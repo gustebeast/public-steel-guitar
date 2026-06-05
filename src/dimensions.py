@@ -138,7 +138,10 @@ NEMA17_PILOT_D  = 22.0
 # overlap. Order: string 0 (lowest, −Y) CLOSEST to the bridge, string 9 (highest,
 # +Y) FURTHEST — so every belt, running back to the bridge at its string's Y,
 # stays on the +Y side of the closer motors' (−Y-extending) bodies and clears.
-MOTOR_X0        = 46.0      # first motor's −X offset from the bridge (clears carriages)
+# First motor offset sized so even the shortest belt (string 0, closest) has a
+# ≥100 mm free span — long enough to develop the 90° belt twist gently (≲1°/mm)
+# and lie flat at each pulley (a 6 mm toothed belt wants ≳15× width to twist).
+MOTOR_X0        = 110.0     # first motor's −X offset from the bridge
 MOTOR_X_STEP    = 44.0      # along-X step between motors (≥ motor square)
 MOTOR_BELT_Z    = SCREW_PULLEY_Z    # motors sit at the screw-pulley height
 
