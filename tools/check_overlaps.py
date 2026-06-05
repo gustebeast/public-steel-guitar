@@ -45,6 +45,7 @@ PER_STRING_OK = {
     frozenset({"locknut", "leadscrew"}), frozenset({"locknut", "screw_bearing"}),
     # a belt connects its OWN motor and screw, so it touches both there
     frozenset({"belt", "motor"}), frozenset({"belt", "leadscrew"}),
+    frozenset({"belt", "belt_clamp"}),   # splice clamp grips its own belt
 }
 GLOBAL_OK = {
     frozenset({"screw_bearing", "screw_rail"}), frozenset({"leadscrew", "screw_rail"}),

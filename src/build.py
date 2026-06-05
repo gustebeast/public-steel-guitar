@@ -28,6 +28,7 @@ from .components import MOTOR_PULLEY_STANDOFF
 from .carriage import carriage, THICK as CARRIAGE_THICK
 from .screw_rail import screw_rail
 from .bridge_mount import bridge_mount
+from .belt_clamp import belt_clamp
 from . import motor_bank as MB
 
 PARTS = {
@@ -35,6 +36,7 @@ PARTS = {
     "screw_rail":      (heal(screw_rail),    "screw_rail.step",      "PA6-GF — shared bottom screw-support rail"),
     "bridge_support":  (heal(bridge_mount),  "bridge_support.step",  "PCTG — bridge-bearing axle support"),
     "motor_bank":      (heal(MB.motor_bank), "motor_bank.step",      "PCTG — under-string staircase motor mounts"),
+    "belt_clamp":      (heal(belt_clamp),    "belt_clamp.step",      "PETG — GT2 belt splice clamp (print 2 per splice ×10)"),
 }
 
 
@@ -52,21 +54,27 @@ def _rod(p0, p1, r):
 # ─────────────────────────────────────────────────────────────────────────
 # Belt geometry report
 # ─────────────────────────────────────────────────────────────────────────
+SPLICE_LAP = 25.0   # extra open-belt length to lap inside the splice clamp
+
+
 def geometry_report() -> str:
     lines = ["", "=== Belt geometry (under-string vertical layout) ===",
              f"  strings={D.N_STRINGS}  string pitch={D.STRING_PITCH} mm  "
              f"screw len={D.SCREW_LEN:.0f} mm (vertical, no whip)",
-             "  per-string belt: motor pulley (axis Y) -> screw pulley (axis Z), "
-             "twisted, run along X:"]
-    runs = []
+             "  toothed GT2 (6 mm); twisted 90° (motor pulley axis Y -> screw "
+             "pulley axis Z), run along X.",
+             "  cut = open-belt length to cut per string (loop + splice lap), mm:",
+             f"    {'str':>4} {'run':>7} {'twist':>9} {'cut len':>9}"]
+    total = 0.0
     for i in range(D.N_STRINGS):
         mx, my, mz = D.motor_pos(i)
         run = abs(mx - D.SCREW_X)
-        runs.append(run)
-        lines.append(f"    string {i}: belt run {run:5.0f} mm along X "
-                     f"(motor at X={mx:.0f}, Y={my:+.1f})")
-    lines.append(f"  belt run range: {min(runs):.0f}-{max(runs):.0f} mm "
-                 f"(long is fine — self-lock holds the load, not the belt)")
+        loop = 2 * run + math.pi * D.PULLEY_OD
+        cut = loop + SPLICE_LAP
+        total += cut
+        lines.append(f"    {i:>4} {run:>6.0f} {90.0 / run:>6.2f}°/mm {cut:>8.0f}")
+    lines.append(f"  total open GT2 to buy: ~{total/1000:.2f} m "
+                 f"(+ {D.N_STRINGS} printed splice clamps)")
     lines.append("")
     return "\n".join(lines)
 
@@ -121,6 +129,9 @@ def _string_components(i):
     out.append((f"motor_{i}", C.motor().translate((mx, my, mz))))
     out.append((f"motor_pulley_{i}", C.motor_pulley().translate((mx, my, mz))))
     out.append((f"belt_{i}", C.belt((mx, my, mz), (D.SCREW_X, sy, D.SCREW_PULLEY_Z))))
+    # splice clamp at the run midpoint (free span, clears the lower motors' bodies)
+    out.append((f"belt_clamp_{i}", belt_clamp.translate(
+        ((mx + D.SCREW_X) / 2, sy, D.SCREW_PULLEY_Z))))
     # string: rises from the anchor tangent to the bearing's +X extent, wraps 90°
     # over the top, then runs the speaking length to the tuner at the nut.
     out.append((f"string_{i}", _string_path(i, sy)))
