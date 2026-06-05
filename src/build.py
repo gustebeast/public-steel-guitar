@@ -131,7 +131,7 @@ def _string_components(i):
     # motor (shaft +Y, body −Y toward player) + its pulley + twisted belt
     out.append((f"motor_{i}", C.motor().translate((mx, my, mz))))
     out.append((f"motor_pulley_{i}", C.motor_pulley().translate((mx, my, mz))))
-    out.append((f"belt_{i}", C.belt((mx, my, mz), (D.SCREW_X, sy, spz))))
+    out.append((f"belt_{i}", C.belt((mx, my, mz), (D.SCREW_X, sy, spz), teeth=(i == 0))))
     # splice clamp on the bottom run near the motor (belt is flat there)
     rb = D.PULLEY_OD / 2 + D.BELT_T / 2
     out.append((f"belt_clamp_{i}", belt_clamp.translate((mx + 35.0, sy, mz - rb))))

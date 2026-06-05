@@ -104,59 +104,99 @@ def tuner() -> cq.Workplane:
 
 
 # ── GT2 belt — full twisted loop (both runs + 90° twist + pulley wraps) ───
-def belt(motor_xyz, screw_xyz) -> cq.Workplane:
+def belt(motor_xyz, screw_xyz, teeth: bool = False) -> cq.Workplane:
     """The real belt loop: it wraps the motor pulley (axis Y) and the screw pulley
-    (axis Z), so its flat (6 mm) face twists 90° (along Y at the motor → along Z at
-    the screw) on each of the two runs. Built as a sequence of oriented strip
-    segments swept along the loop centreline and returned as a compound (no slow
-    booleans). Both pulleys are at the strings' Y; the motor is far −X, screw +X."""
+    (axis Z), so its flat face twists 90° (along Y at the motor → along Z at the
+    screw) on each run. Built by sweeping an oriented strip along the loop
+    centreline, then FUSED into one solid (one Onshape part, one colour). The loop
+    is orientable (the inward normal returns to itself), so `teeth=True` adds GT2
+    teeth on the inner face. Motor is far −X, screw +X; both pulleys at the Y line."""
     import math
     V = cq.Vector
     M, S = V(*motor_xyz), V(*screw_xyz)
     r = D.PULLEY_OD / 2 + D.BELT_T / 2                # belt centreline radius
-    Yv, Zv = V(0, 1, 0), V(0, 0, 1)
     m_top, m_bot = V(M.x, M.y, M.z + r), V(M.x, M.y, M.z - r)   # motor ±Z tangents
     s_py, s_my = V(S.x, S.y + r, S.z), V(S.x, S.y - r, S.z)     # screw ±Y tangents
 
     def lerp(a, b, t):
         return a.add(b.sub(a).multiply(t))
 
-    samples = []                                     # (point, desired width dir)
+    # samples around the loop as (point, inward normal n). n tracks the toothed
+    # face; it is continuous all the way round (verified orientable).
+    samples = []
     NW = 10
-    # run A: motor top -> screw +Y, width twists Y->Z
     NA = max(6, int(s_py.sub(m_top).Length / 18))
-    for k in range(NA + 1):
+    for k in range(NA + 1):                           # run A: n −Z → −Y
         a = (k / NA) * math.pi / 2
-        samples.append((lerp(m_top, s_py, k / NA), V(0, math.cos(a), math.sin(a))))
-    # screw wrap: +Y -> -Y over the +X side (axis Z), width along Z
-    for k in range(1, NW):
+        samples.append((lerp(m_top, s_py, k / NA), V(0, -math.sin(a), -math.cos(a))))
+    for k in range(1, NW):                            # screw wrap (+X side), n → −radial
         phi = math.radians(90 - 180 * k / NW)
-        samples.append((V(S.x + r * math.cos(phi), S.y + r * math.sin(phi), S.z), Zv))
-    # run B: screw -Y -> motor bottom, width twists Z->Y
+        samples.append((V(S.x + r * math.cos(phi), S.y + r * math.sin(phi), S.z),
+                        V(-math.cos(phi), -math.sin(phi), 0)))
     NB = max(6, int(m_bot.sub(s_my).Length / 18))
-    for k in range(NB + 1):
+    for k in range(NB + 1):                           # run B: n +Y → +Z
         a = (k / NB) * math.pi / 2
-        samples.append((lerp(s_my, m_bot, k / NB), V(0, math.sin(a), math.cos(a))))
-    # motor wrap: bottom -> top over the -X side (axis Y), width along Y
-    for k in range(1, NW):
+        samples.append((lerp(s_my, m_bot, k / NB), V(0, math.cos(a), math.sin(a))))
+    for k in range(1, NW):                            # motor wrap (−X side), n → −radial
         th = math.radians(270 - 180 * k / NW)
-        samples.append((V(M.x + r * math.cos(th), M.y, M.z + r * math.sin(th)), Yv))
+        samples.append((V(M.x + r * math.cos(th), M.y, M.z + r * math.sin(th)),
+                        V(-math.cos(th), 0, -math.sin(th))))
 
-    solids, n = [], len(samples)
-    for k in range(n):
-        p0, w0 = samples[k]
-        p1, w1 = samples[(k + 1) % n]
+    n_pts = len(samples)
+
+    def frame(p0, p1, n0, n1):
         seg = p1.sub(p0)
         L = seg.Length
-        if L < 1e-6:
-            continue
         tan = seg.multiply(1.0 / L)
-        wd = w0.add(w1).multiply(0.5)
-        wd = wd.sub(tan.multiply(wd.dot(tan)))       # width ⟂ tangent
-        if wd.Length < 1e-6:
+        nn = n0.add(n1).multiply(0.5)
+        nn = nn.sub(tan.multiply(nn.dot(tan)))        # n ⟂ tangent
+        nn = nn.normalized()
+        wd = nn.cross(tan).normalized()               # width ⟂ both
+        return tan, nn, wd, L
+
+    OV = 0.4
+    parts = []
+    # smooth strip (thickness BELT_T along n, width BELT_W along wd)
+    for k in range(n_pts):
+        p0, n0 = samples[k]
+        p1, n1 = samples[(k + 1) % n_pts]
+        if p1.sub(p0).Length < 1e-6:
             continue
-        wd = wd.normalized()
-        pl = cq.Plane(origin=(p0.x, p0.y, p0.z),
+        tan, nn, wd, L = frame(p0, p1, n0, n1)
+        o = p0.sub(tan.multiply(OV / 2))
+        pl = cq.Plane(origin=(o.x, o.y, o.z),
                       xDir=(wd.x, wd.y, wd.z), normal=(tan.x, tan.y, tan.z))
-        solids.append(cq.Workplane(pl).rect(D.BELT_W, D.BELT_T).extrude(L).val())
-    return cq.Workplane("XY").add(cq.Compound.makeCompound(solids))
+        parts.append(cq.Workplane(pl).rect(D.BELT_W, D.BELT_T).extrude(L + OV).val())
+
+    # GT2 teeth on the inner face, every 2 mm of arc, protruding along +n
+    if teeth:
+        PITCH, TLEN, TH = 2.0, 1.1, 0.75
+        acc = 0.0
+        for k in range(n_pts):
+            p0, n0 = samples[k]
+            p1, n1 = samples[(k + 1) % n_pts]
+            if p1.sub(p0).Length < 1e-6:
+                continue
+            tan, _, _, L = frame(p0, p1, n0, n1)
+            d = 0.0
+            while acc <= L - d + 1e-9:
+                d += acc
+                t = min(d / L, 1.0)
+                pt = lerp(p0, p1, t)
+                nn = lerp(n0, n1, t)
+                nn = nn.sub(tan.multiply(nn.dot(tan)))
+                acc = PITCH
+                if nn.Length < 1e-6:
+                    continue
+                nn = nn.normalized()
+                wd = nn.cross(tan).normalized()
+                base = pt.add(nn.multiply(D.BELT_T / 2 - 0.2))
+                pl = cq.Plane(origin=(base.x, base.y, base.z),
+                              xDir=(wd.x, wd.y, wd.z), normal=(nn.x, nn.y, nn.z))
+                parts.append(cq.Workplane(pl).rect(D.BELT_W, TLEN).extrude(TH + 0.2).val())
+            acc -= (L - d)
+
+    fused = parts[0].fuse(*parts[1:]) if len(parts) > 1 else parts[0]
+    fused = fused.clean()
+    solids = fused.Solids()
+    return cq.Workplane("XY").add(solids[0] if len(solids) == 1 else fused)
