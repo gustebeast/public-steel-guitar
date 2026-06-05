@@ -47,15 +47,12 @@ PER_STRING_OK = {
     frozenset({"belt", "motor"}), frozenset({"belt", "screw"}),
 }
 GLOBAL_OK = {
-    frozenset({"motor", "motor_bank"}), frozenset({"mpulley", "motor_bank"}),
     frozenset({"bearing", "bearing_rail"}), frozenset({"screw", "bearing_rail"}),
     frozenset({"locknut", "bearing_rail"}), frozenset({"spulley", "bearing_rail"}),
     frozenset({"screw", "bridge_mount"}), frozenset({"nut", "bridge_mount"}),
     frozenset({"carriage", "bridge_mount"}),
     frozenset({"bridge_mount", "roller_bridge"}),
     frozenset({"string", "roller_bridge"}), frozenset({"string", "bridge_mount"}),
-    frozenset({"base_rail", "motor_bank"}), frozenset({"base_rail", "bridge_mount"}),
-    frozenset({"base_rail", "bearing_rail"}),
 }
 
 
