@@ -3,16 +3,15 @@
 Split into focused modules:
 
   dimensions  — coordinate system + all dimensional/material/fit constants
-  helpers     — geometric helpers (cyl, box_at, nema17 bolt pattern, heal)
+  helpers     — geometric helpers (cyl, cyl_y, box_at, nema17 cutter, heal)
   components  — purchased-part DUMMIES (motor, screw, nut, pulleys, bearings,
-                guide rod, roller bridge, locking tuner, belt) for the
+                guide rod, bridge bearings, locking tuner, belt) for the
                 assembly only; not exported as printable STEPs
   carriage    — the moving carriage (PA6-GF, load-critical) ×10
-  bearing_block — driven-end bearing cradle (single deep-groove bearing) ×10
-  bridge_mount  — roller-bridge holder + string-anchor geometry
-  base_rail   — chassis base + near-support walls (screw + guide-rod seats)
-  motor_brick — the §5 belt-offset 2-layer motor holder
-  build       — composes one actuator axis ×10 + the motor brick into an
+  screw_rail  — shared bottom rail holding all 10 screw support bushings
+  bridge_mount — bridge-bearing axle support (uprights + tie bar)
+  motor_bank  — under-string staircase motor mounts (faceplate walls + floor)
+  build       — composes 10 actuator axes + the bridge + motor bank into an
                 assembly, writes per-part STEPs + assembly.step, and pushes
                 the assembly to Onshape.
 

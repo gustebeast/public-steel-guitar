@@ -5,9 +5,9 @@
   py -3.12 -m src.build --list       # list part names
   py -3.12 -m src.build --geom       # print the belt geometry report & exit
 
-Vertical-screw, under-string layout: each string turns 90° over its roller and
-runs down to a vertical leadscrew; motors lie flat under the speaking length in a
-staircase, twisted belts connecting them.
+Vertical-screw, under-string layout: each string turns 90° over its bridge
+bearing and runs down to a vertical leadscrew; motors lie flat under the speaking
+length in a staircase, twisted belts connecting them.
 """
 
 from __future__ import annotations
@@ -26,15 +26,15 @@ from .helpers import heal
 from . import components as C
 from .components import MOTOR_PULLEY_STANDOFF
 from .carriage import carriage, THICK as CARRIAGE_THICK
-from .bearing_block import bearing_rail
+from .screw_rail import screw_rail
 from .bridge_mount import bridge_mount
-from . import motor_brick as MB
+from . import motor_bank as MB
 
 PARTS = {
-    "carriage":        (heal(carriage),     "carriage.step",        "PA6-GF, load-critical — ×10 identical"),
-    "screw_rail":      (heal(bearing_rail), "screw_rail.step",      "PA6-GF — shared bottom screw-support rail"),
-    "bridge_support":  (heal(bridge_mount), "bridge_support.step",  "PCTG — bridge-bearing axle support"),
-    "motor_bank":      (heal(MB.motor_bank),"motor_bank.step",      "PCTG — under-string staircase motor mounts"),
+    "carriage":        (heal(carriage),      "carriage.step",        "PA6-GF, load-critical — ×10 identical"),
+    "screw_rail":      (heal(screw_rail),    "screw_rail.step",      "PA6-GF — shared bottom screw-support rail"),
+    "bridge_support":  (heal(bridge_mount),  "bridge_support.step",  "PCTG — bridge-bearing axle support"),
+    "motor_bank":      (heal(MB.motor_bank), "motor_bank.step",      "PCTG — under-string staircase motor mounts"),
 }
 
 
@@ -154,7 +154,7 @@ def collect_components():
     comps = [
         ("bridge_support", bridge_mount),
         ("bridge_bearings", C.bridge_bearings()),
-        ("screw_rail", bearing_rail),
+        ("screw_rail", screw_rail),
         ("motor_bank", MB.motor_bank),
     ]
     for i in range(D.N_STRINGS):

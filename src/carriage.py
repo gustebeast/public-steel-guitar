@@ -2,12 +2,12 @@
 
 The moving element, riding a VERTICAL leadscrew (axis Z) — it travels in Z. It
 presses the round nut into its pocket, rides the guide rod (anti-rotation), and
-anchors the string ball-end directly under the roller, reaching +X over the
-screw to do so. Tension path: string → carriage → nut → screw → support bearing.
+anchors the string ball-end directly under the bridge bearing, reaching +X over
+the screw to do so. Tension path: string → carriage → nut → screw → support brg.
 
 Local frame: origin on the SCREW axis (axis Z). The nut presses in from below;
 the guide bore is at X=−GUIDE_ROD_DX; the string ball-end anchor is at
-X=+ANCHOR_DX (under the roller), opening +Z so the string runs up to the roller.
+X=+ANCHOR_DX (under the bridge bearing), opening +Z so the string runs up to it.
 
 Print orientation: the string-tension axis is Z; lay the part so that runs along
 the layer lines.
@@ -46,9 +46,9 @@ def _build() -> cq.Workplane:
     body = body.cut(cyl(GUIDE_CLR_D, THICK + 2, z=-THICK / 2 - 1)
                     .translate((-D.GUIDE_ROD_DX, 0, 0)))
 
-    # Thin anchor POST rising from the body top to near the roller (so only the
-    # slim post nears the roller, not the full body). String ball-end anchors in
-    # its top, opening +Z (the string runs up to the roller).
+    # Thin anchor POST rising from the body top toward the bridge bearing (so
+    # only the slim post nears the bearing, not the full body). String ball-end
+    # anchors in its top, opening +Z (the string runs up to the bearing).
     post_top = THICK / 2 + ANCHOR_POST_H
     body = body.union(box_at(6.0, WIDTH, ANCHOR_POST_H,
                              x=D.ANCHOR_DX, y=0, z=THICK / 2 + ANCHOR_POST_H / 2))

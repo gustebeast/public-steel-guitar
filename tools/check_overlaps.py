@@ -2,7 +2,7 @@
 
 Loads every placed component from src.build.collect_components(), finds pairs
 whose solids actually interpenetrate, and reports the UNINTENDED ones (skipping
-designed contacts like screw-in-nut, bearing-in-block, motor-on-brick, etc.).
+designed contacts like screw-in-nut, bushing-in-rail, motor-on-bank, etc.).
 
   py -3.12 -m tools.check_overlaps            # report unintended overlaps
   py -3.12 -m tools.check_overlaps --all      # also list intended contacts

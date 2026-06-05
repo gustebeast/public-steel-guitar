@@ -1,11 +1,11 @@
-"""Bottom bearing rail (×1, shared) — PA6-GF (§8 item 2).
+"""Bottom screw-support rail (×1, shared) — PA6-GF (§8 item 2).
 
 The 10 vertical screws' bottom supports live in ONE rail spanning the field at
 the screw line (X=SCREW_X). Each station is a Ø8 bushing/MR85 seat (radial) with
 a top ledge that backs the thrust washer against the screw's UPWARD pull (the
-string pulls each carriage toward its roller, +Z). A single rail avoids the
-overlapping per-screw cradles that 10 separate holders would create at 9.5 mm
-pitch. Built in global position.
+string pulls each carriage toward its bridge bearing, +Z). A single rail avoids
+the overlapping per-screw cradles that 10 separate holders would create at
+9.5 mm pitch. Built in global position.
 """
 
 from __future__ import annotations
@@ -35,4 +35,4 @@ def _build() -> cq.Workplane:
     return body
 
 
-bearing_rail = _build()
+screw_rail = _build()

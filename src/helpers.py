@@ -13,12 +13,6 @@ def cyl(d: float, h: float, z: float = 0.0) -> cq.Workplane:
     return cq.Workplane("XY").workplane(offset=z).circle(d / 2).extrude(h)
 
 
-def cyl_x(d: float, length: float, x0: float, y: float = 0.0, z: float = 0.0) -> cq.Workplane:
-    """Solid cylinder with axis along +X, base face at x0, centred on (y, z)."""
-    return cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        d / 2, length, pnt=cq.Vector(x0, y, z), dir=cq.Vector(1, 0, 0)))
-
-
 def cyl_y(d: float, length: float, y0: float, x: float = 0.0, z: float = 0.0) -> cq.Workplane:
     """Solid cylinder with axis along +Y (the motor shaft axis), base face at y0,
     centred on (x, z)."""

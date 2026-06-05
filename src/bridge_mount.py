@@ -1,4 +1,4 @@
-"""Roller-bridge mount (§8 item 5) — PCTG (schematic, v1).
+"""Bridge-bearing support (§8 item 5) — PCTG (schematic, v1).
 
 Carries the shared bridge-bearing axle. Two uprights (just outside the string
 field, so they don't block the strings) hold the axle ends; a tie bar above the
@@ -11,7 +11,7 @@ from __future__ import annotations
 import cadquery as cq
 
 from . import dimensions as D
-from . import motor_brick as MB
+from . import motor_bank as MB
 from .helpers import cyl_y, box_at
 
 POST_Y   = D.BRIDGE_AXLE_Y                  # uprights at the axle ends
