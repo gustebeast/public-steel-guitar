@@ -8,10 +8,10 @@ Split into focused modules:
                 guide rod, roller bridge, locking tuner, belt) for the
                 assembly only; not exported as printable STEPs
   carriage    — the moving carriage (PA6-GF, load-critical) ×10
-  bearing_block — driven-end radial + thrust bearing support ×10
-  bridge_mount  — roller-bridge holder + behind-the-bridge string anchor
-  base_rail   — chassis base plate + guide-rod mounts + screw far-end support
-  motor_brick — the §5 belt-offset 2-layer fanned motor holder
+  bearing_block — driven-end bearing cradle (single deep-groove bearing) ×10
+  bridge_mount  — roller-bridge holder + string-anchor geometry
+  base_rail   — chassis base + near-support walls (screw + guide-rod seats)
+  motor_brick — the §5 belt-offset 2-layer motor holder
   build       — composes one actuator axis ×10 + the motor brick into an
                 assembly, writes per-part STEPs + assembly.step, and pushes
                 the assembly to Onshape.

@@ -29,8 +29,8 @@ py -3.12 -m src.build --list       # list part names
 py -3.12 -m src.build --geom       # print the §5 belt-geometry report
 ```
 
-- `src/dimensions.py` — global coordinate system (+X across strings, +Y
-  bridge→motor, +Z up) and every constant.
+- `src/dimensions.py` — global coordinate system (+X along the strings: +X
+  changer, −X nut; +Y across the strings; +Z up) and every constant.
 - `src/components.py` — schematic dummies of purchased parts (motor, screw,
   nut, bearing, pulley, belt, tuner) for the assembly only.
 - Printed parts: `carriage`, `bearing_block` (open cradle), `bridge_mount`,
