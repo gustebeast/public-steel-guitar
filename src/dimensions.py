@@ -163,6 +163,10 @@ BRIDGE_BEARING_OD = 8.0     # MR builds (e.g. 693 Ø3×8); fits the 9.5 mm pitch
 BRIDGE_BEARING_W  = 4.0     # along the axle (Y); string rides a groove in the OD
 BRIDGE_AXLE_D     = 3.0     # shared axle (axis Y)
 BRIDGE_BEARING_Z  = STRING_Z - BRIDGE_BEARING_OD / 2     # axle/bearing centre (12)
+# The string rises vertically from the anchor (at ROLLER_X) tangent to the
+# bearing's +X extent, wraps 90° over the top, then leaves −X along the top. So
+# the bearing centre sits OD/2 to −X of the anchor line.
+BRIDGE_AXLE_X     = ROLLER_X - BRIDGE_BEARING_OD / 2     # bearing/axle centre X
 BRIDGE_AXLE_Y     = STRING_FIELD_W / 2 + 9.0             # axle/support half-span
 BRIDGE_BAR_DEPTH  = 12.0    # along-string depth (X) of the supports
 

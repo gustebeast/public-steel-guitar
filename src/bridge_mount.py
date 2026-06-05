@@ -25,14 +25,14 @@ def _build() -> cq.Workplane:
     body = None
     for sy in (-POST_Y, POST_Y):
         post = box_at(D.BRIDGE_BAR_DEPTH, POST_W, TIE_Z - BOT_Z,
-                      x=0, y=sy, z=(TIE_Z + BOT_Z) / 2)
+                      x=D.BRIDGE_AXLE_X, y=sy, z=(TIE_Z + BOT_Z) / 2)
         # axle bore through the upright
         post = post.cut(cyl_y(AXLE_BORE, POST_W + 2, y0=sy - POST_W / 2 - 1,
-                              x=0, z=D.BRIDGE_BEARING_Z))
+                              x=D.BRIDGE_AXLE_X, z=D.BRIDGE_BEARING_Z))
         body = post if body is None else body.union(post)
     # tie bar linking the upright tops (above the strings)
     body = body.union(box_at(D.BRIDGE_BAR_DEPTH, 2 * POST_Y + POST_W, 5.0,
-                             x=0, y=0, z=TIE_Z - 2.5))
+                             x=D.BRIDGE_AXLE_X, y=0, z=TIE_Z - 2.5))
     return body
 
 

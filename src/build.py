@@ -31,10 +31,10 @@ from .bridge_mount import bridge_mount
 from . import motor_brick as MB
 
 PARTS = {
-    "carriage":     (heal(carriage),     "carriage.step",     "PA6-GF, load-critical — ×10 identical"),
-    "bearing_rail": (heal(bearing_rail), "bearing_rail.step", "PA6-GF — shared bottom bushing rail"),
-    "bridge_mount": (heal(bridge_mount), "bridge_mount.step", "PCTG — roller bridge support"),
-    "motor_bank":   (heal(MB.motor_bank),"motor_bank.step",   "PCTG — under-string staircase motor mounts"),
+    "carriage":        (heal(carriage),     "carriage.step",        "PA6-GF, load-critical — ×10 identical"),
+    "screw_rail":      (heal(bearing_rail), "screw_rail.step",      "PA6-GF — shared bottom screw-support rail"),
+    "bridge_support":  (heal(bridge_mount), "bridge_support.step",  "PCTG — bridge-bearing axle support"),
+    "motor_bank":      (heal(MB.motor_bank),"motor_bank.step",      "PCTG — under-string staircase motor mounts"),
 }
 
 
@@ -102,7 +102,7 @@ def _string_components(i):
     mx, my, mz = D.motor_pos(i)
     out = []
     # vertical leadscrew
-    out.append((f"screw_{i}", C.screw().translate((D.SCREW_X, sy, D.SCREW_BOT_Z))))
+    out.append((f"leadscrew_{i}", C.screw().translate((D.SCREW_X, sy, D.SCREW_BOT_Z))))
     # carriage (origin = screw axis) at the nominal travel position
     out.append((f"carriage_{i}", carriage.translate((D.SCREW_X, sy, D.CARRIAGE_NOM_Z))))
     # round nut pressed up into the carriage from below
@@ -110,32 +110,51 @@ def _string_components(i):
         (D.SCREW_X, sy, D.CARRIAGE_NOM_Z - CARRIAGE_THICK / 2))))
     # guide rod (anti-rotation), offset −X, spanning the carriage travel
     glen = D.CARRIAGE_TRAVEL + CARRIAGE_THICK + 6.0
-    out.append((f"guiderod_{i}", C.guide_rod(glen).translate(
+    out.append((f"guide_rod_{i}", C.guide_rod(glen).translate(
         (D.SCREW_X - D.GUIDE_ROD_DX, sy, D.CARRIAGE_NOM_Z - glen / 2))))
-    # screw drive pulley, bushing (in the shared rail), locknut below
-    out.append((f"spulley_{i}", C.screw_pulley().translate((D.SCREW_X, sy, D.SCREW_PULLEY_Z))))
-    out.append((f"bearing_{i}", C.support_bearing().translate((D.SCREW_X, sy, D.SUPPORT_BRG_Z))))
+    # screw drive pulley, support bearing (in the shared rail), locknut below
+    out.append((f"screw_pulley_{i}", C.screw_pulley().translate((D.SCREW_X, sy, D.SCREW_PULLEY_Z))))
+    out.append((f"screw_bearing_{i}", C.support_bearing().translate((D.SCREW_X, sy, D.SUPPORT_BRG_Z))))
     out.append((f"locknut_{i}", C.locknut().translate(
         (D.SCREW_X, sy, D.SUPPORT_BRG_Z - D.SUPPORT_BRG_W / 2 - D.LOCKNUT_W / 2))))
     # motor (shaft +Y, body −Y toward player) + its pulley + twisted belt
     out.append((f"motor_{i}", C.motor().translate((mx, my, mz))))
-    out.append((f"mpulley_{i}", C.motor_pulley().translate((mx, my, mz))))
+    out.append((f"motor_pulley_{i}", C.motor_pulley().translate((mx, my, mz))))
     out.append((f"belt_{i}", C.belt((mx, my, mz), (D.SCREW_X, sy, D.SCREW_PULLEY_Z))))
-    # schematic string: carriage anchor -> roller (90° turn) -> tuner at the nut
-    az = D.CARRIAGE_NOM_Z + CARRIAGE_THICK / 2
-    anchor = cq.Vector(D.ROLLER_X, sy, az)
-    roller = cq.Vector(D.ROLLER_X, sy, D.STRING_Z)
-    tuner = cq.Vector(-D.MOUNTING_SPAN, D.nut_y(i), D.STRING_Z)
-    out.append((f"string_{i}", _rod(anchor, roller, 0.6).union(_rod(roller, tuner, 0.6))))
+    # string: rises from the anchor tangent to the bearing's +X extent, wraps 90°
+    # over the top, then runs the speaking length to the tuner at the nut.
+    out.append((f"string_{i}", _string_path(i, sy)))
     out.append((f"tuner_{i}", C.tuner().translate((-D.MOUNTING_SPAN, D.nut_y(i), D.STRING_Z))))
+    return out
+
+
+def _string_path(i, sy):
+    """Vertical rise → 90° wrap around the bridge bearing → speaking length."""
+    r = D.BRIDGE_BEARING_OD / 2
+    cx, cz = D.BRIDGE_AXLE_X, D.BRIDGE_BEARING_Z      # bearing centre
+    az = D.CARRIAGE_NOM_Z + CARRIAGE_THICK / 2        # anchor (carriage top)
+    rad = 0.55
+    # vertical rise to the +X tangent point (cx+r, cz)
+    p0 = cq.Vector(cx + r, sy, az)
+    prev = cq.Vector(cx + r, sy, cz)
+    out = _rod(p0, prev, rad)
+    # 90° arc, +X extent → top, approximated by short rods
+    N = 10
+    for k in range(1, N + 1):
+        ang = (k / N) * (math.pi / 2)
+        p = cq.Vector(cx + r * math.cos(ang), sy, cz + r * math.sin(ang))
+        out = out.union(_rod(prev, p, rad))
+        prev = p
+    # speaking length from the top tangent to the tuner (fans in Y to nut pitch)
+    out = out.union(_rod(prev, cq.Vector(-D.MOUNTING_SPAN, D.nut_y(i), D.STRING_Z), rad))
     return out
 
 
 def collect_components():
     comps = [
-        ("bridge_mount", bridge_mount),
-        ("roller_bridge", C.roller_bridge()),
-        ("bearing_rail", bearing_rail),
+        ("bridge_support", bridge_mount),
+        ("bridge_bearings", C.bridge_bearings()),
+        ("screw_rail", bearing_rail),
         ("motor_bank", MB.motor_bank),
     ]
     for i in range(D.N_STRINGS):

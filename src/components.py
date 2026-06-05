@@ -78,19 +78,20 @@ def guide_rod(length: float) -> cq.Workplane:
     return cyl(D.GUIDE_ROD_D, length, z=0.0)
 
 
-# ── Roller bridge — one ball bearing per string on a shared axle ─────────
-def roller_bridge() -> cq.Workplane:
-    """A shared axle (axis Y) at X=0 carrying one freely-spinning ball bearing per
-    string; each string rides the bearing OD around the 90° turn. A spinning
-    bearing keeps the bend near-frictionless so the two sides' tensions equalize.
-    Built in global position; bearing tops at STRING_Z."""
-    z = D.BRIDGE_BEARING_Z
-    out = cyl_y(D.BRIDGE_AXLE_D, 2 * D.BRIDGE_AXLE_Y, y0=-D.BRIDGE_AXLE_Y, x=0, z=z)
+# ── Bridge bearings — one ball bearing per string on a shared axle ───────
+def bridge_bearings() -> cq.Workplane:
+    """A shared axle (axis Y) at (BRIDGE_AXLE_X, BRIDGE_BEARING_Z) carrying one
+    freely-spinning ball bearing per string; each string rises tangent to the
+    bearing's +X extent and wraps 90° over the top. A spinning bearing keeps the
+    bend near-frictionless so the two sides' tensions equalize. Built in global
+    position; bearing tops at STRING_Z."""
+    x, z = D.BRIDGE_AXLE_X, D.BRIDGE_BEARING_Z
+    out = cyl_y(D.BRIDGE_AXLE_D, 2 * D.BRIDGE_AXLE_Y, y0=-D.BRIDGE_AXLE_Y, x=x, z=z)
     for i in range(D.N_STRINGS):
         y0 = D.string_y(i) - D.BRIDGE_BEARING_W / 2
-        brg = cyl_y(D.BRIDGE_BEARING_OD, D.BRIDGE_BEARING_W, y0=y0, x=0, z=z)
+        brg = cyl_y(D.BRIDGE_BEARING_OD, D.BRIDGE_BEARING_W, y0=y0, x=x, z=z)
         brg = brg.cut(cyl_y(D.BRIDGE_AXLE_D + 0.3, D.BRIDGE_BEARING_W + 2,
-                            y0=y0 - 1, x=0, z=z))
+                            y0=y0 - 1, x=x, z=z))
         out = out.union(brg)
     return out
 

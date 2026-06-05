@@ -35,24 +35,24 @@ def idx(name: str):
 
 # Designed contacts that SHOULD interpenetrate / touch — not problems.
 PER_STRING_OK = {
-    frozenset({"screw", "nut"}), frozenset({"screw", "carriage"}),
-    frozenset({"nut", "carriage"}), frozenset({"guiderod", "carriage"}),
-    frozenset({"screw", "bearing"}), frozenset({"screw", "spulley"}),
-    frozenset({"belt", "spulley"}), frozenset({"belt", "mpulley"}),
-    frozenset({"motor", "mpulley"}),
+    frozenset({"leadscrew", "nut"}), frozenset({"leadscrew", "carriage"}),
+    frozenset({"nut", "carriage"}), frozenset({"guide_rod", "carriage"}),
+    frozenset({"leadscrew", "screw_bearing"}), frozenset({"leadscrew", "screw_pulley"}),
+    frozenset({"belt", "screw_pulley"}), frozenset({"belt", "motor_pulley"}),
+    frozenset({"motor", "motor_pulley"}),
     frozenset({"string", "carriage"}), frozenset({"string", "tuner"}),
-    frozenset({"nut", "spulley"}), frozenset({"bearing", "spulley"}),
-    frozenset({"locknut", "screw"}), frozenset({"locknut", "bearing"}),
+    frozenset({"nut", "screw_pulley"}), frozenset({"screw_bearing", "screw_pulley"}),
+    frozenset({"locknut", "leadscrew"}), frozenset({"locknut", "screw_bearing"}),
     # a belt connects its OWN motor and screw, so it touches both there
-    frozenset({"belt", "motor"}), frozenset({"belt", "screw"}),
+    frozenset({"belt", "motor"}), frozenset({"belt", "leadscrew"}),
 }
 GLOBAL_OK = {
-    frozenset({"bearing", "bearing_rail"}), frozenset({"screw", "bearing_rail"}),
-    frozenset({"locknut", "bearing_rail"}), frozenset({"spulley", "bearing_rail"}),
-    frozenset({"screw", "bridge_mount"}), frozenset({"nut", "bridge_mount"}),
-    frozenset({"carriage", "bridge_mount"}),
-    frozenset({"bridge_mount", "roller_bridge"}),
-    frozenset({"string", "roller_bridge"}), frozenset({"string", "bridge_mount"}),
+    frozenset({"screw_bearing", "screw_rail"}), frozenset({"leadscrew", "screw_rail"}),
+    frozenset({"locknut", "screw_rail"}), frozenset({"screw_pulley", "screw_rail"}),
+    frozenset({"leadscrew", "bridge_support"}), frozenset({"nut", "bridge_support"}),
+    frozenset({"carriage", "bridge_support"}),
+    frozenset({"bridge_support", "bridge_bearings"}),
+    frozenset({"string", "bridge_bearings"}), frozenset({"string", "bridge_support"}),
 }
 
 
@@ -61,7 +61,7 @@ def intended(na, nb) -> bool:
         return True
     # A belt is allowed to touch its OWN two pulleys (it wraps them); any other
     # belt contact (neighbour belt/pulley/rod) is a real clash to be reported.
-    if {base(na), base(nb)} <= {"belt", "spulley", "mpulley"} \
+    if {base(na), base(nb)} <= {"belt", "screw_pulley", "motor_pulley"} \
             and idx(na) == idx(nb):
         return True
     pair = frozenset({base(na), base(nb)})
