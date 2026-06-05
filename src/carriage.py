@@ -32,7 +32,7 @@ SCREW_CLR_D  = D.SCREW_OD + 1.0
 GUIDE_CLR_D  = D.GUIDE_ROD_D + D.FIT_CLR
 BALL_D       = 3.8
 STRING_SLOT_W = 1.2
-ANCHOR_POST_H = 6.0                        # thin post above the body to the roller
+ANCHOR_POST_H = 4.0                        # thin post above the body toward the bridge bearing
 
 
 def _build() -> cq.Workplane:

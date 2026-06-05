@@ -45,8 +45,8 @@ def nut_y(i: int) -> float:
 # ─────────────────────────────────────────────────────────────────────────
 # Heights (Z). Speaking length on top; mechanism below.
 # ─────────────────────────────────────────────────────────────────────────
-STRING_Z        = 14.0      # speaking-length / roller height (top)
-SCREW_TOP_Z     = 2.0       # screw top, below the roller / carriage travel
+STRING_Z        = 16.0      # speaking-length / bridge-bearing top
+SCREW_TOP_Z     = 2.0       # screw top, below the bend / carriage travel
 # Travel budget from string physics. f ∝ √(stretch) ⇒ stretch ∝ f², so the
 # carriage travel between two pitches is the change in stretch:
 #   travel(f1→f2) = DL_OPEN · ((f2/f_open)² − (f1/f_open)²)
@@ -154,12 +154,17 @@ def motor_pos(i: int):
 
 
 # ─────────────────────────────────────────────────────────────────────────
-# Roller bridge — turns each string 90° (−X speaking length → −Z to the screw)
+# Roller bridge — turns each string 90° (−X speaking length → −Z to the screw).
+# One small ball bearing PER STRING on a shared axle (axis Y): a freely-spinning
+# bearing keeps the bend near-frictionless so the two sides' tensions equalize
+# (a fixed surface would mismatch them ~37% at 90° and cause tuning hysteresis).
 # ─────────────────────────────────────────────────────────────────────────
-BRIDGE_BAR_LEN   = STRING_FIELD_W + 14.0   # across (Y)
-BRIDGE_BAR_DEPTH = 14.0     # along-string depth (X)
-BRIDGE_BAR_H     = 6.0      # Z height (sits above the carriage anchor posts)
-BRIDGE_ROLLER_D  = 6.0
+BRIDGE_BEARING_OD = 8.0     # MR builds (e.g. 693 Ø3×8); fits the 9.5 mm pitch
+BRIDGE_BEARING_W  = 4.0     # along the axle (Y); string rides a groove in the OD
+BRIDGE_AXLE_D     = 3.0     # shared axle (axis Y)
+BRIDGE_BEARING_Z  = STRING_Z - BRIDGE_BEARING_OD / 2     # axle/bearing centre (12)
+BRIDGE_AXLE_Y     = STRING_FIELD_W / 2 + 9.0             # axle/support half-span
+BRIDGE_BAR_DEPTH  = 12.0    # along-string depth (X) of the supports
 
 
 # ─────────────────────────────────────────────────────────────────────────
