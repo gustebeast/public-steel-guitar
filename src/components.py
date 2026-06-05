@@ -52,9 +52,10 @@ def support_bearing() -> cq.Workplane:
 
 
 def locknut() -> cq.Workplane:
-    """Locknut on the screw end (axial retainer), axis Z, centred z=0."""
+    """Locknut on the screw end (axial retainer), axis Z, centred z=0. Bore = screw
+    OD so it sleeves the thread cleanly (the real thread interference isn't modelled)."""
     o = cyl(D.LOCKNUT_OD, D.LOCKNUT_W, z=-D.LOCKNUT_W / 2)
-    return o.cut(cyl(D.SCREW_OD - 0.3, D.LOCKNUT_W + 2, z=-D.LOCKNUT_W / 2 - 1))
+    return o.cut(cyl(D.SCREW_OD, D.LOCKNUT_W + 2, z=-D.LOCKNUT_W / 2 - 1))
 
 
 # ── Motor: MKS SERVO42D, lies flat, shaft +Y ─────────────────────────────
@@ -102,14 +103,60 @@ def tuner() -> cq.Workplane:
     return box_at(D.TUNER_D, D.TUNER_W, D.TUNER_H)
 
 
-# ── GT2 belt (schematic) — twisted run from motor pulley to screw pulley ──
+# ── GT2 belt — full twisted loop (both runs + 90° twist + pulley wraps) ───
 def belt(motor_xyz, screw_xyz) -> cq.Workplane:
-    """Schematic belt: a flat band along X from the motor pulley to the screw
-    pulley (both near the same Z), at the string's Y. The real belt twists 90°
-    (motor axis Y → screw axis Z) over this span; modelled as a band for viz."""
-    mx, my, mz = motor_xyz
-    sx, sy, sz = screw_xyz
-    x0, x1 = min(mx, sx), max(mx, sx)
-    zc = (mz + sz) / 2
-    # thin flat band along X at the pulley centreline (schematic run)
-    return box_at(x1 - x0, D.BELT_W, 2 * D.BELT_T, x=(x0 + x1) / 2, y=my, z=zc)
+    """The real belt loop: it wraps the motor pulley (axis Y) and the screw pulley
+    (axis Z), so its flat (6 mm) face twists 90° (along Y at the motor → along Z at
+    the screw) on each of the two runs. Built as a sequence of oriented strip
+    segments swept along the loop centreline and returned as a compound (no slow
+    booleans). Both pulleys are at the strings' Y; the motor is far −X, screw +X."""
+    import math
+    V = cq.Vector
+    M, S = V(*motor_xyz), V(*screw_xyz)
+    r = D.PULLEY_OD / 2 + D.BELT_T / 2                # belt centreline radius
+    Yv, Zv = V(0, 1, 0), V(0, 0, 1)
+    m_top, m_bot = V(M.x, M.y, M.z + r), V(M.x, M.y, M.z - r)   # motor ±Z tangents
+    s_py, s_my = V(S.x, S.y + r, S.z), V(S.x, S.y - r, S.z)     # screw ±Y tangents
+
+    def lerp(a, b, t):
+        return a.add(b.sub(a).multiply(t))
+
+    samples = []                                     # (point, desired width dir)
+    NW = 10
+    # run A: motor top -> screw +Y, width twists Y->Z
+    NA = max(6, int(s_py.sub(m_top).Length / 18))
+    for k in range(NA + 1):
+        a = (k / NA) * math.pi / 2
+        samples.append((lerp(m_top, s_py, k / NA), V(0, math.cos(a), math.sin(a))))
+    # screw wrap: +Y -> -Y over the +X side (axis Z), width along Z
+    for k in range(1, NW):
+        phi = math.radians(90 - 180 * k / NW)
+        samples.append((V(S.x + r * math.cos(phi), S.y + r * math.sin(phi), S.z), Zv))
+    # run B: screw -Y -> motor bottom, width twists Z->Y
+    NB = max(6, int(m_bot.sub(s_my).Length / 18))
+    for k in range(NB + 1):
+        a = (k / NB) * math.pi / 2
+        samples.append((lerp(s_my, m_bot, k / NB), V(0, math.sin(a), math.cos(a))))
+    # motor wrap: bottom -> top over the -X side (axis Y), width along Y
+    for k in range(1, NW):
+        th = math.radians(270 - 180 * k / NW)
+        samples.append((V(M.x + r * math.cos(th), M.y, M.z + r * math.sin(th)), Yv))
+
+    solids, n = [], len(samples)
+    for k in range(n):
+        p0, w0 = samples[k]
+        p1, w1 = samples[(k + 1) % n]
+        seg = p1.sub(p0)
+        L = seg.Length
+        if L < 1e-6:
+            continue
+        tan = seg.multiply(1.0 / L)
+        wd = w0.add(w1).multiply(0.5)
+        wd = wd.sub(tan.multiply(wd.dot(tan)))       # width ⟂ tangent
+        if wd.Length < 1e-6:
+            continue
+        wd = wd.normalized()
+        pl = cq.Plane(origin=(p0.x, p0.y, p0.z),
+                      xDir=(wd.x, wd.y, wd.z), normal=(tan.x, tan.y, tan.z))
+        solids.append(cq.Workplane(pl).rect(D.BELT_W, D.BELT_T).extrude(L).val())
+    return cq.Workplane("XY").add(cq.Compound.makeCompound(solids))

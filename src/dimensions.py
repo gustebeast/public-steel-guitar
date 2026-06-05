@@ -115,7 +115,10 @@ PULLEY_OD       = 8.4       # over teeth
 PULLEY_W        = 10.0
 PULLEY_BORE_SCREW = SCREW_OD
 PULLEY_BORE_MOTOR = 5.0
-BELT_W          = 6.0
+# 3 mm GT2 (not the spec's 6 mm): a 6 mm belt twisting 90° has too much corner
+# bulge to clear its neighbour at 9.5 mm string pitch. The move torque is tiny
+# (~15 N belt tension) so 3 mm is amply strong.
+BELT_W          = 3.0
 BELT_T          = 1.4
 
 
@@ -143,7 +146,17 @@ NEMA17_PILOT_D  = 22.0
 # and lie flat at each pulley (a 6 mm toothed belt wants ≳15× width to twist).
 MOTOR_X0        = 110.0     # first motor's −X offset from the bridge
 MOTOR_X_STEP    = 44.0      # along-X step between motors (≥ motor square)
-MOTOR_BELT_Z    = SCREW_PULLEY_Z    # motors sit at the screw-pulley height
+MOTOR_BELT_Z    = SCREW_PULLEY_Z    # motors all sit at the (even) screw-pulley height
+
+# Belt-plane cascade: a Ø8.4 pulley + belt wrap is wider than the 9.5 mm string
+# pitch, so adjacent screw pulleys' belts would collide. Raise the ODD pulleys
+# into a second Z plane so neighbours always differ by BELT_PLANE_DZ. Only the
+# pulley moves — the motors stay coplanar and the bottom hardware is unchanged;
+# the odd belt simply rises this much over its run.
+BELT_PLANE_DZ   = 12.0
+
+def screw_pulley_z(i: int) -> float:
+    return SCREW_PULLEY_Z + (i % 2) * BELT_PLANE_DZ
 
 def motor_pos(i: int):
     """Return (x, y, z) of string i's motor pulley (on the string's Y line)."""

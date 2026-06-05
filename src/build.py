@@ -113,25 +113,28 @@ def _string_components(i):
     out.append((f"leadscrew_{i}", C.screw().translate((D.SCREW_X, sy, D.SCREW_BOT_Z))))
     # carriage (origin = screw axis) at the nominal travel position
     out.append((f"carriage_{i}", carriage.translate((D.SCREW_X, sy, D.CARRIAGE_NOM_Z))))
-    # round nut pressed up into the carriage from below
+    # round nut pressed up into the carriage from below — flange seats flush
+    # against the carriage bottom face, body up into the pocket
     out.append((f"nut_{i}", C.nut().translate(
-        (D.SCREW_X, sy, D.CARRIAGE_NOM_Z - CARRIAGE_THICK / 2))))
+        (D.SCREW_X, sy, D.CARRIAGE_NOM_Z - CARRIAGE_THICK / 2 - D.NUT_FLANGE_T))))
     # guide rod (anti-rotation), offset −X, spanning the carriage travel
     glen = D.CARRIAGE_TRAVEL + CARRIAGE_THICK + 6.0
     out.append((f"guide_rod_{i}", C.guide_rod(glen).translate(
         (D.SCREW_X - D.GUIDE_ROD_DX, sy, D.CARRIAGE_NOM_Z - glen / 2))))
-    # screw drive pulley, support bearing (in the shared rail), locknut below
-    out.append((f"screw_pulley_{i}", C.screw_pulley().translate((D.SCREW_X, sy, D.SCREW_PULLEY_Z))))
+    # screw drive pulley (odd ones raised one belt-plane), support bearing
+    # (in the shared rail), locknut below
+    spz = D.screw_pulley_z(i)
+    out.append((f"screw_pulley_{i}", C.screw_pulley().translate((D.SCREW_X, sy, spz))))
     out.append((f"screw_bearing_{i}", C.support_bearing().translate((D.SCREW_X, sy, D.SUPPORT_BRG_Z))))
     out.append((f"locknut_{i}", C.locknut().translate(
         (D.SCREW_X, sy, D.SUPPORT_BRG_Z - D.SUPPORT_BRG_W / 2 - D.LOCKNUT_W / 2))))
     # motor (shaft +Y, body −Y toward player) + its pulley + twisted belt
     out.append((f"motor_{i}", C.motor().translate((mx, my, mz))))
     out.append((f"motor_pulley_{i}", C.motor_pulley().translate((mx, my, mz))))
-    out.append((f"belt_{i}", C.belt((mx, my, mz), (D.SCREW_X, sy, D.SCREW_PULLEY_Z))))
-    # splice clamp at the run midpoint (free span, clears the lower motors' bodies)
-    out.append((f"belt_clamp_{i}", belt_clamp.translate(
-        ((mx + D.SCREW_X) / 2, sy, D.SCREW_PULLEY_Z))))
+    out.append((f"belt_{i}", C.belt((mx, my, mz), (D.SCREW_X, sy, spz))))
+    # splice clamp on the bottom run near the motor (belt is flat there)
+    rb = D.PULLEY_OD / 2 + D.BELT_T / 2
+    out.append((f"belt_clamp_{i}", belt_clamp.translate((mx + 35.0, sy, mz - rb))))
     # string: rises from the anchor tangent to the bearing's +X extent, wraps 90°
     # over the top, then runs the speaking length to the tuner at the nut.
     out.append((f"string_{i}", _string_path(i, sy)))
