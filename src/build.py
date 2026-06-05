@@ -132,9 +132,10 @@ def _string_components(i):
     out.append((f"motor_{i}", C.motor().translate((mx, my, mz))))
     out.append((f"motor_pulley_{i}", C.motor_pulley().translate((mx, my, mz))))
     out.append((f"belt_{i}", C.belt((mx, my, mz), (D.SCREW_X, sy, spz), teeth=(i == 0))))
-    # splice clamp on the bottom run near the motor (belt is flat there)
-    rb = D.PULLEY_OD / 2 + D.BELT_T / 2
-    out.append((f"belt_clamp_{i}", belt_clamp.translate((mx + 35.0, sy, mz - rb))))
+    # splice clamp, oriented to the belt's flat zone (no twist within the clamp)
+    so, sxd, sn = C.splice_frame((mx, my, mz), (D.SCREW_X, sy, spz))
+    cloc = cq.Location(cq.Plane(origin=so, xDir=sxd, normal=sn))
+    out.append((f"belt_clamp_{i}", cq.Workplane("XY").add(belt_clamp.val().moved(cloc))))
     # string: rises from the anchor tangent to the bearing's +X extent, wraps 90°
     # over the top, then runs the speaking length to the tuner at the nut.
     out.append((f"string_{i}", _string_path(i, sy)))

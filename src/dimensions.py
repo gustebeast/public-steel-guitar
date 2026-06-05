@@ -103,18 +103,22 @@ ANCHOR_DX       = BRIDGE_X - SCREW_X    # anchor is +X of the screw (8 mm)
 SUPPORT_BRG_OD  = 8.0
 SUPPORT_BRG_ID  = SCREW_OD
 SUPPORT_BRG_W   = 5.0
-SUPPORT_BRG_Z   = SCREW_PULLEY_Z - 8.5     # below the pulley (= PULLEY_W/2+1+W/2)
+SUPPORT_BRG_Z   = SCREW_PULLEY_Z - 6.5     # below the pulley (= PULLEY_W/2+1+W/2)
 LOCKNUT_OD      = 8.0
 LOCKNUT_W       = 4.0
 
 
 # ─────────────────────────────────────────────────────────────────────────
-# GT2 pulleys (14T) + belt
+# GT2 pulleys (14T) + belt. Flanges keep the (twisting) belt from walking off.
 # ─────────────────────────────────────────────────────────────────────────
 PULLEY_OD       = 8.4       # over teeth
-PULLEY_W        = 10.0
+PULLEY_W        = 6.0       # axial: ~4 mm toothed gap + 2 flanges
+PULLEY_FLANGE_OD = PULLEY_OD + 2.6
+PULLEY_FLANGE_T  = 1.0
 PULLEY_BORE_SCREW = SCREW_OD
 PULLEY_BORE_MOTOR = 5.0
+BELT_PITCH      = 2.0       # GT2 tooth pitch
+BELT_TOOTH_H    = 0.75      # tooth height (rounded GT2 profile)
 # 3 mm GT2 (not the spec's 6 mm): a 6 mm belt twisting 90° has too much corner
 # bulge to clear its neighbour at 9.5 mm string pitch. The move torque is tiny
 # (~15 N belt tension) so 3 mm is amply strong.
@@ -153,7 +157,7 @@ MOTOR_BELT_Z    = SCREW_PULLEY_Z    # motors all sit at the (even) screw-pulley 
 # into a second Z plane so neighbours always differ by BELT_PLANE_DZ. Only the
 # pulley moves — the motors stay coplanar and the bottom hardware is unchanged;
 # the odd belt simply rises this much over its run.
-BELT_PLANE_DZ   = 12.0
+BELT_PLANE_DZ   = 8.0
 
 def screw_pulley_z(i: int) -> float:
     return SCREW_PULLEY_Z + (i % 2) * BELT_PLANE_DZ

@@ -32,16 +32,23 @@ def nut() -> cq.Workplane:
 
 # ── Screw drive pulley (axis Z) ──────────────────────────────────────────
 def screw_pulley() -> cq.Workplane:
-    """GT2 pulley on the vertical screw, axis Z, centred at z=0."""
-    body = cyl(D.PULLEY_OD, D.PULLEY_W, z=-D.PULLEY_W / 2)
-    return body.cut(cyl(D.PULLEY_BORE_SCREW, D.PULLEY_W + 2, z=-D.PULLEY_W / 2 - 1))
+    """Flanged GT2 pulley on the vertical screw, axis Z, centred at z=0. The two
+    flanges keep the (twisting) belt from walking off."""
+    w, ft = D.PULLEY_W, D.PULLEY_FLANGE_T
+    out = (cyl(D.PULLEY_OD, w, z=-w / 2)
+           .union(cyl(D.PULLEY_FLANGE_OD, ft, z=-w / 2))
+           .union(cyl(D.PULLEY_FLANGE_OD, ft, z=w / 2 - ft)))
+    return out.cut(cyl(D.PULLEY_BORE_SCREW, w + 2, z=-w / 2 - 1))
 
 
 # ── Motor pulley (axis Y) ────────────────────────────────────────────────
 def motor_pulley() -> cq.Workplane:
-    """GT2 pulley on the motor shaft, axis Y, centred at y=0."""
-    body = cyl_y(D.PULLEY_OD, D.PULLEY_W, y0=-D.PULLEY_W / 2)
-    return body.cut(cyl_y(D.PULLEY_BORE_MOTOR, D.PULLEY_W + 2, y0=-D.PULLEY_W / 2 - 1))
+    """Flanged GT2 pulley on the motor shaft, axis Y, centred at y=0."""
+    w, ft = D.PULLEY_W, D.PULLEY_FLANGE_T
+    out = (cyl_y(D.PULLEY_OD, w, y0=-w / 2)
+           .union(cyl_y(D.PULLEY_FLANGE_OD, ft, y0=-w / 2))
+           .union(cyl_y(D.PULLEY_FLANGE_OD, ft, y0=w / 2 - ft)))
+    return out.cut(cyl_y(D.PULLEY_BORE_MOTOR, w + 2, y0=-w / 2 - 1))
 
 
 # ── Screw support bearing + locknut (axis Z) ─────────────────────────────
@@ -103,100 +110,124 @@ def tuner() -> cq.Workplane:
     return box_at(D.TUNER_D, D.TUNER_W, D.TUNER_H)
 
 
-# ── GT2 belt — full twisted loop (both runs + 90° twist + pulley wraps) ───
-def belt(motor_xyz, screw_xyz, teeth: bool = False) -> cq.Workplane:
-    """The real belt loop: it wraps the motor pulley (axis Y) and the screw pulley
-    (axis Z), so its flat face twists 90° (along Y at the motor → along Z at the
-    screw) on each run. Built by sweeping an oriented strip along the loop
-    centreline, then FUSED into one solid (one Onshape part, one colour). The loop
-    is orientable (the inward normal returns to itself), so `teeth=True` adds GT2
-    teeth on the inner face. Motor is far −X, screw +X; both pulleys at the Y line."""
+_FLAT_LEN = 42.0            # flat (untwisting) belt zone near the motor end of run B
+_CLAMP_DIST = 24.0         # clamp centre distance from the motor (clears the pulley)
+_AUX_OFF = 3.0             # auxiliary-spine offset that drives the sweep twist
+
+
+def _belt_samples(motor_xyz, screw_xyz):
+    """Loop centreline as a list of (point, inward-normal n). n tracks the toothed
+    face and returns to itself (orientable). Run B carries a FLAT zone near the
+    motor (n held = +Z) so the splice clamp grips a non-twisting section."""
     import math
     V = cq.Vector
     M, S = V(*motor_xyz), V(*screw_xyz)
-    r = D.PULLEY_OD / 2 + D.BELT_T / 2                # belt centreline radius
-    m_top, m_bot = V(M.x, M.y, M.z + r), V(M.x, M.y, M.z - r)   # motor ±Z tangents
-    s_py, s_my = V(S.x, S.y + r, S.z), V(S.x, S.y - r, S.z)     # screw ±Y tangents
+    r = D.PULLEY_OD / 2 + D.BELT_T / 2
+    m_top, m_bot = V(M.x, M.y, M.z + r), V(M.x, M.y, M.z - r)
+    s_py, s_my = V(S.x, S.y + r, S.z), V(S.x, S.y - r, S.z)
 
     def lerp(a, b, t):
         return a.add(b.sub(a).multiply(t))
 
-    # samples around the loop as (point, inward normal n). n tracks the toothed
-    # face; it is continuous all the way round (verified orientable).
-    samples = []
-    NW = 10
-    NA = max(6, int(s_py.sub(m_top).Length / 18))
-    for k in range(NA + 1):                           # run A: n −Z → −Y
+    samples, NW = [], 12
+    NA = max(8, int(s_py.sub(m_top).Length / 12))
+    for k in range(NA):                               # run A: n −Z → −Y
         a = (k / NA) * math.pi / 2
         samples.append((lerp(m_top, s_py, k / NA), V(0, -math.sin(a), -math.cos(a))))
-    for k in range(1, NW):                            # screw wrap (+X side), n → −radial
+    for k in range(NW):                               # screw wrap (+X side)
         phi = math.radians(90 - 180 * k / NW)
         samples.append((V(S.x + r * math.cos(phi), S.y + r * math.sin(phi), S.z),
                         V(-math.cos(phi), -math.sin(phi), 0)))
-    NB = max(6, int(m_bot.sub(s_my).Length / 18))
-    for k in range(NB + 1):                           # run B: n +Y → +Z
-        a = (k / NB) * math.pi / 2
-        samples.append((lerp(s_my, m_bot, k / NB), V(0, math.cos(a), math.sin(a))))
-    for k in range(1, NW):                            # motor wrap (−X side), n → −radial
+    L_B = m_bot.sub(s_my).Length                      # run B: +Y → +Z, flat near motor
+    flat = min(0.45, _FLAT_LEN / L_B)
+    NB = max(8, int(L_B / 12))
+    for k in range(NB):
+        t = k / NB
+        if t < 1 - flat:
+            a = (t / (1 - flat)) * math.pi / 2
+            samples.append((lerp(s_my, m_bot, t), V(0, math.cos(a), math.sin(a))))
+        else:
+            samples.append((lerp(s_my, m_bot, t), V(0, 0, 1)))   # flat splice zone
+    for k in range(NW):                               # motor wrap (−X side)
         th = math.radians(270 - 180 * k / NW)
         samples.append((V(M.x + r * math.cos(th), M.y, M.z + r * math.sin(th)),
                         V(-math.cos(th), 0, -math.sin(th))))
+    return samples
 
-    n_pts = len(samples)
 
-    def frame(p0, p1, n0, n1):
-        seg = p1.sub(p0)
-        L = seg.Length
-        tan = seg.multiply(1.0 / L)
-        nn = n0.add(n1).multiply(0.5)
-        nn = nn.sub(tan.multiply(nn.dot(tan)))        # n ⟂ tangent
-        nn = nn.normalized()
-        wd = nn.cross(tan).normalized()               # width ⟂ both
-        return tan, nn, wd, L
+def splice_frame(motor_xyz, screw_xyz):
+    """Placement for the splice clamp: a point in run B's flat zone with the belt's
+    tangent and (flat) normal. Returns (origin, xDir=tangent, normal=n) tuples."""
+    V = cq.Vector
+    M, S = V(*motor_xyz), V(*screw_xyz)
+    r = D.PULLEY_OD / 2 + D.BELT_T / 2
+    m_bot, s_my = V(M.x, M.y, M.z - r), V(S.x, S.y - r, S.z)
+    L_B = m_bot.sub(s_my).Length
+    t = 1 - _CLAMP_DIST / L_B                          # clamp centre, clear of the pulley
+    p = s_my.add(m_bot.sub(s_my).multiply(t))
+    tan = m_bot.sub(s_my).normalized()
+    n = V(0, 0, 1)
+    n = n.sub(tan.multiply(n.dot(tan))).normalized()
+    return (p.x, p.y, p.z), (tan.x, tan.y, tan.z), (n.x, n.y, n.z)
 
-    OV = 0.4
-    parts = []
-    # smooth strip (thickness BELT_T along n, width BELT_W along wd)
+
+# ── GT2 belt — smooth twisted loop (both runs + 90° twist + pulley wraps) ─
+def belt(motor_xyz, screw_xyz, teeth: bool = False) -> cq.Workplane:
+    """The real belt loop: it wraps the motor pulley (axis Y) and the screw pulley
+    (axis Z), so its flat face twists 90° on each run. Built as a single SMOOTH
+    sweep of the strip profile along the loop centreline, the twist driven by an
+    auxiliary spine (offset along the inward normal) — one solid, no segment seams.
+    `teeth=True` fuses rounded GT2 teeth onto the inner face."""
+    V = cq.Vector
+    samples = _belt_samples(motor_xyz, screw_xyz)
+    pts = [(p.x, p.y, p.z) for p, _ in samples]
+    aux = [(p.x + n.x * _AUX_OFF, p.y + n.y * _AUX_OFF, p.z + n.z * _AUX_OFF)
+           for p, n in samples]
+    path = cq.Workplane("XY").spline(pts, periodic=True).wire()
+    auxw = cq.Workplane("XY").spline(aux, periodic=True).wire()
+
+    p0, n0 = samples[0]
+    p1 = samples[1][0]
+    tan = p1.sub(p0).normalized()
+    wd = n0.cross(tan).normalized()
+    prof = cq.Workplane(cq.Plane(origin=(p0.x, p0.y, p0.z),
+                                 xDir=(wd.x, wd.y, wd.z),
+                                 normal=(tan.x, tan.y, tan.z))).rect(D.BELT_W, D.BELT_T)
+    body = prof.sweep(path, auxSpine=auxw, isFrenet=False).val()
+    if not teeth:
+        return cq.Workplane("XY").add(body)
+
+    # rounded GT2 teeth: half-round ridges (cylinders along the width) every
+    # BELT_PITCH of arc, on the inner face (+n), fused onto the belt.
+    def lerp(a, b, t):
+        return a.add(b.sub(a).multiply(t))
+    ridges, n_pts, acc = [], len(samples), 0.0
     for k in range(n_pts):
-        p0, n0 = samples[k]
-        p1, n1 = samples[(k + 1) % n_pts]
-        if p1.sub(p0).Length < 1e-6:
+        q0, m0 = samples[k]
+        q1, m1 = samples[(k + 1) % n_pts]
+        seg = q1.sub(q0)
+        L = seg.Length
+        if L < 1e-6:
             continue
-        tan, nn, wd, L = frame(p0, p1, n0, n1)
-        o = p0.sub(tan.multiply(OV / 2))
-        pl = cq.Plane(origin=(o.x, o.y, o.z),
-                      xDir=(wd.x, wd.y, wd.z), normal=(tan.x, tan.y, tan.z))
-        parts.append(cq.Workplane(pl).rect(D.BELT_W, D.BELT_T).extrude(L + OV).val())
-
-    # GT2 teeth on the inner face, every 2 mm of arc, protruding along +n
-    if teeth:
-        PITCH, TLEN, TH = 2.0, 1.1, 0.75
-        acc = 0.0
-        for k in range(n_pts):
-            p0, n0 = samples[k]
-            p1, n1 = samples[(k + 1) % n_pts]
-            if p1.sub(p0).Length < 1e-6:
+        t_dir = seg.multiply(1.0 / L)
+        d = 0.0
+        while acc <= L - d + 1e-9:
+            d += acc
+            t = min(d / L, 1.0)
+            pt = lerp(q0, q1, t)
+            nn = lerp(m0, m1, t)
+            nn = nn.sub(t_dir.multiply(nn.dot(t_dir)))
+            acc = D.BELT_PITCH
+            if nn.Length < 1e-6:
                 continue
-            tan, _, _, L = frame(p0, p1, n0, n1)
-            d = 0.0
-            while acc <= L - d + 1e-9:
-                d += acc
-                t = min(d / L, 1.0)
-                pt = lerp(p0, p1, t)
-                nn = lerp(n0, n1, t)
-                nn = nn.sub(tan.multiply(nn.dot(tan)))
-                acc = PITCH
-                if nn.Length < 1e-6:
-                    continue
-                nn = nn.normalized()
-                wd = nn.cross(tan).normalized()
-                base = pt.add(nn.multiply(D.BELT_T / 2 - 0.2))
-                pl = cq.Plane(origin=(base.x, base.y, base.z),
-                              xDir=(wd.x, wd.y, wd.z), normal=(nn.x, nn.y, nn.z))
-                parts.append(cq.Workplane(pl).rect(D.BELT_W, TLEN).extrude(TH + 0.2).val())
-            acc -= (L - d)
-
-    fused = parts[0].fuse(*parts[1:]) if len(parts) > 1 else parts[0]
-    fused = fused.clean()
+            nn = nn.normalized()
+            ww = nn.cross(t_dir).normalized()
+            base = pt.add(nn.multiply(D.BELT_T / 2 - 0.25))   # deep overlap → robust fuse
+            c = base.sub(ww.multiply(D.BELT_W / 2))
+            ridges.append(cq.Solid.makeCylinder(
+                D.BELT_TOOTH_H, D.BELT_W, cq.Vector(c.x, c.y, c.z),
+                cq.Vector(ww.x, ww.y, ww.z)))
+        acc -= (L - d)
+    fused = body.fuse(*ridges).clean()
     solids = fused.Solids()
     return cq.Workplane("XY").add(solids[0] if len(solids) == 1 else fused)
