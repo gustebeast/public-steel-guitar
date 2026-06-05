@@ -37,23 +37,25 @@ def idx(name: str):
 PER_STRING_OK = {
     frozenset({"screw", "nut"}), frozenset({"screw", "carriage"}),
     frozenset({"nut", "carriage"}), frozenset({"guiderod", "carriage"}),
-    frozenset({"screw", "bblock"}), frozenset({"screw", "bearing"}),
-    frozenset({"screw", "spulley"}), frozenset({"belt", "spulley"}),
-    frozenset({"belt", "mpulley"}), frozenset({"motor", "mpulley"}),
+    frozenset({"screw", "bearing"}), frozenset({"screw", "spulley"}),
+    frozenset({"belt", "spulley"}), frozenset({"belt", "mpulley"}),
+    frozenset({"motor", "mpulley"}),
     frozenset({"string", "carriage"}), frozenset({"string", "tuner"}),
-    frozenset({"nut", "spulley"}),
-    # single support bearing + locknut at the driven end
-    frozenset({"bearing", "bblock"}), frozenset({"bearing", "spulley"}),
+    frozenset({"nut", "spulley"}), frozenset({"bearing", "spulley"}),
     frozenset({"locknut", "screw"}), frozenset({"locknut", "bearing"}),
-    frozenset({"locknut", "spulley"}), frozenset({"locknut", "bblock"}),
+    # a belt connects its OWN motor and screw, so it touches both there
+    frozenset({"belt", "motor"}), frozenset({"belt", "screw"}),
 }
 GLOBAL_OK = {
-    frozenset({"motor", "motor_brick"}), frozenset({"mpulley", "motor_brick"}),
-    frozenset({"base_rail", "bblock"}), frozenset({"base_rail", "bridge_mount"}),
-    frozenset({"base_rail", "screw"}), frozenset({"base_rail", "guiderod"}),
+    frozenset({"motor", "motor_bank"}), frozenset({"mpulley", "motor_bank"}),
+    frozenset({"bearing", "bearing_rail"}), frozenset({"screw", "bearing_rail"}),
+    frozenset({"locknut", "bearing_rail"}), frozenset({"spulley", "bearing_rail"}),
+    frozenset({"screw", "bridge_mount"}), frozenset({"nut", "bridge_mount"}),
+    frozenset({"carriage", "bridge_mount"}),
     frozenset({"bridge_mount", "roller_bridge"}),
     frozenset({"string", "roller_bridge"}), frozenset({"string", "bridge_mount"}),
-    frozenset({"base_rail", "carriage"}),  # carriage may dip near the base top
+    frozenset({"base_rail", "motor_bank"}), frozenset({"base_rail", "bridge_mount"}),
+    frozenset({"base_rail", "bearing_rail"}),
 }
 
 

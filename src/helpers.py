@@ -8,18 +8,22 @@ from .dimensions import NEMA17_BOLT_SQ, NEMA17_PILOT_D, M3_CLR_D, BOOL_OVERSHOOT
 
 
 def cyl(d: float, h: float, z: float = 0.0) -> cq.Workplane:
-    """Solid cylinder, diameter d, height h, base at z (axis = +Z)."""
+    """Solid cylinder, diameter d, height h, base at z (axis = +Z). The vertical
+    leadscrew axis."""
     return cq.Workplane("XY").workplane(offset=z).circle(d / 2).extrude(h)
 
 
 def cyl_x(d: float, length: float, x0: float, y: float = 0.0, z: float = 0.0) -> cq.Workplane:
-    """Solid cylinder with axis along +X (the screw/string axis), length
-    `length`, base face at x0, centred on (y, z)."""
+    """Solid cylinder with axis along +X, base face at x0, centred on (y, z)."""
     return cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        d / 2, length,
-        pnt=cq.Vector(x0, y, z),
-        dir=cq.Vector(1, 0, 0),
-    ))
+        d / 2, length, pnt=cq.Vector(x0, y, z), dir=cq.Vector(1, 0, 0)))
+
+
+def cyl_y(d: float, length: float, y0: float, x: float = 0.0, z: float = 0.0) -> cq.Workplane:
+    """Solid cylinder with axis along +Y (the motor shaft axis), base face at y0,
+    centred on (x, z)."""
+    return cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        d / 2, length, pnt=cq.Vector(x, y0, z), dir=cq.Vector(0, 1, 0)))
 
 
 def box_at(dx: float, dy: float, dz: float,
@@ -30,41 +34,33 @@ def box_at(dx: float, dy: float, dz: float,
             .translate((x, y, z)))
 
 
-def nema17_face_cutter(x_face: float, depth: float, *,
-                       y: float = 0.0, z: float = 0.0,
-                       pilot_d: float = NEMA17_PILOT_D,
-                       bolt_d: float = M3_CLR_D,
-                       slot: float = 0.0) -> cq.Workplane:
-    """Cutter for a NEMA17 motor mounting face lying in a Y–Z plane (motor shaft
-    along X). Removes a centre pilot bore + 4 corner bolt holes, all bored along
-    −X from x_face inward by `depth`, centred on (y, z).
-
-    `slot` (mm) elongates each bolt hole along Z for belt tensioning; 0 = plain
-    round holes."""
+def nema17_face_cutter_y(y_face: float, depth: float, *,
+                         x: float = 0.0, z: float = 0.0,
+                         pilot_d: float = NEMA17_PILOT_D,
+                         bolt_d: float = M3_CLR_D,
+                         slot: float = 0.0) -> cq.Workplane:
+    """Cutter for a NEMA17 mounting face in an X–Z plane (motor shaft along Y).
+    Centre pilot bore + 4 corner bolt holes, bored along +Y from y_face inward by
+    `depth`, centred on (x, z). `slot` elongates each bolt hole along X for belt
+    tensioning (0 = round)."""
     half = NEMA17_BOLT_SQ / 2.0
-    out = cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        pilot_d / 2, depth + BOOL_OVERSHOOT,
-        pnt=cq.Vector(x_face + BOOL_OVERSHOOT, y, z),
-        dir=cq.Vector(-1, 0, 0)))
-    for sy in (-half, half):
+    out = cyl_y(pilot_d, depth + BOOL_OVERSHOOT, y0=y_face - BOOL_OVERSHOOT, x=x, z=z)
+    for sx in (-half, half):
         for sz in (-half, half):
-            hole = cq.Workplane("XY").add(cq.Solid.makeCylinder(
-                bolt_d / 2, depth + BOOL_OVERSHOOT,
-                pnt=cq.Vector(x_face + BOOL_OVERSHOOT, y + sy, z + sz),
-                dir=cq.Vector(-1, 0, 0)))
+            hole = cyl_y(bolt_d, depth + BOOL_OVERSHOOT,
+                         y0=y_face - BOOL_OVERSHOOT, x=x + sx, z=z + sz)
             if slot > 0:
-                slotbox = box_at(depth + BOOL_OVERSHOOT, bolt_d, slot,
-                                 x=x_face + BOOL_OVERSHOOT - (depth + BOOL_OVERSHOOT) / 2,
-                                 y=y + sy, z=z + sz)
-                hole = hole.union(slotbox)
+                hole = hole.union(box_at(slot, depth + BOOL_OVERSHOOT, bolt_d,
+                                         x=x + sx,
+                                         y=y_face - BOOL_OVERSHOOT + (depth + BOOL_OVERSHOOT) / 2,
+                                         z=z + sz))
             out = out.union(hole)
     return out
 
 
 def heal(wp: cq.Workplane) -> cq.Workplane:
     """ShapeFix + UnifySameDomain to clean minor tolerance issues and merge
-    coplanar faces before STEP export, so strict importers (Onshape) accept the
-    result."""
+    coplanar faces before STEP export, so strict importers (Onshape) accept it."""
     from OCP.ShapeFix import ShapeFix_Shape          # type: ignore[import]
     from OCP.ShapeUpgrade import ShapeUpgrade_UnifySameDomain  # type: ignore[import]
     from OCP.TopAbs import TopAbs_COMPOUND

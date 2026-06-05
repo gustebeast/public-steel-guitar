@@ -1,20 +1,16 @@
 """Carriage (×10) — PA6-GF, load-critical (§8 item 1).
 
-The moving element. Rides the guide rod (anti-rotation), presses the round
-leadscrew nut into its pocket, and anchors the string ball-end. Tension path:
-string → carriage → nut → screw → support bearing.
+The moving element, riding a VERTICAL leadscrew (axis Z) — it travels in Z. It
+presses the round nut into its pocket, rides the guide rod (anti-rotation), and
+anchors the string ball-end directly under the roller, reaching +X over the
+screw to do so. Tension path: string → carriage → nut → screw → support bearing.
 
-NARROW by design: at the tight string pitch the carriage must stay slim. It is
-sized so it clears its neighbours, and the guide rod runs directly BELOW the
-screw (same Y, Z = GUIDE_ROD_DZ) so it never lands on a neighbour's screw line.
+Local frame: origin on the SCREW axis (axis Z). The nut presses in from below;
+the guide bore is at X=−GUIDE_ROD_DX; the string ball-end anchor is at
+X=+ANCHOR_DX (under the roller), opening +Z so the string runs up to the roller.
 
-Local frame (build.py adds each string's Y and bank X): origin on the SCREW
-axis; screw axis along ±X. Guide bore at Z=GUIDE_ROD_DZ. The string exits the
-−X face toward the bridge/nut; the ball-end anchor post rises to the string
-height (BRIDGE_TOP_Z).
-
-Print orientation: lay the part so the string-tension axis (X) runs ALONG the
-layer lines (print on a side face), never pulling across layers.
+Print orientation: the string-tension axis is Z; lay the part so that runs along
+the layer lines.
 """
 
 from __future__ import annotations
@@ -22,61 +18,43 @@ from __future__ import annotations
 import cadquery as cq
 
 from . import dimensions as D
-from .helpers import cyl_x, box_at
+from .helpers import cyl, box_at
 
-# ── local geometry constants ─────────────────────────────────────────────
-# Across-width is set by the nut + thin walls. Compact: ~9 mm so 10 carriages
-# sit INLINE at the 9.5 mm changer pitch (no bank). Standard: wider, banked.
-WALL            = 1.0 if D.COMPACT else 1.75
-WIDTH           = D.NUT_OD + 2 * WALL       # across the strings (Y)
-ALONG           = 9.0                       # along the screw axis (X)
-Z_TOP           = 6.0                       # block top (above the screw)
-Z_BOT           = D.GUIDE_ROD_DZ - D.GUIDE_ROD_D / 2 - 2.0   # below the guide rod
-BODY_Z          = Z_TOP - Z_BOT
-BODY_ZC         = (Z_TOP + Z_BOT) / 2
+THICK   = 12.0                              # Z height
+WIDTH   = D.NUT_OD + 2 * 1.0               # across (Y), ≤ string pitch
+X_LO    = -D.GUIDE_ROD_DX - 3.0            # past the guide rod (−X)
+X_HI    = D.ANCHOR_DX + 3.0                # past the anchor (+X)
+BODY_X  = X_HI - X_LO
+BODY_XC = (X_HI + X_LO) / 2
 
-NUT_POCKET_D    = D.NUT_OD + 0.2          # press pocket for the round nut
-SCREW_CLR_D     = D.SCREW_OD + 1.0
-GUIDE_CLR_D     = D.GUIDE_ROD_D + D.FIT_CLR
-
-BALL_D          = 3.8       # string ball-end pocket diameter
-STRING_SLOT_W   = 1.2       # string exit slot width
-ANCHOR_W        = min(7.0, WIDTH - 1.0)   # anchor post across-width (Y)
-ANCHOR_DEPTH    = 6.0       # anchor post along-X depth (toward the nut)
-ANCHOR_TOP_Z    = D.BRIDGE_TOP_Z   # post rises to string height
+NUT_POCKET_D = D.NUT_OD + 0.2
+SCREW_CLR_D  = D.SCREW_OD + 1.0
+GUIDE_CLR_D  = D.GUIDE_ROD_D + D.FIT_CLR
+BALL_D       = 3.8
+STRING_SLOT_W = 1.2
+ANCHOR_POST_H = 6.0                        # thin post above the body to the roller
 
 
 def _build() -> cq.Workplane:
-    # Main body, centred on the screw axis in X/Y; spans screw→guide in Z.
-    body = box_at(ALONG, WIDTH, BODY_Z, x=0, y=0, z=BODY_ZC)
+    body = box_at(BODY_X, WIDTH, THICK, x=BODY_XC, y=0, z=0)
 
-    # Nut press-pocket on the +X face (round nut, seat lip bears on the face).
-    body = body.cut(cyl_x(NUT_POCKET_D, D.NUT_BODY_LEN,
-                          x0=ALONG / 2 - D.NUT_BODY_LEN + 0.01, y=0, z=0))
-    # Screw clearance the rest of the way through (so the screw passes).
-    body = body.cut(cyl_x(SCREW_CLR_D, ALONG + 2, x0=-ALONG / 2 - 1, y=0, z=0))
+    # Screw clearance through (axis Z) at the origin.
+    body = body.cut(cyl(SCREW_CLR_D, THICK + 2, z=-THICK / 2 - 1))
+    # Nut press-pocket from the bottom face (seat lip bears on the bottom).
+    body = body.cut(cyl(NUT_POCKET_D, D.NUT_BODY_LEN, z=-THICK / 2 - 0.01))
+    # Guide-rod bore (anti-rotation), axis Z, offset −X.
+    body = body.cut(cyl(GUIDE_CLR_D, THICK + 2, z=-THICK / 2 - 1)
+                    .translate((-D.GUIDE_ROD_DX, 0, 0)))
 
-    # Guide-rod bore directly below the screw (anti-rotation), axis X.
-    body = body.cut(cyl_x(GUIDE_CLR_D, ALONG + 2,
-                          x0=-ALONG / 2 - 1, y=0, z=D.GUIDE_ROD_DZ))
-
-    # String ball-end anchor post on the −X face, rising to string height.
-    post_top_z = ANCHOR_TOP_Z + 3.0
-    post_bot_z = BODY_ZC
-    post = box_at(ANCHOR_DEPTH, ANCHOR_W, post_top_z - post_bot_z,
-                  x=-ALONG / 2 - ANCHOR_DEPTH / 2, y=0, z=(post_top_z + post_bot_z) / 2)
-    body = body.union(post)
-    # ball pocket drilled +X into the post from the −X face at string height
-    body = body.cut(cyl_x(BALL_D, 5.0,
-                          x0=-ALONG / 2 - ANCHOR_DEPTH - 0.5, y=0, z=ANCHOR_TOP_Z))
-    # thin string-exit slot continuing −X at string height
-    body = body.cut(box_at(8.0, STRING_SLOT_W, STRING_SLOT_W + 1.0,
-                           x=-ALONG / 2 - ANCHOR_DEPTH, y=0, z=ANCHOR_TOP_Z))
-    # set-screw insert pocket: vertical hole from the post top down to the ball
-    body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        D.M3_INSERT_D / 2, post_top_z - ANCHOR_TOP_Z + 0.5,
-        pnt=cq.Vector(-ALONG / 2 - ANCHOR_DEPTH / 2, 0, ANCHOR_TOP_Z - 0.5),
-        dir=cq.Vector(0, 0, 1))))
+    # Thin anchor POST rising from the body top to near the roller (so only the
+    # slim post nears the roller, not the full body). String ball-end anchors in
+    # its top, opening +Z (the string runs up to the roller).
+    post_top = THICK / 2 + ANCHOR_POST_H
+    body = body.union(box_at(6.0, WIDTH, ANCHOR_POST_H,
+                             x=D.ANCHOR_DX, y=0, z=THICK / 2 + ANCHOR_POST_H / 2))
+    body = body.cut(cyl(BALL_D, 5.0, z=post_top - 5.0).translate((D.ANCHOR_DX, 0, 0)))
+    body = body.cut(box_at(STRING_SLOT_W, STRING_SLOT_W + 1.0, 6.0,
+                           x=D.ANCHOR_DX, y=0, z=post_top - 1.0))
     return body
 
 

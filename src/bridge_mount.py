@@ -1,11 +1,10 @@
-"""Roller-bridge mount (§8 item 5) — PCTG.
+"""Roller-bridge mount (§8 item 5) — PCTG (schematic, v1).
 
-Holds the roller bridge at the correct height (BRIDGE_TOP_Z), defines the
-speaking length, and provides the string-anchor geometry (the strings pass over
-the rollers and run on to the carriages toward the changer, +X).
-
-Built in global position: a cradle spanning the string field at X=0, sitting on
-the base top and raising the bridge bar to its seat.
+Holds the roller bridge above the carriages at X=0 (the 90° turn). Modelled as a
+top bar above the rollers carried by two end posts (outside the string field)
+down to the chassis — so it doesn't block the carriage/string path that comes up
+from below. (The vertical screws are supported at the bottom rail; a top support
+can be added once the roller-axle detail is fixed.) Built in global position.
 """
 
 from __future__ import annotations
@@ -13,28 +12,22 @@ from __future__ import annotations
 import cadquery as cq
 
 from . import dimensions as D
+from . import motor_brick as MB
 from .helpers import box_at
 
-CRADLE_ALONG  = D.BRIDGE_BAR_DEPTH + 8.0    # along the strings (X)
-CRADLE_ACROSS = D.BRIDGE_BAR_LEN + 8.0      # across the strings (Y)
-SEAT_BOT_Z    = D.BRIDGE_TOP_Z - D.BRIDGE_BAR_H   # underside of bridge bar
-BOT_Z         = D.BASE_TOP_Z
+ACROSS  = D.BRIDGE_BAR_LEN + 10.0
+POST_Y  = D.STRING_FIELD_W / 2 + 14.0      # outside the bottom bearing rail
+TOP_Z   = D.STRING_Z + 4.0
+BOT_Z   = MB.Z_LO + 2.0
 
 
 def _build() -> cq.Workplane:
-    h = SEAT_BOT_Z - BOT_Z
-    body = box_at(CRADLE_ALONG, CRADLE_ACROSS, h, x=0, y=0, z=(SEAT_BOT_Z + BOT_Z) / 2)
-
-    # Seat pocket for the bridge bar on top.
-    body = body.cut(box_at(D.BRIDGE_BAR_DEPTH + D.FIT_CLR, D.BRIDGE_BAR_LEN + D.FIT_CLR,
-                           D.BRIDGE_BAR_H, x=0, y=0,
-                           z=SEAT_BOT_Z + D.BRIDGE_BAR_H / 2 - 0.01))
-
-    # String clearance notches toward the changer so each string can run from the
-    # roller to its carriage anchor without fouling the cradle top.
-    for i in range(D.N_STRINGS):
-        body = body.cut(box_at(4.0, 2.5, 4.0,
-                               x=2.0, y=D.string_y(i), z=SEAT_BOT_Z - 1.0))
+    # top bar above the rollers
+    body = box_at(D.BRIDGE_BAR_DEPTH, ACROSS, 5.0, x=0, y=0, z=TOP_Z - 2.5)
+    # end posts down to the chassis (outside the field)
+    for sy in (-POST_Y, POST_Y):
+        body = body.union(box_at(D.BRIDGE_BAR_DEPTH, 6.0, TOP_Z - BOT_Z,
+                                 x=0, y=sy, z=(TOP_Z + BOT_Z) / 2))
     return body
 
 
