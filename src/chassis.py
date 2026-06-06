@@ -1,18 +1,18 @@
 """Chassis frame (§8) — PCTG. Ties the bridge, screw rail, motor bank, and a nut
-keyhead into ONE rigid frame.
+keyhead into ONE rigid frame, SPLIT into bolt-free glued segments for printing.
 
 The strings pull the bridge and nut toward each other (~10×100 N) at the speaking
 height, which would bow the instrument; the chassis resists that. The stiffness
-comes from DEPTH: two tall longitudinal side rails (web from just under the
-strings down to the motor floor) run the whole length and are tied by bottom
-cross-ribs, plus a keyhead at the nut. PCTG.
+comes from DEPTH: two solid longitudinal side rails (from just under the strings
+down to the motor floor) run the whole length, tied by bottom cross-ribs, plus a
+keyhead at the nut. Bodies are modelled SOLID — the slicer's walls + infill set
+the strength-to-weight (no modelled lightening).
 
-Bodies are modelled SOLID — weight is set by the slicer (wall count + low infill),
-not by modelled lightening holes.
-
-Too long for one print (>255 mm): SPLIT into ~3 segments joined with sliding
-dovetails (slide in from one direction, hard-stop at the mount position, glued).
-The dovetail joinery is not modelled yet — TODO. Built in global position.
+Too long for one print (~630 mm > 255 mm bed), so it's cut into 3 segments joined
+by SLIDING DOVETAILS: each joint's tongue flares toward +X (locking the segments
+against the string pull), you drop the next segment straight DOWN onto it (one
+direction), and it bottoms on a shoulder that sets the position — then glue.
+Built in global position; the segments assemble into the whole frame.
 """
 
 from __future__ import annotations
@@ -21,43 +21,80 @@ import cadquery as cq
 
 from . import dimensions as D
 from . import motor_bank as MB
+from .components import MOTOR_PULLEY_STANDOFF
 from .helpers import box_at
 
-T        = 3.0                         # wall thickness
+T        = 8.0                         # rail thickness (solid; slicer infills)
 X_BRIDGE = 6.0                         # +X (bridge) end
 X_NUT    = -(D.MOUNTING_SPAN + 12.0)   # past the tuners at −MOUNTING_SPAN
 Z_TOP    = D.STRING_Z - 6.0            # just under the speaking length
 Z_BOT    = MB.Z_LO                     # motor-floor bottom
 Y_HI     = D.BRIDGE_AXLE_Y + 1.0       # +Y rail, just outside the bridge uprights
-Y_LO     = MB.Y_LO - 2.0               # −Y rail, just outside the motor bodies
-_XC      = (X_BRIDGE + X_NUT) / 2
-_ZC      = (Z_TOP + Z_BOT) / 2
+Y_LO     = (D.string_y(0) - MOTOR_PULLEY_STANDOFF - D.MOTOR_BODY_LEN
+            - D.MOTOR_PCB_LEN - 6.0)   # −Y rail, just outside the motor PCBs
+_XC, _ZC = (X_BRIDGE + X_NUT) / 2, (Z_TOP + Z_BOT) / 2
 _RIB_H   = 5.0                         # cross-rib height (sits on the very bottom)
-_RIB_Z   = Z_BOT + _RIB_H / 2          # below the motors
+_RIB_Z   = Z_BOT + _RIB_H / 2
 _RIB_X   = [-15, -135, -255, -375, -495, -575]   # tie stations along the length
+
+SPLIT_X  = [-205.0, -420.0]            # 2 cuts → 3 segments, each < 255 mm
+_DT, _WR, _WT, _SH, _CLR = 8.0, 4.0, 7.0, 4.0, 0.3   # dovetail: depth, root/tip W, shoulder, fit
 
 
 def _rail(y):
-    """A tall longitudinal web (deep → bow-stiff), modelled solid (slicer infill
-    sets weight)."""
-    L = X_BRIDGE - X_NUT
-    return box_at(L, T, Z_TOP - Z_BOT, x=_XC, y=y, z=_ZC)
+    """A tall solid longitudinal rail (deep → bow-stiff); slicer infill sets weight."""
+    return box_at(X_BRIDGE - X_NUT, T, Z_TOP - Z_BOT, x=_XC, y=y, z=_ZC)
 
 
-def _build() -> cq.Workplane:
+def _build_full() -> cq.Workplane:
     body = _rail(Y_HI).union(_rail(Y_LO))
-    # bottom cross-ribs tie the two rails (and touch the motor-bank floor)
-    for x in _RIB_X:
+    for x in _RIB_X:                                  # bottom cross-ribs tie the rails
         body = body.union(box_at(T, Y_HI - Y_LO, _RIB_H, x=x, y=(Y_HI + Y_LO) / 2, z=_RIB_Z))
-    # keyhead: end cross-block at the nut, rising to the string height to carry
-    # the 10 tuners; tied to both rails.
-    ky = D.nut_y(D.N_STRINGS - 1) + 8.0
-    keyhead = box_at(18.0, 2 * ky, Z_TOP + 8.0 - Z_BOT,
-                     x=X_NUT + 9.0, y=0, z=(Z_TOP + 8.0 + Z_BOT) / 2)
-    # link the keyhead out to both side rails at the bottom
-    keyhead = keyhead.union(box_at(18.0, Y_HI - Y_LO, _RIB_H,
-                                   x=X_NUT + 9.0, y=(Y_HI + Y_LO) / 2, z=_RIB_Z))
-    return body.union(keyhead)
+    ky = D.nut_y(D.N_STRINGS - 1) + 8.0               # keyhead at the nut carries the tuners
+    body = body.union(box_at(18.0, 2 * ky, Z_TOP + 8.0 - Z_BOT,
+                             x=X_NUT + 9.0, y=0, z=(Z_TOP + 8.0 + Z_BOT) / 2))
+    body = body.union(box_at(18.0, Y_HI - Y_LO, _RIB_H,
+                             x=X_NUT + 9.0, y=(Y_HI + Y_LO) / 2, z=_RIB_Z))
+    return body
 
 
-chassis = _build()
+def _tongue(s, yr, socket=False):
+    """Dovetail prism at split X=s on the rail at Y=yr: a trapezoid (flaring +X in
+    Y) extruded in Z. The −X segment carries it; the +X segment gets it as a socket
+    (with clearance, open-topped). It bottoms on a shoulder of height _SH."""
+    g = _CLR if socket else 0.0
+    wr, wt = (_WR + g) / 2, (_WT + g) / 2
+    z0 = Z_BOT + _SH
+    z1 = (Z_TOP + 14.0) if socket else Z_TOP
+    pts = [(s - 2, yr - wr), (s - 2, yr + wr), (s + _DT, yr + wt), (s + _DT, yr - wt)]
+    return cq.Workplane("XY").workplane(offset=z0).polyline(pts).close().extrude(z1 - z0)
+
+
+def _seg_box(a, b):
+    h = (Z_TOP + 18.0) - (Z_BOT - 6.0)
+    return box_at(abs(a - b) + 0.02, (Y_HI - Y_LO) + 40.0, h,
+                  x=(a + b) / 2, y=(Y_HI + Y_LO) / 2, z=(Z_TOP + 18.0 + Z_BOT - 6.0) / 2)
+
+
+def _is_split(x):
+    return any(abs(x - s) < 1e-6 for s in SPLIT_X)
+
+
+def _segments():
+    full = _build_full()
+    edges = [X_BRIDGE] + sorted(SPLIT_X, reverse=True) + [X_NUT]   # +6, -205, -420, -627
+    segs = []
+    for i in range(len(edges) - 1):
+        a, b = edges[i], edges[i + 1]                 # a (+X) > b (−X)
+        seg = full.intersect(_seg_box(a, b))
+        if _is_split(b):                              # −X boundary split → +X side → socket
+            for yr in (Y_HI, Y_LO):
+                seg = seg.cut(_tongue(b, yr, socket=True))
+        if _is_split(a):                              # +X boundary split → −X side → tongue
+            for yr in (Y_HI, Y_LO):
+                seg = seg.union(_tongue(a, yr))
+        segs.append(seg)
+    return segs
+
+
+segments = _segments()

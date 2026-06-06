@@ -27,7 +27,7 @@ from .carriage import carriage, THICK as CARRIAGE_THICK
 from .screw_rail import screw_rail
 from .bridge_mount import bridge_mount
 from .belt_clamp import belt_clamp
-from .chassis import chassis
+from .chassis import segments as chassis_segments
 from . import motor_bank as MB
 
 PARTS = {
@@ -38,8 +38,10 @@ PARTS = {
     "belt_clamp":      (heal(belt_clamp),    "belt_clamp.step",      "PETG — GT2 belt splice clamp (print 2 per splice ×10)"),
     "screw_pulley":    (heal(C.screw_pulley()),  "screw_pulley.step",  "flanged GT2 pulley, 45° top flange — ×10 (tooth grooves TODO)"),
     "motor_pulley":    (heal(C.motor_pulley()),  "motor_pulley.step",  "flanged GT2 pulley, 45° outer flange — ×10 (tooth grooves TODO)"),
-    "chassis":         (heal(chassis),       "chassis.step",         "PCTG — ladder frame (split into ~3 bolted segments)"),
 }
+for _i, _seg in enumerate(chassis_segments):     # chassis split into dovetailed segments
+    PARTS[f"chassis_{_i}"] = (heal(_seg), f"chassis_{_i}.step",
+                              "PCTG — chassis segment (slide-down dovetail, glued)")
 
 
 def _export(name):
@@ -169,12 +171,12 @@ def _string_path(i, sy):
 
 def collect_components():
     comps = [
-        ("chassis", chassis),
         ("bridge_support", bridge_mount),
         ("bridge_bearings", C.bridge_bearings()),
         ("screw_rail", screw_rail),
         ("motor_bank", MB.motor_bank),
     ]
+    comps += [(f"chassis_{i}", seg) for i, seg in enumerate(chassis_segments)]
     for i in range(D.N_STRINGS):
         comps.extend(_string_components(i))
     return comps

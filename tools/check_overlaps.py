@@ -65,6 +65,9 @@ GLOBAL_OK = {
 def intended(na, nb) -> bool:
     if "build_counter" in (na, nb):
         return True
+    # adjacent chassis segments meet at their sliding-dovetail joints (one frame)
+    if base(na) == base(nb) == "chassis":
+        return True
     # A belt is allowed to touch its OWN two pulleys (it wraps them); any other
     # belt contact (neighbour belt/pulley/rod) is a real clash to be reported.
     if {base(na), base(nb)} <= {"belt", "screw_pulley", "motor_pulley"} \
