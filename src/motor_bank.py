@@ -31,9 +31,10 @@ def _face_y(i):
 # Envelope (for reports / counter).
 _xs = [D.motor_pos(i)[0] for i in range(D.N_STRINGS)]
 _zc = D.MOTOR_BELT_Z
-FLOOR_TOP = _zc - D.MOTOR_SQ / 2            # motors rest ON the floor (no sink-in)
+FLOOR_TOP = _zc - D.MOTOR_SQ / 2            # motors rest here (= wall bottom / chassis rib top)
+BED_Z = FLOOR_TOP - 11.0                    # print bed = chassis rib/rail bottom
 X_LO, X_HI = min(_xs) - WALL_W / 2, max(_xs) + WALL_W / 2
-Z_LO = FLOOR_TOP - FLOOR_T
+Z_LO = BED_Z
 Z_HI = _zc + D.MOTOR_SQ / 2 + _PAD
 # Motors' bodies run −Y from the faceplates; floor spans that.
 Y_LO = min(D.string_y(i) - MOTOR_PULLEY_STANDOFF for i in range(D.N_STRINGS)) - D.MOTOR_BODY_LEN - 4.0
@@ -44,12 +45,15 @@ def _build() -> cq.Workplane:
     # Just the faceplate walls (motor mounts). The motors rest on, and the walls
     # sit on, the chassis's per-motor cross-ribs — there is no solid floor (a thin
     # plate would be heavy printed skin; chunky ribs carry the load far lighter).
+    # Each plate runs all the way to the print bed (BED_Z), with its bottom edges
+    # tapered 45° — printable (no overhang) using less material than straight-down.
     body = None
     for i in range(D.N_STRINGS):
         mx, my, mz = D.motor_pos(i)
         fy = _face_y(i)
-        wall = box_at(WALL_W, PLATE_T, Z_HI - FLOOR_TOP,
-                      x=mx, y=fy, z=(Z_HI + FLOOR_TOP) / 2)
+        wall = box_at(WALL_W, PLATE_T, Z_HI - BED_Z,
+                      x=mx, y=fy, z=(Z_HI + BED_Z) / 2)
+        wall = wall.edges("|Y and <Z").chamfer(FLOOR_TOP - BED_Z - 0.5)
         wall = wall.cut(nema17_face_cutter_y(
             fy - PLATE_T / 2, PLATE_T + 1.0, x=mx, z=mz, slot=TENSION_SLOT))
         body = wall if body is None else body.union(wall)

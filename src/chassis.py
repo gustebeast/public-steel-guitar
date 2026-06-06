@@ -29,13 +29,14 @@ from .helpers import box_at
 T        = 8.0                         # rail thickness (solid; slicer infills)
 X_BRIDGE = 6.0                         # +X (bridge) end
 X_NUT    = -(D.MOUNTING_SPAN + 12.0)   # past the tuners at −MOUNTING_SPAN
-Z_TOP    = D.STRING_Z - 6.0            # just under the speaking length
-Z_BOT    = MB.FLOOR_TOP - 11.0         # 11 mm chunky rib depth below the motor rest
+Z_TOP    = D.STRING_Z - 6.0            # body deck, 6 mm under the strings (normal action)
+Z_BOT    = MB.BED_Z                    # print bed (shared with the motor walls)
 Y_HI     = D.BRIDGE_AXLE_Y + 1.0       # +Y rail, just outside the bridge uprights
 Y_LO     = (D.string_y(0) - MOTOR_PULLEY_STANDOFF - D.MOTOR_BODY_LEN
             - D.MOTOR_PCB_LEN - 6.0)   # −Y rail, just outside the motor PCBs
 _XC, _ZC = (X_BRIDGE + X_NUT) / 2, (Z_TOP + Z_BOT) / 2
 _RIB_W   = 10.0                        # cross-rib X-width (chunky section → slicer infills)
+_TIE_H   = 7.0                         # deck top-tie height (Z), top flush with the rails
 # A chunky rail-to-rail rib UNDER EACH MOTOR (the motor rests on it, its wall sits
 # on it, and it ties the two rails) replaces a solid floor — far lighter for the
 # strength. Plus a rib near the bridge and near the nut.
@@ -56,14 +57,29 @@ def _rib(x, w=_RIB_W):
                   x=x, y=(Y_HI + Y_LO) / 2, z=(MB.FLOOR_TOP + Z_BOT) / 2)
 
 
+def _top_tie(x, w=_RIB_W):
+    """Cross-tie joining the two rail TOPS at the deck (under the strings) — closes
+    the open-U cross-section into a box for torsional stiffness."""
+    return box_at(w, Y_HI - Y_LO, _TIE_H, x=x, y=(Y_HI + Y_LO) / 2, z=Z_TOP - _TIE_H / 2)
+
+
 def _build_full() -> cq.Workplane:
     body = _rail(Y_HI).union(_rail(Y_LO))
-    for x in _RIB_X:                                  # per-motor + bridge/nut cross-ribs
+    for x in _RIB_X:                                  # per-motor + bridge/nut cross-ribs (−Z)
         body = body.union(_rib(x))
+    # deck top-ties (+Z) close the open-U into a box, at the motor + nut stations.
+    for x in [mx for mx in _RIB_X if mx <= -100]:
+        body = body.union(_top_tie(x))
+    # bridge end: the string anchors fill the centre, so a full-width tie can't
+    # pass. The +Y rail is already tied to the bridge support via its upright; add
+    # a −Y-side deck tie reaching the support to close that corner.
+    body = body.union(box_at(8.0, -48.5 - Y_LO, _TIE_H,
+                             x=D.BRIDGE_AXLE_X, y=(Y_LO - 48.5) / 2, z=Z_TOP - _TIE_H / 2))
     ky = D.nut_y(D.N_STRINGS - 1) + 8.0               # keyhead at the nut carries the tuners
     body = body.union(box_at(18.0, 2 * ky, Z_TOP + 8.0 - Z_BOT,
                              x=X_NUT + 9.0, y=0, z=(Z_TOP + 8.0 + Z_BOT) / 2))
-    body = body.union(_rib(X_NUT + 9.0, w=18.0))      # tie the keyhead to both rails
+    body = body.union(_rib(X_NUT + 9.0, w=18.0))      # tie the keyhead to both rails (−Z)
+    body = body.union(_top_tie(X_NUT + 9.0, w=18.0))  # and at the deck (+Z)
     body = body.union(MB.motor_bank)                  # fuse in the motor faceplate walls
     return body
 
