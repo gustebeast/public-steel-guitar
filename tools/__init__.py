@@ -1,1 +1,1 @@
-"""Tooling package (overlap checker, onshape push)."""
+"""Tooling package (overlap checker)."""

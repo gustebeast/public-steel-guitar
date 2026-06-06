@@ -186,8 +186,8 @@ def splice_frame(motor_xyz, screw_xyz):
 def _belt_smooth(samples):
     """Single smooth sweep of the strip profile along the loop centreline, the
     twist driven by an auxiliary spine (offset along the inward normal). One solid,
-    no seams. (FreeCAD/OCC reads these fine — the Onshape importer was the only one
-    that choked on the tight short loops, and Onshape has been retired.)"""
+    no seams. (FreeCAD/OCC reads these fine; tight short loops can trip stricter
+    STEP importers, so the single-sweep approach avoids them.)"""
     pts = [(p.x, p.y, p.z) for p, _ in samples]
     aux = [(p.x + n.x * _AUX_OFF, p.y + n.y * _AUX_OFF, p.z + n.z * _AUX_OFF)
            for p, n in samples]

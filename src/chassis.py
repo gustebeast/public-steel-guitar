@@ -1,18 +1,20 @@
-"""Chassis frame (§8) — PCTG. Ties the bridge, screw rail, motor bank, and a nut
-keyhead into ONE rigid frame, SPLIT into bolt-free glued segments for printing.
+"""Chassis frame (§8) — PCTG. ONE rigid frame that absorbs the motor bank and
+ties in the bridge, screw rail, and a nut keyhead, SPLIT into glued segments.
 
 The strings pull the bridge and nut toward each other (~10×100 N) at the speaking
 height, which would bow the instrument; the chassis resists that. The stiffness
 comes from DEPTH: two solid longitudinal side rails (from just under the strings
-down to the motor floor) run the whole length, tied by bottom cross-ribs, plus a
-keyhead at the nut. Bodies are modelled SOLID — the slicer's walls + infill set
-the strength-to-weight (no modelled lightening).
+down to the motor floor) run the whole length, tied by bottom cross-ribs and the
+motor-bank floor, plus a keyhead at the nut. The motor faceplate walls (with their
+NEMA17 patterns) are fused in. Bodies are modelled SOLID — the slicer's walls +
+infill set the strength-to-weight (no modelled lightening).
 
 Too long for one print (~630 mm > 255 mm bed), so it's cut into 3 segments joined
-by SLIDING DOVETAILS: each joint's tongue flares toward +X (locking the segments
-against the string pull), you drop the next segment straight DOWN onto it (one
-direction), and it bottoms on a shoulder that sets the position — then glue.
-Built in global position; the segments assemble into the whole frame.
+by SLIDING DOVETAILS on the side rails: each joint's tongue flares toward +X
+(locking the segments against the string pull), you drop the next segment straight
+DOWN onto it (one direction), and it bottoms on a shoulder that sets the position —
+then glue. The cuts fall in the ~0.7 mm gaps BETWEEN motor walls, so no motor
+mount is split. Built in global position; the segments assemble into the whole.
 """
 
 from __future__ import annotations
@@ -37,7 +39,7 @@ _RIB_H   = 5.0                         # cross-rib height (sits on the very bott
 _RIB_Z   = Z_BOT + _RIB_H / 2
 _RIB_X   = [-15, -135, -255, -375, -495, -575]   # tie stations along the length
 
-SPLIT_X  = [-205.0, -420.0]            # 2 cuts → 3 segments, each < 255 mm
+SPLIT_X  = [-220.0, -440.0]            # 2 cuts → 3 segments < 255 mm, in motor-wall gaps
 _DT, _WR, _WT, _SH, _CLR = 8.0, 4.0, 7.0, 4.0, 0.3   # dovetail: depth, root/tip W, shoulder, fit
 
 
@@ -55,6 +57,7 @@ def _build_full() -> cq.Workplane:
                              x=X_NUT + 9.0, y=0, z=(Z_TOP + 8.0 + Z_BOT) / 2))
     body = body.union(box_at(18.0, Y_HI - Y_LO, _RIB_H,
                              x=X_NUT + 9.0, y=(Y_HI + Y_LO) / 2, z=_RIB_Z))
+    body = body.union(MB.motor_bank)              # fuse in the motor-bank floor + walls
     return body
 
 
