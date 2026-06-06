@@ -11,12 +11,12 @@ Split into focused modules:
   screw_rail  — shared bottom rail holding all 10 screw support bushings
   bridge_mount — bridge-bearing axle support (uprights + tie bar)
   motor_bank  — under-string staircase motor mounts (faceplate walls + floor)
-  build       — composes 10 actuator axes + the bridge + motor bank into an
-                assembly, writes per-part STEPs + assembly.step, and pushes
-                the assembly to Onshape.
+  build       — composes 10 actuator axes + the bridge + motor bank into a
+                colour-coded assembly, writes per-part STEPs + assembly.step
+                (the refresh signal for the shared FreeCAD live viewer).
 
 Run from the repo root:
-  py -3.12 -m src.build              # build all parts + assembly + push
+  py -3.12 -m src.build              # build all parts + assembly.step
   py -3.12 -m src.build --part NAME  # build one part (fast iteration)
   py -3.12 -m src.build --list       # list part names
 """

@@ -125,10 +125,6 @@ _FLAT_LEN = 42.0            # flat (untwisting) belt zone near the motor end of 
 _CLAMP_DIST = 24.0         # clamp centre distance from the motor (clears the pulley)
 _AUX_OFF = 3.0             # auxiliary-spine offset that drives the sweep twist
 _SAMPLE_DIV = 12.0         # run sample spacing (smaller = denser)
-# Onshape's STEP importer accepts the smooth swept B-spline for longer belts but
-# drops the tight short ones (verified: run 190 dropped, 234 imported); those
-# fall back to the faceted build, which imports reliably.
-_SMOOTH_MIN_RUN = 210.0
 
 
 def _belt_samples(motor_xyz, screw_xyz):
@@ -187,20 +183,11 @@ def splice_frame(motor_xyz, screw_xyz):
     return (p.x, p.y, p.z), (tan.x, tan.y, tan.z), (n.x, n.y, n.z)
 
 
-def _frame(p0, p1, n0, n1):
-    seg = p1.sub(p0)
-    L = seg.Length
-    tan = seg.multiply(1.0 / L)
-    nn = n0.add(n1).multiply(0.5)
-    nn = nn.sub(tan.multiply(nn.dot(tan))).normalized()
-    wd = nn.cross(tan).normalized()
-    return tan, nn, wd, L
-
-
 def _belt_smooth(samples):
-    """Single smooth sweep, twist driven by an auxiliary spine. No seams — but a
-    tight (short-loop) sweep is rejected by Onshape's STEP importer, so it is only
-    used above _SMOOTH_MIN_RUN."""
+    """Single smooth sweep of the strip profile along the loop centreline, the
+    twist driven by an auxiliary spine (offset along the inward normal). One solid,
+    no seams. (FreeCAD/OCC reads these fine — the Onshape importer was the only one
+    that choked on the tight short loops, and Onshape has been retired.)"""
     pts = [(p.x, p.y, p.z) for p, _ in samples]
     aux = [(p.x + n.x * _AUX_OFF, p.y + n.y * _AUX_OFF, p.z + n.z * _AUX_OFF)
            for p, n in samples]
@@ -212,23 +199,6 @@ def _belt_smooth(samples):
     prof = cq.Workplane(cq.Plane(origin=(p0.x, p0.y, p0.z), xDir=(wd.x, wd.y, wd.z),
                                  normal=(tan.x, tan.y, tan.z))).rect(D.BELT_W, D.BELT_T)
     return prof.sweep(path, auxSpine=auxw, isFrenet=False).val()
-
-
-def _belt_faceted(samples):
-    """Oriented strip segments fused into one solid. Has faint segment seams but
-    imports reliably into Onshape — used for the short belts the sweep can't."""
-    OV, parts, n = 0.4, [], len(samples)
-    for k in range(n):
-        p0, n0 = samples[k]
-        p1, n1 = samples[(k + 1) % n]
-        if p1.sub(p0).Length < 1e-6:
-            continue
-        tan, nn, wd, L = _frame(p0, p1, n0, n1)
-        o = p0.sub(tan.multiply(OV / 2))
-        pl = cq.Plane(origin=(o.x, o.y, o.z), xDir=(wd.x, wd.y, wd.z),
-                      normal=(tan.x, tan.y, tan.z))
-        parts.append(cq.Workplane(pl).rect(D.BELT_W, D.BELT_T).extrude(L + OV).val())
-    return parts[0].fuse(*parts[1:])
 
 
 def _belt_teeth_ridges(samples):
@@ -266,16 +236,13 @@ def _belt_teeth_ridges(samples):
     return ridges
 
 
-# ── GT2 belt — twisted loop (both runs + 90° twist + pulley wraps), one solid ─
+# ── GT2 belt — smooth twisted loop (both runs + 90° twist + pulley wraps) ─────
 def belt(motor_xyz, screw_xyz, teeth: bool = False) -> cq.Workplane:
     """The belt loop wraps the motor pulley (axis Y) and screw pulley (axis Z), so
-    its flat face twists 90° per run. Long belts use a single SMOOTH sweep (no
-    seams); SHORT belts (run < _SMOOTH_MIN_RUN) are FACETED because Onshape's STEP
-    importer rejects the tight swept B-spline. `teeth=True` fuses rounded GT2 teeth
-    onto the inner face. Returns one fused solid either way."""
+    its flat face twists 90° per run. A single smooth sweep (no seams), one solid.
+    `teeth=True` fuses rounded GT2 teeth onto the inner face."""
     samples = _belt_samples(motor_xyz, screw_xyz)
-    run = abs(motor_xyz[0] - screw_xyz[0])
-    body = _belt_smooth(samples) if run >= _SMOOTH_MIN_RUN else _belt_faceted(samples)
+    body = _belt_smooth(samples)
     if teeth:
         body = body.fuse(*_belt_teeth_ridges(samples))
     body = body.clean()

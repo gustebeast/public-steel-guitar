@@ -1,5 +1,3 @@
-# Onshape credentials (real keys) — never commit
-tools/onshape_credentials.json
 tools/build_counter.txt
 
 # Python

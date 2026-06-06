@@ -33,11 +33,11 @@ take-up plus three whole steps of raise headroom — see `DL_OPEN` /
 
 ## Build system
 
-CadQuery (Python 3.12) generates a STEP per printed part plus an `assembly.step`,
-then pushes the assembly to Onshape.
+CadQuery (Python 3.12) generates a STEP per printed part plus an `assembly.step`
+with per-part colours baked in.
 
 ```bash
-py -3.12 -m src.build              # all parts + assembly + Onshape push
+py -3.12 -m src.build              # all parts + assembly.step
 py -3.12 -m src.build --part NAME  # one part (fast iteration)
 py -3.12 -m src.build --list       # list part names
 py -3.12 -m src.build --geom       # print the belt-geometry report
@@ -48,10 +48,15 @@ py -3.12 -m src.build --geom       # print the belt-geometry report
 - `src/components.py` — schematic dummies of purchased parts (motor, screw, nut,
   pulleys, support bushing, bridge bearings, belt, tuner) for the assembly only.
 - Printed parts: `carriage` (×10), `screw_rail` (shared bottom support),
-  `bridge_mount` (bridge-bearing axle support), `motor_bank` (staircase mounts).
+  `bridge_mount` (bridge-bearing axle support), `motor_bank` (staircase mounts),
+  `belt_clamp`, `screw_pulley`, `motor_pulley`.
 - `tools/check_overlaps.py` — `py -3.12 -m tools.check_overlaps` reports any
   unintended interpenetration between placed components (the design gate).
-- Onshape push is configured via `tools/onshape_credentials.json` (gitignored).
+
+**Viewing:** the build just writes `assembly.step`; the shared FreeCAD live viewer
+(`../freecad/`) watches that file and auto-reloads on every rebuild, keeping the
+camera and hidden parts. Launch once:
+`& ..\freecad\open_viewer.ps1 -Project .` (the prior Onshape push is retired).
 
 ## Key dimensions
 

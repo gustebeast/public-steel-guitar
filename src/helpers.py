@@ -54,7 +54,7 @@ def nema17_face_cutter_y(y_face: float, depth: float, *,
 
 def heal(wp: cq.Workplane) -> cq.Workplane:
     """ShapeFix + UnifySameDomain to clean minor tolerance issues and merge
-    coplanar faces before STEP export, so strict importers (Onshape) accept it."""
+    coplanar faces before STEP export, so strict STEP importers accept it."""
     from OCP.ShapeFix import ShapeFix_Shape          # type: ignore[import]
     from OCP.ShapeUpgrade import ShapeUpgrade_UnifySameDomain  # type: ignore[import]
     from OCP.TopAbs import TopAbs_COMPOUND

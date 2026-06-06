@@ -1,6 +1,6 @@
 """Electro-mechanical pedal steel guitar — main build script (vertical layout).
 
-  py -3.12 -m src.build              # build all printed parts + assembly + push
+  py -3.12 -m src.build              # build all printed parts + assembly.step
   py -3.12 -m src.build --part NAME  # build one printed part (fast iteration)
   py -3.12 -m src.build --list       # list part names
   py -3.12 -m src.build --geom       # print the belt geometry report & exit
@@ -14,9 +14,7 @@ from __future__ import annotations
 
 import argparse
 import math
-import os
 import pathlib
-import subprocess
 import sys
 
 import cadquery as cq
@@ -179,29 +177,50 @@ def collect_components():
     return comps
 
 
+# Per-part colours, baked into the assembly STEP (single source of truth — they
+# show in the shared FreeCAD live viewer and any STEP viewer). RGB floats 0..1.
+_COLORS = {
+    "carriage":        (0.27, 0.51, 0.71),   # PA6-GF — load-critical
+    "screw_rail":      (0.39, 0.58, 0.93),   # PA6-GF
+    "bridge_support":  (0.24, 0.66, 0.46),   # PCTG
+    "motor_bank":      (0.42, 0.56, 0.34),   # PCTG
+    "belt_clamp":      (0.95, 0.55, 0.15),   # PETG
+    "screw_pulley":    (0.00, 0.55, 0.55),
+    "motor_pulley":    (0.00, 0.55, 0.55),
+    "leadscrew":       (0.75, 0.75, 0.78),   # steel
+    "screw_bearing":   (0.69, 0.77, 0.87),
+    "bridge_bearings": (0.69, 0.77, 0.87),
+    "nut":             (0.82, 0.60, 0.20),   # brass
+    "locknut":         (0.82, 0.60, 0.20),
+    "guide_rod":       (0.35, 0.35, 0.38),
+    "motor":           (0.22, 0.25, 0.27),   # charcoal
+    "belt":            (0.13, 0.13, 0.13),   # GT2 black
+    "string":          (0.85, 0.85, 0.85),
+    "tuner":           (0.50, 0.50, 0.50),
+    "build_counter":   (0.86, 0.08, 0.24),
+}
+_DEFAULT_COLOR = (0.80, 0.80, 0.80)
+
+
+def _color_for(name):
+    head, _, tail = name.rpartition("_")
+    base = head if (head and tail.isdigit()) else name
+    return cq.Color(*_COLORS.get(base, _DEFAULT_COLOR))
+
+
 def _export_assembly():
     build_n = _bump_build_counter()
     asm = cq.Assembly(name="servo_steel")
     for name, wp in collect_components():
-        asm.add(wp, name=name)
+        asm.add(wp, name=name, color=_color_for(name))
     counter = _build_counter_model(build_n)
     if counter is not None:
-        asm.add(counter, name="build_counter")
+        asm.add(counter, name="build_counter", color=_color_for("build_counter"))
     asm.save("assembly.step")
     print(f"Wrote assembly.step  [build #{build_n}]", flush=True)
     print(geometry_report())
-    _push_onshape()
-
-
-def _push_onshape() -> None:
-    script = pathlib.Path(__file__).resolve().parent.parent / "tools" / "onshape_push.py"
-    if not script.exists() or not pathlib.Path("assembly.step").exists():
-        return
-    try:
-        subprocess.run([sys.executable, str(script), "assembly.step"],
-                       check=False, cwd=os.getcwd())
-    except Exception as e:
-        print(f"[onshape] push skipped: {e}", file=sys.stderr)
+    # The STEP write IS the refresh signal for the shared FreeCAD live viewer
+    # (Archive/3D/freecad/README.md). The Onshape push has been retired.
 
 
 def main() -> None:
