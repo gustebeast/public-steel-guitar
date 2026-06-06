@@ -38,8 +38,9 @@ _XC, _ZC = (X_BRIDGE + X_NUT) / 2, (Z_TOP + Z_BOT) / 2
 _RIB_W   = 10.0                        # cross-rib X-width (chunky section → slicer infills)
 # A chunky rail-to-rail rib UNDER EACH MOTOR (the motor rests on it, its wall sits
 # on it, and it ties the two rails) replaces a solid floor — far lighter for the
-# strength. Plus a rib near the bridge and near the nut.
-_RIB_X   = [-15.0] + [D.motor_pos(i)[0] for i in range(D.N_STRINGS)] + [-575.0]
+# strength. Plus a rib at the +X end (under the bridge bulkhead, tying its base to
+# both rails) and near the nut.
+_RIB_X   = [X_BRIDGE - 4.0] + [D.motor_pos(i)[0] for i in range(D.N_STRINGS)] + [-575.0]
 
 SPLIT_X  = [-220.0, -440.0]            # 2 cuts → 3 segments < 255 mm, in motor-wall gaps
 # dovetail: depth, root/tip width, shoulder, fit. Tip width kept ≤ T−3.2 so the
@@ -58,15 +59,46 @@ def _rib(x, w=_RIB_W):
                   x=x, y=(Y_HI + Y_LO) / 2, z=(MB.FLOOR_TOP + Z_BOT) / 2)
 
 
+def _diamond(cy, cz, h, x, thick):
+    """A diamond (45°) prism through the plate (axis X) — self-supporting as a hole
+    in a vertically-printed plate (its crown is a 45° peak, not a flat bridge)."""
+    return (cq.Workplane("YZ").workplane(offset=x - (thick + 2.0) / 2.0)
+            .polyline([(cy, cz + h), (cy + h, cz), (cy, cz - h), (cy - h, cz)]).close()
+            .extrude(thick + 2.0))
+
+
+def _lighten(plate, x, thick):
+    """Punch a grid of self-supporting diamond holes into a bulkhead, leaving a
+    solid perimeter frame (≥M), the 45° funnel edges, and ≥WEB webs — a shear truss
+    instead of a solid plate."""
+    zfull = Z_TOP - 8.0                                   # above this the plate is full width
+    def yl(z): return Y_LO + max(0.0, zfull - z)
+    def yr(z): return Y_HI - max(0.0, zfull - z)
+    H, WEB, M = 10.0, 6.0, 6.0
+    step = 2 * H + WEB
+    def inside(y, z): return (Z_BOT + M <= z <= Z_TOP - M) and (yl(z) + M <= y <= yr(z) - M)
+    yc = (Y_LO + Y_HI) / 2
+    cz = Z_TOP - M - H
+    while cz - H >= Z_BOT + M:
+        cy = yc - step * 6
+        while cy <= yc + step * 6:
+            if all(inside(y, z) for y, z in
+                   [(cy, cz + H), (cy, cz - H), (cy - H, cz), (cy + H, cz)]):
+                plate = plate.cut(_diamond(cy, cz, H, x, thick))
+            cy += step
+        cz -= step
+    return plate
+
+
 def _end_bulkhead(x, thick):
     """Self-supporting end wall that closes the box at a string end: full width at
     the deck (ties both rails), 45° sides converging DOWN to a narrow base on the
-    bed. Prints with no overhang (it builds up from the base) and the lower-outer
-    corners are removed — far better than a horizontal tie, which would bridge the
-    ~185 mm rail-to-rail span. Mid-span stays open (motors fill it; strings need
-    the top clear)."""
+    bed. Prints with no overhang (it builds up from the base); the lower-outer
+    corners are removed and the interior is lightened with diamond holes (shear
+    truss). Far better than a horizontal tie, which would bridge ~185 mm."""
     w = box_at(thick, Y_HI - Y_LO, Z_TOP - Z_BOT, x=x, y=(Y_HI + Y_LO) / 2, z=(Z_TOP + Z_BOT) / 2)
-    return w.edges("|X and <Z").chamfer(Z_TOP - Z_BOT - 8.0)
+    w = w.edges("|X and <Z").chamfer(Z_TOP - Z_BOT - 8.0)
+    return _lighten(w, x, thick)
 
 
 def _build_full() -> cq.Workplane:
