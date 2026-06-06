@@ -54,10 +54,11 @@ GLOBAL_OK = {
     frozenset({"carriage", "bridge_support"}),
     frozenset({"bridge_support", "bridge_bearings"}),
     frozenset({"string", "bridge_bearings"}), frozenset({"string", "bridge_support"}),
-    # chassis ties everything into one bolted frame (intended contacts)
+    # chassis ties everything into one frame (intended contacts); the motor bank
+    # (floor + faceplate walls) is fused into the chassis, so motors mount to it
     frozenset({"chassis", "bridge_support"}), frozenset({"chassis", "screw_rail"}),
-    frozenset({"chassis", "motor_bank"}), frozenset({"chassis", "tuner"}),
-    frozenset({"chassis", "string"}), frozenset({"chassis", "motor"}),
+    frozenset({"chassis", "motor"}), frozenset({"chassis", "tuner"}),
+    frozenset({"chassis", "string"}),
     frozenset({"screw_rail", "bridge_support"}), frozenset({"screw_rail", "chassis"}),
 }
 

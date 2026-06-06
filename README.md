@@ -53,10 +53,10 @@ py -3.12 -m src.build --geom       # print the belt-geometry report
 - `tools/check_overlaps.py` — `py -3.12 -m tools.check_overlaps` reports any
   unintended interpenetration between placed components (the design gate).
 
-**Viewing:** the build just writes `assembly.step`; the shared FreeCAD live viewer
-(`../freecad/`) watches that file and auto-reloads on every rebuild, keeping the
-camera and hidden parts. Launch once:
-`& ..\freecad\open_viewer.ps1 -Project .` (the prior Onshape push is retired).
+**Viewing:** the build writes `assembly.step` and opens (or refreshes) it in the
+shared FreeCAD viewer hub (`../freecad/`), which watches the file and auto-reloads
+on every rebuild, keeping the camera and hidden parts. To open it manually:
+`& ..\freecad\open_viewer.ps1 -Project .`.
 
 ## Key dimensions
 
