@@ -41,19 +41,18 @@ Y_HI = max(_face_y(i) for i in range(D.N_STRINGS)) + PLATE_T / 2
 
 
 def _build() -> cq.Workplane:
-    # Shared floor under the motors (top flush with the motor bodies' bottom).
-    floor = box_at(X_HI - X_LO, Y_HI - Y_LO, FLOOR_T,
-                   x=(X_LO + X_HI) / 2, y=(Y_LO + Y_HI) / 2, z=FLOOR_TOP - FLOOR_T / 2)
-    body = floor
+    # Just the faceplate walls (motor mounts). The motors rest on, and the walls
+    # sit on, the chassis's per-motor cross-ribs — there is no solid floor (a thin
+    # plate would be heavy printed skin; chunky ribs carry the load far lighter).
+    body = None
     for i in range(D.N_STRINGS):
         mx, my, mz = D.motor_pos(i)
         fy = _face_y(i)
-        # faceplate wall (X–Z) just +Y of the motor faceplate, rising from the floor
         wall = box_at(WALL_W, PLATE_T, Z_HI - FLOOR_TOP,
                       x=mx, y=fy, z=(Z_HI + FLOOR_TOP) / 2)
         wall = wall.cut(nema17_face_cutter_y(
             fy - PLATE_T / 2, PLATE_T + 1.0, x=mx, z=mz, slot=TENSION_SLOT))
-        body = body.union(wall)
+        body = wall if body is None else body.union(wall)
     return body
 
 

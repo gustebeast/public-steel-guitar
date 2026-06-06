@@ -30,14 +30,16 @@ T        = 8.0                         # rail thickness (solid; slicer infills)
 X_BRIDGE = 6.0                         # +X (bridge) end
 X_NUT    = -(D.MOUNTING_SPAN + 12.0)   # past the tuners at −MOUNTING_SPAN
 Z_TOP    = D.STRING_Z - 6.0            # just under the speaking length
-Z_BOT    = MB.Z_LO                     # motor-floor bottom
+Z_BOT    = MB.FLOOR_TOP - 11.0         # 11 mm chunky rib depth below the motor rest
 Y_HI     = D.BRIDGE_AXLE_Y + 1.0       # +Y rail, just outside the bridge uprights
 Y_LO     = (D.string_y(0) - MOTOR_PULLEY_STANDOFF - D.MOTOR_BODY_LEN
             - D.MOTOR_PCB_LEN - 6.0)   # −Y rail, just outside the motor PCBs
 _XC, _ZC = (X_BRIDGE + X_NUT) / 2, (Z_TOP + Z_BOT) / 2
-_RIB_H   = 5.0                         # cross-rib height (sits on the very bottom)
-_RIB_Z   = Z_BOT + _RIB_H / 2
-_RIB_X   = [-15, -135, -255, -375, -495, -575]   # tie stations along the length
+_RIB_W   = 10.0                        # cross-rib X-width (chunky section → slicer infills)
+# A chunky rail-to-rail rib UNDER EACH MOTOR (the motor rests on it, its wall sits
+# on it, and it ties the two rails) replaces a solid floor — far lighter for the
+# strength. Plus a rib near the bridge and near the nut.
+_RIB_X   = [-15.0] + [D.motor_pos(i)[0] for i in range(D.N_STRINGS)] + [-575.0]
 
 SPLIT_X  = [-220.0, -440.0]            # 2 cuts → 3 segments < 255 mm, in motor-wall gaps
 _DT, _WR, _WT, _SH, _CLR = 8.0, 4.0, 7.0, 4.0, 0.3   # dovetail: depth, root/tip W, shoulder, fit
@@ -48,16 +50,21 @@ def _rail(y):
     return box_at(X_BRIDGE - X_NUT, T, Z_TOP - Z_BOT, x=_XC, y=y, z=_ZC)
 
 
+def _rib(x, w=_RIB_W):
+    """Chunky cross-rib, rail-to-rail, its top flush with the motor rest (FLOOR_TOP)."""
+    return box_at(w, Y_HI - Y_LO, MB.FLOOR_TOP - Z_BOT,
+                  x=x, y=(Y_HI + Y_LO) / 2, z=(MB.FLOOR_TOP + Z_BOT) / 2)
+
+
 def _build_full() -> cq.Workplane:
     body = _rail(Y_HI).union(_rail(Y_LO))
-    for x in _RIB_X:                                  # bottom cross-ribs tie the rails
-        body = body.union(box_at(T, Y_HI - Y_LO, _RIB_H, x=x, y=(Y_HI + Y_LO) / 2, z=_RIB_Z))
+    for x in _RIB_X:                                  # per-motor + bridge/nut cross-ribs
+        body = body.union(_rib(x))
     ky = D.nut_y(D.N_STRINGS - 1) + 8.0               # keyhead at the nut carries the tuners
     body = body.union(box_at(18.0, 2 * ky, Z_TOP + 8.0 - Z_BOT,
                              x=X_NUT + 9.0, y=0, z=(Z_TOP + 8.0 + Z_BOT) / 2))
-    body = body.union(box_at(18.0, Y_HI - Y_LO, _RIB_H,
-                             x=X_NUT + 9.0, y=(Y_HI + Y_LO) / 2, z=_RIB_Z))
-    body = body.union(MB.motor_bank)              # fuse in the motor-bank floor + walls
+    body = body.union(_rib(X_NUT + 9.0, w=18.0))      # tie the keyhead to both rails
+    body = body.union(MB.motor_bank)                  # fuse in the motor faceplate walls
     return body
 
 
