@@ -27,6 +27,7 @@ from .carriage import carriage, THICK as CARRIAGE_THICK
 from .screw_rail import screw_rail
 from .bridge_mount import bridge_mount
 from .belt_clamp import belt_clamp
+from .chassis import chassis
 from . import motor_bank as MB
 
 PARTS = {
@@ -37,6 +38,7 @@ PARTS = {
     "belt_clamp":      (heal(belt_clamp),    "belt_clamp.step",      "PETG — GT2 belt splice clamp (print 2 per splice ×10)"),
     "screw_pulley":    (heal(C.screw_pulley()),  "screw_pulley.step",  "flanged GT2 pulley, 45° top flange — ×10 (tooth grooves TODO)"),
     "motor_pulley":    (heal(C.motor_pulley()),  "motor_pulley.step",  "flanged GT2 pulley, 45° outer flange — ×10 (tooth grooves TODO)"),
+    "chassis":         (heal(chassis),       "chassis.step",         "PCTG — ladder frame (split into ~3 bolted segments)"),
 }
 
 
@@ -167,6 +169,7 @@ def _string_path(i, sy):
 
 def collect_components():
     comps = [
+        ("chassis", chassis),
         ("bridge_support", bridge_mount),
         ("bridge_bearings", C.bridge_bearings()),
         ("screw_rail", screw_rail),
@@ -197,6 +200,7 @@ _COLORS = {
     "belt":            (0.13, 0.13, 0.13),   # GT2 black
     "string":          (0.85, 0.85, 0.85),
     "tuner":           (0.50, 0.50, 0.50),
+    "chassis":         (0.46, 0.52, 0.55),   # PCTG frame
     "build_counter":   (0.86, 0.08, 0.24),
 }
 _DEFAULT_COLOR = (0.80, 0.80, 0.80)

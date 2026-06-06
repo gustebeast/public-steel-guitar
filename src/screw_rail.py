@@ -15,7 +15,7 @@ import cadquery as cq
 from . import dimensions as D
 from .helpers import cyl, box_at
 
-ACROSS  = D.STRING_FIELD_W + 8.0           # along Y (inside the bridge axle supports)
+ACROSS  = 2 * D.BRIDGE_AXLE_Y              # ends reach the bridge uprights + chassis rail
 DEPTH   = 14.0                             # along X
 HEIGHT  = D.SUPPORT_BRG_W + 5.0            # Z
 SEAT_LEDGE_D = D.SUPPORT_BRG_OD - 2.5      # top-ledge bore (< OD, backs the washer)
