@@ -30,24 +30,35 @@ def nut() -> cq.Workplane:
     return lip.union(body).cut(bore)
 
 
+_CHAMFER = (D.PULLEY_FLANGE_OD - D.PULLEY_OD) / 2     # 45° flange chamfer height
+
+
+def _cone(r1, r2, h, pnt, d):
+    return cq.Workplane("XY").add(cq.Solid.makeCone(r1, r2, h, pnt, d))
+
+
 # ── Screw drive pulley (axis Z) ──────────────────────────────────────────
 def screw_pulley() -> cq.Workplane:
-    """Flanged GT2 pulley on the vertical screw, axis Z, centred at z=0. The two
-    flanges keep the (twisting) belt from walking off."""
+    """Flanged GT2 pulley on the vertical screw, axis Z, centred at z=0. Printed
+    axis-up: full bottom flange (printable wall, where the belt is biased) and a
+    45°-chamfered TOP flange (a cone — printable, no overhang) per the print plan."""
     w, ft = D.PULLEY_W, D.PULLEY_FLANGE_T
     out = (cyl(D.PULLEY_OD, w, z=-w / 2)
-           .union(cyl(D.PULLEY_FLANGE_OD, ft, z=-w / 2))
-           .union(cyl(D.PULLEY_FLANGE_OD, ft, z=w / 2 - ft)))
+           .union(cyl(D.PULLEY_FLANGE_OD, ft, z=-w / 2))                 # full bottom flange
+           .union(_cone(D.PULLEY_OD / 2, D.PULLEY_FLANGE_OD / 2, _CHAMFER,
+                        cq.Vector(0, 0, w / 2 - _CHAMFER), cq.Vector(0, 0, 1))))  # 45° top
     return out.cut(cyl(D.PULLEY_BORE_SCREW, w + 2, z=-w / 2 - 1))
 
 
 # ── Motor pulley (axis Y) ────────────────────────────────────────────────
 def motor_pulley() -> cq.Workplane:
-    """Flanged GT2 pulley on the motor shaft, axis Y, centred at y=0."""
+    """Flanged GT2 pulley on the motor shaft, axis Y, centred at y=0. Full flange
+    on the −Y (motor) side, 45°-chamfered flange on +Y (printable cone)."""
     w, ft = D.PULLEY_W, D.PULLEY_FLANGE_T
     out = (cyl_y(D.PULLEY_OD, w, y0=-w / 2)
-           .union(cyl_y(D.PULLEY_FLANGE_OD, ft, y0=-w / 2))
-           .union(cyl_y(D.PULLEY_FLANGE_OD, ft, y0=w / 2 - ft)))
+           .union(cyl_y(D.PULLEY_FLANGE_OD, ft, y0=-w / 2))             # full −Y flange
+           .union(_cone(D.PULLEY_OD / 2, D.PULLEY_FLANGE_OD / 2, _CHAMFER,
+                        cq.Vector(0, w / 2 - _CHAMFER, 0), cq.Vector(0, 1, 0))))   # 45° +Y
     return out.cut(cyl_y(D.PULLEY_BORE_MOTOR, w + 2, y0=-w / 2 - 1))
 
 
@@ -113,6 +124,11 @@ def tuner() -> cq.Workplane:
 _FLAT_LEN = 42.0            # flat (untwisting) belt zone near the motor end of run B
 _CLAMP_DIST = 24.0         # clamp centre distance from the motor (clears the pulley)
 _AUX_OFF = 3.0             # auxiliary-spine offset that drives the sweep twist
+_SAMPLE_DIV = 12.0         # run sample spacing (smaller = denser)
+# Onshape's STEP importer accepts the smooth swept B-spline for longer belts but
+# drops the tight short ones (verified: run 190 dropped, 234 imported); those
+# fall back to the faceted build, which imports reliably.
+_SMOOTH_MIN_RUN = 210.0
 
 
 def _belt_samples(motor_xyz, screw_xyz):
@@ -130,7 +146,7 @@ def _belt_samples(motor_xyz, screw_xyz):
         return a.add(b.sub(a).multiply(t))
 
     samples, NW = [], 12
-    NA = max(8, int(s_py.sub(m_top).Length / 12))
+    NA = max(8, int(s_py.sub(m_top).Length / _SAMPLE_DIV))
     for k in range(NA):                               # run A: n −Z → −Y
         a = (k / NA) * math.pi / 2
         samples.append((lerp(m_top, s_py, k / NA), V(0, -math.sin(a), -math.cos(a))))
@@ -140,7 +156,7 @@ def _belt_samples(motor_xyz, screw_xyz):
                         V(-math.cos(phi), -math.sin(phi), 0)))
     L_B = m_bot.sub(s_my).Length                      # run B: +Y → +Z, flat near motor
     flat = min(0.45, _FLAT_LEN / L_B)
-    NB = max(8, int(L_B / 12))
+    NB = max(8, int(L_B / _SAMPLE_DIV))
     for k in range(NB):
         t = k / NB
         if t < 1 - flat:
@@ -171,34 +187,53 @@ def splice_frame(motor_xyz, screw_xyz):
     return (p.x, p.y, p.z), (tan.x, tan.y, tan.z), (n.x, n.y, n.z)
 
 
-# ── GT2 belt — smooth twisted loop (both runs + 90° twist + pulley wraps) ─
-def belt(motor_xyz, screw_xyz, teeth: bool = False) -> cq.Workplane:
-    """The real belt loop: it wraps the motor pulley (axis Y) and the screw pulley
-    (axis Z), so its flat face twists 90° on each run. Built as a single SMOOTH
-    sweep of the strip profile along the loop centreline, the twist driven by an
-    auxiliary spine (offset along the inward normal) — one solid, no segment seams.
-    `teeth=True` fuses rounded GT2 teeth onto the inner face."""
-    V = cq.Vector
-    samples = _belt_samples(motor_xyz, screw_xyz)
+def _frame(p0, p1, n0, n1):
+    seg = p1.sub(p0)
+    L = seg.Length
+    tan = seg.multiply(1.0 / L)
+    nn = n0.add(n1).multiply(0.5)
+    nn = nn.sub(tan.multiply(nn.dot(tan))).normalized()
+    wd = nn.cross(tan).normalized()
+    return tan, nn, wd, L
+
+
+def _belt_smooth(samples):
+    """Single smooth sweep, twist driven by an auxiliary spine. No seams — but a
+    tight (short-loop) sweep is rejected by Onshape's STEP importer, so it is only
+    used above _SMOOTH_MIN_RUN."""
     pts = [(p.x, p.y, p.z) for p, _ in samples]
     aux = [(p.x + n.x * _AUX_OFF, p.y + n.y * _AUX_OFF, p.z + n.z * _AUX_OFF)
            for p, n in samples]
     path = cq.Workplane("XY").spline(pts, periodic=True).wire()
     auxw = cq.Workplane("XY").spline(aux, periodic=True).wire()
-
     p0, n0 = samples[0]
-    p1 = samples[1][0]
-    tan = p1.sub(p0).normalized()
+    tan = samples[1][0].sub(p0).normalized()
     wd = n0.cross(tan).normalized()
-    prof = cq.Workplane(cq.Plane(origin=(p0.x, p0.y, p0.z),
-                                 xDir=(wd.x, wd.y, wd.z),
+    prof = cq.Workplane(cq.Plane(origin=(p0.x, p0.y, p0.z), xDir=(wd.x, wd.y, wd.z),
                                  normal=(tan.x, tan.y, tan.z))).rect(D.BELT_W, D.BELT_T)
-    body = prof.sweep(path, auxSpine=auxw, isFrenet=False).val()
-    if not teeth:
-        return cq.Workplane("XY").add(body)
+    return prof.sweep(path, auxSpine=auxw, isFrenet=False).val()
 
-    # rounded GT2 teeth: half-round ridges (cylinders along the width) every
-    # BELT_PITCH of arc, on the inner face (+n), fused onto the belt.
+
+def _belt_faceted(samples):
+    """Oriented strip segments fused into one solid. Has faint segment seams but
+    imports reliably into Onshape — used for the short belts the sweep can't."""
+    OV, parts, n = 0.4, [], len(samples)
+    for k in range(n):
+        p0, n0 = samples[k]
+        p1, n1 = samples[(k + 1) % n]
+        if p1.sub(p0).Length < 1e-6:
+            continue
+        tan, nn, wd, L = _frame(p0, p1, n0, n1)
+        o = p0.sub(tan.multiply(OV / 2))
+        pl = cq.Plane(origin=(o.x, o.y, o.z), xDir=(wd.x, wd.y, wd.z),
+                      normal=(tan.x, tan.y, tan.z))
+        parts.append(cq.Workplane(pl).rect(D.BELT_W, D.BELT_T).extrude(L + OV).val())
+    return parts[0].fuse(*parts[1:])
+
+
+def _belt_teeth_ridges(samples):
+    """Rounded GT2 teeth: half-round ridges (cylinders along the width) every
+    BELT_PITCH of arc on the inner face (+n)."""
     def lerp(a, b, t):
         return a.add(b.sub(a).multiply(t))
     ridges, n_pts, acc = [], len(samples), 0.0
@@ -228,6 +263,21 @@ def belt(motor_xyz, screw_xyz, teeth: bool = False) -> cq.Workplane:
                 D.BELT_TOOTH_H, D.BELT_W, cq.Vector(c.x, c.y, c.z),
                 cq.Vector(ww.x, ww.y, ww.z)))
         acc -= (L - d)
-    fused = body.fuse(*ridges).clean()
-    solids = fused.Solids()
-    return cq.Workplane("XY").add(solids[0] if len(solids) == 1 else fused)
+    return ridges
+
+
+# ── GT2 belt — twisted loop (both runs + 90° twist + pulley wraps), one solid ─
+def belt(motor_xyz, screw_xyz, teeth: bool = False) -> cq.Workplane:
+    """The belt loop wraps the motor pulley (axis Y) and screw pulley (axis Z), so
+    its flat face twists 90° per run. Long belts use a single SMOOTH sweep (no
+    seams); SHORT belts (run < _SMOOTH_MIN_RUN) are FACETED because Onshape's STEP
+    importer rejects the tight swept B-spline. `teeth=True` fuses rounded GT2 teeth
+    onto the inner face. Returns one fused solid either way."""
+    samples = _belt_samples(motor_xyz, screw_xyz)
+    run = abs(motor_xyz[0] - screw_xyz[0])
+    body = _belt_smooth(samples) if run >= _SMOOTH_MIN_RUN else _belt_faceted(samples)
+    if teeth:
+        body = body.fuse(*_belt_teeth_ridges(samples))
+    body = body.clean()
+    solids = body.Solids()
+    return cq.Workplane("XY").add(solids[0] if len(solids) == 1 else body)
