@@ -18,9 +18,9 @@ from .components import MOTOR_PULLEY_STANDOFF
 PLATE_T      = 6.0
 TENSION_SLOT = 4.0
 FLOOR_T      = 6.0
-_PAD         = 4.0
+_BOLT_EDGE   = 4.0                          # material around the NEMA17 bolt square
 
-WALL_W = D.MOTOR_SQ + 1.0                   # wall X-width (< MOTOR_X_STEP, clears neighbour)
+WALL_W = D.NEMA17_BOLT_SQ + 2 * _BOLT_EDGE  # just the bolt square + a ~4 mm edge (39 mm)
 
 # Per-motor faceplate wall CENTRE Y. The motor faceplate (component) is at
 # string_y(i) − STANDOFF; the wall's −Y face must sit there so the faceplate
@@ -35,7 +35,7 @@ FLOOR_TOP = _zc - D.MOTOR_SQ / 2            # motors rest here (= wall bottom / 
 BED_Z = FLOOR_TOP - 11.0                    # print bed = chassis rib/rail bottom
 X_LO, X_HI = min(_xs) - WALL_W / 2, max(_xs) + WALL_W / 2
 Z_LO = BED_Z
-Z_HI = _zc + D.MOTOR_SQ / 2 + _PAD
+Z_HI = _zc + D.NEMA17_BOLT_SQ / 2 + _BOLT_EDGE     # just above the top bolts
 # Motors' bodies run −Y from the faceplates; floor spans that.
 Y_LO = min(D.string_y(i) - MOTOR_PULLEY_STANDOFF for i in range(D.N_STRINGS)) - D.MOTOR_BODY_LEN - 4.0
 Y_HI = max(_face_y(i) for i in range(D.N_STRINGS)) + PLATE_T / 2
@@ -53,7 +53,8 @@ def _build() -> cq.Workplane:
         fy = _face_y(i)
         wall = box_at(WALL_W, PLATE_T, Z_HI - BED_Z,
                       x=mx, y=fy, z=(Z_HI + BED_Z) / 2)
-        wall = wall.edges("|Y and <Z").chamfer(FLOOR_TOP - BED_Z - 0.5)
+        wall = wall.edges("|Y and <Z").chamfer(14.0)   # big 45° buttress → bed (gusset)
+        wall = wall.edges("|Y and >Z").chamfer(3.0)     # trim the top corners
         wall = wall.cut(nema17_face_cutter_y(
             fy - PLATE_T / 2, PLATE_T + 1.0, x=mx, z=mz, slot=TENSION_SLOT))
         body = wall if body is None else body.union(wall)
