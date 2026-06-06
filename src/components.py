@@ -7,6 +7,8 @@ local frame; build.py translates copies into each string's position.
 
 from __future__ import annotations
 
+import math
+
 import cadquery as cq
 
 from . import dimensions as D
@@ -37,6 +39,30 @@ def _cone(r1, r2, h, pnt, d):
     return cq.Workplane("XY").add(cq.Solid.makeCone(r1, r2, h, pnt, d))
 
 
+# GT2 14-tooth pulley grooves: 14 rounded valleys at 2 mm pitch on the pitch circle
+# (PD = 14·2/π = 8.91 mm), BELT_TOOTH_H deep, cut into the toothed band between the
+# flanges. The cutter cylinders sit on a radius that puts the valley floor at
+# OD/2 − tooth height with a GT2-ish rounded bottom (radius _GROOVE_R).
+_N_TEETH  = 14
+_GROOVE_R = 0.55
+_GROOVE_RC = D.PULLEY_OD / 2 - D.BELT_TOOTH_H + _GROOVE_R
+
+
+def _tooth_cutter(axis: str):
+    """Union of the 14 groove-cutting cylinders, axis 'Z' (screw) or 'Y' (motor),
+    spanning the toothed band between the two flanges."""
+    lo = -D.PULLEY_W / 2 + D.PULLEY_FLANGE_T
+    length = D.PULLEY_W - D.PULLEY_FLANGE_T - _CHAMFER
+    tool = None
+    for k in range(_N_TEETH):
+        a = 2 * math.pi * k / _N_TEETH
+        u, v = _GROOVE_RC * math.cos(a), _GROOVE_RC * math.sin(a)
+        g = (cyl(2 * _GROOVE_R, length, z=lo).translate((u, v, 0)) if axis == "Z"
+             else cyl_y(2 * _GROOVE_R, length, y0=lo, x=u, z=v))
+        tool = g if tool is None else tool.union(g)
+    return tool
+
+
 # ── Screw drive pulley (axis Z) ──────────────────────────────────────────
 def screw_pulley() -> cq.Workplane:
     """Flanged GT2 pulley on the vertical screw, axis Z, centred at z=0. Printed
@@ -47,6 +73,7 @@ def screw_pulley() -> cq.Workplane:
            .union(cyl(D.PULLEY_FLANGE_OD, ft, z=-w / 2))                 # full bottom flange
            .union(_cone(D.PULLEY_OD / 2, D.PULLEY_FLANGE_OD / 2, _CHAMFER,
                         cq.Vector(0, 0, w / 2 - _CHAMFER), cq.Vector(0, 0, 1))))  # 45° top
+    out = out.cut(_tooth_cutter("Z"))                                # 14 GT2 grooves
     return out.cut(cyl(D.PULLEY_BORE_SCREW, w + 2, z=-w / 2 - 1))
 
 
@@ -59,6 +86,7 @@ def motor_pulley() -> cq.Workplane:
            .union(cyl_y(D.PULLEY_FLANGE_OD, ft, y0=-w / 2))             # full −Y flange
            .union(_cone(D.PULLEY_OD / 2, D.PULLEY_FLANGE_OD / 2, _CHAMFER,
                         cq.Vector(0, w / 2 - _CHAMFER, 0), cq.Vector(0, 1, 0))))   # 45° +Y
+    out = out.cut(_tooth_cutter("Y"))                                # 14 GT2 grooves
     return out.cut(cyl_y(D.PULLEY_BORE_MOTOR, w + 2, y0=-w / 2 - 1))
 
 

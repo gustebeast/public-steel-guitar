@@ -38,8 +38,8 @@ PARTS = {
     "screw_rail":      (heal(screw_rail),    "screw_rail.step",      "PA6-GF — shared bottom screw-support rail"),
     "bridge_support":  (heal(bridge_mount),  "bridge_support.step",  "PCTG — bridge-bearing axle support"),
     "belt_clamp":      (heal(belt_clamp),    "belt_clamp.step",      "PETG — GT2 belt splice clamp (print 2 per splice ×10)"),
-    "screw_pulley":    (heal(C.screw_pulley()),  "screw_pulley.step",  "flanged GT2 pulley, 45° top flange — ×10 (tooth grooves TODO)"),
-    "motor_pulley":    (heal(C.motor_pulley()),  "motor_pulley.step",  "flanged GT2 pulley, 45° outer flange — ×10 (tooth grooves TODO)"),
+    "screw_pulley":    (heal(C.screw_pulley()),  "screw_pulley.step",  "flanged 14T GT2 pulley, 45° top flange — ×10"),
+    "motor_pulley":    (heal(C.motor_pulley()),  "motor_pulley.step",  "flanged 14T GT2 pulley, 45° outer flange — ×10"),
 }
 for _i, _seg in enumerate(chassis_segments):     # chassis split into dovetailed segments
     PARTS[f"chassis_{_i}"] = (heal(_seg), f"chassis_{_i}.step",
