@@ -84,6 +84,15 @@ def _build() -> cq.Workplane:
     for sy in (-D.BRIDGE_AXLE_Y, D.BRIDGE_AXLE_Y):                    # edge webs rail→arm
         body = body.union(box_at(X1 - _SRX, ARM_W, z_lo - sr_bot,     # down to the rail bottom
                                  x=(X1 + _SRX) / 2, y=sy, z=(z_lo + sr_bot) / 2))
+    # STRINGING-ACCESS window: open the cap over the field (top-centre, between the
+    # bearing arms) so each string threads over its bridge bearing and its end-nut
+    # slots into the carriage from +X. Inboard of the arms (±BRIDGE_AXLE_Y) and below
+    # the tie bar, so the axle support, dovetails and screw rail are untouched.
+    win_hw = D.STRING_FIELD_W / 2 + 3.0          # field half-width + margin
+    win_z0 = -3.0                                # window bottom
+    win_z1 = CH.Z_TOP + 1.0                      # up through the cap top
+    body = body.cut(box_at((X1 - X0) + 2.0, 2 * win_hw, win_z1 - win_z0,
+                           x=(X0 + X1) / 2, y=0, z=(win_z1 + win_z0) / 2))
     # SOCKET the sliding-dovetail tongue on each rail end (both side walls): the
     # endplate drops straight down onto the rail tongues and glues. The dovetail
     # locks it in X+Y; the string pull also compresses it against the rail ends.
