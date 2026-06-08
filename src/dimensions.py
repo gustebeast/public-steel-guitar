@@ -200,6 +200,15 @@ TUNER_W         = 6.0
 TUNER_H         = 18.0
 TUNER_D         = 20.0
 
+# ─────────────────────────────────────────────────────────────────────────
+# String gauges → the nut break inserts are GAUGED to these so the string TOPS
+# sit coplanar at STRING_Z. Reprint the (bolt-on) nut block to switch sets.
+# Index 0 = −Y (player side, lowest/heaviest) → mapped to the set's low end.
+# ─────────────────────────────────────────────────────────────────────────
+GAUGES_E9_IN = (.013, .015, .011, .014, .017, .020, .026, .030, .034, .038)  # str 1→10
+GAUGES_C6_IN = (.015, .014, .017, .020, .024, .030, .036, .042, .054, .070)
+STRING_GAUGE = tuple(g * 25.4 for g in reversed(GAUGES_C6_IN))   # mm, our index 0..9 (C6)
+
 
 # ─────────────────────────────────────────────────────────────────────────
 # Fits / fasteners
