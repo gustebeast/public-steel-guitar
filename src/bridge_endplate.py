@@ -50,10 +50,12 @@ def _cap() -> cq.Workplane:
 
 
 def _arm(sy) -> cq.Workplane:
-    """Edge arm (clear of the strings) reaching −X from the cap to hold the axle."""
+    """Edge arm (clear of the strings) holding the axle. Spans the FULL endplate
+    X-depth (axle line → +X tip) so it fuses solidly to the cap and prints with no
+    overhang when built up along X."""
     z_lo = CH.Z_TOP - 4.0
-    arm = box_at(X0 - ARM_X, ARM_W, TIE_Z - z_lo,
-                 x=(X0 + ARM_X) / 2, y=sy, z=(TIE_Z + z_lo) / 2)
+    arm = box_at(X1 - ARM_X, ARM_W, TIE_Z - z_lo,
+                 x=(X1 + ARM_X) / 2, y=sy, z=(TIE_Z + z_lo) / 2)
     return arm.cut(cyl_y(AXLE_BORE, ARM_W + 2, y0=sy - ARM_W / 2 - 1,
                          x=D.BRIDGE_AXLE_X, z=D.BRIDGE_BEARING_Z))
 
@@ -65,19 +67,20 @@ def _build() -> cq.Workplane:
     body = _cap()
     for sy in (-D.BRIDGE_AXLE_Y, D.BRIDGE_AXLE_Y):
         body = body.union(_arm(sy))
-    # tie bar linking the arm tops above the strings
-    body = body.union(box_at(X0 - ARM_X, 2 * D.BRIDGE_AXLE_Y + ARM_W, 5.0,
-                             x=(X0 + ARM_X) / 2, y=0, z=TIE_Z - 2.5))
+    # tie bar linking the arm tops above the strings (full depth → +X tip)
+    body = body.union(box_at(X1 - ARM_X, 2 * D.BRIDGE_AXLE_Y + ARM_W, 5.0,
+                             x=(X1 + ARM_X) / 2, y=0, z=TIE_Z - 2.5))
     # FUSE IN the screw-support rail and bridge it to the cap at the bottom + tie it
     # up to the bearing arms at the edges — the whole bridge end becomes one solid
     # piece (screw support + bearing support + box closure) with continuous material.
+    # The bottom + edge bridges run the FULL X-depth (screw line → +X tip).
     body = body.union(_screw_rail)
-    body = body.union(box_at(X0 - _SRX, 2 * D.BRIDGE_AXLE_Y, 10.0,    # bottom bridge → cap
-                             x=(X0 + _SRX) / 2, y=0, z=D.SUPPORT_BRG_Z))
+    body = body.union(box_at(X1 - _SRX, 2 * D.BRIDGE_AXLE_Y, 10.0,    # bottom bridge → tip
+                             x=(X1 + _SRX) / 2, y=0, z=D.SUPPORT_BRG_Z))
     z_lo = CH.Z_TOP - 4.0
     for sy in (-D.BRIDGE_AXLE_Y, D.BRIDGE_AXLE_Y):                    # edge webs rail→arm
-        body = body.union(box_at(X0 - _SRX, ARM_W, z_lo - D.SUPPORT_BRG_Z,
-                                 x=(X0 + _SRX) / 2, y=sy, z=(z_lo + D.SUPPORT_BRG_Z) / 2))
+        body = body.union(box_at(X1 - _SRX, ARM_W, z_lo - D.SUPPORT_BRG_Z,
+                                 x=(X1 + _SRX) / 2, y=sy, z=(z_lo + D.SUPPORT_BRG_Z) / 2))
     # tenons protruding −X into the rail-end mortises (glued; the string pull
     # compresses this joint, so it is self-tightening)
     for py, pz in CH.ENDPLATE_PEGS:
