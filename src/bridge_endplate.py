@@ -18,6 +18,7 @@ import cadquery as cq
 
 from . import dimensions as D
 from . import chassis as CH
+from .screw_rail import screw_rail as _screw_rail
 from .helpers import box_at, cyl_y
 
 X0   = CH.X_BRIDGE                 # join line (the rails end here; cap is +X of it)
@@ -57,6 +58,9 @@ def _arm(sy) -> cq.Workplane:
                          x=D.BRIDGE_AXLE_X, z=D.BRIDGE_BEARING_Z))
 
 
+_SRX = D.SCREW_X + 7.0            # screw-rail +X face (DEPTH/2 past the screw line)
+
+
 def _build() -> cq.Workplane:
     body = _cap()
     for sy in (-D.BRIDGE_AXLE_Y, D.BRIDGE_AXLE_Y):
@@ -64,6 +68,16 @@ def _build() -> cq.Workplane:
     # tie bar linking the arm tops above the strings
     body = body.union(box_at(X0 - ARM_X, 2 * D.BRIDGE_AXLE_Y + ARM_W, 5.0,
                              x=(X0 + ARM_X) / 2, y=0, z=TIE_Z - 2.5))
+    # FUSE IN the screw-support rail and bridge it to the cap at the bottom + tie it
+    # up to the bearing arms at the edges — the whole bridge end becomes one solid
+    # piece (screw support + bearing support + box closure) with continuous material.
+    body = body.union(_screw_rail)
+    body = body.union(box_at(X0 - _SRX, 2 * D.BRIDGE_AXLE_Y, 10.0,    # bottom bridge → cap
+                             x=(X0 + _SRX) / 2, y=0, z=D.SUPPORT_BRG_Z))
+    z_lo = CH.Z_TOP - 4.0
+    for sy in (-D.BRIDGE_AXLE_Y, D.BRIDGE_AXLE_Y):                    # edge webs rail→arm
+        body = body.union(box_at(X0 - _SRX, ARM_W, z_lo - D.SUPPORT_BRG_Z,
+                                 x=(X0 + _SRX) / 2, y=sy, z=(z_lo + D.SUPPORT_BRG_Z) / 2))
     # tenons protruding −X into the rail-end mortises (glued; the string pull
     # compresses this joint, so it is self-tightening)
     for py, pz in CH.ENDPLATE_PEGS:

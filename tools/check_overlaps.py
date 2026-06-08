@@ -48,18 +48,18 @@ PER_STRING_OK = {
     frozenset({"belt", "belt_clamp"}),   # splice clamp grips its own belt
 }
 GLOBAL_OK = {
-    frozenset({"screw_bearing", "screw_rail"}), frozenset({"leadscrew", "screw_rail"}),
-    frozenset({"locknut", "screw_rail"}), frozenset({"screw_pulley", "screw_rail"}),
+    frozenset({"screw_bearing", "bridge_endplate"}), frozenset({"leadscrew", "bridge_endplate"}),
+    frozenset({"locknut", "bridge_endplate"}), frozenset({"screw_pulley", "bridge_endplate"}),
     frozenset({"leadscrew", "bridge_endplate"}), frozenset({"nut", "bridge_endplate"}),
     frozenset({"carriage", "bridge_endplate"}),
     frozenset({"bridge_endplate", "bridge_bearings"}),
     frozenset({"string", "bridge_bearings"}), frozenset({"string", "bridge_endplate"}),
     # chassis ties everything into one frame (intended contacts); the motor bank
     # (floor + faceplate walls) is fused into the chassis, so motors mount to it
-    frozenset({"chassis", "bridge_endplate"}), frozenset({"chassis", "screw_rail"}),
+    frozenset({"chassis", "bridge_endplate"}), frozenset({"chassis", "bridge_endplate"}),
     frozenset({"chassis", "motor"}), frozenset({"chassis", "tuner"}),
     frozenset({"chassis", "string"}),
-    frozenset({"screw_rail", "bridge_endplate"}), frozenset({"screw_rail", "chassis"}),
+    frozenset({"bridge_endplate", "bridge_endplate"}), frozenset({"bridge_endplate", "chassis"}),
 }
 
 

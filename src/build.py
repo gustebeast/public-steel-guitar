@@ -28,15 +28,13 @@ from . import dimensions as D
 from .helpers import heal
 from . import components as C
 from .carriage import carriage, THICK as CARRIAGE_THICK
-from .screw_rail import screw_rail
 from .bridge_endplate import bridge_endplate
 from .belt_clamp import belt_clamp
 from .chassis import segments as chassis_segments
 
 PARTS = {
     "carriage":        (heal(carriage),      "carriage.step",        "PA6-GF, load-critical — ×10 identical"),
-    "screw_rail":      (heal(screw_rail),    "screw_rail.step",      "PA6-GF — shared bottom screw-support rail"),
-    "bridge_endplate": (heal(bridge_endplate), "bridge_endplate.step", "PCTG — flat-printed bridge endplate (bearing support + box closure)"),
+    "bridge_endplate": (heal(bridge_endplate), "bridge_endplate.step", "PA6-GF, load-critical — fused bridge end (screw support + bearing support + box closure)"),
     "belt_clamp":      (heal(belt_clamp),    "belt_clamp.step",      "PETG — GT2 belt splice clamp (print 2 per splice ×10)"),
     "screw_pulley":    (heal(C.screw_pulley()),  "screw_pulley.step",  "flanged 14T GT2 pulley, 45° top flange — ×10"),
     "motor_pulley":    (heal(C.motor_pulley()),  "motor_pulley.step",  "flanged 14T GT2 pulley, 45° outer flange — ×10"),
@@ -175,7 +173,6 @@ def collect_components():
     comps = [
         ("bridge_endplate", bridge_endplate),
         ("bridge_bearings", C.bridge_bearings()),
-        ("screw_rail", screw_rail),
     ]
     comps += [(f"chassis_{i}", seg) for i, seg in enumerate(chassis_segments)]
     for i in range(D.N_STRINGS):
@@ -187,8 +184,7 @@ def collect_components():
 # show in the shared FreeCAD live viewer and any STEP viewer). RGB floats 0..1.
 _COLORS = {
     "carriage":        (0.27, 0.51, 0.71),   # PA6-GF — load-critical
-    "screw_rail":      (0.39, 0.58, 0.93),   # PA6-GF
-    "bridge_endplate": (0.24, 0.66, 0.46),   # PCTG
+    "bridge_endplate": (0.39, 0.58, 0.93),   # PA6-GF — load-critical
     "belt_clamp":      (0.95, 0.55, 0.15),   # PETG
     "screw_pulley":    (0.00, 0.55, 0.55),
     "motor_pulley":    (0.00, 0.55, 0.55),
