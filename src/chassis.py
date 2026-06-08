@@ -38,9 +38,10 @@ _XC, _ZC = (X_BRIDGE + X_NUT) / 2, (Z_TOP + Z_BOT) / 2
 _RIB_W   = 10.0                        # cross-rib X-width (chunky section → slicer infills)
 # A chunky rail-to-rail rib UNDER EACH MOTOR (the motor rests on it, its wall sits
 # on it, and it ties the two rails) replaces a solid floor — far lighter for the
-# strength. Plus a rib at the +X end (under the bridge bulkhead, tying its base to
-# both rails) and near the nut.
-_RIB_X   = [X_BRIDGE - 4.0] + [D.motor_pos(i)[0] for i in range(D.N_STRINGS)] + [-575.0]
+# strength. Plus ribs at the +X end (under the bridge bulkhead) and under the
+# bridge support (anchoring the string-mount end to BOTH rails), and near the nut.
+_RIB_X   = ([X_BRIDGE - 4.0, D.BRIDGE_AXLE_X]
+            + [D.motor_pos(i)[0] for i in range(D.N_STRINGS)] + [-575.0])
 
 SPLIT_X  = [-220.0, -440.0]            # 2 cuts → 3 segments < 255 mm, in motor-wall gaps
 # dovetail: depth, root/tip width, shoulder, fit. Tip width kept ≤ T−3.2 so the
@@ -48,9 +49,37 @@ SPLIT_X  = [-220.0, -440.0]            # 2 cuts → 3 segments < 255 mm, in moto
 _DT, _WR, _WT, _SH, _CLR = 8.0, 2.5, 4.5, 4.0, 0.3
 
 
+def _diamond_xz(cx, cz, h, yr):
+    """Diamond (45°) prism through a rail (axis Y) — a self-supporting hole in the
+    vertically-printed rail web (its crown is a 45° peak, not a flat bridge)."""
+    p = [(cx, cz + h), (cx + h, cz), (cx, cz - h), (cx - h, cz)]
+    y0 = yr - (T + 2.0) / 2.0
+    pts = [cq.Vector(x, y0, z) for x, z in p]
+    face = cq.Face.makeFromWires(cq.Wire.makePolygon([*pts, pts[0]]))
+    return cq.Workplane("XY").add(cq.Solid.extrudeLinear(face, cq.Vector(0, T + 2.0, 0)))
+
+
 def _rail(y):
-    """A tall solid longitudinal rail (deep → bow-stiff); slicer infill sets weight."""
-    return box_at(X_BRIDGE - X_NUT, T, Z_TOP - Z_BOT, x=_XC, y=y, z=_ZC)
+    """A deep longitudinal rail. The strings bow the body about the Y axis, so the
+    top/bottom EDGES are the high-stress flanges and the mid-depth sits near the
+    neutral axis — lighten that web with a row of self-supporting diamonds (an
+    I-beam by material placement: most of the bending stiffness is kept for far
+    less mass). Solid is kept at the ~14 mm flanges, the dovetail joints, and the
+    loaded ends (bulkhead/rib ties) for transport robustness."""
+    rail = box_at(X_BRIDGE - X_NUT, T, Z_TOP - Z_BOT, x=_XC, y=y, z=_ZC)
+    FL = 14.0                                   # flange kept top & bottom
+    h = (Z_TOP - Z_BOT) / 2 - FL - 2.0          # diamond half-diagonal in the web band
+    step = 2 * h + 8.0
+    def ok(cx):                                 # leave the string-mount ends + joints SOLID
+        return (cx + h < D.BRIDGE_AXLE_X - 10.0     # bridge support / bulkhead bond zone
+                and cx - h > -560.0                  # nut bulkhead / tuner bond zone
+                and all(abs(cx - s) > h + 14.0 for s in SPLIT_X))
+    cx = X_BRIDGE - 30.0
+    while cx > X_NUT + 30.0:
+        if ok(cx):
+            rail = rail.cut(_diamond_xz(cx, _ZC, h, y))
+        cx -= step
+    return rail
 
 
 def _rib(x, w=_RIB_W):
