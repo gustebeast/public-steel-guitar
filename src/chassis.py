@@ -41,13 +41,16 @@ _RIB_W   = 10.0                        # cross-rib X-width (chunky section → s
 # on it, and it ties the two rails) replaces a solid floor — far lighter for the
 # strength. Plus a rib at the +X end (tying the rails behind the endplate) and one
 # near the nut.
-_RIB_X   = ([X_BRIDGE - 2.0]
+_RIB_X   = ([X_BRIDGE - 6.0]                       # bridge tie, kept −X of the cap (no clip)
             + [D.motor_pos(i)[0] for i in range(D.N_STRINGS)] + [-575.0])
 
 # Bridge-endplate joint: the +X rail ends carry a sliding dovetail TONGUE on each
 # side; the endplate caps + sockets them and drops down to engage (see
-# bridge_endplate.py). ENDPLATE_JOINT_Y are the two rail centre-lines.
+# bridge_endplate.py). ENDPLATE_JOINT_Y are the two rail centre-lines. ENDPLATE_DT
+# is shallow (< cap thickness) so the socket is BLIND — the cap's +X face stays
+# solid for strength.
 ENDPLATE_JOINT_Y = (Y_HI, Y_LO)
+ENDPLATE_DT = 5.0
 
 SPLIT_X  = [-220.0, -440.0]            # 2 cuts → 3 segments < 255 mm, in motor-wall gaps
 # dovetail: depth, root/tip width, shoulder, fit. Tip width kept ≤ T−3.2 so the
@@ -149,19 +152,21 @@ def _build_full() -> cq.Workplane:
     # +X end: a sliding-dovetail tongue on each rail end; the bridge endplate caps
     # and sockets them (drops down to engage, glued).
     for yr in ENDPLATE_JOINT_Y:
-        body = body.union(_tongue(X_BRIDGE, yr))
+        body = body.union(_tongue(X_BRIDGE, yr, depth=ENDPLATE_DT))
     return body
 
 
-def _tongue(s, yr, socket=False):
+def _tongue(s, yr, socket=False, depth=None):
     """Dovetail prism at split X=s on the rail at Y=yr: a trapezoid (flaring +X in
     Y) extruded in Z. The −X segment carries it; the +X segment gets it as a socket
-    (with clearance, open-topped). It bottoms on a shoulder of height _SH."""
+    (with clearance, open-topped). It bottoms on a shoulder of height _SH. `depth`
+    is the +X reach (default _DT; the endplate joint uses a shallower, BLIND depth)."""
+    d = _DT if depth is None else depth
     g = _CLR if socket else 0.0
     wr, wt = (_WR + g) / 2, (_WT + g) / 2
     z0 = Z_BOT + _SH
     z1 = (Z_TOP + 14.0) if socket else Z_TOP
-    pts = [(s - 2, yr - wr), (s - 2, yr + wr), (s + _DT, yr + wt), (s + _DT, yr - wt)]
+    pts = [(s - 2, yr - wr), (s - 2, yr + wr), (s + d, yr + wt), (s + d, yr - wt)]
     return cq.Workplane("XY").workplane(offset=z0).polyline(pts).close().extrude(z1 - z0)
 
 
@@ -177,7 +182,8 @@ def _is_split(x):
 
 def _segments():
     full = _build_full()
-    edges = [X_BRIDGE] + sorted(SPLIT_X, reverse=True) + [X_NUT]   # +6, -205, -420, -627
+    # +X-most bound extends past the endplate tongues so they survive the segment cut
+    edges = [X_BRIDGE + ENDPLATE_DT + 2.0] + sorted(SPLIT_X, reverse=True) + [X_NUT]
     segs = []
     for i in range(len(edges) - 1):
         a, b = edges[i], edges[i + 1]                 # a (+X) > b (−X)
