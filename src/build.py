@@ -27,11 +27,16 @@ from freecad_view import show
 from . import dimensions as D
 from .helpers import heal
 from . import components as C
-from .carriage import carriage, THICK as CARRIAGE_THICK
+from .carriage import carriage, THICK as CARRIAGE_THICK, SEAT_Z as CARRIAGE_SEAT_Z
 from .bridge_endplate import bridge_endplate
 from .belt_clamp import belt_clamp
 from .chassis import segments as chassis_segments
 
+# ── PRINTED parts → each is exported as its own STEP. ────────────────────
+# This is the ONLY set that gets STEP files. DEMONSTRATION parts (purchased /
+# swaged dummies — leadscrew, brass nuts, bearings, motor, belt, string,
+# string-end nut, tuner …) live in components.py and appear ONLY in
+# assembly.step; they are never added here, so they are never exported.
 PARTS = {
     "carriage":        (heal(carriage),      "carriage.step",        "PA6-GF, load-critical — ×10 identical"),
     "bridge_endplate": (heal(bridge_endplate), "bridge_endplate.step", "PA6-GF, load-critical — fused bridge end (screw support + bearing support + box closure)"),
@@ -117,6 +122,9 @@ def _string_components(i):
     out.append((f"leadscrew_{i}", C.screw().translate((D.SCREW_X, sy, D.SCREW_BOT_Z))))
     # carriage (origin = screw axis) at the nominal travel position
     out.append((f"carriage_{i}", carriage.translate((D.SCREW_X, sy, D.CARRIAGE_NOM_Z))))
+    # string-end cylinder nut, seated in the carriage anchor (DEMO — purchased)
+    out.append((f"string_nut_{i}", C.string_nut().translate(
+        (D.BRIDGE_X, sy, D.CARRIAGE_NOM_Z + CARRIAGE_SEAT_Z))))
     # round nut pressed up into the carriage from below — flange seats flush
     # against the carriage bottom face, body up into the pocket
     out.append((f"nut_{i}", C.nut().translate(
@@ -151,7 +159,7 @@ def _string_path(i, sy):
     """Vertical rise → 90° wrap around the bridge bearing → speaking length."""
     r = D.BRIDGE_BEARING_OD / 2
     cx, cz = D.BRIDGE_AXLE_X, D.BRIDGE_BEARING_Z      # bearing centre
-    az = D.CARRIAGE_NOM_Z + CARRIAGE_THICK / 2        # anchor (carriage top)
+    az = D.CARRIAGE_NOM_Z + CARRIAGE_SEAT_Z           # anchor (string-end nut in the carriage)
     rad = 0.55
     # vertical rise to the +X tangent point (cx+r, cz)
     p0 = cq.Vector(cx + r, sy, az)
@@ -192,6 +200,7 @@ _COLORS = {
     "screw_bearing":   (0.69, 0.77, 0.87),
     "bridge_bearings": (0.69, 0.77, 0.87),
     "nut":             (0.82, 0.60, 0.20),   # brass
+    "string_nut":      (0.82, 0.60, 0.20),   # brass string-end fitting (demo)
     "locknut":         (0.82, 0.60, 0.20),
     "guide_rod":       (0.35, 0.35, 0.38),
     "motor":           (0.22, 0.25, 0.27),   # charcoal

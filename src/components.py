@@ -32,6 +32,15 @@ def nut() -> cq.Workplane:
     return lip.union(body).cut(bore)
 
 
+# ── String-end nut (swaged cylinder on the string's bridge end) ──────────
+# A cylinder crimped on the string end (axis Y, crosswise). It slots into the
+# carriage anchor; the string runs +Z out of it to the bridge bearing, and the
+# +Z string pull seats it up under the anchor roof. DEMO ONLY (purchased/swaged).
+def string_nut() -> cq.Workplane:
+    """String-end cylinder fitting, axis Y, centred at the origin."""
+    return cyl_y(D.STRING_NUT_D, D.STRING_NUT_L, y0=-D.STRING_NUT_L / 2, x=0.0, z=0.0)
+
+
 _CHAMFER = (D.PULLEY_FLANGE_OD - D.PULLEY_OD) / 2     # 45° flange chamfer height
 
 

@@ -92,6 +92,12 @@ BRIDGE_X        = 0.0
 SCREW_X         = -8.0      # all 10 vertical screws sit on this X line
 ANCHOR_DX       = BRIDGE_X - SCREW_X    # anchor is +X of the screw (8 mm)
 
+# String-end nut: a cylinder swaged on the string's bridge end (axis Y), slotted
+# into the carriage anchor. The string exits +Z and its pull seats the nut up
+# under the anchor roof (mechanical capture, no clamp). DEMO/purchased part.
+STRING_NUT_D    = 3.5
+STRING_NUT_L    = 6.0
+
 
 # ─────────────────────────────────────────────────────────────────────────
 # Screw support bushing (Ø8, fits the pitch) + locknut — axis Z

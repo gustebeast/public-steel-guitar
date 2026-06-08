@@ -41,6 +41,7 @@ PER_STRING_OK = {
     frozenset({"belt", "screw_pulley"}), frozenset({"belt", "motor_pulley"}),
     frozenset({"motor", "motor_pulley"}),
     frozenset({"string", "carriage"}), frozenset({"string", "tuner"}),
+    frozenset({"string_nut", "carriage"}), frozenset({"string_nut", "string"}),
     frozenset({"nut", "screw_pulley"}), frozenset({"screw_bearing", "screw_pulley"}),
     frozenset({"locknut", "leadscrew"}), frozenset({"locknut", "screw_bearing"}),
     # a belt connects its OWN motor and screw, so it touches both there

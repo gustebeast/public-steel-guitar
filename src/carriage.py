@@ -18,7 +18,7 @@ from __future__ import annotations
 import cadquery as cq
 
 from . import dimensions as D
-from .helpers import cyl, box_at
+from .helpers import cyl, cyl_y, box_at
 
 THICK   = 12.0                              # Z height
 WIDTH   = D.NUT_OD + 2 * 1.0               # across (Y), ≤ string pitch
@@ -30,9 +30,10 @@ BODY_XC = (X_HI + X_LO) / 2
 NUT_POCKET_D = D.NUT_OD + 0.2
 SCREW_CLR_D  = D.SCREW_OD + 1.0
 GUIDE_CLR_D  = D.GUIDE_ROD_D + D.FIT_CLR
-BALL_D       = 3.8
+NUT_SEAT_D    = D.STRING_NUT_D + 0.4       # transverse (Y) seat for the string-end cylinder nut
 STRING_SLOT_W = 1.2
-ANCHOR_POST_H = 4.0                        # thin post above the body toward the bridge bearing
+ANCHOR_POST_H = 7.0                        # post above the body — roofs over the nut seat
+SEAT_Z        = THICK / 2 + D.STRING_NUT_D / 2 + 0.6   # nut-seat centre, above the body top
 
 
 def _build() -> cq.Workplane:
@@ -46,15 +47,22 @@ def _build() -> cq.Workplane:
     body = body.cut(cyl(GUIDE_CLR_D, THICK + 2, z=-THICK / 2 - 1)
                     .translate((-D.GUIDE_ROD_DX, 0, 0)))
 
-    # Thin anchor POST rising from the body top toward the bridge bearing (so
-    # only the slim post nears the bearing, not the full body). String ball-end
-    # anchors in its top, opening +Z (the string runs up to the bearing).
-    post_top = THICK / 2 + ANCHOR_POST_H
-    body = body.union(box_at(6.0, WIDTH, ANCHOR_POST_H,
+    # Anchor POST rising from the body top toward the bridge bearing. The
+    # string-end cylinder NUT (axis Y) slots into a transverse seat in it; the
+    # string runs +Z out through a slot too narrow for the nut, so the string
+    # pull seats the nut UP against the roof (mechanical capture, no clamp). The
+    # nut loads from the +X (open-endplate) side.
+    body = body.union(box_at(8.0, WIDTH, ANCHOR_POST_H,
                              x=D.ANCHOR_DX, y=0, z=THICK / 2 + ANCHOR_POST_H / 2))
-    body = body.cut(cyl(BALL_D, 5.0, z=post_top - 5.0).translate((D.ANCHOR_DX, 0, 0)))
-    body = body.cut(box_at(STRING_SLOT_W, STRING_SLOT_W + 1.0, 6.0,
-                           x=D.ANCHOR_DX, y=0, z=post_top - 1.0))
+    # transverse seat for the cylinder nut
+    body = body.cut(cyl_y(NUT_SEAT_D, WIDTH + 2, y0=-(WIDTH / 2 + 1),
+                          x=D.ANCHOR_DX, z=SEAT_Z))
+    # +X loading mouth — opens the seat to the +X face so the nut slides in
+    body = body.cut(box_at(5.0, D.STRING_NUT_L + 0.6, NUT_SEAT_D,
+                           x=D.ANCHOR_DX + 3.0, y=0, z=SEAT_Z))
+    # +Z string slot up through the roof (narrower than the nut → captures it)
+    body = body.cut(box_at(STRING_SLOT_W, STRING_SLOT_W + 0.6, ANCHOR_POST_H,
+                           x=D.ANCHOR_DX, y=0, z=SEAT_Z + ANCHOR_POST_H / 2))
     return body
 
 
