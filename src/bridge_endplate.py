@@ -87,7 +87,7 @@ def _build() -> cq.Workplane:
     # endplate drops straight down onto the rail tongues and glues. The dovetail
     # locks it in X+Y; the string pull also compresses it against the rail ends.
     for yr in CH.ENDPLATE_JOINT_Y:
-        body = body.cut(CH._tongue(CH.X_BRIDGE, yr, socket=True))
+        body = body.cut(CH._tongue(CH.X_BRIDGE, yr, socket=True, depth=CH.ENDPLATE_DT))
     return body
 
 
