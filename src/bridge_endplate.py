@@ -24,7 +24,7 @@ from .helpers import box_at, cyl_y
 X0   = CH.X_BRIDGE                 # join line (the rails end here; cap is +X of it)
 X1   = X0 + 8.0                    # +X tip
 ARM_X = D.BRIDGE_AXLE_X - 4.0      # arms reach −X to past the axle
-ARM_W = 6.0                        # arm thickness (Y)
+ARM_W = 5.0                        # arm thickness (Y) — kept clear of the +Y rail
 TIE_Z = D.STRING_Z + 6.0          # tie bar / arm top, clear above the strings
 AXLE_BORE = D.BRIDGE_AXLE_D + 0.4
 
@@ -33,7 +33,9 @@ def _cap() -> cq.Workplane:
     """Solid box-closure plate at the +X end, lightened with diamonds (flat-printed,
     so the holes cost nothing); a frame is kept around the edges and the tenons."""
     xc, thk = (X0 + X1) / 2, X1 - X0
-    w = box_at(thk, CH.Y_HI - CH.Y_LO, CH.Z_TOP - CH.Z_BOT,
+    # span out to the rail OUTER faces so the cap fully caps the rail ends + covers
+    # the dovetail sockets (no clipping into the rail sides)
+    w = box_at(thk, CH.Y_HI - CH.Y_LO + CH.T, CH.Z_TOP - CH.Z_BOT,
                x=xc, y=(CH.Y_HI + CH.Y_LO) / 2, z=(CH.Z_TOP + CH.Z_BOT) / 2)
     H, WEB, M = 11.0, 7.0, 9.0
     step = 2 * H + WEB
@@ -81,11 +83,11 @@ def _build() -> cq.Workplane:
     for sy in (-D.BRIDGE_AXLE_Y, D.BRIDGE_AXLE_Y):                    # edge webs rail→arm
         body = body.union(box_at(X1 - _SRX, ARM_W, z_lo - D.SUPPORT_BRG_Z,
                                  x=(X1 + _SRX) / 2, y=sy, z=(z_lo + D.SUPPORT_BRG_Z) / 2))
-    # tenons protruding −X into the rail-end mortises (glued; the string pull
-    # compresses this joint, so it is self-tightening)
-    for py, pz in CH.ENDPLATE_PEGS:
-        body = body.union(box_at(CH.PEG_L, CH.PEG, CH.PEG,
-                                 x=X0 - CH.PEG_L / 2, y=py, z=pz))
+    # SOCKET the sliding-dovetail tongue on each rail end (both side walls): the
+    # endplate drops straight down onto the rail tongues and glues. The dovetail
+    # locks it in X+Y; the string pull also compresses it against the rail ends.
+    for yr in CH.ENDPLATE_JOINT_Y:
+        body = body.cut(CH._tongue(CH.X_BRIDGE, yr, socket=True))
     return body
 
 

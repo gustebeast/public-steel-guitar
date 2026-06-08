@@ -32,7 +32,7 @@ X_BRIDGE = 6.0                         # +X (bridge) end — the rails end here;
 X_NUT    = -(D.MOUNTING_SPAN + 12.0)   # past the tuners at −MOUNTING_SPAN
 Z_TOP    = D.STRING_Z - 6.0            # body deck, 6 mm under the strings (normal action)
 Z_BOT    = MB.BED_Z                    # print bed (shared with the motor walls)
-Y_HI     = D.BRIDGE_AXLE_Y + 1.0       # +Y rail, just outside the bridge uprights
+Y_HI     = D.BRIDGE_AXLE_Y + 7.0       # +Y rail, outboard enough to clear the bearing arm
 Y_LO     = (D.string_y(0) - MOTOR_PULLEY_STANDOFF - D.MOTOR_BODY_LEN
             - D.MOTOR_PCB_LEN - 6.0)   # −Y rail, just outside the motor PCBs
 _XC, _ZC = (X_BRIDGE + X_NUT) / 2, (Z_TOP + Z_BOT) / 2
@@ -44,10 +44,10 @@ _RIB_W   = 10.0                        # cross-rib X-width (chunky section → s
 _RIB_X   = ([X_BRIDGE - 2.0]
             + [D.motor_pos(i)[0] for i in range(D.N_STRINGS)] + [-575.0])
 
-# Bridge-endplate mortise/tenon: tenons on the endplate drop −X into these mortises
-# bored into the rail ends (see bridge_endplate.py).
-PEG, PEG_L   = 6.0, 8.0
-ENDPLATE_PEGS = [(Y_HI, _ZC), (Y_LO, _ZC)]
+# Bridge-endplate joint: the +X rail ends carry a sliding dovetail TONGUE on each
+# side; the endplate caps + sockets them and drops down to engage (see
+# bridge_endplate.py). ENDPLATE_JOINT_Y are the two rail centre-lines.
+ENDPLATE_JOINT_Y = (Y_HI, Y_LO)
 
 SPLIT_X  = [-220.0, -440.0]            # 2 cuts → 3 segments < 255 mm, in motor-wall gaps
 # dovetail: depth, root/tip width, shoulder, fit. Tip width kept ≤ T−3.2 so the
@@ -146,11 +146,10 @@ def _build_full() -> cq.Workplane:
     ky = D.nut_y(D.N_STRINGS - 1) + 8.0
     body = body.union(box_at(18.0, 2 * ky, 8.0, x=X_NUT + 9.0, y=0, z=Z_TOP + 4.0))
     body = body.union(MB.motor_bank)                  # fuse in the motor faceplate walls
-    # +X end: the bridge endplate (separate flat-printed part) tenons into these
-    # mortises bored into the rail ends.
-    for py, pz in ENDPLATE_PEGS:
-        body = body.cut(box_at(PEG_L + 1.0, PEG + 0.4, PEG + 0.4,
-                               x=X_BRIDGE - (PEG_L + 1.0) / 2 + 0.5, y=py, z=pz))
+    # +X end: a sliding-dovetail tongue on each rail end; the bridge endplate caps
+    # and sockets them (drops down to engage, glued).
+    for yr in ENDPLATE_JOINT_Y:
+        body = body.union(_tongue(X_BRIDGE, yr))
     return body
 
 
