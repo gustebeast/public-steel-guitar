@@ -28,6 +28,14 @@ ARM_W = D.BRIDGE_ARM_W             # arm / edge-web thickness (Y) — kept clear
 TIE_Z = D.STRING_Z + 6.0          # tie bar / arm top, clear above the strings
 AXLE_BORE = D.BRIDGE_AXLE_D + 0.4
 
+# Stringing-access cutout (over the field): a clean rectangle with a UNIFORM cap
+# border on every side. WIN_BORDER is that border to the cap top and the bearing
+# arms; the diamond lightening is kept the same distance clear of it below.
+WIN_BORDER = 4.0
+WIN_HW     = (D.BRIDGE_AXLE_Y - ARM_W / 2) - WIN_BORDER   # half-width (rim to the arms)
+WIN_Z1     = CH.Z_TOP - WIN_BORDER                        # top (rim to the cap top)
+WIN_Z0     = WIN_Z1 - 16.0                                # bottom (rim of cap below)
+
 
 def _cap() -> cq.Workplane:
     """Solid box-closure plate at the +X end, lightened with diamonds (flat-printed,
@@ -44,7 +52,12 @@ def _cap() -> cq.Workplane:
     while cz - H >= CH.Z_BOT + M:
         cy = yc - step * 8
         while cy <= yc + step * 8:
-            if CH.Y_LO + M <= cy - H and cy + H <= CH.Y_HI - M:
+            in_field = CH.Y_LO + M <= cy - H and cy + H <= CH.Y_HI - M
+            # keep a clear border around the stringing cutout (no diamonds in it)
+            near_win = (abs(cy) - H <= WIN_HW + WIN_BORDER
+                        and cz + H >= WIN_Z0 - WIN_BORDER
+                        and cz - H <= WIN_Z1 + WIN_BORDER)
+            if in_field and not near_win:
                 w = w.cut(CH._diamond(cy, cz, H, xc, thk))
             cy += step
         cz -= step
@@ -88,11 +101,8 @@ def _build() -> cq.Workplane:
     # bearing arms) so each string threads over its bridge bearing and its end-nut
     # slots into the carriage from +X. Inboard of the arms (±BRIDGE_AXLE_Y) and below
     # the tie bar, so the axle support, dovetails and screw rail are untouched.
-    win_hw = D.STRING_FIELD_W / 2 + 3.0          # field half-width + margin
-    win_z0 = -3.0                                # window bottom
-    win_z1 = CH.Z_TOP + 1.0                      # up through the cap top
-    body = body.cut(box_at((X1 - X0) + 2.0, 2 * win_hw, win_z1 - win_z0,
-                           x=(X0 + X1) / 2, y=0, z=(win_z1 + win_z0) / 2))
+    body = body.cut(box_at((X1 - X0) + 2.0, 2 * WIN_HW, WIN_Z1 - WIN_Z0,
+                           x=(X0 + X1) / 2, y=0, z=(WIN_Z1 + WIN_Z0) / 2))
     # SOCKET the sliding-dovetail tongue on each rail end (both side walls): the
     # endplate drops straight down onto the rail tongues and glues. The dovetail
     # locks it in X+Y; the string pull also compresses it against the rail ends.
