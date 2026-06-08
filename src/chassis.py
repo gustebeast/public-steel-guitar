@@ -27,7 +27,8 @@ from .components import MOTOR_PULLEY_STANDOFF
 from .helpers import box_at
 
 T        = 8.0                         # rail thickness (solid; slicer infills)
-X_BRIDGE = 12.0                        # +X (bridge) end — room past the carriages for a bulkhead
+X_BRIDGE = 6.0                         # +X (bridge) end — the rails end here; the bridge
+                                       #   endplate caps them (a separate flat-printed part)
 X_NUT    = -(D.MOUNTING_SPAN + 12.0)   # past the tuners at −MOUNTING_SPAN
 Z_TOP    = D.STRING_Z - 6.0            # body deck, 6 mm under the strings (normal action)
 Z_BOT    = MB.BED_Z                    # print bed (shared with the motor walls)
@@ -38,10 +39,15 @@ _XC, _ZC = (X_BRIDGE + X_NUT) / 2, (Z_TOP + Z_BOT) / 2
 _RIB_W   = 10.0                        # cross-rib X-width (chunky section → slicer infills)
 # A chunky rail-to-rail rib UNDER EACH MOTOR (the motor rests on it, its wall sits
 # on it, and it ties the two rails) replaces a solid floor — far lighter for the
-# strength. Plus ribs at the +X end (under the bridge bulkhead) and under the
-# bridge support (anchoring the string-mount end to BOTH rails), and near the nut.
-_RIB_X   = ([X_BRIDGE - 4.0, D.BRIDGE_AXLE_X]
+# strength. Plus a rib at the +X end (tying the rails behind the endplate) and one
+# near the nut.
+_RIB_X   = ([X_BRIDGE - 2.0]
             + [D.motor_pos(i)[0] for i in range(D.N_STRINGS)] + [-575.0])
+
+# Bridge-endplate mortise/tenon: tenons on the endplate drop −X into these mortises
+# bored into the rail ends (see bridge_endplate.py).
+PEG, PEG_L   = 6.0, 8.0
+ENDPLATE_PEGS = [(Y_HI, _ZC), (Y_LO, _ZC)]
 
 SPLIT_X  = [-220.0, -440.0]            # 2 cuts → 3 segments < 255 mm, in motor-wall gaps
 # dovetail: depth, root/tip width, shoulder, fit. Tip width kept ≤ T−3.2 so the
@@ -134,13 +140,17 @@ def _build_full() -> cq.Workplane:
     body = _rail(Y_HI).union(_rail(Y_LO))
     for x in _RIB_X:                                  # per-motor + bridge/nut cross-ribs (−Z)
         body = body.union(_rib(x))
-    body = body.union(_end_bulkhead(X_BRIDGE - 4.0, 5.0))   # bridge +X end (closes the box)
-    body = body.union(_end_bulkhead(X_NUT + 9.0, 18.0))     # nut end
+    body = body.union(_end_bulkhead(X_NUT + 9.0, 18.0))     # nut end (self-supporting bulkhead)
     body = body.union(_rib(X_NUT + 9.0, w=18.0))            # nut bottom tie
     # tuner block on the nut bulkhead's deck (rises to the string height)
     ky = D.nut_y(D.N_STRINGS - 1) + 8.0
     body = body.union(box_at(18.0, 2 * ky, 8.0, x=X_NUT + 9.0, y=0, z=Z_TOP + 4.0))
     body = body.union(MB.motor_bank)                  # fuse in the motor faceplate walls
+    # +X end: the bridge endplate (separate flat-printed part) tenons into these
+    # mortises bored into the rail ends.
+    for py, pz in ENDPLATE_PEGS:
+        body = body.cut(box_at(PEG_L + 1.0, PEG + 0.4, PEG + 0.4,
+                               x=X_BRIDGE - (PEG_L + 1.0) / 2 + 0.5, y=py, z=pz))
     return body
 
 

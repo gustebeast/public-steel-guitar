@@ -50,16 +50,16 @@ PER_STRING_OK = {
 GLOBAL_OK = {
     frozenset({"screw_bearing", "screw_rail"}), frozenset({"leadscrew", "screw_rail"}),
     frozenset({"locknut", "screw_rail"}), frozenset({"screw_pulley", "screw_rail"}),
-    frozenset({"leadscrew", "bridge_support"}), frozenset({"nut", "bridge_support"}),
-    frozenset({"carriage", "bridge_support"}),
-    frozenset({"bridge_support", "bridge_bearings"}),
-    frozenset({"string", "bridge_bearings"}), frozenset({"string", "bridge_support"}),
+    frozenset({"leadscrew", "bridge_endplate"}), frozenset({"nut", "bridge_endplate"}),
+    frozenset({"carriage", "bridge_endplate"}),
+    frozenset({"bridge_endplate", "bridge_bearings"}),
+    frozenset({"string", "bridge_bearings"}), frozenset({"string", "bridge_endplate"}),
     # chassis ties everything into one frame (intended contacts); the motor bank
     # (floor + faceplate walls) is fused into the chassis, so motors mount to it
-    frozenset({"chassis", "bridge_support"}), frozenset({"chassis", "screw_rail"}),
+    frozenset({"chassis", "bridge_endplate"}), frozenset({"chassis", "screw_rail"}),
     frozenset({"chassis", "motor"}), frozenset({"chassis", "tuner"}),
     frozenset({"chassis", "string"}),
-    frozenset({"screw_rail", "bridge_support"}), frozenset({"screw_rail", "chassis"}),
+    frozenset({"screw_rail", "bridge_endplate"}), frozenset({"screw_rail", "chassis"}),
 }
 
 

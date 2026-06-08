@@ -29,14 +29,14 @@ from .helpers import heal
 from . import components as C
 from .carriage import carriage, THICK as CARRIAGE_THICK
 from .screw_rail import screw_rail
-from .bridge_mount import bridge_mount
+from .bridge_endplate import bridge_endplate
 from .belt_clamp import belt_clamp
 from .chassis import segments as chassis_segments
 
 PARTS = {
     "carriage":        (heal(carriage),      "carriage.step",        "PA6-GF, load-critical — ×10 identical"),
     "screw_rail":      (heal(screw_rail),    "screw_rail.step",      "PA6-GF — shared bottom screw-support rail"),
-    "bridge_support":  (heal(bridge_mount),  "bridge_support.step",  "PCTG — bridge-bearing axle support"),
+    "bridge_endplate": (heal(bridge_endplate), "bridge_endplate.step", "PCTG — flat-printed bridge endplate (bearing support + box closure)"),
     "belt_clamp":      (heal(belt_clamp),    "belt_clamp.step",      "PETG — GT2 belt splice clamp (print 2 per splice ×10)"),
     "screw_pulley":    (heal(C.screw_pulley()),  "screw_pulley.step",  "flanged 14T GT2 pulley, 45° top flange — ×10"),
     "motor_pulley":    (heal(C.motor_pulley()),  "motor_pulley.step",  "flanged 14T GT2 pulley, 45° outer flange — ×10"),
@@ -173,7 +173,7 @@ def _string_path(i, sy):
 
 def collect_components():
     comps = [
-        ("bridge_support", bridge_mount),
+        ("bridge_endplate", bridge_endplate),
         ("bridge_bearings", C.bridge_bearings()),
         ("screw_rail", screw_rail),
     ]
@@ -188,7 +188,7 @@ def collect_components():
 _COLORS = {
     "carriage":        (0.27, 0.51, 0.71),   # PA6-GF — load-critical
     "screw_rail":      (0.39, 0.58, 0.93),   # PA6-GF
-    "bridge_support":  (0.24, 0.66, 0.46),   # PCTG
+    "bridge_endplate": (0.24, 0.66, 0.46),   # PCTG
     "belt_clamp":      (0.95, 0.55, 0.15),   # PETG
     "screw_pulley":    (0.00, 0.55, 0.55),
     "motor_pulley":    (0.00, 0.55, 0.55),
