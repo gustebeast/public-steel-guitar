@@ -182,6 +182,8 @@ BRIDGE_BEARING_Z  = STRING_Z - BRIDGE_BEARING_OD / 2     # axle/bearing centre (
 # the bearing centre sits OD/2 to −X of the anchor line.
 BRIDGE_AXLE_X     = BRIDGE_X - BRIDGE_BEARING_OD / 2     # bearing/axle centre X
 BRIDGE_AXLE_Y     = STRING_FIELD_W / 2 + 9.0             # axle/support half-span
+BRIDGE_ARM_W      = 5.0     # bridge-endplate bearing-arm / edge-web thickness (Y); the
+                            # screw rail widens by this so the rib overlaps it cleanly
 BRIDGE_BAR_DEPTH  = 12.0    # along-string depth (X) of the supports
 
 

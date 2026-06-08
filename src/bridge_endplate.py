@@ -18,13 +18,13 @@ import cadquery as cq
 
 from . import dimensions as D
 from . import chassis as CH
-from .screw_rail import screw_rail as _screw_rail
+from .screw_rail import screw_rail as _screw_rail, HEIGHT as _SR_H
 from .helpers import box_at, cyl_y
 
 X0   = CH.X_BRIDGE                 # join line (the rails end here; cap is +X of it)
 X1   = X0 + 8.0                    # +X tip
 ARM_X = D.BRIDGE_AXLE_X - 4.0      # arms reach −X to past the axle
-ARM_W = 5.0                        # arm thickness (Y) — kept clear of the +Y rail
+ARM_W = D.BRIDGE_ARM_W             # arm / edge-web thickness (Y) — kept clear of the +Y rail
 TIE_Z = D.STRING_Z + 6.0          # tie bar / arm top, clear above the strings
 AXLE_BORE = D.BRIDGE_AXLE_D + 0.4
 
@@ -80,9 +80,10 @@ def _build() -> cq.Workplane:
     body = body.union(box_at(X1 - _SRX, 2 * D.BRIDGE_AXLE_Y, 10.0,    # bottom bridge → tip
                              x=(X1 + _SRX) / 2, y=0, z=D.SUPPORT_BRG_Z))
     z_lo = CH.Z_TOP - 4.0
+    sr_bot = D.SUPPORT_BRG_Z - _SR_H / 2                              # screw-rail −Z extent
     for sy in (-D.BRIDGE_AXLE_Y, D.BRIDGE_AXLE_Y):                    # edge webs rail→arm
-        body = body.union(box_at(X1 - _SRX, ARM_W, z_lo - D.SUPPORT_BRG_Z,
-                                 x=(X1 + _SRX) / 2, y=sy, z=(z_lo + D.SUPPORT_BRG_Z) / 2))
+        body = body.union(box_at(X1 - _SRX, ARM_W, z_lo - sr_bot,     # down to the rail bottom
+                                 x=(X1 + _SRX) / 2, y=sy, z=(z_lo + sr_bot) / 2))
     # SOCKET the sliding-dovetail tongue on each rail end (both side walls): the
     # endplate drops straight down onto the rail tongues and glues. The dovetail
     # locks it in X+Y; the string pull also compresses it against the rail ends.
