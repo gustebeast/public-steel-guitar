@@ -31,8 +31,8 @@ AXLE_BORE = D.BRIDGE_AXLE_D + 0.4
 # Guide-rod LEDGES: two shallow bars protruding −X from the cap face below the
 # stringing window, spanning arm to arm — straight X-extensions of solid cap, so
 # (printing along X) every layer is backed: no overhang. The rod line is TANGENT
-# to the cap face, so the rods nest flush against it (glued along their length)
-# and the sockets sit in the ledge/cap corner, fully walled by cap interior.
+# to the cap face, so the sockets sit in the ledge/cap corner, fully walled by
+# cap interior (the cap between the ledges is opened — see the guide-view window).
 # UPPER bar: the TOP hard stop — flush with the carriage foot at default (the
 # anchor post can never reach the bridge bearings) — and it caps the rod tops.
 # LOWER bar: press-fit through-sockets for the rod bottoms; its top face is the
@@ -124,6 +124,11 @@ def _build() -> cq.Workplane:
     for i in range(D.N_STRINGS):
         body = body.cut(cyl(D.GUIDE_ROD_D + 0.05, GR_H + 2, z=GR_LBOT - 1)
                         .translate((GRX, D.string_y(i), 0)))
+    # GUIDE-VIEW window: open the cap between the two ledges so the rods' free
+    # span is visible/inspectable from outside. The ledge Z-bands stay solid —
+    # they're the ledges' print backing and carry the stops + rod sockets.
+    body = body.cut(box_at((X1 - X0) + 2.0, 2 * WIN_HW, GR_UBOT - GR_LTOP,
+                           x=(X0 + X1) / 2, y=0, z=(GR_UBOT + GR_LTOP) / 2))
 
     # STRINGING-ACCESS window: open the cap over the field (top-centre, between the
     # bearing arms) so each string threads over its bridge bearing and its end-nut

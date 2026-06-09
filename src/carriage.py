@@ -73,9 +73,9 @@ def _build() -> cq.Workplane:
     body = body.union(box_at(FOOT_X1 - FOOT_X0, WIDTH, D.GUIDE_FOOT_H,
                              x=(FOOT_X0 + FOOT_X1) / 2, y=0,
                              z=D.GUIDE_FOOT_DZ - D.GUIDE_FOOT_H / 2))
-    # +X-open yoke slot riding the rod (which nests against the cap face): the
-    # anti-rotation reaction is ±Y on the slot walls; +X escape is blocked by the
-    # cap face 0.5 away, so the rod is captured without a closed-bore wall.
+    # +X-open yoke slot riding the rod: the anti-rotation reaction is ±Y on the
+    # slot walls, and the screw/nut fixes the carriage in X, so the open side
+    # can never disengage — no closed-bore +X wall needed.
     slot_x0 = D.GUIDE_ROD_DX - GUIDE_CLR_D / 2
     body = body.cut(box_at((FOOT_X1 + 1) - slot_x0, GUIDE_CLR_D, D.GUIDE_FOOT_H + 2,
                            x=(slot_x0 + FOOT_X1 + 1) / 2, y=0,
