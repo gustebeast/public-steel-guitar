@@ -34,10 +34,11 @@ AXLE_BORE = D.BRIDGE_AXLE_D + 0.4
 # to the cap face, so the sockets sit in the ledge/cap corner, fully walled by
 # cap interior (the cap between the ledges is opened — see the guide-view window).
 # UPPER bar: the TOP hard stop — flush with the carriage foot at default (the
-# anchor post can never reach the bridge bearings) — and it caps the rod tops.
-# LOWER bar: press-fit through-sockets for the rod bottoms; its top face is the
-# BOTTOM hard stop, clear of the raised odd pulleys.
-GRX     = D.SCREW_X + D.GUIDE_ROD_DX                      # rod line (+4.75)
+# anchor post can never reach the bridge bearings) — and it carries a snug
+# Ø2.55 drop-in hole per rod: the rod installs top-down through it (through the
+# carriage's C-bore) and its top stays friction-held in this hole. LOWER bar:
+# BLIND snug sockets the rods land in; its top face is the BOTTOM hard stop.
+GRX     = D.SCREW_X + D.GUIDE_ROD_DX                      # rod line (+4.4)
 GR_H    = 6.0                                             # ledge heights
 GR_UBOT = D.CARRIAGE_NOM_Z + D.GUIDE_FOOT_DZ              # upper bottom = top stop (−16.5)
 GR_UTOP = GR_UBOT + GR_H                                  # = the window sill (−10.5)
@@ -115,15 +116,21 @@ def _build() -> cq.Workplane:
     for sy in (-D.BRIDGE_AXLE_Y, D.BRIDGE_AXLE_Y):                    # edge webs rail→arm
         body = body.union(box_at(X1 - _SRX, ARM_W, z_lo - sr_bot,     # down to the rail bottom
                                  x=(X1 + _SRX) / 2, y=sy, z=(z_lo + sr_bot) / 2))
-    # GUIDE-ROD LEDGES (see the GR_* block above): upper = solid stop bar; lower =
-    # bottom stop + press-fit through-sockets for the rod bottoms. Arm to arm.
-    body = body.union(box_at(2.2, 2 * D.BRIDGE_AXLE_Y, GR_H,
-                             x=X0 - 1.1, y=0, z=(GR_UBOT + GR_UTOP) / 2))
+    # GUIDE-ROD LEDGES (see the GR_* block above): upper = stop bar + drop-in
+    # holes; lower = bottom stop + blind landing sockets. Arm to arm.
+    body = body.union(box_at(2.6, 2 * D.BRIDGE_AXLE_Y, GR_H,
+                             x=X0 - 1.3, y=0, z=(GR_UBOT + GR_UTOP) / 2))
     body = body.union(box_at(3.7, 2 * D.BRIDGE_AXLE_Y, GR_H,
                              x=X0 - 1.85, y=0, z=(GR_LBOT + GR_LTOP) / 2))
     for i in range(D.N_STRINGS):
-        body = body.cut(cyl(D.GUIDE_ROD_D + 0.05, GR_H + 2, z=GR_LBOT - 1)
-                        .translate((GRX, D.string_y(i), 0)))
+        sy = D.string_y(i)
+        # blind landing socket: the rod drops until it bottoms at GR_LBOT+2
+        body = body.cut(cyl(D.GUIDE_ROD_D + 0.05, (GR_LTOP + 1) - (GR_LBOT + 2),
+                            z=GR_LBOT + 2).translate((GRX, sy, 0)))
+        # drop-in hole through the stop bar (C-form: it breaches the bar's −X
+        # face 1.6 wide — too narrow for the rod to escape, easy to print)
+        body = body.cut(cyl(D.GUIDE_ROD_D + 0.05, GR_H + 2, z=GR_UBOT - 1)
+                        .translate((GRX, sy, 0)))
     # GUIDE-VIEW window: open the cap between the two ledges so the rods' free
     # span is visible/inspectable from outside. The ledge Z-bands stay solid —
     # they're the ledges' print backing and carry the stops + rod sockets.

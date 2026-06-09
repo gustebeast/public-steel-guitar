@@ -94,13 +94,16 @@ NUT_BODY_LEN    = 7.0
 # no spanning bar, so the endplate prints with no overhang.
 # ─────────────────────────────────────────────────────────────────────────
 GUIDE_ROD_D     = 2.5
-GUIDE_ROD_DX    = 12.75     # screw→rod offset: rod X = SCREW_X + DX = +4.75, which puts
-                            # the rod TANGENT to the endplate cap face (+6); its free
-                            # span shows through the cap's guide-view window. The
-                            # carriage grips it with a +X-open yoke slot: the slot only
-                            # ever sees ±Y (the screw/nut fixes the carriage in X, so
-                            # the open side can't disengage), and skipping the closed-
-                            # bore +X wall keeps the carriage profile straight.
+GUIDE_ROD_DX    = 12.4      # screw→rod offset: rod X = SCREW_X + DX = +4.4, just shy of
+                            # the cap face (+6); its free span shows through the cap's
+                            # guide-view window. INSTALL (top-down): the rod drops in
+                            # through a snug Ø2.55 hole in the endplate's stop bar,
+                            # through the carriage's C-bore, into a blind socket in the
+                            # lower ledge — friction-held top + bottom. The carriage
+                            # foot wraps the rod ~245° (a C-bore with a 1.8 slit at the
+                            # +X face, too narrow for the Ø2.5 rod to escape), so the
+                            # rod alone captures a loose carriage during assembly:
+                            # carriage in place → rod drops in → screw threads in.
 GUIDE_FOOT_DZ   = -14.0     # foot TOP from the carriage centre (plate bottom −6,
                             # then an 8.0 column — clears the upper ledge's Z band,
                             # which sits 0.5 below the anchor cage's sweep bottom)

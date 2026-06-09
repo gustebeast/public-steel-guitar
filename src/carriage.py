@@ -27,9 +27,10 @@ THICK   = 12.0                              # Z height
 WIDTH   = D.NUT_OD + 2 * 1.0               # across (Y), ≤ string pitch
 NUT_POCKET_D = D.NUT_OD + 0.2
 X_LO    = -(NUT_POCKET_D / 2 + 2.0)        # wall past the nut pocket (−X)
-X_HI    = D.ANCHOR_DX + 3.3                # ONE flush +X face for plate, post and
+X_HI    = D.ANCHOR_DX + 2.9                # ONE flush +X face for plate, post and
                                            # column: 0.5 clear of the endplate's stop
-                                           # stub (X ≥ +3.8) and 0.175 off the rod
+                                           # bar (X ≥ +3.4) and clear of the dropping
+                                           # rod's install path (rod −X edge +3.15)
 BODY_X  = X_HI - X_LO
 BODY_XC = (X_HI + X_LO) / 2
 
@@ -73,12 +74,15 @@ def _build() -> cq.Workplane:
     body = body.union(box_at(FOOT_X1 - FOOT_X0, WIDTH, D.GUIDE_FOOT_H,
                              x=(FOOT_X0 + FOOT_X1) / 2, y=0,
                              z=D.GUIDE_FOOT_DZ - D.GUIDE_FOOT_H / 2))
-    # +X-open yoke slot riding the rod: the anti-rotation reaction is ±Y on the
-    # slot walls, and the screw/nut fixes the carriage in X, so the open side
-    # can never disengage — no closed-bore +X wall needed.
-    slot_x0 = D.GUIDE_ROD_DX - GUIDE_CLR_D / 2
-    body = body.cut(box_at((FOOT_X1 + 1) - slot_x0, GUIDE_CLR_D, D.GUIDE_FOOT_H + 2,
-                           x=(slot_x0 + FOOT_X1 + 1) / 2, y=0,
+    # C-bore riding the rod: a full bore plus a narrow slit out the +X face. It
+    # wraps ~245°, so the Ø2.5 rod cannot pass the 1.8 slit — the rod alone
+    # captures a loose carriage during assembly (carriage → rod → screw) — while
+    # skipping the thick closed-bore +X wall that would force a stepped profile.
+    body = body.cut(cyl(GUIDE_CLR_D, D.GUIDE_FOOT_H + 2,
+                        z=D.GUIDE_FOOT_DZ - D.GUIDE_FOOT_H - 1)
+                    .translate((D.GUIDE_ROD_DX, 0, 0)))
+    body = body.cut(box_at((FOOT_X1 + 1) - D.GUIDE_ROD_DX, 1.8, D.GUIDE_FOOT_H + 2,
+                           x=(D.GUIDE_ROD_DX + FOOT_X1 + 1) / 2, y=0,
                            z=D.GUIDE_FOOT_DZ - D.GUIDE_FOOT_H / 2))
 
     # Anchor POST: a tall BALL CAGE toward the bridge bearing. Stringing: the
@@ -95,8 +99,8 @@ def _build() -> cq.Workplane:
                            x=5.5 + 7.5 / 2, y=0,
                            z=(CAGE_TOP + CAGE_BOT + SILL_H) / 2))
     # floor well behind the sill (the sill ties the Y-wall bottoms together)
-    body = body.cut(box_at(4.5, CAGE_W, SILL_H + 0.1,
-                           x=5.5 + 2.25, y=0, z=CAGE_BOT + (SILL_H + 0.1) / 2))
+    body = body.cut(box_at(4.1, CAGE_W, SILL_H + 0.1,
+                           x=5.5 + 2.05, y=0, z=CAGE_BOT + (SILL_H + 0.1) / 2))
     # +Z string slot through the roof (both spans < the nut → captured)
     body = body.cut(box_at(STRING_SLOT_W, STRING_SLOT_Y, ROOF_T + 1,
                            x=D.ANCHOR_DX, y=0, z=CAGE_TOP + (ROOF_T + 1) / 2))
