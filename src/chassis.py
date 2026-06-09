@@ -156,19 +156,6 @@ def _build_full() -> cq.Workplane:
     for sx in (D.NUT_BLOCK_X + NB.X_FRONT - 3.0, D.NUT_BLOCK_X + NB.X_BACK + 3.0):
         for sy in (-(NB.HW - 4.0), NB.HW - 4.0):          # insert pilots under the 4 corner bolts
             body = body.cut(cyl(5.6, 8.0, z=Z_TOP - 8.0).translate((sx, sy, 0)))
-    # BRIDGE-END GUIDE RIB (bottom cross-member): a rail-to-rail band at the guide-rod
-    # line, sitting below the carriages' full down-travel and 2 mm above the raised odd
-    # pulleys. Its TOP face is the BOTTOM HARD STOP — a carriage driven past its range
-    # bottoms out here (solid, rail-to-rail) instead of crushing its pulley/belt — and
-    # it seats the guide-rod bottoms, which were a free ~18 mm cantilever.
-    _gx       = D.SCREW_X - D.GUIDE_ROD_DX                  # guide-rod line (-16)
-    _grib_top = D.CARRIAGE_NOM_Z - D.CARRIAGE_TRAVEL - 6.0  # carriage bottom at full travel
-    _grib_bot = D.screw_pulley_z(1) + 4.0 + 2.0            # 2 mm above the raised odd pulleys
-    body = body.union(box_at(7.0, Y_HI - Y_LO, _grib_top - _grib_bot,
-                             x=_gx - 0.5, y=(Y_HI + Y_LO) / 2, z=(_grib_top + _grib_bot) / 2))
-    for i in range(D.N_STRINGS):                           # guide-rod bottom sockets
-        body = body.cut(cyl(D.GUIDE_ROD_D + 0.1, 5.0, z=_grib_top - 5.0)
-                        .translate((_gx, D.string_y(i), 0)))
     body = body.union(MB.motor_bank)                  # fuse in the motor faceplate walls
     # +X end: a sliding-dovetail tongue on each rail end; the bridge endplate caps
     # and sockets them (drops down to engage, glued).

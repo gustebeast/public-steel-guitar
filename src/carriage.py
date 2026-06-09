@@ -6,8 +6,11 @@ anchors the string ball-end directly under the bridge bearing, reaching +X over
 the screw to do so. Tension path: string → carriage → nut → screw → support brg.
 
 Local frame: origin on the SCREW axis (axis Z). The nut presses in from below;
-the guide bore is at X=−GUIDE_ROD_DX; the string ball-end anchor is at
-X=+ANCHOR_DX (under the bridge bearing), opening +Z so the string runs up to it.
+the string ball-end anchor is at X=+ANCHOR_DX (under the bridge bearing),
+opening +Z so the string runs up to it. The guide bore lives in a low FOOT
+(column + leg hanging below the plate at the +X end): the rod sits below the
+stringing window, so the window stays clear, and the foot's top/bottom faces
+are the hard-stop contacts against the endplate's two guide ledges.
 
 Print orientation: the string-tension axis is Z; lay the part so that runs along
 the layer lines.
@@ -22,12 +25,18 @@ from .helpers import cyl, cyl_y, box_at
 
 THICK   = 12.0                              # Z height
 WIDTH   = D.NUT_OD + 2 * 1.0               # across (Y), ≤ string pitch
-X_LO    = -D.GUIDE_ROD_DX - 3.0            # past the guide rod (−X)
-X_HI    = D.ANCHOR_DX + 3.0                # past the anchor (+X)
+NUT_POCKET_D = D.NUT_OD + 0.2
+X_LO    = -(NUT_POCKET_D / 2 + 2.0)        # wall past the nut pocket (−X)
+X_HI    = D.ANCHOR_DX + 0.5                # plate stops at +0.5 global: the upper
+                                           # guide ledge (X ≥ +1) sweeps past it
 BODY_X  = X_HI - X_LO
 BODY_XC = (X_HI + X_LO) / 2
 
-NUT_POCKET_D = D.NUT_OD + 0.2
+# Guide foot: column down from the plate's +X end, then a leg reaching +X under
+# the upper ledge to the rod line. Foot top = D.GUIDE_FOOT_DZ (the top-stop face).
+COL_X0, COL_X1   = 4.5, X_HI               # column: clear of the screw bore / ledge
+FOOT_X0, FOOT_X1 = 6.5, 13.5               # leg: −X face clears the belt wrap, +X
+                                           # face stops 0.5 shy of the cap face
 SCREW_CLR_D  = D.SCREW_OD + 1.0
 GUIDE_CLR_D  = D.GUIDE_ROD_D + D.FIT_CLR
 NUT_SEAT_D    = D.STRING_NUT_D + 0.4       # transverse (Y) seat for the string-end cylinder nut
@@ -45,9 +54,18 @@ def _build() -> cq.Workplane:
     body = body.cut(cyl(SCREW_CLR_D, THICK + 2, z=-THICK / 2 - 1))
     # Nut press-pocket from the bottom face (seat lip bears on the bottom).
     body = body.cut(cyl(NUT_POCKET_D, D.NUT_BODY_LEN, z=-THICK / 2 - 0.01))
-    # Guide-rod bore (anti-rotation), axis Z, offset −X.
-    body = body.cut(cyl(GUIDE_CLR_D, THICK + 2, z=-THICK / 2 - 1)
-                    .translate((-D.GUIDE_ROD_DX, 0, 0)))
+
+    # Guide FOOT: column + leg below the plate, guide bore through the leg.
+    col_h = -D.GUIDE_FOOT_DZ - THICK / 2                   # plate bottom → foot top
+    body = body.union(box_at(COL_X1 - COL_X0, WIDTH, col_h,
+                             x=(COL_X0 + COL_X1) / 2, y=0,
+                             z=-THICK / 2 - col_h / 2))
+    body = body.union(box_at(FOOT_X1 - FOOT_X0, WIDTH, D.GUIDE_FOOT_H,
+                             x=(FOOT_X0 + FOOT_X1) / 2, y=0,
+                             z=D.GUIDE_FOOT_DZ - D.GUIDE_FOOT_H / 2))
+    body = body.cut(cyl(GUIDE_CLR_D, D.GUIDE_FOOT_H + 2,
+                        z=D.GUIDE_FOOT_DZ - D.GUIDE_FOOT_H - 1)
+                    .translate((D.GUIDE_ROD_DX, 0, 0)))
 
     # Anchor POST rising from the body top toward the bridge bearing. The
     # string-end cylinder NUT (axis Y) slots into a transverse seat in it; the

@@ -131,11 +131,13 @@ def _string_components(i):
     # against the carriage bottom face, body up into the pocket
     out.append((f"nut_{i}", C.nut().translate(
         (D.SCREW_X, sy, D.CARRIAGE_NOM_Z - CARRIAGE_THICK / 2 - D.NUT_FLANGE_T))))
-    # guide rod (anti-rotation), offset −X: top seats in the endplate's guide cross-
-    # member (z≈+6), bottom seats in the chassis bridge-end guide rib (z≈−26) — fixed
-    # at both ends, spanning the carriage's full travel
-    out.append((f"guide_rod_{i}", C.guide_rod(32.0).translate(
-        (D.SCREW_X - D.GUIDE_ROD_DX, sy, -26.0))))
+    # guide rod (anti-rotation), now +X of the screw below the stringing window:
+    # pressed through the endplate's lower guide ledge, rising through the carriage
+    # foot to end flush under the upper ledge (which caps it axially). Ø2.5×24
+    # (DIN 6325 standard length).
+    rod_top = D.CARRIAGE_NOM_Z + D.GUIDE_FOOT_DZ
+    out.append((f"guide_rod_{i}", C.guide_rod(24.0).translate(
+        (D.SCREW_X + D.GUIDE_ROD_DX, sy, rod_top - 24.0))))
     # screw drive pulley (odd ones raised one belt-plane), support bearing
     # (in the shared rail), locknut below
     spz = D.screw_pulley_z(i)

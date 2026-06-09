@@ -70,10 +70,10 @@ SCREW_LEN       = 61.0      # +8 vs the minimum: drops the whole drive stack (pu
                             # from here) 8 mm so the raised odd pulleys clear the carriage's
                             # full down-travel + a bottom stop, restoring the travel margin
 SCREW_BOT_Z     = SCREW_TOP_Z - SCREW_LEN          # -59
-CARRIAGE_NOM_Z  = SCREW_TOP_Z - 8.0                # default = TOP of travel; dropped 1 mm
-                                                   # so the anchor post clears the bridge
-                                                   # bearings (the guide cross-member hard-
-                                                   # stops it here, protecting the bearings)
+CARRIAGE_NOM_Z  = SCREW_TOP_Z - 8.0                # default = TOP of travel; the anchor post
+                                                   # clears the bridge bearings by 1 mm (the
+                                                   # endplate's upper guide ledge hard-stops
+                                                   # the carriage foot here, protecting them)
 SCREW_PULLEY_Z  = SCREW_BOT_Z + 15.0               # screw drive pulley near bottom (-36)
 
 
@@ -87,10 +87,19 @@ NUT_BODY_LEN    = 7.0
 
 
 # ─────────────────────────────────────────────────────────────────────────
-# Guide rod (anti-rotation) — axis Z, offset toward +X (no neighbour conflict)
+# Guide rod (anti-rotation) — axis Z, on the +X (cap) side of the screw, BELOW
+# the stringing window. The carriage reaches it with a low FOOT (column + leg
+# hanging under the plate), keeping the whole window clear for string access.
+# Both rod seats and both hard stops are cap-backed ledges on the endplate —
+# no spanning bar, so the endplate prints with no overhang.
 # ─────────────────────────────────────────────────────────────────────────
 GUIDE_ROD_D     = 2.5
-GUIDE_ROD_DX    = 8.0       # screw→guide offset (−X of the screw)
+GUIDE_ROD_DX    = 10.75     # screw→rod offset, now +X: rod X = SCREW_X + DX = +2.75
+                            # (max that leaves a printable +X wall on the foot, whose
+                            # face stops 0.5 shy of the cap face at +6)
+GUIDE_FOOT_DZ   = -10.5     # foot TOP from the carriage centre (plate bottom −6,
+                            # then a 4.5 column — clears the upper ledge's Z band)
+GUIDE_FOOT_H    = 6.0       # foot height = guide-bore engagement length
 
 # The bridge / string anchor sits at X=0; the screw can't occupy that spot, so
 # it is offset −X by ANCHOR_DX and the carriage reaches over to the anchor.

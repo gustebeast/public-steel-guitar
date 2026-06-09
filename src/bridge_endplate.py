@@ -28,6 +28,21 @@ ARM_W = D.BRIDGE_ARM_W             # arm / edge-web thickness (Y) — kept clear
 TIE_Z = D.STRING_Z + 6.0          # tie bar / arm top, clear above the strings
 AXLE_BORE = D.BRIDGE_AXLE_D + 0.4
 
+# Guide-rod LEDGES: two bars protruding −X from the cap face below the stringing
+# window, spanning arm to arm. Each is a straight X-extension of solid cap, so
+# (printing along X) every layer is backed — no overhang, unlike the old spanning
+# cross-member. UPPER ledge: solid; its bottom face is the TOP hard stop, flush
+# with the carriage foot at default (so the anchor post can never reach the
+# bridge bearings), and it caps the rod tops (no ride-out). LOWER ledge: seats
+# the rod bottoms (press-fit through-sockets); its top face is the BOTTOM hard
+# stop, 2 mm clear of the raised odd pulleys.
+GRX     = D.SCREW_X + D.GUIDE_ROD_DX                      # rod line (+2.75)
+GR_H    = 6.0                                             # ledge heights
+GR_UBOT = D.CARRIAGE_NOM_Z + D.GUIDE_FOOT_DZ              # upper bottom = top stop (−16.5)
+GR_UTOP = GR_UBOT + GR_H                                  # = the window sill (−10.5)
+GR_LTOP = GR_UBOT - D.CARRIAGE_TRAVEL - D.GUIDE_FOOT_H    # lower top = bottom stop (−32.5)
+GR_LBOT = GR_LTOP - GR_H
+
 # Stringing-access cutout (over the field): a clean rectangle with a UNIFORM cap
 # border on every side. WIN_BORDER is that border to the cap top and the bearing
 # arms; the diamond lightening is kept the same distance clear of it below.
@@ -35,7 +50,7 @@ WIN_BORDER = 4.0
 WIN_HW     = D.BRIDGE_AXLE_Y - ARM_W / 2                  # out to the arm inner faces, so the
                                                           # edge carriages/string balls are reachable
 WIN_Z1     = CH.Z_TOP - WIN_BORDER                        # top (rim to the cap top)
-WIN_Z0     = WIN_Z1 - 16.0                                # bottom (rim of cap below)
+WIN_Z0     = GR_UTOP                                      # bottom = the upper guide ledge's top
 
 
 def _cap() -> cq.Workplane:
@@ -54,9 +69,10 @@ def _cap() -> cq.Workplane:
         cy = yc - step * 8
         while cy <= yc + step * 8:
             in_field = CH.Y_LO + M <= cy - H and cy + H <= CH.Y_HI - M
-            # keep a clear border around the stringing cutout (no diamonds in it)
+            # keep a clear border around the stringing cutout AND solid cap behind
+            # the guide ledges (their print layers + stop loads back onto it)
             near_win = (abs(cy) - H <= WIN_HW + WIN_BORDER
-                        and cz + H >= WIN_Z0 - WIN_BORDER
+                        and cz + H >= GR_LBOT - WIN_BORDER
                         and cz - H <= WIN_Z1 + WIN_BORDER)
             if in_field and not near_win:
                 w = w.cut(CH._diamond(cy, cz, H, xc, thk))
@@ -98,22 +114,15 @@ def _build() -> cq.Workplane:
     for sy in (-D.BRIDGE_AXLE_Y, D.BRIDGE_AXLE_Y):                    # edge webs rail→arm
         body = body.union(box_at(X1 - _SRX, ARM_W, z_lo - sr_bot,     # down to the rail bottom
                                  x=(X1 + _SRX) / 2, y=sy, z=(z_lo + sr_bot) / 2))
-    # GUIDE-ROD cross-member: a bar at the guide-rod line (−X of the screws) carrying
-    # the 10 anti-rotation rod tops, tied to the bearing arms — so the rods are part of
-    # the endplate. Its BOTTOM face is flush with the carriage's guide-block top at the
-    # default (top-of-travel) position, so it is the TOP HARD STOP: the carriage cannot
-    # be driven up into the precision bridge bearings — it bottoms out on this bar first.
-    GX = D.SCREW_X - D.GUIDE_ROD_DX
-    gz0 = D.CARRIAGE_NOM_Z + 6.0                          # = guide-block top at default
-    gz1 = gz0 + 6.0
-    body = body.union(box_at(6.0, 2 * D.BRIDGE_AXLE_Y, gz1 - gz0, x=GX, y=0, z=(gz0 + gz1) / 2))
-    link_top = z_lo + 3.0                                 # lap up into the arms for a solid fuse
-    for sy in (-D.BRIDGE_AXLE_Y, D.BRIDGE_AXLE_Y):        # links to the arms
-        body = body.union(box_at((ARM_X + 3.0) - GX, ARM_W, link_top - gz0,
-                                 x=((ARM_X + 3.0) + GX) / 2, y=sy, z=(link_top + gz0) / 2))
-    for i in range(D.N_STRINGS):                          # guide-rod top sockets
-        body = body.cut(cyl(D.GUIDE_ROD_D + 0.1, gz1 - gz0 + 2, z=gz0 - 1)
-                        .translate((GX, D.string_y(i), 0)))
+    # GUIDE-ROD LEDGES (see the GR_* block above): upper = solid stop bar; lower =
+    # bottom stop + press-fit through-sockets for the rod bottoms. Arm to arm.
+    body = body.union(box_at(5.0, 2 * D.BRIDGE_AXLE_Y, GR_H,
+                             x=X0 - 2.5, y=0, z=(GR_UBOT + GR_UTOP) / 2))
+    body = body.union(box_at(6.5, 2 * D.BRIDGE_AXLE_Y, GR_H,
+                             x=X0 - 3.25, y=0, z=(GR_LBOT + GR_LTOP) / 2))
+    for i in range(D.N_STRINGS):
+        body = body.cut(cyl(D.GUIDE_ROD_D + 0.05, GR_H + 2, z=GR_LBOT - 1)
+                        .translate((GRX, D.string_y(i), 0)))
 
     # STRINGING-ACCESS window: open the cap over the field (top-centre, between the
     # bearing arms) so each string threads over its bridge bearing and its end-nut

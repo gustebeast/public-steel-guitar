@@ -67,8 +67,8 @@ GLOBAL_OK = {
     # strings + its gauged dowels + set screws
     frozenset({"nut_block", "chassis"}), frozenset({"nut_block", "string"}),
     frozenset({"nut_block", "break_dowel"}), frozenset({"nut_block", "set_screw"}),
-    # guide rods seat in the endplate cross-member (top) and the chassis guide rib (bottom)
-    frozenset({"guide_rod", "bridge_endplate"}), frozenset({"guide_rod", "chassis"}),
+    # guide rods press through the endplate's lower guide ledge
+    frozenset({"guide_rod", "bridge_endplate"}),
 }
 
 
