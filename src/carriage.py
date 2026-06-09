@@ -21,7 +21,7 @@ from __future__ import annotations
 import cadquery as cq
 
 from . import dimensions as D
-from .helpers import cyl, cyl_y, box_at
+from .helpers import cyl, box_at
 
 THICK   = 12.0                              # Z height
 WIDTH   = D.NUT_OD + 2 * 1.0               # across (Y), ≤ string pitch
@@ -39,12 +39,20 @@ FOOT_X0, FOOT_X1 = 6.5, 13.5               # leg: −X face clears the belt wrap
                                            # face stops 0.5 shy of the cap face
 SCREW_CLR_D  = D.SCREW_OD + 1.0
 GUIDE_CLR_D  = D.GUIDE_ROD_D + D.FIT_CLR
-NUT_SEAT_D    = D.STRING_NUT_D + 0.4       # transverse (Y) seat for the string-end cylinder nut
 # +Z hole the string exits through — must clear the heaviest string (C6 .070 ≈ 1.8 mm)
 # and leave room to bend it in. Still < the Ø3.5 nut, so the nut is captured.
 STRING_SLOT_W = 2.6
-ANCHOR_POST_H = 7.0                        # post above the body — roofs over the nut seat
-SEAT_Z        = THICK / 2 + D.STRING_NUT_D / 2 + 0.6   # nut-seat centre, above the body top
+STRING_SLOT_Y = 4.0                        # slot length along Y (< the 6 mm nut → captured)
+ANCHOR_POST_H = 7.0                        # post above the body: top 1 mm under the bearings
+POST_Z1  = THICK / 2 + ANCHOR_POST_H       # post top (+13)
+ROOF_T   = 3.2                             # capture roof — its slot edges bear the string pull
+CAGE_TOP = POST_Z1 - ROOF_T                # roof underside: the nut seats up against it
+CAGE_BOT = 2.5                             # cage floor, dropped into the plate: cage ≈ 2× the
+                                           # nut Ø so the string/nut can angle in (sets the
+                                           # post's sweep bottom → the upper ledge's Z)
+CAGE_W   = D.STRING_NUT_L + 0.6            # cavity width (Y): the nut slides in freely
+SILL_H   = 2.0                             # mouth sill: a slack nut can't roll back out +X
+SEAT_Z   = CAGE_TOP - D.STRING_NUT_D / 2   # seated-nut centre (demo placement + string path)
 
 
 def _build() -> cq.Workplane:
@@ -67,28 +75,38 @@ def _build() -> cq.Workplane:
                         z=D.GUIDE_FOOT_DZ - D.GUIDE_FOOT_H - 1)
                     .translate((D.GUIDE_ROD_DX, 0, 0)))
 
-    # Anchor POST rising from the body top toward the bridge bearing. The
-    # string-end cylinder NUT (axis Y) slots into a transverse seat in it; the
-    # string runs +Z out through a slot too narrow for the nut, so the string
-    # pull seats the nut UP against the roof (mechanical capture, no clamp). The
-    # nut loads from the +X (open-endplate) side.
-    body = body.union(box_at(8.0, WIDTH, ANCHOR_POST_H,
-                             x=D.ANCHOR_DX, y=0, z=THICK / 2 + ANCHOR_POST_H / 2))
-    # transverse seat for the cylinder nut
-    body = body.cut(cyl_y(NUT_SEAT_D, WIDTH + 2, y0=-(WIDTH / 2 + 1),
-                          x=D.ANCHOR_DX, z=SEAT_Z))
-    # +X loading mouth — opens the seat to the +X face so the nut slides in
-    body = body.cut(box_at(5.0, D.STRING_NUT_L + 0.6, NUT_SEAT_D,
-                           x=D.ANCHOR_DX + 3.0, y=0, z=SEAT_Z))
-    # +Z string slot up through the roof (narrower than the nut → captures it)
-    body = body.cut(box_at(STRING_SLOT_W, STRING_SLOT_W + 0.6, ANCHOR_POST_H,
-                           x=D.ANCHOR_DX, y=0, z=SEAT_Z + ANCHOR_POST_H / 2))
-    # funnel lead-in at the top of the hole so the string threads/bends in cleanly
-    post_top = THICK / 2 + ANCHOR_POST_H
-    funnel = cq.Workplane("XY").add(cq.Solid.makeCone(
-        STRING_SLOT_W / 2, STRING_SLOT_W, 2.5,
-        cq.Vector(D.ANCHOR_DX, 0, post_top - 2.5), cq.Vector(0, 0, 1)))
-    body = body.cut(funnel)
+    # Anchor POST: a tall BALL CAGE toward the bridge bearing. Stringing: the
+    # plain end enters the +X mouth at an angle, threads up out the roof slot,
+    # the whole string pulls through, and the ball-end cylinder NUT (axis Y)
+    # swings in last, seating UP against the roof — the slot is narrower than
+    # the nut, so the pull captures it (no clamp). The cage is ~2× the nut Ø
+    # (floor dropped into the plate) so there's room for that angled entry; at
+    # exactly nut height the bend would have to happen at zero distance.
+    body = body.union(box_at(8.0, WIDTH, POST_Z1 - CAGE_BOT,
+                             x=D.ANCHOR_DX, y=0, z=(POST_Z1 + CAGE_BOT) / 2))
+    # cavity, open to the +X face above the sill (solid Y walls — no through-seat)
+    body = body.cut(box_at(7.5, CAGE_W, CAGE_TOP - (CAGE_BOT + SILL_H),
+                           x=5.5 + 7.5 / 2, y=0,
+                           z=(CAGE_TOP + CAGE_BOT + SILL_H) / 2))
+    # floor well behind the sill (the sill ties the Y-wall bottoms together)
+    body = body.cut(box_at(5.0, CAGE_W, SILL_H + 0.1,
+                           x=5.5 + 2.5, y=0, z=CAGE_BOT + (SILL_H + 0.1) / 2))
+    # +Z string slot through the roof (both spans < the nut → captured)
+    body = body.cut(box_at(STRING_SLOT_W, STRING_SLOT_Y, ROOF_T + 1,
+                           x=D.ANCHOR_DX, y=0, z=CAGE_TOP + (ROOF_T + 1) / 2))
+    # lead-in on the roof's UNDERSIDE so the threaded-up tip finds the slot. The
+    # flare stays smaller than the Ø3.5 nut in X (3.2) so the seated nut bears on
+    # the slot edges and can't wedge in; Y can flare wide (the nut is 6 long).
+    lead = (cq.Workplane("XY", origin=(D.ANCHOR_DX, 0, CAGE_TOP))
+            .rect(3.2, 5.5)
+            .workplane(offset=1.2).rect(STRING_SLOT_W, STRING_SLOT_Y)
+            .loft(combine=False))
+    body = body.cut(lead)
+    # small top-edge relief: under tension the string leans −X toward the bearing,
+    # so it bears on a slope instead of the slot's sharp top edge
+    body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCone(
+        STRING_SLOT_W / 2, 2.25, 1.0,
+        cq.Vector(D.ANCHOR_DX, 0, POST_Z1 - 1.0), cq.Vector(0, 0, 1))))
     return body
 
 
