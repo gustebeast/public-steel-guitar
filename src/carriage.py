@@ -27,9 +27,12 @@ THICK   = 12.0                              # Z height
 WIDTH   = D.NUT_OD + 2 * 1.0               # across (Y), ≤ string pitch
 NUT_POCKET_D = D.NUT_OD + 0.2
 X_LO    = -(NUT_POCKET_D / 2 + 2.0)        # wall past the nut pocket (−X)
-X_HI    = D.ANCHOR_DX + 2.9                # ONE flush +X face for plate, post and
-                                           # column: 0.5 clear of the endplate's stop
-                                           # bar (X ≥ +3.4) and clear of the dropping
+X_HI    = D.ANCHOR_DX + 1.8                # plate/column +X face: 0.5 clear of the
+                                           # stop bar (X ≥ +2.3, deep enough to wall
+                                           # its rod holes all round), which they
+                                           # sweep past. The POST face sits 1.1
+                                           # prouder (its sweep stops above the bar).
+POST_X1H = D.ANCHOR_DX + 2.9               # post +X face: 0.225 off the dropping
                                            # rod's install path (rod −X edge +3.15)
 BODY_X  = X_HI - X_LO
 BODY_XC = (X_HI + X_LO) / 2
@@ -92,8 +95,8 @@ def _build() -> cq.Workplane:
     # the nut, so the pull captures it (no clamp). The cage is ~2× the nut Ø
     # (floor dropped into the plate) so there's room for that angled entry; at
     # exactly nut height the bend would have to happen at zero distance.
-    body = body.union(box_at(X_HI - 4.0, WIDTH, POST_Z1 - CAGE_BOT,
-                             x=(4.0 + X_HI) / 2, y=0, z=(POST_Z1 + CAGE_BOT) / 2))
+    body = body.union(box_at(POST_X1H - 4.0, WIDTH, POST_Z1 - CAGE_BOT,
+                             x=(4.0 + POST_X1H) / 2, y=0, z=(POST_Z1 + CAGE_BOT) / 2))
     # cavity, open to the +X face above the sill (solid Y walls — no through-seat)
     body = body.cut(box_at(7.5, CAGE_W, CAGE_TOP - (CAGE_BOT + SILL_H),
                            x=5.5 + 7.5 / 2, y=0,

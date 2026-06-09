@@ -117,9 +117,10 @@ def _build() -> cq.Workplane:
         body = body.union(box_at(X1 - _SRX, ARM_W, z_lo - sr_bot,     # down to the rail bottom
                                  x=(X1 + _SRX) / 2, y=sy, z=(z_lo + sr_bot) / 2))
     # GUIDE-ROD LEDGES (see the GR_* block above): upper = stop bar + drop-in
-    # holes; lower = bottom stop + blind landing sockets. Arm to arm.
-    body = body.union(box_at(2.6, 2 * D.BRIDGE_AXLE_Y, GR_H,
-                             x=X0 - 1.3, y=0, z=(GR_UBOT + GR_UTOP) / 2))
+    # holes; lower = bottom stop + blind landing sockets. Arm to arm. Both bars
+    # reach X ≥ +2.3 so the Ø2.55 rod holes are fully enclosed (−X wall 0.8).
+    body = body.union(box_at(3.7, 2 * D.BRIDGE_AXLE_Y, GR_H,
+                             x=X0 - 1.85, y=0, z=(GR_UBOT + GR_UTOP) / 2))
     body = body.union(box_at(3.7, 2 * D.BRIDGE_AXLE_Y, GR_H,
                              x=X0 - 1.85, y=0, z=(GR_LBOT + GR_LTOP) / 2))
     for i in range(D.N_STRINGS):
@@ -127,8 +128,8 @@ def _build() -> cq.Workplane:
         # blind landing socket: the rod drops until it bottoms at GR_LBOT+2
         body = body.cut(cyl(D.GUIDE_ROD_D + 0.05, (GR_LTOP + 1) - (GR_LBOT + 2),
                             z=GR_LBOT + 2).translate((GRX, sy, 0)))
-        # drop-in hole through the stop bar (C-form: it breaches the bar's −X
-        # face 1.6 wide — too narrow for the rod to escape, easy to print)
+        # drop-in hole through the stop bar (a complete O — the bar is deep
+        # enough to wall it all round; the rod top stays friction-held in it)
         body = body.cut(cyl(D.GUIDE_ROD_D + 0.05, GR_H + 2, z=GR_UBOT - 1)
                         .translate((GRX, sy, 0)))
     # GUIDE-VIEW window: open the cap between the two ledges so the rods' free
