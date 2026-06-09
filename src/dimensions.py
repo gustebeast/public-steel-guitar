@@ -65,8 +65,11 @@ CARRIAGE_TRAVEL = 2 * DL_OPEN + 2.0    # ≈10 mm; open sits ~DL_OPEN up from sl
 # Ø5×1 single-start: lead angle ~3.6° (very self-locking) and fast enough (a
 # semitone is only ~1.5 mm). Vertical ⇒ short (no whip).
 SCREW_OD        = 5.0       # Ø5, single-start, 1 mm lead
-SCREW_LEN       = 53.0
-SCREW_BOT_Z     = SCREW_TOP_Z - SCREW_LEN          # -51
+SCREW_LEN       = 61.0      # +8 vs the minimum: drops the whole drive stack (pulleys,
+                            # belts, motors, support bearing, chassis floor — all derive
+                            # from here) 8 mm so the raised odd pulleys clear the carriage's
+                            # full down-travel + a bottom stop, restoring the travel margin
+SCREW_BOT_Z     = SCREW_TOP_Z - SCREW_LEN          # -59
 CARRIAGE_NOM_Z  = SCREW_TOP_Z - 8.0                # default = TOP of travel; dropped 1 mm
                                                    # so the anchor post clears the bridge
                                                    # bearings (the guide cross-member hard-
