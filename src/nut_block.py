@@ -36,13 +36,13 @@ ROW2_X   = -16.0                                # clamp row 2 (odd strings)
 GROOVE_W = 1.8                                  # lay-in groove width (string channel)
 GROOVE_FLOOR = -2.0                             # groove bottom
 PIN_D    = 2.0 + 0.1                            # break-pin seat (Ø2 dowel)
-PIN_L    = 6.0                                  # pin length (along Y)
+PIN_L    = 4.0                                  # pin length (Ø2×4 dowel) — drops into its slot
 
-BOSS_TOP = 7.0                                  # clamp boss top (houses the +Z insert)
+BOSS_TOP = 10.0                                 # clamp boss top (houses the +Z insert; screw tip rests on the string)
 BOSS_SQ  = 10.0                                 # clamp boss footprint
 INSERT_D = 5.6                                  # M4 heat-set install hole
 INSERT_L = 4.7
-SCREW_D  = 4.3                                  # M4 set-screw clearance
+SCREW_D  = 4.6                                  # M4 set-screw clearance (also lets the Ø2×4 anvil drop down)
 BOLT_D   = 3.4                                  # M3 mount-bolt clearance
 
 
@@ -60,8 +60,11 @@ def _build() -> cq.Workplane:
         # open lay-in groove along X (string channel), gauged to the string
         body = body.cut(box_at(X_FRONT - X_BACK, gw, BODY_TOP - GROOVE_FLOOR,
                                x=(X_FRONT + X_BACK) / 2, y=y, z=(BODY_TOP + GROOVE_FLOOR) / 2))
-        # gauged break-pin seat (axis Y) at the break edge
+        # gauged break-pin seat (axis Y) + a top-open drop slot so the pin drops
+        # straight in from above (the string then traps it down)
         body = body.cut(cyl_y(PIN_D, PIN_L, y0=y - PIN_L / 2, x=0.0, z=pin_z))
+        body = body.cut(box_at(PIN_D, PIN_L, BODY_TOP - pin_z,
+                               x=0.0, y=y, z=(BODY_TOP + pin_z) / 2))
 
         # clamp: raised boss + buried insert (from +Z) + set-screw bore down to the string,
         # which pinches it against a steel anvil dowel (same Ø2 part) in the floor

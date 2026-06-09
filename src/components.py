@@ -43,13 +43,18 @@ def string_nut() -> cq.Workplane:
 
 # ── Nut-block hardware (Ø2 steel dowel + M4 cup-tip set screw) — DEMO ─────
 def dowel() -> cq.Workplane:
-    """Ø2 steel dowel (axis Y) — the gauged break pin AND the clamp anvil."""
-    return cyl_y(2.0, 5.0, y0=-2.5, x=0.0, z=0.0)
+    """Ø2×4 steel dowel (axis Y) — the gauged break pin AND the clamp anvil.
+    Short so it drops into its top-open pocket / down the set-screw bore."""
+    return cyl_y(2.0, 4.0, y0=-2.0, x=0.0, z=0.0)
 
 
 def set_screw() -> cq.Workplane:
-    """M4×10 cup-tip set screw, axis Z, head/top at z=0 (extends −Z)."""
-    return cyl(4.0, 10.0, z=-10.0)
+    """M4×10 cup-tip set screw, axis Z, top at z=0 (extends −Z), 2 mm hex socket."""
+    body = cyl(4.0, 10.0, z=-10.0)
+    hexd = 2.0 / math.cos(math.radians(30))      # 2 mm across-flats hex key
+    socket = (cq.Workplane("XY").polygon(6, hexd).extrude(-3.0)
+              .translate((0, 0, 0.5)))
+    return body.cut(socket)
 
 
 _CHAMFER = (D.PULLEY_FLANGE_OD - D.PULLEY_OD) / 2     # 45° flange chamfer height

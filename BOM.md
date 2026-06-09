@@ -17,8 +17,14 @@ is commodity.
 | **Bridge bearing** | 693ZZ deep-groove, Ø3 × Ø8 × 4 | 10 | [VXB 693ZZ ×10](https://vxb.com/products/693zz-3x8-shielded-3x8x4-miniature-bearing-pack-of) · [Bearings Direct](https://bearingsdirect.com/693-zz-mini-ball-bearing-3x8x4-shielded-r830zz/) | ~$1 ea | one per string; string rides the Ø8 OD |
 | **Bridge axle** | Ø3 dowel/rod, ~105 mm | 1 | [McMaster dowel pins](https://www.mcmaster.com/products/hardened-dowel-pins/) | ~$2 | the 10 bridge bearings share this axle |
 | **Guide rod** | Ø2.5 hardened/ground dowel (DIN 6325), ~28 mm | 10 | [McMaster](https://www.mcmaster.com/products/hardened-dowel-pins/) · [eBay DIN6325 2.5 mm](https://www.ebay.com/itm/303389911894) | ~$0.5 ea | anti-rotation; cut/order to length |
-| **Far-end tuner** | locking guitar tuner, 6 mm post / 10 mm hole | 10 | [Guyker](https://www.guyker.com/collections/guitar-locking-tuners) (sets) · [Hipshot Grip-Lock](https://hipshotproducts.com/products/grip-lock-open-guitar-tuning-machines) (individual) | ~$6 ea | hand-tension to set the taut regime |
-| **Fasteners** | M3 (NEMA17 mounts), M2 (belt clamps) | — | [McMaster](https://www.mcmaster.com/) | — | commodity |
+| **Nut break/anvil dowel** | Ø2 × 4 mm steel dowel (52100) | ~20 | [McMaster 91595A018](https://www.mcmaster.com/91595A018/) | $12.70 / pack | gauged break pins **and** clamp anvils — one pack does both; drops into its pocket from above |
+| **Nut clamp set screw** | M4 × 0.7 cup-tip, 10 mm, alloy | 10 | [McMaster 91390A114](https://www.mcmaster.com/91390A114/) | $7.28 / pack 100 | clamps each plain string end onto its anvil |
+| **Nut clamp insert** | M4 × 0.7 brass heat-set, 4.7 mm | 10 | [McMaster 94459A150](https://www.mcmaster.com/94459A150/) | $10.82 / pack 50 | deeply buried in the boss (no pull-out) |
+| **Fasteners** | M3 (NEMA17 mounts + 2× nut-block mount, w/ heat-set inserts), M2 (belt clamps) | — | [McMaster](https://www.mcmaster.com/) | — | commodity |
 
-Printed parts (no purchase): carriage, screw_rail, bridge_support, motor_bank,
-belt_clamp, screw_pulley, motor_pulley — see `py -3.12 -m src.build --list`.
+The motor still does all tuning (the nut block clamps; no manual tuners). The nut
+block is **reprintable per string set** — `STRING_GAUGE` in `dimensions.py` swaps
+between E9 and C6; the break pins re-gauge so string tops stay coplanar.
+
+Printed parts (no purchase): carriage, bridge_endplate, chassis (×3 segments),
+nut_block, belt_clamp, screw_pulley, motor_pulley — see `py -3.12 -m src.build --list`.
