@@ -32,7 +32,8 @@ AXLE_BORE = D.BRIDGE_AXLE_D + 0.4
 # border on every side. WIN_BORDER is that border to the cap top and the bearing
 # arms; the diamond lightening is kept the same distance clear of it below.
 WIN_BORDER = 4.0
-WIN_HW     = (D.BRIDGE_AXLE_Y - ARM_W / 2) - WIN_BORDER   # half-width (rim to the arms)
+WIN_HW     = D.BRIDGE_AXLE_Y - ARM_W / 2                  # out to the arm inner faces, so the
+                                                          # edge carriages/string balls are reachable
 WIN_Z1     = CH.Z_TOP - WIN_BORDER                        # top (rim to the cap top)
 WIN_Z0     = WIN_Z1 - 16.0                                # bottom (rim of cap below)
 

@@ -65,6 +65,12 @@ def _build() -> cq.Workplane:
     # +Z string slot up through the roof (narrower than the nut → captures it)
     body = body.cut(box_at(STRING_SLOT_W, STRING_SLOT_W + 0.6, ANCHOR_POST_H,
                            x=D.ANCHOR_DX, y=0, z=SEAT_Z + ANCHOR_POST_H / 2))
+    # funnel lead-in at the top of the hole so the string threads/bends in cleanly
+    post_top = THICK / 2 + ANCHOR_POST_H
+    funnel = cq.Workplane("XY").add(cq.Solid.makeCone(
+        STRING_SLOT_W / 2, STRING_SLOT_W, 2.5,
+        cq.Vector(D.ANCHOR_DX, 0, post_top - 2.5), cq.Vector(0, 0, 1)))
+    body = body.cut(funnel)
     return body
 
 
