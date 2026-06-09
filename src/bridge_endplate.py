@@ -19,7 +19,7 @@ import cadquery as cq
 from . import dimensions as D
 from . import chassis as CH
 from .screw_rail import screw_rail as _screw_rail, HEIGHT as _SR_H
-from .helpers import box_at, cyl_y
+from .helpers import box_at, cyl, cyl_y
 
 X0   = CH.X_BRIDGE                 # join line (the rails end here; cap is +X of it)
 X1   = X0 + 8.0                    # +X tip
@@ -97,6 +97,19 @@ def _build() -> cq.Workplane:
     for sy in (-D.BRIDGE_AXLE_Y, D.BRIDGE_AXLE_Y):                    # edge webs rail→arm
         body = body.union(box_at(X1 - _SRX, ARM_W, z_lo - sr_bot,     # down to the rail bottom
                                  x=(X1 + _SRX) / 2, y=sy, z=(z_lo + sr_bot) / 2))
+    # GUIDE-ROD cross-member: a bar at the guide-rod line (−X of the screws) carrying
+    # the 10 anti-rotation rod tops, tied to the bearing arms — so the rods are part
+    # of the endplate. Sits just above the carriages' top travel and below the strings.
+    GX = D.SCREW_X - D.GUIDE_ROD_DX
+    gz0, gz1 = 7.0, 13.0
+    body = body.union(box_at(6.0, 2 * D.BRIDGE_AXLE_Y, gz1 - gz0, x=GX, y=0, z=(gz0 + gz1) / 2))
+    for sy in (-D.BRIDGE_AXLE_Y, D.BRIDGE_AXLE_Y):       # links to the arms
+        body = body.union(box_at(ARM_X - GX, ARM_W, gz1 - gz0,
+                                 x=(ARM_X + GX) / 2, y=sy, z=(gz0 + gz1) / 2))
+    for i in range(D.N_STRINGS):                          # guide-rod top sockets
+        body = body.cut(cyl(D.GUIDE_ROD_D + 0.1, gz1 - gz0 + 2, z=gz0 - 1)
+                        .translate((GX, D.string_y(i), 0)))
+
     # STRINGING-ACCESS window: open the cap over the field (top-centre, between the
     # bearing arms) so each string threads over its bridge bearing and its end-nut
     # slots into the carriage from +X. Inboard of the arms (±BRIDGE_AXLE_Y) and below
