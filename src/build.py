@@ -132,8 +132,8 @@ def _string_components(i):
     out.append((f"nut_{i}", C.nut().translate(
         (D.SCREW_X, sy, D.CARRIAGE_NOM_Z - CARRIAGE_THICK / 2 - D.NUT_FLANGE_T))))
     # guide rod (anti-rotation), offset −X: top anchored in the endplate's guide
-    # cross-member (z≈+13), running down through the carriage's full travel (to ≈−18)
-    out.append((f"guide_rod_{i}", C.guide_rod(31.0).translate(
+    # cross-member (z≈+6), running down through the carriage's travel (to ≈−18)
+    out.append((f"guide_rod_{i}", C.guide_rod(24.0).translate(
         (D.SCREW_X - D.GUIDE_ROD_DX, sy, -18.0))))
     # screw drive pulley (odd ones raised one belt-plane), support bearing
     # (in the shared rail), locknut below

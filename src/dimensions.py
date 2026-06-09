@@ -67,7 +67,10 @@ CARRIAGE_TRAVEL = 2 * DL_OPEN + 2.0    # ≈10 mm; open sits ~DL_OPEN up from sl
 SCREW_OD        = 5.0       # Ø5, single-start, 1 mm lead
 SCREW_LEN       = 53.0
 SCREW_BOT_Z     = SCREW_TOP_Z - SCREW_LEN          # -51
-CARRIAGE_NOM_Z  = SCREW_TOP_Z - 7.0                # nominal carriage centre (upper)
+CARRIAGE_NOM_Z  = SCREW_TOP_Z - 8.0                # default = TOP of travel; dropped 1 mm
+                                                   # so the anchor post clears the bridge
+                                                   # bearings (the guide cross-member hard-
+                                                   # stops it here, protecting the bearings)
 SCREW_PULLEY_Z  = SCREW_BOT_Z + 15.0               # screw drive pulley near bottom (-36)
 
 

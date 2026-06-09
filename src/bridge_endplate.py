@@ -99,14 +99,18 @@ def _build() -> cq.Workplane:
         body = body.union(box_at(X1 - _SRX, ARM_W, z_lo - sr_bot,     # down to the rail bottom
                                  x=(X1 + _SRX) / 2, y=sy, z=(z_lo + sr_bot) / 2))
     # GUIDE-ROD cross-member: a bar at the guide-rod line (−X of the screws) carrying
-    # the 10 anti-rotation rod tops, tied to the bearing arms — so the rods are part
-    # of the endplate. Sits just above the carriages' top travel and below the strings.
+    # the 10 anti-rotation rod tops, tied to the bearing arms — so the rods are part of
+    # the endplate. Its BOTTOM face is flush with the carriage's guide-block top at the
+    # default (top-of-travel) position, so it is the TOP HARD STOP: the carriage cannot
+    # be driven up into the precision bridge bearings — it bottoms out on this bar first.
     GX = D.SCREW_X - D.GUIDE_ROD_DX
-    gz0, gz1 = 7.0, 13.0
+    gz0 = D.CARRIAGE_NOM_Z + 6.0                          # = guide-block top at default
+    gz1 = gz0 + 6.0
     body = body.union(box_at(6.0, 2 * D.BRIDGE_AXLE_Y, gz1 - gz0, x=GX, y=0, z=(gz0 + gz1) / 2))
-    for sy in (-D.BRIDGE_AXLE_Y, D.BRIDGE_AXLE_Y):       # links to the arms
-        body = body.union(box_at(ARM_X - GX, ARM_W, gz1 - gz0,
-                                 x=(ARM_X + GX) / 2, y=sy, z=(gz0 + gz1) / 2))
+    link_top = z_lo + 3.0                                 # lap up into the arms for a solid fuse
+    for sy in (-D.BRIDGE_AXLE_Y, D.BRIDGE_AXLE_Y):        # links to the arms
+        body = body.union(box_at((ARM_X + 3.0) - GX, ARM_W, link_top - gz0,
+                                 x=((ARM_X + 3.0) + GX) / 2, y=sy, z=(link_top + gz0) / 2))
     for i in range(D.N_STRINGS):                          # guide-rod top sockets
         body = body.cut(cyl(D.GUIDE_ROD_D + 0.1, gz1 - gz0 + 2, z=gz0 - 1)
                         .translate((GX, D.string_y(i), 0)))
