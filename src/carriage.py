@@ -27,14 +27,16 @@ THICK   = 12.0                              # Z height
 WIDTH   = D.NUT_OD + 2 * 1.0               # across (Y), ≤ string pitch
 NUT_POCKET_D = D.NUT_OD + 0.2
 X_LO    = -(NUT_POCKET_D / 2 + 2.0)        # wall past the nut pocket (−X)
-X_HI    = D.ANCHOR_DX + 0.5                # plate stops at +0.5 global: the upper
-                                           # guide ledge (X ≥ +1) sweeps past it
+X_HI    = D.ANCHOR_DX + 3.3                # ONE flush +X face for plate, post and
+                                           # column: 0.5 clear of the endplate's stop
+                                           # stub (X ≥ +3.8) and 0.175 off the rod
 BODY_X  = X_HI - X_LO
 BODY_XC = (X_HI + X_LO) / 2
 
-# Guide foot: column down from the plate's +X end, then a leg reaching +X under
-# the upper ledge to the rod line. Foot top = D.GUIDE_FOOT_DZ (the top-stop face).
-COL_X0, COL_X1   = 4.5, X_HI               # column: clear of the screw bore / ledge
+# Guide foot: a thick column straight down the flush +X face, then a leg whose
+# +X-open yoke slot rides the rod (nested against the cap face). Foot top =
+# D.GUIDE_FOOT_DZ (the top-stop face against the endplate's stop stub).
+COL_X0, COL_X1   = 4.5, X_HI               # column: clear of the screw bore; flush face
 FOOT_X0, FOOT_X1 = 6.5, 13.5               # leg: −X face clears the belt wrap, +X
                                            # face stops 0.5 shy of the cap face
 SCREW_CLR_D  = D.SCREW_OD + 1.0
@@ -71,9 +73,13 @@ def _build() -> cq.Workplane:
     body = body.union(box_at(FOOT_X1 - FOOT_X0, WIDTH, D.GUIDE_FOOT_H,
                              x=(FOOT_X0 + FOOT_X1) / 2, y=0,
                              z=D.GUIDE_FOOT_DZ - D.GUIDE_FOOT_H / 2))
-    body = body.cut(cyl(GUIDE_CLR_D, D.GUIDE_FOOT_H + 2,
-                        z=D.GUIDE_FOOT_DZ - D.GUIDE_FOOT_H - 1)
-                    .translate((D.GUIDE_ROD_DX, 0, 0)))
+    # +X-open yoke slot riding the rod (which nests against the cap face): the
+    # anti-rotation reaction is ±Y on the slot walls; +X escape is blocked by the
+    # cap face 0.5 away, so the rod is captured without a closed-bore wall.
+    slot_x0 = D.GUIDE_ROD_DX - GUIDE_CLR_D / 2
+    body = body.cut(box_at((FOOT_X1 + 1) - slot_x0, GUIDE_CLR_D, D.GUIDE_FOOT_H + 2,
+                           x=(slot_x0 + FOOT_X1 + 1) / 2, y=0,
+                           z=D.GUIDE_FOOT_DZ - D.GUIDE_FOOT_H / 2))
 
     # Anchor POST: a tall BALL CAGE toward the bridge bearing. Stringing: the
     # plain end enters the +X mouth at an angle, threads up out the roof slot,
@@ -82,15 +88,15 @@ def _build() -> cq.Workplane:
     # the nut, so the pull captures it (no clamp). The cage is ~2× the nut Ø
     # (floor dropped into the plate) so there's room for that angled entry; at
     # exactly nut height the bend would have to happen at zero distance.
-    body = body.union(box_at(8.0, WIDTH, POST_Z1 - CAGE_BOT,
-                             x=D.ANCHOR_DX, y=0, z=(POST_Z1 + CAGE_BOT) / 2))
+    body = body.union(box_at(X_HI - 4.0, WIDTH, POST_Z1 - CAGE_BOT,
+                             x=(4.0 + X_HI) / 2, y=0, z=(POST_Z1 + CAGE_BOT) / 2))
     # cavity, open to the +X face above the sill (solid Y walls — no through-seat)
     body = body.cut(box_at(7.5, CAGE_W, CAGE_TOP - (CAGE_BOT + SILL_H),
                            x=5.5 + 7.5 / 2, y=0,
                            z=(CAGE_TOP + CAGE_BOT + SILL_H) / 2))
     # floor well behind the sill (the sill ties the Y-wall bottoms together)
-    body = body.cut(box_at(5.0, CAGE_W, SILL_H + 0.1,
-                           x=5.5 + 2.5, y=0, z=CAGE_BOT + (SILL_H + 0.1) / 2))
+    body = body.cut(box_at(4.5, CAGE_W, SILL_H + 0.1,
+                           x=5.5 + 2.25, y=0, z=CAGE_BOT + (SILL_H + 0.1) / 2))
     # +Z string slot through the roof (both spans < the nut → captured)
     body = body.cut(box_at(STRING_SLOT_W, STRING_SLOT_Y, ROOF_T + 1,
                            x=D.ANCHOR_DX, y=0, z=CAGE_TOP + (ROOF_T + 1) / 2))

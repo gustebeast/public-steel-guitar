@@ -28,15 +28,16 @@ ARM_W = D.BRIDGE_ARM_W             # arm / edge-web thickness (Y) — kept clear
 TIE_Z = D.STRING_Z + 6.0          # tie bar / arm top, clear above the strings
 AXLE_BORE = D.BRIDGE_AXLE_D + 0.4
 
-# Guide-rod LEDGES: two bars protruding −X from the cap face below the stringing
-# window, spanning arm to arm. Each is a straight X-extension of solid cap, so
-# (printing along X) every layer is backed — no overhang, unlike the old spanning
-# cross-member. UPPER ledge: solid; its bottom face is the TOP hard stop, flush
-# with the carriage foot at default (so the anchor post can never reach the
-# bridge bearings), and it caps the rod tops (no ride-out). LOWER ledge: seats
-# the rod bottoms (press-fit through-sockets); its top face is the BOTTOM hard
-# stop, 2 mm clear of the raised odd pulleys.
-GRX     = D.SCREW_X + D.GUIDE_ROD_DX                      # rod line (+2.75)
+# Guide-rod LEDGES: two shallow bars protruding −X from the cap face below the
+# stringing window, spanning arm to arm — straight X-extensions of solid cap, so
+# (printing along X) every layer is backed: no overhang. The rod line is TANGENT
+# to the cap face, so the rods nest flush against it (glued along their length)
+# and the sockets sit in the ledge/cap corner, fully walled by cap interior.
+# UPPER bar: the TOP hard stop — flush with the carriage foot at default (the
+# anchor post can never reach the bridge bearings) — and it caps the rod tops.
+# LOWER bar: press-fit through-sockets for the rod bottoms; its top face is the
+# BOTTOM hard stop, clear of the raised odd pulleys.
+GRX     = D.SCREW_X + D.GUIDE_ROD_DX                      # rod line (+4.75)
 GR_H    = 6.0                                             # ledge heights
 GR_UBOT = D.CARRIAGE_NOM_Z + D.GUIDE_FOOT_DZ              # upper bottom = top stop (−16.5)
 GR_UTOP = GR_UBOT + GR_H                                  # = the window sill (−10.5)
@@ -116,10 +117,10 @@ def _build() -> cq.Workplane:
                                  x=(X1 + _SRX) / 2, y=sy, z=(z_lo + sr_bot) / 2))
     # GUIDE-ROD LEDGES (see the GR_* block above): upper = solid stop bar; lower =
     # bottom stop + press-fit through-sockets for the rod bottoms. Arm to arm.
-    body = body.union(box_at(5.0, 2 * D.BRIDGE_AXLE_Y, GR_H,
-                             x=X0 - 2.5, y=0, z=(GR_UBOT + GR_UTOP) / 2))
-    body = body.union(box_at(6.5, 2 * D.BRIDGE_AXLE_Y, GR_H,
-                             x=X0 - 3.25, y=0, z=(GR_LBOT + GR_LTOP) / 2))
+    body = body.union(box_at(2.2, 2 * D.BRIDGE_AXLE_Y, GR_H,
+                             x=X0 - 1.1, y=0, z=(GR_UBOT + GR_UTOP) / 2))
+    body = body.union(box_at(3.7, 2 * D.BRIDGE_AXLE_Y, GR_H,
+                             x=X0 - 1.85, y=0, z=(GR_LBOT + GR_LTOP) / 2))
     for i in range(D.N_STRINGS):
         body = body.cut(cyl(D.GUIDE_ROD_D + 0.05, GR_H + 2, z=GR_LBOT - 1)
                         .translate((GRX, D.string_y(i), 0)))

@@ -94,9 +94,12 @@ NUT_BODY_LEN    = 7.0
 # no spanning bar, so the endplate prints with no overhang.
 # ─────────────────────────────────────────────────────────────────────────
 GUIDE_ROD_D     = 2.5
-GUIDE_ROD_DX    = 10.75     # screw→rod offset, now +X: rod X = SCREW_X + DX = +2.75
-                            # (max that leaves a printable +X wall on the foot, whose
-                            # face stops 0.5 shy of the cap face at +6)
+GUIDE_ROD_DX    = 12.75     # screw→rod offset: rod X = SCREW_X + DX = +4.75, which puts
+                            # the rod TANGENT to the endplate cap face (+6) — it nests
+                            # flush against it (glued along its length). The carriage
+                            # grips it with a +X-open yoke slot (loads are ±Y; the cap
+                            # face 0.5 away blocks escape), so no closed-bore wall is
+                            # needed and the carriage +X profile stays nearly straight.
 GUIDE_FOOT_DZ   = -14.0     # foot TOP from the carriage centre (plate bottom −6,
                             # then an 8.0 column — clears the upper ledge's Z band,
                             # which sits 0.5 below the anchor cage's sweep bottom)
