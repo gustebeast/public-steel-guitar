@@ -25,6 +25,7 @@ from . import dimensions as D
 from . import motor_bank as MB
 from .components import MOTOR_PULLEY_STANDOFF
 from .helpers import box_at, cyl
+from . import nut_block as NB
 
 T        = 8.0                         # rail thickness (solid; slicer infills)
 X_BRIDGE = 6.0                         # +X (bridge) end — the rails end here; the bridge
@@ -149,11 +150,12 @@ def _build_full() -> cq.Workplane:
     _kx = D.NUT_BLOCK_X - 9.0                               # under the block centre
     body = body.union(_end_bulkhead(_kx, 30.0))            # self-supporting bulkhead
     body = body.union(_rib(_kx, w=30.0))                   # bottom tie
-    ky = D.nut_y(D.N_STRINGS - 1) + 6.0
+    ky = D.nut_y(D.N_STRINGS - 1) + 9.0
     body = body.union(box_at(4.0, 2 * ky, 4.0,            # +X compression wall (below the strings)
                              x=D.NUT_BLOCK_X + 6.0, y=0, z=Z_TOP + 2.0))
-    for sy in (-(ky - 2.0), ky - 2.0):                     # insert pilots for the 2 retention bolts
-        body = body.cut(cyl(5.6, 8.0, z=Z_TOP - 8.0).translate((D.NUT_BLOCK_X - 10.0, sy, 0)))
+    for sx in (D.NUT_BLOCK_X + NB.X_FRONT - 3.0, D.NUT_BLOCK_X + NB.X_BACK + 3.0):
+        for sy in (-(NB.HW - 4.0), NB.HW - 4.0):          # insert pilots under the 4 corner bolts
+            body = body.cut(cyl(5.6, 8.0, z=Z_TOP - 8.0).translate((sx, sy, 0)))
     body = body.union(MB.motor_bank)                  # fuse in the motor faceplate walls
     # +X end: a sliding-dovetail tongue on each rail end; the bridge endplate caps
     # and sockets them (drops down to engage, glued).

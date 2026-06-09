@@ -158,10 +158,8 @@ def _string_components(i):
     row_x = NB.ROW1_X if i % 2 == 0 else NB.ROW2_X
     out.append((f"break_dowel_{i}", C.dowel().translate(
         (D.NUT_BLOCK_X, D.nut_y(i), D.STRING_Z - g - 1.0))))          # pin top at STRING_Z−g
-    out.append((f"anvil_dowel_{i}", C.dowel().translate(
-        (D.NUT_BLOCK_X + row_x, D.nut_y(i), D.STRING_Z + NB.GROOVE_FLOOR))))
     out.append((f"set_screw_{i}", C.set_screw().translate(             # cup tip rests on the string
-        (D.NUT_BLOCK_X + row_x, D.nut_y(i), D.STRING_Z + 9.0 + g))))
+        (D.NUT_BLOCK_X + row_x, D.nut_y(i), D.STRING_Z + 8.0 + g))))
     return out
 
 
@@ -186,10 +184,10 @@ def _string_path(i, sy):
     # speaking length to the break edge: string sits on the gauged pin, TOP at STRING_Z
     brk = cq.Vector(D.NUT_BLOCK_X, D.nut_y(i), D.STRING_Z - g / 2.0)
     out = out.union(_rod(prev, brk, rad))
-    # dead end: break edge → clamp row, where it rests on the anvil dowel
+    # dead end: break edge → clamp row, where it rests on the (plastic) groove floor
     row_x = NB.ROW1_X if i % 2 == 0 else NB.ROW2_X
     out = out.union(_rod(brk, cq.Vector(D.NUT_BLOCK_X + row_x, D.nut_y(i),
-                                        D.STRING_Z - 1.0 + g / 2.0), rad))
+                                        D.STRING_Z + NB.GROOVE_FLOOR + g / 2.0), rad))
     return out
 
 

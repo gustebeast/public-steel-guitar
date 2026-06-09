@@ -31,7 +31,9 @@ NUT_POCKET_D = D.NUT_OD + 0.2
 SCREW_CLR_D  = D.SCREW_OD + 1.0
 GUIDE_CLR_D  = D.GUIDE_ROD_D + D.FIT_CLR
 NUT_SEAT_D    = D.STRING_NUT_D + 0.4       # transverse (Y) seat for the string-end cylinder nut
-STRING_SLOT_W = 1.2
+# +Z hole the string exits through — must clear the heaviest string (C6 .070 ≈ 1.8 mm)
+# and leave room to bend it in. Still < the Ø3.5 nut, so the nut is captured.
+STRING_SLOT_W = 2.6
 ANCHOR_POST_H = 7.0                        # post above the body — roofs over the nut seat
 SEAT_Z        = THICK / 2 + D.STRING_NUT_D / 2 + 0.6   # nut-seat centre, above the body top
 
