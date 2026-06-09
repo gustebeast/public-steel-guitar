@@ -27,9 +27,9 @@ from .helpers import cyl, cyl_y, box_at
 # ── layout (local frame) ─────────────────────────────────────────────────
 HW       = D.nut_y(D.N_STRINGS - 1) + 6.0      # half-width (nut field + margin)
 BODY_TOP = 1.0                                  # body top, just above the string plane
-Z_BOT    = -16.0                                # body bottom
+Z_BOT    = -6.0                                 # body bottom (local) → rests on the chassis top
 X_FRONT  = 4.0                                  # +X lip (speaking side)
-X_BACK   = -24.0                                # −X end (behind the back clamp row)
+X_BACK   = -22.0                                # −X end (behind the back clamp row)
 ROW1_X   = -8.0                                 # clamp row 1 (even strings)
 ROW2_X   = -16.0                                # clamp row 2 (odd strings)
 

@@ -209,6 +209,9 @@ GAUGES_E9_IN = (.013, .015, .011, .014, .017, .020, .026, .030, .034, .038)  # s
 GAUGES_C6_IN = (.015, .014, .017, .020, .024, .030, .036, .042, .054, .070)
 STRING_GAUGE = tuple(g * 25.4 for g in reversed(GAUGES_C6_IN))   # mm, our index 0..9 (C6)
 
+# Nut block sits with its break edge (the open-string scale endpoint) here.
+NUT_BLOCK_X  = -MOUNTING_SPAN
+
 
 # ─────────────────────────────────────────────────────────────────────────
 # Fits / fasteners

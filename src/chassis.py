@@ -24,12 +24,12 @@ import cadquery as cq
 from . import dimensions as D
 from . import motor_bank as MB
 from .components import MOTOR_PULLEY_STANDOFF
-from .helpers import box_at
+from .helpers import box_at, cyl
 
 T        = 8.0                         # rail thickness (solid; slicer infills)
 X_BRIDGE = 6.0                         # +X (bridge) end — the rails end here; the bridge
                                        #   endplate caps them (a separate flat-printed part)
-X_NUT    = -(D.MOUNTING_SPAN + 12.0)   # past the tuners at −MOUNTING_SPAN
+X_NUT    = -(D.MOUNTING_SPAN + 25.0)   # −X end, extended to carry the nut block
 Z_TOP    = D.STRING_Z - 6.0            # body deck, 6 mm under the strings (normal action)
 Z_BOT    = MB.BED_Z                    # print bed (shared with the motor walls)
 Y_HI     = D.BRIDGE_AXLE_Y + 7.0       # +Y rail, outboard enough to clear the bearing arm
@@ -143,11 +143,17 @@ def _build_full() -> cq.Workplane:
     body = _rail(Y_HI).union(_rail(Y_LO))
     for x in _RIB_X:                                  # per-motor + bridge/nut cross-ribs (−Z)
         body = body.union(_rib(x))
-    body = body.union(_end_bulkhead(X_NUT + 9.0, 18.0))     # nut end (self-supporting bulkhead)
-    body = body.union(_rib(X_NUT + 9.0, w=18.0))            # nut bottom tie
-    # tuner block on the nut bulkhead's deck (rises to the string height)
-    ky = D.nut_y(D.N_STRINGS - 1) + 8.0
-    body = body.union(box_at(18.0, 2 * ky, 8.0, x=X_NUT + 9.0, y=0, z=Z_TOP + 4.0))
+    # keyhead: a thick bulkhead under the nut-block footprint (it sits on top, Z_TOP),
+    # plus a compression wall its +X face bears against (string pull → self-tightening),
+    # and pilot holes for the 2 heat-set inserts the retention bolts thread into.
+    _kx = D.NUT_BLOCK_X - 9.0                               # under the block centre
+    body = body.union(_end_bulkhead(_kx, 30.0))            # self-supporting bulkhead
+    body = body.union(_rib(_kx, w=30.0))                   # bottom tie
+    ky = D.nut_y(D.N_STRINGS - 1) + 6.0
+    body = body.union(box_at(4.0, 2 * ky, 4.0,            # +X compression wall (below the strings)
+                             x=D.NUT_BLOCK_X + 6.0, y=0, z=Z_TOP + 2.0))
+    for sy in (-(ky - 2.0), ky - 2.0):                     # insert pilots for the 2 retention bolts
+        body = body.cut(cyl(5.6, 8.0, z=Z_TOP - 8.0).translate((D.NUT_BLOCK_X - 10.0, sy, 0)))
     body = body.union(MB.motor_bank)                  # fuse in the motor faceplate walls
     # +X end: a sliding-dovetail tongue on each rail end; the bridge endplate caps
     # and sockets them (drops down to engage, glued).

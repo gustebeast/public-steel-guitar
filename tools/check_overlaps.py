@@ -42,6 +42,9 @@ PER_STRING_OK = {
     frozenset({"motor", "motor_pulley"}),
     frozenset({"string", "carriage"}), frozenset({"string", "tuner"}),
     frozenset({"string_nut", "carriage"}), frozenset({"string_nut", "string"}),
+    # nut-block hardware (per string): break pin + clamp anvil + set screw grip the string
+    frozenset({"break_dowel", "string"}), frozenset({"anvil_dowel", "string"}),
+    frozenset({"set_screw", "string"}), frozenset({"set_screw", "anvil_dowel"}),
     frozenset({"nut", "screw_pulley"}), frozenset({"screw_bearing", "screw_pulley"}),
     frozenset({"locknut", "leadscrew"}), frozenset({"locknut", "screw_bearing"}),
     # a belt connects its OWN motor and screw, so it touches both there
@@ -61,6 +64,11 @@ GLOBAL_OK = {
     frozenset({"chassis", "motor"}), frozenset({"chassis", "tuner"}),
     frozenset({"chassis", "string"}),
     frozenset({"bridge_endplate", "bridge_endplate"}), frozenset({"bridge_endplate", "chassis"}),
+    # removable nut block: sits on / bears against / bolts to the chassis; holds the
+    # strings + its gauged dowels + set screws
+    frozenset({"nut_block", "chassis"}), frozenset({"nut_block", "string"}),
+    frozenset({"nut_block", "break_dowel"}), frozenset({"nut_block", "anvil_dowel"}),
+    frozenset({"nut_block", "set_screw"}),
 }
 
 

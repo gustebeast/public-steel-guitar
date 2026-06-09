@@ -31,6 +31,7 @@ from .carriage import carriage, THICK as CARRIAGE_THICK, SEAT_Z as CARRIAGE_SEAT
 from .bridge_endplate import bridge_endplate
 from .belt_clamp import belt_clamp
 from .chassis import segments as chassis_segments
+from . import nut_block as NB
 
 # ── PRINTED parts → each is exported as its own STEP. ────────────────────
 # This is the ONLY set that gets STEP files. DEMONSTRATION parts (purchased /
@@ -40,6 +41,7 @@ from .chassis import segments as chassis_segments
 PARTS = {
     "carriage":        (heal(carriage),      "carriage.step",        "PA6-GF, load-critical — ×10 identical"),
     "bridge_endplate": (heal(bridge_endplate), "bridge_endplate.step", "PA6-GF, load-critical — fused bridge end (screw support + bearing support + box closure)"),
+    "nut_block":       (heal(NB.nut_block),   "nut_block.step",       "PCTG — removable keyhead nut block (gauged break-edge + 2-row clamps; reprint per string set)"),
     "belt_clamp":      (heal(belt_clamp),    "belt_clamp.step",      "PETG — GT2 belt splice clamp (print 2 per splice ×10)"),
     "screw_pulley":    (heal(C.screw_pulley()),  "screw_pulley.step",  "flanged 14T GT2 pulley, 45° top flange — ×10"),
     "motor_pulley":    (heal(C.motor_pulley()),  "motor_pulley.step",  "flanged 14T GT2 pulley, 45° outer flange — ×10"),
@@ -151,7 +153,15 @@ def _string_components(i):
     # string: rises from the anchor tangent to the bearing's +X extent, wraps 90°
     # over the top, then runs the speaking length to the tuner at the nut.
     out.append((f"string_{i}", _string_path(i, sy)))
-    out.append((f"tuner_{i}", C.tuner().translate((-D.MOUNTING_SPAN, D.nut_y(i), D.STRING_Z))))
+    # nut-block hardware (DEMO): gauged break pin, clamp anvil, clamp set screw
+    g = D.STRING_GAUGE[i]
+    row_x = NB.ROW1_X if i % 2 == 0 else NB.ROW2_X
+    out.append((f"break_dowel_{i}", C.dowel().translate(
+        (D.NUT_BLOCK_X, D.nut_y(i), D.STRING_Z - g - 1.05))))
+    out.append((f"anvil_dowel_{i}", C.dowel().translate(
+        (D.NUT_BLOCK_X + row_x, D.nut_y(i), D.STRING_Z + NB.GROOVE_FLOOR))))
+    out.append((f"set_screw_{i}", C.set_screw().translate(
+        (D.NUT_BLOCK_X + row_x, D.nut_y(i), D.STRING_Z + NB.BOSS_TOP))))
     return out
 
 
@@ -172,8 +182,13 @@ def _string_path(i, sy):
         p = cq.Vector(cx + r * math.cos(ang), sy, cz + r * math.sin(ang))
         out = out.union(_rod(prev, p, rad))
         prev = p
-    # speaking length from the top tangent to the tuner (fans in Y to nut pitch)
-    out = out.union(_rod(prev, cq.Vector(-D.MOUNTING_SPAN, D.nut_y(i), D.STRING_Z), rad))
+    # speaking length from the top tangent to the break edge (fans in Y to nut pitch)
+    brk = cq.Vector(D.NUT_BLOCK_X, D.nut_y(i), D.STRING_Z)
+    out = out.union(_rod(prev, brk, rad))
+    # dead end: break edge → clamp row (dips into the groove)
+    row_x = NB.ROW1_X if i % 2 == 0 else NB.ROW2_X
+    out = out.union(_rod(brk, cq.Vector(D.NUT_BLOCK_X + row_x, D.nut_y(i),
+                                        D.STRING_Z + NB.GROOVE_FLOOR), rad))
     return out
 
 
@@ -181,6 +196,7 @@ def collect_components():
     comps = [
         ("bridge_endplate", bridge_endplate),
         ("bridge_bearings", C.bridge_bearings()),
+        ("nut_block", NB.nut_block.translate((D.NUT_BLOCK_X, 0, D.STRING_Z))),
     ]
     comps += [(f"chassis_{i}", seg) for i, seg in enumerate(chassis_segments)]
     for i in range(D.N_STRINGS):
@@ -207,6 +223,10 @@ _COLORS = {
     "belt":            (0.13, 0.13, 0.13),   # GT2 black
     "string":          (0.85, 0.85, 0.85),
     "tuner":           (0.50, 0.50, 0.50),
+    "nut_block":       (0.46, 0.52, 0.55),   # PCTG — removable keyhead nut block
+    "break_dowel":     (0.75, 0.75, 0.78),   # steel dowel (gauged break pin)
+    "anvil_dowel":     (0.75, 0.75, 0.78),   # steel dowel (clamp anvil)
+    "set_screw":       (0.55, 0.55, 0.58),   # alloy set screw
     "chassis":         (0.46, 0.52, 0.55),   # PCTG frame
     "build_counter":   (0.86, 0.08, 0.24),
 }
