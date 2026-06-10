@@ -94,15 +94,15 @@ NUT_BODY_LEN    = 7.0
 # no spanning bar, so the endplate prints with no overhang.
 # ─────────────────────────────────────────────────────────────────────────
 GUIDE_ROD_D     = 2.5
-GUIDE_ROD_DX    = 12.4      # screw→rod offset: rod X = SCREW_X + DX = +4.4, just shy of
-                            # the cap face (+6); its free span shows through the cap's
-                            # guide-view window. INSTALL (top-down): the rod drops in
-                            # through a snug Ø2.55 hole in the endplate's stop bar,
-                            # through the carriage's C-bore, into a blind socket in the
-                            # lower ledge — friction-held top + bottom. The carriage
-                            # foot wraps the rod ~245° (a C-bore with a 1.8 slit at the
-                            # +X face, too narrow for the Ø2.5 rod to escape), so the
-                            # rod alone captures a loose carriage during assembly:
+GUIDE_ROD_DX    = 11.5      # screw→rod offset: rod X = SCREW_X + DX = +3.5 — the most
+                            # +X that still lets EVERY hole around it close into a full
+                            # O: the carriage foot's bore (+X wall 0.9, face 0.25 off
+                            # the cap), the stop bar's snug Ø2.55 drop-in hole, and the
+                            # lower ledge's blind socket (both walls 0.8). INSTALL
+                            # (top-down): the rod drops through the stop bar, through
+                            # the carriage's bore, into the blind socket — friction-
+                            # held top + bottom. The closed bore means the rod alone
+                            # fully captures a loose carriage during assembly:
                             # carriage in place → rod drops in → screw threads in.
 GUIDE_FOOT_DZ   = -14.0     # foot TOP from the carriage centre (plate bottom −6,
                             # then an 8.0 column — clears the upper ledge's Z band,

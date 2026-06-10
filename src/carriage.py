@@ -27,13 +27,14 @@ THICK   = 12.0                              # Z height
 WIDTH   = D.NUT_OD + 2 * 1.0               # across (Y), ≤ string pitch
 NUT_POCKET_D = D.NUT_OD + 0.2
 X_LO    = -(NUT_POCKET_D / 2 + 2.0)        # wall past the nut pocket (−X)
-X_HI    = D.ANCHOR_DX + 1.8                # plate/column +X face: 0.5 clear of the
-                                           # stop bar (X ≥ +2.3, deep enough to wall
+X_HI    = D.ANCHOR_DX + 0.9                # plate/column +X face: 0.5 clear of the
+                                           # stop bar (X ≥ +1.4, deep enough to wall
                                            # its rod holes all round), which they
-                                           # sweep past. The POST face sits 1.1
-                                           # prouder (its sweep stops above the bar).
-POST_X1H = D.ANCHOR_DX + 2.9               # post +X face: 0.225 off the dropping
-                                           # rod's install path (rod −X edge +3.15)
+                                           # sweep past. The POST face sits prouder
+                                           # (its sweep stops above the bar).
+POST_X1H = D.ANCHOR_DX + 2.1               # post +X face: 0.8 roof wall past the
+                                           # string slot, and 0.15 off the dropping
+                                           # rod's install path (rod −X edge +2.25)
 BODY_X  = X_HI - X_LO
 BODY_XC = (X_HI + X_LO) / 2
 
@@ -41,8 +42,9 @@ BODY_XC = (X_HI + X_LO) / 2
 # +X-open yoke slot rides the rod (nested against the cap face). Foot top =
 # D.GUIDE_FOOT_DZ (the top-stop face against the endplate's stop stub).
 COL_X0, COL_X1   = 4.5, X_HI               # column: clear of the screw bore; flush face
-FOOT_X0, FOOT_X1 = 6.5, 13.5               # leg: −X face clears the belt wrap, +X
-                                           # face stops 0.5 shy of the cap face
+FOOT_X0, FOOT_X1 = 6.5, 13.75              # leg: −X face clears the belt wrap, +X
+                                           # face 0.25 shy of the cap face (sliding
+                                           # clearance) to fit the bore's +X wall
 SCREW_CLR_D  = D.SCREW_OD + 1.0
 GUIDE_CLR_D  = D.GUIDE_ROD_D + D.FIT_CLR
 # +Z hole the string exits through — must clear the heaviest string (C6 .070 ≈ 1.8 mm)
@@ -77,16 +79,11 @@ def _build() -> cq.Workplane:
     body = body.union(box_at(FOOT_X1 - FOOT_X0, WIDTH, D.GUIDE_FOOT_H,
                              x=(FOOT_X0 + FOOT_X1) / 2, y=0,
                              z=D.GUIDE_FOOT_DZ - D.GUIDE_FOOT_H / 2))
-    # C-bore riding the rod: a full bore plus a narrow slit out the +X face. It
-    # wraps ~245°, so the Ø2.5 rod cannot pass the 1.8 slit — the rod alone
-    # captures a loose carriage during assembly (carriage → rod → screw) — while
-    # skipping the thick closed-bore +X wall that would force a stepped profile.
+    # Closed guide bore: wraps the rod fully, so the rod alone captures a loose
+    # carriage during assembly (carriage in place → rod drops in → screw last).
     body = body.cut(cyl(GUIDE_CLR_D, D.GUIDE_FOOT_H + 2,
                         z=D.GUIDE_FOOT_DZ - D.GUIDE_FOOT_H - 1)
                     .translate((D.GUIDE_ROD_DX, 0, 0)))
-    body = body.cut(box_at((FOOT_X1 + 1) - D.GUIDE_ROD_DX, 1.8, D.GUIDE_FOOT_H + 2,
-                           x=(D.GUIDE_ROD_DX + FOOT_X1 + 1) / 2, y=0,
-                           z=D.GUIDE_FOOT_DZ - D.GUIDE_FOOT_H / 2))
 
     # Anchor POST: a tall BALL CAGE toward the bridge bearing. Stringing: the
     # plain end enters the +X mouth at an angle, threads up out the roof slot,
@@ -102,8 +99,8 @@ def _build() -> cq.Workplane:
                            x=5.5 + 7.5 / 2, y=0,
                            z=(CAGE_TOP + CAGE_BOT + SILL_H) / 2))
     # floor well behind the sill (the sill ties the Y-wall bottoms together)
-    body = body.cut(box_at(4.1, CAGE_W, SILL_H + 0.1,
-                           x=5.5 + 2.05, y=0, z=CAGE_BOT + (SILL_H + 0.1) / 2))
+    body = body.cut(box_at(3.3, CAGE_W, SILL_H + 0.1,
+                           x=5.5 + 1.65, y=0, z=CAGE_BOT + (SILL_H + 0.1) / 2))
     # +Z string slot through the roof (both spans < the nut → captured)
     body = body.cut(box_at(STRING_SLOT_W, STRING_SLOT_Y, ROOF_T + 1,
                            x=D.ANCHOR_DX, y=0, z=CAGE_TOP + (ROOF_T + 1) / 2))

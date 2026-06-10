@@ -118,11 +118,11 @@ def _build() -> cq.Workplane:
                                  x=(X1 + _SRX) / 2, y=sy, z=(z_lo + sr_bot) / 2))
     # GUIDE-ROD LEDGES (see the GR_* block above): upper = stop bar + drop-in
     # holes; lower = bottom stop + blind landing sockets. Arm to arm. Both bars
-    # reach X ≥ +2.3 so the Ø2.55 rod holes are fully enclosed (−X wall 0.8).
-    body = body.union(box_at(3.7, 2 * D.BRIDGE_AXLE_Y, GR_H,
-                             x=X0 - 1.85, y=0, z=(GR_UBOT + GR_UTOP) / 2))
-    body = body.union(box_at(3.7, 2 * D.BRIDGE_AXLE_Y, GR_H,
-                             x=X0 - 1.85, y=0, z=(GR_LBOT + GR_LTOP) / 2))
+    # reach X ≥ +1.4 so the Ø2.55 rod holes are fully enclosed (−X wall 0.8).
+    body = body.union(box_at(4.6, 2 * D.BRIDGE_AXLE_Y, GR_H,
+                             x=X0 - 2.3, y=0, z=(GR_UBOT + GR_UTOP) / 2))
+    body = body.union(box_at(4.6, 2 * D.BRIDGE_AXLE_Y, GR_H,
+                             x=X0 - 2.3, y=0, z=(GR_LBOT + GR_LTOP) / 2))
     for i in range(D.N_STRINGS):
         sy = D.string_y(i)
         # blind landing socket: the rod drops until it bottoms at GR_LBOT+2
