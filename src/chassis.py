@@ -30,7 +30,9 @@ from . import nut_block as NB
 T        = 8.0                         # rail thickness (solid; slicer infills)
 X_BRIDGE = 6.0                         # +X (bridge) end — the rails end here; the bridge
                                        #   endplate caps them (a separate flat-printed part)
-X_NUT    = -(D.MOUNTING_SPAN + 25.0)   # −X end, extended to carry the nut block
+X_NUT    = -(D.MOUNTING_SPAN + 24.0)   # −X end, extended to carry the nut block;
+                                       # rail ends FLUSH with the end bulkhead's
+                                       # outer face (NUT_BLOCK_X − 9 − 15)
 Z_TOP    = D.STRING_Z - 6.0            # body deck, 6 mm under the strings (normal action)
 Z_BOT    = MB.BED_Z                    # print bed (shared with the motor walls)
 Y_HI     = D.BRIDGE_AXLE_Y + 7.0       # +Y rail, outboard enough to clear the bearing arm

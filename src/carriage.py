@@ -114,11 +114,9 @@ def _build() -> cq.Workplane:
             .workplane(offset=1.2).rect(STRING_SLOT_W, STRING_SLOT_Y)
             .loft(combine=False))
     body = body.cut(lead)
-    # small top-edge relief: under tension the string leans −X toward the bearing,
-    # so it bears on a slope instead of the slot's sharp top edge
-    body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCone(
-        STRING_SLOT_W / 2, 2.25, 1.0,
-        cq.Vector(D.ANCHOR_DX, 0, POST_Z1 - 1.0), cq.Vector(0, 0, 1))))
+    # (no top-edge relief: the bearing's +X tangent sits exactly over the anchor,
+    # so the string rises vertically, centred in the slot — it never bears on the
+    # slot's top edge at any travel position)
     return body
 
 

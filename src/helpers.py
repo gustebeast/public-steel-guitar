@@ -41,9 +41,16 @@ def nema17_face_cutter_y(y_face: float, depth: float, *,
     out = cyl_y(pilot_d, depth + BOOL_OVERSHOOT, y0=y_face - BOOL_OVERSHOOT, x=x, z=z)
     for sx in (-half, half):
         for sz in (-half, half):
+            # stadium slot: a bolt-round hole at each end of the ±slot/2 travel,
+            # bridged by a box. (A single centred box used to SWALLOW the round
+            # hole entirely, leaving bare rectangles in the faceplate.)
             hole = cyl_y(bolt_d, depth + BOOL_OVERSHOOT,
                          y0=y_face - BOOL_OVERSHOOT, x=x + sx, z=z + sz)
             if slot > 0:
+                for ex in (-slot / 2, slot / 2):
+                    hole = hole.union(cyl_y(bolt_d, depth + BOOL_OVERSHOOT,
+                                            y0=y_face - BOOL_OVERSHOOT,
+                                            x=x + sx + ex, z=z + sz))
                 hole = hole.union(box_at(slot, depth + BOOL_OVERSHOOT, bolt_d,
                                          x=x + sx,
                                          y=y_face - BOOL_OVERSHOOT + (depth + BOOL_OVERSHOOT) / 2,
