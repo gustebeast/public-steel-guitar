@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import math
+import os
 import pathlib
 import sys
 
@@ -262,7 +263,11 @@ def _export_assembly():
     counter = _build_counter_model(build_n)
     if counter is not None:
         asm.add(counter, name="build_counter", color=_color_for("build_counter"))
-    asm.save("assembly.step")
+    # ATOMIC write: the 30+ MB STEP takes seconds to save, and the viewer's
+    # file-watcher must never see (and import) a half-written file — save to a
+    # temp name, then rename into place (one mtime event, complete file).
+    asm.save("assembly.step.tmp", exportType="STEP")
+    os.replace("assembly.step.tmp", "assembly.step")
     print(f"Wrote assembly.step  [build #{build_n}]", flush=True)
     print(geometry_report())
     show("assembly.step")   # open/refresh it in the shared FreeCAD hub
