@@ -107,7 +107,9 @@ GUIDE_ROD_DX    = 11.5      # screw→rod offset: rod X = SCREW_X + DX = +3.5 �
 GUIDE_FOOT_DZ   = -14.0     # foot TOP from the carriage centre (plate bottom −6,
                             # then an 8.0 column — clears the upper ledge's Z band,
                             # which sits 0.5 below the anchor cage's sweep bottom)
-GUIDE_FOOT_H    = 6.0       # foot height = guide-bore engagement length
+GUIDE_FOOT_H    = 8.0       # foot height = guide-bore engagement length (the foot is
+                            # the carriage's stiffness-critical small feature — taller
+                            # foot = more rod engagement + a chunkier root)
 
 # The bridge / string anchor sits at X=0; the screw can't occupy that spot, so
 # it is offset −X by ANCHOR_DX and the carriage reaches over to the anchor.

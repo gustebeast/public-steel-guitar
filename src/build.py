@@ -146,10 +146,10 @@ def _string_components(i):
     # guide rod (anti-rotation), +X of the screw below the stringing window:
     # dropped in from the top through the stop bar's snug hole + the carriage's
     # closed bore, landing in the lower ledge's blind socket (bottom = blind
-    # floor, 2 above the ledge bottom). Friction-held both ends. Ø2.5×24 (DIN 6325).
+    # floor, 2 above the ledge bottom). Friction-held both ends. Ø2.5×28 (DIN 6325).
     rod_bot = (D.CARRIAGE_NOM_Z + D.GUIDE_FOOT_DZ
                - D.CARRIAGE_TRAVEL - D.GUIDE_FOOT_H - 4.0)   # GR_LBOT + 2
-    out.append((f"guide_rod_{i}", C.guide_rod(24.0).translate(
+    out.append((f"guide_rod_{i}", C.guide_rod(28.0).translate(
         (D.SCREW_X + D.GUIDE_ROD_DX, sy, rod_bot))))
     # screw drive pulley (odd ones raised one belt-plane), support bearing
     # (in the shared rail), locknut below
