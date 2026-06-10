@@ -55,11 +55,15 @@ ANCHOR_POST_H = 7.0                        # post above the body: top 1 mm under
 POST_Z1  = THICK / 2 + ANCHOR_POST_H       # post top (+13)
 ROOF_T   = 3.2                             # capture roof — its slot edges bear the string pull
 CAGE_TOP = POST_Z1 - ROOF_T                # roof underside: the nut seats up against it
-CAGE_BOT = 2.5                             # cage floor, dropped into the plate: cage ≈ 2× the
-                                           # nut Ø so the string/nut can angle in (sets the
-                                           # post's sweep bottom → the upper ledge's Z)
+CAGE_BOT = 2.5                             # post's bottom face, dropped into the plate
+                                           # (sets the post's sweep bottom → the upper
+                                           # ledge's Z)
 CAGE_W   = D.STRING_NUT_L + 0.6            # cavity width (Y): the nut slides in freely
-SILL_H   = 2.0                             # mouth sill: a slack nut can't roll back out +X
+CAGE_FLOOR = CAGE_BOT + 2.0                # cavity floor, FLUSH with the mouth bottom:
+                                           # solid material below (stronger base for the
+                                           # side walls). String tension — full in play,
+                                           # hand-tight while restringing — holds the nut
+                                           # up in its pocket; no retention lip needed.
 SEAT_Z   = CAGE_TOP - D.STRING_NUT_D / 2   # seated-nut centre (demo placement + string path)
 
 
@@ -89,18 +93,16 @@ def _build() -> cq.Workplane:
     # plain end enters the +X mouth at an angle, threads up out the roof slot,
     # the whole string pulls through, and the ball-end cylinder NUT (axis Y)
     # swings in last, seating UP against the roof — the slot is narrower than
-    # the nut, so the pull captures it (no clamp). The cage is ~2× the nut Ø
-    # (floor dropped into the plate) so there's room for that angled entry; at
-    # exactly nut height the bend would have to happen at zero distance.
+    # the nut, so the pull captures it (no clamp). The cage is ~1.5× the nut Ø
+    # so there's room for that angled entry; at exactly nut height the bend
+    # would have to happen at zero distance.
     body = body.union(box_at(POST_X1H - 4.0, WIDTH, POST_Z1 - CAGE_BOT,
                              x=(4.0 + POST_X1H) / 2, y=0, z=(POST_Z1 + CAGE_BOT) / 2))
-    # cavity, open to the +X face above the sill (solid Y walls — no through-seat)
-    body = body.cut(box_at(7.5, CAGE_W, CAGE_TOP - (CAGE_BOT + SILL_H),
+    # cavity, open to the +X face — its floor is flush with the mouth bottom
+    # (solid Y walls, no through-seat; solid block below the floor)
+    body = body.cut(box_at(7.5, CAGE_W, CAGE_TOP - CAGE_FLOOR,
                            x=5.5 + 7.5 / 2, y=0,
-                           z=(CAGE_TOP + CAGE_BOT + SILL_H) / 2))
-    # floor well behind the sill (the sill ties the Y-wall bottoms together)
-    body = body.cut(box_at(3.3, CAGE_W, SILL_H + 0.1,
-                           x=5.5 + 1.65, y=0, z=CAGE_BOT + (SILL_H + 0.1) / 2))
+                           z=(CAGE_TOP + CAGE_FLOOR) / 2))
     # +Z string slot through the roof (both spans < the nut → captured)
     body = body.cut(box_at(STRING_SLOT_W, STRING_SLOT_Y, ROOF_T + 1,
                            x=D.ANCHOR_DX, y=0, z=CAGE_TOP + (ROOF_T + 1) / 2))
