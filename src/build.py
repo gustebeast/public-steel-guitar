@@ -116,21 +116,30 @@ def _build_counter_model(n: int):
         return None
 
 
+# DEMO POSE: per-string carriage offset from nominal (0 = top of travel, the
+# default). Strings 1 and 2 (indices 9 and 8 — index 0 is string 10) are shown
+# FULLY DOWN on the bottom stop: the maximum stretch/tension the mechanism can
+# pull. Everything riding the carriage (string nut, brass nut, string anchor)
+# follows; the guide rod, screw and stops are fixed.
+DEMO_POSE_DZ = {9: -D.CARRIAGE_TRAVEL, 8: -D.CARRIAGE_TRAVEL}
+
+
 def _string_components(i):
     sy = D.string_y(i)
     mx, my, mz = D.motor_pos(i)
+    cz = D.CARRIAGE_NOM_Z + DEMO_POSE_DZ.get(i, 0.0)
     out = []
     # vertical leadscrew
     out.append((f"leadscrew_{i}", C.screw().translate((D.SCREW_X, sy, D.SCREW_BOT_Z))))
-    # carriage (origin = screw axis) at the nominal travel position
-    out.append((f"carriage_{i}", carriage.translate((D.SCREW_X, sy, D.CARRIAGE_NOM_Z))))
+    # carriage (origin = screw axis) at its demo-pose travel position
+    out.append((f"carriage_{i}", carriage.translate((D.SCREW_X, sy, cz))))
     # string-end cylinder nut, seated in the carriage anchor (DEMO — purchased)
     out.append((f"string_nut_{i}", C.string_nut().translate(
-        (D.BRIDGE_X, sy, D.CARRIAGE_NOM_Z + CARRIAGE_SEAT_Z))))
+        (D.BRIDGE_X, sy, cz + CARRIAGE_SEAT_Z))))
     # round nut pressed up into the carriage from below — flange seats flush
     # against the carriage bottom face, body up into the pocket
     out.append((f"nut_{i}", C.nut().translate(
-        (D.SCREW_X, sy, D.CARRIAGE_NOM_Z - CARRIAGE_THICK / 2 - D.NUT_FLANGE_T))))
+        (D.SCREW_X, sy, cz - CARRIAGE_THICK / 2 - D.NUT_FLANGE_T))))
     # guide rod (anti-rotation), +X of the screw below the stringing window:
     # dropped in from the top through the stop bar's snug hole + the carriage's
     # closed bore, landing in the lower ledge's blind socket (bottom = blind
@@ -171,7 +180,8 @@ def _string_path(i, sy):
     """Vertical rise → 90° wrap around the bridge bearing → speaking length."""
     r = D.BRIDGE_BEARING_OD / 2
     cx, cz = D.BRIDGE_AXLE_X, D.BRIDGE_BEARING_Z      # bearing centre
-    az = D.CARRIAGE_NOM_Z + CARRIAGE_SEAT_Z           # anchor (string-end nut in the carriage)
+    az = (D.CARRIAGE_NOM_Z + DEMO_POSE_DZ.get(i, 0.0)
+          + CARRIAGE_SEAT_Z)                          # anchor (string-end nut in the carriage)
     g = D.STRING_GAUGE[i]
     rad = g / 2.0                                     # actual string gauge
     # vertical rise to the +X tangent point (cx+r, cz)
