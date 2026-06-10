@@ -117,11 +117,13 @@ def _build_counter_model(n: int):
 
 
 # DEMO POSE: per-string carriage offset from nominal (0 = top of travel, the
-# default). Strings 1 and 2 (indices 9 and 8 — index 0 is string 10) are shown
-# FULLY DOWN on the bottom stop: the maximum stretch/tension the mechanism can
-# pull. Everything riding the carriage (string nut, brass nut, string anchor)
-# follows; the guide rod, screw and stops are fixed.
-DEMO_POSE_DZ = {9: -D.CARRIAGE_TRAVEL, 8: -D.CARRIAGE_TRAVEL}
+# default). Strings 9 and 10 (indices 8 and 9 — string N = index N−1, matching
+# the part names in the viewer) are kept PERMANENTLY at full down-travel, feet
+# on the bottom stop: the maximum stretch/tension the mechanism can pull, so the
+# travel extremes are always visible side by side. Everything riding the
+# carriage (string nut, brass nut, string anchor) follows; the guide rod, screw
+# and stops are fixed.
+DEMO_POSE_DZ = {8: -D.CARRIAGE_TRAVEL, 9: -D.CARRIAGE_TRAVEL}
 
 
 def _string_components(i):
