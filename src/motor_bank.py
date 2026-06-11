@@ -28,17 +28,10 @@ WALL_W = D.NEMA17_BOLT_SQ + 2 * _BOLT_EDGE  # just the bolt square + a ~4 mm edg
 def _face_y(i):
     return D.string_y(i) - MOTOR_PULLEY_STANDOFF + PLATE_T / 2
 
-# Envelope (for reports / counter).
-_xs = [D.motor_pos(i)[0] for i in range(D.N_STRINGS)]
 _zc = D.MOTOR_BELT_Z
 FLOOR_TOP = _zc - D.MOTOR_SQ / 2            # motors rest here (= wall bottom / chassis rib top)
 BED_Z = FLOOR_TOP - 11.0                    # print bed = chassis rib/rail bottom
-X_LO, X_HI = min(_xs) - WALL_W / 2, max(_xs) + WALL_W / 2
-Z_LO = BED_Z
-Z_HI = _zc + D.NEMA17_BOLT_SQ / 2 + _BOLT_EDGE     # just above the top bolts
-# Motors' bodies run −Y from the faceplates; floor spans that.
-Y_LO = min(D.string_y(i) - MOTOR_PULLEY_STANDOFF for i in range(D.N_STRINGS)) - D.MOTOR_BODY_LEN - 4.0
-Y_HI = max(_face_y(i) for i in range(D.N_STRINGS)) + PLATE_T / 2
+Z_HI = _zc + D.NEMA17_BOLT_SQ / 2 + _BOLT_EDGE     # wall top, just above the top bolts
 
 
 def _build() -> cq.Workplane:

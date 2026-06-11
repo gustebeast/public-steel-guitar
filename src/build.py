@@ -17,6 +17,7 @@ import math
 import os
 import pathlib
 import sys
+from functools import partial
 
 import cadquery as cq
 
@@ -40,23 +41,26 @@ from . import tension_fork as TF
 # swaged dummies — leadscrew, brass nuts, bearings, motor, belt, string,
 # string-end nut, dowels …) live in components.py and appear ONLY in
 # assembly.step; they are never added here, so they are never exported.
+# Values are (builder, path, note): the builder runs heal() LAZILY at export
+# time, so importing this module (the overlap gate, assembly-only builds)
+# doesn't pay for healing parts it never exports.
 PARTS = {
-    "carriage":        (heal(carriage),      "carriage.step",        "PA6-GF, load-critical — ×10 identical"),
-    "bridge_endplate": (heal(bridge_endplate), "bridge_endplate.step", "PCTG — fused bridge end (screw support + bearing support + axle comb + box closure)"),
-    "nut_block":       (heal(NB.nut_block),   "nut_block.step",       "PA6-GF — removable keyhead nut block (gauged break-edge + 2-row clamps; reprint per string set)"),
-    "belt_clamp":      (heal(belt_clamp),    "belt_clamp.step",      "PETG — GT2 belt splice clamp (print 2 per splice ×10)"),
-    "screw_pulley":    (heal(C.screw_pulley()),  "screw_pulley.step",  "flanged 14T GT2 pulley, 45° top flange — ×10"),
-    "motor_pulley":    (heal(C.motor_pulley()),  "motor_pulley.step",  "flanged 14T GT2 pulley, 45° outer flange — ×10"),
-    "tension_fork":    (TF.tension_forks,    "tension_fork.step",    "PCTG — belt-tension lock forks, graded 2.0–4.0 set (4 of the fitting size per motor; positive stop in the slot, no friction reliance)"),
+    "carriage":        (partial(heal, carriage),      "carriage.step",        "PA6-GF, load-critical — ×10 identical"),
+    "bridge_endplate": (partial(heal, bridge_endplate), "bridge_endplate.step", "PCTG — fused bridge end (screw support + bearing support + axle comb + box closure)"),
+    "nut_block":       (partial(heal, NB.nut_block),   "nut_block.step",       "PA6-GF — removable keyhead nut block (gauged break-edge + 2-row clamps; reprint per string set)"),
+    "belt_clamp":      (partial(heal, belt_clamp),    "belt_clamp.step",      "PETG — GT2 belt splice clamp (print 2 per splice ×10)"),
+    "screw_pulley":    (lambda: heal(C.screw_pulley()),  "screw_pulley.step",  "flanged 14T GT2 pulley, 45° top flange — ×10"),
+    "motor_pulley":    (lambda: heal(C.motor_pulley()),  "motor_pulley.step",  "flanged 14T GT2 pulley, 45° outer flange — ×10"),
+    "tension_fork":    (lambda: TF.tension_forks,    "tension_fork.step",    "PCTG — belt-tension lock forks, graded 2.0–4.0 set (4 of the fitting size per motor; positive stop in the slot, no friction reliance)"),
 }
 for _i, _seg in enumerate(chassis_segments):     # chassis split into dovetailed segments
-    PARTS[f"chassis_{_i}"] = (heal(_seg), f"chassis_{_i}.step",
+    PARTS[f"chassis_{_i}"] = (partial(heal, _seg), f"chassis_{_i}.step",
                               "PCTG — chassis segment (slide-down dovetail, glued)")
 
 
 def _export(name):
-    obj, path, note = PARTS[name]
-    cq.exporters.export(obj, path)
+    builder, path, note = PARTS[name]
+    cq.exporters.export(builder(), path)
     print(f"Wrote {path}" + (f"  ({note})" if note else ""))
 
 
