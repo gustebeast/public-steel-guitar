@@ -9,9 +9,10 @@ e.g. a George L E-66 at 33×99×20.6) under the strings, with three adjustments:
   Z (set once): the bar's end TABS carry vertical slots; two M4 screws per
     side into saddle-face inserts give ±6 mm — sets the string gap AND absorbs
     the pickup-height range (the pickup TOP is what the gap fixes).
-  Size (per pickup): two JAWS ride a T-slot across the bar and pinch the
-    pickup's WIDTH (the dimension that actually varies between models); each
-    locks with a vertical M4 set screw jammed against the bar top. Length
+  Size (set once per pickup — like Z, needs no quick release): two JAWS ride a
+    T-slot across the bar and pinch the pickup's WIDTH (the dimension that
+    actually varies between models); each locks with a vertical M4 set screw
+    jammed against the bar top, hex-key tightened at install time. Length
     variants simply overhang the bar symmetrically — poles stay centred. The
     +Y rail sits only ~12 mm past string 10, so end-clamping the length has no
     jaw-travel room; width-clamping is the geometry that fits.
