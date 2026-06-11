@@ -128,8 +128,9 @@ def _jaw() -> cq.Workplane:
                              z=neck_bot - (UC_H - 0.15) / 2))
     body = body.union(foot)
     # lock: M4 set screw down a deep counterbore, insert low so the tip jams
-    # the bar top
-    cx, cy = JAW_T / 2 + 1.5, 9.0
+    # the bar top. Bore centred in the body: Ø5.6 in the 8 leaves 1.2 walls
+    # both sides (house rule: ≥0.8 of material around every hole).
+    cx, cy = JAW_T / 2, 9.0
     body = body.cut(cyl(INSERT_D, JAW_H - 5.0, z=5.0).translate((cx, cy, 0)))
     body = body.cut(cyl(SCREW_CLR, 7.0, z=-1).translate((cx, cy, 0)))
     return body
