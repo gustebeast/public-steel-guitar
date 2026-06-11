@@ -33,6 +33,7 @@ from .bridge_endplate import bridge_endplate
 from .belt_clamp import belt_clamp
 from .chassis import segments as chassis_segments
 from . import nut_block as NB
+from . import tension_fork as TF
 
 # ── PRINTED parts → each is exported as its own STEP. ────────────────────
 # This is the ONLY set that gets STEP files. DEMONSTRATION parts (purchased /
@@ -46,6 +47,7 @@ PARTS = {
     "belt_clamp":      (heal(belt_clamp),    "belt_clamp.step",      "PETG — GT2 belt splice clamp (print 2 per splice ×10)"),
     "screw_pulley":    (heal(C.screw_pulley()),  "screw_pulley.step",  "flanged 14T GT2 pulley, 45° top flange — ×10"),
     "motor_pulley":    (heal(C.motor_pulley()),  "motor_pulley.step",  "flanged 14T GT2 pulley, 45° outer flange — ×10"),
+    "tension_fork":    (TF.tension_forks,    "tension_fork.step",    "PCTG — belt-tension lock forks, graded 2.0–4.0 set (4 of the fitting size per motor; positive stop in the slot, no friction reliance)"),
 }
 for _i, _seg in enumerate(chassis_segments):     # chassis split into dovetailed segments
     PARTS[f"chassis_{_i}"] = (heal(_seg), f"chassis_{_i}.step",
