@@ -119,7 +119,9 @@ py -3.12 -m tools.check_overlaps   # design gate: any unintended interpenetratio
   nut, bearings, pulleys, belt, strings, dowels) used only in the assembly.
 - Printed parts: `carriage` ×10, `bridge_endplate`, `chassis_0/1/2`,
   `nut_block`, `belt_clamp`, `screw_pulley`, `motor_pulley`, `tension_fork`
-  (graded belt-tension lock set).
+  (graded belt-tension lock set), `pickup_saddle`/`pickup_bar`/`pickup_jaw`
+  (adjustable pickup mount: rail-sliding X position for bridge↔neck tone,
+  slotted ±6 mm height, width-clamping jaws for ~22–40 mm pickups).
 - `tools/check_overlaps.py` exits non-zero on any unintended part
   interpenetration; carriage geometry is additionally swept through both
   travel extremes during design review.

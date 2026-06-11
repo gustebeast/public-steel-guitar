@@ -35,6 +35,7 @@ from .belt_clamp import belt_clamp
 from .chassis import segments as chassis_segments
 from . import nut_block as NB
 from . import tension_fork as TF
+from . import pickup_mount as PM
 
 # ── PRINTED parts → each is exported as its own STEP. ────────────────────
 # This is the ONLY set that gets STEP files. DEMONSTRATION parts (purchased /
@@ -52,6 +53,9 @@ PARTS = {
     "screw_pulley":    (lambda: heal(C.screw_pulley()),  "screw_pulley.step",  "flanged 14T GT2 pulley, 45° top flange — ×10"),
     "motor_pulley":    (lambda: heal(C.motor_pulley()),  "motor_pulley.step",  "flanged 14T GT2 pulley, 45° outer flange — ×10"),
     "tension_fork":    (lambda: TF.tension_forks,    "tension_fork.step",    "PCTG — belt-tension lock forks, graded 2.0–4.0 set (4 of the fitting size per motor; positive stop in the slot, no friction reliance)"),
+    "pickup_saddle":   (partial(heal, PM.pickup_saddle), "pickup_saddle.step", "PCTG — pickup-mount rail clamp ×2 (rotate 180° for the other rail); M4 set-screw pinch = quick X slide"),
+    "pickup_bar":      (partial(heal, PM.pickup_bar),  "pickup_bar.step",    "PCTG — pickup bridge bar; slotted end tabs = ±Z string-gap adjust; T-slot carries the jaws"),
+    "pickup_jaw":      (partial(heal, PM.pickup_jaw),  "pickup_jaw.step",    "PCTG — pickup width jaw ×2 (rotate 180° for the opposing side); M4 set-screw lock"),
 }
 for _i, _seg in enumerate(chassis_segments):     # chassis split into dovetailed segments
     PARTS[f"chassis_{_i}"] = (partial(heal, _seg), f"chassis_{_i}.step",
@@ -216,6 +220,26 @@ def _string_path(i, sy):
     return out
 
 
+PICKUP_X = -58.0     # pickup-mount centre (default: near-bridge tone position;
+                     # the saddles slide the whole speaking length for neck tone.
+                     # Min ≈ −58: the bar's tabs stop 1 mm shy of the carriages)
+
+
+def _pickup_mount_components():
+    from . import chassis as CH
+    out = [("pickup", PM.pickup_demo().translate((PICKUP_X, 0, PM.PK_TOP))),
+           ("pickup_bar", PM.pickup_bar.translate((PICKUP_X, 0, 0)))]
+    for k, (yr, rot) in enumerate(((CH.Y_HI, 0), (CH.Y_LO, 180))):
+        out.append((f"pickup_saddle_{k}",
+                    PM.pickup_saddle.rotate((0, 0, 0), (0, 0, 1), rot)
+                    .translate((PICKUP_X + PM.TAB_XC, yr, CH.Z_TOP))))
+    for k, s in enumerate((1, -1)):           # jaws pinching the pickup width
+        out.append((f"pickup_jaw_{k}",
+                    PM.pickup_jaw.rotate((0, 0, 0), (0, 0, 1), 0 if s > 0 else 180)
+                    .translate((PICKUP_X + s * PM.PK_W / 2, 0, PM.PK_BOT))))
+    return out
+
+
 def collect_components():
     comps = [
         ("bridge_endplate", bridge_endplate),
@@ -223,6 +247,7 @@ def collect_components():
         ("nut_block", NB.nut_block.translate((D.NUT_BLOCK_X, 0, D.STRING_Z))),
     ]
     comps += [(f"chassis_{i}", seg) for i, seg in enumerate(chassis_segments)]
+    comps += _pickup_mount_components()
     for i in range(D.N_STRINGS):
         comps.extend(_string_components(i))
     return comps
@@ -250,6 +275,10 @@ _COLORS = {
     "break_dowel":     (0.75, 0.75, 0.78),   # steel dowel (gauged break pin)
     "set_screw":       (0.55, 0.55, 0.58),   # alloy set screw
     "chassis":         (0.46, 0.52, 0.55),   # PCTG frame
+    "pickup":          (0.10, 0.10, 0.12),   # DEMO pickup body
+    "pickup_bar":      (0.80, 0.45, 0.10),   # pickup mount (printed)
+    "pickup_saddle":   (0.80, 0.45, 0.10),
+    "pickup_jaw":      (0.90, 0.60, 0.20),
     "build_counter":   (0.86, 0.08, 0.24),
 }
 _DEFAULT_COLOR = (0.80, 0.80, 0.80)
