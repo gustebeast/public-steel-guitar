@@ -77,10 +77,11 @@ PU_TNG_Z0, PU_TNG_Z1 = -25.5, -20.5    # tongue nominal Z band (groove adds 0.15
 # X-lock stations: a hand-knob M4 button screw threads an insert in the −Y
 # boss's ceiling and presses DOWN on the tongue inside the groove — friction
 # pins the mount; knobs turn from above, over the open motor bay. TWO stations
-# (both permanently fitted): their ±40 tongue-reach zones (−100..−20 and
-# −179..−99) overlap to cover the whole 50..128 range — a single mid station
-# would land inside the motor-0 service notch (below).
-PU_LOCK_XS     = (-60.0, -139.0)
+# (both permanently fitted): their ±34 tongue-reach zones (−114..−46 and
+# −173..−105) overlap to cover the whole 50..128 range — a single mid station
+# would land inside the motor-0 service notch (below), and ±34 reach keeps the
+# bar's sides STRAIGHT (tongue = bar width, no corner extensions).
+PU_LOCK_XS     = (-80.0, -139.0)
 # Motor-0 service notch: motor 0's PCB tail lives under the −Y boss, so its
 # lift-out column needs the boss cut away over x −134..−91 (full boss height).
 # The groove is interrupted there; the 80 mm tongue always bridges it with

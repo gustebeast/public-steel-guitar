@@ -66,9 +66,10 @@ FOOT_L  = 20.0
 INSERT_D, INSERT_L = 5.6, 4.7
 SCREW_CLR = 4.3
 
-TNG_HALF = 40.0                                 # tongue half-length (> BAR_W/2: the
-                                                # tongues outrun the bar so the fixed
-                                                # lock station always reaches them)
+TNG_HALF = BAR_W / 2                            # tongue half-length = bar width: the
+                                                # two lock stations are placed so ±34
+                                                # reach covers the whole range — the
+                                                # bar's sides stay straight
 
 
 def _bar() -> cq.Workplane:
