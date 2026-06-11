@@ -112,12 +112,16 @@ def _pickup_boss(yr, s):
                     x=(PU_X0 + PU_X1 + 1) / 2,
                     y=face + s * ((PU_GROOVE_D + 0.5) / 2 - 0.5),
                     z=(PU_TNG_Z0 + PU_TNG_Z1) / 2)
-    # 45° chevron roof over the groove — its flat ceiling would otherwise be a
-    # ~170 mm continuous overhang in the standing print. The roof stays FLAT
-    # (solid) for ±10 around each lock station so the insert keeps full grip;
-    # those are 4.3 mm bridges over 20 mm — trivially printable.
+    # Groove roof: a SINGLE 45° plane, high at the open face and descending to
+    # the web — the only printable direction: roof material can only accrete
+    # from the web wall (the face side of the opening has nothing under or
+    # beside it, so any face-side flank floats; a chevron peak fails the same
+    # way). The cut runs out through the boss's top-outer corner (a harmless
+    # chamfer along the run). The roof stays FLAT (solid) for ±10 around each
+    # lock station so the insert keeps full grip; those are 6 mm bridges over
+    # 20 mm — printable.
     zt = PU_TNG_Z1 + 0.15
-    tri = [(face, zt), (face + s * PU_GROOVE_D / 2, zt + PU_GROOVE_D / 2),
+    tri = [(face, zt), (face, zt + PU_GROOVE_D),
            (face + s * PU_GROOVE_D, zt)]
     edges = [PU_X0]
     for lx in sorted(PU_LOCK_XS):
