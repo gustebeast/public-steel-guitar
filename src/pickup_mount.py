@@ -89,8 +89,8 @@ def _bar() -> cq.Workplane:
                                    y=yf - s * 3.0,
                                    z=(BAR_TOP + blk_bot) / 2))
         # tongue: launches from the end-block face, crosses the 0.3 body-to-boss
-        # gap, rides the rail groove; tip stops 0.45 off the groove floor
-        tng = 0.3 + 4.0 - 0.45
+        # gap, rides the full-depth groove; tip stops 0.45 off the rail web
+        tng = 0.3 + CH.PU_GROOVE_D - 0.45
         spine = spine.union(box_at(
             2 * half, tng, (CH.PU_TNG_Z1 - CH.PU_TNG_Z0) - 2 * TNG_CLR,
             y=yf + s * tng / 2,

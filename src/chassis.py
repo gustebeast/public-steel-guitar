@@ -87,7 +87,9 @@ PU_LOCK_XS     = (-60.0, -139.0)
 # ≥40 mm engaged elsewhere.
 PU_NOTCH_X0, PU_NOTCH_X1 = -134.0, -91.0
 PU_BOSS_T      = 6.0                   # boss protrusion off the rail face
-PU_GROOVE_D    = 4.3                   # groove depth into the boss (tongue 4.0 + tip clr)
+PU_GROOVE_D    = PU_BOSS_T             # groove runs the FULL boss depth — its inner
+                                       # wall IS the rail web face, so the tongue
+                                       # seats (0.45 shy of) flush with the side wall
 PU_FACE_HI     = Y_HI - T / 2 - PU_BOSS_T    # +Y boss field face (+48.75)
 PU_FACE_LO     = Y_LO + T / 2 + PU_BOSS_T    # −Y boss field face (−122.75)
 
@@ -110,6 +112,23 @@ def _pickup_boss(yr, s):
                     x=(PU_X0 + PU_X1 + 1) / 2,
                     y=face + s * ((PU_GROOVE_D + 0.5) / 2 - 0.5),
                     z=(PU_TNG_Z0 + PU_TNG_Z1) / 2)
+    # 45° chevron roof over the groove — its flat ceiling would otherwise be a
+    # ~170 mm continuous overhang in the standing print. The roof stays FLAT
+    # (solid) for ±10 around each lock station so the insert keeps full grip;
+    # those are 4.3 mm bridges over 20 mm — trivially printable.
+    zt = PU_TNG_Z1 + 0.15
+    tri = [(face, zt), (face + s * PU_GROOVE_D / 2, zt + PU_GROOVE_D / 2),
+           (face + s * PU_GROOVE_D, zt)]
+    edges = [PU_X0]
+    for lx in sorted(PU_LOCK_XS):
+        edges += [lx - 10.0, lx + 10.0]
+    edges += [PU_X1 + 1]
+    for k in range(0, len(edges), 2):
+        x0, x1 = edges[k], edges[k + 1]
+        pts = [cq.Vector(x0, py, pz) for py, pz in tri]
+        f2 = cq.Face.makeFromWires(cq.Wire.makePolygon([*pts, pts[0]]))
+        groove = groove.union(cq.Workplane("XY").add(
+            cq.Solid.extrudeLinear(f2, cq.Vector(x1 - x0, 0, 0))))
     return boss, groove
 
 
