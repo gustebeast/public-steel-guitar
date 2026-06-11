@@ -28,4 +28,5 @@ block is **reprintable per string set** — `STRING_GAUGE` in `dimensions.py` sw
 between E9 and C6; the break pins re-gauge so string tops stay coplanar.
 
 Printed parts (no purchase): carriage, bridge_endplate, chassis (×3 segments),
-nut_block, belt_clamp, screw_pulley, motor_pulley — see `py -3.12 -m src.build --list`.
+nut_block, belt_clamp, screw_pulley, motor_pulley, tension_fork (graded
+belt-tension lock set) — see `py -3.12 -m src.build --list`.
