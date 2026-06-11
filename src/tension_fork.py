@@ -22,10 +22,11 @@ from __future__ import annotations
 import cadquery as cq
 
 from . import dimensions as D
+from . import motor_bank as MB
 from .helpers import box_at
 
-BODY_H   = 3.4 - 0.15            # slips the slot height
-BODY_D   = 6.0 - 0.3             # PLATE_T minus motor-face clearance
+BODY_H   = D.M3_CLR_D - 0.15     # slips the slot height
+BODY_D   = MB.PLATE_T - 0.3      # wall thickness minus motor-face clearance
 HEAD_T   = 1.2                   # flange proud of the wall's +Y face
 HEAD_H   = 5.0
 SIZES    = [round(2.0 + 0.2 * i, 1) for i in range(11)]   # 2.0 .. 4.0
