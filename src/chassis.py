@@ -98,7 +98,10 @@ def _pickup_boss(yr, s):
     face = yr - s * (T / 2 + PU_BOSS_T)            # field face of the boss
     rail_face = yr - s * T / 2
     x0, x1 = PU_X0 - 3.0, PU_X1                    # boss runs past the groove stop
-    prof = [(rail_face, -37.0), (face, -31.0),     # 45° self-supporting underside
+    # bottom lip: groove floor (−25.65) + 3.65 of material = −29.3 (it only
+    # carries the bar's weight and the lock screw's clamp), then the 45°
+    # self-supporting chamfer down to the rail face
+    prof = [(rail_face, -35.3), (face, -29.3),
             (face, -15.0), (rail_face, -15.0)]
     pts = [cq.Vector(x0, py, pz) for py, pz in prof]
     f = cq.Face.makeFromWires(cq.Wire.makePolygon([*pts, pts[0]]))
