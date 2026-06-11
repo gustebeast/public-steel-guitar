@@ -138,6 +138,37 @@ def _build() -> cq.Workplane:
     body = body.cut(box_at((X1 - X0) + 2.0, 2 * WIN_HW, GR_UBOT - GR_LTOP,
                            x=(X0 + X1) / 2, y=0, z=(GR_UBOT + GR_LTOP) / 2))
 
+    # AXLE-SUPPORT COMB: nine fingers from the cap band above the stringing
+    # window, one in each gap between bridge bearings. Without them the Ø3 axle
+    # spans 103.5 mm carrying ~1.5 kN of string wrap load (≈28 mm computed
+    # deflection — it would simply bend); the fingers cut the free span to one
+    # string pitch (δ ≈ 0.004 mm, ~140 MPa in the shaft). Each finger: a ROOT on
+    # the cap band (Z 6..10), an ARCH whose underside clears the anchor post's
+    # sweep by 0.8, and a HEAD with a Ø3.3 bore on the axle line. REST TABS
+    # protrude 0.8 into each gap, topped by a shallow V dipping to Z 8.0
+    # (= axle Z − bearing radius): a bearing dropped between two heads lands on
+    # the tabs with its bore exactly on the axle line — the comb is the assembly
+    # jig: set all 10 bearings in their slots, then slide the axle through
+    # arms + finger bores + bearing bores in one pass (axle must be a g6/h6
+    # precision shaft, NOT an m6 dowel — see BOM). 45° ramps keep every surface
+    # self-supporting printing along X from the cap.
+    CB_W = 5.2                                # finger width → 0.15 to each bearing face
+    _fpro = (cq.Workplane("XZ")
+             .polyline([(6.0, 6.0), (2.6, 6.0), (2.6, 7.8), (-4.2, 7.8),
+                        (-5.5, 6.5), (-6.5, 6.5), (-6.5, 14.5), (-1.5, 14.5),
+                        (3.0, 10.0), (6.0, 10.0)])
+             .close().extrude(CB_W / 2, both=True))
+    _tpro = (cq.Workplane("XZ")
+             .polyline([(-2.0, 7.5), (-2.0, 8.25), (-4.0, 7.9),
+                        (-6.0, 8.25), (-6.0, 7.5)])
+             .close().extrude((CB_W + 1.6) / 2, both=True))
+    for k in range(D.N_STRINGS - 1):
+        yc = (D.string_y(k) + D.string_y(k + 1)) / 2
+        body = body.union(_fpro.translate((0, yc, 0)))
+        body = body.union(_tpro.translate((0, yc, 0)))
+        body = body.cut(cyl_y(D.BRIDGE_AXLE_D + 0.3, CB_W + 2, y0=yc - CB_W / 2 - 1,
+                              x=D.BRIDGE_AXLE_X, z=D.BRIDGE_BEARING_Z))
+
     # STRINGING-ACCESS window: open the cap over the field (top-centre, between the
     # bearing arms) so each string threads over its bridge bearing and its end-nut
     # slots into the carriage from +X. Inboard of the arms (±BRIDGE_AXLE_Y) and below
