@@ -38,9 +38,9 @@ POST_X1H = D.ANCHOR_DX + 2.1               # post +X face: 0.8 roof wall past th
 BODY_X  = X_HI - X_LO
 BODY_XC = (X_HI + X_LO) / 2
 
-# Guide foot: a thick column straight down the flush +X face, then a leg whose
-# +X-open yoke slot rides the rod (nested against the cap face). Foot top =
-# D.GUIDE_FOOT_DZ (the top-stop face against the endplate's stop stub).
+# Guide foot: a thick column down the plate's +X face, then a leg whose closed
+# bore rides the rod. Foot top = D.GUIDE_FOOT_DZ (the top-stop face against the
+# endplate's stop bar); foot bottom lands on the lower ledge at full travel.
 COL_X0, COL_X1   = 4.5, X_HI               # column: clear of the screw bore; flush face
 FOOT_X0, FOOT_X1 = 6.5, 13.75              # leg: −X face clears the belt wrap, +X
                                            # face 0.25 shy of the cap face (sliding

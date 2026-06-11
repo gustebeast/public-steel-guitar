@@ -1,15 +1,17 @@
-"""Bridge endplate (§8) — PCTG, printed FLAT, joined to the body by mortise/tenon.
+"""Bridge endplate (§8) — PCTG, printed FLAT, dovetailed onto the rail ends.
 
 ONE solid piece that closes the box at the +X end AND carries the bridge-bearing
 axle (the 90° string turn — the highest-load point in the instrument). Because it
 prints flat (on its face) it needs no supports, so it can be fully solid and
-featured; glued tenons into the rail ends drive the bearing load straight into the
-bow rails — far stronger than the old bolted bridge support. Replaces both the
-bridge support and the +X bulkhead. Built in global position.
+featured; the rails' dovetail tongues glue into blind sockets in the cap, driving
+the bearing load straight into the rails — far stronger than the old bolted
+bridge support. Replaces both the bridge support and the +X bulkhead. Built in
+global position.
 
 Layout: a solid CAP (+X of all the mechanism) closes the box rail-to-rail; two
 ARMS reach −X at the field edges (clear of the carriages) to hold the axle above
-the strings, linked by a TIE BAR; TENONS protrude −X into mortises in the rails.
+the strings, linked by a TIE BAR; the cap SOCKETS the rails' dovetail tongues
+and drops straight down onto them.
 """
 
 from __future__ import annotations
@@ -30,19 +32,18 @@ AXLE_BORE = D.BRIDGE_AXLE_D + 0.4
 
 # Guide-rod LEDGES: two shallow bars protruding −X from the cap face below the
 # stringing window, spanning arm to arm — straight X-extensions of solid cap, so
-# (printing along X) every layer is backed: no overhang. The rod line is TANGENT
-# to the cap face, so the sockets sit in the ledge/cap corner, fully walled by
-# cap interior (the cap between the ledges is opened — see the guide-view window).
+# (printing along X) every layer is backed: no overhang. (The cap band between
+# the ledges is opened — see the guide-view window.)
 # UPPER bar: the TOP hard stop — flush with the carriage foot at default (the
 # anchor post can never reach the bridge bearings) — and it carries a snug
 # Ø2.55 drop-in hole per rod: the rod installs top-down through it (through the
-# carriage's C-bore) and its top stays friction-held in this hole. LOWER bar:
-# BLIND snug sockets the rods land in; its top face is the BOTTOM hard stop.
-GRX     = D.SCREW_X + D.GUIDE_ROD_DX                      # rod line (+4.4)
+# carriage's closed bore) and its top stays friction-held in this hole. LOWER
+# bar: BLIND snug sockets the rods land in; its top face is the BOTTOM hard stop.
+GRX     = D.SCREW_X + D.GUIDE_ROD_DX                      # rod line (+3.5)
 GR_H    = 6.0                                             # ledge heights
-GR_UBOT = D.CARRIAGE_NOM_Z + D.GUIDE_FOOT_DZ              # upper bottom = top stop (−16.5)
-GR_UTOP = GR_UBOT + GR_H                                  # = the window sill (−10.5)
-GR_LTOP = GR_UBOT - D.CARRIAGE_TRAVEL - D.GUIDE_FOOT_H    # lower top = bottom stop (−32.5)
+GR_UBOT = D.CARRIAGE_NOM_Z + D.GUIDE_FOOT_DZ              # upper bottom = top stop (−20)
+GR_UTOP = GR_UBOT + GR_H                                  # = the window sill (−14)
+GR_LTOP = GR_UBOT - D.CARRIAGE_TRAVEL - D.GUIDE_FOOT_H    # lower top = bottom stop (−38)
 GR_LBOT = GR_LTOP - GR_H
 
 # Stringing-access cutout (over the field): a clean rectangle with a UNIFORM cap
@@ -57,7 +58,8 @@ WIN_Z0     = GR_UTOP                                      # bottom = the upper g
 
 def _cap() -> cq.Workplane:
     """Solid box-closure plate at the +X end, lightened with diamonds (flat-printed,
-    so the holes cost nothing); a frame is kept around the edges and the tenons."""
+    so the holes cost nothing); a frame is kept around the edges and the dovetail
+    sockets."""
     xc, thk = (X0 + X1) / 2, X1 - X0
     # span out to the rail OUTER faces so the cap fully caps the rail ends + covers
     # the dovetail sockets (no clipping into the rail sides)
