@@ -229,8 +229,9 @@ def _build_full() -> cq.Workplane:
     _ly = Y_LO + T / 2 + 2.5                       # screw line, web side of the boss
     _bmid = (Y_LO + T / 2 + PU_FACE_LO) / 2        # boss centre
     for _lx in PU_LOCK_XS:
-        body = body.union(box_at(10.0, PU_BOSS_T, 4.0, x=_lx, y=_bmid, z=-13.0))
-        body = body.cut(cyl(5.6, 4.8, z=-15.8).translate((_lx, _ly, 0)))
+        # bump bottom −14.35: 0.3 above the bar's clean-45° wedge sweep (−14.65)
+        body = body.union(box_at(10.0, PU_BOSS_T, 4.0, x=_lx, y=_bmid, z=-12.35))
+        body = body.cut(cyl(5.6, 4.8, z=-15.15).translate((_lx, _ly, 0)))
         body = body.cut(cyl(4.3, 6.5, z=-21.5).translate((_lx, _ly, 0)))
         body = body.cut(box_at(20.0, 3.6, 21.0,
                                x=_lx, y=Y_LO + T / 2 - 1.8, z=-5.5))

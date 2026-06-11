@@ -89,14 +89,13 @@ def _bar() -> cq.Workplane:
         # travel space at near positions).
         half = TNG_HALF if s < 0 else BAR_W / 2
         d_tip = 0.3 + CH.PU_GROOVE_D - 0.45     # tongue reach from the body face
-        cap = -15.3                             # wedge cap: 0.3 below the lock-station
-                                                # insert bumps that sit on the boss top
-        prof = [(-6.0, cap), (-6.0, CH.PU_TNG_Z0 + 0.3),
-                (0.0, CH.PU_TNG_Z0 + 0.3), (0.0, CH.PU_TNG_Z0 + TNG_CLR),
+        # one flat bottom (block + tongue level, 0.5 above motor 0's PCB top)
+        # and ONE clean 45° from the tongue tip all the way to the bar top —
+        # the lock-station bumps sit high enough (−14.35) to clear its sweep
+        prof = [(-6.0, BAR_TOP), (-6.0, CH.PU_TNG_Z0 + TNG_CLR),
                 (d_tip, CH.PU_TNG_Z0 + TNG_CLR),
                 (d_tip, wedge0 - d_tip),        # wedge top at the tip (−20.2)
-                (wedge0 - cap, cap)]            # 45° up to the cap (the spine box
-                                                # supplies the material above, inboard)
+                (wedge0 - BAR_TOP, BAR_TOP)]    # 45° runs out at the bar top
         pts = [cq.Vector(-half, yf + s * dd, zz) for dd, zz in prof]
         f2 = cq.Face.makeFromWires(cq.Wire.makePolygon([*pts, pts[0]]))
         spine = spine.union(cq.Workplane("XY").add(
