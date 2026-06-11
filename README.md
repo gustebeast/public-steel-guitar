@@ -5,7 +5,7 @@ one closed-loop electric actuator per string, so the copedent — the mapping
 from pedals and knee levers to pitch changes — becomes **software
 configuration** instead of a hand-built maze of rods and bellcranks.
 
-**Status:** CAD in progressw (build-verified geometry, no
+**Status:** CAD in progress (build-verified geometry, no
 physical prototype yet). See
 [`electromechanical-pedal-steel-spec.md`](electromechanical-pedal-steel-spec.md)
 for the full design rationale and history, and [`BOM.md`](BOM.md) for sourced
@@ -118,7 +118,8 @@ py -3.12 -m tools.check_overlaps   # design gate: any unintended interpenetratio
 - `src/components.py` — schematic dummies of purchased parts (motor, screw,
   nut, bearings, pulleys, belt, strings, dowels) used only in the assembly.
 - Printed parts: `carriage` ×10, `bridge_endplate`, `chassis_0/1/2`,
-  `nut_block`, `belt_clamp`, `screw_pulley`, `motor_pulley`.
+  `nut_block`, `belt_clamp`, `screw_pulley`, `motor_pulley`, `tension_fork`
+  (graded belt-tension lock set).
 - `tools/check_overlaps.py` exits non-zero on any unintended part
   interpenetration; carriage geometry is additionally swept through both
   travel extremes during design review.
