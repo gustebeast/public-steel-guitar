@@ -54,8 +54,14 @@ BAR_H   = 8.0
 BAR_TOP = PK_TOP - PK_H_MAX                     # supports the tallest pickup bare
 BAR_BOT = BAR_TOP - BAR_H                       # −21.8: clears motor tops (−22.85)
 NECK_W, NECK_D = 6.0, 3.0                       # T-slot opening
-UC_W, UC_H     = 12.0, 3.2                      # T-slot undercut
-SLOT_X  = 62.0                                  # T-slot length (jaw travel)
+UC_W, UC_H     = 12.0, 3.0                      # T-slot undercut; its flanks rise 45°
+                                                # to the neck (no flat ceiling), and it
+                                                # runs THROUGH the bar's ends — jaws
+                                                # slide in from an end (a closed slot
+                                                # would make T-feet uninstallable), and
+                                                # the bar prints overhang-free either
+                                                # standing on an X end (pure extrusion,
+                                                # glassy 45s) or flat Z-up (most stable)
 TNG_CLR = 0.15                                  # tongue fit in the groove, per side
 
 # ── jaws ────────────────────────────────────────────────────────────────────
@@ -109,24 +115,35 @@ def _bar() -> cq.Workplane:
         f3 = cq.Face.makeFromWires(cq.Wire.makePolygon([*tpts, tpts[0]]))
         spine = spine.cut(cq.Workplane("XY").add(
             cq.Solid.extrudeLinear(f3, cq.Vector(BAR_W + 2, 0, 0))))
-    # T-slot along X at Y0 (jaw feet)
-    spine = spine.cut(box_at(SLOT_X, NECK_W, NECK_D + 0.1,
+    # T-slot along X at Y0, THROUGH both ends; undercut flanks rise 45° to the
+    # neck so the slot has no flat ceiling (Z-up printable without bridges)
+    spine = spine.cut(box_at(BAR_W + 2, NECK_W, NECK_D + 0.1,
                              z=BAR_TOP - (NECK_D + 0.1) / 2))
-    spine = spine.cut(box_at(SLOT_X, UC_W, UC_H,
-                             z=BAR_TOP - NECK_D - UC_H / 2))
+    uc = [(-UC_W / 2, BAR_TOP - NECK_D - UC_H), (UC_W / 2, BAR_TOP - NECK_D - UC_H),
+          (NECK_W / 2, BAR_TOP - NECK_D), (-NECK_W / 2, BAR_TOP - NECK_D)]
+    upts = [cq.Vector(-(BAR_W / 2 + 1), yy, zz) for yy, zz in uc]
+    fu = cq.Face.makeFromWires(cq.Wire.makePolygon([*upts, upts[0]]))
+    spine = spine.cut(cq.Workplane("XY").add(
+        cq.Solid.extrudeLinear(fu, cq.Vector(BAR_W + 2, 0, 0))))
     return spine
 
 
 def _jaw() -> cq.Workplane:
     """Width jaw. Local: bar top Z0, clamp face at X0 facing −X."""
     body = box_at(JAW_T, JAW_Y, JAW_H, x=JAW_T / 2, z=JAW_H / 2)
-    # T-foot riding the slot (0.3/0.15 clearances), wing straight off the neck
+    # T-foot riding the slot (0.3/0.15 clearances): neck stem + a winged base
+    # whose tops slope 45° to match the undercut's flanks (the jaw slides in
+    # from a bar end — the slot is open-ended)
     neck_bot = -(NECK_D - 0.15)
     foot = box_at(FOOT_L, NECK_W - 0.3, NECK_D - 0.15,
                   x=JAW_T - FOOT_L / 2, z=neck_bot / 2)
-    foot = foot.union(box_at(FOOT_L, UC_W - 0.3, UC_H - 0.15,
-                             x=JAW_T - FOOT_L / 2,
-                             z=neck_bot - (UC_H - 0.15) / 2))
+    wb = neck_bot - (UC_H - 0.15)               # wing base
+    wing = [(-(UC_W - 0.3) / 2, wb), ((UC_W - 0.3) / 2, wb),
+            ((NECK_W - 0.3) / 2, neck_bot + 0.01), (-(NECK_W - 0.3) / 2, neck_bot + 0.01)]
+    wpts = [cq.Vector(JAW_T - FOOT_L, yy, zz) for yy, zz in wing]
+    fw = cq.Face.makeFromWires(cq.Wire.makePolygon([*wpts, wpts[0]]))
+    foot = foot.union(cq.Workplane("XY").add(
+        cq.Solid.extrudeLinear(fw, cq.Vector(FOOT_L, 0, 0))))
     body = body.union(foot)
     # lock: M4 set screw down a deep counterbore, insert low so the tip jams
     # the bar top. Bore centred in the body: Ø5.6 in the 8 leaves 1.2 walls
