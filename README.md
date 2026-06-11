@@ -5,15 +5,13 @@ one closed-loop electric actuator per string, so the copedent — the mapping
 from pedals and knee levers to pitch changes — becomes **software
 configuration** instead of a hand-built maze of rods and bellcranks.
 
-**Status:** complete mechanical design in CAD (build-verified geometry, no
+**Status:** CAD in progressw (build-verified geometry, no
 physical prototype yet). See
 [`electromechanical-pedal-steel-spec.md`](electromechanical-pedal-steel-spec.md)
 for the full design rationale and history, and [`BOM.md`](BOM.md) for sourced
 purchased parts (~$370, dominated by the ten servos).
 
 **License:** [CERN-OHL-S 2.0](LICENSE) (strongly reciprocal open hardware).
-This repository is also an intentional **defensive publication**: the concepts
-below are publicly disclosed prior art as of this repository's git history.
 
 ## The concept, in one paragraph
 
