@@ -137,9 +137,14 @@ def _jaw() -> cq.Workplane:
     neck_bot = -(NECK_D - 0.15)
     foot = box_at(FOOT_L, NECK_W - 0.3, NECK_D - 0.15,
                   x=JAW_T - FOOT_L / 2, z=neck_bot / 2)
-    wb = neck_bot - (UC_H - 0.15)               # wing base
-    wing = [(-(UC_W - 0.3) / 2, wb), ((UC_W - 0.3) / 2, wb),
-            ((NECK_W - 0.3) / 2, neck_bot + 0.01), (-(NECK_W - 0.3) / 2, neck_bot + 0.01)]
+    # wing tops are TRUE 45° planes parallel to the undercut flanks, inset 0.25
+    # horizontally (≈0.18 normal clearance); the slope-on-slope pair is also
+    # the anti-lift retention
+    wb = neck_bot - (UC_H - 0.15)               # wing base (−5.7)
+    half_b = (-wb - 0.1) - 0.25                 # flank half-width at wb, inset 0.25 (5.35)
+    half_t = half_b - (neck_bot + 0.01 - wb)    # 45°: shrink 1:1 up to the top (2.49)
+    wing = [(-half_b, wb), (half_b, wb),
+            (half_t, neck_bot + 0.01), (-half_t, neck_bot + 0.01)]
     wpts = [cq.Vector(JAW_T - FOOT_L, yy, zz) for yy, zz in wing]
     fw = cq.Face.makeFromWires(cq.Wire.makePolygon([*wpts, wpts[0]]))
     foot = foot.union(cq.Workplane("XY").add(
