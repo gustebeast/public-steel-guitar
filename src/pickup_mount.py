@@ -100,6 +100,14 @@ def _bar() -> cq.Workplane:
         f2 = cq.Face.makeFromWires(cq.Wire.makePolygon([*pts, pts[0]]))
         spine = spine.union(cq.Workplane("XY").add(
             cq.Solid.extrudeLinear(f2, cq.Vector(2 * half, 0, 0))))
+        # carry the 45° on through the spine's outer-top corner — the spine box
+        # tops at BAR_TOP while the wedge crosses the body face at −14.35, which
+        # would otherwise leave a 0.57 step right at the face
+        tri = [(0.3, wedge0 - 0.3), (0.3, wedge0 + 1.5), (-1.5, wedge0 + 1.5)]
+        tpts = [cq.Vector(-(BAR_W / 2 + 1), yf + s * dd, zz) for dd, zz in tri]
+        f3 = cq.Face.makeFromWires(cq.Wire.makePolygon([*tpts, tpts[0]]))
+        spine = spine.cut(cq.Workplane("XY").add(
+            cq.Solid.extrudeLinear(f3, cq.Vector(BAR_W + 2, 0, 0))))
     # T-slot along X at Y0 (jaw feet)
     spine = spine.cut(box_at(SLOT_X, NECK_W, NECK_D + 0.1,
                              z=BAR_TOP - (NECK_D + 0.1) / 2))

@@ -102,9 +102,11 @@ def _pickup_boss(yr, s):
     x0, x1 = PU_X0 - 3.0, PU_X1                    # boss runs past the groove stop
     # bottom lip: groove floor (−25.65) + 3.65 of material = −29.3 (it only
     # carries the bar's weight and the lock screw's clamp), then the 45°
-    # self-supporting chamfer down to the rail face
+    # self-supporting chamfer down to the rail face. Top at −14.35 = exactly
+    # where the groove's 45° roof lands at the face, so the roof and floor
+    # share their y extents (and the pickup still clears the top by 0.57).
     prof = [(rail_face, -35.3), (face, -29.3),
-            (face, -15.0), (rail_face, -15.0)]
+            (face, -14.35), (rail_face, -14.35)]
     pts = [cq.Vector(x0, py, pz) for py, pz in prof]
     f = cq.Face.makeFromWires(cq.Wire.makePolygon([*pts, pts[0]]))
     boss = cq.Workplane("XY").add(cq.Solid.extrudeLinear(f, cq.Vector(x1 - x0, 0, 0)))
@@ -229,12 +231,12 @@ def _build_full() -> cq.Workplane:
     _ly = Y_LO + T / 2 + 2.5                       # screw line, web side of the boss
     _bmid = (Y_LO + T / 2 + PU_FACE_LO) / 2        # boss centre
     for _lx in PU_LOCK_XS:
-        # bump sits flush on the boss top but starts 0.85 back from the face:
-        # the bar's clean-45° wedge only rises above −15.5 within that first
-        # 0.85 strip, so the bump clears its sweep by ≥0.3 everywhere
+        # bump sits flush on the (raised) boss top but starts 0.85 back from
+        # the face: the bar's clean-45° wedge only rises above −15 within that
+        # first strip, so the bump clears its sweep comfortably
         _by = (PU_FACE_LO - 0.85 + (Y_LO + T / 2)) / 2
-        body = body.union(box_at(10.0, PU_BOSS_T - 0.85, 4.85,
-                                 x=_lx, y=_by, z=-12.775))
+        body = body.union(box_at(10.0, PU_BOSS_T - 0.85, 4.2,
+                                 x=_lx, y=_by, z=-12.45))
         body = body.cut(cyl(5.6, 4.8, z=-15.15).translate((_lx, _ly, 0)))
         body = body.cut(cyl(4.3, 6.5, z=-21.5).translate((_lx, _ly, 0)))
         body = body.cut(box_at(20.0, 3.6, 21.0,
