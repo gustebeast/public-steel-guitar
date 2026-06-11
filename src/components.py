@@ -43,8 +43,8 @@ def string_nut() -> cq.Workplane:
 
 # ── Nut-block hardware (Ø2 steel dowel + M4 cup-tip set screw) — DEMO ─────
 def dowel() -> cq.Workplane:
-    """Ø2×4 steel dowel (axis Y) — the gauged break pin AND the clamp anvil.
-    Short so it drops into its top-open pocket / down the set-screw bore."""
+    """Ø2×4 steel dowel (axis Y) — the gauged break pin. Short so it drops into
+    its top-open slot from above (the string then traps it)."""
     return cyl_y(2.0, 4.0, y0=-2.0, x=0.0, z=0.0)
 
 
@@ -168,12 +168,6 @@ def bridge_bearings() -> cq.Workplane:
     return out
 
 
-# ── Locking tuner (schematic) ────────────────────────────────────────────
-def tuner() -> cq.Workplane:
-    """Schematic locking-tuner block, centred at origin (placed at the nut end)."""
-    return box_at(D.TUNER_D, D.TUNER_W, D.TUNER_H)
-
-
 _FLAT_LEN = 42.0            # flat (untwisting) belt zone near the motor end of run B
 _CLAMP_DIST = 24.0         # clamp centre distance from the motor (clears the pulley)
 _AUX_OFF = 3.0             # auxiliary-spine offset that drives the sweep twist
@@ -184,7 +178,6 @@ def _belt_samples(motor_xyz, screw_xyz):
     """Loop centreline as a list of (point, inward-normal n). n tracks the toothed
     face and returns to itself (orientable). Run B carries a FLAT zone near the
     motor (n held = +Z) so the splice clamp grips a non-twisting section."""
-    import math
     V = cq.Vector
     M, S = V(*motor_xyz), V(*screw_xyz)
     r = D.PULLEY_OD / 2 + D.BELT_T / 2

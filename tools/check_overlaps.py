@@ -40,7 +40,7 @@ PER_STRING_OK = {
     frozenset({"leadscrew", "screw_bearing"}), frozenset({"leadscrew", "screw_pulley"}),
     frozenset({"belt", "screw_pulley"}), frozenset({"belt", "motor_pulley"}),
     frozenset({"motor", "motor_pulley"}),
-    frozenset({"string", "carriage"}), frozenset({"string", "tuner"}),
+    frozenset({"string", "carriage"}),
     frozenset({"string_nut", "carriage"}), frozenset({"string_nut", "string"}),
     # nut-block hardware (per string): break pin sets the scale, set screw clamps the string
     frozenset({"break_dowel", "string"}), frozenset({"set_screw", "string"}),
@@ -50,25 +50,24 @@ PER_STRING_OK = {
     frozenset({"belt", "motor"}), frozenset({"belt", "leadscrew"}),
     frozenset({"belt", "belt_clamp"}),   # splice clamp grips its own belt
 }
+# The bridge endplate hosts the whole drive top end (screw rail fused in, axle
+# comb, guide ledges), so most per-string hardware legitimately touches it.
 GLOBAL_OK = {
     frozenset({"screw_bearing", "bridge_endplate"}), frozenset({"leadscrew", "bridge_endplate"}),
     frozenset({"locknut", "bridge_endplate"}), frozenset({"screw_pulley", "bridge_endplate"}),
-    frozenset({"leadscrew", "bridge_endplate"}), frozenset({"nut", "bridge_endplate"}),
-    frozenset({"carriage", "bridge_endplate"}),
+    frozenset({"nut", "bridge_endplate"}), frozenset({"carriage", "bridge_endplate"}),
     frozenset({"bridge_endplate", "bridge_bearings"}),
     frozenset({"string", "bridge_bearings"}), frozenset({"string", "bridge_endplate"}),
-    # chassis ties everything into one frame (intended contacts); the motor bank
-    # (floor + faceplate walls) is fused into the chassis, so motors mount to it
-    frozenset({"chassis", "bridge_endplate"}), frozenset({"chassis", "bridge_endplate"}),
-    frozenset({"chassis", "motor"}), frozenset({"chassis", "tuner"}),
+    # guide rods drop through the endplate's stop bar into its blind sockets
+    frozenset({"guide_rod", "bridge_endplate"}),
+    # chassis ties everything into one frame; the motor faceplate walls are fused
+    # into it, so motors mount to it
+    frozenset({"chassis", "bridge_endplate"}), frozenset({"chassis", "motor"}),
     frozenset({"chassis", "string"}),
-    frozenset({"bridge_endplate", "bridge_endplate"}), frozenset({"bridge_endplate", "chassis"}),
-    # removable nut block: sits on / bears against / bolts to the chassis; holds the
-    # strings + its gauged dowels + set screws
+    # removable nut block: sits on / bears against / bolts to the chassis; holds
+    # the strings + its gauged dowels + set screws
     frozenset({"nut_block", "chassis"}), frozenset({"nut_block", "string"}),
     frozenset({"nut_block", "break_dowel"}), frozenset({"nut_block", "set_screw"}),
-    # guide rods press through the endplate's lower guide ledge
-    frozenset({"guide_rod", "bridge_endplate"}),
 }
 
 

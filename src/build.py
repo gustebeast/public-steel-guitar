@@ -38,12 +38,12 @@ from . import tension_fork as TF
 # ── PRINTED parts → each is exported as its own STEP. ────────────────────
 # This is the ONLY set that gets STEP files. DEMONSTRATION parts (purchased /
 # swaged dummies — leadscrew, brass nuts, bearings, motor, belt, string,
-# string-end nut, tuner …) live in components.py and appear ONLY in
+# string-end nut, dowels …) live in components.py and appear ONLY in
 # assembly.step; they are never added here, so they are never exported.
 PARTS = {
     "carriage":        (heal(carriage),      "carriage.step",        "PA6-GF, load-critical — ×10 identical"),
-    "bridge_endplate": (heal(bridge_endplate), "bridge_endplate.step", "PA6-GF, load-critical — fused bridge end (screw support + bearing support + box closure)"),
-    "nut_block":       (heal(NB.nut_block),   "nut_block.step",       "PCTG — removable keyhead nut block (gauged break-edge + 2-row clamps; reprint per string set)"),
+    "bridge_endplate": (heal(bridge_endplate), "bridge_endplate.step", "PCTG — fused bridge end (screw support + bearing support + axle comb + box closure)"),
+    "nut_block":       (heal(NB.nut_block),   "nut_block.step",       "PA6-GF — removable keyhead nut block (gauged break-edge + 2-row clamps; reprint per string set)"),
     "belt_clamp":      (heal(belt_clamp),    "belt_clamp.step",      "PETG — GT2 belt splice clamp (print 2 per splice ×10)"),
     "screw_pulley":    (heal(C.screw_pulley()),  "screw_pulley.step",  "flanged 14T GT2 pulley, 45° top flange — ×10"),
     "motor_pulley":    (heal(C.motor_pulley()),  "motor_pulley.step",  "flanged 14T GT2 pulley, 45° outer flange — ×10"),
@@ -75,18 +75,20 @@ def geometry_report() -> str:
     lines = ["", "=== Belt geometry (under-string vertical layout) ===",
              f"  strings={D.N_STRINGS}  string pitch={D.STRING_PITCH} mm  "
              f"screw len={D.SCREW_LEN:.0f} mm (vertical, no whip)",
-             "  toothed GT2 (6 mm); twisted 90° (motor pulley axis Y -> screw "
-             "pulley axis Z), run along X.",
+             f"  toothed GT2 ({D.BELT_W:.0f} mm); twisted 90° (motor pulley axis Y -> "
+             "screw pulley axis Z), run along X.",
              "  cut = open-belt length to cut per string (loop + splice lap), mm:",
              f"    {'str':>4} {'run':>7} {'twist':>9} {'cut len':>9}"]
     total = 0.0
     for i in range(D.N_STRINGS):
         mx, my, mz = D.motor_pos(i)
         run = abs(mx - D.SCREW_X)
-        loop = 2 * run + math.pi * D.PULLEY_OD
+        rise = D.screw_pulley_z(i) - mz          # odd pulleys sit one belt-plane up
+        span = math.hypot(run, rise)
+        loop = 2 * span + math.pi * D.PULLEY_OD
         cut = loop + SPLICE_LAP
         total += cut
-        lines.append(f"    {i:>4} {run:>6.0f} {90.0 / run:>6.2f}°/mm {cut:>8.0f}")
+        lines.append(f"    {i:>4} {span:>6.0f} {90.0 / span:>6.2f}°/mm {cut:>8.0f}")
     lines.append(f"  total open GT2 to buy: ~{total/1000:.2f} m "
                  f"(+ {D.N_STRINGS} printed splice clamps)")
     lines.append("")
@@ -169,9 +171,9 @@ def _string_components(i):
     cloc = cq.Location(cq.Plane(origin=so, xDir=sxd, normal=sn))
     out.append((f"belt_clamp_{i}", cq.Workplane("XY").add(belt_clamp.val().moved(cloc))))
     # string: rises from the anchor tangent to the bearing's +X extent, wraps 90°
-    # over the top, then runs the speaking length to the tuner at the nut.
+    # over the top, then runs the speaking length to the nut block.
     out.append((f"string_{i}", _string_path(i, sy)))
-    # nut-block hardware (DEMO): gauged break pin, clamp anvil, clamp set screw
+    # nut-block hardware (DEMO): gauged break pin + clamp set screw
     g = D.STRING_GAUGE[i]
     row_x = NB.ROW1_X if i % 2 == 0 else NB.ROW2_X
     out.append((f"break_dowel_{i}", C.dowel().translate(
@@ -240,10 +242,8 @@ _COLORS = {
     "motor":           (0.22, 0.25, 0.27),   # charcoal
     "belt":            (0.13, 0.13, 0.13),   # GT2 black
     "string":          (0.85, 0.85, 0.85),
-    "tuner":           (0.50, 0.50, 0.50),
-    "nut_block":       (0.46, 0.52, 0.55),   # PCTG — removable keyhead nut block
+    "nut_block":       (0.46, 0.52, 0.55),   # removable keyhead nut block
     "break_dowel":     (0.75, 0.75, 0.78),   # steel dowel (gauged break pin)
-    "anvil_dowel":     (0.75, 0.75, 0.78),   # steel dowel (clamp anvil)
     "set_screw":       (0.55, 0.55, 0.58),   # alloy set screw
     "chassis":         (0.46, 0.52, 0.55),   # PCTG frame
     "build_counter":   (0.86, 0.08, 0.24),

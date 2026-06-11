@@ -1,4 +1,4 @@
-"""Nut block (×1) — keyhead string termination. PCTG.
+"""Nut block (×1) — keyhead string termination. PA6-GF (clamps bear on it).
 
 REMOVABLE: bolts to the chassis keyhead (no glue) so it can be reprinted to match a
 different string set. Per string it does two jobs:
@@ -45,7 +45,10 @@ BOSS_SQ  = 10.0                                 # clamp boss footprint
 INSERT_D = 5.6                                  # M4 heat-set install hole
 INSERT_L = 4.7
 SCREW_D  = 4.3                                  # M4 set-screw clearance
-BOLT_D   = 3.4                                  # M3 mount-bolt clearance
+BOLT_D   = 4.3                                  # M4 mount-bolt clearance (the 4 corner
+                                                # screws are M4×0.7×12, threading the same
+                                                # heat-set inserts as the clamps — was 3.4,
+                                                # an M3 hole the M4 screws couldn't pass)
 
 
 def _build() -> cq.Workplane:

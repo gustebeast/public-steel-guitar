@@ -1,19 +1,20 @@
 """Chassis frame (§8) — PCTG. ONE rigid frame that absorbs the motor bank and
-ties in the bridge, screw rail, and a nut keyhead, SPLIT into glued segments.
+ties in the bridge endplate and a nut keyhead, SPLIT into glued segments.
 
 The strings pull the bridge and nut toward each other (~10×100 N) at the speaking
 height, which would bow the instrument; the chassis resists that. The stiffness
-comes from DEPTH: two solid longitudinal side rails (from just under the strings
-down to the motor floor) run the whole length, tied by bottom cross-ribs and the
-motor-bank floor, plus a keyhead at the nut. The motor faceplate walls (with their
-NEMA17 patterns) are fused in. Bodies are modelled SOLID — the slicer's walls +
-infill set the strength-to-weight (no modelled lightening).
+comes from DEPTH: two longitudinal side rails (from just under the strings down
+to the print bed) run the whole length, tied by per-motor cross-ribs and a
+keyhead bulkhead at the nut. The motor faceplate walls (with their NEMA17
+patterns) are fused in; the motors rest on the ribs (no floor plate). The rail
+webs carry self-supporting diamond lightening; everything else is modelled
+SOLID — the slicer's walls + infill set the strength-to-weight.
 
-Too long for one print (~630 mm > 255 mm bed), so it's cut into 3 segments joined
+Too long for one print (~645 mm > 255 mm bed), so it's cut into 3 segments joined
 by SLIDING DOVETAILS on the side rails: each joint's tongue flares toward +X
 (locking the segments against the string pull), you drop the next segment straight
 DOWN onto it (one direction), and it bottoms on a shoulder that sets the position —
-then glue. The cuts fall in the ~0.7 mm gaps BETWEEN motor walls, so no motor
+then glue. The cuts fall in the ~5 mm gaps BETWEEN motor walls, so no motor
 mount is split. Built in global position; the segments assemble into the whole.
 """
 
@@ -84,7 +85,7 @@ def _rail(y):
     step = 2 * h + 8.0
     def ok(cx):                                 # leave the string-mount ends + joints SOLID
         return (cx + h < D.BRIDGE_AXLE_X - 10.0     # bridge support / bulkhead bond zone
-                and cx - h > -560.0                  # nut bulkhead / tuner bond zone
+                and cx - h > -560.0                  # keyhead bulkhead bond zone
                 and all(abs(cx - s) > h + 14.0 for s in SPLIT_X))
     cx = X_BRIDGE - 30.0
     while cx > X_NUT + 30.0:
@@ -148,7 +149,7 @@ def _build_full() -> cq.Workplane:
         body = body.union(_rib(x))
     # keyhead: a thick bulkhead under the nut-block footprint (it sits on top, Z_TOP),
     # plus a compression wall its +X face bears against (string pull → self-tightening),
-    # and pilot holes for the 2 heat-set inserts the retention bolts thread into.
+    # and pilot holes for the 4 corner heat-set inserts the retention bolts thread into.
     _kx = D.NUT_BLOCK_X - 9.0                               # under the block centre
     body = body.union(_end_bulkhead(_kx, 30.0))            # self-supporting bulkhead
     body = body.union(_rib(_kx, w=30.0))                   # bottom tie

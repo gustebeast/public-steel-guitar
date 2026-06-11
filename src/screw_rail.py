@@ -1,11 +1,13 @@
-"""Bottom screw-support rail (×1, shared) — PA6-GF (§8 item 2).
+"""Bottom screw-support rail (shared) — FUSED into bridge_endplate (§8 item 2).
 
-The 10 vertical screws' bottom supports live in ONE rail spanning the field at
-the screw line (X=SCREW_X). Each station is a Ø8 bushing/MR85 seat (radial) with
-a top ledge that backs the thrust washer against the screw's UPWARD pull (the
-string pulls each carriage toward its bridge bearing, +Z). A single rail avoids
-the overlapping per-screw cradles that 10 separate holders would create at
-9.5 mm pitch. Built in global position.
+Not a standalone print: bridge_endplate unions this rail in and bridges it to
+the cap, so the whole bridge end is one solid. The 10 vertical screws' bottom
+supports live in ONE rail spanning the field at the screw line (X=SCREW_X).
+Each station is a Ø8 bushing/MR85 seat (radial) with a top ledge that backs the
+thrust washer against the screw's UPWARD pull (the string pulls each carriage
+toward its bridge bearing, +Z). A single rail avoids the overlapping per-screw
+cradles that 10 separate holders would create at 9.5 mm pitch. Built in global
+position.
 """
 
 from __future__ import annotations

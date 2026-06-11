@@ -3,8 +3,9 @@
 The 10 motors lie flat under the speaking length, shaft +Y (bodies extend −Y
 toward the player). They step along −X by MOTOR_X_STEP so they don't overlap,
 each on its string's Y line. Each mounts to a faceplate wall (an X–Z plane at
-its faceplate Y) carrying a NEMA17 pattern; the walls sit on a shared floor that
-runs under the speaking length. Built in global position.
+its faceplate Y) carrying a NEMA17 pattern; motors and walls rest on the
+chassis's per-motor cross-ribs (no floor plate — the walls are fused into the
+chassis). Built in global position.
 """
 
 from __future__ import annotations
@@ -17,7 +18,6 @@ from .components import MOTOR_PULLEY_STANDOFF
 
 PLATE_T      = 6.0
 TENSION_SLOT = 4.0
-FLOOR_T      = 6.0
 _BOLT_EDGE   = 4.0                          # material around the NEMA17 bolt square
 
 WALL_W = D.NEMA17_BOLT_SQ + 2 * _BOLT_EDGE  # just the bolt square + a ~4 mm edge (39 mm)
