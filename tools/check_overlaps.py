@@ -74,8 +74,10 @@ GLOBAL_OK = {
     frozenset({"pickup_bar", "pickup"}), frozenset({"pickup_jaw", "pickup"}),
     frozenset({"pickup_shim", "pickup"}), frozenset({"pickup_shim", "pickup_bar"}),
     frozenset({"pickup_shim", "pickup_jaw"}),
-    # the X-lock screw threads the chassis boss insert; the knob threads the screw
+    # the X-lock screw threads the chassis boss insert; the knob threads the
+    # screw; the screw's cup tip presses (bites) the tongue's 45° wedge top
     frozenset({"pickup_screw", "chassis"}), frozenset({"pickup_knob", "pickup_screw"}),
+    frozenset({"pickup_screw", "pickup_bar"}),
 }
 
 

@@ -238,9 +238,11 @@ def _pickup_mount_components():
                     PM.pickup_jaw.rotate((0, 0, 0), (0, 0, 1), 0 if s > 0 else 180)
                     .translate((PICKUP_X + s * PM.PK_W / 2, 0, PM.BAR_TOP))))
     # X-lock: knobbed M4×12 button screws in the two fixed −Y boss stations
-    # (use whichever covers the current position). Tips on the tongue top.
-    ly = (CH.Y_LO + CH.T / 2 + CH.PU_FACE_LO) / 2
-    tip_z = CH.PU_TNG_Z1 + 0.15
+    # (use whichever covers the current position). Tips land on the tongue's
+    # 45° wedge top at the screw line.
+    ly = CH.Y_LO + CH.T / 2 + 2.5
+    d_scr = (CH.PU_FACE_LO - ly) + 0.3            # screw-line depth from the body face
+    tip_z = (CH.PU_TNG_Z1 + 0.15 + CH.PU_GROOVE_D) - d_scr   # wedge top there
     for k, lx in enumerate(CH.PU_LOCK_XS):
         out.append((f"pickup_screw_{k}", PM.pickup_lock_screw().translate((lx, ly, tip_z))))
         out.append((f"pickup_knob_{k}", PM.pickup_knob.translate((lx, ly, tip_z + 12.0 - 0.3))))

@@ -76,25 +76,31 @@ def _bar() -> cq.Workplane:
     y_hi, y_lo = CH.PU_FACE_HI - 0.3, CH.PU_FACE_LO + 0.3   # body clear of the bosses
     spine = box_at(BAR_W, y_hi - y_lo, BAR_H,
                    y=(y_hi + y_lo) / 2, z=(BAR_TOP + BAR_BOT) / 2)
+    zt = CH.PU_TNG_Z1 + TNG_CLR                 # groove roof springline
+    wedge0 = zt + CH.PU_GROOVE_D                # wedge top at the body face (−14.35)
     for yf, s in ((y_hi, 1), (y_lo, -1)):
-        # End block bridging the spine down to the tongue band; bottom stays
-        # 0.65 above motor 0's PCB top, which the far position slides over.
-        # The −Y side runs ±TNG_HALF (past the bar ends) so the fixed lock screw
-        # always reaches its tongue; the +Y side stays bar-width — its end zone
-        # meets carriage 9's travel space at near positions, and only the −Y
-        # tongue needs the reach.
+        # End profile, one prism per side: block + tongue whose TOP is a 45°
+        # wedge tracking the groove's single-slope roof at 0.3 — broad parallel
+        # contact instead of a corner. Block bottom stays 0.65 above motor 0's
+        # PCB top (the far position slides over it); tongue bottom rides the
+        # groove floor; tip stops 0.45 off the rail web. The −Y side runs
+        # ±TNG_HALF (past the bar ends) so the fixed lock screws always reach
+        # it; the +Y side stays bar-width (its end zone meets carriage 9's
+        # travel space at near positions).
         half = TNG_HALF if s < 0 else BAR_W / 2
-        blk_bot = CH.PU_TNG_Z0 + 0.3
-        spine = spine.union(box_at(2 * half, 6.0, BAR_TOP - blk_bot,
-                                   y=yf - s * 3.0,
-                                   z=(BAR_TOP + blk_bot) / 2))
-        # tongue: launches from the end-block face, crosses the 0.3 body-to-boss
-        # gap, rides the full-depth groove; tip stops 0.45 off the rail web
-        tng = 0.3 + CH.PU_GROOVE_D - 0.45
-        spine = spine.union(box_at(
-            2 * half, tng, (CH.PU_TNG_Z1 - CH.PU_TNG_Z0) - 2 * TNG_CLR,
-            y=yf + s * tng / 2,
-            z=(CH.PU_TNG_Z0 + CH.PU_TNG_Z1) / 2))
+        d_tip = 0.3 + CH.PU_GROOVE_D - 0.45     # tongue reach from the body face
+        cap = -15.3                             # wedge cap: 0.3 below the lock-station
+                                                # insert bumps that sit on the boss top
+        prof = [(-6.0, cap), (-6.0, CH.PU_TNG_Z0 + 0.3),
+                (0.0, CH.PU_TNG_Z0 + 0.3), (0.0, CH.PU_TNG_Z0 + TNG_CLR),
+                (d_tip, CH.PU_TNG_Z0 + TNG_CLR),
+                (d_tip, wedge0 - d_tip),        # wedge top at the tip (−20.2)
+                (wedge0 - cap, cap)]            # 45° up to the cap (the spine box
+                                                # supplies the material above, inboard)
+        pts = [cq.Vector(-half, yf + s * dd, zz) for dd, zz in prof]
+        f2 = cq.Face.makeFromWires(cq.Wire.makePolygon([*pts, pts[0]]))
+        spine = spine.union(cq.Workplane("XY").add(
+            cq.Solid.extrudeLinear(f2, cq.Vector(2 * half, 0, 0))))
     # T-slot along X at Y0 (jaw feet)
     spine = spine.cut(box_at(SLOT_X, NECK_W, NECK_D + 0.1,
                              z=BAR_TOP - (NECK_D + 0.1) / 2))

@@ -117,22 +117,16 @@ def _pickup_boss(yr, s):
     # from the web wall (the face side of the opening has nothing under or
     # beside it, so any face-side flank floats; a chevron peak fails the same
     # way). The cut runs out through the boss's top-outer corner (a harmless
-    # chamfer along the run). The roof stays FLAT (solid) for ±10 around each
-    # lock station so the insert keeps full grip; those are 6 mm bridges over
-    # 20 mm — printable.
+    # chamfer along the run). Uniform along the whole groove — the bar's
+    # wedge-topped tongue sweeps it, so no flat patches are possible; the lock
+    # inserts live in bumps ON the boss top instead (see _build_full).
     zt = PU_TNG_Z1 + 0.15
     tri = [(face, zt), (face, zt + PU_GROOVE_D),
            (face + s * PU_GROOVE_D, zt)]
-    edges = [PU_X0]
-    for lx in sorted(PU_LOCK_XS):
-        edges += [lx - 10.0, lx + 10.0]
-    edges += [PU_X1 + 1]
-    for k in range(0, len(edges), 2):
-        x0, x1 = edges[k], edges[k + 1]
-        pts = [cq.Vector(x0, py, pz) for py, pz in tri]
-        f2 = cq.Face.makeFromWires(cq.Wire.makePolygon([*pts, pts[0]]))
-        groove = groove.union(cq.Workplane("XY").add(
-            cq.Solid.extrudeLinear(f2, cq.Vector(x1 - x0, 0, 0))))
+    pts = [cq.Vector(PU_X0, py, pz) for py, pz in tri]
+    f2 = cq.Face.makeFromWires(cq.Wire.makePolygon([*pts, pts[0]]))
+    groove = groove.union(cq.Workplane("XY").add(
+        cq.Solid.extrudeLinear(f2, cq.Vector(PU_X1 + 1 - PU_X0, 0, 0))))
     return boss, groove
 
 
@@ -226,16 +220,20 @@ def _build_full() -> cq.Workplane:
     for yr, s in ((Y_HI, 1), (Y_LO, -1)):
         boss, groove = _pickup_boss(yr, s)
         body = body.union(boss).cut(groove)
-    # X-lock stations: insert pocket in the −Y boss ceiling + screw bore into the
-    # groove (the knobbed M4 button presses the tongue against the groove floor),
-    # plus a shallow pocket in the rail's inner face so each Ø12 knob can turn
-    # (the web is solid here — diamonds are skipped behind the boss)
-    _ly = (Y_LO + T / 2 + PU_FACE_LO) / 2          # −Y boss centre
+    # X-lock stations: an insert BUMP on the −Y boss top (the sloped groove
+    # roof leaves no flat ceiling to house the insert), screw bore descending
+    # through solid sloped-ceiling material near the web; the knobbed M4
+    # button's tip lands on the tongue's 45° wedge top — pressing it down AND
+    # into the web. A pocket in the rail's inner face lets each Ø12 knob turn
+    # (the web is solid here — diamonds are skipped behind the boss).
+    _ly = Y_LO + T / 2 + 2.5                       # screw line, web side of the boss
+    _bmid = (Y_LO + T / 2 + PU_FACE_LO) / 2        # boss centre
     for _lx in PU_LOCK_XS:
-        body = body.cut(cyl(5.6, 5.0, z=-20.0).translate((_lx, _ly, 0)))
-        body = body.cut(cyl(4.3, 8.0, z=-24.0).translate((_lx, _ly, 0)))
-        body = body.cut(box_at(20.0, 3.6, 17.0,
-                               x=_lx, y=Y_LO + T / 2 - 1.8, z=-7.5))
+        body = body.union(box_at(10.0, PU_BOSS_T, 4.0, x=_lx, y=_bmid, z=-13.0))
+        body = body.cut(cyl(5.6, 4.8, z=-15.8).translate((_lx, _ly, 0)))
+        body = body.cut(cyl(4.3, 6.5, z=-21.5).translate((_lx, _ly, 0)))
+        body = body.cut(box_at(20.0, 3.6, 21.0,
+                               x=_lx, y=Y_LO + T / 2 - 1.8, z=-5.5))
     # motor-0 service notch: clear the −Y boss from motor 0's lift column
     body = body.cut(box_at(PU_NOTCH_X1 - PU_NOTCH_X0, PU_BOSS_T + 0.3, 23.0,
                            x=(PU_NOTCH_X0 + PU_NOTCH_X1) / 2,
