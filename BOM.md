@@ -20,7 +20,7 @@ is commodity.
 | **Nut break dowel** | Ø2 × 4 mm steel dowel (52100) | 10 | [McMaster 91595A018](https://www.mcmaster.com/91595A018/) | $12.70 / pack | gauged break pins (the scale "0"); drop into their slots from above. (Clamps bear on solid PA6-GF — no anvil.) |
 | **Nut clamp set screw** | M4 × 0.7 cup-tip, 10 mm, alloy | 10 | [McMaster 91390A114](https://www.mcmaster.com/91390A114/) | $7.28 / pack 100 | clamps each plain string end onto its anvil |
 | **Nut clamp insert** | M4 × 0.7 brass heat-set, 4.7 mm | 10 | [McMaster 94459A150](https://www.mcmaster.com/94459A150/) | $10.82 / pack 50 | deeply buried in the boss (no pull-out) |
-| **Nut-block mount screw** | M4 × 0.7, 12 mm, 18-8 SS (button or socket head) | 4 | [McMaster 92095A192](https://www.mcmaster.com/92095A192/) | $14.77 / pack | 4 corner bolts into the same 94459A150 inserts; **M4 × 0.7** (coarse) to match the inserts — NOT the M4 × 0.5 fine-thread 90751A120 |
+| **Nut-block mount screw** | M4 × 0.7, 12 mm, 18-8 SS (button or socket head) | 5 | [McMaster 92095A192](https://www.mcmaster.com/92095A192/) | $14.77 / pack | 4 nut-block corner bolts + 1 pickup X-lock (printed knob pressed on its head), all into 94459A150 inserts; **M4 × 0.7** (coarse) to match the inserts — NOT the M4 × 0.5 fine-thread 90751A120 |
 | **Fasteners** | M3 (NEMA17 mounts), M2 (belt clamps) | — | [McMaster](https://www.mcmaster.com/) | — | commodity |
 
 The motor still does all tuning (the nut block clamps; no manual tuners). The nut

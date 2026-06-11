@@ -56,6 +56,7 @@ PARTS = {
     "pickup_bar":      (partial(heal, PM.pickup_bar),  "pickup_bar.step",    "PCTG — pickup bridge bar: end tongues ride the rail grooves (slide in from +X before the endplate); -Y lug set screw locks X"),
     "pickup_jaw":      (partial(heal, PM.pickup_jaw),  "pickup_jaw.step",    "PCTG — pickup width jaw ×2 (rotate 180° for the opposing side); M4 set-screw lock"),
     "pickup_shim":     (partial(heal, PM.pickup_shim), "pickup_shim.step",   "PCTG — pickup height shim (thickness = 25 - pickup height; reprint to tune the string gap)"),
+    "pickup_knob":     (partial(heal, PM.pickup_knob), "pickup_knob.step",   "PCTG — hand knob for the X-lock M4 set screw (self-threads on, dab of CA)"),
 }
 for _i, _seg in enumerate(chassis_segments):     # chassis split into dovetailed segments
     PARTS[f"chassis_{_i}"] = (partial(heal, _seg), f"chassis_{_i}.step",
@@ -228,6 +229,7 @@ PICKUP_X = -58.0     # pickup-mount centre (default: near-bridge tone). The bar'
 
 
 def _pickup_mount_components():
+    from . import chassis as CH
     out = [("pickup", PM.pickup_demo().translate((PICKUP_X, 0, PM.PK_TOP))),
            ("pickup_bar", PM.pickup_bar.translate((PICKUP_X, 0, 0))),
            ("pickup_shim", PM.pickup_shim.translate((PICKUP_X, 0, PM.BAR_TOP)))]
@@ -235,6 +237,12 @@ def _pickup_mount_components():
         out.append((f"pickup_jaw_{k}",
                     PM.pickup_jaw.rotate((0, 0, 0), (0, 0, 1), 0 if s > 0 else 180)
                     .translate((PICKUP_X + s * PM.PK_W / 2, 0, PM.BAR_TOP))))
+    # X-lock: knobbed M4×12 button screw in the fixed −Y boss station. Tip on
+    # the tongue top; the knob's head pocket sits over the button head.
+    ly = (CH.Y_LO + CH.T / 2 + CH.PU_FACE_LO) / 2
+    tip_z = CH.PU_TNG_Z1 + 0.15
+    out.append(("pickup_screw", PM.pickup_lock_screw().translate((CH.PU_LOCK_X, ly, tip_z))))
+    out.append(("pickup_knob", PM.pickup_knob.translate((CH.PU_LOCK_X, ly, tip_z + 12.0 - 0.3))))
     return out
 
 
@@ -277,6 +285,8 @@ _COLORS = {
     "pickup_bar":      (0.80, 0.45, 0.10),   # pickup mount (printed)
     "pickup_jaw":      (0.90, 0.60, 0.20),
     "pickup_shim":     (0.95, 0.75, 0.35),
+    "pickup_knob":     (0.86, 0.30, 0.10),
+    "pickup_screw":    (0.55, 0.55, 0.58),
     "build_counter":   (0.86, 0.08, 0.24),
 }
 _DEFAULT_COLOR = (0.80, 0.80, 0.80)

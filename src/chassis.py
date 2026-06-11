@@ -70,9 +70,15 @@ _DT, _WR, _WT, _SH, _CLR = 8.0, 2.5, 4.5, 4.0, 0.3
 # BELOW the pickup's bottom (the +Y rail is only ~12 mm past string 10, so the
 # pickup's end overhangs the boss); its underside is 45°-chamfered for the
 # standing print, and the rail web behind it stays solid (no diamonds there).
-PU_X0, PU_X1   = -162.0, X_BRIDGE      # groove run (−X end = hard stop @128+bar/2)
+PU_X0, PU_X1   = -168.0, X_BRIDGE      # groove run (−X end = hard stop: tongue half-
+                                       # length 40 → pickup centre max −128)
 PU_TNG_Z0, PU_TNG_Z1 = -25.5, -20.5    # tongue nominal Z band (groove adds 0.15/side);
                                        # bottom clears motor 0's PCB top (−25.85)
+# X-lock station: a hand-knob M4 set screw threads an insert in the −Y boss's
+# ceiling and presses DOWN on the tongue inside the groove — friction pins the
+# mount. One fixed station at −89 reaches the (±40) tongue at every position
+# in the 50..128 range. Knob turns from above, over the open motor bay.
+PU_LOCK_X      = -89.0
 PU_BOSS_T      = 6.0                   # boss protrusion off the rail face
 PU_GROOVE_D    = 4.3                   # groove depth into the boss (tongue 4.0 + tip clr)
 PU_FACE_HI     = Y_HI - T / 2 - PU_BOSS_T    # +Y boss field face (+48.75)
@@ -187,6 +193,15 @@ def _build_full() -> cq.Workplane:
     for yr, s in ((Y_HI, 1), (Y_LO, -1)):
         boss, groove = _pickup_boss(yr, s)
         body = body.union(boss).cut(groove)
+    # X-lock station: insert pocket in the −Y boss ceiling + screw bore into the
+    # groove (the knobbed M4 button presses the tongue against the groove floor),
+    # plus a shallow pocket in the rail's inner face so the Ø12 knob can turn
+    # (the web is solid here — diamonds are skipped behind the boss)
+    _ly = (Y_LO + T / 2 + PU_FACE_LO) / 2          # −Y boss centre
+    body = body.cut(cyl(5.6, 5.0, z=-20.0).translate((PU_LOCK_X, _ly, 0)))
+    body = body.cut(cyl(4.3, 8.0, z=-24.0).translate((PU_LOCK_X, _ly, 0)))
+    body = body.cut(box_at(20.0, 3.6, 17.0,
+                           x=PU_LOCK_X, y=Y_LO + T / 2 - 1.8, z=-7.5))
     # keyhead: a thick bulkhead under the nut-block footprint (it sits on top, Z_TOP),
     # plus a compression wall its +X face bears against (string pull → self-tightening),
     # and pilot holes for the 4 corner heat-set inserts the retention bolts thread into.

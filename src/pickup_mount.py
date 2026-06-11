@@ -3,15 +3,17 @@
 Holds any common steel pickup (width ~22–40, length ≤ ~108, height ~14–25 —
 e.g. a George L E-66 at 33×99×20.6) under the strings:
 
-  X (quick — bridge↔neck tone): the bar's end TONGUES ride X-grooves cut into
-    locally-thickened bosses on BOTH rails (even support across X, no point
-    clamps). The mount slides in from +X before the endplate goes on; the
-    endplate then caps the grooves and retains it. ONE vertical M4 set screw
-    on a lug at the −Y end (reachable from above with a hex key, over the open
-    motor bay) presses down on the boss top to lock the position. Range: the
-    groove's −X end is a hard stop at 128 mm pickup-centre distance from the
-    string termination (fretboard lines live beyond); slides to ~36 mm at the
-    near end (spec asked for ≥50 reachable).
+  X (quick, TOOL-FREE — bridge↔neck tone): the bar's end TONGUES ride X-grooves
+    cut into locally-thickened bosses on BOTH rails (even support across X, no
+    point clamps). The mount slides in from +X before the endplate goes on; the
+    endplate then caps the grooves and retains it. Lock: a hand-knobbed M4 set
+    screw (printed pickup_knob threaded onto a stock set screw) lives in ONE
+    fixed station in the −Y boss's ceiling and presses down on the tongue
+    inside the groove — friction pins the mount; turn it from above over the
+    open motor bay. The tongues run ±40 (past the bar ends) so the one station
+    at X −89 reaches them anywhere in the range. The groove's −X end is a hard
+    stop at exactly 128 mm pickup-centre distance from the string termination
+    (fretboard lines live beyond); verified clean at the 50 mm spec minimum.
   Z (set once): printed SHIM plates under the pickup. The bar top is sized for
     the TALLEST (25 mm) pickup at a 3 mm string gap; shim thickness =
     25 − pickup height (5 mm for the E-66), reprint to tweak the gap. The
@@ -64,8 +66,9 @@ FOOT_L  = 20.0
 INSERT_D, INSERT_L = 5.6, 4.7
 SCREW_CLR = 4.3
 
-# lock lug (−Y end): overhangs the −Y boss top; a vertical set screw presses it
-LUG_Z0, LUG_Z1 = -14.5, -7.5                    # 0.5 above the boss top (−15)
+TNG_HALF = 40.0                                 # tongue half-length (> BAR_W/2: the
+                                                # tongues outrun the bar so the fixed
+                                                # lock station always reaches them)
 
 
 def _bar() -> cq.Workplane:
@@ -74,18 +77,22 @@ def _bar() -> cq.Workplane:
     spine = box_at(BAR_W, y_hi - y_lo, BAR_H,
                    y=(y_hi + y_lo) / 2, z=(BAR_TOP + BAR_BOT) / 2)
     for yf, s in ((y_hi, 1), (y_lo, -1)):
-        # end block bridging the spine down to the tongue band (bottom stays
-        # 0.65 above motor 0's PCB top, which the far position slides over)
+        # End block bridging the spine down to the tongue band; bottom stays
+        # 0.65 above motor 0's PCB top, which the far position slides over.
+        # The −Y side runs ±TNG_HALF (past the bar ends) so the fixed lock screw
+        # always reaches its tongue; the +Y side stays bar-width — its end zone
+        # meets carriage 9's travel space at near positions, and only the −Y
+        # tongue needs the reach.
+        half = TNG_HALF if s < 0 else BAR_W / 2
         blk_bot = CH.PU_TNG_Z0 + 0.3
-        spine = spine.union(box_at(BAR_W, 6.0, BAR_TOP - blk_bot,
+        spine = spine.union(box_at(2 * half, 6.0, BAR_TOP - blk_bot,
                                    y=yf - s * 3.0,
                                    z=(BAR_TOP + blk_bot) / 2))
         # tongue: launches from the end-block face, crosses the 0.3 body-to-boss
-        # gap, and rides the rail groove (full bar width = even support in X);
-        # tip stops 0.45 short of the groove floor
+        # gap, rides the rail groove; tip stops 0.45 off the groove floor
         tng = 0.3 + 4.0 - 0.45
         spine = spine.union(box_at(
-            BAR_W, tng, (CH.PU_TNG_Z1 - CH.PU_TNG_Z0) - 2 * TNG_CLR,
+            2 * half, tng, (CH.PU_TNG_Z1 - CH.PU_TNG_Z0) - 2 * TNG_CLR,
             y=yf + s * tng / 2,
             z=(CH.PU_TNG_Z0 + CH.PU_TNG_Z1) / 2))
     # T-slot along X at Y0 (jaw feet)
@@ -93,17 +100,6 @@ def _bar() -> cq.Workplane:
                              z=BAR_TOP - (NECK_D + 0.1) / 2))
     spine = spine.cut(box_at(SLOT_X, UC_W, UC_H,
                              z=BAR_TOP - NECK_D - UC_H / 2))
-    # lock lug over the −Y boss: insert + vertical M4 set screw → boss top.
-    # Spans from 0.5 shy of the rail face back over the end block (fused to it).
-    lug_y0, lug_y1 = CH.PU_FACE_LO - 5.5, CH.PU_FACE_LO + 7.0
-    lug = box_at(14.0, lug_y1 - lug_y0, LUG_Z1 - LUG_Z0,
-                 y=(lug_y0 + lug_y1) / 2, z=(LUG_Z0 + LUG_Z1) / 2)
-    spine = spine.union(lug)
-    lx, ly = 0.0, CH.PU_FACE_LO - 2.5           # screw lands on the boss top shelf
-    spine = spine.cut(cyl(INSERT_D, INSERT_L + 0.3, z=LUG_Z1 - INSERT_L - 0.3)
-                      .translate((lx, ly, 0)))
-    spine = spine.cut(cyl(SCREW_CLR, LUG_Z1 - LUG_Z0 + 2, z=LUG_Z0 - 1)
-                      .translate((lx, ly, 0)))
     return spine
 
 
@@ -137,6 +133,30 @@ def _shim() -> cq.Workplane:
     return box_at(PK_W - 2.0, 60.0, SHIM_T, z=SHIM_T / 2)
 
 
+KNOB_D, KNOB_H = 12.0, 8.0
+
+
+def _knob() -> cq.Workplane:
+    """Grip knob for the X-lock screw (an M4×12 button head — the stocked
+    92095A192): fluted rim; the button head presses into a Ø7.7 pocket in the
+    underside (dab of CA — the lock torque is tiny). Bottom at z=0."""
+    import math
+    k = cyl(KNOB_D, KNOB_H, z=0.0)
+    for i in range(8):                          # grip flutes
+        a = 2 * math.pi * i / 8
+        k = k.cut(cyl(2.5, KNOB_H + 2, z=-1.0)
+                  .translate((KNOB_D / 2 * math.cos(a), KNOB_D / 2 * math.sin(a), 0)))
+    k = k.cut(cyl(7.7, 2.5, z=-0.01))           # button-head pocket
+    return k.cut(cyl(4.2, KNOB_H, z=-0.01))     # shank clearance
+
+
+def pickup_lock_screw() -> cq.Workplane:
+    """DEMO M4×12 button-head lock screw, axis Z: shank tip at z=0 (on the
+    tongue), head on top."""
+    return cyl(4.0, 12.0, z=0.0).union(cyl(7.5, 2.2, z=12.0))
+
+
 pickup_bar  = _bar()
 pickup_jaw  = _jaw()
 pickup_shim = _shim()
+pickup_knob = _knob()
