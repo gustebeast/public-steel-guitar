@@ -29,6 +29,6 @@ between E9 and C6; the break pins re-gauge so string tops stay coplanar.
 
 Printed parts (no purchase): carriage, bridge_endplate, chassis (×3 segments),
 nut_block, belt_clamp, screw_pulley, motor_pulley, tension_fork (graded
-belt-tension lock set), pickup_saddle/pickup_bar/pickup_jaw (adjustable pickup
-mount — all its hardware comes from the M4 insert/set-screw/button packs above)
+belt-tension lock set), pickup_bar/pickup_jaw/pickup_shim (adjustable pickup
+mount — all its hardware comes from the M4 insert/set-screw packs above)
 — see `py -3.12 -m src.build --list`.
