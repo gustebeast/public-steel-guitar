@@ -14,7 +14,7 @@ Too long for one print (~645 mm > 255 mm bed), so it's cut into 3 segments joine
 by SLIDING DOVETAILS on the side rails: each joint's tongue flares toward +X
 (locking the segments against the string pull), you drop the next segment straight
 DOWN onto it (one direction), and it bottoms on a shoulder that sets the position —
-then glue. The cuts fall in the ~5 mm gaps BETWEEN motor walls, so no motor
+then glue. The cuts fall in the ~1 mm gaps BETWEEN motor walls, so no motor
 mount is split. Built in global position; the segments assemble into the whole.
 """
 
@@ -74,15 +74,22 @@ PU_X0, PU_X1   = -168.0, X_BRIDGE      # groove run (−X end = hard stop: tongu
                                        # length 40 → pickup centre max −128)
 PU_TNG_Z0, PU_TNG_Z1 = -25.5, -20.5    # tongue nominal Z band (groove adds 0.15/side);
                                        # bottom clears motor 0's PCB top (−25.85)
-# X-lock station: a hand-knob M4 set screw threads an insert in the −Y boss's
-# ceiling and presses DOWN on the tongue inside the groove — friction pins the
-# mount. One fixed station at −89 reaches the (±40) tongue at every position
-# in the 50..128 range. Knob turns from above, over the open motor bay.
-PU_LOCK_X      = -89.0
+# X-lock stations: a hand-knob M4 button screw threads an insert in the −Y
+# boss's ceiling and presses DOWN on the tongue inside the groove — friction
+# pins the mount; knobs turn from above, over the open motor bay. TWO stations
+# (both permanently fitted): their ±40 tongue-reach zones (−100..−20 and
+# −179..−99) overlap to cover the whole 50..128 range — a single mid station
+# would land inside the motor-0 service notch (below).
+PU_LOCK_XS     = (-60.0, -139.0)
+# Motor-0 service notch: motor 0's PCB tail lives under the −Y boss, so its
+# lift-out column needs the boss cut away over x −134..−91 (full boss height).
+# The groove is interrupted there; the 80 mm tongue always bridges it with
+# ≥40 mm engaged elsewhere.
+PU_NOTCH_X0, PU_NOTCH_X1 = -134.0, -91.0
 PU_BOSS_T      = 6.0                   # boss protrusion off the rail face
 PU_GROOVE_D    = 4.3                   # groove depth into the boss (tongue 4.0 + tip clr)
 PU_FACE_HI     = Y_HI - T / 2 - PU_BOSS_T    # +Y boss field face (+48.75)
-PU_FACE_LO     = Y_LO + T / 2 + PU_BOSS_T    # −Y boss field face (−118.75)
+PU_FACE_LO     = Y_LO + T / 2 + PU_BOSS_T    # −Y boss field face (−122.75)
 
 
 def _pickup_boss(yr, s):
@@ -193,15 +200,20 @@ def _build_full() -> cq.Workplane:
     for yr, s in ((Y_HI, 1), (Y_LO, -1)):
         boss, groove = _pickup_boss(yr, s)
         body = body.union(boss).cut(groove)
-    # X-lock station: insert pocket in the −Y boss ceiling + screw bore into the
+    # X-lock stations: insert pocket in the −Y boss ceiling + screw bore into the
     # groove (the knobbed M4 button presses the tongue against the groove floor),
-    # plus a shallow pocket in the rail's inner face so the Ø12 knob can turn
+    # plus a shallow pocket in the rail's inner face so each Ø12 knob can turn
     # (the web is solid here — diamonds are skipped behind the boss)
     _ly = (Y_LO + T / 2 + PU_FACE_LO) / 2          # −Y boss centre
-    body = body.cut(cyl(5.6, 5.0, z=-20.0).translate((PU_LOCK_X, _ly, 0)))
-    body = body.cut(cyl(4.3, 8.0, z=-24.0).translate((PU_LOCK_X, _ly, 0)))
-    body = body.cut(box_at(20.0, 3.6, 17.0,
-                           x=PU_LOCK_X, y=Y_LO + T / 2 - 1.8, z=-7.5))
+    for _lx in PU_LOCK_XS:
+        body = body.cut(cyl(5.6, 5.0, z=-20.0).translate((_lx, _ly, 0)))
+        body = body.cut(cyl(4.3, 8.0, z=-24.0).translate((_lx, _ly, 0)))
+        body = body.cut(box_at(20.0, 3.6, 17.0,
+                               x=_lx, y=Y_LO + T / 2 - 1.8, z=-7.5))
+    # motor-0 service notch: clear the −Y boss from motor 0's lift column
+    body = body.cut(box_at(PU_NOTCH_X1 - PU_NOTCH_X0, PU_BOSS_T + 0.3, 23.0,
+                           x=(PU_NOTCH_X0 + PU_NOTCH_X1) / 2,
+                           y=(Y_LO + T / 2 + PU_FACE_LO) / 2 + 0.15, z=-26.0))
     # keyhead: a thick bulkhead under the nut-block footprint (it sits on top, Z_TOP),
     # plus a compression wall its +X face bears against (string pull → self-tightening),
     # and pilot holes for the 4 corner heat-set inserts the retention bolts thread into.

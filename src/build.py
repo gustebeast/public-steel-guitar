@@ -52,8 +52,8 @@ PARTS = {
     "belt_clamp":      (partial(heal, belt_clamp),    "belt_clamp.step",      "PETG — GT2 belt splice clamp (print 2 per splice ×10)"),
     "screw_pulley":    (lambda: heal(C.screw_pulley()),  "screw_pulley.step",  "flanged 14T GT2 pulley, 45° top flange — ×10"),
     "motor_pulley":    (lambda: heal(C.motor_pulley()),  "motor_pulley.step",  "flanged 14T GT2 pulley, 45° outer flange — ×10"),
-    "tension_fork":    (lambda: TF.tension_forks,    "tension_fork.step",    "PCTG — belt-tension lock forks, graded 2.0–4.0 set (4 of the fitting size per motor; positive stop in the slot, no friction reliance)"),
-    "pickup_bar":      (partial(heal, PM.pickup_bar),  "pickup_bar.step",    "PCTG — pickup bridge bar: end tongues ride the rail grooves (slide in from +X before the endplate); -Y lug set screw locks X"),
+    "tension_fork":    (lambda: TF.tension_forks,    "tension_fork.step",    "PCTG — belt-tension lock forks, graded 3.0–6.0 set (4 of the fitting size per motor; positive stop in the slot, no friction reliance)"),
+    "pickup_bar":      (partial(heal, PM.pickup_bar),  "pickup_bar.step",    "PCTG — pickup bridge bar: end tongues ride the rail grooves (slide in from +X before the endplate); the body-mounted knob screw locks X"),
     "pickup_jaw":      (partial(heal, PM.pickup_jaw),  "pickup_jaw.step",    "PCTG — pickup width jaw ×2 (rotate 180° for the opposing side); M4 set-screw lock"),
     "pickup_shim":     (partial(heal, PM.pickup_shim), "pickup_shim.step",   "PCTG — pickup height shim (thickness = 25 - pickup height; reprint to tune the string gap)"),
     "pickup_knob":     (partial(heal, PM.pickup_knob), "pickup_knob.step",   "PCTG — hand knob for the X-lock M4 set screw (self-threads on, dab of CA)"),
@@ -237,12 +237,13 @@ def _pickup_mount_components():
         out.append((f"pickup_jaw_{k}",
                     PM.pickup_jaw.rotate((0, 0, 0), (0, 0, 1), 0 if s > 0 else 180)
                     .translate((PICKUP_X + s * PM.PK_W / 2, 0, PM.BAR_TOP))))
-    # X-lock: knobbed M4×12 button screw in the fixed −Y boss station. Tip on
-    # the tongue top; the knob's head pocket sits over the button head.
+    # X-lock: knobbed M4×12 button screws in the two fixed −Y boss stations
+    # (use whichever covers the current position). Tips on the tongue top.
     ly = (CH.Y_LO + CH.T / 2 + CH.PU_FACE_LO) / 2
     tip_z = CH.PU_TNG_Z1 + 0.15
-    out.append(("pickup_screw", PM.pickup_lock_screw().translate((CH.PU_LOCK_X, ly, tip_z))))
-    out.append(("pickup_knob", PM.pickup_knob.translate((CH.PU_LOCK_X, ly, tip_z + 12.0 - 0.3))))
+    for k, lx in enumerate(CH.PU_LOCK_XS):
+        out.append((f"pickup_screw_{k}", PM.pickup_lock_screw().translate((lx, ly, tip_z))))
+        out.append((f"pickup_knob_{k}", PM.pickup_knob.translate((lx, ly, tip_z + 12.0 - 0.3))))
     return out
 
 
