@@ -61,6 +61,41 @@ SPLIT_X  = [-220.0, -440.0]            # 2 cuts → 3 segments < 255 mm, in moto
 # socket walls in the 8 mm rail stay ≥1.6 mm (2 passes of a 0.8 mm nozzle).
 _DT, _WR, _WT, _SH, _CLR = 8.0, 2.5, 4.5, 4.0, 0.3
 
+# ── Pickup-mount tongue-and-groove (both rails) ──────────────────────────
+# A locally-thickened BOSS strip on each rail's inner face carries an X-running
+# GROOVE; the pickup bar's end tongues ride in it — even support across X, the
+# mount slides in from +X before the endplate goes on (the endplate then caps
+# the groove, retaining the mount). The groove's −X end is a hard stop at the
+# 128 mm max pickup distance (fretboard lines live beyond). The boss sits
+# BELOW the pickup's bottom (the +Y rail is only ~12 mm past string 10, so the
+# pickup's end overhangs the boss); its underside is 45°-chamfered for the
+# standing print, and the rail web behind it stays solid (no diamonds there).
+PU_X0, PU_X1   = -162.0, X_BRIDGE      # groove run (−X end = hard stop @128+bar/2)
+PU_TNG_Z0, PU_TNG_Z1 = -25.5, -20.5    # tongue nominal Z band (groove adds 0.15/side);
+                                       # bottom clears motor 0's PCB top (−25.85)
+PU_BOSS_T      = 6.0                   # boss protrusion off the rail face
+PU_GROOVE_D    = 4.3                   # groove depth into the boss (tongue 4.0 + tip clr)
+PU_FACE_HI     = Y_HI - T / 2 - PU_BOSS_T    # +Y boss field face (+48.75)
+PU_FACE_LO     = Y_LO + T / 2 + PU_BOSS_T    # −Y boss field face (−118.75)
+
+
+def _pickup_boss(yr, s):
+    """Boss strip + groove on the rail at centreline yr (s = +1 for the +Y rail,
+    whose boss protrudes −Y). Returns (boss_solid, groove_cutter)."""
+    face = yr - s * (T / 2 + PU_BOSS_T)            # field face of the boss
+    rail_face = yr - s * T / 2
+    x0, x1 = PU_X0 - 3.0, PU_X1                    # boss runs past the groove stop
+    prof = [(rail_face, -37.0), (face, -31.0),     # 45° self-supporting underside
+            (face, -15.0), (rail_face, -15.0)]
+    pts = [cq.Vector(x0, py, pz) for py, pz in prof]
+    f = cq.Face.makeFromWires(cq.Wire.makePolygon([*pts, pts[0]]))
+    boss = cq.Workplane("XY").add(cq.Solid.extrudeLinear(f, cq.Vector(x1 - x0, 0, 0)))
+    groove = box_at(PU_X1 - PU_X0 + 1, PU_GROOVE_D + 0.5, (PU_TNG_Z1 - PU_TNG_Z0) + 0.3,
+                    x=(PU_X0 + PU_X1 + 1) / 2,
+                    y=face + s * ((PU_GROOVE_D + 0.5) / 2 - 0.5),
+                    z=(PU_TNG_Z0 + PU_TNG_Z1) / 2)
+    return boss, groove
+
 
 def _diamond_xz(cx, cz, h, yr):
     """Diamond (45°) prism through a rail (axis Y) — a self-supporting hole in the
@@ -86,6 +121,7 @@ def _rail(y):
     def ok(cx):                                 # leave the string-mount ends + joints SOLID
         return (cx + h < D.BRIDGE_AXLE_X - 10.0     # bridge support / bulkhead bond zone
                 and cx - h > -560.0                  # keyhead bulkhead bond zone
+                and cx + h < PU_X0 - 3.0             # solid web behind the pickup boss
                 and all(abs(cx - s) > h + 14.0 for s in SPLIT_X))
     cx = X_BRIDGE - 30.0
     while cx > X_NUT + 30.0:
@@ -147,6 +183,10 @@ def _build_full() -> cq.Workplane:
     body = _rail(Y_HI).union(_rail(Y_LO))
     for x in _RIB_X:                                  # per-motor + bridge/nut cross-ribs (−Z)
         body = body.union(_rib(x))
+    # pickup-mount tongue-and-groove bosses on both rails' inner faces
+    for yr, s in ((Y_HI, 1), (Y_LO, -1)):
+        boss, groove = _pickup_boss(yr, s)
+        body = body.union(boss).cut(groove)
     # keyhead: a thick bulkhead under the nut-block footprint (it sits on top, Z_TOP),
     # plus a compression wall its +X face bears against (string pull → self-tightening),
     # and pilot holes for the 4 corner heat-set inserts the retention bolts thread into.

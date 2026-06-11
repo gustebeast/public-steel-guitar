@@ -68,11 +68,12 @@ GLOBAL_OK = {
     # the strings + its gauged dowels + set screws
     frozenset({"nut_block", "chassis"}), frozenset({"nut_block", "string"}),
     frozenset({"nut_block", "break_dowel"}), frozenset({"nut_block", "set_screw"}),
-    # pickup mount: saddles clamp the rails; the bar tabs lap the saddles; the
-    # jaws ride the bar and pinch the pickup, which rests on the bar top
-    frozenset({"pickup_saddle", "chassis"}), frozenset({"pickup_bar", "pickup_saddle"}),
-    frozenset({"pickup_bar", "pickup_jaw"}), frozenset({"pickup_bar", "pickup"}),
-    frozenset({"pickup_jaw", "pickup"}),
+    # pickup mount: the bar's tongues ride grooves in the chassis rails; the
+    # jaws ride the bar and pinch the pickup, which rests on its shim
+    frozenset({"pickup_bar", "chassis"}), frozenset({"pickup_bar", "pickup_jaw"}),
+    frozenset({"pickup_bar", "pickup"}), frozenset({"pickup_jaw", "pickup"}),
+    frozenset({"pickup_shim", "pickup"}), frozenset({"pickup_shim", "pickup_bar"}),
+    frozenset({"pickup_shim", "pickup_jaw"}),
 }
 
 
