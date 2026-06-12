@@ -62,8 +62,9 @@ def _thread(rod_r: float, length: float, clr: float = 0.0,
     facets are ~0.1 mm — irrelevant to a printed Ø36 thread."""
     depth = (TH_MAJOR - TH_MINOR) / 2 + clr
     w_root, w_crest = 4.4 + clr, 2.2 + clr
-    n_turn = 12   # 30 deg facets: the 60 deg joint phase is a multiple,
-                  # so male/female facet grids coincide exactly when seated
+    n_turn = 48   # 7.5 deg facets — smooth enough to read as a helix. MUST
+                  # divide the 60 deg joint phase so male/female facet grids
+                  # coincide exactly when seated (60/7.5 = 8)
     dthe = 2 * math.pi / n_turn
     dz_seg = TH_LEAD / n_turn
     n_seg = int(length / dz_seg) + 1
