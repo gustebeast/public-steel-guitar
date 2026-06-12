@@ -167,13 +167,6 @@ def _rail(y):
     return rail
 
 
-def cyl_y_pocket(x, y_face, s, z):
-    """Ø5.6 heat-set pocket bored from a rail face at y_face inward (−s·Y)."""
-    from .helpers import cyl_y
-    y0 = (y_face - 4.89) if s > 0 else (y_face - 0.01)
-    return cyl_y(5.6, 4.9, y0=y0, x=x, z=z)
-
-
 def _rib(x, w=_RIB_W):
     """Chunky cross-rib, rail-to-rail, its top flush with the motor rest (FLOOR_TOP)."""
     return box_at(w, Y_HI - Y_LO, MB.FLOOR_TOP - Z_BOT,
@@ -265,14 +258,29 @@ def _build_full() -> cq.Workplane:
     for sx in (D.NUT_BLOCK_X + NB.X_FRONT - 3.0, D.NUT_BLOCK_X + NB.X_BACK + 3.0):
         for sy in (-(NB.HW - 4.0), NB.HW - 4.0):          # insert pilots under the 4 corner bolts
             body = body.cut(cyl(5.6, 8.0, z=Z_TOP - 8.0).translate((sx, sy, 0)))
-    # leg-socket bolt inserts: 3× Ø5.6 pockets per corner station, bored from
-    # each rail's OUTER face into the solid bottom flange / below the diamonds
-    from .legs import LEG_STATIONS_X
+    # leg-socket joinery: a vertical sliding-dovetail slot in each rail's
+    # OUTER face at the corner stations (solid web there). The printed socket
+    # slides up from below and GLUES (it is only a separate part because the
+    # chassis can't print below its bed); its barrel rim seats on the rail's
+    # bottom face. The slot roof rises 45° toward the face — in-layer support
+    # accretes from beyond the deep wall, same rule as the pickup groove.
+    from .legs import LEG_STATIONS_X, DT_FACE_HW, DT_DEEP_HW, DT_DEPTH, DT_H
     for _sx in LEG_STATIONS_X:
         for _yr, _s in ((Y_HI, 1), (Y_LO, -1)):
-            y_out = _yr + _s * T / 2
-            for bx, bz in ((-16.0, 12.0), (16.0, 12.0), (0.0, 26.0)):
-                body = body.cut(cyl_y_pocket(_sx + bx, y_out, _s, Z_BOT + bz))
+            yf = _yr + _s * T / 2                          # outer face
+            yd = yf - _s * DT_DEPTH                        # deep wall
+            trap = (cq.Workplane("XY").workplane(offset=Z_BOT - 1.0)
+                    .polyline([(_sx - DT_FACE_HW, yf), (_sx + DT_FACE_HW, yf),
+                               (_sx + DT_DEEP_HW, yd), (_sx - DT_DEEP_HW, yd)])
+                    .close().extrude(1.0 + DT_H + DT_DEPTH))
+            keep = (cq.Workplane("YZ")
+                    .polyline([(yf + _s, Z_BOT - 2.0),
+                               (yf + _s, Z_BOT + DT_H + DT_DEPTH + 1.0),
+                               (yd - _s, Z_BOT + DT_H - 1.0),
+                               (yd - _s, Z_BOT - 2.0)])
+                    .close().extrude(2 * DT_DEEP_HW + 4)
+                    .translate((_sx - DT_DEEP_HW - 2, 0, 0)))
+            body = body.cut(trap.intersect(keep))
     body = body.union(MB.motor_bank)                  # fuse in the motor faceplate walls
     # +X end: a sliding-dovetail tongue on each rail end; the bridge endplate caps
     # and sockets them (drops down to engage, glued).

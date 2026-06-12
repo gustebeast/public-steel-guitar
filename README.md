@@ -90,7 +90,9 @@ slotted holes for belt tensioning. Every printed part is self-supporting at
 45° for a 0.8 mm nozzle; the big parts are PCTG, the load-critical small parts
 (carriage, nut block) PA6-GF.
 
-**Legs**: four quick-attach legs bolt to the rail webs at the corners. Each
+**Legs**: four quick-attach legs join the rails at the corners with glued
+sliding-dovetail sockets (no fasteners — the socket slides up into a slot in
+the rail face and its barrel rim seats under the rail). Each
 junction is an oversized 2-start trapezoidal thread (Ø36/Ø30, 18 mm lead —
 ~1.4 turns to full engagement, like a PC-fan screw), so the instrument breaks
 down for transport in seconds; a TPU washer under each shoulder compresses on

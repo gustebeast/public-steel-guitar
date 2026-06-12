@@ -16,11 +16,14 @@ thread, so legs break down for transport like real steel legs. Anti-unscrew:
 a TPU WASHER under each shoulder compresses on the final quarter turn —
 preload + damping; loads in play are axial (nothing torques a leg).
 
-The SOCKET bolts to a rail's outer face (3× M4 into web inserts — stocked
-hardware) with its threaded barrel hanging below the floor at the corner;
-sockets sit at x −20 (bridge) and −600 (keyhead), both rails. The barrel adds
-nothing inside the box and the chassis still prints flat (the socket is a
-separate part precisely because the chassis can't grow below its print bed).
+The SOCKET joins the rail with GLUED JOINERY, no fasteners: a vertical
+dovetail tenon slides UP into a slot in the rail's outer face from below
+until the barrel's top rim seats flat against the rail's bottom flange.
+Ground reaction = large-area rim compression; bending/torsion = the dovetail
+flanks + glue; the joint is invisible from outside. Sockets sit at x −20
+(bridge) and −600 (keyhead), both rails — solid web, clear of the endplate
+dovetails. The socket is a separate part ONLY because the chassis can't
+print below its bed, which is exactly the case glue is for.
 
 All printed standing (tubes along Z): threads print cleanly, no supports.
 """
@@ -51,9 +54,14 @@ FOOT_H  = 12.0
 # shaft exposure 24..174 + 3 foot floor → height = 217 + 142k + exposure
 
 # socket bracket
-PLATE_T, PLATE_W, PLATE_H = 6.0, 46.0, 40.0
 BARREL_OD, BARREL_L = 44.0, 32.0
 LEG_STATIONS_X = (-20.0, -600.0)       # solid web at both (clear of rail diamonds)
+# rail joinery (chassis.py cuts the matching slots from these)
+DT_FACE_HW = 14.0                      # dovetail half-width at the rail face…
+DT_DEEP_HW = 18.0                      # …flaring 45° to this at full depth
+DT_DEPTH   = 4.0                       # into the Ø8-thick rail (half)
+DT_H       = 38.0                      # straight band above Z_BOT; the roof
+                                       # rises 45° toward the face above it
 
 
 def _thread(rod_r: float, length: float, clr: float = 0.0,
@@ -106,17 +114,28 @@ def _thread(rod_r: float, length: float, clr: float = 0.0,
 
 
 def leg_socket() -> cq.Workplane:
-    """Bolt-on corner socket: plate against the rail's outer face, threaded
-    barrel hanging below the floor. Local: rail outer face = Y0 (plate on −Y),
-    barrel axis at (0, +Y rail half-thickness…) — placed by build.py; here the
-    barrel axis is X0/Y= +PLATE_T? Simplest: barrel axis at origin, plate
-    tangent on −Y; bolts along +Y. Z0 = floor plane (barrel extends −Z)."""
+    """Glued joinery socket, no fasteners: a vertical dovetail tenon slides
+    UP into the rail-face slot from below until the barrel's top rim seats
+    flat under the rail's bottom flange (ground reaction = big-area
+    compression; the tenon's 45° matching top stops 0.3 shy so the rim is
+    the bearing surface). Dovetail flanks + glue take bending/torsion; the
+    tenon foot lands fully on the barrel's solid top disc. Prints barrel
+    mouth down, tenon up (its 45° top self-supports). Local: barrel axis at
+    origin under the rail centreline, rail outer face at y −4 (= chassis
+    T/2, keep in sync), Z0 = rail bottom = the chassis print bed."""
     barrel = cyl(BARREL_OD, BARREL_L, z=-BARREL_L)
-    plate = box_at(PLATE_W, PLATE_T, PLATE_H,
-                   y=-(BARREL_OD / 2 + PLATE_T / 2) + 2.0, z=PLATE_H / 2)
-    gusset = box_at(PLATE_W, BARREL_OD / 2 + 2.0, 6.0,
-                    y=-(BARREL_OD / 4), z=3.0)
-    body = barrel.union(plate).union(gusset)
+    c = 0.3                                       # dovetail sliding clearance
+    tenon = (cq.Workplane("XY")
+             .polyline([(-(DT_FACE_HW - c), -4.0), (DT_FACE_HW - c, -4.0),
+                        (DT_DEEP_HW - 2 * c, -c), (-(DT_DEEP_HW - 2 * c), -c)])
+             .close().extrude(DT_H + DT_DEPTH))
+    # 45° top matching the slot roof (rises toward the face), dropped 0.3
+    keep = (cq.Workplane("YZ")
+            .polyline([(-5.0, 0.0), (-5.0, DT_H + 4.7), (1.0, DT_H - 1.3),
+                       (1.0, 0.0)])
+            .close().extrude(2 * DT_DEEP_HW + 4)
+            .translate((-(DT_DEEP_HW + 2), 0, 0)))
+    body = barrel.union(tenon.intersect(keep))
     # female thread: bore + ridge grooves, opening DOWN
     body = body.cut(cyl(TH_MINOR + TH_CLR, TH_LEN + 2, z=-BARREL_L - 1))
     # one extra lead of groove BELOW the mouth (in free air): prisms whose
@@ -124,12 +143,6 @@ def leg_socket() -> cq.Workplane:
     body = body.cut(_thread((TH_MINOR - TH_CLR) / 2, TH_LEN + 2 + TH_LEAD,
                             clr=0.8, phase_deg=60.0)
                     .translate((0, 0, -BARREL_L - 1 - TH_LEAD)))
-    # bolt holes through the plate (M4 into rail-web inserts; kept LOW so the
-    # inserts land in the rail's solid bottom flange / under the diamonds)
-    py = -(BARREL_OD / 2 + PLATE_T) + 2.0
-    for bx, bz in ((-16.0, 12.0), (16.0, 12.0), (0.0, 26.0)):
-        body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-            2.15, PLATE_T + 2, cq.Vector(bx, py - 1, bz), cq.Vector(0, 1, 0))))
     return heal(body)   # helical-thread booleans need a ShapeFix pass
 
 
