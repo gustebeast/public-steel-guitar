@@ -90,6 +90,14 @@ slotted holes for belt tensioning. Every printed part is self-supporting at
 45° for a 0.8 mm nozzle; the big parts are PCTG, the load-critical small parts
 (carriage, nut block) PA6-GF.
 
+**Legs**: four quick-attach legs bolt to the rail webs at the corners. Each
+junction is an oversized 2-start trapezoidal thread (Ø36/Ø30, 18 mm lead —
+~1.4 turns to full engagement, like a PC-fan screw), so the instrument breaks
+down for transport in seconds; a TPU washer under each shoulder compresses on
+the last quarter turn so the coarse threads can't walk loose. Height adjusts
+560–710 mm via a clamped sliding shaft (prints cover ~5'2"–6'6" players;
+outside that, print longer/shorter segments).
+
 **Electronics** (architecture level; firmware not in this repo): a Teensy-class
 controller reads pedal/lever angle sensors and speaks CAN to the ten servos.
 The playing path is pure feed-forward — pedal moves map directly to motor
@@ -103,7 +111,7 @@ machines anywhere.
 ## Building the CAD
 
 CadQuery on Python 3.12 generates a STEP file per printed part plus a colored
-`assembly.step` (~156 placed components including purchased-part dummies).
+`assembly.step` (~201 placed components including purchased-part dummies).
 
 ```bash
 py -3.12 -m src.build              # all parts + assembly.step
@@ -119,9 +127,11 @@ py -3.12 -m tools.check_overlaps   # design gate: any unintended interpenetratio
   nut, bearings, pulleys, belt, strings, dowels) used only in the assembly.
 - Printed parts: `carriage` ×10, `bridge_endplate`, `chassis_0/1/2`,
   `nut_block`, `belt_clamp`, `screw_pulley`, `motor_pulley`, `tension_fork`
-  (graded belt-tension lock set), `pickup_saddle`/`pickup_bar`/`pickup_jaw`
-  (adjustable pickup mount: rail-sliding X position for bridge↔neck tone,
-  slotted ±6 mm height, width-clamping jaws for ~22–40 mm pickups).
+  (graded belt-tension lock set), `pickup_bar`/`pickup_jaw`/`pickup_shim`/
+  `pickup_knob` (adjustable pickup mount: tongue-and-groove rail slide with
+  hand-knob X locks for bridge↔neck tone, shim-set height, width-clamping
+  jaws), and the legs: `leg_socket`/`leg_segment`/`leg_sleeve`/`leg_shaft`
+  plus `leg_foot`/`leg_washer` in TPU.
 - `tools/check_overlaps.py` exits non-zero on any unintended part
   interpenetration; carriage geometry is additionally swept through both
   travel extremes during design review.
