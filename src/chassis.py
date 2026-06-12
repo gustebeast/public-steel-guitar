@@ -167,6 +167,13 @@ def _rail(y):
     return rail
 
 
+def cyl_y_pocket(x, y_face, s, z):
+    """Ø5.6 heat-set pocket bored from a rail face at y_face inward (−s·Y)."""
+    from .helpers import cyl_y
+    y0 = (y_face - 4.89) if s > 0 else (y_face - 0.01)
+    return cyl_y(5.6, 4.9, y0=y0, x=x, z=z)
+
+
 def _rib(x, w=_RIB_W):
     """Chunky cross-rib, rail-to-rail, its top flush with the motor rest (FLOOR_TOP)."""
     return box_at(w, Y_HI - Y_LO, MB.FLOOR_TOP - Z_BOT,
@@ -258,6 +265,14 @@ def _build_full() -> cq.Workplane:
     for sx in (D.NUT_BLOCK_X + NB.X_FRONT - 3.0, D.NUT_BLOCK_X + NB.X_BACK + 3.0):
         for sy in (-(NB.HW - 4.0), NB.HW - 4.0):          # insert pilots under the 4 corner bolts
             body = body.cut(cyl(5.6, 8.0, z=Z_TOP - 8.0).translate((sx, sy, 0)))
+    # leg-socket bolt inserts: 3× Ø5.6 pockets per corner station, bored from
+    # each rail's OUTER face into the solid bottom flange / below the diamonds
+    from .legs import LEG_STATIONS_X
+    for _sx in LEG_STATIONS_X:
+        for _yr, _s in ((Y_HI, 1), (Y_LO, -1)):
+            y_out = _yr + _s * T / 2
+            for bx, bz in ((-16.0, 12.0), (16.0, 12.0), (0.0, 26.0)):
+                body = body.cut(cyl_y_pocket(_sx + bx, y_out, _s, Z_BOT + bz))
     body = body.union(MB.motor_bank)                  # fuse in the motor faceplate walls
     # +X end: a sliding-dovetail tongue on each rail end; the bridge endplate caps
     # and sockets them (drops down to engage, glued).

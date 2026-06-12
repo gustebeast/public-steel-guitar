@@ -36,6 +36,7 @@ from .chassis import segments as chassis_segments
 from . import nut_block as NB
 from . import tension_fork as TF
 from . import pickup_mount as PM
+from . import legs as LG
 
 # ── PRINTED parts → each is exported as its own STEP. ────────────────────
 # This is the ONLY set that gets STEP files. DEMONSTRATION parts (purchased /
@@ -57,6 +58,12 @@ PARTS = {
     "pickup_jaw":      (partial(heal, PM.pickup_jaw),  "pickup_jaw.step",    "PCTG — pickup width jaw ×2 (rotate 180° for the opposing side); M4 set-screw lock"),
     "pickup_shim":     (partial(heal, PM.pickup_shim), "pickup_shim.step",   "PCTG — pickup height shim (thickness = 25 - pickup height; reprint to tune the string gap)"),
     "pickup_knob":     (partial(heal, PM.pickup_knob), "pickup_knob.step",   "PCTG — hand knob for the X-lock M4 set screw (self-threads on, dab of CA)"),
+    "leg_socket":      (lambda: heal(LG.leg_socket()),  "leg_socket.step",  "PCTG — leg corner socket ×4 (bolts to a rail's outer face; 2-turn coarse thread, quick on/off)"),
+    "leg_segment":     (lambda: heal(LG.leg_segment()), "leg_segment.step", "PCTG — stackable leg tube ×8 (male up / female down; print longer/shorter for out-of-range players)"),
+    "leg_sleeve":      (lambda: heal(LG.leg_sleeve()),  "leg_sleeve.step",  "PCTG — leg slider sleeve ×4 (clamp collar: M4 set screw + insert)"),
+    "leg_shaft":       (lambda: heal(LG.leg_shaft()),   "leg_shaft.step",   "PCTG — leg sliding shaft ×4 (0–150 fine height adjust)"),
+    "leg_foot":        (lambda: heal(LG.leg_foot()),    "leg_foot.step",    "TPU — foot cap ×4"),
+    "leg_washer":      (lambda: heal(LG.leg_washer()),  "leg_washer.step",  "TPU — anti-unscrew shoulder washer ×12 (compresses on the last quarter turn)"),
 }
 for _i, _seg in enumerate(chassis_segments):     # chassis split into dovetailed segments
     PARTS[f"chassis_{_i}"] = (partial(heal, _seg), f"chassis_{_i}.step",
@@ -249,6 +256,41 @@ def _pickup_mount_components():
     return out
 
 
+LEG_HEIGHT = 655.0   # floor → body bottom (the user's reference at 6'); the
+                     # slider covers 560..710 for ~5'2"..6'6" players
+
+
+def _leg_components():
+    from . import chassis as CH
+    out = []
+    socket = LG.leg_socket()
+    seg, sleeve = LG.leg_segment(), LG.leg_sleeve()
+    shaft, foot, washer = LG.leg_shaft(), LG.leg_foot(), LG.leg_washer()
+    ground = CH.Z_BOT - LEG_HEIGHT
+    k = 0
+    for sx in LG.LEG_STATIONS_X:
+        for ry, rot in ((CH.Y_HI, 180), (CH.Y_LO, 0)):   # plate faces outward
+            zb = CH.Z_BOT - LG.BARREL_L                  # barrel bottom
+            a0 = zb - 2 - (LG.SEG_L - LG.TH_LEN)         # segment A bottom
+            b0 = a0 - 2 - (LG.SEG_L - LG.TH_LEN)         # segment B bottom
+            sh = b0 - 2                                  # sleeve shoulder
+            out.append((f"leg_socket_{k}",
+                        socket.rotate((0, 0, 0), (0, 0, 1), rot)
+                        .translate((sx, ry, CH.Z_BOT))))
+            # (thread phase is built into the female generators — all joints
+            # share the same 3 mm offset, so parts place with no rotation)
+            out.append((f"leg_segment_{2 * k}", seg.translate((sx, ry, a0))))
+            out.append((f"leg_segment_{2 * k + 1}", seg.translate((sx, ry, b0))))
+            out.append((f"leg_sleeve_{k}", sleeve.translate((sx, ry, sh))))
+            out.append((f"leg_shaft_{k}", shaft.translate((sx, ry, ground + 3.0))))
+            out.append((f"leg_foot_{k}", foot.translate((sx, ry, ground))))
+            for j, wz in enumerate((zb - 2, a0 - 2, b0 - 2)):
+                out.append((f"leg_washer_{3 * k + j}",
+                            washer.translate((sx, ry, wz))))
+            k += 1
+    return out
+
+
 def collect_components():
     comps = [
         ("bridge_endplate", bridge_endplate),
@@ -257,6 +299,7 @@ def collect_components():
     ]
     comps += [(f"chassis_{i}", seg) for i, seg in enumerate(chassis_segments)]
     comps += _pickup_mount_components()
+    comps += _leg_components()
     for i in range(D.N_STRINGS):
         comps.extend(_string_components(i))
     return comps
@@ -290,6 +333,12 @@ _COLORS = {
     "pickup_shim":     (0.95, 0.75, 0.35),
     "pickup_knob":     (0.86, 0.30, 0.10),
     "pickup_screw":    (0.55, 0.55, 0.58),
+    "leg_socket":      (0.36, 0.42, 0.46),
+    "leg_segment":     (0.42, 0.48, 0.52),
+    "leg_sleeve":      (0.36, 0.42, 0.46),
+    "leg_shaft":       (0.55, 0.58, 0.62),
+    "leg_foot":        (0.12, 0.12, 0.13),   # TPU
+    "leg_washer":      (0.12, 0.12, 0.13),   # TPU
     "build_counter":   (0.86, 0.08, 0.24),
 }
 _DEFAULT_COLOR = (0.80, 0.80, 0.80)

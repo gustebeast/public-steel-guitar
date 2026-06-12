@@ -18,9 +18,9 @@ is commodity.
 | **Bridge axle** | Ø3 **g6/h6 precision shaft**, ~105 mm (e.g. hardened ground shafting) | 1 | [McMaster 3 mm shafts](https://www.mcmaster.com/products/linear-shafts/) | ~$3 | NOT an m6 dowel — m6 is press-fit in a 693ZZ bore; the shaft must slide through all 10 bearings + 9 comb fingers + both arms. Glue dab at the arms retains it |
 | **Guide rod** | Ø2.5 × 28 mm hardened/ground dowel (DIN 6325, standard length) | 10 | [McMaster](https://www.mcmaster.com/products/hardened-dowel-pins/) · [eBay DIN6325 2.5 mm](https://www.ebay.com/itm/303389911894) | ~$0.5 ea | anti-rotation; drops in from the top through the stop bar's snug hole + the carriage's C-bore, landing in a blind socket — friction-held both ends (dab of glue optional) |
 | **Nut break dowel** | Ø2 × 4 mm steel dowel (52100) | 10 | [McMaster 91595A018](https://www.mcmaster.com/91595A018/) | $12.70 / pack | gauged break pins (the scale "0"); drop into their slots from above. (Clamps bear on solid PA6-GF — no anvil.) |
-| **Nut clamp set screw** | M4 × 0.7 cup-tip, 10 mm, alloy | 10 | [McMaster 91390A114](https://www.mcmaster.com/91390A114/) | $7.28 / pack 100 | clamps each plain string end onto its anvil |
-| **Nut clamp insert** | M4 × 0.7 brass heat-set, 4.7 mm | 10 | [McMaster 94459A150](https://www.mcmaster.com/94459A150/) | $10.82 / pack 50 | deeply buried in the boss (no pull-out) |
-| **Nut-block mount screw** | M4 × 0.7, 12 mm, 18-8 SS (button or socket head) | 6 | [McMaster 92095A192](https://www.mcmaster.com/92095A192/) | $14.77 / pack | 4 nut-block corner bolts + 2 pickup X-lock stations (printed knobs pressed on their heads), all into 94459A150 inserts; **M4 × 0.7** (coarse) to match the inserts — NOT the M4 × 0.5 fine-thread 90751A120 |
+| **M4 cup-tip set screw** | M4 × 0.7 cup-tip, 10 mm, alloy | 14 | [McMaster 91390A114](https://www.mcmaster.com/91390A114/) | $7.28 / pack 100 | 10 clamp each plain string end onto its anvil; 4 squeeze the leg-sleeve clamps |
+| **M4 heat-set insert** | M4 × 0.7 brass heat-set, 4.7 mm | 32 | [McMaster 94459A150](https://www.mcmaster.com/94459A150/) | $10.82 / pack 50 | 10 nut clamps + 6 nut-block/pickup + 12 leg-socket (rail web) + 4 leg-sleeve; deeply buried (no pull-out) |
+| **M4 mount screw** | M4 × 0.7, 12 mm, 18-8 SS (button or socket head) | 18 | [McMaster 92095A192](https://www.mcmaster.com/92095A192/) | $14.77 / pack | 4 nut-block corner bolts + 2 pickup X-lock stations (printed knobs pressed on their heads) + 12 leg-socket bolts, all into 94459A150 inserts; **M4 × 0.7** (coarse) to match the inserts — NOT the M4 × 0.5 fine-thread 90751A120 |
 | **Fasteners** | M3 (NEMA17 mounts), M2 (belt clamps) | — | [McMaster](https://www.mcmaster.com/) | — | commodity |
 
 The motor still does all tuning (the nut block clamps; no manual tuners). The nut
@@ -30,5 +30,8 @@ between E9 and C6; the break pins re-gauge so string tops stay coplanar.
 Printed parts (no purchase): carriage, bridge_endplate, chassis (×3 segments),
 nut_block, belt_clamp, screw_pulley, motor_pulley, tension_fork (graded
 belt-tension lock set), pickup_bar/pickup_jaw/pickup_shim (adjustable pickup
-mount — all its hardware comes from the M4 insert/set-screw packs above)
+mount — all its hardware comes from the M4 insert/set-screw packs above),
+and the adjustable legs: leg_socket ×4, leg_segment ×8, leg_sleeve ×4,
+leg_shaft ×4 (PCTG/PA6-GF) plus leg_foot ×4 and leg_washer ×12 in **TPU**
+(anti-unscrew preload washers + floor-friendly feet)
 — see `py -3.12 -m src.build --list`.

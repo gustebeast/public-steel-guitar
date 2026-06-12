@@ -78,6 +78,12 @@ GLOBAL_OK = {
     # screw; the screw's cup tip presses (bites) the tongue's 45° wedge top
     frozenset({"pickup_screw", "chassis"}), frozenset({"pickup_knob", "pickup_screw"}),
     frozenset({"pickup_screw", "pickup_bar"}),
+    # legs: socket bolts to the rail; threaded junctions + washers + slider
+    frozenset({"leg_socket", "chassis"}), frozenset({"leg_socket", "leg_segment"}),
+    frozenset({"leg_segment", "leg_segment"}), frozenset({"leg_segment", "leg_sleeve"}),
+    frozenset({"leg_sleeve", "leg_shaft"}), frozenset({"leg_shaft", "leg_foot"}),
+    frozenset({"leg_washer", "leg_socket"}), frozenset({"leg_washer", "leg_segment"}),
+    frozenset({"leg_washer", "leg_sleeve"}),
 }
 
 
