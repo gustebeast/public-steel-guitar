@@ -59,11 +59,11 @@ PARTS = {
     "pickup_shim":     (partial(heal, PM.pickup_shim), "pickup_shim.step",   "PCTG — pickup height shim (thickness = 25 - pickup height; reprint to tune the string gap)"),
     "pickup_knob":     (partial(heal, PM.pickup_knob), "pickup_knob.step",   "PCTG — hand knob for the X-lock M4 set screw (self-threads on, dab of CA)"),
     "leg_socket":      (lambda: heal(LG.leg_socket()),  "leg_socket.step",  "PCTG — leg corner socket ×4 (bolts to a rail's outer face; 2-turn coarse thread, quick on/off)"),
-    "leg_segment":     (lambda: heal(LG.leg_segment()), "leg_segment.step", "PCTG — stackable leg tube ×8 (male up / female down; print longer/shorter for out-of-range players)"),
+    "leg_segment":     (lambda: heal(LG.leg_segment()), "leg_segment.step", "PCTG — stackable leg tube (male up / female down; the COUNT per leg is the coarse height adjust, 142 mm per segment; default 2 → ×8)"),
     "leg_sleeve":      (lambda: heal(LG.leg_sleeve()),  "leg_sleeve.step",  "PCTG — leg slider sleeve ×4 (clamp collar: M4 set screw + insert)"),
     "leg_shaft":       (lambda: heal(LG.leg_shaft()),   "leg_shaft.step",   "PCTG — leg sliding shaft ×4 (0–150 fine height adjust)"),
     "leg_foot":        (lambda: heal(LG.leg_foot()),    "leg_foot.step",    "TPU — foot cap ×4"),
-    "leg_washer":      (lambda: heal(LG.leg_washer()),  "leg_washer.step",  "TPU — anti-unscrew shoulder washer ×12 (compresses on the last quarter turn)"),
+    "leg_washer":      (lambda: heal(LG.leg_washer()),  "leg_washer.step",  "TPU — anti-unscrew shoulder washer, 1/junction = segments+1 per leg (compresses on the last quarter turn)"),
 }
 for _i, _seg in enumerate(chassis_segments):     # chassis split into dovetailed segments
     PARTS[f"chassis_{_i}"] = (partial(heal, _seg), f"chassis_{_i}.step",
@@ -256,8 +256,10 @@ def _pickup_mount_components():
     return out
 
 
-LEG_HEIGHT = 655.0   # floor → body bottom (the user's reference at 6'); the
-                     # slider covers 560..710 for ~5'2"..6'6" players
+LEG_HEIGHT = 655.0   # floor → body bottom (the user's reference at 6')
+LEG_SEGMENTS = 2     # coarse height: each segment steps 142; the shaft's 150
+                     # slide overlaps the step, so every height ≥ ~241 is
+                     # reachable by picking the count (2 covers 525..675)
 
 
 def _leg_components():
@@ -267,26 +269,28 @@ def _leg_components():
     seg, sleeve = LG.leg_segment(), LG.leg_sleeve()
     shaft, foot, washer = LG.leg_shaft(), LG.leg_foot(), LG.leg_washer()
     ground = CH.Z_BOT - LEG_HEIGHT
+    step = 2.0 + (LG.SEG_L - LG.TH_LEN)                  # washer + segment
     k = 0
     for sx in LG.LEG_STATIONS_X:
         for ry, rot in ((CH.Y_HI, 180), (CH.Y_LO, 0)):   # plate faces outward
             zb = CH.Z_BOT - LG.BARREL_L                  # barrel bottom
-            a0 = zb - 2 - (LG.SEG_L - LG.TH_LEN)         # segment A bottom
-            b0 = a0 - 2 - (LG.SEG_L - LG.TH_LEN)         # segment B bottom
-            sh = b0 - 2                                  # sleeve shoulder
             out.append((f"leg_socket_{k}",
                         socket.rotate((0, 0, 0), (0, 0, 1), rot)
                         .translate((sx, ry, CH.Z_BOT))))
             # (thread phase is built into the female generators — all joints
             # share the same 3 mm offset, so parts place with no rotation)
-            out.append((f"leg_segment_{2 * k}", seg.translate((sx, ry, a0))))
-            out.append((f"leg_segment_{2 * k + 1}", seg.translate((sx, ry, b0))))
-            out.append((f"leg_sleeve_{k}", sleeve.translate((sx, ry, sh))))
+            shoulder = zb                                # next male's shoulder seat
+            for j in range(LEG_SEGMENTS):
+                out.append((f"leg_washer_{(LEG_SEGMENTS + 1) * k + j}",
+                            washer.translate((sx, ry, shoulder - 2))))
+                shoulder -= step
+                out.append((f"leg_segment_{LEG_SEGMENTS * k + j}",
+                            seg.translate((sx, ry, shoulder))))
+            out.append((f"leg_washer_{(LEG_SEGMENTS + 1) * k + LEG_SEGMENTS}",
+                        washer.translate((sx, ry, shoulder - 2))))
+            out.append((f"leg_sleeve_{k}", sleeve.translate((sx, ry, shoulder - 2))))
             out.append((f"leg_shaft_{k}", shaft.translate((sx, ry, ground + 3.0))))
             out.append((f"leg_foot_{k}", foot.translate((sx, ry, ground))))
-            for j, wz in enumerate((zb - 2, a0 - 2, b0 - 2)):
-                out.append((f"leg_washer_{3 * k + j}",
-                            washer.translate((sx, ry, wz))))
             k += 1
     return out
 
