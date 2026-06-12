@@ -1,10 +1,13 @@
 """Adjustable legs (×4) — PCTG tubes + TPU feet/washers. Quick-attach.
 
-Height: the user's reference is 655 mm of lift at 6'; scaling to typical
-players (~5'2"–6'6") needs ~560–710. Stack per leg (ground up): TPU foot →
-Ø20 shaft sliding 0–150 in a clamped SLEEVE (continuous fine adjust) → two
-identical 190 mm SEGMENTS → the instrument SOCKET. Outside that range, print
-a longer/shorter segment (the parts are modular by design).
+Height: COARSE = how many identical stackable SEGMENTS you thread in (the
+legs must print in pieces for build volume anyway, so the pieces ARE the
+adjustment); FINE = a Ø20 shaft sliding in a clamped SLEEVE. One segment
+steps the height by 142 (140 effective + 2 washer); the shaft slides 24–174
+(150 of range > the 142 step), so adjacent bands OVERLAP and every height is
+reachable: 0 segments → 241–391, 1 → 383–533, 2 → 525–675 (the user's 655 at
+~154 exposure), 3 → 667–817, … Stack per leg (ground up): TPU foot → shaft →
+sleeve → k× segment → the instrument SOCKET.
 
 Quick-attach thread (per the PC-fan-screw idea): 2-start trapezoidal,
 Ø36/Ø30 × 9 mm pitch (18 mm lead), 25 mm engagement = 1.4 turns. Every
@@ -38,13 +41,14 @@ TH_LEN  = 25.0
 TH_CLR  = 0.4                          # printed-thread fit (diametral-ish)
 
 TUBE_OD, TUBE_ID = 30.0, 22.0
-SEG_L   = 180.0                        # incl. the 25 male thread → 155 effective
+SEG_L   = 165.0                        # incl. the 25 male thread → 140 effective;
+                                       # step/segment = 142 — MUST stay < the
+                                       # shaft's 150 slide so height bands overlap
 SLEEVE_L = 180.0
 SHAFT_D, SHAFT_L = 20.0, 200.0
 FOOT_H  = 12.0
-# stack: 32 barrel + 3×2 washers + 2×155 segments + 180 sleeve + 9 foot
-# = 536 fixed + 24..174 of shaft slide → 560..710 floor-to-body (user's 655
-# lands at ~119 of exposure)
+# stack at k segments: 32 barrel + (k+1)×2 washers + k×140 + 180 sleeve +
+# shaft exposure 24..174 + 3 foot floor → height = 217 + 142k + exposure
 
 # socket bracket
 PLATE_T, PLATE_W, PLATE_H = 6.0, 46.0, 40.0
@@ -56,10 +60,14 @@ def _thread(rod_r: float, length: float, clr: float = 0.0,
             phase_deg: float = 0.0) -> cq.Workplane:
     """Thread ridges around a rod of radius rod_r: union for a male thread
     (clr=0), cut from a bore for a female one (clr>0 fattens the profile).
-    Built as SEGMENTED straight prisms (16 chords/turn, skewed linear
-    extrusions) — raw helical sweeps make booleans fragile in OCC; this is the
-    same robust approach the belt model uses. At this coarseness the chord
-    facets are ~0.1 mm — irrelevant to a printed Ø36 thread."""
+    Built as SEGMENTED straight prisms (skewed linear extrusions) — raw
+    helical sweeps make booleans fragile in OCC; this is the same robust
+    approach the belt model uses. IMPORTANT: a straight chord follows
+    r(psi) = a/cos(psi) between facets, so the female cut must be generated
+    on the MALE rod radius (clr only widens the profile) or the male skin
+    escapes the cut mid-facet; callers must also extend a female cut one
+    full lead past the mouth so out-of-band male prisms can't poke uncut
+    overshoot tails into the engagement band."""
     depth = (TH_MAJOR - TH_MINOR) / 2 + clr
     w_root, w_crest = 4.4 + clr, 2.2 + clr
     n_turn = 48   # 7.5 deg facets — smooth enough to read as a helix. MUST

@@ -94,9 +94,12 @@ slotted holes for belt tensioning. Every printed part is self-supporting at
 junction is an oversized 2-start trapezoidal thread (Ø36/Ø30, 18 mm lead —
 ~1.4 turns to full engagement, like a PC-fan screw), so the instrument breaks
 down for transport in seconds; a TPU washer under each shoulder compresses on
-the last quarter turn so the coarse threads can't walk loose. Height adjusts
-560–710 mm via a clamped sliding shaft (prints cover ~5'2"–6'6" players;
-outside that, print longer/shorter segments).
+the last quarter turn so the coarse threads can't walk loose. The legs must
+print in pieces for build volume anyway, so the pieces double as the coarse
+height adjustment: each stackable segment steps the height 142 mm, and a
+clamped sliding shaft at the bottom spans 150 mm — more than one step — so
+the bands overlap and **any** height from ~240 mm up is reachable (two
+segments cover 525–675 mm; add or drop segments from there).
 
 **Electronics** (architecture level; firmware not in this repo): a Teensy-class
 controller reads pedal/lever angle sensors and speaks CAN to the ten servos.
