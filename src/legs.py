@@ -155,24 +155,38 @@ def leg_segment() -> cq.Workplane:
 
 def leg_sleeve() -> cq.Workplane:
     """Slider sleeve: MALE spigot up top (threads into the lower segment's
-    bell), Ø20.4 bore for the shaft, slit clamp end with an insert + M4 set
-    screw. Local: Z0 = the shoulder; spigot +Z, body −Z."""
+    bell), Ø20.4 bore for the shaft, PINCH COLLAR at the bottom: ONE slit
+    (the solid wall opposite is the hinge) pulled closed by an M4 button
+    screw spanning two lugs into a heat-set insert, shrinking the bore onto
+    the shaft. Broad-band friction — ~MPa contact stress PCTG holds without
+    creep — instead of a set-screw point load that stress-relaxes; the shaft
+    stays unmarred. Set once per player, hex key. Closing the bore Ø0.4 needs
+    ~1.3 of slit travel (< the 1.6 gap). Local: Z0 = shoulder; body −Z."""
     body = cyl(TUBE_OD + 4, SLEEVE_L, z=-SLEEVE_L)
     spigot = cyl(TH_MINOR - TH_CLR, TH_LEN + 2, z=-2.0)
     spigot = spigot.union(_thread((TH_MINOR - TH_CLR) / 2, TH_LEN + 2)
                           .translate((0, 0, -2.0)))
     body = body.union(spigot)
     body = body.cut(cyl(SHAFT_D + 0.4, SLEEVE_L + TH_LEN, z=-SLEEVE_L - 1))
-    # clamp: two slits + a boss with insert + M4 set screw squeezing the bore
-    for a in (0, 180):
-        sl = box_at(1.6, 26.0, 36.0, y=13.0, z=-SLEEVE_L + 18.0)
-        body = body.cut(sl.rotate((0, 0, 0), (0, 0, 1), a + 90))
-    boss = box_at(14.0, 12.0, 16.0, y=TUBE_OD / 2 + 2.0, z=-SLEEVE_L + 12.0)
-    body = body.union(boss)
+    # lug block on +Y, then the single slit through block + wall + bore
+    lz = -SLEEVE_L + 9.0                                  # bolt line
+    body = body.union(box_at(16.0, 12.0, 18.0, y=21.0, z=lz))
+    body = body.cut(box_at(1.6, 19.0, 44.0, y=18.5, z=-SLEEVE_L + 22.0))
+    # M4 button screw enters +X: Ø8 head pocket to x=4 so the 12 mm screw
+    # fully engages the insert seated in the −X lug (x −8..−3.3)
     body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        2.8, 14, cq.Vector(0, TUBE_OD / 2 + 9, -SLEEVE_L + 12), cq.Vector(0, -1, 0))))
+        2.15, 18.0, cq.Vector(9.0, 21.0, lz), cq.Vector(-1, 0, 0))))
     body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        2.15, 20, cq.Vector(0, TUBE_OD / 2 + 9, -SLEEVE_L + 12), cq.Vector(0, -1, 0))))
+        4.0, 5.5, cq.Vector(9.5, 21.0, lz), cq.Vector(-1, 0, 0))))
+    body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        2.8, 6.0, cq.Vector(-9.0, 21.0, lz), cq.Vector(1, 0, 0))))
+    # 45° teardrop roof on the Ø8 head pocket (horizontal bore, printed
+    # standing; the Ø4.3/Ø5.6 bores are small enough to print round)
+    t = 4.0 * 0.7071
+    body = body.cut(cq.Workplane("YZ")
+                    .polyline([(21.0 - t, lz + t), (21.0 + t, lz + t),
+                               (21.0, lz + 4.0 * 1.4142)])
+                    .close().extrude(5.5).translate((4.0, 0, 0)))
     return heal(body)   # helical-thread booleans need a ShapeFix pass
 
 
