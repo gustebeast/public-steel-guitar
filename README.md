@@ -126,7 +126,7 @@ machines anywhere.
 ## Building the CAD
 
 CadQuery on Python 3.12 generates a STEP file per printed part plus a colored
-`assembly.step``assembly.step` (~217 placed components including purchased-part dummies).
+`assembly.step` (~217 placed components including purchased-part dummies).
 
 ```bash
 py -3.12 -m src.build              # all parts + assembly.step
