@@ -23,6 +23,26 @@ is commodity.
 | **M4 mount screw** | M4 × 0.7, 12 mm, 18-8 SS (button or socket head) | 10 | [McMaster 92095A192](https://www.mcmaster.com/92095A192/) | $14.77 / pack | 4 nut-block corner bolts + 2 pickup X-lock stations (printed knobs pressed on their heads) + 4 leg-sleeve pinch bolts, all into 94459A150 inserts; **M4 × 0.7** (coarse) to match the inserts — NOT the M4 × 0.5 fine-thread 90751A120 |
 | **Fasteners** | M3 (NEMA17 mounts), M2 (belt clamps) | — | [McMaster](https://www.mcmaster.com/) | — | commodity |
 
+## Electronics (compute bay)
+
+The printed tray in the keyhead bay carries tool-free snap mounts for the full
+PRO stack; a BASIC build populates only the first two rows and leaves the rest
+of the sockets empty (the upgrade is drop-in). Panel I/O (1/4" TS line out, DC
+power inlet, USB-C) mounts through the recessed wall in the bridge endplate's
+lower corner — the instrument's right face.
+
+| Part | Role | Qty | Source | ~Price |
+|------|------|-----|--------|--------|
+| **Teensy 4.1** | basic+pro: sensors, CAN servo loop, UI, USB audio | 1 | [PJRC](https://www.pjrc.com/store/teensy41.html) | $32 |
+| **Teensy Audio Shield** | line-in ADC + line out (SGTL5000) | 1 | [PJRC](https://www.pjrc.com/store/teensy3_audio.html) | $16 |
+| **CAN transceiver** | SN65HVD230 breakout (logic ↔ CAN-H/L) | 1 | [Adafruit/DigiKey](https://www.digikey.com/) | $3 |
+| **Raspberry Pi 5** (pro) | 10ch audio→MIDI + Dexed + USB audio gadget | 1 | [official resellers](https://www.raspberrypi.com/products/raspberry-pi-5/) | $60–80 |
+| **CS42448 TDM board** (pro) | 6-in ADC each; ×2 stacked = 10ch analog in | 2 | community boards / [Tindie](https://www.tindie.com/) | ~$35 ea |
+| **Buck module** | 24 V → 5 V for Pi + Teensy | 1 | DigiKey/Pololu | $5 |
+| **1/4" TS panel jack** | analog line out | 1 | [Switchcraft via Mouser](https://www.mouser.com/) | $4 |
+| **DC barrel panel jack** | 24 V power inlet (servo bus + buck) | 1 | Mouser/DigiKey | $2 |
+| **USB-C panel module** | panel-mount extension (2× M3 flange) | 1 | Mouser/DigiKey | $6 |
+
 The motor still does all tuning (the nut block clamps; no manual tuners). The nut
 block is **reprintable per string set** — `STRING_GAUGE` in `dimensions.py` swaps
 between E9 and C6; the break pins re-gauge so string tops stay coplanar.

@@ -103,8 +103,18 @@ clamped sliding shaft at the bottom spans 150 mm — more than one step — so
 the bands overlap and **any** height from ~240 mm up is reachable (two
 segments cover 525–675 mm; add or drop segments from there).
 
-**Electronics** (architecture level; firmware not in this repo): a Teensy-class
-controller reads pedal/lever angle sensors and speaks CAN to the ten servos.
+**Electronics** (architecture level; firmware not in this repo): a Teensy 4.1
+reads pedal/lever angle sensors and speaks CAN to the ten servos. The compute
+bay — a printed tray that drops into rail channels at the keyhead end — has
+tool-free snap mounts for the full **pro** stack (Teensy 4.1 + audio shield,
+CAN transceiver, Raspberry Pi 5, 2× CS42448 TDM ADCs, buck converter); a
+**basic** build populates only the Teensy row and leaves the other sockets
+empty as the upgrade path. Panel I/O (1/4" TS line out, DC power inlet,
+USB-C audio-interface port) mounts through a recessed wall in the bridge
+endplate — the instrument's right face. The modeled harness is color-coded
+per electrical net (spliced runs share a color; every unique source→dest
+pairing differs) and routed through diamond raceways in the cross-ribs; the
+overlap gate verifies the wires touch nothing but their own endpoints.
 The playing path is pure feed-forward — pedal moves map directly to motor
 positions, so there is no pitch-tracking latency while playing. A per-string
 pickup (e.g. a hex/multichannel pickup) feeds slow pitch detection used only
@@ -116,7 +126,7 @@ machines anywhere.
 ## Building the CAD
 
 CadQuery on Python 3.12 generates a STEP file per printed part plus a colored
-`assembly.step` (~201 placed components including purchased-part dummies).
+`assembly.step``assembly.step` (~217 placed components including purchased-part dummies).
 
 ```bash
 py -3.12 -m src.build              # all parts + assembly.step
@@ -136,7 +146,7 @@ py -3.12 -m tools.check_overlaps   # design gate: any unintended interpenetratio
   `pickup_knob` (adjustable pickup mount: tongue-and-groove rail slide with
   hand-knob X locks for bridge↔neck tone, shim-set height, width-clamping
   jaws), and the legs: `leg_socket`/`leg_segment`/`leg_sleeve`/`leg_shaft`
-  plus `leg_foot`/`leg_washer` in TPU.
+  plus `leg_foot`/`leg_washer` in TPU, and `electronics_tray` (compute-bay snap mounts).
 - `tools/check_overlaps.py` exits non-zero on any unintended part
   interpenetration; carriage geometry is additionally swept through both
   travel extremes during design review.

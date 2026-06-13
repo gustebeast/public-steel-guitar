@@ -64,6 +64,7 @@ PARTS = {
     "leg_shaft":       (lambda: heal(LG.leg_shaft()),   "leg_shaft.step",   "PCTG — leg sliding shaft ×4 (0–150 fine height adjust)"),
     "leg_foot":        (lambda: heal(LG.leg_foot()),    "leg_foot.step",    "TPU — foot cap ×4"),
     "leg_washer":      (lambda: heal(LG.leg_washer()),  "leg_washer.step",  "TPU — anti-unscrew shoulder washer, 1/junction = segments+1 per leg (compresses on the last quarter turn)"),
+    "electronics_tray": (lambda: heal(__import__("src.electronics", fromlist=["e"]).electronics_tray()), "electronics_tray.step", "PCTG — compute-bay tray (drops into rail channels from above; tool-free snap mounts for Teensy+shield, Pi 5, 2x CS42448, buck, CAN transceiver; basic builds leave the pro sockets empty)"),
 }
 for _i, _seg in enumerate(chassis_segments):     # chassis split into dovetailed segments
     PARTS[f"chassis_{_i}"] = (partial(heal, _seg), f"chassis_{_i}.step",
@@ -295,6 +296,21 @@ def _leg_components():
     return out
 
 
+def _electronics_components():
+    """The compute bay (PRO population shown; a basic build leaves the Pi /
+    CS stack / buck sockets empty) + panel jacks + the wire harness."""
+    from . import electronics as EL
+    from . import wiring as WR
+    out = [("electronics_tray", EL.electronics_tray()),
+           ("pi5", EL.pi5()), ("teensy_stack", EL.teensy_stack()),
+           ("cs_stack", EL.cs_stack()), ("buck", EL.buck()),
+           ("can_xcvr", EL.can_xcvr()),
+           ("ts_jack", EL.ts_jack()), ("dc_jack", EL.dc_jack()),
+           ("usbc_jack", EL.usbc_jack())]
+    out += WR.build_wires()
+    return out
+
+
 def collect_components():
     comps = [
         ("bridge_endplate", bridge_endplate),
@@ -304,6 +320,7 @@ def collect_components():
     comps += [(f"chassis_{i}", seg) for i, seg in enumerate(chassis_segments)]
     comps += _pickup_mount_components()
     comps += _leg_components()
+    comps += _electronics_components()
     for i in range(D.N_STRINGS):
         comps.extend(_string_components(i))
     return comps
@@ -344,6 +361,24 @@ _COLORS = {
     "leg_foot":        (0.12, 0.12, 0.13),   # TPU
     "leg_washer":      (0.12, 0.12, 0.13),   # TPU
     "build_counter":   (0.86, 0.08, 0.24),
+    # electronics bay (dummies) + panel jacks
+    "electronics_tray": (0.30, 0.36, 0.32),  # printed tray
+    "pi5":             (0.05, 0.35, 0.15),   # PCB green
+    "teensy_stack":    (0.10, 0.45, 0.30),
+    "cs_stack":        (0.15, 0.25, 0.50),
+    "buck":            (0.35, 0.30, 0.50),
+    "can_xcvr":        (0.55, 0.25, 0.25),
+    "ts_jack":         (0.62, 0.64, 0.67),
+    "dc_jack":         (0.62, 0.64, 0.67),
+    "usbc_jack":       (0.62, 0.64, 0.67),
+    # wire harness: one color per NET (splices share; unique pairings differ)
+    "wire_pickup":     (0.92, 0.92, 0.92),   # white  - pickup -> shield + TS
+    "wire_can":        (0.10, 0.65, 0.15),   # green  - CAN bus daisy chain
+    "wire_power":      (0.80, 0.10, 0.10),   # red    - DC in -> servos -> buck
+    "wire_usb":        (0.15, 0.35, 0.85),   # blue   - USB-C panel -> Pi
+    "wire_link":       (0.55, 0.20, 0.75),   # purple - Teensy <-> Pi
+    "wire_canjmp":     (0.95, 0.55, 0.10),   # orange - Teensy <-> transceiver
+    "wire_tdm":        (0.10, 0.60, 0.60),   # teal   - CS stack -> Pi
 }
 _DEFAULT_COLOR = (0.80, 0.80, 0.80)
 

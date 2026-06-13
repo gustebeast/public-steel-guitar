@@ -281,6 +281,23 @@ def _build_full() -> cq.Workplane:
                     .close().extrude(2 * DT_DEEP_HW + 4)
                     .translate((_sx - DT_DEEP_HW - 2, 0, 0)))
             body = body.cut(trap.intersect(keep))
+    # electronics-tray drop-in channels: one vertical channel per rail inner
+    # face (open at the top - the tray lowers in from above and its tabs
+    # bottom on the channel floors), placed in the only solid-web window
+    # between the leg dovetail slot and the rail diamonds
+    from .electronics import TAB_X0, TAB_X1, CH_W, CH_D, TRAY_Z0
+    _cxm = (TAB_X0 + TAB_X1) / 2
+    for _yr, _s in ((Y_HI, 1), (Y_LO, -1)):
+        _yf = _yr - _s * T / 2                         # inner face
+        body = body.cut(box_at(CH_W, CH_D + 1.0, Z_TOP + 1.0 - TRAY_Z0,
+                               x=_cxm, y=_yf + _s * (CH_D - 1.0) / 2,
+                               z=(TRAY_Z0 + Z_TOP + 1.0) / 2))
+    # wire raceways: a self-supporting diamond through every cross-rib at
+    # each floor-trunk lane y (the harness runs at z -70.6, under the motors)
+    from .wiring import RIB_RACE_Y
+    for _rx in _RIB_X:
+        for _ly in RIB_RACE_Y:
+            body = body.cut(_diamond(_ly, -70.65, 3.8, _rx, _RIB_W + 2.0))
     body = body.union(MB.motor_bank)                  # fuse in the motor faceplate walls
     # +X end: a sliding-dovetail tongue on each rail end; the bridge endplate caps
     # and sockets them (drops down to engage, glued).

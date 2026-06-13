@@ -20,6 +20,7 @@ from OCP.GProp import GProp_GProps
 from OCP.BRepGProp import BRepGProp
 
 from src.build import collect_components
+from src.wiring import WIRE_OK
 
 VOL_EPS = 1.0   # mm^3 — ignore numerically-tiny touching contacts
 
@@ -89,6 +90,14 @@ GLOBAL_OK = {
 
 def intended(na, nb) -> bool:
     if "build_counter" in (na, nb):
+        return True
+    # a wire may clip ONLY its declared source/destination bodies (the model
+    # shows connections by clipping); any other wire contact is a routing bug
+    for w, o in ((na, nb), (nb, na)):
+        if base(w) in WIRE_OK:
+            return base(o) in WIRE_OK[base(w)]
+    # the electronics tray's tabs rest on their channel floors
+    if frozenset({base(na), base(nb)}) == frozenset({"electronics_tray", "chassis"}):
         return True
     # adjacent chassis segments meet at their sliding-dovetail joints (one frame)
     if base(na) == base(nb) == "chassis":

@@ -78,7 +78,11 @@ def _cap() -> cq.Workplane:
             near_win = (abs(cy) - H <= WIN_HW + WIN_BORDER
                         and cz + H >= GR_LBOT - WIN_BORDER
                         and cz - H <= WIN_Z1 + WIN_BORDER)
-            if in_field and not near_win:
+            # keep the lower -Y corner solid: the panel-jack recess (TS, DC,
+            # USB-C) thins it to a 4 mm wall instead
+            near_jack = (cy + H >= -119.0 and cy - H <= -57.0
+                         and cz - H <= -44.0 and cz + H >= -70.0)
+            if in_field and not near_win and not near_jack:
                 w = w.cut(CH._diamond(cy, cz, H, xc, thk))
             cy += step
         cz -= step
@@ -182,6 +186,22 @@ def _build() -> cq.Workplane:
     # locks it in X+Y; the string pull also compresses it against the rail ends.
     for yr in CH.ENDPLATE_JOINT_Y:
         body = body.cut(CH._tongue(CH.X_BRIDGE, yr, socket=True, depth=CH.ENDPLATE_DT))
+    # PANEL I/O (the instrument's right face): recess the lower -Y corner from
+    # the inside down to a 4 mm wall, then the three jack holes - 1/4" TS line
+    # out, DC power inlet, USB-C (audio-interface port). Printed flat, so the
+    # recess and holes are vertical in the print - no support concerns.
+    from .electronics import TS_Y, DC_Y, USB_Y, JACK_Z, JACK_WALL_X
+    body = body.cut(box_at(JACK_WALL_X - X0 + 1.0, 58.0, 22.0,
+                           x=(X0 - 1.0 + JACK_WALL_X) / 2, y=-88.0, z=JACK_Z))
+    for jy, jd in ((TS_Y, 9.6), (DC_Y, 11.2)):
+        body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+            jd / 2, 6.0, cq.Vector(JACK_WALL_X - 1.0, jy, JACK_Z),
+            cq.Vector(1, 0, 0))))
+    body = body.cut(box_at(6.0, 13.2, 6.8, x=12.0, y=USB_Y, z=JACK_Z))
+    for sy in (USB_Y - 9.0, USB_Y + 9.0):       # USB-C flange screw pilots
+        body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+            1.25, 6.0, cq.Vector(JACK_WALL_X - 1.0, sy, JACK_Z),
+            cq.Vector(1, 0, 0))))
     return body
 
 
