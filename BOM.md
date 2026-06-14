@@ -33,18 +33,41 @@ lower corner — the instrument's right face.
 
 | Part | Role | Qty | Source | ~Price |
 |------|------|-----|--------|--------|
-| **Teensy 4.1** | basic+pro: sensors, CAN servo loop, UI, USB audio | 1 | [PJRC](https://www.pjrc.com/store/teensy41.html) | $32 |
-| **Teensy Audio Shield** | line-in ADC + line out (SGTL5000) | 1 | [PJRC](https://www.pjrc.com/store/teensy3_audio.html) | $16 |
-| **CAN transceiver** | SN65HVD230 breakout (logic ↔ CAN-H/L) | 1 | [Adafruit/DigiKey](https://www.digikey.com/) | $3 |
-| **Raspberry Pi 5** (pro) | 10ch audio→MIDI + Dexed + USB audio gadget | 1 | [official resellers](https://www.raspberrypi.com/products/raspberry-pi-5/) | $60–80 |
-| **CS42448 TDM board** (pro) | 6-in ADC each; ×2 stacked = 10ch analog in | 2 | community boards / [Tindie](https://www.tindie.com/) | ~$35 ea |
-| **Buck module** | 24 V → 5 V for Pi + Teensy | 1 | DigiKey/Pololu | $5 |
-| **1/4" TS panel jack** | analog line out | 1 | [Switchcraft via Mouser](https://www.mouser.com/) | $4 |
-| **DC barrel panel jack** | 24 V power inlet (servo bus + buck + AFE) | 1 | Mouser/DigiKey | $2 |
-| **USB-C panel module** | panel-mount extension (2× M3 flange) | 1 | Mouser/DigiKey | $6 |
-| **Signal relay** | SPDT/DPDT gold-contact, 5 V coil (true-bypass) | 1 | [Omron G6K via DigiKey](https://www.digikey.com/) | $2 |
-| **JFET/op-amp buffer** | low-noise unity buffer (e.g. OPA1641) + passives | 1 | DigiKey/Mouser | $3 |
-| **Relay driver + LDO** | small NPN/MOSFET + flyback diode + low-noise LDO | 1 | DigiKey/Mouser | $2 |
+Prices verified June 2026 from live listings (qty 1). Build tier in the **B/P**
+column: **B** = both basic & pro, **P** = pro only.
+
+| Part | B/P | PN / source | ~Price | URL |
+|------|-----|-------------|--------|-----|
+| **Teensy 4.1** | B | PJRC via SparkFun | $31.50 | [SparkFun](https://www.sparkfun.com/teensy-4-1.html) |
+| **Teensy 4 Audio Shield Rev D** | B | SGTL5000, SparkFun | $9.80 | [SparkFun](https://www.sparkfun.com/teensy-4-audio-shield-rev-d.html) |
+| **CAN transceiver** | B | SN65HVD230DR (DigiKey) | $2.45 | [DigiKey](https://www.digikey.com/en/products/detail/texas-instruments/SN65HVD230DR/404367) |
+| **Buck 24→5 V 1 A** | B | Pololu D24V10F5 (powers Teensy) | $12.95 | [Pololu](https://www.pololu.com/product/2831) |
+| **Signal relay** | B | Omron G5V-1-DC5 SPDT (true-bypass) | $2.74 | [DigiKey](https://www.digikey.com/en/products/detail/omron-electronics-inc-emc-div/G5V-1-DC5/87831) |
+| **Buffer op-amp** | B | OPA2134PA DIP + passives | ~$11 | [DigiKey](https://www.digikey.com/en/products/detail/texas-instruments/OPA2134PA/254686) |
+| **1/4" TS panel jack** | B | Neutrik NMJ4HCD2 (Ø11.4 hole) | $2.53 | [DigiKey](https://www.digikey.com/en/products/detail/neutrik-americas-inc/NMJ4HCD2/29371256) |
+| **DC barrel panel jack** | B | Same Sky PJ-005A (Ø8 hole, 2.0 pin) | $3.07 | [DigiKey](https://www.digikey.com/en/products/detail/same-sky-formerly-cui-devices/PJ-005A/165838) |
+| **USB-C panel jack** | B | USB 2.0 panel coupler (both brains are USB 2.0) | ~$6 | ⚠ pick PN; NOT the $23 5 Gbps Cliff |
+| **Rotary/4-way joystick** | B | Alps RKJXT1F42001 (UI control) | $9.22 | [DigiKey](https://www.digikey.com/en/products/detail/alps-alpine/RKJXT1F42001/19529127) |
+| **OLED display** | B | 2.42" 128×64 SSD1309 SPI (UI screen) | ~$17 | [Waveshare](https://www.waveshare.com/2.42inch-oled-module.htm) |
+| **USB 2.0 hub** | P | Adafruit CH334F (share 1 port: Teensy+Pi) | $4.50 | [Adafruit](https://www.adafruit.com/product/5999) |
+| **Raspberry Pi 5, 8 GB** | P | 10ch A2M + Dexed + USB-audio gadget | $175 ⚠ | [PiShop](https://www.pishop.us/product/raspberry-pi-5-8gb/) |
+| **Buck 24→5 V ≥6 A** | P | Pololu D36V50F5 (Pi wants 5.1 V/5 A) | $39.95 | [Pololu](https://www.pololu.com/product/4091) |
+| **10-ch audio ADC** | P | ⚠ CS42448 is **EOL** — needs substitution | ~$60 | see note |
+
+⚠ **Pi 5** $175 is the current street price (MSRP ~$80; supply tight). ⚠ **CS42448
+is discontinued** — no purchasable board; the pro 10-channel ADC needs a redesign
+around an in-production codec (e.g. multiple TLV320AIC3104 or PCM1808 boards),
+budget ~$60. ⚠ The panel **USB-C** only needs USB 2.0 (480 Mbps) — both the
+Teensy and the Pi 5 gadget port are USB 2.0 — so a cheap small panel coupler
+suffices, not the 5 Gbps feedthrough.
+
+The **analog front-end** (buffer + true-bypass relay + driver + local LDO) is a
+small board at the bridge end. The relay defaults (de-energized) to passing the
+**raw** pickup straight to the TS jack; the Teensy energizes it (UI toggle) to
+switch in the **Q-processed** path. The ADC is always fed, and the Teensy
+presents itself to a computer as a **USB audio interface** — so the processed
+signal records digitally over USB with no analog round-trip. In **pro**, a USB 2.0
+hub shares one panel port between the Teensy and the Pi (both as USB devices).
 
 The **analog front-end** (buffer + true-bypass relay + driver + local LDO) is a
 small board at the bridge end, on a boss off the bridge cross-rib. The relay
@@ -65,3 +88,42 @@ and the adjustable legs: leg_socket ×4, leg_segment ×8, leg_sleeve ×4,
 leg_shaft ×4 (PCTG/PA6-GF) plus leg_foot ×4 and leg_washer ×12 in **TPU**
 (anti-unscrew preload washers + floor-friendly feet)
 — see `py -3.12 -m src.build --list`.
+
+## Filament (printed parts, both tiers)
+
+Estimated at 2 perimeters (0.8 mm nozzle → 1.6 mm walls) + 15 % infill. Pickup
+parts excluded. PCTG $25/kg, PA6-GF $60/kg; PETG≈$25, TPU≈$30 (assumed).
+
+| Material | Mass | Cost | Main parts |
+|----------|------|------|-----------|
+| PCTG | ~2.41 kg | ~$60 | chassis ×3, endplate, legs, tray, pulleys |
+| PA6-GF | ~53 g | ~$3 | 10 carriages + nut block (load-critical) |
+| PETG | ~32 g | ~$1 | 20 belt-splice clamps |
+| TPU | ~40 g | ~$1 | 4 feet + 12 anti-unscrew washers |
+| **Total** | | **~$65** | |
+
+## Wire
+
+Modeled internal harness ≈ 5.2 m of single-conductor runs; physically ~10 m once
+power/CAN are pairs and audio is shielded. A 45 m hookup spool (~$20) covers
+power/CAN/control; ~1.5 m shielded instrument cable (~$16) for the pickup/audio.
+**~$35.** Excludes pedal/lever sensor wiring (pedals not yet designed).
+
+## Cost summary (per instrument, June 2026)
+
+Approximate; motors dominate. Re-verify before ordering.
+
+| Group | Basic | Pro |
+|-------|------:|----:|
+| Filament (printed) | ~$65 | ~$65 |
+| Mechanical hardware (motors, screws, bearings, belt, fasteners, dowels) | ~$530 | ~$530 |
+| Wire | ~$35 | ~$35 |
+| Electronics + UI | ~$110 | ~$375 |
+| **Total** | **~$740** | **~$1,005** |
+
+Mechanical detail: 10× MKS SERVO42D (~$240) is the bulk; +10× Tr5×1 screw/nut
+(~$60, **confirm 1 mm lead / single-start**), 10× MR85ZZ (~$30), 10× 693ZZ
+(~$30), 10× shaft collars (~$25), Ø3 shaft (~$30), dowels (~$22), GT2 belt
+6.5 m (~$12–130 depending on genuine-Gates vs generic), M-hardware packs (~$50).
+Pro electronics adds the Pi 5 ($175 street), the ≥6 A buck, the USB hub, and the
+10-ch ADC (**CS42448 EOL — substitution needed, ~$60**).
