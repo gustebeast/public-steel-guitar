@@ -197,32 +197,46 @@ def can_xcvr() -> cq.Workplane:
     return b
 
 
+_AX = cq.Vector(1, 0, 0)                # plugs insert from +X (the panel face)
+
+
+def _cyl_x(d, length, x, y, z) -> cq.Workplane:
+    return cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        d / 2, length, cq.Vector(x, y, z), _AX))
+
+
 def ts_jack() -> cq.Workplane:
-    """1/4-inch TS panel jack through the endplate wall (body inside the
-    recess pocket, bushing through, nut outside)."""
-    b = cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        7.5, 8.0, cq.Vector(2.0, TS_Y, JACK_Z), cq.Vector(1, 0, 0)))
-    b = b.add(cq.Solid.makeCylinder(
-        4.7, 4.6, cq.Vector(JACK_WALL_X - 0.05, TS_Y, JACK_Z), cq.Vector(1, 0, 0)))
-    b = b.add(cq.Solid.makeCylinder(
-        7.0, 2.0, cq.Vector(14.05, TS_Y, JACK_Z), cq.Vector(1, 0, 0)))
+    """1/4-inch TS panel jack: body inside the recess, bushing through, nut
+    outside, and the female socket bore (Ø6.5, for the 6.35 mm plug) opening
+    at the panel face."""
+    b = _cyl_x(15.0, 8.0, 2.0, TS_Y, JACK_Z)
+    b = b.union(_cyl_x(9.4, 4.6, JACK_WALL_X - 0.05, TS_Y, JACK_Z))
+    b = b.union(_cyl_x(14.0, 2.0, 14.05, TS_Y, JACK_Z))
+    b = b.cut(_cyl_x(6.5, 14.0, 3.0, TS_Y, JACK_Z))         # female plug socket
     return b
 
 
 def dc_jack() -> cq.Workplane:
-    """DC barrel power inlet, same mounting style."""
-    b = cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        6.0, 8.0, cq.Vector(2.0, DC_Y, JACK_Z), cq.Vector(1, 0, 0)))
-    b = b.add(cq.Solid.makeCylinder(
-        5.5, 4.6, cq.Vector(JACK_WALL_X - 0.05, DC_Y, JACK_Z), cq.Vector(1, 0, 0)))
-    b = b.add(cq.Solid.makeCylinder(
-        6.8, 2.0, cq.Vector(14.05, DC_Y, JACK_Z), cq.Vector(1, 0, 0)))
+    """DC barrel power inlet: female outer bore (Ø5.5, accepts the plug sleeve)
+    with the Ø2.1 centre pin standing in it."""
+    b = _cyl_x(12.0, 8.0, 2.0, DC_Y, JACK_Z)
+    b = b.union(_cyl_x(11.0, 4.6, JACK_WALL_X - 0.05, DC_Y, JACK_Z))
+    b = b.union(_cyl_x(13.6, 2.0, 14.05, DC_Y, JACK_Z))
+    b = b.cut(_cyl_x(5.5, 13.0, 4.0, DC_Y, JACK_Z))         # female barrel bore
+    b = b.union(_cyl_x(2.1, 11.0, 4.0, DC_Y, JACK_Z))       # centre pin
     return b
 
 
 def usbc_jack() -> cq.Workplane:
-    """Panel-mount USB-C module: body inside, flange against the outer face."""
+    """Panel-mount USB-C module: body, flange, and the female receptacle - an
+    8.34 x 2.56 mm racetrack opening with the centre tongue."""
     b = box_at(8.0, 22.0, 11.0, x=6.0, y=USB_Y, z=JACK_Z)
     b = b.union(box_at(4.1, 13.0, 6.6, x=12.0, y=USB_Y, z=JACK_Z))
-    b = b.union(box_at(1.6, 24.0, 13.0, x=14.85, y=USB_Y, z=JACK_Z))
+    b = b.union(box_at(1.6, 21.0, 13.0, x=14.85, y=USB_Y, z=JACK_Z))
+    # racetrack cavity (8.34 wide x 2.56 tall) + centre PCB tongue
+    cav = box_at(7.0, 5.78, 2.56, x=12.5, y=USB_Y, z=JACK_Z)
+    for dy in (-2.89, 2.89):
+        cav = cav.union(_cyl_x(2.56, 7.0, 9.0, USB_Y + dy, JACK_Z))
+    b = b.cut(cav)
+    b = b.union(box_at(5.5, 6.7, 0.7, x=11.75, y=USB_Y, z=JACK_Z))
     return b

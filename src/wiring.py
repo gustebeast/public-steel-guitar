@@ -127,10 +127,11 @@ def build_wires():
         (-50.0, -45.0, -5.0), (-44.0, -60.0, -14.0),
         (-40.0, -76.0, -40.0), (-24.0, -80.0, -50.0), afe_buf_in])))
 
-    # -- AFE relay common -> TS jack (l.gray, short, over the boss top)
+    # -- AFE relay common -> TS jack (l.gray, short, over the boss top; ends
+    #    off-axis in the jack's body wall, clear of the new socket bore)
     out.append(("wire_out", _wire([
-        afe_relay_c, (0.0, -78.0, -52.0), (3.0, -72.0, -55.0),
-        (5.0, EL.TS_Y, EL.JACK_Z)])))
+        afe_relay_c, (0.0, -78.0, -52.0), (3.0, -72.0, -54.0),
+        (2.5, EL.TS_Y, EL.JACK_Z + 4.5)])))
 
     # The three long runs leave the AFE westward (above the boss top, z -52),
     # drop into the open floor WEST of the boss (x <= -46), traverse under the
