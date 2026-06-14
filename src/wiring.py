@@ -179,8 +179,8 @@ def build_wires():
     #    still high (clear of the AFE's -Y exit corridors), drop west of the
     #    boss -> floor lane -> bay -> Pi
     out.append(("wire_usb", _wire([
-        (5.0, EL.USB_Y, EL.JACK_Z), (0.0, EL.USB_Y, -44.0),
-        (0.0, LANE_USB, -44.0), (-30.0, LANE_USB, -44.0),
+        (5.0, EL.USB_Y, EL.JACK_Z), (-8.0, EL.USB_Y, -45.0),
+        (-8.0, LANE_USB, -45.0), (-30.0, LANE_USB, -45.0),
         (-30.0, LANE_USB, LANE_Z), (-524.0, LANE_USB, LANE_Z),
         (-524.0, LANE_USB, -33.0), (-548.0, LANE_USB, -33.0),
         (-548.0, 10.0, -33.0), (-548.0, 10.0, -44.0)])))

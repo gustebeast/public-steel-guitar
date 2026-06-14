@@ -57,8 +57,13 @@ XCVR_FP   = (-604.0, -578.0, -52.0, -39.0)    # SN65HVD230 breakout
 BOARD_Z = TRAY_Z1 + POST_H             # every bottom board sits at -67
 
 # ---- panel jacks (through the endplate recess wall, x 10..14 -> 4 thick) ----
+# The real connectors are deep (TS ~22 mm, DC ~15.5 mm). Behind the endplate
+# the corner is open in X for ~100 mm (out to motor 0 at x -89) EXCEPT the low
+# bridge cross-rib (tops at z -65). So the jacks ride HIGH (z -41), clear above
+# the rib and above the bottom-mounted AFE board - their bodies then reach
+# freely into the open bay.
 JACK_WALL_X = 10.0                     # inner face of the thinned wall
-JACK_Z = -57.0   # jack bodies clear the bridge-rib top (-65.15)
+JACK_Z = -41.0
 TS_Y, DC_Y, USB_Y = -68.0, -86.0, -104.0
 
 # ---- analog front end (bridge-end -Y corner, near the pickup + jacks) ----
@@ -206,24 +211,24 @@ def _cyl_x(d, length, x, y, z) -> cq.Workplane:
 
 
 def ts_jack() -> cq.Workplane:
-    """1/4-inch TS panel jack: body inside the recess, bushing through, nut
-    outside, and the female socket bore (Ø6.5, for the 6.35 mm plug) opening
-    at the panel face."""
-    b = _cyl_x(15.0, 8.0, 2.0, TS_Y, JACK_Z)
-    b = b.union(_cyl_x(9.4, 4.6, JACK_WALL_X - 0.05, TS_Y, JACK_Z))
-    b = b.union(_cyl_x(14.0, 2.0, 14.05, TS_Y, JACK_Z))
-    b = b.cut(_cyl_x(6.5, 14.0, 3.0, TS_Y, JACK_Z))         # female plug socket
+    """1/4-inch TS panel jack — Neutrik NMJ4HCD2 dims: Ø11.4 panel bushing,
+    Ø~15 body ~22 mm deep BEHIND the panel, nut outside. Female socket bore
+    Ø6.5 for the 6.35 mm plug."""
+    b = _cyl_x(15.0, 22.0, -16.0, TS_Y, JACK_Z)            # deep body, behind cap
+    b = b.union(_cyl_x(11.4, 8.05, 6.0, TS_Y, JACK_Z))     # bushing through cap
+    b = b.union(_cyl_x(13.0, 2.0, 14.05, TS_Y, JACK_Z))    # nut, outside
+    b = b.cut(_cyl_x(6.5, 33.0, -15.0, TS_Y, JACK_Z))      # female plug socket
     return b
 
 
 def dc_jack() -> cq.Workplane:
-    """DC barrel power inlet: female outer bore (Ø5.5, accepts the plug sleeve)
-    with the Ø2.1 centre pin standing in it."""
-    b = _cyl_x(12.0, 8.0, 2.0, DC_Y, JACK_Z)
-    b = b.union(_cyl_x(11.0, 4.6, JACK_WALL_X - 0.05, DC_Y, JACK_Z))
-    b = b.union(_cyl_x(13.6, 2.0, 14.05, DC_Y, JACK_Z))
-    b = b.cut(_cyl_x(5.5, 13.0, 4.0, DC_Y, JACK_Z))         # female barrel bore
-    b = b.union(_cyl_x(2.1, 11.0, 4.0, DC_Y, JACK_Z))       # centre pin
+    """DC barrel power inlet — Same Sky PJ-005A dims: Ø10.8 face, Ø5.7 thread,
+    ~15.5 mm overall. Female Ø5.5 barrel bore with the Ø2.0 centre pin."""
+    b = _cyl_x(10.8, 10.0, -4.0, DC_Y, JACK_Z)             # body behind the cap
+    b = b.union(_cyl_x(5.7, 8.05, 6.0, DC_Y, JACK_Z))      # thread through cap
+    b = b.union(_cyl_x(10.8, 2.0, 14.05, DC_Y, JACK_Z))    # front face, outside
+    b = b.cut(_cyl_x(5.5, 22.0, -3.0, DC_Y, JACK_Z))       # female barrel bore
+    b = b.union(_cyl_x(2.0, 17.0, -3.0, DC_Y, JACK_Z))     # centre pin
     return b
 
 
