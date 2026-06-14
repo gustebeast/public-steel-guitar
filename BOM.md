@@ -31,8 +31,6 @@ of the sockets empty (the upgrade is drop-in). Panel I/O (1/4" TS line out, DC
 power inlet, USB-C) mounts through the recessed wall in the bridge endplate's
 lower corner — the instrument's right face.
 
-| Part | Role | Qty | Source | ~Price |
-|------|------|-----|--------|--------|
 Prices verified June 2026 from live listings (qty 1). Build tier in the **B/P**
 column: **B** = both basic & pro, **P** = pro only.
 
