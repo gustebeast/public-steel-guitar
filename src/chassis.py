@@ -292,12 +292,27 @@ def _build_full() -> cq.Workplane:
         body = body.cut(box_at(CH_W, CH_D + 1.0, Z_TOP + 1.0 - TRAY_Z0,
                                x=_cxm, y=_yf + _s * (CH_D - 1.0) / 2,
                                z=(TRAY_Z0 + Z_TOP + 1.0) / 2))
+    # AFE boss: widen the bridge cross-rib's -Y end into a solid pad that
+    # carries the analog front-end board, sitting BELOW the pickup bar and
+    # INBOARD of both the pickup-bar groove (at the rail face) and the leg
+    # barrel - so it fouls neither. Bonds to the bridge rib (no cantilever),
+    # prints as a vertical block off the bed. Two posts hold the board.
+    from .electronics import (AFE_X0, AFE_X1, AFE_Y0, AFE_Y1, AFE_Z,
+                              AFE_PED_TOP)
+    body = body.union(box_at(AFE_X1 + 2 - (AFE_X0 - 2), AFE_Y1 + 2 - (AFE_Y0 - 2),
+                             AFE_PED_TOP - Z_BOT,
+                             x=(AFE_X0 - 2 + AFE_X1 + 2) / 2,
+                             y=(AFE_Y0 - 2 + AFE_Y1 + 2) / 2,
+                             z=(Z_BOT + AFE_PED_TOP) / 2))
+    for _px, _py in ((AFE_X0 + 4, AFE_Y0 + 4), (AFE_X1 - 4, AFE_Y1 - 4)):
+        body = body.union(cyl(6.0, (AFE_Z - 0.2) - AFE_PED_TOP, z=AFE_PED_TOP)
+                          .translate((_px, _py, 0)))
     # wire raceways: a self-supporting diamond through every cross-rib at
     # each floor-trunk lane y (the harness runs at z -70.6, under the motors)
     from .wiring import RIB_RACE_Y
     for _rx in _RIB_X:
         for _ly in RIB_RACE_Y:
-            body = body.cut(_diamond(_ly, -70.65, 3.8, _rx, _RIB_W + 2.0))
+            body = body.cut(_diamond(_ly, -70.65, 3.5, _rx, _RIB_W + 2.0))
     body = body.union(MB.motor_bank)                  # fuse in the motor faceplate walls
     # +X end: a sliding-dovetail tongue on each rail end; the bridge endplate caps
     # and sockets them (drops down to engage, glued).

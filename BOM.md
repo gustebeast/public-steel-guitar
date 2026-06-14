@@ -40,8 +40,18 @@ lower corner — the instrument's right face.
 | **CS42448 TDM board** (pro) | 6-in ADC each; ×2 stacked = 10ch analog in | 2 | community boards / [Tindie](https://www.tindie.com/) | ~$35 ea |
 | **Buck module** | 24 V → 5 V for Pi + Teensy | 1 | DigiKey/Pololu | $5 |
 | **1/4" TS panel jack** | analog line out | 1 | [Switchcraft via Mouser](https://www.mouser.com/) | $4 |
-| **DC barrel panel jack** | 24 V power inlet (servo bus + buck) | 1 | Mouser/DigiKey | $2 |
+| **DC barrel panel jack** | 24 V power inlet (servo bus + buck + AFE) | 1 | Mouser/DigiKey | $2 |
 | **USB-C panel module** | panel-mount extension (2× M3 flange) | 1 | Mouser/DigiKey | $6 |
+| **Signal relay** | SPDT/DPDT gold-contact, 5 V coil (true-bypass) | 1 | [Omron G6K via DigiKey](https://www.digikey.com/) | $2 |
+| **JFET/op-amp buffer** | low-noise unity buffer (e.g. OPA1641) + passives | 1 | DigiKey/Mouser | $3 |
+| **Relay driver + LDO** | small NPN/MOSFET + flyback diode + low-noise LDO | 1 | DigiKey/Mouser | $2 |
+
+The **analog front-end** (buffer + true-bypass relay + driver + local LDO) is a
+small board at the bridge end, on a boss off the bridge cross-rib. The relay
+defaults (de-energized) to passing the **raw** pickup straight to the TS jack;
+the Teensy energizes it (UI toggle) to switch in the **Q-processed** DAC output.
+Buffering at the pickup keeps the long run to the keyhead ADC quiet; the ADC is
+always fed (pitch detection runs in either mode).
 
 The motor still does all tuning (the nut block clamps; no manual tuners). The nut
 block is **reprintable per string set** — `STRING_GAUGE` in `dimensions.py` swaps

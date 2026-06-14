@@ -111,10 +111,17 @@ CAN transceiver, Raspberry Pi 5, 2× CS42448 TDM ADCs, buck converter); a
 **basic** build populates only the Teensy row and leaves the other sockets
 empty as the upgrade path. Panel I/O (1/4" TS line out, DC power inlet,
 USB-C audio-interface port) mounts through a recessed wall in the bridge
-endplate — the instrument's right face. The modeled harness is color-coded
-per electrical net (spliced runs share a color; every unique source→dest
-pairing differs) and routed through diamond raceways in the cross-ribs; the
-overlap gate verifies the wires touch nothing but their own endpoints.
+endplate — the instrument's right face. A small **analog front-end** board at
+the bridge end carries a JFET buffer and a true-bypass signal relay: by
+default (relay de-energized) the raw pickup runs straight to the TS jack with
+no converters in the path; the Teensy energizes the relay from the UI to
+switch in the Q-processed (ADC→DSP→DAC) output instead. Buffering at the
+pickup keeps the long run to the keyhead ADC quiet, and the ADC is fed in
+either mode so pitch detection always works. The modeled harness is
+color-coded per electrical net (spliced runs share a color; every unique
+source→dest pairing differs) and routed through diamond raceways in the
+cross-ribs; the overlap gate verifies the wires touch nothing but their own
+endpoints.
 The playing path is pure feed-forward — pedal moves map directly to motor
 positions, so there is no pitch-tracking latency while playing. A per-string
 pickup (e.g. a hex/multichannel pickup) feeds slow pitch detection used only
@@ -126,7 +133,7 @@ machines anywhere.
 ## Building the CAD
 
 CadQuery on Python 3.12 generates a STEP file per printed part plus a colored
-`assembly.step` (~217 placed components including purchased-part dummies).
+`assembly.step` (~223 placed components including purchased-part dummies).
 
 ```bash
 py -3.12 -m src.build              # all parts + assembly.step

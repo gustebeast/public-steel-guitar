@@ -305,6 +305,7 @@ def _electronics_components():
            ("pi5", EL.pi5()), ("teensy_stack", EL.teensy_stack()),
            ("cs_stack", EL.cs_stack()), ("buck", EL.buck()),
            ("can_xcvr", EL.can_xcvr()),
+           ("analog_frontend", EL.analog_frontend()),
            ("ts_jack", EL.ts_jack()), ("dc_jack", EL.dc_jack()),
            ("usbc_jack", EL.usbc_jack())]
     out += WR.build_wires()
@@ -368,17 +369,22 @@ _COLORS = {
     "cs_stack":        (0.15, 0.25, 0.50),
     "buck":            (0.35, 0.30, 0.50),
     "can_xcvr":        (0.55, 0.25, 0.25),
+    "analog_frontend": (0.20, 0.45, 0.40),   # bridge-end buffer + relay board
     "ts_jack":         (0.62, 0.64, 0.67),
     "dc_jack":         (0.62, 0.64, 0.67),
     "usbc_jack":       (0.62, 0.64, 0.67),
     # wire harness: one color per NET (splices share; unique pairings differ)
-    "wire_pickup":     (0.92, 0.92, 0.92),   # white  - pickup -> shield + TS
-    "wire_can":        (0.10, 0.65, 0.15),   # green  - CAN bus daisy chain
-    "wire_power":      (0.80, 0.10, 0.10),   # red    - DC in -> servos -> buck
-    "wire_usb":        (0.15, 0.35, 0.85),   # blue   - USB-C panel -> Pi
-    "wire_link":       (0.55, 0.20, 0.75),   # purple - Teensy <-> Pi
-    "wire_canjmp":     (0.95, 0.55, 0.10),   # orange - Teensy <-> transceiver
-    "wire_tdm":        (0.10, 0.60, 0.60),   # teal   - CS stack -> Pi
+    "wire_pickup":     (0.92, 0.92, 0.92),   # white   - pickup -> AFE (raw)
+    "wire_out":        (0.70, 0.70, 0.74),   # l.gray  - AFE relay -> TS jack
+    "wire_audio":      (0.20, 0.80, 0.85),   # cyan    - AFE buffer -> ADC
+    "wire_dac":        (0.90, 0.20, 0.70),   # magenta - DAC -> AFE relay
+    "wire_relayctrl":  (0.95, 0.85, 0.10),   # yellow  - Teensy -> relay driver
+    "wire_can":        (0.10, 0.65, 0.15),   # green   - CAN bus daisy chain
+    "wire_power":      (0.80, 0.10, 0.10),   # red     - DC in -> servos -> buck
+    "wire_usb":        (0.15, 0.35, 0.85),   # blue    - USB-C panel -> Pi
+    "wire_link":       (0.55, 0.20, 0.75),   # purple  - Teensy <-> Pi
+    "wire_canjmp":     (0.95, 0.55, 0.10),   # orange  - Teensy <-> transceiver
+    "wire_tdm":        (0.10, 0.60, 0.60),   # teal    - CS stack -> Pi
 }
 _DEFAULT_COLOR = (0.80, 0.80, 0.80)
 

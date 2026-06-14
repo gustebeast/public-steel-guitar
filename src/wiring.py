@@ -1,27 +1,36 @@
 """Wire harness: net-colored round cables, modeled as cylinder chains.
 
-One component per electrical NET (so splices automatically share a color;
-every unique source-dest pairing is its own component/color):
+One component per electrical NET (so splices share a color; every unique
+source-dest pairing is its own component/color):
 
-  wire_pickup  white   pickup hot+gnd coax -> splice -> {audio shield, TS jack}
-  wire_can     green   CAN bus: transceiver -> servo daisy chain (one net)
-  wire_power   red     DC inlet -> servo power chain -> buck input (one net)
-  wire_usb     blue    USB-C panel -> Pi 5 (gadget/audio-interface port)
-  wire_link    purple  Teensy <-> Pi data link
-  wire_canjmp  orange  Teensy CAN TX/RX <-> transceiver logic side
-  wire_tdm     teal    CS42448 stack TDM -> Pi
+  wire_pickup    white     pickup -> analog front-end (raw, short, at the bridge)
+  wire_out       l.gray    AFE relay common -> TS jack (the switched output)
+  wire_audio     cyan      AFE buffer out -> Teensy ADC (always feeds Q)
+  wire_dac       magenta   Teensy DAC -> AFE relay NO (the processed path)
+  wire_relayctrl yellow    Teensy GPIO -> AFE relay driver (UI bypass toggle)
+  wire_afepwr    brown     24 V DC inlet -> AFE local LDO (powers buffer/relay)
+  wire_can       green     CAN bus: transceiver -> servo daisy chain
+  wire_power     red       DC inlet -> servo power chain -> buck input
+  wire_usb       blue      USB-C panel -> Pi 5
+  wire_link      purple    Teensy <-> Pi data link
+  wire_canjmp    orange    Teensy CAN TX/RX <-> transceiver logic side
+  wire_tdm       teal      CS42448 stack TDM -> Pi
 
-Routing: a 4-lane floor trunk at z -70.6 (under the motor bodies, over the
-open floor) passes every cross-rib through diamond raceways cut at the lane
-y's. Per-motor stubs dive to z -74.65 (under the lanes) and rise into each
-motor body at a y chosen >= 4.2 from every lane. In the bay the wires fly
-OVER the board stacks (z -33..-41, mutually separated >= 4.5 at crossings)
-and drop into their targets. Wire ends deliberately clip ~1-2 mm into their
-source / destination bodies to show the connection (whitelisted in the
-checker); everywhere else the gate enforces real clearance.
+Analog architecture: the pickup is buffered AT the bridge (AFE), so the long
+run to the keyhead ADC is low-impedance and noise-tolerant. A true-bypass
+relay on the AFE sends the raw buffered signal straight to the jack by default
+and swaps to the DAC (Q-processed) output when the Teensy energizes it.
 
-Wires are modeled at the demo pose (pickup at its parked X) - physically
-the pickup run gets a service loop.
+Routing: a 6-lane floor trunk at z -70.6 (under the motors) passes every
+cross-rib through diamond raceways. Per-motor stubs (CAN, power) dive to
+z -74.65 under the lanes and rise into each body. Cross-trunk traverses also
+duck to z -74.65 to pass under the lanes. Wire ends clip ~1-2 mm into their
+declared source/destination bodies to show the connection (whitelisted);
+everywhere else the gate enforces clearance.
+
+NOTE: each net is drawn as ONE conductor for clarity; physically power and CAN
+are pairs (V+/GND, CAN-H/L) and the audio runs are shielded - a schematic
+simplification, not a wiring spec.
 """
 
 from __future__ import annotations
@@ -33,14 +42,18 @@ from . import electronics as EL
 
 WIRE_D = 3.5
 
-# floor-trunk lane y's (rib raceway diamonds are cut at these, z -70.65)
-LANE_USB, LANE_PWR, LANE_CAN, LANE_PU = -91.0, -80.5, -70.0, -59.5
-# (motor 0's faceplate wall + foot reach south to y -56.8 at x -125..-95,
-#  so the nearest lane sits at -59.5; the rest space 10.5 apart for the
-#  rib raceway diamonds)
+# floor-trunk lane y's (rib raceway diamonds are cut at these, z -70.65).
+# All sit +Y of the AFE pedestal (y <= -104); spacing 8 keeps riser gaps >= 4.
+LANE_AUDIO = -59.5       # buffered pickup -> ADC (motor 0's wall foot reaches
+                         # y -56.8, so 2.7 clear)
+LANE_CAN   = -67.5       # CAN bus (motor stubs)
+LANE_PWR   = -75.5       # 24 V (motor stubs)
+LANE_USB   = -83.5       # USB-C -> Pi
+LANE_DAC   = -91.5       # DAC -> AFE
+LANE_CTRL  = -99.5       # relay control -> AFE
 LANE_Z = -70.6
-STUB_Z = -74.65          # under-lane crossing level for the motor stubs
-RIB_RACE_Y = (LANE_USB, LANE_PWR, LANE_CAN, LANE_PU)
+STUB_Z = -74.65          # under-lane crossing level
+RIB_RACE_Y = (LANE_AUDIO, LANE_CAN, LANE_PWR, LANE_USB, LANE_DAC, LANE_CTRL)
 
 
 def _wire(pts, d=WIRE_D):
@@ -61,19 +74,21 @@ def _wire(pts, d=WIRE_D):
 
 
 def _riser_y(sy):
-    """Stub riser y inside the motor body footprint (body y = sy-84..sy+4),
-    kept >= 4.2 away from every trunk lane so the vertical run can't shave
-    a lane cable."""
-    for cand in (sy - 40.0, sy - 36.0, sy - 44.0, sy - 32.0, sy - 48.0):
-        if all(abs(cand - L) >= 4.2 for L in RIB_RACE_Y):
-            return cand
-    return sy - 30.0
+    """Stub riser y inside a motor body footprint (body y = sy-84..sy+4), kept
+    >= 4 mm from every trunk lane. The lanes (pitch 8) and motors (pitch 9.5)
+    beat, so a fixed offset hits a lane for most motors; instead pick from
+    ABSOLUTE clear zones - below the whole band (open floor, for -Y motors),
+    the lane-gap centres, or +Y of the band - first that lands in the body."""
+    cands = [-103.5, -95.5, -87.5, -79.5, -71.5, -63.5, -55.5,
+             sy - 30, sy - 20, sy - 10, sy]
+    for y in cands:
+        if sy - 84 <= y <= sy + 4 and all(abs(y - L) >= 4.0 for L in RIB_RACE_Y):
+            return y
+    return sy - 30
 
 
 def _chain(lane_y, x_off, x_from, x_to):
-    """A trunk run along lane_y with a dive-under stub into each motor:
-    trunk at LANE_Z, stub drops to STUB_Z, runs to the riser y, rises into
-    the motor body bottom (clip ~2). Returns the point list."""
+    """Trunk run along lane_y with a dive-under stub into each motor."""
     pts = [(x_from, lane_y, LANE_Z)]
     motors = sorted(((D.motor_pos(i)[0], D.motor_pos(i)[1]) for i in range(10)),
                     key=lambda m: m[0], reverse=(x_from > x_to))
@@ -94,67 +109,95 @@ def build_wires():
     """Returns [(name, workplane)] for every net."""
     out = []
     shield_top = EL.BOARD_Z + 1.0 + 11.0 + EL.BD_T      # Teensy shield top
+    # AFE connection pads dip INTO the board top (z -57) to show the join;
+    # routing then rises to z -52 (clear of the components). Spread across the
+    # board, x -22..-2, y -108..-78.
+    PZ = EL.AFE_Z + 0.8
+    afe_buf_in   = (EL.AFE_X0 + 3, -80.0, PZ)    # pickup in    (west, +Y)
+    afe_buf_out  = (EL.AFE_X0 + 3, -92.0, PZ)    # buffer out   (west, mid)
+    afe_relay_no = (EL.AFE_X0 + 3, -100.0, PZ)   # DAC in       (west, -Y)
+    afe_coil     = (EL.AFE_X0 + 3, -106.0, PZ)   # relay driver (west, -Y)
+    afe_relay_c  = (EL.AFE_X1 - 3, -82.0, PZ)    # relay common (east, +Y -> TS)
+    afe_pwr      = (EL.AFE_X1 - 3, -104.0, PZ)   # 24 V LDO     (east, -Y -> 24V)
+    # the AFE's 24 V is the SAME net as the motor bus (a splice at the inlet),
+    # so it is a branch of wire_power, not its own color
 
-    # -- pickup coax (white): pickup -> drop column -> splice at the floor;
-    #    west branch to the audio shield, east branch to the TS jack
-    top = [(-50.0, -45.0, -5.0),                 # starts inside the pickup
-           (-18.0, -45.0, -11.0),                # over the bar, under strings
-           (-18.0, LANE_PU, -40.0),              # drop past the bar end
-           (-18.0, LANE_PU, LANE_Z)]             # splice point
-    west = [(-18.0, LANE_PU, LANE_Z), (-522.0, LANE_PU, LANE_Z),
-            (-522.0, LANE_PU, -38.0),            # rise east of the tray
-            (-560.0, LANE_PU, -38.0),            # fly west over the bay
-            (-560.0, -67.0, -38.0),              # jog over the Teensy stack
-            (-560.0, -67.0, shield_top - 1.0)]   # drop into the shield
-    east = [(-18.0, LANE_PU, LANE_Z), (-8.0, LANE_PU, LANE_Z),
-            (-8.0, EL.TS_Y, EL.JACK_Z), (5.0, EL.TS_Y, EL.JACK_Z)]
-    out.append(("wire_pickup", _wire(top + west[1:]).union(_wire(east))))
+    # -- pickup -> AFE buffer (white, short; passes its own pickup mount)
+    out.append(("wire_pickup", _wire([
+        (-50.0, -45.0, -5.0), (-44.0, -60.0, -14.0),
+        (-40.0, -76.0, -40.0), (-24.0, -80.0, -50.0), afe_buf_in])))
 
-    # -- CAN bus (green): transceiver -> over the bay aisle (y -45) -> dives
-    #    west of all belts -> floor lane -> stub into every motor
-    head = [(-590.0, -45.0, -57.0),              # clip into the transceiver
-            (-590.0, -45.0, -38.0),
-            (-525.0, -45.0, -38.0),              # fly east over the bay
-            (-525.0, -45.0, STUB_Z),             # drop west of belts/motor 9
-            (-525.0, LANE_CAN, STUB_Z),          # cross under the pickup lane
-            (-525.0, LANE_CAN, LANE_Z)]
-    chain = _chain(LANE_CAN, 14.0, -525.0, -94.0)
-    out.append(("wire_can", _wire(head + chain[1:])))
+    # -- AFE relay common -> TS jack (l.gray, short, over the boss top)
+    out.append(("wire_out", _wire([
+        afe_relay_c, (0.0, -78.0, -52.0), (3.0, -72.0, -55.0),
+        (5.0, EL.TS_Y, EL.JACK_Z)])))
 
-    # -- power (red): DC inlet -> floor lane west with a stub to every motor
-    #    -> rises east of the tray -> ends in the buck converter
-    head = [(5.0, EL.DC_Y, EL.JACK_Z), (-12.0, EL.DC_Y, EL.JACK_Z),
-            (-12.0, LANE_PWR, LANE_Z)]
-    chain = _chain(LANE_PWR, 18.0, -12.0, -523.0)
-    tail = [(-523.0, LANE_PWR, -50.0),           # rise east of the tray
-            (-540.0, LANE_PWR, -50.0),
-            (-540.0, -88.0, -50.0)]              # ends inside a buck cap
-    out.append(("wire_power", _wire(head + chain[1:] + tail)))
+    # The three long runs leave the AFE westward (above the boss top, z -52),
+    # drop into the open floor WEST of the boss (x <= -46), traverse under the
+    # lanes to their lane y, run to the keyhead, rise EAST of the tray AND east
+    # of the USB riser (x -518), y-traverse east of the CS stack, fly west into
+    # the shield. Staggered drop-x / lane / fly-z / shield-y so no two meet.
+    def _long(pad, drop_x, lane_y, fly_z, sh_x, sh_y):
+        return _wire([
+            pad, (pad[0], pad[1], -52.0),                   # rise off the board
+            (drop_x, pad[1], -52.0),                        # west over open floor
+            (drop_x, pad[1], STUB_Z), (drop_x, lane_y, STUB_Z),
+            (drop_x, lane_y, LANE_Z), (-518.0, lane_y, LANE_Z),
+            (-518.0, lane_y, fly_z), (-518.0, sh_y, fly_z),  # y-traverse east of CS
+            (sh_x, sh_y, fly_z), (sh_x, sh_y, shield_top - 1.0)])
 
-    # -- USB (blue): USB-C panel -> floor lane -> rises east of the tray ->
-    #    flies over everything at z -33 -> drops into the Pi USB block
-    pts = [(5.0, EL.USB_Y, EL.JACK_Z), (-16.0, EL.USB_Y, EL.JACK_Z),
-           (-16.0, LANE_USB, LANE_Z), (-524.0, LANE_USB, LANE_Z),
-           (-524.0, LANE_USB, -33.0),
-           (-548.0, LANE_USB, -33.0), (-548.0, 10.0, -33.0),
-           (-548.0, 10.0, -44.0)]
-    out.append(("wire_usb", _wire(pts)))
+    out.append(("wire_audio",
+                _long(afe_buf_out, -46.0, LANE_AUDIO, -37.0, -578.0, -60.0)))
+    out.append(("wire_dac",
+                _long(afe_relay_no, -52.0, LANE_DAC, -40.0, -572.0, -71.0)))
+    out.append(("wire_relayctrl",
+                _long(afe_coil, -58.0, LANE_CTRL, -29.0, -566.0, -76.0)))
 
-    # -- Teensy <-> Pi link (purple): over the aisle into the Pi USB block
-    pts = [(-554.0, -67.0, shield_top - 0.6), (-554.0, -67.0, -42.5),
-           (-554.0, 5.0, -42.5), (-554.0, 5.0, -45.0)]
-    out.append(("wire_link", _wire(pts)))
+    # -- CAN bus (green): transceiver -> floor lane -> stub into every motor
+    head = [(-590.0, -45.0, -57.0), (-590.0, -45.0, -38.0),
+            (-525.0, -45.0, -38.0), (-525.0, -45.0, STUB_Z),
+            (-525.0, LANE_CAN, STUB_Z), (-525.0, LANE_CAN, LANE_Z)]
+    out.append(("wire_can",
+                _wire(head + _chain(LANE_CAN, 14.0, -525.0, -94.0)[1:])))
 
-    # -- Teensy <-> CAN transceiver (orange): across the y -58..-52 aisle
-    pts = [(-598.0, -66.0, shield_top - 0.6), (-598.0, -66.0, -41.0),
-           (-598.0, -44.0, -41.0), (-598.0, -44.0, -57.0)]
-    out.append(("wire_canjmp", _wire(pts)))
+    # -- power (red): DC inlet -> NORTH of the AFE/boss -> floor lane west +
+    #    stub to every motor -> buck
+    # cross from the inlet y (-86) up to the power lane (-75.5) EAST of where
+    # the USB lane begins (x -30), so the two never share a y-crossing
+    head = [(2.0, EL.DC_Y, EL.JACK_Z), (2.0, EL.DC_Y, -49.0),
+            (-26.0, EL.DC_Y, -49.0), (-26.0, EL.DC_Y, STUB_Z),
+            (-26.0, LANE_PWR, STUB_Z), (-26.0, LANE_PWR, LANE_Z)]
+    tail = [(-523.0, LANE_PWR, -50.0), (-540.0, LANE_PWR, -50.0),
+            (-540.0, -88.0, -50.0)]
+    afe_branch = [(2.0, EL.DC_Y, EL.JACK_Z), (-1.0, -92.0, -53.0), afe_pwr]
+    out.append(("wire_power", _wire(
+        head + _chain(LANE_PWR, 18.0, -26.0, -523.0)[1:] + tail)
+        .union(_wire(afe_branch))))
 
-    # -- CS42448 TDM -> Pi (teal): up over its own header, over the Teensy
-    #    stack at z -33, down into the Pi board
-    pts = [(-580.0, -100.0, -43.0), (-580.0, -100.0, -33.0),
-           (-580.0, -5.0, -33.0), (-580.0, -5.0, -57.0)]
-    out.append(("wire_tdm", _wire(pts)))
+    # -- USB (blue): USB-C panel -> up OVER the AFE, shift to its lane y while
+    #    still high (clear of the AFE's -Y exit corridors), drop west of the
+    #    boss -> floor lane -> bay -> Pi
+    out.append(("wire_usb", _wire([
+        (5.0, EL.USB_Y, EL.JACK_Z), (0.0, EL.USB_Y, -44.0),
+        (0.0, LANE_USB, -44.0), (-30.0, LANE_USB, -44.0),
+        (-30.0, LANE_USB, LANE_Z), (-524.0, LANE_USB, LANE_Z),
+        (-524.0, LANE_USB, -33.0), (-548.0, LANE_USB, -33.0),
+        (-548.0, 10.0, -33.0), (-548.0, 10.0, -44.0)])))
+
+    # -- Teensy <-> Pi link (purple)
+    out.append(("wire_link", _wire([
+        (-554.0, -67.0, shield_top - 0.6), (-554.0, -67.0, -42.5),
+        (-554.0, 5.0, -42.5), (-554.0, 5.0, -45.0)])))
+
+    # -- Teensy <-> CAN transceiver (orange)
+    out.append(("wire_canjmp", _wire([
+        (-598.0, -66.0, shield_top - 0.6), (-598.0, -66.0, -41.0),
+        (-598.0, -44.0, -41.0), (-598.0, -44.0, -57.0)])))
+
+    # -- CS42448 TDM -> Pi (teal)
+    out.append(("wire_tdm", _wire([
+        (-580.0, -100.0, -43.0), (-580.0, -100.0, -33.0),
+        (-580.0, -5.0, -33.0), (-580.0, -5.0, -57.0)])))
 
     return out
 
@@ -162,11 +205,15 @@ def build_wires():
 # what each net is ALLOWED to touch (its source/destination bodies);
 # everything else a wire grazes is a routing bug the gate reports
 WIRE_OK = {
-    "wire_pickup": {"pickup", "teensy_stack", "ts_jack"},
-    "wire_can":    {"can_xcvr", "motor"},
-    "wire_power":  {"dc_jack", "motor", "buck"},
-    "wire_usb":    {"usbc_jack", "pi5"},
-    "wire_link":   {"teensy_stack", "pi5"},
-    "wire_canjmp": {"teensy_stack", "can_xcvr"},
-    "wire_tdm":    {"cs_stack", "pi5"},
+    "wire_pickup":    {"pickup", "analog_frontend", "pickup_bar"},
+    "wire_out":       {"analog_frontend", "ts_jack"},
+    "wire_audio":     {"analog_frontend", "teensy_stack"},
+    "wire_dac":       {"analog_frontend", "teensy_stack"},
+    "wire_relayctrl": {"analog_frontend", "teensy_stack"},
+    "wire_can":       {"can_xcvr", "motor"},
+    "wire_power":     {"dc_jack", "motor", "buck", "analog_frontend"},
+    "wire_usb":       {"usbc_jack", "pi5"},
+    "wire_link":      {"teensy_stack", "pi5"},
+    "wire_canjmp":    {"teensy_stack", "can_xcvr"},
+    "wire_tdm":       {"cs_stack", "pi5"},
 }

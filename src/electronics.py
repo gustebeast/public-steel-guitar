@@ -61,6 +61,31 @@ JACK_WALL_X = 10.0                     # inner face of the thinned wall
 JACK_Z = -57.0   # jack bodies clear the bridge-rib top (-65.15)
 TS_Y, DC_Y, USB_Y = -68.0, -86.0, -104.0
 
+# ---- analog front end (bridge-end -Y corner, near the pickup + jacks) ----
+# JFET buffer + SPDT signal relay (true-bypass: de-energized = raw straight to
+# the jack; energize = the Q-processed DAC output) + relay driver/flyback +
+# a local low-noise LDO fed from the nearby 24 V inlet. Clustering all the
+# noise-sensitive analog here (away from the motor drivers) is the whole point;
+# only buffered/line-level/logic runs make the long trip to the keyhead bay.
+AFE_X0, AFE_X1 = -22.0, -2.0
+AFE_Y0, AFE_Y1 = -108.0, -78.0         # inboard of the pickup groove + leg barrel
+AFE_Z = -59.0                          # board bottom (on the bridge-rib boss)
+AFE_PED_TOP = -61.0                    # boss top (posts rise to the board)
+
+
+def analog_frontend() -> cq.Workplane:
+    """Bridge-end analog board dummy: relay (chunkiest), buffer/LDO/driver
+    bumps. Mounted on the chassis -Y-corner pedestal."""
+    bz = AFE_Z
+    b = box_at(AFE_X1 - AFE_X0, AFE_Y1 - AFE_Y0, BD_T,
+               x=(AFE_X0 + AFE_X1) / 2, y=(AFE_Y0 + AFE_Y1) / 2, z=bz + BD_T / 2)
+    # relay (chunkiest, toward the east edge near the jacks)
+    b = b.union(box_at(10.0, 7.5, 6.0, x=AFE_X1 - 7, y=AFE_Y1 - 8, z=bz + BD_T + 3.0))
+    for px, py in ((AFE_X0 + 6, AFE_Y0 + 6), (AFE_X0 + 6, AFE_Y1 - 6),
+                   (AFE_X1 - 6, AFE_Y0 + 6)):
+        b = b.union(box_at(4.0, 4.0, 2.5, x=px, y=py, z=bz + BD_T + 1.25))
+    return b
+
 
 def _posts_strips_fingers(fp, bz):
     """Snap-mount set for one board footprint: 4 corner posts (top 0.2 under
