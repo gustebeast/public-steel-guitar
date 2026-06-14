@@ -143,23 +143,23 @@ def build_wires():
             pad, (pad[0], pad[1], -52.0),                   # rise off the board
             (drop_x, pad[1], -52.0),                        # west over open floor
             (drop_x, pad[1], STUB_Z), (drop_x, lane_y, STUB_Z),
-            (drop_x, lane_y, LANE_Z), (-518.0, lane_y, LANE_Z),
-            (-518.0, lane_y, fly_z), (-518.0, sh_y, fly_z),  # y-traverse east of CS
+            (drop_x, lane_y, LANE_Z), (-536.0, lane_y, LANE_Z),
+            (-536.0, lane_y, fly_z), (-536.0, sh_y, fly_z),  # y-traverse east of CS
             (sh_x, sh_y, fly_z), (sh_x, sh_y, shield_top - 1.0)])
 
     out.append(("wire_audio",
-                _long(afe_buf_out, -46.0, LANE_AUDIO, -37.0, -578.0, -60.0)))
+                _long(afe_buf_out, -46.0, LANE_AUDIO, -37.0, -596.0, -60.0)))
     out.append(("wire_dac",
-                _long(afe_relay_no, -52.0, LANE_DAC, -40.0, -572.0, -71.0)))
+                _long(afe_relay_no, -52.0, LANE_DAC, -40.0, -590.0, -71.0)))
     out.append(("wire_relayctrl",
-                _long(afe_coil, -58.0, LANE_CTRL, -29.0, -566.0, -76.0)))
+                _long(afe_coil, -58.0, LANE_CTRL, -29.0, -584.0, -76.0)))
 
     # -- CAN bus (green): transceiver -> floor lane -> stub into every motor
-    head = [(-590.0, -45.0, -57.0), (-590.0, -45.0, -38.0),
-            (-525.0, -45.0, -38.0), (-525.0, -45.0, STUB_Z),
-            (-525.0, LANE_CAN, STUB_Z), (-525.0, LANE_CAN, LANE_Z)]
+    head = [(-608.0, -45.0, -57.0), (-608.0, -45.0, -38.0),
+            (-543.0, -45.0, -38.0), (-543.0, -45.0, STUB_Z),
+            (-543.0, LANE_CAN, STUB_Z), (-543.0, LANE_CAN, LANE_Z)]
     out.append(("wire_can",
-                _wire(head + _chain(LANE_CAN, 14.0, -525.0, -94.0)[1:])))
+                _wire(head + _chain(LANE_CAN, 14.0, -543.0, -94.0)[1:])))
 
     # -- power (red): DC inlet -> NORTH of the AFE/boss -> floor lane west +
     #    stub to every motor -> buck
@@ -168,11 +168,11 @@ def build_wires():
     head = [(2.0, EL.DC_Y, EL.JACK_Z), (2.0, EL.DC_Y, -49.0),
             (-26.0, EL.DC_Y, -49.0), (-26.0, EL.DC_Y, STUB_Z),
             (-26.0, LANE_PWR, STUB_Z), (-26.0, LANE_PWR, LANE_Z)]
-    tail = [(-523.0, LANE_PWR, -50.0), (-540.0, LANE_PWR, -50.0),
-            (-540.0, -88.0, -50.0)]
+    tail = [(-541.0, LANE_PWR, -50.0), (-558.0, LANE_PWR, -50.0),
+            (-558.0, -88.0, -50.0)]
     afe_branch = [(2.0, EL.DC_Y, EL.JACK_Z), (-1.0, -92.0, -53.0), afe_pwr]
     out.append(("wire_power", _wire(
-        head + _chain(LANE_PWR, 18.0, -26.0, -523.0)[1:] + tail)
+        head + _chain(LANE_PWR, 18.0, -26.0, -541.0)[1:] + tail)
         .union(_wire(afe_branch))))
 
     # -- USB (blue): USB-C panel -> up OVER the AFE, shift to its lane y while
@@ -181,24 +181,24 @@ def build_wires():
     out.append(("wire_usb", _wire([
         (5.0, EL.USB_Y, EL.JACK_Z), (-8.0, EL.USB_Y, -45.0),
         (-8.0, LANE_USB, -45.0), (-30.0, LANE_USB, -45.0),
-        (-30.0, LANE_USB, LANE_Z), (-524.0, LANE_USB, LANE_Z),
-        (-524.0, LANE_USB, -33.0), (-548.0, LANE_USB, -33.0),
-        (-548.0, 10.0, -33.0), (-548.0, 10.0, -44.0)])))
+        (-30.0, LANE_USB, LANE_Z), (-542.0, LANE_USB, LANE_Z),
+        (-542.0, LANE_USB, -33.0), (-566.0, LANE_USB, -33.0),
+        (-566.0, 10.0, -33.0), (-566.0, 10.0, -44.0)])))
 
     # -- Teensy <-> Pi link (purple)
     out.append(("wire_link", _wire([
-        (-554.0, -67.0, shield_top - 0.6), (-554.0, -67.0, -42.5),
-        (-554.0, 5.0, -42.5), (-554.0, 5.0, -45.0)])))
+        (-572.0, -67.0, shield_top - 0.6), (-572.0, -67.0, -42.5),
+        (-572.0, 5.0, -42.5), (-572.0, 5.0, -45.0)])))
 
     # -- Teensy <-> CAN transceiver (orange)
     out.append(("wire_canjmp", _wire([
-        (-598.0, -66.0, shield_top - 0.6), (-598.0, -66.0, -41.0),
-        (-598.0, -44.0, -41.0), (-598.0, -44.0, -57.0)])))
+        (-616.0, -66.0, shield_top - 0.6), (-616.0, -66.0, -41.0),
+        (-616.0, -44.0, -41.0), (-616.0, -44.0, -57.0)])))
 
     # -- CS42448 TDM -> Pi (teal)
     out.append(("wire_tdm", _wire([
-        (-580.0, -100.0, -43.0), (-580.0, -100.0, -33.0),
-        (-580.0, -5.0, -33.0), (-580.0, -5.0, -57.0)])))
+        (-598.0, -100.0, -43.0), (-598.0, -100.0, -33.0),
+        (-598.0, -5.0, -33.0), (-598.0, -5.0, -57.0)])))
 
     return out
 

@@ -28,7 +28,10 @@ from .helpers import box_at, nema17_face_cutter_y
 from .components import MOTOR_PULLEY_STANDOFF
 
 PLATE_T      = 6.0
-TENSION_SLOT = 6.0                          # ±3: belt-install slack + tension + margin
+TENSION_SLOT = 3.0                          # ±1.5: belt slip-on slack + tension + the
+                                            # 1-tooth (1 mm motor travel) cut quantum.
+                                            # Small enough that neighbours never collide
+                                            # at the 46 mm pitch (see MOTOR_X_STEP).
 _BOLT_EDGE   = 6.0                          # material around the NEMA17 bolt square
 
 WALL_W = D.NEMA17_BOLT_SQ + 2 * _BOLT_EDGE  # 43: 0.5 to the chassis split planes,

@@ -33,12 +33,12 @@ import cadquery as cq
 from .helpers import box_at, cyl
 
 # ---- bay geometry (chassis.py cuts the matching channels from these) ----
-TRAY_X0, TRAY_X1 = -608.0, -530.0
+TRAY_X0, TRAY_X1 = -626.0, -548.0
 TRAY_Y0, TRAY_Y1 = -127.5, 53.5        # 1.25 off each rail inner face
 TRAY_Z0, TRAY_Z1 = -64.0, -61.0        # plate band (3 thick) - 1.15 ABOVE the
                                        # x -575 rib top so the bay rib passes
                                        # under the tray
-TAB_X0, TAB_X1 = -581.0, -561.0        # one tab per side, in the only solid
+TAB_X0, TAB_X1 = -599.0, -579.0        # one tab per side, in the only solid
                                        # web window between the leg dovetail
                                        # slot (ends -582) and the rail web
                                        # diamonds (start -560)
@@ -48,11 +48,11 @@ CH_W, CH_D = 20.6, 3.0                 # channel cut: width / depth into web
 # ---- board footprints (x0, x1, y0, y1); board bottom z = TRAY_Z1 + post ----
 POST_H = 3.0
 BD_T = 1.6
-PI_FP     = (-594.0, -538.0, -32.0, 53.0)     # Pi 5: 56 x 85 (long side on Y)
-TEENSY_FP = (-604.0, -543.0, -76.0, -58.0)    # Teensy 4.1 + shield stack
-CS_FP     = (-604.0, -554.0, -124.0, -84.0)   # CS42448 x2, stacked
-BUCK_FP   = (-550.0, -530.0, -120.0, -80.0)   # buck module, 20 x 40
-XCVR_FP   = (-604.0, -578.0, -52.0, -39.0)    # SN65HVD230 breakout
+PI_FP     = (-612.0, -556.0, -32.0, 53.0)     # Pi 5: 56 x 85 (long side on Y)
+TEENSY_FP = (-622.0, -561.0, -76.0, -58.0)    # Teensy 4.1 + shield stack
+CS_FP     = (-622.0, -572.0, -124.0, -84.0)   # CS42448 x2, stacked
+BUCK_FP   = (-568.0, -548.0, -120.0, -80.0)   # buck module, 20 x 40
+XCVR_FP   = (-622.0, -596.0, -52.0, -39.0)    # SN65HVD230 breakout
 
 BOARD_Z = TRAY_Z1 + POST_H             # every bottom board sits at -67
 
@@ -151,7 +151,7 @@ def pi5() -> cq.Workplane:
     b = _board(PI_FP, BOARD_Z)
     b = b.union(box_at(18.0, 50.0, 14.0, x=PI_FP[1] - 9.0, y=10.0,
                        z=BOARD_Z + BD_T + 7.0))
-    b = b.union(box_at(15.0, 15.0, 2.5, x=-572.0, y=10.0, z=BOARD_Z + BD_T + 1.25))
+    b = b.union(box_at(15.0, 15.0, 2.5, x=-590.0, y=10.0, z=BOARD_Z + BD_T + 1.25))
     b = b.union(box_at(5.0, 51.0, 8.0, x=PI_FP[0] + 4.0, y=10.5,
                        z=BOARD_Z + BD_T + 4.0))
     return b
@@ -166,7 +166,7 @@ def teensy_stack() -> cq.Workplane:
                        y=(TEENSY_FP[2] + TEENSY_FP[3]) / 2, z=bz + BD_T + 1.75))
     for hy in (TEENSY_FP[2] + 2.6, TEENSY_FP[3] - 2.6):        # header rows
         # (inset so the tray's snap-finger nubs clear the headers)
-        b = b.union(box_at(58.0, 2.4, 11.0, x=-573.5, y=hy, z=bz + BD_T + 5.5))
+        b = b.union(box_at(58.0, 2.4, 11.0, x=-591.5, y=hy, z=bz + BD_T + 5.5))
     return b
 
 
@@ -178,7 +178,7 @@ def cs_stack() -> cq.Workplane:
         for py in (CS_FP[2] + 4, CS_FP[3] - 4):
             b = b.union(cyl(5.0, 14.0 - BD_T, z=BOARD_Z + BD_T)
                         .translate((px, py, 0)))
-    b = b.union(box_at(40.0, 4.0, 7.0, x=-579.0, y=CS_FP[3] - 3.0,
+    b = b.union(box_at(40.0, 4.0, 7.0, x=-597.0, y=CS_FP[3] - 3.0,
                        z=BOARD_Z + 14.0 + BD_T + 3.5))          # TDM header
     return b
 
@@ -188,8 +188,8 @@ def buck() -> cq.Workplane:
     b = _board(BUCK_FP, BOARD_Z)
     for cy in (BUCK_FP[2] + 8, BUCK_FP[3] - 8):
         b = b.union(cyl(8.0, 9.0, z=BOARD_Z + BD_T)
-                    .translate((-540.0, cy, 0)))
-    b = b.union(box_at(12.0, 12.0, 7.0, x=-540.0, y=-100.0,
+                    .translate((-558.0, cy, 0)))
+    b = b.union(box_at(12.0, 12.0, 7.0, x=-558.0, y=-100.0,
                        z=BOARD_Z + BD_T + 3.5))
     return b
 
@@ -197,7 +197,7 @@ def buck() -> cq.Workplane:
 def can_xcvr() -> cq.Workplane:
     """SN65HVD230 breakout dummy."""
     b = _board(XCVR_FP, BOARD_Z)
-    b = b.union(box_at(20.0, 2.4, 8.0, x=-591.0, y=XCVR_FP[2] + 2.0,
+    b = b.union(box_at(20.0, 2.4, 8.0, x=-609.0, y=XCVR_FP[2] + 2.0,
                        z=BOARD_Z + BD_T + 4.0))
     return b
 

@@ -29,7 +29,9 @@ N_STRINGS       = 10
 STRING_PITCH    = 9.5       # mm, changer pitch (across, Y)
 NUT_PITCH       = 6.5       # mm, spacing at the nut/keyhead end
 STRING_FIELD_W  = (N_STRINGS - 1) * STRING_PITCH   # 85.5 mm
-MOUNTING_SPAN   = 615.0     # between a string's two mounting ends (~24.2" scale)
+MOUNTING_SPAN   = 633.0     # between a string's two mounting ends (~24.9" scale;
+                            # +18 mm vs the original 615/24.2" to absorb the wider
+                            # 46 mm motor pitch at the keyhead bay - see MOTOR_X_STEP)
 
 def string_y(i: int) -> float:
     """Y centre of string i (0..9) at the changer; string 0 at −Y (player side)."""
@@ -180,7 +182,12 @@ NEMA17_PILOT_D  = 22.0
 # ≥100 mm free span — long enough to develop the 90° belt twist gently (≲1°/mm)
 # and lie flat at each pulley (a 6 mm toothed belt wants ≳15× width to twist).
 MOTOR_X0        = 110.0     # first motor's −X offset from the bridge
-MOTOR_X_STEP    = 44.0      # along-X step between motors (≥ motor square)
+MOTOR_X_STEP    = 46.0      # along-X step between motors. Body is 42.3 sq; with
+                            # the ±1.5 (3 mm) tension slot the worst-case gap to a
+                            # neighbour at the opposite slot extreme is 0.7 mm, so
+                            # every motor keeps a full 3 mm (>1 belt tooth) of
+                            # independent tension travel. (44 left only 1.7 mm and
+                            # the slots overlapped - motors could collide.)
 MOTOR_BELT_Z    = SCREW_PULLEY_Z    # motors all sit at the (even) screw-pulley height
 
 # Belt-plane cascade: a Ø8.4 pulley + belt wrap is wider than the 9.5 mm string
