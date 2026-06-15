@@ -49,6 +49,7 @@ from . import legs as LG
 PARTS = {
     "carriage":        (partial(heal, carriage),      "carriage.step",        "PA6-GF, load-critical — ×10 identical"),
     "bridge_endplate": (partial(heal, bridge_endplate), "bridge_endplate.step", "PCTG — fused bridge end (screw support + bearing support + axle comb + box closure)"),
+    "keyhead_endplate": (lambda: heal(__import__("src.keyhead_endplate", fromlist=["e"]).keyhead_endplate), "keyhead_endplate.step", "PCTG — removable keyhead (-X) endplate: closes the box, caps the deck grooves, carries the nut-block inserts; lift off to slide the deck panels out -X"),
     "nut_block":       (partial(heal, NB.nut_block),   "nut_block.step",       "PA6-GF — removable keyhead nut block (gauged break-edge + 2-row clamps; reprint per string set)"),
     "belt_clamp":      (partial(heal, belt_clamp),    "belt_clamp.step",      "PETG — GT2 belt splice clamp (print 2 per splice ×10)"),
     "screw_pulley":    (lambda: heal(C.screw_pulley()),  "screw_pulley.step",  "flanged 14T GT2 pulley, 45° top flange — ×10"),
@@ -326,6 +327,7 @@ def collect_components():
         ("bridge_endplate", bridge_endplate),
         ("bridge_bearings", C.bridge_bearings()),
         ("nut_block", NB.nut_block.translate((D.NUT_BLOCK_X, 0, D.STRING_Z))),
+        ("keyhead_endplate", __import__("src.keyhead_endplate", fromlist=["e"]).keyhead_endplate),
     ]
     comps += [(f"chassis_{i}", seg) for i, seg in enumerate(chassis_segments)]
     comps += _pickup_mount_components()
@@ -341,6 +343,7 @@ def collect_components():
 _COLORS = {
     "carriage":        (0.27, 0.51, 0.71),   # PA6-GF — load-critical
     "bridge_endplate": (0.39, 0.58, 0.93),   # PA6-GF — load-critical
+    "keyhead_endplate": (0.42, 0.50, 0.62),   # PCTG — removable keyhead cap
     "belt_clamp":      (0.95, 0.55, 0.15),   # PETG
     "screw_pulley":    (0.00, 0.55, 0.55),
     "motor_pulley":    (0.00, 0.55, 0.55),
