@@ -37,7 +37,9 @@ GZ0, GZ1 = CH.TP_GZ0, CH.TP_GZ1               # z 3.5..7
 GROOVE_D = CH.TP_GROOVE_D                      # depth into the rail (Y)
 TONGUE_CLR = 0.3
 
-PX0, PX1 = CH.TP_X0, CH.TP_X1           # plate span (matches the groove)
+PX0 = CH.TP_X0                          # +X deck end (the groove runs further -X
+PX1 = -607.0                            # to the rail end, but the panels stop here,
+                                        # +X of the removable keyhead endplate)
 SEG_X = [PX0, -220.0, -440.0, PX1]      # 3 segments at the chassis splits
 PICKUP_SLOT = (-168.0, PX0)            # open over the pickup slide path
 PICKUP_SLOT_HY = 52.0                   # half-Y of the pickup opening
@@ -56,7 +58,7 @@ def _fret_lines(plate, x0, x1):
     return plate
 
 
-def _segment(xa, xb, *, pickup=False, ui=False):
+def _segment(xa, xb, *, pickup=False, ui=False, tenon=True, mortise=True):
     """One deck segment, xa (+X) to xb (-X). Body rests on the rail tops; each
     Y edge drops a tongue into the rail groove (retention) tied up by a web."""
     xm = (xa + xb) / 2
@@ -72,11 +74,12 @@ def _segment(xa, xb, *, pickup=False, ui=False):
         w0, w1 = inner - s * 0.5, inner - s * 3.0
         body = body.union(box_at(xa - xb, abs(w1 - w0), BZ - (GZ1 - 1.0),
                                  x=xm, y=(w0 + w1) / 2, z=((GZ1 - 1.0) + BZ) / 2))
-    # inter-segment tenon on the -X end (slots into the next segment's +X end)
-    body = body.union(box_at(6.0, TENON_W, TZ - BZ,
-                             x=xb - 3.0, y=(YL + YH) / 2, z=(BZ + TZ) / 2))
-    body = body.cut(box_at(6.2, TENON_W + 0.4, TZ - BZ + 0.2,   # mortise on +X end
-                           x=xa - 3.0, y=(YL + YH) / 2, z=(BZ + TZ) / 2))
+    if tenon:   # joins the next (-X) segment; the last segment has none
+        body = body.union(box_at(6.0, TENON_W, TZ - BZ,
+                                 x=xb - 3.0, y=(YL + YH) / 2, z=(BZ + TZ) / 2))
+    if mortise:  # accepts the previous (+X) segment's tenon; the bridge one has none
+        body = body.cut(box_at(6.2, TENON_W + 0.4, TZ - BZ + 0.2,
+                               x=xa - 3.0, y=(YL + YH) / 2, z=(BZ + TZ) / 2))
     if pickup:
         body = body.cut(box_at(PICKUP_SLOT[1] - PICKUP_SLOT[0], 2 * PICKUP_SLOT_HY,
                                TZ - BZ + 2,
@@ -100,9 +103,11 @@ def _segment(xa, xb, *, pickup=False, ui=False):
 
 def _build():
     segs = []
-    for i in range(3):
+    n = len(SEG_X) - 1
+    for i in range(n):
         xa, xb = SEG_X[i], SEG_X[i + 1]
-        segs.append(heal(_segment(xa, xb, pickup=(i == 0), ui=(i == 1))))
+        segs.append(heal(_segment(xa, xb, pickup=(i == 0), ui=(i == 1),
+                                  mortise=(i > 0), tenon=(i < n - 1))))
     return segs
 
 
