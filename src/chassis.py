@@ -331,6 +331,16 @@ def _build_full() -> cq.Workplane:
                                TP_GZ1 - TP_GZ0, x=(TP_X0 + TP_X1) / 2,
                                y=_yf + _s * TP_GROOVE_D / 2.0,
                                z=(TP_GZ0 + TP_GZ1) / 2))
+    # deck-panel +X stop: a deck-level cross-ledge just -X of the carriages
+    # (-13.6). The +X-most panel butts it, so panels can't slide into the
+    # changer. A deck-level cover CAN'T continue over the changer itself
+    # (carriages travel up to z7 there, and stringing needs the window), so the
+    # changer end stays open - the ledge gives the panels their +X stop and
+    # closes the body coverage right up to the changer.
+    body = body.union(box_at(3.0, (Y_HI - T / 2) - (Y_LO + T / 2),
+                             D.STRING_Z - 10.0 - 0.0,   # deck band z 0..6
+                             x=-16.0, y=(Y_LO + Y_HI) / 2,
+                             z=(D.STRING_Z - 10.0) / 2))
     body = body.union(MB.motor_bank)                  # fuse in the motor faceplate walls
     # +X end: a sliding-dovetail tongue on each rail end; the bridge endplate caps
     # and sockets them (drops down to engage, glued).

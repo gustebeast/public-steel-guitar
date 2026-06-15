@@ -37,9 +37,10 @@ GZ0, GZ1 = CH.TP_GZ0, CH.TP_GZ1               # z 3.5..7
 GROOVE_D = CH.TP_GROOVE_D                      # depth into the rail (Y)
 TONGUE_CLR = 0.3
 
-PX0 = CH.TP_X0                          # +X deck end (the groove runs further -X
-PX1 = -607.0                            # to the rail end, but the panels stop here,
-                                        # +X of the removable keyhead endplate)
+PX0 = -17.5                             # +X deck end: panels butt the chassis stop
+                                        # ledge just -X of the carriages (-13.6)
+PX1 = -607.0                            # -X deck end (the groove runs on to the
+                                        # rail end; panels stop +X of the endplate)
 SEG_X = [PX0, -220.0, -440.0, PX1]      # 3 segments at the chassis splits
 PICKUP_SLOT = (-168.0, PX0)            # open over the pickup slide path
 PICKUP_SLOT_HY = 52.0                   # half-Y of the pickup opening
