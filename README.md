@@ -121,11 +121,18 @@ either mode so pitch detection always works. The modeled harness is
 color-coded per electrical net (spliced runs share a color; every unique
 source→dest pairing differs) and routed through diamond raceways in the
 cross-ribs; the overlap gate verifies the wires touch nothing but their own
-endpoints. A **removable top deck** (3 PCTG panels, mortise/tenoned, riding
-grooves in the rail tops so they can't fall off when inverted yet pull out
-toward -X for motor service) covers the motors + electronics, carries printed
+endpoints. A **removable top deck** (PCTG panels riding grooves in the rail tops so they
+can't fall off when inverted, yet pull out toward -X for motor service once the
+keyhead endplate is off) covers the motors + electronics, carries printed
 fret-position lines, doubles as a hand rest, and mounts the UI: a 2.42 in OLED
-and a single Alps multi-control (rotary + 4-way + push).
+and a single Alps multi-control (rotary + 4-way + push). The bridge end of the
+deck is split into 30 mm slots: a 3-slot **pickup-carrier piece** holds the
+pickup (it pokes up through an opening, two skirts form a channel, and 2 M4
+clamp bolts in side slots give ±22.5 mm of fine X-adjust for tone), and the
+remaining slots take swappable **filler bands**. Re-slotting the piece moves the
+pickup coarsely bridge↔neck; the clamp covers everything between, so the full
+range (down to the 50 mm minimum) is reachable, and the region's fixed total
+width keeps the UI/keyhead panels from shifting.
 The playing path is pure feed-forward — pedal moves map directly to motor
 positions, so there is no pitch-tracking latency while playing. A per-string
 pickup (e.g. a hex/multichannel pickup) feeds slow pitch detection used only
@@ -151,12 +158,12 @@ py -3.12 -m tools.check_overlaps   # design gate: any unintended interpenetratio
   bridge, +Y across, +Z up) and **every** dimension as a named constant.
 - `src/components.py` — schematic dummies of purchased parts (motor, screw,
   nut, bearings, pulleys, belt, strings, dowels) used only in the assembly.
-- Printed parts: `carriage` ×10, `bridge_endplate`, `chassis_0/1/2`,
-  `nut_block`, `belt_clamp`, `screw_pulley`, `motor_pulley`, `tension_fork`
-  (graded belt-tension lock set), `pickup_bar`/`pickup_jaw`/`pickup_shim`/
-  `pickup_knob` (adjustable pickup mount: tongue-and-groove rail slide with
-  hand-knob X locks for bridge↔neck tone, shim-set height, width-clamping
-  jaws), and the legs: `leg_socket`/`leg_segment`/`leg_sleeve`/`leg_shaft`
+- Printed parts: `carriage` ×10, `bridge_endplate`, `keyhead_endplate`,
+  `chassis_0/1/2`, `nut_block`, `belt_clamp`, `screw_pulley`, `motor_pulley`,
+  `tension_fork` (graded belt-tension lock set), the **top deck** `top_plate_0..3`
+  (a fret-marked pickup-carrier piece + swappable filler bands + UI/keyhead
+  panels — the pickup is pinned by 2 M4 `clamp_bolt`s for bridge↔neck tone),
+  and the legs: `leg_socket`/`leg_segment`/`leg_sleeve`/`leg_shaft`
   plus `leg_foot`/`leg_washer` in TPU, and `electronics_tray` (compute-bay snap mounts).
 - `tools/check_overlaps.py` exits non-zero on any unintended part
   interpenetration; carriage geometry is additionally swept through both

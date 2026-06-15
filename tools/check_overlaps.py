@@ -73,16 +73,10 @@ GLOBAL_OK = {
     # bolts down through it, and it caps the deck-panel grooves
     frozenset({"keyhead_endplate", "chassis"}), frozenset({"keyhead_endplate", "nut_block"}),
     frozenset({"keyhead_endplate", "top_plate"}), frozenset({"keyhead_endplate", "string"}),
-    # pickup mount: the bar's tongues ride grooves in the chassis rails; the
-    # jaws ride the bar and pinch the pickup, which rests on its shim
-    frozenset({"pickup_bar", "chassis"}), frozenset({"pickup_bar", "pickup_jaw"}),
-    frozenset({"pickup_bar", "pickup"}), frozenset({"pickup_jaw", "pickup"}),
-    frozenset({"pickup_shim", "pickup"}), frozenset({"pickup_shim", "pickup_bar"}),
-    frozenset({"pickup_shim", "pickup_jaw"}),
-    # the X-lock screw threads the chassis boss insert; the knob threads the
-    # screw; the screw's cup tip presses (bites) the tongue's 45° wedge top
-    frozenset({"pickup_screw", "chassis"}), frozenset({"pickup_knob", "pickup_screw"}),
-    frozenset({"pickup_screw", "pickup_bar"}),
+    # pickup carrier: the deck pickup-piece (a top_plate panel) holds the pickup
+    # (pickup<->top_plate is covered by the top_plate rule below); two M4 clamp
+    # bolts pin it through the skirt X-slots
+    frozenset({"clamp_bolt", "pickup"}),
     # legs: socket bolts to the rail; threaded junctions + washers + slider
     frozenset({"leg_socket", "chassis"}), frozenset({"leg_socket", "leg_segment"}),
     frozenset({"leg_segment", "leg_segment"}), frozenset({"leg_segment", "leg_sleeve"}),
@@ -112,7 +106,7 @@ def intended(na, nb) -> bool:
     # carry the OLED + joystick, and the pickup pokes through the open slot
     tp = {base(na), base(nb)}
     if "top_plate" in tp and tp & {"chassis", "top_plate", "oled", "joystick",
-                                   "pickup", "pickup_bar"}:
+                                   "pickup", "clamp_bolt"}:
         return True
     # adjacent chassis segments meet at their sliding-dovetail joints (one frame)
     if base(na) == base(nb) == "chassis":

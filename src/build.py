@@ -55,10 +55,8 @@ PARTS = {
     "screw_pulley":    (lambda: heal(C.screw_pulley()),  "screw_pulley.step",  "flanged 14T GT2 pulley, 45° top flange — ×10"),
     "motor_pulley":    (lambda: heal(C.motor_pulley()),  "motor_pulley.step",  "flanged 14T GT2 pulley, 45° outer flange — ×10"),
     "tension_fork":    (lambda: TF.tension_forks,    "tension_fork.step",    "PCTG — belt-tension lock forks, graded 3.0–6.0 set (4 of the fitting size per motor; positive stop in the slot, no friction reliance)"),
-    "pickup_bar":      (partial(heal, PM.pickup_bar),  "pickup_bar.step",    "PCTG — pickup bridge bar: end tongues ride the rail grooves (slide in from +X before the endplate); the body-mounted knob screw locks X"),
-    "pickup_jaw":      (partial(heal, PM.pickup_jaw),  "pickup_jaw.step",    "PCTG — pickup width jaw ×2 (rotate 180° for the opposing side); M4 set-screw lock"),
-    "pickup_shim":     (partial(heal, PM.pickup_shim), "pickup_shim.step",   "PCTG — pickup height shim (thickness = 25 - pickup height; reprint to tune the string gap)"),
-    "pickup_knob":     (partial(heal, PM.pickup_knob), "pickup_knob.step",   "PCTG — hand knob for the X-lock M4 set screw (self-threads on, dab of CA)"),
+    # pickup carrier: the deck pickup-piece (a top_plate panel) holds the pickup;
+    # two stocked M4 clamp bolts pin it and set fine X (no dedicated printed parts)
     "leg_socket":      (lambda: heal(LG.leg_socket()),  "leg_socket.step",  "PCTG — leg corner socket ×4 (dovetail tenon slides up into the rail slot, glued; 2-turn coarse thread, quick on/off)"),
     "leg_segment":     (lambda: heal(LG.leg_segment()), "leg_segment.step", "PCTG — stackable leg tube (male up / female down; the COUNT per leg is the coarse height adjust, 142 mm per segment; default 2 -> x8)"),
     "leg_sleeve":      (lambda: heal(LG.leg_sleeve()),  "leg_sleeve.step",  "PCTG — leg slider sleeve ×4 (pinch collar: M4 button screw + insert pulls the slit closed; set once per player)"),
@@ -236,31 +234,24 @@ def _string_path(i, sy):
     return out
 
 
-PICKUP_X = -58.0     # pickup-mount centre (default: near-bridge tone). The bar's
-                     # tongues slide the rail grooves; hard stop at −128 (the
-                     # fretboard-line zone starts beyond). Near end: verified
-                     # clean at −50 (the spec minimum); the jaws meet carriage 9's
-                     # travel zone from ~−47, so don't park closer than −50.
+PICKUP_X = -58.0     # pickup centre in the shown pose (near-bridge tone). The
+                     # deck pickup-piece holds it; the clamp bolts give ±22.5 fine
+                     # X within the piece (piece centre −62.5 → reach −40..−85),
+                     # and re-slotting the piece moves it coarsely. −58 is inside
+                     # the bridge-most piece and clears the carriage travel; the
+                     # 50 mm spec minimum is comfortably reachable.
 
 
 def _pickup_mount_components():
-    from . import chassis as CH
-    out = [("pickup", PM.pickup_demo().translate((PICKUP_X, 0, PM.PK_TOP))),
-           ("pickup_bar", PM.pickup_bar.translate((PICKUP_X, 0, 0))),
-           ("pickup_shim", PM.pickup_shim.translate((PICKUP_X, 0, PM.BAR_TOP)))]
-    for k, s in enumerate((1, -1)):           # jaws pinching the pickup width
-        out.append((f"pickup_jaw_{k}",
-                    PM.pickup_jaw.rotate((0, 0, 0), (0, 0, 1), 0 if s > 0 else 180)
-                    .translate((PICKUP_X + s * PM.PK_W / 2, 0, PM.BAR_TOP))))
-    # X-lock: knobbed M4×12 button screws in the two fixed −Y boss stations
-    # (use whichever covers the current position). Tips land on the tongue's
-    # 45° wedge top at the screw line.
-    ly = CH.Y_LO + CH.T / 2 + 2.5
-    d_scr = (CH.PU_FACE_LO - ly) + 0.3            # screw-line depth from the body face
-    tip_z = (CH.PU_TNG_Z1 + 0.15 + CH.PU_GROOVE_D) - d_scr   # wedge top there
-    for k, lx in enumerate(CH.PU_LOCK_XS):
-        out.append((f"pickup_screw_{k}", PM.pickup_lock_screw().translate((lx, ly, tip_z))))
-        out.append((f"pickup_knob_{k}", PM.pickup_knob.translate((lx, ly, tip_z + 12.0 - 0.3))))
+    from . import top_plate as TP
+    out = [("pickup", PM.pickup_demo().translate((PICKUP_X, 0, PM.PK_TOP)))]
+    bz = (TP.SLOT_Z0 + TP.SLOT_Z1) / 2            # bolt height in the skirt X-slot
+    tip = -(PM.PK_L / 2 - 6.5)                     # tip 6.5 mm into the pickup -Y face
+    # both bolts on the -Y skirt (the +Y side has no head room to the rail);
+    # spaced in X they pin position AND rotation. Head outboard (-Y), tip into pickup.
+    for k, dx in enumerate((-15.0, 15.0)):
+        b = PM.clamp_bolt().rotate((0, 0, 0), (0, 0, 1), 180)   # head -Y, tip +Y
+        out.append((f"clamp_bolt_{k}", b.translate((PICKUP_X + dx, tip, bz))))
     return out
 
 
@@ -362,11 +353,7 @@ _COLORS = {
     "set_screw":       (0.55, 0.55, 0.58),   # alloy set screw
     "chassis":         (0.46, 0.52, 0.55),   # PCTG frame
     "pickup":          (0.10, 0.10, 0.12),   # DEMO pickup body
-    "pickup_bar":      (0.80, 0.45, 0.10),   # pickup mount (printed)
-    "pickup_jaw":      (0.90, 0.60, 0.20),
-    "pickup_shim":     (0.95, 0.75, 0.35),
-    "pickup_knob":     (0.86, 0.30, 0.10),
-    "pickup_screw":    (0.55, 0.55, 0.58),
+    "clamp_bolt":      (0.55, 0.55, 0.58),   # M4 clamp bolt (pins the pickup)
     "leg_socket":      (0.36, 0.42, 0.46),
     "leg_segment":     (0.42, 0.48, 0.52),
     "leg_sleeve":      (0.36, 0.42, 0.46),

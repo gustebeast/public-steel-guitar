@@ -1,30 +1,34 @@
-"""Removable top deck plates (PCTG) — cover, hand rest, fret markers, UI mount.
+"""Removable top deck — PCTG. Swappable fret-marked BANDS + a pickup-cover piece.
 
-Roles: (1) printed fret-position lines for the player; (2) dust cover over the
-motors + electronics; (3) some sound damping of motor noise; (4) the mount for
-the OLED + joystick; (5) a hand rest.
+Roles: (1) fret-position lines for the player; (2) dust cover over the motors +
+electronics; (3) sound damping; (4) OLED + joystick mount; (5) hand rest; (6) the
+pickup carrier.
 
-Form: split into 3 segments at the same X lines as the chassis (SPLIT_X), each
-short enough to print, joined to its neighbour by a centred mortise/tenon.
-Each segment rides a GROOVE cut into both rail inner faces (like the pickup
-mount) on a tongue down each Y edge — so the plates can't fall off when the
-instrument is inverted, yet pull straight out toward −X for motor service
-(after the keyhead/nut block is removed; the bridge endplate caps the +X end).
+Form: the deck is a STACK of panels that ride a GROOVE in both rail inner faces
+(a tongue down each Y edge -> can't fall when the instrument is inverted) and
+pull straight out -X for service (after the keyhead endplate + nut block come
+off; the bridge endplate + a chassis stop ledge cap the +X end). The whole stack
+is trapped between that +X ledge and the keyhead endplate, so no panel needs to
+latch and none can slide out on its own.
 
-Two regions stay OPEN: a long slot over the pickup's slide path (so the pickup
-pokes through and still slides), and cut-outs for the OLED + joystick (mounted
-to the mid segment, centred along X by string 10).
+The bridge end is divided into BAND_W-wide slots. A 3-slot PICKUP PIECE carries
+the pickup: the pickup pokes up through an opening, depending side skirts form a
+channel, and two clamp bolts in X-slots give +/-CLAMP mm of fine X-adjust. The
+remaining slot(s) take plain fret-marked FILLER bands. Swapping which slots hold
+the piece coarse-moves the pickup (tone: bridge<->neck); the clamp covers every
+position in between -> continuous reach (50 mm spec min is comfortably inside).
+Because the pickup region is always the same total width, the UI + keyhead
+panels downstream never shift.
 """
 
 from __future__ import annotations
-
-import math
 
 import cadquery as cq
 
 from . import dimensions as D
 from . import chassis as CH
 from . import electronics as EL
+from . import pickup_mount as PM
 from .helpers import box_at, cyl, heal
 
 YL = CH.Y_LO + CH.T / 2                 # -Y rail inner face (-128.75)
@@ -35,23 +39,42 @@ BZ = TZ - 6.0                           # 6 mm deck, recessed between the rails
 # rail retention groove (cut into chassis by chassis.py; we ride it)
 GZ0, GZ1 = CH.TP_GZ0, CH.TP_GZ1               # z 3.5..7
 GROOVE_D = CH.TP_GROOVE_D                      # depth into the rail (Y)
-TONGUE_CLR = 0.3
 
 PX0 = -17.5                             # +X deck end: panels butt the chassis stop
                                         # ledge just -X of the carriages (-13.6)
-PX1 = -607.0                            # -X deck end (the groove runs on to the
-                                        # rail end; panels stop +X of the endplate)
-SEG_X = [PX0, -220.0, -440.0, PX1]      # 3 segments at the chassis splits
-PICKUP_SLOT = (-168.0, PX0)            # open over the pickup slide path
-PICKUP_SLOT_HY = 52.0                   # half-Y of the pickup opening
-TENON_W = 30.0                          # inter-segment mortise/tenon width (Y)
+PX1 = -607.0                            # -X deck end (groove runs on to the rail end)
 
+# ── band slots at the bridge end ─────────────────────────────────────────────
+BAND_W   = 30.0                        # one slot
+N_SLOTS  = 4                           # pickup-region slots (= 4*30 = 120 mm)
+SLOT_X   = [PX0 - i * BAND_W for i in range(N_SLOTS + 1)]   # -17.5 .. -137.5
+PIECE_SLOTS = 3                        # the pickup piece spans 3 slots (90 mm)
+CLAMP    = 22.5                        # +/- fine X-adjust of the pickup in the piece
+
+# shown installed state: piece in the 3 bridge-most slots, 1 filler behind it
+PIECE_X0, PIECE_X1 = SLOT_X[0], SLOT_X[PIECE_SLOTS]        # -17.5, -107.5
+FILL_X0,  FILL_X1  = SLOT_X[PIECE_SLOTS], SLOT_X[N_SLOTS]  # -107.5, -137.5
+REGION_X1 = SLOT_X[-1]                                     # -137.5
+
+# the two long panels behind the band region
+MID_X0, MID_X1 = REGION_X1, -377.5     # carries the UI (string-10 deck band)
+KEY_X0, KEY_X1 = MID_X1, PX1           # keyhead panel
+
+# ── pickup-piece interior geometry ───────────────────────────────────────────
+PIECE_CTR = (PIECE_X0 + PIECE_X1) / 2                      # -62.5
+OPEN_X0   = PIECE_CTR + CLAMP + PM.PK_W / 2                # -23.5 (+X swept edge)
+OPEN_X1   = PIECE_CTR - CLAMP - PM.PK_W / 2                # -101.5 (-X swept edge)
+OPEN_HY   = PM.PK_L / 2 + 0.5                              # 50.0 (pickup half-len +clr)
+SKIRT_T   = 3.0
+SKIRT_BOT = PM.PK_BOT - 1.0                                # channel floor below pickup
+SLOT_Z0, SLOT_Z1 = -6.5, -1.5                             # clamp-bolt X-slot Z band
+SLOT_HX   = CLAMP + PM.CLAMP_BOLT_D / 2 + 0.3              # half-length of the X-slot
 
 MARKER_FRETS = {3, 5, 7, 9, 12, 15, 17, 19, 21, 24}
 
 
 def _fret_lines(plate, x0, x1):
-    """Engrave EVERY 12-TET fret line across the deck (they compress toward the
+    """Engrave EVERY 12-TET fret line across the panel (they compress toward the
     bridge: fret n at nut + scale*(1 - 2^(-n/12))), plus marker dots at the
     standard frets (double at 12 & 24). Stops where the spacing drops below
     1.5 mm (unmarkable, right at the bridge). Cosmetic recesses in the deck top."""
@@ -74,57 +97,66 @@ def _fret_lines(plate, x0, x1):
     return plate
 
 
-def _segment(xa, xb, *, pickup=False, ui=False, tenon=True, mortise=True):
-    """One deck segment, xa (+X) to xb (-X). Body rests on the rail tops; each
-    Y edge drops a tongue into the rail groove (retention) tied up by a web."""
+def _deck_body(xa, xb):
+    """Bare deck panel, xa (+X) to xb (-X): body recessed between the rails with a
+    retention tongue + web down each Y edge into the rail groove."""
     xm = (xa + xb) / 2
     BY0, BY1 = YL + 0.5, YH - 0.5        # body sits BETWEEN the rails (recessed)
     body = box_at(xa - xb, BY1 - BY0, TZ - BZ, x=xm, y=(BY0 + BY1) / 2,
                   z=(BZ + TZ) / 2)
     for inner, s in ((YL, -1), (YH, 1)):            # s = into-rail direction
-        # tongue: in the groove (s side) + inboard a couple mm to meet the web
-        t0, t1 = inner + s * (GROOVE_D - 0.3), inner - s * 2.0
+        t0, t1 = inner + s * (GROOVE_D - 0.3), inner - s * 2.0      # tongue
         body = body.union(box_at(xa - xb, abs(t1 - t0), GZ1 - GZ0,
                                  x=xm, y=(t0 + t1) / 2, z=(GZ0 + GZ1) / 2))
-        # web: inboard riser tying the tongue up to the body (clears the lip)
-        w0, w1 = inner - s * 0.5, inner - s * 3.0
+        w0, w1 = inner - s * 0.5, inner - s * 3.0                   # web riser
         body = body.union(box_at(xa - xb, abs(w1 - w0), BZ - (GZ1 - 1.0),
                                  x=xm, y=(w0 + w1) / 2, z=((GZ1 - 1.0) + BZ) / 2))
-    if tenon:   # joins the next (-X) segment; the last segment has none
-        body = body.union(box_at(6.0, TENON_W, TZ - BZ,
-                                 x=xb - 3.0, y=(YL + YH) / 2, z=(BZ + TZ) / 2))
-    if mortise:  # accepts the previous (+X) segment's tenon; the bridge one has none
-        body = body.cut(box_at(6.2, TENON_W + 0.4, TZ - BZ + 0.2,
-                               x=xa - 3.0, y=(YL + YH) / 2, z=(BZ + TZ) / 2))
-    if pickup:
-        body = body.cut(box_at(PICKUP_SLOT[1] - PICKUP_SLOT[0], 2 * PICKUP_SLOT_HY,
-                               TZ - BZ + 2,
-                               x=(PICKUP_SLOT[0] + PICKUP_SLOT[1]) / 2, y=0,
-                               z=(BZ + TZ) / 2))
+    return body
+
+
+def _band(xa, xb, *, ui=False):
+    """A plain (filler / mid / keyhead) deck panel: body + fret lines + opt. UI."""
+    body = _deck_body(xa, xb)
     if ui:
         # clearance windows for the OLED glass + joystick actuator
         body = body.cut(box_at(64.0, 35.0, TZ - BZ + 2, x=EL.UI_X, y=EL.OLED_Y,
                                z=(BZ + TZ) / 2))
         body = body.cut(cyl(9.0, TZ - BZ + 2, z=BZ - 1).translate(
             (EL.JOY_X, EL.JOY_Y, 0)))
-        # 4 mount bosses around the OLED (M2 self-tap)
-        for dx in (-34, 34):
+        for dx in (-34, 34):                        # OLED mount bosses (M2 self-tap)
             for dy in (-15, 15):
                 body = body.union(cyl(5.0, TZ - BZ, z=BZ).translate(
                     (EL.UI_X + dx, EL.OLED_Y + dy, 0)))
                 body = body.cut(cyl(1.6, TZ - BZ + 1, z=BZ - 0.5).translate(
                     (EL.UI_X + dx, EL.OLED_Y + dy, 0)))
-    return _fret_lines(body, xa, xb)
+    return heal(_fret_lines(body, xa, xb))
 
 
-def _build():
-    segs = []
-    n = len(SEG_X) - 1
-    for i in range(n):
-        xa, xb = SEG_X[i], SEG_X[i + 1]
-        segs.append(heal(_segment(xa, xb, pickup=(i == 0), ui=(i == 1),
-                                  mortise=(i > 0), tenon=(i < n - 1))))
-    return segs
+def _pickup_piece():
+    """3-slot deck panel that carries the pickup: opening to poke through, two
+    depending side skirts forming the channel, and a clamp-bolt X-slot per skirt
+    (the bolt threads the pickup side; loosen, slide +/-CLAMP, retighten)."""
+    body = _deck_body(PIECE_X0, PIECE_X1)
+    # opening through the deck for the pickup (spans its full clamp sweep in X)
+    body = body.cut(box_at(OPEN_X0 - OPEN_X1, 2 * OPEN_HY, (TZ - BZ) + 2,
+                           x=(OPEN_X0 + OPEN_X1) / 2, y=0, z=(BZ + TZ) / 2))
+    for s in (1, -1):                               # +Y / -Y channel skirts
+        y_in = s * OPEN_HY
+        body = body.union(box_at(OPEN_X0 - OPEN_X1 + 4.0, SKIRT_T, BZ - SKIRT_BOT,
+                                 x=(OPEN_X0 + OPEN_X1) / 2,
+                                 y=y_in + s * SKIRT_T / 2,
+                                 z=(BZ + SKIRT_BOT) / 2))
+        # clamp-bolt X-slot through the skirt (bolt fixed to the pickup slides in it)
+        body = body.cut(box_at(2 * SLOT_HX, SKIRT_T + 1.0, SLOT_Z1 - SLOT_Z0,
+                               x=PIECE_CTR, y=y_in + s * SKIRT_T / 2,
+                               z=(SLOT_Z0 + SLOT_Z1) / 2))
+    return heal(body)
 
 
-segments = _build()
+pickup_piece = _pickup_piece()
+filler_band  = _band(FILL_X0, FILL_X1)
+deck_mid     = _band(MID_X0, MID_X1, ui=True)
+deck_keyhead = _band(KEY_X0, KEY_X1)
+
+# build.py registers / places these as top_plate_0..3 (all PCTG deck panels)
+segments = [pickup_piece, filler_band, deck_mid, deck_keyhead]
