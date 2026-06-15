@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import cadquery as cq
 
+from . import chassis as CH          # only early constants (X_*, Z_*) used here
 from .helpers import box_at, cyl
 
 # ---- bay geometry (chassis.py cuts the matching channels from these) ----
@@ -65,6 +66,36 @@ BOARD_Z = TRAY_Z1 + POST_H             # every bottom board sits at -67
 JACK_WALL_X = 10.0                     # inner face of the thinned wall
 JACK_Z = -41.0
 TS_Y, DC_Y, USB_Y = -68.0, -86.0, -104.0
+
+# ---- UI: OLED + joystick on the top deck (mounted to the top plate) ----
+# Centred along X. NOTE: the strings cover the deck within +-42.75 with only
+# ~2 mm clearance, and the +Y/string-10 edge is just ~12 mm wide before the
+# rail - too narrow for the 38 mm screen. So the UI sits on the WIDE -Y deck
+# band (86 mm, over the motor PCBs, clear of the strings). The joystick (Alps
+# RKJXT1F42001: 2-way rotary + 4-way + push) is the sole control.
+UI_X      = (CH.X_BRIDGE + CH.X_NUT) / 2     # instrument X centre (~-325)
+DECK_TOP  = CH.Z_TOP + 4.0                    # top-plate surface (+14)
+OLED_Y    = -100.0                            # wide -Y deck band (clear of strings)
+OLED_W, OLED_L, OLED_T = 38.0, 72.0, 1.6      # 2.42" module PCB (Y x X)
+JOY_X     = UI_X + 56.0                       # just +X of the screen
+JOY_Y     = -82.0
+
+
+def oled() -> cq.Workplane:
+    """2.42" 128x64 OLED module dummy: PCB + glass + header, face up."""
+    b = box_at(OLED_L, OLED_W, OLED_T, x=UI_X, y=OLED_Y, z=DECK_TOP + OLED_T / 2)
+    b = b.union(box_at(62.0, 33.0, 2.0, x=UI_X, y=OLED_Y,
+                       z=DECK_TOP + OLED_T + 1.0))          # glass active area
+    b = b.union(box_at(20.0, 2.5, 5.0, x=UI_X, y=OLED_Y - OLED_W / 2 + 2.0,
+                       z=DECK_TOP + OLED_T + 2.5))          # pin header (-Y edge)
+    return b
+
+
+def joystick() -> cq.Workplane:
+    """Alps RKJXT1F42001 multi-control dummy: ~13 mm body + actuator cap."""
+    b = box_at(13.0, 13.0, 9.0, x=JOY_X, y=JOY_Y, z=DECK_TOP + 4.5)
+    b = b.union(cyl(7.0, 6.0, z=DECK_TOP + 9.0).translate((JOY_X, JOY_Y, 0)))
+    return b
 
 # ---- analog front end (bridge-end -Y corner, near the pickup + jacks) ----
 # JFET buffer + SPDT signal relay (true-bypass: de-energized = raw straight to

@@ -41,6 +41,12 @@ Y_LO     = (D.string_y(0) - MOTOR_PULLEY_STANDOFF - D.MOTOR_BODY_LEN
             - D.MOTOR_PCB_LEN - 6.0)   # −Y rail, just outside the motor PCBs
 _XC, _ZC = (X_BRIDGE + X_NUT) / 2, (Z_TOP + Z_BOT) / 2
 _RIB_W   = 10.0                        # cross-rib X-width (chunky section → slicer infills)
+# Top-plate retention grooves (top_plate.py rides these): a slot in each rail
+# inner face below the rail top, leaving a ~3 mm lip so the deck plates can't
+# fall out when the instrument is inverted (they pull straight out toward −X).
+TP_X0, TP_X1   = -16.0, -624.0         # groove X span (deck extent)
+TP_GZ0, TP_GZ1 = Z_TOP - 6.5, Z_TOP - 3.0   # z 3.5..7 (3 mm lip up to the top)
+TP_GROOVE_D    = 3.0                    # depth into the rail (Y)
 # A chunky rail-to-rail rib UNDER EACH MOTOR (the motor rests on it, its wall sits
 # on it, and it ties the two rails) replaces a solid floor — far lighter for the
 # strength. Plus a rib at the +X end (tying the rails behind the endplate) and one
@@ -313,6 +319,13 @@ def _build_full() -> cq.Workplane:
     for _rx in _RIB_X:
         for _ly in RIB_RACE_Y:
             body = body.cut(_diamond(_ly, -70.65, 3.5, _rx, _RIB_W + 2.0))
+    # top-plate retention grooves: a slot cut INTO each rail from the inner
+    # face (s = into-rail direction), z 3.5..7 with a ~3 mm lip up to the top
+    for _yf, _s in ((Y_HI - T / 2, 1), (Y_LO + T / 2, -1)):
+        body = body.cut(box_at(TP_X0 - TP_X1 + 4, TP_GROOVE_D + 0.5,
+                               TP_GZ1 - TP_GZ0, x=(TP_X0 + TP_X1) / 2,
+                               y=_yf + _s * TP_GROOVE_D / 2.0,
+                               z=(TP_GZ0 + TP_GZ1) / 2))
     body = body.union(MB.motor_bank)                  # fuse in the motor faceplate walls
     # +X end: a sliding-dovetail tongue on each rail end; the bridge endplate caps
     # and sockets them (drops down to engage, glued).

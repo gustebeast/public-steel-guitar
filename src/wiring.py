@@ -195,6 +195,19 @@ def build_wires():
         (-616.0, -66.0, shield_top - 0.6), (-616.0, -66.0, -41.0),
         (-616.0, -44.0, -41.0), (-616.0, -44.0, -57.0)])))
 
+    # -- UI: OLED + joystick (-Y deck band) -> Teensy. Drop just under the deck
+    #    (z 7, above the motors / outboard of the strings + belts) and run to the
+    #    keyhead, then down into the shield. No floor-trunk lane needed.
+    UDZ = 7.0
+    out.append(("wire_oled", _wire([
+        (EL.UI_X, EL.OLED_Y, EL.DECK_TOP + 1.0), (EL.UI_X, EL.OLED_Y, UDZ),
+        (-590.0, EL.OLED_Y, UDZ), (-590.0, -65.0, UDZ),
+        (-590.0, -65.0, shield_top - 1.0)])))
+    out.append(("wire_joy", _wire([
+        (EL.JOY_X, EL.JOY_Y, EL.DECK_TOP + 1.0), (EL.JOY_X, EL.JOY_Y, UDZ),
+        (-578.0, EL.JOY_Y, UDZ), (-578.0, -66.0, UDZ),
+        (-578.0, -66.0, shield_top - 1.0)])))
+
     # -- CS42448 TDM -> Pi (teal)
     out.append(("wire_tdm", _wire([
         (-598.0, -100.0, -43.0), (-598.0, -100.0, -33.0),
@@ -217,4 +230,6 @@ WIRE_OK = {
     "wire_link":      {"teensy_stack", "pi5"},
     "wire_canjmp":    {"teensy_stack", "can_xcvr"},
     "wire_tdm":       {"cs_stack", "pi5"},
+    "wire_oled":      {"oled", "teensy_stack"},
+    "wire_joy":       {"joystick", "teensy_stack"},
 }

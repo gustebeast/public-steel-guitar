@@ -99,6 +99,12 @@ def intended(na, nb) -> bool:
     # the electronics tray's tabs rest on their channel floors
     if frozenset({base(na), base(nb)}) == frozenset({"electronics_tray", "chassis"}):
         return True
+    # top deck plates ride the rail grooves, abut each other (mortise/tenon),
+    # carry the OLED + joystick, and the pickup pokes through the open slot
+    tp = {base(na), base(nb)}
+    if "top_plate" in tp and tp & {"chassis", "top_plate", "oled", "joystick",
+                                   "pickup", "pickup_bar"}:
+        return True
     # adjacent chassis segments meet at their sliding-dovetail joints (one frame)
     if base(na) == base(nb) == "chassis":
         return True

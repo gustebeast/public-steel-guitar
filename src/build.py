@@ -66,6 +66,12 @@ PARTS = {
     "leg_washer":      (lambda: heal(LG.leg_washer()),  "leg_washer.step",  "TPU — anti-unscrew shoulder washer, 1/junction = segments+1 per leg (compresses on the last quarter turn)"),
     "electronics_tray": (lambda: heal(__import__("src.electronics", fromlist=["e"]).electronics_tray()), "electronics_tray.step", "PCTG — compute-bay tray (drops into rail channels from above; tool-free snap mounts for Teensy+shield, Pi 5, 2x CS42448, buck, CAN transceiver; basic builds leave the pro sockets empty)"),
 }
+for _i in range(3):                              # top deck panels (mortise/tenon)
+    PARTS[f"top_plate_{_i}"] = (
+        (lambda i: lambda: heal(__import__("src.top_plate", fromlist=["e"]).segments[i]))(_i),
+        f"top_plate_{_i}.step",
+        "PCTG — removable top deck panel (fret lines + dust cover + hand rest; "
+        "rides rail grooves, slides out -X; mid panel carries the OLED + joystick)")
 for _i, _seg in enumerate(chassis_segments):     # chassis split into dovetailed segments
     PARTS[f"chassis_{_i}"] = (partial(heal, _seg), f"chassis_{_i}.step",
                               "PCTG — chassis segment (slide-down dovetail, glued)")
@@ -301,13 +307,16 @@ def _electronics_components():
     CS stack / buck sockets empty) + panel jacks + the wire harness."""
     from . import electronics as EL
     from . import wiring as WR
+    from . import top_plate as TP
     out = [("electronics_tray", EL.electronics_tray()),
            ("pi5", EL.pi5()), ("teensy_stack", EL.teensy_stack()),
            ("cs_stack", EL.cs_stack()), ("buck", EL.buck()),
            ("can_xcvr", EL.can_xcvr()),
            ("analog_frontend", EL.analog_frontend()),
            ("ts_jack", EL.ts_jack()), ("dc_jack", EL.dc_jack()),
-           ("usbc_jack", EL.usbc_jack())]
+           ("usbc_jack", EL.usbc_jack()),
+           ("oled", EL.oled()), ("joystick", EL.joystick())]
+    out += [(f"top_plate_{i}", seg) for i, seg in enumerate(TP.segments)]
     out += WR.build_wires()
     return out
 
@@ -370,6 +379,9 @@ _COLORS = {
     "buck":            (0.35, 0.30, 0.50),
     "can_xcvr":        (0.55, 0.25, 0.25),
     "analog_frontend": (0.20, 0.45, 0.40),   # bridge-end buffer + relay board
+    "top_plate":       (0.30, 0.33, 0.38),   # PCTG deck panels
+    "oled":            (0.05, 0.05, 0.08),   # screen (perfect-black OLED)
+    "joystick":        (0.15, 0.15, 0.17),   # UI control
     "ts_jack":         (0.62, 0.64, 0.67),
     "dc_jack":         (0.62, 0.64, 0.67),
     "usbc_jack":       (0.62, 0.64, 0.67),
@@ -385,6 +397,8 @@ _COLORS = {
     "wire_link":       (0.55, 0.20, 0.75),   # purple  - Teensy <-> Pi
     "wire_canjmp":     (0.95, 0.55, 0.10),   # orange  - Teensy <-> transceiver
     "wire_tdm":        (0.10, 0.60, 0.60),   # teal    - CS stack -> Pi
+    "wire_oled":       (0.85, 0.45, 0.75),   # pink    - OLED -> Teensy
+    "wire_joy":        (0.55, 0.75, 0.30),   # lime    - joystick -> Teensy
 }
 _DEFAULT_COLOR = (0.80, 0.80, 0.80)
 
