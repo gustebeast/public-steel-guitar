@@ -47,15 +47,30 @@ PICKUP_SLOT_HY = 52.0                   # half-Y of the pickup opening
 TENON_W = 30.0                          # inter-segment mortise/tenon width (Y)
 
 
+MARKER_FRETS = {3, 5, 7, 9, 12, 15, 17, 19, 21, 24}
+
+
 def _fret_lines(plate, x0, x1):
-    """Shallow engraved fret-position lines across the deck (cosmetic)."""
-    nut = D.NUT_BLOCK_X                          # scale 0
-    span = D.BRIDGE_AXLE_X - nut                 # speaking length
-    for n in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 18, 20, 22, 24):
-        fx = nut + span * (1 - 2 ** (-n / 12.0))
-        if x1 + 3 < fx < x0 - 3:
-            plate = plate.cut(box_at(1.2, YH - YL - 8, 0.8,
-                                     x=fx, y=(YL + YH) / 2, z=TZ - 0.4))
+    """Engrave EVERY 12-TET fret line across the deck (they compress toward the
+    bridge: fret n at nut + scale*(1 - 2^(-n/12))), plus marker dots at the
+    standard frets (double at 12 & 24). Stops where the spacing drops below
+    1.5 mm (unmarkable, right at the bridge). Cosmetic recesses in the deck top."""
+    nut = D.NUT_BLOCK_X
+    scale = D.BRIDGE_X - nut                     # full speaking length (nut->bridge)
+    n = 1
+    while True:
+        fx = nut + scale * (1 - 2 ** (-n / 12.0))
+        nxt = nut + scale * (1 - 2 ** (-(n + 1) / 12.0))
+        if fx >= D.BRIDGE_X or nxt - fx < 1.5:
+            break
+        if x1 + 0.8 < fx < x0 - 0.8:
+            plate = plate.cut(box_at(0.7, YH - YL - 8, 0.9,
+                                     x=fx, y=(YL + YH) / 2, z=TZ - 0.45))
+            if n in MARKER_FRETS:
+                for dy in ((-9.0, 9.0) if n in (12, 24) else (0.0,)):
+                    plate = plate.cut(cyl(4.0, 1.3, z=TZ - 1.3)
+                                      .translate((fx, dy, 0)))
+        n += 1
     return plate
 
 
