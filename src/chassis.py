@@ -44,7 +44,9 @@ _RIB_W   = 10.0                        # cross-rib X-width (chunky section → s
 # Top-plate retention grooves (top_plate.py rides these): a slot in each rail
 # inner face below the rail top, leaving a ~3 mm lip so the deck plates can't
 # fall out when the instrument is inverted (they pull straight out toward −X).
-TP_X0, TP_X1   = -16.0, -624.0         # groove X span (deck extent)
+TP_X0, TP_X1   = -16.0, -638.0         # groove X span; open at the -X rail end so
+                                       # the deck panels slide out -X once the
+                                       # (removable) keyhead endplate is off
 TP_GZ0, TP_GZ1 = -4.0, -1.0            # recessed deck (10 mm under strings):
                                        # groove z -4..-1, ~9 mm rail lip above
 TP_GROOVE_D    = 3.0                    # depth into the rail (Y)
@@ -253,18 +255,20 @@ def _build_full() -> cq.Workplane:
     body = body.cut(box_at(PU_NOTCH_X1 - PU_NOTCH_X0, PU_BOSS_T + 0.3, 23.0,
                            x=(PU_NOTCH_X0 + PU_NOTCH_X1) / 2,
                            y=(Y_LO + T / 2 + PU_FACE_LO) / 2 + 0.15, z=-26.0))
-    # keyhead: a thick bulkhead under the nut-block footprint (it sits on top, Z_TOP),
-    # plus a compression wall its +X face bears against (string pull → self-tightening),
-    # and pilot holes for the 4 corner heat-set inserts the retention bolts thread into.
-    _kx = D.NUT_BLOCK_X - 9.0                               # under the block centre
-    body = body.union(_end_bulkhead(_kx, 30.0))            # self-supporting bulkhead
-    body = body.union(_rib(_kx, w=30.0))                   # bottom tie
+    # keyhead: the box-closure bulkhead is now a SEPARATE, removable part
+    # (keyhead_endplate.py) so the deck panels slide out -X for service. It seats
+    # on this bottom tie rib, plugs into the rail-end channels, and is clamped
+    # down by the nut-block bolts (whose inserts it carries) - lift the nut block
+    # off and the endplate lifts out. The chassis keeps the rib + compression
+    # wall + a shallow seat channel in each rail end for the endplate's tabs.
+    _kx = D.NUT_BLOCK_X - 9.0                               # endplate centre line
+    body = body.union(_rib(_kx, w=30.0))                   # bottom tie / seat
     ky = D.nut_y(D.N_STRINGS - 1) + 9.0
     body = body.union(box_at(4.0, 2 * ky, 4.0,            # +X compression wall (below the strings)
                              x=D.NUT_BLOCK_X + 6.0, y=0, z=Z_TOP + 2.0))
-    for sx in (D.NUT_BLOCK_X + NB.X_FRONT - 3.0, D.NUT_BLOCK_X + NB.X_BACK + 3.0):
-        for sy in (-(NB.HW - 4.0), NB.HW - 4.0):          # insert pilots under the 4 corner bolts
-            body = body.cut(cyl(5.6, 8.0, z=Z_TOP - 8.0).translate((sx, sy, 0)))
+    for _yf, _s in ((Y_HI - T / 2, 1), (Y_LO + T / 2, -1)):   # endplate tab channels
+        body = body.cut(box_at(12.0, 3.5, Z_TOP - (Z_BOT + 8.0),
+                               x=_kx, y=_yf + _s * 1.5, z=(Z_TOP + Z_BOT + 8.0) / 2))
     # leg-socket joinery: a vertical sliding-dovetail slot in each rail's
     # OUTER face at the corner stations (solid web there). The printed socket
     # slides up from below and GLUES (it is only a separate part because the

@@ -69,6 +69,10 @@ GLOBAL_OK = {
     # the strings + its gauged dowels + set screws
     frozenset({"nut_block", "chassis"}), frozenset({"nut_block", "string"}),
     frozenset({"nut_block", "break_dowel"}), frozenset({"nut_block", "set_screw"}),
+    # removable keyhead endplate: seats on the chassis rib/rails, the nut block
+    # bolts down through it, and it caps the deck-panel grooves
+    frozenset({"keyhead_endplate", "chassis"}), frozenset({"keyhead_endplate", "nut_block"}),
+    frozenset({"keyhead_endplate", "top_plate"}), frozenset({"keyhead_endplate", "string"}),
     # pickup mount: the bar's tongues ride grooves in the chassis rails; the
     # jaws ride the bar and pinch the pickup, which rests on its shim
     frozenset({"pickup_bar", "chassis"}), frozenset({"pickup_bar", "pickup_jaw"}),
