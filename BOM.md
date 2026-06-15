@@ -44,20 +44,21 @@ column: **B** = both basic & pro, **P** = pro only.
 | **Buffer op-amp** | B | OPA2134PA DIP + passives | ~$11 | [DigiKey](https://www.digikey.com/en/products/detail/texas-instruments/OPA2134PA/254686) |
 | **1/4" TS panel jack** | B | Neutrik NMJ4HCD2 (Ø11.4 hole) | $2.53 | [DigiKey](https://www.digikey.com/en/products/detail/neutrik-americas-inc/NMJ4HCD2/29371256) |
 | **DC barrel panel jack** | B | Same Sky PJ-005A (Ø8 hole, 2.0 pin) | $3.07 | [DigiKey](https://www.digikey.com/en/products/detail/same-sky-formerly-cui-devices/PJ-005A/165838) |
-| **USB-C panel jack** | B | USB 2.0 panel coupler (both brains are USB 2.0) | ~$6 | ⚠ pick PN; NOT the $23 5 Gbps Cliff |
-| **Rotary/4-way joystick** | B | Alps RKJXT1F42001 (UI control) | $9.22 | [DigiKey](https://www.digikey.com/en/products/detail/alps-alpine/RKJXT1F42001/19529127) |
+| **USB-C panel coupler** | B | Adafruit 4261 F↔F (USB 2.0, Ø30 hole) | $7.50 | [DigiKey](https://www.digikey.com/en/products/detail/adafruit-industries-llc/4261/10287031) |
+| **Rotary/4-way joystick** | B | Alps RKJXT1F42001 (sole UI control) | $9.22 | [DigiKey](https://www.digikey.com/en/products/detail/alps-alpine/RKJXT1F42001/19529127) |
 | **OLED display** | B | 2.42" 128×64 SSD1309 SPI (UI screen) | ~$17 | [Waveshare](https://www.waveshare.com/2.42inch-oled-module.htm) |
 | **USB 2.0 hub** | P | Adafruit CH334F (share 1 port: Teensy+Pi) | $4.50 | [Adafruit](https://www.adafruit.com/product/5999) |
 | **Raspberry Pi 5, 8 GB** | P | 10ch A2M + Dexed + USB-audio gadget | $175 ⚠ | [PiShop](https://www.pishop.us/product/raspberry-pi-5-8gb/) |
 | **Buck 24→5 V ≥6 A** | P | Pololu D36V50F5 (Pi wants 5.1 V/5 A) | $39.95 | [Pololu](https://www.pololu.com/product/4091) |
-| **10-ch audio ADC** | P | ⚠ CS42448 is **EOL** — needs substitution | ~$60 | see note |
+| **10-ch audio ADC** | P | TI **PCM1864DBT** ×3 (4-ch each, TDM) on a carrier PCB | $9.57 ea | [DigiKey](https://www.digikey.com/en/products/detail/texas-instruments/PCM1864DBT/5213896) |
 
-⚠ **Pi 5** $175 is the current street price (MSRP ~$80; supply tight). ⚠ **CS42448
-is discontinued** — no purchasable board; the pro 10-channel ADC needs a redesign
-around an in-production codec (e.g. multiple TLV320AIC3104 or PCM1808 boards),
-budget ~$60. ⚠ The panel **USB-C** only needs USB 2.0 (480 Mbps) — both the
-Teensy and the Pi 5 gadget port are USB 2.0 — so a cheap small panel coupler
-suffices, not the 5 Gbps feedthrough.
+⚠ **Pi 5** $175 is the current street price (MSRP ~$80; supply tight). The
+**10-ch ADC** replaces the obsolete CS42448: three **PCM1864** (4-ch, built-in
+line-level inputs, daisy-chain on one TDM bus → 12 ch, use 10) at ~$2.87/ch —
+**these need a small custom carrier PCB** (no stocked 8+ch line-in HAT exists).
+A USB-C panel part (Adafruit 4261) and both ADC routes are all orderable on
+**DigiKey** to keep the supplier count down. The panel **USB-C** only needs
+USB 2.0 (480 Mbps) — both the Teensy and the Pi 5 gadget port are USB 2.0.
 
 The **analog front-end** (buffer + true-bypass relay + driver + local LDO) is a
 small board at the bridge end. The relay defaults (de-energized) to passing the
@@ -82,9 +83,10 @@ Printed parts (no purchase): carriage, bridge_endplate, chassis (×3 segments),
 nut_block, belt_clamp, screw_pulley, motor_pulley, tension_fork (graded
 belt-tension lock set), pickup_bar/pickup_jaw/pickup_shim (adjustable pickup
 mount — all its hardware comes from the M4 insert/set-screw packs above),
-and the adjustable legs: leg_socket ×4, leg_segment ×8, leg_sleeve ×4,
+the adjustable legs: leg_socket ×4, leg_segment ×8, leg_sleeve ×4,
 leg_shaft ×4 (PCTG/PA6-GF) plus leg_foot ×4 and leg_washer ×12 in **TPU**
-(anti-unscrew preload washers + floor-friendly feet)
+(anti-unscrew preload washers + floor-friendly feet), electronics_tray, and
+**top_plate ×3** (removable deck: fret lines + dust cover + hand rest + UI mount)
 — see `py -3.12 -m src.build --list`.
 
 ## Filament (printed parts, both tiers)
@@ -94,11 +96,11 @@ parts excluded. PCTG $25/kg, PA6-GF $60/kg; PETG≈$25, TPU≈$30 (assumed).
 
 | Material | Mass | Cost | Main parts |
 |----------|------|------|-----------|
-| PCTG | ~2.41 kg | ~$60 | chassis ×3, endplate, legs, tray, pulleys |
+| PCTG | ~2.9 kg | ~$73 | chassis ×3, endplate, **top deck ×3 (~0.47 kg)**, legs, tray, pulleys |
 | PA6-GF | ~53 g | ~$3 | 10 carriages + nut block (load-critical) |
 | PETG | ~32 g | ~$1 | 20 belt-splice clamps |
 | TPU | ~40 g | ~$1 | 4 feet + 12 anti-unscrew washers |
-| **Total** | | **~$65** | |
+| **Total** | ~3.0 kg | **~$78** | |
 
 ## Wire
 
@@ -113,11 +115,11 @@ Approximate; motors dominate. Re-verify before ordering.
 
 | Group | Basic | Pro |
 |-------|------:|----:|
-| Filament (printed) | ~$65 | ~$65 |
+| Filament (printed) | ~$78 | ~$78 |
 | Mechanical hardware (motors, screws, bearings, belt, fasteners, dowels) | ~$530 | ~$530 |
 | Wire | ~$35 | ~$35 |
-| Electronics + UI | ~$110 | ~$375 |
-| **Total** | **~$740** | **~$1,005** |
+| Electronics + UI | ~$110 | ~$335 + carrier PCB |
+| **Total** | **~$755** | **~$980** + PCB |
 
 Mechanical detail: 10× MKS SERVO42D (~$240) is the bulk; +10× Tr5×1 screw/nut
 (~$60, **confirm 1 mm lead / single-start**), 10× MR85ZZ (~$30), 10× 693ZZ

@@ -61,7 +61,7 @@ limitation):
 clamped in the **nut block** — a removable, reprintable PA6-GF block whose
 per-string steel **break pins** are gauged so every string's top lies in one
 plane; a cup-point set screw clamps the dead end. The speaking length (615 mm,
-≈24.2″ scale) runs to the bridge, turns 90° over a **per-string Ø8 ball
+≈24.9″ scale) runs to the bridge, turns 90° over a **per-string Ø8 ball
 bearing** (so the bend is near-frictionless and tension equalizes across it),
 and drops vertically to the **carriage**. The ball end sits in a **cage** in
 the carriage: the string threads up through a roof slot narrower than the
@@ -121,7 +121,11 @@ either mode so pitch detection always works. The modeled harness is
 color-coded per electrical net (spliced runs share a color; every unique
 source→dest pairing differs) and routed through diamond raceways in the
 cross-ribs; the overlap gate verifies the wires touch nothing but their own
-endpoints.
+endpoints. A **removable top deck** (3 PCTG panels, mortise/tenoned, riding
+grooves in the rail tops so they can't fall off when inverted yet pull out
+toward -X for motor service) covers the motors + electronics, carries printed
+fret-position lines, doubles as a hand rest, and mounts the UI: a 2.42 in OLED
+and a single Alps multi-control (rotary + 4-way + push).
 The playing path is pure feed-forward — pedal moves map directly to motor
 positions, so there is no pitch-tracking latency while playing. A per-string
 pickup (e.g. a hex/multichannel pickup) feeds slow pitch detection used only
@@ -133,7 +137,7 @@ machines anywhere.
 ## Building the CAD
 
 CadQuery on Python 3.12 generates a STEP file per printed part plus a colored
-`assembly.step` (~223 placed components including purchased-part dummies).
+`assembly.step` (~229 placed components including purchased-part dummies).
 
 ```bash
 py -3.12 -m src.build              # all parts + assembly.step
