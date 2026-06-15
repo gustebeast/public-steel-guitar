@@ -198,7 +198,7 @@ def build_wires():
     # -- UI: OLED + joystick (-Y deck band) -> Teensy. Drop just under the deck
     #    (z 7, above the motors / outboard of the strings + belts) and run to the
     #    keyhead, then down into the shield. No floor-trunk lane needed.
-    UDZ = 7.0
+    UDZ = -2.0          # just under the (now-recessed) deck, over the motors
     out.append(("wire_oled", _wire([
         (EL.UI_X, EL.OLED_Y, EL.DECK_TOP + 1.0), (EL.UI_X, EL.OLED_Y, UDZ),
         (-590.0, EL.OLED_Y, UDZ), (-590.0, -65.0, UDZ),

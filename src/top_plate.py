@@ -29,7 +29,8 @@ from .helpers import box_at, cyl, heal
 
 YL = CH.Y_LO + CH.T / 2                 # -Y rail inner face (-128.75)
 YH = CH.Y_HI - CH.T / 2                 # +Y rail inner face (+54.75)
-BZ, TZ = CH.Z_TOP, EL.DECK_TOP          # plate body z 10..14 (rests on the rails)
+TZ = EL.DECK_TOP                        # deck surface (10 mm under strings = +6)
+BZ = TZ - 6.0                           # 6 mm deck, recessed between the rails
 
 # rail retention groove (cut into chassis by chassis.py; we ride it)
 GZ0, GZ1 = CH.TP_GZ0, CH.TP_GZ1               # z 3.5..7
@@ -59,7 +60,7 @@ def _segment(xa, xb, *, pickup=False, ui=False):
     """One deck segment, xa (+X) to xb (-X). Body rests on the rail tops; each
     Y edge drops a tongue into the rail groove (retention) tied up by a web."""
     xm = (xa + xb) / 2
-    BY0, BY1 = YL - 2.25, YH + 2.25      # body spans onto both rail tops
+    BY0, BY1 = YL + 0.5, YH - 0.5        # body sits BETWEEN the rails (recessed)
     body = box_at(xa - xb, BY1 - BY0, TZ - BZ, x=xm, y=(BY0 + BY1) / 2,
                   z=(BZ + TZ) / 2)
     for inner, s in ((YL, -1), (YH, 1)):            # s = into-rail direction
@@ -69,8 +70,8 @@ def _segment(xa, xb, *, pickup=False, ui=False):
                                  x=xm, y=(t0 + t1) / 2, z=(GZ0 + GZ1) / 2))
         # web: inboard riser tying the tongue up to the body (clears the lip)
         w0, w1 = inner - s * 0.5, inner - s * 3.0
-        body = body.union(box_at(xa - xb, abs(w1 - w0), BZ - GZ1,
-                                 x=xm, y=(w0 + w1) / 2, z=(GZ1 + BZ) / 2))
+        body = body.union(box_at(xa - xb, abs(w1 - w0), BZ - (GZ1 - 1.0),
+                                 x=xm, y=(w0 + w1) / 2, z=((GZ1 - 1.0) + BZ) / 2))
     # inter-segment tenon on the -X end (slots into the next segment's +X end)
     body = body.union(box_at(6.0, TENON_W, TZ - BZ,
                              x=xb - 3.0, y=(YL + YH) / 2, z=(BZ + TZ) / 2))

@@ -45,7 +45,8 @@ _RIB_W   = 10.0                        # cross-rib X-width (chunky section → s
 # inner face below the rail top, leaving a ~3 mm lip so the deck plates can't
 # fall out when the instrument is inverted (they pull straight out toward −X).
 TP_X0, TP_X1   = -16.0, -624.0         # groove X span (deck extent)
-TP_GZ0, TP_GZ1 = Z_TOP - 6.5, Z_TOP - 3.0   # z 3.5..7 (3 mm lip up to the top)
+TP_GZ0, TP_GZ1 = -4.0, -1.0            # recessed deck (10 mm under strings):
+                                       # groove z -4..-1, ~9 mm rail lip above
 TP_GROOVE_D    = 3.0                    # depth into the rail (Y)
 # A chunky rail-to-rail rib UNDER EACH MOTOR (the motor rests on it, its wall sits
 # on it, and it ties the two rails) replaces a solid floor — far lighter for the

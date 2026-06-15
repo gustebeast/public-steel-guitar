@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import cadquery as cq
 
+from . import dimensions as D
 from . import chassis as CH          # only early constants (X_*, Z_*) used here
 from .helpers import box_at, cyl
 
@@ -73,8 +74,10 @@ TS_Y, DC_Y, USB_Y = -68.0, -86.0, -104.0
 # rail - too narrow for the 38 mm screen. So the UI sits on the WIDE -Y deck
 # band (86 mm, over the motor PCBs, clear of the strings). The joystick (Alps
 # RKJXT1F42001: 2-way rotary + 4-way + push) is the sole control.
-UI_X      = (CH.X_BRIDGE + CH.X_NUT) / 2     # instrument X centre (~-325)
-DECK_TOP  = CH.Z_TOP + 4.0                    # top-plate surface (+14)
+UI_X      = (CH.X_BRIDGE + CH.X_NUT) / 2     # instrument X centre
+DECK_TOP  = D.STRING_Z - 10.0                 # deck surface 10 mm under the
+                                              # strings (bar can press strings
+                                              # down without bottoming out) = +6
 OLED_Y    = -100.0                            # wide -Y deck band (clear of strings)
 OLED_W, OLED_L, OLED_T = 38.0, 72.0, 1.6      # 2.42" module PCB (Y x X)
 JOY_X     = UI_X + 56.0                       # just +X of the screen
