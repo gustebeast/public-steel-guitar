@@ -29,9 +29,7 @@ N_STRINGS       = 10
 STRING_PITCH    = 9.5       # mm, changer pitch (across, Y)
 NUT_PITCH       = 6.5       # mm, spacing at the nut/keyhead end
 STRING_FIELD_W  = (N_STRINGS - 1) * STRING_PITCH   # 85.5 mm
-MOUNTING_SPAN   = 633.0     # between a string's two mounting ends (~24.9" scale;
-                            # +18 mm vs the original 615/24.2" to absorb the wider
-                            # 46 mm motor pitch at the keyhead bay - see MOTOR_X_STEP)
+MOUNTING_SPAN   = 615.0     # between a string's two mounting ends (~24.2" scale)
 
 def string_y(i: int) -> float:
     """Y centre of string i (0..9) at the changer; string 0 at −Y (player side)."""

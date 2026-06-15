@@ -35,12 +35,12 @@ from . import chassis as CH          # only early constants (X_*, Z_*) used here
 from .helpers import box_at, cyl
 
 # ---- bay geometry (chassis.py cuts the matching channels from these) ----
-TRAY_X0, TRAY_X1 = -626.0, -548.0
+TRAY_X0, TRAY_X1 = -607.0, -547.0
 TRAY_Y0, TRAY_Y1 = -127.5, 53.5        # 1.25 off each rail inner face
 TRAY_Z0, TRAY_Z1 = -64.0, -61.0        # plate band (3 thick) - 1.15 ABOVE the
                                        # x -575 rib top so the bay rib passes
                                        # under the tray
-TAB_X0, TAB_X1 = -599.0, -579.0        # one tab per side, in the only solid
+TAB_X0, TAB_X1 = -572.0, -552.0        # one tab per side, in the only solid
                                        # web window between the leg dovetail
                                        # slot (ends -582) and the rail web
                                        # diamonds (start -560)
@@ -50,11 +50,11 @@ CH_W, CH_D = 20.6, 3.0                 # channel cut: width / depth into web
 # ---- board footprints (x0, x1, y0, y1); board bottom z = TRAY_Z1 + post ----
 POST_H = 3.0
 BD_T = 1.6
-PI_FP     = (-612.0, -556.0, -32.0, 53.0)     # Pi 5: 56 x 85 (long side on Y)
-TEENSY_FP = (-622.0, -561.0, -76.0, -58.0)    # Teensy 4.1 + shield stack
-CS_FP     = (-622.0, -572.0, -124.0, -84.0)   # CS42448 x2, stacked
-BUCK_FP   = (-568.0, -548.0, -120.0, -80.0)   # buck module, 20 x 40
-XCVR_FP   = (-622.0, -596.0, -52.0, -39.0)    # SN65HVD230 breakout
+PI_FP     = (-603.0, -547.0, -31.0, 54.0)     # Pi 5: 56 x 85 (long side on Y)
+TEENSY_FP = (-607.0, -589.0, -118.0, -57.0)    # Teensy 4.1 + shield stack
+CS_FP     = (-585.0, -547.0, -90.0, -55.0)   # CS42448 x2, stacked
+BUCK_FP   = (-585.0, -549.0, -118.0, -95.0)   # buck module, 20 x 40
+XCVR_FP   = (-607.0, -589.0, -53.0, -40.0)    # SN65HVD230 breakout
 
 BOARD_Z = TRAY_Z1 + POST_H             # every bottom board sits at -67
 
@@ -179,60 +179,62 @@ def _board(fp, bz, t=BD_T):
                   z=bz + t / 2)
 
 
+def _ctr(fp):
+    return (fp[0] + fp[1]) / 2, (fp[2] + fp[3]) / 2
+
+
 def pi5() -> cq.Workplane:
-    """Raspberry Pi 5 dummy: board + USB/eth block (east edge, reachable
-    from above) + SoC + GPIO header bar."""
+    """Raspberry Pi 5 dummy: board + USB/eth block + SoC."""
+    cx, cy = _ctr(PI_FP)
     b = _board(PI_FP, BOARD_Z)
-    b = b.union(box_at(18.0, 50.0, 14.0, x=PI_FP[1] - 9.0, y=10.0,
+    b = b.union(box_at(50.0, 18.0, 14.0, x=cx, y=PI_FP[3] - 9.0,
                        z=BOARD_Z + BD_T + 7.0))
-    b = b.union(box_at(15.0, 15.0, 2.5, x=-590.0, y=10.0, z=BOARD_Z + BD_T + 1.25))
-    b = b.union(box_at(5.0, 51.0, 8.0, x=PI_FP[0] + 4.0, y=10.5,
-                       z=BOARD_Z + BD_T + 4.0))
+    b = b.union(box_at(15.0, 15.0, 2.5, x=cx, y=cy, z=BOARD_Z + BD_T + 1.25))
     return b
 
 
 def teensy_stack() -> cq.Workplane:
-    """Teensy 4.1 with the audio shield stacked above on header pins."""
+    """Teensy 4.1 + audio shield (stacked on headers), long axis on Y."""
+    cx, cy = _ctr(TEENSY_FP)
     bz = BOARD_Z + 1.0
     b = _board(TEENSY_FP, bz)
-    b = b.union(_board(TEENSY_FP, bz + 11.0))                  # shield
-    b = b.union(box_at(8.0, 10.0, 3.5, x=TEENSY_FP[0] + 5.0,   # micro-USB
-                       y=(TEENSY_FP[2] + TEENSY_FP[3]) / 2, z=bz + BD_T + 1.75))
-    for hy in (TEENSY_FP[2] + 2.6, TEENSY_FP[3] - 2.6):        # header rows
-        # (inset so the tray's snap-finger nubs clear the headers)
-        b = b.union(box_at(58.0, 2.4, 11.0, x=-591.5, y=hy, z=bz + BD_T + 5.5))
+    b = b.union(_board(TEENSY_FP, bz + 11.0))
+    b = b.union(box_at(8.0, 8.0, 3.5, x=cx, y=TEENSY_FP[2] + 5.0,
+                       z=bz + BD_T + 1.75))
+    for hx in (TEENSY_FP[0] + 2.6, TEENSY_FP[1] - 2.6):
+        b = b.union(box_at(2.4, TEENSY_FP[3] - TEENSY_FP[2] - 6, 11.0,
+                           x=hx, y=cy, z=bz + BD_T + 5.5))
     return b
 
 
 def cs_stack() -> cq.Workplane:
-    """Two CS42448 TDM ADC boards, stacked on (printed) corner standoffs."""
+    """3x PCM1864 TDM ADC carrier (the pro 10-ch front end) + header."""
+    cx, cy = _ctr(CS_FP)
     b = _board(CS_FP, BOARD_Z)
-    b = b.union(_board(CS_FP, BOARD_Z + 14.0))
-    for px in (CS_FP[0] + 4, CS_FP[1] - 4):
-        for py in (CS_FP[2] + 4, CS_FP[3] - 4):
-            b = b.union(cyl(5.0, 14.0 - BD_T, z=BOARD_Z + BD_T)
-                        .translate((px, py, 0)))
-    b = b.union(box_at(40.0, 4.0, 7.0, x=-597.0, y=CS_FP[3] - 3.0,
-                       z=BOARD_Z + 14.0 + BD_T + 3.5))          # TDM header
+    for px in range(3):
+        b = b.union(box_at(9.0, 9.0, 1.3, x=CS_FP[0] + 8 + px * 13,
+                           y=cy, z=BOARD_Z + BD_T + 0.65))
+    b = b.union(box_at(CS_FP[1] - CS_FP[0] - 8, 4.0, 7.0, x=cx, y=CS_FP[2] + 3.0,
+                       z=BOARD_Z + BD_T + 3.5))
     return b
 
 
 def buck() -> cq.Workplane:
-    """24V -> 5V buck module dummy (two caps + inductor)."""
+    """24V -> 5V buck module dummy (caps + inductor)."""
+    cx, cy = _ctr(BUCK_FP)
     b = _board(BUCK_FP, BOARD_Z)
-    for cy in (BUCK_FP[2] + 8, BUCK_FP[3] - 8):
-        b = b.union(cyl(8.0, 9.0, z=BOARD_Z + BD_T)
-                    .translate((-558.0, cy, 0)))
-    b = b.union(box_at(12.0, 12.0, 7.0, x=-558.0, y=-100.0,
-                       z=BOARD_Z + BD_T + 3.5))
+    for px in (BUCK_FP[0] + 8, BUCK_FP[1] - 8):
+        b = b.union(cyl(7.0, 9.0, z=BOARD_Z + BD_T).translate((px, cy, 0)))
+    b = b.union(box_at(12.0, 12.0, 7.0, x=cx, y=cy, z=BOARD_Z + BD_T + 3.5))
     return b
 
 
 def can_xcvr() -> cq.Workplane:
     """SN65HVD230 breakout dummy."""
+    cx, cy = _ctr(XCVR_FP)
     b = _board(XCVR_FP, BOARD_Z)
-    b = b.union(box_at(20.0, 2.4, 8.0, x=-609.0, y=XCVR_FP[2] + 2.0,
-                       z=BOARD_Z + BD_T + 4.0))
+    b = b.union(box_at(XCVR_FP[1] - XCVR_FP[0] - 4, 2.4, 8.0, x=cx,
+                       y=XCVR_FP[2] + 2.0, z=BOARD_Z + BD_T + 4.0))
     return b
 
 

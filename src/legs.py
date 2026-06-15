@@ -55,7 +55,7 @@ FOOT_H  = 12.0
 
 # socket bracket
 BARREL_OD, BARREL_L = 44.0, 32.0
-LEG_STATIONS_X = (-20.0, -618.0)       # solid web at both (clear of rail diamonds)
+LEG_STATIONS_X = (-20.0, -600.0)       # solid web at both (clear of rail diamonds)
 # rail joinery (chassis.py cuts the matching slots from these)
 DT_FACE_HW = 14.0                      # dovetail half-width at the rail face…
 DT_DEEP_HW = 18.0                      # …flaring 45° to this at full depth

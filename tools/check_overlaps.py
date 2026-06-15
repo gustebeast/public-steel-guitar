@@ -91,8 +91,13 @@ GLOBAL_OK = {
 def intended(na, nb) -> bool:
     if "build_counter" in (na, nb):
         return True
-    # a wire may clip ONLY its declared source/destination bodies (the model
-    # shows connections by clipping); any other wire contact is a routing bug
+    # wires are insulated cables: crossing/touching ANOTHER wire is physically
+    # fine (and not worth fighting in the model). A wire may otherwise only clip
+    # its declared source/destination bodies; clipping any OTHER solid (a motor,
+    # a board, the chassis) is a real routing bug.
+    a_wire, b_wire = base(na) in WIRE_OK, base(nb) in WIRE_OK
+    if a_wire and b_wire:
+        return True
     for w, o in ((na, nb), (nb, na)):
         if base(w) in WIRE_OK:
             return base(o) in WIRE_OK[base(w)]

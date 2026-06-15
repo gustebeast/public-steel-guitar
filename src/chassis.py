@@ -53,7 +53,7 @@ TP_GROOVE_D    = 3.0                    # depth into the rail (Y)
 # strength. Plus a rib at the +X end (tying the rails behind the endplate) and one
 # near the nut.
 _RIB_X   = ([X_BRIDGE - 6.0]                       # bridge tie, kept −X of the cap (no clip)
-            + [D.motor_pos(i)[0] for i in range(D.N_STRINGS)] + [-593.0])
+            + [D.motor_pos(i)[0] for i in range(D.N_STRINGS)] + [-575.0])
 
 # Bridge-endplate joint: the +X rail ends carry a sliding dovetail TONGUE on each
 # side; the endplate caps + sockets them and drops down to engage (see

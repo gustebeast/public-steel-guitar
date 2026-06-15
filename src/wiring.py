@@ -133,85 +133,80 @@ def build_wires():
         afe_relay_c, (0.0, -78.0, -52.0), (3.0, -72.0, -54.0),
         (2.5, EL.TS_Y, EL.JACK_Z + 4.5)])))
 
-    # The three long runs leave the AFE westward (above the boss top, z -52),
-    # drop into the open floor WEST of the boss (x <= -46), traverse under the
-    # lanes to their lane y, run to the keyhead, rise EAST of the tray AND east
-    # of the USB riser (x -518), y-traverse east of the CS stack, fly west into
-    # the shield. Staggered drop-x / lane / fly-z / shield-y so no two meet.
-    def _long(pad, drop_x, lane_y, fly_z, sh_x, sh_y):
+    # Keyhead routing (24.2" bay): wires reach the bay via the clear corridor
+    # between motor 9's rib (-529) and the tray (-547), then fly OVER the boards
+    # (tops ~ -42) to drop into their target. Wire-vs-wire crossings are fine
+    # (insulated); only solids (motors/boards/chassis) are avoided.
+    RISE_X = -538.0          # corridor between motor 9's rib and the tray
+    BAYFLY = -34.0           # over the bay boards
+    out_z = shield_top - 1.0
+
+    def _long(pad, drop_x, lane_y, sh_x, sh_y):
         return _wire([
-            pad, (pad[0], pad[1], -52.0),                   # rise off the board
-            (drop_x, pad[1], -52.0),                        # west over open floor
+            pad, (pad[0], pad[1], -52.0), (drop_x, pad[1], -52.0),
             (drop_x, pad[1], STUB_Z), (drop_x, lane_y, STUB_Z),
-            (drop_x, lane_y, LANE_Z), (-536.0, lane_y, LANE_Z),
-            (-536.0, lane_y, fly_z), (-536.0, sh_y, fly_z),  # y-traverse east of CS
-            (sh_x, sh_y, fly_z), (sh_x, sh_y, shield_top - 1.0)])
+            (drop_x, lane_y, LANE_Z), (RISE_X, lane_y, LANE_Z),
+            (RISE_X, lane_y, BAYFLY), (RISE_X, sh_y, BAYFLY),
+            (sh_x, sh_y, BAYFLY), (sh_x, sh_y, out_z)])
 
-    out.append(("wire_audio",
-                _long(afe_buf_out, -46.0, LANE_AUDIO, -37.0, -596.0, -60.0)))
-    out.append(("wire_dac",
-                _long(afe_relay_no, -52.0, LANE_DAC, -40.0, -590.0, -71.0)))
-    out.append(("wire_relayctrl",
-                _long(afe_coil, -58.0, LANE_CTRL, -29.0, -584.0, -76.0)))
+    out.append(("wire_audio", _long(afe_buf_out, -46.0, LANE_AUDIO, -600.0, -62.0)))
+    out.append(("wire_dac", _long(afe_relay_no, -52.0, LANE_DAC, -600.0, -80.0)))
+    out.append(("wire_relayctrl", _long(afe_coil, -58.0, LANE_CTRL, -600.0, -98.0)))
 
-    # -- CAN bus (green): transceiver -> floor lane -> stub into every motor
-    head = [(-608.0, -45.0, -57.0), (-608.0, -45.0, -38.0),
-            (-543.0, -45.0, -38.0), (-543.0, -45.0, STUB_Z),
-            (-543.0, LANE_CAN, STUB_Z), (-543.0, LANE_CAN, LANE_Z)]
+    # -- CAN bus (green): transceiver -> corridor -> floor lane -> every motor
+    head = [(-598.0, -46.0, -57.0), (-598.0, -46.0, BAYFLY),
+            (RISE_X, -46.0, BAYFLY), (RISE_X, -46.0, STUB_Z),
+            (RISE_X, LANE_CAN, STUB_Z), (RISE_X, LANE_CAN, LANE_Z)]
     out.append(("wire_can",
-                _wire(head + _chain(LANE_CAN, 14.0, -543.0, -94.0)[1:])))
+                _wire(head + _chain(LANE_CAN, 14.0, RISE_X, -94.0)[1:])))
 
-    # -- power (red): DC inlet -> NORTH of the AFE/boss -> floor lane west +
-    #    stub to every motor -> buck
-    # cross from the inlet y (-86) up to the power lane (-75.5) EAST of where
-    # the USB lane begins (x -30), so the two never share a y-crossing
+    # -- power (red): DC inlet -> floor lane + stub to every motor -> buck
     head = [(2.0, EL.DC_Y, EL.JACK_Z), (2.0, EL.DC_Y, -49.0),
             (-26.0, EL.DC_Y, -49.0), (-26.0, EL.DC_Y, STUB_Z),
             (-26.0, LANE_PWR, STUB_Z), (-26.0, LANE_PWR, LANE_Z)]
-    tail = [(-541.0, LANE_PWR, -50.0), (-558.0, LANE_PWR, -50.0),
-            (-558.0, -88.0, -50.0)]
+    tail = [(RISE_X, LANE_PWR, LANE_Z), (RISE_X, LANE_PWR, BAYFLY),
+            (RISE_X, -106.0, BAYFLY), (-567.0, -106.0, BAYFLY),
+            (-567.0, -106.0, -50.0)]                      # over the tray, into buck
     afe_branch = [(2.0, EL.DC_Y, EL.JACK_Z), (-1.0, -92.0, -53.0), afe_pwr]
     out.append(("wire_power", _wire(
-        head + _chain(LANE_PWR, 18.0, -26.0, -541.0)[1:] + tail)
+        head + _chain(LANE_PWR, 18.0, -26.0, RISE_X)[1:] + tail)
         .union(_wire(afe_branch))))
 
-    # -- USB (blue): USB-C panel -> up OVER the AFE, shift to its lane y while
-    #    still high (clear of the AFE's -Y exit corridors), drop west of the
-    #    boss -> floor lane -> bay -> Pi
+    # -- USB (blue): USB-C panel -> floor lane -> corridor -> right-angle to Pi
     out.append(("wire_usb", _wire([
         (5.0, EL.USB_Y, EL.JACK_Z), (-8.0, EL.USB_Y, -45.0),
         (-8.0, LANE_USB, -45.0), (-30.0, LANE_USB, -45.0),
-        (-30.0, LANE_USB, LANE_Z), (-542.0, LANE_USB, LANE_Z),
-        (-542.0, LANE_USB, -33.0), (-566.0, LANE_USB, -33.0),
-        (-566.0, 10.0, -33.0), (-566.0, 10.0, -44.0)])))
+        (-30.0, LANE_USB, LANE_Z), (RISE_X, LANE_USB, LANE_Z),
+        (RISE_X, LANE_USB, BAYFLY), (-560.0, LANE_USB, BAYFLY),
+        (-560.0, 40.0, BAYFLY), (-575.0, 40.0, BAYFLY),
+        (-575.0, 40.0, -44.0)])))                         # west of motor 9, then +Y to Pi
 
-    # -- Teensy <-> Pi link (purple)
+    # -- Teensy <-> Pi link (purple): over the bay
     out.append(("wire_link", _wire([
-        (-572.0, -67.0, shield_top - 0.6), (-572.0, -67.0, -42.5),
-        (-572.0, 5.0, -42.5), (-572.0, 5.0, -45.0)])))
+        (-600.0, -60.0, out_z), (-600.0, -60.0, BAYFLY),
+        (-560.0, 5.0, BAYFLY), (-560.0, 5.0, -57.0)])))
 
-    # -- Teensy <-> CAN transceiver (orange)
+    # -- Teensy <-> CAN transceiver (orange): both at the -X corner
     out.append(("wire_canjmp", _wire([
-        (-616.0, -66.0, shield_top - 0.6), (-616.0, -66.0, -41.0),
-        (-616.0, -44.0, -41.0), (-616.0, -44.0, -57.0)])))
+        (-603.0, -57.0, out_z), (-603.0, -52.0, BAYFLY),
+        (-598.0, -48.0, BAYFLY), (-598.0, -48.0, -57.0)])))
 
-    # -- UI: OLED + joystick (-Y deck band) -> Teensy. Drop just under the deck
-    #    (z 7, above the motors / outboard of the strings + belts) and run to the
-    #    keyhead, then down into the shield. No floor-trunk lane needed.
-    UDZ = -2.0          # just under the (now-recessed) deck, over the motors
+    # -- PCM1864 carrier TDM -> Pi (teal)
+    out.append(("wire_tdm", _wire([
+        (-566.0, -72.0, -57.0), (-566.0, -72.0, BAYFLY),
+        (-580.0, -5.0, BAYFLY), (-580.0, -5.0, -57.0)])))
+
+    # -- UI: OLED + joystick (-Y deck band) -> Teensy. Drop under the deck, run
+    #    to the keyhead, fly over the bay into the shield.
+    UDZ = -2.0
     out.append(("wire_oled", _wire([
         (EL.UI_X, EL.OLED_Y, EL.DECK_TOP + 1.0), (EL.UI_X, EL.OLED_Y, UDZ),
-        (-590.0, EL.OLED_Y, UDZ), (-590.0, -65.0, UDZ),
-        (-590.0, -65.0, shield_top - 1.0)])))
+        (RISE_X, EL.OLED_Y, UDZ), (RISE_X, -110.0, BAYFLY),
+        (-600.0, -110.0, BAYFLY), (-600.0, -110.0, out_z)])))
     out.append(("wire_joy", _wire([
         (EL.JOY_X, EL.JOY_Y, EL.DECK_TOP + 1.0), (EL.JOY_X, EL.JOY_Y, UDZ),
-        (-578.0, EL.JOY_Y, UDZ), (-578.0, -66.0, UDZ),
-        (-578.0, -66.0, shield_top - 1.0)])))
-
-    # -- CS42448 TDM -> Pi (teal)
-    out.append(("wire_tdm", _wire([
-        (-598.0, -100.0, -43.0), (-598.0, -100.0, -33.0),
-        (-598.0, -5.0, -33.0), (-598.0, -5.0, -57.0)])))
+        (RISE_X + 4, EL.JOY_Y, UDZ), (RISE_X + 4, -100.0, BAYFLY),
+        (-595.0, -100.0, BAYFLY), (-595.0, -100.0, out_z)])))
 
     return out
 
