@@ -12,7 +12,7 @@ for the full design rationale and history, and [`BOM.md`](BOM.md) for sourced
 purchased parts (~$755 basic / ~$980 pro, dominated by the ten servos).
 
 **View it in 3D** (no install, no account):
-<https://gustebeast.github.io/servo-steel/> — an interactive model of the
+<https://gustebeast.github.io/servo-pedal-steel/> — an interactive model of the
 instrument body, strings, nut block, and motor/changer drivetrain.
 
 **License:** [CERN-OHL-S 2.0](LICENSE) (strongly reciprocal open hardware).
