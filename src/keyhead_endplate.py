@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from . import dimensions as D
 from . import chassis as CH
+from . import motor_bank as MB
 from . import nut_block as NB
 from .helpers import box_at, cyl, heal
 
@@ -25,14 +26,17 @@ KX   = D.NUT_BLOCK_X - 9.0                 # endplate centre line (= chassis sea
 T_EP = 30.0                                # wall thickness (X)
 YL   = CH.Y_LO + CH.T / 2 + 0.3            # just inside the -Y rail
 YH   = CH.Y_HI - CH.T / 2 - 0.3            # just inside the +Y rail
+ZB   = MB.FLOOR_TOP                        # wall bottom: SEATS ON the keyhead tie rib
+                                           # (don't drop into the open bottom between
+                                           # the rails — the rib closes that 11 mm)
 TAB_Z0 = CH.Z_BOT + 8.0                    # tab/channel band (matches chassis cut)
 
 
 def _build():
-    w = box_at(T_EP, YH - YL, CH.Z_TOP - CH.Z_BOT,
-               x=KX, y=(YL + YH) / 2, z=(CH.Z_TOP + CH.Z_BOT) / 2)
+    w = box_at(T_EP, YH - YL, CH.Z_TOP - ZB,
+               x=KX, y=(YL + YH) / 2, z=(CH.Z_TOP + ZB) / 2)
     # 45deg lower-outer chamfers: self-supporting print + clears the leg barrels
-    w = w.edges("|X and <Z").chamfer(CH.Z_TOP - CH.Z_BOT - 10.0)
+    w = w.edges("|X and <Z").chamfer(CH.Z_TOP - ZB - 10.0)
     # side tabs plug into the rail-end channels (X/Y location + anti-fall)
     for yf, s in ((YL, -1), (YH, 1)):
         w = w.union(box_at(11.0, 3.0, CH.Z_TOP - TAB_Z0,
