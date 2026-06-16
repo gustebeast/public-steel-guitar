@@ -256,12 +256,15 @@ def _pickup_mount_components():
     for k, (hx, hy) in enumerate(TP.HEIGHT_SCREWS):
         out.append((f"height_screw_{k}",
                     PM.height_screw().translate((hx, hy, PM.PK_BOT))))
-    # 2 X/Y clamp screws through the -Y skirt slot into the pickup -Y face
+    # ONE central X/Y clamp screw through the -Y skirt slot into the pickup -Y
+    # face: tightening pulls the pickup's -Y face flat to the skirt (Y + yaw)
+    # and clamps the screw in the slot (X-lock), and the screw through the pickup
+    # retains it in Z (anti-fall when inverted). Loosen -> slide for tone, or
+    # slide right off the height screws to the park for height adjust.
     bz = (TP.SLOT_Z0 + TP.SLOT_Z1) / 2
     tip = -(PM.PK_L / 2 - 6.5)                     # tip 6.5 mm into the pickup -Y face
-    for k, dx in enumerate((-13.0, 13.0)):
-        b = PM.clamp_screw().rotate((0, 0, 0), (0, 0, 1), 180)   # head -Y, tip +Y
-        out.append((f"clamp_screw_{k}", b.translate((PICKUP_X + dx, tip, bz))))
+    b = PM.clamp_screw().rotate((0, 0, 0), (0, 0, 1), 180)       # head -Y, tip +Y
+    out.append(("clamp_screw", b.translate((PICKUP_X, tip, bz))))
     return out
 
 

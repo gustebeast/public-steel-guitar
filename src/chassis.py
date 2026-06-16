@@ -26,7 +26,6 @@ from . import dimensions as D
 from . import motor_bank as MB
 from .components import MOTOR_PULLEY_STANDOFF
 from .helpers import box_at, cyl
-from . import nut_block as NB
 
 T        = 8.0                         # rail thickness (solid; slicer infills)
 X_BRIDGE = 6.0                         # +X (bridge) end — the rails end here; the bridge
@@ -70,78 +69,6 @@ SPLIT_X  = [-220.0, -440.0]            # 2 cuts → 3 segments < 255 mm, in moto
 # socket walls in the 8 mm rail stay ≥1.6 mm (2 passes of a 0.8 mm nozzle).
 _DT, _WR, _WT, _SH, _CLR = 8.0, 2.5, 4.5, 4.0, 0.3
 
-# ── Pickup-mount tongue-and-groove (both rails) ──────────────────────────
-# A locally-thickened BOSS strip on each rail's inner face carries an X-running
-# GROOVE; the pickup bar's end tongues ride in it — even support across X, the
-# mount slides in from +X before the endplate goes on (the endplate then caps
-# the groove, retaining the mount). The groove's −X end is a hard stop at the
-# 128 mm max pickup distance (fretboard lines live beyond). The boss sits
-# BELOW the pickup's bottom (the +Y rail is only ~12 mm past string 10, so the
-# pickup's end overhangs the boss); its underside is 45°-chamfered for the
-# standing print, and the rail web behind it stays solid (no diamonds there).
-PU_X0, PU_X1   = -168.0, X_BRIDGE      # groove run (−X end = hard stop: tongue half-
-                                       # length 40 → pickup centre max −128)
-PU_TNG_Z0, PU_TNG_Z1 = -25.5, -20.5    # tongue nominal Z band (groove adds 0.15/side);
-                                       # bottom clears motor 0's PCB top (−25.85)
-# X-lock stations: a hand-knob M4 button screw threads an insert in the −Y
-# boss's ceiling and presses DOWN on the tongue inside the groove — friction
-# pins the mount; knobs turn from above, over the open motor bay. TWO stations
-# (both permanently fitted): their ±34 tongue-reach zones (−114..−46 and
-# −173..−105) overlap to cover the whole 50..128 range — a single mid station
-# would land inside the motor-0 service notch (below), and ±34 reach keeps the
-# bar's sides STRAIGHT (tongue = bar width, no corner extensions).
-PU_LOCK_XS     = (-80.0, -139.0)
-# Motor-0 service notch: motor 0's PCB tail lives under the −Y boss, so its
-# lift-out column needs the boss cut away over x −134..−91 (full boss height).
-# The groove is interrupted there; the 80 mm tongue always bridges it with
-# ≥40 mm engaged elsewhere.
-PU_NOTCH_X0, PU_NOTCH_X1 = -134.0, -91.0
-PU_BOSS_T      = 6.0                   # boss protrusion off the rail face
-PU_GROOVE_D    = PU_BOSS_T             # groove runs the FULL boss depth — its inner
-                                       # wall IS the rail web face, so the tongue
-                                       # seats (0.45 shy of) flush with the side wall
-PU_FACE_HI     = Y_HI - T / 2 - PU_BOSS_T    # +Y boss field face (+48.75)
-PU_FACE_LO     = Y_LO + T / 2 + PU_BOSS_T    # −Y boss field face (−122.75)
-
-
-def _pickup_boss(yr, s):
-    """Boss strip + groove on the rail at centreline yr (s = +1 for the +Y rail,
-    whose boss protrudes −Y). Returns (boss_solid, groove_cutter)."""
-    face = yr - s * (T / 2 + PU_BOSS_T)            # field face of the boss
-    rail_face = yr - s * T / 2
-    x0, x1 = PU_X0 - 3.0, PU_X1                    # boss runs past the groove stop
-    # bottom lip: groove floor (−25.65) + 3.65 of material = −29.3 (it only
-    # carries the bar's weight and the lock screw's clamp), then the 45°
-    # self-supporting chamfer down to the rail face. Top at −14.35 = exactly
-    # where the groove's 45° roof lands at the face, so the roof and floor
-    # share their y extents (and the pickup still clears the top by 0.57).
-    prof = [(rail_face, -35.3), (face, -29.3),
-            (face, -14.35), (rail_face, -14.35)]
-    pts = [cq.Vector(x0, py, pz) for py, pz in prof]
-    f = cq.Face.makeFromWires(cq.Wire.makePolygon([*pts, pts[0]]))
-    boss = cq.Workplane("XY").add(cq.Solid.extrudeLinear(f, cq.Vector(x1 - x0, 0, 0)))
-    groove = box_at(PU_X1 - PU_X0 + 1, PU_GROOVE_D + 0.5, (PU_TNG_Z1 - PU_TNG_Z0) + 0.3,
-                    x=(PU_X0 + PU_X1 + 1) / 2,
-                    y=face + s * ((PU_GROOVE_D + 0.5) / 2 - 0.5),
-                    z=(PU_TNG_Z0 + PU_TNG_Z1) / 2)
-    # Groove roof: a SINGLE 45° plane, high at the open face and descending to
-    # the web — the only printable direction: roof material can only accrete
-    # from the web wall (the face side of the opening has nothing under or
-    # beside it, so any face-side flank floats; a chevron peak fails the same
-    # way). The cut runs out through the boss's top-outer corner (a harmless
-    # chamfer along the run). Uniform along the whole groove — the bar's
-    # wedge-topped tongue sweeps it, so no flat patches are possible; the lock
-    # inserts live in bumps ON the boss top instead (see _build_full).
-    zt = PU_TNG_Z1 + 0.15
-    tri = [(face, zt), (face, zt + PU_GROOVE_D),
-           (face + s * PU_GROOVE_D, zt)]
-    pts = [cq.Vector(PU_X0, py, pz) for py, pz in tri]
-    f2 = cq.Face.makeFromWires(cq.Wire.makePolygon([*pts, pts[0]]))
-    groove = groove.union(cq.Workplane("XY").add(
-        cq.Solid.extrudeLinear(f2, cq.Vector(PU_X1 + 1 - PU_X0, 0, 0))))
-    return boss, groove
-
-
 def _diamond_xz(cx, cz, h, yr):
     """Diamond (45°) prism through a rail (axis Y) — a self-supporting hole in the
     vertically-printed rail web (its crown is a 45° peak, not a flat bridge)."""
@@ -166,7 +93,6 @@ def _rail(y):
     def ok(cx):                                 # leave the string-mount ends + joints SOLID
         return (cx + h < D.BRIDGE_AXLE_X - 10.0     # bridge support / bulkhead bond zone
                 and cx - h > -560.0                  # keyhead bulkhead bond zone
-                and cx + h < PU_X0 - 3.0             # solid web behind the pickup boss
                 and all(abs(cx - s) > h + 14.0 for s in SPLIT_X))
     cx = X_BRIDGE - 30.0
     while cx > X_NUT + 30.0:
@@ -228,33 +154,8 @@ def _build_full() -> cq.Workplane:
     body = _rail(Y_HI).union(_rail(Y_LO))
     for x in _RIB_X:                                  # per-motor + bridge/nut cross-ribs (−Z)
         body = body.union(_rib(x))
-    # pickup-mount tongue-and-groove bosses on both rails' inner faces
-    for yr, s in ((Y_HI, 1), (Y_LO, -1)):
-        boss, groove = _pickup_boss(yr, s)
-        body = body.union(boss).cut(groove)
-    # X-lock stations: an insert BUMP on the −Y boss top (the sloped groove
-    # roof leaves no flat ceiling to house the insert), screw bore descending
-    # through solid sloped-ceiling material near the web; the knobbed M4
-    # button's tip lands on the tongue's 45° wedge top — pressing it down AND
-    # into the web. A pocket in the rail's inner face lets each Ø12 knob turn
-    # (the web is solid here — diamonds are skipped behind the boss).
-    _ly = Y_LO + T / 2 + 2.5                       # screw line, web side of the boss
-    _bmid = (Y_LO + T / 2 + PU_FACE_LO) / 2        # boss centre
-    for _lx in PU_LOCK_XS:
-        # bump sits flush on the (raised) boss top but starts 0.85 back from
-        # the face: the bar's clean-45° wedge only rises above −15 within that
-        # first strip, so the bump clears its sweep comfortably
-        _by = (PU_FACE_LO - 0.85 + (Y_LO + T / 2)) / 2
-        body = body.union(box_at(10.0, PU_BOSS_T - 0.85, 4.2,
-                                 x=_lx, y=_by, z=-12.45))
-        body = body.cut(cyl(5.6, 4.8, z=-15.15).translate((_lx, _ly, 0)))
-        body = body.cut(cyl(4.3, 6.5, z=-21.5).translate((_lx, _ly, 0)))
-        body = body.cut(box_at(20.0, 3.6, 21.0,
-                               x=_lx, y=Y_LO + T / 2 - 1.8, z=-5.5))
-    # motor-0 service notch: clear the −Y boss from motor 0's lift column
-    body = body.cut(box_at(PU_NOTCH_X1 - PU_NOTCH_X0, PU_BOSS_T + 0.3, 23.0,
-                           x=(PU_NOTCH_X0 + PU_NOTCH_X1) / 2,
-                           y=(Y_LO + T / 2 + PU_FACE_LO) / 2 + 0.15, z=-26.0))
+    # (the pickup now mounts entirely in its deck cover piece — top_plate.py — so
+    # the old rail bosses/grooves/X-lock stations that used to live here are gone)
     # keyhead: the box-closure bulkhead is now a SEPARATE, removable part
     # (keyhead_endplate.py) so the deck panels slide out -X for service. It seats
     # on this bottom tie rib, plugs into the rail-end channels, and is clamped
@@ -274,7 +175,8 @@ def _build_full() -> cq.Workplane:
     # slides up from below and GLUES (it is only a separate part because the
     # chassis can't print below its bed); its barrel rim seats on the rail's
     # bottom face. The slot roof rises 45° toward the face — in-layer support
-    # accretes from beyond the deep wall, same rule as the pickup groove.
+    # accretes from beyond the deep wall (a single supported slope, never a
+    # chevron over an open edge).
     from .legs import LEG_STATIONS_X, DT_FACE_HW, DT_DEEP_HW, DT_DEPTH, DT_H
     for _sx in LEG_STATIONS_X:
         for _yr, _s in ((Y_HI, 1), (Y_LO, -1)):
@@ -304,10 +206,9 @@ def _build_full() -> cq.Workplane:
                                x=_cxm, y=_yf + _s * (CH_D - 1.0) / 2,
                                z=(TRAY_Z0 + Z_TOP + 1.0) / 2))
     # AFE boss: widen the bridge cross-rib's -Y end into a solid pad that
-    # carries the analog front-end board, sitting BELOW the pickup bar and
-    # INBOARD of both the pickup-bar groove (at the rail face) and the leg
-    # barrel - so it fouls neither. Bonds to the bridge rib (no cantilever),
-    # prints as a vertical block off the bed. Two posts hold the board.
+    # carries the analog front-end board, sitting BELOW the pickup and INBOARD
+    # of the leg barrel - so it fouls neither. Bonds to the bridge rib (no
+    # cantilever), prints as a vertical block off the bed. Two posts hold the board.
     from .electronics import (AFE_X0, AFE_X1, AFE_Y0, AFE_Y1, AFE_Z,
                               AFE_PED_TOP)
     body = body.union(box_at(AFE_X1 + 2 - (AFE_X0 - 2), AFE_Y1 + 2 - (AFE_Y0 - 2),

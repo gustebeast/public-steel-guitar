@@ -34,7 +34,6 @@ import math
 
 import cadquery as cq
 
-from . import dimensions as D
 from .helpers import box_at, cyl, heal
 
 # thread (shared by every junction)

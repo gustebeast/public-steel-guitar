@@ -23,8 +23,6 @@ panels downstream never shift.
 
 from __future__ import annotations
 
-import cadquery as cq
-
 from . import dimensions as D
 from . import chassis as CH
 from . import electronics as EL
@@ -75,13 +73,18 @@ FLOOR_BOT = -13.0                                          # tray floor (under t
                                                           # ribs (top out at z -14) at every
                                                           # piece position
 FLOOR_T   = 1.5
-SLOT_Z0, SLOT_Z1 = -6.5, -1.5                             # clamp-screw X-slot Z band
-SLOT_HX   = CLAMP + PM.CSCREW_D / 2 + 0.3                 # half-length of the X-slot
-# 3-point height set-screws in the floor (pickup rests on their tops); placed so
-# the +/-CLAMP fine slide keeps the pickup over all three, yet sliding it to the
-# +X park exposes them from above for in-place height adjust
-HEIGHT_SCREWS = [(PIECE_CTR - 9.0, 35.0), (PIECE_CTR - 9.0, -35.0),
-                 (PIECE_CTR + 9.0, 0.0)]
+PARK_HX   = 22.0                                          # pickup slides this far aside
+                                                          # to uncover the height screws
+SLOT_Z0, SLOT_Z1 = -6.5, -1.5                             # clamp-screw X-slot Z band (the
+                                                          # 5 mm height lets the screw rise
+                                                          # with the pickup as it's set)
+SLOT_HX   = PARK_HX + PM.CSCREW_D / 2 + 0.3              # half-length of the X-slot
+# 3-point height set-screws in the floor (pickup rests on their tops). Their X
+# spread is kept tight (+/-5) so the +/-11 fine-X tone slide keeps the pickup over
+# all three (continuous past the 20 mm slot step), yet a single clamp screw lets
+# the pickup slide right off them to the park for in-place height adjust.
+HEIGHT_SCREWS = [(PIECE_CTR - 5.0, 35.0), (PIECE_CTR - 5.0, -35.0),
+                 (PIECE_CTR + 5.0, 0.0)]
 
 MARKER_FRETS = {3, 5, 7, 9, 12, 15, 17, 19, 21, 24}
 

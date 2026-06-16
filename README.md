@@ -129,12 +129,14 @@ and a single Alps multi-control (rotary + 4-way + push). The bridge end of the
 deck is split into 20 mm slots. A 4-slot **pickup-carrier piece** holds the
 pickup as a tray: the pickup pokes up through an opening and rests on three M4
 height screws standing on a **floor that runs under it** (turn them to set the
-string gap), while two M4 clamp screws pin it in X/Y. Height is adjustable in
-place — loosen the clamp, slide the pickup aside to expose the screws, set it,
-slide back, retighten — without pulling any deck panel. The clamp gives ±11 mm
-of fine X (tone); re-slotting the piece among its 4 positions moves the pickup
-coarsely bridge-to-neck, and the clamp bridges the slot step so the whole range
-(well past the 50 mm minimum) is continuous. The remaining slots take swappable
+string gap), while a single M4 clamp screw pulls it flat to the -Y skirt —
+locating Y, blocking yaw, locking X in its slot, and retaining it against
+falling out when inverted. Height is adjustable in place — loosen the clamp,
+slide the pickup off the screws, set them, slide back, retighten — without
+pulling any deck panel. The clamp's slot gives ±11 mm of fine X (tone) while the
+pickup stays on its 3 height screws; re-slotting the piece among its 4 positions
+moves the pickup coarsely bridge-to-neck, and the fine range bridges the slot
+step so the whole range (well past the 50 mm minimum) is continuous. The remaining slots take swappable
 fret-marked **filler bands**; the region's fixed total width keeps the UI/keyhead
 panels from shifting.
 The playing path is pure feed-forward — pedal moves map directly to motor
@@ -165,8 +167,8 @@ py -3.12 -m tools.check_overlaps   # design gate: any unintended interpenetratio
 - Printed parts: `carriage` ×10, `bridge_endplate`, `keyhead_endplate`,
   `chassis_0/1/2`, `nut_block`, `belt_clamp`, `screw_pulley`, `motor_pulley`,
   `tension_fork` (graded belt-tension lock set), the **top deck** (a
-  pickup-carrier piece with an under-pickup floor, 3 M4 `height_screw`s + 2 M4
-  `clamp_screw`s, swappable fret-marked filler bands, and the UI/keyhead panels),
+  pickup-carrier piece with an under-pickup floor, 3 M4 `height_screw`s + 1 M4
+  `clamp_screw`, swappable fret-marked filler bands, and the UI/keyhead panels),
   and the legs: `leg_socket`/`leg_segment`/`leg_sleeve`/`leg_shaft`
   plus `leg_foot`/`leg_washer` in TPU, and `electronics_tray` (compute-bay snap mounts).
 - `tools/check_overlaps.py` exits non-zero on any unintended part
