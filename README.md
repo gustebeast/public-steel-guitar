@@ -1,4 +1,4 @@
-# servo-steel
+# Servo Pedal Steel
 
 Open-source parametric CAD for an **electro-mechanical pedal steel guitar**:
 one closed-loop electric actuator per string, so the copedent — the mapping

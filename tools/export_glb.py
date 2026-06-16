@@ -42,7 +42,7 @@ def base(name: str) -> str:
 def main() -> None:
     # rotate the whole model so native +Z (up) becomes glTF +Y (up) — model-viewer
     # is Y-up, so this stands the instrument upright and auto-rotates about vertical
-    asm = cq.Assembly(name="servo_steel",
+    asm = cq.Assembly(name="servo_pedal_steel",
                       loc=cq.Location(cq.Vector(0, 0, 0), cq.Vector(1, 0, 0), -90))
     n = 0
     for name, wp in collect_components():
