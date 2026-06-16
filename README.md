@@ -9,7 +9,11 @@ configuration** instead of a hand-built maze of rods and bellcranks.
 physical prototype yet). See
 [`electromechanical-pedal-steel-spec.md`](electromechanical-pedal-steel-spec.md)
 for the full design rationale and history, and [`BOM.md`](BOM.md) for sourced
-purchased parts (~$370, dominated by the ten servos).
+purchased parts (~$755 basic / ~$980 pro, dominated by the ten servos).
+
+**View it in 3D** (no install, no account):
+<https://gustebeast.github.io/servo-steel/> — an interactive model of the
+instrument body, strings, nut block, and motor/changer drivetrain.
 
 **License:** [CERN-OHL-S 2.0](LICENSE) (strongly reciprocal open hardware).
 
@@ -61,7 +65,7 @@ limitation):
 clamped in the **nut block** — a removable, reprintable PA6-GF block whose
 per-string steel **break pins** are gauged so every string's top lies in one
 plane; a cup-point set screw clamps the dead end. The speaking length (615 mm,
-≈24.9″ scale) runs to the bridge, turns 90° over a **per-string Ø8 ball
+≈24.2″ scale) runs to the bridge, turns 90° over a **per-string Ø8 ball
 bearing** (so the bend is near-frictionless and tension equalizes across it),
 and drops vertically to the **carriage**. The ball end sits in a **cage** in
 the carriage: the string threads up through a roof slot narrower than the
@@ -150,7 +154,7 @@ machines anywhere.
 ## Building the CAD
 
 CadQuery on Python 3.12 generates a STEP file per printed part plus a colored
-`assembly.step` (~229 placed components including purchased-part dummies).
+`assembly.step` (~233 placed components including purchased-part dummies).
 
 ```bash
 py -3.12 -m src.build              # all parts + assembly.step
@@ -158,6 +162,7 @@ py -3.12 -m src.build --part NAME  # one part (fast iteration)
 py -3.12 -m src.build --list       # list part names
 py -3.12 -m src.build --geom       # belt-geometry report
 py -3.12 -m tools.check_overlaps   # design gate: any unintended interpenetration
+py -3.12 -m tools.export_glb       # simplified colored GLB for the web viewer (docs/)
 ```
 
 - `src/dimensions.py` — the coordinate frame (+X along the strings toward the
@@ -183,7 +188,8 @@ a keyboard rig. 10 strings at 9.5 mm pitch at the bridge.
 | Path | What |
 |---|---|
 | `src/` | CadQuery source — one module per printed part + helpers |
-| `tools/` | the overlap-check design gate |
+| `tools/` | the overlap-check design gate + the web-viewer GLB exporter |
+| `docs/` | GitHub Pages 3D viewer (`index.html` + `assembly.glb`) |
 | `BOM.md` | purchased parts with sourcing links and prices |
 | `electromechanical-pedal-steel-spec.md` | the full design specification and rationale |
 | `*.step` | generated geometry (per part + full assembly) |
