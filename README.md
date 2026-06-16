@@ -30,10 +30,7 @@ fine-pitch single-start screw is **non-back-drivable**, string tension cannot
 move it: the motors are completely unpowered at rest — no holding current, no
 heat, no idle noise — and the instrument holds its tuning even switched off.
 
-## Disclosed system concepts
-
-For avoidance of doubt, the publicly disclosed ideas include (without
-limitation):
+## System concepts
 
 - Per-string servo/stepper actuation of a pedal-steel changer, with a
   **software-reconfigurable copedent** (pedal/lever sensors → lookup →
