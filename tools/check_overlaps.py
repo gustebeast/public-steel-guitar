@@ -74,9 +74,9 @@ GLOBAL_OK = {
     frozenset({"keyhead_endplate", "chassis"}), frozenset({"keyhead_endplate", "nut_block"}),
     frozenset({"keyhead_endplate", "top_plate"}), frozenset({"keyhead_endplate", "string"}),
     # pickup carrier: the deck pickup-piece (a top_plate panel) holds the pickup
-    # (pickup<->top_plate is covered by the top_plate rule below); two M4 clamp
-    # bolts pin it through the skirt X-slots
-    frozenset({"clamp_bolt", "pickup"}),
+    # (pickup<->top_plate is covered by the top_plate rule below); the pickup rests
+    # on 3 height set-screws and is pinned by 2 X/Y clamp screws
+    frozenset({"height_screw", "pickup"}), frozenset({"clamp_screw", "pickup"}),
     # legs: socket bolts to the rail; threaded junctions + washers + slider
     frozenset({"leg_socket", "chassis"}), frozenset({"leg_socket", "leg_segment"}),
     frozenset({"leg_segment", "leg_segment"}), frozenset({"leg_segment", "leg_sleeve"}),
@@ -106,7 +106,7 @@ def intended(na, nb) -> bool:
     # carry the OLED + joystick, and the pickup pokes through the open slot
     tp = {base(na), base(nb)}
     if "top_plate" in tp and tp & {"chassis", "top_plate", "oled", "joystick",
-                                   "pickup", "clamp_bolt"}:
+                                   "pickup", "height_screw", "clamp_screw"}:
         return True
     # adjacent chassis segments meet at their sliding-dovetail joints (one frame)
     if base(na) == base(nb) == "chassis":

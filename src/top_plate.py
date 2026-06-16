@@ -45,30 +45,43 @@ PX0 = -17.5                             # +X deck end: panels butt the chassis s
 PX1 = -607.0                            # -X deck end (groove runs on to the rail end)
 
 # ── band slots at the bridge end ─────────────────────────────────────────────
-BAND_W   = 30.0                        # one slot
-N_SLOTS  = 4                           # pickup-region slots (= 4*30 = 120 mm)
-SLOT_X   = [PX0 - i * BAND_W for i in range(N_SLOTS + 1)]   # -17.5 .. -137.5
-PIECE_SLOTS = 3                        # the pickup piece spans 3 slots (90 mm)
-CLAMP    = 22.5                        # +/- fine X-adjust of the pickup in the piece
+BAND_W   = 20.0                        # one slot
+N_SLOTS  = 7                           # pickup-region slots (= 7*20 = 140 mm)
+SLOT_X   = [PX0 - i * BAND_W for i in range(N_SLOTS + 1)]   # -17.5 .. -157.5
+PIECE_SLOTS = 4                        # the pickup piece spans 4 slots (80 mm)
+N_POS    = N_SLOTS - PIECE_SLOTS + 1   # = 4 coarse swap positions
+CLAMP    = 11.0                        # +/- fine X-adjust (>= BAND_W/2 -> continuous)
 
-# shown installed state: piece in the 3 bridge-most slots, 1 filler behind it
-PIECE_X0, PIECE_X1 = SLOT_X[0], SLOT_X[PIECE_SLOTS]        # -17.5, -107.5
-FILL_X0,  FILL_X1  = SLOT_X[PIECE_SLOTS], SLOT_X[N_SLOTS]  # -107.5, -137.5
-REGION_X1 = SLOT_X[-1]                                     # -137.5
+# shown installed state: piece in the 4 bridge-most slots, fillers behind it
+PIECE_SHOWN = 0                        # piece occupies slots [0 .. PIECE_SLOTS)
+PIECE_X0, PIECE_X1 = SLOT_X[PIECE_SHOWN], SLOT_X[PIECE_SHOWN + PIECE_SLOTS]
+REGION_X1 = SLOT_X[-1]                                     # -157.5
 
 # the two long panels behind the band region
 MID_X0, MID_X1 = REGION_X1, -377.5     # carries the UI (string-10 deck band)
 KEY_X0, KEY_X1 = MID_X1, PX1           # keyhead panel
 
 # ── pickup-piece interior geometry ───────────────────────────────────────────
-PIECE_CTR = (PIECE_X0 + PIECE_X1) / 2                      # -62.5
-OPEN_X0   = PIECE_CTR + CLAMP + PM.PK_W / 2                # -23.5 (+X swept edge)
-OPEN_X1   = PIECE_CTR - CLAMP - PM.PK_W / 2                # -101.5 (-X swept edge)
-OPEN_HY   = PM.PK_L / 2 + 0.5                              # 50.0 (pickup half-len +clr)
+PIECE_CTR = (PIECE_X0 + PIECE_X1) / 2                      # -57.5
+WALL      = 4.0                                            # piece end walls
+OPEN_X0   = PIECE_X0 - WALL                                # +X opening edge
+OPEN_X1   = PIECE_X1 + WALL                                # -X opening edge
+OPEN_CTR  = (OPEN_X0 + OPEN_X1) / 2
+OPEN_LEN  = OPEN_X0 - OPEN_X1                              # pickup tone+park slide span
+OPEN_HY   = PM.PK_L / 2 + 1.0                              # 50.5 (pickup half-len +clr)
 SKIRT_T   = 3.0
-SKIRT_BOT = PM.PK_BOT - 1.0                                # channel floor below pickup
-SLOT_Z0, SLOT_Z1 = -6.5, -1.5                             # clamp-bolt X-slot Z band
-SLOT_HX   = CLAMP + PM.CLAMP_BOLT_D / 2 + 0.3              # half-length of the X-slot
+FLOOR_BOT = -13.0                                          # tray floor (under the pickup);
+                                                          # bottom clears the chassis motor
+                                                          # ribs (top out at z -14) at every
+                                                          # piece position
+FLOOR_T   = 1.5
+SLOT_Z0, SLOT_Z1 = -6.5, -1.5                             # clamp-screw X-slot Z band
+SLOT_HX   = CLAMP + PM.CSCREW_D / 2 + 0.3                 # half-length of the X-slot
+# 3-point height set-screws in the floor (pickup rests on their tops); placed so
+# the +/-CLAMP fine slide keeps the pickup over all three, yet sliding it to the
+# +X park exposes them from above for in-place height adjust
+HEIGHT_SCREWS = [(PIECE_CTR - 9.0, 35.0), (PIECE_CTR - 9.0, -35.0),
+                 (PIECE_CTR + 9.0, 0.0)]
 
 MARKER_FRETS = {3, 5, 7, 9, 12, 15, 17, 19, 21, 24}
 
@@ -133,30 +146,54 @@ def _band(xa, xb, *, ui=False):
 
 
 def _pickup_piece():
-    """3-slot deck panel that carries the pickup: opening to poke through, two
-    depending side skirts forming the channel, and a clamp-bolt X-slot per skirt
-    (the bolt threads the pickup side; loosen, slide +/-CLAMP, retighten)."""
+    """4-slot deck panel that carries the pickup as a TRAY: an opening to poke
+    through, two depending side skirts + a floor running UNDER the pickup (the
+    material that holds it), three height set-screws standing on the floor (the
+    pickup rests on their tops; slide it aside to reach them for in-place height
+    adjust), and a clamp-screw X-slot in the -Y skirt (loosen -> slide -> lock)."""
     body = _deck_body(PIECE_X0, PIECE_X1)
-    # opening through the deck for the pickup (spans its full clamp sweep in X)
-    body = body.cut(box_at(OPEN_X0 - OPEN_X1, 2 * OPEN_HY, (TZ - BZ) + 2,
-                           x=(OPEN_X0 + OPEN_X1) / 2, y=0, z=(BZ + TZ) / 2))
-    for s in (1, -1):                               # +Y / -Y channel skirts
+    # opening through the deck for the pickup (spans its tone + park slide in X)
+    body = body.cut(box_at(OPEN_LEN, 2 * OPEN_HY, (TZ - BZ) + 2,
+                           x=OPEN_CTR, y=0, z=(BZ + TZ) / 2))
+    for s in (1, -1):                               # +Y / -Y tray skirts
         y_in = s * OPEN_HY
-        body = body.union(box_at(OPEN_X0 - OPEN_X1 + 4.0, SKIRT_T, BZ - SKIRT_BOT,
-                                 x=(OPEN_X0 + OPEN_X1) / 2,
-                                 y=y_in + s * SKIRT_T / 2,
-                                 z=(BZ + SKIRT_BOT) / 2))
-        # clamp-bolt X-slot through the skirt (bolt fixed to the pickup slides in it)
-        body = body.cut(box_at(2 * SLOT_HX, SKIRT_T + 1.0, SLOT_Z1 - SLOT_Z0,
-                               x=PIECE_CTR, y=y_in + s * SKIRT_T / 2,
-                               z=(SLOT_Z0 + SLOT_Z1) / 2))
+        body = body.union(box_at(OPEN_LEN + 2 * WALL, SKIRT_T, BZ - FLOOR_BOT,
+                                 x=OPEN_CTR, y=y_in + s * SKIRT_T / 2,
+                                 z=(BZ + FLOOR_BOT) / 2))
+        if s < 0:                                   # clamp-screw X-slot (-Y skirt)
+            body = body.cut(box_at(2 * SLOT_HX, SKIRT_T + 1.0, SLOT_Z1 - SLOT_Z0,
+                                   x=PIECE_CTR, y=y_in + s * SKIRT_T / 2,
+                                   z=(SLOT_Z0 + SLOT_Z1) / 2))
+    # floor under the pickup (ties the skirts together; carries the height screws)
+    body = body.union(box_at(OPEN_LEN + 2 * WALL, 2 * OPEN_HY + 2 * SKIRT_T, FLOOR_T,
+                             x=OPEN_CTR, y=0, z=FLOOR_BOT + FLOOR_T / 2))
+    for hx, hy in HEIGHT_SCREWS:                    # threaded bosses + clearance
+        body = body.union(cyl(8.0, 3.5, z=FLOOR_BOT)    # boss stays above the ribs
+                          .translate((hx, hy, 0)))
+        body = body.cut(cyl(HSCREW_CLR, 6.0, z=FLOOR_BOT - 1.0)
+                        .translate((hx, hy, 0)))
     return heal(body)
 
 
+HSCREW_CLR = PM.HSCREW_D + 0.4                       # tapped/insert hole for the screw
+
+
+def _filler(slot):
+    """One fret-marked filler band at slot index `slot` (its own fixed X span)."""
+    return _band(SLOT_X[slot], SLOT_X[slot + 1])
+
+
 pickup_piece = _pickup_piece()
-filler_band  = _band(FILL_X0, FILL_X1)
 deck_mid     = _band(MID_X0, MID_X1, ui=True)
 deck_keyhead = _band(KEY_X0, KEY_X1)
 
-# build.py registers / places these as top_plate_0..3 (all PCTG deck panels)
-segments = [pickup_piece, filler_band, deck_mid, deck_keyhead]
+# every slot has its own fret-marked filler (fret lines are at absolute X, so a
+# filler only fits its own slot); print the set, install the ones the piece
+# doesn't cover. SHOWN config: piece in slots [0..4), fillers in slots [4..7).
+fillers = [_filler(i) for i in range(N_SLOTS)]
+shown_fillers = [fillers[i] for i in range(PIECE_SHOWN + PIECE_SLOTS, N_SLOTS)]
+
+# build.py places these in the assembly (piece + visible fillers + the 2 panels).
+# The fillers under the piece are exported as parts but not placed (they'd clash).
+segments = [pickup_piece, *shown_fillers, deck_mid, deck_keyhead]
+spare_fillers = [fillers[i] for i in range(PIECE_SHOWN, PIECE_SHOWN + PIECE_SLOTS)]

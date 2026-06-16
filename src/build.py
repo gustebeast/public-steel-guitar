@@ -65,12 +65,20 @@ PARTS = {
     "leg_washer":      (lambda: heal(LG.leg_washer()),  "leg_washer.step",  "TPU — anti-unscrew shoulder washer, 1/junction = segments+1 per leg (compresses on the last quarter turn)"),
     "electronics_tray": (lambda: heal(__import__("src.electronics", fromlist=["e"]).electronics_tray()), "electronics_tray.step", "PCTG — compute-bay tray (drops into rail channels from above; tool-free snap mounts for Teensy+shield, Pi 5, 2x CS42448, buck, CAN transceiver; basic builds leave the pro sockets empty)"),
 }
-for _i in range(3):                              # top deck panels (mortise/tenon)
+_TP = __import__("src.top_plate", fromlist=["e"])
+for _i in range(len(_TP.segments)):              # placed deck panels (piece + fillers + UI/keyhead)
     PARTS[f"top_plate_{_i}"] = (
         (lambda i: lambda: heal(__import__("src.top_plate", fromlist=["e"]).segments[i]))(_i),
         f"top_plate_{_i}.step",
         "PCTG — removable top deck panel (fret lines + dust cover + hand rest; "
-        "rides rail grooves, slides out -X; mid panel carries the OLED + joystick)")
+        "rides rail grooves, slides out -X; piece carries the pickup, mid panel "
+        "the OLED + joystick)")
+for _i in range(len(_TP.spare_fillers)):         # fillers for the other pickup-piece slots
+    PARTS[f"top_plate_spare_{_i}"] = (
+        (lambda i: lambda: heal(__import__("src.top_plate", fromlist=["e"]).spare_fillers[i]))(_i),
+        f"top_plate_spare_{_i}.step",
+        "PCTG — fret-marked filler band for an alternate pickup-piece position "
+        "(print the set; install the ones the piece doesn't cover)")
 for _i, _seg in enumerate(chassis_segments):     # chassis split into dovetailed segments
     PARTS[f"chassis_{_i}"] = (partial(heal, _seg), f"chassis_{_i}.step",
                               "PCTG — chassis segment (slide-down dovetail, glued)")
@@ -234,24 +242,26 @@ def _string_path(i, sy):
     return out
 
 
-PICKUP_X = -58.0     # pickup centre in the shown pose (near-bridge tone). The
-                     # deck pickup-piece holds it; the clamp bolts give ±22.5 fine
-                     # X within the piece (piece centre −62.5 → reach −40..−85),
-                     # and re-slotting the piece moves it coarsely. −58 is inside
-                     # the bridge-most piece and clears the carriage travel; the
-                     # 50 mm spec minimum is comfortably reachable.
+PICKUP_X = -57.5     # pickup centre in the shown pose (= piece centre, so it
+                     # rests evenly on the 3 height screws). The clamp gives ±11
+                     # fine X (>= the 20 mm slot/2 -> continuous), and re-slotting
+                     # the piece (4 positions) moves it coarsely bridge<->neck;
+                     # full reach ~ -46.5..-128.5 (50 mm spec comfortably inside).
 
 
 def _pickup_mount_components():
     from . import top_plate as TP
     out = [("pickup", PM.pickup_demo().translate((PICKUP_X, 0, PM.PK_TOP)))]
-    bz = (TP.SLOT_Z0 + TP.SLOT_Z1) / 2            # bolt height in the skirt X-slot
+    # 3 height set-screws stand on the tray floor; tops at PK_BOT (pickup rests)
+    for k, (hx, hy) in enumerate(TP.HEIGHT_SCREWS):
+        out.append((f"height_screw_{k}",
+                    PM.height_screw().translate((hx, hy, PM.PK_BOT))))
+    # 2 X/Y clamp screws through the -Y skirt slot into the pickup -Y face
+    bz = (TP.SLOT_Z0 + TP.SLOT_Z1) / 2
     tip = -(PM.PK_L / 2 - 6.5)                     # tip 6.5 mm into the pickup -Y face
-    # both bolts on the -Y skirt (the +Y side has no head room to the rail);
-    # spaced in X they pin position AND rotation. Head outboard (-Y), tip into pickup.
-    for k, dx in enumerate((-15.0, 15.0)):
-        b = PM.clamp_bolt().rotate((0, 0, 0), (0, 0, 1), 180)   # head -Y, tip +Y
-        out.append((f"clamp_bolt_{k}", b.translate((PICKUP_X + dx, tip, bz))))
+    for k, dx in enumerate((-13.0, 13.0)):
+        b = PM.clamp_screw().rotate((0, 0, 0), (0, 0, 1), 180)   # head -Y, tip +Y
+        out.append((f"clamp_screw_{k}", b.translate((PICKUP_X + dx, tip, bz))))
     return out
 
 
@@ -309,6 +319,14 @@ def _electronics_components():
            ("usbc_jack", EL.usbc_jack()),
            ("oled", EL.oled()), ("joystick", EL.joystick())]
     out += [(f"top_plate_{i}", seg) for i, seg in enumerate(TP.segments)]
+    # the fillers the pickup piece displaced: show them slid +Y clear of the
+    # instrument (exploded), but at the true X/Z where they'd seat if the pickup
+    # weren't there -- so it reads as "pull these, drop in the pickup piece"
+    from . import chassis as CH
+    rail_outer = CH.Y_HI + CH.T / 2
+    for i, f in enumerate(TP.spare_fillers):
+        dy = (rail_outer + 8.0) - f.val().BoundingBox().ymin
+        out.append((f"top_plate_{len(TP.segments) + i}", f.translate((0, dy, 0))))
     out += WR.build_wires()
     return out
 
@@ -353,7 +371,8 @@ _COLORS = {
     "set_screw":       (0.55, 0.55, 0.58),   # alloy set screw
     "chassis":         (0.46, 0.52, 0.55),   # PCTG frame
     "pickup":          (0.10, 0.10, 0.12),   # DEMO pickup body
-    "clamp_bolt":      (0.55, 0.55, 0.58),   # M4 clamp bolt (pins the pickup)
+    "height_screw":    (0.72, 0.72, 0.75),   # M4 height set-screw (under the pickup)
+    "clamp_screw":     (0.55, 0.55, 0.58),   # M4 X/Y clamp screw
     "leg_socket":      (0.36, 0.42, 0.46),
     "leg_segment":     (0.42, 0.48, 0.52),
     "leg_sleeve":      (0.36, 0.42, 0.46),

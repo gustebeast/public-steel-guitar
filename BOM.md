@@ -18,9 +18,9 @@ is commodity.
 | **Bridge axle** | Ø3 **g6/h6 precision shaft**, ~105 mm (e.g. hardened ground shafting) | 1 | [McMaster 3 mm shafts](https://www.mcmaster.com/products/linear-shafts/) | ~$3 | NOT an m6 dowel — m6 is press-fit in a 693ZZ bore; the shaft must slide through all 10 bearings + 9 comb fingers + both arms. Glue dab at the arms retains it |
 | **Guide rod** | Ø2.5 × 28 mm hardened/ground dowel (DIN 6325, standard length) | 10 | [McMaster](https://www.mcmaster.com/products/hardened-dowel-pins/) · [eBay DIN6325 2.5 mm](https://www.ebay.com/itm/303389911894) | ~$0.5 ea | anti-rotation; drops in from the top through the stop bar's snug hole + the carriage's C-bore, landing in a blind socket — friction-held both ends (dab of glue optional) |
 | **Nut break dowel** | Ø2 × 4 mm steel dowel (52100) | 10 | [McMaster 91595A018](https://www.mcmaster.com/91595A018/) | $12.70 / pack | gauged break pins (the scale "0"); drop into their slots from above. (Clamps bear on solid PA6-GF — no anvil.) |
-| **M4 cup-tip set screw** | M4 × 0.7 cup-tip, 10 mm, alloy | 10 | [McMaster 91390A114](https://www.mcmaster.com/91390A114/) | $7.28 / pack 100 | clamps each plain string end onto its anvil |
-| **M4 heat-set insert** | M4 × 0.7 brass heat-set, 4.7 mm | 18 | [McMaster 94459A150](https://www.mcmaster.com/94459A150/) | $10.82 / pack 50 | 10 nut clamps + 4 nut-block + 4 leg-sleeve pinch collars; deeply buried (no pull-out) |
-| **M4 mount screw** | M4 × 0.7, 12 mm, 18-8 SS (button or socket head) | 10 | [McMaster 92095A192](https://www.mcmaster.com/92095A192/) | $14.77 / pack | 4 nut-block corner bolts + 2 pickup clamp bolts (pin the carrier piece, set fine X) + 4 leg-sleeve pinch bolts, into 94459A150 inserts; **M4 × 0.7** (coarse) to match the inserts — NOT the M4 × 0.5 fine-thread 90751A120 |
+| **M4 cup-tip set screw** | M4 × 0.7 cup-tip, 10 mm, alloy | 13 | [McMaster 91390A114](https://www.mcmaster.com/91390A114/) | $7.28 / pack 100 | clamps each plain string end onto its anvil (10) + 3 pickup-carrier height screws (the pickup rests on their tops; turn to set the string gap) |
+| **M4 heat-set insert** | M4 × 0.7 brass heat-set, 4.7 mm | 21 | [McMaster 94459A150](https://www.mcmaster.com/94459A150/) | $10.82 / pack 50 | 10 nut clamps + 4 nut-block + 4 leg-sleeve pinch collars + 3 pickup-carrier height-screw bosses; deeply buried (no pull-out) |
+| **M4 mount screw** | M4 × 0.7, 12 mm, 18-8 SS (button or socket head) | 10 | [McMaster 92095A192](https://www.mcmaster.com/92095A192/) | $14.77 / pack | 4 nut-block corner bolts + 2 pickup X/Y clamp screws (pin the pickup in the carrier, set fine X) + 4 leg-sleeve pinch bolts, into 94459A150 inserts; **M4 × 0.7** (coarse) to match the inserts — NOT the M4 × 0.5 fine-thread 90751A120 |
 | **Fasteners** | M3 (NEMA17 mounts), M2 (belt clamps) | — | [McMaster](https://www.mcmaster.com/) | — | commodity |
 
 ## Electronics (compute bay)
@@ -85,10 +85,11 @@ tension_fork (graded belt-tension lock set),
 the adjustable legs: leg_socket ×4, leg_segment ×8, leg_sleeve ×4,
 leg_shaft ×4 (PCTG/PA6-GF) plus leg_foot ×4 and leg_washer ×12 in **TPU**
 (anti-unscrew preload washers + floor-friendly feet), electronics_tray, and
-the **removable top deck**: a fret-marked **pickup-carrier piece** + swappable
-**filler bands** + the UI/keyhead panels (fret lines + dust cover + hand rest +
-UI mount; the pickup is pinned by 2 M4 clamp bolts from the insert/screw packs
-above — no dedicated mount parts) — see `py -3.12 -m src.build --list`.
+the **removable top deck**: a **pickup-carrier piece** (a tray whose floor runs
+under the pickup; 3 M4 height screws set the string gap, 2 M4 clamp screws pin
+X/Y — all from the packs above) + swappable fret-marked **filler bands** (one
+per slot; print the set) + the UI/keyhead panels (fret lines + dust cover + hand
+rest + UI mount) — see `py -3.12 -m src.build --list`.
 
 ## Filament (printed parts, both tiers)
 
