@@ -150,7 +150,10 @@ def _deck_body(xa, xb):
         # both top and bottom must slope (each part uses the face that overhangs in
         # its own print); the two opposed wedges + the rigid deck still retain it.
         t1 = inner - s * 2.0                          # inboard base edge
-        prof = [(t1, GZ0), (inner, GZ0), (inner + s * dep, mz), (inner, GZ1), (t1, GZ1)]
+        edge = inner - s * 0.5                         # body edge: the wedge springs from
+        # here (where the web backs it), so the protruding part is ALL 45 wedge --
+        # no flat ledge sticking past the supported body
+        prof = [(t1, GZ0), (edge, GZ0), (edge + s * dep, mz), (edge, GZ1), (t1, GZ1)]
         pts = [cq.Vector(xb, py, pz) for py, pz in prof]
         face = cq.Face.makeFromWires(cq.Wire.makePolygon([*pts, pts[0]]))
         body = body.union(cq.Workplane("XY").add(
