@@ -49,7 +49,10 @@ TP_X0, TP_X1   = -16.0, -638.0         # groove X span; open at the -X rail end 
 TP_GZ0, TP_GZ1 = 0.0, 6.0              # groove spans the DECK BODY z-plane (0..6, the
                                        # recessed deck) so the tenon sits in-plane (no
                                        # hanging tongue); ~4 mm rail lip above (z6..10)
-TP_GROOVE_D    = 3.0                    # depth into the rail (Y)
+TP_DT_NECK     = 2.0                    # sliding-dovetail: rail-face -> waist (45 neck)
+TP_DT_HEAD     = 4.0                    # rail-face -> head tip (= neck + 45 flare); the
+                                       # head is captured behind the waist -> ties the
+                                       # rails in Y (top_plate.py builds the matching tenon)
 # A chunky rail-to-rail rib UNDER EACH MOTOR (the motor rests on it, its wall sits
 # on it, and it ties the two rails) replaces a solid floor — far lighter for the
 # strength. Plus a rib at the +X end (tying the rails behind the endplate) and one
@@ -231,13 +234,21 @@ def _build_full() -> cq.Workplane:
     # tapering to a point) is self-supporting for the rail's print (the lip's
     # underside slopes at 45) AND mates the deck's wedge tongue -- the deck and the
     # rail print in opposite directions, so the joinery slopes on top AND bottom.
-    _ghh = (TP_GZ1 - TP_GZ0 + 0.6) / 2.0    # half the clearance-expanded height -> 45 slopes
+    # SLIDING-DOVETAIL mortise: matches top_plate's DT tenon (+ clearance) so the
+    # deck ties the rails in Y. Necks at 45 (self-supporting roof for the rail's
+    # print). +X end stops at the +X stop ledge's -X face (z0..6 cut must not free it).
+    _ND, _HD = TP_DT_NECK, TP_DT_HEAD
+    _wh = (TP_GZ1 - TP_GZ0) / 2.0 - _ND
     _gmz = (TP_GZ0 + TP_GZ1) / 2.0
-    _gx0, _gx1 = TP_X1 - 2.0, -17.5          # +X end stops at the +X stop ledge's -X face
-    for _yf, _s in ((Y_HI - T / 2, 1), (Y_LO + T / 2, -1)):   # (z0..6 groove must NOT
-        prof = [(_yf - _s * 0.3, TP_GZ0 - 0.3),               #  cut the deck-level ledge)
-                (_yf - _s * 0.3 + _s * _ghh, _gmz),     # point: depth = half-height -> 45 deg
-                (_yf - _s * 0.3, TP_GZ1 + 0.3)]
+    _C = 0.25                                # sliding clearance
+    _gx0, _gx1 = TP_X1 - 2.0, -17.5
+    for _yf, _s in ((Y_HI - T / 2, 1), (Y_LO + T / 2, -1)):
+        prof = [(_yf, TP_GZ0 - _C),
+                (_yf + _s * _ND, _gmz - _wh - _C),            # neck -> waist (wider than tenon)
+                (_yf + _s * (_HD + 0.3), TP_GZ0 - _C),        # head cavity (deeper than tenon)
+                (_yf + _s * (_HD + 0.3), TP_GZ1 + _C),
+                (_yf + _s * _ND, _gmz + _wh + _C),
+                (_yf, TP_GZ1 + _C)]
         pts = [cq.Vector(_gx0, py, pz) for py, pz in prof]
         face = cq.Face.makeFromWires(cq.Wire.makePolygon([*pts, pts[0]]))
         body = body.cut(cq.Workplane("XY").add(

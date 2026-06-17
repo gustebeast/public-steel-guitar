@@ -36,8 +36,11 @@ YH = CH.Y_HI - CH.T / 2                 # +Y rail inner face (+54.75)
 TZ = EL.DECK_TOP                        # deck surface (10 mm under strings = +6)
 BZ = TZ - 6.0                           # 6 mm deck, recessed between the rails
 
-# The deck tenons sit in the panel's own z-plane (BZ..TZ) and ride the matching
-# rail groove (cut in chassis.py at the same z-band, CH.TP_GZ0..TP_GZ1).
+# Deck tenons sit in the panel's own z-plane (BZ..TZ) and ride the matching rail
+# mortise (chassis.py, same z-band). The joint is a SLIDING DOVETAIL so it ties
+# the rails in Y (resists the walls spreading), not just a wedge.
+DT_NECK = CH.TP_DT_NECK                # rail-face -> waist depth (45 deg neck)
+DT_HEAD = CH.TP_DT_HEAD                # rail-face -> head-tip depth (= NECK + 45 flare)
 
 PX0 = -17.5                             # +X deck end: panels butt the chassis stop
                                         # ledge just -X of the carriages (-13.6)
@@ -144,10 +147,21 @@ def _deck_body(xa, xb):
     BY0, BY1 = YL + 0.5, YH - 0.5        # body sits BETWEEN the rails (recessed)
     body = box_at(xa - xb, BY1 - BY0, TZ - BZ, x=xm, y=(BY0 + BY1) / 2,
                   z=(BZ + TZ) / 2)
-    dep = (TZ - BZ) / 2.0                            # full-height 45 wedge -> point
+    # SLIDING DOVETAIL tenon on each ±Y edge: full height at the rail face, necked
+    # to a waist (DT_W/2 half-height) NECK mm into the rail, then flared back to
+    # full height at the head HEAD mm deep. The head is captured behind the waist
+    # -> ties the rails in Y (can't pull apart); it still slides out -X. Necks/
+    # flares are 45 so each part prints (deck and rail go opposite ways).
     mz = (BZ + TZ) / 2.0
-    for edge, s in ((BY0, -1), (BY1, 1)):           # ±Y body edge -> wedge tenon
-        prof = [(edge, BZ), (edge + s * dep, mz), (edge, TZ)]
+    wh = (TZ - BZ) / 2.0 - DT_NECK                   # waist half-height (45 neck)
+    for inner, s in ((YL, -1), (YH, 1)):
+        edge = inner - s * 0.5                        # recessed body edge
+        prof = [(edge, BZ), (inner, BZ),
+                (inner + s * DT_NECK, mz - wh),       # neck down to the waist (45)
+                (inner + s * DT_HEAD, BZ),            # flare back out to the head tip (45)
+                (inner + s * DT_HEAD, TZ),
+                (inner + s * DT_NECK, mz + wh),
+                (inner, TZ), (edge, TZ)]
         pts = [cq.Vector(xb, py, pz) for py, pz in prof]
         face = cq.Face.makeFromWires(cq.Wire.makePolygon([*pts, pts[0]]))
         body = body.union(cq.Workplane("XY").add(
