@@ -27,7 +27,7 @@ from . import dimensions as D
 from . import chassis as CH
 from . import electronics as EL
 from . import pickup_mount as PM
-from .helpers import box_at, cyl, heal
+from .helpers import box_at, cyl, cyl_y, heal
 
 YL = CH.Y_LO + CH.T / 2                 # -Y rail inner face (-128.75)
 YH = CH.Y_HI - CH.T / 2                 # +Y rail inner face (+54.75)
@@ -46,11 +46,11 @@ PX1 = -607.0                            # -X deck end (groove runs on to the rai
 BAND_W   = 20.0                        # one slot
 N_SLOTS  = 7                           # pickup-region slots (= 7*20 = 140 mm)
 SLOT_X   = [PX0 - i * BAND_W for i in range(N_SLOTS + 1)]   # -17.5 .. -157.5
-PIECE_SLOTS = 4                        # the pickup piece spans 4 slots (80 mm)
-N_POS    = N_SLOTS - PIECE_SLOTS + 1   # = 4 coarse swap positions
-CLAMP    = 11.0                        # +/- fine X-adjust (>= BAND_W/2 -> continuous)
+PIECE_SLOTS = 3                        # the pickup piece spans 3 slots (60 mm)
+N_POS    = N_SLOTS - PIECE_SLOTS + 1   # = 5 coarse swap positions
+CLAMP    = 10.0                        # +/- fine X-adjust (= BAND_W/2 -> continuous)
 
-# shown installed state: piece in the 4 bridge-most slots, fillers behind it
+# shown installed state: piece in the 3 bridge-most slots, fillers behind it
 PIECE_SHOWN = 0                        # piece occupies slots [0 .. PIECE_SLOTS)
 PIECE_X0, PIECE_X1 = SLOT_X[PIECE_SHOWN], SLOT_X[PIECE_SHOWN + PIECE_SLOTS]
 REGION_X1 = SLOT_X[-1]                                     # -157.5
@@ -60,31 +60,38 @@ MID_X0, MID_X1 = REGION_X1, -377.5     # carries the UI (string-10 deck band)
 KEY_X0, KEY_X1 = MID_X1, PX1           # keyhead panel
 
 # ── pickup-piece interior geometry ───────────────────────────────────────────
-PIECE_CTR = (PIECE_X0 + PIECE_X1) / 2                      # -57.5
-WALL      = 4.0                                            # piece end walls
-OPEN_X0   = PIECE_X0 - WALL                                # +X opening edge
-OPEN_X1   = PIECE_X1 + WALL                                # -X opening edge
-OPEN_CTR  = (OPEN_X0 + OPEN_X1) / 2
-OPEN_LEN  = OPEN_X0 - OPEN_X1                              # pickup tone+park slide span
-OPEN_HY   = PM.PK_L / 2 + 1.0                              # 50.5 (pickup half-len +clr)
+# The pickup does NOT rest on the height screws directly (those would block its X
+# travel); it rests on a full-width Z-PLATE that the screws lift. The plate slides
+# only in Z inside the piece pocket, so the pickup can sit ANYWHERE across its
+# +/-CLAMP fine-X range -> that's what lets the piece be only 3 bands wide. Height
+# screws thread the floor and are turned from BELOW (a long driver past the belts);
+# a side CLAMP screw drives a protective shim that pins the pickup +Y against the
+# reference skirt (friction then holds X and, with the plate under it, Z).
+PIECE_CTR = (PIECE_X0 + PIECE_X1) / 2                      # -47.5
+WALL      = 3.5                                            # piece end walls
+OPEN_X0   = PIECE_X0 - WALL                                # +X opening edge (-21.0)
+OPEN_X1   = PIECE_X1 + WALL                                # -X opening edge (-74.0)
+OPEN_CTR  = (OPEN_X0 + OPEN_X1) / 2                        # -47.5
+OPEN_LEN  = OPEN_X0 - OPEN_X1                              # 53.0 = PK_W + 2*CLAMP
+HY_REF    = PM.PK_L / 2 + 1.0                              # +50.5  reference skirt (+Y)
+HY_CLAMP  = PM.PK_L / 2 + 7.0                              # -56.5  clamp skirt (room for
+                                                          #        the shim + side screw)
+OPEN_YC   = (HY_REF - HY_CLAMP) / 2                        # opening/floor Y centre (-3.0)
+OPEN_YW   = HY_REF + HY_CLAMP                              # opening/floor Y width (107.0)
 SKIRT_T   = 3.0
-FLOOR_BOT = -13.0                                          # tray floor (under the pickup);
-                                                          # bottom clears the chassis motor
-                                                          # ribs (top out at z -14) at every
-                                                          # piece position
-FLOOR_T   = 1.5
-PARK_HX   = 22.0                                          # pickup slides this far aside
-                                                          # to uncover the height screws
-SLOT_Z0, SLOT_Z1 = -6.5, -1.5                             # clamp-screw X-slot Z band (the
-                                                          # 5 mm height lets the screw rise
-                                                          # with the pickup as it's set)
-SLOT_HX   = PARK_HX + PM.CSCREW_D / 2 + 0.3              # half-length of the X-slot
-# 3-point height set-screws in the floor (pickup rests on their tops). Their X
-# spread is kept tight (+/-5) so the +/-11 fine-X tone slide keeps the pickup over
-# all three (continuous past the 20 mm slot step), yet a single clamp screw lets
-# the pickup slide right off them to the park for in-place height adjust.
-HEIGHT_SCREWS = [(PIECE_CTR - 5.0, 35.0), (PIECE_CTR - 5.0, -35.0),
-                 (PIECE_CTR + 5.0, 0.0)]
+FLOOR_BOT = -13.5                                          # floor bottom clears the chassis
+FLOOR_T   = 1.5                                            # motor ribs (tops at z -14)
+# Z-plate: full-opening, slides only in Z (lifted by the screws); pickup rests on it
+ZPL_T     = 2.0
+ZPL_TOP   = PM.PK_BOT                                      # pickup sits on the plate top
+ZPL_BOT   = ZPL_TOP - ZPL_T
+# 3 height set-screws UNDER the plate (fixed; reached from below). Spread wide for
+# a stable 3-point lift -- under the PLATE, not the pickup, so they never limit
+# where the pickup sits.
+HEIGHT_SCREWS = [(PIECE_CTR - 18.0, 30.0), (PIECE_CTR - 18.0, -30.0),
+                 (PIECE_CTR + 18.0, 0.0)]
+HSCREW_CLR = PM.HSCREW_D + 0.4                            # tapped/insert hole for the screw
+CL_Z      = -4.0                                          # side clamp screw / shim height
 
 MARKER_FRETS = {3, 5, 7, 9, 12, 15, 17, 19, 21, 24}
 
@@ -149,36 +156,44 @@ def _band(xa, xb, *, ui=False):
 
 
 def _pickup_piece():
-    """4-slot deck panel that carries the pickup as a TRAY: an opening to poke
-    through, two depending side skirts + a floor running UNDER the pickup (the
-    material that holds it), three height set-screws standing on the floor (the
-    pickup rests on their tops; slide it aside to reach them for in-place height
-    adjust), and a clamp-screw X-slot in the -Y skirt (loosen -> slide -> lock)."""
+    """3-slot deck panel that carries the pickup as a TRAY: an opening to poke
+    through, two depending side skirts (+Y = reference, -Y = clamp) + a floor
+    that carries the three height set-screws, and a clamp-screw hole in the -Y
+    skirt. The pickup rests on the separate Z-plate (see _pickup_zplate), so the
+    screws under the floor never limit where the pickup sits in X."""
     body = _deck_body(PIECE_X0, PIECE_X1)
-    # opening through the deck for the pickup (spans its tone + park slide in X)
-    body = body.cut(box_at(OPEN_LEN, 2 * OPEN_HY, (TZ - BZ) + 2,
-                           x=OPEN_CTR, y=0, z=(BZ + TZ) / 2))
-    for s in (1, -1):                               # +Y / -Y tray skirts
-        y_in = s * OPEN_HY
+    # deck opening (pickup pokes through; offset -Y to give the clamp shim room)
+    body = body.cut(box_at(OPEN_LEN, OPEN_YW, (TZ - BZ) + 2,
+                           x=OPEN_CTR, y=OPEN_YC, z=(BZ + TZ) / 2))
+    for y_in, s in ((HY_REF, 1), (HY_CLAMP, -1)):   # +Y reference / -Y clamp skirts
         body = body.union(box_at(OPEN_LEN + 2 * WALL, SKIRT_T, BZ - FLOOR_BOT,
-                                 x=OPEN_CTR, y=y_in + s * SKIRT_T / 2,
+                                 x=OPEN_CTR, y=s * y_in + s * SKIRT_T / 2,
                                  z=(BZ + FLOOR_BOT) / 2))
-        if s < 0:                                   # clamp-screw X-slot (-Y skirt)
-            body = body.cut(box_at(2 * SLOT_HX, SKIRT_T + 1.0, SLOT_Z1 - SLOT_Z0,
-                                   x=PIECE_CTR, y=y_in + s * SKIRT_T / 2,
-                                   z=(SLOT_Z0 + SLOT_Z1) / 2))
-    # floor under the pickup (ties the skirts together; carries the height screws)
-    body = body.union(box_at(OPEN_LEN + 2 * WALL, 2 * OPEN_HY + 2 * SKIRT_T, FLOOR_T,
-                             x=OPEN_CTR, y=0, z=FLOOR_BOT + FLOOR_T / 2))
+    # clamp-screw hole through the -Y skirt (threaded; tip drives the shim +Y)
+    body = body.cut(cyl_y(PM.CSCREW_D + 0.4, SKIRT_T + 2.0,
+                          y0=-(HY_CLAMP + SKIRT_T + 1.0), x=PIECE_CTR, z=CL_Z))
+    # floor (ties the skirts; carries the 3 height-screw bosses, reached from below)
+    body = body.union(box_at(OPEN_LEN + 2 * WALL, OPEN_YW + 2 * SKIRT_T, FLOOR_T,
+                             x=OPEN_CTR, y=OPEN_YC, z=FLOOR_BOT + FLOOR_T / 2))
     for hx, hy in HEIGHT_SCREWS:                    # threaded bosses + clearance
-        body = body.union(cyl(8.0, 3.5, z=FLOOR_BOT)    # boss stays above the ribs
-                          .translate((hx, hy, 0)))
-        body = body.cut(cyl(HSCREW_CLR, 6.0, z=FLOOR_BOT - 1.0)
-                        .translate((hx, hy, 0)))
+        body = body.union(cyl(8.0, 3.5, z=FLOOR_BOT).translate((hx, hy, 0)))
+        body = body.cut(cyl(HSCREW_CLR, 6.0, z=FLOOR_BOT - 1.0).translate((hx, hy, 0)))
     return heal(body)
 
 
-HSCREW_CLR = PM.HSCREW_D + 0.4                       # tapped/insert hole for the screw
+def _pickup_zplate():
+    """Full-opening height plate: the pickup rests on its top, the 3 height screws
+    lift it, and it slides only in Z within the piece pocket (so the pickup can sit
+    anywhere across the +/-CLAMP fine-X range). Built in place."""
+    return box_at(OPEN_LEN - 0.8, OPEN_YW - 0.8, ZPL_T,
+                  x=OPEN_CTR, y=OPEN_YC, z=(ZPL_BOT + ZPL_TOP) / 2)
+
+
+def _pickup_xclamp():
+    """Protective shim between the side clamp screw and the pickup -Y face (spreads
+    the screw load so no metal digs the pickup). Pushed +Y. Built in place."""
+    return box_at(24.0, 2.5, 9.0,          # bears on the pickup -Y face, above the Z-plate
+                  x=PIECE_CTR, y=-(PM.PK_L / 2 + 1.5), z=CL_Z)
 
 
 def _filler(slot):
@@ -186,7 +201,9 @@ def _filler(slot):
     return _band(SLOT_X[slot], SLOT_X[slot + 1])
 
 
-pickup_piece = _pickup_piece()
+pickup_piece  = _pickup_piece()
+pickup_zplate = heal(_pickup_zplate())
+pickup_xclamp = heal(_pickup_xclamp())
 deck_mid     = _band(MID_X0, MID_X1, ui=True)
 deck_keyhead = _band(KEY_X0, KEY_X1)
 

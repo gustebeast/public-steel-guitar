@@ -55,8 +55,11 @@ PARTS = {
     "screw_pulley":    (lambda: heal(C.screw_pulley()),  "screw_pulley.step",  "flanged 14T GT2 pulley, 45° top flange — ×10"),
     "motor_pulley":    (lambda: heal(C.motor_pulley()),  "motor_pulley.step",  "flanged 14T GT2 pulley, 45° outer flange — ×10"),
     "tension_fork":    (lambda: TF.tension_forks,    "tension_fork.step",    "PCTG — belt-tension lock forks, graded 3.0–6.0 set (4 of the fitting size per motor; positive stop in the slot, no friction reliance)"),
-    # pickup carrier: the deck pickup-piece (a top_plate panel) holds the pickup;
-    # two stocked M4 clamp bolts pin it and set fine X (no dedicated printed parts)
+    # pickup carrier: the deck pickup-piece (a top_plate panel) holds the pickup
+    # via a full-width height plate + a clamp shim (both printed); the screws are
+    # stocked M4
+    "pickup_zplate":   (lambda: heal(__import__("src.top_plate", fromlist=["e"]).pickup_zplate), "pickup_zplate.step", "PCTG — pickup height plate (full-width; the 3 M4 height screws lift it from below, pickup rests on top so it can sit anywhere in X)"),
+    "pickup_xclamp":   (lambda: heal(__import__("src.top_plate", fromlist=["e"]).pickup_xclamp), "pickup_xclamp.step", "PCTG — pickup clamp shim (the side M4 screw drives it against the pickup so no metal digs the pickup)"),
     "leg_socket":      (lambda: heal(LG.leg_socket()),  "leg_socket.step",  "PCTG — leg corner socket ×4 (dovetail tenon slides up into the rail slot, glued; 2-turn coarse thread, quick on/off)"),
     "leg_segment":     (lambda: heal(LG.leg_segment()), "leg_segment.step", "PCTG — stackable leg tube (male up / female down; the COUNT per leg is the coarse height adjust, 142 mm per segment; default 2 -> x8)"),
     "leg_sleeve":      (lambda: heal(LG.leg_sleeve()),  "leg_sleeve.step",  "PCTG — leg slider sleeve ×4 (pinch collar: M4 button screw + insert pulls the slit closed; set once per player)"),
@@ -242,29 +245,28 @@ def _string_path(i, sy):
     return out
 
 
-PICKUP_X = -57.5     # pickup centre in the shown pose (= piece centre, so it
-                     # rests evenly on the 3 height screws). The clamp gives ±11
-                     # fine X (>= the 20 mm slot/2 -> continuous), and re-slotting
-                     # the piece (4 positions) moves it coarsely bridge<->neck;
-                     # full reach ~ -46.5..-128.5 (50 mm spec comfortably inside).
+PICKUP_X = -50.0     # pickup centre in the shown pose (the 50 mm spec). The clamp
+                     # gives +/-10 fine X (= the 20 mm slot/2 -> continuous), and
+                     # re-slotting the 3-band piece (5 positions) moves it coarsely
+                     # bridge<->neck; full reach ~ -37.5..-127.5.
 
 
 def _pickup_mount_components():
     from . import top_plate as TP
-    out = [("pickup", PM.pickup_demo().translate((PICKUP_X, 0, PM.PK_TOP)))]
-    # 3 height set-screws stand on the tray floor; tops at PK_BOT (pickup rests)
+    # pickup rests on the Z-plate; both built in place at the shown piece location
+    out = [("pickup", PM.pickup_demo().translate((PICKUP_X, 0, PM.PK_TOP))),
+           ("pickup_zplate", TP.pickup_zplate),
+           ("pickup_xclamp", TP.pickup_xclamp)]
+    # 3 height set-screws lift the Z-plate FROM BELOW (tips at the plate bottom);
+    # they're under the plate, not the pickup, so they don't limit its X position
     for k, (hx, hy) in enumerate(TP.HEIGHT_SCREWS):
         out.append((f"height_screw_{k}",
-                    PM.height_screw().translate((hx, hy, PM.PK_BOT))))
-    # ONE central X/Y clamp screw through the -Y skirt slot into the pickup -Y
-    # face: tightening pulls the pickup's -Y face flat to the skirt (Y + yaw)
-    # and clamps the screw in the slot (X-lock), and the screw through the pickup
-    # retains it in Z (anti-fall when inverted). Loosen -> slide for tone, or
-    # slide right off the height screws to the park for height adjust.
-    bz = (TP.SLOT_Z0 + TP.SLOT_Z1) / 2
-    tip = -(PM.PK_L / 2 - 6.5)                     # tip 6.5 mm into the pickup -Y face
-    b = PM.clamp_screw().rotate((0, 0, 0), (0, 0, 1), 180)       # head -Y, tip +Y
-    out.append(("clamp_screw", b.translate((PICKUP_X, tip, bz))))
+                    PM.height_screw().translate((hx, hy, TP.ZPL_BOT))))
+    # side clamp screw threads the -Y skirt; its tip drives the shim +Y into the
+    # pickup, pinning it against the +Y reference skirt (friction holds X, and with
+    # the plate under it, Z)
+    sc = PM.clamp_screw().rotate((0, 0, 0), (0, 0, 1), 180)      # head -Y, tip +Y
+    out.append(("clamp_screw", sc.translate((TP.PIECE_CTR, -52.5, TP.CL_Z))))
     return out
 
 
@@ -374,8 +376,10 @@ _COLORS = {
     "set_screw":       (0.55, 0.55, 0.58),   # alloy set screw
     "chassis":         (0.46, 0.52, 0.55),   # PCTG frame
     "pickup":          (0.10, 0.10, 0.12),   # DEMO pickup body
-    "height_screw":    (0.72, 0.72, 0.75),   # M4 height set-screw (under the pickup)
-    "clamp_screw":     (0.55, 0.55, 0.58),   # M4 X/Y clamp screw
+    "pickup_zplate":   (0.85, 0.65, 0.30),   # PCTG height plate (under the pickup)
+    "pickup_xclamp":   (0.90, 0.55, 0.20),   # PCTG clamp shim
+    "height_screw":    (0.72, 0.72, 0.75),   # M4 height set-screw (lifts the plate)
+    "clamp_screw":     (0.55, 0.55, 0.58),   # M4 side clamp screw
     "leg_socket":      (0.36, 0.42, 0.46),
     "leg_segment":     (0.42, 0.48, 0.52),
     "leg_sleeve":      (0.36, 0.42, 0.46),
