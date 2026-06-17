@@ -253,20 +253,20 @@ PICKUP_X = -50.0     # pickup centre in the shown pose (the 50 mm spec). The cla
 
 def _pickup_mount_components():
     from . import top_plate as TP
-    # pickup rests on the Z-plate; both built in place at the shown piece location
-    out = [("pickup", PM.pickup_demo().translate((PICKUP_X, 0, PM.PK_TOP))),
+    # pickup rests on the Z-plate, +Y face seated against the plate's +Y flange
+    py = (TP.HY_REF - 0.3 - TP.FLG_T) - PM.PK_L / 2
+    out = [("pickup", PM.pickup_demo().translate((PICKUP_X, py, PM.PK_TOP))),
            ("pickup_zplate", TP.pickup_zplate),
-           ("pickup_xclamp", TP.pickup_xclamp)]
-    # ONE height screw lifts the Z-plate from below, in whichever of the 3 holes
-    # sits nearest the pickup (the plate spreads the load + its flanges keep it
-    # flat, so a single screw suffices and one knob sets the height)
-    hx = min(TP.HEIGHT_HOLES, key=lambda h: abs(h - PICKUP_X))
-    out.append(("height_screw", PM.height_screw().translate((hx, 0.0, TP.ZPL_BOT))))
-    # side clamp screw threads the -Y skirt; its tip drives the shim +Y into the
-    # pickup, pinning it against the +Y reference skirt (friction holds X, and with
-    # the plate under it, Z)
+           ("pickup_xclamp", TP.pickup_xclamp.translate((PICKUP_X - TP.PIECE_CTR, 0, 0)))]
+    # ONE central height screw lifts the Z-plate from below (one knob sets height;
+    # the plate's +Y flange rides the full-height carrier track to keep it flat)
+    out.append(("height_screw",
+                PM.height_screw().translate((TP.HEIGHT_HOLE, 0.0, TP.ZPL_BOT))))
+    # clamp screw in whichever -Y skirt hole sits nearest the pickup; its tip drives
+    # the shim +Y, pinning the pickup against the +Y flange (the shim spreads load)
+    cx = min(TP.CLAMP_HOLES, key=lambda h: abs(h - PICKUP_X))
     sc = PM.clamp_screw().rotate((0, 0, 0), (0, 0, 1), 180)      # head -Y, tip +Y
-    out.append(("clamp_screw", sc.translate((TP.PIECE_CTR, -52.5, TP.CL_Z))))
+    out.append(("clamp_screw", sc.translate((cx, -53.75, TP.CL_Z))))
     return out
 
 
