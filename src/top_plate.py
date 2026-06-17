@@ -87,10 +87,11 @@ ZPL_TOP   = PM.PK_BOT                                      # pickup sits on the 
 ZPL_BOT   = ZPL_TOP - ZPL_T
 SPINE_W   = 16.0                                          # central spine carrying the boss
 FLG_T     = 2.5                                           # Z-plate guide-flange thickness
-FLG_BOT   = FLOOR_BOT                                     # flange spans the FULL pocket height
-FLG_TOP   = TZ - 0.5                                      # (~ -13.5 .. +5.5) so the plate is
-                                                          # guided/keyed the whole way as it
-                                                          # drops in from above
+FLG_BOT   = ZPL_BOT                                       # flange bottoms FLUSH with the plate
+                                                          # body -> flat print bottom (the
+                                                          # carrier guide TRACK still runs the
+FLG_TOP   = TZ - 0.5                                      # full -13.5..+6; the flange rides its
+                                                          # upper part, ~ -10.8 .. +5.5)
 # Z height: ONE central screw lifts the plate (reached from below); the plate's
 # +/-Y flanges ride the skirt inner faces so it can only move in flat Z (no
 # see-saw) -> one knob sets the height.
@@ -195,17 +196,31 @@ def _pickup_piece():
 
 def _pickup_zplate():
     """Full-width height plate the pickup rests on, lifted by the single central
-    height screw. A tall +Y flange runs the FULL pocket height and rides the +Y
-    carrier face (deck edge + skirt) -- the joint that keeps the plate's motion
-    flat and guides/keys it as it drops in from above. Full-width so the pickup
-    mounts anywhere in X; the +Y flange also reference-locates the pickup +Y face.
-    Built in place."""
+    height screw. It's guided flat by full-height flanges on BOTH Y rails that ride
+    the carrier faces (deck edge + skirt) as it drops in from above:
+      +Y: a solid wall (also reference-locates the pickup +Y face);
+      -Y: a COMB -- fingers between the 3 clamp-screw holes, joined by a top bar
+          set above the clamp-screw Z so it never covers the holes.
+    Full-width so the pickup mounts anywhere in X. Built in place."""
     plate = box_at(OPEN_LEN - 0.8, OPEN_YW - 0.8, ZPL_T,
                    x=OPEN_CTR, y=OPEN_YC, z=(ZPL_BOT + ZPL_TOP) / 2)
-    y_out = HY_REF - 0.3                              # rides the +Y carrier face (0.3 clr)
+    # +Y solid guide wall (full height)
+    yp = (HY_REF - 0.3) - FLG_T / 2                   # rides the +Y carrier face (0.3 clr)
     plate = plate.union(box_at(OPEN_LEN - 0.8, FLG_T, FLG_TOP - FLG_BOT,
-                               x=OPEN_CTR, y=y_out - FLG_T / 2,
-                               z=(FLG_BOT + FLG_TOP) / 2))
+                               x=OPEN_CTR, y=yp, z=(FLG_BOT + FLG_TOP) / 2))
+    # -Y comb: top bar (full X, above the clamp screws) + fingers in the hole gaps
+    ym = -(HY_CLAMP - 0.3) + FLG_T / 2
+    top0 = CL_Z + PM.CSCREW_D / 2 + 1.5              # top-bar bottom (clears the screws)
+    plate = plate.union(box_at(OPEN_LEN - 0.8, FLG_T, FLG_TOP - top0,
+                               x=OPEN_CTR, y=ym, z=(top0 + FLG_TOP) / 2))
+    hole_clr = PM.CSCREW_D / 2 + 2.0
+    xs = sorted([OPEN_X1] + CLAMP_HOLES + [OPEN_X0])
+    for a, b in zip(xs[:-1], xs[1:]):                # one finger per gap between holes
+        lo = a + (hole_clr if a in CLAMP_HOLES else 0.6)
+        hi = b - (hole_clr if b in CLAMP_HOLES else 0.6)
+        if hi - lo > 2.0:
+            plate = plate.union(box_at(hi - lo, FLG_T, top0 - FLG_BOT,
+                                       x=(lo + hi) / 2, y=ym, z=(FLG_BOT + top0) / 2))
     return plate
 
 
@@ -213,8 +228,8 @@ def _pickup_xclamp():
     """Protective shim between the side clamp screw and the pickup -Y face (spreads
     the screw load so no metal digs the pickup). Pushed +Y. Built in place at the
     nominal pickup X (build.py shifts it to the actual pickup)."""
-    return box_at(24.0, 2.5, 9.0,          # bears on the pickup -Y face, above the Z-plate
-                  x=PIECE_CTR, y=-52.5, z=CL_Z)
+    return box_at(24.0, 2.0, 9.0,          # bears on the pickup -Y face, clear of the -Y comb
+                  x=PIECE_CTR, y=-52.3, z=CL_Z)
 
 
 def _filler(slot):
