@@ -85,11 +85,14 @@ FLOOR_T   = 1.5                                            # motor ribs (tops at
 ZPL_T     = 2.0
 ZPL_TOP   = PM.PK_BOT                                      # pickup sits on the plate top
 ZPL_BOT   = ZPL_TOP - ZPL_T
-# 3 height set-screws UNDER the plate (fixed; reached from below). Spread wide for
-# a stable 3-point lift -- under the PLATE, not the pickup, so they never limit
-# where the pickup sits.
-HEIGHT_SCREWS = [(PIECE_CTR - 18.0, 30.0), (PIECE_CTR - 18.0, -30.0),
-                 (PIECE_CTR + 18.0, 0.0)]
+SPINE_W   = 16.0                                          # central spine carrying the bosses
+FLG_T     = 2.0                                           # Z-plate guide-flange thickness
+FLG_BOT   = -13.0                                         # flange bottom (rides the skirts)
+# ONE height screw lifts the plate, dropped into whichever of these 3 floor holes
+# sits nearest the pickup -- the full-width plate spreads the load, so the screw
+# needn't be exactly under the pickup centre. The plate's +/-Y flanges ride the
+# skirt inner faces so it can only move in Z (no see-saw on the single screw).
+HEIGHT_HOLES = [PIECE_CTR - 18.0, PIECE_CTR, PIECE_CTR + 18.0]
 HSCREW_CLR = PM.HSCREW_D + 0.4                            # tapped/insert hole for the screw
 CL_Z      = -4.0                                          # side clamp screw / shim height
 
@@ -156,11 +159,10 @@ def _band(xa, xb, *, ui=False):
 
 
 def _pickup_piece():
-    """3-slot deck panel that carries the pickup as a TRAY: an opening to poke
-    through, two depending side skirts (+Y = reference, -Y = clamp) + a floor
-    that carries the three height set-screws, and a clamp-screw hole in the -Y
-    skirt. The pickup rests on the separate Z-plate (see _pickup_zplate), so the
-    screws under the floor never limit where the pickup sits in X."""
+    """3-slot deck panel that carries the pickup. It's a pocket bounded by two
+    side skirts (+Y = reference, -Y = clamp) and two end walls; the Z-plate drops
+    into it and the pickup rests on the plate. A central spine carries 3 height-
+    screw holes (reached from below); a clamp-screw hole pierces the -Y skirt."""
     body = _deck_body(PIECE_X0, PIECE_X1)
     # deck opening (pickup pokes through; offset -Y to give the clamp shim room)
     body = body.cut(box_at(OPEN_LEN, OPEN_YW, (TZ - BZ) + 2,
@@ -169,24 +171,34 @@ def _pickup_piece():
         body = body.union(box_at(OPEN_LEN + 2 * WALL, SKIRT_T, BZ - FLOOR_BOT,
                                  x=OPEN_CTR, y=s * y_in + s * SKIRT_T / 2,
                                  z=(BZ + FLOOR_BOT) / 2))
+    for xe in (PIECE_X0 - WALL / 2, PIECE_X1 + WALL / 2):   # end walls (stop plate X)
+        body = body.union(box_at(WALL, OPEN_YW, BZ - FLOOR_BOT,
+                                 x=xe, y=OPEN_YC, z=(BZ + FLOOR_BOT) / 2))
     # clamp-screw hole through the -Y skirt (threaded; tip drives the shim +Y)
     body = body.cut(cyl_y(PM.CSCREW_D + 0.4, SKIRT_T + 2.0,
                           y0=-(HY_CLAMP + SKIRT_T + 1.0), x=PIECE_CTR, z=CL_Z))
-    # floor (ties the skirts; carries the 3 height-screw bosses, reached from below)
-    body = body.union(box_at(OPEN_LEN + 2 * WALL, OPEN_YW + 2 * SKIRT_T, FLOOR_T,
-                             x=OPEN_CTR, y=OPEN_YC, z=FLOOR_BOT + FLOOR_T / 2))
-    for hx, hy in HEIGHT_SCREWS:                    # threaded bosses + clearance
-        body = body.union(cyl(8.0, 3.5, z=FLOOR_BOT).translate((hx, hy, 0)))
-        body = body.cut(cyl(HSCREW_CLR, 6.0, z=FLOOR_BOT - 1.0).translate((hx, hy, 0)))
+    # central spine (Y=0) carrying the 3 height-screw bosses, reached from below
+    body = body.union(box_at(OPEN_LEN + 2 * WALL, SPINE_W, FLOOR_T,
+                             x=OPEN_CTR, y=0, z=FLOOR_BOT + FLOOR_T / 2))
+    for hx in HEIGHT_HOLES:                         # threaded boss + clearance hole
+        body = body.union(cyl(8.0, 2.0, z=FLOOR_BOT).translate((hx, 0, 0)))
+        body = body.cut(cyl(HSCREW_CLR, 6.0, z=FLOOR_BOT - 1.0).translate((hx, 0, 0)))
     return heal(body)
 
 
 def _pickup_zplate():
-    """Full-opening height plate: the pickup rests on its top, the 3 height screws
-    lift it, and it slides only in Z within the piece pocket (so the pickup can sit
-    anywhere across the +/-CLAMP fine-X range). Built in place."""
-    return box_at(OPEN_LEN - 0.8, OPEN_YW - 0.8, ZPL_T,
-                  x=OPEN_CTR, y=OPEN_YC, z=(ZPL_BOT + ZPL_TOP) / 2)
+    """Full-width height plate the pickup rests on, lifted by the single height
+    screw. Downward +/-Y flanges ride the skirt inner faces so the plate moves in
+    strict flat Z (no see-saw) -- that's the wall joinery. Full-width so the pickup
+    can be installed anywhere across its X range. Built in place."""
+    plate = box_at(OPEN_LEN - 0.8, OPEN_YW - 0.8, ZPL_T,
+                   x=OPEN_CTR, y=OPEN_YC, z=(ZPL_BOT + ZPL_TOP) / 2)
+    for y_in, s in ((HY_REF, 1), (HY_CLAMP, -1)):   # tall guide flanges on the rails
+        y_out = s * (y_in - 0.3)                     # 0.3 sliding clr to the skirt face
+        plate = plate.union(box_at(OPEN_LEN - 0.8, FLG_T, ZPL_TOP - FLG_BOT,
+                                   x=OPEN_CTR, y=y_out - s * FLG_T / 2,
+                                   z=(FLG_BOT + ZPL_TOP) / 2))
+    return plate
 
 
 def _pickup_xclamp():

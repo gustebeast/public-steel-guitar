@@ -257,11 +257,11 @@ def _pickup_mount_components():
     out = [("pickup", PM.pickup_demo().translate((PICKUP_X, 0, PM.PK_TOP))),
            ("pickup_zplate", TP.pickup_zplate),
            ("pickup_xclamp", TP.pickup_xclamp)]
-    # 3 height set-screws lift the Z-plate FROM BELOW (tips at the plate bottom);
-    # they're under the plate, not the pickup, so they don't limit its X position
-    for k, (hx, hy) in enumerate(TP.HEIGHT_SCREWS):
-        out.append((f"height_screw_{k}",
-                    PM.height_screw().translate((hx, hy, TP.ZPL_BOT))))
+    # ONE height screw lifts the Z-plate from below, in whichever of the 3 holes
+    # sits nearest the pickup (the plate spreads the load + its flanges keep it
+    # flat, so a single screw suffices and one knob sets the height)
+    hx = min(TP.HEIGHT_HOLES, key=lambda h: abs(h - PICKUP_X))
+    out.append(("height_screw", PM.height_screw().translate((hx, 0.0, TP.ZPL_BOT))))
     # side clamp screw threads the -Y skirt; its tip drives the shim +Y into the
     # pickup, pinning it against the +Y reference skirt (friction holds X, and with
     # the plate under it, Z)
