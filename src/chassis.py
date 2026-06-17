@@ -225,13 +225,21 @@ def _build_full() -> cq.Workplane:
     for _rx in _RIB_X:
         for _ly in RIB_RACE_Y:
             body = body.cut(_diamond(_ly, -70.65, 3.5, _rx, _RIB_W + 2.0))
-    # top-plate retention grooves: a slot cut INTO each rail from the inner
-    # face (s = into-rail direction), z 3.5..7 with a ~3 mm lip up to the top
+    # top-plate retention grooves: a 45 WEDGE slot cut into each rail inner face
+    # (s = into-rail direction), z -4..-1. The wedge (full height at the mouth,
+    # tapering to a point) is self-supporting for the rail's print (the lip's
+    # underside slopes at 45) AND mates the deck's wedge tongue -- the deck and the
+    # rail print in opposite directions, so the joinery slopes on top AND bottom.
+    _gdep = (TP_GZ1 - TP_GZ0) / 2.0
+    _gmz = (TP_GZ0 + TP_GZ1) / 2.0
     for _yf, _s in ((Y_HI - T / 2, 1), (Y_LO + T / 2, -1)):
-        body = body.cut(box_at(TP_X0 - TP_X1 + 4, TP_GROOVE_D + 0.5,
-                               TP_GZ1 - TP_GZ0, x=(TP_X0 + TP_X1) / 2,
-                               y=_yf + _s * TP_GROOVE_D / 2.0,
-                               z=(TP_GZ0 + TP_GZ1) / 2))
+        prof = [(_yf - _s * 0.3, TP_GZ0 - 0.3),
+                (_yf + _s * (_gdep + 0.5), _gmz),
+                (_yf - _s * 0.3, TP_GZ1 + 0.3)]
+        pts = [cq.Vector(TP_X1 - 2.0, py, pz) for py, pz in prof]
+        face = cq.Face.makeFromWires(cq.Wire.makePolygon([*pts, pts[0]]))
+        body = body.cut(cq.Workplane("XY").add(
+            cq.Solid.extrudeLinear(face, cq.Vector((TP_X0 + 2.0) - (TP_X1 - 2.0), 0, 0))))
     # deck-panel +X stop: a deck-level cross-ledge just -X of the carriages
     # (-13.6). The +X-most panel butts it, so panels can't slide into the
     # changer. A deck-level cover CAN'T continue over the changer itself

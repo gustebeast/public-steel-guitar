@@ -142,10 +142,19 @@ def _deck_body(xa, xb):
     BY0, BY1 = YL + 0.5, YH - 0.5        # body sits BETWEEN the rails (recessed)
     body = box_at(xa - xb, BY1 - BY0, TZ - BZ, x=xm, y=(BY0 + BY1) / 2,
                   z=(BZ + TZ) / 2)
+    dep = (GZ1 - GZ0) / 2.0                          # wedge depth (45 top+bottom -> a point)
+    mz = (GZ0 + GZ1) / 2.0
     for inner, s in ((YL, -1), (YH, 1)):            # s = into-rail direction
-        t0, t1 = inner + s * (GROOVE_D - 0.3), inner - s * 2.0      # tongue
-        body = body.union(box_at(xa - xb, abs(t1 - t0), GZ1 - GZ0,
-                                 x=xm, y=(t0 + t1) / 2, z=(GZ0 + GZ1) / 2))
+        # tongue: a base in the deck body + a SYMMETRIC 45 wedge tip into the rail
+        # groove. The deck and the chassis groove print in opposite directions, so
+        # both top and bottom must slope (each part uses the face that overhangs in
+        # its own print); the two opposed wedges + the rigid deck still retain it.
+        t1 = inner - s * 2.0                          # inboard base edge
+        prof = [(t1, GZ0), (inner, GZ0), (inner + s * dep, mz), (inner, GZ1), (t1, GZ1)]
+        pts = [cq.Vector(xb, py, pz) for py, pz in prof]
+        face = cq.Face.makeFromWires(cq.Wire.makePolygon([*pts, pts[0]]))
+        body = body.union(cq.Workplane("XY").add(
+            cq.Solid.extrudeLinear(face, cq.Vector(xa - xb, 0, 0))))
         w0, w1 = inner - s * 0.5, inner - s * 3.0                   # web riser
         body = body.union(box_at(xa - xb, abs(w1 - w0), BZ - (GZ1 - 1.0),
                                  x=xm, y=(w0 + w1) / 2, z=((GZ1 - 1.0) + BZ) / 2))
