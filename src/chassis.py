@@ -46,8 +46,9 @@ _RIB_W   = 10.0                        # cross-rib X-width (chunky section → s
 TP_X0, TP_X1   = -16.0, -638.0         # groove X span; open at the -X rail end so
                                        # the deck panels slide out -X once the
                                        # (removable) keyhead endplate is off
-TP_GZ0, TP_GZ1 = -4.0, -1.0            # recessed deck (10 mm under strings):
-                                       # groove z -4..-1, ~9 mm rail lip above
+TP_GZ0, TP_GZ1 = 0.0, 6.0              # groove spans the DECK BODY z-plane (0..6, the
+                                       # recessed deck) so the tenon sits in-plane (no
+                                       # hanging tongue); ~4 mm rail lip above (z6..10)
 TP_GROOVE_D    = 3.0                    # depth into the rail (Y)
 # A chunky rail-to-rail rib UNDER EACH MOTOR (the motor rests on it, its wall sits
 # on it, and it ties the two rails) replaces a solid floor — far lighter for the
@@ -230,16 +231,17 @@ def _build_full() -> cq.Workplane:
     # tapering to a point) is self-supporting for the rail's print (the lip's
     # underside slopes at 45) AND mates the deck's wedge tongue -- the deck and the
     # rail print in opposite directions, so the joinery slopes on top AND bottom.
-    _gdep = (TP_GZ1 - TP_GZ0) / 2.0
+    _ghh = (TP_GZ1 - TP_GZ0 + 0.6) / 2.0    # half the clearance-expanded height -> 45 slopes
     _gmz = (TP_GZ0 + TP_GZ1) / 2.0
-    for _yf, _s in ((Y_HI - T / 2, 1), (Y_LO + T / 2, -1)):
-        prof = [(_yf - _s * 0.3, TP_GZ0 - 0.3),
-                (_yf + _s * (_gdep + 0.5), _gmz),
+    _gx0, _gx1 = TP_X1 - 2.0, -17.5          # +X end stops at the +X stop ledge's -X face
+    for _yf, _s in ((Y_HI - T / 2, 1), (Y_LO + T / 2, -1)):   # (z0..6 groove must NOT
+        prof = [(_yf - _s * 0.3, TP_GZ0 - 0.3),               #  cut the deck-level ledge)
+                (_yf - _s * 0.3 + _s * _ghh, _gmz),     # point: depth = half-height -> 45 deg
                 (_yf - _s * 0.3, TP_GZ1 + 0.3)]
-        pts = [cq.Vector(TP_X1 - 2.0, py, pz) for py, pz in prof]
+        pts = [cq.Vector(_gx0, py, pz) for py, pz in prof]
         face = cq.Face.makeFromWires(cq.Wire.makePolygon([*pts, pts[0]]))
         body = body.cut(cq.Workplane("XY").add(
-            cq.Solid.extrudeLinear(face, cq.Vector((TP_X0 + 2.0) - (TP_X1 - 2.0), 0, 0))))
+            cq.Solid.extrudeLinear(face, cq.Vector(_gx1 - _gx0, 0, 0))))
     # deck-panel +X stop: a deck-level cross-ledge just -X of the carriages
     # (-13.6). The +X-most panel butts it, so panels can't slide into the
     # changer. A deck-level cover CAN'T continue over the changer itself

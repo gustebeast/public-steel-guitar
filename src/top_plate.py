@@ -36,9 +36,8 @@ YH = CH.Y_HI - CH.T / 2                 # +Y rail inner face (+54.75)
 TZ = EL.DECK_TOP                        # deck surface (10 mm under strings = +6)
 BZ = TZ - 6.0                           # 6 mm deck, recessed between the rails
 
-# rail retention groove (cut into chassis by chassis.py; we ride it)
-GZ0, GZ1 = CH.TP_GZ0, CH.TP_GZ1               # z 3.5..7
-GROOVE_D = CH.TP_GROOVE_D                      # depth into the rail (Y)
+# The deck tenons sit in the panel's own z-plane (BZ..TZ) and ride the matching
+# rail groove (cut in chassis.py at the same z-band, CH.TP_GZ0..TP_GZ1).
 
 PX0 = -17.5                             # +X deck end: panels butt the chassis stop
                                         # ledge just -X of the carriages (-13.6)
@@ -136,31 +135,23 @@ def _fret_lines(plate, x0, x1):
 
 
 def _deck_body(xa, xb):
-    """Bare deck panel, xa (+X) to xb (-X): body recessed between the rails with a
-    retention tongue + web down each Y edge into the rail groove."""
+    """Bare deck panel, xa (+X) to xb (-X): a slab recessed between the rails whose
+    ±Y edges ARE the retention tenons -- a full-height symmetric 45 wedge in the
+    panel's own z-plane (no hanging tongue, no web). The wedge rides the matching
+    rail groove; it's 45 on top AND bottom (deck and rail print opposite ways) and
+    the two opposed wedges + the rigid panel retain it."""
     xm = (xa + xb) / 2
     BY0, BY1 = YL + 0.5, YH - 0.5        # body sits BETWEEN the rails (recessed)
     body = box_at(xa - xb, BY1 - BY0, TZ - BZ, x=xm, y=(BY0 + BY1) / 2,
                   z=(BZ + TZ) / 2)
-    dep = (GZ1 - GZ0) / 2.0                          # wedge depth (45 top+bottom -> a point)
-    mz = (GZ0 + GZ1) / 2.0
-    for inner, s in ((YL, -1), (YH, 1)):            # s = into-rail direction
-        # tongue: a base in the deck body + a SYMMETRIC 45 wedge tip into the rail
-        # groove. The deck and the chassis groove print in opposite directions, so
-        # both top and bottom must slope (each part uses the face that overhangs in
-        # its own print); the two opposed wedges + the rigid deck still retain it.
-        t1 = inner - s * 2.0                          # inboard base edge
-        edge = inner - s * 0.5                         # body edge: the wedge springs from
-        # here (where the web backs it), so the protruding part is ALL 45 wedge --
-        # no flat ledge sticking past the supported body
-        prof = [(t1, GZ0), (edge, GZ0), (edge + s * dep, mz), (edge, GZ1), (t1, GZ1)]
+    dep = (TZ - BZ) / 2.0                            # full-height 45 wedge -> point
+    mz = (BZ + TZ) / 2.0
+    for edge, s in ((BY0, -1), (BY1, 1)):           # ±Y body edge -> wedge tenon
+        prof = [(edge, BZ), (edge + s * dep, mz), (edge, TZ)]
         pts = [cq.Vector(xb, py, pz) for py, pz in prof]
         face = cq.Face.makeFromWires(cq.Wire.makePolygon([*pts, pts[0]]))
         body = body.union(cq.Workplane("XY").add(
             cq.Solid.extrudeLinear(face, cq.Vector(xa - xb, 0, 0))))
-        w0, w1 = inner - s * 0.5, inner - s * 3.0                   # web riser
-        body = body.union(box_at(xa - xb, abs(w1 - w0), BZ - (GZ1 - 1.0),
-                                 x=xm, y=(w0 + w1) / 2, z=((GZ1 - 1.0) + BZ) / 2))
     return body
 
 
