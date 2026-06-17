@@ -32,7 +32,11 @@ from . import dimensions as D
 from .helpers import box_at, cyl, cyl_y
 
 # ── the pickup itself (DEMO dummy; the piece adjusts around it) ───────────────
-PK_W, PK_L, PK_H = 33.0, 99.0, 20.0            # X (width), Y (length), Z (height)
+PK_W, PK_L, PK_H = 33.0, 99.0, 19.0            # X (width), Y (length), Z (height)
+PK_H_MIN = 15.0                                 # shortest pickup we expect to fit; the
+                                               # carrier walls are capped at this so they
+                                               # never poke above the pickup top (= the
+                                               # strings) even raised all the way up
 GAP     = 3.0                                   # pickup top -> heaviest string bottom
 PK_TOP  = D.STRING_Z - max(D.STRING_GAUGE) - GAP
 PK_BOT  = PK_TOP - PK_H

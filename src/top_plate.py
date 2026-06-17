@@ -23,6 +23,8 @@ panels downstream never shift.
 
 from __future__ import annotations
 
+import cadquery as cq
+
 from . import dimensions as D
 from . import chassis as CH
 from . import electronics as EL
@@ -90,8 +92,11 @@ FLG_T     = 2.5                                           # Z-plate guide-flange
 FLG_BOT   = ZPL_BOT                                       # flange bottoms FLUSH with the plate
                                                           # body -> flat print bottom (the
                                                           # carrier guide TRACK still runs the
-FLG_TOP   = TZ - 0.5                                      # full -13.5..+6; the flange rides its
-                                                          # upper part, ~ -10.8 .. +5.5)
+                                                          # full -13.5..+6; the flange rides it)
+# wall TOP is capped one shortest-pickup-height above the rest surface, so that
+# even raising the shortest pickup until it touches the strings, the walls land at
+# the pickup top -- never above it (never fouling the bar/strings)
+FLG_TOP   = ZPL_TOP + PM.PK_H_MIN
 # Z height: ONE central screw lifts the plate (reached from below); the plate's
 # +/-Y flanges ride the skirt inner faces so it can only move in flat Z (no
 # see-saw) -> one knob sets the height.
@@ -208,19 +213,21 @@ def _pickup_zplate():
     yp = (HY_REF - 0.3) - FLG_T / 2                   # rides the +Y carrier face (0.3 clr)
     plate = plate.union(box_at(OPEN_LEN - 0.8, FLG_T, FLG_TOP - FLG_BOT,
                                x=OPEN_CTR, y=yp, z=(FLG_BOT + FLG_TOP) / 2))
-    # -Y comb: top bar (full X, above the clamp screws) + fingers in the hole gaps
+    # -Y guide: a solid wall like +Y, but with a SELF-SUPPORTING notch over each
+    # clamp-screw hole -- open at the bottom (the screw passes; print bed is the
+    # plate bottom) and closing to a point at 45 deg above the screw, so the wall
+    # prints -z->+z with no flat bridge over the holes.
     ym = -(HY_CLAMP - 0.3) + FLG_T / 2
-    top0 = CL_Z + PM.CSCREW_D / 2 + 1.5              # top-bar bottom (clears the screws)
-    plate = plate.union(box_at(OPEN_LEN - 0.8, FLG_T, FLG_TOP - top0,
-                               x=OPEN_CTR, y=ym, z=(top0 + FLG_TOP) / 2))
-    hole_clr = PM.CSCREW_D / 2 + 2.0
-    xs = sorted([OPEN_X1] + CLAMP_HOLES + [OPEN_X0])
-    for a, b in zip(xs[:-1], xs[1:]):                # one finger per gap between holes
-        lo = a + (hole_clr if a in CLAMP_HOLES else 0.6)
-        hi = b - (hole_clr if b in CLAMP_HOLES else 0.6)
-        if hi - lo > 2.0:
-            plate = plate.union(box_at(hi - lo, FLG_T, top0 - FLG_BOT,
-                                       x=(lo + hi) / 2, y=ym, z=(FLG_BOT + top0) / 2))
+    plate = plate.union(box_at(OPEN_LEN - 0.8, FLG_T, FLG_TOP - FLG_BOT,
+                               x=OPEN_CTR, y=ym, z=(FLG_BOT + FLG_TOP) / 2))
+    nz0 = CL_Z + PM.CSCREW_D / 2 + 0.5              # screw clears below here
+    half = PM.CSCREW_D / 2 + 2.0                    # notch half-width
+    for cx in CLAMP_HOLES:
+        pts = [(cx - half, FLG_BOT - 1.0), (cx + half, FLG_BOT - 1.0),
+               (cx + half, nz0), (cx, nz0 + half), (cx - half, nz0)]   # box + 45 roof
+        notch = (cq.Workplane("XZ").polyline(pts).close()
+                 .extrude(10.0, both=True).translate((0, ym, 0)))
+        plate = plate.cut(notch)
     return plate
 
 
@@ -228,7 +235,7 @@ def _pickup_xclamp():
     """Protective shim between the side clamp screw and the pickup -Y face (spreads
     the screw load so no metal digs the pickup). Pushed +Y. Built in place at the
     nominal pickup X (build.py shifts it to the actual pickup)."""
-    return box_at(24.0, 2.0, 9.0,          # bears on the pickup -Y face, clear of the -Y comb
+    return box_at(24.0, 2.0, 7.0,          # bears on the pickup -Y face, above the plate top
                   x=PIECE_CTR, y=-52.3, z=CL_Z)
 
 
