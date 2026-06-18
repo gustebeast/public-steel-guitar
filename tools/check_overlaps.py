@@ -109,7 +109,8 @@ def intended(na, nb) -> bool:
     tp = {base(na), base(nb)}
     if "top_plate" in tp and tp & {"chassis", "top_plate", "oled", "joystick",
                                    "pickup", "pickup_zplate", "pickup_xclamp",
-                                   "height_screw", "clamp_screw"}:
+                                   "height_screw", "clamp_screw",
+                                   "bridge_endplate", "keyhead_endplate"}:
         return True
     # adjacent chassis segments meet at their sliding-dovetail joints (one frame)
     if base(na) == base(nb) == "chassis":

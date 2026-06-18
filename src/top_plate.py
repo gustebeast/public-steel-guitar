@@ -36,14 +36,13 @@ YH = CH.Y_HI - CH.T / 2                 # +Y rail inner face (+54.75)
 TZ = EL.DECK_TOP                        # deck surface (10 mm under strings = +6)
 BZ = TZ - 6.0                           # 6 mm deck, recessed between the rails
 
-# Deck tenons sit in the panel's own z-plane (BZ..TZ) and ride the matching rail
-# mortise (chassis.py, same z-band). The joint is a SLIDING DOVETAIL so it ties
-# the rails in Y (resists the walls spreading), not just a wedge.
-DT_NECK = CH.TP_DT_NECK                # rail-face -> waist depth (45 deg neck)
-DT_HEAD = CH.TP_DT_HEAD                # rail-face -> head-tip depth (= NECK + 45 flare)
+# Deck joint: each plate CAPS both rails and drops a vertical DOVETAIL tongue down
+# the rail centre-line into a rail-top groove (chassis.py). Wide foot, narrow mouth
+# -> +Z retention (plates can't fall out inverted) AND a Y-tie (the inboard groove
+# wall stops the rails spreading). The tongue runs along X -> plates slide out -X.
 
-PX0 = -17.5                             # +X deck end: panels butt the chassis stop
-                                        # ledge just -X of the carriages (-13.6)
+PX0 = -17.5                             # +X deck end: panels butt the bridge endplate
+                                        # shelf shoulder (which also locks that plate)
 PX1 = -607.0                            # -X deck end (groove runs on to the rail end)
 
 # ── band slots at the bridge end ─────────────────────────────────────────────
@@ -138,30 +137,21 @@ def _fret_lines(plate, x0, x1):
 
 
 def _deck_body(xa, xb):
-    """Bare deck panel, xa (+X) to xb (-X): a slab recessed between the rails whose
-    ±Y edges ARE the retention tenons -- a full-height symmetric 45 wedge in the
-    panel's own z-plane (no hanging tongue, no web). The wedge rides the matching
-    rail groove; it's 45 on top AND bottom (deck and rail print opposite ways) and
-    the two opposed wedges + the rigid panel retain it."""
+    """Bare deck plate, xa (+X) to xb (-X): a slab that CAPS both rails (the chassis
+    lowers their tops to z0 across the deck span) with a vertical DOVETAIL tongue
+    dropping down each rail centre-line into the rail-top groove. Wide foot, narrow
+    mouth -> the plate can't lift out when inverted, and the tongue ties the rails
+    in Y. The tongue runs along X, so the plate still slides out -X."""
     xm = (xa + xb) / 2
-    BY0, BY1 = YL + 0.5, YH - 0.5        # body sits BETWEEN the rails (recessed)
+    BY0 = CH.Y_LO - CH.T / 2             # cap from the -Y rail outer face ...
+    BY1 = CH.Y_HI + CH.T / 2             # ... to the +Y rail outer face
     body = box_at(xa - xb, BY1 - BY0, TZ - BZ, x=xm, y=(BY0 + BY1) / 2,
                   z=(BZ + TZ) / 2)
-    # SLIDING DOVETAIL tenon on each ±Y edge: full height at the rail face, necked
-    # to a waist (DT_W/2 half-height) NECK mm into the rail, then flared back to
-    # full height at the head HEAD mm deep. The head is captured behind the waist
-    # -> ties the rails in Y (can't pull apart); it still slides out -X. Necks/
-    # flares are 45 so each part prints (deck and rail go opposite ways).
-    mz = (BZ + TZ) / 2.0
-    wh = (TZ - BZ) / 2.0 - DT_NECK                   # waist half-height (45 neck)
-    for inner, s in ((YL, -1), (YH, 1)):
-        edge = inner - s * 0.5                        # recessed body edge
-        prof = [(edge, BZ), (inner, BZ),
-                (inner + s * DT_NECK, mz - wh),       # neck down to the waist (45)
-                (inner + s * DT_HEAD, BZ),            # flare back out to the head tip (45)
-                (inner + s * DT_HEAD, TZ),
-                (inner + s * DT_NECK, mz + wh),
-                (inner, TZ), (edge, TZ)]
+    MW, FLR, DEP = CH.TP_TG_MW, CH.TP_TG_FLR, CH.TP_TG_DEPTH
+    for yc in (CH.Y_HI, CH.Y_LO):                     # dovetail tongue down each rail
+        prof = [(yc - MW, BZ), (yc + MW, BZ),         # mouth (narrow) at the deck bottom
+                (yc + MW + FLR, BZ - DEP),            # flare to the wide foot ...
+                (yc - MW - FLR, BZ - DEP)]            # ... DEP below (in the rail groove)
         pts = [cq.Vector(xb, py, pz) for py, pz in prof]
         face = cq.Face.makeFromWires(cq.Wire.makePolygon([*pts, pts[0]]))
         body = body.union(cq.Workplane("XY").add(

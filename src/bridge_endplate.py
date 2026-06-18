@@ -122,6 +122,34 @@ def _build() -> cq.Workplane:
     for sy in (-D.BRIDGE_AXLE_Y, D.BRIDGE_AXLE_Y):                    # edge webs rail→arm
         body = body.union(box_at(X1 - _SRX, ARM_W, z_lo - sr_bot,     # down to the rail bottom
                                  x=(X1 + _SRX) / 2, y=sy, z=(z_lo + sr_bot) / 2))
+    # +X SHELF: reach −X over each rail top (the chassis shaved the rail there) so
+    # the +X-most deck plate locks this endplate. CAPTURE zone (TP_EP_X0..TP_EP_GX):
+    # a z−6..0 block carrying the deck dovetail GROOVE section — the deck plate's
+    # tongue slides in and its wide foot is captured, pinning the endplate in +Z.
+    # +X part (TP_EP_GX..X_BRIDGE): a solid z−6..6 shelf, its −X shoulder the deck
+    # panels' +X stop, fused into the cap.
+    EPX0, EGX = CH.TP_EP_X0, CH.TP_EP_GX
+    GFL = CH.TP_GZ0 - CH.TP_TG_DEPTH
+    MW, FLR, DEP, C = CH.TP_TG_MW, CH.TP_TG_FLR, CH.TP_TG_DEPTH, CH.TP_TG_CLR
+    for yc in (CH.Y_HI, CH.Y_LO):
+        blk = box_at(EGX - EPX0, CH.T, CH.TP_GZ0 - GFL,
+                     x=(EPX0 + EGX) / 2, y=yc, z=(CH.TP_GZ0 + GFL) / 2)
+        prof = [(yc - MW - C, CH.TP_GZ0 + 0.1), (yc + MW + C, CH.TP_GZ0 + 0.1),
+                (yc + MW + FLR + C, CH.TP_GZ0 - DEP), (yc - MW - FLR - C, CH.TP_GZ0 - DEP)]
+        pts = [cq.Vector(EPX0, py, pz) for py, pz in prof]
+        face = cq.Face.makeFromWires(cq.Wire.makePolygon([*pts, pts[0]]))
+        blk = blk.cut(cq.Workplane("XY").add(
+            cq.Solid.extrudeLinear(face, cq.Vector(EGX - EPX0, 0, 0))))
+        body = body.union(blk)
+        body = body.union(box_at(X0 - EGX, CH.T, CH.TP_GZ1 - GFL,
+                                 x=(EGX + X0) / 2, y=yc, z=(CH.TP_GZ1 + GFL) / 2))
+    # −Y TOP COVER (the side benefit): the −Y shelf widens inboard over the jack bay
+    # to a field edge clear of the −42.8 strings, so the endplate roofs its own −Y
+    # half (z0..6, flush with the deck) above the output jacks.
+    ROOF_YIN, ROOF_YOUT = -50.0, CH.Y_LO - CH.T / 2
+    body = body.union(box_at(X0 - EGX, ROOF_YIN - ROOF_YOUT, CH.TP_GZ1 - CH.TP_GZ0,
+                             x=(EGX + X0) / 2, y=(ROOF_YIN + ROOF_YOUT) / 2,
+                             z=(CH.TP_GZ1 + CH.TP_GZ0) / 2))
     # GUIDE-ROD LEDGES (see the GR_* block above): upper = stop bar + drop-in
     # holes; lower = bottom stop + blind landing sockets. Arm to arm. Both bars
     # reach X ≥ +1.4 so the Ø2.55 rod holes are fully enclosed (−X wall 0.8).
