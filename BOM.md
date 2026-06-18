@@ -19,8 +19,9 @@ is commodity.
 | **Guide rod** | Ø2.5 × 28 mm hardened/ground dowel (DIN 6325, standard length) | 10 | [McMaster](https://www.mcmaster.com/products/hardened-dowel-pins/) · [eBay DIN6325 2.5 mm](https://www.ebay.com/itm/303389911894) | ~$0.5 ea | anti-rotation; drops in from the top through the stop bar's snug hole + the carriage's C-bore, landing in a blind socket — friction-held both ends (dab of glue optional) |
 | **Nut break dowel** | Ø2 × 4 mm steel dowel (52100) | 10 | [McMaster 91595A018](https://www.mcmaster.com/91595A018/) | $12.70 / pack | gauged break pins (the scale "0"); drop into their slots from above. (Clamps bear on solid PA6-GF — no anvil.) |
 | **M4 cup-tip set screw** | M4 × 0.7 cup-tip, 10 mm, alloy | 13 | [McMaster 91390A114](https://www.mcmaster.com/91390A114/) | $7.28 / pack 100 | clamps each plain string end onto its anvil (10) + 3 pickup-carrier height screws (the pickup rests on their tops; turn to set the string gap) |
-| **M4 heat-set insert** | M4 × 0.7 brass heat-set, 4.7 mm | 21 | [McMaster 94459A150](https://www.mcmaster.com/94459A150/) | $10.82 / pack 50 | 10 nut clamps + 4 nut-block + 4 leg-sleeve pinch collars + 3 pickup-carrier height-screw bosses; deeply buried (no pull-out) |
-| **M4 mount screw** | M4 × 0.7, 12 mm, 18-8 SS (button or socket head) | 9 | [McMaster 92095A192](https://www.mcmaster.com/92095A192/) | $14.77 / pack | 4 nut-block corner bolts + 1 pickup X/Y clamp screw (pulls the pickup flat to the -Y skirt: Y + yaw + X-lock + anti-fall; slides in its slot for fine X) + 4 leg-sleeve pinch bolts, into 94459A150 inserts; **M4 × 0.7** (coarse) to match the inserts — NOT the M4 × 0.5 fine-thread 90751A120 |
+| **M4 heat-set insert** | M4 × 0.7 brass heat-set, 4.7 mm | 17 | [McMaster 94459A150](https://www.mcmaster.com/94459A150/) | $10.82 / pack 50 | 10 nut clamps + 4 leg-sleeve pinch collars + 3 pickup-carrier height-screw bosses; deeply buried (no pull-out) |
+| **M4 mount screw** | M4 × 0.7, 12 mm, 18-8 SS (button or socket head) | 5 | [McMaster 92095A192](https://www.mcmaster.com/92095A192/) | $14.77 / pack | 1 pickup X/Y clamp screw (pulls the pickup flat to the -Y skirt: Y + yaw + X-lock + anti-fall; slides in its slot for fine X) + 4 leg-sleeve pinch bolts, into 94459A150 inserts; **M4 × 0.7** (coarse) to match the inserts — NOT the M4 × 0.5 fine-thread 90751A120 |
+| **M4 hold-down screw** | M4 × 18 mm, thread-forming for plastic | 1 | [McMaster](https://www.mcmaster.com/) | ~$8 / pack | the single +Z screw locking the merged keyhead nut-block endplate down — up from the floor bottom, thread-forming into its PA6-GF boss (the rest of the body is held by joinery) |
 | **Fasteners** | M3 (NEMA17 mounts), M2 (belt clamps) | — | [McMaster](https://www.mcmaster.com/) | — | commodity |
 
 ## Electronics (compute bay)
@@ -79,8 +80,8 @@ The motor still does all tuning (the nut block clamps; no manual tuners). The nu
 block is **reprintable per string set** — `STRING_GAUGE` in `dimensions.py` swaps
 between E9 and C6; the break pins re-gauge so string tops stay coplanar.
 
-Printed parts (no purchase): carriage, bridge_endplate, keyhead_endplate,
-chassis (×3 segments), nut_block, belt_clamp, screw_pulley, motor_pulley,
+Printed parts (no purchase): carriage, bridge_endplate, keyhead_endplate
+(merged with the nut block), chassis (×3 segments), belt_clamp, screw_pulley, motor_pulley,
 tension_fork (graded belt-tension lock set),
 the adjustable legs: leg_socket ×4, leg_segment ×8, leg_sleeve ×4,
 leg_shaft ×4 (PCTG/PA6-GF) plus leg_foot ×4 and leg_washer ×12 in **TPU**
@@ -98,8 +99,8 @@ parts excluded. PCTG $25/kg, PA6-GF $60/kg; PETG≈$25, TPU≈$30 (assumed).
 
 | Material | Mass | Cost | Main parts |
 |----------|------|------|-----------|
-| PCTG | ~2.9 kg | ~$73 | chassis ×3, endplates ×2, **top deck (pickup piece + bands + UI/keyhead panels, ~0.47 kg)**, legs, tray, pulleys |
-| PA6-GF | ~53 g | ~$3 | 10 carriages + nut block (load-critical) |
+| PCTG | ~2.9 kg | ~$73 | chassis ×3, bridge endplate, **top deck (pickup piece + bands + UI/keyhead panels, ~0.47 kg)**, legs, tray, pulleys |
+| PA6-GF | ~0.13 kg | ~$7 | 10 carriages + keyhead endplate incl. nut block (load-critical) |
 | PETG | ~32 g | ~$1 | 20 belt-splice clamps |
 | TPU | ~40 g | ~$1 | 4 feet + 12 anti-unscrew washers |
 | **Total** | ~3.0 kg | **~$78** | |

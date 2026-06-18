@@ -27,8 +27,9 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "freecad"))
 from freecad_view import show
 
 from . import dimensions as D
-from .helpers import heal
+from .helpers import heal, cyl
 from . import components as C
+from . import chassis as CH
 from .carriage import carriage, THICK as CARRIAGE_THICK, SEAT_Z as CARRIAGE_SEAT_Z
 from .bridge_endplate import bridge_endplate
 from .belt_clamp import belt_clamp
@@ -49,8 +50,7 @@ from . import legs as LG
 PARTS = {
     "carriage":        (partial(heal, carriage),      "carriage.step",        "PA6-GF, load-critical — ×10 identical"),
     "bridge_endplate": (partial(heal, bridge_endplate), "bridge_endplate.step", "PCTG — fused bridge end (screw support + bearing support + axle comb + box closure)"),
-    "keyhead_endplate": (lambda: heal(__import__("src.keyhead_endplate", fromlist=["e"]).keyhead_endplate), "keyhead_endplate.step", "PCTG — removable keyhead (-X) endplate: closes the box, caps the deck grooves, carries the nut-block inserts; lift off to slide the deck panels out -X"),
-    "nut_block":       (partial(heal, NB.nut_block),   "nut_block.step",       "PA6-GF — removable keyhead nut block (gauged break-edge + 2-row clamps; reprint per string set)"),
+    "keyhead_endplate": (lambda: heal(__import__("src.keyhead_endplate", fromlist=["e"]).keyhead_endplate), "keyhead_endplate.step", "PA6-GF — merged keyhead (-X) endplate + nut block (25 mm, one piece): closes the box, caps the deck grooves, gauged break-edge + 2-row clamps; drops in last, held by 1 screw"),
     "belt_clamp":      (partial(heal, belt_clamp),    "belt_clamp.step",      "PETG — GT2 belt splice clamp (print 2 per splice ×10)"),
     "screw_pulley":    (lambda: heal(C.screw_pulley()),  "screw_pulley.step",  "flanged 14T GT2 pulley, 45° top flange — ×10"),
     "motor_pulley":    (lambda: heal(C.motor_pulley()),  "motor_pulley.step",  "flanged 14T GT2 pulley, 45° outer flange — ×10"),
@@ -340,8 +340,9 @@ def collect_components():
     comps = [
         ("bridge_endplate", bridge_endplate),
         ("bridge_bearings", C.bridge_bearings()),
-        ("nut_block", NB.nut_block.translate((D.NUT_BLOCK_X, 0, D.STRING_Z))),
         ("keyhead_endplate", __import__("src.keyhead_endplate", fromlist=["e"]).keyhead_endplate),
+        ("keyhead_screw", cyl(4.0, 18.0, z=-74.0).union(cyl(7.5, 3.0, z=-77.0))
+         .translate((CH.KH_SCREW_X, 0.0, 0))),     # +Z hold-down (up from the floor)
     ]
     comps += [(f"chassis_{i}", seg) for i, seg in enumerate(chassis_segments)]
     comps += _pickup_mount_components()
@@ -357,7 +358,7 @@ def collect_components():
 _COLORS = {
     "carriage":        (0.27, 0.51, 0.71),   # PA6-GF — load-critical
     "bridge_endplate": (0.39, 0.58, 0.93),   # PA6-GF — load-critical
-    "keyhead_endplate": (0.42, 0.50, 0.62),   # PCTG — removable keyhead cap
+    "keyhead_endplate": (0.42, 0.50, 0.62),   # PA6-GF — keyhead endplate + nut block (merged)
     "belt_clamp":      (0.95, 0.55, 0.15),   # PETG
     "screw_pulley":    (0.00, 0.55, 0.55),
     "motor_pulley":    (0.00, 0.55, 0.55),
@@ -371,7 +372,7 @@ _COLORS = {
     "motor":           (0.22, 0.25, 0.27),   # charcoal
     "belt":            (0.13, 0.13, 0.13),   # GT2 black
     "string":          (0.85, 0.85, 0.85),
-    "nut_block":       (0.46, 0.52, 0.55),   # removable keyhead nut block
+    "keyhead_screw":   (0.55, 0.55, 0.58),   # +Z hold-down screw
     "break_dowel":     (0.75, 0.75, 0.78),   # steel dowel (gauged break pin)
     "set_screw":       (0.55, 0.55, 0.58),   # alloy set screw
     "chassis":         (0.46, 0.52, 0.55),   # PCTG frame

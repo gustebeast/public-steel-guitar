@@ -43,7 +43,8 @@ BZ = TZ - 6.0                           # 6 mm deck, recessed between the rails
 
 PX0 = -17.5                             # +X deck end: panels butt the bridge endplate
                                         # shelf shoulder (which also locks that plate)
-PX1 = -607.0                            # -X deck end (groove runs on to the rail end)
+PX1 = -611.0                            # -X deck end: flush with the merged keyhead
+                                        # nut-block endplate (its +X face at -611)
 
 # ── band slots at the bridge end ─────────────────────────────────────────────
 BAND_W   = 20.0                        # one slot

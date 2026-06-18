@@ -68,6 +68,9 @@ TP_TG_CLR      = 0.25                  # sliding clearance (groove = tongue + CL
 # above it; the rail provides the groove only -X of the capture zone.
 TP_EP_X0       = -30.0                  # endplate shelf -X end (capture-zone -X end)
 TP_EP_GX       = -17.5                  # capture-zone +X end = deck +X face / shelf shoulder
+KH_SCREW_X     = -623.5                 # merged keyhead nut-block endplate centre: the
+                                       # single +Z hold-down screw goes up here, from the
+                                       # floor bottom into the part (keyhead_endplate.py)
 # A chunky rail-to-rail rib UNDER EACH MOTOR (the motor rests on it, its wall sits
 # on it, and it ties the two rails) replaces a solid floor — far lighter for the
 # strength. Plus a rib at the +X end (tying the rails behind the endplate) and one
@@ -275,6 +278,9 @@ def _build_full() -> cq.Workplane:
     # and sockets them (drops down to engage, glued).
     for yr in ENDPLATE_JOINT_Y:
         body = body.union(_tongue(X_BRIDGE, yr, depth=ENDPLATE_DT))
+    # keyhead hold-down: clearance through the floor for the +Z lock screw (inserted
+    # from the floor bottom, threads up into the merged keyhead nut-block endplate)
+    body = body.cut(cyl(4.5, 12.0, z=-76.5).translate((KH_SCREW_X, 0.0, 0)))
     return body
 
 
@@ -305,6 +311,16 @@ def _is_split(x):
     return any(abs(x - s) < 1e-6 for s in SPLIT_X)
 
 
+def _largest(seg):
+    """Keep only the largest solid: the lightening diamonds + wire raceways + joint
+    cuts can pinch off tiny disconnected slivers near the splits; those print as
+    loose chips. Drop them (each is <1 % of the body and isn't attached anyway)."""
+    sols = seg.val().Solids()
+    if len(sols) <= 1:
+        return seg
+    return cq.Workplane("XY").add(max(sols, key=lambda s: s.Volume()))
+
+
 def _segments():
     full = _build_full()
     # +X-most bound extends past the endplate tongues so they survive the segment cut
@@ -319,7 +335,7 @@ def _segments():
         if _is_split(a):                              # +X boundary split → −X side → tongue
             for yr in (Y_HI, Y_LO):
                 seg = seg.union(_tongue(a, yr))
-        segs.append(seg)
+        segs.append(_largest(seg))
     return segs
 
 

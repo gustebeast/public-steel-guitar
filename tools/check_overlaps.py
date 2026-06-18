@@ -65,14 +65,13 @@ GLOBAL_OK = {
     # into it, so motors mount to it
     frozenset({"chassis", "bridge_endplate"}), frozenset({"chassis", "motor"}),
     frozenset({"chassis", "string"}),
-    # removable nut block: sits on / bears against / bolts to the chassis; holds
-    # the strings + its gauged dowels + set screws
-    frozenset({"nut_block", "chassis"}), frozenset({"nut_block", "string"}),
-    frozenset({"nut_block", "break_dowel"}), frozenset({"nut_block", "set_screw"}),
-    # removable keyhead endplate: seats on the chassis rib/rails, the nut block
-    # bolts down through it, and it caps the deck-panel grooves
-    frozenset({"keyhead_endplate", "chassis"}), frozenset({"keyhead_endplate", "nut_block"}),
-    frozenset({"keyhead_endplate", "top_plate"}), frozenset({"keyhead_endplate", "string"}),
+    # merged keyhead endplate + nut block: seats on / caps the chassis, caps the
+    # deck-panel grooves, and holds the strings + their gauged dowels + set screws;
+    # one +Z hold-down screw ties it to the chassis floor
+    frozenset({"keyhead_endplate", "chassis"}), frozenset({"keyhead_endplate", "string"}),
+    frozenset({"keyhead_endplate", "top_plate"}),
+    frozenset({"keyhead_endplate", "break_dowel"}), frozenset({"keyhead_endplate", "set_screw"}),
+    frozenset({"keyhead_screw", "chassis"}), frozenset({"keyhead_screw", "keyhead_endplate"}),
     # pickup carrier: the pickup rests on the printed Z-plate (lifted by the 3
     # height screws) and is pinned by the clamp shim (driven by the side clamp
     # screw). Each part's contact with the piece is the top_plate rule below.

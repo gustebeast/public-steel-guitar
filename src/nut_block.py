@@ -1,7 +1,9 @@
-"""Nut block (×1) — keyhead string termination. PA6-GF (clamps bear on it).
+"""Nut block geometry (×1) — keyhead string termination. PA6-GF (clamps bear on it).
 
-REMOVABLE: bolts to the chassis keyhead (no glue) so it can be reprinted to match a
-different string set. Per string it does two jobs:
+This is now FUSED into the keyhead endplate (one printed piece — keyhead_endplate.py
+unions this geometry in); kept as its own module for the per-string layout + the
+constants the build uses to place the break dowels / set screws. Per string it does
+two jobs:
 
   1. Break edge — a hardened Ø2 dowel pin (DEMO) sets the open-string scale endpoint.
      Each pin sits at a GAUGED height (D.STRING_GAUGE) so every string TOP lands
@@ -13,7 +15,7 @@ different string set. Per string it does two jobs:
      deeply-buried brass heat-set insert (DEMO). Clamps alternate between TWO rows
      (even strings front, odd strings back) so each Ø5.6 insert has ~13 mm of pitch
      (thick walls → no pull-out). Print with high wall/floor counts for a solid clamp
-     floor. Bolts on at 4 corners (no glue) → reprintable per string set.
+     floor. Reprint the whole keyhead piece to match a different string set.
 
 Local frame: X=0 at the break edge, +X toward the bridge (speaking length); Z=0 at
 the string-top plane (= STRING_Z global); body hangs −Z.
@@ -45,10 +47,6 @@ BOSS_SQ  = 10.0                                 # clamp boss footprint
 INSERT_D = 5.6                                  # M4 heat-set install hole
 INSERT_L = 4.7
 SCREW_D  = 4.3                                  # M4 set-screw clearance
-BOLT_D   = 4.3                                  # M4 mount-bolt clearance (the 4 corner
-                                                # screws are M4×0.7×12, threading the same
-                                                # heat-set inserts as the clamps — was 3.4,
-                                                # an M3 hole the M4 screws couldn't pass)
 
 
 def _build() -> cq.Workplane:
@@ -82,12 +80,8 @@ def _build() -> cq.Workplane:
         body = body.cut(box_at(BOSS_SQ + 1, gw, BODY_TOP - GROOVE_FLOOR,   # groove through the boss
                                x=row_x, y=y, z=(BODY_TOP + GROOVE_FLOOR) / 2))
 
-    # mount: 4 corner bolts (string pull taken by the chassis compression wall; these
-    # just hold it down). Clear of the clamp rows.
-    for sx in (X_FRONT - 3.0, X_BACK + 3.0):
-        for sy in (-(HW - 4.0), HW - 4.0):
-            body = body.cut(cyl(BOLT_D, BODY_TOP - Z_BOT + 2, z=Z_BOT - 1)
-                            .translate((sx, sy, 0)))
+    # No mount bolts: this block is now FUSED into the keyhead endplate (one PA6-GF
+    # piece, keyhead_endplate.py) which drops in and is held by one screw + joinery.
     return body
 
 
