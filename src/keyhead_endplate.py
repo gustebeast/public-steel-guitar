@@ -41,6 +41,15 @@ def _build():
     for yf, s in ((YL, -1), (YH, 1)):
         w = w.union(box_at(11.0, 3.0, CH.Z_TOP - TAB_Z0,
                            x=KX, y=yf + s * 1.2, z=(CH.Z_TOP + TAB_Z0) / 2))
+    # cap each rail top (lowered to z0 here) and PLUG the deck groove so the panels
+    # can't slide out -X until the endplate is removed. The plug is only mouth-wide
+    # (no dovetail flare) so the endplate still lifts straight up +Z to come off.
+    MW, DEP, GZ = CH.TP_TG_MW, CH.TP_TG_DEPTH, CH.TP_GZ0
+    for yc, inner, outer in ((CH.Y_HI, YH, CH.Y_HI + CH.T / 2),
+                             (CH.Y_LO, YL, CH.Y_LO - CH.T / 2)):
+        w = w.union(box_at(T_EP, abs(outer - inner), CH.Z_TOP - GZ,
+                           x=KX, y=(inner + outer) / 2, z=(CH.Z_TOP + GZ) / 2))
+        w = w.union(box_at(T_EP, 2 * MW, DEP, x=KX, y=yc, z=GZ - DEP / 2))
     # nut-block bolt inserts (the block bolts down through into these)
     for sx in (D.NUT_BLOCK_X + NB.X_FRONT - 3.0, D.NUT_BLOCK_X + NB.X_BACK + 3.0):
         for sy in (-(NB.HW - 4.0), NB.HW - 4.0):

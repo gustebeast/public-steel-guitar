@@ -46,13 +46,28 @@ _RIB_W   = 10.0                        # cross-rib X-width (chunky section → s
 TP_X0, TP_X1   = -16.0, -638.0         # groove X span; open at the -X rail end so
                                        # the deck panels slide out -X once the
                                        # (removable) keyhead endplate is off
-TP_GZ0, TP_GZ1 = 0.0, 6.0              # groove spans the DECK BODY z-plane (0..6, the
-                                       # recessed deck) so the tenon sits in-plane (no
-                                       # hanging tongue); ~4 mm rail lip above (z6..10)
-TP_DT_NECK     = 2.0                    # sliding-dovetail: rail-face -> waist (45 neck)
-TP_DT_HEAD     = 4.0                    # rail-face -> head tip (= neck + 45 flare); the
-                                       # head is captured behind the waist -> ties the
-                                       # rails in Y (top_plate.py builds the matching tenon)
+TP_GZ0, TP_GZ1 = 0.0, 6.0              # deck plate z-plane: bottom rests on the rail
+                                       # top (lowered to z0 here), top = playing surface
+# DECK JOINT — a VERTICAL DOVETAIL tongue-and-groove. The deck plate caps the rail
+# (right-angle bend) and drops a dovetail tongue straight down into a groove milled
+# in the rail top. The foot is wider than the mouth, so the wide foot can't pull up
+# through the narrow mouth -> +Z retention (plates stay put when inverted). The
+# inboard groove wall is what the rail bears against if the rails try to spread, so
+# it also ties the rails in Y. The tongue runs along X -> plates still slide out -X.
+# top_plate.py builds the matching tongue; the rail top is lowered to z0 in the deck
+# X-span so the plate sits flush on top.
+TP_TG_DEPTH    = 6.0                    # tongue depth below the deck (z0 .. -DEPTH)
+TP_TG_MW       = 1.5                    # mouth half-width (at z0)
+TP_TG_FLR      = 0.8                    # dovetail flare per side over DEPTH (foot = MW+FLR)
+TP_TG_YC       = {1: Y_HI, -1: Y_LO}   # groove centre = each rail centre-line
+TP_TG_CLR      = 0.25                  # sliding clearance (groove = tongue + CLR)
+# +X bridge endplate seat: the endplate extends -X over the rail tops to TP_EP_X0
+# and carries a section of the deck groove (TP_EP_X0 .. TP_EP_GX, the capture zone)
+# that locks the +X-most deck plate's tongue -> locks the endplate in +Z. The rail
+# top is shaved to the groove FLOOR over the whole shelf span so the endplate fills
+# above it; the rail provides the groove only -X of the capture zone.
+TP_EP_X0       = -30.0                  # endplate shelf -X end (capture-zone -X end)
+TP_EP_GX       = -17.5                  # capture-zone +X end = deck +X face / shelf shoulder
 # A chunky rail-to-rail rib UNDER EACH MOTOR (the motor rests on it, its wall sits
 # on it, and it ties the two rails) replaces a solid floor — far lighter for the
 # strength. Plus a rib at the +X end (tying the rails behind the endplate) and one
@@ -229,40 +244,32 @@ def _build_full() -> cq.Workplane:
     for _rx in _RIB_X:
         for _ly in RIB_RACE_Y:
             body = body.cut(_diamond(_ly, -70.65, 3.5, _rx, _RIB_W + 2.0))
-    # top-plate retention grooves: a 45 WEDGE slot cut into each rail inner face
-    # (s = into-rail direction), z -4..-1. The wedge (full height at the mouth,
-    # tapering to a point) is self-supporting for the rail's print (the lip's
-    # underside slopes at 45) AND mates the deck's wedge tongue -- the deck and the
-    # rail print in opposite directions, so the joinery slopes on top AND bottom.
-    # SLIDING-DOVETAIL mortise: matches top_plate's DT tenon (+ clearance) so the
-    # deck ties the rails in Y. Necks at 45 (self-supporting roof for the rail's
-    # print). +X end stops at the +X stop ledge's -X face (z0..6 cut must not free it).
-    _ND, _HD = TP_DT_NECK, TP_DT_HEAD
-    _wh = (TP_GZ1 - TP_GZ0) / 2.0 - _ND
-    _gmz = (TP_GZ0 + TP_GZ1) / 2.0
-    _C = 0.25                                # sliding clearance
-    _gx0, _gx1 = TP_X1 - 2.0, -17.5
-    for _yf, _s in ((Y_HI - T / 2, 1), (Y_LO + T / 2, -1)):
-        prof = [(_yf, TP_GZ0 - _C),
-                (_yf + _s * _ND, _gmz - _wh - _C),            # neck -> waist (wider than tenon)
-                (_yf + _s * (_HD + 0.3), TP_GZ0 - _C),        # head cavity (deeper than tenon)
-                (_yf + _s * (_HD + 0.3), TP_GZ1 + _C),
-                (_yf + _s * _ND, _gmz + _wh + _C),
-                (_yf, TP_GZ1 + _C)]
+    # DECK JOINT: the plates cap the rail and drop a vertical DOVETAIL tongue into a
+    # groove milled in the rail top. (1) lower the rail top to z0 across the deck
+    # X-span so a plate sits flush on top; (2) mill the groove (matches top_plate's
+    # tongue + clearance). The +X end stops at -17.5 (just -X of the stop ledge at
+    # -16) so the deck-level stop ledge is never freed.
+    _gx0 = TP_X1 - 2.0
+    for _yc in (Y_HI, Y_LO):
+        # (1) -X of the endplate shelf: shave the rail top to z0 + mill the groove
+        body = body.cut(box_at(TP_EP_X0 - _gx0, T + 0.5, (Z_TOP + 1.0) - TP_GZ0,
+                               x=(_gx0 + TP_EP_X0) / 2, y=_yc,
+                               z=(TP_GZ0 + Z_TOP + 1.0) / 2))
+        MW, FLR, DEP, C = TP_TG_MW, TP_TG_FLR, TP_TG_DEPTH, TP_TG_CLR
+        prof = [(_yc - MW - C, TP_GZ0 + 0.1), (_yc + MW + C, TP_GZ0 + 0.1),
+                (_yc + MW + FLR + C, TP_GZ0 - DEP), (_yc - MW - FLR - C, TP_GZ0 - DEP)]
         pts = [cq.Vector(_gx0, py, pz) for py, pz in prof]
         face = cq.Face.makeFromWires(cq.Wire.makePolygon([*pts, pts[0]]))
         body = body.cut(cq.Workplane("XY").add(
-            cq.Solid.extrudeLinear(face, cq.Vector(_gx1 - _gx0, 0, 0))))
-    # deck-panel +X stop: a deck-level cross-ledge just -X of the carriages
-    # (-13.6). The +X-most panel butts it, so panels can't slide into the
-    # changer. A deck-level cover CAN'T continue over the changer itself
-    # (carriages travel up to z7 there, and stringing needs the window), so the
-    # changer end stays open - the ledge gives the panels their +X stop and
-    # closes the body coverage right up to the changer.
-    body = body.union(box_at(3.0, (Y_HI - T / 2) - (Y_LO + T / 2),
-                             D.STRING_Z - 10.0 - 0.0,   # deck band z 0..6
-                             x=-16.0, y=(Y_LO + Y_HI) / 2,
-                             z=(D.STRING_Z - 10.0) / 2))
+            cq.Solid.extrudeLinear(face, cq.Vector(TP_EP_X0 - _gx0, 0, 0))))
+        # (2) endplate shelf span (TP_EP_X0 .. X_BRIDGE): shave the rail to the groove
+        # FLOOR so the bridge endplate fills above it (it carries the groove section
+        # over the capture zone + the solid shelf/+X stop). No +X stop ledge now -
+        # the endplate's shelf shoulder is the deck panels' +X stop.
+        body = body.cut(box_at(X_BRIDGE - TP_EP_X0, T + 0.5,
+                               (Z_TOP + 1.0) - (TP_GZ0 - TP_TG_DEPTH),
+                               x=(TP_EP_X0 + X_BRIDGE) / 2, y=_yc,
+                               z=((TP_GZ0 - TP_TG_DEPTH) + Z_TOP + 1.0) / 2))
     body = body.union(MB.motor_bank)                  # fuse in the motor faceplate walls
     # +X end: a sliding-dovetail tongue on each rail end; the bridge endplate caps
     # and sockets them (drops down to engage, glued).
@@ -281,6 +288,9 @@ def _tongue(s, yr, socket=False, depth=None):
     wr, wt = (_WR + g) / 2, (_WT + g) / 2
     z0 = Z_BOT + _SH
     z1 = (Z_TOP + 14.0) if socket else Z_TOP
+    if TP_X1 < s < TP_X0:                 # deck span: stop at the deck-groove FLOOR so
+        z1 = TP_GZ0 - TP_TG_DEPTH          # the segment joint never blocks the groove
+                                           # (z -6 .. 0) the deck tongue slides through
     pts = [(s - 2, yr - wr), (s - 2, yr + wr), (s + d, yr + wt), (s + d, yr - wt)]
     return cq.Workplane("XY").workplane(offset=z0).polyline(pts).close().extrude(z1 - z0)
 
