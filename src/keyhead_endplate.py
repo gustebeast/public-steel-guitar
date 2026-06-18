@@ -16,6 +16,8 @@ lift this piece out, slide the deck panels off -X.
 
 from __future__ import annotations
 
+import cadquery as cq
+
 from . import dimensions as D
 from . import chassis as CH
 from . import motor_bank as MB
@@ -34,8 +36,9 @@ YL   = CH.Y_LO + CH.T / 2 + 0.3            # just inside the -Y rail
 YH   = CH.Y_HI - CH.T / 2 - 0.3            # just inside the +Y rail
 ZB   = MB.FLOOR_TOP                        # wall bottom: SEATS ON the keyhead floor
 TAB_Z0 = CH.Z_BOT + 8.0                    # tab/channel band (matches chassis cut)
-SCREW_X = KX                               # +Z hold-down: vertical screw on the centre-
-SCREW_PILOT = 3.4                          # line, M4 threading into the PA6-GF
+LOWER_XLO = -626.0                         # -X face of the tapered lower wall (15 mm)
+SCREW_X = CH.KH_SCREW_X                     # +Z hold-down: vertical screw, centred in the
+SCREW_PILOT = 3.4                          # tapered lower wall; M4 thread-forming in PA6-GF
 
 
 def _build():
@@ -60,6 +63,21 @@ def _build():
     # then trim the result to the 25 mm X-slab.
     w = w.union(NB.nut_block.translate((D.NUT_BLOCK_X, 0, D.STRING_Z)))
     w = w.intersect(box_at(T_EP, 4000.0, 4000.0, x=KX, y=0, z=0))
+    # SOCKET the rail dovetail tongues (chassis _kh_tongue): the keyhead drops onto
+    # them, gripping the rails against the +X string tension (locked X+Y; lifts +Z).
+    for yc in (CH.Y_HI, CH.Y_LO):
+        w = w.cut(CH._kh_tongue(yc, socket=True))
+    # 45 TAPER on the -X (back) face below the nut block: keep the full 25 mm where the
+    # nut block sits (z >= Z_TOP, for the clamps + break edge), then taper -X in at 45
+    # to the ~15 mm lower wall -> big volume cut, nut block still fully backed (PA6-GF).
+    TT = CH.Z_TOP
+    wpts = [(XLO, TT), (LOWER_XLO, TT - (LOWER_XLO - XLO)), (LOWER_XLO, ZB - 5),
+            (XLO - 6, ZB - 5), (XLO - 6, TT)]
+    yw0, yw1 = CH.Y_LO - CH.T / 2 - 2, CH.Y_HI + CH.T / 2 + 2
+    pts = [cq.Vector(px, yw0, pz) for px, pz in wpts]
+    face = cq.Face.makeFromWires(cq.Wire.makePolygon([*pts, pts[0]]))
+    w = w.cut(cq.Workplane("XY").add(
+        cq.Solid.extrudeLinear(face, cq.Vector(0, yw1 - yw0, 0))))
     # +Z hold-down screw: a centre BOSS reaching the floor seat (the lower chamfer
     # would otherwise leave no material here) + an M4 pilot up into it (PA6-GF).
     w = w.union(cyl(11.0, 14.0, z=ZB).translate((SCREW_X, 0.0, 0)))

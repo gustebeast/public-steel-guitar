@@ -68,9 +68,16 @@ TP_TG_CLR      = 0.25                  # sliding clearance (groove = tongue + CL
 # above it; the rail provides the groove only -X of the capture zone.
 TP_EP_X0       = -30.0                  # endplate shelf -X end (capture-zone -X end)
 TP_EP_GX       = -17.5                  # capture-zone +X end = deck +X face / shelf shoulder
-KH_SCREW_X     = -623.5                 # merged keyhead nut-block endplate centre: the
-                                       # single +Z hold-down screw goes up here, from the
-                                       # floor bottom into the part (keyhead_endplate.py)
+KH_SCREW_X     = -618.5                 # +Z hold-down screw: centred in the keyhead's
+                                       # tapered LOWER section (-626..-611); goes up from
+                                       # the floor bottom into the part (keyhead_endplate.py)
+# Keyhead drop-in DOVETAIL: a Z-extruded dovetail tongue on each rail top under the
+# keyhead, WIDE at -X / narrow at +X. The keyhead sockets them as it drops in -Z, so
+# it's locked in X+Y and GRIPS the rails against the +X string tension (it still lifts
+# straight +Z, freed only by the screw). z0..Z_TOP, above the deck groove.
+KH_DT_X0, KH_DT_X1 = -624.0, -613.0    # tongue X: wide end (-X) .. narrow end (+X)
+KH_DT_WR, KH_DT_WT = 2.5, 4.5          # narrow / wide half-widths (Y)
+KH_DT_CLR      = 0.3                    # socket clearance
 # A chunky rail-to-rail rib UNDER EACH MOTOR (the motor rests on it, its wall sits
 # on it, and it ties the two rails) replaces a solid floor — far lighter for the
 # strength. Plus a rib at the +X end (tying the rails behind the endplate) and one
@@ -278,6 +285,10 @@ def _build_full() -> cq.Workplane:
     # and sockets them (drops down to engage, glued).
     for yr in ENDPLATE_JOINT_Y:
         body = body.union(_tongue(X_BRIDGE, yr, depth=ENDPLATE_DT))
+    # keyhead drop-in dovetail tongues (one per rail) — the keyhead sockets these to
+    # grip the rails against the +X string tension
+    for _yc in (Y_HI, Y_LO):
+        body = body.union(_kh_tongue(_yc))
     # keyhead hold-down: clearance through the floor for the +Z lock screw (inserted
     # from the floor bottom, threads up into the merged keyhead nut-block endplate)
     body = body.cut(cyl(4.5, 12.0, z=-76.5).translate((KH_SCREW_X, 0.0, 0)))
@@ -299,6 +310,19 @@ def _tongue(s, yr, socket=False, depth=None):
                                            # (z -6 .. 0) the deck tongue slides through
     pts = [(s - 2, yr - wr), (s - 2, yr + wr), (s + d, yr + wt), (s + d, yr - wt)]
     return cq.Workplane("XY").workplane(offset=z0).polyline(pts).close().extrude(z1 - z0)
+
+
+def _kh_tongue(yc, socket=False):
+    """Keyhead drop-in dovetail tongue on the rail at Y=yc (see KH_DT_*): a Z-extruded
+    trapezoid, wide at -X / narrow at +X, so the keyhead (which sockets it) is gripped
+    against +X string pull. socket=True adds clearance + an open top for the cut."""
+    g = KH_DT_CLR if socket else 0.0
+    wr, wt = KH_DT_WR + g, KH_DT_WT + g
+    z1 = (Z_TOP + 5.0) if socket else Z_TOP
+    pts = [(KH_DT_X1, yc - wr), (KH_DT_X1, yc + wr),
+           (KH_DT_X0, yc + wt), (KH_DT_X0, yc - wt)]
+    return (cq.Workplane("XY").workplane(offset=TP_GZ0)
+            .polyline(pts).close().extrude(z1 - TP_GZ0))
 
 
 def _seg_box(a, b):
