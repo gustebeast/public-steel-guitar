@@ -71,12 +71,16 @@ TP_EP_GX       = -17.5                  # capture-zone +X end = deck +X face / s
 KH_SCREW_X     = -618.5                 # +Z hold-down screw: centred in the keyhead's
                                        # tapered LOWER section (-626..-611); goes up from
                                        # the floor bottom into the part (keyhead_endplate.py)
-# Keyhead drop-in DOVETAIL: a Z-extruded dovetail tongue on each rail top under the
-# keyhead, WIDE at -X / narrow at +X. The keyhead sockets them as it drops in -Z, so
-# it's locked in X+Y and GRIPS the rails against the +X string tension (it still lifts
-# straight +Z, freed only by the screw). z0..Z_TOP, above the deck groove.
-KH_DT_X0, KH_DT_X1 = -624.0, -613.0    # tongue X: wide end (-X) .. narrow end (+X)
+# Keyhead RAIL-END DOVETAIL (mirrors the bridge endplate joint): the full-width
+# keyhead takes over the rail -X ends; it drops onto a Z-extruded dovetail tongue on
+# each rail end, WIDE at -X / narrow at +X, so the +X string tension is gripped. In the
+# z band between the -X leg sockets (top -34.4) and the deck-groove floor (-6) so it
+# clashes with neither; the keyhead sockets them (X+Y lock; still lifts +Z via screw).
+KH_X           = -611.0                 # keyhead +X face / rail -X end (rails stop here)
+KH_DT_X1, KH_DT_X0 = KH_X, KH_X - 8.0  # tongue X: narrow end (+X, rail) .. wide end (-X)
 KH_DT_WR, KH_DT_WT = 2.5, 4.5          # narrow / wide half-widths (Y)
+KH_DT_Z0       = -33.0                  # dovetail BOTTOM: above the -X leg sockets (top
+                                       # -34.4) and below the deck-groove floor (-6)
 KH_DT_CLR      = 0.3                    # socket clearance
 # A chunky rail-to-rail rib UNDER EACH MOTOR (the motor rests on it, its wall sits
 # on it, and it ties the two rails) replaces a solid floor — far lighter for the
@@ -285,8 +289,15 @@ def _build_full() -> cq.Workplane:
     # and sockets them (drops down to engage, glued).
     for yr in ENDPLATE_JOINT_Y:
         body = body.union(_tongue(X_BRIDGE, yr, depth=ENDPLATE_DT))
-    # keyhead drop-in dovetail tongues (one per rail) — the keyhead sockets these to
-    # grip the rails against the +X string tension
+    # keyhead TAKES OVER the side walls: shave everything above the floor (z >
+    # FLOOR_TOP) at the rail -X ends (x < KH_X) so the full-width keyhead fills it
+    # (its front edge then shows, like the bridge end). The floor below stays (the
+    # keyhead seats on it + the screw threads into it).
+    body = body.cut(box_at(KH_X - (X_NUT - 5.0), (Y_HI - Y_LO) + T + 4.0,
+                           (Z_TOP + 1.0) - MB.FLOOR_TOP,
+                           x=(KH_X + X_NUT - 5.0) / 2, y=(Y_HI + Y_LO) / 2,
+                           z=(MB.FLOOR_TOP + Z_TOP + 1.0) / 2))
+    # then the rail-end dovetail tongues the keyhead drops onto (grip vs +X tension)
     for _yc in (Y_HI, Y_LO):
         body = body.union(_kh_tongue(_yc))
     # keyhead hold-down: clearance through the floor for the +Z lock screw (inserted
@@ -313,16 +324,17 @@ def _tongue(s, yr, socket=False, depth=None):
 
 
 def _kh_tongue(yc, socket=False):
-    """Keyhead drop-in dovetail tongue on the rail at Y=yc (see KH_DT_*): a Z-extruded
-    trapezoid, wide at -X / narrow at +X, so the keyhead (which sockets it) is gripped
-    against +X string pull. socket=True adds clearance + an open top for the cut."""
+    """Keyhead rail-END dovetail at Y=yc (see KH_DT_*): a Z-extruded trapezoid on the
+    rail -X end, wide -X / narrow +X (so +X string pull is gripped), BELOW the deck
+    groove (z FLOOR_TOP..groove-floor). The full-width keyhead drops onto it. socket=
+    True adds clearance + an open top for the cut."""
     g = KH_DT_CLR if socket else 0.0
     wr, wt = KH_DT_WR + g, KH_DT_WT + g
-    z1 = (Z_TOP + 5.0) if socket else Z_TOP
-    pts = [(KH_DT_X1, yc - wr), (KH_DT_X1, yc + wr),
-           (KH_DT_X0, yc + wt), (KH_DT_X0, yc - wt)]
-    return (cq.Workplane("XY").workplane(offset=TP_GZ0)
-            .polyline(pts).close().extrude(z1 - TP_GZ0))
+    z0 = KH_DT_Z0
+    z1 = TP_GZ0 if socket else (TP_GZ0 - TP_TG_DEPTH)
+    pts = [(KH_DT_X1, yc - wr), (KH_DT_X1, yc + wr),   # +X narrow (rail side)
+           (KH_DT_X0, yc + wt), (KH_DT_X0, yc - wt)]   # -X wide (into the keyhead)
+    return (cq.Workplane("XY").workplane(offset=z0).polyline(pts).close().extrude(z1 - z0))
 
 
 def _seg_box(a, b):
