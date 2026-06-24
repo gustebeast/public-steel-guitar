@@ -22,12 +22,12 @@ from src.build import collect_components, _color_for
 # base names to KEEP (everything else — legs, top_plate, electronics, wires,
 # jacks, pickup/clamp/height screws — is dropped)
 INCLUDE = {
-    # instrument body (no legs)
+    # instrument body (no legs); the nut block is fused into keyhead_endplate now
     "chassis", "bridge_endplate", "keyhead_endplate",
     # strings
     "string", "string_nut",
-    # nut block
-    "nut_block", "break_dowel", "set_screw",
+    # nut-block hardware (gauged break pins + clamp set screws)
+    "break_dowel", "set_screw",
     # motor / changer drivetrain
     "motor", "leadscrew", "carriage", "nut", "guide_rod",
     "screw_pulley", "motor_pulley", "belt", "belt_clamp",
