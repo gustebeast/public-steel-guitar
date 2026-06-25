@@ -58,13 +58,17 @@ XCVR_FP   = (-607.0, -589.0, -53.0, -40.0)    # SN65HVD230 breakout
 
 BOARD_Z = TRAY_Z1 + POST_H             # every bottom board sits at -67
 
-# ---- panel jacks (through the endplate recess wall, x 10..14 -> 4 thick) ----
+# ---- panel jacks (through the endplate recess wall, kept 4 mm thick) ----
 # The real connectors are deep (TS ~22 mm, DC ~15.5 mm). Behind the endplate
 # the corner is open in X for ~100 mm (out to motor 0 at x -89) EXCEPT the low
 # bridge cross-rib (tops at z -65). So the jacks ride HIGH (z -41), clear above
 # the rib and above the bottom-mounted AFE board - their bodies then reach
 # freely into the open bay.
-JACK_WALL_X = 10.0                     # inner face of the thinned wall
+# The +X face = the bridge cap face (X_BRIDGE + WALL); keep a 4 mm panel at it and
+# slide the connectors (authored for the old 8 mm cap) out by JACK_FACE_DX so they
+# always mount through that face whatever the wall thickness.
+JACK_WALL_X = CH.X_BRIDGE + D.WALL_THICKNESS - 4.0   # inner face of the 4 mm panel
+JACK_FACE_DX = D.WALL_THICKNESS - 8.0                # +X shift from the original 8 mm cap
 JACK_Z = -41.0
 TS_Y, DC_Y, USB_Y = -68.0, -86.0, -104.0
 
@@ -254,7 +258,7 @@ def ts_jack() -> cq.Workplane:
     b = b.union(_cyl_x(11.4, 8.05, 6.0, TS_Y, JACK_Z))     # bushing through cap
     b = b.union(_cyl_x(13.0, 2.0, 14.05, TS_Y, JACK_Z))    # nut, outside
     b = b.cut(_cyl_x(6.5, 33.0, -15.0, TS_Y, JACK_Z))      # female plug socket
-    return b
+    return b.translate((JACK_FACE_DX, 0, 0))               # ride the (thicker) +X face
 
 
 def dc_jack() -> cq.Workplane:
@@ -265,7 +269,7 @@ def dc_jack() -> cq.Workplane:
     b = b.union(_cyl_x(10.8, 2.0, 14.05, DC_Y, JACK_Z))    # front face, outside
     b = b.cut(_cyl_x(5.5, 22.0, -3.0, DC_Y, JACK_Z))       # female barrel bore
     b = b.union(_cyl_x(2.0, 17.0, -3.0, DC_Y, JACK_Z))     # centre pin
-    return b
+    return b.translate((JACK_FACE_DX, 0, 0))               # ride the (thicker) +X face
 
 
 def usbc_jack() -> cq.Workplane:
@@ -280,4 +284,4 @@ def usbc_jack() -> cq.Workplane:
         cav = cav.union(_cyl_x(2.56, 7.0, 9.0, USB_Y + dy, JACK_Z))
     b = b.cut(cav)
     b = b.union(box_at(5.5, 6.7, 0.7, x=11.75, y=USB_Y, z=JACK_Z))
-    return b
+    return b.translate((JACK_FACE_DX, 0, 0))               # ride the (thicker) +X face

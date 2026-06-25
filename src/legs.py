@@ -54,9 +54,10 @@ FOOT_H  = 12.0
 
 # socket bracket
 BARREL_OD, BARREL_L = 44.0, 32.0
-LEG_STATIONS_X = (-20.0, -604.0)       # -X leg: narrow dovetail edge (station-14 = -618)
-                                       # lands on the -X crossbar's +X face; wide edge
-                                       # (-622) bites into it. +X leg clear of the diamonds.
+LEG_STATIONS_X = (-18.0, -604.0)       # narrow dovetail edge (station-14) lands on each
+                                       # crossbar's inner face -> a clean XBAR gap to the
+                                       # endplate: +X leg narrow edge -4 (10 mm to the
+                                       # bridge face at +6); -X leg narrow edge -618.
 # rail joinery (chassis.py cuts the matching slots from these)
 DT_FACE_HW = 14.0                      # dovetail half-width at the rail face…
 DT_DEEP_HW = 18.0                      # …flaring 45° to this at full depth

@@ -24,7 +24,7 @@ from .screw_rail import screw_rail as _screw_rail, HEIGHT as _SR_H
 from .helpers import box_at, cyl, cyl_y
 
 X0   = CH.X_BRIDGE                 # join line (the rails end here; cap is +X of it)
-X1   = X0 + 8.0                    # +X tip
+X1   = X0 + D.WALL_THICKNESS       # +X tip (cap thickness = wall)
 ARM_X = D.BRIDGE_AXLE_X - 4.0      # arms reach −X to past the axle
 ARM_W = D.BRIDGE_ARM_W             # arm / edge-web thickness (Y) — kept clear of the +Y rail
 TIE_Z = D.STRING_Z + 6.0          # tie bar / arm top, clear above the strings
@@ -143,6 +143,12 @@ def _build() -> cq.Workplane:
         body = body.union(blk)
         body = body.union(box_at(X0 - EGX, CH.T, CH.TP_GZ1 - GFL,
                                  x=(EGX + X0) / 2, y=yc, z=(CH.TP_GZ1 + GFL) / 2))
+        # DROP a thick section to the L level (KH_DT_Z0) over the +X leg, mirroring the
+        # keyhead's thick top: the chassis shaved the rail to match, so this fills it and
+        # leaves a clean XBAR (10 mm) border above the leg tenon at the rail end.
+        body = body.union(box_at(CH.PX_DEEP_X1 - EPX0, CH.T, GFL - CH.KH_DT_Z0,
+                                 x=(EPX0 + CH.PX_DEEP_X1) / 2, y=yc,
+                                 z=(GFL + CH.KH_DT_Z0) / 2))
     # −Y TOP COVER (the side benefit): the −Y shelf widens inboard over the jack bay
     # to a field edge clear of the −42.8 strings, so the endplate roofs its own −Y
     # half (z0..6, flush with the deck) above the output jacks.
@@ -225,7 +231,7 @@ def _build() -> cq.Workplane:
         body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
             jd / 2, 6.0, cq.Vector(JACK_WALL_X - 1.0, jy, JACK_Z),
             cq.Vector(1, 0, 0))))
-    body = body.cut(box_at(6.0, 13.2, 6.8, x=12.0, y=USB_Y, z=JACK_Z))
+    body = body.cut(box_at(6.0, 13.2, 6.8, x=JACK_WALL_X + 2.0, y=USB_Y, z=JACK_Z))
     for sy in (USB_Y - 9.0, USB_Y + 9.0):       # USB-C flange screw pilots
         body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
             1.25, 6.0, cq.Vector(JACK_WALL_X - 1.0, sy, JACK_Z),

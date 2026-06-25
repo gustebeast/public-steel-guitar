@@ -32,6 +32,8 @@ STRING_FIELD_W  = (N_STRINGS - 1) * STRING_PITCH   # 85.5 mm
 MOUNTING_SPAN   = 615.0     # between a string's two mounting ends (~24.2" scale)
 XBAR            = 10.0      # the one "10 mm" module: square cross-rib section (10×10),
                             # end-crossbar width, and the leg/endplate border + L offset
+WALL_THICKNESS  = 10.0     # structural wall: I-beam rail thickness, the keyhead/bridge
+                            # endplate faces, and the deck inner/outer face references
 
 def string_y(i: int) -> float:
     """Y centre of string i (0..9) at the changer; string 0 at −Y (player side)."""

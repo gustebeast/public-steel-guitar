@@ -27,7 +27,7 @@ from . import motor_bank as MB
 from .components import MOTOR_PULLEY_STANDOFF
 from .helpers import box_at, cyl
 
-T        = 8.0                         # rail thickness (solid; slicer infills)
+T        = D.WALL_THICKNESS            # rail thickness (solid; slicer infills)
 X_BRIDGE = 6.0                         # +X (bridge) end — the rails end here; the bridge
                                        #   endplate caps them (a separate flat-printed part)
 X_NUT    = -(D.MOUNTING_SPAN + 24.0)   # −X end, extended to carry the nut block;
@@ -35,9 +35,11 @@ X_NUT    = -(D.MOUNTING_SPAN + 24.0)   # −X end, extended to carry the nut blo
                                        # outer face (NUT_BLOCK_X − 9 − 15)
 Z_TOP    = D.STRING_Z - 6.0            # body deck, 6 mm under the strings (normal action)
 Z_BOT    = MB.BED_Z                    # print bed (shared with the motor walls)
-Y_HI     = D.BRIDGE_AXLE_Y + 7.0       # +Y rail, outboard enough to clear the bearing arm
+# Rail CENTRES, defined so the INNER faces stay fixed as the wall T changes (the wall
+# grows outward): +Y inner clears the bearing arm, -Y inner clears the motor PCBs.
+Y_HI     = D.BRIDGE_AXLE_Y + 3.0 + T / 2          # +Y rail (inner face = axle_Y + 3)
 Y_LO     = (D.string_y(0) - MOTOR_PULLEY_STANDOFF - D.MOTOR_BODY_LEN
-            - D.MOTOR_PCB_LEN - 6.0)   # −Y rail, just outside the motor PCBs
+            - D.MOTOR_PCB_LEN - 2.0) - T / 2      # −Y rail (inner = PCB back − 2)
 _XC, _ZC = (X_BRIDGE + X_NUT) / 2, (Z_TOP + Z_BOT) / 2
 _RIB_W   = D.XBAR                      # cross-rib X-width = XBAR (square XBAR×XBAR section)
 # Top-plate retention grooves (top_plate.py rides these): a slot in each rail
@@ -68,6 +70,9 @@ TP_TG_CLR      = 0.25                  # sliding clearance (groove = tongue + CL
 # above it; the rail provides the groove only -X of the capture zone.
 TP_EP_X0       = -30.0                  # endplate shelf -X end (capture-zone -X end)
 TP_EP_GX       = -17.5                  # capture-zone +X end = deck +X face / shelf shoulder
+PX_DEEP_X1     = 0.0                    # +X leg dovetail +X extent: the bridge thick section
+                                       # (+ deeper rail shave) runs TP_EP_X0..here, XBAR above
+                                       # the leg; +X of it the rail-end tongue/crossbar stay
 # -X END CROSSBAR: a square XBAR×XBAR rail-to-rail rib at the bottom, just inward of
 # the keyhead's 8 mm back face (mirror of the +X bridge rib). The keyhead screws into
 # it horizontally; the -X legs sit just inward of it (narrow dovetail edge on its +X
@@ -83,14 +88,16 @@ KH_SCREW_Z     = -70.0                  # hold-down screw: HORIZONTAL on the -X 
 KH_X           = -611.0                 # keyhead +X face / rail -X end (rails stop here)
 KH_DT_X1, KH_DT_X0 = KH_X, KH_X - 8.0  # tongue X: narrow end (+X, rail) .. wide end (-X)
 KH_DT_WR, KH_DT_WT = 2.5, 4.5          # narrow / wide half-widths (Y)
-KH_DT_Z0       = -24.4                  # dovetail BOTTOM = keyhead L cut = leg tenon top
-                                       # (-34.4) + XBAR (the consistent 10 mm border)
+KH_DT_Z0       = -23.15                 # dovetail BOTTOM = keyhead L cut = leg tenon top
+                                       # (-33.15) + XBAR (the clean 10 mm border to the leg)
 KH_DT_CLR      = 0.3                    # socket clearance
 # A chunky rail-to-rail rib UNDER EACH MOTOR (the motor rests on it, its wall sits
 # on it, and it ties the two rails) replaces a solid floor — far lighter for the
 # strength. Plus a rib at the +X end (tying the rails behind the endplate) and one
 # near the nut.
-_RIB_X   = ([X_BRIDGE - 6.0]                       # bridge tie, kept −X of the cap (no clip)
+_RIB_X   = ([X_BRIDGE - 5.0]                       # +X crossbar (-4..6): +X face at the rail
+                                                   # end, -X face where the +X leg narrow
+                                                   # dovetail edge (-4) tucks behind it
             + [D.motor_pos(i)[0] for i in range(D.N_STRINGS)] + [-575.0])
 
 # Bridge-endplate joint: the +X rail ends carry a sliding dovetail TONGUE on each
@@ -288,6 +295,13 @@ def _build_full() -> cq.Workplane:
                                (Z_TOP + 1.0) - (TP_GZ0 - TP_TG_DEPTH),
                                x=(TP_EP_X0 + X_BRIDGE) / 2, y=_yc,
                                z=((TP_GZ0 - TP_TG_DEPTH) + Z_TOP + 1.0) / 2))
+        # (3) DEEPER over the +X leg (TP_EP_X0 .. PX_DEEP_X1): shave to the L level so
+        # the bridge endplate drops a thick section to XBAR above the leg (mirrors the
+        # keyhead's thick top at the -X end). x > PX_DEEP_X1 keeps the rail-end tongue.
+        body = body.cut(box_at(PX_DEEP_X1 - TP_EP_X0, T + 0.5,
+                               (TP_GZ0 - TP_TG_DEPTH) - KH_DT_Z0,
+                               x=(TP_EP_X0 + PX_DEEP_X1) / 2, y=_yc,
+                               z=((TP_GZ0 - TP_TG_DEPTH) + KH_DT_Z0) / 2))
     body = body.union(MB.motor_bank)                  # fuse in the motor faceplate walls
     # +X end: a sliding-dovetail tongue on each rail end; the bridge endplate caps
     # and sockets them (drops down to engage, glued).
