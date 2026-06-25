@@ -68,8 +68,8 @@ TP_TG_CLR      = 0.25                  # sliding clearance (groove = tongue + CL
 # above it; the rail provides the groove only -X of the capture zone.
 TP_EP_X0       = -30.0                  # endplate shelf -X end (capture-zone -X end)
 TP_EP_GX       = -17.5                  # capture-zone +X end = deck +X face / shelf shoulder
-KH_SCREW_X     = -618.5                 # +Z hold-down screw: centred in the keyhead's
-                                       # tapered LOWER section (-626..-611); goes up from
+KH_SCREW_X     = -632.0                 # +Z hold-down screw: centred in the keyhead's
+                                       # 8 mm lower back plate (-636..-628); goes up from
                                        # the floor bottom into the part (keyhead_endplate.py)
 # Keyhead RAIL-END DOVETAIL (mirrors the bridge endplate joint): the full-width
 # keyhead takes over the rail -X ends; it drops onto a Z-extruded dovetail tongue on
