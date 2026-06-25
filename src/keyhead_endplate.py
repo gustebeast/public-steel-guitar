@@ -17,22 +17,20 @@ lift this piece out, slide the deck panels off -X.
 
 from __future__ import annotations
 
-import cadquery as cq
-
 from . import dimensions as D
 from . import chassis as CH
-from . import motor_bank as MB
 from . import nut_block as NB
-from .helpers import box_at, cyl, heal
+from .helpers import box_at, heal
 
-# ONE part (x −636 .. −611, PA6-GF), FULL-WIDTH (rail outer to rail outer) so it
-# TAKES OVER the rail −X ends and its edge shows from the front, mirroring the bridge
-# endplate. In side view it's an **L**: the full 25 mm thickness only up top (where
-# the nut block sits + the rail-end dovetails engage), and an 8 mm back plate (like
-# the +X endplate) for the rest — the open +X-lower zone clears the −X legs, so no
-# foot cutouts are needed. Installs LAST, dropping straight DOWN (+Z→−Z): it sockets
-# a dovetail tongue on each rail end (X+Y lock + grip vs the +X string tension), and
-# ONE screw up from the floor bottom locks it in +Z. Nut block fused in (~15 % infill).
+# ONE part (x −636 .. −611, PA6-GF), FULL-WIDTH (rail outer to rail outer) so it TAKES
+# OVER the whole −X end and its edge shows from the front, mirroring the bridge endplate.
+# Per the endplate methodology it's AS SOLID AS POSSIBLE: a solid block from the deck
+# level (z6) down to the bed -- so the block itself is the −X cross-tie (no separate
+# crossbar) -- with the nut block the only thing reaching above the deck and foot
+# clearance hollowed only over the −X legs (XBAR above the tenon). Installs LAST,
+# dropping straight DOWN (+Z→−Z): it sockets a dovetail tongue on each rail end (X+Y
+# lock + grip vs the +X string tension) and is held by those alone (no screw). Nut
+# block fused in (~15 % infill).
 T_EP = 25.0                                # FULL thickness (X), at the top only
 XHI  = CH.KH_X                             # +X face = rail -X end (-611)
 XLO  = XHI - T_EP                          # = -636
