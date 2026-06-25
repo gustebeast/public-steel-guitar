@@ -9,7 +9,11 @@ configuration** instead of a hand-built maze of rods and bellcranks.
 physical prototype yet). See
 [`electromechanical-pedal-steel-spec.md`](electromechanical-pedal-steel-spec.md)
 for the full design rationale and history, and [`BOM.md`](BOM.md) for sourced
-purchased parts (~$755 basic / ~$980 pro, dominated by the ten servos).
+purchased parts (~$865 basic / ~$1,090 pro, dominated by the ten closed-loop steppers).
+
+> **On the name —** "servo" here means closed-loop *position control*; the
+> per-string actuators are **closed-loop steppers** (MKS SERVO42D), not servo
+> motors in the motor-type sense.
 
 **View it in 3D** (no install, no account):
 <https://gustebeast.github.io/servo-pedal-steel/> — an interactive model of the
@@ -22,7 +26,7 @@ instrument body, strings, nut block, and motor/changer drivetrain.
 A traditional pedal steel changes string pitch by pulling the string's anchor
 with a mechanical changer; which pedal pulls which string, and by how much, is
 fixed in hardware. Here, each of the 10 strings terminates on a **carriage
-riding a self-locking leadscrew** driven by a **closed-loop servo motor**.
+riding a self-locking leadscrew** driven by a **closed-loop stepper** (MKS SERVO42D).
 Pedals and levers are just **sensors**; firmware looks up the active copedent
 and commands the relevant motors to new positions. Any pedal can bend any
 combination of strings by any interval, changeable between songs. Because the
@@ -88,8 +92,8 @@ string wrap load; the comb cuts its free span to one string pitch *and* acts
 as the assembly jig — drop the ten bearings into the comb slots and slide the
 shaft through everything in one pass). Motors mount on faceplate walls with
 slotted holes for belt tensioning. Every printed part is self-supporting at
-45° for a 0.8 mm nozzle; the big parts are PCTG, the load-critical small parts
-(carriage, nut block) PA6-GF.
+45° for a 0.8 mm nozzle; the big parts are PCTG, the load-critical parts
+(the carriages and the keyhead nut-block endplate) PA6-GF.
 
 **Legs**: four quick-attach legs join the rails at the corners with glued
 sliding-dovetail sockets (no fasteners — the socket slides up into a slot in
@@ -108,7 +112,7 @@ segments cover 525–675 mm; add or drop segments from there).
 reads pedal/lever angle sensors and speaks CAN to the ten servos. The compute
 bay — a printed tray that drops into rail channels at the keyhead end — has
 tool-free snap mounts for the full **pro** stack (Teensy 4.1 + audio shield,
-CAN transceiver, Raspberry Pi 5, 2× CS42448 TDM ADCs, buck converter); a
+CAN transceiver, Raspberry Pi 5, 3× PCM1864 TDM ADCs, buck converter); a
 **basic** build populates only the Teensy row and leaves the other sockets
 empty as the upgrade path. Panel I/O (1/4" TS line out, DC power inlet,
 USB-C audio-interface port) mounts through a recessed wall in the bridge
@@ -166,8 +170,8 @@ py -3.12 -m tools.export_glb       # simplified colored GLB for the web viewer (
   bridge, +Y across, +Z up) and **every** dimension as a named constant.
 - `src/components.py` — schematic dummies of purchased parts (motor, screw,
   nut, bearings, pulleys, belt, strings, dowels) used only in the assembly.
-- Printed parts: `carriage` ×10, `bridge_endplate`, `keyhead_endplate`,
-  `chassis_0/1/2`, `nut_block`, `belt_clamp`, `screw_pulley`, `motor_pulley`,
+- Printed parts: `carriage` ×10, `bridge_endplate`, `keyhead_endplate`
+  (nut block fused in), `chassis_0/1/2`, `belt_clamp`, `screw_pulley`, `motor_pulley`,
   `tension_fork` (graded belt-tension lock set), the **top deck** (a
   pickup-carrier piece with an under-pickup floor, 3 M4 `height_screw`s + 1 M4
   `clamp_screw`, swappable fret-marked filler bands, and the UI/keyhead panels),

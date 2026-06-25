@@ -4,13 +4,13 @@ Sourcing for the bought parts (printed parts are built from `src/`). Links were
 checked for a real, in-stock listing at the spec; prices are approximate and per
 the date of writing — re-validate before ordering. Avoid Amazon per project
 preference. See `electromechanical-pedal-steel-spec.md` §12 for the fuller
-rationale. The **motors dominate cost** (~$220 of ~$370 total); everything else
+rationale. The **motors dominate cost** (10 × ~$35 ≈ ~$350); everything else
 is commodity.
 
 | Part | Spec | Qty | Source (verify stock) | ~Price | Notes |
 |------|------|-----|--------|--------|-------|
 | **Drive belt** | GT2 (2 mm pitch) open, **5 mm wide** | ~6.5 m | [Bulkman3D GT2 open belt](https://bulkman3d.com/product/gt000-gt0003/) | ~$0.5–1.7/m | cut-to-length, splice into loops with the printed clamp |
-| **Drive motor** | MKS SERVO42D, NEMA17, **CAN** variant | 10 | [P3D](https://p3d.mx/products/makerbase-mks-servo42d-nema17-foc-motor) · [ElectroPeak](https://electropeak.com/mks-servo42d-nema17-closed-loop-stepper-motor) | $22 ea | pick the "CAN MB/MT" option; in stock |
+| **Drive motor** | MKS SERVO42D closed-loop stepper, NEMA17, **CAN MT** (board + motor) | 10 | [P3D](https://p3d.mx/products/makerbase-mks-servo42d-nema17-foc-motor) · [ElectroPeak](https://electropeak.com/mks-servo42d-nema17-closed-loop-stepper-motor) | $35 ea | get **MT** (board + motor = the working actuator). The cheaper **MB ($22) is the board ONLY** — only worth it if sourcing bare 48 mm NEMA17s under ~$13 ea. makerbase3d.com sells direct ≈ $34 |
 | **Lead screw + nut** | Tr5×1 trapezoidal (5 mm, 1 mm lead, 1-start, self-locking) + brass nut | 10 | [eBay Tr5×1 + brass nut](https://www.ebay.com/itm/396869709608) · mfr [ALM](https://www.autolinearmotion.com/5mm-trapezoidal-lead-screw.html) | ~$3 ea | cut to ~61 mm; eBay listings rotate—AliExpress/ALM are stable fallbacks |
 | **Screw support bearing** | MR85ZZ deep-groove, Ø5 × Ø8 × 2.5 | 10 | [Bearings Direct](https://bearingsdirect.com/mr85-zz-mini-ball-bearing-5x8x2-5-shielded-l850zz/) · [Trianglelab](https://trianglelab.net/products/mr85zz) | $0.5–4 ea | + a Ø5 thrust washer for the axial string pull |
 | **Axial retainer** | Ø5 set-screw shaft collar (or a 2nd Tr5 nut) | 10 | [ServoCity 5 mm collar](https://www.servocity.com/2920-series-steel-set-screw-collar-5mm-bore-2-pack/) | ~$2.5 ea | locks the screw against the support bearing |
@@ -119,14 +119,15 @@ Approximate; motors dominate. Re-verify before ordering.
 | Group | Basic | Pro |
 |-------|------:|----:|
 | Filament (printed) | ~$78 | ~$78 |
-| Mechanical hardware (motors, screws, bearings, belt, fasteners, dowels) | ~$530 | ~$530 |
+| Mechanical hardware (motors, screws, bearings, belt, fasteners, dowels) | ~$640 | ~$640 |
 | Wire | ~$35 | ~$35 |
 | Electronics + UI | ~$110 | ~$335 + carrier PCB |
-| **Total** | **~$755** | **~$980** + PCB |
+| **Total** | **~$865** | **~$1,090** + PCB |
 
-Mechanical detail: 10× MKS SERVO42D (~$240) is the bulk; +10× Tr5×1 screw/nut
+Mechanical detail: 10× MKS SERVO42D CAN MT (~$350) is the bulk; +10× Tr5×1 screw/nut
 (~$60, **confirm 1 mm lead / single-start**), 10× MR85ZZ (~$30), 10× 693ZZ
 (~$30), 10× shaft collars (~$25), Ø3 shaft (~$30), dowels (~$22), GT2 belt
 6.5 m (~$12–130 depending on genuine-Gates vs generic), M-hardware packs (~$50).
 Pro electronics adds the Pi 5 ($175 street), the ≥6 A buck, the USB hub, and the
-10-ch ADC (**CS42448 EOL — substitution needed, ~$60**).
+10-ch ADC (**3× PCM1864 on a small carrier PCB, ~$30 + PCB** — already substituted
+for the obsolete CS42448; see the electronics table).
