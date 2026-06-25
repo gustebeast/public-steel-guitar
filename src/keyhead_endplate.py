@@ -39,29 +39,33 @@ XLO  = XHI - T_EP                          # = -636
 KX   = (XLO + XHI) / 2
 YFL  = CH.Y_LO - CH.T / 2                   # full width: -Y rail outer face
 YFH  = CH.Y_HI + CH.T / 2                   # +Y rail outer face
-ZB   = CH.Z_BOT                            # bottom: the 8 mm back is FULL-Z (down to the bed)
-ZSTEP = CH.KH_DT_Z0                         # thick-top / 8 mm-back boundary (= tenon + XBAR)
-SCREW_CLR = 4.3                            # clearance for the horizontal hold-down screw
+Z6    = CH.TP_GZ1                          # deck/top-plate level = general plate top
+ZSTEP = CH.KH_DT_Z0                         # foot-clearance top = XBAR above the leg tenon
+NB_HW = 41.0                               # nut-block half-width (Y); riser ties it down
+NB_Z0 = 10.0                               # nut-block base Z
+FOOT_X0 = -625.0                           # foot clearance: -X edge (covers the leg dovetail)
+# -X leg Y bands (from leg_socket_2/_3), clamped into the plate: hollow over each leg
+LEG_BANDS = ((37.0, YFH), (YFL, -111.0))
 
 
 def _build():
     yc, yw = (YFL + YFH) / 2, YFH - YFL
-    # thick TOP (full 25 mm): holds the nut block + the rail-end dovetail sockets,
-    # butts the rail end; sits above the -X leg sockets
-    w = box_at(T_EP, yw, CH.Z_TOP - ZSTEP, x=KX, y=yc, z=(CH.Z_TOP + ZSTEP) / 2)
-    # 8 mm back face (matching the +X endplate), FULL-Z to the bed at the -X back; its
-    # +X-lower zone stays open so the -X legs + end crossbar tuck in (no cutouts)
-    w = w.union(box_at(CH.T, yw, ZSTEP - ZB, x=XLO + CH.T / 2, y=yc, z=(ZSTEP + ZB) / 2))
-    # fuse the nut block -> one PA6-GF piece; trim to the 25 mm X-slab
+    # AS SOLID AS POSSIBLE: a solid block over the whole footprint from the deck level
+    # (z6) down to the bed -- this block IS the -X cross-tie (no separate crossbar) and
+    # is held by the rail-end dovetails (no screw). String holder (nut block) above z6.
+    w = box_at(T_EP, yw, Z6 - CH.Z_BOT, x=KX, y=yc, z=(Z6 + CH.Z_BOT) / 2)
+    # nut block (the only thing reaching above the deck) + a riser tying it to the block
+    w = w.union(box_at(T_EP, 2 * NB_HW, NB_Z0 - Z6, x=KX, y=0, z=(NB_Z0 + Z6) / 2))
     w = w.union(NB.nut_block.translate((D.NUT_BLOCK_X, 0, D.STRING_Z)))
     w = w.intersect(box_at(T_EP, 4000.0, 4000.0, x=KX, y=0, z=0))
-    # socket the rail-end dovetail tongues (in the thick top, above the legs)
+    # FOOT clearance: hollow over each -X leg below the XBAR-above-tenon line (the only
+    # place we thin from the solid block) so the leg + the part's install drop clear
+    for (y0, y1) in LEG_BANDS:
+        w = w.cut(box_at(XHI - FOOT_X0, y1 - y0, ZSTEP - CH.Z_BOT,
+                         x=(FOOT_X0 + XHI) / 2, y=(y0 + y1) / 2, z=(ZSTEP + CH.Z_BOT) / 2))
+    # rail-end dovetail sockets (grip the rail tongues; X+Y lock vs the string tension)
     for ycc in (CH.Y_HI, CH.Y_LO):
         w = w.cut(CH._kh_tongue(ycc, socket=True))
-    # hold-down screw: HORIZONTAL clearance through the 8 mm back (head on the -X face);
-    # it threads on into the end crossbar (chassis), locking the part in +Z
-    w = w.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        SCREW_CLR / 2.0, 9.0, cq.Vector(XLO - 1.0, 0.0, CH.KH_SCREW_Z), cq.Vector(1, 0, 0))))
     return heal(w)
 
 

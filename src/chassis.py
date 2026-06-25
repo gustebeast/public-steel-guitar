@@ -73,19 +73,14 @@ TP_EP_GX       = -17.5                  # capture-zone +X end = deck +X face / s
 PX_DEEP_X1     = 0.0                    # +X leg dovetail +X extent: the bridge thick section
                                        # (+ deeper rail shave) runs TP_EP_X0..here, XBAR above
                                        # the leg; +X of it the rail-end tongue/crossbar stay
-# -X END CROSSBAR: a square XBAR×XBAR rail-to-rail rib at the bottom, just inward of
-# the keyhead's 8 mm back face (mirror of the +X bridge rib). The keyhead screws into
-# it horizontally; the -X legs sit just inward of it (narrow dovetail edge on its +X
-# face). The keyhead's 8 mm back face is full-Z and -X of it.
-KH_BAR_X       = -623.0                 # -X crossbar centre (spans -628..-618 at XBAR=10)
-KH_BACK_X1     = KH_BAR_X - D.XBAR / 2  # = -628; keyhead back +X face / crossbar -X face
-KH_SCREW_Z     = -70.0                  # hold-down screw: HORIZONTAL on the -X face, threads
-                                       # +X into the crossbar (keyhead_endplate.py), y=0
+# -X END: the keyhead endplate takes over the whole -X end as one solid block (it is the
+# -X cross-tie itself -- no separate crossbar -- and is held by the rail-end dovetails
+# alone, no screw). The rails simply stop at KH_X.
+KH_X           = -611.0                 # keyhead +X face / rail -X end (rails stop here)
 # Keyhead RAIL-END DOVETAIL (mirrors the bridge endplate joint): the keyhead drops onto
 # a Z-extruded dovetail tongue on each rail end, WIDE at -X / narrow at +X, so the +X
 # string tension is gripped. In the z band between the -X leg sockets (top -34.4) and
 # the deck-groove floor (-6); the keyhead sockets them (X+Y lock; still lifts +Z).
-KH_X           = -611.0                 # keyhead +X face / rail -X end (rails stop here)
 KH_DT_X1, KH_DT_X0 = KH_X, KH_X - 8.0  # tongue X: narrow end (+X, rail) .. wide end (-X)
 KH_DT_WR, KH_DT_WT = 2.5, 4.5          # narrow / wide half-widths (Y)
 KH_DT_Z0       = -23.15                 # dovetail BOTTOM = keyhead L cut = leg tenon top
@@ -307,24 +302,16 @@ def _build_full() -> cq.Workplane:
     # and sockets them (drops down to engage, glued).
     for yr in ENDPLATE_JOINT_Y:
         body = body.union(_tongue(X_BRIDGE, yr, depth=ENDPLATE_DT))
-    # keyhead TAKES OVER the -X end (its edge shows from the front like the bridge end):
-    # (1) above the floor, shave the rail tops at x < KH_X so the keyhead thick top +
-    # deck cap fill it; (2) below the floor, clear -X of the end crossbar (x < KH_BACK_X1)
-    # so the keyhead's full-Z 8 mm back fits. Between KH_BACK_X1..KH_X the rail bottom +
-    # crossbar stay.
-    for _z0, _z1, _x1 in ((MB.FLOOR_TOP, Z_TOP + 1.0, KH_X),
-                          (Z_BOT - 1.0, MB.FLOOR_TOP, KH_BACK_X1)):
-        body = body.cut(box_at(_x1 - (X_NUT - 5.0), (Y_HI - Y_LO) + T + 4.0, _z1 - _z0,
-                               x=(_x1 + X_NUT - 5.0) / 2, y=(Y_HI + Y_LO) / 2,
-                               z=(_z0 + _z1) / 2))
-    # the -X end CROSSBAR (square XBAR rib the keyhead screws into; legs sit inward of it)
-    body = body.union(_rib(KH_BAR_X))
-    # rail-end dovetail tongues the keyhead drops onto (grip vs +X tension)
+    # keyhead TAKES OVER the -X end as a solid block (its edge shows from the front like
+    # the bridge end): remove the rail ENTIRELY at x < KH_X (z full) so the keyhead fills
+    # it and IS the -X cross-tie (no separate crossbar); it's held by the rail-end
+    # dovetails alone (no screw). Only the dovetail tongues it sockets are added back.
+    body = body.cut(box_at(KH_X - (X_NUT - 5.0), (Y_HI - Y_LO) + T + 4.0,
+                           (Z_TOP + 1.0) - (Z_BOT - 1.0),
+                           x=(KH_X + X_NUT - 5.0) / 2, y=(Y_HI + Y_LO) / 2,
+                           z=((Z_BOT - 1.0) + (Z_TOP + 1.0)) / 2))
     for _yc in (Y_HI, Y_LO):
         body = body.union(_kh_tongue(_yc))
-    # keyhead hold-down: HORIZONTAL screw pilot into the crossbar (from the -X face, +X)
-    body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        3.4 / 2.0, 11.0, cq.Vector(KH_BACK_X1 - 1.0, 0.0, KH_SCREW_Z), cq.Vector(1, 0, 0))))
     return body
 
 

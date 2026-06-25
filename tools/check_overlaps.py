@@ -71,7 +71,6 @@ GLOBAL_OK = {
     frozenset({"keyhead_endplate", "chassis"}), frozenset({"keyhead_endplate", "string"}),
     frozenset({"keyhead_endplate", "top_plate"}),
     frozenset({"keyhead_endplate", "break_dowel"}), frozenset({"keyhead_endplate", "set_screw"}),
-    frozenset({"keyhead_screw", "chassis"}), frozenset({"keyhead_screw", "keyhead_endplate"}),
     # pickup carrier: the pickup rests on the printed Z-plate (lifted by the 3
     # height screws) and is pinned by the clamp shim (driven by the side clamp
     # screw). Each part's contact with the piece is the top_plate rule below.

@@ -341,10 +341,6 @@ def collect_components():
         ("bridge_endplate", bridge_endplate),
         ("bridge_bearings", C.bridge_bearings()),
         ("keyhead_endplate", __import__("src.keyhead_endplate", fromlist=["e"]).keyhead_endplate),
-        ("keyhead_screw", cq.Workplane("XY").add(cq.Solid.makeCylinder(  # HORIZONTAL,
-            2.0, 18.0, cq.Vector(-636.0, 0.0, CH.KH_SCREW_Z), cq.Vector(1, 0, 0)))  # shank
-            .add(cq.Solid.makeCylinder(3.75, 3.0,                          # head on -X face
-                 cq.Vector(-639.0, 0.0, CH.KH_SCREW_Z), cq.Vector(1, 0, 0)))),
     ]
     comps += [(f"chassis_{i}", seg) for i, seg in enumerate(chassis_segments)]
     comps += _pickup_mount_components()
@@ -374,7 +370,6 @@ _COLORS = {
     "motor":           (0.22, 0.25, 0.27),   # charcoal
     "belt":            (0.13, 0.13, 0.13),   # GT2 black
     "string":          (0.85, 0.85, 0.85),
-    "keyhead_screw":   (0.55, 0.55, 0.58),   # +Z hold-down screw
     "break_dowel":     (0.75, 0.75, 0.78),   # steel dowel (gauged break pin)
     "set_screw":       (0.55, 0.55, 0.58),   # alloy set screw
     "chassis":         (0.46, 0.52, 0.55),   # PCTG frame
