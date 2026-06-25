@@ -45,7 +45,9 @@ def _face_y(i):
 
 _zc = D.MOTOR_BELT_Z
 FLOOR_TOP = _zc - D.MOTOR_SQ / 2            # motors rest here (= wall bottom / chassis rib top)
-BED_Z = FLOOR_TOP - 11.0                    # print bed = chassis rib/rail bottom
+BED_Z = FLOOR_TOP - D.XBAR                  # print bed = chassis rib/rail bottom; the
+                                            # FLOOR_TOP->bed gap = rib height = XBAR, so the
+                                            # cross-ribs are a square XBAR x XBAR section
 Z_HI = _zc + D.NEMA17_BOLT_SQ / 2 + _BOLT_EDGE     # wall top, just above the top bolts
 
 

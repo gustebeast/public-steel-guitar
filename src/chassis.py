@@ -39,7 +39,7 @@ Y_HI     = D.BRIDGE_AXLE_Y + 7.0       # +Y rail, outboard enough to clear the b
 Y_LO     = (D.string_y(0) - MOTOR_PULLEY_STANDOFF - D.MOTOR_BODY_LEN
             - D.MOTOR_PCB_LEN - 6.0)   # −Y rail, just outside the motor PCBs
 _XC, _ZC = (X_BRIDGE + X_NUT) / 2, (Z_TOP + Z_BOT) / 2
-_RIB_W   = 10.0                        # cross-rib X-width (chunky section → slicer infills)
+_RIB_W   = D.XBAR                      # cross-rib X-width = XBAR (square XBAR×XBAR section)
 # Top-plate retention grooves (top_plate.py rides these): a slot in each rail
 # inner face below the rail top, leaving a ~3 mm lip so the deck plates can't
 # fall out when the instrument is inverted (they pull straight out toward −X).
@@ -68,19 +68,23 @@ TP_TG_CLR      = 0.25                  # sliding clearance (groove = tongue + CL
 # above it; the rail provides the groove only -X of the capture zone.
 TP_EP_X0       = -30.0                  # endplate shelf -X end (capture-zone -X end)
 TP_EP_GX       = -17.5                  # capture-zone +X end = deck +X face / shelf shoulder
-KH_SCREW_X     = -632.0                 # +Z hold-down screw: centred in the keyhead's
-                                       # 8 mm lower back plate (-636..-628); goes up from
-                                       # the floor bottom into the part (keyhead_endplate.py)
-# Keyhead RAIL-END DOVETAIL (mirrors the bridge endplate joint): the full-width
-# keyhead takes over the rail -X ends; it drops onto a Z-extruded dovetail tongue on
-# each rail end, WIDE at -X / narrow at +X, so the +X string tension is gripped. In the
-# z band between the -X leg sockets (top -34.4) and the deck-groove floor (-6) so it
-# clashes with neither; the keyhead sockets them (X+Y lock; still lifts +Z via screw).
+# -X END CROSSBAR: a square XBAR×XBAR rail-to-rail rib at the bottom, just inward of
+# the keyhead's 8 mm back face (mirror of the +X bridge rib). The keyhead screws into
+# it horizontally; the -X legs sit just inward of it (narrow dovetail edge on its +X
+# face). The keyhead's 8 mm back face is full-Z and -X of it.
+KH_BAR_X       = -623.0                 # -X crossbar centre (spans -628..-618 at XBAR=10)
+KH_BACK_X1     = KH_BAR_X - D.XBAR / 2  # = -628; keyhead back +X face / crossbar -X face
+KH_SCREW_Z     = -70.0                  # hold-down screw: HORIZONTAL on the -X face, threads
+                                       # +X into the crossbar (keyhead_endplate.py), y=0
+# Keyhead RAIL-END DOVETAIL (mirrors the bridge endplate joint): the keyhead drops onto
+# a Z-extruded dovetail tongue on each rail end, WIDE at -X / narrow at +X, so the +X
+# string tension is gripped. In the z band between the -X leg sockets (top -34.4) and
+# the deck-groove floor (-6); the keyhead sockets them (X+Y lock; still lifts +Z).
 KH_X           = -611.0                 # keyhead +X face / rail -X end (rails stop here)
 KH_DT_X1, KH_DT_X0 = KH_X, KH_X - 8.0  # tongue X: narrow end (+X, rail) .. wide end (-X)
 KH_DT_WR, KH_DT_WT = 2.5, 4.5          # narrow / wide half-widths (Y)
-KH_DT_Z0       = -33.0                  # dovetail BOTTOM: above the -X leg sockets (top
-                                       # -34.4) and below the deck-groove floor (-6)
+KH_DT_Z0       = -24.4                  # dovetail BOTTOM = keyhead L cut = leg tenon top
+                                       # (-34.4) + XBAR (the consistent 10 mm border)
 KH_DT_CLR      = 0.3                    # socket clearance
 # A chunky rail-to-rail rib UNDER EACH MOTOR (the motor rests on it, its wall sits
 # on it, and it ties the two rails) replaces a solid floor — far lighter for the
@@ -289,20 +293,24 @@ def _build_full() -> cq.Workplane:
     # and sockets them (drops down to engage, glued).
     for yr in ENDPLATE_JOINT_Y:
         body = body.union(_tongue(X_BRIDGE, yr, depth=ENDPLATE_DT))
-    # keyhead TAKES OVER the side walls: shave everything above the floor (z >
-    # FLOOR_TOP) at the rail -X ends (x < KH_X) so the full-width keyhead fills it
-    # (its front edge then shows, like the bridge end). The floor below stays (the
-    # keyhead seats on it + the screw threads into it).
-    body = body.cut(box_at(KH_X - (X_NUT - 5.0), (Y_HI - Y_LO) + T + 4.0,
-                           (Z_TOP + 1.0) - MB.FLOOR_TOP,
-                           x=(KH_X + X_NUT - 5.0) / 2, y=(Y_HI + Y_LO) / 2,
-                           z=(MB.FLOOR_TOP + Z_TOP + 1.0) / 2))
-    # then the rail-end dovetail tongues the keyhead drops onto (grip vs +X tension)
+    # keyhead TAKES OVER the -X end (its edge shows from the front like the bridge end):
+    # (1) above the floor, shave the rail tops at x < KH_X so the keyhead thick top +
+    # deck cap fill it; (2) below the floor, clear -X of the end crossbar (x < KH_BACK_X1)
+    # so the keyhead's full-Z 8 mm back fits. Between KH_BACK_X1..KH_X the rail bottom +
+    # crossbar stay.
+    for _z0, _z1, _x1 in ((MB.FLOOR_TOP, Z_TOP + 1.0, KH_X),
+                          (Z_BOT - 1.0, MB.FLOOR_TOP, KH_BACK_X1)):
+        body = body.cut(box_at(_x1 - (X_NUT - 5.0), (Y_HI - Y_LO) + T + 4.0, _z1 - _z0,
+                               x=(_x1 + X_NUT - 5.0) / 2, y=(Y_HI + Y_LO) / 2,
+                               z=(_z0 + _z1) / 2))
+    # the -X end CROSSBAR (square XBAR rib the keyhead screws into; legs sit inward of it)
+    body = body.union(_rib(KH_BAR_X))
+    # rail-end dovetail tongues the keyhead drops onto (grip vs +X tension)
     for _yc in (Y_HI, Y_LO):
         body = body.union(_kh_tongue(_yc))
-    # keyhead hold-down: clearance through the floor for the +Z lock screw (inserted
-    # from the floor bottom, threads up into the merged keyhead nut-block endplate)
-    body = body.cut(cyl(4.5, 12.0, z=-76.5).translate((KH_SCREW_X, 0.0, 0)))
+    # keyhead hold-down: HORIZONTAL screw pilot into the crossbar (from the -X face, +X)
+    body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        3.4 / 2.0, 11.0, cq.Vector(KH_BACK_X1 - 1.0, 0.0, KH_SCREW_Z), cq.Vector(1, 0, 0))))
     return body
 
 

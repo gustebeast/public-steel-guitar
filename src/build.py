@@ -341,8 +341,10 @@ def collect_components():
         ("bridge_endplate", bridge_endplate),
         ("bridge_bearings", C.bridge_bearings()),
         ("keyhead_endplate", __import__("src.keyhead_endplate", fromlist=["e"]).keyhead_endplate),
-        ("keyhead_screw", cyl(4.0, 18.0, z=-74.0).union(cyl(7.5, 3.0, z=-77.0))
-         .translate((CH.KH_SCREW_X, 0.0, 0))),     # +Z hold-down (up from the floor)
+        ("keyhead_screw", cq.Workplane("XY").add(cq.Solid.makeCylinder(  # HORIZONTAL,
+            2.0, 18.0, cq.Vector(-636.0, 0.0, CH.KH_SCREW_Z), cq.Vector(1, 0, 0)))  # shank
+            .add(cq.Solid.makeCylinder(3.75, 3.0,                          # head on -X face
+                 cq.Vector(-639.0, 0.0, CH.KH_SCREW_Z), cq.Vector(1, 0, 0)))),
     ]
     comps += [(f"chassis_{i}", seg) for i, seg in enumerate(chassis_segments)]
     comps += _pickup_mount_components()

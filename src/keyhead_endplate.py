@@ -17,6 +17,8 @@ lift this piece out, slide the deck panels off -X.
 
 from __future__ import annotations
 
+import cadquery as cq
+
 from . import dimensions as D
 from . import chassis as CH
 from . import motor_bank as MB
@@ -37,10 +39,9 @@ XLO  = XHI - T_EP                          # = -636
 KX   = (XLO + XHI) / 2
 YFL  = CH.Y_LO - CH.T / 2                   # full width: -Y rail outer face
 YFH  = CH.Y_HI + CH.T / 2                   # +Y rail outer face
-ZB   = MB.FLOOR_TOP                        # bottom: SEATS ON the keyhead floor
-ZSTEP = CH.KH_DT_Z0                         # thick-top / 8 mm-back boundary (above the legs)
-SCREW_X = CH.KH_SCREW_X                     # +Z hold-down screw (vertical), in the 8 mm back
-SCREW_PILOT = 3.4                          # M4 thread-forming into the PA6-GF
+ZB   = CH.Z_BOT                            # bottom: the 8 mm back is FULL-Z (down to the bed)
+ZSTEP = CH.KH_DT_Z0                         # thick-top / 8 mm-back boundary (= tenon + XBAR)
+SCREW_CLR = 4.3                            # clearance for the horizontal hold-down screw
 
 
 def _build():
@@ -48,8 +49,8 @@ def _build():
     # thick TOP (full 25 mm): holds the nut block + the rail-end dovetail sockets,
     # butts the rail end; sits above the -X leg sockets
     w = box_at(T_EP, yw, CH.Z_TOP - ZSTEP, x=KX, y=yc, z=(CH.Z_TOP + ZSTEP) / 2)
-    # 8 mm back plate (matching the +X endplate) for the rest, at the -X back — seats
-    # on the floor; its +X-lower zone stays open so the -X legs tuck in (no cutouts)
+    # 8 mm back face (matching the +X endplate), FULL-Z to the bed at the -X back; its
+    # +X-lower zone stays open so the -X legs + end crossbar tuck in (no cutouts)
     w = w.union(box_at(CH.T, yw, ZSTEP - ZB, x=XLO + CH.T / 2, y=yc, z=(ZSTEP + ZB) / 2))
     # fuse the nut block -> one PA6-GF piece; trim to the 25 mm X-slab
     w = w.union(NB.nut_block.translate((D.NUT_BLOCK_X, 0, D.STRING_Z)))
@@ -57,8 +58,10 @@ def _build():
     # socket the rail-end dovetail tongues (in the thick top, above the legs)
     for ycc in (CH.Y_HI, CH.Y_LO):
         w = w.cut(CH._kh_tongue(ycc, socket=True))
-    # +Z hold-down screw pilot, up from the floor seat into the 8 mm back plate
-    w = w.cut(cyl(SCREW_PILOT, 16.0, z=ZB).translate((SCREW_X, 0.0, 0)))
+    # hold-down screw: HORIZONTAL clearance through the 8 mm back (head on the -X face);
+    # it threads on into the end crossbar (chassis), locking the part in +Z
+    w = w.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        SCREW_CLR / 2.0, 9.0, cq.Vector(XLO - 1.0, 0.0, CH.KH_SCREW_Z), cq.Vector(1, 0, 0))))
     return heal(w)
 
 
