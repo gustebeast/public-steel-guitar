@@ -63,16 +63,12 @@ TP_TG_MW       = 1.5                    # mouth half-width (at z0)
 TP_TG_FLR      = 0.8                    # dovetail flare per side over DEPTH (foot = MW+FLR)
 TP_TG_YC       = {1: Y_HI, -1: Y_LO}   # groove centre = each rail centre-line
 TP_TG_CLR      = 0.25                  # sliding clearance (groove = tongue + CLR)
-# +X bridge endplate seat: the endplate extends -X over the rail tops to TP_EP_X0
-# and carries a section of the deck groove (TP_EP_X0 .. TP_EP_GX, the capture zone)
-# that locks the +X-most deck plate's tongue -> locks the endplate in +Z. The rail
-# top is shaved to the groove FLOOR over the whole shelf span so the endplate fills
-# above it; the rail provides the groove only -X of the capture zone.
-TP_EP_X0       = -30.0                  # endplate shelf -X end (capture-zone -X end)
-TP_EP_GX       = -17.5                  # capture-zone +X end = deck +X face / shelf shoulder
-PX_DEEP_X1     = 0.0                    # +X leg dovetail +X extent: the bridge thick section
-                                       # (+ deeper rail shave) runs TP_EP_X0..here, XBAR above
-                                       # the leg; +X of it the rail-end tongue/crossbar stay
+# +X END: the bridge endplate TAKES OVER the whole +X end as one solid block (the
+# same endplate methodology as the keyhead): it is the +X cross-tie itself (no
+# separate crossbar) and is held by the rail-end dovetails alone. The rails simply
+# stop at TP_EP_GX; the deck groove runs up to there, then the bridge takes over.
+TP_EP_GX       = -17.5                  # bridge +X face / rail +X end (rails stop here) =
+                                       # deck +X face (the panels butt the bridge)
 # -X END: the keyhead endplate takes over the whole -X end as one solid block (it is the
 # -X cross-tie itself -- no separate crossbar -- and is held by the rail-end dovetails
 # alone, no screw). The rails simply stop at KH_X.
@@ -86,22 +82,20 @@ KH_DT_WR, KH_DT_WT = 2.5, 4.5          # narrow / wide half-widths (Y)
 KH_DT_Z0       = -23.15                 # dovetail BOTTOM = keyhead L cut = leg tenon top
                                        # (-33.15) + XBAR (the clean 10 mm border to the leg)
 KH_DT_CLR      = 0.3                    # socket clearance
+# Bridge RAIL-END DOVETAIL (mirror of the keyhead's, across the +X takeover line): the
+# bridge drops onto a Z-extruded dovetail tongue on each rail +X end, WIDE at +X /
+# narrow at -X. The +X bearing wrap pulls the bridge -X; the wide-at-+X foot can't pull
+# out -X, so it grips that. Same low z band as the keyhead (leg-tenon clear .. deck-
+# groove floor) so it never blocks the bridge dropping to z6. Shares KH_DT_* widths/clr.
+BR_DT_X0, BR_DT_X1 = TP_EP_GX, TP_EP_GX + 8.0   # tongue X: narrow end (-X, rail) .. wide (+X)
 # A chunky rail-to-rail rib UNDER EACH MOTOR (the motor rests on it, its wall sits
 # on it, and it ties the two rails) replaces a solid floor — far lighter for the
-# strength. Plus a rib at the +X end (tying the rails behind the endplate) and one
-# near the nut.
-_RIB_X   = ([X_BRIDGE - 5.0]                       # +X crossbar (-4..6): +X face at the rail
-                                                   # end, -X face where the +X leg narrow
-                                                   # dovetail edge (-4) tucks behind it
-            + [D.motor_pos(i)[0] for i in range(D.N_STRINGS)] + [-575.0])
+# strength. Plus a rib near the nut. (No +X crossbar: the bridge block IS the +X tie.)
+_RIB_X   = ([D.motor_pos(i)[0] for i in range(D.N_STRINGS)] + [-575.0])
 
-# Bridge-endplate joint: the +X rail ends carry a sliding dovetail TONGUE on each
-# side; the endplate caps + sockets them and drops down to engage (see
-# bridge_endplate.py). ENDPLATE_JOINT_Y are the two rail centre-lines. ENDPLATE_DT
-# is shallow (< cap thickness) so the socket is BLIND — the cap's +X face stays
-# solid for strength.
+# Bridge-endplate joint: ENDPLATE_JOINT_Y are the two rail centre-lines the bridge
+# (and keyhead) sit over; kept for the bridge's foot/joint references.
 ENDPLATE_JOINT_Y = (Y_HI, Y_LO)
-ENDPLATE_DT = 5.0
 
 SPLIT_X  = [-220.0, -440.0]            # 2 cuts → 3 segments < 255 mm, in motor-wall gaps
 # dovetail: depth, root/tip width, shoulder, fit. Tip width kept ≤ T−3.2 so the
@@ -265,15 +259,15 @@ def _build_full() -> cq.Workplane:
         for _ly in RIB_RACE_Y:
             body = body.cut(_diamond(_ly, -70.65, 3.5, _rx, _RIB_W + 2.0))
     # DECK JOINT: the plates cap the rail and drop a vertical DOVETAIL tongue into a
-    # groove milled in the rail top. (1) lower the rail top to z0 across the deck
-    # X-span so a plate sits flush on top; (2) mill the groove (matches top_plate's
-    # tongue + clearance). The +X end stops at -17.5 (just -X of the stop ledge at
-    # -16) so the deck-level stop ledge is never freed.
+    # groove milled in the rail top. Lower the rail top to z0 across the whole deck
+    # X-span (rail -X end up to the +X takeover line TP_EP_GX) so a plate sits flush,
+    # then mill the groove (matches top_plate's tongue + clearance). The groove runs
+    # right to TP_EP_GX; +X of there the bridge takes over (rail removed below).
     _gx0 = TP_X1 - 2.0
     for _yc in (Y_HI, Y_LO):
-        # (1) -X of the endplate shelf: shave the rail top to z0 + mill the groove
-        body = body.cut(box_at(TP_EP_X0 - _gx0, T + 0.5, (Z_TOP + 1.0) - TP_GZ0,
-                               x=(_gx0 + TP_EP_X0) / 2, y=_yc,
+        # shave the rail top to z0 across the deck span + mill the groove
+        body = body.cut(box_at(TP_EP_GX - _gx0, T + 0.5, (Z_TOP + 1.0) - TP_GZ0,
+                               x=(_gx0 + TP_EP_GX) / 2, y=_yc,
                                z=(TP_GZ0 + Z_TOP + 1.0) / 2))
         MW, FLR, DEP, C = TP_TG_MW, TP_TG_FLR, TP_TG_DEPTH, TP_TG_CLR
         prof = [(_yc - MW - C, TP_GZ0 + 0.1), (_yc + MW + C, TP_GZ0 + 0.1),
@@ -281,27 +275,18 @@ def _build_full() -> cq.Workplane:
         pts = [cq.Vector(_gx0, py, pz) for py, pz in prof]
         face = cq.Face.makeFromWires(cq.Wire.makePolygon([*pts, pts[0]]))
         body = body.cut(cq.Workplane("XY").add(
-            cq.Solid.extrudeLinear(face, cq.Vector(TP_EP_X0 - _gx0, 0, 0))))
-        # (2) endplate shelf span (TP_EP_X0 .. X_BRIDGE): shave the rail to the groove
-        # FLOOR so the bridge endplate fills above it (it carries the groove section
-        # over the capture zone + the solid shelf/+X stop). No +X stop ledge now -
-        # the endplate's shelf shoulder is the deck panels' +X stop.
-        body = body.cut(box_at(X_BRIDGE - TP_EP_X0, T + 0.5,
-                               (Z_TOP + 1.0) - (TP_GZ0 - TP_TG_DEPTH),
-                               x=(TP_EP_X0 + X_BRIDGE) / 2, y=_yc,
-                               z=((TP_GZ0 - TP_TG_DEPTH) + Z_TOP + 1.0) / 2))
-        # (3) DEEPER over the +X leg (TP_EP_X0 .. PX_DEEP_X1): shave to the L level so
-        # the bridge endplate drops a thick section to XBAR above the leg (mirrors the
-        # keyhead's thick top at the -X end). x > PX_DEEP_X1 keeps the rail-end tongue.
-        body = body.cut(box_at(PX_DEEP_X1 - TP_EP_X0, T + 0.5,
-                               (TP_GZ0 - TP_TG_DEPTH) - KH_DT_Z0,
-                               x=(TP_EP_X0 + PX_DEEP_X1) / 2, y=_yc,
-                               z=((TP_GZ0 - TP_TG_DEPTH) + KH_DT_Z0) / 2))
+            cq.Solid.extrudeLinear(face, cq.Vector(TP_EP_GX - _gx0, 0, 0))))
     body = body.union(MB.motor_bank)                  # fuse in the motor faceplate walls
-    # +X end: a sliding-dovetail tongue on each rail end; the bridge endplate caps
-    # and sockets them (drops down to engage, glued).
-    for yr in ENDPLATE_JOINT_Y:
-        body = body.union(_tongue(X_BRIDGE, yr, depth=ENDPLATE_DT))
+    # +X end: the bridge endplate TAKES OVER the +X end as a solid block (mirror of the
+    # keyhead -X takeover): remove the rail ENTIRELY at x > TP_EP_GX (z full) so the
+    # bridge fills it and IS the +X cross-tie (no separate crossbar); it's held by the
+    # rail-end dovetails alone. Only the dovetail tongues it sockets are added back.
+    body = body.cut(box_at((X_BRIDGE + 5.0) - TP_EP_GX, (Y_HI - Y_LO) + T + 4.0,
+                           (Z_TOP + 1.0) - (Z_BOT - 1.0),
+                           x=(TP_EP_GX + X_BRIDGE + 5.0) / 2, y=(Y_HI + Y_LO) / 2,
+                           z=((Z_BOT - 1.0) + (Z_TOP + 1.0)) / 2))
+    for _yc in (Y_HI, Y_LO):
+        body = body.union(_br_tongue(_yc))
     # keyhead TAKES OVER the -X end as a solid block (its edge shows from the front like
     # the bridge end): remove the rail ENTIRELY at x < KH_X (z full) so the keyhead fills
     # it and IS the -X cross-tie (no separate crossbar); it's held by the rail-end
@@ -319,7 +304,8 @@ def _tongue(s, yr, socket=False, depth=None):
     """Dovetail prism at split X=s on the rail at Y=yr: a trapezoid (flaring +X in
     Y) extruded in Z. The −X segment carries it; the +X segment gets it as a socket
     (with clearance, open-topped). It bottoms on a shoulder of height _SH. `depth`
-    is the +X reach (default _DT; the endplate joint uses a shallower, BLIND depth)."""
+    is the +X reach (default _DT). Used for the inter-SEGMENT joints (the bridge/
+    keyhead end joints use the low _br_tongue/_kh_tongue dovetails instead)."""
     d = _DT if depth is None else depth
     g = _CLR if socket else 0.0
     wr, wt = (_WR + g) / 2, (_WT + g) / 2
@@ -346,6 +332,22 @@ def _kh_tongue(yc, socket=False):
     return (cq.Workplane("XY").workplane(offset=z0).polyline(pts).close().extrude(z1 - z0))
 
 
+def _br_tongue(yc, socket=False):
+    """Bridge rail-END dovetail at Y=yc (see BR_DT_*): the mirror of _kh_tongue across
+    the +X takeover line. A Z-extruded trapezoid on the rail +X end, narrow -X (rail
+    side) / wide +X (into the bridge), so the +X bearing wrap (which pulls the bridge
+    -X) can't pull the wide foot out. Same low z band as the keyhead (leg-tenon clear
+    .. deck-groove floor) so it never blocks the bridge dropping to z6. socket=True
+    adds clearance + an open top for the cut."""
+    g = KH_DT_CLR if socket else 0.0
+    wr, wt = KH_DT_WR + g, KH_DT_WT + g
+    z0 = KH_DT_Z0
+    z1 = TP_GZ0 if socket else (TP_GZ0 - TP_TG_DEPTH)
+    pts = [(BR_DT_X0, yc - wr), (BR_DT_X0, yc + wr),   # -X narrow (rail side)
+           (BR_DT_X1, yc + wt), (BR_DT_X1, yc - wt)]   # +X wide (into the bridge)
+    return (cq.Workplane("XY").workplane(offset=z0).polyline(pts).close().extrude(z1 - z0))
+
+
 def _seg_box(a, b):
     h = (Z_TOP + 18.0) - (Z_BOT - 6.0)
     return box_at(abs(a - b) + 0.02, (Y_HI - Y_LO) + 40.0, h,
@@ -368,8 +370,8 @@ def _largest(seg):
 
 def _segments():
     full = _build_full()
-    # +X-most bound extends past the endplate tongues so they survive the segment cut
-    edges = [X_BRIDGE + ENDPLATE_DT + 2.0] + sorted(SPLIT_X, reverse=True) + [X_NUT]
+    # +X-most bound reaches past the rail +X end + its bridge dovetail tongues
+    edges = [X_BRIDGE + 2.0] + sorted(SPLIT_X, reverse=True) + [X_NUT]
     segs = []
     for i in range(len(edges) - 1):
         a, b = edges[i], edges[i + 1]                 # a (+X) > b (−X)
