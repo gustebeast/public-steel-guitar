@@ -38,12 +38,14 @@ KX   = (XLO + XHI) / 2
 YFL  = CH.Y_LO - CH.T / 2                   # full width: -Y rail outer face
 YFH  = CH.Y_HI + CH.T / 2                   # +Y rail outer face
 Z6    = CH.TP_GZ1                          # deck/top-plate level = general plate top
-ZSTEP = CH.KH_DT_Z0                         # foot-clearance top = XBAR above the leg tenon
 NB_HW = 41.0                               # nut-block half-width (Y); riser ties it down
 NB_Z0 = 10.0                               # nut-block base Z
-FOOT_X0 = -625.0                           # foot clearance: -X edge (covers the leg dovetail)
-# -X leg Y bands (from leg_socket_2/_3), clamped into the plate: hollow over each leg
-LEG_BANDS = ((37.0, YFH), (YFL, -111.0))
+# FOOT POCKET: the chassis now KEEPS a ~10 mm rail shell hugging each -X leg socket
+# (CH._leg_shell over CH.LEG_SHELL_NX); the keyhead is solid AROUND that shell and
+# nests over it as it drops -Z. The pocket is just the shell outer profile + a small
+# assembly clearance (no big empty box): leg -> 10 mm rail wall -> keyhead, touching.
+LEG_CLR = 0.4                              # assembly clearance around the kept chassis shell
+LEG_SHELL_X0, LEG_SHELL_X1 = CH.LEG_SHELL_NX     # -624 .. -611 (rail-takeover region)
 
 
 def _build():
@@ -56,11 +58,16 @@ def _build():
     w = w.union(box_at(T_EP, 2 * NB_HW, NB_Z0 - Z6, x=KX, y=0, z=(NB_Z0 + Z6) / 2))
     w = w.union(NB.nut_block.translate((D.NUT_BLOCK_X, 0, D.STRING_Z)))
     w = w.intersect(box_at(T_EP, 4000.0, 4000.0, x=KX, y=0, z=0))
-    # FOOT clearance: hollow over each -X leg below the XBAR-above-tenon line (the only
-    # place we thin from the solid block) so the leg + the part's install drop clear
-    for (y0, y1) in LEG_BANDS:
-        w = w.cut(box_at(XHI - FOOT_X0, y1 - y0, ZSTEP - CH.Z_BOT,
-                         x=(FOOT_X0 + XHI) / 2, y=(y0 + y1) / 2, z=(ZSTEP + CH.Z_BOT) / 2))
+    # FOOT POCKET: pocket exactly the kept chassis rail shell (+ clearance) out of each
+    # -X leg station so the keyhead nests over it (open-top, to z6) as it drops -Z. The
+    # block stays SOLID everywhere else around the shell -- no empty box, no gap.
+    for yr, s in ((CH.Y_HI, 1), (CH.Y_LO, -1)):
+        yf = yr + s * CH.T / 2 + s * LEG_CLR        # shell outer face + clearance
+        yi = yr - s * CH.T / 2 - s * LEG_CLR        # shell inner face + clearance
+        w = w.cut(box_at((XHI + 1.0) - (LEG_SHELL_X0 - LEG_CLR), abs(yf - yi),
+                         (Z6 + 1.0) - (CH.Z_BOT - 1.0),
+                         x=((LEG_SHELL_X0 - LEG_CLR) + (XHI + 1.0)) / 2,
+                         y=(yf + yi) / 2, z=((CH.Z_BOT - 1.0) + (Z6 + 1.0)) / 2))
     # rail-end dovetail sockets (grip the rail tongues; X+Y lock vs the string tension)
     for ycc in (CH.Y_HI, CH.Y_LO):
         w = w.cut(CH._kh_tongue(ycc, socket=True))

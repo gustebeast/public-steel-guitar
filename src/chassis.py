@@ -26,6 +26,8 @@ from . import dimensions as D
 from . import motor_bank as MB
 from .components import MOTOR_PULLEY_STANDOFF
 from .helpers import box_at, cyl
+from .legs import (LEG_STATIONS_X, DT_FACE_HW, DT_DEEP_HW, DT_DEPTH, DT_H,
+                   BARREL_OD)
 
 T        = D.WALL_THICKNESS            # rail thickness (solid; slicer infills)
 X_BRIDGE = 6.0                         # +X (bridge) end — the rails end here; the bridge
@@ -210,23 +212,9 @@ def _build_full() -> cq.Workplane:
     # bottom face. The slot roof rises 45° toward the face — in-layer support
     # accretes from beyond the deep wall (a single supported slope, never a
     # chevron over an open edge).
-    from .legs import LEG_STATIONS_X, DT_FACE_HW, DT_DEEP_HW, DT_DEPTH, DT_H
     for _sx in LEG_STATIONS_X:
         for _yr, _s in ((Y_HI, 1), (Y_LO, -1)):
-            yf = _yr + _s * T / 2                          # outer face
-            yd = yf - _s * DT_DEPTH                        # deep wall
-            trap = (cq.Workplane("XY").workplane(offset=Z_BOT - 1.0)
-                    .polyline([(_sx - DT_FACE_HW, yf), (_sx + DT_FACE_HW, yf),
-                               (_sx + DT_DEEP_HW, yd), (_sx - DT_DEEP_HW, yd)])
-                    .close().extrude(1.0 + DT_H + DT_DEPTH))
-            keep = (cq.Workplane("YZ")
-                    .polyline([(yf + _s, Z_BOT - 2.0),
-                               (yf + _s, Z_BOT + DT_H + DT_DEPTH + 1.0),
-                               (yd - _s, Z_BOT + DT_H - 1.0),
-                               (yd - _s, Z_BOT - 2.0)])
-                    .close().extrude(2 * DT_DEEP_HW + 4)
-                    .translate((_sx - DT_DEEP_HW - 2, 0, 0)))
-            body = body.cut(trap.intersect(keep))
+            body = body.cut(_leg_dt_slot(_sx, _yr, _s))
     # electronics-tray drop-in channels: one vertical channel per rail inner
     # face (open at the top - the tray lowers in from above and its tabs
     # bottom on the channel floors), placed in the only solid-web window
@@ -285,6 +273,9 @@ def _build_full() -> cq.Workplane:
                            (Z_TOP + 1.0) - (Z_BOT - 1.0),
                            x=(TP_EP_GX + X_BRIDGE + 5.0) / 2, y=(Y_HI + Y_LO) / 2,
                            z=((Z_BOT - 1.0) + (Z_TOP + 1.0)) / 2))
+    # KEEP a ~10 mm rail shell hugging the +X leg socket (the removal above stripped
+    # the rail off the leg's +X reach); the bridge endplate nests over this shell.
+    body = body.union(_leg_shell(LEG_STATIONS_X[0], *LEG_SHELL_PX))
     for _yc in (Y_HI, Y_LO):
         body = body.union(_br_tongue(_yc))
     # keyhead TAKES OVER the -X end as a solid block (its edge shows from the front like
@@ -295,9 +286,57 @@ def _build_full() -> cq.Workplane:
                            (Z_TOP + 1.0) - (Z_BOT - 1.0),
                            x=(KH_X + X_NUT - 5.0) / 2, y=(Y_HI + Y_LO) / 2,
                            z=((Z_BOT - 1.0) + (Z_TOP + 1.0)) / 2))
+    # KEEP a ~10 mm rail shell hugging the -X leg socket (mirror of the +X end).
+    body = body.union(_leg_shell(LEG_STATIONS_X[1], *LEG_SHELL_NX))
     for _yc in (Y_HI, Y_LO):
         body = body.union(_kh_tongue(_yc))
     return body
+
+
+def _leg_dt_slot(sx, yr, s):
+    """The vertical sliding-dovetail SLOT for a leg socket in the rail's OUTER
+    face at station (sx, yr); `s` = +1 (Y_HI) / -1 (Y_LO). Cut from the rail; the
+    printed leg tenon slides up into it from below. Factored out so the +X/-X
+    end-takeover can KEEP a rail shell around the leg and re-cut this same slot."""
+    yf = yr + s * T / 2                              # outer face
+    yd = yf - s * DT_DEPTH                           # deep wall
+    trap = (cq.Workplane("XY").workplane(offset=Z_BOT - 1.0)
+            .polyline([(sx - DT_FACE_HW, yf), (sx + DT_FACE_HW, yf),
+                       (sx + DT_DEEP_HW, yd), (sx - DT_DEEP_HW, yd)])
+            .close().extrude(1.0 + DT_H + DT_DEPTH))
+    keep = (cq.Workplane("YZ")
+            .polyline([(yf + s, Z_BOT - 2.0),
+                       (yf + s, Z_BOT + DT_H + DT_DEPTH + 1.0),
+                       (yd - s, Z_BOT + DT_H - 1.0),
+                       (yd - s, Z_BOT - 2.0)])
+            .close().extrude(2 * DT_DEEP_HW + 4)
+            .translate((sx - DT_DEEP_HW - 2, 0, 0)))
+    return trap.intersect(keep)
+
+
+# Leg-shell X-extents in each end-takeover region: the end removal would strip the
+# rail off the leg socket's end-side, leaving the leg unhugged + the endplate
+# clearing it with a big empty box. Instead KEEP the rail (its T=10 wall IS the
+# ~10 mm body wrap) over the leg socket's reach into the takeover, then re-cut the
+# leg dovetail slot in the kept shell. The barrel (Ø44) reaches BARREL_OD/2 past
+# the station; that sets the shell's end-side X.
+LEG_SHELL_PX = (TP_EP_GX, LEG_STATIONS_X[0] + BARREL_OD / 2)     # +X leg: -17.5 .. 4
+LEG_SHELL_NX = (LEG_STATIONS_X[1] - BARREL_OD / 2, KH_X)         # -X leg: -624 .. -611
+
+
+def _leg_shell(sx, x0, x1):
+    """The kept rail shell around one leg station (both rails), spanning x0..x1
+    over the rail Y-bands, from the bed up to the deck level (z6, matching the
+    endplate rail-takeover height -- the shell fills the gap the endplate used to
+    leave empty, no more). Re-cut the leg dovetail slot in it afterward."""
+    out = None
+    z1 = TP_GZ1                                       # deck level (z6); not above the deck
+    for yr, s in ((Y_HI, 1), (Y_LO, -1)):
+        sh = box_at(x1 - x0, T, z1 - (Z_BOT - 1.0),
+                    x=(x0 + x1) / 2, y=yr, z=((Z_BOT - 1.0) + z1) / 2)
+        sh = sh.cut(_leg_dt_slot(sx, yr, s))
+        out = sh if out is None else out.union(sh)
+    return out
 
 
 def _tongue(s, yr, socket=False, depth=None):
