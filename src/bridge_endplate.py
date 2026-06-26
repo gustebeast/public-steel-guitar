@@ -244,10 +244,10 @@ def _build() -> cq.Workplane:
         yf = yr + s * CH.T / 2 + s * LEG_CLR        # shell outer face + clearance
         yi = yr - s * CH.T / 2 - s * LEG_CLR        # shell inner face + clearance
         body = body.cut(box_at((LEG_SHELL_X1 + LEG_CLR) - (LEG_SHELL_X0 - 1.0),
-                               abs(yf - yi), (FOOT_Z + 0.1) - (CH.Z_BOT - 1.0),
+                               abs(yf - yi), FOOT_Z - (CH.Z_BOT - 1.0),   # stop AT the foot line
                                x=((LEG_SHELL_X0 - 1.0) + (LEG_SHELL_X1 + LEG_CLR)) / 2,
                                y=(yf + yi) / 2,
-                               z=((CH.Z_BOT - 1.0) + (FOOT_Z + 0.1)) / 2))
+                               z=((CH.Z_BOT - 1.0) + FOOT_Z) / 2))
     # SOCKET the rail-end dovetail tongue on each rail (keyhead-style, low band z
     # -23.15..-6): the endplate drops straight down onto the rail tongues and glues.
     # The dovetail (wide +X / narrow -X) locks it in X+Y and grips the bearing-wrap

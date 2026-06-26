@@ -92,7 +92,10 @@ KH_DT_WR, KH_DT_WT = 2.0, 3.0          # narrow / wide half-widths (Y). Sized so
 KH_DT_DEPTH    = 8.0                    # dovetail reach into the endplate (X)
 KH_DT_Z0       = -23.15                 # foot line = leg-tenon top (-33.15) + XBAR; also the
                                        # LOWER/UPPER dovetail split (the L-corner / drop stop)
-KH_DT_CLR      = 0.3                    # socket clearance
+KH_DT_CLR      = 0.3                    # socket clearance (Y fit)
+KH_DT_SEAT     = 0.1                    # lower-mortise headroom above the foot line: the
+                                       # socket tops at KH_DT_Z0 + this so the tenon seats on
+                                       # the L-foot/shell, not the mortise ceiling (-23.05)
 # A chunky rail-to-rail rib UNDER EACH MOTOR (the motor rests on it, its wall sits
 # on it, and it ties the two rails) replaces a solid floor — far lighter for the
 # strength. Plus a rib near the nut. (No +X crossbar: the bridge block IS the +X tie.)
@@ -365,20 +368,19 @@ def _tongue(s, yr, socket=False, depth=None):
     return cq.Workplane("XY").workplane(offset=z0).polyline(pts).close().extrude(z1 - z0)
 
 
-def _end_dt(x_face, into, yc, z0, z1, socket=False, open_top=True):
+def _end_dt(x_face, into, yc, z0, z1, socket=False, top_clr=TP_TG_DEPTH):
     """ONE Y-flaring vertical dovetail on an end-contact face at x=x_face, Z-extruded
     z0..z1, centred on Y=yc. `into` (+1/-1) points from the face toward the endplate
     tip: the trapezoid is NARROW at x_face (rail/shell side) and WIDE KH_DT_DEPTH into
     the endplate, so string tension can't draw the wide foot back out. The body carries
     it (tenon); the endplate cuts it (socket=True widens it by the clearance all round).
-    `open_top` extends the socket's top by TP_TG_DEPTH so the endplate can drop straight
-    down over the tenon -- used for the UPPER dovetail (whose top sits in the deck zone);
-    the LOWER dovetail passes open_top=False so its socket stops at the fill-zone floor
-    (z1=KH_DT_Z0) instead of cutting up into the solid fill band."""
+    `top_clr` raises the SOCKET top above the tenon top (z1) so the tenon seats on its
+    real stop, not the mortise ceiling: the UPPER dovetail uses TP_TG_DEPTH (its top sits
+    in the deck zone); the LOWER passes KH_DT_SEAT -- a hair above the fill-zone floor."""
     g = KH_DT_CLR if socket else 0.0
     wr, wt = KH_DT_WR + g, KH_DT_WT + g
     x_in = x_face + into * KH_DT_DEPTH
-    z_hi = z1 + (TP_TG_DEPTH if (socket and open_top) else 0.0)
+    z_hi = z1 + (top_clr if socket else 0.0)
     pts = [(x_face, yc - wr), (x_face, yc + wr),        # narrow (rail/shell face)
            (x_in, yc + wt), (x_in, yc - wt)]            # wide (into the endplate)
     return cq.Workplane("XY").workplane(offset=z0).polyline(pts).close().extrude(z_hi - z0)
@@ -390,7 +392,7 @@ def _kh_tongue(yc, socket=False):
     UPPER on the foot<->rail-end face (x=KH_X, z foot line..deck-groove floor). Both wide
     -X into the keyhead so the +X string pull is gripped. Body carries them; the keyhead
     drops on and sockets them. socket=True adds clearance + open tops for the cut."""
-    lower = _end_dt(_SHELL_NX, -1, yc, Z_BOT, KH_DT_Z0, socket, open_top=False)
+    lower = _end_dt(_SHELL_NX, -1, yc, Z_BOT, KH_DT_Z0, socket, top_clr=KH_DT_SEAT)
     upper = _end_dt(KH_X, -1, yc, KH_DT_Z0, TP_GZ0 - TP_TG_DEPTH, socket)
     return lower.union(upper)
 
@@ -401,7 +403,7 @@ def _br_tongue(yc, socket=False):
     face (x=TP_EP_GX, z foot line..deck-groove floor). Both wide +X into the bridge so the
     +X bearing wrap (which pulls the bridge -X) can't draw the wide foot out. Body carries
     them; the bridge drops on and sockets them. socket=True adds clearance + open tops."""
-    lower = _end_dt(_SHELL_PX, +1, yc, Z_BOT, KH_DT_Z0, socket, open_top=False)
+    lower = _end_dt(_SHELL_PX, +1, yc, Z_BOT, KH_DT_Z0, socket, top_clr=KH_DT_SEAT)
     upper = _end_dt(TP_EP_GX, +1, yc, KH_DT_Z0, TP_GZ0 - TP_TG_DEPTH, socket)
     return lower.union(upper)
 

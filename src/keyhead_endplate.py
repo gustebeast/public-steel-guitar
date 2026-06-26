@@ -87,9 +87,9 @@ def _build():
         yf = yr + s * CH.T / 2 + s * LEG_CLR        # shell outer face + clearance
         yi = yr - s * CH.T / 2 - s * LEG_CLR        # shell inner face + clearance
         w = w.cut(box_at((XHI + 1.0) - (LEG_SHELL_X0 - LEG_CLR), abs(yf - yi),
-                         (FOOT_Z + 0.1) - (CH.Z_BOT - 1.0),
-                         x=((LEG_SHELL_X0 - LEG_CLR) + (XHI + 1.0)) / 2,
-                         y=(yf + yi) / 2, z=((CH.Z_BOT - 1.0) + (FOOT_Z + 0.1)) / 2))
+                         FOOT_Z - (CH.Z_BOT - 1.0),       # stop AT the foot line (= band floor):
+                         x=((LEG_SHELL_X0 - LEG_CLR) + (XHI + 1.0)) / 2,   # no +0.1 step into the band
+                         y=(yf + yi) / 2, z=((CH.Z_BOT - 1.0) + FOOT_Z) / 2))
     # rail-end dovetail sockets (grip the rail tongues; X+Y lock vs the string tension)
     for ycc in (CH.Y_HI, CH.Y_LO):
         w = w.cut(CH._kh_tongue(ycc, socket=True))
