@@ -70,8 +70,8 @@ MECH_HW = D.BRIDGE_AXLE_Y + ARM_W / 2   # field-centre upper-cap half-span (arm 
 # outer profile grown by a small assembly clearance, so the bridge nests over the
 # kept shell as it drops -Z (no gap: leg -> 10 mm rail wall -> bridge, all touching).
 FOOT_Z   = CH.KH_DT_Z0              # XBAR-above-tenon line (-23.15) = use-up box floor
-LEG_CLR  = 0.4                      # assembly clearance around the kept chassis shell
-LEG_SHELL_X0, LEG_SHELL_X1 = CH.LEG_SHELL_PX     # -17.5 .. 4 (rail-takeover region)
+LEG_CLR  = CH.EP_LEG_CLR            # assembly clearance around the kept chassis shell (shared)
+LEG_SHELL_X0, LEG_SHELL_X1 = CH.LEG_SHELL_PX     # -17.5 .. 5.6 (rail-takeover region)
 
 
 def _cap() -> cq.Workplane:
@@ -233,18 +233,21 @@ def _build() -> cq.Workplane:
     body = body.cut(box_at((X1 - X0) + 2.0, 2 * WIN_HW, WIN_Z1 - WIN_Z0,
                            x=(X0 + X1) / 2, y=0, z=(WIN_Z1 + WIN_Z0) / 2))
     # FOOT POCKET: the chassis KEEPS a ~10 mm rail shell hugging each +X leg socket
-    # (CH._leg_shell). Pocket exactly that shell + a small assembly clearance out of
-    # the bridge so it nests over the shell as it drops -Z. No empty box: leg ->
-    # 10 mm rail wall -> bridge, all touching. The pocket reaches z6 (open-top) so
-    # the bridge clears the kept shell vertically on the install drop.
+    # (CH._leg_shell), capped at the foot line (z FOOT_Z = -23.15). Pocket exactly
+    # that shell + a small assembly clearance out of the bridge so it nests over the
+    # shell as it drops -Z. No empty box: leg -> 10 mm rail wall -> bridge, all
+    # touching. The pocket ONLY clears z = Z_BOT .. FOOT_Z (over the shell) -- NOT
+    # full-Z -- so the solid fill band (z -23.15..6) stays intact over the legs (the
+    # band sits on top of the capped shell; the shell ends at FOOT_Z so nothing above
+    # it needs clearing on the install drop).
     for yr, s in ((CH.Y_HI, 1), (CH.Y_LO, -1)):
         yf = yr + s * CH.T / 2 + s * LEG_CLR        # shell outer face + clearance
         yi = yr - s * CH.T / 2 - s * LEG_CLR        # shell inner face + clearance
         body = body.cut(box_at((LEG_SHELL_X1 + LEG_CLR) - (LEG_SHELL_X0 - 1.0),
-                               abs(yf - yi), (Z6 + 1.0) - (CH.Z_BOT - 1.0),
+                               abs(yf - yi), (FOOT_Z + 0.1) - (CH.Z_BOT - 1.0),
                                x=((LEG_SHELL_X0 - 1.0) + (LEG_SHELL_X1 + LEG_CLR)) / 2,
                                y=(yf + yi) / 2,
-                               z=((CH.Z_BOT - 1.0) + (Z6 + 1.0)) / 2))
+                               z=((CH.Z_BOT - 1.0) + (FOOT_Z + 0.1)) / 2))
     # SOCKET the rail-end dovetail tongue on each rail (keyhead-style, low band z
     # -23.15..-6): the endplate drops straight down onto the rail tongues and glues.
     # The dovetail (wide +X / narrow -X) locks it in X+Y and grips the bearing-wrap

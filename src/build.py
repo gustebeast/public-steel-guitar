@@ -25,9 +25,10 @@ import cadquery as cq
 # output viewable — opens or refreshes its tab in the FreeCAD hub. Never raises.
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "freecad"))
 from freecad_view import show
+from step_export import export_step
 
 from . import dimensions as D
-from .helpers import heal, cyl
+from .helpers import heal
 from . import components as C
 from . import chassis as CH
 from .carriage import carriage, THICK as CARRIAGE_THICK, SEAT_Z as CARRIAGE_SEAT_Z
@@ -89,7 +90,7 @@ for _i, _seg in enumerate(chassis_segments):     # chassis split into dovetailed
 
 def _export(name):
     builder, path, note = PARTS[name]
-    cq.exporters.export(builder(), path)
+    export_step(builder(), path)
     print(f"Wrote {path}" + (f"  ({note})" if note else ""))
 
 
@@ -285,7 +286,7 @@ def _leg_components():
     ground = CH.Z_BOT - LEG_HEIGHT
     step = 2.0 + (LG.SEG_L - LG.TH_LEN)                  # washer + segment
     k = 0
-    for sx in LG.LEG_STATIONS_X:
+    for sx in CH.LEG_STATIONS_X:           # stations computed from the shared endplate model
         for ry, rot in ((CH.Y_HI, 180), (CH.Y_LO, 0)):   # plate faces outward
             zb = CH.Z_BOT - LG.BARREL_L                  # barrel bottom
             out.append((f"leg_socket_{k}",

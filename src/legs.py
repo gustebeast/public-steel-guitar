@@ -20,9 +20,9 @@ The SOCKET joins the rail with GLUED JOINERY, no fasteners: a vertical
 dovetail tenon slides UP into a slot in the rail's outer face from below
 until the barrel's top rim seats flat against the rail's bottom flange.
 Ground reaction = large-area rim compression; bending/torsion = the dovetail
-flanks + glue; the joint is invisible from outside. Sockets sit at x −20
-(bridge) and −600 (keyhead), both rails — solid web, clear of the endplate
-dovetails. The socket is a separate part ONLY because the chassis can't
+flanks + glue; the joint is invisible from outside. Sockets sit at x −18.4
+(bridge) and −601.6 (keyhead), both rails — solid web, clear of the endplate
+dovetails (positions computed in chassis.py; see LEG_STATIONS_X there). The socket is a separate part ONLY because the chassis can't
 print below its bed, which is exactly the case glue is for.
 
 All printed standing (tubes along Z): threads print cleanly, no supports.
@@ -54,10 +54,14 @@ FOOT_H  = 12.0
 
 # socket bracket
 BARREL_OD, BARREL_L = 44.0, 32.0
-LEG_STATIONS_X = (-18.0, -602.0)       # -X leg (narrow dovetail edge station-14 = -616) tucks
-                                       # under the solid keyhead block (its dovetail seats in
-                                       # the rail just +X of the keyhead). +X leg narrow edge
-                                       # -4, XBAR (10mm) off the bridge face at +6.
+# LEG_STATIONS_X (the two corner-station X's, both rails) is COMPUTED in chassis.py
+# from the shared endplate<->leg model (chassis.LEG_STATIONS_X): each station is set
+# so the leg's dovetail tenon leaves the same EP_LEG_BUFFER (10mm) of solid body to
+# its endplate wall, mirrored at both ends. It lives there (not here) because it
+# depends on the endplate tip positions, which are chassis constants. Result: the +X
+# leg at -18.4 and the -X leg at -601.6 -- each placed so its dovetail tenon leaves
+# exactly EP_LEG_BUFFER (10mm) of SOLID BODY to the endplate wall (measured from the
+# leg-shell face, so the wall<->shell clearance gap doesn't eat into the 10mm).
 # rail joinery (chassis.py cuts the matching slots from these)
 DT_FACE_HW = 14.0                      # dovetail half-width at the rail face…
 DT_DEEP_HW = 18.0                      # …flaring 45° to this at full depth

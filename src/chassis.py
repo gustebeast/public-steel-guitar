@@ -26,8 +26,7 @@ from . import dimensions as D
 from . import motor_bank as MB
 from .components import MOTOR_PULLEY_STANDOFF
 from .helpers import box_at, cyl
-from .legs import (LEG_STATIONS_X, DT_FACE_HW, DT_DEEP_HW, DT_DEPTH, DT_H,
-                   BARREL_OD)
+from .legs import DT_FACE_HW, DT_DEEP_HW, DT_DEPTH, DT_H
 
 T        = D.WALL_THICKNESS            # rail thickness (solid; slicer infills)
 X_BRIDGE = 6.0                         # +X (bridge) end — the rails end here; the bridge
@@ -75,21 +74,25 @@ TP_EP_GX       = -17.5                  # bridge +X face / rail +X end (rails st
 # -X cross-tie itself -- no separate crossbar -- and is held by the rail-end dovetails
 # alone, no screw). The rails simply stop at KH_X.
 KH_X           = -611.0                 # keyhead +X face / rail -X end (rails stop here)
-# Keyhead RAIL-END DOVETAIL (mirrors the bridge endplate joint): the keyhead drops onto
-# a Z-extruded dovetail tongue on each rail end, WIDE at -X / narrow at +X, so the +X
-# string tension is gripped. In the z band between the -X leg sockets (top -34.4) and
-# the deck-groove floor (-6); the keyhead sockets them (X+Y lock; still lifts +Z).
-KH_DT_X1, KH_DT_X0 = KH_X, KH_X - 8.0  # tongue X: narrow end (+X, rail) .. wide end (-X)
-KH_DT_WR, KH_DT_WT = 2.5, 4.5          # narrow / wide half-widths (Y)
-KH_DT_Z0       = -23.15                 # dovetail BOTTOM = keyhead L cut = leg tenon top
-                                       # (-33.15) + XBAR (the clean 10 mm border to the leg)
+# Endplate JOINERY (both ends, shared — see _end_dt / _kh_tongue / _br_tongue): each
+# endplate is held by Y-flaring vertical dovetails that follow the L-shaped body<->
+# endplate contact. Per rail there are TWO stacked dovetails: a LOWER one on the
+# wall<->leg-shell face (z bed..foot line) and an UPPER one on the foot<->rail-end face
+# (z foot line..deck-groove floor — it STOPS below the deck so the panel seat stays
+# clear). Each is NARROW at the rail/shell face and WIDE KH_DT_DEPTH into the endplate,
+# so string tension can't draw the wide foot back out. The body carries the tenons; the
+# endplate sockets them (X+Y lock, still lifts +Z). The endplate's L-foot resting on the
+# leg-shell top is the drop-depth stop, so the dovetails need no shoulder of their own.
+KH_DT_WR, KH_DT_WT = 2.0, 3.0          # narrow / wide half-widths (Y). Sized so the socket's
+                                       # OUTER wall (to the instrument's outer face, the only
+                                       # bounded side: the dovetail centres on the rail, 5 mm
+                                       # from that face) stays >= 1.6 mm (2x 0.8 nozzle): wall =
+                                       # 5 - WT - KH_DT_CLR = 1.7 mm. 1:8 flank flare (WT-WR=1.0
+                                       # over DEPTH), so the wall comfortably backs the undercut.
+KH_DT_DEPTH    = 8.0                    # dovetail reach into the endplate (X)
+KH_DT_Z0       = -23.15                 # foot line = leg-tenon top (-33.15) + XBAR; also the
+                                       # LOWER/UPPER dovetail split (the L-corner / drop stop)
 KH_DT_CLR      = 0.3                    # socket clearance
-# Bridge RAIL-END DOVETAIL (mirror of the keyhead's, across the +X takeover line): the
-# bridge drops onto a Z-extruded dovetail tongue on each rail +X end, WIDE at +X /
-# narrow at -X. The +X bearing wrap pulls the bridge -X; the wide-at-+X foot can't pull
-# out -X, so it grips that. Same low z band as the keyhead (leg-tenon clear .. deck-
-# groove floor) so it never blocks the bridge dropping to z6. Shares KH_DT_* widths/clr.
-BR_DT_X0, BR_DT_X1 = TP_EP_GX, TP_EP_GX + 8.0   # tongue X: narrow end (-X, rail) .. wide (+X)
 # A chunky rail-to-rail rib UNDER EACH MOTOR (the motor rests on it, its wall sits
 # on it, and it ties the two rails) replaces a solid floor — far lighter for the
 # strength. Plus a rib near the nut. (No +X crossbar: the bridge block IS the +X tie.)
@@ -149,40 +152,6 @@ def _diamond(cy, cz, h, x, thick):
     return (cq.Workplane("YZ").workplane(offset=x - (thick + 2.0) / 2.0)
             .polyline([(cy, cz + h), (cy + h, cz), (cy, cz - h), (cy - h, cz)]).close()
             .extrude(thick + 2.0))
-
-
-def _lighten(plate, x, thick):
-    """Punch a grid of self-supporting diamond holes into a bulkhead, leaving a
-    solid perimeter frame (≥M), the 45° funnel edges, and ≥WEB webs — a shear truss
-    instead of a solid plate."""
-    zfull = Z_TOP - 8.0                                   # above this the plate is full width
-    def yl(z): return Y_LO + max(0.0, zfull - z)
-    def yr(z): return Y_HI - max(0.0, zfull - z)
-    H, WEB, M = 10.0, 6.0, 6.0
-    step = 2 * H + WEB
-    def inside(y, z): return (Z_BOT + M <= z <= Z_TOP - M) and (yl(z) + M <= y <= yr(z) - M)
-    yc = (Y_LO + Y_HI) / 2
-    cz = Z_TOP - M - H
-    while cz - H >= Z_BOT + M:
-        cy = yc - step * 6
-        while cy <= yc + step * 6:
-            if all(inside(y, z) for y, z in
-                   [(cy, cz + H), (cy, cz - H), (cy - H, cz), (cy + H, cz)]):
-                plate = plate.cut(_diamond(cy, cz, H, x, thick))
-            cy += step
-        cz -= step
-    return plate
-
-
-def _end_bulkhead(x, thick):
-    """Self-supporting end wall that closes the box at a string end: full width at
-    the deck (ties both rails), 45° sides converging DOWN to a narrow base on the
-    bed. Prints with no overhang (it builds up from the base); the lower-outer
-    corners are removed and the interior is lightened with diamond holes (shear
-    truss). Far better than a horizontal tie, which would bridge ~185 mm."""
-    w = box_at(thick, Y_HI - Y_LO, Z_TOP - Z_BOT, x=x, y=(Y_HI + Y_LO) / 2, z=(Z_TOP + Z_BOT) / 2)
-    w = w.edges("|X and <Z").chamfer(Z_TOP - Z_BOT - 8.0)
-    return _lighten(w, x, thick)
 
 
 def _build_full() -> cq.Workplane:
@@ -314,26 +283,65 @@ def _leg_dt_slot(sx, yr, s):
     return trap.intersect(keep)
 
 
-# Leg-shell X-extents in each end-takeover region: the end removal would strip the
-# rail off the leg socket's end-side, leaving the leg unhugged + the endplate
-# clearing it with a big empty box. Instead KEEP the rail (its T=10 wall IS the
-# ~10 mm body wrap) over the leg socket's reach into the takeover, then re-cut the
-# leg dovetail slot in the kept shell. The barrel (Ø44) reaches BARREL_OD/2 past
-# the station; that sets the shell's end-side X.
-LEG_SHELL_PX = (TP_EP_GX, LEG_STATIONS_X[0] + BARREL_OD / 2)     # +X leg: -17.5 .. 4
-LEG_SHELL_NX = (LEG_STATIONS_X[1] - BARREL_OD / 2, KH_X)         # -X leg: -624 .. -611
+# ============================================================================
+# Endplate <-> leg geometry — ONE shared model for BOTH ends (they CANNOT diverge)
+# ============================================================================
+# Each endplate is the same shape mirrored: a solid that closes its end, wraps its
+# leg with a T-thick WALL, nests over the kept leg shell with EP_LEG_CLR clearance,
+# and leaves EP_LEG_BUFFER of solid body between the leg's dovetail tenon and that
+# wall. Measuring everything INBOARD from each endplate's outer face ("tip") with
+# the SAME three constants guarantees both ends are identical by construction:
+#   pocket edge = tip  ∓ T            (the endplate wall is T thick)
+#   shell  edge = pocket ∓ EP_LEG_CLR (the kept rail shell sits a clearance inboard)
+#   leg tenon   = shell ∓ EP_LEG_BUFFER          → station ∓ DT_FACE_HW further in
+# (the BUFFER is SOLID BODY, so it's measured from the SHELL face where material
+#  actually begins — the wall<->shell clearance gap is air and doesn't count.)
+# The end removal would otherwise strip the rail off the leg + leave the endplate
+# clearing it with a big empty box; instead we KEEP a rail shell (its T wall IS the
+# body wrap) over the leg, re-cutting the leg dovetail slot in it (_leg_shell).
+KH_EP_THK     = 25.0          # keyhead endplate thickness in X (= keyhead_endplate.T_EP)
+EP_LEG_CLR    = 0.4           # assembly clearance: endplate foot pocket vs the kept shell
+EP_LEG_BUFFER = D.XBAR        # 10 mm solid body between the leg tenon and the endplate wall
+EP_TIP_NX = KH_X - KH_EP_THK              # keyhead -X outer face (-636)
+EP_TIP_PX = X_BRIDGE + D.WALL_THICKNESS   # bridge   +X outer tip  (16)
+
+
+def _leg_geom(tip, sign):
+    """All inboard from one endplate's outer face `tip`. `sign` = the direction from
+    the tip toward the instrument body (+1 for the -X/keyhead end, -1 for the +X/
+    bridge end). Returns (pocket_edge, shell_edge, station) for that leg."""
+    pocket = tip + sign * T
+    shell = pocket + sign * EP_LEG_CLR
+    station = shell + sign * (EP_LEG_BUFFER + DT_FACE_HW)   # BUFFER of solid body from the shell face
+    return pocket, shell, station
+
+
+_PKT_NX, _SHELL_NX, _STN_NX = _leg_geom(EP_TIP_NX, +1)    # -X end → body is +X of the tip
+_PKT_PX, _SHELL_PX, _STN_PX = _leg_geom(EP_TIP_PX, -1)    # +X end → body is -X of the tip
+# the kept shell spans from its pinned outer edge to the rail-takeover join line:
+LEG_SHELL_NX = (_SHELL_NX, KH_X)            # -X leg: -625.6 .. -611
+LEG_SHELL_PX = (TP_EP_GX, _SHELL_PX)        # +X leg: -17.5 .. 5.6
+# leg stations: (+X leg, -X leg) — each set so its tenon leaves EP_LEG_BUFFER of body:
+LEG_STATIONS_X = (_STN_PX, _STN_NX)         # (-18.4, -601.6)
 
 
 def _leg_shell(sx, x0, x1):
     """The kept rail shell around one leg station (both rails), spanning x0..x1
-    over the rail Y-bands, from the bed up to the deck level (z6, matching the
-    endplate rail-takeover height -- the shell fills the gap the endplate used to
-    leave empty, no more). Re-cut the leg dovetail slot in it afterward."""
+    over the rail Y-bands, from the bed up to the FOOT LINE (z = KH_DT_Z0 =
+    -23.15). The shell only wraps the leg tenon + its 10 mm border BELOW the foot
+    line; ABOVE the foot line (z -23.15..6) is the endplate's own solid fill band,
+    not the shell -- so the shell stops at -23.15 and the endplate band sits on
+    top of it. Re-cut the leg dovetail slot in it afterward."""
     out = None
-    z1 = TP_GZ1                                       # deck level (z6); not above the deck
+    z1 = KH_DT_Z0                                     # foot line (-23.15); the endplate's
+                                                      # solid fill band takes over above this
     for yr, s in ((Y_HI, 1), (Y_LO, -1)):
-        sh = box_at(x1 - x0, T, z1 - (Z_BOT - 1.0),
-                    x=(x0 + x1) / 2, y=yr, z=((Z_BOT - 1.0) + z1) / 2)
+        # bottom EXACTLY on the bed (Z_BOT) -- the same constant the chassis/endplate
+        # floors use -- so the shell can't poke below the instrument floor. (This is a
+        # UNION, so it needs no -Z boolean overshoot; the leg-slot CUT below overshoots
+        # on its own.)
+        sh = box_at(x1 - x0, T, z1 - Z_BOT,
+                    x=(x0 + x1) / 2, y=yr, z=(Z_BOT + z1) / 2)
         sh = sh.cut(_leg_dt_slot(sx, yr, s))
         out = sh if out is None else out.union(sh)
     return out
@@ -357,34 +365,45 @@ def _tongue(s, yr, socket=False, depth=None):
     return cq.Workplane("XY").workplane(offset=z0).polyline(pts).close().extrude(z1 - z0)
 
 
-def _kh_tongue(yc, socket=False):
-    """Keyhead rail-END dovetail at Y=yc (see KH_DT_*): a Z-extruded trapezoid on the
-    rail -X end, wide -X / narrow +X (so +X string pull is gripped), BELOW the deck
-    groove (z FLOOR_TOP..groove-floor). The full-width keyhead drops onto it. socket=
-    True adds clearance + an open top for the cut."""
+def _end_dt(x_face, into, yc, z0, z1, socket=False, open_top=True):
+    """ONE Y-flaring vertical dovetail on an end-contact face at x=x_face, Z-extruded
+    z0..z1, centred on Y=yc. `into` (+1/-1) points from the face toward the endplate
+    tip: the trapezoid is NARROW at x_face (rail/shell side) and WIDE KH_DT_DEPTH into
+    the endplate, so string tension can't draw the wide foot back out. The body carries
+    it (tenon); the endplate cuts it (socket=True widens it by the clearance all round).
+    `open_top` extends the socket's top by TP_TG_DEPTH so the endplate can drop straight
+    down over the tenon -- used for the UPPER dovetail (whose top sits in the deck zone);
+    the LOWER dovetail passes open_top=False so its socket stops at the fill-zone floor
+    (z1=KH_DT_Z0) instead of cutting up into the solid fill band."""
     g = KH_DT_CLR if socket else 0.0
     wr, wt = KH_DT_WR + g, KH_DT_WT + g
-    z0 = KH_DT_Z0
-    z1 = TP_GZ0 if socket else (TP_GZ0 - TP_TG_DEPTH)
-    pts = [(KH_DT_X1, yc - wr), (KH_DT_X1, yc + wr),   # +X narrow (rail side)
-           (KH_DT_X0, yc + wt), (KH_DT_X0, yc - wt)]   # -X wide (into the keyhead)
-    return (cq.Workplane("XY").workplane(offset=z0).polyline(pts).close().extrude(z1 - z0))
+    x_in = x_face + into * KH_DT_DEPTH
+    z_hi = z1 + (TP_TG_DEPTH if (socket and open_top) else 0.0)
+    pts = [(x_face, yc - wr), (x_face, yc + wr),        # narrow (rail/shell face)
+           (x_in, yc + wt), (x_in, yc - wt)]            # wide (into the endplate)
+    return cq.Workplane("XY").workplane(offset=z0).polyline(pts).close().extrude(z_hi - z0)
+
+
+def _kh_tongue(yc, socket=False):
+    """Keyhead joinery at Y=yc: the two stacked dovetails of the L-shaped joint (see the
+    KH_DT_* block). LOWER on the wall<->leg-shell face (x=_SHELL_NX, z bed..foot line);
+    UPPER on the foot<->rail-end face (x=KH_X, z foot line..deck-groove floor). Both wide
+    -X into the keyhead so the +X string pull is gripped. Body carries them; the keyhead
+    drops on and sockets them. socket=True adds clearance + open tops for the cut."""
+    lower = _end_dt(_SHELL_NX, -1, yc, Z_BOT, KH_DT_Z0, socket, open_top=False)
+    upper = _end_dt(KH_X, -1, yc, KH_DT_Z0, TP_GZ0 - TP_TG_DEPTH, socket)
+    return lower.union(upper)
 
 
 def _br_tongue(yc, socket=False):
-    """Bridge rail-END dovetail at Y=yc (see BR_DT_*): the mirror of _kh_tongue across
-    the +X takeover line. A Z-extruded trapezoid on the rail +X end, narrow -X (rail
-    side) / wide +X (into the bridge), so the +X bearing wrap (which pulls the bridge
-    -X) can't pull the wide foot out. Same low z band as the keyhead (leg-tenon clear
-    .. deck-groove floor) so it never blocks the bridge dropping to z6. socket=True
-    adds clearance + an open top for the cut."""
-    g = KH_DT_CLR if socket else 0.0
-    wr, wt = KH_DT_WR + g, KH_DT_WT + g
-    z0 = KH_DT_Z0
-    z1 = TP_GZ0 if socket else (TP_GZ0 - TP_TG_DEPTH)
-    pts = [(BR_DT_X0, yc - wr), (BR_DT_X0, yc + wr),   # -X narrow (rail side)
-           (BR_DT_X1, yc + wt), (BR_DT_X1, yc - wt)]   # +X wide (into the bridge)
-    return (cq.Workplane("XY").workplane(offset=z0).polyline(pts).close().extrude(z1 - z0))
+    """Bridge joinery at Y=yc: the mirror of _kh_tongue across the +X takeover line. LOWER
+    on the wall<->leg-shell face (x=_SHELL_PX, z bed..foot line); UPPER on the foot<->rail
+    face (x=TP_EP_GX, z foot line..deck-groove floor). Both wide +X into the bridge so the
+    +X bearing wrap (which pulls the bridge -X) can't draw the wide foot out. Body carries
+    them; the bridge drops on and sockets them. socket=True adds clearance + open tops."""
+    lower = _end_dt(_SHELL_PX, +1, yc, Z_BOT, KH_DT_Z0, socket, open_top=False)
+    upper = _end_dt(TP_EP_GX, +1, yc, KH_DT_Z0, TP_GZ0 - TP_TG_DEPTH, socket)
+    return lower.union(upper)
 
 
 def _seg_box(a, b):
