@@ -6,10 +6,17 @@ supplies the placed parts (``src.build.collect_components``) and the project's
 motor-on-bank, …); the engine runs the parallel boolean scan and reports the
 UNINTENDED interpenetrations.
 
-  py -3.12 -m tools.check_overlaps            # report unintended overlaps (parallel)
+  py -3.12 -m tools.check_overlaps            # fast scan (skips belts -- see below)
+  py -3.12 -m tools.check_overlaps --full     # check EVERY part (belts too) -- pre-commit
   py -3.12 -m tools.check_overlaps --all      # also list intended contacts
+  py -3.12 -m tools.check_overlaps --only chassis,keyhead_endplate   # just these bases
+  py -3.12 -m tools.check_overlaps --exclude string,wire            # skip more bases
   py -3.12 -m tools.check_overlaps -j 14      # set worker count (default: cores/2)
   py -3.12 -m tools.check_overlaps --serial   # single-process (baseline/debug)
+
+The belts are slow to boolean (swept compounds dominate the runtime) and rarely
+move, so the DEFAULT scan skips them for a quick inner-loop check; pass --full for
+the complete gate (e.g. before committing). Every run prints what it skipped.
 
 Exit code is the number of unintended overlapping pairs (0 = clean).
 
@@ -131,9 +138,20 @@ def intended(na, nb) -> bool:
     return False
 
 
+# Base names skipped by default: the belts are swept compounds whose booleans
+# dominate the runtime, and they rarely move. --full overrides this.
+DEFAULT_SKIP = {"belt", "belt_clamp"}
+
+
 def main():
     ap = argparse.ArgumentParser(description="Pedal-steel assembly overlap checker.")
     ap.add_argument("--all", action="store_true", help="also list intended contacts")
+    ap.add_argument("--full", action="store_true",
+                    help=f"check ALL parts (default skips {sorted(DEFAULT_SKIP)})")
+    ap.add_argument("--exclude", default="", metavar="A,B",
+                    help="comma-separated base names to also skip")
+    ap.add_argument("--only", default="", metavar="A,B",
+                    help="check ONLY these comma-separated base names")
     ap.add_argument("--serial", action="store_true", help="single-process (baseline/debug)")
     ap.add_argument("-j", "--jobs", type=int, default=None,
                     help="worker processes (default: cores/2)")
@@ -145,6 +163,17 @@ def main():
     WIRE_OK = src.wiring.WIRE_OK
 
     comps = [(n, wp.val()) for n, wp in collect_components()]
+    only = {s for s in args.only.split(",") if s}
+    if only:
+        comps = [(n, s) for n, s in comps if base(n) in only]
+        print(f"checking ONLY base names: {sorted(only)}")
+    else:
+        skip = set() if args.full else set(DEFAULT_SKIP)
+        skip |= {s for s in args.exclude.split(",") if s}
+        if skip:
+            comps = [(n, s) for n, s in comps if base(n) not in skip]
+            print(f"skipping base names (pass --full to include): {sorted(skip)}")
+
     jobs = 1 if args.serial else args.jobs
     sys.exit(run(comps, intended, jobs=jobs, show_all=args.all))
 
