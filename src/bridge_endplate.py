@@ -3,15 +3,21 @@
 ONE solid piece that closes the box at the +X end AND carries the bridge-bearing
 axle (the 90° string turn — the highest-load point in the instrument). Because it
 prints flat (on its face) it needs no supports, so it can be fully solid and
-featured; the rails' dovetail tongues glue into blind sockets in the cap, driving
+featured; the rails' dovetail tongues glue into blind sockets in the base, driving
 the bearing load straight into the rails — far stronger than the old bolted
-bridge support. Replaces both the bridge support and the +X bulkhead. Built in
-global position.
+bridge support. Replaces the bridge support, the +X bulkhead AND the +X crossbar.
+Built in global position.
 
-Layout: a solid CAP (+X of all the mechanism) closes the box rail-to-rail; two
-ARMS reach −X at the field edges (clear of the carriages) to hold the axle above
-the strings, linked by a TIE BAR; the cap SOCKETS the rails' dovetail tongues
-and drops straight down onto them.
+Endplate methodology (mirrors the keyhead): the base is AS SOLID AS POSSIBLE — a
+block over the whole +X footprint (the cap thickness x6..16 PLUS a -X rail-takeover
+extension over each rail to x -17.5) from the deck level (z6) down to the bed, so
+the block itself IS the +X cross-tie (no separate chassis crossbar). It TAKES OVER
+the rail +X ends (the chassis removes the rail at x > -17.5) and sockets a low
+keyhead-style dovetail on each rail end (wide +X / narrow -X, gripping the bearing
+wrap's -X pull). Above z6 only the string-holding mechanism: the bearing AXLE on
+two ARMS + a TIE BAR (the 90° turn) and the axle-support COMB. The +X carriages
+move in Z and install from +X, so the stringing window + guide ledges + screw rail
++ carriage sweep stay HOLLOW; foot clearance is hollowed only over the +X legs.
 """
 
 from __future__ import annotations
@@ -56,15 +62,40 @@ WIN_Z1     = CH.Z_TOP - WIN_BORDER                        # top (rim to the cap 
 WIN_Z0     = GR_UTOP                                      # bottom = the upper guide ledge's top
 
 
+Z6     = CH.TP_GZ1                 # deck/top-plate level = the bridge's general top
+MECH_HW = D.BRIDGE_AXLE_Y + ARM_W / 2   # field-centre upper-cap half-span (arm outer)
+# +X-leg foot clearance: hollow the solid base over each +X leg below the XBAR-above-
+# tenon line (KH_DT_Z0). The +X legs are at x -40..4, y 37.75..81.75 (+Y) and
+# -155.75..-111.75 (-Y) -- both fully cover their rail Y band, so the clearance is the
+# whole rail-takeover block below KH_DT_Z0 (it keeps the dovetail band z -23.15..6).
+FOOT_Z   = CH.KH_DT_Z0
+LEG_BANDS = ((37.75, 81.75), (-155.75, -111.75))
+
+
 def _cap() -> cq.Workplane:
-    """Solid box-closure plate at the +X end, lightened with diamonds (flat-printed,
-    so the holes cost nothing); a frame is kept around the edges and the dovetail
-    sockets."""
+    """SOLID BASE + box-closure plate at the +X end. The endplate methodology: a solid
+    block over the whole +X footprint from the deck level (z6) down to the bed -- this
+    block IS the +X cross-tie (no separate crossbar). It spans the cap thickness (x6..16,
+    rail-to-rail) PLUS a -X rail-takeover extension over each rail (x -17.5..6) that fills
+    the rail end the chassis dropped. Generally it tops at z6; only a field-centre upper
+    band (z6..10, |y| <= the bearing arms) reaches the body top to back the window rim +
+    axle comb + arm/tie roots. Lightened with diamonds in the cap thickness (flat-printed,
+    so the holes cost nothing). Foot clearance is hollowed over each +X leg afterward."""
     xc, thk = (X0 + X1) / 2, X1 - X0
-    # span out to the rail OUTER faces so the cap fully caps the rail ends + covers
-    # the dovetail sockets (no clipping into the rail sides)
-    w = box_at(thk, CH.Y_HI - CH.Y_LO + CH.T, CH.Z_TOP - CH.Z_BOT,
-               x=xc, y=(CH.Y_HI + CH.Y_LO) / 2, z=(CH.Z_TOP + CH.Z_BOT) / 2)
+    # cap (x6..16), rail-to-rail, z6 down to the bed -- the box closure + cross-tie
+    w = box_at(thk, CH.Y_HI - CH.Y_LO + CH.T, Z6 - CH.Z_BOT,
+               x=xc, y=(CH.Y_HI + CH.Y_LO) / 2, z=(Z6 + CH.Z_BOT) / 2)
+    # field-centre upper band (z6..10): backs the window rim, the axle comb roots and
+    # the bearing-arm/tie roots (the mechanism above z6 lives here, in the centre only)
+    w = w.union(box_at(thk, 2 * MECH_HW, CH.Z_TOP - Z6,
+                       x=xc, y=0, z=(CH.Z_TOP + Z6) / 2))
+    # -X rail-takeover extension: fill each rail end (x -17.5..6) over its Y band, z6
+    # down to the bed, so the bridge IS the rail there (the chassis removed it)
+    for yf in (CH.Y_HI, CH.Y_LO):
+        w = w.union(box_at(X0 - CH.TP_EP_GX, CH.T, Z6 - CH.Z_BOT,
+                           x=(CH.TP_EP_GX + X0) / 2, y=yf, z=(Z6 + CH.Z_BOT) / 2))
+    # diamond lightening of the cap thickness (the flat-print face); skip the window
+    # border, the guide-ledge backing and the -Y jack zone
     H, WEB, M = 11.0, 7.0, 9.0
     step = 2 * H + WEB
     yc = (CH.Y_LO + CH.Y_HI) / 2
@@ -73,6 +104,7 @@ def _cap() -> cq.Workplane:
         cy = yc - step * 8
         while cy <= yc + step * 8:
             in_field = CH.Y_LO + M <= cy - H and cy + H <= CH.Y_HI - M
+            above_base = cz - H >= Z6 and abs(cy) + H > MECH_HW   # only the field band is solid up there
             # keep a clear border around the stringing cutout AND solid cap behind
             # the guide ledges (their print layers + stop loads back onto it)
             near_win = (abs(cy) - H <= WIN_HW + WIN_BORDER
@@ -82,7 +114,7 @@ def _cap() -> cq.Workplane:
             # USB-C, raised to z -41) thins it to a 4 mm wall instead
             near_jack = (cy + H >= -119.0 and cy - H <= -57.0
                          and cz - H <= -28.0 and cz + H >= -54.0)
-            if in_field and not near_win and not near_jack:
+            if in_field and not near_win and not near_jack and not above_base:
                 w = w.cut(CH._diamond(cy, cz, H, xc, thk))
             cy += step
         cz -= step
@@ -122,40 +154,9 @@ def _build() -> cq.Workplane:
     for sy in (-D.BRIDGE_AXLE_Y, D.BRIDGE_AXLE_Y):                    # edge webs rail→arm
         body = body.union(box_at(X1 - _SRX, ARM_W, z_lo - sr_bot,     # down to the rail bottom
                                  x=(X1 + _SRX) / 2, y=sy, z=(z_lo + sr_bot) / 2))
-    # +X SHELF: reach −X over each rail top (the chassis shaved the rail there) so
-    # the +X-most deck plate locks this endplate. CAPTURE zone (TP_EP_X0..TP_EP_GX):
-    # a z−6..0 block carrying the deck dovetail GROOVE section — the deck plate's
-    # tongue slides in and its wide foot is captured, pinning the endplate in +Z.
-    # +X part (TP_EP_GX..X_BRIDGE): a solid z−6..6 shelf, its −X shoulder the deck
-    # panels' +X stop, fused into the cap.
-    EPX0, EGX = CH.TP_EP_X0, CH.TP_EP_GX
-    GFL = CH.TP_GZ0 - CH.TP_TG_DEPTH
-    MW, FLR, DEP, C = CH.TP_TG_MW, CH.TP_TG_FLR, CH.TP_TG_DEPTH, CH.TP_TG_CLR
-    for yc in (CH.Y_HI, CH.Y_LO):
-        blk = box_at(EGX - EPX0, CH.T, CH.TP_GZ0 - GFL,
-                     x=(EPX0 + EGX) / 2, y=yc, z=(CH.TP_GZ0 + GFL) / 2)
-        prof = [(yc - MW - C, CH.TP_GZ0 + 0.1), (yc + MW + C, CH.TP_GZ0 + 0.1),
-                (yc + MW + FLR + C, CH.TP_GZ0 - DEP), (yc - MW - FLR - C, CH.TP_GZ0 - DEP)]
-        pts = [cq.Vector(EPX0, py, pz) for py, pz in prof]
-        face = cq.Face.makeFromWires(cq.Wire.makePolygon([*pts, pts[0]]))
-        blk = blk.cut(cq.Workplane("XY").add(
-            cq.Solid.extrudeLinear(face, cq.Vector(EGX - EPX0, 0, 0))))
-        body = body.union(blk)
-        body = body.union(box_at(X0 - EGX, CH.T, CH.TP_GZ1 - GFL,
-                                 x=(EGX + X0) / 2, y=yc, z=(CH.TP_GZ1 + GFL) / 2))
-        # DROP a thick section to the L level (KH_DT_Z0) over the +X leg, mirroring the
-        # keyhead's thick top: the chassis shaved the rail to match, so this fills it and
-        # leaves a clean XBAR (10 mm) border above the leg tenon at the rail end.
-        body = body.union(box_at(CH.PX_DEEP_X1 - EPX0, CH.T, GFL - CH.KH_DT_Z0,
-                                 x=(EPX0 + CH.PX_DEEP_X1) / 2, y=yc,
-                                 z=(GFL + CH.KH_DT_Z0) / 2))
-    # −Y TOP COVER (the side benefit): the −Y shelf widens inboard over the jack bay
-    # to a field edge clear of the −42.8 strings, so the endplate roofs its own −Y
-    # half (z0..6, flush with the deck) above the output jacks.
-    ROOF_YIN, ROOF_YOUT = -50.0, CH.Y_LO - CH.T / 2
-    body = body.union(box_at(X0 - EGX, ROOF_YIN - ROOF_YOUT, CH.TP_GZ1 - CH.TP_GZ0,
-                             x=(EGX + X0) / 2, y=(ROOF_YIN + ROOF_YOUT) / 2,
-                             z=(CH.TP_GZ1 + CH.TP_GZ0) / 2))
+    # (no +X deck-lock shelf / capture groove / dropped section / -Y roof: the solid
+    #  base over the rail ends now IS the cross-tie + the deck panels' +X stop; the
+    #  deck is held in +Z by the rail-top grooves along its length, not by the bridge.)
     # GUIDE-ROD LEDGES (see the GR_* block above): upper = stop bar + drop-in
     # holes; lower = bottom stop + blind landing sockets. Arm to arm. Both bars
     # reach X ≥ +1.4 so the Ø2.55 rod holes are fully enclosed (−X wall 0.8).
@@ -215,11 +216,19 @@ def _build() -> cq.Workplane:
     # the tie bar, so the axle support, dovetails and screw rail are untouched.
     body = body.cut(box_at((X1 - X0) + 2.0, 2 * WIN_HW, WIN_Z1 - WIN_Z0,
                            x=(X0 + X1) / 2, y=0, z=(WIN_Z1 + WIN_Z0) / 2))
-    # SOCKET the sliding-dovetail tongue on each rail end (both side walls): the
-    # endplate drops straight down onto the rail tongues and glues. The dovetail
-    # locks it in X+Y; the string pull also compresses it against the rail ends.
+    # FOOT clearance: hollow the solid base over each +X leg below the XBAR-above-tenon
+    # line (the only place we thin the rail-takeover block) so the leg + the bridge's
+    # install drop clear. x -17.5..4 covers the leg's +X reach into the bridge footprint.
+    for (y0, y1) in LEG_BANDS:
+        body = body.cut(box_at(4.0 - CH.TP_EP_GX, y1 - y0, FOOT_Z - CH.Z_BOT,
+                               x=(CH.TP_EP_GX + 4.0) / 2, y=(y0 + y1) / 2,
+                               z=(FOOT_Z + CH.Z_BOT) / 2))
+    # SOCKET the rail-end dovetail tongue on each rail (keyhead-style, low band z
+    # -23.15..-6): the endplate drops straight down onto the rail tongues and glues.
+    # The dovetail (wide +X / narrow -X) locks it in X+Y and grips the bearing-wrap
+    # pull (-X); the low band leaves the cap free to drop to z6.
     for yr in CH.ENDPLATE_JOINT_Y:
-        body = body.cut(CH._tongue(CH.X_BRIDGE, yr, socket=True, depth=CH.ENDPLATE_DT))
+        body = body.cut(CH._br_tongue(yr, socket=True))
     # PANEL I/O (the instrument's right face): recess the lower -Y corner from
     # the inside down to a 4 mm wall, then the three jack holes - 1/4" TS line
     # out, DC power inlet, USB-C (audio-interface port). Printed flat, so the

@@ -41,8 +41,8 @@ BZ = TZ - 6.0                           # 6 mm deck, recessed between the rails
 # -> +Z retention (plates can't fall out inverted) AND a Y-tie (the inboard groove
 # wall stops the rails spreading). The tongue runs along X -> plates slide out -X.
 
-PX0 = -17.5                             # +X deck end: panels butt the bridge endplate
-                                        # shelf shoulder (which also locks that plate)
+PX0 = -17.5                             # +X deck end: panels butt the bridge endplate's
+                                        # solid base face (+Z held by the rail-top grooves)
 PX1 = -611.0                            # -X deck end: flush with the merged keyhead
                                         # nut-block endplate (its +X face at -611)
 
