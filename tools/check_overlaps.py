@@ -1,28 +1,33 @@
 """Overlap checker for the pedal-steel assembly.
 
-Loads every placed component from src.build.collect_components(), finds pairs
-whose solids actually interpenetrate, and reports the UNINTENDED ones (skipping
-designed contacts like screw-in-nut, bushing-in-rail, motor-on-bank, etc.).
+Project glue over the shared engine in ``freecad/overlap_check.py``: this file
+supplies the placed parts (``src.build.collect_components``) and the project's
+``intended()`` whitelist of designed contacts (screw-in-nut, bushing-in-rail,
+motor-on-bank, …); the engine runs the parallel boolean scan and reports the
+UNINTENDED interpenetrations.
 
-  py -3.12 -m tools.check_overlaps            # report unintended overlaps
+  py -3.12 -m tools.check_overlaps            # report unintended overlaps (parallel)
   py -3.12 -m tools.check_overlaps --all      # also list intended contacts
+  py -3.12 -m tools.check_overlaps -j 14      # set worker count (default: cores/2)
+  py -3.12 -m tools.check_overlaps --serial   # single-process (baseline/debug)
 
 Exit code is the number of unintended overlapping pairs (0 = clean).
+
+The heavy project build is imported only inside main(), so spawned workers (which
+re-import this module) don't rebuild it — they just load the serialized shapes.
 """
 
 from __future__ import annotations
 
+import argparse
+import pathlib
 import re
 import sys
 
-from OCP.BRepAlgoAPI import BRepAlgoAPI_Common
-from OCP.GProp import GProp_GProps
-from OCP.BRepGProp import BRepGProp
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "freecad"))
+from overlap_check import run                     # noqa: E402  (shared engine)
 
-from src.build import collect_components
-from src.wiring import WIRE_OK
-
-VOL_EPS = 1.0   # mm^3 — ignore numerically-tiny touching contacts
+WIRE_OK = None      # set in main() (src.wiring needs src.build imported first)
 
 
 def base(name: str) -> str:
@@ -126,52 +131,22 @@ def intended(na, nb) -> bool:
     return False
 
 
-def bbox_overlap(a, b, tol=0.05) -> bool:
-    return (a.xmin < b.xmax - tol and b.xmin < a.xmax - tol and
-            a.ymin < b.ymax - tol and b.ymin < a.ymax - tol and
-            a.zmin < b.zmax - tol and b.zmin < a.zmax - tol)
-
-
-def common_volume(sa, sb) -> float:
-    try:
-        common = BRepAlgoAPI_Common(sa.wrapped, sb.wrapped).Shape()
-        props = GProp_GProps()
-        BRepGProp.VolumeProperties_s(common, props)
-        return props.Mass()
-    except Exception:
-        return 0.0
-
-
 def main():
-    show_all = "--all" in sys.argv
+    ap = argparse.ArgumentParser(description="Pedal-steel assembly overlap checker.")
+    ap.add_argument("--all", action="store_true", help="also list intended contacts")
+    ap.add_argument("--serial", action="store_true", help="single-process (baseline/debug)")
+    ap.add_argument("-j", "--jobs", type=int, default=None,
+                    help="worker processes (default: cores/2)")
+    args = ap.parse_args()
+
+    global WIRE_OK
+    from src.build import collect_components       # heavy: deferred so workers skip it
+    import src.wiring                              # safe now (src.build imported first)
+    WIRE_OK = src.wiring.WIRE_OK
+
     comps = [(n, wp.val()) for n, wp in collect_components()]
-    bboxes = [s.BoundingBox() for _, s in comps]
-    print(f"checking {len(comps)} components for overlaps...")
-
-    bad, ok = [], []
-    for i in range(len(comps)):
-        for j in range(i + 1, len(comps)):
-            if not bbox_overlap(bboxes[i], bboxes[j]):
-                continue
-            na, nb = comps[i][0], comps[j][0]
-            vol = common_volume(comps[i][1], comps[j][1])
-            if vol <= VOL_EPS:
-                continue
-            (ok if intended(na, nb) else bad).append((vol, na, nb))
-
-    bad.sort(reverse=True)
-    ok.sort(reverse=True)
-    if show_all:
-        print(f"\n-- intended contacts ({len(ok)}) --")
-        for vol, na, nb in ok:
-            print(f"   {vol:9.1f} mm^3   {na:14} <-> {nb}")
-
-    print(f"\n== UNINTENDED overlaps ({len(bad)}) ==")
-    for vol, na, nb in bad:
-        print(f"   {vol:9.1f} mm^3   {na:14} <-> {nb}")
-    if not bad:
-        print("   none - clean!")
-    sys.exit(len(bad))
+    jobs = 1 if args.serial else args.jobs
+    sys.exit(run(comps, intended, jobs=jobs, show_all=args.all))
 
 
 if __name__ == "__main__":
