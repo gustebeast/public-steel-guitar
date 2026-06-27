@@ -130,8 +130,8 @@ def build_wires():
     # -- AFE relay common -> TS jack (l.gray, short, over the boss top; ends
     #    off-axis in the jack's body wall, clear of the new socket bore)
     out.append(("wire_out", _wire([
-        afe_relay_c, (0.0, -78.0, -52.0), (3.0, -72.0, -54.0),
-        (2.5, EL.TS_Y, EL.JACK_Z + 4.5)])))
+        afe_relay_c, (0.0, -78.0, -52.0), (-4.5, -72.0, -54.0),
+        (-5.0, EL.TS_Y, EL.JACK_Z + 4.5)])))     # jack moved -X with the centred tip
 
     # Keyhead routing (24.2" bay): wires reach the bay via the clear corridor
     # between motor 9's rib (-529) and the tray (-547), then fly OVER the boards
@@ -161,21 +161,21 @@ def build_wires():
                 _wire(head + _chain(LANE_CAN, 14.0, RISE_X, -94.0)[1:])))
 
     # -- power (red): DC inlet -> floor lane + stub to every motor -> buck
-    head = [(2.0, EL.DC_Y, EL.JACK_Z), (2.0, EL.DC_Y, -49.0),
+    head = [(-5.5, EL.DC_Y, EL.JACK_Z), (-5.5, EL.DC_Y, -49.0),
             (-26.0, EL.DC_Y, -49.0), (-26.0, EL.DC_Y, STUB_Z),
             (-26.0, LANE_PWR, STUB_Z), (-26.0, LANE_PWR, LANE_Z)]
     tail = [(RISE_X, LANE_PWR, LANE_Z), (RISE_X, LANE_PWR, BAYFLY),
             (RISE_X, -106.0, BAYFLY), (-567.0, -106.0, BAYFLY),
             (-567.0, -106.0, -50.0)]                      # over the tray, into buck
-    afe_branch = [(2.0, EL.DC_Y, EL.JACK_Z), (-1.0, -92.0, -53.0), afe_pwr]
+    afe_branch = [(-5.5, EL.DC_Y, EL.JACK_Z), (-1.0, -92.0, -53.0), afe_pwr]
     out.append(("wire_power", _wire(
         head + _chain(LANE_PWR, 18.0, -26.0, RISE_X)[1:] + tail)
         .union(_wire(afe_branch))))
 
     # -- USB (blue): USB-C panel -> floor lane -> corridor -> right-angle to Pi
     out.append(("wire_usb", _wire([
-        (5.0, EL.USB_Y, EL.JACK_Z), (-8.0, EL.USB_Y, -45.0),
-        (-8.0, LANE_USB, -45.0), (-30.0, LANE_USB, -45.0),
+        (-2.5, EL.USB_Y, EL.JACK_Z), (-12.0, EL.USB_Y, -45.0),
+        (-12.0, LANE_USB, -45.0), (-30.0, LANE_USB, -45.0),    # clear the -X jack body
         (-30.0, LANE_USB, LANE_Z), (RISE_X, LANE_USB, LANE_Z),
         (RISE_X, LANE_USB, BAYFLY), (-560.0, LANE_USB, BAYFLY),
         (-560.0, 40.0, BAYFLY), (-575.0, 40.0, BAYFLY),

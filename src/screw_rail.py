@@ -18,13 +18,17 @@ from . import dimensions as D
 from .helpers import cyl, box_at
 
 ACROSS  = 2 * D.BRIDGE_AXLE_Y + D.BRIDGE_ARM_W   # reach the endplate edge-ribs' outer Y
-DEPTH   = 14.0                             # along X
+# X span: the -X face reaches the endplate's own -X edge (BRIDGE_BASE_X0) so the
+# drivetrain-mount base is the full 25 mm wide (matching the endplate); the +X face stops
+# at SCREW_X+7, where the bridge's bottom-bridge takes over up to the +X tip.
+X_NX    = D.BRIDGE_BASE_X0                 # -X face (= endplate -X edge, -16.5)
+X_PX    = D.SCREW_X + 7.0                  # +X face (bottom-bridge takeover, -1)
 HEIGHT  = D.SUPPORT_BRG_W + 5.0            # Z
 SEAT_LEDGE_D = D.SUPPORT_BRG_OD - 2.5      # top-ledge bore (< OD, backs the washer)
 
 
 def _build() -> cq.Workplane:
-    body = box_at(DEPTH, ACROSS, HEIGHT, x=D.SCREW_X, y=0, z=D.SUPPORT_BRG_Z)
+    body = box_at(X_PX - X_NX, ACROSS, HEIGHT, x=(X_NX + X_PX) / 2, y=0, z=D.SUPPORT_BRG_Z)
     for i in range(D.N_STRINGS):
         y = D.string_y(i)
         # bushing seat: counterbore from the bottom (−Z) up by the bushing width

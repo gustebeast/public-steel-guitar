@@ -64,11 +64,13 @@ BOARD_Z = TRAY_Z1 + POST_H             # every bottom board sits at -67
 # bridge cross-rib (tops at z -65). So the jacks ride HIGH (z -41), clear above
 # the rib and above the bottom-mounted AFE board - their bodies then reach
 # freely into the open bay.
-# The +X face = the bridge cap face (X_BRIDGE + WALL); keep a 4 mm panel at it and
-# slide the connectors (authored for the old 8 mm cap) out by JACK_FACE_DX so they
-# always mount through that face whatever the wall thickness.
-JACK_WALL_X = CH.X_BRIDGE + D.WALL_THICKNESS - 4.0   # inner face of the 4 mm panel
-JACK_FACE_DX = D.WALL_THICKNESS - 8.0                # +X shift from the original 8 mm cap
+# The +X face is now the centred 25 mm bridge's tip (BRIDGE_AXLE_X + 25/2 = 8.5), NOT
+# X_BRIDGE+WALL -- the block is centred on the axle, not pinned to the rail end. Keep a
+# 4 mm panel at that tip and slide the connectors (authored with their panel face at
+# x~14) by JACK_FACE_DX so they ride the tip wherever it lands.
+JACK_TIP = D.BRIDGE_AXLE_X + CH.KH_EP_THK / 2        # bridge +X face = centred 25 mm block (8.5)
+JACK_WALL_X = JACK_TIP - 4.0                          # inner face of the 4 mm panel (4.5)
+JACK_FACE_DX = JACK_TIP - 14.0                        # authored face sits at x~14; ride the +X tip
 JACK_Z = -41.0
 TS_Y, DC_Y, USB_Y = -68.0, -86.0, -104.0
 

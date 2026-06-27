@@ -225,6 +225,15 @@ BRIDGE_AXLE_Y     = STRING_FIELD_W / 2 + 9.0             # axle/support half-spa
 BRIDGE_ARM_W      = 5.0     # bridge-endplate bearing-arm / edge-web thickness (Y); the
                             # screw rail widens by this so the rib overlaps it cleanly
 
+# ── Endplate block (BOTH ends) + bridge drivetrain base: ONE 25 mm X-width ──
+# The keyhead nut block sets this width; the bridge centers it on the axle, and the
+# screw-support (drivetrain) base spans the same X. Deriving the leg/foot, the endplate
+# wall and the base from THESE datums (never a hardcoded tip) keeps the 10 mm endplate
+# wall + 10 mm leg buffer intact whenever the block width OR the axle moves.
+ENDPLATE_W     = 25.0
+BRIDGE_BASE_X0 = BRIDGE_AXLE_X - ENDPLATE_W / 2     # -16.5  (-X inboard face)
+BRIDGE_BASE_X1 = BRIDGE_AXLE_X + ENDPLATE_W / 2     #  8.5   (+X outer tip)
+
 
 # ─────────────────────────────────────────────────────────────────────────
 # String gauges → the nut break inserts are GAUGED to these so the string TOPS

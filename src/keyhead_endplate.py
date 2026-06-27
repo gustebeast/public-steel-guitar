@@ -33,7 +33,8 @@ from .helpers import box_at, heal
 # block fused in (~15 % infill).
 T_EP = CH.KH_EP_THK                        # FULL thickness (X), at the top only (=25; the leg
                                            # shell's -X edge is pinned to this so the -X wall = T)
-XHI  = CH.KH_X                             # +X face = rail -X end (-611)
+XHI  = CH.KH_X                             # +X (inboard) face (-611); the rail end stops
+                                           # EP_TOP_CLR short of it (CH.KH_RAIL_X)
 XLO  = XHI - T_EP                          # = -636
 KX   = (XLO + XHI) / 2
 YFL  = CH.Y_LO - CH.T / 2                   # full width: -Y rail outer face

@@ -64,16 +64,23 @@ TP_TG_MW       = 1.5                    # mouth half-width (at z0)
 TP_TG_FLR      = 0.8                    # dovetail flare per side over DEPTH (foot = MW+FLR)
 TP_TG_YC       = {1: Y_HI, -1: Y_LO}   # groove centre = each rail centre-line
 TP_TG_CLR      = 0.25                  # sliding clearance (groove = tongue + CLR)
-# +X END: the bridge endplate TAKES OVER the whole +X end as one solid block (the
-# same endplate methodology as the keyhead): it is the +X cross-tie itself (no
-# separate crossbar) and is held by the rail-end dovetails alone. The rails simply
-# stop at TP_EP_GX; the deck groove runs up to there, then the bridge takes over.
-TP_EP_GX       = -17.5                  # bridge +X face / rail +X end (rails stop here) =
-                                       # deck +X face (the panels butt the bridge)
-# -X END: the keyhead endplate takes over the whole -X end as one solid block (it is the
-# -X cross-tie itself -- no separate crossbar -- and is held by the rail-end dovetails
-# alone, no screw). The rails simply stop at KH_X.
-KH_X           = -611.0                 # keyhead +X face / rail -X end (rails stop here)
+# TOP L-joint X-clearance (housing<->endplate): the chassis rail end stops EP_TOP_CLR
+# short of each endplate's INBOARD face, so the endplate drops on without binding in X --
+# the same idea as the bottom L-joint's leg clearance (EP_LEG_CLR), and DERIVED from the
+# endplate faces so both ends stay consistent however the endplates are positioned (the
+# keyhead at the nut, the bridge centred on the axle). Without this the keyhead read 0 mm
+# (face == rail end) and the bridge read 1 mm (centred face vs a hardcoded rail end).
+EP_TOP_CLR     = 0.4
+# +X END: the bridge endplate TAKES OVER the whole +X end as one solid block (the same
+# endplate methodology as the keyhead): the +X cross-tie itself (no crossbar), held by
+# the rail-end dovetails alone. The rail +X end stops EP_TOP_CLR -X of the bridge's
+# inboard face (D.BRIDGE_BASE_X0); the deck groove runs up to there.
+TP_EP_GX       = D.BRIDGE_BASE_X0 - EP_TOP_CLR   # rail +X end / deck +X face (-16.9)
+# -X END: the keyhead takes over the whole -X end as one solid block (the -X cross-tie,
+# held by the rail-end dovetails, no screw). KH_X is the keyhead INBOARD FACE; the rail
+# -X end (KH_RAIL_X) stops EP_TOP_CLR +X of it.
+KH_X           = -611.0                          # keyhead inboard face (-611)
+KH_RAIL_X      = KH_X + EP_TOP_CLR               # rail -X end / keyhead dovetail face (-610.6)
 # Endplate JOINERY (both ends, shared — see _end_dt / _kh_tongue / _br_tongue): each
 # endplate is held by Y-flaring vertical dovetails that follow the L-shaped body<->
 # endplate contact. Per rail there are TWO stacked dovetails: a LOWER one on the
@@ -93,9 +100,11 @@ KH_DT_DEPTH    = 8.0                    # dovetail reach into the endplate (X)
 KH_DT_Z0       = -23.15                 # foot line = leg-tenon top (-33.15) + XBAR; also the
                                        # LOWER/UPPER dovetail split (the L-corner / drop stop)
 KH_DT_CLR      = 0.3                    # socket clearance (Y fit)
-KH_DT_SEAT     = 0.1                    # lower-mortise headroom above the foot line: the
-                                       # socket tops at KH_DT_Z0 + this so the tenon seats on
-                                       # the L-foot/shell, not the mortise ceiling (-23.05)
+KH_DT_SEAT     = 0.1                    # lower-dovetail seating clearance: the mortise face stays
+                                       # ON the foot line (KH_DT_Z0 = -23.15) and the TENON is
+                                       # shortened by this (top -23.25) so the tenon seats on the
+                                       # L-foot/shell, not the mortise ceiling -- without lifting
+                                       # the visible mortise face off the foot line
 # A chunky rail-to-rail rib UNDER EACH MOTOR (the motor rests on it, its wall sits
 # on it, and it ties the two rails) replaces a solid floor — far lighter for the
 # strength. Plus a rib near the nut. (No +X crossbar: the bridge block IS the +X tie.)
@@ -251,12 +260,12 @@ def _build_full() -> cq.Workplane:
     for _yc in (Y_HI, Y_LO):
         body = body.union(_br_tongue(_yc))
     # keyhead TAKES OVER the -X end as a solid block (its edge shows from the front like
-    # the bridge end): remove the rail ENTIRELY at x < KH_X (z full) so the keyhead fills
-    # it and IS the -X cross-tie (no separate crossbar); it's held by the rail-end
+    # the bridge end): remove the rail ENTIRELY at x < KH_RAIL_X (z full) so the keyhead
+    # fills it and IS the -X cross-tie (no separate crossbar); it's held by the rail-end
     # dovetails alone (no screw). Only the dovetail tongues it sockets are added back.
-    body = body.cut(box_at(KH_X - (X_NUT - 5.0), (Y_HI - Y_LO) + T + 4.0,
+    body = body.cut(box_at(KH_RAIL_X - (X_NUT - 5.0), (Y_HI - Y_LO) + T + 4.0,
                            (Z_TOP + 1.0) - (Z_BOT - 1.0),
-                           x=(KH_X + X_NUT - 5.0) / 2, y=(Y_HI + Y_LO) / 2,
+                           x=(KH_RAIL_X + X_NUT - 5.0) / 2, y=(Y_HI + Y_LO) / 2,
                            z=((Z_BOT - 1.0) + (Z_TOP + 1.0)) / 2))
     # KEEP a ~10 mm rail shell hugging the -X leg socket (mirror of the +X end).
     body = body.union(_leg_shell(LEG_STATIONS_X[1], *LEG_SHELL_NX))
@@ -302,11 +311,13 @@ def _leg_dt_slot(sx, yr, s):
 # The end removal would otherwise strip the rail off the leg + leave the endplate
 # clearing it with a big empty box; instead we KEEP a rail shell (its T wall IS the
 # body wrap) over the leg, re-cutting the leg dovetail slot in it (_leg_shell).
-KH_EP_THK     = 25.0          # keyhead endplate thickness in X (= keyhead_endplate.T_EP)
-EP_LEG_CLR    = 0.4           # assembly clearance: endplate foot pocket vs the kept shell
+KH_EP_THK     = D.ENDPLATE_W  # keyhead endplate thickness in X (= keyhead_endplate.T_EP)
+EP_LEG_CLR    = EP_TOP_CLR    # assembly clearance: endplate foot pocket vs the kept shell
+                              # (= the top-joint clearance -- ONE value for both L joints)
 EP_LEG_BUFFER = D.XBAR        # 10 mm solid body between the leg tenon and the endplate wall
 EP_TIP_NX = KH_X - KH_EP_THK              # keyhead -X outer face (-636)
-EP_TIP_PX = X_BRIDGE + D.WALL_THICKNESS   # bridge   +X outer tip  (16)
+EP_TIP_PX = D.BRIDGE_BASE_X1              # bridge +X outer tip (8.5) -- the ACTUAL outer face,
+                                          # so the leg/shell/wall track it (10 mm wall preserved)
 
 
 def _leg_geom(tip, sign):
@@ -322,7 +333,7 @@ def _leg_geom(tip, sign):
 _PKT_NX, _SHELL_NX, _STN_NX = _leg_geom(EP_TIP_NX, +1)    # -X end → body is +X of the tip
 _PKT_PX, _SHELL_PX, _STN_PX = _leg_geom(EP_TIP_PX, -1)    # +X end → body is -X of the tip
 # the kept shell spans from its pinned outer edge to the rail-takeover join line:
-LEG_SHELL_NX = (_SHELL_NX, KH_X)            # -X leg: -625.6 .. -611
+LEG_SHELL_NX = (_SHELL_NX, KH_RAIL_X)       # -X leg: -625.6 .. -610.6 (reaches the rail end)
 LEG_SHELL_PX = (TP_EP_GX, _SHELL_PX)        # +X leg: -17.5 .. 5.6
 # leg stations: (+X leg, -X leg) — each set so its tenon leaves EP_LEG_BUFFER of body:
 LEG_STATIONS_X = (_STN_PX, _STN_NX)         # (-18.4, -601.6)
@@ -376,7 +387,9 @@ def _end_dt(x_face, into, yc, z0, z1, socket=False, top_clr=TP_TG_DEPTH):
     it (tenon); the endplate cuts it (socket=True widens it by the clearance all round).
     `top_clr` raises the SOCKET top above the tenon top (z1) so the tenon seats on its
     real stop, not the mortise ceiling: the UPPER dovetail uses TP_TG_DEPTH (its top sits
-    in the deck zone); the LOWER passes KH_DT_SEAT -- a hair above the fill-zone floor."""
+    in the deck zone). The LOWER dovetail instead passes z1 = foot line - KH_DT_SEAT with
+    top_clr = KH_DT_SEAT, so the MORTISE face lands exactly on the foot line (-23.15) while
+    the tenon is the shortened one (-23.25) -- the seating clearance, kept off the face."""
     g = KH_DT_CLR if socket else 0.0
     wr, wt = KH_DT_WR + g, KH_DT_WT + g
     x_in = x_face + into * KH_DT_DEPTH
@@ -389,11 +402,11 @@ def _end_dt(x_face, into, yc, z0, z1, socket=False, top_clr=TP_TG_DEPTH):
 def _kh_tongue(yc, socket=False):
     """Keyhead joinery at Y=yc: the two stacked dovetails of the L-shaped joint (see the
     KH_DT_* block). LOWER on the wall<->leg-shell face (x=_SHELL_NX, z bed..foot line);
-    UPPER on the foot<->rail-end face (x=KH_X, z foot line..deck-groove floor). Both wide
-    -X into the keyhead so the +X string pull is gripped. Body carries them; the keyhead
-    drops on and sockets them. socket=True adds clearance + open tops for the cut."""
-    lower = _end_dt(_SHELL_NX, -1, yc, Z_BOT, KH_DT_Z0, socket, top_clr=KH_DT_SEAT)
-    upper = _end_dt(KH_X, -1, yc, KH_DT_Z0, TP_GZ0 - TP_TG_DEPTH, socket)
+    UPPER on the foot<->rail-end face (x=KH_RAIL_X, z foot line..deck-groove floor). Both
+    wide -X into the keyhead so the +X string pull is gripped. Body carries them; the
+    keyhead drops on and sockets them. socket=True adds clearance + open tops for the cut."""
+    lower = _end_dt(_SHELL_NX, -1, yc, Z_BOT, KH_DT_Z0 - KH_DT_SEAT, socket, top_clr=KH_DT_SEAT)
+    upper = _end_dt(KH_RAIL_X, -1, yc, KH_DT_Z0, TP_GZ0 - TP_TG_DEPTH, socket)
     return lower.union(upper)
 
 
@@ -403,7 +416,7 @@ def _br_tongue(yc, socket=False):
     face (x=TP_EP_GX, z foot line..deck-groove floor). Both wide +X into the bridge so the
     +X bearing wrap (which pulls the bridge -X) can't draw the wide foot out. Body carries
     them; the bridge drops on and sockets them. socket=True adds clearance + open tops."""
-    lower = _end_dt(_SHELL_PX, +1, yc, Z_BOT, KH_DT_Z0, socket, top_clr=KH_DT_SEAT)
+    lower = _end_dt(_SHELL_PX, +1, yc, Z_BOT, KH_DT_Z0 - KH_DT_SEAT, socket, top_clr=KH_DT_SEAT)
     upper = _end_dt(TP_EP_GX, +1, yc, KH_DT_Z0, TP_GZ0 - TP_TG_DEPTH, socket)
     return lower.union(upper)
 
@@ -430,8 +443,10 @@ def _largest(seg):
 
 def _segments():
     full = _build_full()
-    # +X-most bound reaches past the rail +X end + its bridge dovetail tongues
-    edges = [X_BRIDGE + 2.0] + sorted(SPLIT_X, reverse=True) + [X_NUT]
+    # +X-most bound must clear the +X-most chassis feature -- the LOWER bridge dovetail
+    # tongue tip (_SHELL_PX + KH_DT_DEPTH = 13.6); a smaller bound (the old X_BRIDGE+2 = 8)
+    # sliced the tongue off at the segment boundary.
+    edges = [_SHELL_PX + KH_DT_DEPTH + 2.0] + sorted(SPLIT_X, reverse=True) + [X_NUT]
     segs = []
     for i in range(len(edges) - 1):
         a, b = edges[i], edges[i + 1]                 # a (+X) > b (−X)

@@ -29,9 +29,20 @@ from . import chassis as CH
 from .screw_rail import screw_rail as _screw_rail, HEIGHT as _SR_H
 from .helpers import box_at, cyl, cyl_y
 
-X0   = CH.X_BRIDGE                 # join line (the rails end here; cap is +X of it)
-X1   = X0 + D.WALL_THICKNESS       # +X tip (cap thickness = wall)
-ARM_X = D.BRIDGE_AXLE_X - 4.0      # arms reach −X to past the axle
+X0   = CH.X_BRIDGE                 # cap -X face / field<->cap boundary: the field stays
+                                   #   OPEN -X of here (carriage sweep / strings / rods)
+# 25 mm block CENTERED on the bearing axle (the highest-load string-turn point), so the
+# axle sits mid-material and the ~1.5 kN of string wrap is balanced about it. Both
+# endplates are 25 mm (= CH.KH_EP_THK); the keyhead pins its inboard face to the rail
+# end, the bridge instead centers that span on the axle. The arms, the fill band and the
+# L-foot all span XLO..XHI SYMMETRIC about the axle, so the load path is balanced.
+# XLO sits EP_TOP_CLR (0.4) +X of the rail end (CH.TP_EP_GX, derived as XLO - EP_TOP_CLR):
+# the consistent top-joint X-gap to the housing; the dovetail's locking foot stays captured.
+T_EP = D.ENDPLATE_W                # 25 mm width in X (shared with the keyhead + base)
+XHI  = D.BRIDGE_BASE_X1            # +X outer tip (8.5), 12.5 +X of the axle
+XLO  = D.BRIDGE_BASE_X0            # -X inboard face (-16.5), 12.5 -X of the axle
+X1   = XHI                         # +X tip (8.5) -- alias for the mechanism references
+ARM_X = XLO                        # arms span the FULL 25 mm block: symmetric edge webs
 ARM_W = D.BRIDGE_ARM_W             # arm / edge-web thickness (Y) — kept clear of the +Y rail
 TIE_Z = D.STRING_Z + 6.0          # tie bar / arm top, clear above the strings
 AXLE_BORE = D.BRIDGE_AXLE_D + 0.4
@@ -77,8 +88,8 @@ LEG_SHELL_X0, LEG_SHELL_X1 = CH.LEG_SHELL_PX     # -17.5 .. 5.6 (rail-takeover r
 def _cap() -> cq.Workplane:
     """SOLID BASE + box-closure plate at the +X end. The endplate methodology: a solid
     block over the whole +X footprint from the deck level (z6) down to the bed -- this
-    block IS the +X cross-tie (no separate crossbar). It spans the cap thickness (x6..16,
-    rail-to-rail) PLUS a -X rail-takeover extension over each rail (x -17.5..6) that fills
+    block IS the +X cross-tie (no separate crossbar). It spans the +X cap (X0..XHI,
+    rail-to-rail) PLUS a -X rail-takeover extension over each rail (x XLO..6) that fills
     the rail end the chassis dropped. Generally it tops at z6; only a field-centre upper
     band (z6..10, |y| <= the bearing arms) reaches the body top to back the window rim +
     axle comb + arm/tie roots. Lightened with diamonds in the cap thickness (flat-printed,
@@ -91,15 +102,15 @@ def _cap() -> cq.Workplane:
     # the bearing-arm/tie roots (the mechanism above z6 lives here, in the centre only)
     w = w.union(box_at(thk, 2 * MECH_HW, CH.Z_TOP - Z6,
                        x=xc, y=0, z=(CH.Z_TOP + Z6) / 2))
-    # -X rail-takeover extension: fill each rail end (x -17.5..6) over its Y band, z6
+    # -X rail-takeover extension: fill each rail end (x XLO..6) over its Y band, z6
     # down to the bed, so the bridge IS the rail there (the chassis removed it)
     for yf in (CH.Y_HI, CH.Y_LO):
-        w = w.union(box_at(X0 - CH.TP_EP_GX, CH.T, Z6 - CH.Z_BOT,
-                           x=(CH.TP_EP_GX + X0) / 2, y=yf, z=(Z6 + CH.Z_BOT) / 2))
+        w = w.union(box_at(X0 - XLO, CH.T, Z6 - CH.Z_BOT,
+                           x=(XLO + X0) / 2, y=yf, z=(Z6 + CH.Z_BOT) / 2))
     # USE-UP FILL ("draw a full solid in the use-up area, then cut only what's
-    # needed"): the use-up box is x -17.5..16, full width, z -23.15..6. The cap +
-    # rail-takeover + field band above already fill the field centre and the rail
-    # strips; what's left EMPTY (over the electronics) is the +Y strip ABOVE the
+    # needed"): the use-up box is x XLO..XHI (the full 25 mm), full width, z -23.15..6.
+    # The cap + rail-takeover + field band above already fill the field centre and the
+    # rail strips; what's left EMPTY (over the electronics) is the +Y strip ABOVE the
     # stringing window and the whole -Y half. Fill them solid here. The field
     # centre (|y| <= WIN_HW) is deliberately NOT filled -- the carriage sweep, the
     # strings and the screw rail live there. Genuine clearances (the panel-jack
@@ -107,13 +118,14 @@ def _cap() -> cq.Workplane:
     yhi_out = CH.Y_HI + CH.T / 2
     ylo_out = CH.Y_LO - CH.T / 2
     for (ya, yb) in ((WIN_HW, yhi_out), (ylo_out, -WIN_HW)):    # +Y strip, -Y half
-        w = w.union(box_at(X1 - CH.TP_EP_GX, yb - ya, Z6 - FOOT_Z,
-                           x=(CH.TP_EP_GX + X1) / 2, y=(ya + yb) / 2,
+        w = w.union(box_at(XHI - XLO, yb - ya, Z6 - FOOT_Z,
+                           x=(XLO + XHI) / 2, y=(ya + yb) / 2,
                            z=(Z6 + FOOT_Z) / 2))
-    # diamond lightening of the cap thickness (the flat-print face); skip the window
-    # border, the guide-ledge backing and the -Y jack zone
+    # diamond lightening through the FULL 25 mm block (the flat-print face); skip the
+    # window border, the guide-ledge backing and the -Y jack zone
     H, WEB, M = 11.0, 7.0, 9.0
     step = 2 * H + WEB
+    dxc, dthk = (XLO + XHI) / 2, XHI - XLO         # lighten the whole block, not just the cap
     yc = (CH.Y_LO + CH.Y_HI) / 2
     cz = CH.Z_TOP - M - H
     while cz - H >= CH.Z_BOT + M:
@@ -131,7 +143,7 @@ def _cap() -> cq.Workplane:
             near_jack = (cy + H >= -119.0 and cy - H <= -57.0
                          and cz - H <= -28.0 and cz + H >= -54.0)
             if in_field and not near_win and not near_jack and not above_base:
-                w = w.cut(CH._diamond(cy, cz, H, xc, thk))
+                w = w.cut(CH._diamond(cy, cz, H, dxc, dthk))
             cy += step
         cz -= step
     return w
@@ -254,13 +266,16 @@ def _build() -> cq.Workplane:
     # pull (-X); the low band leaves the cap free to drop to z6.
     for yr in CH.ENDPLATE_JOINT_Y:
         body = body.cut(CH._br_tongue(yr, socket=True))
-    # PANEL I/O (the instrument's right face): recess the lower -Y corner from
-    # the inside down to a 4 mm wall, then the three jack holes - 1/4" TS line
-    # out, DC power inlet, USB-C (audio-interface port). Printed flat, so the
-    # recess and holes are vertical in the print - no support concerns.
+    # PANEL I/O (the instrument's right face): the +X cap is only ~2.5 mm in the centred
+    # 25 mm block -- too thin for the jacks -- so grow a local 4 mm PANEL BOSS at the -Y
+    # jack corner (x JACK_WALL_X..XHI). It hangs off the fill band (z FOOT_Z) down past
+    # the jacks; behind it is open (the jack bodies seat in air), so no recess is needed.
+    # Then the three jack holes - 1/4" TS line out, DC power inlet, USB-C (audio-interface
+    # port). Printed flat, so the panel + holes are vertical in the print - no supports.
     from .electronics import TS_Y, DC_Y, USB_Y, JACK_Z, JACK_WALL_X
-    body = body.cut(box_at(JACK_WALL_X - X0 + 1.0, 58.0, 22.0,
-                           x=(X0 - 1.0 + JACK_WALL_X) / 2, y=-88.0, z=JACK_Z))
+    body = body.union(box_at(XHI - JACK_WALL_X, 62.0, FOOT_Z - (JACK_Z - 14.0),
+                             x=(JACK_WALL_X + XHI) / 2, y=-88.0,
+                             z=(FOOT_Z + (JACK_Z - 14.0)) / 2))
     for jy, jd in ((TS_Y, 11.8), (DC_Y, 6.2)):   # Ø11.4 TS bushing, Ø5.7 DC thread
         body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
             jd / 2, 6.0, cq.Vector(JACK_WALL_X - 1.0, jy, JACK_Z),
