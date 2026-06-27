@@ -426,7 +426,7 @@ def _color_for(name):
 
 def _export_assembly():
     build_n = _bump_build_counter()
-    asm = cq.Assembly(name="servo_pedal_steel")
+    asm = cq.Assembly(name="public_steel_guitar")
     for name, wp in collect_components():
         asm.add(wp, name=name, color=_color_for(name))
     counter = _build_counter_model(build_n)

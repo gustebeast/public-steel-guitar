@@ -1,4 +1,4 @@
-# Servo Pedal Steel
+# Public Steel Guitar
 
 Open-source parametric CAD for an **electro-mechanical pedal steel guitar**:
 one closed-loop electric actuator per string, so the copedent — the mapping
@@ -11,12 +11,8 @@ physical prototype yet). See
 for the full design rationale and history, and [`BOM.md`](BOM.md) for sourced
 purchased parts (~$865 basic / ~$1,090 pro, dominated by the ten closed-loop steppers).
 
-> **On the name —** "servo" here means closed-loop *position control*; the
-> per-string actuators are **closed-loop steppers** (MKS SERVO42D), not servo
-> motors in the motor-type sense.
-
 **View it in 3D** (no install, no account):
-<https://gustebeast.github.io/servo-pedal-steel/> — an interactive model of the
+<https://gustebeast.github.io/public-steel-guitar/> — an interactive model of the
 instrument body, strings, nut block, and motor/changer drivetrain.
 
 **License:** [CERN-OHL-S 2.0](LICENSE) (strongly reciprocal open hardware).

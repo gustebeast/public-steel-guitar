@@ -42,7 +42,7 @@ def base(name: str) -> str:
 def main() -> None:
     # cadquery's GLTF exporter already converts CAD Z-up to glTF Y-up at the scene
     # root, so we add NO rotation here (an explicit one double-rotates -> upside down)
-    asm = cq.Assembly(name="servo_pedal_steel")
+    asm = cq.Assembly(name="public_steel_guitar")
     n = 0
     for name, wp in collect_components():
         if base(name) in INCLUDE:
