@@ -82,7 +82,20 @@ MECH_HW = D.BRIDGE_AXLE_Y + ARM_W / 2   # field-centre upper-cap half-span (arm 
 # kept shell as it drops -Z (no gap: leg -> 10 mm rail wall -> bridge, all touching).
 FOOT_Z   = CH.KH_DT_Z0              # XBAR-above-tenon line (-23.15) = use-up box floor
 LEG_CLR  = CH.EP_LEG_CLR            # assembly clearance around the kept chassis shell (shared)
-LEG_SHELL_X0, LEG_SHELL_X1 = CH.LEG_SHELL_PX     # -17.5 .. 5.6 (rail-takeover region)
+LEG_SHELL_X0, LEG_SHELL_X1 = CH.LEG_SHELL_PX     # leg-wrap shell span (rail-takeover region)
+
+# +Z RETENTION LIP (-Y bay, BRIDGE ONLY) -- see _build. A 5x5 mm bar protruding -X off
+# the endplate's -X face at the deck-bottom plane, running in Y from the -Y rail inner
+# face to the pickup piece's -Y skirt. The deck panels slide in OVER it (deck bottom and
+# lip top both at z0), so once the deck is in the lip is trapped under it and the endplate
+# can't lift +Z. Internal (under the deck) -> nothing shows on the outside. The keyhead
+# is held in +Z separately (nut-block screw path), so it gets no lip.
+LIP_DX  = 5.0                                   # -X protrusion off the endplate -X face
+LIP_DZ  = 5.0                                   # Z height, hanging below the deck bottom
+LIP_CLR = CH.EP_TOP_CLR                         # clearance to the rail inner face + skirt
+LIP_Y0  = CH.Y_LO + CH.T / 2 + LIP_CLR          # -Y rail inner face + clr (-128.35)
+LIP_Y1  = -59.5 - LIP_CLR                       # pickup -Y skirt outer face - clr (top_plate
+                                                # -(HY_CLAMP + SKIRT_T) = -59.5)
 
 
 def _cap() -> cq.Workplane:
@@ -92,8 +105,7 @@ def _cap() -> cq.Workplane:
     rail-to-rail) PLUS a -X rail-takeover extension over each rail (x XLO..6) that fills
     the rail end the chassis dropped. Generally it tops at z6; only a field-centre upper
     band (z6..10, |y| <= the bearing arms) reaches the body top to back the window rim +
-    axle comb + arm/tie roots. Lightened with diamonds in the cap thickness (flat-printed,
-    so the holes cost nothing). Foot clearance is hollowed over each +X leg afterward."""
+    axle comb + arm/tie roots. Foot clearance is hollowed over each +X leg afterward."""
     xc, thk = (X0 + X1) / 2, X1 - X0
     # cap (x6..16), rail-to-rail, z6 down to the bed -- the box closure + cross-tie
     w = box_at(thk, CH.Y_HI - CH.Y_LO + CH.T, Z6 - CH.Z_BOT,
@@ -121,31 +133,6 @@ def _cap() -> cq.Workplane:
         w = w.union(box_at(XHI - XLO, yb - ya, Z6 - FOOT_Z,
                            x=(XLO + XHI) / 2, y=(ya + yb) / 2,
                            z=(Z6 + FOOT_Z) / 2))
-    # diamond lightening through the FULL 25 mm block (the flat-print face); skip the
-    # window border, the guide-ledge backing and the -Y jack zone
-    H, WEB, M = 11.0, 7.0, 9.0
-    step = 2 * H + WEB
-    dxc, dthk = (XLO + XHI) / 2, XHI - XLO         # lighten the whole block, not just the cap
-    yc = (CH.Y_LO + CH.Y_HI) / 2
-    cz = CH.Z_TOP - M - H
-    while cz - H >= CH.Z_BOT + M:
-        cy = yc - step * 8
-        while cy <= yc + step * 8:
-            in_field = CH.Y_LO + M <= cy - H and cy + H <= CH.Y_HI - M
-            above_base = cz - H >= Z6 and abs(cy) + H > MECH_HW   # only the field band is solid up there
-            # keep a clear border around the stringing cutout AND solid cap behind
-            # the guide ledges (their print layers + stop loads back onto it)
-            near_win = (abs(cy) - H <= WIN_HW + WIN_BORDER
-                        and cz + H >= GR_LBOT - WIN_BORDER
-                        and cz - H <= WIN_Z1 + WIN_BORDER)
-            # keep the -Y jack zone solid: the panel-jack recess (TS, DC,
-            # USB-C, raised to z -41) thins it to a 4 mm wall instead
-            near_jack = (cy + H >= -119.0 and cy - H <= -57.0
-                         and cz - H <= -28.0 and cz + H >= -54.0)
-            if in_field and not near_win and not near_jack and not above_base:
-                w = w.cut(CH._diamond(cy, cz, H, dxc, dthk))
-            cy += step
-        cz -= step
     return w
 
 
@@ -285,6 +272,12 @@ def _build() -> cq.Workplane:
         body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
             1.25, 6.0, cq.Vector(JACK_WALL_X - 1.0, sy, JACK_Z),
             cq.Vector(1, 0, 0))))
+    # +Z RETENTION LIP: protrudes -X under the deck in the -Y bay (see the LIP_* block);
+    # the installed deck panels trap it, blocking the endplate from lifting +Z. Its +X face
+    # is the endplate -X face (XLO); top is the deck-bottom plane (z0) so the deck rides it.
+    body = body.union(box_at(LIP_DX, LIP_Y1 - LIP_Y0, LIP_DZ,
+                             x=XLO - LIP_DX / 2, y=(LIP_Y0 + LIP_Y1) / 2,
+                             z=CH.TP_GZ0 - LIP_DZ / 2))
     return body
 
 

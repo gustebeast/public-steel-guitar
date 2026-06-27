@@ -41,27 +41,41 @@ BZ = TZ - 6.0                           # 6 mm deck, recessed between the rails
 # -> +Z retention (plates can't fall out inverted) AND a Y-tie (the inboard groove
 # wall stops the rails spreading). The tongue runs along X -> plates slide out -X.
 
-PX0 = -17.5                             # +X deck end: panels butt the bridge endplate's
-                                        # solid base face (+Z held by the rail-top grooves)
-PX1 = -611.0                            # -X deck end: flush with the merged keyhead
-                                        # nut-block endplate (its +X face at -611)
+# Deck X-extent, DERIVED from the endplates so it tracks them. The stack installs
+# +X -> -X: the FIRST panel butts the bridge endplate FLUSH (no gap -- you push it home),
+# then each panel keeps GAP clearance to the previous so the stack can't bind, and the
+# LAST panel stops EP_TOP_CLR short of the keyhead face so the keyhead slides in past the
+# seated stack. Fret lines are at absolute X, so this positioning makes every marker land
+# true on its panel.
+PX0 = D.BRIDGE_BASE_X0                  # +X deck end: FLUSH with the bridge endplate -X face
+                                        # (-16.5); +Z held by the rail-top grooves
+PX1 = CH.KH_RAIL_X                      # -X deck end: EP_TOP_CLR off the keyhead face
+                                        # (-610.6) -> the keyhead can slide in past it
+GAP = 0.05                              # assembly clearance between consecutive panels
 
 # ── band slots at the bridge end ─────────────────────────────────────────────
-BAND_W   = 20.0                        # one slot
-N_SLOTS  = 7                           # pickup-region slots (= 7*20 = 140 mm)
-SLOT_X   = [PX0 - i * BAND_W for i in range(N_SLOTS + 1)]   # -17.5 .. -157.5
-PIECE_SLOTS = 3                        # the pickup piece spans 3 slots (60 mm)
+BAND_W   = 20.0                        # one slot (band material width)
+N_SLOTS  = 7                           # pickup-region slots
+PITCH    = BAND_W + GAP                # slot pitch = band + the gap after it
+SLOT_X   = [PX0 - i * PITCH for i in range(N_SLOTS + 1)]   # +X face of each slot
+PIECE_SLOTS = 3                        # the pickup piece spans 3 slots
 N_POS    = N_SLOTS - PIECE_SLOTS + 1   # = 5 coarse swap positions
 CLAMP    = 10.0                        # +/- fine X-adjust (= BAND_W/2 -> continuous)
 
 # shown installed state: piece in the 3 bridge-most slots, fillers behind it
 PIECE_SHOWN = 0                        # piece occupies slots [0 .. PIECE_SLOTS)
-PIECE_X0, PIECE_X1 = SLOT_X[PIECE_SHOWN], SLOT_X[PIECE_SHOWN + PIECE_SLOTS]
-REGION_X1 = SLOT_X[-1]                                     # -157.5
+PIECE_X0 = SLOT_X[PIECE_SHOWN]
+PIECE_X1 = PIECE_X0 - (PIECE_SLOTS * BAND_W + (PIECE_SLOTS - 1) * GAP)   # spans its slots
+                                       # INCLUDING the 2 internal gaps it absorbs, so
+                                       # swapping it for 3 fillers leaves the downstream
+                                       # panels (UI, keyhead) put
+REGION_X1 = SLOT_X[-1]                  # -X end of the band region (after the last gap)
 
 # the two long panels behind the band region
-MID_X0, MID_X1 = REGION_X1, -377.5     # carries the UI (string-10 deck band)
-KEY_X0, KEY_X1 = MID_X1, PX1           # keyhead panel
+MID_X0 = REGION_X1                      # carries the UI (string-10 deck band)
+MID_X1 = MID_X0 - 220.0
+KEY_X0 = MID_X1 - GAP                   # keyhead panel, sized so its -X face lands on PX1
+KEY_X1 = PX1
 
 # ── pickup-piece interior geometry ───────────────────────────────────────────
 # The pickup does NOT rest on the height screws directly (those would block its X
@@ -248,8 +262,9 @@ def _pickup_xclamp():
 
 
 def _filler(slot):
-    """One fret-marked filler band at slot index `slot` (its own fixed X span)."""
-    return _band(SLOT_X[slot], SLOT_X[slot + 1])
+    """One fret-marked filler band at slot index `slot` (its own fixed X span; BAND_W
+    wide, with the GAP to the next slot left as clearance)."""
+    return _band(SLOT_X[slot], SLOT_X[slot] - BAND_W)
 
 
 pickup_piece  = _pickup_piece()
