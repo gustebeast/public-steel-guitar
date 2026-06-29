@@ -36,12 +36,13 @@ WALL_THICKNESS  = 10.0     # structural wall: I-beam rail thickness, the keyhead
                             # endplate faces, and the deck inner/outer face references
 
 def string_y(i: int) -> float:
-    """Y centre of string i (0..9) at the changer; string 0 at −Y (player side)."""
-    return (i - (N_STRINGS - 1) / 2.0) * STRING_PITCH
+    """Y centre of string i (0..9) at the changer. Index 0 = string 1 (lightest) sits at
+    +Y; the index rises toward −Y (the player side), where string 10 (heaviest) sits."""
+    return ((N_STRINGS - 1) / 2.0 - i) * STRING_PITCH
 
 def nut_y(i: int) -> float:
-    """Y centre of string i at the nut end (strings fan to here)."""
-    return (i - (N_STRINGS - 1) / 2.0) * NUT_PITCH
+    """Y centre of string i at the nut end (strings fan to here); same ordering."""
+    return ((N_STRINGS - 1) / 2.0 - i) * NUT_PITCH
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -177,11 +178,12 @@ NEMA17_PILOT_D  = 22.0
 # ─────────────────────────────────────────────────────────────────────────
 # Each motor's pulley sits on its string's Y line (shaft +Y), body extending −Y
 # (toward the player). The motors step along −X by MOTOR_X_STEP so they don't
-# overlap. Order: string 0 (lowest, −Y) CLOSEST to the bridge, string 9 (highest,
-# +Y) FURTHEST — so every belt, running back to the bridge at its string's Y,
-# stays on the +Y side of the closer motors' (−Y-extending) bodies and clears.
-# First motor offset sized so even the shortest belt (string 0, closest) has a
-# ≥100 mm free span — long enough to develop the 90° belt twist gently (≲1°/mm)
+# overlap. Order is by Y, not by index: the −Y string (the LAST index, heaviest)
+# sits CLOSEST to the bridge, the +Y string (index 0, lightest) FURTHEST — so every
+# belt, running back to the bridge at its string's Y, stays on the +Y side of the
+# closer motors' (−Y-extending) bodies and clears. First motor offset sized so even
+# the shortest belt (the −Y string, closest) has a ≥100 mm free span — long enough
+# to develop the 90° belt twist gently (≲1°/mm)
 # and lie flat at each pulley (a 6 mm toothed belt wants ≳15× width to twist).
 MOTOR_X0        = 110.0     # first motor's −X offset from the bridge
 MOTOR_X_STEP    = 46.0      # along-X step between motors. Body is 42.3 sq; with
@@ -200,11 +202,14 @@ MOTOR_BELT_Z    = SCREW_PULLEY_Z    # motors all sit at the (even) screw-pulley 
 BELT_PLANE_DZ   = 10.0
 
 def screw_pulley_z(i: int) -> float:
-    return SCREW_PULLEY_Z + (i % 2) * BELT_PLANE_DZ
+    # raise alternate pulleys a belt-plane so neighbours never collide; phased off the
+    # −Y end (last index on the base plane) so the SAME physical pulleys rise
+    return SCREW_PULLEY_Z + ((N_STRINGS - 1 - i) % 2) * BELT_PLANE_DZ
 
 def motor_pos(i: int):
-    """Return (x, y, z) of string i's motor pulley (on the string's Y line)."""
-    return (-(MOTOR_X0 + i * MOTOR_X_STEP), string_y(i), MOTOR_BELT_Z)
+    """Return (x, y, z) of string i's motor pulley (on the string's Y line). The −Y
+    string (last index) is closest to the bridge, stepping out toward +Y (see above)."""
+    return (-(MOTOR_X0 + (N_STRINGS - 1 - i) * MOTOR_X_STEP), string_y(i), MOTOR_BELT_Z)
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -238,11 +243,13 @@ BRIDGE_BASE_X1 = BRIDGE_AXLE_X + ENDPLATE_W / 2     #  8.5   (+X outer tip)
 # ─────────────────────────────────────────────────────────────────────────
 # String gauges → the nut break inserts are GAUGED to these so the string TOPS
 # sit coplanar at STRING_Z. Reprint the (bolt-on) nut block to switch sets.
-# Index 0 = −Y (player side, lowest/heaviest) → mapped to the set's low end.
+# Index i = string (i+1), low to high: index 0 = string 1 (lightest, +Y); index 9 =
+# string 10 (heaviest, −Y player side). Edit GAUGES_C6_IN (or swap in another set in
+# the same string-1→10 order) and rebuild to regenerate the endplate for that set.
 # ─────────────────────────────────────────────────────────────────────────
 GAUGES_E9_IN = (.013, .015, .011, .014, .017, .020, .026, .030, .034, .038)  # str 1→10
-GAUGES_C6_IN = (.015, .014, .017, .020, .024, .030, .036, .042, .054, .070)
-STRING_GAUGE = tuple(g * 25.4 for g in reversed(GAUGES_C6_IN))   # mm, our index 0..9 (C6)
+GAUGES_C6_IN = (.015, .014, .017, .020, .024, .030, .036, .042, .054, .070)  # str 1→10
+STRING_GAUGE = tuple(g * 25.4 for g in GAUGES_C6_IN)            # mm, index 0..9 = str 1..10 (C6)
 
 # Nut block sits with its break edge (the open-string scale endpoint) here.
 NUT_BLOCK_X  = -MOUNTING_SPAN
