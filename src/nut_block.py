@@ -23,6 +23,8 @@ the string-top plane (= STRING_Z global); body hangs −Z.
 
 from __future__ import annotations
 
+import math
+
 import cadquery as cq
 
 from . import dimensions as D
@@ -38,7 +40,15 @@ ROW1_X   = -8.0                                 # clamp row 1 (even strings)
 ROW2_X   = -16.0                                # clamp row 2 (odd strings)
 
 GROOVE_W = 1.8                                  # lay-in groove width (string channel)
-GROOVE_FLOOR = -2.0                             # groove bottom
+GROOVE_FLOOR = -2.0                             # nominal groove bottom (per-string floor goes deeper)
+BREAK_ANGLE = 10.0                              # MIN string break angle over the pin (deg). The
+                                                # down-bearing on the pin is T*sin(angle); the
+                                                # vibrating string lifts with ~T*pi*a/L, so the needed
+                                                # angle is tension-independent. The clamp floor drops
+                                                # per string (floor = -(gauge + run*tan(angle))) to
+                                                # guarantee it, so the pin -- not the clamp -- cleanly
+                                                # terminates the speaking length. Thin/already-steep
+                                                # strings keep the nominal floor.
 PIN_D    = 2.0 + 0.15                           # break-pin seat (Ø2 dowel + 0.15 sliding clearance)
 PIN_L    = 4.0                                  # pin length (Ø2×4 dowel) — drops into its slot
 
@@ -59,10 +69,13 @@ def _build() -> cq.Workplane:
         gw = max(g + 0.8, 1.4)                  # GAUGED groove width — each string lays in + centres
         pin_z = -g - PIN_D / 2                  # gauged: pin top at −g → string top at 0
         row_x = ROW1_X if i % 2 == 0 else ROW2_X
+        # per-string pinch floor: deep enough that the string leaves the pin (top at -g) at
+        # >= BREAK_ANGLE over the run to the clamp; keep the nominal floor if already steeper
+        floor = min(GROOVE_FLOOR, -(g + abs(row_x) * math.tan(math.radians(BREAK_ANGLE))))
 
         # open lay-in groove along X (string channel), gauged to the string
-        body = body.cut(box_at(X_FRONT - X_BACK, gw, BODY_TOP - GROOVE_FLOOR,
-                               x=(X_FRONT + X_BACK) / 2, y=y, z=(BODY_TOP + GROOVE_FLOOR) / 2))
+        body = body.cut(box_at(X_FRONT - X_BACK, gw, BODY_TOP - floor,
+                               x=(X_FRONT + X_BACK) / 2, y=y, z=(BODY_TOP + floor) / 2))
         # gauged break-pin seat (axis Y) + a top-open drop slot so the pin drops
         # straight in from above (the string then traps it down)
         body = body.cut(cyl_y(PIN_D, PIN_L, y0=y - PIN_L / 2, x=0.0, z=pin_z))
@@ -71,14 +84,14 @@ def _build() -> cq.Workplane:
 
         # clamp: raised boss + buried insert (from +Z) + set-screw bore down to the
         # string, which pinches it DOWN onto the solid (PA6-GF) groove floor
-        body = body.union(box_at(BOSS_SQ, BOSS_SQ, BOSS_TOP - GROOVE_FLOOR,
-                                 x=row_x, y=y, z=(BOSS_TOP + GROOVE_FLOOR) / 2))
+        body = body.union(box_at(BOSS_SQ, BOSS_SQ, BOSS_TOP - floor,
+                                 x=row_x, y=y, z=(BOSS_TOP + floor) / 2))
         body = body.cut(cyl(INSERT_D, INSERT_L + 0.5, z=BOSS_TOP - INSERT_L)
                         .translate((row_x, y, 0)))
-        body = body.cut(cyl(SCREW_D, BOSS_TOP - GROOVE_FLOOR + 1, z=GROOVE_FLOOR)
+        body = body.cut(cyl(SCREW_D, BOSS_TOP - floor + 1, z=floor)
                         .translate((row_x, y, 0)))
-        body = body.cut(box_at(BOSS_SQ + 1, gw, BODY_TOP - GROOVE_FLOOR,   # groove through the boss
-                               x=row_x, y=y, z=(BODY_TOP + GROOVE_FLOOR) / 2))
+        body = body.cut(box_at(BOSS_SQ + 1, gw, BODY_TOP - floor,   # groove through the boss
+                               x=row_x, y=y, z=(BODY_TOP + floor) / 2))
 
     # No mount bolts: this block is now FUSED into the keyhead endplate (one PA6-GF
     # piece, keyhead_endplate.py) which drops in and is held by one screw + joinery.
