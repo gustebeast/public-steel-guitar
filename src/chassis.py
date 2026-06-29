@@ -49,7 +49,7 @@ _RIB_W   = D.XBAR                      # cross-rib X-width = XBAR (square XBAR×
 TP_X0, TP_X1   = -16.0, -638.0         # groove X span; open at the -X rail end so
                                        # the deck panels slide out -X once the
                                        # (removable) keyhead endplate is off
-TP_GZ0, TP_GZ1 = 0.0, 6.0              # deck plate z-plane: bottom rests on the rail
+TP_GZ0, TP_GZ1 = 0.0, D.DECK_TOP_Z     # deck plate z-plane: bottom rests on the rail
                                        # top (lowered to z0 here), top = playing surface
 # DECK JOINT — a VERTICAL DOVETAIL tongue-and-groove. The deck plate caps the rail
 # (right-angle bend) and drops a dovetail tongue straight down into a groove milled

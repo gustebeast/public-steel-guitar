@@ -1,24 +1,30 @@
 """Nut block geometry (×1) — keyhead string termination. PA6-GF (clamps bear on it).
 
-This is now FUSED into the keyhead endplate (one printed piece — keyhead_endplate.py
-unions this geometry in); kept as its own module for the per-string layout + the
-constants the build uses to place the break dowels / set screws. Per string it does
-two jobs:
+This is FUSED into the keyhead endplate (one printed piece — keyhead_endplate.py unions
+this geometry in); kept as its own module for the per-string layout. The block is ONE
+SOLID PRISM spanning the full keyhead-endplate X-thickness (rail outer faces of the nut
+field), the nut Y-width, and Z from the deck plane up to the boss top -- and EVERY feature
+is CUT from it (no additive bosses). Its X extent is the very thing that SETS the endplate
+thickness: dimensions.py walks the hardware along X (lip, dowel, two clamp rows, insert
+wall) to derive D.ENDPLATE_W, and this module reads those same constants back to place the
+cuts, so the prism and the endplate always agree by construction.
+
+Per string it does two jobs:
 
   1. Break edge — a hardened Ø2 dowel pin (DEMO) sets the open-string scale endpoint.
      Each pin sits at a GAUGED height (D.STRING_GAUGE) so every string TOP lands
      coplanar at STRING_Z. The string lays into an OPEN V-groove over the pin (no
      threading through a hole).
 
-  2. Clamp — the plain end, laid in the same groove, is pinched DOWN onto the
-     (solid PA6-GF) floor by an M4 cup-tip set screw (DEMO) running through a
-     deeply-buried brass heat-set insert (DEMO). Clamps alternate between TWO rows
-     (adjacent strings alternate front/back) so each Ø5.6 insert has ~13 mm of pitch
-     (thick walls → no pull-out). Print with high wall/floor counts for a solid clamp
-     floor. Reprint the whole keyhead piece to match a different string set.
+  2. Clamp — the plain end, laid in the same groove, is pinched DOWN onto the solid
+     PA6-GF floor by an M4 cup-tip set screw (DEMO) running through a deeply-buried brass
+     heat-set insert (DEMO). Clamps alternate between TWO rows (adjacent strings alternate
+     front/back) so each Ø5.6 insert has ~13 mm of pitch (thick walls → no pull-out).
+     Print with high wall/floor counts for a solid clamp floor. Reprint the whole keyhead
+     piece to match a different string set.
 
-Local frame: X=0 at the break edge, +X toward the bridge (speaking length); Z=0 at
-the string-top plane (= STRING_Z global); body hangs −Z.
+Local frame: X=0 at the break edge, +X toward the bridge (speaking length); Z=0 at the
+string-top plane (= STRING_Z global); body hangs −Z to the deck plane.
 """
 
 from __future__ import annotations
@@ -30,14 +36,40 @@ import cadquery as cq
 from . import dimensions as D
 from .helpers import cyl, cyl_y, box_at
 
-# ── layout (local frame) ─────────────────────────────────────────────────
-HW       = D.nut_y(0) + 11.0                    # half-width to the +Y-most string + room for 4 corner bolts
-BODY_TOP = 1.0                                  # body top, just above the string plane
-Z_BOT    = -6.0                                 # body bottom (local) → rests on the chassis top
-X_FRONT  = 4.0                                  # +X lip (speaking side)
-X_BACK   = -22.0                                # −X end (behind the back clamp row)
-ROW1_X   = -8.0                                 # near clamp row (short run to the dowel)
-ROW2_X   = -16.0                                # far clamp row (long run)
+# ── hardware sizes (the X-driving ones live in dimensions; read them back here) ──
+INSERT_D = D.NUT_INSERT_D
+INSERT_L = D.NUT_INSERT_L
+SCREW_D  = D.NUT_SCREW_D
+PIN_D    = D.NUT_PIN_D                          # dowel nominal Ø2
+PIN_L    = D.NUT_PIN_L                          # dowel length 4 (axis Y)
+PIN_CLR  = D.NUT_PIN_CLR                        # 0.4 clearance perimeter around the dowel
+PIN_SEAT_D = PIN_D + 2 * PIN_CLR                # = 2.8: pocket Ø (0.4 all round the dowel)
+PIN_SEAT_L = PIN_L + 2 * PIN_CLR                # = 4.8: pocket length (0.4 past each dowel end)
+
+# ── X layout (local frame) — DERIVED from the same buffers that set D.ENDPLATE_W,
+# so the prism is exactly the endplate footprint (−21 .. +4 → global −636 .. −611) ──
+X_FRONT = D.BREAK_PX_BUF                                    # +4: +X lip / inboard face
+ROW1_X  = -D.DOWEL_SCREW_RUN                                # −8: near clamp row (short run)
+ROW2_X  = ROW1_X - D.SCREW_ROW_GAP                          # −16: far clamp row (long run)
+X_BACK  = ROW2_X - D.NUT_INSERT_D / 2 - D.SCREW_NX_WALL     # −21: −X outer face (wall behind insert)
+
+# ── Y/Z extent ──
+Y_WALL   = 8.0                                  # wall +-Y of the outermost clamp insert
+HW       = D.nut_y(0) + INSERT_D / 2 + Y_WALL   # half-width to that wall (≈40)
+INSERT_GAP = 1.6                                # insert bottom sits this far ABOVE the string plane:
+                                                # close to the string (little dead Z below it) but
+                                                # clear of it -- the clamped string sits lower still,
+                                                # so true clearance is ~3 mm.
+INSERT_POCKET_EXTRA = 0.8                       # pocket sunk this much DEEPER than the insert is long,
+                                                # so the insert can dip just below the top surface
+                                                # (more wall over it -> stronger heat-set grip). This
+                                                # raises the CEILING, not the floor -- the 1.6 gap is
+                                                # untouched.
+INSERT_POCKET = INSERT_L + INSERT_POCKET_EXTRA  # = 5.5: the install-hole depth
+NUT_TOP  = INSERT_GAP + INSERT_POCKET           # boss top / ceiling (= 7.1 → global 23.1). The set
+                                                # screw (D.NUT_SCREW_L=10) is longer than gap+pocket,
+                                                # so its tail still stands PROUD of this top.
+NUT_BASE = D.DECK_TOP_Z - D.STRING_Z            # −10: prism base sits on the deck plane (global 6)
 
 
 def clamp_row_x(i: int) -> float:
@@ -46,8 +78,13 @@ def clamp_row_x(i: int) -> float:
     index) lands on the near ROW1 -- the shorter run, hence the shallower clamp floor."""
     return ROW1_X if (D.N_STRINGS - 1 - i) % 2 == 0 else ROW2_X
 
+
 GROOVE_W = 1.8                                  # lay-in groove width (string channel)
 GROOVE_FLOOR = -2.0                             # nominal groove bottom (per-string floor goes deeper)
+ROOF_CLR = 0.8                                  # string surface -> /\ channel roof clearance (_channel);
+                                                # 2x the 0.4 lay-in side gap -- measured perpendicular to
+                                                # the 45 roof sides (their closest approach), which also
+                                                # lifts the vertical peak gap to ~1.2-1.5 mm
 BREAK_ANGLE = 10.0                              # MIN string break angle over the pin (deg). The
                                                 # down-bearing on the pin is T*sin(angle); the
                                                 # vibrating string lifts with ~T*pi*a/L, so the needed
@@ -56,52 +93,101 @@ BREAK_ANGLE = 10.0                              # MIN string break angle over th
                                                 # guarantee it, so the pin -- not the clamp -- cleanly
                                                 # terminates the speaking length. Thin/already-steep
                                                 # strings keep the nominal floor.
-PIN_D    = 2.0 + 0.15                           # break-pin seat (Ø2 dowel + 0.15 sliding clearance)
-PIN_L    = 4.0                                  # pin length (Ø2×4 dowel) — drops into its slot
 
-BOSS_TOP = 10.0                                 # clamp boss top (houses the +Z insert; screw tip rests on the string)
-BOSS_SQ  = 10.0                                 # clamp boss footprint
-INSERT_D = 5.6                                  # M4 heat-set install hole
-INSERT_L = 4.7
-SCREW_D  = 4.3                                  # M4 set-screw clearance
+
+def clamp_floor(i: int) -> float:
+    """Per-string groove floor at the clamp (local Z). Deep enough that the string leaves the
+    pin at >= BREAK_ANGLE over the run to the clamp, never shallower than GROOVE_FLOOR. The set
+    screw presses the string DOWN onto this floor, so floor + gauge IS the clamped string top --
+    the build draws the string (and the screw tip) pressed to here, not floating above it."""
+    g = D.STRING_GAUGE[i]
+    return min(GROOVE_FLOOR, -(g + abs(clamp_row_x(i)) * math.tan(math.radians(BREAK_ANGLE))))
+
+
+EXIT_ANGLE = 45.0                               # the string leaves the nut at this down-angle,
+                                                # primed for the loop into the keyhead stow bore
+EXIT_X0    = ROW2_X - SCREW_D / 2                # curve start: the -X EDGE of the far clamp's set
+                                                # screw (not its centre) -- COMMON to all strings, so
+                                                # every screw is fully clear before the floor drops
+EXIT_X1    = X_BACK                               # reach the -X outer face (X_BACK is exactly it now,
+                                                # so the exit hole is no longer left short by a 1 mm lip)
+
+
+def _exit_curve(floor, gw, y):
+    """A down-CURVE in the groove floor from EXIT_X0 (tangent-flat, just past the far clamp)
+    to the -X edge, bending the string's free end down to EXIT_ANGLE so it leaves the nut
+    already angled toward the stow loop. Same start + shape for every string (only `floor`
+    differs), so they all exit the same way. Cuts the crescent between the flat floor and
+    the descending arc, so the remaining floor IS the arc (tangent-flat at EXIT_X0)."""
+    R = (EXIT_X0 - EXIT_X1) / math.sin(math.radians(EXIT_ANGLE))
+    drop = R * (1.0 - math.cos(math.radians(EXIT_ANGLE)))
+    th = math.radians(EXIT_ANGLE / 2.0)
+    mid = (EXIT_X0 - R * math.sin(th), floor - R * (1.0 - math.cos(th)))
+    prof = (cq.Workplane("XZ").moveTo(EXIT_X0, floor)
+            .lineTo(EXIT_X1, floor).lineTo(EXIT_X1, floor - drop)
+            .threePointArc(mid, (EXIT_X0, floor)).close())
+    return prof.extrude(gw / 2.0, both=True).translate((0, y, 0))
+
+
+def _channel(gw, floor, y, g, x0, x1):
+    """A run of the string channel over x0..x1, as a solid to CUT: vertical walls (gw wide) from
+    `floor` up to a 45-degree /\\ roof, with SOLID material above it to the ceiling (no open slot
+    to the top). The roof spans Y over the string so the clamp inserts sit in solid material ->
+    more grip. Its 45-degree sides lie on a line tangent to (string + ROOF_CLR), so the string
+    keeps ROOF_CLR from the roof -- measured to the SIDES, which come closer than the peak. The
+    insert pocket, set-screw bore and dowel drop-slot each punch back up through it for their
+    vertical install access; the string threads in from a channel mouth (not dropped from above).
+    The channel is cut in TWO runs at different floors (see _build): a shallow one at the dowel
+    midline that leaves solid UNDER the dowel, and the deep break-angle one out to the exit."""
+    c = -g / 2.0 + (g / 2.0 + ROOF_CLR) * math.sqrt(2.0)   # /\ peak height (local z); 45 sides
+    spring = c - gw / 2.0                                  # walls -> roof transition height
+    return (cq.Workplane("YZ")
+            .moveTo(y - gw / 2.0, floor).lineTo(y + gw / 2.0, floor)
+            .lineTo(y + gw / 2.0, spring).lineTo(y, c).lineTo(y - gw / 2.0, spring)
+            .close().extrude(x1 - x0).translate((x0, 0.0, 0.0)))
 
 
 def _build() -> cq.Workplane:
-    body = box_at(X_FRONT - X_BACK, 2 * HW, BODY_TOP - Z_BOT,
-                  x=(X_FRONT + X_BACK) / 2, y=0, z=(BODY_TOP + Z_BOT) / 2)
+    # ONE solid prism: the full endplate X-thickness × the nut Y-width × deck plane up to
+    # the boss top. ALL string-termination features are CUT from it -- no additive bosses.
+    body = box_at(X_FRONT - X_BACK, 2 * HW, NUT_TOP - NUT_BASE,
+                  x=(X_FRONT + X_BACK) / 2, y=0, z=(NUT_TOP + NUT_BASE) / 2)
 
     for i in range(D.N_STRINGS):
         y = D.nut_y(i)
         g = D.STRING_GAUGE[i]
         gw = max(g + 0.8, 1.4)                  # GAUGED groove width — each string lays in + centres
-        pin_z = -g - PIN_D / 2                  # gauged: pin top at −g → string top at 0
+        pin_z  = -g - PIN_D / 2                 # dowel centre -> its top at −g (string top 0)
+        seat_z = pin_z + PIN_CLR                # seat (Ø dowel+2*clr) centre, raised so its BOTTOM is
+                                                # flush with the dowel bottom: no Z clearance under the
+                                                # gauge datum (clearance grows 0 at the floor -> clr at
+                                                # the sides), the dowel rests where the string presses it
+        dowel_nx = -PIN_D / 2                   # dowel −X extent (break starts here)
         row_x = clamp_row_x(i)
-        # per-string pinch floor: deep enough that the string leaves the pin (top at -g) at
-        # >= BREAK_ANGLE over the run to the clamp; keep the nominal floor if already steeper
-        floor = min(GROOVE_FLOOR, -(g + abs(row_x) * math.tan(math.radians(BREAK_ANGLE))))
+        floor = clamp_floor(i)                  # per-string clamp floor (string is pressed down to here)
 
-        # open lay-in groove along X (string channel), gauged to the string
-        body = body.cut(box_at(X_FRONT - X_BACK, gw, BODY_TOP - floor,
-                               x=(X_FRONT + X_BACK) / 2, y=y, z=(BODY_TOP + floor) / 2))
-        # gauged break-pin seat (axis Y) + a top-open drop slot so the pin drops
-        # straight in from above (the string then traps it down)
-        body = body.cut(cyl_y(PIN_D, PIN_L, y0=y - PIN_L / 2, x=0.0, z=pin_z))
-        body = body.cut(box_at(PIN_D, PIN_L, BODY_TOP - pin_z,
-                               x=0.0, y=y, z=(BODY_TOP + pin_z) / 2))
-
-        # clamp: raised boss + buried insert (from +Z) + set-screw bore down to the
-        # string, which pinches it DOWN onto the solid (PA6-GF) groove floor
-        body = body.union(box_at(BOSS_SQ, BOSS_SQ, BOSS_TOP - floor,
-                                 x=row_x, y=y, z=(BOSS_TOP + floor) / 2))
-        body = body.cut(cyl(INSERT_D, INSERT_L + 0.5, z=BOSS_TOP - INSERT_L)
+        # string channel under a 45 /\ roof, in TWO floor runs: shallow at the dowel midline from the
+        # +X entry to the dowel's −X edge (leaves SOLID under the dowel so it's supported across the
+        # channel, not just at its ends), then the deep break-angle floor on out to the exit
+        body = body.cut(_channel(gw, pin_z, y, g, dowel_nx, X_FRONT))
+        body = body.cut(_channel(gw, floor, y, g, X_BACK, dowel_nx))
+        # break-pin seat (axis Y) + a top-open drop slot so the pin drops straight in from above (the
+        # string then traps it down). Seat is the dowel + PIN_CLR all round, bottom flush with the dowel.
+        body = body.cut(cyl_y(PIN_SEAT_D, PIN_SEAT_L, y0=y - PIN_SEAT_L / 2, x=0.0, z=seat_z))
+        body = body.cut(box_at(PIN_SEAT_D, PIN_SEAT_L, NUT_TOP - seat_z,
+                               x=0.0, y=y, z=(NUT_TOP + seat_z) / 2))
+        # clamp: buried M4 insert (from +Z, punching up through the roof) + set-screw bore down
+        # to the string, which pinches it DOWN onto the solid (PA6-GF) groove floor. The pocket
+        # runs from the gap up to the ceiling (INSERT_POCKET deep) so the insert recesses slightly.
+        body = body.cut(cyl(INSERT_D, INSERT_POCKET + 0.5, z=INSERT_GAP)
                         .translate((row_x, y, 0)))
-        body = body.cut(cyl(SCREW_D, BOSS_TOP - floor + 1, z=floor)
+        body = body.cut(cyl(SCREW_D, NUT_TOP - floor + 1, z=floor)
                         .translate((row_x, y, 0)))
-        body = body.cut(box_at(BOSS_SQ + 1, gw, BODY_TOP - floor,   # groove through the boss
-                               x=row_x, y=y, z=(BODY_TOP + floor) / 2))
+        # exit down-curve: bend the free end to EXIT_ANGLE toward the stow loop
+        body = body.cut(_exit_curve(floor, gw, y))
 
-    # No mount bolts: this block is now FUSED into the keyhead endplate (one PA6-GF
-    # piece, keyhead_endplate.py) which drops in and is held by one screw + joinery.
+    # No mount bolts: this block is FUSED into the keyhead endplate (one PA6-GF piece,
+    # keyhead_endplate.py) which drops in and is held by the rail-end dovetails + joinery.
     return body
 
 
