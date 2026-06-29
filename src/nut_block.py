@@ -13,7 +13,7 @@ two jobs:
   2. Clamp — the plain end, laid in the same groove, is pinched DOWN onto the
      (solid PA6-GF) floor by an M4 cup-tip set screw (DEMO) running through a
      deeply-buried brass heat-set insert (DEMO). Clamps alternate between TWO rows
-     (even strings front, odd strings back) so each Ø5.6 insert has ~13 mm of pitch
+     (adjacent strings alternate front/back) so each Ø5.6 insert has ~13 mm of pitch
      (thick walls → no pull-out). Print with high wall/floor counts for a solid clamp
      floor. Reprint the whole keyhead piece to match a different string set.
 
@@ -31,13 +31,20 @@ from . import dimensions as D
 from .helpers import cyl, cyl_y, box_at
 
 # ── layout (local frame) ─────────────────────────────────────────────────
-HW       = D.nut_y(D.N_STRINGS - 1) + 11.0     # half-width (room for 4 corner bolts clear of the clamps)
+HW       = D.nut_y(0) + 11.0                    # half-width to the +Y-most string + room for 4 corner bolts
 BODY_TOP = 1.0                                  # body top, just above the string plane
 Z_BOT    = -6.0                                 # body bottom (local) → rests on the chassis top
 X_FRONT  = 4.0                                  # +X lip (speaking side)
 X_BACK   = -22.0                                # −X end (behind the back clamp row)
-ROW1_X   = -8.0                                 # clamp row 1 (even strings)
-ROW2_X   = -16.0                                # clamp row 2 (odd strings)
+ROW1_X   = -8.0                                 # near clamp row (short run to the dowel)
+ROW2_X   = -16.0                                # far clamp row (long run)
+
+
+def clamp_row_x(i: int) -> float:
+    """X of string i's clamp row. Adjacent strings alternate near/far rows so each Ø5.6
+    insert keeps ~13 mm of Y pitch; phased off the −Y end so the heaviest string (last
+    index) lands on the near ROW1 -- the shorter run, hence the shallower clamp floor."""
+    return ROW1_X if (D.N_STRINGS - 1 - i) % 2 == 0 else ROW2_X
 
 GROOVE_W = 1.8                                  # lay-in groove width (string channel)
 GROOVE_FLOOR = -2.0                             # nominal groove bottom (per-string floor goes deeper)
@@ -68,7 +75,7 @@ def _build() -> cq.Workplane:
         g = D.STRING_GAUGE[i]
         gw = max(g + 0.8, 1.4)                  # GAUGED groove width — each string lays in + centres
         pin_z = -g - PIN_D / 2                  # gauged: pin top at −g → string top at 0
-        row_x = ROW1_X if i % 2 == 0 else ROW2_X
+        row_x = clamp_row_x(i)
         # per-string pinch floor: deep enough that the string leaves the pin (top at -g) at
         # >= BREAK_ANGLE over the run to the clamp; keep the nominal floor if already steeper
         floor = min(GROOVE_FLOOR, -(g + abs(row_x) * math.tan(math.radians(BREAK_ANGLE))))

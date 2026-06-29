@@ -209,7 +209,7 @@ def _string_components(i):
     out.append((f"string_{i}", _string_path(i, sy)))
     # nut-block hardware (DEMO): gauged break pin + clamp set screw
     g = D.STRING_GAUGE[i]
-    row_x = NB.ROW1_X if i % 2 == 0 else NB.ROW2_X
+    row_x = NB.clamp_row_x(i)
     out.append((f"break_dowel_{i}", C.dowel().translate(
         (D.NUT_BLOCK_X, D.nut_y(i), D.STRING_Z - g - 1.0))))          # pin top at STRING_Z−g
     out.append((f"set_screw_{i}", C.set_screw().translate(             # cup tip rests on the string
@@ -240,7 +240,7 @@ def _string_path(i, sy):
     brk = cq.Vector(D.NUT_BLOCK_X, D.nut_y(i), D.STRING_Z - g / 2.0)
     out = out.union(_rod(prev, brk, rad))
     # dead end: break edge → clamp row, where it rests on the (plastic) groove floor
-    row_x = NB.ROW1_X if i % 2 == 0 else NB.ROW2_X
+    row_x = NB.clamp_row_x(i)
     out = out.union(_rod(brk, cq.Vector(D.NUT_BLOCK_X + row_x, D.nut_y(i),
                                         D.STRING_Z + NB.GROOVE_FLOOR + g / 2.0), rad))
     return out

@@ -39,8 +39,8 @@ Z_BOT    = MB.BED_Z                    # print bed (shared with the motor walls)
 # Rail CENTRES, defined so the INNER faces stay fixed as the wall T changes (the wall
 # grows outward): +Y inner clears the bearing arm, -Y inner clears the motor PCBs.
 Y_HI     = D.BRIDGE_AXLE_Y + 3.0 + T / 2          # +Y rail (inner face = axle_Y + 3)
-Y_LO     = (D.string_y(0) - MOTOR_PULLEY_STANDOFF - D.MOTOR_BODY_LEN
-            - D.MOTOR_PCB_LEN - 2.0) - T / 2      # −Y rail (inner = PCB back − 2)
+Y_LO     = (D.string_y(D.N_STRINGS - 1) - MOTOR_PULLEY_STANDOFF - D.MOTOR_BODY_LEN
+            - D.MOTOR_PCB_LEN - 2.0) - T / 2      # −Y rail off the −Y-most string (last index)
 _XC, _ZC = (X_BRIDGE + X_NUT) / 2, (Z_TOP + Z_BOT) / 2
 _RIB_W   = D.XBAR                      # cross-rib X-width = XBAR (square XBAR×XBAR section)
 # Top-plate retention grooves (top_plate.py rides these): a slot in each rail
@@ -180,7 +180,7 @@ def _build_full() -> cq.Workplane:
     # wall + a shallow seat channel in each rail end for the endplate's tabs.
     _kx = D.NUT_BLOCK_X - 9.0                               # endplate centre line
     body = body.union(_rib(_kx, w=30.0))                   # bottom tie / seat
-    ky = D.nut_y(D.N_STRINGS - 1) + 9.0
+    ky = D.nut_y(0) + 9.0                                  # +Y-most string (index 0) + margin
     body = body.union(box_at(4.0, 2 * ky, 4.0,            # +X compression wall (below the strings)
                              x=D.NUT_BLOCK_X + 6.0, y=0, z=Z_TOP + 2.0))
     for _yf, _s in ((Y_HI - T / 2, 1), (Y_LO + T / 2, -1)):   # endplate tab channels
