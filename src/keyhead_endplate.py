@@ -24,36 +24,26 @@ import cadquery as cq
 from . import dimensions as D
 from . import chassis as CH
 from . import nut_block as NB
-from .helpers import box_at, cyl, heal
+from .helpers import box_at, heal
 
 
-def _angled_bore(p0, p1, d, over=2.0):
-    """A round bore of diameter `d` running from p0 to p1 (both (x, y, z)), extended
-    `over` mm past each end so it fully breaks through the faces it meets."""
-    v = cq.Vector(p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2])
-    u = v.multiply(1.0 / v.Length)
-    start = cq.Vector(*p0).sub(u.multiply(over))
-    return cq.Workplane("XY").add(
-        cq.Solid.makeCylinder(d / 2, v.Length + 2 * over, start, u))
-
-
-def _entry_tube(d, x_hole, x_face, z_top):
-    """The string-entry bore (built at y=0): a 1/8-circle (45 deg) sweep that blends the
-    -X face opening (x_face, z_top, leaning out at 45 deg) SMOOTHLY into the vertical stow
-    bore at x_hole (tangent vertical where they meet), so the inserted string rides a
-    continuous ramp with no kink. A short straight 45 deg lead-out guarantees the -X face
-    breaks through. Returns (tube, z_join) where z_join is where the arc meets the bore."""
-    R = (x_hole - x_face) / (1.0 - math.cos(math.radians(45)))   # arc radius for a 45 deg span
-    zj = z_top - R * math.sin(math.radians(45))                  # arc meets the vertical bore here
+def _stow_bore(d, x_hole, x_face, z_top, z_bot):
+    """The WHOLE string-stow hole as ONE swept solid (built at y=0) -- no unions, so no
+    internal seams. A circle is swept up a straight vertical bore (from below the bed at
+    z_bot, at x_hole), SMOOTHLY through a 45-deg (1/8-circle) arc, then out a short 45-deg
+    lead-in at the -X face (x_face, z_top). The bore->arc and arc->lead joins are tangent,
+    so the inserted string rides one continuous wall from the face down into the bore."""
+    R = (x_hole - x_face) / (1.0 - math.cos(math.radians(45)))   # arc radius for the 45-deg span
+    zj = z_top - R * math.sin(math.radians(45))                  # straight bore up to here, then arc
     cx = x_hole - R                                              # arc centre x (z = zj)
     mid = (cx + R * math.cos(math.radians(22.5)), zj + R * math.sin(math.radians(22.5)))
-    path = cq.Workplane("XZ").moveTo(x_hole, zj).threePointArc(mid, (x_face, z_top))
-    prof = cq.Workplane("XY", origin=(x_hole, 0.0, zj)).circle(d / 2)
-    tube = prof.sweep(path)
-    lead = _angled_bore((x_face, 0.0, z_top),
-                        (x_face - 3.0 * math.cos(math.radians(45)),
-                         0.0, z_top + 3.0 * math.sin(math.radians(45))), d, over=1.0)
-    return tube.union(lead), zj
+    c = math.cos(math.radians(45))
+    path = (cq.Workplane("XZ").moveTo(x_hole, z_bot)
+            .lineTo(x_hole, zj)                                  # straight vertical bore
+            .threePointArc(mid, (x_face, z_top))                # 1/8-circle blend to 45 deg
+            .lineTo(x_face - 3.0 * c, z_top + 3.0 * c))         # 45-deg lead-in through the face
+    prof = cq.Workplane("XY", origin=(x_hole, 0.0, z_bot)).circle(d / 2)
+    return prof.sweep(path)
 
 # ONE part (x −636 .. −611, PA6-GF), FULL-WIDTH (rail outer to rail outer) so it TAKES
 # OVER the whole −X end and its edge shows from the front, mirroring the bridge endplate.
@@ -74,8 +64,6 @@ YFL  = CH.Y_LO - CH.T / 2                   # full width: -Y rail outer face
 YFH  = CH.Y_HI + CH.T / 2                   # +Y rail outer face
 Z6    = CH.TP_GZ1                          # deck/top-plate level = general plate top
 FOOT_Z = CH.KH_DT_Z0                       # foot line (-23.15): fill band bottom / wall-box top
-NB_HW = 41.0                               # nut-block half-width (Y); riser ties it down
-NB_Z0 = 10.0                               # nut-block base Z
 # FOOT POCKET: the chassis now KEEPS a ~10 mm rail shell hugging each -X leg socket
 # (CH._leg_shell over CH.LEG_SHELL_NX), capped at the foot line (z -23.15); the keyhead
 # is solid AROUND that shell and nests over it as it drops -Z. The pocket only clears
@@ -112,8 +100,9 @@ def _build():
                            y=(hol_y0 + hol_y1) / 2,
                            z=((CH.Z_BOT - 1.0) + (FOOT_Z + 0.1)) / 2))
     w = w.union(foot)
-    # nut block (the only thing reaching above the deck) + a riser tying it to the block
-    w = w.union(box_at(T_EP, 2 * NB_HW, NB_Z0 - Z6, x=KX, y=0, z=(NB_Z0 + Z6) / 2))
+    # nut block (the only thing reaching above the deck): ONE solid prism from the deck
+    # plane (Z6) up to the boss top, fused on -- it bridges down to the fill zone itself,
+    # so no separate riser
     w = w.union(NB.nut_block.translate((D.NUT_BLOCK_X, 0, D.STRING_Z)))
     w = w.intersect(box_at(T_EP, 4000.0, 4000.0, x=KX, y=0, z=0))
     # FOOT POCKET: pocket exactly the kept chassis rail shell (+ clearance) out of each
@@ -134,17 +123,14 @@ def _build():
     # (ZHOLE_X, ~3.5 mm of wall left -X of it) running from near the body top straight DOWN
     # and out through the bed -- the cut string end tucks into it, so almost nothing
     # protrudes -X and what does is a smooth loop, not a sharp tail. The string can't drop
-    # in from straight above (the nut-block riser caps that), so it enters through a SWEPT
-    # 1/8-circle bore from the -X face top corner (XLO, Z6) that curves smoothly from 45 deg
-    # at the face to vertical where it joins the stow bore (no kink to push past).
-    # Restringing: pull the end back out with pliers for a hand-hold while setting the new
-    # string hand-tight.
-    entry, z_join = _entry_tube(ZHOLE_D, ZHOLE_X, XLO, Z6)
+    # in from straight above (the nut-block riser caps that), so the bore curves smoothly
+    # out to the -X face top corner (XLO, Z6): the WHOLE thing -- vertical bore, 45-deg
+    # arc, and 45-deg face lead-in -- is one swept solid, so there's no seam where the
+    # curve meets the bore (one continuous wall to push the string against). Restringing:
+    # pull the end back out with pliers for a hand-hold while setting the new string hand-tight.
+    bore = _stow_bore(ZHOLE_D, ZHOLE_X, XLO, Z6, CH.Z_BOT - 1.0)
     for i in range(D.N_STRINGS):
-        y = D.nut_y(i)
-        w = w.cut(cyl(ZHOLE_D, (z_join + 2.0) - (CH.Z_BOT - 1.0), z=CH.Z_BOT - 1.0)
-                  .translate((ZHOLE_X, y, 0)))
-        w = w.cut(entry.translate((0, y, 0)))
+        w = w.cut(bore.translate((0, D.nut_y(i), 0)))
     return heal(w)
 
 

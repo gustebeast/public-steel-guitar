@@ -49,6 +49,8 @@ def nut_y(i: int) -> float:
 # Heights (Z). Speaking length on top; mechanism below.
 # ─────────────────────────────────────────────────────────────────────────
 STRING_Z        = 16.0      # speaking-length / bridge-bearing top
+DECK_TOP_Z      = 6.0       # deck-plate top = playing-surface datum; the chassis deck
+                            # plane (TP_GZ0/1) and the keyhead nut-block base both sit here
 SCREW_TOP_Z     = 2.0       # screw top, below the bend / carriage travel
 # Travel budget from string physics. f ∝ √(stretch) ⇒ stretch ∝ f², so the
 # carriage travel between two pitches is the change in stretch:
@@ -230,12 +232,33 @@ BRIDGE_AXLE_Y     = STRING_FIELD_W / 2 + 9.0             # axle/support half-spa
 BRIDGE_ARM_W      = 5.0     # bridge-endplate bearing-arm / edge-web thickness (Y); the
                             # screw rail widens by this so the rib overlaps it cleanly
 
-# ── Endplate block (BOTH ends) + bridge drivetrain base: ONE 25 mm X-width ──
-# The keyhead nut block sets this width; the bridge centers it on the axle, and the
-# screw-support (drivetrain) base spans the same X. Deriving the leg/foot, the endplate
-# wall and the base from THESE datums (never a hardcoded tip) keeps the 10 mm endplate
-# wall + 10 mm leg buffer intact whenever the block width OR the axle moves.
-ENDPLATE_W     = 25.0
+# ── Keyhead nut-block hardware → ENDPLATE_W (BOTH ends + bridge base) ────────
+# The endplate THICKNESS in X is not a round number -- it's exactly what the string-
+# termination hardware needs. Laid out -X from the break dowel (which sits at the scale
+# endpoint NUT_BLOCK_X, the +X-most part) the X stack is: a +X strength lip, the dowel,
+# the run to the NEAR clamp row, the X-stagger to the FAR clamp row, then a wall behind
+# the far clamp's heat-set insert (its OD is the -X-most hardware). BOTH endplates inherit
+# this width (the bridge centres it on the bearing axle) and the drivetrain base spans it,
+# so editing any buffer here resizes both ends together -- never a hardcoded tip. The
+# keyhead nut block (nut_block.py) reads these same constants to place its features.
+NUT_INSERT_D    = 5.6           # M4 brass heat-set insert install Ø (the -X-most hardware)
+NUT_INSERT_L    = 4.7
+NUT_SCREW_D     = 4.3           # M4 set-screw clearance (runs down the insert onto the string)
+NUT_SCREW_L     = 10.0          # M4 set-screw length (DEMO). The boss is NOT one screw tall: the
+                                # insert sinks to a small gap off the string (nut_block.INSERT_GAP)
+                                # and this screw's surplus length stands PROUD of the top surface.
+NUT_PIN_D       = 2.0           # Ø2 break-dowel NOMINAL diameter
+NUT_PIN_L       = 4.0           # Ø2×4 dowel length (axis Y)
+NUT_PIN_CLR     = 0.4           # clearance perimeter around the dowel in its pocket (drop-in fit,
+                                # all faces -- the seat is Ø+2*clr and length+2*clr)
+
+BREAK_PX_BUF    = 4.0           # +X of the dowel: the lip the deck/pickup plate seat against
+DOWEL_SCREW_RUN = 8.0           # dowel -> NEAR clamp row centre (the break run to the clamp)
+SCREW_ROW_GAP   = 8.0           # NEAR -> FAR clamp row centre (rows stagger so inserts keep Y pitch)
+SCREW_NX_WALL   = 2.2           # solid wall -X behind the far insert's OD (strength)
+
+ENDPLATE_W = (BREAK_PX_BUF + DOWEL_SCREW_RUN + SCREW_ROW_GAP
+              + NUT_INSERT_D / 2 + SCREW_NX_WALL)            # = 25.0
 BRIDGE_BASE_X0 = BRIDGE_AXLE_X - ENDPLATE_W / 2     # -16.5  (-X inboard face)
 BRIDGE_BASE_X1 = BRIDGE_AXLE_X + ENDPLATE_W / 2     #  8.5   (+X outer tip)
 

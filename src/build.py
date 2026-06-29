@@ -210,10 +210,11 @@ def _string_components(i):
     # nut-block hardware (DEMO): gauged break pin + clamp set screw
     g = D.STRING_GAUGE[i]
     row_x = NB.clamp_row_x(i)
-    out.append((f"break_dowel_{i}", C.dowel().translate(
-        (D.NUT_BLOCK_X, D.nut_y(i), D.STRING_Z - g - 1.0))))          # pin top at STRING_Z−g
-    out.append((f"set_screw_{i}", C.set_screw().translate(             # cup tip rests on the string
-        (D.NUT_BLOCK_X + row_x, D.nut_y(i), D.STRING_Z + 8.0 + g))))
+    out.append((f"break_dowel_{i}", C.dowel().translate(               # centred in its seat (0.4 clr
+        (D.NUT_BLOCK_X, D.nut_y(i), D.STRING_Z - g - D.NUT_PIN_D / 2))))  # all round); pin top at Z−g
+    out.append((f"set_screw_{i}", C.set_screw().translate(             # cup tip on the CLAMPED string
+        (D.NUT_BLOCK_X + row_x, D.nut_y(i),                            # (per-string floor); tail proud
+         D.STRING_Z + NB.clamp_floor(i) + D.NUT_SCREW_L + g))))
     return out
 
 
@@ -239,10 +240,38 @@ def _string_path(i, sy):
     # speaking length to the break edge: string sits on the gauged pin, TOP at STRING_Z
     brk = cq.Vector(D.NUT_BLOCK_X, D.nut_y(i), D.STRING_Z - g / 2.0)
     out = out.union(_rod(prev, brk, rad))
-    # dead end: break edge → clamp row, where it rests on the (plastic) groove floor
-    row_x = NB.clamp_row_x(i)
-    out = out.union(_rod(brk, cq.Vector(D.NUT_BLOCK_X + row_x, D.nut_y(i),
-                                        D.STRING_Z + NB.GROOVE_FLOOR + g / 2.0), rad))
+    # dead end: break edge → clamp, then on out the exit curve and down into the Z stow bore
+    out = out.union(_rod(brk, cq.Vector(D.NUT_BLOCK_X + NB.clamp_row_x(i), D.nut_y(i),
+                                        D.STRING_Z + NB.clamp_floor(i) + g / 2.0), rad))
+    out = out.union(_stow_tail(i, rad))
+    return out
+
+
+def _stow_tail(i, rad):
+    """DEMO: the clamped string's free end continuing past the clamp -- flat to the exit-curve
+    start, angled down (EXIT_ANGLE) out the -X face, then looping into the keyhead Z stow bore
+    (face mouth → inward arc → straight down to the bed). Shows where each cut end tucks away."""
+    from . import keyhead_endplate as KE
+    ny = D.nut_y(i)
+    cz = D.STRING_Z + NB.clamp_floor(i) + D.STRING_GAUGE[i] / 2.0       # centreline on the clamp floor
+    R_e = (NB.EXIT_X0 - NB.EXIT_X1) / math.sin(math.radians(NB.EXIT_ANGLE))
+    drop = R_e * (1.0 - math.cos(math.radians(NB.EXIT_ANGLE)))          # exit-curve drop at the -X face
+    pts = [cq.Vector(D.NUT_BLOCK_X + NB.clamp_row_x(i), ny, cz),        # clamp
+           cq.Vector(D.NUT_BLOCK_X + NB.EXIT_X0,        ny, cz),        # flat run to the exit start
+           cq.Vector(D.NUT_BLOCK_X + NB.EXIT_X1,        ny, cz - drop)] # down the exit to the face
+    # the stow bore: -X-face mouth, a 45° inward arc to x=ZHOLE_X, then straight down to the bed
+    R = (KE.ZHOLE_X - KE.XLO) / (1.0 - math.cos(math.radians(45.0)))
+    zj, cx = KE.Z6 - R * math.sin(math.radians(45.0)), KE.ZHOLE_X - R
+    pts.append(cq.Vector(KE.XLO, ny, KE.Z6))                            # bore mouth at the -X face
+    M = 8
+    for k in range(1, M + 1):
+        th = math.radians(45.0 * (1.0 - k / M))                        # 45° → 0° around the arc
+        pts.append(cq.Vector(cx + R * math.cos(th), ny, zj + R * math.sin(th)))
+    pts.append(cq.Vector(KE.ZHOLE_X, ny, CH.Z_BOT))                    # down the bore to the bed
+    out = None
+    for a, b in zip(pts[:-1], pts[1:]):
+        seg = _rod(a, b, rad)
+        out = seg if out is None else out.union(seg)
     return out
 
 
