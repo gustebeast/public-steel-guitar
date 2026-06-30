@@ -34,7 +34,7 @@ import math
 import cadquery as cq
 
 from . import dimensions as D
-from .helpers import cyl, cyl_y, box_at
+from .helpers import cyl, box_at
 
 # ── hardware sizes (the X-driving ones live in dimensions; read them back here) ──
 INSERT_D = D.NUT_INSERT_D
@@ -81,10 +81,10 @@ def clamp_row_x(i: int) -> float:
 
 GROOVE_W = 1.8                                  # lay-in groove width (string channel)
 GROOVE_FLOOR = -2.0                             # nominal groove bottom (per-string floor goes deeper)
-ROOF_CLR = 0.8                                  # string surface -> /\ channel roof clearance (_channel);
-                                                # 2x the 0.4 lay-in side gap -- measured perpendicular to
-                                                # the 45 roof sides (their closest approach), which also
-                                                # lifts the vertical peak gap to ~1.2-1.5 mm
+ROOF_CLR = 0.8                                  # vertical headroom from the string top to the FLAT channel
+                                                # roof (2x the 0.4 lay-in side gap). Flat (not /\) is fine
+                                                # because the keyhead prints ALONG X, so the roof is a wall
+                                                # parallel to the layers -- not a bridged ceiling
 BREAK_ANGLE = 10.0                              # MIN string break angle over the pin (deg). The
                                                 # down-bearing on the pin is T*sin(angle); the
                                                 # vibrating string lifts with ~T*pi*a/L, so the needed
@@ -129,22 +129,38 @@ def _exit_curve(floor, gw, y):
     return prof.extrude(gw / 2.0, both=True).translate((0, y, 0))
 
 
-def _channel(gw, floor, y, g, x0, x1):
-    """A run of the string channel over x0..x1, as a solid to CUT: vertical walls (gw wide) from
-    `floor` up to a 45-degree /\\ roof, with SOLID material above it to the ceiling (no open slot
-    to the top). The roof spans Y over the string so the clamp inserts sit in solid material ->
-    more grip. Its 45-degree sides lie on a line tangent to (string + ROOF_CLR), so the string
-    keeps ROOF_CLR from the roof -- measured to the SIDES, which come closer than the peak. The
-    insert pocket, set-screw bore and dowel drop-slot each punch back up through it for their
-    vertical install access; the string threads in from a channel mouth (not dropped from above).
-    The channel is cut in TWO runs at different floors (see _build): a shallow one at the dowel
-    midline that leaves solid UNDER the dowel, and the deep break-angle one out to the exit."""
-    c = -g / 2.0 + (g / 2.0 + ROOF_CLR) * math.sqrt(2.0)   # /\ peak height (local z); 45 sides
-    spring = c - gw / 2.0                                  # walls -> roof transition height
-    return (cq.Workplane("YZ")
-            .moveTo(y - gw / 2.0, floor).lineTo(y + gw / 2.0, floor)
-            .lineTo(y + gw / 2.0, spring).lineTo(y, c).lineTo(y - gw / 2.0, spring)
-            .close().extrude(x1 - x0).translate((x0, 0.0, 0.0)))
+def _channel(gw, floor, y, x0, x1):
+    """A run of the string channel over x0..x1, as a solid to CUT: a rectangular slot, gw wide,
+    from `floor` up to a FLAT roof ROOF_CLR above the string-top plane, with SOLID material above
+    it to the ceiling (no open slot to the top -> the clamp inserts sit in solid material for grip).
+    A flat roof is fine because the keyhead prints ALONG X (the channel length is the build
+    direction), so the roof is a wall parallel to the layers, not a bridged ceiling. The string
+    keeps ROOF_CLR over its top and the gauged side gap at the walls; the insert pocket, set-screw
+    bore and dowel access punch up through it. Cut in TWO runs at different floors (see _build): a
+    shallow one at the dowel midline that leaves solid UNDER the dowel, and the deep one to the exit."""
+    roof = ROOF_CLR                                        # flat roof, ROOF_CLR above the string top (z=0)
+    return box_at(x1 - x0, gw, roof - floor, x=(x0 + x1) / 2.0, y=y, z=(roof + floor) / 2.0)
+
+
+def _dowel_pocket(seat_z, y):
+    """The dowel seat as a solid to CUT (an X-Z profile extruded along Y). A round cradle (Ø
+    PIN_SEAT_D) cups the dowel from BELOW for gravity retention (gravity pulls the pin −Z), with
+    its bottom flush to the dowel bottom and 0.4 side clearance growing from the floor. The wrap is
+    asymmetric for the print (keyhead prints −X→+X): a full 90° up the −X side to a vertical wall,
+    but only 45° up the +X side -- a steeper +X wall would be a print overhang. Above the 45° point
+    the +X side opens at 45° (the printable limit) out to the +X face, which also clears the access
+    overhang and lets the dowel drop in. Little +X retention, but the net +X string push is ~1-2 N."""
+    R = PIN_SEAT_D / 2.0
+    s = R * math.sin(math.radians(45.0))                     # the +X 45° (4:30) point offset
+    z_face = seat_z + X_FRONT - 2.0 * s                      # where the +X 45° slope meets the +X face
+    prof = (cq.Workplane("XZ")
+            .moveTo(-R, NUT_TOP)                              # top of the −X wall
+            .lineTo(-R, seat_z)                              # down the −X vertical wall to the 90° point
+            .threePointArc((0.0, seat_z - R), (s, seat_z - s))  # cradle: −X 90° → bottom → +X 45°
+            .lineTo(X_FRONT, z_face)                         # 45° slope out to the +X face (no overhang)
+            .lineTo(X_FRONT, NUT_TOP)                        # up the open +X face
+            .close())                                        # across the top
+    return prof.extrude(PIN_SEAT_L / 2.0, both=True).translate((0.0, y, 0.0))
 
 
 def _build() -> cq.Workplane:
@@ -166,16 +182,14 @@ def _build() -> cq.Workplane:
         row_x = clamp_row_x(i)
         floor = clamp_floor(i)                  # per-string clamp floor (string is pressed down to here)
 
-        # string channel under a 45 /\ roof, in TWO floor runs: shallow at the dowel midline from the
+        # string channel under a FLAT roof, in TWO floor runs: shallow at the dowel midline from the
         # +X entry to the dowel's −X edge (leaves SOLID under the dowel so it's supported across the
         # channel, not just at its ends), then the deep break-angle floor on out to the exit
-        body = body.cut(_channel(gw, pin_z, y, g, dowel_nx, X_FRONT))
-        body = body.cut(_channel(gw, floor, y, g, X_BACK, dowel_nx))
-        # break-pin seat (axis Y) + a top-open drop slot so the pin drops straight in from above (the
-        # string then traps it down). Seat is the dowel + PIN_CLR all round, bottom flush with the dowel.
-        body = body.cut(cyl_y(PIN_SEAT_D, PIN_SEAT_L, y0=y - PIN_SEAT_L / 2, x=0.0, z=seat_z))
-        body = body.cut(box_at(PIN_SEAT_D, PIN_SEAT_L, NUT_TOP - seat_z,
-                               x=0.0, y=y, z=(NUT_TOP + seat_z) / 2))
+        body = body.cut(_channel(gw, pin_z, y, dowel_nx, X_FRONT))
+        body = body.cut(_channel(gw, floor, y, X_BACK, dowel_nx))
+        # break-pin seat: a round cradle cupping the dowel from below (gravity retention), wrapping 90°
+        # up the −X side and 45° up the +X side, then opening at 45° out to the +X face (print + access)
+        body = body.cut(_dowel_pocket(seat_z, y))
         # clamp: buried M4 insert (from +Z, punching up through the roof) + set-screw bore down
         # to the string, which pinches it DOWN onto the solid (PA6-GF) groove floor. The pocket
         # runs from the gap up to the ceiling (INSERT_POCKET deep) so the insert recesses slightly.
