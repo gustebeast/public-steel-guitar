@@ -98,8 +98,27 @@ GLOBAL_OK = {
 }
 
 
+# The knee-lever control core is a self-contained subassembly: the axle, bearings,
+# magnet, sensor board, springs, set screws, housing and lever are ALL designed to
+# touch/run on each other. Whitelist any pair WITHIN the family (this never masks a
+# housing<->chassis / housing<->motor clash, since those involve a non-family part).
+KNEE_FAMILY = {"knee_housing", "knee_lever", "kl_axle", "kl_bearing", "kl_magnet", "kl_pcb",
+               "main_spring", "half_stop_spring", "floating_tenon", "retention_setscrew",
+               "main_cart_base", "main_cart_roof", "main_cart_piston",
+               "half_stop_cart_base", "half_stop_cart_roof", "half_stop_cart_piston",
+               "main_spring_tension_setscrew", "half_stop_spring_tension_setscrew",
+               "main_clamp_setscrew", "half_stop_clamp_setscrew", "stop_angle_setscrew"}
+
+
 def intended(na, nb) -> bool:
     if "build_counter" in (na, nb):
+        return True
+    if base(na) in KNEE_FAMILY and base(nb) in KNEE_FAMILY:
+        return True
+    # the knee-lever -Y retention screw is a thread-forming screw that bites the chassis -Y rail;
+    # the floating tenon slides up into the rib mortise (its designed seat)
+    if frozenset({base(na), base(nb)}) in (frozenset({"retention_setscrew", "chassis"}),
+                                           frozenset({"floating_tenon", "chassis"})):
         return True
     # wires are insulated cables: crossing/touching ANOTHER wire is physically
     # fine (and not worth fighting in the model). A wire may otherwise only clip

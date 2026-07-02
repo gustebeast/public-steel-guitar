@@ -107,8 +107,11 @@ KH_DT_SEAT     = 0.1                    # lower-dovetail seating clearance: the 
                                        # the visible mortise face off the foot line
 # A chunky rail-to-rail rib UNDER EACH MOTOR (the motor rests on it, its wall sits
 # on it, and it ties the two rails) replaces a solid floor — far lighter for the
-# strength. Plus a rib near the nut. (No +X crossbar: the bridge block IS the +X tie.)
-_RIB_X   = ([D.motor_pos(i)[0] for i in range(D.N_STRINGS)] + [-575.0])
+# strength. Plus a rib near the nut, placed to keep the WHOLE bottom-rib set on a
+# uniform 46 mm pitch (the motor ribs already are): evenly-spaced ribs make every
+# bay identical, so a knee/pedal lever's christmas-tree mount fits ANY pair. (No +X
+# crossbar: the bridge block IS the +X tie.)
+_RIB_X   = ([D.motor_pos(i)[0] for i in range(D.N_STRINGS)] + [-570.0])
 
 # Bridge-endplate joint: ENDPLATE_JOINT_Y are the two rail centre-lines the bridge
 # (and keyhead) sit over; kept for the bridge's foot/joint references.
@@ -170,6 +173,14 @@ def _build_full() -> cq.Workplane:
     body = _rail(Y_HI).union(_rail(Y_LO))
     for x in _RIB_X:                                  # per-motor + bridge/nut cross-ribs (−Z)
         body = body.union(_rib(x))
+    # knee/pedal lever mounts: cut a christmas-tree mortise into EVERY rib (so a lever can mount in
+    # any bay -- its two tenons drop into the two ribs flanking the chosen bay), plus a retention
+    # pilot at each installed bay. Even rib pitch -> the one tenon fits all.
+    from . import knee_lever as _KL
+    for _rx in _RIB_X:
+        body = body.cut(_KL.rib_mortise(_rx))
+    for _bx in _KL.INSTALLED_BAYS:
+        body = body.cut(_KL.retention_pilot(_bx))
     # (the pickup now mounts entirely in its deck cover piece — top_plate.py — so
     # the old rail bosses/grooves/X-lock stations that used to live here are gone)
     # keyhead: the box-closure bulkhead is now a SEPARATE, removable part

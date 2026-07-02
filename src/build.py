@@ -53,6 +53,12 @@ PARTS = {
     "bridge_endplate": (partial(heal, bridge_endplate), "bridge_endplate.step", "PCTG — fused bridge end (screw support + bearing support + axle comb + box closure)"),
     "keyhead_endplate": (lambda: heal(__import__("src.keyhead_endplate", fromlist=["e"]).keyhead_endplate), "keyhead_endplate.step", "PA6-GF — merged keyhead (-X) endplate + nut block (25 mm, one piece): closes the box, caps the deck grooves, gauged break-edge + 2-row clamps; drops in last, held by 1 screw"),
     "belt_clamp":      (partial(heal, belt_clamp),    "belt_clamp.step",      "PETG — GT2 belt splice clamp (print 2 per splice ×10)"),
+    "knee_housing":    (lambda: __import__("src.knee_lever", fromlist=["e"]).knee_housing, "knee_housing.step", "PCTG — knee-lever (LKL) housing: MR85 pivot bearings + MT6701 sensor mount"),
+    "knee_lever":      (lambda: __import__("src.knee_lever", fromlist=["e"]).knee_lever,   "knee_lever.step",   "PCTG — knee-lever (LKL) arm + knee paddle"),
+    "floating_tenon":  (lambda: __import__("src.knee_lever", fromlist=["e"]).floating_tenon, "floating_tenon.step", "PCTG — floating christmas-tree tenon: glue into the lever yoke, slide into the rib (2 per lever)"),
+    "cart_base": (lambda: __import__("src.knee_lever", fromlist=["e"]).cart_base, "cart_base.step", "PCTG — spring-cartridge base (shared: print 2, for main + half-stop)"),
+    "cart_roof": (lambda: __import__("src.knee_lever", fromlist=["e"]).cart_roof, "cart_roof.step", "PCTG — spring-cartridge roof (shared: print 2)"),
+    "cart_piston": (lambda: __import__("src.knee_lever", fromlist=["e"]).cart_piston, "cart_piston.step", "PCTG — spring-cartridge piston, flat follower tongue (shared: print 2)"),
     "screw_pulley":    (lambda: heal(C.screw_pulley()),  "screw_pulley.step",  "flanged 14T GT2 pulley, 45° top flange — ×10"),
     "motor_pulley":    (lambda: heal(C.motor_pulley()),  "motor_pulley.step",  "flanged 14T GT2 pulley, 45° outer flange — ×10"),
     "tension_fork":    (lambda: TF.tension_forks,    "tension_fork.step",    "PCTG — belt-tension lock forks, graded 3.0–6.0 set (4 of the fitting size per motor; positive stop in the slot, no friction reliance)"),
@@ -366,6 +372,22 @@ def _electronics_components():
     return out
 
 
+def _knee_lever_components():
+    """Knee lever (LKL) — input-side control, mounted in its rib bay (centre x=-501): the
+    christmas-tree tenons slide +Y into the two flanking ribs; chassis.py cuts the grooves."""
+    from . import knee_lever as KL
+    pose = KL.MOUNT_POSE
+    out = [("knee_housing", KL.knee_housing), ("knee_lever", KL.knee_lever)]
+    for nm, off in (("main", KL.CART_MAIN_OFFSET), ("half_stop", KL.CART_HALFSTOP_OFFSET)):
+        out.append((f"{nm}_cart_base", KL.cart_base.translate(off)))
+        out.append((f"{nm}_cart_roof", KL.cart_roof.translate(off)))
+        out.append((f"{nm}_cart_piston", KL.cart_piston.translate(off)))
+    out += KL.demo_parts()
+    for i, s in enumerate((1, -1)):                       # one floating tenon per rib (built at absolute Y)
+        out.append((f"floating_tenon_{i}", KL.floating_tenon.translate((s * KL.TEN_XC, 0, 0))))
+    return [(n, s.translate(pose)) for n, s in out]
+
+
 def collect_components():
     comps = [
         ("bridge_endplate", bridge_endplate),
@@ -376,6 +398,7 @@ def collect_components():
     comps += _pickup_mount_components()
     comps += _leg_components()
     comps += _electronics_components()
+    comps += _knee_lever_components()
     for i in range(D.N_STRINGS):
         comps.extend(_string_components(i))
     return comps
@@ -415,6 +438,29 @@ _COLORS = {
     "leg_foot":        (0.12, 0.12, 0.13),   # TPU
     "leg_washer":      (0.12, 0.12, 0.13),   # TPU
     "build_counter":   (0.86, 0.08, 0.24),
+    # knee lever (LKL) — input-side control
+    "knee_housing":    (0.30, 0.36, 0.42),   # PCTG housing
+    "knee_lever":      (0.27, 0.51, 0.71),   # PCTG lever/paddle
+    "kl_axle":         (0.55, 0.58, 0.62),   # steel pin
+    "kl_bearing":      (0.69, 0.77, 0.87),   # MR85ZZ
+    "kl_magnet":       (0.80, 0.20, 0.20),   # diametric magnet
+    "kl_pcb":          (0.05, 0.35, 0.15),   # MT6701 board (green)
+    # feel parts (unified: two identical spring cartridges, main -Y + half-stop +Y)
+    "main_spring":                        (0.55, 0.20, 0.75),
+    "half_stop_spring":                   (0.75, 0.45, 0.88),
+    "main_spring_tension_setscrew":       (0.55, 0.55, 0.58),
+    "half_stop_spring_tension_setscrew":  (0.62, 0.62, 0.66),
+    "main_clamp_setscrew":                (0.30, 0.62, 0.62),   # from-below clamp (locks slid X)
+    "half_stop_clamp_setscrew":           (0.36, 0.68, 0.68),
+    "stop_angle_setscrew":                (0.72, 0.35, 0.30),   # travel-limit screw (central web)
+    "main_cart_base":                     (0.85, 0.65, 0.13),   # printed cartridge (shared part)
+    "main_cart_roof":                     (0.90, 0.72, 0.20),
+    "main_cart_piston":                   (0.95, 0.80, 0.30),
+    "half_stop_cart_base":                (0.80, 0.60, 0.10),
+    "half_stop_cart_roof":                (0.86, 0.68, 0.16),
+    "half_stop_cart_piston":              (0.92, 0.76, 0.26),
+    "retention_setscrew":                 (0.40, 0.40, 0.43),   # -Y lock screw
+    "floating_tenon":  (0.90, 0.55, 0.10),   # glued christmas-tree tenon (printed)
     # electronics bay (dummies) + panel jacks
     "electronics_tray": (0.30, 0.36, 0.32),  # printed tray
     "pi5":             (0.05, 0.35, 0.15),   # PCB green
