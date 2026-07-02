@@ -192,13 +192,12 @@ HS_CART_WY  = HS_CH_WY + 2 * HS_WALL         # cartridge outer Y (~9.0)
 HS_POCKET_HW = HS_CART_WY / 2 + HS_CLR        # cartridge pocket (slot) half-width
 HS_YC   = WP_Y0 - HS_POCKET_HW                # HALF-STOP (+Y): pocket +Y edge flush with +Y bearing-wall inner face
 MAIN_YC = WN_Y1 + HS_POCKET_HW                # MAIN (-Y): pocket -Y edge flush with -Y bearing-wall inner face
-# Stop boss Z: full 1.6 mm wall around the pilot. Y: capped at the center gap between the two flush
-# cartridge pockets (inner edges at +-(HS_YC-HS_POCKET_HW)); with 0.4 clearance the widest boss that
-# clears the pockets is 4.0 mm -> only ~0.7 mm solid to each pocket (< 1.6). Full 1.6 mm in Y would need
-# the cartridges spread ~0.9 mm each, which the bearing walls block -- flagged to the user.
-STOP_GAP_HW     = (HS_YC - HS_POCKET_HW) - HS_CLR          # widest half-width clearing both pockets
-HS_STOP_BOSS_WY = 2 * STOP_GAP_HW                          # Y width (pocket-limited)
-HS_STOP_BOSS_WZ = M4_SELFTAP + 2 * HS_STOP_WALL            # Z: 1.6 mm wall all round
+# Stop boss: full 1.6 mm wall all round the pilot in BOTH Y and Z. It is built oversize and the two
+# cartridge pockets are RE-CUT from it, so where a cartridge block flanks the screw the block wall IS
+# the boss (carved back to the center gap), and only at the exposed TIP -- where the screw passes -X
+# beyond the block fronts into the (cam-clear) swing slot -- does the 1.6 mm boss stand alone.
+HS_STOP_BOSS_WY = M4_SELFTAP + 2 * HS_STOP_WALL           # Y: 1.6 mm wall (pockets re-cut where they flank)
+HS_STOP_BOSS_WZ = M4_SELFTAP + 2 * HS_STOP_WALL           # Z: 1.6 mm wall all round
 HS_CART_Z0  = HS_Z - HS_CH_WZ / 2 - HS_WALL  # cartridge floor underside
 HS_CART_Z1  = HS_ROOF_SPLIT + HS_ROOF_TZ     # cartridge roof top (< mount boss ~11.3)
 # Only the cartridge OUTER shell keeps a 45 /\ V bottom (apex toward -Z) that nests into the housing
@@ -532,6 +531,11 @@ def _housing() -> cq.Workplane:
     sb0, sb1 = STOP_BOSS_X0, STOP_BOSS_X1
     w = w.union(box_at(sb1 - sb0, HS_STOP_BOSS_WY, HS_STOP_BOSS_WZ,
                        x=(sb0 + sb1) / 2, y=HUB_YC, z=STOP_Z))
+    # re-cut the cartridge pockets so the oversize boss is carved back to the center gap wherever a block
+    # flanks the screw (that block wall then IS the boss); the full 1.6 mm boss survives only at the
+    # exposed tip, -X of the block fronts, where the swing slot is cam-clear.
+    for dx, dy in ((0.0, MAIN_YC - HS_YC), (HS_SETBACK, 0.0)):
+        w = w.cut(_hs_pocket(HS_YC + dy, HS_POCKET_X0 + dx, HS_BACK_X + 1.0 + dx))
     # M4 pilot through the full boss (driver reaches the hex down this bore); the cup protrudes -X into
     # the swing slot to meet the cam face. Long (M4x16) screw stays threaded over the whole cup range.
     w = w.cut(cyl(M4_SELFTAP, (sb1 - sb0) + 2, z=sb0 - 1)
