@@ -117,7 +117,13 @@ _RIB_X   = ([D.motor_pos(i)[0] for i in range(D.N_STRINGS)] + [-570.0])
 # (and keyhead) sit over; kept for the bridge's foot/joint references.
 ENDPLATE_JOINT_Y = (Y_HI, Y_LO)
 
-SPLIT_X  = [-220.0, -440.0]            # 2 cuts → 3 segments < 255 mm, in motor-wall gaps
+SPLIT_X  = [-225.0, -455.0]            # 2 cuts → 3 segments < 255 mm, in motor-wall gaps
+                                       # (gap 6/7 centre -225, gap 1/2 centre -455; must NOT land
+                                       # inside a 43-wide wall or the split slices a motor plate)
+# guard: a split inside a motor faceplate wall silently slices that plate between two segments
+for _s in SPLIT_X:
+    _hit = [i for i in range(D.N_STRINGS) if abs(_s - D.motor_pos(i)[0]) <= MB.WALL_W / 2]
+    assert not _hit, f"SPLIT_X {_s} lands inside motor wall(s) {_hit} — move it to a wall gap"
 # dovetail: depth, root/tip width, shoulder, fit. Tip width kept ≤ T−3.2 so the
 # socket walls in the 8 mm rail stay ≥1.6 mm (2 passes of a 0.8 mm nozzle).
 _DT, _WR, _WT, _SH, _CLR = 8.0, 2.5, 4.5, 4.0, 0.3
