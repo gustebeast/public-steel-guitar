@@ -17,11 +17,11 @@ is commodity.
 | **Bridge bearing** | 693ZZ deep-groove, Ø3 × Ø8 × 4 | 10 | [VXB 693ZZ ×10](https://vxb.com/products/693zz-3x8-shielded-3x8x4-miniature-bearing-pack-of) · [Bearings Direct](https://bearingsdirect.com/693-zz-mini-ball-bearing-3x8x4-shielded-r830zz/) | ~$1 ea | one per string; string rides the Ø8 OD |
 | **Bridge axle** | Ø3 **g6/h6 precision shaft**, ~105 mm (e.g. hardened ground shafting) | 1 | [McMaster 3 mm shafts](https://www.mcmaster.com/products/linear-shafts/) | ~$3 | NOT an m6 dowel — m6 is press-fit in a 693ZZ bore; the shaft must slide through all 10 bearings + 9 comb fingers + both arms. Glue dab at the arms retains it |
 | **Guide rod** | Ø2.5 × 28 mm hardened/ground dowel (DIN 6325, standard length) | 10 | [McMaster](https://www.mcmaster.com/products/hardened-dowel-pins/) · [eBay DIN6325 2.5 mm](https://www.ebay.com/itm/303389911894) | ~$0.5 ea | anti-rotation; drops in from the top through the stop bar's snug hole + the carriage's C-bore, landing in a blind socket — friction-held both ends (dab of glue optional) |
-| **Nut break dowel** | Ø2 × 4 mm steel dowel (52100) | 10 | [McMaster 91595A018](https://www.mcmaster.com/91595A018/) | $12.70 / pack | gauged break pins (the scale "0"); drop into their slots from above. (Clamps bear on solid PA6-GF — no anvil.) |
+| **Nut break dowel** | Ø2 × 4 mm steel dowel (52100) | 10 | [McMaster 91595A018](https://www.mcmaster.com/91595A018/) | $12.70 / pack | gauged break pins (the scale "0"); drop into their slots from above. (Clamps bear on solid PETG-GF — no anvil.) |
 | **M4 cup-tip set screw** | M4 × 0.7 cup-tip, 10 mm, alloy | 13 | [McMaster 91390A114](https://www.mcmaster.com/91390A114/) | $7.28 / pack 100 | clamps each plain string end onto its anvil (10) + 3 pickup-carrier height screws (the pickup rests on their tops; turn to set the string gap) |
 | **M4 heat-set insert** | M4 × 0.7 brass heat-set, 4.7 mm | 17 | [McMaster 94459A150](https://www.mcmaster.com/94459A150/) | $10.82 / pack 50 | 10 nut clamps + 4 leg-sleeve pinch collars + 3 pickup-carrier height-screw bosses; deeply buried (no pull-out) |
 | **M4 mount screw** | M4 × 0.7, 12 mm, 18-8 SS (button or socket head) | 5 | [McMaster 92095A192](https://www.mcmaster.com/92095A192/) | $14.77 / pack | 1 pickup X/Y clamp screw (pulls the pickup flat to the -Y skirt: Y + yaw + X-lock + anti-fall; slides in its slot for fine X) + 4 leg-sleeve pinch bolts, into 94459A150 inserts; **M4 × 0.7** (coarse) to match the inserts — NOT the M4 × 0.5 fine-thread 90751A120 |
-| **M4 hold-down screw** | M4 × 18 mm, thread-forming for plastic | 1 | [McMaster](https://www.mcmaster.com/) | ~$8 / pack | the single +Z screw locking the merged keyhead nut-block endplate down — up from the floor bottom, thread-forming into its PA6-GF boss (the rest of the body is held by joinery) |
+| **M4 hold-down screw** | M4 × 18 mm, thread-forming for plastic | 1 | [McMaster](https://www.mcmaster.com/) | ~$8 / pack | the single +Z screw locking the merged keyhead nut-block endplate down — up from the floor bottom, thread-forming into its PETG-GF boss (the rest of the body is held by joinery) |
 | **Fasteners** | M3 (NEMA17 mounts), M2 (belt clamps) | — | [McMaster](https://www.mcmaster.com/) | — | commodity |
 
 ## Electronics (compute bay)
@@ -83,8 +83,8 @@ between E9 and C6; the break pins re-gauge so string tops stay coplanar.
 Printed parts (no purchase): carriage, bridge_endplate, keyhead_endplate
 (merged with the nut block), chassis (×3 segments), belt_clamp, screw_pulley, motor_pulley,
 tension_fork (graded belt-tension lock set),
-the adjustable legs: leg_socket ×4, leg_segment ×8, leg_sleeve ×4,
-leg_shaft ×4 (PCTG/PA6-GF) plus leg_foot ×4 and leg_washer ×12 in **TPU**
+the adjustable legs: leg_socket ×4, leg_segment ×8, leg_shaft ×4 (PETG-GF),
+leg_sleeve ×4 (PCTG — the pinch collar must flex) plus leg_foot ×4 and leg_washer ×12 in **TPU**
 (anti-unscrew preload washers + floor-friendly feet), electronics_tray, and
 the **removable top deck**: a **pickup-carrier piece** (a tray whose floor runs
 under the pickup; 3 M4 height screws set the string gap, 2 M4 clamp screws pin
@@ -95,22 +95,60 @@ rest + UI mount) — see `py -3.12 -m src.build --list`.
 ## Filament (printed parts, both tiers)
 
 Estimated at 2 perimeters (0.8 mm nozzle → 1.6 mm walls) + 15 % infill. Pickup
-parts excluded. PCTG $25/kg, PA6-GF $60/kg; PETG≈$25, TPU≈$30 (assumed).
+parts excluded. PCTG $25/kg, PETG-GF $30/kg, TPU≈$30 (assumed). The build
+exports each part into its **material folder** (`petg-gf/`, `pctg/`, `tpu/`):
+PETG-GF = every stiffness/creep-critical part (sustained string-tension +
+ground-reaction paths); PCTG = compliant / snap-fit / fine-feature parts, and
+the WHOLE deck — panels are PAIRS (transparent-PCTG base with embossed fret
+lines + colour-PCTG layer) printed as one two-filament object. The deck is the
+forearm rest: no glass fiber on skin-contact surfaces (abrasion exposes fiber
+ends), and same-resin pairs weld/purge cleanest.
 
 | Material | Mass | Cost | Main parts |
 |----------|------|------|-----------|
-| PCTG | ~2.9 kg | ~$73 | chassis ×3, bridge endplate, **top deck (pickup piece + bands + UI/keyhead panels, ~0.47 kg)**, legs, tray, pulleys |
-| PA6-GF | ~0.13 kg | ~$7 | 10 carriages + keyhead endplate incl. nut block (load-critical) |
-| PETG | ~32 g | ~$1 | 20 belt-splice clamps |
+| PETG-GF | ~2.3 kg | ~$69 | chassis ×3, bridge + keyhead endplates, 10 carriages, leg tubes/shafts/sockets, knee housing, pickup Z-plate |
+| PCTG | ~0.65 kg | ~$16 | full deck (transparent bases + colour layers), tray, pulleys, belt clamps, knee arm, small compliant parts |
 | TPU | ~40 g | ~$1 | 4 feet + 12 anti-unscrew washers |
-| **Total** | ~3.0 kg | **~$78** | |
+| **Total** | ~3.0 kg | **~$88** | |
+
+Chosen spools:
+
+- **PCTG — [3D-Fuel Pro PCTG](https://www.3dfuel.com/collections/1-75mm-pro-pctg)**:
+  [Natural/Clear](https://www.3dfuel.com/products/pro-pctg-natural-1-75mm) for the
+  transparent deck bases (the fret-line light path wants the clear grade), plus a
+  colour of choice for the deck colour layers + the rest of the PCTG parts.
+  Publishes a TDS; AMS-compatible spool — the deck's clear+colour pair can run
+  from one AMS.
+- **PETG-GF — [Tinmorry PETG-GF](https://tinmorry.net/en-us/collections/petg-gf)** (~$30/kg).
+  No published TDS, so **verify the first spool** with a bend coupon before
+  committing the chassis: 10×10×140 mm bar, 120 mm span, 1 kg at centre —
+  ~0.5 mm deflection ⇒ ~2.8 GPa (buy); ~0.9 mm ⇒ plain-PETG stiffness (return).
+  Elegoo PETG-GF (flex modulus 3345 MPa, published) is the documented fallback.
+  Vendor recommends a hardened ≥0.4 mm (ideally 0.6 mm) nozzle.
+- **TPU — [Tinmorry TPU 95A](https://tinmorry.net/en-us/products/filament-tpu-1-75-mm-tinmorry-3d-printing-materials-tpu-filament-for-fdm-3d-printer-1-kg-1-spool-black)**
+  (Shore 95A±2 — right grade for floor grip + preload washers; 68D "AMS-safe"
+  TPU is 5–10× stiffer and grips poorly). Dry 70 °C / 8 h before printing;
+  **not AMS-compatible** — run the feet + washers from the external spool.
 
 ## Wire
 
 Modeled internal harness ≈ 5.2 m of single-conductor runs; physically ~10 m once
-power/CAN are pairs and audio is shielded. A 45 m hookup spool (~$20) covers
-power/CAN/control; ~1.5 m shielded instrument cable (~$16) for the pickup/audio.
-**~$35.** Excludes pedal/lever sensor wiring (pedals not yet designed).
+power/CAN are pairs and audio is shielded. Gauges (the SERVO42D driver rides the
+motor, so there are **no stepper phase leads** — noise defence is shielding +
+twisting + the bridge-side AFE buffer, not conductor size):
+
+| Net | Cable | OD |
+|---|---|---|
+| 24 V bus | 20 AWG silicone pair, twisted/flat (fleet slew staggered <5 A; ~0.3 V drop over the run) | ~2.4 |
+| CAN | 26 AWG twisted pair, 120 Ω terminated | ~2.2 |
+| pickup / audio / DAC / out | 28 AWG **shielded** pair (mA signals — the shield is the spec) | ~2.0 |
+| USB panel → Pi | slim shielded USB-2 | ~2.6 |
+| logic (relay, link, TDM, OLED, joystick) | 28 AWG | ~1.4 |
+
+A 45 m hookup spool (~$20) covers power/CAN/control; ~1.5 m shielded pair
+(~$16) for the pickup/audio runs. **~$35.** Excludes pedal/lever sensor wiring
+(pedals not yet designed). All cross-rib raceways pass ≤ Ø2.6 and sit above the
+knee-lever mortise plane — route no fatter cable through the floor trunk.
 
 ## Cost summary (per instrument, June 2026)
 

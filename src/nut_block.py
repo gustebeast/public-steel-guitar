@@ -1,4 +1,4 @@
-"""Nut block geometry (×1) — keyhead string termination. PA6-GF (clamps bear on it).
+"""Nut block geometry (×1) — keyhead string termination. PETG-GF (clamps bear on it).
 
 This is FUSED into the keyhead endplate (one printed piece — keyhead_endplate.py unions
 this geometry in); kept as its own module for the per-string layout. The block is ONE
@@ -17,7 +17,7 @@ Per string it does two jobs:
      threading through a hole).
 
   2. Clamp — the plain end, laid in the same groove, is pinched DOWN onto the solid
-     PA6-GF floor by an M4 cup-tip set screw (DEMO) running through a deeply-buried brass
+     PETG-GF floor by an M4 cup-tip set screw (DEMO) running through a deeply-buried brass
      heat-set insert (DEMO). Clamps alternate between TWO rows (adjacent strings alternate
      front/back) so each Ø5.6 insert has ~13 mm of pitch (thick walls → no pull-out).
      Print with high wall/floor counts for a solid clamp floor. Reprint the whole keyhead
@@ -191,7 +191,7 @@ def _build() -> cq.Workplane:
         # up the −X side and 45° up the +X side, then opening at 45° out to the +X face (print + access)
         body = body.cut(_dowel_pocket(seat_z, y))
         # clamp: buried M4 insert (from +Z, punching up through the roof) + set-screw bore down
-        # to the string, which pinches it DOWN onto the solid (PA6-GF) groove floor. The pocket
+        # to the string, which pinches it DOWN onto the solid (PETG-GF) groove floor. The pocket
         # runs from the gap up to the ceiling (INSERT_POCKET deep) so the insert recesses slightly.
         body = body.cut(cyl(INSERT_D, INSERT_POCKET + 0.5, z=INSERT_GAP)
                         .translate((row_x, y, 0)))
@@ -200,7 +200,7 @@ def _build() -> cq.Workplane:
         # exit down-curve: bend the free end to EXIT_ANGLE toward the stow loop
         body = body.cut(_exit_curve(floor, gw, y))
 
-    # No mount bolts: this block is FUSED into the keyhead endplate (one PA6-GF piece,
+    # No mount bolts: this block is FUSED into the keyhead endplate (one PETG-GF piece,
     # keyhead_endplate.py) which drops in and is held by the rail-end dovetails + joinery.
     return body
 

@@ -1,4 +1,4 @@
-"""Keyhead (-X) endplate + NUT BLOCK — PA6-GF, ONE merged 25 mm piece (x -636..-611).
+"""Keyhead (-X) endplate + NUT BLOCK — PETG-GF, ONE merged 25 mm piece (x -636..-611).
 
 The nut block (string termination) is fused into a simple FULL-WIDTH solid prism
 (rail outer to rail outer) that TAKES OVER the rail -X ends, so its edge shows from
@@ -6,7 +6,7 @@ the front like the bridge endplate. It INSTALLS LAST, dropping straight down (+Z
 with the deck panels already in place. It:
   - closes the -X end of the box (its solid +X face stops the deck panels sliding -X);
   - terminates the strings (gauged break edge + 2-row clamps), bearing on solid
-    PA6-GF — no separate nut block, no 4 corner bolts;
+    PETG-GF — no separate nut block, no 4 corner bolts;
   - sockets a dovetail tongue on each rail end (mirrors the bridge joint) -> X+Y lock
     + grip against the +X string tension; locked in +Z by ONE thread-forming screw up
     from the chassis floor bottom into the solid body.
@@ -45,7 +45,7 @@ def _stow_bore(d, x_hole, x_face, z_top, z_bot):
     prof = cq.Workplane("XY", origin=(x_hole, 0.0, z_bot)).circle(d / 2)
     return prof.sweep(path)
 
-# ONE part (x −636 .. −611, PA6-GF), FULL-WIDTH (rail outer to rail outer) so it TAKES
+# ONE part (x −636 .. −611, PETG-GF), FULL-WIDTH (rail outer to rail outer) so it TAKES
 # OVER the whole −X end and its edge shows from the front, mirroring the bridge endplate.
 # Per the endplate methodology it's AS SOLID AS POSSIBLE: a solid block from the deck
 # level (z6) down to the bed -- so the block itself is the −X cross-tie (no separate

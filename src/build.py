@@ -48,55 +48,85 @@ from . import legs as LG
 # Values are (builder, path, note): the builder runs heal() LAZILY at export
 # time, so importing this module (the overlap gate, assembly-only builds)
 # doesn't pay for healing parts it never exports.
+#
+# Paths are MATERIAL FOLDERS — slice a whole folder with one filament:
+#   petg-gf/  stiffness/creep-critical (the sustained string-tension +
+#             ground-reaction paths, and the deck colour layers)
+#   pctg/     compliant, snap-fit, impact and fine-feature parts
+#   tpu/      feet + preload washers
 PARTS = {
-    "carriage":        (partial(heal, carriage),      "carriage.step",        "PA6-GF, load-critical — ×10 identical"),
-    "bridge_endplate": (partial(heal, bridge_endplate), "bridge_endplate.step", "PCTG — fused bridge end (screw support + bearing support + axle comb + box closure)"),
-    "keyhead_endplate": (lambda: heal(__import__("src.keyhead_endplate", fromlist=["e"]).keyhead_endplate), "keyhead_endplate.step", "PA6-GF — merged keyhead (-X) endplate + nut block (25 mm, one piece): closes the box, caps the deck grooves, gauged break-edge + 2-row clamps; drops in last, held by 1 screw"),
-    "belt_clamp":      (partial(heal, belt_clamp),    "belt_clamp.step",      "PETG — GT2 belt splice clamp (print 2 per splice ×10)"),
-    "knee_housing":    (lambda: __import__("src.knee_lever", fromlist=["e"]).knee_housing, "knee_housing.step", "PCTG — knee-lever (LKL) housing: MR85 pivot bearings + MT6701 sensor mount"),
-    "knee_lever":      (lambda: __import__("src.knee_lever", fromlist=["e"]).knee_lever,   "knee_lever.step",   "PCTG — knee-lever (LKL) arm + knee paddle"),
-    "floating_tenon":  (lambda: __import__("src.knee_lever", fromlist=["e"]).floating_tenon, "floating_tenon.step", "PCTG — floating christmas-tree tenon: glue into the lever yoke, slide into the rib (2 per lever)"),
-    "cart_base": (lambda: __import__("src.knee_lever", fromlist=["e"]).cart_base, "cart_base.step", "PCTG — spring-cartridge base (shared: print 2, for main + half-stop)"),
-    "cart_roof": (lambda: __import__("src.knee_lever", fromlist=["e"]).cart_roof, "cart_roof.step", "PCTG — spring-cartridge roof (shared: print 2)"),
-    "cart_piston": (lambda: __import__("src.knee_lever", fromlist=["e"]).cart_piston, "cart_piston.step", "PCTG — spring-cartridge piston, flat follower tongue (shared: print 2)"),
-    "screw_pulley":    (lambda: heal(C.screw_pulley()),  "screw_pulley.step",  "flanged 14T GT2 pulley, 45° top flange — ×10"),
-    "motor_pulley":    (lambda: heal(C.motor_pulley()),  "motor_pulley.step",  "flanged 14T GT2 pulley, 45° outer flange — ×10"),
-    "tension_fork":    (lambda: TF.tension_forks,    "tension_fork.step",    "PCTG — belt-tension lock forks, graded 3.0–6.0 set (4 of the fitting size per motor; positive stop in the slot, no friction reliance)"),
+    "carriage":        (partial(heal, carriage),      "petg-gf/carriage.step",        "PETG-GF, load-critical — ×10 identical"),
+    "bridge_endplate": (partial(heal, bridge_endplate), "petg-gf/bridge_endplate.step", "PETG-GF — fused bridge end (screw support + bearing support + axle comb + box closure)"),
+    "keyhead_endplate": (lambda: heal(__import__("src.keyhead_endplate", fromlist=["e"]).keyhead_endplate), "petg-gf/keyhead_endplate.step", "PETG-GF — merged keyhead (-X) endplate + nut block (25 mm, one piece): closes the box, caps the deck grooves, gauged break-edge + 2-row clamps; drops in last, held by 1 screw"),
+    "belt_clamp":      (partial(heal, belt_clamp),    "pctg/belt_clamp.step",      "PCTG — GT2 belt splice clamp (print 2 per splice ×10)"),
+    "knee_housing":    (lambda: __import__("src.knee_lever", fromlist=["e"]).knee_housing, "petg-gf/knee_housing.step", "PETG-GF — knee-lever (LKL) housing: MR85 pivot bearings + MT6701 sensor mount (rigid = stable air gap)"),
+    "knee_lever":      (lambda: __import__("src.knee_lever", fromlist=["e"]).knee_lever,   "pctg/knee_lever.step",   "PCTG — knee-lever (LKL) arm + knee paddle (takes knee strikes: toughness over stiffness)"),
+    "floating_tenon":  (lambda: __import__("src.knee_lever", fromlist=["e"]).floating_tenon, "petg-gf/floating_tenon.step", "PETG-GF — floating christmas-tree tenon: glue into the lever yoke, slide into the rib (2 per lever)"),
+    "cart_base": (lambda: __import__("src.knee_lever", fromlist=["e"]).cart_base, "pctg/cart_base.step", "PCTG — spring-cartridge base (shared: print 2, for main + half-stop)"),
+    "cart_roof": (lambda: __import__("src.knee_lever", fromlist=["e"]).cart_roof, "pctg/cart_roof.step", "PCTG — spring-cartridge roof (shared: print 2)"),
+    "cart_piston": (lambda: __import__("src.knee_lever", fromlist=["e"]).cart_piston, "pctg/cart_piston.step", "PCTG — spring-cartridge piston, flat follower tongue (shared: print 2)"),
+    "guide_post": (lambda: __import__("src.knee_lever", fromlist=["e"]).guide_post, "pctg/guide_post.step", "PCTG — coil-back guide post, screw pushes it (shared: print 2)"),
+    "screw_pulley":    (lambda: heal(C.screw_pulley()),  "pctg/screw_pulley.step",  "PCTG — flanged 14T GT2 pulley, 45° top flange — ×10 (fine teeth need unfilled resolution)"),
+    "motor_pulley":    (lambda: heal(C.motor_pulley()),  "pctg/motor_pulley.step",  "PCTG — flanged 14T GT2 pulley, 45° outer flange — ×10"),
+    "tension_fork":    (lambda: TF.tension_forks,    "pctg/tension_fork.step",    "PCTG — belt-tension lock forks, graded 3.0–6.0 set (4 of the fitting size per motor; positive stop in the slot, no friction reliance)"),
     # pickup carrier: the deck pickup-piece (a top_plate panel) holds the pickup
     # via a full-width height plate + a clamp shim (both printed); the screws are
     # stocked M4
-    "pickup_zplate":   (lambda: heal(__import__("src.top_plate", fromlist=["e"]).pickup_zplate), "pickup_zplate.step", "PCTG — pickup height plate (full-width; the 3 M4 height screws lift it from below, pickup rests on top so it can sit anywhere in X)"),
-    "pickup_xclamp":   (lambda: heal(__import__("src.top_plate", fromlist=["e"]).pickup_xclamp), "pickup_xclamp.step", "PCTG — pickup clamp shim (the side M4 screw drives it against the pickup so no metal digs the pickup)"),
-    "leg_socket":      (lambda: heal(LG.leg_socket()),  "leg_socket.step",  "PCTG — leg corner socket ×4 (dovetail tenon slides up into the rail slot, glued; 2-turn coarse thread, quick on/off)"),
-    "leg_segment":     (lambda: heal(LG.leg_segment()), "leg_segment.step", "PCTG — stackable leg tube (male up / female down; the COUNT per leg is the coarse height adjust, 142 mm per segment; default 2 -> x8)"),
-    "leg_sleeve":      (lambda: heal(LG.leg_sleeve()),  "leg_sleeve.step",  "PCTG — leg slider sleeve ×4 (pinch collar: M4 button screw + insert pulls the slit closed; set once per player)"),
-    "leg_shaft":       (lambda: heal(LG.leg_shaft()),   "leg_shaft.step",   "PCTG — leg sliding shaft ×4 (0–150 fine height adjust)"),
-    "leg_foot":        (lambda: heal(LG.leg_foot()),    "leg_foot.step",    "TPU — foot cap ×4"),
-    "leg_washer":      (lambda: heal(LG.leg_washer()),  "leg_washer.step",  "TPU — anti-unscrew shoulder washer, 1/junction = segments+1 per leg (compresses on the last quarter turn)"),
-    "electronics_tray": (lambda: heal(__import__("src.electronics", fromlist=["e"]).electronics_tray()), "electronics_tray.step", "PCTG — compute-bay tray (drops into rail channels from above; tool-free snap mounts for Teensy+shield, Pi 5, 2x CS42448, buck, CAN transceiver; basic builds leave the pro sockets empty)"),
+    "pickup_zplate":   (lambda: heal(__import__("src.top_plate", fromlist=["e"]).pickup_zplate), "petg-gf/pickup_zplate.step", "PETG-GF — pickup height plate (full-width; the 3 M4 height screws lift it from below, pickup rests on top so it can sit anywhere in X; GF keeps it flat on the point loads)"),
+    "pickup_xclamp":   (lambda: heal(__import__("src.top_plate", fromlist=["e"]).pickup_xclamp), "pctg/pickup_xclamp.step", "PCTG — pickup clamp shim (the side M4 screw drives it against the pickup so no metal digs the pickup; compliance is the function)"),
+    "leg_socket":      (lambda: heal(LG.leg_socket()),  "petg-gf/leg_socket.step",  "PETG-GF — leg corner socket ×4 (dovetail tenon slides up into the rail slot, glued; 2-turn coarse thread, quick on/off)"),
+    "leg_segment":     (lambda: heal(LG.leg_segment()), "petg-gf/leg_segment.step", "PETG-GF — stackable leg tube (male up / female down; the COUNT per leg is the coarse height adjust, 142 mm per segment; default 2 -> x8)"),
+    "leg_sleeve":      (lambda: heal(LG.leg_sleeve()),  "pctg/leg_sleeve.step",  "PCTG — leg slider sleeve ×4 (pinch collar: M4 button screw + insert pulls the slit closed; the slit MUST flex — never glass-filled)"),
+    "leg_shaft":       (lambda: heal(LG.leg_shaft()),   "petg-gf/leg_shaft.step",   "PETG-GF — leg sliding shaft ×4 (0–150 fine height adjust)"),
+    "leg_foot":        (lambda: heal(LG.leg_foot()),    "tpu/leg_foot.step",    "TPU — foot cap ×4"),
+    "leg_washer":      (lambda: heal(LG.leg_washer()),  "tpu/leg_washer.step",  "TPU — anti-unscrew shoulder washer, 1/junction = segments+1 per leg (compresses on the last quarter turn)"),
+    "electronics_tray": (lambda: heal(__import__("src.electronics", fromlist=["e"]).electronics_tray()), "pctg/electronics_tray.step", "PCTG — compute-bay tray (drops into rail channels from above; tool-free SNAP mounts for Teensy+shield, Pi 5, 2x CS42448, buck, CAN transceiver — snap fingers need PCTG's ductility)"),
 }
+# Deck panels: each is a (base, colour) PAIR — same origin, print as ONE object
+# with two filaments (the ha-keypad keycaps/keycaps_text pattern). The base is
+# the transparent body + embossed fret lines; the _color part is the 1.6 mm top
+# layer between the lines.
 _TP = __import__("src.top_plate", fromlist=["e"])
 for _i in range(len(_TP.segments)):              # placed deck panels (piece + fillers + UI/keyhead)
     PARTS[f"top_plate_{_i}"] = (
         (lambda i: lambda: heal(__import__("src.top_plate", fromlist=["e"]).segments[i]))(_i),
-        f"top_plate_{_i}.step",
-        "PCTG — removable top deck panel (fret lines + dust cover + hand rest; "
-        "rides rail grooves, slides out -X; piece carries the pickup, mid panel "
-        "the OLED + joystick)")
+        f"pctg/top_plate_{_i}.step",
+        "PCTG (transparent) — deck panel BASE: body + embossed fret lines/dots "
+        f"(print AS ONE OBJECT with top_plate_{_i}_color; rides rail grooves, "
+        "slides out -X; piece carries the pickup, mid panel the OLED + joystick)")
+    PARTS[f"top_plate_{_i}_color"] = (
+        (lambda i: lambda: heal(__import__("src.top_plate", fromlist=["e"]).segments_color[i]))(_i),
+        f"pctg/top_plate_{_i}_color.step",
+        f"PCTG (colour) — deck COLOUR layer (1.6 mm top band between the fret lines; "
+        f"print AS ONE OBJECT with top_plate_{_i}). PCTG, not PETG-GF: the deck is the "
+        "forearm rest — no glass fiber on skin-contact surfaces, and same-resin pairs "
+        "weld/purge cleanest")
 for _i in range(len(_TP.spare_fillers)):         # fillers for the other pickup-piece slots
     PARTS[f"top_plate_spare_{_i}"] = (
         (lambda i: lambda: heal(__import__("src.top_plate", fromlist=["e"]).spare_fillers[i]))(_i),
-        f"top_plate_spare_{_i}.step",
-        "PCTG — fret-marked filler band for an alternate pickup-piece position "
-        "(print the set; install the ones the piece doesn't cover)")
+        f"pctg/top_plate_spare_{_i}.step",
+        "PCTG (transparent) — filler-band BASE for an alternate pickup-piece "
+        f"position (print AS ONE OBJECT with top_plate_spare_{_i}_color; install "
+        "the ones the piece doesn't cover)")
+    PARTS[f"top_plate_spare_{_i}_color"] = (
+        (lambda i: lambda: heal(__import__("src.top_plate", fromlist=["e"]).spare_fillers_color[i]))(_i),
+        f"pctg/top_plate_spare_{_i}_color.step",
+        f"PCTG (colour) — filler-band COLOUR layer (print AS ONE OBJECT with "
+        f"top_plate_spare_{_i}; skin-contact surface — no glass fiber)")
 for _i, _seg in enumerate(chassis_segments):     # chassis split into dovetailed segments
-    PARTS[f"chassis_{_i}"] = (partial(heal, _seg), f"chassis_{_i}.step",
-                              "PCTG — chassis segment (slide-down dovetail, glued)")
+    PARTS[f"chassis_{_i}"] = (partial(heal, _seg), f"petg-gf/chassis_{_i}.step",
+                              "PETG-GF — chassis segment (slide-down dovetail, glued)")
+
+
+# Anchor ALL outputs to the project folder (never the cwd — see Archive/3D/CLAUDE.md)
+OUT = pathlib.Path(__file__).resolve().parents[1]
 
 
 def _export(name):
     builder, path, note = PARTS[name]
-    export_step(builder(), path)
+    dest = OUT / path
+    dest.parent.mkdir(parents=True, exist_ok=True)   # material folder (petg-gf/pctg/tpu)
+    export_step(builder(), str(dest))
     print(f"Wrote {path}" + (f"  ({note})" if note else ""))
 
 
@@ -221,6 +251,9 @@ def _string_components(i):
     out.append((f"set_screw_{i}", C.set_screw().translate(             # cup tip on the CLAMPED string
         (D.NUT_BLOCK_X + row_x, D.nut_y(i),                            # (per-string floor); tail proud
          D.STRING_Z + NB.clamp_floor(i) + D.NUT_SCREW_L + g))))
+    out.append((f"nut_insert_{i}", C.m4_insert().translate(           # Ø6×5 heat-set insert (the screw
+        (D.NUT_BLOCK_X + row_x, D.nut_y(i),                            # threads into it), in its roof pocket
+         D.STRING_Z + NB.INSERT_GAP + NB.INSERT_L))))                  # (pocket floor INSERT_GAP, up INSERT_L)
     return out
 
 
@@ -360,14 +393,19 @@ def _electronics_components():
            ("usbc_jack", EL.usbc_jack()),
            ("oled", EL.oled()), ("joystick", EL.joystick())]
     out += [(f"top_plate_{i}", seg) for i, seg in enumerate(TP.segments)]
+    out += [(f"top_plate_color_{i}", seg) for i, seg in enumerate(TP.segments_color)]
     # the fillers the pickup piece displaced: show them slid +Y clear of the
     # instrument (exploded), but at the true X/Z where they'd seat if the pickup
-    # weren't there -- so it reads as "pull these, drop in the pickup piece"
+    # weren't there -- so it reads as "pull these, drop in the pickup piece".
+    # Base + colour move by the SAME dy (from the base's bbox) so the pair stays
+    # aligned as printed.
     from . import chassis as CH
     rail_outer = CH.Y_HI + CH.T / 2
-    for i, f in enumerate(TP.spare_fillers):
+    for i, (f, fc) in enumerate(zip(TP.spare_fillers, TP.spare_fillers_color)):
         dy = (rail_outer + 8.0) - f.val().BoundingBox().ymin
         out.append((f"top_plate_{len(TP.segments) + i}", f.translate((0, dy, 0))))
+        out.append((f"top_plate_color_{len(TP.segments_color) + i}",
+                    fc.translate((0, dy, 0))))
     out += WR.build_wires()
     return out
 
@@ -382,6 +420,7 @@ def _knee_lever_components():
         out.append((f"{nm}_cart_base", KL.cart_base.translate(off)))
         out.append((f"{nm}_cart_roof", KL.cart_roof.translate(off)))
         out.append((f"{nm}_cart_piston", KL.cart_piston.translate(off)))
+        out.append((f"{nm}_guide_post", KL.guide_post.translate(off)))
     out += KL.demo_parts()
     for i, s in enumerate((1, -1)):                       # one floating tenon per rib (built at absolute Y)
         out.append((f"floating_tenon_{i}", KL.floating_tenon.translate((s * KL.TEN_XC, 0, 0))))
@@ -407,9 +446,9 @@ def collect_components():
 # Per-part colours, baked into the assembly STEP (single source of truth — they
 # show in the shared FreeCAD live viewer and any STEP viewer). RGB floats 0..1.
 _COLORS = {
-    "carriage":        (0.27, 0.51, 0.71),   # PA6-GF — load-critical
-    "bridge_endplate": (0.39, 0.58, 0.93),   # PA6-GF — load-critical
-    "keyhead_endplate": (0.42, 0.50, 0.62),   # PA6-GF — keyhead endplate + nut block (merged)
+    "carriage":        (0.27, 0.51, 0.71),   # PETG-GF — load-critical
+    "bridge_endplate": (0.39, 0.58, 0.93),   # PETG-GF — load-critical
+    "keyhead_endplate": (0.42, 0.50, 0.62),   # PETG-GF — keyhead endplate + nut block (merged)
     "belt_clamp":      (0.95, 0.55, 0.15),   # PETG
     "screw_pulley":    (0.00, 0.55, 0.55),
     "motor_pulley":    (0.00, 0.55, 0.55),
@@ -425,7 +464,7 @@ _COLORS = {
     "string":          (0.85, 0.85, 0.85),
     "break_dowel":     (0.75, 0.75, 0.78),   # steel dowel (gauged break pin)
     "set_screw":       (0.55, 0.55, 0.58),   # alloy set screw
-    "chassis":         (0.46, 0.52, 0.55),   # PCTG frame
+    "chassis":         (0.46, 0.52, 0.55),   # PETG-GF frame
     "pickup":          (0.10, 0.10, 0.12),   # DEMO pickup body
     "pickup_zplate":   (0.85, 0.65, 0.30),   # PCTG height plate (under the pickup)
     "pickup_xclamp":   (0.90, 0.55, 0.20),   # PCTG clamp shim
@@ -459,6 +498,8 @@ _COLORS = {
     "half_stop_cart_base":                (0.80, 0.60, 0.10),
     "half_stop_cart_roof":                (0.86, 0.68, 0.16),
     "half_stop_cart_piston":              (0.92, 0.76, 0.26),
+    "main_guide_post":                    (0.70, 0.50, 0.10),
+    "half_stop_guide_post":               (0.66, 0.46, 0.08),
     "retention_setscrew":                 (0.40, 0.40, 0.43),   # -Y lock screw
     "floating_tenon":  (0.90, 0.55, 0.10),   # glued christmas-tree tenon (printed)
     # electronics bay (dummies) + panel jacks
@@ -469,26 +510,30 @@ _COLORS = {
     "buck":            (0.35, 0.30, 0.50),
     "can_xcvr":        (0.55, 0.25, 0.25),
     "analog_frontend": (0.20, 0.45, 0.40),   # bridge-end buffer + relay board
-    "top_plate":       (0.30, 0.33, 0.38),   # PCTG deck panels
+    "top_plate":       (0.88, 0.91, 0.94),   # transparent-PCTG deck base + fret lines
+    "top_plate_color": (0.30, 0.33, 0.38),   # colour-PCTG deck layer (skin contact)
     "oled":            (0.05, 0.05, 0.08),   # screen (perfect-black OLED)
     "joystick":        (0.15, 0.15, 0.17),   # UI control
     "ts_jack":         (0.62, 0.64, 0.67),
     "dc_jack":         (0.62, 0.64, 0.67),
     "usbc_jack":       (0.62, 0.64, 0.67),
-    # wire harness: one color per NET (splices share; unique pairings differ)
-    "wire_pickup":     (0.92, 0.92, 0.92),   # white   - pickup -> AFE (raw)
-    "wire_out":        (0.70, 0.70, 0.74),   # l.gray  - AFE relay -> TS jack
-    "wire_audio":      (0.20, 0.80, 0.85),   # cyan    - AFE buffer -> ADC
-    "wire_dac":        (0.90, 0.20, 0.70),   # magenta - DAC -> AFE relay
-    "wire_relayctrl":  (0.95, 0.85, 0.10),   # yellow  - Teensy -> relay driver
-    "wire_can":        (0.10, 0.65, 0.15),   # green   - CAN bus daisy chain
-    "wire_power":      (0.80, 0.10, 0.10),   # red     - DC in -> servos -> buck
-    "wire_usb":        (0.15, 0.35, 0.85),   # blue    - USB-C panel -> Pi
-    "wire_link":       (0.55, 0.20, 0.75),   # purple  - Teensy <-> Pi
-    "wire_canjmp":     (0.95, 0.55, 0.10),   # orange  - Teensy <-> transceiver
-    "wire_tdm":        (0.10, 0.60, 0.60),   # teal    - CS stack -> Pi
-    "wire_oled":       (0.85, 0.45, 0.75),   # pink    - OLED -> Teensy
-    "wire_joy":        (0.55, 0.75, 0.30),   # lime    - joystick -> Teensy
+    # wire harness: HUE = gauge bucket, SHADE = the specific wire in the bucket
+    #   blue = 20 AWG power | red = 26 AWG CAN | green = 28 AWG shielded audio
+    #   amber = 28 AWG logic | violet = shielded USB-2
+    "wire_pwr_hot":    (0.08, 0.20, 0.60),   # dark blue   - 24 V hot
+    "wire_pwr_gnd":    (0.45, 0.65, 0.95),   # light blue  - 24 V ground/return
+    "wire_can":        (0.80, 0.10, 0.10),   # red         - CAN twisted pair
+    "wire_pickup":     (0.55, 0.85, 0.55),   # lightest green - shielded: pickup -> AFE
+    "wire_audio":      (0.30, 0.72, 0.40),   # light green - shielded: AFE -> ADC
+    "wire_dac":        (0.10, 0.52, 0.28),   # dark green  - shielded: DAC -> AFE
+    "wire_out":        (0.04, 0.34, 0.18),   # darkest green - shielded: relay -> jack
+    "wire_relayctrl":  (0.98, 0.88, 0.35),   # lightest amber - relay control
+    "wire_link":       (0.95, 0.72, 0.22),   # light amber - Teensy <-> Pi
+    "wire_canjmp":     (0.90, 0.58, 0.14),   # amber       - Teensy <-> transceiver
+    "wire_tdm":        (0.80, 0.46, 0.10),   # deep amber  - CS stack -> Pi
+    "wire_oled":       (0.68, 0.36, 0.08),   # brown-amber - OLED -> Teensy
+    "wire_joy":        (0.54, 0.28, 0.08),   # darkest amber - joystick -> Teensy
+    "wire_usb":        (0.55, 0.25, 0.75),   # violet      - shielded USB-2 -> Pi
 }
 _DEFAULT_COLOR = (0.80, 0.80, 0.80)
 
@@ -510,11 +555,11 @@ def _export_assembly():
     # ATOMIC write: the 30+ MB STEP takes seconds to save, and the viewer's
     # file-watcher must never see (and import) a half-written file — save to a
     # temp name, then rename into place (one mtime event, complete file).
-    asm.save("assembly.step.tmp", exportType="STEP")
-    os.replace("assembly.step.tmp", "assembly.step")
+    asm.save(str(OUT / "assembly.step.tmp"), exportType="STEP")
+    os.replace(OUT / "assembly.step.tmp", OUT / "assembly.step")
     print(f"Wrote assembly.step  [build #{build_n}]", flush=True)
     print(geometry_report())
-    show("assembly.step")   # open/refresh it in the shared FreeCAD hub
+    show(str(OUT / "assembly.step"))   # open/refresh it in the shared FreeCAD hub
 
 
 def main() -> None:

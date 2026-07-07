@@ -155,7 +155,7 @@ If the fan gets too wide, fallbacks: (a) longer belt runs to shrink the skew ang
 | Guide rod | 3–4 mm steel | anti-rotation per carriage |
 | Build volume limit | 255 × 255 × 255 mm | body must be split + glued |
 | Body material | PCTG | non-load structure |
-| Load-part material | PA6-GF (glass-filled nylon) | carriage, anchors, bearing blocks |
+| Load-part material | PETG-GF (glass-filled PETG) | carriage, anchors, bearing blocks |
 
 ---
 
@@ -181,7 +181,7 @@ Verify all against current vendor datasheets before final fits; these are nomina
 
 Priority order roughly matches what unblocks the rest.
 
-1. **Carriage (×10)** — *PA6-GF, load-critical.* Rides the guide rod; captures the leadscrew nut (anti-rotation pocket); anchors the string ball-end (heat-set insert + set screw, or a captured slot). Tension path runs string → carriage → nut. Orient print so tension runs along layer lines, not across them.
+1. **Carriage (×10)** — *PETG-GF, load-critical.* Rides the guide rod; captures the leadscrew nut (anti-rotation pocket); anchors the string ball-end (heat-set insert + set screw, or a captured slot). Tension path runs string → carriage → nut. Orient print so tension runs along layer lines, not across them.
 2. **Leadscrew bearing block (×10, or a shared rail)** — supports the radial + thrust bearing at each screw's driven end; reacts the full string load. Metal inserts where the bearing seats.
 3. **Screw far-end support** — simple radial location for the non-driven end (or integrate into the bridge mount).
 4. **Guide-rod mounts / carriage rail** — hold the anti-rotation rods parallel to the screws.
@@ -199,8 +199,8 @@ Priority order roughly matches what unblocks the rest.
 - **Printer build volume = 255 × 255 × 255 mm.** The body exceeds this; design it as **multiple pieces joined with glue** (woodworking-style butt/scarf joints), with **dowels or alignment keys** so the screw field stays straight across joints.
 - **Materials by role:**
   - **PCTG** — body, brackets, enclosures (dimensionally stable, tough, non-load-critical).
-  - **PA6-GF (glass-filled nylon)** — carriage, string anchors, bearing blocks, anything in the sustained tension path. Requires a **hardened nozzle** and a **filament dryer** (assumed already owned).
-- **Creep is the enemy.** PCTG/PA creep under sustained load. **Keep printed plastic out of the continuous-tension load path wherever possible** — use metal for the screw, nut, ball-end anchor hardware, fasteners, and bearing races. Printed parts should *hold geometry*, not *carry standing tension*.
+  - **PETG-GF (glass-filled PETG)** — carriage, string anchors, bearing blocks, anything in the sustained tension path. Requires a **hardened nozzle**; dries like ordinary PETG (no nylon-grade drying regime).
+- **Creep is the enemy.** PCTG/PETG creep under sustained load (glass fill slows it; nothing stops it). **Keep printed plastic out of the continuous-tension load path wherever possible** — use metal for the screw, nut, ball-end anchor hardware, fasteners, and bearing races. Printed parts should *hold geometry*, not *carry standing tension*.
 - **Print orientation:** route any unavoidable tension **along layer lines**, never pulling across layers (interlayer adhesion is the weak axis).
 - **Fastening:** heat-set threaded inserts for screwed joints; set screws to lock string ball-ends and pulleys.
 - **Keep the playing portion thin** (sit-on-keyboard goal): bulk lives in the outboard end-box, not under the strings.
@@ -265,7 +265,7 @@ Estimated total **~$1,280** (realistic range **$1,150–1,550**). 3D printer, ha
 | Strings (varied gauge) | — | — | $20 | thinner/higher-tension for big excursions |
 | Heat-set inserts, set screws, fasteners | — | — | $25 | |
 | **Materials** | | | | |
-| Filament: PCTG (body) + PA6-GF (load parts) | — | — | $115 | PA6-GF needs hardened nozzle + dryer |
+| Filament: PCTG (body) + PETG-GF (load parts) | — | — | $115 | PETG-GF needs a hardened nozzle |
 | Misc / consumables | — | — | $30 | |
 
 **Open price variables:** the Nu Multi custom quote (±$100+), SERVO42D seller/kit pricing ($25–40/axis), and filament quantity.

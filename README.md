@@ -59,7 +59,7 @@ heat, no idle noise — and the instrument holds its tuning even switched off.
 ## How the mechanism works
 
 **The string's path** (from the player's left): each string's plain end is
-clamped in the **nut block** — a removable, reprintable PA6-GF block whose
+clamped in the **nut block** — a removable, reprintable PETG-GF block whose
 per-string steel **break pins** are gauged so every string's top lies in one
 plane; a cup-point set screw clamps the dead end. The speaking length (615 mm,
 ≈24.2″ scale) runs to the bridge, turns 90° over a **per-string Ø8 ball
@@ -88,8 +88,13 @@ string wrap load; the comb cuts its free span to one string pitch *and* acts
 as the assembly jig — drop the ten bearings into the comb slots and slide the
 shaft through everything in one pass). Motors mount on faceplate walls with
 slotted holes for belt tensioning. Every printed part is self-supporting at
-45° for a 0.8 mm nozzle; the big parts are PCTG, the load-critical parts
-(the carriages and the keyhead nut-block endplate) PA6-GF.
+45° for a 0.8 mm nozzle. Materials (the build exports into per-material
+folders): **PETG-GF** for every stiffness/creep-critical part — chassis,
+both endplates, carriages, leg tubes — **PCTG** for compliant, snap-fit and
+fine-feature parts and the whole deck — the panels print as two-filament
+pairs (transparent-PCTG base whose fret lines run full-depth through the
+plate + a colour-PCTG layer between them; no glass fiber on the forearm-rest
+surface).
 
 **Legs**: four quick-attach legs join the rails at the corners with glued
 sliding-dovetail sockets (no fasteners — the socket slides up into a slot in

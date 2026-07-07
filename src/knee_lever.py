@@ -44,7 +44,8 @@ from . import components as C
 from .helpers import box_at, cyl, cyl_y, heal
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "freecad"))
-from fasteners import M2_SELFTAP_D  # noqa: E402
+from fasteners import (M2_SELFTAP_D, M4_SHAFT_CLR_D, M4_INSERT_D,  # noqa: E402
+                       M4_INSERT_L, M4_SCREW_L)
 
 # ── bought parts (assembly dummies). REUSE existing line items where possible so they buy in
 # bulk: MR85ZZ bearings + the M4×10 cup-tip set screws + M4 heat-set inserts are ALL already in
@@ -54,8 +55,8 @@ BRG_OD, BRG_ID, BRG_W = 8.0, 5.0, 2.5   # MR85ZZ — shared with the screw-suppo
 MAG_D, MAG_T = 6.0, 2.5             # Ø6×2.5 diametrically-magnetised magnet (on the axle end)
 AIR_GAP = 1.5                       # magnet face -> MT6701 chip (the 0.5-3 mm window)
 PCB_W, PCB_T = 18.0, 1.6            # custom JLCPCB MT6701 board (square)
-INSERT_D, INSERT_L = D.NUT_INSERT_D, D.NUT_INSERT_L   # M4 heat-set insert Ø5.6 × 4.7 (reused)
-SCREW_CLR = D.NUT_SCREW_D           # M4 set-screw clearance (4.3)
+INSERT_D, INSERT_L = M4_INSERT_D, M4_INSERT_L   # M4 heat-set insert Ø6 × 5 (standard set-screw process)
+SCREW_CLR = M4_SHAFT_CLR_D          # M4 set-screw shaft clearance (Ø4.4)
 
 # ── housing envelope ─────────────────────────────────────────────────────────
 WALL    = 4.0                       # bearing-wall thickness (Y)
@@ -138,33 +139,41 @@ STOP_BOSS_X1    = STOP_BOSS_X0 + 8.0           # boss back: ~8 mm of threaded en
 # at REST (sets the rest angle), the HALF-STOP is slid back HS_SETBACK so it engages partway. Each
 # piston has a FLAT FOLLOWER face (spans the lobe Z-band) on a tongue that protrudes -X out of the
 # cartridge front; the coil preloads it forward against front side-lips.
-HS_SPR_OD = 2.0                     # coil OD (slim -> its piston-back recess keeps a wide border)
+# Feel coil (see knee-lever-feel-spring memory): servos pull the strings, so the coil only makes FEEL +
+# return. 8N-at-knee x the 12.75:1 lever de-amplification = ~100N at the piston; that energy needs a
+# Ø6 x ~37mm coil (~19 turns Ø1.2 wire, ~9 N/mm -> ~8.5N). Y (not Z) is the binding axis, so the coil
+# sits in a Ø6.6 bore whose 1.1mm side walls are THINNER than the 1.6mm structural wall (cartridge outer
+# stays 8.8 -> drops into the current pocket, no bearing/cam changes). The Ø4 screw drives the coil
+# through a loose captive GUIDE POST (Ø3.2 pilot into the coil ID, Ø6 shoulder), not cup-on-coil.
+HS_SPR_OD   = 6.0                   # coil OD
+HS_SPR_WIRE = 1.2                   # coil wire dia
+HS_SPR_ID   = HS_SPR_OD - 2 * HS_SPR_WIRE      # 3.6 -> guide-post / piston pilot noses into this
+HS_SPR_FREE = 35.4                  # coil free length (~8N; bay + light-preload compression, fits 92mm)
+HS_SPR_INST = 34.0                  # coil length DRAWN = the bay (= coil at lightest preload, its longest)
+HS_PILOT_D  = HS_SPR_ID - 0.4       # 3.2: centre pilot (piston back + guide-post front) into the coil ID
+HS_GPOST_LX = 3.0                   # guide-post body: coil-shoulder -> cup face (screw bears here)
+HS_PILOT_LX = 5.0                   # pilot length reaching into the coil ID (piston back & guide post)
 HS_ARM    = 4.0                     # piston "arm" (follower tongue): HS_ARM x HS_ARM (Y x Z), ends in a
                                     #   half-cylinder nose of radius HS_ARM/2
-HS_HEAD   = HS_ARM + 0.8            # piston "head" (body): 0.8 bigger than the arm, so the front lips
-                                    #   catch it (the coil can't push it out)
-HS_Z      = HUB_TOP + 1.5           # piston / follower centre Z: as high as the taller head can sit and
-                                    #   still clear the mount boss, while the HS_ARM tongue clears the hub
-                                    #   below and still spans the lobe band (5.66..8)
-HS_PISTON_WY = HS_HEAD              # piston body (head) width (Y)
-HS_PISTON_WZ = HS_HEAD              # piston body (head) height (Z)
-HS_FOLLOW_WY = HS_ARM              # follower-tongue width (Y) < head, so the front lips capture the head
+HS_Z      = HUB_TOP + 1.5           # piston / follower centre Z: the HS_ARM tongue spans the lobe band
+                                    #   (5.66..8) and clears the hub below; the Ø6 body clears the boss
+HS_PISTON_WY = HS_SPR_OD            # piston body: round Ø6 (= coil OD) -> seats the coil, rides the
+HS_PISTON_WZ = HS_SPR_OD            #   channel, and is caught by the front lips (window < Ø6)
+HS_FOLLOW_WY = HS_ARM              # follower-tongue width (Y) < body, so the front lips capture the body
 HS_NOSE_PROTRUDE = FOLL_TRAVEL + 1.0  # tongue sticks this far -X of the front (> travel: never retracts)
-HS_BODY_LX = 4.0                    # piston body length in X (the guided part)
-HS_CLR    = 0.4                     # piston <-> channel slide clearance (per side)
-HS_WALL   = 1.6                     # cartridge (printed part) wall (floor / sides)
+HS_BODY_LX = 5.0                    # piston body length in X (rides the channel; long enough not to cock)
+HS_CLR    = 0.4                     # piston/coil <-> channel slide clearance (per side)
+HS_WALL   = 1.6                     # cartridge STRUCTURAL wall (floor / front / back); the coil-region
+                                    #   SIDE walls end up thinner (~1.0, emergent) so the Ø6 coil fits Y
 HS_HOUS_WALL = 2.4                  # housing shell wall around the pocket -- CONSTANT thickness, the
                                     #   outer /\ bottom parallels the pocket /\ (no thick flat bottom)
 HS_ROOF_TZ = 1.0                    # roof thickness (thin, so the cartridge top stays under the mount boss)
 HS_TENON_H, HS_TENON_WY = 0.6, 1.0  # base->roof tenon (up into a BLIND roof mortise): square, NO Z
-                                    #   retention (the clamp screw / housing pocket holds it down) -- it
-                                    #   only sets the roof's install position; blind at +X = a -X stop
+                                    #   retention -- only sets the roof's install position; blind +X = -X stop
 HS_LIP    = 1.5                     # front-lip depth in X (side lips that catch the piston body)
 HS_TRAVEL = FOLL_TRAVEL + 0.5       # channel back-travel (>= follower travel)
-HS_SPR_BORE = HS_SPR_OD + 0.6       # coil clearance bore in the cartridge back
-HS_RIB_H  = 0.6                     # anti-bind rib height (rounded crest, floor + roof)
-HS_RIB_N  = 3                       # number of ribs across the channel width
-HS_ROOF_SPLIT = HS_Z + HS_PISTON_WZ / 2 + HS_CLR + HS_RIB_H   # base<->roof split plane (just above piston)
+HS_SPR_BORE = HS_SPR_OD + 0.6       # coil clearance bore
+HS_ROOF_SPLIT = HS_Z + HS_PISTON_WZ / 2 + HS_CLR   # base<->roof split plane (just above the piston/coil)
 M4_SELFTAP = 3.4                    # M4 self-tap pilot (compression-loaded position/stop screws)
 HS_ENGAGE_DEG = 15.0                          # half-stop engagement angle (throw deg)
 # The rounded nose meets the rotating plate ~1.5 deg later than the flat-follower sin() model, so the
@@ -176,15 +185,16 @@ HS_SETBACK = 1.863                            # = engages at 15.0 deg (sin(15) w
 HS_NOSE_TIPX = LOBE_X0              # follower face at rest -- bears on plate face / lobe extremum
 HS_FRONT    = HS_NOSE_TIPX + HS_NOSE_PROTRUDE   # cartridge front face (clears LOBE_X1 at full throw)
 HS_BODY_X0  = HS_FRONT + HS_LIP     # piston body front at rest (bears on the front lips)
-HS_BODY_BX  = HS_BODY_X0 + HS_BODY_LX        # body back / coil seat at rest
-HS_CH_BX    = HS_BODY_BX + HS_TRAVEL         # channel back (body + its travel)
-HS_SPR_TIPX = HS_CH_BX + 3.0                 # coil seat / tension-screw tip
-HS_BACK_X   = HS_SPR_TIPX + INSERT_L + 1.0   # cartridge back wall
-HS_CH_WY    = HS_PISTON_WY + 2 * HS_CLR      # channel clear width (Y)
-HS_CH_WZ    = HS_PISTON_WZ + 2 * (HS_CLR + HS_RIB_H)   # channel clear height (floor flat -> roof flat)
-HS_WIN_WY   = HS_ARM + 0.4                   # front-lip opening in Y: passes the HS_ARM tongue, catches
-                                             #   the 0.8-bigger head
-HS_CART_WY  = HS_CH_WY + 2 * HS_WALL         # cartridge outer Y (~9.0)
+HS_BODY_BX  = HS_BODY_X0 + HS_BODY_LX        # piston body back = coil FRONT seat at rest
+HS_CH_BX    = HS_BODY_BX + HS_TRAVEL         # piston body rearmost (after full-throw travel)
+HS_SPR_TIPX = HS_BODY_BX + HS_SPR_INST       # coil BACK / guide-post shoulder (drawn nominal-preload)
+HS_GPOST_BX = HS_SPR_TIPX + HS_GPOST_LX      # guide-post back = tension-screw cup face
+HS_BACK_X   = HS_GPOST_BX + INSERT_L + 0.5   # cartridge back wall (hosts the tension insert)
+HS_CH_WY    = HS_PISTON_WY + 2 * HS_CLR      # channel clear width (Y) = 6.8 (Ø6 coil/piston + slide clr)
+HS_CH_WZ    = HS_PISTON_WZ + 2 * HS_CLR      # channel clear height (Z) = 6.8 (unchanged; ribs removed)
+HS_WIN_WY   = HS_ARM + 0.4                   # front-lip opening in Y: passes the tongue, catches the body
+HS_CART_WY  = 8.8                            # cartridge outer Y -- FIXED (keeps pocket/placement); the
+                                             #   wider 6.8 channel leaves ~1.0mm coil-region side walls
 # cartridge Y placement: align each POCKET (the hole the cartridge slots into) so its outer edge is
 # flush with the bearing wall's INNER face on that side -- the cartridge shares the bearing wall (no
 # separate wall, no gap). (Earlier this aligned the block's OUTER face with the wall's outer face,
@@ -192,11 +202,11 @@ HS_CART_WY  = HS_CH_WY + 2 * HS_WALL         # cartridge outer Y (~9.0)
 HS_POCKET_HW = HS_CART_WY / 2 + HS_CLR        # cartridge pocket (slot) half-width
 HS_YC   = WP_Y0 - HS_POCKET_HW                # HALF-STOP (+Y): pocket +Y edge flush with +Y bearing-wall inner face
 MAIN_YC = WN_Y1 + HS_POCKET_HW                # MAIN (-Y): pocket -Y edge flush with -Y bearing-wall inner face
-# Stop boss: full 1.6 mm wall all round the pilot in BOTH Y and Z. It is built oversize and the two
-# cartridge pockets are RE-CUT from it, so where a cartridge block flanks the screw the block wall IS
-# the boss (carved back to the center gap), and only at the exposed TIP -- where the screw passes -X
-# beyond the block fronts into the (cam-clear) swing slot -- does the 1.6 mm boss stand alone.
-HS_STOP_BOSS_WY = M4_SELFTAP + 2 * HS_STOP_WALL           # Y: 1.6 mm wall (pockets re-cut where they flank)
+# Stop boss: Z gets a full 1.6 mm wall; Y is LOCKED to the cartridge-housing edge (the pocket inner face
+# at HS_YC-HS_POCKET_HW) so the boss is continuous with the retainer housing wall and never protrudes
+# past it. Where a block flanks the screw its inner wall already fills to this edge; at the tip (-X of
+# the block fronts) the boss fills the same +-edge -> boss and housing are one locked wall.
+HS_STOP_BOSS_WY = 2 * (HS_YC - HS_POCKET_HW)              # Y: flush with the cartridge-housing edge
 HS_STOP_BOSS_WZ = M4_SELFTAP + 2 * HS_STOP_WALL           # Z: 1.6 mm wall all round
 HS_CART_Z0  = HS_Z - HS_CH_WZ / 2 - HS_WALL  # cartridge floor underside
 HS_CART_Z1  = HS_ROOF_SPLIT + HS_ROOF_TZ     # cartridge roof top (< mount boss ~11.3)
@@ -204,7 +214,8 @@ HS_CART_Z1  = HS_ROOF_SPLIT + HS_ROOF_TZ     # cartridge roof top (< mount boss 
 # pocket /\; the channel and piston interior are square. Apex offset one wall inward (perpendicular = *sqrt2).
 HS_CART_APEX = HS_CART_Z0 - HS_CART_WY / 2            # cartridge outer /\ apex (nests in the pocket /\)
 HS_POCKET_X0 = SWING_X              # housing pocket front (cartridge front cantilevers -X into the slot)
-HS_HOUS_BACK = HS_BACK_X + INSERT_L + 1.0           # housing back wall (hosts the START-screw insert)
+HS_HOUS_BACK = HS_BACK_X + 1.0                      # housing ends at the pocket back (holds the insert);
+                                                    #   the tension screw's hex is left PROUD out the back
 
 # ── mount (FLOATING-TENON): the lever hangs ENTIRELY below the body. The housing carries NO
 # protruding tenon -- so it can print +Z->-Z without the tenon causing overhangs -- only a MORTISE
@@ -252,12 +263,22 @@ MOUNT_POSE = (MOUNT_X, MOUNT_Y, MOUNT_Z)
 # nub slides +Y along it to the player's chosen knee depth, then the retention screw locks it.
 MID_Y     = -37.0                   # guitar Y-midpoint (= chassis (Y_LO + Y_HI)/2)
 MORT_Y1   = MID_Y - MOUNT_Y         # mortise +Y end at mid-Y (in the local frame)
-# -Y retention: once slid in, ONE vertical M4 thread-forming set screw rises through the yoke and
-# bites the -Y side rail -> its shank pins the slide (no -Y back-out). Placed OFF-CENTRE in the
-# clear window between the +X bearing wall and the +X tenon (x0 is blocked by the wall + sensor).
-RETAIN_X, RETAIN_Y = 14.0, 17.0   # retention set-screw X/Y (local; under the -Y rail, inboard of the
-                                  # +X spring bar and the +Y wall, off-centre from the sensor)
-RETAIN_PILOT = 3.5       # M4 thread-forming pilot Ø bitten into the -Y rail
+# retention: the +X tenon's FLAT -X side leaves the rib ledge on that side reachable straight down, so
+# ONE M4 set screw threads UP through the yoke boss beside the tenon and PRESSES the rib ledge (jamming
+# the tenon in its mortise -> friction-locks the Y slide). The rib runs in Y, so the ledge is directly
+# above the screw at EVERY slide position -- it never floats past a rail end like the old rail-biting
+# screw did, and it needs no drilled pilot (it just bears on the printed rib surface).
+# X: the Ø4.4 clearance bore runs TANGENT to the tenon's flat -X face (TEN_XC-HW0) so the screw clears
+# the tenon and threads fully home. The bore may cut through the mortise WALL (fine) but not the tenon.
+RETAIN_X = (TEN_XC - HW0) - SCREW_CLR / 2
+# +Y of BOTH the half-stop cartridge (ends Y=12) AND the +Y bearing wall (ends Y=16), so the screw's
+# whole Z path -- driver access + its up/down adjustment -- is open below the yoke boss; clear of the
+# PCB wall at Y=20.5. (At Y=5 the cartridge housing sat right in that path.)
+RETAIN_Y = 18.0                                         # yoke boss (TEN_Y0..TEN_Y1) clear of cart+wall+PCB
+# Insert pocket TOP: as high (close to the rib the cup presses) as it can go without the Ø6 pocket
+# reaching the mortise -- 1 mm below the mortise's lowest z (the grown christmas-tree tip, _LP-MORT_CLR).
+# This lets the screw thread fully home AND still reach the rib. Derived, never hardcoded.
+RETAIN_INS_TOP = (_LP - MORT_CLR) - 1.0
 
 
 def _bearing():
@@ -280,14 +301,20 @@ def demo_parts():
     # has a coil, a back TENSION screw (preload), and a FROM-BELOW CLAMP screw that jams the cartridge
     # up against the pocket ceiling -- locking its slid X (= rest / engagement) and retaining the roof.
     for nm, dx, dy in (("main", 0.0, MAIN_YC - HS_YC), ("half_stop", HS_SETBACK, 0.0)):
-        out.append((f"{nm}_spring", cyl(HS_SPR_OD, HS_SPR_TIPX - HS_BODY_BX, z=HS_BODY_BX)
+        out.append((f"{nm}_spring", (cyl(HS_SPR_OD, HS_SPR_INST, z=HS_BODY_BX)   # Ø6 coil (tube: pilots
+                    .cut(cyl(HS_SPR_ID, HS_SPR_INST + 2, z=HS_BODY_BX - 1)))      #   pass through the ID)
                     .rotate((0, 0, 0), (0, 1, 0), 90).translate((dx, HS_YC + dy, HS_Z))))
-        # HEX faces +X (accessed through the back-wall bore), CUP faces -X (presses the coil): set_screw
-        # is hex(+Z)/cup(-Z) -> rotate +90 maps hex->+X. Hex sits at the cartridge back (the insert mouth).
+        # HEX faces +X (accessed through the back-wall bore), CUP faces -X: set_screw is hex(+Z)/cup(-Z)
+        # -> rotate +90 maps hex->+X. The CUP tip bears on the GUIDE-POST back (HS_GPOST_BX); driving it
+        # in pushes the post -> compresses the coil (preload). Hex sits in the housing access bore behind.
         out.append((f"{nm}_spring_tension_setscrew", C.set_screw().rotate((0, 0, 0), (0, 1, 0), 90)
-                    .translate((HS_BACK_X + dx, HS_YC + dy, HS_Z))))
+                    .translate((HS_GPOST_BX + M4_SCREW_L + dx, HS_YC + dy, HS_Z))))
+        out.append((f"{nm}_spring_tension_insert",                      # Ø6×5 insert, flush at the back wall
+                    _seated_insert((HS_BACK_X + dx, HS_YC + dy, HS_Z), (0, 1, 0), -90)))
+        cp = _hs_clamp_pt(HS_YC + dy, dx)
         out.append((f"{nm}_clamp_setscrew", C.set_screw().rotate((0, 0, 0), (1, 0, 0), -45)  # +Y+Z angled
-                    .translate(_hs_clamp_pt(HS_YC + dy, dx))))
+                    .translate(cp)))
+        out.append((f"{nm}_clamp_insert", _insert_dummy(cp, (1, 0, 0), -45)))               # Ø6×5 insert
     # travel STOP: a horizontal screw in the central web; the cam +X face hits its -X tip at the throw
     # limit (turn -X to shorten the travel). At y0 (centre gap), clear of both cartridges.
     # CUP tip -X (hits the cam), HEX +X (driver in the gap): set_screw is hex(+Z)/cup(-Z) -> rotate +90
@@ -297,19 +324,32 @@ def demo_parts():
              .cut(cq.Workplane("XY").polygon(6, _hexd).extrude(-3.0).translate((0, 0, 0.5))))
     out.append(("stop_angle_setscrew", _stop.rotate((0, 0, 0), (0, 1, 0), 90)
                 .translate((STOP_X + STOP_SCREW_L, HUB_YC, STOP_Z))))
-    # -Y retention set screw (M4 thread-forming): up through the yoke into the -Y rail, locks the slide
-    out.append(("retention_setscrew", C.set_screw().translate((RETAIN_X, RETAIN_Y, YOKE_Z1 + 3.0))))
+    # retention set screw: threads up through the yoke boss beside the +X tenon (flat -X side), CUP tip
+    # +Z pressing the rib ledge, HEX -Z driven from below. set_screw is hex(+Z)/cup(-Z) -> rotate 180
+    # about X flips it (cup +Z / hex -Z); cup tip lands at the rib bottom (BODY_Z).
+    out.append(("retention_setscrew", C.set_screw().rotate((0, 0, 0), (1, 0, 0), 180)
+                .translate((RETAIN_X, RETAIN_Y, BODY_Z - 10.0))))
+    out.append(("retention_insert",                                  # Ø6×5 insert, top RETAIN_INS_TOP
+                C.m4_insert().translate((RETAIN_X, RETAIN_Y, RETAIN_INS_TOP))))
     return out
 
 
 def _ctree_prism_y(xc, y0, y1, grow=0.0):
-    """A christmas-tree prism from TEN_PTS (a symmetric X-Z outline: trunk + 0.8 mm widen teeth +
-    tapered points), centred at xc, extruded +Y over y0..y1. `grow` offsets the half-width (and the
-    two point tips outward in z) to make a slide-fit mortise from the same profile."""
+    """A christmas-tree prism from TEN_PTS but with ONE FLAT SIDE: the +X side keeps the capture teeth
+    (trunk + 0.8 mm 45 widen + tapered points), the -X side is a single VERTICAL WALL (at the trunk
+    half-width, 45-chamfered to the shared point tips). The flat face gives the printed tenon a bed to
+    lie on, and leaves the rib ledge on that side reachable STRAIGHT DOWN (no tooth notch) for the
+    retention screw. Centred at xc, extruded +Y over y0..y1. `grow` -> slide-fit mortise from the same
+    profile."""
     p = [(z, hw + grow) for z, hw in TEN_PTS]
-    p[0] = (p[0][0] - grow, p[0][1]); p[-1] = (p[-1][0] + grow, p[-1][1])   # blunt+clear the tips
-    right = [cq.Vector(xc + hw, y0, z) for z, hw in p]
-    left = [cq.Vector(xc - hw, y0, z) for z, hw in reversed(p)][1:-1]       # skip shared tip points
+    # tips: push grow DEEPER in z AND reset to a SHARP point (hw=0). The z-push is what keeps the 45
+    # taper at 45 once hw is grown (Δz = TAPER+grow must equal Δx = HW1+grow); leaving the tip blunt at
+    # hw=grow instead skews the taper to ~49/41 deg -- a non-clean MORTISE while the grow=0 tenon stays 45.
+    p[0] = (p[0][0] - grow, 0.0); p[-1] = (p[-1][0] + grow, 0.0)
+    right = [cq.Vector(xc + hw, y0, z) for z, hw in p]                      # +X: full christmas tree
+    fw = HW0 + grow                                                        # flat wall at the trunk half-width
+    left = [cq.Vector(xc - fw, y0, p[-1][0] - fw),                         # top 45 chamfer -> vertical wall
+            cq.Vector(xc - fw, y0, p[0][0] + fw)]                          # -> bottom 45 chamfer (on close)
     verts = right + left
     face = cq.Face.makeFromWires(cq.Wire.makePolygon(verts + [verts[0]]))
     return cq.Workplane("XY").add(cq.Solid.extrudeLinear(face, cq.Vector(0, y1 - y0, 0)))
@@ -341,47 +381,33 @@ def rib_mortise(rib_x):
     return m.translate((rib_x, MOUNT_Y, MOUNT_Z))
 
 
-def retention_pilot(bay_x):
-    """The M4 thread-forming retention-screw pilot (GLOBAL) up into the -Y rail, off-centre in the
-    bay. chassis.py drills it at each INSTALLED bay; the lever's lock screw bites it to pin the slide."""
-    return cyl(RETAIN_PILOT, 14.0, z=BODY_Z).translate((bay_x + RETAIN_X, MOUNT_Y + RETAIN_Y, MOUNT_Z))
+# (retention now PRESSES the rib ledge -- no drilled pilot in the rib, so no per-bay chassis feature)
 
 
-INSTALLED_BAYS = [MOUNT_X]          # bay centres that currently carry a lever (-> a retention pilot)
-
-
-def _hs_rib_bar(x0, x1, z_face):
-    """A row of HS_RIB_N rounded ridges running along X (crest HS_RIB_H proud of z_face), spanning the
-    channel width. Union onto the base floor / roof underside -> the crests are the piston's bearing
-    lines (clean, low-stiction contact; the flats sit HS_RIB_H back)."""
-    bar = None
-    step = HS_CH_WY / HS_RIB_N
-    for i in range(HS_RIB_N):
-        yc = HS_YC - HS_CH_WY / 2 + step * (i + 0.5)
-        rib = cyl(2 * HS_RIB_H, x1 - x0, z=x0).rotate((0, 0, 0), (0, 1, 0), 90).translate((0, yc, z_face))
-        bar = rib if bar is None else bar.union(rib)
-    return bar
+def _guide_post() -> cq.Workplane:
+    """Loose captive guide post (printed): a Ø6 SHOULDER that seats the coil BACK and rides the channel,
+    with a Ø3.2 PILOT nosing -X into the coil ID. The Ø4 tension-screw cup bears on its +X face -- it only
+    ever pushes, and is trapped between cup, coil and roof once assembled (see knee-lever-feel-spring)."""
+    shoulder = cyl(HS_SPR_OD, HS_GPOST_LX, z=HS_SPR_TIPX)                  # Ø6: coil back -> cup face
+    pilot = cyl(HS_PILOT_D, HS_PILOT_LX, z=HS_SPR_TIPX - HS_PILOT_LX)      # Ø3.2: -X into the coil ID
+    return heal(shoulder.union(pilot).rotate((0, 0, 0), (0, 1, 0), 90).translate((0, HS_YC, HS_Z)))
 
 
 def _half_stop_piston() -> cq.Workplane:
-    """The piston (printed): a flat/square BODY that slides in the base channel + a SHORT follower TONGUE
-    at the lobe band that protrudes -X, ending in a HALF-CYLINDER nose (round in the X-Z plane, square
-    across Y) so the lobe keeps clean rolling contact through the throw. The body is wider than the
-    front-lip opening, so the preloaded coil can't eject it."""
-    # FLAT body (tall enough to fully seat the coil recess with a >=0.8 border) + a SHORT follower
-    # TONGUE at the lobe band ending in a HALF-CYLINDER nose (axis Y): a full round in the X-Z rotation
-    # plane, no flat at the tip, square across Y -- so the lobe keeps clean rolling contact through the
-    # whole throw. Body wider than the front lip -> the preloaded coil can't eject it.
+    """The piston (printed): a square BODY (Ø6 footprint) that slides in the channel and seats the coil
+    FRONT on its +X face, a centre PILOT boss that noses +X into the coil ID to keep it aligned, and a
+    SHORT follower TONGUE at the lobe band that protrudes -X, ending in a HALF-CYLINDER nose (round in
+    X-Z, square across Y) for clean rolling cam contact. The body is wider than the front-lip window, so
+    the preloaded coil can't eject it."""
     body = box_at(HS_BODY_BX - HS_BODY_X0, HS_PISTON_WY, HS_PISTON_WZ,
                   x=(HS_BODY_X0 + HS_BODY_BX) / 2, y=HS_YC, z=HS_Z)
     rn = HS_ARM / 2                                                        # nose radius = half the arm height
     neck = box_at(HS_BODY_X0 - (HS_NOSE_TIPX + rn), HS_FOLLOW_WY, HS_ARM,
                   x=(HS_NOSE_TIPX + rn + HS_BODY_X0) / 2, y=HS_YC, z=HS_Z)
     cap = cyl_y(HS_ARM, HS_FOLLOW_WY, y0=HS_YC - HS_FOLLOW_WY / 2).translate((HS_NOSE_TIPX + rn, 0, HS_Z))
-    p = body.union(neck).union(cap)
-    p = p.cut(cyl(HS_SPR_OD + 0.4, 1.5, z=HS_BODY_BX - 1.5)                 # coil seat recess (centred, bordered)
-              .rotate((0, 0, 0), (0, 1, 0), 90).translate((0, HS_YC, HS_Z)))
-    return heal(p)
+    pilot = (cyl(HS_PILOT_D, HS_PILOT_LX, z=HS_BODY_BX)                    # +X boss centring the coil ID
+             .rotate((0, 0, 0), (0, 1, 0), 90).translate((0, HS_YC, HS_Z)))
+    return heal(body.union(neck).union(cap).union(pilot))
 
 
 def _hs_wall_yc(s):
@@ -398,19 +424,17 @@ def _half_stop_cart_base() -> cq.Workplane:
     # is solid between the /\ outer and the flat channel floor.
     ch_z0 = HS_Z - HS_CH_WZ / 2                                            # (square) channel floor
     base = _v_prism(HS_YC, HS_CART_WY / 2, HS_ROOF_SPLIT, HS_CART_APEX, HS_FRONT, HS_BACK_X)
-    base = base.cut(box_at(HS_CH_BX - HS_BODY_X0, HS_CH_WY, (HS_ROOF_SPLIT + 5) - ch_z0,
-                           x=(HS_BODY_X0 + HS_CH_BX) / 2, y=HS_YC, z=(ch_z0 + HS_ROOF_SPLIT + 5) / 2))
+    # ONE wide channel: the Ø6 piston, coil and guide post all ride it (open top for the roof drop-on)
+    base = base.cut(box_at(HS_GPOST_BX - HS_BODY_X0, HS_CH_WY, (HS_ROOF_SPLIT + 5) - ch_z0,
+                           x=(HS_BODY_X0 + HS_GPOST_BX) / 2, y=HS_YC, z=(ch_z0 + HS_ROOF_SPLIT + 5) / 2))
     # front tongue window (at the lobe band): passes the follower tongue; the front wall catches the body
     base = base.cut(box_at(HS_BODY_X0 - HS_FRONT + 0.1, HS_WIN_WY, HS_ARM + 0.4,
                            x=(HS_FRONT + HS_BODY_X0) / 2, y=HS_YC, z=HS_Z))
-    # coil bore + rear M4 heat-set insert (tension screw, opens +X)
-    base = base.cut(cyl(HS_SPR_BORE, HS_SPR_TIPX - HS_CH_BX, z=HS_CH_BX)
+    # rear M4 heat-set insert (tension screw, opens +X) + Ø4.4 shaft clearance from the insert to the
+    # guide-post cup face: the screw threads the insert and its cup pushes the guide post -> coil preload
+    base = _insert_pocket(base, (HS_BACK_X, HS_YC, HS_Z), (0, 1, 0), -90)
+    base = base.cut(cyl(SCREW_CLR, HS_BACK_X - HS_GPOST_BX, z=HS_GPOST_BX)
                     .rotate((0, 0, 0), (0, 1, 0), 90).translate((0, HS_YC, HS_Z)))
-    base = base.cut(cyl(INSERT_D, INSERT_L + 0.3, z=HS_BACK_X - (INSERT_L + 0.3))
-                    .rotate((0, 0, 0), (0, 1, 0), 90).translate((0, HS_YC, HS_Z)))
-    # anti-bind floor ribs (crest into the channel; the piston rides their tops)
-    base = base.union(_hs_rib_bar(HS_BODY_X0, HS_CH_BX, ch_z0).intersect(
-        box_at(400, HS_CH_WY, 400, x=0, y=HS_YC, z=0)))
     # a tenon on each side-wall top: rises HS_TENON_H into the roof's blind mortise
     for s in (1, -1):
         base = base.union(box_at(HS_BACK_X - 1 - HS_BODY_X0, HS_TENON_WY, HS_TENON_H,
@@ -420,16 +444,12 @@ def _half_stop_cart_base() -> cq.Workplane:
 
 
 def _half_stop_cart_roof() -> cq.Workplane:
-    """Half-stop cartridge ROOF (printed): a FULL-cover lid (solid +Z face). Its underside carries the
-    anti-bind ribs (bear on the piston top) and two BLIND mortises that swallow the base tenons -- open
-    at -X, closed at +X, so the roof drops on and slides -X to a hard stop (its install position). No Z
-    retention (that's the clamp screw / housing pocket); the -X stop means sliding the cartridge into
-    the housing seats the roof harder rather than peeling it off. Prints flat -> no overhang."""
+    """Half-stop cartridge ROOF (printed): a FULL-cover lid (solid +Z face) with two BLIND mortises that
+    swallow the base tenons -- open at -X, closed at +X, so the roof drops on and slides -X to a hard stop
+    (its install position). No Z retention (that's the clamp screw / housing pocket); the -X stop means
+    sliding the cartridge into the housing seats the roof harder rather than peeling it off. Prints flat."""
     lid = box_at(HS_BACK_X - HS_FRONT, HS_CART_WY, HS_CART_Z1 - HS_ROOF_SPLIT,
                  x=(HS_FRONT + HS_BACK_X) / 2, y=HS_YC, z=(HS_ROOF_SPLIT + HS_CART_Z1) / 2)
-    ribs = _hs_rib_bar(HS_BODY_X0, HS_CH_BX, HS_ROOF_SPLIT).intersect(
-        box_at(400, HS_CH_WY, 400, x=0, y=HS_YC, z=0))
-    lid = lid.union(ribs)
     # blind mortises for the tenons: open at the -X (front) edge, closed at +X (HS_BACK_X-1) = -X stop
     for s in (1, -1):
         lid = lid.cut(box_at((HS_BACK_X - 1) - HS_FRONT, HS_TENON_WY + 0.4, HS_TENON_H + 0.3,
@@ -467,6 +487,49 @@ def _hs_clamp_pt(yc, dx):
     r"""Midpoint of the -Y /\ slope, where the angled clamp screw bears (axis along +Y+Z)."""
     hw = hs_pocket_hw()
     return ((HS_FRONT + HS_BACK_X) / 2 + dx, yc - hw / 2, ((HS_CART_Z0 - HS_CLR) + hs_pocket_zridge()) / 2)
+
+
+_INS_BOSS_PROT = 6.0                # how far the insert boss protrudes past the (too-thin) wall
+
+
+def _oriented(s, axis, deg, pt):
+    return s.rotate((0, 0, 0), axis, deg).translate(pt)
+
+
+def _insert_boss_cut(w, pt, axis, deg, clr_len=(M4_SCREW_L - M4_INSERT_L) + 2.0):
+    """Add a STANDARD Ø6×5-insert boss along a screw axis where the local wall is too thin: a protruding
+    Ø(6+2) boss to host the insert, the Ø6×5 insert pocket at the -axis (entry) face, and Ø4.4 shaft
+    clearance running +axis to the working tip. `axis`,`deg` rotate local +Z (toward the tip) onto the
+    screw axis; `pt` is the axis origin (local z=0, the wall face). Shared by the angled cartridge clamp
+    and the vertical retention screw -- returns the modified housing.
+    clr_len defaults to the screw's PROTRUDING reach only (screw len - insert engagement + 2 mm cup
+    margin); a longer bore punches out the far wall past the cup (e.g. the +Y cartridge housing)."""
+    bp = _INS_BOSS_PROT
+    w = w.union(_oriented(cyl(M4_INSERT_D + 2.0, bp, z=-bp), axis, deg, pt))
+    w = w.cut(_oriented(cyl(M4_INSERT_D, M4_INSERT_L, z=-bp), axis, deg, pt))
+    w = w.cut(_oriented(cyl(SCREW_CLR, clr_len, z=-bp + M4_INSERT_L), axis, deg, pt))
+    return w
+
+
+def _insert_dummy(pt, axis, deg):
+    """The Ø6×5 insert TUBE dummy seated in an _insert_boss_cut pocket (call with the SAME pt/axis/deg)."""
+    return _oriented(C.m4_insert().translate((0, 0, -_INS_BOSS_PROT + M4_INSERT_L)), axis, deg, pt)
+
+
+# --- flat-wall insert (no boss): a matched pocket/dummy PAIR --------------------------------------
+# Both take the SAME (mouth_pt, axis, deg) and both derive their size from M4_INSERT_D / M4_INSERT_L,
+# so the pocket depth ALWAYS equals the insert thickness and the fitted insert ALWAYS seats flush
+# against the depth lip -- there is no per-call depth/diameter to drift. `axis`,`deg` rotate local +Z
+# (the insertion direction, INTO the material) onto the bore axis; `mouth_pt` is the wall face the
+# insert enters at. (_insert_boss_cut / _insert_dummy are the equivalent pair when a boss must host it.)
+def _insert_pocket(w, mouth_pt, axis, deg):
+    """Cut the STANDARD Ø(M4_INSERT_D) x M4_INSERT_L heat-set pocket, mouth at `mouth_pt`, bore +axis."""
+    return w.cut(_oriented(cyl(M4_INSERT_D, M4_INSERT_L, z=0), axis, deg, mouth_pt))
+
+
+def _seated_insert(mouth_pt, axis, deg):
+    """The insert dummy seated FLUSH in an _insert_pocket -- fills the same z=0..L span (SAME args)."""
+    return _oriented(C.m4_insert().translate((0, 0, M4_INSERT_L)), axis, deg, mouth_pt)
 
 
 def _hs_block(yc, x0, x1):
@@ -517,13 +580,13 @@ def _housing() -> cq.Workplane:
         # no floor-bridge overhang); the cartridge front cantilevers -X of HS_POCKET_X0 into the swing slot
         w = w.union(_hs_block(yc, bx0, bx1))
         w = w.cut(_hs_pocket(yc, bx0, HS_BACK_X + 1.0 + dx))
-        # ANGLED clamp (axis +Y+Z): self-tap through the -Y /\ slope -> presses the cartridge UP against
-        # the ceiling AND into its +Y wall (locks the slid X). Head is on the -Y/-Z player-facing face.
-        w = w.cut(cyl(M4_SELFTAP, 16.0, z=-8.0)
-                  .rotate((0, 0, 0), (1, 0, 0), -45).translate(_hs_clamp_pt(yc, dx)))
-        # +X TENSION-screw access bore (through the back wall to the +X open face)
-        w = w.cut(cyl(3.3, (HS_HOUS_BACK - HS_BACK_X) + 1, z=HS_BACK_X + dx)
-                  .rotate((0, 0, 0), (0, 1, 0), 90).translate((0, yc, HS_Z)))
+        # ANGLED clamp (axis +Y+Z): threads into a Ø6×5 insert at the -Y/-Z player face; its cup presses
+        # the cartridge UP against the ceiling. The /\ slope wall is too thin, so a boss protrudes -axis
+        # into the player-side air to host it; the pocket is RE-CUT after so the boss can't reach the slot.
+        w = _insert_boss_cut(w, _hs_clamp_pt(yc, dx), (1, 0, 0), -45)
+        w = w.cut(_hs_pocket(yc, bx0, HS_BACK_X + 1.0 + dx))
+        # (no back-wall access bore: the housing stops at the pocket back, so the tension screw's hex
+        #  simply protrudes into open air past it -- reached by a driver directly)
     # travel STOP: a central boss (y0, in the clear gap between the cartridges) carrying a horizontal
     # self-tap screw whose CUP tip faces -X (the cam +X FACE runs into it) and whose HEX faces +X (driver
     # reaches it in the gap). The boss sits +X of the cam's full-throw reach; the screw drives in over the
@@ -531,20 +594,25 @@ def _housing() -> cq.Workplane:
     sb0, sb1 = STOP_BOSS_X0, STOP_BOSS_X1
     w = w.union(box_at(sb1 - sb0, HS_STOP_BOSS_WY, HS_STOP_BOSS_WZ,
                        x=(sb0 + sb1) / 2, y=HUB_YC, z=STOP_Z))
-    # re-cut the cartridge pockets so the oversize boss is carved back to the center gap wherever a block
-    # flanks the screw (that block wall then IS the boss); the full 1.6 mm boss survives only at the
-    # exposed tip, -X of the block fronts, where the swing slot is cam-clear.
-    for dx, dy in ((0.0, MAIN_YC - HS_YC), (HS_SETBACK, 0.0)):
-        w = w.cut(_hs_pocket(HS_YC + dy, HS_POCKET_X0 + dx, HS_BACK_X + 1.0 + dx))
+    # (boss Y is flush with the pocket inner face, so no pocket re-cut is needed -- it can't protrude)
     # M4 pilot through the full boss (driver reaches the hex down this bore); the cup protrudes -X into
     # the swing slot to meet the cam face. Long (M4x16) screw stays threaded over the whole cup range.
     w = w.cut(cyl(M4_SELFTAP, (sb1 - sb0) + 2, z=sb0 - 1)
               .rotate((0, 0, 0), (0, 1, 0), 90).translate((0, HUB_YC, STOP_Z)))
     # mount: yoke with a lever-side christmas-tree mortise at each rib (the floating tenon glues in)
     w = w.union(_mount())
-    # -Y retention: clearance bore up through the yoke (off-centre, clear of the wall) for the M4
-    # thread-forming lock screw that bites the -Y rail -> its shank pins the +Y slide.
-    w = w.cut(cyl(SCREW_CLR, (YOKE_Z1 - YOKE_Z0) + 2, z=YOKE_Z0 - 1).translate((RETAIN_X, RETAIN_Y, 0)))
+    # retention: the Ø6×5 insert + Ø4.4 clearance sit in a boss beside the +X tenon. The boss runs the
+    # FULL Z to the yoke top (backed by the body -> no overhang), then the +X tenon MORTISE is re-cut so
+    # it passes cleanly THROUGH the boss (the tenon still slides). The insert stops RETAIN_INS_TOP (1 mm
+    # below the mortise) so the screw threads fully home yet its cup still reaches the rib.
+    _ins_bot = RETAIN_INS_TOP - M4_INSERT_L
+    w = w.union(cyl(M4_INSERT_D + 2.0, YOKE_Z1 - _ins_bot, z=_ins_bot).translate((RETAIN_X, RETAIN_Y, 0)))
+    _mort = (_ctree_prism_y(TEN_XC, TEN_LY0, TEN_Y1, grow=MORT_CLR)
+             .intersect(box_at(400, 500, 400, z=YOKE_Z1 - 200)))     # +X tenon mortise (z <= yoke top)
+    w = w.cut(_mort)                                                 # re-cut it THROUGH the boss
+    w = w.cut(cyl(M4_INSERT_D, M4_INSERT_L, z=_ins_bot).translate((RETAIN_X, RETAIN_Y, 0)))       # Ø6×5 insert
+    w = w.cut(cyl(SCREW_CLR, (YOKE_Z1 + 2) - RETAIN_INS_TOP, z=RETAIN_INS_TOP)
+              .translate((RETAIN_X, RETAIN_Y, 0)))                   # Ø4.4 shaft clearance up to the rib
     return heal(w)
 
 
@@ -568,9 +636,10 @@ knee_lever = _lever()
 # MAIN_YC. Placement helper for build.py / tools:
 CART_MAIN_OFFSET = (0.0, MAIN_YC - HS_YC, 0.0)        # main copy: shift to -Y
 CART_HALFSTOP_OFFSET = (HS_SETBACK, 0.0, 0.0)         # half-stop copy: slide +X (engagement setback)
-cart_base = _half_stop_cart_base()             # printed: cartridge base (U-channel + coil + lips)
-cart_roof = _half_stop_cart_roof()             # printed: cartridge roof (slides on; ribs underneath)
-cart_piston = _half_stop_piston()              # printed: piston (flat follower tongue)
+cart_base = _half_stop_cart_base()             # printed: cartridge base (U-channel + coil bay + lips)
+cart_roof = _half_stop_cart_roof()             # printed: cartridge roof (drops on; blind tenon mortises)
+cart_piston = _half_stop_piston()              # printed: piston (Ø6 body + follower tongue + coil pilot)
+guide_post = _guide_post()                     # printed: loose coil-back guide post (screw pushes it)
 # the FLOATING TENON: a separate printed rail (one per rib); glue its lower half into the lever
 # yoke, slide its upper half into the rib. Full housing length, built centred in Y at the origin.
 floating_tenon = heal(_ctree_prism_y(0.0, TEN_LY0, TEN_Y1))   # built at absolute Y (seats at the -Y stop)

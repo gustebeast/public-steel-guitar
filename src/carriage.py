@@ -1,4 +1,4 @@
-"""Carriage (×10) — PA6-GF, load-critical (§8 item 1).
+"""Carriage (×10) — PETG-GF, load-critical (§8 item 1).
 
 The moving element, riding a VERTICAL leadscrew (axis Z) — it travels in Z. It
 presses the round nut into its pocket, rides the guide rod (anti-rotation), and

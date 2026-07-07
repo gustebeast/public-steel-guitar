@@ -167,12 +167,21 @@ def _rib(x, w=_RIB_W):
                   x=x, y=(Y_HI + Y_LO) / 2, z=(MB.FLOOR_TOP + Z_BOT) / 2)
 
 
-def _diamond(cy, cz, h, x, thick):
-    """A diamond (45°) prism through the plate (axis X) — self-supporting as a hole
-    in a vertically-printed plate (its crown is a 45° peak, not a flat bridge)."""
+RACE_HW   = 2.4     # wire-raceway half-width — passes the fattest cable (Ø2.6 USB)
+RACE_WALL = 2.0     # raceway vertical wall height above its floor
+
+
+def _raceway(cy, z0, x, thick):
+    """Wire raceway through a cross-rib (axis X): flat floor + vertical walls +
+    a 45° gable roof (self-supporting in the vertical print — its crown is a
+    peak, not a flat bridge). SHALLOW on purpose: the floor z0 is derived just
+    ABOVE the knee-lever rib-mortise tip (see _build_full), so the harness can
+    never block a floating tenon sliding along the rib to any knee depth."""
+    pts = [(cy - RACE_HW, z0), (cy + RACE_HW, z0),
+           (cy + RACE_HW, z0 + RACE_WALL), (cy, z0 + RACE_WALL + RACE_HW),
+           (cy - RACE_HW, z0 + RACE_WALL)]
     return (cq.Workplane("YZ").workplane(offset=x - (thick + 2.0) / 2.0)
-            .polyline([(cy, cz + h), (cy + h, cz), (cy, cz - h), (cy - h, cz)]).close()
-            .extrude(thick + 2.0))
+            .polyline(pts).close().extrude(thick + 2.0))
 
 
 def _build_full() -> cq.Workplane:
@@ -180,13 +189,11 @@ def _build_full() -> cq.Workplane:
     for x in _RIB_X:                                  # per-motor + bridge/nut cross-ribs (−Z)
         body = body.union(_rib(x))
     # knee/pedal lever mounts: cut a christmas-tree mortise into EVERY rib (so a lever can mount in
-    # any bay -- its two tenons drop into the two ribs flanking the chosen bay), plus a retention
-    # pilot at each installed bay. Even rib pitch -> the one tenon fits all.
+    # any bay -- its two tenons drop into the two ribs flanking the chosen bay). Even rib pitch -> the
+    # one tenon fits all. (Retention is a set screw that presses the rib ledge -- no per-bay pilot.)
     from . import knee_lever as _KL
     for _rx in _RIB_X:
         body = body.cut(_KL.rib_mortise(_rx))
-    for _bx in _KL.INSTALLED_BAYS:
-        body = body.cut(_KL.retention_pilot(_bx))
     # (the pickup now mounts entirely in its deck cover piece — top_plate.py — so
     # the old rail bosses/grooves/X-lock stations that used to live here are gone)
     # keyhead: the box-closure bulkhead is now a SEPARATE, removable part
@@ -238,12 +245,17 @@ def _build_full() -> cq.Workplane:
     for _px, _py in ((AFE_X0 + 4, AFE_Y0 + 4), (AFE_X1 - 4, AFE_Y1 - 4)):
         body = body.union(cyl(6.0, (AFE_Z - 0.2) - AFE_PED_TOP, z=AFE_PED_TOP)
                           .translate((_px, _py, 0)))
-    # wire raceways: a self-supporting diamond through every cross-rib at
-    # each floor-trunk lane y (the harness runs at z -70.6, under the motors)
+    # wire raceways through every cross-rib at each floor-trunk lane y. The
+    # harness (wiring.py: lane centres z -69.6, cable ODs <= 2.6) runs under
+    # the motors; the raceway FLOOR is derived 0.4 ABOVE the knee-lever
+    # rib-mortise tip so the wires sit clear of a floating tenon sliding along
+    # the rib to ANY knee depth (the old deep diamonds cut into the mortise
+    # and the harness blocked the tenon).
     from .wiring import RIB_RACE_Y
+    _race_z0 = (_KL.TEN_PTS[-1][0] + _KL.MORT_CLR + _KL.MOUNT_POSE[2]) + 0.4  # -71.02
     for _rx in _RIB_X:
         for _ly in RIB_RACE_Y:
-            body = body.cut(_diamond(_ly, -70.65, 3.5, _rx, _RIB_W + 2.0))
+            body = body.cut(_raceway(_ly, _race_z0, _rx, _RIB_W + 2.0))
     # DECK JOINT: the plates cap the rail and drop a vertical DOVETAIL tongue into a
     # groove milled in the rail top. Lower the rail top to z0 across the whole deck
     # X-span (rail -X end up to the +X takeover line TP_EP_GX) so a plate sits flush,
@@ -292,11 +304,13 @@ def _build_full() -> cq.Workplane:
 
 
 def _leg_dt_slot(sx, yr, s):
-    """The vertical sliding-dovetail SLOT for a leg socket in the rail's OUTER
+    """The vertical sliding-dovetail SLOT for a leg socket in the rail's INNER
     face at station (sx, yr); `s` = +1 (Y_HI) / -1 (Y_LO). Cut from the rail; the
     printed leg tenon slides up into it from below. Factored out so the +X/-X
-    end-takeover can KEEP a rail shell around the leg and re-cut this same slot."""
-    yf = yr + s * T / 2                              # outer face
+    end-takeover can KEEP a rail shell around the leg and re-cut this same slot.
+    Built on the OUTER face then MIRRORED across the rail centreline to the INNER
+    face, so the outer instrument face stays clean/flush (the joint hides inside)."""
+    yf = yr + s * T / 2                              # (build on the outer face...)
     yd = yf - s * DT_DEPTH                           # deep wall
     trap = (cq.Workplane("XY").workplane(offset=Z_BOT - 1.0)
             .polyline([(sx - DT_FACE_HW, yf), (sx + DT_FACE_HW, yf),
@@ -309,7 +323,7 @@ def _leg_dt_slot(sx, yr, s):
                        (yd - s, Z_BOT - 2.0)])
             .close().extrude(2 * DT_DEEP_HW + 4)
             .translate((sx - DT_DEEP_HW - 2, 0, 0)))
-    return trap.intersect(keep)
+    return trap.intersect(keep).mirror("XZ", (0, yr, 0))   # ...mirror to the INNER face
 
 
 # ============================================================================

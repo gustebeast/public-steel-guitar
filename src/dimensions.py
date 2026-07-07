@@ -241,9 +241,9 @@ BRIDGE_ARM_W      = 5.0     # bridge-endplate bearing-arm / edge-web thickness (
 # this width (the bridge centres it on the bearing axle) and the drivetrain base spans it,
 # so editing any buffer here resizes both ends together -- never a hardcoded tip. The
 # keyhead nut block (nut_block.py) reads these same constants to place its features.
-NUT_INSERT_D    = 5.6           # M4 brass heat-set insert install Ø (the -X-most hardware)
-NUT_INSERT_L    = 4.7
-NUT_SCREW_D     = 4.3           # M4 set-screw clearance (runs down the insert onto the string)
+NUT_INSERT_D    = 6.0           # M4 heat-set insert install Ø — the shared SET-SCREW STANDARD
+NUT_INSERT_L    = 5.0           #   (freecad/fasteners.py M4_INSERT_D / M4_INSERT_L)
+NUT_SCREW_D     = 4.4           # M4 set-screw shaft clearance (M4_SHAFT_CLR_D)
 NUT_SCREW_L     = 10.0          # M4 set-screw length (DEMO). The boss is NOT one screw tall: the
                                 # insert sinks to a small gap off the string (nut_block.INSERT_GAP)
                                 # and this screw's surplus length stands PROUD of the top surface.
