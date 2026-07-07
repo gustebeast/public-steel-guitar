@@ -54,6 +54,23 @@ from . import legs as LG
 #             ground-reaction paths, and the deck colour layers)
 #   pctg/     compliant, snap-fit, impact and fine-feature parts
 #   tpu/      feet + preload washers
+
+
+def _PB_bolt(i):
+    PB = __import__("src.pedal_bar", fromlist=["e"])
+    return PB.pedal_bolt(*PB.LATCHES[i])
+
+
+def _PB_lid(i):
+    PB = __import__("src.pedal_bar", fromlist=["e"])
+    return PB.pedal_latch_lid(*PB.LATCHES[i])
+
+
+def _PB_finger(i):
+    PB = __import__("src.pedal_bar", fromlist=["e"])
+    return PB.pedal_latch_finger(*PB.LATCHES[i])
+
+
 PARTS = {
     "carriage":        (partial(heal, carriage),      "petg-gf/carriage.step",        "PETG-GF, load-critical — ×10 identical"),
     "bridge_endplate": (partial(heal, bridge_endplate), "petg-gf/bridge_endplate.step", "PETG-GF — fused bridge end (screw support + bearing support + axle comb + box closure)"),
@@ -82,12 +99,12 @@ PARTS = {
     # pedal bar + latch (one latched foot for now; mirror to -X once the feel
     # is validated). The bar itself is a DEMO prism (longer than the bed —
     # it gets segmented for printing once the pedals land on it).
-    "pedal_bar":       (lambda: heal(__import__("src.pedal_bar", fromlist=["e"]).pedal_bar()), "petg-gf/pedal_bar.step", "PETG-GF — pedal bar (demo prism): C-slots wrap the +Y legs' shaft waists; thumb-slide latch at the +X foot"),
-    "pedal_bolt":      (lambda: heal(__import__("src.pedal_bar", fromlist=["e"]).pedal_bolt()), "petg-gf/pedal_bolt.step", "PETG-GF — latch sliding bolt + thumb pad (rigid lock: flat -Y face blocks the waist, 45-deg tip bevel self-latches on push-on; slide +5 to release)"),
-    "pedal_latch_lid": (lambda: heal(__import__("src.pedal_bar", fromlist=["e"]).pedal_latch_lid()), "pctg/pedal_latch_lid.step", "PCTG — latch lid (roofs the channel, carries the thumb-pad slot, sockets the TPU finger; 2x M2)"),
-    "pedal_latch_finger": (lambda: heal(__import__("src.pedal_bar", fromlist=["e"]).pedal_latch_finger()), "tpu/pedal_latch_finger.step", "TPU — latch return finger (bending spring hung from the lid; unloaded at rest -> no creep; the latch's ONLY spring)"),
-    "pedal_jack_foot": (lambda: heal(__import__("src.pedal_bar", fromlist=["e"]).pedal_jack_foot()), "petg-gf/pedal_jack_foot.step", "PETG-GF — TRRS jack foot (replaces the TPU foot at the -X/+Y leg: keyed to the shaft flats; riser carries the jack + the alignment tenon that grabs 4.5 before the plug touches)"),
-    "pedal_foot_pad": (lambda: heal(__import__("src.pedal_bar", fromlist=["e"]).pedal_foot_pad()), "tpu/pedal_foot_pad.step", "TPU — jack-foot floor pad (flush in the underside recess; matches the other feet)"),
+    "pedal_bar":       (lambda: heal(__import__("src.pedal_bar", fromlist=["e"]).pedal_bar()), "petg-gf/pedal_bar.step", "PETG-GF — pedal bar (demo prism): C-slots wrap the +Y legs' shaft waists; a thumb-slide latch at EACH foot"),
+    "pedal_bolt":      (lambda: heal(_PB_bolt(0)), "petg-gf/pedal_bolt.step", "PETG-GF — latch sliding bolt + thumb pad, +X foot (rigid lock: flat head bears on the waist chord, 45-deg tip bevel self-latches on push-on; slide 5 inboard to release)"),
+    "pedal_bolt_m":    (lambda: heal(_PB_bolt(1)), "petg-gf/pedal_bolt_m.step", "PETG-GF — latch sliding bolt + thumb pad, -X foot (MIRRORED variant of pedal_bolt)"),
+    "pedal_latch_lid": (lambda: heal(_PB_lid(0)), "pctg/pedal_latch_lid.step", "PCTG — latch lid, +X foot (roofs the channel, carries the thumb-pad slot, sockets the TPU finger; 2x M2)"),
+    "pedal_latch_lid_m": (lambda: heal(_PB_lid(1)), "pctg/pedal_latch_lid_m.step", "PCTG — latch lid, -X foot (MIRRORED variant of pedal_latch_lid)"),
+    "pedal_latch_finger": (lambda: heal(_PB_finger(0)), "tpu/pedal_latch_finger.step", "TPU — latch return finger x2, one per foot (symmetric: the same print serves both mirrored latches; bending spring, unloaded at rest -> no creep; the latch's ONLY spring)"),
     "electronics_tray": (lambda: heal(__import__("src.electronics", fromlist=["e"]).electronics_tray()), "pctg/electronics_tray.step", "PCTG — compute-bay tray (drops into rail channels from above; tool-free SNAP mounts for Teensy+shield, Pi 5, 2x CS42448, buck, CAN transceiver — snap fingers need PCTG's ductility)"),
 }
 # Deck panels: each is a (base, colour) PAIR — same origin, print as ONE object
@@ -390,10 +407,7 @@ def _leg_components():
             out.append((f"leg_shaft_{k}",
                         shaft.rotate((0, 0, 0), (0, 0, 1), rot)
                         .translate((sx, ry, ground + 3.0))))
-            # the -X/+Y leg's foot is pedal_jack_foot (the TRRS riser, placed
-            # by _pedal_bar_components) instead of the TPU cap
-            if (sx, ry) != (CH.LEG_STATIONS_X[1], CH.Y_HI):
-                out.append((f"leg_foot_{k}", foot.translate((sx, ry, ground))))
+            out.append((f"leg_foot_{k}", foot.translate((sx, ry, ground))))
             k += 1
     return out
 
@@ -517,12 +531,10 @@ _COLORS = {
     # pedal bar + latch (+X foot)
     "pedal_bar":        (0.30, 0.45, 0.35),  # PETG-GF bar body
     "pedal_bolt":       (0.85, 0.35, 0.20),  # sliding bolt + thumb pad (the lock)
+    "pedal_bolt_m":     (0.85, 0.35, 0.20),  # ... mirrored variant, -X foot
     "pedal_latch_lid":  (0.50, 0.58, 0.52),  # latch lid
+    "pedal_latch_lid_m": (0.50, 0.58, 0.52),  # ... mirrored variant, -X foot
     "pedal_latch_finger": (0.12, 0.12, 0.13),  # TPU return finger (the only spring)
-    "pedal_jack_foot":  (0.36, 0.52, 0.42),  # TRRS jack foot (keyed, riser + tenon)
-    "pedal_foot_pad":   (0.12, 0.12, 0.13),  # TPU floor pad
-    "pedal_trrs_jack":  (0.62, 0.64, 0.67),  # panel jack (DEMO)
-    "pedal_trrs_plug":  (0.15, 0.15, 0.17),  # right-angle plug (DEMO)
     "build_counter":   (0.86, 0.08, 0.24),
     # knee lever (LKL) — input-side control
     "knee_housing":    (0.30, 0.36, 0.42),   # PCTG housing
