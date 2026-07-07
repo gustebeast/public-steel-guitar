@@ -97,7 +97,25 @@ GLOBAL_OK = {
     frozenset({"leg_sleeve", "leg_shaft"}), frozenset({"leg_shaft", "leg_foot"}),
     frozenset({"leg_washer", "leg_socket"}), frozenset({"leg_washer", "leg_segment"}),
     frozenset({"leg_washer", "leg_sleeve"}),
+    # pedal bar: the C-slots wrap the shaft waists (0.2 clr, touch at the
+    # shoulder plane), the plate rests on the foot caps, and the closed bolt
+    # blocks the waist
+    frozenset({"pedal_bar", "leg_shaft"}), frozenset({"pedal_bar", "leg_foot"}),
+    frozenset({"pedal_bolt", "leg_shaft"}),
+    # the TRRS jack foot replaces the TPU foot at the -X/+Y leg: keyed onto
+    # the shaft's bottom section
+    frozenset({"pedal_jack_foot", "leg_shaft"}),
 }
+
+# The pedal-bar latch + TRRS dock is a self-contained subassembly (bolt in
+# its channel, TPU finger potted in the lid, lid recessed into the bar,
+# tenon in the bar's mortise, jack in the riser, plug in its pocket/jack):
+# whitelist any pair WITHIN the family — a pedal part clashing with a
+# leg/chassis part (other than the GLOBAL_OK contacts above) stays a
+# reportable bug.
+PEDAL_FAMILY = {"pedal_bar", "pedal_bolt", "pedal_latch_lid",
+                "pedal_latch_finger", "pedal_jack_foot", "pedal_foot_pad",
+                "pedal_trrs_jack", "pedal_trrs_plug"}
 
 
 # The knee-lever control core is a self-contained subassembly: the axle, bearings,
@@ -106,16 +124,17 @@ GLOBAL_OK = {
 # housing<->chassis / housing<->motor clash, since those involve a non-family part).
 KNEE_FAMILY = {"knee_housing", "knee_lever", "kl_axle", "kl_bearing", "kl_magnet", "kl_pcb",
                "main_spring", "half_stop_spring", "floating_tenon", "retention_setscrew",
-               "main_cart_base", "main_cart_roof", "main_cart_piston", "main_guide_post",
-               "half_stop_cart_base", "half_stop_cart_roof", "half_stop_cart_piston", "half_stop_guide_post",
-               "main_spring_tension_setscrew", "half_stop_spring_tension_setscrew",
-               "main_clamp_setscrew", "half_stop_clamp_setscrew", "stop_angle_setscrew"}
+               "main_cart_base", "main_cart_piston", "main_guide_post",
+               "half_stop_cart_base", "half_stop_cart_piston", "half_stop_guide_post",
+               "main_spring_tension_setscrew", "half_stop_spring_tension_setscrew"}
 
 
 def intended(na, nb) -> bool:
     if "build_counter" in (na, nb):
         return True
     if base(na) in KNEE_FAMILY and base(nb) in KNEE_FAMILY:
+        return True
+    if base(na) in PEDAL_FAMILY and base(nb) in PEDAL_FAMILY:
         return True
     # the knee-lever -Y retention screw is a thread-forming screw that bites the chassis -Y rail;
     # the floating tenon slides up into the rib mortise (its designed seat)
