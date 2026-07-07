@@ -55,8 +55,10 @@ PER_STRING_OK = {
     frozenset({"motor", "motor_pulley"}),
     frozenset({"string", "carriage"}),
     frozenset({"string_nut", "carriage"}), frozenset({"string_nut", "string"}),
-    # nut-block hardware (per string): break pin sets the scale, set screw clamps the string
+    # nut-block hardware (per string): break pin sets the scale, set screw clamps the
+    # string, threading through its own heat-set insert
     frozenset({"break_dowel", "string"}), frozenset({"set_screw", "string"}),
+    frozenset({"set_screw", "nut_insert"}),
     frozenset({"nut", "screw_pulley"}), frozenset({"screw_bearing", "screw_pulley"}),
     frozenset({"locknut", "leadscrew"}), frozenset({"locknut", "screw_bearing"}),
     # a belt connects its OWN motor and screw, so it touches both there
@@ -104,8 +106,8 @@ GLOBAL_OK = {
 # housing<->chassis / housing<->motor clash, since those involve a non-family part).
 KNEE_FAMILY = {"knee_housing", "knee_lever", "kl_axle", "kl_bearing", "kl_magnet", "kl_pcb",
                "main_spring", "half_stop_spring", "floating_tenon", "retention_setscrew",
-               "main_cart_base", "main_cart_roof", "main_cart_piston",
-               "half_stop_cart_base", "half_stop_cart_roof", "half_stop_cart_piston",
+               "main_cart_base", "main_cart_roof", "main_cart_piston", "main_guide_post",
+               "half_stop_cart_base", "half_stop_cart_roof", "half_stop_cart_piston", "half_stop_guide_post",
                "main_spring_tension_setscrew", "half_stop_spring_tension_setscrew",
                "main_clamp_setscrew", "half_stop_clamp_setscrew", "stop_angle_setscrew"}
 
@@ -134,12 +136,15 @@ def intended(na, nb) -> bool:
     if frozenset({base(na), base(nb)}) == frozenset({"electronics_tray", "chassis"}):
         return True
     # top deck plates ride the rail grooves, abut each other (mortise/tenon),
-    # carry the OLED + joystick, and the pickup pokes through the open slot
+    # carry the OLED + joystick, and the pickup pokes through the open slot.
+    # Each panel is a base + colour-layer PAIR (top_plate_N / top_plate_color_N)
+    # printed as one object — designed full-face contact.
     tp = {base(na), base(nb)}
-    if "top_plate" in tp and tp & {"chassis", "top_plate", "oled", "joystick",
-                                   "pickup", "pickup_zplate", "pickup_xclamp",
-                                   "height_screw", "clamp_screw",
-                                   "bridge_endplate", "keyhead_endplate"}:
+    TP_FAMILY = {"top_plate", "top_plate_color"}
+    if tp & TP_FAMILY and tp <= (TP_FAMILY | {"chassis", "oled", "joystick",
+                                              "pickup", "pickup_zplate", "pickup_xclamp",
+                                              "height_screw", "clamp_screw",
+                                              "bridge_endplate", "keyhead_endplate"}):
         return True
     # adjacent chassis segments meet at their sliding-dovetail joints (one frame)
     if base(na) == base(nb) == "chassis":

@@ -7,7 +7,7 @@ Split into focused modules:
   components      — purchased-part DUMMIES (motor, screw, nut, pulleys,
                     bearings, guide rod, dowels, set screws, belt) for the
                     assembly only; not exported as printable STEPs
-  carriage        — the moving carriage (PA6-GF, load-critical) ×10
+  carriage        — the moving carriage (PETG-GF, load-critical) ×10
   screw_rail      — shared bottom screw-support rail (fused into the endplate)
   bridge_endplate — one-piece bridge end: box closure + bearing arms + axle
                     comb + guide ledges (absorbs screw_rail)

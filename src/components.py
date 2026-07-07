@@ -8,11 +8,17 @@ local frame; build.py translates copies into each string's position.
 from __future__ import annotations
 
 import math
+import pathlib
+import sys
 
 import cadquery as cq
 
 from . import dimensions as D
 from .helpers import cyl, cyl_y, box_at
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "freecad"))
+from fasteners import (M4_SCREW_D, M4_SCREW_L, M4_INSERT_D,  # noqa: E402
+                       M4_INSERT_L, M4_SHAFT_CLR_D)
 
 MOTOR_PULLEY_STANDOFF = 14.0   # pulley sits this far +Y of the motor faceplate
 
@@ -50,11 +56,20 @@ def dowel() -> cq.Workplane:
 
 def set_screw() -> cq.Workplane:
     """M4×10 cup-tip set screw, axis Z, top at z=0 (extends −Z), 2 mm hex socket."""
-    body = cyl(4.0, 10.0, z=-10.0)
+    body = cyl(M4_SCREW_D, M4_SCREW_L, z=-M4_SCREW_L)
     hexd = 2.0 / math.cos(math.radians(30))      # 2 mm across-flats hex key
     socket = (cq.Workplane("XY").polygon(6, hexd).extrude(-3.0)
               .translate((0, 0, 0.5)))
     return body.cut(socket)
+
+
+def m4_insert() -> cq.Workplane:
+    """Dummy M4 heat-set insert: a Ø6 × 5 TUBE (brass ring), axis Z, top at z=0 (extends −Z). The
+    through-bore (Ø4.4) lets the M4 screw pass straight through — it is NOT a solid slug. Fit-check
+    only; melts into a pocket bored EXACTLY Ø6×5. Drawn here ONCE so every insert in the model is
+    identical (see freecad/fasteners.py)."""
+    return (cyl(M4_INSERT_D, M4_INSERT_L, z=-M4_INSERT_L)
+            .cut(cyl(M4_SHAFT_CLR_D, M4_INSERT_L + 2, z=-M4_INSERT_L - 1)))
 
 
 _CHAMFER = (D.PULLEY_FLANGE_OD - D.PULLEY_OD) / 2     # 45° flange chamfer height

@@ -141,7 +141,9 @@ def leg_socket() -> cq.Workplane:
                        (1.0, 0.0)])
             .close().extrude(2 * DT_DEEP_HW + 4)
             .translate((-(DT_DEEP_HW + 2), 0, 0)))
-    body = barrel.union(tenon.intersect(keep))
+    # tenon built on the OUTER face (y −4), then MIRRORED across the rail centreline to the INNER face
+    # (+y) so the joint hides inside the instrument and the outer face stays clean/flush.
+    body = barrel.union(tenon.intersect(keep).mirror("XZ"))
     # female thread: bore + ridge grooves, opening DOWN
     body = body.cut(cyl(TH_MINOR + TH_CLR, TH_LEN + 2, z=-BARREL_L - 1))
     # one extra lead of groove BELOW the mouth (in free air): prisms whose
