@@ -62,8 +62,7 @@ PARTS = {
     "knee_housing":    (lambda: __import__("src.knee_lever", fromlist=["e"]).knee_housing, "petg-gf/knee_housing.step", "PETG-GF — knee-lever (LKL) housing: MR85 pivot bearings + MT6701 sensor mount (rigid = stable air gap)"),
     "knee_lever":      (lambda: __import__("src.knee_lever", fromlist=["e"]).knee_lever,   "pctg/knee_lever.step",   "PCTG — knee-lever (LKL) arm + knee paddle (takes knee strikes: toughness over stiffness)"),
     "floating_tenon":  (lambda: __import__("src.knee_lever", fromlist=["e"]).floating_tenon, "petg-gf/floating_tenon.step", "PETG-GF — floating christmas-tree tenon: glue into the lever yoke, slide into the rib (2 per lever)"),
-    "cart_base": (lambda: __import__("src.knee_lever", fromlist=["e"]).cart_base, "pctg/cart_base.step", "PCTG — spring-cartridge base (shared: print 2, for main + half-stop)"),
-    "cart_roof": (lambda: __import__("src.knee_lever", fromlist=["e"]).cart_roof, "pctg/cart_roof.step", "PCTG — spring-cartridge roof (shared: print 2)"),
+    "cart_base": (lambda: __import__("src.knee_lever", fromlist=["e"]).cart_base, "pctg/cart_base.step", "PCTG — spring-cartridge (inverted-U, open -Z; shared: print 2, for main + half-stop)"),
     "cart_piston": (lambda: __import__("src.knee_lever", fromlist=["e"]).cart_piston, "pctg/cart_piston.step", "PCTG — spring-cartridge piston, flat follower tongue (shared: print 2)"),
     "guide_post": (lambda: __import__("src.knee_lever", fromlist=["e"]).guide_post, "pctg/guide_post.step", "PCTG — coil-back guide post, screw pushes it (shared: print 2)"),
     "screw_pulley":    (lambda: heal(C.screw_pulley()),  "pctg/screw_pulley.step",  "PCTG — flanged 14T GT2 pulley, 45° top flange — ×10 (fine teeth need unfilled resolution)"),
@@ -77,9 +76,18 @@ PARTS = {
     "leg_socket":      (lambda: heal(LG.leg_socket()),  "petg-gf/leg_socket.step",  "PETG-GF — leg corner socket ×4 (dovetail tenon slides up into the rail slot, glued; 2-turn coarse thread, quick on/off)"),
     "leg_segment":     (lambda: heal(LG.leg_segment()), "petg-gf/leg_segment.step", "PETG-GF — stackable leg tube (male up / female down; the COUNT per leg is the coarse height adjust, 142 mm per segment; default 2 -> x8)"),
     "leg_sleeve":      (lambda: heal(LG.leg_sleeve()),  "pctg/leg_sleeve.step",  "PCTG — leg slider sleeve ×4 (pinch collar: M4 button screw + insert pulls the slit closed; the slit MUST flex — never glass-filled)"),
-    "leg_shaft":       (lambda: heal(LG.leg_shaft()),   "petg-gf/leg_shaft.step",   "PETG-GF — leg sliding shaft ×4 (0–150 fine height adjust)"),
+    "leg_shaft":       (lambda: heal(LG.leg_shaft()),   "petg-gf/leg_shaft.step",   "PETG-GF — leg sliding shaft ×4 (fine height adjust; keyed flats = pure Z travel, bottom waist mounts the pedal bar on the +Y legs)"),
     "leg_foot":        (lambda: heal(LG.leg_foot()),    "tpu/leg_foot.step",    "TPU — foot cap ×4"),
-    "leg_washer":      (lambda: heal(LG.leg_washer()),  "tpu/leg_washer.step",  "TPU — anti-unscrew shoulder washer, 1/junction = segments+1 per leg (compresses on the last quarter turn)"),
+    "leg_washer":      (lambda: heal(LG.leg_washer()),  "tpu/leg_washer.step",  "TPU — gland washer, 1/junction = segments+1 per leg (sits in the female-rim recess; the hard-stop collar squeezes it a fixed 2.5->2.0 every assembly)"),
+    # pedal bar + latch (one latched foot for now; mirror to -X once the feel
+    # is validated). The bar itself is a DEMO prism (longer than the bed —
+    # it gets segmented for printing once the pedals land on it).
+    "pedal_bar":       (lambda: heal(__import__("src.pedal_bar", fromlist=["e"]).pedal_bar()), "petg-gf/pedal_bar.step", "PETG-GF — pedal bar (demo prism): C-slots wrap the +Y legs' shaft waists; thumb-slide latch at the +X foot"),
+    "pedal_bolt":      (lambda: heal(__import__("src.pedal_bar", fromlist=["e"]).pedal_bolt()), "petg-gf/pedal_bolt.step", "PETG-GF — latch sliding bolt + thumb pad (rigid lock: flat -Y face blocks the waist, 45-deg tip bevel self-latches on push-on; slide +5 to release)"),
+    "pedal_latch_lid": (lambda: heal(__import__("src.pedal_bar", fromlist=["e"]).pedal_latch_lid()), "pctg/pedal_latch_lid.step", "PCTG — latch lid (roofs the channel, carries the thumb-pad slot, sockets the TPU finger; 2x M2)"),
+    "pedal_latch_finger": (lambda: heal(__import__("src.pedal_bar", fromlist=["e"]).pedal_latch_finger()), "tpu/pedal_latch_finger.step", "TPU — latch return finger (bending spring hung from the lid; unloaded at rest -> no creep; the latch's ONLY spring)"),
+    "pedal_jack_foot": (lambda: heal(__import__("src.pedal_bar", fromlist=["e"]).pedal_jack_foot()), "petg-gf/pedal_jack_foot.step", "PETG-GF — TRRS jack foot (replaces the TPU foot at the -X/+Y leg: keyed to the shaft flats; riser carries the jack + the alignment tenon that grabs 4.5 before the plug touches)"),
+    "pedal_foot_pad": (lambda: heal(__import__("src.pedal_bar", fromlist=["e"]).pedal_foot_pad()), "tpu/pedal_foot_pad.step", "TPU — jack-foot floor pad (flush in the underside recess; matches the other feet)"),
     "electronics_tray": (lambda: heal(__import__("src.electronics", fromlist=["e"]).electronics_tray()), "pctg/electronics_tray.step", "PCTG — compute-bay tray (drops into rail channels from above; tool-free SNAP mounts for Teensy+shield, Pi 5, 2x CS42448, buck, CAN transceiver — snap fingers need PCTG's ductility)"),
 }
 # Deck panels: each is a (base, colour) PAIR — same origin, print as ONE object
@@ -340,9 +348,9 @@ def _pickup_mount_components():
 
 
 LEG_HEIGHT = 655.0   # floor → body bottom (the user's reference at 6')
-LEG_SEGMENTS = 2     # coarse height: each segment steps 142; the shaft's 150
+LEG_SEGMENTS = 2     # coarse height: each segment steps 142; the shaft's 160
                      # slide overlaps the step, so every height ≥ ~241 is
-                     # reachable by picking the count (2 covers 525..675)
+                     # reachable by picking the count (2 covers 525..685)
 
 
 def _leg_components():
@@ -352,7 +360,7 @@ def _leg_components():
     seg, sleeve = LG.leg_segment(), LG.leg_sleeve()
     shaft, foot, washer = LG.leg_shaft(), LG.leg_foot(), LG.leg_washer()
     ground = CH.Z_BOT - LEG_HEIGHT
-    step = 2.0 + (LG.SEG_L - LG.TH_LEN)                  # washer + segment
+    step = 2.0 + (LG.SEG_L - LG.TH_LEN)                  # collar gap + segment
     k = 0
     for sx in CH.LEG_STATIONS_X:           # stations computed from the shared endplate model
         for ry, rot in ((CH.Y_HI, 180), (CH.Y_LO, 0)):   # plate faces outward
@@ -361,21 +369,41 @@ def _leg_components():
                         socket.rotate((0, 0, 0), (0, 0, 1), rot)
                         .translate((sx, ry, CH.Z_BOT))))
             # (thread phase is built into the female generators — all joints
-            # share the same 3 mm offset, so parts place with no rotation)
-            shoulder = zb                                # next male's shoulder seat
+            # share the same 3 mm offset, so parts place with no relative
+            # rotation. The SINGLE-start thread is not 180°-symmetric, so the
+            # rotated +Y-rail socket clocks its whole stack 180 with it —
+            # exactly what the hard-stop junctions do physically. The shaft
+            # flats/waist are 180°-symmetric, so the pedal bar doesn't care.)
+            shoulder = zb                                # next male's collar seat
             for j in range(LEG_SEGMENTS):
                 out.append((f"leg_washer_{(LEG_SEGMENTS + 1) * k + j}",
-                            washer.translate((sx, ry, shoulder - 2))))
+                            washer.translate((sx, ry, shoulder))))
                 shoulder -= step
                 out.append((f"leg_segment_{LEG_SEGMENTS * k + j}",
-                            seg.translate((sx, ry, shoulder))))
+                            seg.rotate((0, 0, 0), (0, 0, 1), rot)
+                            .translate((sx, ry, shoulder))))
             out.append((f"leg_washer_{(LEG_SEGMENTS + 1) * k + LEG_SEGMENTS}",
-                        washer.translate((sx, ry, shoulder - 2))))
-            out.append((f"leg_sleeve_{k}", sleeve.translate((sx, ry, shoulder - 2))))
-            out.append((f"leg_shaft_{k}", shaft.translate((sx, ry, ground + 3.0))))
-            out.append((f"leg_foot_{k}", foot.translate((sx, ry, ground))))
+                        washer.translate((sx, ry, shoulder))))
+            out.append((f"leg_sleeve_{k}",
+                        sleeve.rotate((0, 0, 0), (0, 0, 1), rot)
+                        .translate((sx, ry, shoulder - 2))))
+            out.append((f"leg_shaft_{k}",
+                        shaft.rotate((0, 0, 0), (0, 0, 1), rot)
+                        .translate((sx, ry, ground + 3.0))))
+            # the -X/+Y leg's foot is pedal_jack_foot (the TRRS riser, placed
+            # by _pedal_bar_components) instead of the TPU cap
+            if (sx, ry) != (CH.LEG_STATIONS_X[1], CH.Y_HI):
+                out.append((f"leg_foot_{k}", foot.translate((sx, ry, ground))))
             k += 1
     return out
+
+
+def _pedal_bar_components():
+    """Pedal bar + latch, modelled in absolute X/Y with z0 = plate bottom =
+    the shaft waist's lower shoulder (foot top): lift by ground + FOOT_H."""
+    from . import pedal_bar as PB
+    dz = (CH.Z_BOT - LEG_HEIGHT) + LG.FOOT_H
+    return [(n, wp.translate((0, 0, dz))) for n, wp in PB.assembly_parts()]
 
 
 def _electronics_components():
@@ -412,16 +440,25 @@ def _electronics_components():
 
 def _knee_lever_components():
     """Knee lever (LKL) — input-side control, mounted in its rib bay (centre x=-501): the
-    christmas-tree tenons slide +Y into the two flanking ribs; chassis.py cuts the grooves."""
+    christmas-tree tenons slide +Y into the two flanking ribs; chassis.py cuts the grooves.
+    Set KNEE_THROW_DEG=<angle> to pose the lever at that throw (rotate about the Y axle + slide the
+    followers to ride the lobe) instead of at rest -- demonstrates the swept position in the assembly."""
     from . import knee_lever as KL
+    import os
+    throw = float(os.environ.get("KNEE_THROW_DEG", "0") or "0")
+    def swing(s):                                        # rotate a lever-attached solid about the Y axle
+        return s.rotate((0, 0, 0), (0, 1, 0), throw) if throw else s
+    thr, eng = math.radians(throw), math.radians(KL.HS_ENGAGE_DEG)
+    s_main = KL.LOBE_RC * math.sin(thr) if throw else 0.0            # MAIN follower engaged from rest
+    s_hs = (KL.LOBE_RC * (math.sin(thr) - math.sin(eng)) + 1.0) if throw > KL.HS_ENGAGE_DEG else 0.0  # engages @15°
     pose = KL.MOUNT_POSE
-    out = [("knee_housing", KL.knee_housing), ("knee_lever", KL.knee_lever)]
-    for nm, off in (("main", KL.CART_MAIN_OFFSET), ("half_stop", KL.CART_HALFSTOP_OFFSET)):
-        out.append((f"{nm}_cart_base", KL.cart_base.translate(off)))
-        out.append((f"{nm}_cart_roof", KL.cart_roof.translate(off)))
-        out.append((f"{nm}_cart_piston", KL.cart_piston.translate(off)))
-        out.append((f"{nm}_guide_post", KL.guide_post.translate(off)))
-    out += KL.demo_parts()
+    out = [("knee_housing", KL.knee_housing), ("knee_lever", swing(KL.knee_lever))]
+    for nm, off, s in (("main", KL.CART_MAIN_OFFSET, s_main), ("half_stop", KL.CART_HALFSTOP_OFFSET, s_hs)):
+        out.append((f"{nm}_cart_base", KL.feel_place(KL.cart_base.translate(off))))
+        out.append((f"{nm}_cart_piston", KL.feel_place(KL.cart_piston.translate(off)).translate((-s, 0, 0))))
+        out.append((f"{nm}_guide_post", KL.feel_place(KL.guide_post.translate(off))))
+    for n, s in KL.demo_parts():                         # magnet spins with the lever; the rest are stationary
+        out.append((n, swing(s) if n == "kl_magnet" else s))
     for i, s in enumerate((1, -1)):                       # one floating tenon per rib (built at absolute Y)
         out.append((f"floating_tenon_{i}", KL.floating_tenon.translate((s * KL.TEN_XC, 0, 0))))
     return [(n, s.translate(pose)) for n, s in out]
@@ -436,6 +473,7 @@ def collect_components():
     comps += [(f"chassis_{i}", seg) for i, seg in enumerate(chassis_segments)]
     comps += _pickup_mount_components()
     comps += _leg_components()
+    comps += _pedal_bar_components()
     comps += _electronics_components()
     comps += _knee_lever_components()
     for i in range(D.N_STRINGS):
@@ -476,6 +514,15 @@ _COLORS = {
     "leg_shaft":       (0.55, 0.58, 0.62),
     "leg_foot":        (0.12, 0.12, 0.13),   # TPU
     "leg_washer":      (0.12, 0.12, 0.13),   # TPU
+    # pedal bar + latch (+X foot)
+    "pedal_bar":        (0.30, 0.45, 0.35),  # PETG-GF bar body
+    "pedal_bolt":       (0.85, 0.35, 0.20),  # sliding bolt + thumb pad (the lock)
+    "pedal_latch_lid":  (0.50, 0.58, 0.52),  # latch lid
+    "pedal_latch_finger": (0.12, 0.12, 0.13),  # TPU return finger (the only spring)
+    "pedal_jack_foot":  (0.36, 0.52, 0.42),  # TRRS jack foot (keyed, riser + tenon)
+    "pedal_foot_pad":   (0.12, 0.12, 0.13),  # TPU floor pad
+    "pedal_trrs_jack":  (0.62, 0.64, 0.67),  # panel jack (DEMO)
+    "pedal_trrs_plug":  (0.15, 0.15, 0.17),  # right-angle plug (DEMO)
     "build_counter":   (0.86, 0.08, 0.24),
     # knee lever (LKL) — input-side control
     "knee_housing":    (0.30, 0.36, 0.42),   # PCTG housing
@@ -489,14 +536,9 @@ _COLORS = {
     "half_stop_spring":                   (0.75, 0.45, 0.88),
     "main_spring_tension_setscrew":       (0.55, 0.55, 0.58),
     "half_stop_spring_tension_setscrew":  (0.62, 0.62, 0.66),
-    "main_clamp_setscrew":                (0.30, 0.62, 0.62),   # from-below clamp (locks slid X)
-    "half_stop_clamp_setscrew":           (0.36, 0.68, 0.68),
-    "stop_angle_setscrew":                (0.72, 0.35, 0.30),   # travel-limit screw (central web)
     "main_cart_base":                     (0.85, 0.65, 0.13),   # printed cartridge (shared part)
-    "main_cart_roof":                     (0.90, 0.72, 0.20),
     "main_cart_piston":                   (0.95, 0.80, 0.30),
     "half_stop_cart_base":                (0.80, 0.60, 0.10),
-    "half_stop_cart_roof":                (0.86, 0.68, 0.16),
     "half_stop_cart_piston":              (0.92, 0.76, 0.26),
     "main_guide_post":                    (0.70, 0.50, 0.10),
     "half_stop_guide_post":               (0.66, 0.46, 0.08),
