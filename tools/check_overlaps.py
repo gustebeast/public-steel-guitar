@@ -98,24 +98,19 @@ GLOBAL_OK = {
     frozenset({"leg_washer", "leg_socket"}), frozenset({"leg_washer", "leg_segment"}),
     frozenset({"leg_washer", "leg_sleeve"}),
     # pedal bar: the C-slots wrap the shaft waists (0.2 clr, touch at the
-    # shoulder plane), the plate rests on the foot caps, and the closed bolt
-    # blocks the waist
+    # shoulder plane), the plate rests on the foot caps, and the closed
+    # bolts (one latch per foot) block the waists
     frozenset({"pedal_bar", "leg_shaft"}), frozenset({"pedal_bar", "leg_foot"}),
-    frozenset({"pedal_bolt", "leg_shaft"}),
-    # the TRRS jack foot replaces the TPU foot at the -X/+Y leg: keyed onto
-    # the shaft's bottom section
-    frozenset({"pedal_jack_foot", "leg_shaft"}),
+    frozenset({"pedal_bolt", "leg_shaft"}), frozenset({"pedal_bolt_m", "leg_shaft"}),
 }
 
-# The pedal-bar latch + TRRS dock is a self-contained subassembly (bolt in
-# its channel, TPU finger potted in the lid, lid recessed into the bar,
-# tenon in the bar's mortise, jack in the riser, plug in its pocket/jack):
-# whitelist any pair WITHIN the family — a pedal part clashing with a
-# leg/chassis part (other than the GLOBAL_OK contacts above) stays a
-# reportable bug.
-PEDAL_FAMILY = {"pedal_bar", "pedal_bolt", "pedal_latch_lid",
-                "pedal_latch_finger", "pedal_jack_foot", "pedal_foot_pad",
-                "pedal_trrs_jack", "pedal_trrs_plug"}
+# The pedal-bar latches are a self-contained subassembly (bolt in its
+# channel, TPU finger potted in the lid, lid recessed into the bar; one
+# mirrored latch per foot): whitelist any pair WITHIN the family — a pedal
+# part clashing with a leg/chassis part (other than the GLOBAL_OK contacts
+# above) stays a reportable bug.
+PEDAL_FAMILY = {"pedal_bar", "pedal_bolt", "pedal_bolt_m", "pedal_latch_lid",
+                "pedal_latch_lid_m", "pedal_latch_finger"}
 
 
 # The knee-lever control core is a self-contained subassembly: the axle, bearings,
