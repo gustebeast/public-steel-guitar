@@ -111,7 +111,10 @@ LOBE_RC = 11.0                               # lobe axis radius (pivot -> lobe) 
                                              #   BELOW the Ø10 hub (z -5) -- else the tall follower jams the
                                              #   hub. Also the moment arm (ratio ≈ 100/11 = 9:1).
 LOBE_R  = 1.5                                # rounded lobe radius
-LOBE_WY = 3.0                                # each lobe's Y width (a short ridge per follower)
+LOBE_WY = 5.0                                # each lobe's / follower-tongue Y width. Widened from 3: the
+                                             #   cartridges move inboard (CART_INSET) off the bearing walls,
+                                             #   which frees the arm-outboard wall for a fatter (stronger)
+                                             #   tongue -- bounded by window<body (Ø6) and the ~1mm arm wall.
 CAM_TX  = 3.0                                # cam-plate thickness in X (the swing direction)
 CAM_Y0, CAM_Y1 = HUB_Y0 + 1.0, HUB_Y1 - 1.0  # cam-plate Y span (wide enough to span both followers,
                                              #   which sit flush against the bearing walls)
@@ -155,9 +158,10 @@ HS_PILOT_D  = HS_SPR_ID - 0.4       # 3.2: centre pilot (piston back + guide-pos
 HS_GPOST_LX = 3.0                   # guide-post body: coil-shoulder -> cup face (screw bears here)
 HS_PILOT_LX = 5.0                   # pilot length reaching into the coil ID (piston back & guide post)
 HS_ARM    = 4.0                     # follower-tongue Y width band
-FOLL_H    = 3.5                    # follower FLAT-face height (Z). At THROW=30 the lobe only rises ~1.5 mm
-                                   #   (was 4.3 at 45°), so a short face keeps the lobe on it -- and it now
-                                   #   fits WITHIN the channel instead of poking out the +Z roof.
+FOLL_H    = 6.0                    # follower FLAT-face height (Z). Only ~1.5 mm of it TRACKS the lobe at
+                                   #   THROW=30; the rest is STRENGTH -- a tall face makes the tongue stout
+                                   #   in the friction-bending (Z) direction. Bounded above by the hub
+                                   #   (follower top must stay -Z of it -- there is ~2 mm of margin at 6.0).
 FOLL_DZ   = 0.75                   # follower centre offset up from HS_Z (centres it on the lobe's rising arc)
 HS_Z      = HUB_TOP + 1.5           # piston / follower centre Z: the HS_ARM tongue spans the lobe band
                                     #   (5.66..8) and clears the hub below; the Ø6 body clears the boss
@@ -211,8 +215,12 @@ HS_CART_WY  = 8.8                            # cartridge outer Y -- FIXED (keeps
 # separate wall, no gap). (Earlier this aligned the block's OUTER face with the wall's outer face,
 # spreading the cartridges too far.)
 HS_POCKET_HW = HS_CART_WY / 2 + HS_CLR        # cartridge pocket (slot) half-width
-HS_YC   = WP_Y0 - HS_POCKET_HW                # HALF-STOP (+Y): pocket +Y edge flush with +Y bearing-wall inner face
-MAIN_YC = WN_Y1 + HS_POCKET_HW                # MAIN (-Y): pocket -Y edge flush with -Y bearing-wall inner face
+# CART_INSET moves BOTH cartridges inboard off the bearing walls (into the old dead centre gap), so each
+# lobe/follower sits at |Y|=6.0 instead of 7.2 -- that frees ~1mm of arm outboard of a WIDER lobe, letting
+# the tongue fatten to 5mm (was 3). The freed wall-side space is just unused; the centre gap shrinks.
+CART_INSET = 1.2
+HS_YC   = WP_Y0 - HS_POCKET_HW - CART_INSET   # HALF-STOP (+Y): pocket inset off the +Y bearing wall
+MAIN_YC = WN_Y1 + HS_POCKET_HW + CART_INSET   # MAIN (-Y): pocket inset off the -Y bearing wall
 HS_CART_Z1  = HS_ROOF_SPLIT + HS_ROOF_TZ     # cartridge +Z CAP top (< mount boss ~11.3)
 # INVERTED-U cartridge, OPEN on -Z (no separate roof): a solid +Z cap (toward the axle, narrow arc) + side
 # walls, open on -Z where the arm's arc is WIDEST. The HOUSING floor is the -Z retaining wall (relieved to
@@ -645,7 +653,7 @@ def _lever() -> cq.Workplane:
     # key: as the arm swings, its solid material JUST BELOW the lobe rotates UP into the follower's contact
     # zone -- so the recess must clear down to where that material comes from (~LOBE_RC + follower travel).
     # The arm keeps its full +X half (x 0..5) at the band, so it's a local notch, not a through-thin.
-    rec_zbot = -(LOBE_RC + LOBE_RC * math.sin(_THR) + 0.5)          # below the lobe by ~a throw's follower travel
+    rec_zbot = -(LOBE_RC + LOBE_RC * math.sin(_THR) + FOLL_H / 2 + 0.5)  # clears the (now taller) tongue's swept depth
     rec_ztop = -(LOBE_RC - 6.0)                                     # a bit above the lobe (clears the rising contact)
     for fy in (MAIN_YC, HS_YC):
         body = body.cut(box_at(6.5, LOBE_WY + 1.0, rec_ztop - rec_zbot,   # recess back at x=0 so the round
