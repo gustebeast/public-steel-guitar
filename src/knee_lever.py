@@ -105,17 +105,18 @@ HUB_TOP = HUB_D / 2                          # top of the round hub -- feel clea
 AXLE_Z  = 0.0                                # lever AXLE centre Z. The whole feel block is anchored to
                                              #   this (via feel_place()), so RAISING the axle later slides
                                              #   the cartridges up automatically -- no other edits needed.
-LOBE_RC = 8.0                                # lobe axis radius (pivot -> lobe) = axle->lobe Z. The whole
+LOBE_RC = 9.0                                # lobe axis radius (pivot -> lobe) = axle->lobe Z. The whole
                                              #   feel block tracks -LOBE_RC (feel_place), so this sets how
                                              #   close the contact -- and the swept recess above it -- ride
                                              #   toward the axle. The recess just carves the hub as it
                                              #   rises, so the real limit is the solid WEB it leaves to the
-                                             #   Ø5 axle bore: 8.0 leaves 1.6mm (measured), the thin-wall
-                                             #   floor (0.8mm risked being too weak for a torque boss).
-                                             #   Trades vs the old 11: ratio ARM_LEN/LOBE_RC = 100/8 =
-                                             #   12.5:1 (was 9.1), follower travel = 8*sin30 = 4.0mm (was
-                                             #   5.5) -- RETUNE the coil to suit. Raising THROW again would
-                                             #   swing the lobe higher, thinning the web -> raise LOBE_RC.
+                                             #   Ø5 axle bore: 9.0 leaves ~2.6mm (measured; each -1mm of
+                                             #   LOBE_RC costs 1mm of web, 0.8mm being the thin-wall floor).
+                                             #   Ratio ARM_LEN/LOBE_RC = 100/9 = 11.1:1, follower travel =
+                                             #   9*sin30 = 4.5mm. 9 (not 8) so the Ø1.4 feel coil keeps
+                                             #   fatigue headroom for the setscrew (10.3N knee ceiling vs
+                                             #   8N target). Raising THROW would swing the lobe higher,
+                                             #   thinning the web -> raise LOBE_RC.
 LOBE_R  = 1.5                                # rounded lobe radius
 LOBE_WY = 6.0                                # each lobe's / follower-tongue Y width -> a 6×6 SQUARE face.
                                              #   The two cartridges are flushed to the centre (dead wall gone)
@@ -151,17 +152,19 @@ SWING_X = LOBE_RC * math.sin(_THR) + CAM_TX  # cam +X reach at full throw (sizes
 # piston has a FLAT FOLLOWER face (spans the lobe Z-band) on a tongue that protrudes -X out of the
 # cartridge front; the coil preloads it forward against front side-lips.
 # Feel coil (see knee-lever-feel-spring memory): servos pull the strings, so the coil only makes FEEL +
-# return. 8N-at-knee x the 12.75:1 lever de-amplification = ~100N at the piston; that energy needs a
-# Ø6 x ~37mm coil (~19 turns Ø1.2 wire, ~9 N/mm -> ~8.5N). Y (not Z) is the binding axis, so the coil
-# sits in a Ø6.6 bore whose 1.1mm side walls are THINNER than the 1.6mm structural wall (cartridge outer
-# stays 8.8 -> drops into the current pocket, no bearing/cam changes). The Ø4 screw drives the coil
-# through a loose captive GUIDE POST (Ø3.2 pilot into the coil ID, Ø6 shoulder), not cup-on-coil.
-HS_SPR_OD   = 6.0                   # coil OD
-HS_SPR_WIRE = 1.2                   # coil wire dia
-HS_SPR_ID   = HS_SPR_OD - 2 * HS_SPR_WIRE      # 3.6 -> guide-post / piston pilot noses into this
-HS_SPR_FREE = 35.4                  # coil free length (~8N; bay + light-preload compression, fits 92mm)
-HS_SPR_INST = 34.0                  # coil length DRAWN = the bay (= coil at lightest preload, its longest)
-HS_PILOT_D  = HS_SPR_ID - 0.4       # 3.2: centre pilot (piston back + guide-post front) into the coil ID
+# return. At LOBE_RC=9 the 11.1:1 ratio turns the 8N-at-knee feel into ~89N at the piston over the 4.5mm
+# throw travel -> a k~17 N/mm coil. That force OVER-STRESSES Ø1.2 music wire (fatigue), so the wire is
+# Ø1.4: peak shear ~575 MPa with a 10.3N-at-knee fatigue ceiling, i.e. real setscrew headroom above the
+# 8N target. The tradeoff is length -- k~17 with Ø1.4 needs ~25 coils (~34.5mm solid), so the coil/
+# cartridge run longer than the old Ø1.2. Y (not Z) is the binding axis; the coil sits in a Ø6.6 bore
+# (cartridge outer stays 8.8 -> same pocket, no bearing/cam changes). The Ø4 screw drives it through a
+# loose captive GUIDE POST (Ø2.8 pilot into the now-Ø3.2 coil ID, Ø6 shoulder), not cup-on-coil.
+HS_SPR_OD   = 6.0                   # coil OD (arm width-limited -- can't grow to drop stress, hence Ø1.4 wire)
+HS_SPR_WIRE = 1.4                   # coil wire dia (up from 1.2: keeps peak shear fatigue-safe at ~89N)
+HS_SPR_ID   = HS_SPR_OD - 2 * HS_SPR_WIRE      # 3.2 -> guide-post / piston pilot noses into this
+HS_SPR_FREE = 42.0                  # coil free length = solid(34.5) + throw(4.5) + preload/clash margin
+HS_SPR_INST = 41.4                  # coil length DRAWN = bay (lightest preload ~0.6mm; full throw clears solid)
+HS_PILOT_D  = HS_SPR_ID - 0.4       # 2.8: centre pilot (piston back + guide-post front) into the coil ID
 HS_GPOST_LX = 3.0                   # guide-post body: coil-shoulder -> cup face (screw bears here)
 HS_PILOT_LX = 5.0                   # pilot length reaching into the coil ID (piston back & guide post)
 HS_ARM    = 4.0                     # follower-tongue Y width band
