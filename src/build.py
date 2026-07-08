@@ -95,6 +95,7 @@ PARTS = {
     "pedal_latch_lid": (lambda: heal(_PB("lid_plain")), "pctg/pedal_latch_lid.step", "PCTG — latch lid, +X foot (roofs the channel, thumb-pad slot, TPU finger socket; 2x M2)"),
     "pedal_latch_lid_trrs": (lambda: heal(_PB("lid_trrs")), "pctg/pedal_latch_lid_trrs.step", "PCTG — latch lid, -X foot (roofs the TRRS latch cavity + caps the plug cradle; kick-spring socket; 2x M2)"),
     "pedal_latch_finger": (lambda: heal(_PB("finger_part")), "tpu/pedal_latch_finger.step", "TPU — latch finger x2 (same print): +X foot = bolt return spring; -X foot = far-end KICK spring, engaged only over the last ~4.5 of opening (holding retracted is nearly free)"),
+    "pedal_detent_nub": (lambda: heal(_PB("nub_part")), "tpu/pedal_detent_nub.step", "TPU — detent nub x2 (Ø4x4, pressed into each lid): clicks into the post's closed groove — every latch holds itself CLOSED independent of the TRRS (user rule)"),
     "electronics_tray": (lambda: heal(__import__("src.electronics", fromlist=["e"]).electronics_tray()), "pctg/electronics_tray.step", "PCTG — compute-bay tray (drops into rail channels from above; tool-free SNAP mounts for Teensy+shield, Pi 5, 2x CS42448, buck, CAN transceiver — snap fingers need PCTG's ductility)"),
 }
 # Deck panels: each is a (base, colour) PAIR — same origin, print as ONE object
@@ -529,6 +530,7 @@ _COLORS = {
     "pedal_latch_lid":  (0.50, 0.58, 0.52),  # latch lid
     "pedal_latch_lid_trrs": (0.50, 0.58, 0.52),  # ... TRRS variant, -X foot
     "pedal_latch_finger": (0.12, 0.12, 0.13),  # TPU return finger (the only spring)
+    "pedal_detent_nub": (0.12, 0.12, 0.13),  # TPU hold-closed detent nub
     "pedal_trrs_jack":  (0.62, 0.64, 0.67),  # leg-side female TRRS (DEMO)
     "pedal_trrs_plug":  (0.15, 0.15, 0.17),  # bar-side right-angle male (DEMO)
     "build_counter":   (0.86, 0.08, 0.24),
