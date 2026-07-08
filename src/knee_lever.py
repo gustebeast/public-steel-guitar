@@ -445,6 +445,38 @@ def _cam_swept(step=2.0, extra_deg=3.0):
 _CAM_SWEPT = _cam_swept()                            # built once (module import); reused for every relief cut
 
 
+def _recess_swept(yc, step=3.0, fold=45.0):
+    """The follower TONGUE's clearance region swept through the lever's WHOLE motion, mapped into the ARM
+    frame -> the arm recess for one follower band. Two motions feed it:
+      * THROW 0..THROW  -- tongue ENGAGED (slid back by LOBE_RC*sin as it rides the rising lobe). At full
+        throw the tongue is deepest & most -X in the arm frame; its underside sets the sloped -Z wall
+        (~parallel to the piston at 30 deg -- the tightest -Z clearance).
+      * FOLD 0..-fold   -- tongue at REST while the lever folds flat toward +X for storage. In the arm
+        frame the rest tongue swings UP, and THAT (not the 0 deg rest) sets the +Z wall: a 0-deg-height wall
+        would be clipped as the lever folds. Past ~fold the tongue has swung -X of the arm face into open
+        air, so capping the sweep there loses no clearance.
+    A clearance box bounding tongue+nose (FOLL_H + 2*HS_CLR tall, opening from the lobe back into open air)
+    is swept and unioned; only its in-arm part removes material, so the recess hugs the motion -- far less
+    removed than the old rectangular notch, leaving the arm solid right behind the lobe."""
+    c = HS_CLR
+    zc = _FEEL_DZ + HS_Z + FOLL_DZ                       # follower centre, placed frame
+    x_hi, x_lo = 0.0, -13.0                              # lobe centre .. back into open air (past -X face)
+    tongue = box_at(x_hi - x_lo, LOBE_WY + 1.0, FOLL_H + 2 * c,
+                    x=(x_hi + x_lo) / 2, y=yc, z=zc)
+    def at(deg):
+        s = LOBE_RC * math.sin(math.radians(deg)) if deg > 0 else 0.0
+        return tongue.translate((-s, 0, 0)).rotate((0, 0, 0), (0, 1, 0), -deg)
+    degs = list(range(0, int(round(THROW)) + 1, int(step))) + \
+           [-d for d in range(int(step), int(fold) + 1, int(step))]
+    env = None
+    for d in degs:
+        env = at(d) if env is None else env.union(at(d))
+    return heal(env)
+
+
+_RECESS_SWEPT = _recess_swept(MAIN_YC)               # one band, built once; translated in Y for the other
+
+
 def _half_stop_piston() -> cq.Workplane:
     """The piston (printed): a square BODY (Ø6 footprint) that slides in the channel and seats the coil
     FRONT on its +X face, a centre PILOT boss that noses +X into the coil ID to keep it aligned, and a
@@ -671,16 +703,13 @@ def _lever() -> cq.Workplane:
     # arm's -X face (one per follower); the ridge only PROTRUDES in those two bands -- between and around
     # them it's buried in the solid arm (identical contact, one primitive), and the un-recessed spans keep
     # the arm stiff.
-    # Recess: removes the arm's -X HALF (x -6.5..0) at each lobe band, over a Z span that runs from just
-    # above the lobe down PAST it. The lobe protrudes -X into it (round contact). The deep -Z reach is the
-    # key: as the arm swings, its solid material JUST BELOW the lobe rotates UP into the follower's contact
-    # zone -- so the recess must clear down to where that material comes from (~LOBE_RC + follower travel).
-    # The arm keeps its full +X half (x 0..5) at the band, so it's a local notch, not a through-thin.
-    rec_zbot = -(LOBE_RC + LOBE_RC * math.sin(_THR) + FOLL_H / 2 + 0.5)  # clears the (now taller) tongue's swept depth
-    rec_ztop = -(LOBE_RC - 6.0)                                     # a bit above the lobe (clears the rising contact)
-    for fy in (MAIN_YC, HS_YC):
-        body = body.cut(box_at(6.5, LOBE_WY + 1.0, rec_ztop - rec_zbot,   # recess back at x=0 so the round
-                               x=-3.25, y=fy, z=(rec_ztop + rec_zbot) / 2))  # lobe PROTRUDES -X into it; Y
+    # Recess: instead of one oversized rectangular notch, cut the tongue's SWEPT-motion clearance envelope
+    # (_recess_swept) at each lobe band -- its walls hug the piston (sloped -Z wall ~parallel to the 30 deg
+    # piston; +Z wall set by the fold), so the arm keeps its material right behind the lobe. The lobe
+    # protrudes -X into the opening for round contact. The arm keeps its full +X half at each band, so each
+    # is a local notch, not a through-thin.
+    body = body.cut(_RECESS_SWEPT)                                              # -Y (MAIN) follower band
+    body = body.cut(_RECESS_SWEPT.translate((0, HS_YC - MAIN_YC, 0)))          # +Y (HALF-STOP) follower band
     body = body.union(cyl_y(2 * LOBE_R, 2 * LEVER_HW, y0=-LEVER_HW)        # ONE full-width lobe ridge; the
                       .translate((0, 0, -LOBE_RC)))                        #   spans between recesses bury in the arm
     body = body.cut(cyl_y(AXLE_D + 0.05, 2 * LEVER_HW + 2, y0=-LEVER_HW - 1))   # axle bore
