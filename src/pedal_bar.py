@@ -165,12 +165,17 @@ def _slot_cutter(lx: float, square_ls: float = 0.0) -> cq.Workplane:
     round side; the key flat faces the mouth as the latch's bearing plane),
     full height, opening -Y, 45° lead-in flares. square_ls ≠ 0 squares the
     back on that (inboard) side to fit the TRRS shaft's corner-fill."""
-    cut = box_at(SLOT_W, 19.0, BAR_H + 2, x=lx, y=YC - 7.5, z=BAR_H / 2)
+    # mouth box ends at y=0, where the r10.2 back circle is exactly SLOT_W
+    # wide — the wall meets the round back TANGENTIALLY (a longer box left a
+    # 0.2-thick curved sliver ridge between wall and circle)
+    cut = box_at(SLOT_W, 17.0, BAR_H + 2, x=lx, y=YC - 8.5, z=BAR_H / 2)
     cut = cut.union(cyl(SLOT_W, BAR_H + 2, z=-1).translate((lx, YC, 0)))
-    # full-width TOP-BAND cavity (EVERY slot — the shelf band is on every
-    # shaft): slides past the shaft's rectangular SHELF; the SOLID corners
-    # below it sit under the shelf's underside = positive hold-down
-    cut = cut.union(box_at(20.8, 27.4, 3.8, x=lx, y=YC - 3.3, z=18.5))
+    # TOP-BAND cavity (EVERY slot — the shelf band is on every shaft):
+    # slides past the shaft's rectangular SHELF; the SOLID corners below it
+    # sit under the shelf's underside = positive hold-down. Same SLOT_W as
+    # the walls and back at the circle's +10.2 tangent — no 0.2 ledges (the
+    # 20.0-wide shelf keeps its 0.2/side fit)
+    cut = cut.union(box_at(SLOT_W, 27.2, 3.8, x=lx, y=YC - 3.4, z=18.5))
     if square_ls:
         cut = cut.union(box_at(SLOT_W / 2, 27.4, BAR_H + 2,
                                x=lx + square_ls * SLOT_W / 4,
