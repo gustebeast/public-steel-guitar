@@ -7,10 +7,10 @@ shaft's round side, and the shaft's single key flat faces the MOUTH, where
 it is the latch bolt's bearing plane (the leg's single-D key aims
 everything; at the TRRS leg the slot's inboard back corner is SQUARED to
 fit that shaft's corner-fill extension, whose flat also face-seats the
-wall). Z: the plate rests on the foot caps; anti-lift is the SEATED TRRS
-plug (the plain end can float up until gravity returns it — fine in play,
-bar off in transport). Bar = one slim prism (Y -16..+15), ends just past
-each leg; each latch sits INBOARD of its leg.
+wall). Z: the plate rests on the foot caps; anti-lift is every shaft's
+SHELF band overhanging the slot's solid corners (the seated TRRS plug adds
+belt-and-braces at the -X foot). Bar = one slim prism (Y -16..+15), ends
+just past each leg; each latch sits INBOARD of its leg.
 
 Y RETENTION — one sliding-bolt latch per foot, both opening INBOARD; rigid
 lock, no flexing structural member. Closed, the bolt's thickened HEAD bears
@@ -19,21 +19,20 @@ bearing plane: normal pure Y, a tug cannot cam it open, wear cannot loosen
 it, seated Y float ~0.4 total (0.2 flat + 0.2 round-back seat). The thumb
 pad rides an integral post through an X slot in the lid.
 
-The two latches differ:
-- +X foot (pedal_bolt, 6.4 travel): keeps the 45° tip bevel — pushing the
-  bar on cams it aside and it SNAPS in; TPU finger return.
-- -X foot (pedal_bolt_trrs, 15.0 travel): the slider ALSO carries the male
-  TRRS plug (axis X, pointing at the leg), so the latch IS the connector
-  actuator: RETRACT the pad (the plug clears the leg's envelope), slide the
-  bar on/off freely, RELEASE — the far-end TPU kick spring shoves the
-  slider toward the leg — and THUMB-PRESS the pad home: the plug clicks
-  into the jack embedded in the shaft (legs.leg_shaft_trrs; wires up the
-  leg's Ø6 hollow centre). Deliberately NO tip bevel here: an un-retracted
-  install butts the shaft against the flat head and refuses — a cam could
-  only yield ~6 of the needed 15 and the leg would bend the barrel. The
-  seated TRRS detent (5-15 N) is the hold-closed force; the kick spring is
-  engaged only over the last ~4.5 of opening, so holding it retracted while
-  positioning the bar costs almost nothing.
+The LATCHES ARE IDENTICAL at both feet (15.0 travel, extended head, no
+bevel, far-end kick spring, detent-nub hold-closed): RETRACT both pads
+(the +X slot clears; at the -X foot the carried plug also clears the leg's
+envelope), slide the bar on/off freely, RELEASE — the kick springs shove
+the sliders toward the legs — and THUMB-PRESS each pad to its click. The
+-X slider is the SAME design with a TRRS MOUNT grown on: it carries the
+male plug (axis X, pointing at the leg), so that latch is also the
+connector actuator — the plug clicks into the jack embedded in the shaft
+(legs.leg_shaft_trrs; wires up the leg's Ø6 hollow centre). Deliberately NO
+tip bevel anywhere: an un-retracted install butts the shaft against the
+flat head and refuses — a cam could only yield ~6 of the needed 15 and, on
+the TRRS side, the leg would bend the barrel. The kick springs engage only
+over the last ~4.5 of opening, so holding the pads retracted while
+positioning the bar costs almost nothing.
 
 The plug (a STRAIGHT solder/molded TRRS plug, Ø~9 × ~18 body + Ø3.5 × 14
 barrel) sits in a cradle on the slider: backstop pushes it in, a Ø9 collar
@@ -92,20 +91,36 @@ SLOT_W = SHAFT_D + 0.4                     # 20.4 walls on the shaft's rounds;
                                            # the MOUTH and is the latch's
                                            # bearing plane)
 
-# ── shared latch geometry (x offsets from the leg axis, flipped by ls) ───
-BOLT_X0, BOLT_X1 = 4.0, 27.0
-BOLT_Y0, BOLT_Y1 = -13.6, -9.4             # thin BODY band (rides the channel)
-HEAD_X1, HEAD_Y1 = 9.0, -7.0               # blocking head: 0.2 off the shaft's
+# ── the LATCH — IDENTICAL at both feet (the TRRS foot's slider is the SAME
+#    design with the plug cradle grown on): 15.0 travel, NO bevel — always
+#    retract to install or remove (an un-retracted install REFUSES: a cam
+#    could only yield ~6 of the 15, and on the TRRS side would bend the
+#    barrel). x offsets from the leg axis, flipped inboard by ls. ─────────
+TRAVEL = 15.0
+BOLT_TIP, BOLT_X1 = -4.3, 27.0             # head/body tip: clears the corridor
+                                           # at 14.7 of the stroke (the plug at
+                                           # 14.4) and bears across ~11.4 of
+                                           # the shaft's key flat
+BOLT_Y0, BOLT_Y1 = -13.6, -9.4             # thin BODY band
+HEAD_Y1 = -7.0                             # blocking head: 0.2 off the shaft's
                                            # key flat (the print-bed face IS
                                            # the latch's bearing plane)
+HEAD_X1 = 9.0
 BOLT_Z0, BOLT_Z1 = 2.4, 14.7
-CH_Y0, CH_Y1 = -13.9, -9.1                 # body-channel walls (0.3 clr/side)
+CH_Y0, CH_Y1 = -13.9, -9.1                 # bolt-body lane (0.3 clr/side)
 CH_Z0 = 2.4                                # cavity floor
+CAV_X0, CAV_X1 = 10.0, 47.0                # ONE open-top cavity per latch
+CAV_Y0, CAV_Y1 = -13.9, 6.5                # (slider + cradle + kick spring
+                                           # + cable loop all live here)
 POST_X0, POST_X1 = 13.0, 17.0              # thumb-pad post through the lid
 PAD_X0, PAD_X1 = 12.5, 21.0
 PAD_Y0, PAD_Y1 = -14.5, -8.5
 PAD_Z0, PAD_Z1 = BAR_H + 0.3, BAR_H + 3.8
 FNG_T, FNG_W = 4.5, 4.0                    # TPU finger blade: X × Y
+FNG_X0 = 37.5                              # kick spring: presses the bolt
+                                           # body's end face only over the
+                                           # last ~4.5 of opening (holding
+                                           # retracted is nearly free)
 FNG_Z0, FNG_ZTOP = 2.7, 15.0
 FNG_BASE_H = 3.5
 LID_Z0 = 15.0
@@ -131,42 +146,18 @@ LOCK_X, LOCK_Y = LID_XB - 4.6, 7.6  # lid-lock detent nub: bar-top pocket; a
                                    # and detents extraction (locks BOTH lid
                                    # pieces: B butts A). No screws anywhere.
 
-# ── plain (+X) latch: 6.4 travel, snap-in tip bevel ──────────────────────
-A_TRAVEL = 6.4
-A_DP_X0, A_DP_X1, DP_Y1 = 10.0, 15.7, -6.7  # head's travel garage
-A_TAB_X1, TAB_Z1 = 28.2, 5.5               # low pusher tab → finger arm
-A_CH_X0, A_CH_X1 = 10.0, 39.5              # channel + finger bay
-A_FNG_X0 = A_TAB_X1                        # finger front rests on the tab
-
-# ── TRRS (-X) latch: 15.0 travel, the slider carries the plug ────────────
-# Seated (drawn) plug: jack mouth flush at the shaft surface (x' 10), barrel
-# Ø3.5 spans 10.2 → -3.8 (13.8 of the 14 insertion; the collar noses 0.8
-# into the shaft's counterbore). Retracted (+15): barrel tip at 11.2 — the
-# corridor (±10.2) is FULLY clear, the leg slides past nothing.
-# Parts (DigiKey): male = Same Sky SP-3541 (Ø3.5×11.5 barrel + Ø4.5×3 lead
-# = 14.5 to the body; 5×5×~12.1 body, 4 solder pins — carried pins-UP in
-# the cradle, wires solder from the open top before the lid goes on);
-# female = Same Sky SJ-43516-SMT-TR (14.0 mating depth), embedded in
-# legs.leg_shaft_trrs. Seated: jack mouth at the shaft surface (x' 10),
-# barrel tip at -4 (full 14 insertion, tip stays inside the jack body).
-B_TRAVEL = 15.0
+# ── TRRS delta (-X foot only): the slider's plug cradle ─────────────────
+# Retracted (+15): barrel tip at 11 — the corridor (±10.2) is FULLY clear.
+# Parts (DigiKey): male = Same Sky SP-3541 (Ø3.5×14.5 barrel + Ø4.5×3 lead
+# ring that stays 0.5 proud of the mouth at the full 14 insertion; 5×5×8
+# body, 4 solder pins — carried pins-UP in the cradle, wires solder from
+# the open top before the lid slides on); female = Same Sky
+# SJ-43516-SMT-TR (14.0 mating depth), embedded in legs.leg_shaft_trrs.
+# Seated (drawn): jack mouth at the shaft surface (x' 10), tip at -4.
 TR_Z = 8.7                                 # connector axis (bar-local z)
-B_BOLT_X0 = -4.3                           # blocking head/body tip: sized so
-                                           # the head clears the corridor at
-                                           # 14.7 of the stroke — the SAME
-                                           # time the plug clears (14.4); it
-                                           # also bears across ~11.4 of the
-                                           # chord flat (was 3.1)
-PLUG_TIP = -4.0                            # barrel tip (x', seated): the
-                                           # Ø3.5 barrel is 14.5 long, so at
-                                           # 14 insertion its Ø4.5 lead ring
-                                           # stays 0.5 proud of the mouth
+PLUG_TIP = -4.0                            # barrel tip (x', seated)
 BODY_X0, BODY_X1 = 13.5, 21.6              # SP-3541 body (5 × 5) in the cradle
 CRDL_X1 = 24.0                             # cradle backstop end
-B_CAV_X0, B_CAV_X1 = 10.0, 45.0            # one open-top latch cavity
-B_CAV_Y0, B_CAV_Y1 = -13.9, 6.5
-B_FNG_X0 = 34.5                            # kick spring: engaged only over
-                                           # the last ~4.5 of opening
 
 
 def _slot_cutter(lx: float, square_ls: float = 0.0) -> cq.Workplane:
@@ -176,14 +167,14 @@ def _slot_cutter(lx: float, square_ls: float = 0.0) -> cq.Workplane:
     back on that (inboard) side to fit the TRRS shaft's corner-fill."""
     cut = box_at(SLOT_W, 19.0, BAR_H + 2, x=lx, y=YC - 7.5, z=BAR_H / 2)
     cut = cut.union(cyl(SLOT_W, BAR_H + 2, z=-1).translate((lx, YC, 0)))
+    # full-width TOP-BAND cavity (EVERY slot — the shelf band is on every
+    # shaft): slides past the shaft's rectangular SHELF; the SOLID corners
+    # below it sit under the shelf's underside = positive hold-down
+    cut = cut.union(box_at(20.8, 27.4, 3.8, x=lx, y=YC - 3.3, z=18.5))
     if square_ls:
         cut = cut.union(box_at(SLOT_W / 2, 27.4, BAR_H + 2,
                                x=lx + square_ls * SLOT_W / 4,
                                y=YC - 3.3, z=BAR_H / 2))
-        # full-width TOP-BAND cavity: slides past the shaft's rectangular
-        # SHELF band; the SOLID corners below it sit under the shelf's
-        # underside = positive hold-down
-        cut = cut.union(box_at(20.8, 27.4, 3.8, x=lx, y=YC - 3.3, z=18.5))
     for s in (1, -1):
         cut = cut.union(
             cq.Workplane("XY")
@@ -203,25 +194,14 @@ def _bar_full() -> cq.Workplane:
     body = body.cut(_slot_cutter(LATCHES[0][0]))
     body = body.cut(_slot_cutter(LATCHES[1][0], LATCHES[1][1]))
 
-    # plain latch (+X foot) channel + head garage
-    lx, ls = LATCHES[0]
-    body = body.cut(box_at(A_CH_X1 - A_CH_X0, CH_Y1 - CH_Y0, BAR_H - CH_Z0 + 1,
-                           x=lx + ls * (A_CH_X0 + A_CH_X1) / 2,
-                           y=YC + (CH_Y0 + CH_Y1) / 2,
-                           z=(CH_Z0 + BAR_H + 1) / 2))
-    body = body.cut(box_at(A_DP_X1 - A_DP_X0, DP_Y1 - CH_Y0, BAR_H - CH_Z0 + 1,
-                           x=lx + ls * (A_DP_X0 + A_DP_X1) / 2,
-                           y=YC + (CH_Y0 + DP_Y1) / 2,
-                           z=(CH_Z0 + BAR_H + 1) / 2))
-
-    # TRRS latch (-X foot): one open-top cavity swallows the slider,
-    # cradle, plug travel, kick spring and cable service loop
-    lx, ls = LATCHES[1]
-    body = body.cut(box_at(B_CAV_X1 - B_CAV_X0, B_CAV_Y1 - B_CAV_Y0,
-                           BAR_H - CH_Z0 + 1,
-                           x=lx + ls * (B_CAV_X0 + B_CAV_X1) / 2,
-                           y=YC + (B_CAV_Y0 + B_CAV_Y1) / 2,
-                           z=(CH_Z0 + BAR_H + 1) / 2))
+    # the IDENTICAL latch cavity at each foot: one open-top pocket swallows
+    # the slider, (TRRS-side) cradle, plug travel, kick spring + cable loop
+    for lx, ls in LATCHES:
+        body = body.cut(box_at(CAV_X1 - CAV_X0, CAV_Y1 - CAV_Y0,
+                               BAR_H - CH_Z0 + 1,
+                               x=lx + ls * (CAV_X0 + CAV_X1) / 2,
+                               y=YC + (CAV_Y0 + CAV_Y1) / 2,
+                               z=(CH_Z0 + BAR_H + 1) / 2))
 
     # wiring TROUGH (open top; the lid roofs it)
     body = body.cut(box_at(TROUGH_X1 - TROUGH_X0, 16.5, BAR_H - 4.0 + 1,
@@ -277,27 +257,20 @@ def pedal_bar_b() -> cq.Workplane:
     return _bar_full().intersect(half).cut(_splice_prisms(0.2))
 
 
-def _bolt_core(lx: float, ls: float, bevel: bool,
-               x0: float = BOLT_X0) -> cq.Workplane:
-    """Bolt body + blocking head + thumb post/pad (shared by both latches).
-    x0 is the head/body tip: the TRRS latch extends it to B_BOLT_X0 so the
-    lock disengages at the same stroke point as the plug."""
-    body = box_at(BOLT_X1 - x0, BOLT_Y1 - BOLT_Y0, BOLT_Z1 - BOLT_Z0,
-                  x=lx + ls * (x0 + BOLT_X1) / 2,
+def _bolt_core(lx: float, ls: float) -> cq.Workplane:
+    """The latch slider — IDENTICAL design at both feet: extended bolt body
+    + blocking head (tip at BOLT_TIP: the lock disengages at the same
+    stroke point as a carried plug) + thumb post/pad + detent groove. No
+    bevel: always retract to install or remove."""
+    body = box_at(BOLT_X1 - BOLT_TIP, BOLT_Y1 - BOLT_Y0, BOLT_Z1 - BOLT_Z0,
+                  x=lx + ls * (BOLT_TIP + BOLT_X1) / 2,
                   y=YC + (BOLT_Y0 + BOLT_Y1) / 2,
                   z=(BOLT_Z0 + BOLT_Z1) / 2)
-    body = body.union(box_at(HEAD_X1 - x0, HEAD_Y1 - BOLT_Y0,
+    body = body.union(box_at(HEAD_X1 - BOLT_TIP, HEAD_Y1 - BOLT_Y0,
                              BOLT_Z1 - BOLT_Z0,
-                             x=lx + ls * (x0 + HEAD_X1) / 2,
+                             x=lx + ls * (BOLT_TIP + HEAD_X1) / 2,
                              y=YC + (BOLT_Y0 + HEAD_Y1) / 2,
                              z=(BOLT_Z0 + BOLT_Z1) / 2))
-    if bevel:   # snap-in entry ramp (plain latch only — see header)
-        body = body.cut(cq.Workplane("XY")
-                        .polyline([(ls * x0, BOLT_Y0),
-                                   (ls * (x0 + 3.0), BOLT_Y0),
-                                   (ls * x0, BOLT_Y0 + 3.0)])
-                        .close().extrude(BOLT_Z1 - BOLT_Z0 + 2)
-                        .translate((lx, YC, BOLT_Z0 - 1)))
     body = body.union(box_at(POST_X1 - POST_X0, BOLT_Y1 - BOLT_Y0,
                              PAD_Z0 - BOLT_Z1,
                              x=lx + ls * (POST_X0 + POST_X1) / 2,
@@ -318,30 +291,23 @@ def _bolt_core(lx: float, ls: float, bevel: bool,
 
 
 def pedal_bolt() -> cq.Workplane:
-    """Plain (+X foot) bolt, drawn CLOSED: snap-in bevel, pusher tab for its
-    TPU return finger. Slide 6.4 inboard to release."""
-    lx, ls = LATCHES[0]
-    body = _bolt_core(lx, ls, bevel=True)
-    body = body.union(box_at(A_TAB_X1 - BOLT_X1, BOLT_Y1 - BOLT_Y0,
-                             TAB_Z1 - BOLT_Z0,
-                             x=lx + ls * (BOLT_X1 + A_TAB_X1) / 2,
-                             y=YC + (BOLT_Y0 + BOLT_Y1) / 2,
-                             z=(BOLT_Z0 + TAB_Z1) / 2))
-    return body
+    """+X foot slider, drawn CLOSED: the bare latch (retract 15, release,
+    thumb-press to the detent click)."""
+    return _bolt_core(*LATCHES[0])
 
 
 def pedal_bolt_trrs() -> cq.Workplane:
-    """TRRS (-X foot) slider, drawn CLOSED/SEATED: extended bolt (no bevel —
-    an un-retracted install must REFUSE, not half-cam into the barrel; tip
-    at B_BOLT_X0 so lock and plug disengage together) + bridge + open-top
-    plug CRADLE for the SP-3541. The plug drops in pins-UP (solder access
-    from the open top before the lid goes on): U-channel walls locate the
-    5-wide body, the backstop pushes it in, a SIDE M2 set screw (Ø2.2
-    self-tap, CLAUDE.md rule) pinches the body so retraction pulls it back
-    out of the jack. At closed the body face sits 0.5 off the shaft;
-    nothing enters the leg but the barrel."""
+    """-X foot slider, drawn CLOSED/SEATED: the SAME latch design with the
+    TRRS MOUNT grown on — bridge + open-top plug CRADLE for the SP-3541.
+    The plug drops in pins-UP (solder access from the open top before the
+    lid slides on): U-channel walls locate the 5-wide body, the backstop
+    pushes it in, a SIDE M2 set screw (Ø2.2 self-tap, CLAUDE.md rule)
+    pinches the body so retraction pulls it back out of the jack. At closed
+    the body face sits 0.5 off the shaft; nothing enters the leg but the
+    barrel. An un-retracted install butts the shaft on the flat head and
+    REFUSES (no bevel) — it cannot bend the barrel."""
     lx, ls = LATCHES[1]
-    body = _bolt_core(lx, ls, bevel=False, x0=B_BOLT_X0)
+    body = _bolt_core(lx, ls)
     # bridge: bolt body band → cradle wall
     body = body.union(box_at(8.0, 6.0, 8.0,
                              x=lx + ls * 16.0, y=YC - 6.6, z=TR_Z))
@@ -363,20 +329,9 @@ def pedal_bolt_trrs() -> cq.Workplane:
     return body
 
 
-def lid_plain() -> cq.Workplane:
-    lx, ls = LATCHES[0]
-    return pedal_latch_lid(lx, ls, A_LID_X0, A_LID_X1, LID_Y1, A_FNG_X0, A_M2)
-
-
-def lid_trrs() -> cq.Workplane:
-    lx, ls = LATCHES[1]
-    return pedal_latch_lid(lx, ls, B_LID_X0, B_LID_X1, 7.0, B_FNG_X0, B_M2)
-
-
 def finger_part() -> cq.Workplane:
     """The single printed TPU finger (export once, print 2)."""
-    lx, ls = LATCHES[0]
-    return pedal_latch_finger(lx, ls, A_FNG_X0, (CH_Y0 + CH_Y1) / 2)
+    return pedal_latch_finger(*LATCHES[0])
 
 
 def _lid_full() -> cq.Workplane:
@@ -391,18 +346,18 @@ def _lid_full() -> cq.Workplane:
             .polyline([(-15.3, 15.0), (8.3, 15.0), (6.7, 19.0), (-13.7, 19.0)])
             .close().extrude(LID_XB - LID_XA))
     body = cq.Workplane("XY").add(prof.val()).translate((LID_XA, YC, 0))
-    # thumb-post slots + finger sockets + latch detent-nub pockets
-    for (lx, ls), travel, fng_x0, fng_yc in (
-            (LATCHES[0], A_TRAVEL, A_FNG_X0, (CH_Y0 + CH_Y1) / 2),
-            (LATCHES[1], B_TRAVEL, B_FNG_X0, 0.0)):
-        body = body.cut(box_at(POST_X1 - POST_X0 + travel + 0.6,
+    # thumb-post slots + finger sockets + latch detent-nub pockets — the
+    # SAME stations at both feet (the latches are identical)
+    for lx, ls in LATCHES:
+        body = body.cut(box_at(POST_X1 - POST_X0 + TRAVEL + 0.6,
                                BOLT_Y1 - BOLT_Y0 + 0.6, BAR_H - LID_Z0 + 2,
-                               x=lx + ls * (POST_X0 - 0.3 + POST_X1 + travel + 0.3) / 2,
+                               x=lx + ls * (POST_X0 - 0.3 + POST_X1 + TRAVEL + 0.3) / 2,
                                y=YC + (BOLT_Y0 + BOLT_Y1) / 2,
                                z=(LID_Z0 + BAR_H) / 2))
         body = body.cut(box_at(FNG_T + 0.8, FNG_W + 0.8, FNG_BASE_H,
-                               x=lx + ls * (fng_x0 + FNG_T / 2),
-                               y=YC + fng_yc, z=LID_Z0 + FNG_BASE_H / 2))
+                               x=lx + ls * (FNG_X0 + FNG_T / 2),
+                               y=YC + (CH_Y0 + CH_Y1) / 2,
+                               z=LID_Z0 + FNG_BASE_H / 2))
         # TPU detent-nub press pocket (Ø3.8 for the Ø4 nub): the nub bulges
         # into the post lane and clicks into the post's closed groove
         body = body.cut(cyl(3.8, BAR_H - LID_Z0 + 2, z=LID_Z0 - 1)
@@ -433,19 +388,19 @@ def pedal_lid_b() -> cq.Workplane:
     return _lid_full().intersect(half)
 
 
-def pedal_latch_finger(lx: float, ls: float, fng_x0: float,
-                       yc_off: float) -> cq.Workplane:
-    """TPU finger: base potted in the lid, blade hangs down. On the plain
-    latch it is the return spring (rests on the pusher tab); on the TRRS
-    latch it sits at the FAR end as the kick spring — engaged only over the
-    last ~4.5 of opening, so holding the latch retracted is nearly free,
-    and release shoves the slider toward the leg (thumb completes the TRRS
-    click). Symmetric boxes → ONE printed part serves both (print 2)."""
+def pedal_latch_finger(lx: float, ls: float) -> cq.Workplane:
+    """TPU KICK finger (identical at both feet): base potted in the lid,
+    blade hangs down at the far end of the slider's travel — engaged only
+    over the last ~4.5 of opening (pressing the bolt body's end face), so
+    holding the latch retracted is nearly free, and release shoves the
+    slider toward the leg (thumb completes the click). Symmetric boxes →
+    ONE printed part serves both (print 2)."""
+    yc = YC + (CH_Y0 + CH_Y1) / 2
     blade = box_at(FNG_T, FNG_W, FNG_ZTOP - FNG_Z0,
-                   x=lx + ls * (fng_x0 + FNG_T / 2), y=YC + yc_off,
+                   x=lx + ls * (FNG_X0 + FNG_T / 2), y=yc,
                    z=(FNG_Z0 + FNG_ZTOP) / 2)
     base = box_at(FNG_T + 0.8, FNG_W + 0.8, FNG_BASE_H,
-                  x=lx + ls * (fng_x0 + FNG_T / 2), y=YC + yc_off,
+                  x=lx + ls * (FNG_X0 + FNG_T / 2), y=yc,
                   z=FNG_ZTOP + FNG_BASE_H / 2)
     return blade.union(base)
 
@@ -511,10 +466,8 @@ def assembly_parts():
             ("pedal_lid_b", pedal_lid_b()),
             ("pedal_bolt", pedal_bolt()),
             ("pedal_bolt_trrs", pedal_bolt_trrs()),
-            ("pedal_latch_finger_0", pedal_latch_finger(
-                lx_a, ls_a, A_FNG_X0, (CH_Y0 + CH_Y1) / 2)),
-            ("pedal_latch_finger_1", pedal_latch_finger(
-                lx_b, ls_b, B_FNG_X0, 0.0)),
+            ("pedal_latch_finger_0", pedal_latch_finger(lx_a, ls_a)),
+            ("pedal_latch_finger_1", pedal_latch_finger(lx_b, ls_b)),
             ("pedal_detent_nub_0", pedal_detent_nub(lx_a, ls_a)),
             ("pedal_detent_nub_1", pedal_detent_nub(lx_b, ls_b)),
             ("pedal_detent_nub_2", _lock_nub()),
