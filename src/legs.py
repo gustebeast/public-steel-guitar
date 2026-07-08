@@ -46,7 +46,29 @@ flanks + glue; the joint is invisible from outside. Sockets sit at x −18.4
 dovetails (positions computed in chassis.py; see LEG_STATIONS_X there). The socket is a separate part ONLY because the chassis can't
 print below its bed, which is exactly the case glue is for.
 
-All printed standing (tubes along Z): threads print cleanly, no supports.
+PRINT PLAN (all standing, tubes along Z — the threads, gland, keyed bore and
+waist are all round toleranced fits that need vertical circularity; sideways
+Z-ovality would eat the 0.2..0.4 fits and roughen the thread flanks):
+- SEGMENTS + SHAFT: **PCTG**, not PETG-GF. Standing prints carry bending
+  across layer lines, and a kick is ENERGY-limited (~2-5 J): absorbable
+  energy scales with strength²/stiffness. PCTG's interlayer strength is
+  ~85-90% of bulk AND it yields ductilely at ~40 mm of mid-span flex →
+  ~8-9 J before failure; PETG-GF's fibers do nothing across layers
+  (interlayer ~15-25 MPa, brittle, high E → ~2 J: a solid kick snaps it at
+  a layer line, and a fatter GF tube barely helps). The trade is sway
+  (PCTG E ≈ 1.9 vs 4.5 GPa → ~2.3× body sway under knee-lever/bar loads);
+  if the first print wobbles, the fix is SECTION (Ø30→Ø36 tube, wall 5,
+  matches GF stiffness and keeps the 4× impact margin), not GF.
+- SOCKET stays PETG-GF: 32 mm barrel = negligible moment arm across its
+  layers, glued into the rail, and it lives in the sustained ground-
+  reaction path where GF's creep resistance pays.
+- SLEEVE was already PCTG (the pinch collar must flex). FOOT/WASHERS TPU.
+- Settings that buy Z-strength: LOW part-cooling fan (0-30%), dry filament,
+  0.2 layers; the 4 mm tube walls resolve as solid perimeter rings. The
+  Ø20×210 shaft is the only slender print (~10:1): brim + slow outer wall.
+- Each junction's TPU gland washer doubles as an impact isolator, and the
+  bell-over-spigot overlap double-walls the joint zones — the plain tube
+  mid-spans are the governing sections (the PCTG numbers above).
 """
 
 from __future__ import annotations
@@ -198,6 +220,12 @@ def leg_socket() -> cq.Workplane:
     body = body.cut(_thread((TH_MINOR - TH_CLR) / 2, TH_LEN + 2 + TH_LEAD,
                             clr=0.8, phase_deg=60.0)
                     .translate((0, 0, -BARREL_L - 1 - TH_LEAD)))
+    # bore-ceiling 45° cone (printed mouth-down, the bore roof was a flat
+    # Ø30.4 internal bridge): self-supporting to Ø24, the small remaining
+    # disc bridges cleanly; stops 2.8 under the tenon's solid top disc
+    body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCone(
+        (TH_MINOR + TH_CLR) / 2, 12.0, 3.2,
+        cq.Vector(0, 0, -BARREL_L - 1 + TH_LEN + 2), cq.Vector(0, 0, 1))))
     return heal(body)   # helical-thread booleans need a ShapeFix pass
 
 
@@ -227,6 +255,13 @@ def leg_segment() -> cq.Workplane:
                     .translate((0, 0, -1 - TH_LEAD)))   # extra lead below mouth
     # hollow core (weight)
     body = body.cut(cyl(TUBE_ID, SEG_L - 2 * TH_LEN - 14, z=TH_LEN + 4))
+    # bore-ceiling 45° cone (printed bell-down, the female bore's roof was a
+    # flat Ø30.4 internal bridge): rises into the core — fully self-
+    # supporting; the spigot-tip clearance below is untouched
+    body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCone(
+        (TH_MINOR + TH_CLR) / 2, TUBE_ID / 2,
+        (TH_MINOR + TH_CLR - TUBE_ID) / 2,
+        cq.Vector(0, 0, TH_LEN), cq.Vector(0, 0, 1))))
     return heal(body)   # helical-thread booleans need a ShapeFix pass
 
 
