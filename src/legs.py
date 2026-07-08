@@ -361,38 +361,36 @@ def leg_shaft() -> cq.Workplane:
 
 
 # TRRS dock (the -X/+Y leg only — see pedal_bar.py for the mating story):
-# a PJ-320 / SJ-43516-class SMT TRRS JACK (~11×12×6) embeds in the shaft
-# through the key flat, its mouth 2.5 PROUD of the flat (that nose enters a
-# recess in the bar's slot back as the last-2.3mm fine alignment). Wires
-# solder to its pads and run up the CABLE GROOVE in the flat — the sleeve
-# rides over the groove, and above the sleeve the cable continues inside the
-# hollow segments to the chassis.
-TRRS_Z = 18.5                          # jack axis (shaft-local; = plate mid)
-TRRS_JACK_W, TRRS_JACK_L, TRRS_JACK_H = 11.0, 12.0, 6.0
-TRRS_PROUD = 2.5                       # mouth proud of the key flat
-GROOVE_W, GROOVE_D = 4.0, 2.5          # cable way in the flat, full length up
+# a PJ-320 / SJ-43516-class SMT TRRS JACK (~12×11×5) embeds in the shaft
+# with its mating axis along X, mouth flush with the Ø20 at the INBOARD
+# face (local -X; the rotated +Y-rail stack turns that toward the bar's
+# latch side). The bar's latch slider carries the male plug and drives it
+# in/out along X. Wires solder to the jack pads and run UP the Ø6 hollow
+# CENTER BORE to the shaft top, then inside the sleeve/segments to the
+# chassis.
+TRRS_Z = 17.7                          # jack axis (shaft-local; = bar-local
+                                       # 8.7 — low enough that the bar-side
+                                       # cradle tube clears the lid plane)
+TRRS_JACK_L, TRRS_JACK_W, TRRS_JACK_H = 12.0, 11.0, 5.0   # X × Y × Z
+WIRE_BORE_D = 6.0                      # hollow centre: jack pocket → top
 
 
 def leg_shaft_trrs() -> cq.Workplane:
-    """The -X/+Y leg's shaft: leg_shaft() + the TRRS jack pocket (opens at
-    the key flat; the jack sits mostly inside the Ø20, mouth proud), a
-    barrel-tip well behind it (a TRRS plug inserts ~14 — the tip passes the
-    jack's open back), and the cable groove up the flat. Same print
-    orientation (lying on the flat; the pocket faces DOWN at the bed over
-    its 12mm — short anchored bridge, or a dab of support)."""
+    """The -X/+Y leg's shaft: leg_shaft() + the X-facing TRRS jack pocket
+    (mouth flush at the inboard face, Ø10×1.2 counterbore so the slider's
+    barrel collar noses in at full insertion), a barrel-tip well behind the
+    jack's open back (full 14 insertion), and the Ø6 wire bore up the
+    centre. Same lying-flat print: the pocket opens SIDEWAYS (clean
+    vertical walls, no bridge); the centre bore prints as a long horizontal
+    hole — acceptable sag, nothing fits it tightly."""
     body = leg_shaft()
-    # jack pocket: local y -10.3 (clear of the proud mouth, outside the
-    # flat) .. +3.2 (0.5 behind the jack back — 1.6 wall to the chord after
-    # the tip well)
-    body = body.cut(box_at(TRRS_JACK_W + 0.4, 13.5, TRRS_JACK_H + 0.6,
-                           y=-3.55, z=TRRS_Z))
+    # jack pocket: local -X (inboard once placed), mouth at the Ø20 surface
+    body = body.cut(box_at(13.0, TRRS_JACK_W + 0.4, TRRS_JACK_H + 0.6,
+                           x=-11.5 + 13.0 / 2 + 1.0, z=TRRS_Z))
     # barrel-tip well (the seated plug tip pokes past the jack's open back)
-    body = body.cut(box_at(5.0, 2.2, 5.0, y=4.3, z=TRRS_Z))
-    # cable groove up the flat (from the pocket to the shaft top)
-    body = body.cut(box_at(GROOVE_W, GROOVE_D + 0.4,
-                           SHAFT_L - (TRRS_Z + TRRS_JACK_H / 2) + 1,
-                           y=-(SHAFT_FLAT_Y + 0.4) + (GROOVE_D + 0.4) / 2,
-                           z=(TRRS_Z + TRRS_JACK_H / 2 + SHAFT_L + 1) / 2))
+    body = body.cut(box_at(2.9, 5.0, 5.0, x=3.45, z=TRRS_Z))
+    # Ø6 wire bore: jack pocket → shaft top (wires up the hollow centre)
+    body = body.cut(cyl(WIRE_BORE_D, SHAFT_L - 19.5 + 1, z=19.5))
     return body
 
 
