@@ -311,29 +311,18 @@ def pedal_bolt_trrs() -> cq.Workplane:
     # bridge: bolt body band → cradle wall
     body = body.union(box_at(8.0, 6.0, 8.0,
                              x=lx + ls * 16.0, y=YC - 6.6, z=TR_Z))
-    # cradle: floor (extended forward under the retainer) + two walls +
-    # backstop (open top; the lid caps it)
-    body = body.union(box_at(CRDL_X1 - 11.9, 8.8, 1.3,
-                             x=lx + ls * (11.9 + CRDL_X1) / 2,
-                             y=YC, z=5.55))
-    for s in (1, -1):
-        body = body.union(box_at(CRDL_X1 - (BODY_X0 + 0.4), 1.5, 7.0,
-                                 x=lx + ls * (BODY_X0 + 0.4 + CRDL_X1) / 2,
-                                 y=YC + s * 3.65, z=9.4))
-    body = body.union(box_at(CRDL_X1 - BODY_X1 - 0.2, 8.8, 8.0,
-                             x=lx + ls * (BODY_X1 + 0.2 + CRDL_X1) / 2,
-                             y=YC, z=8.9))
-    # FRONT RETAINER wall: a top-open Ø4.7 keyhole passes the plug's Ø4.5
-    # lead ring at drop-in; the wall's back face bears on the body's front
-    # face (0.2 slack) so retraction positively PULLS the plug out of the
-    # jack — visible geometry doing the retention (replaced a side set
-    # screw pinching the body)
-    wall = box_at(1.2, 8.8, 8.0, x=lx + ls * 12.7, y=YC, z=8.9)
-    wall = wall.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        2.35, 2.0, cq.Vector(lx + ls * 11.9, YC, TR_Z), cq.Vector(ls, 0, 0))))
-    wall = wall.cut(box_at(2.0, 4.7, 6.0, x=lx + ls * 12.7, y=YC,
-                           z=TR_Z + 3.0))
-    body = body.union(wall)
+    # cradle — SUBTRACTIVE (one prism, hollowed; additive walls made wonky
+    # sliver geometry): box → open-roof middle cut for the 5×5 body →
+    # Ø4.8 hole in the -x wall that passes the barrel + Ø4.5 lead ring but
+    # NOT the body. That wall bears on the body's front face (0.2) so
+    # retraction PULLS the plug out of the jack; the +x wall is the
+    # backstop. Assembly: thread the barrel through the hole (slight
+    # tilt), lower the body in, solder from the open roof; the lid caps it.
+    crdl = box_at(12.0, 8.8, 9.0, x=lx + ls * 17.9, y=YC, z=8.4)
+    crdl = crdl.cut(box_at(8.5, 5.5, 7.6, x=lx + ls * 17.55, y=YC, z=9.9))
+    crdl = crdl.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        2.4, 3.0, cq.Vector(lx + ls * 11.4, YC, TR_Z), cq.Vector(ls, 0, 0))))
+    body = body.union(crdl)
     return body
 
 
@@ -470,10 +459,26 @@ def _trrs_plug() -> cq.Workplane:
     for px in (15.0, 17.0, 19.0, 21.0):     # solder pins, facing UP
         p = p.union(box_at(0.6, 0.6, 2.5, x=lx + ls * px, y=YC,
                            z=TR_Z + 2.5 + 1.25))
-    # the soldered 4-wire HARNESS: hugs all four pin tops and exits +x
-    # toward the wiring trough (service loop implied)
-    p = p.union(box_at(22.0, 3.5, 1.8, x=lx + ls * 25.0, y=YC, z=13.9))
     return p
+
+
+def _wire_bar() -> cq.Workplane:
+    """DEMO bar-side harness (26 AWG bucket — the CAN pair + sensor supply
+    reuse the cabinet's wire_can gauge): from the plug pins, through the
+    latch cavity (the ~15 service loop lives here) into the wiring trough
+    toward the mid-bar electronics."""
+    lx, ls = LATCHES[1]
+    return cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        1.3, 56.0, cq.Vector(lx + ls * 14.0, YC, 12.8), cq.Vector(ls, 0, 0)))
+
+
+def _wire_leg() -> cq.Workplane:
+    """DEMO leg-side harness: from the jack pads up the shaft's Ø6 hollow
+    centre bore (stub — continues inside the sleeve/segments to the
+    chassis)."""
+    lx, _ = LATCHES[1]
+    return cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        1.3, 28.0, cq.Vector(lx, YC, 11.4), cq.Vector(0, 0, 1)))
 
 
 def assembly_parts():
@@ -492,4 +497,6 @@ def assembly_parts():
             ("pedal_detent_nub_1", pedal_detent_nub(lx_b, ls_b)),
             ("pedal_detent_nub_2", _lock_nub()),
             ("pedal_trrs_jack", _trrs_jack()),
-            ("pedal_trrs_plug", _trrs_plug())]
+            ("pedal_trrs_plug", _trrs_plug()),
+            ("pedal_wire_0", _wire_bar()),
+            ("pedal_wire_1", _wire_leg())]
