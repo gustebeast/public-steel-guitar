@@ -453,11 +453,15 @@ def _half_stop_piston() -> cq.Workplane:
     the preloaded coil can't eject it."""
     body = box_at(HS_BODY_BX - HS_BODY_X0, HS_PISTON_WY, HS_PISTON_WZ,
                   x=(HS_BODY_X0 + HS_BODY_BX) / 2, y=HS_YC, z=HS_Z)
-    # follower: a TALL FLAT tongue (its -X face is the contact). The centred lobe RISES ~3.4 mm in Z over
-    # the throw, so the flat face is FOLL_H tall and offset up (+FOLL_DZ) to keep the rounded lobe on it
-    # from rest to full throw -> bounded travel, no slip-off.
-    foll = box_at(HS_BODY_X0 - HS_NOSE_TIPX, HS_FOLLOW_WY, FOLL_H,
-                  x=(HS_NOSE_TIPX + HS_BODY_X0) / 2, y=HS_YC, z=HS_Z + FOLL_DZ)
+    # follower: a tongue ending in a ROUNDED NOSE (half-cylinder, axis Y -> round in X-Z, flat across Y).
+    # The round tip keeps a clean TANGENT contact on the arm through the whole throw -- it can't edge-load
+    # the way a flat -X face would when the arm rotates. Behind the nose a box (height FOLL_H, offset up by
+    # FOLL_DZ) spans the lobe's ~3.4mm Z-excursion so the tip stays on the lobe from rest to full throw.
+    _nose_r = FOLL_H / 2                                                    # round nose radius = half the face
+    foll = box_at(HS_BODY_X0 - (HS_NOSE_TIPX + _nose_r), HS_FOLLOW_WY, FOLL_H,
+                  x=(HS_NOSE_TIPX + _nose_r + HS_BODY_X0) / 2, y=HS_YC, z=HS_Z + FOLL_DZ)
+    foll = foll.union(cyl_y(2 * _nose_r, HS_FOLLOW_WY, y0=HS_YC - HS_FOLLOW_WY / 2)
+                      .translate((HS_NOSE_TIPX + _nose_r, 0, HS_Z + FOLL_DZ)))    # rounded -X tip
     pilot = (cyl(HS_PILOT_D, HS_PILOT_LX, z=HS_BODY_BX)                    # +X boss centring the coil ID
              .rotate((0, 0, 0), (0, 1, 0), 90).translate((0, HS_YC, HS_Z)))
     return heal(body.union(foll).union(pilot))
@@ -615,6 +619,18 @@ def _housing() -> cq.Workplane:
         # with the tension insert. Engagement is now geometry-set, not screw-adjustable.)
         # (no back-wall access bore: the housing stops at the pocket back, so the tension screw's hex
         #  simply protrudes into open air past it -- reached by a driver directly)
+    # CENTRE-WALL removal: each pocket keeps a full HS_HOUS_WALL on its INBOARD side, but the two
+    # cartridges only leave a ~0.6mm gap between them -- so those two inboard walls merge into one solid
+    # central slab that BOTH cartridges clip into by ~2.3mm each. It isn't a printable wall anyway. Cut it
+    # out in the pocket Z-band only: the floor shelf below (the -Z piston retainer) and the cap above stay,
+    # now tying the two halves into one span. The pistons sit at |Y| >= HS_PISTON_WY/2 = clear of the
+    # centre, so no piston loses -Z support. Skip if the cartridges are far enough apart to leave no wall.
+    _clr_hw = (hs_pocket_hw() + HS_HOUS_WALL) - HS_YC + 0.1
+    if _clr_hw > 0:
+        _cx0, _cx1 = HS_POCKET_X0, HS_BACK_X + 2.0 + HS_SETBACK      # span both cartridges (HS is slid +X)
+        _cz0, _cz1 = HS_FLOOR_Z - HS_CLR, HS_CART_Z1 + HS_CLR        # pocket void Z (floor/cap left intact)
+        w = w.cut(feel_place(box_at(_cx1 - _cx0, 2 * _clr_hw, _cz1 - _cz0,
+                                    x=(_cx0 + _cx1) / 2, y=0.0, z=(_cz0 + _cz1) / 2)))
     # front-bottom RELIEF: open the housing floor below each cartridge FRONT where the swinging arm
     # sweeps (X ~ -10..-18, the front ~8mm) so the arm clears. The clamp, coil bay and pocket back
     # (X < -20) are untouched -- the arm never reaches them. Cut BEFORE the stop boss (whose cup is
