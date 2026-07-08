@@ -254,7 +254,7 @@ HS_POCKET_X0 = SWING_X              # housing pocket front (cartridge front cant
 HS_BSTOP_BORE   = 5.0               # hollow bore -- clears the M4 tension-screw hex-key driver
 HS_BSTOP_OD     = 9.0               # thread crest (major) OD; the drive flange stays just under the cartridge pitch
 HS_TH_PITCH     = 2.0               # self-supporting 45deg thread pitch (whole-turn engagement)
-HS_TH_DEPTH     = 0.5               # flank depth <= pitch/2 (with margin); minor = OD - 2*depth
+HS_TH_DEPTH     = 0.75              # flank depth <= pitch/2 (=1.0, margin kept); deeper flanks = more grip/prevailing torque
 HS_TH_MINOR     = HS_BSTOP_OD - 2 * HS_TH_DEPTH   # 8.0 -> wall to the Ø5 bore = 1.5mm
 HS_TH_CLR       = 0.4               # diametral thread clearance on the MALE side (TIGHTER than the 0.8 tested loose fit)
 HS_BSTOP_ENGAGE = 4.0               # engagement in the boss = 2 turns (the leg sits 1.44mm behind -> can't go deeper)
@@ -703,7 +703,12 @@ def _housing() -> cq.Workplane:
     slot_h = LOBE_RC + 2 * LOBE_R + 3
     w = w.cut(box_at(2 * SWING_X + 4, cw, slot_h, x=0, y=HUB_YC,          # cam swing slot (now -Z, around
                      z=-(slot_h / 2 + PIVOT_BOSS_D / 2 + 0.5)))          #   the -Z lobe; clears the bosses)
-    for dx, dy in ((0.0, MAIN_YC - HS_YC), (HS_SETBACK, 0.0)):
+    # SYMMETRIC single prism: BOTH slots run to the same backmost (retracted) X (dx = HS_SETBACK), so the
+    # housing is one uniform prism -- the MAIN vs HALF-STOP distinction is purely where you set that slot's
+    # hollow back-stop screw (either cartridge can go in either slot). The forward-set (main) cartridge
+    # leaves ~HS_SETBACK of empty pocket behind it = its screw travel.
+    for dy in (MAIN_YC - HS_YC, 0.0):
+        dx = HS_SETBACK
         yc  = HS_YC + dy
         bx0, bx1 = HS_POCKET_X0 + dx, HS_HOUS_BACK + dx
         # constant-wall shell (/\ bottom parallels the pocket /\) + the /\ pocket cut (self-supporting,
@@ -758,9 +763,9 @@ def _housing() -> cq.Workplane:
     # heal a threaded part). Nominal thread; the printed screw carries the clearance (HS_TH_CLR). A short
     # nut cutter (2 turns) per cartridge, mapped into the -Z/-X placed boss by feel_place.
     from threads import threaded_rod                                # noqa: E402  (freecad/ on sys.path)
-    for dx, dy in ((0.0, MAIN_YC - HS_YC), (HS_SETBACK, 0.0)):
+    for dy in (MAIN_YC - HS_YC, 0.0):                               # symmetric: both bosses at the same backmost X
         nut = (threaded_rod(HS_TH_MINOR, HS_BSTOP_OD, HS_TH_PITCH, HS_BSTOP_ENGAGE)
-               .rotate((0, 0, 0), (0, 1, 0), 90).translate((HS_BACK_X + dx, HS_YC + dy, HS_Z)))
+               .rotate((0, 0, 0), (0, 1, 0), 90).translate((HS_BACK_X + HS_SETBACK, HS_YC + dy, HS_Z)))
         w = w.cut(feel_place(nut), clean=False)
     return w
 
