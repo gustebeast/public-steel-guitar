@@ -538,10 +538,12 @@ _COLORS = {
     "pedal_trrs_jack":  (0.62, 0.64, 0.67),  # leg-side female TRRS (DEMO)
     "pedal_trrs_plug":  (0.32, 0.36, 0.58),  # bar-side male plug (DEMO; slate
                                              # — black is reserved for TPU)
-    "pedal_wire":       (0.80, 0.10, 0.10),  # = wire_can: the pedal harness
-                                             # reuses the cabinet's 26 AWG CAN
-                                             # gauge (red bucket; the mA-level
-                                             # sensor supply rides the same)
+    "pedal_wire":       (0.74, 0.42, 0.10),  # 28 AWG bucket (amber hue, own
+                                             # shade): the pedal link reuses
+                                             # the cabinet's SMALLEST gauge —
+                                             # the CAN stub is too short for
+                                             # 28 AWG to matter and the sensor
+                                             # supply is mA-level
     "build_counter":   (0.86, 0.08, 0.24),
     # knee lever (LKL) — input-side control
     "knee_housing":    (0.30, 0.36, 0.42),   # PCTG housing
