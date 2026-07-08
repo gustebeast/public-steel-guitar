@@ -372,6 +372,11 @@ TRRS_Z = 17.7                          # jack axis (shaft-local; = bar-local
                                        # cradle clears the lid plane)
 TRRS_JACK_L, TRRS_JACK_W, TRRS_JACK_H = 14.5, 6.0, 5.0    # X × Y × Z
 WIRE_BORE_D = 6.0                      # hollow centre: jack pocket → top
+SHELF_Z0, SHELF_Z1 = 26.0, 29.0        # small OUTBOARD corner fill at the TOP
+                                       # of the foot band: its underside is a
+                                       # SHELF over the bar's solid corner —
+                                       # positive hold-down (the slot squares
+                                       # only its top 2.4 to slide past)
 
 
 def leg_shaft_trrs() -> cq.Workplane:
@@ -392,13 +397,19 @@ def leg_shaft_trrs() -> cq.Workplane:
     body = body.union(box_at(10.0, SHAFT_FLAT_Y + 10.0, WAIST_Z1 - WAIST_Z0,
                              x=-5.0, y=(SHAFT_FLAT_Y - 10.0) / 2,
                              z=(WAIST_Z0 + WAIST_Z1) / 2))
-    # elephant-foot chamfer on the extension's bed edge (band-limited)
-    body = body.cut(cq.Workplane("XY")
-                    .polyline([(-(10.0 - 0.6), SHAFT_FLAT_Y + 0.3),
-                               (-(10.0 + 0.3), SHAFT_FLAT_Y + 0.3),
-                               (-(10.0 + 0.3), SHAFT_FLAT_Y - 0.6)])
-                    .close().extrude(WAIST_Z1 - WAIST_Z0 + 0.2)
-                    .translate((0, 0, WAIST_Z0 - 0.1)))
+    # small OUTBOARD (local +X) corner fill at the band TOP: its underside
+    # (z 26) is the hold-down SHELF over the bar's solid slot corner
+    body = body.union(box_at(5.0, SHAFT_FLAT_Y + 10.0, SHELF_Z1 - SHELF_Z0,
+                             x=7.5, y=(SHAFT_FLAT_Y - 10.0) / 2,
+                             z=(SHELF_Z0 + SHELF_Z1) / 2))
+    # elephant-foot chamfers on both extensions' bed edges (band-limited)
+    for sx, z0, z1 in ((-1, WAIST_Z0, WAIST_Z1), (1, SHELF_Z0, SHELF_Z1)):
+        body = body.cut(cq.Workplane("XY")
+                        .polyline([(sx * (10.0 - 0.6), SHAFT_FLAT_Y + 0.3),
+                                   (sx * (10.0 + 0.3), SHAFT_FLAT_Y + 0.3),
+                                   (sx * (10.0 + 0.3), SHAFT_FLAT_Y - 0.6)])
+                        .close().extrude(z1 - z0 + 0.2)
+                        .translate((0, 0, z0 - 0.1)))
     # jack pocket: local -X (inboard once placed), mouth in the flat face
     body = body.cut(box_at(TRRS_JACK_L + 1.0, TRRS_JACK_W + 0.6,
                            TRRS_JACK_H + 0.6, x=-10.5 + (TRRS_JACK_L + 1.0) / 2,
