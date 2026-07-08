@@ -354,6 +354,23 @@ def leg_shaft() -> cq.Workplane:
                        (sx * (xe + 0.3), SHAFT_FLAT_Y + 0.3),
                        (sx * (xe + 0.3), SHAFT_FLAT_Y - 0.6)])
             .close().extrude(SHAFT_L + 2).translate((0, 0, -1)))
+    # anti-lift SHELF band — SHARED by every shaft (the TRRS variant only
+    # adds its jack dock on top): the full bounding rectangle at the top of
+    # the foot band; its underside (z 26) overhangs the bar slot's solid
+    # corners (the slot squares only its top 2.4 to slide past) → positive
+    # hold-down at BOTH pedal-bar feet. X-symmetric, so the mirrored +Y-rail
+    # stacks and the (bar-less) -Y legs all print the same part.
+    body = body.union(box_at(20.0, SHAFT_FLAT_Y + 10.0, SHELF_Z1 - SHELF_Z0,
+                             x=0.0, y=(SHAFT_FLAT_Y - 10.0) / 2,
+                             z=(SHELF_Z0 + SHELF_Z1) / 2))
+    for sx in (1, -1):   # band-limited bed-edge chamfers on the shelf
+        body = body.cut(
+            cq.Workplane("XY")
+            .polyline([(sx * (10.0 - 0.6), SHAFT_FLAT_Y + 0.3),
+                       (sx * (10.0 + 0.3), SHAFT_FLAT_Y + 0.3),
+                       (sx * (10.0 + 0.3), SHAFT_FLAT_Y - 0.6)])
+            .close().extrude(SHELF_Z1 - SHELF_Z0 + 0.2)
+            .translate((0, 0, SHELF_Z0 - 0.1)))
     return body
 
 
@@ -392,26 +409,20 @@ def leg_shaft_trrs() -> cq.Workplane:
     bore prints as a long horizontal hole — acceptable sag, nothing fits it
     tightly."""
     body = leg_shaft()
-    # corner fill: local -X half → rectangle to x=-10, full width up to the
-    # key flat, FOOT BAND only (never enters the sleeve or the foot cap)
+    # TRRS delta 1: corner fill — local -X half → rectangle to x=-10, full
+    # width up to the key flat, FOOT BAND only (never enters the sleeve or
+    # the foot cap): flat jack face + meat around the pocket + flat slot
+    # X-seat (the shared shelf band is already in leg_shaft())
     body = body.union(box_at(10.0, SHAFT_FLAT_Y + 10.0, WAIST_Z1 - WAIST_Z0,
                              x=-5.0, y=(SHAFT_FLAT_Y - 10.0) / 2,
                              z=(WAIST_Z0 + WAIST_Z1) / 2))
-    # SHELF band at the band TOP: the FULL bounding rectangle (in practice
-    # this only adds the slivers the circle leaves — the inboard fill
-    # already covers its half); its underside (z 26) is the hold-down SHELF
-    # over the bar's solid slot corners
-    body = body.union(box_at(20.0, SHAFT_FLAT_Y + 10.0, SHELF_Z1 - SHELF_Z0,
-                             x=0.0, y=(SHAFT_FLAT_Y - 10.0) / 2,
-                             z=(SHELF_Z0 + SHELF_Z1) / 2))
-    # elephant-foot chamfers on both extensions' bed edges (band-limited)
-    for sx, z0, z1 in ((-1, WAIST_Z0, WAIST_Z1), (1, SHELF_Z0, SHELF_Z1)):
-        body = body.cut(cq.Workplane("XY")
-                        .polyline([(sx * (10.0 - 0.6), SHAFT_FLAT_Y + 0.3),
-                                   (sx * (10.0 + 0.3), SHAFT_FLAT_Y + 0.3),
-                                   (sx * (10.0 + 0.3), SHAFT_FLAT_Y - 0.6)])
-                        .close().extrude(z1 - z0 + 0.2)
-                        .translate((0, 0, z0 - 0.1)))
+    # band-limited bed-edge chamfer on the fill's edge
+    body = body.cut(cq.Workplane("XY")
+                    .polyline([(-(10.0 - 0.6), SHAFT_FLAT_Y + 0.3),
+                               (-(10.0 + 0.3), SHAFT_FLAT_Y + 0.3),
+                               (-(10.0 + 0.3), SHAFT_FLAT_Y - 0.6)])
+                    .close().extrude(WAIST_Z1 - WAIST_Z0 + 0.2)
+                    .translate((0, 0, WAIST_Z0 - 0.1)))
     # jack pocket: local -X (inboard once placed), mouth in the flat face
     body = body.cut(box_at(TRRS_JACK_L + 1.0, TRRS_JACK_W + 0.6,
                            TRRS_JACK_H + 0.6, x=-10.5 + (TRRS_JACK_L + 1.0) / 2,
