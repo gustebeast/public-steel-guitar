@@ -368,6 +368,17 @@ def _lid_full() -> cq.Workplane:
                            z=LID_Z0 + 0.35))
     body = body.cut(cyl(4.4, 1.7, z=LID_Z0 - 0.1)
                     .translate((LOCK_X, YC + LOCK_Y, 0)))
+    # the slot-mouth lead-in flares CONTINUE through the lid (same wedges as
+    # _slot_cutter): otherwise the lid's square plan corner overhangs the
+    # bar's chamfer right in the funnel path and catches the incoming foot
+    for lx, _ in LATCHES:
+        for s in (1, -1):
+            body = body.cut(
+                cq.Workplane("XY")
+                .polyline([(s * SLOT_W / 2, -16.0),
+                           (s * (SLOT_W / 2 + 4), -16.0),
+                           (s * SLOT_W / 2, -11.0)])
+                .close().extrude(BAR_H + 2).translate((lx, YC, -1)))
     return body
 
 
