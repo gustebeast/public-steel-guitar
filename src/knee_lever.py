@@ -105,11 +105,17 @@ HUB_TOP = HUB_D / 2                          # top of the round hub -- feel clea
 AXLE_Z  = 0.0                                # lever AXLE centre Z. The whole feel block is anchored to
                                              #   this (via feel_place()), so RAISING the axle later slides
                                              #   the cartridges up automatically -- no other edits needed.
-LOBE_RC = 11.0                               # lobe axis radius (pivot -> lobe) = axle->lobe Z. In the -Z
-                                             #   layout the lobe RISES toward the axle over the throw, so
-                                             #   this must be big enough that the 45° lobe (~z -6.7) stays
-                                             #   BELOW the Ø10 hub (z -5) -- else the tall follower jams the
-                                             #   hub. Also the moment arm (ratio ≈ 100/11 = 9:1).
+LOBE_RC = 8.0                                # lobe axis radius (pivot -> lobe) = axle->lobe Z. The whole
+                                             #   feel block tracks -LOBE_RC (feel_place), so this sets how
+                                             #   close the contact -- and the swept recess above it -- ride
+                                             #   toward the axle. The recess just carves the hub as it
+                                             #   rises, so the real limit is the solid WEB it leaves to the
+                                             #   Ø5 axle bore: 8.0 leaves 1.6mm (measured), the thin-wall
+                                             #   floor (0.8mm risked being too weak for a torque boss).
+                                             #   Trades vs the old 11: ratio ARM_LEN/LOBE_RC = 100/8 =
+                                             #   12.5:1 (was 9.1), follower travel = 8*sin30 = 4.0mm (was
+                                             #   5.5) -- RETUNE the coil to suit. Raising THROW again would
+                                             #   swing the lobe higher, thinning the web -> raise LOBE_RC.
 LOBE_R  = 1.5                                # rounded lobe radius
 LOBE_WY = 6.0                                # each lobe's / follower-tongue Y width -> a 6×6 SQUARE face.
                                              #   The two cartridges are flushed to the centre (dead wall gone)
