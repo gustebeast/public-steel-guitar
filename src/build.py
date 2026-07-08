@@ -534,7 +534,12 @@ _COLORS = {
     "pedal_latch_finger": (0.12, 0.12, 0.13),  # TPU return finger (the only spring)
     "pedal_detent_nub": (0.12, 0.12, 0.13),  # TPU hold-closed detent nub
     "pedal_trrs_jack":  (0.62, 0.64, 0.67),  # leg-side female TRRS (DEMO)
-    "pedal_trrs_plug":  (0.15, 0.15, 0.17),  # bar-side right-angle male (DEMO)
+    "pedal_trrs_plug":  (0.32, 0.36, 0.58),  # bar-side male plug (DEMO; slate
+                                             # — black is reserved for TPU)
+    "pedal_wire":       (0.80, 0.10, 0.10),  # = wire_can: the pedal harness
+                                             # reuses the cabinet's 26 AWG CAN
+                                             # gauge (red bucket; the mA-level
+                                             # sensor supply rides the same)
     "build_counter":   (0.86, 0.08, 0.24),
     # knee lever (LKL) — input-side control
     "knee_housing":    (0.30, 0.36, 0.42),   # PCTG housing
