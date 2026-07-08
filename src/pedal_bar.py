@@ -463,22 +463,35 @@ def _trrs_plug() -> cq.Workplane:
 
 
 def _wire_bar() -> cq.Workplane:
-    """DEMO bar-side harness (26 AWG bucket — the CAN pair + sensor supply
-    reuse the cabinet's wire_can gauge): from the plug pins, through the
-    latch cavity (the ~15 service loop lives here) into the wiring trough
-    toward the mid-bar electronics."""
+    """DEMO bar-side wires — FOUR 28 AWG conductors (Ø1.1 insulated; the
+    smallest gauge already in the cabinet — fine here: the CAN stub is far
+    too short for 28 AWG's resistance/impedance to matter, and the sensor
+    supply is mA-level): one per plug pin, through the latch cavity (the
+    ~15 service loop lives here) into the wiring trough toward the mid-bar
+    electronics."""
     lx, ls = LATCHES[1]
-    return cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        1.3, 56.0, cq.Vector(lx + ls * 14.0, YC, 12.8), cq.Vector(ls, 0, 0)))
+    out = None
+    for i, px in enumerate((15.0, 17.0, 19.0, 21.0)):
+        rod = cq.Workplane("XY").add(cq.Solid.makeCylinder(
+            0.55, 70.0 - px,
+            cq.Vector(lx + ls * px, YC - 1.8 + 1.2 * i, 13.2),
+            cq.Vector(ls, 0, 0)))
+        out = rod if out is None else out.union(rod)
+    return out
 
 
 def _wire_leg() -> cq.Workplane:
-    """DEMO leg-side harness: from the jack pads up the shaft's Ø6 hollow
-    centre bore (stub — continues inside the sleeve/segments to the
-    chassis)."""
+    """DEMO leg-side wires — the same FOUR 28 AWG conductors from the jack
+    pads up the shaft's Ø6 hollow centre bore (stub — they continue inside
+    the sleeve/segments to the chassis)."""
     lx, _ = LATCHES[1]
-    return cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        1.3, 28.0, cq.Vector(lx, YC, 11.4), cq.Vector(0, 0, 1)))
+    out = None
+    for dx, dy in ((-1.1, -1.1), (1.1, -1.1), (-1.1, 1.1), (1.1, 1.1)):
+        rod = cq.Workplane("XY").add(cq.Solid.makeCylinder(
+            0.55, 28.0, cq.Vector(lx + dx, YC + dy, 11.4),
+            cq.Vector(0, 0, 1)))
+        out = rod if out is None else out.union(rod)
+    return out
 
 
 def assembly_parts():
