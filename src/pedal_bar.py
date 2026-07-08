@@ -1,14 +1,15 @@
 """Pedal bar — spans the two +Y legs at ankle height; press-on / thumb-off.
 
 The bar is the mounting rail for the (future) sensor pedals. It attaches to
-the +Y legs' shaft WAISTS (legs.py): each end has a C-SLOT, open toward the
-instrument (-Y), that wraps the waist — flat side walls grip the key flats
-(exact X registration, no twist about the leg), the round back hugs the Ø18,
-the waist's two shoulders capture the bar in Z, and the plate rests on the
-foot-cap / lower-shoulder plane. Everything lives INSIDE the bar's prism —
-no lumps beyond its Y faces, and the bar ends just past each leg (enough
-wall to close the slot, nothing more): each latch sits INBOARD of its leg,
-in the span between the legs.
+the +Y legs' shafts (legs.py): each end has a rectangular SLOT, open toward
+the instrument (-Y) — Ø20.4 walls register X on the shaft's rounds, and the
+flat back FACE-seats on the shaft's single key flat (the leg's single-D key
+aims everything). Z: the plate rests on the foot cap + the chord notch's
+lower crescent; anti-lift is the CLOSED bolt head sitting inside the notch
+(the head hits the upper crescent if the bar rides up). Everything lives
+INSIDE the bar's prism — no lumps beyond its Y faces, and the bar ends just
+past each leg (enough wall to close the slot, nothing more): each latch
+sits INBOARD of its leg, in the span between the legs.
 
 Y RETENTION — one latch per foot, mirror images of each other (both open
 INBOARD): a rigid SLIDING BOLT, no flexing structural member. The bolt
@@ -16,12 +17,13 @@ rides an X channel in the plate's front band; closed, its thickened HEAD's
 flat back face bears on the waist's front CHORD (legs.WAIST_CHORD_Y):
 flat-on-flat, normal pure Y — a tug on the bar has NO cam-open component,
 it's a hard geometric lock that wear cannot loosen, and the escape play is
-just the 0.2 fit (the +Y seat at the slot root is the matching 0.2, so the
-seated bar floats ~0.4 total in Y). The tip's 45° plan bevel is the entry
-ramp: pushing the bar on cams the bolt aside (rigid slide, not material
-flex) and it snaps back at seat. To remove: grab the bar ends, THUMB-SLIDE
-each top pad inboard (5 mm) and pull the bar off. The pad rides an integral
-post through an X slot in the lid. Because the two latches are mirrored,
+just the 0.2 fit (the +Y face seat at the slot back is the matching 0.2, so
+the seated bar floats ~0.4 total in Y). The tip's 45° plan bevel is the
+entry ramp: pushing the bar on cams the bolt aside (rigid slide, not
+material flex) and it snaps back at seat. To remove: grab the bar ends,
+THUMB-SLIDE each top pad inboard (6.4 mm) and pull the bar off. The pad
+rides an integral post through an X slot in the lid. Because the two
+latches are mirrored,
 the bolt and lid each come in a plain and a `_m` (mirrored) printed
 variant; the TPU finger is symmetric — one part, print 2.
 
@@ -46,7 +48,7 @@ import cadquery as cq
 
 from .helpers import box_at, cyl
 from .chassis import LEG_STATIONS_X, Y_HI
-from .legs import WAIST_D, WAIST_FLAT_W
+from .legs import SHAFT_D, SHAFT_FLAT_Y
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "freecad"))
 from fasteners import (M2_SELFTAP_D, M2_SHAFT_CLR_D, M2_HEAD_RECESS_D,  # noqa: E402
@@ -67,31 +69,34 @@ END_MARGIN = 15.0                          # bar end past each leg axis: the
                                            # 8.2 slot wall + 6.8 of closure
 BAR_X0 = LEG_STATIONS_X[1] - END_MARGIN
 BAR_X1 = LEG_STATIONS_X[0] + END_MARGIN
-SLOT_W = WAIST_FLAT_W + 0.4                # 16.4 across the waist flats
-SLOT_R = (WAIST_D + 0.4) / 2               # 9.2 round back
+SLOT_W = SHAFT_D + 0.4                     # 20.4 walls register X on the
+                                           # shaft's rounds (0.2/side)
+SLOT_BACK = SHAFT_FLAT_Y + 0.2             # 7.0 flat back: FACE seat on the
+                                           # shaft's single key flat (0.2)
 
 # ── latch geometry: x offsets from the latch leg axis, all POSITIVE here
 #    and flipped inboard per-latch by ls (y' = y−YC as before) ────────────
-# bolt: closed tip at |x'| 4.0 (covers 4..8.2 of the ±8 corridor); thumb
-# travel 5.0 clears it
+# bolt: closed tip at |x'| 4.0 — the head overlaps the chord notch over
+# x 4..7.1 (the notch flat's half-width) and the ±10.2 corridor means a
+# 6.4 thumb travel clears it
 BOLT_X0, BOLT_X1 = 4.0, 27.0
 BOLT_Y0, BOLT_Y1 = -13.6, -9.4             # thin BODY band (rides the channel)
 HEAD_X1, HEAD_Y1 = 9.0, -7.2               # blocking head: 0.2 off the chord
 BOLT_Z0, BOLT_Z1 = 2.4, 14.7
-BOLT_TRAVEL = 5.0
-DP_X0, DP_X1, DP_Y1 = 8.0, 14.3, -6.9      # deep pocket: the head's travel
+BOLT_TRAVEL = 6.4
+DP_X0, DP_X1, DP_Y1 = 10.0, 15.7, -6.9     # deep pocket: the head's travel
                                            # garage behind the slot wall
 TAB_X1, TAB_Z1 = 28.2, 5.5                 # low pusher tab → the TPU finger
                                            # bends about a long arm (soft)
-CH_X0, CH_X1 = 8.0, 38.0                   # channel + finger bay (starts 0.2
-                                           # INSIDE the slot wall at 8.2 so no
+CH_X0, CH_X1 = 10.0, 39.5                  # channel + finger bay (starts 0.2
+                                           # INSIDE the slot wall at 10.2 so no
                                            # sliver survives across the bolt;
-                                           # reaches 38 so the bent blade fits)
+                                           # reaches 39.5 so the bent blade fits)
 CH_Y0, CH_Y1 = -13.9, -9.1                 # channel walls (0.3 clr per side)
 CH_Z0 = 2.4                                # channel floor
 
-# thumb pad on an integral post through an X slot in the lid: slide 5 to
-# open. The post sweep (13..22) stays clear of the finger base (27.8+).
+# thumb pad on an integral post through an X slot in the lid: slide 6.4 to
+# open. The post sweep (13..23.4) stays clear of the finger base (27.8+).
 POST_X0, POST_X1 = 13.0, 17.0
 PAD_X0, PAD_X1 = 12.5, 21.0
 PAD_Y0, PAD_Y1 = -14.5, -8.5               # wider than the lid slot → covers it
@@ -105,18 +110,19 @@ FNG_BASE_H = 3.5                           # socket depth in the lid underside
 
 # lid: recessed flush into the bar top, 2× M2 (self-tap + insert pockets)
 LID_Z0 = 15.0
-LID_X0, LID_X1 = 8.4, 38.4
+LID_X0, LID_X1 = 10.4, 39.9
 LID_Y0, LID_Y1 = -16.5, -4.0
 M2_XY = ((18.0, -6.55), (32.0, -6.55))     # both OUTSIDE the head's deep
-                                           # pocket (x ≤ 14.3) so the insert
+                                           # pocket (x ≤ 15.7) so the insert
                                            # pockets keep a solid wall
 
 
 def _slot_cutter(lx: float) -> cq.Workplane:
-    """C-slot for one leg: flat walls over the key flats + round back, full
-    height, opening -Y, with 45° lead-in flares at the mouth."""
-    cut = box_at(SLOT_W, 24.0, BAR_H + 2, x=lx, y=YC - 12.0, z=BAR_H / 2)
-    cut = cut.union(cyl(2 * SLOT_R, BAR_H + 2, z=-1).translate((lx, YC, 0)))
+    """Slot for one leg: a plain rectangular pocket — Ø20.4 walls register X
+    on the shaft's rounds, the flat back FACE-seats on the single key flat —
+    full height, opening -Y, with 45° lead-in flares at the mouth."""
+    cut = box_at(SLOT_W, 17.0 + SLOT_BACK, BAR_H + 2,
+                 x=lx, y=YC + (SLOT_BACK - 17.0) / 2, z=BAR_H / 2)
     for s in (1, -1):
         cut = cut.union(
             cq.Workplane("XY")
