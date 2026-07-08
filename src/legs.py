@@ -30,12 +30,18 @@ height IS the old 2 mm washer gap, so the 142 step and the drawn thread
 phase (60° = 3 mm at the 18 lead) are unchanged. Loads in play are axial
 (nothing torques a leg).
 
-KEYED FINE STAGE: the shaft carries flats (17 across, ±X) and the sleeve
-bore matches, so the fine adjust is pure Z travel and the foot end of the
-leg is clocked all the way from the chassis (flats are 180°-symmetric, so
-the mirrored +Y-rail stacks key identically). The shaft's bottom 9..29 is a
-WAIST (Ø18 / 16 across flats): the pedal bar's end plate wraps it, the two
-shoulders capture the bar in Z, and the waist never enters the sleeve.
+KEYED FINE STAGE: the shaft carries a SINGLE key flat (local -Y, 6.8 from
+the axis, full length) and the sleeve bore matches — the fine adjust is
+pure Z travel, the foot end is clocked all the way from the chassis, and a
+single-D key admits exactly ONE orientation (no 180° ambiguity to get
+wrong at assembly). The flat is on the ROOT side (global +Y on the rotated
++Y-rail stacks): the pedal bar's slot is a plain rectangular pocket — Ø20.4
+walls register X on the shaft's rounds, the flat back at 7.0 is a proper
+FACE seat on the key flat (0.2). The only other shaft feature is the CHORD
+NOTCH at z 9..29 (local +Y → the bar-mouth side): the latch bolt's head
+bears flat-on-flat on it, its crescent shoulders + the foot cap set the
+bar's Z, and the CLOSED bolt head under the upper shoulder is the
+anti-lift. The notch never enters the sleeve (exposure stays ≥ ~30).
 
 The SOCKET joins the rail with GLUED JOINERY, no fasteners: a vertical
 dovetail tenon slides UP into a slot in the rail's outer face from below
@@ -64,8 +70,15 @@ Z-ovality would eat the 0.2..0.4 fits and roughen the thread flanks):
   reaction path where GF's creep resistance pays.
 - SLEEVE was already PCTG (the pinch collar must flex). FOOT/WASHERS TPU.
 - Settings that buy Z-strength: LOW part-cooling fan (0-30%), dry filament,
-  0.2 layers; the 4 mm tube walls resolve as solid perimeter rings. The
-  Ø20×210 shaft is the only slender print (~10:1): brim + slow outer wall.
+  0.2 layers; the 4 mm tube walls resolve as solid perimeter rings.
+- EXCEPTION — the SHAFT prints LYING ON ITS SINGLE KEY FLAT (no threads,
+  and standing Ø20×210 is too tall-skinny): the flat IS the bed face,
+  continuous full length (the chord notch faces UP — no bridges), and the
+  layer lines run ALONG the shaft so kick bending loads bulk material.
+  The flat sits 6.8 from the axis so the flat→round junction overhangs
+  43° (a 17-across dual-flat put that junction at ~58° — droop city; the
+  convex top needs nothing, undersides are what count). 45° chamfers on
+  the two bed edges absorb first-layer elephant foot.
 - Each junction's TPU gland washer doubles as an impact isolator, and the
   bell-over-spigot overlap double-walls the joint zones — the plain tube
   mid-spans are the governing sections (the PCTG numbers above).
@@ -101,18 +114,22 @@ SLEEVE_L = 180.0
 SHAFT_D, SHAFT_L = 20.0, 210.0         # 210 keeps 26 retained at 184 exposure —
                                        # the extra 10 buys the pedal bar its
                                        # ≥30 floor without opening band gaps
-SHAFT_FLAT_W  = 17.0                   # shaft key flats, across ±X
-SLEEVE_FLAT_W = 17.4                   # matching sleeve-bore flats (0.2/side)
-WAIST_D, WAIST_FLAT_W = 18.0, 16.0     # pedal-bar waist at the shaft bottom
-WAIST_Z0, WAIST_Z1 = 9.0, 29.0         # waist band (z from the shaft bottom;
-                                       # starts where the foot cap ends)
-WAIST_CHORD_Y = 7.0                    # front CHORD flat on the waist (local
-                                       # +Y; the rotated +Y-rail stacks aim it
-                                       # at the bar mouth): the latch bolt
+SHAFT_FLAT_Y  = 6.8                    # SINGLE key flat (local -Y, full
+                                       # length): the print-bed face, the
+                                       # sleeve key, and the bar slot's face
+                                       # seat. 6.8 keeps the flat→round
+                                       # junction at 43° (< 45° overhang);
+                                       # single-D = one unique orientation
+SLEEVE_FLAT_Y = 7.0                    # matching sleeve-bore flat (0.2 clr)
+WAIST_Z0, WAIST_Z1 = 9.0, 29.0         # chord-NOTCH band (z from the shaft
+                                       # bottom; starts where the foot ends)
+WAIST_CHORD_Y = 7.0                    # the CHORD notch (local +Y, band above;
+                                       # the rotated +Y-rail stacks aim it at
+                                       # the bar mouth): the latch bolt's head
                                        # bears FLAT-on-flat — normal pure Y,
-                                       # no cam-open component, 0.2 play.
-                                       # NOTE: breaks the waist's 180° symmetry
-                                       # — assemble shafts chord-toward-player
+                                       # no cam-open component, 0.2 play; its
+                                       # shoulders are the bar's Z crescents
+                                       # and (with the closed bolt) anti-lift
 FOOT_H  = 12.0
 # stack at k segments: 32 barrel + (k+1)×2 collar gaps + k×140 + 180 sleeve +
 # shaft exposure 24..184 + 3 foot floor → height = 217 + 142k + exposure
@@ -284,12 +301,12 @@ def leg_sleeve() -> cq.Workplane:
     body = body.union(cq.Workplane("XY").add(cq.Solid.makeCone(
         (TUBE_OD + 4) / 2, COLLAR_D / 2, 3.0,
         cq.Vector(0, 0, -3.0), cq.Vector(0, 0, 1))))
-    # keyed bore: Ø20.4 with 17.4-across flats (±X) — the shaft cannot rotate,
-    # the fine adjust is pure Z, and the pinch closes flat-on-flat
+    # keyed bore: Ø20.4 with ONE flat (local -Y at 7.0) — single-D: the shaft
+    # cannot rotate AND can only insert in its one correct orientation
     body = body.cut(cyl(SHAFT_D + 0.4, SLEEVE_L + TH_LEN, z=-SLEEVE_L - 1)
-                    .intersect(box_at(SLEEVE_FLAT_W, SHAFT_D + 4,
-                                      SLEEVE_L + TH_LEN + 2,
-                                      z=-SLEEVE_L - 1 + (SLEEVE_L + TH_LEN) / 2)))
+                    .cut(box_at(SHAFT_D + 4, 6.0, SLEEVE_L + TH_LEN + 2,
+                                y=-(SLEEVE_FLAT_Y + 3.0),
+                                z=-SLEEVE_L - 1 + (SLEEVE_L + TH_LEN) / 2)))
     # lug block on +Y, then the single slit through block + wall + bore
     lz = -SLEEVE_L + 9.0                                  # bolt line
     body = body.union(box_at(16.0, 12.0, 18.0, y=21.0, z=lz))
@@ -312,29 +329,34 @@ def leg_sleeve() -> cq.Workplane:
     return heal(body)   # helical-thread booleans need a ShapeFix pass
 
 
-def _keyed(d: float, flat_w: float, h: float, z: float) -> cq.Workplane:
-    """Cylinder Ø d with ±X flats flat_w across, height h, base at z."""
-    return cyl(d, h, z=z).intersect(box_at(flat_w, d + 2, h + 2, z=z + h / 2))
-
-
 def leg_shaft() -> cq.Workplane:
-    """Lower sliding shaft: Ø20 with 17-across key flats (±X) so the fine
-    stage cannot rotate (the sleeve bore matches), plus the bottom WAIST
-    (Ø18 / 16 across, z 9..29) the pedal bar's end plate wraps — the two
-    shoulders capture the bar in Z; the sleeve never reaches down to the
-    waist (exposure stays ≥ ~30 with the bar mounted). Solid (slicer
-    infills); prints standing — the 1 mm upper waist shoulder is a small
-    annular overhang, fine at this size. Foot spigot below."""
-    body = _keyed(SHAFT_D, SHAFT_FLAT_W, SHAFT_L, 0.0)
-    ring = (_keyed(SHAFT_D + 2, SHAFT_FLAT_W + 2, WAIST_Z1 - WAIST_Z0, WAIST_Z0)
-            .cut(_keyed(WAIST_D, WAIST_FLAT_W, WAIST_Z1 - WAIST_Z0 + 2,
-                        WAIST_Z0 - 1)))
-    body = body.cut(ring)
-    # waist front chord (the latch bolt's flat bearing face — see above);
-    # cut ONLY in the waist band so the shoulders keep their full round
+    """Lower sliding shaft: Ø20 with a SINGLE key flat (local -Y at 6.8,
+    full length) — prints LYING ON THE FLAT (no tall-skinny standing print;
+    layer lines run ALONG the shaft, so kick bending loads bulk material,
+    and the 43° flat→round junction is self-supporting). Single-D keys the
+    sleeve in exactly one orientation. The CHORD NOTCH (local +Y, z 9..29)
+    faces UP on the bed: the latch bolt's head bears flat-on-flat on it,
+    its crescent shoulders + the foot cap set the pedal bar's Z, and the
+    closed bolt head under the upper shoulder is the anti-lift. 45°
+    chamfers on the two bed edges absorb first-layer elephant foot so the
+    sleeve/slot fits stay true. Solid (slicer infills); foot spigot below."""
+    body = cyl(SHAFT_D, SHAFT_L, z=0.0).cut(
+        box_at(SHAFT_D + 2, 6.0, SHAFT_L + 2,
+               y=-(SHAFT_FLAT_Y + 3.0), z=SHAFT_L / 2))
+    # chord notch (the latch bolt's bearing face — see WAIST_CHORD_Y);
+    # band-limited so the crescent shoulders remain above and below
     body = body.cut(box_at(SHAFT_D + 2, 5.0, WAIST_Z1 - WAIST_Z0,
                            y=WAIST_CHORD_Y + 2.5,
                            z=(WAIST_Z0 + WAIST_Z1) / 2))
+    # elephant-foot chamfers along the two flat→round bed edges
+    xe = math.sqrt((SHAFT_D / 2) ** 2 - SHAFT_FLAT_Y ** 2)
+    for sx in (1, -1):
+        body = body.cut(
+            cq.Workplane("XY")
+            .polyline([(sx * (xe - 0.6), -(SHAFT_FLAT_Y + 0.3)),
+                       (sx * (xe + 0.3), -(SHAFT_FLAT_Y + 0.3)),
+                       (sx * (xe + 0.3), -(SHAFT_FLAT_Y - 0.6))])
+            .close().extrude(SHAFT_L + 2).translate((0, 0, -1)))
     return body
 
 
