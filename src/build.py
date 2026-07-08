@@ -592,11 +592,16 @@ _COLORS = {
     "wire_usb":        (0.55, 0.25, 0.75),   # violet      - shielded USB-2 -> Pi
 }
 _DEFAULT_COLOR = (0.80, 0.80, 0.80)
+_TPU_BLACK = (0.03, 0.03, 0.03)                  # ALL TPU parts render black (user rule)
+# every part whose output path is tpu/... -> black, regardless of instance prefix/suffix
+_TPU_BASES = tuple(sorted((k for k, v in PARTS.items() if v[1].startswith("tpu/")), key=len, reverse=True))
 
 
 def _color_for(name):
     head, _, tail = name.rpartition("_")
     base = head if (head and tail.isdigit()) else name
+    if base in _TPU_BASES or any(base.endswith(k) for k in _TPU_BASES):
+        return cq.Color(*_TPU_BLACK)             # TPU is always black
     return cq.Color(*_COLORS.get(base, _DEFAULT_COLOR))
 
 
