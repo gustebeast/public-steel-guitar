@@ -89,13 +89,14 @@ PARTS = {
     # pedal bar + latch (one latched foot for now; mirror to -X once the feel
     # is validated). The bar itself is a DEMO prism (longer than the bed —
     # it gets segmented for printing once the pedals land on it).
-    "pedal_bar":       (lambda: heal(_PB("pedal_bar")), "petg-gf/pedal_bar.step", "PETG-GF — pedal bar (demo prism, slim: Y -16..+12): slots wrap the +Y legs' shafts; snap latch at the +X foot, TRRS-carrying latch at the -X foot"),
-    "pedal_bolt":      (lambda: heal(_PB("pedal_bolt")), "petg-gf/pedal_bolt.step", "PETG-GF — snap latch slider + thumb pad, +X foot (flat head bears on the chord; 45-deg bevel self-latches on push-on; slide 6.4 inboard to release)"),
+    "pedal_bar_a":     (lambda: heal(_PB("pedal_bar_a")), "petg-gf/pedal_bar_a.step", "PETG-GF — pedal bar, -X piece (TRRS foot + wiring trough + dovetail lid groove; splice tenons at its +X end). 322 long: place DIAGONALLY on the 255^2 bed; glue to pedal_bar_b"),
+    "pedal_bar_b":     (lambda: heal(_PB("pedal_bar_b")), "petg-gf/pedal_bar_b.step", "PETG-GF — pedal bar, +X piece (plain snap foot; splice slots at its -X end). 292 long: diagonal print; slide down onto _a's tenons + glue"),
+    "pedal_lid_a":     (lambda: heal(_PB("pedal_lid_a")), "petg-gf/pedal_lid_a.step", "PETG-GF — sliding dovetail lid, -X piece (covers the TRRS latch; bridges the bar splice). 241 long; print TOP-FACE DOWN (45-deg flanks)"),
+    "pedal_lid_b":     (lambda: heal(_PB("pedal_lid_b")), "petg-gf/pedal_lid_b.step", "PETG-GF — sliding dovetail lid, +X piece (covers the plain latch; lock dimple clicks onto the bar-top nub, pinning both lid pieces — no screws). 322 long: diagonal, TOP-FACE DOWN"),
+    "pedal_bolt":      (lambda: heal(_PB("pedal_bolt")), "petg-gf/pedal_bolt.step", "PETG-GF — snap latch slider + thumb pad, +X foot (flat head bears on the shaft's key flat; 45-deg bevel self-latches on push-on; slide 6.4 inboard to release)"),
     "pedal_bolt_trrs": (lambda: heal(_PB("pedal_bolt_trrs")), "petg-gf/pedal_bolt_trrs.step", "PETG-GF — TRRS latch slider, -X foot: bolt (NO bevel: un-retracted install refuses instead of bending the barrel) + cradle carrying the male TRRS plug — retract 15 to clear, release + thumb-press to latch AND mate the connector"),
-    "pedal_latch_lid": (lambda: heal(_PB("lid_plain")), "pctg/pedal_latch_lid.step", "PCTG — latch lid, +X foot (roofs the channel, thumb-pad slot, TPU finger socket; 2x M2)"),
-    "pedal_latch_lid_trrs": (lambda: heal(_PB("lid_trrs")), "pctg/pedal_latch_lid_trrs.step", "PCTG — latch lid, -X foot (roofs the TRRS latch cavity + caps the plug cradle; kick-spring socket; 2x M2)"),
     "pedal_latch_finger": (lambda: heal(_PB("finger_part")), "tpu/pedal_latch_finger.step", "TPU — latch finger x2 (same print): +X foot = bolt return spring; -X foot = far-end KICK spring, engaged only over the last ~4.5 of opening (holding retracted is nearly free)"),
-    "pedal_detent_nub": (lambda: heal(_PB("nub_part")), "tpu/pedal_detent_nub.step", "TPU — detent nub x2 (Ø4x4, pressed into each lid): clicks into the post's closed groove — every latch holds itself CLOSED independent of the TRRS (user rule)"),
+    "pedal_detent_nub": (lambda: heal(_PB("nub_part")), "tpu/pedal_detent_nub.step", "TPU — detent nub x3 (Ø4x4): two press into the lid over the posts (hold-closed clicks, TRRS-independent per user rule); one presses into the bar top as the LID lock"),
     "electronics_tray": (lambda: heal(__import__("src.electronics", fromlist=["e"]).electronics_tray()), "pctg/electronics_tray.step", "PCTG — compute-bay tray (drops into rail channels from above; tool-free SNAP mounts for Teensy+shield, Pi 5, 2x CS42448, buck, CAN transceiver — snap fingers need PCTG's ductility)"),
 }
 # Deck panels: each is a (base, colour) PAIR — same origin, print as ONE object
@@ -523,12 +524,13 @@ _COLORS = {
     "leg_shaft":       (0.55, 0.58, 0.62),
     "leg_foot":        (0.12, 0.12, 0.13),   # TPU
     "leg_washer":      (0.12, 0.12, 0.13),   # TPU
-    # pedal bar + latch (+X foot)
-    "pedal_bar":        (0.30, 0.45, 0.35),  # PETG-GF bar body
+    # pedal bar (2 spliced pieces + 2 dovetail-lid pieces) + latches
+    "pedal_bar_a":      (0.30, 0.45, 0.35),  # PETG-GF bar, -X piece
+    "pedal_bar_b":      (0.33, 0.48, 0.38),  # PETG-GF bar, +X piece
+    "pedal_lid_a":      (0.50, 0.58, 0.52),  # dovetail lid, -X piece
+    "pedal_lid_b":      (0.54, 0.62, 0.56),  # dovetail lid, +X piece
     "pedal_bolt":       (0.85, 0.35, 0.20),  # snap latch slider, +X foot
     "pedal_bolt_trrs":  (0.85, 0.35, 0.20),  # TRRS latch slider, -X foot
-    "pedal_latch_lid":  (0.50, 0.58, 0.52),  # latch lid
-    "pedal_latch_lid_trrs": (0.50, 0.58, 0.52),  # ... TRRS variant, -X foot
     "pedal_latch_finger": (0.12, 0.12, 0.13),  # TPU return finger (the only spring)
     "pedal_detent_nub": (0.12, 0.12, 0.13),  # TPU hold-closed detent nub
     "pedal_trrs_jack":  (0.62, 0.64, 0.67),  # leg-side female TRRS (DEMO)
