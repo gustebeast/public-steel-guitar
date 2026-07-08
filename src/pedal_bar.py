@@ -42,10 +42,21 @@ counterbore at full insertion), the lid caps it. Its cable gets a ~15
 service loop in the latch cavity, then exits inboard toward the pedal
 electronics.
 
+SEGMENTED FOR THE 255×255 BED: two bar pieces (dovetail-splice + glue at
+XS, mid-trough; 322/292 — diagonal placement, (L+W)/√2 ≤ 255) and two lid
+pieces (butt splice at XL, staggered 55 so each lid piece BRIDGES the glued
+bar joint). A WIRING TROUGH runs between the two latch cavities (the TRRS
+pigtail reaches the mid-bar electronics without crossing a leg slot), and
+ONE full-length 45° sliding-DOVETAIL LID roofs trough + both latches — no
+screws: the lid pieces slide in from the +X end; a third TPU detent nub in
+the bar top clicks into lid B's underside dimple, setting the position and
+locking the stack (B butts A). Assembly: glue the bar halves; drop each
+slider in with its plug/finger; slide lid A, then lid B to the click; press
+the latch nubs down through their lid pockets.
+
 FRAME: modelled at ABSOLUTE X/Y (the legs' real stations, +Y rail); Z is
 local with 0 = the plate bottom (build.py translates by ground + FOOT_H).
-Drawn SEATED: bolts closed, plug fully inserted. DEMO: the bar is one prism
-— longer than any print bed; it gets segmented once the pedals land on it.
+Drawn SEATED: bolts closed, plug fully inserted.
 """
 
 from __future__ import annotations
@@ -60,8 +71,7 @@ from .chassis import LEG_STATIONS_X, Y_HI
 from .legs import SHAFT_D
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "freecad"))
-from fasteners import (M2_SELFTAP_D, M2_SHAFT_CLR_D, M2_HEAD_RECESS_D,  # noqa: E402
-                       M2_HEAD_RECESS_H, M2_INSERT_PILOT_D, M2_INSERT_DEPTH)
+from fasteners import M2_SELFTAP_D   # noqa: E402  (the cradle set screw)
 
 YC = Y_HI                              # leg axes sit on the +Y rail centreline
 # one latch per foot, each opening INBOARD: (leg station, side sign)
@@ -99,7 +109,27 @@ FNG_T, FNG_W = 4.5, 4.0                    # TPU finger blade: X × Y
 FNG_Z0, FNG_ZTOP = 2.7, 15.0
 FNG_BASE_H = 3.5
 LID_Z0 = 15.0
-LID_Y0, LID_Y1 = -16.5, -4.0
+
+# ── SEGMENTATION (255×255 bed, pieces placed on the DIAGONAL:
+#    (L + W)/√2 ≤ 255) + the full-length sliding-DOVETAIL lid ────────────
+# everything here DERIVES from the leg stations (they are chassis-owned and
+# have moved before — never hardcode absolutes against them)
+XS = (LATCHES[0][0] + LATCHES[1][0]) / 2   # bar splice (mid-trough): ~303
+                   # per piece (+4 tenon) → ≤240 diagonal footprint. Joined
+                   # by vertical slide-in dovetail tenons + glue (the
+                   # chassis-segment pattern).
+XL = XS - 50.0     # lid butt-splice, STAGGERED 50 from XS so each lid piece
+                   # bridges the glued bar joint (the lid is structure)
+LID_XA = LATCHES[1][0] + 10.4      # lid span: between the slots' inboard
+LID_XB = LATCHES[0][0] - 10.4      # walls (the shafts fill the slots to the
+                                   # bar top — the lid cannot cross them)
+TROUGH_X0 = LATCHES[1][0] + 45.0   # wiring trough: connects the two latch
+TROUGH_X1 = LATCHES[0][0] - 45.0   # cavities (no leg slot is ever crossed)
+LOCK_X, LOCK_Y = LID_XB - 4.6, 7.6  # lid-lock detent nub: bar-top pocket; a
+                                   # groove+dimple in lid B's underside sets
+                                   # the final position, stops over-insert
+                                   # and detents extraction (locks BOTH lid
+                                   # pieces: B butts A). No screws anywhere.
 
 # ── plain (+X) latch: 6.4 travel, snap-in tip bevel ──────────────────────
 A_TRAVEL = 6.4
@@ -107,8 +137,6 @@ A_DP_X0, A_DP_X1, DP_Y1 = 10.0, 15.7, -6.7  # head's travel garage
 A_TAB_X1, TAB_Z1 = 28.2, 5.5               # low pusher tab → finger arm
 A_CH_X0, A_CH_X1 = 10.0, 39.5              # channel + finger bay
 A_FNG_X0 = A_TAB_X1                        # finger front rests on the tab
-A_LID_X0, A_LID_X1 = 10.4, 39.9
-A_M2 = ((18.0, -6.55), (32.0, -6.55))
 
 # ── TRRS (-X) latch: 15.0 travel, the slider carries the plug ────────────
 # Seated (drawn) plug: jack mouth flush at the shaft surface (x' 10), barrel
@@ -139,8 +167,6 @@ B_CAV_X0, B_CAV_X1 = 10.0, 45.0            # one open-top latch cavity
 B_CAV_Y0, B_CAV_Y1 = -13.9, 6.5
 B_FNG_X0 = 34.5                            # kick spring: engaged only over
                                            # the last ~4.5 of opening
-B_LID_X0, B_LID_X1 = 10.4, 49.5
-B_M2 = ((47.0, -11.0), (47.0, 2.0))        # both beyond the cavity (x>45)
 
 
 def _slot_cutter(lx: float, square_ls: float = 0.0) -> cq.Workplane:
@@ -167,26 +193,17 @@ def _slot_cutter(lx: float, square_ls: float = 0.0) -> cq.Workplane:
     return cut
 
 
-def _m2_bores(body, lx, ls, holes):
-    """Ø2.2 self-tap below a Ø3.3×3.5 insert pocket (CLAUDE.md rule)."""
-    for mx, my in holes:
-        body = body.cut(cyl(M2_SELFTAP_D, LID_Z0 - 6.0, z=6.0)
-                        .translate((lx + ls * mx, YC + my, 0)))
-        body = body.cut(cyl(M2_INSERT_PILOT_D, M2_INSERT_DEPTH + 0.5,
-                            z=LID_Z0 - M2_INSERT_DEPTH)
-                        .translate((lx + ls * mx, YC + my, 0)))
-    return body
-
-
-def pedal_bar() -> cq.Workplane:
-    """The bar body: one slim prism − slots − the two (different) latch
-    cavities and lid recesses."""
+def _bar_full() -> cq.Workplane:
+    """The full bar (pre-split): slim prism − slots − latch cavities −
+    wiring TROUGH − the full-length dovetail lid GROOVE − the lid-lock
+    detent pocket. The trough connects both latch cavities (the TRRS
+    pigtail routes to the mid-bar electronics without crossing a slot)."""
     body = box_at(BAR_X1 - BAR_X0, BAR_Y1 - BAR_Y0, BAR_H,
                   x=(BAR_X0 + BAR_X1) / 2, y=(BAR_Y0 + BAR_Y1) / 2, z=BAR_H / 2)
     body = body.cut(_slot_cutter(LATCHES[0][0]))
     body = body.cut(_slot_cutter(LATCHES[1][0], LATCHES[1][1]))
 
-    # ── plain latch (+X foot) ──────────────────────────────────────────
+    # plain latch (+X foot) channel + head garage
     lx, ls = LATCHES[0]
     body = body.cut(box_at(A_CH_X1 - A_CH_X0, CH_Y1 - CH_Y0, BAR_H - CH_Z0 + 1,
                            x=lx + ls * (A_CH_X0 + A_CH_X1) / 2,
@@ -196,28 +213,68 @@ def pedal_bar() -> cq.Workplane:
                            x=lx + ls * (A_DP_X0 + A_DP_X1) / 2,
                            y=YC + (CH_Y0 + DP_Y1) / 2,
                            z=(CH_Z0 + BAR_H + 1) / 2))
-    body = body.cut(box_at(A_LID_X1 - A_LID_X0, LID_Y1 - LID_Y0,
-                           BAR_H - LID_Z0 + 1,
-                           x=lx + ls * (A_LID_X0 + A_LID_X1) / 2,
-                           y=YC + (LID_Y0 + LID_Y1) / 2,
-                           z=(LID_Z0 + BAR_H + 1) / 2))
-    body = _m2_bores(body, lx, ls, A_M2)
 
-    # ── TRRS latch (-X foot): one open-top cavity swallows the slider,
-    #    cradle, plug travel, kick spring and cable service loop ─────────
+    # TRRS latch (-X foot): one open-top cavity swallows the slider,
+    # cradle, plug travel, kick spring and cable service loop
     lx, ls = LATCHES[1]
     body = body.cut(box_at(B_CAV_X1 - B_CAV_X0, B_CAV_Y1 - B_CAV_Y0,
                            BAR_H - CH_Z0 + 1,
                            x=lx + ls * (B_CAV_X0 + B_CAV_X1) / 2,
                            y=YC + (B_CAV_Y0 + B_CAV_Y1) / 2,
                            z=(CH_Z0 + BAR_H + 1) / 2))
-    body = body.cut(box_at(B_LID_X1 - B_LID_X0, (7.0 - LID_Y0),
-                           BAR_H - LID_Z0 + 1,
-                           x=lx + ls * (B_LID_X0 + B_LID_X1) / 2,
-                           y=YC + (LID_Y0 + 7.0) / 2,
-                           z=(LID_Z0 + BAR_H + 1) / 2))
-    body = _m2_bores(body, lx, ls, B_M2)
+
+    # wiring TROUGH (open top; the lid roofs it)
+    body = body.cut(box_at(TROUGH_X1 - TROUGH_X0, 16.5, BAR_H - 4.0 + 1,
+                           x=(TROUGH_X0 + TROUGH_X1) / 2, y=YC - 1.75,
+                           z=(4.0 + BAR_H + 1) / 2))
+
+    # full-length dovetail lid GROOVE (45° flanks — the rails print as
+    # self-supporting overhangs with the bar lying bottom-down): runs out
+    # the +X end face for lid insertion (the short open stub over the +X
+    # slot region is cosmetic)
+    groove = (cq.Workplane("YZ")
+              .polyline([(-15.4, 15.0), (8.4, 15.0), (6.8, 19.0),
+                         (6.8, 20.0), (-13.8, 20.0), (-13.8, 19.0)])
+              .close().extrude(BAR_X1 + 1 - LID_XA))
+    body = body.cut(cq.Workplane("XY").add(groove.val())
+                    .translate((LID_XA, YC, 0)))
+    # lid-lock detent pocket (a TPU nub sits 1.2 proud of the groove floor)
+    body = body.cut(cyl(3.8, 3.2, z=LID_Z0 - 3.1)
+                    .translate((LOCK_X, YC + LOCK_Y, 0)))
     return body
+
+
+def _splice_prisms(grow: float) -> cq.Workplane:
+    """The two vertical slide-in dovetail tenons at the bar splice (plan-view
+    trapezoids on the front/back trough walls, z 0..15 so the lid groove
+    stays untouched). grow=0 → piece A's tenons; grow>0 → piece B's slots."""
+    out = None
+    for y0, y1 in ((-14.5, -11.5), (9.25, 12.25)):      # tenon roots
+        p = (cq.Workplane("XY")
+             .polyline([(XS - grow * 4, y0 + YC - grow),
+                        (XS + 4.0 + grow, y0 - 0.7 + YC - grow),
+                        (XS + 4.0 + grow, y1 + 0.7 + YC + grow),
+                        (XS - grow * 4, y1 + YC + grow)])
+             .close().extrude(15.0 + grow))
+        out = p if out is None else out.union(p)
+    return out
+
+
+def pedal_bar_a() -> cq.Workplane:
+    """-X bar piece (TRRS foot): full bar clipped at the splice + the two
+    dovetail tenons (slide piece B down onto them, glue). 321.6 long —
+    fits the 255² bed on the diagonal."""
+    half = box_at(XS - (BAR_X0 - 1), 80.0, 40.0,
+                  x=(BAR_X0 - 1 + XS) / 2, y=YC, z=10.0)
+    return _bar_full().intersect(half).union(_splice_prisms(0.0))
+
+
+def pedal_bar_b() -> cq.Workplane:
+    """+X bar piece (plain foot): clipped at the splice − the tenon slots
+    (0.2 fit). 291.6 long — diagonal print."""
+    half = box_at((BAR_X1 + 1) - XS, 80.0, 40.0,
+                  x=(XS + BAR_X1 + 1) / 2, y=YC, z=10.0)
+    return _bar_full().intersect(half).cut(_splice_prisms(0.2))
 
 
 def _bolt_core(lx: float, ls: float, bevel: bool,
@@ -322,35 +379,58 @@ def finger_part() -> cq.Workplane:
     return pedal_latch_finger(lx, ls, A_FNG_X0, (CH_Y0 + CH_Y1) / 2)
 
 
-def pedal_latch_lid(lx: float, ls: float, x0: float, x1: float, y1: float,
-                    fng_x0: float, m2) -> cq.Workplane:
-    """A latch lid: roofs its cavity (recessed flush), carries the thumb-pad
-    slot, sockets the TPU finger, M2s down into the bar."""
-    body = box_at(x1 - x0, y1 - LID_Y0, BAR_H - LID_Z0,
-                  x=lx + ls * (x0 + x1) / 2, y=YC + (LID_Y0 + y1) / 2,
-                  z=(LID_Z0 + BAR_H) / 2)
-    travel = A_TRAVEL if fng_x0 == A_FNG_X0 else B_TRAVEL
-    body = body.cut(box_at(POST_X1 - POST_X0 + travel + 0.6,
-                           BOLT_Y1 - BOLT_Y0 + 0.6, BAR_H - LID_Z0 + 2,
-                           x=lx + ls * (POST_X0 - 0.3 + POST_X1 + travel + 0.3) / 2,
-                           y=YC + (BOLT_Y0 + BOLT_Y1) / 2,
-                           z=(LID_Z0 + BAR_H) / 2))
-    body = body.cut(box_at(FNG_T + 0.8, FNG_W + 0.8, FNG_BASE_H,
-                           x=lx + ls * (fng_x0 + FNG_T / 2),
-                           y=YC + (CH_Y0 + CH_Y1) / 2
-                           if fng_x0 == A_FNG_X0 else YC,
-                           z=LID_Z0 + FNG_BASE_H / 2))
-    # TPU detent-nub press pocket (Ø3.8 for the Ø4 nub, 0.1/side squeeze):
-    # the nub bulges into the post lane and clicks into the closed groove
-    body = body.cut(cyl(3.8, BAR_H - LID_Z0 + 2, z=LID_Z0 - 1)
-                    .translate((lx + ls * 15.0, YC - 8.2, 0)))
-    for mx, my in m2:
-        body = body.cut(cyl(M2_SHAFT_CLR_D, BAR_H - LID_Z0 + 2, z=LID_Z0 - 1)
-                        .translate((lx + ls * mx, YC + my, 0)))
-        body = body.cut(cyl(M2_HEAD_RECESS_D, M2_HEAD_RECESS_H + 1,
-                            z=BAR_H - M2_HEAD_RECESS_H)
-                        .translate((lx + ls * mx, YC + my, 0)))
+def _lid_full() -> cq.Workplane:
+    """The full sliding-dovetail lid (pre-split): a 4-thick plate with 45°
+    dovetail flanks riding the bar's top groove — ONE lid roofs the wiring
+    trough AND both latch cavities (no separate latch lids, no screws). It
+    carries the thumb-post slots, the TPU finger sockets, the latch detent
+    nub pockets, and the underside LOCK groove (both pieces slide over the
+    bar-top nub; lid B's groove ends in a dimple that clicks in at the
+    final position). Prints TOP-FACE DOWN: the flanks are 45°."""
+    prof = (cq.Workplane("YZ")
+            .polyline([(-15.3, 15.0), (8.3, 15.0), (6.7, 19.0), (-13.7, 19.0)])
+            .close().extrude(LID_XB - LID_XA))
+    body = cq.Workplane("XY").add(prof.val()).translate((LID_XA, YC, 0))
+    # thumb-post slots + finger sockets + latch detent-nub pockets
+    for (lx, ls), travel, fng_x0, fng_yc in (
+            (LATCHES[0], A_TRAVEL, A_FNG_X0, (CH_Y0 + CH_Y1) / 2),
+            (LATCHES[1], B_TRAVEL, B_FNG_X0, 0.0)):
+        body = body.cut(box_at(POST_X1 - POST_X0 + travel + 0.6,
+                               BOLT_Y1 - BOLT_Y0 + 0.6, BAR_H - LID_Z0 + 2,
+                               x=lx + ls * (POST_X0 - 0.3 + POST_X1 + travel + 0.3) / 2,
+                               y=YC + (BOLT_Y0 + BOLT_Y1) / 2,
+                               z=(LID_Z0 + BAR_H) / 2))
+        body = body.cut(box_at(FNG_T + 0.8, FNG_W + 0.8, FNG_BASE_H,
+                               x=lx + ls * (fng_x0 + FNG_T / 2),
+                               y=YC + fng_yc, z=LID_Z0 + FNG_BASE_H / 2))
+        # TPU detent-nub press pocket (Ø3.8 for the Ø4 nub): the nub bulges
+        # into the post lane and clicks into the post's closed groove
+        body = body.cut(cyl(3.8, BAR_H - LID_Z0 + 2, z=LID_Z0 - 1)
+                        .translate((lx + ls * 15.0, YC - 8.2, 0)))
+    # underside LOCK groove (rides the bar-top nub, 0.5 squeeze) + dimple
+    body = body.cut(box_at(LID_XB - LID_XA + 2, 4.3, 0.7,
+                           x=(LID_XA + LID_XB) / 2, y=YC + LOCK_Y,
+                           z=LID_Z0 + 0.35))
+    body = body.cut(cyl(4.4, 1.7, z=LID_Z0 - 0.1)
+                    .translate((LOCK_X, YC + LOCK_Y, 0)))
     return body
+
+
+def pedal_lid_a() -> cq.Workplane:
+    """-X lid piece (covers the TRRS latch; 241.4 — prints straight)."""
+    half = box_at(XL - (LID_XA - 1), 80.0, 40.0,
+                  x=(LID_XA - 1 + XL) / 2, y=YC, z=10.0)
+    return _lid_full().intersect(half)
+
+
+def pedal_lid_b() -> cq.Workplane:
+    """+X lid piece (covers the plain latch + carries the lock dimple;
+    321.6 — diagonal print). Slides in last: its lock dimple clicks onto
+    the bar-top nub, pinning BOTH lid pieces (B butts A, A butts nothing —
+    the stack is set by the nub)."""
+    half = box_at((LID_XB + 1) - XL, 80.0, 40.0,
+                  x=(XL + LID_XB + 1) / 2, y=YC, z=10.0)
+    return _lid_full().intersect(half)
 
 
 def pedal_latch_finger(lx: float, ls: float, fng_x0: float,
@@ -374,13 +454,20 @@ def pedal_detent_nub(lx: float, ls: float) -> cq.Workplane:
     """TPU detent nub (Ø4 × 4): pressed into the lid's Ø3.8 pocket, its side
     bulges ~0.8 into the thumb-post lane and clicks into the post's closed
     groove — the hold-closed force of EVERY latch, independent of any
-    connector (~5-10 N pop, a light drag while sliding). Print 2."""
+    connector (~5-10 N pop, a light drag while sliding). Print 3 (two latch
+    nubs + the lid-lock nub)."""
     return (cyl(4.0, BAR_H - LID_Z0, z=LID_Z0)
             .translate((lx + ls * 15.0, YC - 8.2, 0)))
 
 
+def _lock_nub() -> cq.Workplane:
+    """The lid-lock instance: same printed nub, pressed into the bar-top
+    pocket; sits 1.2 proud of the groove floor into lid B's lock groove."""
+    return cyl(4.0, 4.0, z=LID_Z0 - 2.8).translate((LOCK_X, YC + LOCK_Y, 0))
+
+
 def nub_part() -> cq.Workplane:
-    """The single printed TPU nub (export once, print 2)."""
+    """The single printed TPU nub (export once, print 3)."""
     return pedal_detent_nub(*LATCHES[0])
 
 
@@ -418,18 +505,18 @@ def assembly_parts():
     """[(name, workplane)] — printed parts + connector DEMOs, drawn SEATED,
     absolute X/Y, z0 = plate bottom (build.py lifts by ground + FOOT_H)."""
     (lx_a, ls_a), (lx_b, ls_b) = LATCHES
-    return [("pedal_bar", pedal_bar()),
+    return [("pedal_bar_a", pedal_bar_a()),
+            ("pedal_bar_b", pedal_bar_b()),
+            ("pedal_lid_a", pedal_lid_a()),
+            ("pedal_lid_b", pedal_lid_b()),
             ("pedal_bolt", pedal_bolt()),
             ("pedal_bolt_trrs", pedal_bolt_trrs()),
-            ("pedal_latch_lid", pedal_latch_lid(
-                lx_a, ls_a, A_LID_X0, A_LID_X1, LID_Y1, A_FNG_X0, A_M2)),
-            ("pedal_latch_lid_trrs", pedal_latch_lid(
-                lx_b, ls_b, B_LID_X0, B_LID_X1, 7.0, B_FNG_X0, B_M2)),
             ("pedal_latch_finger_0", pedal_latch_finger(
                 lx_a, ls_a, A_FNG_X0, (CH_Y0 + CH_Y1) / 2)),
             ("pedal_latch_finger_1", pedal_latch_finger(
                 lx_b, ls_b, B_FNG_X0, 0.0)),
             ("pedal_detent_nub_0", pedal_detent_nub(lx_a, ls_a)),
             ("pedal_detent_nub_1", pedal_detent_nub(lx_b, ls_b)),
+            ("pedal_detent_nub_2", _lock_nub()),
             ("pedal_trrs_jack", _trrs_jack()),
             ("pedal_trrs_plug", _trrs_plug())]
