@@ -192,7 +192,10 @@ HS_NOSE_PROTRUDE = FOLL_TRAVEL + 1.0 + CART_RECEDE  # tongue -X of the front (> 
                                                    #   extra CART_RECEDE lengthens the tongue = body recede.
                                                    #   8 mm clears the plain-prism cartridge to ~33° with NO
                                                    #   carve -- just push the whole box out of the arm's arc)
-HS_BODY_LX = 5.0                    # piston body length in X (rides the channel; long enough not to cock)
+HS_BODY_LX = 3.0                    # piston body length in X (was 5; matched to the 3mm guide post -- the 2mm
+                                    #   saved pulls the whole cartridge + its back-stop boss 2mm forward, all
+                                    #   spent on thread engagement without moving the leg-facing extent). The
+                                    #   pilot + tongue add effective bearing length so 3mm won't cock.
 HS_CLR    = 0.4                     # piston/coil <-> channel slide clearance (per side)
 HS_WALL   = 1.6                     # cartridge STRUCTURAL wall (floor / front / back); the coil-region
                                     #   SIDE walls end up thinner (~1.0, emergent) so the Ø6 coil fits Y
@@ -257,7 +260,8 @@ HS_TH_PITCH     = 2.0               # self-supporting 45deg thread pitch (whole-
 HS_TH_DEPTH     = 0.75              # flank depth <= pitch/2 (=1.0, margin kept); deeper flanks = more grip/prevailing torque
 HS_TH_MINOR     = HS_BSTOP_OD - 2 * HS_TH_DEPTH   # 8.0 -> wall to the Ø5 bore = 1.5mm
 HS_TH_CLR       = 0.4               # diametral thread clearance on the MALE side (TIGHTER than the 0.8 tested loose fit)
-HS_BSTOP_ENGAGE = 4.0               # engagement in the boss = 2 turns (the leg sits 1.44mm behind -> can't go deeper)
+HS_BSTOP_ENGAGE = 6.0               # engagement in the boss = 3 turns (the 2mm reclaimed from the piston head
+                                    #   pulls this boss forward, so 6mm now fits at the SAME 1.44mm leg clearance)
 HS_BSTOP_FLANGE = 0.5               # +X drive flange (drive slots on its face; thin so the total extent clears the leg)
 HS_DRAG_LX, HS_DRAG_SEAT, HS_DRAG_BULGE = 6.0, 1.5, 0.4  # TPU drag: X length, wall-recess depth, interference into lane
 HS_HOUS_BACK = HS_BACK_X + HS_BSTOP_ENGAGE   # housing boss depth = engagement (no extra -- preserves the leg clearance)
