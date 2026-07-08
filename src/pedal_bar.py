@@ -106,20 +106,32 @@ A_M2 = ((18.0, -6.55), (32.0, -6.55))
 # Ø3.5 spans 10.2 → -3.8 (13.8 of the 14 insertion; the collar noses 0.8
 # into the shaft's counterbore). Retracted (+15): barrel tip at 11.2 — the
 # corridor (±10.2) is FULLY clear, the leg slides past nothing.
+# Parts (DigiKey): male = Same Sky SP-3541 (Ø3.5×11.5 barrel + Ø4.5×3 lead
+# = 14.5 to the body; 5×5×~12.1 body, 4 solder pins — carried pins-UP in
+# the cradle, wires solder from the open top before the lid goes on);
+# female = Same Sky SJ-43516-SMT-TR (14.0 mating depth), embedded in
+# legs.leg_shaft_trrs. Seated: jack mouth at the shaft surface (x' 10),
+# barrel tip at -4 (full 14 insertion, tip stays inside the jack body).
 B_TRAVEL = 15.0
-TR_Z = 8.7                                 # connector axis (bar-local z; low
-                                           # enough that the cradle tube roof
-                                           # stays under the lid plane)
-PLUG_TIP, PLUG_BASE = -3.8, 10.2           # barrel (x', seated)
-PLUG_BODY_L, PLUG_BODY_D = 18.0, 9.0       # straight plug body in the cradle
-TUBE_X1 = 30.2                             # cradle tube incl. backstop end
-SHELL_X1 = TUBE_X1
-B_CAV_X0, B_CAV_X1 = 10.0, 49.5            # one open-top latch cavity
+TR_Z = 8.7                                 # connector axis (bar-local z)
+B_BOLT_X0 = -4.3                           # blocking head/body tip: sized so
+                                           # the head clears the corridor at
+                                           # 14.7 of the stroke — the SAME
+                                           # time the plug clears (14.4); it
+                                           # also bears across ~11.4 of the
+                                           # chord flat (was 3.1)
+PLUG_TIP = -4.0                            # barrel tip (x', seated): the
+                                           # Ø3.5 barrel is 14.5 long, so at
+                                           # 14 insertion its Ø4.5 lead ring
+                                           # stays 0.5 proud of the mouth
+BODY_X0, BODY_X1 = 13.5, 21.6              # SP-3541 body (5 × 5) in the cradle
+CRDL_X1 = 24.0                             # cradle backstop end
+B_CAV_X0, B_CAV_X1 = 10.0, 45.0            # one open-top latch cavity
 B_CAV_Y0, B_CAV_Y1 = -13.9, 6.5
-B_FNG_X0 = 40.7                            # kick spring: engaged only over
+B_FNG_X0 = 34.5                            # kick spring: engaged only over
                                            # the last ~4.5 of opening
-B_LID_X0, B_LID_X1 = 10.4, 54.0
-B_M2 = ((51.5, -11.0), (51.5, 2.0))        # both beyond the cavity (x>49.5)
+B_LID_X0, B_LID_X1 = 10.4, 49.5
+B_M2 = ((47.0, -11.0), (47.0, 2.0))        # both beyond the cavity (x>45)
 
 
 def _slot_cutter(lx: float) -> cq.Workplane:
@@ -189,22 +201,25 @@ def pedal_bar() -> cq.Workplane:
     return body
 
 
-def _bolt_core(lx: float, ls: float, bevel: bool) -> cq.Workplane:
-    """Bolt body + blocking head + thumb post/pad (shared by both latches)."""
-    body = box_at(BOLT_X1 - BOLT_X0, BOLT_Y1 - BOLT_Y0, BOLT_Z1 - BOLT_Z0,
-                  x=lx + ls * (BOLT_X0 + BOLT_X1) / 2,
+def _bolt_core(lx: float, ls: float, bevel: bool,
+               x0: float = BOLT_X0) -> cq.Workplane:
+    """Bolt body + blocking head + thumb post/pad (shared by both latches).
+    x0 is the head/body tip: the TRRS latch extends it to B_BOLT_X0 so the
+    lock disengages at the same stroke point as the plug."""
+    body = box_at(BOLT_X1 - x0, BOLT_Y1 - BOLT_Y0, BOLT_Z1 - BOLT_Z0,
+                  x=lx + ls * (x0 + BOLT_X1) / 2,
                   y=YC + (BOLT_Y0 + BOLT_Y1) / 2,
                   z=(BOLT_Z0 + BOLT_Z1) / 2)
-    body = body.union(box_at(HEAD_X1 - BOLT_X0, HEAD_Y1 - BOLT_Y0,
+    body = body.union(box_at(HEAD_X1 - x0, HEAD_Y1 - BOLT_Y0,
                              BOLT_Z1 - BOLT_Z0,
-                             x=lx + ls * (BOLT_X0 + HEAD_X1) / 2,
+                             x=lx + ls * (x0 + HEAD_X1) / 2,
                              y=YC + (BOLT_Y0 + HEAD_Y1) / 2,
                              z=(BOLT_Z0 + BOLT_Z1) / 2))
     if bevel:   # snap-in entry ramp (plain latch only — see header)
         body = body.cut(cq.Workplane("XY")
-                        .polyline([(ls * BOLT_X0, BOLT_Y0),
-                                   (ls * (BOLT_X0 + 3.0), BOLT_Y0),
-                                   (ls * BOLT_X0, BOLT_Y0 + 3.0)])
+                        .polyline([(ls * x0, BOLT_Y0),
+                                   (ls * (x0 + 3.0), BOLT_Y0),
+                                   (ls * x0, BOLT_Y0 + 3.0)])
                         .close().extrude(BOLT_Z1 - BOLT_Z0 + 2)
                         .translate((lx, YC, BOLT_Z0 - 1)))
     body = body.union(box_at(POST_X1 - POST_X0, BOLT_Y1 - BOLT_Y0,
@@ -233,34 +248,35 @@ def pedal_bolt() -> cq.Workplane:
 
 
 def pedal_bolt_trrs() -> cq.Workplane:
-    """TRRS (-X foot) slider, drawn CLOSED/SEATED: bolt (no bevel — an
-    un-retracted install must REFUSE, not half-cam into the barrel) + bridge
-    + plug cradle TUBE (Ø12 over a Ø9.5 bore). The plug loads barrel-first
-    through the tube's open front BEFORE the slider drops into the bar; the
-    backstop end (Ø5 cable bore) pushes it in, an M2 set screw through the
-    tube roof (Ø2.2 self-tap, CLAUDE.md rule) pinches the molded body so
-    retraction pulls it back out of the jack. At closed the tube's front
-    face sits 0.2 off the shaft (the shaft's round has receded everywhere
-    else); nothing enters the leg but the barrel."""
+    """TRRS (-X foot) slider, drawn CLOSED/SEATED: extended bolt (no bevel —
+    an un-retracted install must REFUSE, not half-cam into the barrel; tip
+    at B_BOLT_X0 so lock and plug disengage together) + bridge + open-top
+    plug CRADLE for the SP-3541. The plug drops in pins-UP (solder access
+    from the open top before the lid goes on): U-channel walls locate the
+    5-wide body, the backstop pushes it in, a SIDE M2 set screw (Ø2.2
+    self-tap, CLAUDE.md rule) pinches the body so retraction pulls it back
+    out of the jack. At closed the body face sits 0.5 off the shaft;
+    nothing enters the leg but the barrel."""
     lx, ls = LATCHES[1]
-    body = _bolt_core(lx, ls, bevel=False)
-    # bridge: bolt body band → cradle tube
-    body = body.union(box_at(8.0, 5.0, 8.0,
-                             x=lx + ls * 16.0, y=YC - 7.1, z=TR_Z))
-    # cradle tube + backstop end
-    tube = cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        6.0, TUBE_X1 - PLUG_BASE,
-        cq.Vector(lx + ls * PLUG_BASE, YC, TR_Z), cq.Vector(ls, 0, 0)))
-    tube = tube.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        4.75, PLUG_BODY_L + 1.2,
-        cq.Vector(lx + ls * (PLUG_BASE - 1), YC, TR_Z), cq.Vector(ls, 0, 0))))
-    tube = tube.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        2.5, TUBE_X1 - PLUG_BASE + 2,
-        cq.Vector(lx + ls * (PLUG_BASE - 1), YC, TR_Z), cq.Vector(ls, 0, 0))))
-    # M2 set-screw way through the tube roof (retains the plug body)
-    tube = tube.cut(cyl(M2_SELFTAP_D, 8.0, z=TR_Z)
-                    .translate((lx + ls * (PLUG_BASE + PLUG_BODY_L / 2), YC, 0)))
-    body = body.union(tube)
+    body = _bolt_core(lx, ls, bevel=False, x0=B_BOLT_X0)
+    # bridge: bolt body band → cradle wall
+    body = body.union(box_at(8.0, 6.0, 8.0,
+                             x=lx + ls * 16.0, y=YC - 6.6, z=TR_Z))
+    # cradle: floor + two walls + backstop (open top; the lid caps it)
+    body = body.union(box_at(CRDL_X1 - (BODY_X0 + 0.4), 8.8, 1.3,
+                             x=lx + ls * (BODY_X0 + 0.4 + CRDL_X1) / 2,
+                             y=YC, z=5.55))
+    for s in (1, -1):
+        body = body.union(box_at(CRDL_X1 - (BODY_X0 + 0.4), 1.5, 7.0,
+                                 x=lx + ls * (BODY_X0 + 0.4 + CRDL_X1) / 2,
+                                 y=YC + s * 3.65, z=9.4))
+    body = body.union(box_at(CRDL_X1 - BODY_X1 - 0.2, 8.8, 8.0,
+                             x=lx + ls * (BODY_X1 + 0.2 + CRDL_X1) / 2,
+                             y=YC, z=8.9))
+    # side M2 set-screw way (pinches the plug body for the pull-out)
+    body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        M2_SELFTAP_D / 2, 3.4,
+        cq.Vector(lx + ls * 17.5, YC - 6.0, TR_Z), cq.Vector(0, 1, 0))))
     return body
 
 
@@ -325,28 +341,32 @@ def pedal_latch_finger(lx: float, ls: float, fng_x0: float,
 
 
 def _trrs_jack() -> cq.Workplane:
-    """DEMO leg-side female jack (PJ-320 / SJ-43516 class, 12×11×5): mating
-    axis X, mouth flush at the shaft's inboard face, Ø3.6 way."""
+    """DEMO leg-side female jack — Same Sky SJ-43516-SMT-TR (DigiKey;
+    ~14.5×6×5 body, 14.0 mating depth): mating axis X, mouth flush at the
+    shaft's inboard face, Ø3.6 way."""
     lx, ls = LATCHES[1]
-    j = box_at(12.0, 11.0, 5.0, x=lx + ls * 4.0, y=YC, z=TR_Z)
+    j = box_at(14.5, 6.0, 5.0, x=lx + ls * (10.0 - 14.5 / 2), y=YC, z=TR_Z)
     return j.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        1.8, 14.0, cq.Vector(lx + ls * 10.5, YC, TR_Z), cq.Vector(-ls, 0, 0))))
+        1.8, 15.0, cq.Vector(lx + ls * 10.5, YC, TR_Z), cq.Vector(-ls, 0, 0))))
 
 
 def _trrs_plug() -> cq.Workplane:
-    """DEMO bar-side straight male plug, drawn SEATED in the jack: Ø3.5×14
-    barrel + Ø9×18 body in the cradle + cable stub with its service loop."""
+    """DEMO bar-side male plug — Same Sky SP-3541 (DigiKey; Ø3.5×11.5
+    barrel + Ø4.5×3 lead + 5×5×12.1 body, 4 solder pins), drawn SEATED:
+    tip at x' -4 (full 14 insertion), body in the cradle pins-UP, wire stub
+    over the backstop with its service loop implied."""
     lx, ls = LATCHES[1]
     p = cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        1.75, PLUG_BASE - PLUG_TIP,
-        cq.Vector(lx + ls * PLUG_BASE, YC, TR_Z), cq.Vector(-ls, 0, 0)))
+        1.75, 14.5, cq.Vector(lx + ls * 10.5, YC, TR_Z), cq.Vector(-ls, 0, 0)))
     p = p.union(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        PLUG_BODY_D / 2, PLUG_BODY_L,
-        cq.Vector(lx + ls * PLUG_BASE, YC, TR_Z), cq.Vector(ls, 0, 0))))
-    # cable stub: out the backstop's Ø5 bore, service loop implied (stops
-    # short of the kick spring at x' 40.7)
-    p = p.union(box_at(11.6, 3.4, 3.4,
-                       x=lx + ls * (28.4 + 11.6 / 2), y=YC, z=TR_Z))
+        2.25, 3.0, cq.Vector(lx + ls * BODY_X0, YC, TR_Z), cq.Vector(-ls, 0, 0))))
+    p = p.union(box_at(BODY_X1 - BODY_X0, 5.0, 5.0,
+                       x=lx + ls * (BODY_X0 + BODY_X1) / 2, y=YC, z=TR_Z))
+    for px in (15.0, 17.0, 19.0, 21.0):     # solder pins, facing UP
+        p = p.union(box_at(0.6, 0.6, 2.5, x=lx + ls * px, y=YC,
+                           z=TR_Z + 2.5 + 1.25))
+    p = p.union(box_at(12.0, 3.0, 1.9,      # wire stub over the backstop
+                       x=lx + ls * 27.0, y=YC, z=13.9))
     return p
 
 
