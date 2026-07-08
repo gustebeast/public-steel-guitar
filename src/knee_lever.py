@@ -111,10 +111,10 @@ LOBE_RC = 11.0                               # lobe axis radius (pivot -> lobe) 
                                              #   BELOW the Ø10 hub (z -5) -- else the tall follower jams the
                                              #   hub. Also the moment arm (ratio ≈ 100/11 = 9:1).
 LOBE_R  = 1.5                                # rounded lobe radius
-LOBE_WY = 5.0                                # each lobe's / follower-tongue Y width. Widened from 3: the
-                                             #   cartridges move inboard (CART_INSET) off the bearing walls,
-                                             #   which frees the arm-outboard wall for a fatter (stronger)
-                                             #   tongue -- bounded by window<body (Ø6) and the ~1mm arm wall.
+LOBE_WY = 4.0                                # each lobe's / follower-tongue Y width. Widened from 3 (via the
+                                             #   inboard CART_INSET, which frees the arm-outboard wall), but
+                                             #   CAPPED at 4: the front lip that catches the Ø6 body is
+                                             #   (body - (LOBE_WY+0.4))/2, which hits the 0.8 mm floor at 4.
 CAM_TX  = 3.0                                # cam-plate thickness in X (the swing direction)
 CAM_Y0, CAM_Y1 = HUB_Y0 + 1.0, HUB_Y1 - 1.0  # cam-plate Y span (wide enough to span both followers,
                                              #   which sit flush against the bearing walls)
@@ -158,10 +158,11 @@ HS_PILOT_D  = HS_SPR_ID - 0.4       # 3.2: centre pilot (piston back + guide-pos
 HS_GPOST_LX = 3.0                   # guide-post body: coil-shoulder -> cup face (screw bears here)
 HS_PILOT_LX = 5.0                   # pilot length reaching into the coil ID (piston back & guide post)
 HS_ARM    = 4.0                     # follower-tongue Y width band
-FOLL_H    = 6.0                    # follower FLAT-face height (Z). Only ~1.5 mm of it TRACKS the lobe at
-                                   #   THROW=30; the rest is STRENGTH -- a tall face makes the tongue stout
-                                   #   in the friction-bending (Z) direction. Bounded above by the hub
-                                   #   (follower top must stay -Z of it -- there is ~2 mm of margin at 6.0).
+FOLL_H    = 4.5                    # follower FLAT-face height (Z). Only ~1.5 mm TRACKS the lobe at THROW=30;
+                                   #   the rest is STRENGTH. Capped NOT by the hub but by the cartridge FRONT
+                                   #   WALL: the tongue's window is FOLL_H+1 tall and the front wall is only
+                                   #   ~7.4 mm (piston bottom -> mount), so FOLL_H>4.5 leaves <0.8 mm of wall
+                                   #   above/below the window. (A taller tongue needs the axle raised first.)
 FOLL_DZ   = 0.75                   # follower centre offset up from HS_Z (centres it on the lobe's rising arc)
 HS_Z      = HUB_TOP + 1.5           # piston / follower centre Z: the HS_ARM tongue spans the lobe band
                                     #   (5.66..8) and clears the hub below; the Ø6 body clears the boss
