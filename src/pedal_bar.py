@@ -1,19 +1,23 @@
 """Pedal bar — spans the two +Y legs at ankle height; retract-slide-release.
 
 The bar is the mounting rail for the (future) sensor pedals. It attaches to
-the +Y legs' shafts (legs.py): each end has a rectangular SLOT, open toward
-the instrument (-Y) — Ø20.4 walls register X on the shaft's rounds, and the
-flat back FACE-seats on the shaft's single key flat (the leg's single-D key
-aims everything). Z: the plate rests on the foot cap + the chord notch's
-lower crescent; anti-lift is the CLOSED bolt head sitting inside the notch.
-The bar is one slim prism (Y -16..+12): no lumps, ends just past each leg.
+the +Y legs' shafts (legs.py): each end has a SLOT, open toward the
+instrument (-Y) — Ø20.4 walls register X, a ROUND back (r10.2) hugs the
+shaft's round side, and the shaft's single key flat faces the MOUTH, where
+it is the latch bolt's bearing plane (the leg's single-D key aims
+everything; at the TRRS leg the slot's inboard back corner is SQUARED to
+fit that shaft's corner-fill extension, whose flat also face-seats the
+wall). Z: the plate rests on the foot caps; anti-lift is the SEATED TRRS
+plug (the plain end can float up until gravity returns it — fine in play,
+bar off in transport). Bar = one slim prism (Y -16..+15), ends just past
+each leg; each latch sits INBOARD of its leg.
 
 Y RETENTION — one sliding-bolt latch per foot, both opening INBOARD; rigid
 lock, no flexing structural member. Closed, the bolt's thickened HEAD bears
-flat-on-flat on the waist's front CHORD (legs.WAIST_CHORD_Y): normal pure
-Y — a tug cannot cam it open, wear cannot loosen it, seated Y float ~0.4
-total (0.2 chord + 0.2 slot-back seat). The thumb pad rides an integral
-post through an X slot in the lid.
+flat-on-flat on the shaft's key flat — the PRINT-BED surface reused as the
+bearing plane: normal pure Y, a tug cannot cam it open, wear cannot loosen
+it, seated Y float ~0.4 total (0.2 flat + 0.2 round-back seat). The thumb
+pad rides an integral post through an X slot in the lid.
 
 The two latches differ:
 - +X foot (pedal_bolt, 6.4 travel): keeps the 45° tip bevel — pushing the
@@ -53,7 +57,7 @@ import cadquery as cq
 
 from .helpers import box_at, cyl
 from .chassis import LEG_STATIONS_X, Y_HI
-from .legs import SHAFT_D, SHAFT_FLAT_Y
+from .legs import SHAFT_D
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "freecad"))
 from fasteners import (M2_SELFTAP_D, M2_SHAFT_CLR_D, M2_HEAD_RECESS_D,  # noqa: E402
@@ -66,19 +70,24 @@ LATCHES = ((LEG_STATIONS_X[0], -1.0),  # +X leg → plain snap latch, extends -X
 
 # plate: 19 tall inside the 20-tall notch band (1.0 anti-lift clearance up)
 BAR_H = 19.0
-BAR_Y0, BAR_Y1 = YC - 16.0, YC + 12.0      # slim prism: 2.1 front wall ahead
-                                           # of the bolt channel, 5.0 back
-                                           # wall behind the slot back
+BAR_Y0, BAR_Y1 = YC - 16.0, YC + 15.0      # slim prism: 2.1 front wall ahead
+                                           # of the bolt channel, 4.6 back
+                                           # wall behind the round slot back
 END_MARGIN = 15.0                          # bar end past each leg axis
 BAR_X0 = LEG_STATIONS_X[1] - END_MARGIN
 BAR_X1 = LEG_STATIONS_X[0] + END_MARGIN
-SLOT_W = SHAFT_D + 0.4                     # 20.4 walls on the shaft's rounds
-SLOT_BACK = SHAFT_FLAT_Y + 0.2             # 7.0 flat back: face seat (0.2)
+SLOT_W = SHAFT_D + 0.4                     # 20.4 walls on the shaft's rounds;
+                                           # the back is ROUND (r10.2 hugging
+                                           # the shaft — its key flat faces
+                                           # the MOUTH and is the latch's
+                                           # bearing plane)
 
 # ── shared latch geometry (x offsets from the leg axis, flipped by ls) ───
 BOLT_X0, BOLT_X1 = 4.0, 27.0
 BOLT_Y0, BOLT_Y1 = -13.6, -9.4             # thin BODY band (rides the channel)
-HEAD_X1, HEAD_Y1 = 9.0, -7.2               # blocking head: 0.2 off the chord
+HEAD_X1, HEAD_Y1 = 9.0, -7.0               # blocking head: 0.2 off the shaft's
+                                           # key flat (the print-bed face IS
+                                           # the latch's bearing plane)
 BOLT_Z0, BOLT_Z1 = 2.4, 14.7
 CH_Y0, CH_Y1 = -13.9, -9.1                 # body-channel walls (0.3 clr/side)
 CH_Z0 = 2.4                                # cavity floor
@@ -94,7 +103,7 @@ LID_Y0, LID_Y1 = -16.5, -4.0
 
 # ── plain (+X) latch: 6.4 travel, snap-in tip bevel ──────────────────────
 A_TRAVEL = 6.4
-A_DP_X0, A_DP_X1, DP_Y1 = 10.0, 15.7, -6.9  # head's travel garage
+A_DP_X0, A_DP_X1, DP_Y1 = 10.0, 15.7, -6.7  # head's travel garage
 A_TAB_X1, TAB_Z1 = 28.2, 5.5               # low pusher tab → finger arm
 A_CH_X0, A_CH_X1 = 10.0, 39.5              # channel + finger bay
 A_FNG_X0 = A_TAB_X1                        # finger front rests on the tab
@@ -134,11 +143,17 @@ B_LID_X0, B_LID_X1 = 10.4, 49.5
 B_M2 = ((47.0, -11.0), (47.0, 2.0))        # both beyond the cavity (x>45)
 
 
-def _slot_cutter(lx: float) -> cq.Workplane:
-    """Slot for one leg: rectangular pocket (Ø20.4 walls, 7.0 flat back),
-    full height, opening -Y, with 45° lead-in flares at the mouth."""
-    cut = box_at(SLOT_W, 17.0 + SLOT_BACK, BAR_H + 2,
-                 x=lx, y=YC + (SLOT_BACK - 17.0) / 2, z=BAR_H / 2)
+def _slot_cutter(lx: float, square_ls: float = 0.0) -> cq.Workplane:
+    """Slot for one leg: Ø20.4 walls + ROUND back (r10.2 hugging the shaft's
+    round side; the key flat faces the mouth as the latch's bearing plane),
+    full height, opening -Y, 45° lead-in flares. square_ls ≠ 0 squares the
+    back on that (inboard) side to fit the TRRS shaft's corner-fill."""
+    cut = box_at(SLOT_W, 19.0, BAR_H + 2, x=lx, y=YC - 7.5, z=BAR_H / 2)
+    cut = cut.union(cyl(SLOT_W, BAR_H + 2, z=-1).translate((lx, YC, 0)))
+    if square_ls:
+        cut = cut.union(box_at(SLOT_W / 2, 27.4, BAR_H + 2,
+                               x=lx + square_ls * SLOT_W / 4,
+                               y=YC - 3.3, z=BAR_H / 2))
     for s in (1, -1):
         cut = cut.union(
             cq.Workplane("XY")
@@ -164,8 +179,8 @@ def pedal_bar() -> cq.Workplane:
     cavities and lid recesses."""
     body = box_at(BAR_X1 - BAR_X0, BAR_Y1 - BAR_Y0, BAR_H,
                   x=(BAR_X0 + BAR_X1) / 2, y=(BAR_Y0 + BAR_Y1) / 2, z=BAR_H / 2)
-    for lx, _ in LATCHES:
-        body = body.cut(_slot_cutter(lx))
+    body = body.cut(_slot_cutter(LATCHES[0][0]))
+    body = body.cut(_slot_cutter(LATCHES[1][0], LATCHES[1][1]))
 
     # ── plain latch (+X foot) ──────────────────────────────────────────
     lx, ls = LATCHES[0]
