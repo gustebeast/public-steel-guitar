@@ -251,6 +251,13 @@ def _bolt_core(lx: float, ls: float, bevel: bool,
                              x=lx + ls * (PAD_X0 + PAD_X1) / 2,
                              y=YC + (PAD_Y0 + PAD_Y1) / 2,
                              z=(PAD_Z0 + PAD_Z1) / 2))
+    # closed-position DETENT groove in the post's +Y face: the lid's TPU nub
+    # clicks in (0.8 lateral engagement) — every latch holds itself closed
+    # with or without a TRRS in it (the spring deflects SIDEWAYS a fixed
+    # 0.8, so the detent works regardless of the latch's travel)
+    body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        2.0, 5.25, cq.Vector(lx + ls * 15.0, YC - 8.2, 14.0),
+        cq.Vector(0, 0, 1))))
     return body
 
 
@@ -334,6 +341,10 @@ def pedal_latch_lid(lx: float, ls: float, x0: float, x1: float, y1: float,
                            y=YC + (CH_Y0 + CH_Y1) / 2
                            if fng_x0 == A_FNG_X0 else YC,
                            z=LID_Z0 + FNG_BASE_H / 2))
+    # TPU detent-nub press pocket (Ø3.8 for the Ø4 nub, 0.1/side squeeze):
+    # the nub bulges into the post lane and clicks into the closed groove
+    body = body.cut(cyl(3.8, BAR_H - LID_Z0 + 2, z=LID_Z0 - 1)
+                    .translate((lx + ls * 15.0, YC - 8.2, 0)))
     for mx, my in m2:
         body = body.cut(cyl(M2_SHAFT_CLR_D, BAR_H - LID_Z0 + 2, z=LID_Z0 - 1)
                         .translate((lx + ls * mx, YC + my, 0)))
@@ -358,6 +369,20 @@ def pedal_latch_finger(lx: float, ls: float, fng_x0: float,
                   x=lx + ls * (fng_x0 + FNG_T / 2), y=YC + yc_off,
                   z=FNG_ZTOP + FNG_BASE_H / 2)
     return blade.union(base)
+
+
+def pedal_detent_nub(lx: float, ls: float) -> cq.Workplane:
+    """TPU detent nub (Ø4 × 4): pressed into the lid's Ø3.8 pocket, its side
+    bulges ~0.8 into the thumb-post lane and clicks into the post's closed
+    groove — the hold-closed force of EVERY latch, independent of any
+    connector (~5-10 N pop, a light drag while sliding). Print 2."""
+    return (cyl(4.0, BAR_H - LID_Z0, z=LID_Z0)
+            .translate((lx + ls * 15.0, YC - 8.2, 0)))
+
+
+def nub_part() -> cq.Workplane:
+    """The single printed TPU nub (export once, print 2)."""
+    return pedal_detent_nub(*LATCHES[0])
 
 
 def _trrs_jack() -> cq.Workplane:
@@ -405,5 +430,7 @@ def assembly_parts():
                 lx_a, ls_a, A_FNG_X0, (CH_Y0 + CH_Y1) / 2)),
             ("pedal_latch_finger_1", pedal_latch_finger(
                 lx_b, ls_b, B_FNG_X0, 0.0)),
+            ("pedal_detent_nub_0", pedal_detent_nub(lx_a, ls_a)),
+            ("pedal_detent_nub_1", pedal_detent_nub(lx_b, ls_b)),
             ("pedal_trrs_jack", _trrs_jack()),
             ("pedal_trrs_plug", _trrs_plug())]
