@@ -114,7 +114,7 @@ GLOBAL_OK = {
 # part clashing with a leg/chassis part (other than the GLOBAL_OK contacts
 # above) stays a reportable bug.
 PEDAL_FAMILY = {"pedal_bar", "pedal_bolt", "pedal_bolt_trrs", "pedal_latch_lid",
-                "pedal_latch_lid_trrs", "pedal_latch_finger",
+                "pedal_latch_lid_trrs", "pedal_latch_finger", "pedal_detent_nub",
                 "pedal_trrs_jack", "pedal_trrs_plug"}
 
 
