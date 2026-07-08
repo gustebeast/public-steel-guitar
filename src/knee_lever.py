@@ -111,10 +111,11 @@ LOBE_RC = 11.0                               # lobe axis radius (pivot -> lobe) 
                                              #   BELOW the Ø10 hub (z -5) -- else the tall follower jams the
                                              #   hub. Also the moment arm (ratio ≈ 100/11 = 9:1).
 LOBE_R  = 1.5                                # rounded lobe radius
-LOBE_WY = 4.0                                # each lobe's / follower-tongue Y width. Widened from 3 (via the
-                                             #   inboard CART_INSET, which frees the arm-outboard wall), but
-                                             #   CAPPED at 4: the front lip that catches the Ø6 body is
-                                             #   (body - (LOBE_WY+0.4))/2, which hits the 0.8 mm floor at 4.
+LOBE_WY = 6.0                                # each lobe's / follower-tongue Y width -> a 6×6 SQUARE face.
+                                             #   The two cartridges are flushed to the centre (dead wall gone)
+                                             #   and the piston HEAD widened to (LOBE_WY+2) so the 0.8mm front
+                                             #   lip survives -- so the tongue can be this wide within the 20mm
+                                             #   arm (0.8mm arm-outboard wall) without a bigger coil.
 CAM_TX  = 3.0                                # cam-plate thickness in X (the swing direction)
 CAM_Y0, CAM_Y1 = HUB_Y0 + 1.0, HUB_Y1 - 1.0  # cam-plate Y span (wide enough to span both followers,
                                              #   which sit flush against the bearing walls)
@@ -158,16 +159,19 @@ HS_PILOT_D  = HS_SPR_ID - 0.4       # 3.2: centre pilot (piston back + guide-pos
 HS_GPOST_LX = 3.0                   # guide-post body: coil-shoulder -> cup face (screw bears here)
 HS_PILOT_LX = 5.0                   # pilot length reaching into the coil ID (piston back & guide post)
 HS_ARM    = 4.0                     # follower-tongue Y width band
-FOLL_H    = 4.5                    # follower FLAT-face height (Z). Only ~1.5 mm TRACKS the lobe at THROW=30;
-                                   #   the rest is STRENGTH. Capped NOT by the hub but by the cartridge FRONT
-                                   #   WALL: the tongue's window is FOLL_H+1 tall and the front wall is only
-                                   #   ~7.4 mm (piston bottom -> mount), so FOLL_H>4.5 leaves <0.8 mm of wall
-                                   #   above/below the window. (A taller tongue needs the axle raised first.)
-FOLL_DZ   = 0.75                   # follower centre offset up from HS_Z (centres it on the lobe's rising arc)
+FOLL_H    = 6.0                    # follower FLAT-face height (Z) = LOBE_WY -> SQUARE face. Centred (FOLL_DZ)
+                                   #   so the window BOTTOM lands at the cartridge's already-open -Z bottom
+                                   #   (no thin wall, no extra -Z) and the window TOP clears the +Z cap by
+                                   #   0.8mm once the cap is raised to the mount (HS_ROOF_TZ). ~1.5mm tracks
+                                   #   the lobe; the rest is strength.
+FOLL_DZ   = 0.5                    # follower centre offset up from HS_Z: puts the window bottom on the -Z open
+                                   #   face and the window top 0.8mm under the mount-height cap
 HS_Z      = HUB_TOP + 1.5           # piston / follower centre Z: the HS_ARM tongue spans the lobe band
                                     #   (5.66..8) and clears the hub below; the Ø6 body clears the boss
-HS_PISTON_WY = HS_SPR_OD            # piston body: round Ø6 (= coil OD) -> seats the coil, rides the
-HS_PISTON_WZ = HS_SPR_OD            #   channel, and is caught by the front lips (window < Ø6)
+HS_PISTON_WY = LOBE_WY + 2.0        # piston HEAD width (Y): DECOUPLED from the Ø6 coil -- a wider plate that
+                                   #   the coil still pushes on-centre, so the front lip = (head-(LOBE_WY+0.4))/2
+                                   #   = 0.8mm survives a 6mm tongue. Rides the (widened) channel; catches the lip.
+HS_PISTON_WZ = HS_SPR_OD            # head height (Z) = Ø6 coil seat (the coil bears on the head's -X back face)
 HS_FOLLOW_WY = LOBE_WY             # follower width (Y) = the lobe width (only has to cover the lobe); < body
                                   #   so the front lips still capture the body, and it stays narrow enough
                                   #   that the arm keeps a ~0.8mm printable wall outboard of each lobe recess
@@ -185,7 +189,8 @@ HS_WALL   = 1.6                     # cartridge STRUCTURAL wall (floor / front /
                                     #   SIDE walls end up thinner (~1.0, emergent) so the Ø6 coil fits Y
 HS_HOUS_WALL = 2.4                  # housing shell wall around the pocket -- CONSTANT thickness, the
                                     #   outer /\ bottom parallels the pocket /\ (no thick flat bottom)
-HS_ROOF_TZ = 1.0                    # +Z CAP thickness (thin, so the cartridge top stays under the mount boss)
+HS_ROOF_TZ = 1.4                    # +Z CAP thickness -> cap top at the mount ceiling (~11.3), giving the
+                                   #   0.8mm front-wall above the tall tongue window
 HS_LIP    = 1.5                     # front-lip depth in X (side lips that catch the piston body)
 HS_TRAVEL = FOLL_TRAVEL + 0.5       # channel back-travel (>= follower travel)
 HS_SPR_BORE = HS_SPR_OD + 0.6       # coil clearance bore
@@ -209,19 +214,19 @@ HS_BACK_X   = HS_GPOST_BX + INSERT_L + 0.5   # cartridge back wall (hosts the te
 HS_CH_WY    = HS_PISTON_WY + 2 * HS_CLR      # channel clear width (Y) = 6.8 (Ø6 coil/piston + slide clr)
 HS_CH_WZ    = HS_PISTON_WZ + 2 * HS_CLR      # channel clear height (Z) = 6.8 (unchanged; ribs removed)
 HS_WIN_WY   = HS_FOLLOW_WY + 0.4             # front-lip opening in Y: passes the tongue, catches the body
-HS_CART_WY  = 8.8                            # cartridge outer Y -- FIXED (keeps pocket/placement); the
-                                             #   wider 6.8 channel leaves ~1.0mm coil-region side walls
+HS_CART_WY  = HS_CH_WY + 2.0                 # cartridge outer Y = channel + 1.0mm side walls (was fixed 8.8;
+                                             #   now derived so the wider head/channel carries its own walls)
 # cartridge Y placement: align each POCKET (the hole the cartridge slots into) so its outer edge is
 # flush with the bearing wall's INNER face on that side -- the cartridge shares the bearing wall (no
 # separate wall, no gap). (Earlier this aligned the block's OUTER face with the wall's outer face,
 # spreading the cartridges too far.)
 HS_POCKET_HW = HS_CART_WY / 2 + HS_CLR        # cartridge pocket (slot) half-width
-# CART_INSET moves BOTH cartridges inboard off the bearing walls (into the old dead centre gap), so each
-# lobe/follower sits at |Y|=6.0 instead of 7.2 -- that frees ~1mm of arm outboard of a WIDER lobe, letting
-# the tongue fatten to 5mm (was 3). The freed wall-side space is just unused; the centre gap shrinks.
-CART_INSET = 1.2
-HS_YC   = WP_Y0 - HS_POCKET_HW - CART_INSET   # HALF-STOP (+Y): pocket inset off the +Y bearing wall
-MAIN_YC = WN_Y1 + HS_POCKET_HW + CART_INSET   # MAIN (-Y): pocket inset off the -Y bearing wall
+# Cartridge Y: place each lobe/tongue as far INBOARD as the 0.8mm arm-outboard wall allows -- that (plus
+# the wider head) is what frees the width. The two cartridges nearly meet at the centre (the old dead wall
+# between them is gone); the wall-side gaps to the bearing walls are the leftover slack.
+_ARM_LOBE_WALL = 0.8
+HS_YC   =  (LEVER_HW - _ARM_LOBE_WALL - (LOBE_WY + 1) / 2)   # +Y lobe/cartridge centre (arm-outboard-wall limited)
+MAIN_YC = -(LEVER_HW - _ARM_LOBE_WALL - (LOBE_WY + 1) / 2)   # -Y
 HS_CART_Z1  = HS_ROOF_SPLIT + HS_ROOF_TZ     # cartridge +Z CAP top (< mount boss ~11.3)
 # INVERTED-U cartridge, OPEN on -Z (no separate roof): a solid +Z cap (toward the axle, narrow arc) + side
 # walls, open on -Z where the arm's arc is WIDEST. The HOUSING floor is the -Z retaining wall (relieved to
