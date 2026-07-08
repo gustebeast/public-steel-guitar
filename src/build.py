@@ -71,6 +71,8 @@ PARTS = {
     "cart_base": (lambda: __import__("src.knee_lever", fromlist=["e"]).cart_base, "pctg/cart_base.step", "PCTG — spring-cartridge (inverted-U, open -Z; shared: print 2, for main + half-stop)"),
     "cart_piston": (lambda: __import__("src.knee_lever", fromlist=["e"]).cart_piston, "pctg/cart_piston.step", "PCTG — spring-cartridge piston, flat follower tongue (shared: print 2)"),
     "guide_post": (lambda: __import__("src.knee_lever", fromlist=["e"]).guide_post, "pctg/guide_post.step", "PCTG — coil-back guide post, screw pushes it (shared: print 2)"),
+    "cart_backstop": (lambda: __import__("src.knee_lever", fromlist=["e"]).cart_backstop, "pctg/cart_backstop.step", "PCTG — hollow X-position back-stop screw: threads the housing boss, tension screw runs through the Ø5.5 bore (shared: print 2)"),
+    "cart_drag": (lambda: __import__("src.knee_lever", fromlist=["e"]).cart_drag, "tpu/cart_drag.step", "TPU — passive drag pad: seats in the pocket outboard-wall recess, bulges onto the cartridge for transport-drift friction (print 2, MAIN mirrored)"),
     "screw_pulley":    (lambda: heal(C.screw_pulley()),  "pctg/screw_pulley.step",  "PCTG — flanged 14T GT2 pulley, 45° top flange — ×10 (fine teeth need unfilled resolution)"),
     "motor_pulley":    (lambda: heal(C.motor_pulley()),  "pctg/motor_pulley.step",  "PCTG — flanged 14T GT2 pulley, 45° outer flange — ×10"),
     "tension_fork":    (lambda: TF.tension_forks,    "pctg/tension_fork.step",    "PCTG — belt-tension lock forks, graded 3.0–6.0 set (4 of the fitting size per motor; positive stop in the slot, no friction reliance)"),
