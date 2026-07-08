@@ -665,11 +665,12 @@ def _lever() -> cq.Workplane:
     hub = cyl_y(HUB_D, 2 * LEVER_HW, y0=-LEVER_HW)
     arm = box_at(ARM_TX, 2 * LEVER_HW, ARM_LEN, x=0, y=HUB_YC, z=-ARM_LEN / 2)
     body = hub.union(arm)
-    # TWO centred lobes, one per spring (at each follower Y). A CENTRED lobe (extremum ~x=0, right under
-    # the axle) barely moves in Z through the throw, so the followers stay on it and the moment arm holds
-    # (an off-axle face lobe traced a big arc and slipped off). Each lobe is a short rounded ridge reached
-    # through a LOCAL recess in the arm's -X face -- two small notches keep the arm solid between/around
-    # them (stiffer than one wide crossbar).
+    # ONE centred lobe ridge spanning the FULL lever width. A CENTRED lobe (extremum ~x=0, right under the
+    # axle) barely moves in Z through the throw, so the followers stay on it and the moment arm holds (an
+    # off-axle face lobe traced a big arc and slipped off). It's reached through TWO LOCAL recesses in the
+    # arm's -X face (one per follower); the ridge only PROTRUDES in those two bands -- between and around
+    # them it's buried in the solid arm (identical contact, one primitive), and the un-recessed spans keep
+    # the arm stiff.
     # Recess: removes the arm's -X HALF (x -6.5..0) at each lobe band, over a Z span that runs from just
     # above the lobe down PAST it. The lobe protrudes -X into it (round contact). The deep -Z reach is the
     # key: as the arm swings, its solid material JUST BELOW the lobe rotates UP into the follower's contact
@@ -680,8 +681,8 @@ def _lever() -> cq.Workplane:
     for fy in (MAIN_YC, HS_YC):
         body = body.cut(box_at(6.5, LOBE_WY + 1.0, rec_ztop - rec_zbot,   # recess back at x=0 so the round
                                x=-3.25, y=fy, z=(rec_ztop + rec_zbot) / 2))  # lobe PROTRUDES -X into it; Y
-        body = body.union(cyl_y(2 * LOBE_R, LOBE_WY, y0=fy - LOBE_WY / 2)  #   leaves ~0.8mm wall outboard.
-                          .translate((0, 0, -LOBE_RC)))                    # lobe: round ridge, extremum x=-1.5
+    body = body.union(cyl_y(2 * LOBE_R, 2 * LEVER_HW, y0=-LEVER_HW)        # ONE full-width lobe ridge; the
+                      .translate((0, 0, -LOBE_RC)))                        #   spans between recesses bury in the arm
     body = body.cut(cyl_y(AXLE_D + 0.05, 2 * LEVER_HW + 2, y0=-LEVER_HW - 1))   # axle bore
     return heal(body)
 
