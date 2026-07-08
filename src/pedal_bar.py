@@ -34,10 +34,10 @@ the TRRS side, the leg would bend the barrel. The kick springs engage only
 over the last ~4.5 of opening, so holding the pads retracted while
 positioning the bar costs almost nothing.
 
-The plug (a STRAIGHT solder/molded TRRS plug, Ø~9 × ~18 body + Ø3.5 × 14
-barrel) sits in a cradle on the slider: backstop pushes it in, a Ø9 collar
-around the barrel pulls it out (the collar noses into the shaft pocket's
-counterbore at full insertion), the lid caps it. Its cable gets a ~15
+The plug (Same Sky SP-3541: Ø3.5 barrel + Ø4.5 lead ring + 5×5 pin body)
+sits in a cradle on the slider: the backstop pushes it in, the FRONT
+RETAINER wall (top-open Ø4.7 keyhole over the lead ring, bearing on the
+body's front face) pulls it out, the lid caps it. Its harness gets a ~15
 service loop in the latch cavity, then exits inboard toward the pedal
 electronics.
 
@@ -60,17 +60,11 @@ Drawn SEATED: bolts closed, plug fully inserted.
 
 from __future__ import annotations
 
-import pathlib
-import sys
-
 import cadquery as cq
 
 from .helpers import box_at, cyl
 from .chassis import LEG_STATIONS_X, Y_HI
 from .legs import SHAFT_D
-
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "freecad"))
-from fasteners import M2_SELFTAP_D   # noqa: E402  (the cradle set screw)
 
 YC = Y_HI                              # leg axes sit on the +Y rail centreline
 # one latch per foot, each opening INBOARD: (leg station, side sign)
@@ -304,21 +298,23 @@ def pedal_bolt() -> cq.Workplane:
 def pedal_bolt_trrs() -> cq.Workplane:
     """-X foot slider, drawn CLOSED/SEATED: the SAME latch design with the
     TRRS MOUNT grown on — bridge + open-top plug CRADLE for the SP-3541.
-    The plug drops in pins-UP (solder access from the open top before the
-    lid slides on): U-channel walls locate the 5-wide body, the backstop
-    pushes it in, a SIDE M2 set screw (Ø2.2 self-tap, CLAUDE.md rule)
-    pinches the body so retraction pulls it back out of the jack. At closed
-    the body face sits 0.5 off the shaft; nothing enters the leg but the
-    barrel. An un-retracted install butts the shaft on the flat head and
-    REFUSES (no bevel) — it cannot bend the barrel."""
+    The plug drops in pins-UP (its Ø4.5 lead ring falls through the front
+    retainer's top-open keyhole; solder access from the open top before
+    the lid slides on): U-channel walls locate the 5-wide body, the
+    backstop pushes it in, the FRONT RETAINER wall bears on the body's
+    front face so retraction pulls it back out of the jack. At closed the
+    retainer sits 2.1 off the shaft; nothing enters the leg but the barrel.
+    An un-retracted install butts the shaft on the flat head and REFUSES
+    (no bevel) — it cannot bend the barrel."""
     lx, ls = LATCHES[1]
     body = _bolt_core(lx, ls)
     # bridge: bolt body band → cradle wall
     body = body.union(box_at(8.0, 6.0, 8.0,
                              x=lx + ls * 16.0, y=YC - 6.6, z=TR_Z))
-    # cradle: floor + two walls + backstop (open top; the lid caps it)
-    body = body.union(box_at(CRDL_X1 - (BODY_X0 + 0.4), 8.8, 1.3,
-                             x=lx + ls * (BODY_X0 + 0.4 + CRDL_X1) / 2,
+    # cradle: floor (extended forward under the retainer) + two walls +
+    # backstop (open top; the lid caps it)
+    body = body.union(box_at(CRDL_X1 - 11.9, 8.8, 1.3,
+                             x=lx + ls * (11.9 + CRDL_X1) / 2,
                              y=YC, z=5.55))
     for s in (1, -1):
         body = body.union(box_at(CRDL_X1 - (BODY_X0 + 0.4), 1.5, 7.0,
@@ -327,10 +323,17 @@ def pedal_bolt_trrs() -> cq.Workplane:
     body = body.union(box_at(CRDL_X1 - BODY_X1 - 0.2, 8.8, 8.0,
                              x=lx + ls * (BODY_X1 + 0.2 + CRDL_X1) / 2,
                              y=YC, z=8.9))
-    # side M2 set-screw way (pinches the plug body for the pull-out)
-    body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        M2_SELFTAP_D / 2, 3.4,
-        cq.Vector(lx + ls * 17.5, YC - 6.0, TR_Z), cq.Vector(0, 1, 0))))
+    # FRONT RETAINER wall: a top-open Ø4.7 keyhole passes the plug's Ø4.5
+    # lead ring at drop-in; the wall's back face bears on the body's front
+    # face (0.2 slack) so retraction positively PULLS the plug out of the
+    # jack — visible geometry doing the retention (replaced a side set
+    # screw pinching the body)
+    wall = box_at(1.2, 8.8, 8.0, x=lx + ls * 12.7, y=YC, z=8.9)
+    wall = wall.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        2.35, 2.0, cq.Vector(lx + ls * 11.9, YC, TR_Z), cq.Vector(ls, 0, 0))))
+    wall = wall.cut(box_at(2.0, 4.7, 6.0, x=lx + ls * 12.7, y=YC,
+                           z=TR_Z + 3.0))
+    body = body.union(wall)
     return body
 
 
@@ -467,8 +470,9 @@ def _trrs_plug() -> cq.Workplane:
     for px in (15.0, 17.0, 19.0, 21.0):     # solder pins, facing UP
         p = p.union(box_at(0.6, 0.6, 2.5, x=lx + ls * px, y=YC,
                            z=TR_Z + 2.5 + 1.25))
-    p = p.union(box_at(12.0, 3.0, 1.9,      # wire stub over the backstop
-                       x=lx + ls * 27.0, y=YC, z=13.9))
+    # the soldered 4-wire HARNESS: hugs all four pin tops and exits +x
+    # toward the wiring trough (service loop implied)
+    p = p.union(box_at(22.0, 3.5, 1.8, x=lx + ls * 25.0, y=YC, z=13.9))
     return p
 
 
