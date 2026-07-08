@@ -93,7 +93,8 @@ PARTS = {
     "leg_socket":      (lambda: heal(LG.leg_socket()),  "petg-gf/leg_socket.step",  "PETG-GF — leg corner socket ×4 (dovetail tenon slides up into the rail slot, glued; 2-turn coarse thread, quick on/off)"),
     "leg_segment":     (lambda: heal(LG.leg_segment()), "pctg/leg_segment.step", "PCTG — stackable leg tube ×8 (male up / female down; COUNT per leg = coarse height adjust, 142/segment). PCTG not GF: standing prints bend across layer lines and a kick is energy-limited — PCTG interlayer is ~85-90% of bulk + ductile (~8 J to yield vs ~2 J to snap for GF). Print bell-down, LOW fan"),
     "leg_sleeve":      (lambda: heal(LG.leg_sleeve()),  "pctg/leg_sleeve.step",  "PCTG — leg slider sleeve ×4 (pinch collar: M4 button screw + insert pulls the slit closed; the slit MUST flex — never glass-filled)"),
-    "leg_shaft":       (lambda: heal(LG.leg_shaft()),   "pctg/leg_shaft.step",   "PCTG — leg sliding shaft ×4 (fine height adjust; single-D key flat = pure Z travel + one unique orientation; chord notch mounts the pedal bar on the +Y legs). Print LYING ON THE FLAT: layer lines run along the shaft (kick bending loads bulk material), 43-deg junction self-supporting, notch faces up"),
+    "leg_shaft":       (lambda: heal(LG.leg_shaft()),   "pctg/leg_shaft.step",   "PCTG — leg sliding shaft ×3 (fine height adjust; single-D key flat = pure Z travel + one unique orientation; chord notch mounts the pedal bar on the +Y legs). Print LYING ON THE FLAT: layer lines run along the shaft (kick bending loads bulk material), 43-deg junction self-supporting, notch faces up"),
+    "leg_shaft_trrs":  (lambda: heal(LG.leg_shaft_trrs()), "pctg/leg_shaft_trrs.step", "PCTG — the -X/+Y leg's shaft ×1: leg_shaft + the embedded TRRS jack pocket (PJ-320/SJ-43516-class, mouth proud of the key flat) + cable groove up the flat. Same lying-flat print; the pocket bridges 12mm at the bed"),
     "leg_foot":        (lambda: heal(LG.leg_foot()),    "tpu/leg_foot.step",    "TPU — foot cap ×4"),
     "leg_washer":      (lambda: heal(LG.leg_washer()),  "tpu/leg_washer.step",  "TPU — gland washer, 1/junction = segments+1 per leg (sits in the female-rim recess; the hard-stop collar squeezes it a fixed 2.5->2.0 every assembly)"),
     # pedal bar + latch (one latched foot for now; mirror to -X once the feel
@@ -404,8 +405,12 @@ def _leg_components():
             out.append((f"leg_sleeve_{k}",
                         sleeve.rotate((0, 0, 0), (0, 0, 1), rot)
                         .translate((sx, ry, shoulder - 2))))
+            # the -X/+Y leg carries the TRRS-jack shaft variant (same base
+            # name: the whitelist pairs and colours apply unchanged)
+            sh = (LG.leg_shaft_trrs()
+                  if (sx, ry) == (CH.LEG_STATIONS_X[1], CH.Y_HI) else shaft)
             out.append((f"leg_shaft_{k}",
-                        shaft.rotate((0, 0, 0), (0, 0, 1), rot)
+                        sh.rotate((0, 0, 0), (0, 0, 1), rot)
                         .translate((sx, ry, ground + 3.0))))
             out.append((f"leg_foot_{k}", foot.translate((sx, ry, ground))))
             k += 1
@@ -535,6 +540,8 @@ _COLORS = {
     "pedal_latch_lid":  (0.50, 0.58, 0.52),  # latch lid
     "pedal_latch_lid_m": (0.50, 0.58, 0.52),  # ... mirrored variant, -X foot
     "pedal_latch_finger": (0.12, 0.12, 0.13),  # TPU return finger (the only spring)
+    "pedal_trrs_jack":  (0.62, 0.64, 0.67),  # leg-side female TRRS (DEMO)
+    "pedal_trrs_plug":  (0.15, 0.15, 0.17),  # bar-side right-angle male (DEMO)
     "build_counter":   (0.86, 0.08, 0.24),
     # knee lever (LKL) — input-side control
     "knee_housing":    (0.30, 0.36, 0.42),   # PCTG housing
