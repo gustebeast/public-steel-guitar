@@ -251,16 +251,16 @@ HS_POCKET_X0 = SWING_X              # housing pocket front (cartridge front cant
 # DRAG pad in the pocket resists transport drift when the lever is UNLOADED (the back-stop only holds the
 # loaded direction). [Stage 1: threads are smooth-cylinder envelopes; the printed coarse thread comes once
 # packing is confirmed.]
-HS_BSTOP_BORE   = 5.5               # hollow bore -- clears the M4 tension-screw hex + a long driver
-HS_BSTOP_WALL   = 1.6               # back-stop screw wall
-HS_BSTOP_OD     = HS_BSTOP_BORE + 2 * HS_BSTOP_WALL   # 8.7 male thread envelope OD
-HS_THREAD_CLR   = 0.35              # female bore clearance over the male OD
-HS_BSTOP_ENGAGE = 3.0               # thread engagement in the boss (compression-loaded, so short is fine;
-                                    #   kept short so the boss stays within the tension-screw's clear -X
-                                    #   extent -- past that a LEG socket sits behind the knee back)
-HS_BSTOP_FLANGE = 1.5               # +X drive flange (paddle grip; protrudes past the boss for access)
+HS_BSTOP_BORE   = 5.0               # hollow bore -- clears the M4 tension-screw hex-key driver
+HS_BSTOP_OD     = 9.0               # thread crest (major) OD; the drive flange stays just under the cartridge pitch
+HS_TH_PITCH     = 2.0               # self-supporting 45deg thread pitch (whole-turn engagement)
+HS_TH_DEPTH     = 0.5               # flank depth <= pitch/2 (with margin); minor = OD - 2*depth
+HS_TH_MINOR     = HS_BSTOP_OD - 2 * HS_TH_DEPTH   # 8.0 -> wall to the Ø5 bore = 1.5mm
+HS_TH_CLR       = 0.4               # diametral thread clearance on the MALE side (TIGHTER than the 0.8 tested loose fit)
+HS_BSTOP_ENGAGE = 4.0               # engagement in the boss = 2 turns (the leg sits 1.44mm behind -> can't go deeper)
+HS_BSTOP_FLANGE = 0.5               # +X drive flange (drive slots on its face; thin so the total extent clears the leg)
 HS_DRAG_LX, HS_DRAG_SEAT, HS_DRAG_BULGE = 6.0, 1.5, 0.4  # TPU drag: X length, wall-recess depth, interference into lane
-HS_HOUS_BACK = HS_BACK_X + HS_BSTOP_ENGAGE + 1.0    # housing back = the boss that hosts the back-stop thread
+HS_HOUS_BACK = HS_BACK_X + HS_BSTOP_ENGAGE   # housing boss depth = engagement (no extra -- preserves the leg clearance)
 
 # ── mount (FLOATING-TENON): the lever hangs ENTIRELY below the body. The housing carries NO
 # protruding tenon -- so it can print +Z->-Z without the tenon causing overhangs -- only a MORTISE
@@ -559,19 +559,22 @@ def _half_stop_cart_base() -> cq.Workplane:
 
 
 def _cart_backstop() -> cq.Workplane:
-    """HOLLOW back-stop screw (printed, one per cartridge -- print 2). Threads into the housing back boss;
-    its -X face is the adjustable stop the cartridge back seats against, setting the cartridge's X home.
-    HOLLOW (Ø HS_BSTOP_BORE) so the coaxial M4 tension screw reaches the cartridge insert through it -- the
-    preload (inner) and the position (this) stay independent. A +X drive flange (paddle) is turned to
-    adjust; the contact force keeps it compression-seated so it holds without backing out. Built along X at
-    the cartridge back, HS_YC (feel_place()d into the assembly like the cartridge).
-    [Stage 1: smooth-cylinder thread envelope -- printed coarse thread profile to follow.]"""
-    body   = cyl(HS_BSTOP_OD, HS_BSTOP_ENGAGE, z=HS_BACK_X)                     # threaded body (in the boss)
-    # +X paddle/drive flange -- kept < the cartridge pitch so the two back-stops don't clash at the centre
-    flange = cyl(min(HS_BSTOP_OD + 2.0, 2 * abs(HS_YC) - 1.5), HS_BSTOP_FLANGE, z=HS_BACK_X + HS_BSTOP_ENGAGE)
-    part   = body.union(flange).cut(cyl(HS_BSTOP_BORE,                          # hollow the whole length
-                                        HS_BSTOP_ENGAGE + HS_BSTOP_FLANGE + 2, z=HS_BACK_X - 1))
-    return heal(part.rotate((0, 0, 0), (0, 1, 0), 90).translate((0, HS_YC, HS_Z)))
+    """HOLLOW back-stop screw (printed PCTG, one per cartridge -- print 2). A self-supporting 45deg MALE
+    thread screws into the housing boss; its -X face is the adjustable stop the cartridge back seats against,
+    setting the cartridge's X home. HOLLOW (Ø HS_BSTOP_BORE) so the coaxial M4 tension screw reaches the
+    cartridge insert through it -- preload (inner) and position (this) stay independent. Turned by drive
+    slots on the +X flange face; the contact force keeps it compression-seated so it holds without backing
+    out. The thread carries HS_TH_CLR of clearance (tighter than the 0.8 tested loose fit). SHORT screw ->
+    print AXIS-VERTICAL (no side-print needed); the 45deg flanks self-support. Threads cut LAST, un-healed
+    (thread rules). Built along X at the cartridge back, HS_YC (feel_place()d into the assembly)."""
+    from threads import cut_thread                                              # noqa: E402 (freecad/ on sys.path)
+    maj, mnr = HS_BSTOP_OD - HS_TH_CLR, HS_TH_MINOR - HS_TH_CLR                 # male shrunk by the clearance
+    fl_od = min(HS_BSTOP_OD + 2.0, 2 * abs(HS_YC) - 1.5)                        # flange < cartridge pitch (no centre clash)
+    blank = (cyl(maj, HS_BSTOP_ENGAGE, z=HS_BACK_X)                             # SMOOTH crest-Ø body...
+             .union(cyl(fl_od, HS_BSTOP_FLANGE, z=HS_BACK_X + HS_BSTOP_ENGAGE)) # ...+ drive flange...
+             .cut(cyl(HS_BSTOP_BORE, HS_BSTOP_ENGAGE + HS_BSTOP_FLANGE + 2, z=HS_BACK_X - 1)))  # ...hollowed
+    male = cut_thread(blank, minor_d=mnr, major_d=maj, pitch=HS_TH_PITCH, length=HS_BSTOP_ENGAGE, z=HS_BACK_X)
+    return male.rotate((0, 0, 0), (0, 1, 0), 90).translate((0, HS_YC, HS_Z))    # NO heal on a threaded part
 
 
 def _drag_seat_xc(dx=0.0):
@@ -707,10 +710,8 @@ def _housing() -> cq.Workplane:
         # no floor-bridge overhang); the cartridge front cantilevers -X of HS_POCKET_X0 into the swing slot
         w = w.union(feel_place(_hs_block(yc, bx0, bx1)))                # block now runs +X into the back-stop boss
         w = w.cut(feel_place(_hs_pocket(yc, bx0, HS_BACK_X + dx)))      # pocket STOPS at the cartridge back (boss stays solid)
-        # HOLLOW back-stop thread bore (envelope) into the +X boss, coaxial with the tension screw: the
-        # printed back-stop screws in here, its -X face the adjustable stop the cartridge back seats against.
-        w = w.cut(feel_place(cyl(HS_BSTOP_OD + HS_THREAD_CLR, HS_HOUS_BACK - HS_BACK_X + 0.1, z=HS_BACK_X + dx)
-                             .rotate((0, 0, 0), (0, 1, 0), 90).translate((0, yc, HS_Z))))
+        # (the HOLLOW back-stop's FEMALE thread is cut into this solid boss AFTER heal -- threads must be cut
+        #  last & alone and never healed; see the end of _housing)
         # TPU drag-pad seat: a shallow recess in the OUTBOARD pocket wall over the coil bay (solid region);
         # the pad presses out of it onto the cartridge for light transport-drift friction.
         _sgn = 1.0 if yc > 0 else -1.0
@@ -752,7 +753,16 @@ def _housing() -> cq.Workplane:
     w = w.cut(cyl(M4_INSERT_D, M4_INSERT_L, z=_ins_bot).translate((RETAIN_X, RETAIN_Y, 0)))       # Ø6×5 insert
     w = w.cut(cyl(SCREW_CLR, (YOKE_Z1 + 2) - RETAIN_INS_TOP, z=RETAIN_INS_TOP)
               .translate((RETAIN_X, RETAIN_Y, 0)))                   # Ø4.4 shaft clearance up to the rib
-    return heal(w)
+    w = heal(w)                                                     # heal EVERYTHING except the threads...
+    # ...then cut the two FEMALE back-stop threads LAST and ALONE (thread rules: clean=False, and NEVER
+    # heal a threaded part). Nominal thread; the printed screw carries the clearance (HS_TH_CLR). A short
+    # nut cutter (2 turns) per cartridge, mapped into the -Z/-X placed boss by feel_place.
+    from threads import threaded_rod                                # noqa: E402  (freecad/ on sys.path)
+    for dx, dy in ((0.0, MAIN_YC - HS_YC), (HS_SETBACK, 0.0)):
+        nut = (threaded_rod(HS_TH_MINOR, HS_BSTOP_OD, HS_TH_PITCH, HS_BSTOP_ENGAGE)
+               .rotate((0, 0, 0), (0, 1, 0), 90).translate((HS_BACK_X + dx, HS_YC + dy, HS_Z)))
+        w = w.cut(feel_place(nut), clean=False)
+    return w
 
 
 def _lever() -> cq.Workplane:
