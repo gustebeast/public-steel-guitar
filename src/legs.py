@@ -397,10 +397,12 @@ def leg_shaft_trrs() -> cq.Workplane:
     body = body.union(box_at(10.0, SHAFT_FLAT_Y + 10.0, WAIST_Z1 - WAIST_Z0,
                              x=-5.0, y=(SHAFT_FLAT_Y - 10.0) / 2,
                              z=(WAIST_Z0 + WAIST_Z1) / 2))
-    # small OUTBOARD (local +X) corner fill at the band TOP: its underside
-    # (z 26) is the hold-down SHELF over the bar's solid slot corner
-    body = body.union(box_at(5.0, SHAFT_FLAT_Y + 10.0, SHELF_Z1 - SHELF_Z0,
-                             x=7.5, y=(SHAFT_FLAT_Y - 10.0) / 2,
+    # SHELF band at the band TOP: the FULL bounding rectangle (in practice
+    # this only adds the slivers the circle leaves — the inboard fill
+    # already covers its half); its underside (z 26) is the hold-down SHELF
+    # over the bar's solid slot corners
+    body = body.union(box_at(20.0, SHAFT_FLAT_Y + 10.0, SHELF_Z1 - SHELF_Z0,
+                             x=0.0, y=(SHAFT_FLAT_Y - 10.0) / 2,
                              z=(SHELF_Z0 + SHELF_Z1) / 2))
     # elephant-foot chamfers on both extensions' bed edges (band-limited)
     for sx, z0, z1 in ((-1, WAIST_Z0, WAIST_Z1), (1, SHELF_Z0, SHELF_Z1)):

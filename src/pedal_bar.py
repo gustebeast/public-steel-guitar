@@ -154,11 +154,10 @@ def _slot_cutter(lx: float, square_ls: float = 0.0) -> cq.Workplane:
         cut = cut.union(box_at(SLOT_W / 2, 27.4, BAR_H + 2,
                                x=lx + square_ls * SLOT_W / 4,
                                y=YC - 3.3, z=BAR_H / 2))
-        # outboard TOP-BAND cavity: slides past the shaft's shelf fill; the
-        # SOLID corner below it sits under the shelf = positive hold-down
-        cut = cut.union(box_at(5.8, 27.4, 3.8,
-                               x=lx - square_ls * 7.5,
-                               y=YC - 3.3, z=18.5))
+        # full-width TOP-BAND cavity: slides past the shaft's rectangular
+        # SHELF band; the SOLID corners below it sit under the shelf's
+        # underside = positive hold-down
+        cut = cut.union(box_at(20.8, 27.4, 3.8, x=lx, y=YC - 3.3, z=18.5))
     for s in (1, -1):
         cut = cut.union(
             cq.Workplane("XY")
