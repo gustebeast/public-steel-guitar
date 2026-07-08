@@ -114,22 +114,24 @@ SLEEVE_L = 180.0
 SHAFT_D, SHAFT_L = 20.0, 210.0         # 210 keeps 26 retained at 184 exposure —
                                        # the extra 10 buys the pedal bar its
                                        # ≥30 floor without opening band gaps
-SHAFT_FLAT_Y  = 6.8                    # SINGLE key flat (local -Y, full
-                                       # length): the print-bed face, the
-                                       # sleeve key, and the bar slot's face
-                                       # seat. 6.8 keeps the flat→round
-                                       # junction at 43° (< 45° overhang);
-                                       # single-D = one unique orientation
+SHAFT_FLAT_Y  = 6.8                    # SINGLE key flat (local +Y → the
+                                       # rotated +Y-rail stacks aim it at the
+                                       # bar MOUTH, i.e. INWARD): the
+                                       # print-bed face, the sleeve key, AND
+                                       # the latch bolt's bearing face — the
+                                       # head bears flat-on-flat on the bed
+                                       # surface itself (normal pure Y, no
+                                       # cam-open component, 0.2 play). 6.8
+                                       # keeps the flat→round junction at 43°
+                                       # (< 45° overhang); single-D = one
+                                       # unique orientation. The slot's back
+                                       # is ROUND (r10.2 on the Ø20).
 SLEEVE_FLAT_Y = 7.0                    # matching sleeve-bore flat (0.2 clr)
-WAIST_Z0, WAIST_Z1 = 9.0, 29.0         # chord-NOTCH band (z from the shaft
-                                       # bottom; starts where the foot ends)
-WAIST_CHORD_Y = 7.0                    # the CHORD notch (local +Y, band above;
-                                       # the rotated +Y-rail stacks aim it at
-                                       # the bar mouth): the latch bolt's head
-                                       # bears FLAT-on-flat — normal pure Y,
-                                       # no cam-open component, 0.2 play; its
-                                       # shoulders are the bar's Z crescents
-                                       # and (with the closed bolt) anti-lift
+WAIST_Z0, WAIST_Z1 = 9.0, 29.0         # the FOOT BAND (z from the shaft
+                                       # bottom: foot cap top → sleeve's
+                                       # lowest reach): the bar plate rides
+                                       # here; the TRRS shaft's corner-fill
+                                       # extension is limited to this band
 FOOT_H  = 12.0
 # stack at k segments: 32 barrel + (k+1)×2 collar gaps + k×140 + 180 sleeve +
 # shaft exposure 24..184 + 3 foot floor → height = 217 + 142k + exposure
@@ -301,11 +303,11 @@ def leg_sleeve() -> cq.Workplane:
     body = body.union(cq.Workplane("XY").add(cq.Solid.makeCone(
         (TUBE_OD + 4) / 2, COLLAR_D / 2, 3.0,
         cq.Vector(0, 0, -3.0), cq.Vector(0, 0, 1))))
-    # keyed bore: Ø20.4 with ONE flat (local -Y at 7.0) — single-D: the shaft
+    # keyed bore: Ø20.4 with ONE flat (local +Y at 7.0) — single-D: the shaft
     # cannot rotate AND can only insert in its one correct orientation
     body = body.cut(cyl(SHAFT_D + 0.4, SLEEVE_L + TH_LEN, z=-SLEEVE_L - 1)
                     .cut(box_at(SHAFT_D + 4, 6.0, SLEEVE_L + TH_LEN + 2,
-                                y=-(SLEEVE_FLAT_Y + 3.0),
+                                y=SLEEVE_FLAT_Y + 3.0,
                                 z=-SLEEVE_L - 1 + (SLEEVE_L + TH_LEN) / 2)))
     # lug block on +Y, then the single slit through block + wall + bore
     lz = -SLEEVE_L + 9.0                                  # bolt line
@@ -330,32 +332,27 @@ def leg_sleeve() -> cq.Workplane:
 
 
 def leg_shaft() -> cq.Workplane:
-    """Lower sliding shaft: Ø20 with a SINGLE key flat (local -Y at 6.8,
-    full length) — prints LYING ON THE FLAT (no tall-skinny standing print;
-    layer lines run ALONG the shaft, so kick bending loads bulk material,
-    and the 43° flat→round junction is self-supporting). Single-D keys the
-    sleeve in exactly one orientation. The CHORD NOTCH (local +Y, z 9..29)
-    faces UP on the bed: the latch bolt's head bears flat-on-flat on it,
-    its crescent shoulders + the foot cap set the pedal bar's Z, and the
-    closed bolt head under the upper shoulder is the anti-lift. 45°
-    chamfers on the two bed edges absorb first-layer elephant foot so the
-    sleeve/slot fits stay true. Solid (slicer infills); foot spigot below."""
+    """Lower sliding shaft: Ø20 with a SINGLE key flat (local +Y at 6.8 —
+    placed, it faces the bar's MOUTH) — prints LYING ON THE FLAT (no
+    tall-skinny standing print; layer lines run ALONG the shaft, so kick
+    bending loads bulk material, and the 43° flat→round junction is
+    self-supporting). Single-D keys the sleeve in exactly one orientation,
+    and the bed surface doubles as the latch bolt's bearing face (the bar's
+    Z: foot cap below, the seated TRRS plug above — the plain end floats up
+    freely until gravity returns it). 45° chamfers on the two bed edges
+    absorb first-layer elephant foot so the sleeve/slot fits stay true.
+    Solid (slicer infills); foot spigot below."""
     body = cyl(SHAFT_D, SHAFT_L, z=0.0).cut(
         box_at(SHAFT_D + 2, 6.0, SHAFT_L + 2,
-               y=-(SHAFT_FLAT_Y + 3.0), z=SHAFT_L / 2))
-    # chord notch (the latch bolt's bearing face — see WAIST_CHORD_Y);
-    # band-limited so the crescent shoulders remain above and below
-    body = body.cut(box_at(SHAFT_D + 2, 5.0, WAIST_Z1 - WAIST_Z0,
-                           y=WAIST_CHORD_Y + 2.5,
-                           z=(WAIST_Z0 + WAIST_Z1) / 2))
+               y=SHAFT_FLAT_Y + 3.0, z=SHAFT_L / 2))
     # elephant-foot chamfers along the two flat→round bed edges
     xe = math.sqrt((SHAFT_D / 2) ** 2 - SHAFT_FLAT_Y ** 2)
     for sx in (1, -1):
         body = body.cut(
             cq.Workplane("XY")
-            .polyline([(sx * (xe - 0.6), -(SHAFT_FLAT_Y + 0.3)),
-                       (sx * (xe + 0.3), -(SHAFT_FLAT_Y + 0.3)),
-                       (sx * (xe + 0.3), -(SHAFT_FLAT_Y - 0.6))])
+            .polyline([(sx * (xe - 0.6), SHAFT_FLAT_Y + 0.3),
+                       (sx * (xe + 0.3), SHAFT_FLAT_Y + 0.3),
+                       (sx * (xe + 0.3), SHAFT_FLAT_Y - 0.6)])
             .close().extrude(SHAFT_L + 2).translate((0, 0, -1)))
     return body
 
@@ -378,13 +375,31 @@ WIRE_BORE_D = 6.0                      # hollow centre: jack pocket → top
 
 
 def leg_shaft_trrs() -> cq.Workplane:
-    """The -X/+Y leg's shaft: leg_shaft() + the X-facing TRRS jack pocket
-    (SJ-43516-SMT, mouth flush at the inboard face) and the Ø6 wire bore up
-    the centre. Same lying-flat print: the pocket opens SIDEWAYS (clean
-    vertical walls, no bridge); the centre bore prints as a long horizontal
-    hole — acceptable sag, nothing fits it tightly."""
+    """The -X/+Y leg's shaft: leg_shaft() + the CORNER-FILL extension on the
+    inboard half (foot band only): the cylinder's inboard extent extruded to
+    a full-width rectangle — a FLAT face for the TRRS jack with a touch more
+    material around its pocket, flat X-seat faces for the bar slot, and an
+    unmistakable single orientation. Then the X-facing jack pocket
+    (SJ-43516-SMT, mouth flush in the flat face) and the Ø6 wire bore up
+    the centre. Same lying-flat print: the extension reaches the bed at its
+    own chamfered edge (vertical wall — even less overhang than the round),
+    its top is flat, and the pocket opens sideways (no bridges); the centre
+    bore prints as a long horizontal hole — acceptable sag, nothing fits it
+    tightly."""
     body = leg_shaft()
-    # jack pocket: local -X (inboard once placed), mouth at the Ø20 surface
+    # corner fill: local -X half → rectangle to x=-10, full width up to the
+    # key flat, FOOT BAND only (never enters the sleeve or the foot cap)
+    body = body.union(box_at(10.0, SHAFT_FLAT_Y + 10.0, WAIST_Z1 - WAIST_Z0,
+                             x=-5.0, y=(SHAFT_FLAT_Y - 10.0) / 2,
+                             z=(WAIST_Z0 + WAIST_Z1) / 2))
+    # elephant-foot chamfer on the extension's bed edge (band-limited)
+    body = body.cut(cq.Workplane("XY")
+                    .polyline([(-(10.0 - 0.6), SHAFT_FLAT_Y + 0.3),
+                               (-(10.0 + 0.3), SHAFT_FLAT_Y + 0.3),
+                               (-(10.0 + 0.3), SHAFT_FLAT_Y - 0.6)])
+                    .close().extrude(WAIST_Z1 - WAIST_Z0 + 0.2)
+                    .translate((0, 0, WAIST_Z0 - 0.1)))
+    # jack pocket: local -X (inboard once placed), mouth in the flat face
     body = body.cut(box_at(TRRS_JACK_L + 1.0, TRRS_JACK_W + 0.6,
                            TRRS_JACK_H + 0.6, x=-10.5 + (TRRS_JACK_L + 1.0) / 2,
                            z=TRRS_Z))
