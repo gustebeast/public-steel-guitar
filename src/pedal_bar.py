@@ -32,6 +32,14 @@ N/mm at the pusher tab — a compression TPU block would be ~30× too stiff)
 to return the bolt. It is unloaded at rest and when latched, deflected only
 during actuation, so it never creeps. No coil, no extra BOM spring.
 
+TRRS AUTO-MATE at the -X foot: the CAN/TRRS connection clicks in as the bar
+seats — no separate plug-in step. Female jack in the LEG (embedded in the
+shaft through its key flat), male right-angle plug in the bar's back band
+with its barrel reaching -Y into the leg's envelope; the slot's hard walls
+align the pair 2mm before the connector halves can touch (see the TRRS
+constants block for the full δ sequence and legs.leg_shaft_trrs for the
+leg side). Removal is the same thumb-slide + pull — the pull un-mates it.
+
 FRAME: modelled at ABSOLUTE X/Y (the legs' real stations, +Y rail); Z is
 local with 0 = the plate bottom = the waist's lower shoulder (build.py
 translates by ground + FOOT_H). Drawn SEATED: bolts closed. DEMO: the bar
@@ -60,11 +68,16 @@ YC = Y_HI                              # leg axes sit on the +Y rail centreline
 LATCHES = ((LEG_STATIONS_X[0], -1.0),  # +X (bridge-end) leg → latch extends -X
            (LEG_STATIONS_X[1], +1.0))  # -X (keyhead-end) leg → latch extends +X
 
-# plate: 19 tall inside the 20-tall waist (1.0 anti-lift clearance up top)
+# plate: 19 tall inside the 20-tall notch band (1.0 anti-lift clearance up)
 BAR_H = 19.0
-BAR_Y0, BAR_Y1 = YC - 16.0, YC + 18.0      # one clean prism: 2.1 front wall
-                                           # ahead of the bolt channel, 8.8
-                                           # back wall behind the slot root
+BAR_Y0, BAR_Y1 = YC - 25.0, YC + 23.0      # one clean prism. Front reaches
+                                           # -25 so the slot's HARD walls
+                                           # engage the shaft 16 before seat
+                                           # — 2 BEFORE the TRRS barrel can
+                                           # touch its jack (contact = the
+                                           # 14 insertion depth). Back
+                                           # reaches +23 to swallow the
+                                           # right-angle plug body.
 END_MARGIN = 15.0                          # bar end past each leg axis: the
                                            # 8.2 slot wall + 6.8 of closure
 BAR_X0 = LEG_STATIONS_X[1] - END_MARGIN
@@ -116,18 +129,39 @@ M2_XY = ((18.0, -6.55), (32.0, -6.55))     # both OUTSIDE the head's deep
                                            # pocket (x ≤ 15.7) so the insert
                                            # pockets keep a solid wall
 
+# ── TRRS auto-mate at the -X/+Y foot (LATCHES[1]) ────────────────────────
+# The connector clicks in AS the bar seats: the leg-side FEMALE (a PJ-320 /
+# SJ-43516-class SMT TRRS jack, embedded in the shaft through its key flat,
+# mouth 2.5 PROUD of the flat — see legs.leg_shaft_trrs) faces +Y; the
+# bar-side MALE right-angle plug lives in the thickened back band, barrel
+# -Y through the slot back and INTO the leg's envelope. Sequence (δ = travel
+# to seat): δ=18 flare funnel, δ=16 HARD slot walls (X ±0.2), δ=14 barrel
+# tip meets the jack mouth (its own conical entry), δ=2.3 the jack's proud
+# nose enters the bar's recess (final fine alignment), δ=0 fully seated.
+# The plug's cable elbows INBOARD along a channel in the back band.
+TR_Z = 9.5                                 # connector axis (bar-local z)
+JACK_Y0, JACK_Y1 = -2.7, 9.3               # jack body (leg-fixed): 12 deep,
+JACK_W, JACK_H = 11.0, 6.0                 # ... mouth at +9.3 (2.5 proud)
+PLUG_Y1 = 20.3                             # plug body back (9.3..20.3)
+PLUG_W, PLUG_H = 10.0, 10.0
+NOSE_Y0, NOSE_Y1 = 6.9, 9.8                # nose recess through the slot back
+PKT_Y0, PKT_Y1 = 9.0, 20.9                 # plug pocket (open top)
+CBL_X0, CBL_X1 = 5.8, 30.0                 # cable channel, inboard (ls)
+
 
 def _slot_cutter(lx: float) -> cq.Workplane:
     """Slot for one leg: a plain rectangular pocket — Ø20.4 walls register X
     on the shaft's rounds, the flat back FACE-seats on the single key flat —
-    full height, opening -Y, with 45° lead-in flares at the mouth."""
-    cut = box_at(SLOT_W, 17.0 + SLOT_BACK, BAR_H + 2,
-                 x=lx, y=YC + (SLOT_BACK - 17.0) / 2, z=BAR_H / 2)
+    full height, opening -Y. A SHORT (2-deep) flare funnels the mouth; the
+    hard walls behind it run 16 deep so they align the shaft 2mm before the
+    TRRS halves can touch."""
+    cut = box_at(SLOT_W, 26.0 + SLOT_BACK, BAR_H + 2,
+                 x=lx, y=YC + (SLOT_BACK - 26.0) / 2, z=BAR_H / 2)
     for s in (1, -1):
         cut = cut.union(
             cq.Workplane("XY")
-            .polyline([(s * SLOT_W / 2, -16.0), (s * (SLOT_W / 2 + 4), -16.0),
-                       (s * SLOT_W / 2, -11.0)])
+            .polyline([(s * SLOT_W / 2, -25.0), (s * (SLOT_W / 2 + 3), -25.0),
+                       (s * SLOT_W / 2, -23.0)])
             .close().extrude(BAR_H + 2).translate((lx, YC, -1)))
     return cut
 
@@ -161,6 +195,20 @@ def pedal_bar() -> cq.Workplane:
             body = body.cut(cyl(M2_INSERT_PILOT_D, M2_INSERT_DEPTH + 0.5,
                                 z=LID_Z0 - M2_INSERT_DEPTH)
                             .translate((lx + ls * mx, YC + my, 0)))
+
+    # ── TRRS dock at the -X foot (see the constants block) ────────────
+    tx, tls = LATCHES[1]
+    # nose recess: the jack's proud mouth pokes through the slot back here
+    body = body.cut(box_at(JACK_W + 0.8, NOSE_Y1 - NOSE_Y0, JACK_H + 1.0,
+                           x=tx, y=YC + (NOSE_Y0 + NOSE_Y1) / 2, z=TR_Z))
+    # right-angle plug pocket (open top: plug drops in, barrel out -Y)
+    body = body.cut(box_at(PLUG_W + 1.6, PKT_Y1 - PKT_Y0, BAR_H - 4.0 + 1,
+                           x=tx, y=YC + (PKT_Y0 + PKT_Y1) / 2,
+                           z=(4.0 + BAR_H + 1) / 2))
+    # cable channel: the right-angle lead elbows inboard along the bar
+    body = body.cut(box_at(CBL_X1 - CBL_X0, 6.0, 9.0,
+                           x=tx + tls * (CBL_X0 + CBL_X1) / 2,
+                           y=YC + 14.0, z=TR_Z))
     return body
 
 
@@ -248,12 +296,37 @@ def pedal_latch_finger(lx: float, ls: float) -> cq.Workplane:
     return blade.union(base)
 
 
+def _trrs_jack() -> cq.Workplane:
+    """DEMO leg-side female jack (PJ-320 / SJ-43516 class, ~11×12×6): body
+    embedded in the shaft through its key flat, mouth 2.5 proud, Ø3.6 way."""
+    tx, _ = LATCHES[1]
+    j = box_at(JACK_W, JACK_Y1 - JACK_Y0, JACK_H,
+               x=tx, y=YC + (JACK_Y0 + JACK_Y1) / 2, z=TR_Z)
+    return j.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        1.8, JACK_Y1 - JACK_Y0 + 2,
+        cq.Vector(tx, YC + JACK_Y0 - 1, TR_Z), cq.Vector(0, 1, 0))))
+
+
+def _trrs_plug() -> cq.Workplane:
+    """DEMO bar-side right-angle male plug: Ø3.5×14 barrel -Y through the
+    slot back into the leg-mounted jack (drawn fully seated), molded body in
+    the back-band pocket, cable stub elbowing inboard."""
+    tx, tls = LATCHES[1]
+    p = cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        1.75, 14.0, cq.Vector(tx, YC + JACK_Y1, TR_Z), cq.Vector(0, -1, 0)))
+    p = p.union(box_at(PLUG_W, PLUG_Y1 - JACK_Y1, PLUG_H,
+                       x=tx, y=YC + (JACK_Y1 + PLUG_Y1) / 2, z=TR_Z))
+    p = p.union(box_at(22.0, 4.5, 4.5,
+                       x=tx + tls * (5.0 + 22.0 / 2), y=YC + 14.0, z=TR_Z))
+    return p
+
+
 def assembly_parts():
-    """[(name, workplane)] — the printed parts, drawn SEATED, in absolute
-    X/Y with z0 = the plate bottom (build.py lifts the whole set by
-    ground + FOOT_H). The ls=+1 latch is the mirror image of the ls=-1 one,
-    so its bolt/lid are the `_m` printed variants; the finger is symmetric
-    (one part ×2)."""
+    """[(name, workplane)] — the printed parts + connector DEMOs, drawn
+    SEATED, in absolute X/Y with z0 = the plate bottom (build.py lifts the
+    whole set by ground + FOOT_H). The ls=+1 latch is the mirror image of
+    the ls=-1 one, so its bolt/lid are the `_m` printed variants; the finger
+    is symmetric (one part ×2)."""
     (lx_a, ls_a), (lx_b, ls_b) = LATCHES
     return [("pedal_bar", pedal_bar()),
             ("pedal_bolt", pedal_bolt(lx_a, ls_a)),
@@ -261,4 +334,6 @@ def assembly_parts():
             ("pedal_latch_lid", pedal_latch_lid(lx_a, ls_a)),
             ("pedal_latch_lid_m", pedal_latch_lid(lx_b, ls_b)),
             ("pedal_latch_finger_0", pedal_latch_finger(lx_a, ls_a)),
-            ("pedal_latch_finger_1", pedal_latch_finger(lx_b, ls_b))]
+            ("pedal_latch_finger_1", pedal_latch_finger(lx_b, ls_b)),
+            ("pedal_trrs_jack", _trrs_jack()),
+            ("pedal_trrs_plug", _trrs_plug())]

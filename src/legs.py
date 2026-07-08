@@ -360,6 +360,42 @@ def leg_shaft() -> cq.Workplane:
     return body
 
 
+# TRRS dock (the -X/+Y leg only — see pedal_bar.py for the mating story):
+# a PJ-320 / SJ-43516-class SMT TRRS JACK (~11×12×6) embeds in the shaft
+# through the key flat, its mouth 2.5 PROUD of the flat (that nose enters a
+# recess in the bar's slot back as the last-2.3mm fine alignment). Wires
+# solder to its pads and run up the CABLE GROOVE in the flat — the sleeve
+# rides over the groove, and above the sleeve the cable continues inside the
+# hollow segments to the chassis.
+TRRS_Z = 18.5                          # jack axis (shaft-local; = plate mid)
+TRRS_JACK_W, TRRS_JACK_L, TRRS_JACK_H = 11.0, 12.0, 6.0
+TRRS_PROUD = 2.5                       # mouth proud of the key flat
+GROOVE_W, GROOVE_D = 4.0, 2.5          # cable way in the flat, full length up
+
+
+def leg_shaft_trrs() -> cq.Workplane:
+    """The -X/+Y leg's shaft: leg_shaft() + the TRRS jack pocket (opens at
+    the key flat; the jack sits mostly inside the Ø20, mouth proud), a
+    barrel-tip well behind it (a TRRS plug inserts ~14 — the tip passes the
+    jack's open back), and the cable groove up the flat. Same print
+    orientation (lying on the flat; the pocket faces DOWN at the bed over
+    its 12mm — short anchored bridge, or a dab of support)."""
+    body = leg_shaft()
+    # jack pocket: local y -10.3 (clear of the proud mouth, outside the
+    # flat) .. +3.2 (0.5 behind the jack back — 1.6 wall to the chord after
+    # the tip well)
+    body = body.cut(box_at(TRRS_JACK_W + 0.4, 13.5, TRRS_JACK_H + 0.6,
+                           y=-3.55, z=TRRS_Z))
+    # barrel-tip well (the seated plug tip pokes past the jack's open back)
+    body = body.cut(box_at(5.0, 2.2, 5.0, y=4.3, z=TRRS_Z))
+    # cable groove up the flat (from the pocket to the shaft top)
+    body = body.cut(box_at(GROOVE_W, GROOVE_D + 0.4,
+                           SHAFT_L - (TRRS_Z + TRRS_JACK_H / 2) + 1,
+                           y=-(SHAFT_FLAT_Y + 0.4) + (GROOVE_D + 0.4) / 2,
+                           z=(TRRS_Z + TRRS_JACK_H / 2 + SHAFT_L + 1) / 2))
+    return body
+
+
 def leg_foot() -> cq.Workplane:
     """TPU foot cap, pressed over the shaft end (grips the round sides of the
     keyed shaft; its cap ends exactly where the waist begins). Z0 = ground."""

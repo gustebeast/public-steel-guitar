@@ -102,6 +102,10 @@ GLOBAL_OK = {
     # bolts (one latch per foot) block the waists
     frozenset({"pedal_bar", "leg_shaft"}), frozenset({"pedal_bar", "leg_foot"}),
     frozenset({"pedal_bolt", "leg_shaft"}), frozenset({"pedal_bolt_m", "leg_shaft"}),
+    # TRRS: the female jack embeds in the -X/+Y shaft (leg_shaft_2 is the
+    # leg_shaft_trrs variant); the bar-side plug's barrel reaches into it
+    frozenset({"pedal_trrs_jack", "leg_shaft"}),
+    frozenset({"pedal_trrs_plug", "leg_shaft"}),
 }
 
 # The pedal-bar latches are a self-contained subassembly (bolt in its
@@ -110,7 +114,8 @@ GLOBAL_OK = {
 # part clashing with a leg/chassis part (other than the GLOBAL_OK contacts
 # above) stays a reportable bug.
 PEDAL_FAMILY = {"pedal_bar", "pedal_bolt", "pedal_bolt_m", "pedal_latch_lid",
-                "pedal_latch_lid_m", "pedal_latch_finger"}
+                "pedal_latch_lid_m", "pedal_latch_finger",
+                "pedal_trrs_jack", "pedal_trrs_plug"}
 
 
 # The knee-lever control core is a self-contained subassembly: the axle, bearings,
