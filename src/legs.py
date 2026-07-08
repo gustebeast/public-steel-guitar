@@ -361,34 +361,33 @@ def leg_shaft() -> cq.Workplane:
 
 
 # TRRS dock (the -X/+Y leg only — see pedal_bar.py for the mating story):
-# a PJ-320 / SJ-43516-class SMT TRRS JACK (~12×11×5) embeds in the shaft
-# with its mating axis along X, mouth flush with the Ø20 at the INBOARD
-# face (local -X; the rotated +Y-rail stack turns that toward the bar's
-# latch side). The bar's latch slider carries the male plug and drives it
+# the FEMALE jack is a Same Sky SJ-43516-SMT (DigiKey SJ-43516-SMT-TR,
+# ~14.5×6×5 body, 14.0 mating depth), embedded in the shaft with its mating
+# axis along X, mouth flush with the Ø20 at the INBOARD face (local -X; the
+# rotated +Y-rail stack turns that toward the bar's latch side). The bar's
+# latch slider carries the male plug (Same Sky SP-3541) and drives it
 # in/out along X. Wires solder to the jack pads and run UP the Ø6 hollow
 # CENTER BORE to the shaft top, then inside the sleeve/segments to the
-# chassis.
+# chassis. The jack body (14.5) is longer than the mating depth (14), so
+# the plug tip stays inside it — no tip well behind.
 TRRS_Z = 17.7                          # jack axis (shaft-local; = bar-local
                                        # 8.7 — low enough that the bar-side
-                                       # cradle tube clears the lid plane)
-TRRS_JACK_L, TRRS_JACK_W, TRRS_JACK_H = 12.0, 11.0, 5.0   # X × Y × Z
+                                       # cradle clears the lid plane)
+TRRS_JACK_L, TRRS_JACK_W, TRRS_JACK_H = 14.5, 6.0, 5.0    # X × Y × Z
 WIRE_BORE_D = 6.0                      # hollow centre: jack pocket → top
 
 
 def leg_shaft_trrs() -> cq.Workplane:
     """The -X/+Y leg's shaft: leg_shaft() + the X-facing TRRS jack pocket
-    (mouth flush at the inboard face, Ø10×1.2 counterbore so the slider's
-    barrel collar noses in at full insertion), a barrel-tip well behind the
-    jack's open back (full 14 insertion), and the Ø6 wire bore up the
-    centre. Same lying-flat print: the pocket opens SIDEWAYS (clean
+    (SJ-43516-SMT, mouth flush at the inboard face) and the Ø6 wire bore up
+    the centre. Same lying-flat print: the pocket opens SIDEWAYS (clean
     vertical walls, no bridge); the centre bore prints as a long horizontal
     hole — acceptable sag, nothing fits it tightly."""
     body = leg_shaft()
     # jack pocket: local -X (inboard once placed), mouth at the Ø20 surface
-    body = body.cut(box_at(13.0, TRRS_JACK_W + 0.4, TRRS_JACK_H + 0.6,
-                           x=-11.5 + 13.0 / 2 + 1.0, z=TRRS_Z))
-    # barrel-tip well (the seated plug tip pokes past the jack's open back)
-    body = body.cut(box_at(2.9, 5.0, 5.0, x=3.45, z=TRRS_Z))
+    body = body.cut(box_at(TRRS_JACK_L + 1.0, TRRS_JACK_W + 0.6,
+                           TRRS_JACK_H + 0.6, x=-10.5 + (TRRS_JACK_L + 1.0) / 2,
+                           z=TRRS_Z))
     # Ø6 wire bore: jack pocket → shaft top (wires up the hollow centre)
     body = body.cut(cyl(WIRE_BORE_D, SHAFT_L - 19.5 + 1, z=19.5))
     return body
