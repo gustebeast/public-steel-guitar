@@ -778,6 +778,20 @@ def _housing() -> cq.Workplane:
     #  the new geometry can be added later if wanted; for now throw is bounded by clearance / the sensor.)
     # mount: yoke with a lever-side christmas-tree mortise at each rib (the floating tenon glues in)
     w = w.union(_mount())
+    # RAIL SUPPORT (point 5): the rail bosses float ~7mm above the cartridge cap; carry the load down to it.
+    # ANALYSIS @0.8mm nozzle: 45deg triangulated MEMBERS beat solid+infill on material for this axial load
+    # path (a solid block wastes its low-stress core; struts are self-supporting so they also print clean).
+    # -> two 45deg strut-walls per rail (an inverted-V), thin, fusing the cartridge cap to the rail boss.
+    _cap_z = HS_CART_Z1 + _FEEL_DZ
+    _sw = 1.6                                                        # strut wall thickness (2 passes @0.8)
+    for rx in RAIL_X:
+        for sgn in (1, -1):                                         # inverted-V: a strut each side of the rail
+            x_foot = rx + sgn * (BOSS_Z0 - _cap_z)                  # 45deg -> horizontal run == vertical rise
+            _p = [(rx - _sw / 2, BOSS_Z0), (rx + _sw / 2, BOSS_Z0),
+                  (x_foot + sgn * _sw / 2, _cap_z), (x_foot - sgn * _sw / 2, _cap_z)]
+            _f = cq.Face.makeFromWires(cq.Wire.makePolygon(
+                [cq.Vector(x, -_HOUS_HW, z) for x, z in _p] + [cq.Vector(_p[0][0], -_HOUS_HW, _p[0][1])]))
+            w = w.union(cq.Workplane("XY").add(cq.Solid.extrudeLinear(_f, cq.Vector(0, 2 * _HOUS_HW, 0))))
     # retention: the Ø6×5 insert + Ø4.4 clearance sit in a boss beside the NEAR (-23) rail. The boss runs
     # the FULL Z to the yoke top (backed by the body -> no overhang), then that rail's MORTISE is re-cut so
     # it passes cleanly THROUGH the boss (the tenon still slides). The insert stops RETAIN_INS_TOP (1 mm
