@@ -85,8 +85,11 @@ PARTS = {
     "leg_segment":     (lambda: heal(LG.leg_segment()), "pctg/leg_segment.step", "PCTG — stackable leg tube ×8 (male up / female down; COUNT per leg = coarse height adjust, 142/segment). PCTG not GF: standing prints bend across layer lines and a kick is energy-limited — PCTG interlayer is ~85-90% of bulk + ductile (~8 J to yield vs ~2 J to snap for GF). Print bell-down, LOW fan"),
     "leg_sleeve":      (lambda: heal(LG.leg_sleeve()),  "pctg/leg_sleeve.step",  "PCTG — leg slider sleeve ×4 (pinch collar: M4 button screw + insert pulls the slit closed; the slit MUST flex — never glass-filled)"),
     "leg_shaft":       (lambda: heal(LG.leg_shaft()),   "pctg/leg_shaft.step",   "PCTG — leg sliding shaft ×3 (fine height adjust; single-D key flat = pure Z travel + one unique orientation; chord notch mounts the pedal bar on the +Y legs). Print LYING ON THE FLAT: layer lines run along the shaft (kick bending loads bulk material), 43-deg junction self-supporting, notch faces up"),
-    "leg_shaft_trrs":  (lambda: heal(LG.leg_shaft_trrs()), "pctg/leg_shaft_trrs.step", "PCTG — the -X/+Y leg's shaft ×1: leg_shaft + inboard corner fill + the X-facing TRRS jack pocket (Same Sky SJ-43514-SMT, mouth flush in the fill's flat face) + Ø6 wire bore up the centre. Same lying-flat print (pocket opens sideways, no bridges)"),
+    "leg_shaft_trrs":  (lambda: heal(LG.leg_shaft_trrs()), "pctg/leg_shaft_trrs.step", "PCTG — the -X/+Y leg's shaft ×1: leg_shaft + inboard corner fill + the X-facing TRRS jack pocket (LCSC SMT jack on the leg CARRIER PCB, mouth flush in the fill's flat face) + carrier seat + bottom-entry XH cavity (under the foot) + Ø5 off-axis cable bore. Same lying-flat print (pocket opens sideways, no bridges)"),
     "leg_foot":        (lambda: heal(LG.leg_foot()),    "tpu/leg_foot.step",    "TPU — foot cap ×4"),
+    "leg_socket_trrs": (lambda: heal(LG.leg_socket_trrs()), "petg-gf/leg_socket_trrs.step", "PETG-GF — the -X/+Y leg's socket ×1: leg_socket + the vertical chassis-jack way (Tensility 10-03404, coaxial with the thread — the column-top plug BLIND-MATES on the final turn) + mouth-seat boss + tenon cable channel. Jack drops in before glue-up"),
+    "leg_plug_retainer": (lambda: heal(LG.leg_plug_retainer()), "pctg/leg_plug_retainer.step", "PCTG — press sleeve ×1: up the wired leg's top-segment bore under the CA-354S handle (insertion backstop; the spigot tip lip takes withdrawal)"),
+    "socket_jack_slug": (lambda: heal(LG.socket_jack_slug()), "tpu/socket_jack_slug.step", "TPU — saddle slug ×1: tops the chassis jack in the socket way (insertion backstop after glue-up; side slot clears the cable exit)"),
     "leg_washer":      (lambda: heal(LG.leg_washer()),  "tpu/leg_washer.step",  "TPU — gland washer, 1/junction = segments+1 per leg (sits in the female-rim recess; the hard-stop collar squeezes it a fixed 2.5->2.0 every assembly)"),
     # pedal bar + latch (one latched foot for now; mirror to -X once the feel
     # is validated). The bar itself is a DEMO prism (longer than the bed —
@@ -376,8 +379,10 @@ def _leg_components():
     for sx in CH.LEG_STATIONS_X:           # stations computed from the shared endplate model
         for ry, rot in ((CH.Y_HI, 180), (CH.Y_LO, 0)):   # plate faces outward
             zb = CH.Z_BOT - LG.BARREL_L                  # barrel bottom
+            wired = (sx, ry) == (CH.LEG_STATIONS_X[1], CH.Y_HI)
+            sock = LG.leg_socket_trrs() if wired else socket
             out.append((f"leg_socket_{k}",
-                        socket.rotate((0, 0, 0), (0, 0, 1), rot)
+                        sock.rotate((0, 0, 0), (0, 0, 1), rot)
                         .translate((sx, ry, CH.Z_BOT))))
             # (thread phase is built into the female generators — all joints
             # share the same 3 mm offset, so parts place with no relative
@@ -406,6 +411,41 @@ def _leg_components():
                         sh.rotate((0, 0, 0), (0, 0, 1), rot)
                         .translate((sx, ry, ground + 3.0))))
             out.append((f"leg_foot_{k}", foot.translate((sx, ry, ground))))
+            if wired:
+                # leg↔body TRRS blind-mate hardware (socket-local builders,
+                # rotated with the stack, lifted to the rail bottom)
+                for nm, bldr in (("chassis_trrs_jack", LG.chassis_trrs_jack),
+                                 ("leg_column_plug", LG.leg_column_plug),
+                                 ("socket_jack_slug", LG.socket_jack_slug)):
+                    zoff = 31.3 if nm == "socket_jack_slug" else 0.0
+                    out.append((nm, bldr().rotate((0, 0, 0), (0, 0, 1), rot)
+                                .translate((sx, ry, CH.Z_BOT + zoff))))
+                out.append(("leg_plug_retainer",
+                            LG.leg_plug_retainer()
+                            .rotate((0, 0, 0), (0, 0, 1), rot)
+                            .translate((sx, ry, CH.Z_BOT - 40.5))))
+                # the column CA-354S cable: plug spring -> down the segment
+                # cores/sleeve -> INTO the shaft's Ø6 bore, meeting the
+                # shaft-side model (pedal_trrs_cable_leg) at the bar band
+                from . import wiring as WR
+                out.append(("leg_column_cable", WR._wire([
+                    (sx, ry, CH.Z_BOT - 38.0),
+                    (sx, ry, ground + 224.0),
+                    (sx - 6.7, ry, ground + 215.0)], 3.7)))   # jog to the
+                # shaft's off-axis bore mouth (the shaft-side model
+                # continues from there)
+                # the chassis jack's factory cable: axial exit, 90° out the
+                # tenon channel (inner face), down to the floor, landing on
+                # the bus-B socket tee (12)
+                iy = -1.0 if ry > 0 else 1.0             # inboard sign
+                out.append(("chassis_trrs_cable", WR._wire([
+                    (sx, ry, CH.Z_BOT + 31.8),
+                    (sx, ry, CH.Z_BOT + 34.5),
+                    (sx, ry + iy * 8.0, CH.Z_BOT + 35.5),
+                    (-605.5, 46.0, -45.0),
+                    (-605.5, 46.0, -72.5),      # through the tray's notch
+                    (-592.0, 44.5, -72.5),
+                    (-590.0, 44.5, WR.HDR_Z)], 3.8)))
             k += 1
     return out
 
@@ -427,7 +467,7 @@ def _electronics_components():
     out = [("electronics_tray", EL.electronics_tray()),
            ("pi5", EL.pi5()), ("teensy_stack", EL.teensy_stack()),
            ("cs_stack", EL.cs_stack()), ("buck", EL.buck()),
-           ("can_xcvr", EL.can_xcvr()),
+           ("teensy_ifc", EL.teensy_ifc()),
            ("analog_frontend", EL.analog_frontend()),
            ("ts_jack", EL.ts_jack()), ("dc_jack", EL.dc_jack()),
            ("usbc_jack", EL.usbc_jack()),
@@ -446,6 +486,7 @@ def _electronics_components():
         out.append((f"top_plate_{len(TP.segments) + i}", f.translate((0, dy, 0))))
         out.append((f"top_plate_color_{len(TP.segments_color) + i}",
                     fc.translate((0, dy, 0))))
+    out += WR.tee_components()
     out += WR.build_wires()
     return out
 
@@ -521,6 +562,13 @@ _COLORS = {
     "height_screw":    (0.72, 0.72, 0.75),   # M4 height set-screw (lifts the plate)
     "clamp_screw":     (0.55, 0.55, 0.58),   # M4 side clamp screw
     "leg_socket":      (0.36, 0.42, 0.46),
+    "leg_socket_trrs": (0.36, 0.42, 0.46),
+    "leg_plug_retainer": (0.42, 0.48, 0.52),
+    "socket_jack_slug": (0.12, 0.12, 0.13),  # TPU
+    "chassis_trrs_jack": (0.62, 0.64, 0.67),
+    "leg_column_plug":  (0.32, 0.36, 0.58),  # slate, matches the bar plug
+    "chassis_trrs_cable": (0.45, 0.45, 0.48),
+    "leg_column_cable": (0.45, 0.45, 0.48),
     "leg_segment":     (0.42, 0.48, 0.52),
     "leg_sleeve":      (0.36, 0.42, 0.46),
     "leg_shaft":       (0.55, 0.58, 0.62),
@@ -538,14 +586,13 @@ _COLORS = {
     "pedal_trrs_jack":  (0.62, 0.64, 0.67),  # leg-side female TRRS (DEMO)
     "pedal_trrs_plug":  (0.32, 0.36, 0.58),  # bar-side male plug (DEMO; slate
                                              # — black is reserved for TPU)
-    # pedal TRRS link: 28 AWG (the cabinet's smallest gauge — a short CAN
-    # stub + mA sensor supply). Amber = the 28 AWG family; one shade per
-    # wire per the policy. (The amber bucket is getting crowded — 10 shades
-    # now; consider a re-bucket if it stops reading.)
-    "pedal_wire_canh":  (1.00, 0.82, 0.50),  # palest amber  - CAN high
-    "pedal_wire_canl":  (0.93, 0.65, 0.18),  # pale amber    - CAN low
-    "pedal_wire_pwr":   (0.85, 0.52, 0.12),  # mid amber     - sensor V+
-    "pedal_wire_gnd":   (0.62, 0.32, 0.08),  # dark amber    - ground
+    # pedal TRRS link: Tensility CA-354S factory cables (Ø3.7 shielded 4C
+    # jackets). Grey — NOT black (TPU-reserved); the per-wire gauge/shade
+    # colours reappear at the crimped XH pigtails, not inside a jacket.
+    "pedal_trrs_cable_bar": (0.45, 0.45, 0.48),  # cradle plug → first bar tee
+    "pedal_trrs_cable_leg": (0.45, 0.45, 0.48),  # leg carrier → column top
+    "pedal_leg_carrier": (0.10, 0.42, 0.18),     # leg carrier PCB (jack on
+                                                 # top, XH header below)
     "build_counter":   (0.86, 0.08, 0.24),
     # knee lever (LKL) — input-side control
     "knee_housing":    (0.30, 0.36, 0.42),   # PCTG housing
@@ -573,7 +620,9 @@ _COLORS = {
     "teensy_stack":    (0.10, 0.45, 0.30),
     "cs_stack":        (0.15, 0.25, 0.50),
     "buck":            (0.35, 0.30, 0.50),
-    "can_xcvr":        (0.55, 0.25, 0.25),
+    "teensy_ifc":      (0.55, 0.25, 0.25),   # Teensy interface PCB (2x CAN
+                                             # transceiver + XH headers)
+    "tee_pcb":         (0.10, 0.42, 0.18),   # trunk-and-drop bus tee PCBs
     "analog_frontend": (0.20, 0.45, 0.40),   # bridge-end buffer + relay board
     "top_plate":       (0.88, 0.91, 0.94),   # transparent-PCTG deck base + fret lines
     "top_plate_color": (0.30, 0.33, 0.38),   # colour-PCTG deck layer (skin contact)
@@ -587,7 +636,12 @@ _COLORS = {
     #   amber = 28 AWG logic | violet = shielded USB-2
     "wire_pwr_hot":    (0.08, 0.20, 0.60),   # dark blue   - 24 V hot
     "wire_pwr_gnd":    (0.45, 0.65, 0.95),   # light blue  - 24 V ground/return
-    "wire_can":        (0.80, 0.10, 0.10),   # red         - CAN twisted pair
+    "wire_can":        (0.80, 0.10, 0.10),   # red         - bus A CAN (crimped
+                                             #   XH trunk segments, tee to tee)
+    "wire_canb":       (0.95, 0.35, 0.30),   # light red   - bus B CAN (inputs)
+    "motor_pigtail":   (0.45, 0.45, 0.48),   # grey        - SERVO42D's own 6-pin
+                                             #   XH pigtail (factory jacket)
+    "wire_knee_drop":  (0.45, 0.45, 0.48),   # grey        - LKL drop stub
     "wire_pickup":     (0.55, 0.85, 0.55),   # lightest green - shielded: pickup -> AFE
     "wire_audio":      (0.30, 0.72, 0.40),   # light green - shielded: AFE -> ADC
     "wire_dac":        (0.10, 0.52, 0.28),   # dark green  - shielded: DAC -> AFE
