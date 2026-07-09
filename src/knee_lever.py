@@ -787,6 +787,8 @@ def _housing() -> cq.Workplane:
     for rx in RAIL_X:
         for sgn in (1, -1):                                         # inverted-V: a strut each side of the rail
             x_foot = rx + sgn * (BOSS_Z0 - _cap_z)                  # 45deg -> horizontal run == vertical rise
+            x_foot = max(-70.0, min(-18.0, x_foot))                # ...but clamp the foot ONTO the cartridge cap
+            #   (an outboard foot would overshoot into air; clamping just steepens the strut past 45deg, fine)
             _p = [(rx - _sw / 2, BOSS_Z0), (rx + _sw / 2, BOSS_Z0),
                   (x_foot + sgn * _sw / 2, _cap_z), (x_foot - sgn * _sw / 2, _cap_z)]
             _f = cq.Face.makeFromWires(cq.Wire.makePolygon(
