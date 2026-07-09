@@ -107,11 +107,21 @@ GLOBAL_OK = {
     # leg_shaft_trrs variant); the slider-carried plug reaches into it
     frozenset({"pedal_trrs_jack", "leg_shaft"}),
     frozenset({"pedal_trrs_plug", "leg_shaft"}),
-    # the four TRRS conductors up the shaft's Ø6 hollow centre
-    frozenset({"pedal_wire_canh", "leg_shaft"}),
-    frozenset({"pedal_wire_canl", "leg_shaft"}),
-    frozenset({"pedal_wire_pwr", "leg_shaft"}),
-    frozenset({"pedal_wire_gnd", "leg_shaft"}),
+    frozenset({"pedal_leg_carrier", "leg_shaft"}),
+    # the leg-column TRRS cable up the shaft's Ø6 hollow centre
+    frozenset({"pedal_trrs_cable_leg", "leg_shaft"}),
+    # leg↔body TRRS blind-mate: jack seated in the socket way (slug atop),
+    # plug recessed in the top segment's bore (retainer pressed beneath)
+    frozenset({"chassis_trrs_jack", "leg_socket"}),
+    frozenset({"socket_jack_slug", "leg_socket"}),
+    frozenset({"socket_jack_slug", "chassis_trrs_jack"}),
+    frozenset({"leg_column_plug", "leg_segment"}),
+    frozenset({"leg_column_plug", "chassis_trrs_jack"}),
+    frozenset({"leg_column_plug", "leg_plug_retainer"}),
+    frozenset({"leg_plug_retainer", "leg_segment"}),
+    # the leg-column cable and the shaft-side cable model the SAME physical
+    # CA-354S in two modeling domains; they abut/overlap inside the bore
+    frozenset({"leg_column_cable", "pedal_trrs_cable_leg"}),
 }
 
 # The pedal-bar latches are a self-contained subassembly (bolt in its
@@ -122,8 +132,8 @@ GLOBAL_OK = {
 PEDAL_FAMILY = {"pedal_bar_a", "pedal_bar_b", "pedal_lid_a", "pedal_lid_b",
                 "pedal_bolt", "pedal_bolt_trrs", "pedal_latch_finger",
                 "pedal_detent_nub", "pedal_trrs_jack", "pedal_trrs_plug",
-                "pedal_wire_canh", "pedal_wire_canl",
-                "pedal_wire_pwr", "pedal_wire_gnd"}
+                "pedal_leg_carrier",
+                "pedal_trrs_cable_bar", "pedal_trrs_cable_leg"}
 
 
 # The knee-lever control core is a self-contained subassembly: the axle, bearings,
@@ -161,6 +171,9 @@ def intended(na, nb) -> bool:
             return base(o) in WIRE_OK[base(w)]
     # the electronics tray's tabs rest on their channel floors
     if frozenset({base(na), base(nb)}) == frozenset({"electronics_tray", "chassis"}):
+        return True
+    # bus tee PCBs mount flat on the chassis floor (christmas-tree boss TBD)
+    if frozenset({base(na), base(nb)}) == frozenset({"tee_pcb", "chassis"}):
         return True
     # top deck plates ride the rail grooves, abut each other (mortise/tenon),
     # carry the OLED + joystick, and the pickup pokes through the open slot.

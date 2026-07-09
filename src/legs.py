@@ -248,6 +248,24 @@ def leg_socket() -> cq.Workplane:
     return heal(body)   # helical-thread booleans need a ShapeFix pass
 
 
+# ── TRRS leg↔body BLIND-MATE (the -X/+Y leg's stack; see pedal_bar.py for
+# the bar joint). The chassis-side jack (Tensility 10-03404: Ø9.1 × 39.4
+# molded body on 0.91 m of cable) embeds VERTICALLY in leg_socket_trrs,
+# COAXIAL with the thread; the column-top plug (the second CA-354S,
+# recessed in the top segment's spigot bore) blind-mates during the final
+# thread turn — lead 18 > insertion 14, the plug's annular contacts spin
+# freely inside the jack, so threading twists no wires, and the hard-stop
+# clocking fixes the seated depth. Socket-local z (0 = rail bottom):
+# seated spigot tip -9.0 (its Ø9.4 retention lip spans -9.5..-9.0); plug
+# handle top -9.7 (0.2 under the lip; full barrel exposed), tip +4.8;
+# jack mouth -8.2 → 13.0 insertion (the same DELIBERATE 1.0 shortfall as
+# the bar joint — it buys the mouth-seat ring its thickness).
+CHJ_MOUTH_Z = -8.2            # chassis-jack mouth plane (socket-local)
+CHJ_D, CHJ_L = 9.1, 39.4      # 10-03404 molded body
+SEG_BORE_D = 11.0             # segment axial bore (Ø10 handle way)
+PLUG_TIP_Z = 4.8              # seated barrel tip (socket-local)
+
+
 def leg_segment() -> cq.Workplane:
     """Stackable tube: male thread up top, female bell at the bottom. Two per
     leg; print more/shorter to leave the typical height range. Z0 = bottom."""
@@ -281,6 +299,15 @@ def leg_segment() -> cq.Workplane:
         (TH_MINOR + TH_CLR) / 2, TUBE_ID / 2,
         (TH_MINOR + TH_CLR - TUBE_ID) / 2,
         cq.Vector(0, 0, TH_LEN), cq.Vector(0, 0, 1))))
+    # TRRS column way (UNIVERSAL — every segment prints the same): a Ø11
+    # axial bore through the solid spigot top links the Ø22 core to the
+    # tip, sized for the CA-354S plug's Ø10 handle; the last 0.5 narrows
+    # to Ø9.4 — that lip retains the plug UPWARD against the ≤4 kgf TRRS
+    # withdrawal on the wired leg's TOP segment. Everywhere else it is
+    # just a lighter spigot (and the cable's way on the wired leg's lower
+    # segment).
+    body = body.cut(cyl(SEG_BORE_D, 36.5, z=SEG_L - 37.0))
+    body = body.cut(cyl(9.4, 1.7, z=SEG_L - 0.5))
     return heal(body)   # helical-thread booleans need a ShapeFix pass
 
 
@@ -303,6 +330,10 @@ def leg_sleeve() -> cq.Workplane:
     body = body.union(cq.Workplane("XY").add(cq.Solid.makeCone(
         (TUBE_OD + 4) / 2, COLLAR_D / 2, 3.0,
         cq.Vector(0, 0, -3.0), cq.Vector(0, 0, 1))))
+    # TRRS column way: the keyed bore stops 3 short of the spigot tip —
+    # open it (Ø11, same as the segments) so the wired leg's CA-354S cable
+    # passes clean through the column
+    body = body.cut(cyl(11.0, 6.0, z=22.0))
     # keyed bore: Ø20.4 with ONE flat (local +Y at 7.0) — single-D: the shaft
     # cannot rotate AND can only insert in its one correct orientation
     body = body.cut(cyl(SHAFT_D + 0.4, SLEEVE_L + TH_LEN, z=-SLEEVE_L - 1)
@@ -440,14 +471,93 @@ def leg_shaft_trrs() -> cq.Workplane:
     # to their actual terminals showed the previous 0.3 gap over the jack
     # body was impassable.)
     body = body.cut(box_at(8.0, 10.6, 7.3, x=1.0, z=18.55))
-    # narrow REAR CHANNEL for the jack's TIP terminal (it exits the rear
-    # face per the SJ-4351X drawing) + its wire riser — kept to ±1.6 wide
-    # so the pocket's rear wall still backstops the jack body against plug
-    # insertion loads
-    body = body.cut(box_at(1.9, 3.2, 7.3, x=5.95, z=18.55))
-    # Ø6 wire bore: jack pocket → shaft top (wires up the hollow centre)
-    body = body.cut(cyl(WIRE_BORE_D, SHAFT_L - 19.5 + 1, z=19.5))
+    # CARRIER PCB seat: the jack rides a 1.6 board (factory-assembled, XH
+    # header on its UNDERSIDE) — deepen the pocket floor by 2.0 for it
+    body = body.cut(box_at(TRRS_JACK_L + 1.0, 7.0, 2.1,
+                           x=-10.5 + (TRRS_JACK_L + 1.0) / 2, z=14.35))
+    # bottom-entry cavity: the leg-column cable's crimped XH housing mates
+    # UPWARD onto the carrier's underside header; the cavity opens at the
+    # shaft's bottom face and hides under the TPU foot cap (assemble the
+    # housing, then cap the foot). The foot spigot keeps its outer ring.
+    body = body.cut(box_at(13.0, 8.0, 15.5, x=-1.5, z=6.65))
+    # REAR CHANNEL: the Ø3.7 cable's downway (gallery → bottom cavity),
+    # behind the jack. Plug-insertion loads now backstop through the
+    # CARRIER BOARD's rear edge on its full-width seat wall (below this
+    # channel), not the jack body — the SMT jack is rated for
+    # board-carried insertion loads.
+    body = body.cut(box_at(4.2, 4.6, 19.8, x=6.7, z=12.3))
+    # Ø5 cable bore, OFF-AXIS at local (+6.7, 0): drops the Ø3.7 CA-354S
+    # straight down BEHIND the jack into the rear channel (an on-axis bore
+    # lands on the jack's roof with only a 2.0 gap to cross — impassable;
+    # found by routing the cable for real). 0.8 wall to the Ø20 surface.
+    body = body.cut(cyl(5.0, SHAFT_L - 19.5 + 1, z=19.5)
+                    .translate((6.7, 0, 0)))
     return body
+
+
+def leg_socket_trrs() -> cq.Workplane:
+    """leg_socket() + the vertical CHASSIS-JACK pocket for the leg↔body
+    blind-mate (the -X/+Y station only — see the TRRS block above): a
+    Ø9.7 way COAXIAL with the thread, from the bore-ceiling void up
+    through the top disc and the tenon core (the dovetail FLANKS carry
+    the glue; a centre bore costs little), a MOUTH-SEAT boss hanging into
+    the void whose Ø4.8..9.7 bottom ring seats the jack face (withdrawal
+    backstop; the printed socket_jack_slug + the rail slot roof backstop
+    insertion after glue-up), and a 90° CABLE CHANNEL above the jack out
+    the tenon's inner face (local +y; the 180°-placed +Y-rail socket
+    turns it toward the body interior). The jack drops in from the tenon
+    top BEFORE glue-up — a 5000-cycle part that outlives the joint."""
+    body = leg_socket()
+    body = body.union(cyl(13.0, 6.2, z=-8.8))       # mouth-seat boss
+    body = body.cut(cyl(4.8, 1.2, z=-8.9))          # barrel way thru the ring
+    body = body.cut(cyl(9.7, 52.0, z=CHJ_MOUTH_Z))  # jack way, open to top
+    body = body.cut(box_at(4.4, 8.5, 9.0, y=4.25, z=35.5))   # cable channel
+    return body
+
+
+def leg_plug_retainer() -> cq.Workplane:
+    """Printed press sleeve ×1 (PCTG): pushed up the wired leg's top-
+    segment Ø11 bore under the plug handle — the INSERTION backstop (the
+    blind-mate pushes the plug DOWN; the spigot's Ø9.4 tip lip takes
+    withdrawal). 18 long at Ø11.15 (0.15 press) spreads the load; the
+    side slot admits the cable during assembly. Z0 = bottom."""
+    b = cyl(11.15, 18.0, z=0.0)
+    b = b.cut(cyl(6.6, 20.0, z=-1.0))    # the Ø6 spring relief passes through
+    b = b.cut(box_at(4.2, 8.0, 20.0, y=4.0, z=9.0))
+    return b
+
+
+def socket_jack_slug() -> cq.Workplane:
+    """Printed saddle slug ×1 (TPU): drops into the socket's jack way on
+    top of the seated chassis jack (the side-open slot clears the axial
+    cable exit) and fills the bore toward the rail-slot roof — the jack's
+    INSERTION backstop after glue-up. Z0 = bottom."""
+    b = cyl(9.55, 8.0, z=0.0)
+    b = b.cut(box_at(4.4, 9.0, 10.0, y=2.0, z=4.0))
+    return b
+
+
+def chassis_trrs_jack() -> cq.Workplane:
+    """DEMO chassis-side jack — Tensility 10-03404 (Ø9.1 × 39.4 molded
+    body, Ø3.6 mouth DOWN, factory cable out the top): seated on the
+    socket's mouth ring, coaxial with the leg thread. Socket-local."""
+    b = cyl(CHJ_D, CHJ_L, z=CHJ_MOUTH_Z)
+    b = b.cut(cyl(3.7, 14.5, z=CHJ_MOUTH_Z - 0.2))
+    return b
+
+
+def leg_column_plug() -> cq.Workplane:
+    """DEMO column-top plug — the SECOND CA-354S, recessed in the top
+    segment's Ø11 bore with its full barrel exposed (handle top 0.2 under
+    the tip lip): tip at +4.8 = 13.0 into the chassis jack at seat.
+    Socket-local."""
+    b = cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        1.75, 14.5, cq.Vector(0, 0, -9.7), cq.Vector(0, 0, 1)))
+    b = b.union(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        5.0, 12.6, cq.Vector(0, 0, -9.7), cq.Vector(0, 0, -1))))
+    b = b.union(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        3.0, 16.0, cq.Vector(0, 0, -22.3), cq.Vector(0, 0, -1))))
+    return b
 
 
 def leg_foot() -> cq.Workplane:

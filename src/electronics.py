@@ -176,6 +176,12 @@ def electronics_tray() -> cq.Workplane:
     for fp, bz in ((PI_FP, BOARD_Z), (TEENSY_FP, BOARD_Z + 1.0),
                    (CS_FP, BOARD_Z), (BUCK_FP, BOARD_Z), (XCVR_FP, BOARD_Z)):
         body = body.union(_posts_strips_fingers(fp, bz))
+    # cable notch in the -X edge (west of the Pi footprint): the chassis
+    # TRRS jack's cable descends here from the -X/+Y leg socket to the
+    # bus-B landing tee under the tray (the tray-to-rail gap is only 1.25
+    # — no cable fits around the plate)
+    body = body.cut(box_at(4.0, 8.0, 6.0, x=TRAY_X0 + 1.5, y=46.0,
+                           z=(TRAY_Z0 + TRAY_Z1) / 2))
     return body
 
 
@@ -235,12 +241,49 @@ def buck() -> cq.Workplane:
     return b
 
 
-def can_xcvr() -> cq.Workplane:
-    """SN65HVD230 breakout dummy."""
+def teensy_ifc() -> cq.Workplane:
+    """Teensy INTERFACE board (custom, rides the sensor-PCB panel): the
+    wiring strategy's carrier for everything crimped — 2× MCP2562FD CAN
+    transceivers (bus A motors / bus B inputs), one 120 Ω per bus behind
+    shunt jumpers (bus A's closed here + at the last motor tee; bus B's
+    closed at the last input tee instead), and THREE XH headers: bus A
+    trunk, bus B trunk, and the crimped jumper to the Teensy stack. No
+    wire ever solders to this board — every field connection is a
+    housing."""
     cx, cy = _ctr(XCVR_FP)
     b = _board(XCVR_FP, BOARD_Z)
-    b = b.union(box_at(XCVR_FP[1] - XCVR_FP[0] - 4, 2.4, 8.0, x=cx,
-                       y=XCVR_FP[2] + 2.0, z=BOARD_Z + BD_T + 4.0))
+    for px in (cx - 4.5, cx + 4.5):                     # 2× MCP2562FD
+        b = b.union(box_at(5.0, 4.0, 1.6, x=px, y=cy + 1.5,
+                           z=BOARD_Z + BD_T + 0.8))
+    for i, hy in enumerate((XCVR_FP[2] + 3.0, XCVR_FP[2] + 3.0, XCVR_FP[3] - 3.0)):
+        hx = XCVR_FP[0] + 5.0 + (i % 2) * 8.0 if i < 2 else cx
+        b = b.union(box_at(7.0, 4.0, 6.5, x=hx, y=hy,
+                           z=BOARD_Z + BD_T + 3.25))    # XH headers (inboard
+                                                        # of the tray snap nubs)
+    return b
+
+
+# floor plane (bed top) — tee PCBs and the trunk-and-drop harness live here
+FLOOR_Z = -75.15
+
+
+def tee_pcb(x: float, y: float, drop: int = 1) -> cq.Workplane:
+    """Bus TEE PCB dummy, flat on the chassis floor at (x, y): 18×14×1.6
+    board, two TRUNK headers (±X ends) + one DROP header on the drop-side
+    (±Y) edge + the 120 Ω-behind-jumper bump (closed only on each bus's
+    LAST tee = termination). One board design serves bus A (one per motor;
+    the drop takes the SERVO42D's native XH pigtail) and bus B (knee
+    levers / leg-socket landing). Trunk segments are crimped XH jumpers —
+    unplugging any device never breaks the bus. Mount: christmas-tree boss
+    (detailed with the real PCB)."""
+    b = box_at(18.0, 14.0, 1.6, x=x, y=y, z=FLOOR_Z + 0.8)
+    for dx in (-5.5, 5.5):                              # trunk headers
+        b = b.union(box_at(6.0, 8.0, 6.5, x=x + dx, y=y - drop * 2.0,
+                           z=FLOOR_Z + 1.6 + 3.25))
+    b = b.union(box_at(7.0, 4.0, 6.5, x=x, y=y + drop * 4.5,
+                       z=FLOOR_Z + 1.6 + 3.25))         # drop header
+    b = b.union(box_at(3.5, 2.0, 1.8, x=x - 6.5, y=y + drop * 4.5,
+                       z=FLOOR_Z + 1.6 + 0.9))          # 120R + jumper
     return b
 
 
