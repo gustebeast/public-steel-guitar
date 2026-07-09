@@ -180,9 +180,10 @@ $0.59–0.78 per pre-crimped lead — 20×; needs a ~$25–45 tool, below).
 | **Power connector** (PSU trunk only) | XT30 pair — DFRobot **FIT0586** | 4 pr | $1.90 | [DigiKey](https://www.digikey.com/en/products/detail/dfrobot/FIT0586/9559255) | 15 A/30 A pk, gold; pigtails bench-soldered ONCE, field = plug/unplug only |
 | **CAN terminator R** | Yageo **CFR-25JB-52-120R** (120 Ω ¼ W) | 10 | $0.10 / $0.036 @10 | [DigiKey](https://www.digikey.com/en/products/result?keywords=CFR-25JB-52-120R) | carrier + last motor + the XH-2 terminator dongle |
 | **FD-capable transceiver** (new PCBs) | Microchip **MCP2562FD-E/SN** | ~10 | $1.29 / $1.07 @25 | [DigiKey](https://www.digikey.com/en/products/result?keywords=MCP2562FD-E%2FSN) | rides the sensor-PCB assembly order (LCSC ~$0.50 there); VIO pin suits 3.3 V logic |
-| **Crimp tool** (one-time, NOT DigiKey) | IWISS SN-01BM (~$25) or Engineer PA-09 (~$45) | 1 | — | mfr/eBay | does XH + PH + most small JST; amortizes across all future projects |
 
-≈ **$35–45 of consumables** + the one-time tool. Fallback if crimping
+≈ **$35–45 of consumables** (tools live in the Tools section — per project
+policy they're shop infrastructure, not a line item weighed against any one
+approach). Fallback if crimping
 frustrates: JST pre-crimped leads [ASXHSXH22K203](https://www.digikey.com/en/products/detail/jst-sales-america-inc/ASXHSXH22K203/9961918)
 ($0.78 / $0.588 @50, 200 mm socket-socket — cut in half = 2 pigtails).
 Molded TRRS cables were dropped: DigiKey's are special-order/obsolete
@@ -191,6 +192,20 @@ TRRS hop ever appears, any consumer 4-pole aux cable serves. Audio stays as
 already pinned above (Neutrik NMJ4HCD2 + shielded pair, single-point ground).
 The SERVO42D's own I/O is **XH2.54 native**, so the XH standard needs no
 adapting at the motors.
+
+## Tools (shop infrastructure — NOT per-instrument cost)
+
+One-time purchases that outlive this project; documented here so nothing is
+a surprise at build time, but **excluded from the cost summary and from
+pros/cons when weighing approaches** (project policy).
+
+| Tool | For | ~Price | Notes |
+|------|-----|--------|-------|
+| **JST crimp tool** | XH harness (contacts SXH-001T-P0.6) | $25–45 | IWISS SN-01BM or Engineer PA-09 (mfr/eBay — not DigiKey); covers XH/PH/most small JST; budget a dozen practice crimps |
+| **Soldering iron** | bench-once pigtails (SP-3541, XT30), PCB touch-up | — | presumed owned |
+| **Heat-set insert tips** | M4 (94459A150) + M2 insert pockets | ~$15 | fits the soldering iron |
+| **Hardened nozzle ≥0.4 (ideally 0.6)** | PETG-GF (vendor recommendation) | ~$15–30 | glass fiber eats brass nozzles |
+| **Wire strippers 20–30 AWG** | all harness work | — | presumed owned |
 
 ## Cost summary (per instrument, June 2026)
 
