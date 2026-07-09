@@ -778,22 +778,16 @@ def _housing() -> cq.Workplane:
     #  the new geometry can be added later if wanted; for now throw is bounded by clearance / the sensor.)
     # mount: yoke with a lever-side christmas-tree mortise at each rib (the floating tenon glues in)
     w = w.union(_mount())
-    # RAIL SUPPORT (point 5): the rail bosses float ~7mm above the cartridge cap; carry the load down to it.
-    # ANALYSIS @0.8mm nozzle: 45deg triangulated MEMBERS beat solid+infill on material for this axial load
-    # path (a solid block wastes its low-stress core; struts are self-supporting so they also print clean).
-    # -> two 45deg strut-walls per rail (an inverted-V), thin, fusing the cartridge cap to the rail boss.
+    # RAIL <-> CARTRIDGE <-> BEARING connection (points 1+2): a SOLID BLOCK from the cartridge cap up to
+    # the yoke, matching the cartridge X-Y footprint and reaching forward to the bearing-wall -X edge. Solid
+    # (not struts) because the 46mm rail span can't be BRIDGED in PCTG/PETG, and it's nearly free HERE -- the
+    # cartridge already needs a solid roof (its cap = this block's floor), so the only extra material is the
+    # top layer. It also gives the STRONGEST axle-load path: the bearing walls (axle plates) now tie solidly
+    # into it at their -X edge, and it carries the load down to the cartridge and up to the rails.
     _cap_z = HS_CART_Z1 + _FEEL_DZ
-    _sw = 1.6                                                        # strut wall thickness (2 passes @0.8)
-    for rx in RAIL_X:
-        for sgn in (1, -1):                                         # inverted-V: a strut each side of the rail
-            x_foot = rx + sgn * (BOSS_Z0 - _cap_z)                  # 45deg -> horizontal run == vertical rise
-            x_foot = max(-70.0, min(-18.0, x_foot))                # ...but clamp the foot ONTO the cartridge cap
-            #   (an outboard foot would overshoot into air; clamping just steepens the strut past 45deg, fine)
-            _p = [(rx - _sw / 2, BOSS_Z0), (rx + _sw / 2, BOSS_Z0),
-                  (x_foot + sgn * _sw / 2, _cap_z), (x_foot - sgn * _sw / 2, _cap_z)]
-            _f = cq.Face.makeFromWires(cq.Wire.makePolygon(
-                [cq.Vector(x, -_HOUS_HW, z) for x, z in _p] + [cq.Vector(_p[0][0], -_HOUS_HW, _p[0][1])]))
-            w = w.union(cq.Workplane("XY").add(cq.Solid.extrudeLinear(_f, cq.Vector(0, 2 * _HOUS_HW, 0))))
+    _blk_x0, _blk_x1 = RAIL_X[1] - HW1 - 2, -HALF_X                 # cartridge back .. bearing-wall -X edge (all -X of the lever)
+    w = w.union(box_at(_blk_x1 - _blk_x0, 2 * _HOUS_HW, YOKE_Z0 - _cap_z,
+                       x=(_blk_x0 + _blk_x1) / 2, y=0.0, z=(_cap_z + YOKE_Z0) / 2))
     # retention: the Ø6×5 insert + Ø4.4 clearance sit in a boss beside the NEAR (-23) rail. The boss runs
     # the FULL Z to the yoke top (backed by the body -> no overhang), then that rail's MORTISE is re-cut so
     # it passes cleanly THROUGH the boss (the tenon still slides). The insert stops RETAIN_INS_TOP (1 mm
