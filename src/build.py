@@ -471,8 +471,8 @@ def _knee_lever_components():
         out.append((f"{nm}_guide_post", KL.feel_place(KL.guide_post.translate(off))))
     for n, s in KL.demo_parts():                         # magnet spins with the lever; the rest are stationary
         out.append((n, swing(s) if n == "kl_magnet" else s))
-    for i, s in enumerate((1, -1)):                       # one floating tenon per rib (built at absolute Y)
-        out.append((f"floating_tenon_{i}", KL.floating_tenon.translate((s * KL.TEN_XC, 0, 0))))
+    for i, rx in enumerate(KL.RAIL_X):                    # one floating tenon per rail (both -X of the axle)
+        out.append((f"floating_tenon_{i}", KL.floating_tenon.translate((rx, 0, 0))))
     return [(n, s.translate(pose)) for n, s in out]
 
 
