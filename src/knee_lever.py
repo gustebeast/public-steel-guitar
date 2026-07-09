@@ -305,7 +305,10 @@ TEN_PTS   = [(_LP, 0.0), (Z_TL - DZ45, HW1), (Z_TL, HW0),
 BOSS_Z0   = _LP - 1.0                  # yoke-boss floor (hosts the lever-side taper point)
 # the floating tenon + its lever-yoke mortise run the FULL Y length of the housing (a long glue
 # joint + more rib engagement); the low 0.8 mm joint keeps it clear of the feel screws below.
-TEN_Y0, TEN_Y1   = WN_Y0, 24.0     # floating-tenon / lever-mortise Y-span (outboard wall -> inboard)
+TEN_Y0, TEN_Y1   = WN_Y0, WP_Y1    # floating-tenon / lever-mortise Y-span = the bearing-wall span (±16), so
+                                   #   the whole mount sits over the solid block (was 24, which floated past
+                                   #   the block into the sensor region -- extending it inboard again is part
+                                   #   of the sensor redesign, point 7)
 TEN_STOP  = 1.5                    # -Y STOP wall closing the lever mortise: the tenon seats against it
                                    #   (sliding the lever in drags the tenon -Y into the stop -> located)
 TEN_LY0   = TEN_Y0 + TEN_STOP      # tenon / lever-mortise -Y end (butts the stop)
