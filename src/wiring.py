@@ -1,21 +1,44 @@
 """Wire harness: gauge-colored round cables, modeled as cylinder chains.
 
-One component per physical CABLE. Discrete wires (the 24 V pair) are drawn
-individually; jacketed cables (CAN pair, shielded audio, USB) are drawn as one
-conductor at the jacket OD. Colors (build.py): HUE = gauge bucket, SHADE = the
-specific wire within the bucket:
+STRATEGY (July 2026, BOM 'Connectors' section): solder only on PCBs, every
+field connection a connector, never inline-splice. Both CAN buses are
+TRUNK-AND-DROP over TEE PCBs (electronics.tee_pcb, flat on the floor):
+crimped XH jumper SEGMENTS run tee-to-tee (each drawn as its own component,
+suffix _N — a segment IS a separate physical cable), and each device hangs
+by ONE drop, so unplugging a device never breaks a bus. 120 Ω termination
+lives on the boards (teensy_ifc + each bus's LAST tee, jumper closed).
 
-  BLUE = 20 AWG power     wire_pwr_hot (dark) / wire_pwr_gnd (light):
-                          DC inlet -> servo chain -> buck, + AFE LDO branch
-  RED = 26 AWG CAN pair   wire_can: transceiver -> servo daisy chain
+  bus A (motors): teensy_ifc -> tee 9..0 (one per motor; LAST = tee 0,
+        easternmost — its jumper is closed). Drop = the SERVO42D's own
+        6-pin XH pigtail (motor_pigtail_N, grey). The 24 V pair rides the
+        same tees (2 contacts per rail on the 6-pos trunk headers): head
+        = DC inlet -> the AFE tee (10) -> tee 0; tail = tee 9 -> buck.
+  bus B (inputs): teensy_ifc -> tee 11 (LKL knee station) -> tee 12
+        (leg-socket landing, under the tray west of the bay rib; takes
+        the chassis TRRS jack's factory cable -> the pedal bar).
+
+One component per physical CABLE. Discrete wires (the 24 V pair) are drawn
+individually; jacketed/bundled runs at the bundle OD. Colors (build.py):
+HUE = gauge bucket, SHADE = the specific wire within the bucket:
+
+  BLUE = power pair       wire_pwr_hot (dark) / wire_pwr_gnd (light):
+                          2 × 22 AWG PER RAIL in the crimped trunk jumpers
+                          (XH contacts take 22 AWG max; <5 A staggered slew
+                          = 2.5 A/contact), drawn as one rod per rail
+  RED = CAN               wire_can (bus A) / wire_canb (bus B): 22 AWG
+                          pairs inside the crimped trunk jumpers
   GREEN = 28 AWG SHIELDED (light -> dark)
                           wire_pickup: pickup -> AFE (raw, short)
                           wire_audio:  AFE buffer -> Teensy ADC
                           wire_dac:    Teensy DAC -> AFE relay NO
                           wire_out:    AFE relay common -> TS jack
   AMBER = 28 AWG logic    (light -> dark) wire_relayctrl, wire_link,
-                          wire_canjmp, wire_tdm, wire_oled, wire_joy
+                          wire_canjmp (Teensy stack <-> teensy_ifc XH
+                          jumper), wire_tdm, wire_oled, wire_joy
   VIOLET = shielded USB-2 wire_usb: USB-C panel -> Pi 5
+  GREY = factory jackets  motor_pigtail_N, wire_knee_drop (stub to the
+                          LKL station; lands on the kl_pcb XH when the
+                          knee harness PCB rev lands)
 
 Analog architecture: the pickup is buffered AT the bridge (AFE), so the long
 run to the keyhead ADC is low-impedance and noise-tolerant. A true-bypass
@@ -25,24 +48,16 @@ and swaps to the DAC (Q-processed) output when the Teensy energizes it.
 Routing: a 6-lane floor trunk at z -69.7 (under the motors) passes every
 cross-rib through SHALLOW gable raceways (chassis._raceway) whose floor stays
 0.4 clear of the knee-lever rib-mortise tip (-71.42) -- the harness never
-blocks a floating tenon sliding to ANY knee depth. Per-motor stubs (CAN,
-power) dive to z -72.6 under the lanes (between ribs, clear of the mortise
-plane) and rise into each body. Wire ends clip ~1-2 mm into their declared
-source/destination bodies to show the connection (whitelisted); everywhere
-else the gate enforces clearance.
+blocks a floating tenon sliding to ANY knee depth. Trunk segments still ride
+those lanes rib-to-rib; they dip to z -72.6 (between ribs, clear of the
+mortise plane) to land on their tee headers. Wire ends clip ~1-2 mm into
+their declared source/destination bodies to show the connection
+(whitelisted); everywhere else the gate enforces clearance.
 
-CABLE SPEC (per net; OD drives the model + raceway size). The SERVO42D driver
-is ON the motor, so there are NO stepper phase leads -- the harness is DC bus,
-CAN, buffered audio and logic only. Insulation is not an EMI defence: noise
-immunity comes from SHIELDING (audio), TWISTING (power, CAN) and buffering at
-the source (the AFE at the bridge). Gauges:
-  power      20 AWG pair, twisted/flat (10-motor worst-case slew ~6-10 A at
-             24 V is staggered by firmware to <5 A; drop over ~1.2 m ~0.3 V)
-  can        26 AWG twisted pair (120R terminated)
-  pickup/audio/dac/out  28 AWG SHIELDED pair (mA signals -- the shield is the
-             spec, not the copper)
-  usb        slim shielded USB-2 (28 AWG cores)
-  logic (relayctrl/link/canjmp/tdm/oled/joy)  28 AWG
+The SERVO42D driver is ON the motor, so there are NO stepper phase leads --
+the harness is DC bus, CAN, buffered audio and logic only. Insulation is not
+an EMI defence: noise immunity comes from SHIELDING (audio), TWISTING
+(power, CAN) and buffering at the source (the AFE at the bridge).
 """
 
 from __future__ import annotations
@@ -57,10 +72,11 @@ from . import electronics as EL
 # silicone wires. Nothing exceeds 2.6.
 WIRE_OD = {
     "wire_pickup": 2.0, "wire_out": 2.0, "wire_audio": 2.0, "wire_dac": 2.0,
-    "wire_relayctrl": 1.4, "wire_can": 2.2, "wire_usb": 2.6,
+    "wire_relayctrl": 1.4, "wire_can": 2.2, "wire_canb": 2.4, "wire_usb": 2.6,
     "wire_pwr_hot": 1.8, "wire_pwr_gnd": 1.8,
     "wire_link": 1.4, "wire_canjmp": 1.4, "wire_tdm": 1.4,
     "wire_oled": 1.4, "wire_joy": 1.4,
+    "motor_pigtail": 3.4, "wire_knee_drop": 2.4,
 }
 PWR_OFF = 1.2         # 24 V hot/gnd separation, applied in BOTH x and y (+off /
                       # -off): a single-axis offset leaves the pair COLLINEAR on
@@ -118,22 +134,43 @@ def _riser_y(sy):
     return sy - 30
 
 
-def _chain(lane_y, x_off, x_from, x_to):
-    """Trunk run along lane_y with a dive-under stub into each motor."""
-    pts = [(x_from, lane_y, LANE_Z)]
-    motors = sorted(((D.motor_pos(i)[0], D.motor_pos(i)[1]) for i in range(10)),
-                    key=lambda m: m[0], reverse=(x_from > x_to))
-    for mx, sy in motors:
-        sx = mx + x_off
-        if not (min(x_from, x_to) < sx < max(x_from, x_to)):
-            continue
-        ry = _riser_y(sy)
-        pts += [(sx, lane_y, LANE_Z), (sx, lane_y, STUB_Z),
-                (sx, ry, STUB_Z), (sx, ry, -63.0),          # ~2 into the body
-                (sx, ry, STUB_Z), (sx, lane_y, STUB_Z),
-                (sx, lane_y, LANE_Z)]
-    pts.append((x_to, lane_y, LANE_Z))
-    return pts
+# ── tee stations (trunk-and-drop; see the header) ────────────────────────
+TEE_Y_A = -71.5          # bus A tees sit between the CAN and PWR lanes
+HDR_Z = EL.FLOOR_Z + 8.1  # tee header top (wire entry z)
+
+
+def tee_stations():
+    """[(x, y, drop_sign)] — 0..9 bus A (one per motor), 10 AFE power tee,
+    11 bus B knee (LKL), 12 bus B leg-socket landing (west of the bay rib,
+    under the tray — reachable from the -X/+Y socket without crossing an
+    un-racewayed rib)."""
+    out = [(D.motor_pos(i)[0] + 16.0, TEE_Y_A, +1) for i in range(10)]
+    out.append((-42.0, -108.0, -1))      # 10: AFE power tee — SOUTH of all
+                                         #     six lanes (a tee inside the
+                                         #     lane band collides with the
+                                         #     passing runs) and west of the
+                                         #     AFE (x ≥ -22)
+    out.append((-545.0, -110.0, -1))     # 11: LKL knee station (bay edge —
+                                         #     clear of the housing, y≤-122.7)
+    out.append((-590.0, 40.0, +1))       # 12: leg-socket cable landing
+    return out
+
+
+def tee_components():
+    """The tee-PCB dummies for the assembly."""
+    return [(f"tee_pcb_{i}", EL.tee_pcb(x, y, d))
+            for i, (x, y, d) in enumerate(tee_stations())]
+
+
+def _seg(a, b, lane_y, d=WIRE_D, off=0.0):
+    """One crimped trunk SEGMENT between tee headers at a=(x,y) and
+    b=(x,y): dip under, cross to the raceway lane, ride it rib-to-rib,
+    dip back to the far header. off shifts x AND y (the 24 V pair)."""
+    (xa, ya), (xb, yb) = a, b
+    pts = [(xa, ya, HDR_Z), (xa, ya, STUB_Z), (xa, lane_y, STUB_Z),
+           (xa, lane_y, LANE_Z), (xb, lane_y, LANE_Z),
+           (xb, lane_y, STUB_Z), (xb, yb, STUB_Z), (xb, yb, HDR_Z)]
+    return _wire([(px + off, py + off, pz) for px, py, pz in pts], d)
 
 
 def build_wires():
@@ -189,32 +226,83 @@ def build_wires():
     out.append(("wire_relayctrl", _long(afe_coil, -58.0, LANE_CTRL, -600.0, -98.0,
                                         WIRE_OD["wire_relayctrl"])))
 
-    # -- CAN bus (green): transceiver -> corridor -> floor lane -> every motor
-    head = [(-598.0, -46.0, -57.0), (-598.0, -46.0, BAYFLY),
-            (RISE_X, -46.0, BAYFLY), (RISE_X, -46.0, STUB_Z),
-            (RISE_X, LANE_CAN, STUB_Z), (RISE_X, LANE_CAN, LANE_Z)]
-    out.append(("wire_can",
-                _wire(head + _chain(LANE_CAN, 14.0, RISE_X, -94.0)[1:],
-                      WIRE_OD["wire_can"])))
+    # ── the two CAN buses: TRUNK-AND-DROP over the tee PCBs ─────────────
+    tees = tee_stations()
+    hdrA = {i: (tees[i][0], tees[i][1] - tees[i][2] * 2.0)   # trunk-header
+            for i in range(len(tees))}                       # (x, y) per tee
+    west = sorted(range(10), key=lambda i: hdrA[i][0])       # bus A west→east
 
-    # -- power (red): DC inlet -> floor lane + stub to every motor -> buck
-    head = [(-5.5, EL.DC_Y, EL.JACK_Z), (-5.5, EL.DC_Y, -49.0),
-            (-26.0, EL.DC_Y, -49.0), (-26.0, EL.DC_Y, STUB_Z),
-            (-26.0, LANE_PWR, STUB_Z), (-26.0, LANE_PWR, LANE_Z)]
-    tail = [(RISE_X, LANE_PWR, LANE_Z), (RISE_X, LANE_PWR, BAYFLY),
-            (RISE_X, -106.0, BAYFLY), (-567.0, -106.0, BAYFLY),
-            (-567.0, -106.0, -50.0)]                      # over the tray, into buck
-    afe_branch = [(-5.5, EL.DC_Y, EL.JACK_Z), (-1.0, -92.0, -53.0), afe_pwr]
-    # hot + ground drawn as the two discrete 20 AWG wires they are, offset
-    # +-PWR_OFF in x AND y so the pair runs side-by-side on every leg — lanes
-    # (x-runs), motor stubs (y-runs) and verticals alike (wire-on-wire contact
-    # is fine; both stay inside the raceway)
-    ppts = head + _chain(LANE_PWR, 18.0, -26.0, RISE_X)[1:] + tail
+    # bus A CAN head: teensy_ifc busA header -> corridor -> CAN lane -> the
+    # westernmost motor tee (tee 9); then one crimped segment per hop east.
+    # Termination: teensy_ifc (this end) + tee 0's closed jumper (far end).
+    xw, yw = hdrA[west[0]]
+    out.append(("wire_can_0", _wire([
+        (-602.0, -51.0, -50.5), (-602.0, -51.0, BAYFLY),
+        (RISE_X, -51.0, BAYFLY), (RISE_X, -51.0, STUB_Z),
+        (RISE_X, LANE_CAN, STUB_Z), (RISE_X, LANE_CAN, LANE_Z),
+        (xw, LANE_CAN, LANE_Z), (xw, LANE_CAN, STUB_Z),
+        (xw, yw, STUB_Z), (xw, yw, HDR_Z)], WIRE_OD["wire_can"])))
+    for k in range(9):
+        out.append((f"wire_can_{k + 1}",
+                    _seg(hdrA[west[k]], hdrA[west[k + 1]], LANE_CAN,
+                         WIRE_OD["wire_can"])))
+
+    # bus A drops: each motor's OWN factory 6-pin XH pigtail (grey), from
+    # its tee's drop header up into the motor body (no splices anywhere)
+    for i in range(10):
+        tx, sy = tees[i][0], D.motor_pos(i)[1]
+        ry = _riser_y(sy)
+        out.append((f"motor_pigtail_{i}", _wire([
+            (tx, TEE_Y_A + 4.5, HDR_Z), (tx, TEE_Y_A + 4.5, STUB_Z),
+            (tx, ry, STUB_Z), (tx, ry, -63.0)], WIRE_OD["motor_pigtail"])))
+
+    # 24 V pair (2 × 22 AWG per rail in the trunk jumpers): DC inlet ->
+    # AFE tee (10) -> tee 0 ... tee 9 -> buck; the AFE's LDO feed is tee
+    # 10's DROP (no splice at the inlet). hot/gnd offset ±PWR_OFF.
+    x10, y10 = hdrA[10]
+    heads = [(-5.5, EL.DC_Y, EL.JACK_Z), (-5.5, EL.DC_Y, -60.0),
+             (-26.0, EL.DC_Y, -66.0), (-26.0, -97.0, -70.0),
+             (-31.0, -104.0, -72.0), (x10 + 5.5, y10, HDR_Z)]
+    tail9 = [(hdrA[west[0]][0], hdrA[west[0]][1], HDR_Z),
+             (hdrA[west[0]][0], hdrA[west[0]][1], STUB_Z),
+             (hdrA[west[0]][0], LANE_PWR, STUB_Z),
+             (hdrA[west[0]][0], LANE_PWR, LANE_Z),
+             (RISE_X, LANE_PWR, LANE_Z), (RISE_X, LANE_PWR, BAYFLY),
+             (RISE_X, -106.0, BAYFLY), (-567.0, -106.0, BAYFLY),
+             (-567.0, -106.0, -50.0)]                    # over the tray, buck
+    afe_drop = [(x10, tees[10][1] - 4.5, HDR_Z), (x10, tees[10][1] - 4.5, -66.0),
+                (-24.0, -112.0, -56.0), (-5.0, -106.0, -53.0), afe_pwr]
     for _nm, _do in (("wire_pwr_hot", -PWR_OFF), ("wire_pwr_gnd", PWR_OFF)):
-        out.append((_nm, _wire([(px + _do, py + _do, pz) for px, py, pz in ppts],
-                               WIRE_OD[_nm])
-                    .union(_wire([(px + _do, py + _do, pz) for px, py, pz in afe_branch],
-                                 WIRE_OD[_nm]))))
+        def _off(pts):
+            return [(px + _do, py + _do, pz) for px, py, pz in pts]
+        out.append((f"{_nm}_0", _wire(_off(heads), WIRE_OD[_nm])))
+        out.append((f"{_nm}_1", _seg(hdrA[10], hdrA[west[-1]], LANE_PWR,
+                                     WIRE_OD[_nm], off=_do)))
+        for k in range(9):
+            out.append((f"{_nm}_{k + 2}",
+                        _seg(hdrA[west[k + 1]], hdrA[west[k]], LANE_PWR,
+                             WIRE_OD[_nm], off=_do)))
+        out.append((f"{_nm}_11", _wire(_off(tail9), WIRE_OD[_nm])))
+        out.append((f"{_nm}_12", _wire(_off(afe_drop), WIRE_OD[_nm])))
+
+    # ── bus B (inputs): ifc -> LKL tee -> leg-socket landing tee ────────
+    x11, y11 = hdrA[11]
+    out.append(("wire_canb_0", _wire([
+        (-594.0, -49.0, -50.5), (-594.0, -49.0, BAYFLY),
+        (RISE_X, -49.0, BAYFLY), (RISE_X, -49.0, STUB_Z),
+        (RISE_X, LANE_CTRL, STUB_Z), (RISE_X, LANE_CTRL, LANE_Z),
+        (x11, LANE_CTRL, LANE_Z), (x11, LANE_CTRL, STUB_Z),
+        (x11, y11, STUB_Z), (x11, y11, HDR_Z)], WIRE_OD["wire_canb"])))
+    out.append(("wire_canb_1", _seg(hdrA[11], hdrA[12], LANE_CTRL,
+                                    WIRE_OD["wire_canb"])))
+    # LKL drop stub: drawn to the STATION BOUNDARY (housing starts y -122.7;
+    # its kl_pcb sits OUTBOARD at y≈-127 below the floor). The last ~15 mm
+    # to the kl_pcb's XH needs a small rail/floor pass-through near the
+    # knee station — flagged as a CHASSIS REQUEST; until then the stub ends
+    # clear of housing, rib and rail.
+    out.append(("wire_knee_drop", _wire([
+        (-545.0, tees[11][1] - 4.5, HDR_Z), (-537.0, -118.0, -71.0),
+        (-533.0, -119.5, -71.0)], WIRE_OD["wire_knee_drop"])))
 
     # -- USB (blue): USB-C panel -> floor lane -> corridor -> right-angle to Pi
     out.append(("wire_usb", _wire([
@@ -265,12 +353,15 @@ WIRE_OK = {
     "wire_audio":     {"analog_frontend", "teensy_stack"},
     "wire_dac":       {"analog_frontend", "teensy_stack"},
     "wire_relayctrl": {"analog_frontend", "teensy_stack"},
-    "wire_can":       {"can_xcvr", "motor"},
-    "wire_pwr_hot":   {"dc_jack", "motor", "buck", "analog_frontend"},
-    "wire_pwr_gnd":   {"dc_jack", "motor", "buck", "analog_frontend"},
+    "wire_can":       {"teensy_ifc", "tee_pcb"},
+    "wire_canb":      {"teensy_ifc", "tee_pcb"},
+    "motor_pigtail":  {"tee_pcb", "motor"},
+    "wire_knee_drop": {"tee_pcb"},
+    "wire_pwr_hot":   {"dc_jack", "buck", "tee_pcb", "analog_frontend"},
+    "wire_pwr_gnd":   {"dc_jack", "buck", "tee_pcb", "analog_frontend"},
     "wire_usb":       {"usbc_jack", "pi5"},
     "wire_link":      {"teensy_stack", "pi5"},
-    "wire_canjmp":    {"teensy_stack", "can_xcvr"},
+    "wire_canjmp":    {"teensy_stack", "teensy_ifc"},
     "wire_tdm":       {"cs_stack", "pi5"},
     "wire_oled":      {"oled", "teensy_stack"},
     "wire_joy":       {"joystick", "teensy_stack"},

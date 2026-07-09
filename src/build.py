@@ -427,7 +427,7 @@ def _electronics_components():
     out = [("electronics_tray", EL.electronics_tray()),
            ("pi5", EL.pi5()), ("teensy_stack", EL.teensy_stack()),
            ("cs_stack", EL.cs_stack()), ("buck", EL.buck()),
-           ("can_xcvr", EL.can_xcvr()),
+           ("teensy_ifc", EL.teensy_ifc()),
            ("analog_frontend", EL.analog_frontend()),
            ("ts_jack", EL.ts_jack()), ("dc_jack", EL.dc_jack()),
            ("usbc_jack", EL.usbc_jack()),
@@ -446,6 +446,7 @@ def _electronics_components():
         out.append((f"top_plate_{len(TP.segments) + i}", f.translate((0, dy, 0))))
         out.append((f"top_plate_color_{len(TP.segments_color) + i}",
                     fc.translate((0, dy, 0))))
+    out += WR.tee_components()
     out += WR.build_wires()
     return out
 
@@ -570,7 +571,9 @@ _COLORS = {
     "teensy_stack":    (0.10, 0.45, 0.30),
     "cs_stack":        (0.15, 0.25, 0.50),
     "buck":            (0.35, 0.30, 0.50),
-    "can_xcvr":        (0.55, 0.25, 0.25),
+    "teensy_ifc":      (0.55, 0.25, 0.25),   # Teensy interface PCB (2x CAN
+                                             # transceiver + XH headers)
+    "tee_pcb":         (0.10, 0.42, 0.18),   # trunk-and-drop bus tee PCBs
     "analog_frontend": (0.20, 0.45, 0.40),   # bridge-end buffer + relay board
     "top_plate":       (0.88, 0.91, 0.94),   # transparent-PCTG deck base + fret lines
     "top_plate_color": (0.30, 0.33, 0.38),   # colour-PCTG deck layer (skin contact)
@@ -584,7 +587,12 @@ _COLORS = {
     #   amber = 28 AWG logic | violet = shielded USB-2
     "wire_pwr_hot":    (0.08, 0.20, 0.60),   # dark blue   - 24 V hot
     "wire_pwr_gnd":    (0.45, 0.65, 0.95),   # light blue  - 24 V ground/return
-    "wire_can":        (0.80, 0.10, 0.10),   # red         - CAN twisted pair
+    "wire_can":        (0.80, 0.10, 0.10),   # red         - bus A CAN (crimped
+                                             #   XH trunk segments, tee to tee)
+    "wire_canb":       (0.95, 0.35, 0.30),   # light red   - bus B CAN (inputs)
+    "motor_pigtail":   (0.45, 0.45, 0.48),   # grey        - SERVO42D's own 6-pin
+                                             #   XH pigtail (factory jacket)
+    "wire_knee_drop":  (0.45, 0.45, 0.48),   # grey        - LKL drop stub
     "wire_pickup":     (0.55, 0.85, 0.55),   # lightest green - shielded: pickup -> AFE
     "wire_audio":      (0.30, 0.72, 0.40),   # light green - shielded: AFE -> ADC
     "wire_dac":        (0.10, 0.52, 0.28),   # dark green  - shielded: DAC -> AFE
