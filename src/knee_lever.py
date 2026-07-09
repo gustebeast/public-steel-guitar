@@ -459,15 +459,17 @@ def feel_unplace(s):                                # inverse of feel_place: pla
     return s.translate((-_FEEL_DX, 0, -_FEEL_DZ)).mirror("YZ")
 
 
-def _cam_swept(step=2.0, extra_deg=3.0):
+def _cam_swept(step=2.0, extra_deg=3.0, hw=None):
     r"""Union of the lever ARM's near-axle (cam) region swept 0..THROW+extra about the +Y axle, grown by
-    the slide clearance. Cut this from the cartridge front-bottom and the housing floor below it so the
-    swinging arm never plows into them. Only the Z>-40 region is built -- the long paddle sweeps open air
-    below the guitar. Built in the placed (final) frame (the arm lives there); feel_unplace() maps it into
-    a cartridge PART's own build frame."""
+    the slide clearance -> the front-bottom relief cut in the housing floor so the swinging arm never plows
+    into it. The arm is only 2*LEVER_HW wide, but `hw` widens the envelope in Y: pass the housing's outer
+    half-width so the relief runs the FULL width of the cartridge prism -- one clean cut, no leftover
+    outboard slivers of floor beside the arm's path (those walls carry nothing). Only Z>-40 is built (the
+    long paddle sweeps open air below the guitar). Built in the placed (final) frame."""
+    hw = LEVER_HW if hw is None else hw
     grow = HS_CLR                                                   # +0.4 clearance around the arm envelope
-    hub = cyl_y(HUB_D + 2 * grow, 2 * LEVER_HW, y0=-LEVER_HW)
-    arm = box_at(ARM_TX + 2 * grow, 2 * LEVER_HW, 40.0, x=0, y=HUB_YC, z=-20.0 + 2.5)
+    hub = cyl_y(HUB_D + 2 * grow, 2 * hw, y0=-hw)
+    arm = box_at(ARM_TX + 2 * grow, 2 * hw, 40.0, x=0, y=HUB_YC, z=-20.0 + 2.5)
     cam = hub.union(arm)                                            # lobes sit inside this envelope
     swept = cam
     a = step
@@ -477,7 +479,9 @@ def _cam_swept(step=2.0, extra_deg=3.0):
     return heal(swept)
 
 
-_CAM_SWEPT = _cam_swept()                            # built once (module import); reused for every relief cut
+# housing outer half-width (the single prism): the outermost cartridge centre + its pocket + one wall
+_HOUS_HW = abs(HS_YC) + HS_CART_WY / 2 + HS_CLR + HS_HOUS_WALL
+_CAM_SWEPT = _cam_swept(hw=_HOUS_HW)                 # FULL-WIDTH relief (one clean cut across the whole prism)
 
 
 def _recess_swept(yc, step=3.0, fold=45.0):
@@ -703,8 +707,8 @@ def _housing() -> cq.Workplane:
     # lobe. Each sits in a slide-fit pocket, is CLAMPED UP from below (locks its slid X + retains the
     # roof), and its tension screw is reached from +X. No rest/stop screws: the MAIN cartridge sets the
     # rest, and the springs only PUSH so the lever folds free the other way (storage). ──
-    cw  = (CAM_Y1 - CAM_Y0) + 1                                             # swing-slot Y width (clears walls)
-    slot_h = LOBE_RC + 2 * LOBE_R + 3
+    cw  = 2 * _HOUS_HW                                                      # swing slot spans the FULL prism width
+    slot_h = LOBE_RC + 2 * LOBE_R + 3                                       #   (was arm-width -> left outboard walls)
     w = w.cut(box_at(2 * SWING_X + 4, cw, slot_h, x=0, y=HUB_YC,          # cam swing slot (now -Z, around
                      z=-(slot_h / 2 + PIVOT_BOSS_D / 2 + 0.5)))          #   the -Z lobe; clears the bosses)
     # SYMMETRIC single prism: BOTH slots run to the same backmost (retracted) X (dx = HS_SETBACK), so the
