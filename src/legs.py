@@ -375,7 +375,8 @@ def leg_shaft() -> cq.Workplane:
 
 
 # TRRS dock (the -X/+Y leg only — see pedal_bar.py for the mating story):
-# the FEMALE jack is a Same Sky SJ-43516-SMT (DigiKey SJ-43516-SMT-TR,
+# the FEMALE jack is a Same Sky SJ-43514-SMT (DigiKey SJ-43514-SMT-TR —
+# the no-switch 4-terminal variant: we carry exactly 4 signals,
 # ~14.5×6×5 body, 14.0 mating depth), embedded in the shaft with its mating
 # axis along X, mouth flush with the Ø20 at the INBOARD face (local -X; the
 # rotated +Y-rail stack turns that toward the bar's latch side). The bar's
@@ -402,7 +403,7 @@ def leg_shaft_trrs() -> cq.Workplane:
     a full-width rectangle — a FLAT face for the TRRS jack with a touch more
     material around its pocket, flat X-seat faces for the bar slot, and an
     unmistakable single orientation. Then the X-facing jack pocket
-    (SJ-43516-SMT, mouth flush in the flat face) and the Ø6 wire bore up
+    (SJ-43514-SMT, mouth flush in the flat face) and the Ø6 wire bore up
     the centre. Same lying-flat print: the extension reaches the bed at its
     own chamfered edge (vertical wall — even less overhang than the round),
     its top is flat, and the pocket opens sideways (no bridges); the centre

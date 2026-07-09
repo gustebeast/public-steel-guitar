@@ -146,7 +146,8 @@ LOCK_X, LOCK_Y = LID_XB - 4.6, 7.6  # lid-lock detent nub: bar-top pocket; a
 # ring that stays 0.5 proud of the mouth at the full 14 insertion; 5×5×8
 # body, 4 solder pins — carried pins-UP in the cradle, wires solder from
 # the open top before the lid slides on); female = Same Sky
-# SJ-43516-SMT-TR (14.0 mating depth), embedded in legs.leg_shaft_trrs.
+# SJ-43514-SMT-TR (14.0 mating depth; the no-switch 4-terminal variant —
+# we carry exactly 4 signals), embedded in legs.leg_shaft_trrs.
 # Seated (drawn): jack mouth at the shaft surface (x' 10), tip at -4.
 TR_Z = 8.7                                 # connector axis (bar-local z)
 PLUG_TIP = -4.0                            # barrel tip (x', seated)
@@ -435,17 +436,19 @@ def nub_part() -> cq.Workplane:
 
 
 def _trrs_jack() -> cq.Workplane:
-    """DEMO leg-side female jack — Same Sky SJ-43516-SMT-TR (DigiKey;
-    ~14.5×6×5 housing, 14.0 mating depth): mating axis X, mouth flush at
-    the shaft's inboard face, Ø3.6 way. Per the SJ-4351X-SMT drawing it has
-    SIX gull-wing SMT terminals (2×3 pads, 0.2-0.3 metal) staggered along
-    both sides at the base — the wires solder to these tabs (the shaft
-    pocket carries a widened band at the tab plane to clear them)."""
+    """DEMO leg-side female jack — Same Sky SJ-43514-SMT-TR (DigiKey; the
+    NO-SWITCH 4-terminal variant of the SJ-4351X family — we carry exactly
+    4 signals; the -6's extra tip/ring plug-detect switches were unused).
+    ~14.5×6×5 housing, 14.0 mating depth: mating axis X, mouth flush at the
+    shaft's inboard face, Ø3.6 way. FOUR gull-wing SMT terminals (2×3 pads,
+    0.2-0.3 metal) staggered along both sides at the base — the wires
+    solder to these tabs (the shaft pocket carries a widened band at the
+    tab plane to clear them)."""
     lx, ls = LATCHES[1]
     j = box_at(14.5, 6.0, 5.0, x=lx + ls * (10.0 - 14.5 / 2), y=YC, z=TR_Z)
     j = j.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
         1.8, 15.0, cq.Vector(lx + ls * 10.5, YC, TR_Z), cq.Vector(-ls, 0, 0))))
-    for sy, xs in ((1, (7.5, 2.5, -2.5)), (-1, (5.0, 0.0, -4.0))):
+    for sy, xs in ((1, (7.5, -2.5)), (-1, (5.0, 0.0))):
         for px in xs:      # staggered gull-wing feet at the body base
             j = j.union(box_at(1.6, 1.9, 0.5, x=lx + ls * px,
                                y=YC + sy * 3.95, z=TR_Z - 2.25))
