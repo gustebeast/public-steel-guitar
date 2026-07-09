@@ -165,8 +165,11 @@ pedal/lever station: 3× B4B-XH-A — trunk in, trunk out, drop — plus a 120 �
 terminator behind a 2-pin shunt jumper, closed only on the last tee), and
 each device hangs off its tee by ONE short XH drop — so unplugging any
 device NEVER breaks the bus, and every trunk segment is individually
-replaceable. The trunk crosses the ONE TRRS in the instrument, the leg↔bar
-auto-mate joint. The SERVO42D is classic-CAN-only, which is why any bus with
+replaceable. The trunk crosses the instrument's only TWO TRRS joints, both
+SELF-MATING: the leg↔bar auto-mate (latch-driven) and the leg↔body joint
+(the column-top plug blind-mates the chassis jack during the final thread
+turn — deterministic clocking sets the depth, and the plug's annular
+contacts rotate freely, so threading twists no wires). The SERVO42D is classic-CAN-only, which is why any bus with
 motors runs classic; sensor boards still get FD-capable transceivers to keep
 the FD option on bus B. XT30 only at the PSU trunk joints.
 
@@ -174,11 +177,12 @@ the FD option on bus B. XT30 only at the PSU trunk joints.
 mouse-bite, snap apart — never hand-cut FR4), ONE assembly job, **full paid
 assembly including the THT headers** (accept the standard-tier fee if
 economic PCBA rejects THT; incremental tee assembly ≈ $7–12). Zero personal
-soldering also applies to the two former "bench-once pigtail" points: the
-bar-cradle SP-3541 gets a tiny **plug-carrier PCB** on the same panel (plug
-reflows/wave-solders into the carrier, carrier presents an XH header) and
-XT30 arrives as **pre-wired pigtails** (or XT30PW board-mount on the power
-distribution PCB) — pick whichever quotes cleaner at order time.
+soldering also applies to the former "bench-once pigtail" points: every
+TRRS is either factory-molded-on-cable (Tensility, cut + crimp) or
+factory-assembled on the leg carrier PCB, and XT30 arrives as **pre-wired
+pigtails** (or XT30PW board-mount on the power distribution PCB) — pick
+whichever quotes cleaner at order time. NO consignment anywhere: all PCB
+parts are LCSC-library.
 
 Prices **verified on DigiKey 2026-07-09** (stock healthy unless noted);
 re-check at order time. XH harness = crimp-your-own (contacts ~$0.03 vs
@@ -186,15 +190,16 @@ $0.59–0.78 per pre-crimped lead — 20×; needs a ~$25–45 tool, below).
 
 | Role | Part | Qty | Price (verified) | URL | Notes |
 |------|------|-----|------------------|-----|-------|
-| **TRRS jack** (leg breakout PCB) | Same Sky **SJ-43514-SMT-TR** | 3 | $1.52 / $1.29 @10 | [DigiKey](https://www.digikey.com/en/products/result?keywords=SJ-43514-SMT-TR) | no-switch 4-terminal; reflowed on the breakout, never hand-soldered |
-| **TRRS plug** (bar auto-mate) | Same Sky **SP-3541** | 2 | $3.04 / $2.58 @10 | [DigiKey](https://www.digikey.com/en/products/result?keywords=SP-3541) | 1 in the pedal-bar cradle + spare; pins soldered as a bench-once pigtail |
+| **TRRS plug + cable** (bar cradle AND leg-column riser) | Tensility **CA-354S** (053-0113R): molded plug Ø10, barrel Ø3.5×14, 1.83 m Ø3.7 shielded 26 AWG cable, tinned ends | 3 | $3.53 / $3.00 @10 | [DigiKey](https://www.digikey.com/en/products/detail/tensility-international-corp/CA-354S/382910) | zero-solder: cut cable to length, crimp XH on the cut end. #1 = bar cradle → first bar tee; #2 = leg carrier → recessed plug at column top; +1 spare. [Drawing](https://tensility.s3.us-west-2.amazonaws.com/uploads/pdffiles/053-0113R.pdf) |
+| **TRRS jack + cable** (chassis, above the -X/+Y socket) | Tensility **10-03404**: molded jack Ø9.1×39.4, 0.91 m Ø3.8 shielded 28 AWG cable | 1 | $5.15 / $4.4 @10 | [DigiKey](https://www.digikey.com/en/products/detail/tensility-international-corp/10-03404/11196637) | embedded VERTICALLY above the socket — the column-top plug BLIND-MATES during the final thread turn (18 mm lead > 14 mm insertion; plug spins freely in the jack → no wire twist); cable → nearest tee. Body too long (39.4) to ever fit the Ø20 shaft — chassis only. [Drawing](https://tensility.s3.us-west-2.amazonaws.com/uploads/pdffiles/10-03404.pdf) |
+| **TRRS jack, SMT** (leg-shaft auto-mate, on the leg carrier PCB) | LCSC-library compact SMT jack, **pick at PCB design** (SJ-4351X-class, ~13×6×5) | 2 | ~$0.30 | LCSC | the only form factor that fits the Ø20 shaft; factory-assembled on the carrier (no consignment). Pocket gets rebuilt around the chosen part's drawing. Fallback: Same Sky SJ-43514-SMT-TR via JLCPCB global sourcing |
 | **XH crimp contacts** | JST **SXH-001T-P0.6** | 300 | ~$0.024–0.047 | [DigiKey](https://www.digikey.com/en/products/result?keywords=SXH-001T-P0.6) | 22–30 AWG; qty includes learning-curve scrap |
 | **XH housings** | JST **XHP-2 / XHP-4 / XHP-6** | ~30 | ~$0.10 | [DigiKey](https://www.digikey.com/en/products/result?keywords=XHP-4) | contacts click in by hand, extractable; XHP-6 mates the SERVO42D pigtail |
 | **XH headers**, THT top-entry | JST **B2B/B4B/B6B-XH-A(LF)(SN)** | ~30 | $0.17 / $0.144 @10 | [DigiKey](https://www.digikey.com/en/products/result?keywords=B4B-XH-A) | on every custom PCB (sensor boards, Teensy carrier, leg breakout); B4B verified, other sizes same class |
 | **Power connector** (PSU trunk only) | XT30 pair — DFRobot **FIT0586** | 4 pr | $1.90 | [DigiKey](https://www.digikey.com/en/products/detail/dfrobot/FIT0586/9559255) | 15 A/30 A pk, gold; pigtails bench-soldered ONCE, field = plug/unplug only |
 | **CAN terminator R** | Yageo **CFR-25JB-52-120R** (120 Ω ¼ W) | 10 | $0.10 / $0.036 @10 | [DigiKey](https://www.digikey.com/en/products/result?keywords=CFR-25JB-52-120R) | Teensy carrier + last motor; bus-B termination lives ON the tees (SMT 120R there) |
 | **Tee PCB** | custom: 3× B4B-XH-A + 120 Ω + shunt jumper | 12 | ~$2 assembled (est.) | JLCPCB | panelized with the sensor boards; close the jumper on the LAST tee = bus-B termination |
-| **Leg-breakout + plug-carrier PCBs** | SJ-43514 carrier (leg) / SP-3541 carrier (bar cradle) | 2+2 | ~$2 (est.) | JLCPCB | ride the same panel; each presents an XH header — keeps the TRRS pair factory-soldered |
+| **Leg carrier PCB** | custom: LCSC SMT jack + B4B-XH-A header | 2 | ~$2 assembled (est.) | JLCPCB | rides the same panel; sits in the shaft pocket — auto-mate jack's terminals land on XH, fully factory-soldered |
 | **FD-capable transceiver** (new PCBs) | Microchip **MCP2562FD-E/SN** | ~10 | $1.29 / $1.07 @25 | [DigiKey](https://www.digikey.com/en/products/result?keywords=MCP2562FD-E%2FSN) | rides the sensor-PCB assembly order (LCSC ~$0.50 there); VIO pin suits 3.3 V logic |
 
 ≈ **$40 of connectors + ~$25 of tee/carrier boards** (board figures are
