@@ -786,8 +786,9 @@ def _housing() -> cq.Workplane:
     # into it at their -X edge, and it carries the load down to the cartridge and up to the rails.
     _cap_z = HS_CART_Z1 + _FEEL_DZ
     _blk_x0, _blk_x1 = RAIL_X[1] - HW1 - 2, -HALF_X                 # cartridge back .. bearing-wall -X edge (all -X of the lever)
-    w = w.union(box_at(_blk_x1 - _blk_x0, 2 * _HOUS_HW, YOKE_Z0 - _cap_z,
-                       x=(_blk_x0 + _blk_x1) / 2, y=0.0, z=(_cap_z + YOKE_Z0) / 2))
+    w = w.union(box_at(_blk_x1 - _blk_x0, 2 * WP_Y1, YOKE_Z0 - _cap_z,   # Y to the bearing-wall edge (±16) so the
+                       x=(_blk_x0 + _blk_x1) / 2, y=0.0, z=(_cap_z + YOKE_Z0) / 2))  # plates fuse over their FULL Y
+    #   (the ~2mm of block that overhangs the cartridge outboard of Y=±13.9 is a small self-supporting cantilever)
     # retention: the Ø6×5 insert + Ø4.4 clearance sit in a boss beside the NEAR (-23) rail. The boss runs
     # the FULL Z to the yoke top (backed by the body -> no overhang), then that rail's MORTISE is re-cut so
     # it passes cleanly THROUGH the boss (the tenon still slides). The insert stops RETAIN_INS_TOP (1 mm
