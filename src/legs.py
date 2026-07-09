@@ -428,12 +428,23 @@ def leg_shaft_trrs() -> cq.Workplane:
     body = body.cut(box_at(TRRS_JACK_L + 1.0, TRRS_JACK_W + 0.6,
                            TRRS_JACK_H + 0.6, x=-10.5 + (TRRS_JACK_L + 1.0) / 2,
                            z=TRRS_Z))
-    # widened band at the jack's terminal plane: the SJ-4351X's six SMT
+    # widened band at the jack's terminal plane: the SJ-4351X's SMT
     # gull-wings splay to ~10 total width (datasheet PCB layout) — wider
     # than the body pocket
     body = body.cut(box_at(TRRS_JACK_L + 1.0, 10.6, 1.6,
                            x=-10.5 + (TRRS_JACK_L + 1.0) / 2,
                            z=TRRS_Z - 2.2))
+    # WIRE GALLERY: the pocket's rear half opens upward to the bore mouth —
+    # the four wires rise from the gull-wing tabs beside the body, cross
+    # over its rear, and gather into the Ø6 centre bore. (Routing the wires
+    # to their actual terminals showed the previous 0.3 gap over the jack
+    # body was impassable.)
+    body = body.cut(box_at(8.0, 10.6, 7.3, x=1.0, z=18.55))
+    # narrow REAR CHANNEL for the jack's TIP terminal (it exits the rear
+    # face per the SJ-4351X drawing) + its wire riser — kept to ±1.6 wide
+    # so the pocket's rear wall still backstops the jack body against plug
+    # insertion loads
+    body = body.cut(box_at(1.9, 3.2, 7.3, x=5.95, z=18.55))
     # Ø6 wire bore: jack pocket → shaft top (wires up the hollow centre)
     body = body.cut(cyl(WIRE_BORE_D, SHAFT_L - 19.5 + 1, z=19.5))
     return body
