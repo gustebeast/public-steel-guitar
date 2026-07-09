@@ -695,6 +695,19 @@ def _housing() -> cq.Workplane:
     # two bearing walls (normal to Y) + the top spine that ties them (and is the mount face)
     w = box_at(xw, WALL, zh, x=xc, y=WN_Y0 + WALL / 2, z=zc)
     w = w.union(box_at(xw, WALL, zh, x=xc, y=WP_Y0 + WALL / 2, z=zc))
+    # 45deg PRINT BUTTRESS: the front bearing walls (axle plates) float above the print bed (the cartridge
+    # is all -X), so support them for -Z->+Z printing with a gusset rising from the cartridge block. The -X
+    # face is vertical (fuses to the cartridge); the +X-bottom is a 45deg self-supporting chamfer, so the
+    # region +X-below the axle stays OPEN (valuable headroom). [FIRST PASS -- the axle sits +X of the
+    # cartridge, so some +X fill is unavoidable to carry the bearing; pushing the bed footprint further -X
+    # (a thinner strut) at the cost of bearing support is a refinement for review.]
+    _BED_Z = (HS_FLOOR_Z - HS_CLR - HS_HOUS_WALL) + _FEEL_DZ         # housing floor shelf = the print bed
+    _ch = WALL_Z0 - _BED_Z                                           # 45deg chamfer run (= rise)
+    for by0, by1 in ((WN_Y0, WN_Y1), (WP_Y0, WP_Y1)):
+        _prof = [(-13.0, _BED_Z), (-13.0, WALL_Z0), (HALF_X, WALL_Z0), (HALF_X - _ch, _BED_Z)]
+        _face = cq.Face.makeFromWires(cq.Wire.makePolygon(
+            [cq.Vector(x, by0, z) for x, z in _prof] + [cq.Vector(_prof[0][0], by0, _prof[0][1])]))
+        w = w.union(cq.Workplane("XY").add(cq.Solid.extrudeLinear(_face, cq.Vector(0, by1 - by0, 0))))
     # bearing pockets (Ø8) + axle clearance through-bores
     for by in (WN_Y0, WP_Y0):
         w = w.cut(cyl_y(BRG_OD + 0.1, BRG_W + 0.3, y0=by + (WALL - BRG_W) / 2))
