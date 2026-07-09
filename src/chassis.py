@@ -220,6 +220,16 @@ def _build_full() -> cq.Workplane:
     for _sx in LEG_STATIONS_X:
         for _yr, _s in ((Y_HI, 1), (Y_LO, -1)):
             body = body.cut(_leg_dt_slot(_sx, _yr, _s))
+    # TRRS chassis-jack way (the -X/+Y station only): the leg↔body
+    # blind-mate jack (legs.leg_socket_trrs) sits COAXIAL with the leg
+    # thread, and above the rail bottom the WEB owns the -y half of that
+    # axis — bore the matching Ø9.8 way through the web/slot zone (the
+    # socket tenon's bore carries the +y half; the bore CEILING at +39.6
+    # is the jack's insertion backstop via the printed slug). See
+    # legs.leg_socket_trrs / BOM 'Connectors'.
+    body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        4.9, 40.6, cq.Vector(LEG_STATIONS_X[1], Y_HI, Z_BOT - 1.0),
+        cq.Vector(0, 0, 1))))
     # electronics-tray drop-in channels: one vertical channel per rail inner
     # face (open at the top - the tray lowers in from above and its tabs
     # bottom on the channel floors), placed in the only solid-web window
