@@ -152,32 +152,45 @@ knee-lever mortise plane — route no fatter cable through the floor trunk.
 
 ## Connectors (wiring strategy, July 2026)
 
-Rule: **solder only happens on factory-assembled PCBs; every field connection
-is a connector** (no bare wire ever meets a bare module pin; devices get
-pigtails; never inline-splice). Two classic-CAN buses at 500 kbps, each ONE
-linear daisy chain: **bus A motors** (Teensy CAN1 → 10× SERVO42D, XH jumpers,
-120 Ω fixed at both ends) and **bus B inputs** (Teensy CAN2 → knee levers →
-leg bore → TRRS joint → pedal bar; terminator PLUG parked in the last pedal's
-empty OUT jack so termination travels with the bar). The SERVO42D is
-classic-CAN-only, which is why any bus with motors runs classic; sensor
-boards still get FD-capable transceivers to keep the FD option on bus B.
-All DigiKey; prices approximate qty-1, July 2026.
+Rule: **solder only happens on factory-assembled PCBs or bench-once pigtails;
+every field connection is a connector** (no bare wire ever meets a bare module
+pin; devices get pigtails; never inline-splice — user priority: damage-free
+un/re-mating beats install speed). Two classic-CAN buses at 500 kbps, each ONE
+linear daisy chain: **bus A motors** (Teensy CAN1 → 10× SERVO42D over their
+native XH pigtails — power AND CAN; ~1–1.5 A input at 24 V sits inside XH's
+3 A rating, so no separate motor power connector — 120 Ω fixed at both ends)
+and **bus B inputs** (Teensy CAN2 → knee levers on XH chains → leg bore →
+the ONE TRRS in the instrument: the leg↔bar auto-mate joint → bar pedals on
+the internal XH harness; termination = a 120 Ω XH-2 dongle on the last
+pedal's OUT header). The SERVO42D is classic-CAN-only, which is why any bus
+with motors runs classic; sensor boards still get FD-capable transceivers to
+keep the FD option on bus B. XT30 only at the PSU trunk joints.
 
-| Role | Part | Qty | ~Price | URL | Notes |
-|------|------|-----|--------|-----|-------|
-| **TRRS jack** (bus B device PCBs ×2 each + leg breakout) | Same Sky **SJ-43514-SMT-TR** | ~16 | $1.10 | [DigiKey](https://www.digikey.com/en/products/result?keywords=SJ-43514-SMT-TR) | no-switch 4-terminal; reflowed on PCBs, never hand-soldered |
-| **TRRS plug** (bar auto-mate + terminators) | Same Sky **SP-3541** | 4 | $1.50 | [DigiKey](https://www.digikey.com/en/products/result?keywords=SP-3541) | 1 in the pedal-bar cradle, 1 bus-B terminator (+ spares) |
-| **TRRS cable**, molded plug-plug | SparkFun **CAB-14163** (1 ft) | ~6 | $2.10 | [DigiKey](https://www.digikey.com/en/products/detail/sparkfun-electronics/14163/7324452) | zero-solder bus-B hops; longer molded TRRS aux lengths exist if a hop needs it |
-| **Wire-to-board leads**, pre-crimped XH | JST **ASXHSXH22K203** (22 AWG, 200 mm, socket-socket) | ~40 | $1.00 | [DigiKey](https://www.digikey.com/en/products/detail/jst-sales-america-inc/ASXHSXH22K203/9961918) | cut in half = 2 pigtails, **no crimp tool**; also 152/305 mm lengths |
-| **XH housings** | JST **XHP-2 / XHP-4 / XHP-6** | ~30 | $0.10 | [DigiKey](https://www.digikey.com/en/products/result?keywords=XHP-4) | leads click in by hand; XHP-6 mates the SERVO42D pigtail |
-| **XH headers**, THT top-entry | JST **B2B/B4B/B6B-XH-A(LF)(SN)** | ~30 | $0.15 | [DigiKey](https://www.digikey.com/en/products/result?keywords=B4B-XH-A) | on every custom PCB (sensor boards, Teensy carrier, leg breakout) |
-| **Power connector** | XT30 pair — DFRobot **FIT0586** | ~12 pr | $1.90 | [DigiKey](https://www.digikey.com/en/products/detail/dfrobot/FIT0586/9559255) | 15 A/30 A pk; pigtails bench-soldered ONCE, field = plug/unplug only |
-| **CAN terminator R** | Yageo **CFR-25JB-52-120R** (120 Ω ¼ W) | 10 | $0.10 | [DigiKey](https://www.digikey.com/en/products/result?keywords=CFR-25JB-52-120R) | 2 on carrier/last-motor + inside the SP-3541 terminator plug |
-| **FD-capable transceiver** (new PCBs) | Microchip **MCP2562FD-E/SN** | ~10 | $1.20 | [DigiKey](https://www.digikey.com/en/products/result?keywords=MCP2562FD-E%2FSN) | VIO pin suits 3.3 V Teensy/MCUs; same price class as classic-only — keeps bus-B FD option |
+Prices **verified on DigiKey 2026-07-09** (stock healthy unless noted);
+re-check at order time. XH harness = crimp-your-own (contacts ~$0.03 vs
+$0.59–0.78 per pre-crimped lead — 20×; needs a ~$25–45 tool, below).
 
-Audio stays as already pinned above (Neutrik NMJ4HCD2 panel jack + shielded
-pair, single-point ground). The SERVO42D's own I/O is **XH2.54 native** (ships
-with a 6-pin XH pigtail), so the XH standard needs no adapting at the motors.
+| Role | Part | Qty | Price (verified) | URL | Notes |
+|------|------|-----|------------------|-----|-------|
+| **TRRS jack** (leg breakout PCB) | Same Sky **SJ-43514-SMT-TR** | 3 | $1.52 / $1.29 @10 | [DigiKey](https://www.digikey.com/en/products/result?keywords=SJ-43514-SMT-TR) | no-switch 4-terminal; reflowed on the breakout, never hand-soldered |
+| **TRRS plug** (bar auto-mate) | Same Sky **SP-3541** | 2 | $3.04 / $2.58 @10 | [DigiKey](https://www.digikey.com/en/products/result?keywords=SP-3541) | 1 in the pedal-bar cradle + spare; pins soldered as a bench-once pigtail |
+| **XH crimp contacts** | JST **SXH-001T-P0.6** | 300 | ~$0.024–0.047 | [DigiKey](https://www.digikey.com/en/products/result?keywords=SXH-001T-P0.6) | 22–30 AWG; qty includes learning-curve scrap |
+| **XH housings** | JST **XHP-2 / XHP-4 / XHP-6** | ~30 | ~$0.10 | [DigiKey](https://www.digikey.com/en/products/result?keywords=XHP-4) | contacts click in by hand, extractable; XHP-6 mates the SERVO42D pigtail |
+| **XH headers**, THT top-entry | JST **B2B/B4B/B6B-XH-A(LF)(SN)** | ~30 | $0.17 / $0.144 @10 | [DigiKey](https://www.digikey.com/en/products/result?keywords=B4B-XH-A) | on every custom PCB (sensor boards, Teensy carrier, leg breakout); B4B verified, other sizes same class |
+| **Power connector** (PSU trunk only) | XT30 pair — DFRobot **FIT0586** | 4 pr | $1.90 | [DigiKey](https://www.digikey.com/en/products/detail/dfrobot/FIT0586/9559255) | 15 A/30 A pk, gold; pigtails bench-soldered ONCE, field = plug/unplug only |
+| **CAN terminator R** | Yageo **CFR-25JB-52-120R** (120 Ω ¼ W) | 10 | $0.10 / $0.036 @10 | [DigiKey](https://www.digikey.com/en/products/result?keywords=CFR-25JB-52-120R) | carrier + last motor + the XH-2 terminator dongle |
+| **FD-capable transceiver** (new PCBs) | Microchip **MCP2562FD-E/SN** | ~10 | $1.29 / $1.07 @25 | [DigiKey](https://www.digikey.com/en/products/result?keywords=MCP2562FD-E%2FSN) | rides the sensor-PCB assembly order (LCSC ~$0.50 there); VIO pin suits 3.3 V logic |
+| **Crimp tool** (one-time, NOT DigiKey) | IWISS SN-01BM (~$25) or Engineer PA-09 (~$45) | 1 | — | mfr/eBay | does XH + PH + most small JST; amortizes across all future projects |
+
+≈ **$35–45 of consumables** + the one-time tool. Fallback if crimping
+frustrates: JST pre-crimped leads [ASXHSXH22K203](https://www.digikey.com/en/products/detail/jst-sales-america-inc/ASXHSXH22K203/9961918)
+($0.78 / $0.588 @50, 200 mm socket-socket — cut in half = 2 pigtails).
+Molded TRRS cables were dropped: DigiKey's are special-order/obsolete
+(SparkFun 14163/14164) and the lean topology needs none — if an external
+TRRS hop ever appears, any consumer 4-pole aux cable serves. Audio stays as
+already pinned above (Neutrik NMJ4HCD2 + shielded pair, single-point ground).
+The SERVO42D's own I/O is **XH2.54 native**, so the XH standard needs no
+adapting at the motors.
 
 ## Cost summary (per instrument, June 2026)
 
