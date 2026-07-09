@@ -448,10 +448,17 @@ def _trrs_jack() -> cq.Workplane:
     j = box_at(14.5, 6.0, 5.0, x=lx + ls * (10.0 - 14.5 / 2), y=YC, z=TR_Z)
     j = j.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
         1.8, 15.0, cq.Vector(lx + ls * 10.5, YC, TR_Z), cq.Vector(-ls, 0, 0))))
-    for sy, xs in ((1, (7.5, -2.5)), (-1, (5.0, 0.0))):
-        for px in xs:      # staggered gull-wing feet at the body base
-            j = j.union(box_at(1.6, 1.9, 0.5, x=lx + ls * px,
-                               y=YC + sy * 3.95, z=TR_Z - 2.25))
+    # terminals AT THEIR DRAWN STATIONS (SJ-4351X mechanical drawing / PCB
+    # layout; pin 1 sleeve, 2 tip, 3 ring 1, 4 ring 2): sleeve and ring 1
+    # exit one side, ring 2 the other, and the TIP terminal exits the REAR
+    # face (deepest contact, heaviest spring)
+    for tx, ty in ((6.5, 3.95),      # pin 1 sleeve   (front, +y side)
+                   (3.7, 3.95),      # pin 3 ring 1   (mid,   +y side)
+                   (5.5, -3.95)):    # pin 4 ring 2   (front, -y side)
+        j = j.union(box_at(1.6, 1.9, 0.5, x=lx + ls * tx,
+                           y=YC + ty, z=TR_Z - 2.25))
+    j = j.union(box_at(2.0, 1.6, 0.5, x=lx + ls * -5.25, y=YC,
+                       z=TR_Z - 2.25))   # pin 2 tip (rear face)
     return j
 
 
@@ -467,8 +474,11 @@ def _trrs_plug() -> cq.Workplane:
         2.25, 3.0, cq.Vector(lx + ls * BODY_X0, YC, TR_Z), cq.Vector(-ls, 0, 0))))
     p = p.union(box_at(BODY_X1 - BODY_X0, 5.0, 5.0,
                        x=lx + ls * (BODY_X0 + BODY_X1) / 2, y=YC, z=TR_Z))
-    for px in (15.0, 17.0, 19.0, 21.0):     # solder pins, facing UP
-        p = p.union(box_at(0.6, 0.6, 2.5, x=lx + ls * px, y=YC,
+    # solder pins facing UP, per the SP-3541 drawing: blade pins in the
+    # order Sleeve | Ring 2 | Ring 1 | Tip from the barrel, at
+    # 1.9/1.7/1.7 pitch (sleeve nearest the jack)
+    for px in (15.0, 16.9, 18.6, 20.3):
+        p = p.union(box_at(0.3, 1.0, 2.5, x=lx + ls * px, y=YC,
                            z=TR_Z + 2.5 + 1.25))
     return p
 
@@ -476,28 +486,57 @@ def _trrs_plug() -> cq.Workplane:
 # the four TRRS conductors — 28 AWG (Ø1.1 insulated; the smallest gauge
 # already in the cabinet — the CAN stub is far too short for 28 AWG to
 # matter and the sensor supply is mA-level). Per the wiring policy each is
-# its OWN NAMED WIRE with its own shade of the 28 AWG amber family:
-# (name, plug-pin x', bar-run y lane, leg-bore (dx, dy))
-_WIRES = (("pedal_wire_canh", 15.0, -1.8, (-1.1, -1.1)),
-          ("pedal_wire_canl", 17.0, -0.6, (1.1, -1.1)),
-          ("pedal_wire_pwr", 19.0, 0.6, (-1.1, 1.1)),
-          ("pedal_wire_gnd", 21.0, 1.8, (1.1, 1.1)))
+# its OWN NAMED WIRE with its own shade of the 28 AWG amber family, and the
+# CAD *is* the wiring guide — every run connects its REAL terminals.
+#
+# SIGNAL PLAN (soldering reference):
+#   GND  = SLEEVE (jack pin 1; mates FIRST on insertion — ground-first)
+#   CANH = TIP    (jack pin 2; the jack's REAR terminal)
+#   CANL = RING 1 (jack pin 3)
+#   PWR  = RING 2 (jack pin 4)
+# Plug pins (SP-3541 drawing): Sleeve|Ring2|Ring1|Tip from the barrel at
+# 1.9/1.7/1.7 pitch. Jack tabs (SJ-4351X drawing): sleeve + ring 1 on one
+# side, ring 2 opposite, tip out the rear face.
+# (name, plug-pin x', bar-run y lane, jack tab attach (x', y),
+#  gallery riser (x', y), bore slot (dx, dy))
+_WIRES = (
+    ("pedal_wire_gnd",  15.0,  1.8, (6.5, 4.7),   (2.2, 4.7),   (1.1, 1.1)),
+    ("pedal_wire_pwr",  16.9,  0.6, (5.5, -4.2),  (1.0, -4.2),  (1.1, -1.1)),
+    ("pedal_wire_canl", 18.6, -0.6, (3.7, 3.5),   (0.0, 3.5),   (-1.1, 1.1)),
+    ("pedal_wire_canh", 20.3, -1.8, (-5.5, 0.0),  (-5.5, 0.0),  (-1.1, -1.1)))
+
+
+def _chain(lx, ls, pts):
+    """A wire as a chain of Ø1.1 rods through (x', y-off, z) waypoints."""
+    out = None
+    for a, b in zip(pts[:-1], pts[1:]):
+        pa = cq.Vector(lx + ls * a[0], YC + a[1], a[2])
+        v = cq.Vector(lx + ls * b[0], YC + b[1], b[2]) - pa
+        if v.Length < 1e-6:
+            continue
+        rod = cq.Workplane("XY").add(cq.Solid.makeCylinder(0.55, v.Length,
+                                                           pa, v))
+        out = rod if out is None else out.union(rod)
+    return out
 
 
 def _wire_runs():
-    """DEMO wires, two segments per conductor: bar side (from its plug pin,
-    through the latch cavity — the ~15 service loop lives here — into the
-    wiring trough) and leg side (up the shaft's Ø6 hollow centre; stub —
-    continues inside the sleeve/segments to the chassis)."""
+    """DEMO wires routed pin-to-terminal (the routing is both the wiring
+    guide and the clearance proof). Bar side: from ITS plug pin, rise over
+    the pin row, fan to its lane, run through the latch cavity (the ~15
+    service loop lives here) into the wiring trough. Leg side: from ITS
+    jack tab (side tabs via the terminal band, the tip via the rear
+    channel), rise in the WIRE GALLERY, cross over the jack body, and up
+    the Ø6 centre bore (stub — continues inside the sleeve/segments to the
+    chassis)."""
     lx, ls = LATCHES[1]
     out = []
-    for name, px, wy, (dx, dy) in _WIRES:
-        out.append((f"{name}_0", cq.Workplane("XY").add(cq.Solid.makeCylinder(
-            0.55, 70.0 - px, cq.Vector(lx + ls * px, YC + wy, 13.2),
-            cq.Vector(ls, 0, 0)))))
-        out.append((f"{name}_1", cq.Workplane("XY").add(cq.Solid.makeCylinder(
-            0.55, 28.0, cq.Vector(lx + dx, YC + dy, 11.4),
-            cq.Vector(0, 0, 1)))))
+    for name, px, wy, (tx, ty), (rx, ry), (dx, dy) in _WIRES:
+        out.append((f"{name}_0", _chain(lx, ls, [
+            (px, 0.0, 13.6), (px + 1.4, wy, 14.35), (70.0, wy, 14.35)])))
+        out.append((f"{name}_1", _chain(lx, ls, [
+            (tx, ty, 6.45), (rx, ry, 6.45), (rx, ry, 12.4),
+            (dx, dy, 12.4), (dx, dy, 39.0)])))
     return out
 
 
