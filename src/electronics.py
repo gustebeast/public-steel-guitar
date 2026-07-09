@@ -176,6 +176,12 @@ def electronics_tray() -> cq.Workplane:
     for fp, bz in ((PI_FP, BOARD_Z), (TEENSY_FP, BOARD_Z + 1.0),
                    (CS_FP, BOARD_Z), (BUCK_FP, BOARD_Z), (XCVR_FP, BOARD_Z)):
         body = body.union(_posts_strips_fingers(fp, bz))
+    # cable notch in the -X edge (west of the Pi footprint): the chassis
+    # TRRS jack's cable descends here from the -X/+Y leg socket to the
+    # bus-B landing tee under the tray (the tray-to-rail gap is only 1.25
+    # — no cable fits around the plate)
+    body = body.cut(box_at(4.0, 8.0, 6.0, x=TRAY_X0 + 1.5, y=46.0,
+                           z=(TRAY_Z0 + TRAY_Z1) / 2))
     return body
 
 

@@ -357,6 +357,15 @@ WIRE_OK = {
     "wire_canb":      {"teensy_ifc", "tee_pcb"},
     "motor_pigtail":  {"tee_pcb", "motor"},
     "wire_knee_drop": {"tee_pcb"},
+    # leg↔body TRRS: the chassis jack's factory cable (tenon channel ->
+    # bus-B socket tee) and the column CA-354S inside the leg stack
+    "chassis_trrs_cable": {"tee_pcb", "leg_socket", "chassis_trrs_jack"},
+    "leg_column_cable": {"leg_socket", "leg_segment", "leg_sleeve",
+                         "leg_shaft", "leg_washer", "leg_column_plug",
+                         "leg_plug_retainer",
+                         # the shaft-side model of the SAME physical
+                         # CA-354S — they abut inside the shaft bore
+                         "pedal_trrs_cable_leg"},
     "wire_pwr_hot":   {"dc_jack", "buck", "tee_pcb", "analog_frontend"},
     "wire_pwr_gnd":   {"dc_jack", "buck", "tee_pcb", "analog_frontend"},
     "wire_usb":       {"usbc_jack", "pi5"},

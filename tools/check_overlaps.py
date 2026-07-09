@@ -109,6 +109,18 @@ GLOBAL_OK = {
     frozenset({"pedal_trrs_plug", "leg_shaft"}),
     # the leg-column TRRS cable up the shaft's Ø6 hollow centre
     frozenset({"pedal_trrs_cable_leg", "leg_shaft"}),
+    # leg↔body TRRS blind-mate: jack seated in the socket way (slug atop),
+    # plug recessed in the top segment's bore (retainer pressed beneath)
+    frozenset({"chassis_trrs_jack", "leg_socket"}),
+    frozenset({"socket_jack_slug", "leg_socket"}),
+    frozenset({"socket_jack_slug", "chassis_trrs_jack"}),
+    frozenset({"leg_column_plug", "leg_segment"}),
+    frozenset({"leg_column_plug", "chassis_trrs_jack"}),
+    frozenset({"leg_column_plug", "leg_plug_retainer"}),
+    frozenset({"leg_plug_retainer", "leg_segment"}),
+    # the leg-column cable and the shaft-side cable model the SAME physical
+    # CA-354S in two modeling domains; they abut/overlap inside the bore
+    frozenset({"leg_column_cable", "pedal_trrs_cable_leg"}),
 }
 
 # The pedal-bar latches are a self-contained subassembly (bolt in its
