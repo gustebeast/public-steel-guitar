@@ -71,6 +71,8 @@ PARTS = {
     "cart_base": (lambda: __import__("src.knee_lever", fromlist=["e"]).cart_base, "pctg/cart_base.step", "PCTG — spring-cartridge (inverted-U, open -Z; shared: print 2, for main + half-stop)"),
     "cart_piston": (lambda: __import__("src.knee_lever", fromlist=["e"]).cart_piston, "pctg/cart_piston.step", "PCTG — spring-cartridge piston, flat follower tongue (shared: print 2)"),
     "guide_post": (lambda: __import__("src.knee_lever", fromlist=["e"]).guide_post, "pctg/guide_post.step", "PCTG — coil-back guide post, screw pushes it (shared: print 2)"),
+    "cart_backstop": (lambda: __import__("src.knee_lever", fromlist=["e"]).cart_backstop, "pctg/cart_backstop.step", "PCTG — hollow X-position back-stop screw: threads the housing boss, tension screw runs through the Ø5.5 bore (shared: print 2)"),
+    "cart_drag": (lambda: __import__("src.knee_lever", fromlist=["e"]).cart_drag, "tpu/cart_drag.step", "TPU — passive drag pad: seats in the pocket outboard-wall recess, bulges onto the cartridge for transport-drift friction (print 2, MAIN mirrored)"),
     "screw_pulley":    (lambda: heal(C.screw_pulley()),  "pctg/screw_pulley.step",  "PCTG — flanged 14T GT2 pulley, 45° top flange — ×10 (fine teeth need unfilled resolution)"),
     "motor_pulley":    (lambda: heal(C.motor_pulley()),  "pctg/motor_pulley.step",  "PCTG — flanged 14T GT2 pulley, 45° outer flange — ×10"),
     "tension_fork":    (lambda: TF.tension_forks,    "pctg/tension_fork.step",    "PCTG — belt-tension lock forks, graded 3.0–6.0 set (4 of the fitting size per motor; positive stop in the slot, no friction reliance)"),
@@ -469,8 +471,8 @@ def _knee_lever_components():
         out.append((f"{nm}_guide_post", KL.feel_place(KL.guide_post.translate(off))))
     for n, s in KL.demo_parts():                         # magnet spins with the lever; the rest are stationary
         out.append((n, swing(s) if n == "kl_magnet" else s))
-    for i, s in enumerate((1, -1)):                       # one floating tenon per rib (built at absolute Y)
-        out.append((f"floating_tenon_{i}", KL.floating_tenon.translate((s * KL.TEN_XC, 0, 0))))
+    for i, rx in enumerate(KL.RAIL_X):                    # one floating tenon per rail (both -X of the axle)
+        out.append((f"floating_tenon_{i}", KL.floating_tenon.translate((rx, 0, 0))))
     return [(n, s.translate(pose)) for n, s in out]
 
 
@@ -596,11 +598,16 @@ _COLORS = {
     "wire_usb":        (0.55, 0.25, 0.75),   # violet      - shielded USB-2 -> Pi
 }
 _DEFAULT_COLOR = (0.80, 0.80, 0.80)
+_TPU_BLACK = (0.03, 0.03, 0.03)                  # ALL TPU parts render black (user rule)
+# every part whose output path is tpu/... -> black, regardless of instance prefix/suffix
+_TPU_BASES = tuple(sorted((k for k, v in PARTS.items() if v[1].startswith("tpu/")), key=len, reverse=True))
 
 
 def _color_for(name):
     head, _, tail = name.rpartition("_")
     base = head if (head and tail.isdigit()) else name
+    if base in _TPU_BASES or any(base.endswith(k) for k in _TPU_BASES):
+        return cq.Color(*_TPU_BLACK)             # TPU is always black
     return cq.Color(*_COLORS.get(base, _DEFAULT_COLOR))
 
 
