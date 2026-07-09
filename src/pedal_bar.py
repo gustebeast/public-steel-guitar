@@ -506,19 +506,44 @@ def _trrs_plug() -> cq.Workplane:
 #                  only; trim it flush at the bar end.)
 
 
+def _rods(lx, ls, pts, d):
+    """Cable as cylinders between (x', y-off, z) waypoints."""
+    out = None
+    for a, b in zip(pts[:-1], pts[1:]):
+        pa = cq.Vector(lx + ls * a[0], YC + a[1], a[2])
+        v = cq.Vector(lx + ls * b[0], YC + b[1], b[2]) - pa
+        rod = cq.Workplane("XY").add(cq.Solid.makeCylinder(d / 2, v.Length,
+                                                           pa, v))
+        out = rod if out is None else out.union(rod)
+    return out
+
+
+def _leg_carrier() -> cq.Workplane:
+    """DEMO leg CARRIER PCB (custom, factory-assembled on the sensor-PCB
+    panel): the SMT jack reflows on its top, the XH header hangs from its
+    UNDERSIDE into the shaft's bottom-entry cavity — the leg-column
+    CA-354S's crimped housing mates UPWARD there, hidden by the TPU foot.
+    Board + header/housing block drawn as one dummy."""
+    lx, ls = LATCHES[1]
+    b = box_at(14.0, 6.6, 1.6, x=lx + ls * 2.0, y=YC, z=5.4)
+    b = b.union(box_at(9.0, 5.6, 8.6, x=lx + ls * 2.0, y=YC, z=0.3))
+    return b
+
+
 def _cable_runs():
     """DEMO cables (Ø3.7 shielded 4-conductor factory jackets — per-wire
     colours reappear at the crimped XH pigtails, not here). Bar: the
     cradle plug's cable from its spring relief through the latch cavity
     into the trough (cut + crimped into an XH housing at the first bar
-    tee). Leg: the SECOND CA-354S rising from the leg carrier PCB up the
-    Ø6 centre bore toward the column top (stub — the chassis-side
-    blind-mate is the next design package)."""
+    tee). Leg: the SECOND CA-354S coming DOWN the Ø6 centre bore from the
+    column (legs/build model the upper run), through the wire gallery and
+    rear channel into the bottom cavity, plugging UP into the carrier's
+    underside header."""
     lx, ls = LATCHES[1]
     bar = cq.Workplane("XY").add(cq.Solid.makeCylinder(
         1.85, 30.0, cq.Vector(lx + ls * 40.0, YC, TR_Z), cq.Vector(ls, 0, 0)))
-    leg = cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        1.85, 27.0, cq.Vector(lx, YC, 12.0), cq.Vector(0, 0, 1)))
+    leg = _rods(lx, ls, [(-6.7, 0.0, 201.0), (-6.7, 0.0, -3.2),
+                         (2.0, 0.0, -3.2)], 3.7)
     return [("pedal_trrs_cable_bar", bar), ("pedal_trrs_cable_leg", leg)]
 
 
@@ -538,4 +563,5 @@ def assembly_parts():
             ("pedal_detent_nub_1", pedal_detent_nub(lx_b, ls_b)),
             ("pedal_detent_nub_2", _lock_nub()),
             ("pedal_trrs_jack", _trrs_jack()),
+            ("pedal_leg_carrier", _leg_carrier()),
             ("pedal_trrs_plug", _trrs_plug())] + _cable_runs()

@@ -85,7 +85,7 @@ PARTS = {
     "leg_segment":     (lambda: heal(LG.leg_segment()), "pctg/leg_segment.step", "PCTG — stackable leg tube ×8 (male up / female down; COUNT per leg = coarse height adjust, 142/segment). PCTG not GF: standing prints bend across layer lines and a kick is energy-limited — PCTG interlayer is ~85-90% of bulk + ductile (~8 J to yield vs ~2 J to snap for GF). Print bell-down, LOW fan"),
     "leg_sleeve":      (lambda: heal(LG.leg_sleeve()),  "pctg/leg_sleeve.step",  "PCTG — leg slider sleeve ×4 (pinch collar: M4 button screw + insert pulls the slit closed; the slit MUST flex — never glass-filled)"),
     "leg_shaft":       (lambda: heal(LG.leg_shaft()),   "pctg/leg_shaft.step",   "PCTG — leg sliding shaft ×3 (fine height adjust; single-D key flat = pure Z travel + one unique orientation; chord notch mounts the pedal bar on the +Y legs). Print LYING ON THE FLAT: layer lines run along the shaft (kick bending loads bulk material), 43-deg junction self-supporting, notch faces up"),
-    "leg_shaft_trrs":  (lambda: heal(LG.leg_shaft_trrs()), "pctg/leg_shaft_trrs.step", "PCTG — the -X/+Y leg's shaft ×1: leg_shaft + inboard corner fill + the X-facing TRRS jack pocket (Same Sky SJ-43514-SMT, mouth flush in the fill's flat face) + Ø6 wire bore up the centre. Same lying-flat print (pocket opens sideways, no bridges)"),
+    "leg_shaft_trrs":  (lambda: heal(LG.leg_shaft_trrs()), "pctg/leg_shaft_trrs.step", "PCTG — the -X/+Y leg's shaft ×1: leg_shaft + inboard corner fill + the X-facing TRRS jack pocket (LCSC SMT jack on the leg CARRIER PCB, mouth flush in the fill's flat face) + carrier seat + bottom-entry XH cavity (under the foot) + Ø5 off-axis cable bore. Same lying-flat print (pocket opens sideways, no bridges)"),
     "leg_foot":        (lambda: heal(LG.leg_foot()),    "tpu/leg_foot.step",    "TPU — foot cap ×4"),
     "leg_socket_trrs": (lambda: heal(LG.leg_socket_trrs()), "petg-gf/leg_socket_trrs.step", "PETG-GF — the -X/+Y leg's socket ×1: leg_socket + the vertical chassis-jack way (Tensility 10-03404, coaxial with the thread — the column-top plug BLIND-MATES on the final turn) + mouth-seat boss + tenon cable channel. Jack drops in before glue-up"),
     "leg_plug_retainer": (lambda: heal(LG.leg_plug_retainer()), "pctg/leg_plug_retainer.step", "PCTG — press sleeve ×1: up the wired leg's top-segment bore under the CA-354S handle (insertion backstop; the spigot tip lip takes withdrawal)"),
@@ -430,7 +430,10 @@ def _leg_components():
                 from . import wiring as WR
                 out.append(("leg_column_cable", WR._wire([
                     (sx, ry, CH.Z_BOT - 38.0),
-                    (sx, ry, ground + LG.FOOT_H + 24.0)], 3.7)))
+                    (sx, ry, ground + 224.0),
+                    (sx - 6.7, ry, ground + 215.0)], 3.7)))   # jog to the
+                # shaft's off-axis bore mouth (the shaft-side model
+                # continues from there)
                 # the chassis jack's factory cable: axial exit, 90° out the
                 # tenon channel (inner face), down to the floor, landing on
                 # the bus-B socket tee (12)
@@ -588,6 +591,8 @@ _COLORS = {
     # colours reappear at the crimped XH pigtails, not inside a jacket.
     "pedal_trrs_cable_bar": (0.45, 0.45, 0.48),  # cradle plug → first bar tee
     "pedal_trrs_cable_leg": (0.45, 0.45, 0.48),  # leg carrier → column top
+    "pedal_leg_carrier": (0.10, 0.42, 0.18),     # leg carrier PCB (jack on
+                                                 # top, XH header below)
     "build_counter":   (0.86, 0.08, 0.24),
     # knee lever (LKL) — input-side control
     "knee_housing":    (0.30, 0.36, 0.42),   # PCTG housing

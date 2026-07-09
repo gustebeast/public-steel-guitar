@@ -471,13 +471,27 @@ def leg_shaft_trrs() -> cq.Workplane:
     # to their actual terminals showed the previous 0.3 gap over the jack
     # body was impassable.)
     body = body.cut(box_at(8.0, 10.6, 7.3, x=1.0, z=18.55))
-    # narrow REAR CHANNEL for the jack's TIP terminal (it exits the rear
-    # face per the SJ-4351X drawing) + its wire riser — kept to ±1.6 wide
-    # so the pocket's rear wall still backstops the jack body against plug
-    # insertion loads
-    body = body.cut(box_at(1.9, 3.2, 7.3, x=5.95, z=18.55))
-    # Ø6 wire bore: jack pocket → shaft top (wires up the hollow centre)
-    body = body.cut(cyl(WIRE_BORE_D, SHAFT_L - 19.5 + 1, z=19.5))
+    # CARRIER PCB seat: the jack rides a 1.6 board (factory-assembled, XH
+    # header on its UNDERSIDE) — deepen the pocket floor by 2.0 for it
+    body = body.cut(box_at(TRRS_JACK_L + 1.0, 7.0, 2.1,
+                           x=-10.5 + (TRRS_JACK_L + 1.0) / 2, z=14.35))
+    # bottom-entry cavity: the leg-column cable's crimped XH housing mates
+    # UPWARD onto the carrier's underside header; the cavity opens at the
+    # shaft's bottom face and hides under the TPU foot cap (assemble the
+    # housing, then cap the foot). The foot spigot keeps its outer ring.
+    body = body.cut(box_at(13.0, 8.0, 15.5, x=-1.5, z=6.65))
+    # REAR CHANNEL: the Ø3.7 cable's downway (gallery → bottom cavity),
+    # behind the jack. Plug-insertion loads now backstop through the
+    # CARRIER BOARD's rear edge on its full-width seat wall (below this
+    # channel), not the jack body — the SMT jack is rated for
+    # board-carried insertion loads.
+    body = body.cut(box_at(4.2, 4.6, 19.8, x=6.7, z=12.3))
+    # Ø5 cable bore, OFF-AXIS at local (+6.7, 0): drops the Ø3.7 CA-354S
+    # straight down BEHIND the jack into the rear channel (an on-axis bore
+    # lands on the jack's roof with only a 2.0 gap to cross — impassable;
+    # found by routing the cable for real). 0.8 wall to the Ø20 surface.
+    body = body.cut(cyl(5.0, SHAFT_L - 19.5 + 1, z=19.5)
+                    .translate((6.7, 0, 0)))
     return body
 
 
