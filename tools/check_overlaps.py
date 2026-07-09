@@ -107,7 +107,11 @@ GLOBAL_OK = {
     # leg_shaft_trrs variant); the slider-carried plug reaches into it
     frozenset({"pedal_trrs_jack", "leg_shaft"}),
     frozenset({"pedal_trrs_plug", "leg_shaft"}),
-    frozenset({"pedal_wire", "leg_shaft"}),   # the harness up the Ø6 bore
+    # the four TRRS conductors up the shaft's Ø6 hollow centre
+    frozenset({"pedal_wire_canh", "leg_shaft"}),
+    frozenset({"pedal_wire_canl", "leg_shaft"}),
+    frozenset({"pedal_wire_pwr", "leg_shaft"}),
+    frozenset({"pedal_wire_gnd", "leg_shaft"}),
 }
 
 # The pedal-bar latches are a self-contained subassembly (bolt in its
@@ -118,7 +122,8 @@ GLOBAL_OK = {
 PEDAL_FAMILY = {"pedal_bar_a", "pedal_bar_b", "pedal_lid_a", "pedal_lid_b",
                 "pedal_bolt", "pedal_bolt_trrs", "pedal_latch_finger",
                 "pedal_detent_nub", "pedal_trrs_jack", "pedal_trrs_plug",
-                "pedal_wire"}
+                "pedal_wire_canh", "pedal_wire_canl",
+                "pedal_wire_pwr", "pedal_wire_gnd"}
 
 
 # The knee-lever control core is a self-contained subassembly: the axle, bearings,

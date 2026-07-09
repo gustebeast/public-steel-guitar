@@ -436,12 +436,20 @@ def nub_part() -> cq.Workplane:
 
 def _trrs_jack() -> cq.Workplane:
     """DEMO leg-side female jack — Same Sky SJ-43516-SMT-TR (DigiKey;
-    ~14.5×6×5 body, 14.0 mating depth): mating axis X, mouth flush at the
-    shaft's inboard face, Ø3.6 way."""
+    ~14.5×6×5 housing, 14.0 mating depth): mating axis X, mouth flush at
+    the shaft's inboard face, Ø3.6 way. Per the SJ-4351X-SMT drawing it has
+    SIX gull-wing SMT terminals (2×3 pads, 0.2-0.3 metal) staggered along
+    both sides at the base — the wires solder to these tabs (the shaft
+    pocket carries a widened band at the tab plane to clear them)."""
     lx, ls = LATCHES[1]
     j = box_at(14.5, 6.0, 5.0, x=lx + ls * (10.0 - 14.5 / 2), y=YC, z=TR_Z)
-    return j.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+    j = j.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
         1.8, 15.0, cq.Vector(lx + ls * 10.5, YC, TR_Z), cq.Vector(-ls, 0, 0))))
+    for sy, xs in ((1, (7.5, 2.5, -2.5)), (-1, (5.0, 0.0, -4.0))):
+        for px in xs:      # staggered gull-wing feet at the body base
+            j = j.union(box_at(1.6, 1.9, 0.5, x=lx + ls * px,
+                               y=YC + sy * 3.95, z=TR_Z - 2.25))
+    return j
 
 
 def _trrs_plug() -> cq.Workplane:
@@ -462,35 +470,31 @@ def _trrs_plug() -> cq.Workplane:
     return p
 
 
-def _wire_bar() -> cq.Workplane:
-    """DEMO bar-side wires — FOUR 28 AWG conductors (Ø1.1 insulated; the
-    smallest gauge already in the cabinet — fine here: the CAN stub is far
-    too short for 28 AWG's resistance/impedance to matter, and the sensor
-    supply is mA-level): one per plug pin, through the latch cavity (the
-    ~15 service loop lives here) into the wiring trough toward the mid-bar
-    electronics."""
+# the four TRRS conductors — 28 AWG (Ø1.1 insulated; the smallest gauge
+# already in the cabinet — the CAN stub is far too short for 28 AWG to
+# matter and the sensor supply is mA-level). Per the wiring policy each is
+# its OWN NAMED WIRE with its own shade of the 28 AWG amber family:
+# (name, plug-pin x', bar-run y lane, leg-bore (dx, dy))
+_WIRES = (("pedal_wire_canh", 15.0, -1.8, (-1.1, -1.1)),
+          ("pedal_wire_canl", 17.0, -0.6, (1.1, -1.1)),
+          ("pedal_wire_pwr", 19.0, 0.6, (-1.1, 1.1)),
+          ("pedal_wire_gnd", 21.0, 1.8, (1.1, 1.1)))
+
+
+def _wire_runs():
+    """DEMO wires, two segments per conductor: bar side (from its plug pin,
+    through the latch cavity — the ~15 service loop lives here — into the
+    wiring trough) and leg side (up the shaft's Ø6 hollow centre; stub —
+    continues inside the sleeve/segments to the chassis)."""
     lx, ls = LATCHES[1]
-    out = None
-    for i, px in enumerate((15.0, 17.0, 19.0, 21.0)):
-        rod = cq.Workplane("XY").add(cq.Solid.makeCylinder(
-            0.55, 70.0 - px,
-            cq.Vector(lx + ls * px, YC - 1.8 + 1.2 * i, 13.2),
-            cq.Vector(ls, 0, 0)))
-        out = rod if out is None else out.union(rod)
-    return out
-
-
-def _wire_leg() -> cq.Workplane:
-    """DEMO leg-side wires — the same FOUR 28 AWG conductors from the jack
-    pads up the shaft's Ø6 hollow centre bore (stub — they continue inside
-    the sleeve/segments to the chassis)."""
-    lx, _ = LATCHES[1]
-    out = None
-    for dx, dy in ((-1.1, -1.1), (1.1, -1.1), (-1.1, 1.1), (1.1, 1.1)):
-        rod = cq.Workplane("XY").add(cq.Solid.makeCylinder(
+    out = []
+    for name, px, wy, (dx, dy) in _WIRES:
+        out.append((f"{name}_0", cq.Workplane("XY").add(cq.Solid.makeCylinder(
+            0.55, 70.0 - px, cq.Vector(lx + ls * px, YC + wy, 13.2),
+            cq.Vector(ls, 0, 0)))))
+        out.append((f"{name}_1", cq.Workplane("XY").add(cq.Solid.makeCylinder(
             0.55, 28.0, cq.Vector(lx + dx, YC + dy, 11.4),
-            cq.Vector(0, 0, 1)))
-        out = rod if out is None else out.union(rod)
+            cq.Vector(0, 0, 1)))))
     return out
 
 
@@ -510,6 +514,4 @@ def assembly_parts():
             ("pedal_detent_nub_1", pedal_detent_nub(lx_b, ls_b)),
             ("pedal_detent_nub_2", _lock_nub()),
             ("pedal_trrs_jack", _trrs_jack()),
-            ("pedal_trrs_plug", _trrs_plug()),
-            ("pedal_wire_0", _wire_bar()),
-            ("pedal_wire_1", _wire_leg())]
+            ("pedal_trrs_plug", _trrs_plug())] + _wire_runs()
