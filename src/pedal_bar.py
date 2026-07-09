@@ -34,12 +34,13 @@ the TRRS side, the leg would bend the barrel. The kick springs engage only
 over the last ~4.5 of opening, so holding the pads retracted while
 positioning the bar costs almost nothing.
 
-The plug (Same Sky SP-3541: Ø3.5 barrel + Ø4.5 lead ring + 5×5 pin body)
-sits in a cradle on the slider: the backstop pushes it in, the FRONT
-RETAINER wall (top-open Ø4.7 keyhole over the lead ring, bearing on the
-body's front face) pulls it out, the lid caps it. Its harness gets a ~15
-service loop in the latch cavity, then exits inboard toward the pedal
-electronics.
+The plug (Tensility CA-354S, factory-molded on its own shielded cable:
+Ø3.5×14 barrel + Ø10×12.6 handle + Ø6 spring relief) lies in a Ø10.4
+cradle channel on the slider: the rear wall backstops insertion, the
+FRONT wall (top-open Ø5.4 keyhole around the barrel, bearing on the
+handle's front face) pulls it out, the lid caps it. Its cable exits the
+rear keyhole through the latch cavity into the trough, cut + crimped into
+an XH housing at the first bar tee — no solder anywhere.
 
 SEGMENTED FOR THE 255×255 BED: two bar pieces (dovetail-splice + glue at
 XS, mid-trough; 322/292 — diagonal placement, (L+W)/√2 ≤ 255) and two lid
@@ -141,18 +142,27 @@ LOCK_X, LOCK_Y = LID_XB - 4.6, 7.6  # lid-lock detent nub: bar-top pocket; a
                                    # pieces: B butts A). No screws anywhere.
 
 # ── TRRS delta (-X foot only): the slider's plug cradle ─────────────────
-# Retracted (+15): barrel tip at 11 — the corridor (±10.2) is FULLY clear.
-# Parts (DigiKey): male = Same Sky SP-3541 (Ø3.5×14.5 barrel + Ø4.5×3 lead
-# ring that stays 0.5 proud of the mouth at the full 14 insertion; 5×5×8
-# body, 4 solder pins — carried pins-UP in the cradle, wires solder from
-# the open top before the lid slides on); female = Same Sky
-# SJ-43514-SMT-TR (14.0 mating depth; the no-switch 4-terminal variant —
-# we carry exactly 4 signals), embedded in legs.leg_shaft_trrs.
-# Seated (drawn): jack mouth at the shaft surface (x' 10), tip at -4.
+# Retracted (+15): barrel tip at 12 — the corridor (±10.2) is FULLY clear.
+# Parts (DigiKey; both FACTORY-CABLED — zero personal solder, cut + crimp):
+# male = Tensility CA-354S / 053-0113R (Ø3.5×14 barrel, Ø10×12.6 molded
+# handle, Ø6 spring strain relief, 1.83 m Ø3.7 shielded 26 AWG cable, ends
+# tinned; drawing wire code: A/tip=red, B/ring1=black, C/ring2=yellow,
+# D/sleeve=green); female = compact SMT jack (SJ-4351X-class from the LCSC
+# library, picked at PCB design) on the leg CARRIER PCB in
+# legs.leg_shaft_trrs.
+# Seated (drawn): jack mouth at the shaft face (x' 10), INSERTION 13.0 —
+# 1.0 shy of full 14 ON PURPOSE: fully seated, the handle front sits only
+# ~0.5 off the shaft face (no room for any retainer); at 13.0 the handle
+# front is at x' 11.5, so a 0.9 front wall fits between face and handle
+# and PULLS the plug out on retraction (withdrawal spec is up to 4 kgf).
+# Constraint carried to the carrier-PCB task: choose the jack so all four
+# contact bands engage by 13.0 insertion.
 TR_Z = 8.7                                 # connector axis (bar-local z)
-PLUG_TIP = -4.0                            # barrel tip (x', seated)
-BODY_X0, BODY_X1 = 13.5, 21.6              # SP-3541 body (5 × 5) in the cradle
-CRDL_X1 = 24.0                             # cradle backstop end
+TRRS_INS = 13.0                            # drawn insertion depth
+PLUG_TIP = 10.0 - TRRS_INS                 # barrel tip x' (seated) = -3.0
+HNDL_X0, HNDL_X1 = 11.5, 24.1              # Ø10 molded handle (seated)
+CRDL_X0, CRDL_X1 = 10.4, 26.1              # cradle prism (front wall to
+                                           # x' 11.3; rear wall from 24.3)
 
 
 def _slot_cutter(lx: float, square_ls: float = 0.0) -> cq.Workplane:
@@ -298,32 +308,38 @@ def pedal_bolt() -> cq.Workplane:
 
 def pedal_bolt_trrs() -> cq.Workplane:
     """-X foot slider, drawn CLOSED/SEATED: the SAME latch design with the
-    TRRS MOUNT grown on — bridge + open-top plug CRADLE for the SP-3541.
-    The plug drops in pins-UP (its Ø4.5 lead ring falls through the front
-    retainer's top-open keyhole; solder access from the open top before
-    the lid slides on): U-channel walls locate the 5-wide body, the
-    backstop pushes it in, the FRONT RETAINER wall bears on the body's
-    front face so retraction pulls it back out of the jack. At closed the
-    retainer sits 2.1 off the shaft; nothing enters the leg but the barrel.
-    An un-retracted install butts the shaft on the flat head and REFUSES
-    (no bevel) — it cannot bend the barrel."""
+    TRRS MOUNT grown on — bridge + open-top CRADLE for the CA-354S's Ø10
+    molded handle. The plug DROPS IN from the open roof (both end walls
+    carry top-open KEYHOLES: Ø5.4 for the barrel, Ø6.8 for the spring
+    relief), the handle lies in a Ø10.4 half-channel, the FRONT wall bears
+    on the handle's front face so retraction pulls the plug out of the
+    jack (≤4 kgf withdrawal), the REAR wall backstops insertion via the
+    handle's rear face, and the lid caps the roof. Zero fasteners, zero
+    solder — the cable exits the rear keyhole into the trough. At closed
+    the front wall sits 0.4 off the shaft face; nothing enters the leg but
+    the barrel. An un-retracted install butts the shaft on the flat head
+    and REFUSES (no bevel) — it cannot bend the barrel."""
     lx, ls = LATCHES[1]
     body = _bolt_core(lx, ls)
     # bridge: bolt body band → cradle wall
     body = body.union(box_at(8.0, 6.0, 8.0,
                              x=lx + ls * 16.0, y=YC - 6.6, z=TR_Z))
-    # cradle — SUBTRACTIVE (one prism, hollowed; additive walls made wonky
-    # sliver geometry): box → open-roof middle cut for the 5×5 body →
-    # Ø4.8 hole in the -x wall that passes the barrel + Ø4.5 lead ring but
-    # NOT the body. That wall bears on the body's front face (0.2) so
-    # retraction PULLS the plug out of the jack; the +x wall is the
-    # backstop. Assembly: thread the barrel through the hole (slight
-    # tilt), lower the body in, solder from the open roof; the lid caps it.
-    crdl = box_at(12.0, 8.8, 9.0, x=lx + ls * 17.9, y=YC, z=8.4)
-    crdl = crdl.cut(box_at(8.5, 5.5, 7.6, x=lx + ls * 17.55, y=YC, z=9.9))
-    crdl = crdl.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        2.4, 3.0, cq.Vector(lx + ls * 11.4, YC, TR_Z), cq.Vector(ls, 0, 0))))
-    body = body.union(crdl)
+    # cradle — SUBTRACTIVE (prism + bridge united FIRST, then hollowed as
+    # one body — the fat Ø10 handle also sweeps through the bridge's inner
+    # corner): Ø10.4 handle channel between the walls → open roof over the
+    # channel → keyhole (cylinder + top slot) through each wall
+    body = body.union(box_at(CRDL_X1 - CRDL_X0, 12.0, 11.4,
+                             x=lx + ls * (CRDL_X0 + CRDL_X1) / 2,
+                             y=YC, z=8.5))
+    body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        5.2, 13.0, cq.Vector(lx + ls * 11.3, YC, TR_Z), cq.Vector(ls, 0, 0))))
+    body = body.cut(box_at(13.0, 10.4, 5.7, x=lx + ls * 17.8, y=YC, z=11.45))
+    body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        2.7, 1.3, cq.Vector(lx + ls * 10.2, YC, TR_Z), cq.Vector(ls, 0, 0))))
+    body = body.cut(box_at(1.3, 5.4, 5.7, x=lx + ls * 10.85, y=YC, z=11.45))
+    body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        3.4, 2.4, cq.Vector(lx + ls * 24.1, YC, TR_Z), cq.Vector(ls, 0, 0))))
+    body = body.cut(box_at(2.4, 6.8, 5.7, x=lx + ls * 25.3, y=YC, z=11.45))
     return body
 
 
@@ -436,14 +452,14 @@ def nub_part() -> cq.Workplane:
 
 
 def _trrs_jack() -> cq.Workplane:
-    """DEMO leg-side female jack — Same Sky SJ-43514-SMT-TR (DigiKey; the
-    NO-SWITCH 4-terminal variant of the SJ-4351X family — we carry exactly
-    4 signals; the -6's extra tip/ring plug-detect switches were unused).
-    ~14.5×6×5 housing, 14.0 mating depth: mating axis X, mouth flush at the
-    shaft's inboard face, Ø3.6 way. FOUR gull-wing SMT terminals (2×3 pads,
-    0.2-0.3 metal) staggered along both sides at the base — the wires
-    solder to these tabs (the shaft pocket carries a widened band at the
-    tab plane to clear them)."""
+    """DEMO leg-side female jack — PLACEHOLDER at SJ-4351X-class dims
+    (~14.5×6×5 housing, 14.0 mating depth, 4 gull-wing SMT terminals):
+    the real part is a compact SMT jack from the LCSC library, picked at
+    PCB design so it factory-assembles on the leg CARRIER PCB (no
+    consignment). Constraint from the cradle: all four contact bands must
+    engage by 13.0 insertion. Mating axis X, mouth flush at the shaft's
+    inboard face, Ø3.6 way. (Carrier PCB + its cable connection are the
+    next design package, together with the chassis-side blind-mate.)"""
     lx, ls = LATCHES[1]
     j = box_at(14.5, 6.0, 5.0, x=lx + ls * (10.0 - 14.5 / 2), y=YC, z=TR_Z)
     j = j.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
@@ -463,81 +479,47 @@ def _trrs_jack() -> cq.Workplane:
 
 
 def _trrs_plug() -> cq.Workplane:
-    """DEMO bar-side male plug — Same Sky SP-3541 (DigiKey; Ø3.5×11.5
-    barrel + Ø4.5×3 lead + 5×5×12.1 body, 4 solder pins), drawn SEATED:
-    tip at x' -4 (full 14 insertion), body in the cradle pins-UP, wire stub
-    over the backstop with its service loop implied."""
+    """DEMO bar-side male plug — Tensility CA-354S (DigiKey; factory
+    plug-on-cable: Ø3.5×14 barrel, Ø10×12.6 molded handle, Ø6 spring
+    strain relief), drawn SEATED at 13.0 insertion (tip x' -3 — see the
+    TRRS block note on the deliberate 1.0 shortfall)."""
     lx, ls = LATCHES[1]
     p = cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        1.75, 14.5, cq.Vector(lx + ls * 10.5, YC, TR_Z), cq.Vector(-ls, 0, 0)))
+        1.75, 14.5, cq.Vector(lx + ls * HNDL_X0, YC, TR_Z),
+        cq.Vector(-ls, 0, 0)))
     p = p.union(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        2.25, 3.0, cq.Vector(lx + ls * BODY_X0, YC, TR_Z), cq.Vector(-ls, 0, 0))))
-    p = p.union(box_at(BODY_X1 - BODY_X0, 5.0, 5.0,
-                       x=lx + ls * (BODY_X0 + BODY_X1) / 2, y=YC, z=TR_Z))
-    # solder pins facing UP, per the SP-3541 drawing: blade pins in the
-    # order Sleeve | Ring 2 | Ring 1 | Tip from the barrel, at
-    # 1.9/1.7/1.7 pitch (sleeve nearest the jack)
-    for px in (15.0, 16.9, 18.6, 20.3):
-        p = p.union(box_at(0.3, 1.0, 2.5, x=lx + ls * px, y=YC,
-                           z=TR_Z + 2.5 + 1.25))
+        5.0, HNDL_X1 - HNDL_X0, cq.Vector(lx + ls * HNDL_X0, YC, TR_Z),
+        cq.Vector(ls, 0, 0))))
+    p = p.union(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        3.0, 16.0, cq.Vector(lx + ls * HNDL_X1, YC, TR_Z),
+        cq.Vector(ls, 0, 0))))
     return p
 
 
-# the four TRRS conductors — 28 AWG (Ø1.1 insulated; the smallest gauge
-# already in the cabinet — the CAN stub is far too short for 28 AWG to
-# matter and the sensor supply is mA-level). Per the wiring policy each is
-# its OWN NAMED WIRE with its own shade of the 28 AWG amber family, and the
-# CAD *is* the wiring guide — every run connects its REAL terminals.
-#
-# SIGNAL PLAN (soldering reference):
-#   GND  = SLEEVE (jack pin 1; mates FIRST on insertion — ground-first)
-#   CANH = TIP    (jack pin 2; the jack's REAR terminal)
-#   CANL = RING 1 (jack pin 3)
-#   PWR  = RING 2 (jack pin 4)
-# Plug pins (SP-3541 drawing): Sleeve|Ring2|Ring1|Tip from the barrel at
-# 1.9/1.7/1.7 pitch. Jack tabs (SJ-4351X drawing): sleeve + ring 1 on one
-# side, ring 2 opposite, tip out the rear face.
-# (name, plug-pin x', bar-run y lane, jack tab attach (x', y),
-#  gallery riser (x', y), bore slot (dx, dy))
-_WIRES = (
-    ("pedal_wire_gnd",  15.0,  1.8, (6.5, 4.7),   (2.2, 4.7),   (1.1, 1.1)),
-    ("pedal_wire_pwr",  16.9,  0.6, (5.5, -4.2),  (1.0, -4.2),  (1.1, -1.1)),
-    ("pedal_wire_canl", 18.6, -0.6, (3.7, 3.5),   (0.0, 3.5),   (-1.1, 1.1)),
-    ("pedal_wire_canh", 20.3, -1.8, (-5.5, 0.0),  (-5.5, 0.0),  (-1.1, -1.1)))
+# SIGNAL PLAN (crimping reference at the tees/carrier; the four conductors
+# now live inside the CA-354S's factory jacket — drawing wire colours):
+#   CANH = TIP    (CA-354S wire A, RED)
+#   CANL = RING 1 (wire B, BLACK)
+#   PWR  = RING 2 (wire C, YELLOW)
+#   GND  = SLEEVE (wire D, GREEN; mates FIRST on insertion — ground-first.
+#                  The cable SHIELD ties to GND at the cabinet-side XH
+#                  only; trim it flush at the bar end.)
 
 
-def _chain(lx, ls, pts):
-    """A wire as a chain of Ø1.1 rods through (x', y-off, z) waypoints."""
-    out = None
-    for a, b in zip(pts[:-1], pts[1:]):
-        pa = cq.Vector(lx + ls * a[0], YC + a[1], a[2])
-        v = cq.Vector(lx + ls * b[0], YC + b[1], b[2]) - pa
-        if v.Length < 1e-6:
-            continue
-        rod = cq.Workplane("XY").add(cq.Solid.makeCylinder(0.55, v.Length,
-                                                           pa, v))
-        out = rod if out is None else out.union(rod)
-    return out
-
-
-def _wire_runs():
-    """DEMO wires routed pin-to-terminal (the routing is both the wiring
-    guide and the clearance proof). Bar side: from ITS plug pin, rise over
-    the pin row, fan to its lane, run through the latch cavity (the ~15
-    service loop lives here) into the wiring trough. Leg side: from ITS
-    jack tab (side tabs via the terminal band, the tip via the rear
-    channel), rise in the WIRE GALLERY, cross over the jack body, and up
-    the Ø6 centre bore (stub — continues inside the sleeve/segments to the
-    chassis)."""
+def _cable_runs():
+    """DEMO cables (Ø3.7 shielded 4-conductor factory jackets — per-wire
+    colours reappear at the crimped XH pigtails, not here). Bar: the
+    cradle plug's cable from its spring relief through the latch cavity
+    into the trough (cut + crimped into an XH housing at the first bar
+    tee). Leg: the SECOND CA-354S rising from the leg carrier PCB up the
+    Ø6 centre bore toward the column top (stub — the chassis-side
+    blind-mate is the next design package)."""
     lx, ls = LATCHES[1]
-    out = []
-    for name, px, wy, (tx, ty), (rx, ry), (dx, dy) in _WIRES:
-        out.append((f"{name}_0", _chain(lx, ls, [
-            (px, 0.0, 13.6), (px + 1.4, wy, 14.35), (70.0, wy, 14.35)])))
-        out.append((f"{name}_1", _chain(lx, ls, [
-            (tx, ty, 6.45), (rx, ry, 6.45), (rx, ry, 12.4),
-            (dx, dy, 12.4), (dx, dy, 39.0)])))
-    return out
+    bar = cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        1.85, 30.0, cq.Vector(lx + ls * 40.0, YC, TR_Z), cq.Vector(ls, 0, 0)))
+    leg = cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        1.85, 27.0, cq.Vector(lx, YC, 12.0), cq.Vector(0, 0, 1)))
+    return [("pedal_trrs_cable_bar", bar), ("pedal_trrs_cable_leg", leg)]
 
 
 def assembly_parts():
@@ -556,4 +538,4 @@ def assembly_parts():
             ("pedal_detent_nub_1", pedal_detent_nub(lx_b, ls_b)),
             ("pedal_detent_nub_2", _lock_nub()),
             ("pedal_trrs_jack", _trrs_jack()),
-            ("pedal_trrs_plug", _trrs_plug())] + _wire_runs()
+            ("pedal_trrs_plug", _trrs_plug())] + _cable_runs()
