@@ -45,7 +45,11 @@ from .helpers import box_at, cyl, cyl_y, heal
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "freecad"))
 from fasteners import (M2_SELFTAP_D, M4_SHAFT_CLR_D, M4_INSERT_D,  # noqa: E402
-                       M4_INSERT_L, M4_SCREW_L)
+                       M4_INSERT_L, M4_SCREW_L,
+                       cut_m4_pocket, seated_m4_insert, cut_m4_boss, m4_boss_insert)
+# the M4 insert pocket/boss helpers now live in freecad/fasteners.py (shared); keep the old local names:
+_insert_pocket, _seated_insert = cut_m4_pocket, seated_m4_insert
+_insert_boss_cut, _insert_dummy = cut_m4_boss, m4_boss_insert
 
 # ── bought parts (assembly dummies). REUSE existing line items where possible so they buy in
 # bulk: MR85ZZ bearings + the M4×10 cup-tip set screws + M4 heat-set inserts are ALL already in
@@ -637,47 +641,8 @@ def _hs_clamp_pt(yc, dx):
     return ((HS_BODY_BX + HS_GPOST_BX) / 2 + dx, inboard, HS_FLOOR_Z)
 
 
-_INS_BOSS_PROT = 6.0                # how far the insert boss protrudes past the (too-thin) wall
-
-
-def _oriented(s, axis, deg, pt):
-    return s.rotate((0, 0, 0), axis, deg).translate(pt)
-
-
-def _insert_boss_cut(w, pt, axis, deg, clr_len=(M4_SCREW_L - M4_INSERT_L) + 2.0):
-    """Add a STANDARD Ø6×5-insert boss along a screw axis where the local wall is too thin: a protruding
-    Ø(6+2) boss to host the insert, the Ø6×5 insert pocket at the -axis (entry) face, and Ø4.4 shaft
-    clearance running +axis to the working tip. `axis`,`deg` rotate local +Z (toward the tip) onto the
-    screw axis; `pt` is the axis origin (local z=0, the wall face). Shared by the angled cartridge clamp
-    and the vertical retention screw -- returns the modified housing.
-    clr_len defaults to the screw's PROTRUDING reach only (screw len - insert engagement + 2 mm cup
-    margin); a longer bore punches out the far wall past the cup (e.g. the +Y cartridge housing)."""
-    bp = _INS_BOSS_PROT
-    w = w.union(_oriented(cyl(M4_INSERT_D + 2.0, bp, z=-bp), axis, deg, pt))
-    w = w.cut(_oriented(cyl(M4_INSERT_D, M4_INSERT_L, z=-bp), axis, deg, pt))
-    w = w.cut(_oriented(cyl(SCREW_CLR, clr_len, z=-bp + M4_INSERT_L), axis, deg, pt))
-    return w
-
-
-def _insert_dummy(pt, axis, deg):
-    """The Ø6×5 insert TUBE dummy seated in an _insert_boss_cut pocket (call with the SAME pt/axis/deg)."""
-    return _oriented(C.m4_insert().translate((0, 0, -_INS_BOSS_PROT + M4_INSERT_L)), axis, deg, pt)
-
-
-# --- flat-wall insert (no boss): a matched pocket/dummy PAIR --------------------------------------
-# Both take the SAME (mouth_pt, axis, deg) and both derive their size from M4_INSERT_D / M4_INSERT_L,
-# so the pocket depth ALWAYS equals the insert thickness and the fitted insert ALWAYS seats flush
-# against the depth lip -- there is no per-call depth/diameter to drift. `axis`,`deg` rotate local +Z
-# (the insertion direction, INTO the material) onto the bore axis; `mouth_pt` is the wall face the
-# insert enters at. (_insert_boss_cut / _insert_dummy are the equivalent pair when a boss must host it.)
-def _insert_pocket(w, mouth_pt, axis, deg):
-    """Cut the STANDARD Ø(M4_INSERT_D) x M4_INSERT_L heat-set pocket, mouth at `mouth_pt`, bore +axis."""
-    return w.cut(_oriented(cyl(M4_INSERT_D, M4_INSERT_L, z=0), axis, deg, mouth_pt))
-
-
-def _seated_insert(mouth_pt, axis, deg):
-    """The insert dummy seated FLUSH in an _insert_pocket -- fills the same z=0..L span (SAME args)."""
-    return _oriented(C.m4_insert().translate((0, 0, M4_INSERT_L)), axis, deg, mouth_pt)
+# (the M4 insert pocket/boss geometry -- _insert_pocket/_seated_insert/_insert_boss_cut/_insert_dummy --
+#  now lives in freecad/fasteners.py and is aliased in at the top of this file.)
 
 
 def _hs_block(yc, x0, x1):
