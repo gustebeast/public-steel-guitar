@@ -45,7 +45,7 @@ from .helpers import box_at, cyl, cyl_y, heal
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "freecad"))
 from fasteners import (M2_SELFTAP_D, M4_SHAFT_CLR_D, M4_INSERT_D,  # noqa: E402
-                       M4_INSERT_L, M4_SCREW_L,
+                       M4_INSERT_L, M4_SCREW_L, M4, cut_insert_bore,
                        cut_m4_pocket, seated_m4_insert, cut_m4_boss, m4_boss_insert)
 # the M4 insert pocket/boss helpers now live in freecad/fasteners.py (shared); keep the old local names:
 _insert_pocket, _seated_insert = cut_m4_pocket, seated_m4_insert
@@ -576,11 +576,13 @@ def _half_stop_cart_base() -> cq.Workplane:
     # Ø6 body in Y (window < body). The tongue rides up through it as the lobe rises over the throw
     base = base.cut(box_at(HS_BODY_X0 - HS_FRONT + 0.1, HS_WIN_WY, FOLL_H + 1.0,
                            x=(HS_FRONT + HS_BODY_X0) / 2, y=HS_YC, z=HS_Z + FOLL_DZ))
-    # rear M4 heat-set insert (tension screw, opens +X) + Ø4.4 shaft clearance from the insert to the
-    # guide-post cup face: the screw threads the insert and its cup pushes the guide post -> coil preload
-    base = _insert_pocket(base, (HS_BACK_X, HS_YC, HS_Z), (0, 1, 0), -90)
-    base = base.cut(cyl(SCREW_CLR, HS_BACK_X - HS_GPOST_BX, z=HS_GPOST_BX)
-                    .rotate((0, 0, 0), (0, 1, 0), 90).translate((0, HS_YC, HS_Z)))
+    # rear M4 insert_bore (tension SET SCREW, opens +X): Ø6×5 melt pocket + Ø4.4 shaft clearance running -X
+    # to the guide-post cup face. The screw threads the insert and its cup pushes the guide post -> coil
+    # preload; the shaft-clearance beyond the pocket is the sanctioned insert-bore deviation (set screws
+    # must never self-tap -- they hold load), reason recorded in-line.
+    base = cut_insert_bore(M4, base, (HS_BACK_X, HS_YC, HS_Z), (-1, 0, 0),
+                           clr_len=HS_BACK_X - HS_GPOST_BX - M4_INSERT_L,
+                           reason="tension set screw: cup drives the guide post through the shaft clearance")
     return heal(base)
 
 
@@ -766,9 +768,12 @@ def _housing() -> cq.Workplane:
     _mort = (_ctree_prism_y(RAIL_X[0], TEN_LY0, TEN_Y1, grow=MORT_CLR)
              .intersect(box_at(400, 500, 400, z=YOKE_Z1 - 200)))     # near-rail mortise (z <= yoke top)
     w = w.cut(_mort)                                                 # re-cut it THROUGH the boss
-    w = w.cut(cyl(M4_INSERT_D, M4_INSERT_L, z=_ins_bot).translate((RETAIN_X, RETAIN_Y, 0)))       # Ø6×5 insert
-    w = w.cut(cyl(SCREW_CLR, (YOKE_Z1 + 2) - RETAIN_INS_TOP, z=RETAIN_INS_TOP)
-              .translate((RETAIN_X, RETAIN_Y, 0)))                   # Ø4.4 shaft clearance up to the rib
+    # insert_bore up the boss: Ø6×5 melt pocket + Ø4.4 clearance to the rib (set screw presses the far rib;
+    # sanctioned insert-bore deviation). The Ø8 boss above is a STRUCTURAL feature (full-height, mortise
+    # re-cut through it), so it stays hand-rolled -- only the pocket+clearance route through the spec.
+    w = cut_insert_bore(M4, w, (RETAIN_X, RETAIN_Y, _ins_bot), (0, 0, 1),
+                        clr_len=(YOKE_Z1 + 2) - RETAIN_INS_TOP,
+                        reason="retention set screw: cup presses the far chassis rib through the shaft clearance")
     w = heal(w)                                                     # heal EVERYTHING except the threads...
     # ...then cut the two FEMALE back-stop threads LAST and ALONE (thread rules: clean=False, and NEVER
     # heal a threaded part). Nominal thread; the printed screw carries the clearance (HS_TH_CLR). A short
