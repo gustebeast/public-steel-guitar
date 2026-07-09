@@ -107,6 +107,7 @@ GLOBAL_OK = {
     # leg_shaft_trrs variant); the slider-carried plug reaches into it
     frozenset({"pedal_trrs_jack", "leg_shaft"}),
     frozenset({"pedal_trrs_plug", "leg_shaft"}),
+    frozenset({"pedal_leg_carrier", "leg_shaft"}),
     # the leg-column TRRS cable up the shaft's Ø6 hollow centre
     frozenset({"pedal_trrs_cable_leg", "leg_shaft"}),
     # leg↔body TRRS blind-mate: jack seated in the socket way (slug atop),
@@ -131,6 +132,7 @@ GLOBAL_OK = {
 PEDAL_FAMILY = {"pedal_bar_a", "pedal_bar_b", "pedal_lid_a", "pedal_lid_b",
                 "pedal_bolt", "pedal_bolt_trrs", "pedal_latch_finger",
                 "pedal_detent_nub", "pedal_trrs_jack", "pedal_trrs_plug",
+                "pedal_leg_carrier",
                 "pedal_trrs_cable_bar", "pedal_trrs_cable_leg"}
 
 
