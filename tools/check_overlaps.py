@@ -158,6 +158,9 @@ def intended(na, nb) -> bool:
     # the electronics tray's tabs rest on their channel floors
     if frozenset({base(na), base(nb)}) == frozenset({"electronics_tray", "chassis"}):
         return True
+    # bus tee PCBs mount flat on the chassis floor (christmas-tree boss TBD)
+    if frozenset({base(na), base(nb)}) == frozenset({"tee_pcb", "chassis"}):
+        return True
     # top deck plates ride the rail grooves, abut each other (mortise/tenon),
     # carry the OLED + joystick, and the pickup pokes through the open slot.
     # Each panel is a base + colour-layer PAIR (top_plate_N / top_plate_color_N)
