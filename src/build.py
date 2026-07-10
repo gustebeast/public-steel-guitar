@@ -427,7 +427,8 @@ def _leg_components():
                               top - LG.SEG_BODY_L)))
                 if wired:
                     out.append((f"leg_lid_{j}",
-                                R(lid.translate((0, LG.SQ_W / 2 - 1.9, 0)),
+                                R(lid.rotate((0, 0, 0), (0, 0, 1), -90)
+                                  .translate((LG.SQ_W / 2 - 1.9, 0, 0)),
                                   top - LG.SEG_BODY_L)))
                 top -= LG.SEG_BODY_L
             out.append((f"leg_sleeve_{k}", R(sleeve, top)))
