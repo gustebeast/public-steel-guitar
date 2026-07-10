@@ -21,11 +21,10 @@ from functools import partial
 
 import cadquery as cq
 
-# Shared FreeCAD viewer helper (Archive/3D/freecad). show() makes the build's
-# output viewable — opens or refreshes its tab in the FreeCAD hub. Never raises.
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "freecad"))
-from freecad_view import show
-from step_export import export_step
+# Shared CAD utilities, vendored at <project>/cadkit (git subtree). show() makes the
+# build's output viewable — opens/refreshes its tab in the FreeCAD hub. Never raises.
+from cadkit.freecad import show
+from cadkit.step_export import export_step
 
 from . import dimensions as D
 from .helpers import heal

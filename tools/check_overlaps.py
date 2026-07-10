@@ -31,8 +31,7 @@ import pathlib
 import re
 import sys
 
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "freecad"))
-from overlap_check import run                     # noqa: E402  (shared engine)
+from cadkit.overlap_check import run              # shared engine
 
 WIRE_OK = None      # set in main() (src.wiring needs src.build imported first)
 
