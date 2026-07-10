@@ -363,6 +363,8 @@ WIRE_OK = {
     "leg_column_cable": {"leg_socket", "leg_segment", "leg_sleeve",
                          "leg_shaft", "leg_washer", "leg_column_plug",
                          "leg_plug_retainer", "leg_cable_coil",
+                         "leg_latch_head", "leg_coupler_m", "leg_coupler_f",
+                         "leg_seg_body", "leg_lid",
                          # the shaft-side model of the SAME physical
                          # CA-354S — they abut inside the shaft channel
                          "pedal_trrs_cable_leg"},
