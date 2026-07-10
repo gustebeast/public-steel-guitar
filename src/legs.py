@@ -535,24 +535,28 @@ PUCK_PLUG_L = 20.0             # coupler glue plug depth into the core
 CH_MOUTH, CH_DEEP = 6.0, 7.0   # face cable channel (lidded; Ø3.7 + slack)
 
 
-def _sq_body(length: float) -> cq.Workplane:
+def _sq_body(length: float, channel: bool = False) -> cq.Workplane:
     """Square leg body stock: 44×44×length, hollow 32-square core (prints
     lying on a face — the crown of the core self-supports via its 45°
-    corner chamfers), face CABLE CHANNEL in the +Y wall (the clocking
-    lands it on the hidden inboard diagonal) with a 45° dovetail LID seat
-    (pedal-bar lid pattern: slide in along Z, TPU nub, no screws).
-    Z0 = bottom."""
+    corner chamfers). channel=True (the WIRED leg's bodies ONLY — user:
+    legs are otherwise identical) adds the +Y face CABLE CHANNEL with the
+    45° dovetail LID seat (pedal-bar pattern: slide along Z, TPU nub, no
+    screws) and a core DIVE hole near each end (cable → core at the
+    sleeve joint below and at the latch head above). Z0 = bottom."""
     b = box_at(SQ_W, SQ_W, length, z=length / 2)
     b = b.cut(box_at(SQ_CORE, SQ_CORE, length + 2, z=length / 2))
-    hw, yf = CH_MOUTH / 2, SQ_W / 2
-    # one XY profile, extruded the full length: channel slot (to depth 7)
-    # + dovetail lid seat (1.9 deep, flanks flaring 45° at the surface)
-    b = b.cut(cq.Workplane("XY")
-              .polyline([(-hw, yf - CH_DEEP), (hw, yf - CH_DEEP),
-                         (hw, yf - 1.9), (hw + 3.5, yf - 1.9),
-                         (hw + 1.6, yf + 0.1), (-hw - 1.6, yf + 0.1),
-                         (-hw - 3.5, yf - 1.9), (-hw, yf - 1.9)])
-              .close().extrude(length + 2).translate((0, 0, -1)))
+    if channel:
+        hw, yf = CH_MOUTH / 2, SQ_W / 2
+        b = b.cut(cq.Workplane("XY")
+                  .polyline([(-hw, yf - CH_DEEP), (hw, yf - CH_DEEP),
+                             (hw, yf - 1.9), (hw + 3.5, yf - 1.9),
+                             (hw + 1.6, yf + 0.1), (-hw - 1.6, yf + 0.1),
+                             (-hw - 3.5, yf - 1.9), (-hw, yf - 1.9)])
+                  .close().extrude(length + 2).translate((0, 0, -1)))
+        for dz in (24.0, length - 24.0):     # channel-floor dive holes
+            b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+                2.75, CH_DEEP + 2.0, cq.Vector(0, SQ_W / 2 + 0.5, dz),
+                cq.Vector(0, -1, 0))))
     # coupler retention screws (user rule: the snug square JOINERY carries
     # every load; ONE M4 per coupler only prevents extraction the way it
     # went in — no glue, no press fit). Ø4.5 clearance through the -Y
@@ -565,10 +569,16 @@ def _sq_body(length: float) -> cq.Workplane:
 
 
 def leg_seg_body() -> cq.Workplane:
-    """PETG-GF square segment BODY (prints LYING on the -Y face — layer
-    lines along the leg). Takes one male + one female thread coupler,
-    glued into the square core ends."""
+    """PETG-GF square segment BODY ×6 (the plain legs; prints LYING on a
+    face — layer lines along the leg). Takes one male + one female thread
+    coupler, M4-retained in the square core ends."""
     return _sq_body(SEG_BODY_L)
+
+
+def leg_seg_body_ch() -> cq.Workplane:
+    """PETG-GF square segment BODY, CHANNELED ×2 (the wired -X/+Y leg
+    only): + the lidded face cable channel and core dive holes."""
+    return _sq_body(SEG_BODY_L, channel=True)
 
 
 def leg_coupler_m() -> cq.Workplane:
@@ -631,6 +641,164 @@ def leg_lid() -> cq.Workplane:
                        (hw + 1.5, 0.0), (-hw - 1.5, 0.0)])
             .close().extrude(SEG_BODY_L - 0.6)
             .translate((0, 1.8, 0.3)))
+
+
+# ── stage 2: seatbelt-latch top joint (all mechanism ON the leg) ────────
+SQS_OUT = 52.0                 # passive socket outer square
+SQS_WAY = 36.4                 # socket way (spigot 36.0 + 0.4)
+SQS_DEPTH = 50.0               # mouth at z -50 (socket-local, 0 = rail
+                               # bottom); way roof at -8
+SPG_W, SPG_L = 36.0, 40.0      # latch-head spigot (geometric clocking:
+                               # one 6×45° keyed corner)
+HEAD_BODY_L = 30.0             # head body below the 50-sq shoulder plate
+# latch: bolt in the spigot's +y (inboard-placed) face; ledge pocket in
+# the socket way wall. Washer preload pushes the head DOWN onto the
+# pocket floor = zero play. Bolt/button drawn as functional dummies —
+# the 35° wedge coupling + TPU return finger detail at refinement.
+BOLT_W, BOLT_H, BOLT_X = 12.0, 8.0, -12.0
+LEDGE_Z = -22.2                # pocket floor (socket-local) = retention
+
+
+def leg_washer_sq() -> cq.Workplane:
+    """TPU square gland washer ×4 (top joint): 44 sq × 2.5, 37-sq hole —
+    lives in the socket mouth's 2.0-deep recess, squeezed 2.5→2.0 when
+    the head's 50-sq shoulder plate hits the mouth face (defined
+    compression, same rule as the threaded joints). Z0 = bottom."""
+    return (box_at(44.0, 44.0, 2.5, z=1.25)
+            .cut(box_at(37.0, 37.0, 4.0, z=1.25)))
+
+
+def _sq_socket_core() -> cq.Workplane:
+    """Shared passive square socket: 52-sq barrel below the rail, square
+    way + keyed corner, gland recess, latch LEDGE pocket (+y way wall),
+    dovetail tenon on top (chassis interface unchanged). Socket-local:
+    z0 = rail bottom."""
+    body = box_at(SQS_OUT, SQS_OUT, SQS_DEPTH, z=-SQS_DEPTH / 2)
+    # tenon (same joinery as the round socket — copied placement)
+    c = 0.3
+    tenon = (cq.Workplane("XY")
+             .polyline([(-(DT_FACE_HW - c), -4.0), (DT_FACE_HW - c, -4.0),
+                        (DT_DEEP_HW - 2 * c, -c), (-(DT_DEEP_HW - 2 * c), -c)])
+             .close().extrude(DT_H + DT_DEPTH))
+    keep = (cq.Workplane("YZ")
+            .polyline([(-5.0, 0.0), (-5.0, DT_H + 4.7), (1.0, DT_H - 1.3),
+                       (1.0, 0.0)])
+            .close().extrude(2 * DT_DEEP_HW + 4)
+            .translate((-(DT_DEEP_HW + 2), 0, 0)))
+    body = body.union(tenon.intersect(keep).mirror("XZ"))
+    # square way (keyed corner: the +x/+y corner carries a 6×45° fill —
+    # the spigot's matching chamfer admits ONE orientation)
+    way = box_at(SQS_WAY, SQS_WAY, SQS_DEPTH - 8.0,
+                 z=-(SQS_DEPTH + 8.0) / 2 + 0.0)
+    way = way.cut(cq.Workplane("XY")
+                  .polyline([(SQS_WAY / 2 - 6.2, SQS_WAY / 2),
+                             (SQS_WAY / 2, SQS_WAY / 2),
+                             (SQS_WAY / 2, SQS_WAY / 2 - 6.2)])
+                  .close().extrude(SQS_DEPTH)
+                  .translate((0, 0, -SQS_DEPTH - 1)))
+    body = body.cut(way)
+    # gland recess in the mouth face (44.6 sq × 2 deep, washer 44 sq)
+    body = body.cut(box_at(44.6, 44.6, 2.0, z=-SQS_DEPTH + 1.0)
+                    .cut(box_at(SQS_WAY - 0.4, SQS_WAY - 0.4, 4.0,
+                                z=-SQS_DEPTH + 1.0)))
+    # latch LEDGE pocket in the +y way wall (bolt noses in; its underside
+    # bears on the pocket floor = the retention/preload face)
+    body = body.cut(box_at(BOLT_W + 2.0, 3.7, 9.0,
+                           x=BOLT_X, y=SQS_WAY / 2 + 1.75,
+                           z=LEDGE_Z + 4.5))
+    return body
+
+
+def leg_socket_sq() -> cq.Workplane:
+    """Passive square latch socket ×3 (plain legs). PETG-GF (glued into
+    the rail; sustained ground-reaction path)."""
+    return _sq_socket_core()
+
+
+def leg_socket_sq_trrs() -> cq.Workplane:
+    """Passive square latch socket ×1 (the -X/+Y WIRED leg): + the
+    vertical chassis-jack way re-hosted from the round design — Ø9.7
+    coaxial way, mouth-seat boss hanging under the way roof (jack mouth
+    -9.3, plug tip +3.7 at seat = 13.0 insertion), tenon cable channel.
+    The chassis web bore + slug + 10-03404 carry over unchanged."""
+    body = _sq_socket_core()
+    body = body.union(cyl(13.0, 4.0, z=-9.9))       # mouth-seat boss (into
+    #                                                 the way-roof material)
+    body = body.cut(cyl(4.8, 1.4, z=-10.0))         # barrel way thru ring
+    body = body.cut(cyl(9.7, 53.0, z=-9.3))         # jack way, open to top
+    body = body.cut(box_at(4.4, 8.5, 9.0, y=4.25, z=35.5))   # cable channel
+    return body
+
+
+def leg_latch_head() -> cq.Workplane:
+    """LATCH HEAD ×4 (PCTG, prints standing — thread + mechanism quality):
+    the leg's top piece. Bottom = the SAME female thread joint (gland +
+    rim + Ø36/30 thread) taking any segment's male coupler; middle = the
+    50-sq shoulder PLATE (hard stop on the socket mouth, washer under
+    it); top = the 36-sq keyed SPIGOT with the bolt channel, recessed
+    seatbelt BUTTON pocket on the body's inboard face (x -14 — beside
+    the cable channel at x 0), captive TRRS plug seat (Ø11 + Ø9.4 lip;
+    leg_plug_retainer presses beneath) and Ø14 cable way. Local z0 =
+    shoulder-plate TOP (mounted at socket mouth -50)."""
+    b = box_at(50.0, 50.0, 4.0, z=-2.0)                       # shoulder plate
+    b = b.union(box_at(SQ_W, SQ_W, HEAD_BODY_L, z=-4.0 - HEAD_BODY_L / 2))
+    spig = box_at(SPG_W, SPG_W, SPG_L, z=SPG_L / 2)
+    spig = spig.cut(cq.Workplane("XY")                        # keyed corner
+                    .polyline([(SPG_W / 2 - 6.0, SPG_W / 2),
+                               (SPG_W / 2, SPG_W / 2),
+                               (SPG_W / 2, SPG_W / 2 - 6.0)])
+                    .close().extrude(SPG_L + 2).translate((0, 0, -1)))
+    b = b.union(spig)
+    # female thread joint at the bottom (mirrors coupler_f/leg_segment)
+    zm = -4.0 - HEAD_BODY_L                                   # mouth face
+    b = b.cut(cyl(SQ_W + 4, GLAND_DEPTH + 0.5, z=zm - 0.5)
+              .cut(cyl(GLAND_ID, GLAND_DEPTH + 2, z=zm - 1)))
+    b = b.cut(cyl(TH_MINOR + TH_CLR, TH_LEN + 1, z=zm - 1))
+    b = b.cut(_thread((TH_MINOR - TH_CLR) / 2, TH_LEN + 1 + TH_LEAD,
+                      clr=0.8, phase_deg=60.0)
+              .translate((0, 0, zm - 1 - TH_LEAD)))
+    # TRRS plug seat + cable way down the centre
+    b = b.cut(cyl(9.4, 1.5, z=SPG_L - 0.5))                   # tip lip way
+    b = b.cut(cyl(11.0, SPG_L - 0.5 - 8.0, z=8.0))            # handle way
+    b = b.cut(cyl(14.0, 8.0 + HEAD_BODY_L - TH_LEN + 2.0,
+                  z=zm + TH_LEN - 1.0))                       # cable way
+    # (NO face channel — user: only the wired leg's SEGMENTS carry the
+    # channel; the cable dives into the core at the top segment's upper
+    # dive hole and rises through this head's internal Ø14/Ø11 way, which
+    # every head carries invisibly — ONE head SKU for all four legs)
+    # bolt channel through the spigot's +y face + button pocket on the
+    # body's inboard face (functional dummies; wedge detail at refinement)
+    b = b.cut(box_at(BOLT_W + 0.4, SPG_W / 2 + 4.0, BOLT_H + 0.4,
+                     x=BOLT_X, y=SPG_W / 4 + 1.0, z=SPG_L - 12.0))
+    b = b.cut(box_at(12.4, 9.0, 10.4, x=-14.0, y=SQ_W / 2 - 4.4,
+                     z=-4.0 - HEAD_BODY_L / 2))
+    return heal(b)
+
+
+def leg_latch_bolt() -> cq.Workplane:
+    """Latch BOLT ×4 (PCTG): rigid slider in the spigot channel, 45° nose
+    chamfer self-latches on push-in; underside bears on the socket's
+    ledge (washer preload = zero play). Drawn ENGAGED. Local = head
+    frame."""
+    b = box_at(BOLT_W, SPG_W / 2 + 3.0, BOLT_H,
+               x=BOLT_X, y=SPG_W / 4 + 0.5, z=SPG_L - 12.0)
+    b = b.cut(cq.Workplane("YZ")                     # 45° insertion chamfer
+              .polyline([(SPG_W / 2 + 2.0, SPG_L - 12.0 + BOLT_H / 2),
+                         (SPG_W / 2 - 1.0, SPG_L - 12.0 + BOLT_H / 2),
+                         (SPG_W / 2 + 2.0, SPG_L - 12.0 - BOLT_H / 2 + 1.0)])
+              .close().extrude(BOLT_W + 2).translate((BOLT_X - BOLT_W / 2 - 1, 0, 0)))
+    return b
+
+
+def leg_latch_btn() -> cq.Workplane:
+    """Latch BUTTON ×4 (PCTG): recessed seatbelt-style pad on the head
+    body's inboard face + stem into the mechanism cavity (35° wedge to
+    the bolt at refinement). Local = head frame."""
+    b = box_at(12.0, 3.0, 10.0, x=-14.0, y=SQ_W / 2 - 1.6,
+               z=-4.0 - HEAD_BODY_L / 2)
+    b = b.union(box_at(8.0, 6.0, 6.0, x=-14.0, y=SQ_W / 2 - 6.0,
+                       z=-4.0 - HEAD_BODY_L / 2))
+    return b
 
 
 def leg_socket_trrs() -> cq.Workplane:
