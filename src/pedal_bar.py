@@ -281,10 +281,11 @@ def nub_part() -> cq.Workplane:
 def _cable_runs():
     """DEMO bar cable: from the trough, through the wired stub's side way,
     up its core to the captive plug seat (the column-side cable is placed
-    by build.py with the leg stack)."""
+    by build.py with the leg stack). Rises on the TRRS axis — offset +5
+    from the station, matching the down-way and the plug seat."""
     lx = LATCHES[1][0]
     pts = [(lx + 24.0, YC, 11.0), (lx + 14.0, YC, 11.0),
-           (lx, YC, 11.0), (lx, YC, 26.0)]
+           (lx + 5.0, YC, 11.0), (lx + 5.0, YC, 26.0)]
     out = None
     for a, bpt in zip(pts[:-1], pts[1:]):
         va, vb = cq.Vector(*a), cq.Vector(*bpt)
