@@ -113,16 +113,24 @@ KH_DT_SEAT     = 0.1                    # lower-dovetail seating clearance: the 
 # uniform pitch (the motor ribs already are): evenly-spaced ribs make every
 # bay identical, so a knee/pedal lever's christmas-tree mount fits ANY pair. (No +X
 # crossbar: the bridge block IS the +X tie.)
-# HALF-PITCH RIBS: a crossbar per motor (46 mm apart) PLUS one between each adjacent
-# pair -> 23 mm pitch, twice the crossbar support. Motors can't move (belt geometry),
-# so keep every motor rib and ADD the midpoints; every rib is identical (XBAR-wide, same
-# christmas-tree mortise + wire raceway), so "one tenon fits any bay" still holds -- a
-# lever just spans two of the finer bays.
-#   The only bays that SKIP their inter-motor rib are the knee/pedal LEVER bays: the
-#   lever's housing + hanging cartridge fill that bay and mount nothing there. The segment
-#   SPLITS do NOT skip a rib -- the motor plates are fused per segment AFTER the cut (see
-#   _segments), so a split sits between ribs without slicing a plate or its bolt holes.
-_MOTOR_RIB_X = sorted([D.motor_pos(i)[0] for i in range(D.N_STRINGS)] + [-570.0])
+# HALF-PITCH RIB COMB (generative -- a rib can never go missing): a crossbar per motor
+# PLUS one between each adjacent pair -> uniform 23 mm pitch, twice the crossbar support,
+# extended TWO motor-pitches past each end of the motor bank. Every rib is identical
+# (XBAR-wide, same christmas-tree mortise + wire raceway), so "one tenon fits any bay"
+# holds -- a lever just spans two of the finer bays. NOTHING is excluded (the knee-lever
+# bay keeps its ribs too; the lever housing is relieved for them in knee_lever.py).
+def _rib_positions():
+    """The rib X-list, computed so there is never a gap. Motor pitch = (first motor .. last
+    motor) / (N-1); take N_STRINGS+4 BASE ribs at that pitch starting two pitches past the
+    -X-most motor (a rib per motor + two beyond each end), then drop a rib at every midpoint
+    between adjacent base ribs -> the uniform half-pitch comb."""
+    mx = sorted(D.motor_pos(i)[0] for i in range(D.N_STRINGS))
+    pitch = (mx[-1] - mx[0]) / (D.N_STRINGS - 1)                       # motor pitch (46)
+    base = [mx[0] - 2 * pitch + k * pitch for k in range(D.N_STRINGS + 4)]   # 2 past each end
+    mids = [(base[i] + base[i + 1]) / 2 for i in range(len(base) - 1)]
+    return sorted(base + mids)
+
+_RIB_X = _rib_positions()
 SPLIT_X  = [-216.5, -446.5]            # 2 cuts → 3 segments < 255 mm (224.7 / 230.0 / 192.5), each in a
                                        # 13 mm gap BETWEEN two ribs. The cut straddles a 43-wide motor
                                        # plate, but that plate is fused WHOLE into the segment that owns
@@ -130,12 +138,6 @@ SPLIT_X  = [-216.5, -446.5]            # 2 cuts → 3 segments < 255 mm (224.7 /
                                        # bolt holes intact and the neighbour is relieved. So the split is
                                        # free of the motor-wall / bolt-column constraint -- it only has
                                        # to clear the ribs (a rib and an 8 mm joint won't share a 3 mm gap).
-_MIDPOINTS = [(_MOTOR_RIB_X[i] + _MOTOR_RIB_X[i + 1]) / 2 for i in range(len(_MOTOR_RIB_X) - 1)]
-# Skip an inter-motor rib only where a knee/pedal lever fills the bay (mounts nothing there).
-_LEVER_BAYS = [(-571.0, -490.0)]       # LKL @ MOUNT_X -501 (tenons -524/-570); append one per lever
-_RIB_X   = sorted(set(_MOTOR_RIB_X + [
-    m for m in _MIDPOINTS
-    if not any(x0 <= m <= x1 for x0, x1 in _LEVER_BAYS)]))
 
 # Bridge-endplate joint: ENDPLATE_JOINT_Y are the two rail centre-lines the bridge
 # (and keyhead) sit over; kept for the bridge's foot/joint references.
