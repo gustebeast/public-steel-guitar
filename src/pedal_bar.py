@@ -542,8 +542,11 @@ def _cable_runs():
     lx, ls = LATCHES[1]
     bar = cq.Workplane("XY").add(cq.Solid.makeCylinder(
         1.85, 30.0, cq.Vector(lx + ls * 40.0, YC, TR_Z), cq.Vector(ls, 0, 0)))
-    leg = _rods(lx, ls, [(-6.7, 0.0, 201.0), (-6.7, 0.0, -3.2),
-                         (2.0, 0.0, -3.2)], 3.7)
+    # leg cable rides the shaft's OPEN press-in channel (azimuth 142°
+    # shaft-local → bar (x' +6.07, y -4.74)), lands in the cavity corner,
+    # curls to the carrier's underside header
+    leg = _rods(lx, ls, [(6.07, -4.74, 201.0), (6.07, -4.74, 1.5),
+                         (2.0, -1.0, -3.0)], 3.7)
     return [("pedal_trrs_cable_bar", bar), ("pedal_trrs_cable_leg", leg)]
 
 

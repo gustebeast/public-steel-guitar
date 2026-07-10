@@ -428,12 +428,27 @@ def _leg_components():
                 # cores/sleeve -> INTO the shaft's Ø6 bore, meeting the
                 # shaft-side model (pedal_trrs_cable_leg) at the bar band
                 from . import wiring as WR
+                # column cable in two straight runs bracketing the COIL
+                # (heat-set: wind the CA-354S mid-span on a Ø8 mandrel,
+                # ~85 °C / 15 min — a one-time bench step). The coil parks
+                # in the lower segment's Ø22 core and self-absorbs the
+                # shaft's 160 of fine-height slack: raising stretches it,
+                # lowering lets it retract — the musician only ever
+                # touches the pinch screw. Drawn at the build's height;
+                # bottom run jogs to the shaft channel's top.
                 out.append(("leg_column_cable", WR._wire([
                     (sx, ry, CH.Z_BOT - 38.0),
-                    (sx, ry, ground + 224.0),
-                    (sx - 6.7, ry, ground + 215.0)], 3.7)))   # jog to the
-                # shaft's off-axis bore mouth (the shaft-side model
-                # continues from there)
+                    (sx, ry, CH.Z_BOT - 190.0)], 3.7).union(WR._wire([
+                        (sx, ry, CH.Z_BOT - 285.0),
+                        (sx, ry, ground + 224.0),
+                        (sx + 6.07, ry - 4.74, ground + 214.0)], 3.7))))
+                coil = cq.Workplane("XY").add(cq.Solid.makeCylinder(
+                    8.0, 95.0, cq.Vector(sx, ry, CH.Z_BOT - 285.0),
+                    cq.Vector(0, 0, 1))).cut(
+                    cq.Workplane("XY").add(cq.Solid.makeCylinder(
+                        4.5, 97.0, cq.Vector(sx, ry, CH.Z_BOT - 286.0),
+                        cq.Vector(0, 0, 1))))
+                out.append(("leg_cable_coil", coil))
                 # the chassis jack's factory cable: axial exit, 90° out the
                 # tenon channel (inner face), down to the floor, landing on
                 # the bus-B socket tee (12)
@@ -569,6 +584,8 @@ _COLORS = {
     "leg_column_plug":  (0.32, 0.36, 0.58),  # slate, matches the bar plug
     "chassis_trrs_cable": (0.45, 0.45, 0.48),
     "leg_column_cable": (0.45, 0.45, 0.48),
+    "leg_cable_coil":  (0.45, 0.45, 0.48),   # heat-set coil section (slack
+                                             # take-up in the segment core)
     "leg_segment":     (0.42, 0.48, 0.52),
     "leg_sleeve":      (0.36, 0.42, 0.46),
     "leg_shaft":       (0.55, 0.58, 0.62),
