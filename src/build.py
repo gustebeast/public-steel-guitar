@@ -90,6 +90,12 @@ PARTS = {
     "leg_socket_trrs": (lambda: heal(LG.leg_socket_trrs()), "petg-gf/leg_socket_trrs.step", "PETG-GF — the -X/+Y leg's socket ×1: leg_socket + the vertical chassis-jack way (Tensility 10-03404, coaxial with the thread — the column-top plug BLIND-MATES on the final turn) + mouth-seat boss + tenon cable channel. Jack drops in before glue-up"),
     "leg_plug_retainer": (lambda: heal(LG.leg_plug_retainer()), "pctg/leg_plug_retainer.step", "PCTG — press sleeve ×1: up the wired leg's top-segment bore under the CA-354S handle (insertion backstop; the spigot tip lip takes withdrawal)"),
     "socket_jack_slug": (lambda: heal(LG.socket_jack_slug()), "tpu/socket_jack_slug.step", "TPU — saddle slug ×1: tops the chassis jack in the socket way (insertion backstop after glue-up; side slot clears the cable exit)"),
+    # ── SQUARE-LEG redesign, STAGE 1 (generators + eval prints; the round
+    # legs still populate the assembly until the stack swap lands) ──
+    "leg_seg_body":    (lambda: heal(LG.leg_seg_body()), "petg-gf/leg_seg_body.step", "PETG-GF — square 44 segment BODY ×8 (redesign): prints LYING on the -Y face (layer lines along the leg — kick loads bulk GF); square-32 core takes the glued thread couplers; +Y face = lidded cable channel"),
+    "leg_coupler_m":   (lambda: heal(LG.leg_coupler_m()), "pctg/leg_coupler_m.step", "PCTG — male thread coupler ×8 (redesign): prints STANDING (thread quality); glues into a body core end; Ø40 collar hard stop + Ø36/30 single-start spigot unchanged"),
+    "leg_coupler_f":   (lambda: heal(LG.leg_coupler_f()), "pctg/leg_coupler_f.step", "PCTG — female thread coupler ×8 (redesign): prints STANDING mouth-down; gland + rim hard-stop ring in its face; internal thread through the glue plug"),
+    "leg_lid":         (lambda: heal(LG.leg_lid()), "petg-gf/leg_lid.step", "PETG-GF — leg channel LID ×8 (redesign): 45° dovetail strip, slides over the body's cable channel (bar-lid pattern; TPU nub SKU locks it)"),
     "leg_washer":      (lambda: heal(LG.leg_washer()),  "tpu/leg_washer.step",  "TPU — gland washer, 1/junction = segments+1 per leg (sits in the female-rim recess; the hard-stop collar squeezes it a fixed 2.5->2.0 every assembly)"),
     # pedal bar + latch (one latched foot for now; mirror to -X once the feel
     # is validated). The bar itself is a DEMO prism (longer than the bed —
