@@ -362,10 +362,11 @@ WIRE_OK = {
     "chassis_trrs_cable": {"tee_pcb", "leg_socket", "chassis_trrs_jack"},
     "leg_column_cable": {"leg_socket", "leg_segment", "leg_sleeve",
                          "leg_shaft", "leg_washer", "leg_column_plug",
-                         "leg_plug_retainer",
+                         "leg_plug_retainer", "leg_cable_coil",
                          # the shaft-side model of the SAME physical
-                         # CA-354S — they abut inside the shaft bore
+                         # CA-354S — they abut inside the shaft channel
                          "pedal_trrs_cable_leg"},
+    "leg_cable_coil":   {"leg_segment", "leg_column_cable"},
     "wire_pwr_hot":   {"dc_jack", "buck", "tee_pcb", "analog_frontend"},
     "wire_pwr_gnd":   {"dc_jack", "buck", "tee_pcb", "analog_frontend"},
     "wire_usb":       {"usbc_jack", "pi5"},

@@ -486,12 +486,28 @@ def leg_shaft_trrs() -> cq.Workplane:
     # channel), not the jack body — the SMT jack is rated for
     # board-carried insertion loads.
     body = body.cut(box_at(4.2, 4.6, 19.8, x=6.7, z=12.3))
-    # Ø5 cable bore, OFF-AXIS at local (+6.7, 0): drops the Ø3.7 CA-354S
-    # straight down BEHIND the jack into the rear channel (an on-axis bore
-    # lands on the jack's roof with only a 2.0 gap to cross — impassable;
-    # found by routing the cable for real). 0.8 wall to the Ø20 surface.
-    body = body.cut(cyl(5.0, SHAFT_L - 19.5 + 1, z=19.5)
-                    .translate((6.7, 0, 0)))
+    # ── open PRESS-IN CABLE CHANNEL (replaced the enclosed bore): the
+    # cable lays in SIDEWAYS at the bench with its housing already crimped
+    # — no threading through the shaft, no contact extraction to service
+    # (unplug, pop the cable out laterally, slide the shaft off). Azimuth
+    # 142° local = DIAGONALLY INWARD once placed (global +x/-y on this
+    # -X/+Y leg): invisible from the front and side views; the sleeve
+    # cages it over the engaged length. T-slot: Ø4.4 way at r7.7 under a
+    # 3.2 mouth (lips grip the Ø3.7 jacket, fully sub-flush of the Ø20).
+    # Over the foot band the mouth deepens through the corner-fill /
+    # shelf corner (bar-covered when playing, foot-covered below) and
+    # lands in the bottom cavity's corner.
+    ang = 142.0
+    _ca, _sa = math.cos(math.radians(ang)), math.sin(math.radians(ang))
+    body = body.cut(cyl(4.4, 204.0, z=8.0)
+                    .translate((7.7 * _ca, 7.7 * _sa, 0)))
+    body = body.cut(box_at(5.6, 3.2, 21.2, x=10.3, z=18.5)
+                    .rotate((0, 0, 0), (0, 0, 1), ang))
+    body = body.cut(box_at(3.4, 3.2, 183.0, x=9.15, z=120.4)
+                    .rotate((0, 0, 0), (0, 0, 1), ang))
+    # cavity corner reach: the channel's foot lands here; the cable curls
+    # across the cavity to the carrier's underside header
+    body = body.cut(box_at(5.0, 4.4, 15.0, x=-5.5, y=4.2, z=6.4))
     return body
 
 
