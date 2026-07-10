@@ -1,63 +1,37 @@
-"""Pedal bar — spans the two +Y legs at ankle height; retract-slide-release.
+"""Pedal bar — spans the two +Y legs at ankle height, carrying their last
+piece as FUSED STUB TOWERS.
 
-The bar is the mounting rail for the (future) sensor pedals. It attaches to
-the +Y legs' shafts (legs.py): each end has a SLOT, open toward the
-instrument (-Y) — Ø20.4 walls register X, a ROUND back (r10.2) hugs the
-shaft's round side, and the shaft's single key flat faces the MOUTH, where
-it is the latch bolt's bearing plane (the leg's single-D key aims
-everything; at the TRRS leg the slot's inboard back corner is SQUARED to
-fit that shaft's corner-fill extension, whose flat also face-seats the
-wall). Z: the plate rests on the foot caps; anti-lift is every shaft's
-SHELF band overhanging the slot's solid corners (the seated TRRS plug adds
-belt-and-braces at the -X foot). Bar = one slim prism (Y -16..+15), ends
-just past each leg; each latch sits INBOARD of its leg.
+The bar is the mounting rail for the (future) sensor pedals. Each end
+carries a 44-sq STUB TOWER printed WITH the bar: the shortened +Y leg
+shafts press DOWN onto the towers' house spigots — the leg↔body seatbelt
+latch, verbatim (wedging bolt + recessed button live on the tower; the
+leg block's socket is passive) — and the wired (-X) tower adds the second
+vertical TRRS blind-mate: its captive CA-354S plug (threaded up through
+the foot-mortise access) points UP into the 10-03404 jack in the shaft,
+on the TRRS axis at station +5. Pedal height is constant regardless of
+instrument height, and stomp loads go floor-direct through the bar's
+feet, never through a latch.
 
-Y RETENTION — one sliding-bolt latch per foot, both opening INBOARD; rigid
-lock, no flexing structural member. Closed, the bolt's thickened HEAD bears
-flat-on-flat on the shaft's key flat — the PRINT-BED surface reused as the
-bearing plane: normal pure Y, a tug cannot cam it open, wear cannot loosen
-it, seated Y float ~0.4 total (0.2 flat + 0.2 round-back seat). The thumb
-pad rides an integral post through an X slot in the lid.
+FLUSH 44 COLUMN (user): the bar prism is 44 wide (Y = YC ± 22) and 19
+tall, and its END faces sit at station ± 22 — flush with the towers, the
+leg blocks above, and the TPU feet below, so each +Y stack reads as ONE
+clean 44×44 column from block top to floor. The feet are the shared
+legs.leg_foot dovetail inserts (mortise opens at the bar's -Y face).
 
-The LATCHES ARE IDENTICAL at both feet (15.0 travel, extended head, no
-bevel, far-end kick spring, detent-nub hold-closed): RETRACT both pads
-(the +X slot clears; at the -X foot the carried plug also clears the leg's
-envelope), slide the bar on/off freely, RELEASE — the kick springs shove
-the sliders toward the legs — and THUMB-PRESS each pad to its click. The
--X slider is the SAME design with a TRRS MOUNT grown on: it carries the
-male plug (axis X, pointing at the leg), so that latch is also the
-connector actuator — the plug clicks into the jack embedded in the shaft
-(legs.leg_shaft_trrs; wires up the leg's Ø6 hollow centre). Deliberately NO
-tip bevel anywhere: an un-retracted install butts the shaft against the
-flat head and refuses — a cam could only yield ~6 of the needed 15 and, on
-the TRRS side, the leg would bend the barrel. The kick springs engage only
-over the last ~4.5 of opening, so holding the pads retracted while
-positioning the bar costs almost nothing.
+A WIRING TROUGH runs between the towers under a full-length 45° sliding-
+DOVETAIL LID — no screws: the lid pieces slide in from the +X end; a TPU
+detent nub in the bar top clicks into lid B's underside dimple, setting
+the position and locking the stack (B butts A). The wired tower's cable
+enters from the trough through a Ø8 side way and rises to the plug seat.
 
-The plug (Tensility CA-354S, factory-molded on its own shielded cable:
-Ø3.5×14 barrel + Ø10×12.6 handle + Ø6 spring relief) lies in a Ø10.4
-cradle channel on the slider: the rear wall backstops insertion, the
-FRONT wall (top-open Ø5.4 keyhole around the barrel, bearing on the
-handle's front face) pulls it out, the lid caps it. Its cable exits the
-rear keyhole through the latch cavity into the trough, cut + crimped into
-an XH housing at the first bar tee — no solder anywhere.
-
-SEGMENTED FOR THE 255×255 BED: two bar pieces (dovetail-splice + glue at
-XS, mid-trough; 322/292 — diagonal placement, (L+W)/√2 ≤ 255) and two lid
-pieces (butt splice at XL, staggered 55 so each lid piece BRIDGES the glued
-bar joint). A WIRING TROUGH runs between the two latch cavities (the TRRS
-pigtail reaches the mid-bar electronics without crossing a leg slot), and
-ONE full-length 45° sliding-DOVETAIL LID roofs trough + both latches — no
-screws: the lid pieces slide in from the +X end; a third TPU detent nub in
-the bar top clicks into lid B's underside dimple, setting the position and
-locking the stack (B butts A). Assembly: glue the bar halves; drop each
-slider in with its plug/finger; slide lid A, then lid B to the click; press
-the latch nubs down through their lid pockets.
+SEGMENTED FOR THE 255×255 BED: two bar pieces (vertical slide-in
+dovetail tenons + glue at XS, mid-trough; ~315/311 at 44 wide — diagonal
+placement, (L+W)/√2 ≤ 255) and two lid pieces (butt splice at XL,
+staggered 50 so each lid piece BRIDGES the glued bar joint).
 
 FRAME: modelled at ABSOLUTE X/Y (the legs' real stations, +Y rail); Z is
 local with 0 = the plate bottom (build.py translates by ground + FOOT_H).
-Drawn SEATED: bolts closed, plug fully inserted.
-"""
+Drawn SEATED."""
 
 from __future__ import annotations
 
@@ -73,26 +47,18 @@ YC = Y_HI                              # leg axes sit on the +Y rail centreline
 LATCHES = ((LEG_STATIONS_X[0], -1.0),  # +X leg → plain snap latch, extends -X
            (LEG_STATIONS_X[1], +1.0))  # -X leg → TRRS latch, extends +X
 
-# plate: 19 tall inside the 20-tall notch band (1.0 anti-lift clearance up)
 BAR_H = 19.0
-BAR_Y0, BAR_Y1 = YC - 16.0, YC + 15.0      # slim prism: 2.1 front wall ahead
-                                           # of the bolt channel, 4.6 back
-                                           # wall behind the round slot back
-END_MARGIN = 15.0                          # bar end past each leg axis
+BAR_Y0, BAR_Y1 = YC - 22.0, YC + 22.0      # 44 wide (user): matches the
+                                           # 44-sq towers/blocks/feet — the
+                                           # +Y stacks are FLUSH columns
+END_MARGIN = 22.0                          # bar END faces at station ±22,
+                                           # flush with the tower faces
+                                           # (15 used to shear the towers'
+                                           # outer 6 via the piece clips)
 BAR_X0 = LEG_STATIONS_X[1] - END_MARGIN
 BAR_X1 = LEG_STATIONS_X[0] + END_MARGIN
 
 
-# ── the LATCH — IDENTICAL at both feet (the TRRS foot's slider is the SAME
-#    design with the plug cradle grown on): 15.0 travel, NO bevel — always
-#    retract to install or remove (an un-retracted install REFUSES: a cam
-#    could only yield ~6 of the 15, and on the TRRS side would bend the
-#    barrel). x offsets from the leg axis, flipped inboard by ls. ─────────
-# ROUND 4: the sliding latches are GONE — the bar carries two STUB TOWERS
-# (the last ~72 of the +Y legs, semipermanently M4-mounted through the
-# bar) and installs by pressing DOWN onto them: house spigot + wedging
-# bolt + recessed button up top (the leg↔body latch, verbatim), TPU feet
-# below, the second vertical TRRS blind-mate inside the wired one.
 STUB_Z0 = 43.0                             # tower seat plane (bar frame): the
                                            # leg block's mouth face lands here
                                            # (bar top 19 + 24 button band)
@@ -109,8 +75,8 @@ FOOT_PAD = 12.0
 #    (L + W)/√2 ≤ 255) + the full-length sliding-DOVETAIL lid ────────────
 # everything here DERIVES from the leg stations (they are chassis-owned and
 # have moved before — never hardcode absolutes against them)
-XS = (LATCHES[0][0] + LATCHES[1][0]) / 2   # bar splice (mid-trough): ~303
-                   # per piece (+4 tenon) → ≤240 diagonal footprint. Joined
+XS = (LATCHES[0][0] + LATCHES[1][0]) / 2   # bar splice (mid-trough): 315/311
+                   # per piece at 44 wide → ≤254 diagonal footprint. Joined
                    # by vertical slide-in dovetail tenons + glue (the
                    # chassis-segment pattern).
 XL = XS - 50.0     # lid butt-splice, STAGGERED 50 from XS so each lid piece
@@ -213,17 +179,17 @@ def _splice_prisms(grow: float) -> cq.Workplane:
 
 
 def pedal_bar_a() -> cq.Workplane:
-    """-X bar piece (TRRS foot): full bar clipped at the splice + the two
-    dovetail tenons (slide piece B down onto them, glue). 321.6 long —
-    fits the 255² bed on the diagonal."""
+    """-X bar piece (TRRS tower): full bar clipped at the splice + the two
+    dovetail tenons (slide piece B down onto them, glue). 315 long × 44 —
+    fits the 255² bed on the diagonal ((315+44)/√2 = 254)."""
     half = box_at(XS - (BAR_X0 - 1), 80.0, 120.0,
                   x=(BAR_X0 - 1 + XS) / 2, y=YC, z=40.0)
     return _bar_full().intersect(half).union(_splice_prisms(0.0))
 
 
 def pedal_bar_b() -> cq.Workplane:
-    """+X bar piece (plain foot): clipped at the splice − the tenon slots
-    (0.2 fit). 291.6 long — diagonal print."""
+    """+X bar piece (plain tower): clipped at the splice − the tenon slots
+    (0.2 fit). 311 long × 44 — diagonal print."""
     half = box_at((BAR_X1 + 1) - XS, 80.0, 120.0,
                   x=(XS + BAR_X1 + 1) / 2, y=YC, z=40.0)
     return _bar_full().intersect(half).cut(_splice_prisms(0.2))
