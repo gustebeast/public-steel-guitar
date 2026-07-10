@@ -717,6 +717,15 @@ def _export_assembly():
 
 
 def main() -> None:
+    # Part notes carry Unicode (→, Ø, …); a cp1252 Windows console/pipe raises
+    # UnicodeEncodeError mid-export and aborts the build. Force UTF-8 so a print
+    # can never kill a good geometry build (replace = never crash on any glyph).
+    for _stream in (sys.stdout, sys.stderr):
+        try:
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError):
+            pass
+
     p = argparse.ArgumentParser(prog="src.build")
     p.add_argument("--part", help="Build only this printed part (skips assembly).")
     p.add_argument("--list", action="store_true", help="List part names and exit.")
