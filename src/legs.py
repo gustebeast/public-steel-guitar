@@ -553,6 +553,14 @@ def _sq_body(length: float) -> cq.Workplane:
                          (hw + 1.6, yf + 0.1), (-hw - 1.6, yf + 0.1),
                          (-hw - 3.5, yf - 1.9), (-hw, yf - 1.9)])
               .close().extrude(length + 2).translate((0, 0, -1)))
+    # coupler retention screws (user rule: the snug square JOINERY carries
+    # every load; ONE M4 per coupler only prevents extraction the way it
+    # went in — no glue, no press fit). Ø4.5 clearance through the -Y
+    # wall, 12 in from each end
+    for sz in (12.0, length - 12.0):
+        b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+            2.25, 9.0, cq.Vector(0, -SQ_W / 2 - 1.0, sz),
+            cq.Vector(0, 1, 0))))
     return b
 
 
@@ -578,6 +586,11 @@ def leg_coupler_m() -> cq.Workplane:
                 .translate((0, 0, 6.0)))
     b = b.cut(cyl(14.0, PUCK_PLUG_L + 6 + TH_LEN + 4,
                   z=-PUCK_PLUG_L - 1))                 # cable way
+    # M4 retention pilot (thread-forming; the plug's slide fit takes the
+    # loads, this only stops extraction)
+    b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        1.8, 8.0, cq.Vector(0, -SQ_CORE / 2 - 0.5, -12.0),
+        cq.Vector(0, 1, 0))))
     return heal(b)
 
 
@@ -601,6 +614,10 @@ def leg_coupler_f() -> cq.Workplane:
         cq.Vector(0, 0, TH_LEN), cq.Vector(0, 0, 1))))
     b = b.cut(cyl(22.0, PUCK_PLUG_L - TH_LEN + 8 + 2,
                   z=TH_LEN + 3.0))                     # open core way
+    # M4 retention pilot (see coupler_m note)
+    b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        1.8, 8.0, cq.Vector(0, -SQ_CORE / 2 - 0.5, 20.0),
+        cq.Vector(0, 1, 0))))
     return heal(b)
 
 
@@ -614,6 +631,9 @@ def leg_lid() -> cq.Workplane:
                        (hw + 1.5, 0.0), (-hw - 1.5, 0.0)])
             .close().extrude(SEG_BODY_L - 0.6)
             .translate((0, 1.8, 0.3)))
+
+
+def leg_socket_trrs() -> cq.Workplane:
     """leg_socket() + the vertical CHASSIS-JACK pocket for the leg↔body
     blind-mate (the -X/+Y station only — see the TRRS block above): a
     Ø9.7 way COAXIAL with the thread, from the bore-ceiling void up
