@@ -377,8 +377,12 @@ def _pickup_mount_components():
     return out
 
 
-LEG_HEIGHT = 662.0   # floor → body bottom (drawn pose; round-4 stack —
-                     # keeps the sleeve 2+ clear of the short shaft's block)
+LEG_HEIGHT = 655.0   # floor → body bottom (user reference). Fine-stage
+                     # bands (E = engagement 50..192, travel 142):
+                     # +Y: H = 603+142k−E → k=1 covers 553..695;
+                     # -Y: H = 511+142k−E → k=2 covers 561..703.
+                     # Drawn: +Y 1 segment (E=90), -Y 2 (E=140) —
+                     # counts are PER LEG (different ground datums)
 LEG_SEGMENTS = 2     # coarse height: each segment steps 142; the shaft's 160
                      # slide overlaps the step, so every height ≥ ~241 is
                      # reachable by picking the count (2 covers 525..685)
@@ -426,7 +430,8 @@ def _leg_components():
             # washers/couplers. Head bottom face at -96; each body IS the
             # 142 pitch (its plug rides inside the part above).
             top = -96.0
-            for j in range(LEG_SEGMENTS):
+            nseg = LEG_SEGMENTS if ry == CH.Y_LO else LEG_SEGMENTS - 1
+            for j in range(nseg):
                 idx = LEG_SEGMENTS * k + j
                 out.append((f"leg_seg_body_{idx}",
                             R(seg_body_ch if wired else seg_body,
@@ -516,14 +521,14 @@ def _leg_components():
                     (sx, ry, CH.Z_BOT - 195.0)], 3.7)))
                 out.append(("shaft_trrs_cable", WR._wire([
                     (sx, ry, zst + 84.0),
-                    (sx, ry, CH.Z_BOT - 390.0)], 3.8).union(WR._wire([
-                        (sx, ry, CH.Z_BOT - 460.0),
+                    (sx, ry, CH.Z_BOT - 340.0)], 3.8).union(WR._wire([
+                        (sx, ry, CH.Z_BOT - 270.0),
                         (sx, ry, CH.Z_BOT - 207.0)], 3.8))))
                 coil = cq.Workplane("XY").add(cq.Solid.makeCylinder(
-                    8.0, 70.0, cq.Vector(sx, ry, CH.Z_BOT - 460.0),
+                    8.0, 70.0, cq.Vector(sx, ry, CH.Z_BOT - 340.0),
                     cq.Vector(0, 0, 1))).cut(
                     cq.Workplane("XY").add(cq.Solid.makeCylinder(
-                        4.5, 72.0, cq.Vector(sx, ry, CH.Z_BOT - 461.0),
+                        4.5, 72.0, cq.Vector(sx, ry, CH.Z_BOT - 341.0),
                         cq.Vector(0, 0, 1))))
                 out.append(("leg_cable_coil", coil))
                 # chassis jack's factory cable → bus-B tee (unchanged)
