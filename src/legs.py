@@ -322,17 +322,19 @@ def leg_sleeve() -> cq.Workplane:
     creep — instead of a set-screw point load that stress-relaxes; the shaft
     stays unmarred. Set once per player, hex key. Closing the bore Ø0.4 needs
     ~1.3 of slit travel (< the 1.6 gap). Local: Z0 = shoulder; body −Z."""
-    # SQUARE-LEG reskin: 44-sq outer body (matches the segment bodies; the
-    # pinch lug pokes ~5 proud of the +y face — accepted v1). Prints
-    # STANDING as always (the keyed sliding bore needs circularity).
+    # SQUARE-LEG reskin: 44-sq outer body (the pinch lug pokes ~5 proud
+    # of the +y face — accepted v1). Prints STANDING as always (the
+    # sliding bore needs dimensional truth). ROUND 3: the threaded spigot
+    # + collar are GONE — an integral 31.7-sq PLUG (28) slides into the
+    # bottom segment's core, butt faces = hard stop, one M4 = retention.
     body = box_at(SQ_W, SQ_W, SLEEVE_L, z=-SLEEVE_L / 2)
-    spigot = cyl(TH_MINOR - TH_CLR, TH_LEN + 2, z=-2.0)
-    spigot = spigot.union(_thread((TH_MINOR - TH_CLR) / 2, TH_LEN + 2)
-                          .translate((0, 0, -2.0)))
-    body = body.union(spigot)
-    # male shoulder COLLAR (hard stop; the 44-sq top face backs it — no
-    # transition cone needed)
-    body = body.union(cyl(COLLAR_D, COLLAR_H, z=0.0))
+    body = body.union(
+        box_at(SQ_CORE - 0.3, SQ_CORE - 0.3, SEG_PLUG_L + 1.0,
+               z=(SEG_PLUG_L - 1.0) / 2)
+        .cut(box_at(22.0, 22.0, SEG_PLUG_L + 4.0, z=SEG_PLUG_L / 2)))
+    body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        1.8, 8.0, cq.Vector(0, -SQ_CORE / 2 - 0.5, 14.0),
+        cq.Vector(0, 1, 0))))
     # TRRS column way: the keyed bore stops 3 short of the spigot tip —
     # open it (Ø11, same as the segments) so the wired leg's CA-354S cable
     # passes clean through the column
@@ -532,12 +534,17 @@ def leg_shaft_trrs() -> cq.Workplane:
 SQ_W = 44.0                    # outer square width (uniform, = old bell OD)
 SQ_CORE = 32.0                 # square core (glue pocket for the couplers;
                                # 45° crown corners print lying)
-SEG_BODY_L = 106.0             # GF body; + 6 male flange + 28 female
-                               # barrel = 140 effective (step stays 142).
-                               # The female coupler's thread (Ø36.4
-                               # crests) CANNOT fit inside the 32-square
-                               # core — it lives in the coupler's own
-                               # 44-sq barrel below the body (gate-caught)
+SEG_BODY_L = 142.0             # ROUND 3 (user): NO THREADS, NO TPU
+                               # GASKETS in the square legs — the thread
+                               # couplers and washers are GONE. Each body
+                               # is the full 142 pitch with an INTEGRAL
+                               # 31.7-sq male PLUG (28 long) on its top
+                               # end sliding into the part above; the
+                               # butt of the shoulder faces is the hard
+                               # stop, clocking is geometric, and ONE M4
+                               # per joint is extraction retention only
+                               # (user rule: joinery takes the force).
+SEG_PLUG_L = 28.0              # male plug engagement (sockets are 30)
 PUCK_PLUG_L = 20.0             # coupler glue plug depth into the core
 CH_MOUTH, CH_DEEP = 6.0, 7.0   # face cable channel (lidded; Ø3.7 + slack)
 
@@ -551,7 +558,11 @@ def _sq_body(length: float, channel: bool = False) -> cq.Workplane:
     screws) and a core DIVE hole near each end (cable → core at the
     sleeve joint below and at the latch head above). Z0 = bottom."""
     b = box_at(SQ_W, SQ_W, length, z=length / 2)
-    b = b.cut(box_at(SQ_CORE, SQ_CORE, length + 2, z=length / 2))
+    # core stops 4 short of the top: the solid CAP roots the integral
+    # plug and is the butt-shoulder web; a 22-sq way continues through
+    b = b.cut(box_at(SQ_CORE, SQ_CORE, length - 4.0 + 1.0,
+                     z=(length - 4.0 - 1.0) / 2))
+    b = b.cut(box_at(22.0, 22.0, 8.0, z=length - 2.0))
     if channel:
         hw, yf = CH_MOUTH / 2, SQ_W / 2
         b = b.cut(cq.Workplane("XY")
@@ -564,15 +575,22 @@ def _sq_body(length: float, channel: bool = False) -> cq.Workplane:
             b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
                 2.75, CH_DEEP + 2.0, cq.Vector(0, SQ_W / 2 + 0.5, dz),
                 cq.Vector(0, -1, 0))))
-    # coupler retention screws (user rule: the snug square JOINERY carries
-    # every load; ONE M4 per coupler only prevents extraction the way it
-    # went in — no glue, no press fit). Ø4.5 clearance through the -Y
-    # wall: low hole hits the female coupler's SHORT plug (z 0..8), high
-    # hole the male coupler's 20-deep plug
-    for sz in (4.0, length - 12.0):
-        b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-            2.25, 9.0, cq.Vector(0, -SQ_W / 2 - 1.0, sz),
-            cq.Vector(0, 1, 0))))
+    # integral male PLUG on the top end (hollow 22-sq way keeps the cable
+    # and even the coil passable through joints) + 45° tip lead-ins
+    plug = (box_at(SQ_CORE - 0.3, SQ_CORE - 0.3, SEG_PLUG_L + 1.0,
+                   z=length + (SEG_PLUG_L - 1.0) / 2)
+            .cut(box_at(22.0, 22.0, SEG_PLUG_L + 4.0,
+                        z=length + SEG_PLUG_L / 2)))
+    b = b.union(plug)
+    # M4 retention (user rule: joinery takes the force, the screw only
+    # stops extraction): Ø4.5 clearance thru the -Y wall over the
+    # INCOMING plug below + Ø3.6 thread-forming pilot in our OWN plug
+    b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        2.25, 9.0, cq.Vector(0, -SQ_W / 2 - 1.0, 14.0),
+        cq.Vector(0, 1, 0))))
+    b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        1.8, 8.0, cq.Vector(0, -SQ_CORE / 2 - 0.5, length + 14.0),
+        cq.Vector(0, 1, 0))))
     return b
 
 
@@ -658,7 +676,8 @@ SQS_DEPTH = 50.0               # mouth at z -50 (socket-local, 0 = rail
                                # bottom); way roof at -8
 SPG_W, SPG_L = 36.0, 40.0      # latch-head spigot (geometric clocking:
                                # one 6×45° keyed corner)
-HEAD_BODY_L = 30.0             # head body below the 50-sq shoulder plate
+HEAD_BODY_L = 42.0             # head body below the 50-sq shoulder plate
+                               # (30-deep plug socket + button band)
 # latch: bolt in the spigot's +y (inboard-placed) face; ledge pocket in
 # the socket way wall. Washer preload pushes the head DOWN onto the
 # pocket floor = zero play. Bolt/button drawn as functional dummies —
@@ -762,6 +781,14 @@ def leg_latch_head() -> cq.Workplane:
     shoulder-plate TOP (mounted at socket mouth -50)."""
     b = box_at(50.0, 50.0, 4.0, z=-2.0)                       # shoulder plate
     b = b.union(box_at(SQ_W, SQ_W, HEAD_BODY_L, z=-4.0 - HEAD_BODY_L / 2))
+    # ROUND 3: threadless bottom — a 32.1-sq SOCKET (30 deep) takes the
+    # top segment's integral plug; butt faces = hard stop; one M4 through
+    # the -Y wall = retention. (Gland/thread deleted with the washers.)
+    b = b.cut(box_at(SQ_CORE + 0.1, SQ_CORE + 0.1, 30.0,
+                     z=-4.0 - HEAD_BODY_L + 15.0))
+    b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        2.25, 9.0, cq.Vector(0, -SQ_W / 2 - 1.0, -4.0 - HEAD_BODY_L + 14.0),
+        cq.Vector(0, 1, 0))))
     spig = box_at(SPG_W, SPG_W, SPG_L, z=SPG_L / 2)
     spig = spig.cut(cq.Workplane("XY")                        # keyed corner
                     .polyline([(SPG_W / 2 - 6.0, SPG_W / 2),
@@ -769,19 +796,10 @@ def leg_latch_head() -> cq.Workplane:
                                (SPG_W / 2, SPG_W / 2 - 6.0)])
                     .close().extrude(SPG_L + 2).translate((0, 0, -1)))
     b = b.union(spig)
-    # female thread joint at the bottom (mirrors coupler_f/leg_segment)
-    zm = -4.0 - HEAD_BODY_L                                   # mouth face
-    b = b.cut(cyl(SQ_W + 4, GLAND_DEPTH + 0.5, z=zm - 0.5)
-              .cut(cyl(GLAND_ID, GLAND_DEPTH + 2, z=zm - 1)))
-    b = b.cut(cyl(TH_MINOR + TH_CLR, TH_LEN + 1, z=zm - 1))
-    b = b.cut(_thread((TH_MINOR - TH_CLR) / 2, TH_LEN + 1 + TH_LEAD,
-                      clr=0.8, phase_deg=60.0)
-              .translate((0, 0, zm - 1 - TH_LEAD)))
-    # TRRS plug seat + cable way down the centre
+    # TRRS plug seat + cable way down the centre (way meets the socket)
     b = b.cut(cyl(9.4, 1.5, z=SPG_L - 0.5))                   # tip lip way
     b = b.cut(cyl(11.0, SPG_L - 0.5 - 8.0, z=8.0))            # handle way
-    b = b.cut(cyl(14.0, 8.0 + HEAD_BODY_L - TH_LEN + 2.0,
-                  z=zm + TH_LEN - 1.0))                       # cable way
+    b = b.cut(cyl(14.0, 26.0, z=-4.0 - HEAD_BODY_L + 28.0))   # cable way
     # (NO face channel — user: only the wired leg's SEGMENTS carry the
     # channel; the cable dives into the core at the top segment's upper
     # dive hole and rises through this head's internal Ø14/Ø11 way, which
@@ -791,8 +809,8 @@ def leg_latch_head() -> cq.Workplane:
     b = b.cut(box_at(BOLT_W + 0.4, SPG_W / 2 + 4.0, BOLT_H + 0.4,
                      x=BOLT_X, y=SPG_W / 4 + 1.0, z=31.8))
     b = b.cut(box_at(12.4, 9.0, 10.4, x=-14.0, y=SQ_W / 2 - 4.4,
-                     z=-4.0 - HEAD_BODY_L / 2))
-    return heal(b)
+                     z=-11.0))         # button band: under the plate,
+    return heal(b)                     # above the plug socket (-16)
 
 
 def leg_latch_bolt() -> cq.Workplane:
@@ -814,10 +832,8 @@ def leg_latch_btn() -> cq.Workplane:
     """Latch BUTTON ×4 (PCTG): recessed seatbelt-style pad on the head
     body's inboard face + stem into the mechanism cavity (35° wedge to
     the bolt at refinement). Local = head frame."""
-    b = box_at(12.0, 3.0, 10.0, x=-14.0, y=SQ_W / 2 - 1.6,
-               z=-4.0 - HEAD_BODY_L / 2)
-    b = b.union(box_at(8.0, 6.0, 6.0, x=-14.0, y=SQ_W / 2 - 6.0,
-                       z=-4.0 - HEAD_BODY_L / 2))
+    b = box_at(12.0, 3.0, 10.0, x=-14.0, y=SQ_W / 2 - 1.6, z=-11.0)
+    b = b.union(box_at(8.0, 6.0, 6.0, x=-14.0, y=SQ_W / 2 - 6.0, z=-11.0))
     return b
 
 

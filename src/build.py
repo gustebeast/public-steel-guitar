@@ -95,16 +95,16 @@ PARTS = {
     # legs still populate the assembly until the stack swap lands) ──
     "leg_seg_body":    (lambda: heal(LG.leg_seg_body()), "petg-gf/leg_seg_body.step", "PETG-GF — square 44 segment BODY ×6 (redesign, plain legs): prints LYING on a face (layer lines along the leg — kick loads bulk GF); square-32 core takes the M4-retained thread couplers"),
     "leg_seg_body_ch": (lambda: heal(LG.leg_seg_body_ch()), "petg-gf/leg_seg_body_ch.step", "PETG-GF — square segment BODY, CHANNELED ×2 (redesign, the wired -X/+Y leg only): + lidded face cable channel + core dive holes"),
-    "leg_coupler_m":   (lambda: heal(LG.leg_coupler_m()), "pctg/leg_coupler_m.step", "PCTG — male thread coupler ×8 (redesign): prints STANDING (thread quality); slides into a body core end, ONE M4 retention screw (joinery takes the loads); Ø40 collar hard stop + Ø36/30 single-start spigot unchanged"),
-    "leg_coupler_f":   (lambda: heal(LG.leg_coupler_f()), "pctg/leg_coupler_f.step", "PCTG — female thread coupler ×8 (redesign): prints STANDING mouth-down; gland + rim hard-stop ring in its face; internal thread through the M4-retained plug"),
+    # ("leg_coupler_m" export retired — ROUND 3: threadless, gasketless square legs)
+    # ("leg_coupler_f" export retired — ROUND 3: threadless, gasketless square legs)
     "leg_lid":         (lambda: heal(LG.leg_lid()), "petg-gf/leg_lid.step", "PETG-GF — leg channel LID ×2 (redesign, wired leg): 45° dovetail strip, slides over the body's cable channel (bar-lid pattern; TPU nub SKU locks it)"),
-    "leg_washer_sq":   (lambda: heal(LG.leg_washer_sq()), "tpu/leg_washer_sq.step", "TPU — square gland washer ×4 (redesign, top joint): 44 sq, squeezed 2.5→2.0 by the latch head's shoulder plate (defined compression)"),
+    # ("leg_washer_sq" export retired — ROUND 3: threadless, gasketless square legs)
     "leg_socket_sq":   (lambda: heal(LG.leg_socket_sq()), "petg-gf/leg_socket_sq.step", "PETG-GF — passive square LATCH SOCKET ×3 (redesign): square keyed way + gland + blind ledge pocket; zero moving parts in the body; same glued dovetail tenon"),
     "leg_socket_sq_trrs": (lambda: heal(LG.leg_socket_sq_trrs()), "petg-gf/leg_socket_sq_trrs.step", "PETG-GF — passive square latch socket ×1 (wired leg): + the vertical chassis-jack way (10-03404, blind-mates on the straight push) + tenon cable channel"),
     "leg_latch_head":  (lambda: heal(LG.leg_latch_head()), "pctg/leg_latch_head.step", "PCTG — LATCH HEAD ×4 (redesign; prints standing): female thread joint below, 50-sq shoulder plate (hard stop + washer preload), keyed 36-sq spigot with bolt channel + recessed seatbelt button pocket + captive TRRS plug seat (one SKU for all legs)"),
     "leg_latch_bolt":  (lambda: heal(LG.leg_latch_bolt()), "pctg/leg_latch_bolt.step", "PCTG — latch BOLT ×4 (redesign): rigid slider, 45° self-latching nose; underside bears the socket ledge (retention ~100N target)"),
     "leg_latch_btn":   (lambda: heal(LG.leg_latch_btn()), "pctg/leg_latch_btn.step", "PCTG — latch BUTTON ×4 (redesign): recessed seatbelt-style release on the head's inboard face (35° wedge coupling at refinement)"),
-    "leg_washer":      (lambda: heal(LG.leg_washer()),  "tpu/leg_washer.step",  "TPU — gland washer, 1/junction = segments+1 per leg (sits in the female-rim recess; the hard-stop collar squeezes it a fixed 2.5->2.0 every assembly)"),
+    # ("leg_washer" export retired — ROUND 3: threadless, gasketless square legs)
     # pedal bar + latch (one latched foot for now; mirror to -X once the feel
     # is validated). The bar itself is a DEMO prism (longer than the bed —
     # it gets segmented for printing once the pedals land on it).
@@ -394,12 +394,12 @@ def _leg_components():
     from . import wiring as WR
     out = []
     seg_body, seg_body_ch = LG.leg_seg_body(), LG.leg_seg_body_ch()
-    cm, cf, lid = LG.leg_coupler_m(), LG.leg_coupler_f(), LG.leg_lid()
+    lid = LG.leg_lid()
     head, bolt, btn = (LG.leg_latch_head(), LG.leg_latch_bolt(),
                        LG.leg_latch_btn())
-    wsq, sock_p = LG.leg_washer_sq(), LG.leg_socket_sq()
+    sock_p = LG.leg_socket_sq()
     sleeve = LG.leg_sleeve()
-    shaft, foot, washer = LG.leg_shaft(), LG.leg_foot(), LG.leg_washer()
+    shaft, foot = LG.leg_shaft(), LG.leg_foot()
     ground = CH.Z_BOT - LEG_HEIGHT
     k = 0
     for sx in CH.LEG_STATIONS_X:           # stations computed from the shared endplate model
@@ -413,29 +413,24 @@ def _leg_components():
 
             out.append((f"leg_socket_{k}",
                         R(LG.leg_socket_sq_trrs() if wired else sock_p)))
-            out.append((f"leg_washer_sq_{k}", R(wsq, -50.0)))
             out.append((f"leg_latch_head_{k}", R(head, -50.0)))
             out.append((f"leg_latch_bolt_{k}", R(bolt, -50.0)))
             out.append((f"leg_latch_btn_{k}", R(btn, -50.0)))
-            mouth = -84.0                       # head's female mouth plane
+            # ROUND 3 threadless chain: butt faces, integral plugs, no
+            # washers/couplers. Head bottom face at -96; each body IS the
+            # 142 pitch (its plug rides inside the part above).
+            top = -96.0
             for j in range(LEG_SEGMENTS):
                 idx = LEG_SEGMENTS * k + j
-                out.append((f"leg_washer_{(LEG_SEGMENTS + 1) * k + j}",
-                            R(washer, mouth)))
-                out.append((f"leg_coupler_m_{idx}", R(cm, mouth - 8.0)))
                 out.append((f"leg_seg_body_{idx}",
                             R(seg_body_ch if wired else seg_body,
-                              mouth - 8.0 - LG.SEG_BODY_L)))
+                              top - LG.SEG_BODY_L)))
                 if wired:
                     out.append((f"leg_lid_{j}",
                                 R(lid.translate((0, LG.SQ_W / 2 - 1.9, 0)),
-                                  mouth - 8.0 - LG.SEG_BODY_L)))
-                out.append((f"leg_coupler_f_{idx}",
-                            R(cf, mouth - 142.0)))
-                mouth -= 142.0                  # step preserved
-            out.append((f"leg_washer_{(LEG_SEGMENTS + 1) * k + LEG_SEGMENTS}",
-                        R(washer, mouth)))
-            out.append((f"leg_sleeve_{k}", R(sleeve, mouth - 2.0)))
+                                  top - LG.SEG_BODY_L)))
+                top -= LG.SEG_BODY_L
+            out.append((f"leg_sleeve_{k}", R(sleeve, top)))
             # the -X/+Y leg carries the TRRS-jack shaft variant (same base
             # name: the whitelist pairs and colours apply unchanged)
             out.append((f"leg_shaft_{k}",
