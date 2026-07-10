@@ -131,6 +131,21 @@ GLOBAL_OK = {
     # the leg-column cable and the shaft-side cable model the SAME physical
     # CA-354S in two modeling domains; they abut/overlap inside the bore
     frozenset({"leg_column_cable", "pedal_trrs_cable_leg"}),
+    # ROUND 4: the bar carries the +Y legs' stub towers — the short
+    # shaft's block seats the stub plate, the latch bolt bears its ledge,
+    # the second TRRS pair mates inside, the stub takes a leg foot
+    frozenset({"pedal_bar_stub", "leg_shaft"}),
+    frozenset({"pedal_bar_stub", "leg_foot"}),
+    frozenset({"pedal_bar_stub", "leg_column_plug"}),
+    frozenset({"pedal_bar_stub", "leg_plug_retainer"}),
+    frozenset({"pedal_bar_stub", "leg_latch_bolt"}),
+    frozenset({"pedal_bar_stub", "leg_latch_btn"}),
+    frozenset({"leg_latch_bolt", "leg_shaft"}),
+    frozenset({"shaft_trrs_jack", "leg_shaft"}),
+    frozenset({"shaft_trrs_jack", "leg_column_plug"}),
+    frozenset({"shaft_trrs_jack", "jack_seat_ring"}),
+    frozenset({"jack_seat_ring", "leg_shaft"}),
+    frozenset({"leg_junction_pcb", "leg_seg_body"}),
 }
 
 # The pedal-bar latches are a self-contained subassembly (bolt in its
@@ -139,10 +154,8 @@ GLOBAL_OK = {
 # part clashing with a leg/chassis part (other than the GLOBAL_OK contacts
 # above) stays a reportable bug.
 PEDAL_FAMILY = {"pedal_bar_a", "pedal_bar_b", "pedal_lid_a", "pedal_lid_b",
-                "pedal_bolt", "pedal_bolt_trrs", "pedal_latch_finger",
-                "pedal_detent_nub", "pedal_trrs_jack", "pedal_trrs_plug",
-                "pedal_leg_carrier",
-                "pedal_trrs_cable_bar", "pedal_trrs_cable_leg"}
+                "pedal_detent_nub", "pedal_bar_stub",
+                "pedal_trrs_cable_bar"}
 
 
 # The knee-lever control core is a self-contained subassembly: the axle, bearings,
