@@ -134,12 +134,14 @@ GLOBAL_OK = {
     # ROUND 4: the bar carries the +Y legs' stub towers — the short
     # shaft's block seats the stub plate, the latch bolt bears its ledge,
     # the second TRRS pair mates inside, the stub takes a leg foot
-    frozenset({"pedal_bar_stub", "leg_shaft"}),
-    frozenset({"pedal_bar_stub", "leg_foot"}),
-    frozenset({"pedal_bar_stub", "leg_column_plug"}),
-    frozenset({"pedal_bar_stub", "leg_plug_retainer"}),
-    frozenset({"pedal_bar_stub", "leg_latch_bolt"}),
-    frozenset({"pedal_bar_stub", "leg_latch_btn"}),
+    frozenset({"leg_latch_bolt", "pedal_bar_a"}),
+    frozenset({"leg_latch_bolt", "pedal_bar_b"}),
+    frozenset({"leg_latch_btn", "pedal_bar_a"}),
+    frozenset({"leg_latch_btn", "pedal_bar_b"}),
+    frozenset({"leg_column_plug", "pedal_bar_a"}),
+    frozenset({"leg_column_plug", "pedal_bar_b"}),
+    frozenset({"leg_plug_retainer", "pedal_bar_a"}),
+    frozenset({"leg_plug_retainer", "pedal_bar_b"}),
     frozenset({"leg_latch_bolt", "leg_shaft"}),
     frozenset({"shaft_trrs_jack", "leg_shaft"}),
     frozenset({"shaft_trrs_jack", "leg_column_plug"}),
@@ -154,7 +156,7 @@ GLOBAL_OK = {
 # part clashing with a leg/chassis part (other than the GLOBAL_OK contacts
 # above) stays a reportable bug.
 PEDAL_FAMILY = {"pedal_bar_a", "pedal_bar_b", "pedal_lid_a", "pedal_lid_b",
-                "pedal_detent_nub", "pedal_bar_stub",
+                "pedal_detent_nub", "pedal_bar_foot",
                 "pedal_trrs_cable_bar"}
 
 
