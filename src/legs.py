@@ -454,13 +454,13 @@ def leg_shaft_trrs() -> cq.Workplane:
     # the integral mouth-seat BOSS (withdrawal backstop); a pressed
     # jack_seat_ring ABOVE it takes insertion. Jack mouth +42.7, plug tip
     # +55.7 = 13.0 insertion on the same press that clicks the latch.
-    body = body.union(cyl(13.0, 2.6, z=41.5))        # mouth-seat boss: its
+    body = body.union(cyl(13.0, 1.9, z=42.2))        # mouth-seat boss: its
     #                                                  42.7 ledge seats the
     #                                                  jack, its upper band
     #                                                  ties to the roof, its
     #                                                  bottom clears the
     #                                                  plug handle (41.2)
-    body = body.cut(cyl(4.8, 2.2, z=41.3))           # barrel way thru boss
+    body = body.cut(cyl(4.8, 2.0, z=42.0))           # barrel way thru boss
     body = body.cut(cyl(9.7, SHORT_SHAFT_L - 42.7 + 2.0, z=42.7))
     return body
 
