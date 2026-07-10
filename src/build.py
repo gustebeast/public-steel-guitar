@@ -115,7 +115,7 @@ PARTS = {
     # (pedal_bolt / pedal_bolt_trrs / pedal_latch_finger exports RETIRED by
     # ROUND 4 — the sliding latches are gone; the bar carries stub towers)
     "pedal_detent_nub": (lambda: heal(_PB("nub_part")), "tpu/pedal_detent_nub.step", "TPU — detent nub ×1 (Ø4×4): presses into the bar top as the LID lock"),
-    "pedal_bar_stub":  (lambda: heal(__import__("src.pedal_bar", fromlist=["e"]).pedal_bar_stub(False)), "pctg/pedal_bar_stub.step", "PCTG — bar STUB TOWER ×2 (print 1 plain + 1 from pedal_bar_stub(True) for the wired -X station): the bar-carried last piece of each +Y leg — house spigot + wedging bolt channel + recessed button + plug through the bar (1 M4) + foot spigot; the leg presses down onto it (leg↔body latch, verbatim)"),
+    "pedal_bar_foot":  (lambda: heal(__import__("src.pedal_bar", fromlist=["e"]).pedal_bar_foot()), "tpu/pedal_bar_foot.step", "TPU — bar FOOT ×2 (user: foot inserts into a bar mortise): 44-sq ground pad + dovetail tenon, slides in from -Y (compression-loaded, no fastener); the wired one covers the plug-threading access. The stub TOWERS are FUSED into the bar prints"),
     "leg_shaft_short": (lambda: heal(LG.leg_shaft_short()), "petg-gf/leg_shaft_short.step", "PETG-GF — SHORT +Y shaft ×1 (the wired one prints from leg_shaft_trrs): 28×26 fat tenon ending in the 44-sq terminal block whose house socket + ledge take the bar stub"),
     "jack_seat_ring":  (lambda: heal(LG.jack_seat_ring()), "pctg/jack_seat_ring.step", "PCTG — press ring ×1: down the wired short shaft's way onto the bar-joint jack (insertion backstop; the integral boss takes withdrawal)"),
     "electronics_tray": (lambda: heal(__import__("src.electronics", fromlist=["e"]).electronics_tray()), "pctg/electronics_tray.step", "PCTG — compute-bay tray (drops into rail channels from above; tool-free SNAP mounts for Teensy+shield, Pi 5, 2x CS42448, buck, CAN transceiver — snap fingers need PCTG's ductility)"),
@@ -448,13 +448,9 @@ def _leg_components():
                             sh.rotate((0, 0, 0), (0, 0, 1), rot)
                             .translate((sx, ry,
                                         ground + LG.FOOT_H + PB_STUB_Z0))))
-                # the STUB TOWER (bar-carried leg piece) + its latch bolt/
-                # button (leg_latch SKUs, head frame) + its TPU foot
+                # latch bolt/button on the FUSED bar tower (head frame,
+                # seat plane at STUB_Z0)
                 zst = ground + LG.FOOT_H + PB_STUB_Z0
-                out.append((f"pedal_bar_stub_{k // 2}",
-                            PB2.pedal_bar_stub(wired)
-                            .rotate((0, 0, 0), (0, 0, 1), rot)
-                            .translate((sx, ry, zst))))
                 out.append((f"leg_latch_bolt_{4 + k // 2}",
                             LG.leg_latch_bolt()
                             .rotate((0, 0, 0), (0, 0, 1), rot)
@@ -463,9 +459,6 @@ def _leg_components():
                             LG.leg_latch_btn()
                             .rotate((0, 0, 0), (0, 0, 1), rot)
                             .translate((sx, ry, zst))))
-                out.append((f"leg_foot_{k}",
-                            foot.rotate((0, 0, 0), (0, 0, 1), rot)
-                            .translate((sx, ry, ground))))
             else:
                 out.append((f"leg_shaft_{k}",
                             shaft.rotate((0, 0, 0), (0, 0, 1), rot)
@@ -490,7 +483,6 @@ def _leg_components():
                 # the short shaft's block; the plug + retainer ride the
                 # bar stub (same generators, frame-shifted: both mate
                 # dummies share ONE translate so tip/mouth land together)
-                zst = ground + LG.FOOT_H + PB_STUB_Z0
                 zj = zst + 42.7 - LG.CHJ_MOUTH_Z    # jack mouth at +42.7
                 out.append(("shaft_trrs_jack",
                             LG.chassis_trrs_jack()
@@ -698,7 +690,7 @@ _COLORS = {
     # jackets). Grey — NOT black (TPU-reserved); the per-wire gauge/shade
     # colours reappear at the crimped XH pigtails, not inside a jacket.
     "pedal_trrs_cable_bar": (0.45, 0.45, 0.48),  # trough → stub plug seat
-    "pedal_bar_stub":  (0.36, 0.42, 0.46),       # bar-carried leg stubs
+    "pedal_bar_foot":  (0.12, 0.12, 0.13),       # TPU bar feet (mortise inserts)
     "shaft_trrs_jack": (0.62, 0.64, 0.67),       # bar-joint jack (10-03404)
     "shaft_trrs_cable": (0.45, 0.45, 0.48),
     "jack_seat_ring":  (0.42, 0.48, 0.52),
