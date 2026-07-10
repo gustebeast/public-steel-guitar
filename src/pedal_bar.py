@@ -123,27 +123,19 @@ def _stub_tower(lx: float, wired: bool) -> cq.Workplane:
     """FUSED stub tower (user: single printed piece — the tenon is part of
     the bar): 44-sq button body (19..43) + house spigot (43..85) with the
     wedging-bolt channel + recessed button pocket (leg_latch_bolt/btn SKUs
-    reuse verbatim, frame = seat plane 43). The wired tower carries the
-    captive CA-354S seat; its plug threads UP from the foot mortise below
-    (the TPU foot covers the access) and its cable enters from the trough
-    side way. Prints WITH the bar, bottom-down — plain standing geometry,
-    no overhangs (the old 50-plate is gone: the 44 face IS the seat)."""
-    b = box_at(LG.SQ_W, LG.SQ_W, STUB_Z0 - BAR_H, x=lx, y=YC,
-               z=(BAR_H + STUB_Z0) / 2)
-    b = b.union(_house(27.7, -15.85, 1.85, 42.0)
-                .translate((lx, YC, STUB_Z0)))
+    reuse verbatim, frame = seat plane 43). Authored at the ORIGIN and
+    ROTATED 180° like the +Y leg stacks, so the house gable, bolt and
+    ledge all face the leg block's rotated features. The wired tower's
+    captive CA-354S threads UP from the foot-mortise access below; its
+    cable enters from the trough side way. Prints WITH the bar,
+    bottom-down — plain standing geometry, no overhangs."""
+    b = box_at(LG.SQ_W, LG.SQ_W, STUB_Z0 - BAR_H, z=(BAR_H + STUB_Z0) / 2)
+    b = b.union(_house(27.7, -15.85, 1.85, 42.0).translate((0, 0, STUB_Z0)))
     b = b.cut(box_at(LG.BOLT_W + 0.4, LG.SPG_W / 2 + 4.0, LG.BOLT_H + 0.4,
-                     x=lx + LG.BOLT_X, y=YC + LG.SPG_W / 4 + 1.0,
-                     z=STUB_Z0 + 31.8))
-    b = b.cut(box_at(12.4, 9.0, 10.4, x=lx - 14.0,
-                     y=YC + LG.SQ_W / 2 - 4.4, z=STUB_Z0 - 11.0))
-    if wired:
-        b = b.cut(cyl(9.4, 1.7, z=STUB_Z0 + 41.4).translate((lx, YC, 0)))
-        b = b.cut(cyl(11.0, 33.5, z=STUB_Z0 + 8.0).translate((lx, YC, 0)))
-        b = b.cut(cyl(8.0, STUB_Z0 + 9.0, z=-0.5).translate((lx, YC, 0)))
-        b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-            4.0, 16.0, cq.Vector(lx - 14.0, YC, 10.0),
-            cq.Vector(1, 0, 0))))                 # side way from the trough
+                     x=LG.BOLT_X, y=LG.SPG_W / 4 + 1.0, z=STUB_Z0 + 31.8))
+    b = b.cut(box_at(12.4, 9.0, 10.4, x=-14.0, y=LG.SQ_W / 2 - 4.4,
+                     z=STUB_Z0 - 11.0))
+    b = b.rotate((0, 0, 0), (0, 0, 1), 180).translate((lx, YC, 0))
     return b
 
 
@@ -169,6 +161,15 @@ def _bar_full() -> cq.Workplane:
     body = body.union(_stub_tower(LATCHES[1][0], True))
     body = body.cut(_foot_mortise_cutter(LATCHES[0][0]))
     body = body.cut(_foot_mortise_cutter(LATCHES[1][0]))
+    # wired tower's ways — cut AFTER the union (they pierce both the tower
+    # and the bar prism beneath it): captive plug seat, Ø8 down-way to the
+    # foot-mortise access, Ø8 side way to the trough
+    wlx = LATCHES[1][0]
+    body = body.cut(cyl(9.4, 1.7, z=STUB_Z0 + 41.4).translate((wlx, YC, 0)))
+    body = body.cut(cyl(11.0, 33.5, z=STUB_Z0 + 8.0).translate((wlx, YC, 0)))
+    body = body.cut(cyl(8.0, STUB_Z0 + 9.0, z=-0.5).translate((wlx, YC, 0)))
+    body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        4.0, 28.0, cq.Vector(wlx - 2.0, YC, 11.0), cq.Vector(1, 0, 0))))
 
     # wiring TROUGH (open top; the lid roofs it)
     body = body.cut(box_at(TROUGH_X1 - TROUGH_X0, 16.5, BAR_H - 4.0 + 1,
@@ -211,16 +212,16 @@ def pedal_bar_a() -> cq.Workplane:
     """-X bar piece (TRRS foot): full bar clipped at the splice + the two
     dovetail tenons (slide piece B down onto them, glue). 321.6 long —
     fits the 255² bed on the diagonal."""
-    half = box_at(XS - (BAR_X0 - 1), 80.0, 40.0,
-                  x=(BAR_X0 - 1 + XS) / 2, y=YC, z=10.0)
+    half = box_at(XS - (BAR_X0 - 1), 80.0, 120.0,
+                  x=(BAR_X0 - 1 + XS) / 2, y=YC, z=40.0)
     return _bar_full().intersect(half).union(_splice_prisms(0.0))
 
 
 def pedal_bar_b() -> cq.Workplane:
     """+X bar piece (plain foot): clipped at the splice − the tenon slots
     (0.2 fit). 291.6 long — diagonal print."""
-    half = box_at((BAR_X1 + 1) - XS, 80.0, 40.0,
-                  x=(XS + BAR_X1 + 1) / 2, y=YC, z=10.0)
+    half = box_at((BAR_X1 + 1) - XS, 80.0, 120.0,
+                  x=(XS + BAR_X1 + 1) / 2, y=YC, z=40.0)
     return _bar_full().intersect(half).cut(_splice_prisms(0.2))
 
 
