@@ -84,8 +84,8 @@ PARTS = {
     # redesign — generators remain in legs.py until the refinement pass
     # deletes them)
     "leg_sleeve":      (lambda: heal(LG.leg_sleeve()),  "pctg/leg_sleeve.step",  "PCTG — leg slider sleeve ×4 (pinch collar: M4 button screw + insert pulls the slit closed; the slit MUST flex — never glass-filled)"),
-    "leg_shaft":       (lambda: heal(LG.leg_shaft()),   "petg-gf/leg_shaft.step",   "PETG-GF — RECTANGULAR sliding shaft ×3 (20×16.8; fine height adjust; the (+x,-y) corner chamfer keys ONE orientation; the mouth face carries the latch bolt's bearing plane). Prints LYING on the back face — layer lines along the shaft (user: stability over impact protection)"),
-    "leg_shaft_trrs":  (lambda: heal(LG.leg_shaft_trrs()), "petg-gf/leg_shaft_trrs.step", "PETG-GF — the -X/+Y leg's shaft ×1: rectangular shaft + the TRRS dock in its NATIVE -x face (LCSC SMT jack on the leg CARRIER PCB) + carrier seat + bottom-entry XH cavity (under the foot) + the press-in cable channel on the inward CORNER. Lying print, pocket opens sideways"),
+    "leg_shaft":       (lambda: heal(LG.leg_shaft()),   "petg-gf/leg_shaft.step",   "PETG-GF — -Y shaft ×2: 28×26 keyed tenon (197) + SOLID 44-sq block (91, equal-height rule) with the shared TPU foot's dovetail mortise. 288 long: print LYING on the bed DIAGONAL (layer lines along the shaft; user: stability over impact protection)"),
+    "leg_shaft_trrs":  (lambda: heal(LG.leg_shaft_trrs()), "petg-gf/leg_shaft_trrs.step", "PETG-GF — +Y WIRED shaft ×1 (245, lying print): 197 tenon + 44-sq block with the bar-joint house socket + the 10-03404 jack seated mouth-down on the +5 TRRS axis (loads from the open tenon top; boss = withdrawal stop, pressed jack_seat_ring = insertion stop)"),
     "leg_foot":        (lambda: heal(LG.leg_foot()),    "tpu/leg_foot.step",    "TPU — SHARED dovetail foot ×4 (user: one look): 44-sq pad + tenon into the underside mortise of the -Y leg blocks AND the pedal bar; the wired bar one covers the plug-threading access"),
     # (round leg_socket_trrs export retired — see leg_socket_sq_trrs)
     "leg_plug_retainer": (lambda: heal(LG.leg_plug_retainer()), "pctg/leg_plug_retainer.step", "PCTG — press sleeve ×1: up the wired leg's top-segment bore under the CA-354S handle (insertion backstop; the spigot tip lip takes withdrawal)"),
@@ -107,8 +107,8 @@ PARTS = {
     # pedal bar + latch (one latched foot for now; mirror to -X once the feel
     # is validated). The bar itself is a DEMO prism (longer than the bed —
     # it gets segmented for printing once the pedals land on it).
-    "pedal_bar_a":     (lambda: heal(_PB("pedal_bar_a")), "petg-gf/pedal_bar_a.step", "PETG-GF — pedal bar, -X piece (TRRS foot + wiring trough + dovetail lid groove; splice tenons at its +X end). 322 long: place DIAGONALLY on the 255^2 bed; glue to pedal_bar_b"),
-    "pedal_bar_b":     (lambda: heal(_PB("pedal_bar_b")), "petg-gf/pedal_bar_b.step", "PETG-GF — pedal bar, +X piece (plain snap foot; splice slots at its -X end). 292 long: diagonal print; slide down onto _a's tenons + glue"),
+    "pedal_bar_a":     (lambda: heal(_PB("pedal_bar_a")), "petg-gf/pedal_bar_a.step", "PETG-GF — pedal bar, -X piece (44 wide, flush with its fused WIRED tower; wiring trough + dovetail lid groove; splice tenons at its +X end). 315 long: place DIAGONALLY on the 255^2 bed; glue to pedal_bar_b"),
+    "pedal_bar_b":     (lambda: heal(_PB("pedal_bar_b")), "petg-gf/pedal_bar_b.step", "PETG-GF — pedal bar, +X piece (44 wide, flush with its fused PLAIN tower; splice slots at its -X end). 311 long: diagonal print; slide down onto _a's tenons + glue"),
     "pedal_lid_a":     (lambda: heal(_PB("pedal_lid_a")), "petg-gf/pedal_lid_a.step", "PETG-GF — sliding dovetail lid, -X piece (covers the TRRS latch; bridges the bar splice). 241 long; print TOP-FACE DOWN (45-deg flanks)"),
     "pedal_lid_b":     (lambda: heal(_PB("pedal_lid_b")), "petg-gf/pedal_lid_b.step", "PETG-GF — sliding dovetail lid, +X piece (covers the plain latch; lock dimple clicks onto the bar-top nub, pinning both lid pieces — no screws). 322 long: diagonal, TOP-FACE DOWN"),
     # (pedal_bolt / pedal_bolt_trrs / pedal_latch_finger exports RETIRED by
@@ -377,14 +377,14 @@ def _pickup_mount_components():
 
 
 LEG_HEIGHT = 655.0   # floor → body bottom (user reference). Fine-stage
-                     # bands (E = engagement 50..192, travel 142; unified
-                     # 245 shafts w/ 48 blocks): +Y H = 596+142k−E (k=1:
-                     # 546..688); -Y H = 553+142k−E (k=2: 645..787).
-                     # Drawn: +Y 1 segment (E=83), -Y 2 (E=182) —
-                     # counts are PER LEG (different ground datums)
-LEG_SEGMENTS = 2     # coarse height: each segment steps 142; the shaft's 160
-                     # slide overlaps the step, so every height ≥ ~241 is
-                     # reachable by picking the count (2 covers 525..685)
+                     # bands (E = engagement 50..192, travel 142): with
+                     # EQUAL 103-tall wide bottoms (user: -Y block 91 =
+                     # bar 19 + tower 24 + block 48) every tenon roots at
+                     # floor+103, so BOTH sides share ONE band formula
+                     # H = 596+142k−E (k=1: 546..688). Drawn 655 = k=1,
+                     # E=83, all four legs — same count everywhere
+LEG_SEGMENTS = 2     # index stride / band count; the drawn chain places
+                     # LEG_SEGMENTS−1 bodies per leg (k=1 at 655)
 
 
 def _leg_components():
@@ -429,7 +429,10 @@ def _leg_components():
             # washers/couplers. Head bottom face at -96; each body IS the
             # 142 pitch (its plug rides inside the part above).
             top = -96.0
-            nseg = LEG_SEGMENTS if ry == CH.Y_LO else LEG_SEGMENTS - 1
+            # EQUAL bottoms (user): the -Y 91 block roots its tenon at the
+            # same height as the +Y block-on-tower stack, so both sides
+            # take the SAME segment count at any drawn height
+            nseg = LEG_SEGMENTS - 1
             for j in range(nseg):
                 idx = LEG_SEGMENTS * k + j
                 out.append((f"leg_seg_body_{idx}",
