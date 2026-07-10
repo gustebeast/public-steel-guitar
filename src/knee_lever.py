@@ -280,8 +280,12 @@ HS_HOUS_BACK = HS_BACK_X + HS_BSTOP_ENGAGE   # housing boss depth = engagement (
 # being 45°, both mortises are self-supporting (print bottom-to-top). The TRUNK is only 0.8 mm so
 # neither mortise goes deep. The RIB mortise is the long part (player face -> guitar mid-Y) so the
 # lever slides to the chosen knee depth; a -Y M4 screw locks it. Even pitch -> one tenon fits any bay. ──
-RIB_PITCH = 46.0                    # uniform bottom-rib pitch
-TEN_XC    = RIB_PITCH / 2           # half-pitch (23) -- the nearest rib is this far -X of the axle
+RIB_PITCH = 46.0                    # the lever's TENON SPAN (set by the cartridge reach). The chassis
+                                    # rib pitch is now HALF this (23 mm -- a crossbar per motor + one
+                                    # between each), so this lever spans TWO chassis bays: its axle sits
+                                    # over a rib and its two tenons drop into the ribs 1 and 3 to the -X
+                                    # (23 and 69 mm), skipping the rib directly between them.
+TEN_XC    = RIB_PITCH / 2           # near tenon 23 mm -X of the axle (= one 23 mm chassis pitch)
 # BOTH rails -X of the axle: the cartridge extends -X all the way to the far rail, so that rib is blocked
 # for any other lever -- we take both -X ribs for support and leave the +X rib free. (Chassis cuts a
 # mortise into EVERY rib, so no chassis change is needed; the lever just uses two adjacent -X ribs.)
