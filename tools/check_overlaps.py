@@ -91,12 +91,28 @@ GLOBAL_OK = {
     frozenset({"pickup", "pickup_zplate"}), frozenset({"pickup", "pickup_xclamp"}),
     frozenset({"pickup_zplate", "height_screw"}),
     frozenset({"pickup_xclamp", "clamp_screw"}),
-    # legs: socket bolts to the rail; threaded junctions + washers + slider
-    frozenset({"leg_socket", "chassis"}), frozenset({"leg_socket", "leg_segment"}),
-    frozenset({"leg_segment", "leg_segment"}), frozenset({"leg_segment", "leg_sleeve"}),
+    # legs: socket glues to the rail; SQUARE-LEG stack (latch head, coupler
+    # joints, washers, slider) — every joint is a designed contact
+    frozenset({"leg_socket", "chassis"}),
     frozenset({"leg_sleeve", "leg_shaft"}), frozenset({"leg_shaft", "leg_foot"}),
-    frozenset({"leg_washer", "leg_socket"}), frozenset({"leg_washer", "leg_segment"}),
     frozenset({"leg_washer", "leg_sleeve"}),
+    frozenset({"leg_seg_body", "leg_coupler_m"}),
+    frozenset({"leg_seg_body", "leg_coupler_f"}),
+    frozenset({"leg_coupler_m", "leg_coupler_f"}),
+    frozenset({"leg_coupler_m", "leg_latch_head"}),
+    frozenset({"leg_coupler_f", "leg_sleeve"}),
+    frozenset({"leg_washer", "leg_coupler_m"}),
+    frozenset({"leg_washer", "leg_coupler_f"}),
+    frozenset({"leg_washer", "leg_latch_head"}),
+    frozenset({"leg_washer_sq", "leg_socket"}),
+    frozenset({"leg_washer_sq", "leg_latch_head"}),
+    frozenset({"leg_latch_head", "leg_socket"}),
+    frozenset({"leg_latch_bolt", "leg_latch_head"}),
+    frozenset({"leg_latch_bolt", "leg_socket"}),
+    frozenset({"leg_latch_btn", "leg_latch_head"}),
+    frozenset({"leg_column_plug", "leg_latch_head"}),
+    frozenset({"leg_plug_retainer", "leg_latch_head"}),
+    frozenset({"leg_lid", "leg_seg_body"}),
     # pedal bar: the C-slots wrap the shaft waists (0.2 clr, touch at the
     # shoulder plane), the plate rests on the foot caps, and the closed
     # bolts (one latch per foot) block the waists

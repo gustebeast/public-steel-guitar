@@ -260,7 +260,9 @@ def leg_socket() -> cq.Workplane:
 # handle top -9.7 (0.2 under the lip; full barrel exposed), tip +4.8;
 # jack mouth -8.2 → 13.0 insertion (the same DELIBERATE 1.0 shortfall as
 # the bar joint — it buys the mouth-seat ring its thickness).
-CHJ_MOUTH_Z = -8.2            # chassis-jack mouth plane (socket-local)
+CHJ_MOUTH_Z = -9.3            # chassis-jack mouth plane (socket-local;
+                              # re-based for the square latch socket:
+                              # spigot top -10, plug tip +3.7)
 CHJ_D, CHJ_L = 9.1, 39.4      # 10-03404 molded body
 SEG_BORE_D = 11.0             # segment axial bore (Ø10 handle way)
 PLUG_TIP_Z = 4.8              # seated barrel tip (socket-local)
@@ -320,16 +322,17 @@ def leg_sleeve() -> cq.Workplane:
     creep — instead of a set-screw point load that stress-relaxes; the shaft
     stays unmarred. Set once per player, hex key. Closing the bore Ø0.4 needs
     ~1.3 of slit travel (< the 1.6 gap). Local: Z0 = shoulder; body −Z."""
-    body = cyl(TUBE_OD + 4, SLEEVE_L, z=-SLEEVE_L)
+    # SQUARE-LEG reskin: 44-sq outer body (matches the segment bodies; the
+    # pinch lug pokes ~5 proud of the +y face — accepted v1). Prints
+    # STANDING as always (the keyed sliding bore needs circularity).
+    body = box_at(SQ_W, SQ_W, SLEEVE_L, z=-SLEEVE_L / 2)
     spigot = cyl(TH_MINOR - TH_CLR, TH_LEN + 2, z=-2.0)
     spigot = spigot.union(_thread((TH_MINOR - TH_CLR) / 2, TH_LEN + 2)
                           .translate((0, 0, -2.0)))
     body = body.union(spigot)
-    # male shoulder COLLAR + 45° cone (same hard stop as the segment top)
+    # male shoulder COLLAR (hard stop; the 44-sq top face backs it — no
+    # transition cone needed)
     body = body.union(cyl(COLLAR_D, COLLAR_H, z=0.0))
-    body = body.union(cq.Workplane("XY").add(cq.Solid.makeCone(
-        (TUBE_OD + 4) / 2, COLLAR_D / 2, 3.0,
-        cq.Vector(0, 0, -3.0), cq.Vector(0, 0, 1))))
     # TRRS column way: the keyed bore stops 3 short of the spigot tip —
     # open it (Ø11, same as the segments) so the wired leg's CA-354S cable
     # passes clean through the column
@@ -529,8 +532,12 @@ def leg_shaft_trrs() -> cq.Workplane:
 SQ_W = 44.0                    # outer square width (uniform, = old bell OD)
 SQ_CORE = 32.0                 # square core (glue pocket for the couplers;
                                # 45° crown corners print lying)
-SEG_BODY_L = 126.0             # GF body; + 6 male / 8 female coupler
-                               # flanges = 140 effective (step stays 142)
+SEG_BODY_L = 106.0             # GF body; + 6 male flange + 28 female
+                               # barrel = 140 effective (step stays 142).
+                               # The female coupler's thread (Ø36.4
+                               # crests) CANNOT fit inside the 32-square
+                               # core — it lives in the coupler's own
+                               # 44-sq barrel below the body (gate-caught)
 PUCK_PLUG_L = 20.0             # coupler glue plug depth into the core
 CH_MOUTH, CH_DEEP = 6.0, 7.0   # face cable channel (lidded; Ø3.7 + slack)
 
@@ -560,8 +567,9 @@ def _sq_body(length: float, channel: bool = False) -> cq.Workplane:
     # coupler retention screws (user rule: the snug square JOINERY carries
     # every load; ONE M4 per coupler only prevents extraction the way it
     # went in — no glue, no press fit). Ø4.5 clearance through the -Y
-    # wall, 12 in from each end
-    for sz in (12.0, length - 12.0):
+    # wall: low hole hits the female coupler's SHORT plug (z 0..8), high
+    # hole the male coupler's 20-deep plug
+    for sz in (4.0, length - 12.0):
         b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
             2.25, 9.0, cq.Vector(0, -SQ_W / 2 - 1.0, sz),
             cq.Vector(0, 1, 0))))
@@ -605,13 +613,14 @@ def leg_coupler_m() -> cq.Workplane:
 
 
 def leg_coupler_f() -> cq.Workplane:
-    """PCTG female THREAD COUPLER (prints STANDING, mouth down): 44 sq ×8
-    flange whose mouth face carries the TPU-washer GLAND + rim hard-stop
-    ring, internal thread rising through the square 32 glue plug. Z0 =
-    the mouth face (= body bottom end - 8)."""
-    b = box_at(SQ_W, SQ_W, 8.0, z=4.0)
-    b = b.union(box_at(SQ_CORE - 0.3, SQ_CORE - 0.3, PUCK_PLUG_L,
-                       z=8.0 + PUCK_PLUG_L / 2))
+    """PCTG female THREAD COUPLER (prints STANDING, mouth down): a 44-sq
+    ×28 BARREL that hosts the full internal thread (Ø36.4 crests cannot
+    fit inside the 32-square core — the barrel is exposed leg surface,
+    flush with the bodies) with the TPU-washer GLAND + rim hard-stop ring
+    in its mouth face, and a SHORT 32-sq locating plug (z 28..36) into
+    the body core, M4-retained. Z0 = the mouth face."""
+    b = box_at(SQ_W, SQ_W, 28.0, z=14.0)
+    b = b.union(box_at(SQ_CORE - 0.3, SQ_CORE - 0.3, 8.0, z=32.0))
     b = b.cut(cyl(SQ_W + 4, GLAND_DEPTH + 0.5, z=-0.5)
               .cut(cyl(GLAND_ID, GLAND_DEPTH + 2, z=-1)))
     b = b.cut(cyl(TH_MINOR + TH_CLR, TH_LEN + 1, z=-1))
@@ -622,11 +631,10 @@ def leg_coupler_f() -> cq.Workplane:
     b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCone(
         (TH_MINOR + TH_CLR) / 2, 11.0, 4.2,
         cq.Vector(0, 0, TH_LEN), cq.Vector(0, 0, 1))))
-    b = b.cut(cyl(22.0, PUCK_PLUG_L - TH_LEN + 8 + 2,
-                  z=TH_LEN + 3.0))                     # open core way
-    # M4 retention pilot (see coupler_m note)
+    b = b.cut(cyl(22.0, 10.0, z=27.5))                 # open core way
+    # M4 retention pilot into the locating plug (see coupler_m note)
     b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        1.8, 8.0, cq.Vector(0, -SQ_CORE / 2 - 0.5, 20.0),
+        1.8, 8.0, cq.Vector(0, -SQ_CORE / 2 - 0.5, 32.0),
         cq.Vector(0, 1, 0))))
     return heal(b)
 
@@ -706,6 +714,18 @@ def _sq_socket_core() -> cq.Workplane:
     body = body.cut(box_at(BOLT_W + 2.0, 3.7, 9.0,
                            x=BOLT_X, y=SQS_WAY / 2 + 1.75,
                            z=LEDGE_Z + 4.5))
+    # ±X face relief over the top band: the full 52-sq barrel grazes the
+    # LKL knee housing at the keyhead/-Y station (gate-caught); trimming
+    # every socket symmetrically keeps one look. 45° transition below
+    # (prints mouth-down — self-supporting).
+    for sxs in (1, -1):
+        body = body.cut(box_at(4.7, SQS_OUT + 2, 23.5,
+                               x=sxs * 24.35, z=-11.75))
+        body = body.cut(cq.Workplane("XZ")
+                        .polyline([(sxs * 22.4, -23.4), (sxs * 27.0, -23.4),
+                                   (sxs * 27.0, -27.9)])
+                        .close().extrude(SQS_OUT + 2)
+                        .translate((0, (SQS_OUT + 2) / 2, 0)))
     return body
 
 
@@ -769,7 +789,7 @@ def leg_latch_head() -> cq.Workplane:
     # bolt channel through the spigot's +y face + button pocket on the
     # body's inboard face (functional dummies; wedge detail at refinement)
     b = b.cut(box_at(BOLT_W + 0.4, SPG_W / 2 + 4.0, BOLT_H + 0.4,
-                     x=BOLT_X, y=SPG_W / 4 + 1.0, z=SPG_L - 12.0))
+                     x=BOLT_X, y=SPG_W / 4 + 1.0, z=31.8))
     b = b.cut(box_at(12.4, 9.0, 10.4, x=-14.0, y=SQ_W / 2 - 4.4,
                      z=-4.0 - HEAD_BODY_L / 2))
     return heal(b)
@@ -781,11 +801,11 @@ def leg_latch_bolt() -> cq.Workplane:
     ledge (washer preload = zero play). Drawn ENGAGED. Local = head
     frame."""
     b = box_at(BOLT_W, SPG_W / 2 + 3.0, BOLT_H,
-               x=BOLT_X, y=SPG_W / 4 + 0.5, z=SPG_L - 12.0)
+               x=BOLT_X, y=SPG_W / 4 + 0.5, z=31.8)   # bottom at the ledge
     b = b.cut(cq.Workplane("YZ")                     # 45° insertion chamfer
-              .polyline([(SPG_W / 2 + 2.0, SPG_L - 12.0 + BOLT_H / 2),
-                         (SPG_W / 2 - 1.0, SPG_L - 12.0 + BOLT_H / 2),
-                         (SPG_W / 2 + 2.0, SPG_L - 12.0 - BOLT_H / 2 + 1.0)])
+              .polyline([(SPG_W / 2 + 2.0, 31.8 + BOLT_H / 2),
+                         (SPG_W / 2 - 1.0, 31.8 + BOLT_H / 2),
+                         (SPG_W / 2 + 2.0, 31.8 - BOLT_H / 2 + 1.0)])
               .close().extrude(BOLT_W + 2).translate((BOLT_X - BOLT_W / 2 - 1, 0, 0)))
     return b
 
@@ -858,11 +878,11 @@ def leg_column_plug() -> cq.Workplane:
     the tip lip): tip at +4.8 = 13.0 into the chassis jack at seat.
     Socket-local."""
     b = cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        1.75, 14.5, cq.Vector(0, 0, -9.7), cq.Vector(0, 0, 1)))
+        1.75, 14.5, cq.Vector(0, 0, -10.8), cq.Vector(0, 0, 1)))
     b = b.union(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        5.0, 12.6, cq.Vector(0, 0, -9.7), cq.Vector(0, 0, -1))))
+        5.0, 12.6, cq.Vector(0, 0, -10.8), cq.Vector(0, 0, -1))))
     b = b.union(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        3.0, 16.0, cq.Vector(0, 0, -22.3), cq.Vector(0, 0, -1))))
+        3.0, 16.0, cq.Vector(0, 0, -23.4), cq.Vector(0, 0, -1))))
     return b
 
 
