@@ -93,9 +93,11 @@ BAR_X1 = LEG_STATIONS_X[0] + END_MARGIN
 # bar) and installs by pressing DOWN onto them: house spigot + wedging
 # bolt + recessed button up top (the leg↔body latch, verbatim), TPU feet
 # below, the second vertical TRRS blind-mate inside the wired one.
-STUB_Z0 = 43.2                             # stub plate-top plane (bar frame):
-                                           # bar top 19 + 0.2 lid gap + body 24
+STUB_Z0 = 43.0                             # tower seat plane (bar frame): the
+                                           # leg block's mouth face lands here
+                                           # (bar top 19 + 24 button band)
 LID_Z0 = 15.0
+FOOT_PAD = 12.0
 
 # ── SEGMENTATION (255×255 bed, pieces placed on the DIAGONAL:
 #    (L + W)/√2 ≤ 255) + the full-length sliding-DOVETAIL lid ────────────
@@ -107,28 +109,53 @@ XS = (LATCHES[0][0] + LATCHES[1][0]) / 2   # bar splice (mid-trough): ~303
                    # chassis-segment pattern).
 XL = XS - 50.0     # lid butt-splice, STAGGERED 50 from XS so each lid piece
                    # bridges the glued bar joint (the lid is structure)
-LID_XA = LATCHES[1][0] + 14.5      # lid span: between the stub sockets
-LID_XB = LATCHES[0][0] - 14.5      # (the stub PLATES sit 0.2 above the lid
-                                   # plane, so the lid slides beneath them)
-TROUGH_X0 = LATCHES[1][0] + 14.6   # wiring trough: runs right up to the
-TROUGH_X1 = LATCHES[0][0] - 14.6   # stub sockets (no slots to avoid now)
+LID_XA = LATCHES[1][0] + 22.4      # lid span: between the FUSED stub
+LID_XB = LATCHES[0][0] - 22.4      # towers (44-sq, printed with the bar)
+TROUGH_X0 = LATCHES[1][0] + 22.6   # wiring trough: runs right up to the
+TROUGH_X1 = LATCHES[0][0] - 22.6   # towers
 LOCK_X, LOCK_Y = LID_XB - 4.6, 7.6  # lid-lock detent nub: bar-top pocket; a
                                    # groove+dimple in lid B's underside sets
                                    # the final position, stops over-insert
                                    # and detents extraction (locks BOTH lid
                                    # pieces: B butts A). No screws anywhere.
 
-def _stub_socket_cutter(lx: float, wired: bool) -> cq.Workplane:
-    """Vertical HOUSE through-socket at a station: the stub's plug drops
-    through the bar (foot spigot below, tower above), one M4 through the
-    bar's front wall retains it (joinery takes the loads). The wired
-    station gets the trough→socket cable notch."""
-    cut = _house(28.1, -16.05, 2.05, BAR_H + 2).translate((lx, YC, -1))
-    cut = cut.union(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        2.25, 4.0, cq.Vector(lx, YC - 17.0, 9.5), cq.Vector(0, 1, 0))))
+def _stub_tower(lx: float, wired: bool) -> cq.Workplane:
+    """FUSED stub tower (user: single printed piece — the tenon is part of
+    the bar): 44-sq button body (19..43) + house spigot (43..85) with the
+    wedging-bolt channel + recessed button pocket (leg_latch_bolt/btn SKUs
+    reuse verbatim, frame = seat plane 43). The wired tower carries the
+    captive CA-354S seat; its plug threads UP from the foot mortise below
+    (the TPU foot covers the access) and its cable enters from the trough
+    side way. Prints WITH the bar, bottom-down — plain standing geometry,
+    no overhangs (the old 50-plate is gone: the 44 face IS the seat)."""
+    b = box_at(LG.SQ_W, LG.SQ_W, STUB_Z0 - BAR_H, x=lx, y=YC,
+               z=(BAR_H + STUB_Z0) / 2)
+    b = b.union(_house(27.7, -15.85, 1.85, 42.0)
+                .translate((lx, YC, STUB_Z0)))
+    b = b.cut(box_at(LG.BOLT_W + 0.4, LG.SPG_W / 2 + 4.0, LG.BOLT_H + 0.4,
+                     x=lx + LG.BOLT_X, y=YC + LG.SPG_W / 4 + 1.0,
+                     z=STUB_Z0 + 31.8))
+    b = b.cut(box_at(12.4, 9.0, 10.4, x=lx - 14.0,
+                     y=YC + LG.SQ_W / 2 - 4.4, z=STUB_Z0 - 11.0))
     if wired:
-        cut = cut.union(box_at(4.0, 6.0, 7.0, x=lx + 14.5, y=YC, z=11.0))
-    return cut
+        b = b.cut(cyl(9.4, 1.7, z=STUB_Z0 + 41.4).translate((lx, YC, 0)))
+        b = b.cut(cyl(11.0, 33.5, z=STUB_Z0 + 8.0).translate((lx, YC, 0)))
+        b = b.cut(cyl(8.0, STUB_Z0 + 9.0, z=-0.5).translate((lx, YC, 0)))
+        b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+            4.0, 16.0, cq.Vector(lx - 14.0, YC, 10.0),
+            cq.Vector(1, 0, 0))))                 # side way from the trough
+    return b
+
+
+def _foot_mortise_cutter(lx: float) -> cq.Workplane:
+    """Underside DOVETAIL mortise for the TPU bar foot's tenon (slides in
+    from -Y; TPU grip + compression loading = no fastener). Doubles as
+    the wired tower's plug-threading access hatch."""
+    return (cq.Workplane("XZ")
+            .polyline([(lx - 15.0, 0.0), (lx - 13.4, 6.0),
+                       (lx + 13.4, 6.0), (lx + 15.0, 0.0)])
+            .close().extrude(40.0).translate((0, YC + 16.0, 0))
+            .mirror("XY", (0, 0, 3)).mirror("XY", (0, 0, 3)))
 
 
 def _bar_full() -> cq.Workplane:
@@ -138,8 +165,10 @@ def _bar_full() -> cq.Workplane:
     pigtail routes to the mid-bar electronics without crossing a slot)."""
     body = box_at(BAR_X1 - BAR_X0, BAR_Y1 - BAR_Y0, BAR_H,
                   x=(BAR_X0 + BAR_X1) / 2, y=(BAR_Y0 + BAR_Y1) / 2, z=BAR_H / 2)
-    body = body.cut(_stub_socket_cutter(LATCHES[0][0], False))
-    body = body.cut(_stub_socket_cutter(LATCHES[1][0], True))
+    body = body.union(_stub_tower(LATCHES[0][0], False))
+    body = body.union(_stub_tower(LATCHES[1][0], True))
+    body = body.cut(_foot_mortise_cutter(LATCHES[0][0]))
+    body = body.cut(_foot_mortise_cutter(LATCHES[1][0]))
 
     # wiring TROUGH (open top; the lid roofs it)
     body = body.cut(box_at(TROUGH_X1 - TROUGH_X0, 16.5, BAR_H - 4.0 + 1,
@@ -218,8 +247,8 @@ def _lid_full() -> cq.Workplane:
 
 def pedal_lid_a() -> cq.Workplane:
     """-X lid piece (covers the TRRS latch; 241.4 — prints straight)."""
-    half = box_at(XL - (LID_XA - 1), 80.0, 40.0,
-                  x=(LID_XA - 1 + XL) / 2, y=YC, z=10.0)
+    half = box_at(XL - (LID_XA - 1), 80.0, 120.0,
+                  x=(LID_XA - 1 + XL) / 2, y=YC, z=40.0)
     return _lid_full().intersect(half)
 
 
@@ -228,8 +257,8 @@ def pedal_lid_b() -> cq.Workplane:
     321.6 — diagonal print). Slides in last: its lock dimple clicks onto
     the bar-top nub, pinning BOTH lid pieces (B butts A, A butts nothing —
     the stack is set by the nub)."""
-    half = box_at((LID_XB + 1) - XL, 80.0, 40.0,
-                  x=(XL + LID_XB + 1) / 2, y=YC, z=10.0)
+    half = box_at((LID_XB + 1) - XL, 80.0, 120.0,
+                  x=(XL + LID_XB + 1) / 2, y=YC, z=40.0)
     return _lid_full().intersect(half)
 
 
@@ -244,34 +273,19 @@ def nub_part() -> cq.Workplane:
     return _lock_nub()
 
 
-def pedal_bar_stub(wired: bool) -> cq.Workplane:
-    """STUB TOWER (PCTG, prints standing; ×2, ONE wired): the last piece of
-    the +Y legs, carried by the bar. Authored in the LATCH-HEAD frame
-    (plate top = z0) so leg_latch_bolt/btn REUSE VERBATIM: 50-sq plate
-    (0..-4, sits 0.2 over the lid plane), 44-sq button body (-4..-24),
-    house PLUG down through the bar (-24..-43.2, one M4 = retention),
-    28×26 foot spigot below (-43.2..-55.2, takes the leg_foot SKU), house
-    SPIGOT up (0..40) with the wedging-bolt channel + recessed button
-    pocket, and (wired) the captive CA-354S seat + cable way fed from the
-    trough notch."""
-    b = box_at(50.0, 50.0, 4.0, z=-2.0)
-    b = b.union(box_at(LG.SQ_W, LG.SQ_W, 20.0, z=-14.0))
-    b = b.union(_house(27.7, -15.85, 1.85, 19.2).translate((0, 0, -43.2)))
-    b = b.union(box_at(28.0, 26.0, 12.0, z=-49.2))
-    spig = _house(27.7, -15.85, 1.85, 42.0)      # 42: the flipped joint
-    b = b.union(spig)                            # needs the extra reach
-    # bolt channel + button pocket (leg_latch_bolt/btn frames)
-    b = b.cut(box_at(LG.BOLT_W + 0.4, LG.SPG_W / 2 + 4.0, LG.BOLT_H + 0.4,
-                     x=LG.BOLT_X, y=LG.SPG_W / 4 + 1.0, z=31.8))
-    b = b.cut(box_at(12.4, 9.0, 10.4, x=-14.0, y=LG.SQ_W / 2 - 4.4,
-                     z=-11.0))
-    if wired:
-        b = b.cut(cyl(9.4, 1.7, z=41.4))          # plug tip lip way
-        b = b.cut(cyl(11.0, 33.5, z=8.0))         # handle way
-        b = b.cut(cyl(8.0, 44.0, z=-35.0))        # cable way to the bar level
-        b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-            4.0, 16.0, cq.Vector(-14.0, 0, -33.0),
-            cq.Vector(1, 0, 0))))                 # side way from the trough
+def pedal_bar_foot() -> cq.Workplane:
+    """TPU bar FOOT ×2 (user: foot material inserts into a bar mortise):
+    44×44×12 ground pad + dovetail tenon (slides into the bar's underside
+    mortise from -Y; compression-loaded, TPU-grippy — no fastener). The
+    wired station's foot covers the plug-threading access. Z0 = ground,
+    authored at the -X station."""
+    lx = LATCHES[1][0]
+    b = box_at(LG.SQ_W, LG.SQ_W, FOOT_PAD, x=lx, y=YC, z=FOOT_PAD / 2)
+    b = b.union(cq.Workplane("XZ")
+                .polyline([(lx - 14.8, FOOT_PAD), (lx - 13.3, FOOT_PAD + 5.8),
+                           (lx + 13.3, FOOT_PAD + 5.8),
+                           (lx + 14.8, FOOT_PAD)])
+                .close().extrude(39.0).translate((0, YC + 15.5, 0)))
     return b
 
 
@@ -300,4 +314,9 @@ def assembly_parts():
             ("pedal_bar_b", pedal_bar_b()),
             ("pedal_lid_a", pedal_lid_a()),
             ("pedal_lid_b", pedal_lid_b()),
-            ("pedal_detent_nub_0", _lock_nub())] + _cable_runs()
+            ("pedal_detent_nub_0", _lock_nub()),
+            ("pedal_bar_foot_1",
+             pedal_bar_foot().translate((0, 0, -12.0))),
+            ("pedal_bar_foot_0",
+             pedal_bar_foot().translate(
+                 (LATCHES[0][0] - LATCHES[1][0], 0, -12.0)))] + _cable_runs()
