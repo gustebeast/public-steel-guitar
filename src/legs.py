@@ -614,6 +614,9 @@ def leg_lid() -> cq.Workplane:
                        (hw + 1.5, 0.0), (-hw - 1.5, 0.0)])
             .close().extrude(SEG_BODY_L - 0.6)
             .translate((0, 1.8, 0.3)))
+
+
+def leg_socket_trrs() -> cq.Workplane:
     """leg_socket() + the vertical CHASSIS-JACK pocket for the leg↔body
     blind-mate (the -X/+Y station only — see the TRRS block above): a
     Ø9.7 way COAXIAL with the thread, from the bore-ceiling void up
