@@ -110,10 +110,16 @@ TUBE_OD, TUBE_ID = 30.0, 22.0
 SEG_L   = 165.0                        # incl. the 25 male thread → 140 effective;
                                        # step/segment = 142 — MUST stay < the
                                        # shaft's slide range so bands overlap
-SLEEVE_L = 180.0
-SHAFT_D, SHAFT_L = 20.0, 210.0         # 210 keeps 26 retained at 184 exposure —
-                                       # the extra 10 buys the pedal bar its
-                                       # ≥30 floor without opening band gaps
+SLEEVE_L = 200.0                       # bore-through; hosts up to 192 of
+                                       # tenon engagement (prints standing)
+SHAFT_D, SHAFT_L = 20.0, 212.0         # -Y long shaft: 197 sliding tenon + 15
+                                       # foot zone. FINE-STAGE MATH (user):
+                                       # travel = the 142 section pitch (so
+                                       # height bands are CONTIGUOUS across
+                                       # segment-count changes) + 50 minimum
+                                       # extended overlap (1.8× the 28-wide
+                                       # tenon — mortise proportion; the pinch
+                                       # preloads it) + 5 dead = 197 tenon
 SHAFT_FLAT_Y  = 6.8                    # SINGLE key flat (local +Y → the
                                        # rotated +Y-rail stacks aim it at the
                                        # bar MOUTH, i.e. INWARD): the
@@ -340,7 +346,7 @@ def leg_sleeve() -> cq.Workplane:
     # shaft, with the 3×45° key chamfer on the (+x,-y) corner — one
     # orientation, no flat needed; the plug's hollow way continues above
     body = body.cut(cq.Workplane("XY")
-                    .polyline([(-14.2, -13.2), (9.6, -13.2), (14.2, -8.6),
+                    .polyline([(-14.2, -13.2), (10.1, -13.2), (14.2, -9.1),
                                (14.2, 13.2), (-14.2, 13.2)])
                     .close().extrude(SLEEVE_L + TH_LEN)
                     .translate((0, 0, -SLEEVE_L - 1)))
@@ -413,8 +419,9 @@ SHELF_Z0, SHELF_Z1 = 26.0, 29.0        # small OUTBOARD corner fill at the TOP
                                        # only its top 2.4 to slide past)
 
 
-SHORT_SHAFT_L = 138.0          # +Y shafts end short (ROUND 4: the bar
-                               # carries the last ~72 as its STUB TOWERS)
+SHORT_SHAFT_L = 252.0          # +Y shafts: 197 sliding tenon (travel 142
+                               # + overlap 50 + 5) + the 55 terminal block
+                               # (prints LYING, straight, under 255)
 BLOCK_H = 55.0                 # 44-sq terminal block at the short shaft's
                                # bottom: hosts the FULL-SIZE house socket
                                # + latch ledge (+ the jack on the wired
