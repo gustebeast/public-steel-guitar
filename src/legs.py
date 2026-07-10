@@ -329,9 +329,10 @@ def leg_sleeve() -> cq.Workplane:
     # bottom segment's core, butt faces = hard stop, one M4 = retention.
     body = box_at(SQ_W, SQ_W, SLEEVE_L, z=-SLEEVE_L / 2)
     body = body.union(
-        box_at(SQ_CORE - 0.3, SQ_CORE - 0.3, SEG_PLUG_L + 1.0,
-               z=(SEG_PLUG_L - 1.0) / 2)
-        .cut(box_at(22.0, 22.0, SEG_PLUG_L + 4.0, z=SEG_PLUG_L / 2)))
+        _house(27.7, -15.85, 1.85, SEG_PLUG_L + 1.0)
+        .translate((0, 0, -1.0))
+        .cut(_house(20.0, -12.0, 2.0, SEG_PLUG_L + 4.0)
+             .translate((0, 0, -2.0))))
     body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
         1.8, 8.0, cq.Vector(0, -SQ_CORE / 2 - 0.5, 14.0),
         cq.Vector(0, 1, 0))))
@@ -545,6 +546,20 @@ SEG_BODY_L = 142.0             # ROUND 3 (user): NO THREADS, NO TPU
                                # per joint is extraction retention only
                                # (user rule: joinery takes the force).
 SEG_PLUG_L = 28.0              # male plug engagement (sockets are 30)
+
+
+def _house(w: float, floor_y: float, wall_top_y: float,
+           length: float) -> cq.Workplane:
+    """HOUSE-profile prism (user rule: every joint cross-section is a
+    house — vertical walls, 45° gable to the apex, flat floor — so the
+    LYING bodies print with ZERO overhang; the gable points AWAY from
+    the print face). A house also admits exactly ONE orientation, so it
+    IS the clocking key. Extruded +Z from 0."""
+    hw = w / 2
+    return (cq.Workplane("XY")
+            .polyline([(-hw, floor_y), (hw, floor_y), (hw, wall_top_y),
+                       (0.0, wall_top_y + hw), (-hw, wall_top_y)])
+            .close().extrude(length))
 PUCK_PLUG_L = 20.0             # coupler glue plug depth into the core
 CH_MOUTH, CH_DEEP = 6.0, 7.0   # face cable channel (lidded; Ø3.7 + slack)
 
@@ -558,29 +573,33 @@ def _sq_body(length: float, channel: bool = False) -> cq.Workplane:
     screws) and a core DIVE hole near each end (cable → core at the
     sleeve joint below and at the latch head above). Z0 = bottom."""
     b = box_at(SQ_W, SQ_W, length, z=length / 2)
-    # core stops 4 short of the top: the solid CAP roots the integral
-    # plug and is the butt-shoulder web; a 22-sq way continues through
-    b = b.cut(box_at(SQ_CORE, SQ_CORE, length - 4.0 + 1.0,
-                     z=(length - 4.0 - 1.0) / 2))
-    b = b.cut(box_at(22.0, 22.0, 8.0, z=length - 2.0))
+    # HOUSE core (base 28, floor -16, walls to +2, apex +16 — prints
+    # lying on -y with the gable up): stops 4 short of the top; the solid
+    # CAP roots the integral plug; a house-20 way continues through
+    b = b.cut(_house(28.0, -16.0, 2.0, length - 4.0 + 1.0)
+              .translate((0, 0, -1)))
+    b = b.cut(_house(20.0, -12.0, 2.0, 8.0).translate((0, 0, length - 6.0)))
     if channel:
-        hw, yf = CH_MOUTH / 2, SQ_W / 2
+        # cable channel on the +X SIDE face (the gable owns +y's depth);
+        # lidded, so it reads as a seam. Same dovetail-seat profile,
+        # coordinates swapped for the x-facing wall.
+        hw, xf = CH_MOUTH / 2, SQ_W / 2
         b = b.cut(cq.Workplane("XY")
-                  .polyline([(-hw, yf - CH_DEEP), (hw, yf - CH_DEEP),
-                             (hw, yf - 1.9), (hw + 3.5, yf - 1.9),
-                             (hw + 1.6, yf + 0.1), (-hw - 1.6, yf + 0.1),
-                             (-hw - 3.5, yf - 1.9), (-hw, yf - 1.9)])
+                  .polyline([(xf - CH_DEEP, -hw), (xf - CH_DEEP, hw),
+                             (xf - 1.9, hw), (xf - 1.9, hw + 3.5),
+                             (xf + 0.1, hw + 1.6), (xf + 0.1, -hw - 1.6),
+                             (xf - 1.9, -hw - 3.5), (xf - 1.9, -hw)])
                   .close().extrude(length + 2).translate((0, 0, -1)))
         for dz in (24.0, length - 24.0):     # channel-floor dive holes
             b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-                2.75, CH_DEEP + 2.0, cq.Vector(0, SQ_W / 2 + 0.5, dz),
-                cq.Vector(0, -1, 0))))
-    # integral male PLUG on the top end (hollow 22-sq way keeps the cable
-    # and even the coil passable through joints) + 45° tip lead-ins
-    plug = (box_at(SQ_CORE - 0.3, SQ_CORE - 0.3, SEG_PLUG_L + 1.0,
-                   z=length + (SEG_PLUG_L - 1.0) / 2)
-            .cut(box_at(22.0, 22.0, SEG_PLUG_L + 4.0,
-                        z=length + SEG_PLUG_L / 2)))
+                2.75, CH_DEEP + 2.0, cq.Vector(SQ_W / 2 + 0.5, 0, dz),
+                cq.Vector(-1, 0, 0))))
+    # integral male HOUSE PLUG on the top end (hollow house-20 way keeps
+    # the cable and even the coil passable through joints)
+    plug = (_house(27.7, -15.85, 1.85, SEG_PLUG_L + 1.0)
+            .translate((0, 0, length - 1.0))
+            .cut(_house(20.0, -12.0, 2.0, SEG_PLUG_L + 4.0)
+                 .translate((0, 0, length - 2.0))))
     b = b.union(plug)
     # M4 retention (user rule: joinery takes the force, the screw only
     # stops extraction): Ø4.5 clearance thru the -Y wall over the
@@ -781,11 +800,12 @@ def leg_latch_head() -> cq.Workplane:
     shoulder-plate TOP (mounted at socket mouth -50)."""
     b = box_at(50.0, 50.0, 4.0, z=-2.0)                       # shoulder plate
     b = b.union(box_at(SQ_W, SQ_W, HEAD_BODY_L, z=-4.0 - HEAD_BODY_L / 2))
-    # ROUND 3: threadless bottom — a 32.1-sq SOCKET (30 deep) takes the
-    # top segment's integral plug; butt faces = hard stop; one M4 through
-    # the -Y wall = retention. (Gland/thread deleted with the washers.)
-    b = b.cut(box_at(SQ_CORE + 0.1, SQ_CORE + 0.1, 30.0,
-                     z=-4.0 - HEAD_BODY_L + 15.0))
+    # ROUND 3: threadless bottom — a HOUSE socket (30 deep) takes the top
+    # segment's integral plug; butt faces = hard stop; one M4 through the
+    # -Y wall = retention. (Standing print: the blind end's house profile
+    # bridges 28 — acceptable; a pyramid ceiling lands at refinement.)
+    b = b.cut(_house(28.1, -16.05, 2.05, 31.0)
+              .translate((0, 0, -4.0 - HEAD_BODY_L - 1.0)))
     b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
         2.25, 9.0, cq.Vector(0, -SQ_W / 2 - 1.0, -4.0 - HEAD_BODY_L + 14.0),
         cq.Vector(0, 1, 0))))
