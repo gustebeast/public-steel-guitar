@@ -373,26 +373,18 @@ def leg_sleeve() -> cq.Workplane:
 
 
 def leg_shaft() -> cq.Workplane:
-    """Lower sliding shaft: Ø20 with a SINGLE key flat (local +Y at 6.8 —
-    placed, it faces the bar's MOUTH) — prints LYING ON THE FLAT (no
-    tall-skinny standing print; layer lines run ALONG the shaft, so kick
-    bending loads bulk material, and the 43° flat→round junction is
-    self-supporting). Single-D keys the sleeve in exactly one orientation,
-    and the bed surface doubles as the latch bolt's bearing face (the bar's
-    Z: foot cap below, the seated TRRS plug above — the plain end floats up
-    freely until gravity returns it). 45° chamfers on the two bed edges
-    absorb first-layer elephant foot so the sleeve/slot fits stay true.
-    Solid (slicer infills); foot spigot below."""
-    # -Y shaft ×2 (user: ALL FOUR legs share the wide|narrow|wide look):
-    # the same 197 tenon + 44-sq terminal block, printed ONE SOLID (no
-    # joint down here — nothing beyond the block to create lateral
-    # force), with the shared TPU foot's dovetail mortise underneath.
-    # PETG-GF, prints lying.
+    """-Y shaft ×2 (user: ALL FOUR legs share the wide|narrow|wide look
+    at EQUAL heights): the same 197 tenon over a 44-sq terminal block —
+    here 91 tall and printed ONE SOLID (no joint down low; nothing below
+    creates lateral force), so block 91 + foot 12 = 103 matches the +Y
+    stack's block 48 + tower 24 + bar 19 + foot 12. Shared TPU foot's
+    dovetail mortise underneath. PETG-GF; 288 long — prints LYING on the
+    bed DIAGONAL (like the bar pieces). Z0 = the block's bottom face."""
     body = (cq.Workplane("XY")
             .polyline([(-14.0, -13.0), (10.0, -13.0), (14.0, -9.0),
                        (14.0, 13.0), (-14.0, 13.0)])
-            .close().extrude(SHORT_SHAFT_L))
-    body = body.union(box_at(SQ_W, SQ_W, BLOCK_H, z=BLOCK_H / 2))
+            .close().extrude(TALL_SHAFT_L))
+    body = body.union(box_at(SQ_W, SQ_W, TALL_BLOCK_H, z=TALL_BLOCK_H / 2))
     body = body.cut(foot_mortise_cutter())
     return body
 
@@ -420,19 +412,24 @@ SHELF_Z0, SHELF_Z1 = 26.0, 29.0        # small OUTBOARD corner fill at the TOP
                                        # only its top 2.4 to slide past)
 
 
-SHORT_SHAFT_L = 245.0          # BOTH shaft SKUs: 197 sliding tenon
-                               # (travel 142 + overlap 50 + 5) + the 48
-                               # terminal block (prints LYING, <255).
-                               # User: all four legs share the visual
-                               # wide|narrow|wide bottom profile.
-BLOCK_H = 48.0                 # 44-sq terminal block: +Y = the bar-joint
-                               # mortise (socket 40, spigot 38 — reduced
+TENON_L = 197.0                # every shaft's sliding tenon: travel 142
+                               # + overlap 50 + 5 dead (the fine-stage law)
+SHORT_SHAFT_L = 245.0          # +Y shafts: 197 tenon + the 48 block
+                               # (prints LYING, straight, <255)
+BLOCK_H = 48.0                 # +Y 44-sq terminal block = the bar-joint
+                               # mortise (socket 41, spigot 38 — reduced
                                # overlap per user: this joint's moment is
                                # small, and the wide stack must stay
                                # within PEDAL_ASSEMBLY_Z_HEIGHT (75 above
-                               # the bar top) for the future pedals);
-                               # -Y = printed SOLID, same silhouette,
-                               # with the TPU foot's dovetail mortise
+                               # the bar top) for the future pedals)
+TALL_BLOCK_H = 91.0            # -Y 44-sq terminal block, printed SOLID:
+                               # user requires EQUAL wide-section heights
+                               # on all four legs — foot 12 + 91 = 103 =
+                               # foot 12 + bar 19 + tower 24 + block 48.
+                               # Same silhouette, TPU foot mortise below.
+TALL_SHAFT_L = TENON_L + TALL_BLOCK_H   # 288: prints LYING on the bed
+                               # DIAGONAL ((288+44)/sqrt(2) = 235 < 255),
+                               # like the bar pieces
 
 
 def foot_mortise_cutter() -> cq.Workplane:
@@ -925,12 +922,14 @@ def leg_foot() -> cq.Workplane:
     """SHARED TPU foot ×4 (user: one look everywhere — the same dovetail
     insert serves the -Y leg blocks AND the pedal bar): 44-sq ground pad
     + dovetail tenon sliding into the underside mortise from -Y local;
-    compression-loaded, TPU-grippy, no fastener. Z0 = ground."""
+    compression-loaded, TPU-grippy, no fastener. Tenon 37 long (y -21.5
+    ..15.5): fully INSIDE the 44 faces — nothing pokes the flush column.
+    Z0 = ground."""
     b = box_at(SQ_W, SQ_W, FOOT_H, z=FOOT_H / 2)
     b = b.union(cq.Workplane("XZ")
                 .polyline([(-14.8, FOOT_H), (-13.3, FOOT_H + 5.8),
                            (13.3, FOOT_H + 5.8), (14.8, FOOT_H)])
-                .close().extrude(39.0).translate((0, 15.5, 0)))
+                .close().extrude(37.0).translate((0, 15.5, 0)))
     return b
 
 
