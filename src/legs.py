@@ -511,7 +511,109 @@ def leg_shaft_trrs() -> cq.Workplane:
     return body
 
 
-def leg_socket_trrs() -> cq.Workplane:
+# ═══ SQUARE-LEG REDESIGN (2026-07-09, user-directed; supersedes the round
+# tubes above — old generators kept during the staged swap) ══════════════
+# Constant 44×44 outside, PRINTED LYING on a face in PETG-GF (layer lines
+# run ALONG the leg → kick bending loads bulk material — the standing-
+# print interlayer veto on GF is gone; square-44 ≈6× the Ø30 tube's
+# stiffness by geometry, GF adds ~2.4× modulus). Threads can't print
+# lying, so each body takes two STANDING-printed PCTG THREAD COUPLERS
+# glued into its square core ends (huge glue area, inherent
+# anti-rotation; preserves segment-count coarse height adjust). Internal
+# joint geometry — Ø36/30 single-start thread, Ø40 collar hard stop, TPU
+# gland washer — is UNCHANGED, so the 142 step and clocking phase carry
+# over. The face CABLE CHANNEL + sliding lid (pedal-bar pattern) aligns
+# across joints BECAUSE of the deterministic clocking: the cable lays in
+# AFTER column assembly. Top joint = the SEATBELT LATCH head (separate
+# part; all mechanism on the leg, passive socket) — see latch_head().
+SQ_W = 44.0                    # outer square width (uniform, = old bell OD)
+SQ_CORE = 32.0                 # square core (glue pocket for the couplers;
+                               # 45° crown corners print lying)
+SEG_BODY_L = 126.0             # GF body; + 6 male / 8 female coupler
+                               # flanges = 140 effective (step stays 142)
+PUCK_PLUG_L = 20.0             # coupler glue plug depth into the core
+CH_MOUTH, CH_DEEP = 6.0, 7.0   # face cable channel (lidded; Ø3.7 + slack)
+
+
+def _sq_body(length: float) -> cq.Workplane:
+    """Square leg body stock: 44×44×length, hollow 32-square core (prints
+    lying on a face — the crown of the core self-supports via its 45°
+    corner chamfers), face CABLE CHANNEL in the +Y wall (the clocking
+    lands it on the hidden inboard diagonal) with a 45° dovetail LID seat
+    (pedal-bar lid pattern: slide in along Z, TPU nub, no screws).
+    Z0 = bottom."""
+    b = box_at(SQ_W, SQ_W, length, z=length / 2)
+    b = b.cut(box_at(SQ_CORE, SQ_CORE, length + 2, z=length / 2))
+    hw, yf = CH_MOUTH / 2, SQ_W / 2
+    # one XY profile, extruded the full length: channel slot (to depth 7)
+    # + dovetail lid seat (1.9 deep, flanks flaring 45° at the surface)
+    b = b.cut(cq.Workplane("XY")
+              .polyline([(-hw, yf - CH_DEEP), (hw, yf - CH_DEEP),
+                         (hw, yf - 1.9), (hw + 3.5, yf - 1.9),
+                         (hw + 1.6, yf + 0.1), (-hw - 1.6, yf + 0.1),
+                         (-hw - 3.5, yf - 1.9), (-hw, yf - 1.9)])
+              .close().extrude(length + 2).translate((0, 0, -1)))
+    return b
+
+
+def leg_seg_body() -> cq.Workplane:
+    """PETG-GF square segment BODY (prints LYING on the -Y face — layer
+    lines along the leg). Takes one male + one female thread coupler,
+    glued into the square core ends."""
+    return _sq_body(SEG_BODY_L)
+
+
+def leg_coupler_m() -> cq.Workplane:
+    """PCTG male THREAD COUPLER (prints STANDING — thread quality): 44 sq
+    ×6 flange + Ø40×2 hard-stop collar + the same Ø36/30 single-start
+    spigot, square 32 glue plug below (0.3 fit into the body core; big
+    glue area, inherent anti-rotation). Ø14 cable way through. Z0 = the
+    flange's glue face (= body top end)."""
+    b = box_at(SQ_W, SQ_W, 6.0, z=3.0)
+    b = b.union(box_at(SQ_CORE - 0.3, SQ_CORE - 0.3, PUCK_PLUG_L,
+                       z=-PUCK_PLUG_L / 2))
+    b = b.union(cyl(COLLAR_D, COLLAR_H, z=6.0))
+    b = b.union(cyl(TH_MINOR - TH_CLR, TH_LEN + 2, z=6.0))
+    b = b.union(_thread((TH_MINOR - TH_CLR) / 2, TH_LEN + 2)
+                .translate((0, 0, 6.0)))
+    b = b.cut(cyl(14.0, PUCK_PLUG_L + 6 + TH_LEN + 4,
+                  z=-PUCK_PLUG_L - 1))                 # cable way
+    return heal(b)
+
+
+def leg_coupler_f() -> cq.Workplane:
+    """PCTG female THREAD COUPLER (prints STANDING, mouth down): 44 sq ×8
+    flange whose mouth face carries the TPU-washer GLAND + rim hard-stop
+    ring, internal thread rising through the square 32 glue plug. Z0 =
+    the mouth face (= body bottom end - 8)."""
+    b = box_at(SQ_W, SQ_W, 8.0, z=4.0)
+    b = b.union(box_at(SQ_CORE - 0.3, SQ_CORE - 0.3, PUCK_PLUG_L,
+                       z=8.0 + PUCK_PLUG_L / 2))
+    b = b.cut(cyl(SQ_W + 4, GLAND_DEPTH + 0.5, z=-0.5)
+              .cut(cyl(GLAND_ID, GLAND_DEPTH + 2, z=-1)))
+    b = b.cut(cyl(TH_MINOR + TH_CLR, TH_LEN + 1, z=-1))
+    b = b.cut(_thread((TH_MINOR - TH_CLR) / 2, TH_LEN + 1 + TH_LEAD,
+                      clr=0.8, phase_deg=60.0)
+              .translate((0, 0, -1 - TH_LEAD)))
+    # bore ceiling 45° cone into the core (prints mouth-down)
+    b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCone(
+        (TH_MINOR + TH_CLR) / 2, 11.0, 4.2,
+        cq.Vector(0, 0, TH_LEN), cq.Vector(0, 0, 1))))
+    b = b.cut(cyl(22.0, PUCK_PLUG_L - TH_LEN + 8 + 2,
+                  z=TH_LEN + 3.0))                     # open core way
+    return heal(b)
+
+
+def leg_lid() -> cq.Workplane:
+    """PETG-GF sliding channel LID (one per segment body, prints lying,
+    top-face down like the bar lid): 45° dovetail flanks ride the body's
+    seat; a TPU nub (pedal_detent_nub SKU) locks it. Z0 = bottom."""
+    hw = CH_MOUTH / 2
+    return (cq.Workplane("XY")
+            .polyline([(-hw - 3.3, -1.8), (hw + 3.3, -1.8),
+                       (hw + 1.5, 0.0), (-hw - 1.5, 0.0)])
+            .close().extrude(SEG_BODY_L - 0.6)
+            .translate((0, 1.8, 0.3)))
     """leg_socket() + the vertical CHASSIS-JACK pocket for the leg↔body
     blind-mate (the -X/+Y station only — see the TRRS block above): a
     Ø9.7 way COAXIAL with the thread, from the bore-ceiling void up
