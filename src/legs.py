@@ -336,16 +336,14 @@ def leg_sleeve() -> cq.Workplane:
     body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
         1.8, 8.0, cq.Vector(0, -SQ_CORE / 2 - 0.5, 14.0),
         cq.Vector(0, 1, 0))))
-    # TRRS column way: the keyed bore stops 3 short of the spigot tip —
-    # open it (Ø11, same as the segments) so the wired leg's CA-354S cable
-    # passes clean through the column
-    body = body.cut(cyl(11.0, 6.0, z=22.0))
-    # keyed bore: Ø20.4 with ONE flat (local +Y at 7.0) — single-D: the shaft
-    # cannot rotate AND can only insert in its one correct orientation
-    body = body.cut(cyl(SHAFT_D + 0.4, SLEEVE_L + TH_LEN, z=-SLEEVE_L - 1)
-                    .cut(box_at(SHAFT_D + 4, 6.0, SLEEVE_L + TH_LEN + 2,
-                                y=SLEEVE_FLAT_Y + 3.0,
-                                z=-SLEEVE_L - 1 + (SLEEVE_L + TH_LEN) / 2)))
+    # RECT keyed bore (ROUND 3): 20.4 × 17.2 matching the rectangular
+    # shaft, with the 3×45° key chamfer on the (+x,-y) corner — one
+    # orientation, no flat needed; the plug's hollow way continues above
+    body = body.cut(cq.Workplane("XY")
+                    .polyline([(-10.2, -10.2), (7.4, -10.2), (10.2, -7.4),
+                               (10.2, SLEEVE_FLAT_Y), (-10.2, SLEEVE_FLAT_Y)])
+                    .close().extrude(SLEEVE_L + TH_LEN)
+                    .translate((0, 0, -SLEEVE_L - 1)))
     # lug block on +Y, then the single slit through block + wall + bore
     lz = -SLEEVE_L + 9.0                                  # bolt line
     body = body.union(box_at(16.0, 12.0, 18.0, y=21.0, z=lz))
@@ -379,35 +377,22 @@ def leg_shaft() -> cq.Workplane:
     freely until gravity returns it). 45° chamfers on the two bed edges
     absorb first-layer elephant foot so the sleeve/slot fits stay true.
     Solid (slicer infills); foot spigot below."""
-    body = cyl(SHAFT_D, SHAFT_L, z=0.0).cut(
-        box_at(SHAFT_D + 2, 6.0, SHAFT_L + 2,
-               y=SHAFT_FLAT_Y + 3.0, z=SHAFT_L / 2))
-    # elephant-foot chamfers along the two flat→round bed edges
-    xe = math.sqrt((SHAFT_D / 2) ** 2 - SHAFT_FLAT_Y ** 2)
-    for sx in (1, -1):
-        body = body.cut(
-            cq.Workplane("XY")
-            .polyline([(sx * (xe - 0.6), SHAFT_FLAT_Y + 0.3),
-                       (sx * (xe + 0.3), SHAFT_FLAT_Y + 0.3),
-                       (sx * (xe + 0.3), SHAFT_FLAT_Y - 0.6)])
-            .close().extrude(SHAFT_L + 2).translate((0, 0, -1)))
-    # anti-lift SHELF band — SHARED by every shaft (the TRRS variant only
-    # adds its jack dock on top): the full bounding rectangle at the top of
-    # the foot band; its underside (z 26) overhangs the bar slot's solid
-    # corners (the slot squares only its top 2.4 to slide past) → positive
-    # hold-down at BOTH pedal-bar feet. X-symmetric, so the mirrored +Y-rail
-    # stacks and the (bar-less) -Y legs all print the same part.
-    body = body.union(box_at(20.0, SHAFT_FLAT_Y + 10.0, SHELF_Z1 - SHELF_Z0,
-                             x=0.0, y=(SHAFT_FLAT_Y - 10.0) / 2,
+    # ROUND 3 — RECTANGULAR shaft, 20 (x) × 16.8 (y -10..+6.8): the mouth
+    # face sits EXACTLY on the old key-flat datum (+6.8) and the other
+    # three faces on the old Ø20 extents, so every pedal-bar latch/TRRS
+    # constant survives the squaring. PETG-GF (user: playing stability
+    # over impact protection), prints LYING on the -y back face. The
+    # single 3×45° chamfer on the (+x,-y) corner is the one-orientation
+    # key (matched in the sleeve bore). SOLID; the square SHELF collar at
+    # the top of the foot band is the anti-lift (overhangs the slot walls
+    # ±12; the slot's widened top band slides past it).
+    body = (cq.Workplane("XY")
+            .polyline([(-10.0, -10.0), (7.0, -10.0), (10.0, -7.0),
+                       (10.0, SHAFT_FLAT_Y), (-10.0, SHAFT_FLAT_Y)])
+            .close().extrude(SHAFT_L))
+    body = body.union(box_at(24.0, 17.4, SHELF_Z1 - SHELF_Z0,
+                             x=0.0, y=-1.6,
                              z=(SHELF_Z0 + SHELF_Z1) / 2))
-    for sx in (1, -1):   # band-limited bed-edge chamfers on the shelf
-        body = body.cut(
-            cq.Workplane("XY")
-            .polyline([(sx * (10.0 - 0.6), SHAFT_FLAT_Y + 0.3),
-                       (sx * (10.0 + 0.3), SHAFT_FLAT_Y + 0.3),
-                       (sx * (10.0 + 0.3), SHAFT_FLAT_Y - 0.6)])
-            .close().extrude(SHELF_Z1 - SHELF_Z0 + 0.2)
-            .translate((0, 0, SHELF_Z0 - 0.1)))
     return body
 
 
@@ -435,33 +420,15 @@ SHELF_Z0, SHELF_Z1 = 26.0, 29.0        # small OUTBOARD corner fill at the TOP
 
 
 def leg_shaft_trrs() -> cq.Workplane:
-    """The -X/+Y leg's shaft: leg_shaft() + the CORNER-FILL extension on the
-    inboard half (foot band only): the cylinder's inboard extent extruded to
-    a full-width rectangle — a FLAT face for the TRRS jack with a touch more
-    material around its pocket, flat X-seat faces for the bar slot, and an
-    unmistakable single orientation. Then the X-facing jack pocket
-    (SJ-43514-SMT, mouth flush in the flat face) and the Ø6 wire bore up
-    the centre. Same lying-flat print: the extension reaches the bed at its
-    own chamfered edge (vertical wall — even less overhang than the round),
-    its top is flat, and the pocket opens sideways (no bridges); the centre
-    bore prints as a long horizontal hole — acceptable sag, nothing fits it
-    tightly."""
+    """The -X/+Y leg's shaft: the RECTANGULAR leg_shaft() with the TRRS
+    dock carved into its NATIVE -x face (the old corner-fill existed only
+    to flatten the round shaft — the rectangle has the flat for free):
+    jack pocket + carrier seat + terminal band + wire gallery + rear
+    channel + bottom-entry XH cavity, and the open PRESS-IN cable channel
+    on the (-x, +y) INWARD CORNER. Same lying print (back face down); the
+    pocket opens sideways, no bridges."""
     body = leg_shaft()
-    # TRRS delta 1: corner fill — local -X half → rectangle to x=-10, full
-    # width up to the key flat, FOOT BAND only (never enters the sleeve or
-    # the foot cap): flat jack face + meat around the pocket + flat slot
-    # X-seat (the shared shelf band is already in leg_shaft())
-    body = body.union(box_at(10.0, SHAFT_FLAT_Y + 10.0, WAIST_Z1 - WAIST_Z0,
-                             x=-5.0, y=(SHAFT_FLAT_Y - 10.0) / 2,
-                             z=(WAIST_Z0 + WAIST_Z1) / 2))
-    # band-limited bed-edge chamfer on the fill's edge
-    body = body.cut(cq.Workplane("XY")
-                    .polyline([(-(10.0 - 0.6), SHAFT_FLAT_Y + 0.3),
-                               (-(10.0 + 0.3), SHAFT_FLAT_Y + 0.3),
-                               (-(10.0 + 0.3), SHAFT_FLAT_Y - 0.6)])
-                    .close().extrude(WAIST_Z1 - WAIST_Z0 + 0.2)
-                    .translate((0, 0, WAIST_Z0 - 0.1)))
-    # jack pocket: local -X (inboard once placed), mouth in the flat face
+    # jack pocket: local -X (inboard once placed), mouth in the native face
     body = body.cut(box_at(TRRS_JACK_L + 1.0, TRRS_JACK_W + 0.6,
                            TRRS_JACK_H + 0.6, x=-10.5 + (TRRS_JACK_L + 1.0) / 2,
                            z=TRRS_Z))
@@ -492,28 +459,22 @@ def leg_shaft_trrs() -> cq.Workplane:
     # channel), not the jack body — the SMT jack is rated for
     # board-carried insertion loads.
     body = body.cut(box_at(4.2, 4.6, 19.8, x=6.7, z=12.3))
-    # ── open PRESS-IN CABLE CHANNEL (replaced the enclosed bore): the
-    # cable lays in SIDEWAYS at the bench with its housing already crimped
-    # — no threading through the shaft, no contact extraction to service
-    # (unplug, pop the cable out laterally, slide the shaft off). Azimuth
-    # 142° local = DIAGONALLY INWARD once placed (global +x/-y on this
-    # -X/+Y leg): invisible from the front and side views; the sleeve
-    # cages it over the engaged length. T-slot: Ø4.4 way at r7.7 under a
-    # 3.2 mouth (lips grip the Ø3.7 jacket, fully sub-flush of the Ø20).
-    # Over the foot band the mouth deepens through the corner-fill /
-    # shelf corner (bar-covered when playing, foot-covered below) and
-    # lands in the bottom cavity's corner.
-    ang = 142.0
-    _ca, _sa = math.cos(math.radians(ang)), math.sin(math.radians(ang))
-    body = body.cut(cyl(4.4, 204.0, z=8.0)
-                    .translate((7.7 * _ca, 7.7 * _sa, 0)))
-    body = body.cut(box_at(5.6, 3.2, 21.2, x=10.3, z=18.5)
-                    .rotate((0, 0, 0), (0, 0, 1), ang))
-    body = body.cut(box_at(3.4, 3.2, 183.0, x=9.15, z=120.4)
-                    .rotate((0, 0, 0), (0, 0, 1), ang))
+    # ── open PRESS-IN CABLE CHANNEL on the (-x, +y) INWARD CORNER (the
+    # literal "diagonal inward" — global +x/-y once placed: invisible from
+    # the front and side; the sleeve cages it over the engaged length,
+    # the bar/foot cover the rest). Ø4.4 way 3.2 diagonally in from the
+    # corner + a 3.2 mouth slot out the corner (lips grip the Ø3.7
+    # jacket sub-flush). The cable lays in SIDEWAYS at the bench with its
+    # housing already crimped — no threading, no contact extraction:
+    # unplug, pop the cable out, slide the shaft off.
+    _cx, _cy = -10.0 + 2.26, SHAFT_FLAT_Y - 2.26     # way centre
+    body = body.cut(cyl(4.4, 204.0, z=8.0).translate((_cx, _cy, 0)))
+    body = body.cut(box_at(3.2, 6.0, 204.0, y=3.0, z=110.0)
+                    .rotate((0, 0, 0), (0, 0, 1), 45.0)
+                    .translate((_cx, _cy, 0)))
     # cavity corner reach: the channel's foot lands here; the cable curls
     # across the cavity to the carrier's underside header
-    body = body.cut(box_at(5.0, 4.4, 15.0, x=-5.5, y=4.2, z=6.4))
+    body = body.cut(box_at(5.0, 4.8, 15.0, x=-6.4, y=3.8, z=6.4))
     return body
 
 
@@ -937,10 +898,11 @@ def leg_column_plug() -> cq.Workplane:
 
 
 def leg_foot() -> cq.Workplane:
-    """TPU foot cap, pressed over the shaft end (grips the round sides of the
-    keyed shaft; its cap ends exactly where the waist begins). Z0 = ground."""
-    body = cyl(SHAFT_D + 8.0, FOOT_H, z=0.0)
-    return body.cut(cyl(SHAFT_D + 0.2, FOOT_H - 3.0, z=3.0))
+    """TPU SQUARE foot cap (ROUND 3), pressed over the rectangular shaft
+    end; rotates with the stack at placement. Z0 = ground."""
+    body = box_at(26.0, 23.0, FOOT_H, y=-1.6, z=FOOT_H / 2)
+    return body.cut(box_at(20.2, 17.0, FOOT_H - 3.0 + 1.0, y=-1.6,
+                           z=3.0 + (FOOT_H - 3.0 + 1.0) / 2))
 
 
 def leg_washer() -> cq.Workplane:

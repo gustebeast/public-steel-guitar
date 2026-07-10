@@ -130,9 +130,10 @@ XS = (LATCHES[0][0] + LATCHES[1][0]) / 2   # bar splice (mid-trough): ~303
                    # chassis-segment pattern).
 XL = XS - 50.0     # lid butt-splice, STAGGERED 50 from XS so each lid piece
                    # bridges the glued bar joint (the lid is structure)
-LID_XA = LATCHES[1][0] + 10.4      # lid span: between the slots' inboard
-LID_XB = LATCHES[0][0] - 10.4      # walls (the shafts fill the slots to the
-                                   # bar top — the lid cannot cross them)
+LID_XA = LATCHES[1][0] + 12.4      # lid span: between the shafts' 24-wide
+LID_XB = LATCHES[0][0] - 12.4      # SHELF collars (round-3 rectangular
+                                   # shaft; the shelf band rides at the
+                                   # lid's z — the lid cannot cross it)
 TROUGH_X0 = LATCHES[1][0] + 45.0   # wiring trough: connects the two latch
 TROUGH_X1 = LATCHES[0][0] - 45.0   # cavities (no leg slot is ever crossed)
 LOCK_X, LOCK_Y = LID_XB - 4.6, 7.6  # lid-lock detent nub: bar-top pocket; a
@@ -165,26 +166,19 @@ CRDL_X0, CRDL_X1 = 10.4, 26.1              # cradle prism (front wall to
                                            # x' 11.3; rear wall from 24.3)
 
 
-def _slot_cutter(lx: float, square_ls: float = 0.0) -> cq.Workplane:
-    """Slot for one leg: Ø20.4 walls + ROUND back (r10.2 hugging the shaft's
-    round side; the key flat faces the mouth as the latch's bearing plane),
-    full height, opening -Y, 45° lead-in flares. square_ls ≠ 0 squares the
-    back on that (inboard) side to fit the TRRS shaft's corner-fill."""
-    # mouth box ends at y=0, where the r10.2 back circle is exactly SLOT_W
-    # wide — the wall meets the round back TANGENTIALLY (a longer box left a
-    # 0.2-thick curved sliver ridge between wall and circle)
-    cut = box_at(SLOT_W, 17.0, BAR_H + 2, x=lx, y=YC - 8.5, z=BAR_H / 2)
-    cut = cut.union(cyl(SLOT_W, BAR_H + 2, z=-1).translate((lx, YC, 0)))
-    # TOP-BAND cavity (EVERY slot — the shelf band is on every shaft):
-    # slides past the shaft's rectangular SHELF; the SOLID corners below it
-    # sit under the shelf's underside = positive hold-down. Same SLOT_W as
-    # the walls and back at the circle's +10.2 tangent — no 0.2 ledges (the
-    # 20.0-wide shelf keeps its 0.2/side fit)
-    cut = cut.union(box_at(SLOT_W, 27.2, 3.8, x=lx, y=YC - 3.4, z=18.5))
-    if square_ls:
-        cut = cut.union(box_at(SLOT_W / 2, 27.4, BAR_H + 2,
-                               x=lx + square_ls * SLOT_W / 4,
-                               y=YC - 3.3, z=BAR_H / 2))
+def _slot_cutter(lx: float) -> cq.Workplane:
+    """Slot for one leg — ROUND-3 RECTANGULAR shaft (20 × 16.8): a plain
+    rectangular pocket, walls at ±10.2, flat back at +10.2, opening -Y,
+    45° lead-in flares. The shaft's mouth face sits at the OLD key-flat
+    datum (y -6.8), so the latch bolt's bearing plane and every latch
+    constant are unchanged; the round-back/corner-fill/squared-slot
+    apparatus of the round shaft is GONE. Both feet use the identical
+    cutter now (the TRRS jack face is a native shaft face)."""
+    cut = box_at(SLOT_W, 26.7, BAR_H + 2, x=lx, y=YC - 3.15, z=BAR_H / 2)
+    # TOP-BAND cavity (every slot): slides past the shaft's 24-wide square
+    # SHELF collar; the solid corners below it sit under the shelf's
+    # underside = positive anti-lift hold-down
+    cut = cut.union(box_at(24.4, 27.2, 3.8, x=lx, y=YC - 3.4, z=18.5))
     for s in (1, -1):
         cut = cut.union(
             cq.Workplane("XY")
@@ -202,7 +196,7 @@ def _bar_full() -> cq.Workplane:
     body = box_at(BAR_X1 - BAR_X0, BAR_Y1 - BAR_Y0, BAR_H,
                   x=(BAR_X0 + BAR_X1) / 2, y=(BAR_Y0 + BAR_Y1) / 2, z=BAR_H / 2)
     body = body.cut(_slot_cutter(LATCHES[0][0]))
-    body = body.cut(_slot_cutter(LATCHES[1][0], LATCHES[1][1]))
+    body = body.cut(_slot_cutter(LATCHES[1][0]))
 
     # the IDENTICAL latch cavity at each foot: one open-top pocket swallows
     # the slider, (TRRS-side) cradle, plug travel, kick spring + cable loop
@@ -542,10 +536,10 @@ def _cable_runs():
     lx, ls = LATCHES[1]
     bar = cq.Workplane("XY").add(cq.Solid.makeCylinder(
         1.85, 30.0, cq.Vector(lx + ls * 40.0, YC, TR_Z), cq.Vector(ls, 0, 0)))
-    # leg cable rides the shaft's OPEN press-in channel (azimuth 142°
-    # shaft-local → bar (x' +6.07, y -4.74)), lands in the cavity corner,
-    # curls to the carrier's underside header
-    leg = _rods(lx, ls, [(6.07, -4.74, 201.0), (6.07, -4.74, 1.5),
+    # leg cable rides the shaft's OPEN press-in channel (the (-x,+y)
+    # inward CORNER shaft-local → bar (x' +7.74, y -4.54)), lands in the
+    # cavity corner, curls to the carrier's underside header
+    leg = _rods(lx, ls, [(7.74, -4.54, 201.0), (7.74, -4.54, 1.5),
                          (2.0, -1.0, -3.0)], 3.7)
     return [("pedal_trrs_cable_bar", bar), ("pedal_trrs_cable_leg", leg)]
 
