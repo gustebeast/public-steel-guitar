@@ -21,11 +21,10 @@ from functools import partial
 
 import cadquery as cq
 
-# Shared FreeCAD viewer helper (Archive/3D/freecad). show() makes the build's
-# output viewable — opens or refreshes its tab in the FreeCAD hub. Never raises.
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "freecad"))
-from freecad_view import show
-from step_export import export_step
+# Shared CAD utilities, vendored at <project>/cadkit (git subtree). show() makes the
+# build's output viewable — opens/refreshes its tab in the FreeCAD hub. Never raises.
+from cadkit.freecad import show
+from cadkit.step_export import export_step
 
 from . import dimensions as D
 from .helpers import heal
@@ -800,6 +799,15 @@ def _export_assembly():
 
 
 def main() -> None:
+    # Part notes carry Unicode (→, Ø, …); a cp1252 Windows console/pipe raises
+    # UnicodeEncodeError mid-export and aborts the build. Force UTF-8 so a print
+    # can never kill a good geometry build (replace = never crash on any glyph).
+    for _stream in (sys.stdout, sys.stderr):
+        try:
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError):
+            pass
+
     p = argparse.ArgumentParser(prog="src.build")
     p.add_argument("--part", help="Build only this printed part (skips assembly).")
     p.add_argument("--list", action="store_true", help="List part names and exit.")

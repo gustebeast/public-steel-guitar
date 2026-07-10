@@ -43,11 +43,10 @@ from . import dimensions as D
 from . import components as C
 from .helpers import box_at, cyl, cyl_y, heal
 
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "freecad"))
-from fasteners import (M2_SELFTAP_D, M4_SHAFT_CLR_D, M4_INSERT_D,  # noqa: E402
+from cadkit.fasteners import (M2_SELFTAP_D, M4_SHAFT_CLR_D, M4_INSERT_D,
                        M4_INSERT_L, M4_SCREW_L, M4, cut_insert_bore,
                        cut_m4_pocket, seated_m4_insert, cut_m4_boss, m4_boss_insert)
-# the M4 insert pocket/boss helpers now live in freecad/fasteners.py (shared); keep the old local names:
+# the M4 insert pocket/boss helpers now live in cadkit/fasteners.py (shared); keep the old local names:
 _insert_pocket, _seated_insert = cut_m4_pocket, seated_m4_insert
 _insert_boss_cut, _insert_dummy = cut_m4_boss, m4_boss_insert
 
@@ -280,8 +279,12 @@ HS_HOUS_BACK = HS_BACK_X + HS_BSTOP_ENGAGE   # housing boss depth = engagement (
 # being 45°, both mortises are self-supporting (print bottom-to-top). The TRUNK is only 0.8 mm so
 # neither mortise goes deep. The RIB mortise is the long part (player face -> guitar mid-Y) so the
 # lever slides to the chosen knee depth; a -Y M4 screw locks it. Even pitch -> one tenon fits any bay. ──
-RIB_PITCH = 46.0                    # uniform bottom-rib pitch
-TEN_XC    = RIB_PITCH / 2           # half-pitch (23) -- the nearest rib is this far -X of the axle
+RIB_PITCH = 46.0                    # the lever's TENON SPAN (set by the cartridge reach). The chassis
+                                    # rib pitch is now HALF this (23 mm -- a crossbar per motor + one
+                                    # between each), so this lever spans TWO chassis bays: its axle sits
+                                    # over a rib and its two tenons drop into the ribs 1 and 3 to the -X
+                                    # (23 and 69 mm), skipping the rib directly between them.
+TEN_XC    = RIB_PITCH / 2           # near tenon 23 mm -X of the axle (= one 23 mm chassis pitch)
 # BOTH rails -X of the axle: the cartridge extends -X all the way to the far rail, so that rib is blocked
 # for any other lever -- we take both -X ribs for support and leave the +X rib free. (Chassis cuts a
 # mortise into EVERY rib, so no chassis change is needed; the lever just uses two adjacent -X ribs.)
@@ -595,7 +598,7 @@ def _cart_backstop() -> cq.Workplane:
     out. The thread carries HS_TH_CLR of clearance (tighter than the 0.8 tested loose fit). SHORT screw ->
     print AXIS-VERTICAL (no side-print needed); the 45deg flanks self-support. Threads cut LAST, un-healed
     (thread rules). Built along X at the cartridge back, HS_YC (feel_place()d into the assembly)."""
-    from threads import cut_thread                                              # noqa: E402 (freecad/ on sys.path)
+    from cadkit.threads import cut_thread
     maj, mnr = HS_BSTOP_OD - HS_TH_CLR, HS_TH_MINOR - HS_TH_CLR                 # male shrunk by the clearance
     fl_od = min(HS_BSTOP_OD + 2.0, 2 * abs(HS_YC) - 1.5)                        # flange < cartridge pitch (no centre clash)
     blank = (cyl(maj, HS_BSTOP_ENGAGE, z=HS_BACK_X)                             # SMOOTH crest-Ø body...
@@ -778,7 +781,7 @@ def _housing() -> cq.Workplane:
     # ...then cut the two FEMALE back-stop threads LAST and ALONE (thread rules: clean=False, and NEVER
     # heal a threaded part). Nominal thread; the printed screw carries the clearance (HS_TH_CLR). A short
     # nut cutter (2 turns) per cartridge, mapped into the -Z/-X placed boss by feel_place.
-    from threads import threaded_rod                                # noqa: E402  (freecad/ on sys.path)
+    from cadkit.threads import threaded_rod
     for dy in (MAIN_YC - HS_YC, 0.0):                               # symmetric: both bosses at the same backmost X
         nut = (threaded_rod(HS_TH_MINOR, HS_BSTOP_OD, HS_TH_PITCH, HS_BSTOP_ENGAGE)
                .rotate((0, 0, 0), (0, 1, 0), 90).translate((HS_BACK_X + HS_SETBACK, HS_YC + dy, HS_Z)))
