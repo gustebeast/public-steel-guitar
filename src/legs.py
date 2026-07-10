@@ -340,8 +340,8 @@ def leg_sleeve() -> cq.Workplane:
     # shaft, with the 3×45° key chamfer on the (+x,-y) corner — one
     # orientation, no flat needed; the plug's hollow way continues above
     body = body.cut(cq.Workplane("XY")
-                    .polyline([(-10.2, -10.2), (7.4, -10.2), (10.2, -7.4),
-                               (10.2, SLEEVE_FLAT_Y), (-10.2, SLEEVE_FLAT_Y)])
+                    .polyline([(-14.2, -13.2), (9.6, -13.2), (14.2, -8.6),
+                               (14.2, 13.2), (-14.2, 13.2)])
                     .close().extrude(SLEEVE_L + TH_LEN)
                     .translate((0, 0, -SLEEVE_L - 1)))
     # lug block on +Y, then the single slit through block + wall + bore
@@ -377,22 +377,16 @@ def leg_shaft() -> cq.Workplane:
     freely until gravity returns it). 45° chamfers on the two bed edges
     absorb first-layer elephant foot so the sleeve/slot fits stay true.
     Solid (slicer infills); foot spigot below."""
-    # ROUND 3 — RECTANGULAR shaft, 20 (x) × 16.8 (y -10..+6.8): the mouth
-    # face sits EXACTLY on the old key-flat datum (+6.8) and the other
-    # three faces on the old Ø20 extents, so every pedal-bar latch/TRRS
-    # constant survives the squaring. PETG-GF (user: playing stability
-    # over impact protection), prints LYING on the -y back face. The
-    # single 3×45° chamfer on the (+x,-y) corner is the one-orientation
-    # key (matched in the sleeve bore). SOLID; the square SHELF collar at
-    # the top of the foot band is the anti-lift (overhangs the slot walls
-    # ±12; the slot's widened top band slides past it).
+    # ROUND 4 — FAT tenon (user: split the material properly between the
+    # adjustable tenon and the sleeve mortise): 28 × 26 SYMMETRIC rect
+    # (the bar-wrap datum died when the bar grew its own leg stubs), one
+    # 4×45° key chamfer on the (+x,-y) corner, sleeve mortise walls ~8.
+    # PETG-GF, prints lying. This LONG variant (×2, the -Y legs) runs to
+    # the floor and takes a TPU foot; the +Y pair use leg_shaft_short.
     body = (cq.Workplane("XY")
-            .polyline([(-10.0, -10.0), (7.0, -10.0), (10.0, -7.0),
-                       (10.0, SHAFT_FLAT_Y), (-10.0, SHAFT_FLAT_Y)])
+            .polyline([(-14.0, -13.0), (10.0, -13.0), (14.0, -9.0),
+                       (14.0, 13.0), (-14.0, 13.0)])
             .close().extrude(SHAFT_L))
-    body = body.union(box_at(24.0, 17.4, SHELF_Z1 - SHELF_Z0,
-                             x=0.0, y=-1.6,
-                             z=(SHELF_Z0 + SHELF_Z1) / 2))
     return body
 
 
@@ -419,62 +413,55 @@ SHELF_Z0, SHELF_Z1 = 26.0, 29.0        # small OUTBOARD corner fill at the TOP
                                        # only its top 2.4 to slide past)
 
 
+SHORT_SHAFT_L = 138.0          # +Y shafts end short (ROUND 4: the bar
+                               # carries the last ~72 as its STUB TOWERS)
+BLOCK_H = 55.0                 # 44-sq terminal block at the short shaft's
+                               # bottom: hosts the FULL-SIZE house socket
+                               # + latch ledge (+ the jack on the wired
+                               # one) — the same joint as leg↔body
+
+
+def leg_shaft_short() -> cq.Workplane:
+    """+Y SHORT shaft ×2 (ROUND 4): the 28×26 tenon ends in a 44-sq
+    terminal BLOCK whose downward house socket + ledge take the bar
+    stub's spigot/bolt — the leg↔body latch joint, verbatim, pointed at
+    the floor. Passive (bolt + button live on the bar stub). Z0 =
+    bottom (the block's mouth face)."""
+    body = (cq.Workplane("XY")
+            .polyline([(-14.0, -13.0), (10.0, -13.0), (14.0, -9.0),
+                       (14.0, 13.0), (-14.0, 13.0)])
+            .close().extrude(SHORT_SHAFT_L))
+    body = body.union(box_at(SQ_W, SQ_W, BLOCK_H, z=BLOCK_H / 2))
+    # downward house socket (mouth at z0, 44 deep — the stub's 42 spigot
+    # + 2 roof clearance) + the latch LEDGE pocket in its +y way wall
+    # (floor at 27.4: the stub's bolt rests on it against extraction)
+    body = body.cut(_house(28.1, -16.05, 2.05, 45.0).translate((0, 0, -1)))
+    body = body.cut(box_at(BOLT_W + 2.0, 3.7, 9.0,
+                           x=BOLT_X, y=14.05 + 1.75, z=31.9))
+    return body
+
+
 def leg_shaft_trrs() -> cq.Workplane:
-    """The -X/+Y leg's shaft: the RECTANGULAR leg_shaft() with the TRRS
-    dock carved into its NATIVE -x face (the old corner-fill existed only
-    to flatten the round shaft — the rectangle has the flat for free):
-    jack pocket + carrier seat + terminal band + wire gallery + rear
-    channel + bottom-entry XH cavity, and the open PRESS-IN cable channel
-    on the (-x, +y) INWARD CORNER. Same lying print (back face down); the
-    pocket opens sideways, no bridges."""
-    body = leg_shaft()
-    # jack pocket: local -X (inboard once placed), mouth in the native face
-    body = body.cut(box_at(TRRS_JACK_L + 1.0, TRRS_JACK_W + 0.6,
-                           TRRS_JACK_H + 0.6, x=-10.5 + (TRRS_JACK_L + 1.0) / 2,
-                           z=TRRS_Z))
-    # widened band at the jack's terminal plane: the SJ-4351X's SMT
-    # gull-wings splay to ~10 total width (datasheet PCB layout) — wider
-    # than the body pocket
-    body = body.cut(box_at(TRRS_JACK_L + 1.0, 10.6, 1.6,
-                           x=-10.5 + (TRRS_JACK_L + 1.0) / 2,
-                           z=TRRS_Z - 2.2))
-    # WIRE GALLERY: the pocket's rear half opens upward to the bore mouth —
-    # the four wires rise from the gull-wing tabs beside the body, cross
-    # over its rear, and gather into the Ø6 centre bore. (Routing the wires
-    # to their actual terminals showed the previous 0.3 gap over the jack
-    # body was impassable.)
-    body = body.cut(box_at(8.0, 10.6, 7.3, x=1.0, z=18.55))
-    # CARRIER PCB seat: the jack rides a 1.6 board (factory-assembled, XH
-    # header on its UNDERSIDE) — deepen the pocket floor by 2.0 for it
-    body = body.cut(box_at(TRRS_JACK_L + 1.0, 7.0, 2.1,
-                           x=-10.5 + (TRRS_JACK_L + 1.0) / 2, z=14.35))
-    # bottom-entry cavity: the leg-column cable's crimped XH housing mates
-    # UPWARD onto the carrier's underside header; the cavity opens at the
-    # shaft's bottom face and hides under the TPU foot cap (assemble the
-    # housing, then cap the foot). The foot spigot keeps its outer ring.
-    body = body.cut(box_at(13.0, 8.0, 15.5, x=-1.5, z=6.65))
-    # REAR CHANNEL: the Ø3.7 cable's downway (gallery → bottom cavity),
-    # behind the jack. Plug-insertion loads now backstop through the
-    # CARRIER BOARD's rear edge on its full-width seat wall (below this
-    # channel), not the jack body — the SMT jack is rated for
-    # board-carried insertion loads.
-    body = body.cut(box_at(4.2, 4.6, 19.8, x=6.7, z=12.3))
-    # ── open PRESS-IN CABLE CHANNEL on the (-x, +y) INWARD CORNER (the
-    # literal "diagonal inward" — global +x/-y once placed: invisible from
-    # the front and side; the sleeve cages it over the engaged length,
-    # the bar/foot cover the rest). Ø4.4 way 3.2 diagonally in from the
-    # corner + a 3.2 mouth slot out the corner (lips grip the Ø3.7
-    # jacket sub-flush). The cable lays in SIDEWAYS at the bench with its
-    # housing already crimped — no threading, no contact extraction:
-    # unplug, pop the cable out, slide the shaft off.
-    _cx, _cy = -10.0 + 2.26, SHAFT_FLAT_Y - 2.26     # way centre
-    body = body.cut(cyl(4.4, 204.0, z=8.0).translate((_cx, _cy, 0)))
-    body = body.cut(box_at(3.2, 6.0, 204.0, y=3.0, z=110.0)
-                    .rotate((0, 0, 0), (0, 0, 1), 45.0)
-                    .translate((_cx, _cy, 0)))
-    # cavity corner reach: the channel's foot lands here; the cable curls
-    # across the cavity to the carrier's underside header
-    body = body.cut(box_at(5.0, 4.8, 15.0, x=-6.4, y=3.8, z=6.4))
+    """The -X/+Y leg's shaft (ROUND 4): leg_shaft_short() + the SECOND
+    vertical TRRS blind-mate — a 10-03404 jack (mouth DOWN) coaxial above
+    the socket roof, mating the bar stub's captive CA-354S plug on the
+    same straight press that clicks the latch. Its factory cable runs UP
+    the column to the mini junction PCB. The side dock / carrier PCB /
+    corner channel of the sideways design are GONE."""
+    body = leg_shaft_short()
+    # vertical jack way, Ø9.7 CLEAN THROUGH to the tenon top: the
+    # 10-03404 loads DOWN from the shaft's open top (pre-assembly) onto
+    # the integral mouth-seat BOSS (withdrawal backstop); a pressed
+    # jack_seat_ring ABOVE it takes insertion. Jack mouth +42.7, plug tip
+    # +55.7 = 13.0 insertion on the same press that clicks the latch.
+    body = body.union(cyl(13.0, 2.6, z=41.5))        # mouth-seat boss: its
+    #                                                  42.7 ledge seats the
+    #                                                  jack, its upper band
+    #                                                  ties to the roof, its
+    #                                                  bottom clears the
+    #                                                  plug handle (41.2)
+    body = body.cut(cyl(4.8, 2.2, z=41.3))           # barrel way thru boss
+    body = body.cut(cyl(9.7, SHORT_SHAFT_L - 42.7 + 2.0, z=42.7))
     return body
 
 
@@ -883,6 +870,14 @@ def chassis_trrs_jack() -> cq.Workplane:
     return b
 
 
+def jack_seat_ring() -> cq.Workplane:
+    """Printed press ring ×1 (PCTG): pushed DOWN the wired short shaft's
+    Ø9.7 way onto the bar-joint jack's top — its insertion backstop (the
+    integral boss below the mouth takes withdrawal). Ø5 way passes the
+    factory cable. Z0 = bottom (sits on the jack top)."""
+    return cyl(9.75, 6.0, z=0.0).cut(cyl(5.0, 8.0, z=-1.0))
+
+
 def leg_column_plug() -> cq.Workplane:
     """DEMO column-top plug — the SECOND CA-354S, recessed in the top
     segment's Ø11 bore with its full barrel exposed (handle top 0.2 under
@@ -898,10 +893,11 @@ def leg_column_plug() -> cq.Workplane:
 
 
 def leg_foot() -> cq.Workplane:
-    """TPU SQUARE foot cap (ROUND 3), pressed over the rectangular shaft
-    end; rotates with the stack at placement. Z0 = ground."""
-    body = box_at(26.0, 23.0, FOOT_H, y=-1.6, z=FOOT_H / 2)
-    return body.cut(box_at(20.2, 17.0, FOOT_H - 3.0 + 1.0, y=-1.6,
+    """TPU SQUARE foot cap ×2 (ROUND 4: only the -Y legs — the +Y pair's
+    feet ride the bar stubs), pressed over the fat 28×26 shaft end. Z0 =
+    ground."""
+    body = box_at(34.0, 32.0, FOOT_H, z=FOOT_H / 2)
+    return body.cut(box_at(28.2, 26.2, FOOT_H - 3.0 + 1.0,
                            z=3.0 + (FOOT_H - 3.0 + 1.0) / 2))
 
 
