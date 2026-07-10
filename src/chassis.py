@@ -14,8 +14,10 @@ Too long for one print (~645 mm > 255 mm bed), so it's cut into 3 segments joine
 by SLIDING DOVETAILS on the side rails: each joint's tongue flares toward +X
 (locking the segments against the string pull), you drop the next segment straight
 DOWN onto it (one direction), and it bottoms on a shoulder that sets the position —
-then glue. The cuts fall in the ~1 mm gaps BETWEEN motor walls, so no motor
-mount is split. Built in global position; the segments assemble into the whole.
+then glue. The cuts fall in the gaps BETWEEN ribs; each motor faceplate is fused
+WHOLE into the segment that owns its motor (_segments), so a plate straddling a cut
+just overhangs into the relieved neighbour — never sliced. Built in global position;
+the segments assemble into the whole.
 """
 
 from __future__ import annotations
@@ -108,25 +110,54 @@ KH_DT_SEAT     = 0.1                    # lower-dovetail seating clearance: the 
 # A chunky rail-to-rail rib UNDER EACH MOTOR (the motor rests on it, its wall sits
 # on it, and it ties the two rails) replaces a solid floor — far lighter for the
 # strength. Plus a rib near the nut, placed to keep the WHOLE bottom-rib set on a
-# uniform 46 mm pitch (the motor ribs already are): evenly-spaced ribs make every
+# uniform pitch (the motor ribs already are): evenly-spaced ribs make every
 # bay identical, so a knee/pedal lever's christmas-tree mount fits ANY pair. (No +X
 # crossbar: the bridge block IS the +X tie.)
-_RIB_X   = ([D.motor_pos(i)[0] for i in range(D.N_STRINGS)] + [-570.0])
+# HALF-PITCH RIB COMB (generative -- a rib can never go missing): a crossbar per motor
+# PLUS one between each adjacent pair -> uniform 23 mm pitch, twice the crossbar support,
+# extended TWO motor-pitches past each end of the motor bank. Every rib is identical
+# (XBAR-wide, same christmas-tree mortise + wire raceway), so "one tenon fits any bay"
+# holds -- a lever just spans two of the finer bays. NOTHING is excluded (the knee-lever
+# bay keeps its ribs too; the lever housing is relieved for them in knee_lever.py).
+def _rib_positions():
+    """The rib X-list, computed so there is never a gap. Motor pitch = (first motor .. last
+    motor) / (N-1); take N_STRINGS+4 BASE ribs at that pitch starting two pitches past the
+    -X-most motor (a rib per motor + two beyond each end), then drop a rib at every midpoint
+    between adjacent base ribs -> the uniform half-pitch comb."""
+    mx = sorted(D.motor_pos(i)[0] for i in range(D.N_STRINGS))
+    pitch = (mx[-1] - mx[0]) / (D.N_STRINGS - 1)                       # motor pitch (46)
+    base = [mx[0] - 2 * pitch + k * pitch for k in range(D.N_STRINGS + 4)]   # 2 past each end
+    mids = [(base[i] + base[i + 1]) / 2 for i in range(len(base) - 1)]
+    return sorted(base + mids)
+
+_RIB_X = _rib_positions()
+SPLIT_X  = [-216.5, -446.5]            # 2 cuts → 3 segments < 255 mm (224.7 / 230.0 / 192.5), each in a
+                                       # 13 mm gap BETWEEN two ribs. The cut straddles a 43-wide motor
+                                       # plate, but that plate is fused WHOLE into the segment that owns
+                                       # its motor (see _segments): it overhangs the cut plane with its
+                                       # bolt holes intact and the neighbour is relieved. So the split is
+                                       # free of the motor-wall / bolt-column constraint -- it only has
+                                       # to clear the ribs (a rib and an 8 mm joint won't share a 3 mm gap).
 
 # Bridge-endplate joint: ENDPLATE_JOINT_Y are the two rail centre-lines the bridge
 # (and keyhead) sit over; kept for the bridge's foot/joint references.
 ENDPLATE_JOINT_Y = (Y_HI, Y_LO)
 
-SPLIT_X  = [-225.0, -455.0]            # 2 cuts → 3 segments < 255 mm, in motor-wall gaps
-                                       # (gap 6/7 centre -225, gap 1/2 centre -455; must NOT land
-                                       # inside a 43-wide wall or the split slices a motor plate)
-# guard: a split inside a motor faceplate wall silently slices that plate between two segments
+# guard: a split PLANE (full-Y cut) must miss every rail-to-rail rib -- it would slice one
+# in half. (Motor plates are NOT a constraint any more: they fuse per segment, so the plane
+# may cross a plate's X-span; the plate goes whole to its motor's segment and overhangs.)
 for _s in SPLIT_X:
-    _hit = [i for i in range(D.N_STRINGS) if abs(_s - D.motor_pos(i)[0]) <= MB.WALL_W / 2]
-    assert not _hit, f"SPLIT_X {_s} lands inside motor wall(s) {_hit} — move it to a wall gap"
+    _plane_hit = [rx for rx in _RIB_X if abs(_s - rx) < _RIB_W / 2]
+    assert not _plane_hit, f"SPLIT_X {_s} plane slices rib(s) {_plane_hit} — move it into a rib gap"
 # dovetail: depth, root/tip width, shoulder, fit. Tip width kept ≤ T−3.2 so the
 # socket walls in the 8 mm rail stay ≥1.6 mm (2 passes of a 0.8 mm nozzle).
 _DT, _WR, _WT, _SH, _CLR = 8.0, 2.5, 4.5, 4.0, 0.3
+# guard: the dovetail JOINT (X-footprint s−2 .. s+_DT, at the RAILS) must not overlap a
+# rib -- the rib runs to the rails there, so an overlap would slice it.
+for _s in SPLIT_X:
+    _rib_hit = [rx for rx in _RIB_X
+                if (rx + _RIB_W / 2) > (_s - 2.0) and (rx - _RIB_W / 2) < (_s + _DT)]
+    assert not _rib_hit, f"SPLIT_X {_s} dovetail joint overlaps rib(s) {_rib_hit} — move it into a rib gap"
 
 def _diamond_xz(cx, cz, h, yr):
     """Diamond (45°) prism through a rail (axis Y) — a self-supporting hole in the
@@ -284,7 +315,8 @@ def _build_full() -> cq.Workplane:
         face = cq.Face.makeFromWires(cq.Wire.makePolygon([*pts, pts[0]]))
         body = body.cut(cq.Workplane("XY").add(
             cq.Solid.extrudeLinear(face, cq.Vector(TP_EP_GX - _gx0, 0, 0))))
-    body = body.union(MB.motor_bank)                  # fuse in the motor faceplate walls
+    # NB: motor faceplate walls are NOT fused here -- _segments() adds each plate WHOLE to
+    # the print segment that owns its motor (so a split can cross a plate without slicing it).
     # +X end: the bridge endplate TAKES OVER the +X end as a solid block (mirror of the
     # keyhead -X takeover): remove the rail ENTIRELY at x > TP_EP_GX (z full) so the
     # bridge fills it and IS the +X cross-tie (no separate crossbar); it's held by the
@@ -488,6 +520,9 @@ def _segments():
     # tongue tip (_SHELL_PX + KH_DT_DEPTH = 13.6); a smaller bound (the old X_BRIDGE+2 = 8)
     # sliced the tongue off at the segment boundary.
     edges = [_SHELL_PX + KH_DT_DEPTH + 2.0] + sorted(SPLIT_X, reverse=True) + [X_NUT]
+    # each motor's faceplate plate is fused WHOLE into the segment whose X-band holds its
+    # motor -- a plate straddling a split overhangs into the neighbour rather than being cut.
+    _motor_x = [D.motor_pos(i)[0] for i in range(D.N_STRINGS)]
     segs = []
     for i in range(len(edges) - 1):
         a, b = edges[i], edges[i + 1]                 # a (+X) > b (−X)
@@ -498,6 +533,11 @@ def _segments():
         if _is_split(a):                              # +X boundary split → −X side → tongue
             for yr in (Y_HI, Y_LO):
                 seg = seg.union(_tongue(a, yr))
+        for mi, mx in enumerate(_motor_x):
+            if b < mx < a:                            # this segment OWNS the motor: fuse its plate whole
+                seg = seg.union(MB.plates[mi])
+            else:                                     # a neighbour's plate may overhang in: relieve it
+                seg = seg.cut(MB.plates[mi])
         segs.append(_largest(seg))
     return segs
 

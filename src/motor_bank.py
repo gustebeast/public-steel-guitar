@@ -51,27 +51,40 @@ BED_Z = FLOOR_TOP - D.XBAR                  # print bed = chassis rib/rail botto
 Z_HI = _zc + D.NEMA17_BOLT_SQ / 2 + _BOLT_EDGE     # wall top, just above the top bolts
 
 
+def plate(i) -> cq.Workplane:
+    """ONE motor's faceplate wall (motor mount). The motors rest on, and the walls
+    sit on, the chassis's per-motor cross-ribs — there is no solid floor (a thin
+    plate would be heavy printed skin; chunky ribs carry the load far lighter).
+    Each plate runs all the way to the print bed (BED_Z), with its bottom edges
+    tapered 45° — printable (no overhang) using less material than straight-down.
+
+    Exposed PER MOTOR so the chassis can fuse each plate WHOLE into the print
+    segment that owns its motor -- a plate straddling a segment boundary is never
+    sliced (its NEMA17 bolt holes stay intact); it just overhangs the cut plane and
+    the neighbour is relieved. That frees the segment splits to fall between ribs
+    instead of dodging the 43-wide plates."""
+    mx, my, mz = D.motor_pos(i)
+    fy = _face_y(i)
+    wall = box_at(WALL_W, PLATE_T, Z_HI - BED_Z,
+                  x=mx, y=fy, z=(Z_HI + BED_Z) / 2)
+    wall = wall.edges("|Y and <Z").chamfer(14.0)   # big 45° buttress → bed (gusset)
+    wall = wall.edges("|Y and >Z").chamfer(3.0)     # trim the top corners
+    wall = wall.cut(nema17_face_cutter_y(
+        fy - PLATE_T / 2, PLATE_T + 1.0, x=mx, z=mz, slot=TENSION_SLOT))
+    # shaft exit channel: pilot bore → wall TOP edge, so an unbolted motor
+    # (backed off ~3 mm) lifts out through the string field
+    wall = wall.cut(box_at(6.0, PLATE_T + 2.0, Z_HI - mz + 1,
+                           x=mx, y=fy, z=(mz + Z_HI + 1) / 2))
+    return wall
+
+
+plates = [plate(i) for i in range(D.N_STRINGS)]
+
+
 def _build() -> cq.Workplane:
-    # Just the faceplate walls (motor mounts). The motors rest on, and the walls
-    # sit on, the chassis's per-motor cross-ribs — there is no solid floor (a thin
-    # plate would be heavy printed skin; chunky ribs carry the load far lighter).
-    # Each plate runs all the way to the print bed (BED_Z), with its bottom edges
-    # tapered 45° — printable (no overhang) using less material than straight-down.
-    body = None
-    for i in range(D.N_STRINGS):
-        mx, my, mz = D.motor_pos(i)
-        fy = _face_y(i)
-        wall = box_at(WALL_W, PLATE_T, Z_HI - BED_Z,
-                      x=mx, y=fy, z=(Z_HI + BED_Z) / 2)
-        wall = wall.edges("|Y and <Z").chamfer(14.0)   # big 45° buttress → bed (gusset)
-        wall = wall.edges("|Y and >Z").chamfer(3.0)     # trim the top corners
-        wall = wall.cut(nema17_face_cutter_y(
-            fy - PLATE_T / 2, PLATE_T + 1.0, x=mx, z=mz, slot=TENSION_SLOT))
-        # shaft exit channel: pilot bore → wall TOP edge, so an unbolted motor
-        # (backed off ~3 mm) lifts out through the string field
-        wall = wall.cut(box_at(6.0, PLATE_T + 2.0, Z_HI - mz + 1,
-                               x=mx, y=fy, z=(mz + Z_HI + 1) / 2))
-        body = wall if body is None else body.union(wall)
+    body = plates[0]
+    for w in plates[1:]:
+        body = body.union(w)
     return body
 
 
