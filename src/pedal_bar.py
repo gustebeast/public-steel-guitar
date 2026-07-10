@@ -96,6 +96,12 @@ BAR_X1 = LEG_STATIONS_X[0] + END_MARGIN
 STUB_Z0 = 43.0                             # tower seat plane (bar frame): the
                                            # leg block's mouth face lands here
                                            # (bar top 19 + 24 button band)
+# Future pedals mount spring carriages vertically (lever pattern) above
+# the bar: the legs' WIDE bottom sections must stay below this envelope
+# (user placeholder; reference point x -313.80, y 43.75 = the bar top
+# plane at z -699.15 global). Budget check: tower top = STUB_Z0 + 38 =
+# 81, leg block top = STUB_Z0 + 48 = 91, both <= 19 + 75 = 94.
+PEDAL_ASSEMBLY_Z_HEIGHT = 75.0
 LID_Z0 = 15.0
 FOOT_PAD = 12.0
 
@@ -130,9 +136,11 @@ def _stub_tower(lx: float, wired: bool) -> cq.Workplane:
     cable enters from the trough side way. Prints WITH the bar,
     bottom-down — plain standing geometry, no overhangs."""
     b = box_at(LG.SQ_W, LG.SQ_W, STUB_Z0 - BAR_H, z=(BAR_H + STUB_Z0) / 2)
-    b = b.union(_house(27.7, -15.85, 1.85, 42.0).translate((0, 0, STUB_Z0)))
-    b = b.cut(box_at(LG.BOLT_W + 0.4, LG.SPG_W / 2 + 4.0, LG.BOLT_H + 0.4,
-                     x=LG.BOLT_X, y=LG.SPG_W / 4 + 1.0, z=STUB_Z0 + 31.8))
+    b = b.union(_house(27.7, -15.85, 1.85, 38.0).translate((0, 0, STUB_Z0)))
+    # bolt channel on the house FLOOR side (pre-rotation -y → global +y;
+    # the gabled receiving mortise has no room on the roof side)
+    b = b.cut(box_at(LG.BOLT_W + 0.4, 30.0, LG.BOLT_H + 0.4,
+                     x=8.0, y=-12.2, z=STUB_Z0 + 31.8))
     b = b.cut(box_at(12.4, 9.0, 10.4, x=-14.0, y=LG.SQ_W / 2 - 4.4,
                      z=STUB_Z0 - 11.0))
     b = b.rotate((0, 0, 0), (0, 0, 1), 180).translate((lx, YC, 0))
@@ -140,14 +148,9 @@ def _stub_tower(lx: float, wired: bool) -> cq.Workplane:
 
 
 def _foot_mortise_cutter(lx: float) -> cq.Workplane:
-    """Underside DOVETAIL mortise for the TPU bar foot's tenon (slides in
-    from -Y; TPU grip + compression loading = no fastener). Doubles as
-    the wired tower's plug-threading access hatch."""
-    return (cq.Workplane("XZ")
-            .polyline([(lx - 15.0, 0.0), (lx - 13.4, 6.0),
-                       (lx + 13.4, 6.0), (lx + 15.0, 0.0)])
-            .close().extrude(40.0).translate((0, YC + 16.0, 0))
-            .mirror("XY", (0, 0, 3)).mirror("XY", (0, 0, 3)))
+    """The SHARED foot mortise (legs.foot_mortise_cutter) at a station —
+    one TPU foot SKU serves the -Y leg blocks and the bar."""
+    return LG.foot_mortise_cutter().translate((lx, YC, 0))
 
 
 def _bar_full() -> cq.Workplane:
@@ -164,9 +167,10 @@ def _bar_full() -> cq.Workplane:
     # wired tower's ways — cut AFTER the union (they pierce both the tower
     # and the bar prism beneath it): captive plug seat, Ø8 down-way to the
     # foot-mortise access, Ø8 side way to the trough
-    wlx = LATCHES[1][0]
-    body = body.cut(cyl(9.4, 1.7, z=STUB_Z0 + 41.4).translate((wlx, YC, 0)))
-    body = body.cut(cyl(11.0, 33.5, z=STUB_Z0 + 8.0).translate((wlx, YC, 0)))
+    wlx = LATCHES[1][0] + 5.0     # TRRS axis offset +5 (the bolt owns the
+    #                               other side of the house floor band)
+    body = body.cut(cyl(9.4, 1.7, z=STUB_Z0 + 37.4).translate((wlx, YC, 0)))
+    body = body.cut(cyl(11.0, 29.5, z=STUB_Z0 + 8.0).translate((wlx, YC, 0)))
     body = body.cut(cyl(8.0, STUB_Z0 + 9.0, z=-0.5).translate((wlx, YC, 0)))
     body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
         4.0, 28.0, cq.Vector(wlx - 2.0, YC, 11.0), cq.Vector(1, 0, 0))))
@@ -274,22 +278,6 @@ def nub_part() -> cq.Workplane:
     return _lock_nub()
 
 
-def pedal_bar_foot() -> cq.Workplane:
-    """TPU bar FOOT ×2 (user: foot material inserts into a bar mortise):
-    44×44×12 ground pad + dovetail tenon (slides into the bar's underside
-    mortise from -Y; compression-loaded, TPU-grippy — no fastener). The
-    wired station's foot covers the plug-threading access. Z0 = ground,
-    authored at the -X station."""
-    lx = LATCHES[1][0]
-    b = box_at(LG.SQ_W, LG.SQ_W, FOOT_PAD, x=lx, y=YC, z=FOOT_PAD / 2)
-    b = b.union(cq.Workplane("XZ")
-                .polyline([(lx - 14.8, FOOT_PAD), (lx - 13.3, FOOT_PAD + 5.8),
-                           (lx + 13.3, FOOT_PAD + 5.8),
-                           (lx + 14.8, FOOT_PAD)])
-                .close().extrude(39.0).translate((0, YC + 15.5, 0)))
-    return b
-
-
 def _cable_runs():
     """DEMO bar cable: from the trough, through the wired stub's side way,
     up its core to the captive plug seat (the column-side cable is placed
@@ -316,8 +304,7 @@ def assembly_parts():
             ("pedal_lid_a", pedal_lid_a()),
             ("pedal_lid_b", pedal_lid_b()),
             ("pedal_detent_nub_0", _lock_nub()),
-            ("pedal_bar_foot_1",
-             pedal_bar_foot().translate((0, 0, -12.0))),
-            ("pedal_bar_foot_0",
-             pedal_bar_foot().translate(
-                 (LATCHES[0][0] - LATCHES[1][0], 0, -12.0)))] + _cable_runs()
+            ("leg_foot_4",
+             LG.leg_foot().translate((LATCHES[1][0], YC, -12.0))),
+            ("leg_foot_5",
+             LG.leg_foot().translate((LATCHES[0][0], YC, -12.0)))] + _cable_runs()
