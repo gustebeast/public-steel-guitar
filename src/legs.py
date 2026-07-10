@@ -561,7 +561,11 @@ def _house(w: float, floor_y: float, wall_top_y: float,
                        (0.0, wall_top_y + hw), (-hw, wall_top_y)])
             .close().extrude(length))
 PUCK_PLUG_L = 20.0             # coupler glue plug depth into the core
-CH_MOUTH, CH_DEEP = 6.0, 7.0   # face cable channel (lidded; Ø3.7 + slack)
+CH_MOUTH, CH_DEEP = 4.4, 5.2   # face cable channel (lidded; just the flat
+                               # Ø3.7 run — the SLACK COIL lives in the
+                               # core, so the channel stays narrow and the
+                               # web to the joint socket wall stays ~2.8
+                               # (user: protect the tenon walls))
 
 
 def _sq_body(length: float, channel: bool = False) -> cq.Workplane:
@@ -573,12 +577,20 @@ def _sq_body(length: float, channel: bool = False) -> cq.Workplane:
     screws) and a core DIVE hole near each end (cable → core at the
     sleeve joint below and at the latch head above). Z0 = bottom."""
     b = box_at(SQ_W, SQ_W, length, z=length / 2)
-    # HOUSE core (base 28, floor -16, walls to +2, apex +16 — prints
-    # lying on -y with the gable up): stops 4 short of the top; the solid
-    # CAP roots the integral plug; a house-20 way continues through
-    b = b.cut(_house(28.0, -16.0, 2.0, length - 4.0 + 1.0)
-              .translate((0, 0, -1)))
-    b = b.cut(_house(20.0, -12.0, 2.0, 8.0).translate((0, 0, length - 6.0)))
+    if channel:
+        # WIRED body: full house through-core (base 28, floor -16, walls
+        # to +2, apex +16 — prints lying with the gable up; hosts the
+        # cable + slack coil), stopping 4 short of the top where the
+        # solid CAP roots the plug; house-20 way through the cap
+        b = b.cut(_house(28.0, -16.0, 2.0, length - 4.0 + 1.0)
+                  .translate((0, 0, -1)))
+        b = b.cut(_house(20.0, -12.0, 2.0, 8.0)
+                  .translate((0, 0, length - 6.0)))
+    else:
+        # PLAIN bodies are SOLID (user: only the wired leg needs the
+        # channel/core; the slicer's infill sets real density) — just the
+        # 30-deep house SOCKET at the bottom for the incoming plug
+        b = b.cut(_house(28.1, -16.05, 2.05, 31.0).translate((0, 0, -1)))
     if channel:
         # cable channel on the +X SIDE face (the gable owns +y's depth);
         # lidded, so it reads as a seam. Same dovetail-seat profile,
@@ -592,14 +604,16 @@ def _sq_body(length: float, channel: bool = False) -> cq.Workplane:
                   .close().extrude(length + 2).translate((0, 0, -1)))
         for dz in (24.0, length - 24.0):     # channel-floor dive holes
             b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-                2.75, CH_DEEP + 2.0, cq.Vector(SQ_W / 2 + 0.5, 0, dz),
+                2.1, CH_DEEP + 2.0, cq.Vector(SQ_W / 2 + 0.5, 0, dz),
                 cq.Vector(-1, 0, 0))))
-    # integral male HOUSE PLUG on the top end (hollow house-20 way keeps
-    # the cable and even the coil passable through joints)
+    # integral male HOUSE PLUG on the top end (wired: hollow house-20 way
+    # keeps the cable and even the coil passable through joints; plain:
+    # SOLID — stronger tenon, user request)
     plug = (_house(27.7, -15.85, 1.85, SEG_PLUG_L + 1.0)
-            .translate((0, 0, length - 1.0))
-            .cut(_house(20.0, -12.0, 2.0, SEG_PLUG_L + 4.0)
-                 .translate((0, 0, length - 2.0))))
+            .translate((0, 0, length - 1.0)))
+    if channel:
+        plug = plug.cut(_house(20.0, -12.0, 2.0, SEG_PLUG_L + 4.0)
+                        .translate((0, 0, length - 2.0)))
     b = b.union(plug)
     # M4 retention (user rule: joinery takes the force, the screw only
     # stops extraction): Ø4.5 clearance thru the -Y wall over the
