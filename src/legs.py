@@ -383,16 +383,17 @@ def leg_shaft() -> cq.Workplane:
     freely until gravity returns it). 45° chamfers on the two bed edges
     absorb first-layer elephant foot so the sleeve/slot fits stay true.
     Solid (slicer infills); foot spigot below."""
-    # ROUND 4 — FAT tenon (user: split the material properly between the
-    # adjustable tenon and the sleeve mortise): 28 × 26 SYMMETRIC rect
-    # (the bar-wrap datum died when the bar grew its own leg stubs), one
-    # 4×45° key chamfer on the (+x,-y) corner, sleeve mortise walls ~8.
-    # PETG-GF, prints lying. This LONG variant (×2, the -Y legs) runs to
-    # the floor and takes a TPU foot; the +Y pair use leg_shaft_short.
+    # -Y shaft ×2 (user: ALL FOUR legs share the wide|narrow|wide look):
+    # the same 197 tenon + 44-sq terminal block, printed ONE SOLID (no
+    # joint down here — nothing beyond the block to create lateral
+    # force), with the shared TPU foot's dovetail mortise underneath.
+    # PETG-GF, prints lying.
     body = (cq.Workplane("XY")
             .polyline([(-14.0, -13.0), (10.0, -13.0), (14.0, -9.0),
                        (14.0, 13.0), (-14.0, 13.0)])
-            .close().extrude(SHAFT_L))
+            .close().extrude(SHORT_SHAFT_L))
+    body = body.union(box_at(SQ_W, SQ_W, BLOCK_H, z=BLOCK_H / 2))
+    body = body.cut(foot_mortise_cutter())
     return body
 
 
@@ -419,32 +420,51 @@ SHELF_Z0, SHELF_Z1 = 26.0, 29.0        # small OUTBOARD corner fill at the TOP
                                        # only its top 2.4 to slide past)
 
 
-SHORT_SHAFT_L = 252.0          # +Y shafts: 197 sliding tenon (travel 142
-                               # + overlap 50 + 5) + the 55 terminal block
-                               # (prints LYING, straight, under 255)
-BLOCK_H = 55.0                 # 44-sq terminal block at the short shaft's
-                               # bottom: hosts the FULL-SIZE house socket
-                               # + latch ledge (+ the jack on the wired
-                               # one) — the same joint as leg↔body
+SHORT_SHAFT_L = 245.0          # BOTH shaft SKUs: 197 sliding tenon
+                               # (travel 142 + overlap 50 + 5) + the 48
+                               # terminal block (prints LYING, <255).
+                               # User: all four legs share the visual
+                               # wide|narrow|wide bottom profile.
+BLOCK_H = 48.0                 # 44-sq terminal block: +Y = the bar-joint
+                               # mortise (socket 40, spigot 38 — reduced
+                               # overlap per user: this joint's moment is
+                               # small, and the wide stack must stay
+                               # within PEDAL_ASSEMBLY_Z_HEIGHT (75 above
+                               # the bar top) for the future pedals);
+                               # -Y = printed SOLID, same silhouette,
+                               # with the TPU foot's dovetail mortise
+
+
+def foot_mortise_cutter() -> cq.Workplane:
+    """Underside DOVETAIL mortise for the shared TPU foot tenon (slides
+    in from -Y local; grip + compression = no fastener). Cut at the
+    origin; z0 = the block's bottom face."""
+    return (cq.Workplane("XZ")
+            .polyline([(-15.0, 0.0), (-13.4, 6.0), (13.4, 6.0),
+                       (15.0, 0.0)])
+            .close().extrude(40.0).translate((0, 16.0, 0)))
 
 
 def leg_shaft_short() -> cq.Workplane:
-    """+Y SHORT shaft ×2 (ROUND 4): the 28×26 tenon ends in a 44-sq
-    terminal BLOCK whose downward house socket + ledge take the bar
-    stub's spigot/bolt — the leg↔body latch joint, verbatim, pointed at
-    the floor. Passive (bolt + button live on the bar stub). Z0 =
-    bottom (the block's mouth face)."""
+    """+Y shaft ×2: the 28×26 tenon ends in the 44-sq terminal BLOCK
+    whose downward house socket + ledge take the bar tower's spigot/bolt
+    (the leg↔body latch pattern with REDUCED 38 overlap — user: small
+    moment here, and the wide stack must clear the future pedals'
+    PEDAL_ASSEMBLY_Z_HEIGHT). Passive. Z0 = the block's mouth face."""
     body = (cq.Workplane("XY")
             .polyline([(-14.0, -13.0), (10.0, -13.0), (14.0, -9.0),
                        (14.0, 13.0), (-14.0, 13.0)])
             .close().extrude(SHORT_SHAFT_L))
     body = body.union(box_at(SQ_W, SQ_W, BLOCK_H, z=BLOCK_H / 2))
-    # downward house socket (mouth at z0, 44 deep — the stub's 42 spigot
-    # + 2 roof clearance) + the latch LEDGE pocket in its +y way wall
-    # (floor at 27.4: the stub's bolt rests on it against extraction)
-    body = body.cut(_house(28.1, -16.05, 2.05, 45.0).translate((0, 0, -1)))
-    body = body.cut(box_at(BOLT_W + 2.0, 3.7, 9.0,
-                           x=BOLT_X, y=14.05 + 1.75, z=31.9))
+    body = body.cut(_house(28.1, -16.05, 2.05, 41.0).translate((0, 0, -1)))
+    # ledge pocket on the house FLOOR side (-y local): the floor is the
+    # full-width flat face — a +y-side bolt would run into the gable's
+    # solid flanks (latent since the stub round; probe-caught)
+    # (bolt rides at local x +8: its 12 width must fit INSIDE the house
+    # width — beyond ±14.05 is solid wall here, unlike the body joint's
+    # big square way)
+    body = body.cut(box_at(BOLT_W + 2.0, 4.2, 9.0,
+                           x=8.0, y=-(16.05 + 2.1), z=31.9))
     return body
 
 
@@ -461,14 +481,12 @@ def leg_shaft_trrs() -> cq.Workplane:
     # the integral mouth-seat BOSS (withdrawal backstop); a pressed
     # jack_seat_ring ABOVE it takes insertion. Jack mouth +42.7, plug tip
     # +55.7 = 13.0 insertion on the same press that clicks the latch.
-    body = body.union(cyl(13.0, 1.9, z=42.2))        # mouth-seat boss: its
-    #                                                  42.7 ledge seats the
-    #                                                  jack, its upper band
-    #                                                  ties to the roof, its
-    #                                                  bottom clears the
-    #                                                  plug handle (41.2)
-    body = body.cut(cyl(4.8, 2.0, z=42.0))           # barrel way thru boss
-    body = body.cut(cyl(9.7, SHORT_SHAFT_L - 42.7 + 2.0, z=42.7))
+    # TRRS axis OFFSET to local x -5 (global +5 after the 180 placement):
+    # the latch bolt owns the other side of the house floor band
+    body = body.union(cyl(13.0, 1.9, z=38.2).translate((-5.0, 0, 0)))
+    body = body.cut(cyl(4.8, 2.0, z=38.0).translate((-5.0, 0, 0)))
+    body = body.cut(cyl(9.7, SHORT_SHAFT_L - 38.7 + 2.0, z=38.7)
+                    .translate((-5.0, 0, 0)))
     return body
 
 
@@ -807,8 +825,11 @@ def leg_latch_bolt() -> cq.Workplane:
     chamfer self-latches on push-in; underside bears on the socket's
     ledge (washer preload = zero play). Drawn ENGAGED. Local = head
     frame."""
-    b = box_at(BOLT_W, SPG_W / 2 + 3.0, BOLT_H,
-               x=BOLT_X, y=SPG_W / 4 + 0.5, z=31.8)   # bottom at the ledge
+    b = box_at(BOLT_W, SPG_W / 2 + 2.6, BOLT_H,
+               x=BOLT_X, y=SPG_W / 4 + 0.7, z=31.8)   # bottom at the ledge;
+    #                                       rear at y -0.6 so the bar-joint
+    #                                       placement (ry - 1.4) clears the
+    #                                       shaft block's descending gable
     b = b.cut(cq.Workplane("YZ")                     # 45° insertion chamfer
               .polyline([(SPG_W / 2 + 2.0, 31.8 + BOLT_H / 2),
                          (SPG_W / 2 - 1.0, 31.8 + BOLT_H / 2),
@@ -820,9 +841,10 @@ def leg_latch_bolt() -> cq.Workplane:
 def leg_latch_btn() -> cq.Workplane:
     """Latch BUTTON ×4 (PCTG): recessed seatbelt-style pad on the head
     body's inboard face + stem into the mechanism cavity (35° wedge to
-    the bolt at refinement). Local = head frame."""
+    the bolt at refinement). Local = head frame. Stem tip lands ON the
+    pocket floor (y 13.1) — not through it."""
     b = box_at(12.0, 3.0, 10.0, x=-14.0, y=SQ_W / 2 - 1.6, z=-11.0)
-    b = b.union(box_at(8.0, 6.0, 6.0, x=-14.0, y=SQ_W / 2 - 6.0, z=-11.0))
+    b = b.union(box_at(8.0, 5.9, 6.0, x=-14.0, y=SQ_W / 2 - 5.95, z=-11.0))
     return b
 
 
@@ -900,12 +922,16 @@ def leg_column_plug() -> cq.Workplane:
 
 
 def leg_foot() -> cq.Workplane:
-    """TPU SQUARE foot cap ×2 (ROUND 4: only the -Y legs — the +Y pair's
-    feet ride the bar stubs), pressed over the fat 28×26 shaft end. Z0 =
-    ground."""
-    body = box_at(34.0, 32.0, FOOT_H, z=FOOT_H / 2)
-    return body.cut(box_at(28.2, 26.2, FOOT_H - 3.0 + 1.0,
-                           z=3.0 + (FOOT_H - 3.0 + 1.0) / 2))
+    """SHARED TPU foot ×4 (user: one look everywhere — the same dovetail
+    insert serves the -Y leg blocks AND the pedal bar): 44-sq ground pad
+    + dovetail tenon sliding into the underside mortise from -Y local;
+    compression-loaded, TPU-grippy, no fastener. Z0 = ground."""
+    b = box_at(SQ_W, SQ_W, FOOT_H, z=FOOT_H / 2)
+    b = b.union(cq.Workplane("XZ")
+                .polyline([(-14.8, FOOT_H), (-13.3, FOOT_H + 5.8),
+                           (13.3, FOOT_H + 5.8), (14.8, FOOT_H)])
+                .close().extrude(39.0).translate((0, 15.5, 0)))
+    return b
 
 
 def leg_washer() -> cq.Workplane:
