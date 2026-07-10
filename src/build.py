@@ -85,9 +85,9 @@ PARTS = {
     # redesign — generators remain in legs.py until the refinement pass
     # deletes them)
     "leg_sleeve":      (lambda: heal(LG.leg_sleeve()),  "pctg/leg_sleeve.step",  "PCTG — leg slider sleeve ×4 (pinch collar: M4 button screw + insert pulls the slit closed; the slit MUST flex — never glass-filled)"),
-    "leg_shaft":       (lambda: heal(LG.leg_shaft()),   "pctg/leg_shaft.step",   "PCTG — leg sliding shaft ×3 (fine height adjust; single-D key flat = pure Z travel + one unique orientation; chord notch mounts the pedal bar on the +Y legs). Print LYING ON THE FLAT: layer lines run along the shaft (kick bending loads bulk material), 43-deg junction self-supporting, notch faces up"),
-    "leg_shaft_trrs":  (lambda: heal(LG.leg_shaft_trrs()), "pctg/leg_shaft_trrs.step", "PCTG — the -X/+Y leg's shaft ×1: leg_shaft + inboard corner fill + the X-facing TRRS jack pocket (LCSC SMT jack on the leg CARRIER PCB, mouth flush in the fill's flat face) + carrier seat + bottom-entry XH cavity (under the foot) + Ø5 off-axis cable bore. Same lying-flat print (pocket opens sideways, no bridges)"),
-    "leg_foot":        (lambda: heal(LG.leg_foot()),    "tpu/leg_foot.step",    "TPU — foot cap ×4"),
+    "leg_shaft":       (lambda: heal(LG.leg_shaft()),   "petg-gf/leg_shaft.step",   "PETG-GF — RECTANGULAR sliding shaft ×3 (20×16.8; fine height adjust; the (+x,-y) corner chamfer keys ONE orientation; the mouth face carries the latch bolt's bearing plane). Prints LYING on the back face — layer lines along the shaft (user: stability over impact protection)"),
+    "leg_shaft_trrs":  (lambda: heal(LG.leg_shaft_trrs()), "petg-gf/leg_shaft_trrs.step", "PETG-GF — the -X/+Y leg's shaft ×1: rectangular shaft + the TRRS dock in its NATIVE -x face (LCSC SMT jack on the leg CARRIER PCB) + carrier seat + bottom-entry XH cavity (under the foot) + the press-in cable channel on the inward CORNER. Lying print, pocket opens sideways"),
+    "leg_foot":        (lambda: heal(LG.leg_foot()),    "tpu/leg_foot.step",    "TPU — SQUARE foot cap ×4 (rect socket over the shaft end)"),
     # (round leg_socket_trrs export retired — see leg_socket_sq_trrs)
     "leg_plug_retainer": (lambda: heal(LG.leg_plug_retainer()), "pctg/leg_plug_retainer.step", "PCTG — press sleeve ×1: up the wired leg's top-segment bore under the CA-354S handle (insertion backstop; the spigot tip lip takes withdrawal)"),
     "socket_jack_slug": (lambda: heal(LG.socket_jack_slug()), "tpu/socket_jack_slug.step", "TPU — saddle slug ×1: tops the chassis jack in the socket way (insertion backstop after glue-up; side slot clears the cable exit)"),
@@ -438,7 +438,9 @@ def _leg_components():
                         (LG.leg_shaft_trrs() if wired else shaft)
                         .rotate((0, 0, 0), (0, 0, 1), rot)
                         .translate((sx, ry, ground + 3.0))))
-            out.append((f"leg_foot_{k}", foot.translate((sx, ry, ground))))
+            out.append((f"leg_foot_{k}",
+                        foot.rotate((0, 0, 0), (0, 0, 1), rot)
+                        .translate((sx, ry, ground))))
             if wired:
                 # leg↔body TRRS blind-mate hardware (socket-local builders,
                 # rotated with the stack, lifted to the rail bottom)
@@ -469,7 +471,7 @@ def _leg_components():
                     (sx, ry, CH.Z_BOT - 114.0)], 3.7).union(WR._wire([
                         (sx, ry, CH.Z_BOT - 198.0),
                         (sx, ry, ground + 220.0),
-                        (sx + 6.07, ry - 4.74, ground + 211.0)], 3.7))))
+                        (sx + 7.74, ry - 4.54, ground + 211.0)], 3.7))))
                 coil = cq.Workplane("XY").add(cq.Solid.makeCylinder(
                     8.0, 84.0, cq.Vector(sx, ry, CH.Z_BOT - 198.0),
                     cq.Vector(0, 0, 1))).cut(
