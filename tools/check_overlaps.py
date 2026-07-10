@@ -133,6 +133,8 @@ GLOBAL_OK = {
     # ROUND 4: the bar carries the +Y legs' stub towers — the short
     # shaft's block seats the stub plate, the latch bolt bears its ledge,
     # the second TRRS pair mates inside, the stub takes a leg foot
+    frozenset({"leg_foot", "pedal_bar_a"}),
+    frozenset({"leg_foot", "pedal_bar_b"}),
     frozenset({"leg_latch_bolt", "pedal_bar_a"}),
     frozenset({"leg_latch_bolt", "pedal_bar_b"}),
     frozenset({"leg_latch_btn", "pedal_bar_a"}),
@@ -155,7 +157,7 @@ GLOBAL_OK = {
 # part clashing with a leg/chassis part (other than the GLOBAL_OK contacts
 # above) stays a reportable bug.
 PEDAL_FAMILY = {"pedal_bar_a", "pedal_bar_b", "pedal_lid_a", "pedal_lid_b",
-                "pedal_detent_nub", "pedal_bar_foot",
+                "pedal_detent_nub",
                 "pedal_trrs_cable_bar"}
 
 
