@@ -153,6 +153,19 @@ for _i in range(len(_TP.spare_fillers)):         # fillers for the other pickup-
 for _i, _seg in enumerate(chassis_segments):     # chassis split into dovetailed segments
     PARTS[f"chassis_{_i}"] = (partial(heal, _seg), f"petg-gf/chassis_{_i}.step",
                               "PETG-GF — chassis segment (slide-down dovetail, glued)")
+# Print coupon for the cadkit octagon slide joint (the joint the knee levers key
+# into the body with). test_*.step at the project root; also rendered off to the
+# side in the assembly (see _joint_coupon_components) so it rebuilds every time.
+PARTS["test_octagon_tenon"] = (
+    lambda: heal(__import__("src.joint_coupon", fromlist=["e"]).tenon_coupon()),
+    "test_octagon_tenon.step",
+    "TEST COUPON — octagon (stop-sign) joint TENON on a base plate; prints -Z→+Z. "
+    "Slide into test_octagon_mortise along X to check the fit")
+PARTS["test_octagon_mortise"] = (
+    lambda: heal(__import__("src.joint_coupon", fromlist=["e"]).mortise_coupon()),
+    "test_octagon_mortise.step",
+    "TEST COUPON — octagon joint MORTISE block (through-slot); prints -Z→+Z; the "
+    "thin slot ceiling is the one-bead bridge the octagon roof is sized for")
 
 
 # Anchor ALL outputs to the project folder (never the cwd — see Archive/3D/CLAUDE.md)
@@ -620,6 +633,17 @@ def _knee_lever_components():
     return [(n, s.translate(pose)) for n, s in out]
 
 
+def _joint_coupon_components():
+    """The octagon-joint print coupons, parked off the +X end of the guitar (clear
+    of every real part) so they rebuild with the model and can't drift from the
+    cadkit geometry. Shown side by side in Y, unmated."""
+    from . import joint_coupon as JC
+    dy = JC.SPAN + 20.0
+    ten = JC.tenon_coupon().translate((150.0, -dy, 40.0))
+    mor = JC.mortise_coupon().translate((150.0, dy, 40.0))
+    return [("test_octagon_tenon_coupon", ten), ("test_octagon_mortise_coupon", mor)]
+
+
 def collect_components():
     comps = [
         ("bridge_endplate", bridge_endplate),
@@ -632,6 +656,7 @@ def collect_components():
     comps += _pedal_bar_components()
     comps += _electronics_components()
     comps += _knee_lever_components()
+    comps += _joint_coupon_components()
     for i in range(D.N_STRINGS):
         comps.extend(_string_components(i))
     return comps
@@ -768,6 +793,8 @@ _COLORS = {
     "wire_oled":       (0.68, 0.36, 0.08),   # brown-amber - OLED -> Teensy
     "wire_joy":        (0.54, 0.28, 0.08),   # darkest amber - joystick -> Teensy
     "wire_usb":        (0.55, 0.25, 0.75),   # violet      - shielded USB-2 -> Pi
+    "test_octagon_tenon_coupon":   (0.20, 0.75, 0.85),   # cyan  - joint coupon (test piece)
+    "test_octagon_mortise_coupon": (0.95, 0.55, 0.15),   # orange - joint coupon (test piece)
 }
 _DEFAULT_COLOR = (0.80, 0.80, 0.80)
 _TPU_BLACK = (0.03, 0.03, 0.03)                  # ALL TPU parts render black (user rule)
