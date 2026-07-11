@@ -38,9 +38,10 @@ here like threads.py grew):
   ramp so the TENON prints on a -Y→+Y host (mortise host still -Z→+Z).
   Point the ramp side toward the tenon host's PRINT BED.
 
-A separate FAMILY, `octagon_tenon` / `octagon_mortise` (below), covers the
-BOTH-hosts-(-Z→+Z) case with an octagon-on-post ("stop sign") section: one
-`span` knob, a nozzle-pinned roof bridge. See the README's "Octagon joint".
+A separate FAMILY, `octagon_mortise` / `octagon_tenon` (below), covers the
+BOTH-hosts-(-Z→+Z) case with a symmetric octagon-on-post ("stop sign") section:
+one `width` knob (grows the diagonals only), the one-nozzle bridge cap on the
+MORTISE roof. See the README's "Octagon joint".
 
 Every working face is 45° ON PURPOSE — see the README for why the shared
 ramp face can't be steepened for one part without hurting the other. The
@@ -149,96 +150,99 @@ def arrow_mortise(stem_w, head_w, stem_h, length, tip_w=_TIP_W, ramp=False,
 
 
 # ─────────────────── OCTAGON ("stop-sign") slide joint ───────────────────────
-# A keyed slide joint whose cross-section is an OCTAGON on a POST — a "stop
-# sign". BOTH hosts print -Z→+Z (octagon pointing +z), so it's the joint to reach
-# for when neither part prints sideways. It exists for all-45°/one-bead
+# A keyed slide joint whose cross-section is a symmetric OCTAGON on a POST — a
+# "stop sign". BOTH hosts print -Z→+Z (octagon pointing +z), so it's the joint to
+# reach for when neither part prints sideways. It exists for all-45°/one-bead
 # printability:
-#   • the octagon's lower half FLARES OUT at 45° (self-supporting overhang) —
-#     this flare is also the retention shoulder the mortise lip captures;
-#   • the upper half TUCKS IN (each layer smaller than the one below — always
-#     printable);
-#   • the only unsupported span, the flat ROOF of the mortise cavity, is pinned
-#     to ONE nozzle width so the printer bridges it in a single bead. A sharp
-#     peak would print rounded — the flat roof is the smallest peak a nozzle can
-#     actually lay.
+#   • the lower 45° diagonals FLARE OUT (self-supporting overhang) — this flare is
+#     also the retention shoulder the mortise lip captures;
+#   • above the waist the upper diagonals TUCK IN (each layer smaller than the one
+#     below — always printable);
+#   • the only unsupported span, the flat ROOF of the MORTISE cavity, is one nozzle
+#     wide so the printer bridges it in a single bead. A sharp peak would print
+#     rounded — the flat roof is the smallest peak a nozzle can actually lay.
 #
-# SIZING — ONE knob (see JOINERY_README "Octagon joint"). `span` = the octagon's
-# flat-to-flat width = the room the joint may occupy. Bigger span → longer
-# load-bearing segments → stronger, automatically; it floors at the nozzle-
-# minimum regular octagon (every side = nozzle). THE ROOF OVERHANG IS NOT A
-# PARAMETER: it is pinned to `nozzle` internally and never scales with `span`, so
-# no caller can configure a joint whose bridge the printer can't lay. `nozzle` is
-# the one physical constant, `length` the slide/engagement depth, `clearance` the
-# fit — nothing else to get wrong.
+# The cap lives on the MORTISE (the face the printer actually bridges), NOT the
+# tenon: the nominal profile below IS the mortise, roof = one nozzle; the tenon is
+# that profile SHRUNK by the fit clearance (its roof ends up a hair under, but a
+# tenon top is a supported last layer — no overhang — so that's free).
+#
+# SIZING — give it ROOM, not force (see JOINERY_README "Octagon joint"). The
+# section is SYMMETRIC: a nozzle roof and a nozzle stem joined through the waist by
+# two EQUAL 45° diagonals, with a nozzle-tall vertical at the waist. Only the
+# diagonals grow — `width` (flat-to-flat, the lateral room) lengthens them equally;
+# roof, verticals and stem stay one nozzle and are NOT knobs, so the callsite makes
+# no shape decisions. `length` is the slide/engagement depth (the real load path —
+# the other room dimension). At the minimum width every segment is one nozzle: a
+# regular octagon.
 
-def octagon_span_min(nozzle=0.8):
-    """Smallest printable `span`: a regular octagon with every side = nozzle."""
+def octagon_width_min(nozzle=0.8):
+    """Smallest printable `width`: every segment (both diagonals, the verticals,
+    roof and stem) is one nozzle here — a regular octagon."""
     return nozzle * (1.0 + math.sqrt(2.0))
 
 
-def _octagon_profile(span, nozzle, base_z):
-    """Closed (y, z) points for the stop-sign cross-section: an octagon of
-    flat-to-flat width `span` sitting on a post of width L = span/(1+√2), the
-    post running from z=base_z up through the z=0 mating plane into the bulb. The
-    flat ROOF is pinned to `nozzle` (the bridge cap) no matter how large `span`
-    is. Returns (points, roof_z). Enforcing span ≥ the nozzle minimum makes EVERY
-    segment ≥ nozzle in one check (side, flare, taper, roof and post all bottom
-    out together at the minimum)."""
+def _octagon_profile(width, nozzle, base_z):
+    """Closed (y, z) points for the MORTISE cross-section — the cavity, where the
+    one-nozzle roof cap lives. A symmetric stop sign: a `nozzle`-wide ROOF and a
+    `nozzle`-wide STEM joined through the waist by two EQUAL 45° diagonals (the
+    only thing `width` grows) with a `nozzle`-tall vertical at the waist. z=0 is the
+    mating plane; the stem runs from base_z up through it into the bulb. Returns
+    (points, roof_z). The TENON is this profile shrunk by the fit clearance."""
     if nozzle <= 0:
         raise ValueError("nozzle must be > 0")
-    smin = octagon_span_min(nozzle)
-    if span < smin - 1e-9:
-        raise ValueError(f"span {span:.3f} is below the printable minimum "
-                         f"{smin:.3f} mm (a nozzle-side octagon at nozzle={nozzle}) — "
+    wmin = octagon_width_min(nozzle)
+    if width < wmin - 1e-9:
+        raise ValueError(f"width {width:.3f} is below the printable minimum "
+                         f"{wmin:.3f} mm (a nozzle-side octagon at nozzle={nozzle}) — "
                          "give the joint more room, or use a finer nozzle")
     n = nozzle
-    a = span / 2.0                          # half flat-to-flat width
-    L = span / (1.0 + math.sqrt(2.0))       # octagon side = post width = neck
-    post_h = L                              # neck standoff (scales with the joint)
-    z_neck = post_h                         # post top = octagon bottom flat level
-    z_wb = z_neck + (a - L / 2.0)           # top of lower 45° flare = bottom of verticals
-    z_wt = z_wb + L                         # top of verticals
-    z_roof = z_wt + (a - n / 2.0)           # flat roof (upper 45° tapers meet here)
+    hw = width / 2.0                    # half flat-to-flat (the waist)
+    run = hw - n / 2.0                  # each 45° diagonal's horizontal run = its rise
+    post_h = n                          # stem standoff above the mating plane (locked)
+    z_neck = post_h                     # stem top = bottom flat
+    z_wb = z_neck + run                 # lower diagonal → waist bottom
+    z_wt = z_wb + n                     # nozzle-tall vertical → waist top
+    z_roof = z_wt + run                 # upper diagonal → roof (symmetric with lower)
     pts = [
-        (L / 2.0,  base_z),                 # post bottom-right (below the mating plane)
-        (L / 2.0,  z_neck),                 # post right wall (through z=0) to the bulb
-        (a,        z_wb),                   # lower-right 45° flare → waist (retention shoulder)
-        (a,        z_wt),                   # right vertical
-        (n / 2.0,  z_roof),                 # upper-right 45° taper → roof
-        (-n / 2.0, z_roof),                 # ROOF — one nozzle wide (the pinned bridge cap)
-        (-a,       z_wt),                   # upper-left taper (mirror)
-        (-a,       z_wb),                   # left vertical
-        (-L / 2.0, z_neck),                 # lower-left flare
-        (-L / 2.0, base_z),                 # post bottom-left
+        (n / 2.0,  base_z),             # stem right (below the mating plane)
+        (n / 2.0,  z_neck),             # stem right wall (through z=0) to the bottom flat
+        (hw,       z_wb),               # lower-right 45° diagonal → waist (retention shoulder)
+        (hw,       z_wt),               # right vertical (one nozzle tall)
+        (n / 2.0,  z_roof),             # upper-right 45° diagonal → roof
+        (-n / 2.0, z_roof),             # ROOF — one nozzle (the mortise bridge cap)
+        (-hw,      z_wt),               # upper-left diagonal (mirror)
+        (-hw,      z_wb),               # left vertical
+        (-n / 2.0, z_neck),             # lower-left diagonal
+        (-n / 2.0, base_z),             # stem left
     ]
     return pts, z_roof
 
 
-def octagon_height(span, nozzle=0.8):
-    """Tenon height above the mating plane (what the mortise host must swallow)."""
-    _, h = _octagon_profile(span, nozzle, 0.0)
+def octagon_height(width, nozzle=0.8):
+    """Mortise depth above the mating plane (what the host must swallow)."""
+    _, h = _octagon_profile(width, nozzle, 0.0)
     return h
 
 
-def octagon_tenon(span, length, nozzle=0.8, root=1.0):
-    """Stop-sign tenon: an octagon-on-post prism along +X, base at the z=0 mating
-    plane and extended `root` below it for volumetric fusion into its host. Prints
-    -Z→+Z (octagon pointing +z). ONE size knob `span` (flat-to-flat width); the
-    roof overhang stays one `nozzle` wide at every span."""
-    pts, _ = _octagon_profile(span, nozzle, -abs(root))
+def octagon_mortise(width, length, nozzle=0.8, drop=2.0):
+    """Cavity CUTTER — the nominal stop-sign profile (roof = one nozzle, the printed
+    bridge cap), dropped `drop` below the mating plane so it opens through the
+    host's face, extruded along +X. Extrude PAST the host's open X-face so the tenon
+    slides in; the far end left inside the host is the stop wall."""
+    pts, _ = _octagon_profile(width, nozzle, -abs(drop))
     return cq.Workplane("YZ").polyline(pts).close().extrude(length)
 
 
-def octagon_mortise(span, length, nozzle=0.8, clearance=0.1, drop=2.0):
-    """Cavity CUTTER matching octagon_tenon: the same profile dilated `clearance`
-    per side (mitred → every face stays 45°/vertical) and dropped `drop` below the
-    mating plane so it opens through the host's face. Extrude PAST the host's open
-    X-face so the tenon slides in; leave the far end inside the host as the stop
-    wall. The printed roof bridge is `nozzle + 2·clearance`, so keep `clearance`
-    small (0.1 default ≈ one bead)."""
-    pts, _ = _octagon_profile(span, nozzle, -abs(drop))
+def octagon_tenon(width, length, nozzle=0.8, clearance=0.1, root=1.0):
+    """Stop-sign tenon: the mortise profile SHRUNK `clearance` per side (mitred → all
+    faces stay 45°/vertical), base at the z=0 mating plane and extended `root` below
+    for fusion into its host. Prints -Z→+Z (octagon pointing +z). Pass the SAME
+    `width`/`nozzle` as the mortise and a matching `clearance`; the tenon comes out
+    `clearance` smaller all round, so the one-nozzle cap stays on the mortise roof."""
+    pts, _ = _octagon_profile(width, nozzle, -abs(root))
     return (cq.Workplane("YZ").polyline(pts).close()
-            .offset2D(clearance, "intersection")
+            .offset2D(-abs(clearance), "intersection")
             .extrude(length))
 
 
@@ -297,12 +301,12 @@ if __name__ == "__main__":
 
     # ── octagon ("stop-sign") joint: both hosts print -Z→+Z ──
     print("-- octagon --")
-    SPAN, NZ, CLR2 = 4.0, 0.8, 0.1
-    Hh = octagon_height(SPAN, NZ)
-    oten = octagon_tenon(SPAN, 14, nozzle=NZ)                       # x 0..14
-    ohost = (cq.Workplane("XY").box(20, 16, Hh + 6, centered=(False, True, True))
+    WIDTH, NZ, CLR2 = 6.0, 0.8, 0.1
+    Hh = octagon_height(WIDTH, NZ)
+    oten = octagon_tenon(WIDTH, 14, nozzle=NZ, clearance=CLR2)      # x 0..14
+    ohost = (cq.Workplane("XY").box(20, WIDTH + 8, Hh + 6, centered=(False, True, True))
              .translate((0, 0, Hh / 2.0))                          # z -3 .. Hh+3
-             .cut(octagon_mortise(SPAN, 22, nozzle=NZ, clearance=CLR2, drop=3)
+             .cut(octagon_mortise(WIDTH, 22, nozzle=NZ, drop=3)
                   .translate((-1, 0, 0))))                         # through-slot in x
     n_solids = len(oten.val().Solids())
     if n_solids != 1:
@@ -323,28 +327,37 @@ if __name__ == "__main__":
         print(f"  {label:<20} {v:>9.3f} mm3 (must be {expect}){'' if ok else '  <-- FAIL'}")
         if not ok:
             fails.append(f"octagon: {label} = {v:.3f}")
-    # the hard cap: the roof is exactly one nozzle wide, and does NOT grow with span
-    for s in (SPAN, SPAN * 3.0, octagon_span_min(NZ)):
-        pts, _ = _octagon_profile(s, NZ, 0.0)
-        zr = max(z for _, z in pts)
-        roof = sorted(y for y, z in pts if abs(z - zr) < 1e-6)
-        w = roof[-1] - roof[0]
-        ok = abs(w - NZ) < 1e-9
-        print(f"  roof @ span={s:5.2f}   {w:.3f} mm (must be = nozzle {NZ}){'' if ok else '  <-- FAIL'}")
+    # the hard cap: the MORTISE roof is exactly one nozzle, at any width (measured
+    # off the cutter's top face, not the profile — this is what the printer bridges)
+    for w in (WIDTH, WIDTH * 3.0, octagon_width_min(NZ)):
+        m = octagon_mortise(w, 6, nozzle=NZ)
+        top = max(m.val().Faces(), key=lambda f: f.Center().z)
+        rw = top.BoundingBox().ylen
+        ok = abs(rw - NZ) < 1e-3
+        print(f"  mortise roof @ w={w:5.2f}  {rw:.3f} mm (must be = nozzle {NZ}){'' if ok else '  <-- FAIL'}")
         if not ok:
-            fails.append(f"octagon: roof at span {s} = {w:.3f} != {NZ}")
-    # the floor: below the nozzle-minimum span must raise
+            fails.append(f"octagon: mortise roof at width {w} = {rw:.3f} != {NZ}")
+    # the section is SYMMETRIC: upper diagonal == lower diagonal (user's rule)
+    pts, _ = _octagon_profile(WIDTH, NZ, 0.0)
+    seg = lambda i: math.hypot(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1])
+    lower_diag, upper_diag = seg(1), seg(3)     # stem→waist, waist→roof (right side)
+    ok = abs(lower_diag - upper_diag) < 1e-9
+    print(f"  diagonals lower={lower_diag:.3f} upper={upper_diag:.3f} "
+          f"(must be equal){'' if ok else '  <-- FAIL'}")
+    if not ok:
+        fails.append(f"octagon: diagonals {lower_diag:.3f} != {upper_diag:.3f}")
+    # the floor: below the nozzle-minimum width must raise
     try:
-        octagon_tenon(octagon_span_min(NZ) - 0.2, 10, nozzle=NZ)
-        fails.append("octagon: sub-minimum span did not raise")
-        print("  span floor            did NOT raise  <-- FAIL")
+        octagon_mortise(octagon_width_min(NZ) - 0.2, 10, nozzle=NZ)
+        fails.append("octagon: sub-minimum width did not raise")
+        print("  width floor           did NOT raise  <-- FAIL")
     except ValueError:
-        print(f"  span floor            raises below {octagon_span_min(NZ):.2f} mm (ok)")
+        print(f"  width floor           raises below {octagon_width_min(NZ):.2f} mm (ok)")
 
     if fails:
         print("FAIL:", *fails, sep="\n  ")
     else:
         print("OK — all variants: seat clear, only the band-guarded +x is free; "
-              "hook locks the up-ramp diagonal; octagon locks ±y/±z and pins its "
-              "roof at one nozzle.")
+              "hook locks the up-ramp diagonal; octagon locks ±y/±z, symmetric "
+              "diagonals, mortise roof one nozzle at any width.")
     sys.exit(len(fails))
