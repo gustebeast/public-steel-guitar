@@ -4,14 +4,14 @@ knee levers use to key into the body.
 Two small blocks, both printed -Z→+Z (the real lever/body orientation): one
 grows the octagon TENON standing up, the other carries the MORTISE slot. Print
 both, slide them together along X, and check the fit + that the mortise roof
-bridged cleanly. It calls the SAME library functions the levers use
-(`cadkit.joinery.octagon_*`) at the SAME nozzle/span — never re-models the joint,
-so the coupon can't drift from the real geometry.
+bridged cleanly. It goes through the SAME `slide_joint` front door the levers
+use — both halves face 'up' → the octagon family — so the coupon can't drift
+from the real geometry.
 """
 
 import cadquery as cq
 
-from cadkit.joinery import octagon_tenon, octagon_mortise, octagon_height
+from cadkit.joinery import PrintSpec, slide_joint
 
 NOZZLE = 0.8          # pedal-steel nozzle
 WIDTH  = 6.0          # flat-to-flat room (well above the ~1.93 mm floor)
@@ -21,7 +21,10 @@ PLATE  = 4.0          # coupon base-plate / floor thickness
 CEIL   = 2.0          # mortise ceiling over the roof = the printed bridge
 MARGIN = 6.0          # material each side of the joint in Y
 
-_H = octagon_height(WIDTH, NOZZLE)   # mortise depth above the mating plane
+# both halves print -Z→+Z (facing 'up') → slide_joint picks the octagon family
+_UP = PrintSpec(nozzle=NOZZLE, material="PETG-GF", facing="up")
+_J = slide_joint(WIDTH, LENGTH, tenon=_UP, mortise=_UP, clearance=CLR)
+_H = _J.height                       # mortise depth above the mating plane
 
 
 def tenon_coupon():
@@ -30,7 +33,7 @@ def tenon_coupon():
     plate = (cq.Workplane("XY")
              .box(LENGTH, WIDTH + 2 * MARGIN, PLATE, centered=(True, True, False))
              .translate((0, 0, -PLATE)))                       # z -PLATE..0
-    ten = octagon_tenon(WIDTH, LENGTH, nozzle=NOZZLE, clearance=CLR).translate((-LENGTH / 2.0, 0, 0))
+    ten = _J.tenon(root=1.0).translate((-LENGTH / 2.0, 0, 0))
     return plate.union(ten)
 
 
@@ -40,6 +43,7 @@ def mortise_coupon():
     block = (cq.Workplane("XY")
              .box(LENGTH, WIDTH + 2 * MARGIN, _H + PLATE + CEIL, centered=(True, True, False))
              .translate((0, 0, -PLATE)))                        # z -PLATE.._H+CEIL (ceiling = bridge)
-    cut = (octagon_mortise(WIDTH, LENGTH + 2, nozzle=NOZZLE, clearance=CLR, drop=PLATE)
+    cut = (slide_joint(WIDTH, LENGTH + 2, tenon=_UP, mortise=_UP, clearance=CLR)
+           .mortise(drop=PLATE)
            .translate((-(LENGTH + 2) / 2.0, 0, 0)))             # slot open both X ends
     return block.cut(cut)
