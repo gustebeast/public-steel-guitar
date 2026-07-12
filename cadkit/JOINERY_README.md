@@ -147,24 +147,24 @@ Fit lessons from the first row:
 ## Octagon ("stop-sign") joint — both hosts print −Z→+Z
 
 A second joint family for when **neither** part prints sideways — the tenon host
-*and* the mortise host both print −Z→+Z. Its cross-section is a **symmetric octagon
-on a post**, a stop sign:
+*and* the mortise host both print −Z→+Z. Its cross-section is an **octagon on a fat
+stem**, a stop sign:
 
 ```
    __             ROOF = one nozzle (the MORTISE bridge cap)
-  /  \            upper 45° diagonal  ┐ EQUAL — the only segments `width` grows
- |    |           vertical (one nozzle)│
-  \  /            lower 45° diagonal  ┘ = shoulder the mortise lip captures
-   ||             stem (one nozzle)     → connects the bulb to the host
+  /  \            upper 45° "green" diagonal ← set by `width` (the size)
+ |    |           vertical (one nozzle)
+  \  /            lower 45° "orange" diagonal ← (width−stem)/2, the shoulder
+  |  |            STEM = stem_frac·width (fat, for strength)
 ```
 
 ```python
-from cadkit.joinery import octagon_mortise, octagon_tenon, octagon_height
+from cadkit.joinery import octagon_tenon, octagon_mortise, octagon_height
 
-cut = octagon_mortise(width=6.0, length=24)                 # cavity cutter, roof = one nozzle
-ten = octagon_tenon(width=6.0, length=12, clearance=0.1)    # the cavity shrunk by the fit gap
-ring = ring.cut(cut.translate(...))       # cavity opens through the host's face
+ten = octagon_tenon(width=6.0, length=12, clearance=0.1)    # nominal shape, +X prism
+cut = octagon_mortise(width=6.0, length=24, clearance=0.1)  # the tenon dilated by the fit gap
 host = host.union(ten.translate(...))     # tenon fuses into its host (root sunk 1 mm)
+ring = ring.cut(cut.translate(...))       # cavity opens through the host's face
 ```
 
 Same slide-along-X convention as the arrowhead: the profile lives in Y-Z, extrudes
@@ -180,44 +180,46 @@ one real print risk: printed −Z→+Z, the **mortise cavity's roof is an unsupp
 bridge**. So it's held to **one nozzle width** — a single bead the printer spans
 without sag.
 
-### The cap is on the MORTISE, not the tenon
+### Two constraints, on OPPOSITE parts
 
-The nominal profile IS the mortise (roof = one nozzle). The **tenon is that profile
-shrunk by `clearance`**, so its roof comes out a hair under — which is fine, a
-tenon top is a *supported* last layer, not an overhang. The face that actually
-bridges is the mortise roof, and that is what's pinned to one nozzle. (Cap the
-tenon instead and the mortise's clearance offset widens its roof to
-`nozzle + 2·clearance·(√2−1)` — i.e. 0.88 mm at 0.1 — which sags.)
+- **Roof cap → the MORTISE.** The face that bridges is the mortise roof, so that is
+  what's pinned to one nozzle. The tenon roof is *pre-shrunk* so that after the
+  mortise's mitred clearance dilation the bridge lands on exactly one nozzle. (Cap
+  the tenon instead and the mortise roof widens to `nozzle + 2·clearance·(√2−1)` —
+  0.88 mm at 0.1 — which sags.)
+- **Nozzle minimum → the TENON.** The mortise is the tenon dilated, so the tenon is
+  the *smaller* part everywhere — its segments are what bottom out. `width_min` is
+  the smallest width whose **tenon** stem and diagonals all clear one nozzle. (The
+  roof is exempt: capped bridge on the mortise, supported last layer on the tenon.)
 
 ### Sizing — give it room, not force
 
 ```python
-octagon_mortise(width, length, nozzle=0.8, drop=2.0)
-octagon_tenon(width, length, nozzle=0.8, clearance=0.1, root=1.0)
+octagon_tenon(width, length, nozzle=0.8, clearance=0.1, stem_frac=0.5, root=1.0)
+octagon_mortise(width, length, nozzle=0.8, clearance=0.1, stem_frac=0.5, drop=2.0)
 ```
 
-- **`width`** — flat-to-flat = *the lateral room the cavity may occupy*. The **only
-  shape knob**, and it grows just the two (equal, symmetric) 45° diagonals — the
-  retention shoulder — so wider = stronger. Floors at the nozzle-minimum octagon
-  (`width_min = nozzle·(1+√2) ≈ 1.93 mm` at 0.8, every segment one nozzle); below
-  that it raises with the floor in the message.
+- **`width`** — flat-to-flat = *the lateral room* = the joint size. Sets the upper
+  ("green") diagonal; wider = bigger (and, at 45°, taller).
 - **`length`** — slide/engagement depth = *the other room dimension*, and the real
-  load path of a slide joint. The better strength knob when you have depth.
-- **`nozzle`** — the one physical constant. **Roof, verticals and stem are locked
-  at one nozzle and are NOT knobs** — the callsite makes no shape decisions, it just
-  reports the two dimensions of its hole. `clearance` = fit gap; `root`/`drop` =
-  fusion / cavity-opening depth below the mating plane.
+  load path of a slide joint.
+- **`stem_frac`** (default **0.5**) — the stem is `stem_frac·width`, a **fat** stem
+  for strength; the lower ("orange") diagonal then follows as the shoulder. 0.5
+  balances the stem in tension against the two mortise lips in shear; raise it for a
+  stronger neck / less retention, lower it for the reverse. Leave it alone and the
+  callsite makes no shape decision.
+- **`nozzle`** the physical constant; verticals locked at one nozzle; `clearance` =
+  fit gap; `root`/`drop` = fusion / cavity-opening depth.
 
 **No `force` argument, on purpose.** An agent can't put a joint's load in Newtons,
 and any force→geometry map needs shaky material/layer-adhesion assumptions —
 "as strong as fits the room" is the right default anyway. So the API takes *room*
-(`width`, `length`) and fills it. If a wider/narrower stem is ever wanted as an
-explicit strength lever, add one *named optional* param — never make the callsite
-size raw segments.
+(`width`, `length`) plus the one *named optional* strength lever (`stem_frac`);
+the callsite never sizes raw segments.
 
-The self-test (`py -3.12 joinery.py`) gates all of this: ±Y/±Z locked, X free,
-diagonals symmetric, and the **mortise roof measured at three widths** to prove it
-stays one nozzle.
+The self-test (`py -3.12 joinery.py`) gates all of this: ±Y/±Z locked, X free, the
+fat stem (`stem_frac·width`, orange < green), the **tenon floor** ≥ nozzle, and the
+**mortise roof** measured at three widths to prove it stays one nozzle.
 
 ## Adding a variant
 
