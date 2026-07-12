@@ -117,24 +117,30 @@ def _profile(stem_w, head_w, stem_h, tip_w, ramp, base_z, hook_h=None, nozzle=0.
 
 
 def arrow_width_min(nozzle=0.8):
-    """Smallest printable dovetail `width`: the barb `seg` hits one nozzle here
-    (3-bead stem + 1-bead segments) — the span-4.0 print-validated floor at 0.8."""
-    return 5.0 * nozzle
+    """Smallest printable dovetail `width`: at 3·nozzle every segment (stem, barb
+    flare, hook) is exactly one nozzle bead."""
+    return 3.0 * nozzle
 
 
-def _arrow_dims(width, nozzle, clearance):
-    """Width-based ramp+hook dovetail dims — the PRINT-VALIDATED scheme (from the
-    toothpaste-dispenser work): the barb segments share one `seg`, and the stem
-    keeps ≥ 3 beads (seg = min((width−3·nozzle)/2, width/3.5)), so it reproduces
-    both validated recipes (width 4.0 = floor, width 5.6 = stem 2.4 / barb 1.6).
-    The dull tip is PRE-SHRUNK so the MORTISE bridge lands on one nozzle."""
+def arrow_dims(width, nozzle=0.8, clearance=0.1):
+    """Width-based ramp+hook dovetail dims, sized for MAX STRENGTH at a given width:
+
+        stem_w = flare = hook_h = width/3   (head_w = stem_w + 2·flare = width)
+
+    That split is the analytic optimum. Under a pull-apart load the tenon has two
+    failure modes — the NECK shears (capacity ∝ stem_w) and the BARB shears off its
+    root (capacity ∝ hook_h) — and with a SQUARE hook (hook_h = flare) and the width
+    budget stem_w + 2·flare = width, joint strength = min(stem_w, flare) is maximised
+    when stem_w = flare, i.e. width/3. A fatter stem would starve the barb; a bigger
+    barb would starve the neck. (σ≈τ assumed for the two modes.) The dull tip is
+    PRE-SHRUNK so the MORTISE bridge lands on one nozzle. Floors at 3·nozzle."""
     if width < arrow_width_min(nozzle) - 1e-9:
         raise ValueError(f"width {width:.3f} below the dovetail minimum "
-                         f"{arrow_width_min(nozzle):.3f} mm (3-bead stem + 1-bead barb "
-                         f"at nozzle={nozzle}) — give it more room, or a finer nozzle")
-    seg = min((width - 3.0 * nozzle) / 2.0, width / 3.5)   # barb flare = hook_h = seg
-    return dict(stem_w=width - 2.0 * seg, head_w=width,    # stem keeps ≥ 3 beads
-                stem_h=seg + clearance,                    # mortise neck = seg
+                         f"{arrow_width_min(nozzle):.3f} mm (every segment one bead at "
+                         f"nozzle={nozzle}) — give it more room, or a finer nozzle")
+    seg = width / 3.0                                      # stem_w = flare = hook_h
+    return dict(stem_w=seg, head_w=width,                  # head = stem + 2·flare = 3·seg
+                stem_h=seg + clearance,                    # mortise neck = flare = seg
                 tip_w=_tenon_roof(nozzle, clearance),      # bridge → one nozzle in the mortise
                 hook_h=seg)                                # square hook
 
@@ -142,7 +148,7 @@ def _arrow_dims(width, nozzle, clearance):
 def arrow_height(width, nozzle=0.8, clearance=0.1):
     """Tenon height above the mating plane (what the mortise host must swallow)."""
     _, h = _profile(ramp=True, base_z=0.0, nozzle=nozzle,
-                    **_arrow_dims(width, nozzle, clearance))
+                    **arrow_dims(width, nozzle, clearance))
     return h
 
 
@@ -151,7 +157,7 @@ def arrow_tenon(width, length, nozzle=0.8, clearance=0.1, root=1.0):
     -Z→+Z. One `width` knob; prism along +X, base at z=0, `root` below for fusion.
     Pass the SAME width/nozzle/clearance to the mortise so they mate."""
     pts, _ = _profile(ramp=True, base_z=-abs(root), nozzle=nozzle,
-                      **_arrow_dims(width, nozzle, clearance))
+                      **arrow_dims(width, nozzle, clearance))
     return cq.Workplane("YZ").polyline(pts).close().extrude(length)
 
 
@@ -160,7 +166,7 @@ def arrow_mortise(width, length, nozzle=0.8, clearance=0.1, drop=2.0):
     side (mitred), dropped `drop` below the mating plane to open through the host
     face. Extrude PAST the host's -X face (open entry); the +X end left inside is
     the stop wall. The mortise neck (= width/4) must clear the nozzle."""
-    d = _arrow_dims(width, nozzle, clearance)
+    d = arrow_dims(width, nozzle, clearance)
     if d["stem_h"] - clearance < nozzle - 1e-9:
         raise ValueError(f"width {width:.2f}: mortise neck {d['stem_h'] - clearance:.2f} "
                          f"below the {nozzle} nozzle floor — widen to >= {4 * nozzle:.1f} mm")
