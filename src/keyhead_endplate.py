@@ -24,6 +24,7 @@ import cadquery as cq
 from . import dimensions as D
 from . import chassis as CH
 from . import nut_block as NB
+from .endplate_base import endplate_base
 from .helpers import box_at, heal
 
 
@@ -77,29 +78,12 @@ ZHOLE_X = XLO + 6.0                         # -630: keeps ~3.5 mm of wall -X of 
 
 
 def _build():
-    yc, yw = (YFL + YFH) / 2, YFH - YFL
-    # 1) FILL ZONE (z -23.15 .. 6): a SOLID slab over the FULL endplate X-Y footprint --
-    # computed from the endplate's own Y extent (YFL..YFH) and the fill-zone X/Z extents
-    # (NOT hardcoded strips). This band IS the -X cross-tie and ties the rails. The -X end
-    # has NO cut in this band at all (the +X stringing window is a bridge-only feature).
-    w = box_at(T_EP, yw, Z6 - FOOT_Z, x=KX, y=yc, z=(Z6 + FOOT_Z) / 2)
-    # 2) BELOW z -23.15 (foot region): thin to a 10 mm wall -- only the exterior faces
-    # (the -X end face + the two +-Y side faces) stay solid at CH.T; the interior is
-    # hollow. Build the full footprint box, then cut the interior inset by CH.T on the
-    # +-Y sides and the +X (interior) side. The -X end face is the instrument's end, the
-    # +-Y faces are the side walls; +X opens to the rest of the chassis box so it is part
-    # of the inset interior (the rail-end shells + tongues come from the chassis side).
-    foot = box_at(T_EP, yw, FOOT_Z - CH.Z_BOT, x=KX, y=yc, z=(FOOT_Z + CH.Z_BOT) / 2)
-    # hollow = footprint inset by CH.T on the two +-Y walls and the +X face; the -X end
-    # face wall is kept (XLO + CH.T). Reaches up to FOOT_Z and down past the bed.
-    hol_y0 = YFL + CH.T                                   # +Y-side inner face (inset by wall)
-    hol_y1 = YFH - CH.T                                   # -Y-side inner face (inset by wall)
-    foot = foot.cut(box_at((XHI + 1.0) - (XLO + CH.T), hol_y1 - hol_y0,
-                           (FOOT_Z + 0.1) - (CH.Z_BOT - 1.0),
-                           x=((XLO + CH.T) + (XHI + 1.0)) / 2,
-                           y=(hol_y0 + hol_y1) / 2,
-                           z=((CH.Z_BOT - 1.0) + (FOOT_Z + 0.1)) / 2))
-    w = w.union(foot)
+    # THE SHARED TWO-PRISM BASE (endplate_base — same code as the bridge):
+    # 1) the FILL SLAB (z -23.15..6, full footprint) = the -X cross-tie;
+    # 2) the FOOT BOX below, hollowed to CH.T exterior walls (the -X end
+    # face + both +-Y side faces stay solid; +X opens to the chassis box —
+    # the rail-end shells + tongues come from the chassis side).
+    w = endplate_base(XLO, XHI, "lo")
     # nut block (the only thing reaching above the deck): ONE solid prism from the deck
     # plane (Z6) up to the boss top, fused on -- it bridges down to the fill zone itself,
     # so no separate riser
