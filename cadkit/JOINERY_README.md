@@ -155,7 +155,7 @@ stem**, a stop sign:
   /  \            upper 45° "green" diagonal ← set by `width` (the size)
  |    |           vertical (one nozzle)
   \  /            lower 45° "orange" diagonal ← (width−stem)/2, the shoulder
-  |  |            STEM = stem_frac·width (fat, for strength)
+  |  |            STEM = width/2 (fat, computed)
 ```
 
 ```python
@@ -195,30 +195,27 @@ without sag.
 ### Sizing — give it room, not force
 
 ```python
-octagon_tenon(width, length, nozzle=0.8, clearance=0.1, stem_frac=0.5, root=1.0)
-octagon_mortise(width, length, nozzle=0.8, clearance=0.1, stem_frac=0.5, drop=2.0)
+octagon_tenon(width, length, nozzle=0.8, clearance=0.1, root=1.0)
+octagon_mortise(width, length, nozzle=0.8, clearance=0.1, drop=2.0)
 ```
 
-- **`width`** — flat-to-flat = *the lateral room* = the joint size. Sets the upper
-  ("green") diagonal; wider = bigger (and, at 45°, taller).
+- **`width`** — flat-to-flat = *the lateral room* = the joint size, and the **only
+  shape knob**. Sets the upper ("green") diagonal; wider = bigger (and, at 45°,
+  taller).
 - **`length`** — slide/engagement depth = *the other room dimension*, and the real
   load path of a slide joint.
-- **`stem_frac`** (default **0.5**) — the stem is `stem_frac·width`, a **fat** stem
-  for strength; the lower ("orange") diagonal then follows as the shoulder. 0.5
-  balances the stem in tension against the two mortise lips in shear; raise it for a
-  stronger neck / less retention, lower it for the reverse. Leave it alone and the
-  callsite makes no shape decision.
-- **`nozzle`** the physical constant; verticals locked at one nozzle; `clearance` =
-  fit gap; `root`/`drop` = fusion / cavity-opening depth.
+- **`nozzle`** the physical constant; `clearance` = fit gap; `root`/`drop` = fusion
+  / cavity-opening depth.
 
-**No `force` argument, on purpose.** An agent can't put a joint's load in Newtons,
-and any force→geometry map needs shaky material/layer-adhesion assumptions —
-"as strong as fits the room" is the right default anyway. So the API takes *room*
-(`width`, `length`) plus the one *named optional* strength lever (`stem_frac`);
-the callsite never sizes raw segments.
+The **stem is width/2** and the **shoulder follows** — both *computed*, not knobs.
+width/2 is where the stem (tension) and the two mortise lips (shear) fail at the
+same load, so it's the deterministic strength optimum; wider starves retention,
+narrower starves the neck. Verticals are locked at one nozzle. So the callsite
+reports *room* (`width`, `length`) and nothing else — no `force`, no `stem_frac`,
+no raw segments to get wrong.
 
 The self-test (`py -3.12 joinery.py`) gates all of this: ±Y/±Z locked, X free, the
-fat stem (`stem_frac·width`, orange < green), the **tenon floor** ≥ nozzle, and the
+fat stem (`width/2`, orange < green), the **tenon floor** ≥ nozzle, and the
 **mortise roof** measured at three widths to prove it stays one nozzle.
 
 ## Adding a variant
