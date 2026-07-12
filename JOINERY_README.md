@@ -1,14 +1,46 @@
-# `joinery.py` — printable mortise-and-tenon slide joints (dull arrowhead)
+# `joinery.py` — printable mortise-and-tenon slide joints
 
 Shared, project-agnostic joint generators, in the spirit of `threads.py`: the
 geometry rules live here once, projects import and place. Read this before
 adding variants.
 
-```python
-from cadkit.joinery import arrow_tenon, arrow_mortise, arrow_height
+## Single entrypoint — start here
 
-ten = arrow_tenon(stem_w=4, head_w=7, stem_h=1, length=12, ramp=True)
-cut = arrow_mortise(stem_w=4, head_w=7, stem_h=1, length=24, ramp=True, clearance=0.3)
+Don't pick a joint type. Describe how each half **prints** and the **room** it has;
+the library picks the printable family and the fit clearance.
+
+```python
+from cadkit.joinery import PrintSpec, slide_joint
+
+up   = PrintSpec(nozzle=0.8, material="PETG-GF", facing="up")    # part prints -Z→+Z
+side = PrintSpec(nozzle=0.8, material="PETG-GF", facing="side")  # part prints -Y→+Y
+
+j = slide_joint(width=5.6, length=6, tenon=side, mortise=up)     # facings pick the family
+host = host.union(j.tenon(root=1.0).translate(...))   # tenon fuses into its host
+ring = ring.cut(j.mortise(drop=2.0).translate(...))   # cavity opens through the face
+# j.family / j.height / j.width_min / j.clearance / j.nozzle — size around it without
+# knowing internals
+```
+
+- **`PrintSpec(nozzle, material, facing)`** — `facing` is `'up'` (−Z→+Z) or `'side'`
+  (−Y→+Y). `material` picks the fit clearance from a print-validated table
+  (`PETG-GF → 0.1`), falling back to a **default (0.15)** when unknown; override any
+  time with `slide_joint(…, clearance=…)`.
+- **Facings pick the family:** `up + up` → the octagon; `side + up` → the arrow
+  ramp+hook. Any unmodelled pair **raises** with an "add the variant" pointer — no
+  silent unprintable improvisation.
+- **Size = room:** `width` (flat-to-flat) and `length` (engagement). Everything else
+  is derived and floored per family; the bridge is pinned to one nozzle on the
+  mortise. `width` too small → raises at model time with the floor.
+
+The per-family generators below are the fine-control layer `slide_joint` dispatches
+to — each takes one `width` knob:
+
+```python
+from cadkit.joinery import arrow_tenon, arrow_mortise, octagon_tenon, octagon_mortise
+
+ten = arrow_tenon(width=5.6, length=6, clearance=0.1)     # ramp+hook dovetail
+cut = arrow_mortise(width=5.6, length=12, clearance=0.1)
 rail = rail.union(ten.translate(...))    # tenon fuses into its host (root sunk 1 mm)
 ring = ring.cut(cut.translate(...))      # cavity opens through the other host's face
 ```
