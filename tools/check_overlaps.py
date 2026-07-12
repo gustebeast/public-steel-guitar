@@ -89,18 +89,25 @@ GLOBAL_OK = {
     # screw). Each part's contact with the piece is the top_plate rule below.
     frozenset({"pickup", "pickup_zplate"}), frozenset({"pickup", "pickup_xclamp"}),
     frozenset({"pickup_zplate", "height_screw"}),
+    # the electronics tray's snap nubs/fingers bite their boards by design
+    frozenset({"electronics_tray", "pi5"}),
+    frozenset({"electronics_tray", "teensy_ifc"}),
     frozenset({"pickup_xclamp", "clamp_screw"}),
-    # legs: socket glues to the rail; SQUARE-LEG stack (latch head, coupler
-    # joints, washers, slider) — every joint is a designed contact
-    frozenset({"leg_socket", "chassis"}),
+    # legs (FLUSH round): the BODY STUB's octagon wall tenons mortise the
+    # rail band (0.1 fit) and its top face butts the body bottom; the
+    # latch head engages its socket; the stack below is designed contact
+    frozenset({"leg_body_stub", "chassis"}),
+    frozenset({"leg_body_stub", "leg_latch_head"}),
+    frozenset({"leg_latch_bolt", "leg_body_stub"}),
+    frozenset({"chassis_trrs_jack", "leg_body_stub"}),
+    frozenset({"jack_seat_ring", "leg_body_stub"}),
+    frozenset({"leg_column_plug", "leg_body_stub"}),
     frozenset({"leg_sleeve", "leg_shaft"}), frozenset({"leg_shaft", "leg_foot"}),
     frozenset({"leg_washer", "leg_sleeve"}),
     frozenset({"leg_seg_body", "leg_seg_body"}),
     frozenset({"leg_seg_body", "leg_latch_head"}),
     frozenset({"leg_seg_body", "leg_sleeve"}),
-    frozenset({"leg_latch_head", "leg_socket"}),
     frozenset({"leg_latch_bolt", "leg_latch_head"}),
-    frozenset({"leg_latch_bolt", "leg_socket"}),
     frozenset({"leg_latch_btn", "leg_latch_head"}),
     frozenset({"leg_column_plug", "leg_latch_head"}),
     frozenset({"leg_plug_retainer", "leg_latch_head"}),
@@ -118,13 +125,11 @@ GLOBAL_OK = {
     frozenset({"pedal_leg_carrier", "leg_shaft"}),
     # the leg-column TRRS cable up the shaft's Ø6 hollow centre
     frozenset({"pedal_trrs_cable_leg", "leg_shaft"}),
-    # leg↔body TRRS blind-mate: jack seated in the socket way (slug atop),
-    # plug recessed in the top segment's bore (retainer pressed beneath)
-    frozenset({"chassis_trrs_jack", "leg_socket"}),
-    frozenset({"socket_jack_slug", "leg_socket"}),
-    frozenset({"socket_jack_slug", "chassis_trrs_jack"}),
+    # leg↔body TRRS blind-mate: jack in the stub chimney (ring pressed
+    # atop = the 0.05 crush), plug in the head (retainer pressed beneath)
     frozenset({"leg_column_plug", "leg_segment"}),
     frozenset({"leg_column_plug", "chassis_trrs_jack"}),
+    frozenset({"jack_seat_ring", "chassis_trrs_jack"}),
     frozenset({"leg_column_plug", "leg_plug_retainer"}),
     frozenset({"leg_plug_retainer", "leg_segment"}),
     # the leg-column cable and the shaft-side cable model the SAME physical
