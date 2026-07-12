@@ -673,148 +673,150 @@ def leg_lid() -> cq.Workplane:
 
 
 # ── stage 2: seatbelt-latch top joint (all mechanism ON the leg) ────────
-SQS_OUT = 52.0                 # passive socket outer square
-SQS_WAY = 36.4                 # socket way (spigot 36.0 + 0.4)
-SQS_DEPTH = 50.0               # mouth at z -50 (socket-local, 0 = rail
-                               # bottom); way roof at -8
-SPG_W, SPG_L = 36.0, 40.0      # latch-head spigot (geometric clocking:
-                               # one 6×45° keyed corner)
-HEAD_BODY_L = 42.0             # head body below the 50-sq shoulder plate
-                               # (30-deep plug socket + button band)
-# latch: bolt in the spigot's +y (inboard-placed) face; ledge pocket in
-# the socket way wall. Washer preload pushes the head DOWN onto the
-# pocket floor = zero play. Bolt/button drawn as functional dummies —
-# the 35° wedge coupling + TPU return finger detail at refinement.
+# ── the leg↔body joint (FLUSH round, replaces the 52-sq outset socket):
+# a 44-sq BODY STUB per corner — "a regular leg section, as short as
+# possible" (user) — semi-permanently attached via TWO tall octagon
+# WALL TENONS (cadkit.joinery stop-sign profile, coupon-validated)
+# sliding UP into closed mortises in the rail band / kept shells, ONE
+# vertical M4 dropped down the rail web (head hidden under the deck) =
+# extraction retention only. Below the body the stub carries the SAME
+# passive latch socket as the leg↔bar joint (house 28.1 × 41 + ledge);
+# the latch head engages it exactly like a bar tower — but the whole
+# joint is authored FLIPPED 180° so the bolt channel opens INBOARD
+# (never through the flush outer wall).
+SPG_W = 36.0                   # latch-bolt sizing datum (legacy spigot
+                               # width — the bolt SKU spans SPG_W/2+2.6)
+HEAD_BODY_L = 42.0             # head body (30-deep plug socket + button
+                               # band + plug seat)
 BOLT_W, BOLT_H, BOLT_X = 12.0, 8.0, -12.0
-LEDGE_Z = -22.2                # pocket floor (socket-local) = retention
+STUB_H = 48.0                  # stub protrusion below the body bottom =
+                               # the disassembled-instrument z cost (the
+                               # old 52-sq socket hung 50)
+STUB_TEN_L = 29.6              # octagon wall-tenon height (mortises are
+                               # 30 — the stub's top face butting the
+                               # body bottom is the seat, not the tip)
+STUB_TEN_X = 14.0              # tenon centres at local x ±14: each lands
+                               # fully in ONE chassis host (kept shell /
+                               # true rail) at all four corners; the
+                               # INBOARD one is always rail-hosted and
+                               # takes the M4
+STUB_TEN_W = 8.0               # octagon width (flat-to-flat): height
+                               # 7.24 nests in the 10 rail wall with
+                               # ~1.3 skins each side
+STUB_TEN_Y = -13.4             # tenon stem plane (pre-rot local y; the
+                               # band centre sits 17 outboard of the leg
+                               # axis — flush legs are 17 inboard of the
+                               # rail centreline)
 
 
-def leg_washer_sq() -> cq.Workplane:
-    """TPU square gland washer ×4 (top joint): 44 sq × 2.5, 37-sq hole —
-    lives in the socket mouth's 2.0-deep recess, squeezed 2.5→2.0 when
-    the head's 50-sq shoulder plate hits the mouth face (defined
-    compression, same rule as the threaded joints). Z0 = bottom."""
-    return (box_at(44.0, 44.0, 2.5, z=1.25)
-            .cut(box_at(37.0, 37.0, 4.0, z=1.25)))
+def _wall_tenon() -> cq.Workplane:
+    """One octagon wall tenon as a VERTICAL prism (slide axis +z), roof
+    pointing pre-rot -y (outboard, into the rail wall), width along x.
+    cadkit.joinery builds the profile in Y-Z extruded along X; rotate
+    Y(-90) maps the slide to +z, then Z(+90) points the roof at -y."""
+    from cadkit.joinery import octagon_tenon
+    return (octagon_tenon(width=STUB_TEN_W, length=STUB_TEN_L)
+            .rotate((0, 0, 0), (0, 1, 0), -90)
+            .rotate((0, 0, 0), (0, 0, 1), 90))
 
 
-def _sq_socket_core() -> cq.Workplane:
-    """Shared passive square socket: 52-sq barrel below the rail, square
-    way + keyed corner, gland recess, latch LEDGE pocket (+y way wall),
-    dovetail tenon on top (chassis interface unchanged). Socket-local:
-    z0 = rail bottom."""
-    body = box_at(SQS_OUT, SQS_OUT, SQS_DEPTH, z=-SQS_DEPTH / 2)
-    # tenon (same joinery as the round socket — copied placement)
-    c = 0.3
-    tenon = (cq.Workplane("XY")
-             .polyline([(-(DT_FACE_HW - c), -4.0), (DT_FACE_HW - c, -4.0),
-                        (DT_DEEP_HW - 2 * c, -c), (-(DT_DEEP_HW - 2 * c), -c)])
-             .close().extrude(DT_H + DT_DEPTH))
-    keep = (cq.Workplane("YZ")
-            .polyline([(-5.0, 0.0), (-5.0, DT_H + 4.7), (1.0, DT_H - 1.3),
-                       (1.0, 0.0)])
-            .close().extrude(2 * DT_DEEP_HW + 4)
-            .translate((-(DT_DEEP_HW + 2), 0, 0)))
-    body = body.union(tenon.intersect(keep).mirror("XZ"))
-    # square way (keyed corner: the +x/+y corner carries a 6×45° fill —
-    # the spigot's matching chamfer admits ONE orientation)
-    way = box_at(SQS_WAY, SQS_WAY, SQS_DEPTH - 8.0,
-                 z=-(SQS_DEPTH + 8.0) / 2 + 0.0)
-    way = way.cut(cq.Workplane("XY")
-                  .polyline([(SQS_WAY / 2 - 6.2, SQS_WAY / 2),
-                             (SQS_WAY / 2, SQS_WAY / 2),
-                             (SQS_WAY / 2, SQS_WAY / 2 - 6.2)])
-                  .close().extrude(SQS_DEPTH)
-                  .translate((0, 0, -SQS_DEPTH - 1)))
-    body = body.cut(way)
-    # gland recess in the mouth face (44.6 sq × 2 deep, washer 44 sq)
-    body = body.cut(box_at(44.6, 44.6, 2.0, z=-SQS_DEPTH + 1.0)
-                    .cut(box_at(SQS_WAY - 0.4, SQS_WAY - 0.4, 4.0,
-                                z=-SQS_DEPTH + 1.0)))
-    # latch LEDGE pocket in the +y way wall (bolt noses in; its underside
-    # bears on the pocket floor = the retention/preload face)
-    body = body.cut(box_at(BOLT_W + 2.0, 3.7, 9.0,
-                           x=BOLT_X, y=SQS_WAY / 2 + 1.75,
-                           z=LEDGE_Z + 4.5))
-    # ±X face relief over the top band: the full 52-sq barrel grazes the
-    # LKL knee housing at the keyhead/-Y station (gate-caught); trimming
-    # every socket symmetrically keeps one look. 45° transition below
-    # (prints mouth-down — self-supporting).
-    for sxs in (1, -1):
-        body = body.cut(box_at(4.7, SQS_OUT + 2, 23.5,
-                               x=sxs * 24.35, z=-11.75))
-        body = body.cut(cq.Workplane("XZ")
-                        .polyline([(sxs * 22.4, -23.4), (sxs * 27.0, -23.4),
-                                   (sxs * 27.0, -27.9)])
-                        .close().extrude(SQS_OUT + 2)
-                        .translate((0, (SQS_OUT + 2) / 2, 0)))
-    return body
+def wall_mortise() -> cq.Workplane:
+    """The matching chassis cavity (tenon dilated 0.1/side, coupon-
+    validated), vertical, roof at -y — the CALLER rotates it so the roof
+    points outboard and translates it to (station±14, band, Z_BOT-1).
+    Length 30: entry opens 1 below the rail bottom; ceiling at +29 (the
+    tenon tops out 0.4 short — the stub's butt face is the seat)."""
+    from cadkit.joinery import octagon_mortise
+    return (octagon_mortise(width=STUB_TEN_W, length=30.0)
+            .rotate((0, 0, 0), (0, 1, 0), -90)
+            .rotate((0, 0, 0), (0, 0, 1), 90))
 
 
-def leg_socket_sq() -> cq.Workplane:
-    """Passive square latch socket ×3 (plain legs). PETG-GF (glued into
-    the rail; sustained ground-reaction path)."""
-    return _sq_socket_core()
+def _body_stub(wired: bool) -> cq.Workplane:
+    """BODY STUB ×4 (PETG-GF, prints standing mouth-down): the flush-44
+    replacement for the 52-sq socket. z0 = MOUTH (bottom face, at global
+    Z_BOT - 48); body 0..48; two wall tenons 47..76.6 on the outboard
+    band. Bottom = the leg↔bar latch socket VERBATIM (house 28.1 × 41 +
+    ledge pocket), authored FLIPPED 180° so the head's bolt channel
+    opens inboard. Wired: + the mouth-seat boss, Ø9.7 jack way and a
+    Ø13 CHIMNEY rising into the box that sleeves the naked 10-03404
+    (jack loads from the chimney top before the stub mounts; a pressed
+    jack_seat_ring above it is the insertion stop)."""
+    b = box_at(SQ_W, SQ_W, STUB_H, z=STUB_H / 2)
+    cuts = _house(28.1, -16.05, 2.05, 41.0).translate((0, 0, -1))
+    # ledge pocket on the house FLOOR side at local x +8 — VERBATIM the
+    # bar-joint block's pocket (leg_shaft_short), so the same bolt nests
+    cuts = cuts.union(box_at(BOLT_W + 2.0, 4.2, 9.0,
+                             x=8.0, y=-(16.05 + 2.1), z=31.9))
+    b = b.cut(cuts.rotate((0, 0, 0), (0, 0, 1), 180))
+    for tx in (-STUB_TEN_X, STUB_TEN_X):
+        b = b.union(_wall_tenon().translate((tx, STUB_TEN_Y, STUB_H - 1.0)))
+        # M4 retention pilot down the tenon core (the screw drops through
+        # the rail-web access bore; only the inboard tenon gets one, but
+        # the SKU keeps both so it works at every corner)
+        b = b.cut(cyl(3.6, 12.0, z=STUB_H + STUB_TEN_L - 12.6)
+                  .translate((tx, STUB_TEN_Y - 3.6, 0)))
+    if wired:
+        b = b.union(cyl(13.0, 1.9, z=38.2).translate((5.0, 0, 0)))  # mouth-
+        #                                    seat boss: 38.7 ledge seats the
+        #                                    jack, bottom clears the plug
+        #                                    handle (37.2)
+        b = b.cut(cyl(4.8, 2.0, z=38.0).translate((5.0, 0, 0)))     # barrel way
+        b = b.union(cyl(13.0, 36.5, z=STUB_H).translate((5.0, 0, 0)))  # chimney
+        b = b.cut(cyl(9.7, (STUB_H + 36.5 - 38.7) + 1.0, z=38.7)
+                  .translate((5.0, 0, 0)))                          # jack way
+    return b
 
 
-def leg_socket_sq_trrs() -> cq.Workplane:
-    """Passive square latch socket ×1 (the -X/+Y WIRED leg): + the
-    vertical chassis-jack way re-hosted from the round design — Ø9.7
-    coaxial way, mouth-seat boss hanging under the way roof (jack mouth
-    -9.3, plug tip +3.7 at seat = 13.0 insertion), tenon cable channel.
-    The chassis web bore + slug + 10-03404 carry over unchanged."""
-    body = _sq_socket_core()
-    body = body.union(cyl(13.0, 4.0, z=-9.9))       # mouth-seat boss (into
-    #                                                 the way-roof material)
-    body = body.cut(cyl(4.8, 1.4, z=-10.0))         # barrel way thru ring
-    body = body.cut(cyl(9.7, 53.0, z=-9.3))         # jack way, open to top
-    body = body.cut(box_at(4.4, 8.5, 9.0, y=4.25, z=35.5))   # cable channel
-    return body
+def leg_body_stub() -> cq.Workplane:
+    """Plain body stub ×3."""
+    return _body_stub(False)
+
+
+def leg_body_stub_trrs() -> cq.Workplane:
+    """Wired body stub ×1 (the -X/+Y corner): carries the chassis-side
+    10-03404 of the leg↔body blind-mate on the flipped TRRS axis
+    (local +5)."""
+    return _body_stub(True)
 
 
 def leg_latch_head() -> cq.Workplane:
-    """LATCH HEAD ×4 (PCTG, prints standing — thread + mechanism quality):
-    the leg's top piece. Bottom = the SAME female thread joint (gland +
-    rim + Ø36/30 thread) taking any segment's male coupler; middle = the
-    50-sq shoulder PLATE (hard stop on the socket mouth, washer under
-    it); top = the 36-sq keyed SPIGOT with the bolt channel, recessed
-    seatbelt BUTTON pocket on the body's inboard face (x -14 — beside
-    the cable channel at x 0), captive TRRS plug seat (Ø11 + Ø9.4 lip;
-    leg_plug_retainer presses beneath) and Ø14 cable way. Local z0 =
-    shoulder-plate TOP (mounted at socket mouth -50)."""
-    b = box_at(50.0, 50.0, 4.0, z=-2.0)                       # shoulder plate
-    b = b.union(box_at(SQ_W, SQ_W, HEAD_BODY_L, z=-4.0 - HEAD_BODY_L / 2))
-    # ROUND 3: threadless bottom — a HOUSE socket (30 deep) takes the top
-    # segment's integral plug; butt faces = hard stop; one M4 through the
-    # -Y wall = retention. (Standing print: the blind end's house profile
-    # bridges 28 — acceptable; a pyramid ceiling lands at refinement.)
+    """LATCH HEAD x4 (PCTG, prints standing): the leg column's top piece
+    = the INSERTING half of the leg<->body latch, the bar-tower pattern
+    VERBATIM but authored FLIPPED 180 deg so the bolt channel opens
+    INBOARD (under the body's shadow - never through the flush outer
+    wall): 44-sq body with the 27.7 house SPIGOT (38, into the body
+    stub's 41 socket + ledge), wedging-bolt channel + recessed seatbelt
+    BUTTON pocket, the standard section house socket below (any
+    segment's integral plug + one M4), and the captive TRRS plug seat +
+    cable ways on the flipped +5 axis (every head carries them
+    invisibly - ONE SKU for all four legs). The 50-sq shoulder plate is
+    GONE (user: consistent 44 everywhere); the body top face butting
+    the stub mouth is the hard stop. Local z0 = the body TOP face
+    (mounted at global Z_BOT - 48)."""
+    b = box_at(SQ_W, SQ_W, HEAD_BODY_L, z=-HEAD_BODY_L / 2)
+    # section socket below (STANDARD stack orientation - the segment
+    # chain underneath is not flipped) + its M4 retention pilot
     b = b.cut(_house(28.1, -16.05, 2.05, 31.0)
-              .translate((0, 0, -4.0 - HEAD_BODY_L - 1.0)))
+              .translate((0, 0, -HEAD_BODY_L - 1.0)))
     b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        2.25, 9.0, cq.Vector(0, -SQ_W / 2 - 1.0, -4.0 - HEAD_BODY_L + 14.0),
+        2.25, 9.0, cq.Vector(0, -SQ_W / 2 - 1.0, -HEAD_BODY_L + 14.0),
         cq.Vector(0, 1, 0))))
-    spig = box_at(SPG_W, SPG_W, SPG_L, z=SPG_L / 2)
-    spig = spig.cut(cq.Workplane("XY")                        # keyed corner
-                    .polyline([(SPG_W / 2 - 6.0, SPG_W / 2),
-                               (SPG_W / 2, SPG_W / 2),
-                               (SPG_W / 2, SPG_W / 2 - 6.0)])
-                    .close().extrude(SPG_L + 2).translate((0, 0, -1)))
-    b = b.union(spig)
-    # TRRS plug seat + cable way down the centre (way meets the socket)
-    b = b.cut(cyl(9.4, 1.5, z=SPG_L - 0.5))                   # tip lip way
-    b = b.cut(cyl(11.0, SPG_L - 0.5 - 8.0, z=8.0))            # handle way
-    b = b.cut(cyl(14.0, 26.0, z=-4.0 - HEAD_BODY_L + 28.0))   # cable way
-    # (NO face channel — user: only the wired leg's SEGMENTS carry the
-    # channel; the cable dives into the core at the top segment's upper
-    # dive hole and rises through this head's internal Ø14/Ø11 way, which
-    # every head carries invisibly — ONE head SKU for all four legs)
-    # bolt channel through the spigot's +y face + button pocket on the
-    # body's inboard face (functional dummies; wedge detail at refinement)
-    b = b.cut(box_at(BOLT_W + 0.4, SPG_W / 2 + 4.0, BOLT_H + 0.4,
-                     x=BOLT_X, y=SPG_W / 4 + 1.0, z=31.8))
-    b = b.cut(box_at(12.4, 9.0, 10.4, x=-14.0, y=SQ_W / 2 - 4.4,
-                     z=-11.0))         # button band: under the plate,
-    return heal(b)                     # above the plug socket (-16)
+    # house spigot + latch cuts, FLIPPED 180 (mirrors the stub's socket)
+    b = b.union(_house(27.7, -15.85, 1.85, 38.0)
+                .rotate((0, 0, 0), (0, 0, 1), 180))
+    b = b.cut(box_at(BOLT_W + 0.4, 30.0, BOLT_H + 0.4,
+                     x=-8.0, y=12.2, z=31.8))       # bolt channel (floor side)
+    b = b.cut(box_at(12.4, 9.0, 10.4, x=14.0, y=-(SQ_W / 2 - 4.4),
+                     z=-11.0))                      # recessed button pocket
+    # captive CA-354S seat + cable ways on the flipped TRRS axis (+5):
+    # tip lip, handle way, then the Ø8 down-way into the section core
+    b = b.cut(cyl(9.4, 1.7, z=37.4).translate((5.0, 0, 0)))
+    b = b.cut(cyl(11.0, 31.2, z=6.3).translate((5.0, 0, 0)))   # way starts
+    #                        at +6.3: the press retainer (bottom +6.4) sits
+    #                        fully in Ø11 (probe-caught collar burial)
+    b = b.cut(cyl(8.0, 22.0, z=-13.0).translate((5.0, 0, 0)))
+    return heal(b)
 
 
 def leg_latch_bolt() -> cq.Workplane:
@@ -874,16 +876,6 @@ def leg_plug_retainer() -> cq.Workplane:
     b = cyl(11.15, 18.0, z=0.0)
     b = b.cut(cyl(6.6, 20.0, z=-1.0))    # the Ø6 spring relief passes through
     b = b.cut(box_at(4.2, 8.0, 20.0, y=4.0, z=9.0))
-    return b
-
-
-def socket_jack_slug() -> cq.Workplane:
-    """Printed saddle slug ×1 (TPU): drops into the socket's jack way on
-    top of the seated chassis jack (the side-open slot clears the axial
-    cable exit) and fills the bore toward the rail-slot roof — the jack's
-    INSERTION backstop after glue-up. Z0 = bottom."""
-    b = cyl(9.55, 8.0, z=0.0)
-    b = b.cut(box_at(4.4, 9.0, 10.0, y=2.0, z=4.0))
     return b
 
 

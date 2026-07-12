@@ -50,11 +50,20 @@ CH_W, CH_D = 20.6, 3.0                 # channel cut: width / depth into web
 # ---- board footprints (x0, x1, y0, y1); board bottom z = TRAY_Z1 + post ----
 POST_H = 3.0
 BD_T = 1.6
-PI_FP     = (-603.0, -547.0, -31.0, 54.0)     # Pi 5: 56 x 85 (long side on Y)
+PI_FP     = (-603.0, -547.0, -50.0, 35.0)     # Pi 5: 56 x 85 (long side on Y);
+                                       # slid 19 SOUTH (FLUSH round): the wired
+                                       # leg's jack chimney + cable drop own the
+                                       # tray's west-north corner (x > -603 must
+                                       # stay clear of y > 35 there; east is
+                                       # walled by motor 0)
 TEENSY_FP = (-607.0, -589.0, -118.0, -57.0)    # Teensy 4.1 + shield stack
 CS_FP     = (-585.0, -547.0, -90.0, -55.0)   # CS42448 x2, stacked
 BUCK_FP   = (-585.0, -549.0, -118.0, -95.0)   # buck module, 20 x 40
-XCVR_FP   = (-607.0, -589.0, -53.0, -40.0)    # SN65HVD230 breakout
+XCVR_FP   = (-570.0, -552.0, 39.0, 52.0)      # teensy_ifc (CAN transceivers):
+                                       # moved to the tray's NORTH strip east of
+                                       # the wired leg's jack chimney (FLUSH
+                                       # round) - pi5 slid south into its old
+                                       # -X-corner spot
 
 BOARD_Z = TRAY_Z1 + POST_H             # every bottom board sits at -67
 
@@ -176,11 +185,11 @@ def electronics_tray() -> cq.Workplane:
     for fp, bz in ((PI_FP, BOARD_Z), (TEENSY_FP, BOARD_Z + 1.0),
                    (CS_FP, BOARD_Z), (BUCK_FP, BOARD_Z), (XCVR_FP, BOARD_Z)):
         body = body.union(_posts_strips_fingers(fp, bz))
-    # cable notch in the -X edge (west of the Pi footprint): the chassis
-    # TRRS jack's cable descends here from the -X/+Y leg socket to the
-    # bus-B landing tee under the tray (the tray-to-rail gap is only 1.25
-    # — no cable fits around the plate)
-    body = body.cut(box_at(4.0, 8.0, 6.0, x=TRAY_X0 + 1.5, y=46.0,
+    # west-north CORNER BITE (FLUSH-LEG round): the wired leg's Ø13 jack
+    # chimney rises through this corner of the tray plan, and its Ø3.8
+    # factory cable drops beside it to the under-tray rib window - one
+    # rectangular bite clears both (the old -X-edge notch is superseded)
+    body = body.cut(box_at(8.5, 16.0, 6.0, x=TRAY_X0 + 3.75, y=43.0,
                            z=(TRAY_Z0 + TRAY_Z1) / 2))
     return body
 
