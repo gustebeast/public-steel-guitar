@@ -40,6 +40,6 @@ def mortise_coupon():
     block = (cq.Workplane("XY")
              .box(LENGTH, WIDTH + 2 * MARGIN, _H + PLATE + CEIL, centered=(True, True, False))
              .translate((0, 0, -PLATE)))                        # z -PLATE.._H+CEIL (ceiling = bridge)
-    cut = (octagon_mortise(WIDTH, LENGTH + 2, nozzle=NOZZLE, drop=PLATE)
+    cut = (octagon_mortise(WIDTH, LENGTH + 2, nozzle=NOZZLE, clearance=CLR, drop=PLATE)
            .translate((-(LENGTH + 2) / 2.0, 0, 0)))             # slot open both X ends
     return block.cut(cut)
