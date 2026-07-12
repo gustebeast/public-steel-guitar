@@ -38,11 +38,14 @@ from __future__ import annotations
 import cadquery as cq
 
 from .helpers import box_at, cyl
-from .chassis import LEG_STATIONS_X, Y_HI
+from .chassis import LEG_STATIONS_X, LEG_Y
 from . import legs as LG
 from .legs import _house
 
-YC = Y_HI                              # leg axes sit on the +Y rail centreline
+YC = LEG_Y[0]                          # FLUSH round: the bar rides the +Y
+                                       # legs' centreline, 17 inboard of the
+                                       # rail — its outer face continues the
+                                       # body wall plane to the floor
 # one latch per foot, each opening INBOARD: (leg station, side sign)
 LATCHES = ((LEG_STATIONS_X[0], -1.0),  # +X leg → plain snap latch, extends -X
            (LEG_STATIONS_X[1], +1.0))  # -X leg → TRRS latch, extends +X
@@ -136,7 +139,9 @@ def _bar_full() -> cq.Workplane:
     wlx = LATCHES[1][0] + 5.0     # TRRS axis offset +5 (the bolt owns the
     #                               other side of the house floor band)
     body = body.cut(cyl(9.4, 1.7, z=STUB_Z0 + 37.4).translate((wlx, YC, 0)))
-    body = body.cut(cyl(11.0, 29.5, z=STUB_Z0 + 8.0).translate((wlx, YC, 0)))
+    body = body.cut(cyl(11.0, 31.2, z=STUB_Z0 + 6.3).translate((wlx, YC, 0)))
+    #                    ^ way starts +6.3: the press retainer (bottom +6.4)
+    #                      sits fully in Ø11 (probe-caught collar burial)
     body = body.cut(cyl(8.0, STUB_Z0 + 9.0, z=-0.5).translate((wlx, YC, 0)))
     body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
         4.0, 28.0, cq.Vector(wlx - 2.0, YC, 11.0), cq.Vector(1, 0, 0))))
