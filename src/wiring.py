@@ -152,7 +152,10 @@ def tee_stations():
                                          #     AFE (x ≥ -22)
     out.append((-545.0, -110.0, -1))     # 11: LKL knee station (bay edge —
                                          #     clear of the housing, y≤-122.7)
-    out.append((-590.0, 40.0, +1))       # 12: leg-socket cable landing
+    out.append((-581.5, 40.0, +1))       # 12: leg-socket cable landing (in
+                                         # the rib GAP -588..-575: the flush
+                                         # round un-severed the station rib,
+                                         # which now owns x -598..-588)
     return out
 
 
@@ -237,8 +240,9 @@ def build_wires():
     # Termination: teensy_ifc (this end) + tee 0's closed jumper (far end).
     xw, yw = hdrA[west[0]]
     out.append(("wire_can_0", _wire([
-        (-602.0, -51.0, -50.5), (-602.0, -51.0, BAYFLY),
-        (RISE_X, -51.0, BAYFLY), (RISE_X, -51.0, STUB_Z),
+        (-565.0, 42.0, -50.5), (-565.0, 42.0, BAYFLY),
+        (RISE_X, 42.0, BAYFLY), (RISE_X, 42.0, STUB_Z),
+        (RISE_X, -51.0, STUB_Z),
         (RISE_X, LANE_CAN, STUB_Z), (RISE_X, LANE_CAN, LANE_Z),
         (xw, LANE_CAN, LANE_Z), (xw, LANE_CAN, STUB_Z),
         (xw, yw, STUB_Z), (xw, yw, HDR_Z)], WIRE_OD["wire_can"])))
@@ -260,8 +264,12 @@ def build_wires():
     # AFE tee (10) -> tee 0 ... tee 9 -> buck; the AFE's LDO feed is tee
     # 10's DROP (no splice at the inlet). hot/gnd offset ±PWR_OFF.
     x10, y10 = hdrA[10]
-    heads = [(-5.5, EL.DC_Y, EL.JACK_Z), (-5.5, EL.DC_Y, -60.0),
-             (-26.0, EL.DC_Y, -66.0), (-26.0, -97.0, -70.0),
+    # inlet drop: dodge the AFE pedestal (x -24..0, y -110..-76, top -61)
+    # to its NORTH, cross the x -18 rib ABOVE its top (-65.15; the FLUSH
+    # round un-severed it), then descend in the -36..-23 bay to the AFE tee
+    heads = [(-5.5, EL.DC_Y, EL.JACK_Z), (-5.5, EL.DC_Y, -52.0),
+             (-5.5, -74.0, -56.0), (-12.0, -74.0, -63.4),
+             (-26.0, -74.0, -63.4), (-26.0, -97.0, -70.0),
              (-31.0, -104.0, -72.0), (x10 + 5.5, y10, HDR_Z)]
     tail9 = [(hdrA[west[0]][0], hdrA[west[0]][1], HDR_Z),
              (hdrA[west[0]][0], hdrA[west[0]][1], STUB_Z),
@@ -288,8 +296,9 @@ def build_wires():
     # ── bus B (inputs): ifc -> LKL tee -> leg-socket landing tee ────────
     x11, y11 = hdrA[11]
     out.append(("wire_canb_0", _wire([
-        (-594.0, -49.0, -50.5), (-594.0, -49.0, BAYFLY),
-        (RISE_X, -49.0, BAYFLY), (RISE_X, -49.0, STUB_Z),
+        (-557.0, 42.0, -50.5), (-557.0, 42.0, BAYFLY),
+        (RISE_X, 42.0, BAYFLY), (RISE_X, 42.0, STUB_Z),
+        (RISE_X, -49.0, STUB_Z),
         (RISE_X, LANE_CTRL, STUB_Z), (RISE_X, LANE_CTRL, LANE_Z),
         (x11, LANE_CTRL, LANE_Z), (x11, LANE_CTRL, STUB_Z),
         (x11, y11, STUB_Z), (x11, y11, HDR_Z)], WIRE_OD["wire_canb"])))
@@ -310,8 +319,8 @@ def build_wires():
         (-12.0, LANE_USB, -45.0), (-30.0, LANE_USB, -45.0),    # clear the -X jack body
         (-30.0, LANE_USB, LANE_Z), (RISE_X, LANE_USB, LANE_Z),
         (RISE_X, LANE_USB, BAYFLY), (-560.0, LANE_USB, BAYFLY),
-        (-560.0, 40.0, BAYFLY), (-575.0, 40.0, BAYFLY),
-        (-575.0, 40.0, -44.0)],
+        (-560.0, 20.0, BAYFLY), (-575.0, 20.0, BAYFLY),
+        (-575.0, 20.0, -44.0)],
         WIRE_OD["wire_usb"])))                         # west of motor 9, then +Y to Pi
 
     # -- Teensy <-> Pi link (purple): over the bay
@@ -322,7 +331,7 @@ def build_wires():
     # -- Teensy <-> CAN transceiver (orange): both at the -X corner
     out.append(("wire_canjmp", _wire([
         (-603.0, -57.0, out_z), (-603.0, -52.0, BAYFLY),
-        (-598.0, -48.0, BAYFLY), (-598.0, -48.0, -57.0)], WIRE_OD["wire_canjmp"])))
+        (-561.0, 49.0, BAYFLY), (-561.0, 49.0, -50.5)], WIRE_OD["wire_canjmp"])))
 
     # -- PCM1864 carrier TDM -> Pi (teal)
     out.append(("wire_tdm", _wire([
@@ -359,9 +368,10 @@ WIRE_OK = {
     "wire_knee_drop": {"tee_pcb"},
     # leg↔body TRRS: the chassis jack's factory cable (tenon channel ->
     # bus-B socket tee) and the column CA-354S inside the leg stack
-    "chassis_trrs_cable": {"tee_pcb", "leg_socket", "chassis_trrs_jack"},
-    "leg_column_cable": {"leg_socket", "leg_segment", "leg_sleeve",
-                         "leg_shaft", "leg_washer", "leg_column_plug",
+    "chassis_trrs_cable": {"tee_pcb", "leg_body_stub", "chassis_trrs_jack",
+                           "jack_seat_ring"},
+    "leg_column_cable": {"leg_body_stub", "leg_segment", "leg_sleeve",
+                         "leg_shaft", "leg_column_plug",
                          "leg_plug_retainer", "leg_cable_coil",
                          "leg_latch_head", "leg_junction_pcb",
                          "leg_seg_body", "leg_lid",

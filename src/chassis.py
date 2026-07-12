@@ -241,26 +241,10 @@ def _build_full() -> cq.Workplane:
     for _yf, _s in ((Y_HI - T / 2, 1), (Y_LO + T / 2, -1)):   # endplate tab channels
         body = body.cut(box_at(12.0, 3.5, Z_TOP - (Z_BOT + 8.0),
                                x=_kx, y=_yf + _s * 1.5, z=(Z_TOP + Z_BOT + 8.0) / 2))
-    # leg-socket joinery: a vertical sliding-dovetail slot in each rail's
-    # OUTER face at the corner stations (solid web there). The printed socket
-    # slides up from below and GLUES (it is only a separate part because the
-    # chassis can't print below its bed); its barrel rim seats on the rail's
-    # bottom face. The slot roof rises 45° toward the face — in-layer support
-    # accretes from beyond the deep wall (a single supported slope, never a
-    # chevron over an open edge).
-    for _sx in LEG_STATIONS_X:
-        for _yr, _s in ((Y_HI, 1), (Y_LO, -1)):
-            body = body.cut(_leg_dt_slot(_sx, _yr, _s))
-    # TRRS chassis-jack way (the -X/+Y station only): the leg↔body
-    # blind-mate jack (legs.leg_socket_trrs) sits COAXIAL with the leg
-    # thread, and above the rail bottom the WEB owns the -y half of that
-    # axis — bore the matching Ø9.8 way through the web/slot zone (the
-    # socket tenon's bore carries the +y half; the bore CEILING at +39.6
-    # is the jack's insertion backstop via the printed slug). See
-    # legs.leg_socket_trrs / BOM 'Connectors'.
-    body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        4.9, 40.6, cq.Vector(LEG_STATIONS_X[1], Y_HI, Z_BOT - 1.0),
-        cq.Vector(0, 0, 1))))
+    # (the old leg-socket dovetail slots + the Ø9.8 TRRS web way are GONE —
+    # FLUSH-LEG round: the legs moved inboard to the wall plane and attach
+    # via BODY STUBS whose octagon wall tenons mortise the rail band; see
+    # the cuts after the end-takeover section below, and legs._body_stub)
     # electronics-tray drop-in channels: one vertical channel per rail inner
     # face (open at the top - the tray lowers in from above and its tabs
     # bottom on the channel floors), placed in the only solid-web window
@@ -338,34 +322,54 @@ def _build_full() -> cq.Workplane:
                            (Z_TOP + 1.0) - (Z_BOT - 1.0),
                            x=(KH_RAIL_X + X_NUT - 5.0) / 2, y=(Y_HI + Y_LO) / 2,
                            z=((Z_BOT - 1.0) + (Z_TOP + 1.0)) / 2))
-    # KEEP a ~10 mm rail shell hugging the -X leg socket (mirror of the +X end).
+    # KEEP a ~10 mm rail shell hugging the -X leg station (mirror of the +X end).
     body = body.union(_leg_shell(LEG_STATIONS_X[1], *LEG_SHELL_NX))
     for _yc in (Y_HI, Y_LO):
         body = body.union(_kh_tongue(_yc))
+    # ── FLUSH-LEG BODY-STUB JOINERY (cut LAST — the shells above host two
+    # of the eight mortises). Each corner: a 44-sq body stub (legs.py)
+    # slides UP; its two octagon wall tenons (at station ±14, so each
+    # lands fully in ONE host — kept shell or true rail — at all four
+    # corners) enter closed vertical mortises in the wall band; the
+    # stub's top face butts the body bottom (Z_BOT) = the seat. ONE
+    # vertical M4 per stub drops down the rail web from under the deck
+    # (Ø4.6 access bore + Ø8.4 head counterbore below the deck-groove
+    # floor) into the INBOARD tenon's pilot: extraction retention only.
+    from .legs import wall_mortise as _wm
+    _xc_mid = sum(LEG_STATIONS_X) / 2
+    for _sx in LEG_STATIONS_X:
+        _ib = 1.0 if _xc_mid > _sx else -1.0        # inboard tenon side
+        for _yr, _s in ((Y_HI, 1), (Y_LO, -1)):
+            _lc = LEG_Y[0] if _s > 0 else LEG_Y[1]  # flush leg centreline
+            _stem = _lc + _s * 13.4                 # tenon stem plane (the
+            #                                         octagon nests in the 10
+            #                                         wall, ~1.3 skins/side)
+            for _tx in (-14.0, 14.0):
+                _m = _wm()
+                if _s > 0:                          # roof points outboard
+                    _m = _m.rotate((0, 0, 0), (0, 0, 1), 180)
+                body = body.cut(_m.translate((_sx + _tx, _stem, Z_BOT - 1.0)))
+            body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+                2.3, 48.0, cq.Vector(_sx + _ib * 14.0, _yr, Z_BOT + 27.5),
+                cq.Vector(0, 0, 1))))
+            body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+                4.2, 5.0, cq.Vector(_sx + _ib * 14.0, _yr,
+                                    TP_GZ0 - TP_TG_DEPTH - 5.1),
+                cq.Vector(0, 0, 1))))
+    # WIRED corner (-X/+Y): the stub's Ø13 jack CHIMNEY rises beside the
+    # keyhead seat rib — clear a Ø16 way for it, and open a Ø7 harness
+    # window through the station rib for the jack's Ø3.8 factory cable
+    # (too fat for the knee-mortise / raceway crossings every other wire
+    # uses) on its way to the bus-B socket tee.
+    body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        8.0, 39.0, cq.Vector(LEG_STATIONS_X[1] - 5.0, LEG_Y[0], Z_BOT - 1.0),
+        cq.Vector(0, 0, 1))))
+    body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        3.5, 27.0, cq.Vector(LEG_STATIONS_X[1] - 10.7, 33.0, -70.6),
+        cq.Vector(1, 0, 0))))   # harness window at y 33 (SOUTH of the
+    #                             chimney): one Ø7 bore through the keyhead
+    #                             seat rib AND the station rib to the tee bay
     return body
-
-
-def _leg_dt_slot(sx, yr, s):
-    """The vertical sliding-dovetail SLOT for a leg socket in the rail's INNER
-    face at station (sx, yr); `s` = +1 (Y_HI) / -1 (Y_LO). Cut from the rail; the
-    printed leg tenon slides up into it from below. Factored out so the +X/-X
-    end-takeover can KEEP a rail shell around the leg and re-cut this same slot.
-    Built on the OUTER face then MIRRORED across the rail centreline to the INNER
-    face, so the outer instrument face stays clean/flush (the joint hides inside)."""
-    yf = yr + s * T / 2                              # (build on the outer face...)
-    yd = yf - s * DT_DEPTH                           # deep wall
-    trap = (cq.Workplane("XY").workplane(offset=Z_BOT - 1.0)
-            .polyline([(sx - DT_FACE_HW, yf), (sx + DT_FACE_HW, yf),
-                       (sx + DT_DEEP_HW, yd), (sx - DT_DEEP_HW, yd)])
-            .close().extrude(1.0 + DT_H + DT_DEPTH))
-    keep = (cq.Workplane("YZ")
-            .polyline([(yf + s, Z_BOT - 2.0),
-                       (yf + s, Z_BOT + DT_H + DT_DEPTH + 1.0),
-                       (yd - s, Z_BOT + DT_H - 1.0),
-                       (yd - s, Z_BOT - 2.0)])
-            .close().extrude(2 * DT_DEEP_HW + 4)
-            .translate((sx - DT_DEEP_HW - 2, 0, 0)))
-    return trap.intersect(keep).mirror("XZ", (0, yr, 0))   # ...mirror to the INNER face
 
 
 # ============================================================================
@@ -410,6 +414,14 @@ LEG_SHELL_NX = (_SHELL_NX, KH_RAIL_X)       # -X leg: -625.6 .. -610.6 (reaches 
 LEG_SHELL_PX = (TP_EP_GX, _SHELL_PX)        # +X leg: -17.5 .. 5.6
 # leg stations: (+X leg, -X leg) — each set so its tenon leaves EP_LEG_BUFFER of body:
 LEG_STATIONS_X = (_STN_PX, _STN_NX)         # (-18.4, -601.6)
+# FLUSH-LEG round (user): the 44-sq legs sit FLUSH with the outer wall
+# planes instead of outset on the rail centrelines — centres 17 inboard
+# of the rails. Everything leg-shaped (stubs, columns, pedal bar rail)
+# derives its Y from here.
+LEG_W = 44.0                                # = legs.SQ_W (legs.py owns the part;
+                                            # the chassis owns the placement)
+LEG_Y = (Y_HI + T / 2 - LEG_W / 2,          # +Y legs: 42.75 (outer face 64.75)
+         Y_LO - T / 2 + LEG_W / 2)          # -Y legs: -116.75
 
 
 def _leg_shell(sx, x0, x1):
@@ -429,7 +441,8 @@ def _leg_shell(sx, x0, x1):
         # on its own.)
         sh = box_at(x1 - x0, T, z1 - Z_BOT,
                     x=(x0 + x1) / 2, y=yr, z=(Z_BOT + z1) / 2)
-        sh = sh.cut(_leg_dt_slot(sx, yr, s))
+        # (no dovetail re-cut — FLUSH-LEG round: the shells now host the
+        # body stubs' octagon wall mortises, cut in the main builder)
         out = sh if out is None else out.union(sh)
     return out
 
