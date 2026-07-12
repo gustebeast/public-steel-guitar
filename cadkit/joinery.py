@@ -1,20 +1,21 @@
-"""joinery.py — printable mortise-and-tenon slide joints (dull arrowhead).
+"""joinery.py — printable mortise-and-tenon SLIDE joints.
 
-See JOINERY_README.md for the full story. THE standard recipe — a tenon on a
-sideways-printed (+Y build) host mated to a mortise in a flat-printed (+Z
-build) host — is `ramp=True, hook_h=...` (print-validated in PETG; plain
-`ramp=True` without a hook cams apart along the up-ramp diagonal and survives
-only as a demo):
+FRONT DOOR: `slide_joint`. Describe how each half PRINTS (a PrintSpec: nozzle,
+material, facing) and the room it has (width, length); the facings pick the joint
+family and the materials pick the fit clearance. See JOINERY_README.md.
 
-    from cadkit.joinery import arrow_tenon, arrow_mortise
+    from cadkit.joinery import PrintSpec, slide_joint
 
-    # print-validated 0.8-nozzle numbers (every face ≥ one bead); scale beads
-    # not ratios for other nozzles. neck rule: stem_h = wanted_neck + clearance.
-    J = dict(stem_w=2.4, head_w=4.0, stem_h=0.9, tip_w=0.8, ramp=True, hook_h=0.8)
-    ten = arrow_tenon(length=5.5, **J)                      # +Y-printed host
-    cut = arrow_mortise(length=12, clearance=0.1, **J)      # +Z-printed host
-    host  = host.union(ten.translate(...))      # rail grows the tenon
-    other = other.cut(cut.translate(...))       # ring gets the cavity
+    up   = PrintSpec(nozzle=0.8, material="PETG-GF", facing="up")    # prints -Z→+Z
+    side = PrintSpec(nozzle=0.8, material="PETG-GF", facing="side")  # prints -Y→+Y
+
+    j   = slide_joint(width=5.6, length=6, tenon=side, mortise=up)   # → arrow ramp+hook
+    host = host.union(j.tenon(root=1.0).translate(...))    # tenon fuses into its host
+    ring = ring.cut(j.mortise(drop=2.0).translate(...))    # cavity opens through the face
+    #   tenon=up, mortise=up → the octagon instead; j.height/j.family/j.width_min exposed
+
+The per-family generators below (`octagon_*`, `arrow_*`, both one-`width`-knob) are
+the fine-control layer `slide_joint` dispatches to.
 
 CONVENTIONS
 - The profile lives in the local Y-Z plane and is extruded along +X — the
@@ -45,8 +46,8 @@ the one-nozzle bridge CAP on the mortise roof. See the README's "Octagon joint".
 
 Every working face is 45° ON PURPOSE — see the README for why the shared
 ramp face can't be steepened for one part without hurting the other. The
-only flat is the dull tip (default 1.6 = 2 bead widths of a 0.8 nozzle): a
-tiny bridge in the mortise, deliberately "just big enough to print".
+only flat is the dull tip: it's pre-shrunk so the MORTISE bridge lands on
+exactly one nozzle (a one-bead bridge), same as the octagon roof.
 """
 
 import math
@@ -64,8 +65,10 @@ def _profile(stem_w, head_w, stem_h, tip_w, ramp, base_z, hook_h=None, nozzle=0.
     flare, taper = b - a, b - t
     if not (flare > 0 and taper > 0 and tip_w > 0 and stem_h >= 0):
         raise ValueError("need head_w > stem_w, head_w > tip_w > 0, stem_h >= 0")
-    segs = {"stem_h (mortise neck + clearance)": stem_h, "tip_w": tip_w,
-            "flare (barb per side)": flare}
+    # Nozzle floor is on the TENON's load segments. The dull TIP is EXEMPT — it's
+    # the capped bridge (pre-shrunk so the mortise roof lands on one nozzle), a
+    # supported last layer on the tenon, not a load face.
+    segs = {"stem_h (mortise neck + clearance)": stem_h, "flare (barb per side)": flare}
     if hook_h is not None:
         segs["hook_h"] = hook_h
     else:
@@ -113,37 +116,55 @@ def _profile(stem_w, head_w, stem_h, tip_w, ramp, base_z, hook_h=None, nozzle=0.
     return pts, H
 
 
-def arrow_height(stem_w, head_w, stem_h, tip_w=_TIP_W, hook_h=None):
-    """Total tenon height above the mating plane (what the mortise host must swallow)."""
-    b, t = head_w / 2.0, tip_w / 2.0
-    flare = b - stem_w / 2.0
-    if hook_h is not None:
-        return stem_h + hook_h + flare      # hook: the taper returns over the start
-    return stem_h + flare + (b - t)
+def arrow_width_min(nozzle=0.8):
+    """Smallest printable dovetail `width`: the barb `seg` hits one nozzle here
+    (3-bead stem + 1-bead segments) — the span-4.0 print-validated floor at 0.8."""
+    return 5.0 * nozzle
 
 
-def arrow_tenon(stem_w, head_w, stem_h, length, tip_w=_TIP_W, ramp=False, root=1.0,
-                hook_h=None, nozzle=0.8):
-    """Tenon prism along +X, base at z=0, extended `root` below for fusion.
-    hook_h: square-hook barb height (flat underside; ramp=True only) — locks the
-    up-ramp diagonal an all-45° profile cams out along. Every working segment is
-    validated ≥ `nozzle`."""
-    pts, _ = _profile(stem_w, head_w, stem_h, tip_w, ramp, -abs(root), hook_h, nozzle)
+def _arrow_dims(width, nozzle, clearance):
+    """Width-based ramp+hook dovetail dims — the PRINT-VALIDATED scheme (from the
+    toothpaste-dispenser work): the barb segments share one `seg`, and the stem
+    keeps ≥ 3 beads (seg = min((width−3·nozzle)/2, width/3.5)), so it reproduces
+    both validated recipes (width 4.0 = floor, width 5.6 = stem 2.4 / barb 1.6).
+    The dull tip is PRE-SHRUNK so the MORTISE bridge lands on one nozzle."""
+    if width < arrow_width_min(nozzle) - 1e-9:
+        raise ValueError(f"width {width:.3f} below the dovetail minimum "
+                         f"{arrow_width_min(nozzle):.3f} mm (3-bead stem + 1-bead barb "
+                         f"at nozzle={nozzle}) — give it more room, or a finer nozzle")
+    seg = min((width - 3.0 * nozzle) / 2.0, width / 3.5)   # barb flare = hook_h = seg
+    return dict(stem_w=width - 2.0 * seg, head_w=width,    # stem keeps ≥ 3 beads
+                stem_h=seg + clearance,                    # mortise neck = seg
+                tip_w=_tenon_roof(nozzle, clearance),      # bridge → one nozzle in the mortise
+                hook_h=seg)                                # square hook
+
+
+def arrow_height(width, nozzle=0.8, clearance=0.1):
+    """Tenon height above the mating plane (what the mortise host must swallow)."""
+    _, h = _profile(ramp=True, base_z=0.0, nozzle=nozzle,
+                    **_arrow_dims(width, nozzle, clearance))
+    return h
+
+
+def arrow_tenon(width, length, nozzle=0.8, clearance=0.1, root=1.0):
+    """Ramp+hook dovetail TENON — tenon host prints -Y→+Y (sideways), mortise host
+    -Z→+Z. One `width` knob; prism along +X, base at z=0, `root` below for fusion.
+    Pass the SAME width/nozzle/clearance to the mortise so they mate."""
+    pts, _ = _profile(ramp=True, base_z=-abs(root), nozzle=nozzle,
+                      **_arrow_dims(width, nozzle, clearance))
     return cq.Workplane("YZ").polyline(pts).close().extrude(length)
 
 
-def arrow_mortise(stem_w, head_w, stem_h, length, tip_w=_TIP_W, ramp=False,
-                  clearance=0.3, drop=2.0, hook_h=None, nozzle=0.8):
-    """Cavity CUTTER: the tenon profile dilated `clearance` per side (mitred
-    offset, so all faces stay 45°/vertical), dropped `drop` below the mating
-    plane to open through the host's face. Extrude it out PAST the host's -X
-    face so the channel is open on that side (where the tenon enters as the
-    host slides -X onto it); the cutter's +X end, left inside the host, is
-    the hard stop wall. Boolean-friendly plain prism."""
-    if stem_h - clearance < nozzle - 1e-9:
-        raise ValueError(f"mortise neck = stem_h - clearance = {stem_h - clearance:.2f} "
-                         f"is below the {nozzle} nozzle floor")
-    pts, _ = _profile(stem_w, head_w, stem_h, tip_w, ramp, -abs(drop), hook_h, nozzle)
+def arrow_mortise(width, length, nozzle=0.8, clearance=0.1, drop=2.0):
+    """Cavity CUTTER matching arrow_tenon: the tenon profile dilated `clearance` per
+    side (mitred), dropped `drop` below the mating plane to open through the host
+    face. Extrude PAST the host's -X face (open entry); the +X end left inside is
+    the stop wall. The mortise neck (= width/4) must clear the nozzle."""
+    d = _arrow_dims(width, nozzle, clearance)
+    if d["stem_h"] - clearance < nozzle - 1e-9:
+        raise ValueError(f"width {width:.2f}: mortise neck {d['stem_h'] - clearance:.2f} "
+                         f"below the {nozzle} nozzle floor — widen to >= {4 * nozzle:.1f} mm")
+    pts, _ = _profile(ramp=True, base_z=-abs(drop), nozzle=nozzle, **d)
     return (cq.Workplane("YZ").polyline(pts).close()
             .offset2D(clearance, "intersection")
             .extrude(length))
@@ -277,12 +298,91 @@ def octagon_mortise(width, length, nozzle=0.8, clearance=0.1, drop=2.0):
             .extrude(length))
 
 
+# ─────────────────── Unified print-aware entry point ─────────────────────────
+# One entrypoint for both joint families. The consumer describes how each half
+# PRINTS (a PrintSpec: nozzle, material, facing) and the room it has (width,
+# length); the facings pick the shape and the materials pick the clearance:
+#   • tenon 'up',   mortise 'up'   → octagon (both parts print -Z→+Z)
+#   • tenon 'side', mortise 'up'   → ramp+hook dovetail (tenon prints -Y→+Y)
+# Other combinations aren't modelled yet and raise.
+
+# Fit clearance per side, print-VALIDATED (small joints, ~0.8 nozzle). Clearance is
+# print-TESTED, not formulaic (it also creeps up with engagement length), so this
+# holds only measured materials; anything else falls back to the default and should
+# be print-checked (or passed explicitly via `clearance=`).
+_MATERIAL_CLEARANCE = {
+    "PETG-GF": 0.1,
+}
+_DEFAULT_CLEARANCE = 0.15
+
+
+class PrintSpec:
+    """How one half of a joint prints: `nozzle` (mm), `material` (a key into the
+    clearance table, or None), and `facing` — 'up' (the part prints -Z→+Z) or
+    'side' (prints -Y→+Y, on its side)."""
+    __slots__ = ("nozzle", "material", "facing")
+
+    def __init__(self, nozzle=0.8, material=None, facing="up"):
+        if facing not in ("up", "side"):
+            raise ValueError("facing must be 'up' or 'side', got %r" % (facing,))
+        if nozzle <= 0:
+            raise ValueError("nozzle must be > 0")
+        self.nozzle, self.material, self.facing = nozzle, material, facing
+
+
+def _clearance_for(tenon, mortise, override):
+    if override is not None:
+        return override
+    found = [_MATERIAL_CLEARANCE[s.material] for s in (tenon, mortise)
+             if s.material in _MATERIAL_CLEARANCE]
+    return max(found) if found else _DEFAULT_CLEARANCE
+
+
+class _SlideJoint:
+    """Result of `slide_joint`: call `.tenon(root=…)` / `.mortise(drop=…)` for the two
+    solids. Attributes: `.family` ('octagon'|'arrow'), `.height` (how deep the
+    mortise host must be), `.width_min` (the printable floor), `.clearance`, and
+    `.nozzle` (the coarser of the two halves)."""
+    def __init__(self, width, length, tenon, mortise, clearance):
+        self.width, self.length, self.clearance = width, length, clearance
+        self.nozzle = max(tenon.nozzle, mortise.nozzle)   # coarser drives the min feature
+        kind = (tenon.facing, mortise.facing)
+        if kind == ("up", "up"):
+            self.family = "octagon"
+        elif kind == ("side", "up"):
+            self.family = "arrow"
+        else:
+            raise NotImplementedError(
+                "no joint for tenon '%s' + mortise '%s' yet (have up+up, side+up) — "
+                "add the variant the way threads.py grew" % kind)
+        self.height = (octagon_height if self.family == "octagon" else arrow_height)(
+            self.width, self.nozzle, self.clearance)
+        self.width_min = (octagon_width_min if self.family == "octagon"
+                          else arrow_width_min)(self.nozzle)
+
+    def tenon(self, root=1.0):
+        f = octagon_tenon if self.family == "octagon" else arrow_tenon
+        return f(self.width, self.length, self.nozzle, self.clearance, root)
+
+    def mortise(self, drop=2.0):
+        f = octagon_mortise if self.family == "octagon" else arrow_mortise
+        return f(self.width, self.length, self.nozzle, self.clearance, drop)
+
+
+def slide_joint(width, length, tenon, mortise, clearance=None):
+    """Build a printable slide joint sized to the room (`width`, `length`) and the
+    way each half prints (`tenon`, `mortise`: PrintSpec). Facings pick the shape;
+    material picks the clearance (override with `clearance=`). Returns a _SlideJoint
+    with `.tenon(root)` / `.mortise(drop)`."""
+    return _SlideJoint(width, length, tenon, mortise,
+                       _clearance_for(tenon, mortise, clearance))
+
+
 # ── Self-test: geometry gates (run `py -3.12 joinery.py`) ────────────────────
 if __name__ == "__main__":
     import sys
 
-    # neck = STEMH - CLR must clear the 0.8 floor (the library enforces it)
-    STEM, HEAD, STEMH, TIP, CLR = 4.0, 7.0, 1.1, _TIP_W, 0.3
+    CLR = 0.1
     fails = []
 
     def vol(a, b):
@@ -292,43 +392,40 @@ if __name__ == "__main__":
         except Exception:
             return 0.0
 
-    for name, ramp, hook in (("symmetric", False, None), ("ramp", True, None),
-                             ("ramp+hook", True, 1.0)):
-        # tenon fixed at x 6.3..18.3; cavity open through the host's -x face,
-        # stop wall at x = 18.6 (0.3 x-gap at the seat). The HOST moves, like
-        # the real mortise part: install slide is -x, uninstall is +x.
-        ten = arrow_tenon(STEM, HEAD, STEMH, 12, ramp=ramp, hook_h=hook).translate((6.3, 0, 0))
-        host = (cq.Workplane("XY").box(26, 24, 7, centered=(False, True, False))
-                .cut(arrow_mortise(STEM, HEAD, STEMH, 22.6, ramp=ramp, clearance=CLR,
-                                   hook_h=hook)
-                     .translate((-4, 0, 0))))
-        n = len(ten.val().Solids())
-        if n != 1:
-            fails.append(f"{name}: tenon is {n} solids")
-        d45 = (CLR + 0.3) / 2 ** 0.5
-        checks = [
-            ("seated",                   (0, 0, 0),            "=0"),
-            ("+x free (uninstall dir)",  (2, 0, 0),            "=0"),
-            ("-x stop (install ends)",   (-0.5, 0, 0),         ">0"),
-            ("+z lift locked",           (0, 0, CLR + 0.3),    ">0"),
-            ("+y locked",                (0, CLR + 0.3, 0),    ">0"),
-            ("-y locked",                (0, -(CLR + 0.3), 0), ">0"),
-        ]
-        if hook is not None:
-            # the hook's whole reason: an all-45° profile is PARALLEL to the
-            # up-ramp diagonal and cams out along it (print-test finding)
-            checks.append(("diag +y+z locked (the hook's job)", (0, d45, d45), ">0"))
-        print(f"-- {name} --")
-        for label, d, expect in checks:
-            v = vol(host.translate(d), ten)
-            ok = (v == 0.0) if expect == "=0" else (v > 0.0)
-            print(f"  {label:<34} {v:>9.3f} mm3 (must be {expect}){'' if ok else '  <-- FAIL'}")
-            if not ok:
-                fails.append(f"{name}: {label} = {v:.3f}")
-        if name == "ramp":
-            # document the degeneracy, don't fail it: plain ramp+45 CANNOT block this
-            v = vol(host.translate((0, d45, d45)), ten)
-            print(f"  (known degeneracy: diag +y+z {v:>9.3f} mm3 — use hook_h to lock it)")
+    # ── ramp+hook dovetail (width-based): tenon prints -Y→+Y, mortise -Z→+Z ──
+    print("-- arrow (ramp+hook) --")
+    AW = 5.6                                      # width; barb/neck = 1.6/3.2 at nozzle 0.8
+    ten = arrow_tenon(AW, 12, clearance=CLR).translate((6.3, 0, 0))    # x 6.3..18.3
+    host = (cq.Workplane("XY").box(26, 24, 8, centered=(False, True, False))
+            .cut(arrow_mortise(AW, 22.6, clearance=CLR).translate((-4, 0, 0))))  # stop at +x
+    n = len(ten.val().Solids())
+    if n != 1:
+        fails.append(f"arrow: tenon is {n} solids")
+    g = CLR + 0.3
+    d45 = g / 2 ** 0.5
+    achecks = [
+        ("seated",                   (0, 0, 0),   "=0"),
+        ("+x free (uninstall dir)",  (2, 0, 0),   "=0"),
+        ("-x stop (install ends)",   (-0.5, 0, 0), ">0"),
+        ("+z lift locked",           (0, 0, g),   ">0"),
+        ("+y locked",                (0, g, 0),   ">0"),
+        ("-y locked",                (0, -g, 0),  ">0"),
+        ("diag +y+z locked (the hook's job)", (0, d45, d45), ">0"),
+    ]
+    for label, d, expect in achecks:
+        v = vol(host.translate(d), ten)
+        ok = (v == 0.0) if expect == "=0" else (v > 0.0)
+        print(f"  {label:<34} {v:>9.3f} mm3 (must be {expect}){'' if ok else '  <-- FAIL'}")
+        if not ok:
+            fails.append(f"arrow: {label} = {v:.3f}")
+    # bridge cap on the MORTISE = one nozzle (measured off the cutter's top face)
+    am = arrow_mortise(AW, 6, clearance=CLR)
+    atop = max(am.val().Faces(), key=lambda f: f.Center().z)
+    arw = atop.BoundingBox().ylen
+    ok = abs(arw - 0.8) < 1e-3
+    print(f"  mortise bridge   {arw:.3f} mm (must be = nozzle 0.8){'' if ok else '  <-- FAIL'}")
+    if not ok:
+        fails.append(f"arrow: mortise bridge {arw:.3f} != 0.8")
 
     # ── octagon ("stop-sign") joint: both hosts print -Z→+Z ──
     print("-- octagon --")
@@ -399,6 +496,37 @@ if __name__ == "__main__":
         print("  width floor           did NOT raise  <-- FAIL")
     except ValueError:
         print(f"  width floor           raises below {wmin:.2f} mm (ok)")
+
+    # ── unified slide_joint dispatch ──
+    print("-- slide_joint --")
+    up = PrintSpec(nozzle=0.8, material="PETG-GF", facing="up")
+    side = PrintSpec(nozzle=0.8, material="PETG-GF", facing="side")
+    cases = [
+        ("up+up -> octagon", up, up, octagon_tenon(6.0, 12, 0.8, 0.1).val().Volume()),
+        ("side+up -> arrow", side, up, arrow_tenon(5.6, 12, 0.8, 0.1).val().Volume()),
+    ]
+    for label, tspec, mspec, want_vol in cases:
+        w = 6.0 if tspec.facing == "up" else 5.6
+        j = slide_joint(w, 12, tenon=tspec, mortise=mspec)
+        got = j.tenon().val().Volume()
+        ok = abs(got - want_vol) < 1e-3 and j.clearance == 0.1
+        print(f"  {label:<20} clr={j.clearance} vol={got:.1f}{'' if ok else '  <-- FAIL'}")
+        if not ok:
+            fails.append(f"slide_joint: {label} vol {got:.1f}/{want_vol:.1f} clr {j.clearance}")
+    # material default + override
+    unknown = PrintSpec(material="MysteryPLA")
+    ok = (slide_joint(6, 12, unknown, unknown).clearance == _DEFAULT_CLEARANCE and
+          slide_joint(6, 12, up, up, clearance=0.22).clearance == 0.22)
+    print(f"  clearance default/override {'ok' if ok else 'FAIL'}")
+    if not ok:
+        fails.append("slide_joint: clearance default/override")
+    # unsupported facing combo raises
+    try:
+        slide_joint(6, 12, up, side)          # tenon up, mortise side — not modelled
+        fails.append("slide_joint: unsupported combo did not raise")
+        print("  unsupported combo     did NOT raise  <-- FAIL")
+    except NotImplementedError:
+        print("  unsupported combo     raises (ok)")
 
     if fails:
         print("FAIL:", *fails, sep="\n  ")
