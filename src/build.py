@@ -638,7 +638,7 @@ def _joint_coupon_components():
     of every real part) so they rebuild with the model and can't drift from the
     cadkit geometry. Shown side by side in Y, unmated."""
     from . import joint_coupon as JC
-    dy = JC.SPAN + 20.0
+    dy = JC.WIDTH + 20.0
     ten = JC.tenon_coupon().translate((150.0, -dy, 40.0))
     mor = JC.mortise_coupon().translate((150.0, dy, 40.0))
     return [("test_octagon_tenon_coupon", ten), ("test_octagon_mortise_coupon", mor)]
