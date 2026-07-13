@@ -62,7 +62,7 @@
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.setSize(innerWidth, innerHeight);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.05;
+  renderer.toneMappingExposure = 0.85;
   view.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
@@ -78,8 +78,8 @@
   // Even lighting: image-based ambient from the room environment (set above) plus
   // a hemisphere, a flat ambient fill, and directional fills from several angles
   // so nothing occluded from one light falls to black.
-  scene.add(new THREE.HemisphereLight(0xdfe6f0, 0x2a2e36, 1.1));
-  scene.add(new THREE.AmbientLight(0xffffff, 0.35));
+  scene.add(new THREE.HemisphereLight(0xdfe6f0, 0x2a2e36, 0.85));
+  scene.add(new THREE.AmbientLight(0xffffff, 0.2));
   for (const [x, y, z, intensity] of [
       [ 3,  4,  2, 0.85], [-3,  2, -2, 0.5], [ 2, 1, -3, 0.4],
       [-2,  3,  3, 0.4 ], [ 0, -3,  0, 0.3]]) {   // last = up-fill from below
