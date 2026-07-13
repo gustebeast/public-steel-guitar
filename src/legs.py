@@ -695,11 +695,15 @@ STUB_H = 48.0                  # stub protrusion below the body bottom =
 STUB_TEN_L = 29.6              # octagon wall-tenon height (mortises are
                                # 30 — the stub's top face butting the
                                # body bottom is the seat, not the tip)
-STUB_TEN_X = 14.0              # tenon centres at local x ±14: each lands
-                               # fully in ONE chassis host (kept shell /
-                               # true rail) at all four corners; the
-                               # INBOARD one is always rail-hosted and
-                               # takes the M4
+STUB_TEN_X = 7.0               # tenon centres at local x ±7 (FLUSH-X):
+                               # both land in CHASSIS material (kept
+                               # shell / rail — they abut seamlessly) at
+                               # all four corners, inside the endplates'
+                               # end-joint dovetails (which own the
+                               # outboard ±16 band); the INBOARD one
+                               # takes the M4. The +X inboard mortise
+                               # crosses the 0.5 rail-end clearance slit
+                               # (harmless internal interruption).
 STUB_TEN_W = 8.0               # octagon width (flat-to-flat): height
                                # 7.24 nests in the 10 rail wall with
                                # ~1.3 skins each side

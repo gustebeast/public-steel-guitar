@@ -24,10 +24,11 @@ detent nub in the bar top clicks into lid B's underside dimple, setting
 the position and locking the stack (B butts A). The wired tower's cable
 enters from the trough through a Ø8 side way and rises to the plug seat.
 
-SEGMENTED FOR THE 255×255 BED: two bar pieces (vertical slide-in
-dovetail tenons + glue at XS, mid-trough; ~315/311 at 44 wide — diagonal
-placement, (L+W)/√2 ≤ 255) and two lid pieces (butt splice at XL,
-staggered 50 so each lid piece BRIDGES the glued bar joint).
+SEGMENTED FOR THE 255×255 BED: FLUSH-X grew the bar to the full
+instrument span (644.8) — THREE ~215 pieces now, each printing STRAIGHT
+(vertical slide-in dovetail tenons + glue at XS1/XS2, mid-trough), and
+two ~278 lid pieces (butt splice at XL, mid-span, so each lid piece
+BRIDGES one glued bar joint).
 
 FRAME: modelled at ABSOLUTE X/Y (the legs' real stations, +Y rail); Z is
 local with 0 = the plate bottom (build.py translates by ground + FOOT_H).
@@ -74,16 +75,17 @@ PEDAL_ASSEMBLY_Z_HEIGHT = 75.0
 LID_Z0 = 15.0
 FOOT_PAD = 12.0
 
-# ── SEGMENTATION (255×255 bed, pieces placed on the DIAGONAL:
-#    (L + W)/√2 ≤ 255) + the full-length sliding-DOVETAIL lid ────────────
+# ── SEGMENTATION (255×255 bed) + the full-length sliding-DOVETAIL lid ──
 # everything here DERIVES from the leg stations (they are chassis-owned and
-# have moved before — never hardcode absolutes against them)
-XS = (LATCHES[0][0] + LATCHES[1][0]) / 2   # bar splice (mid-trough): 315/311
-                   # per piece at 44 wide → ≤254 diagonal footprint. Joined
-                   # by vertical slide-in dovetail tenons + glue (the
-                   # chassis-segment pattern).
-XL = XS - 50.0     # lid butt-splice, STAGGERED 50 from XS so each lid piece
-                   # bridges the glued bar joint (the lid is structure)
+# have moved before — never hardcode absolutes against them).
+# FLUSH-X: the bar spans the WHOLE instrument (644.8) — past any two-piece
+# diagonal — so THREE ~215 pieces, each printing STRAIGHT, joined by
+# vertical slide-in dovetail tenons + glue (the chassis-segment pattern).
+XS1 = BAR_X0 + 215.0   # -X splice (mid-trough)
+XS2 = BAR_X1 - 215.0   # +X splice (mid-trough)
+XL = (LATCHES[0][0] + LATCHES[1][0]) / 2   # lid butt-splice: mid-span,
+                   # ~107 from each bar splice so each lid piece BRIDGES
+                   # one glued bar joint (the lid is structure)
 LID_XA = LATCHES[1][0] + 22.4      # lid span: between the FUSED stub
 LID_XB = LATCHES[0][0] - 22.4      # towers (44-sq, printed with the bar)
 TROUGH_X0 = LATCHES[1][0] + 22.6   # wiring trough: runs right up to the
@@ -167,37 +169,48 @@ def _bar_full() -> cq.Workplane:
     return body
 
 
-def _splice_prisms(grow: float) -> cq.Workplane:
-    """The two vertical slide-in dovetail tenons at the bar splice (plan-view
-    trapezoids on the front/back trough walls, z 0..15 so the lid groove
-    stays untouched). grow=0 → piece A's tenons; grow>0 → piece B's slots."""
+def _splice_prisms(xs: float, grow: float) -> cq.Workplane:
+    """The two vertical slide-in dovetail tenons at bar splice `xs`
+    (plan-view trapezoids on the front/back trough walls, z 0..15 so the
+    lid groove stays untouched). grow=0 → the -X piece's tenons; grow>0
+    → the +X piece's slots."""
     out = None
     for y0, y1 in ((-14.5, -11.5), (9.25, 12.25)):      # tenon roots
         p = (cq.Workplane("XY")
-             .polyline([(XS - grow * 4, y0 + YC - grow),
-                        (XS + 4.0 + grow, y0 - 0.7 + YC - grow),
-                        (XS + 4.0 + grow, y1 + 0.7 + YC + grow),
-                        (XS - grow * 4, y1 + YC + grow)])
+             .polyline([(xs - grow * 4, y0 + YC - grow),
+                        (xs + 4.0 + grow, y0 - 0.7 + YC - grow),
+                        (xs + 4.0 + grow, y1 + 0.7 + YC + grow),
+                        (xs - grow * 4, y1 + YC + grow)])
              .close().extrude(15.0 + grow))
         out = p if out is None else out.union(p)
     return out
 
 
+def _clip(x0: float, x1: float) -> cq.Workplane:
+    return box_at(x1 - x0, 80.0, 120.0, x=(x0 + x1) / 2, y=YC, z=40.0)
+
+
 def pedal_bar_a() -> cq.Workplane:
-    """-X bar piece (TRRS tower): full bar clipped at the splice + the two
-    dovetail tenons (slide piece B down onto them, glue). 315 long × 44 —
-    fits the 255² bed on the diagonal ((315+44)/√2 = 254)."""
-    half = box_at(XS - (BAR_X0 - 1), 80.0, 120.0,
-                  x=(BAR_X0 - 1 + XS) / 2, y=YC, z=40.0)
-    return _bar_full().intersect(half).union(_splice_prisms(0.0))
+    """-X bar piece (WIRED TRRS tower): full bar clipped at XS1 + its two
+    dovetail tenons (slide piece B down onto them, glue). ~219 long —
+    prints STRAIGHT."""
+    return (_bar_full().intersect(_clip(BAR_X0 - 1.0, XS1))
+            .union(_splice_prisms(XS1, 0.0)))
 
 
 def pedal_bar_b() -> cq.Workplane:
-    """+X bar piece (plain tower): clipped at the splice − the tenon slots
-    (0.2 fit). 311 long × 44 — diagonal print."""
-    half = box_at((BAR_X1 + 1) - XS, 80.0, 120.0,
-                  x=(XS + BAR_X1 + 1) / 2, y=YC, z=40.0)
-    return _bar_full().intersect(half).cut(_splice_prisms(0.2))
+    """MID bar piece (trough only): clipped XS1..XS2 − XS1 slots (0.2
+    fit) + XS2 tenons. ~219 long — straight print."""
+    return (_bar_full().intersect(_clip(XS1, XS2))
+            .cut(_splice_prisms(XS1, 0.2))
+            .union(_splice_prisms(XS2, 0.0)))
+
+
+def pedal_bar_c() -> cq.Workplane:
+    """+X bar piece (plain tower): clipped at XS2 − the tenon slots (0.2
+    fit). ~215 long — straight print."""
+    return (_bar_full().intersect(_clip(XS2, BAR_X1 + 1.0))
+            .cut(_splice_prisms(XS2, 0.2)))
 
 
 def _lid_full() -> cq.Workplane:
@@ -222,20 +235,16 @@ def _lid_full() -> cq.Workplane:
 
 
 def pedal_lid_a() -> cq.Workplane:
-    """-X lid piece (covers the TRRS latch; 241.4 — prints straight)."""
-    half = box_at(XL - (LID_XA - 1), 80.0, 120.0,
-                  x=(LID_XA - 1 + XL) / 2, y=YC, z=40.0)
-    return _lid_full().intersect(half)
+    """-X lid piece (~278 — diagonal print; bridges bar splice XS1)."""
+    return _lid_full().intersect(_clip(LID_XA - 1.0, XL))
 
 
 def pedal_lid_b() -> cq.Workplane:
-    """+X lid piece (covers the plain latch + carries the lock dimple;
-    321.6 — diagonal print). Slides in last: its lock dimple clicks onto
-    the bar-top nub, pinning BOTH lid pieces (B butts A, A butts nothing —
+    """+X lid piece (~278 — diagonal print; bridges bar splice XS2 +
+    carries the lock dimple). Slides in last: its dimple clicks onto the
+    bar-top nub, pinning BOTH lid pieces (B butts A, A butts nothing —
     the stack is set by the nub)."""
-    half = box_at((LID_XB + 1) - XL, 80.0, 120.0,
-                  x=(XL + LID_XB + 1) / 2, y=YC, z=40.0)
-    return _lid_full().intersect(half)
+    return _lid_full().intersect(_clip(XL, LID_XB + 1.0))
 
 
 def _lock_nub() -> cq.Workplane:
@@ -273,6 +282,7 @@ def assembly_parts():
     leg stacks)."""
     return [("pedal_bar_a", pedal_bar_a()),
             ("pedal_bar_b", pedal_bar_b()),
+            ("pedal_bar_c", pedal_bar_c()),
             ("pedal_lid_a", pedal_lid_a()),
             ("pedal_lid_b", pedal_lid_b()),
             ("pedal_detent_nub_0", _lock_nub()),
