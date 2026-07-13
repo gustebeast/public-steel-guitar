@@ -247,36 +247,32 @@ def _build() -> cq.Workplane:
     # pull (-X); the low band leaves the cap free to drop to z6.
     for yr in CH.ENDPLATE_JOINT_Y:
         body = body.cut(CH._br_tongue(yr, socket=True))
-    # LEG-STUB endplate mortises (user: the stubs must join the ENDPLATES,
-    # not just the side panels): each +X corner stub raises TWO more octagon
-    # tenons into this end wall -- stem plane x = station + 13.4 (= 0.0; same
-    # nesting as the rail band). The whole band (z -76.15..-46.15) sits UNDER
-    # the guide windows (GR_LTOP -38), so the +Y pair (leg+6/-7) is free; on
-    # the -Y (jack) leg the strip mortise (leg-6) rides between the panel
-    # recess and the shell foot pocket, and the inboard one (leg+7) is SHORT
-    # (24) so its ceiling stays 1.15 under the recess floor. Entry 1 below bed.
-    from .legs import ep_mortise as _epm
-    _stn0 = CH.LEG_STATIONS_X[0]
-    for _yc, _ln in ((CH.LEG_Y[0] + 6.0, 30.0), (CH.LEG_Y[0] - 7.0, 30.0),
-                     (CH.LEG_Y[1] - 6.0, 30.0), (CH.LEG_Y[1] + 7.0, 24.0)):
-        body = body.cut(_epm(1.0, _ln).translate((_stn0 + 13.4, _yc,
-                                                  CH.Z_BOT - 1.0)))
+    # LEG-STUB grooves (Y-INSTALL round — user: the stubs print on their
+    # side and SLIDE IN ALONG Y): cut this end's corner negatives from the
+    # SAME shared source the chassis uses (legs.corner_groove_negatives),
+    # so the end-wall groove continues seamlessly across the kept-shell /
+    # endplate boundary at the rail bands. The bridge hosts the 44-long
+    # END-WALL groove at x 3.6 (wall centreline; blind inboard end = the
+    # flush hard stop) — its band (bed..bed+7.34) sits far below the jack
+    # recess floor (-55) and the guide windows.
+    from .legs import corner_groove_negatives as _cgn
+    for _ly, _s in ((CH.LEG_Y[0], 1.0), (CH.LEG_Y[1], -1.0)):
+        for _n in _cgn(CH.LEG_STATIONS_X[0], _ly, _s, 1.0, False,
+                       CH.Z_BOT):
+            body = body.cut(_n)
     # PANEL I/O (the instrument's right face): the base's +X end wall is CH.T (10)
     # thick -- too deep for the jacks (their bodies span x -16..6) -- so RECESS its
     # interior back to a 4 mm panel at the -Y jack corner (the wall face at
     # JACK_WALL_X..XHI stays; the bodies seat through the recess into the hollow
-    # foot interior). Recess band z (JACK_Z-10)..FOOT_Z, y -117..-57 -- SHRUNK from
-    # (JACK_Z-14) / -119..-57 so the -Y leg stub's endplate mortises stay CLOSED:
-    # the strip mortise clears its south edge by 1.65 and the SHORT inboard
-    # mortise's ceiling (-52.15) stays 1.15 under its floor (-51). The deepest
-    # jack body (TS Ø15 on the -41 line) only needs -48.5; the USB flange
-    # (y -93..-115) keeps 2.0 to the south edge.
+    # foot interior). Recess band z (JACK_Z-14)..FOOT_Z, inside the hollow's Y span
+    # (the Y-INSTALL leg grooves top out at bed+7.34, 12.7 below the recess floor,
+    # so the recess is back at its full pre-EP-tenon size).
     # Then the three jack holes - 1/4" TS line out, DC power inlet, USB-C (audio-interface
     # port). Printed flat, so the panel + holes are vertical in the print - no supports.
     from .electronics import TS_Y, DC_Y, USB_Y, JACK_Z, JACK_WALL_X
-    body = body.cut(box_at(JACK_WALL_X - (XLO - 1.0), 60.0, FOOT_Z - (JACK_Z - 10.0),
-                           x=((XLO - 1.0) + JACK_WALL_X) / 2, y=-87.0,
-                           z=(FOOT_Z + (JACK_Z - 10.0)) / 2))
+    body = body.cut(box_at(JACK_WALL_X - (XLO - 1.0), 62.0, FOOT_Z - (JACK_Z - 14.0),
+                           x=((XLO - 1.0) + JACK_WALL_X) / 2, y=-88.0,
+                           z=(FOOT_Z + (JACK_Z - 14.0)) / 2))
     for jy, jd in ((TS_Y, 11.8), (DC_Y, 6.2)):   # Ø11.4 TS bushing, Ø5.7 DC thread
         body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
             jd / 2, 6.0, cq.Vector(JACK_WALL_X - 1.0, jy, JACK_Z),
