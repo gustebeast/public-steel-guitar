@@ -388,7 +388,7 @@ WIRE_OK = {
     "wire_usb":       {"usbc_jack", "pi5"},
     "wire_link":      {"teensy_stack", "pi5"},
     "wire_canjmp":    {"teensy_stack", "teensy_ifc"},
-    "wire_tdm":       {"cs_stack", "pi5"},
+    "wire_tdm":       {"adc_stack", "pi5"},
     "wire_oled":      {"oled", "teensy_stack"},
     "wire_joy":       {"joystick", "teensy_stack"},
 }

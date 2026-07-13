@@ -6,11 +6,11 @@ the strings, above the open floor):
 
   - Raspberry Pi 5            (pro: 10ch audio->MIDI + Dexed + USB audio)
   - Teensy 4.1 + audio shield (basic+pro: sensors, CAN servo loop, UI, USB)
-  - 2x CS42448 TDM ADC boards (pro: 10ch analog in; modeled stacked)
+  - multichannel TDM ADC stack (pro: 10ch analog in; modeled stacked)
   - buck converter            (24V -> 5V for Pi + Teensy)
   - CAN transceiver breakout  (SN65HVD230: Teensy logic <-> CAN-H/L bus)
 
-A BASIC build prints the SAME tray and just leaves the Pi/CS/buck mounts
+A BASIC build prints the SAME tray and just leaves the Pi/ADC/buck mounts
 empty - the sockets are the upgrade path.
 
 Mounting is tool-free and zero-hardware: each board sits on corner posts
@@ -57,7 +57,7 @@ PI_FP     = (-603.0, -547.0, -50.0, 35.0)     # Pi 5: 56 x 85 (long side on Y);
                                        # stay clear of y > 35 there; east is
                                        # walled by motor 0)
 TEENSY_FP = (-607.0, -589.0, -118.0, -57.0)    # Teensy 4.1 + shield stack
-CS_FP     = (-585.0, -547.0, -90.0, -55.0)   # CS42448 x2, stacked
+ADC_FP     = (-585.0, -547.0, -90.0, -55.0)   # multichannel TDM ADC, stacked
 BUCK_FP   = (-585.0, -549.0, -118.0, -95.0)   # buck module, 20 x 40
 XCVR_FP   = (-570.0, -552.0, 39.0, 52.0)      # teensy_ifc (CAN transceivers):
                                        # moved to the tray's NORTH strip east of
@@ -183,7 +183,7 @@ def electronics_tray() -> cq.Workplane:
                                  y=ye + s * (TAB_T + 1.25) / 2 - s * 0.001,
                                  z=TRAY_Z0 + 3.0))
     for fp, bz in ((PI_FP, BOARD_Z), (TEENSY_FP, BOARD_Z + 1.0),
-                   (CS_FP, BOARD_Z), (BUCK_FP, BOARD_Z), (XCVR_FP, BOARD_Z)):
+                   (ADC_FP, BOARD_Z), (BUCK_FP, BOARD_Z), (XCVR_FP, BOARD_Z)):
         body = body.union(_posts_strips_fingers(fp, bz))
     # west-north CORNER BITE (FLUSH-LEG round): the wired leg's Ø13 jack
     # chimney rises through this corner of the tray plan, and its Ø3.8
@@ -228,14 +228,14 @@ def teensy_stack() -> cq.Workplane:
     return b
 
 
-def cs_stack() -> cq.Workplane:
-    """3x PCM1864 TDM ADC carrier (the pro 10-ch front end) + header."""
-    cx, cy = _ctr(CS_FP)
-    b = _board(CS_FP, BOARD_Z)
+def adc_stack() -> cq.Workplane:
+    """Multichannel TDM ADC carrier stack (the pro 10-ch analog front end) + header."""
+    cx, cy = _ctr(ADC_FP)
+    b = _board(ADC_FP, BOARD_Z)
     for px in range(3):
-        b = b.union(box_at(9.0, 9.0, 1.3, x=CS_FP[0] + 8 + px * 13,
+        b = b.union(box_at(9.0, 9.0, 1.3, x=ADC_FP[0] + 8 + px * 13,
                            y=cy, z=BOARD_Z + BD_T + 0.65))
-    b = b.union(box_at(CS_FP[1] - CS_FP[0] - 8, 4.0, 7.0, x=cx, y=CS_FP[2] + 3.0,
+    b = b.union(box_at(ADC_FP[1] - ADC_FP[0] - 8, 4.0, 7.0, x=cx, y=ADC_FP[2] + 3.0,
                        z=BOARD_Z + BD_T + 3.5))
     return b
 
