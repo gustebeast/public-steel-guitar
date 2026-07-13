@@ -196,7 +196,9 @@
 
     new GLTFLoader().load('assembly.glb?v=' + rig.build, gltf => {
       const root = gltf.scene;
-      root.traverse(o => { if (o.name) nodes[o.name] = o; });
+      // index by name, OUTERMOST wins (GLTFLoader can repeat a name on the inner
+      // mesh primitive; we want the top node so pivots apply to the whole part)
+      root.traverse(o => { if (o.name && !(o.name in nodes)) nodes[o.name] = o; });
       scene.add(root);
       frame(root);
       document.getElementById('loading').style.opacity = '0';
