@@ -344,31 +344,31 @@ def _build_full() -> cq.Workplane:
             _stem = _lc + _s * 13.4                 # tenon stem plane (the
             #                                         octagon nests in the 10
             #                                         wall, ~1.3 skins/side)
-            for _tx in (-14.0, 14.0):
+            # FLUSH-X: tenons at station ±7 — both in chassis (the kept
+            # shell and the rail abut seamlessly); the endplates' own
+            # end-joint dovetails occupy the outboard ±16 band
+            for _tx in (-7.0, 7.0):
                 _m = _wm()
                 if _s > 0:                          # roof points outboard
                     _m = _m.rotate((0, 0, 0), (0, 0, 1), 180)
-                body = body.cut(_m.translate((_sx + _tx, _stem, Z_BOT - 1.0)))
+                body = body.cut(_m.translate((_sx + _tx, _stem,
+                                              Z_BOT - 1.0)))
             body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-                2.3, 48.0, cq.Vector(_sx + _ib * 14.0, _yr, Z_BOT + 27.5),
+                2.3, 48.0, cq.Vector(_sx + _ib * 7.0, _yr, Z_BOT + 27.5),
                 cq.Vector(0, 0, 1))))
             body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-                4.2, 5.0, cq.Vector(_sx + _ib * 14.0, _yr,
+                4.2, 5.0, cq.Vector(_sx + _ib * 7.0, _yr,
                                     TP_GZ0 - TP_TG_DEPTH - 5.1),
                 cq.Vector(0, 0, 1))))
-    # WIRED corner (-X/+Y): the stub's Ø13 jack CHIMNEY rises beside the
-    # keyhead seat rib — clear a Ø16 way for it, and open a Ø7 harness
-    # window through the station rib for the jack's Ø3.8 factory cable
-    # (too fat for the knee-mortise / raceway crossings every other wire
-    # uses) on its way to the bus-B socket tee.
+    # WIRED corner (-X/+Y): the stub's Ø13 jack CHIMNEY now rises inside
+    # the KEYHEAD's hollow foot corner (flush-X moved it west of all
+    # chassis material). Its Ø3.8 factory pigtail drops beside it (y 33)
+    # and runs east at z -70.6 — one Ø7 harness window through the
+    # keyhead seat rib AND the station rib carries it to the bus-B tee
+    # (the cable is too fat for the knee-mortise / raceway crossings).
     body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        8.0, 39.0, cq.Vector(LEG_STATIONS_X[1] - 5.0, LEG_Y[0], Z_BOT - 1.0),
-        cq.Vector(0, 0, 1))))
-    body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        3.5, 27.0, cq.Vector(LEG_STATIONS_X[1] - 10.7, 33.0, -70.6),
-        cq.Vector(1, 0, 0))))   # harness window at y 33 (SOUTH of the
-    #                             chimney): one Ø7 bore through the keyhead
-    #                             seat rib AND the station rib to the tee bay
+        3.5, 36.0, cq.Vector(LEG_STATIONS_X[1] - 7.0, 33.0, -70.6),
+        cq.Vector(1, 0, 0))))
     return body
 
 
@@ -397,13 +397,20 @@ EP_TIP_PX = D.BRIDGE_BASE_X1              # bridge +X outer tip (8.5) -- the ACT
                                           # so the leg/shell/wall track it (10 mm wall preserved)
 
 
+LEG_W = 44.0                  # = legs.SQ_W (legs.py owns the part; the chassis
+                              # owns the placement)
+
+
 def _leg_geom(tip, sign):
     """All inboard from one endplate's outer face `tip`. `sign` = the direction from
     the tip toward the instrument body (+1 for the -X/keyhead end, -1 for the +X/
-    bridge end). Returns (pocket_edge, shell_edge, station) for that leg."""
+    bridge end). Returns (pocket_edge, shell_edge, station) for that leg.
+    FLUSH-X round (user): the station sits LEG_W/2 inboard of the tip, so the
+    leg's outer X face lies ON the endplate's outer face (the old formula kept
+    a dovetail-era buffer that inset the legs 12.4)."""
     pocket = tip + sign * T
     shell = pocket + sign * EP_LEG_CLR
-    station = shell + sign * (EP_LEG_BUFFER + DT_FACE_HW)   # BUFFER of solid body from the shell face
+    station = tip + sign * LEG_W / 2
     return pocket, shell, station
 
 
@@ -412,14 +419,12 @@ _PKT_PX, _SHELL_PX, _STN_PX = _leg_geom(EP_TIP_PX, -1)    # +X end → body is -
 # the kept shell spans from its pinned outer edge to the rail-takeover join line:
 LEG_SHELL_NX = (_SHELL_NX, KH_RAIL_X)       # -X leg: -625.6 .. -610.6 (reaches the rail end)
 LEG_SHELL_PX = (TP_EP_GX, _SHELL_PX)        # +X leg: -17.5 .. 5.6
-# leg stations: (+X leg, -X leg) — each set so its tenon leaves EP_LEG_BUFFER of body:
-LEG_STATIONS_X = (_STN_PX, _STN_NX)         # (-18.4, -601.6)
+# leg stations: (+X leg, -X leg) — outer faces ON the endplate tips (flush X):
+LEG_STATIONS_X = (_STN_PX, _STN_NX)         # (-13.4, -614.2)
 # FLUSH-LEG round (user): the 44-sq legs sit FLUSH with the outer wall
 # planes instead of outset on the rail centrelines — centres 17 inboard
 # of the rails. Everything leg-shaped (stubs, columns, pedal bar rail)
 # derives its Y from here.
-LEG_W = 44.0                                # = legs.SQ_W (legs.py owns the part;
-                                            # the chassis owns the placement)
 LEG_Y = (Y_HI + T / 2 - LEG_W / 2,          # +Y legs: 42.75 (outer face 64.75)
          Y_LO - T / 2 + LEG_W / 2)          # -Y legs: -116.75
 

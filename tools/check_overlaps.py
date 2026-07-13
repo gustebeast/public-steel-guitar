@@ -89,6 +89,10 @@ GLOBAL_OK = {
     # screw). Each part's contact with the piece is the top_plate rule below.
     frozenset({"pickup", "pickup_zplate"}), frozenset({"pickup", "pickup_xclamp"}),
     frozenset({"pickup_zplate", "height_screw"}),
+    # FLUSH-X: the body stubs' outboard wall tenons mortise the ENDPLATE
+    # side walls (the inboard ones mortise the rail/chassis)
+    frozenset({"leg_body_stub", "keyhead_endplate"}),
+    frozenset({"leg_body_stub", "bridge_endplate"}),
     # the electronics tray's snap nubs/fingers bite their boards by design
     frozenset({"electronics_tray", "pi5"}),
     frozenset({"electronics_tray", "teensy_ifc"}),
@@ -115,8 +119,8 @@ GLOBAL_OK = {
     # pedal bar: the C-slots wrap the shaft waists (0.2 clr, touch at the
     # shoulder plane), the plate rests on the foot caps, and the closed
     # bolts (one latch per foot) block the waists
-    frozenset({"pedal_bar_a", "leg_shaft"}), frozenset({"pedal_bar_a", "leg_foot"}),
-    frozenset({"pedal_bar_b", "leg_shaft"}), frozenset({"pedal_bar_b", "leg_foot"}),
+    frozenset({"pedal_bar_a", "leg_shaft"}),
+    frozenset({"pedal_bar_c", "leg_shaft"}),
     frozenset({"pedal_bolt", "leg_shaft"}), frozenset({"pedal_bolt_trrs", "leg_shaft"}),
     # TRRS: the female jack embeds in the -X/+Y shaft (leg_shaft_2 is the
     # leg_shaft_trrs variant); the slider-carried plug reaches into it
@@ -139,15 +143,13 @@ GLOBAL_OK = {
     # shaft's block seats the stub plate, the latch bolt bears its ledge,
     # the second TRRS pair mates inside, the stub takes a leg foot
     frozenset({"leg_foot", "pedal_bar_a"}),
-    frozenset({"leg_foot", "pedal_bar_b"}),
+    frozenset({"leg_foot", "pedal_bar_c"}),
     frozenset({"leg_latch_bolt", "pedal_bar_a"}),
-    frozenset({"leg_latch_bolt", "pedal_bar_b"}),
+    frozenset({"leg_latch_bolt", "pedal_bar_c"}),
     frozenset({"leg_latch_btn", "pedal_bar_a"}),
-    frozenset({"leg_latch_btn", "pedal_bar_b"}),
+    frozenset({"leg_latch_btn", "pedal_bar_c"}),
     frozenset({"leg_column_plug", "pedal_bar_a"}),
-    frozenset({"leg_column_plug", "pedal_bar_b"}),
     frozenset({"leg_plug_retainer", "pedal_bar_a"}),
-    frozenset({"leg_plug_retainer", "pedal_bar_b"}),
     frozenset({"leg_latch_bolt", "leg_shaft"}),
     frozenset({"shaft_trrs_jack", "leg_shaft"}),
     frozenset({"shaft_trrs_jack", "leg_column_plug"}),
@@ -161,8 +163,8 @@ GLOBAL_OK = {
 # mirrored latch per foot): whitelist any pair WITHIN the family — a pedal
 # part clashing with a leg/chassis part (other than the GLOBAL_OK contacts
 # above) stays a reportable bug.
-PEDAL_FAMILY = {"pedal_bar_a", "pedal_bar_b", "pedal_lid_a", "pedal_lid_b",
-                "pedal_detent_nub",
+PEDAL_FAMILY = {"pedal_bar_a", "pedal_bar_b", "pedal_bar_c",
+                "pedal_lid_a", "pedal_lid_b", "pedal_detent_nub",
                 "pedal_trrs_cable_bar"}
 
 
