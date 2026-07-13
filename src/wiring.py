@@ -200,9 +200,12 @@ def build_wires():
         WIRE_OD["wire_pickup"])))
 
     # -- AFE relay common -> TS jack (l.gray, short, over the boss top; ends
-    #    off-axis in the jack's body wall, clear of the new socket bore)
+    #    off-axis in the jack's body wall, clear of the new socket bore).
+    #    Sag waypoints stay INBOARD of the end-wall inner face (x <= -3, in
+    #    the foot hollow): the panel-jack recess floor rose to -51 (EP-TENON
+    #    round), so the old x-0 dip would cross solid wall below it.
     out.append(("wire_out", _wire([
-        afe_relay_c, (0.0, -78.0, -52.0), (-4.5, -72.0, -54.0),
+        afe_relay_c, (-3.0, -78.0, -52.0), (-4.5, -72.0, -54.0),
         (-5.0, EL.TS_Y, EL.JACK_Z + 4.5)],
         WIRE_OD["wire_out"])))     # jack moved -X with the centred tip
 
