@@ -17,30 +17,49 @@ import pathlib
 
 import cadquery as cq
 
-from src.build import collect_components, _color_for
+from src.build import (collect_components, _color_for, _build_counter_model,
+                       _BUILD_COUNTER_FILE)
 
 REPO = pathlib.Path(__file__).resolve().parents[1]
 GLB = REPO / "docs" / "assembly.glb"
 
 
-def build_glb(components=None, out: pathlib.Path = GLB) -> pathlib.Path:
+def _current_build_n():
+    """The current build number WITHOUT bumping it (a preview export is not a
+    build). None if the counter file is missing/unreadable."""
+    try:
+        return int(_BUILD_COUNTER_FILE.read_text().strip())
+    except (OSError, ValueError):
+        return None
+
+
+def build_glb(components=None, out: pathlib.Path = GLB, build_n=None) -> pathlib.Path:
     """Write `out` (a web GLB) from `components` — the (name, workplane) list from
     collect_components(). Pass the list the caller already built to avoid rebuilding
-    all the geometry a second time; omit it to collect fresh. Returns the path.
+    all the geometry a second time; omit it to collect fresh. `build_n` stamps the
+    floating build-number label into the scene (same as assembly.step); omit it to
+    read the current counter without bumping. Returns the path.
 
     cadquery's GLTF exporter already converts CAD Z-up to glTF Y-up at the scene
     root, so we add NO rotation here (an explicit one double-rotates -> upside down)."""
     if components is None:
         components = collect_components()
+    if build_n is None:
+        build_n = _current_build_n()
     asm = cq.Assembly(name="public_steel_guitar")
     n = 0
     for name, wp in components:
         asm.add(wp, name=name, color=_color_for(name))
         n += 1
+    if build_n is not None:
+        counter = _build_counter_model(build_n)
+        if counter is not None:
+            asm.add(counter, name="build_counter", color=_color_for("build_counter"))
+            n += 1
     out.parent.mkdir(parents=True, exist_ok=True)
     asm.save(str(out), exportType="GLTF")
     mb = out.stat().st_size / 1e6
-    print(f"wrote {out.relative_to(REPO).as_posix()}  ({n} parts, {mb:.1f} MB)")
+    print(f"wrote {out.relative_to(REPO).as_posix()}  ({n} parts, {mb:.1f} MB, build #{build_n})")
     return out
 
 
