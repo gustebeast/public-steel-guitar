@@ -840,8 +840,10 @@ def _publish_web_preview(comps, build_n):
     (so agent worktrees don't publish) — see tools/publish_preview.py."""
     try:
         from tools.export_glb import build_glb
+        from tools.export_rig import build_rig
         from tools.publish_preview import push_gh_pages
         build_glb(comps, build_n=build_n)   # full instrument + the #build label
+        build_rig(build_n)                  # animation manifest (pivots + copedent)
         push_gh_pages(build_n)
     except Exception as e:               # noqa: BLE001 — never let publishing break a build
         print(f"web preview: publish skipped ({type(e).__name__}: {e})", flush=True)
