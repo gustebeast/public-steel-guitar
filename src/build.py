@@ -241,8 +241,9 @@ def _build_counter_model(n: int):
 
 
 # DEMO POSE: per-string carriage offset from nominal (0 = top of travel, the
-# default). Strings 1, 2, 9 and 10 — both edge pairs; string N = index 10−N
-# (index 9 is string 1, the thinnest) — are kept PERMANENTLY at full
+# default). Strings 1, 2, 9 and 10 — both edge pairs; string N = index + 1
+# (string 1 = index 0 = thinnest/highest, the far edge; string 10 = index 9 =
+# thickest/lowest, nearest the player) — are kept PERMANENTLY at full
 # down-travel, feet on the bottom stop: the maximum stretch/tension the
 # mechanism can pull, so the travel extremes are always visible from either
 # side. Everything riding the carriage (string nut, brass nut, string anchor)
