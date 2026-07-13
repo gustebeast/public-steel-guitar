@@ -219,11 +219,13 @@ def _build_full() -> cq.Workplane:
     body = _rail(Y_HI).union(_rail(Y_LO))
     for x in _RIB_X:                                  # per-motor + bridge/nut cross-ribs (−Z)
         body = body.union(_rib(x))
-    # knee/pedal lever mounts: cut a christmas-tree mortise into EVERY rib (so a lever can mount in
+    # knee/pedal lever mounts: cut a christmas-tree mortise into each rib (so a lever can mount in
     # any bay -- its two tenons drop into the two ribs flanking the chosen bay). Even rib pitch -> the
     # one tenon fits all. (Retention is a set screw that presses the rib ledge -- no per-bay pilot.)
+    # SKIP the +X-most rib: the last (bridge-end) bay isn't a lever mount, so its
+    # +X-flank mortise is superfluous -- one too many at the +X end.
     from . import knee_lever as _KL
-    for _rx in _RIB_X:
+    for _rx in _RIB_X[:-1]:
         body = body.cut(_KL.rib_mortise(_rx))
     # (the pickup now mounts entirely in its deck cover piece — top_plate.py — so
     # the old rail bosses/grooves/X-lock stations that used to live here are gone)
