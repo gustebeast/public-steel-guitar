@@ -328,46 +328,46 @@ def _build_full() -> cq.Workplane:
     body = body.union(_leg_shell(LEG_STATIONS_X[1], *LEG_SHELL_NX))
     for _yc in (Y_HI, Y_LO):
         body = body.union(_kh_tongue(_yc))
-    # ── FLUSH-LEG BODY-STUB JOINERY (cut LAST — the shells above host two
-    # of the eight mortises). Each corner: a 44-sq body stub (legs.py)
-    # slides UP; its two octagon wall tenons (at station ±14, so each
-    # lands fully in ONE host — kept shell or true rail — at all four
-    # corners) enter closed vertical mortises in the wall band; the
-    # stub's top face butts the body bottom (Z_BOT) = the seat. ONE
-    # vertical M4 per stub drops down the rail web from under the deck
-    # (Ø4.6 access bore + Ø8.4 head counterbore below the deck-groove
-    # floor) into the INBOARD tenon's pilot: extraction retention only.
-    from .legs import wall_mortise as _wm
+    # ── Y-INSTALL BODY-STUB JOINERY (user: the stubs print on their side,
+    # so they SLIDE IN ALONG Y; cut LAST — the shells above host the wall
+    # crossings). Each corner: three Y-running octagon ridges on the stub
+    # top (legs.py) ride grooves cut here + in the endplates from the SAME
+    # shared negatives (legs.corner_groove_negatives — cross-part grooves
+    # align by construction): the side-wall band gets octagon THROUGH-
+    # crossings at station ±7 (their side-face openings are filled flush
+    # by the ridge ends), and whatever chassis crosses the corner (kept
+    # shell, seat rib, the +X comb rib) gets tunnelled for extra
+    # engagement. The end-wall groove's blind end (in the endplate) is
+    # the flush hard stop. ONE vertical M4 per stub drops down the rail
+    # web from under the deck into the INBOARD ridge = the Y-retention
+    # SHEAR PIN: Ø8.4 head well to Z_BOT+30 (3 mm hex key reaches through
+    # it), Ø4.6 shaft way on down to the groove, Ø3.6 pilot in the ridge.
+    # Screw: M4×35 (head -45.15, tip -80.15, thread through the ridge).
+    from .legs import corner_groove_negatives as _cgn
     _xc_mid = sum(LEG_STATIONS_X) / 2
     for _sx in LEG_STATIONS_X:
-        _ib = 1.0 if _xc_mid > _sx else -1.0        # inboard tenon side
+        _egx = -1.0 if _xc_mid > _sx else 1.0       # outboard x sign
+        _ib = -_egx                                 # inboard ridge side
         for _yr, _s in ((Y_HI, 1), (Y_LO, -1)):
             _lc = LEG_Y[0] if _s > 0 else LEG_Y[1]  # flush leg centreline
-            _stem = _lc + _s * 13.4                 # tenon stem plane (the
-            #                                         octagon nests in the 10
-            #                                         wall, ~1.3 skins/side)
-            # FLUSH-X: tenons at station ±7 — both in chassis (the kept
-            # shell and the rail abut seamlessly); the endplates' own
-            # end-joint dovetails occupy the outboard ±16 band
-            for _tx in (-7.0, 7.0):
-                _m = _wm()
-                if _s > 0:                          # roof points outboard
-                    _m = _m.rotate((0, 0, 0), (0, 0, 1), 180)
-                body = body.cut(_m.translate((_sx + _tx, _stem,
-                                              Z_BOT - 1.0)))
+            _wired = (_sx, _lc) == (LEG_STATIONS_X[1], LEG_Y[0])
+            for _n in _cgn(_sx, _lc, float(_s), _egx, _wired, Z_BOT):
+                body = body.cut(_n)
             body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-                2.3, 48.0, cq.Vector(_sx + _ib * 7.0, _yr, Z_BOT + 27.5),
+                2.3, 24.5, cq.Vector(_sx + _ib * 7.0, _yr, Z_BOT + 6.0),
                 cq.Vector(0, 0, 1))))
             body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-                4.2, 5.0, cq.Vector(_sx + _ib * 7.0, _yr,
-                                    TP_GZ0 - TP_TG_DEPTH - 5.1),
+                4.2, (TP_GZ0 - TP_TG_DEPTH - 0.1) - (Z_BOT + 30.0),
+                cq.Vector(_sx + _ib * 7.0, _yr, Z_BOT + 30.0),
                 cq.Vector(0, 0, 1))))
-    # WIRED corner (-X/+Y): the stub's Ø13 jack CHIMNEY now rises inside
-    # the KEYHEAD's hollow foot corner (flush-X moved it west of all
-    # chassis material). Its Ø3.8 factory pigtail drops beside it (y 33)
-    # and runs east at z -70.6 — one Ø7 harness window through the
-    # keyhead seat rib AND the station rib carries it to the bus-B tee
-    # (the cable is too fat for the knee-mortise / raceway crossings).
+    # WIRED corner (-X/+Y): the stub's jack FIN swipes in through its own
+    # gabled side-wall passage (cut above via the shared negatives) and
+    # fills it flush. The Ø3.8 factory pigtail is threaded up through the
+    # open foot hollow during the slide, exits the fin gable (peak
+    # bed+43), drops at y 33 and runs east at z -70.6 through this Ø7
+    # harness window (keyhead seat-rib remnant + station rib) to the
+    # bus-B tee — the WIRED stub's two crossing ridges stop at y 34.75
+    # (legs.RIDGE_CROSS_WIRED) so the drop and run never cross a ridge.
     body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
         3.5, 36.0, cq.Vector(LEG_STATIONS_X[1] - 7.0, 33.0, -70.6),
         cq.Vector(1, 0, 0))))
