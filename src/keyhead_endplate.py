@@ -103,6 +103,18 @@ def _build():
     # rail-end dovetail sockets (grip the rail tongues; X+Y lock vs the string tension)
     for ycc in (CH.Y_HI, CH.Y_LO):
         w = w.cut(CH._kh_tongue(ycc, socket=True))
+    # LEG-STUB endplate mortises (user: the stubs must join the ENDPLATES,
+    # not just the side panels): each -X corner stub raises TWO more octagon
+    # tenons into THIS end wall — stem plane x = station - 13.4 (the same
+    # 1.4-past-inner-face nesting as the rail band), at leg_y -6/+7. The
+    # whole band (z -76.15..-46.15) probes fully solid there: clear of the
+    # string-stow bores (|y| <= 31.75), the rail-end dovetail sockets
+    # (leg±17) and the foot pockets (x >= -626.0). Entry opens 1 below bed.
+    from .legs import ep_mortise as _epm
+    for _ly in CH.LEG_Y:
+        for _off in (-6.0, 7.0):
+            w = w.cut(_epm(-1.0).translate(
+                (CH.LEG_STATIONS_X[1] - 13.4, _ly + _off, CH.Z_BOT - 1.0)))
     # STRING-END STOWAGE (one per string): a vertical bore set INBOARD of the -X face
     # (ZHOLE_X, ~3.5 mm of wall left -X of it) running from near the body top straight DOWN
     # and out through the bed -- the cut string end tucks into it, so almost nothing
