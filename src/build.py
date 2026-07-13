@@ -841,7 +841,7 @@ def _publish_web_preview(comps, build_n):
     try:
         from tools.export_glb import build_glb
         from tools.publish_preview import push_gh_pages
-        build_glb(comps)                 # writes docs/assembly.glb (full instrument)
+        build_glb(comps, build_n=build_n)   # full instrument + the #build label
         push_gh_pages(build_n)
     except Exception as e:               # noqa: BLE001 — never let publishing break a build
         print(f"web preview: publish skipped ({type(e).__name__}: {e})", flush=True)
