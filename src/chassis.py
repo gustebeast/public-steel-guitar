@@ -129,12 +129,15 @@ def _rib_positions():
     base = [mx[0] - 2 * pitch + k * pitch for k in range(D.N_STRINGS + 4)]   # 2 past each end
     mids = [(base[i] + base[i + 1]) / 2 for i in range(len(base) - 1)]
     ribs = sorted(base + mids)
-    # Drop any +X-most comb rib that lands in the bridge-endplate takeover zone
-    # (x > TP_EP_GX): there the bridge block IS the +X tie, so such a rib would only
-    # be a clipped stub fused to the bridge -- redundant. (The last real lever bay's
-    # +X flank then becomes the next rib in, which keeps its mortise.)
-    while ribs and ribs[-1] + _RIB_W / 2 > TP_EP_GX:
+    # Drop comb ribs that land in an endplate takeover zone (the bridge block at +X,
+    # x > TP_EP_GX; the keyhead block at -X, x < KH_RAIL_X). There the endplate IS the
+    # cross-tie, so such a rib is only a clipped stub fused to it -- redundant -- and
+    # its lever mortise would gouge the endplate/leg structure. (The last real lever
+    # bay's flank then becomes the next rib in, which keeps its mortise.)
+    while ribs and ribs[-1] + _RIB_W / 2 > TP_EP_GX:      # +X: bridge endplate zone
         ribs.pop()
+    while ribs and ribs[0] - _RIB_W / 2 < KH_RAIL_X:      # -X: keyhead endplate zone
+        ribs.pop(0)
     return ribs
 
 _RIB_X = _rib_positions()
