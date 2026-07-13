@@ -97,9 +97,9 @@ PARTS = {
     # ("leg_coupler_f" export retired — ROUND 3: threadless, gasketless square legs)
     "leg_lid":         (lambda: heal(LG.leg_lid()), "petg-gf/leg_lid.step", "PETG-GF — leg channel LID ×2 (redesign, wired leg): 45° dovetail strip, slides over the body's cable channel (bar-lid pattern; TPU nub SKU locks it)"),
     # ("leg_washer_sq" export retired — ROUND 3: threadless, gasketless square legs)
-    "leg_body_stub":   (lambda: heal(LG.leg_body_stub()), "petg-gf/leg_body_stub.step", "PETG-GF — BODY STUB ×2 (bridge/+Y + keyhead/-Y; prints standing mouth-down): the 44-sq semi-permanent corner piece - FOUR octagon tenons slide UP: two into the rail-band mortises + two into the ENDPLATE's end wall (leg -6/+7); ONE M4 down the rail web (head under the deck) retains; below, the leg↔bar latch socket verbatim (house 28.1 × 41 + ledge). Hangs 48 below the body = the disassembled z cost"),
-    "leg_body_stub_jk": (lambda: heal(LG.leg_body_stub_jk()), "petg-gf/leg_body_stub_jk.step", "PETG-GF — body stub ×1 (the +X/-Y JACK corner): endplate side mirrored (local +x) and the inboard endplate tenon SHORT (23.6) - its mortise ceiling stays 1.15 under the bridge's panel-jack recess floor"),
-    "leg_body_stub_trrs": (lambda: heal(LG.leg_body_stub_trrs()), "petg-gf/leg_body_stub_trrs.step", "PETG-GF — body stub ×1 (the -X/+Y WIRED corner): endplate side local +x; + the mouth-seat boss, Ø9.7 jack way and the Ø13 chimney sleeving the 10-03404 up into the box (jack loads from the chimney top; jack_seat_ring presses above = insertion stop)"),
+    "leg_body_stub":   (lambda: heal(LG.leg_body_stub()), "petg-gf/leg_body_stub.step", "PETG-GF — BODY STUB ×2 (bridge/+Y + keyhead/-Y; prints LYING ON ITS +Y FACE - Y-INSTALL round: layer lines in x-z so both leg-bending directions load within layers; the ridges print as vertical fins, the house gable points up): the 44-sq semi-permanent corner piece SLIDES IN ALONG Y - three Y-running octagon ridges (roof up): side-wall crossings at ±7 + the 44-long END-WALL ridge at -17 (the endplate tie; its blind groove end = the flush stop); ONE M4×35 down the rail web into the inboard ridge = the Y-retention shear pin; below, the leg↔bar latch socket verbatim (house 28.1 × 41 + ledge). Hangs 48 below the body = the disassembled z cost"),
+    "leg_body_stub_jk": (lambda: heal(LG.leg_body_stub_jk()), "petg-gf/leg_body_stub_jk.step", "PETG-GF — body stub ×1 (the +X/-Y jack corner): the mirror SKU - end-wall ridge on local +x (this corner faces its endplate the other way); otherwise identical"),
+    "leg_body_stub_trrs": (lambda: heal(LG.leg_body_stub_trrs()), "petg-gf/leg_body_stub_trrs.step", "PETG-GF — body stub ×1 (the -X/+Y WIRED corner; end-wall ridge local +x): + the mouth-seat boss, Ø9.7 jack way and the gabled jack FIN (13 wide, walls 36.5, peak 43) sleeving the 10-03404 and running to the trailing face - it swipes through, then FILLS, its own side-wall passage (jack loads from the fin top; an M2 set screw through the fin wall clamps the barrel - a pressed ring can't ride through the passage; pigtail threads up the open hollow during the slide; crossing ridges stop at y+8 so the pigtail's drop/run never cross one)"),
     "leg_latch_head":  (lambda: heal(LG.leg_latch_head()), "pctg/leg_latch_head.step", "PCTG — LATCH HEAD ×4 (FLUSH round; prints standing): 44-sq (the 50 shoulder plate is gone), house spigot + wedging-bolt channel + recessed seatbelt button on the flipped INBOARD-opening frame, standard section socket below, captive TRRS plug seat on the +5 axis (one SKU for all legs)"),
     "leg_latch_bolt":  (lambda: heal(LG.leg_latch_bolt()), "pctg/leg_latch_bolt.step", "PCTG — latch BOLT ×4 (redesign): rigid slider, 45° self-latching nose; underside bears the socket ledge (retention ~100N target)"),
     "leg_latch_btn":   (lambda: heal(LG.leg_latch_btn()), "pctg/leg_latch_btn.step", "PCTG — latch BUTTON ×4 (redesign): recessed seatbelt-style release on the head's inboard face (35° wedge coupling at refinement)"),
@@ -358,7 +358,9 @@ def _stow_tail(i, rad):
     for k in range(1, M + 1):
         th = math.radians(45.0 * (1.0 - k / M))                        # 45° → 0° around the arc
         pts.append(cq.Vector(cx + R * math.cos(th), ny, zj + R * math.sin(th)))
-    pts.append(cq.Vector(KE.ZHOLE_X, ny, CH.Z_BOT))                    # down the bore to the bed
+    pts.append(cq.Vector(KE.ZHOLE_X, ny, CH.Z_BOT + 7.6))              # down the bore, stopping
+    #                                    just above the corner stubs' Y-ridge roofs (bed + 7.34):
+    #                                    the two +Y-corner bores land on the keyhead stub
     out = None
     for a, b in zip(pts[:-1], pts[1:]):
         seg = _rod(a, b, rad)
@@ -509,8 +511,9 @@ def _leg_components():
                             R(LG.chassis_trrs_jack(), 0.0, 5.0)))
                 out.append(("leg_column_plug_0",
                             R(LG.leg_column_plug(), 0.0, 5.0)))
-                out.append(("jack_seat_ring_0",
-                            R(LG.jack_seat_ring(), 30.2, 5.0)))
+                # (no seat ring at the BODY joint any more — Y-INSTALL: a
+                # ring can't ride through the fin's side-wall passage, so
+                # an M2 set screw through the fin wall clamps the jack)
                 out.append(("leg_plug_retainer_0",
                             R(LG.leg_plug_retainer(), -41.6, 5.0)))
                 # leg<->bar blind-mate: jack #2 (mouth DOWN) + seat ring
@@ -563,15 +566,18 @@ def _leg_components():
                         4.5, 72.0, cq.Vector(sx, ly, CH.Z_BOT - 341.0),
                         cq.Vector(0, 0, 1))))
                 out.append(("leg_cable_coil", coil))
-                # body jack's factory cable: out the chimney top, over and
-                # down to the bus-B socket tee
-                # pigtail: out the chimney top (inside the keyhead's
-                # hollow corner now), drop beside it at y 33, east at
-                # -70.6 through the seat/station-rib window to the tee
+                # body jack's factory cable: up the fin's jack way, out
+                # the gable (peak bed+43), over the fin at bed+45.5, drop
+                # beside it at y 33 — clear of the fin's y-36.25 end AND
+                # of every ridge (the wired stub's crossing ridges stop
+                # at y 34.75) — to -70.6, then east through the seat/
+                # station-rib window to the tee. (Threaded up through the
+                # open foot hollow while the stub slides in; unplug at
+                # the tee to extract.)
                 out.append(("chassis_trrs_cable", WR._wire([
                     (sx - 5.0, ly, CH.Z_BOT + 36.7),
-                    (sx - 5.0, ly, CH.Z_BOT + 40.0),
-                    (sx - 5.0, 33.0, CH.Z_BOT + 40.0),
+                    (sx - 5.0, ly, CH.Z_BOT + 45.5),
+                    (sx - 5.0, 33.0, CH.Z_BOT + 45.5),
                     (sx - 5.0, 33.0, -70.6),
                     (-586.0, 33.0, -70.6),
                     (-581.5, 35.5, WR.HDR_Z)], 3.8)))

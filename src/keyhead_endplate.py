@@ -103,18 +103,22 @@ def _build():
     # rail-end dovetail sockets (grip the rail tongues; X+Y lock vs the string tension)
     for ycc in (CH.Y_HI, CH.Y_LO):
         w = w.cut(CH._kh_tongue(ycc, socket=True))
-    # LEG-STUB endplate mortises (user: the stubs must join the ENDPLATES,
-    # not just the side panels): each -X corner stub raises TWO more octagon
-    # tenons into THIS end wall — stem plane x = station - 13.4 (the same
-    # 1.4-past-inner-face nesting as the rail band), at leg_y -6/+7. The
-    # whole band (z -76.15..-46.15) probes fully solid there: clear of the
-    # string-stow bores (|y| <= 31.75), the rail-end dovetail sockets
-    # (leg±17) and the foot pockets (x >= -626.0). Entry opens 1 below bed.
-    from .legs import ep_mortise as _epm
-    for _ly in CH.LEG_Y:
-        for _off in (-6.0, 7.0):
-            w = w.cut(_epm(-1.0).translate(
-                (CH.LEG_STATIONS_X[1] - 13.4, _ly + _off, CH.Z_BOT - 1.0)))
+    # LEG-STUB grooves (Y-INSTALL round — user: the stubs print on their
+    # side and SLIDE IN ALONG Y): cut this end's corner negatives from the
+    # SAME shared source the chassis uses (legs.corner_groove_negatives).
+    # For the keyhead that hosts: the 44-long END-WALL groove (x -631.2,
+    # the wall centreline — its blind inboard end is the stub's flush hard
+    # stop; the two crossing stow bores just poke its roof, shortening
+    # those string tails ~7), the crossing grooves' reach through the
+    # endplate's own side-wall band / tab, and nothing of the fin passage
+    # (that crossing is all kept-shell). Groove roofs at bed + 7.34, far
+    # below the dovetail sockets (-23.15..-6).
+    from .legs import corner_groove_negatives as _cgn
+    for _ly, _s in ((CH.LEG_Y[0], 1.0), (CH.LEG_Y[1], -1.0)):
+        _wired = _ly == CH.LEG_Y[0]
+        for _n in _cgn(CH.LEG_STATIONS_X[1], _ly, _s, -1.0, _wired,
+                       CH.Z_BOT):
+            w = w.cut(_n)
     # STRING-END STOWAGE (one per string): a vertical bore set INBOARD of the -X face
     # (ZHOLE_X, ~3.5 mm of wall left -X of it) running from near the body top straight DOWN
     # and out through the bed -- the cut string end tucks into it, so almost nothing
