@@ -128,17 +128,7 @@ def _rib_positions():
     pitch = (mx[-1] - mx[0]) / (D.N_STRINGS - 1)                       # motor pitch (46)
     base = [mx[0] - 2 * pitch + k * pitch for k in range(D.N_STRINGS + 4)]   # 2 past each end
     mids = [(base[i] + base[i + 1]) / 2 for i in range(len(base) - 1)]
-    ribs = sorted(base + mids)
-    # Drop comb ribs that land in an endplate takeover zone (the bridge block at +X,
-    # x > TP_EP_GX; the keyhead block at -X, x < KH_RAIL_X). There the endplate IS the
-    # cross-tie, so such a rib is only a clipped stub fused to it -- redundant -- and
-    # its lever mortise would gouge the endplate/leg structure. (The last real lever
-    # bay's flank then becomes the next rib in, which keeps its mortise.)
-    while ribs and ribs[-1] + _RIB_W / 2 > TP_EP_GX:      # +X: bridge endplate zone
-        ribs.pop()
-    while ribs and ribs[0] - _RIB_W / 2 < KH_RAIL_X:      # -X: keyhead endplate zone
-        ribs.pop(0)
-    return ribs
+    return sorted(base + mids)   # _RIB_X is trimmed against the leg stubs below
 
 _RIB_X = _rib_positions()
 SPLIT_X  = [-216.5, -446.5]            # 2 cuts → 3 segments < 255 mm (224.7 / 230.0 / 192.5), each in a
@@ -431,6 +421,14 @@ LEG_SHELL_NX = (_SHELL_NX, KH_RAIL_X)       # -X leg: -625.6 .. -610.6 (reaches 
 LEG_SHELL_PX = (TP_EP_GX, _SHELL_PX)        # +X leg: -17.5 .. 5.6
 # leg stations: (+X leg, -X leg) — outer faces ON the endplate tips (flush X):
 LEG_STATIONS_X = (_STN_PX, _STN_NX)         # (-13.4, -614.2)
+# Trim the rib comb against the leg BODY STUBS (SQ_W-sq at each station): a comb rib
+# whose footprint collides with a stub is redundant -- the stub + its endplate are the
+# corner cross-tie there -- and it merges into the stub as a clipped nub while its lever
+# mortise would gouge the stub. Drop those (deferred to here: the stations resolve after
+# _rib_positions). A rib within (SQ_W + rib_w)/2 of a station touches its stub.
+from .legs import SQ_W as _STUB_W
+_RIB_X = [x for x in _RIB_X
+          if all(abs(x - _st) >= (_STUB_W + _RIB_W) / 2.0 for _st in LEG_STATIONS_X)]
 # FLUSH-LEG round (user): the 44-sq legs sit FLUSH with the outer wall
 # planes instead of outset on the rail centrelines — centres 17 inboard
 # of the rails. Everything leg-shaped (stubs, columns, pedal bar rail)
