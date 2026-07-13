@@ -1,57 +1,51 @@
-"""Export a SIMPLIFIED, colored GLB of the instrument for web sharing.
+"""Export a colored GLB of the FULL instrument for web sharing.
 
 Writes docs/assembly.glb (served by GitHub Pages via docs/index.html, Google's
 <model-viewer>). The full assembly.step is ~145 MB — far too big for in-browser
-viewers — and a GLB is web-native, keeps the per-part colors, and is ~10x smaller.
+viewers — and a GLB is web-native, keeps the per-part colors, and is far smaller.
 
-This SIMPLIFIED view keeps only the instrument body, the strings, the nut block,
-and the motor/changer drivetrain. It drops the legs, the deck cover plates, the
-electronics + wiring, the output jacks, and the pickup, so the mechanism reads
-clearly. Re-run after a design change:  py -3.12 -m tools.export_glb
+The GLB carries the ENTIRE assembly (every part collect_components() builds —
+body, legs, deck, electronics, wiring, pickup, the lot) so the web preview
+matches the build 1:1. Re-run after a design change:  py -3.12 -m tools.export_glb
+(a full `py -3.12 -m src.build` refreshes AND publishes it automatically).
 """
 
 from __future__ import annotations
 
 import os
-import re
+import pathlib
 
 import cadquery as cq
 
 from src.build import collect_components, _color_for
 
-# base names to KEEP (everything else — legs, top_plate, electronics, wires,
-# jacks, pickup/clamp/height screws — is dropped)
-INCLUDE = {
-    # instrument body (no legs); the nut block is fused into keyhead_endplate now
-    "chassis", "bridge_endplate", "keyhead_endplate",
-    # strings
-    "string", "string_nut",
-    # nut-block hardware (gauged break pins + clamp set screws)
-    "break_dowel", "set_screw",
-    # motor / changer drivetrain
-    "motor", "leadscrew", "carriage", "nut", "guide_rod",
-    "screw_pulley", "motor_pulley", "belt", "belt_clamp",
-    "screw_bearing", "bridge_bearings", "locknut",
-}
+REPO = pathlib.Path(__file__).resolve().parents[1]
+GLB = REPO / "docs" / "assembly.glb"
 
 
-def base(name: str) -> str:
-    return re.sub(r"_\d+$", "", name)
+def build_glb(components=None, out: pathlib.Path = GLB) -> pathlib.Path:
+    """Write `out` (a web GLB) from `components` — the (name, workplane) list from
+    collect_components(). Pass the list the caller already built to avoid rebuilding
+    all the geometry a second time; omit it to collect fresh. Returns the path.
+
+    cadquery's GLTF exporter already converts CAD Z-up to glTF Y-up at the scene
+    root, so we add NO rotation here (an explicit one double-rotates -> upside down)."""
+    if components is None:
+        components = collect_components()
+    asm = cq.Assembly(name="public_steel_guitar")
+    n = 0
+    for name, wp in components:
+        asm.add(wp, name=name, color=_color_for(name))
+        n += 1
+    out.parent.mkdir(parents=True, exist_ok=True)
+    asm.save(str(out), exportType="GLTF")
+    mb = out.stat().st_size / 1e6
+    print(f"wrote {out.relative_to(REPO).as_posix()}  ({n} parts, {mb:.1f} MB)")
+    return out
 
 
 def main() -> None:
-    # cadquery's GLTF exporter already converts CAD Z-up to glTF Y-up at the scene
-    # root, so we add NO rotation here (an explicit one double-rotates -> upside down)
-    asm = cq.Assembly(name="public_steel_guitar")
-    n = 0
-    for name, wp in collect_components():
-        if base(name) in INCLUDE:
-            asm.add(wp, name=name, color=_color_for(name))
-            n += 1
-    os.makedirs("docs", exist_ok=True)
-    asm.save("docs/assembly.glb", exportType="GLTF")
-    mb = os.path.getsize("docs/assembly.glb") / 1e6
-    print(f"wrote docs/assembly.glb  ({n} parts, {mb:.1f} MB)")
+    build_glb()
 
 
 if __name__ == "__main__":

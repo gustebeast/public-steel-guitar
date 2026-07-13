@@ -811,10 +811,11 @@ def _color_for(name):
     return cq.Color(*_COLORS.get(base, _DEFAULT_COLOR))
 
 
-def _export_assembly():
+def _export_assembly(publish=True):
     build_n = _bump_build_counter()
+    comps = collect_components()
     asm = cq.Assembly(name="public_steel_guitar")
-    for name, wp in collect_components():
+    for name, wp in comps:
         asm.add(wp, name=name, color=_color_for(name))
     counter = _build_counter_model(build_n)
     if counter is not None:
@@ -827,6 +828,23 @@ def _export_assembly():
     print(f"Wrote assembly.step  [build #{build_n}]", flush=True)
     print(geometry_report())
     show(str(OUT / "assembly.step"))   # open/refresh it in the shared FreeCAD hub
+    if publish:
+        _publish_web_preview(comps, build_n)
+
+
+def _publish_web_preview(comps, build_n):
+    """Refresh the web-preview GLB from the just-built components (reused — no
+    second geometry pass) and force-push it to the gh-pages branch. STRICTLY
+    NON-FATAL: a publish failure (offline, not on main, auth) must never fail an
+    otherwise-good geometry build. The push itself is a no-op off the main branch
+    (so agent worktrees don't publish) — see tools/publish_preview.py."""
+    try:
+        from tools.export_glb import build_glb
+        from tools.publish_preview import push_gh_pages
+        build_glb(comps)                 # writes docs/assembly.glb (full instrument)
+        push_gh_pages(build_n)
+    except Exception as e:               # noqa: BLE001 — never let publishing break a build
+        print(f"web preview: publish skipped ({type(e).__name__}: {e})", flush=True)
 
 
 def main() -> None:
