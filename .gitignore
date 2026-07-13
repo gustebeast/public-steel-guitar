@@ -9,3 +9,4 @@ __pycache__/
 *.step
 *.stl
 *.png
+docs/assembly.glb
