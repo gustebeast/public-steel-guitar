@@ -220,6 +220,16 @@
       // index by name, OUTERMOST wins (GLTFLoader can repeat a name on the inner
       // mesh primitive; we want the top node so pivots apply to the whole part)
       root.traverse(o => { if (o.name && !(o.name in nodes)) nodes[o.name] = o; });
+      // cadquery's GLB omits metallicFactor, so glTF defaults every material to
+      // metalness=1 (metal) — metals have no diffuse response and read black under
+      // lights. These are printed plastic: force dielectric so the light rig + env
+      // illuminate them evenly and their true colors show.
+      root.traverse(o => {
+        if (!o.isMesh || !o.material) return;
+        for (const m of (Array.isArray(o.material) ? o.material : [o.material])) {
+          m.metalness = 0.0; m.roughness = 0.65; m.needsUpdate = true;
+        }
+      });
       deck = Object.keys(nodes).filter(n => n.startsWith('top_plate')).map(n => nodes[n]);
       scene.add(root);
       frame(root);
