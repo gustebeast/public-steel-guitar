@@ -43,14 +43,14 @@ bears flat-on-flat on it, its crescent shoulders + the foot cap set the
 bar's Z, and the CLOSED bolt head under the upper shoulder is the
 anti-lift. The notch never enters the sleeve (exposure stays ≥ ~30).
 
-The SOCKET joins the rail with GLUED JOINERY, no fasteners: a vertical
-dovetail tenon slides UP into a slot in the rail's outer face from below
-until the barrel's top rim seats flat against the rail's bottom flange.
-Ground reaction = large-area rim compression; bending/torsion = the dovetail
-flanks + glue; the joint is invisible from outside. Sockets sit at x −18.4
-(bridge) and −601.6 (keyhead), both rails — solid web, clear of the endplate
-dovetails (positions computed in chassis.py; see LEG_STATIONS_X there). The socket is a separate part ONLY because the chassis can't
-print below its bed, which is exactly the case glue is for.
+The BODY STUB joins the body with SLIDE-UP OCTAGON JOINERY, no glue: four
+vertical octagon tenons on its top face — two into the rail's wall band
+(station ±7) and two into the ENDPLATE's end wall (leg centre −6/+7) — so
+every corner is tied in BOTH directions; ONE M4 down the rail web retains.
+The stub's top face butting the body bottom is the seat; the joint is
+invisible from outside. The stub is a separate part ONLY because the
+chassis can't print below its bed. Stations/centres are computed in
+chassis.py (LEG_STATIONS_X / LEG_Y — flush corner columns).
 
 PRINT PLAN (all standing, tubes along Z — the threads, gland, keyed bore and
 waist are all round toleranced fits that need vertical circularity; sideways
@@ -145,13 +145,10 @@ FOOT_H  = 12.0
 # socket bracket
 BARREL_OD, BARREL_L = 44.0, 32.0
 # LEG_STATIONS_X (the two corner-station X's, both rails) is COMPUTED in chassis.py
-# from the shared endplate<->leg model (chassis.LEG_STATIONS_X): each station is set
-# so the leg's dovetail tenon leaves the same EP_LEG_BUFFER (10mm) of solid body to
-# its endplate wall, mirrored at both ends. It lives there (not here) because it
-# depends on the endplate tip positions, which are chassis constants. Result: the +X
-# leg at -18.4 and the -X leg at -601.6 -- each placed so its dovetail tenon leaves
-# exactly EP_LEG_BUFFER (10mm) of SOLID BODY to the endplate wall (measured from the
-# leg-shell face, so the wall<->shell clearance gap doesn't eat into the 10mm).
+# from the shared endplate<->leg model (chassis.LEG_STATIONS_X = endplate tip -/+
+# LEG_W/2 -- FLUSH-X: each leg's outer X face lies ON its endplate's outer face).
+# It lives there (not here) because it depends on the endplate tip positions,
+# which are chassis constants. Result: (-13.4, -614.2).
 # rail joinery (chassis.py cuts the matching slots from these)
 DT_FACE_HW = 14.0                      # dovetail half-width at the rail face…
 DT_DEEP_HW = 18.0                      # …flaring 45° to this at full depth
@@ -711,41 +708,65 @@ STUB_TEN_Y = -13.4             # tenon stem plane (pre-rot local y; the
                                # band centre sits 17 outboard of the leg
                                # axis — flush legs are 17 inboard of the
                                # rail centreline)
+STUB_EP_STEM = 13.4            # ENDPLATE-tenon stem plane (|local x|): the
+                               # flush corner faces its endplate's 10-thick
+                               # end wall exactly like the rail band, so the
+                               # same 13.4 nesting holds (1.4 past the wall
+                               # inner face, ~1.3 skin to the tip)
+STUB_TEN_SHORT = 23.6          # the ONE shortened endplate tenon (bridge
+                               # -Y jack corner, inboard): its 24 mortise
+                               # ceiling (-52.15) stays 1.15 under the
+                               # raised panel-jack recess floor (-51)
 
 
-def _wall_tenon() -> cq.Workplane:
+def _wall_tenon(length: float = STUB_TEN_L) -> cq.Workplane:
     """One octagon wall tenon as a VERTICAL prism (slide axis +z), roof
     pointing pre-rot -y (outboard, into the rail wall), width along x.
     cadkit.joinery builds the profile in Y-Z extruded along X; rotate
     Y(-90) maps the slide to +z, then Z(+90) points the roof at -y."""
     from cadkit.joinery import octagon_tenon
-    return (octagon_tenon(width=STUB_TEN_W, length=STUB_TEN_L)
+    return (octagon_tenon(width=STUB_TEN_W, length=length)
             .rotate((0, 0, 0), (0, 1, 0), -90)
             .rotate((0, 0, 0), (0, 0, 1), 90))
 
 
-def wall_mortise() -> cq.Workplane:
-    """The matching chassis cavity (tenon dilated 0.1/side, coupon-
-    validated), vertical, roof at -y — the CALLER rotates it so the roof
-    points outboard and translates it to (station±14, band, Z_BOT-1).
-    Length 30: entry opens 1 below the rail bottom; ceiling at +29 (the
-    tenon tops out 0.4 short — the stub's butt face is the seat)."""
+def wall_mortise(length: float = 30.0) -> cq.Workplane:
+    """The matching cavity (tenon dilated 0.1/side, coupon-validated),
+    vertical, roof at -y — the CALLER rotates it so the roof points
+    outboard and translates it to (station±7, band, Z_BOT-1). Length 30:
+    entry opens 1 below the rail bottom; ceiling at +29 (the tenon tops
+    out 0.4 short — the stub's butt face is the seat)."""
     from cadkit.joinery import octagon_mortise
-    return (octagon_mortise(width=STUB_TEN_W, length=30.0)
+    return (octagon_mortise(width=STUB_TEN_W, length=length)
             .rotate((0, 0, 0), (0, 1, 0), -90)
             .rotate((0, 0, 0), (0, 0, 1), 90))
 
 
-def _body_stub(wired: bool) -> cq.Workplane:
+def ep_mortise(eps: float, length: float = 30.0) -> cq.Workplane:
+    """ENDPLATE-wall mortise: the same vertical octagon cavity, roof
+    rotated to point outboard in X (eps = -1 -> -x / keyhead tip, +1 ->
+    +x / bridge tip). The endplates translate it to (station + eps*
+    STUB_EP_STEM, leg_y + offset, Z_BOT - 1) — same 1.4-past-inner-face
+    stem nesting as the rail band (the stem slit's 0.7 poke through the
+    wall inner face is the same designed slit the rails have)."""
+    return wall_mortise(length).rotate((0, 0, 0), (0, 0, 1), 90 * eps)
+
+
+def _body_stub(wired: bool, eps: float,
+               ep_tenons: tuple) -> cq.Workplane:
     """BODY STUB ×4 (PETG-GF, prints standing mouth-down): the flush-44
     replacement for the 52-sq socket. z0 = MOUTH (bottom face, at global
     Z_BOT - 48); body 0..48; two wall tenons 47..76.6 on the outboard
-    band. Bottom = the leg↔bar latch socket VERBATIM (house 28.1 × 41 +
-    ledge pocket), authored FLIPPED 180° so the head's bolt channel
-    opens inboard. Wired: + the mouth-seat boss, Ø9.7 jack way and a
-    Ø13 CHIMNEY rising into the box that sleeves the naked 10-03404
-    (jack loads from the chimney top before the stub mounts; a pressed
-    jack_seat_ring above it is the insertion stop)."""
+    band PLUS two ENDPLATE tenons (user) on the end-wall stem plane
+    (local x = eps*13.4 — eps is which local x side this SKU's corner
+    faces its endplate on; ep_tenons = ((y_off, length), ...)), so every
+    corner ties BOTH the rail band and the endplate wall. Bottom = the
+    leg↔bar latch socket VERBATIM (house 28.1 × 41 + ledge pocket),
+    authored FLIPPED 180° so the head's bolt channel opens inboard.
+    Wired: + the mouth-seat boss, Ø9.7 jack way and a Ø13 CHIMNEY rising
+    into the box that sleeves the naked 10-03404 (jack loads from the
+    chimney top before the stub mounts; a pressed jack_seat_ring above
+    it is the insertion stop)."""
     b = box_at(SQ_W, SQ_W, STUB_H, z=STUB_H / 2)
     cuts = _house(28.1, -16.05, 2.05, 41.0).translate((0, 0, -1))
     # ledge pocket on the house FLOOR side at local x +8 — VERBATIM the
@@ -760,6 +781,13 @@ def _body_stub(wired: bool) -> cq.Workplane:
         # the SKU keeps both so it works at every corner)
         b = b.cut(cyl(3.6, 12.0, z=STUB_H + STUB_TEN_L - 12.6)
                   .translate((tx, STUB_TEN_Y - 3.6, 0)))
+    # ENDPLATE tenons (user): two more octagons rising into the endplate's
+    # end wall — same nesting, rotated 90° (roof outboard in local x). No
+    # pilots (the M4 retention stays in the rail web).
+    for off, ln in ep_tenons:
+        b = b.union(_wall_tenon(ln)
+                    .rotate((0, 0, 0), (0, 0, 1), 90 * eps)
+                    .translate((eps * STUB_EP_STEM, off, STUB_H - 1.0)))
     if wired:
         b = b.union(cyl(13.0, 1.9, z=38.2).translate((5.0, 0, 0)))  # mouth-
         #                                    seat boss: 38.7 ledge seats the
@@ -773,15 +801,29 @@ def _body_stub(wired: bool) -> cq.Workplane:
 
 
 def leg_body_stub() -> cq.Workplane:
-    """Plain body stub ×3."""
-    return _body_stub(False)
+    """Plain body stub ×2 (bridge/+Y at rot 180 and keyhead/-Y at rot 0:
+    both face their endplate on local -x). Endplate tenons at local y
+    -6/+7 -> global leg-6/+7 (keyhead) and leg+6/-7 (bridge): clear of
+    the keyhead stow bores (|y| <= 31.75), the rail-end dovetail sockets
+    (leg±17) and the foot pockets."""
+    return _body_stub(False, -1.0, ((-6.0, STUB_TEN_L), (7.0, STUB_TEN_L)))
+
+
+def leg_body_stub_jk() -> cq.Workplane:
+    """JACK-corner body stub ×1 (bridge/-Y, rot 0 -> endplate on local
+    +x): the strip tenon (-6, full) rides between the panel-jack recess
+    and the shell foot pocket; the inboard one (+7) sits UNDER the
+    recess, so it is the SHORT SKU-exception (see STUB_TEN_SHORT)."""
+    return _body_stub(False, 1.0,
+                      ((-6.0, STUB_TEN_L), (7.0, STUB_TEN_SHORT)))
 
 
 def leg_body_stub_trrs() -> cq.Workplane:
-    """Wired body stub ×1 (the -X/+Y corner): carries the chassis-side
-    10-03404 of the leg↔body blind-mate on the flipped TRRS axis
-    (local +5)."""
-    return _body_stub(True)
+    """Wired body stub ×1 (the -X/+Y corner, rot 180 -> endplate on
+    local +x): carries the chassis-side 10-03404 of the leg↔body
+    blind-mate on the flipped TRRS axis (local +5). Endplate tenons at
+    local +6/-7 -> global leg-6/+7."""
+    return _body_stub(True, 1.0, ((6.0, STUB_TEN_L), (-7.0, STUB_TEN_L)))
 
 
 def leg_latch_head() -> cq.Workplane:
