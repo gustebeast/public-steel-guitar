@@ -10,3 +10,4 @@ __pycache__/
 *.stl
 *.png
 docs/assembly.glb
+docs/rig.json
