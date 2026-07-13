@@ -10,7 +10,7 @@
  "strings": [
   {
    "i": 0,
-   "string": 10,
+   "string": 1,
    "rest_dz": -10.0,
    "carriage_nodes": [
     "carriage_0",
@@ -54,7 +54,7 @@
   },
   {
    "i": 1,
-   "string": 9,
+   "string": 2,
    "rest_dz": -10.0,
    "carriage_nodes": [
     "carriage_1",
@@ -98,7 +98,7 @@
   },
   {
    "i": 2,
-   "string": 8,
+   "string": 3,
    "rest_dz": 0.0,
    "carriage_nodes": [
     "carriage_2",
@@ -142,7 +142,7 @@
   },
   {
    "i": 3,
-   "string": 7,
+   "string": 4,
    "rest_dz": 0.0,
    "carriage_nodes": [
     "carriage_3",
@@ -186,7 +186,7 @@
   },
   {
    "i": 4,
-   "string": 6,
+   "string": 5,
    "rest_dz": 0.0,
    "carriage_nodes": [
     "carriage_4",
@@ -230,7 +230,7 @@
   },
   {
    "i": 5,
-   "string": 5,
+   "string": 6,
    "rest_dz": 0.0,
    "carriage_nodes": [
     "carriage_5",
@@ -274,7 +274,7 @@
   },
   {
    "i": 6,
-   "string": 4,
+   "string": 7,
    "rest_dz": 0.0,
    "carriage_nodes": [
     "carriage_6",
@@ -318,7 +318,7 @@
   },
   {
    "i": 7,
-   "string": 3,
+   "string": 8,
    "rest_dz": 0.0,
    "carriage_nodes": [
     "carriage_7",
@@ -362,7 +362,7 @@
   },
   {
    "i": 8,
-   "string": 2,
+   "string": 9,
    "rest_dz": -10.0,
    "carriage_nodes": [
     "carriage_8",
@@ -406,7 +406,7 @@
   },
   {
    "i": 9,
-   "string": 1,
+   "string": 10,
    "rest_dz": -10.0,
    "carriage_nodes": [
     "carriage_9",
@@ -455,11 +455,11 @@
    "key": "1",
    "raises": [
     {
-     "i": 5,
+     "i": 4,
      "semitones": 2
     },
     {
-     "i": 0,
+     "i": 9,
      "semitones": 2
     }
    ]
@@ -469,11 +469,11 @@
    "key": "2",
    "raises": [
     {
-     "i": 7,
+     "i": 2,
      "semitones": 1
     },
     {
-     "i": 4,
+     "i": 5,
      "semitones": 1
     }
    ]
@@ -483,11 +483,11 @@
    "key": "3",
    "raises": [
     {
-     "i": 6,
+     "i": 3,
      "semitones": 2
     },
     {
-     "i": 5,
+     "i": 4,
      "semitones": 2
     }
    ]

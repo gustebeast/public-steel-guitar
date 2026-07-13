@@ -165,7 +165,7 @@
     for (const p of rig.copedent) {
       const el = document.createElement('div');
       el.className = 'pedal'; el.dataset.name = p.name;
-      const strs = p.raises.map(r => rig.n_strings - r.i).sort((a, b) => a - b).join(',');
+      const strs = p.raises.map(r => r.i + 1).sort((a, b) => a - b).join(',');
       el.innerHTML = `<span class="k">${p.key}</span><b>${p.name}</b>` +
                      `<div class="t">strings ${strs}</div>`;
       el.onclick = () => { latched.has(p.name) ? latched.delete(p.name)
