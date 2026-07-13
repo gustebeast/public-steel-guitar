@@ -29,9 +29,10 @@ from src import components as C
 REPO = pathlib.Path(__file__).resolve().parents[1]
 RIG = REPO / "docs" / "rig.json"
 
-# ── Emmons E9 copedent, as STRING NUMBERS (1 = thinnest). This model indexes
-# strings 0..9 with string number N = 10 - index (index 9 = string 1). Raises are
-# in semitones; every classic A/B/C move is a raise (carriage travels to tension).
+# ── Emmons E9 copedent, as STRING NUMBERS (accepted standard: string 1 = highest
+# pitch, furthest from the player). This model indexes strings 0..9 from that same
+# far edge, so string number N = index + 1 (string 1 = index 0). Raises are in
+# semitones; every classic A/B/C move is a raise (carriage travels to tension).
 _COPEDENT = {
     "A": {"key": "1", "raise": {5: 2, 10: 2}},   # B->C# on 5 & 10
     "B": {"key": "2", "raise": {3: 1, 6: 1}},    # G#->A on 3 & 6
@@ -40,7 +41,7 @@ _COPEDENT = {
 
 
 def _idx(string_no: int) -> int:
-    return D.N_STRINGS - string_no                 # N = 10 - index  <=>  index = 10 - N
+    return string_no - 1                           # N = index + 1  <=>  index = N - 1
 
 
 def build_rig(build_n=None) -> pathlib.Path:
@@ -60,7 +61,7 @@ def build_rig(build_n=None) -> pathlib.Path:
         _, tan, _ = C.splice_frame(mpos, (D.SCREW_X, sy, scz))   # belt-clamp travel dir
         strings.append({
             "i": i,
-            "string": D.N_STRINGS - i,               # string number (1 = thinnest)
+            "string": i + 1,                          # string number (1 = highest, far edge)
             "rest_dz": DEMO_POSE_DZ.get(i, 0.0),      # baked demo offset (viewer cancels it)
             # carriage assembly: pure Z translation (raise = -Z, toward more tension)
             "carriage_nodes": [f"carriage_{i}", f"nut_{i}", f"string_nut_{i}"],
