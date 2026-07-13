@@ -106,8 +106,9 @@ PARTS = {
     # pedal bar + latch (one latched foot for now; mirror to -X once the feel
     # is validated). The bar itself is a DEMO prism (longer than the bed —
     # it gets segmented for printing once the pedals land on it).
-    "pedal_bar_a":     (lambda: heal(_PB("pedal_bar_a")), "petg-gf/pedal_bar_a.step", "PETG-GF — pedal bar, -X piece (44 wide, flush with its fused WIRED tower; wiring trough + dovetail lid groove; splice tenons at its +X end). 315 long: place DIAGONALLY on the 255^2 bed; glue to pedal_bar_b"),
-    "pedal_bar_b":     (lambda: heal(_PB("pedal_bar_b")), "petg-gf/pedal_bar_b.step", "PETG-GF — pedal bar, +X piece (44 wide, flush with its fused PLAIN tower; splice slots at its -X end). 311 long: diagonal print; slide down onto _a's tenons + glue"),
+    "pedal_bar_a":     (lambda: heal(_PB("pedal_bar_a")), "petg-gf/pedal_bar_a.step", "PETG-GF — pedal bar, -X piece (44 wide, flush; fused WIRED tower; trough + lid groove; splice tenons at +X). ~219 long: prints STRAIGHT; glue to _b"),
+    "pedal_bar_b":     (lambda: heal(_PB("pedal_bar_b")), "petg-gf/pedal_bar_b.step", "PETG-GF — pedal bar, MID piece (trough only; XS1 slots -X, XS2 tenons +X). ~219 long: straight print; slide down onto _a's tenons + glue"),
+    "pedal_bar_c":     (lambda: heal(_PB("pedal_bar_c")), "petg-gf/pedal_bar_c.step", "PETG-GF — pedal bar, +X piece (44 wide, flush; fused PLAIN tower; splice slots at -X). ~215 long: straight print; slide down onto _b's tenons + glue"),
     "pedal_lid_a":     (lambda: heal(_PB("pedal_lid_a")), "petg-gf/pedal_lid_a.step", "PETG-GF — sliding dovetail lid, -X piece (covers the TRRS latch; bridges the bar splice). 241 long; print TOP-FACE DOWN (45-deg flanks)"),
     "pedal_lid_b":     (lambda: heal(_PB("pedal_lid_b")), "petg-gf/pedal_lid_b.step", "PETG-GF — sliding dovetail lid, +X piece (covers the plain latch; lock dimple clicks onto the bar-top nub, pinning both lid pieces — no screws). 322 long: diagonal, TOP-FACE DOWN"),
     # (pedal_bolt / pedal_bolt_trrs / pedal_latch_finger exports RETIRED by
@@ -559,12 +560,14 @@ def _leg_components():
                 out.append(("leg_cable_coil", coil))
                 # body jack's factory cable: out the chimney top, over and
                 # down to the bus-B socket tee
+                # pigtail: out the chimney top (inside the keyhead's
+                # hollow corner now), drop beside it at y 33, east at
+                # -70.6 through the seat/station-rib window to the tee
                 out.append(("chassis_trrs_cable", WR._wire([
                     (sx - 5.0, ly, CH.Z_BOT + 36.7),
                     (sx - 5.0, ly, CH.Z_BOT + 40.0),
-                    (sx - 13.9, ly, CH.Z_BOT + 40.0),
-                    (sx - 13.9, ly, -70.6),
-                    (sx - 13.9, 33.0, -70.6),
+                    (sx - 5.0, 33.0, CH.Z_BOT + 40.0),
+                    (sx - 5.0, 33.0, -70.6),
                     (-586.0, 33.0, -70.6),
                     (-581.5, 35.5, WR.HDR_Z)], 3.8)))
             k += 1
@@ -716,7 +719,8 @@ _COLORS = {
     "leg_washer":      (0.12, 0.12, 0.13),   # TPU
     # pedal bar (2 spliced pieces + 2 dovetail-lid pieces) + latches
     "pedal_bar_a":      (0.30, 0.45, 0.35),  # PETG-GF bar, -X piece
-    "pedal_bar_b":      (0.33, 0.48, 0.38),  # PETG-GF bar, +X piece
+    "pedal_bar_b":      (0.33, 0.48, 0.38),  # PETG-GF bar, mid piece
+    "pedal_bar_c":      (0.31, 0.46, 0.36),  # PETG-GF bar, +X piece
     "pedal_lid_a":      (0.50, 0.58, 0.52),  # dovetail lid, -X piece
     "pedal_lid_b":      (0.54, 0.62, 0.56),  # dovetail lid, +X piece
     "pedal_bolt":       (0.85, 0.35, 0.20),  # snap latch slider, +X foot

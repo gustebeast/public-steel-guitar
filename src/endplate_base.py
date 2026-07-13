@@ -51,3 +51,4 @@ def endplate_base(xlo: float, xhi: float, end: str) -> cq.Workplane:
                            x=(hx0 + hx1) / 2, y=yc,
                            z=((CH.Z_BOT - 1.0) + (foot_z + 0.1)) / 2))
     return w.union(foot)
+
