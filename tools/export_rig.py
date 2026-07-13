@@ -47,6 +47,10 @@ def build_rig(build_n=None) -> pathlib.Path:
     if build_n is None:
         from tools.export_glb import _current_build_n
         build_n = _current_build_n()
+    # The GLB bakes a static demo pose (some carriages parked at full travel to show
+    # the extremes). The viewer cancels it so the animation starts from a clean
+    # neutral rest — read the exact per-string offset that was baked in.
+    from src.build import DEMO_POSE_DZ
 
     strings = []
     for i in range(D.N_STRINGS):
@@ -57,6 +61,7 @@ def build_rig(build_n=None) -> pathlib.Path:
         strings.append({
             "i": i,
             "string": D.N_STRINGS - i,               # string number (1 = thinnest)
+            "rest_dz": DEMO_POSE_DZ.get(i, 0.0),      # baked demo offset (viewer cancels it)
             # carriage assembly: pure Z translation (raise = -Z, toward more tension)
             "carriage_nodes": [f"carriage_{i}", f"nut_{i}", f"string_nut_{i}"],
             # pulleys: spin about their own axis, centre in CAD space
