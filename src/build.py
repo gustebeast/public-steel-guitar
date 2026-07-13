@@ -587,7 +587,7 @@ def _electronics_components():
     from . import top_plate as TP
     out = [("electronics_tray", EL.electronics_tray()),
            ("pi5", EL.pi5()), ("teensy_stack", EL.teensy_stack()),
-           ("cs_stack", EL.cs_stack()), ("buck", EL.buck()),
+           ("adc_stack", EL.adc_stack()), ("buck", EL.buck()),
            ("teensy_ifc", EL.teensy_ifc()),
            ("analog_frontend", EL.analog_frontend()),
            ("ts_jack", EL.ts_jack()), ("dc_jack", EL.dc_jack()),
@@ -760,7 +760,7 @@ _COLORS = {
     "electronics_tray": (0.30, 0.36, 0.32),  # printed tray
     "pi5":             (0.05, 0.35, 0.15),   # PCB green
     "teensy_stack":    (0.10, 0.45, 0.30),
-    "cs_stack":        (0.15, 0.25, 0.50),
+    "adc_stack":       (0.15, 0.25, 0.50),
     "buck":            (0.35, 0.30, 0.50),
     "teensy_ifc":      (0.55, 0.25, 0.25),   # Teensy interface PCB (2x CAN
                                              # transceiver + XH headers)
