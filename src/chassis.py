@@ -128,7 +128,14 @@ def _rib_positions():
     pitch = (mx[-1] - mx[0]) / (D.N_STRINGS - 1)                       # motor pitch (46)
     base = [mx[0] - 2 * pitch + k * pitch for k in range(D.N_STRINGS + 4)]   # 2 past each end
     mids = [(base[i] + base[i + 1]) / 2 for i in range(len(base) - 1)]
-    return sorted(base + mids)
+    ribs = sorted(base + mids)
+    # Drop any +X-most comb rib that lands in the bridge-endplate takeover zone
+    # (x > TP_EP_GX): there the bridge block IS the +X tie, so such a rib would only
+    # be a clipped stub fused to the bridge -- redundant. (The last real lever bay's
+    # +X flank then becomes the next rib in, which keeps its mortise.)
+    while ribs and ribs[-1] + _RIB_W / 2 > TP_EP_GX:
+        ribs.pop()
+    return ribs
 
 _RIB_X = _rib_positions()
 SPLIT_X  = [-216.5, -446.5]            # 2 cuts → 3 segments < 255 mm (224.7 / 230.0 / 192.5), each in a
@@ -219,13 +226,11 @@ def _build_full() -> cq.Workplane:
     body = _rail(Y_HI).union(_rail(Y_LO))
     for x in _RIB_X:                                  # per-motor + bridge/nut cross-ribs (−Z)
         body = body.union(_rib(x))
-    # knee/pedal lever mounts: cut a christmas-tree mortise into each rib (so a lever can mount in
+    # knee/pedal lever mounts: cut a christmas-tree mortise into EVERY rib (so a lever can mount in
     # any bay -- its two tenons drop into the two ribs flanking the chosen bay). Even rib pitch -> the
     # one tenon fits all. (Retention is a set screw that presses the rib ledge -- no per-bay pilot.)
-    # SKIP the +X-most rib: the last (bridge-end) bay isn't a lever mount, so its
-    # +X-flank mortise is superfluous -- one too many at the +X end.
     from . import knee_lever as _KL
-    for _rx in _RIB_X[:-1]:
+    for _rx in _RIB_X:
         body = body.cut(_KL.rib_mortise(_rx))
     # (the pickup now mounts entirely in its deck cover piece — top_plate.py — so
     # the old rail bosses/grooves/X-lock stations that used to live here are gone)
