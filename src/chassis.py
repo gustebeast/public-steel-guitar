@@ -228,13 +228,17 @@ def _build_full() -> cq.Workplane:
     # (the pickup now mounts entirely in its deck cover piece — top_plate.py — so
     # the old rail bosses/grooves/X-lock stations that used to live here are gone)
     # keyhead: the box-closure bulkhead is now a SEPARATE, removable part
-    # (keyhead_endplate.py) so the deck panels slide out -X for service. It seats
-    # on this bottom tie rib, plugs into the rail-end channels, and is clamped
-    # down by the nut-block bolts (whose inserts it carries) - lift the nut block
-    # off and the endplate lifts out. The chassis keeps the rib + compression
-    # wall + a shallow seat channel in each rail end for the endplate's tabs.
+    # (keyhead_endplate.py) so the deck panels slide out -X for service. It plugs
+    # into the rail-end channels and is clamped down by the nut-block bolts (whose
+    # inserts it carries) - lift the nut block off and the endplate lifts out. The
+    # chassis keeps the compression wall + a shallow seat channel in each rail end
+    # for the endplate's tabs.
+    # (NO bottom tie/seat rib: the endplate part now fills its own body to the bed
+    # and the -X end is tied by the keyhead block + leg stubs + the -570 rib. The
+    # old _rib(_kx, 30) sat almost entirely inside the keyhead's removed zone (x <
+    # KH_RAIL_X), leaving only a ~1.4 mm vestigial full-width sliver at its +X edge
+    # -- which carried the TRRS harness window. Dropped at the source.)
     _kx = D.NUT_BLOCK_X - 9.0                               # endplate centre line
-    body = body.union(_rib(_kx, w=30.0))                   # bottom tie / seat
     ky = D.nut_y(0) + 9.0                                  # +Y-most string (index 0) + margin
     body = body.union(box_at(4.0, 2 * ky, 4.0,            # +X compression wall (below the strings)
                              x=D.NUT_BLOCK_X + 6.0, y=0, z=Z_TOP + 2.0))
