@@ -97,8 +97,9 @@ PARTS = {
     # ("leg_coupler_f" export retired — ROUND 3: threadless, gasketless square legs)
     "leg_lid":         (lambda: heal(LG.leg_lid()), "petg-gf/leg_lid.step", "PETG-GF — leg channel LID ×2 (redesign, wired leg): 45° dovetail strip, slides over the body's cable channel (bar-lid pattern; TPU nub SKU locks it)"),
     # ("leg_washer_sq" export retired — ROUND 3: threadless, gasketless square legs)
-    "leg_body_stub":   (lambda: heal(LG.leg_body_stub()), "petg-gf/leg_body_stub.step", "PETG-GF — BODY STUB ×3 (FLUSH round; prints standing mouth-down): the 44-sq semi-permanent corner piece - two octagon wall tenons slide UP into the rail-band mortises, ONE M4 down the rail web (head under the deck) retains; below, the leg↔bar latch socket verbatim (house 28.1 × 41 + ledge). Hangs 48 below the body = the disassembled z cost"),
-    "leg_body_stub_trrs": (lambda: heal(LG.leg_body_stub_trrs()), "petg-gf/leg_body_stub_trrs.step", "PETG-GF — body stub ×1 (the -X/+Y WIRED corner): + the mouth-seat boss, Ø9.7 jack way and the Ø13 chimney sleeving the 10-03404 up into the box (jack loads from the chimney top; jack_seat_ring presses above = insertion stop)"),
+    "leg_body_stub":   (lambda: heal(LG.leg_body_stub()), "petg-gf/leg_body_stub.step", "PETG-GF — BODY STUB ×2 (bridge/+Y + keyhead/-Y; prints standing mouth-down): the 44-sq semi-permanent corner piece - FOUR octagon tenons slide UP: two into the rail-band mortises + two into the ENDPLATE's end wall (leg -6/+7); ONE M4 down the rail web (head under the deck) retains; below, the leg↔bar latch socket verbatim (house 28.1 × 41 + ledge). Hangs 48 below the body = the disassembled z cost"),
+    "leg_body_stub_jk": (lambda: heal(LG.leg_body_stub_jk()), "petg-gf/leg_body_stub_jk.step", "PETG-GF — body stub ×1 (the +X/-Y JACK corner): endplate side mirrored (local +x) and the inboard endplate tenon SHORT (23.6) - its mortise ceiling stays 1.15 under the bridge's panel-jack recess floor"),
+    "leg_body_stub_trrs": (lambda: heal(LG.leg_body_stub_trrs()), "petg-gf/leg_body_stub_trrs.step", "PETG-GF — body stub ×1 (the -X/+Y WIRED corner): endplate side local +x; + the mouth-seat boss, Ø9.7 jack way and the Ø13 chimney sleeving the 10-03404 up into the box (jack loads from the chimney top; jack_seat_ring presses above = insertion stop)"),
     "leg_latch_head":  (lambda: heal(LG.leg_latch_head()), "pctg/leg_latch_head.step", "PCTG — LATCH HEAD ×4 (FLUSH round; prints standing): 44-sq (the 50 shoulder plate is gone), house spigot + wedging-bolt channel + recessed seatbelt button on the flipped INBOARD-opening frame, standard section socket below, captive TRRS plug seat on the +5 axis (one SKU for all legs)"),
     "leg_latch_bolt":  (lambda: heal(LG.leg_latch_bolt()), "pctg/leg_latch_bolt.step", "PCTG — latch BOLT ×4 (redesign): rigid slider, 45° self-latching nose; underside bears the socket ledge (retention ~100N target)"),
     "leg_latch_btn":   (lambda: heal(LG.leg_latch_btn()), "pctg/leg_latch_btn.step", "PCTG — latch BUTTON ×4 (redesign): recessed seatbelt-style release on the head's inboard face (35° wedge coupling at refinement)"),
@@ -420,7 +421,7 @@ def _leg_components():
     lid = LG.leg_lid()
     head, bolt, btn = (LG.leg_latch_head(), LG.leg_latch_bolt(),
                        LG.leg_latch_btn())
-    stub_p = LG.leg_body_stub()
+    stub_p, stub_jk = LG.leg_body_stub(), LG.leg_body_stub_jk()
     sleeve = LG.leg_sleeve()
     shaft, foot = LG.leg_shaft(), LG.leg_foot()
     ground = CH.Z_BOT - LEG_HEIGHT
@@ -429,6 +430,9 @@ def _leg_components():
     for sx in CH.LEG_STATIONS_X:           # stations computed from the shared endplate model
         for ly, rot in ((CH.LEG_Y[0], 180), (CH.LEG_Y[1], 0)):   # flush centres
             wired = (sx, ly) == (CH.LEG_STATIONS_X[1], CH.LEG_Y[0])
+            # the bridge/-Y corner takes the JACK-corner stub SKU (its
+            # endplate side is local +x and one ep tenon is the short one)
+            jack = (sx, ly) == (CH.LEG_STATIONS_X[0], CH.LEG_Y[1])
 
             def R(wp, dz=0.0, dx=0.0):
                 return (wp.translate((dx, 0, dz))
@@ -436,7 +440,8 @@ def _leg_components():
                         .translate((sx, ly, CH.Z_BOT)))
 
             out.append((f"leg_body_stub_{k}",
-                        R(LG.leg_body_stub_trrs() if wired else stub_p, ZM)))
+                        R(LG.leg_body_stub_trrs() if wired
+                          else stub_jk if jack else stub_p, ZM)))
             out.append((f"leg_latch_head_{k}", R(head, ZM)))
             # body-joint bolt/button dummies (head frame, seat plane ZM).
             # The joint is FLIPPED (bolt channel inboard): the authored
