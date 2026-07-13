@@ -124,23 +124,29 @@
     return raise;
   }
 
-  // smoothed current displacement (mm) per string, eased toward target
-  let curDz = null;
+  // Two eased state arrays per string: `raise` = the pedal actuation (mm, drives
+  // pulleys + belt), `carr` = the carriage's absolute Z offset from its baked pose.
+  // carr eases from 0 (the baked demo pose) to -rest_dz (neutral) at load, then to
+  // -rest_dz - raise as pedals engage — so pulleys spin ONLY for pedal actuation,
+  // not the one-time neutralization glide.
+  let curRaise = null, curCarr = null;
   function applyRig(dt) {
     if (!rig) return;
     const g = rig.gains, tgtSt = targetRaise();
-    if (!curDz) curDz = new Array(rig.n_strings).fill(0);
+    if (!curRaise) { curRaise = new Array(rig.n_strings).fill(0);
+                     curCarr = new Array(rig.n_strings).fill(0); }
     const k = 1 - Math.pow(0.0001, dt);              // ~critically damped ease
     for (const s of strings) {
-      // raise = carriage travels -Z (toward tension), clamped to the real travel
-      let tgt = -Math.min(tgtSt[s.i] * g.mm_per_semitone, rig.carriage_travel);
-      curDz[s.i] += (tgt - curDz[s.i]) * k;
-      const dz = curDz[s.i];
-      for (const n of s.carriage_nodes) translateNode(n, 0, 0, dz);
-      const ang = TAU * g.pulley_turns_per_mm * dz;  // 1:1 pulleys, same angle
+      const raiseTgt = Math.min(tgtSt[s.i] * g.mm_per_semitone, rig.carriage_travel);
+      curRaise[s.i] += (raiseTgt - curRaise[s.i]) * k;
+      const raise = curRaise[s.i];
+      const carrTgt = -(s.rest_dz || 0) - raise;     // cancel demo pose, then tension -Z
+      curCarr[s.i] += (carrTgt - curCarr[s.i]) * k;
+      for (const n of s.carriage_nodes) translateNode(n, 0, 0, curCarr[s.i]);
+      const ang = -TAU * g.pulley_turns_per_mm * raise;   // 1:1 pulleys, same angle
       spinNode(s.screw_pulley.node, s.screw_pulley.center, s.screw_pulley.axis, ang);
       spinNode(s.motor_pulley.node, s.motor_pulley.center, s.motor_pulley.axis, ang);
-      const d = s.belt_clamp.dir, bs = g.belt_mm_per_mm * dz;
+      const d = s.belt_clamp.dir, bs = g.belt_mm_per_mm * raise;
       translateNode(s.belt_clamp.node, d[0] * bs, d[1] * bs, d[2] * bs);
     }
   }
