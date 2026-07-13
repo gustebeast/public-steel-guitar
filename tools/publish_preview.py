@@ -77,7 +77,9 @@ def push_gh_pages(build_n: int | None = None, remote: str = "origin",
 
 def main() -> None:
     from tools.export_glb import build_glb
+    from tools.export_rig import build_rig
     build_glb()
+    build_rig()
     push_gh_pages()
 
 
