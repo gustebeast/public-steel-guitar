@@ -96,9 +96,9 @@ PARTS = {
     # ("leg_coupler_f" export retired — ROUND 3: threadless, gasketless square legs)
     "leg_lid":         (lambda: heal(LG.leg_lid()), "petg-gf/leg_lid.step", "PETG-GF — leg channel LID ×2 (redesign, wired leg): 45° dovetail strip, slides over the body's cable channel (bar-lid pattern; TPU nub SKU locks it)"),
     # ("leg_washer_sq" export retired — ROUND 3: threadless, gasketless square legs)
-    "leg_body_stub":   (lambda: heal(LG.leg_body_stub()), "petg-gf/leg_body_stub.step", "PETG-GF — BODY STUB ×2 (bridge/+Y + keyhead/-Y; prints LYING ON ITS +Y FACE - Y-INSTALL round: layer lines in x-z so both leg-bending directions load within layers; the ridges print as vertical fins, the house gable points up): the 44-sq semi-permanent corner piece SLIDES IN ALONG Y - three Y-running octagon ridges (roof up): side-wall crossings at ±7 + the 44-long END-WALL ridge at -17 (the endplate tie; its blind groove end = the flush stop); ONE M4×35 down the rail web into the inboard ridge = the Y-retention shear pin; below, the leg↔bar latch socket verbatim (house 28.1 × 41 + ledge). Hangs 48 below the body = the disassembled z cost"),
+    "leg_body_stub":   (lambda: heal(LG.leg_body_stub()), "petg-gf/leg_body_stub.step", "PETG-GF — BODY STUB ×2 (bridge/+Y + keyhead/-Y; prints LYING ON ITS +Y FACE - Y-INSTALL round: layer lines in x-z so both leg-bending directions load within layers; the ridges print as vertical fins, the house gable points up): the 44-sq semi-permanent corner piece SLIDES IN ALONG Y - three FULL-LENGTH Y-running octagon ridges (roof up): side-wall crossings at the THIRDS of the 34 side-panel overlap (station +0.667/-10.667, hosted continuously by the WIDE CORNER RIB) + the 44-long END-WALL ridge at -17 (the endplate tie; its blind groove end = the flush stop); ONE M4×35 down the rail web into the inboard ridge = the Y-retention shear pin; below, the leg↔bar latch socket verbatim (house 28.1 × 41 + ledge). Hangs 48 below the body = the disassembled z cost"),
     "leg_body_stub_jk": (lambda: heal(LG.leg_body_stub_jk()), "petg-gf/leg_body_stub_jk.step", "PETG-GF — body stub ×1 (the +X/-Y jack corner): the mirror SKU - end-wall ridge on local +x (this corner faces its endplate the other way); otherwise identical"),
-    "leg_body_stub_trrs": (lambda: heal(LG.leg_body_stub_trrs()), "petg-gf/leg_body_stub_trrs.step", "PETG-GF — body stub ×1 (the -X/+Y WIRED corner; end-wall ridge local +x): + the mouth-seat boss, Ø9.7 jack way and the gabled jack FIN (13 wide, walls 36.5, peak 43) sleeving the 10-03404 and running to the trailing face - it swipes through, then FILLS, its own side-wall passage (jack loads from the fin top; an M2 set screw through the fin wall clamps the barrel - a pressed ring can't ride through the passage; pigtail threads up the open hollow during the slide; crossing ridges stop at y+8 so the pigtail's drop/run never cross one)"),
+    "leg_body_stub_trrs": (lambda: heal(LG.leg_body_stub_trrs()), "petg-gf/leg_body_stub_trrs.step", "PETG-GF — body stub ×1 (the -X/+Y WIRED corner; end-wall ridge local +x): NOTHING above the top face (user killed the jack fin) - the mouth-seat boss, barrel way and Ø9.7 jack way open through the FLAT top; the naked 10-03404 DROPS IN through the wide rib's Ø10.5 well AFTER the slide, seats on the boss, and an M2 set screw from the stub's inboard-y face (reachable under the assembled body) clamps its barrel; the pigtail rides the over-rib raceway (y 50.5) east to the bus-B tee"),
     "leg_latch_head":  (lambda: heal(LG.leg_latch_head()), "pctg/leg_latch_head.step", "PCTG — LATCH HEAD ×4 (FLUSH round; prints standing): 44-sq (the 50 shoulder plate is gone), house spigot + wedging-bolt channel + recessed seatbelt button on the flipped INBOARD-opening frame, standard section socket below, captive TRRS plug seat on the +5 axis (one SKU for all legs)"),
     "leg_latch_bolt":  (lambda: heal(LG.leg_latch_bolt()), "pctg/leg_latch_bolt.step", "PCTG — latch BOLT ×4 (redesign): rigid slider, 45° self-latching nose; underside bears the socket ledge (retention ~100N target)"),
     "leg_latch_btn":   (lambda: heal(LG.leg_latch_btn()), "pctg/leg_latch_btn.step", "PCTG — latch BUTTON ×4 (redesign): recessed seatbelt-style release on the head's inboard face (35° wedge coupling at refinement)"),
@@ -565,21 +565,25 @@ def _leg_components():
                         4.5, 72.0, cq.Vector(sx, ly, CH.Z_BOT - 341.0),
                         cq.Vector(0, 0, 1))))
                 out.append(("leg_cable_coil", coil))
-                # body jack's factory cable: up the fin's jack way, out
-                # the gable (peak bed+43), over the fin at bed+45.5, drop
-                # beside it at y 33 — clear of the fin's y-36.25 end AND
-                # of every ridge (the wired stub's crossing ridges stop
-                # at y 34.75) — to -70.6, then east through the seat/
-                # station-rib window to the tee. (Threaded up through the
-                # open foot hollow while the stub slides in; unplug at
-                # the tee to extract.)
+                # body jack's factory cable (Y-INSTALL, finless): the
+                # jack drops into the stub's way through the wide rib's
+                # well AFTER the slide; its pigtail exits the jack top
+                # (-44.95), jogs NORTH to y 50.5 (past the jack barrel,
+                # north of the electronics tray) and drops into the
+                # OVER-RIB raceway lane (floor -67.3, cut across the
+                # wide rib + station rib), riding it east ABOVE the
+                # full-length ridge roofs (-67.91), then diagonally down
+                # to the bus-B tee. Unplug at the tee to extract.
                 out.append(("chassis_trrs_cable", WR._wire([
-                    (sx - 5.0, ly, CH.Z_BOT + 36.7),
-                    (sx - 5.0, ly, CH.Z_BOT + 45.5),
-                    (sx - 5.0, 33.0, CH.Z_BOT + 45.5),
-                    (sx - 5.0, 33.0, -70.6),
-                    (-586.0, 33.0, -70.6),
+                    (sx - 5.0, ly, CH.Z_BOT + 30.4),
+                    (sx - 5.0, ly, -42.9),
+                    (sx - 5.0, 50.5, -42.9),
+                    (sx - 5.0, 50.5, -65.0),
+                    (-586.5, 50.5, -65.0),
                     (-581.5, 35.5, WR.HDR_Z)], 3.8)))
+                #   ^ the descent elbow sits 2.5 east of the station
+                #     rib's face (-589) so the fat diagonal rod clears
+                #     its corner south of the raceway band
             k += 1
     return out
 
