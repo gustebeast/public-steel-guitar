@@ -96,9 +96,9 @@ PARTS = {
     # ("leg_coupler_f" export retired — ROUND 3: threadless, gasketless square legs)
     "leg_lid":         (lambda: heal(LG.leg_lid()), "petg-gf/leg_lid.step", "PETG-GF — leg channel LID ×2 (redesign, wired leg): 45° dovetail strip, slides over the body's cable channel (bar-lid pattern; TPU nub SKU locks it)"),
     # ("leg_washer_sq" export retired — ROUND 3: threadless, gasketless square legs)
-    "leg_body_stub":   (lambda: heal(LG.leg_body_stub()), "petg-gf/leg_body_stub.step", "PETG-GF — BODY STUB ×2 (bridge/+Y + keyhead/-Y; prints LYING ON ITS +Y FACE - Y-INSTALL round: layer lines in x-z so both leg-bending directions load within layers; the ridges print as vertical fins, the house gable points up): the 44-sq semi-permanent corner piece SLIDES IN ALONG Y - three FULL-LENGTH Y-running octagon ridges (roof up): side-wall crossings at the THIRDS of the 34 side-panel overlap (station +0.667/-10.667, hosted continuously by the WIDE CORNER RIB) + the 44-long END-WALL ridge at -17 (the endplate tie; its blind groove end = the flush stop); ONE M4×35 down the rail web into the inboard ridge = the Y-retention shear pin; below, the leg↔bar latch socket verbatim (house 28.1 × 41 + ledge). Hangs 48 below the body = the disassembled z cost"),
-    "leg_body_stub_jk": (lambda: heal(LG.leg_body_stub_jk()), "petg-gf/leg_body_stub_jk.step", "PETG-GF — body stub ×1 (the +X/-Y jack corner): the mirror SKU - end-wall ridge on local +x (this corner faces its endplate the other way); otherwise identical"),
-    "leg_body_stub_trrs": (lambda: heal(LG.leg_body_stub_trrs()), "petg-gf/leg_body_stub_trrs.step", "PETG-GF — body stub ×1 (the -X/+Y WIRED corner; end-wall ridge local +x): NOTHING above the top face (user killed the jack fin) - the mouth-seat boss, barrel way and Ø9.7 jack way open through the FLAT top; the naked 10-03404 DROPS IN through the wide rib's Ø10.5 well AFTER the slide, seats on the boss, and an M2 set screw from the stub's inboard-y face (reachable under the assembled body) clamps its barrel; the pigtail rides the over-rib raceway (y 50.5) east to the bus-B tee"),
+    "leg_body_stub":   (lambda: heal(LG.leg_body_stub()), "petg-gf/leg_body_stub.step", "PETG-GF — BODY STUB ×2 (bridge/+Y + keyhead/-Y; prints LYING ON ITS +Y FACE - Y-INSTALL round: layer lines in x-z so both leg-bending directions load within layers; the ridges print as vertical fins, the house gable points up): the 44-sq semi-permanent corner piece SLIDES IN ALONG Y - two FULL-LENGTH Y-running octagon crossing ridges (roof up) at the THIRDS of the 34 side-panel overlap (station +0.667/-10.667, hosted continuously by the WIDE CORNER RIB) + the 44-long simple 5×8 TONGUE at -17 into the endplate's groove (even 5/2.5+2.5 material split of the 10 wall; blind groove end = the flush stop); ONE M4×35 down the rail web into the inboard ridge = the Y-retention shear pin + ONE M4×10 along x through the endplate's end face cross-pinning the tongue (double shear); below, the leg↔bar latch socket verbatim (house 28.1 × 41 + ledge). Hangs 48 below the body = the disassembled z cost"),
+    "leg_body_stub_jk": (lambda: heal(LG.leg_body_stub_jk()), "petg-gf/leg_body_stub_jk.step", "PETG-GF — body stub ×1 (the +X/-Y jack corner): the mirror SKU - end-wall tongue on local +x (this corner faces its endplate the other way); otherwise identical"),
+    "leg_body_stub_trrs": (lambda: heal(LG.leg_body_stub_trrs()), "petg-gf/leg_body_stub_trrs.step", "PETG-GF — body stub ×1 (the -X/+Y WIRED corner; end-wall tongue local +x): NOTHING above the top face (user killed the jack fin) - the mouth-seat boss, barrel way and Ø9.7 jack way open through the FLAT top; the naked 10-03404 DROPS IN through the wide rib's Ø10.5 well AFTER the slide, seats on the boss, and an M2 set screw from the stub's inboard-y face (reachable under the assembled body) clamps its barrel; the pigtail rides the over-rib raceway (y 50.5) east to the bus-B tee"),
     "leg_latch_head":  (lambda: heal(LG.leg_latch_head()), "pctg/leg_latch_head.step", "PCTG — LATCH HEAD ×4 (FLUSH round; prints standing): 44-sq (the 50 shoulder plate is gone), house spigot + wedging-bolt channel + recessed seatbelt button on the flipped INBOARD-opening frame, standard section socket below, captive TRRS plug seat on the +5 axis (one SKU for all legs)"),
     "leg_latch_bolt":  (lambda: heal(LG.leg_latch_bolt()), "pctg/leg_latch_bolt.step", "PCTG — latch BOLT ×4 (redesign): rigid slider, 45° self-latching nose; underside bears the socket ledge (retention ~100N target)"),
     "leg_latch_btn":   (lambda: heal(LG.leg_latch_btn()), "pctg/leg_latch_btn.step", "PCTG — latch BUTTON ×4 (redesign): recessed seatbelt-style release on the head's inboard face (35° wedge coupling at refinement)"),
@@ -357,9 +357,10 @@ def _stow_tail(i, rad):
     for k in range(1, M + 1):
         th = math.radians(45.0 * (1.0 - k / M))                        # 45° → 0° around the arc
         pts.append(cq.Vector(cx + R * math.cos(th), ny, zj + R * math.sin(th)))
-    pts.append(cq.Vector(KE.ZHOLE_X, ny, CH.Z_BOT + 7.6))              # down the bore, stopping
-    #                                    just above the corner stubs' Y-ridge roofs (bed + 7.34):
-    #                                    the two +Y-corner bores land on the keyhead stub
+    pts.append(cq.Vector(KE.ZHOLE_X, ny, CH.Z_BOT + 8.4))              # down the bore, stopping
+    #                                    just above the corner stubs' end-wall TONGUE top
+    #                                    (bed + 8.0): the two +Y-corner bores land on the
+    #                                    keyhead stub's tongue
     out = None
     for a, b in zip(pts[:-1], pts[1:]):
         seg = _rod(a, b, rad)
@@ -407,8 +408,10 @@ LEG_SEGMENTS = 2     # index stride / band count; the drawn chain places
 def _leg_components():
     """FLUSH SQUARE-LEG stack (leg centres = CH.LEG_Y, 17 inboard of the
     rails so every outer face is flush with the body walls): BODY STUB
-    (semi-permanent: octagon wall tenons into the rail band + one M4
-    down the web; mouth at -48) -> latch head (the inserting half, bolt
+    (semi-permanent: octagon crossing ridges into the side walls + the
+    end-wall tongue into the endplate, one M4 down the web + one M4
+    along x through the end face; mouth at -48) -> latch head (the
+    inserting half, bolt
     channel opening INBOARD; its female mouth at -90) -> segment chain
     (142 pitch) -> sleeve -> shaft -> TPU foot. The stub/head latch
     frames are authored FLIPPED 180 in legs.py, so the whole stack still

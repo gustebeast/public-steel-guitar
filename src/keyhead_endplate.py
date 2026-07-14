@@ -115,10 +115,15 @@ def _build():
     # below the dovetail sockets (-23.15..-6).
     # relief=False: the 45° overhang wedge relieves the CHASSIS tongue
     # only — cut here it eats the end-wall groove roof (user-caught).
-    from .legs import corner_groove_negatives as _cgn
+    # + the per-leg M4 LOCK SCREW ways along x through the end face
+    # (Ø4.6 outboard cheek / Ø3.6 pilot through tongue + inboard cheek).
+    from .legs import (corner_groove_negatives as _cgn,
+                       endwall_screw_negatives as _esn)
     for _ly, _s in ((CH.LEG_Y[0], 1.0), (CH.LEG_Y[1], -1.0)):
         for _n in _cgn(CH.LEG_STATIONS_X[1], _ly, _s, -1.0, CH.Z_BOT,
                        relief=False):
+            w = w.cut(_n)
+        for _n in _esn(CH.LEG_STATIONS_X[1], _ly, -1.0, CH.Z_BOT):
             w = w.cut(_n)
     # STRING-END STOWAGE (one per string): a vertical bore set INBOARD of the -X face
     # (ZHOLE_X, ~3.5 mm of wall left -X of it) running from near the body top straight DOWN
