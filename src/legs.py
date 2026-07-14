@@ -793,6 +793,26 @@ def corner_groove_negatives(station: float, ly: float, syg: float,
     y0c = (ly - SQ_W / 2 - 0.5) if syg > 0 else (ly - SQ_W / 2 - 1.0)
     for dx in _cross_x(egx):
         negs.append(_groove(Lc).translate((station + dx, y0c, z_bot)))
+    # 45° OVERHANG RELIEF (user): in the RAIL-BAND y (where the end-wall
+    # groove crosses the rail-end dovetail tongue at the keyhead / the
+    # kept-shell exit at the bridge), the corner left standing above the
+    # groove's OUTBOARD exit is trimmed by a 45° plane that JUST CLEARS
+    # the joint's roof — height from cadkit octagon_height, so the plane
+    # tracks any joint-size change — rising outboard: one continuous 45°
+    # underside from the joint's top-inboard flank out through the
+    # tongue / wall face. Reach 3.6 stays inside the endplate's outer
+    # skin (groove face gap 0.86 + skin 0.9 at both ends).
+    from cadkit.joinery import octagon_height
+    zr = z_bot + octagon_height(STUB_TEN_W) + 0.3
+    xg = station + egx * STUB_RIDGE_EP
+    RCH = 3.6
+    prof = [(xg, zr), (xg + egx * RCH, zr + RCH),
+            (xg + egx * RCH, z_bot - 1.0), (xg, z_bot - 1.0)]
+    yw0 = ly + syg * 10.5
+    yw1 = ly + syg * 23.0
+    ylo, yhi = min(yw0, yw1), max(yw0, yw1)
+    negs.append(cq.Workplane("XZ").workplane(offset=-yhi)
+                .polyline(prof).close().extrude(yhi - ylo))
     return negs
 
 
