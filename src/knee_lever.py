@@ -557,6 +557,20 @@ def _half_stop_piston() -> cq.Workplane:
 HS_FLOOR_Z = HS_Z - HS_PISTON_WZ / 2               # piston underside = cartridge OPEN-bottom = housing floor
 
 
+def _roof_gable(yc, hw, z_base, x0, x1):
+    r"""A triangular GABLE prism (roof): base yc±hw at z_base, apex at (yc, z_base+hw) with
+    45deg faces, extruded along X from x0 to x1. Unioned on top of a flat-topped cartridge/
+    pocket so the roof over the cartridge is a self-supporting /\ (each face 45deg) instead of
+    a flat -Z->+Z print overhang. It sits ABOVE the cap top (z_base >= HS_CART_Z1), well clear
+    of the piston (top HS_Z+HS_PISTON_WZ/2), so no running clearance changes -- it just replaces
+    the flat lid with a peak. The two cartridges' peaks (at ±HS_YC) leave a solid ridge between
+    them; below the eaves each pocket is the usual vertical-walled box."""
+    pts = [(yc - hw, z_base), (yc + hw, z_base), (yc, z_base + hw)]
+    wire = cq.Wire.makePolygon([cq.Vector(x0, y, z) for (y, z) in pts] + [cq.Vector(x0, *pts[0])])
+    face = cq.Face.makeFromWires(wire)
+    return cq.Workplane("XY").add(cq.Solid.extrudeLinear(face, cq.Vector(x1 - x0, 0, 0)))
+
+
 def _half_stop_cart_base() -> cq.Workplane:
     """Cartridge (printed -- ONE part, NO separate roof): an INVERTED-U. A solid +Z CAP (toward the axle,
     where the swinging arm's arc is narrow) + two side walls + front/back walls, OPEN on -Z. The piston
@@ -581,6 +595,9 @@ def _half_stop_cart_base() -> cq.Workplane:
     base = cut_insert_bore(M4, base, (HS_BACK_X, HS_YC, HS_Z), (-1, 0, 0),
                            clr_len=HS_BACK_X - HS_GPOST_BX - M4_INSERT_L,
                            reason="tension set screw: cup drives the guide post through the shaft clearance")
+    # 45deg gable cap: replace the flat lid with a peaked roof so the housing pocket cut from it is
+    # self-supporting (no flat overhang) in the -Z->+Z print. Above the cap top, clear of the coil/piston.
+    base = base.union(_roof_gable(HS_YC, HS_CART_WY / 2, HS_CART_Z1, HS_FRONT, HS_BACK_X))
     return heal(base)
 
 
@@ -624,12 +641,14 @@ def hs_pocket_hw():
 
 
 def _hs_pocket(yc, x0, x1):
-    r"""The housing pocket for one cartridge: a plain rectangular slot (flat floor + flat ceiling), CLR
-    bigger than the cartridge all round. The FLOOR sits at the piston underside -- it is the -Z retaining
-    wall for the open-bottomed cartridge. The cartridge slides in X and is jammed against the ceiling by the
-    vertical clamp."""
+    r"""The housing pocket for one cartridge: a rectangular slot with a 45deg GABLE ceiling, CLR bigger
+    than the cartridge all round. The FLOOR sits at the piston underside -- it is the -Z retaining wall
+    for the open-bottomed cartridge. The ceiling is a peaked /\ (not flat) so the roof over it prints
+    self-supporting -Z->+Z; the cartridge cap carries the matching gable. The cartridge slides in X and
+    is jammed against the ceiling by the vertical clamp."""
     z0, z1 = HS_FLOOR_Z - HS_CLR, HS_CART_Z1 + HS_CLR
-    return box_at(x1 - x0, 2 * hs_pocket_hw(), z1 - z0, x=(x0 + x1) / 2, y=yc, z=(z0 + z1) / 2)
+    box = box_at(x1 - x0, 2 * hs_pocket_hw(), z1 - z0, x=(x0 + x1) / 2, y=yc, z=(z0 + z1) / 2)
+    return box.union(_roof_gable(yc, hs_pocket_hw(), z1, x0, x1))     # peaked ceiling
 
 
 def _hs_clamp_pt(yc, dx):
@@ -653,7 +672,9 @@ def _hs_block(yc, x0, x1):
     HS_HOUS_WALL) -- symmetric, so the -Z floor is a clean 0.8-multiple like every other housing wall."""
     hw = hs_pocket_hw()
     t = HS_HOUS_WALL
-    z_bot, z_top = (HS_FLOOR_Z - HS_CLR) - t, (HS_CART_Z1 + HS_CLR) + t     # pocket floor/ceiling ± one wall
+    # z_top clears the pocket GABLE apex (peak = ceiling + hw) plus one wall, so the shell fully caps the
+    # peaked ceiling; the flat top merges into the solid rail<->cartridge block above.
+    z_bot, z_top = (HS_FLOOR_Z - HS_CLR) - t, (HS_CART_Z1 + HS_CLR) + hw + t
     return box_at(x1 - x0, 2 * (hw + t), z_top - z_bot, x=(x0 + x1) / 2, y=yc, z=(z_bot + z_top) / 2)
 
 
@@ -757,6 +778,11 @@ def _housing() -> cq.Workplane:
     w = w.union(box_at(_blk_x1 - _blk_x0, 2 * WP_Y1, YOKE_Z0 - _cap_z,   # Y to the bearing-wall edge (±16) so the
                        x=(_blk_x0 + _blk_x1) / 2, y=0.0, z=(_cap_z + YOKE_Z0) / 2))  # plates fuse over their FULL Y
     #   (the ~2mm of block that overhangs the cartridge outboard of Y=±13.9 is a small self-supporting cantilever)
+    # re-open the cartridge pockets: the block above fuses down to the OLD flat-cap level, so with the new
+    # 45deg gable cap it would BURY the peaked void. Re-cut each pocket (its gable ceiling) from the block so
+    # the cartridge's sloped cap keeps its slide clearance and the roof stays a self-supporting /\.
+    for _dy in (MAIN_YC - HS_YC, 0.0):
+        w = w.cut(feel_place(_hs_pocket(HS_YC + _dy, HS_POCKET_X0 + HS_SETBACK, HS_BACK_X + HS_SETBACK)))
     # retention (Y-slide lock): the yoke boss beside the NEAR (-23) rail runs the full Z to the yoke top
     # (backed by the body -> no overhang).
     # M2 self-tapping pilot up the yoke boss (Ø2.2, fits the 2mm rib column beside the octagon). The set
