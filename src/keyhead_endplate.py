@@ -113,9 +113,12 @@ def _build():
     # endplate's own side-wall band / tab, and nothing of the fin passage
     # (that crossing is all kept-shell). Groove roofs at bed + 7.34, far
     # below the dovetail sockets (-23.15..-6).
+    # relief=False: the 45° overhang wedge relieves the CHASSIS tongue
+    # only — cut here it eats the end-wall groove roof (user-caught).
     from .legs import corner_groove_negatives as _cgn
     for _ly, _s in ((CH.LEG_Y[0], 1.0), (CH.LEG_Y[1], -1.0)):
-        for _n in _cgn(CH.LEG_STATIONS_X[1], _ly, _s, -1.0, CH.Z_BOT):
+        for _n in _cgn(CH.LEG_STATIONS_X[1], _ly, _s, -1.0, CH.Z_BOT,
+                       relief=False):
             w = w.cut(_n)
     # STRING-END STOWAGE (one per string): a vertical bore set INBOARD of the -X face
     # (ZHOLE_X, ~3.5 mm of wall left -X of it) running from near the body top straight DOWN
