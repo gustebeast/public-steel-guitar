@@ -274,10 +274,21 @@ def _build_full() -> cq.Workplane:
     for _px, _py in ((AFE_X0 + 4, AFE_Y0 + 4), (AFE_X1 - 4, AFE_Y1 - 4)):
         body = body.union(cyl(6.0, (AFE_Z - 0.2) - AFE_PED_TOP, z=AFE_PED_TOP)
                           .translate((_px, _py, 0)))
-    # (wire raceways through the cross-ribs REMOVED: the W=6 knee octagon mortise now fills the
-    # lower rib where the harness lanes ran, so there's no shared room. The cables are left
-    # colliding with the solid ribs for now -- a cable-routing pass over the bigger joint comes
-    # next. See wiring.py RIB_RACE_Y / the knee _JW=6 note.)
+    # wire raceways through every cross-rib at each floor-trunk lane y. The harness
+    # (wiring.py: lane centres z -69.6, cable ODs <= 2.6) runs under the motors; each
+    # raceway is a full-X channel (floor -71.02 .. gable crown -66.62) that carries the
+    # wire through the rib. FIXED floor (was auto-derived 0.4 above the octagon roof):
+    # the W=6 octagon roof (-69.33) now sits WITHIN the wire band, but that's a separate
+    # void BELOW the channel -- the wire still rides the raceway, and the octagon just
+    # adds room under it. The raceway cuts the 2mm side columns + top beam at each lane,
+    # but only at the inboard lane band (y -59.5..-99.5); the mount tenon engages far
+    # outboard (y -133..-163), so the mount arch is untouched. -71.02 keeps the fattest
+    # cable (Ø2.6) 0.1 clear of the floor (wiring.py LANE_Z note).
+    from .wiring import RIB_RACE_Y
+    _race_z0 = -71.02
+    for _rx in _RIB_X:
+        for _ly in RIB_RACE_Y:
+            body = body.cut(_raceway(_ly, _race_z0, _rx, _RIB_W + 2.0))
     # DECK JOINT: the plates cap the rail and drop a vertical DOVETAIL tongue into a
     # groove milled in the rail top. Lower the rail top to z0 across the whole deck
     # X-span (rail -X end up to the +X takeover line TP_EP_GX) so a plate sits flush,
