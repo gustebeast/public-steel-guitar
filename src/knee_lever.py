@@ -346,19 +346,15 @@ MORT_Y1   = MID_Y - MOUNT_Y         # mortise +Y end at mid-Y (in the local fram
 # screw did, and it needs no drilled pilot (it just bears on the printed rib surface).
 # X: the Ø4.4 clearance bore runs TANGENT to the tenon's flat -X face (TEN_XC-HW0) so the screw clears
 # the tenon and threads fully home. The bore may cut through the mortise WALL (fine) but not the tenon.
-# NOTE: with the W=6 octagon (spans rail +-3) there's no longer room for the Ø6 insert boss
-# AND the M4 screw beside the tenon inside the 10mm rib -- this clears the tenon but the screw
-# now sits at/just outside the rib edge, so the Y-slide LOCK needs a rework (smaller screw or a
-# different grip). Deferred with the cable-routing pass.
-RETAIN_X = RAIL_X[0] - _JHW - (M4_INSERT_D + 2) / 2 - 0.3  # boss clear of the octagon tenon
+# The W=6 octagon (spans rail +-3) leaves only a 2mm rib side-column, too narrow for the old Ø6
+# insert + M4. The Y-slide LOCK is now an M2 SELF-TAPPING set screw (no insert): its Ø2.2 pilot
+# clears the octagon and its cup presses that column. Small, but the octagon carries the knee-strike
+# loads -- this only holds the chosen depth.
+RETAIN_X = RAIL_X[0] - _JHW - M2_SELFTAP_D / 2 - 0.15   # M2 pilot -X of the octagon, in the rib column
 # +Y of BOTH the half-stop cartridge (ends Y=12) AND the +Y bearing wall (ends Y=16), so the screw's
 # whole Z path -- driver access + its up/down adjustment -- is open below the yoke boss; clear of the
 # PCB wall at Y=20.5. (At Y=5 the cartridge housing sat right in that path.)
 RETAIN_Y = 18.0                                         # yoke boss (TEN_Y0..TEN_Y1) clear of cart+wall+PCB
-# Insert pocket TOP: as high (close to the rib the cup presses) as it can go. The Ø6 insert sits
-# -X of the octagon (RETAIN_X clears it), so it can run right up to the yoke top -- 1 mm below it
-# so the boss caps the pocket. The screw threads through and its cup reaches the rib above.
-RETAIN_INS_TOP = YOKE_Z1 - 1.0
 
 
 def _bearing():
@@ -398,13 +394,10 @@ def demo_parts():
         _drag = cart_drag if dy == 0 else cart_drag.mirror("XZ")
         out.append((f"{nm}_cart_drag", feel_place(_drag.translate((dx, 0, 0)))))
     # (no travel-stop screw: the +Z-cam-era stop boss was removed -- see _housing)
-    # retention set screw: threads up through the yoke boss beside the +X tenon (flat -X side), CUP tip
-    # +Z pressing the rib ledge, HEX -Z driven from below. set_screw is hex(+Z)/cup(-Z) -> rotate 180
-    # about X flips it (cup +Z / hex -Z); cup tip lands at the rib bottom (BODY_Z).
+    # retention set screw (M2 self-tap, no insert): threads up the yoke boss beside the near octagon, CUP
+    # tip +Z pressing the rib bottom, HEX -Z driven from below. Dummy shown at ~the boss (viz only).
     out.append(("retention_setscrew", C.set_screw().rotate((0, 0, 0), (1, 0, 0), 180)
                 .translate((RETAIN_X, RETAIN_Y, BODY_Z - 10.0))))
-    out.append(("retention_insert",                                  # Ø6×5 insert, top RETAIN_INS_TOP
-                C.m4_insert().translate((RETAIN_X, RETAIN_Y, RETAIN_INS_TOP))))
     return out
 
 
@@ -764,18 +757,11 @@ def _housing() -> cq.Workplane:
     w = w.union(box_at(_blk_x1 - _blk_x0, 2 * WP_Y1, YOKE_Z0 - _cap_z,   # Y to the bearing-wall edge (±16) so the
                        x=(_blk_x0 + _blk_x1) / 2, y=0.0, z=(_cap_z + YOKE_Z0) / 2))  # plates fuse over their FULL Y
     #   (the ~2mm of block that overhangs the cartridge outboard of Y=±13.9 is a small self-supporting cantilever)
-    # retention: the Ø6×5 insert + Ø4.4 clearance sit in a boss beside the NEAR (-23) rail's octagon (RETAIN_X
-    # clears the tenon). The boss runs the FULL Z to the yoke top (backed by the body -> no overhang); the set
-    # screw threads up and its cup presses the far chassis rib to friction-lock the Y slide. The tenon is now
-    # SOLID (fused), so there's no mortise to re-cut through the boss.
-    _ins_bot = RETAIN_INS_TOP - M4_INSERT_L
-    w = w.union(cyl(M4_INSERT_D + 2.0, YOKE_Z1 - _ins_bot, z=_ins_bot).translate((RETAIN_X, RETAIN_Y, 0)))
-    # insert_bore up the boss: Ø6×5 melt pocket + Ø4.4 clearance to the rib (set screw presses the far rib;
-    # sanctioned insert-bore deviation). The Ø8 boss is a STRUCTURAL feature, so it stays hand-rolled --
-    # only the pocket+clearance route through the spec.
-    w = cut_insert_bore(M4, w, (RETAIN_X, RETAIN_Y, _ins_bot), (0, 0, 1),
-                        clr_len=(YOKE_Z1 + 2) - RETAIN_INS_TOP,
-                        reason="retention set screw: cup presses the far chassis rib through the shaft clearance")
+    # retention (Y-slide lock): the yoke boss beside the NEAR (-23) rail runs the full Z to the yoke top
+    # (backed by the body -> no overhang).
+    # M2 self-tapping pilot up the yoke boss (Ø2.2, fits the 2mm rib column beside the octagon). The set
+    # screw threads its own way in and its cup protrudes past the yoke top to press the rib bottom.
+    w = w.cut(cyl(M2_SELFTAP_D, (YOKE_Z1 + 0.5) - BOSS_Z0, z=BOSS_Z0).translate((RETAIN_X, RETAIN_Y, 0)))
     w = heal(w)                                                     # heal EVERYTHING except the threads...
     # ...then cut the two FEMALE back-stop threads LAST and ALONE (thread rules: clean=False, and NEVER
     # heal a threaded part). Nominal thread; the printed screw carries the clearance (HS_TH_CLR). A short
