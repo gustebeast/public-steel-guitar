@@ -280,7 +280,10 @@ def _build_full() -> cq.Workplane:
     # rib-mortise ROOF so the wires sit clear of the fused tenon sliding along
     # the rib to ANY knee depth.
     from .wiring import RIB_RACE_Y
-    _race_z0 = _KL.rib_mortise(0.0).val().BoundingBox().zmax + 0.4
+    # 0.4 above the knee octagon rib-mortise ROOF, but never BELOW the harness-built level
+    # (-71.02): the octagon mortise (roof -71.58) is deeper than the old joint, and dipping the
+    # raceway to -71.18 clipped the pedal harness's descending USB lane. -71.02 clears the octagon.
+    _race_z0 = max(-71.02, _KL.rib_mortise(0.0).val().BoundingBox().zmax + 0.4)
     for _rx in _RIB_X:
         for _ly in RIB_RACE_Y:
             body = body.cut(_raceway(_ly, _race_z0, _rx, _RIB_W + 2.0))
