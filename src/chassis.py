@@ -274,19 +274,10 @@ def _build_full() -> cq.Workplane:
     for _px, _py in ((AFE_X0 + 4, AFE_Y0 + 4), (AFE_X1 - 4, AFE_Y1 - 4)):
         body = body.union(cyl(6.0, (AFE_Z - 0.2) - AFE_PED_TOP, z=AFE_PED_TOP)
                           .translate((_px, _py, 0)))
-    # wire raceways through every cross-rib at each floor-trunk lane y. The
-    # harness (wiring.py: lane centres z -69.6, cable ODs <= 2.6) runs under
-    # the motors; the raceway FLOOR is derived 0.4 ABOVE the knee-lever octagon
-    # rib-mortise ROOF so the wires sit clear of the fused tenon sliding along
-    # the rib to ANY knee depth.
-    from .wiring import RIB_RACE_Y
-    # 0.4 above the knee octagon rib-mortise ROOF, but never BELOW the harness-built level
-    # (-71.02): the octagon mortise (roof -71.58) is deeper than the old joint, and dipping the
-    # raceway to -71.18 clipped the pedal harness's descending USB lane. -71.02 clears the octagon.
-    _race_z0 = max(-71.02, _KL.rib_mortise(0.0).val().BoundingBox().zmax + 0.4)
-    for _rx in _RIB_X:
-        for _ly in RIB_RACE_Y:
-            body = body.cut(_raceway(_ly, _race_z0, _rx, _RIB_W + 2.0))
+    # (wire raceways through the cross-ribs REMOVED: the W=6 knee octagon mortise now fills the
+    # lower rib where the harness lanes ran, so there's no shared room. The cables are left
+    # colliding with the solid ribs for now -- a cable-routing pass over the bigger joint comes
+    # next. See wiring.py RIB_RACE_Y / the knee _JW=6 note.)
     # DECK JOINT: the plates cap the rail and drop a vertical DOVETAIL tongue into a
     # groove milled in the rail top. Lower the rail top to z0 across the whole deck
     # X-span (rail -X end up to the +X takeover line TP_EP_GX) so a plate sits flush,
