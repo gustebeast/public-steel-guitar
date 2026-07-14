@@ -772,7 +772,8 @@ def _groove(length: float) -> cq.Workplane:
 
 def corner_groove_negatives(station: float, ly: float, syg: float,
                             egx: float,
-                            z_bot: float) -> list:
+                            z_bot: float,
+                            relief: bool = True) -> list:
     """WORLD-space groove negatives for ONE leg corner — the ONE source
     both the chassis and the endplates cut from, so cross-part grooves
     (shell<->endplate, tab<->channel, wide corner rib) align by
@@ -780,7 +781,10 @@ def corner_groove_negatives(station: float, ly: float, syg: float,
     x sign (+1 at the bridge end). Per corner: the END-WALL groove (blind
     at the stub's inboard y face = the flush hard stop, open + 1
     overshoot outboard) and two CROSSING grooves (overshot both ends).
-    (No fin passage any more — nothing rides above the stub top.)"""
+    (No fin passage any more — nothing rides above the stub top.)
+    relief=True appends the 45° overhang wedge — for the CHASSIS ONLY
+    (it relieves the wall-plate tongue's print overhang; the endplates
+    pass relief=False or the wedge eats their end-wall groove roof)."""
     negs = []
     # end-wall groove: blind end exactly at the stub's inboard face
     L = SQ_W + 1.0
@@ -802,6 +806,8 @@ def corner_groove_negatives(station: float, ly: float, syg: float,
     # underside from the joint's top-inboard flank out through the
     # tongue / wall face. Reach 3.6 stays inside the endplate's outer
     # skin (groove face gap 0.86 + skin 0.9 at both ends).
+    if not relief:
+        return negs
     from cadkit.joinery import octagon_height
     zr = z_bot + octagon_height(STUB_TEN_W) + 0.3
     xg = station + egx * STUB_RIDGE_EP
