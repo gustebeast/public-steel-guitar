@@ -257,10 +257,15 @@ def _build() -> cq.Workplane:
     # recess floor (-55) and the guide windows.
     # relief=False: the 45° overhang wedge relieves the CHASSIS tongue
     # only — cut here it eats the end-wall groove roof (user-caught).
-    from .legs import corner_groove_negatives as _cgn
+    # + the per-leg M4 LOCK SCREW ways along x through the end face
+    # (Ø4.6 outboard cheek / Ø3.6 pilot through tongue + inboard cheek).
+    from .legs import (corner_groove_negatives as _cgn,
+                       endwall_screw_negatives as _esn)
     for _ly, _s in ((CH.LEG_Y[0], 1.0), (CH.LEG_Y[1], -1.0)):
         for _n in _cgn(CH.LEG_STATIONS_X[0], _ly, _s, 1.0, CH.Z_BOT,
                        relief=False):
+            body = body.cut(_n)
+        for _n in _esn(CH.LEG_STATIONS_X[0], _ly, 1.0, CH.Z_BOT):
             body = body.cut(_n)
     # PANEL I/O (the instrument's right face): the base's +X end wall is CH.T (10)
     # thick -- too deep for the jacks (their bodies span x -16..6) -- so RECESS its
