@@ -328,49 +328,79 @@ def _build_full() -> cq.Workplane:
     body = body.union(_leg_shell(LEG_STATIONS_X[1], *LEG_SHELL_NX))
     for _yc in (Y_HI, Y_LO):
         body = body.union(_kh_tongue(_yc))
+    # ── WIDE CORNER RIBS (user): one per end, tying both leg corners to
+    # the rails and hosting the crossing grooves CONTINUOUSLY, so all
+    # three stub ridges run full length. x: from the endplate end wall's
+    # inner face (+0.4 clearance) to the leg's inboard face (~34 wide);
+    # the CHASSIS-zone part is rail-to-rail (unions rails / kept shells /
+    # station ribs), the ENDPLATE-zone part fits the foot hollow with 0.4
+    # wall clearance. Top flush with the motor rest (FLOOR_TOP, like every
+    # rib) — 1.15 under the electronics tray's bottom (-64.0).
+    _WR_Y0, _WR_Y1 = Y_LO + T / 2 + 0.4, Y_HI - T / 2 - 0.4
+    for _c0, _c1, _h0, _h1 in (
+            (KH_RAIL_X, LEG_STATIONS_X[1] + LEG_W / 2,
+             EP_TIP_NX + T + 0.4, KH_RAIL_X),
+            (LEG_STATIONS_X[0] - LEG_W / 2, TP_EP_GX,
+             TP_EP_GX, EP_TIP_PX - T - 0.4)):
+        body = body.union(box_at(abs(_c1 - _c0), Y_HI - Y_LO,
+                                 MB.FLOOR_TOP - Z_BOT, x=(_c0 + _c1) / 2,
+                                 y=(Y_HI + Y_LO) / 2,
+                                 z=(MB.FLOOR_TOP + Z_BOT) / 2))
+        body = body.union(box_at(abs(_h1 - _h0), _WR_Y1 - _WR_Y0,
+                                 MB.FLOOR_TOP - Z_BOT, x=(_h0 + _h1) / 2,
+                                 y=(_WR_Y0 + _WR_Y1) / 2,
+                                 z=(MB.FLOOR_TOP + Z_BOT) / 2))
+    # wired-corner services through the -X wide rib: the Ø10.5 JACK WELL
+    # (the naked 10-03404 drops through it into the stub's way AFTER the
+    # slide; the well sleeves the barrel) and the OVER-RIB raceway lane
+    # (y 50.5, floor -67.0: the pigtail rides it east ABOVE the ridge
+    # roofs (-67.91) and NORTH of the electronics tray, gabled-window
+    # through the station rib, then drops to the bus-B tee)
+    body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        5.25, (MB.FLOOR_TOP - Z_BOT) + 2.0,
+        cq.Vector(LEG_STATIONS_X[1] - 5.0, LEG_Y[0], Z_BOT - 1.0),
+        cq.Vector(0, 0, 1))))
+    body = body.cut(_raceway(50.5, -67.0, -604.75, 31.5))
+    # +X tee-10 clearance notch out of the bridge rib's west face (the
+    # tee pokes 2.4 into it; box clears the PCB + header margin)
+    body = body.cut(box_at(4.0, 17.0, (MB.FLOOR_TOP - Z_BOT) + 2.0,
+                           x=-34.5, y=-108.0,
+                           z=(MB.FLOOR_TOP + Z_BOT) / 2))
     # ── Y-INSTALL BODY-STUB JOINERY (user: the stubs print on their side,
     # so they SLIDE IN ALONG Y; cut LAST — the shells above host the wall
     # crossings). Each corner: three Y-running octagon ridges on the stub
     # top (legs.py) ride grooves cut here + in the endplates from the SAME
     # shared negatives (legs.corner_groove_negatives — cross-part grooves
     # align by construction): the side-wall band gets octagon THROUGH-
-    # crossings at station ±7 (their side-face openings are filled flush
-    # by the ridge ends), and whatever chassis crosses the corner (kept
-    # shell, seat rib, the +X comb rib) gets tunnelled for extra
-    # engagement. The end-wall groove's blind end (in the endplate) is
-    # the flush hard stop. ONE vertical M4 per stub drops down the rail
-    # web from under the deck into the INBOARD ridge = the Y-retention
-    # SHEAR PIN: Ø8.4 head well to Z_BOT+30 (3 mm hex key reaches through
-    # it), Ø4.6 shaft way on down to the groove, Ø3.6 pilot in the ridge.
-    # Screw: M4×35 (head -45.15, tip -80.15, thread through the ridge).
-    from .legs import corner_groove_negatives as _cgn
+    # crossings at the THIRDS of the leg<->side-panel overlap (user:
+    # station +0.667 / −10.667 toward inboard — legs._cross_x; their
+    # side-face openings are filled flush by the ridge ends), and whatever
+    # chassis crosses the corner (kept shell, seat rib, the +X comb rib)
+    # gets tunnelled for extra engagement. The end-wall groove's blind end
+    # (in the endplate) is the flush hard stop. ONE vertical M4 per stub
+    # drops down the rail web from under the deck into the INBOARD ridge
+    # = the Y-retention SHEAR PIN: Ø8.4 head well to Z_BOT+30 (3 mm hex
+    # key reaches through it), Ø4.6 shaft way on down to the groove, Ø3.6
+    # pilot in the ridge. Screw: M4×35 (head -45.15, tip -80.15).
+    from .legs import corner_groove_negatives as _cgn, _cross_x as _cx
     _xc_mid = sum(LEG_STATIONS_X) / 2
     for _sx in LEG_STATIONS_X:
         _egx = -1.0 if _xc_mid > _sx else 1.0       # outboard x sign
-        _ib = -_egx                                 # inboard ridge side
+        _xm4 = _sx + _cx(_egx)[1]                   # inboard crossing ridge
         for _yr, _s in ((Y_HI, 1), (Y_LO, -1)):
             _lc = LEG_Y[0] if _s > 0 else LEG_Y[1]  # flush leg centreline
-            _wired = (_sx, _lc) == (LEG_STATIONS_X[1], LEG_Y[0])
-            for _n in _cgn(_sx, _lc, float(_s), _egx, _wired, Z_BOT):
+            for _n in _cgn(_sx, _lc, float(_s), _egx, Z_BOT):
                 body = body.cut(_n)
             body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-                2.3, 24.5, cq.Vector(_sx + _ib * 7.0, _yr, Z_BOT + 6.0),
+                2.3, 24.5, cq.Vector(_xm4, _yr, Z_BOT + 6.0),
                 cq.Vector(0, 0, 1))))
             body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
                 4.2, (TP_GZ0 - TP_TG_DEPTH - 0.1) - (Z_BOT + 30.0),
-                cq.Vector(_sx + _ib * 7.0, _yr, Z_BOT + 30.0),
+                cq.Vector(_xm4, _yr, Z_BOT + 30.0),
                 cq.Vector(0, 0, 1))))
-    # WIRED corner (-X/+Y): the stub's jack FIN swipes in through its own
-    # gabled side-wall passage (cut above via the shared negatives) and
-    # fills it flush. The Ø3.8 factory pigtail is threaded up through the
-    # open foot hollow during the slide, exits the fin gable (peak
-    # bed+43), drops at y 33 and runs east at z -70.6 through this Ø7
-    # harness window (keyhead seat-rib remnant + station rib) to the
-    # bus-B tee — the WIRED stub's two crossing ridges stop at y 34.75
-    # (legs.RIDGE_CROSS_WIRED) so the drop and run never cross a ridge.
-    body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        3.5, 36.0, cq.Vector(LEG_STATIONS_X[1] - 7.0, 33.0, -70.6),
-        cq.Vector(1, 0, 0))))
+    # (the old y-33 / z-70.6 Ø7 harness window is GONE — the wired
+    # corner's pigtail now rides the OVER-RIB raceway lane at y 50.5,
+    # cut with the wide corner ribs above)
     return body
 
 
