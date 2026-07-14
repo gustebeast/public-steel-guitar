@@ -185,12 +185,13 @@ def electronics_tray() -> cq.Workplane:
     for fp, bz in ((PI_FP, BOARD_Z), (TEENSY_FP, BOARD_Z + 1.0),
                    (ADC_FP, BOARD_Z), (BUCK_FP, BOARD_Z), (XCVR_FP, BOARD_Z)):
         body = body.union(_posts_strips_fingers(fp, bz))
-    # west-north CORNER BITE (FLUSH-LEG round): the wired leg's Ø13 jack
-    # chimney rises through this corner of the tray plan, and its Ø3.8
-    # factory cable drops beside it to the under-tray rib window - one
-    # rectangular bite clears both (the old -X-edge notch is superseded)
-    body = body.cut(box_at(8.5, 16.0, 6.0, x=TRAY_X0 + 3.75, y=43.0,
-                           z=(TRAY_Z0 + TRAY_Z1) / 2))
+    # NORTH-SHELF LANE CHANNEL (Y-INSTALL round; supersedes the old
+    # west-north chimney bite - the jack chimney/fin is gone): the wired
+    # leg's Ø3.8 factory pigtail rides the chassis' over-rib raceway east
+    # at y 50.5 / z -65.0, passing under the tray's north rim shelf
+    # (y 46.5..53.5, bottom -64.0) - channel its underside 1.7 deep so
+    # the cable (top -63.1) clears by 0.7; the shelf keeps 1.4 above.
+    body = body.cut(box_at(25.2, 9.9, 1.7, x=-595.6, y=48.45, z=-63.25))
     return body
 
 
