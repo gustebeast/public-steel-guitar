@@ -115,9 +115,7 @@ def _build():
     # below the dovetail sockets (-23.15..-6).
     from .legs import corner_groove_negatives as _cgn
     for _ly, _s in ((CH.LEG_Y[0], 1.0), (CH.LEG_Y[1], -1.0)):
-        _wired = _ly == CH.LEG_Y[0]
-        for _n in _cgn(CH.LEG_STATIONS_X[1], _ly, _s, -1.0, _wired,
-                       CH.Z_BOT):
+        for _n in _cgn(CH.LEG_STATIONS_X[1], _ly, _s, -1.0, CH.Z_BOT):
             w = w.cut(_n)
     # STRING-END STOWAGE (one per string): a vertical bore set INBOARD of the -X face
     # (ZHOLE_X, ~3.5 mm of wall left -X of it) running from near the body top straight DOWN
