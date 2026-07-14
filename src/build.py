@@ -784,6 +784,7 @@ _COLORS = {
     "teensy_ifc":      (0.55, 0.25, 0.25),   # Teensy interface PCB (2x CAN
                                              # transceiver + XH headers)
     "tee_pcb":         (0.10, 0.42, 0.18),   # trunk-and-drop bus tee PCBs
+    "tee_cradle":      (0.32, 0.55, 0.42),   # PCTG 3-wall drop-in PCB cradle (pcb_cradle)
     "analog_frontend": (0.20, 0.45, 0.40),   # bridge-end buffer + relay board
     "top_plate":       (0.88, 0.91, 0.94),   # transparent-PCTG deck base + fret lines
     "top_plate_color": (0.30, 0.33, 0.38),   # colour-PCTG deck layer (skin contact)

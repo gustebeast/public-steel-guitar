@@ -86,21 +86,31 @@ PWR_OFF = 1.2         # 24 V hot/gnd separation, applied in BOTH x and y (+off /
                       # 1.2 + 0.9 = 2.1 < RACE_HW 2.4.
 WIRE_D = 2.0          # default (shielded-pair size)
 
-# floor-trunk lane y's (rib raceway diamonds are cut at these, z -70.65).
-# All sit +Y of the AFE pedestal (y <= -104); spacing 8 keeps riser gaps >= 4.
-LANE_AUDIO = -59.5       # buffered pickup -> ADC (motor 0's wall foot reaches
-                         # y -56.8, so 2.7 clear)
-LANE_CAN   = -67.5       # CAN bus (motor stubs)
-LANE_PWR   = -75.5       # 24 V (motor stubs)
-LANE_USB   = -83.5       # USB-C -> Pi
-LANE_DAC   = -91.5       # DAC -> AFE
-LANE_CTRL  = -99.5       # relay control -> AFE
-LANE_Z = -69.6           # trunk centre: the max-OD (2.6) wire bottoms out 0.1
-                         # above the raceway floor (-71.02); every OD stays
-                         # inside the gable
-STUB_Z = -72.6           # under-lane crossing level (between ribs; bottom of a
-                         # 2.4 stub = -73.8, still 1.35 above the bed)
-RIB_RACE_Y = (LANE_AUDIO, LANE_CAN, LANE_PWR, LANE_USB, LANE_DAC, LANE_CTRL)
+# ── -Y RAIL harness corridor ──────────────────────────────────────────────
+# The ribs are STRUCTURE + lever mounts ONLY: a knee/pedal lever slides along its rib
+# mortise to ANY depth in ANY bay, so a cable sitting in a rib would block a lever from
+# being installed there. So NO wire crosses a rib. The whole X-running trunk instead
+# hugs the -Y rail's INNER FACE, ABOVE the rib tops (z > FLOOR_TOP -65.15) where no rib
+# reaches and -- except the +X-most motor (m9) -- no motor body reaches either. The tees
+# mount on the rail (each on a pcb_cradle); every motor's drop pigtail reaches from its
+# -Y-facing PCB out to its tee. Past m9 the rail is notched (chassis motor-9 cable cut).
+from .chassis import Y_LO as _Y_LO, T as _RAIL_T
+from .motor_bank import FLOOR_TOP as _RIB_TOP           # -65.15 (rib tops = above = rib-free)
+RAIL_INNER_Y = _Y_LO + _RAIL_T / 2                       # -128.75: -Y rail inner face
+RAIL_Y = RAIL_INNER_Y + 4.5                              # trunk corridor centre, hugging the rail
+TEE_Y  = RAIL_INNER_Y + 8.0                              # tee-board centre (14mm-deep board clears wall)
+# six trunk lanes, STACKED in Z (was spread in Y), all ABOVE the tee headers (-54) so the
+# long-haul nets (audio/dac/relayctrl/usb, which do NOT land on a tee) clear every tee; the
+# CAN/pwr/canb nets dip DOWN to the tee headers to land (whitelisted tee contacts). 2mm pitch.
+LANE_AUDIO = -52.0       # buffered pickup -> ADC
+LANE_CAN   = -50.0       # CAN bus A (motors)
+LANE_PWR   = -48.0       # 24 V
+LANE_USB   = -46.0       # USB-C -> Pi
+LANE_DAC   = -44.0       # DAC -> AFE
+LANE_CTRL  = -42.0       # relay control / CAN bus B
+# NOTE: LANE_* are now Z heights along the RAIL_Y corridor (not lane y's).
+TEE_Z = _RIB_TOP + 3.0                                   # tee board rides a cradle on the rib tops
+HDR_Z = -54.0                                            # lifted tee header top (wire entry z)
 
 
 def _wire(pts, d=WIRE_D):
@@ -120,69 +130,85 @@ def _wire(pts, d=WIRE_D):
     return out
 
 
-def _riser_y(sy):
-    """Stub riser y inside a motor body footprint (body y = sy-84..sy+4), kept
-    >= 4 mm from every trunk lane. The lanes (pitch 8) and motors (pitch 9.5)
-    beat, so a fixed offset hits a lane for most motors; instead pick from
-    ABSOLUTE clear zones - below the whole band (open floor, for -Y motors),
-    the lane-gap centres, or +Y of the band - first that lands in the body."""
-    cands = [-103.5, -95.5, -87.5, -79.5, -71.5, -63.5, -55.5,
-             sy - 30, sy - 20, sy - 10, sy]
-    for y in cands:
-        if sy - 84 <= y <= sy + 4 and all(abs(y - L) >= 4.0 for L in RIB_RACE_Y):
-            return y
-    return sy - 30
+# motor 9 (the +X-most motor) is the ONE whose body reaches the -Y rail, so the rail
+# corridor at RAIL_Y is blocked by it; the trunk dips OUTBOARD into the rail there (the
+# chassis motor-9 cable cut notches the rail + drops its diamonds). Every other motor
+# leaves the corridor open.
+_M9X = D.motor_pos(9)[0]
+M9_X0, M9_X1 = _M9X - D.MOTOR_SQ / 2 - 2.0, _M9X + D.MOTOR_SQ / 2 + 2.0
+CUTOUT_Y = RAIL_INNER_Y - 1.25           # trunk dip: just past m9's back into the notched rail,
+                                         # shallow enough that even the Ø2.6 USB stays inside the cut
 
 
-# ── tee stations (trunk-and-drop; see the header) ────────────────────────
-TEE_Y_A = -71.5          # bus A tees sit between the CAN and PWR lanes
-HDR_Z = EL.FLOOR_Z + 8.1  # tee header top (wire entry z)
+def _rail_pts(x0, x1, z):
+    """Points riding the -Y rail corridor (RAIL_Y) from x0 to x1 at height z, dipping
+    OUTBOARD to CUTOUT_Y across motor 9's X-span (its body reaches RAIL_Y; the rail is
+    notched there so the trunk passes outboard of it)."""
+    pts = [(x0, RAIL_Y, z)]
+    if min(x0, x1) < M9_X1 and max(x0, x1) > M9_X0:      # ride spans m9 -> dip around it
+        a, b = (M9_X1, M9_X0) if x0 > x1 else (M9_X0, M9_X1)
+        pts += [(a, RAIL_Y, z), (a, CUTOUT_Y, z), (b, CUTOUT_Y, z), (b, RAIL_Y, z)]
+    pts.append((x1, RAIL_Y, z))
+    return pts
+
+
+# ── tee stations (all on the -Y rail corridor) ────────────────────────────
+def _motor_back(i):
+    return D.motor_pos(i)[1] - 84.0          # -Y-most face of motor i (PCB back)
 
 
 def tee_stations():
-    """[(x, y, drop_sign)] — 0..9 bus A (one per motor), 10 AFE power tee,
-    11 bus B knee (LKL), 12 bus B leg-socket landing (west of the bay rib,
-    under the tray — reachable from the -X/+Y socket without crossing an
-    un-racewayed rib)."""
-    out = [(D.motor_pos(i)[0] + 16.0, TEE_Y_A, +1) for i in range(10)]
-    out.append((-42.0, -108.0, -1))      # 10: AFE power tee — SOUTH of all
-                                         #     six lanes (a tee inside the lane
-                                         #     band collides with the passing
-                                         #     runs) and west of the AFE (x≥-22).
-                                         #     Wedged on the -41 rib: the 18mm
-                                         #     board can't clear both flanking
-                                         #     ribs AND the dac/relayctrl drops
-                                         #     (west) or the leg stub (east), so
-                                         #     the pwr header dips graze the -41
-                                         #     rib (~35mm^3, inherited) -- fixing
-                                         #     it needs an AFE-region relayout.
-    out.append((-536.0, -110.0, -1))     # 11: LKL knee station (bay edge —
-                                         #     clear of the housing, y≤-122.7).
-                                         #     x -536 (not -545) puts both header
-                                         #     dips in the -542..-529 rib GAP so
-                                         #     canb_0/1 + the knee drop clear the
-                                         #     -547 rib
-    out.append((-581.5, 40.0, +1))       # 12: leg-socket cable landing (in
-                                         # the rib GAP -588..-575: the flush
-                                         # round un-severed the station rib,
-                                         # which now owns x -598..-588)
+    """[(x, y, drop_sign)] tee-PCB anchors, all on the -Y rail (TEE_Y) so the CAN trunk
+    stays on the rail and never crosses a rib. 0..9 bus A (one per motor); 10 AFE power;
+    11 knee (LKL); 12 leg-socket. The two +X-most motors (8,9) reach the rail, so a tee
+    dead-behind them would sit inside the motor -- their tees shift into the clear corridor
+    (m8 -X toward m7, m9 +X past the motor bank) and reach back with a longer pigtail."""
+    out = []
+    for i in range(10):
+        mx = D.motor_pos(i)[0]
+        # m9's body sits AT the rail (its tee would be buried in it) -> park m9's tee just past the
+        # motor bank in the clear corridor; every other motor's tee rides the rail at its own X (m8's
+        # tee corner just grazes m8's PCB, a whitelisted mount contact).
+        if i == 9:
+            mx = _M9X + 30.0
+        out.append((mx, TEE_Y, +1))
+    out.append((-48.0, TEE_Y, -1))            # 10 AFE power (rail; -X of the +X leg stub at -13.4)
+    # bus B (knee + leg-socket): NOT on the crowded motor rail -- inboard of it, near the knee
+    # station, clear of the bay tray/buck and the motor tees.
+    out.append((-500.0, -100.0, -1))          # 11 knee (LKL): inboard, +X of the housing
+    out.append((-538.0, -100.0, +1))          # 12 leg-socket landing: inboard, +X of the bay tray
     return out
 
 
+_TEE_LIFT = TEE_Z - EL.FLOOR_Z          # lift the tee dummy onto its cradle, above the rib tops
+
+
 def tee_components():
-    """The tee-PCB dummies for the assembly."""
-    return [(f"tee_pcb_{i}", EL.tee_pcb(x, y, d))
+    """The tee-PCB dummies for the assembly, lifted onto their -Y-rail cradles (above the
+    rib tops so no tee sits in a rib). See tee_cradles()."""
+    return [(f"tee_pcb_{i}", EL.tee_pcb(x, y, d).translate((0, 0, _TEE_LIFT)))
             for i, (x, y, d) in enumerate(tee_stations())]
 
 
-def _seg(a, b, lane_y, d=WIRE_D, off=0.0):
-    """One crimped trunk SEGMENT between tee headers at a=(x,y) and
-    b=(x,y): dip under, cross to the raceway lane, ride it rib-to-rib,
-    dip back to the far header. off shifts x AND y (the 24 V pair)."""
+def tee_cradles():
+    """A 3-wall drop-in pcb_cradle under each tee, on the -Y-rail corridor. The cradle base
+    sits on the rib tops; the tee drops in and one M2 screw retains it. Open edge faces +Y
+    (the motor side) so the drop pigtail + trunk headers exit toward the corridor."""
+    from cadkit.pcb import pcb_cradle
+    out = []
+    for i, (x, y, d) in enumerate(tee_stations()):
+        cr = pcb_cradle(18.0, 14.0, screw_xy=(6.5, -4.0), open_edge="+y",
+                        standoff=TEE_Z + 0.8 - _RIB_TOP, wall_over=1.2)   # rest the lifted tee board
+        out.append((f"tee_cradle_{i}", cr.translate((x, y, _RIB_TOP))))
+    return out
+
+
+def _seg(a, b, lane_z, d=WIRE_D, off=0.0):
+    """One crimped trunk SEGMENT between two rail tee headers a=(x,y), b=(x,y): rise to the
+    rail corridor at lane_z (above the ribs) and ride it in X (dodging m9). off shifts x AND
+    y (the 24 V pair)."""
     (xa, ya), (xb, yb) = a, b
-    pts = [(xa, ya, HDR_Z), (xa, ya, STUB_Z), (xa, lane_y, STUB_Z),
-           (xa, lane_y, LANE_Z), (xb, lane_y, LANE_Z),
-           (xb, lane_y, STUB_Z), (xb, yb, STUB_Z), (xb, yb, HDR_Z)]
+    pts = [(xa, ya, HDR_Z)] + _rail_pts(xa, xb, lane_z) + [(xb, yb, HDR_Z)]
     return _wire([(px + off, py + off, pz) for px, py, pz in pts], d)
 
 
@@ -223,123 +249,95 @@ def build_wires():
     # between motor 9's rib (-529) and the tray (-547), then fly OVER the boards
     # (tops ~ -42) to drop into their target. Wire-vs-wire crossings are fine
     # (insulated); only solids (motors/boards/chassis) are avoided.
-    RISE_X = -538.0          # corridor between motor 9's rib and the tray
+    RISE_X = -552.0          # bay corridor, -X of motor 0 (spans -545..-503) so the fly-up clears it
     BAYFLY = -34.0           # over the bay boards
     out_z = shield_top - 1.0
 
-    def _long(pad, drop_x, lane_y, sh_x, sh_y, d=WIRE_D):
-        return _wire([
-            pad, (pad[0], pad[1], -52.0), (drop_x, pad[1], -52.0),
-            (drop_x, pad[1], STUB_Z), (drop_x, lane_y, STUB_Z),
-            (drop_x, lane_y, LANE_Z), (RISE_X, lane_y, LANE_Z),
-            (RISE_X, lane_y, BAYFLY), (RISE_X, sh_y, BAYFLY),
-            (sh_x, sh_y, BAYFLY), (sh_x, sh_y, out_z)], d)
+    def _long(pad, lane_z, sh_x, sh_y, d=WIRE_D):
+        """AFE pad -> up over the board -> out to the -Y rail corridor -> ride to the bay
+        (dodging m9) -> up into the shield. All above the rib tops (no rib crossing)."""
+        px, py, _ = pad
+        return _wire([pad, (px, py, -52.0), (px, RAIL_Y, -52.0)]
+                     + _rail_pts(px, RISE_X, lane_z)
+                     + [(RISE_X, RAIL_Y, BAYFLY), (RISE_X, sh_y, BAYFLY),
+                        (sh_x, sh_y, BAYFLY), (sh_x, sh_y, out_z)], d)
 
-    out.append(("wire_audio", _long(afe_buf_out, -50.0, LANE_AUDIO, -600.0, -62.0,
-                                    WIRE_OD["wire_audio"])))   # -50: rib gap (-46 clipped the -41 rib)
-    out.append(("wire_dac", _long(afe_relay_no, -52.0, LANE_DAC, -600.0, -80.0,
-                                  WIRE_OD["wire_dac"])))
-    out.append(("wire_relayctrl", _long(afe_coil, -58.0, LANE_CTRL, -600.0, -98.0,
-                                        WIRE_OD["wire_relayctrl"])))
+    out.append(("wire_audio", _long(afe_buf_out, LANE_AUDIO, -600.0, -62.0, WIRE_OD["wire_audio"])))
+    out.append(("wire_dac", _long(afe_relay_no, LANE_DAC, -600.0, -80.0, WIRE_OD["wire_dac"])))
+    out.append(("wire_relayctrl", _long(afe_coil, LANE_CTRL, -600.0, -98.0, WIRE_OD["wire_relayctrl"])))
 
-    # ── the two CAN buses: TRUNK-AND-DROP over the tee PCBs ─────────────
+    # ── the two CAN buses: TRUNK-AND-DROP over the rail tee PCBs ────────
     tees = tee_stations()
-    hdrA = {i: (tees[i][0], tees[i][1] - tees[i][2] * 2.0)   # trunk-header
-            for i in range(len(tees))}                       # (x, y) per tee
+    hdrA = {i: (tees[i][0], tees[i][1] - tees[i][2] * 2.0)   # trunk-header (x, y) per tee
+            for i in range(len(tees))}
     west = sorted(range(10), key=lambda i: hdrA[i][0])       # bus A west→east
 
-    # bus A CAN head: teensy_ifc busA header -> corridor -> CAN lane -> the
-    # westernmost motor tee (tee 9); then one crimped segment per hop east.
-    # Termination: teensy_ifc (this end) + tee 0's closed jumper (far end).
+    # bus A CAN head: teensy_ifc -> bay corridor -> -Y rail -> westernmost motor tee; then
+    # one crimped segment per hop east. Termination: teensy_ifc + tee 0's closed jumper.
     xw, yw = hdrA[west[0]]
-    out.append(("wire_can_0", _wire([
-        (-565.0, 42.0, -50.5), (-565.0, 42.0, BAYFLY),
-        (RISE_X, 42.0, BAYFLY), (RISE_X, 42.0, STUB_Z),
-        (RISE_X, -51.0, STUB_Z),
-        (RISE_X, LANE_CAN, STUB_Z), (RISE_X, LANE_CAN, LANE_Z),
-        (xw, LANE_CAN, LANE_Z), (xw, LANE_CAN, STUB_Z),
-        (xw, yw, STUB_Z), (xw, yw, HDR_Z)], WIRE_OD["wire_can"])))
+    out.append(("wire_can_0", _wire(
+        [(-565.0, 42.0, -50.5), (-565.0, 42.0, BAYFLY), (RISE_X, 42.0, BAYFLY),
+         (RISE_X, RAIL_Y, BAYFLY)] + _rail_pts(RISE_X, xw, LANE_CAN) + [(xw, yw, HDR_Z)],
+        WIRE_OD["wire_can"])))
     for k in range(9):
         out.append((f"wire_can_{k + 1}",
-                    _seg(hdrA[west[k]], hdrA[west[k + 1]], LANE_CAN,
-                         WIRE_OD["wire_can"])))
+                    _seg(hdrA[west[k]], hdrA[west[k + 1]], LANE_CAN, WIRE_OD["wire_can"])))
 
-    # bus A drops: each motor's OWN factory 6-pin XH pigtail (grey), from
-    # its tee's drop header up into the motor body (no splices anywhere)
+    # bus A drops: each motor's factory 6-pin XH pigtail (grey), from its -Y-facing PCB out
+    # to its rail tee. cy = outboard of THIS motor's back so the pigtail never re-enters it;
+    # m9 runs through the motor-9 cutout to its tee past the bank.
     for i in range(10):
-        tx, sy = tees[i][0], D.motor_pos(i)[1]
-        ry = _riser_y(sy)
+        tx = tees[i][0]
+        mx, sy, mz = D.motor_pos(i)
+        back = _motor_back(i)
+        cy = min(TEE_Y, back - 3.0)
         out.append((f"motor_pigtail_{i}", _wire([
-            (tx, TEE_Y_A + 4.5, HDR_Z), (tx, TEE_Y_A + 4.5, STUB_Z),
-            (tx, ry, STUB_Z), (tx, ry, -63.0)], WIRE_OD["motor_pigtail"])))
+            (mx, back, mz), (mx, back, -52.0), (mx, cy, -52.0),
+            (tx, cy, -52.0), (tx, TEE_Y + 4.5, -52.0), (tx, TEE_Y + 4.5, HDR_Z)],
+            WIRE_OD["motor_pigtail"])))
 
-    # 24 V pair (2 × 22 AWG per rail in the trunk jumpers): DC inlet ->
-    # AFE tee (10) -> tee 0 ... tee 9 -> buck; the AFE's LDO feed is tee
-    # 10's DROP (no splice at the inlet). hot/gnd offset ±PWR_OFF.
+    # 24 V pair (2 × 22 AWG per rail): DC inlet -> AFE tee (10) -> tee 0 ... tee 9 -> buck;
+    # the AFE's LDO feed is tee 10's DROP. hot/gnd offset ±PWR_OFF.
     x10, y10 = hdrA[10]
-    # inlet drop: dodge the AFE pedestal (x -24..0, y -110..-76, top -61)
-    # to its NORTH, fly WEST at -63.4 OVER the wide corner rib + the x -18
-    # comb rib (tops -65.15) and clear of the -24.07/-12.73 leg ridges
-    # (roofs -67.91), then drop straight onto tee 10's header WEST of the
-    # rib (the old bay dive at (-26,-97)/(-31,-104) is rib body now)
-    heads = [(-5.5, EL.DC_Y, EL.JACK_Z), (-5.5, EL.DC_Y, -52.0),
-             (-5.5, -74.0, -56.0), (-12.0, -74.0, -63.4),
-             (-26.0, -74.0, -63.4), (x10 + 5.5, y10, -63.4),
-             (x10 + 5.5, y10, HDR_Z)]
-    tail9 = [(hdrA[west[0]][0], hdrA[west[0]][1], HDR_Z),
-             (hdrA[west[0]][0], hdrA[west[0]][1], STUB_Z),
-             (hdrA[west[0]][0], LANE_PWR, STUB_Z),
-             (hdrA[west[0]][0], LANE_PWR, LANE_Z),
-             (RISE_X, LANE_PWR, LANE_Z), (RISE_X, LANE_PWR, BAYFLY),
-             (RISE_X, -106.0, BAYFLY), (-567.0, -106.0, BAYFLY),
-             (-567.0, -106.0, -50.0)]                    # over the tray, buck
-    afe_drop = [(x10, tees[10][1] - 4.5, HDR_Z), (x10, tees[10][1] - 4.5, -66.0),
-                (-24.0, -112.0, -56.0), (-5.0, -106.0, -53.0), afe_pwr]
+    heads = [(-5.5, EL.DC_Y, EL.JACK_Z), (-5.5, EL.DC_Y, -52.0), (-5.5, TEE_Y, -52.0),
+             (x10, TEE_Y, -52.0), (x10, TEE_Y, HDR_Z)]
+    tail = ([(hdrA[west[0]][0], hdrA[west[0]][1], HDR_Z)]
+            + _rail_pts(hdrA[west[0]][0], RISE_X, LANE_PWR)
+            + [(RISE_X, RAIL_Y, BAYFLY), (RISE_X, -106.0, BAYFLY),
+               (-567.0, -106.0, BAYFLY), (-567.0, -106.0, -50.0)])   # over the tray, buck
+    afe_drop = [(x10, TEE_Y + 4.5, HDR_Z), (x10, -104.0, -54.0),
+                (-8.0, -104.0, -54.0), afe_pwr]
     for _nm, _do in (("wire_pwr_hot", -PWR_OFF), ("wire_pwr_gnd", PWR_OFF)):
         def _off(pts):
             return [(px + _do, py + _do, pz) for px, py, pz in pts]
         out.append((f"{_nm}_0", _wire(_off(heads), WIRE_OD[_nm])))
-        out.append((f"{_nm}_1", _seg(hdrA[10], hdrA[west[-1]], LANE_PWR,
-                                     WIRE_OD[_nm], off=_do)))
+        out.append((f"{_nm}_1", _seg(hdrA[10], hdrA[west[-1]], LANE_PWR, WIRE_OD[_nm], off=_do)))
         for k in range(9):
             out.append((f"{_nm}_{k + 2}",
-                        _seg(hdrA[west[k + 1]], hdrA[west[k]], LANE_PWR,
-                             WIRE_OD[_nm], off=_do)))
-        out.append((f"{_nm}_11", _wire(_off(tail9), WIRE_OD[_nm])))
+                        _seg(hdrA[west[k + 1]], hdrA[west[k]], LANE_PWR, WIRE_OD[_nm], off=_do)))
+        out.append((f"{_nm}_11", _wire(_off(tail), WIRE_OD[_nm])))
         out.append((f"{_nm}_12", _wire(_off(afe_drop), WIRE_OD[_nm])))
 
     # ── bus B (inputs): ifc -> LKL tee -> leg-socket landing tee ────────
     x11, y11 = hdrA[11]
-    out.append(("wire_canb_0", _wire([
-        (-557.0, 42.0, -50.5), (-557.0, 42.0, BAYFLY),
-        (RISE_X, 42.0, BAYFLY), (RISE_X, 42.0, STUB_Z),
-        (RISE_X, -49.0, STUB_Z),
-        (RISE_X, LANE_CTRL, STUB_Z), (RISE_X, LANE_CTRL, LANE_Z),
-        (x11, LANE_CTRL, LANE_Z), (x11, LANE_CTRL, STUB_Z),
-        (x11, y11, STUB_Z), (x11, y11, HDR_Z)], WIRE_OD["wire_canb"])))
-    out.append(("wire_canb_1", _seg(hdrA[11], hdrA[12], LANE_CTRL,
-                                    WIRE_OD["wire_canb"])))
-    # LKL drop stub: drawn to the STATION BOUNDARY (housing starts y -122.7;
-    # its kl_pcb sits OUTBOARD at y≈-127 below the floor). The last ~15 mm
-    # to the kl_pcb's XH needs a small rail/floor pass-through near the
-    # knee station — flagged as a CHASSIS REQUEST; until then the stub ends
-    # clear of housing, rib and rail.
+    out.append(("wire_canb_0", _wire(
+        [(-557.0, 42.0, -50.5), (-557.0, 42.0, BAYFLY), (RISE_X, 42.0, BAYFLY),
+         (RISE_X, RAIL_Y, BAYFLY)] + _rail_pts(RISE_X, x11, LANE_CTRL) + [(x11, y11, HDR_Z)],
+        WIRE_OD["wire_canb"])))
+    out.append(("wire_canb_1", _seg(hdrA[11], hdrA[12], LANE_CTRL, WIRE_OD["wire_canb"])))
+    # LKL drop stub: from tee 11 down toward the kl_pcb XH at the knee station (ends clear of
+    # housing/rib/rail; the last pass-through to the board is a chassis follow-up).
     out.append(("wire_knee_drop", _wire([
-        (tees[11][0], tees[11][1] - 4.5, HDR_Z), (-537.0, -118.0, -71.0),
-        (-533.0, -119.5, -71.0)], WIRE_OD["wire_knee_drop"])))   # start AT tee 11
-    #      (was hardcoded -545, which sat on the -547 rib; tee 11's gap x clears it)
+        (tees[11][0], tees[11][1] - 4.5, HDR_Z), (-535.0, -124.0, -62.0),
+        (-533.0, -125.0, -68.0)], WIRE_OD["wire_knee_drop"])))
 
-    # -- USB (blue): USB-C panel -> floor lane -> corridor -> right-angle to Pi
-    # (the floor-lane descent moved WEST of the +X wide corner rib)
-    out.append(("wire_usb", _wire([
-        (-2.5, EL.USB_Y, EL.JACK_Z), (-12.0, EL.USB_Y, -45.0),
-        (-12.0, LANE_USB, -45.0), (-47.0, LANE_USB, -45.0),    # clear the -X jack body
-        (-47.0, LANE_USB, LANE_Z), (RISE_X, LANE_USB, LANE_Z),    # descend WEST of the
-        #                                    -41 comb rib (the wide corner rib owns -35.4..)
-        (RISE_X, LANE_USB, BAYFLY), (-560.0, LANE_USB, BAYFLY),
-        (-560.0, 20.0, BAYFLY), (-575.0, 20.0, BAYFLY),
-        (-575.0, 20.0, -44.0)],
-        WIRE_OD["wire_usb"])))                         # west of motor 9, then +Y to Pi
+    # -- USB (blue): USB-C panel -> -Y rail corridor -> ride to the bay -> right-angle to Pi
+    out.append(("wire_usb", _wire(
+        [(-2.5, EL.USB_Y, EL.JACK_Z), (-12.0, EL.USB_Y, -45.0), (-12.0, RAIL_Y, -45.0)]
+        + _rail_pts(-12.0, RISE_X, LANE_USB)
+        + [(RISE_X, RAIL_Y, BAYFLY), (-560.0, RAIL_Y, BAYFLY),
+           (-560.0, 20.0, BAYFLY), (-575.0, 20.0, BAYFLY), (-575.0, 20.0, -44.0)],
+        WIRE_OD["wire_usb"])))                          # west of motor 9, then +Y to Pi
 
     # -- Teensy <-> Pi link (purple): over the bay
     out.append(("wire_link", _wire([
