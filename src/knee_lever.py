@@ -262,8 +262,12 @@ HS_POCKET_X0 = SWING_X              # housing pocket front (cartridge front cant
 # packing is confirmed.]
 HS_BSTOP_BORE   = 5.0               # hollow bore -- clears the M4 tension-screw hex-key driver
 HS_BSTOP_OD     = 9.0               # thread crest (major) OD; the drive flange stays just under the cartridge pitch
-HS_TH_PITCH     = 2.0               # self-supporting 45deg thread pitch (whole-turn engagement)
-HS_TH_DEPTH     = 0.75              # flank depth <= pitch/2 (=1.0, margin kept); deeper flanks = more grip/prevailing torque
+HS_TH_PITCH     = 3.0               # self-supporting 45deg thread pitch. Raised 2.0->3.0: at pitch 2 the
+#                                    deep 0.75 flanks + overshoot made the valley (2.35) wider than the
+#                                    pitch -> adjacent turns overlapped into a silent no-op cutter (the
+#                                    updated cadkit thread check now REJECTS this). 3.0 keeps the grippy
+#                                    flanks valid; the 6mm boss = 2 turns (was ~3), enough for a feel stop.
+HS_TH_DEPTH     = 0.75              # flank depth <= pitch/2 (=1.5, margin kept); deeper flanks = more grip/prevailing torque
 HS_TH_MINOR     = HS_BSTOP_OD - 2 * HS_TH_DEPTH   # 8.0 -> wall to the Ø5 bore = 1.5mm
 HS_TH_CLR       = 0.4               # diametral thread clearance on the MALE side (TIGHTER than the 0.8 tested loose fit)
 HS_BSTOP_ENGAGE = 6.0               # engagement in the boss = 3 turns (the 2mm reclaimed from the piston head
@@ -303,11 +307,12 @@ HW0       = NECK_W / 2              # retention-bore offset from the rail centre
 # LENGTHS: a short TENON on the housing (its own Y span) and a long RIB MORTISE (the
 # knee-depth slide range). Replaces the old floating double-christmas-tree tenon now
 # that the housing prints -Z->+Z, so the tenon can be fused (single part).
-_JW       = 3.0                     # octagon flat-to-flat width. Kept small so the mortise ROOF
-#                                    (Z_BOT + ~3.6 = -71.6) stays below the harness lanes (bottom
-#                                    -70.9) -- the fused tenon slides clear of the wires at any knee
-#                                    depth, no reroute. Still > width_min (2.26) and stronger than the
-#                                    old christmas-tree; it's a low-load position-sensor mount.
+_JW       = 6.0                     # octagon flat-to-flat width. Sized on the MECHANICS (knee-strike
+#                                    pull-out): ~3x the shear area and 2x the retention shoulder of the
+#                                    old 3mm, while the rib keeps ~77% of its section as a sound arch
+#                                    (2mm side columns + 4.2mm top beam). The mortise roof now rises
+#                                    into the harness lanes -- the rib raceways are removed and the
+#                                    cables left colliding for now (a cable-routing pass comes next).
 _JHW      = _JW / 2.0               # octagon half-width in X (after the Z-rotation)
 _JUP      = PrintSpec(nozzle=0.8, material="PETG-GF", facing="up")
 def _lever_joint(length):
@@ -341,7 +346,11 @@ MORT_Y1   = MID_Y - MOUNT_Y         # mortise +Y end at mid-Y (in the local fram
 # screw did, and it needs no drilled pilot (it just bears on the printed rib surface).
 # X: the Ø4.4 clearance bore runs TANGENT to the tenon's flat -X face (TEN_XC-HW0) so the screw clears
 # the tenon and threads fully home. The bore may cut through the mortise WALL (fine) but not the tenon.
-RETAIN_X = RAIL_X[0] - _JHW - M4_INSERT_D / 2 - 0.3  # -X of the NEAR (-23) rail's octagon, Ø6 insert clear of it; presses the rib ledge there
+# NOTE: with the W=6 octagon (spans rail +-3) there's no longer room for the Ø6 insert boss
+# AND the M4 screw beside the tenon inside the 10mm rib -- this clears the tenon but the screw
+# now sits at/just outside the rib edge, so the Y-slide LOCK needs a rework (smaller screw or a
+# different grip). Deferred with the cable-routing pass.
+RETAIN_X = RAIL_X[0] - _JHW - (M4_INSERT_D + 2) / 2 - 0.3  # boss clear of the octagon tenon
 # +Y of BOTH the half-stop cartridge (ends Y=12) AND the +Y bearing wall (ends Y=16), so the screw's
 # whole Z path -- driver access + its up/down adjustment -- is open below the yoke boss; clear of the
 # PCB wall at Y=20.5. (At Y=5 the cartridge housing sat right in that path.)
