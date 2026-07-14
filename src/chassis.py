@@ -169,6 +169,17 @@ def _diamond_xz(cx, cz, h, yr):
     return cq.Workplane("XY").add(cq.Solid.extrudeLinear(face, cq.Vector(0, T + 2.0, 0)))
 
 
+# ── motor-9 cable cutout ──────────────────────────────────────────────────
+# The +X-most motor's body reaches the -Y rail, so the harness trunk corridor is blocked
+# there; the trunk dips OUTBOARD into the rail behind it (wiring._rail_pts / CUTOUT_Y). We
+# notch the -Y rail's inner face for those cables over that span and DROP the diamond
+# lightening there (keep the rail SOLID around the notch, per the user). +X-most motor.
+_M9X_CH = D.motor_pos(D.N_STRINGS - 1)[0]                 # -110
+M9_CUT_X0, M9_CUT_X1 = _M9X_CH - 25.0, _M9X_CH + 35.0     # cutout X-span (-135..-75; covers the m9 tee run)
+M9_CUT_YBACK = Y_LO + T / 2 - 4.0                         # notch back: inner face -> 4mm into the rail
+M9_CUT_Z0, M9_CUT_Z1 = -64.0, -40.0                      # trunk Z-band (above the rib tops, over the top lane)
+
+
 def _rail(y):
     """A deep longitudinal rail. The strings bow the body about the Y axis, so the
     top/bottom EDGES are the high-stress flanges and the mid-depth sits near the
@@ -183,7 +194,8 @@ def _rail(y):
     def ok(cx):                                 # leave the string-mount ends + joints SOLID
         return (cx + h < D.BRIDGE_AXLE_X - 10.0     # bridge support / bulkhead bond zone
                 and cx - h > -560.0                  # keyhead bulkhead bond zone
-                and all(abs(cx - s) > h + 14.0 for s in SPLIT_X))
+                and all(abs(cx - s) > h + 14.0 for s in SPLIT_X)
+                and not (y == Y_LO and M9_CUT_X0 - h < cx < M9_CUT_X1 + h))   # solid at the m9 cable cutout
     cx = X_BRIDGE - 30.0
     while cx > X_NUT + 30.0:
         if ok(cx):
@@ -217,6 +229,11 @@ def _raceway(cy, z0, x, thick):
 
 def _build_full() -> cq.Workplane:
     body = _rail(Y_HI).union(_rail(Y_LO))
+    # motor-9 cable cutout: notch the -Y rail inner face for the trunk that dips behind the
+    # +X-most motor (diamonds already dropped over this span in _rail).
+    body = body.cut(box_at(M9_CUT_X1 - M9_CUT_X0, -116.0 - M9_CUT_YBACK, M9_CUT_Z1 - M9_CUT_Z0,
+                           x=(M9_CUT_X0 + M9_CUT_X1) / 2, y=(M9_CUT_YBACK + -116.0) / 2,
+                           z=(M9_CUT_Z0 + M9_CUT_Z1) / 2))
     for x in _RIB_X:                                  # per-motor + bridge/nut cross-ribs (−Z)
         body = body.union(_rib(x))
     # knee/pedal lever mounts: cut a christmas-tree mortise into EVERY rib (so a lever can mount in
@@ -274,21 +291,14 @@ def _build_full() -> cq.Workplane:
     for _px, _py in ((AFE_X0 + 4, AFE_Y0 + 4), (AFE_X1 - 4, AFE_Y1 - 4)):
         body = body.union(cyl(6.0, (AFE_Z - 0.2) - AFE_PED_TOP, z=AFE_PED_TOP)
                           .translate((_px, _py, 0)))
-    # wire raceways through every cross-rib at each floor-trunk lane y. The harness
-    # (wiring.py: lane centres z -69.6, cable ODs <= 2.6) runs under the motors; each
-    # raceway is a full-X channel (floor -71.02 .. gable crown -66.62) that carries the
-    # wire through the rib. FIXED floor (was auto-derived 0.4 above the octagon roof):
-    # the W=6 octagon roof (-69.33) now sits WITHIN the wire band, but that's a separate
-    # void BELOW the channel -- the wire still rides the raceway, and the octagon just
-    # adds room under it. The raceway cuts the 2mm side columns + top beam at each lane,
-    # but only at the inboard lane band (y -59.5..-99.5); the mount tenon engages far
-    # outboard (y -133..-163), so the mount arch is untouched. -71.02 keeps the fattest
-    # cable (Ø2.6) 0.1 clear of the floor (wiring.py LANE_Z note).
-    from .wiring import RIB_RACE_Y
-    _race_z0 = -71.02
-    for _rx in _RIB_X:
-        for _ly in RIB_RACE_Y:
-            body = body.cut(_raceway(_ly, _race_z0, _rx, _RIB_W + 2.0))
+    # NO wire raceways through the ribs. The ribs are for STRUCTURE and holding LEVERS
+    # only: every rib carries the knee/pedal-lever octagon mortise along its whole Y, and
+    # a lever slides to ANY knee depth in ANY bay -- so a cable sitting in a rib would
+    # block a lever from being installed at that depth. The harness instead runs along the
+    # -Y rail's INNER FACE, in the vertical channel ABOVE the rib tops (z > FLOOR_TOP)
+    # where no rib reaches; it clears every motor except the +X-most (motor 9), whose body
+    # reaches the -Y rail -- handled by the strategic cable cutout in the rail there
+    # (_motor9_cable_cut below). See wiring.py.
     # DECK JOINT: the plates cap the rail and drop a vertical DOVETAIL tongue into a
     # groove milled in the rail top. Lower the rail top to z0 across the whole deck
     # X-span (rail -X end up to the +X takeover line TP_EP_GX) so a plate sits flush,
