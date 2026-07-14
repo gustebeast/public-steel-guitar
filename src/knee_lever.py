@@ -46,6 +46,7 @@ from .helpers import box_at, cyl, cyl_y, heal
 from cadkit.fasteners import (M2_SELFTAP_D, M4_SHAFT_CLR_D, M4_INSERT_D,
                        M4_INSERT_L, M4_SCREW_L, M4, cut_insert_bore,
                        cut_m4_pocket, seated_m4_insert, cut_m4_boss, m4_boss_insert)
+from cadkit.joinery import PrintSpec, slide_joint   # the shared octagon slide joint
 # the M4 insert pocket/boss helpers now live in cadkit/fasteners.py (shared); keep the old local names:
 _insert_pocket, _seated_insert = cut_m4_pocket, seated_m4_insert
 _insert_boss_cut, _insert_dummy = cut_m4_boss, m4_boss_insert
@@ -293,23 +294,26 @@ BODY_Z    = 5.0 + 2.4               # body underside in local Z: the lever's Ø1
                                     #   gap (no material between the lever and the body). Raising the axle
                                     #   is equivalent to lowering BODY_Z here; MOUNT_Z tracks it (= -82.55)
 YOKE_Z0, YOKE_Z1 = BODY_Z - 3.3, BODY_Z - 0.3   # yoke plate (top 0.3 mm below the body underside)
-NECK_W    = 3.0                     # trunk / slit width (X)
-SEG       = 0.8                     # EVERY segment is 0.8 mm ALONG ITS EDGE (one 0.8 nozzle pass)
-DZ45      = SEG / math.sqrt(2)      # a 45° segment of edge SEG rises this much in Z (= in X) (~0.566)
-HW0       = NECK_W / 2              # trunk half-width (1.5)
-HW1       = HW0 + DZ45              # widest half-width -- the captured tooth (the 0.8 mm 45° widen)
-TAPER     = HW1                     # 45° taper: the Z it takes to come back to a POINT (computed)
-# The narrow trunk extends SEG=0.8 mm into EACH mortise -- that 0.8 mm is the mortise SIDE-WALL
-# height (the slit). So the tenon's own trunk spans 2*SEG + the yoke/rib gap. Then a 0.8 mm widen
-# makes the captured tooth on each side, and a computed taper closes to a point. The tenon glues
-# into the lever (lower half) + slides in the rib (upper half).
-Z_TL      = YOKE_Z1 - SEG              # trunk low  = 0.8 mm vertical slit into the yoke (lever wall)
-Z_TH      = BODY_Z + SEG               # trunk high = 0.8 mm vertical slit into the rib  (rib wall)
-_LP       = Z_TL - DZ45 - TAPER        # lever point (deep in the yoke)
-_RP       = Z_TH + DZ45 + TAPER        # rib point (deep in the rib)
-TEN_PTS   = [(_LP, 0.0), (Z_TL - DZ45, HW1), (Z_TL, HW0),
-             (Z_TH, HW0), (Z_TH + DZ45, HW1), (_RP, 0.0)]
-BOSS_Z0   = _LP - 1.0                  # yoke-boss floor (hosts the lever-side taper point)
+NECK_W    = 3.0                     # retention-boss / yoke sizing reference
+HW0       = NECK_W / 2              # retention-bore offset from the rail centre (1.5)
+# ── OCTAGON slide-joint mount (cadkit): the housing carries FUSED octagon tenons that
+# rise +Z into the ribs and SLIDE +Y (cadkit's octagon slides along its extrude axis;
+# we rotate it 90° about Z so the slide is Y and the roof stays +Z). Both halves print
+# -Z->+Z (facing 'up') -> the octagon family -> self-supporting. One joint SIZE, two
+# LENGTHS: a short TENON on the housing (its own Y span) and a long RIB MORTISE (the
+# knee-depth slide range). Replaces the old floating double-christmas-tree tenon now
+# that the housing prints -Z->+Z, so the tenon can be fused (single part).
+_JW       = 3.0                     # octagon flat-to-flat width. Kept small so the mortise ROOF
+#                                    (Z_BOT + ~3.6 = -71.6) stays below the harness lanes (bottom
+#                                    -70.9) -- the fused tenon slides clear of the wires at any knee
+#                                    depth, no reroute. Still > width_min (2.26) and stronger than the
+#                                    old christmas-tree; it's a low-load position-sensor mount.
+_JHW      = _JW / 2.0               # octagon half-width in X (after the Z-rotation)
+_JUP      = PrintSpec(nozzle=0.8, material="PETG-GF", facing="up")
+def _lever_joint(length):
+    """The mount joint at a given SLIDE length (Y). MORT_CLR shrinks the tenon for fit."""
+    return slide_joint(_JW, length, tenon=_JUP, mortise=_JUP, clearance=MORT_CLR)
+BOSS_Z0   = YOKE_Z0 - 1.0           # yoke-boss floor (hosts the fused tenon root)
 # the floating tenon + its lever-yoke mortise run the FULL Y length of the housing (a long glue
 # joint + more rib engagement); the low 0.8 mm joint keeps it clear of the feel screws below.
 TEN_Y0, TEN_Y1   = WN_Y0, WP_Y1    # floating-tenon / lever-mortise Y-span = the bearing-wall span (±16), so
@@ -337,15 +341,15 @@ MORT_Y1   = MID_Y - MOUNT_Y         # mortise +Y end at mid-Y (in the local fram
 # screw did, and it needs no drilled pilot (it just bears on the printed rib surface).
 # X: the Ø4.4 clearance bore runs TANGENT to the tenon's flat -X face (TEN_XC-HW0) so the screw clears
 # the tenon and threads fully home. The bore may cut through the mortise WALL (fine) but not the tenon.
-RETAIN_X = RAIL_X[0] - HW0 - SCREW_CLR / 2          # beside the NEAR (-23) rail's flat -X face; presses the rib ledge there
+RETAIN_X = RAIL_X[0] - _JHW - M4_INSERT_D / 2 - 0.3  # -X of the NEAR (-23) rail's octagon, Ø6 insert clear of it; presses the rib ledge there
 # +Y of BOTH the half-stop cartridge (ends Y=12) AND the +Y bearing wall (ends Y=16), so the screw's
 # whole Z path -- driver access + its up/down adjustment -- is open below the yoke boss; clear of the
 # PCB wall at Y=20.5. (At Y=5 the cartridge housing sat right in that path.)
 RETAIN_Y = 18.0                                         # yoke boss (TEN_Y0..TEN_Y1) clear of cart+wall+PCB
-# Insert pocket TOP: as high (close to the rib the cup presses) as it can go without the Ø6 pocket
-# reaching the mortise -- 1 mm below the mortise's lowest z (the grown christmas-tree tip, _LP-MORT_CLR).
-# This lets the screw thread fully home AND still reach the rib. Derived, never hardcoded.
-RETAIN_INS_TOP = (_LP - MORT_CLR) - 1.0
+# Insert pocket TOP: as high (close to the rib the cup presses) as it can go. The Ø6 insert sits
+# -X of the octagon (RETAIN_X clears it), so it can run right up to the yoke top -- 1 mm below it
+# so the boss caps the pocket. The screw threads through and its cup reaches the rib above.
+RETAIN_INS_TOP = YOKE_Z1 - 1.0
 
 
 def _bearing():
@@ -395,53 +399,42 @@ def demo_parts():
     return out
 
 
-def _ctree_prism_y(xc, y0, y1, grow=0.0):
-    """A christmas-tree prism from TEN_PTS but with ONE FLAT SIDE: the +X side keeps the capture teeth
-    (trunk + 0.8 mm 45 widen + tapered points), the -X side is a single VERTICAL WALL (at the trunk
-    half-width, 45-chamfered to the shared point tips). The flat face gives the printed tenon a bed to
-    lie on, and leaves the rib ledge on that side reachable STRAIGHT DOWN (no tooth notch) for the
-    retention screw. Centred at xc, extruded +Y over y0..y1. `grow` -> slide-fit mortise from the same
-    profile."""
-    p = [(z, hw + grow) for z, hw in TEN_PTS]
-    # tips: push grow DEEPER in z AND reset to a SHARP point (hw=0). The z-push is what keeps the 45
-    # taper at 45 once hw is grown (Δz = TAPER+grow must equal Δx = HW1+grow); leaving the tip blunt at
-    # hw=grow instead skews the taper to ~49/41 deg -- a non-clean MORTISE while the grow=0 tenon stays 45.
-    p[0] = (p[0][0] - grow, 0.0); p[-1] = (p[-1][0] + grow, 0.0)
-    right = [cq.Vector(xc + hw, y0, z) for z, hw in p]                      # +X: full christmas tree
-    fw = HW0 + grow                                                        # flat wall at the trunk half-width
-    left = [cq.Vector(xc - fw, y0, p[-1][0] - fw),                         # top 45 chamfer -> vertical wall
-            cq.Vector(xc - fw, y0, p[0][0] + fw)]                          # -> bottom 45 chamfer (on close)
-    verts = right + left
-    face = cq.Face.makeFromWires(cq.Wire.makePolygon(verts + [verts[0]]))
-    return cq.Workplane("XY").add(cq.Solid.extrudeLinear(face, cq.Vector(0, y1 - y0, 0)))
+def _lever_tenon(rx):
+    """ONE fused octagon tenon at rail rx: cadkit's octagon (slides +X, roof +Z) rotated 90°
+    about Z so it slides +Y, mating plane at the body underside (BODY_Z), roof rising +Z into
+    the rib and the root reaching -Z down to the yoke-boss floor for a solid fuse."""
+    root = BODY_Z - BOSS_Z0
+    return (_lever_joint(TEN_Y1 - TEN_LY0).tenon(root=root)
+            .rotate((0, 0, 0), (0, 0, 1), 90)                 # slide axis X -> Y (roof stays +Z)
+            .translate((rx, TEN_LY0, BODY_Z)))                # rail X, -Y start, mate at body underside
 
 
 def _mount():
-    """The mount: TWO rails, BOTH -X of the axle (RAIL_X). Each rail is a christmas-tree MORTISE (the
-    lower half of the profile) in a boss; the floating tenon glues in and slides +Y into the chassis rib.
-    A yoke plate ties the two -X rails to the bearing block -- and it stays -X of the lever, so nothing
-    sits in the 2.4mm body gap above the hub. No protruding +Z tenon (prints clean); the floating tenon
-    is the separate part."""
-    x_lo = RAIL_X[1] - HW1 - 2                                 # -X end (just past the far rail)
+    """The mount: TWO FUSED octagon tenons, BOTH -X of the axle (RAIL_X). Each rises +Z from a
+    yoke boss into its chassis rib and slides +Y to the knee depth; a -Y M4 screw locks it.
+    A yoke plate ties the two -X rails to the bearing block, staying -X of the lever so nothing
+    sits in the 2.4 mm body gap above the hub. Tenon + rib mortise are the shared cadkit octagon
+    (both print -Z->+Z, self-supporting) -- no floating part."""
+    x_lo = RAIL_X[1] - _JHW - 2                                # -X end (just past the far rail)
     x_hi = -HALF_X                                             # +X end meets the bearing block, clear of the lever
     out = box_at(x_hi - x_lo, TEN_Y1 - YOKE_Y0, YOKE_Z1 - YOKE_Z0,
                  x=(x_lo + x_hi) / 2, y=(YOKE_Y0 + TEN_Y1) / 2, z=(YOKE_Z0 + YOKE_Z1) / 2)
-    for rx in RAIL_X:                                          # a boss to host each mortise
-        out = out.union(box_at(2 * HW1 + 4, TEN_Y1 - TEN_Y0, YOKE_Z1 - BOSS_Z0,
+    for rx in RAIL_X:                                          # a boss under each tenon (hosts the root)
+        out = out.union(box_at(2 * _JHW + 4, TEN_Y1 - TEN_Y0, YOKE_Z1 - BOSS_Z0,
                                x=rx, y=(TEN_Y0 + TEN_Y1) / 2, z=(YOKE_Z1 + BOSS_Z0) / 2))
-    for rx in RAIL_X:                                          # lever-side mortise = profile z <= yoke top
-        mortise = _ctree_prism_y(rx, TEN_LY0, TEN_Y1, grow=MORT_CLR)   # -Y end closed = the stop
-        mortise = mortise.intersect(box_at(400, 500, 400, z=YOKE_Z1 - 200))   # keep z <= yoke top
-        out = out.cut(mortise)
+    for rx in RAIL_X:                                          # the fused octagon tenons
+        out = out.union(_lever_tenon(rx))
     return out
 
 
 def rib_mortise(rib_x):
-    """ONE christmas-tree mortise (GLOBAL) = the RIB half of the profile (z >= rib bottom), centred on
-    the crossbar at rib_x, opening at the rib bottom (-Z) and running +Y from the player face to the
-    guitar mid-Y. chassis.py cuts this into EVERY rib so a lever can mount in ANY bay."""
-    m = _ctree_prism_y(0.0, MORT_Y0, MORT_Y1, grow=MORT_CLR)
-    m = m.intersect(box_at(400, 500, 400, z=BODY_Z + 200))                 # keep z >= rib bottom
+    """ONE octagon MORTISE (GLOBAL) for the rib at rib_x: the same cadkit octagon as the tenon
+    but LONG in Y (MORT_Y0..MORT_Y1 = the knee-depth slide range), rotated to slide +Y. Opens at
+    the rib bottom (-Z, the mating plane = Z_BOT) and its roof bridges inside the rib. chassis.py
+    cuts this into every rib so a lever can mount in ANY bay."""
+    m = (_lever_joint(MORT_Y1 - MORT_Y0).mortise(drop=2.0)
+         .rotate((0, 0, 0), (0, 0, 1), 90)                     # slide axis X -> Y
+         .translate((0.0, MORT_Y0, BODY_Z)))                   # centred x=0, -Y mouth, mate at rib bottom
     return m.translate((rib_x, MOUNT_Y, MOUNT_Z))
 
 
@@ -749,7 +742,7 @@ def _housing() -> cq.Workplane:
     # (No travel-stop boss here: the old central stop-screw boss was sized for the +Z cam PLATE and, in the
     #  -Z arm-as-cam layout, its block sat right in the arm's swing path -- it's removed. A hard stop for
     #  the new geometry can be added later if wanted; for now throw is bounded by clearance / the sensor.)
-    # mount: yoke with a lever-side christmas-tree mortise at each rib (the floating tenon glues in)
+    # mount: yoke with a FUSED octagon tenon at each rail (cadkit slide joint) -- no floating part
     w = w.union(_mount())
     # RAIL <-> CARTRIDGE <-> BEARING connection (points 1+2): a SOLID BLOCK from the cartridge cap up to
     # the yoke, matching the cartridge X-Y footprint and reaching forward to the bearing-wall -X edge. Solid
@@ -758,22 +751,19 @@ def _housing() -> cq.Workplane:
     # top layer. It also gives the STRONGEST axle-load path: the bearing walls (axle plates) now tie solidly
     # into it at their -X edge, and it carries the load down to the cartridge and up to the rails.
     _cap_z = HS_CART_Z1 + _FEEL_DZ
-    _blk_x0, _blk_x1 = RAIL_X[1] - HW1 - 2, -HALF_X                 # cartridge back .. bearing-wall -X edge (all -X of the lever)
+    _blk_x0, _blk_x1 = RAIL_X[1] - _JHW - 2, -HALF_X                 # cartridge back .. bearing-wall -X edge (all -X of the lever)
     w = w.union(box_at(_blk_x1 - _blk_x0, 2 * WP_Y1, YOKE_Z0 - _cap_z,   # Y to the bearing-wall edge (±16) so the
                        x=(_blk_x0 + _blk_x1) / 2, y=0.0, z=(_cap_z + YOKE_Z0) / 2))  # plates fuse over their FULL Y
     #   (the ~2mm of block that overhangs the cartridge outboard of Y=±13.9 is a small self-supporting cantilever)
-    # retention: the Ø6×5 insert + Ø4.4 clearance sit in a boss beside the NEAR (-23) rail. The boss runs
-    # the FULL Z to the yoke top (backed by the body -> no overhang), then that rail's MORTISE is re-cut so
-    # it passes cleanly THROUGH the boss (the tenon still slides). The insert stops RETAIN_INS_TOP (1 mm
-    # below the mortise) so the screw threads fully home yet its cup still reaches the rib.
+    # retention: the Ø6×5 insert + Ø4.4 clearance sit in a boss beside the NEAR (-23) rail's octagon (RETAIN_X
+    # clears the tenon). The boss runs the FULL Z to the yoke top (backed by the body -> no overhang); the set
+    # screw threads up and its cup presses the far chassis rib to friction-lock the Y slide. The tenon is now
+    # SOLID (fused), so there's no mortise to re-cut through the boss.
     _ins_bot = RETAIN_INS_TOP - M4_INSERT_L
     w = w.union(cyl(M4_INSERT_D + 2.0, YOKE_Z1 - _ins_bot, z=_ins_bot).translate((RETAIN_X, RETAIN_Y, 0)))
-    _mort = (_ctree_prism_y(RAIL_X[0], TEN_LY0, TEN_Y1, grow=MORT_CLR)
-             .intersect(box_at(400, 500, 400, z=YOKE_Z1 - 200)))     # near-rail mortise (z <= yoke top)
-    w = w.cut(_mort)                                                 # re-cut it THROUGH the boss
     # insert_bore up the boss: Ø6×5 melt pocket + Ø4.4 clearance to the rib (set screw presses the far rib;
-    # sanctioned insert-bore deviation). The Ø8 boss above is a STRUCTURAL feature (full-height, mortise
-    # re-cut through it), so it stays hand-rolled -- only the pocket+clearance route through the spec.
+    # sanctioned insert-bore deviation). The Ø8 boss is a STRUCTURAL feature, so it stays hand-rolled --
+    # only the pocket+clearance route through the spec.
     w = cut_insert_bore(M4, w, (RETAIN_X, RETAIN_Y, _ins_bot), (0, 0, 1),
                         clr_len=(YOKE_Z1 + 2) - RETAIN_INS_TOP,
                         reason="retention set screw: cup presses the far chassis rib through the shaft clearance")
@@ -829,6 +819,5 @@ cart_piston = _half_stop_piston()              # printed: piston (Ø6 body + fol
 guide_post = _guide_post()                     # printed: loose coil-back guide post (screw pushes it)
 cart_backstop = _cart_backstop()               # printed: hollow X-position back-stop screw (tension screw runs through it)
 cart_drag = _cart_drag()                       # printed TPU: passive drag pad (transport retention; print 2, MAIN mirrored)
-# the FLOATING TENON: a separate printed rail (one per rib); glue its lower half into the lever
-# yoke, slide its upper half into the rib. Full housing length, built centred in Y at the origin.
-floating_tenon = heal(_ctree_prism_y(0.0, TEN_LY0, TEN_Y1))   # built at absolute Y (seats at the -Y stop)
+# (the FLOATING TENON is retired -- the octagon tenons are now FUSED onto the housing yoke, so
+# the lever mounts as a single part; the rib carries the matching octagon mortise. See _mount.)

@@ -276,12 +276,11 @@ def _build_full() -> cq.Workplane:
                           .translate((_px, _py, 0)))
     # wire raceways through every cross-rib at each floor-trunk lane y. The
     # harness (wiring.py: lane centres z -69.6, cable ODs <= 2.6) runs under
-    # the motors; the raceway FLOOR is derived 0.4 ABOVE the knee-lever
-    # rib-mortise tip so the wires sit clear of a floating tenon sliding along
-    # the rib to ANY knee depth (the old deep diamonds cut into the mortise
-    # and the harness blocked the tenon).
+    # the motors; the raceway FLOOR is derived 0.4 ABOVE the knee-lever octagon
+    # rib-mortise ROOF so the wires sit clear of the fused tenon sliding along
+    # the rib to ANY knee depth.
     from .wiring import RIB_RACE_Y
-    _race_z0 = (_KL.TEN_PTS[-1][0] + _KL.MORT_CLR + _KL.MOUNT_POSE[2]) + 0.4  # -71.02
+    _race_z0 = _KL.rib_mortise(0.0).val().BoundingBox().zmax + 0.4
     for _rx in _RIB_X:
         for _ly in RIB_RACE_Y:
             body = body.cut(_raceway(_ly, _race_z0, _rx, _RIB_W + 2.0))
