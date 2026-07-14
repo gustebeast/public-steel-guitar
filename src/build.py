@@ -66,7 +66,6 @@ PARTS = {
     "belt_clamp":      (partial(heal, belt_clamp),    "pctg/belt_clamp.step",      "PCTG — GT2 belt splice clamp (print 2 per splice ×10)"),
     "knee_housing":    (lambda: __import__("src.knee_lever", fromlist=["e"]).knee_housing, "petg-gf/knee_housing.step", "PETG-GF — knee-lever (LKL) housing: MR85 pivot bearings + MT6701 sensor mount (rigid = stable air gap)"),
     "knee_lever":      (lambda: __import__("src.knee_lever", fromlist=["e"]).knee_lever,   "pctg/knee_lever.step",   "PCTG — knee-lever (LKL) arm + knee paddle (takes knee strikes: toughness over stiffness)"),
-    "floating_tenon":  (lambda: __import__("src.knee_lever", fromlist=["e"]).floating_tenon, "petg-gf/floating_tenon.step", "PETG-GF — floating christmas-tree tenon: glue into the lever yoke, slide into the rib (2 per lever)"),
     "cart_base": (lambda: __import__("src.knee_lever", fromlist=["e"]).cart_base, "pctg/cart_base.step", "PCTG — spring-cartridge (inverted-U, open -Z; shared: print 2, for main + half-stop)"),
     "cart_piston": (lambda: __import__("src.knee_lever", fromlist=["e"]).cart_piston, "pctg/cart_piston.step", "PCTG — spring-cartridge piston, flat follower tongue (shared: print 2)"),
     "guide_post": (lambda: __import__("src.knee_lever", fromlist=["e"]).guide_post, "pctg/guide_post.step", "PCTG — coil-back guide post, screw pushes it (shared: print 2)"),
@@ -647,8 +646,7 @@ def _knee_lever_components():
         out.append((f"{nm}_guide_post", KL.feel_place(KL.guide_post.translate(off))))
     for n, s in KL.demo_parts():                         # magnet spins with the lever; the rest are stationary
         out.append((n, swing(s) if n == "kl_magnet" else s))
-    for i, rx in enumerate(KL.RAIL_X):                    # one floating tenon per rail (both -X of the axle)
-        out.append((f"floating_tenon_{i}", KL.floating_tenon.translate((rx, 0, 0))))
+    # (the octagon mount tenons are FUSED onto knee_housing now -- no separate floating_tenon parts)
     return [(n, s.translate(pose)) for n, s in out]
 
 
@@ -770,7 +768,6 @@ _COLORS = {
     "main_guide_post":                    (0.70, 0.50, 0.10),
     "half_stop_guide_post":               (0.66, 0.46, 0.08),
     "retention_setscrew":                 (0.40, 0.40, 0.43),   # -Y lock screw
-    "floating_tenon":  (0.90, 0.55, 0.10),   # glued christmas-tree tenon (printed)
     # electronics bay (dummies) + panel jacks
     "electronics_tray": (0.30, 0.36, 0.32),  # printed tray
     "pi5":             (0.05, 0.35, 0.15),   # PCB green
