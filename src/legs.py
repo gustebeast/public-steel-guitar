@@ -697,10 +697,11 @@ STUB_H = 48.0                  # stub protrusion below the body bottom =
 # strength, so the stub<->body joint SLIDES ALONG Y, not Z): the stub top
 # carries THREE octagon RIDGES running the full 44 local y, roof UP.
 # Grooves in the body bottom open at the instrument's +-Y side face; the
-# stub slides in from outboard until the end-wall ridge tip butts its
+# stub slides in from outboard until the end-wall tongue tip butts its
 # blind groove end (= outer faces flush); ONE vertical M4 down the rail
-# web into the inboard ridge is the Y-retention SHEAR PIN. Every groove
-# entry on the side face is FILLED flush by its ridge end when seated.
+# web into the inboard ridge is the Y-retention SHEAR PIN, and ONE
+# horizontal M4 through the endplate's end face cross-pins the tongue.
+# Every groove entry on the side face is FILLED flush when seated.
 STUB_WALL_D = 10.0             # endplate end-wall depth (= CH.T): the
                                # outboard 10 of the stub's 44 is under the
                                # end wall; the remaining 34 is the leg<->
@@ -720,21 +721,30 @@ def _cross_x(eps: float) -> tuple:
     inner = SQ_W / 2 - STUB_WALL_D              # end-wall inner face (12)
     span = SQ_W - STUB_WALL_D                   # side-panel overlap (34)
     return (eps * (inner - span / 3.0), eps * (inner - 2.0 * span / 3.0))
-STUB_TEN_W = 8.0               # octagon width (flat-to-flat), profile
-                               # height 7.24: the END-WALL ridge nests in
-                               # the 10-thick wall with ~0.9 skins/side
-STUB_RIDGE_EP = 17.0           # end-wall ridge |local x| (= the endplate
+STUB_TEN_W = 8.0               # CROSSING-ridge octagon width (flat-to-
+                               # flat), profile height 7.24
+STUB_RIDGE_EP = 17.0           # end-wall TONGUE |local x| (= the endplate
                                # end wall's centreline, tip - 5): runs the
                                # FULL 44 inside the endplate's wall = the
                                # leg<->ENDPLATE joint (user), blind inboard
                                # end = the flush hard stop
-# Ridge z placement: the octagon profile's z=0 IS the mating plane (the
-# stem runs from -root below it, through it, to the waist above), so the
-# ridge sits at exactly z = STUB_H and the groove at exactly z = Z_BOT —
-# the built-in root/drop do the embedding/opening. Waist top (roof) at
-# +7.24, groove roof +7.34; the stub top riding the wall bottoms is the
-# Z datum. (A -0.3 'extra embed' here mis-aligned the 45° flanks by 0.2
-# past the 0.1 fit — probe-caught at all 8 corners.)
+# END-WALL TONGUE-AND-GROOVE (user: simple, not octagon, + one M4 lock
+# screw along x per leg). The 10-thick end wall is SPLIT EVENLY between
+# the two parts — tongue 5 = the two groove cheeks 2.5 + 2.5 — so tenon
+# shear area equals the mortise cheeks' combined section (the same
+# analytic even-split rule as the octagon stem = width/2: the weaker
+# member is maximized). Height 8 leaves 2.2 of cover above/below the
+# Ø3.6 M4 pilot crossing at mid-height. Fit = the PETG-GF coupon 0.1/side
+# (groove 5.2 wide x 8.1 deep).
+STUB_TNG_W = 5.0               # end-wall tongue thickness (x) = CH.T/2
+STUB_TNG_H = 8.0               # end-wall tongue height above the stub top
+# Crossing-ridge z placement: the octagon profile's z=0 IS the mating
+# plane (the stem runs from -root below it, through it, to the waist
+# above), so the ridge sits at exactly z = STUB_H and the groove at
+# exactly z = Z_BOT — the built-in root/drop do the embedding/opening.
+# Waist top (roof) at +7.24, groove roof +7.34; the stub top riding the
+# wall bottoms is the Z datum. (A -0.3 'extra embed' here mis-aligned the
+# 45° flanks by 0.2 past the 0.1 fit — probe-caught at all 8 corners.)
 TRRS_DX = 5.0                  # the flipped TRRS axis (local +x offset).
                                # WIRED stub, Y-INSTALL: NOTHING protrudes
                                # above the stub top any more (user killed
@@ -786,11 +796,16 @@ def corner_groove_negatives(station: float, ly: float, syg: float,
     (it relieves the wall-plate tongue's print overhang; the endplates
     pass relief=False or the wedge eats their end-wall groove roof)."""
     negs = []
-    # end-wall groove: blind end exactly at the stub's inboard face
+    # end-wall groove: SIMPLE rectangular tongue-and-groove (user) —
+    # width STUB_TNG_W + 0.1/side, depth STUB_TNG_H + 0.1, opened 1
+    # below the mating plane; blind end exactly at the stub's inboard
+    # face. The M4 lock screw crossing it lives in
+    # endwall_screw_negatives (endplates) / _body_stub (tongue pilot).
     L = SQ_W + 1.0
     y0 = ly - SQ_W / 2 if syg > 0 else ly - SQ_W / 2 - 1.0
-    negs.append(_groove(L).translate((station + egx * STUB_RIDGE_EP,
-                                      y0, z_bot)))
+    negs.append(box_at(STUB_TNG_W + 0.2, L, STUB_TNG_H + 0.1 + 1.0,
+                       x=station + egx * STUB_RIDGE_EP, y=y0 + L / 2,
+                       z=z_bot + (STUB_TNG_H + 0.1 - 1.0) / 2))
     # crossing grooves (thirds of the side-panel overlap): 0.5 inboard
     # overshoot, 1 outboard
     Lc = SQ_W + 1.5
@@ -801,15 +816,14 @@ def corner_groove_negatives(station: float, ly: float, syg: float,
     # groove crosses the rail-end dovetail tongue at the keyhead / the
     # kept-shell exit at the bridge), the corner left standing above the
     # groove's OUTBOARD exit is trimmed by a 45° plane that JUST CLEARS
-    # the joint's roof — height from cadkit octagon_height, so the plane
-    # tracks any joint-size change — rising outboard: one continuous 45°
-    # underside from the joint's top-inboard flank out through the
-    # tongue / wall face. Reach 3.6 stays inside the endplate's outer
-    # skin (groove face gap 0.86 + skin 0.9 at both ends).
+    # the joint's roof — height from the groove depth (STUB_TNG_H + fit),
+    # so the plane tracks any joint-size change — rising outboard: one
+    # continuous 45° underside from the joint's top-inboard flank out
+    # through the tongue / wall face. Reach 3.6 stays inside the
+    # endplate's outer skin (groove face gap 0.86 + skin 0.9 both ends).
     if not relief:
         return negs
-    from cadkit.joinery import octagon_height
-    zr = z_bot + octagon_height(STUB_TEN_W) + 0.3
+    zr = z_bot + (STUB_TNG_H + 0.1) + 0.3
     xg = station + egx * STUB_RIDGE_EP
     RCH = 3.6
     prof = [(xg, zr), (xg + egx * RCH, zr + RCH),
@@ -822,18 +836,44 @@ def corner_groove_negatives(station: float, ly: float, syg: float,
     return negs
 
 
+def endwall_screw_negatives(station: float, ly: float, egx: float,
+                            z_bot: float) -> list:
+    """The per-leg M4 LOCK SCREW (user): ONE M4x10 button head per leg
+    runs ALONG X in from the instrument's end face, crossing the
+    tongue-and-groove transversely — Ø4.6 clearance through the OUTBOARD
+    groove cheek, Ø3.6 thread-forming pilot on through the stub's tongue
+    and the INBOARD cheek (a double-shear lock pin: holds the stub
+    against y slide-out and z pull-off; tip flush with the wall inner
+    face). Axis on the leg centreline at tongue mid-height (z_bot + 4) —
+    clear of the rail-band relief wedge (ly+10.5..23) and the KH stow
+    bores (|y| <= 31.75). WORLD-space cutters for the ENDPLATES; the
+    stub cuts its own tongue pilot in _body_stub."""
+    zc = z_bot + STUB_TNG_H / 2
+    tip = station + egx * (SQ_W / 2 + 1.0)          # 1 outboard of the face
+    negs = [cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        1.8, STUB_WALL_D + 1.0, cq.Vector(tip, ly, zc),
+        cq.Vector(-egx, 0, 0)))]
+    negs.append(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        2.3, 1.0 + (STUB_WALL_D - (STUB_TNG_W + 0.2)) / 2,
+        cq.Vector(tip, ly, zc), cq.Vector(-egx, 0, 0))))
+    return negs
+
+
 def _body_stub(wired: bool, eps: float) -> cq.Workplane:
     """BODY STUB ×4 (PETG-GF, prints LYING ON ITS LOCAL +Y FACE — the
     Y-install round's point: layer lines run in x-z, so BOTH leg-bending
     directions load within layers, and the house-socket gable points up
     in the print). z0 = MOUTH (bottom face, at global Z_BOT - 48); body
-    0..48; THREE Y-running octagon ridges on top (roof up, full 44):
-    crossings at the side-panel-overlap THIRDS (_cross_x: local
-    eps*0.667 / -eps*10.667) + the END-WALL ridge at x = eps*17 (eps = which
-    local x side this SKU's corner faces its endplate on). The stub
-    slides in ALONG +local-y until the end-wall ridge tip butts its
-    blind groove end (outer faces flush); every groove entry in the side
-    face is filled flush by its ridge end. Bottom = the leg↔bar latch
+    0..48; on top (full 44 in y): TWO Y-running octagon crossing ridges
+    at the side-panel-overlap THIRDS (_cross_x: local eps*0.667 /
+    -eps*10.667) + the END-WALL rectangular TONGUE 5 x 8 at x = eps*17
+    (eps = which local x side this SKU's corner faces its endplate on),
+    with the Ø3.6 M4 lock-screw pilot crossing it along x at mid-height
+    (the screw comes in through the endplate's end face —
+    endwall_screw_negatives). The stub slides in ALONG +local-y until
+    the tongue tip butts its blind groove end (outer faces flush); every
+    groove entry in the side face is filled flush by its ridge/tongue
+    end. Bottom = the leg↔bar latch
     socket VERBATIM (house 28.1 × 41 + ledge pocket), FLIPPED 180° so
     the head's bolt channel opens inboard. Wired: + the mouth-seat boss,
     barrel way and the Ø9.7 jack way opening through the FLAT top face
@@ -848,8 +888,17 @@ def _body_stub(wired: bool, eps: float) -> cq.Workplane:
                              x=8.0, y=-(16.05 + 2.1), z=31.9))
     b = b.cut(cuts.rotate((0, 0, 0), (0, 0, 1), 180))
     ca, cb = _cross_x(eps)
-    for rx in (ca, cb, eps * STUB_RIDGE_EP):
+    for rx in (ca, cb):
         b = b.union(_stub_ridge(SQ_W).translate((rx, -SQ_W / 2, STUB_H)))
+    # end-wall TONGUE (simple rectangle, user) + its Ø3.6 M4 pilot
+    # crossing at mid-height on the y centreline (world y = leg centre)
+    b = b.union(box_at(STUB_TNG_W, SQ_W, STUB_TNG_H,
+                       x=eps * STUB_RIDGE_EP, z=STUB_H + STUB_TNG_H / 2))
+    b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        1.8, STUB_TNG_W + 2.0,
+        cq.Vector(eps * (STUB_RIDGE_EP + STUB_TNG_W / 2 + 1.0), 0.0,
+                  STUB_H + STUB_TNG_H / 2),
+        cq.Vector(-eps, 0, 0))))
     # M4 SHEAR-PIN pilots down through the crossing ridges at the wall
     # band (local y -17 = the rail-web access-bore line; only the
     # inboard one gets a screw, the SKU keeps both for every corner)
