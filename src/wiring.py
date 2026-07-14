@@ -146,12 +146,22 @@ def tee_stations():
     un-racewayed rib)."""
     out = [(D.motor_pos(i)[0] + 16.0, TEE_Y_A, +1) for i in range(10)]
     out.append((-42.0, -108.0, -1))      # 10: AFE power tee — SOUTH of all
-                                         #     six lanes (a tee inside the
-                                         #     lane band collides with the
-                                         #     passing runs) and west of the
-                                         #     AFE (x ≥ -22)
-    out.append((-545.0, -110.0, -1))     # 11: LKL knee station (bay edge —
-                                         #     clear of the housing, y≤-122.7)
+                                         #     six lanes (a tee inside the lane
+                                         #     band collides with the passing
+                                         #     runs) and west of the AFE (x≥-22).
+                                         #     Wedged on the -41 rib: the 18mm
+                                         #     board can't clear both flanking
+                                         #     ribs AND the dac/relayctrl drops
+                                         #     (west) or the leg stub (east), so
+                                         #     the pwr header dips graze the -41
+                                         #     rib (~35mm^3, inherited) -- fixing
+                                         #     it needs an AFE-region relayout.
+    out.append((-536.0, -110.0, -1))     # 11: LKL knee station (bay edge —
+                                         #     clear of the housing, y≤-122.7).
+                                         #     x -536 (not -545) puts both header
+                                         #     dips in the -542..-529 rib GAP so
+                                         #     canb_0/1 + the knee drop clear the
+                                         #     -547 rib
     out.append((-581.5, 40.0, +1))       # 12: leg-socket cable landing (in
                                          # the rib GAP -588..-575: the flush
                                          # round un-severed the station rib,
@@ -225,8 +235,8 @@ def build_wires():
             (RISE_X, lane_y, BAYFLY), (RISE_X, sh_y, BAYFLY),
             (sh_x, sh_y, BAYFLY), (sh_x, sh_y, out_z)], d)
 
-    out.append(("wire_audio", _long(afe_buf_out, -46.0, LANE_AUDIO, -600.0, -62.0,
-                                    WIRE_OD["wire_audio"])))
+    out.append(("wire_audio", _long(afe_buf_out, -50.0, LANE_AUDIO, -600.0, -62.0,
+                                    WIRE_OD["wire_audio"])))   # -50: rib gap (-46 clipped the -41 rib)
     out.append(("wire_dac", _long(afe_relay_no, -52.0, LANE_DAC, -600.0, -80.0,
                                   WIRE_OD["wire_dac"])))
     out.append(("wire_relayctrl", _long(afe_coil, -58.0, LANE_CTRL, -600.0, -98.0,
@@ -315,8 +325,9 @@ def build_wires():
     # knee station — flagged as a CHASSIS REQUEST; until then the stub ends
     # clear of housing, rib and rail.
     out.append(("wire_knee_drop", _wire([
-        (-545.0, tees[11][1] - 4.5, HDR_Z), (-537.0, -118.0, -71.0),
-        (-533.0, -119.5, -71.0)], WIRE_OD["wire_knee_drop"])))
+        (tees[11][0], tees[11][1] - 4.5, HDR_Z), (-537.0, -118.0, -71.0),
+        (-533.0, -119.5, -71.0)], WIRE_OD["wire_knee_drop"])))   # start AT tee 11
+    #      (was hardcoded -545, which sat on the -547 rib; tee 11's gap x clears it)
 
     # -- USB (blue): USB-C panel -> floor lane -> corridor -> right-angle to Pi
     # (the floor-lane descent moved WEST of the +X wide corner rib)
