@@ -257,8 +257,7 @@ def _build() -> cq.Workplane:
     # recess floor (-55) and the guide windows.
     from .legs import corner_groove_negatives as _cgn
     for _ly, _s in ((CH.LEG_Y[0], 1.0), (CH.LEG_Y[1], -1.0)):
-        for _n in _cgn(CH.LEG_STATIONS_X[0], _ly, _s, 1.0, False,
-                       CH.Z_BOT):
+        for _n in _cgn(CH.LEG_STATIONS_X[0], _ly, _s, 1.0, CH.Z_BOT):
             body = body.cut(_n)
     # PANEL I/O (the instrument's right face): the base's +X end wall is CH.T (10)
     # thick -- too deep for the jacks (their bodies span x -16..6) -- so RECESS its

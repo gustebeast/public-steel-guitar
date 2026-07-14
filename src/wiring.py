@@ -268,12 +268,14 @@ def build_wires():
     # 10's DROP (no splice at the inlet). hot/gnd offset ±PWR_OFF.
     x10, y10 = hdrA[10]
     # inlet drop: dodge the AFE pedestal (x -24..0, y -110..-76, top -61)
-    # to its NORTH, cross the x -18 rib ABOVE its top (-65.15; the FLUSH
-    # round un-severed it), then descend in the -36..-23 bay to the AFE tee
+    # to its NORTH, fly WEST at -63.4 OVER the wide corner rib + the x -18
+    # comb rib (tops -65.15) and clear of the -24.07/-12.73 leg ridges
+    # (roofs -67.91), then drop straight onto tee 10's header WEST of the
+    # rib (the old bay dive at (-26,-97)/(-31,-104) is rib body now)
     heads = [(-5.5, EL.DC_Y, EL.JACK_Z), (-5.5, EL.DC_Y, -52.0),
              (-5.5, -74.0, -56.0), (-12.0, -74.0, -63.4),
-             (-26.0, -74.0, -63.4), (-26.0, -97.0, -70.0),
-             (-31.0, -104.0, -72.0), (x10 + 5.5, y10, HDR_Z)]
+             (-26.0, -74.0, -63.4), (x10 + 5.5, y10, -63.4),
+             (x10 + 5.5, y10, HDR_Z)]
     tail9 = [(hdrA[west[0]][0], hdrA[west[0]][1], HDR_Z),
              (hdrA[west[0]][0], hdrA[west[0]][1], STUB_Z),
              (hdrA[west[0]][0], LANE_PWR, STUB_Z),
@@ -317,10 +319,12 @@ def build_wires():
         (-533.0, -119.5, -71.0)], WIRE_OD["wire_knee_drop"])))
 
     # -- USB (blue): USB-C panel -> floor lane -> corridor -> right-angle to Pi
+    # (the floor-lane descent moved WEST of the +X wide corner rib)
     out.append(("wire_usb", _wire([
         (-2.5, EL.USB_Y, EL.JACK_Z), (-12.0, EL.USB_Y, -45.0),
-        (-12.0, LANE_USB, -45.0), (-30.0, LANE_USB, -45.0),    # clear the -X jack body
-        (-30.0, LANE_USB, LANE_Z), (RISE_X, LANE_USB, LANE_Z),
+        (-12.0, LANE_USB, -45.0), (-47.0, LANE_USB, -45.0),    # clear the -X jack body
+        (-47.0, LANE_USB, LANE_Z), (RISE_X, LANE_USB, LANE_Z),    # descend WEST of the
+        #                                    -41 comb rib (the wide corner rib owns -35.4..)
         (RISE_X, LANE_USB, BAYFLY), (-560.0, LANE_USB, BAYFLY),
         (-560.0, 20.0, BAYFLY), (-575.0, 20.0, BAYFLY),
         (-575.0, 20.0, -44.0)],
