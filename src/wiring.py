@@ -21,12 +21,17 @@ One component per physical CABLE. Discrete wires (the 24 V pair) are drawn
 individually; jacketed/bundled runs at the bundle OD. Colors (build.py):
 HUE = gauge bucket, SHADE = the specific wire within the bucket:
 
-  BLUE = power pair       wire_pwr_hot (dark) / wire_pwr_gnd (light):
-                          2 × 22 AWG PER RAIL in the crimped trunk jumpers
-                          (XH contacts take 22 AWG max; <5 A staggered slew
-                          = 2.5 A/contact), drawn as one rod per rail
-  RED = CAN               wire_can (bus A) / wire_canb (bus B): 22 AWG
-                          pairs inside the crimped trunk jumpers
+  CAN BUS COLOURS (user override): the CAN + power trunk is shown as its four
+  colour-coded conductors, NOT the gauge/shade rule below:
+      BLACK  = wire_pwr_gnd  (CAN ground / 0 V return)
+      RED    = wire_pwr_hot  (CAN 24 V)
+      YELLOW = wire_can*h    (CAN-H, both buses + the transceiver jumper)
+      GREEN  = wire_can*l    (CAN-L)
+  Each CAN bus is drawn as its CAN-H/CAN-L pair (split ±CAN_OFF); bus A
+  (wire_canh/l, motors), bus B (wire_canbh/l, inputs), jumper (wire_canjmph/l).
+
+  The gauge/shade rule still governs the NON-CAN nets:
+  BLUE = power pair       (superseded for the CAN power rails above)
   GREEN = 28 AWG SHIELDED (light -> dark)
                           wire_pickup: pickup -> AFE (raw, short)
                           wire_audio:  AFE buffer -> Teensy ADC
@@ -67,17 +72,26 @@ import cadquery as cq
 from . import dimensions as D
 from . import electronics as EL
 
-# modeled cable OD per net (mm): jacketed bundles (CAN/shielded/USB) drawn as
-# ONE round conductor at the jacket OD; the 24 V pair as TWO discrete 20 AWG
-# silicone wires. Nothing exceeds 2.6.
+# modeled cable OD per net (mm): jacketed bundles (shielded/USB) drawn as ONE
+# round conductor at the jacket OD; the 24 V pair AND the CAN pairs as discrete
+# conductors (user override: the CAN bus is shown as its four colour-coded
+# wires -- black gnd, red 24 V, yellow CAN-H, green CAN-L). Nothing exceeds 2.6.
 WIRE_OD = {
     "wire_pickup": 2.0, "wire_out": 2.0, "wire_audio": 2.0, "wire_dac": 2.0,
-    "wire_relayctrl": 1.4, "wire_can": 2.2, "wire_canb": 2.4, "wire_usb": 2.6,
+    "wire_relayctrl": 1.4, "wire_usb": 2.6,
+    # CAN signal pairs, split into CAN-H / CAN-L discrete conductors
+    "wire_canh": 1.3, "wire_canl": 1.3,       # bus A (motors)
+    "wire_canbh": 1.3, "wire_canbl": 1.3,     # bus B (inputs)
+    "wire_canjmph": 1.2, "wire_canjmpl": 1.2, # Teensy <-> transceiver jumper
     "wire_pwr_hot": 1.8, "wire_pwr_gnd": 1.8,
-    "wire_link": 1.4, "wire_canjmp": 1.4, "wire_tdm": 1.4,
+    "wire_link": 1.4, "wire_tdm": 1.4,
     "wire_oled": 1.4, "wire_joy": 1.4,
     "motor_pigtail": 3.4, "wire_knee_drop": 2.4,
 }
+CAN_OFF = 0.7         # CAN-H / CAN-L conductor separation (both x and y, same
+                      # scheme as PWR_OFF): the split pair stays inside the old
+                      # single-jacket envelope (0.7 + 0.65 = 1.35 < the 2.4/2 it
+                      # replaces) so the trunk footprint is unchanged.
 PWR_OFF = 1.2         # 24 V hot/gnd separation, applied in BOTH x and y (+off /
                       # -off): a single-axis offset leaves the pair COLLINEAR on
                       # runs along that axis (the y-offset pair coincided on the
@@ -278,14 +292,17 @@ def build_wires():
 
     # bus A CAN head: teensy_ifc -> bay corridor -> -Y rail -> westernmost motor tee; then
     # one crimped segment per hop east. Termination: teensy_ifc + tee 0's closed jumper.
+    # Drawn as the CAN-H (yellow) + CAN-L (green) pair, offset +-CAN_OFF (user).
     xw, yw = hdrA[west[0]]
-    out.append(("wire_can_0", _wire(
-        [(-565.0, 42.0, -50.5), (-565.0, 42.0, BAYFLY), (RISE_X, 42.0, BAYFLY),
-         (RISE_X, RAIL_Y, BAYFLY)] + _rail_pts(RISE_X, xw, LANE_CAN) + [(xw, yw, HDR_Z)],
-        WIRE_OD["wire_can"])))
-    for k in range(9):
-        out.append((f"wire_can_{k + 1}",
-                    _seg(hdrA[west[k]], hdrA[west[k + 1]], LANE_CAN, WIRE_OD["wire_can"])))
+    _canA_head = [(-565.0, 42.0, -50.5), (-565.0, 42.0, BAYFLY), (RISE_X, 42.0, BAYFLY),
+                  (RISE_X, RAIL_Y, BAYFLY)] + _rail_pts(RISE_X, xw, LANE_CAN) + [(xw, yw, HDR_Z)]
+    for _sfx, _co in (("h", -CAN_OFF), ("l", CAN_OFF)):
+        _od = WIRE_OD[f"wire_can{_sfx}"]
+        out.append((f"wire_can{_sfx}_0", _wire(
+            [(px + _co, py + _co, pz) for px, py, pz in _canA_head], _od)))
+        for k in range(9):
+            out.append((f"wire_can{_sfx}_{k + 1}",
+                        _seg(hdrA[west[k]], hdrA[west[k + 1]], LANE_CAN, _od, off=_co)))
 
     # bus A drops: each motor's factory 6-pin XH pigtail (grey), from its -Y-facing PCB out
     # to its rail tee. cy = outboard of THIS motor's back so the pigtail never re-enters it;
@@ -324,11 +341,14 @@ def build_wires():
 
     # ── bus B (inputs): ifc -> LKL tee -> leg-socket landing tee ────────
     x11, y11 = hdrA[11]
-    out.append(("wire_canb_0", _wire(
-        [(-557.0, 42.0, -50.5), (-557.0, 42.0, BAYFLY), (RISE_X, 42.0, BAYFLY),
-         (RISE_X, RAIL_Y, BAYFLY)] + _rail_pts(RISE_X, x11, LANE_CTRL) + [(x11, y11, HDR_Z)],
-        WIRE_OD["wire_canb"])))
-    out.append(("wire_canb_1", _seg(hdrA[11], hdrA[12], LANE_CTRL, WIRE_OD["wire_canb"])))
+    _canB_head = [(-557.0, 42.0, -50.5), (-557.0, 42.0, BAYFLY), (RISE_X, 42.0, BAYFLY),
+                  (RISE_X, RAIL_Y, BAYFLY)] + _rail_pts(RISE_X, x11, LANE_CTRL) + [(x11, y11, HDR_Z)]
+    for _sfx, _co in (("h", -CAN_OFF), ("l", CAN_OFF)):
+        _od = WIRE_OD[f"wire_canb{_sfx}"]
+        out.append((f"wire_canb{_sfx}_0", _wire(
+            [(px + _co, py + _co, pz) for px, py, pz in _canB_head], _od)))
+        out.append((f"wire_canb{_sfx}_1",
+                    _seg(hdrA[11], hdrA[12], LANE_CTRL, _od, off=_co)))
     # LKL drop stub: from tee 11 down toward the kl_pcb XH at the knee station (ends clear of
     # housing/rib/rail; the last pass-through to the board is a chassis follow-up).
     out.append(("wire_knee_drop", _wire([
@@ -349,10 +369,13 @@ def build_wires():
         (-600.0, -60.0, out_z), (-600.0, -60.0, BAYFLY),
         (-560.0, 5.0, BAYFLY), (-560.0, 5.0, -57.0)], WIRE_OD["wire_link"])))
 
-    # -- Teensy <-> CAN transceiver (orange): both at the -X corner
-    out.append(("wire_canjmp", _wire([
-        (-603.0, -57.0, out_z), (-603.0, -52.0, BAYFLY),
-        (-561.0, 49.0, BAYFLY), (-561.0, 49.0, -50.5)], WIRE_OD["wire_canjmp"])))
+    # -- Teensy <-> CAN transceiver: the CAN-H (yellow) / CAN-L (green) jumper pair
+    _canjmp = [(-603.0, -57.0, out_z), (-603.0, -52.0, BAYFLY),
+               (-561.0, 49.0, BAYFLY), (-561.0, 49.0, -50.5)]
+    for _sfx, _co in (("h", -CAN_OFF), ("l", CAN_OFF)):
+        out.append((f"wire_canjmp{_sfx}", _wire(
+            [(px + _co, py + _co, pz) for px, py, pz in _canjmp],
+            WIRE_OD[f"wire_canjmp{_sfx}"])))
 
     # -- PCM1864 carrier TDM -> Pi (teal)
     out.append(("wire_tdm", _wire([
@@ -383,8 +406,10 @@ WIRE_OK = {
     "wire_audio":     {"analog_frontend", "teensy_stack"},
     "wire_dac":       {"analog_frontend", "teensy_stack"},
     "wire_relayctrl": {"analog_frontend", "teensy_stack"},
-    "wire_can":       {"teensy_ifc", "tee_pcb"},
-    "wire_canb":      {"teensy_ifc", "tee_pcb"},
+    "wire_canh":      {"teensy_ifc", "tee_pcb"},
+    "wire_canl":      {"teensy_ifc", "tee_pcb"},
+    "wire_canbh":     {"teensy_ifc", "tee_pcb"},
+    "wire_canbl":     {"teensy_ifc", "tee_pcb"},
     "motor_pigtail":  {"tee_pcb", "motor"},
     "wire_knee_drop": {"tee_pcb"},
     # leg↔body TRRS: the chassis jack's factory cable (tenon channel ->
@@ -408,7 +433,8 @@ WIRE_OK = {
     "wire_pwr_gnd":   {"dc_jack", "buck", "tee_pcb", "analog_frontend"},
     "wire_usb":       {"usbc_jack", "pi5"},
     "wire_link":      {"teensy_stack", "pi5"},
-    "wire_canjmp":    {"teensy_stack", "teensy_ifc"},
+    "wire_canjmph":   {"teensy_stack", "teensy_ifc"},
+    "wire_canjmpl":   {"teensy_stack", "teensy_ifc"},
     "wire_tdm":       {"adc_stack", "pi5"},
     "wire_oled":      {"oled", "teensy_stack"},
     "wire_joy":       {"joystick", "teensy_stack"},
