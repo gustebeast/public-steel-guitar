@@ -197,8 +197,12 @@ def tee_cradles():
     from cadkit.pcb import pcb_cradle
     out = []
     for i, (x, y, d) in enumerate(tee_stations()):
-        cr = pcb_cradle(18.0, 14.0, screw_xy=(6.5, -4.0), open_edge="+y",
-                        standoff=TEE_Z + 0.8 - _RIB_TOP, wall_over=1.2)   # rest the lifted tee board
+        # bus-A (0..10) sit on the -Y rail: open +Y so the motor pigtail + trunk headers exit
+        # toward the motors. bus-B (11 knee, 12 leg) sit inboard: their drop exits toward -Y
+        # (down to the knee/leg station), so open -Y or the wall clips the drop cable.
+        open_edge = "-y" if i >= 11 else "+y"
+        cr = pcb_cradle(18.0, 14.0, screw_xy=(6.5, -4.0), open_edge=open_edge,
+                        standoff=TEE_Z - _RIB_TOP, wall_over=1.2)   # pads meet the lifted tee board bottom (TEE_Z)
         out.append((f"tee_cradle_{i}", cr.translate((x, y, _RIB_TOP))))
     return out
 
@@ -328,8 +332,9 @@ def build_wires():
     # LKL drop stub: from tee 11 down toward the kl_pcb XH at the knee station (ends clear of
     # housing/rib/rail; the last pass-through to the board is a chassis follow-up).
     out.append(("wire_knee_drop", _wire([
-        (tees[11][0], tees[11][1] - 4.5, HDR_Z), (-535.0, -124.0, -62.0),
-        (-533.0, -125.0, -68.0)], WIRE_OD["wire_knee_drop"])))
+        (tees[11][0], tees[11][1] - 4.5, HDR_Z),   # exit tee 11 toward -Y
+        (-508.0, -110.0, -60.0)], WIRE_OD["wire_knee_drop"])))  # short stub, clear of the packed -X corner
+    # (tee 0/11/12 + kl_pcb all share this station); the -Y/-Z drop onto the kl_pcb XH is the chassis follow-up.
 
     # -- USB (blue): USB-C panel -> -Y rail corridor -> ride to the bay -> right-angle to Pi
     out.append(("wire_usb", _wire(
