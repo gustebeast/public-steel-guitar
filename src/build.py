@@ -150,9 +150,24 @@ for _i in range(len(_TP.spare_fillers)):         # fillers for the other pickup-
         f"pctg/top_plate_spare_{_i}_color.step",
         f"PCTG (colour) — filler-band COLOUR layer (print AS ONE OBJECT with "
         f"top_plate_spare_{_i}; skin-contact surface — no glass fiber)")
+# fuse each tee's drop-in PCB cradle (cadkit.pcb.pcb_cradle) into the chassis segment
+# whose X-band owns that tee, so the cradle PRINTS AS PART of that segment. Each cradle's
+# -Y wall merges into the -Y-rail inner face (a light cantilever bracket over the rib-top
+# plane); the inboard bus-B tees (11,12) land on the nearest rib/bay structure. Verified:
+# every cradle makes solid contact and each segment stays ONE connected solid. Done here
+# (not in chassis.py) because chassis can't import wiring at module load (wiring imports
+# chassis) -- build.py sits above both, so the fuse is clean.
+from . import wiring as _WR_FUSE
+_seg_edges = [CH._SHELL_PX + CH.KH_DT_DEPTH + 2.0] + sorted(CH.SPLIT_X, reverse=True) + [CH.X_NUT]
+chassis_segments = list(chassis_segments)
+for (_cnm, _cr), (_ctx, _cty, _ctd) in zip(_WR_FUSE.tee_cradles(), _WR_FUSE.tee_stations()):
+    for _csi in range(len(_seg_edges) - 1):
+        if _seg_edges[_csi + 1] < _ctx < _seg_edges[_csi]:
+            chassis_segments[_csi] = chassis_segments[_csi].union(_cr)
+            break
 for _i, _seg in enumerate(chassis_segments):     # chassis split into dovetailed segments
     PARTS[f"chassis_{_i}"] = (partial(heal, _seg), f"petg-gf/chassis_{_i}.step",
-                              "PETG-GF — chassis segment (slide-down dovetail, glued)")
+                              "PETG-GF — chassis segment (slide-down dovetail, glued + tee cradles)")
 # Print coupon for the cadkit octagon slide joint (the joint the knee levers key
 # into the body with). test_*.step at the project root; also rendered off to the
 # side in the assembly (see _joint_coupon_components) so it rebuilds every time.
