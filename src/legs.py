@@ -536,8 +536,15 @@ SEC_W       = 28.0    # octagon flat-to-flat across local X (= the old house's X
 SEC_TEN_L   = 28.0    # spigot engagement along Z (= the old SEG_PLUG_L)
 SEC_MOR_L   = 30.0    # socket depth (> spigot so the 44-sq shoulders butt = the
                       # ground-reaction hard stop; the octagon stop wall is backup)
-SEC_Y0      = 10.6    # local-Y offset centring the joint on the leg axis
-                      # (~10.4 wall to each Y face; base near +Y, point near -Y)
+# FLUSH AT THE BED FACE (user round 2): the joint is NOT hidden inside the leg.
+# The tenon's flat STEM BASE lies exactly ON the local +Y face = the print bed
+# (a floating inset base would be an unprintable mid-air flat on the side-lying
+# spigot), and the mortise opens THROUGH that face as an octagon-profile groove
+# — the open air gap the next tenon slides into. Capture survives: the face
+# slit is the 14-wide stem, the 28 waist can't pass it. Profile spans local
+# y +22 (base) .. -0.24 (point); the outer (-Y) wall keeps ~21 of material.
+SEC_BORE_Y  = 13.0    # wired: cable-bore centre (in the fat flare band; clears
+                      # the M4 at x+7 and stays inside the profile walls)
 SEC_CABLE_D = 7.0     # wired leg: axial cable bore through the spigot + socket roof
 # DEFERRED (user-directed): the segment↔segment and head↔segment section joints
 # are converted to this octagon; the SLEEVE↔segment joint is NOT yet — a 28-wide
@@ -563,28 +570,32 @@ def _house(w: float, floor_y: float, wall_top_y: float,
             .close().extrude(length))
 
 
-def _section_tenon(length: float = SEC_TEN_L, root: float = 1.0) -> cq.Workplane:
+def _section_tenon(length: float = SEC_TEN_L) -> cq.Workplane:
     """Section-joint male SPIGOT: the cadkit octagon TENON rotated so its slide
-    axis is +Z (stacking) with the point toward local -Y and the flat stem base
-    toward local +Y (the inner/bed face). Base at z=0; callers translate to
-    (0,0,part_top) so the spigot sticks out the top Z-end."""
+    axis is +Z (stacking), point toward local -Y, and the flat STEM BASE lying
+    EXACTLY ON the local +Y face (y = SQ_W/2) — the print bed of the side-lying
+    leg (user: the stem must be flat against the bed; an inset base would be a
+    floating flat). root=0: any root would poke past the leg face. Callers
+    embed 1 along Z for the volumetric fusion instead. Base plane at z=0."""
     from cadkit.joinery import octagon_tenon
-    return (octagon_tenon(SEC_W, length, nozzle=0.8, clearance=0.1, root=root)
+    return (octagon_tenon(SEC_W, length, nozzle=0.8, clearance=0.1, root=0.0)
             .rotate((0, 0, 0), (0, 1, 0), -90)
             .rotate((0, 0, 0), (0, 0, 1), 90)
-            .translate((0, SEC_Y0, 0)))
+            .translate((0, SQ_W / 2, 0)))
 
 
 def _section_mortise(length: float = SEC_MOR_L, drop: float = 2.0) -> cq.Workplane:
-    """Matching section SOCKET cavity (the octagon MORTISE, same rotation). Cut
-    from the part's bottom Z-end; callers translate to (0,0,z_open) with a small
-    -Z overshoot so the socket mouth opens cleanly through the bottom face. The
-    far (+Z) end left inside the body is the stop wall."""
+    """Matching section SOCKET cavity (the octagon MORTISE, same rotation), its
+    mating plane on the local +Y face so the `drop` opens the cavity THROUGH
+    that face — the visible groove/air gap the tenon needs (its bed-flat stem
+    base can't be walled in). The 14-wide face slit still captures the 28
+    waist. Cut from the part's bottom Z-end; callers translate to (0,0,z_open)
+    with a small -Z overshoot; the far (+Z) end inside is the stop wall."""
     from cadkit.joinery import octagon_mortise
     return (octagon_mortise(SEC_W, length, nozzle=0.8, clearance=0.1, drop=drop)
             .rotate((0, 0, 0), (0, 1, 0), -90)
             .rotate((0, 0, 0), (0, 0, 1), 90)
-            .translate((0, SEC_Y0, 0)))
+            .translate((0, SQ_W / 2, 0)))
 
 
 PUCK_PLUG_L = 20.0             # coupler glue plug depth into the core
@@ -621,10 +632,10 @@ def _sq_body(length: float, channel: bool = False) -> cq.Workplane:
         # the incoming spigot's bore) and through the solid top CAP that roots
         # the spigot. The old 20-wide slack-coil-through-joint way is gone (the
         # octagon stem is only 14 wide) — thread the cable straight, coil in core.
-        b = b.cut(cyl(SEC_CABLE_D, 4.0, z=SEC_MOR_L - 1.0)
-                  .translate((0, SEC_Y0, 0)))
+        b = b.cut(cyl(SEC_CABLE_D, 6.0, z=SEC_MOR_L - 2.0)
+                  .translate((0, SEC_BORE_Y, 0)))
         b = b.cut(cyl(SEC_CABLE_D, 8.0, z=length - 6.0)
-                  .translate((0, SEC_Y0, 0)))
+                  .translate((0, SEC_BORE_Y, 0)))
     if channel:
         # cable channel on the +X SIDE face (the gable owns +y's depth);
         # lidded, so it reads as a seam. Same dovetail-seat profile,
@@ -640,24 +651,28 @@ def _sq_body(length: float, channel: bool = False) -> cq.Workplane:
             b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
                 2.1, CH_DEEP + 2.0, cq.Vector(SQ_W / 2 + 0.5, 0, dz),
                 cq.Vector(-1, 0, 0))))
-    # integral male SPIGOT on the top end: the octagon section TENON (its root
-    # fuses 1 into the body top). Wired: a Ø7 axial cable bore up its stem;
-    # plain: solid.
-    plug = _section_tenon(SEG_PLUG_L).translate((0, 0, length))
+    # integral male SPIGOT on the top end: the octagon section TENON, embedded
+    # 1 along Z into the body for volumetric fusion (root=0 — the flush base
+    # can't extend past the leg face). Wired: a Ø7 axial cable bore, open out
+    # the tip; plain: solid.
+    plug = _section_tenon(SEG_PLUG_L + 1.0).translate((0, 0, length - 1.0))
     if channel:
-        plug = plug.cut(cyl(SEC_CABLE_D, SEG_PLUG_L + 2.0, z=length - 1.0)
-                        .translate((0, SEC_Y0, 0)))
+        plug = plug.cut(cyl(SEC_CABLE_D, SEG_PLUG_L + 3.0, z=length - 2.0)
+                        .translate((0, SEC_BORE_Y, 0)))
     b = b.union(plug)
     # M4 retention (user rule: joinery takes the force, the screw only stops
-    # extraction). The octagon stem base is on +Y now, so both bores enter from
-    # the +Y (inner/bed) face into the fat stem: Ø4.5 clearance over the INCOMING
-    # spigot in our bottom socket + Ø3.6 thread-forming pilot in our OWN spigot.
+    # extraction): ONE M4×35 button per joint from the OUTER (-Y) face — the +Y
+    # face is the open groove now, so the screw comes through the thick point-
+    # side wall instead. At x +7 (clears the Ø7 cable bore at x ±3.5): Ø4.5
+    # clearance through our wall over the INCOMING spigot (bottom socket) +
+    # Ø3.6 thread-forming pilot crossing our OWN spigot's flare band (blind —
+    # stops 2 shy of the bed face, so the inner face stays clean).
     b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        2.25, 9.5, cq.Vector(0, SQ_W / 2 + 1.0, 14.0),
-        cq.Vector(0, -1, 0))))
+        2.25, 30.0, cq.Vector(7.0, -SQ_W / 2 - 1.0, 14.0),
+        cq.Vector(0, 1, 0))))
     b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        1.8, 16.0, cq.Vector(0, SQ_W / 2 + 1.0, length + 14.0),
-        cq.Vector(0, -1, 0))))
+        1.8, 16.0, cq.Vector(7.0, 4.0, length + 14.0),
+        cq.Vector(0, 1, 0))))
     return b
 
 
@@ -1041,12 +1056,14 @@ def leg_latch_head() -> cq.Workplane:
     b = box_at(SQ_W, SQ_W, HEAD_BODY_L, z=-HEAD_BODY_L / 2)
     # section socket below (STANDARD stack orientation - the segment chain
     # underneath is not flipped): the OCTAGON section mortise, opening through
-    # the head's bottom face + its M4 retention pilot (now from the +Y stem side)
+    # the head's bottom face AND its +Y face (the flush-joint groove) + the M4
+    # retention clearance from the OUTER -Y face at x +7 (same scheme as the
+    # segment sockets; the button pocket at x 7.8..20.2, z -16..-6 clears it)
     b = b.cut(_section_mortise(length=SEC_MOR_L + 1.0)
               .translate((0, 0, -HEAD_BODY_L - 1.0)))
     b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        2.25, 9.5, cq.Vector(0, SQ_W / 2 + 1.0, -HEAD_BODY_L + 14.0),
-        cq.Vector(0, -1, 0))))
+        2.25, 30.0, cq.Vector(7.0, -SQ_W / 2 - 1.0, -HEAD_BODY_L + 14.0),
+        cq.Vector(0, 1, 0))))
     # house spigot + latch cuts, FLIPPED 180 (mirrors the stub's socket)
     b = b.union(_house(27.7, -15.85, 1.85, 38.0)
                 .rotate((0, 0, 0), (0, 0, 1), 180))
