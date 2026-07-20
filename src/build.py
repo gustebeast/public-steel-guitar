@@ -181,6 +181,17 @@ PARTS["test_octagon_mortise"] = (
     "test_octagon_mortise.step",
     "TEST COUPON — octagon joint MORTISE block (through-slot); prints -Z→+Z; the "
     "thin slot ceiling is the one-bead bridge the octagon roof is sized for")
+# Section-joint coupon (the LEG stack's octagon at the real 28 mm width — legs.SEC_W)
+PARTS["test_section_tenon"] = (
+    lambda: heal(__import__("src.joint_coupon", fromlist=["e"]).section_tenon_coupon()),
+    "test_section_tenon.step",
+    "TEST COUPON — LEG section joint (28 mm octagon) TENON on a base plate; prints "
+    "-Z→+Z. Slide into test_section_mortise to check the leg stack's slide fit")
+PARTS["test_section_mortise"] = (
+    lambda: heal(__import__("src.joint_coupon", fromlist=["e"]).section_mortise_coupon()),
+    "test_section_mortise.step",
+    "TEST COUPON — LEG section joint (28 mm octagon) MORTISE block (through-slot); "
+    "prints -Z→+Z; validates the one-bead roof bridge at the real section size")
 
 
 # Anchor ALL outputs to the project folder (never the cwd — see Archive/3D/CLAUDE.md)

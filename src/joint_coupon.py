@@ -47,3 +47,30 @@ def mortise_coupon():
            .mortise(drop=PLATE)
            .translate((-(LENGTH + 2) / 2.0, 0, 0)))             # slot open both X ends
     return block.cut(cut)
+
+
+# ── SECTION-JOINT coupon (the LEG stack's octagon, width 28 — legs.SEC_W). The
+# 6 mm knee coupon above does NOT validate the 28 mm section fit, so print this
+# pair to check the leg stack's slide fit + one-bead roof bridge at the real size.
+SEC_WIDTH, SEC_LEN = 28.0, 28.0
+_SJ = slide_joint(SEC_WIDTH, SEC_LEN, tenon=_UP, mortise=_UP, clearance=CLR)
+_SH = _SJ.height
+
+
+def section_tenon_coupon():
+    """Base plate with the 28 mm section octagon tenon standing up (+z)."""
+    plate = (cq.Workplane("XY")
+             .box(SEC_LEN, SEC_WIDTH + 2 * MARGIN, PLATE, centered=(True, True, False))
+             .translate((0, 0, -PLATE)))
+    return plate.union(_SJ.tenon(root=1.0).translate((-SEC_LEN / 2.0, 0, 0)))
+
+
+def section_mortise_coupon():
+    """Block with the 28 mm section octagon mortise as a through-slot along X."""
+    block = (cq.Workplane("XY")
+             .box(SEC_LEN, SEC_WIDTH + 2 * MARGIN, _SH + PLATE + CEIL, centered=(True, True, False))
+             .translate((0, 0, -PLATE)))
+    cut = (slide_joint(SEC_WIDTH, SEC_LEN + 2, tenon=_UP, mortise=_UP, clearance=CLR)
+           .mortise(drop=PLATE)
+           .translate((-(SEC_LEN + 2) / 2.0, 0, 0)))
+    return block.cut(cut)
