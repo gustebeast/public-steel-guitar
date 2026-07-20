@@ -38,6 +38,7 @@ from . import nut_block as NB
 from . import tension_fork as TF
 from . import pickup_mount as PM
 from . import legs as LG
+from cadkit.fasteners import m4_boss_insert
 
 # ── PRINTED parts → each is exported as its own STEP. ────────────────────
 # This is the ONLY set that gets STEP files. DEMONSTRATION parts (purchased /
@@ -396,10 +397,14 @@ def _pickup_mount_components():
     out = [("pickup", PM.pickup_demo().translate((PICKUP_X, py, PM.PK_TOP))),
            ("pickup_zplate", TP.pickup_zplate),
            ("pickup_xclamp", TP.pickup_xclamp.translate((PICKUP_X - TP.PIECE_CTR, 0, 0)))]
-    # ONE central height screw lifts the Z-plate from below (one knob sets height;
-    # the plate's +Y flange rides the full-height carrier track to keep it flat)
+    # ONE central M4 JACK screw lifts the Z-plate from below (one knob sets
+    # height; the plate's +Y flange rides the full-height carrier track to keep
+    # it flat). It threads a heat-set insert seated in the floor boss (Ø8 boss +
+    # Ø6×5 pocket, cadkit standard); the cup tip bears on the plate bottom.
+    out.append(("pickup_height_insert",
+                m4_boss_insert((TP.HEIGHT_HOLE, 0.0, TP.FLOOR_TOP), (1, 0, 0), 0)))
     out.append(("height_screw",
-                PM.height_screw().translate((TP.HEIGHT_HOLE, 0.0, TP.ZPL_BOT))))
+                C.set_screw().translate((TP.HEIGHT_HOLE, 0.0, TP.ZPL_BOT))))
     # clamp screw in whichever -Y skirt hole sits nearest the pickup; its tip drives
     # the shim +Y, pinning the pickup against the +Y flange (the shim spreads load)
     cx = min(TP.CLAMP_HOLES, key=lambda h: abs(h - PICKUP_X))
@@ -722,6 +727,7 @@ _COLORS = {
     "string":          (0.85, 0.85, 0.85),
     "break_dowel":     (0.75, 0.75, 0.78),   # steel dowel (gauged break pin)
     "set_screw":       (0.55, 0.55, 0.58),   # alloy set screw
+    "pickup_height_insert": (0.72, 0.52, 0.24),  # brass heat-set insert
     "chassis":         (0.46, 0.52, 0.55),   # PETG-GF frame
     "pickup":          (0.10, 0.10, 0.12),   # DEMO pickup body
     "pickup_zplate":   (0.85, 0.65, 0.30),   # PCTG height plate (under the pickup)
@@ -809,13 +815,17 @@ _COLORS = {
     "dc_jack":         (0.62, 0.64, 0.67),
     "usbc_jack":       (0.62, 0.64, 0.67),
     # wire harness: HUE = gauge bucket, SHADE = the specific wire in the bucket
-    #   blue = 20 AWG power | red = 26 AWG CAN | green = 28 AWG shielded audio
-    #   amber = 28 AWG logic | violet = shielded USB-2
-    "wire_pwr_hot":    (0.08, 0.20, 0.60),   # dark blue   - 24 V hot
-    "wire_pwr_gnd":    (0.45, 0.65, 0.95),   # light blue  - 24 V ground/return
-    "wire_can":        (0.80, 0.10, 0.10),   # red         - bus A CAN (crimped
-                                             #   XH trunk segments, tee to tee)
-    "wire_canb":       (0.95, 0.35, 0.30),   # light red   - bus B CAN (inputs)
+    #   green = 28 AWG shielded audio | amber = 28 AWG logic | violet = USB-2
+    # CAN + power trunk = its 4 colour-coded conductors (user override):
+    #   black = gnd | red = 24 V | yellow = CAN-H | green = CAN-L
+    "wire_pwr_hot":    (0.85, 0.12, 0.10),   # red         - CAN 24 V
+    "wire_pwr_gnd":    (0.05, 0.05, 0.05),   # black       - CAN ground/return
+    "wire_canh":       (0.95, 0.85, 0.10),   # yellow      - bus A CAN-H
+    "wire_canl":       (0.13, 0.72, 0.20),   # green       - bus A CAN-L
+    "wire_canbh":      (0.95, 0.85, 0.10),   # yellow      - bus B CAN-H
+    "wire_canbl":      (0.13, 0.72, 0.20),   # green       - bus B CAN-L
+    "wire_canjmph":    (0.95, 0.85, 0.10),   # yellow      - jumper CAN-H
+    "wire_canjmpl":    (0.13, 0.72, 0.20),   # green       - jumper CAN-L
     "motor_pigtail":   (0.45, 0.45, 0.48),   # grey        - SERVO42D's own 6-pin
                                              #   XH pigtail (factory jacket)
     "wire_knee_drop":  (0.45, 0.45, 0.48),   # grey        - LKL drop stub
@@ -825,7 +835,6 @@ _COLORS = {
     "wire_out":        (0.04, 0.34, 0.18),   # darkest green - shielded: relay -> jack
     "wire_relayctrl":  (0.98, 0.88, 0.35),   # lightest amber - relay control
     "wire_link":       (0.95, 0.72, 0.22),   # light amber - Teensy <-> Pi
-    "wire_canjmp":     (0.90, 0.58, 0.14),   # amber       - Teensy <-> transceiver
     "wire_tdm":        (0.80, 0.46, 0.10),   # deep amber  - CS stack -> Pi
     "wire_oled":       (0.68, 0.36, 0.08),   # brown-amber - OLED -> Teensy
     "wire_joy":        (0.54, 0.28, 0.08),   # darkest amber - joystick -> Teensy
