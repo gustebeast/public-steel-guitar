@@ -33,6 +33,7 @@ import cadquery as cq
 from . import dimensions as D
 from . import chassis as CH          # only early constants (X_*, Z_*) used here
 from .helpers import box_at, cyl
+from cadkit.fasteners import M2, cut_anchor
 
 # ---- bay geometry (chassis.py cuts the matching channels from these) ----
 TRAY_X0, TRAY_X1 = -607.0, -547.0
@@ -141,32 +142,34 @@ def analog_frontend() -> cq.Workplane:
     return b
 
 
-def _posts_strips_fingers(fp, bz):
-    """Snap-mount set for one board footprint: 4 corner posts (top 0.2 under
-    the board), 2 locator strips along the x edges (0.3 off the board), and
-    2 snap fingers mid-x on the y edges, their 45-degree nubs hovering 0.15
-    over the board top. All clearance - nothing touches the dummy."""
+def _screw_xy(fp, corner):
+    """One board corner (5 mm inset, at a real corner mounting-hole position)."""
     x0, x1, y0, y1 = fp
+    return (x0 + 5 if corner[0] < 0 else x1 - 5,
+            y0 + 5 if corner[1] < 0 else y1 - 5)
+
+
+def _posts_strips_screw(fp, bz, corner):
+    """Drop-in, SCREW-RETAINED mount for one board footprint (no snap/flexure --
+    a deliberate rule; plastic snaps aren't trusted). 4 corner support posts
+    (tops flush with the board bottom -- the board RESTS on them), 2 locator
+    strips along the x edges (0.3 plan fit) that locate the board in the pocket,
+    and ONE fat boss at `corner` carrying an M2 anchor: the board drops into the
+    strip-located pocket and a single screw through its corner mounting hole
+    stops lift-out. The anchor itself is cut in electronics_tray() (after the
+    boss fuses into the tray plate, so the self-tap runs full depth)."""
+    x0, x1, y0, y1 = fp
+    sx, sy = _screw_xy(fp, corner)
     out = cq.Workplane("XY")
     for px in (x0 + 5, x1 - 5):
         for py in (y0 + 5, y1 - 5):
-            out = out.add(cyl(5.0, bz - 0.2 - TRAY_Z1, z=TRAY_Z1)
+            is_screw = abs(px - sx) < 1e-6 and abs(py - sy) < 1e-6
+            out = out.add(cyl(7.0 if is_screw else 5.0, bz - TRAY_Z1, z=TRAY_Z1)
                           .translate((px, py, 0)))
-    for sy in (y0 - 1.0, y1 + 1.0):    # strips: 0.3 plan gap to the board
+    for sy2 in (y0 - 1.0, y1 + 1.0):    # strips: 0.3 plan gap to the board
         out = out.add(box_at(x1 - x0 - 16.0, 1.4, bz + 1.0 - TRAY_Z1,
-                             x=(x0 + x1) / 2, y=sy + (0.0 if sy < y0 else 0.0),
+                             x=(x0 + x1) / 2, y=sy2,
                              z=(TRAY_Z1 + bz + 1.0) / 2))
-    xm = (x0 + x1) / 2
-    nub_z = bz + BD_T + 0.15           # nub underside hovers over the board
-    for sy, s in ((y0 - 1.0, 1), (y1 + 1.0, -1)):
-        fin = box_at(5.0, 1.4, nub_z + 1.4 - TRAY_Z1,
-                     x=xm, y=sy, z=(TRAY_Z1 + nub_z + 1.4) / 2)
-        # 45-deg nub: chamfered both faces (prints standing, still retains)
-        nub = (cq.Workplane("YZ")
-               .polyline([(sy, nub_z), (sy + s * 1.5, nub_z + 0.7),
-                          (sy, nub_z + 1.4)])
-               .close().extrude(5.0).translate((xm - 2.5, 0, 0)))
-        out = out.add(fin).add(nub)
     return out
 
 
@@ -182,9 +185,16 @@ def electronics_tray() -> cq.Workplane:
                                  x=(TAB_X0 + TAB_X1) / 2,
                                  y=ye + s * (TAB_T + 1.25) / 2 - s * 0.001,
                                  z=TRAY_Z0 + 3.0))
-    for fp, bz in ((PI_FP, BOARD_Z), (TEENSY_FP, BOARD_Z + 1.0),
-                   (ADC_FP, BOARD_Z), (BUCK_FP, BOARD_Z), (XCVR_FP, BOARD_Z)):
-        body = body.union(_posts_strips_fingers(fp, bz))
+    # each board: strip-located drop-in pocket + ONE M2 screw at a chosen corner
+    # (a corner clear of the board's top-side components / neighbours).
+    for fp, bz, corner in ((PI_FP, BOARD_Z, (-1, -1)),
+                           (TEENSY_FP, BOARD_Z + 1.0, (-1, -1)),
+                           (ADC_FP, BOARD_Z, (+1, -1)),
+                           (BUCK_FP, BOARD_Z, (+1, +1)),
+                           (XCVR_FP, BOARD_Z, (-1, -1))):
+        body = body.union(_posts_strips_screw(fp, bz, corner))
+        sx, sy = _screw_xy(fp, corner)
+        body = cut_anchor(M2, body, (sx, sy, bz), (0, 0, -1), M2.anchor_min_wall)
     # NORTH-SHELF LANE CHANNEL (Y-INSTALL round; supersedes the old
     # west-north chimney bite - the jack chimney/fin is gone): the wired
     # leg's Ø3.8 factory pigtail rides the chassis' over-rib raceway east
