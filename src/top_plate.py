@@ -41,6 +41,7 @@ from . import dimensions as D
 from . import chassis as CH
 from . import electronics as EL
 from . import pickup_mount as PM
+from cadkit.fasteners import cut_m4_boss
 from .helpers import box_at, cyl, cyl_y, heal
 
 YL = CH.Y_LO + CH.T / 2                 # -Y rail inner face (-128.75)
@@ -115,6 +116,7 @@ OPEN_YW   = HY_REF + HY_CLAMP                              # opening/floor Y wid
 SKIRT_T   = 3.0
 FLOOR_BOT = -13.5                                          # floor bottom clears the chassis
 FLOOR_T   = 1.5                                            # motor ribs (tops at z -14)
+FLOOR_TOP = FLOOR_BOT + FLOOR_T                            # -12.0 (screw-boss datum)
 # Z-plate: full-opening, slides only in Z (lifted by the screws); pickup rests on it
 ZPL_T     = 2.0
 ZPL_TOP   = PM.PK_BOT                                      # pickup sits on the plate top
@@ -133,7 +135,6 @@ FLG_TOP   = ZPL_TOP + PM.PK_H_MIN
 # +/-Y flanges ride the skirt inner faces so it can only move in flat Z (no
 # see-saw) -> one knob sets the height.
 HEIGHT_HOLE = PIECE_CTR
-HSCREW_CLR = PM.HSCREW_D + 0.4                            # tapped/insert hole for the screw
 # X clamp: THREE clamp-screw holes along the -Y skirt -> use the one nearest the
 # pickup so the side clamp pushes near the pickup centre wherever it's slid. The
 # shim spreads the load, so the hole needn't line up exactly with the midpoint.
@@ -335,8 +336,16 @@ def _pickup_piece():
     # central spine (Y=0) carrying the single height-screw boss, reached from below
     body = body.union(box_at(OPEN_LEN + 2 * WALL, SPINE_W, FLOOR_T,
                              x=OPEN_CTR, y=0, z=FLOOR_BOT + FLOOR_T / 2))
-    body = body.union(cyl(8.0, 2.0, z=FLOOR_BOT).translate((HEIGHT_HOLE, 0, 0)))
-    body = body.cut(cyl(HSCREW_CLR, 6.0, z=FLOOR_BOT - 1.0).translate((HEIGHT_HOLE, 0, 0)))
+    # height JACK screw: a proper M4 heat-set insert in a Ø8 boss (cadkit
+    # fastener standard) protruding DOWN from the floor into the open bay below
+    # (clear ~18 mm to belt_4). The screw threads UP into the insert from below
+    # and its tip lifts the Z-plate; because it must HOLD the pickup height under
+    # load it is the set-screw pattern (insert bore, never self-tap). A downward
+    # boss would overhang if this piece printed floor-down, so the PICKUP PIECE
+    # prints ON ITS SIDE (-X -> +X) -- it carries no fret lines, so side layer
+    # lines cost nothing. clr_len just clears the 1.5 floor above the pocket.
+    body = cut_m4_boss(body, (HEIGHT_HOLE, 0.0, FLOOR_TOP), (1, 0, 0), 0,
+                       clr_len=FLOOR_T + 2.0)
     return heal(body)
 
 
