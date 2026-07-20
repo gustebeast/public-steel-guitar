@@ -28,6 +28,7 @@ from . import dimensions as D
 from . import motor_bank as MB
 from .components import MOTOR_PULLEY_STANDOFF
 from .helpers import box_at, cyl
+from cadkit.fasteners import M2, cut_anchor
 from .legs import DT_FACE_HW, DT_DEEP_HW, DT_DEPTH, DT_H
 
 T        = D.WALL_THICKNESS            # rail thickness (solid; slicer infills)
@@ -288,9 +289,17 @@ def _build_full() -> cq.Workplane:
                              x=(AFE_X0 - 2 + AFE_X1 + 2) / 2,
                              y=(AFE_Y0 - 2 + AFE_Y1 + 2) / 2,
                              z=(Z_BOT + AFE_PED_TOP) / 2))
-    for _px, _py in ((AFE_X0 + 4, AFE_Y0 + 4), (AFE_X1 - 4, AFE_Y1 - 4)):
-        body = body.union(cyl(6.0, (AFE_Z - 0.2) - AFE_PED_TOP, z=AFE_PED_TOP)
+    # two posts hold the board (tops flush -> it RESTS on them); the -X/-Y post
+    # is a fat boss carrying one M2 anchor so a single screw retains the AFE (no
+    # snap/flexure -- the deliberate rule). The pedestal is solid below, so the
+    # self-tap runs full depth.
+    _afe_scr = (AFE_X0 + 4, AFE_Y0 + 4)
+    for _px, _py in (_afe_scr, (AFE_X1 - 4, AFE_Y1 - 4)):
+        _is_scr = _px == _afe_scr[0] and _py == _afe_scr[1]
+        body = body.union(cyl(7.0 if _is_scr else 6.0, AFE_Z - AFE_PED_TOP, z=AFE_PED_TOP)
                           .translate((_px, _py, 0)))
+    body = cut_anchor(M2, body, (_afe_scr[0], _afe_scr[1], AFE_Z), (0, 0, -1),
+                      M2.anchor_min_wall)
     # NO wire raceways through the ribs. The ribs are for STRUCTURE and holding LEVERS
     # only: every rib carries the knee/pedal-lever octagon mortise along its whole Y, and
     # a lever slides to ANY knee depth in ANY bay -- so a cable sitting in a rib would
