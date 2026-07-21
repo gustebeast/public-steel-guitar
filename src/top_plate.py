@@ -41,7 +41,6 @@ from . import dimensions as D
 from . import chassis as CH
 from . import electronics as EL
 from . import pickup_mount as PM
-from cadkit.fasteners import cut_m4_boss
 from .helpers import box_at, cyl, cyl_y, heal
 
 YL = CH.Y_LO + CH.T / 2                 # -Y rail inner face (-128.75)
@@ -131,9 +130,27 @@ FLG_BOT   = ZPL_BOT                                       # flange bottoms FLUSH
 # even raising the shortest pickup until it touches the strings, the walls land at
 # the pickup top -- never above it (never fouling the bar/strings)
 FLG_TOP   = ZPL_TOP + PM.PK_H_MIN
-# Z height: ONE central screw lifts the plate (reached from below); the plate's
-# +/-Y flanges ride the skirt inner faces so it can only move in flat Z (no
-# see-saw) -> one knob sets the height.
+# ── TOP-ACCESS jackscrews (user: adjust height with the instrument assembled) ──
+# THREE vertical M2 GRUB-SCREW jacks in a TRIPOD (deterministic, no rock): TWO on
+# the +Y reference side at the two X-ends (BEYOND the 33mm pickup, so their heads
+# clear it), ONE on the -Y side at the CENTRE X. All three sit OUTBOARD of the
+# strings (|Y|>29), so a driver reaches them from +Z without going between strings.
+# Each threads a downward TAB on the plate; its tip bears on a FIXED pad in the
+# piece below. Turn CW to jack that corner up; the fine thread self-locks.
+# LEVELLING: the -Y screw is at centre X (no along-neck moment), so EQUALISING the
+# two +Y screws = X LEVEL (user: no along-neck tilt); the -Y screw then sets
+# ACROSS-STRING tilt. The pickup still seats flush to the +Y wall (covers string 1).
+# No mechanism under the pickup -> the bay centre stays open. Tab bottoms sit at
+# JACK_TAB_BOTZ to clear the -14 ribs in the neck-ward re-slot positions.
+JACK_YP       = OPEN_YC + 47.0                   # +Y reference-side screws (44)
+JACK_YM       = OPEN_YC - 50.5                   # -Y single screw (-53.5, in the 5.2 gap)
+JACK_POS      = [(OPEN_X0 - 3.5, JACK_YP),        # +X end, +Y
+                 (OPEN_X1 + 3.5, JACK_YP),        # -X end, +Y
+                 (PIECE_CTR, JACK_YM)]            # centre X, -Y
+JACK_D        = 2.0                              # M2 (fits the tight -Y gap)
+JACK_TAB_OD   = 5.0                              # plate threaded-tab OD
+JACK_TAB_BOTZ = -12.6                            # tab bottom (nominal; ~1.4 down to the -14 rib)
+JACK_PAD_TOPZ = -13.0                            # fixed pad top (screw tip bears here)
 HEIGHT_HOLE = PIECE_CTR
 # X clamp: THREE clamp-screw holes along the -Y skirt -> use the one nearest the
 # pickup so the side clamp pushes near the pickup centre wherever it's slid. The
@@ -313,12 +330,13 @@ def _band(xa, xb, *, ui=False):
 
 
 def _pickup_piece():
-    """3-slot deck panel that carries the pickup. It's a pocket bounded by two
-    side skirts (+Y = reference, -Y = clamp) and two end walls; the Z-plate drops
-    in from above and the pickup rests on it. The +Y skirt inner face (continuous
+    """3-slot deck panel that carries the pickup. A pocket bounded by two side
+    skirts (+Y = reference, -Y = clamp) and two end walls; the Z-plate drops in
+    from above and the pickup rests on it. The +Y skirt inner face (continuous
     with the deck opening edge) is the full-height guide track for the plate's +Y
-    flange. A central spine carries ONE height-screw hole (reached from below);
-    the -Y skirt has THREE clamp-screw holes (use the one nearest the pickup)."""
+    flange; the -Y skirt has THREE clamp-screw holes. HEIGHT: two vertical M3
+    grub-screw jacks at the plate X-ends thread plate tabs and bear on FIXED pads
+    added here (no mechanism under the pickup -> the bay is open below the plate)."""
     body = _deck_body(PIECE_X0, PIECE_X1)
     # deck opening (pickup pokes through; offset -Y to give the clamp shim room)
     body = body.cut(box_at(OPEN_LEN, OPEN_YW, (TZ - BZ) + 2,
@@ -333,19 +351,14 @@ def _pickup_piece():
     for cx in CLAMP_HOLES:                          # 3 clamp-screw holes (-Y skirt)
         body = body.cut(cyl_y(PM.CSCREW_D + 0.4, SKIRT_T + 2.0,
                               y0=-(HY_CLAMP + SKIRT_T + 1.0), x=cx, z=CL_Z))
-    # central spine (Y=0) carrying the single height-screw boss, reached from below
-    body = body.union(box_at(OPEN_LEN + 2 * WALL, SPINE_W, FLOOR_T,
-                             x=OPEN_CTR, y=0, z=FLOOR_BOT + FLOOR_T / 2))
-    # height JACK screw: a proper M4 heat-set insert in a Ø8 boss (cadkit
-    # fastener standard) protruding DOWN from the floor into the open bay below
-    # (clear ~18 mm to belt_4). The screw threads UP into the insert from below
-    # and its tip lifts the Z-plate; because it must HOLD the pickup height under
-    # load it is the set-screw pattern (insert bore, never self-tap). A downward
-    # boss would overhang if this piece printed floor-down, so the PICKUP PIECE
-    # prints ON ITS SIDE (-X -> +X) -- it carries no fret lines, so side layer
-    # lines cost nothing. clr_len just clears the 1.5 floor above the pocket.
-    body = cut_m4_boss(body, (HEIGHT_HOLE, 0.0, FLOOR_TOP), (1, 0, 0), 0,
-                       clr_len=FLOOR_T + 2.0)
+    # FIXED jack pads: a small post under each of the 3 tripod screws (fused to the
+    # nearest end wall / -Y skirt) that the grub-screw tip bears on to jack the plate
+    # up. Bottom on the piece floor plane (FLOOR_BOT, clears the -14 ribs), top at
+    # JACK_PAD_TOPZ. NO central floor -> the bay is open below the plate.
+    for jx, jy in JACK_POS:
+        body = body.union(box_at(9.0, 10.0, JACK_PAD_TOPZ - FLOOR_BOT,
+                                 x=jx, y=jy,
+                                 z=(FLOOR_BOT + JACK_PAD_TOPZ) / 2.0))
     return heal(body)
 
 
@@ -378,6 +391,17 @@ def _pickup_zplate():
         notch = (cq.Workplane("XZ").polyline(pts).close()
                  .extrude(10.0, both=True).translate((0, ym, 0)))
         plate = plate.cut(notch)
+    # JACK TABS: a downward threaded boss under each of the 3 tripod screws — head
+    # counterbore on the plate TOP (reached from +Z), M2 self-tap thread through the
+    # tab, tip protrudes below to the fixed pad. (self-tap Ø = screw_d + 0.2, prints
+    # near the major Ø; a heat-set insert is the upgrade for repeated adjustment.)
+    for jx, jy in JACK_POS:
+        plate = plate.union(cyl(JACK_TAB_OD, ZPL_BOT - JACK_TAB_BOTZ, z=JACK_TAB_BOTZ)
+                            .translate((jx, jy, 0.0)))
+        plate = plate.cut(cyl(JACK_D + 0.2, ZPL_TOP - JACK_TAB_BOTZ + 1.0,
+                              z=JACK_TAB_BOTZ - 0.5).translate((jx, jy, 0.0)))
+        plate = plate.cut(cyl(JACK_D + 2.0, 1.5, z=ZPL_TOP - 1.5)
+                          .translate((jx, jy, 0.0)))       # head counterbore
     return plate
 
 
