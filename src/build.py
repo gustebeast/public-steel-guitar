@@ -38,7 +38,6 @@ from . import nut_block as NB
 from . import tension_fork as TF
 from . import pickup_mount as PM
 from . import legs as LG
-from cadkit.fasteners import m4_boss_insert
 
 # ── PRINTED parts → each is exported as its own STEP. ────────────────────
 # This is the ONLY set that gets STEP files. DEMONSTRATION parts (purchased /
@@ -397,14 +396,19 @@ def _pickup_mount_components():
     out = [("pickup", PM.pickup_demo().translate((PICKUP_X, py, PM.PK_TOP))),
            ("pickup_zplate", TP.pickup_zplate),
            ("pickup_xclamp", TP.pickup_xclamp.translate((PICKUP_X - TP.PIECE_CTR, 0, 0)))]
-    # ONE central M4 JACK screw lifts the Z-plate from below (one knob sets
-    # height; the plate's +Y flange rides the full-height carrier track to keep
-    # it flat). It threads a heat-set insert seated in the floor boss (Ø8 boss +
-    # Ø6×5 pocket, cadkit standard); the cup tip bears on the plate bottom.
-    out.append(("pickup_height_insert",
-                m4_boss_insert((TP.HEIGHT_HOLE, 0.0, TP.FLOOR_TOP), (1, 0, 0), 0)))
-    out.append(("height_screw",
-                C.set_screw().translate((TP.HEIGHT_HOLE, 0.0, TP.ZPL_BOT))))
+    # WEDGE CRADLE height (user): two wedges ride skirt-floor channels under the
+    # Z-plate flanges; an M4 leadscrew from the -X end wall slides each (both =
+    # height, differential = tilt), self-locking on the fine thread. No central
+    # jack -> the bay is open below the plate.
+    out.append(("pickup_wedge_0", TP.pickup_wedge_p))
+    out.append(("pickup_wedge_1", TP.pickup_wedge_m))
+    _swx0 = TP.PIECE_X1 - 1.5
+    _swx1 = TP.OPEN_CTR - TP.WEDGE_LX / 2.0 + TP.WTAB_LX - 2.0   # into the drive tab
+    for _i, _dy in enumerate((TP.WDRIVE_YP, TP.WDRIVE_YM)):
+        out.append((f"pickup_wedge_screw_{_i}", cq.Workplane("XY").add(
+            cq.Solid.makeCylinder(0.8, _swx1 - _swx0,
+                                  cq.Vector(_swx0, _dy, TP.WDRV_Z),
+                                  cq.Vector(1, 0, 0)))))
     # clamp screw in whichever -Y skirt hole sits nearest the pickup; its tip drives
     # the shim +Y, pinning the pickup against the +Y flange (the shim spreads load)
     cx = min(TP.CLAMP_HOLES, key=lambda h: abs(h - PICKUP_X))
@@ -727,7 +731,8 @@ _COLORS = {
     "string":          (0.85, 0.85, 0.85),
     "break_dowel":     (0.75, 0.75, 0.78),   # steel dowel (gauged break pin)
     "set_screw":       (0.55, 0.55, 0.58),   # alloy set screw
-    "pickup_height_insert": (0.72, 0.52, 0.24),  # brass heat-set insert
+    "pickup_wedge":       (0.85, 0.74, 0.52),  # PCTG height wedge
+    "pickup_wedge_screw": (0.55, 0.55, 0.58),  # M2 wedge leadscrew
     "chassis":         (0.46, 0.52, 0.55),   # PETG-GF frame
     "pickup":          (0.10, 0.10, 0.12),   # DEMO pickup body
     "pickup_zplate":   (0.85, 0.65, 0.30),   # PCTG height plate (under the pickup)
