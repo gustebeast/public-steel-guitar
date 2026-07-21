@@ -52,9 +52,9 @@ def mortise_coupon():
 # ── SECTION-JOINT coupon (the LEG stack's octagon, width 28 — legs.SEC_W). The
 # 6 mm knee coupon above does NOT validate the 28 mm section fit, so print this
 # pair to check the leg stack's slide fit + one-bead roof bridge at the real size.
-SEC_WIDTH, SEC_LEN, SEC_HEIGHT = 28.0, 28.0, 32.0   # keep = legs.SEC_W/_TEN_L/_H
+SEC_WIDTH, SEC_LEN, SEC_HEIGHT = 28.0, 28.0, 36.0   # keep = legs.SEC_W/_TEN_L/_H
 _SJ = slide_joint(SEC_WIDTH, SEC_LEN, tenon=_UP, mortise=_UP, clearance=CLR,
-                  height=SEC_HEIGHT)
+                  depth=SEC_HEIGHT)
 _SH = _SJ.height
 
 
@@ -72,7 +72,7 @@ def section_mortise_coupon():
              .box(SEC_LEN, SEC_WIDTH + 2 * MARGIN, _SH + PLATE + CEIL, centered=(True, True, False))
              .translate((0, 0, -PLATE)))
     cut = (slide_joint(SEC_WIDTH, SEC_LEN + 2, tenon=_UP, mortise=_UP, clearance=CLR,
-                       height=SEC_HEIGHT)
+                       depth=SEC_HEIGHT)
            .mortise(drop=PLATE)
            .translate((-(SEC_LEN + 2) / 2.0, 0, 0)))
     return block.cut(cut)
