@@ -339,10 +339,15 @@ def leg_sleeve() -> cq.Workplane:
     44-sq envelope, and NO cavity ceiling wider than ONE NOZZLE — the
     octagon-roof rule; the first pocket's 6-wide bridge broke it): a PCTG
     pad (leg_pinch_gib) rides a pocket in the thick +X wall near the mouth,
-    pressed -X onto the shaft's flat WAIST WALL by TWO M4 GRUB screws
+    pressed -X onto the shaft's flat WAIST WALL by ONE central M4 GRUB
     threading the outer +X face (flush, hex-key access at any height):
     flat-on-flat broad friction, no point load, ZERO flexure → the sleeve
     is PETG-GF and prints LYING on its +Y face like every other leg piece.
+    TPU pad + single screw (user): the pad IS the preload spring (defined
+    compression survives plastic creep, same logic as the old TPU glands)
+    and µ~0.7 gives ~500-650 N of axial hold — ~1.5-2× the worst-case
+    instrument + hard-elbow-lean share per leg (~350 N); a slip only sags
+    to the block-butt hard stop. One screw also self-seats the pad.
     The pocket's print ceiling converges by 45° chamfers to a 0.8 flat
     (the same discipline as every mortise roof); the pad loads in from the
     mouth face.
@@ -369,26 +374,25 @@ def leg_sleeve() -> cq.Workplane:
                                (15.75, -1.55), (16.9, -0.7), (16.9, 7.7)])
                     .close().extrude(29.0)
                     .translate((0, 0, -SLEEVE_L - 1.0)))
-    # two M4 GRUB bores (Ø3.4 thread-forming, ~5 of PETG-GF thread) through
-    # the +X outer wall onto the pad's back — fully embedded, flush
-    for gz in (-SLEEVE_L + 12.0, -SLEEVE_L + 20.0):
-        body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-            1.7, 5.6, cq.Vector(SQ_W / 2 + 1.0, 3.5, gz),
-            cq.Vector(-1, 0, 0))))
+    # ONE central M4 GRUB bore (Ø3.4 thread-forming, ~5 of PETG-GF thread)
+    # through the +X outer wall onto the pad's back — fully embedded, flush
+    body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        1.7, 5.6, cq.Vector(SQ_W / 2 + 1.0, 3.5, -SLEEVE_L + 15.0),
+        cq.Vector(-1, 0, 0))))
     return heal(body)
 
 
 def leg_pinch_gib() -> cq.Workplane:
-    """PCTG pinch GIB PAD ×4 (the sleeve's embedded shaft clamp): a flat
-    plate in the +X wall pocket, pressed -X by the two grub screws onto the
-    shaft octagon's +X WAIST WALL (flat-on-flat, 0.3 drawn standoff; the
-    shaft then bears its -X wall + diagonals — broad friction). Shallow
-    dimples seat the grub tips. Slides in from the sleeve's mouth. Prints
-    flat. Local: sleeve frame cross-section, z 0..20."""
+    """TPU pinch GIB PAD ×4 (the sleeve's embedded shaft clamp): a grippy
+    flat pad in the +X wall pocket, pressed -X by ONE central grub screw
+    onto the shaft octagon's +X WAIST WALL (flat-on-flat, 0.3 drawn
+    standoff; the shaft then bears its -X wall + diagonals). TPU = the
+    preload SPRING (defined compression survives creep) AND the friction
+    surface (µ~0.7). A shallow dimple seats the grub tip. Slides in from
+    the sleeve's mouth. Prints flat. Local: sleeve frame, z 0..20."""
     b = box_at(2.2, 7.8, 20.0, x=15.4, y=3.6, z=10.0)
-    for gz in (6.0, 14.0):
-        b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCone(
-            1.6, 0.2, 1.2, cq.Vector(16.6, 3.5, gz), cq.Vector(-1, 0, 0))))
+    b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCone(
+        1.6, 0.2, 1.2, cq.Vector(16.6, 3.5, 10.0), cq.Vector(-1, 0, 0))))
     return heal(b)
 
 
