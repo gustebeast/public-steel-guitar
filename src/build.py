@@ -84,7 +84,7 @@ PARTS = {
     # redesign — generators remain in legs.py until the refinement pass
     # deletes them)
     "leg_sleeve":      (lambda: heal(LG.leg_sleeve()),  "petg-gf/leg_sleeve.step",  "PETG-GF — leg slider sleeve ×4 (all-octagon: solid flush spigot up top, full-length open octagon GROOVE for the shaft, EMBEDDED gib clamp — pocket + 2× M4 grub screws flush in the outer face, zero flexure so GF is fine now; prints LYING on the +Y face like the rest of the leg)"),
-    "leg_pinch_gib":   (lambda: heal(LG.leg_pinch_gib()), "pctg/leg_pinch_gib.step", "PCTG — pinch GIB ×4: V-collar shoe in the sleeve pocket; two M4 grubs press it onto the shaft octagon's lower 45° flanks (broad gib friction, no point load). Prints lying on its flat back band"),
+    "leg_pinch_gib":   (lambda: heal(LG.leg_pinch_gib()), "pctg/leg_pinch_gib.step", "PCTG — pinch GIB PAD ×4: flat shoe in the sleeve's +X wall pocket; two M4 grubs press it onto the shaft octagon's waist wall (flat-on-flat gib friction, no point load). Prints flat"),
     "leg_shaft":       (lambda: heal(LG.leg_shaft()),   "petg-gf/leg_shaft.step",   "PETG-GF — -Y shaft ×2: W28 flush-octagon tenon (197, rides the sleeve's open groove) + SOLID 44-sq block (91, equal-height rule) with the shared TPU foot's dovetail mortise. 288 long: print LYING on the stem-base face, laid diagonal in plan"),
     "leg_shaft_trrs":  (lambda: heal(LG.leg_shaft_trrs()), "petg-gf/leg_shaft_trrs.step", "PETG-GF — +Y WIRED shaft ×1 (245, lying print): W28 octagon tenon + 44-sq block with the bar-joint octagon socket + the 10-03404 jack seated mouth-down on the (-5,+13) TRRS axis (loads from the open tenon top; boss = withdrawal stop, pressed jack_seat_ring = insertion stop)"),
     "leg_foot":        (lambda: heal(LG.leg_foot()),    "tpu/leg_foot.step",    "TPU — SHARED dovetail foot ×4 (user: one look): 44-sq pad + tenon into the underside mortise of the -Y leg blocks AND the pedal bar; the wired bar one covers the plug-threading access"),
@@ -507,9 +507,9 @@ def _leg_components():
                               top - LG.SEG_BODY_L)))
                 top -= LG.SEG_BODY_L
             out.append((f"leg_sleeve_{k}", R(sleeve, top)))
-            # gib drawn released (0.3 V standoff) in the pocket near the mouth
+            # gib pad drawn released (0.3 standoff) in the pocket near the mouth
             out.append((f"leg_pinch_gib_{k}",
-                        R(LG.leg_pinch_gib(), top - 196.0)))
+                        R(LG.leg_pinch_gib(), top - 195.0)))
             # +Y legs end SHORT (the bar carries their last piece as stub
             # towers); only the -Y legs run to the floor with feet.
             if rot == 180:
