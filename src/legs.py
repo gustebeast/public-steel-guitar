@@ -468,9 +468,10 @@ def leg_shaft_trrs() -> cq.Workplane:
     the column to the mini junction PCB. The side dock / carrier PCB /
     corner channel of the sideways design are GONE."""
     body = leg_shaft_short()
-    # vertical jack way, Ø9.7 CLEAN THROUGH to the tenon top: the
-    # 10-03404 loads DOWN from the shaft's open top (pre-assembly) onto
-    # the integral mouth-seat BOSS (withdrawal backstop); a pressed
+    # vertical jack way, Ø9.7 CLEAN THROUGH to the tenon top: the leg
+    # EXTENSION cable's molded jack barrel (10-03404-class envelope,
+    # verify the SKU) loads DOWN from the shaft's open top onto the
+    # integral mouth-seat BOSS (withdrawal backstop); a pressed
     # jack_seat_ring ABOVE it takes insertion. Jack mouth +42.7, plug tip
     # +55.7 = 13.0 insertion on the same press that clicks the latch.
     # TRRS axis at local (-5, +13): x -5 dodges the latch bolt (global +5
