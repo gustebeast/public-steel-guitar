@@ -158,7 +158,6 @@ GLOBAL_OK = {
     frozenset({"shaft_trrs_jack", "leg_column_plug"}),
     frozenset({"shaft_trrs_jack", "jack_seat_ring"}),
     frozenset({"jack_seat_ring", "leg_shaft"}),
-    frozenset({"leg_junction_pcb", "leg_seg_body"}),
 }
 
 # The pedal-bar latches are a self-contained subassembly (bolt in its
