@@ -32,14 +32,14 @@ from . import dimensions as D
 from .helpers import box_at, cyl, cyl_y
 
 # ── the pickup itself (Lace Alumitone ToneBar 10, 3.75") ──────────────────────
-# The RECOMMENDED pickup (user). A current-driven BLADE humbucker: no per-string
-# poles, so its blade reads every string within its width -- which is why it works
-# despite our tight 6.5mm string pitch (58.5mm span) being far narrower than the
-# ~95mm blade. It's referenced flush to the +Y wall to just cover string 1 (the
-# +Y-most/highest string) and OVERHANGS -Y past string 10 (the mount is sized to
-# hold the overhang). ~102 (4.0") also fits the +Y-referenced layout; 95 keeps the
-# -Y overhang shorter. Depth 22 is deeper than strings allow at the neck-slide
-# positions (-14 ribs) -- a known TODO the user will review.
+# The RECOMMENDED pickup (user). A current-driven BLADE humbucker (no per-string
+# poles). The strings FAN: 9.5mm pitch at the changer (STANDARD pedal steel, ~85mm
+# field) -> 6.5mm at the nut. The pickup sits near the changer, so the 95mm blade
+# fits the ~85mm changer-end field well (NOT oversized -- an earlier note wrongly
+# used the 6.5mm nut spacing). It's +Y-referenced (top_plate) to just cover string
+# 1 where it crosses the pickup (~+42, string_y(0)), overhanging -Y ~8mm past
+# string 10. Depth 22 is deeper than the -14 ribs allow at the neck-slide positions
+# -- a known TODO the user will review.
 PK_W, PK_L, PK_H = 38.0, 95.0, 22.0            # X (along neck), Y (across strings), Z (height)
 PK_H_MIN = 15.0                                 # carrier-wall cap datum: walls stay this far
                                                # above the plate so they never top the pickup
