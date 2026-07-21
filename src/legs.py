@@ -348,9 +348,10 @@ def leg_sleeve() -> cq.Workplane:
     and µ~0.7 gives ~500-650 N of axial hold — ~1.5-2× the worst-case
     instrument + hard-elbow-lean share per leg (~350 N); a slip only sags
     to the block-butt hard stop. One screw also self-seats the pad.
-    The pocket's print ceiling converges by 45° chamfers to a 0.8 flat
-    (the same discipline as every mortise roof); the pad loads in from the
-    mouth face.
+    The bay's print ceiling IS the mortise's upper 45° taper plane
+    EXTENDED outward (user's cut — one continuous self-supporting plane;
+    the only flat left is the 0.4 through-wall ledge, under one bead); the
+    pad loads in from the mouth face.
     Local: Z0 = shoulder (top face); body −Z."""
     body = box_at(SQ_W, SQ_W, SLEEVE_L, z=-SLEEVE_L / 2)
     # full-length slider groove: open at the bottom mouth and through the +Y
@@ -364,20 +365,21 @@ def leg_sleeve() -> cq.Workplane:
                     .translate((0, SEC_BORE_Y, 0)))
     body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
         1.8, 20.0, cq.Vector(7.0, -9.0, 14.0), cq.Vector(0, 1, 0))))
-    # GIB-PAD POCKET in the +X wall at the waist band, near the mouth: opens
-    # into the groove through the waist wall (x 13.8) and out the mouth face
-    # (-Z, pad loads from below). Its -Y print-ceiling converges by 45°
-    # chamfers to a 0.8 ONE-NOZZLE flat (the mortise-roof rule — the first
-    # pocket's 6-wide flat bridge was user-caught)
+    # GIB-PAD BAY in the +X wall at the waist band, near the mouth: opens
+    # into the groove through the waist wall and out the mouth face (-Z,
+    # pad loads from below). Its ceiling CONTINUES the mortise's upper 45°
+    # taper plane from the waist-top corner (14.2, -0.56) straight out to
+    # the bay wall (user's cut - no wedge sliver, no bridge; the 0.4
+    # through-wall ledge at the top is under one nozzle bead)
     body = body.cut(cq.Workplane("XY")
-                    .polyline([(13.8, 7.7), (13.8, -0.7), (14.95, -1.55),
-                               (15.75, -1.55), (16.9, -0.7), (16.9, 7.7)])
+                    .polyline([(13.8, -0.56), (14.2, -0.56), (16.9, 2.14),
+                               (16.9, 7.7), (13.8, 7.7)])
                     .close().extrude(29.0)
                     .translate((0, 0, -SLEEVE_L - 1.0)))
     # ONE central M4 GRUB bore (Ø3.4 thread-forming, ~5 of PETG-GF thread)
     # through the +X outer wall onto the pad's back — fully embedded, flush
     body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        1.7, 5.6, cq.Vector(SQ_W / 2 + 1.0, 3.5, -SLEEVE_L + 15.0),
+        1.7, 5.6, cq.Vector(SQ_W / 2 + 1.0, 4.8, -SLEEVE_L + 15.0),
         cq.Vector(-1, 0, 0))))
     return heal(body)
 
@@ -390,9 +392,11 @@ def leg_pinch_gib() -> cq.Workplane:
     preload SPRING (defined compression survives creep) AND the friction
     surface (µ~0.7). A shallow dimple seats the grub tip. Slides in from
     the sleeve's mouth. Prints flat. Local: sleeve frame, z 0..20."""
-    b = box_at(2.2, 7.8, 20.0, x=15.4, y=3.6, z=10.0)
+    b = (cq.Workplane("XY")
+         .polyline([(14.3, 0.0), (16.5, 2.2), (16.5, 7.5), (14.3, 7.5)])
+         .close().extrude(20.0))
     b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCone(
-        1.6, 0.2, 1.2, cq.Vector(16.6, 3.5, 10.0), cq.Vector(-1, 0, 0))))
+        1.6, 0.2, 1.2, cq.Vector(16.6, 4.8, 10.0), cq.Vector(-1, 0, 0))))
     return heal(b)
 
 
