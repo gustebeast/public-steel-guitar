@@ -27,7 +27,7 @@ from cadkit.freecad import show
 from cadkit.step_export import export_step
 
 from . import dimensions as D
-from .helpers import heal
+from .helpers import heal, cyl
 from . import components as C
 from . import chassis as CH
 from .carriage import carriage, THICK as CARRIAGE_THICK, SEAT_Z as CARRIAGE_SEAT_Z
@@ -38,7 +38,6 @@ from . import nut_block as NB
 from . import tension_fork as TF
 from . import pickup_mount as PM
 from . import legs as LG
-from cadkit.fasteners import m4_boss_insert
 
 # ── PRINTED parts → each is exported as its own STEP. ────────────────────
 # This is the ONLY set that gets STEP files. DEMONSTRATION parts (purchased /
@@ -410,14 +409,17 @@ def _pickup_mount_components():
     out = [("pickup", PM.pickup_demo().translate((PICKUP_X, py, PM.PK_TOP))),
            ("pickup_zplate", TP.pickup_zplate),
            ("pickup_xclamp", TP.pickup_xclamp.translate((PICKUP_X - TP.PIECE_CTR, 0, 0)))]
-    # ONE central M4 JACK screw lifts the Z-plate from below (one knob sets
-    # height; the plate's +Y flange rides the full-height carrier track to keep
-    # it flat). It threads a heat-set insert seated in the floor boss (Ø8 boss +
-    # Ø6×5 pocket, cadkit standard); the cup tip bears on the plate bottom.
-    out.append(("pickup_height_insert",
-                m4_boss_insert((TP.HEIGHT_HOLE, 0.0, TP.FLOOR_TOP), (1, 0, 0), 0)))
-    out.append(("height_screw",
-                C.set_screw().translate((TP.HEIGHT_HOLE, 0.0, TP.ZPL_BOT))))
+    # TOP-ACCESS height (user): THREE vertical M2 grub-screw jacks in a tripod (2 on
+    # the +Y reference side at the X-ends, 1 on -Y at centre X), heads on the plate
+    # top, reached from +Z outboard of the strings. Turn CW to jack that corner up
+    # off the fixed pad; equalise the two +Y = X level, -Y = across-string tilt.
+    for _i, (_jx, _jy) in enumerate(TP.JACK_POS):
+        _tip = TP.JACK_PAD_TOPZ - 0.2
+        _hz = TP.ZPL_TOP - 1.5
+        out.append((f"pickup_jack_screw_{_i}",              # head sits flush in its
+                    cyl(TP.JACK_D, _hz - _tip, z=_tip)      # counterbore (top at the
+                    .union(cyl(TP.JACK_D + 2.0, 1.5, z=_hz))  # plate top, not proud)
+                    .translate((_jx, _jy, 0.0))))
     # clamp screw in whichever -Y skirt hole sits nearest the pickup; its tip drives
     # the shim +Y, pinning the pickup against the +Y flange (the shim spreads load)
     cx = min(TP.CLAMP_HOLES, key=lambda h: abs(h - PICKUP_X))
@@ -745,7 +747,7 @@ _COLORS = {
     "string":          (0.85, 0.85, 0.85),
     "break_dowel":     (0.75, 0.75, 0.78),   # steel dowel (gauged break pin)
     "set_screw":       (0.55, 0.55, 0.58),   # alloy set screw
-    "pickup_height_insert": (0.72, 0.52, 0.24),  # brass heat-set insert
+    "pickup_jack_screw":  (0.55, 0.55, 0.58),  # M3 top-access height jackscrew
     "chassis":         (0.46, 0.52, 0.55),   # PETG-GF frame
     "pickup":          (0.10, 0.10, 0.12),   # DEMO pickup body
     "pickup_zplate":   (0.85, 0.65, 0.30),   # PCTG height plate (under the pickup)
