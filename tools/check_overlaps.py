@@ -84,11 +84,12 @@ GLOBAL_OK = {
     frozenset({"keyhead_endplate", "chassis"}), frozenset({"keyhead_endplate", "string"}),
     frozenset({"keyhead_endplate", "top_plate"}),
     frozenset({"keyhead_endplate", "break_dowel"}), frozenset({"keyhead_endplate", "set_screw"}),
-    # pickup carrier: the pickup rests on the printed Z-plate (lifted by the 3
-    # height screws) and is pinned by the clamp shim (driven by the side clamp
-    # screw). Each part's contact with the piece is the top_plate rule below.
+    # pickup carrier: the pickup rests on the printed Z-plate (jacked by the two
+    # top-access M3 grub-screws that thread the plate's X-end tabs and bear on the
+    # piece's fixed pads) and is pinned by the clamp shim (side clamp screw).
     frozenset({"pickup", "pickup_zplate"}), frozenset({"pickup", "pickup_xclamp"}),
-    frozenset({"pickup_zplate", "height_screw"}),
+    frozenset({"pickup_zplate", "pickup_jack_screw"}),
+    frozenset({"pickup_jack_screw", "top_plate"}),
     # FLUSH-X: the body stubs' outboard wall tenons mortise the ENDPLATE
     # side walls (the inboard ones mortise the rail/chassis)
     frozenset({"leg_body_stub", "keyhead_endplate"}),
