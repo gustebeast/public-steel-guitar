@@ -114,12 +114,14 @@ TUBE_OD, TUBE_ID = 30.0, 22.0
 SEG_L   = 165.0                        # incl. the 25 male thread → 140 effective;
                                        # step/segment = 142 — MUST stay < the
                                        # shaft's slide range so bands overlap
-SLEEVE_L = 228.0                       # groove-through (ROUND 3: 200 + 28 —
-                                       # the flush octagon spigot up top is
-                                       # SOLID, so the shaft can no longer
-                                       # over-run into it; the extra length
-                                       # restores the lost retraction range.
-                                       # Height bands: H = 618 + 142k − E)
+SLEEVE_L = 200.0                       # groove-through. Retraction is
+                                       # governed by the BLOCK BUTTING the
+                                       # sleeve bottom (E=0), NOT the groove
+                                       # top: tip gap at full retraction =
+                                       # L−199 = 1.0; travel 147 ≥ the 142
+                                       # law. (A +28 "range restoration" was
+                                       # dead length — user-caught.)
+                                       # Height bands: H = 590 + 142k − E
 SHAFT_D, SHAFT_L = 20.0, 212.0         # -Y long shaft: 197 sliding tenon + 15
                                        # foot zone. FINE-STAGE MATH (user):
                                        # travel = the 142 section pitch (so
@@ -454,7 +456,7 @@ def leg_shaft_short() -> cq.Workplane:
     window through the face skin. Passive. Z0 = the block's mouth face."""
     body = _shaft_prism(SHORT_SHAFT_L)
     body = body.union(box_at(SQ_W, SQ_W, BLOCK_H, z=BLOCK_H / 2))
-    body = body.cut(_section_mortise(length=41.0).translate((0, 0, -1.0)))
+    body = body.cut(_section_mortise(length=39.4).translate((0, 0, -1.0)))
     body = body.cut(box_at(BOLT_W + 2.0, 6.4, 9.0, x=8.0, y=-9.6, z=31.9))
     body = body.cut(box_at(BOLT_W + 2.4, 9.6, 9.4, x=8.0, y=17.7, z=31.9))
     return body
@@ -533,8 +535,9 @@ SEC_H       = 36.0    # profile HEIGHT (the cadkit room bound past the mating
                       # minimum 22.24; the extra 13.76 grows the two verticals
                       # to 7.68 each (deeper lip engagement + flank bearing)
 SEC_TEN_L   = 28.0    # spigot engagement along Z (= the old SEG_PLUG_L)
-SEC_MOR_L   = 30.0    # socket depth (> spigot so the 44-sq shoulders butt = the
-                      # ground-reaction hard stop; the octagon stop wall is backup)
+SEC_MOR_L   = 28.4    # socket depth: spigot 28 + a 0.4 tip gap (user: near-flush
+                      # tips — the tolerance slack belongs HERE, never at the big
+                      # shoulder faces, which are the ground-reaction hard stop)
 # FLUSH AT THE BED FACE (user round 2): the joint is NOT hidden inside the leg.
 # The tenon's flat STEM BASE lies exactly ON the local +Y face = the print bed
 # (a floating inset base would be an unprintable mid-air flat on the side-lying
@@ -976,7 +979,7 @@ def _body_stub(wired: bool, eps: float) -> cq.Workplane:
     # spigot 38 → mouth-butt hard stop), opening through the bottom face AND
     # the local +Y face (the groove — user round 3: every leg joint is the
     # flush octagon; no 180 flip any more, the bed face fixes the orientation)
-    b = b.cut(_section_mortise(length=41.0).translate((0, 0, -1.0)))
+    b = b.cut(_section_mortise(length=39.4).translate((0, 0, -1.0)))
     # ledge POCKET in the thick -Y (point-side) wall at x -8 (matches the
     # head's bolt channel): 6.4 deep so the whole 20.6 bolt nests inside the
     # face plane when engaged; the wall below z 27.4 is the bearing ledge
