@@ -368,12 +368,14 @@ def leg_sleeve() -> cq.Workplane:
     # GIB-PAD BAY in the +X wall at the waist band, near the mouth: opens
     # into the groove through the waist wall and out the mouth face (-Z,
     # pad loads from below). Its ceiling CONTINUES the mortise's upper 45°
-    # taper plane from the waist-top corner (14.2, -0.56) straight out to
-    # the bay wall (user's cut - no wedge sliver, no bridge; the 0.4
-    # through-wall ledge at the top is under one nozzle bead)
+    # taper plane and its floor lands ON the waist-bottom corner — the
+    # EXACT dilated-mortise corners (W28/H36/clr0.2, mitred): waist-top
+    # (14.2, -0.40), taper plane y = x - 14.6, waist-bottom y 7.42
+    # (user-measured: the first bay started 0.28 low / ended 0.16 high).
+    # The 0.4 through-wall ledge stays under one nozzle bead.
     body = body.cut(cq.Workplane("XY")
-                    .polyline([(13.8, -0.56), (14.2, -0.56), (16.9, 2.14),
-                               (16.9, 7.7), (13.8, 7.7)])
+                    .polyline([(13.8, -0.4), (14.2, -0.4), (16.9, 2.3),
+                               (16.9, 7.4245), (13.8, 7.4245)])
                     .close().extrude(29.0)
                     .translate((0, 0, -SLEEVE_L - 1.0)))
     # ONE central M4 GRUB bore (Ø3.4 thread-forming, ~5 of PETG-GF thread)
@@ -393,7 +395,7 @@ def leg_pinch_gib() -> cq.Workplane:
     surface (µ~0.7). A shallow dimple seats the grub tip. Slides in from
     the sleeve's mouth. Prints flat. Local: sleeve frame, z 0..20."""
     b = (cq.Workplane("XY")
-         .polyline([(14.3, 0.0), (16.5, 2.2), (16.5, 7.5), (14.3, 7.5)])
+         .polyline([(14.3, 0.12), (16.5, 2.32), (16.5, 7.2), (14.3, 7.2)])
          .close().extrude(20.0))
     b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCone(
         1.6, 0.2, 1.2, cq.Vector(16.6, 4.8, 10.0), cq.Vector(-1, 0, 0))))
