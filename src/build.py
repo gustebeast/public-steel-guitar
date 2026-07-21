@@ -95,7 +95,8 @@ PARTS = {
     "leg_seg_body_ch": (lambda: heal(LG.leg_seg_body_ch()), "petg-gf/leg_seg_body_ch.step", "PETG-GF — square segment BODY, CHANNELED ×2 (redesign, the wired -X/+Y leg only): + lidded face cable channel + core dive holes"),
     # ("leg_coupler_m" export retired — ROUND 3: threadless, gasketless square legs)
     # ("leg_coupler_f" export retired — ROUND 3: threadless, gasketless square legs)
-    "leg_lid":         (lambda: heal(LG.leg_lid()), "petg-gf/leg_lid.step", "PETG-GF — leg channel LID ×2 (redesign, wired leg): 45° dovetail strip, slides over the body's cable channel (bar-lid pattern; TPU nub SKU locks it)"),
+    # ("leg_lid" export retired — the wired cable runs up the column CENTER
+    # through the flush-octagon joints' Ø7 bores; no face channel to cover)
     # ("leg_washer_sq" export retired — ROUND 3: threadless, gasketless square legs)
     "leg_body_stub":   (lambda: heal(LG.leg_body_stub()), "petg-gf/leg_body_stub.step", "PETG-GF — BODY STUB ×2 (bridge/+Y + keyhead/-Y; prints LYING ON ITS +Y FACE - Y-INSTALL round: layer lines in x-z so both leg-bending directions load within layers; the ridges print as vertical fins, the house gable points up): the 44-sq semi-permanent corner piece SLIDES IN ALONG Y - two FULL-LENGTH Y-running octagon crossing ridges (roof up) at the THIRDS of the 34 side-panel overlap (station +0.667/-10.667, hosted continuously by the WIDE CORNER RIB) + the 44-long simple 5×8 TONGUE at -17 into the endplate's groove (even 5/2.5+2.5 material split of the 10 wall; blind groove end = the flush stop); ONE M4×35 down the rail web into the inboard ridge = the Y-retention shear pin + ONE M4×10 along x through the endplate's end face cross-pinning the tongue (double shear); below, the leg↔bar latch socket verbatim (house 28.1 × 41 + ledge). Hangs 48 below the body = the disassembled z cost"),
     "leg_body_stub_jk": (lambda: heal(LG.leg_body_stub_jk()), "petg-gf/leg_body_stub_jk.step", "PETG-GF — body stub ×1 (the +X/-Y jack corner): the mirror SKU - end-wall tongue on local +x (this corner faces its endplate the other way); otherwise identical"),
@@ -453,7 +454,6 @@ def _leg_components():
     from .helpers import box_at
     out = []
     seg_body, seg_body_ch = LG.leg_seg_body(), LG.leg_seg_body_ch()
-    lid = LG.leg_lid()
     head, bolt, btn = (LG.leg_latch_head(), LG.leg_latch_bolt(),
                        LG.leg_latch_btn())
     stub_p, stub_jk = LG.leg_body_stub(), LG.leg_body_stub_jk()
@@ -481,9 +481,9 @@ def _leg_components():
             # body-joint bolt/button dummies (head frame, seat plane ZM).
             # ROUND 3 (flush octagon): the bolt hooks the mortise's thick
             # -Y wall, so the authored +y-nosed bolt is FLIPPED 180 and
-            # sits at authored (-8, 11.3) — offset (-20, +21.15) from its
+            # sits at authored (-8, 3.8) — offset (-20, +13.65) from its
             # rotated center, rotating with the leg.
-            bdx, bdy = (-20.0, 21.15) if rot == 0 else (20.0, -21.15)
+            bdx, bdy = (-20.0, 13.65) if rot == 0 else (20.0, -13.65)
             out.append((f"leg_latch_bolt_{k}",
                         LG.leg_latch_bolt()
                         .rotate((0, 0, 0), (0, 0, 1), rot + 180)
@@ -496,18 +496,14 @@ def _leg_components():
             # face at ZM - 42 = -90; each body IS the 142 pitch.
             top = ZM - LG.HEAD_BODY_L
             # equal bottoms: identical silhouettes -> identical bands
-            # both sides (H = 590 + 142k - E; drawn 655 = k1/E77 x4)
+            # both sides (H = 618 + 142k - E after the 228 sleeve)
+            # (leg_lid retired: the wired cable runs up the column CENTER)
             nseg = LEG_SEGMENTS - 1
             for j in range(nseg):
                 idx = LEG_SEGMENTS * k + j
                 out.append((f"leg_seg_body_{idx}",
                             R(seg_body_ch if wired else seg_body,
                               top - LG.SEG_BODY_L)))
-                if wired:
-                    out.append((f"leg_lid_{j}",
-                                R(lid.rotate((0, 0, 0), (0, 0, 1), -90)
-                                  .translate((LG.SQ_W / 2 - 1.9, 0, 0)),
-                                  top - LG.SEG_BODY_L)))
                 top -= LG.SEG_BODY_L
             out.append((f"leg_sleeve_{k}", R(sleeve, top)))
             # +Y legs end SHORT (the bar carries their last piece as stub
@@ -520,12 +516,12 @@ def _leg_components():
                                         ground + LG.FOOT_H + PB_STUB_Z0))))
                 # latch bolt/button on the FUSED bar tower. ROUND 3: the
                 # flip(180) x tower(180) cancel — the authored bolt lands
-                # UNROTATED at world offset (+4, -21.15) (hooks the block
+                # UNROTATED at world offset (+4, -13.65) (hooks the block
                 # mortise's thick wall through the mirrored channel).
                 zst = ground + LG.FOOT_H + PB_STUB_Z0
                 out.append((f"leg_latch_bolt_{4 + k // 2}",
                             LG.leg_latch_bolt()
-                            .translate((sx + 4.0, ly - 21.15, zst))))
+                            .translate((sx + 4.0, ly - 13.65, zst))))
                 out.append((f"leg_latch_btn_{4 + k // 2}",
                             LG.leg_latch_btn()
                             .rotate((0, 0, 0), (0, 0, 1), rot)
@@ -593,25 +589,26 @@ def _leg_components():
                 out.append(("leg_column_cable", WR._wire([
                     (sx - 5.0, yj, CH.Z_BOT - 39.2),
                     (sx - 5.0, yj, CH.Z_BOT - 58.0),
-                    (sx, yj, CH.Z_BOT - 66.0),
-                    (sx, yj, CH.Z_BOT - 178.0),
+                    (sx, ly - 13.0, CH.Z_BOT - 66.0),
+                    (sx, ly - 13.0, CH.Z_BOT - 178.0),
                     (sx, ly, CH.Z_BOT - 184.0)], 3.7)))
                 out.append(("shaft_trrs_cable", WR._wire([
                     (sx + 5.0, yj, zst + 80.0),
                     (sx + 5.0, yj, CH.Z_BOT - 352.0),
-                    (sx, ly - 13.6, CH.Z_BOT - 348.0),
-                    (sx, ly - 13.6, CH.Z_BOT - 340.0)], 3.8).union(WR._wire([
-                        (sx, ly - 13.6, CH.Z_BOT - 270.0),
-                        (sx, yj, CH.Z_BOT - 230.0),
-                        (sx, yj, CH.Z_BOT - 196.0),
+                    (sx, yj, CH.Z_BOT - 348.0),
+                    (sx, yj, CH.Z_BOT - 340.0)], 3.8).union(WR._wire([
+                        (sx, yj, CH.Z_BOT - 270.0),
+                        (sx, ly - 13.0, CH.Z_BOT - 240.0),
+                        (sx, ly - 13.0, CH.Z_BOT - 196.0),
                         (sx, ly - 4.0, CH.Z_BOT - 192.0)], 3.8))))
-                # slack coil in the sleeve's groove free span: the largest
-                # inscribed circle of the open octagon sits at y -13.6
+                # slack coil in the sleeve's groove free span: at SEC_H 32
+                # the groove's largest inscribed circle centres at y -6.5
+                # (= TRRS_DY), r ~11.9 — plenty for the O16 coil
                 coil = cq.Workplane("XY").add(cq.Solid.makeCylinder(
-                    8.0, 70.0, cq.Vector(sx, ly - 13.6, CH.Z_BOT - 340.0),
+                    8.0, 70.0, cq.Vector(sx, yj, CH.Z_BOT - 340.0),
                     cq.Vector(0, 0, 1))).cut(
                     cq.Workplane("XY").add(cq.Solid.makeCylinder(
-                        4.5, 72.0, cq.Vector(sx, ly - 13.6, CH.Z_BOT - 341.0),
+                        4.5, 72.0, cq.Vector(sx, yj, CH.Z_BOT - 341.0),
                         cq.Vector(0, 0, 1))))
                 out.append(("leg_cable_coil", coil))
                 # body jack's factory cable (Y-INSTALL, finless): the
@@ -764,7 +761,6 @@ _COLORS = {
     "leg_seg_body":    (0.42, 0.48, 0.52),   # square GF bodies
     "leg_coupler_m":   (0.36, 0.42, 0.46),
     "leg_coupler_f":   (0.36, 0.42, 0.46),
-    "leg_lid":         (0.50, 0.58, 0.52),   # channel lid (matches bar lids)
     "leg_latch_head":  (0.36, 0.42, 0.46),
     "leg_latch_bolt":  (0.85, 0.35, 0.20),   # latch accent (matches pedal bolts)
     "leg_latch_btn":   (0.85, 0.35, 0.20),
