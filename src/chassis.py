@@ -383,8 +383,10 @@ def _build_full() -> cq.Workplane:
     # through the station rib, then drops to the bus-B tee)
     body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
         5.25, (MB.FLOOR_TOP - Z_BOT) + 2.0,
-        cq.Vector(LEG_STATIONS_X[1] - 5.0, LEG_Y[0], Z_BOT - 1.0),
+        cq.Vector(LEG_STATIONS_X[1] - 5.0, LEG_Y[0] - 13.0, Z_BOT - 1.0),
         cq.Vector(0, 0, 1))))
+    #   ^ y -13: the TRRS axis rides the flush octagon's fat flare band
+    #     (legs.TRRS_DY) — the well tracks the stub's relocated jack way
     body = body.cut(_raceway(50.5, -67.0, -604.75, 31.5))
     # +X tee-10 clearance notch out of the bridge rib's west face (the
     # tee pokes 2.4 into it; box clears the PCB + header margin)
