@@ -41,7 +41,6 @@ from . import dimensions as D
 from . import chassis as CH
 from . import electronics as EL
 from . import pickup_mount as PM
-from cadkit.fasteners import cut_m4_boss
 from .helpers import box_at, cyl, cyl_y, heal
 
 YL = CH.Y_LO + CH.T / 2                 # -Y rail inner face (-128.75)
@@ -131,9 +130,48 @@ FLG_BOT   = ZPL_BOT                                       # flange bottoms FLUSH
 # even raising the shortest pickup until it touches the strings, the walls land at
 # the pickup top -- never above it (never fouling the bar/strings)
 FLG_TOP   = ZPL_TOP + PM.PK_H_MIN
-# Z height: ONE central screw lifts the plate (reached from below); the plate's
-# +/-Y flanges ride the skirt inner faces so it can only move in flat Z (no
-# see-saw) -> one knob sets the height.
+# ── WEDGE height mechanism (user "wedge cradle", replaces the vertical jack) ──
+# The central gap under the pickup (floor -12 .. plate -9.78 = 2.2mm) is too thin
+# for a wedge, and everything under the deck must clear the -14 motor ribs in the
+# neck-ward re-slot positions. So the wedges live in the two TALL Y-SKIRTS: one
+# under each of the plate's guide flanges, riding an X-channel on a skirt-floor
+# strip (bottom FLOOR_BOT, respecting the -14 ribs). A captive M4 leadscrew from
+# the -X end wall slides each wedge; its ramp lifts that flange, so the cradle
+# rises (both together = height, differential = treble/bass tilt). The fine
+# leadscrew thread self-locks the setting. The central floor + jack are gone -> no
+# insert stack under the pickup, and the bay centre is open.
+_WANG   = 12.0                                            # ramp angle (deg)
+_WT     = math.tan(math.radians(_WANG))
+WEDGE_LX  = 22.0                                          # wedge X length (slide)
+WEDGE_WY  = 2.2                                           # wedge Y width (fits UNDER the
+                                                          # 2.5 guide flange, off the skirt)
+WEDGE_MIN = 0.8                                           # thin-end thickness
+WRUN_T    = 0.8                                           # wedge-run floor skin thickness
+WEDGE_RUNZ = FLOOR_BOT + WRUN_T                           # wedge rides here (-12.7)
+WEDGE_TOP0 = ZPL_BOT                                      # top at nominal (= flange bottom)
+WEDGE_RANGE = (WEDGE_TOP0 - WEDGE_MIN - WEDGE_RUNZ)       # usable height range (~2.1mm)
+RIDER_YP  = (HY_REF - 0.3) - FLG_T / 2                    # +Y flange centre (blade Y)
+RIDER_YM  = -(HY_CLAMP - 0.3) + FLG_T / 2                 # -Y flange centre
+# v2 stepped wedge: the lift BLADE stays narrow under the flange, but the drive
+# bore moves to a WIDE TAB that hangs in the open pocket BELOW the plate (clear of
+# the pickup, which starts at ZPL_TOP). M4 can't fit vertically here (the sub-plate
+# gap is rib-capped ~2.9), so the tab hosts a robust M2 leadscrew with solid Y
+# walls (the v1 pilot was in the fragile 2.2 blade).
+WTAB_WY   = 6.0                                           # drive-tab Y width
+WTAB_LX   = 12.0                                          # drive-tab X length (-X end)
+WTAB_TOPZ = ZPL_BOT - 0.3                                 # tab stays below the plate
+WDRV_Z    = (WEDGE_RUNZ + WTAB_TOPZ) / 2                  # leadscrew axis (mid-tab)
+
+
+def _wedge_drive_y(rider_y):
+    """Y of the drive tab / leadscrew for the wedge under flange `rider_y`: the
+    tab shares the blade's OUTBOARD edge and grows inboard (below the plate)."""
+    sgn = 1.0 if rider_y > 0 else -1.0
+    return (rider_y + sgn * WEDGE_WY / 2.0) - sgn * WTAB_WY / 2.0
+
+
+WDRIVE_YP = _wedge_drive_y(RIDER_YP)
+WDRIVE_YM = _wedge_drive_y(RIDER_YM)
 HEIGHT_HOLE = PIECE_CTR
 # X clamp: THREE clamp-screw holes along the -Y skirt -> use the one nearest the
 # pickup so the side clamp pushes near the pickup centre wherever it's slid. The
@@ -312,13 +350,49 @@ def _band(xa, xb, *, ui=False):
     return body
 
 
+def _wedge_solid(rider_y, clr=0.0):
+    """One height WEDGE at a flange line (rider_y), NOMINAL X. Flat bottom on the
+    wedge-run floor (WEDGE_RUNZ), top inclined at _WANG rising +X, length WEDGE_LX
+    centred at OPEN_CTR, Y width WEDGE_WY. clr dilates it — the Z-plate cuts its
+    seat with clr>0 so the real wedge slides in X with that fit clearance."""
+    bx0 = OPEN_CTR - WEDGE_LX / 2.0
+
+    def ztop(x):
+        return WEDGE_RUNZ + WEDGE_MIN + (x - bx0) * _WT
+    x0, x1 = bx0, OPEN_CTR + WEDGE_LX / 2.0
+    pts = [(x0 - clr, WEDGE_RUNZ - clr), (x1 + clr, WEDGE_RUNZ - clr),
+           (x1 + clr, ztop(x1) + clr), (x0 - clr, ztop(x0) + clr)]
+    w = cq.Workplane("XZ").polyline(pts).close().extrude(WEDGE_WY + 2.0 * clr)
+    return w.translate((0.0, rider_y + (WEDGE_WY / 2.0 + clr), 0.0))
+
+
+def _pickup_wedge(rider_y):
+    """Printed height wedge (PCTG) ×2 — STEPPED (v2): a narrow lift BLADE under the
+    Z-plate flange + a WIDE drive TAB hanging in the open pocket below the plate at
+    the -X end. A captive M2 leadscrew from the -X end wall threads the tab (solid
+    Y walls) and slides the wedge in X; the blade ramp lifts the flange (slid +X =
+    raise), the fine thread self-locks. Both wedges together = height, differential
+    = tilt."""
+    w = _wedge_solid(rider_y, clr=0.0)                    # the lift blade (ramp)
+    dy = _wedge_drive_y(rider_y)
+    x0 = OPEN_CTR - WEDGE_LX / 2.0
+    w = w.union(box_at(WTAB_LX, WTAB_WY, WTAB_TOPZ - WEDGE_RUNZ,
+                       x=x0 + WTAB_LX / 2.0, y=dy,
+                       z=(WEDGE_RUNZ + WTAB_TOPZ) / 2.0))
+    w = w.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        0.8, WTAB_LX + 6.0, cq.Vector(x0 - 3.0, dy, WDRV_Z), cq.Vector(1, 0, 0))))
+    return heal(w)
+
+
 def _pickup_piece():
-    """3-slot deck panel that carries the pickup. It's a pocket bounded by two
-    side skirts (+Y = reference, -Y = clamp) and two end walls; the Z-plate drops
-    in from above and the pickup rests on it. The +Y skirt inner face (continuous
+    """3-slot deck panel that carries the pickup. A pocket bounded by two side
+    skirts (+Y = reference, -Y = clamp) and two end walls; the Z-plate drops in
+    from above and the pickup rests on it. The +Y skirt inner face (continuous
     with the deck opening edge) is the full-height guide track for the plate's +Y
-    flange. A central spine carries ONE height-screw hole (reached from below);
-    the -Y skirt has THREE clamp-screw holes (use the one nearest the pickup)."""
+    flange; the -Y skirt has THREE clamp-screw holes. HEIGHT: two wedges ride
+    X-channels on the skirt-floor strips under the plate flanges, each driven by
+    an M4 leadscrew through the -X end wall (no central floor/jack -> the pickup
+    bay is open below the plate)."""
     body = _deck_body(PIECE_X0, PIECE_X1)
     # deck opening (pickup pokes through; offset -Y to give the clamp shim room)
     body = body.cut(box_at(OPEN_LEN, OPEN_YW, (TZ - BZ) + 2,
@@ -333,19 +407,17 @@ def _pickup_piece():
     for cx in CLAMP_HOLES:                          # 3 clamp-screw holes (-Y skirt)
         body = body.cut(cyl_y(PM.CSCREW_D + 0.4, SKIRT_T + 2.0,
                               y0=-(HY_CLAMP + SKIRT_T + 1.0), x=cx, z=CL_Z))
-    # central spine (Y=0) carrying the single height-screw boss, reached from below
-    body = body.union(box_at(OPEN_LEN + 2 * WALL, SPINE_W, FLOOR_T,
-                             x=OPEN_CTR, y=0, z=FLOOR_BOT + FLOOR_T / 2))
-    # height JACK screw: a proper M4 heat-set insert in a Ø8 boss (cadkit
-    # fastener standard) protruding DOWN from the floor into the open bay below
-    # (clear ~18 mm to belt_4). The screw threads UP into the insert from below
-    # and its tip lifts the Z-plate; because it must HOLD the pickup height under
-    # load it is the set-screw pattern (insert bore, never self-tap). A downward
-    # boss would overhang if this piece printed floor-down, so the PICKUP PIECE
-    # prints ON ITS SIDE (-X -> +X) -- it carries no fret lines, so side layer
-    # lines cost nothing. clr_len just clears the 1.5 floor above the pocket.
-    body = cut_m4_boss(body, (HEIGHT_HOLE, 0.0, FLOOR_TOP), (1, 0, 0), 0,
-                       clr_len=FLOOR_T + 2.0)
+    # wedge-run floor: a thin skin strip under EACH stepped wedge (blade + drive
+    # tab), the wedges riding their tops at WEDGE_RUNZ. NO central floor -> the bay
+    # is open below the plate. Each strip carries an M2 leadscrew way through the
+    # -X end wall at the drive-tab Y.
+    for ry in (RIDER_YP, RIDER_YM):
+        dy = _wedge_drive_y(ry)
+        body = body.union(box_at(OPEN_LEN, WTAB_WY + 1.5, WRUN_T,
+                                 x=OPEN_CTR, y=dy, z=FLOOR_BOT + WRUN_T / 2))
+        body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+            1.3, 2.0 * WALL + 3.0,
+            cq.Vector(PIECE_X1 - 1.0, dy, WDRV_Z), cq.Vector(1, 0, 0))))
     return heal(body)
 
 
@@ -378,6 +450,10 @@ def _pickup_zplate():
         notch = (cq.Workplane("XZ").polyline(pts).close()
                  .extrude(10.0, both=True).translate((0, ym, 0)))
         plate = plate.cut(notch)
+    # WEDGE seats: notch each flange bottom to the wedge profile (0.15 fit) so it
+    # rides its height wedge
+    plate = plate.cut(_wedge_solid(RIDER_YP, clr=0.15))
+    plate = plate.cut(_wedge_solid(RIDER_YM, clr=0.15))
     return plate
 
 
@@ -397,6 +473,8 @@ def _filler(slot):
 
 pickup_zplate = heal(_pickup_zplate())
 pickup_xclamp = heal(_pickup_xclamp())
+pickup_wedge_p = _pickup_wedge(RIDER_YP)     # +Y flange height wedge
+pickup_wedge_m = _pickup_wedge(RIDER_YM)     # -Y flange height wedge
 
 # every panel becomes a (base, colour) print pair. The pickup piece keeps a
 # line-free top (its opening chops the field, and it had no lines before); every
