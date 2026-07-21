@@ -327,24 +327,28 @@ def leg_segment() -> cq.Workplane:
 
 
 def leg_sleeve() -> cq.Workplane:
-    """Slider sleeve (ROUND 3, all-octagon): 44-sq × 228. On top, the SOLID
+    """Slider sleeve (ROUND 3, all-octagon): 44-sq × 200. On top, the SOLID
     flush octagon SPIGOT into the bottom segment's socket (one M4 retention,
     Ø7 cable bore for the wired leg — one SKU ×4). Below, the fine-adjust
     way is the full-length OCTAGON GROOVE at the SLIDE clearance (SH_CLR),
     opening through the local +Y face like every flush joint — the shaft (the
     same W28 octagon prism) rides it: keyed to one orientation, captured
-    ±X/±Y by the waist-vs-slit, stroked along Z. The groove stops at z −2 so
-    a 1 mm disk roots the spigot (shaft tops out there; SLEEVE_L grew +28 to
-    keep the range). PINCH: two lugs flank the groove's open slit at the
-    bottom; an M4 button + heat-set insert spans them ABOVE the face plane
-    (clear of the sliding shaft) and pulls the C-section's lips together —
-    broad-band 45°-flank friction on the shaft, no point load. Compliance of
-    the C-flex is a print-check item. Prints STANDING (constant Z-sections —
-    groove, spigot and body are all prisms; slide faces stay smooth).
+    ±X/±Y by the waist-vs-slit, stroked along Z (groove top at z −2 roots
+    the spigot; retraction stop = the shaft BLOCK butting the mouth face).
+    CLAMP = an EMBEDDED GIB (user: the old proud lug pair protruded past the
+    bed face — nothing may leave the 44-sq envelope): a PCTG V-collar shoe
+    (leg_pinch_gib) in a pocket behind the groove's point, pressed +Y by TWO
+    M4 GRUB screws threading the outer wall (flush in the outer face, hex
+    key access at any height) — the gib's 45° V presses the shaft's lower
+    flanks and preloads it into the upper flanks/lips: broad gib-style
+    friction, no point load, ZERO flexure → the sleeve is PETG-GF now and
+    prints LYING on its +Y face like every other leg piece (the groove is a
+    mortise opening at the bed; the pocket ceiling is a 6-wide bridge with
+    45° chamfers; the grub bores print vertical).
     Local: Z0 = shoulder (top face); body −Z."""
     body = box_at(SQ_W, SQ_W, SLEEVE_L, z=-SLEEVE_L / 2)
-    # full-length slider groove: open at the bottom mouth (−229) and through
-    # the +Y face; top at −2 (the disk under the spigot)
+    # full-length slider groove: open at the bottom mouth and through the +Y
+    # face; top at −2 (the disk under the spigot)
     body = body.cut(_shaft_groove(SLEEVE_L - 1.0)
                     .translate((0, 0, -SLEEVE_L - 1.0)))
     # top spigot (embed 1) + its cable bore + the M4 retention pilot (the
@@ -354,26 +358,40 @@ def leg_sleeve() -> cq.Workplane:
                     .translate((0, SEC_BORE_Y, 0)))
     body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
         1.8, 20.0, cq.Vector(7.0, -9.0, 14.0), cq.Vector(0, 1, 0))))
-    # PINCH lugs + cross screw (M4 button into a heat-set insert), riding
-    # y 22..29 proud of the inner face — the screw line sits above the open
-    # groove, so the shaft slides beneath it untouched
-    lz = -SLEEVE_L + 9.0
-    for sx_ in (12.0, -12.0):
-        body = body.union(box_at(9.0, 7.0, 16.0, x=sx_, y=25.5, z=lz))
-    body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        2.15, 24.0, cq.Vector(17.5, 25.5, lz), cq.Vector(-1, 0, 0))))
-    body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        4.0, 4.5, cq.Vector(17.0, 25.5, lz), cq.Vector(-1, 0, 0))))
-    body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        2.8, 6.0, cq.Vector(-16.6, 25.5, lz), cq.Vector(1, 0, 0))))
-    # 45° teardrop roof on the Ø8 head pocket (horizontal bore, standing
-    # print; the Ø4.3/Ø5.6 bores are small enough to print round)
-    t = 4.0 * 0.7071
-    body = body.cut(cq.Workplane("YZ")
-                    .polyline([(25.5 - t, lz + t), (25.5 + t, lz + t),
-                               (25.5, lz + 4.0 * 1.4142)])
-                    .close().extrude(4.5).translate((12.5, 0, 0)))
+    # GIB POCKET behind the groove's point near the mouth: trapezoid section
+    # (flat back band ±3 at y −14.5 + 45° chamfers to ±8 — the lying print's
+    # ceiling is a 6-wide bridge, chamfer-flanked); opens into the groove
+    # (+Y) and out the mouth face (−Z) so the gib slides in from below
+    body = body.cut(cq.Workplane("XY")
+                    .polyline([(-8.0, -6.0), (8.0, -6.0), (8.0, -11.0),
+                               (3.0, -16.0), (-3.0, -16.0), (-8.0, -11.0)])
+                    .close().extrude(31.0)
+                    .translate((0, 0, -SLEEVE_L - 1.0)))
+    # two M4 GRUB bores (Ø3.4 thread-forming, ~7.5 of PETG-GF thread) from
+    # the outer face onto the gib's flat back band — fully embedded, flush
+    for gx in (2.0, -2.0):
+        body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+            1.7, 7.5, cq.Vector(gx, -SQ_W / 2 - 1.0, -SLEEVE_L + 16.0),
+            cq.Vector(0, 1, 0))))
     return heal(body)
+
+
+def leg_pinch_gib() -> cq.Workplane:
+    """PCTG pinch GIB ×4 (the sleeve's embedded shaft clamp): a V-collar
+    straddling the shaft octagon's point — 45° V faces (0.3 drawn standoff)
+    press the shaft's lower taper flanks when the two grub screws drive the
+    flat back band +Y; trapezoid back matches the sleeve pocket (0.3 fit).
+    24 long; slides into the pocket from the sleeve's mouth. Shallow dimples
+    seat the grub tips. Prints lying on the back's flat band (V up at 45°).
+    Local: sleeve frame cross-section, z 0..24."""
+    b = (cq.Workplane("XY")
+         .polyline([(-7.7, -7.3), (-0.7, -14.3), (0.7, -14.3), (7.7, -7.3),
+                    (7.7, -10.9), (2.9, -15.7), (-2.9, -15.7), (-7.7, -10.9)])
+         .close().extrude(24.0))
+    for gx in (2.0, -2.0):
+        b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCone(
+            1.6, 0.2, 1.4, cq.Vector(gx, -15.8, 12.0), cq.Vector(0, 1, 0))))
+    return heal(b)
 
 
 def leg_shaft() -> cq.Workplane:
