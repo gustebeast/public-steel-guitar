@@ -115,7 +115,7 @@ def _stub_tower(lx: float, wired: bool) -> cq.Workplane:
     # block's mortise (the +Y face is the open groove); x +8 dodges the
     # TRRS way at authored (-5, +TRRS_DY)
     b = b.cut(box_at(LG.BOLT_W + 0.4, 34.0, LG.BOLT_H + 0.4,
-                     x=8.0, y=6.0, z=STUB_Z0 + 31.8))
+                     x=8.0, y=2.5, z=STUB_Z0 + 31.8))
     b = b.cut(box_at(12.4, 9.0, 10.4, x=-14.0, y=LG.SQ_W / 2 - 4.4,
                      z=STUB_Z0 - 11.0))
     b = b.rotate((0, 0, 0), (0, 0, 1), 180).translate((lx, YC, 0))

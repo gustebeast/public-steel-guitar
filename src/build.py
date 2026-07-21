@@ -481,9 +481,9 @@ def _leg_components():
             # body-joint bolt/button dummies (head frame, seat plane ZM).
             # ROUND 3 (flush octagon): the bolt hooks the mortise's thick
             # -Y wall, so the authored +y-nosed bolt is FLIPPED 180 and
-            # sits at authored (-8, 3.8) — offset (-20, +13.65) from its
+            # sits at authored (-8, -0.1) — offset (-20, +9.75) from its
             # rotated center, rotating with the leg.
-            bdx, bdy = (-20.0, 13.65) if rot == 0 else (20.0, -13.65)
+            bdx, bdy = (-20.0, 9.75) if rot == 0 else (20.0, -9.75)
             out.append((f"leg_latch_bolt_{k}",
                         LG.leg_latch_bolt()
                         .rotate((0, 0, 0), (0, 0, 1), rot + 180)
@@ -521,7 +521,7 @@ def _leg_components():
                 zst = ground + LG.FOOT_H + PB_STUB_Z0
                 out.append((f"leg_latch_bolt_{4 + k // 2}",
                             LG.leg_latch_bolt()
-                            .translate((sx + 4.0, ly - 13.65, zst))))
+                            .translate((sx + 4.0, ly - 9.75, zst))))
                 out.append((f"leg_latch_btn_{4 + k // 2}",
                             LG.leg_latch_btn()
                             .rotate((0, 0, 0), (0, 0, 1), rot)
@@ -569,41 +569,30 @@ def _leg_components():
                             LG.leg_plug_retainer()
                             .rotate((0, 0, 0), (0, 0, 1), rot)
                             .translate((sx + 5.0, yj, zst + 48.0 - 41.6))))
-                # column cables: plug#0's run down to the JUNCTION PCB in
-                # seg1's core; jack#2's factory cable up from the shaft -
-                # its COIL (heat-set, O8 mandrel/85C bench step) rides
-                # THIS side (the shaft slides; the junction is fixed)
-                # (z -190: the old -201 parked it in the hollow house
-                # spigot — the flush octagon spigot is SOLID, so the PCB
-                # moves fully into seg1's core, clear of the spigot tip)
-                out.append(("leg_junction_pcb",
-                            box_at(14.0, 11.0, 1.6, x=sx, y=ly,
-                                   z=CH.Z_BOT - 190.0)
-                            .union(box_at(7.0, 4.0, 6.0, x=sx, y=ly - 2.5,
-                                          z=CH.Z_BOT - 193.5))
-                            .union(box_at(7.0, 4.0, 6.0, x=sx, y=ly + 2.5,
-                                          z=CH.Z_BOT - 185.5))))
-                # cable runs follow the (±5, -13) axes: down the head way,
-                # 5-jog into the segment spigot bore (both at world y-13),
-                # through the core (jog back to centre at the junction)
+                # ONE CONTINUOUS cable (user: NO junction PCB — the
+                # 10-03404's factory cable runs the whole column and
+                # terminates in the CA-354S plug's solder cups at the
+                # head: a connector termination, not an inline splice).
+                # Path: head plug -> Ø7 joint bores + cores (y ly-13) ->
+                # sleeve groove -> heat-set slack COIL (O8 mandrel/85C;
+                # at the groove's inscribed centre, y yj) -> up the
+                # shaft's Ø9.7 way to the bar-joint jack. Drawn as two
+                # nets purely so the coil renders between them.
                 out.append(("leg_column_cable", WR._wire([
                     (sx - 5.0, yj, CH.Z_BOT - 39.2),
                     (sx - 5.0, yj, CH.Z_BOT - 58.0),
                     (sx, ly - 13.0, CH.Z_BOT - 66.0),
-                    (sx, ly - 13.0, CH.Z_BOT - 178.0),
-                    (sx, ly, CH.Z_BOT - 184.0)], 3.7)))
+                    (sx, ly - 13.0, CH.Z_BOT - 245.0),
+                    (sx, yj, CH.Z_BOT - 262.0),
+                    (sx, yj, CH.Z_BOT - 270.0)], 3.8)))
                 out.append(("shaft_trrs_cable", WR._wire([
                     (sx + 5.0, yj, zst + 80.0),
                     (sx + 5.0, yj, CH.Z_BOT - 352.0),
                     (sx, yj, CH.Z_BOT - 348.0),
-                    (sx, yj, CH.Z_BOT - 340.0)], 3.8).union(WR._wire([
-                        (sx, yj, CH.Z_BOT - 270.0),
-                        (sx, ly - 13.0, CH.Z_BOT - 240.0),
-                        (sx, ly - 13.0, CH.Z_BOT - 196.0),
-                        (sx, ly - 4.0, CH.Z_BOT - 192.0)], 3.8))))
-                # slack coil in the sleeve's groove free span: at SEC_H 32
-                # the groove's largest inscribed circle centres at y -6.5
-                # (= TRRS_DY), r ~11.9 — plenty for the O16 coil
+                    (sx, yj, CH.Z_BOT - 340.0)], 3.8)))
+                # slack coil in the sleeve's groove free span: at SEC_H 36
+                # the groove's largest inscribed circle centres at y -3.5
+                # (= TRRS_DY), r ~12.7 — plenty for the O16 coil
                 coil = cq.Workplane("XY").add(cq.Solid.makeCylinder(
                     8.0, 70.0, cq.Vector(sx, yj, CH.Z_BOT - 340.0),
                     cq.Vector(0, 0, 1))).cut(
@@ -797,7 +786,6 @@ _COLORS = {
     "shaft_trrs_jack": (0.62, 0.64, 0.67),       # bar-joint jack (10-03404)
     "shaft_trrs_cable": (0.45, 0.45, 0.48),
     "jack_seat_ring":  (0.42, 0.48, 0.52),
-    "leg_junction_pcb": (0.10, 0.42, 0.18),      # mid-column XH junction
     "build_counter":   (0.86, 0.08, 0.24),
     # knee lever (LKL) — input-side control
     "knee_housing":    (0.30, 0.36, 0.42),   # PCTG housing

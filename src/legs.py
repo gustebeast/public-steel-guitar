@@ -351,7 +351,7 @@ def leg_sleeve() -> cq.Workplane:
     body = body.cut(cyl(SEC_CABLE_D, SEG_PLUG_L + 3.0, z=-2.0)
                     .translate((0, SEC_BORE_Y, 0)))
     body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        1.8, 18.0, cq.Vector(7.0, -5.0, 14.0), cq.Vector(0, 1, 0))))
+        1.8, 20.0, cq.Vector(7.0, -9.0, 14.0), cq.Vector(0, 1, 0))))
     # PINCH lugs + cross screw (M4 button into a heat-set insert), riding
     # y 22..29 proud of the inner face — the screw line sits above the open
     # groove, so the shaft slides beneath it untouched
@@ -455,8 +455,8 @@ def leg_shaft_short() -> cq.Workplane:
     body = _shaft_prism(SHORT_SHAFT_L)
     body = body.union(box_at(SQ_W, SQ_W, BLOCK_H, z=BLOCK_H / 2))
     body = body.cut(_section_mortise(length=41.0).translate((0, 0, -1.0)))
-    body = body.cut(box_at(BOLT_W + 2.0, 6.4, 9.0, x=8.0, y=-5.7, z=31.9))
-    body = body.cut(box_at(BOLT_W + 2.4, 8.4, 9.4, x=8.0, y=19.0, z=31.9))
+    body = body.cut(box_at(BOLT_W + 2.0, 6.4, 9.0, x=8.0, y=-9.6, z=31.9))
+    body = body.cut(box_at(BOLT_W + 2.4, 9.6, 9.4, x=8.0, y=17.7, z=31.9))
     return body
 
 
@@ -525,10 +525,12 @@ SEG_PLUG_L = 28.0              # male plug engagement (sockets are 30)
 # (the print bed) for BOTH Y-sides. See _section_tenon / _section_mortise.
 SEC_W       = 28.0    # octagon flat-to-flat across local X (= the old house's X
                       # footprint); 8 mm wall to the ±22 X faces
-SEC_H       = 32.0    # profile HEIGHT (the cadkit height bound — user: size the
-                      # joint to the room): the width-driven minimum is 22.24, the
-                      # extra 9.76 grows the two verticals to 5.68 each (deeper lip
-                      # engagement + taller flank bearing); ~11.4 outer wall left
+SEC_H       = 36.0    # profile HEIGHT (the cadkit room bound past the mating
+                      # plane — user: pass the ACTUAL room): 44 leg depth − ~7
+                      # structural outer wall (2 perimeters + infill; also the
+                      # sleeve's C-channel wall) − drop/dilation. Width-driven
+                      # minimum 22.24; the extra 13.76 grows the two verticals
+                      # to 7.68 each (deeper lip engagement + flank bearing)
 SEC_TEN_L   = 28.0    # spigot engagement along Z (= the old SEG_PLUG_L)
 SEC_MOR_L   = 30.0    # socket depth (> spigot so the 44-sq shoulders butt = the
                       # ground-reaction hard stop; the octagon stop wall is backup)
@@ -553,12 +555,11 @@ SEC_CABLE_D = 7.0     # wired leg: axial cable bore through the spigot + socket 
 # placements) shift with them.
 SH_CLR      = 0.2     # shaft↔sleeve octagon SLIDE fit (per side; the fine
                       # stage strokes, unlike the assemble-once 0.1 joints)
-TRRS_DY     = 6.5     # TRRS axes ride the profile's deep waist: head/stub at
-                      # local (+TRRS_DX, +TRRS_DY), shaft/tower at (-TRRS_DX,
-                      # +TRRS_DY). At SEC_H 32 the Ø11/Ø13 ways clear the
-                      # orange/taper flanks by ~8.4 and the waist wall by ≥2.5
-                      # (y 13 — the old fat band — would pierce the taller
-                      # profile's lower diagonal)
+TRRS_DY     = 3.5     # TRRS axes ride the profile's deep waist (also the
+                      # groove's inscribed-circle centre): head/stub at local
+                      # (+TRRS_DX, +TRRS_DY), shaft/tower at (-TRRS_DX,
+                      # +TRRS_DY). At SEC_H 36 the Ø11/Ø13 ways clear the
+                      # orange/taper flanks by ~9 and the waist wall by ≥2.5
 
 
 def _house(w: float, floor_y: float, wall_top_y: float,
@@ -681,15 +682,15 @@ def _sq_body(length: float, channel: bool = False) -> cq.Workplane:
     # M4 retention (user rule: joinery takes the force, the screw only stops
     # extraction): ONE M4×25 button per joint from the OUTER (-Y) face — the +Y
     # face is the open groove, so the screw comes through the point-side wall
-    # (~11.4 at SEC_H 32). At x +7 (clears the Ø7 cable bore at x ±3.5): Ø4.5
+    # (~7.3 at SEC_H 36). At x +7 (clears the Ø7 cable bore at x ±3.5): Ø4.5
     # clearance through our wall over the INCOMING spigot (bottom socket) +
     # Ø3.6 thread-forming pilot crossing our OWN spigot (blind — stops 9 shy
     # of the bed face, so the inner face stays clean).
     b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        2.25, 21.0, cq.Vector(7.0, -SQ_W / 2 - 1.0, 14.0),
+        2.25, 17.0, cq.Vector(7.0, -SQ_W / 2 - 1.0, 14.0),
         cq.Vector(0, 1, 0))))
     b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        1.8, 18.0, cq.Vector(7.0, -5.0, length + 14.0),
+        1.8, 20.0, cq.Vector(7.0, -9.0, length + 14.0),
         cq.Vector(0, 1, 0))))
     return b
 
@@ -978,10 +979,10 @@ def _body_stub(wired: bool, eps: float) -> cq.Workplane:
     # ledge POCKET in the thick -Y (point-side) wall at x -8 (matches the
     # head's bolt channel): 6.4 deep so the whole 20.6 bolt nests inside the
     # face plane when engaged; the wall below z 27.4 is the bearing ledge
-    b = b.cut(box_at(BOLT_W + 2.0, 6.4, 9.0, x=-8.0, y=-5.7, z=31.9))
+    b = b.cut(box_at(BOLT_W + 2.0, 6.4, 9.0, x=-8.0, y=-9.6, z=31.9))
     # bolt TAIL WINDOW through the 1.7 face skin (the retract stroke pokes
     # the tail past the inner face — open air under the body)
-    b = b.cut(box_at(BOLT_W + 2.4, 8.4, 9.4, x=-8.0, y=19.0, z=31.9))
+    b = b.cut(box_at(BOLT_W + 2.4, 9.6, 9.4, x=-8.0, y=17.7, z=31.9))
     ca, cb = _cross_x(eps)
     for rx in (ca, cb):
         b = b.union(_stub_ridge(SQ_W).translate((rx, -SQ_W / 2, STUB_H)))
@@ -1018,10 +1019,10 @@ def _body_stub(wired: bool, eps: float) -> cq.Workplane:
         # axis (the way's +y wall is now at y 17.85): Ø4.2 access bore to
         # the wall + Ø1.6 thread-forming pilot poking into the Ø9.7 way
         b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-            2.1, 11.0, cq.Vector(TRRS_DX, SQ_W / 2 + 1.5, 43.0),
+            2.1, 13.5, cq.Vector(TRRS_DX, SQ_W / 2 + 1.5, 43.0),
             cq.Vector(0, -1, 0))))
         b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-            0.8, 3.5, cq.Vector(TRRS_DX, 12.8, 43.0),
+            0.8, 3.5, cq.Vector(TRRS_DX, 10.3, 43.0),
             cq.Vector(0, -1, 0))))
     return b
 
@@ -1076,7 +1077,7 @@ def leg_latch_head() -> cq.Workplane:
     b = b.cut(_section_mortise(length=SEC_MOR_L + 1.0)
               .translate((0, 0, -HEAD_BODY_L - 1.0)))
     b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        2.25, 21.0, cq.Vector(7.0, -SQ_W / 2 - 1.0, -HEAD_BODY_L + 14.0),
+        2.25, 17.0, cq.Vector(7.0, -SQ_W / 2 - 1.0, -HEAD_BODY_L + 14.0),
         cq.Vector(0, 1, 0))))
     # SPIGOT: the flush OCTAGON section tenon (38 up, embedded 1 into the
     # body top; stem base ON the +Y bed face — user round 3, replaces the
@@ -1086,7 +1087,7 @@ def leg_latch_head() -> cq.Workplane:
     # (the +Y face is the open groove — nothing left to hook there): a
     # through-notch in the spigot at x -8, spanning past both flanks
     b = b.cut(box_at(BOLT_W + 0.4, 34.0, BOLT_H + 0.4,
-                     x=-8.0, y=6.0, z=31.8))
+                     x=-8.0, y=2.5, z=31.8))
     b = b.cut(box_at(12.4, 9.0, 10.4, x=14.0, y=-(SQ_W / 2 - 4.4),
                      z=-11.0))                      # recessed button pocket
     # captive CA-354S seat + cable ways on the TRRS axis (+5, +13 — moved
