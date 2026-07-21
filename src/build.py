@@ -411,7 +411,7 @@ def _pickup_mount_components():
     # the shim +Y, pinning the pickup against the +Y flange (the shim spreads load)
     cx = min(TP.CLAMP_HOLES, key=lambda h: abs(h - PICKUP_X))
     sc = PM.clamp_screw().rotate((0, 0, 0), (0, 0, 1), 180)      # head -Y, tip +Y
-    out.append(("clamp_screw", sc.translate((cx, -53.75, TP.CL_Z))))
+    out.append(("clamp_screw", sc.translate((cx, TP.CLAMP_SHIM_Y - 1.45, TP.CL_Z))))
     return out
 
 
