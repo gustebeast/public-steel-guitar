@@ -114,8 +114,12 @@ TUBE_OD, TUBE_ID = 30.0, 22.0
 SEG_L   = 165.0                        # incl. the 25 male thread → 140 effective;
                                        # step/segment = 142 — MUST stay < the
                                        # shaft's slide range so bands overlap
-SLEEVE_L = 200.0                       # bore-through; hosts up to 192 of
-                                       # tenon engagement (prints standing)
+SLEEVE_L = 228.0                       # groove-through (ROUND 3: 200 + 28 —
+                                       # the flush octagon spigot up top is
+                                       # SOLID, so the shaft can no longer
+                                       # over-run into it; the extra length
+                                       # restores the lost retraction range.
+                                       # Height bands: H = 618 + 142k − E)
 SHAFT_D, SHAFT_L = 20.0, 212.0         # -Y long shaft: 197 sliding tenon + 15
                                        # foot zone. FINE-STAGE MATH (user):
                                        # travel = the 142 section pitch (so
@@ -321,59 +325,53 @@ def leg_segment() -> cq.Workplane:
 
 
 def leg_sleeve() -> cq.Workplane:
-    """Slider sleeve: MALE spigot up top (threads into the lower segment's
-    bell), Ø20.4 bore for the shaft, PINCH COLLAR at the bottom: ONE slit
-    (the solid wall opposite is the hinge) pulled closed by an M4 button
-    screw spanning two lugs into a heat-set insert, shrinking the bore onto
-    the shaft. Broad-band friction — ~MPa contact stress PCTG holds without
-    creep — instead of a set-screw point load that stress-relaxes; the shaft
-    stays unmarred. Set once per player, hex key. Closing the bore Ø0.4 needs
-    ~1.3 of slit travel (< the 1.6 gap). Local: Z0 = shoulder; body −Z."""
-    # SQUARE-LEG reskin: 44-sq outer body (the pinch lug pokes ~5 proud
-    # of the +y face — accepted v1). Prints STANDING as always (the
-    # sliding bore needs dimensional truth). ROUND 3: the threaded spigot
-    # + collar are GONE — an integral 31.7-sq PLUG (28) slides into the
-    # bottom segment's core, butt faces = hard stop, one M4 = retention.
+    """Slider sleeve (ROUND 3, all-octagon): 44-sq × 228. On top, the SOLID
+    flush octagon SPIGOT into the bottom segment's socket (one M4 retention,
+    Ø7 cable bore for the wired leg — one SKU ×4). Below, the fine-adjust
+    way is the full-length OCTAGON GROOVE at the SLIDE clearance (SH_CLR),
+    opening through the local +Y face like every flush joint — the shaft (the
+    same W28 octagon prism) rides it: keyed to one orientation, captured
+    ±X/±Y by the waist-vs-slit, stroked along Z. The groove stops at z −2 so
+    a 1 mm disk roots the spigot (shaft tops out there; SLEEVE_L grew +28 to
+    keep the range). PINCH: two lugs flank the groove's open slit at the
+    bottom; an M4 button + heat-set insert spans them ABOVE the face plane
+    (clear of the sliding shaft) and pulls the C-section's lips together —
+    broad-band 45°-flank friction on the shaft, no point load. Compliance of
+    the C-flex is a print-check item. Prints STANDING (constant Z-sections —
+    groove, spigot and body are all prisms; slide faces stay smooth).
+    Local: Z0 = shoulder (top face); body −Z."""
     body = box_at(SQ_W, SQ_W, SLEEVE_L, z=-SLEEVE_L / 2)
-    body = body.union(
-        _house(27.7, -15.85, 1.85, SEG_PLUG_L + 1.0)
-        .translate((0, 0, -1.0))
-        .cut(_house(20.0, -12.0, 2.0, SEG_PLUG_L + 4.0)
-             .translate((0, 0, -2.0))))
+    # full-length slider groove: open at the bottom mouth (−229) and through
+    # the +Y face; top at −2 (the disk under the spigot)
+    body = body.cut(_shaft_groove(SLEEVE_L - 1.0)
+                    .translate((0, 0, -SLEEVE_L - 1.0)))
+    # top spigot (embed 1) + its cable bore + the M4 retention pilot (the
+    # segment above brings the clearance bore from its own -Y wall)
+    body = body.union(_section_tenon(SEG_PLUG_L + 1.0).translate((0, 0, -1.0)))
+    body = body.cut(cyl(SEC_CABLE_D, SEG_PLUG_L + 3.0, z=-2.0)
+                    .translate((0, SEC_BORE_Y, 0)))
     body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        1.8, 8.0, cq.Vector(0, -SQ_CORE / 2 - 0.5, 14.0),
-        cq.Vector(0, 1, 0))))
-    # RECT keyed bore (ROUND 3): 20.4 × 17.2 matching the rectangular shaft,
-    # with the 3×45° key chamfer on the (+x,-y) corner — one orientation, no
-    # flat needed. Terminates at the sleeve top (z=0): the shaft tenon (197) in
-    # the 200 bore tops out at z≈-3, so it never reaches the octagon spigot — the
-    # old over-cut to z+24 would have hollowed the spigot away (the bore is wider
-    # than the octagon). The spigot above z=0 stays SOLID, no travel lost.
-    body = body.cut(cq.Workplane("XY")
-                    .polyline([(-14.2, -13.2), (10.1, -13.2), (14.2, -9.1),
-                               (14.2, 13.2), (-14.2, 13.2)])
-                    .close().extrude(SLEEVE_L + TH_LEN)
-                    .translate((0, 0, -SLEEVE_L - 1)))
-    # lug block on +Y, then the single slit through block + wall + bore
-    lz = -SLEEVE_L + 9.0                                  # bolt line
-    body = body.union(box_at(16.0, 12.0, 18.0, y=21.0, z=lz))
-    body = body.cut(box_at(1.6, 19.0, 44.0, y=18.5, z=-SLEEVE_L + 22.0))
-    # M4 button screw enters +X: Ø8 head pocket to x=4 so the 12 mm screw
-    # fully engages the insert seated in the −X lug (x −8..−3.3)
+        1.8, 16.0, cq.Vector(7.0, 4.0, 14.0), cq.Vector(0, 1, 0))))
+    # PINCH lugs + cross screw (M4 button into a heat-set insert), riding
+    # y 22..29 proud of the inner face — the screw line sits above the open
+    # groove, so the shaft slides beneath it untouched
+    lz = -SLEEVE_L + 9.0
+    for sx_ in (12.0, -12.0):
+        body = body.union(box_at(9.0, 7.0, 16.0, x=sx_, y=25.5, z=lz))
     body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        2.15, 18.0, cq.Vector(9.0, 21.0, lz), cq.Vector(-1, 0, 0))))
+        2.15, 24.0, cq.Vector(17.5, 25.5, lz), cq.Vector(-1, 0, 0))))
     body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        4.0, 5.5, cq.Vector(9.5, 21.0, lz), cq.Vector(-1, 0, 0))))
+        4.0, 4.5, cq.Vector(17.0, 25.5, lz), cq.Vector(-1, 0, 0))))
     body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        2.8, 6.0, cq.Vector(-9.0, 21.0, lz), cq.Vector(1, 0, 0))))
-    # 45° teardrop roof on the Ø8 head pocket (horizontal bore, printed
-    # standing; the Ø4.3/Ø5.6 bores are small enough to print round)
+        2.8, 6.0, cq.Vector(-16.6, 25.5, lz), cq.Vector(1, 0, 0))))
+    # 45° teardrop roof on the Ø8 head pocket (horizontal bore, standing
+    # print; the Ø4.3/Ø5.6 bores are small enough to print round)
     t = 4.0 * 0.7071
     body = body.cut(cq.Workplane("YZ")
-                    .polyline([(21.0 - t, lz + t), (21.0 + t, lz + t),
-                               (21.0, lz + 4.0 * 1.4142)])
-                    .close().extrude(5.5).translate((4.0, 0, 0)))
-    return heal(body)   # helical-thread booleans need a ShapeFix pass
+                    .polyline([(25.5 - t, lz + t), (25.5 + t, lz + t),
+                               (25.5, lz + 4.0 * 1.4142)])
+                    .close().extrude(4.5).translate((12.5, 0, 0)))
+    return heal(body)
 
 
 def leg_shaft() -> cq.Workplane:
@@ -382,12 +380,12 @@ def leg_shaft() -> cq.Workplane:
     here 91 tall and printed ONE SOLID (no joint down low; nothing below
     creates lateral force), so block 91 + foot 12 = 103 matches the +Y
     stack's block 48 + tower 24 + bar 19 + foot 12. Shared TPU foot's
-    dovetail mortise underneath. PETG-GF; 288 long — prints LYING on the
-    bed DIAGONAL (like the bar pieces). Z0 = the block's bottom face."""
-    body = (cq.Workplane("XY")
-            .polyline([(-14.0, -13.0), (10.0, -13.0), (14.0, -9.0),
-                       (14.0, 13.0), (-14.0, 13.0)])
-            .close().extrude(TALL_SHAFT_L))
+    dovetail mortise underneath. ROUND 3: the tenon is the W28 flush
+    OCTAGON prism (_shaft_prism — stem base on local +Y, riding the
+    sleeve's open groove at the slide clearance; keyed + captured by
+    shape). PETG-GF; 288 long — prints LYING on the stem-base face,
+    laid DIAGONAL in plan (like the bar pieces). Z0 = block bottom."""
+    body = _shaft_prism(TALL_SHAFT_L)
     body = body.union(box_at(SQ_W, SQ_W, TALL_BLOCK_H, z=TALL_BLOCK_H / 2))
     body = body.cut(foot_mortise_cutter())
     return body
@@ -448,24 +446,17 @@ def foot_mortise_cutter() -> cq.Workplane:
 
 def leg_shaft_short() -> cq.Workplane:
     """+Y shaft ×2: the 28×26 tenon ends in the 44-sq terminal BLOCK
-    whose downward house socket + ledge take the bar tower's spigot/bolt
-    (the leg↔body latch pattern with REDUCED 38 overlap — user: small
-    moment here, and the wide stack must clear the future pedals'
-    PEDAL_ASSEMBLY_Z_HEIGHT). Passive. Z0 = the block's mouth face."""
-    body = (cq.Workplane("XY")
-            .polyline([(-14.0, -13.0), (10.0, -13.0), (14.0, -9.0),
-                       (14.0, 13.0), (-14.0, 13.0)])
-            .close().extrude(SHORT_SHAFT_L))
+    whose downward socket + ledge take the bar tower's spigot/bolt.
+    ROUND 3: tenon = the W28 flush OCTAGON prism; the bar-joint socket =
+    the flush octagon mortise (the lying shaft's +Y bed face flipped the
+    old house floor into a 28-wide ceiling bridge), ledge pocket in the
+    thick -Y wall at x +8 (matches the tower's mirrored channel) + tail
+    window through the face skin. Passive. Z0 = the block's mouth face."""
+    body = _shaft_prism(SHORT_SHAFT_L)
     body = body.union(box_at(SQ_W, SQ_W, BLOCK_H, z=BLOCK_H / 2))
-    body = body.cut(_house(28.1, -16.05, 2.05, 41.0).translate((0, 0, -1)))
-    # ledge pocket on the house FLOOR side (-y local): the floor is the
-    # full-width flat face — a +y-side bolt would run into the gable's
-    # solid flanks (latent since the stub round; probe-caught)
-    # (bolt rides at local x +8: its 12 width must fit INSIDE the house
-    # width — beyond ±14.05 is solid wall here, unlike the body joint's
-    # big square way)
-    body = body.cut(box_at(BOLT_W + 2.0, 4.2, 9.0,
-                           x=8.0, y=-(16.05 + 2.1), z=31.9))
+    body = body.cut(_section_mortise(length=41.0).translate((0, 0, -1.0)))
+    body = body.cut(box_at(BOLT_W + 2.0, 6.4, 9.0, x=8.0, y=3.9, z=31.9))
+    body = body.cut(box_at(BOLT_W + 2.4, 4.4, 9.4, x=8.0, y=21.9, z=31.9))
     return body
 
 
@@ -482,12 +473,13 @@ def leg_shaft_trrs() -> cq.Workplane:
     # the integral mouth-seat BOSS (withdrawal backstop); a pressed
     # jack_seat_ring ABOVE it takes insertion. Jack mouth +42.7, plug tip
     # +55.7 = 13.0 insertion on the same press that clicks the latch.
-    # TRRS axis OFFSET to local x -5 (global +5 after the 180 placement):
-    # the latch bolt owns the other side of the house floor band
-    body = body.union(cyl(13.0, 1.9, z=38.2).translate((-5.0, 0, 0)))
-    body = body.cut(cyl(4.8, 2.0, z=38.0).translate((-5.0, 0, 0)))
+    # TRRS axis at local (-5, +13): x -5 dodges the latch bolt (global +5
+    # after the 180 placement); +13 rides the octagon's fat flare band —
+    # the way keeps a ~1.3 wall to the tenon's taper flank
+    body = body.union(cyl(13.0, 1.9, z=38.2).translate((-5.0, TRRS_DY, 0)))
+    body = body.cut(cyl(4.8, 2.0, z=38.0).translate((-5.0, TRRS_DY, 0)))
     body = body.cut(cyl(9.7, SHORT_SHAFT_L - 38.7 + 2.0, z=38.7)
-                    .translate((-5.0, 0, 0)))
+                    .translate((-5.0, TRRS_DY, 0)))
     return body
 
 
@@ -546,14 +538,19 @@ SEC_MOR_L   = 30.0    # socket depth (> spigot so the 44-sq shoulders butt = the
 SEC_BORE_Y  = 13.0    # wired: cable-bore centre (in the fat flare band; clears
                       # the M4 at x+7 and stays inside the profile walls)
 SEC_CABLE_D = 7.0     # wired leg: axial cable bore through the spigot + socket roof
-# DEFERRED (user-directed): the segment↔segment and head↔segment section joints
-# are converted to this octagon; the SLEEVE↔segment joint is NOT yet — a 28-wide
-# shaft can't pass through a 28-wide octagon (its stem necks to width/2=14), so a
-# sleeve octagon spigot must be SOLID, which costs ~28 mm of fine-adjust retraction
-# AND blocks the wired leg's cable/junction-PCB path. The sleeve keeps its house
-# spigot (leg_sleeve) for now; it's a standing bored slider, not a bending span.
-# Follow-up: a bottom TRANSITION segment (house socket ↔ sleeve, octagon plug ↔
-# chain), or lengthen the sleeve/shaft to swallow a solid spigot.
+# ROUND 3 (user): EVERY leg joint is this flush octagon now — sections, the
+# latch head↔body stub, the sleeve↔segment, the shaft↔sleeve fine-adjust
+# SLIDER, and the bar tower↔block latch (the shaft lying on +Y flipped the old
+# house sockets' flat floors into unprintable 28-wide ceiling bridges). The
+# slider pair uses a looser SLIDE clearance; the fixed joints keep the 0.1
+# assembly fit. TRRS blind-mate axes move into the profile's fat flare band
+# (y +13 — the old y-0 axes have no material around them in a bed-flush
+# octagon); the world couplings (chassis jack well, bar tower ways, dummy
+# placements) shift with them.
+SH_CLR      = 0.2     # shaft↔sleeve octagon SLIDE fit (per side; the fine
+                      # stage strokes, unlike the assemble-once 0.1 joints)
+TRRS_DY     = 13.0    # TRRS axes ride the fat band: head/stub at local
+                      # (+TRRS_DX, +TRRS_DY), shaft/tower at (-TRRS_DX, +TRRS_DY)
 
 
 def _house(w: float, floor_y: float, wall_top_y: float,
@@ -593,6 +590,31 @@ def _section_mortise(length: float = SEC_MOR_L, drop: float = 2.0) -> cq.Workpla
     with a small -Z overshoot; the far (+Z) end inside is the stop wall."""
     from cadkit.joinery import octagon_mortise
     return (octagon_mortise(SEC_W, length, nozzle=0.8, clearance=0.1, drop=drop)
+            .rotate((0, 0, 0), (0, 1, 0), -90)
+            .rotate((0, 0, 0), (0, 0, 1), 90)
+            .translate((0, SQ_W / 2, 0)))
+
+
+def _shaft_prism(length: float) -> cq.Workplane:
+    """The FINE-ADJUST SLIDER's male: the same flush W28 octagon profile as the
+    section joints but at the SLIDE clearance (SH_CLR) — the shaft is this
+    prism, riding the sleeve's matching full-length groove. Stem base on local
+    +Y (the bed of the lying shaft), z 0..length."""
+    from cadkit.joinery import octagon_tenon
+    return (octagon_tenon(SEC_W, length, nozzle=0.8, clearance=SH_CLR, root=0.0)
+            .rotate((0, 0, 0), (0, 1, 0), -90)
+            .rotate((0, 0, 0), (0, 0, 1), 90)
+            .translate((0, SQ_W / 2, 0)))
+
+
+def _shaft_groove(length: float, drop: float = 2.0) -> cq.Workplane:
+    """The slider's female: octagon mortise at SH_CLR, open through local +Y
+    (the sleeve's groove — visible on the leg's inner face, like every flush
+    joint). Z-running; callers place/limit it so it never severs the sleeve's
+    top spigot."""
+    from cadkit.joinery import octagon_mortise
+    return (octagon_mortise(SEC_W, length, nozzle=0.8, clearance=SH_CLR,
+                            drop=drop)
             .rotate((0, 0, 0), (0, 1, 0), -90)
             .rotate((0, 0, 0), (0, 0, 1), 90)
             .translate((0, SQ_W / 2, 0)))
@@ -951,20 +973,26 @@ def _body_stub(wired: bool, eps: float) -> cq.Workplane:
     endwall_screw_negatives). The stub slides in ALONG +local-y until
     the tongue tip butts its blind groove end (outer faces flush); every
     groove entry in the side face is filled flush by its ridge/tongue
-    end. Bottom = the leg↔bar latch
-    socket VERBATIM (house 28.1 × 41 + ledge pocket), FLIPPED 180° so
-    the head's bolt channel opens inboard. Wired: + the mouth-seat boss,
+    end. Bottom = the flush OCTAGON latch socket (round 3 — mortise open
+    through the bottom face + the local +Y groove; ledge pocket + bolt
+    tail window in/through the thick -Y wall). Wired: + the mouth-seat boss,
     barrel way and the Ø9.7 jack way opening through the FLAT top face
     (see TRRS_DX — no fin/chimney: the naked 10-03404 drops in through
     the wide rib's well AFTER the stub seats, and an M2 set screw from
     the inboard-y face clamps it)."""
     b = box_at(SQ_W, SQ_W, STUB_H, z=STUB_H / 2)
-    cuts = _house(28.1, -16.05, 2.05, 41.0).translate((0, 0, -1))
-    # ledge pocket on the house FLOOR side at local x +8 — VERBATIM the
-    # bar-joint block's pocket (leg_shaft_short), so the same bolt nests
-    cuts = cuts.union(box_at(BOLT_W + 2.0, 4.2, 9.0,
-                             x=8.0, y=-(16.05 + 2.1), z=31.9))
-    b = b.cut(cuts.rotate((0, 0, 0), (0, 0, 1), 180))
+    # latch SOCKET: the flush OCTAGON mortise (net 40 deep from the mouth,
+    # spigot 38 → mouth-butt hard stop), opening through the bottom face AND
+    # the local +Y face (the groove — user round 3: every leg joint is the
+    # flush octagon; no 180 flip any more, the bed face fixes the orientation)
+    b = b.cut(_section_mortise(length=41.0).translate((0, 0, -1.0)))
+    # ledge POCKET in the thick -Y (point-side) wall at x -8 (matches the
+    # head's bolt channel): 6.4 deep so the whole 20.6 bolt nests inside the
+    # face plane when engaged; the wall below z 27.4 is the bearing ledge
+    b = b.cut(box_at(BOLT_W + 2.0, 6.4, 9.0, x=-8.0, y=3.9, z=31.9))
+    # bolt TAIL WINDOW through the 1.7 face skin (the retract stroke pokes
+    # the tail past the inner face — open air under the body)
+    b = b.cut(box_at(BOLT_W + 2.4, 4.4, 9.4, x=-8.0, y=21.9, z=31.9))
     ca, cb = _cross_x(eps)
     for rx in (ca, cb):
         b = b.union(_stub_ridge(SQ_W).translate((rx, -SQ_W / 2, STUB_H)))
@@ -984,30 +1012,27 @@ def _body_stub(wired: bool, eps: float) -> cq.Workplane:
         b = b.cut(cyl(3.6, 12.0, z=STUB_H + 7.24 - 12.0)
                   .translate((tx, -17.0, 0)))
     if wired:
-        b = b.union(cyl(13.0, 1.9, z=38.2).translate((TRRS_DX, 0, 0)))
+        # TRRS axis at (TRRS_DX, TRRS_DY) — the fat flare band of the flush
+        # octagon (the old y-0 axis has no material around it any more)
+        b = b.union(cyl(13.0, 1.9, z=38.2).translate((TRRS_DX, TRRS_DY, 0)))
         #                                    mouth-seat boss: 38.7 ledge
         #                                    seats the jack, bottom clears
         #                                    the plug handle (37.2)
-        b = b.cut(cyl(4.8, 2.0, z=38.0).translate((TRRS_DX, 0, 0)))  # barrel
-        #                                                              way
+        b = b.cut(cyl(4.8, 2.0, z=38.0).translate((TRRS_DX, TRRS_DY, 0)))
         b = b.cut(cyl(9.7, (STUB_H + 7.24 - 38.7) + 1.0, z=38.7)
-                  .translate((TRRS_DX, 0, 0)))     # jack way: opens through
-        #                                    the flat TOP FACE and notches
-        #                                    the +0.667 crossing ridge
-        #                                    where it overhangs the mouth
-        #                                    (the jack drops in after the
-        #                                    slide, through the wide rib's
-        #                                    well; nothing stands proud)
-        # M2 SET-SCREW way from the stub's INBOARD-y face (local +y —
-        # exposed below the body even when assembled) clamping the jack
-        # barrel just above its seated mouth: Ø4.2 access bore + Ø1.6
-        # thread-forming pilot poking into the Ø9.7 way (1.5 hex key
-        # drives the M2×5 through the access bore)
+                  .translate((TRRS_DX, TRRS_DY, 0)))   # jack way: opens
+        #                                    through the flat TOP FACE and
+        #                                    notches the +0.667 crossing
+        #                                    ridge (jack drops in after the
+        #                                    slide through the rib's well)
+        # M2 SET-SCREW way from the inboard +y face, re-derived for the new
+        # axis (the way's +y wall is now at y 17.85): Ø4.2 access bore to
+        # the wall + Ø1.6 thread-forming pilot poking into the Ø9.7 way
         b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-            2.1, 15.0, cq.Vector(TRRS_DX, SQ_W / 2 + 1.0, 43.0),
+            2.1, 4.0, cq.Vector(TRRS_DX, SQ_W / 2 + 1.5, 43.0),
             cq.Vector(0, -1, 0))))
         b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-            0.8, 4.5, cq.Vector(TRRS_DX, 8.5, 43.0),
+            0.8, 3.0, cq.Vector(TRRS_DX, 19.8, 43.0),
             cq.Vector(0, -1, 0))))
     return b
 
@@ -1033,13 +1058,13 @@ def leg_body_stub_trrs() -> cq.Workplane:
 
 
 def leg_latch_head() -> cq.Workplane:
-    """LATCH HEAD x4 (PCTG). Its section socket below is now the OCTAGON section
-    mortise (mates the top segment's octagon spigot), so the head prints LYING on
-    its +Y face like the segments. PRINT-REFINEMENT FLAG: the leg↔body latch
-    features (bolt-channel closed end, the captive TRRS plug seat + Ø8/Ø11 ways)
-    were drawn for a standing print — when lying they want 45° teardrops (bolt end)
-    and a roundness check / possible split insert (TRRS seat). Deferred with the
-    sleeve. Below the docstring the head is otherwise unchanged: the leg column's
+    """LATCH HEAD x4 (PCTG, prints LYING on its +Y bed face — round 3,
+    all-octagon): octagon section socket below (mates the top segment), flush
+    octagon SPIGOT above (into the body stub), bolt channel hooking the stub
+    mortise's thick -Y point-side wall, TRRS plug seat + ways on the (+5,+13)
+    axis (the flare band). PRINT-REFINEMENT FLAG: the lying TRRS seat/way
+    bores are horizontal — want teardrops / a roundness print-check.
+    The head is otherwise the bar-tower pattern: the leg column's
     top piece
     = the INSERTING half of the leg<->body latch, the bar-tower pattern
     VERBATIM but authored FLIPPED 180 deg so the bolt channel opens
@@ -1064,20 +1089,24 @@ def leg_latch_head() -> cq.Workplane:
     b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
         2.25, 30.0, cq.Vector(7.0, -SQ_W / 2 - 1.0, -HEAD_BODY_L + 14.0),
         cq.Vector(0, 1, 0))))
-    # house spigot + latch cuts, FLIPPED 180 (mirrors the stub's socket)
-    b = b.union(_house(27.7, -15.85, 1.85, 38.0)
-                .rotate((0, 0, 0), (0, 0, 1), 180))
-    b = b.cut(box_at(BOLT_W + 0.4, 30.0, BOLT_H + 0.4,
-                     x=-8.0, y=12.2, z=31.8))       # bolt channel (floor side)
+    # SPIGOT: the flush OCTAGON section tenon (38 up, embedded 1 into the
+    # body top; stem base ON the +Y bed face — user round 3, replaces the
+    # house). Slides -Z-relative into the stub's mortise; mouth-butt stop.
+    b = b.union(_section_tenon(39.0).translate((0, 0, -1.0)))
+    # bolt channel: hooks the thick -Y (point-side) wall of the stub now
+    # (the +Y face is the open groove — nothing left to hook there): a
+    # through-notch in the spigot at x -8, spanning past both flanks
+    b = b.cut(box_at(BOLT_W + 0.4, 34.0, BOLT_H + 0.4,
+                     x=-8.0, y=8.0, z=31.8))
     b = b.cut(box_at(12.4, 9.0, 10.4, x=14.0, y=-(SQ_W / 2 - 4.4),
                      z=-11.0))                      # recessed button pocket
-    # captive CA-354S seat + cable ways on the flipped TRRS axis (+5):
-    # tip lip, handle way, then the Ø8 down-way into the section core
-    b = b.cut(cyl(9.4, 1.7, z=37.4).translate((5.0, 0, 0)))
-    b = b.cut(cyl(11.0, 31.2, z=6.3).translate((5.0, 0, 0)))   # way starts
-    #                        at +6.3: the press retainer (bottom +6.4) sits
-    #                        fully in Ø11 (probe-caught collar burial)
-    b = b.cut(cyl(8.0, 22.0, z=-13.0).translate((5.0, 0, 0)))
+    # captive CA-354S seat + cable ways on the TRRS axis (+5, +13 — moved
+    # into the fat flare band): tip lip, handle way, Ø8 down-way to the core
+    b = b.cut(cyl(9.4, 1.7, z=37.4).translate((5.0, TRRS_DY, 0)))
+    b = b.cut(cyl(11.0, 31.2, z=6.3).translate((5.0, TRRS_DY, 0)))
+    #                        way starts at +6.3: the press retainer (bottom
+    #                        +6.4) sits fully in Ø11 (probe-caught burial)
+    b = b.cut(cyl(8.0, 22.0, z=-13.0).translate((5.0, TRRS_DY, 0)))
     return heal(b)
 
 

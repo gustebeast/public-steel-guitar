@@ -107,11 +107,15 @@ def _stub_tower(lx: float, wired: bool) -> cq.Workplane:
     cable enters from the trough side way. Prints WITH the bar,
     bottom-down — plain standing geometry, no overhangs."""
     b = box_at(LG.SQ_W, LG.SQ_W, STUB_Z0 - BAR_H, z=(BAR_H + STUB_Z0) / 2)
-    b = b.union(_house(27.7, -15.85, 1.85, 38.0).translate((0, 0, STUB_Z0)))
-    # bolt channel on the house FLOOR side (pre-rotation -y → global +y;
-    # the gabled receiving mortise has no room on the roof side)
-    b = b.cut(box_at(LG.BOLT_W + 0.4, 30.0, LG.BOLT_H + 0.4,
-                     x=8.0, y=-12.2, z=STUB_Z0 + 31.8))
+    # spigot: the flush OCTAGON section tenon (round 3 — the lying leg
+    # block's bed face turned the old house floor into a 28-wide ceiling
+    # bridge). Constant Z-section: still prints clean standing with the bar.
+    b = b.union(LG._section_tenon(39.0).translate((0, 0, STUB_Z0 - 1.0)))
+    # bolt channel hooks the thick authored -Y (point-side) wall of the
+    # block's mortise (the +Y face is the open groove); x +8 dodges the
+    # TRRS way at authored (-5, +13)
+    b = b.cut(box_at(LG.BOLT_W + 0.4, 34.0, LG.BOLT_H + 0.4,
+                     x=8.0, y=8.0, z=STUB_Z0 + 31.8))
     b = b.cut(box_at(12.4, 9.0, 10.4, x=-14.0, y=LG.SQ_W / 2 - 4.4,
                      z=STUB_Z0 - 11.0))
     b = b.rotate((0, 0, 0), (0, 0, 1), 180).translate((lx, YC, 0))
@@ -138,15 +142,22 @@ def _bar_full() -> cq.Workplane:
     # wired tower's ways — cut AFTER the union (they pierce both the tower
     # and the bar prism beneath it): captive plug seat, Ø8 down-way to the
     # foot-mortise access, Ø8 side way to the trough
-    wlx = LATCHES[1][0] + 5.0     # TRRS axis offset +5 (the bolt owns the
-    #                               other side of the house floor band)
-    body = body.cut(cyl(9.4, 1.7, z=STUB_Z0 + 37.4).translate((wlx, YC, 0)))
-    body = body.cut(cyl(11.0, 31.2, z=STUB_Z0 + 6.3).translate((wlx, YC, 0)))
+    wlx = LATCHES[1][0] + 5.0     # TRRS axis: +5 in x (the bolt owns the
+    #                               other x side) and -13 in world y — the
+    #                               fat flare band of the tower's octagon
+    #                               (authored (-5, +13), tower rotated 180)
+    wly = YC - LG.TRRS_DY
+    body = body.cut(cyl(9.4, 1.7, z=STUB_Z0 + 37.4).translate((wlx, wly, 0)))
+    body = body.cut(cyl(11.0, 31.2, z=STUB_Z0 + 6.3).translate((wlx, wly, 0)))
     #                    ^ way starts +6.3: the press retainer (bottom +6.4)
     #                      sits fully in Ø11 (probe-caught collar burial)
-    body = body.cut(cyl(8.0, STUB_Z0 + 9.0, z=-0.5).translate((wlx, YC, 0)))
+    body = body.cut(cyl(8.0, STUB_Z0 + 9.0, z=-0.5).translate((wlx, wly, 0)))
+    # side way to the trough: at y wly+3.5 the Ø8 bore overlaps BOTH the
+    # down-way column (wly±4) and the trough band (YC-10..YC+6.5) — a
+    # snaked but continuous cable passage
     body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        4.0, 28.0, cq.Vector(wlx - 2.0, YC, 11.0), cq.Vector(1, 0, 0))))
+        4.0, 28.0, cq.Vector(wlx - 2.0, wly + 3.5, 11.0),
+        cq.Vector(1, 0, 0))))
 
     # wiring TROUGH (open top; the lid roofs it)
     body = body.cut(box_at(TROUGH_X1 - TROUGH_X0, 16.5, BAR_H - 4.0 + 1,
@@ -264,8 +275,9 @@ def _cable_runs():
     by build.py with the leg stack). Rises on the TRRS axis — offset +5
     from the station, matching the down-way and the plug seat."""
     lx = LATCHES[1][0]
-    pts = [(lx + 24.0, YC, 11.0), (lx + 14.0, YC, 11.0),
-           (lx + 5.0, YC, 11.0), (lx + 5.0, YC, 26.0)]
+    wly = YC - LG.TRRS_DY
+    pts = [(lx + 24.0, YC - 3.0, 11.0), (lx + 14.0, wly + 3.5, 11.0),
+           (lx + 5.0, wly, 11.0), (lx + 5.0, wly, 26.0)]
     out = None
     for a, bpt in zip(pts[:-1], pts[1:]):
         va, vb = cq.Vector(*a), cq.Vector(*bpt)
