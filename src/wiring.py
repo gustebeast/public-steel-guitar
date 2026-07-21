@@ -247,9 +247,11 @@ def build_wires():
     # the AFE's 24 V is the SAME net as the motor bus (a splice at the inlet),
     # so it is a branch of wire_power, not its own color
 
-    # -- pickup -> AFE buffer (white, short; passes its own pickup mount)
+    # -- pickup -> AFE buffer (white, short; passes its own pickup mount). Drops
+    # below the -Y height-jack tab (z -9.78..-12.6) while still INBOARD (y>-49)
+    # before spreading toward -Y, so it clears the jack + its pad.
     out.append(("wire_pickup", _wire([
-        (-50.0, -45.0, -5.0), (-44.0, -60.0, -14.0),
+        (-50.0, -45.0, -5.0), (-47.0, -49.0, -14.0),
         (-40.0, -76.0, -40.0), (-24.0, -80.0, -50.0), afe_buf_in],
         WIRE_OD["wire_pickup"])))
 
