@@ -31,12 +31,19 @@ import cadquery as cq
 from . import dimensions as D
 from .helpers import box_at, cyl, cyl_y
 
-# ── the pickup itself (DEMO dummy; the piece adjusts around it) ───────────────
-PK_W, PK_L, PK_H = 33.0, 99.0, 19.0            # X (width), Y (length), Z (height)
-PK_H_MIN = 15.0                                 # shortest pickup we expect to fit; the
-                                               # carrier walls are capped at this so they
-                                               # never poke above the pickup top (= the
-                                               # strings) even raised all the way up
+# ── the pickup itself (Lace Alumitone ToneBar 10, 3.75") ──────────────────────
+# The RECOMMENDED pickup (user). A current-driven BLADE humbucker: no per-string
+# poles, so its blade reads every string within its width -- which is why it works
+# despite our tight 6.5mm string pitch (58.5mm span) being far narrower than the
+# ~95mm blade. It's referenced flush to the +Y wall to just cover string 1 (the
+# +Y-most/highest string) and OVERHANGS -Y past string 10 (the mount is sized to
+# hold the overhang). ~102 (4.0") also fits the +Y-referenced layout; 95 keeps the
+# -Y overhang shorter. Depth 22 is deeper than strings allow at the neck-slide
+# positions (-14 ribs) -- a known TODO the user will review.
+PK_W, PK_L, PK_H = 38.0, 95.0, 22.0            # X (along neck), Y (across strings), Z (height)
+PK_H_MIN = 15.0                                 # carrier-wall cap datum: walls stay this far
+                                               # above the plate so they never top the pickup
+                                               # (< PK_H) even raised -- never foul bar/strings
 GAP     = 3.0                                   # pickup top -> heaviest string bottom
 PK_TOP  = D.STRING_Z - max(D.STRING_GAUGE) - GAP
 PK_BOT  = PK_TOP - PK_H
@@ -47,7 +54,7 @@ CSCREW_D = 4.0                                  # M4 X/Y clamp screw
 
 
 def pickup_demo() -> cq.Workplane:
-    """DEMO pickup body (George L E-66-ish 33x99x20), centred X/Y, top at z=0."""
+    """Lace Alumitone ToneBar 10 envelope (38 x 95 x 22), centred X/Y, top at z=0."""
     return box_at(PK_W, PK_L, PK_H, z=-PK_H / 2)
 
 
