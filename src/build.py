@@ -88,7 +88,7 @@ PARTS = {
     "leg_shaft_trrs":  (lambda: heal(LG.leg_shaft_trrs()), "petg-gf/leg_shaft_trrs.step", "PETG-GF — +Y WIRED shaft ×1 (245, lying print): W28 octagon tenon + 44-sq block with the bar-joint octagon socket + the 10-03404 jack seated mouth-down on the (-5,+13) TRRS axis (loads from the open tenon top; boss = withdrawal stop, pressed jack_seat_ring = insertion stop)"),
     "leg_foot":        (lambda: heal(LG.leg_foot()),    "tpu/leg_foot.step",    "TPU — SHARED dovetail foot ×4 (user: one look): 44-sq pad + tenon into the underside mortise of the -Y leg blocks AND the pedal bar; the wired bar one covers the plug-threading access"),
     # (round leg_socket_trrs export retired — see leg_socket_sq_trrs)
-    "leg_plug_retainer": (lambda: heal(LG.leg_plug_retainer()), "pctg/leg_plug_retainer.step", "PCTG — press sleeve ×1: up the wired leg's top-segment bore under the CA-354S handle (insertion backstop; the spigot tip lip takes withdrawal)"),
+    "leg_plug_retainer": (lambda: heal(LG.leg_plug_retainer()), "pctg/leg_plug_retainer.step", "PCTG — press sleeve ×2: under the molded TRRS plug handles (the leg extension cable's at the head + the bar cradle CA-354S's in the tower) — insertion backstop; the seat lip takes withdrawal"),
     # ── SQUARE-LEG redesign, STAGE 1 (generators + eval prints; the round
     # legs still populate the assembly until the stack swap lands) ──
     "leg_seg_body":    (lambda: heal(LG.leg_seg_body()), "petg-gf/leg_seg_body.step", "PETG-GF — square 44 segment BODY ×6 (redesign, plain legs): prints LYING on a face (layer lines along the leg — kick loads bulk GF); square-32 core takes the M4-retained thread couplers"),
@@ -118,7 +118,7 @@ PARTS = {
     "pedal_detent_nub": (lambda: heal(_PB("nub_part")), "tpu/pedal_detent_nub.step", "TPU — detent nub ×1 (Ø4×4): presses into the bar top as the LID lock"),
     # (pedal_bar_foot merged into the shared leg_foot SKU — one look ×4)
     "leg_shaft_short": (lambda: heal(LG.leg_shaft_short()), "petg-gf/leg_shaft_short.step", "PETG-GF — SHORT +Y shaft ×1 (the wired one prints from leg_shaft_trrs): W28 octagon tenon ending in the 44-sq terminal block whose flush octagon socket + point-side ledge take the bar tower"),
-    "jack_seat_ring":  (lambda: heal(LG.jack_seat_ring()), "pctg/jack_seat_ring.step", "PCTG — press ring ×1: down the wired short shaft's way onto the bar-joint jack (insertion backstop; the integral boss takes withdrawal)"),
+    "jack_seat_ring":  (lambda: heal(LG.jack_seat_ring()), "pctg/jack_seat_ring.step", "PCTG — press ring ×1: down the wired short shaft's way onto the leg extension cable's molded jack barrel (insertion backstop; the integral boss takes withdrawal)"),
     "electronics_tray": (lambda: heal(__import__("src.electronics", fromlist=["e"]).electronics_tray()), "pctg/electronics_tray.step", "PCTG — compute-bay tray (drops into rail channels from above; tool-free SNAP mounts for Teensy+shield, Pi 5, 2x CS42448, buck, CAN transceiver — snap fingers need PCTG's ductility)"),
 }
 # Deck panels: each is a (base, colour) PAIR — same origin, print as ONE object
@@ -569,14 +569,16 @@ def _leg_components():
                             LG.leg_plug_retainer()
                             .rotate((0, 0, 0), (0, 0, 1), rot)
                             .translate((sx + 5.0, yj, zst + 48.0 - 41.6))))
-                # ONE CONTINUOUS cable (user: NO junction PCB — the
-                # 10-03404's factory cable runs the whole column and
-                # terminates in the CA-354S plug's solder cups at the
-                # head: a connector termination, not an inline splice).
+                # ONE OFF-THE-SHELF TRRS M->F EXTENSION cable is the
+                # whole column (user: zero connections on the leg): its
+                # molded PLUG sits captive in the head (blind-mates the
+                # chassis jack), its molded FEMALE barrel seats in the
+                # shaft block (receives the bar tower's plug) — no
+                # solder, no crimps, no junction anywhere in the leg.
                 # Path: head plug -> Ø7 joint bores + cores (y ly-13) ->
                 # sleeve groove -> heat-set slack COIL (O8 mandrel/85C;
                 # at the groove's inscribed centre, y yj) -> up the
-                # shaft's Ø9.7 way to the bar-joint jack. Drawn as two
+                # shaft's Ø9.7 way to its jack barrel. Drawn as two
                 # nets purely so the coil renders between them.
                 out.append(("leg_column_cable", WR._wire([
                     (sx - 5.0, yj, CH.Z_BOT - 39.2),
