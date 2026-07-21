@@ -110,12 +110,14 @@ OPEN_LEN  = OPEN_X0 - OPEN_X1                              # 53.0 = PK_W + 2*CLA
 SKIRT_T   = 3.0
 FLG_T     = 2.5                                            # Z-plate guide-flange thickness
 # +Y REFERENCE (user): the pickup seats flush to the +Y wall, positioned so its +Y
-# edge JUST covers string 1 (D.nut_y(0), the +Y-most / highest string). The
-# Alumitone blade is far longer than the 58.5 string field, so it OVERHANGS -Y past
-# string 10; the mount (opening + -Y skirt) is sized to HOLD the overhang.
+# edge JUST covers string 1. The strings FAN (D.string_y = 9.5mm pitch at the
+# changer/bridge -> D.nut_y = 6.5mm at the nut), and the pickup sits near the
+# changer, so string 1 crosses it at ~+42 (string_y(0)=42.75), NOT nut_y(0)=29.25.
+# Reference to string_y(0) (the widest string-1 Y, guaranteeing coverage at every
+# slide position). At the pickup the field is ~85mm, so the 95 blade fits it well.
 PK_COVER  = 2.0                                           # +Y margin past string 1
-PK_YP     = D.nut_y(0) + PK_COVER                         # pickup +Y face (~31.25)
-PK_YM     = PK_YP - PM.PK_L                               # pickup -Y face (~-63.75)
+PK_YP     = D.string_y(0) + PK_COVER                      # pickup +Y face (~44.75)
+PK_YM     = PK_YP - PM.PK_L                               # pickup -Y face (~-50.25)
 HY_REF    = PK_YP + 0.3 + FLG_T                           # +Y reference skirt (pickup seats -0.3)
 HY_CLAMP  = -PK_YM + 7.0                                  # -Y clamp skirt (room: shim + screw)
 OPEN_YC   = (HY_REF - HY_CLAMP) / 2                       # opening/floor Y centre
@@ -140,7 +142,7 @@ FLOOR_BOT = ZPL_BOT - 5.2                                 # piece bottom -- DEEP
 # below. Turn CW to jack that corner up; the fine thread self-locks. LEVELLING: the
 # -Y screw is at centre X (no along-neck moment), so EQUALISING the two +Y screws =
 # X LEVEL; the -Y screw then sets ACROSS-STRING tilt.
-JACK_YP       = D.nut_y(0) + 2.25                # +Y jacks: just outboard of string 1
+JACK_YP       = D.string_y(0) + 2.25             # +Y jacks: just outboard of string 1 (fanned)
 JACK_YM       = PK_YM - 3.0                       # -Y jack: just outboard of the pickup -Y edge
 JACK_POS      = [(OPEN_X0 - 3.5, JACK_YP),        # +X end, +Y
                  (OPEN_X1 + 3.5, JACK_YP),        # -X end, +Y
