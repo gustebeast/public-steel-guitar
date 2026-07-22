@@ -137,21 +137,24 @@ FLOOR_BOT = ZPL_BOT - 5.7                                # piece bottom -- DEEP 
                                                          # jack tabs/pads (below the -14 ribs; the
                                                          # neck-slide collision is a TODO to review)
 # ── TOP-ACCESS M4 TRIPOD JACKS (user) ────────────────────────────────────────
-# THREE vertical M4 set-screw jacks lift/tilt the Z-plate, ALL turned from +Z:
-#   * TWO on the +Y side at the pickup's two +Y MOUNTING-EAR positions -- the hex
-#     driver drops THROUGH the pickup's own ear holes (tip string 1 aside). They sit
-#     under the pickup at the nominal (pocket-centre) X where the ears align; heads
-#     flush so the pickup still slides over them for tone.
-#   * ONE on the -Y side at centre X, just OUTBOARD of the pickup -Y edge (open bay,
-#     reached directly from +Z).
+# THREE vertical M4 set-screw jacks lift/tilt the Z-plate, ALL turned from +Z, at
+# the PLATE's OWN clear zones -- NOT the pickup (PICKUP-AGNOSTIC: any pickup that fits
+# on the plate works; nothing here reads the pickup's mounting-hole pattern):
+#   * TWO at the +Y plate corners (near the X-ends, OUTBOARD of the pickup in X and
+#     OUTBOARD of string 1 in Y), so the driver drops straight down in the open bay
+#     with no pickup and no string over it (at the nominal centred pickup X; the heads
+#     are flush so the pickup still slides over the plate for tone).
+#   * ONE on the -Y plate edge at centre X, outboard of the pickup -Y edge.
 # LEVELLING: the two +Y jacks are symmetric about centre X, so EQUALISING them = X
-# LEVEL; the -Y jack (centre X, no along-neck moment) sets ACROSS-STRING tilt.
+# LEVEL; the -Y jack (centre X, no along-neck moment) sets ACROSS-STRING tilt. (The
+# -Y jack is centred, not a corner, precisely so there is no way to tilt X.)
 PICKUP_X_NOM  = OPEN_CTR                          # nominal (service) pickup centre X
-JACK_YP       = PK_CTR_Y + PM.EAR_HOLE_Y          # +Y jacks on the +Y ear line (~+41.3)
+JACK_INSET_X  = 28.0                              # +Y jacks near the plate X-ends (corners)
+JACK_YP       = 45.5                               # +Y corner jacks: outboard of string 1, inside the plate
 JACK_YM       = PK_YM - 2.5                        # -Y jack just outboard of the pickup (~-54)
-JACK_POS      = [(PICKUP_X_NOM + PM.EAR_HOLE_X, JACK_YP),   # +X +Y ear
-                 (PICKUP_X_NOM - PM.EAR_HOLE_X, JACK_YP),   # -X +Y ear
-                 (PICKUP_X_NOM, JACK_YM)]                    # centre X, -Y outboard
+JACK_POS      = [(PICKUP_X_NOM + JACK_INSET_X, JACK_YP),    # +X +Y corner
+                 (PICKUP_X_NOM - JACK_INSET_X, JACK_YP),    # -X +Y corner
+                 (PICKUP_X_NOM, JACK_YM)]                    # centre X, -Y edge
 JACK_D        = 4.0                              # M4
 JACK_TAB_OD   = 8.0                              # plate threaded-tab OD (M4 self-tap wall)
 JACK_TAB_BOTZ = ZPL_BOT - 3.5                    # tab bottom (thread below the plate)
