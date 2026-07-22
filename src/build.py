@@ -74,11 +74,10 @@ PARTS = {
     "screw_pulley":    (lambda: heal(C.screw_pulley()),  "pctg/screw_pulley.step",  "PCTG — flanged 14T GT2 pulley, 45° top flange — ×10 (fine teeth need unfilled resolution)"),
     "motor_pulley":    (lambda: heal(C.motor_pulley()),  "pctg/motor_pulley.step",  "PCTG — flanged 14T GT2 pulley, 45° outer flange — ×10"),
     "tension_fork":    (lambda: TF.tension_forks,    "pctg/tension_fork.step",    "PCTG — belt-tension lock forks, graded 3.0–6.0 set (4 of the fitting size per motor; positive stop in the slot, no friction reliance)"),
-    # pickup carrier: the deck pickup-piece (a top_plate panel) holds the pickup
-    # via a full-width height plate + a clamp shim (both printed); the screws are
-    # stocked M4
-    "pickup_zplate":   (lambda: heal(__import__("src.top_plate", fromlist=["e"]).pickup_zplate), "petg-gf/pickup_zplate.step", "PETG-GF — pickup height plate (full-width; the 3 M4 height screws lift it from below, pickup rests on top so it can sit anywhere in X; GF keeps it flat on the point loads)"),
-    "pickup_xclamp":   (lambda: heal(__import__("src.top_plate", fromlist=["e"]).pickup_xclamp), "pctg/pickup_xclamp.step", "PCTG — pickup clamp shim (the side M4 screw drives it against the pickup so no metal digs the pickup; compliance is the function)"),
+    # pickup carrier: the deck pickup-piece (a top_plate panel) holds the pickup on a
+    # full-width height plate lifted by 3 M4 set-screw jacks; 2 M4 toe-clamp screws in
+    # the piece's -Y ledges lock it. All hardware is stocked M4, all turned from +Z.
+    "pickup_zplate":   (lambda: heal(__import__("src.top_plate", fromlist=["e"]).pickup_zplate), "petg-gf/pickup_zplate.step", "PETG-GF — pickup height plate (full-width; the 3 M4 set-screw jacks lift/tilt it, pickup rests on top and slides in X for tone; GF keeps it flat on the point loads)"),
     # (round leg_socket / leg_segment exports RETIRED by the square-leg
     # redesign — generators remain in legs.py until the refinement pass
     # deletes them)
@@ -396,35 +395,32 @@ def _stow_tail(i, rad):
     return out
 
 
-PICKUP_X = -50.0     # pickup centre in the shown pose (the 50 mm spec). The clamp
-                     # gives +/-10 fine X (= the 20 mm slot/2 -> continuous), and
-                     # re-slotting the 3-band piece (5 positions) moves it coarsely
-                     # bridge<->neck; full reach ~ -37.5..-127.5.
-
-
 def _pickup_mount_components():
     from . import top_plate as TP
-    # pickup rests on the Z-plate, +Y face seated against the plate's +Y flange
-    py = (TP.HY_REF - 0.3 - TP.FLG_T) - PM.PK_L / 2
-    out = [("pickup", PM.pickup_demo().translate((PICKUP_X, py, PM.PK_TOP))),
-           ("pickup_zplate", TP.pickup_zplate),
-           ("pickup_xclamp", TP.pickup_xclamp.translate((PICKUP_X - TP.PIECE_CTR, 0, 0)))]
-    # TOP-ACCESS height (user): THREE vertical M2 grub-screw jacks in a tripod (2 on
-    # the +Y reference side at the X-ends, 1 on -Y at centre X), heads on the plate
-    # top, reached from +Z outboard of the strings. Turn CW to jack that corner up
-    # off the fixed pad; equalise the two +Y = X level, -Y = across-string tilt.
+    PICKUP_X = TP.PICKUP_X_NOM     # pickup centre in the shown pose (pocket centre); it
+                                   # slides +/-~17 in X for fine tone, re-slots the 4-band
+                                   # piece for coarse bridge<->neck moves.
+    # pickup rests on the Z-plate, centred on the field (Y = PK_CTR_Y) for magnetic cover
+    out = [("pickup", PM.pickup_demo().translate((PICKUP_X, TP.PK_CTR_Y, PM.PK_TOP))),
+           ("pickup_zplate", TP.pickup_zplate)]
+    # TOP-ACCESS height (user): THREE vertical M4 SET-SCREW jacks in a tripod that lift
+    # the plate off fixed pads -- ALL turned from +Z. The two +Y jacks are reached
+    # THROUGH the pickup's own +Y ear holes (tip string 1 aside); the -Y jack sits
+    # outboard at centre X. Equalise the two +Y = X level, -Y = across-string tilt.
     for _i, (_jx, _jy) in enumerate(TP.JACK_POS):
         _tip = TP.JACK_PAD_TOPZ - 0.2
-        _hz = TP.ZPL_TOP - 1.5
-        out.append((f"pickup_jack_screw_{_i}",              # head sits flush in its
-                    cyl(TP.JACK_D, _hz - _tip, z=_tip)      # counterbore (top at the
-                    .union(cyl(TP.JACK_D + 2.0, 1.5, z=_hz))  # plate top, not proud)
-                    .translate((_jx, _jy, 0.0))))
-    # clamp screw in whichever -Y skirt hole sits nearest the pickup; its tip drives
-    # the shim +Y, pinning the pickup against the +Y flange (the shim spreads load)
-    cx = min(TP.CLAMP_HOLES, key=lambda h: abs(h - PICKUP_X))
-    sc = PM.clamp_screw().rotate((0, 0, 0), (0, 0, 1), 180)      # head -Y, tip +Y
-    out.append(("clamp_screw", sc.translate((cx, TP.CLAMP_SHIM_Y - 1.45, TP.CL_Z))))
+        _topz = TP.ZPL_TOP + 0.5                            # set-screw top just above the plate
+        out.append((f"pickup_jack_screw_{_i}",
+                    cyl(TP.JACK_D, _topz - _tip, z=_tip).translate((_jx, _jy, 0.0))))
+    # TOP-ACCESS toe-clamps (replace the side clamp): two M4 screws driven DOWN through
+    # the -Y skirt ledges; the tip presses the pickup's -Y frame, locking pickup + plate.
+    for _i, _cx in enumerate(TP.TOECLAMP_X):
+        _tip = PM.PK_TOP - 1.0
+        _topz = TP.TOECLAMP_TOPZ + 1.5
+        out.append((f"pickup_toeclamp_screw_{_i}",
+                    cyl(TP.TOECLAMP_D, _topz - _tip, z=_tip)
+                    .union(cyl(TP.TOECLAMP_D + 3.0, 1.5, z=TP.TOECLAMP_TOPZ))
+                    .translate((_cx, TP.TOECLAMP_LIPY - 0.5, 0.0))))
     return out
 
 
@@ -747,13 +743,11 @@ _COLORS = {
     "string":          (0.85, 0.85, 0.85),
     "break_dowel":     (0.75, 0.75, 0.78),   # steel dowel (gauged break pin)
     "set_screw":       (0.55, 0.55, 0.58),   # alloy set screw
-    "pickup_jack_screw":  (0.55, 0.55, 0.58),  # M3 top-access height jackscrew
+    "pickup_jack_screw":  (0.55, 0.55, 0.58),  # M4 top-access height set-screw jack
+    "pickup_toeclamp_screw": (0.55, 0.55, 0.58),  # M4 top-access toe-clamp screw
     "chassis":         (0.46, 0.52, 0.55),   # PETG-GF frame
     "pickup":          (0.10, 0.10, 0.12),   # DEMO pickup body
     "pickup_zplate":   (0.85, 0.65, 0.30),   # PCTG height plate (under the pickup)
-    "pickup_xclamp":   (0.90, 0.55, 0.20),   # PCTG clamp shim
-    "height_screw":    (0.72, 0.72, 0.75),   # M4 height set-screw (lifts the plate)
-    "clamp_screw":     (0.55, 0.55, 0.58),   # M4 side clamp screw
     "leg_body_stub":   (0.36, 0.42, 0.46),
     "leg_seg_body":    (0.42, 0.48, 0.52),   # square GF bodies
     "leg_coupler_m":   (0.36, 0.42, 0.46),
