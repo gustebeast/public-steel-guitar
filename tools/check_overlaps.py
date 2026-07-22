@@ -84,12 +84,16 @@ GLOBAL_OK = {
     frozenset({"keyhead_endplate", "chassis"}), frozenset({"keyhead_endplate", "string"}),
     frozenset({"keyhead_endplate", "top_plate"}),
     frozenset({"keyhead_endplate", "break_dowel"}), frozenset({"keyhead_endplate", "set_screw"}),
-    # pickup carrier: the pickup rests on the printed Z-plate (jacked by the two
-    # top-access M3 grub-screws that thread the plate's X-end tabs and bear on the
-    # piece's fixed pads) and is pinned by the clamp shim (side clamp screw).
-    frozenset({"pickup", "pickup_zplate"}), frozenset({"pickup", "pickup_xclamp"}),
+    # pickup carrier: the pickup rests on the printed Z-plate (jacked by the three
+    # top-access M4 set-screws that thread the plate's tabs and bear on the piece's
+    # fixed pads; the two +Y jacks poke up into the pickup's ear holes) and is locked
+    # by the two M4 toe-clamp screws that thread the piece's -Y ledges onto its frame.
+    frozenset({"pickup", "pickup_zplate"}),
+    frozenset({"pickup", "pickup_jack_screw"}),
+    frozenset({"pickup", "pickup_toeclamp_screw"}),
     frozenset({"pickup_zplate", "pickup_jack_screw"}),
     frozenset({"pickup_jack_screw", "top_plate"}),
+    frozenset({"pickup_toeclamp_screw", "top_plate"}),
     # FLUSH-X: the body stubs' outboard wall tenons mortise the ENDPLATE
     # side walls (the inboard ones mortise the rail/chassis)
     frozenset({"leg_body_stub", "keyhead_endplate"}),
@@ -100,7 +104,6 @@ GLOBAL_OK = {
     # a motor's CAN tee mounts right at that motor's -Y PCB (the drop pigtail is short);
     # the tee-board corner grazing the motor body there is that mount contact
     frozenset({"tee_pcb", "motor"}),
-    frozenset({"pickup_xclamp", "clamp_screw"}),
     # legs (FLUSH round): the BODY STUB's octagon wall tenons mortise the
     # rail band (0.1 fit) and its top face butts the body bottom; the
     # latch head engages its socket; the stack below is designed contact
@@ -217,8 +220,8 @@ def intended(na, nb) -> bool:
     tp = {base(na), base(nb)}
     TP_FAMILY = {"top_plate", "top_plate_color"}
     if tp & TP_FAMILY and tp <= (TP_FAMILY | {"chassis", "oled", "joystick",
-                                              "pickup", "pickup_zplate", "pickup_xclamp",
-                                              "height_screw", "clamp_screw",
+                                              "pickup", "pickup_zplate",
+                                              "pickup_jack_screw", "pickup_toeclamp_screw",
                                               "bridge_endplate", "keyhead_endplate"}):
         return True
     # adjacent chassis segments meet at their sliding-dovetail joints (one frame)
