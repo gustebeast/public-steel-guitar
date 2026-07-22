@@ -451,11 +451,19 @@ def leg_shaft() -> cq.Workplane:
     dovetail mortise underneath. ROUND 3: the tenon is the W28 flush
     OCTAGON prism (_shaft_prism — stem base on local +Y, riding the
     sleeve's open groove at the slide clearance; keyed + captured by
-    shape). PETG-GF; 288 long — prints LYING on the stem-base face,
-    laid DIAGONAL in plan (like the bar pieces). Z0 = block bottom."""
+    shape). COVER round: the prism stem dropped to SH_Y (17.8) to run
+    under the sleeve cover, so the BLOCK's +Y face is TRUNCATED to the
+    SAME plane — the print bed must be ONE plane (user caught the full
+    44 block floating the stem 4.2 off the bed). The whole below-the-
+    mouth unit now shares one flush 17.8 inner plane (the TPU foot stays
+    44-sq: a proud ground pad, and it also serves the full-depth bar).
+    PETG-GF; 288 long — prints LYING on that face, laid DIAGONAL in
+    plan (like the bar pieces). Z0 = block bottom."""
     body = _shaft_prism(TALL_SHAFT_L)
     body = body.union(box_at(SQ_W, SQ_W, TALL_BLOCK_H, z=TALL_BLOCK_H / 2))
     body = body.cut(foot_mortise_cutter())
+    body = body.cut(box_at(SQ_W + 2.0, 6.0, TALL_SHAFT_L + 4.0,
+                           y=SH_Y + 3.0, z=TALL_SHAFT_L / 2))
     return body
 
 
@@ -519,12 +527,19 @@ def leg_shaft_short() -> cq.Workplane:
     the flush octagon mortise (the lying shaft's +Y bed face flipped the
     old house floor into a 28-wide ceiling bridge), ledge pocket in the
     thick -Y wall at x +8 (matches the tower's mirrored channel) + tail
-    window through the face skin. Passive. Z0 = the block's mouth face."""
+    window through the face skin. Passive. COVER round: the block's +Y
+    face is TRUNCATED to the slider stem plane SH_Y (one flat print bed
+    with the thinned prism — user caught the float); the bar tower's
+    tenon is shaved to the same plane and lands flush in the opened
+    socket (capture keeps 3.5 of lip band; waist-vs-slit unchanged).
+    Z0 = the block's mouth face."""
     body = _shaft_prism(SHORT_SHAFT_L)
     body = body.union(box_at(SQ_W, SQ_W, BLOCK_H, z=BLOCK_H / 2))
     body = body.cut(_section_mortise(length=39.4).translate((0, 0, -1.0)))
     body = body.cut(box_at(BOLT_W + 2.0, 6.4, 9.0, x=8.0, y=-9.6, z=31.9))
     body = body.cut(box_at(BOLT_W + 2.4, 9.6, 9.4, x=8.0, y=17.7, z=31.9))
+    body = body.cut(box_at(SQ_W + 2.0, 6.0, SHORT_SHAFT_L + 4.0,
+                           y=SH_Y + 3.0, z=SHORT_SHAFT_L / 2))
     return body
 
 
