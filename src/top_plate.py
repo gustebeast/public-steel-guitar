@@ -42,6 +42,7 @@ from . import chassis as CH
 from . import electronics as EL
 from . import pickup_mount as PM
 from .helpers import box_at, cyl, cyl_y, heal
+from cadkit.fasteners import M4, cut_m4_boss, cut_insert_bore
 
 YL = CH.Y_LO + CH.T / 2                 # -Y rail inner face (-128.75)
 YH = CH.Y_HI - CH.T / 2                 # +Y rail inner face (+54.75)
@@ -137,8 +138,12 @@ ZPL_TOP  = PM.PK_BOT                                      # pickup rests on the 
 ZPL_BOT  = ZPL_TOP - ZPL_T
 FLG_BOT  = ZPL_BOT
 FLG_TOP  = ZPL_TOP + PM.PK_H_MIN                          # -Y guide wall top (capped below pickup top)
-FLOOR_BOT = ZPL_BOT - 5.7                                # piece bottom -- DEEP for the 22mm pickup's
-                                                         # jack tabs/pads (below the -14 ribs; the
+# jack throw: M4x8 set screw threading a heat-set insert in the plate (mouth at the
+# plate top, boss down); its tip lands JACK_SCREW_L below the mouth, on the reaction.
+JACK_SCREW_L = 8.0                                        # M4x8 (short throw keeps the floor shallow)
+JACK_PAD_Z   = ZPL_TOP - JACK_SCREW_L                     # reaction pad TOP = set-screw tip contact (~-18.8)
+FLOOR_BOT = JACK_PAD_Z - 1.0                              # piece bottom (1mm reaction pad; DEEP for the
+                                                         # 22mm pickup, below the -14 ribs -- the
                                                          # neck-slide collision is a TODO to review)
 # ── TOP-ACCESS M4 TRIPOD JACKS (user), at the PLATE's clear zones (pickup-agnostic)
 # TWO at the +Y plate corners (near the X-ends, outboard of pickup+string 1); ONE deep
@@ -152,10 +157,9 @@ JACK_YM       = PK_YM - 10.0                        # -Y jack deep in the utilit
 JACK_POS      = [(PICKUP_X_NOM + JACK_INSET_X, JACK_YP),
                  (PICKUP_X_NOM - JACK_INSET_X, JACK_YP),
                  (PICKUP_X_NOM, JACK_YM)]
-JACK_D        = 4.0                              # M4
-JACK_TAB_OD   = 8.0                              # plate threaded-tab OD (M4 self-tap wall)
-JACK_TAB_BOTZ = ZPL_BOT - 3.5                    # tab bottom (thread below the plate)
-JACK_PAD_TOPZ = JACK_TAB_BOTZ - 0.4              # fixed pad top (set-screw tip bears here)
+JACK_D        = 4.0                              # M4 (cadkit M4 set-screw + heat-set insert standard)
+JACK_MOUTH_Z  = ZPL_TOP                          # insert mouth (pocket opening) at the plate top
+BUT_T         = 10.0                             # reaction-buttress thickness
 HEIGHT_HOLE = PICKUP_X_NOM
 # ── Y CLAMP: TWO adjustable -Y clamp pads (user) ─────────────────────────────
 # In the -Y utility zone, two printed PADS (one either side of the -Y jack) each ride
@@ -357,11 +361,26 @@ def _pickup_piece():
     for xe in (PIECE_X0 - WALL / 2, PIECE_X1 + WALL / 2):   # end walls (stop plate X)
         body = body.union(box_at(WALL, OPEN_YW, BZ - FLOOR_BOT,
                                  x=xe, y=OPEN_YC, z=(BZ + FLOOR_BOT) / 2))
-    # FIXED jack pads: a post under each of the 3 tripod set-screws (tip bears here to
-    # jack the plate up). Bottom on the piece floor (FLOOR_BOT, clears the -14 ribs).
+    # REACTION BUTTRESSES: each jack tip bears on a small pad carried by a triangular
+    # buttress ROOTED ON THE NEAREST WALL. The buttress grows from the wall (at the
+    # deck) down to the pad at < 45 deg, so it PRINTS SELF-SUPPORTING in the deck-down
+    # (+Z -> -Z) orientation -- unlike the old floating flat pads. (The tiny tip-contact
+    # face itself is a short bridge.) +Y jacks root on an end wall; the -Y jack on the
+    # -Y skirt.
     for jx, jy in JACK_POS:
-        body = body.union(box_at(11.0, 11.0, JACK_PAD_TOPZ - FLOOR_BOT,
-                                 x=jx, y=jy, z=(FLOOR_BOT + JACK_PAD_TOPZ) / 2.0))
+        if jy > 0:                                         # +Y jack -> nearest end wall (X-Z fin)
+            wx = (PIECE_X0 - WALL / 2) if jx > OPEN_CTR else (PIECE_X1 + WALL / 2)
+            prof = [(wx, BZ), (wx, FLOOR_BOT), (jx, FLOOR_BOT)]
+            fin = (cq.Workplane("XZ").polyline(prof).close()
+                   .extrude(BUT_T / 2, both=True).translate((0, jy, 0)))
+        else:                                              # -Y jack -> -Y skirt (Y-Z fin)
+            wy = -(HY_CLAMP)
+            prof = [(wy, BZ), (wy, FLOOR_BOT), (jy, FLOOR_BOT)]
+            fin = (cq.Workplane("YZ").polyline(prof).close()
+                   .extrude(BUT_T / 2, both=True).translate((jx, 0, 0)))
+        body = body.union(fin)
+        body = body.union(box_at(6.0, 6.0, JACK_PAD_Z - FLOOR_BOT,   # tip-contact pad
+                                 x=jx, y=jy, z=(FLOOR_BOT + JACK_PAD_Z) / 2.0))
     return heal(body)
 
 
@@ -377,17 +396,19 @@ def _pickup_zplate():
     ym = -(HY_CLAMP - 0.3) + FLG_T / 2
     plate = plate.union(box_at(OPEN_LEN - 0.8, FLG_T, FLG_TOP - FLG_BOT,
                                x=OPEN_CTR, y=ym, z=(FLG_BOT + FLG_TOP) / 2))
-    # JACK TABS: a downward threaded boss under each of the 3 tripod set-screws, tip on
-    # the fixed pad below. M4 self-tap (Ø = screw_d + 0.2; heat-set insert = upgrade).
+    # JACK BOSSES: the cadkit M4 SET-SCREW + HEAT-SET INSERT standard (cut_m4_boss:
+    # Ø8 boss, Ø6×5 melt pocket, Ø4.4 clearance to the tip) under each tripod jack --
+    # boss protrudes DOWN, insert mouth at the plate top, the set-screw tip runs on
+    # through the clearance onto the piece reaction buttress. Same helper as the nut
+    # block / knee lever; no more self-tap cylinders.
     for jx, jy in JACK_POS:
-        plate = plate.union(cyl(JACK_TAB_OD, ZPL_BOT - JACK_TAB_BOTZ, z=JACK_TAB_BOTZ)
-                            .translate((jx, jy, 0.0)))
-        plate = plate.cut(cyl(JACK_D + 0.2, ZPL_TOP - JACK_TAB_BOTZ + 1.0,
-                              z=JACK_TAB_BOTZ - 0.5).translate((jx, jy, 0.0)))
-    # Y-CLAMP screw holes (self-tap) in the -Y utility zone: the clamp pads ride these.
+        plate = cut_m4_boss(plate, (jx, jy, JACK_MOUTH_Z - M4.boss_prot),
+                            (1, 0, 0), 180, clr_len=4.0)
+    # Y-CLAMP: same M4 insert boss (the clamp screw threads the insert; its head, down a
+    # bore in the pad, pulls the pad onto the pickup). Mouth at the plate top, boss down.
     for cx in YCLAMP_X:
-        plate = plate.cut(cyl(YCLAMP_D + 0.2, ZPL_T + 2,
-                              z=ZPL_BOT - 1).translate((cx, YCLAMP_SCR_Y, 0.0)))
+        plate = cut_m4_boss(plate, (cx, YCLAMP_SCR_Y, JACK_MOUTH_Z - M4.boss_prot),
+                            (1, 0, 0), 180, clr_len=2.0)
     return plate
 
 
@@ -406,15 +427,17 @@ def _pickup_yclamp():
     # top lip overhanging +Y over the pickup -Y top edge (traps it down)
     body = body.union(box_at(w, 3.0, z1 - PM.PK_TOP,
                              x=0.0, y=y_face + 1.5, z=(PM.PK_TOP + z1) / 2))
-    # Y-slot for the M4 screw (stadium: travel in Y, rounded ends)
-    slot = box_at(YCLAMP_D + 0.4, YCLAMP_SLOTY, z1 - z0 + 2,
-                  x=0.0, y=YCLAMP_SCR_Y, z=(z0 + z1) / 2)
-    for ey in (-YCLAMP_SLOTY / 2, YCLAMP_SLOTY / 2):
-        slot = slot.union(cyl((YCLAMP_D + 0.4), z1 - z0 + 2, z=z0 - 1)
-                          .translate((0.0, YCLAMP_SCR_Y + ey, 0.0)))
-    body = body.cut(slot)
-    # screw-head counterbore on top
-    body = body.cut(cyl(YCLAMP_D + 3.0, 2.0, z=z1 - 2.0).translate((0.0, YCLAMP_SCR_Y, 0.0)))
+    # Y-SLOT (shaft clearance + driver access) up the full pad; HEAD POCKET (a wider
+    # Y-slot) at the BOTTOM, where the M4 button head bears near the plate. The screw
+    # threads the plate insert (fixed); the pad slides in Y on the slot, then the head
+    # (turned from +Z down the bore) pulls the pad down onto the pickup.
+    def _yslot(dia, zlo, zhi):
+        s = box_at(dia, YCLAMP_SLOTY, zhi - zlo, x=0.0, y=YCLAMP_SCR_Y, z=(zlo + zhi) / 2)
+        for ey in (-YCLAMP_SLOTY / 2, YCLAMP_SLOTY / 2):
+            s = s.union(cyl(dia, zhi - zlo, z=zlo).translate((0.0, YCLAMP_SCR_Y + ey, 0.0)))
+        return s
+    body = body.cut(_yslot(M4.shaft_clr_d + 0.4, z0 - 1, z1 + 1))      # shaft + driver bore
+    body = body.cut(_yslot(M4.boss_od - 0.5, z0, z0 + 3.0))            # head pocket at the plate
     return body
 
 
