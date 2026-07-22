@@ -81,7 +81,8 @@ PARTS = {
     # (round leg_socket / leg_segment exports RETIRED by the square-leg
     # redesign — generators remain in legs.py until the refinement pass
     # deletes them)
-    "leg_sleeve":      (lambda: heal(LG.leg_sleeve()),  "petg-gf/leg_sleeve.step",  "PETG-GF — leg slider sleeve ×4 (all-octagon: solid flush spigot up top, full-length open octagon GROOVE for the shaft, EMBEDDED gib clamp — pocket + 2× M4 grub screws flush in the outer face, zero flexure so GF is fine now; prints LYING on the +Y face like the rest of the leg)"),
+    "leg_sleeve":      (lambda: heal(LG.leg_sleeve()),  "petg-gf/leg_sleeve.step",  "PETG-GF — leg slider sleeve ×4 (44×40×200, +Y face thinned for the cover: truncated flush spigot up top — the cover tongue completes the joint — full-length dropped octagon GROOVE, two W5 cover-rail slots, EMBEDDED gib bay + ONE M4 grub flush in the +X face; prints LYING on the thinned +Y face)"),
+    "leg_sleeve_cover": (lambda: heal(LG.leg_sleeve_cover()), "petg-gf/leg_sleeve_cover.step", "PETG-GF — sleeve COVER ×4: 44-wide × 4 plate sliding down two W5 octagon rails to close the sleeve's open C-channel into a box tube (anti-bow at long extension) + hide the slack coil; segment-mortise TONGUE up top + blind rail ends = captive, zero fasteners. Prints lying on the outer face"),
     "leg_pinch_gib":   (lambda: heal(LG.leg_pinch_gib()), "tpu/leg_pinch_gib.step", "TPU — pinch GIB PAD ×4: grippy pad in the sleeve's +X wall pocket; ONE central M4 grub presses it onto the shaft octagon's waist wall (TPU = preload spring + µ~0.7 friction; ~500-650 N hold vs ~350 N worst leg load). Prints flat"),
     "leg_shaft":       (lambda: heal(LG.leg_shaft()),   "petg-gf/leg_shaft.step",   "PETG-GF — -Y shaft ×2: W28 flush-octagon tenon (197, rides the sleeve's open groove) + SOLID 44-sq block (91, equal-height rule) with the shared TPU foot's dovetail mortise. 288 long: print LYING on the stem-base face, laid diagonal in plan"),
     "leg_shaft_trrs":  (lambda: heal(LG.leg_shaft_trrs()), "petg-gf/leg_shaft_trrs.step", "PETG-GF — +Y WIRED shaft ×1 (245, lying print): W28 octagon tenon + 44-sq block with the bar-joint octagon socket + the 10-03404 jack seated mouth-down on the (-5,+13) TRRS axis (loads from the open tenon top; boss = withdrawal stop, pressed jack_seat_ring = insertion stop)"),
@@ -193,6 +194,17 @@ PARTS["test_section_mortise"] = (
     "test_section_mortise.step",
     "TEST COUPON — LEG section joint (28 mm octagon) MORTISE block (through-slot); "
     "prints -Z→+Z; validates the one-bead roof bridge at the real section size")
+# Sleeve-cover rail coupon (the W5 rail octagons + 44-wide plate, real geometry)
+PARTS["test_cover_seat"] = (
+    lambda: heal(__import__("src.joint_coupon", fromlist=["e"]).cover_seat_coupon()),
+    "test_cover_seat.step",
+    "TEST COUPON — 40-long slice of the thinned sleeve face with both W5 cover-rail "
+    "slots; print lying like the sleeve, slide test_cover_plate on to check the fit")
+PARTS["test_cover_plate"] = (
+    lambda: heal(__import__("src.joint_coupon", fromlist=["e"]).cover_plate_coupon()),
+    "test_cover_plate.step",
+    "TEST COUPON — 40-long slice of the leg sleeve cover (44-wide plate + both W5 "
+    "octagon rails); prints lying on its outer face")
 
 
 # Anchor ALL outputs to the project folder (never the cwd — see Archive/3D/CLAUDE.md)
@@ -456,7 +468,7 @@ def _leg_components():
     head, bolt, btn = (LG.leg_latch_head(), LG.leg_latch_bolt(),
                        LG.leg_latch_btn())
     stub_p, stub_jk = LG.leg_body_stub(), LG.leg_body_stub_jk()
-    sleeve = LG.leg_sleeve()
+    sleeve, cover = LG.leg_sleeve(), LG.leg_sleeve_cover()
     shaft, foot = LG.leg_shaft(), LG.leg_foot()
     ground = CH.Z_BOT - LEG_HEIGHT
     ZM = -LG.STUB_H                        # stub mouth / head seat (rel Z_BOT)
@@ -505,6 +517,8 @@ def _leg_components():
                               top - LG.SEG_BODY_L)))
                 top -= LG.SEG_BODY_L
             out.append((f"leg_sleeve_{k}", R(sleeve, top)))
+            # cover rides the sleeve frame (rails at blind-end down-stop)
+            out.append((f"leg_sleeve_cover_{k}", R(cover, top)))
             # gib pad drawn released (0.3 standoff) in the pocket near the mouth
             out.append((f"leg_pinch_gib_{k}",
                         R(LG.leg_pinch_gib(), top - 195.0)))
@@ -765,6 +779,7 @@ _COLORS = {
                                              # take-up in the segment core)
     "leg_segment":     (0.42, 0.48, 0.52),
     "leg_sleeve":      (0.36, 0.42, 0.46),
+    "leg_sleeve_cover": (0.30, 0.36, 0.40),
     "leg_shaft":       (0.55, 0.58, 0.62),
     "leg_foot":        (0.12, 0.12, 0.13),   # TPU
     "leg_washer":      (0.12, 0.12, 0.13),   # TPU
