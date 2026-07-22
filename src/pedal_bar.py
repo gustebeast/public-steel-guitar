@@ -111,6 +111,13 @@ def _stub_tower(lx: float, wired: bool) -> cq.Workplane:
     # block's bed face turned the old house floor into a 28-wide ceiling
     # bridge). Constant Z-section: still prints clean standing with the bar.
     b = b.union(LG._section_tenon(39.0).translate((0, 0, STUB_Z0 - 1.0)))
+    # COVER round: the leg block is truncated to the slider stem plane
+    # (LG.SH_Y — its print-bed fix), so the tenon band above that plane is
+    # SHAVED from the seat plane up: the truncated tenon lands FLUSH with
+    # the block's thinned face (waist-vs-slit capture + the bolt latch are
+    # untouched; the 44-sq tower body below keeps its full corner)
+    b = b.cut(box_at(LG.SQ_W + 2.0, 6.0, 40.0, y=LG.SH_Y + 3.0,
+                     z=STUB_Z0 + 20.0))
     # bolt channel hooks the thick authored -Y (point-side) wall of the
     # block's mortise (the +Y face is the open groove); x +8 dodges the
     # TRRS way at authored (-5, +TRRS_DY)
