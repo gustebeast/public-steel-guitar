@@ -453,17 +453,16 @@ def leg_shaft() -> cq.Workplane:
     sleeve's open groove at the slide clearance; keyed + captured by
     shape). COVER round: the prism stem dropped to SH_Y (17.8) to run
     under the sleeve cover, so the BLOCK's +Y face is TRUNCATED to the
-    SAME plane — the print bed must be ONE plane (user caught the full
-    44 block floating the stem 4.2 off the bed). The whole below-the-
-    mouth unit now shares one flush 17.8 inner plane (the TPU foot stays
-    44-sq: a proud ground pad, and it also serves the full-depth bar).
-    PETG-GF; 288 long — prints LYING on that face, laid DIAGONAL in
-    plan (like the bar pieces). Z0 = block bottom."""
+    SAME plane — and (user, symmetry round) the block now insets 4.2 on
+    ALL FOUR sides: BLK_W 35.6 square, centred — the one-sided cut read
+    asymmetrical. +Y face = the stem plane, so the ONE-plane print bed
+    comes free; the TPU foot stays 44-sq (a proud ground boot, and it
+    also serves the full-depth bar — its dovetail tail is trimmed to
+    stay inside the smaller block). PETG-GF; 288 long — prints LYING on
+    the stem face, laid DIAGONAL in plan. Z0 = block bottom."""
     body = _shaft_prism(TALL_SHAFT_L)
-    body = body.union(box_at(SQ_W, SQ_W, TALL_BLOCK_H, z=TALL_BLOCK_H / 2))
+    body = body.union(box_at(BLK_W, BLK_W, TALL_BLOCK_H, z=TALL_BLOCK_H / 2))
     body = body.cut(foot_mortise_cutter())
-    body = body.cut(box_at(SQ_W + 2.0, 6.0, TALL_SHAFT_L + 4.0,
-                           y=SH_Y + 3.0, z=TALL_SHAFT_L / 2))
     return body
 
 
@@ -527,19 +526,18 @@ def leg_shaft_short() -> cq.Workplane:
     the flush octagon mortise (the lying shaft's +Y bed face flipped the
     old house floor into a 28-wide ceiling bridge), ledge pocket in the
     thick -Y wall at x +8 (matches the tower's mirrored channel) + tail
-    window through the face skin. Passive. COVER round: the block's +Y
-    face is TRUNCATED to the slider stem plane SH_Y (one flat print bed
-    with the thinned prism — user caught the float); the bar tower's
-    tenon is shaved to the same plane and lands flush in the opened
-    socket (capture keeps 3.5 of lip band; waist-vs-slit unchanged).
-    Z0 = the block's mouth face."""
+    window through the face skin. Passive. COVER + SYMMETRY rounds: the
+    block is BLK_W 35.6 square (4.2 inset on all four sides — user: the
+    +Y-only truncation looked asymmetrical; +Y face = the stem plane, so
+    the flat bed comes free). The bar tower's tenon is shaved to the
+    same +Y plane and lands flush in the opened socket (capture keeps
+    3.5 of lip band; waist-vs-slit unchanged; socket X walls 3.6, -Y
+    back wall 3.5). Z0 = the block's mouth face."""
     body = _shaft_prism(SHORT_SHAFT_L)
-    body = body.union(box_at(SQ_W, SQ_W, BLOCK_H, z=BLOCK_H / 2))
+    body = body.union(box_at(BLK_W, BLK_W, BLOCK_H, z=BLOCK_H / 2))
     body = body.cut(_section_mortise(length=39.4).translate((0, 0, -1.0)))
     body = body.cut(box_at(BOLT_W + 2.0, 6.4, 9.0, x=8.0, y=-9.6, z=31.9))
     body = body.cut(box_at(BOLT_W + 2.4, 9.6, 9.4, x=8.0, y=17.7, z=31.9))
-    body = body.cut(box_at(SQ_W + 2.0, 6.0, SHORT_SHAFT_L + 4.0,
-                           y=SH_Y + 3.0, z=SHORT_SHAFT_L / 2))
     return body
 
 
@@ -671,6 +669,10 @@ CVR_RAIL_W = 5.0      # rail octagon flat-to-flat (cadkit h_min 4.95 at n0.8)
 CVR_RAIL_H = 5.0      # rail octagon height: slot floor y 12.9 dilated
 CVR_TNG_L  = 28.0     # cover tongue engagement (= SEC_TEN_L; 0.4 tip gap in
                       # the segment's 28.4 socket = the cover's up-play)
+BLK_W      = 2 * SH_Y # 35.6: the shaft terminal blocks' square (user: the
+                      # cover side's 4.2 inset on ALL FOUR sides — the one-
+                      # sided cut looked asymmetrical; the +Y face IS the
+                      # slider stem plane, so the flat print bed comes free)
 
 
 def _rail_tenon(length: float) -> cq.Workplane:
@@ -1334,14 +1336,15 @@ def leg_foot() -> cq.Workplane:
     """SHARED TPU foot ×4 (user: one look everywhere — the same dovetail
     insert serves the -Y leg blocks AND the pedal bar): 44-sq ground pad
     + dovetail tenon sliding into the underside mortise from -Y local;
-    compression-loaded, TPU-grippy, no fastener. Tenon 37 long (y -21.5
-    ..15.5): fully INSIDE the 44 faces — nothing pokes the flush column.
+    compression-loaded, TPU-grippy, no fastener. Tenon 33 long (y -17.5
+    ..15.5): inside the 35.6 BLK_W block faces (and the 44 bar; the +Y
+    end still butts the slot's closed end at 16 = the Y registration).
     Z0 = ground."""
     b = box_at(SQ_W, SQ_W, FOOT_H, z=FOOT_H / 2)
     b = b.union(cq.Workplane("XZ")
                 .polyline([(-14.8, FOOT_H), (-13.3, FOOT_H + 5.8),
                            (13.3, FOOT_H + 5.8), (14.8, FOOT_H)])
-                .close().extrude(37.0).translate((0, 15.5, 0)))
+                .close().extrude(33.0).translate((0, 15.5, 0)))
     return b
 
 
