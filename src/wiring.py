@@ -403,7 +403,7 @@ def build_wires():
 # everything else a wire grazes is a routing bug the gate reports
 WIRE_OK = {
     "wire_pickup":    {"pickup", "analog_frontend", "top_plate",
-                       "pickup_zplate", "pickup_xclamp"},
+                       "pickup_zplate"},
     "wire_out":       {"analog_frontend", "ts_jack"},
     "wire_audio":     {"analog_frontend", "teensy_stack"},
     "wire_dac":       {"analog_frontend", "teensy_stack"},
