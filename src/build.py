@@ -108,9 +108,9 @@ PARTS = {
     # pedal bar + latch (one latched foot for now; mirror to -X once the feel
     # is validated). The bar itself is a DEMO prism (longer than the bed —
     # it gets segmented for printing once the pedals land on it).
-    "pedal_bar_a":     (lambda: heal(_PB("pedal_bar_a")), "petg-gf/pedal_bar_a.step", "PETG-GF — pedal bar, -X piece (44 wide, flush; fused WIRED tower; trough + lid groove; splice tenons at +X). ~219 long: prints STRAIGHT; glue to _b"),
+    "pedal_bar_a":     (lambda: heal(_PB("pedal_bar_a")), "petg-gf/pedal_bar_a.step", "PETG-GF — pedal bar, -X piece (35.6 wide, flush with the slimmed leg blocks; fused WIRED tower; trough + lid groove; splice tenons at +X). ~219 long: prints STRAIGHT; glue to _b"),
     "pedal_bar_b":     (lambda: heal(_PB("pedal_bar_b")), "petg-gf/pedal_bar_b.step", "PETG-GF — pedal bar, MID piece (trough only; XS1 slots -X, XS2 tenons +X). ~219 long: straight print; slide down onto _a's tenons + glue"),
-    "pedal_bar_c":     (lambda: heal(_PB("pedal_bar_c")), "petg-gf/pedal_bar_c.step", "PETG-GF — pedal bar, +X piece (44 wide, flush; fused PLAIN tower; splice slots at -X). ~215 long: straight print; slide down onto _b's tenons + glue"),
+    "pedal_bar_c":     (lambda: heal(_PB("pedal_bar_c")), "petg-gf/pedal_bar_c.step", "PETG-GF — pedal bar, +X piece (35.6 wide, flush with the slimmed leg blocks; fused PLAIN tower; splice slots at -X). ~215 long: straight print; slide down onto _b's tenons + glue"),
     "pedal_lid_a":     (lambda: heal(_PB("pedal_lid_a")), "petg-gf/pedal_lid_a.step", "PETG-GF — sliding dovetail lid, -X piece (covers the TRRS latch; bridges the bar splice). 241 long; print TOP-FACE DOWN (45-deg flanks)"),
     "pedal_lid_b":     (lambda: heal(_PB("pedal_lid_b")), "petg-gf/pedal_lid_b.step", "PETG-GF — sliding dovetail lid, +X piece (covers the plain latch; lock dimple clicks onto the bar-top nub, pinning both lid pieces — no screws). 322 long: diagonal, TOP-FACE DOWN"),
     # (pedal_bolt / pedal_bolt_trrs / pedal_latch_finger exports RETIRED by
@@ -538,10 +538,13 @@ def _leg_components():
                 out.append((f"leg_latch_bolt_{4 + k // 2}",
                             LG.leg_latch_bolt()
                             .translate((sx + 4.0, ly - 9.75, zst))))
+                # slim-tower button pocket sits at authored (-10.5,
+                # BLK_W/2-4.4) — offset the shared SKU to match (local
+                # (+3.5, -4.2) -> world (-3.5, +4.2) after the 180)
                 out.append((f"leg_latch_btn_{4 + k // 2}",
                             LG.leg_latch_btn()
                             .rotate((0, 0, 0), (0, 0, 1), rot)
-                            .translate((sx, ly, zst))))
+                            .translate((sx - 3.5, ly + 4.2, zst))))
             else:
                 out.append((f"leg_shaft_{k}",
                             shaft.rotate((0, 0, 0), (0, 0, 1), rot)
