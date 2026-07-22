@@ -398,34 +398,33 @@ def _stow_tail(i, rad):
 
 def _pickup_mount_components():
     from . import top_plate as TP
+    from cadkit.fasteners import M4, m4_boss_insert, screw as f_screw
     PICKUP_X = TP.PICKUP_X_NOM     # pickup centre in the shown pose (pocket centre); it
                                    # slides +/-~17 in X for fine tone, re-slots the 4-band
                                    # piece for coarse bridge<->neck moves.
     # pickup rests on the Z-plate, centred on the field (Y = PK_CTR_Y) for magnetic cover
     out = [("pickup", PM.pickup_demo().translate((PICKUP_X, TP.PK_CTR_Y, PM.PK_TOP))),
            ("pickup_zplate", TP.pickup_zplate)]
-    # TOP-ACCESS height (user): THREE vertical M4 SET-SCREW jacks in a tripod that lift
-    # the plate off fixed pads -- ALL turned from +Z, at the PLATE's clear corners
-    # (pickup-agnostic; nothing reads the pickup's holes). The two +Y corner jacks and
-    # the -Y-centre jack all sit outboard of the pickup + strings, open to +Z. Equalise
-    # the two +Y = X level, -Y = across-string tilt.
+    # TOP-ACCESS height (user): THREE M4 SET-SCREW jacks, drawn with the cadkit
+    # standard -- a seated HEAT-SET INSERT (m4_boss_insert) in the plate boss + the M4
+    # set-screw dummy (f_screw, real Ø4 shaft + 2mm hex socket), same as the nut block.
+    # Turned from +Z; tip bears on the piece reaction buttress. Equalise the two +Y =
+    # X level, -Y = across-string tilt.
     for _i, (_jx, _jy) in enumerate(TP.JACK_POS):
-        _tip = TP.JACK_PAD_TOPZ - 0.2
-        _topz = TP.ZPL_TOP + 0.5                            # set-screw top just above the plate
+        _pt = (_jx, _jy, TP.JACK_MOUTH_Z - M4.boss_prot)
+        out.append((f"pickup_jack_insert_{_i}", m4_boss_insert(_pt, (1, 0, 0), 180)))
         out.append((f"pickup_jack_screw_{_i}",
-                    cyl(TP.JACK_D, _topz - _tip, z=_tip).translate((_jx, _jy, 0.0))))
-    # Y CLAMP (user): two adjustable -Y clamp pads in the utility zone, each riding a
-    # vertical M4 screw through a Y-slot into the plate. Slide +Y to the pickup -Y edge
-    # (pins it +Y toward the datum, top lip traps it down), tighten from +Z. The pads
-    # slide to fit any pickup length -- pickup-agnostic hold-down.
+                    f_screw(M4, TP.JACK_SCREW_L).translate((_jx, _jy, TP.JACK_MOUTH_Z))))
+    # Y CLAMP (user): two adjustable -Y clamp pads, each on an M4 button screw through
+    # a heat-set INSERT in the plate (same standard). Slide the pad +Y to the pickup -Y
+    # edge, then the head (down the pad bore) pulls it down onto the pickup. All +Z.
     for _i, _cx in enumerate(TP.YCLAMP_X):
         out.append((f"pickup_yclamp_{_i}", TP.pickup_yclamp.translate((_cx, 0.0, 0.0))))
-        _tip = TP.ZPL_TOP - 0.5
-        _hz = TP.YCLAMP_TOPZ - 0.5
+        _pt = (_cx, TP.YCLAMP_SCR_Y, TP.JACK_MOUTH_Z - M4.boss_prot)
+        out.append((f"pickup_yclamp_insert_{_i}", m4_boss_insert(_pt, (1, 0, 0), 180)))
+        _sc = f_screw(M4, TP.JACK_SCREW_L).union(cyl(M4.boss_od - 1.0, 2.5, z=0.0))  # + button head
         out.append((f"pickup_yclamp_screw_{_i}",
-                    cyl(TP.YCLAMP_D, _hz - _tip, z=_tip)
-                    .union(cyl(TP.YCLAMP_D + 3.0, 1.5, z=_hz))
-                    .translate((_cx, TP.YCLAMP_SCR_Y, 0.0))))
+                    _sc.translate((_cx, TP.YCLAMP_SCR_Y, TP.ZPL_TOP))))
     return out
 
 
@@ -749,7 +748,9 @@ _COLORS = {
     "break_dowel":     (0.75, 0.75, 0.78),   # steel dowel (gauged break pin)
     "set_screw":       (0.55, 0.55, 0.58),   # alloy set screw
     "pickup_jack_screw":  (0.55, 0.55, 0.58),  # M4 top-access height set-screw jack
+    "pickup_jack_insert":  (0.80, 0.60, 0.35),  # brass heat-set insert (jack)
     "pickup_yclamp_screw": (0.55, 0.55, 0.58),  # M4 top-access Y-clamp screw
+    "pickup_yclamp_insert": (0.80, 0.60, 0.35),  # brass heat-set insert (Y-clamp)
     "pickup_yclamp":   (0.90, 0.55, 0.20),   # PCTG adjustable -Y clamp pad
     "chassis":         (0.46, 0.52, 0.55),   # PETG-GF frame
     "pickup":          (0.10, 0.10, 0.12),   # DEMO pickup body
