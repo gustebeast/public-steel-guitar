@@ -416,9 +416,10 @@ def _pickup_mount_components():
     out = [("pickup", PM.pickup_demo().translate((PICKUP_X, TP.PK_CTR_Y, PM.PK_TOP))),
            ("pickup_zplate", TP.pickup_zplate)]
     # TOP-ACCESS height (user): THREE vertical M4 SET-SCREW jacks in a tripod that lift
-    # the plate off fixed pads -- ALL turned from +Z. The two +Y jacks are reached
-    # THROUGH the pickup's own +Y ear holes (tip string 1 aside); the -Y jack sits
-    # outboard at centre X. Equalise the two +Y = X level, -Y = across-string tilt.
+    # the plate off fixed pads -- ALL turned from +Z, at the PLATE's clear corners
+    # (pickup-agnostic; nothing reads the pickup's holes). The two +Y corner jacks and
+    # the -Y-centre jack all sit outboard of the pickup + strings, open to +Z. Equalise
+    # the two +Y = X level, -Y = across-string tilt.
     for _i, (_jx, _jy) in enumerate(TP.JACK_POS):
         _tip = TP.JACK_PAD_TOPZ - 0.2
         _topz = TP.ZPL_TOP + 0.5                            # set-screw top just above the plate
