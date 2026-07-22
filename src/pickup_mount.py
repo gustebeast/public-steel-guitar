@@ -77,9 +77,9 @@ def pickup_demo() -> cq.Workplane:
     flange = (box_at(PK_W, PK_L, PK_FLG_T, z=-PK_FLG_T / 2)     # thin ear plate on top
               .edges("|Z").fillet(6.0))                          # rounded corner ears
     body = coil.union(flange)
-    for hx, hy in EAR_HOLES:                                     # 4 FULL-DEPTH mounting holes
-        body = body.cut(cyl(EAR_HOLE_D, PK_H + 2, z=-PK_H - 1)   # (the +Y two also pass a hex
-                        .translate((hx, hy, 0)))                 # driver down to the jacks)
+    for hx, hy in EAR_HOLES:                                     # the pickup's own 4 mounting holes
+        body = body.cut(cyl(EAR_HOLE_D, PK_H + 2, z=-PK_H - 1)   # (the mount doesn't use these --
+                        .translate((hx, hy, 0)))                 # jacks are on the plate corners)
     return body
 
 
