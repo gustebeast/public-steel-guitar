@@ -78,6 +78,7 @@ PARTS = {
     # full-width height plate lifted by 3 M4 set-screw jacks; 2 M4 toe-clamp screws in
     # the piece's -Y ledges lock it. All hardware is stocked M4, all turned from +Z.
     "pickup_zplate":   (lambda: heal(__import__("src.top_plate", fromlist=["e"]).pickup_zplate), "petg-gf/pickup_zplate.step", "PETG-GF — pickup height plate (full-width; the 3 M4 set-screw jacks lift/tilt it, pickup rests on top and slides in X for tone; GF keeps it flat on the point loads)"),
+    "pickup_yclamp":   (lambda: heal(__import__("src.top_plate", fromlist=["e"]).pickup_yclamp), "pctg/pickup_yclamp.step", "PCTG — adjustable -Y clamp pad (print 2): rides an M4 screw through a Y-slot into the plate; slides to the pickup's -Y edge to pin it +Y + trap it down, fitting any pickup length (all from +Z)"),
     # (round leg_socket / leg_segment exports RETIRED by the square-leg
     # redesign — generators remain in legs.py until the refinement pass
     # deletes them)
@@ -425,15 +426,18 @@ def _pickup_mount_components():
         _topz = TP.ZPL_TOP + 0.5                            # set-screw top just above the plate
         out.append((f"pickup_jack_screw_{_i}",
                     cyl(TP.JACK_D, _topz - _tip, z=_tip).translate((_jx, _jy, 0.0))))
-    # TOP-ACCESS toe-clamps (replace the side clamp): two M4 screws driven DOWN through
-    # the -Y skirt ledges; the tip presses the pickup's -Y frame, locking pickup + plate.
-    for _i, _cx in enumerate(TP.TOECLAMP_X):
-        _tip = PM.PK_TOP - 1.0
-        _topz = TP.TOECLAMP_TOPZ + 1.5
-        out.append((f"pickup_toeclamp_screw_{_i}",
-                    cyl(TP.TOECLAMP_D, _topz - _tip, z=_tip)
-                    .union(cyl(TP.TOECLAMP_D + 3.0, 1.5, z=TP.TOECLAMP_TOPZ))
-                    .translate((_cx, TP.TOECLAMP_LIPY - 0.5, 0.0))))
+    # Y CLAMP (user): two adjustable -Y clamp pads in the utility zone, each riding a
+    # vertical M4 screw through a Y-slot into the plate. Slide +Y to the pickup -Y edge
+    # (pins it +Y toward the datum, top lip traps it down), tighten from +Z. The pads
+    # slide to fit any pickup length -- pickup-agnostic hold-down.
+    for _i, _cx in enumerate(TP.YCLAMP_X):
+        out.append((f"pickup_yclamp_{_i}", TP.pickup_yclamp.translate((_cx, 0.0, 0.0))))
+        _tip = TP.ZPL_TOP - 0.5
+        _hz = TP.YCLAMP_TOPZ - 0.5
+        out.append((f"pickup_yclamp_screw_{_i}",
+                    cyl(TP.YCLAMP_D, _hz - _tip, z=_tip)
+                    .union(cyl(TP.YCLAMP_D + 3.0, 1.5, z=_hz))
+                    .translate((_cx, TP.YCLAMP_SCR_Y, 0.0))))
     return out
 
 
@@ -762,7 +766,8 @@ _COLORS = {
     "break_dowel":     (0.75, 0.75, 0.78),   # steel dowel (gauged break pin)
     "set_screw":       (0.55, 0.55, 0.58),   # alloy set screw
     "pickup_jack_screw":  (0.55, 0.55, 0.58),  # M4 top-access height set-screw jack
-    "pickup_toeclamp_screw": (0.55, 0.55, 0.58),  # M4 top-access toe-clamp screw
+    "pickup_yclamp_screw": (0.55, 0.55, 0.58),  # M4 top-access Y-clamp screw
+    "pickup_yclamp":   (0.90, 0.55, 0.20),   # PCTG adjustable -Y clamp pad
     "chassis":         (0.46, 0.52, 0.55),   # PETG-GF frame
     "pickup":          (0.10, 0.10, 0.12),   # DEMO pickup body
     "pickup_zplate":   (0.85, 0.65, 0.30),   # PCTG height plate (under the pickup)

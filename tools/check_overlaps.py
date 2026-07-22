@@ -85,15 +85,16 @@ GLOBAL_OK = {
     frozenset({"keyhead_endplate", "top_plate"}),
     frozenset({"keyhead_endplate", "break_dowel"}), frozenset({"keyhead_endplate", "set_screw"}),
     # pickup carrier: the pickup rests on the printed Z-plate (jacked by the three
-    # top-access M4 set-screws that thread the plate's tabs and bear on the piece's
-    # fixed pads; the two +Y jacks poke up into the pickup's ear holes) and is locked
-    # by the two M4 toe-clamp screws that thread the piece's -Y ledges onto its frame.
+    # top-access M4 set-screws at the plate's clear corners/-Y zone, bearing on the
+    # piece's fixed pads) and is held by the two adjustable -Y CLAMP PADS, each on an
+    # M4 screw through a Y-slot into the plate, whose face + top lip pin the pickup.
     frozenset({"pickup", "pickup_zplate"}),
-    frozenset({"pickup", "pickup_jack_screw"}),
-    frozenset({"pickup", "pickup_toeclamp_screw"}),
+    frozenset({"pickup", "pickup_yclamp"}),
     frozenset({"pickup_zplate", "pickup_jack_screw"}),
     frozenset({"pickup_jack_screw", "top_plate"}),
-    frozenset({"pickup_toeclamp_screw", "top_plate"}),
+    frozenset({"pickup_zplate", "pickup_yclamp"}),
+    frozenset({"pickup_zplate", "pickup_yclamp_screw"}),
+    frozenset({"pickup_yclamp", "pickup_yclamp_screw"}),
     # FLUSH-X: the body stubs' outboard wall tenons mortise the ENDPLATE
     # side walls (the inboard ones mortise the rail/chassis)
     frozenset({"leg_body_stub", "keyhead_endplate"}),
@@ -220,8 +221,8 @@ def intended(na, nb) -> bool:
     tp = {base(na), base(nb)}
     TP_FAMILY = {"top_plate", "top_plate_color"}
     if tp & TP_FAMILY and tp <= (TP_FAMILY | {"chassis", "oled", "joystick",
-                                              "pickup", "pickup_zplate",
-                                              "pickup_jack_screw", "pickup_toeclamp_screw",
+                                              "pickup", "pickup_zplate", "pickup_jack_screw",
+                                              "pickup_yclamp", "pickup_yclamp_screw",
                                               "bridge_endplate", "keyhead_endplate"}):
         return True
     # adjacent chassis segments meet at their sliding-dovetail joints (one frame)
