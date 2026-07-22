@@ -76,3 +76,30 @@ def section_mortise_coupon():
            .mortise(drop=PLATE)
            .translate((-(SEC_LEN + 2) / 2.0, 0, 0)))
     return block.cut(cut)
+
+
+# ── SLEEVE-COVER rail coupon: the leg sleeve cover's W5 octagon rails at the
+# REAL geometry — built from legs.py's own helpers so the coupon can't drift.
+def cover_seat_coupon():
+    """40-long slice of the sleeve's thinned +Y face carrying both W5 rail
+    slots. Print LYING like the real sleeve (slots open at the bed; the 0.8
+    roof bridges at depth 5); slide cover_plate_coupon on along Z."""
+    from .legs import _rail_groove, CVR_RAIL_X, SLV_FACE_Y, SQ_W
+    blk = (cq.Workplane("XY")
+           .box(SQ_W, 12.0, 40.0, centered=(True, True, False))
+           .translate((0, SLV_FACE_Y - 6.0, 0)))
+    for gx in (CVR_RAIL_X, -CVR_RAIL_X):
+        blk = blk.cut(_rail_groove(42.0).translate((gx, 0, -1.0)))
+    return blk
+
+
+def cover_plate_coupon():
+    """40-long slice of the cover: the 44-wide × COVER_T plate + both rails
+    (no tongue). Prints lying on its outer face, rails up."""
+    from .legs import _rail_tenon, CVR_RAIL_X, COVER_T, SQ_W
+    b = (cq.Workplane("XY")
+         .box(SQ_W, COVER_T, 40.0, centered=(True, True, False))
+         .translate((0, SQ_W / 2 - COVER_T / 2, 0)))
+    for gx in (CVR_RAIL_X, -CVR_RAIL_X):
+        b = b.union(_rail_tenon(40.0).translate((gx, 0, 0)))
+    return b

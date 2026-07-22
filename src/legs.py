@@ -327,35 +327,35 @@ def leg_segment() -> cq.Workplane:
 
 
 def leg_sleeve() -> cq.Workplane:
-    """Slider sleeve (ROUND 3, all-octagon): 44-sq × 200. On top, the SOLID
-    flush octagon SPIGOT into the bottom segment's socket (one M4 retention,
-    Ø7 cable bore for the wired leg — one SKU ×4). Below, the fine-adjust
-    way is the full-length OCTAGON GROOVE at the SLIDE clearance (SH_CLR),
-    opening through the local +Y face like every flush joint — the shaft (the
-    same W28 octagon prism) rides it: keyed to one orientation, captured
-    ±X/±Y by the waist-vs-slit, stroked along Z (groove top at z −2 roots
+    """Slider sleeve (ROUND 3 all-octagon; COVER round: 44 × 40 × 200 — the
+    +Y face is THINNED by COVER_T and leg_sleeve_cover restores the 44-sq
+    silhouette). On top, the flush octagon SPIGOT into the bottom segment's
+    socket (one M4 retention, Ø7 cable bore — one SKU ×4), TRUNCATED at the
+    thinned face: the joint's missing stem/lip slab is the COVER'S TONGUE,
+    which completes the octagon inside the segment's mortise and locks the
+    cover's top end. Below, the fine-adjust way is the full-length OCTAGON
+    GROOVE at the SLIDE clearance on the DROPPED profile (stem SH_Y under
+    the cover, roof still -14), opening through the thinned face: the shaft
+    rides it keyed + captured, stroked along Z (groove top at z -2 roots
     the spigot; retraction stop = the shaft BLOCK butting the mouth face).
-    CLAMP = an EMBEDDED side GIB PAD (user rounds: nothing may leave the
-    44-sq envelope, and NO cavity ceiling wider than ONE NOZZLE — the
-    octagon-roof rule; the first pocket's 6-wide bridge broke it): a PCTG
-    pad (leg_pinch_gib) rides a pocket in the thick +X wall near the mouth,
-    pressed -X onto the shaft's flat WAIST WALL by ONE central M4 GRUB
-    threading the outer +X face (flush, hex-key access at any height):
-    flat-on-flat broad friction, no point load, ZERO flexure → the sleeve
-    is PETG-GF and prints LYING on its +Y face like every other leg piece.
-    TPU pad + single screw (user): the pad IS the preload spring (defined
-    compression survives plastic creep, same logic as the old TPU glands)
-    and µ~0.7 gives ~500-650 N of axial hold — ~1.5-2× the worst-case
-    instrument + hard-elbow-lean share per leg (~350 N); a slip only sags
-    to the block-butt hard stop. One screw also self-seats the pad.
-    The bay's print ceiling IS the mortise's upper 45° taper plane
-    EXTENDED outward (user's cut — one continuous self-supporting plane;
-    the only flat left is the 0.4 through-wall ledge, under one bead); the
-    pad loads in from the mouth face.
-    Local: Z0 = shoulder (top face); body −Z."""
+    COVER RAILS: two W5 octagon slots at ±CVR_RAIL_X run the face, open at
+    the TOP end (the cover slides down), BLIND 0.4 above the mouth = the
+    cover's down-stop; covered, the open C-channel becomes a closed BOX
+    TUBE — the long-extension bow of the free half-walls is gone (user).
+    CLAMP = the EMBEDDED side GIB PAD (unchanged scheme): TPU pad in the +X
+    wall bay near the mouth, pressed -X onto the shaft's waist wall by ONE
+    M4 GRUB threading the outer +X face; ~500-650 N axial hold vs ~350 N
+    worst leg share; a slip only sags to the block-butt stop. The bay's
+    print ceiling IS the mortise's upper 45° taper plane EXTENDED — the
+    sub-waist profile is UNCHANGED by the drop (same (14.2,-0.4) corner,
+    same y = x - 14.6 plane); only the floor moves DOWN to the new dilated
+    waist-top corner y 5.3243 (probe-measured, as 7.4245 was before).
+    PETG-GF, prints LYING on the thinned +Y face (the truncated spigot's
+    flat lands ON the bed — the full stem would float 4 above it).
+    Local: Z0 = shoulder (top face); body -Z."""
     body = box_at(SQ_W, SQ_W, SLEEVE_L, z=-SLEEVE_L / 2)
-    # full-length slider groove: open at the bottom mouth and through the +Y
-    # face; top at −2 (the disk under the spigot)
+    # full-length slider groove: open at the bottom mouth and through the
+    # (thinned) +Y face; top at -2 (the disk under the spigot)
     body = body.cut(_shaft_groove(SLEEVE_L - 1.0)
                     .translate((0, 0, -SLEEVE_L - 1.0)))
     # top spigot (embed 1) + its cable bore + the M4 retention pilot (the
@@ -365,40 +365,80 @@ def leg_sleeve() -> cq.Workplane:
                     .translate((0, SEC_BORE_Y, 0)))
     body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
         1.8, 20.0, cq.Vector(7.0, -9.0, 14.0), cq.Vector(0, 1, 0))))
+    # FACE THINNING (cover round): shave the whole +Y band above SLV_FACE_Y,
+    # body AND spigot in one slab (the spigot's missing slab = cover tongue)
+    body = body.cut(box_at(SQ_W + 2.0, COVER_T + 2.0,
+                           SLEEVE_L + SEG_PLUG_L + 6.0,
+                           y=SQ_W / 2 - COVER_T / 2 + 1.0,
+                           z=(SEG_PLUG_L + 4.0 - SLEEVE_L - 2.0) / 2))
+    # COVER RAIL SLOTS: open through the face + out the top end, blind 0.4
+    # above the mouth (the cover's down-stop; plate lands mouth-flush)
+    for gx in (CVR_RAIL_X, -CVR_RAIL_X):
+        body = body.cut(_rail_groove(SLEEVE_L - 0.4 + 1.0)
+                        .translate((gx, 0, -(SLEEVE_L - 0.4))))
     # GIB-PAD BAY in the +X wall at the waist band, near the mouth: opens
     # into the groove through the waist wall and out the mouth face (-Z,
-    # pad loads from below). Its ceiling CONTINUES the mortise's upper 45°
-    # taper plane and its floor lands ON the waist-bottom corner — the
-    # EXACT dilated-mortise corners (W28/H36/clr0.2, mitred): waist-top
-    # (14.2, -0.40), taper plane y = x - 14.6, waist-bottom y 7.42
-    # (user-measured: the first bay started 0.28 low / ended 0.16 high).
-    # The 0.4 through-wall ledge stays under one nozzle bead.
+    # pad loads from below). Ceiling CONTINUES the mortise's upper 45°
+    # taper plane, floor ON the dilated waist-top corner (probe-measured
+    # for the DROPPED profile: same (14.2,-0.4) / y = x - 14.6 below the
+    # waist, floor 7.4245 → 5.3243). 0.4 through-wall ledge ≤ one bead.
     body = body.cut(cq.Workplane("XY")
                     .polyline([(13.8, -0.4), (14.2, -0.4), (16.9, 2.3),
-                               (16.9, 7.4245), (13.8, 7.4245)])
+                               (16.9, 5.3243), (13.8, 5.3243)])
                     .close().extrude(29.0)
                     .translate((0, 0, -SLEEVE_L - 1.0)))
-    # ONE central M4 GRUB bore (Ø3.4 thread-forming, ~5 of PETG-GF thread)
-    # through the +X outer wall onto the pad's back — fully embedded, flush
+    # ONE central M4 GRUB bore (Ø3.4 thread-forming, ~4.6 of PETG-GF thread)
+    # through the +X outer wall, opening INTO the bay onto the pad's back.
+    # Length 6.6 (was 5.6 — that bore stopped 0.5 SHY of the 16.9 bay wall:
+    # a solid web the grub could never push through; latent until this round)
     body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        1.7, 5.6, cq.Vector(SQ_W / 2 + 1.0, 4.8, -SLEEVE_L + 15.0),
+        1.7, 6.6, cq.Vector(SQ_W / 2 + 1.0, 3.5, -SLEEVE_L + 15.0),
         cq.Vector(-1, 0, 0))))
     return heal(body)
 
 
 def leg_pinch_gib() -> cq.Workplane:
     """TPU pinch GIB PAD ×4 (the sleeve's embedded shaft clamp): a grippy
-    flat pad in the +X wall pocket, pressed -X by ONE central grub screw
-    onto the shaft octagon's +X WAIST WALL (flat-on-flat, 0.3 drawn
-    standoff; the shaft then bears its -X wall + diagonals). TPU = the
-    preload SPRING (defined compression survives creep) AND the friction
-    surface (µ~0.7). A shallow dimple seats the grub tip. Slides in from
-    the sleeve's mouth. Prints flat. Local: sleeve frame, z 0..20."""
+    flat pad in the +X wall bay, pressed -X by ONE central grub screw onto
+    the shaft octagon's +X WAIST WALL (flat-on-flat, 0.3 drawn standoff;
+    the shaft then bears its -X wall + diagonals). TPU = the preload SPRING
+    (defined compression survives creep) AND the friction surface (µ~0.7).
+    A shallow dimple seats the grub tip. Slides in from the sleeve's mouth.
+    COVER round: the waist band dropped with the slider profile — the pad
+    tracks the new bay (floor 5.1, grub axis y 3.5). Prints flat.
+    Local: sleeve frame, z 0..20."""
     b = (cq.Workplane("XY")
-         .polyline([(14.3, 0.12), (16.5, 2.32), (16.5, 7.2), (14.3, 7.2)])
+         .polyline([(14.3, 0.12), (16.5, 2.32), (16.5, 5.1), (14.3, 5.1)])
          .close().extrude(20.0))
     b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCone(
-        1.6, 0.2, 1.2, cq.Vector(16.6, 4.8, 10.0), cq.Vector(-1, 0, 0))))
+        1.6, 0.2, 1.2, cq.Vector(16.6, 3.5, 10.0), cq.Vector(-1, 0, 0))))
+    return heal(b)
+
+
+def leg_sleeve_cover() -> cq.Workplane:
+    """PETG-GF sleeve COVER ×4 (user: at long extension the open C-channel
+    is a poorly-supported span that can bow outward — and the slack coil
+    shows). A 44-wide × COVER_T plate rides the sleeve's thinned +Y face on
+    two W5 octagon RAILS (slid DOWN from the top end), closing the channel
+    into a box tube and restoring the flush 44-sq leg look; it also hides
+    the coil. Captive with ZERO fasteners: the TONGUE (14 × 4 × 28)
+    continues past the top edge into the segment's mortise LIP BAND — the
+    slab the truncated spigot leaves void — completing the octagon joint,
+    flush with the segment's outer face, and trapping the cover once the
+    segment is mated (up-play 0.4 to the tongue tip); down-stop = the
+    rails' blind slot ends 0.4 above the mouth, landing the plate flush
+    with the mouth face (the shaft block butts sleeve + cover evenly).
+    Prints LYING on the outer (y 22) face: rails grow up with 45° flares,
+    the tongue is plate-thickness. Local: sleeve frame — plate y 18..22,
+    z -200..-0.2 (0.2 shy of the segment butt so the structural shoulder
+    never rides the cover); rails z -199.6..-0.2; tongue z -0.2..28."""
+    b = box_at(SQ_W, COVER_T, SLEEVE_L - 0.2,
+               y=SQ_W / 2 - COVER_T / 2, z=-(SLEEVE_L + 0.2) / 2)
+    b = b.union(box_at(14.0, COVER_T, CVR_TNG_L + 0.2,
+                       y=SQ_W / 2 - COVER_T / 2, z=(CVR_TNG_L - 0.2) / 2))
+    for gx in (CVR_RAIL_X, -CVR_RAIL_X):
+        b = b.union(_rail_tenon(SLEEVE_L - 0.6)
+                    .translate((gx, 0, -(SLEEVE_L - 0.4))))
     return heal(b)
 
 
@@ -592,6 +632,57 @@ TRRS_DY     = 3.5     # TRRS axes ride the profile's deep waist (also the
                       # orange/taper flanks by ~9 and the waist wall by ≥2.5
 
 
+# ── SLEEVE COVER (2026-07-21, user): at long extension the sleeve's open
+# C-channel is a poorly-supported span — the two half-walls can bow outward
+# (and the slack coil shows through the opening). Fix: the sleeve's +Y face
+# band is THINNED by COVER_T (outer becomes 44 × 40) and a separate 44-wide
+# COVER PLATE (leg_sleeve_cover) slides down two W5 octagon RAILS, closing
+# the C into a box tube and restoring the 44-sq silhouette — nothing steps
+# past the leg profile. The SLIDER octagon drops with the face (the shaft
+# must run UNDER the solid plate): stem plane SH_Y, roof pinned at -14 (the
+# section joints' roof — the whole sub-waist profile, and with it the gib
+# bay's taper-plane ceiling, is UNCHANGED). The sleeve's top spigot is
+# TRUNCATED at the thinned face; its missing stem/lip slab is the cover's
+# TONGUE, which completes the octagon inside the segment's mortise and
+# locks the cover's top end — no cover fasteners at all.
+COVER_T    = 4.0      # cover plate thickness = the face-thinning depth
+SLV_FACE_Y = SQ_W / 2 - COVER_T        # 18.0: the sleeve's thinned +Y face
+SH_Y       = SLV_FACE_Y - SH_CLR       # 17.8: slider stem plane (0.2 running
+                                       # clearance under the cover's inner face)
+SH_H       = SH_Y + 14.0               # 31.8: slider octagon height (roof -14)
+CVR_RAIL_X = 17.0     # rail centres ±x: slot spans 14.4..19.6 dilated — 7.2
+                      # web to the groove's lip band, 2.4 outer ±X skin
+CVR_RAIL_W = 5.0      # rail octagon flat-to-flat (cadkit h_min 4.95 at n0.8)
+CVR_RAIL_H = 5.0      # rail octagon height: slot floor y 12.9 dilated
+CVR_TNG_L  = 28.0     # cover tongue engagement (= SEC_TEN_L; 0.4 tip gap in
+                      # the segment's 28.4 socket = the cover's up-play)
+
+
+def _rail_tenon(length: float) -> cq.Workplane:
+    """Cover-rail male: W5 octagon rib on the cover's inner face (stem rooted
+    at the thinned-face plane, point -Y into the sleeve wall), z 0..length;
+    caller translates to ±CVR_RAIL_X. Prints growing UP off the lying cover
+    plate: neck, 45° flare out, 45° back to the 0.8 tip — no overhang."""
+    from cadkit.joinery import octagon_tenon
+    return (octagon_tenon(CVR_RAIL_W, length, nozzle=0.8, clearance=0.1,
+                          root=0.0, height=CVR_RAIL_H)
+            .rotate((0, 0, 0), (0, 1, 0), -90)
+            .rotate((0, 0, 0), (0, 0, 1), 90)
+            .translate((0, SLV_FACE_Y, 0)))
+
+
+def _rail_groove(length: float) -> cq.Workplane:
+    """Cover-rail female: the matching W5 slot, opening through the thinned
+    +Y face — on the lying sleeve a standard mortise-at-the-bed (0.8 roof
+    bridge at y 12.9). Z-running; caller translates/limits it."""
+    from cadkit.joinery import octagon_mortise
+    return (octagon_mortise(CVR_RAIL_W, length, nozzle=0.8, clearance=0.1,
+                            drop=2.0, height=CVR_RAIL_H)
+            .rotate((0, 0, 0), (0, 1, 0), -90)
+            .rotate((0, 0, 0), (0, 0, 1), 90)
+            .translate((0, SLV_FACE_Y, 0)))
+
+
 def _house(w: float, floor_y: float, wall_top_y: float,
            length: float) -> cq.Workplane:
     """HOUSE-profile prism (user rule: every joint cross-section is a
@@ -639,27 +730,30 @@ def _section_mortise(length: float = SEC_MOR_L, drop: float = 2.0) -> cq.Workpla
 def _shaft_prism(length: float) -> cq.Workplane:
     """The FINE-ADJUST SLIDER's male: the same flush W28 octagon profile as the
     section joints but at the SLIDE clearance (SH_CLR) — the shaft is this
-    prism, riding the sleeve's matching full-length groove. Stem base on local
-    +Y (the bed of the lying shaft), z 0..length."""
+    prism, riding the sleeve's matching full-length groove. COVER round: stem
+    plane at SH_Y (17.8 — the shaft runs 0.2 under the cover plate), roof
+    still -14 → height SH_H. The stem base is the lying shaft's print bed,
+    z 0..length."""
     from cadkit.joinery import octagon_tenon
     return (octagon_tenon(SEC_W, length, nozzle=0.8, clearance=SH_CLR, root=0.0,
-                          height=SEC_H)
+                          height=SH_H)
             .rotate((0, 0, 0), (0, 1, 0), -90)
             .rotate((0, 0, 0), (0, 0, 1), 90)
-            .translate((0, SQ_W / 2, 0)))
+            .translate((0, SH_Y, 0)))
 
 
 def _shaft_groove(length: float, drop: float = 2.0) -> cq.Workplane:
-    """The slider's female: octagon mortise at SH_CLR, open through local +Y
-    (the sleeve's groove — visible on the leg's inner face, like every flush
-    joint). Z-running; callers place/limit it so it never severs the sleeve's
-    top spigot."""
+    """The slider's female: octagon mortise at SH_CLR on the DROPPED slider
+    profile (SH_Y/SH_H), open through the sleeve's thinned +Y face (the
+    dilated opening lands flush at SLV_FACE_Y — hidden under the cover once
+    it's on). Z-running; callers place/limit it so it never severs the
+    sleeve's top spigot."""
     from cadkit.joinery import octagon_mortise
     return (octagon_mortise(SEC_W, length, nozzle=0.8, clearance=SH_CLR,
-                            drop=drop, height=SEC_H)
+                            drop=drop, height=SH_H)
             .rotate((0, 0, 0), (0, 1, 0), -90)
             .rotate((0, 0, 0), (0, 0, 1), 90)
-            .translate((0, SQ_W / 2, 0)))
+            .translate((0, SH_Y, 0)))
 
 
 PUCK_PLUG_L = 20.0             # coupler glue plug depth into the core
