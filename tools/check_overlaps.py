@@ -90,11 +90,17 @@ GLOBAL_OK = {
     # M4 screw through a Y-slot into the plate, whose face + top lip pin the pickup.
     frozenset({"pickup", "pickup_zplate"}),
     frozenset({"pickup", "pickup_yclamp"}),
+    # jacks: set-screw + seated insert in the plate boss, tip on the piece buttress
+    frozenset({"pickup_zplate", "pickup_jack_insert"}),
     frozenset({"pickup_zplate", "pickup_jack_screw"}),
+    frozenset({"pickup_jack_insert", "pickup_jack_screw"}),
     frozenset({"pickup_jack_screw", "top_plate"}),
+    # Y-clamp: pad + button screw + seated insert in the plate boss
     frozenset({"pickup_zplate", "pickup_yclamp"}),
+    frozenset({"pickup_zplate", "pickup_yclamp_insert"}),
     frozenset({"pickup_zplate", "pickup_yclamp_screw"}),
     frozenset({"pickup_yclamp", "pickup_yclamp_screw"}),
+    frozenset({"pickup_yclamp_insert", "pickup_yclamp_screw"}),
     # FLUSH-X: the body stubs' outboard wall tenons mortise the ENDPLATE
     # side walls (the inboard ones mortise the rail/chassis)
     frozenset({"leg_body_stub", "keyhead_endplate"}),
@@ -222,6 +228,7 @@ def intended(na, nb) -> bool:
     TP_FAMILY = {"top_plate", "top_plate_color"}
     if tp & TP_FAMILY and tp <= (TP_FAMILY | {"chassis", "oled", "joystick",
                                               "pickup", "pickup_zplate", "pickup_jack_screw",
+                                              "pickup_jack_insert", "pickup_yclamp_insert",
                                               "pickup_yclamp", "pickup_yclamp_screw",
                                               "bridge_endplate", "keyhead_endplate"}):
         return True
