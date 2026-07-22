@@ -12,11 +12,14 @@ on the TRRS axis at station +5. Pedal height is constant regardless of
 instrument height, and stomp loads go floor-direct through the bar's
 feet, never through a latch.
 
-FLUSH 44 COLUMN (user): the bar prism is 44 wide (Y = YC ± 22) and 19
-tall, and its END faces sit at station ± 22 — flush with the towers, the
-leg blocks above, and the TPU feet below, so each +Y stack reads as ONE
-clean 44×44 column from block top to floor. The feet are the shared
-legs.leg_foot dovetail inserts (mortise opens at the bar's -Y face).
+FLUSH 35.6 COLUMN (user, symmetry round: match the leg shafts): the bar
+prism is BLK_W wide (Y = YC ± 17.8) and 19 tall, and its END faces sit
+at station ± 17.8 — flush with the slimmed towers and the 35.6 leg
+blocks above, so each +Y stack reads as ONE clean 35.6-sq column from
+block top to bar bottom, all at the legs' 4.2 inset. Only the shared
+TPU feet stay 44 (proud ground boots, like under the -Y blocks). The
+feet are the shared legs.leg_foot dovetail inserts (mortise opens at
+the bar's -Y face).
 
 A WIRING TROUGH runs between the towers under a full-length 45° sliding-
 DOVETAIL LID — no screws: the lid pieces slide in from the +X end; a TPU
@@ -52,10 +55,11 @@ LATCHES = ((LEG_STATIONS_X[0], -1.0),  # +X leg → plain snap latch, extends -X
            (LEG_STATIONS_X[1], +1.0))  # -X leg → TRRS latch, extends +X
 
 BAR_H = 19.0
-BAR_Y0, BAR_Y1 = YC - 22.0, YC + 22.0      # 44 wide (user): matches the
-                                           # 44-sq towers/blocks/feet — the
-                                           # +Y stacks are FLUSH columns
-END_MARGIN = 22.0                          # bar END faces at station ±22,
+BAR_Y0 = YC - LG.BLK_W / 2                 # BLK_W (35.6) wide — matches
+BAR_Y1 = YC + LG.BLK_W / 2                 # the slimmed towers/blocks: the
+                                           # +Y stacks are FLUSH columns at
+                                           # the legs' 4.2 inset (user)
+END_MARGIN = LG.BLK_W / 2                  # bar END faces at station ±17.8,
                                            # flush with the tower faces
                                            # (15 used to shear the towers'
                                            # outer 6 via the piece clips)
@@ -86,10 +90,10 @@ XS2 = BAR_X1 - 215.0   # +X splice (mid-trough)
 XL = (LATCHES[0][0] + LATCHES[1][0]) / 2   # lid butt-splice: mid-span,
                    # ~107 from each bar splice so each lid piece BRIDGES
                    # one glued bar joint (the lid is structure)
-LID_XA = LATCHES[1][0] + 22.4      # lid span: between the FUSED stub
-LID_XB = LATCHES[0][0] - 22.4      # towers (44-sq, printed with the bar)
-TROUGH_X0 = LATCHES[1][0] + 22.6   # wiring trough: runs right up to the
-TROUGH_X1 = LATCHES[0][0] - 22.6   # towers
+LID_XA = LATCHES[1][0] + LG.BLK_W / 2 + 0.4   # lid span: between the
+LID_XB = LATCHES[0][0] - LG.BLK_W / 2 - 0.4   # FUSED towers, 0.4 tip gaps
+TROUGH_X0 = LATCHES[1][0] + LG.BLK_W / 2 + 0.6   # wiring trough: runs
+TROUGH_X1 = LATCHES[0][0] - LG.BLK_W / 2 - 0.6   # right up to the towers
 LOCK_X, LOCK_Y = LID_XB - 4.6, 7.6  # lid-lock detent nub: bar-top pocket; a
                                    # groove+dimple in lid B's underside sets
                                    # the final position, stops over-insert
@@ -98,32 +102,36 @@ LOCK_X, LOCK_Y = LID_XB - 4.6, 7.6  # lid-lock detent nub: bar-top pocket; a
 
 def _stub_tower(lx: float, wired: bool) -> cq.Workplane:
     """FUSED stub tower (user: single printed piece — the tenon is part of
-    the bar): 44-sq button body (19..43) + house spigot (43..85) with the
-    wedging-bolt channel + recessed button pocket (leg_latch_bolt/btn SKUs
-    reuse verbatim, frame = seat plane 43). Authored at the ORIGIN and
-    ROTATED 180° like the +Y leg stacks, so the house gable, bolt and
-    ledge all face the leg block's rotated features. The wired tower's
-    captive CA-354S threads UP from the foot-mortise access below; its
-    cable enters from the trough side way. Prints WITH the bar,
-    bottom-down — plain standing geometry, no overhangs."""
-    b = box_at(LG.SQ_W, LG.SQ_W, STUB_Z0 - BAR_H, z=(BAR_H + STUB_Z0) / 2)
+    the bar): BLK_W-sq button body (19..43 — slimmed with the leg blocks
+    to the 4.2 inset, symmetry round) + octagon spigot (43..81) with the
+    wedging-bolt channel + recessed button pocket (leg_latch_bolt/btn
+    SKUs reuse verbatim; the button pocket shifts inboard to (x -10.5,
+    face BLK_W/2) — at the old (x -14, face 22) the shared button pad
+    would float outside the slim tower; build.py offsets the bar-tower
+    button dummies to match). Authored at the ORIGIN and ROTATED 180°
+    like the +Y leg stacks. The wired tower's captive CA-354S threads UP
+    from the foot-mortise access below; its cable enters from the trough
+    side way. Prints WITH the bar, bottom-down — plain standing
+    geometry, no overhangs."""
+    b = box_at(LG.BLK_W, LG.BLK_W, STUB_Z0 - BAR_H, z=(BAR_H + STUB_Z0) / 2)
     # spigot: the flush OCTAGON section tenon (round 3 — the lying leg
     # block's bed face turned the old house floor into a 28-wide ceiling
     # bridge). Constant Z-section: still prints clean standing with the bar.
     b = b.union(LG._section_tenon(39.0).translate((0, 0, STUB_Z0 - 1.0)))
     # COVER round: the leg block is truncated to the slider stem plane
     # (LG.SH_Y — its print-bed fix), so the tenon band above that plane is
-    # SHAVED from the seat plane up: the truncated tenon lands FLUSH with
-    # the block's thinned face (waist-vs-slit capture + the bolt latch are
-    # untouched; the 44-sq tower body below keeps its full corner)
-    b = b.cut(box_at(LG.SQ_W + 2.0, 6.0, 40.0, y=LG.SH_Y + 3.0,
-                     z=STUB_Z0 + 20.0))
+    # SHAVED, INCLUDING the 1-embed slab below the seat plane (the slim
+    # BLK_W body no longer buries it — it poked out as a 1-tall fin): the
+    # truncated tenon lands FLUSH with the block's thinned face
+    # (waist-vs-slit capture + the bolt latch are untouched)
+    b = b.cut(box_at(LG.SQ_W + 2.0, 6.0, 42.0, y=LG.SH_Y + 3.0,
+                     z=STUB_Z0 + 19.0))
     # bolt channel hooks the thick authored -Y (point-side) wall of the
     # block's mortise (the +Y face is the open groove); x +8 dodges the
     # TRRS way at authored (-5, +TRRS_DY)
     b = b.cut(box_at(LG.BOLT_W + 0.4, 34.0, LG.BOLT_H + 0.4,
                      x=8.0, y=2.5, z=STUB_Z0 + 31.8))
-    b = b.cut(box_at(12.4, 9.0, 10.4, x=-14.0, y=LG.SQ_W / 2 - 4.4,
+    b = b.cut(box_at(12.4, 9.0, 10.4, x=-10.5, y=LG.BLK_W / 2 - 4.4,
                      z=STUB_Z0 - 11.0))
     b = b.rotate((0, 0, 0), (0, 0, 1), 180).translate((lx, YC, 0))
     return b
