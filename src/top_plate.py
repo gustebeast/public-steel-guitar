@@ -72,7 +72,8 @@ BAND_W   = 20.0                        # one slot (band material width)
 N_SLOTS  = 7                           # pickup-region slots
 PITCH    = BAND_W + GAP                # slot pitch = band + the gap after it
 SLOT_X   = [PX0 - i * PITCH for i in range(N_SLOTS + 1)]   # +X face of each slot
-PIECE_SLOTS = 3                        # the pickup piece spans 3 slots
+PIECE_SLOTS = 4                        # the pickup piece spans 4 slots (enlarged one slot so the
+                                       # 38.6-wide Alumitone still has >= +/-10 continuous X slide)
 N_POS    = N_SLOTS - PIECE_SLOTS + 1   # = 5 coarse swap positions
 CLAMP    = 10.0                        # +/- fine X-adjust (= BAND_W/2 -> continuous)
 
@@ -109,55 +110,64 @@ OPEN_CTR  = (OPEN_X0 + OPEN_X1) / 2                        # -47.5
 OPEN_LEN  = OPEN_X0 - OPEN_X1                              # 53.0 = PK_W + 2*CLAMP
 SKIRT_T   = 3.0
 FLG_T     = 2.5                                            # Z-plate guide-flange thickness
-# +Y REFERENCE (user): the pickup seats flush to the +Y wall, positioned so its +Y
-# edge JUST covers string 1. The strings FAN (D.string_y = 9.5mm pitch at the
-# changer/bridge -> D.nut_y = 6.5mm at the nut), and the pickup sits near the
-# changer, so string 1 crosses it at ~+42 (string_y(0)=42.75), NOT nut_y(0)=29.25.
-# Reference to string_y(0) (the widest string-1 Y, guaranteeing coverage at every
-# slide position). At the pickup the field is ~85mm, so the 95 blade fits it well.
-PK_COVER  = 2.0                                           # +Y margin past string 1
-PK_YP     = D.string_y(0) + PK_COVER                      # pickup +Y face (~44.75)
-PK_YM     = PK_YP - PM.PK_L                               # pickup -Y face (~-50.25)
-HY_REF    = PK_YP + 0.3 + FLG_T                           # +Y reference skirt (pickup seats -0.3)
-HY_CLAMP  = -PK_YM + 7.0                                  # -Y clamp skirt (room: shim + screw)
-OPEN_YC   = (HY_REF - HY_CLAMP) / 2                       # opening/floor Y centre
-OPEN_YW   = HY_REF + HY_CLAMP                             # opening/floor Y width
-# Z-plate the pickup rests on (slides only in Z, lifted by the tripod jacks):
-ZPL_T     = 2.0
-ZPL_TOP   = PM.PK_BOT                                     # pickup sits on the plate top
-ZPL_BOT   = ZPL_TOP - ZPL_T
-FLG_BOT   = ZPL_BOT
-# wall TOP capped PK_H_MIN above the plate so the walls never top the pickup
-FLG_TOP   = ZPL_TOP + PM.PK_H_MIN
-FLOOR_BOT = ZPL_BOT - 5.2                                 # piece bottom -- DEEP for the 22mm
-                                                         # pickup's tripod tabs/pads (now below
-                                                         # the -14 ribs; the neck-slide collision
-                                                         # is a TODO the user will review)
-# ── TOP-ACCESS jackscrews (user: adjust height with the instrument assembled) ──
-# THREE vertical M2 GRUB-SCREW jacks in a TRIPOD (deterministic, no rock): TWO on
-# the +Y reference side just OUTBOARD of string 1, at the two X-ends (beyond the
-# pickup in X); ONE on the -Y side at CENTRE X, outboard of the pickup's -Y edge.
-# All three sit outboard of the strings so a driver reaches them from +Z. Each
-# threads a downward TAB on the plate; its tip bears on a FIXED pad in the piece
-# below. Turn CW to jack that corner up; the fine thread self-locks. LEVELLING: the
-# -Y screw is at centre X (no along-neck moment), so EQUALISING the two +Y screws =
-# X LEVEL; the -Y screw then sets ACROSS-STRING tilt.
-JACK_YP       = D.string_y(0) + 2.25             # +Y jacks: just outboard of string 1 (fanned)
-JACK_YM       = PK_YM - 3.0                       # -Y jack: just outboard of the pickup -Y edge
-JACK_POS      = [(OPEN_X0 - 3.5, JACK_YP),        # +X end, +Y
-                 (OPEN_X1 + 3.5, JACK_YP),        # -X end, +Y
-                 (PIECE_CTR, JACK_YM)]            # centre X, -Y
-JACK_D        = 2.0                              # M2
-JACK_TAB_OD   = 4.5                              # plate threaded-tab OD
-JACK_TAB_BOTZ = ZPL_BOT - 3.0                    # tab bottom (3mm thread below the plate)
-JACK_PAD_TOPZ = JACK_TAB_BOTZ - 0.4              # fixed pad top (screw tip bears here)
-HEIGHT_HOLE = PIECE_CTR
-# X clamp: THREE clamp-screw holes along the -Y skirt -> use the one nearest the
-# pickup so the side clamp pushes near the pickup centre wherever it's slid. The
-# shim spreads the load, so the hole needn't line up exactly with the midpoint.
-CLAMP_HOLES = [PIECE_CTR - 18.0, PIECE_CTR, PIECE_CTR + 18.0]
-CL_Z      = -4.0                                          # side clamp screw / shim height
-CLAMP_SHIM_Y = PK_YM - 1.0                                # shim bears on the pickup -Y face
+# ── pickup Y placement: by MAGNETIC coverage; NO +Y skirt (the +Y rail is the wall)
+# The strings FAN and cross the pickup at ~+/-42. The pickup's MAGNETIC range is only
+# 88.9 (PM.PK_MAG_L) -- a ~6.35mm DEAD FRAME at each Y end -- so coverage is reckoned
+# against the magnetic range, NOT the 101.6 body edge. Bias the body toward +Y just
+# enough that the magnetic edge clears string 1 (+1mm); that puts the +Y BODY edge at
+# ~+50.1, ~4mm shy of the +Y chassis rail (inner face YH=+54.75) -- no room for a +Y
+# skirt. So there is NO +Y skirt/flange: the plate is guided by the -Y skirt + the two
+# end walls, and the +Y body edge floats in the open bay. (Both outer strings are
+# covered: the 88.9 magnetic range spans +/-44.45 vs strings +/-42, ~2.4mm margin.)
+PK_MAG_INSET = (PM.PK_L - PM.PK_MAG_L) / 2               # 6.35 dead frame at each Y end
+PK_YP    = D.string_y(0) + 1.0 + PK_MAG_INSET            # body +Y edge (~+50.1); mag covers str1
+PK_YM    = PK_YP - PM.PK_L                                # body -Y edge (~-51.5)
+PK_CTR_Y = (PK_YP + PK_YM) / 2                            # pickup centre Y (~-0.7)
+OPEN_YP  = PK_YP + 0.6                                    # +Y opening edge (open bay; < rail YH)
+HY_CLAMP = -PK_YM + 0.3 + FLG_T                          # -Y guide skirt inner face (~+54.3)
+OPEN_YC  = (OPEN_YP - HY_CLAMP) / 2                       # opening/floor Y centre
+OPEN_YW  = OPEN_YP + HY_CLAMP                             # opening/floor Y width
+# Z-plate the pickup slides on in X (fine tone) -- lifted/tilted by the 3 jacks:
+ZPL_T    = 2.0
+ZPL_TOP  = PM.PK_BOT                                      # pickup rests on the plate top
+ZPL_BOT  = ZPL_TOP - ZPL_T
+FLG_BOT  = ZPL_BOT
+FLG_TOP  = ZPL_TOP + PM.PK_H_MIN                          # -Y guide wall top (capped below pickup top)
+FLOOR_BOT = ZPL_BOT - 5.7                                # piece bottom -- DEEP for the 22mm pickup's
+                                                         # jack tabs/pads (below the -14 ribs; the
+                                                         # neck-slide collision is a TODO to review)
+# ── TOP-ACCESS M4 TRIPOD JACKS (user) ────────────────────────────────────────
+# THREE vertical M4 set-screw jacks lift/tilt the Z-plate, ALL turned from +Z:
+#   * TWO on the +Y side at the pickup's two +Y MOUNTING-EAR positions -- the hex
+#     driver drops THROUGH the pickup's own ear holes (tip string 1 aside). They sit
+#     under the pickup at the nominal (pocket-centre) X where the ears align; heads
+#     flush so the pickup still slides over them for tone.
+#   * ONE on the -Y side at centre X, just OUTBOARD of the pickup -Y edge (open bay,
+#     reached directly from +Z).
+# LEVELLING: the two +Y jacks are symmetric about centre X, so EQUALISING them = X
+# LEVEL; the -Y jack (centre X, no along-neck moment) sets ACROSS-STRING tilt.
+PICKUP_X_NOM  = OPEN_CTR                          # nominal (service) pickup centre X
+JACK_YP       = PK_CTR_Y + PM.EAR_HOLE_Y          # +Y jacks on the +Y ear line (~+41.3)
+JACK_YM       = PK_YM - 2.5                        # -Y jack just outboard of the pickup (~-54)
+JACK_POS      = [(PICKUP_X_NOM + PM.EAR_HOLE_X, JACK_YP),   # +X +Y ear
+                 (PICKUP_X_NOM - PM.EAR_HOLE_X, JACK_YP),   # -X +Y ear
+                 (PICKUP_X_NOM, JACK_YM)]                    # centre X, -Y outboard
+JACK_D        = 4.0                              # M4
+JACK_TAB_OD   = 8.0                              # plate threaded-tab OD (M4 self-tap wall)
+JACK_TAB_BOTZ = ZPL_BOT - 3.5                    # tab bottom (thread below the plate)
+JACK_PAD_TOPZ = JACK_TAB_BOTZ - 0.4              # fixed pad top (set-screw tip bears here)
+HEIGHT_HOLE = PICKUP_X_NOM
+# ── TOP-ACCESS TOE-CLAMPS (replace the side clamp) ───────────────────────────
+# TWO printed toe-clamp bars bridge from the -Y skirt over the pickup's -Y mounting
+# frame (outboard of the strings). An M4 screw driven DOWN from +Z into the skirt
+# pulls each bar down; its lip presses the pickup frame -> clamps the pickup onto the
+# plate AND the plate onto the jack pads: locks height + X/Y in one action, all from
+# +Z. Loosen to jack the height or slide the tone.
+TOECLAMP_D    = 4.0                              # M4 clamp screw
+TOECLAMP_X    = [PICKUP_X_NOM - 14.0, PICKUP_X_NOM + 14.0]  # over the -Y frame, clear of the -Y jack
+TOECLAMP_SCRZ = -(HY_CLAMP + SKIRT_T / 2)        # screw Y: into the -Y skirt top
+TOECLAMP_LIPY = PK_YM + 1.5                       # bar lip presses here (over the -Y frame)
+TOECLAMP_TOPZ = PM.PK_TOP + 2.0                   # bar top (just above the pickup frame top)
 
 MARKER_FRETS = {3, 5, 7, 9, 12, 15, 17, 19, 21, 24}
 # ── fret lines + fretboard border as a MATERIAL split, not an engraving ──────
@@ -331,87 +341,63 @@ def _band(xa, xb, *, ui=False):
 
 
 def _pickup_piece():
-    """3-slot deck panel that carries the pickup. A pocket bounded by two side
-    skirts (+Y = reference, -Y = clamp) and two end walls; the Z-plate drops in
-    from above and the pickup rests on it. The +Y skirt inner face (continuous
-    with the deck opening edge) is the full-height guide track for the plate's +Y
-    flange; the -Y skirt has THREE clamp-screw holes. HEIGHT: two vertical M3
-    grub-screw jacks at the plate X-ends thread plate tabs and bear on FIXED pads
-    added here (no mechanism under the pickup -> the bay is open below the plate)."""
+    """4-slot deck panel that carries the pickup. A pocket bounded by a -Y GUIDE
+    skirt and two end walls; the +Y side is OPEN (the +Y chassis rail is too close
+    for a skirt). The Z-plate drops in from above and the pickup rests on it, sliding
+    in X for tone. HEIGHT: three M4 set-screw jacks thread plate tabs and bear on
+    FIXED pads added here (bay open below the plate). LOCK: two TOE-CLAMP ledges over
+    the pickup's -Y mounting frame take M4 clamp screws (driven from +Z)."""
     body = _deck_body(PIECE_X0, PIECE_X1)
-    # deck opening (pickup pokes through; offset -Y to give the clamp shim room)
     body = body.cut(box_at(OPEN_LEN, OPEN_YW, (TZ - BZ) + 2,
                            x=OPEN_CTR, y=OPEN_YC, z=(BZ + TZ) / 2))
-    for y_in, s in ((HY_REF, 1), (HY_CLAMP, -1)):   # +Y reference / -Y clamp skirts
-        body = body.union(box_at(OPEN_LEN + 2 * WALL, SKIRT_T, BZ - FLOOR_BOT,
-                                 x=OPEN_CTR, y=s * y_in + s * SKIRT_T / 2,
-                                 z=(BZ + FLOOR_BOT) / 2))
+    # -Y guide skirt only (the +Y body edge floats in the open bay by the rail)
+    body = body.union(box_at(OPEN_LEN + 2 * WALL, SKIRT_T, BZ - FLOOR_BOT,
+                             x=OPEN_CTR, y=-(HY_CLAMP + SKIRT_T / 2),
+                             z=(BZ + FLOOR_BOT) / 2))
     for xe in (PIECE_X0 - WALL / 2, PIECE_X1 + WALL / 2):   # end walls (stop plate X)
         body = body.union(box_at(WALL, OPEN_YW, BZ - FLOOR_BOT,
                                  x=xe, y=OPEN_YC, z=(BZ + FLOOR_BOT) / 2))
-    for cx in CLAMP_HOLES:                          # 3 clamp-screw holes (-Y skirt)
-        body = body.cut(cyl_y(PM.CSCREW_D + 0.4, SKIRT_T + 2.0,
-                              y0=-(HY_CLAMP + SKIRT_T + 1.0), x=cx, z=CL_Z))
-    # FIXED jack pads: a small post under each of the 3 tripod screws (fused to the
-    # nearest end wall / -Y skirt) that the grub-screw tip bears on to jack the plate
-    # up. Bottom on the piece floor plane (FLOOR_BOT, clears the -14 ribs), top at
-    # JACK_PAD_TOPZ. NO central floor -> the bay is open below the plate.
+    # FIXED jack pads: a post under each of the 3 tripod set-screws (tip bears here to
+    # jack the plate up). Bottom on the piece floor (FLOOR_BOT, clears the -14 ribs).
     for jx, jy in JACK_POS:
-        body = body.union(box_at(9.0, 10.0, JACK_PAD_TOPZ - FLOOR_BOT,
-                                 x=jx, y=jy,
-                                 z=(FLOOR_BOT + JACK_PAD_TOPZ) / 2.0))
+        body = body.union(box_at(11.0, 11.0, JACK_PAD_TOPZ - FLOOR_BOT,
+                                 x=jx, y=jy, z=(FLOOR_BOT + JACK_PAD_TOPZ) / 2.0))
+    # TOE-CLAMP ledges: at each clamp X, a post rises from the -Y skirt and a short
+    # block bridges +Y over the pickup's -Y frame; an M4 self-tap hole through it takes
+    # the clamp screw whose tip presses the frame down (locks the pickup + plate).
+    sk_y = -(HY_CLAMP + SKIRT_T / 2)                       # -Y skirt centre-line
+    for cx in TOECLAMP_X:
+        body = body.union(box_at(14.0, SKIRT_T, TOECLAMP_TOPZ - BZ,   # riser on the skirt
+                                 x=cx, y=sk_y, z=(BZ + TOECLAMP_TOPZ) / 2))
+        y1, y2 = -(HY_CLAMP), TOECLAMP_LIPY               # skirt inner face -> over the frame
+        body = body.union(box_at(14.0, abs(y1 - y2), TOECLAMP_TOPZ - PM.PK_TOP,  # ledge
+                                 x=cx, y=(y1 + y2) / 2,
+                                 z=(PM.PK_TOP + TOECLAMP_TOPZ) / 2))
+        body = body.cut(cyl(TOECLAMP_D + 0.2, TOECLAMP_TOPZ - PM.PK_TOP + 2.0,
+                            z=PM.PK_TOP - 1.0).translate((cx, TOECLAMP_LIPY - 0.5, 0)))
     return heal(body)
 
 
 def _pickup_zplate():
-    """Full-width height plate the pickup rests on, lifted by the single central
-    height screw. It's guided flat by full-height flanges on BOTH Y rails that ride
-    the carrier faces (deck edge + skirt) as it drops in from above:
-      +Y: a solid wall (also reference-locates the pickup +Y face);
-      -Y: a COMB -- fingers between the 3 clamp-screw holes, joined by a top bar
-          set above the clamp-screw Z so it never covers the holes.
-    Full-width so the pickup mounts anywhere in X. Built in place."""
+    """Full-width height plate the pickup rests on and slides across in X (tone),
+    lifted/tilted by the 3 M4 jacks. Guided flat by a -Y flange that rides the -Y
+    skirt as it drops in from above (the +Y side has no guide -- the end walls set X
+    and the -Y flange sets Y). Full-width so the pickup mounts anywhere in X."""
     plate = box_at(OPEN_LEN - 0.8, OPEN_YW - 0.8, ZPL_T,
                    x=OPEN_CTR, y=OPEN_YC, z=(ZPL_BOT + ZPL_TOP) / 2)
-    # +Y solid guide wall (full height)
-    yp = (HY_REF - 0.3) - FLG_T / 2                   # rides the +Y carrier face (0.3 clr)
-    plate = plate.union(box_at(OPEN_LEN - 0.8, FLG_T, FLG_TOP - FLG_BOT,
-                               x=OPEN_CTR, y=yp, z=(FLG_BOT + FLG_TOP) / 2))
-    # -Y guide: a solid wall like +Y, but with a SELF-SUPPORTING notch over each
-    # clamp-screw hole -- open at the bottom (the screw passes; print bed is the
-    # plate bottom) and closing to a point at 45 deg above the screw, so the wall
-    # prints -z->+z with no flat bridge over the holes.
+    # -Y solid guide flange (full height, rides the -Y skirt inner face)
     ym = -(HY_CLAMP - 0.3) + FLG_T / 2
     plate = plate.union(box_at(OPEN_LEN - 0.8, FLG_T, FLG_TOP - FLG_BOT,
                                x=OPEN_CTR, y=ym, z=(FLG_BOT + FLG_TOP) / 2))
-    nz0 = CL_Z + PM.CSCREW_D / 2 + 0.5              # screw clears below here
-    half = PM.CSCREW_D / 2 + 2.0                    # notch half-width
-    for cx in CLAMP_HOLES:
-        pts = [(cx - half, FLG_BOT - 1.0), (cx + half, FLG_BOT - 1.0),
-               (cx + half, nz0), (cx, nz0 + half), (cx - half, nz0)]   # box + 45 roof
-        notch = (cq.Workplane("XZ").polyline(pts).close()
-                 .extrude(10.0, both=True).translate((0, ym, 0)))
-        plate = plate.cut(notch)
-    # JACK TABS: a downward threaded boss under each of the 3 tripod screws — head
-    # counterbore on the plate TOP (reached from +Z), M2 self-tap thread through the
-    # tab, tip protrudes below to the fixed pad. (self-tap Ø = screw_d + 0.2, prints
-    # near the major Ø; a heat-set insert is the upgrade for repeated adjustment.)
+    # JACK TABS: a downward threaded boss under each of the 3 tripod set-screws. The
+    # two +Y tabs sit under the pickup ear holes; the driver reaches them from +Z
+    # through those holes. M4 self-tap (Ø = screw_d + 0.2; heat-set insert = upgrade).
     for jx, jy in JACK_POS:
         plate = plate.union(cyl(JACK_TAB_OD, ZPL_BOT - JACK_TAB_BOTZ, z=JACK_TAB_BOTZ)
                             .translate((jx, jy, 0.0)))
         plate = plate.cut(cyl(JACK_D + 0.2, ZPL_TOP - JACK_TAB_BOTZ + 1.0,
                               z=JACK_TAB_BOTZ - 0.5).translate((jx, jy, 0.0)))
-        plate = plate.cut(cyl(JACK_D + 2.0, 1.5, z=ZPL_TOP - 1.5)
-                          .translate((jx, jy, 0.0)))       # head counterbore
     return plate
-
-
-def _pickup_xclamp():
-    """Protective shim between the side clamp screw and the pickup -Y face (spreads
-    the screw load so no metal digs the pickup). Pushed +Y. Built in place at the
-    nominal pickup X (build.py shifts it to the actual pickup)."""
-    return box_at(24.0, 2.0, 7.0,          # bears on the pickup -Y face, above the plate top
-                  x=PIECE_CTR, y=CLAMP_SHIM_Y, z=CL_Z)
 
 
 def _filler(slot):
@@ -421,7 +407,6 @@ def _filler(slot):
 
 
 pickup_zplate = heal(_pickup_zplate())
-pickup_xclamp = heal(_pickup_xclamp())
 
 # every panel becomes a (base, colour) print pair. The pickup piece keeps a
 # line-free top (its opening chops the field, and it had no lines before); every
