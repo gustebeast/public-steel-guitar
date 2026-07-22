@@ -98,9 +98,9 @@ LIP_DX  = 5.0                                   # -X protrusion off the endplate
 LIP_DZ  = 5.0                                   # Z height, hanging below the deck bottom
 LIP_CLR = CH.EP_TOP_CLR                         # clearance to the rail inner face + skirt
 LIP_Y0  = CH.Y_LO + CH.T / 2 + LIP_CLR          # -Y rail inner face + clr (-128.35)
-LIP_Y1  = -57.3 - LIP_CLR                       # pickup -Y skirt outer face - clr (top_plate
-                                                # -(HY_CLAMP + SKIRT_T) = -(54.3 + 3.0) = -57.3;
-                                                # no +Y skirt now, so the endplate lip is -Y only)
+LIP_Y1  = -70.5 - LIP_CLR                       # pickup -Y skirt outer face - clr (top_plate
+                                                # -(HY_CLAMP + SKIRT_T) = -(67.5 + 3.0) = -70.5;
+                                                # the -Y utility zone extended the skirt outward)
 
 
 def _cap() -> cq.Workplane:
