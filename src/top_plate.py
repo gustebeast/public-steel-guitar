@@ -138,18 +138,28 @@ ZPL_TOP  = PM.PK_BOT                                      # pickup rests on the 
 ZPL_BOT  = ZPL_TOP - ZPL_T
 FLG_BOT  = ZPL_BOT
 FLG_TOP  = ZPL_TOP + PM.PK_H_MIN                          # -Y guide wall top (capped below pickup top)
-# jack throw: M4x8 set screw threading a heat-set insert in the plate (mouth at the
-# plate top, boss down); its tip lands JACK_SCREW_L below the mouth, on the reaction.
-JACK_SCREW_L = 8.0                                        # M4x8 (short throw keeps the floor shallow)
-JACK_PAD_Z   = ZPL_TOP - JACK_SCREW_L                     # reaction pad TOP = set-screw tip contact (~-18.8)
-FLOOR_BOT = JACK_PAD_Z - 1.0                              # piece bottom (1mm reaction pad; DEEP for the
-                                                         # 22mm pickup, below the -14 ribs -- the
-                                                         # neck-slide collision is a TODO to review)
-# ── TOP-ACCESS M4 TRIPOD JACKS (user), at the PLATE's clear zones (pickup-agnostic)
-# TWO at the +Y plate corners (near the X-ends, outboard of pickup+string 1); ONE deep
-# in the -Y utility zone at centre X (now well clear of the pickup, not blocked by it).
-# All open to +Z. Equalise the two +Y = X LEVEL; the -Y jack (centre X) = across-string
-# tilt (centred -> can't tilt X).
+# ── LEADSCREW JACKS (user): head captured at the TOP, the plate rides the thread ──
+# Each height jack is a mini LEADSCREW: an M4 screw whose HEAD is captured (axially fixed,
+# free to ROTATE, driven from +Z) in a piece BEARING HOUSING at the top of the bay; its
+# thread runs down through a heat-set-insert NUT in the plate. Turning the head from +Z
+# walks the plate up/down the thread -> >10mm travel WITHOUT the screw hanging deep into
+# the motor/rib zone (the screw lives in the deck->plate zone; the plate's -Y guide flange
+# is already ~17mm tall so the nut has room). The plate's Ø8 nut boss telescopes up into
+# the Ø9 housing bore as it climbs. Gravity + the Y-clamp keep the load on the head shoulder.
+JACK_D         = 4.0                             # M4 (cadkit heat-set-insert nut in the plate)
+JACK_MOUTH_Z   = ZPL_TOP                          # plate NUT mouth (at the plate top; screw threads down through)
+JACK_HEAD_Z    = BZ - 2.0                         # leadscrew head SHOULDER, captured in the housing (~-2)
+HOUSING_OD     = 11.0                             # bearing-housing outer Ø (short -- just holds the head)
+HOUSING_BOT    = JACK_HEAD_Z - 2.0                # housing bottom (~-4); the plate rides BELOW it
+WEB_T          = 4.0                              # housing -> wall web thickness
+PLATE_TOP_HI   = HOUSING_BOT - 0.5                # plate can climb to here (stays clear of the housing)
+JACK_SCREW_BOT = JACK_MOUTH_Z - M4.insert_depth - 3.0    # screw tail at the plate-LOW nut bottom (~-18.8)
+FLOOR_BOT = JACK_SCREW_BOT - 0.5                  # piece bottom (~-19.3; ~ the original depth. The
+                                                 # leadscrew keeps the screw out of the DEEP bay -- the
+                                                 # tail lives in the deck->plate zone, not hanging past the
+                                                 # plate. Neck-slide rib collision is still the TODO to review)
+# TOP-ACCESS at the PLATE's clear zones (pickup-agnostic): TWO +Y plate corners + ONE
+# deep -Y-centre. Equalise the two +Y = X LEVEL; the -Y jack (centre X) = across-string tilt.
 PICKUP_X_NOM  = OPEN_CTR                          # nominal pickup centre X
 JACK_INSET_X  = 31.5                              # +Y jacks near the plate X-ends (toward the corners)
 JACK_YP       = 45.5                               # +Y corner jacks: outboard of string 1, inside the plate
@@ -157,9 +167,6 @@ JACK_YM       = PK_YM - 10.0                        # -Y jack deep in the utilit
 JACK_POS      = [(PICKUP_X_NOM + JACK_INSET_X, JACK_YP),
                  (PICKUP_X_NOM - JACK_INSET_X, JACK_YP),
                  (PICKUP_X_NOM, JACK_YM)]
-JACK_D        = 4.0                              # M4 (cadkit M4 set-screw + heat-set insert standard)
-JACK_MOUTH_Z  = ZPL_TOP                          # insert mouth (pocket opening) at the plate top
-BUT_T         = 10.0                             # reaction-buttress thickness
 HEIGHT_HOLE = PICKUP_X_NOM
 # ── Y CLAMP: TWO adjustable -Y clamp pads (user) ─────────────────────────────
 # In the -Y utility zone, two printed PADS (one either side of the -Y jack) each ride
@@ -348,9 +355,10 @@ def _pickup_piece():
     """4-slot deck panel that carries the pickup. A pocket bounded by a -Y GUIDE
     skirt and two end walls; the +Y side is OPEN (the +Y chassis rail is too close
     for a skirt). Extends into a LONG -Y utility zone. The Z-plate drops in from above
-    and the pickup rests on it, sliding in X for tone. HEIGHT: three M4 set-screw jacks
-    thread plate tabs and bear on FIXED pads added here (bay open below the plate).
-    The -Y jack + the Y-clamp pads all live in the -Y zone, clear of the pickup."""
+    and the pickup rests on it, sliding in X for tone. HEIGHT: three LEADSCREW jacks --
+    a short bearing HOUSING here captures each screw head at the top (rooted to the
+    nearest wall by a vertical web; both print self-supporting), and the plate rides the
+    thread below. The -Y jack + the Y-clamp pads all live in the -Y zone, clear of the pickup."""
     body = _deck_body(PIECE_X0, PIECE_X1)
     body = body.cut(box_at(OPEN_LEN, OPEN_YW, (TZ - BZ) + 2,
                            x=OPEN_CTR, y=OPEN_YC, z=(BZ + TZ) / 2))
@@ -361,26 +369,26 @@ def _pickup_piece():
     for xe in (PIECE_X0 - WALL / 2, PIECE_X1 + WALL / 2):   # end walls (stop plate X)
         body = body.union(box_at(WALL, OPEN_YW, BZ - FLOOR_BOT,
                                  x=xe, y=OPEN_YC, z=(BZ + FLOOR_BOT) / 2))
-    # REACTION BUTTRESSES: each jack tip bears on a small pad carried by a triangular
-    # buttress ROOTED ON THE NEAREST WALL. The buttress grows from the wall (at the
-    # deck) down to the pad at < 45 deg, so it PRINTS SELF-SUPPORTING in the deck-down
-    # (+Z -> -Z) orientation -- unlike the old floating flat pads. (The tiny tip-contact
-    # face itself is a short bridge.) +Y jacks root on an end wall; the -Y jack on the
-    # -Y skirt.
+    # LEADSCREW HEAD-BEARING HOUSINGS: a short Ø11 boss at each jack captures the screw
+    # head (Ø7.5 head pocket down to the shoulder, Ø4.6 shaft neck below); rooted to the
+    # nearest wall by a VERTICAL WEB (both self-supporting in the deck-down print). The
+    # head rests on the shoulder (gravity + Y-clamp keep the load down); the screw runs
+    # on down to the plate nut. Turned from +Z through the open bay above.
     for jx, jy in JACK_POS:
-        if jy > 0:                                         # +Y jack -> nearest end wall (X-Z fin)
+        body = body.union(cyl(HOUSING_OD, BZ - HOUSING_BOT, z=HOUSING_BOT)
+                          .translate((jx, jy, 0.0)))
+        if jy > 0:                                         # +Y jack -> nearest end wall (X-Z web)
             wx = (PIECE_X0 - WALL / 2) if jx > OPEN_CTR else (PIECE_X1 + WALL / 2)
-            prof = [(wx, BZ), (wx, FLOOR_BOT), (jx, FLOOR_BOT)]
-            fin = (cq.Workplane("XZ").polyline(prof).close()
-                   .extrude(BUT_T / 2, both=True).translate((0, jy, 0)))
-        else:                                              # -Y jack -> -Y skirt (Y-Z fin)
+            body = body.union(box_at(abs(wx - jx), WEB_T, BZ - HOUSING_BOT,
+                                     x=(wx + jx) / 2, y=jy, z=(BZ + HOUSING_BOT) / 2))
+        else:                                              # -Y jack -> -Y skirt (Y-Z web)
             wy = -(HY_CLAMP)
-            prof = [(wy, BZ), (wy, FLOOR_BOT), (jy, FLOOR_BOT)]
-            fin = (cq.Workplane("YZ").polyline(prof).close()
-                   .extrude(BUT_T / 2, both=True).translate((jx, 0, 0)))
-        body = body.union(fin)
-        body = body.union(box_at(6.0, 6.0, JACK_PAD_Z - FLOOR_BOT,   # tip-contact pad
-                                 x=jx, y=jy, z=(FLOOR_BOT + JACK_PAD_Z) / 2.0))
+            body = body.union(box_at(WEB_T, abs(wy - jy), BZ - HOUSING_BOT,
+                                     x=jx, y=(wy + jy) / 2, z=(BZ + HOUSING_BOT) / 2))
+        body = body.cut(cyl(7.5, BZ - JACK_HEAD_Z + 1, z=JACK_HEAD_Z)     # head pocket
+                        .translate((jx, jy, 0.0)))
+        body = body.cut(cyl(M4.shaft_clr_d + 0.2, BZ - HOUSING_BOT + 2,   # shaft neck
+                            z=HOUSING_BOT - 1).translate((jx, jy, 0.0)))
     return heal(body)
 
 
@@ -396,11 +404,11 @@ def _pickup_zplate():
     ym = -(HY_CLAMP - 0.3) + FLG_T / 2
     plate = plate.union(box_at(OPEN_LEN - 0.8, FLG_T, FLG_TOP - FLG_BOT,
                                x=OPEN_CTR, y=ym, z=(FLG_BOT + FLG_TOP) / 2))
-    # JACK BOSSES: the cadkit M4 SET-SCREW + HEAT-SET INSERT standard (cut_m4_boss:
-    # Ø8 boss, Ø6×5 melt pocket, Ø4.4 clearance to the tip) under each tripod jack --
-    # boss protrudes DOWN, insert mouth at the plate top, the set-screw tip runs on
-    # through the clearance onto the piece reaction buttress. Same helper as the nut
-    # block / knee lever; no more self-tap cylinders.
+    # LEADSCREW NUTS: the cadkit M4 heat-set-insert boss (cut_m4_boss: Ø8 boss, Ø6×5 melt
+    # pocket, Ø4.4 clearance) at each jack -- the INSERT is the traveling NUT; the leadscrew
+    # threads through it (mouth up at the plate top) and its tail runs on down the Ø4.4
+    # clearance. Turning the captured screw walks the plate up/down. Same helper as the
+    # nut block / knee lever.
     for jx, jy in JACK_POS:
         plate = cut_m4_boss(plate, (jx, jy, JACK_MOUTH_Z - M4.boss_prot),
                             (1, 0, 0), 180, clr_len=4.0)
