@@ -417,16 +417,19 @@ def _pickup_mount_components():
     # pickup rests on the Z-plate, centred on the field (Y = PK_CTR_Y) for magnetic cover
     out = [("pickup", PM.pickup_demo().translate((PICKUP_X, TP.PK_CTR_Y, PM.PK_TOP))),
            ("pickup_zplate", TP.pickup_zplate)]
-    # TOP-ACCESS height (user): THREE M4 SET-SCREW jacks, drawn with the cadkit
-    # standard -- a seated HEAT-SET INSERT (m4_boss_insert) in the plate boss + the M4
-    # set-screw dummy (f_screw, real Ø4 shaft + 2mm hex socket), same as the nut block.
-    # Turned from +Z; tip bears on the piece reaction buttress. Equalise the two +Y =
-    # X level, -Y = across-string tilt.
+    # TOP-ACCESS height (user): THREE M4 LEADSCREW jacks. Each screw's HEAD is captured
+    # in the piece bearing housing at the top (JACK_HEAD_Z) and its thread runs down
+    # through a HEAT-SET-INSERT NUT (m4_boss_insert) in the plate. Turning the head from
+    # +Z walks the plate up/down (>10mm travel, no deep screw). Equalise the two +Y = X
+    # level, -Y = across-string tilt.
+    _shaft = TP.JACK_HEAD_Z - TP.JACK_SCREW_BOT
     for _i, (_jx, _jy) in enumerate(TP.JACK_POS):
         _pt = (_jx, _jy, TP.JACK_MOUTH_Z - M4.boss_prot)
         out.append((f"pickup_jack_insert_{_i}", m4_boss_insert(_pt, (1, 0, 0), 180)))
+        _screw = (f_screw(M4, _shaft)                                  # threaded shaft (down)
+                  .union(cyl(M4.boss_od - 1.0, TP.BZ - TP.JACK_HEAD_Z, z=0.0)))  # captured button head
         out.append((f"pickup_jack_screw_{_i}",
-                    f_screw(M4, TP.JACK_SCREW_L).translate((_jx, _jy, TP.JACK_MOUTH_Z))))
+                    _screw.translate((_jx, _jy, TP.JACK_HEAD_Z))))
     # Y CLAMP (user): two adjustable -Y clamp pads, each on an M4 button screw through
     # a heat-set INSERT in the plate (same standard). Slide the pad +Y to the pickup -Y
     # edge, then the head (down the pad bore) pulls it down onto the pickup. All +Z.
@@ -434,7 +437,7 @@ def _pickup_mount_components():
         out.append((f"pickup_yclamp_{_i}", TP.pickup_yclamp.translate((_cx, 0.0, 0.0))))
         _pt = (_cx, TP.YCLAMP_SCR_Y, TP.JACK_MOUTH_Z - M4.boss_prot)
         out.append((f"pickup_yclamp_insert_{_i}", m4_boss_insert(_pt, (1, 0, 0), 180)))
-        _sc = f_screw(M4, TP.JACK_SCREW_L).union(cyl(M4.boss_od - 1.0, 2.5, z=0.0))  # + button head
+        _sc = f_screw(M4, 6.0).union(cyl(M4.boss_od - 1.0, 2.5, z=0.0))  # M4 button (threads plate insert)
         out.append((f"pickup_yclamp_screw_{_i}",
                     _sc.translate((_cx, TP.YCLAMP_SCR_Y, TP.ZPL_TOP))))
     return out
