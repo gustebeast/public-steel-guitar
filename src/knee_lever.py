@@ -702,28 +702,30 @@ def _housing() -> cq.Workplane:
     Ø10.8 crown are flagged for the axle round."""
     w = box_at(HOUS_X1 - HOUS_X0, 2 * HOUS_HW, HOUS_Z1 - HOUS_Z0,
                x=(HOUS_X0 + HOUS_X1) / 2, y=0.0, z=(HOUS_Z0 + HOUS_Z1) / 2)
-    # LEVER ROOM. Hub band: lever ±X envelope + slide clearance, LEVER
-    # Y-span only (the ±Y cheeks at the +X end stay = proto bearing
-    # walls), out through the top face
-    w = w.cut(box_at(ARM_TX + 2 * HS_CLR, 2 * (LEVER_HW + HS_CLR),
-                     (HOUS_Z1 + 1.0) - (-5.5),
-                     x=0.0, y=HUB_YC, z=((HOUS_Z1 + 1.0) + (-5.5)) / 2))
-    # swing slot: the lobe/tongue band, FULL width (the cartridge fronts
-    # open into it; no dead outboard slivers)
-    slot_h = LOBE_RC + 2 * LOBE_R + 3
-    w = w.cut(box_at(2 * SWING_X + 4, 2 * HOUS_HW + 2, slot_h, x=0.0,
-                     y=HUB_YC, z=-(slot_h / 2 + PIVOT_BOSS_D / 2 + 0.5)))
-    # arm-throw WEDGE, planar (user: the curved swept relief is pulled for
-    # now): vertical +X face past the rest arm, ONE 30°-slanted -X face =
-    # the full-throw arm plane + clearance, lever Y-span, out the bottom —
-    # the slanted cut at the +X end of the cartridges, as a single prism.
-    # (The ±Y cheeks stay SOLID: axle/bearing bores return with the axle
-    # round; the axle/bearing dummies ride buried until then.)
+    # LEVER ROOM = ONE PLANAR SWEEP CUT (user round 3: 'solid everywhere
+    # except the house cut and a sweep cut for the lever range of motion' —
+    # the old full-width swing slot notched the front cheeks and the full-
+    # height hub band slotted the top face; both are gone, the followers'
+    # path lives inside the through house channels now). The cut is the
+    # planar envelope of the lever swept 0..THROW, lever Y-span only:
+    #   x +5.4 vertical  = the rest arm's +X face + clearance (the prism
+    #                      face at +5.0 is inside it, so the whole +X
+    #                      half-space stays open — the storage fold at +X
+    #                      swings into air)
+    #   z ±5.4 hub band  = the Ø10.8 hub + clearance, square-bounded
+    #   30° slant        = the full-throw arm's -X face + clearance
+    # (Print note for the axle round: the 10.8-wide flat ceiling over the
+    # hub band replaces the old top-face slot — gable or re-slot it when
+    # the bearings land.)
     _hw = LEVER_HW + HS_CLR
-    _sx = math.tan(_THR)
-    _zt, _zb = HUB_D / 4.0, HOUS_Z0 - 1.0            # wedge z band (hub band covers above)
-    _p = [(6.0, _zt), (-(ARM_TX / 2 + HS_CLR), _zt),
-          (-(ARM_TX / 2 + HS_CLR) + _sx * (_zb - _zt), _zb), (6.0, _zb)]
+    _e = ARM_TX / 2 + HS_CLR                          # 5.4: lever half-depth + clr
+    _zb = HOUS_Z0 - 1.0
+    _slant = lambda z: math.tan(_THR) * z - (_e + ARM_TX / 2 * (1 / math.cos(_THR) - 1) + 0.4)
+    # -X boundary: x = tan(30°)·z − c, the rotated arm face + clearance;
+    # it crosses the hub band's -5.4 at z ≈ 1.5, so the polygon walks
+    # hub-top → hub-side → slant → bottom → rest-side
+    _zc = (-_e + (_e + ARM_TX / 2 * (1 / math.cos(_THR) - 1) + 0.4)) / math.tan(_THR)
+    _p = [(_e, _e), (-_e, _e), (-_e, _zc), (_slant(_zb), _zb), (_e, _zb)]
     _face = cq.Face.makeFromWires(cq.Wire.makePolygon(
         [cq.Vector(x, -_hw, z) for x, z in _p] + [cq.Vector(_p[0][0], -_hw, _p[0][1])]))
     w = w.cut(cq.Workplane("XY").add(
