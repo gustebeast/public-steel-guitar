@@ -476,26 +476,6 @@ def feel_unplace(s):                                # inverse of feel_place: pla
     return s.translate((-_FEEL_DX, 0, -_FEEL_DZ)).mirror("YZ")
 
 
-def _cam_swept(step=2.0, extra_deg=3.0, hw=None):
-    r"""Union of the lever ARM's near-axle (cam) region swept 0..THROW+extra about the +Y axle, grown by
-    the slide clearance -> the front-bottom relief cut in the housing floor so the swinging arm never plows
-    into it. The arm is only 2*LEVER_HW wide, but `hw` widens the envelope in Y: pass the housing's outer
-    half-width so the relief runs the FULL width of the cartridge prism -- one clean cut, no leftover
-    outboard slivers of floor beside the arm's path (those walls carry nothing). Only Z>-40 is built (the
-    long paddle sweeps open air below the guitar). Built in the placed (final) frame."""
-    hw = LEVER_HW if hw is None else hw
-    grow = HS_CLR                                                   # +0.4 clearance around the arm envelope
-    hub = cyl_y(HUB_D + 2 * grow, 2 * hw, y0=-hw)
-    arm = box_at(ARM_TX + 2 * grow, 2 * hw, 40.0, x=0, y=HUB_YC, z=-20.0 + 2.5)
-    cam = hub.union(arm)                                            # lobes sit inside this envelope
-    swept = cam
-    a = step
-    while a <= THROW + extra_deg + 1e-9:
-        swept = swept.union(cam.rotate((0, 0, 0), (0, 1, 0), a))
-        a += step
-    return heal(swept)
-
-
 # ── HOUSING = ONE PARAMETRIC PRISM (user round: draw the lever, then the
 # cartridges incl. their back-stops, then DERIVE the housing box from their
 # extents — each face computed from the previous stage, no hand numbers):
@@ -512,7 +492,9 @@ HOUS_HW = abs(HS_YC) + HS_CART_WY / 2 + HS_CLR + HS_HOUS_WALL   # 13.9
 HOUS_Z1 = BODY_Z - 0.3                                   # +7.1
 HOUS_Z0 = (HS_Z - HS_PISTON_WZ / 2) + _FEEL_DZ - HS_CLR - HS_HOUS_WALL  # -14.8
 #           ^ = HS_FLOOR_Z (defined below, after the piston) placed
-_CAM_SWEPT = _cam_swept(hw=HOUS_HW)                  # FULL-WIDTH relief (one clean cut across the whole prism)
+# (the swept-arm relief _cam_swept — a union of rotated hub/arm copies — is
+#  PULLED for now (user: no curved geometry around the axle; keep it simple,
+#  build back up later). The lever room is all planar cuts in _housing.)
 
 
 def _recess_swept(yc, step=3.0, fold=45.0):
@@ -701,8 +683,9 @@ def _housing() -> cq.Workplane:
         (lever Y-span only, so ±Y CHEEKS survive at the +X end: the future
         bearing walls), opened out the TOP face (the slot hides 0.3 under
         the body; no round-crown ceiling over the lever), the full-width
-        lobe/tongue SWING SLOT, and the swept arm envelope _CAM_SWEPT —
-        the slanted cut past the cartridge fronts (arm at full throw).
+        lobe/tongue SWING SLOT, and a PLANAR arm-throw wedge (one
+        30°-slanted face = the full-throw arm plane; the old curved swept
+        relief is PULLED per user — simple first, build back up).
       * two HOUSE-profile cartridge POCKETS (_hs_pocket: rect + 45° gable,
         self-supporting). Both run to the same backmost X — either
         cartridge fits either slot; the MAIN one just parks HS_SETBACK
@@ -730,14 +713,30 @@ def _housing() -> cq.Workplane:
     slot_h = LOBE_RC + 2 * LOBE_R + 3
     w = w.cut(box_at(2 * SWING_X + 4, 2 * HOUS_HW + 2, slot_h, x=0.0,
                      y=HUB_YC, z=-(slot_h / 2 + PIVOT_BOSS_D / 2 + 0.5)))
-    # swept arm envelope: the SLANTED cut at the +X end of the cartridges
-    # (arm swept 0..THROW, full width — floor relief + swing clearance)
-    w = w.cut(_CAM_SWEPT)
-    # cartridge house-pockets + drag recesses
+    # arm-throw WEDGE, planar (user: the curved swept relief is pulled for
+    # now): vertical +X face past the rest arm, ONE 30°-slanted -X face =
+    # the full-throw arm plane + clearance, lever Y-span, out the bottom —
+    # the slanted cut at the +X end of the cartridges, as a single prism.
+    # (The ±Y cheeks stay SOLID: axle/bearing bores return with the axle
+    # round; the axle/bearing dummies ride buried until then.)
+    _hw = LEVER_HW + HS_CLR
+    _sx = math.tan(_THR)
+    _zt, _zb = HUB_D / 4.0, HOUS_Z0 - 1.0            # wedge z band (hub band covers above)
+    _p = [(6.0, _zt), (-(ARM_TX / 2 + HS_CLR), _zt),
+          (-(ARM_TX / 2 + HS_CLR) + _sx * (_zb - _zt), _zb), (6.0, _zb)]
+    _face = cq.Face.makeFromWires(cq.Wire.makePolygon(
+        [cq.Vector(x, -_hw, z) for x, z in _p] + [cq.Vector(_p[0][0], -_hw, _p[0][1])]))
+    w = w.cut(cq.Workplane("XY").add(
+        cq.Solid.extrudeLinear(_face, cq.Vector(0, 2 * _hw, 0))))
+    # cartridge house-pockets + drag recesses. The house profile runs ALL
+    # THE WAY OUT the +X face (user: extend to the prism edge, toward +x) —
+    # one clean house channel from the front face to the cartridge back;
+    # the 6mm threaded back-stop boss behind it stays solid. (Build frame
+    # is mirrored: placed +X face = build -HOUS_X1; 1.0 overshoot.)
     for dy in (MAIN_YC - HS_YC, 0.0):
         dx = HS_SETBACK
         yc = HS_YC + dy
-        w = w.cut(feel_place(_hs_pocket(yc, HS_POCKET_X0 + dx, HS_BACK_X + dx)))
+        w = w.cut(feel_place(_hs_pocket(yc, -HOUS_X1 - 1.0, HS_BACK_X + dx)))
         _sgn = 1.0 if yc > 0 else -1.0
         _yw = yc + _sgn * hs_pocket_hw()                          # pocket wall inner face
         _ys = yc + _sgn * (hs_pocket_hw() + HS_DRAG_SEAT)         # recess back (into the wall)
