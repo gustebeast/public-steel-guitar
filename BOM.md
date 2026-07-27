@@ -104,25 +104,35 @@ populate them.
 | Part | Qty | ~Price | Source | Notes |
 |------|-----|--------|--------|-------|
 | **Angle sensor IC** | 8 | ~$1.2–2 ea | [LCSC](https://www.lcsc.com/search?q=MT6701) | MagnTek **MT6701**, 14-bit on-axis magnetic encoder (SSOP-8). Assembled by JLCPCB onto our sensor PCB alongside the tee boards — no hand soldering |
-| **Diametric magnet** | 8 | ~$0.5–1.5 ea | commodity — supermagnete / K&J / AliExpress (**pick & verify at purchase**) | **Ø8 × 2 mm NdFeB N35, DIAMETRICALLY magnetised.** ⚠ **Diametric, NOT axial** — axial discs are far more common and simply do not work here. Glues onto the printed axle stub |
+| **Diametric magnet** | 8 | $0.40 / $0.33 @10 | [DigiKey](https://www.digikey.com/en/products/detail/radial-magnets-inc/8995/5126077) | Radial Magnets **8995** — NdFeB **N35, Ø6 × 2.5 mm, DIAMETRICALLY magnetised**, NiCuNi, 80 °C, 3873 G surface; ~9k in stock. ⚠ **Diametric, NOT axial** — axial discs are far more common and simply do not work here (DigiKey lists the direction in the specs, so it is checkable at order time). Glues onto the printed axle stub |
 
 *(qty 8 = 7 controls + 1 spare)*
 
-**Why Ø8 × 2 rather than the usual Ø6 × 2.5.** The IC reads field **direction**,
-not magnitude, so the magnet only has to land the field inside the sensor's
-window (this class of on-axis encoder wants roughly 30–70 mT — confirm against
-the MT6701 datasheet at board design). Strength buys no accuracy, which frees us
-to spend the magnet's geometry on the axis that is actually scarce: **+Y room is
-tight** (the sensor cluster sits inboard, under the body) while lateral room is
-free. A diametric disc's poles sit on its curved flanks, so the pole separation —
-and with it how slowly the field decays across the gap — scales with the
-**diameter**. Going Ø6 → Ø8 more than pays for thinning 2.5 → 2.0, so we save
-0.5 mm of Y *and* read a stronger field. The wider disc also flattens the field
-across the die, which now matters: the axle is **printed PCTG**, with more runout
-than the old ground steel pin. Keep the grade at **N35** — at Ø8 an N52 would
-push past the top of the window. Final trim is the **air gap** (a printed
-dimension, currently 1.5 mm): measure the field on the first board and adjust the
-gap in the model rather than re-buying magnets.
+**Sizing / sourcing note.** The IC reads field **direction**, not magnitude, so
+the magnet only has to land the field inside the sensor's window (this class of
+on-axis encoder wants roughly 30–70 mT — confirm against the MT6701 datasheet at
+board design). Strength buys no accuracy, which in principle frees us to spend
+the magnet's geometry on the axis that is actually scarce: **+Y room is tight**
+(the sensor cluster sits inboard, under the body) while lateral room is free. A
+diametric disc's poles sit on its curved flanks, so pole separation — and with it
+how slowly the field decays across the gap — scales with **diameter**, meaning a
+Ø8 × 2.0 would save 0.5 mm of Y *and* read stronger than a Ø6 × 2.5.
+
+We are **not** doing that, on sourcing grounds: no supplier we already buy from
+stocks Ø8 × 2.0. DigiKey's Ø8 diametric is 2.5 thick (saves nothing) and the
+Ø8 × 2.0 is a 100-pack from a magnet specialist — a new vendor and a 12× overbuy
+to save 0.5 mm, at a moment when re-anchoring the sensor cluster to the real
+housing face has already reclaimed 2.6 mm of +Y. Ø6 × 2.5 is also the **reference
+geometry** for this sensor class (ams' own AS5000-MD6H is D6 × 2.5), so the
+published app notes apply directly rather than us estimating the field. Final
+trim is the **air gap** (a printed dimension, currently 1.5 mm): measure on the
+first board and adjust the gap in the model rather than re-buying magnets.
+
+⚠ **Temperature:** the 8995 is plain N35, rated **80 °C**. That is fine in normal
+use but marginal for an instrument left in a hot car; if that becomes a real duty
+cycle, step up to an **N35H/SH** in the same Ø6 × 2.5 geometry (~120–150 °C).
+Partial demagnetisation would weaken the field but not corrupt the angle — the
+sensor reads direction — so the failure mode is graceful, not silent.
 
 ## Filament (printed parts, both tiers)
 
