@@ -84,23 +84,15 @@ GLOBAL_OK = {
     frozenset({"keyhead_endplate", "chassis"}), frozenset({"keyhead_endplate", "string"}),
     frozenset({"keyhead_endplate", "top_plate"}),
     frozenset({"keyhead_endplate", "break_dowel"}), frozenset({"keyhead_endplate", "set_screw"}),
-    # pickup carrier: the pickup rests on the printed Z-plate (jacked by the three
-    # top-access M4 set-screws at the plate's clear corners/-Y zone, bearing on the
-    # piece's fixed pads) and is held by the two adjustable -Y CLAMP PADS, each on an
-    # M4 screw through a Y-slot into the plate, whose face + top lip pin the pickup.
+    # pickup carrier: the pickup rests on the printed Z-plate, which the three LEADSCREW
+    # jacks raise/tilt -- each screw head captured in a piece bearing housing at the top,
+    # its thread running through a heat-set-insert NUT in the plate. (Y hold-down clamp
+    # removed for now -- height adjustment only.)
     frozenset({"pickup", "pickup_zplate"}),
-    frozenset({"pickup", "pickup_yclamp"}),
-    # jacks: set-screw + seated insert in the plate boss, tip on the piece buttress
     frozenset({"pickup_zplate", "pickup_jack_insert"}),
     frozenset({"pickup_zplate", "pickup_jack_screw"}),
     frozenset({"pickup_jack_insert", "pickup_jack_screw"}),
     frozenset({"pickup_jack_screw", "top_plate"}),
-    # Y-clamp: pad + button screw + seated insert in the plate boss
-    frozenset({"pickup_zplate", "pickup_yclamp"}),
-    frozenset({"pickup_zplate", "pickup_yclamp_insert"}),
-    frozenset({"pickup_zplate", "pickup_yclamp_screw"}),
-    frozenset({"pickup_yclamp", "pickup_yclamp_screw"}),
-    frozenset({"pickup_yclamp_insert", "pickup_yclamp_screw"}),
     # FLUSH-X: the body stubs' outboard wall tenons mortise the ENDPLATE
     # side walls (the inboard ones mortise the rail/chassis)
     frozenset({"leg_body_stub", "keyhead_endplate"}),
@@ -228,8 +220,7 @@ def intended(na, nb) -> bool:
     TP_FAMILY = {"top_plate", "top_plate_color"}
     if tp & TP_FAMILY and tp <= (TP_FAMILY | {"chassis", "oled", "joystick",
                                               "pickup", "pickup_zplate", "pickup_jack_screw",
-                                              "pickup_jack_insert", "pickup_yclamp_insert",
-                                              "pickup_yclamp", "pickup_yclamp_screw",
+                                              "pickup_jack_insert",
                                               "bridge_endplate", "keyhead_endplate"}):
         return True
     # adjacent chassis segments meet at their sliding-dovetail joints (one frame)
