@@ -482,14 +482,17 @@ def feel_unplace(s):                                # inverse of feel_place: pla
 #   +X  the LEVER's +X extent (hub/arm half-depth; the knee face is exposed)
 #   -X  the CARTRIDGE back + the back-stop screw's thread engagement
 #   ±Y  the outermost cartridge face + slide clearance + one housing wall
-#   +Z  the instrument BODY underside − a 0.3 running gap
+#   +Z  the instrument BODY underside, FLUSH (user round 4: the slab
+#       beside the lever fills the whole lever-top→body zone — 2.4 of
+#       MATERIAL, no air gap; was 2.1 + 0.3 air)
 #   -Z  the cartridge bottom (piston underside) + slide clearance + one wall
 # Globals (MOUNT_POSE + these): x -578.26..-496.00, y -162.65..-134.85,
-# z -97.35..-75.45 — the user-checked corner set.
+# z -97.35..-75.15 (top now flush with the chassis underside Z_BOT).
 HOUS_X1 = ARM_TX / 2                                     # +5.0
 HOUS_X0 = -(HS_HOUS_BACK + HS_SETBACK)                   # -77.26
 HOUS_HW = abs(HS_YC) + HS_CART_WY / 2 + HS_CLR + HS_HOUS_WALL   # 13.9
-HOUS_Z1 = BODY_Z - 0.3                                   # +7.1
+HOUS_Z1 = BODY_Z                                         # +7.4 (flush: BODY_Z
+#           = HUB_TOP + 2.4 — the designed 2.4 stands between lever and body)
 HOUS_Z0 = (HS_Z - HS_PISTON_WZ / 2) + _FEEL_DZ - HS_CLR - HS_HOUS_WALL  # -14.8
 #           ^ = HS_FLOOR_Z (defined below, after the piston) placed
 # (the swept-arm relief _cam_swept — a union of rotated hub/arm copies — is
@@ -712,11 +715,10 @@ def _housing() -> cq.Workplane:
     #                      face at +5.0 is inside it, so the whole +X
     #                      half-space stays open — the storage fold at +X
     #                      swings into air)
-    #   z ±5.4 hub band  = the Ø10.8 hub + clearance, square-bounded
+    #   OPEN OUT THE TOP = user round 4: the flat ceiling directly above
+    #                      the lever was a 10.8-wide print overhang — cut;
+    #                      the band exits the top face as a slot
     #   30° slant        = the full-throw arm's -X face + clearance
-    # (Print note for the axle round: the 10.8-wide flat ceiling over the
-    # hub band replaces the old top-face slot — gable or re-slot it when
-    # the bearings land.)
     _hw = LEVER_HW + HS_CLR
     _e = ARM_TX / 2 + HS_CLR                          # 5.4: lever half-depth + clr
     _zb = HOUS_Z0 - 1.0
@@ -725,7 +727,8 @@ def _housing() -> cq.Workplane:
     # it crosses the hub band's -5.4 at z ≈ 1.5, so the polygon walks
     # hub-top → hub-side → slant → bottom → rest-side
     _zc = (-_e + (_e + ARM_TX / 2 * (1 / math.cos(_THR) - 1) + 0.4)) / math.tan(_THR)
-    _p = [(_e, _e), (-_e, _e), (-_e, _zc), (_slant(_zb), _zb), (_e, _zb)]
+    _p = [(_e, HOUS_Z1 + 1.0), (-_e, HOUS_Z1 + 1.0), (-_e, _zc),
+          (_slant(_zb), _zb), (_e, _zb)]
     _face = cq.Face.makeFromWires(cq.Wire.makePolygon(
         [cq.Vector(x, -_hw, z) for x, z in _p] + [cq.Vector(_p[0][0], -_hw, _p[0][1])]))
     w = w.cut(cq.Workplane("XY").add(
