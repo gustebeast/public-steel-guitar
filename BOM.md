@@ -103,7 +103,7 @@ populate them.
 
 | Part | Qty | ~Price | Source | Notes |
 |------|-----|--------|--------|-------|
-| **Angle sensor IC** | 8 | ~$1.2–2 ea | [LCSC](https://www.lcsc.com/search?q=MT6701) | MagnTek **MT6701**, 14-bit on-axis magnetic encoder (SSOP-8). Assembled by JLCPCB onto our sensor PCB alongside the tee boards — no hand soldering |
+| **Angle sensor IC** | 8 | ~$1.2–2 ea | [LCSC](https://www.lcsc.com/search?q=MT6701) | MagnTek **MT6701QT-STD**, 14-bit on-axis magnetic encoder. Take the **QFN-16 (3×3×0.75)**, *not* the SOP-8 variant: the air gap is measured to the IC's own top surface, so the package height comes straight out of the gap budget, and the SOP-8 is ~1.5 mm tall — twice the QFN — on the axis where we have the least room. Assembled by JLCPCB onto our sensor PCB alongside the tee boards — no hand soldering |
 | **Diametric magnet** | 8 | $0.40 / $0.33 @10 | [DigiKey](https://www.digikey.com/en/products/detail/radial-magnets-inc/8995/5126077) | Radial Magnets **8995** — NdFeB **N35, Ø6 × 2.5 mm, DIAMETRICALLY magnetised**, NiCuNi, 80 °C, 3873 G surface; ~9k in stock. ⚠ **Diametric, NOT axial** — axial discs are far more common and simply do not work here (DigiKey lists the direction in the specs, so it is checkable at order time). Glues onto the printed axle stub |
 
 *(qty 8 = 7 controls + 1 spare)*
