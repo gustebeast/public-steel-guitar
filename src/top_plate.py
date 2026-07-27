@@ -111,17 +111,15 @@ OPEN_CTR  = (OPEN_X0 + OPEN_X1) / 2                        # -47.5
 OPEN_LEN  = OPEN_X0 - OPEN_X1                              # 53.0 = PK_W + 2*CLAMP
 SKIRT_T   = 3.0
 FLG_T     = 2.5                                            # Z-plate guide-flange thickness
-# ── pickup Y: +Y REFERENCE datum + EXTENDED -Y utility zone (user) ────────────
-# The pickup registers its +Y edge on a low +Y REFERENCE LIP that puts the 88.9
-# MAGNETIC range over string 1 (there's a ~6.35mm DEAD FRAME at each Y end, so
-# coverage is reckoned against the magnetic range, NOT the 101.6 body edge -> the
-# datum sits at the body edge, ~+50.1). The -Y side is a LONG UTILITY ZONE that runs
-# well past the pickup so it (a) FITS PICKUPS OF VARIOUS Y-LENGTHS -- the adjustable
-# -Y CLAMP PADS slide to whatever the -Y edge is -- and (b) houses the -Y height jack
-# + the Y-clamp screws CLEAR of the pickup, reached from +Z. NO tall +Y skirt (the +Y
-# rail YH=+54.75 is 4.6mm off the datum); the low lip clears it.
+# ── pickup Y placement + EXTENDED -Y utility zone (user) ─────────────────────
+# The pickup is placed by MAGNETIC coverage: its 88.9 MAGNETIC range must sit over
+# string 1 (there's a ~6.35mm DEAD FRAME at each Y end, so coverage is reckoned against
+# the magnetic range, NOT the 101.6 body edge -> the +Y body edge lands ~+50.1). The -Y
+# side is a LONG UTILITY ZONE that runs well past the pickup so the -Y HEIGHT JACK sits
+# CLEAR of the pickup, reached from +Z. NO tall +Y skirt (the +Y rail YH=+54.75 is 4.6mm
+# off the body edge). (Y hold-down clamp REMOVED for now -- height adjustment only.)
 PK_MAG_INSET = (PM.PK_L - PM.PK_MAG_L) / 2               # 6.35 dead frame at each Y end
-PK_YP    = D.string_y(0) + 1.0 + PK_MAG_INSET            # +Y REFERENCE / body edge (~+50.1)
+PK_YP    = D.string_y(0) + 1.0 + PK_MAG_INSET            # +Y body edge (~+50.1); mag covers string 1
 PK_YM    = PK_YP - PM.PK_L                                # Alumitone -Y edge (~-51.5)
 PK_CTR_Y = (PK_YP + PK_YM) / 2                            # Alumitone centre Y (demo placement)
 YZONE    = 16.0                                           # -Y utility-zone depth beyond the pickup
@@ -129,9 +127,6 @@ OPEN_YP  = PK_YP + 0.6                                    # +Y opening edge (ope
 HY_CLAMP = -PK_YM + YZONE                                 # -Y skirt inner = extended -Y edge (~+67.5)
 OPEN_YC  = (OPEN_YP - HY_CLAMP) / 2                       # opening/floor Y centre
 OPEN_YW  = OPEN_YP + HY_CLAMP                             # opening/floor Y width
-# +Y DATUM = the deck opening's +Y edge (OPEN_YP): the -Y clamp pushes the pickup +Y
-# until its +Y edge nears it -> string 1 covered. (No +Y lip: the pickup +Y edge sits
-# right at the plate edge against the rail, with no room for one.)
 # Z-plate the pickup slides on in X (fine tone) -- lifted/tilted by the 3 jacks:
 ZPL_T    = 2.0
 ZPL_TOP  = PM.PK_BOT                                      # pickup rests on the plate top
@@ -168,17 +163,8 @@ JACK_POS      = [(PICKUP_X_NOM + JACK_INSET_X, JACK_YP),
                  (PICKUP_X_NOM - JACK_INSET_X, JACK_YP),
                  (PICKUP_X_NOM, JACK_YM)]
 HEIGHT_HOLE = PICKUP_X_NOM
-# ── Y CLAMP: TWO adjustable -Y clamp pads (user) ─────────────────────────────
-# In the -Y utility zone, two printed PADS (one either side of the -Y jack) each ride
-# a vertical M4 screw through a Y-SLOT into the plate. Slide a pad +Y so its face bears
-# the pickup -Y edge -- pinning the pickup +Y on the reference lip -- and its top lip
-# traps the pickup down; tighten the screw from +Z to lock. The Y-slots let the SAME
-# pads fit ANY pickup Y-length (slide to the -Y edge). Replaces the toe-clamps.
-YCLAMP_D     = 4.0                               # M4 clamp screw (2)
-YCLAMP_X     = [PICKUP_X_NOM - 14.0, PICKUP_X_NOM + 14.0]   # over the pickup -Y edge, either side of the -Y jack
-YCLAMP_SCR_Y = PK_YM - 6.0                        # screw axis Y in the plate (~-57.5, mid-zone)
-YCLAMP_SLOTY = 12.0                               # Y-slot travel (the pickup-length range one pad covers)
-YCLAMP_TOPZ  = PM.PK_TOP + 2.0                    # pad top (just above the pickup top)
+# (Y-CLAMP hold-down REMOVED for now, user -- focusing on height adjustment. The pickup
+# just rests on the plate; the -Y utility zone now only houses the -Y leadscrew jack.)
 
 MARKER_FRETS = {3, 5, 7, 9, 12, 15, 17, 19, 21, 24}
 # ── fret lines + fretboard border as a MATERIAL split, not an engraving ──────
@@ -358,7 +344,7 @@ def _pickup_piece():
     and the pickup rests on it, sliding in X for tone. HEIGHT: three LEADSCREW jacks --
     a short bearing HOUSING here captures each screw head at the top (rooted to the
     nearest wall by a vertical web; both print self-supporting), and the plate rides the
-    thread below. The -Y jack + the Y-clamp pads all live in the -Y zone, clear of the pickup."""
+    thread below. The -Y jack lives deep in the -Y utility zone, clear of the pickup."""
     body = _deck_body(PIECE_X0, PIECE_X1)
     body = body.cut(box_at(OPEN_LEN, OPEN_YW, (TZ - BZ) + 2,
                            x=OPEN_CTR, y=OPEN_YC, z=(BZ + TZ) / 2))
@@ -372,7 +358,7 @@ def _pickup_piece():
     # LEADSCREW HEAD-BEARING HOUSINGS: a short Ø11 boss at each jack captures the screw
     # head (Ø7.5 head pocket down to the shoulder, Ø4.6 shaft neck below); rooted to the
     # nearest wall by a VERTICAL WEB (both self-supporting in the deck-down print). The
-    # head rests on the shoulder (gravity + Y-clamp keep the load down); the screw runs
+    # head rests on the shoulder (gravity keeps the load down); the screw runs
     # on down to the plate nut. Turned from +Z through the open bay above.
     for jx, jy in JACK_POS:
         body = body.union(cyl(HOUSING_OD, BZ - HOUSING_BOT, z=HOUSING_BOT)
@@ -396,8 +382,8 @@ def _pickup_zplate():
     """Full-width height plate the pickup rests on and slides across in X (tone),
     lifted/tilted by the 3 M4 jacks. Guided flat by a -Y flange that rides the -Y
     skirt as it drops in from above (the +Y side has no guide -- the end walls set X
-    and the -Y flange sets Y). Extends into the -Y utility zone; carries two threaded
-    holes there for the Y-clamp pad screws. Full-width so the pickup mounts anywhere."""
+    and the -Y flange sets Y). Extends into the -Y utility zone (houses the -Y jack).
+    Full-width so the pickup mounts anywhere."""
     plate = box_at(OPEN_LEN - 0.8, OPEN_YW - 0.8, ZPL_T,
                    x=OPEN_CTR, y=OPEN_YC, z=(ZPL_BOT + ZPL_TOP) / 2)
     # -Y solid guide flange (full height, rides the -Y skirt inner face)
@@ -412,41 +398,7 @@ def _pickup_zplate():
     for jx, jy in JACK_POS:
         plate = cut_m4_boss(plate, (jx, jy, JACK_MOUTH_Z - M4.boss_prot),
                             (1, 0, 0), 180, clr_len=4.0)
-    # Y-CLAMP: same M4 insert boss (the clamp screw threads the insert; its head, down a
-    # bore in the pad, pulls the pad onto the pickup). Mouth at the plate top, boss down.
-    for cx in YCLAMP_X:
-        plate = cut_m4_boss(plate, (cx, YCLAMP_SCR_Y, JACK_MOUTH_Z - M4.boss_prot),
-                            (1, 0, 0), 180, clr_len=2.0)
     return plate
-
-
-def _pickup_yclamp():
-    """One adjustable -Y CLAMP PAD (print 2), built at X=0 / nominal Y (build.py places
-    it at each YCLAMP_X). It rides a vertical M4 screw through a Y-SLOT into the plate:
-    slide it +Y so its face bears the pickup's -Y edge (pinning the pickup +Y toward the
-    deck-opening datum) and its top lip traps the pickup down, then tighten from +Z. The
-    Y-slot lets the SAME pad fit any pickup Y-length. Pickup-agnostic hold-down."""
-    w = 16.0
-    y_face = PK_YM                                        # +Y face (bears pickup -Y edge), nominal
-    y_back = YCLAMP_SCR_Y - 6.0                            # -Y back, past the screw
-    z0, z1 = ZPL_TOP, YCLAMP_TOPZ
-    body = box_at(w, abs(y_face - y_back), z1 - z0,
-                  x=0.0, y=(y_face + y_back) / 2, z=(z0 + z1) / 2)
-    # top lip overhanging +Y over the pickup -Y top edge (traps it down)
-    body = body.union(box_at(w, 3.0, z1 - PM.PK_TOP,
-                             x=0.0, y=y_face + 1.5, z=(PM.PK_TOP + z1) / 2))
-    # Y-SLOT (shaft clearance + driver access) up the full pad; HEAD POCKET (a wider
-    # Y-slot) at the BOTTOM, where the M4 button head bears near the plate. The screw
-    # threads the plate insert (fixed); the pad slides in Y on the slot, then the head
-    # (turned from +Z down the bore) pulls the pad down onto the pickup.
-    def _yslot(dia, zlo, zhi):
-        s = box_at(dia, YCLAMP_SLOTY, zhi - zlo, x=0.0, y=YCLAMP_SCR_Y, z=(zlo + zhi) / 2)
-        for ey in (-YCLAMP_SLOTY / 2, YCLAMP_SLOTY / 2):
-            s = s.union(cyl(dia, zhi - zlo, z=zlo).translate((0.0, YCLAMP_SCR_Y + ey, 0.0)))
-        return s
-    body = body.cut(_yslot(M4.shaft_clr_d + 0.4, z0 - 1, z1 + 1))      # shaft + driver bore
-    body = body.cut(_yslot(M4.boss_od - 0.5, z0, z0 + 3.0))            # head pocket at the plate
-    return body
 
 
 def _filler(slot):
@@ -456,7 +408,6 @@ def _filler(slot):
 
 
 pickup_zplate = heal(_pickup_zplate())
-pickup_yclamp = heal(_pickup_yclamp())
 
 # every panel becomes a (base, colour) print pair. The pickup piece keeps a
 # line-free top (its opening chops the field, and it had no lines before); every
