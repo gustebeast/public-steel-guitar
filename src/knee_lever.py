@@ -65,22 +65,42 @@ AXLE_D  = 5.0                       # Ø5 axle journals — PCTG now (user: no s
                                     # lying -Y bed face); the -Y journal is the glued
                                     # kl_axle_insert (the bed face must stay flat).
 BRG_OD, BRG_ID, BRG_W = 8.0, 5.0, 2.5   # MR85ZZ — shared with the screw-support bearings
-MAG_D, MAG_T = 8.0, 2.0             # DIAMETRICALLY-magnetised NdFeB disc on the axle end
-                                    # (user: lateral room is cheap, +Y room is NOT — the
-                                    # sensor cluster sits inboard under the body). Ø6×2.5
-                                    # → Ø8×2.0 SAVES 0.5 of Y and still reads STRONGER at
-                                    # the 1.5 gap: a diametric disc's poles sit on the
-                                    # curved flanks, so the pole separation (and with it
-                                    # the falloff length) scales with the DIAMETER — going
-                                    # wider buys back a thinner magnet with margin. The
-                                    # wider disc also flattens the field across the die,
-                                    # which now matters: the axle is PRINTED (more runout
-                                    # than the old ground pin). N35, NOT a higher grade —
-                                    # at Ø8 an N52 would push past the sensor's window.
-                                    # AIR_GAP is the trim knob (it's a printed dimension):
+MAG_D, MAG_T = 6.0, 2.5             # DIAMETRICALLY-magnetised NdFeB disc on the axle end
+                                    # = DigiKey/Radial Magnets 8995 (N35, NiCuNi, 80 °C),
+                                    # an EXISTING supplier, in stock, $0.33–0.40. SOURCING
+                                    # PICKED THE SIZE (user asked): a Ø8×2.0 would save
+                                    # 0.5 of +Y — going wider buys back a thinner magnet
+                                    # because a diametric disc's poles sit on the CURVED
+                                    # FLANKS, so pole separation (and the falloff length
+                                    # over the gap) scales with DIAMETER — but nobody we
+                                    # already buy from stocks Ø8×2.0: DigiKey's Ø8 is
+                                    # 2.5 thick (saves nothing) and the Ø8×2.0 is a
+                                    # 100-pack from a new vendor. Not worth it for 0.5,
+                                    # especially now the MAG_Y0 anchor fix below has
+                                    # already reclaimed 2.6 of +Y. Ø6×2.5 is also the
+                                    # REFERENCE geometry for this sensor class (ams' own
+                                    # AS5000-MD6H is D6×2.5), so the app notes apply
+                                    # directly instead of us estimating the field.
+                                    # AIR_GAP stays the trim knob (a printed dimension):
                                     # the IC reads field DIRECTION, so strength only has
                                     # to LAND in the window, it doesn't set accuracy.
-AIR_GAP = 1.5                       # magnet face -> MT6701 chip (the 0.5-3 mm window)
+AIR_GAP = 1.5                       # magnet face -> MT6701. DATASHEET (verified 2026-07):
+                                    # field at the IC SURFACE must be 200-1000 G (20-100 mT)
+                                    # with a 0.5-2.0 gap, and the reference magnet is
+                                    # EXACTLY our Ø6x2.5 — so the pair is the nominal
+                                    # configuration, not a marginal one. TWO THINGS THE
+                                    # DEFERRED SENSOR ROUND MUST SETTLE:
+                                    #  (1) the window is 0.5-2.0 (NARROWER than the AS5600's
+                                    #      0.5-3.0 this constant was first written against).
+                                    #      1.5 nominal + the stack's axial float (0.3 bearing
+                                    #      + 0.1 insert) can reach ~1.9 — legal but with no
+                                    #      margin, so RETARGET ~1.2 when the mount is drawn.
+                                    #  (2) the datum is the IC SURFACE, but PCB_Y below puts
+                                    #      the BOARD face at this distance and no chip is
+                                    #      modelled. The die must face the magnet (reading
+                                    #      back through 1.6 of FR4 would sit ~3.1 out, past
+                                    #      the window), so the package height has to come
+                                    #      OUT of this gap: PCB_Y = magnet + AIR_GAP + pkg.
 PCB_W, PCB_T = 18.0, 1.6            # custom JLCPCB MT6701 board (square)
 PCB_TOP = 4.0                       # board TOP edge above the axle axis (user: the
                                     # centred board clipped 1.6 into the instrument).
