@@ -66,7 +66,8 @@ PARTS = {
     "belt_clamp":      (partial(heal, belt_clamp),    "pctg/belt_clamp.step",      "PCTG — GT2 belt splice clamp (print 2 per splice ×10)"),
     "knee_housing":    (lambda: __import__("src.knee_lever", fromlist=["e"]).knee_housing, "petg-gf/knee_housing.step", "PETG-GF — knee-lever (LKL) housing: ONE parametric prism derived from the lever/cartridge/body extents, minus the house-pockets, backstop threads + lever room (axle/bearings, sensor mount + rib tenons deferred)"),
     "knee_lever":      (lambda: __import__("src.knee_lever", fromlist=["e"]).knee_lever,   "pctg/knee_lever.step",   "PCTG — knee-lever (LKL) arm + knee paddle (takes knee strikes: toughness over stiffness); the +Y axle journal + magnet stub print INTEGRAL (stand off the lying -Y bed face)"),
-    "kl_axle_insert": (lambda: __import__("src.knee_lever", fromlist=["e"]).kl_axle_insert(), "pctg/kl_axle_insert.step", "PCTG — knee-lever -Y AXLE INSERT ×1: Ø5 journal + 45° cone/pilot glue tenon into the hub's bed-face pocket, with an anti-rotation KEY tongue along the pilot (glue carries no torque); axially captive in its bearing pocket. Prints journal-down"),
+    "kl_axle": (lambda: __import__("src.knee_lever", fromlist=["e"]).kl_axle, "pctg/kl_axle.step", "PCTG — knee-lever AXLE ×1: ONE full-length part fitted LAST, slid +Y→−Y through bearing/lever/bearing (the old integral stub could never enter its bearing). Ø5 round journals, D-FLAT key through the hub, flange seating on the housing contact rib (= the air-gap datum), threaded magnet pocket. Prints STANDING, POCKET-DOWN, with a brim"),
+    "kl_magnet_cap": (lambda: __import__("src.knee_lever", fromlist=["e"]).kl_magnet_cap, "pctg/kl_magnet_cap.step", "PCTG — magnet CAP ×1: female-threaded ring screwing over the axle's pocket collar to clamp the Ø6 diametric disc; centre stays open so nothing intrudes on the air gap. Prints APERTURE-DOWN"),
     "cart_base": (lambda: __import__("src.knee_lever", fromlist=["e"]).cart_base, "pctg/cart_base.step", "PCTG — spring-cartridge (inverted-U, open -Z; shared: print 2, for main + half-stop)"),
     "cart_piston": (lambda: __import__("src.knee_lever", fromlist=["e"]).cart_piston, "pctg/cart_piston.step", "PCTG — spring-cartridge piston, flat follower tongue (shared: print 2)"),
     "guide_post": (lambda: __import__("src.knee_lever", fromlist=["e"]).guide_post, "pctg/guide_post.step", "PCTG — coil-back guide post, screw pushes it (shared: print 2)"),
@@ -699,7 +700,8 @@ def _knee_lever_components():
     s_hs = (KL.LOBE_RC * (math.sin(thr) - math.sin(eng)) + 1.0) if throw > KL.HS_ENGAGE_DEG else 0.0  # engages @15°
     pose = KL.MOUNT_POSE
     out = [("knee_housing", KL.knee_housing), ("knee_lever", swing(KL.knee_lever)),
-           ("kl_axle_insert", swing(KL.kl_axle_insert()))]   # glued -> rotates with the lever
+           ("kl_axle", swing(KL.kl_axle)),                  # keyed+glued -> turns with the lever
+           ("kl_magnet_cap", swing(KL.kl_magnet_cap))]      # screwed to the axle
     for nm, off, s in (("main", KL.CART_MAIN_OFFSET, s_main), ("half_stop", KL.CART_HALFSTOP_OFFSET, s_hs)):
         out.append((f"{nm}_cart_base", KL.feel_place(KL.cart_base.translate(off))))
         out.append((f"{nm}_cart_piston", KL.feel_place(KL.cart_piston.translate(off)).translate((-s, 0, 0))))
@@ -811,7 +813,9 @@ _COLORS = {
     # knee lever (LKL) — input-side control
     "knee_housing":    (0.30, 0.36, 0.42),   # PCTG housing
     "knee_lever":      (0.27, 0.51, 0.71),   # PCTG lever/paddle
-    "kl_axle_insert":  (0.30, 0.54, 0.68),   # PCTG -Y journal (near the lever blue)
+    "kl_axle":         (0.30, 0.54, 0.68),   # PCTG full-length axle (near the lever blue)
+    "kl_magnet_cap":   (0.24, 0.44, 0.56),   # PCTG magnet retainer
+    "kl_chip":         (0.12, 0.12, 0.14),   # MT6701 package (black)
     "kl_bearing":      (0.69, 0.77, 0.87),   # MR85ZZ
     "kl_magnet":       (0.80, 0.20, 0.20),   # diametric magnet
     "kl_pcb":          (0.05, 0.35, 0.15),   # MT6701 board (green)

@@ -47,6 +47,7 @@ from cadkit.fasteners import (M2_SELFTAP_D, M4_SHAFT_CLR_D, M4_INSERT_D,
                        M4_INSERT_L, M4_SCREW_L, M4, cut_insert_bore,
                        cut_m4_pocket, seated_m4_insert, cut_m4_boss, m4_boss_insert)
 from cadkit.joinery import PrintSpec, slide_joint   # the shared octagon slide joint
+from cadkit.supports import printable_bore, contact_rib
 # the M4 insert pocket/boss helpers now live in cadkit/fasteners.py (shared); keep the old local names:
 _insert_pocket, _seated_insert = cut_m4_pocket, seated_m4_insert
 _insert_boss_cut, _insert_dummy = cut_m4_boss, m4_boss_insert
@@ -84,7 +85,12 @@ MAG_D, MAG_T = 6.0, 2.5             # DIAMETRICALLY-magnetised NdFeB disc on the
                                     # AIR_GAP stays the trim knob (a printed dimension):
                                     # the IC reads field DIRECTION, so strength only has
                                     # to LAND in the window, it doesn't set accuracy.
-AIR_GAP = 1.5                       # magnet face -> MT6701. DATASHEET (verified 2026-07):
+AIR_GAP = 1.2                       # magnet face -> the IC's OWN TOP SURFACE (the
+                                    # datasheet's datum — see CHIP_* below; the board is
+                                    # a further CHIP_H out). Retargeted 1.5 -> 1.2 so the
+                                    # assembly's axial float lands the gap at 1.2-1.6,
+                                    # mid-window, instead of grazing the 2.0 ceiling.
+                                    # DATASHEET (verified 2026-07):
                                     # field at the IC SURFACE must be 200-1000 G (20-100 mT)
                                     # with a 0.5-2.0 gap, and the reference magnet is
                                     # EXACTLY our Ø6x2.5 — so the pair is the nominal
@@ -102,6 +108,15 @@ AIR_GAP = 1.5                       # magnet face -> MT6701. DATASHEET (verified
                                     #      the window), so the package height has to come
                                     #      OUT of this gap: PCB_Y = magnet + AIR_GAP + pkg.
 PCB_W, PCB_T = 18.0, 1.6            # custom JLCPCB MT6701 board (square)
+CHIP_W, CHIP_H = 3.0, 0.75          # MT6701QT-STD, QFN-16 3x3 (standard 0.75 body —
+                                    # CONFIRM against MagnTek's package drawing at board
+                                    # layout). The QFN is the variant to buy: the SOP-8
+                                    # is ~1.5 tall and every tenth of that is +Y we do
+                                    # not have. MODELLED (user) because the datasheet's
+                                    # air gap is measured to the IC's TOP SURFACE, not to
+                                    # the board — with the die facing the magnet the
+                                    # package height sits INSIDE the gap, so a board-face
+                                    # datum silently overstates it by CHIP_H.
 PCB_TOP = 4.0                       # board TOP edge above the axle axis (user: the
                                     # centred board clipped 1.6 into the instrument).
                                     # The CHIP must sit ON the axle axis (z=0) to read
@@ -130,29 +145,9 @@ WP_Y0, WP_Y1   = HUB_Y1, HUB_Y1 + 4.0   # +Y bearing wall (10 .. 14)
 #  anchor to the housing face + bearing home, which are defined there. They
 #  used to hang off WP_Y1 — the +Y bearing WALL, deleted in the prism round —
 #  which left the magnet floating 2.6 outboard of the real face.)
-INS_CONE_L  = 1.0                   # insert glue tenon: 45° cone Ø5→Ø3 into the hub...
-INS_PILOT_L = 3.0                   # ...then a Ø3 pilot (takes the bearing moment as a
-                                    # couple over the embed) ending in a 45° tip — every
-                                    # pocket ceiling on the lying lever CONVERGES (the
-                                    # pocket opens at the -Y print-bed face)
-# anti-rotation KEY (user: tongue-and-groove so the insert can't spin in the
-# lever). A rib along the pilot + its matching groove: the glue joint no longer
-# has to carry ANY torque, so a cold/creeping bond can't let the -Y journal
-# work loose. Both halves stay printable — the tongue narrows going +Y (up in
-# the insert's journal-down print) and the groove's ROOF converges on the same
-# 45°, so the lying lever gets no flat ceiling over it (one-nozzle rule).
-KEY_W    = 1.6                      # tongue width (tangential); the groove leaves ≥2.5 of
-                                    # hub wall to the Ø10 OD
-KEY_RAMP = 0.8                      # radial protrusion past the pilot == the 45° ramp run
-KEY_CLR  = 0.1                      # groove clearance — the project's standard assembly
-                                    # fit (not the tenon's 0.15 glue fit): both key faces
-                                    # print VERTICAL in their own parts, so accuracy is
-                                    # good, and halving the slop halves the key's backlash
-                                    # (it engages within ~3°). Backlash costs no sensor
-                                    # accuracy either way — the MAGNET rides the +Y stub,
-                                    # which is integral with the lever; this end is a bare
-                                    # journal, so the key only has to be there if the glue
-                                    # ever lets go.
+# (the cone/pilot glue tenon and its protruding KEY tongue are retired with the
+#  insert — the axle is one through-part now and the key is a D-FLAT, sized in
+#  the prism block: a protruding tongue cannot pass the Ø5 bearing bore.)
 HUB_YC  = (HUB_Y0 + HUB_Y1) / 2     # hub / cam / feel centre Y (0)
 
 # ── lever ────────────────────────────────────────────────────────────────────
@@ -448,6 +443,11 @@ def demo_parts():
     out.append(("kl_magnet", cyl_y(MAG_D, MAG_T, y0=MAG_Y0)))
     out.append(("kl_pcb", box_at(PCB_W, PCB_T, PCB_W, x=0, y=PCB_Y + PCB_T / 2,
                                  z=PCB_TOP - PCB_W / 2)))    # chip on-axis, board hangs -Z
+    # the MT6701 itself (user): it sits ON the axle axis, package facing the
+    # magnet, and its BODY is what the air gap is measured to — modelling it is
+    # what makes the gap a real dimension instead of a board-face guess.
+    out.append(("kl_chip", box_at(CHIP_W, CHIP_H, CHIP_W,
+                                  x=0, y=PCB_Y - CHIP_H / 2, z=0)))
     # BOTH springs are the SAME cartridge: MAIN (at MAIN_YC) whose follower touches the lobe at REST
     # (sets the rest angle), and HALF-STOP (at HS_YC, slid +X by HS_SETBACK) that engages partway. Each
     # has a coil, a back TENSION screw (preload), and a FROM-BELOW CLAMP screw that jams the cartridge
@@ -579,16 +579,59 @@ BRG_Y0 = LEVER_HW + HS_CLR          # bearing INNER faces at ±10.4 = the lever-
 # SENSOR-SIDE Y (re-anchored here — see the note up in the layout block): the
 # magnet rides the integral +Y stub just past the HOUSING FACE, not past the
 # long-deleted bearing wall. 0.5 running clearance to the static face.
-MAG_Y0  = HOUS_HW + 0.5             # magnet seat (14.4; was 16.5 off the dead wall)
-PCB_Y   = MAG_Y0 + MAG_T + AIR_GAP  # MT6701 board face (chip side, -Y) at the gap
-AXLE_Y0, AXLE_Y1 = -13.1, MAG_Y0    # axle ends: -Y insert journal tip (stops INSIDE its
-                                    # bearing pocket, back wall -13.2, 0.1 clear; AXIALLY
-                                    # CAPTIVE there) .. the integral +Y stub's magnet-seat
-                                    # face. DEFERRED with the sensor mount: a centring CUP
-                                    # for the disc (a Ø9 boss needs a 45° cone off the Ø5
-                                    # stub — either 2.0 further out, or flared inside an
-                                    # opened-up face bore; it wants co-designing with the
-                                    # PCB mount + gap, so the disc butts the stub for now)
+# ── AXLE (user round 2: the previous integral-stub + glued-insert pair COULD
+# NOT BE INSTALLED. The lever's +Y stub had to enter the +Y bearing, but the hub
+# is boxed in by the cheeks with only 0.4 of axial travel, so the stub could
+# never reach it — that pair only ever fitted in a render.) The axle is now ONE
+# printed part fitted LAST: press both bearings, drop the lever in, then slide
+# the axle +Y -> -Y through bearing / lever / bearing. Its magnet POCKET is
+# threaded on the OD and a screw-on CAP traps the disc; the axle's flange seats
+# on a cadkit CONTACT RIB on the housing's outer face, so the magnet's Y — and
+# with it the sensor air gap — is set by a printed datum instead of by wherever
+# the stack happens to come to rest.
+RIB_T = RIB_PROUD = 0.85            # cadkit house contact-rib section
+AXLE_SHOULDER_Y = HOUS_HW + RIB_PROUD           # 14.75: flange face, ON the rib
+AXLE_FLANGE_D   = 9.0               # flange Ø = the cap thread's NOMINAL major
+MAG_FLANGE_T    = 0.8                           # pocket floor under the magnet
+MAG_Y0  = AXLE_SHOULDER_Y + MAG_FLANGE_T        # 15.55: magnet seat
+MAG_Y1  = MAG_Y0 + MAG_T                        # 18.05: magnet face -> the air gap
+MAG_POCKET_D  = MAG_D + 0.2                     # 6.2 slip fit for the Ø6 disc
+MAG_COLLAR_H  = MAG_T - 0.1         # 2.4: the collar stops 0.1 SHORT of the disc so the
+                                    # cap always lands on the MAGNET — bottoming on the
+                                    # collar instead would leave the disc free to rattle
+MAG_TH_PITCH  = 2.0                 # cap thread, cadkit 45° self-supporting profile.
+MAG_TH_DEPTH  = 0.35                # Shallow + fine because the collar is only 2.4 long
+MAG_TH_MINOR  = AXLE_FLANGE_D - 2 * MAG_TH_DEPTH   # (~1 turn): at this pitch a deeper
+MAG_TH_CLR    = 0.4                 # flank trips cadkit's valley-overlap check. Fine —
+                                    # the cap retains a 0.5 g disc and carries no load.
+CAP_T  = 0.8                                    # cap's clamping flange
+CAP_OD = 11.0
+CAP_APERTURE = 5.0                  # open on the axis so the cap never intrudes on the
+                                    # field path or on any future gap reduction
+# D-FLAT key. The user asked for a tongue; a PROTRUDING one is impossible here —
+# it would have to pass through the Ø5 bearing bore on the way in — so the key
+# lives INSIDE the Ø5 envelope as a flat.
+# ITS EXTENT IS FORCED, and a probe caught the naive version: the flat must run
+# from the axle's LEADING (-Y) TIP all the way past the hub. Anything round
+# ahead of the flat has to pass through the lever's D-bore during insertion,
+# where the bore's flat leaves material standing at AXLE_FLAT_R — so a round
+# leading section simply cannot get through. Only a flat that starts at the tip
+# leaves no round section ahead of it.
+# The cost is that the -Y journal runs on a flatted shaft. That lands on the
+# right side: the magnet is at the +Y end, whose journal stays fully ROUND, so
+# the disc's concentricity is set by the good bearing. Worst case the -Y end can
+# shift by the flat depth, and ONLY toward +Z — gravity and the knee's lateral
+# load both bear on round metal — which tilts the magnet by ~0.1 mm against the
+# ±0.5 mm misalignment the encoder allows. Depth 0.5 (not 0.7) keeps that margin
+# comfortable while still leaving a 3.0-wide key face.
+AXLE_FLAT_DEPTH = 0.5
+AXLE_FLAT_R = AXLE_D / 2 - AXLE_FLAT_DEPTH      # 2.0 from the axis
+AXLE_FLAT_Y = LEVER_HW + 0.1                    # flat's +Y end (hub ±10, bearings ±10.4)
+AXLE_BORE_D = AXLE_D + 0.2                      # lever's through D-bore (glue fit)
+PCB_Y   = MAG_Y1 + AIR_GAP + CHIP_H             # board face = magnet + gap + PACKAGE
+AXLE_Y0, AXLE_Y1 = -13.1, MAG_Y1                # axle: -Y journal tip (stops INSIDE its
+                                                # bearing pocket, back wall -13.2) .. the
+                                                # magnet face at the +Y end
 # (the swept-arm relief _cam_swept — a union of rotated hub/arm copies — is
 #  PULLED for now (user: no curved geometry around the axle; keep it simple,
 #  build back up later). The lever room is all planar cuts in _housing.)
@@ -837,7 +880,18 @@ def _housing() -> cq.Workplane:
     # the -Z→+Z print — teardrop/roundness refinement rides the axle round.
     w = w.cut(cyl_y(BRG_OD + 0.1, BRG_W + 0.3, y0=BRG_Y0))
     w = w.cut(cyl_y(BRG_OD + 0.1, BRG_W + 0.3, y0=-(BRG_Y0 + BRG_W + 0.3)))
-    w = w.cut(cyl_y(AXLE_D + 1.0, 1.2, y0=BRG_Y0 + BRG_W + 0.2))
+    # axle way out through the +Y cheek. TEARDROP — and cadkit picks that
+    # itself from print_up: this bore runs SIDEWAYS in the housing's -Z->+Z
+    # print, so a round ceiling would droop into it and take it out of round.
+    w = w.cut(printable_bore(AXLE_D + 1.0, HOUS_HW - (BRG_Y0 + BRG_W + 0.2),
+                             (0.0, BRG_Y0 + BRG_W + 0.2, 0.0),
+                             (0.0, 1.0, 0.0), (0.0, 0.0, 1.0), overshoot=0.6))
+    # CONTACT RIB on the outer face: the axle's flange seats here, so this ring
+    # IS the air gap's datum. Narrow on purpose — the flange turns against it,
+    # and a ring costs a fraction of a full annulus's friction.
+    w = w.union(contact_rib(AXLE_FLANGE_D - 1.5, RIB_PROUD, RIB_T,
+                            (0.0, HOUS_HW, 0.0), (0.0, 1.0, 0.0),
+                            (0.0, 0.0, 1.0)))
     # cartridge house-pockets + drag recesses. The house profile runs ALL
     # THE WAY OUT the +X face (user: extend to the prism edge, toward +x) —
     # one clean house channel from the front face to the cartridge back;
@@ -861,45 +915,6 @@ def _housing() -> cq.Workplane:
                .rotate((0, 0, 0), (0, 1, 0), 90).translate((HS_BACK_X + HS_SETBACK, HS_YC + dy, HS_Z)))
         w = w.cut(feel_place(nut), clean=False)
     return w
-
-
-def _key_prism(pts, width: float) -> cq.Workplane:
-    """A (y, z) polygon extruded along X and centred on x=0 — the axle KEY's
-    tongue (on the insert) or groove (in the lever hub). Built in the lever
-    frame, keyed toward +Z (away from the -Z arm, where the hub is solid to
-    its Ø10 OD and nothing else is cut)."""
-    x0 = -width / 2.0
-    wire = cq.Wire.makePolygon([cq.Vector(x0, y, z) for y, z in pts]
-                               + [cq.Vector(x0, *pts[0])])
-    face = cq.Face.makeFromWires(wire)
-    return cq.Workplane("XY").add(
-        cq.Solid.extrudeLinear(face, cq.Vector(width, 0, 0)))
-
-
-# KEY station along the axis: the pilot band of the insert tenon.
-_KEY_Y0 = -LEVER_HW + INS_CONE_L                 # pilot start (-9.0)
-_KEY_Y1 = _KEY_Y0 + INS_PILOT_L                  # pilot end   (-6.0)
-_PILOT_R = AXLE_D / 2 - 1.0                      # insert pilot radius (1.5)
-_PILOT_BR = AXLE_D / 2 - 0.85                    # lever pilot BORE radius (1.65)
-
-
-def _key_tongue():
-    """The insert's rib: full height over the pilot, then a 45° ramp back down
-    onto the pilot surface (self-supporting in the journal-down print)."""
-    kr = _PILOT_R + KEY_RAMP                                     # 2.3
-    return _key_prism([(_KEY_Y0, 0.0), (_KEY_Y0, kr),
-                       (_KEY_Y1 - KEY_RAMP, kr), (_KEY_Y1, _PILOT_R),
-                       (_KEY_Y1, 0.0)], KEY_W)
-
-
-def _key_groove():
-    """The lever's matching slot: same shape + KEY_CLR, but open all the way
-    out through the -Y bed face so the tongue can slide in, and its ROOF lands
-    on the pilot bore at 45° (no flat ceiling on the lying lever)."""
-    gkr = _PILOT_R + KEY_RAMP + KEY_CLR                          # 2.45
-    return _key_prism([(-LEVER_HW - 1.0, 0.0), (-LEVER_HW - 1.0, gkr),
-                       (_KEY_Y1 - KEY_RAMP, gkr), (_KEY_Y1, _PILOT_BR),
-                       (_KEY_Y1, 0.0)], KEY_W + 2 * KEY_CLR)
 
 
 def _lever() -> cq.Workplane:
@@ -926,57 +941,113 @@ def _lever() -> cq.Workplane:
     body = body.cut(_RECESS_SWEPT.translate((0, HS_YC - MAIN_YC, 0)))          # +Y (HALF-STOP) follower band
     body = body.union(cyl_y(2 * LOBE_R, 2 * LEVER_HW, y0=-LEVER_HW)        # ONE full-width lobe ridge; the
                       .translate((0, 0, -LOBE_RC)))                        #   spans between recesses bury in the arm
-    # PCTG AXLE (user): the +Y journal + magnet stub print INTEGRAL — a Ø5
-    # boss standing off the lying lever's -Y bed face, through the +Y
-    # bearing and its Ø6 face bore out to the magnet seat (MAG_Y0)
-    body = body.union(cyl_y(AXLE_D, MAG_Y0 - LEVER_HW, y0=LEVER_HW))
-    # -Y INSERT POCKET in the bed face (the old Ø5 through-bore is gone):
-    # 45° cone mouth Ø5.3→Ø3.3 + Ø3.3 pilot bore + 45° tip — all ceilings
-    # converge, printed opening-at-the-bed (0.15 radial glue clearance)
-    body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCone(
-        AXLE_D / 2 + 0.15, AXLE_D / 2 - 0.85, INS_CONE_L,
-        cq.Vector(0, -LEVER_HW, 0), cq.Vector(0, 1, 0))))
-    body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        AXLE_D / 2 - 0.85, INS_PILOT_L,
-        cq.Vector(0, -LEVER_HW + INS_CONE_L, 0), cq.Vector(0, 1, 0))))
-    body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCone(
-        AXLE_D / 2 - 0.85, 0.05, 1.55,
-        cq.Vector(0, -LEVER_HW + INS_CONE_L + INS_PILOT_L, 0),
-        cq.Vector(0, 1, 0))))
-    body = body.cut(_key_groove())            # anti-rotation KEY slot (+Z)
+    # AXLE THROUGH-BORE (user round 2: the axle is a separate full-length part
+    # now, so the hub simply takes a bore). D-BORE — the flat IS the key. cadkit
+    # picks the shape from print_up: the lever prints lying on its -Y face, so
+    # this bore runs ALONG the build direction, has no ceiling, and correctly
+    # comes back as a PLAIN cylinder — the same call site that hands the housing
+    # a teardrop.
+    _bore = printable_bore(AXLE_BORE_D, 2 * LEVER_HW, (0.0, -LEVER_HW, 0.0),
+                           (0.0, 1.0, 0.0), (0.0, 1.0, 0.0), overshoot=1.0)
+    _zhi, _zlo = AXLE_FLAT_R + 0.1, -(AXLE_BORE_D / 2 + 1.0)
+    body = body.cut(_bore.intersect(box_at(               # flatten the +Z side -> D
+        AXLE_BORE_D + 2.0, 2 * LEVER_HW + 4.0, _zhi - _zlo,
+        x=0.0, y=0.0, z=(_zhi + _zlo) / 2)))
     return heal(body)
 
 
-def kl_axle_insert() -> cq.Workplane:
-    """PCTG -Y AXLE INSERT ×1 per lever (user: the steel pin is gone). The
-    lever prints lying on its -Y face, so only the +Y journal can be
-    integral; this part is the -Y journal: Ø5 (rides the -Y MR85ZZ inner
-    race) → 45° cone Ø5→Ø3 glue tenon → Ø3 pilot → 45° tip, matching the
-    hub-face pocket (0.15 glue clearance), plus a KEY tongue along the
-    pilot (user) running in a matching hub groove: the glue never has to
-    carry torque, so a cold or creeping bond still can't let this journal
-    spin. Prints JOURNAL-DOWN, standing: cone, tip and the key's 45° ramp
-    all narrow upward — fully self-supporting. Axially CAPTIVE between the
-    hub face and the bearing pocket's back wall (0.1 float). Drawn in the
-    lever frame, journal tip at AXLE_Y0."""
+def kl_axle() -> cq.Workplane:
+    """PCTG AXLE ×1 per lever — ONE full-length printed part (user: the old
+    integral-stub + glued-insert pair could not physically be assembled).
+    Fitted LAST and slid +Y -> -Y through the +Y bearing, the lever hub and
+    the -Y bearing, so nothing has to thread a rigid stub into an already-
+    captured bearing.
+
+      * Ø5 journals at both bearings, kept fully ROUND.
+      * a D-FLAT over the hub band = the anti-rotation key (a protruding
+        tongue could not pass the Ø5 bearing bore on the way in). Glue in the
+        lever's matching D-bore is what holds it axially; the flat means that
+        glue never carries torque.
+      * a FLANGE that seats on the housing's contact rib — the axial datum
+        that sets the magnet's Y, and with it the sensor air gap.
+      * a magnet POCKET with a MALE thread on its OD; kl_magnet_cap screws
+        over it and clamps the disc.
+
+    Prints STANDING, POCKET-DOWN (collar face on the bed): that way the
+    Ø5 -> Ø9 flange step is an upward-facing floor rather than a 2 mm
+    overhanging ledge, and the 45° thread flanks self-support. Use a brim —
+    the bed footprint is only the collar's annulus under a ~31 mm column.
+    Built along +Z, threaded, then rotated onto the lever's +Y axis; the flat
+    is milled AFTER the thread (cadkit thread rule) and it is NEVER healed."""
+    from cadkit.threads import cut_thread
     r = AXLE_D / 2
+    # smooth blank along +Z: journal shaft, then the flange/collar barrel
     b = cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        r, -AXLE_Y0 - LEVER_HW, cq.Vector(0, AXLE_Y0, 0), cq.Vector(0, 1, 0)))
-    b = b.union(cq.Workplane("XY").add(cq.Solid.makeCone(
-        r, r - 1.0, INS_CONE_L, cq.Vector(0, -LEVER_HW, 0), cq.Vector(0, 1, 0))))
+        r, AXLE_SHOULDER_Y - AXLE_Y0, cq.Vector(0, 0, AXLE_Y0), cq.Vector(0, 0, 1)))
     b = b.union(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        r - 1.0, INS_PILOT_L, cq.Vector(0, -LEVER_HW + INS_CONE_L, 0),
-        cq.Vector(0, 1, 0))))
-    b = b.union(cq.Workplane("XY").add(cq.Solid.makeCone(
-        r - 1.0, 0.05, 1.4,
-        cq.Vector(0, -LEVER_HW + INS_CONE_L + INS_PILOT_L, 0),
-        cq.Vector(0, 1, 0))))
-    b = b.union(_key_tongue())                # anti-rotation KEY tongue (+Z)
-    return heal(b)
+        (AXLE_FLANGE_D - MAG_TH_CLR) / 2, MAG_FLANGE_T + MAG_COLLAR_H,
+        cq.Vector(0, 0, AXLE_SHOULDER_Y), cq.Vector(0, 0, 1))))
+    b = b.union(cq.Workplane("XY").add(cq.Solid.makeCylinder(   # flange (rides the rib)
+        AXLE_FLANGE_D / 2, MAG_FLANGE_T,
+        cq.Vector(0, 0, AXLE_SHOULDER_Y), cq.Vector(0, 0, 1))))
+    b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(     # magnet pocket
+        MAG_POCKET_D / 2, MAG_COLLAR_H + 1.0,
+        cq.Vector(0, 0, MAG_Y0), cq.Vector(0, 0, 1))))
+    b = heal(b)
+    # MALE thread on the collar (blank is already at crest Ø), then the flat
+    b = cut_thread(b, minor_d=MAG_TH_MINOR - MAG_TH_CLR,
+                   major_d=AXLE_FLANGE_D - MAG_TH_CLR,
+                   pitch=MAG_TH_PITCH, length=MAG_COLLAR_H, z=MAG_Y0)
+    b = b.rotate((0, 0, 0), (1, 0, 0), -90)          # +Z -> +Y (the lever's axis)
+    # D-flat, milled last (cadkit thread rule), +Z side, running from the
+    # leading tip to AXLE_FLAT_Y — see the constant block for why it cannot
+    # stop short of the tip.
+    _zhi, _ylo = r + 1.0, AXLE_Y0 - 1.0
+    return b.cut(box_at(AXLE_D + 2.0, AXLE_FLAT_Y - _ylo, _zhi - AXLE_FLAT_R,
+                        x=0.0, y=(_ylo + AXLE_FLAT_Y) / 2,
+                        z=(AXLE_FLAT_R + _zhi) / 2), clean=False)
+
+
+def kl_magnet_cap() -> cq.Workplane:
+    """PCTG MAGNET CAP ×1 per lever (user): a ring with a FEMALE thread on its
+    ID that screws over the axle's pocket collar and clamps the Ø6 magnet in.
+    Its bore stops 0.1 short of the collar's rim, so it always lands on the
+    DISC rather than bottoming on the collar and leaving it loose.
+
+    The centre stays OPEN (CAP_APERTURE): the cap must never sit between the
+    magnet and the chip — that distance is the air gap, and anything in it
+    would have to come out of the gap budget.
+
+    Prints APERTURE-DOWN: with the flange on the bed, the bore's step out to
+    the thread Ø is an upward-facing floor (nothing overhangs), and the
+    internal 45° thread flanks self-support. Built along +Z and rotated onto
+    the lever's +Y axis; threaded LAST and NEVER healed."""
+    from cadkit.threads import threaded_rod
+    # THREADED BARREL ONLY, up to the magnet face...
+    b = heal(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        CAP_OD / 2, MAG_Y1 - MAG_Y0,
+        cq.Vector(0, 0, MAG_Y0), cq.Vector(0, 0, 1))))
+    nut = threaded_rod(MAG_TH_MINOR, AXLE_FLANGE_D, MAG_TH_PITCH,
+                       MAG_Y1 - MAG_Y0, z=MAG_Y0)
+    b = b.cut(nut, clean=False)
+    # ...and the clamping FLANGE unioned on AFTERWARDS. Order matters: the
+    # thread cutter rounds its span up to whole turns, so building the flange
+    # first lets it overrun and quietly eat the very face that holds the magnet
+    # (a probe caught exactly that — the cap came out a plain ring that touched
+    # nothing but its own collar).
+    flange = (cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        CAP_OD / 2, CAP_T, cq.Vector(0, 0, MAG_Y1), cq.Vector(0, 0, 1)))
+        .cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(   # sensor aperture
+            CAP_APERTURE / 2, CAP_T + 2.0,
+            cq.Vector(0, 0, MAG_Y1 - 1.0), cq.Vector(0, 0, 1)))))
+    b = b.union(flange, clean=False)
+    return b.rotate((0, 0, 0), (1, 0, 0), -90)          # +Z -> +Y
 
 
 knee_housing = _housing()
 knee_lever = _lever()
+kl_axle = kl_axle()                            # printed: full-length PCTG axle
+kl_magnet_cap = kl_magnet_cap()                # printed: screw-on magnet retainer
 # ONE shared cartridge (printed twice: MAIN + HALF-STOP). Built canonically (MAIN placement: follower
 # at the lobe rest extremum); the assembly slides a HALF-STOP copy +X by HS_SETBACK and a MAIN copy to
 # MAIN_YC. Placement helper for build.py / tools:
