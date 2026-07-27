@@ -59,6 +59,13 @@ BRG_OD, BRG_ID, BRG_W = 8.0, 5.0, 2.5   # MR85ZZ — shared with the screw-suppo
 MAG_D, MAG_T = 6.0, 2.5             # Ø6×2.5 diametrically-magnetised magnet (on the axle end)
 AIR_GAP = 1.5                       # magnet face -> MT6701 chip (the 0.5-3 mm window)
 PCB_W, PCB_T = 18.0, 1.6            # custom JLCPCB MT6701 board (square)
+PCB_TOP = 4.0                       # board TOP edge above the axle axis (user: the
+                                    # centred board clipped 1.6 into the instrument).
+                                    # The CHIP must sit ON the axle axis (z=0) to read
+                                    # the diametric magnet; the OUTLINE is ours — chip
+                                    # near the top edge (4 covers the Ø6 magnet face
+                                    # +1), board extends -Z into open air. Top lands
+                                    # 3.4 clear of the chassis underside.
 INSERT_D, INSERT_L = M4_INSERT_D, M4_INSERT_L   # M4 heat-set insert Ø6 × 5 (standard set-screw process)
 SCREW_CLR = M4_SHAFT_CLR_D          # M4 set-screw shaft clearance (Ø4.4)
 
@@ -371,7 +378,8 @@ def demo_parts():
     for i, by in enumerate((WN_Y0 + (WALL - BRG_W) / 2, WP_Y0 + (WALL - BRG_W) / 2)):
         out.append((f"kl_bearing_{i}", _bearing().translate((0, by, 0))))
     out.append(("kl_magnet", cyl_y(MAG_D, MAG_T, y0=MAG_Y0)))
-    out.append(("kl_pcb", box_at(PCB_W, PCB_T, PCB_W, x=0, y=PCB_Y + PCB_T / 2, z=0)))
+    out.append(("kl_pcb", box_at(PCB_W, PCB_T, PCB_W, x=0, y=PCB_Y + PCB_T / 2,
+                                 z=PCB_TOP - PCB_W / 2)))    # chip on-axis, board hangs -Z
     # BOTH springs are the SAME cartridge: MAIN (at MAIN_YC) whose follower touches the lobe at REST
     # (sets the rest angle), and HALF-STOP (at HS_YC, slid +X by HS_SETBACK) that engages partway. Each
     # has a coil, a back TENSION screw (preload), and a FROM-BELOW CLAMP screw that jams the cartridge
