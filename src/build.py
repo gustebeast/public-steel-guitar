@@ -428,7 +428,7 @@ def _pickup_mount_components():
         _pt = (_jx, _jy, TP.JACK_MOUTH_Z - M4.boss_prot)
         out.append((f"pickup_jack_insert_{_i}", m4_boss_insert(_pt, (1, 0, 0), 180)))
         _screw = (f_screw(M4, _shaft)                                  # threaded shaft (down)
-                  .union(cyl(M4.boss_od - 1.0, TP.BZ - TP.JACK_HEAD_Z, z=0.0)))  # captured button head
+                  .union(cyl(M4.boss_od - 1.0, TP.TZ - TP.JACK_HEAD_Z, z=0.0)))  # captured button head (to the bed)
         out.append((f"pickup_jack_screw_{_i}",
                     _screw.translate((_jx, _jy, TP.JACK_HEAD_Z))))
     # (Y hold-down clamp removed for now -- height adjustment only; the pickup rests on
