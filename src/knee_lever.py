@@ -85,7 +85,9 @@ WN_Y0, WN_Y1   = HUB_Y0 - 4.0, HUB_Y0   # -Y bearing wall (-14 .. -10)
 WP_Y0, WP_Y1   = HUB_Y1, HUB_Y1 + 4.0   # +Y bearing wall (10 .. 14)
 MAG_Y0  = WP_Y1 + 0.5               # magnet on the axle +Y end, just past the +Y wall (14.5)
 PCB_Y   = MAG_Y0 + MAG_T + AIR_GAP  # MT6701 board face (chip side, -Y) at the gap
-AXLE_Y0, AXLE_Y1 = WN_Y0, MAG_Y0    # axle: through both bearing walls .. the magnet seat
+AXLE_Y0, AXLE_Y1 = -13.5, MAG_Y0    # axle: -Y end 0.4 INSIDE the housing face (was
+                                    # WN_Y0 = -14, 0.1 proud of the prism) .. the magnet
+                                    # seat (+Y: magnet/sensor live outside, mount deferred)
 HUB_YC  = (HUB_Y0 + HUB_Y1) / 2     # hub / cam / feel centre Y (0)
 
 # ── lever ────────────────────────────────────────────────────────────────────
@@ -375,8 +377,8 @@ def demo_parts():
     """Bought-part dummies in the local frame: (name, shape). Assembly-only."""
     out = []
     out.append(("kl_axle", cyl_y(AXLE_D, AXLE_Y1 - AXLE_Y0, y0=AXLE_Y0)))
-    for i, by in enumerate((WN_Y0 + (WALL - BRG_W) / 2, WP_Y0 + (WALL - BRG_W) / 2)):
-        out.append((f"kl_bearing_{i}", _bearing().translate((0, by, 0))))
+    for i, by in enumerate((-(BRG_Y0 + BRG_W), BRG_Y0)):    # inner faces at ±BRG_Y0,
+        out.append((f"kl_bearing_{i}", _bearing().translate((0, by, 0))))  # enclosed in the cheeks
     out.append(("kl_magnet", cyl_y(MAG_D, MAG_T, y0=MAG_Y0)))
     out.append(("kl_pcb", box_at(PCB_W, PCB_T, PCB_W, x=0, y=PCB_Y + PCB_T / 2,
                                  z=PCB_TOP - PCB_W / 2)))    # chip on-axis, board hangs -Z
@@ -503,6 +505,11 @@ HOUS_Z1 = BODY_Z                                         # +7.4 (flush: BODY_Z
 #           = HUB_TOP + 2.4 — the designed 2.4 stands between lever and body)
 HOUS_Z0 = (HS_Z - HS_PISTON_WZ / 2) + _FEEL_DZ - HS_CLR - HS_HOUS_WALL  # -14.8
 #           ^ = HS_FLOOR_Z (defined below, after the piston) placed
+BRG_Y0 = LEVER_HW + HS_CLR          # bearing INNER faces at ±10.4 = the lever-room wall
+                                    # (user: the old wall-station bearings poked along Y —
+                                    # moved against the lever so both sit FULLY inside the
+                                    # ±13.9 cheeks: span 10.4..12.9, 1.0 outboard skin;
+                                    # 0.4 gap to the ±10 hub ends. Seats = axle round.)
 # (the swept-arm relief _cam_swept — a union of rotated hub/arm copies — is
 #  PULLED for now (user: no curved geometry around the axle; keep it simple,
 #  build back up later). The lever room is all planar cuts in _housing.)
