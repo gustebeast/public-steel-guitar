@@ -92,6 +92,38 @@ X/Y — all from the packs above) + swappable fret-marked **filler bands** (one
 per slot; print the set) + the UI/keyhead panels (fret lines + dust cover + hand
 rest + UI mount) — see `py -3.12 -m src.build --list`.
 
+## Control sensors (knee levers + pedals)
+
+Every player input — 4 knee levers + 3 pedals — is a **contactless magnetic
+angle sensor** rather than a switch or a pot: a diametrically-magnetised magnet
+rides the control's axle and an MT6701 reads its angle across an air gap. There
+is no wiper to wear out and no mechanical calibration. The boards are our own
+(they panelise with the tee PCBs — see Connectors); these are the two parts that
+populate them.
+
+| Part | Qty | ~Price | Source | Notes |
+|------|-----|--------|--------|-------|
+| **Angle sensor IC** | 8 | ~$1.2–2 ea | [LCSC](https://www.lcsc.com/search?q=MT6701) | MagnTek **MT6701**, 14-bit on-axis magnetic encoder (SSOP-8). Assembled by JLCPCB onto our sensor PCB alongside the tee boards — no hand soldering |
+| **Diametric magnet** | 8 | ~$0.5–1.5 ea | commodity — supermagnete / K&J / AliExpress (**pick & verify at purchase**) | **Ø8 × 2 mm NdFeB N35, DIAMETRICALLY magnetised.** ⚠ **Diametric, NOT axial** — axial discs are far more common and simply do not work here. Glues onto the printed axle stub |
+
+*(qty 8 = 7 controls + 1 spare)*
+
+**Why Ø8 × 2 rather than the usual Ø6 × 2.5.** The IC reads field **direction**,
+not magnitude, so the magnet only has to land the field inside the sensor's
+window (this class of on-axis encoder wants roughly 30–70 mT — confirm against
+the MT6701 datasheet at board design). Strength buys no accuracy, which frees us
+to spend the magnet's geometry on the axis that is actually scarce: **+Y room is
+tight** (the sensor cluster sits inboard, under the body) while lateral room is
+free. A diametric disc's poles sit on its curved flanks, so the pole separation —
+and with it how slowly the field decays across the gap — scales with the
+**diameter**. Going Ø6 → Ø8 more than pays for thinning 2.5 → 2.0, so we save
+0.5 mm of Y *and* read a stronger field. The wider disc also flattens the field
+across the die, which now matters: the axle is **printed PCTG**, with more runout
+than the old ground steel pin. Keep the grade at **N35** — at Ø8 an N52 would
+push past the top of the window. Final trim is the **air gap** (a printed
+dimension, currently 1.5 mm): measure the field on the first board and adjust the
+gap in the model rather than re-buying magnets.
+
 ## Filament (printed parts, both tiers)
 
 Estimated at 2 perimeters (0.8 mm nozzle → 1.6 mm walls) + 15 % infill. Pickup
