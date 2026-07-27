@@ -65,7 +65,21 @@ AXLE_D  = 5.0                       # Ø5 axle journals — PCTG now (user: no s
                                     # lying -Y bed face); the -Y journal is the glued
                                     # kl_axle_insert (the bed face must stay flat).
 BRG_OD, BRG_ID, BRG_W = 8.0, 5.0, 2.5   # MR85ZZ — shared with the screw-support bearings
-MAG_D, MAG_T = 6.0, 2.5             # Ø6×2.5 diametrically-magnetised magnet (on the axle end)
+MAG_D, MAG_T = 8.0, 2.0             # DIAMETRICALLY-magnetised NdFeB disc on the axle end
+                                    # (user: lateral room is cheap, +Y room is NOT — the
+                                    # sensor cluster sits inboard under the body). Ø6×2.5
+                                    # → Ø8×2.0 SAVES 0.5 of Y and still reads STRONGER at
+                                    # the 1.5 gap: a diametric disc's poles sit on the
+                                    # curved flanks, so the pole separation (and with it
+                                    # the falloff length) scales with the DIAMETER — going
+                                    # wider buys back a thinner magnet with margin. The
+                                    # wider disc also flattens the field across the die,
+                                    # which now matters: the axle is PRINTED (more runout
+                                    # than the old ground pin). N35, NOT a higher grade —
+                                    # at Ø8 an N52 would push past the sensor's window.
+                                    # AIR_GAP is the trim knob (it's a printed dimension):
+                                    # the IC reads field DIRECTION, so strength only has
+                                    # to LAND in the window, it doesn't set accuracy.
 AIR_GAP = 1.5                       # magnet face -> MT6701 chip (the 0.5-3 mm window)
 PCB_W, PCB_T = 18.0, 1.6            # custom JLCPCB MT6701 board (square)
 PCB_TOP = 4.0                       # board TOP edge above the axle axis (user: the
@@ -92,18 +106,33 @@ WALL_Z0, WALL_Z1 = -9.0, 5.5        # bearing walls (axle plates) span this in Z
 HUB_Y0, HUB_Y1 = -12.0, 12.0        # hub / cam / feel cavity -- 24 mm thick
 WN_Y0, WN_Y1   = HUB_Y0 - 4.0, HUB_Y0   # -Y bearing wall (-14 .. -10)
 WP_Y0, WP_Y1   = HUB_Y1, HUB_Y1 + 4.0   # +Y bearing wall (10 .. 14)
-MAG_Y0  = WP_Y1 + 0.5               # magnet on the axle +Y end, just past the +Y wall (14.5)
-PCB_Y   = MAG_Y0 + MAG_T + AIR_GAP  # MT6701 board face (chip side, -Y) at the gap
-AXLE_Y0, AXLE_Y1 = -13.1, MAG_Y0    # axle ends: -Y insert journal tip (stops INSIDE
-                                    # its bearing pocket, back wall -13.2, 0.1 clear;
-                                    # AXIALLY CAPTIVE there) .. the integral +Y stub's
-                                    # magnet-seat face (out the Ø6 through-bore to the
-                                    # sensor cluster, mount deferred)
+# (MAG_Y0 / PCB_Y / AXLE_Y0 / AXLE_Y1 moved DOWN to the prism block: they
+#  anchor to the housing face + bearing home, which are defined there. They
+#  used to hang off WP_Y1 — the +Y bearing WALL, deleted in the prism round —
+#  which left the magnet floating 2.6 outboard of the real face.)
 INS_CONE_L  = 1.0                   # insert glue tenon: 45° cone Ø5→Ø3 into the hub...
 INS_PILOT_L = 3.0                   # ...then a Ø3 pilot (takes the bearing moment as a
                                     # couple over the embed) ending in a 45° tip — every
                                     # pocket ceiling on the lying lever CONVERGES (the
                                     # pocket opens at the -Y print-bed face)
+# anti-rotation KEY (user: tongue-and-groove so the insert can't spin in the
+# lever). A rib along the pilot + its matching groove: the glue joint no longer
+# has to carry ANY torque, so a cold/creeping bond can't let the -Y journal
+# work loose. Both halves stay printable — the tongue narrows going +Y (up in
+# the insert's journal-down print) and the groove's ROOF converges on the same
+# 45°, so the lying lever gets no flat ceiling over it (one-nozzle rule).
+KEY_W    = 1.6                      # tongue width (tangential); the groove leaves ≥2.5 of
+                                    # hub wall to the Ø10 OD
+KEY_RAMP = 0.8                      # radial protrusion past the pilot == the 45° ramp run
+KEY_CLR  = 0.1                      # groove clearance — the project's standard assembly
+                                    # fit (not the tenon's 0.15 glue fit): both key faces
+                                    # print VERTICAL in their own parts, so accuracy is
+                                    # good, and halving the slop halves the key's backlash
+                                    # (it engages within ~3°). Backlash costs no sensor
+                                    # accuracy either way — the MAGNET rides the +Y stub,
+                                    # which is integral with the lever; this end is a bare
+                                    # journal, so the key only has to be there if the glue
+                                    # ever lets go.
 HUB_YC  = (HUB_Y0 + HUB_Y1) / 2     # hub / cam / feel centre Y (0)
 
 # ── lever ────────────────────────────────────────────────────────────────────
@@ -527,6 +556,19 @@ BRG_Y0 = LEVER_HW + HS_CLR          # bearing INNER faces at ±10.4 = the lever-
                                     # moved against the lever so both sit FULLY inside the
                                     # ±13.9 cheeks: span 10.4..12.9, 1.0 outboard skin;
                                     # 0.4 gap to the ±10 hub ends. Seats = axle round.)
+# SENSOR-SIDE Y (re-anchored here — see the note up in the layout block): the
+# magnet rides the integral +Y stub just past the HOUSING FACE, not past the
+# long-deleted bearing wall. 0.5 running clearance to the static face.
+MAG_Y0  = HOUS_HW + 0.5             # magnet seat (14.4; was 16.5 off the dead wall)
+PCB_Y   = MAG_Y0 + MAG_T + AIR_GAP  # MT6701 board face (chip side, -Y) at the gap
+AXLE_Y0, AXLE_Y1 = -13.1, MAG_Y0    # axle ends: -Y insert journal tip (stops INSIDE its
+                                    # bearing pocket, back wall -13.2, 0.1 clear; AXIALLY
+                                    # CAPTIVE there) .. the integral +Y stub's magnet-seat
+                                    # face. DEFERRED with the sensor mount: a centring CUP
+                                    # for the disc (a Ø9 boss needs a 45° cone off the Ø5
+                                    # stub — either 2.0 further out, or flared inside an
+                                    # opened-up face bore; it wants co-designing with the
+                                    # PCB mount + gap, so the disc butts the stub for now)
 # (the swept-arm relief _cam_swept — a union of rotated hub/arm copies — is
 #  PULLED for now (user: no curved geometry around the axle; keep it simple,
 #  build back up later). The lever room is all planar cuts in _housing.)
@@ -801,6 +843,45 @@ def _housing() -> cq.Workplane:
     return w
 
 
+def _key_prism(pts, width: float) -> cq.Workplane:
+    """A (y, z) polygon extruded along X and centred on x=0 — the axle KEY's
+    tongue (on the insert) or groove (in the lever hub). Built in the lever
+    frame, keyed toward +Z (away from the -Z arm, where the hub is solid to
+    its Ø10 OD and nothing else is cut)."""
+    x0 = -width / 2.0
+    wire = cq.Wire.makePolygon([cq.Vector(x0, y, z) for y, z in pts]
+                               + [cq.Vector(x0, *pts[0])])
+    face = cq.Face.makeFromWires(wire)
+    return cq.Workplane("XY").add(
+        cq.Solid.extrudeLinear(face, cq.Vector(width, 0, 0)))
+
+
+# KEY station along the axis: the pilot band of the insert tenon.
+_KEY_Y0 = -LEVER_HW + INS_CONE_L                 # pilot start (-9.0)
+_KEY_Y1 = _KEY_Y0 + INS_PILOT_L                  # pilot end   (-6.0)
+_PILOT_R = AXLE_D / 2 - 1.0                      # insert pilot radius (1.5)
+_PILOT_BR = AXLE_D / 2 - 0.85                    # lever pilot BORE radius (1.65)
+
+
+def _key_tongue():
+    """The insert's rib: full height over the pilot, then a 45° ramp back down
+    onto the pilot surface (self-supporting in the journal-down print)."""
+    kr = _PILOT_R + KEY_RAMP                                     # 2.3
+    return _key_prism([(_KEY_Y0, 0.0), (_KEY_Y0, kr),
+                       (_KEY_Y1 - KEY_RAMP, kr), (_KEY_Y1, _PILOT_R),
+                       (_KEY_Y1, 0.0)], KEY_W)
+
+
+def _key_groove():
+    """The lever's matching slot: same shape + KEY_CLR, but open all the way
+    out through the -Y bed face so the tongue can slide in, and its ROOF lands
+    on the pilot bore at 45° (no flat ceiling on the lying lever)."""
+    gkr = _PILOT_R + KEY_RAMP + KEY_CLR                          # 2.45
+    return _key_prism([(-LEVER_HW - 1.0, 0.0), (-LEVER_HW - 1.0, gkr),
+                       (_KEY_Y1 - KEY_RAMP, gkr), (_KEY_Y1, _PILOT_BR),
+                       (_KEY_Y1, 0.0)], KEY_W + 2 * KEY_CLR)
+
+
 def _lever() -> cq.Workplane:
     # hub on the axle (bore Ø5). The arm hangs -Z (the leg bears on it) and now ALSO carries the return
     # CAM: a rounded LOBE ridge along its -X FACE at z=-LOBE_RC. The flat piston followers bear on that
@@ -842,6 +923,7 @@ def _lever() -> cq.Workplane:
         AXLE_D / 2 - 0.85, 0.05, 1.55,
         cq.Vector(0, -LEVER_HW + INS_CONE_L + INS_PILOT_L, 0),
         cq.Vector(0, 1, 0))))
+    body = body.cut(_key_groove())            # anti-rotation KEY slot (+Z)
     return heal(body)
 
 
@@ -850,12 +932,13 @@ def kl_axle_insert() -> cq.Workplane:
     lever prints lying on its -Y face, so only the +Y journal can be
     integral; this part is the -Y journal: Ø5 (rides the -Y MR85ZZ inner
     race) → 45° cone Ø5→Ø3 glue tenon → Ø3 pilot → 45° tip, matching the
-    hub-face pocket (0.15 glue clearance). Prints JOURNAL-DOWN, standing:
-    the cone/tip narrow upward — fully self-supporting. No rotation key:
-    this end carries ZERO torque (the magnet rides the +Y integral stub);
-    axially CAPTIVE between the hub face and the bearing pocket's back
-    wall (0.1 float) — the glue is redundancy. Drawn in the lever frame,
-    journal tip at AXLE_Y0."""
+    hub-face pocket (0.15 glue clearance), plus a KEY tongue along the
+    pilot (user) running in a matching hub groove: the glue never has to
+    carry torque, so a cold or creeping bond still can't let this journal
+    spin. Prints JOURNAL-DOWN, standing: cone, tip and the key's 45° ramp
+    all narrow upward — fully self-supporting. Axially CAPTIVE between the
+    hub face and the bearing pocket's back wall (0.1 float). Drawn in the
+    lever frame, journal tip at AXLE_Y0."""
     r = AXLE_D / 2
     b = cq.Workplane("XY").add(cq.Solid.makeCylinder(
         r, -AXLE_Y0 - LEVER_HW, cq.Vector(0, AXLE_Y0, 0), cq.Vector(0, 1, 0)))
@@ -868,6 +951,7 @@ def kl_axle_insert() -> cq.Workplane:
         r - 1.0, 0.05, 1.4,
         cq.Vector(0, -LEVER_HW + INS_CONE_L + INS_PILOT_L, 0),
         cq.Vector(0, 1, 0))))
+    b = b.union(_key_tongue())                # anti-rotation KEY tongue (+Z)
     return heal(b)
 
 
