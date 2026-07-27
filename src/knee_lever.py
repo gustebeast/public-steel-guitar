@@ -85,9 +85,10 @@ WN_Y0, WN_Y1   = HUB_Y0 - 4.0, HUB_Y0   # -Y bearing wall (-14 .. -10)
 WP_Y0, WP_Y1   = HUB_Y1, HUB_Y1 + 4.0   # +Y bearing wall (10 .. 14)
 MAG_Y0  = WP_Y1 + 0.5               # magnet on the axle +Y end, just past the +Y wall (14.5)
 PCB_Y   = MAG_Y0 + MAG_T + AIR_GAP  # MT6701 board face (chip side, -Y) at the gap
-AXLE_Y0, AXLE_Y1 = -13.5, MAG_Y0    # axle: -Y end 0.4 INSIDE the housing face (was
-                                    # WN_Y0 = -14, 0.1 proud of the prism) .. the magnet
-                                    # seat (+Y: magnet/sensor live outside, mount deferred)
+AXLE_Y0, AXLE_Y1 = -13.1, MAG_Y0    # axle: -Y end stops INSIDE the -Y bearing pocket
+                                    # (back wall -13.2; 0.1 clear) .. the magnet seat
+                                    # (+Y: out the seat's Ø6 through-bore to the
+                                    # magnet/sensor cluster, mount deferred)
 HUB_YC  = (HUB_Y0 + HUB_Y1) / 2     # hub / cam / feel centre Y (0)
 
 # ── lever ────────────────────────────────────────────────────────────────────
@@ -748,6 +749,17 @@ def _housing() -> cq.Workplane:
         [cq.Vector(x, -_hw, z) for x, z in _p] + [cq.Vector(_p[0][0], -_hw, _p[0][1])]))
     w = w.cut(cq.Workplane("XY").add(
         cq.Solid.extrudeLinear(_face, cq.Vector(0, 2 * _hw, 0))))
+    # BEARING SEATS (user): Ø8.1 pockets for the MR85ZZ pair, opening
+    # INBOARD at the lever-room walls (±BRG_Y0) and reaching 2.8 into the
+    # cheeks (0.3 axial float over the 2.5 bearing — the proven old wall
+    # numbers) → 0.7 of outboard skin stays; bearings press in from the
+    # lever room. The +Y seat adds a Ø6 axle through-bore out the face
+    # (the axle continues to the magnet/sensor cluster); the -Y axle end
+    # stops INSIDE its pocket (AXLE_Y0 -13.1). Horizontal round bores in
+    # the -Z→+Z print — teardrop/roundness refinement rides the axle round.
+    w = w.cut(cyl_y(BRG_OD + 0.1, BRG_W + 0.3, y0=BRG_Y0))
+    w = w.cut(cyl_y(BRG_OD + 0.1, BRG_W + 0.3, y0=-(BRG_Y0 + BRG_W + 0.3)))
+    w = w.cut(cyl_y(AXLE_D + 1.0, 1.2, y0=BRG_Y0 + BRG_W + 0.2))
     # cartridge house-pockets + drag recesses. The house profile runs ALL
     # THE WAY OUT the +X face (user: extend to the prism edge, toward +x) —
     # one clean house channel from the front face to the cartridge back;
