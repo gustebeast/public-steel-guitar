@@ -54,7 +54,16 @@ _insert_boss_cut, _insert_dummy = cut_m4_boss, m4_boss_insert
 # ── bought parts (assembly dummies). REUSE existing line items where possible so they buy in
 # bulk: MR85ZZ bearings + the M4×10 cup-tip set screws + M4 heat-set inserts are ALL already in
 # the BOM (nut-block / screw-support). New: the Ø6 magnet, the MT6701 board, the springs.
-AXLE_D  = 5.0                       # Ø5 ground-steel pin axle (rotates with the lever)
+AXLE_D  = 5.0                       # Ø5 axle journals — PCTG now (user: no steel pin).
+                                    # Zero torque lives on the axle (the springs act on
+                                    # the LOBE; the magnet only co-rotates for the
+                                    # sensor) and the radial bearing reactions (~4-5x
+                                    # knee force ≈ 130 N worst) sit ~5x under a Ø5 PCTG
+                                    # journal's shear capacity; the steel MR85 inner
+                                    # races take all the wear. +Y journal + magnet stub
+                                    # print INTEGRAL with the lever (standing off its
+                                    # lying -Y bed face); the -Y journal is the glued
+                                    # kl_axle_insert (the bed face must stay flat).
 BRG_OD, BRG_ID, BRG_W = 8.0, 5.0, 2.5   # MR85ZZ — shared with the screw-support bearings
 MAG_D, MAG_T = 6.0, 2.5             # Ø6×2.5 diametrically-magnetised magnet (on the axle end)
 AIR_GAP = 1.5                       # magnet face -> MT6701 chip (the 0.5-3 mm window)
@@ -85,10 +94,16 @@ WN_Y0, WN_Y1   = HUB_Y0 - 4.0, HUB_Y0   # -Y bearing wall (-14 .. -10)
 WP_Y0, WP_Y1   = HUB_Y1, HUB_Y1 + 4.0   # +Y bearing wall (10 .. 14)
 MAG_Y0  = WP_Y1 + 0.5               # magnet on the axle +Y end, just past the +Y wall (14.5)
 PCB_Y   = MAG_Y0 + MAG_T + AIR_GAP  # MT6701 board face (chip side, -Y) at the gap
-AXLE_Y0, AXLE_Y1 = -13.1, MAG_Y0    # axle: -Y end stops INSIDE the -Y bearing pocket
-                                    # (back wall -13.2; 0.1 clear) .. the magnet seat
-                                    # (+Y: out the seat's Ø6 through-bore to the
-                                    # magnet/sensor cluster, mount deferred)
+AXLE_Y0, AXLE_Y1 = -13.1, MAG_Y0    # axle ends: -Y insert journal tip (stops INSIDE
+                                    # its bearing pocket, back wall -13.2, 0.1 clear;
+                                    # AXIALLY CAPTIVE there) .. the integral +Y stub's
+                                    # magnet-seat face (out the Ø6 through-bore to the
+                                    # sensor cluster, mount deferred)
+INS_CONE_L  = 1.0                   # insert glue tenon: 45° cone Ø5→Ø3 into the hub...
+INS_PILOT_L = 3.0                   # ...then a Ø3 pilot (takes the bearing moment as a
+                                    # couple over the embed) ending in a 45° tip — every
+                                    # pocket ceiling on the lying lever CONVERGES (the
+                                    # pocket opens at the -Y print-bed face)
 HUB_YC  = (HUB_Y0 + HUB_Y1) / 2     # hub / cam / feel centre Y (0)
 
 # ── lever ────────────────────────────────────────────────────────────────────
@@ -377,7 +392,8 @@ def _bearing():
 def demo_parts():
     """Bought-part dummies in the local frame: (name, shape). Assembly-only."""
     out = []
-    out.append(("kl_axle", cyl_y(AXLE_D, AXLE_Y1 - AXLE_Y0, y0=AXLE_Y0)))
+    # (no kl_axle dummy: the axle is PRINTED now — +Y journal integral to
+    #  the lever, -Y journal = the kl_axle_insert part)
     for i, by in enumerate((-(BRG_Y0 + BRG_W), BRG_Y0)):    # inner faces at ±BRG_Y0,
         out.append((f"kl_bearing_{i}", _bearing().translate((0, by, 0))))  # enclosed in the cheeks
     out.append(("kl_magnet", cyl_y(MAG_D, MAG_T, y0=MAG_Y0)))
@@ -809,8 +825,50 @@ def _lever() -> cq.Workplane:
     body = body.cut(_RECESS_SWEPT.translate((0, HS_YC - MAIN_YC, 0)))          # +Y (HALF-STOP) follower band
     body = body.union(cyl_y(2 * LOBE_R, 2 * LEVER_HW, y0=-LEVER_HW)        # ONE full-width lobe ridge; the
                       .translate((0, 0, -LOBE_RC)))                        #   spans between recesses bury in the arm
-    body = body.cut(cyl_y(AXLE_D + 0.05, 2 * LEVER_HW + 2, y0=-LEVER_HW - 1))   # axle bore
+    # PCTG AXLE (user): the +Y journal + magnet stub print INTEGRAL — a Ø5
+    # boss standing off the lying lever's -Y bed face, through the +Y
+    # bearing and its Ø6 face bore out to the magnet seat (MAG_Y0)
+    body = body.union(cyl_y(AXLE_D, MAG_Y0 - LEVER_HW, y0=LEVER_HW))
+    # -Y INSERT POCKET in the bed face (the old Ø5 through-bore is gone):
+    # 45° cone mouth Ø5.3→Ø3.3 + Ø3.3 pilot bore + 45° tip — all ceilings
+    # converge, printed opening-at-the-bed (0.15 radial glue clearance)
+    body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCone(
+        AXLE_D / 2 + 0.15, AXLE_D / 2 - 0.85, INS_CONE_L,
+        cq.Vector(0, -LEVER_HW, 0), cq.Vector(0, 1, 0))))
+    body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        AXLE_D / 2 - 0.85, INS_PILOT_L,
+        cq.Vector(0, -LEVER_HW + INS_CONE_L, 0), cq.Vector(0, 1, 0))))
+    body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCone(
+        AXLE_D / 2 - 0.85, 0.05, 1.55,
+        cq.Vector(0, -LEVER_HW + INS_CONE_L + INS_PILOT_L, 0),
+        cq.Vector(0, 1, 0))))
     return heal(body)
+
+
+def kl_axle_insert() -> cq.Workplane:
+    """PCTG -Y AXLE INSERT ×1 per lever (user: the steel pin is gone). The
+    lever prints lying on its -Y face, so only the +Y journal can be
+    integral; this part is the -Y journal: Ø5 (rides the -Y MR85ZZ inner
+    race) → 45° cone Ø5→Ø3 glue tenon → Ø3 pilot → 45° tip, matching the
+    hub-face pocket (0.15 glue clearance). Prints JOURNAL-DOWN, standing:
+    the cone/tip narrow upward — fully self-supporting. No rotation key:
+    this end carries ZERO torque (the magnet rides the +Y integral stub);
+    axially CAPTIVE between the hub face and the bearing pocket's back
+    wall (0.1 float) — the glue is redundancy. Drawn in the lever frame,
+    journal tip at AXLE_Y0."""
+    r = AXLE_D / 2
+    b = cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        r, -AXLE_Y0 - LEVER_HW, cq.Vector(0, AXLE_Y0, 0), cq.Vector(0, 1, 0)))
+    b = b.union(cq.Workplane("XY").add(cq.Solid.makeCone(
+        r, r - 1.0, INS_CONE_L, cq.Vector(0, -LEVER_HW, 0), cq.Vector(0, 1, 0))))
+    b = b.union(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        r - 1.0, INS_PILOT_L, cq.Vector(0, -LEVER_HW + INS_CONE_L, 0),
+        cq.Vector(0, 1, 0))))
+    b = b.union(cq.Workplane("XY").add(cq.Solid.makeCone(
+        r - 1.0, 0.05, 1.4,
+        cq.Vector(0, -LEVER_HW + INS_CONE_L + INS_PILOT_L, 0),
+        cq.Vector(0, 1, 0))))
+    return heal(b)
 
 
 knee_housing = _housing()
