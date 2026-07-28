@@ -23,6 +23,17 @@ LAYOUT (under-string, vertical-screw):
 """
 
 # ─────────────────────────────────────────────────────────────────────────
+# Print process — the min-material floor (cadkit.printing owns the rule)
+# ─────────────────────────────────────────────────────────────────────────
+from cadkit.printing import min_wall
+NOZZLE_D        = 0.8       # this build runs a 0.8 mm nozzle
+MIN_WALL        = min_wall(NOZZLE_D)          # 0.85 — floor for ANY single-bead
+                                              # feature (web/ceiling/rib). Material
+                                              # == one nozzle can be dropped by the
+                                              # slicer, so a lone bead gets +0.05.
+MIN_WALL_2P     = min_wall(NOZZLE_D, beads=2) # 1.6 — a real 2-perimeter wall (no buffer)
+
+# ─────────────────────────────────────────────────────────────────────────
 # String field (strings spaced ACROSS, along Y; lowest pitch at −Y / player)
 # ─────────────────────────────────────────────────────────────────────────
 N_STRINGS       = 10
