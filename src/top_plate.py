@@ -120,8 +120,18 @@ FLG_T     = 2.5                                            # Z-plate guide-flang
 # off the body edge). (Y hold-down clamp REMOVED for now -- height adjustment only.)
 PK_MAG_INSET = (PM.PK_L - PM.PK_MAG_L) / 2               # 6.35 dead frame at each Y end
 PK_YP    = D.string_y(0) + 1.0 + PK_MAG_INSET            # +Y body edge (~+50.1); mag covers string 1
-PK_YM    = PK_YP - PM.PK_L                                # Alumitone -Y edge (~-51.5)
+PK_YM    = PK_YP - PM.PK_L                                # Alumitone -Y edge (~-51.5) = the LONGEST supported
 PK_CTR_Y = (PK_YP + PK_YM) / 2                            # Alumitone centre Y (demo placement)
+# Supported pickup LENGTH window. EVERY pickup butts the +Y wall (the magnetic datum), so a shorter
+# pickup's -Y face sits further +Y; the -Y grub's reach is what still retains it. With the shared
+# M4x10 cup-tip the grub's usable tip travel is ~GRUB_SWEEP, so the window is [PK_MAX_L - GRUB_SWEEP,
+# PK_MAX_L]. We put PK_MAX_L at the Alumitone (101.6) and spend the sweep going DOWN over the dense
+# 10-string cluster (George L ~97, Steeltronics ~98, Bill Lawrence/Wilde 100, Lace/Wallace/Sentell
+# 101.6). The plate/cavity already fit 101.6, so covering shorter pickups needs NO plate growth. The
+# 108 Sentell LS20 + 120.7 wide-10 stay out (they'd need a longer screw AND a bigger cavity).
+PK_MAX_L   = PM.PK_L                                      # longest supported = Alumitone 101.6
+GRUB_SWEEP = 5.5                                          # M4x10 usable tip travel (screw_l - min_bite - ~1 tip)
+PK_MIN_L   = PK_MAX_L - GRUB_SWEEP                        # ~96.1 shortest retained (covers the whole cluster)
 YZONE    = 16.0                                           # -Y utility-zone depth beyond the pickup
 OPEN_YP  = PK_YP + 0.6                                    # +Y opening edge (open bay; < rail YH)
 HY_CLAMP = -PK_YM + YZONE                                 # -Y skirt inner = extended -Y edge (~+67.5)
@@ -174,7 +184,10 @@ HEIGHT_HOLE = PICKUP_X_NOM
 RET_WALL_T = 2.0                                   # +Y wall thickness (Y)
 RET_WALL_H = 8.0                                   # +Y wall height above the plate top (enough to lock, not tall)
 RET_SCREW_Z = ZPL_TOP + 3.0                        # grub axis height (bears low on the pickup base)
-RET_BOSS_L = 8.0                                   # -Y clamp boss length (Y) = insert pocket + clearance to the tip
+RET_BOSS_L = 6.0                                   # -Y grub boss length (Y): insert pocket (5) + 1 to the boss +Y
+                                                   # face at PK_YM (the LONGEST pickup's -Y face). Shorter pickups
+                                                   # butt the +Y wall, so their -Y face sits +Y of here and the
+                                                   # grub protrudes across open cavity to reach it (GRUB_SWEEP).
 RET_SCREW_X = PICKUP_X_NOM + 14.0                  # X-offset so it clears the centre -Y jack
 # The -Y grub is an M4 cup-tip SET SCREW threading a heat-set insert (cadkit set-screw bore), so the
 # boss ceiling must clear the Ø6 insert pocket by MIN_WALL on EVERY side (the reported thin-ceiling
@@ -417,10 +430,11 @@ def _pickup_zplate():
     plate = plate.union(box_at(PM.PK_W, RET_WALL_T, RET_WALL_H,
                                x=PICKUP_X_NOM, y=PK_YP + RET_WALL_T / 2,
                                z=ZPL_TOP + RET_WALL_H / 2))
-    # -Y RETENTION grub boss: a pedestal rising from the plate at the pickup -Y edge, hosting a
-    # HORIZONTAL M4 heat-set insert (cadkit set-screw bore -> a cup-tip grub, which must never
-    # self-tap). The grub pushes the pickup +Y against the wall. The pedestal ceiling reaches
-    # RET_BOSS_TOP_Z so >= MIN_WALL of material rings the Ø6 insert pocket on every side incl. +Z.
+    # -Y RETENTION grub boss: a pedestal rising from the plate at the LONGEST pickup's -Y edge (PK_YM),
+    # hosting a HORIZONTAL M4 heat-set insert (cadkit set-screw bore -> a cup-tip grub, which must never
+    # self-tap). The grub pushes the pickup +Y against the wall; threading it in/out lets its tip meet
+    # any pickup in the [PK_MIN_L, PK_MAX_L] window (its -Y face floats +Y for shorter pickups). The
+    # pedestal ceiling reaches RET_BOSS_TOP_Z so >= MIN_WALL of material rings the Ø6 pocket every side.
     ret_face_y = PK_YM - RET_BOSS_L                    # -Y outer face = the insert-entry (grub) face
     plate = plate.union(box_at(NUB_W, RET_BOSS_L, RET_BOSS_TOP_Z - ZPL_BOT,
                                x=RET_SCREW_X, y=(ret_face_y + PK_YM) / 2,
