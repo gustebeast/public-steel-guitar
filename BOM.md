@@ -103,15 +103,29 @@ populate them.
 
 | Part | Qty | ~Price | Source | Notes |
 |------|-----|--------|--------|-------|
-| **Angle sensor IC** | 8 | ~$1.2–2 ea | [LCSC](https://www.lcsc.com/search?q=MT6701) | MagnTek **MT6701QT-STD**, 14-bit on-axis magnetic encoder. Take the **QFN-16 (3×3×0.75)**, *not* the SOP-8 variant: the air gap is measured to the IC's own top surface, so the package height comes straight out of the gap budget, and the SOP-8 is ~1.5 mm tall — twice the QFN — on the axis where we have the least room. Assembled by JLCPCB onto our sensor PCB alongside the tee boards — no hand soldering |
-| **Diametric magnet** | 8 | $0.40 / $0.33 @10 | [DigiKey](https://www.digikey.com/en/products/detail/radial-magnets-inc/8995/5126077) | Radial Magnets **8995** — NdFeB **N35, Ø6 × 2.5 mm, DIAMETRICALLY magnetised**, NiCuNi, 80 °C, 3873 G surface; ~9k in stock. ⚠ **Diametric, NOT axial** — axial discs are far more common and simply do not work here (DigiKey lists the direction in the specs, so it is checkable at order time). Glues onto the printed axle stub |
+| **Angle sensor IC** | 8 | ~$1.2–2 ea | [LCSC](https://www.lcsc.com/search?q=MT6701) | MagnTek **MT6701QT-STD**, 14-bit on-axis magnetic encoder. Take the **QFN-16**, *not* the SOP-8 variant: the air gap is measured to the IC's own top surface, so the package height comes straight out of the gap budget, and the SOP-8 is ~1.5 mm tall — twice the QFN — on the axis where we have the least room. Datasheet §9.2: D = E = 2.900–3.100, **A (total height) = 0.700–0.800** (the model carries the 0.800 max). §1.2: *"Sensing Center at Geometry Center"* — so the package body centres on the axle axis with no per-package offset. Assembled by JLCPCB onto our sensor PCB alongside the tee boards — no hand soldering |
+| **Diametric magnet** | 8 | $0.40 / $0.33 @10 | [DigiKey](https://www.digikey.com/en/products/detail/radial-magnets-inc/8995/5126077) | Radial Magnets **8995** — NdFeB **N35, Ø6 × 2.5 mm, DIAMETRICALLY magnetised**, NiCuNi, 80 °C, 3873 G surface; ~9k in stock. ⚠ **Diametric, NOT axial** — axial discs are far more common and simply do not work here (DigiKey lists the direction in the specs, so it is checkable at order time). It is also the datasheet's own **recommended magnet** (§5: "Ø6mm x 2.5mm"), so this pair is the configuration the IC was characterised in. Drops into the axle's end pocket; `kl_magnet_cap` screws over it — no adhesive |
 
 *(qty 8 = 7 controls + 1 spare)*
 
+**Board spec (ours, for layout).** Outline **20 × 18 × 1.6 mm**, and it is
+deliberately *not* symmetric about the sensor: the chip sits on the axle axis
+9.0 mm from the +X edge and 11.0 mm from the −X edge, 4.0 mm below the top edge.
+The board drops into two grooves in the housing's printed cradle, so **1.85 mm of
+each side edge and the bottom 0.0–1.0 mm are mechanical** — keep copper and parts
+out of them. One **Ø4.4 clearance hole** at 7.4 mm −X and 9.5 mm below the axis
+takes the single M4 that locks it in. The QFN goes on the **−Y (magnet-facing)**
+side; everything else — connector, passives — goes on the +Y side, where there is
+open air. Routed-outline-to-copper tolerance matters here: the datasheet's max
+sensing-centre-to-magnet-axis misalignment is **0.3 mm**, and JLCPCB's ±0.2 mm
+outline tolerance plus the cradle's 0.15 mm slip fit spends most of it. Overrunning
+it slightly costs INL only (±1.0° typ → ±1.5° max), which the per-control
+calibration map removes; repeatability is untouched.
+
 **Sizing / sourcing note.** The IC reads field **direction**, not magnitude, so
-the magnet only has to land the field inside the sensor's window (this class of
-on-axis encoder wants roughly 30–70 mT — confirm against the MT6701 datasheet at
-board design). Strength buys no accuracy, which in principle frees us to spend
+the magnet only has to land the field inside the sensor's window (datasheet §5:
+**200–1,000 Gauss measured at the IC surface**, air gap **0.5 / 1.0 / 2.0 mm**
+min/typ/max). Strength buys no accuracy, which in principle frees us to spend
 the magnet's geometry on the axis that is actually scarce: **+Y room is tight**
 (the sensor cluster sits inboard, under the body) while lateral room is free. A
 diametric disc's poles sit on its curved flanks, so pole separation — and with it

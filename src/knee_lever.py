@@ -44,7 +44,8 @@ from . import components as C
 from .helpers import box_at, cyl, cyl_y, heal
 
 from cadkit.fasteners import (M2_SELFTAP_D, M4_SHAFT_CLR_D, M4_INSERT_D,
-                       M4_INSERT_L, M4_SCREW_L, M4, cut_insert_bore,
+                       M4_INSERT_L, M4_SCREW_L, M4_SELFTAP_D, M4_MIN_BITE, M4,
+                       cut_insert_bore, cut_anchor,
                        cut_m4_pocket, seated_m4_insert, cut_m4_boss, m4_boss_insert)
 from cadkit.joinery import PrintSpec, slide_joint   # the shared octagon slide joint
 from cadkit.supports import printable_bore, contact_rib
@@ -85,50 +86,60 @@ MAG_D, MAG_T = 6.0, 2.5             # DIAMETRICALLY-magnetised NdFeB disc on the
                                     # AIR_GAP stays the trim knob (a printed dimension):
                                     # the IC reads field DIRECTION, so strength only has
                                     # to LAND in the window, it doesn't set accuracy.
-AIR_GAP = 1.2                       # magnet face -> the IC's OWN TOP SURFACE (the
-                                    # datasheet's datum — see CHIP_* below; the board is
-                                    # a further CHIP_H out). Retargeted 1.5 -> 1.2.
-                                    # FLOAT DIRECTION (measured, and it is the opposite of
-                                    # what it first looks like): the axle's flange seats
-                                    # -Y on the rib, so the only travel left is +Y, which
-                                    # carries the magnet TOWARD the chip. The gap band is
-                                    # therefore 1.2 (datum) DOWN to 0.8 (lever hub against
-                                    # the +Y cheek, probed) — not 1.2 up to 1.6. Both ends
-                                    # sit inside the 0.5-2.0 window, and the magnet's pull
-                                    # toward the steel bearing preloads the flange onto the
-                                    # rib, so 1.2 is where it actually rests. Closing the
-                                    # 0.4 out entirely (a second contact rib on the +Y
-                                    # cheek, bearing on the hub end) is the obvious
-                                    # follow-up once the sensor MOUNT exists — until then
-                                    # the +Y side of this gap is held by nothing at all,
-                                    # because kl_pcb is still a free-floating dummy.
-                                    # DATASHEET (verified 2026-07):
-                                    # field at the IC SURFACE must be 200-1000 G (20-100 mT)
-                                    # with a 0.5-2.0 gap, and the reference magnet is
-                                    # EXACTLY our Ø6x2.5 — so the pair is the nominal
-                                    # configuration, not a marginal one. TWO THINGS THE
-                                    # DEFERRED SENSOR ROUND MUST SETTLE:
-                                    #  (1) the window is 0.5-2.0 (NARROWER than the AS5600's
-                                    #      0.5-3.0 this constant was first written against).
-                                    #      1.5 nominal + the stack's axial float (0.3 bearing
-                                    #      + 0.1 insert) can reach ~1.9 — legal but with no
-                                    #      margin, so RETARGET ~1.2 when the mount is drawn.
-                                    #  (2) the datum is the IC SURFACE, but PCB_Y below puts
-                                    #      the BOARD face at this distance and no chip is
-                                    #      modelled. The die must face the magnet (reading
-                                    #      back through 1.6 of FR4 would sit ~3.1 out, past
-                                    #      the window), so the package height has to come
-                                    #      OUT of this gap: PCB_Y = magnet + AIR_GAP + pkg.
-PCB_W, PCB_T = 18.0, 1.6            # custom JLCPCB MT6701 board (square)
-CHIP_W, CHIP_H = 3.0, 0.75          # MT6701QT-STD, QFN-16 3x3 (standard 0.75 body —
-                                    # CONFIRM against MagnTek's package drawing at board
-                                    # layout). The QFN is the variant to buy: the SOP-8
-                                    # is ~1.5 tall and every tenth of that is +Y we do
-                                    # not have. MODELLED (user) because the datasheet's
-                                    # air gap is measured to the IC's TOP SURFACE, not to
-                                    # the board — with the die facing the magnet the
-                                    # package height sits INSIDE the gap, so a board-face
-                                    # datum silently overstates it by CHIP_H.
+AIR_GAP = 1.5                       # magnet face -> the IC's OWN TOP SURFACE. THE DATUM IS
+                                    # THE PACKAGE FACE, not the board: the die looks at the
+                                    # magnet, so the QFN's own height sits INSIDE the gap and
+                                    # the board is a further CHIP_H out (PCB_Y below).
+                                    # 1.2 -> 1.5 (this round), and the reason is a CLASH the
+                                    # sensor round turned up rather than a field argument:
+                                    # kl_magnet_cap's flange stands CAP_T = 0.8 proud of the
+                                    # magnet face, so the chip's real clearance to a ROTATING
+                                    # part is AIR_GAP - CAP_T, and the stack's axial float is
+                                    # 0.4 in exactly that direction. At 1.2 the numbers were
+                                    # 0.4 and 0.4 — the cap could touch the IC. At 1.5 it is
+                                    # 0.7 nominal, 0.3 at full float. FLOAT DIRECTION
+                                    # (measured): the axle flange seats -Y on the rib, so the
+                                    # only travel left is +Y, carrying the magnet TOWARD the
+                                    # chip — the gap band is 1.5 DOWN to 1.1, never up. That
+                                    # is why the old worry about grazing the 2.0 ceiling was
+                                    # backwards, and why 1.5 costs nothing: both ends sit
+                                    # mid-window, and the magnet's pull toward the steel
+                                    # bearing preloads the flange onto the rib, so 1.5 is
+                                    # where it actually rests.
+                                    # DATASHEET (MagnTek MT6701 Rev 1.5, 2021.03, §5 —
+                                    # quoted, not estimated): Bpk 200-1,000 Gauss "Measure at
+                                    # the IC Surface"; AG "Magnetic to IC Surface Distance"
+                                    # 0.5 / 1.0 / 2.0 min/typ/max; recommended magnet Ø6 x
+                                    # 2.5 — EXACTLY ours, so this is the nominal
+                                    # configuration the part was characterised in.
+PCB_WX, PCB_WZ = 22.0, 18.0         # custom JLCPCB MT6701 board. NOT square any more: the
+PCB_T = 1.6                         # cradle's side grooves eat 1.85 of each edge and the M4
+                                    # lock screw needs ≥1.4 of FR4 around its Ø4.4 hole, and
+                                    # 18 wide could not pay for both. Nothing constrains the
+                                    # outline but the cradle (see PCB_* in the cradle block).
+CHIP_W, CHIP_H = 3.0, 0.80          # MT6701QT-STD, QFN-16. DATASHEET §9.2 (verified):
+                                    # D = E = 2.900..3.100 (3.0 nominal) and A, the TOTAL
+                                    # package height, = 0.700..0.800. CHIP_H takes the MAX,
+                                    # not the typical: A is what stands between the board
+                                    # face and the air gap's datum, so the tallest package is
+                                    # the one the stack has to fit. (0.75 here before was a
+                                    # generic-QFN guess; the real max is 0.80.)
+                                    # §1.2 states "Sensing Center at Geometry Center" for the
+                                    # QFN-16 (and the SOP-8) — so putting the package body's
+                                    # centre on the axle axis IS putting the sensing centre
+                                    # there; no package-specific offset to carry.
+                                    # The QFN is the variant to buy: the SOP-8 is ~1.5 tall
+                                    # and every tenth of that is +Y we do not have.
+CHIP_DISP_MAX = 0.3                 # datasheet DISP: max misalignment between the sensing
+                                    # centre and the magnet axis. This is the tolerance that
+                                    # sizes the cradle's X/Z location, and it is spent on
+                                    # (a) the board's routed-outline-to-copper tolerance
+                                    # (JLCPCB ±0.2) and (b) the groove's 0.15 slip fit. It
+                                    # buys INL only — ±1.0° typ vs ±1.5° max — and INL is a
+                                    # smooth systematic error the per-control calibration map
+                                    # already removes, so overrunning it slightly degrades
+                                    # nothing we depend on. Repeatability (0.01° rms noise,
+                                    # 0.088° hysteresis) is untouched by misalignment.
 PCB_TOP = 4.0                       # board TOP edge above the axle axis (user: the
                                     # centred board clipped 1.6 into the instrument).
                                     # The CHIP must sit ON the axle axis (z=0) to read
@@ -430,8 +441,13 @@ def demo_parts():
     for i, by in enumerate((-(BRG_Y0 + BRG_W), BRG_Y0)):    # inner faces at ±BRG_Y0,
         out.append((f"kl_bearing_{i}", _bearing().translate((0, by, 0))))  # enclosed in the cheeks
     out.append(("kl_magnet", cyl_y(MAG_D, MAG_T, y0=MAG_Y0)))
-    out.append(("kl_pcb", box_at(PCB_W, PCB_T, PCB_W, x=0, y=PCB_Y + PCB_T / 2,
-                                 z=PCB_TOP - PCB_W / 2)))    # chip on-axis, board hangs -Z
+    # the board, WITH its M4 lock hole — the hole is a fabrication requirement on a
+    # board we are specifying, so it belongs in the dummy the STEP hands to layout.
+    out.append(("kl_pcb", box_at(PCB_WX, PCB_T, PCB_WZ, x=(PCB_X0 + PCB_X1) / 2,
+                                 y=PCB_Y + PCB_T / 2,
+                                 z=(PCB_Z0 + PCB_Z1) / 2)       # chip on-axis, board hangs -Z
+                .cut(cyl_y(M4_SHAFT_CLR_D, PCB_T + 2.0, y0=PCB_Y - 1.0)
+                     .translate((CR_SCREW[0], 0.0, CR_SCREW[1])))))
     # the MT6701 itself (user): it sits ON the axle axis, package facing the
     # magnet, and its BODY is what the air gap is measured to — modelling it is
     # what makes the gap a real dimension instead of a board-face guess.
@@ -465,6 +481,65 @@ def demo_parts():
     # (no retention set-screw dummy: the rib-mount tenons + their M2 lock are
     #  DEFERRED with the mount -- prism round; see _housing)
     return out
+
+
+def _cradle(w):
+    """Add the MT6701 board cradle to the housing (user). Everything here grows UP
+    off the same bed as the housing and has no ceiling anywhere, so it needs no
+    supports; see the constant block for the retention scheme and the socket cone.
+
+    Built as: two side webs + a front plinth + a floor, then ONE slot cut through
+    them for the board (that slot IS both grooves), then the screw boss and its M4
+    anchor. Cutting the slot after the webs is what makes the grooves — the web
+    material outboard of CR_SLOT_X survives as the groove's outer wall."""
+    inner0, slot0, outer0 = _cr_faces(PCB_X0)
+    inner1, slot1, outer1 = _cr_faces(PCB_X1)
+    # side webs — vertical plates, the full height of the cradle
+    for a, b in ((inner0, outer0), (inner1, outer1)):
+        w = w.union(box_at(abs(b - a), CR_Y1 - CR_Y0, CR_Z1 - HOUS_Z0,
+                           x=(a + b) / 2, y=(CR_Y0 + CR_Y1) / 2,
+                           z=(HOUS_Z0 + CR_Z1) / 2))
+    # front plinth: the slab the board's -Y face seats on, and the body the screw
+    # boss lives in. Its top IS the socket cone's floor.
+    w = w.union(box_at(outer1 - outer0, CR_SLOT_Y0 - CR_Y0, CR_PLINTH_Z1 - HOUS_Z0,
+                       x=(outer0 + outer1) / 2, y=(CR_Y0 + CR_SLOT_Y0) / 2,
+                       z=(HOUS_Z0 + CR_PLINTH_Z1) / 2))
+    # floor under the board + the tie between the two webs behind it
+    w = w.union(box_at(outer1 - outer0, CR_Y1 - CR_SLOT_Y0, PCB_Z0 - HOUS_Z0,
+                       x=(outer0 + outer1) / 2, y=(CR_SLOT_Y0 + CR_Y1) / 2,
+                       z=(HOUS_Z0 + PCB_Z0) / 2))
+    # screw boss — a column in the plinth, standing proud of it by 2
+    w = w.union(cyl_y(CR_BOSS_D, CR_SLOT_Y0 - CR_Y0, y0=CR_Y0)
+                .translate((CR_SCREW[0], 0.0, CR_SCREW[1])))
+    # THE BOARD SLOT (both grooves in one cut): open at +Z — the install axis —
+    # and bottoming on the floor at PCB_Z0, which is the board's -Z seat.
+    w = w.cut(box_at(slot1 - slot0, CR_SLOT_Y1 - CR_SLOT_Y0, (CR_Z1 + 2.0) - PCB_Z0,
+                     x=(slot0 + slot1) / 2, y=(CR_SLOT_Y0 + CR_SLOT_Y1) / 2,
+                     z=(PCB_Z0 + CR_Z1 + 2.0) / 2))
+    # SOCKET CONE — reserved so kl_magnet_cap can be driven with the cradle in
+    # place. Cut rather than merely avoided: it is a guarantee, not an intention,
+    # and anything a later round adds in this zone now gets removed instead of
+    # silently blocking the driver. Teardrop, like every sideways bore here.
+    # It starts at MAG_Y0, NOT at the housing face: the socket only ever has to
+    # reach the cap's rim, and running it inboard of that would bore Ø14 straight
+    # through the two features that live there — the axle flange's CONTACT RIB
+    # (the air gap's whole datum) and the +Y bearing seat's 0.7 outboard skin
+    # (what stops the bearing walking out). Both are well inside Ø14.
+    w = w.cut(printable_bore(SOCK_D, (CR_Y1 + 1.0) - MAG_Y0, (0.0, MAG_Y0, 0.0),
+                             (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)))
+    # M4 LOCK (user: the hole only, no screw). Standard cadkit anchor — Ø6 insert
+    # pocket then a self-tapped bite — driven -Y from the seat plane, so the screw
+    # goes through the board and pulls it onto the seat. Teardropped after, because
+    # this bore runs sideways in a -Z→+Z print like the axle way and the bearing
+    # seats; the anchor cutter itself is round.
+    _pt = (CR_SCREW[0], CR_SLOT_Y0, CR_SCREW[1])
+    w = cut_anchor(M4, w, _pt, (0.0, -1.0, 0.0), M4_INSERT_L + M4_MIN_BITE)
+    for _d, _l, _y in ((M4_INSERT_D, M4_INSERT_L, CR_SLOT_Y0 - M4_INSERT_L),
+                       (M4_SELFTAP_D, M4_INSERT_L + M4_MIN_BITE,
+                        CR_SLOT_Y0 - M4_INSERT_L - M4_MIN_BITE)):
+        w = w.cut(printable_bore(_d, _l, (CR_SCREW[0], _y, CR_SCREW[1]),
+                                 (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)))
+    return w
 
 
 def _top_tenon(tx):
@@ -644,6 +719,70 @@ PCB_Y   = MAG_Y1 + AIR_GAP + CHIP_H             # board face = magnet + gap + PA
 AXLE_Y0, AXLE_Y1 = -13.1, MAG_Y1                # axle: -Y journal tip (stops INSIDE its
                                                 # bearing pocket, back wall -13.2) .. the
                                                 # magnet face at the +Y end
+
+# ── SENSOR-BOARD CRADLE (user: "build material in the housing to hold the PCB").
+# Fused to the housing's +Y face, printed with it (-Z→+Z), and every feature stands
+# UP off the bed: two side WEBS (vertical plates), a front PLINTH and a floor, plus
+# one screw boss. There is not a single ceiling in it, so no supports.
+#
+# RETENTION / INSTALL (the shape the user asked for — retained everywhere but one
+# axis, and that axis locked by one screw):
+#     ±X   the grooves' side walls          ±Y  the grooves' front/back flanks,
+#     -Z   the floor the board's edge sits on    plus the plinth + boss seat faces
+#     +Z   FREE — the install axis. The board is lowered into the two grooves from
+#          above and slides down to the floor; ONE M4 through it locks that out.
+# So it is a bench operation on the finished lever: axle in, cap on, board down the
+# grooves, one screw. Service reverses it. Once the lever is mounted, the chassis
+# underside sits 3.4 above the board and blocks the +Z escape as well — the screw
+# is what holds it, but the instrument is a second line.
+#
+# THE SOCKET CONE is what shapes all of this. kl_magnet_cap has to be driven at
+# assembly, AFTER the cradle exists (it is printed into the housing) and BEFORE the
+# board goes in, so a clear cylinder of SOCK_D about the axle axis is reserved
+# through the whole cradle and every part below is checked against it. That is the
+# reason the plinth stops at -7.0 and the screw lives low and off to -X: those are
+# the only places a Ø6 insert pocket fits outside the cone.
+SOCK_D  = 14.0                      # reserved driver bore about the axis (a 3/8" socket /
+                                    # nut driver runs ~12.5-13.5 OD; 14 gives it room)
+SOCK_R  = SOCK_D / 2
+CR_CLR   = 0.15                     # board slip fit, per face. The board's -Y face is the
+                                    # AIR GAP's datum, so it is the M4 that sets it: doing
+                                    # the screw up pulls the board onto the seat faces at
+                                    # PCB_Y and the 0.3 of slot slop all lands behind.
+CR_ENG   = 1.85                     # how deep each board edge sits in its groove
+CR_WEB_T = 4.0                      # web thickness in X, outboard of the groove
+CR_BACK  = 1.5                      # web material BEHIND the groove (the +Y flank)
+# The board is DELIBERATELY ASYMMETRIC about the chip. Both edges are pushed out by
+# the socket cone (a groove wall may not come inside SOCK_R, so an edge may not come
+# inside SOCK_R + CR_ENG - CR_CLR = 8.70), and the -X edge is pushed out FURTHER by
+# the M4, which needs 1.4 of FR4 around its Ø4.4 hole. Since the chip's X is fixed at
+# the axle axis and the outline is ours, paying for the screw on one side only is
+# free — and it keeps the +X web from reaching much past the housing's knee face.
+PCB_X1  =  9.0                                  # +X edge: cone-limited (8.70 min)
+PCB_X0  = -11.0                                 # -X edge: screw-limited
+PCB_WX  = PCB_X1 - PCB_X0                       # 20.0
+PCB_Z1, PCB_Z0 = PCB_TOP, PCB_TOP - PCB_WZ      # +4.0 .. -14.0
+def _cr_faces(edge):
+    """(web inner, groove wall, web outer) X for a board edge — the groove is the
+    gap between the inner face and the wall, and the board's edge lives in it."""
+    s = 1.0 if edge > 0 else -1.0
+    return (edge - s * (CR_ENG - CR_CLR), edge + s * CR_CLR,
+            edge + s * (CR_CLR + CR_WEB_T))
+CR_Y0    = HOUS_HW                              # 13.9: root, on the housing's +Y face
+CR_SLOT_Y0 = PCB_Y                              # 20.35: seat plane = board -Y face
+CR_SLOT_Y1 = PCB_Y + PCB_T + 2 * CR_CLR         # 22.25: groove back flank
+CR_Y1    = CR_SLOT_Y1 + CR_BACK                 # 23.75: cradle +Y face
+CR_Z1    = PCB_Z1 + 1.0                         # +5.0: web tops, 1 over the board — and
+                                                # 2.4 under the chassis, same as the lever
+CR_PLINTH_Z1 = -SOCK_R                          # -7.0: front plinth top = the cone's floor
+CR_SCREW = (-7.4, -9.5)                         # (x, z) of the M4 lock. Boxed in on three
+                                                # sides: ≥ SOCK_R + boss radius from the axis
+                                                # (12.04 vs 11.5 needed), ≥1.4 of FR4 to the
+                                                # board's -X and bottom edges, and its Ø6
+                                                # pocket + 3.5 bite has to land in solid
+                                                # material — probed, the tail runs 2.05 into
+                                                # the housing wall and it is solid there.
+CR_BOSS_D = 9.0                                 # screw boss (Ø6 pocket + 1.5 walls)
 # (the swept-arm relief _cam_swept — a union of rotated hub/arm copies — is
 #  PULLED for now (user: no curved geometry around the axle; keep it simple,
 #  build back up later). The lever room is all planar cuts in _housing.)
@@ -857,8 +996,11 @@ def _housing() -> cq.Workplane:
       * the TPU drag-pad recesses in the outboard pocket walls.
       * the two female BACK-STOP THREADS in the solid behind the pockets
         (cut last, alone, un-healed — thread rules).
-    DEFERRED: the MT6701 sensor mount and the M2 depth LOCK (they share the
-    same +Y region, so they land together).
+    SENSOR CRADLE (user, see _cradle): two webs + a plinth + a floor off the
+    +Y face holding the MT6701 board, retained on every axis but +Z and
+    locked there by one M4. A Ø14 driver bore is RESERVED about the axle
+    axis so kl_magnet_cap can still be socketed with all this printed.
+    DEFERRED: the M2 depth LOCK.
     NOTE — the tenons engage NOTHING at the modelled pose: MOUNT_Y puts the
     housing's +Y face at -134.85 and the chassis rails start at -133.75, so
     the whole housing hangs 1.1 mm OUTBOARD of the rib comb. That pose is the
@@ -951,6 +1093,7 @@ def _housing() -> cq.Workplane:
         _ys = yc + _sgn * (hs_pocket_hw() + HS_DRAG_SEAT)         # recess back (into the wall)
         w = w.cut(feel_place(box_at(HS_DRAG_LX + 0.4, abs(_ys - _yw), HS_PISTON_WZ + 0.4,
                                     x=_drag_seat_xc(dx), y=(_yw + _ys) / 2, z=HS_Z)))
+    w = _cradle(w)                                                  # the MT6701 board cradle (user)
     w = heal(w)                                                     # heal EVERYTHING except the threads...
     # ...then cut the two FEMALE back-stop threads LAST and ALONE (thread rules: clean=False, and NEVER
     # heal a threaded part). Nominal thread; the printed screw carries the clearance (HS_TH_CLR).
