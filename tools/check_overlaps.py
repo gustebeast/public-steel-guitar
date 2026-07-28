@@ -181,7 +181,7 @@ PEDAL_FAMILY = {"pedal_bar_a", "pedal_bar_b", "pedal_bar_c",
 # touch/run on each other. Whitelist any pair WITHIN the family (this never masks a
 # housing<->chassis / housing<->motor clash, since those involve a non-family part).
 KNEE_FAMILY = {"knee_housing", "knee_lever", "kl_axle", "kl_magnet_cap", "kl_chip",
-               "kl_bearing", "kl_magnet", "kl_pcb",
+               "kl_bearing", "kl_magnet", "kl_pcb", "kl_can_header",
                "main_spring", "half_stop_spring", "floating_tenon", "retention_setscrew",
                "main_cart_base", "main_cart_piston", "main_guide_post", "main_cart_backstop", "main_cart_drag",
                "half_stop_cart_base", "half_stop_cart_piston", "half_stop_guide_post", "half_stop_cart_backstop", "half_stop_cart_drag",
