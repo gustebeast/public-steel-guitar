@@ -21,9 +21,9 @@ Pivot at the origin; the axle axis runs along Y through x=0, z=0.
 
 The whole pivot/hub/cam/feel cluster sits OUTBOARD of the rib -Y ends in open air,
 so the four M4 feel-adjuster screws are reachable from +-X. The throw is lateral
-(X), so the housing's +-X faces are clean bearing walls -> they carry the
-christmas-tree mount tenons into the flanking ribs, and the magnet/sensor exit the
-+Y end into open space under the body (no rib conflict).
+(X), so the housing's +-X faces stay clean, the mount tenons stand on its TOP face
+(one per chassis rib crossing, sliding +Y for knee depth), and the magnet/sensor
+exit the +Y end into open space under the body (no rib conflict).
 
 Two springs per the project tensioner pattern: a PRIMARY return spring (sets the
 main feel) and an optional HALF-STOP spring, set back so it only engages partway
@@ -357,38 +357,26 @@ HS_BSTOP_FLANGE = 0.5               # +X drive flange (drive slots on its face; 
 HS_DRAG_LX, HS_DRAG_SEAT, HS_DRAG_BULGE = 6.0, 1.5, 0.4  # TPU drag: X length, wall-recess depth, interference into lane
 HS_HOUS_BACK = HS_BACK_X + HS_BSTOP_ENGAGE   # housing boss depth = engagement (no extra -- preserves the leg clearance)
 
-# ── mount (FLOATING-TENON): the lever hangs ENTIRELY below the body. The housing carries NO
-# protruding tenon -- so it can print +Z->-Z without the tenon causing overhangs -- only a MORTISE
-# in its yoke. The rib carries the SAME mortise. A separate FLOATING TENON (a double christmas-tree:
-# two 45° diamonds joined by a thin TRUNK) bridges them: its lower diamond GLUES into the yoke, its
-# upper diamond SLIDES +Y in the rib. Each diamond is wider than its slit, so it can't pull out -Z;
-# being 45°, both mortises are self-supporting (print bottom-to-top). The TRUNK is only 0.8 mm so
-# neither mortise goes deep. The RIB mortise is the long part (player face -> guitar mid-Y) so the
-# lever slides to the chosen knee depth; a -Y M4 screw locks it. Even pitch -> one tenon fits any bay. ──
-RIB_PITCH = 46.0                    # the lever's TENON SPAN (set by the cartridge reach). The chassis
-                                    # rib pitch is now HALF this (23 mm -- a crossbar per motor + one
-                                    # between each), so this lever spans TWO chassis bays: its axle sits
-                                    # over a rib and its two tenons drop into the ribs 1 and 3 to the -X
-                                    # (23 and 69 mm), skipping the rib directly between them.
-TEN_XC    = RIB_PITCH / 2           # near tenon 23 mm -X of the axle (= one 23 mm chassis pitch)
-# BOTH rails -X of the axle: the cartridge extends -X all the way to the far rail, so that rib is blocked
-# for any other lever -- we take both -X ribs for support and leave the +X rib free. (Chassis cuts a
-# mortise into EVERY rib, so no chassis change is needed; the lever just uses two adjacent -X ribs.)
-RAIL_X    = (-TEN_XC, -TEN_XC - RIB_PITCH)          # -23 and -69 (global -524, -570)
+# ── MOUNT (user): the housing's TOP FACE is already FLUSH with the chassis underside
+# (HOUS_Z1 = BODY_Z = Z_BOT), so the mount needs no yoke, no boss and no floating part —
+# FUSED OCTAGON TENONS rise straight off that face into matching mortises in the chassis
+# cross-ribs. (The old double-christmas-tree floating tenon + its yoke plate are gone: they
+# existed because the housing used to print +Z→-Z and could not carry a protruding tenon.
+# It prints -Z→+Z now, so the tenon is just part of the part.) ──
+RIB_PITCH = 46.0                    # MOTOR pitch. The chassis rib comb is HALF this (23 mm: a
+                                    # crossbar per motor plus one between each pair), and the
+                                    # tenon stations are generated on that finer pitch — see
+                                    # TEN_X down in the prism block, where the housing X extents
+                                    # that bound them are finally known.
 BODY_Z    = 5.0 + 2.4               # body underside in local Z: the lever's Ø10 hub top (z=5) + a 2.4mm AIR
                                     #   gap (no material between the lever and the body). Raising the axle
                                     #   is equivalent to lowering BODY_Z here; MOUNT_Z tracks it (= -82.55)
-YOKE_Z0, YOKE_Z1 = BODY_Z - 3.3, BODY_Z - 0.3   # yoke plate (top 0.3 mm below the body underside)
-NECK_W    = 3.0                     # retention-boss / yoke sizing reference
-HW0       = NECK_W / 2              # retention-bore offset from the rail centre (1.5)
-# ── OCTAGON slide-joint mount (cadkit): the housing carries FUSED octagon tenons that
-# rise +Z into the ribs and SLIDE +Y (cadkit's octagon slides along its extrude axis;
-# we rotate it 90° about Z so the slide is Y and the roof stays +Z). Both halves print
-# -Z->+Z (facing 'up') -> the octagon family -> self-supporting. One joint SIZE, two
-# LENGTHS: a short TENON on the housing (its own Y span) and a long RIB MORTISE (the
-# knee-depth slide range). Replaces the old floating double-christmas-tree tenon now
-# that the housing prints -Z->+Z, so the tenon can be fused (single part).
-_JW       = 6.0                     # octagon flat-to-flat width. Sized on the MECHANICS (knee-strike
+# ── OCTAGON slide-joint (cadkit): cadkit's octagon slides along its extrude axis, so we
+# rotate it 90° about Z — the slide becomes +Y (the knee-DEPTH adjustment) and the roof
+# stays +Z. Both halves print -Z->+Z (facing 'up') -> the octagon family -> self-supporting
+# on BOTH sides. One joint SIZE, two LENGTHS: short TENONS on the housing (its own Y span)
+# and a long RIB MORTISE (the whole knee-depth range).
+_JW       = 6.0                   # octagon flat-to-flat width. Sized on the MECHANICS (knee-strike
 #                                    pull-out): ~3x the shear area and 2x the retention shoulder of the
 #                                    old 3mm, while the rib keeps ~77% of its section as a sound arch
 #                                    (2mm side columns + 4.2mm top beam). The mortise roof now rises
@@ -399,43 +387,32 @@ _JUP      = PrintSpec(nozzle=0.8, material="PETG-GF", facing="up")
 def _lever_joint(length):
     """The mount joint at a given SLIDE length (Y). MORT_CLR shrinks the tenon for fit."""
     return slide_joint(_JW, length, tenon=_JUP, mortise=_JUP, clearance=MORT_CLR)
-BOSS_Z0   = YOKE_Z0 - 1.0           # yoke-boss floor (hosts the fused tenon root)
-# the floating tenon + its lever-yoke mortise run the FULL Y length of the housing (a long glue
-# joint + more rib engagement); the low 0.8 mm joint keeps it clear of the feel screws below.
-TEN_Y0, TEN_Y1   = WN_Y0, WP_Y1    # floating-tenon / lever-mortise Y-span = the bearing-wall span (±16), so
-                                   #   the whole mount sits over the solid block (was 24, which floated past
-                                   #   the block into the sensor region -- extending it inboard again is part
-                                   #   of the sensor redesign, point 7)
-TEN_STOP  = 1.5                    # -Y STOP wall closing the lever mortise: the tenon seats against it
-                                   #   (sliding the lever in drags the tenon -Y into the stop -> located)
-TEN_LY0   = TEN_Y0 + TEN_STOP      # tenon / lever-mortise -Y end (butts the stop)
-MORT_CLR  = 0.3                     # mortise clearance (slide / glue fit)
-MORT_Y0   = -2.0                    # mortise -Y mouth (opens outboard of the -Y rail for slide-in)
-YOKE_Y0   = -10.0                   # yoke -Y extent (over the bearing block)
-# global mount: LKL bay (centred between even ribs -524 / -478). build.py poses the lever here;
-# chassis.py cuts the rib mortises at the same place.
+MORT_CLR  = 0.3                     # mortise clearance (slide fit)
+TEN_H     = _lever_joint(10.0).height   # how far a tenon rises above its mating face (5.82)
+MORT_Y0   = -2.0                  # mortise -Y mouth (opens outboard of the -Y rail for slide-in)
+# global mount: MOUNT_X = -501 is itself a rib X in the half-pitch comb, which is what lets
+# the tenon stations be generated on a plain 23 mm walk from the axle. build.py poses the
+# lever here; chassis.py cuts the rib mortises into EVERY rib at the same Y.
+# ENGAGEMENT WARNING (measured, and worth reading before trusting the render): the chassis
+# rails start at y = -133.75 and this pose puts the housing's +Y face at -134.85, so at
+# MOUNT_Y the housing sits 1.1 mm entirely OUTBOARD of the rib comb and the tenons touch
+# nothing. It is a legal state — the fully-slid-OUT end of the knee-depth travel — but it
+# is not an installed one: engagement only starts once the lever is pushed +Y, and equals
+# (slide - 1.1). If the assembly should SHOW the lever mounted, MOUNT_Y wants to move +Y by
+# the intended depth; that changes where the whole lever appears, so it is left alone here.
 MOUNT_X, MOUNT_Y, MOUNT_Z = -501.0, -148.75, -75.15 - BODY_Z
 MOUNT_POSE = (MOUNT_X, MOUNT_Y, MOUNT_Z)
 # the mortise (slot) runs from the player face ALL THE WAY to the guitar's Y midpoint -- the lever's
 # nub slides +Y along it to the player's chosen knee depth, then the retention screw locks it.
 MID_Y     = -37.0                   # guitar Y-midpoint (= chassis (Y_LO + Y_HI)/2)
 MORT_Y1   = MID_Y - MOUNT_Y         # mortise +Y end at mid-Y (in the local frame)
-# retention: the +X tenon's FLAT -X side leaves the rib ledge on that side reachable straight down, so
-# ONE M4 set screw threads UP through the yoke boss beside the tenon and PRESSES the rib ledge (jamming
-# the tenon in its mortise -> friction-locks the Y slide). The rib runs in Y, so the ledge is directly
-# above the screw at EVERY slide position -- it never floats past a rail end like the old rail-biting
-# screw did, and it needs no drilled pilot (it just bears on the printed rib surface).
-# X: the Ø4.4 clearance bore runs TANGENT to the tenon's flat -X face (TEN_XC-HW0) so the screw clears
-# the tenon and threads fully home. The bore may cut through the mortise WALL (fine) but not the tenon.
-# The W=6 octagon (spans rail +-3) leaves only a 2mm rib side-column, too narrow for the old Ø6
-# insert + M4. The Y-slide LOCK is now an M2 SELF-TAPPING set screw (no insert): its Ø2.2 pilot
-# clears the octagon and its cup presses that column. Small, but the octagon carries the knee-strike
-# loads -- this only holds the chosen depth.
-RETAIN_X = RAIL_X[0] - _JHW - M2_SELFTAP_D / 2 - 0.15   # M2 pilot -X of the octagon, in the rib column
-# +Y of BOTH the half-stop cartridge (ends Y=12) AND the +Y bearing wall (ends Y=16), so the screw's
-# whole Z path -- driver access + its up/down adjustment -- is open below the yoke boss; clear of the
-# PCB wall at Y=20.5. (At Y=5 the cartridge housing sat right in that path.)
-RETAIN_Y = 18.0                                         # yoke boss (TEN_Y0..TEN_Y1) clear of cart+wall+PCB
+# DEPTH LOCK — still DEFERRED (it lands with the sensor mount, which shares the same +Y
+# region). Plan of record: an M2 SELF-TAPPING set screw threading UP through the housing
+# top beside one tenon, its cup pressing the rib's side column so the Y slide friction-
+# locks. It needs no drilled pilot in the rib (it bears on the printed surface), and the
+# rib runs in Y, so the ledge is above the screw at EVERY depth setting. The octagon
+# carries the knee-strike load; this only holds the chosen depth. (The old M4 version
+# doesn't fit: the W=6 octagon leaves only a 2 mm rib side column.)
 
 
 def _bearing():
@@ -490,32 +467,14 @@ def demo_parts():
     return out
 
 
-def _lever_tenon(rx):
-    """ONE fused octagon tenon at rail rx: cadkit's octagon (slides +X, roof +Z) rotated 90°
-    about Z so it slides +Y, mating plane at the body underside (BODY_Z), roof rising +Z into
-    the rib and the root reaching -Z down to the yoke-boss floor for a solid fuse."""
-    root = BODY_Z - BOSS_Z0
-    return (_lever_joint(TEN_Y1 - TEN_LY0).tenon(root=root)
+def _top_tenon(tx):
+    """ONE fused octagon tenon at station tx: cadkit's octagon (slides +X, roof +Z) rotated
+    90° about Z so it slides +Y, mating plane at the housing TOP face (which is the chassis
+    underside), roof rising +Z into the rib above and the root reaching TEN_ROOT down into
+    the prism for a volumetric fuse."""
+    return (_lever_joint(TEN_Y1 - TEN_Y0).tenon(root=TEN_ROOT)
             .rotate((0, 0, 0), (0, 0, 1), 90)                 # slide axis X -> Y (roof stays +Z)
-            .translate((rx, TEN_LY0, BODY_Z)))                # rail X, -Y start, mate at body underside
-
-
-def _mount():
-    """The mount: TWO FUSED octagon tenons, BOTH -X of the axle (RAIL_X). Each rises +Z from a
-    yoke boss into its chassis rib and slides +Y to the knee depth; a -Y M4 screw locks it.
-    A yoke plate ties the two -X rails to the bearing block, staying -X of the lever so nothing
-    sits in the 2.4 mm body gap above the hub. Tenon + rib mortise are the shared cadkit octagon
-    (both print -Z->+Z, self-supporting) -- no floating part."""
-    x_lo = RAIL_X[1] - _JHW - 2                                # -X end (just past the far rail)
-    x_hi = -HALF_X                                             # +X end meets the bearing block, clear of the lever
-    out = box_at(x_hi - x_lo, TEN_Y1 - YOKE_Y0, YOKE_Z1 - YOKE_Z0,
-                 x=(x_lo + x_hi) / 2, y=(YOKE_Y0 + TEN_Y1) / 2, z=(YOKE_Z0 + YOKE_Z1) / 2)
-    for rx in RAIL_X:                                          # a boss under each tenon (hosts the root)
-        out = out.union(box_at(2 * _JHW + 4, TEN_Y1 - TEN_Y0, YOKE_Z1 - BOSS_Z0,
-                               x=rx, y=(TEN_Y0 + TEN_Y1) / 2, z=(YOKE_Z1 + BOSS_Z0) / 2))
-    for rx in RAIL_X:                                          # the fused octagon tenons
-        out = out.union(_lever_tenon(rx))
-    return out
+            .translate((tx, TEN_Y0, HOUS_Z1)))                # station X, -Y start, mate at the top face
 
 
 def rib_mortise(rib_x):
@@ -588,6 +547,25 @@ BRG_Y0 = LEVER_HW + HS_CLR          # bearing INNER faces at ±10.4 = the lever-
                                     # moved against the lever so both sit FULLY inside the
                                     # ±13.9 cheeks: span 10.4..12.9, 1.0 outboard skin;
                                     # 0.4 gap to the ±10 hub ends. Seats = axle round.)
+# ── MOUNT TENON STATIONS (user: "4 sets"). The chassis rib comb is a uniform
+# RIB_PITCH/2 = 23 mm and the lever is posed ON a rib (MOUNT_X = -501 IS a rib X), so
+# the stations are just k·23 walking -X from the axle, kept while the whole 6-wide
+# octagon still lands on the top face: 0, -23, -46, -69 — four, and the count falls
+# out of the geometry rather than being written down (widen or shift the housing and
+# the comb re-solves). Generated here rather than in the mount block because it is
+# HOUS_X0/X1 that bound them, and those aren't known until this point.
+_TEN_PITCH = RIB_PITCH / 2.0        # = the chassis half-pitch rib comb
+TEN_X = tuple(-k * _TEN_PITCH for k in range(20)
+              if HOUS_X0 + _JHW <= -k * _TEN_PITCH <= HOUS_X1 - _JHW)
+# Each tenon runs the housing's FULL Y depth: it is a rail, and every millimetre of it
+# is engagement the player can buy by sliding the lever inboard. The +X-most station
+# (x=0) sits directly over the lever, where the lever-room slot opens the top face —
+# so all that survives of it is a stub on top of each ±Y cheek wall. That is by
+# construction, not by special-casing: the tenons are unioned BEFORE the lever-room
+# cut, so the same sweep that clears the lever trims the tenon.
+TEN_Y0, TEN_Y1 = -HOUS_HW, HOUS_HW
+TEN_ROOT = 1.0                      # root below the mating face — volumetric fuse into the
+                                    # prism, never a coplanar touch (cadkit joinery rule)
 # SENSOR-SIDE Y (re-anchored here — see the note up in the layout block): the
 # magnet rides the integral +Y stub just past the HOUSING FACE, not past the
 # long-deleted bearing wall. 0.5 running clearance to the static face.
@@ -852,7 +830,18 @@ def _hs_block(yc, x0, x1):
 def _housing() -> cq.Workplane:
     """ONE PARAMETRIC PRISM (user simplification round): the box spanned by
     HOUS_* (every face derived from the lever / cartridge / body extents),
-    minus exactly four families of cuts:
+    PLUS the mount tenons, minus exactly four families of cuts.
+
+    MOUNT (user): FOUR fused octagon tenons on the TOP face, one per chassis
+    rib crossing the housing (TEN_X = 0, -23, -46, -69 on the rib comb's
+    23 mm pitch). Each is a Y-RAIL running the housing's full depth and
+    sliding +Y in its rib mortise — that slide IS the knee-depth adjustment.
+    They are unioned onto the RAW prism, before any cut, which is what makes
+    the +X-most station come out "minimal" without special-casing: it stands
+    right over the lever, so the lever-room sweep removes its middle and
+    leaves a stub on top of each ±Y cheek wall.
+
+    The cuts:
       * the LEVER ROOM — a hub-band channel over the lever's ±X envelope
         (lever Y-span only, so ±Y CHEEKS survive at the +X end: the future
         bearing walls), opened out the TOP face (the slot hides 0.3 under
@@ -868,14 +857,22 @@ def _housing() -> cq.Workplane:
       * the TPU drag-pad recesses in the outboard pocket walls.
       * the two female BACK-STOP THREADS in the solid behind the pockets
         (cut last, alone, un-healed — thread rules).
-    DEFERRED (user: next rounds): axle/bearings + thrust bosses, the
-    MT6701 sensor mount, and the rib-mount tenons — the old bearing
-    walls, PCB wall, yoke/tenons, rail block and print buttresses are
-    GONE with them (the ~120-line accreted shell is this one prism now).
-    Prints -Z→+Z; the 3.4-wide swing-slot ceiling strips and the cheeks'
-    Ø10.8 crown are flagged for the axle round."""
+    DEFERRED: the MT6701 sensor mount and the M2 depth LOCK (they share the
+    same +Y region, so they land together).
+    NOTE — the tenons engage NOTHING at the modelled pose: MOUNT_Y puts the
+    housing's +Y face at -134.85 and the chassis rails start at -133.75, so
+    the whole housing hangs 1.1 mm OUTBOARD of the rib comb. That pose is the
+    fully-slid-OUT limit; engagement = slide - 1.1. See the note in the mount
+    block — moving MOUNT_Y +Y is the fix, and it is the user's call.
+    Prints -Z→+Z (the tenons are the octagon family, self-supporting)."""
     w = box_at(HOUS_X1 - HOUS_X0, 2 * HOUS_HW, HOUS_Z1 - HOUS_Z0,
                x=(HOUS_X0 + HOUS_X1) / 2, y=0.0, z=(HOUS_Z0 + HOUS_Z1) / 2)
+    # MOUNT TENONS (user), unioned onto the raw prism BEFORE anything is cut — that
+    # ordering is what makes the +X-most station come out "minimal" on its own: the
+    # lever-room sweep below runs the full tenon height now, so it takes that tenon's
+    # middle with it and leaves only the two cheek-wall stubs.
+    for _tx in TEN_X:
+        w = w.union(_top_tenon(_tx))
     # LEVER ROOM = ONE PLANAR SWEEP CUT (user round 3: 'solid everywhere
     # except the house cut and a sweep cut for the lever range of motion' —
     # the old full-width swing slot notched the front cheeks and the full-
@@ -898,7 +895,8 @@ def _housing() -> cq.Workplane:
     # it crosses the hub band's -5.4 at z ≈ 1.5, so the polygon walks
     # hub-top → hub-side → slant → bottom → rest-side
     _zc = (-_e + (_e + ARM_TX / 2 * (1 / math.cos(_THR) - 1) + 0.4)) / math.tan(_THR)
-    _p = [(_e, HOUS_Z1 + 1.0), (-_e, HOUS_Z1 + 1.0), (-_e, _zc),
+    _zt = HOUS_Z1 + TEN_H + 1.0                       # ABOVE the tenons, so the sweep
+    _p = [(_e, _zt), (-_e, _zt), (-_e, _zc),          #   trims the x=0 station too
           (_slant(_zb), _zb), (_e, _zb)]
     _face = cq.Face.makeFromWires(cq.Wire.makePolygon(
         [cq.Vector(x, -_hw, z) for x, z in _p] + [cq.Vector(_p[0][0], -_hw, _p[0][1])]))
