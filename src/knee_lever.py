@@ -87,9 +87,21 @@ MAG_D, MAG_T = 6.0, 2.5             # DIAMETRICALLY-magnetised NdFeB disc on the
                                     # to LAND in the window, it doesn't set accuracy.
 AIR_GAP = 1.2                       # magnet face -> the IC's OWN TOP SURFACE (the
                                     # datasheet's datum — see CHIP_* below; the board is
-                                    # a further CHIP_H out). Retargeted 1.5 -> 1.2 so the
-                                    # assembly's axial float lands the gap at 1.2-1.6,
-                                    # mid-window, instead of grazing the 2.0 ceiling.
+                                    # a further CHIP_H out). Retargeted 1.5 -> 1.2.
+                                    # FLOAT DIRECTION (measured, and it is the opposite of
+                                    # what it first looks like): the axle's flange seats
+                                    # -Y on the rib, so the only travel left is +Y, which
+                                    # carries the magnet TOWARD the chip. The gap band is
+                                    # therefore 1.2 (datum) DOWN to 0.8 (lever hub against
+                                    # the +Y cheek, probed) — not 1.2 up to 1.6. Both ends
+                                    # sit inside the 0.5-2.0 window, and the magnet's pull
+                                    # toward the steel bearing preloads the flange onto the
+                                    # rib, so 1.2 is where it actually rests. Closing the
+                                    # 0.4 out entirely (a second contact rib on the +Y
+                                    # cheek, bearing on the hub end) is the obvious
+                                    # follow-up once the sensor MOUNT exists — until then
+                                    # the +Y side of this gap is held by nothing at all,
+                                    # because kl_pcb is still a free-floating dummy.
                                     # DATASHEET (verified 2026-07):
                                     # field at the IC SURFACE must be 200-1000 G (20-100 mT)
                                     # with a 0.5-2.0 gap, and the reference magnet is
