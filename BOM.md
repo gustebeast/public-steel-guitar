@@ -108,15 +108,24 @@ populate them.
 
 *(qty 8 = 7 controls + 1 spare)*
 
-**Board spec (ours, for layout).** Outline **20 × 18 × 1.6 mm**, and it is
-deliberately *not* symmetric about the sensor: the chip sits on the axle axis
-9.0 mm from the +X edge and 11.0 mm from the −X edge, 4.0 mm below the top edge.
-The board drops into two grooves in the housing's printed cradle, so **1.85 mm of
-each side edge and the bottom 0.0–1.0 mm are mechanical** — keep copper and parts
-out of them. One **Ø4.4 clearance hole** at 7.4 mm −X and 9.5 mm below the axis
-takes the single M4 that locks it in. The QFN goes on the **−Y (magnet-facing)**
-side; everything else — connector, passives — goes on the +Y side, where there is
-open air. Routed-outline-to-copper tolerance matters here: the datasheet's max
+**Board spec (ours, for layout).** Outline **19.5 × 19 × 1.6 mm**, deliberately
+*not* symmetric about the sensor: the chip sits on the axle axis 9.0 mm from the
++X edge, 10.5 mm from the −X edge and 7.0 mm below the top edge. **No mounting
+holes** — the board drops into two grooves in the housing's printed cradle, rests
+on its floor, and the instrument's own underside closes over it as the lid. So
+**1.85 mm of each side edge is mechanical** — keep copper and parts out of it.
+
+The QFN goes on the **−Y (magnet-facing)** side; the connector and passives go on
+the **+Y** side. The CAN drop is a **B4B-XH-A stood on end** — pin row vertical, at
+6.5 mm −X of the axis, pins at 5.75/3.25/0.75 mm below and 1.75 mm above it. That
+orientation is not cosmetic: the XH is through-hole, its posts stand 1.8 mm proud
+of the board's magnet-facing face, and with the row horizontal the board's install
+stroke drags all four of them through the rotating magnet cap. Standing it up puts
+every post on one X, 6.5 mm out, clear of the cap's 5.4 mm radius for the whole
+stroke. If the board is ever respun with an **SMT** XH (S4B-XH-SM4-TB) the
+constraint disappears with the posts.
+
+Routed-outline-to-copper tolerance matters here: the datasheet's max
 sensing-centre-to-magnet-axis misalignment is **0.3 mm**, and JLCPCB's ±0.2 mm
 outline tolerance plus the cradle's 0.15 mm slip fit spends most of it. Overrunning
 it slightly costs INL only (±1.0° typ → ±1.5° max), which the per-control
@@ -252,7 +261,7 @@ $0.59–0.78 per pre-crimped lead — 20×; needs a ~$25–45 tool, below).
 | **TRRS jack, SMT** (leg-shaft auto-mate, on the leg carrier PCB) | LCSC-library compact SMT jack, **pick at PCB design** (SJ-4351X-class, ~13×6×5) | 2 | ~$0.30 | LCSC | the only form factor that fits the Ø20 shaft; factory-assembled on the carrier (no consignment). Pocket gets rebuilt around the chosen part's drawing. Fallback: Same Sky SJ-43514-SMT-TR via JLCPCB global sourcing |
 | **XH crimp contacts** | JST **SXH-001T-P0.6** | 300 | ~$0.024–0.047 | [DigiKey](https://www.digikey.com/en/products/result?keywords=SXH-001T-P0.6) | 22–30 AWG; qty includes learning-curve scrap |
 | **XH housings** | JST **XHP-2 / XHP-4 / XHP-6** | ~30 | ~$0.10 | [DigiKey](https://www.digikey.com/en/products/result?keywords=XHP-4) | contacts click in by hand, extractable; XHP-6 mates the SERVO42D pigtail |
-| **XH headers**, THT top-entry | JST **B2B/B4B/B6B-XH-A(LF)(SN)** | ~30 | $0.17 / $0.144 @10 | [DigiKey](https://www.digikey.com/en/products/result?keywords=B4B-XH-A) | on every custom PCB (sensor boards, Teensy carrier, leg breakout); B4B verified, other sizes same class |
+| **XH headers**, THT top-entry | JST **B2B/B4B/B6B-XH-A(LF)(SN)** | ~30 | $0.17 / $0.144 @10 | [DigiKey](https://www.digikey.com/en/products/result?keywords=B4B-XH-A) | on every custom PCB (sensor boards, Teensy carrier, leg breakout); B4B verified, other sizes same class. Modelled from JST's own drawing (`cadkit.pcb.jst_xh_header`): B4B is **12.4 × 5.75**, **7.0 mm** tall bare and **9.8 mm mated** — the mated figure is the one clearances must use — with □0.64 posts reaching 3.4 mm below the seating plane, i.e. **1.8 mm proud** of a 1.6 mm board's far face. The pin row is **2.0 mm from one long edge, 3.75 from the other**, so the part is not symmetric about its pins and which way it faces is a real layout decision |
 | **Power connector** (PSU trunk only) | XT30 pair — DFRobot **FIT0586** | 4 pr | $1.90 | [DigiKey](https://www.digikey.com/en/products/detail/dfrobot/FIT0586/9559255) | 15 A/30 A pk, gold; pigtails bench-soldered ONCE, field = plug/unplug only |
 | **CAN terminator R** | Yageo **CFR-25JB-52-120R** (120 Ω ¼ W) | 10 | $0.10 / $0.036 @10 | [DigiKey](https://www.digikey.com/en/products/result?keywords=CFR-25JB-52-120R) | Teensy carrier + last motor; bus-B termination lives ON the tees (SMT 120R there) |
 | **Tee PCB** | custom: 3× B4B-XH-A + 120 Ω + shunt jumper | 12 | ~$2 assembled (est.) | JLCPCB | panelized with the sensor boards; close the jumper on the LAST tee = bus-B termination |
