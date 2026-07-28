@@ -603,7 +603,8 @@ BRG_Y0 = LEVER_HW + HS_CLR          # bearing INNER faces at ±10.4 = the lever-
 # the stack happens to come to rest.
 RIB_T = RIB_PROUD = 0.85            # cadkit house contact-rib section
 AXLE_SHOULDER_Y = HOUS_HW + RIB_PROUD           # 14.75: flange face, ON the rib
-AXLE_FLANGE_D   = 9.0               # flange Ø = the cap thread's NOMINAL major
+AXLE_FLANGE_D   = 9.0               # flange Ø (what seats on the rib). NOT the thread
+                                    # major any more — the hex cap forced those apart
 MAG_FLANGE_T    = 0.8                           # pocket floor under the magnet
 MAG_Y0  = AXLE_SHOULDER_Y + MAG_FLANGE_T        # 15.55: magnet seat
 MAG_Y1  = MAG_Y0 + MAG_T                        # 18.05: magnet face -> the air gap
@@ -611,13 +612,34 @@ MAG_POCKET_D  = MAG_D + 0.2                     # 6.2 slip fit for the Ø6 disc
 MAG_COLLAR_H  = MAG_T - 0.1         # 2.4: the collar stops 0.1 SHORT of the disc so the
                                     # cap always lands on the MAGNET — bottoming on the
                                     # collar instead would leave the disc free to rattle
-MAG_TH_PITCH  = 2.0                 # cap thread, cadkit 45° self-supporting profile.
-MAG_TH_DEPTH  = 0.35                # Shallow + fine because the collar is only 2.4 long
-MAG_TH_MINOR  = AXLE_FLANGE_D - 2 * MAG_TH_DEPTH   # (~1 turn): at this pitch a deeper
-MAG_TH_CLR    = 0.4                 # flank trips cadkit's valley-overlap check. Fine —
-                                    # the cap retains a 0.5 g disc and carries no load.
+MAG_TH_PITCH  = 2.0                 # cap thread, cadkit 45° self-supporting profile
+MAG_TH_DEPTH  = 0.3                 # (shallow + fine: the collar is only 2.4 long, and at
+                                    # this pitch a deeper flank trips cadkit's valley-
+                                    # overlap check)
+MAG_TH_MAJOR  = 8.0                 # SIZED BY THE DRIVER rather than by strength. A 3/8"
+                                    # socket is 9.525 across flats and the Ø6.2 magnet
+                                    # pocket has to live inside it, so the entire radial
+                                    # budget between them is ~1.66 — split between collar
+                                    # wall, thread and cap wall. Major 8.0 divides it
+                                    # 0.60 / 0.675: thin, but sound for a hand-tight
+                                    # retainer holding a 0.5 g disc. (Keeping the old 9.0
+                                    # would have left a 0.175 cap wall — unprintable, and
+                                    # the reason this Ø split off from the flange's.)
+MAG_TH_MINOR  = MAG_TH_MAJOR - 2 * MAG_TH_DEPTH
+MAG_TH_CLR    = 0.4                 # male shrunk (same rule as the backstop)
 CAP_T  = 0.8                                    # cap's clamping flange
-CAP_OD = 11.0
+CAP_HEX_AF = 9.2                    # across flats, for a 3/8" (9.525) female hex driver.
+                                    # 0.325 total clearance, deliberately generous: printed
+                                    # external features come out slightly OVER size, and the
+                                    # two failure modes are not symmetric — a hex a hair too
+                                    # big will not enter the socket at all, while one a hair
+                                    # too small merely rocks. Across corners 10.62, so the
+                                    # hex still sits inside the cap's old Ø11 envelope and
+                                    # nothing downstream has to move.
+CAP_BASE_CLR = 0.3                  # the cap's rim stops SHORT of the axle flange so it
+                                    # can only ever land on the MAGNET; bottoming on the
+                                    # flange would leave the disc loose — the same trap the
+                                    # collar height already dodges at the other end
 CAP_APERTURE = 5.0                  # open on the axis so the cap never intrudes on the
                                     # field path or on any future gap reduction
 # D-FLAT key. The user asked for a tongue; a PROTRUDING one is impossible here —
@@ -997,7 +1019,7 @@ def kl_axle() -> cq.Workplane:
     b = cq.Workplane("XY").add(cq.Solid.makeCylinder(
         r, AXLE_SHOULDER_Y - AXLE_Y0, cq.Vector(0, 0, AXLE_Y0), cq.Vector(0, 0, 1)))
     b = b.union(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        (AXLE_FLANGE_D - MAG_TH_CLR) / 2, MAG_FLANGE_T + MAG_COLLAR_H,
+        (MAG_TH_MAJOR - MAG_TH_CLR) / 2, MAG_FLANGE_T + MAG_COLLAR_H,
         cq.Vector(0, 0, AXLE_SHOULDER_Y), cq.Vector(0, 0, 1))))
     b = b.union(cq.Workplane("XY").add(cq.Solid.makeCylinder(   # flange (rides the rib)
         AXLE_FLANGE_D / 2, MAG_FLANGE_T,
@@ -1008,7 +1030,7 @@ def kl_axle() -> cq.Workplane:
     b = heal(b)
     # MALE thread on the collar (blank is already at crest Ø), then the flat
     b = cut_thread(b, minor_d=MAG_TH_MINOR - MAG_TH_CLR,
-                   major_d=AXLE_FLANGE_D - MAG_TH_CLR,
+                   major_d=MAG_TH_MAJOR - MAG_TH_CLR,
                    pitch=MAG_TH_PITCH, length=MAG_COLLAR_H, z=MAG_Y0)
     b = b.rotate((0, 0, 0), (1, 0, 0), -90)          # +Z -> +Y (the lever's axis)
     # D-flat, milled last (cadkit thread rule), +Z side, running from the
@@ -1021,8 +1043,13 @@ def kl_axle() -> cq.Workplane:
 
 
 def kl_magnet_cap() -> cq.Workplane:
-    """PCTG MAGNET CAP ×1 per lever (user): a ring with a FEMALE thread on its
-    ID that screws over the axle's pocket collar and clamps the Ø6 magnet in.
+    """PCTG MAGNET CAP ×1 per lever (user): a HEX nut with a FEMALE thread on
+    its ID that screws over the axle's pocket collar and clamps the Ø6 magnet
+    in. Sized across flats for a 3/8" female hex driver (user) — and that is
+    what set the thread Ø, since a 3/8" socket around a Ø6.2 pocket leaves only
+    ~1.66 of radius for collar wall + thread + cap wall (see MAG_TH_MAJOR).
+    Fit it BEFORE the sensor board: the socket comes down the axis the board
+    later occupies.
     Its bore stops 0.1 short of the collar's rim, so it always lands on the
     DISC rather than bottoming on the collar and leaving it loose.
 
@@ -1035,23 +1062,24 @@ def kl_magnet_cap() -> cq.Workplane:
     internal 45° thread flanks self-support. Built along +Z and rotated onto
     the lever's +Y axis; threaded LAST and NEVER healed."""
     from cadkit.threads import threaded_rod
+    _ac = CAP_HEX_AF * 2.0 / math.sqrt(3.0)          # hex across-corners
+    _z0 = MAG_Y0 + CAP_BASE_CLR                      # rim held clear of the axle flange
     # THREADED BARREL ONLY, up to the magnet face...
-    b = heal(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        CAP_OD / 2, MAG_Y1 - MAG_Y0,
-        cq.Vector(0, 0, MAG_Y0), cq.Vector(0, 0, 1))))
-    nut = threaded_rod(MAG_TH_MINOR, AXLE_FLANGE_D, MAG_TH_PITCH,
-                       MAG_Y1 - MAG_Y0, z=MAG_Y0)
+    b = heal(cq.Workplane("XY").workplane(offset=_z0)
+             .polygon(6, _ac).extrude(MAG_Y1 - _z0))
+    nut = threaded_rod(MAG_TH_MINOR, MAG_TH_MAJOR, MAG_TH_PITCH,
+                       MAG_Y1 - _z0, z=_z0)
     b = b.cut(nut, clean=False)
     # ...and the clamping FLANGE unioned on AFTERWARDS. Order matters: the
     # thread cutter rounds its span up to whole turns, so building the flange
     # first lets it overrun and quietly eat the very face that holds the magnet
     # (a probe caught exactly that — the cap came out a plain ring that touched
     # nothing but its own collar).
-    flange = (cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        CAP_OD / 2, CAP_T, cq.Vector(0, 0, MAG_Y1), cq.Vector(0, 0, 1)))
-        .cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(   # sensor aperture
-            CAP_APERTURE / 2, CAP_T + 2.0,
-            cq.Vector(0, 0, MAG_Y1 - 1.0), cq.Vector(0, 0, 1)))))
+    flange = (cq.Workplane("XY").workplane(offset=MAG_Y1)
+              .polygon(6, _ac).extrude(CAP_T)
+              .cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(   # sensor aperture
+                  CAP_APERTURE / 2, CAP_T + 2.0,
+                  cq.Vector(0, 0, MAG_Y1 - 1.0), cq.Vector(0, 0, 1)))))
     b = b.union(flange, clean=False)
     return b.rotate((0, 0, 0), (1, 0, 0), -90)          # +Z -> +Y
 
