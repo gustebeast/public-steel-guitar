@@ -143,9 +143,16 @@ JACK_D         = 4.0                             # M4 (cadkit heat-set-insert nu
 BOSS_H         = 6.0                              # NUT boss height ABOVE the plate top (nut boss is on TOP now,
                                                  # so the plate BOTTOM stays flat -> prints -Z->+Z, user)
 JACK_MOUTH_Z   = ZPL_TOP + BOSS_H                  # plate NUT mouth = the boss TOP (screw threads down into it)
-JACK_HEAD_Z    = TZ - 2.0                          # head SHOULDER, captured in the solid deck at the bed (=4)
-HEAD_POCKET_D  = 7.5                               # head pocket Ø (bored down from the deck top)
-JACK_SCREW_BOT = ZPL_BOT - 1.5                     # screw tail, just below the (flat) plate bottom
+# The leadscrew is a real M4 BUTTON-HEAD cap screw (headed, hex-socket drive) captured in the
+# deck: a counterbore seats the head, the shoulder bears on its floor, the shank threads down
+# through the plate nut. Turning the head from +Z walks the plate up/down.
+JACK_HEAD_D    = 7.6                               # M4 button-head cap screw head Ø (ISO 7380)
+JACK_HEAD_H    = 2.2                               # button-head height
+JACK_HEAD_Z    = TZ - (JACK_HEAD_H + 0.3)          # head SHOULDER (pocket floor) in the solid deck (=3.5)
+HEAD_POCKET_D  = JACK_HEAD_D + 0.4                 # Ø8 head counterbore, opens at the bed (deck top TZ)
+JACK_SCREW_L   = 20.0                              # NEW BOM part: M4×20 button-head leadscrew. 20 mm shank
+                                                   # spans the full height-adjust travel (15..22 mm pickup
+                                                   # depths + string-gap set) with the nut engaged throughout.
 FLOOR_BOT = ZPL_BOT - 5.0                          # -Y skirt / end-wall bottom (structure / endplate-lip datum)
 # TOP-ACCESS at the PLATE's clear zones (pickup-agnostic): TWO +Y plate corners + ONE
 # deep -Y-centre. Equalise the two +Y = X LEVEL; the -Y jack (centre X) = across-string tilt.
@@ -166,10 +173,13 @@ HEIGHT_HOLE = PICKUP_X_NOM
 # from the plate; a horizontal M4 grub through a -Y boss pushes the pickup +Y against it.
 RET_WALL_T = 2.0                                   # +Y wall thickness (Y)
 RET_WALL_H = 8.0                                   # +Y wall height above the plate top (enough to lock, not tall)
-RET_SCREW_D = 4.0                                  # M4 -Y clamp grub
-RET_SCREW_Z = ZPL_TOP + 4.0                        # grub axis height (bears low on the pickup base)
-RET_BOSS_L = 8.0                                   # -Y clamp boss length (Y) = grub thread depth
+RET_SCREW_Z = ZPL_TOP + 3.0                        # grub axis height (bears low on the pickup base)
+RET_BOSS_L = 8.0                                   # -Y clamp boss length (Y) = insert pocket + clearance to the tip
 RET_SCREW_X = PICKUP_X_NOM + 14.0                  # X-offset so it clears the centre -Y jack
+# The -Y grub is an M4 cup-tip SET SCREW threading a heat-set insert (cadkit set-screw bore), so the
+# boss ceiling must clear the Ø6 insert pocket by MIN_WALL on EVERY side (the reported thin-ceiling
+# fix: material == nozzle can be dropped by the slicer). Ceiling = axis + pocket radius + MIN_WALL.
+RET_BOSS_TOP_Z = RET_SCREW_Z + M4.insert_pilot_d / 2 + D.MIN_WALL   # >= 0.85 of material over the bore
 X_SLIDE   = 6.0                                    # pickup X-position room on the plate (+/-)
 PLATE_X   = PM.PK_W + 2 * X_SLIDE                  # green X (pickup + slide) ~50.6
 PLATE_Y   = (PK_YP - PK_YM) + 2 * RET_WALL_T       # green Y (pickup + wall room each side) ~105.6
@@ -182,7 +192,7 @@ MARKER_FRETS = {3, 5, 7, 9, 12, 15, 17, 19, 21, 24}
 # ── fret lines + fretboard border as a MATERIAL split, not an engraving ──────
 FRET_T  = 1.6      # colour-layer thickness = embossed inlay height (Z)
 INLAY_W = 2.4      # SHARED in-plane width: transparent fret-line width AND the border-frame band width
-MIN_WEB = 0.8      # smallest colour web left between lines (stops the dense micro-lines at the bridge)
+MIN_WEB = D.MIN_WALL   # smallest colour web left between lines (single-bead floor; stops dense micro-lines at the bridge)
 # border X: the fretted length — from the bridge end of the fretboard (just -X of the pickup region) to
 # the nut/keyhead end. Absolute coords; _split gives each panel its portion so the frame is continuous.
 FRET_AREA_X0 = SLOT_X[PIECE_SHOWN + PIECE_SLOTS]   # +X (bridge) end of the fretboard
@@ -407,13 +417,17 @@ def _pickup_zplate():
     plate = plate.union(box_at(PM.PK_W, RET_WALL_T, RET_WALL_H,
                                x=PICKUP_X_NOM, y=PK_YP + RET_WALL_T / 2,
                                z=ZPL_TOP + RET_WALL_H / 2))
-    # -Y RETENTION grub boss: a block rising from the plate at the pickup -Y edge with a
-    # HORIZONTAL M4 self-tap bore; the grub pushes the pickup +Y against the wall.
-    plate = plate.union(box_at(NUB_W, RET_BOSS_L, RET_SCREW_Z + 2 - ZPL_BOT,
-                               x=RET_SCREW_X, y=PK_YM - RET_BOSS_L / 2,
-                               z=(ZPL_BOT + RET_SCREW_Z + 2) / 2))
-    plate = plate.cut(cyl_y(RET_SCREW_D - 0.4, RET_BOSS_L + 1.0,
-                            y0=PK_YM - RET_BOSS_L - 0.5, x=RET_SCREW_X, z=RET_SCREW_Z))
+    # -Y RETENTION grub boss: a pedestal rising from the plate at the pickup -Y edge, hosting a
+    # HORIZONTAL M4 heat-set insert (cadkit set-screw bore -> a cup-tip grub, which must never
+    # self-tap). The grub pushes the pickup +Y against the wall. The pedestal ceiling reaches
+    # RET_BOSS_TOP_Z so >= MIN_WALL of material rings the Ø6 insert pocket on every side incl. +Z.
+    ret_face_y = PK_YM - RET_BOSS_L                    # -Y outer face = the insert-entry (grub) face
+    plate = plate.union(box_at(NUB_W, RET_BOSS_L, RET_BOSS_TOP_Z - ZPL_BOT,
+                               x=RET_SCREW_X, y=(ret_face_y + PK_YM) / 2,
+                               z=(ZPL_BOT + RET_BOSS_TOP_Z) / 2))
+    plate = cut_insert_bore(M4, plate, (RET_SCREW_X, ret_face_y, RET_SCREW_Z), (0, 1, 0),
+                            clr_len=RET_BOSS_L - M4.insert_depth + 1.0,
+                            reason="set screw: -Y pickup-retention grub, must not self-tap")
     return plate
 
 

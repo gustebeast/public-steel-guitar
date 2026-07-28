@@ -77,9 +77,9 @@ PARTS = {
     "motor_pulley":    (lambda: heal(C.motor_pulley()),  "pctg/motor_pulley.step",  "PCTG — flanged 14T GT2 pulley, 45° outer flange — ×10"),
     "tension_fork":    (lambda: TF.tension_forks,    "pctg/tension_fork.step",    "PCTG — belt-tension lock forks, graded 3.0–6.0 set (4 of the fitting size per motor; positive stop in the slot, no friction reliance)"),
     # pickup carrier: the deck pickup-piece (a top_plate panel) holds the pickup on a
-    # full-width height plate lifted by 3 M4 set-screw jacks; 2 M4 toe-clamp screws in
-    # the piece's -Y ledges lock it. All hardware is stocked M4, all turned from +Z.
-    "pickup_zplate":   (lambda: heal(__import__("src.top_plate", fromlist=["e"]).pickup_zplate), "petg-gf/pickup_zplate.step", "PETG-GF — pickup height plate (full-width; the 3 M4 set-screw jacks lift/tilt it, pickup rests on top and slides in X for tone; GF keeps it flat on the point loads)"),
+    # height plate lifted by 3 M4×20 button-head leadscrew jacks; a -Y M4 cup-tip grub
+    # locks the pickup +Y against the plate's +Y wall. All hardware is stocked M4, all +Z.
+    "pickup_zplate":   (lambda: heal(__import__("src.top_plate", fromlist=["e"]).pickup_zplate), "petg-gf/pickup_zplate.step", "PETG-GF — pickup height plate (green pickup area + nubs; 3 M4×20 button-head leadscrew jacks lift/tilt it via heat-set nuts on top, pickup rests on it and slides in X for tone; +Y retention wall + -Y cup-tip grub lock the pickup to the plate; GF keeps it flat on the point loads)"),
     # (round leg_socket / leg_segment exports RETIRED by the square-leg
     # redesign — generators remain in legs.py until the refinement pass
     # deletes them)
@@ -411,28 +411,33 @@ def _stow_tail(i, rad):
 
 def _pickup_mount_components():
     from . import top_plate as TP
-    from cadkit.fasteners import M4, screw as f_screw, insert as f_insert
+    from cadkit.fasteners import (M4, screw as f_screw, insert as f_insert,
+                                  headed_screw, seated_insert)
     PICKUP_X = TP.PICKUP_X_NOM     # pickup centre in the shown pose (pocket centre)
     # pickup rests on the Z-plate, centred on the field (Y = PK_CTR_Y) for magnetic cover
     out = [("pickup", PM.pickup_demo().translate((PICKUP_X, TP.PK_CTR_Y, PM.PK_TOP))),
            ("pickup_zplate", TP.pickup_zplate)]
-    # TOP-ACCESS height (user): THREE M4 LEADSCREW jacks. Each screw's HEAD is captured in
-    # the solid deck at the bed (JACK_HEAD_Z); its thread runs down through a HEAT-SET-INSERT
-    # NUT standing on the plate (boss on TOP -> flat plate bottom). Turning the head from +Z
-    # walks the plate up/down. Equalise the two +Y = X level, -Y = across-string tilt.
-    _shaft = TP.JACK_HEAD_Z - TP.JACK_SCREW_BOT
+    # TOP-ACCESS height (user): THREE M4×20 BUTTON-HEAD LEADSCREW jacks (real headed cap screw,
+    # cadkit headed_screw -> hex-socket drive visible in the head top). Each head is captured in a
+    # counterbore in the solid deck (JACK_HEAD_Z shoulder); the shank threads down through a HEAT-
+    # SET-INSERT NUT standing on the plate. Turning the head from +Z walks the plate up/down.
+    # Equalise the two +Y = X level, -Y = across-string tilt.
     for _i, (_jx, _jy) in enumerate(TP.JACK_POS):
         out.append((f"pickup_jack_insert_{_i}",
                     f_insert(M4).translate((_jx, _jy, TP.JACK_MOUTH_Z))))   # nut, mouth at the boss top
-        _screw = (f_screw(M4, _shaft)                                  # threaded shaft (down)
-                  .union(cyl(M4.boss_od - 1.0, TP.TZ - TP.JACK_HEAD_Z, z=0.0)))  # captured button head (to the bed)
+        _screw = headed_screw(M4, TP.JACK_SCREW_L, head_d=TP.JACK_HEAD_D,   # M4×20 button head, hex socket
+                              head_h=TP.JACK_HEAD_H, socket_af=2.5)
         out.append((f"pickup_jack_screw_{_i}",
-                    _screw.translate((_jx, _jy, TP.JACK_HEAD_Z))))
-    # PICKUP RETENTION (user): a -Y horizontal M4 grub pushes the pickup +Y against the +Y
+                    _screw.translate((_jx, _jy, TP.JACK_HEAD_Z + TP.JACK_HEAD_H))))  # head top over the shoulder
+    # PICKUP RETENTION (user): a -Y horizontal M4 cup-tip SET SCREW (existing BOM part; cadkit
+    # screw dummy, hex socket) threads a heat-set insert and pushes the pickup +Y against the +Y
     # wall, locking it to the PLATE only (both are plate features, so they travel with it).
+    _ret_face_y = TP.PK_YM - TP.RET_BOSS_L
+    _ret_grub = f_screw(M4).rotate((0, 0, 0), (1, 0, 0), 90)          # drive/hex end -Y, shank +Y
     out.append(("pickup_retention_screw",
-                cyl_y(TP.RET_SCREW_D, TP.RET_BOSS_L, y0=TP.PK_YM - TP.RET_BOSS_L,
-                      x=TP.RET_SCREW_X, z=TP.RET_SCREW_Z)))
+                _ret_grub.translate((TP.RET_SCREW_X, _ret_face_y, TP.RET_SCREW_Z))))
+    out.append(("pickup_retention_insert",
+                seated_insert(M4, (TP.RET_SCREW_X, _ret_face_y, TP.RET_SCREW_Z), (0, 1, 0))))
     return out
 
 
@@ -764,7 +769,8 @@ _COLORS = {
     "set_screw":       (0.55, 0.55, 0.58),   # alloy set screw
     "pickup_jack_screw":  (0.55, 0.55, 0.58),  # M4 top-access height set-screw jack
     "pickup_jack_insert":  (0.80, 0.60, 0.35),  # brass heat-set insert (jack)
-    "pickup_retention_screw": (0.55, 0.55, 0.58),  # M4 -Y retention grub
+    "pickup_retention_screw": (0.55, 0.55, 0.58),  # M4 -Y retention cup-tip set screw
+    "pickup_retention_insert": (0.80, 0.60, 0.35),  # brass heat-set insert (-Y retention grub)
     "chassis":         (0.46, 0.52, 0.55),   # PETG-GF frame
     "pickup":          (0.10, 0.10, 0.12),   # DEMO pickup body
     "pickup_zplate":   (0.85, 0.65, 0.30),   # PCTG height plate (under the pickup)
