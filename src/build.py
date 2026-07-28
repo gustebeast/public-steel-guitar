@@ -27,7 +27,7 @@ from cadkit.freecad import show
 from cadkit.step_export import export_step
 
 from . import dimensions as D
-from .helpers import heal, cyl
+from .helpers import heal, cyl, cyl_y
 from . import components as C
 from . import chassis as CH
 from .carriage import carriage, THICK as CARRIAGE_THICK, SEAT_Z as CARRIAGE_SEAT_Z
@@ -410,28 +410,28 @@ def _stow_tail(i, rad):
 
 def _pickup_mount_components():
     from . import top_plate as TP
-    from cadkit.fasteners import M4, m4_boss_insert, screw as f_screw
-    PICKUP_X = TP.PICKUP_X_NOM     # pickup centre in the shown pose (pocket centre); it
-                                   # slides +/-~17 in X for fine tone, re-slots the 4-band
-                                   # piece for coarse bridge<->neck moves.
+    from cadkit.fasteners import M4, screw as f_screw, insert as f_insert
+    PICKUP_X = TP.PICKUP_X_NOM     # pickup centre in the shown pose (pocket centre)
     # pickup rests on the Z-plate, centred on the field (Y = PK_CTR_Y) for magnetic cover
     out = [("pickup", PM.pickup_demo().translate((PICKUP_X, TP.PK_CTR_Y, PM.PK_TOP))),
            ("pickup_zplate", TP.pickup_zplate)]
-    # TOP-ACCESS height (user): THREE M4 LEADSCREW jacks. Each screw's HEAD is captured
-    # in the piece bearing housing at the top (JACK_HEAD_Z) and its thread runs down
-    # through a HEAT-SET-INSERT NUT (m4_boss_insert) in the plate. Turning the head from
-    # +Z walks the plate up/down (>10mm travel, no deep screw). Equalise the two +Y = X
-    # level, -Y = across-string tilt.
+    # TOP-ACCESS height (user): THREE M4 LEADSCREW jacks. Each screw's HEAD is captured in
+    # the solid deck at the bed (JACK_HEAD_Z); its thread runs down through a HEAT-SET-INSERT
+    # NUT standing on the plate (boss on TOP -> flat plate bottom). Turning the head from +Z
+    # walks the plate up/down. Equalise the two +Y = X level, -Y = across-string tilt.
     _shaft = TP.JACK_HEAD_Z - TP.JACK_SCREW_BOT
     for _i, (_jx, _jy) in enumerate(TP.JACK_POS):
-        _pt = (_jx, _jy, TP.JACK_MOUTH_Z - M4.boss_prot)
-        out.append((f"pickup_jack_insert_{_i}", m4_boss_insert(_pt, (1, 0, 0), 180)))
+        out.append((f"pickup_jack_insert_{_i}",
+                    f_insert(M4).translate((_jx, _jy, TP.JACK_MOUTH_Z))))   # nut, mouth at the boss top
         _screw = (f_screw(M4, _shaft)                                  # threaded shaft (down)
                   .union(cyl(M4.boss_od - 1.0, TP.TZ - TP.JACK_HEAD_Z, z=0.0)))  # captured button head (to the bed)
         out.append((f"pickup_jack_screw_{_i}",
                     _screw.translate((_jx, _jy, TP.JACK_HEAD_Z))))
-    # (Y hold-down clamp removed for now -- height adjustment only; the pickup rests on
-    #  the plate and the 3 leadscrews set its height/tilt.)
+    # PICKUP RETENTION (user): a -Y horizontal M4 grub pushes the pickup +Y against the +Y
+    # wall, locking it to the PLATE only (both are plate features, so they travel with it).
+    out.append(("pickup_retention_screw",
+                cyl_y(TP.RET_SCREW_D, TP.RET_BOSS_L, y0=TP.PK_YM - TP.RET_BOSS_L,
+                      x=TP.RET_SCREW_X, z=TP.RET_SCREW_Z)))
     return out
 
 
@@ -762,6 +762,7 @@ _COLORS = {
     "set_screw":       (0.55, 0.55, 0.58),   # alloy set screw
     "pickup_jack_screw":  (0.55, 0.55, 0.58),  # M4 top-access height set-screw jack
     "pickup_jack_insert":  (0.80, 0.60, 0.35),  # brass heat-set insert (jack)
+    "pickup_retention_screw": (0.55, 0.55, 0.58),  # M4 -Y retention grub
     "chassis":         (0.46, 0.52, 0.55),   # PETG-GF frame
     "pickup":          (0.10, 0.10, 0.12),   # DEMO pickup body
     "pickup_zplate":   (0.85, 0.65, 0.30),   # PCTG height plate (under the pickup)
