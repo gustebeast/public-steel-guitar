@@ -44,9 +44,9 @@ from . import components as C
 from .helpers import box_at, cyl, cyl_y, heal
 
 from cadkit.fasteners import (M2_SELFTAP_D, M4_SHAFT_CLR_D, M4_INSERT_D,
-                       M4_INSERT_L, M4_SCREW_L, M4_SELFTAP_D, M4_MIN_BITE, M4,
-                       cut_insert_bore, cut_anchor,
+                       M4_INSERT_L, M4_SCREW_L, M4, cut_insert_bore,
                        cut_m4_pocket, seated_m4_insert, cut_m4_boss, m4_boss_insert)
+from cadkit.pcb import jst_xh_header, xh_length, XH_BODY_W, XH_ROW_OFF
 from cadkit.joinery import PrintSpec, slide_joint   # the shared octagon slide joint
 from cadkit.supports import printable_bore, contact_rib
 # the M4 insert pocket/boss helpers now live in cadkit/fasteners.py (shared); keep the old local names:
@@ -112,11 +112,10 @@ AIR_GAP = 1.5                       # magnet face -> the IC's OWN TOP SURFACE. T
                                     # 0.5 / 1.0 / 2.0 min/typ/max; recommended magnet Ø6 x
                                     # 2.5 — EXACTLY ours, so this is the nominal
                                     # configuration the part was characterised in.
-PCB_WX, PCB_WZ = 22.0, 18.0         # custom JLCPCB MT6701 board. NOT square any more: the
-PCB_T = 1.6                         # cradle's side grooves eat 1.85 of each edge and the M4
-                                    # lock screw needs ≥1.4 of FR4 around its Ø4.4 hole, and
-                                    # 18 wide could not pay for both. Nothing constrains the
-                                    # outline but the cradle (see PCB_* in the cradle block).
+PCB_WZ = 19.0                       # custom JLCPCB MT6701 board. The outline is ours; what
+PCB_T = 1.6                         # sets it is the cradle + the reserved driver bore (see
+                                    # the cradle block) and, in Z, the instrument itself —
+                                    # the board runs from the chassis underside down.
 CHIP_W, CHIP_H = 3.0, 0.80          # MT6701QT-STD, QFN-16. DATASHEET §9.2 (verified):
                                     # D = E = 2.900..3.100 (3.0 nominal) and A, the TOTAL
                                     # package height, = 0.700..0.800. CHIP_H takes the MAX,
@@ -140,13 +139,9 @@ CHIP_DISP_MAX = 0.3                 # datasheet DISP: max misalignment between t
                                     # already removes, so overrunning it slightly degrades
                                     # nothing we depend on. Repeatability (0.01° rms noise,
                                     # 0.088° hysteresis) is untouched by misalignment.
-PCB_TOP = 4.0                       # board TOP edge above the axle axis (user: the
-                                    # centred board clipped 1.6 into the instrument).
-                                    # The CHIP must sit ON the axle axis (z=0) to read
-                                    # the diametric magnet; the OUTLINE is ours — chip
-                                    # near the top edge (4 covers the Ø6 magnet face
-                                    # +1), board extends -Z into open air. Top lands
-                                    # 3.4 clear of the chassis underside.
+                                    # (PCB_TOP / the board's Z extent live in the cradle
+                                    # block below — they are set by the instrument's
+                                    # underside, which isn't known this early.)
 INSERT_D, INSERT_L = M4_INSERT_D, M4_INSERT_L   # M4 heat-set insert Ø6 × 5 (standard set-screw process)
 SCREW_CLR = M4_SHAFT_CLR_D          # M4 set-screw shaft clearance (Ø4.4)
 
@@ -441,13 +436,19 @@ def demo_parts():
     for i, by in enumerate((-(BRG_Y0 + BRG_W), BRG_Y0)):    # inner faces at ±BRG_Y0,
         out.append((f"kl_bearing_{i}", _bearing().translate((0, by, 0))))  # enclosed in the cheeks
     out.append(("kl_magnet", cyl_y(MAG_D, MAG_T, y0=MAG_Y0)))
-    # the board, WITH its M4 lock hole — the hole is a fabrication requirement on a
-    # board we are specifying, so it belongs in the dummy the STEP hands to layout.
     out.append(("kl_pcb", box_at(PCB_WX, PCB_T, PCB_WZ, x=(PCB_X0 + PCB_X1) / 2,
                                  y=PCB_Y + PCB_T / 2,
-                                 z=(PCB_Z0 + PCB_Z1) / 2)       # chip on-axis, board hangs -Z
-                .cut(cyl_y(M4_SHAFT_CLR_D, PCB_T + 2.0, y0=PCB_Y - 1.0)
-                     .translate((CR_SCREW[0], 0.0, CR_SCREW[1])))))
+                                 z=(PCB_Z0 + PCB_Z1) / 2)))   # chip on-axis, board hangs -Z
+    # CAN drop connector (user: model the plug we actually use). MATED envelope —
+    # a connector nobody can get a plug onto is not a fit, and the seated XHP-4
+    # stands 9.8 off the board where the bare header is 7.0. cadkit draws it from
+    # JST's own drawing; here it is rotated onto the board's +Y face and then
+    # STOOD ON END so the four post tails share one X — see CONN_ROW_X.
+    out.append(("kl_can_header",
+                jst_xh_header(CONN_N, mated=True)
+                .rotate((0, 0, 0), (1, 0, 0), -90)       # +Z (off-board) -> +Y
+                .rotate((0, 0, 0), (0, 1, 0), -90)       # pin row: along X -> along Z
+                .translate((CONN_ROW_X, PCB_Y + PCB_T, CONN_ROW_ZC))))
     # the MT6701 itself (user): it sits ON the axle axis, package facing the
     # magnet, and its BODY is what the air gap is measured to — modelling it is
     # what makes the gap a real dimension instead of a board-face guess.
@@ -489,9 +490,9 @@ def _cradle(w):
     supports; see the constant block for the retention scheme and the socket cone.
 
     Built as: two side webs + a front plinth + a floor, then ONE slot cut through
-    them for the board (that slot IS both grooves), then the screw boss and its M4
-    anchor. Cutting the slot after the webs is what makes the grooves — the web
-    material outboard of CR_SLOT_X survives as the groove's outer wall."""
+    them for the board — that slot IS both grooves. Cutting it after the webs is
+    what makes them: the web material outboard of the slot survives as each
+    groove's outer wall."""
     inner0, slot0, outer0 = _cr_faces(PCB_X0)
     inner1, slot1, outer1 = _cr_faces(PCB_X1)
     # side webs — vertical plates, the full height of the cradle
@@ -508,9 +509,6 @@ def _cradle(w):
     w = w.union(box_at(outer1 - outer0, CR_Y1 - CR_SLOT_Y0, PCB_Z0 - HOUS_Z0,
                        x=(outer0 + outer1) / 2, y=(CR_SLOT_Y0 + CR_Y1) / 2,
                        z=(HOUS_Z0 + PCB_Z0) / 2))
-    # screw boss — a column in the plinth, standing proud of it by 2
-    w = w.union(cyl_y(CR_BOSS_D, CR_SLOT_Y0 - CR_Y0, y0=CR_Y0)
-                .translate((CR_SCREW[0], 0.0, CR_SCREW[1])))
     # THE BOARD SLOT (both grooves in one cut): open at +Z — the install axis —
     # and bottoming on the floor at PCB_Z0, which is the board's -Z seat.
     w = w.cut(box_at(slot1 - slot0, CR_SLOT_Y1 - CR_SLOT_Y0, (CR_Z1 + 2.0) - PCB_Z0,
@@ -527,18 +525,6 @@ def _cradle(w):
     # (what stops the bearing walking out). Both are well inside Ø14.
     w = w.cut(printable_bore(SOCK_D, (CR_Y1 + 1.0) - MAG_Y0, (0.0, MAG_Y0, 0.0),
                              (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)))
-    # M4 LOCK (user: the hole only, no screw). Standard cadkit anchor — Ø6 insert
-    # pocket then a self-tapped bite — driven -Y from the seat plane, so the screw
-    # goes through the board and pulls it onto the seat. Teardropped after, because
-    # this bore runs sideways in a -Z→+Z print like the axle way and the bearing
-    # seats; the anchor cutter itself is round.
-    _pt = (CR_SCREW[0], CR_SLOT_Y0, CR_SCREW[1])
-    w = cut_anchor(M4, w, _pt, (0.0, -1.0, 0.0), M4_INSERT_L + M4_MIN_BITE)
-    for _d, _l, _y in ((M4_INSERT_D, M4_INSERT_L, CR_SLOT_Y0 - M4_INSERT_L),
-                       (M4_SELFTAP_D, M4_INSERT_L + M4_MIN_BITE,
-                        CR_SLOT_Y0 - M4_INSERT_L - M4_MIN_BITE)):
-        w = w.cut(printable_bore(_d, _l, (CR_SCREW[0], _y, CR_SCREW[1]),
-                                 (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)))
     return w
 
 
@@ -722,26 +708,31 @@ AXLE_Y0, AXLE_Y1 = -13.1, MAG_Y1                # axle: -Y journal tip (stops IN
 
 # ── SENSOR-BOARD CRADLE (user: "build material in the housing to hold the PCB").
 # Fused to the housing's +Y face, printed with it (-Z→+Z), and every feature stands
-# UP off the bed: two side WEBS (vertical plates), a front PLINTH and a floor, plus
-# one screw boss. There is not a single ceiling in it, so no supports.
+# UP off the bed: two side WEBS (vertical plates), a front PLINTH and a floor.
+# There is not a single ceiling in it, so no supports.
 #
-# RETENTION / INSTALL (the shape the user asked for — retained everywhere but one
-# axis, and that axis locked by one screw):
-#     ±X   the grooves' side walls          ±Y  the grooves' front/back flanks,
-#     -Z   the floor the board's edge sits on    plus the plinth + boss seat faces
-#     +Z   FREE — the install axis. The board is lowered into the two grooves from
-#          above and slides down to the floor; ONE M4 through it locks that out.
-# So it is a bench operation on the finished lever: axle in, cap on, board down the
-# grooves, one screw. Service reverses it. Once the lever is mounted, the chassis
-# underside sits 3.4 above the board and blocks the +Z escape as well — the screw
-# is what holds it, but the instrument is a second line.
+# RETENTION / INSTALL — retained on five faces by shape, and the sixth is the
+# INSTRUMENT (user). There is NO retaining screw:
+#     ±X   the grooves' side walls          ±Y  the grooves' front/back flanks
+#     -Z   the floor the board's edge rests on   plus the plinth's seat face
+#     +Z   the install axis — the board is lowered into the two grooves from above
+#          and slides down to the floor. It is put in with the lever OFF the guitar;
+#          when the lever then slides into the ribs, the CHASSIS UNDERSIDE closes
+#          over it CEIL_CLR away and the board can no longer come out.
+# So: axle in, cap on, board down the grooves, lever onto the instrument — and it is
+# captive, with no fastener anywhere in the sensor stack. Service reverses it, and
+# the order is forced rather than remembered: you cannot reach the board without
+# first sliding the lever out, and you cannot reach the cap without first lifting
+# the board. Because the board still RESTS on the floor, the ceiling is a lift stop
+# and not a datum — the chip's position is set by the cradle either way.
 #
-# THE SOCKET CONE is what shapes all of this. kl_magnet_cap has to be driven at
+# THE DRIVER BORE shapes the printed part. kl_magnet_cap has to be socketed at
 # assembly, AFTER the cradle exists (it is printed into the housing) and BEFORE the
-# board goes in, so a clear cylinder of SOCK_D about the axle axis is reserved
-# through the whole cradle and every part below is checked against it. That is the
-# reason the plinth stops at -7.0 and the screw lives low and off to -X: those are
-# the only places a Ø6 insert pocket fits outside the cone.
+# board goes in, so a clear cylinder of SOCK_D about the axle axis is reserved and
+# every PRINTED feature is checked against it — that is why the plinth stops at -7.0
+# and why the board's edges cannot come inside 8.70. It does NOT bind the board or
+# its connector: those arrive after the cap and leave before it, so they are as free
+# to block the bore as the board obviously already does.
 SOCK_D  = 14.0                      # reserved driver bore about the axis (a 3/8" socket /
                                     # nut driver runs ~12.5-13.5 OD; 14 gives it room)
 SOCK_R  = SOCK_D / 2
@@ -758,10 +749,35 @@ CR_BACK  = 1.5                      # web material BEHIND the groove (the +Y fla
 # the M4, which needs 1.4 of FR4 around its Ø4.4 hole. Since the chip's X is fixed at
 # the axle axis and the outline is ours, paying for the screw on one side only is
 # free — and it keeps the +X web from reaching much past the housing's knee face.
-PCB_X1  =  9.0                                  # +X edge: cone-limited (8.70 min)
-PCB_X0  = -11.0                                 # -X edge: screw-limited
-PCB_WX  = PCB_X1 - PCB_X0                       # 20.0
-PCB_Z1, PCB_Z0 = PCB_TOP, PCB_TOP - PCB_WZ      # +4.0 .. -14.0
+PCB_X1  =  9.0                                  # +X edge: CONE-limited. An edge may not come
+                                                # inside SOCK_R + CR_ENG - CR_CLR = 8.70, or
+                                                # its GROOVE WALL — printed, permanent — would
+                                                # sit in the driver's way.
+PCB_X0  = -10.5                                 # -X edge: CONNECTOR-limited, 1.5 further out,
+                                                # to get the -X web's inner face clear of the
+                                                # XH body (see CONN_ROW_X). Asymmetry is free:
+                                                # the outline is ours and only the chip's
+                                                # position is fixed.
+PCB_WX  = PCB_X1 - PCB_X0                       # 19.5
+CEIL_CLR = 0.4                      # board top edge -> the instrument's underside. THE
+                                    # INSTRUMENT IS THE BOARD'S +Z RETAINER (user), which is
+                                    # why there is no retaining screw: the board goes in with
+                                    # the lever OFF the guitar, and the chassis becomes its
+                                    # lid the moment the lever slides into the ribs. 0.4 is
+                                    # the slide clearance plus the board's own height
+                                    # tolerance. The board still RESTS on the cradle floor, so
+                                    # this is a LIFT STOP, not a datum — it costs the chip's
+                                    # position nothing. PROBED against the built chassis at
+                                    # the board's own Y: the ceiling is real over x -9..-1.8
+                                    # and 1.8..9.0, the gap being only the rib's own mortise
+                                    # slot, which the rigid board simply bridges.
+PCB_Z1 = HOUS_Z1 - CEIL_CLR                     # +7.0: as high as the board can go. It was
+PCB_Z0 = PCB_Z1 - PCB_WZ                        # -12.0. PCB_Z1 used to be 4.0, chosen only to
+PCB_TOP = PCB_Z1                                # keep clear of the instrument; now the
+                                                # instrument is the retainer, so the board
+                                                # runs right up to it. The CHIP stays ON the
+                                                # axle axis (z=0) — raising the top edge just
+                                                # moves the chip further down the board.
 def _cr_faces(edge):
     """(web inner, groove wall, web outer) X for a board edge — the groove is the
     gap between the inner face and the wall, and the board's edge lives in it."""
@@ -772,17 +788,42 @@ CR_Y0    = HOUS_HW                              # 13.9: root, on the housing's +
 CR_SLOT_Y0 = PCB_Y                              # 20.35: seat plane = board -Y face
 CR_SLOT_Y1 = PCB_Y + PCB_T + 2 * CR_CLR         # 22.25: groove back flank
 CR_Y1    = CR_SLOT_Y1 + CR_BACK                 # 23.75: cradle +Y face
-CR_Z1    = PCB_Z1 + 1.0                         # +5.0: web tops, 1 over the board — and
-                                                # 2.4 under the chassis, same as the lever
-CR_PLINTH_Z1 = -SOCK_R                          # -7.0: front plinth top = the cone's floor
-CR_SCREW = (-7.4, -9.5)                         # (x, z) of the M4 lock. Boxed in on three
-                                                # sides: ≥ SOCK_R + boss radius from the axis
-                                                # (12.04 vs 11.5 needed), ≥1.4 of FR4 to the
-                                                # board's -X and bottom edges, and its Ø6
-                                                # pocket + 3.5 bite has to land in solid
-                                                # material — probed, the tail runs 2.05 into
-                                                # the housing wall and it is solid there.
-CR_BOSS_D = 9.0                                 # screw boss (Ø6 pocket + 1.5 walls)
+CR_Z1    = HOUS_Z1                              # web tops FLUSH with the housing top, i.e.
+                                                # with the chassis underside: the grooves have
+                                                # to guide the board as high as it goes, and
+                                                # flush is exactly what already slides under
+                                                # the ribs everywhere else on this part
+# ── CAN DROP CONNECTOR: JST B4B-XH-A (the project standard — see BOM Connectors;
+# the SERVO42D's own I/O is XH2.54 native, so the whole harness is one system).
+# FOUR circuits because that is what CAN costs us: black GND / red 24 V / yellow H
+# / green L. One connector, not two — the bus is daisy-chained by the TEE boards
+# and every device hangs off its tee by one short drop.
+# It goes on the +Y face (the magnet side is spoken for) and DOWN LOW, and the
+# driver bore is why: a connector inside SOCK_R would block the socket, and the
+# board is installed last precisely so it doesn't. Its Ø0.64 post TAILS matter
+# more than the body here — they protrude 3.4 back out of the board's SEATING
+# face, so they have to miss both the driver bore and the plinth.
+CONN_N     = 4
+# ORIENTATION — the pin row runs along Z (the connector stands on end), and that is a
+# fix for a real defect, not a preference. B4B-XH-A is THROUGH-HOLE: its Ø0.64 posts
+# come 3.4 back out of the board's SEATING face, i.e. 1.8 PAST it, toward the magnet —
+# and the cap's outer face is only 0.3 further out still. With the row along X the
+# four tails sit at x = ±1.25, ±3.75, and the board's install stroke drags every one
+# of them straight down THROUGH the magnet cap (probed: fouls over a 15 mm sweep).
+# Standing the connector on end puts all four tails on ONE x, so the whole stroke can
+# be held clear of the cap by an X offset alone. The static clearance is the same
+# number, so this also buys the assembled part a margin it did not have.
+CONN_ROW_X = -6.5                   # tails 6.5 from the axis vs the cap's 5.4 circumradius
+                                    # -> 1.1 clear, at rest AND all the way down. -X because
+                                    # that side of the board is the cheap one to widen (the
+                                    # +X web is the one that overhangs the knee face).
+CONN_ROW_ZC = -2.0                  # row centre; pins at -5.75 / -3.25 / -0.75 / +1.75. Only
+                                    # the X offset does the clearing, so Z is free — this
+                                    # keeps the body off both board edges.
+CR_PLINTH_Z1 = -SOCK_R              # -7.0: front plinth top = the driver bore's floor. (The
+                                    # post tails no longer bind it: standing the connector up
+                                    # moved them out to x = -6.5, where the plinth's own
+                                    # groove-side material already is.)
 # (the swept-arm relief _cam_swept — a union of rotated hub/arm copies — is
 #  PULLED for now (user: no curved geometry around the axle; keep it simple,
 #  build back up later). The lever room is all planar cuts in _housing.)
@@ -997,9 +1038,10 @@ def _housing() -> cq.Workplane:
       * the two female BACK-STOP THREADS in the solid behind the pockets
         (cut last, alone, un-healed — thread rules).
     SENSOR CRADLE (user, see _cradle): two webs + a plinth + a floor off the
-    +Y face holding the MT6701 board, retained on every axis but +Z and
-    locked there by one M4. A Ø14 driver bore is RESERVED about the axle
-    axis so kl_magnet_cap can still be socketed with all this printed.
+    +Y face holding the MT6701 board — retained on five faces by shape, and
+    on the sixth by the INSTRUMENT once the lever slides in, so there is no
+    retaining screw. A Ø14 driver bore is RESERVED about the axle axis so
+    kl_magnet_cap can still be socketed with all this printed.
     DEFERRED: the M2 depth LOCK.
     NOTE — the tenons engage NOTHING at the modelled pose: MOUNT_Y puts the
     housing's +Y face at -134.85 and the chassis rails start at -133.75, so
