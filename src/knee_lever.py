@@ -912,20 +912,33 @@ def _housing() -> cq.Workplane:
     # (the axle continues to the magnet/sensor cluster); the -Y axle end
     # stops INSIDE its pocket (AXLE_Y0 -13.1). Horizontal round bores in
     # the -Z→+Z print — teardrop/roundness refinement rides the axle round.
-    w = w.cut(cyl_y(BRG_OD + 0.1, BRG_W + 0.3, y0=BRG_Y0))
-    w = w.cut(cyl_y(BRG_OD + 0.1, BRG_W + 0.3, y0=-(BRG_Y0 + BRG_W + 0.3)))
-    # axle way out through the +Y cheek. TEARDROP — and cadkit picks that
-    # itself from print_up: this bore runs SIDEWAYS in the housing's -Z->+Z
-    # print, so a round ceiling would droop into it and take it out of round.
-    w = w.cut(printable_bore(AXLE_D + 1.0, HOUS_HW - (BRG_Y0 + BRG_W + 0.2),
-                             (0.0, BRG_Y0 + BRG_W + 0.2, 0.0),
-                             (0.0, 1.0, 0.0), (0.0, 0.0, 1.0), overshoot=0.6))
+    # BEARING SEATS, also through cadkit (user). These run sideways in the
+    # -Z->+Z print exactly like the axle way, and a drooping ceiling here is
+    # worse than anywhere else: the droop is what takes the seat OUT OF ROUND,
+    # which is the one property a press fit needs. The teardrop keeps the bore
+    # round where the bearing actually seats and sends the overhang into an
+    # attic above it. The load helps — the lever's weight presses the axle DOWN
+    # onto round metal, so the opened top carries nothing.
+    for by in (BRG_Y0, -(BRG_Y0 + BRG_W + 0.3)):
+        w = w.cut(printable_bore(BRG_OD + 0.1, BRG_W + 0.3, (0.0, by, 0.0),
+                                 (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)))
     # CONTACT RIB on the outer face: the axle's flange seats here, so this ring
     # IS the air gap's datum. Narrow on purpose — the flange turns against it,
     # and a ring costs a fraction of a full annulus's friction.
+    # UNIONED BEFORE THE BORE, and the order is the whole point: cadkit builds
+    # the ring ROUND, so adding it after the bore laid a round aperture right
+    # across the teardrop's peak and undid it (user spotted the round hole).
+    # Cutting the bore through the rib afterwards opens its top too.
     w = w.union(contact_rib(AXLE_FLANGE_D - 1.5, RIB_PROUD, RIB_T,
                             (0.0, HOUS_HW, 0.0), (0.0, 1.0, 0.0),
                             (0.0, 0.0, 1.0)))
+    # axle way out through the +Y cheek AND the rib. TEARDROP — cadkit picks
+    # that itself from print_up: this bore runs SIDEWAYS in the -Z->+Z print,
+    # so a round ceiling would droop into it and take it out of round.
+    _bore_y0 = BRG_Y0 + BRG_W + 0.2
+    w = w.cut(printable_bore(AXLE_D + 1.0, (HOUS_HW + RIB_PROUD) - _bore_y0,
+                             (0.0, _bore_y0, 0.0),
+                             (0.0, 1.0, 0.0), (0.0, 0.0, 1.0), overshoot=0.6))
     # cartridge house-pockets + drag recesses. The house profile runs ALL
     # THE WAY OUT the +X face (user: extend to the prism edge, toward +x) —
     # one clean house channel from the front face to the cartridge back;
