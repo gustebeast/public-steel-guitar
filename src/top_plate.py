@@ -139,12 +139,14 @@ FLG_TOP  = ZPL_TOP + PM.PK_H_MIN                          # -Y guide wall top (c
 # -- a Ø7.5 head pocket + a Ø4.6 shaft bore, NO boss/web/overhang. The thread runs down
 # through a cadkit heat-set-insert NUT on a plate NUB. Turning the head from +Z (axially
 # fixed, free to rotate; gravity holds it on the shoulder) walks the plate up/down.
-JACK_D         = 4.0                             # M4 (cadkit heat-set-insert nut in the plate)
-JACK_MOUTH_Z   = ZPL_TOP                          # plate NUT mouth (at the plate top; screw threads down through)
+JACK_D         = 4.0                             # M4 (cadkit heat-set-insert nut on the plate)
+BOSS_H         = 6.0                              # NUT boss height ABOVE the plate top (nut boss is on TOP now,
+                                                 # so the plate BOTTOM stays flat -> prints -Z->+Z, user)
+JACK_MOUTH_Z   = ZPL_TOP + BOSS_H                  # plate NUT mouth = the boss TOP (screw threads down into it)
 JACK_HEAD_Z    = TZ - 2.0                          # head SHOULDER, captured in the solid deck at the bed (=4)
 HEAD_POCKET_D  = 7.5                               # head pocket Ø (bored down from the deck top)
-JACK_SCREW_BOT = JACK_MOUTH_Z - M4.insert_depth - 3.0    # screw tail at the plate-LOW nut bottom (~-18.8)
-FLOOR_BOT = JACK_SCREW_BOT - 0.5                  # -Y skirt / end-wall bottom (~-19.3; below the nut boss)
+JACK_SCREW_BOT = ZPL_BOT - 1.5                     # screw tail, just below the (flat) plate bottom
+FLOOR_BOT = ZPL_BOT - 5.0                          # -Y skirt / end-wall bottom (structure / endplate-lip datum)
 # TOP-ACCESS at the PLATE's clear zones (pickup-agnostic): TWO +Y plate corners + ONE
 # deep -Y-centre. Equalise the two +Y = X LEVEL; the -Y jack (centre X) = across-string tilt.
 PICKUP_X_NOM  = OPEN_CTR                          # nominal pickup centre X
@@ -159,13 +161,22 @@ HEIGHT_HOLE = PICKUP_X_NOM
 # The plate is JUST the usable pickup area (a green prism) plus nubs that reach the 3 jack
 # nuts. Everywhere else the plate used to occupy is now SOLID DECK (reclaimed as coloured
 # top surface) -- the deck cavity is only the pickup + the 3 screws.
+# ── pickup RETENTION (user): +Y WALL + -Y SCREW lock the pickup to the PLATE only ─
+# (so the plate still moves up/down freely). The pickup's +Y face butts a wall that rises
+# from the plate; a horizontal M4 grub through a -Y boss pushes the pickup +Y against it.
+RET_WALL_T = 2.0                                   # +Y wall thickness (Y)
+RET_WALL_H = 8.0                                   # +Y wall height above the plate top (enough to lock, not tall)
+RET_SCREW_D = 4.0                                  # M4 -Y clamp grub
+RET_SCREW_Z = ZPL_TOP + 4.0                        # grub axis height (bears low on the pickup base)
+RET_BOSS_L = 8.0                                   # -Y clamp boss length (Y) = grub thread depth
+RET_SCREW_X = PICKUP_X_NOM + 14.0                  # X-offset so it clears the centre -Y jack
 X_SLIDE   = 6.0                                    # pickup X-position room on the plate (+/-)
 PLATE_X   = PM.PK_W + 2 * X_SLIDE                  # green X (pickup + slide) ~50.6
-PLATE_Y   = (PK_YP - PK_YM) + 2.0                  # green Y (pickup + margin) ~103.6
+PLATE_Y   = (PK_YP - PK_YM) + 2 * RET_WALL_T       # green Y (pickup + wall room each side) ~105.6
 NUB_W     = 11.0                                   # nub/arm width (>= boss Ø8)
 CAVITY_X  = PLATE_X + 1.5                          # pickup cavity in the deck (green + clearance)
 CAVITY_Y  = PLATE_Y + 1.5
-# (Y-CLAMP hold-down REMOVED for now, user -- height adjustment only.)
+# (Y hold-down CLAMP removed; retention above locks the pickup to the plate instead.)
 
 MARKER_FRETS = {3, 5, 7, 9, 12, 15, 17, 19, 21, 24}
 # ── fret lines + fretboard border as a MATERIAL split, not an engraving ──────
@@ -368,9 +379,11 @@ def _pickup_piece():
 
 def _pickup_zplate():
     """The height plate: a GREEN pickup-area prism (the pickup rests on it; X-slide room)
-    plus 3 NUBS reaching out to the leadscrew NUTS (user's green+red shape). Lifted/tilted
-    by the 3 leadscrews (nut = a cadkit heat-set insert on each nub; the captured screw
-    walks the plate up/down). Everywhere else is now solid deck, not plate."""
+    plus 3 NUBS reaching the leadscrew NUTS (user's green+red shape). PRINTS -Z->+Z with a
+    FLAT BOTTOM (user): every boss is on TOP -- the nut bosses stand UP (insert pocket down
+    from the boss top; the screw tail passes through a Ø4.4 hole in the flat plate). RETENTION
+    (user): a +Y WALL the pickup butts + a -Y horizontal grub that pushes it +Y against the
+    wall, locking the pickup to the PLATE only (so the plate still travels)."""
     plate = box_at(PLATE_X, PLATE_Y, ZPL_T,
                    x=PICKUP_X_NOM, y=PK_CTR_Y, z=(ZPL_BOT + ZPL_TOP) / 2)
     for jx, jy in JACK_POS:
@@ -383,9 +396,24 @@ def _pickup_zplate():
             ye = PK_CTR_Y + (PLATE_Y / 2 if dy > 0 else -PLATE_Y / 2)
             plate = plate.union(box_at(NUB_W, abs(jy - ye) + NUB_W, ZPL_T,
                                        x=jx, y=(jy + ye) / 2, z=(ZPL_BOT + ZPL_TOP) / 2))
-        # LEADSCREW NUT: cadkit M4 heat-set-insert boss on the nub (mouth up; screw threads through)
-        plate = cut_m4_boss(plate, (jx, jy, JACK_MOUTH_Z - M4.boss_prot),
-                            (1, 0, 0), 180, clr_len=4.0)
+        # LEADSCREW NUT boss ON TOP (flat plate bottom): Ø8 boss up from the plate, Ø6×5
+        # insert pocket down from the boss top, Ø4.4 screw-tail clearance on through the plate.
+        plate = plate.union(cyl(M4.boss_od, BOSS_H, z=ZPL_TOP).translate((jx, jy, 0.0)))
+        plate = plate.cut(cyl(M4.insert_pilot_d, M4.insert_depth + 0.6,
+                              z=JACK_MOUTH_Z - M4.insert_depth).translate((jx, jy, 0.0)))
+        plate = plate.cut(cyl(M4.shaft_clr_d, (JACK_MOUTH_Z - M4.insert_depth) - (ZPL_BOT - 2),
+                              z=ZPL_BOT - 2).translate((jx, jy, 0.0)))
+    # +Y RETENTION WALL (rises from the plate top; the pickup +Y face butts its -Y face)
+    plate = plate.union(box_at(PM.PK_W, RET_WALL_T, RET_WALL_H,
+                               x=PICKUP_X_NOM, y=PK_YP + RET_WALL_T / 2,
+                               z=ZPL_TOP + RET_WALL_H / 2))
+    # -Y RETENTION grub boss: a block rising from the plate at the pickup -Y edge with a
+    # HORIZONTAL M4 self-tap bore; the grub pushes the pickup +Y against the wall.
+    plate = plate.union(box_at(NUB_W, RET_BOSS_L, RET_SCREW_Z + 2 - ZPL_BOT,
+                               x=RET_SCREW_X, y=PK_YM - RET_BOSS_L / 2,
+                               z=(ZPL_BOT + RET_SCREW_Z + 2) / 2))
+    plate = plate.cut(cyl_y(RET_SCREW_D - 0.4, RET_BOSS_L + 1.0,
+                            y0=PK_YM - RET_BOSS_L - 0.5, x=RET_SCREW_X, z=RET_SCREW_Z))
     return plate
 
 
