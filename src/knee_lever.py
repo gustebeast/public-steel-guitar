@@ -46,7 +46,8 @@ from .helpers import box_at, cyl, cyl_y, heal
 from cadkit.fasteners import (M2_SELFTAP_D, M4_SHAFT_CLR_D, M4_INSERT_D,
                        M4_INSERT_L, M4_SCREW_L, M4, cut_insert_bore,
                        cut_m4_pocket, seated_m4_insert, cut_m4_boss, m4_boss_insert)
-from cadkit.pcb import jst_xh_header, xh_length, XH_BODY_W, XH_ROW_OFF
+from cadkit.pcb import (jst_xh_side_header, xh_side_length,
+                        XH_SIDE_H, XH_SIDE_D)
 from cadkit.joinery import PrintSpec, slide_joint   # the shared octagon slide joint
 from cadkit.supports import printable_bore, contact_rib
 # the M4 insert pocket/boss helpers now live in cadkit/fasteners.py (shared); keep the old local names:
@@ -439,16 +440,17 @@ def demo_parts():
     out.append(("kl_pcb", box_at(PCB_WX, PCB_T, PCB_WZ, x=(PCB_X0 + PCB_X1) / 2,
                                  y=PCB_Y + PCB_T / 2,
                                  z=(PCB_Z0 + PCB_Z1) / 2)))   # chip on-axis, board hangs -Z
-    # CAN drop connector (user: model the plug we actually use). MATED envelope —
-    # a connector nobody can get a plug onto is not a fit, and the seated XHP-4
-    # stands 9.8 off the board where the bare header is 7.0. cadkit draws it from
-    # JST's own drawing; here it is rotated onto the board's +Y face and then
-    # STOOD ON END so the four post tails share one X — see CONN_ROW_X.
+    # CAN drop connector (user: model the plug we actually use). S4B-XH-SM4-TB on
+    # the board's MAGNET-facing face, drawn MATED — a connector nobody can get a
+    # plug onto is not a fit, and for side entry the plug's reach is the whole
+    # question. Rotated out of cadkit's board frame: height +Z -> -Y (it stands off
+    # the -Y face), mating axis +Y -> +X (the plug arrives from -X, through the
+    # tunnel cut in the -X web), length -> Z.
     out.append(("kl_can_header",
-                jst_xh_header(CONN_N, mated=True)
-                .rotate((0, 0, 0), (1, 0, 0), -90)       # +Z (off-board) -> +Y
-                .rotate((0, 0, 0), (0, 1, 0), -90)       # pin row: along X -> along Z
-                .translate((CONN_ROW_X, PCB_Y + PCB_T, CONN_ROW_ZC))))
+                jst_xh_side_header(CONN_N, mated=True)
+                .rotate((0, 0, 0), (1, 0, 0), 90)        # off-board +Z -> -Y
+                .rotate((0, 0, 0), (0, 1, 0), 90)        # mating axis -> +X
+                .translate((CONN_MOUTH_X, PCB_Y, CONN_ZC))))
     # the MT6701 itself (user): it sits ON the axle axis, package facing the
     # magnet, and its BODY is what the air gap is measured to — modelling it is
     # what makes the gap a real dimension instead of a board-face guess.
@@ -514,6 +516,40 @@ def _cradle(w):
     w = w.cut(box_at(slot1 - slot0, CR_SLOT_Y1 - CR_SLOT_Y0, (CR_Z1 + 2.0) - PCB_Z0,
                      x=(slot0 + slot1) / 2, y=(CR_SLOT_Y0 + CR_SLOT_Y1) / 2,
                      z=(PCB_Z0 + CR_Z1 + 2.0) / 2))
+    # ── ROOM FOR THE CONNECTOR, which lives on the board's MAGNET-facing face.
+    # Two cuts, both through material that is ours — the cradle's own plinth and
+    # web, and 0.85 of the housing's +Y cheek. The cheek can afford it: it is 3.50
+    # thick (lever-room wall at BRG_Y0, outer face at HOUS_HW), this leaves 2.65,
+    # and the LEVER never comes past y=10.00 at any angle in its whole -95°..+34°
+    # range — 3.35 short of the deepest point of this relief. Nothing that moves
+    # is anywhere near it.
+    # ONE relief, doing two jobs, and open out the TOP so it has no ceiling:
+    #   * a DESCENT CHANNEL for the connector — not merely a pocket at its rest
+    #     position, since the board is lowered in and the body needs the relief all
+    #     the way up. That is also why the cut runs past CR_Z1 rather than stopping
+    #     at the connector: a lid over it would be a 45 mm² flat overhang.
+    #   * a PLUG RUN-IN through the -X web, which is what stood in the plug's way.
+    # The web keeps its groove and its +Y back flank — both live outboard of PCB_Y,
+    # so this cut never reaches them. What it gives up is the seat face on that side
+    # above _cz0; the board's -X edge is then seated by the plinth below and by the
+    # +X groove, which is enough for a rigid board.
+    _cy0 = PCB_Y - XH_SIDE_H - CONN_POCKET          # 13.05: relief floor
+    _cz0 = CONN_ZC - xh_side_length(CONN_N) / 2 - CONN_POCKET       # -8.3
+    # -X end: far enough for the plug to come fully OFF, not merely to sit there.
+    # It needs its own length of straight travel before it clears the header, and
+    # for that whole stroke its inboard face is still inside the cheek's outer
+    # 0.85 — probed, and it was a real foul until this reached out here.
+    _cx0 = CONN_MOUTH_X - 2 * CONN_PLUG_RUN - 3.0   # -29.9
+    _cx1 = CONN_MOUTH_X + XH_SIDE_D + CONN_POCKET
+    # +Z end: clear THROUGH the mount tenons, not just up to the cradle top. The
+    # x=-23 tenon is a Y-rail that runs out to HOUS_HW, so it stands in this
+    # relief's path; stopping the cut at CR_Z1 left a 2.9 mm² flat ceiling notched
+    # into it. Running past TEN_H instead trims 0.85 off that tenon's +Y end — 3%
+    # of a 27.8 rail, and it exits cleanly.
+    _cz1 = CR_Z1 + TEN_H + 1.0
+    w = w.cut(box_at(_cx1 - _cx0, PCB_Y - _cy0, _cz1 - _cz0,
+                     x=(_cx0 + _cx1) / 2, y=(_cy0 + PCB_Y) / 2,
+                     z=(_cz0 + _cz1) / 2))
     # SOCKET CONE — reserved so kl_magnet_cap can be driven with the cradle in
     # place. Cut rather than merely avoided: it is a guarantee, not an intention,
     # and anything a later round adds in this zone now gets removed instead of
@@ -753,12 +789,14 @@ PCB_X1  =  9.0                                  # +X edge: CONE-limited. An edge
                                                 # inside SOCK_R + CR_ENG - CR_CLR = 8.70, or
                                                 # its GROOVE WALL — printed, permanent — would
                                                 # sit in the driver's way.
-PCB_X0  = -10.5                                 # -X edge: CONNECTOR-limited, 1.5 further out,
-                                                # to get the -X web's inner face clear of the
-                                                # XH body (see CONN_ROW_X). Asymmetry is free:
-                                                # the outline is ours and only the chip's
-                                                # position is fixed.
-PCB_WX  = PCB_X1 - PCB_X0                       # 19.5
+PCB_X0  = -14.0                                 # -X edge: CONNECTOR-limited, and by a lot. The
+                                                # connector now lives on the MAGNET side and has
+                                                # to sit entirely outside the cap's sweep, so the
+                                                # board has to reach far enough -X to carry it
+                                                # there and still have 1.85 of edge left for the
+                                                # groove. Asymmetry is free: the outline is ours
+                                                # and only the chip's position is fixed.
+PCB_WX  = PCB_X1 - PCB_X0                       # 23.0
 CEIL_CLR = 0.4                      # board top edge -> the instrument's underside. THE
                                     # INSTRUMENT IS THE BOARD'S +Z RETAINER (user), which is
                                     # why there is no retaining screw: the board goes in with
@@ -804,26 +842,34 @@ CR_Z1    = HOUS_Z1                              # web tops FLUSH with the housin
 # more than the body here — they protrude 3.4 back out of the board's SEATING
 # face, so they have to miss both the driver bore and the plinth.
 CONN_N     = 4
-# ORIENTATION — the pin row runs along Z (the connector stands on end), and that is a
-# fix for a real defect, not a preference. B4B-XH-A is THROUGH-HOLE: its Ø0.64 posts
-# come 3.4 back out of the board's SEATING face, i.e. 1.8 PAST it, toward the magnet —
-# and the cap's outer face is only 0.3 further out still. With the row along X the
-# four tails sit at x = ±1.25, ±3.75, and the board's install stroke drags every one
-# of them straight down THROUGH the magnet cap (probed: fouls over a 15 mm sweep).
-# Standing the connector on end puts all four tails on ONE x, so the whole stroke can
-# be held clear of the cap by an X offset alone. The static clearance is the same
-# number, so this also buys the assembled part a margin it did not have.
-CONN_ROW_X = -6.5                   # tails 6.5 from the axis vs the cap's 5.4 circumradius
-                                    # -> 1.1 clear, at rest AND all the way down. -X because
-                                    # that side of the board is the cheap one to widen (the
-                                    # +X web is the one that overhangs the knee face).
-CONN_ROW_ZC = -2.0                  # row centre; pins at -5.75 / -3.25 / -0.75 / +1.75. Only
-                                    # the X offset does the clearing, so Z is free — this
-                                    # keeps the body off both board edges.
-CR_PLINTH_Z1 = -SOCK_R              # -7.0: front plinth top = the driver bore's floor. (The
-                                    # post tails no longer bind it: standing the connector up
-                                    # moved them out to x = -6.5, where the plinth's own
-                                    # groove-side material already is.)
+# THE CONNECTOR IS ON THE MAGNET SIDE (user), so that the QFN and it share ONE face
+# and the board is a single-sided SMT job — that is the entire point, and it is worth
+# the geometry below because double-sided assembly is a per-order setup fee.
+# It has to be the SIDE-ENTRY SMT part, S4B-XH-SM4-TB, for two independent reasons:
+#   * SMT — a through-hole header's posts would stand 1.8 proud of this face, which is
+#     the face that seats, and would sweep the magnet cap on the way in.
+#   * SIDE entry — a top-entry plug would have to be inserted from -Y, i.e. from
+#     inside the housing. Mating parallel to the board turns that into a horizontal
+#     run-in, which is a cut we can make.
+# X POSITION is forced. The board installs by dropping straight down past the cap, so
+# anything on this face deeper than the 1.5 between the board and the cap's outer
+# face must keep its WHOLE footprint outside the cap's 5.4 circumradius + clearance.
+# The body is XH_SIDE_D deep, so the mouth goes at -11.9 and the body runs +X to -5.8
+# — 0.4 clear of the cap for the entire stroke, not just at rest.
+CONN_MOUTH_X = -11.9                # mouth face; body extends +X from here
+CONN_ZC      = -0.5                 # length centre -> the body spans z -8.0..+7.0, i.e.
+                                    # topped out flush with the board. HIGH on purpose: the
+                                    # plug's run-in tunnel has to be cut through the -X web
+                                    # and the plinth, and putting the connector high keeps
+                                    # that tunnel above the plinth, which survives whole
+                                    # below -8.5 and goes on carrying the board's seat.
+CONN_POCKET  = 0.3                  # clearance around it in the housing/cradle relief
+CONN_PLUG_RUN = 7.5                 # how far the mated XHP-4 reaches past the mouth. Taken
+                                    # as the housing's own height with NO credit for shroud
+                                    # engagement — JST doesn't publish a mated projection for
+                                    # side entry, and over-reserving is the safe error here
+                                    # because the relief it buys is 0.85 of a 3.50 cheek.
+CR_PLINTH_Z1 = -SOCK_R              # -7.0: front plinth top = the driver bore's floor
 # (the swept-arm relief _cam_swept — a union of rotated hub/arm copies — is
 #  PULLED for now (user: no curved geometry around the axle; keep it simple,
 #  build back up later). The lever room is all planar cuts in _housing.)
