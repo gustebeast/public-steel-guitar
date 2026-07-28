@@ -433,7 +433,7 @@ def _pickup_mount_components():
     # cadkit screw dummy, hex socket) threads a heat-set insert and pushes the pickup +Y against the
     # +Y wall, locking it to the PLATE only. Threading it in/out meets any pickup in the ~5.5 mm
     # length window; shown here at the DEMO Alumitone (longest, so nearly backed out): tip at PK_YM.
-    _ret_face_y = TP.PK_YM - TP.RET_BOSS_L                            # boss/insert mouth (-Y)
+    _ret_face_y = TP.PK_MAX_YM - TP.RET_BOSS_L                        # boss/insert mouth (-Y, at the room edge)
     _ret_grub = f_screw(M4).rotate((0, 0, 0), (1, 0, 0), 90)          # drive/hex end -Y, cup tip +Y
     out.append(("pickup_retention_screw",
                 _ret_grub.translate((TP.RET_SCREW_X, TP.PK_YM - M4.screw_l, TP.RET_SCREW_Z))))  # tip at the pickup

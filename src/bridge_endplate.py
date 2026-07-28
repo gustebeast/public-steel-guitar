@@ -29,6 +29,7 @@ import cadquery as cq
 
 from . import dimensions as D
 from . import chassis as CH
+from . import top_plate as TP
 from .endplate_base import endplate_base
 from .screw_rail import screw_rail as _screw_rail, HEIGHT as _SR_H
 from .helpers import box_at, cyl, cyl_y
@@ -98,9 +99,9 @@ LIP_DX  = 5.0                                   # -X protrusion off the endplate
 LIP_DZ  = 5.0                                   # Z height, hanging below the deck bottom
 LIP_CLR = CH.EP_TOP_CLR                         # clearance to the rail inner face + skirt
 LIP_Y0  = CH.Y_LO + CH.T / 2 + LIP_CLR          # -Y rail inner face + clr (-128.35)
-LIP_Y1  = -70.5 - LIP_CLR                       # pickup -Y skirt outer face - clr (top_plate
-                                                # -(HY_CLAMP + SKIRT_T) = -(67.5 + 3.0) = -70.5;
-                                                # the -Y utility zone extended the skirt outward)
+LIP_Y1  = -(TP.HY_CLAMP + TP.SKIRT_T) - LIP_CLR # pickup -Y skirt outer face - clr; self-tracks the
+                                                # top_plate -Y room (-(HY_CLAMP + SKIRT_T), ~-70.9 now
+                                                # that the room sizes to PK_MAX_L=102, not the Alumitone)
 
 
 def _cap() -> cq.Workplane:
