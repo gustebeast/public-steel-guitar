@@ -93,9 +93,12 @@ GLOBAL_OK = {
     frozenset({"pickup_zplate", "pickup_jack_screw"}),
     frozenset({"pickup_jack_insert", "pickup_jack_screw"}),
     frozenset({"pickup_jack_screw", "top_plate"}),
-    # retention: -Y grub pushes the pickup +Y against the plate's +Y wall
+    # retention: -Y cup-tip grub threads a heat-set insert in the plate boss and pushes the
+    # pickup +Y against the plate's +Y wall
     frozenset({"pickup_retention_screw", "pickup"}),
     frozenset({"pickup_retention_screw", "pickup_zplate"}),
+    frozenset({"pickup_retention_insert", "pickup_zplate"}),
+    frozenset({"pickup_retention_insert", "pickup_retention_screw"}),
     # FLUSH-X: the body stubs' outboard wall tenons mortise the ENDPLATE
     # side walls (the inboard ones mortise the rail/chassis)
     frozenset({"leg_body_stub", "keyhead_endplate"}),

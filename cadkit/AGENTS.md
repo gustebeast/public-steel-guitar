@@ -258,6 +258,31 @@ the bare solid, for fusing into a larger cut. They take a direction **vector**
 mouth face; `overshoot=` extends the cutter backwards out of the material to dodge
 coincident-face booleans without moving any real feature.
 
+## Minimum material — nothing thinner than one bead + buffer
+No load- or seal-bearing material may be thinner than **`nozzle + 0.05 mm`**. The
+`0.05` is a slicer buffer: material *exactly* one nozzle wide sometimes lands just
+under the slicer's extrusion-width threshold and gets **dropped**, leaving a gap
+where you drew solid — the pad pushes a lone bead safely over. We do **not** just
+raise the nozzle figure by `0.05` globally, because a wall built as an integer
+number of beads (`2 × nozzle` for a 2-perimeter wall, `3 ×`, …) needs no buffer —
+the slicer lays exactly that many full beads and the pad would only bloat the wall
+and knock the perimeters out of register. So the buffer belongs on the **one-bead
+floor**, not on deliberate multi-bead walls.
+
+`cadkit.printing` owns the rule — never hard-code `0.85`:
+```python
+from cadkit.printing import min_wall
+NOZZLE_D = 0.8                       # set ONCE per project (this repo runs 0.8)
+MIN_WALL = min_wall(NOZZLE_D)        # 0.85 — floor for any single-bead feature
+MIN_2P   = min_wall(NOZZLE_D, beads=2)   # 1.6 — a real 2-perimeter wall, no buffer
+```
+Then size features from `MIN_WALL` (e.g. a boss ceiling over a cross-bore =
+`axis_z + bore_r + MIN_WALL`). It bites hardest at **hidden** thin spots — a boss
+ceiling over a horizontal set-screw bore, a web between two pockets — where the
+nominal numbers look fine but the finished solid is a razor. The overlap gate
+does NOT catch thin material (see its caveats), so **verify these on the real
+solid** with a point-probe / cross-section, not on paper.
+
 ## Don't
 - Don't re-add Onshape (push scripts, credentials, `_push_onshape`) — removed on
   purpose.
