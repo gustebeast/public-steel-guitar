@@ -497,11 +497,19 @@ def _cradle(w):
     groove's outer wall."""
     inner0, slot0, outer0 = _cr_faces(PCB_X0)
     inner1, slot1, outer1 = _cr_faces(PCB_X1)
-    # side webs — vertical plates, the full height of the cradle
-    for a, b in ((inner0, outer0), (inner1, outer1)):
-        w = w.union(box_at(abs(b - a), CR_Y1 - CR_Y0, CR_Z1 - HOUS_Z0,
+    outer1 = min(outer1, CR_X1_MAX)             # nothing +X of the prism face (user)
+    # SIDE WEBS, and they are deliberately UNEQUAL. The -X one runs the full height
+    # of the cradle; the +X one stops at the plinth top, because everything above
+    # that on this side is inside the driver bore and could not be printed anyway
+    # (its inner face at 1.30 and top at -7.0 sit 7.12 from the axis, just outside
+    # SOCK_R). So the +X side gives a 5 mm groove at the bottom and the -X side
+    # carries the rest — which is the trade the user asked for, and it is a good
+    # one: the -X web is 14 from the chip with a full-height groove, so it has far
+    # more leverage on the board than a short +X one ever had.
+    for a, b, ztop in ((inner0, outer0, CR_Z1), (inner1, outer1, CR_PLINTH_Z1)):
+        w = w.union(box_at(abs(b - a), CR_Y1 - CR_Y0, ztop - HOUS_Z0,
                            x=(a + b) / 2, y=(CR_Y0 + CR_Y1) / 2,
-                           z=(HOUS_Z0 + CR_Z1) / 2))
+                           z=(HOUS_Z0 + ztop) / 2))
     # front plinth: the slab the board's -Y face seats on, and the body the screw
     # boss lives in. Its top IS the socket cone's floor.
     w = w.union(box_at(outer1 - outer0, CR_SLOT_Y0 - CR_Y0, CR_PLINTH_Z1 - HOUS_Z0,
@@ -785,10 +793,17 @@ CR_BACK  = 1.5                      # web material BEHIND the groove (the +Y fla
 # the M4, which needs 1.4 of FR4 around its Ø4.4 hole. Since the chip's X is fixed at
 # the axle axis and the outline is ours, paying for the screw on one side only is
 # free — and it keeps the +X web from reaching much past the housing's knee face.
-PCB_X1  =  9.0                                  # +X edge: CONE-limited. An edge may not come
-                                                # inside SOCK_R + CR_ENG - CR_CLR = 8.70, or
-                                                # its GROOVE WALL — printed, permanent — would
-                                                # sit in the driver's way.
+PCB_X1  =  3.0                                  # +X edge: as close to the CHIP as the board
+                                                # house allows (user: pull the lever's +X extent
+                                                # in). The QFN body ends at 1.5, so this leaves
+                                                # 1.5 of edge keepout — comfortably over
+                                                # JLCPCB's 1.0 component-to-edge rule, on a
+                                                # board that panelises with the tee PCBs anyway.
+                                                # This used to be 8.70, set by the driver bore:
+                                                # a groove wall may not come inside SOCK_R. That
+                                                # no longer binds because the +X groove carrier
+                                                # is now confined BELOW the bore (see CR_X1_MAX
+                                                # and _cradle) instead of running full height.
 PCB_X0  = -14.0                                 # -X edge: CONNECTOR-limited, and by a lot. The
                                                 # connector now lives on the MAGNET side and has
                                                 # to sit entirely outside the cap's sweep, so the
@@ -826,6 +841,12 @@ CR_Y0    = HOUS_HW                              # 13.9: root, on the housing's +
 CR_SLOT_Y0 = PCB_Y                              # 20.35: seat plane = board -Y face
 CR_SLOT_Y1 = PCB_Y + PCB_T + 2 * CR_CLR         # 22.25: groove back flank
 CR_Y1    = CR_SLOT_Y1 + CR_BACK                 # 23.75: cradle +Y face
+CR_X1_MAX = HOUS_X1                 # NOTHING in the cradle may stand +X of the housing prism's
+                                    # own +X face (user). That is what caps the +X web: it
+                                    # would otherwise want to reach 7.15, and the part's whole
+                                    # +X extent was 13.15. The retention lost there is bought
+                                    # back on -X, where the web runs full height and the board
+                                    # is 14 deep — see _cradle.
 CR_Z1    = HOUS_Z1                              # web tops FLUSH with the housing top, i.e.
                                                 # with the chassis underside: the grooves have
                                                 # to guide the board as high as it goes, and
