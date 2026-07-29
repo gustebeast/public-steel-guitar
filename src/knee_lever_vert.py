@@ -78,6 +78,7 @@ _STROKE     = LOBE_RC_V * math.sin(math.radians(THROW_V))
 _FEEL_DZ_V  = LOBE_RC_V + KL.LOBE_RC        # +22.2: how far the whole feel block rises
 
 # ── the lever ────────────────────────────────────────────────────────────────
+TEN_PITCH   = KL.RIB_PITCH / 2.0    # the chassis rib comb, along local Y once posed
 ARM_LEN_V   = 50.0                  # axle -> paddle end. 50 gives 17.1 of paddle lift at
                                     # 20°, about an inch, which is a normal knee rise.
 ARM_TZ      = 8.0                   # arm thickness in Z (it is the arm's bending depth now)
@@ -126,7 +127,18 @@ def vplace(s):
 
 HOUS_X0 = KL.HOUS_X0                # cartridge back + back-stop engagement — unchanged
 HOUS_X1 = HUB_D / 2 + KL.HS_CLR + KL.HS_HOUS_WALL       # +7.8: the arm exits through here
-HOUS_HW = KL.HOUS_HW                # ±13.9 — the whole Y stack is unchanged
+# Y IS ASYMMETRIC, and only one side moved. +Y is the SENSOR side: HOUS_HW is the
+# datum the contact rib, the axle flange, the magnet, the cap and the whole board
+# cradle cascade off, so touching it would lengthen the axle and grow the magnet's
+# cantilever off the bearing. -Y carries nothing but wall, so that is where the room
+# for a SECOND TENON gets bought (user asked what it would cost): the rib comb is
+# 23 and a tenon is 6 wide, so two stations need 23 + 6 + margin of Y. At 0.5 of
+# margin either side of each tenon that is 30.0 of span against the 27.8 we had —
+# 2.2, ALL of it on -Y. (Bare minimum, tenons flush with the faces, is 1.2.)
+HOUS_HW_P = KL.HOUS_HW              # +13.9 — the sensor side, untouched on purpose
+TEN_MARGIN = 0.5                    # material outboard of each tenon's edge
+HOUS_HW_N = (TEN_PITCH + 2 * KL._JHW + 2 * TEN_MARGIN) - HOUS_HW_P      # 16.1
+HOUS_HW = HOUS_HW_P                 # the sensor-side alias the Y stack reads
 # +Z comes from the RAISED POCKET's own measured extent, not from the piston: the
 # cartridge block stands 6.6 above its centre where the piston stands 3.0, and using
 # the piston's figure put the housing lid 3.6 BELOW the cartridge it is meant to
@@ -139,9 +151,12 @@ AXLE_DROP = HOUS_Z1 - KL.HOUS_Z1    # how much lower the axle sits than LKL's (+
 
 # ── mount tenons: slide along LOCAL X (see the docstring) ────────────────────
 TEN_X0, TEN_X1 = HOUS_X0 + 2.0, HOUS_X1     # the slide span available
-TEN_PITCH = KL.RIB_PITCH / 2.0              # the chassis rib comb, now along local Y
-TEN_Y = tuple(k * TEN_PITCH for k in (-1, 0, 1)
-              if abs(k * TEN_PITCH) <= HOUS_HW - KL._JHW)
+# Two stations, pushed as far apart as the span allows. Their absolute Y is free —
+# the phase is set by where we pose the lever in the guitar's X, since after the
+# mount's 90° rotation the rib comb runs along local Y. So the housing does not
+# chase the ribs; the pose does.
+TEN_Y = (HOUS_HW_P - KL._JHW - TEN_MARGIN - TEN_PITCH,      # -12.60
+         HOUS_HW_P - KL._JHW - TEN_MARGIN)                  # +10.40
 
 
 def _top_tenon(ty):
@@ -169,8 +184,9 @@ def _housing() -> cq.Workplane:
     """The prism, derived from the lever + the raised cartridges exactly as LKL's
     is, minus the lever room, the two house pockets and the drag recesses, plus
     the bearing seats, the sensor-side contact rib and the mount tenons."""
-    w = box_at(HOUS_X1 - HOUS_X0, 2 * HOUS_HW, HOUS_Z1 - HOUS_Z0,
-               x=(HOUS_X0 + HOUS_X1) / 2, y=0.0, z=(HOUS_Z0 + HOUS_Z1) / 2)
+    w = box_at(HOUS_X1 - HOUS_X0, HOUS_HW_P + HOUS_HW_N, HOUS_Z1 - HOUS_Z0,
+               x=(HOUS_X0 + HOUS_X1) / 2, y=(HOUS_HW_P - HOUS_HW_N) / 2,
+               z=(HOUS_Z0 + HOUS_Z1) / 2)
     for ty in TEN_Y:
         w = w.union(_top_tenon(ty))
     # LEVER ROOM = the lever's OWN SWEPT ENVELOPE, as a union of clearance copies
