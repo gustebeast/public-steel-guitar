@@ -190,7 +190,8 @@ def tee_stations():
     # bus B (knee + leg-socket): NOT on the crowded motor rail -- inboard of it, near the knee
     # station, clear of the bay tray/buck and the motor tees.
     out.append((-500.0, -100.0, -1))          # 11 knee (LKL): inboard, +X of the housing
-    out.append((-538.0, -100.0, +1))          # 12 leg-socket landing: inboard, +X of the bay tray
+    out.append((-538.0, -94.0, +1))           # 12 leg-socket landing: inboard, +X of the bay tray
+                                              # (nudged +Y to clear the grown accurate bus-A tee_0 at -524)
     return out
 
 
@@ -200,24 +201,29 @@ _TEE_LIFT = TEE_Z - EL.FLOOR_Z          # lift the tee dummy onto its cradle, ab
 def tee_components():
     """The tee-PCB dummies for the assembly, lifted onto their -Y-rail cradles (above the
     rib tops so no tee sits in a rib). See tee_cradles()."""
-    return [(f"tee_pcb_{i}", EL.tee_pcb(x, y, d).translate((0, 0, _TEE_LIFT)))
+    return [(f"tee_pcb_{i}", EL.tee_pcb(x, y, d, accurate=i < 11).translate((0, 0, _TEE_LIFT)))
             for i, (x, y, d) in enumerate(tee_stations())]
 
 
 def tee_cradles():
-    """A 3-wall drop-in pcb_cradle under each tee, on the -Y-rail corridor. The cradle base
-    sits on the rib tops; the tee drops in and one M2 screw retains it. Open edge faces +Y
-    (the motor side) so the drop pigtail + trunk headers exit toward the corridor."""
+    """A drop-in pcb_cradle under each tee, on the -Y-rail corridor. The cradle base sits on the
+    rib tops; the tee drops in from +Z and one M2 screw retains it. The tee connectors are TOP-
+    entry (cables up), so a relief WINDOW is cut in the base under them for the THT post tails
+    (3.4 below the board vs the 3.0 standoff)."""
     from cadkit.pcb import pcb_cradle
+    from .helpers import box_at
+    rw, rl = EL.TEE_RELIEF
     out = []
     for i, (x, y, d) in enumerate(tee_stations()):
-        # bus-A (0..10) sit on the -Y rail: open +Y so the motor pigtail + trunk headers exit
-        # toward the motors. bus-B (11 knee, 12 leg) sit inboard: their drop exits toward -Y
-        # (down to the knee/leg station), so open -Y or the wall clips the drop cable.
-        open_edge = "-y" if i >= 11 else "+y"
-        cr = pcb_cradle(18.0, 14.0, screw_xy=(6.5, -4.0), open_edge=open_edge,
-                        standoff=TEE_Z - _RIB_TOP, wall_over=1.2)   # pads meet the lifted tee board bottom (TEE_Z)
-        out.append((f"tee_cradle_{i}", cr.translate((x, y, _RIB_TOP))))
+        so = TEE_Z - _RIB_TOP                                    # pads meet the lifted tee board bottom (TEE_Z)
+        if i >= 11:                                              # bus-B: compact placeholder cradle (see tee_pcb)
+            cr = pcb_cradle(18.0, 14.0, screw_xy=(6.5, -4.0), open_edge="-y", standoff=so, wall_over=1.2)
+            out.append((f"tee_cradle_{i}", cr.translate((x, y, _RIB_TOP))))
+            continue
+        cr = pcb_cradle(EL.TEE_BOARD_X, EL.TEE_BOARD_Y, screw_xy=EL.TEE_SCREW_XY, open_edge="+y",
+                        standoff=so, wall_over=1.2)
+        cr = cr.cut(box_at(rw, rl, 4.0, x=0.0, y=EL.TEE_CONN_CY, z=-1.5))   # THT-tail relief window in the base
+        out.append((f"tee_cradle_{i}", cr.translate((x, EL.tee_board_cy(y), _RIB_TOP))))
     return out
 
 
