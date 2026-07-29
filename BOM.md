@@ -108,9 +108,12 @@ populate them.
 
 *(qty 8 = 7 controls + 1 spare)*
 
-**Board spec (ours, for layout).** Outline **23 × 19 × 1.6 mm**, deliberately
-*not* symmetric about the sensor: the chip sits on the axle axis 9.0 mm from the
-+X edge, 14.0 mm from the −X edge and 7.0 mm below the top edge. **No mounting
+**Board spec (ours, for layout).** Outline **17 × 19 × 1.6 mm**, strongly
+*asymmetric* about the sensor: the chip sits on the axle axis just **3.0 mm from
+the +X edge**, 14.0 mm from the −X edge and 7.0 mm below the top edge. The 3.0 is
+deliberately tight — the QFN body ends at 1.5, leaving 1.5 of edge keepout, over
+JLCPCB's 1.0 mm component-to-edge rule — because every millimetre there is
+millimetres off the lever's +X extent, which is the face nearest the player. **No mounting
 holes** — the board drops into two grooves in the housing's printed cradle, rests
 on its floor, and the instrument's own underside closes over it as the lid. So
 **1.85 mm of each side edge is mechanical** — keep copper and parts out of it.
