@@ -34,6 +34,7 @@ from . import dimensions as D
 from . import chassis as CH          # only early constants (X_*, Z_*) used here
 from .helpers import box_at, cyl
 from cadkit.fasteners import M2, cut_anchor
+from cadkit.pcb import jst_xh_header, xh_length, XH_POST_TAIL
 
 # ---- bay geometry (chassis.py cuts the matching channels from these) ----
 TRAY_X0, TRAY_X1 = -607.0, -547.0
@@ -287,23 +288,64 @@ def teensy_ifc() -> cq.Workplane:
 FLOOR_Z = -75.15
 
 
-def tee_pcb(x: float, y: float, drop: int = 1) -> cq.Workplane:
-    """Bus TEE PCB dummy, flat on the chassis floor at (x, y): 18×14×1.6
-    board, two TRUNK headers (±X ends) + one DROP header on the drop-side
-    (±Y) edge + the 120 Ω-behind-jumper bump (closed only on each bus's
-    LAST tee = termination). One board design serves bus A (one per motor;
-    the drop takes the SERVO42D's native XH pigtail) and bus B (knee
-    levers / leg-socket landing). Trunk segments are crimped XH jumpers —
-    unplugging any device never breaks the bus. Mount: christmas-tree boss
-    (detailed with the real PCB)."""
+# ── CAN bus TEE PCB ──────────────────────────────────────────────────────────
+# The SERVO42D has a SINGLE 6-pin XH (power+CAN); a single-port device can't be
+# daisy-chained without soldering, so each node needs a 3-way junction -- this tee:
+# TRUNK-IN + DROP + TRUNK-OUT + a switchable 120R terminator. Connectors are the
+# real cadkit JST-XH: TOP-ENTRY (B4B-XH-A), cables rising +Z into the corridor
+# harness, so the board packs compactly (the 15 mm SIDE-entry parts used on the
+# knee lever would need a ~45 mm board -- infeasible at the 32 mm tee pitch). All
+# three are 4-pin: a single-motor DROP needs only the 4 CAN conductors (gnd/24V/
+# H/L), so the SERVO42D's 6-pin pigtail lands its 4 relevant wires here. Single-
+# sided placement (all bodies on top); the THT posts drop 3.4 through the board
+# and are cleared by a relief WINDOW in the cradle base (see wiring.tee_cradles).
+TEE_CONN_N   = 4                                     # CAN = 4 conductors (gnd/24V/H/L)
+TEE_BOARD_X  = 22.0                                  # seats 3 top-entry XH side by side + hardware
+TEE_BOARD_Y  = 24.0                                  # grows +Y off the rail into the open corridor
+TEE_YSHIFT   = 5.0                                   # board centre shift +Y so the -Y edge stays at y-7
+TEE_CONN_DX  = 6.5                                   # trunk-in / drop / trunk-out X spacing
+TEE_CONN_CY  = -1.0                                  # connector row centre (board-local Y)
+TEE_SCREW_XY = (0.0, 9.0)                            # cradle retention hole (top band, clear of connectors)
+TEE_RELIEF   = (16.0, 11.0)                          # base tail-relief window (w × l), board-local, at (0, CONN_CY)
+
+
+def tee_board_cy(y: float) -> float:
+    """Board (and cradle) centre Y for a tee at station y: the -Y edge stays at y-7
+    (clear of the -Y rail, as before); the board grows +Y into the open corridor."""
+    return y + TEE_YSHIFT
+
+
+def _tee_pcb_placeholder(x: float, y: float, drop: int = 1) -> cq.Workplane:
+    """Compact SCHEMATIC tee (18×14, box connectors) for the two bus-B tees crammed
+    into the keyhead bay: the accurate 22×24 board doesn't fit the 23 mm gap between
+    the electronics tray and the bus-A tee there. The real fix is to fold the bus-B
+    CAN tap onto the knee-lever / leg-carrier PCBs themselves (no separate tee) -- TODO."""
     b = box_at(18.0, 14.0, 1.6, x=x, y=y, z=FLOOR_Z + 0.8)
-    for dx in (-5.5, 5.5):                              # trunk headers
-        b = b.union(box_at(6.0, 8.0, 6.5, x=x + dx, y=y - drop * 2.0,
-                           z=FLOOR_Z + 1.6 + 3.25))
-    b = b.union(box_at(7.0, 4.0, 6.5, x=x, y=y + drop * 4.5,
-                       z=FLOOR_Z + 1.6 + 3.25))         # drop header
-    b = b.union(box_at(3.5, 2.0, 1.8, x=x - 6.5, y=y + drop * 4.5,
-                       z=FLOOR_Z + 1.6 + 0.9))          # 120R + jumper
+    for dx in (-5.5, 5.5):
+        b = b.union(box_at(6.0, 8.0, 6.5, x=x + dx, y=y - drop * 2.0, z=FLOOR_Z + 1.6 + 3.25))
+    b = b.union(box_at(7.0, 4.0, 6.5, x=x, y=y + drop * 4.5, z=FLOOR_Z + 1.6 + 3.25))
+    b = b.union(box_at(3.5, 2.0, 1.8, x=x - 6.5, y=y + drop * 4.5, z=FLOOR_Z + 1.6 + 0.9))
+    return b
+
+
+def tee_pcb(x: float, y: float, drop: int = 1, accurate: bool = True) -> cq.Workplane:
+    """CAN bus TEE PCB dummy, flat on the chassis floor. THREE 4-pin TOP-ENTRY XH
+    (B4B-XH-A; cadkit jst_xh_header, drawn MATED) -- trunk-in / drop / trunk-out,
+    L-to-R, cables up -- plus the 120 Ω-behind-jumper terminator (closed only on
+    each bus's LAST tee). Serves the 10 bus-A motor tees on the open -Y rail. `drop`
+    = ±1 marks the device side (cables are top-entry, so it doesn't change the board
+    geometry). Mount: drop-in cradle + one M2. `accurate=False` -> the compact bus-B
+    placeholder (see _tee_pcb_placeholder)."""
+    if not accurate:
+        return _tee_pcb_placeholder(x, y, drop)
+    top = FLOOR_Z + 1.6                              # board top face; connectors rise +Z from here
+    cy = tee_board_cy(y)
+    b = box_at(TEE_BOARD_X, TEE_BOARD_Y, 1.6, x=x, y=cy, z=FLOOR_Z + 0.8)
+    for dx in (-TEE_CONN_DX, 0.0, TEE_CONN_DX):      # trunk-in / drop / trunk-out (rows along Y)
+        b = b.union(jst_xh_header(TEE_CONN_N, mated=True)
+                    .rotate((0, 0, 0), (0, 0, 1), 90)
+                    .translate((x + dx, cy + TEE_CONN_CY, top)))
+    b = b.union(box_at(3.5, 2.0, 1.8, x=x - 8.0, y=cy + 9.0, z=top + 0.9))   # 120R + jumper
     return b
 
 
