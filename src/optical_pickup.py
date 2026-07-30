@@ -83,7 +83,12 @@ USB_H   = 2.6                                    # micro-B receptacle shell heig
 # of it, toward the endplate that already exists. Centring the board on the sensors
 # instead pushed its -X edge -- and therefore the tie-bar extension carrying it -- 8 mm
 # further over the player for no reason.
-SENSE_EDGE = 3.0                                 # sensor row inset from the board's -X edge
+# 2.0 puts the widest package (the 1.25 emitter) 1.375 from the routed edge -- clear of
+# JLCPCB's 1.0 component-to-edge rule even after their +/-0.2 outline tolerance (1.175).
+# Not tighter: the MT6701 board's note in BOM.md is the precedent -- routed-outline-to-
+# copper tolerance eats most of a tight budget, and the last millimetre here buys only
+# a millimetre of tie-bar reach.
+SENSE_EDGE = 2.0                                 # sensor row inset from the board's -X edge
 
 # SINGLE-SIDED (user): every part on the BOTTOM face. The MCU went on the back for one
 # round to keep the board short, but there is plenty of room in -Y -- the -Y rail is out
@@ -139,6 +144,17 @@ PCB_CX = (PCB_X0 + PCB_X1) / 2
 #     in -Y" the single-sided board spends instead of using its back face.
 _OUTER_Y = max(abs(string_y_at(i, SENSE_X)) for i in range(D.N_STRINGS))
 SENSE_HL = _OUTER_Y + PD_DY                      # last sensor Y; NOTHING else inside this
+
+# OPTICAL RELIEF -- delete the pocket's -X side wall over the sensing field.
+# That wall runs parallel to the entire sensor row, and PETG-GF is reflective in IR, so
+# it closes a stray path: emitter -> -X -> wall -> back -> photodiode, never touching a
+# string. At this spacing the bounce path is a few mm against a ~6 mm signal path (3 down
+# to the string and back), so it is a real fraction of what the detectors see -- and
+# because it is modulated by the emitter exactly like the signal, AMBIENT SUBTRACTION
+# DOES NOT REMOVE IT. It lands as a DC pedestal that eats headroom and contributes shot
+# noise carrying no information. Cheaper to delete the wall than to buy distance from it.
+RELIEF_HY = SENSE_HL + 1.0                       # relieve over the sensing field only
+RELIEF_X1 = PCB_X1 - 8.0                         # overshoot, to break out past the tie bar
 TIE_HY   = D.BRIDGE_AXLE_Y + D.BRIDGE_ARM_W / 2  # tie-bar half-span at the arms (54.25)
 MCU_Y    = -(SENSE_HL + END_KEEP + MCU_PKG[1] / 2)        # processor, first past the field
 USB_Y    = MCU_Y - MCU_PKG[1] / 2 - 3.0 - USB_PKG[1] / 2  # receptacle, outboard of it
@@ -181,8 +197,19 @@ def opt_pcb_pocket() -> cq.Workplane:
     the deeper tail packages simply break through into open air at Y < -44 -- which is
     what leaves the USB receptacle reachable by a cable."""
     clr = 0.3
-    return box_at(PCB_W + 2 * clr, PCB_L + 2 * clr, PCB_TOP - STACK_BOT_Z,
-                  x=PCB_CX, y=PCB_CY, z=(STACK_BOT_Z + PCB_TOP) / 2)
+    pocket = box_at(PCB_W + 2 * clr, PCB_L + 2 * clr, PCB_TOP - STACK_BOT_Z,
+                    x=PCB_CX, y=PCB_CY, z=(STACK_BOT_Z + PCB_TOP) / 2)
+    # ... plus the optical relief (see RELIEF_* above): carry the pocket's -X side out
+    # past the tie bar over the sensing field, so no plastic faces the emitters. The bar
+    # keeps its full section everywhere else, and the material ABOVE the board (PCB_TOP
+    # up to TIE_Z) still bridges across -- the relief only opens the underside, which is
+    # the side the optics look out of.
+    relief_x0 = PCB_X1 + clr
+    pocket = pocket.union(box_at(relief_x0 - RELIEF_X1, 2 * RELIEF_HY,
+                                 PCB_TOP - STACK_BOT_Z,
+                                 x=(relief_x0 + RELIEF_X1) / 2, y=0.0,
+                                 z=(STACK_BOT_Z + PCB_TOP) / 2))
+    return pocket
 
 
 def _assert_field_clear():
