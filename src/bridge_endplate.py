@@ -54,15 +54,22 @@ ARM_W = D.BRIDGE_ARM_W             # arm / edge-web thickness (Y) — kept clear
 # underside, so it is sized from that stack rather than from a round number: its
 # UNDERSIDE meets the strip's sensor faces (so the bar shades the detectors and nothing
 # protrudes toward the strings) and its TOP clears the strip's top-side MCU by TIE_CAP.
-TIE_CAP = 2.5                     # structure over the strip's tallest top-side part
-TIE_Z   = OP.STACK_TOP_Z + TIE_CAP        # 25.9 -- tie bar / arm top
-TIE_T   = TIE_Z - OP.SENSE_FACE_Z         # 6.9  -- thickness (underside at the sensor faces)
+TIE_CAP = 2.5                     # structure over the strip's board
+TIE_Z   = OP.PCB_TOP + TIE_CAP            # 24.2 -- tie bar / arm top
+TIE_T   = TIE_Z - OP.SENSE_FACE_Z         # 5.2  -- thickness (underside at the sensor faces)
 # The bar EXTENDS -X past the endplate block to carry the optical strip out to its
 # sensing station. Farther from the string termination = MORE signal (displacement is
 # linear in distance from a termination), so the bar reaches the strip rather than the
 # strip crowding the bridge. Cantilevered from the arms: 5 mm of PETG-GF over a ~17 mm
 # reach, ~8x margin against a palm leaning on it.
 TIE_X0 = OP.PCB_X1 - 2.0          # -X face: the strip's own -X edge + a margin
+# The bar also runs ASYMMETRICALLY in -Y, to the end of the strip's processor/USB tail.
+# Without this the tail hangs ~14 mm past the bar with the USB receptacle on it, and
+# every cable insertion flexes an unsupported piece of FR4 -- on the connector that
+# carries firmware updates. Past the string field (string 10 is at ~-42) this is open
+# space above the deck, which is the "room in -Y" the single-sided board is spending.
+TIE_Y0 = OP.PCB_YM - 2.0          # -Y face: past the strip's tail
+TIE_Y1 = D.BRIDGE_AXLE_Y + ARM_W / 2      # +Y face: unchanged, at the arm outer
 AXLE_BORE = D.BRIDGE_AXLE_D + 0.4
 
 # Guide-rod LEDGES: two shallow bars protruding −X from the cap face below the
@@ -166,8 +173,9 @@ def _build() -> cq.Workplane:
     # Tie bar linking the arm tops above the strings. Runs from the +X tip out to
     # TIE_X0 -- past the endplate block -- so its underside can carry the DOWN-FIRING
     # optical strip at OP.SENSE_X, ~20 mm off the string termination.
-    body = body.union(box_at(X1 - TIE_X0, 2 * D.BRIDGE_AXLE_Y + ARM_W, TIE_T,
-                             x=(X1 + TIE_X0) / 2, y=0, z=TIE_Z - TIE_T / 2))
+    body = body.union(box_at(X1 - TIE_X0, TIE_Y1 - TIE_Y0, TIE_T,
+                             x=(X1 + TIE_X0) / 2, y=(TIE_Y1 + TIE_Y0) / 2,
+                             z=TIE_Z - TIE_T / 2))
     # Pocket for the strip, opening DOWNWARD: board envelope + the full component
     # depth beneath it. Cut from the strip's own solid, so the pocket is always the
     # board. The strip's sensor faces end flush with the tie-bar underside -- nothing
