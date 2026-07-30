@@ -182,14 +182,17 @@ JACK_SCREW_L   = 20.0                              # NEW BOM part: M4×20 button
                                                    # depths + string-gap set) with the nut engaged throughout.
 FLOOR_BOT = ZPL_BOT - 5.0                          # -Y skirt / end-wall bottom (structure / endplate-lip datum)
 # TOP-ACCESS at the PLATE's clear zones (pickup-agnostic): TWO +Y plate corners + ONE
-# deep -Y-centre. Equalise the two +Y = X LEVEL; the -Y jack (centre X) = across-string tilt.
+# deep -Y. Equalise the two +Y = X LEVEL; the -Y jack = across-string tilt. The -Y jack is
+# nudged slightly off-CENTRE (JACK_MX_OFF) to free the CENTRE for the retention setscrew --
+# a plane is set by any 3 non-collinear points, so an off-centre tilt jack still levels fully.
 PICKUP_X_NOM  = OPEN_CTR                          # nominal pickup centre X
 JACK_INSET_X  = 31.5                              # +Y jacks near the plate X-ends (toward the corners)
 JACK_YP       = 45.5                               # +Y corner jacks: outboard of string 1, on the nubs
 JACK_YM       = PK_MAX_YM - 10.0                    # -Y jack deep in the -Y zone (~-61.9), below the room edge, on its nub
+JACK_MX_OFF   = 8.0                                # -Y jack X-nudge off centre (frees the centre for the setscrew)
 JACK_POS      = [(PICKUP_X_NOM + JACK_INSET_X, JACK_YP),
                  (PICKUP_X_NOM - JACK_INSET_X, JACK_YP),
-                 (PICKUP_X_NOM, JACK_YM)]
+                 (PICKUP_X_NOM + JACK_MX_OFF, JACK_YM)]
 HEIGHT_HOLE = PICKUP_X_NOM
 # ── plate SHAPE (user): GREEN pickup-area prism + 3 RED nubs out to the screws ────
 # The plate is JUST the usable pickup area (a green prism) plus nubs that reach the 3 jack
@@ -205,7 +208,12 @@ RET_BOSS_L = 6.0                                   # -Y grub boss length (Y): in
                                                    # face at PK_MAX_YM (the LONGEST supported pickup's -Y face).
                                                    # Shorter pickups butt the +Y wall, so their -Y face sits +Y of
                                                    # here and the grub protrudes across open cavity to reach it.
-RET_SCREW_X = PICKUP_X_NOM + 14.0                  # X-offset so it clears the centre -Y jack
+RET_SCREW_X = PICKUP_X_NOM                          # CENTRED (the -Y jack was nudged off centre to free it):
+                                                   # a centred setscrew stays on the pickup across the FULL
+                                                   # +/-X_SLIDE, unlike the old +14 offset (rode off the +X
+                                                   # edge in the last ~0.7 mm of -X slide). The setscrew boss
+                                                   # + jack nub are one part (the plate) so they overlap
+                                                   # freely; only the screw/insert dummies keep JACK_MX_OFF.
 # The -Y grub is an M4 cup-tip SET SCREW threading a heat-set insert (cadkit set-screw bore), so the
 # boss ceiling must clear the Ø6 insert pocket by MIN_WALL on EVERY side (the reported thin-ceiling
 # fix: material == nozzle can be dropped by the slicer). Ceiling = axis + pocket radius + MIN_WALL.
