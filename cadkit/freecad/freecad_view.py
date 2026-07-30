@@ -193,7 +193,10 @@ def _resolve_step(step_path=None, project=None):
 def show(step_path=None, project=None, freecad_exe=None):
     """Make a STEP viewable in the shared FreeCAD hub (open a tab, launching the
     hub window first if needed). Returns True if a viewer is up/queued, False on
-    any handled problem. Never raises."""
+    any handled problem. Never raises.
+
+    Opening a tab is all this does — it never brings the window forward or
+    changes which tab is showing (user). There is no flag for that any more."""
     try:
         step = _resolve_step(step_path, project)
         if not os.path.exists(step):
