@@ -113,7 +113,7 @@ AIR_GAP = 1.5                       # magnet face -> the IC's OWN TOP SURFACE. T
                                     # 0.5 / 1.0 / 2.0 min/typ/max; recommended magnet Ø6 x
                                     # 2.5 — EXACTLY ours, so this is the nominal
                                     # configuration the part was characterised in.
-# (PCB_WZ is DERIVED below, from the housing — see board_z.) The outline is ours; what
+PCB_WZ = 19.0                       # ONE board for every lever. The outline is ours; what
 PCB_T = 1.6                         # sets it is the cradle + the reserved driver bore (see
                                     # the cradle block) and, in Z, the instrument itself —
                                     # the board runs from the chassis underside down.
@@ -468,37 +468,61 @@ def demo_parts():
     return out
 
 
-def sensor_parts(z_bot, z_top, prefix="kl"):
-    """The sensor stack's DUMMIES — board, MT6701 and the mated CAN connector — for
-    a housing spanning z_bot..z_top. SHARED BY BOTH LEVERS (user): the geometry is
-    identical in Y (the magnet, cap, air gap and board face never move) and in X
-    (the chip is on the axle axis and the outline hangs off it), so the only thing
-    a second lever changes is the pair of Z extents — which is exactly what this
-    takes. See board_z / conn_z for how they turn into the board.
+def sensor_board():
+    """THE board — one design for every lever (user). Drawn once, in its own frame:
+    chip on the axle axis, top edge CHIP_DROP above it. Levers pose it; none of them
+    redraws it, which is what makes "identical" structural rather than a promise."""
+    return box_at(PCB_WX, PCB_T, PCB_WZ, x=(PCB_X0 + PCB_X1) / 2,
+                  y=PCB_Y + PCB_T / 2, z=(PCB_Z0 + PCB_Z1) / 2)
 
-      * the CHIP sits ON the axle axis in both, because that is what reading a
-        diametric magnet requires; the board's outline moves around it.
-      * the connector is drawn MATED — a connector nobody can get a plug onto is
-        not a fit, and for side entry the plug's reach is the whole question.
-        Rotated out of cadkit's board frame: height +Z -> -Y (it stands off the
-        magnet-facing face), mating axis +Y -> +X (the plug arrives from -X,
-        through the tunnel cut in the -X web), length -> Z."""
-    pcb_z0, pcb_z1 = board_z(z_bot, z_top)
+
+def sensor_connector():
+    """The CAN drop as drawn on that board: S4B-XH-SM4-TB, MATED (a connector nobody
+    can get a plug onto is not a fit, and for side entry the plug's reach is the
+    whole question). Height +Z -> -Y so it stands off the magnet-facing face, mating
+    axis +Y -> +X so the plug arrives from -X, length -> Z."""
+    return (jst_xh_side_header(CONN_N, mated=True)
+            .rotate((0, 0, 0), (1, 0, 0), 90)
+            .rotate((0, 0, 0), (0, 1, 0), 90)
+            .translate((CONN_MOUTH_X, PCB_Y, PCB_Z0 + CONN_RISE)))
+
+
+def _install(s, z_bot, z_top):
+    """Pose a board-frame solid into a housing: identity, or turned over."""
+    return (s.rotate((0, 0, 0), (0, 1, 0), 180)
+            if board_flip(z_bot, z_top) else s)
+
+
+def sensor_parts(z_bot, z_top, prefix="kl"):
+    """Board + MT6701 + mated connector, posed for this housing. The board and the
+    connector come from sensor_board/sensor_connector unchanged and are only ROTATED,
+    so there is exactly one board design in the project."""
     return [
-        (f"{prefix}_pcb", box_at(PCB_WX, PCB_T, pcb_z1 - pcb_z0,
-                                 x=(PCB_X0 + PCB_X1) / 2, y=PCB_Y + PCB_T / 2,
-                                 z=(pcb_z0 + pcb_z1) / 2)),
+        (f"{prefix}_pcb", _install(sensor_board(), z_bot, z_top)),
         (f"{prefix}_chip", box_at(CHIP_W, CHIP_H, CHIP_W,
                                   x=0.0, y=PCB_Y - CHIP_H / 2, z=0.0)),
-        (f"{prefix}_can_header",
-         jst_xh_side_header(CONN_N, mated=True)
-         .rotate((0, 0, 0), (1, 0, 0), 90)
-         .rotate((0, 0, 0), (0, 1, 0), 90)
-         .translate((CONN_MOUTH_X, PCB_Y, conn_z(z_bot, z_top)))),
+        (f"{prefix}_can_header", _install(sensor_connector(), z_bot, z_top)),
     ]
 
 
-def _cradle(w, z_bot=None, z_top=None):
+def pcb_shim(z_bot, z_top):
+    """PRINTED SHIM (user): the board is one size and the housings are not, so the
+    slack between the board's top edge and the instrument is taken up by a plastic
+    block that slides down the SAME grooves on top of it. The chassis then presses
+    the shim, the shim presses the board, and the retention stays exactly what it
+    was — no fastener, no second board design. Returns None where the board already
+    reaches the ceiling (the horizontal lever), so the part only exists where it is
+    needed."""
+    gap = (z_top - CEIL_CLR) - board_z(z_bot, z_top)[1]
+    if gap <= CR_CLR:
+        return None
+    bx0, bx1 = board_x(z_bot, z_top)
+    return box_at(bx1 - bx0, PCB_T, gap - CR_CLR, x=(bx0 + bx1) / 2,
+                  y=PCB_Y + PCB_T / 2,
+                  z=board_z(z_bot, z_top)[1] + CR_CLR + (gap - CR_CLR) / 2)
+
+
+def _cradle(w, z_bot=None, z_top=None, x_max=None):
     """Add the MT6701 board cradle to the housing (user). Everything here grows UP
     off the same bed as the housing and has no ceiling anywhere, so it needs no
     supports; see the constant block for the retention scheme and the socket cone.
@@ -511,10 +535,32 @@ def _cradle(w, z_bot=None, z_top=None):
     z_top = HOUS_Z1 if z_top is None else z_top
     pcb_z0, pcb_z1 = board_z(z_bot, z_top)
     conn_zc = conn_z(z_bot, z_top)
+    bx0, bx1 = board_x(z_bot, z_top)      # installed edges — the flip swaps them
+    conn_mx = conn_mouth_x(z_bot, z_top)
+    _sx = -1.0 if board_flip(z_bot, z_top) else 1.0
+    x_max = CR_X1_MAX if x_max is None else x_max
 
-    inner0, slot0, outer0 = _cr_faces(PCB_X0)
-    inner1, slot1, outer1 = _cr_faces(PCB_X1)
-    outer1 = min(outer1, CR_X1_MAX)             # nothing +X of the prism face (user)
+    inner0, slot0, outer0 = _cr_faces(bx0)
+    inner1, slot1, outer1 = _cr_faces(bx1)
+    # WHICH SIDE GETS THE FULL-HEIGHT WEB is decided by the DRIVER BORE, not by the
+    # sign of X. The board is asymmetric about the chip, so one groove sits far from
+    # the axle axis and the other close to it; the close one cannot run full height
+    # (it would stand inside the bore), the far one can. Turning the board over
+    # swaps which is which — and assuming -X was always the far side left the
+    # vertical lever with a full-height web 1.30 from the axis, straight through the
+    # bore, and its housing in two pieces.
+    _far, _near = (((inner0, outer0), (inner1, outer1)) if abs(inner0) > abs(inner1)
+                   else ((inner1, outer1), (inner0, outer0)))
+    # the NEAR side is the one that risks reaching past the housing's own +X face
+    _ni, _no = _near
+    _no = min(_no, x_max) if _no > 0 else max(_no, -x_max)
+    _near = (_ni, _no)
+    # write the capped extents back, because the plinth and the floor span
+    # outer0..outer1 and would otherwise be built to the UNcapped width
+    if _far[1] > 0:
+        outer1, outer0 = _far[1], _no
+    else:
+        outer0, outer1 = _far[1], _no
     # SIDE WEBS, and they are deliberately UNEQUAL. The -X one runs the full height
     # of the cradle; the +X one stops at the plinth top, because everything above
     # that on this side is inside the driver bore and could not be printed anyway
@@ -534,7 +580,7 @@ def _cradle(w, z_bot=None, z_top=None):
     _lo = (z_bot, min(pcb_z1, CR_PLINTH_Z1))
     _hi = (max(z_bot, SOCK_R), z_top)
     _span = max(_lo, _hi, key=lambda r: max(0.0, min(r[1], pcb_z1) - max(r[0], pcb_z0)))
-    for a, b, z0, z1 in ((inner0, outer0, z_bot, z_top), (inner1, outer1) + _span):
+    for a, b, z0, z1 in ((_far[0], _far[1], z_bot, z_top), _near + _span):
         w = w.union(box_at(abs(b - a), CR_Y1 - CR_Y0, z1 - z0,
                            x=(a + b) / 2, y=(CR_Y0 + CR_Y1) / 2,
                            z=(z0 + z1) / 2))
@@ -588,15 +634,15 @@ def _cradle(w, z_bot=None, z_top=None):
     # It needs its own length of straight travel before it clears the header, and
     # for that whole stroke its inboard face is still inside the cheek's outer
     # 0.85 — probed, and it was a real foul until this reached out here.
-    _cx0 = CONN_MOUTH_X - 2 * CONN_PLUG_RUN - 3.0   # -29.9
-    _cx1 = CONN_MOUTH_X + XH_SIDE_D + CONN_POCKET
+    _cx0 = conn_mx - _sx * (2 * CONN_PLUG_RUN + 3.0)   # the plug's unplug stroke
+    _cx1 = conn_mx + _sx * (XH_SIDE_D + CONN_POCKET)
     # +Z end: clear THROUGH the mount tenons, not just up to the cradle top. The
     # x=-23 tenon is a Y-rail that runs out to HOUS_HW, so it stands in this
     # relief's path; stopping the cut at z_top left a 2.9 mm² flat ceiling notched
     # into it. Running past TEN_H instead trims 0.85 off that tenon's +Y end — 3%
     # of a 27.8 rail, and it exits cleanly.
     _cz1 = z_top + TEN_H + 1.0
-    w = w.cut(box_at(_cx1 - _cx0, PCB_Y - _cy0, _cz1 - _cz0,
+    w = w.cut(box_at(abs(_cx1 - _cx0), PCB_Y - _cy0, _cz1 - _cz0,
                      x=(_cx0 + _cx1) / 2, y=(_cy0 + PCB_Y) / 2,
                      z=(_cz0 + _cz1) / 2))
     # SOCKET CONE — reserved so kl_magnet_cap can be driven with the cradle in
@@ -867,31 +913,67 @@ CEIL_CLR = 0.4                      # board top edge -> the instrument's undersi
                                     # slot, which the rigid board simply bridges.
 CR_FLOOR_T = 2.8                    # cradle floor under the board
 CONN_RISE  = 11.5                   # connector row above the board's bottom edge
+CHIP_DROP  = 7.0                    # chip below the board's TOP edge
+
+# THE BOARD IS ONE DESIGN, FIXED (user: "the boards should be fully identical").
+# It is not derived from the housing any more: the chip has to sit on the axle axis,
+# the outline hangs off the chip, so the board's Z span is a property of the BOARD.
+# What varies between levers is which way up it goes in.
+PCB_Z1 = CHIP_DROP                              # +7.0
+PCB_Z0 = PCB_Z1 - PCB_WZ                        # -12.0
+
+
+def board_flip(z_bot, z_top):
+    """Which way up the board goes in a housing spanning z_bot..z_top.
+
+    There is no freedom in the board's Z once the chip is on the axle axis, so the
+    only lever available is turning it over — a rotation of 180° about the AXLE
+    AXIS, which swaps top-for-bottom and left-for-right but leaves the chip on the
+    axis and, crucially, leaves the populated face still looking at the magnet.
+    (Mirroring would be a different physical board; rotating about any other axis
+    turns the components away from the magnet.)
+
+    On the horizontal lever the board goes in as drawn and its top edge lands on
+    the ceiling. On the vertical one the axle sits 19 lower, so as-drawn the board
+    would hang 4.2 through the housing floor; turned over it clears by 0.8 and
+    leaves 14.2 to the ceiling, which is what pcb_shim fills.
+
+    Raises if neither way up fits — better than silently drawing a board that
+    hangs out of its own housing."""
+    ceil = z_top - CEIL_CLR
+    as_drawn = PCB_Z0 >= z_bot and PCB_Z1 <= ceil
+    flipped = -PCB_Z1 >= z_bot and -PCB_Z0 <= ceil
+    if as_drawn:
+        return False
+    if flipped:
+        return True
+    raise ValueError(
+        f"the {PCB_WZ:.1f} board fits a housing spanning {z_bot:.2f}..{z_top:.2f} "
+        "neither way up — move the housing's floor or its ceiling, not the board")
 
 
 def board_z(z_bot, z_top):
-    """(bottom, top) of the sensor board in a housing spanning z_bot..z_top.
+    """(bottom, top) of the board as INSTALLED in this housing."""
+    return (-PCB_Z1, -PCB_Z0) if board_flip(z_bot, z_top) else (PCB_Z0, PCB_Z1)
 
-    SHARED BY BOTH LEVERS (user) — which is why it is a function of the housing
-    rather than a pair of constants. The board hangs off the CEILING, that being
-    its entire retention, and stands on the cradle floor, so BOTH ends are derived
-    and the board's HEIGHT is simply whatever the housing gives it: 19 on the
-    horizontal lever, ~32 on the vertical one whose axle sits far lower. The chip
-    stays on the axle axis in both, so what differs is how far down the board the
-    chip lands — not anything mechanical."""
-    return (z_bot + CR_FLOOR_T, z_top - CEIL_CLR)
+
+def board_x(z_bot, z_top):
+    """(-X, +X) edges as INSTALLED — turning the board over swaps them too."""
+    return (-PCB_X1, -PCB_X0) if board_flip(z_bot, z_top) else (PCB_X0, PCB_X1)
 
 
 def conn_z(z_bot, z_top):
-    """Connector row Z: a fixed rise off the board's BOTTOM edge, so the same rule
-    places it on either lever. Only the X offset does the cap clearing, so Z is
-    free to follow the board."""
-    return board_z(z_bot, z_top)[0] + CONN_RISE
+    """Connector row Z as installed: a fixed rise off the board's own bottom edge,
+    carried through the flip with it."""
+    f = board_flip(z_bot, z_top)
+    return -(PCB_Z0 + CONN_RISE) if f else PCB_Z0 + CONN_RISE
 
 
-PCB_Z0, PCB_Z1 = board_z(HOUS_Z0, HOUS_Z1)      # -12.0 .. +7.0 for this lever
+def conn_mouth_x(z_bot, z_top):
+    return -CONN_MOUTH_X if board_flip(z_bot, z_top) else CONN_MOUTH_X
+
+
 PCB_TOP = PCB_Z1
-PCB_WZ = PCB_Z1 - PCB_Z0                        # 19.0 — derived now, not declared
 def _cr_faces(edge):
     """(web inner, groove wall, web outer) X for a board edge — the groove is the
     gap between the inner face and the wall, and the board's edge lives in it."""
