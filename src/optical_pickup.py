@@ -62,6 +62,7 @@ import cadquery as cq
 
 from . import dimensions as D
 from .helpers import box_at
+from cadkit.fasteners import M2
 
 # ── where it sits ────────────────────────────────────────────────────────────
 # The speaking length ends at the BEARING TANGENT (directly over the axle), NOT at
@@ -168,9 +169,43 @@ SENSE_HL = _OUTER_Y + PD_DY                      # last sensor Y; NOTHING else i
 # noise carrying no information. Cheaper to delete the wall than to buy distance from it.
 RELIEF_HY = SENSE_HL + 1.0                       # relieve over the sensing field only
 RELIEF_X1 = PCB_X1 - 8.0                         # overshoot, to break out past the tie bar
+
+# ── RETENTION ────────────────────────────────────────────────────────────────
+# Constraint (user): NO endplate material may sit -X of the PCB -- the board itself is
+# the furthest anything reaches into the playing area. So the board cannot be trapped by
+# an -X lip, and retention has to come entirely from ABOVE and +X.
+# Answer: M2 screws entering from BELOW (the side the board is inserted from), up through
+# clearance holes in the board, into anchors in the tie bar. Screws sit at MOUNT_X, well
+# +X of the sensor row, so they are nowhere near the optical path; their heads hang below
+# the board but stay above the strings, like the sensors do.
+MOUNT_X  = SENSE_X + 10.0                        # -6.0: +X of the row, on the board
+MOUNT_DY = 3.0                                   # head/boss clearance wanted from a string
+
+
+def _mount_ys():
+    """Screw Y positions: two just outside the string field, one mid-field in the gap
+    between strings 5 and 6, one in the tail to hold the connector end down (that is the
+    end a USB cable levers on). Mid-field is safe because everything the screw adds in Z
+    -- boss above the bar, head below the board -- clears the strings anyway; the gap
+    check is belt-and-braces so a future gauge/pitch change cannot quietly land a screw
+    on a string."""
+    mid = (string_y_at(4, MOUNT_X) + string_y_at(5, MOUNT_X)) / 2
+    return [SENSE_HL + 1.5, mid, -(SENSE_HL + 1.5), TAIL_MOUNT_Y]
+
+
+def mount_points():
+    """(x, y, z) anchor mouths, on the board's TOP face -- the screw travels +Z from
+    below and the pocket (if an insert is ever needed) opens downward into the pocket
+    the board sits in, reachable with the board out."""
+    return [(MOUNT_X, y, PCB_TOP) for y in _mount_ys()]
 TIE_HY   = D.BRIDGE_AXLE_Y + D.BRIDGE_ARM_W / 2  # tie-bar half-span at the arms (54.25)
 MCU_Y    = -(SENSE_HL + END_KEEP + MCU_PKG[1] / 2)        # processor, first past the field
-USB_Y    = MCU_Y - MCU_PKG[1] / 2 - 3.0 - USB_PKG[1] / 2  # receptacle, outboard of it
+# The MCU->USB gap is set by the RETENTION SCREW that lands between them, not by routing:
+# the tail is the end a USB cable levers on, so it needs a hold-down, and the only clear
+# Y for one out here is between those two packages.
+TAIL_GAP = 8.0
+USB_Y    = MCU_Y - MCU_PKG[1] / 2 - TAIL_GAP - USB_PKG[1] / 2
+TAIL_MOUNT_Y = (MCU_Y - MCU_PKG[1] / 2 + USB_Y + USB_PKG[1] / 2) / 2
 PCB_YP   = SENSE_HL + END_KEEP                            # +Y end
 PCB_YM   = USB_Y - USB_PKG[1] / 2 - 1.0                   # -Y end, just past the connector
 PCB_L    = PCB_YP - PCB_YM
@@ -200,6 +235,10 @@ def opt_pcb() -> cq.Workplane:
 
     pcb = pcb.union(_part(MCU_PKG, PCB_CX, MCU_Y, PCB_BOT))   # -Y tail, same face
     pcb = pcb.union(_part(USB_PKG, PCB_CX, USB_Y, PCB_BOT))   # outboard of it, faces -Y
+
+    for mx, my, _ in mount_points():                          # M2 clearance holes
+        pcb = pcb.cut(box_at(M2.shaft_clr_d, M2.shaft_clr_d, PCB_T + 2,
+                             x=mx, y=my, z=PCB_BOT + PCB_T / 2))
     return pcb
 
 
