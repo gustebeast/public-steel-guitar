@@ -34,6 +34,7 @@ from . import optical_pickup as OP
 from .endplate_base import endplate_base
 from .screw_rail import screw_rail as _screw_rail, HEIGHT as _SR_H
 from .helpers import box_at, cyl, cyl_y
+from cadkit.fasteners import M2, cut_m2_anchor
 
 X0   = CH.X_BRIDGE                 # cap -X face / field<->cap boundary: the field stays
                                    #   OPEN -X of here (carriage sweep / strings / rods)
@@ -62,7 +63,20 @@ TIE_T   = TIE_Z - OP.SENSE_FACE_Z         # 5.2  -- thickness (underside at the 
 # linear in distance from a termination), so the bar reaches the strip rather than the
 # strip crowding the bridge. Cantilevered from the arms: 5 mm of PETG-GF over a ~17 mm
 # reach, ~8x margin against a palm leaning on it.
-TIE_X0 = OP.PCB_X1 - 2.0          # -X face: the strip's own -X edge + a margin
+# -X face FLUSH with the strip's own -X edge (user): no endplate material may reach
+# further -X than the PCB -- the board itself is the furthest anything goes into the
+# playing area. That also means the board cannot be trapped by an -X lip, which is why
+# retention is screws from below into MOUNT_BOSSES (see below), not a captive pocket.
+TIE_X0 = OP.PCB_X1                # -X face, flush with the board edge
+# Anchor room for those screws. Above the board the bar has only TIE_CAP of material,
+# well under M2's anchor_min_wall (insert pocket + a real bite), so each screw gets a
+# BOSS grown UPWARD off the bar top -- away from the strings and the player, the one
+# direction here that is free. (cadkit's cut_boss_anchor grows the boss BACKWARDS toward
+# the screw, which would push it down into the string space, so the boss is unioned by
+# hand and a plain cut_m2_anchor put in it.)
+MOUNT_DEPTH = M2.anchor_min_wall          # 5.5 -- pocket + min_bite, no deviation
+MOUNT_TOP_Z = OP.PCB_TOP + MOUNT_DEPTH    # boss top
+MOUNT_BOSS_D = M2.insert_pilot_d + 2 * M2.boss_wall
 # The bar also runs ASYMMETRICALLY in -Y, to the end of the strip's processor/USB tail.
 # Without this the tail hangs ~14 mm past the bar with the USB receptacle on it, and
 # every cable insertion flexes an unsupported piece of FR4 -- on the connector that
@@ -181,6 +195,15 @@ def _build() -> cq.Workplane:
     # board. The strip's sensor faces end flush with the tie-bar underside -- nothing
     # protrudes toward the strings, and the bar shades the detectors from above.
     body = body.cut(OP.opt_pcb_pocket())
+    # Retention: a boss up off the bar top per screw, then a standard M2 anchor down
+    # it. Mouth is the board's TOP face, so the screw comes from BELOW (the side the
+    # board loads from) and the insert pocket -- if those self-tapped threads ever
+    # strip -- opens downward into the board pocket, reachable with the board out.
+    for mp in OP.mount_points():
+        body = body.union(cyl(MOUNT_BOSS_D, MOUNT_TOP_Z - TIE_Z,
+                              z=TIE_Z).translate((mp[0], mp[1], 0)))
+    for mp in OP.mount_points():
+        body = cut_m2_anchor(body, mp, (0, 0, 1), depth=MOUNT_DEPTH)
     # FUSE IN the screw-support rail and bridge it to the cap at the bottom + tie it
     # up to the bearing arms at the edges — the whole bridge end becomes one solid
     # piece (screw support + bearing support + box closure) with continuous material.

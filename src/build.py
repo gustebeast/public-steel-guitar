@@ -413,17 +413,31 @@ def _stow_tail(i, rad):
 
 def _pickup_mount_components():
     from . import top_plate as TP
-    from cadkit.fasteners import (M4, screw as f_screw, insert as f_insert,
+    from cadkit.fasteners import (M2, M4, screw as f_screw, insert as f_insert,
                                   headed_screw, seated_insert)
     PICKUP_X = TP.PICKUP_X_NOM     # pickup centre in the shown pose (pocket centre)
     # pickup rests on the Z-plate, centred on the field (Y = PK_CTR_Y) for magnetic cover
     out = [("pickup", PM.pickup_demo().translate((PICKUP_X, TP.PK_CTR_Y, PM.PK_TOP))),
            ("pickup_zplate", TP.pickup_zplate)]
-    # OPTICAL per-string strip: its own thin bridge-most deck band carries it (see
-    # optical_pickup.py). Fab/purchased -> assembly only, no standalone STEP. Already
-    # at absolute X/Y/Z, so no translate.
+    # OPTICAL per-string strip: hangs from the bridge endplate's tie bar, firing DOWN
+    # (see optical_pickup.py). Fab/purchased -> assembly only, no standalone STEP.
+    # Already at absolute X/Y/Z, so no translate.
     from . import optical_pickup as OP
+    from . import bridge_endplate as BE
     out.append(("optical_pcb", OP.opt_pcb()))
+    # Retention: M2 UP from below, through the board, into the tie-bar bosses. No -X lip
+    # is allowed (the PCB is the furthest anything reaches into the playing area), so the
+    # screws are the whole retention. headed_screw draws head-top-at-0 / shank -Z, so it
+    # is flipped 180 about X: head under the board, shank running +Z into the anchor.
+    _opt_hh = 1.2                                   # button-head height
+    _opt_scr = (headed_screw(M2, BE.MOUNT_DEPTH + OP.PCB_T, head_d=3.8, head_h=_opt_hh,
+                             socket_af=1.5)
+                .rotate((0, 0, 0), (1, 0, 0), 180))
+    for _i, (_mx, _my, _mz) in enumerate(OP.mount_points()):
+        # after the flip the head sits at local z 0..head_h, so drop it by head_h to put
+        # the head UNDER the board (bearing on it) with the shank running up into the anchor
+        out.append((f"optical_screw_{_i}",
+                    _opt_scr.translate((_mx, _my, OP.PCB_BOT - _opt_hh))))
     # TOP-ACCESS height (user): THREE M4×20 BUTTON-HEAD LEADSCREW jacks (real headed cap screw,
     # cadkit headed_screw -> hex-socket drive visible in the head top). Each head is captured in a
     # counterbore in the solid deck (JACK_HEAD_Z shoulder); the shank threads down through a HEAT-
@@ -878,6 +892,7 @@ _COLORS = {
     "analog_frontend": (0.20, 0.45, 0.40),   # bridge-end buffer + relay board
     "optical_pcb":     (0.12, 0.30, 0.55),   # per-string optical strip (blue solder mask,
                                              # so it reads apart from the green audio PCBs)
+    "optical_screw":   (0.72, 0.74, 0.78),   # M2 retention, up from below into the tie bar
     "top_plate":       (0.88, 0.91, 0.94),   # transparent-PCTG deck base + fret lines
     "top_plate_color": (0.30, 0.33, 0.38),   # colour-PCTG deck layer (skin contact)
     "oled":            (0.05, 0.05, 0.08),   # screen (perfect-black OLED)
