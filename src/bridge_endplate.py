@@ -30,6 +30,7 @@ import cadquery as cq
 from . import dimensions as D
 from . import chassis as CH
 from . import top_plate as TP
+from . import optical_pickup as OP
 from .endplate_base import endplate_base
 from .screw_rail import screw_rail as _screw_rail, HEIGHT as _SR_H
 from .helpers import box_at, cyl, cyl_y
@@ -49,7 +50,19 @@ XLO  = D.BRIDGE_BASE_X0            # -X inboard face (-16.5), 12.5 -X of the axl
 X1   = XHI                         # +X tip (8.5) -- alias for the mechanism references
 ARM_X = XLO                        # arms span the FULL 25 mm block: symmetric edge webs
 ARM_W = D.BRIDGE_ARM_W             # arm / edge-web thickness (Y) — kept clear of the +Y rail
-TIE_Z = D.STRING_Z + 6.0          # tie bar / arm top, clear above the strings
+# Tie bar / arm top. The bar now POCKETS the optical strip (optical_pickup.py) in its
+# underside, so it is sized from that stack rather than from a round number: its
+# UNDERSIDE meets the strip's sensor faces (so the bar shades the detectors and nothing
+# protrudes toward the strings) and its TOP clears the strip's top-side MCU by TIE_CAP.
+TIE_CAP = 2.5                     # structure over the strip's tallest top-side part
+TIE_Z   = OP.STACK_TOP_Z + TIE_CAP        # 25.9 -- tie bar / arm top
+TIE_T   = TIE_Z - OP.SENSE_FACE_Z         # 6.9  -- thickness (underside at the sensor faces)
+# The bar EXTENDS -X past the endplate block to carry the optical strip out to its
+# sensing station. Farther from the string termination = MORE signal (displacement is
+# linear in distance from a termination), so the bar reaches the strip rather than the
+# strip crowding the bridge. Cantilevered from the arms: 5 mm of PETG-GF over a ~17 mm
+# reach, ~8x margin against a palm leaning on it.
+TIE_X0 = OP.PCB_X1 - 2.0          # -X face: the strip's own -X edge + a margin
 AXLE_BORE = D.BRIDGE_AXLE_D + 0.4
 
 # Guide-rod LEDGES: two shallow bars protruding −X from the cap face below the
@@ -150,9 +163,16 @@ def _build() -> cq.Workplane:
     body = _cap()
     for sy in (-D.BRIDGE_AXLE_Y, D.BRIDGE_AXLE_Y):
         body = body.union(_arm(sy))
-    # tie bar linking the arm tops above the strings (full depth → +X tip)
-    body = body.union(box_at(X1 - ARM_X, 2 * D.BRIDGE_AXLE_Y + ARM_W, 5.0,
-                             x=(X1 + ARM_X) / 2, y=0, z=TIE_Z - 2.5))
+    # Tie bar linking the arm tops above the strings. Runs from the +X tip out to
+    # TIE_X0 -- past the endplate block -- so its underside can carry the DOWN-FIRING
+    # optical strip at OP.SENSE_X, ~20 mm off the string termination.
+    body = body.union(box_at(X1 - TIE_X0, 2 * D.BRIDGE_AXLE_Y + ARM_W, TIE_T,
+                             x=(X1 + TIE_X0) / 2, y=0, z=TIE_Z - TIE_T / 2))
+    # Pocket for the strip, opening DOWNWARD: board envelope + the full component
+    # depth beneath it. Cut from the strip's own solid, so the pocket is always the
+    # board. The strip's sensor faces end flush with the tie-bar underside -- nothing
+    # protrudes toward the strings, and the bar shades the detectors from above.
+    body = body.cut(OP.opt_pcb_pocket())
     # FUSE IN the screw-support rail and bridge it to the cap at the bottom + tie it
     # up to the bearing arms at the edges — the whole bridge end becomes one solid
     # piece (screw support + bearing support + box closure) with continuous material.
