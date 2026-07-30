@@ -76,10 +76,21 @@ PD_DY    = 2.0                    # photodiode offset either side of the string 
 LED_PKG  = (1.25, 2.0, 1.1)       # 0805 IR emitter: X, Y, Z
 PD_PKG   = (0.8, 1.6, 0.8)        # 0603 photodiode: X, Y, Z
 
-# ── processor + IO, in the Y end room beyond the outer strings ───────────────
+# ── processor + IO, in the Y end room BEYOND the outer strings ───────────────
+# Placed by measuring OUT from the outer string's detector, never IN from the PCB
+# end -- measuring from the end is what put the CAN transceiver exactly on string 10
+# in the first cut of this part. END_KEEP is that guard band.
+#
+# NO CAN transceiver and NO XH header: the strip's only consumer over the wire is the
+# Pi (USB MIDI, class-compliant, no driver). Calibration f0 reaches the Teensy -- which
+# owns the position->pitch map -- via the Pi over the EXISTING Teensy<->Pi link
+# (wire_link), so the strip needs one USB connector and nothing else. That deletes two
+# parts, frees the -Y end room a 12.4 mm XH header could not fit, and keeps the board
+# 10 mm wide.
 MCU_PKG  = (5.0, 5.0, 0.9)        # UFQFPN32 (STM32G4 class) -- fits the 10 mm strip
-XCVR_PKG = (4.0, 5.0, 1.5)        # SO-8 CAN transceiver (TJA1051)
-CONN_PKG = (7.5, 12.4, 7.0)       # B4B-XH-A header (see cadkit.pcb.jst_xh_header dims)
+USB_PKG  = (7.5, 5.5, 2.6)        # micro-B SMT receptacle; 2.6 tall stays well under
+                                  # the strings (they are 5.0 above the board face)
+END_KEEP = 4.0                    # clear space between the outer detector and any part
 
 
 def string_y_at(i: int, x: float) -> float:
@@ -94,11 +105,13 @@ OPT_X0 = D.BRIDGE_BASE_X0                 # -16.5
 OPT_X1 = OPT_X0 - OPT_BAND_W              # -28.5
 OPT_CTR_X = (OPT_X0 + OPT_X1) / 2         # -22.5 -- the sensing station
 
-# Y extent: outer strings at THIS x, + the detector offset, + end room for MCU/IO.
-_OUTER_Y = string_y_at(0, OPT_CTR_X)      # ~+42.2 (string 1, +Y edge)
-END_ROOM = 10.0                            # MCU one end, connector the other
-PCB_HL   = _OUTER_Y + PD_DY + END_ROOM     # PCB half-length in Y
-PCB_L    = 2 * PCB_HL                      # ~108.4
+# Y extent, built OUTWARD from the sensing field so nothing can land on a string:
+#   outer string -> its detector (PD_DY) -> guard band (END_KEEP) -> the parts.
+_OUTER_Y  = max(abs(string_y_at(i, OPT_CTR_X)) for i in range(D.N_STRINGS))  # ~42.25
+SENSE_HL  = _OUTER_Y + PD_DY               # ~44.25 -- last sensor Y; NOTHING else inside
+PART_Y    = SENSE_HL + END_KEEP            # ~48.25 -- centre line for MCU / USB
+PCB_HL    = PART_Y + 5.0                   # ~53.25 -- half-length, covers the parts
+PCB_L     = 2 * PCB_HL                     # ~106.5
 
 
 def _part(pkg, x, y, z_bot):
@@ -120,11 +133,28 @@ def opt_pcb() -> cq.Workplane:
         for s in (1, -1):
             pcb = pcb.union(_part(PD_PKG, OPT_CTR_X, sy + s * PD_DY, PCB_TOP))
 
-    # processor at the +Y end, IO at the -Y end -- both outside the string field
-    pcb = pcb.union(_part(MCU_PKG, OPT_CTR_X, PCB_HL - 5.0, PCB_TOP))
-    pcb = pcb.union(_part(XCVR_PKG, OPT_CTR_X, -(PCB_HL - 12.0), PCB_TOP))
-    pcb = pcb.union(_part(CONN_PKG, OPT_CTR_X, -(PCB_HL - 5.0), PCB_TOP))
+    # processor at the +Y end, USB at the -Y end -- both OUTSIDE the sensing field,
+    # placed at +/-PART_Y (measured out from the last detector), never in from the end
+    pcb = pcb.union(_part(MCU_PKG, OPT_CTR_X, PART_Y, PCB_TOP))
+    pcb = pcb.union(_part(USB_PKG, OPT_CTR_X, -PART_Y, PCB_TOP))
     return pcb
+
+
+def _assert_field_clear():
+    """Guard the bug this part shipped with once: a processor/IO package placed by
+    measuring IN from the PCB end landed exactly on string 10's sensor triplet. The
+    assembly overlap gate CANNOT catch it -- board and components are one unioned
+    solid, and a pairwise checker never tests a solid against itself. So assert it
+    here, at import, where it is cheap and unmissable."""
+    for name, pkg in (("MCU", MCU_PKG), ("USB", USB_PKG)):
+        near = PART_Y - pkg[1] / 2
+        if near < SENSE_HL:
+            raise AssertionError(
+                f"optical strip: {name} reaches Y={near:.2f}, inside the sensing "
+                f"field edge {SENSE_HL:.2f} -- it would sit on a string's sensors")
+
+
+_assert_field_clear()
 
 
 def opt_pcb_outline() -> cq.Workplane:
