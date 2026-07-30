@@ -143,7 +143,12 @@ HOUS_HW = HOUS_HW_P                 # the sensor-side alias the Y stack reads
 # intersects nothing — it took a bounding-box check.
 HOUS_Z1 = (vplace(KL._hs_pocket(KL.HS_YC, -20.0, KL.HS_BACK_X)).val()
            .BoundingBox().zmax + KL.HS_HOUS_WALL)
-HOUS_Z0 = -(HUB_D / 2 + KL.HS_CLR + KL.HS_HOUS_WALL)    # under the hub / the arm at rest
+# -Z is the deeper of two demands: clearing the hub/arm at rest, and giving the
+# SENSOR BOARD its floor. The board is one fixed design (user) and goes in TURNED
+# OVER here, so its bottom edge lands at -PCB_Z1; the cradle floor wants CR_FLOOR_T
+# under that. The hub alone would allow -7.80, which left the floor 0.8 thick.
+HOUS_Z0 = min(-(HUB_D / 2 + KL.HS_CLR + KL.HS_HOUS_WALL),
+              -KL.PCB_Z1 - KL.CR_FLOOR_T)               # -9.80
 AXLE_DROP = HOUS_Z1 - KL.HOUS_Z1    # how much lower the axle sits than LKL's (+11.0..15.2)
 
 # ── mount tenons: slide along LOCAL X (see the docstring) ────────────────────
@@ -234,7 +239,7 @@ def _housing() -> cq.Workplane:
     # (user: draw it once and reuse it). Everything about the sensor stack is
     # identical between the levers except how tall the board is, and that falls
     # out of z_bot/z_top.
-    w = KL._cradle(w, HOUS_Z0, HOUS_Z1)
+    w = KL._cradle(w, HOUS_Z0, HOUS_Z1, x_max=HOUS_X1)
     w = heal(w)
     # ...then the two female back-stop threads LAST and ALONE (thread rules)
     from cadkit.threads import threaded_rod
@@ -263,6 +268,9 @@ def demo_parts():
         out.append((f"kv_bearing_{i}", KL._bearing().translate((0, by, 0))))
     out.append(("kv_magnet", cyl_y(KL.MAG_D, KL.MAG_T, y0=KL.MAG_Y0)))
     out += KL.sensor_parts(HOUS_Z0, HOUS_Z1, prefix="kv")
+    _sh = KL.pcb_shim(HOUS_Z0, HOUS_Z1)
+    if _sh is not None:
+        out.append(("kv_pcb_shim", _sh))
     for nm, off in (("main", KL.CART_MAIN_OFFSET), ("half_stop", KL.CART_HALFSTOP_OFFSET)):
         out.append((f"kv_{nm}_cart_base", vplace(KL.cart_base.translate(off))))
         out.append((f"kv_{nm}_cart_piston", vplace(KL.cart_piston.translate(off))))
@@ -299,3 +307,32 @@ MOUNT_POSE = (MOUNT_X, MOUNT_Y, MOUNT_Z)
 def place(s):
     """Local frame -> guitar frame."""
     return s.rotate((0, 0, 0), (0, 0, 1), -90).translate(MOUNT_POSE)
+
+
+# ── the boards must be ONE design (user) ────────────────────────────────────
+def _assert_one_board():
+    """Both levers must put the SAME board in — installed differently, drawn the
+    same. They already share sensor_board(), so this is a guard against a future
+    round quietly re-parameterising the outline for one of them: it compares the
+    solids that actually reach the assembly, by volume and by sorted bounding-box
+    dimensions, which a pure rotation leaves untouched and any redraw would not."""
+    a = dict(KL.demo_parts())["kl_pcb"]
+    b = dict(demo_parts())["kv_pcb"]
+    for nm, s in (("kl", a), ("kv", b)):
+        if len(s.val().Solids()) != 1:
+            raise AssertionError(f"{nm}_pcb is not one solid")
+    va = sum(x.Volume() for x in a.val().Solids())
+    vb = sum(x.Volume() for x in b.val().Solids())
+    if abs(va - vb) > 1e-6:
+        raise AssertionError(f"the two levers draw DIFFERENT boards: {va:.3f} vs {vb:.3f} mm3")
+    da = sorted(round(v, 6) for v in (a.val().BoundingBox().xlen,
+                                      a.val().BoundingBox().ylen,
+                                      a.val().BoundingBox().zlen))
+    db = sorted(round(v, 6) for v in (b.val().BoundingBox().xlen,
+                                      b.val().BoundingBox().ylen,
+                                      b.val().BoundingBox().zlen))
+    if da != db:
+        raise AssertionError(f"the two levers draw DIFFERENT boards: {da} vs {db}")
+
+
+_assert_one_board()

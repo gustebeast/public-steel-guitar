@@ -852,6 +852,7 @@ _COLORS = {
     "kv_pcb":          (0.05, 0.35, 0.15),   # LKV MT6701 board (green, as LKL)
     "kv_chip":         (0.12, 0.12, 0.14),   # LKV MT6701 package (black)
     "kv_can_header":   (0.95, 0.95, 0.90),   # LKV S4B-XH-SM4-TB + mated XHP-4
+    "kv_pcb_shim":     (0.75, 0.75, 0.78),   # LKV board shim (printed, takes up the slack)
     # feel parts (unified: two identical spring cartridges, main -Y + half-stop +Y)
     "main_spring":                        (0.55, 0.20, 0.75),
     "half_stop_spring":                   (0.75, 0.45, 0.88),
