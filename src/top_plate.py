@@ -41,6 +41,7 @@ from . import dimensions as D
 from . import chassis as CH
 from . import electronics as EL
 from . import pickup_mount as PM
+from . import optical_pickup as OP
 from .helpers import box_at, cyl, cyl_y, heal
 from cadkit.fasteners import M4, cut_m4_boss, cut_insert_bore
 
@@ -68,11 +69,21 @@ PX1 = CH.KH_RAIL_X                      # -X deck end: EP_TOP_CLR off the keyhea
                                         # (-610.6) -> the keyhead can slide in past it
 GAP = 0.05                              # assembly clearance between consecutive panels
 
+# ── OPTICAL pickup band: the bridge-most panel, ahead of the slot grid ───────
+# The per-string optical strip (optical_pickup.py) gets the deck's +X end -- the
+# closest to the changer any deck panel can sit -- and the 20 mm slot grid starts
+# AFTER it. The band is deliberately THIN (12, not a full 20 mm slot) because every
+# millimetre here is a millimetre the MAGNETIC pickup gives up on its own approach to
+# the changer: inserting it costs the magnetic piece 12.05 mm, not 20.05 mm.
+OPT_X0    = PX0                                   # -16.5, flush with the bridge endplate
+OPT_X1    = PX0 - OP.OPT_BAND_W                   # -28.5
+OPT_PITCH = OP.OPT_BAND_W + GAP                   # 12.05 -- what the grid shifts by
+
 # ── band slots at the bridge end ─────────────────────────────────────────────
 BAND_W   = 20.0                        # one slot (band material width)
 N_SLOTS  = 7                           # pickup-region slots
 PITCH    = BAND_W + GAP                # slot pitch = band + the gap after it
-SLOT_X   = [PX0 - i * PITCH for i in range(N_SLOTS + 1)]   # +X face of each slot
+SLOT_X   = [OPT_X1 - GAP - i * PITCH for i in range(N_SLOTS + 1)]   # +X face of each slot
 PIECE_SLOTS = 4                        # the pickup piece spans 4 slots (enlarged one slot so the
                                        # 38.6-wide Alumitone still has >= +/-10 continuous X slide)
 N_POS    = N_SLOTS - PIECE_SLOTS + 1   # = 5 coarse swap positions
@@ -89,9 +100,13 @@ REGION_X1 = SLOT_X[-1]                  # -X end of the band region (after the l
 
 # the two long panels behind the band region
 MID_X0 = REGION_X1                      # carries the UI (string-10 deck band)
-MID_X1 = MID_X0 - 226.0                # length picked so the mid/key seam lands in the CLEAR gap between
+MID_X1 = MID_X0 - (226.0 - OPT_PITCH)  # length picked so the mid/key seam lands in the CLEAR gap between
                                        #   the fret-9 pentagon marker and the fret-8 line (was 220 -> the
-                                       #   seam ran through the pentagon); both panels stay < 255 mm bed
+                                       #   seam ran through the pentagon); both panels stay < 255 mm bed.
+                                       #   SHORTENED by OPT_PITCH so that inserting the optical band (which
+                                       #   pushes the whole slot grid -X) leaves MID_X1 at the SAME absolute
+                                       #   X -- the tuned seam stays in its clear gap instead of sliding
+                                       #   12 mm onto the pentagon. The keyhead panel absorbs the change.
 KEY_X0 = MID_X1 - GAP                   # keyhead panel, sized so its -X face lands on PX1
 KEY_X1 = PX1
 
@@ -453,6 +468,39 @@ def _filler(slot):
     return _band(SLOT_X[slot], SLOT_X[slot] - BAND_W)
 
 
+def _optical_band():
+    """The bridge-most deck panel: a normal deck band, OPT_BAND_W wide, whose middle
+    is a full-length Y trough that carries the OPTICAL STRIP PCB.
+
+    The PCB sits ABOVE the deck surface (its sensor faces must reach OPT_GAP of the
+    strings, and the deck is 10 mm below them), so the band grows two support walls
+    that rise from the deck top to the board's underside. The board drops in from +Z
+    between them and rests on the shelf the walls form -- no fasteners, no jacks.
+
+    Height is FIXED by SHELF_Z (see optical_pickup.py for why adjustability was ruled
+    out: there is no room for a jack that doesn't widen the band or foul string 1).
+    The trough is cut from the PCB's own outline solid, so pocket and board cannot
+    drift apart."""
+    body = _deck_body(OPT_X0, OPT_X1)
+
+    # Raised sensor bar: solid from the deck top to the board's TOP face, spanning the
+    # full deck Y so it ties to both rails. The pocket cut below leaves material TZ ->
+    # SHELF_Z as the board's floor and the two flanking walls SHELF_Z -> PCB_TOP as its
+    # X location -- so the board is both supported and located by one printed feature.
+    body = body.union(box_at(OP.OPT_BAND_W, BY1 - BY0, OP.PCB_TOP - TZ,
+                             x=OP.OPT_CTR_X, y=(BY0 + BY1) / 2,
+                             z=(TZ + OP.PCB_TOP) / 2))
+    # the trough: PCB slot + the open channel above it, cut right through in +Z
+    slot = OP.opt_pcb_outline()
+    body = body.cut(slot)
+    body = body.cut(box_at(OP.PCB_W, OP.PCB_L, D.STRING_Z - OP.PCB_BOT,
+                           x=OP.OPT_CTR_X, z=(OP.PCB_BOT + D.STRING_Z) / 2))
+    # wire exit: notch the -Y wall end so the XH plug can leave along -Y
+    body = body.cut(box_at(OP.PCB_W + 2 * OP.WALL_T + 1.0, 14.0, OP.PCB_TOP - TZ,
+                           x=OP.OPT_CTR_X, y=BY0 + 7.0, z=(TZ + OP.PCB_TOP) / 2))
+    return body
+
+
 pickup_zplate = heal(_pickup_zplate())
 
 # every panel becomes a (base, colour) print pair. The pickup piece keeps a
@@ -460,6 +508,7 @@ pickup_zplate = heal(_pickup_zplate())
 # other panel carries the lines. Fret lines are at absolute X, so a filler only
 # fits its own slot; print the set, install the ones the piece doesn't cover.
 # SHOWN config: piece in slots [0..3), fillers in slots [3..7).
+_opt_pair     = _split(_optical_band(), OPT_X0, OPT_X1, lines=False)
 _piece_pair   = _split(_pickup_piece(), PIECE_X0, PIECE_X1, lines=False)
 _filler_pairs = [_split(_filler(i), SLOT_X[i], SLOT_X[i] - BAND_W)
                  for i in range(N_SLOTS)]
@@ -470,7 +519,7 @@ _key_pair     = _split(_band(KEY_X0, KEY_X1), KEY_X0, KEY_X1)
 # and exports base + colour side by side (top_plate_N + top_plate_N_color). The
 # fillers under the piece are exported as parts but not placed (they'd clash).
 _shown_pairs = [_filler_pairs[i] for i in range(PIECE_SHOWN + PIECE_SLOTS, N_SLOTS)]
-_seg_pairs   = [_piece_pair, *_shown_pairs, _mid_pair, _key_pair]
+_seg_pairs   = [_opt_pair, _piece_pair, *_shown_pairs, _mid_pair, _key_pair]
 segments        = [b for b, _ in _seg_pairs]
 segments_color  = [c for _, c in _seg_pairs]
 _spare_pairs = [_filler_pairs[i] for i in range(PIECE_SHOWN, PIECE_SHOWN + PIECE_SLOTS)]
