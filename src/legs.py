@@ -666,7 +666,12 @@ SH_H       = SH_Y + 14.0               # 31.8: slider octagon height (roof -14)
 CVR_RAIL_X = 17.0     # rail centres ±x: slot spans 14.4..19.6 dilated — 7.2
                       # web to the groove's lip band, 2.4 outer ±X skin
 CVR_RAIL_W = 5.0      # rail octagon flat-to-flat (cadkit h_min 4.95 at n0.8)
-CVR_RAIL_H = 5.0      # rail octagon height: slot floor y 12.9 dilated
+from cadkit.joinery import octagon_height as _octagon_height
+CVR_RAIL_H = _octagon_height(CVR_RAIL_W, 0.8)   # ASK cadkit, don't hand-write it: the
+#   octagon's height is not free — 45° diagonals plus two-nozzle verticals set a floor
+#   per width, and this was a hard 5.0 until cadkit raised the verticals to the
+#   two-bead quality tier and started REJECTING it (min for W5 is 6.591). Deriving it
+#   means the next tightening moves the groove instead of breaking the build.
 CVR_TNG_L  = 28.0     # cover tongue engagement (= SEC_TEN_L; 0.4 tip gap in
                       # the segment's 28.4 socket = the cover's up-play)
 BLK_W      = 2 * SH_Y # 35.6: the shaft terminal blocks' square (user: the
