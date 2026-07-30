@@ -419,6 +419,11 @@ def _pickup_mount_components():
     # pickup rests on the Z-plate, centred on the field (Y = PK_CTR_Y) for magnetic cover
     out = [("pickup", PM.pickup_demo().translate((PICKUP_X, TP.PK_CTR_Y, PM.PK_TOP))),
            ("pickup_zplate", TP.pickup_zplate)]
+    # OPTICAL per-string strip: its own thin bridge-most deck band carries it (see
+    # optical_pickup.py). Fab/purchased -> assembly only, no standalone STEP. Already
+    # at absolute X/Y/Z, so no translate.
+    from . import optical_pickup as OP
+    out.append(("optical_pcb", OP.opt_pcb()))
     # TOP-ACCESS height (user): THREE M4×20 BUTTON-HEAD LEADSCREW jacks (real headed cap screw,
     # cadkit headed_screw -> hex-socket drive visible in the head top). Each head is captured in a
     # counterbore in the solid deck (JACK_HEAD_Z shoulder); the shank threads down through a HEAT-
@@ -867,6 +872,8 @@ _COLORS = {
     "tee_pcb":         (0.10, 0.42, 0.18),   # trunk-and-drop bus tee PCBs
     "tee_cradle":      (0.32, 0.55, 0.42),   # PCTG 3-wall drop-in PCB cradle (pcb_cradle)
     "analog_frontend": (0.20, 0.45, 0.40),   # bridge-end buffer + relay board
+    "optical_pcb":     (0.12, 0.30, 0.55),   # per-string optical strip (blue solder mask,
+                                             # so it reads apart from the green audio PCBs)
     "top_plate":       (0.88, 0.91, 0.94),   # transparent-PCTG deck base + fret lines
     "top_plate_color": (0.30, 0.33, 0.38),   # colour-PCTG deck layer (skin contact)
     "oled":            (0.05, 0.05, 0.08),   # screen (perfect-black OLED)
