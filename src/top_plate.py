@@ -331,14 +331,26 @@ def _fret_solids(x0, x1):
     return out
 
 
-def _split(panel, xa, xb, lines=True):
+def _split(panel, xa, xb, lines=True, top_z=None):
     """Split a finished panel at the colour line (z = TZ-FRET_T) → (base, colour).
+
+    `top_z` is the TOP of the colour region; it defaults to TZ, the deck surface, which
+    is right for every panel whose top IS the deck. A panel that rises ABOVE the deck --
+    the optical band's raised sensor bar, which tops out at OP.PCB_TOP -- must pass its
+    own top, or the colour line lands INSIDE the raised material and the cap prints
+    transparent: transparent -> colour -> transparent, which reads badly because the deck
+    panels are visible from the SIDE of the instrument. Passing the real top instead runs
+    the colour from the normal deck colour line all the way up (transparent -> colour ->
+    colour), so the side profile still shows the same transparent base as its neighbours.
+
     BASE (transparent PCTG) keeps everything below, plus the embossed fret solids
     trimmed to the panel (openings/windows interrupt the lines automatically);
     COLOUR (colour PCTG) is the top band minus those solids. Exact complements with a
     flush top at TZ — the deck datum doesn't move. Print the pair as one object."""
-    slab = box_at(xa - xb + 2.0, BY1 - BY0 + 2.0, FRET_T,
-                  x=(xa + xb) / 2, y=(BY0 + BY1) / 2, z=TZ - FRET_T / 2)
+    ztop = TZ if top_z is None else top_z
+    zbot = TZ - FRET_T                                  # colour line: same on every panel
+    slab = box_at(xa - xb + 2.0, BY1 - BY0 + 2.0, ztop - zbot,
+                  x=(xa + xb) / 2, y=(BY0 + BY1) / 2, z=(zbot + ztop) / 2)
     frets = _fret_solids(xa, xb) if lines else None
     base, colour = panel.cut(slab), panel.intersect(slab)
     if frets is not None:
@@ -508,7 +520,7 @@ pickup_zplate = heal(_pickup_zplate())
 # other panel carries the lines. Fret lines are at absolute X, so a filler only
 # fits its own slot; print the set, install the ones the piece doesn't cover.
 # SHOWN config: piece in slots [0..3), fillers in slots [3..7).
-_opt_pair     = _split(_optical_band(), OPT_X0, OPT_X1, lines=False)
+_opt_pair     = _split(_optical_band(), OPT_X0, OPT_X1, lines=False, top_z=OP.PCB_TOP)
 _piece_pair   = _split(_pickup_piece(), PIECE_X0, PIECE_X1, lines=False)
 _filler_pairs = [_split(_filler(i), SLOT_X[i], SLOT_X[i] - BAND_W)
                  for i in range(N_SLOTS)]
