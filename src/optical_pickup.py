@@ -68,9 +68,22 @@ from .helpers import box_at
 # BRIDGE_X (which is the ball-end anchor, past the bearing). Distances that matter to
 # the physics are measured from here.
 TERMINATION_X = D.BRIDGE_AXLE_X                  # -4.0
-SENSE_D       = 20.0                             # sensing station, out from the termination
-SENSE_X       = TERMINATION_X - SENSE_D          # -24.0
-STIFF_FLOOR   = 12.0                             # do not sense closer than this (see docstring)
+# Pushed as far +X (toward the termination) as the physics tolerates, on purpose: this is
+# the ONE variable that buys back tie-bar overhang, and every millimetre of SENSE_D is a
+# millimetre of bar cantilevered over the player. At 12 the bar reaches -20, only 3.4 past
+# the endplate block's own -16.6 face -- versus 11.4 at the earlier, arbitrary 20.
+# The cost is real and linear: 0.60x the signal of a 20 mm station. Revisit with the
+# prototype's measured SNR margin, not by argument -- SENSE_D is the only edit needed,
+# PCB_X1 and the endplate's TIE_X0 both derive from it.
+SENSE_D       = 12.0                             # sensing station, out from the termination
+SENSE_X       = TERMINATION_X - SENSE_D          # -16.0
+# Floor, from the string's bending-stiffness length sqrt(EI/T): ~1.2 mm for the plain
+# .015 core at ~120 N, ~1.7 mm for the wound .070 (core ~.018) at ~150 N. The boundary
+# layer where the string stops following the ideal mode shape -- and the effective
+# termination point turns frequency-dependent, which would put inharmonicity straight
+# into a PITCH measurement -- runs a few multiples of that, so 5-10 mm. 10 is the
+# pessimistic end of that estimate; SENSE_D keeps ~20% over it.
+STIFF_FLOOR   = 10.0
 
 OPT_GAP = 3.0                                    # sensor face -> string TOP (down-firing)
 PCB_T   = 1.6                                    # FR4
