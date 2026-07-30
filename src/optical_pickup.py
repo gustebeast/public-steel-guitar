@@ -172,32 +172,31 @@ RELIEF_X1 = PCB_X1 - 8.0                         # overshoot, to break out past 
 
 # ── RETENTION ────────────────────────────────────────────────────────────────
 # Constraint (user): NO endplate material may sit -X of the PCB -- the board itself is
-# the furthest anything reaches into the playing area. So the board cannot be trapped by
-# an -X lip, and retention has to come entirely from ABOVE and +X.
-# Answer: M2 screws entering from BELOW (the side the board is inserted from), up through
-# clearance holes in the board, into anchors in the tie bar. Screws sit at MOUNT_X, well
-# +X of the sensor row, so they are nowhere near the optical path; their heads hang below
-# the board but stay above the strings, like the sensors do.
-MOUNT_X  = SENSE_X + 10.0                        # -6.0: +X of the row, on the board
-MOUNT_DY = 3.0                                   # head/boss clearance wanted from a string
-
-
-def _mount_ys():
-    """Screw Y positions: two just outside the string field, one mid-field in the gap
-    between strings 5 and 6, one in the tail to hold the connector end down (that is the
-    end a USB cable levers on). Mid-field is safe because everything the screw adds in Z
-    -- boss above the bar, head below the board -- clears the strings anyway; the gap
-    check is belt-and-braces so a future gauge/pitch change cannot quietly land a screw
-    on a string."""
-    mid = (string_y_at(4, MOUNT_X) + string_y_at(5, MOUNT_X)) / 2
-    return [SENSE_HL + 1.5, mid, -(SENSE_HL + 1.5), TAIL_MOUNT_Y]
+# the furthest anything reaches into the playing area.
+#
+# So the board is a SLIDE-IN: it enters along -X->+X through the one open face, into a
+# slot whose FLOOR (see opt_pcb_pocket) carries it in -Z and sets the sensor standoff,
+# whose CEILING caps it in +Z, and whose end/+X walls locate it in Y and +X. Every
+# degree of freedom is then closed except sliding back out -X -- so retention is ONE
+# screw, not four. Earlier revisions used four only because the pocket had no floor and
+# the screws were holding the board UP; giving it a floor is strictly better, because a
+# printed ledge sets the standoff far more repeatably than screw clamping does.
+MOUNT_X = SENSE_X + 10.0                         # -6.0: +X of the row, off the optical path
 
 
 def mount_points():
-    """(x, y, z) anchor mouths, on the board's TOP face -- the screw travels +Z from
-    below and the pocket (if an insert is ever needed) opens downward into the pocket
-    the board sits in, reachable with the board out."""
-    return [(MOUNT_X, y, PCB_TOP) for y in _mount_ys()]
+    """The single retention screw: mid-span, in the string 5/6 gap. (x, y, z) is the
+    anchor mouth on the board's TOP face -- the screw travels +Z from below, and the
+    insert pocket, if those self-tapped threads ever strip, opens downward into the board
+    slot where an iron can reach it with the board out.
+
+    Mid-span rather than at an end so it also damps the board against the strings'
+    vibration; the ends are already held in Y and -Z by the slot itself. Landing it in
+    the string gap is belt-and-braces -- the boss is above the bar and the head below the
+    board, both clear of the strings in Z regardless -- but it keeps a future gauge or
+    pitch change from quietly putting a screw over a string."""
+    mid = (string_y_at(4, MOUNT_X) + string_y_at(5, MOUNT_X)) / 2
+    return [(MOUNT_X, mid, PCB_TOP)]
 TIE_HY   = D.BRIDGE_AXLE_Y + D.BRIDGE_ARM_W / 2  # tie-bar half-span at the arms (54.25)
 MCU_Y    = -(SENSE_HL + END_KEEP + MCU_PKG[1] / 2)        # processor, first past the field
 # The MCU->USB gap is set by the RETENTION SCREW that lands between them, not by routing:
@@ -206,8 +205,14 @@ MCU_Y    = -(SENSE_HL + END_KEEP + MCU_PKG[1] / 2)        # processor, first pas
 TAIL_GAP = 8.0
 USB_Y    = MCU_Y - MCU_PKG[1] / 2 - TAIL_GAP - USB_PKG[1] / 2
 TAIL_MOUNT_Y = (MCU_Y - MCU_PKG[1] / 2 + USB_Y + USB_PKG[1] / 2) / 2
-PCB_YP   = SENSE_HL + END_KEEP                            # +Y end
-PCB_YM   = USB_Y - USB_PKG[1] / 2 - 1.0                   # -Y end, just past the connector
+# FLOOR LEDGES (user): the slot's floor exists ONLY at the two Y ends -- just enough to
+# carry the board and set its standoff -- so the entire underside between them stays free
+# for sensors, processor, connector and routing. The board is sized to overhang each
+# ledge by FLOOR_L.
+FLOOR_L    = 5.0
+LEDGE_KEEP = 1.5                                          # ledge inner edge -> nearest package
+PCB_YP     = SENSE_HL + END_KEEP + FLOOR_L                # +Y end, incl. its ledge
+PCB_YM     = USB_Y - USB_PKG[1] / 2 - LEDGE_KEEP - FLOOR_L  # -Y end, incl. its ledge
 PCB_L    = PCB_YP - PCB_YM
 PCB_CY   = (PCB_YP + PCB_YM) / 2
 
@@ -248,19 +253,23 @@ def opt_pcb_pocket() -> cq.Workplane:
     always exactly the board. It runs down to STACK_BOT_Z, below the bar's underside, so
     the deeper tail packages simply break through into open air at Y < -44 -- which is
     what leaves the USB receptacle reachable by a cable."""
-    clr = 0.3
-    pocket = box_at(PCB_W + 2 * clr, PCB_L + 2 * clr, PCB_TOP - STACK_BOT_Z,
-                    x=PCB_CX, y=PCB_CY, z=(STACK_BOT_Z + PCB_TOP) / 2)
-    # ... plus the optical relief (see RELIEF_* above): carry the pocket's -X side out
-    # past the tie bar over the sensing field, so no plastic faces the emitters. The bar
-    # keeps its full section everywhere else, and the material ABOVE the board (PCB_TOP
-    # up to TIE_Z) still bridges across -- the relief only opens the underside, which is
-    # the side the optics look out of.
-    relief_x0 = PCB_X1 + clr
-    pocket = pocket.union(box_at(relief_x0 - RELIEF_X1, 2 * RELIEF_HY,
-                                 PCB_TOP - STACK_BOT_Z,
-                                 x=(relief_x0 + RELIEF_X1) / 2, y=0.0,
-                                 z=(STACK_BOT_Z + PCB_TOP) / 2))
+    clr, zclr = 0.3, 0.2
+    # (a) THE SLOT -- board thickness, with the Z clearance ABOVE so the FLOOR stays the
+    # datum: the board rests on the ledges, which makes the sensor standoff a printed
+    # dimension rather than something a screw has to hold. The board SLIDES IN along
+    # -X -> +X through the one open face.
+    pocket = box_at(PCB_W + 2 * clr, PCB_L + 2 * clr, (PCB_TOP + zclr) - PCB_BOT,
+                    x=PCB_CX, y=PCB_CY, z=(PCB_BOT + PCB_TOP + zclr) / 2)
+
+    # (b) EVERYTHING UNDER THE BOARD EXCEPT THE TWO END LEDGES -- cut full depth, so the
+    # whole middle of the underside is free for sensors, processor, connector and
+    # routing. Carried out past the tie bar's -X face as well, so no plastic faces the
+    # emitters (the stray emitter->wall->detector path; see RELIEF_* above).
+    dy1, dy0 = PCB_YP - FLOOR_L, PCB_YM + FLOOR_L
+    x0 = PCB_X0 + clr
+    pocket = pocket.union(box_at(x0 - RELIEF_X1, dy1 - dy0, PCB_BOT - STACK_BOT_Z,
+                                 x=(x0 + RELIEF_X1) / 2, y=(dy0 + dy1) / 2,
+                                 z=(STACK_BOT_Z + PCB_BOT) / 2))
     return pocket
 
 
