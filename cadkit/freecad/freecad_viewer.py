@@ -205,49 +205,33 @@ def _reload_project(name):
         App.setActiveDocument(prev.Name)
 
 
-def _raise_window():
-    """Bring the hub window to the user. Only for launcher-initiated opens —
-    background polls must never steal focus."""
-    try:
-        mw = Gui.getMainWindow()
-        if mw.isMinimized():
-            mw.showNormal()
-        mw.raise_()
-        mw.activateWindow()
-    except Exception:
-        pass
-
-
 def _scan_inbox():
-    """Open any projects queued by later launcher calls (one file per request)."""
+    """Open any projects queued by later launcher calls (one file per request).
+
+    NEVER touches the window or the active tab. The hub used to be able to raise
+    itself and switch to the requested tab, which meant a background rebuild could
+    yank the user off whatever they were reading. That was narrowed once, to only
+    fire for launcher-initiated opens, and is now GONE entirely (user): opening a
+    tab and looking at a tab are separate things, and only the user does the
+    second. The setActiveDocument calls that remain in _open_project /
+    _reload_project are the opposite of this — they RESTORE the tab you were on
+    after FreeCAD moves you off it, and removing them would reintroduce exactly
+    the switching this deletes."""
     inbox = _hub["inbox"]
     if not inbox or not os.path.isdir(inbox):
         return
-    focused = None
     for f in sorted(glob.glob(os.path.join(inbox, "*.txt"))):
         try:
             # utf-8-sig so a BOM (e.g. from PowerShell Set-Content) is stripped.
-            step = open(f, encoding="utf-8-sig").read().strip()
+            step = (open(f, encoding="utf-8-sig").read().splitlines() or [""])[0].strip()
         except OSError:
             continue
         if step:
-            doc = _open_project(step)
-            if doc is not None:
-                focused = doc
+            _open_project(step)
         try:
             os.remove(f)            # processed (or already open) — drop the request
         except OSError:
             pass
-    if focused is not None:
-        # An inbox request is user-initiated (View Assembly.cmd or a build's
-        # show()): switch to that project's tab and bring the window forward —
-        # otherwise a double-click with FreeCAD in the background looks like
-        # a silent no-op.
-        try:
-            App.setActiveDocument(focused.Name)
-        except Exception:
-            pass
-        _raise_window()
 
 
 def _write_heartbeat():
