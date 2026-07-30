@@ -76,20 +76,27 @@ OPT_GAP = 3.0                                    # sensor face -> string TOP (do
 PCB_T   = 1.6                                    # FR4
 PCB_W   = 16.0                                   # X -- fits an LQFP64-class USB-HS MCU
 LED_H   = 1.1                                    # 0805 emitter height (sets the board underside)
-MCU_H   = 1.7                                    # LQFP64 height (sets the top of the stack)
+MCU_H   = 1.7                                    # LQFP64 height
+USB_H   = 2.6                                    # micro-B receptacle shell height
+# The sensor row sits near the board's -X EDGE, not on its centre line (user). The row's
+# X is fixed by the physics (SENSE_X); everything else about the board is free to sit +X
+# of it, toward the endplate that already exists. Centring the board on the sensors
+# instead pushed its -X edge -- and therefore the tie-bar extension carrying it -- 8 mm
+# further over the player for no reason.
+SENSE_EDGE = 3.0                                 # sensor row inset from the board's -X edge
 
-# Z stack, built DOWNWARD from the strings. The board is DOUBLE-SIDED, and which side
-# a part lives on is a real decision:
-#   BOTTOM (facing the strings) = the sensor triplets ONLY. Keeping it otherwise bare
-#     leaves the optical path clean -- no package near a detector to bounce stray IR.
-#   TOP (facing into the tie bar) = the MCU. A 12x12 LQFP in the Y end room made the
-#     board 123.6 long, 7.6 past each end of the tie bar; on the top face it costs no
-#     length at all. This is what lets a USB-HIGH-SPEED part fit, and therefore what
-#     keeps the per-string audio option open.
+# SINGLE-SIDED (user): every part on the BOTTOM face. The MCU went on the back for one
+# round to keep the board short, but there is plenty of room in -Y -- the -Y rail is out
+# at ~-128, so past the string field it is open deck -- so the processor moves THERE
+# instead. One populated side = one stencil, one reflow, no back-side placement.
+#
+# Z stack, built DOWNWARD from the strings. The LED sets the board height (its face must
+# land on SENSE_FACE_Z); taller packages therefore hang LOWER than the sensors. That is
+# fine because they all live at Y < -44, past string 10 -- checked in _assert_field_clear.
 SENSE_FACE_Z = D.STRING_Z + OPT_GAP              # 19.0 -- sensor faces look down
 PCB_BOT      = SENSE_FACE_Z + LED_H              # 20.1 -- board underside
-PCB_TOP      = PCB_BOT + PCB_T                   # 21.7 -- board top
-STACK_TOP_Z  = PCB_TOP + MCU_H                   # 23.4 -- top of the tallest top-side part
+PCB_TOP      = PCB_BOT + PCB_T                   # 21.7 -- board top; nothing above it now
+STACK_BOT_Z  = PCB_BOT - max(MCU_H, USB_H)       # 17.5 -- lowest package (the USB shell)
 
 # ── per-string sensor triplet ────────────────────────────────────────────────
 PD_DY   = 1.6                                    # detector offset either side of the string.
@@ -120,22 +127,25 @@ def string_y_at(i: int, x: float) -> float:
     return D.nut_y(i) + (D.string_y(i) - D.nut_y(i)) * t
 
 
+# X extent: the row sits SENSE_EDGE in from the -X edge, board runs +X from there.
+PCB_X1 = SENSE_X - SENSE_EDGE                    # -27.0 -- board's -X edge (sets the tie-bar reach)
+PCB_X0 = PCB_X1 + PCB_W                          # -11.0 -- +X edge, tucked under the endplate block
+PCB_CX = (PCB_X0 + PCB_X1) / 2
+
 # Y extent. ASYMMETRIC on purpose:
-#   +Y ends just past the outer string's detector -- nothing lives out there any more.
-#   -Y runs a TAIL past the tie bar's edge so the USB receptacle sits in OPEN AIR and a
-#     cable can actually be plugged in; buried under the bar it would be unreachable.
-#     -Y is also where the user wants the cable routed to the bay.
+#   +Y stops just past the outer string's detector -- nothing lives out there.
+#   -Y runs a TAIL carrying the processor and the USB receptacle, which faces -Y so a
+#     cable plugs in horizontally and routes to the bay (user). This is the "lots of room
+#     in -Y" the single-sided board spends instead of using its back face.
 _OUTER_Y = max(abs(string_y_at(i, SENSE_X)) for i in range(D.N_STRINGS))
 SENSE_HL = _OUTER_Y + PD_DY                      # last sensor Y; NOTHING else inside this
-TIE_HY   = D.BRIDGE_AXLE_Y + D.BRIDGE_ARM_W / 2  # tie-bar half-span (54.25)
-PCB_YP   = SENSE_HL + END_KEEP                   # +Y end
-PCB_YM   = -(TIE_HY + 4.0)                       # -Y end: clear of the bar, connector reachable
+TIE_HY   = D.BRIDGE_AXLE_Y + D.BRIDGE_ARM_W / 2  # tie-bar half-span at the arms (54.25)
+MCU_Y    = -(SENSE_HL + END_KEEP + MCU_PKG[1] / 2)        # processor, first past the field
+USB_Y    = MCU_Y - MCU_PKG[1] / 2 - 3.0 - USB_PKG[1] / 2  # receptacle, outboard of it
+PCB_YP   = SENSE_HL + END_KEEP                            # +Y end
+PCB_YM   = USB_Y - USB_PKG[1] / 2 - 1.0                   # -Y end, just past the connector
 PCB_L    = PCB_YP - PCB_YM
 PCB_CY   = (PCB_YP + PCB_YM) / 2
-USB_Y    = -(TIE_HY + 1.0)                       # receptacle centre, just outside the bar
-
-# board envelope, for the tie-bar pocket (shared solid -> pocket and board can't drift)
-PCB_X0, PCB_X1 = SENSE_X + PCB_W / 2, SENSE_X - PCB_W / 2
 
 
 def _part(pkg, x, y, z_top):
@@ -144,17 +154,14 @@ def _part(pkg, x, y, z_top):
     return box_at(dx, dy, dz, x=x, y=y, z=z_top - dz / 2)
 
 
-def _part_up(pkg, x, y, z_bot):
-    """Package standing UP from the board (top side): z_bot is its board-side face."""
-    dx, dy, dz = pkg
-    return box_at(dx, dy, dz, x=x, y=y, z=z_bot + dz / 2)
+# (no _part_up: the board is single-sided -- everything hangs DOWN from PCB_BOT)
 
 
 def opt_pcb() -> cq.Workplane:
     """The assembled optical strip: FR4 + every placed component, at its true Z, all
     facing DOWN. Fab/purchased -> NO standalone STEP (cadkit convention); it exists in
     the assembly as the fit-check that it clears the strings and fits the tie bar."""
-    pcb = box_at(PCB_W, PCB_L, PCB_T, x=SENSE_X, y=PCB_CY, z=PCB_BOT + PCB_T / 2)
+    pcb = box_at(PCB_W, PCB_L, PCB_T, x=PCB_CX, y=PCB_CY, z=PCB_BOT + PCB_T / 2)
 
     for i in range(D.N_STRINGS):                          # 10 triplets, on the FAN
         sy = string_y_at(i, SENSE_X)
@@ -162,19 +169,20 @@ def opt_pcb() -> cq.Workplane:
         for s in (1, -1):
             pcb = pcb.union(_part(PD_PKG, SENSE_X, sy + s * PD_DY, PCB_BOT))
 
-    pcb = pcb.union(_part_up(MCU_PKG, SENSE_X, 0.0, PCB_TOP))     # TOP side, over the field
-    pcb = pcb.union(_part(USB_PKG, SENSE_X, USB_Y, PCB_BOT))      # BOTTOM, -Y tail, open air
+    pcb = pcb.union(_part(MCU_PKG, PCB_CX, MCU_Y, PCB_BOT))   # -Y tail, same face
+    pcb = pcb.union(_part(USB_PKG, PCB_CX, USB_Y, PCB_BOT))   # outboard of it, faces -Y
     return pcb
 
 
 def opt_pcb_pocket() -> cq.Workplane:
-    """Cutter for the tie-bar pocket, opening DOWNWARD: from the sensor faces up over
-    the top-side MCU, with a slip fit in X/Y. Cut from the same numbers as the board,
-    so the pocket is always exactly the board. The -Y tail runs out past the bar, so
-    the pocket breaks out there and the USB receptacle ends up in open air."""
+    """Cutter for the tie-bar pocket, opening DOWNWARD: the board plus everything hanging
+    beneath it, with a slip fit. Cut from the same numbers as the board, so the pocket is
+    always exactly the board. It runs down to STACK_BOT_Z, below the bar's underside, so
+    the deeper tail packages simply break through into open air at Y < -44 -- which is
+    what leaves the USB receptacle reachable by a cable."""
     clr = 0.3
-    return box_at(PCB_W + 2 * clr, PCB_L + 2 * clr, STACK_TOP_Z - SENSE_FACE_Z,
-                  x=SENSE_X, y=PCB_CY, z=(SENSE_FACE_Z + STACK_TOP_Z) / 2)
+    return box_at(PCB_W + 2 * clr, PCB_L + 2 * clr, PCB_TOP - STACK_BOT_Z,
+                  x=PCB_CX, y=PCB_CY, z=(STACK_BOT_Z + PCB_TOP) / 2)
 
 
 def _assert_field_clear():
@@ -185,11 +193,13 @@ def _assert_field_clear():
          string's sensor triplet -- this actually happened, on string 10;
       2. the sensing station creeping inside the string's stiffness boundary layer,
          where pitch would pick up inharmonicity error."""
-    near = USB_Y + USB_PKG[1] / 2                    # USB is BOTTOM-side, so it can collide
-    if near > -SENSE_HL:
-        raise AssertionError(
-            f"optical strip: USB reaches Y={near:.2f}, inside the sensing field edge "
-            f"{-SENSE_HL:.2f} -- it would sit on a string's sensors")
+    # single-sided: EVERY package shares the sensors' face, so all of them can collide
+    for name, pkg, cy in (("MCU", MCU_PKG, MCU_Y), ("USB", USB_PKG, USB_Y)):
+        near = cy + pkg[1] / 2
+        if near > -SENSE_HL:
+            raise AssertionError(
+                f"optical strip: {name} reaches Y={near:.2f}, inside the sensing field "
+                f"edge {-SENSE_HL:.2f} -- it would sit on a string's sensors")
     if PCB_YP < SENSE_HL:
         raise AssertionError(
             f"optical strip: board +Y end {PCB_YP:.2f} is inside the last detector at "
