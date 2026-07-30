@@ -49,9 +49,6 @@ magnet cap, bearings and the MT6701 board.
 DEFERRED (this round is the basic geometry, per the user):
   * the REST STOP. Gravity and the springs both pull this arm down, so unlike
     LKL there is no spring-defined rest angle — it needs a hard stop to land on.
-  * the sensor CRADLE. knee_lever's is welded to that housing's own Z extents;
-    it wants parameterising rather than copying, and this housing's Z span is
-    30.4 against 22.2, so the board has room to spare either way.
   * the global MOUNT POSE (which bay, and how far inboard).
   * the follower RECESSES are plain rectangles here, not knee_lever's swept
     tongue envelopes — the arm keeps more material with the swept version, so it
@@ -233,6 +230,11 @@ def _housing() -> cq.Workplane:
         w = w.cut(vplace(box_at(KL.HS_DRAG_LX + 0.4, abs(_ys - _yw),
                                 KL.HS_PISTON_WZ + 0.4,
                                 x=KL._drag_seat_xc(dx), y=(_yw + _ys) / 2, z=KL.HS_Z)))
+    # SENSOR CRADLE — knee_lever's, parameterised by this housing's Z extents
+    # (user: draw it once and reuse it). Everything about the sensor stack is
+    # identical between the levers except how tall the board is, and that falls
+    # out of z_bot/z_top.
+    w = KL._cradle(w, HOUS_Z0, HOUS_Z1)
     w = heal(w)
     # ...then the two female back-stop threads LAST and ALONE (thread rules)
     from cadkit.threads import threaded_rod
@@ -260,6 +262,7 @@ def demo_parts():
     for i, by in enumerate((-(KL.BRG_Y0 + KL.BRG_W), KL.BRG_Y0)):
         out.append((f"kv_bearing_{i}", KL._bearing().translate((0, by, 0))))
     out.append(("kv_magnet", cyl_y(KL.MAG_D, KL.MAG_T, y0=KL.MAG_Y0)))
+    out += KL.sensor_parts(HOUS_Z0, HOUS_Z1, prefix="kv")
     for nm, off in (("main", KL.CART_MAIN_OFFSET), ("half_stop", KL.CART_HALFSTOP_OFFSET)):
         out.append((f"kv_{nm}_cart_base", vplace(KL.cart_base.translate(off))))
         out.append((f"kv_{nm}_cart_piston", vplace(KL.cart_piston.translate(off))))

@@ -113,7 +113,7 @@ AIR_GAP = 1.5                       # magnet face -> the IC's OWN TOP SURFACE. T
                                     # 0.5 / 1.0 / 2.0 min/typ/max; recommended magnet Ø6 x
                                     # 2.5 — EXACTLY ours, so this is the nominal
                                     # configuration the part was characterised in.
-PCB_WZ = 19.0                       # custom JLCPCB MT6701 board. The outline is ours; what
+# (PCB_WZ is DERIVED below, from the housing — see board_z.) The outline is ours; what
 PCB_T = 1.6                         # sets it is the cradle + the reserved driver bore (see
                                     # the cradle block) and, in Z, the instrument itself —
                                     # the board runs from the chassis underside down.
@@ -437,25 +437,7 @@ def demo_parts():
     for i, by in enumerate((-(BRG_Y0 + BRG_W), BRG_Y0)):    # inner faces at ±BRG_Y0,
         out.append((f"kl_bearing_{i}", _bearing().translate((0, by, 0))))  # enclosed in the cheeks
     out.append(("kl_magnet", cyl_y(MAG_D, MAG_T, y0=MAG_Y0)))
-    out.append(("kl_pcb", box_at(PCB_WX, PCB_T, PCB_WZ, x=(PCB_X0 + PCB_X1) / 2,
-                                 y=PCB_Y + PCB_T / 2,
-                                 z=(PCB_Z0 + PCB_Z1) / 2)))   # chip on-axis, board hangs -Z
-    # CAN drop connector (user: model the plug we actually use). S4B-XH-SM4-TB on
-    # the board's MAGNET-facing face, drawn MATED — a connector nobody can get a
-    # plug onto is not a fit, and for side entry the plug's reach is the whole
-    # question. Rotated out of cadkit's board frame: height +Z -> -Y (it stands off
-    # the -Y face), mating axis +Y -> +X (the plug arrives from -X, through the
-    # tunnel cut in the -X web), length -> Z.
-    out.append(("kl_can_header",
-                jst_xh_side_header(CONN_N, mated=True)
-                .rotate((0, 0, 0), (1, 0, 0), 90)        # off-board +Z -> -Y
-                .rotate((0, 0, 0), (0, 1, 0), 90)        # mating axis -> +X
-                .translate((CONN_MOUTH_X, PCB_Y, CONN_ZC))))
-    # the MT6701 itself (user): it sits ON the axle axis, package facing the
-    # magnet, and its BODY is what the air gap is measured to — modelling it is
-    # what makes the gap a real dimension instead of a board-face guess.
-    out.append(("kl_chip", box_at(CHIP_W, CHIP_H, CHIP_W,
-                                  x=0, y=PCB_Y - CHIP_H / 2, z=0)))
+    out += sensor_parts(HOUS_Z0, HOUS_Z1)
     # BOTH springs are the SAME cartridge: MAIN (at MAIN_YC) whose follower touches the lobe at REST
     # (sets the rest angle), and HALF-STOP (at HS_YC, slid +X by HS_SETBACK) that engages partway. Each
     # has a coil, a back TENSION screw (preload), and a FROM-BELOW CLAMP screw that jams the cartridge
@@ -486,7 +468,37 @@ def demo_parts():
     return out
 
 
-def _cradle(w):
+def sensor_parts(z_bot, z_top, prefix="kl"):
+    """The sensor stack's DUMMIES — board, MT6701 and the mated CAN connector — for
+    a housing spanning z_bot..z_top. SHARED BY BOTH LEVERS (user): the geometry is
+    identical in Y (the magnet, cap, air gap and board face never move) and in X
+    (the chip is on the axle axis and the outline hangs off it), so the only thing
+    a second lever changes is the pair of Z extents — which is exactly what this
+    takes. See board_z / conn_z for how they turn into the board.
+
+      * the CHIP sits ON the axle axis in both, because that is what reading a
+        diametric magnet requires; the board's outline moves around it.
+      * the connector is drawn MATED — a connector nobody can get a plug onto is
+        not a fit, and for side entry the plug's reach is the whole question.
+        Rotated out of cadkit's board frame: height +Z -> -Y (it stands off the
+        magnet-facing face), mating axis +Y -> +X (the plug arrives from -X,
+        through the tunnel cut in the -X web), length -> Z."""
+    pcb_z0, pcb_z1 = board_z(z_bot, z_top)
+    return [
+        (f"{prefix}_pcb", box_at(PCB_WX, PCB_T, pcb_z1 - pcb_z0,
+                                 x=(PCB_X0 + PCB_X1) / 2, y=PCB_Y + PCB_T / 2,
+                                 z=(pcb_z0 + pcb_z1) / 2)),
+        (f"{prefix}_chip", box_at(CHIP_W, CHIP_H, CHIP_W,
+                                  x=0.0, y=PCB_Y - CHIP_H / 2, z=0.0)),
+        (f"{prefix}_can_header",
+         jst_xh_side_header(CONN_N, mated=True)
+         .rotate((0, 0, 0), (1, 0, 0), 90)
+         .rotate((0, 0, 0), (0, 1, 0), 90)
+         .translate((CONN_MOUTH_X, PCB_Y, conn_z(z_bot, z_top)))),
+    ]
+
+
+def _cradle(w, z_bot=None, z_top=None):
     """Add the MT6701 board cradle to the housing (user). Everything here grows UP
     off the same bed as the housing and has no ceiling anywhere, so it needs no
     supports; see the constant block for the retention scheme and the socket cone.
@@ -495,6 +507,11 @@ def _cradle(w):
     them for the board — that slot IS both grooves. Cutting it after the webs is
     what makes them: the web material outboard of the slot survives as each
     groove's outer wall."""
+    z_bot = HOUS_Z0 if z_bot is None else z_bot
+    z_top = HOUS_Z1 if z_top is None else z_top
+    pcb_z0, pcb_z1 = board_z(z_bot, z_top)
+    conn_zc = conn_z(z_bot, z_top)
+
     inner0, slot0, outer0 = _cr_faces(PCB_X0)
     inner1, slot1, outer1 = _cr_faces(PCB_X1)
     outer1 = min(outer1, CR_X1_MAX)             # nothing +X of the prism face (user)
@@ -506,24 +523,48 @@ def _cradle(w):
     # carries the rest — which is the trade the user asked for, and it is a good
     # one: the -X web is 14 from the chip with a full-height groove, so it has far
     # more leverage on the board than a short +X one ever had.
-    for a, b, ztop in ((inner0, outer0, CR_Z1), (inner1, outer1, CR_PLINTH_Z1)):
-        w = w.union(box_at(abs(b - a), CR_Y1 - CR_Y0, ztop - HOUS_Z0,
+    # ...and WHICH part of the board's height the +X side can hold is derived, not
+    # fixed. The bore forbids printed material within SOCK_R of the axis, so the +X
+    # carrier has to live either below -SOCK_R or above +SOCK_R; the right answer is
+    # whichever of those two bands actually OVERLAPS THE BOARD. On this lever the
+    # board hangs low and it is the lower band (a 5 mm groove at the bottom); on the
+    # vertical lever the axle sits 19 lower, the board is entirely ABOVE the bore,
+    # and the upper band is the only one that touches it — pinning this to the lower
+    # band left that lever with NO +X retention at all, which the push probe caught.
+    _lo = (z_bot, min(pcb_z1, CR_PLINTH_Z1))
+    _hi = (max(z_bot, SOCK_R), z_top)
+    _span = max(_lo, _hi, key=lambda r: max(0.0, min(r[1], pcb_z1) - max(r[0], pcb_z0)))
+    for a, b, z0, z1 in ((inner0, outer0, z_bot, z_top), (inner1, outer1) + _span):
+        w = w.union(box_at(abs(b - a), CR_Y1 - CR_Y0, z1 - z0,
                            x=(a + b) / 2, y=(CR_Y0 + CR_Y1) / 2,
-                           z=(HOUS_Z0 + ztop) / 2))
+                           z=(z0 + z1) / 2))
+        if z0 > z_bot + 1e-6:
+            # This web does not start on the bed — it cantilevers off the housing's
+            # +Y cheek — so its underside is a CR_Y1-CR_Y0 deep unsupported ledge.
+            # Ramp it at 45° off the cheek instead. Costs the groove its lowest
+            # (CR_Y1-CR_Y0) of engagement and nothing else, and the band it takes
+            # is the far end from the board's seat anyway.
+            _p = [(CR_Y0 - 1.0, z0 - 1.0), (CR_Y1 + 1.0, z0 - 1.0),
+                  (CR_Y1 + 1.0, z0 + (CR_Y1 + 1.0) - (CR_Y0 - 1.0)), (CR_Y0 - 1.0, z0)]
+            _f = cq.Face.makeFromWires(cq.Wire.makePolygon(
+                [cq.Vector(min(a, b) - 1.0, y, z) for y, z in _p]
+                + [cq.Vector(min(a, b) - 1.0, _p[0][0], _p[0][1])]))
+            w = w.cut(cq.Workplane("XY").add(cq.Solid.extrudeLinear(
+                _f, cq.Vector(abs(b - a) + 2.0, 0, 0))))
     # front plinth: the slab the board's -Y face seats on, and the body the screw
     # boss lives in. Its top IS the socket cone's floor.
-    w = w.union(box_at(outer1 - outer0, CR_SLOT_Y0 - CR_Y0, CR_PLINTH_Z1 - HOUS_Z0,
+    w = w.union(box_at(outer1 - outer0, CR_SLOT_Y0 - CR_Y0, CR_PLINTH_Z1 - z_bot,
                        x=(outer0 + outer1) / 2, y=(CR_Y0 + CR_SLOT_Y0) / 2,
-                       z=(HOUS_Z0 + CR_PLINTH_Z1) / 2))
+                       z=(z_bot + CR_PLINTH_Z1) / 2))
     # floor under the board + the tie between the two webs behind it
-    w = w.union(box_at(outer1 - outer0, CR_Y1 - CR_SLOT_Y0, PCB_Z0 - HOUS_Z0,
+    w = w.union(box_at(outer1 - outer0, CR_Y1 - CR_SLOT_Y0, pcb_z0 - z_bot,
                        x=(outer0 + outer1) / 2, y=(CR_SLOT_Y0 + CR_Y1) / 2,
-                       z=(HOUS_Z0 + PCB_Z0) / 2))
+                       z=(z_bot + pcb_z0) / 2))
     # THE BOARD SLOT (both grooves in one cut): open at +Z — the install axis —
-    # and bottoming on the floor at PCB_Z0, which is the board's -Z seat.
-    w = w.cut(box_at(slot1 - slot0, CR_SLOT_Y1 - CR_SLOT_Y0, (CR_Z1 + 2.0) - PCB_Z0,
+    # and bottoming on the floor at pcb_z0, which is the board's -Z seat.
+    w = w.cut(box_at(slot1 - slot0, CR_SLOT_Y1 - CR_SLOT_Y0, (z_top + 2.0) - pcb_z0,
                      x=(slot0 + slot1) / 2, y=(CR_SLOT_Y0 + CR_SLOT_Y1) / 2,
-                     z=(PCB_Z0 + CR_Z1 + 2.0) / 2))
+                     z=(pcb_z0 + z_top + 2.0) / 2))
     # ── ROOM FOR THE CONNECTOR, which lives on the board's MAGNET-facing face.
     # Two cuts, both through material that is ours — the cradle's own plinth and
     # web, and 0.85 of the housing's +Y cheek. The cheek can afford it: it is 3.50
@@ -534,7 +575,7 @@ def _cradle(w):
     # ONE relief, doing two jobs, and open out the TOP so it has no ceiling:
     #   * a DESCENT CHANNEL for the connector — not merely a pocket at its rest
     #     position, since the board is lowered in and the body needs the relief all
-    #     the way up. That is also why the cut runs past CR_Z1 rather than stopping
+    #     the way up. That is also why the cut runs past z_top rather than stopping
     #     at the connector: a lid over it would be a 45 mm² flat overhang.
     #   * a PLUG RUN-IN through the -X web, which is what stood in the plug's way.
     # The web keeps its groove and its +Y back flank — both live outboard of PCB_Y,
@@ -542,7 +583,7 @@ def _cradle(w):
     # above _cz0; the board's -X edge is then seated by the plinth below and by the
     # +X groove, which is enough for a rigid board.
     _cy0 = PCB_Y - XH_SIDE_H - CONN_POCKET          # 13.05: relief floor
-    _cz0 = CONN_ZC - xh_side_length(CONN_N) / 2 - CONN_POCKET       # -8.3
+    _cz0 = conn_zc - xh_side_length(CONN_N) / 2 - CONN_POCKET       # -8.3
     # -X end: far enough for the plug to come fully OFF, not merely to sit there.
     # It needs its own length of straight travel before it clears the header, and
     # for that whole stroke its inboard face is still inside the cheek's outer
@@ -551,10 +592,10 @@ def _cradle(w):
     _cx1 = CONN_MOUTH_X + XH_SIDE_D + CONN_POCKET
     # +Z end: clear THROUGH the mount tenons, not just up to the cradle top. The
     # x=-23 tenon is a Y-rail that runs out to HOUS_HW, so it stands in this
-    # relief's path; stopping the cut at CR_Z1 left a 2.9 mm² flat ceiling notched
+    # relief's path; stopping the cut at z_top left a 2.9 mm² flat ceiling notched
     # into it. Running past TEN_H instead trims 0.85 off that tenon's +Y end — 3%
     # of a 27.8 rail, and it exits cleanly.
-    _cz1 = CR_Z1 + TEN_H + 1.0
+    _cz1 = z_top + TEN_H + 1.0
     w = w.cut(box_at(_cx1 - _cx0, PCB_Y - _cy0, _cz1 - _cz0,
                      x=(_cx0 + _cx1) / 2, y=(_cy0 + PCB_Y) / 2,
                      z=(_cz0 + _cz1) / 2))
@@ -824,13 +865,33 @@ CEIL_CLR = 0.4                      # board top edge -> the instrument's undersi
                                     # the board's own Y: the ceiling is real over x -9..-1.8
                                     # and 1.8..9.0, the gap being only the rib's own mortise
                                     # slot, which the rigid board simply bridges.
-PCB_Z1 = HOUS_Z1 - CEIL_CLR                     # +7.0: as high as the board can go. It was
-PCB_Z0 = PCB_Z1 - PCB_WZ                        # -12.0. PCB_Z1 used to be 4.0, chosen only to
-PCB_TOP = PCB_Z1                                # keep clear of the instrument; now the
-                                                # instrument is the retainer, so the board
-                                                # runs right up to it. The CHIP stays ON the
-                                                # axle axis (z=0) — raising the top edge just
-                                                # moves the chip further down the board.
+CR_FLOOR_T = 2.8                    # cradle floor under the board
+CONN_RISE  = 11.5                   # connector row above the board's bottom edge
+
+
+def board_z(z_bot, z_top):
+    """(bottom, top) of the sensor board in a housing spanning z_bot..z_top.
+
+    SHARED BY BOTH LEVERS (user) — which is why it is a function of the housing
+    rather than a pair of constants. The board hangs off the CEILING, that being
+    its entire retention, and stands on the cradle floor, so BOTH ends are derived
+    and the board's HEIGHT is simply whatever the housing gives it: 19 on the
+    horizontal lever, ~32 on the vertical one whose axle sits far lower. The chip
+    stays on the axle axis in both, so what differs is how far down the board the
+    chip lands — not anything mechanical."""
+    return (z_bot + CR_FLOOR_T, z_top - CEIL_CLR)
+
+
+def conn_z(z_bot, z_top):
+    """Connector row Z: a fixed rise off the board's BOTTOM edge, so the same rule
+    places it on either lever. Only the X offset does the cap clearing, so Z is
+    free to follow the board."""
+    return board_z(z_bot, z_top)[0] + CONN_RISE
+
+
+PCB_Z0, PCB_Z1 = board_z(HOUS_Z0, HOUS_Z1)      # -12.0 .. +7.0 for this lever
+PCB_TOP = PCB_Z1
+PCB_WZ = PCB_Z1 - PCB_Z0                        # 19.0 — derived now, not declared
 def _cr_faces(edge):
     """(web inner, groove wall, web outer) X for a board edge — the groove is the
     gap between the inner face and the wall, and the board's edge lives in it."""
@@ -878,7 +939,10 @@ CONN_N     = 4
 # The body is XH_SIDE_D deep, so the mouth goes at -11.9 and the body runs +X to -5.8
 # — 0.4 clear of the cap for the entire stroke, not just at rest.
 CONN_MOUTH_X = -11.9                # mouth face; body extends +X from here
-CONN_ZC      = -0.5                 # length centre -> the body spans z -8.0..+7.0, i.e.
+CONN_ZC      = conn_z(HOUS_Z0, HOUS_Z1)   # -0.5 here. A fixed RISE off the board's
+                                    # bottom edge rather than an absolute Z, so the same
+                                    # rule lands it on the vertical lever too (conn_z).
+                                    # Was: length centre -> the body spans z -8.0..+7.0, i.e.
                                     # topped out flush with the board. HIGH on purpose: the
                                     # plug's run-in tunnel has to be cut through the -X web
                                     # and the plinth, and putting the connector high keeps
