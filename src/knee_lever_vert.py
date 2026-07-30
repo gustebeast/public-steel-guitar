@@ -273,3 +273,26 @@ if __name__ == "__main__":
     print(f"housing   x {HOUS_X0:.2f}..{HOUS_X1:.2f}  y ±{HOUS_HW}  z {HOUS_Z0:.2f}..{HOUS_Z1:.2f}")
     print(f"axle sits {AXLE_DROP:.2f} lower than the horizontal lever's")
     print(f"tenons at local y {TEN_Y}, sliding local x {TEN_X0:.2f}..{TEN_X1:.2f}")
+
+
+# ── GLOBAL POSE ──────────────────────────────────────────────────────────────
+# The 90° that makes this a "vertical" lever. Local +X -> global -Y (the arm reaches
+# out at the player), local +Y -> global +X (the sensor cluster runs toward the
+# bridge). Z is untouched, so the housing top still lands flush on the chassis
+# underside and the tenons still rise into the rib mortises from the same plane —
+# which is why chassis.py needs NO new feature: rib_mortise is already an octagon
+# slot of this width running along global Y in every rib, so it accepts these
+# tenons as they are. What has to line up is X: the two stations sit at local
+# y -12.60 / +10.40, so MOUNT_X is chosen to land them on two real ribs.
+_Z_BOT = -75.15                     # chassis underside (chassis.Z_BOT; not imported to
+                                    # keep this module out of the chassis import cycle)
+MOUNT_X = -455.0 - TEN_Y[1]         # -465.40 -> stations at ribs -478.0 and -455.0
+MOUNT_Y = -130.0                    # axle 3.75 inboard of the -Y rail, so the housing
+                                    # runs inboard under the body and the arm reaches out
+MOUNT_Z = _Z_BOT - HOUS_Z1          # housing top flush with the chassis underside
+MOUNT_POSE = (MOUNT_X, MOUNT_Y, MOUNT_Z)
+
+
+def place(s):
+    """Local frame -> guitar frame."""
+    return s.rotate((0, 0, 0), (0, 0, 1), -90).translate(MOUNT_POSE)
