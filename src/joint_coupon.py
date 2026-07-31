@@ -11,7 +11,7 @@ from the real geometry.
 
 import cadquery as cq
 
-from cadkit.joinery import PrintSpec, slide_joint
+from cadkit.joinery import PrintSpec, joint
 
 NOZZLE = 0.8          # pedal-steel nozzle
 WIDTH  = 6.0          # flat-to-flat room (well above the ~1.93 mm floor)
@@ -23,7 +23,7 @@ MARGIN = 6.0          # material each side of the joint in Y
 
 # both halves print -Z→+Z (facing 'up') → slide_joint picks the octagon family
 _UP = PrintSpec(nozzle=NOZZLE, material="PETG-GF", facing="up")
-_J = slide_joint(WIDTH, LENGTH, tenon=_UP, mortise=_UP, clearance=CLR)
+_J = joint(WIDTH, LENGTH, tenon=_UP, mortise=_UP, clearance=CLR)
 _H = _J.height                       # mortise depth above the mating plane
 
 
@@ -43,7 +43,7 @@ def mortise_coupon():
     block = (cq.Workplane("XY")
              .box(LENGTH, WIDTH + 2 * MARGIN, _H + PLATE + CEIL, centered=(True, True, False))
              .translate((0, 0, -PLATE)))                        # z -PLATE.._H+CEIL (ceiling = bridge)
-    cut = (slide_joint(WIDTH, LENGTH + 2, tenon=_UP, mortise=_UP, clearance=CLR)
+    cut = (joint(WIDTH, LENGTH + 2, tenon=_UP, mortise=_UP, clearance=CLR)
            .mortise(drop=PLATE)
            .translate((-(LENGTH + 2) / 2.0, 0, 0)))             # slot open both X ends
     return block.cut(cut)
@@ -53,7 +53,7 @@ def mortise_coupon():
 # 6 mm knee coupon above does NOT validate the 28 mm section fit, so print this
 # pair to check the leg stack's slide fit + one-bead roof bridge at the real size.
 SEC_WIDTH, SEC_LEN, SEC_HEIGHT = 28.0, 28.0, 36.0   # keep = legs.SEC_W/_TEN_L/_H
-_SJ = slide_joint(SEC_WIDTH, SEC_LEN, tenon=_UP, mortise=_UP, clearance=CLR,
+_SJ = joint(SEC_WIDTH, SEC_LEN, tenon=_UP, mortise=_UP, clearance=CLR,
                   depth=SEC_HEIGHT)
 _SH = _SJ.height
 
@@ -71,7 +71,7 @@ def section_mortise_coupon():
     block = (cq.Workplane("XY")
              .box(SEC_LEN, SEC_WIDTH + 2 * MARGIN, _SH + PLATE + CEIL, centered=(True, True, False))
              .translate((0, 0, -PLATE)))
-    cut = (slide_joint(SEC_WIDTH, SEC_LEN + 2, tenon=_UP, mortise=_UP, clearance=CLR,
+    cut = (joint(SEC_WIDTH, SEC_LEN + 2, tenon=_UP, mortise=_UP, clearance=CLR,
                        depth=SEC_HEIGHT)
            .mortise(drop=PLATE)
            .translate((-(SEC_LEN + 2) / 2.0, 0, 0)))

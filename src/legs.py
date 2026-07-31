@@ -666,7 +666,17 @@ SH_H       = SH_Y + 14.0               # 31.8: slider octagon height (roof -14)
 CVR_RAIL_X = 17.0     # rail centres ±x: slot spans 14.4..19.6 dilated — 7.2
                       # web to the groove's lip band, 2.4 outer ±X skin
 CVR_RAIL_W = 5.0      # rail octagon flat-to-flat (cadkit h_min 4.95 at n0.8)
-from cadkit.joinery import octagon_height as _octagon_height
+from cadkit.joinery import PrintSpec as _PrintSpec, joint as _joint
+# cadkit collapsed the per-family entrypoints into ONE `joint()` (you describe the
+# SITE, it picks the geometry), so this file now says how its halves PRINT instead
+# of naming the octagon. Both are PETG-GF printed -Z->+Z.
+_UP = _PrintSpec(nozzle=0.8, material="PETG-GF", facing="up")
+
+
+def _octagon_height(width, nozzle=0.8, clearance=0.1, height=None):
+    """Height of a joint of this width — the sizing figure the cover rail needs."""
+    return _joint(width, 1.0, tenon=_UP, mortise=_UP, clearance=clearance,
+                  depth=height).height
 CVR_RAIL_H = _octagon_height(CVR_RAIL_W, 0.8)   # ASK cadkit, don't hand-write it: the
 #   octagon's height is not free — 45° diagonals plus two-nozzle verticals set a floor
 #   per width, and this was a hard 5.0 until cadkit raised the verticals to the
@@ -685,9 +695,7 @@ def _rail_tenon(length: float) -> cq.Workplane:
     at the thinned-face plane, point -Y into the sleeve wall), z 0..length;
     caller translates to ±CVR_RAIL_X. Prints growing UP off the lying cover
     plate: neck, 45° flare out, 45° back to the 0.8 tip — no overhang."""
-    from cadkit.joinery import octagon_tenon
-    return (octagon_tenon(CVR_RAIL_W, length, nozzle=0.8, clearance=0.1,
-                          root=0.0, height=CVR_RAIL_H)
+    return (_joint(CVR_RAIL_W, length, tenon=_UP, mortise=_UP, clearance=0.1, depth=CVR_RAIL_H).tenon(root=0.0)
             .rotate((0, 0, 0), (0, 1, 0), -90)
             .rotate((0, 0, 0), (0, 0, 1), 90)
             .translate((0, SLV_FACE_Y, 0)))
@@ -697,9 +705,7 @@ def _rail_groove(length: float) -> cq.Workplane:
     """Cover-rail female: the matching W5 slot, opening through the thinned
     +Y face — on the lying sleeve a standard mortise-at-the-bed (0.8 roof
     bridge at y 12.9). Z-running; caller translates/limits it."""
-    from cadkit.joinery import octagon_mortise
-    return (octagon_mortise(CVR_RAIL_W, length, nozzle=0.8, clearance=0.1,
-                            drop=2.0, height=CVR_RAIL_H)
+    return (_joint(CVR_RAIL_W, length, tenon=_UP, mortise=_UP, clearance=0.1, depth=CVR_RAIL_H).mortise(drop=2.0)
             .rotate((0, 0, 0), (0, 1, 0), -90)
             .rotate((0, 0, 0), (0, 0, 1), 90)
             .translate((0, SLV_FACE_Y, 0)))
@@ -726,9 +732,7 @@ def _section_tenon(length: float = SEC_TEN_L) -> cq.Workplane:
     leg (user: the stem must be flat against the bed; an inset base would be a
     floating flat). root=0: any root would poke past the leg face. Callers
     embed 1 along Z for the volumetric fusion instead. Base plane at z=0."""
-    from cadkit.joinery import octagon_tenon
-    return (octagon_tenon(SEC_W, length, nozzle=0.8, clearance=0.1, root=0.0,
-                          height=SEC_H)
+    return (_joint(SEC_W, length, tenon=_UP, mortise=_UP, clearance=0.1, depth=SEC_H).tenon(root=0.0)
             .rotate((0, 0, 0), (0, 1, 0), -90)
             .rotate((0, 0, 0), (0, 0, 1), 90)
             .translate((0, SQ_W / 2, 0)))
@@ -741,9 +745,7 @@ def _section_mortise(length: float = SEC_MOR_L, drop: float = 2.0) -> cq.Workpla
     base can't be walled in). The 14-wide face slit still captures the 28
     waist. Cut from the part's bottom Z-end; callers translate to (0,0,z_open)
     with a small -Z overshoot; the far (+Z) end inside is the stop wall."""
-    from cadkit.joinery import octagon_mortise
-    return (octagon_mortise(SEC_W, length, nozzle=0.8, clearance=0.1, drop=drop,
-                            height=SEC_H)
+    return (_joint(SEC_W, length, tenon=_UP, mortise=_UP, clearance=0.1, depth=SEC_H).mortise(drop=drop)
             .rotate((0, 0, 0), (0, 1, 0), -90)
             .rotate((0, 0, 0), (0, 0, 1), 90)
             .translate((0, SQ_W / 2, 0)))
@@ -756,9 +758,7 @@ def _shaft_prism(length: float) -> cq.Workplane:
     plane at SH_Y (17.8 — the shaft runs 0.2 under the cover plate), roof
     still -14 → height SH_H. The stem base is the lying shaft's print bed,
     z 0..length."""
-    from cadkit.joinery import octagon_tenon
-    return (octagon_tenon(SEC_W, length, nozzle=0.8, clearance=SH_CLR, root=0.0,
-                          height=SH_H)
+    return (_joint(SEC_W, length, tenon=_UP, mortise=_UP, clearance=SH_CLR, depth=SH_H).tenon(root=0.0)
             .rotate((0, 0, 0), (0, 1, 0), -90)
             .rotate((0, 0, 0), (0, 0, 1), 90)
             .translate((0, SH_Y, 0)))
@@ -770,9 +770,7 @@ def _shaft_groove(length: float, drop: float = 2.0) -> cq.Workplane:
     dilated opening lands flush at SLV_FACE_Y — hidden under the cover once
     it's on). Z-running; callers place/limit it so it never severs the
     sleeve's top spigot."""
-    from cadkit.joinery import octagon_mortise
-    return (octagon_mortise(SEC_W, length, nozzle=0.8, clearance=SH_CLR,
-                            drop=drop, height=SH_H)
+    return (_joint(SEC_W, length, tenon=_UP, mortise=_UP, clearance=SH_CLR, depth=SH_H).mortise(drop=drop)
             .rotate((0, 0, 0), (0, 1, 0), -90)
             .rotate((0, 0, 0), (0, 0, 1), 90)
             .translate((0, SH_Y, 0)))
@@ -1001,8 +999,8 @@ def _stub_ridge(length: float = SQ_W) -> cq.Workplane:
     width along x, base (stem plane) at z 0, extruded +y from y 0.
     cadkit.joinery builds the profile in Y-Z extruded along X; rotate
     Z(+90) maps the extrusion to +y and the width onto x."""
-    from cadkit.joinery import octagon_tenon
-    return (octagon_tenon(width=STUB_TEN_W, length=length)
+    return (_joint(STUB_TEN_W, length, tenon=_UP, mortise=_UP, clearance=0.1)
+            .tenon()
             .rotate((0, 0, 0), (0, 0, 1), 90))
 
 
@@ -1011,8 +1009,8 @@ def _groove(length: float) -> cq.Workplane:
     Y-running, roof up, opening DOWNWARD at its base plane (the mortise's
     stem slit extends 2.1 below it — over the sliding plane that is air).
     Callers translate it to (ridge x, y0, Z_BOT)."""
-    from cadkit.joinery import octagon_mortise
-    return (octagon_mortise(width=STUB_TEN_W, length=length)
+    return (_joint(STUB_TEN_W, length, tenon=_UP, mortise=_UP, clearance=0.1)
+            .mortise()
             .rotate((0, 0, 0), (0, 0, 1), 90))
 
 
