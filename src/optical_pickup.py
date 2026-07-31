@@ -402,20 +402,28 @@ def opt_pcb() -> cq.Workplane:
 
 
 def opt_cover() -> cq.Workplane:
-    """PRINTED lid over the sensor row: a roof with one aperture per string, plus a -X
+    """Lid over the sensor row, UNIONED INTO THE ENDPLATE (user) rather than made as a
+    separate printed part: the plinth is only 3.2 thick and cannot host an M2 anchor, so
+    a bolt-down lid had nowhere to land. Integral solves retention by deleting it.
+    The board therefore installs by SLIDING +X under the roof, and comes out the same way
+    -- which needs the magnetic pickup out of the way first.
+
+    Was: a printed lid over the sensor row: a roof with one aperture per string, plus a -X
     wall that closes the shallow-angle ambient path (from +X the endplate already does).
     Drops on after the board and is the last thing installed before stringing.
 
     It covers the ROW ONLY, not the whole board: the quad op-amps stand 1.75 above the
     board, higher than the roof, and they need no protection -- only the optics do."""
-    x0, x1 = COVER_X0, PCB_X0
+    # +X edge runs to the DECK BAND edge, not the board edge, so the roof fuses into the
+    # endplate's comb brace instead of floating 0.2 short of it.
+    x0, x1 = COVER_X0, BAND_X0
     roof = box_at(x1 - x0, 2 * COVER_HY, COVER_T,
                   x=(x0 + x1) / 2, y=0, z=(COVER_Z0 + COVER_Z1) / 2)
-    # -X wall, down to just over the board
-    wt = D.MIN_WALL_2P
-    roof = roof.union(box_at(wt, 2 * COVER_HY, COVER_Z1 - (PCB_TOP + 0.3),
-                             x=x0 + wt / 2, y=0,
-                             z=((PCB_TOP + 0.3) + COVER_Z1) / 2))
+    # NO -X WALL any more. Integrating the lid means the board SLIDES IN +X beneath it,
+    # so nothing may hang below the roof or the sensors cannot pass. Cheap to lose: the
+    # roof underside sits COVER_GAP (0.3) over the sensor faces across 5.4 of depth, so a
+    # ray from -X has to be within ~3 deg of horizontal to reach a detector -- the gap's
+    # own aspect ratio does what the wall did.
     for i in range(D.N_STRINGS):                       # apertures
         roof = roof.cut(box_at(SLOT_DX, SLOT_DY, COVER_T + 2,
                                x=SENSE_X, y=string_y_at(i, SENSE_X),
