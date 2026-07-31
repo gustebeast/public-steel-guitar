@@ -334,6 +334,7 @@ ADC inputs plus a 12-signal ULPI bus will not fit a 64-pin part.
 |-----|-----|-------------|---------|---------------|
 | 1 | U6 | MCU — Cortex-M7, 3× 16-bit ADC, USB OTG_HS via ULPI | LQFP100 | 16.00 × 16.00 × 1.60 |
 | 1 | J1 | USB-C receptacle — 10 ch audio + MIDI + DFU | USB-C | 8.94 × 7.35 × 3.16 |
+| 1 | J2 | power in, 5 V from the instrument rail — side entry, −X edge | XH-SM-2 | 6.10 × 10.00 × 7.00 |
 | 5 | U1–U5 | quad op-amp — 4× transimpedance amp | SOIC-14 | 6.00 × 8.65 × 1.75 |
 | 1 | U7 | USB 2.0 high-speed ULPI PHY | QFN-24 | 4.00 × 4.00 × 0.90 |
 | 1 | U8 | LDO — 3V3 digital | SOT-23-5 | 2.90 × 2.80 × 1.45 |
@@ -343,13 +344,15 @@ ADC inputs plus a 12-signal ULPI bus will not fit a 64-pin part.
 | 1 | Y2 | 24 MHz crystal — PHY reference | 3225 | 3.20 × 2.50 × 0.90 |
 | 1 | Q1 | N-ch MOSFET — LED row driver | SOT-23 | 2.90 × 2.40 × 1.30 |
 | 1 | U10 | USB data-line ESD array | SOT-563 | 1.60 × 1.60 × 0.60 |
-| 10 | D1–D10 | IR emitter, 940 nm | 0805 (opto) | 2.00 × 1.25 × 0.85 |
+| 10 | D1–D10 | IR emitter, 940 nm — **narrow beam, see below** | 0805 (opto) | 2.00 × 1.25 × 0.85 |
 | 10 | PD1A–PD10A | PIN photodiode, +Y of string | 0805 (opto) | 2.00 × 1.25 × 0.85 |
 | 10 | PD1B–PD10B | PIN photodiode, −Y of string | 0805 (opto) | 2.00 × 1.25 × 0.85 |
-| 10 | R1–R10 | LED current-set resistor | 0603 | 1.60 × 0.80 × 0.95 |
+| 5 | R1–R5 | LED current-set — **per-string value**, plain strings | 0603 | 1.60 × 0.80 × 0.95 |
+| 5 | R6–R10 | LED current-set — **per-string value**, wound strings | 0603 | 1.60 × 0.80 × 0.95 |
 | 1 | FB1 | ferrite bead — analog rail isolation | 0603 | 1.60 × 0.80 × 0.95 |
 | 4 | C130–C133 | bulk caps — VBUS / 3V3D / 3V3A / reference | 0805 | 2.00 × 1.25 × 1.45 |
-| 20 | Rf11–Rf54 | TIA feedback resistor | 0402 | 1.00 × 0.50 × 0.55 |
+| 20 | Rf11–Rf54 | TIA feedback resistor — **per-string value** | 0402 | 1.00 × 0.50 × 0.55 |
+| 4 | C140–C143 | power-input decoupling | 0402 | 1.00 × 0.50 × 0.55 |
 | 20 | Cf11–Cf54 | TIA feedback cap (sets the anti-alias pole) | 0402 | 1.00 × 0.50 × 0.55 |
 | 12 | C100–C111 | MCU decoupling | 0402 | 1.00 × 0.50 × 0.55 |
 | 10 | Cd11–Cd52 | op-amp decoupling | 0402 | 1.00 × 0.50 × 0.55 |
@@ -362,23 +365,73 @@ ADC inputs plus a 12-signal ULPI bus will not fit a 64-pin part.
 | 1 | R36 | LED driver gate resistor | 0402 | 1.00 × 0.50 × 0.55 |
 | — | — | SWD programming pads (no component; first flash before USB DFU works) | pads | — |
 
-**136 placed parts**, all on ONE side (single-sided, per project rule: one
-stencil, one reflow, no back-side placement). The model tracks 32 distinct
+**141 placed parts**, all on ONE side (single-sided, per project rule: one
+stencil, one reflow, no back-side placement). The model tracks 35 distinct
 (description, package) lines; the table above merges four bulk-cap variants and
 the two CC pull-downs into single rows.
 
-**Board**: 20 × 134.9 mm, 4-layer, 1.6 mm FR4; 29 % of the area is package
-footprint. Two blocks, split electrically rather than for packing — the 20 TIAs
-sit in the X band immediately beside the sensor row (the summing node is the
-noise-critical point on a board reading tens of nanoamps), everything digital
-lives in the −Y room past the last string. Single-sided is what makes it 135 mm
-long; double-siding would save roughly 35 mm if that ever becomes worth the
-second assembly setup.
+**Board**: STEPPED outline, 4-layer, 1.6 mm FR4, 3408 mm² — **30 × 49 mm** over
+the plain strings (+Y) and **20 × 96.9 mm** over the wound strings and the
+digital block (−Y). Two blocks, split electrically rather than for packing — the
+20 TIAs sit in the X band immediately beside the sensor row (the summing node is
+the noise-critical point on a board reading tens of nanoamps), everything digital
+lives in the −Y room past the last string. Single-sided is what makes it long;
+double-siding would save roughly 35 mm if that ever becomes worth the second
+assembly setup.
+
+### The thin-string signal budget — why the outline steps
+
+Optical signal scales with the string's **diameter**: the string *is* the target,
+and what comes back is set by how much of the beam it intercepts. Across this set
+that is .014 against .070 = 5.1× = **14.0 dB**, and the thin strings sit up to
+0.71 mm further from the sensor plane (which references the *thickest* string's
+top), so call it **~16 dB**. That deficit lands on exactly the strings the player
+uses most. Note the hard string for *latency* (low C, long analysis window) and
+the hard string for *SNR* (string 2, .014) are opposite ends of the set.
+
+Four levers, spent in order of cost:
+
+1. **Emitter beam angle — the largest and it is free.** At the 3 mm standoff a
+   ±60° emitter throws a ~10.4 mm spot and a 0.356 mm string intercepts ~3 % of
+   it; the rest returns as pedestal and crosstalk. ±30° → 3.5 mm spot, ~10 %,
+   **+9.5 dB**. ±20° → **+13.6 dB**. Do not go tighter: below ~±20° the alignment
+   budget (fab ±0.2, string position, board seating) starts eating the gain.
+   **Beam angle is the primary selection criterion for D1–D10**, ahead of package
+   or price. The VSMB1940X01 whose outline the model uses is a placeholder chosen
+   for its dimensions, not its optics.
+2. **Per-string LED current** (R1–R10, already ten independent parts). Roughly
+   linear in signal. This is what forces J2 — see below.
+3. **Per-string TIA gain** (Rf, already twenty independent parts). Bounded by the
+   op-amp's gain–bandwidth product, not by the resistor: thin strings want more
+   gain *and* more bandwidth, and Rf × Cin trades one against the other.
+4. **Distance from the termination** — the worst lever, and the only one with a
+   playing cost. Signal is linear in distance, so gain is 20·log10(d/12) dB while
+   the cost in playing space is linear. Equalising .014 would need d = 60 mm,
+   putting the board edge at −66.5. Spent anyway, as a **step**: plain strings
+   (1–5) go to 22 mm for **+5.3 dB**, wound strings stay at 12 mm. A step rather
+   than a taper because a taper would interpolate and hand string 5 almost
+   nothing.
+
+**What the step costs in playing.** The tie bar's underside is only 3.00 mm above
+the strings, so nothing can be picked *under* it — the bar's −X face is the
+picking-zone boundary. Stepping keeps that boundary at **14.5 mm** from the
+termination over the wound strings and moves it to **24.5 mm** only over the
+plain ones. A uniform 22 mm row would have pushed all ten out to 24.5.
+
+**Power (J2): 5 V from the instrument rail, not USB VBUS.** MCU ~200–300 mA, PHY
+~50, 21 op-amp channels ~40 — already past a USB port's 500 mA before a single
+emitter is lit. Since LED current is the second-best SNR lever, capping it at
+what a host port will give up would throw away the thing the design most needs.
+J2 is side-entry on the **−X edge**: the −Y edge is taken by the USB receptacle
+and the floor-ledge lane, and −X of the board is open air (the optical relief
+removes the tie bar's wall there), so that mouth is reachable. It plugs in after
+the board slides home.
 
 **All ten emitters are driven by ONE FET.** Ambient subtraction sweeps the whole
 row on, then the whole row off, which gives the front end ~10 µs to settle
-instead of ~1 µs. The cost is optical crosstalk between neighbouring strings —
-one of the things the QTR prototype needs to measure.
+instead of ~1 µs. Per-string *current* is still set individually by R1–R10; what
+is common is only the on/off gate. The cost is optical crosstalk between
+neighbouring strings — one of the things the prototype needs to measure.
 
 **Open sourcing items** (project rule: NO consignment, all PCB parts
 LCSC-library — none of the below is confirmed orderable for assembly yet):
@@ -389,7 +442,18 @@ LCSC-library — none of the below is confirmed orderable for assembly yet):
 - the **PIN photodiode**. JLC's readily-available optoelectronics skew toward
   *phototransistors*, which would undermine the linearity the audio path needs.
   This is the part most likely to force a redesign.
+- the **IR emitter's beam angle** — ±20–30° at 940 nm in an 0805-class package.
+  Worth more dB than anything else on this list; if the library has nothing
+  narrow, that changes the signal budget more than any other substitution.
 - **quad op-amp** with low enough input bias current for a nanoamp TIA.
+- **J2**: JST S2B-XH-SM4-TB class, SMT side-entry 2-way. The envelope in the
+  model is scaled from the S4B figures already in this BOM — confirm against
+  JST's drawing before layout, as the S4B was.
+
+**Prototype: the first measurement is now string 2, not `SENSE_D`.** Specifically
+a **.014 plain string at 22 mm with a narrow-beam emitter at a realistic drive
+current**. Testing with a wide-angle emitter would understate the design by ~10 dB
+and could argue for playing-space intrusion that isn't needed.
 
 **Cost (estimate, not yet quoted)**: ~$30/board in parts — the MCU (~$9), 20
 photodiodes (~$7), 5 quad op-amps (~$4) and the PHY (~$2.50) dominate; ~95
