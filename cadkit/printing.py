@@ -1,69 +1,62 @@
 # -*- coding: utf-8 -*-
 """cadkit.printing — FDM print-process limits that geometry must respect.
 
-Currently one rule: the MINIMUM MATERIAL floor.
+Currently one rule: the MINIMUM MATERIAL floor, counted in WHOLE BEADS.
 
-    min_wall(nozzle_d)          -> a single bead: nozzle_d + SLICER_BUFFER
-    min_wall(nozzle_d, beads=N) -> N deliberate beads: N * nozzle_d   (no buffer)
+    min_wall(nozzle_d)          -> one bead:  nozzle_d          (the HARD floor)
+    min_wall(nozzle_d, beads=N) -> N beads:   N * nozzle_d
 
-WHY A BUFFER, AND ONLY ON A SINGLE BEAD
-Material EXACTLY one nozzle wide sometimes lands just under the slicer's
-extrusion-width threshold and gets DROPPED, leaving a gap where you drew solid.
-So the floor for any lone web / ceiling / rib is nozzle_d + SLICER_BUFFER
-(0.05 mm) — just enough to push it safely over the threshold.
+Design printed material as an INTEGER number of beads. The projects slice with a
+variable-width wall generator (ARACHNE), which fills exact nozzle multiples
+cleanly — so there is NO buffer. (An earlier nozzle+0.05 pad guarded against
+CLASSIC generators dropping exactly-one-nozzle lines; retired once everything
+moved to Arachne — user's call 2026-07-22.)
 
-But a wall designed as an INTEGER number of beads (2*nozzle for a 2-perimeter
-wall, 3*nozzle, ...) needs no buffer: the slicer lays exactly that many full
-beads and the buffer would only bloat the wall and push the perimeters out of
-register. That is why we do NOT simply bump the nozzle to nozzle+0.05 globally —
-the buffer belongs on the one-bead floor, not on multi-bead walls.
+ONE bead is the hard floor, but a lone bead slices a bit mushy; TWO beads
+(2*nozzle) is the QUALITY TARGET — two clean perimeters print crisp. Aim for two
+beads on anything load- or seal-bearing; drop to one only in a genuinely tight
+room. (This mirrors joinery._bead / _bead_pref and contact.contact_rib_size.)
 
-USE IT
 Set the nozzle ONCE per project and derive every minimum from it:
 
     from cadkit.printing import min_wall
-    NOZZLE_D = 0.8
-    MIN_WALL = min_wall(NOZZLE_D)      # 0.85 — floor for any single-bead feature
+    NOZZLE_D    = 0.8
+    MIN_WALL    = min_wall(NOZZLE_D)          # 0.8 — one-bead hard floor
+    MIN_WALL_2P = min_wall(NOZZLE_D, beads=2) # 1.6 — two-bead quality target
 
-RULE OF THUMB: no load- or seal-bearing material dimension below
-min_wall(nozzle). This bites hardest at HIDDEN thin spots — a boss ceiling over
-a cross-bore, a web between two pockets — where a nominal number looks fine but
-the finished solid is a razor. Check those on the real solid, not on paper.
+RULE OF THUMB: no load- or seal-bearing material below min_wall(nozzle); PREFER
+min_wall(nozzle, 2). This bites hardest at HIDDEN thin spots — a boss ceiling
+over a cross-bore, a web between two pockets — where a nominal number looks fine
+but the finished solid is a razor. Check those on the real solid, not on paper.
 
 Self-test: `python -m cadkit.printing` (or run this file).
 """
 
-__all__ = ["SLICER_BUFFER", "DEFAULT_NOZZLE_D", "min_wall"]
-
-# Material == one nozzle can be skipped by the slicer; pad a lone bead past the
-# threshold by this much. NOT applied to deliberate integer-bead walls.
-SLICER_BUFFER = 0.05
+__all__ = ["DEFAULT_NOZZLE_D", "min_wall"]
 
 # A common FDM nozzle. Projects override with their own (this repo runs 0.8).
 DEFAULT_NOZZLE_D = 0.4
 
 
 def min_wall(nozzle_d=DEFAULT_NOZZLE_D, beads=1):
-    """Smallest material thickness that reliably prints.
+    """Smallest reliably-printable material thickness = beads * nozzle_d.
 
-    beads == 1 (the default): a single bead, floored at nozzle_d + SLICER_BUFFER
-    so the slicer can't drop it. beads > 1: a deliberate multi-bead wall,
-    beads * nozzle_d with NO buffer (the slicer lays that many full beads)."""
+    One bead is the hard floor; two beads (the default quality target) print
+    crisp where a lone bead goes mushy. No buffer — with a variable-width wall
+    generator (Arachne) the slicer fills exact nozzle multiples cleanly."""
     if nozzle_d <= 0:
         raise ValueError("min_wall: nozzle_d must be > 0, got %r" % (nozzle_d,))
     if beads < 1:
         raise ValueError("min_wall: beads must be >= 1, got %r" % (beads,))
-    if beads == 1:
-        return nozzle_d + SLICER_BUFFER
     return beads * nozzle_d
 
 
 if __name__ == "__main__":
-    # One bead gets the buffer; multi-bead walls are exact multiples.
-    assert abs(min_wall(0.8) - 0.85) < 1e-12, min_wall(0.8)
-    assert abs(min_wall(0.8, beads=1) - 0.85) < 1e-12
-    assert abs(min_wall(0.8, beads=2) - 1.6) < 1e-12   # 2 perimeters, no buffer
-    assert abs(min_wall(0.4) - 0.45) < 1e-12
+    # Whole-bead multiples, no buffer.
+    assert abs(min_wall(0.8) - 0.8) < 1e-12, min_wall(0.8)
+    assert abs(min_wall(0.8, beads=1) - 0.8) < 1e-12
+    assert abs(min_wall(0.8, beads=2) - 1.6) < 1e-12   # two-bead quality target
+    assert abs(min_wall(0.4) - 0.4) < 1e-12
     assert abs(min_wall(0.4, beads=3) - 1.2) < 1e-12
     for bad in (0.0, -0.4):
         try:

@@ -203,8 +203,8 @@ RET_SCREW_X = PICKUP_X_NOM                          # CENTRED (the -Y jack was n
                                                    # + jack nub are one part (the plate) so they overlap
                                                    # freely; only the screw/insert dummies keep JACK_MX_OFF.
 # The -Y grub is an M4 cup-tip SET SCREW threading a heat-set insert (cadkit set-screw bore), so the
-# boss ceiling must clear the Ø6 insert pocket by MIN_WALL on EVERY side (the reported thin-ceiling
-# fix: material == nozzle can be dropped by the slicer). Ceiling = axis + pocket radius + MIN_WALL.
+# boss ceiling must clear the Ø6 insert pocket by MIN_WALL_2P (2 beads) on EVERY side (the reported
+# thin-ceiling fix). Ceiling = axis + pocket radius + MIN_WALL_2P.
 RET_BOSS_TOP_Z = RET_SCREW_Z + M4.insert_pilot_d / 2 + D.MIN_WALL_2P   # 1.6 (2-bead quality floor) over the bore
 X_SLIDE   = 6.0                                    # pickup X-position room on the plate (+/-)
 PLATE_X   = PM.PK_W + 2 * X_SLIDE                  # green X (pickup + slide) ~50.6
