@@ -1,10 +1,20 @@
 # -*- coding: utf-8 -*-
 """cadkit.printing — FDM print-process limits that geometry must respect.
 
-Currently one rule: the MINIMUM MATERIAL floor.
+TWO NUMBERS, AND THEY ARE NOT THE SAME KIND OF THING:
 
-    min_wall(nozzle_d)          -> a single bead: nozzle_d + SLICER_BUFFER
+    quality_wall(nozzle_d)      -> the DEFAULT for new geometry: TWO beads
+    min_wall(nozzle_d)          -> the ABSOLUTE floor, one bead + SLICER_BUFFER
     min_wall(nozzle_d, beads=N) -> N deliberate beads: N * nozzle_d   (no buffer)
+
+`min_wall` is a fact about the process: below it the slicer drops material. It is
+NOT a target. Designing to it gives single-perimeter walls — no infill, nothing to
+bond to its neighbour, and every layer a potential split line. Aim at
+`quality_wall` (2 * nozzle) and treat anything thinner as a deviation you can name
+a reason for. Project policy for this repo family, user's call 2026-07-30: run a
+0.8 nozzle wherever possible, which makes the default minimum feature 1.6; drop to
+a single 0.85 bead only where the feature genuinely cannot be thicker, and to a
+0.4 nozzle only where even that fails.
 
 WHY A BUFFER, AND ONLY ON A SINGLE BEAD
 Material EXACTLY one nozzle wide sometimes lands just under the slicer's
@@ -21,19 +31,21 @@ the buffer belongs on the one-bead floor, not on multi-bead walls.
 USE IT
 Set the nozzle ONCE per project and derive every minimum from it:
 
-    from cadkit.printing import min_wall
-    NOZZLE_D = 0.8
-    MIN_WALL = min_wall(NOZZLE_D)      # 0.85 — floor for any single-bead feature
+    from cadkit.printing import min_wall, quality_wall
+    NOZZLE_D  = 0.8
+    MIN_FEAT  = quality_wall(NOZZLE_D)   # 1.6 — SIZE FROM THIS
+    MIN_WALL  = min_wall(NOZZLE_D)       # 0.85 — the exception, not the default
 
-RULE OF THUMB: no load- or seal-bearing material dimension below
-min_wall(nozzle). This bites hardest at HIDDEN thin spots — a boss ceiling over
-a cross-bore, a web between two pockets — where a nominal number looks fine but
-the finished solid is a razor. Check those on the real solid, not on paper.
+RULE OF THUMB: no material dimension below quality_wall(nozzle), and none at all
+below min_wall(nozzle). This bites hardest at HIDDEN thin spots — a boss ceiling
+over a cross-bore, a web between two pockets — where a nominal number looks fine
+but the finished solid is a razor. Check those on the real solid, not on paper.
 
 Self-test: `python -m cadkit.printing` (or run this file).
 """
 
-__all__ = ["SLICER_BUFFER", "DEFAULT_NOZZLE_D", "min_wall"]
+__all__ = ["SLICER_BUFFER", "DEFAULT_NOZZLE_D", "QUALITY_BEADS",
+           "min_wall", "quality_wall"]
 
 # Material == one nozzle can be skipped by the slicer; pad a lone bead past the
 # threshold by this much. NOT applied to deliberate integer-bead walls.
@@ -41,6 +53,11 @@ SLICER_BUFFER = 0.05
 
 # A common FDM nozzle. Projects override with their own (this repo runs 0.8).
 DEFAULT_NOZZLE_D = 0.4
+
+# The quality tier. Two beads is the first thickness that is a real WALL rather
+# than a single extrusion: two perimeters bond to each other, so it resists
+# splitting along a layer instead of relying on one bead's adhesion.
+QUALITY_BEADS = 2
 
 
 def min_wall(nozzle_d=DEFAULT_NOZZLE_D, beads=1):
@@ -56,6 +73,16 @@ def min_wall(nozzle_d=DEFAULT_NOZZLE_D, beads=1):
     if beads == 1:
         return nozzle_d + SLICER_BUFFER
     return beads * nozzle_d
+
+
+def quality_wall(nozzle_d=DEFAULT_NOZZLE_D):
+    """The DEFAULT minimum for new geometry: QUALITY_BEADS full beads.
+
+    Reach for this, not min_wall. min_wall says what the printer can just about
+    produce; this says what is worth producing. Going below it should be a
+    deliberate, stated exception — a feature that cannot be thicker without
+    breaking something else — not the ordinary case."""
+    return min_wall(nozzle_d, beads=QUALITY_BEADS)
 
 
 if __name__ == "__main__":
@@ -74,4 +101,7 @@ if __name__ == "__main__":
         min_wall(0.8, beads=0); raise AssertionError("expected ValueError")
     except ValueError:
         pass
+    assert abs(quality_wall(0.8) - 1.6) < 1e-12, quality_wall(0.8)
+    assert abs(quality_wall(0.4) - 0.8) < 1e-12
+    assert quality_wall(0.8) > min_wall(0.8)      # the target is above the floor
     print("cadkit.printing self-test OK")
