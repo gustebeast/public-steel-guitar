@@ -29,9 +29,16 @@ enters from the trough through a Ø8 side way and rises to the plug seat.
 
 SEGMENTED FOR THE 255×255 BED: FLUSH-X grew the bar to the full
 instrument span (644.8) — THREE ~215 pieces now, each printing STRAIGHT
-(vertical slide-in dovetail tenons + glue at XS1/XS2, mid-trough), and
-two ~278 lid pieces (butt splice at XL, mid-span, so each lid piece
-BRIDGES one glued bar joint).
+(cadkit install-z joints at XS1/XS2, one per trough wall), and two ~278
+lid pieces (butt splice at XL, mid-span, so each lid piece BRIDGES one
+bar joint).
+
+NO GLUE, and NO fastener either: the splice joints take X and Y by shape
+and leave Z — the install axis — to the LID. A lid piece spans each
+splice, and its 45° foot (23.8 wide) cannot rise back through either
+piece's 20.6 groove mouth, so neither bar piece can lift off the other
+while the lid is in. That is what "the lid is structure" already meant;
+the glue was only ever belt-and-braces on top of it.
 
 FRAME: modelled at ABSOLUTE X/Y (the legs' real stations, +Y rail); Z is
 local with 0 = the plate bottom (build.py translates by ground + FOOT_H).
@@ -41,6 +48,7 @@ from __future__ import annotations
 
 import cadquery as cq
 
+from cadkit.joinery import PrintSpec, joint
 from .helpers import box_at, cyl
 from .chassis import LEG_STATIONS_X, LEG_Y
 from . import legs as LG
@@ -83,13 +91,14 @@ FOOT_PAD = 12.0
 # everything here DERIVES from the leg stations (they are chassis-owned and
 # have moved before — never hardcode absolutes against them).
 # FLUSH-X: the bar spans the WHOLE instrument (644.8) — past any two-piece
-# diagonal — so THREE ~215 pieces, each printing STRAIGHT, joined by
-# vertical slide-in dovetail tenons + glue (the chassis-segment pattern).
+# diagonal — so THREE ~215 pieces, each printing STRAIGHT, joined by cadkit
+# install-z joints (the chassis-segment pattern).
 XS1 = BAR_X0 + 215.0   # -X splice (mid-trough)
 XS2 = BAR_X1 - 215.0   # +X splice (mid-trough)
 XL = (LATCHES[0][0] + LATCHES[1][0]) / 2   # lid butt-splice: mid-span,
                    # ~107 from each bar splice so each lid piece BRIDGES
-                   # one glued bar joint (the lid is structure)
+                   # one bar joint — the lid IS the splice's Z lock (the
+                   # install axis the joint leaves free), not just a roof
 LID_XA = LATCHES[1][0] + LG.BLK_W / 2 + 0.4   # lid span: between the
 LID_XB = LATCHES[0][0] - LG.BLK_W / 2 - 0.4   # FUSED towers, 0.4 tip gaps
 TROUGH_X0 = LATCHES[1][0] + LG.BLK_W / 2 + 0.6   # wiring trough: runs
@@ -195,19 +204,38 @@ def _bar_full() -> cq.Workplane:
     return body
 
 
-def _splice_prisms(xs: float, grow: float) -> cq.Workplane:
-    """The two vertical slide-in dovetail tenons at bar splice `xs`
-    (plan-view trapezoids on the front/back trough walls, z 0..15 so the
-    lid groove stays untouched). grow=0 → the -X piece's tenons; grow>0
-    → the +X piece's slots."""
+# SPLICE JOINTS — cadkit, install='z' (both pieces print bottom-down, so the
+# profile lies in the plan plane and every working face is a vertical wall). One
+# per trough wall. Width is what each wall can host with 1.6 (2 beads) of printed
+# wall left on BOTH sides after the mortise's clearance dilation: the -Y wall runs
+# YC-17.8..YC-10 (7.8 thick), the +Y wall YC+6.5..YC+17.8 (11.3).
+_UP = PrintSpec(nozzle=0.8, material="PETG-GF", facing="up")
+SPLICE_YC = (YC - 13.9, YC + 12.15)    # centred in each trough wall
+SPLICE_W  = (4.3, 6.4)
+SPLICE_L  = 15.0                       # Z engagement (the lid groove floor is 15)
+SPLICE_D  = 8.0                        # room into the +X piece
+SPLICE_J  = tuple(joint(width=w, length=SPLICE_L, depth=SPLICE_D,
+                        tenon=_UP, mortise=_UP, install="z") for w in SPLICE_W)
+
+
+def _splice_tenons(xs: float) -> cq.Workplane:
+    """The -X piece's half of both splice joints at bar splice `xs`."""
     out = None
-    for y0, y1 in ((-14.5, -11.5), (9.25, 12.25)):      # tenon roots
-        p = (cq.Workplane("XY")
-             .polyline([(xs - grow * 4, y0 + YC - grow),
-                        (xs + 4.0 + grow, y0 - 0.7 + YC - grow),
-                        (xs + 4.0 + grow, y1 + 0.7 + YC + grow),
-                        (xs - grow * 4, y1 + YC + grow)])
-             .close().extrude(15.0 + grow))
+    for j, yc in zip(SPLICE_J, SPLICE_YC):
+        p = j.tenon(root=2.0).translate((xs, yc, 0.0))
+        out = p if out is None else out.union(p)
+    return out
+
+
+def _splice_mortises(xs: float) -> cq.Workplane:
+    """The +X piece's cavities — THROUGH slots, open at the piece's BOTTOM face
+    (the tenons enter there as it is lowered on) and out through the top, so
+    neither cavity has a ceiling to bridge. Z is unretained BY DESIGN — it is the
+    install axis, and the LID closes it (see the module docstring); the two
+    pieces' coplanar bottom faces set the height on the assembly bench."""
+    out = None
+    for j, yc in zip(SPLICE_J, SPLICE_YC):
+        p = j.mortise(drop=3.0, length=BAR_H + 2.0).translate((xs, yc, -1.0))
         out = p if out is None else out.union(p)
     return out
 
@@ -218,25 +246,25 @@ def _clip(x0: float, x1: float) -> cq.Workplane:
 
 def pedal_bar_a() -> cq.Workplane:
     """-X bar piece (WIRED TRRS tower): full bar clipped at XS1 + its two
-    dovetail tenons (slide piece B down onto them, glue). ~219 long —
-    prints STRAIGHT."""
+    splice tenons (piece B drops straight down onto them; the lid locks
+    the stack — no glue). ~219 long — prints STRAIGHT."""
     return (_bar_full().intersect(_clip(BAR_X0 - 1.0, XS1))
-            .union(_splice_prisms(XS1, 0.0)))
+            .union(_splice_tenons(XS1)))
 
 
 def pedal_bar_b() -> cq.Workplane:
-    """MID bar piece (trough only): clipped XS1..XS2 − XS1 slots (0.2
-    fit) + XS2 tenons. ~219 long — straight print."""
+    """MID bar piece (trough only): clipped XS1..XS2 − the XS1 cavities +
+    the XS2 tenons. ~219 long — straight print."""
     return (_bar_full().intersect(_clip(XS1, XS2))
-            .cut(_splice_prisms(XS1, 0.2))
-            .union(_splice_prisms(XS2, 0.0)))
+            .cut(_splice_mortises(XS1))
+            .union(_splice_tenons(XS2)))
 
 
 def pedal_bar_c() -> cq.Workplane:
-    """+X bar piece (plain tower): clipped at XS2 − the tenon slots (0.2
-    fit). ~215 long — straight print."""
+    """+X bar piece (plain tower): clipped at XS2 − the XS2 cavities.
+    ~215 long — straight print."""
     return (_bar_full().intersect(_clip(XS2, BAR_X1 + 1.0))
-            .cut(_splice_prisms(XS2, 0.2)))
+            .cut(_splice_mortises(XS2)))
 
 
 def _lid_full() -> cq.Workplane:
