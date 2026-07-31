@@ -44,7 +44,8 @@ from . import components as C
 from .helpers import box_at, cyl, cyl_y, heal
 
 from cadkit.fasteners import (M2_SELFTAP_D, M4_SHAFT_CLR_D, M4_INSERT_D,
-                       M4_INSERT_L, M4_SCREW_L, M4, cut_insert_bore,
+                       M4_INSERT_L, M4_SCREW_L, M2, M4, cut_insert_bore,
+                       cut_selftap,
                        cut_m4_pocket, seated_m4_insert, cut_m4_boss, m4_boss_insert)
 from cadkit.pcb import (jst_xh_side_header, xh_side_length,
                         XH_SIDE_H, XH_SIDE_D)
@@ -831,7 +832,22 @@ CAP_APERTURE = 5.0                  # open on the axis so the cap never intrudes
 AXLE_FLAT_DEPTH = 0.5
 AXLE_FLAT_R = AXLE_D / 2 - AXLE_FLAT_DEPTH      # 2.0 from the axis
 AXLE_FLAT_Y = LEVER_HW + 0.1                    # flat's +Y end (hub ±10, bearings ±10.4)
-AXLE_BORE_D = AXLE_D + 0.2                      # lever's through D-bore (glue fit)
+AXLE_BORE_D = AXLE_D + 0.2                      # lever's through D-bore (slip fit — the
+                                                # set screw below is what holds it)
+# AXIAL RETENTION, NO GLUE (user: every part comes apart). The axle cannot carry an
+# integral shoulder — it is slid +Y -> -Y through both Ø5 bearings, so nothing on it
+# may exceed Ø5 — and it ROTATES, so it cannot be pinned to the housing either. What
+# it CAN be pinned to is the LEVER, and the lever is already axially captive: its hub
+# ends (±10) sit 0.4 inside the two bearing INNER races (±10.4), which the housing
+# pockets capture. So one M2 set screw through the hub wall onto the D-FLAT fixes the
+# axle to the lever and the pair is trapped either way within that 0.4.
+# It self-taps rather than taking a heat-set insert (cadkit's usual preference for a
+# set screw): the hub wall over the flat is 2.4 (bore r 2.6 -> hub r 5.0) and an M2
+# pocket wants 3.5. 2.4 is six threads at 0.4 pitch, against a retention load that is
+# essentially the axle's own ~1 g — the screw stops a slide, it never carries the
+# pivot load, and the flat already carries what little torque there is.
+AXLE_SET_R  = HUB_D / 2                         # mouth: the hub's OD, on the +Z flat side
+AXLE_SET_L  = AXLE_SET_R - AXLE_FLAT_R + 0.2    # 3.2: through the wall, 0.2 past the flat
 PCB_Y   = MAG_Y1 + AIR_GAP + CHIP_H             # board face = magnet + gap + PACKAGE
 AXLE_Y0, AXLE_Y1 = -13.1, MAG_Y1                # axle: -Y journal tip (stops INSIDE its
                                                 # bearing pocket, back wall -13.2) .. the
@@ -1396,6 +1412,11 @@ def _lever() -> cq.Workplane:
     body = body.cut(_bore.intersect(box_at(               # flatten the +Z side -> D
         AXLE_BORE_D + 2.0, 2 * LEVER_HW + 4.0, _zhi - _zlo,
         x=0.0, y=0.0, z=(_zhi + _zlo) / 2)))
+    # AXLE SET SCREW — radial, at the hub's Y centre (between the two follower
+    # recess bands), down the +Z side onto the axle's D-flat. This is the axle's
+    # only axial retention now that the glue is gone; see the AXLE_SET_* block.
+    body = cut_selftap(M2, body, (0.0, 0.0, AXLE_SET_R), (0.0, 0.0, -1.0),
+                       AXLE_SET_L, overshoot=0.5)
     return heal(body)
 
 
@@ -1408,9 +1429,13 @@ def kl_axle() -> cq.Workplane:
 
       * Ø5 journals at both bearings, kept fully ROUND.
       * a D-FLAT over the hub band = the anti-rotation key (a protruding
-        tongue could not pass the Ø5 bearing bore on the way in). Glue in the
-        lever's matching D-bore is what holds it axially; the flat means that
-        glue never carries torque.
+        tongue could not pass the Ø5 bearing bore on the way in). An M2 SET
+        SCREW through the hub wall onto that flat is what holds the axle
+        axially — no glue: the axle can carry no integral shoulder (nothing on
+        it may exceed Ø5, or it could not pass the bearings) and it rotates, so
+        it cannot be pinned to the housing either. Pinning it to the LEVER does
+        the job, because the lever's hub ends already sit 0.4 inside the two
+        bearing inner races.
       * a FLANGE that seats on the housing's contact rib — the axial datum
         that sets the magnet's Y, and with it the sensor air gap.
       * a magnet POCKET with a MALE thread on its OD; kl_magnet_cap screws
