@@ -15,7 +15,7 @@ exterior walls are the +X END face (CH.T = 10 thick) and the +-Y side faces (=
 the rail takeovers: the chassis removes the rail ends at x > -17.5 and this piece
 IS the rail there). Each rail end sockets a low keyhead-style dovetail (wide +X /
 narrow -X, gripping the bearing wrap's -X pull). Above z6 only the string-holding
-mechanism: the bearing AXLE on two ARMS + a TIE BAR (the 90° turn) and the
+mechanism: the bearing AXLE on two short ARM stubs (the 90° turn) and the
 axle-support COMB. The +X carriages move in Z and install from +X, so the
 stringing window + guide ledges + screw rail + carriage sweep are OPENED out of
 the base's field centre (below the lower guide ledge nothing sweeps — the base
@@ -50,18 +50,24 @@ XLO  = D.BRIDGE_BASE_X0            # -X inboard face (-16.5), 12.5 -X of the axl
 X1   = XHI                         # +X tip (8.5) -- alias for the mechanism references
 ARM_X = XLO                        # arms span the FULL 25 mm block: symmetric edge webs
 ARM_W = D.BRIDGE_ARM_W             # arm / edge-web thickness (Y) — kept clear of the +Y rail
-TIE_Z = D.STRING_Z + 6.0          # tie bar / arm top, clear above the strings
-TIE_T = 5.0                       # ORIGINAL section, restored: the optical strip no longer
-                                  # hangs from this bar, so it is back to its structural job
-                                  # of linking the arm tops.
-# NOTE for the LEAD, found while reverting: at TIE_T=5.0 under TIE_Z=22.0 the bar's
-# UNDERSIDE sits at 17.00, which is 0.11 above the thickest string's top (16.889), and it
-# spans x -16.6..8.6 -- i.e. from 12.6 mm out from the termination inward. That is inside
-# the PALM BLOCKING zone with essentially zero hand room, and it predates the optical
-# pickup entirely. The down-firing strip actually RAISED that clearance to 3.0 while
-# pushing the bar further -X; removing the strip restores both. If palm blocking is a
-# hard requirement, this bar wants a look on its own account -- not something this feature
-# can fix, since the tie is structural and spans the strings by definition.
+# ── TIE BAR DELETED (user) -- THE TOP IS NOW FREE ───────────────────────────
+# There is no longer ANY structure above the strings at the bridge. The old bar spanned
+# x -16.6..8.6 at z 17..22, i.e. its underside was 0.11 mm over the thickest string's top
+# and it started 12.6 mm out from the termination -- dead centre of the palm blocking
+# zone, with no hand room at all.
+#
+# Removing it costs the axle almost nothing, and the reason is worth writing down: the
+# axle bore is at z 12.0 and the SOLID field-centre cap band runs z 6..10, so the axle is
+# carried 2 mm above the top of solid material. The arms are not really cantilevers at
+# all at that height -- they are stubs. Everything the arm had from the bore's top (13.7)
+# up to 22 was there to host the tie bar, not to hold the axle up. So the string load path
+# is unchanged: bearings -> axle -> the nine comb fingers + two arm stubs -> cap band ->
+# endplate block -> dovetails -> rails.
+#
+# The arms sit at y +-51.75, 9.35 mm OUTBOARD of the outermost string (+-42.4), so their
+# height was never a string-clearance question either -- only the bar's span was.
+ARM_TOP = D.BRIDGE_BEARING_Z + (D.BRIDGE_AXLE_D + 0.4) / 2 + 2.0   # 15.70: bore + a real
+                                                                   # cap, and nothing more
 MIN_ADDED = D.MIN_WALL_2P         # 1.6 -- two-bead QUALITY floor for material this
                                   # feature ADDS (single-sourced via dimensions)
 
@@ -174,8 +180,8 @@ def _arm(sy) -> cq.Workplane:
     X-depth (axle line → +X tip) so it fuses solidly to the cap and prints with no
     overhang when built up along X."""
     z_lo = CH.Z_TOP - 4.0
-    arm = box_at(X1 - ARM_X, ARM_W, TIE_Z - z_lo,
-                 x=(X1 + ARM_X) / 2, y=sy, z=(TIE_Z + z_lo) / 2)
+    arm = box_at(X1 - ARM_X, ARM_W, ARM_TOP - z_lo,
+                 x=(X1 + ARM_X) / 2, y=sy, z=(ARM_TOP + z_lo) / 2)
     return arm.cut(cyl_y(AXLE_BORE, ARM_W + 2, y0=sy - ARM_W / 2 - 1,
                          x=D.BRIDGE_AXLE_X, z=D.BRIDGE_BEARING_Z))
 
@@ -190,9 +196,6 @@ def _build() -> cq.Workplane:
     # Tie bar linking the arm tops above the strings. Runs from the +X tip out to
     # TIE_X0 -- past the endplate block -- so its underside can carry the DOWN-FIRING
     # optical strip at OP.SENSE_X, ~20 mm off the string termination.
-    # tie bar linking the arm tops above the strings (full depth -> +X tip)
-    body = body.union(box_at(X1 - ARM_X, 2 * D.BRIDGE_AXLE_Y + ARM_W, TIE_T,
-                             x=(X1 + ARM_X) / 2, y=0, z=TIE_Z - TIE_T / 2))
     # OPTICAL-STRIP CARRIER: a plinth reaching -X over the deck, top face at the board's
     # underside. Prints with the rest -- at x = XLO its whole cross-section is backed by
     # the endplate's z6..10 field-centre band, which is why CARRIER_HY stops at 54.
