@@ -48,7 +48,7 @@ from cadkit.fasteners import (M2_SELFTAP_D, M4_SHAFT_CLR_D, M4_INSERT_D,
                        cut_m4_pocket, seated_m4_insert, cut_m4_boss, m4_boss_insert)
 from cadkit.pcb import (jst_xh_side_header, xh_side_length,
                         XH_SIDE_H, XH_SIDE_D)
-from cadkit.joinery import PrintSpec, slide_joint   # the shared octagon slide joint
+from cadkit.joinery import PrintSpec, joint   # cadkit's one joinery entrypoint
 from cadkit.supports import printable_bore, contact_rib
 # the M4 insert pocket/boss helpers now live in cadkit/fasteners.py (shared); keep the old local names:
 _insert_pocket, _seated_insert = cut_m4_pocket, seated_m4_insert
@@ -393,7 +393,7 @@ _JHW      = _JW / 2.0               # octagon half-width in X (after the Z-rotat
 _JUP      = PrintSpec(nozzle=0.8, material="PETG-GF", facing="up")
 def _lever_joint(length):
     """The mount joint at a given SLIDE length (Y). MORT_CLR shrinks the tenon for fit."""
-    return slide_joint(_JW, length, tenon=_JUP, mortise=_JUP, clearance=MORT_CLR)
+    return joint(_JW, length, tenon=_JUP, mortise=_JUP, clearance=MORT_CLR)
 MORT_CLR  = 0.3                     # mortise clearance (slide fit)
 TEN_H     = _lever_joint(10.0).height   # how far a tenon rises above its mating face (5.82)
 MORT_Y0   = -2.0                  # mortise -Y mouth (opens outboard of the -Y rail for slide-in)
