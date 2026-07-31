@@ -286,6 +286,118 @@ already pinned above (Neutrik NMJ4HCD2 + shielded pair, single-point ground).
 The SERVO42D's own I/O is **XH2.54 native**, so the XH standard needs no
 adapting at the motors.
 
+## Optical pickup PCB (per-string sensing + on-board audio→MIDI)
+
+One custom board, hanging **face-down from the bridge endplate's tie bar**, that
+reads all ten strings optically. It replaces nothing in the signal path — the
+magnetic pickup is untouched — and does two jobs: per-string **pitch** (tuning
+calibration + audio→MIDI) and per-string **audio**.
+
+**The canonical part list is `src/optical_pickup.py::PARTS`.** The table below is
+generated from it, so the 3D model, the clearance assertions and this BOM cannot
+disagree about what is on the board. Every package is a real JEDEC/IPC outline at
+max dimensions; placement in the model is representative (block order and X
+columns are deliberate, exact XY of an 0402 is layout's business).
+
+**Architecture.** Each string gets an IR emitter flanked by two photodiodes in Y.
+SUM tracks vertical motion (the audio signal); DIFF tracks lateral. Both are
+needed: with symmetric detectors SUM is an *even* function of lateral
+displacement, so as the vibration plane precesses toward horizontal — which it
+does over this instrument's long sustain — SUM's f₀ collapses and **2f₀ takes
+over**, handing the detector a confident octave-up error rather than a dropout.
+Each photodiode therefore gets its own transimpedance amp and its own ADC input
+(20 of each); SUM/DIFF are one add and one subtract in firmware, cheaper in parts
+than analog sum *and* difference stages.
+
+Two rates share one ADC stream: **audio** = SUM at 48 kHz × 10 ch = 960 kB/s
+straight out over USB; **pitch** = decimated to ~6–8 kHz, detected on-chip, MIDI
+out over the same cable. The expensive stage is the only one not running at 48 k,
+which is why both fit in ~15 % of the MCU.
+
+**Why an external USB PHY.** 960 kB/s needs USB high-speed (isochronous
+full-speed tops out near 1023 kB/s theoretical, with MIDI still to send). Survey
+at time of writing:
+
+| Candidate | HS PHY | Fits a 20 mm board | Verdict |
+|---|---|---|---|
+| STM32H7 (LQFP100) | external ULPI | yes | **chosen** — M7, 3× 16-bit ADC |
+| STM32F723/733 | internal | no — ≥144 pins, 22×22 over leads | too wide |
+| AT32F435/437 | none (full-speed only) | yes | no HS |
+| GD32F470 | external ULPI | yes | M4 240 MHz, 12-bit ADC |
+| CH32V307 | internal | yes | 144 MHz, 16 ADC ch — can't run the detector |
+
+The only part with an integrated HS PHY that fits cannot run the detector, so the
+extra PHY chip is unavoidable. LQFP100 is likewise a floor, not a preference: 20
+ADC inputs plus a 12-signal ULPI bus will not fit a 64-pin part.
+
+| Qty | Ref | Part / role | Package | Envelope (mm) |
+|-----|-----|-------------|---------|---------------|
+| 1 | U6 | MCU — Cortex-M7, 3× 16-bit ADC, USB OTG_HS via ULPI | LQFP100 | 16.00 × 16.00 × 1.60 |
+| 1 | J1 | USB-C receptacle — 10 ch audio + MIDI + DFU | USB-C | 8.94 × 7.35 × 3.16 |
+| 5 | U1–U5 | quad op-amp — 4× transimpedance amp | SOIC-14 | 6.00 × 8.65 × 1.75 |
+| 1 | U7 | USB 2.0 high-speed ULPI PHY | QFN-24 | 4.00 × 4.00 × 0.90 |
+| 1 | U8 | LDO — 3V3 digital | SOT-23-5 | 2.90 × 2.80 × 1.45 |
+| 1 | U9 | LDO — 3V3 analog (low noise) | SOT-23-5 | 2.90 × 2.80 × 1.45 |
+| 1 | U11 | single op-amp — TIA mid-rail reference buffer | SOT-23-5 | 2.90 × 2.80 × 1.45 |
+| 1 | Y1 | 25 MHz crystal — MCU HSE | 3225 | 3.20 × 2.50 × 0.90 |
+| 1 | Y2 | 24 MHz crystal — PHY reference | 3225 | 3.20 × 2.50 × 0.90 |
+| 1 | Q1 | N-ch MOSFET — LED row driver | SOT-23 | 2.90 × 2.40 × 1.30 |
+| 1 | U10 | USB data-line ESD array | SOT-563 | 1.60 × 1.60 × 0.60 |
+| 10 | D1–D10 | IR emitter, 940 nm | 0805 (opto) | 2.00 × 1.25 × 0.85 |
+| 10 | PD1A–PD10A | PIN photodiode, +Y of string | 0805 (opto) | 2.00 × 1.25 × 0.85 |
+| 10 | PD1B–PD10B | PIN photodiode, −Y of string | 0805 (opto) | 2.00 × 1.25 × 0.85 |
+| 10 | R1–R10 | LED current-set resistor | 0603 | 1.60 × 0.80 × 0.95 |
+| 1 | FB1 | ferrite bead — analog rail isolation | 0603 | 1.60 × 0.80 × 0.95 |
+| 4 | C130–C133 | bulk caps — VBUS / 3V3D / 3V3A / reference | 0805 | 2.00 × 1.25 × 1.45 |
+| 20 | Rf11–Rf54 | TIA feedback resistor | 0402 | 1.00 × 0.50 × 0.55 |
+| 20 | Cf11–Cf54 | TIA feedback cap (sets the anti-alias pole) | 0402 | 1.00 × 0.50 × 0.55 |
+| 12 | C100–C111 | MCU decoupling | 0402 | 1.00 × 0.50 × 0.55 |
+| 10 | Cd11–Cd52 | op-amp decoupling | 0402 | 1.00 × 0.50 × 0.55 |
+| 4 | C123–C126 | crystal load caps | 0402 | 1.00 × 0.50 × 0.55 |
+| 3 | C120–C122 | PHY decoupling | 0402 | 1.00 × 0.50 × 0.55 |
+| 2 | R34–R35 | mid-rail divider | 0402 | 1.00 × 0.50 × 0.55 |
+| 2 | R32–R33 | USB-C CC pull-downs, 5k1 | 0402 | 1.00 × 0.50 × 0.55 |
+| 1 | R30 | BOOT0 pull-down | 0402 | 1.00 × 0.50 × 0.55 |
+| 1 | R31 | NRST pull-up | 0402 | 1.00 × 0.50 × 0.55 |
+| 1 | R36 | LED driver gate resistor | 0402 | 1.00 × 0.50 × 0.55 |
+| — | — | SWD programming pads (no component; first flash before USB DFU works) | pads | — |
+
+**136 placed parts**, all on ONE side (single-sided, per project rule: one
+stencil, one reflow, no back-side placement). The model tracks 32 distinct
+(description, package) lines; the table above merges four bulk-cap variants and
+the two CC pull-downs into single rows.
+
+**Board**: 20 × 134.9 mm, 4-layer, 1.6 mm FR4; 29 % of the area is package
+footprint. Two blocks, split electrically rather than for packing — the 20 TIAs
+sit in the X band immediately beside the sensor row (the summing node is the
+noise-critical point on a board reading tens of nanoamps), everything digital
+lives in the −Y room past the last string. Single-sided is what makes it 135 mm
+long; double-siding would save roughly 35 mm if that ever becomes worth the
+second assembly setup.
+
+**All ten emitters are driven by ONE FET.** Ambient subtraction sweeps the whole
+row on, then the whole row off, which gives the front end ~10 µs to settle
+instead of ~1 µs. The cost is optical crosstalk between neighbouring strings —
+one of the things the QTR prototype needs to measure.
+
+**Open sourcing items** (project rule: NO consignment, all PCB parts
+LCSC-library — none of the below is confirmed orderable for assembly yet):
+- the exact **STM32H7 LQFP100** variant, and whether it exposes **20 ADC input
+  pins** on that package. If it comes up short, the fallback is muxing the ten
+  DIFF channels (they only run at the decimated rate) into one input.
+- a **ULPI PHY** in JLC's library — USB3343-class QFN-24 is the envelope modelled.
+- the **PIN photodiode**. JLC's readily-available optoelectronics skew toward
+  *phototransistors*, which would undermine the linearity the audio path needs.
+  This is the part most likely to force a redesign.
+- **quad op-amp** with low enough input bias current for a nanoamp TIA.
+
+**Cost (estimate, not yet quoted)**: ~$30/board in parts — the MCU (~$9), 20
+photodiodes (~$7), 5 quad op-amps (~$4) and the PHY (~$2.50) dominate; ~95
+passives total about $1. Assembly follows the same per-*order* economics as the
+tee/sensor panel ($25 setup + ~$1.50 per unique feeder), so it should ride the
+**same JLCPCB panel** — the 0402 R/C and generic parts overlap with the existing
+boards, and only the specialised lines add feeders.
+
 ## Tools (shop infrastructure — NOT per-instrument cost)
 
 One-time purchases that outlive this project; documented here so nothing is
