@@ -94,9 +94,16 @@ PCB_T   = 1.6                                    # FR4
 # than when those two packages had to queue up past the last string. Width is cheap here
 # (the tie bar is 26.6 deep in X); Y length is not, because it is all cantilever.
 PCB_W   = 20.0                                   # X -- row + a full-length +X parts field
-LED_H   = 1.1                                    # 0805 emitter height (sets the board underside)
-MCU_H   = 1.7                                    # LQFP64 height
-USB_H   = 2.6                                    # micro-B receptacle shell height
+# ── PACKAGE ENVELOPES -- real parts, datasheet dimensions ────────────────────
+# Every package below is a named real part or a JEDEC-standard outline, NOT a guess.
+# (An earlier revision carried invented envelopes; among other things it modelled the
+# emitter and its detectors FLUSH against each other at 0.00 mm, which is unbuildable.)
+# Part SELECTION is still open -- the BOM's "all PCB parts are LCSC-library" rule means
+# the MCU in particular has to be checked for USB-HS availability in JLC's library -- but
+# the outlines are now the real ones for these package classes.
+LED_H   = 0.85                                   # Vishay VSMB1940X01, 0805, 2.0x1.25x0.85
+MCU_H   = 1.60                                   # LQFP64 JEDEC MS-026 BCD: 1.40 body + 0.10 standoff
+USB_H   = 3.16                                   # TYPE-C-31-M-12 (LCSC C165948, in JLC's library)
 # The sensor row sits near the board's -X EDGE, not on its centre line (user). The row's
 # X is fixed by the physics (SENSE_X); everything else about the board is free to sit +X
 # of it, toward the endplate that already exists. Centring the board on the sensors
@@ -107,7 +114,11 @@ USB_H   = 2.6                                    # micro-B receptacle shell heig
 # Not tighter: the MT6701 board's note in BOM.md is the precedent -- routed-outline-to-
 # copper tolerance eats most of a tight budget, and the last millimetre here buys only
 # a millimetre of tie-bar reach.
-SENSE_EDGE = 2.0                                 # sensor row inset from the board's -X edge
+# 2.5, sized from the WIDEST part in the row now that packages run long-axis-along-X: the
+# 0805 emitter's 1.0 half-width + JLCPCB's 1.0 component-to-edge rule + their 0.2 outline
+# tolerance = 2.2, rounded up. (At the old 2.0 with a rotated emitter this would have been
+# 0.8 after tolerance -- under the rule.)
+SENSE_EDGE = 2.5                                 # sensor row inset from the board's -X edge
 
 # SINGLE-SIDED (user): every part on the BOTTOM face. The MCU went on the back for one
 # round to keep the board short, but there is plenty of room in -Y -- the -Y rail is out
@@ -127,8 +138,13 @@ PD_DY   = 1.6                                    # detector offset either side o
                                                  # Scaled to the SHORT standoff -- at 3 mm a
                                                  # wider straddle would view the string at too
                                                  # oblique an angle to return signal.
-LED_PKG = (1.25, 2.0, 1.1)                       # 0805 IR emitter: X, Y, Z
-PD_PKG  = (0.8, 1.2, 0.8)                        # 0603 photodiode
+# Packages run their LONG axis along X and their short axis along Y. Y is the scarce
+# direction here (PD_DY has to stay small for the standoff), X is free (the board is 20
+# wide for one 2 mm sensor row). Laid the other way up, an 0805 emitter and its 0603
+# detectors sat FLUSH against each other -- 0.00 mm clearance, unbuildable. Asserted below.
+LED_PKG = (2.0, 1.25, LED_H)                     # Vishay VSMB1940X01 940nm, 0805 (2012 metric)
+PD_PKG  = (2.0, 1.25, LED_H)                     # 0805 photodiode, same optoelectronic outline
+PKG_CLR = 0.25                                   # least placement gap between packages
 
 # ── processor + IO, in the Y end room BEYOND the outer strings ───────────────
 # Placed by measuring OUTWARD from the outer string's detector, never IN from the PCB
@@ -138,8 +154,12 @@ PD_PKG  = (0.8, 1.2, 0.8)                        # 0603 photodiode
 # ONE cable: USB to the Pi. No CAN transceiver -- calibration f0 reaches the Teensy
 # (which owns the position->pitch map) via the existing Teensy<->Pi link. The Pi is
 # also the DFU host, so it can reflash this board over the same cable.
-MCU_PKG = (12.0, 12.0, MCU_H)                    # LQFP64, USB HIGH-SPEED capable -- TOP side
-USB_PKG = (7.5, 5.5, 2.6)                        # micro-B SMT receptacle -- BOTTOM side, -Y tail
+MCU_PKG = (12.0, 12.0, MCU_H)                    # LQFP64, 10x10 body / 12x12 over leads (MS-026)
+# USB-C, not micro-B. The Pi end of this cable is USB-C, and micro-B is obsolete for a
+# port that carries firmware updates for the life of the instrument. It is BIGGER than
+# the micro-B envelope this modelled before (9.0 x 7.5 x 3.3 vs 7.5 x 5.5 x 2.6), which
+# is why the tail did not shrink as far as the package move alone would suggest.
+USB_PKG = (8.94, 7.35, USB_H)                    # TYPE-C-31-M-12: 8.94 across x 7.35 deep, faces -Y
 END_KEEP = 3.0                                   # clear space between outer detector and any part
 
 
@@ -318,6 +338,19 @@ def _assert_field_clear():
     # test is in X, not Y: nothing may reach back into the sensor row's X band. (The Y
     # test that used to live here is gone with the tail -- MCU_Y is deliberately over
     # the field now.)
+    # Emitter <-> detector placement gap. This was 0.00 (packages flush) before the row
+    # was laid long-axis-along-X; a real assembler cannot place that.
+    gap = (PD_DY - PD_PKG[1] / 2) - LED_PKG[1] / 2
+    if gap < PKG_CLR:
+        raise AssertionError(
+            f"optical strip: emitter-to-detector gap {gap:.2f} < PKG_CLR {PKG_CLR} -- "
+            f"raise PD_DY or use a shorter package in Y")
+    # Sensor row vs the board's -X edge, against JLCPCB's 1.0 rule + 0.2 outline tolerance
+    edge = SENSE_EDGE - max(LED_PKG[0], PD_PKG[0]) / 2
+    if edge - 0.2 < 1.0:
+        raise AssertionError(
+            f"optical strip: row-to-edge {edge:.2f} leaves {edge - 0.2:.2f} after outline "
+            f"tolerance, under JLCPCB's 1.0 component-to-edge rule")
     row_x1 = SENSE_X + max(LED_PKG[0], PD_PKG[0]) / 2
     for name, pkg in (("MCU", MCU_PKG), ("USB", USB_PKG)):
         near = PART_X - pkg[0] / 2
