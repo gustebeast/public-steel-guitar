@@ -90,13 +90,35 @@ MIN_ADDED = D.MIN_WALL_2P         # 1.6 -- two-bead QUALITY floor for material t
 # X is capped by the deck band OP reads from top_plate (pickup cavity to deck end): there
 # is 0.2 either side of the board, so the plinth cannot have an -X wall and the board is
 # located +X against the endplate face.
-# Y is capped at the endplate's own field-centre band (|y| <= MECH_HW): past that there is
-# no material at this Z behind the plinth, and printing +X -> -X its first layer would be
-# a floating island. That is why the strip's TAIL is not carried here -- see below.
+#
+# The plinth is BACKED BY THE COMB BRACE below -- which is what makes it printable at all.
+# On its own its first layer floated: the field-centre band above z6 is only unioned from
+# X0 (+6.0) to X1, so between XLO and +6 there is no material at this height for the
+# plinth to start on. (User-caught.)
 CARRIER_TOP  = OP.PCB_BOT                     # 9.661 -- the board bears directly on this
 CARRIER_BOT  = OP.DECK_TOP + 0.2              # 6.2 -- clearance so the deck slides under
 CARRIER_X1   = OP.PCB_X1S - 0.1               # -X face, inside the band by a hair
-CARRIER_HY   = 54.0                           # within the endplate's z6..10 band
+CARRIER_HY   = 54.0                           # out to the arms
+
+# ── COMB BACK-BRACE (user's sketch) ──────────────────────────────────────────
+# The comb fingers root on the cap band at x 2.6..6.0 and reach out to -6.5 with the AXLE
+# BORE AT THEIR TIP -- a 12.5 mm cantilever carrying the highest load in the instrument.
+# This braces the other side: each finger grows -X, then FLARES AT 45 deg in plan until
+# neighbouring flares merge into one solid bar spanning the full Y extent. The finger
+# stops being a cantilever and becomes a beam held at both ends.
+#
+# 45 deg is not cosmetic -- it is the print constraint. The endplate builds +X -> -X, so
+# growing in Y as X decreases means new material with nothing behind it; 45 deg is exactly
+# the self-supporting limit, so the gaps close without a single overhang.
+#
+# And the same bar keeps running -X to BECOME the PCB plinth, which is what fixes that
+# part's floating first layer: the whole path from the cap band to the optical strip is
+# now continuous material in the build direction.
+BRACE_X0 = -8.6                  # start of the flare: 0.6 clear of the bearing OD (x -8..0)
+BRACE_X1 = XLO                   # -16.60, where the plinth takes over
+BRACE_Z0 = CARRIER_BOT           # 6.2, so the plinth is backed over its full height
+BRACE_Z1 = 13.0                  # covers the bore (10.3..13.7) up to where string
+                                 # clearance runs out: 2.11 under the lowest string
 AXLE_BORE = D.BRIDGE_AXLE_D + 0.4
 # AXLE RETENTION, NO GLUE (user: every part comes apart). The Ø3 ground shaft slides
 # -Y through both arms, 10 bearings and 9 comb fingers, so it can carry no shoulder;
@@ -211,6 +233,20 @@ def _arm(sy, blind=False) -> cq.Workplane:
 _SRX = D.SCREW_X + 7.0            # screw-rail +X face (DEPTH/2 past the screw line)
 
 
+def _comb_brace(yc: float, cb_w: float) -> cq.Workplane:
+    """One finger's back-brace: constant width out to BRACE_X0, then a 45 deg flare in
+    plan. Neighbouring flares merge into a solid bar; the outermost ones run on toward the
+    arms. Nothing here is an overhang -- 1 mm of Y growth per 1 mm of X is exactly the
+    self-supporting limit for a +X -> -X build."""
+    hw0 = cb_w / 2
+    hw1 = hw0 + (BRACE_X0 - BRACE_X1)          # 45 deg: Y growth == X run
+    pts = [(-6.5, yc - hw0), (-6.5, yc + hw0),
+           (BRACE_X0, yc + hw0), (BRACE_X1, yc + hw1),
+           (BRACE_X1, yc - hw1), (BRACE_X0, yc - hw0)]
+    return (cq.Workplane("XY").polyline(pts).close()
+            .extrude(BRACE_Z1 - BRACE_Z0).translate((0, 0, BRACE_Z0)))
+
+
 def _build() -> cq.Workplane:
     body = _cap()
     for sy in (-D.BRIDGE_AXLE_Y, D.BRIDGE_AXLE_Y):
@@ -292,6 +328,7 @@ def _build() -> cq.Workplane:
         yc = (D.string_y(k) + D.string_y(k + 1)) / 2
         body = body.union(_fpro.translate((0, yc, 0)))
         body = body.union(_tpro.translate((0, yc, 0)))
+        body = body.union(_comb_brace(yc, CB_W))
         body = body.cut(cyl_y(D.BRIDGE_AXLE_D + 0.3, CB_W + 2, y0=yc - CB_W / 2 - 1,
                               x=D.BRIDGE_AXLE_X, z=D.BRIDGE_BEARING_Z))
 
