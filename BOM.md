@@ -288,8 +288,22 @@ adapting at the motors.
 
 ## Optical pickup PCB (per-string sensing + on-board audio→MIDI)
 
-One custom board, hanging **face-down from the bridge endplate's tie bar**, that
-reads all ten strings optically. It replaces nothing in the signal path — the
+One custom board lying **under the strings, firing up**, on a carrier that is part
+of the bridge endplate and **rides on top of the deck**, that reads all ten
+strings optically.
+
+It spent a while hanging face-DOWN from the endplate's tie bar. Optically that is
+better — a down-firing sensor is shaded by its own mount, free, and sheds debris
+instead of collecting it — but it put structure 3 mm over the strings starting
+14.5 mm out from the termination, straight through the **palm blocking** zone.
+Blocking is core right-hand technique, so that mount lost.
+
+Riding on the deck rather than taking a deck slot is what keeps the magnetic
+pickup whole: there is a **14.0 mm clear band** between the pickup cavity's +X
+edge (−30.62) and the deck's end at the endplate (−16.60), and the entire sensing
+section lives in it. The carrier is monolithic with the endplate so the sensor
+standoff — the signal-critical dimension — references the bridge directly rather
+than through the deck panel's tolerance stack. It replaces nothing in the signal path — the
 magnetic pickup is untouched — and does two jobs: per-string **pitch** (tuning
 calibration + audio→MIDI) and per-string **audio**.
 
@@ -370,14 +384,14 @@ stencil, one reflow, no back-side placement). The model tracks 35 distinct
 (description, package) lines; the table above merges four bulk-cap variants and
 the two CC pull-downs into single rows.
 
-**Board**: STEPPED outline, 4-layer, 1.6 mm FR4, 3408 mm² — **30 × 49 mm** over
-the plain strings (+Y) and **20 × 96.9 mm** over the wound strings and the
-digital block (−Y). Two blocks, split electrically rather than for packing — the
-20 TIAs sit in the X band immediately beside the sensor row (the summing node is
-the noise-critical point on a board reading tens of nanoamps), everything digital
-lives in the −Y room past the last string. Single-sided is what makes it long;
-double-siding would save roughly 35 mm if that ever becomes worth the second
-assembly setup.
+**Board**: 4-layer, 1.6 mm FR4, two sections. A **13.6 mm-wide sensing strip**
+(X −30.4…−16.8) running the string field, carrying the row, the ten ballast
+resistors and all five quad op-amps; then a **30 mm-wide tail** (X −46.8…−16.8,
+Y −104.2…−56.1) for the digital block, which widens only past the pickup cavity's
+−Y edge where the deck is solid again and nothing is overhead. The MCU is 16 mm
+over its leads and simply does not fit the band — that is what forces the tail.
+Single-sided, every part on the TOP face, so the whole underside bears on a solid
+plinth: no ledges, no floor to fuse back.
 
 ### The thin-string signal budget — why the outline steps
 
@@ -404,19 +418,33 @@ Four levers, spent in order of cost:
 3. **Per-string TIA gain** (Rf, already twenty independent parts). Bounded by the
    op-amp's gain–bandwidth product, not by the resistor: thin strings want more
    gain *and* more bandwidth, and Rf × Cin trades one against the other.
-4. **Distance from the termination** — the worst lever, and the only one with a
-   playing cost. Signal is linear in distance, so gain is 20·log10(d/12) dB while
-   the cost in playing space is linear. Equalising .014 would need d = 60 mm,
-   putting the board edge at −66.5. Spent anyway, as a **step**: plain strings
-   (1–5) go to 22 mm for **+5.3 dB**, wound strings stay at 12 mm. A step rather
-   than a taper because a taper would interpolate and hand string 5 almost
-   nothing.
+4. **Distance from the termination** — the worst lever: signal is linear in
+   distance, so gain is only 20·log10(d/d₀) dB. Equalising .014 would need 60 mm.
 
-**What the step costs in playing.** The tie bar's underside is only 3.00 mm above
-the strings, so nothing can be picked *under* it — the bar's −X face is the
-picking-zone boundary. Stepping keeps that boundary at **14.5 mm** from the
-termination over the wound strings and moves it to **24.5 mm** only over the
-plain ones. A uniform 22 mm row would have pushed all ten out to 24.5.
+**The stepped row was dropped, and the 14 mm band is why.** The band holds ONE
+sensor row plus the transimpedance amps — not two rows plus the amps. Keeping
+every TIA within a few mm of its photodiode beat the step's +5.3 dB: the summing
+node is the noise-critical point on a board reading tens of nanoamps, and the
+alternative was a ~90 mm trace sharing a board with a 96 kHz LED driver whose
+switching noise is **synchronous with sampling**, so ambient subtraction would not
+cancel it. The single row sits at **15.5 mm** for all ten — further out than the
+old wound row, so every string gains ~+1.9 dB and the thin ones give up 3.4 dB
+relative to the stepped plan.
+
+**The cover (printed part `optical_cover`).** Up-firing is what makes this
+necessary: the detector looks at the sky, and ambient subtraction fixes flicker
+and offset but **not saturation**. An up-firing sensor also collects the skin and
+string shed a down-firing one sheds. The lid gives each string its own aperture
+and closes the shallow-angle path with a −X wall (from +X the endplate already
+does it). Be honest about the limit: at a 3 mm standoff a slot cannot collimate
+much — geometric rejection is a few dB, and the heavy lifting against sun would be
+an **IR-pass window** bonded into the slots, which is the obvious next addition if
+the prototype says sun is a problem. Print it **dark**: it is the one surface
+facing the detectors.
+
+Z stack: deck 6.00 → board 9.66–11.26 → sensor faces 12.11 → cover 12.41–14.01 →
+lowest string 15.11. That leaves **1.10 mm** over the cover and **3.00 mm** of
+optical gap. Install order is board, cover, then strings.
 
 **Power (J2): 5 V from the instrument rail, not USB VBUS.** MCU ~200–300 mA, PHY
 ~50, 21 op-amp channels ~40 — already past a USB port's 500 mA before a single

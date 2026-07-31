@@ -34,7 +34,6 @@ from . import optical_pickup as OP
 from .endplate_base import endplate_base
 from .screw_rail import screw_rail as _screw_rail, HEIGHT as _SR_H
 from .helpers import box_at, cyl, cyl_y
-from cadkit.fasteners import M2, cut_m2_anchor
 
 X0   = CH.X_BRIDGE                 # cap -X face / field<->cap boundary: the field stays
                                    #   OPEN -X of here (carriage sweep / strings / rods)
@@ -51,54 +50,43 @@ XLO  = D.BRIDGE_BASE_X0            # -X inboard face (-16.5), 12.5 -X of the axl
 X1   = XHI                         # +X tip (8.5) -- alias for the mechanism references
 ARM_X = XLO                        # arms span the FULL 25 mm block: symmetric edge webs
 ARM_W = D.BRIDGE_ARM_W             # arm / edge-web thickness (Y) — kept clear of the +Y rail
-# Tie bar / arm top. The bar now POCKETS the optical strip (optical_pickup.py) in its
-# underside, so it is sized from that stack rather than from a round number: its
-# UNDERSIDE meets the strip's sensor faces (so the bar shades the detectors and nothing
-# protrudes toward the strings) and its TOP clears the strip's top-side MCU by TIE_CAP.
-TIE_CAP = 2.5                     # structure over the strip's board
-TIE_Z   = OP.PCB_TOP + TIE_CAP            # 24.2 -- tie bar / arm top
-TIE_T   = TIE_Z - OP.SENSE_FACE_Z         # 5.2  -- thickness (underside at the sensor faces)
-# The bar EXTENDS -X past the endplate block to carry the optical strip out to its
-# sensing station. Farther from the string termination = MORE signal (displacement is
-# linear in distance from a termination), so the bar reaches the strip rather than the
-# strip crowding the bridge. Cantilevered from the arms: 5 mm of PETG-GF over a ~17 mm
-# reach, ~8x margin against a palm leaning on it.
-# -X face FLUSH with the strip's own -X edge (user): no endplate material may reach
-# further -X than the PCB -- the board itself is the furthest anything goes into the
-# playing area. That also means the board cannot be trapped by an -X lip, which is why
-# retention is screws from below into MOUNT_BOSSES (see below), not a captive pocket.
-# The bar's -X face STEPS with the board's (OP.board_x1): it reaches -28.5 only over the
-# +Y half, where the plain strings' sensors sit 22 mm out from the termination, and stays
-# at -18.5 over the wound half. That step is playing space, not cosmetics -- the bar's
-# underside is 3.0 above the strings, so nothing can be picked UNDER it and this face IS
-# the picking-zone boundary. Stepping keeps it at 14.5 mm from the termination over the
-# wound strings instead of pushing all ten out to 24.5.
-TIE_X0  = OP.PCB_X1               # -X face over the WOUND (-Y) half
-TIE_X0W = OP.PCB_X1W              # -X face over the PLAIN (+Y) half
-# Anchor room for those screws. Above the board the bar has only TIE_CAP of material,
-# well under M2's anchor_min_wall (insert pocket + a real bite), so each screw gets a
-# BOSS grown UPWARD off the bar top -- away from the strings and the player, the one
-# direction here that is free. (cadkit's cut_boss_anchor grows the boss BACKWARDS toward
-# the screw, which would push it down into the string space, so the boss is unioned by
-# hand and a plain cut_m2_anchor put in it.)
-MOUNT_DEPTH = M2.anchor_min_wall          # 5.5 -- pocket + min_bite, no deviation
-MOUNT_TOP_Z = OP.PCB_TOP + MOUNT_DEPTH    # boss top
-MIN_ADDED = D.MIN_WALL_2P                 # 1.6 -- two-bead QUALITY floor for material this feature
-                                          # ADDS (single-sourced from cadkit.printing via dimensions)
-MOUNT_BOSS_D = M2.insert_pilot_d + 2 * MIN_ADDED   # 6.5 (M2.boss_wall's 1.0 is under it)
-# The bar also runs ASYMMETRICALLY in -Y, to the end of the strip's processor/USB tail.
-# Without this the tail hangs ~14 mm past the bar with the USB receptacle on it, and
-# every cable insertion flexes an unsupported piece of FR4 -- on the connector that
-# carries firmware updates. Past the string field (string 10 is at ~-42) this is open
-# space above the deck, which is the "room in -Y" the single-sided board is spending.
-# Far enough -Y that the strip's -Y floor ledge has solid bar to root into: the ledge
-# overruns the pocket wall (OP.LEDGE_YM) and needs real material outboard of that, not a
-# knife edge. Reading OP.LEDGE_YM keeps the two in step -- sized from OP.PCB_YM instead,
-# this left the ledge rooted in a 1.7 mm sliver.
-TIE_Y0 = OP.LEDGE_YM - MIN_ADDED  # -Y face: past the strip's tail AND its ledge root
-RIB_Z0 = 12.0                     # -Y overhang stiffener floor (see _build); clear of the
-                                  # deck at z6 and of everything the strip hangs below it
-TIE_Y1 = D.BRIDGE_AXLE_Y + ARM_W / 2      # +Y face: unchanged, at the arm outer
+TIE_Z = D.STRING_Z + 6.0          # tie bar / arm top, clear above the strings
+TIE_T = 5.0                       # ORIGINAL section, restored: the optical strip no longer
+                                  # hangs from this bar, so it is back to its structural job
+                                  # of linking the arm tops.
+# NOTE for the LEAD, found while reverting: at TIE_T=5.0 under TIE_Z=22.0 the bar's
+# UNDERSIDE sits at 17.00, which is 0.11 above the thickest string's top (16.889), and it
+# spans x -16.6..8.6 -- i.e. from 12.6 mm out from the termination inward. That is inside
+# the PALM BLOCKING zone with essentially zero hand room, and it predates the optical
+# pickup entirely. The down-firing strip actually RAISED that clearance to 3.0 while
+# pushing the bar further -X; removing the strip restores both. If palm blocking is a
+# hard requirement, this bar wants a look on its own account -- not something this feature
+# can fix, since the tie is structural and spans the strings by definition.
+MIN_ADDED = D.MIN_WALL_2P         # 1.6 -- two-bead QUALITY floor for material this
+                                  # feature ADDS (single-sourced via dimensions)
+
+# ── OPTICAL-STRIP CARRIER (optical_pickup.py) ────────────────────────────────
+# The strip moved OUT from under this bar and UNDER THE STRINGS (user): a bar 3 mm over
+# the strings, starting 14.5 mm out from the termination, sat straight in the palm
+# blocking zone. It now lies on the deck, and this carrier is what holds it.
+#
+# A PLINTH, not a slot, and it is monolithic with the endplate on purpose: the sensor
+# standoff is the signal-critical dimension on this board, so it wants to reference the
+# bridge directly rather than through the deck panel's tolerance stack. It simply RIDES
+# ON TOP of the deck -- no slot is spent, so the magnetic pickup keeps the whole grid.
+#
+# The strip is single-sided with every part on its TOP face, so the whole underside can
+# bear on a solid plinth top; no ledges, no floor, nothing to fuse back after a cut.
+# X is capped by the deck band OP reads from top_plate (pickup cavity to deck end): there
+# is 0.2 either side of the board, so the plinth cannot have an -X wall and the board is
+# located +X against the endplate face.
+# Y is capped at the endplate's own field-centre band (|y| <= MECH_HW): past that there is
+# no material at this Z behind the plinth, and printing +X -> -X its first layer would be
+# a floating island. That is why the strip's TAIL is not carried here -- see below.
+CARRIER_TOP  = OP.PCB_BOT                     # 9.661 -- the board bears directly on this
+CARRIER_BOT  = OP.DECK_TOP + 0.2              # 6.2 -- clearance so the deck slides under
+CARRIER_X1   = OP.PCB_X1S - 0.1               # -X face, inside the band by a hair
+CARRIER_HY   = 54.0                           # within the endplate's z6..10 band
 AXLE_BORE = D.BRIDGE_AXLE_D + 0.4
 
 # Guide-rod LEDGES: two shallow bars protruding −X from the cap face below the
@@ -195,27 +183,6 @@ def _arm(sy) -> cq.Workplane:
 _SRX = D.SCREW_X + 7.0            # screw-rail +X face (DEPTH/2 past the screw line)
 
 
-def _mount_boss(mx: float, my: float) -> cq.Workplane:
-    """Retention-screw boss standing off the tie-bar TOP, with the 45 deg buttress that
-    makes it printable. The endplate builds +X -> -X, so anything rising above the bar
-    top has nothing at +X to start on: a bare boss's first layer is a floating island.
-    The buttress ramps from the bar top up to full boss height over its own height, so
-    every layer steps out one layer's worth -- the same trick as the axle comb's ramps.
-
-    SQUARE, not round: a cylinder's first layer at the +X tangent is a knife edge that
-    then widens faster than 45 deg. A square section starts at full width against the
-    buttress, which is already there at full height. Flats give MIN_ADDED wall to the
-    insert pocket, corners more."""
-    h = MOUNT_TOP_Z - TIE_Z
-    r = MOUNT_BOSS_D / 2
-    boss = box_at(MOUNT_BOSS_D, MOUNT_BOSS_D, h, x=mx, y=my, z=TIE_Z + h / 2)
-    ramp = (cq.Workplane("XZ")
-            .polyline([(mx + r, TIE_Z), (mx + r, MOUNT_TOP_Z), (mx + r + h, TIE_Z)])
-            .close().extrude(r, both=True)
-            .translate((0, my, 0)))
-    return boss.union(ramp)
-
-
 def _build() -> cq.Workplane:
     body = _cap()
     for sy in (-D.BRIDGE_AXLE_Y, D.BRIDGE_AXLE_Y):
@@ -223,44 +190,15 @@ def _build() -> cq.Workplane:
     # Tie bar linking the arm tops above the strings. Runs from the +X tip out to
     # TIE_X0 -- past the endplate block -- so its underside can carry the DOWN-FIRING
     # optical strip at OP.SENSE_X, ~20 mm off the string termination.
-    # Two sections, stepping at OP.Y_STEP -- see TIE_X0/TIE_X0W. Printing +X -> -X, the
-    # step is safe: going -X the bar LOSES its -Y half at x = TIE_X0, and material only
-    # ever disappears, never appears unsupported.
-    for _x0, _y0, _y1 in ((TIE_X0W, OP.Y_STEP, TIE_Y1), (TIE_X0, TIE_Y0, OP.Y_STEP)):
-        body = body.union(box_at(X1 - _x0, _y1 - _y0, TIE_T,
-                                 x=(X1 + _x0) / 2, y=(_y1 + _y0) / 2,
-                                 z=TIE_Z - TIE_T / 2))
-    # -Y OVERHANG STIFFENER. The bar has to reach y -100.8 to carry the strip's digital
-    # block, which cantilevers ~49 mm past the bearing arm -- and the far end is where the
-    # USB receptacle lives, i.e. the one part of this board that gets handled, on the port
-    # that carries firmware updates. A board that flexes when you plug into it is a
-    # reliability problem, not a cosmetic one.
-    # The fix is free depth: the bar's underside is pinned at the sensor plane only WHERE
-    # THERE ARE STRINGS. Past the last one it can go as deep as we like, so the solid +X
-    # wall (the strip's pocket ends at OP.PCB_X0 + clearance) drops to RIB_Z0. That is
-    # ~5x the second moment for material nobody can see and nothing else wants.
-    body = body.union(box_at(X1 - (OP.PCB_X0 + OP.PCB_CLR), -46.0 - TIE_Y0, TIE_Z - RIB_Z0,
-                             x=(X1 + OP.PCB_X0 + OP.PCB_CLR) / 2,
-                             y=(-46.0 + TIE_Y0) / 2, z=(TIE_Z + RIB_Z0) / 2))
-    # Pocket for the strip, opening DOWNWARD: board envelope + the full component
-    # depth beneath it. Cut from the strip's own solid, so the pocket is always the
-    # board. The strip's sensor faces end flush with the tie-bar underside -- nothing
-    # protrudes toward the strings, and the bar shades the detectors from above.
-    body = body.cut(OP.opt_pcb_pocket())
-    # Floor ledges the board rests on, unioned AFTER the pocket so the cut can't eat
-    # them. They carry their own LEDGE_T rather than living on the 1.1 the bar leaves
-    # under the board, which was below the 1.6 floor for added material. Each is rooted
-    # in solid bar at +X (and overruns the pocket in Y) -- OP sizes them from the POCKET,
-    # not from the board, or they land PCB_CLR short of the wall and float.
-    body = body.union(OP.opt_floor_ledges())
-    # Retention: a boss up off the bar top per screw, then a standard M2 anchor down
-    # it. Mouth is the board's TOP face, so the screw comes from BELOW (the side the
-    # board loads from) and the insert pocket -- if those self-tapped threads ever
-    # strip -- opens downward into the board pocket, reachable with the board out.
-    for mp in OP.mount_points():
-        body = body.union(_mount_boss(mp[0], mp[1]))
-    for mp in OP.mount_points():
-        body = cut_m2_anchor(body, mp, (0, 0, 1), depth=MOUNT_DEPTH)
+    # tie bar linking the arm tops above the strings (full depth -> +X tip)
+    body = body.union(box_at(X1 - ARM_X, 2 * D.BRIDGE_AXLE_Y + ARM_W, TIE_T,
+                             x=(X1 + ARM_X) / 2, y=0, z=TIE_Z - TIE_T / 2))
+    # OPTICAL-STRIP CARRIER: a plinth reaching -X over the deck, top face at the board's
+    # underside. Prints with the rest -- at x = XLO its whole cross-section is backed by
+    # the endplate's z6..10 field-centre band, which is why CARRIER_HY stops at 54.
+    body = body.union(box_at(XLO - CARRIER_X1, 2 * CARRIER_HY, CARRIER_TOP - CARRIER_BOT,
+                             x=(XLO + CARRIER_X1) / 2, y=0,
+                             z=(CARRIER_BOT + CARRIER_TOP) / 2))
     # FUSE IN the screw-support rail and bridge it to the cap at the bottom + tie it
     # up to the bearing arms at the edges — the whole bridge end becomes one solid
     # piece (screw support + bearing support + box closure) with continuous material.
