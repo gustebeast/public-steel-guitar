@@ -96,13 +96,11 @@ pairs (transparent-PCTG base whose fret lines run full-depth through the
 plate + a colour-PCTG layer between them; no glass fiber on the forearm-rest
 surface).
 
-**Legs**: four quick-attach legs join the rails at the corners with glued
-sliding-dovetail sockets (no fasteners — the socket slides up into a slot in
-the rail face and its barrel rim seats under the rail). Each
-junction is an oversized 2-start trapezoidal thread (Ø36/Ø30, 18 mm lead —
-~1.4 turns to full engagement, like a PC-fan screw), so the instrument breaks
-down for transport in seconds; a TPU washer under each shoulder compresses on
-the last quarter turn so the coarse threads can't walk loose. The legs must
+**Legs**: four quick-attach legs join the body at the corners with slide-in
+octagon joinery and a cross-pin — no glue anywhere in the instrument, so every
+part comes apart again. Each leg-to-leg junction is a cadkit octagon slide
+joint retained by a single M4 (extraction only — the joinery takes the force),
+so the instrument breaks down for transport in seconds. The legs must
 print in pieces for build volume anyway, so the pieces double as the coarse
 height adjustment: each stackable segment steps the height 142 mm, and a
 clamped sliding shaft at the bottom spans 150 mm — more than one step — so

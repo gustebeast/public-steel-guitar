@@ -70,8 +70,9 @@ Z-ovality would eat the 0.2..0.4 fits and roughen the thread flanks):
   if the first print wobbles, the fix is SECTION (Ø30→Ø36 tube, wall 5,
   matches GF stiffness and keeps the 4× impact margin), not GF.
 - SOCKET stays PETG-GF: 32 mm barrel = negligible moment arm across its
-  layers, glued into the rail, and it lives in the sustained ground-
-  reaction path where GF's creep resistance pays.
+  layers, and it lives in the sustained ground-reaction path where GF's
+  creep resistance pays. (This whole round-tube family is RETIRED; its
+  glued rail joint is not something to revive — see leg_socket.)
 - SLEEVE was already PCTG (the pinch collar must flex). FOOT/WASHERS TPU.
 - Settings that buy Z-strength: LOW part-cooling fan (0-30%), dry filament,
   0.2 layers; the 4 mm tube walls resolve as solid perimeter rings.
@@ -217,7 +218,11 @@ def _thread(rod_r: float, length: float, clr: float = 0.0,
 
 
 def leg_socket() -> cq.Workplane:
-    """Glued joinery socket, no fasteners: a vertical dovetail tenon slides
+    """RETIRED (round-tube legs; NOT exported — see build.py). Kept only as
+    reference during the staged swap to the square legs. It is GLUED, which
+    the project no longer permits: nothing here may be revived as drawn.
+
+    Glued joinery socket, no fasteners: a vertical dovetail tenon slides
     UP into the rail-face slot from below until the barrel's top rim seats
     flat under the rail's bottom flange (ground reaction = big-area
     compression; the tenon's 45° matching top stops 0.3 shy so the rim is
@@ -571,9 +576,9 @@ def leg_shaft_trrs() -> cq.Workplane:
 # run ALONG the leg → kick bending loads bulk material — the standing-
 # print interlayer veto on GF is gone; square-44 ≈6× the Ø30 tube's
 # stiffness by geometry, GF adds ~2.4× modulus). Threads can't print
-# lying, so each body takes two STANDING-printed PCTG THREAD COUPLERS
-# glued into its square core ends (huge glue area, inherent
-# anti-rotation; preserves segment-count coarse height adjust). Internal
+# lying, so each body originally took two STANDING-printed PCTG THREAD
+# COUPLERS glued into its square core ends — RETIRED at round 3 below
+# (threadless, and the project is glue-free). Internal
 # joint geometry — Ø36/30 single-start thread, Ø40 collar hard stop, TPU
 # gland washer — is UNCHANGED, so the 142 step and clocking phase carry
 # over. The face CABLE CHANNEL + sliding lid (pedal-bar pattern) aligns
@@ -581,8 +586,8 @@ def leg_shaft_trrs() -> cq.Workplane:
 # AFTER column assembly. Top joint = the SEATBELT LATCH head (separate
 # part; all mechanism on the leg, passive socket) — see latch_head().
 SQ_W = 44.0                    # outer square width (uniform, = old bell OD)
-SQ_CORE = 32.0                 # square core (glue pocket for the couplers;
-                               # 45° crown corners print lying)
+SQ_CORE = 32.0                 # square core (was the couplers' pocket — they went
+                               # at round 3; 45° crown corners print lying)
 SEG_BODY_L = 142.0             # ROUND 3 (user): NO THREADS, NO TPU
                                # GASKETS in the square legs — the thread
                                # couplers and washers are GONE. Each body
@@ -854,7 +859,10 @@ def leg_seg_body_ch() -> cq.Workplane:
 
 
 def leg_coupler_m() -> cq.Workplane:
-    """PCTG male THREAD COUPLER (prints STANDING — thread quality): 44 sq
+    """RETIRED at round 3 (threadless, gasketless square legs; NOT exported).
+    GLUED — must not be revived as drawn, the project is glue-free.
+
+    PCTG male THREAD COUPLER (prints STANDING — thread quality): 44 sq
     ×6 flange + Ø40×2 hard-stop collar + the same Ø36/30 single-start
     spigot, square 32 glue plug below (0.3 fit into the body core; big
     glue area, inherent anti-rotation). Ø14 cable way through. Z0 = the
@@ -1273,7 +1281,10 @@ def leg_latch_btn() -> cq.Workplane:
 
 
 def leg_socket_trrs() -> cq.Workplane:
-    """leg_socket() + the vertical CHASSIS-JACK pocket for the leg↔body
+    """RETIRED with leg_socket (round-tube legs, GLUED; NOT exported — the live
+    part is leg_socket_sq_trrs). Do not revive as drawn.
+
+    leg_socket() + the vertical CHASSIS-JACK pocket for the leg↔body
     blind-mate (the -X/+Y station only — see the TRRS block above): a
     Ø9.7 way COAXIAL with the thread, from the bore-ceiling void up
     through the top disc and the tenon core (the dovetail FLANKS carry
