@@ -84,7 +84,11 @@ MOUNT_BOSS_D = M2.insert_pilot_d + 2 * MIN_ADDED   # 6.5 (M2.boss_wall's 1.0 is 
 # every cable insertion flexes an unsupported piece of FR4 -- on the connector that
 # carries firmware updates. Past the string field (string 10 is at ~-42) this is open
 # space above the deck, which is the "room in -Y" the single-sided board is spending.
-TIE_Y0 = OP.PCB_YM - 2.0          # -Y face: past the strip's tail
+# Far enough -Y that the strip's -Y floor ledge has solid bar to root into: the ledge
+# overruns the pocket wall (OP.LEDGE_YM) and needs real material outboard of that, not a
+# knife edge. Reading OP.LEDGE_YM keeps the two in step -- sized from OP.PCB_YM instead,
+# this left the ledge rooted in a 1.7 mm sliver.
+TIE_Y0 = OP.LEDGE_YM - MIN_ADDED  # -Y face: past the strip's tail AND its ledge root
 TIE_Y1 = D.BRIDGE_AXLE_Y + ARM_W / 2      # +Y face: unchanged, at the arm outer
 AXLE_BORE = D.BRIDGE_AXLE_D + 0.4
 
@@ -182,6 +186,27 @@ def _arm(sy) -> cq.Workplane:
 _SRX = D.SCREW_X + 7.0            # screw-rail +X face (DEPTH/2 past the screw line)
 
 
+def _mount_boss(mx: float, my: float) -> cq.Workplane:
+    """Retention-screw boss standing off the tie-bar TOP, with the 45 deg buttress that
+    makes it printable. The endplate builds +X -> -X, so anything rising above the bar
+    top has nothing at +X to start on: a bare boss's first layer is a floating island.
+    The buttress ramps from the bar top up to full boss height over its own height, so
+    every layer steps out one layer's worth -- the same trick as the axle comb's ramps.
+
+    SQUARE, not round: a cylinder's first layer at the +X tangent is a knife edge that
+    then widens faster than 45 deg. A square section starts at full width against the
+    buttress, which is already there at full height. Flats give MIN_ADDED wall to the
+    insert pocket, corners more."""
+    h = MOUNT_TOP_Z - TIE_Z
+    r = MOUNT_BOSS_D / 2
+    boss = box_at(MOUNT_BOSS_D, MOUNT_BOSS_D, h, x=mx, y=my, z=TIE_Z + h / 2)
+    ramp = (cq.Workplane("XZ")
+            .polyline([(mx + r, TIE_Z), (mx + r, MOUNT_TOP_Z), (mx + r + h, TIE_Z)])
+            .close().extrude(r, both=True)
+            .translate((0, my, 0)))
+    return boss.union(ramp)
+
+
 def _build() -> cq.Workplane:
     body = _cap()
     for sy in (-D.BRIDGE_AXLE_Y, D.BRIDGE_AXLE_Y):
@@ -199,15 +224,16 @@ def _build() -> cq.Workplane:
     body = body.cut(OP.opt_pcb_pocket())
     # Floor ledges the board rests on, unioned AFTER the pocket so the cut can't eat
     # them. They carry their own LEDGE_T rather than living on the 1.1 the bar leaves
-    # under the board, which was below the 1.6 floor for added material.
+    # under the board, which was below the 1.6 floor for added material. Each is rooted
+    # in solid bar at +X (and overruns the pocket in Y) -- OP sizes them from the POCKET,
+    # not from the board, or they land PCB_CLR short of the wall and float.
     body = body.union(OP.opt_floor_ledges())
     # Retention: a boss up off the bar top per screw, then a standard M2 anchor down
     # it. Mouth is the board's TOP face, so the screw comes from BELOW (the side the
     # board loads from) and the insert pocket -- if those self-tapped threads ever
     # strip -- opens downward into the board pocket, reachable with the board out.
     for mp in OP.mount_points():
-        body = body.union(cyl(MOUNT_BOSS_D, MOUNT_TOP_Z - TIE_Z,
-                              z=TIE_Z).translate((mp[0], mp[1], 0)))
+        body = body.union(_mount_boss(mp[0], mp[1]))
     for mp in OP.mount_points():
         body = cut_m2_anchor(body, mp, (0, 0, 1), depth=MOUNT_DEPTH)
     # FUSE IN the screw-support rail and bridge it to the cap at the bottom + tie it
