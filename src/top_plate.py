@@ -205,7 +205,7 @@ RET_SCREW_X = PICKUP_X_NOM                          # CENTRED (the -Y jack was n
 # The -Y grub is an M4 cup-tip SET SCREW threading a heat-set insert (cadkit set-screw bore), so the
 # boss ceiling must clear the Ø6 insert pocket by MIN_WALL on EVERY side (the reported thin-ceiling
 # fix: material == nozzle can be dropped by the slicer). Ceiling = axis + pocket radius + MIN_WALL.
-RET_BOSS_TOP_Z = RET_SCREW_Z + M4.insert_pilot_d / 2 + D.MIN_WALL   # >= 0.85 of material over the bore
+RET_BOSS_TOP_Z = RET_SCREW_Z + M4.insert_pilot_d / 2 + D.MIN_WALL_2P   # 1.6 (2-bead quality floor) over the bore
 X_SLIDE   = 6.0                                    # pickup X-position room on the plate (+/-)
 PLATE_X   = PM.PK_W + 2 * X_SLIDE                  # green X (pickup + slide) ~50.6
 PLATE_Y   = (PK_YP - PK_MAX_YM) + 2 * RET_WALL_T   # green Y (LONGEST pickup + wall room each side) ~106.0
@@ -447,7 +447,7 @@ def _pickup_zplate():
     # (PK_MAX_YM), hosting a HORIZONTAL M4 heat-set insert (cadkit set-screw bore -> a cup-tip grub, which
     # must never self-tap). The grub pushes the pickup +Y against the wall; threading it in/out lets its
     # tip meet any pickup in the [PK_MIN_L, PK_MAX_L] window (its -Y face floats +Y for shorter pickups).
-    # The pedestal ceiling reaches RET_BOSS_TOP_Z so >= MIN_WALL of material rings the Ø6 pocket every side.
+    # The pedestal ceiling reaches RET_BOSS_TOP_Z so >= MIN_WALL_2P (1.6) rings the Ø6 pocket every side.
     ret_face_y = PK_MAX_YM - RET_BOSS_L               # -Y outer face = the insert-entry (grub) face
     plate = plate.union(box_at(NUB_W, RET_BOSS_L, RET_BOSS_TOP_Z - ZPL_BOT,
                                x=RET_SCREW_X, y=(ret_face_y + PK_MAX_YM) / 2,
