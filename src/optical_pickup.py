@@ -219,7 +219,11 @@ PART_KEEP = 2.0                                               # sensor row -> an
 ROW_X0    = SENSE_X - LED_PKG[0] / 2                          # the row's -X edge, -20.50
 COL_OPA   = ROW_X0 - PART_KEEP - PKG["SOIC-14"][0] / 2        # -25.50
 COVER_X0  = COL_OPA + PKG["SOIC-14"][0] / 2 + 0.5             # lid's -X edge, -22.00
-COVER_HY  = SENSE_HL + 1.0                                    # lid's Y half-span
+# Lid Y half-span, sized off the OUTERMOST APERTURE rather than the sensing field: the
+# slot is wider than the triplet it serves (SLOT_DY 5.0 against 4.45 of packages), so
+# referencing SENSE_HL left only 0.1 of material outboard of the last slot -- a knife edge
+# (user-caught). Two full beads past the aperture instead.
+COVER_HY  = _OUTER_Y + SLOT_DY / 2 + D.MIN_WALL_2P
 FB_PITCH, FB_ROWS = 2.0, (5.6, 6.8, 8.0, 9.2)                 # 0402 grid in the Y gaps
 
 
@@ -520,7 +524,13 @@ def _assert_field_clear():
                 f"optical strip: {p['ref']} ({p['desc']}) stands to "
                 f"{PCB_TOP + PKG[p['pkg']][2]:.2f}, into the cover underside at "
                 f"{COVER_Z0:.2f}")
-    # 6. every sensor must actually see through an aperture
+    # 6. the lid must keep real material outboard of its last aperture, at both ends
+    edge = COVER_HY - (_OUTER_Y + SLOT_DY / 2)
+    if edge < D.MIN_WALL_2P - 1e-9:
+        raise AssertionError(
+            f"optical strip: cover has only {edge:.2f} outboard of the outermost "
+            f"aperture -- under the {D.MIN_WALL_2P} two-bead floor")
+    # 7. every sensor must actually see through an aperture
     for i in range(D.N_STRINGS):
         sy = string_y_at(i, SENSE_X)
         for s in (0, PD_DY, -PD_DY):
