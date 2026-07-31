@@ -102,8 +102,40 @@ TERMINATION_X = D.BRIDGE_AXLE_X                  # -4.0
 # The cost is real and linear: 0.60x the signal of a 20 mm station. Revisit with the
 # prototype's measured SNR margin, not by argument -- SENSE_D is the only edit needed,
 # PCB_X1 and the endplate's TIE_X0 both derive from it.
-SENSE_D       = 12.0                             # sensing station, out from the termination
-SENSE_X       = TERMINATION_X - SENSE_D          # -16.0
+# STEPPED, not uniform -- the row is two rows. Optical signal scales with the string's
+# DIAMETER (the string IS the target: a wide beam is mostly missing it, and how much comes
+# back is set by how much of the beam the string intercepts). Across this set that is
+# .014 against .070 = 5.1x = 14.0 dB, and the thin strings are also up to 0.71 further from
+# the sensor plane, since the plane references the THICKEST string's top -- call it 16 dB.
+# Signal is also linear in distance from the termination, so distance can buy some of that
+# back: +20*log10(d/12) dB. It is the WORST lever we have -- logarithmic gain against a
+# linear cost in playing space -- and it cannot come close to closing 16 dB on its own
+# (equalising .014 would need d = 60, putting the board edge at -66.5). But the user's call
+# is to spend every lever rather than hedge, so the five PLAIN strings get the step.
+#
+# A STEP, not a taper, and that is the better shape here: a taper interpolates, so it would
+# hand string 5 almost nothing, while a step gives all five plain strings the full +5.3 dB.
+# It also keeps the board a two-rectangle outline instead of a trapezoid.
+# The wound strings stay at 12 -- they do not need it, and every millimetre out there is
+# playing space spent for nothing.
+SENSE_D_WOUND = 12.0                             # strings 6-10, .030-.070 (wound)
+SENSE_D_PLAIN = 22.0                             # strings 1-5,  .014-.024 (plain)
+N_PLAIN       = 5                                # count of plain strings, from string 1
+SENSE_D       = SENSE_D_WOUND                    # the +X-most row; sets the tie-bar minimum
+SENSE_X       = TERMINATION_X - SENSE_D_WOUND    # -16.0
+SENSE_X_PLAIN = TERMINATION_X - SENSE_D_PLAIN    # -26.0
+# Y where the outline steps: between string 5 and string 6, both of which sit ~4.7 off
+# centre with their detectors 1.6 further, so the centre line is clear of every package.
+Y_STEP = 0.0
+
+
+def sense_d(i: int) -> float:
+    """Sensing distance from the termination for string i (0-based)."""
+    return SENSE_D_PLAIN if i < N_PLAIN else SENSE_D_WOUND
+
+
+def sense_x(i: int) -> float:
+    return TERMINATION_X - sense_d(i)
 # Floor, from the string's bending-stiffness length sqrt(EI/T): ~1.2 mm for the plain
 # .015 core at ~120 N, ~1.7 mm for the wound .070 (core ~.018) at ~150 N. The boundary
 # layer where the string stops following the ideal mode shape -- and the effective
@@ -143,6 +175,11 @@ PKG = {
     "LQFP100":  (16.00, 16.00, 1.60), # JEDEC MS-026 BED: 14x14 body, 16x16 over the leads
     "3225":     (3.20, 2.50, 0.90),   # 3.2 x 2.5 crystal
     "USB-C":    (8.94, 7.35, 3.16),   # TYPE-C-31-M-12 (LCSC C165948)
+    # JST XH 2-pin, SMT SIDE-ENTRY (S2B-XH-SM4-TB class), long axis along Y so the mouth
+    # faces -X. Length scaled from the S4B-XH-SM4-TB figures already in BOM.md (15.0 long
+    # over 4 ways at 2.5 pitch -> 7.5 of overhead + 2.5 per way) -- CONFIRM against JST's
+    # drawing before layout, like the S4B was.
+    "XH-SM-2":  (6.10, 10.00, 7.00),
 }
 LED_PKG = PKG["0805OPT"]
 PD_PKG  = PKG["0805OPT"]
@@ -195,13 +232,24 @@ def string_y_at(i: int, x: float) -> float:
     return D.nut_y(i) + (D.string_y(i) - D.nut_y(i)) * t
 
 
-# X extent: the row sits SENSE_EDGE in from the -X edge, board runs +X from there.
-PCB_X1 = SENSE_X - SENSE_EDGE                    # -18.5 -- board's -X edge (sets tie-bar reach)
-PCB_X0 = PCB_X1 + PCB_W                          # 1.5  -- +X edge, tucked under the endplate
-PCB_CX = (PCB_X0 + PCB_X1) / 2
-MID_X  = PCB_CX                                  # centre line, for the wide digital parts
+# X extent. The +X edge is common; the -X edge STEPS with the sensor row, so only the
+# +Y half -- where the plain strings are, at y > 0 -- reaches deep into the playing area.
+# That matters more than it looks: the tie bar's underside is only 3.0 above the strings,
+# so nothing can be picked UNDER it, and the bar's -X face is the boundary of the picking
+# zone. Stepping keeps that boundary at 14.5 mm from the termination over the wound
+# strings and moves it to 24.5 only over the plain ones.
+PCB_X0  = SENSE_X - SENSE_EDGE + PCB_W           # 1.5  -- +X edge, common to both sections
+PCB_X1  = SENSE_X - SENSE_EDGE                   # -18.5 -- -X edge, WOUND (-Y) section
+PCB_X1W = SENSE_X_PLAIN - SENSE_EDGE             # -28.5 -- -X edge, PLAIN (+Y) section
+PCB_CX  = (PCB_X0 + PCB_X1) / 2
+MID_X   = PCB_CX                                 # centre line, for the wide digital parts
 
-_OUTER_Y = max(abs(string_y_at(i, SENSE_X)) for i in range(D.N_STRINGS))
+
+def board_x1(y: float) -> float:
+    """The board's -X edge at Y -- the step."""
+    return PCB_X1W if y > Y_STEP else PCB_X1
+
+_OUTER_Y = max(abs(string_y_at(i, sense_x(i))) for i in range(D.N_STRINGS))
 SENSE_HL = _OUTER_Y + PD_DY                      # last sensor Y; NOTHING else inside this
 
 # ── ANALOG FIELD -- X columns, running +X from the sensor row's keep-out ─────
@@ -210,7 +258,11 @@ SENSE_HL = _OUTER_Y + PD_DY                      # last sensor Y; NOTHING else i
 # point on the board), the feedback R/C and decoupling fill the remaining +X strip.
 AF_X0 = SENSE_X + LED_PKG[0] / 2 + PART_KEEP                       # -13.0
 AF_X1 = PCB_X0 - EDGE_KEEP                                         # 0.3
-COL_LEDR = AF_X0 + PKG["0603"][0] / 2                              # -12.20
+# LED ballast rides just +X of ITS OWN emitter, per string, so the step carries it along:
+# it is the high-di/dt half of the emitter loop and wants to stay next to the part it
+# feeds. -12.20 over the wound row, -22.20 over the plain one.
+LEDR_DX  = LED_PKG[0] / 2 + PART_KEEP + PKG["0603"][0] / 2         # +3.80 off the emitter
+COL_LEDR = SENSE_X + LEDR_DX                                       # -12.20 (wound row)
 COL_OPA  = COL_LEDR + PKG["0603"][0] / 2 + ROW_GAP + PKG["SOIC-14"][0] / 2   # -7.40
 COL_FB   = COL_OPA + PKG["SOIC-14"][0] / 2 + ROW_GAP               # -3.40, first 0402 column
 FB_PITCH = 1.6                                                     # 0402 column pitch
@@ -281,16 +333,19 @@ def _parts():
 
     # ---- 1. sensing row: 10 triplets ON THE STRING FAN, + their LED ballast ----
     for i in range(D.N_STRINGS):
-        n = i + 1
-        sy = string_y_at(i, SENSE_X)
-        add("D%d" % n, "IR emitter, 940 nm", "0805OPT", SENSE_X, sy)
-        add("PD%dA" % n, "PIN photodiode, +Y of string", "0805OPT", SENSE_X, sy + PD_DY)
-        add("PD%dB" % n, "PIN photodiode, -Y of string", "0805OPT", SENSE_X, sy - PD_DY)
-        add("R%d" % n, "LED current-set resistor", "0603", COL_LEDR, sy)
+        n, sx = i + 1, sense_x(i)
+        sy = string_y_at(i, sx)
+        kind = "plain" if i < N_PLAIN else "wound"
+        add("D%d" % n, "IR emitter, 940 nm, NARROW beam", "0805OPT", sx, sy)
+        add("PD%dA" % n, "PIN photodiode, +Y of string", "0805OPT", sx, sy + PD_DY)
+        add("PD%dB" % n, "PIN photodiode, -Y of string", "0805OPT", sx, sy - PD_DY)
+        add("R%d" % n, "LED current-set resistor (per-string, %s)" % kind,
+            "0603", sx + LEDR_DX, sy)
 
     # ---- 2. the 20 TIAs: one QUAD per string PAIR, at that pair's centroid ----
     for q in range(D.N_STRINGS // 2):
-        cy = (string_y_at(2 * q, SENSE_X) + string_y_at(2 * q + 1, SENSE_X)) / 2
+        cy = (string_y_at(2 * q, sense_x(2 * q))
+              + string_y_at(2 * q + 1, sense_x(2 * q + 1))) / 2
         add("U%d" % (q + 1), "quad op-amp -- 4x transimpedance amp", "SOIC-14", COL_OPA, cy)
         # Feedback R/C per channel + local decoupling, in the 0402 field beside the quad.
         # The feedback cap doubles as the anti-alias pole, so it is per-channel, not shared.
@@ -311,6 +366,22 @@ def _parts():
     y -= PKG["LQFP100"][1] / 2
     add("U6", "MCU -- Cortex-M7, 3x 16-bit ADC, USB OTG_HS via ULPI", "LQFP100", MID_X, y)
     y -= PKG["LQFP100"][1] / 2 + ROW_GAP
+
+    # POWER INPUT -- 5V from the instrument rail, NOT from USB VBUS. Sizing: MCU ~200-300,
+    # PHY ~50, 21 op-amp channels ~40, and ten emitters at whatever current the thin
+    # strings turn out to need. That is already past a USB port's 500 mA before the LEDs
+    # are counted, and LED current is the single best SNR lever we have -- capping it at
+    # a port's budget would be exactly the hedge the user ruled out.
+    # SIDE-ENTRY on the board's -X EDGE, not the -Y end: the -Y edge is spoken for by the
+    # USB receptacle and the floor-ledge lane, and -X of the board is open air (the
+    # optical relief takes the tie bar's wall away there), so a mouth on that edge is
+    # reachable. It plugs in after the board slides home.
+    y -= PKG["XH-SM-2"][1] / 2
+    add("J2", "power in, 5V from the instrument rail -- side entry, -X edge",
+        "XH-SM-2", PCB_X1 + PKG["XH-SM-2"][0] / 2, y)
+    _spread(P, y, [("C%d" % (140 + k), "power-input decoupling", "0402") for k in range(4)],
+            x0=PCB_X1 + PKG["XH-SM-2"][0] + ROW_GAP, x1=PCB_X0 - EDGE_KEEP)
+    y -= PKG["XH-SM-2"][1] / 2 + ROW_GAP
 
     y = _block(P, y, [("C%d" % (100 + k), "MCU decoupling", "0402") for k in range(12)]
                      + [("R30", "BOOT0 pull-down", "0402"),
@@ -415,7 +486,10 @@ LEDGE_YM = PCB_YM - PCB_CLR - LEDGE_ROOT
 # because it is modulated by the emitter exactly like the signal, AMBIENT SUBTRACTION
 # DOES NOT REMOVE IT. It lands as a DC pedestal that eats headroom and contributes shot
 # noise carrying no information. Cheaper to delete the wall than to buy distance from it.
-RELIEF_X1 = PCB_X1 - 8.0                         # overshoot, to break out past the tie bar
+# Measured from the DEEPEST section (the plain-string one), so the wall is gone at every
+# Y -- referenced to PCB_X1 it would have left plastic facing the plain-string emitters,
+# which are the very ones short of signal.
+RELIEF_X1 = PCB_X1W - 8.0                        # overshoot, to break out past the tie bar
 
 # ── RETENTION ────────────────────────────────────────────────────────────────
 # Constraint (user): NO endplate material may sit -X of the PCB -- the board itself is
@@ -438,7 +512,8 @@ def mount_points():
 
     Mid-span rather than at an end so it also damps the board against the strings'
     vibration; the ends are already held in Y and -Z by the slot itself."""
-    cy = [(string_y_at(2 * q, SENSE_X) + string_y_at(2 * q + 1, SENSE_X)) / 2
+    cy = [(string_y_at(2 * q, sense_x(2 * q))
+           + string_y_at(2 * q + 1, sense_x(2 * q + 1))) / 2
           for q in range(D.N_STRINGS // 2)]
     return [(MOUNT_X, (cy[1] + cy[2]) / 2, PCB_TOP)]
 
@@ -449,11 +524,28 @@ def _part_solid(p):
     return box_at(dx, dy, dz, x=p["x"], y=p["y"], z=PCB_BOT - dz / 2)
 
 
+def _outline(grow=0.0, t=None, zc=None):
+    """The board's STEPPED footprint as a solid: the wide (plain-string) section from
+    Y_STEP to +Y, the narrow (wound) section from Y_STEP to -Y, sharing the +X edge.
+    `grow` inflates it in X and Y for the pocket's slip fit."""
+    t = PCB_T if t is None else t
+    zc = PCB_BOT + PCB_T / 2 if zc is None else zc
+    out = None
+    for y0, y1, x1 in ((Y_STEP, PCB_YP, PCB_X1W), (PCB_YM, Y_STEP, PCB_X1)):
+        # only the OUTER Y face of each section grows -- the shared seam at Y_STEP must
+        # not, or the two halves would overlap by 2*grow and the seam would move
+        a, b = (y0 - grow, y1) if y0 != Y_STEP else (y0, y1 + grow)
+        blk = box_at((PCB_X0 + grow) - (x1 - grow), b - a, t,
+                     x=((PCB_X0 + grow) + (x1 - grow)) / 2, y=(a + b) / 2, z=zc)
+        out = blk if out is None else out.union(blk)
+    return out
+
+
 def opt_pcb() -> cq.Workplane:
     """The assembled optical strip: FR4 + EVERY placed component, at its true Z, all
     facing DOWN. Fab/purchased -> NO standalone STEP (cadkit convention); it exists in
     the assembly as the fit-check that it clears the strings and fits the tie bar."""
-    pcb = box_at(PCB_W, PCB_L, PCB_T, x=PCB_CX, y=PCB_CY, z=PCB_BOT + PCB_T / 2)
+    pcb = _outline()
     for p in PARTS:
         pcb = pcb.union(_part_solid(p))
     for mx, my, _ in mount_points():                          # M2 clearance hole
@@ -470,8 +562,8 @@ def opt_pcb_pocket() -> cq.Workplane:
     # (a) THE SLOT -- board thickness, with the Z clearance ABOVE so the FLOOR stays the
     # datum: the board rests on the ledges, which makes the sensor standoff a printed
     # dimension rather than something a screw has to hold. The board SLIDES IN along -X.
-    pocket = box_at(PCB_W + 2 * PCB_CLR, PCB_L + 2 * PCB_CLR, (PCB_TOP + zclr) - PCB_BOT,
-                    x=PCB_CX, y=PCB_CY, z=(PCB_BOT + PCB_TOP + zclr) / 2)
+    pocket = _outline(grow=PCB_CLR, t=(PCB_TOP + zclr) - PCB_BOT,
+                      zc=(PCB_BOT + PCB_TOP + zclr) / 2)
     # (b) EVERYTHING UNDER THE BOARD -- cut full depth over the WHOLE footprint, and
     # carried out past the tie bar's -X face so no plastic faces the emitters (the stray
     # emitter->wall->detector path; see RELIEF_X1). The floor ledges are unioned back
@@ -504,7 +596,8 @@ def _ledge_specs():
     ux0, ux1, _, _ = part_span(part("J1"))
     root_x = PCB_X0 + PCB_CLR + LEDGE_ROOT
     return [
-        (PCB_YP - FLOOR_L, LEDGE_YP, PCB_X1 - PCB_CLR, root_x),
+        # +Y ledge is in the WIDE section, so it runs out to that section's edge
+        (PCB_YP - FLOOR_L, LEDGE_YP, PCB_X1W - PCB_CLR, root_x),
         (LEDGE_YM, PCB_YM + FLOOR_L, ux1 + LEDGE_KEEP, root_x),
     ]
 
@@ -559,15 +652,18 @@ def _assert_field_clear():
     # string 10's triplet; even spacing in _spread can silently go negative.
     for p in PARTS:
         x0, x1, y0, y1 = part_span(p)
-        if (x0 < PCB_X1 + EDGE_KEEP - 1e-9 or x1 > PCB_X0 - EDGE_KEEP + 1e-9
-                or y0 < PCB_YM + EDGE_KEEP - 1e-9 or y1 > PCB_YP - EDGE_KEEP + 1e-9):
-            # the connector is allowed to reach the -Y edge: that is its mouth
-            if not (p["ref"] == "J1" and y0 >= PCB_YM - 1e-9):
-                raise AssertionError(
-                    f"optical strip: {p['ref']} ({p['desc']}) at "
-                    f"X {x0:.2f}..{x1:.2f} Y {y0:.2f}..{y1:.2f} breaks the {EDGE_KEEP} "
-                    f"edge keep-out of board X {PCB_X1:.2f}..{PCB_X0:.2f} "
-                    f"Y {PCB_YM:.2f}..{PCB_YP:.2f}")
+        # -X limit is the STEPPED edge: a part straddling Y_STEP has to satisfy the
+        # NARROW section, since that is where the board actually ends under it.
+        lim = board_x1(y0) if board_x1(y0) == board_x1(y1) else PCB_X1
+        keep_x0 = 0.0 if p["ref"] == "J2" else EDGE_KEEP   # J2's mouth IS the -X edge
+        keep_ym = 0.0 if p["ref"] == "J1" else EDGE_KEEP   # J1's mouth IS the -Y edge
+        if (x0 < lim + keep_x0 - 1e-9 or x1 > PCB_X0 - EDGE_KEEP + 1e-9
+                or y0 < PCB_YM + keep_ym - 1e-9 or y1 > PCB_YP - EDGE_KEEP + 1e-9):
+            raise AssertionError(
+                f"optical strip: {p['ref']} ({p['desc']}) at "
+                f"X {x0:.2f}..{x1:.2f} Y {y0:.2f}..{y1:.2f} breaks the {EDGE_KEEP} "
+                f"edge keep-out of board X {lim:.2f}..{PCB_X0:.2f} "
+                f"Y {PCB_YM:.2f}..{PCB_YP:.2f}")
     for i, a in enumerate(PARTS):
         ax0, ax1, ay0, ay1 = part_span(a)
         for b in PARTS[i + 1:]:
@@ -579,17 +675,23 @@ def _assert_field_clear():
                     f"optical strip: {a['ref']} ({a['desc']}) and {b['ref']} "
                     f"({b['desc']}) are {sep:.2f} apart, inside the {PKG_CLR} "
                     f"placement clearance")
-    # 4. NOTHING but the sensor row inside the sensing field's X band -- anything else
-    # there would sit on the emitters or shadow them.
-    row_x1 = SENSE_X + LED_PKG[0] / 2
+    # 4. NOTHING may sit -X OF A SENSOR at an overlapping Y. That is the open side the
+    # optical relief exists to clear: a package out there is a reflector on the stray
+    # emitter -> -X -> back -> detector path, which ambient subtraction cannot remove
+    # because it is modulated by the emitter exactly like the signal. With the row now
+    # stepped this has to be per-sensor rather than one X band.
+    sensors = [p for p in PARTS if p["pkg"] == "0805OPT"]
     for p in PARTS:
-        x0, _, y0, y1 = part_span(p)
         if p["pkg"] == "0805OPT":
             continue
-        if x0 < row_x1 and y1 > -SENSE_HL and y0 < SENSE_HL:
-            raise AssertionError(
-                f"optical strip: {p['ref']} ({p['desc']}) reaches X={x0:.2f} inside the "
-                f"sensor row's band (ends {row_x1:.2f}) while over the sensing field")
+        px0, _, py0, py1 = part_span(p)
+        for s in sensors:
+            sx0, _, sy0, sy1 = part_span(s)
+            if px0 < sx0 and py1 > sy0 and py0 < sy1:
+                raise AssertionError(
+                    f"optical strip: {p['ref']} ({p['desc']}) reaches X={px0:.2f}, "
+                    f"-X of sensor {s['ref']} at {sx0:.2f} and overlapping it in Y -- "
+                    f"it would sit in that emitter's stray-reflection path")
     # 5. anything over the sensing field must clear the STRINGS in Z. The strings run
     # under the whole board, not just under the sensor row, so a tall package in the
     # analog field is over a string even though it is nowhere near the optics.
