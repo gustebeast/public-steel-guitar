@@ -125,8 +125,10 @@ CARRIER_HY   = 54.0                           # out to the arms
 BRACE_X0 = -8.6                  # start of the flare: 0.6 clear of the bearing OD (x -8..0)
 BRACE_X1 = XLO                   # -16.60, where the plinth takes over
 BRACE_Z0 = UNDER_Z               # flush with the finger underside -- see UNDER_Z
-BRACE_Z1 = 13.0                  # covers the bore (10.3..13.7) up to where string
-                                 # clearance runs out: 2.11 under the lowest string
+# Raised to meet the light cover's top, since the brace is what the cover's roof lands on
+# in the +X -> -X build -- at 13.0 the roof's upper 1.0 would have had no backing and its
+# first layer would have floated. Same 1.10 string clearance the cover already carries.
+BRACE_Z1 = OP.COVER_Z1           # 14.011; still covers the bore (10.3..13.7) entirely
 AXLE_BORE = D.BRIDGE_AXLE_D + 0.4
 # AXLE RETENTION, NO GLUE (user: every part comes apart). The Ø3 ground shaft slides
 # -Y through both arms, 10 bearings and 9 comb fingers, so it can carry no shoulder;
@@ -251,8 +253,14 @@ def _comb_brace(yc: float, cb_w: float) -> cq.Workplane:
     pts = [(-6.5, yc - hw0), (-6.5, yc + hw0),
            (BRACE_X0, yc + hw0), (BRACE_X1, yc + hw1),
            (BRACE_X1, yc - hw1), (BRACE_X0, yc - hw0)]
-    return (cq.Workplane("XY").polyline(pts).close()
-            .extrude(BRACE_Z1 - BRACE_Z0).translate((0, 0, BRACE_Z0)))
+    flare = (cq.Workplane("XY").polyline(pts).close()
+             .extrude(BRACE_Z1 - BRACE_Z0).translate((0, 0, BRACE_Z0)))
+    # The END fingers sit close enough to the arms that their flare would otherwise run
+    # out past the arm outer face and into the rail. Clamp every flare there.
+    lim = D.BRIDGE_AXLE_Y + ARM_W / 2
+    return flare.intersect(box_at(40.0, 2 * lim, BRACE_Z1 - BRACE_Z0,
+                                  x=BRACE_X1 + 20.0, y=0.0,
+                                  z=(BRACE_Z0 + BRACE_Z1) / 2))
 
 
 def _build() -> cq.Workplane:
@@ -335,13 +343,23 @@ def _build() -> cq.Workplane:
                         (-5.5, 6.5), (-6.5, 6.5), (-6.5, 14.5), (-1.5, 14.5),
                         (3.0, 10.0), (6.0, 10.0)])
              .close().extrude(CB_W / 2, both=True))
-    for k in range(D.N_STRINGS - 1):
-        yc = (D.string_y(k) + D.string_y(k + 1)) / 2
+    # A finger in every bearing GAP, plus one off EACH END of the axle (user), so all ten
+    # bearings are flanked on both sides instead of the outer two leaning on the arm 4.5
+    # away. 11 fingers, one half-pitch outboard of strings 1 and 10 -- close enough to the
+    # arms that they merge into them, which is exactly the tie the end bearings wanted.
+    _pitch = abs(D.string_y(1) - D.string_y(0))
+    _comb_y = ([D.string_y(0) + _pitch / 2]
+               + [(D.string_y(k) + D.string_y(k + 1)) / 2 for k in range(D.N_STRINGS - 1)]
+               + [D.string_y(D.N_STRINGS - 1) - _pitch / 2])
+    for yc in _comb_y:
         body = body.union(_fpro.translate((0, yc, 0)))
         body = body.union(_comb_brace(yc, CB_W))
         body = body.cut(cyl_y(D.BRIDGE_AXLE_D + 0.3, CB_W + 2, y0=yc - CB_W / 2 - 1,
                               x=D.BRIDGE_AXLE_X, z=D.BRIDGE_BEARING_Z))
 
+    # LIGHT COVER for the optical strip, unioned in: its roof lands on the comb
+    # brace at XLO and its slots sit over the sensor triplets.
+    body = body.union(OP.opt_cover())
     # STRINGING-ACCESS window: open the cap over the field (top-centre, between the
     # bearing arms) so each string threads over its bridge bearing and its end-nut
     # slots into the carriage from +X. Inboard of the arms (±BRIDGE_AXLE_Y) and below
