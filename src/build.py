@@ -423,11 +423,10 @@ def _pickup_mount_components():
            ("pickup_zplate", TP.pickup_zplate)]
     # OPTICAL per-string strip: lies UNDER the strings on a carrier that is part of the
     # bridge endplate and rides on top of the deck, firing UP (see optical_pickup.py).
-    # Board is fab/purchased -> assembly only, no standalone STEP. The COVER is printed,
-    # so it exports like any other part. Both are already at absolute X/Y/Z.
+    # Board is fab/purchased -> assembly only, no standalone STEP. The light COVER is
+    # now part of the ENDPLATE (unioned there), not a part of its own.
     from . import optical_pickup as OP
     out.append(("optical_pcb", OP.opt_pcb()))
-    out.append(("optical_cover", OP.opt_cover()))
     # TOP-ACCESS height (user): THREE M4×20 BUTTON-HEAD LEADSCREW jacks (real headed cap screw,
     # cadkit headed_screw -> hex-socket drive visible in the head top). Each head is captured in a
     # counterbore in the solid deck (JACK_HEAD_Z shoulder); the shank threads down through a HEAT-
