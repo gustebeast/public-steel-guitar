@@ -96,7 +96,15 @@ MIN_ADDED = D.MIN_WALL_2P         # 1.6 -- two-bead QUALITY floor for material t
 # X0 (+6.0) to X1, so between XLO and +6 there is no material at this height for the
 # plinth to start on. (User-caught.)
 CARRIER_TOP  = OP.PCB_BOT                     # 9.661 -- the board bears directly on this
-CARRIER_BOT  = OP.DECK_TOP + 0.2              # 6.2 -- clearance so the deck slides under
+# ONE underside plane for the plinth AND the brace, set by the comb finger's own underside
+# where the two meet (_fpro is flat at 6.5 from x -6.5 to -5.5). Sizing this off the deck
+# instead (6.2) left the brace hanging 0.3 below the finger, i.e. a lip running the whole
+# length of every flare at well under one 0.8 bead -- unprintable detail on a face that
+# does nothing. Matching the finger removes the step entirely: the underside is now a
+# single flat plane from the plinth's -X edge all the way to x -5.5, where the finger's
+# existing 45 deg arch ramp takes over. Still 0.5 clear of the deck.
+UNDER_Z      = 6.5
+CARRIER_BOT  = UNDER_Z                        # 6.5 -- 0.5 over the deck, flush with the comb
 CARRIER_X1   = OP.PCB_X1S - 0.1               # -X face, inside the band by a hair
 CARRIER_HY   = 54.0                           # out to the arms
 
@@ -116,7 +124,7 @@ CARRIER_HY   = 54.0                           # out to the arms
 # now continuous material in the build direction.
 BRACE_X0 = -8.6                  # start of the flare: 0.6 clear of the bearing OD (x -8..0)
 BRACE_X1 = XLO                   # -16.60, where the plinth takes over
-BRACE_Z0 = CARRIER_BOT           # 6.2, so the plinth is backed over its full height
+BRACE_Z0 = UNDER_Z               # flush with the finger underside -- see UNDER_Z
 BRACE_Z1 = 13.0                  # covers the bore (10.3..13.7) up to where string
                                  # clearance runs out: 2.11 under the lowest string
 AXLE_BORE = D.BRIDGE_AXLE_D + 0.4
