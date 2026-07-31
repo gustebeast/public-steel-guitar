@@ -76,7 +76,9 @@ TIE_X0 = OP.PCB_X1                # -X face, flush with the board edge
 # hand and a plain cut_m2_anchor put in it.)
 MOUNT_DEPTH = M2.anchor_min_wall          # 5.5 -- pocket + min_bite, no deviation
 MOUNT_TOP_Z = OP.PCB_TOP + MOUNT_DEPTH    # boss top
-MOUNT_BOSS_D = M2.insert_pilot_d + 2 * M2.boss_wall
+MIN_ADDED = 1.6                           # floor for material this feature ADDS (user):
+                                          # two full beads, well over D.MIN_WALL's 0.85
+MOUNT_BOSS_D = M2.insert_pilot_d + 2 * MIN_ADDED   # 6.5 (M2.boss_wall's 1.0 is under it)
 # The bar also runs ASYMMETRICALLY in -Y, to the end of the strip's processor/USB tail.
 # Without this the tail hangs ~14 mm past the bar with the USB receptacle on it, and
 # every cable insertion flexes an unsupported piece of FR4 -- on the connector that
@@ -195,6 +197,10 @@ def _build() -> cq.Workplane:
     # board. The strip's sensor faces end flush with the tie-bar underside -- nothing
     # protrudes toward the strings, and the bar shades the detectors from above.
     body = body.cut(OP.opt_pcb_pocket())
+    # Floor ledges the board rests on, unioned AFTER the pocket so the cut can't eat
+    # them. They carry their own LEDGE_T rather than living on the 1.1 the bar leaves
+    # under the board, which was below the 1.6 floor for added material.
+    body = body.union(OP.opt_floor_ledges())
     # Retention: a boss up off the bar top per screw, then a standard M2 anchor down
     # it. Mouth is the board's TOP face, so the screw comes from BELOW (the side the
     # board loads from) and the insert pocket -- if those self-tapped threads ever
