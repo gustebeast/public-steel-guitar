@@ -246,6 +246,17 @@ MCU_Y    = -30.0                                          # (USB_Y is below -- i
 # ledge by FLOOR_L.
 FLOOR_L    = 3.0                                          # ledge depth in Y -- bearing only
 LEDGE_KEEP = 1.0                                          # ledge -> nearest package (clearance)
+# Slip fit, SHARED by the pocket cutter and the ledges. It has to be shared: the pocket
+# is cut to board + PCB_CLR, so a ledge drawn to the BOARD's own edges stops PCB_CLR short
+# of the pocket wall and the union leaves it FLOATING IN AIR (user-caught in the viewer:
+# the -Y ledge as a detached block). Anything unioned back INTO a pocket must be sized
+# from the pocket, not from the part the pocket was cut for.
+PCB_CLR    = 0.3
+# ...and it needs to reach PAST the wall, not just touch it: this is the ledge's only
+# fuse to the bar. Outboard of the pocket the bar is solid from its underside to TIE_Z,
+# so at the wall plane the joint is the bar's FULL depth, not the 0.85 of overlap the
+# ledge's top shares with the bar underside. LEDGE_ROOT is that run into solid material.
+LEDGE_ROOT = 2.0
 # Ledge THICKNESS. The tie bar's underside sits at SENSE_FACE_Z, which leaves only
 # PCB_BOT - SENSE_FACE_Z = LED_H (1.1) of material under the board -- below the 1.6 floor
 # the user set for added material. The ledges are free to hang LOWER than the bar,
