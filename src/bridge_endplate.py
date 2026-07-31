@@ -3,9 +3,12 @@
 ONE solid piece that closes the box at the +X end AND carries the bridge-bearing
 axle (the 90° string turn — the highest-load point in the instrument). Because it
 prints flat (on its face) it needs no supports, so it can be fully solid and
-featured; the rails' dovetail tongues glue into blind sockets in the base, driving
+featured; the rails' dovetail tongues socket into blind pockets in the base, driving
 the bearing load straight into the rails — far stronger than the old bolted
-bridge support. Replaces the bridge support, the +X bulkhead AND the +X crossbar.
+bridge support. NO GLUE: the sockets lock X and Y by shape, and +Z — the drop-on
+install axis — is closed by the RETENTION LIP below, which the installed deck
+panels trap (probed: seated 0, lift 0.2 fouls the deck by 114 mm³). Replaces the
+bridge support, the +X bulkhead AND the +X crossbar.
 Built in global position.
 
 Endplate methodology: BOTH endplates start from THE SAME TWO PRISMS (shared code,
@@ -34,6 +37,7 @@ from . import optical_pickup as OP
 from .endplate_base import endplate_base
 from .screw_rail import screw_rail as _screw_rail, HEIGHT as _SR_H
 from .helpers import box_at, cyl, cyl_y
+from cadkit.fasteners import M2, cut_selftap
 
 X0   = CH.X_BRIDGE                 # cap -X face / field<->cap boundary: the field stays
                                    #   OPEN -X of here (carriage sweep / strings / rods)
@@ -94,6 +98,19 @@ CARRIER_BOT  = OP.DECK_TOP + 0.2              # 6.2 -- clearance so the deck sli
 CARRIER_X1   = OP.PCB_X1S - 0.1               # -X face, inside the band by a hair
 CARRIER_HY   = 54.0                           # within the endplate's z6..10 band
 AXLE_BORE = D.BRIDGE_AXLE_D + 0.4
+# AXLE RETENTION, NO GLUE (user: every part comes apart). The Ø3 ground shaft slides
+# -Y through both arms, 10 bearings and 9 comb fingers, so it can carry no shoulder;
+# a glue dab at the arms used to hold it. Instead: the -Y arm's bore is BLIND (that
+# wall is the -Y hard stop) and one M2 grub in the +Y arm's TOP bears on the shaft to
+# close +Y. Deleting the tie bar freed that top face, so the grub is now reachable
+# from straight above with the strings off. It self-taps in AXLE_GRUB_L of material
+# rather than taking a heat-set insert (cadkit's usual set-screw preference): there
+# are only 2.0 mm between the bore crown and the arm top, and 2.0 is five threads at
+# 0.4 pitch against a shaft that nothing pushes axially -- 10 bearing bores of friction
+# already hold it, and the blind end takes the other direction positively.
+AXLE_END_WALL = 1.6                                   # -Y blind-bore wall (2 beads)
+AXLE_GRUB_Z   = ARM_TOP                               # grub mouth: the arm's free top
+AXLE_GRUB_L   = ARM_TOP - (D.BRIDGE_BEARING_Z + D.BRIDGE_AXLE_D / 2) + 0.2
 
 # Guide-rod LEDGES: two shallow bars protruding −X from the cap face below the
 # stringing window, spanning arm to arm — straight X-extensions of solid cap, so
@@ -175,14 +192,19 @@ def _cap() -> cq.Workplane:
     return w
 
 
-def _arm(sy) -> cq.Workplane:
+def _arm(sy, blind=False) -> cq.Workplane:
     """Edge arm (clear of the strings) holding the axle. Spans the FULL endplate
     X-depth (axle line → +X tip) so it fuses solidly to the cap and prints with no
-    overhang when built up along X."""
+    overhang when built up along X.
+
+    `blind=True` (the -Y arm) stops the bore AXLE_END_WALL short of the outer face:
+    that wall is the shaft's -Y hard stop. See AXLE_END_WALL for why."""
     z_lo = CH.Z_TOP - 4.0
     arm = box_at(X1 - ARM_X, ARM_W, ARM_TOP - z_lo,
                  x=(X1 + ARM_X) / 2, y=sy, z=(ARM_TOP + z_lo) / 2)
-    return arm.cut(cyl_y(AXLE_BORE, ARM_W + 2, y0=sy - ARM_W / 2 - 1,
+    y0 = sy - ARM_W / 2 + (AXLE_END_WALL if blind else -1.0)
+    h = (ARM_W / 2 + 1.0) - (y0 - sy)
+    return arm.cut(cyl_y(AXLE_BORE, h, y0=y0,
                          x=D.BRIDGE_AXLE_X, z=D.BRIDGE_BEARING_Z))
 
 
@@ -192,7 +214,10 @@ _SRX = D.SCREW_X + 7.0            # screw-rail +X face (DEPTH/2 past the screw l
 def _build() -> cq.Workplane:
     body = _cap()
     for sy in (-D.BRIDGE_AXLE_Y, D.BRIDGE_AXLE_Y):
-        body = body.union(_arm(sy))
+        body = body.union(_arm(sy, blind=sy < 0))     # -Y arm: blind bore = the -Y stop
+    # +Y arm: the M2 grub that closes the shaft's one remaining direction
+    body = cut_selftap(M2, body, (D.BRIDGE_AXLE_X, D.BRIDGE_AXLE_Y, AXLE_GRUB_Z),
+                       (0.0, 0.0, -1.0), AXLE_GRUB_L, overshoot=0.5)
     # Tie bar linking the arm tops above the strings. Runs from the +X tip out to
     # TIE_X0 -- past the endplate block -- so its underside can carry the DOWN-FIRING
     # optical strip at OP.SENSE_X, ~20 mm off the string termination.
@@ -293,7 +318,8 @@ def _build() -> cq.Workplane:
                                y=(yf + yi) / 2,
                                z=((CH.Z_BOT - 1.0) + FOOT_Z) / 2))
     # SOCKET the rail-end dovetail tongue on each rail (keyhead-style, low band z
-    # -23.15..-6): the endplate drops straight down onto the rail tongues and glues.
+    # -23.15..-6): the endplate drops straight down onto the rail tongues. No glue —
+    # the deck panels trap the +Z retention lip (see the module docstring).
     # The dovetail (wide +X / narrow -X) locks it in X+Y and grips the bearing-wrap
     # pull (-X); the low band leaves the cap free to drop to z6.
     for yr in CH.ENDPLATE_JOINT_Y:
