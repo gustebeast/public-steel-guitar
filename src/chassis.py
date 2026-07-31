@@ -1,5 +1,5 @@
 """Chassis frame (§8) — PCTG. ONE rigid frame that absorbs the motor bank and
-ties in the bridge endplate and a nut keyhead, SPLIT into glued segments.
+ties in the bridge endplate and a nut keyhead, SPLIT into SCREWED segments.
 
 The strings pull the bridge and nut toward each other (~10×100 N) at the speaking
 height, which would bow the instrument; the chassis resists that. The stiffness
@@ -11,10 +11,12 @@ webs carry self-supporting diamond lightening; everything else is modelled
 SOLID — the slicer's walls + infill set the strength-to-weight.
 
 Too long for one print (~645 mm > 255 mm bed), so it's cut into 3 segments joined
-by SLIDING DOVETAILS on the side rails: each joint's tongue flares toward +X
-(locking the segments against the string pull), you drop the next segment straight
-DOWN onto it (one direction), and it bottoms on a shoulder that sets the position —
-then glue. The cuts fall in the gaps BETWEEN ribs; each motor faceplate is fused
+by a cadkit install-z JOINT on each side rail: the profile lies in the plan plane,
+so every working face is a printed VERTICAL wall, and you drop the next segment
+straight DOWN onto it. The joint locks ±X (so string pull can never draw the seam
+open) and ±Y by shape; Z — the install axis — is closed by an OUTER LAP PLATE fused
+to the −X segment and screwed to the +X one (2× M4 per rail per seam). NO GLUE:
+every seam comes apart with a hex key. The cuts fall in the gaps BETWEEN ribs; each motor faceplate is fused
 WHOLE into the segment that owns its motor (_segments), so a plate straddling a cut
 just overhangs into the relieved neighbour — never sliced. Built in global position;
 the segments assemble into the whole.
@@ -28,7 +30,8 @@ from . import dimensions as D
 from . import motor_bank as MB
 from .components import MOTOR_PULLEY_STANDOFF
 from .helpers import box_at, cyl
-from cadkit.fasteners import M2, cut_anchor
+from cadkit.fasteners import M2, M4, cut_anchor, cut_clearance
+from cadkit.joinery import PrintSpec, joint
 from .legs import DT_FACE_HW, DT_DEEP_HW, DT_DEPTH, DT_H
 
 T        = D.WALL_THICKNESS            # rail thickness (solid; slicer infills)
@@ -150,15 +153,42 @@ ENDPLATE_JOINT_Y = (Y_HI, Y_LO)
 for _s in SPLIT_X:
     _plane_hit = [rx for rx in _RIB_X if abs(_s - rx) < _RIB_W / 2]
     assert not _plane_hit, f"SPLIT_X {_s} plane slices rib(s) {_plane_hit} — move it into a rib gap"
-# dovetail: depth, root/tip width, shoulder, fit. Tip width kept ≤ T−3.2 so the
-# socket walls in the 8 mm rail stay ≥1.6 mm (2 passes of a 0.8 mm nozzle).
-_DT, _WR, _WT, _SH, _CLR = 8.0, 2.5, 4.5, 4.0, 0.3
-# guard: the dovetail JOINT (X-footprint s−2 .. s+_DT, at the RAILS) must not overlap a
-# rib -- the rib runs to the rails there, so an overlap would slice it.
+# SEGMENT JOINT — cadkit, install='z' (both hosts print −Z→+Z, so the profile lies
+# in the plan plane and every working face is a vertical printed wall). It replaces
+# the hand-rolled sliding dovetail, which cadkit retired: at a 0.8 nozzle the
+# dovetail's acute plan corners round DOWN on the tenon and UP in the mortise, so
+# the halves collide at the corners before the faces seat.
+_UP       = PrintSpec(nozzle=0.8, material="PETG-GF", facing="up")
+_SEG_JW   = 6.4                        # width across Y — leaves (T − JW)/2 − clearance
+                                       # = 1.65 mm of rail wall per side (2 beads)
+_SEG_JD   = 8.0                        # room into the +X segment (the T uses 5.63 of it)
+_SEG_JZ1  = TP_GZ0 - TP_TG_DEPTH       # tenon top = the deck-groove FLOOR (−6), so the
+                                       # seam joint never reaches into the deck groove
+_SEG_ROOT = 2.0                        # volumetric fusion depth back into the −X segment
+_SEG_J    = joint(width=_SEG_JW, length=_SEG_JZ1 - Z_BOT, depth=_SEG_JD,
+                  tenon=_UP, mortise=_UP, install="z")
+_SEG_JX1  = _SEG_J.dims["depth_used"]  # the tenon's +X reach past the seam plane
+# guard: the seam JOINT (X-footprint s−ROOT .. s+reach, at the RAILS) must not overlap
+# a rib -- the rib runs to the rails there, so an overlap would slice it.
 for _s in SPLIT_X:
     _rib_hit = [rx for rx in _RIB_X
-                if (rx + _RIB_W / 2) > (_s - 2.0) and (rx - _RIB_W / 2) < (_s + _DT)]
-    assert not _rib_hit, f"SPLIT_X {_s} dovetail joint overlaps rib(s) {_rib_hit} — move it into a rib gap"
+                if (rx + _RIB_W / 2) > (_s - _SEG_ROOT) and (rx - _RIB_W / 2) < (_s + _SEG_JX1)]
+    assert not _rib_hit, f"SPLIT_X {_s} seam joint overlaps rib(s) {_rib_hit} — move it into a rib gap"
+# LAP PLATE — the seam's Z lock (install='z' leaves Z free BY DESIGN; cadkit's contract
+# is that the caller closes it). A pad standing LAP_T PROUD of the rail's outer face,
+# fused to the −X segment and reaching LAP_X1 over the +X one, screwed down with 2× M4.
+# Proud, not recessed: a recess would eat the +X rail's thickness and leave the anchor
+# short of its bite. Outer face = a hex key reaches every seam screw with the
+# instrument assembled. The plate is also a splice: it stiffens the seam in bending.
+_Y_MID   = (Y_HI + Y_LO) / 2.0         # body centre-line: tells outer from inner
+LAP_T    = 3.2                         # plate thickness (4 beads — it is the bearing wall)
+LAP_X0   = -12.0                       # plate X span about the split: rooted on the −X
+LAP_X1   = 16.0                        # segment, lapping the +X one
+LAP_H    = 32.0                        # height above the bed (well under the diamonds)
+LAP_SX   = 8.0                         # screw X, past the split (into the +X segment)
+LAP_SZ   = (8.0, 24.0)                 # screw Z above the bed — a VERTICAL pair, so the
+                                       # seam cannot hinge about a single screw
+LAP_ANCHOR_D = 8.5                     # M4 anchor depth into the 10 mm rail (1.5 left)
 
 def _diamond_xz(cx, cz, h, yr):
     """Diamond (45°) prism through a rail (axis Y) — a self-supporting hole in the
@@ -520,22 +550,58 @@ def _leg_shell(sx, x0, x1):
     return out
 
 
-def _tongue(s, yr, socket=False, depth=None):
-    """Dovetail prism at split X=s on the rail at Y=yr: a trapezoid (flaring +X in
-    Y) extruded in Z. The −X segment carries it; the +X segment gets it as a socket
-    (with clearance, open-topped). It bottoms on a shoulder of height _SH. `depth`
-    is the +X reach (default _DT). Used for the inter-SEGMENT joints (the bridge/
-    keyhead end joints use the low _br_tongue/_kh_tongue dovetails instead)."""
-    d = _DT if depth is None else depth
-    g = _CLR if socket else 0.0
-    wr, wt = (_WR + g) / 2, (_WT + g) / 2
-    z0 = Z_BOT + _SH
-    z1 = (Z_TOP + 14.0) if socket else Z_TOP
-    if TP_X1 < s < TP_X0:                 # deck span: stop at the deck-groove FLOOR so
-        z1 = TP_GZ0 - TP_TG_DEPTH          # the segment joint never blocks the groove
-                                           # (z -6 .. 0) the deck tongue slides through
-    pts = [(s - 2, yr - wr), (s - 2, yr + wr), (s + d, yr + wt), (s + d, yr - wt)]
-    return cq.Workplane("XY").workplane(offset=z0).polyline(pts).close().extrude(z1 - z0)
+def _seg_tenon(s, yr):
+    """The −X segment's half of the seam joint at split X=s, rail Y=yr: a plan-plane
+    T prism standing from the bed up to the deck-groove floor. (The bridge/keyhead END
+    joints are a different site — they use the low _br_tongue/_kh_tongue dovetails.)"""
+    return _SEG_J.tenon(root=_SEG_ROOT).translate((s, yr, Z_BOT))
+
+
+def _seg_mortise(s, yr):
+    """The +X segment's cavity — a THROUGH slot: open at the segment's BOTTOM face
+    (the tenon enters there as the segment is lowered on) and open at the top through
+    the rail crown, so the cavity has no ceiling to bridge and no 'blind pocket' that
+    the deck groove would have to pass the tenon through. Z is unretained here BY
+    DESIGN — cadkit's install axis; the lap plate closes it."""
+    return (_SEG_J.mortise(drop=_SEG_ROOT + 1.0,
+                           length=(TP_GZ0 + 2.0) - (Z_BOT - 1.0))
+            .translate((s, yr, Z_BOT - 1.0)))
+
+
+def _lap_outer(yr):
+    """(outer-face y, unit y pointing OUTWARD) for the rail at Y=yr."""
+    out = 1.0 if yr > _Y_MID else -1.0
+    return yr + out * T / 2.0, out
+
+
+def _seg_lap(s, yr):
+    """The lap PLATE at split X=s: LAP_T proud of the rail's outer face, fused to the
+    −X segment, reaching LAP_X1 over the +X one."""
+    face, out = _lap_outer(yr)
+    return box_at(LAP_X1 - LAP_X0, LAP_T, LAP_H,
+                  x=s + (LAP_X0 + LAP_X1) / 2.0,
+                  y=face + out * LAP_T / 2.0,
+                  z=Z_BOT + LAP_H / 2.0)
+
+
+def _lap_clearance(seg, s, yr):
+    """−X segment: the screws pass FREE through the plate (they thread in the +X one)."""
+    face, out = _lap_outer(yr)
+    d = (0.0, -out, 0.0)                          # into the material
+    for dz in LAP_SZ:
+        pnt = (s + LAP_SX, face + out * LAP_T, Z_BOT + dz)
+        seg = cut_clearance(M4, seg, pnt, d, LAP_T + 1.0, overshoot=1.0)
+    return seg
+
+
+def _lap_anchors(seg, s, yr):
+    """+X segment: the standard anchor (self-tap now, heat-set insert later) in the
+    rail's outer face, under the lap plate."""
+    face, out = _lap_outer(yr)
+    d = (0.0, -out, 0.0)
+    for dz in LAP_SZ:
+        seg = cut_anchor(M4, seg, (s + LAP_SX, face, Z_BOT + dz), d, LAP_ANCHOR_D)
+    return seg
 
 
 def _end_dt(x_face, into, yc, z0, z1, socket=False, top_clr=TP_TG_DEPTH):
@@ -613,12 +679,13 @@ def _segments():
     for i in range(len(edges) - 1):
         a, b = edges[i], edges[i + 1]                 # a (+X) > b (−X)
         seg = full.intersect(_seg_box(a, b))
-        if _is_split(b):                              # −X boundary split → +X side → socket
+        if _is_split(b):                              # −X boundary split → +X side → mortise
             for yr in (Y_HI, Y_LO):
-                seg = seg.cut(_tongue(b, yr, socket=True))
-        if _is_split(a):                              # +X boundary split → −X side → tongue
+                seg = _lap_anchors(seg.cut(_seg_mortise(b, yr)), b, yr)
+        if _is_split(a):                              # +X boundary split → −X side → tenon
             for yr in (Y_HI, Y_LO):
-                seg = seg.union(_tongue(a, yr))
+                seg = seg.union(_seg_tenon(a, yr)).union(_seg_lap(a, yr))
+                seg = _lap_clearance(seg, a, yr)
         for mi, mx in enumerate(_motor_x):
             if b < mx < a:                            # this segment OWNS the motor: fuse its plate whole
                 seg = seg.union(MB.plates[mi])
