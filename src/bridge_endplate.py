@@ -67,7 +67,14 @@ TIE_T   = TIE_Z - OP.SENSE_FACE_Z         # 5.2  -- thickness (underside at the 
 # further -X than the PCB -- the board itself is the furthest anything goes into the
 # playing area. That also means the board cannot be trapped by an -X lip, which is why
 # retention is screws from below into MOUNT_BOSSES (see below), not a captive pocket.
-TIE_X0 = OP.PCB_X1                # -X face, flush with the board edge
+# The bar's -X face STEPS with the board's (OP.board_x1): it reaches -28.5 only over the
+# +Y half, where the plain strings' sensors sit 22 mm out from the termination, and stays
+# at -18.5 over the wound half. That step is playing space, not cosmetics -- the bar's
+# underside is 3.0 above the strings, so nothing can be picked UNDER it and this face IS
+# the picking-zone boundary. Stepping keeps it at 14.5 mm from the termination over the
+# wound strings instead of pushing all ten out to 24.5.
+TIE_X0  = OP.PCB_X1               # -X face over the WOUND (-Y) half
+TIE_X0W = OP.PCB_X1W              # -X face over the PLAIN (+Y) half
 # Anchor room for those screws. Above the board the bar has only TIE_CAP of material,
 # well under M2's anchor_min_wall (insert pocket + a real bite), so each screw gets a
 # BOSS grown UPWARD off the bar top -- away from the strings and the player, the one
@@ -89,6 +96,8 @@ MOUNT_BOSS_D = M2.insert_pilot_d + 2 * MIN_ADDED   # 6.5 (M2.boss_wall's 1.0 is 
 # knife edge. Reading OP.LEDGE_YM keeps the two in step -- sized from OP.PCB_YM instead,
 # this left the ledge rooted in a 1.7 mm sliver.
 TIE_Y0 = OP.LEDGE_YM - MIN_ADDED  # -Y face: past the strip's tail AND its ledge root
+RIB_Z0 = 12.0                     # -Y overhang stiffener floor (see _build); clear of the
+                                  # deck at z6 and of everything the strip hangs below it
 TIE_Y1 = D.BRIDGE_AXLE_Y + ARM_W / 2      # +Y face: unchanged, at the arm outer
 AXLE_BORE = D.BRIDGE_AXLE_D + 0.4
 
@@ -214,9 +223,25 @@ def _build() -> cq.Workplane:
     # Tie bar linking the arm tops above the strings. Runs from the +X tip out to
     # TIE_X0 -- past the endplate block -- so its underside can carry the DOWN-FIRING
     # optical strip at OP.SENSE_X, ~20 mm off the string termination.
-    body = body.union(box_at(X1 - TIE_X0, TIE_Y1 - TIE_Y0, TIE_T,
-                             x=(X1 + TIE_X0) / 2, y=(TIE_Y1 + TIE_Y0) / 2,
-                             z=TIE_Z - TIE_T / 2))
+    # Two sections, stepping at OP.Y_STEP -- see TIE_X0/TIE_X0W. Printing +X -> -X, the
+    # step is safe: going -X the bar LOSES its -Y half at x = TIE_X0, and material only
+    # ever disappears, never appears unsupported.
+    for _x0, _y0, _y1 in ((TIE_X0W, OP.Y_STEP, TIE_Y1), (TIE_X0, TIE_Y0, OP.Y_STEP)):
+        body = body.union(box_at(X1 - _x0, _y1 - _y0, TIE_T,
+                                 x=(X1 + _x0) / 2, y=(_y1 + _y0) / 2,
+                                 z=TIE_Z - TIE_T / 2))
+    # -Y OVERHANG STIFFENER. The bar has to reach y -100.8 to carry the strip's digital
+    # block, which cantilevers ~49 mm past the bearing arm -- and the far end is where the
+    # USB receptacle lives, i.e. the one part of this board that gets handled, on the port
+    # that carries firmware updates. A board that flexes when you plug into it is a
+    # reliability problem, not a cosmetic one.
+    # The fix is free depth: the bar's underside is pinned at the sensor plane only WHERE
+    # THERE ARE STRINGS. Past the last one it can go as deep as we like, so the solid +X
+    # wall (the strip's pocket ends at OP.PCB_X0 + clearance) drops to RIB_Z0. That is
+    # ~5x the second moment for material nobody can see and nothing else wants.
+    body = body.union(box_at(X1 - (OP.PCB_X0 + OP.PCB_CLR), -46.0 - TIE_Y0, TIE_Z - RIB_Z0,
+                             x=(X1 + OP.PCB_X0 + OP.PCB_CLR) / 2,
+                             y=(-46.0 + TIE_Y0) / 2, z=(TIE_Z + RIB_Z0) / 2))
     # Pocket for the strip, opening DOWNWARD: board envelope + the full component
     # depth beneath it. Cut from the strip's own solid, so the pocket is always the
     # board. The strip's sensor faces end flush with the tie-bar underside -- nothing
