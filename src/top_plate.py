@@ -264,13 +264,17 @@ def _fret_positions(x0, x1):
 
 
 def _border_frame():
-    """Transparent rectangular frame (band width INLAY_W) around the fret field — same inlay/material as
-    the fret lines, in the colour band (TZ-FRET_T .. TZ). Absolute coords: _split clips it to each panel
-    so the frame reads as one continuous border across the stack."""
-    xm = (FRET_AREA_X0 + FRET_AREA_X1) / 2
-    lx = FRET_AREA_X0 - FRET_AREA_X1
-    outer = box_at(lx, 2 * BORDER_HY, FRET_T, x=xm, y=0.0, z=TZ - FRET_T / 2)
-    inner = box_at(lx - 2 * INLAY_W, 2 * FRET_HY, FRET_T + 1.0, x=xm, y=0.0, z=TZ - FRET_T / 2)
+    """Transparent U-frame (band width INLAY_W) around the fret field — the two long Y sides + the
+    -X (nut/keyhead) end. OPEN at the +X (bridge) end: there is no fretboard edge there — the field
+    just runs out under the pickup, whose seam X MOVES with the pickup's slot position (user), so a
+    fixed +X edge would be both wrong and a false 'fret' on the seam. Same inlay/material as the fret
+    lines, in the colour band (TZ-FRET_T .. TZ); _split clips it to each panel so the U reads continuous."""
+    x_hi, x_lo = FRET_AREA_X0, FRET_AREA_X1                       # +X (bridge) end, -X (nut) end
+    outer = box_at(x_hi - x_lo, 2 * BORDER_HY, FRET_T,
+                   x=(x_hi + x_lo) / 2, y=0.0, z=TZ - FRET_T / 2)
+    ix_lo, ix_hi = x_lo + INLAY_W, x_hi + 1.0                     # inset the -X end; RUN PAST the +X end
+    inner = box_at(ix_hi - ix_lo, 2 * FRET_HY, FRET_T + 1.0,
+                   x=(ix_hi + ix_lo) / 2, y=0.0, z=TZ - FRET_T / 2)
     return outer.cut(inner)
 
 
