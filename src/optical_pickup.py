@@ -252,10 +252,15 @@ LEDGE_KEEP = 1.0                                          # ledge -> nearest pac
 # the -Y ledge as a detached block). Anything unioned back INTO a pocket must be sized
 # from the pocket, not from the part the pocket was cut for.
 PCB_CLR    = 0.3
-# ...and it needs to reach PAST the wall, not just touch it: this is the ledge's only
-# fuse to the bar. Outboard of the pocket the bar is solid from its underside to TIE_Z,
-# so at the wall plane the joint is the bar's FULL depth, not the 0.85 of overlap the
-# ledge's top shares with the bar underside. LEDGE_ROOT is that run into solid material.
+# ...and it has to reach PAST the wall, not just touch it. LEDGE_ROOT is that run into
+# solid bar, and it earns its keep twice:
+#   FUSE -- the pocket clears everything under the board, so the root is the ledge's only
+#     joint to the bar. At the wall plane it is the bar's full depth, not the 0.85 of
+#     overlap the ledge's top shares with the bar underside.
+#   PRINT -- the endplate builds +X -> -X (it prints flat on its +X face), so a shelf
+#     rooted in solid material at +X is supported layer-on-layer along its whole run,
+#     while a shelf floating inside the pocket has no first layer at all. This is why
+#     BOTH ledges are anchored at +X and grow -X; see _ledge_specs.
 LEDGE_ROOT = 2.0
 # Ledge THICKNESS. The tie bar's underside sits at SENSE_FACE_Z, which leaves only
 # PCB_BOT - SENSE_FACE_Z = LED_H (1.1) of material under the board -- below the 1.6 floor
@@ -273,6 +278,10 @@ PCB_YM     = -PCB_YP                                      # -Y end, mirrored
 USB_Y      = PCB_YM + USB_PKG[1] / 2                      # mouth flush with the -Y board edge
 PCB_L    = PCB_YP - PCB_YM
 PCB_CY   = (PCB_YP + PCB_YM) / 2
+# Ledge outer Y -- past the pocket wall, into solid bar (second fuse face; see LEDGE_ROOT).
+# The endplate's tie bar has to reach past LEDGE_YM for that to be solid, so it reads this.
+LEDGE_YP = PCB_YP + PCB_CLR + LEDGE_ROOT
+LEDGE_YM = PCB_YM - PCB_CLR - LEDGE_ROOT
 
 
 def _part(pkg, x, y, z_top):
@@ -311,7 +320,7 @@ def opt_pcb_pocket() -> cq.Workplane:
     always exactly the board. It runs down to STACK_BOT_Z, below the bar's underside, so
     the deeper tail packages simply break through into open air at Y < -44 -- which is
     what leaves the USB receptacle reachable by a cable."""
-    clr, zclr = 0.3, 0.2
+    clr, zclr = PCB_CLR, 0.2
     # (a) THE SLOT -- board thickness, with the Z clearance ABOVE so the FLOOR stays the
     # datum: the board rests on the ledges, which makes the sensor standoff a printed
     # dimension rather than something a screw has to hold. The board SLIDES IN along
@@ -336,18 +345,24 @@ def opt_pcb_pocket() -> cq.Workplane:
 def _ledge_specs():
     """(y0, y1, x0, x1) per end ledge.
 
-    The -Y one is X-LIMITED so it sits BESIDE the USB receptacle instead of in front of
-    its mouth. The mouth has to reach the board's -Y edge to be pluggable, and the ledge
-    occupies the same Z band as the connector shell -- a full-width ledge there would
-    wall the port off. Splitting them in X lets both live at the extreme -Y end, which is
-    what stops the connector from lengthening the board.
+    Both are ROOTED AT +X, in solid bar past the pocket wall, and grow from there in -X
+    -- the build direction (see LEDGE_ROOT). Both also overrun the pocket in Y for a
+    second fuse face.
+
+    The -Y one is X-LIMITED, to the strip of board +X OF THE USB RECEPTACLE. It cannot be
+    full width: the connector's mouth has to reach the -Y board edge to be pluggable and
+    its shell occupies the ledge's own Z band, so a full-width ledge would wall the port
+    off. It also cannot sit -X of the connector, where it used to -- that side faces
+    nothing but open pocket all the way to the board's -X edge, so it had no material to
+    start on and printed as a floating island. +X of the connector it gets both bearing
+    under the board and a root in the bar.
 
     The +Y one is full width: nothing is out there."""
-    clr = 0.3
-    usb_x1 = PART_X - USB_PKG[0] / 2 - LEDGE_KEEP
+    usb_x0 = PART_X + USB_PKG[0] / 2 + LEDGE_KEEP
+    root_x = PCB_X0 + PCB_CLR + LEDGE_ROOT
     return [
-        (PCB_YP - FLOOR_L, PCB_YP, PCB_X1 - clr, PCB_X0 + clr),
-        (PCB_YM, PCB_YM + FLOOR_L, PCB_X1 - clr, usb_x1),
+        (PCB_YP - FLOOR_L, LEDGE_YP, PCB_X1 - PCB_CLR, root_x),
+        (LEDGE_YM, PCB_YM + FLOOR_L, usb_x0, root_x),
     ]
 
 
@@ -355,7 +370,12 @@ def opt_floor_ledges() -> cq.Workplane:
     """The two end ledges the board rests on, as a solid for the endplate to UNION after
     it has cut the pocket. They hang LEDGE_T below the board rather than relying on the
     LED_H the tie bar happens to leave there -- see LEDGE_T. Both sit outside the string
-    field, so hanging below the bar's underside fouls nothing."""
+    field, so hanging below the bar's underside fouls nothing.
+
+    That overhang is the one print-direction step in the feature: LEDGE_T - LED_H = 0.75
+    of new material at the ledge's first (+X-most) layer, where it drops below the bar's
+    underside. Sub-millimetre, on a face that carries no fit -- the rest of the run is
+    supported layer-on-layer."""
     out = None
     for y0, y1, x0, x1 in _ledge_specs():
         blk = box_at(x1 - x0, y1 - y0, LEDGE_T,
@@ -407,6 +427,26 @@ def _assert_field_clear():
         raise AssertionError(
             f"optical strip: sensing at {SENSE_D:.1f} mm from the termination is inside "
             f"the {STIFF_FLOOR:.1f} mm stiffness floor -- pitch would be inharmonic")
+    # 3. a floor ledge unioned back into the pocket with nothing to attach to. Both a
+    # structural bug (a detached island in the STEP) and a print bug (no first layer, the
+    # endplate building +X -> -X), and the overlap gate sees neither -- a disconnected
+    # solid interpenetrates nothing. This is what shipped last round: the ledges were
+    # drawn to the BOARD's edges while the pocket is cut to board + PCB_CLR.
+    for i, (y0, y1, x0, x1) in enumerate(_ledge_specs()):
+        tag = "+Y" if y1 > 0 else "-Y"
+        if x1 < PCB_X0 + PCB_CLR + 1e-9:
+            raise AssertionError(
+                f"optical strip: {tag} floor ledge ends at X={x1:.2f}, inside the pocket "
+                f"wall at {PCB_X0 + PCB_CLR:.2f} -- it would be a detached island, and "
+                f"would have no material at +X to print onto")
+        if x1 - x0 <= 0 or y1 - y0 <= 0:
+            raise AssertionError(f"optical strip: {tag} floor ledge is degenerate")
+        # ...and must not foul the packages it was shaped around
+        for name, pkg, py in (("MCU", MCU_PKG, MCU_Y), ("USB", USB_PKG, USB_Y)):
+            if (y0 < py + pkg[1] / 2 and y1 > py - pkg[1] / 2
+                    and x0 < PART_X + pkg[0] / 2 and x1 > PART_X - pkg[0] / 2):
+                raise AssertionError(
+                    f"optical strip: {tag} floor ledge overlaps the {name} package")
 
 
 _assert_field_clear()
