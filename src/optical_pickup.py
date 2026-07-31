@@ -88,7 +88,12 @@ STIFF_FLOOR   = 10.0
 
 OPT_GAP = 3.0                                    # sensor face -> string TOP (down-firing)
 PCB_T   = 1.6                                    # FR4
-PCB_W   = 16.0                                   # X -- fits an LQFP64-class USB-HS MCU
+# X width. The sensor row hugs the -X edge (SENSE_EDGE), so the rest of the board is a
+# clear +X field -- wide enough to carry the PROCESSOR AND THE CONNECTOR BESIDE the row
+# rather than beyond it in Y. That is what collapses the tail: the board is ~20 mm shorter
+# than when those two packages had to queue up past the last string. Width is cheap here
+# (the tie bar is 26.6 deep in X); Y length is not, because it is all cantilever.
+PCB_W   = 20.0                                   # X -- row + a full-length +X parts field
 LED_H   = 1.1                                    # 0805 emitter height (sets the board underside)
 MCU_H   = 1.7                                    # LQFP64 height
 USB_H   = 2.6                                    # micro-B receptacle shell height
@@ -198,13 +203,16 @@ def mount_points():
     mid = (string_y_at(4, MOUNT_X) + string_y_at(5, MOUNT_X)) / 2
     return [(MOUNT_X, mid, PCB_TOP)]
 TIE_HY   = D.BRIDGE_AXLE_Y + D.BRIDGE_ARM_W / 2  # tie-bar half-span at the arms (54.25)
-MCU_Y    = -(SENSE_HL + END_KEEP + MCU_PKG[1] / 2)        # processor, first past the field
-# The MCU->USB gap is set by the RETENTION SCREW that lands between them, not by routing:
-# the tail is the end a USB cable levers on, so it needs a hold-down, and the only clear
-# Y for one out here is between those two packages.
-TAIL_GAP = 8.0
-USB_Y    = MCU_Y - MCU_PKG[1] / 2 - TAIL_GAP - USB_PKG[1] / 2
-TAIL_MOUNT_Y = (MCU_Y - MCU_PKG[1] / 2 + USB_Y + USB_PKG[1] / 2) / 2
+# Processor and connector sit BESIDE the sensor row, in the +X parts field -- not beyond
+# it in Y. PART_X is that field's centre line, clear of the row by PART_KEEP.
+PART_KEEP = 2.0
+PART_X    = SENSE_X + PART_KEEP + max(MCU_PKG[0], USB_PKG[0]) / 2
+# The MCU sits over the field (harmless: it is +X of the row, so nothing optical, and it
+# hangs no lower than the sensors' own standoff allows) and near the connector, which is
+# what routing wants. The USB stays at the -Y EDGE -- it has to face out to be pluggable
+# -- but now it is the ONLY thing setting the tail length.
+MCU_Y    = -35.0
+USB_Y    = -(SENSE_HL + END_KEEP + USB_PKG[1] / 2)
 # FLOOR LEDGES (user): the slot's floor exists ONLY at the two Y ends -- just enough to
 # carry the board and set its standoff -- so the entire underside between them stays free
 # for sensors, processor, connector and routing. The board is sized to overhang each
@@ -244,8 +252,8 @@ def opt_pcb() -> cq.Workplane:
         for s in (1, -1):
             pcb = pcb.union(_part(PD_PKG, SENSE_X, sy + s * PD_DY, PCB_BOT))
 
-    pcb = pcb.union(_part(MCU_PKG, PCB_CX, MCU_Y, PCB_BOT))   # -Y tail, same face
-    pcb = pcb.union(_part(USB_PKG, PCB_CX, USB_Y, PCB_BOT))   # outboard of it, faces -Y
+    pcb = pcb.union(_part(MCU_PKG, PART_X, MCU_Y, PCB_BOT))   # +X field, beside the row
+    pcb = pcb.union(_part(USB_PKG, PART_X, USB_Y, PCB_BOT))   # +X field, at the -Y edge
 
     for mx, my, _ in mount_points():                          # M2 clearance holes
         pcb = pcb.cut(box_at(M2.shaft_clr_d, M2.shaft_clr_d, PCB_T + 2,
@@ -306,13 +314,20 @@ def _assert_field_clear():
          string's sensor triplet -- this actually happened, on string 10;
       2. the sensing station creeping inside the string's stiffness boundary layer,
          where pitch would pick up inharmonicity error."""
-    # single-sided: EVERY package shares the sensors' face, so all of them can collide
-    for name, pkg, cy in (("MCU", MCU_PKG, MCU_Y), ("USB", USB_PKG, USB_Y)):
-        near = cy + pkg[1] / 2
-        if near > -SENSE_HL:
+    # Single-sided AND the parts now sit beside the row rather than beyond it, so the
+    # test is in X, not Y: nothing may reach back into the sensor row's X band. (The Y
+    # test that used to live here is gone with the tail -- MCU_Y is deliberately over
+    # the field now.)
+    row_x1 = SENSE_X + max(LED_PKG[0], PD_PKG[0]) / 2
+    for name, pkg in (("MCU", MCU_PKG), ("USB", USB_PKG)):
+        near = PART_X - pkg[0] / 2
+        if near < row_x1:
             raise AssertionError(
-                f"optical strip: {name} reaches Y={near:.2f}, inside the sensing field "
-                f"edge {-SENSE_HL:.2f} -- it would sit on a string's sensors")
+                f"optical strip: {name} reaches X={near:.2f}, into the sensor row's band "
+                f"(ends {row_x1:.2f}) -- it would sit on the emitters")
+    if PART_X + max(MCU_PKG[0], USB_PKG[0]) / 2 > PCB_X0 - 1.6:
+        raise AssertionError(
+            "optical strip: +X parts field overruns the board edge keepout")
     if PCB_YP < SENSE_HL:
         raise AssertionError(
             f"optical strip: board +Y end {PCB_YP:.2f} is inside the last detector at "
