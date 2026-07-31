@@ -210,7 +210,13 @@ TAIL_MOUNT_Y = (MCU_Y - MCU_PKG[1] / 2 + USB_Y + USB_PKG[1] / 2) / 2
 # for sensors, processor, connector and routing. The board is sized to overhang each
 # ledge by FLOOR_L.
 FLOOR_L    = 5.0
-LEDGE_KEEP = 1.5                                          # ledge inner edge -> nearest package
+LEDGE_KEEP = 1.6                                          # ledge inner edge -> nearest package
+# Ledge THICKNESS. The tie bar's underside sits at SENSE_FACE_Z, which leaves only
+# PCB_BOT - SENSE_FACE_Z = LED_H (1.1) of material under the board -- below the 1.6 floor
+# the user set for added material. The ledges are free to hang LOWER than the bar,
+# though, because both sit outside the string field (+Y past string 1, -Y past string
+# 10), so nothing here has to respect OPT_GAP. So they get their own thickness.
+LEDGE_T    = 1.6                                          # two full beads
 PCB_YP     = SENSE_HL + END_KEEP + FLOOR_L                # +Y end, incl. its ledge
 PCB_YM     = USB_Y - USB_PKG[1] / 2 - LEDGE_KEEP - FLOOR_L  # -Y end, incl. its ledge
 PCB_L    = PCB_YP - PCB_YM
@@ -271,6 +277,25 @@ def opt_pcb_pocket() -> cq.Workplane:
                                  x=(x0 + RELIEF_X1) / 2, y=(dy0 + dy1) / 2,
                                  z=(STACK_BOT_Z + PCB_BOT) / 2))
     return pocket
+
+
+def _ledge_ys():
+    """(y0, y1) of each end floor ledge."""
+    return [(PCB_YP - FLOOR_L, PCB_YP), (PCB_YM, PCB_YM + FLOOR_L)]
+
+
+def opt_floor_ledges() -> cq.Workplane:
+    """The two end ledges the board rests on, as a solid for the endplate to UNION after
+    it has cut the pocket. They hang LEDGE_T below the board rather than relying on the
+    1.1 the tie bar happens to leave there -- see LEDGE_T. Both sit outside the string
+    field, so hanging below the bar's underside fouls nothing."""
+    clr = 0.3
+    out = None
+    for y0, y1 in _ledge_ys():
+        blk = box_at(PCB_W + 2 * clr, y1 - y0, LEDGE_T,
+                     x=PCB_CX, y=(y0 + y1) / 2, z=PCB_BOT - LEDGE_T / 2)
+        out = blk if out is None else out.union(blk)
+    return out
 
 
 def _assert_field_clear():
