@@ -128,7 +128,15 @@ SENSE_EDGE = 2.5                                 # sensor row inset from the boa
 # Z stack, built DOWNWARD from the strings. The LED sets the board height (its face must
 # land on SENSE_FACE_Z); taller packages therefore hang LOWER than the sensors. That is
 # fine because they all live at Y < -44, past string 10 -- checked in _assert_field_clear.
-SENSE_FACE_Z = D.STRING_Z + OPT_GAP              # 19.0 -- sensor faces look down
+# The standoff datum is the TOP OF THE THICKEST STRING, not D.STRING_Z.
+# D.STRING_Z is the string CENTRE line -- the model holds centres coplanar (verified: the
+# .070 low C tops out at 16.89, the .054 at 16.69, both centred on 16.00), so string TOPS
+# rise with gauge. Referencing D.STRING_Z directly, as this did, silently gave the
+# THICKEST string -- the one nearest the sensors -- only 2.11 of the intended 3.0, and put
+# the USB shell 0.2 INTO the low C. Reference the worst case and every other string simply
+# gets more gap.
+STRING_TOP_MAX = D.STRING_Z + max(D.STRING_GAUGE) / 2     # 16.889
+SENSE_FACE_Z   = STRING_TOP_MAX + OPT_GAP                 # sensor faces look down
 PCB_BOT      = SENSE_FACE_Z + LED_H              # 20.1 -- board underside
 PCB_TOP      = PCB_BOT + PCB_T                   # 21.7 -- board top; nothing above it now
 STACK_BOT_Z  = PCB_BOT - max(MCU_H, USB_H)       # 17.5 -- lowest package (the USB shell)
@@ -160,7 +168,7 @@ MCU_PKG = (12.0, 12.0, MCU_H)                    # LQFP64, 10x10 body / 12x12 ov
 # the micro-B envelope this modelled before (9.0 x 7.5 x 3.3 vs 7.5 x 5.5 x 2.6), which
 # is why the tail did not shrink as far as the package move alone would suggest.
 USB_PKG = (8.94, 7.35, USB_H)                    # TYPE-C-31-M-12: 8.94 across x 7.35 deep, faces -Y
-END_KEEP = 3.0                                   # clear space between outer detector and any part
+END_KEEP = 2.0                                   # clear space between outer detector and any part
 
 
 def string_y_at(i: int, x: float) -> float:
@@ -231,22 +239,27 @@ PART_X    = SENSE_X + PART_KEEP + max(MCU_PKG[0], USB_PKG[0]) / 2
 # hangs no lower than the sensors' own standoff allows) and near the connector, which is
 # what routing wants. The USB stays at the -Y EDGE -- it has to face out to be pluggable
 # -- but now it is the ONLY thing setting the tail length.
-MCU_Y    = -35.0
-USB_Y    = -(SENSE_HL + END_KEEP + USB_PKG[1] / 2)
+MCU_Y    = -30.0                                          # (USB_Y is below -- it needs PCB_YM)
 # FLOOR LEDGES (user): the slot's floor exists ONLY at the two Y ends -- just enough to
 # carry the board and set its standoff -- so the entire underside between them stays free
 # for sensors, processor, connector and routing. The board is sized to overhang each
 # ledge by FLOOR_L.
-FLOOR_L    = 5.0
-LEDGE_KEEP = 1.6                                          # ledge inner edge -> nearest package
+FLOOR_L    = 3.0                                          # ledge depth in Y -- bearing only
+LEDGE_KEEP = 1.0                                          # ledge -> nearest package (clearance)
 # Ledge THICKNESS. The tie bar's underside sits at SENSE_FACE_Z, which leaves only
 # PCB_BOT - SENSE_FACE_Z = LED_H (1.1) of material under the board -- below the 1.6 floor
 # the user set for added material. The ledges are free to hang LOWER than the bar,
 # though, because both sit outside the string field (+Y past string 1, -Y past string
 # 10), so nothing here has to respect OPT_GAP. So they get their own thickness.
 LEDGE_T    = 1.6                                          # two full beads
+# SYMMETRIC ends, both set by the SENSING FIELD rather than by a package tail (user):
+# nothing may push the board past the last detector by more than a keep-out and a ledge.
+# The USB reaches the -Y edge from the inside -- its mouth has to, to be pluggable -- but
+# it no longer LENGTHENS the board, because it lives in the +X parts field where its Y
+# span is allowed to overlap the field edge (it is 2 mm clear of the row in X).
 PCB_YP     = SENSE_HL + END_KEEP + FLOOR_L                # +Y end, incl. its ledge
-PCB_YM     = USB_Y - USB_PKG[1] / 2 - LEDGE_KEEP - FLOOR_L  # -Y end, incl. its ledge
+PCB_YM     = -PCB_YP                                      # -Y end, mirrored
+USB_Y      = PCB_YM + USB_PKG[1] / 2                      # mouth flush with the -Y board edge
 PCB_L    = PCB_YP - PCB_YM
 PCB_CY   = (PCB_YP + PCB_YM) / 2
 
@@ -295,33 +308,47 @@ def opt_pcb_pocket() -> cq.Workplane:
     pocket = box_at(PCB_W + 2 * clr, PCB_L + 2 * clr, (PCB_TOP + zclr) - PCB_BOT,
                     x=PCB_CX, y=PCB_CY, z=(PCB_BOT + PCB_TOP + zclr) / 2)
 
-    # (b) EVERYTHING UNDER THE BOARD EXCEPT THE TWO END LEDGES -- cut full depth, so the
-    # whole middle of the underside is free for sensors, processor, connector and
-    # routing. Carried out past the tie bar's -X face as well, so no plastic faces the
-    # emitters (the stray emitter->wall->detector path; see RELIEF_* above).
-    dy1, dy0 = PCB_YP - FLOOR_L, PCB_YM + FLOOR_L
+    # (b) EVERYTHING UNDER THE BOARD -- cut full depth over the WHOLE footprint, and
+    # carried out past the tie bar's -X face so no plastic faces the emitters (the stray
+    # emitter->wall->detector path; see RELIEF_* above). The floor ledges are unioned back
+    # afterwards by the endplate, so they define their own shape.
+    # This used to spare the two ledge Y-bands instead -- which left material under the
+    # USB inside the -Y band and drove it straight into the connector, because that ledge
+    # is X-limited and the spared band was not.
     x0 = PCB_X0 + clr
-    pocket = pocket.union(box_at(x0 - RELIEF_X1, dy1 - dy0, PCB_BOT - STACK_BOT_Z,
-                                 x=(x0 + RELIEF_X1) / 2, y=(dy0 + dy1) / 2,
+    pocket = pocket.union(box_at(x0 - RELIEF_X1, PCB_L + 2 * clr, PCB_BOT - STACK_BOT_Z,
+                                 x=(x0 + RELIEF_X1) / 2, y=PCB_CY,
                                  z=(STACK_BOT_Z + PCB_BOT) / 2))
     return pocket
 
 
-def _ledge_ys():
-    """(y0, y1) of each end floor ledge."""
-    return [(PCB_YP - FLOOR_L, PCB_YP), (PCB_YM, PCB_YM + FLOOR_L)]
+def _ledge_specs():
+    """(y0, y1, x0, x1) per end ledge.
+
+    The -Y one is X-LIMITED so it sits BESIDE the USB receptacle instead of in front of
+    its mouth. The mouth has to reach the board's -Y edge to be pluggable, and the ledge
+    occupies the same Z band as the connector shell -- a full-width ledge there would
+    wall the port off. Splitting them in X lets both live at the extreme -Y end, which is
+    what stops the connector from lengthening the board.
+
+    The +Y one is full width: nothing is out there."""
+    clr = 0.3
+    usb_x1 = PART_X - USB_PKG[0] / 2 - LEDGE_KEEP
+    return [
+        (PCB_YP - FLOOR_L, PCB_YP, PCB_X1 - clr, PCB_X0 + clr),
+        (PCB_YM, PCB_YM + FLOOR_L, PCB_X1 - clr, usb_x1),
+    ]
 
 
 def opt_floor_ledges() -> cq.Workplane:
     """The two end ledges the board rests on, as a solid for the endplate to UNION after
     it has cut the pocket. They hang LEDGE_T below the board rather than relying on the
-    1.1 the tie bar happens to leave there -- see LEDGE_T. Both sit outside the string
+    LED_H the tie bar happens to leave there -- see LEDGE_T. Both sit outside the string
     field, so hanging below the bar's underside fouls nothing."""
-    clr = 0.3
     out = None
-    for y0, y1 in _ledge_ys():
-        blk = box_at(PCB_W + 2 * clr, y1 - y0, LEDGE_T,
-                     x=PCB_CX, y=(y0 + y1) / 2, z=PCB_BOT - LEDGE_T / 2)
+    for y0, y1, x0, x1 in _ledge_specs():
+        blk = box_at(x1 - x0, y1 - y0, LEDGE_T,
+                     x=(x0 + x1) / 2, y=(y0 + y1) / 2, z=PCB_BOT - LEDGE_T / 2)
         out = blk if out is None else out.union(blk)
     return out
 
