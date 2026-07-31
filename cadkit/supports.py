@@ -209,7 +209,7 @@ def printable_bore(diameter, length, axis_point=(0.0, 0.0, 0.0),
                      axis_dir, print_up)
 
 
-def contact_rib(mean_diameter, proud=0.85, thickness=0.85,
+def contact_rib(mean_diameter, proud=0.8, thickness=0.8,
                 axis_point=(0.0, 0.0, 0.0), axis_dir=(0.0, 1.0, 0.0),
                 print_up=(0.0, 0.0, 1.0)):
     """A thin proud RING standing off a face — a CONTACT/THRUST rib. UNION it.
@@ -222,8 +222,10 @@ def contact_rib(mean_diameter, proud=0.85, thickness=0.85,
     gives the printer a small, well-defined face to lay down flat instead of a
     wide one that only touches on its high spots.
 
-    Defaults are the house size: 0.85 wide × 0.85 proud — about one nozzle
-    each way, the smallest rib that still prints as a solid wall.
+    Defaults are the hard floor: 0.8 wide × 0.8 proud — one nozzle each way, the
+    smallest rib that still prints as a wall (no buffer; Arachne fills a full
+    bead). A lone bead slices a bit mushy, so a PLACED rub feature should prefer
+    two nozzles — see contact.contact_rib_size — and give itself the room.
 
     When the ring's axis runs SIDEWAYS in the print (proud of a vertical
     wall), its own underside overhangs, so the teardrop support is fused on
