@@ -27,11 +27,11 @@ LAYOUT (under-string, vertical-screw):
 # ─────────────────────────────────────────────────────────────────────────
 from cadkit.printing import min_wall
 NOZZLE_D        = 0.8       # this build runs a 0.8 mm nozzle
-MIN_WALL        = min_wall(NOZZLE_D)          # 0.85 — floor for ANY single-bead
-                                              # feature (web/ceiling/rib). Material
-                                              # == one nozzle can be dropped by the
-                                              # slicer, so a lone bead gets +0.05.
-MIN_WALL_2P     = min_wall(NOZZLE_D, beads=2) # 1.6 — a real 2-perimeter wall (no buffer)
+MIN_WALL        = min_wall(NOZZLE_D)          # 0.8 — one-bead HARD floor (web/ceiling/rib).
+                                              # A lone bead slices mushy, so PREFER MIN_WALL_2P;
+                                              # drop to MIN_WALL only in a genuinely tight room.
+MIN_WALL_2P     = min_wall(NOZZLE_D, beads=2) # 1.6 — two-bead QUALITY target (crisp perimeters).
+                                              # No buffer: Arachne fills exact nozzle multiples cleanly.
 
 # ─────────────────────────────────────────────────────────────────────────
 # String field (strings spaced ACROSS, along Y; lowest pitch at −Y / player)

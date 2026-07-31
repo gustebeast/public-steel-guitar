@@ -76,8 +76,8 @@ TIE_X0 = OP.PCB_X1                # -X face, flush with the board edge
 # hand and a plain cut_m2_anchor put in it.)
 MOUNT_DEPTH = M2.anchor_min_wall          # 5.5 -- pocket + min_bite, no deviation
 MOUNT_TOP_Z = OP.PCB_TOP + MOUNT_DEPTH    # boss top
-MIN_ADDED = 1.6                           # floor for material this feature ADDS (user):
-                                          # two full beads, well over D.MIN_WALL's 0.85
+MIN_ADDED = D.MIN_WALL_2P                 # 1.6 -- two-bead QUALITY floor for material this feature
+                                          # ADDS (single-sourced from cadkit.printing via dimensions)
 MOUNT_BOSS_D = M2.insert_pilot_d + 2 * MIN_ADDED   # 6.5 (M2.boss_wall's 1.0 is under it)
 # The bar also runs ASYMMETRICALLY in -Y, to the end of the strip's processor/USB tail.
 # Without this the tail hangs ~14 mm past the bar with the USB receptacle on it, and
