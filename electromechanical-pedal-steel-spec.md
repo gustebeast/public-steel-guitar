@@ -153,7 +153,7 @@ If the fan gets too wide, fallbacks: (a) longer belt runs to shrink the skew ang
 | Motor | MKS SERVO42D (CAN), 48 mm NEMA17 | 42.3 mm sq, 14-bit encoder, 24 V |
 | Motor layout | 2 layers × 5, fanned | in outboard end-box |
 | Guide rod | 3–4 mm steel | anti-rotation per carriage |
-| Build volume limit | 255 × 255 × 255 mm | body must be split + glued |
+| Build volume limit | 255 × 255 × 255 mm | body must be split — joined mechanically, NEVER glued |
 | Body material | PCTG | non-load structure |
 | Load-part material | PETG-GF (glass-filled PETG) | carriage, anchors, bearing blocks |
 
@@ -187,7 +187,7 @@ Priority order roughly matches what unblocks the rest.
 4. **Guide-rod mounts / carriage rail** — hold the anti-rotation rods parallel to the screws.
 5. **Roller-bridge mount** — holds the bridge at correct height; defines speaking length; provides the behind-the-bridge string anchor geometry.
 6. **Motor brick (§5)** — *PCTG.* Holds 10 SERVO42D motors in the fanned 2-layer arrangement; **slotted mounts for belt tensioning**; cable management for CAN daisy-chain. This is the hard one.
-7. **Main chassis** — *PCTG, split into ≤255 mm pieces, glued woodworking-style* (dowels/keys for alignment). Houses screw field + bridge; thin profile for the sit-on-keyboard goal.
+7. **Main chassis** — *PCTG, split into ≤255 mm pieces, joined by a cadkit install-z joint per side rail plus a screwed outer lap plate* (no glue — every seam comes apart with a hex key). Houses screw field + bridge; thin profile for the sit-on-keyboard goal.
 8. **Outboard end-box** — houses motor brick + electronics tray; PCTG.
 9. **Pedal & knee-lever housings** — mount AS5600 sensors + return springs; one analog/I²C sensor per control (~7–8 controls).
 10. **Electronics tray** — Teensy 4.1, 24 V→5 V buck, CAN wiring, fuse/switch/inlet.
@@ -196,7 +196,11 @@ Priority order roughly matches what unblocks the rest.
 
 ## 9. Manufacturing constraints (read before modeling parts)
 
-- **Printer build volume = 255 × 255 × 255 mm.** The body exceeds this; design it as **multiple pieces joined with glue** (woodworking-style butt/scarf joints), with **dowels or alignment keys** so the screw field stays straight across joints.
+- **NO GLUE ANYWHERE (user rule).** Every part must come apart again. A joint's shape
+  retains five degrees of freedom; the sixth — its install axis — is closed by a
+  fastener, or by a part installed later across it (the deck over the endplate lip, the
+  pedal-bar lid over the bar splices). Route the shape half through `cadkit.joinery`.
+- **Printer build volume = 255 × 255 × 255 mm.** The body exceeds this; design it as **multiple pieces joined mechanically** — a cadkit install-z joint per side rail, closed by a screwed lap plate — with the joint itself doing the alignment so the screw field stays straight across seams.
 - **Materials by role:**
   - **PCTG** — body, brackets, enclosures (dimensionally stable, tough, non-load-critical).
   - **PETG-GF (glass-filled PETG)** — carriage, string anchors, bearing blocks, anything in the sustained tension path. Requires a **hardened nozzle**; dries like ordinary PETG (no nylon-grade drying regime).

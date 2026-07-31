@@ -65,8 +65,8 @@ joint_box_min(up, up, install="z", quality=True)   # -> (4.8, 3.5): the room a
   fine, the depth sandwich bound until its face gap reached 0.3. Other
   families' fiber behavior is unmeasured — they use the base value.
 - **`fit`** — `"normal"` (default) is the print-tested slide fit; `"loose"`
-  doubles BOTH clearances for joints that must slide with zero effort (glued
-  assemblies, frequently-serviced parts). Retention geometry is unchanged —
+  doubles BOTH clearances for joints that must slide with zero effort
+  (frequently-serviced parts, joints mated blind). Retention geometry is unchanged —
   only the gaps grow.
 - **`install`** — the slide/install axis: the ONE direction deliberately left
   without retention (print orientation alone under-determines a slide joint).

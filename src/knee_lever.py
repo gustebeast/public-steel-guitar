@@ -64,10 +64,9 @@ AXLE_D  = 5.0                       # Ø5 axle journals — PCTG now (user: no s
                                     # sensor) and the radial bearing reactions (~4-5x
                                     # knee force ≈ 130 N worst) sit ~5x under a Ø5 PCTG
                                     # journal's shear capacity; the steel MR85 inner
-                                    # races take all the wear. +Y journal + magnet stub
-                                    # print INTEGRAL with the lever (standing off its
-                                    # lying -Y bed face); the -Y journal is the glued
-                                    # kl_axle_insert (the bed face must stay flat).
+                                    # races take all the wear. (HISTORICAL: this described
+                                    # the integral-stub + glued-insert pair, retired at
+                                    # round 2 — the axle is ONE part now, see kl_axle.)
 BRG_OD, BRG_ID, BRG_W = 8.0, 5.0, 2.5   # MR85ZZ — shared with the screw-support bearings
 MAG_D, MAG_T = 6.0, 2.5             # DIAMETRICALLY-magnetised NdFeB disc on the axle end
                                     # = DigiKey/Radial Magnets 8995 (N35, NiCuNi, 80 °C),

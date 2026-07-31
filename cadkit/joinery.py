@@ -783,7 +783,7 @@ def _hook_mortise(width, length, nozzle=0.8, clearance=0.1, drop=2.0):
 #
 # `fit` picks the tier: "normal" (default) = the print-tested slide fit;
 # "loose" = 2× BOTH values, for joints that must slide with zero effort
-# (glued assemblies, frequently-serviced parts) — retention geometry is
+# (frequently-serviced parts, blind assemblies) — retention geometry is
 # unchanged, only the gaps grow.
 _MATERIAL_CLEARANCE = {
     "PETG-GF": 0.15,
@@ -1080,7 +1080,8 @@ def joint(width, length, tenon, mortise, clearance=None, install="x",
     halves get a doubled depth-face gap; override the base with
     `clearance=`); `fit` picks the tier: "normal" (print-tested slide) or
     "loose" (2× everything — for joints that must slide with zero effort,
-    e.g. glued assemblies). Returns a Joint: `.tenon(root)` /
+    e.g. a part serviced often, or one mated blind). Returns a Joint:
+    `.tenon(root)` /
     `.mortise(drop)` solids plus sizing metadata (`.height`, `.width_min`,
     `.dims`). Use `joint_box_min` for "how much room would a joint need
     here" before committing geometry."""
