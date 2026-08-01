@@ -367,15 +367,8 @@ def _deck_body(xa, xb):
     xm = (xa + xb) / 2
     body = box_at(xa - xb, BY1 - BY0, TZ - BZ, x=xm, y=(BY0 + BY1) / 2,
                   z=(BZ + TZ) / 2)
-    MW, FLR, DEP = CH.TP_TG_MW, CH.TP_TG_FLR, CH.TP_TG_DEPTH
-    for yc in (CH.Y_HI, CH.Y_LO):                     # dovetail tongue down each rail
-        prof = [(yc - MW, BZ), (yc + MW, BZ),         # mouth (narrow) at the deck bottom
-                (yc + MW + FLR, BZ - DEP),            # flare to the wide foot ...
-                (yc - MW - FLR, BZ - DEP)]            # ... DEP below (in the rail groove)
-        pts = [cq.Vector(xb, py, pz) for py, pz in prof]
-        face = cq.Face.makeFromWires(cq.Wire.makePolygon([*pts, pts[0]]))
-        body = body.union(cq.Workplane("XY").add(
-            cq.Solid.extrudeLinear(face, cq.Vector(xa - xb, 0, 0))))
+    for yc in (CH.Y_HI, CH.Y_LO):        # cadkit mushroom tenon down each rail
+        body = body.union(CH._deck_tg(yc, xb, xa, mortise=False))
     return body
 
 
