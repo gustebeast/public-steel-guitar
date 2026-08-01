@@ -312,8 +312,10 @@ def _build() -> cq.Workplane:
         # Screw enters from ABOVE, down through the board's clearance hole. The plinth is
         # only 3.66 thick but it sits ON the fill slab, so the anchor gets M4's full
         # anchor_min_wall (8.5 = insert pocket + a real bite) inside solid material.
-        body = cut_anchor(M4, body, (_mx, _my, CARRIER_TOP), (0, 0, -1),
-                          depth=M4.anchor_min_wall)
+        # Deeper than M4.anchor_min_wall (8.5) so a stock M4x12 -- the length already in
+        # the BOM -- cannot bottom out: it reaches z -0.74 and the anchor floor is -1.34.
+        # Depth is free here, the plinth sits on ~29 mm of fill slab.
+        body = cut_anchor(M4, body, (_mx, _my, CARRIER_TOP), (0, 0, -1), depth=11.0)
     # FUSE IN the screw-support rail and bridge it to the cap at the bottom + tie it
     # up to the bearing arms at the edges — the whole bridge end becomes one solid
     # piece (screw support + bearing support + box closure) with continuous material.
