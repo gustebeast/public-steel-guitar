@@ -8,8 +8,6 @@ local frame; build.py translates copies into each string's position.
 from __future__ import annotations
 
 import math
-import pathlib
-import sys
 
 import cadquery as cq
 
