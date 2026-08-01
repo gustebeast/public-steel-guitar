@@ -501,44 +501,68 @@ tee/sensor panel ($25 setup + ~$1.50 per unique feeder), so it should ride the
 **same JLCPCB panel** — the 0402 R/C and generic parts overlap with the existing
 boards, and only the specialised lines add feeders.
 
-### Cost — one board (estimate, unverified except where noted)
+### PCB cost basis — 10 instruments per order (PROJECT CONVENTION)
 
-141 parts, ~541 solder joints, 30 × 158.5 mm outline (47.5 cm²). The $25 PCBA
-order setup is **excluded** — the lever sensor board already pays it.
+**Every PCB cost in this BOM is the cost to build 10, divided by 10.** One
+JLCPCB order, use what each instrument needs, discard the extras. Other hardware
+bought in packs (screws, inserts, dowels) keeps its **per-unit** price as
+elsewhere in this file — pack overage is not amortised. PCBs are different because
+their fixed costs are large and genuinely per-order.
 
-| Line | Detail | ~Cost |
+**Why 10, and why the number matters.** JLCPCB's PCBA quantity ladder is **2, 5,
+then multiples of 5** — you cannot order 3. So the per-instrument curve is a
+**sawtooth, not a smooth decay**, and three instruments cost *more each* than two:
+
+| Instruments | Order | Waste | Order total | Per instrument |
+|--:|--:|--:|--:|--:|
+| 1 | 2 | 1 | $172.64 | $172.64 |
+| 2 | 2 | 0 | $172.64 | $86.32 |
+| 3 | 5 | 2 | $283.10 | **$94.37** ↑ |
+| 5 | 5 | 0 | $283.10 | $56.62 |
+| 6 | 10 | 4 | $467.21 | **$77.87** ↑ |
+| **10** | **10** | **0** | **$467.21** | **$46.72** |
+| 15 | 15 | 0 | $651.31 | $43.42 |
+| 20 | 20 | 0 | $835.42 | $41.77 |
+
+Two consequences worth acting on:
+
+* **Build in ladder multiples.** 3 and 5 have the *same order total*; 6 and 10 do
+  too. If you are planning 3, build 5 — the boards are already paid for.
+* **10 is the knee.** It is the first quantity within 30 % of the variable-cost
+  floor; past 15 the gains are slow. Hence the convention.
+
+### Optical pickup board at that basis — $46.72 per instrument
+
+Board is **37.4 × 184.4 mm = 69.0 cm²**, 4-layer, 141 parts, ~541 solder joints.
+(An earlier revision of this section said 47.5 cm² — that predates the +X wraps
+and the M4 bands.)
+
+| | | |
 |---|---|---:|
-| MCU | STM32H743ZIT6 LQFP144 — **LCSC C114408, verified $7.63** | $7.63 |
-| PIN photodiodes ×20 | VEMD4110X02 | $8.00 |
-| Quad op-amps ×5 | the 20 TIA channels | $4.50 |
-| IR emitters ×10 | 940 nm, narrow beam | $3.00 |
-| USB HS ULPI PHY | USB3343-class QFN-24 | $3.00 |
-| Crystals ×2, LDOs ×2, reference op-amp | | $1.20 |
-| USB-C + JST XH | J1, J2 | $0.60 |
-| MOSFET, ESD array, ferrite | | $0.22 |
-| 80 × 0402, 11 × 0603, 4 × 0805 | | $0.82 |
-| **Parts subtotal** | | **~$29** |
-| PCB fab | 4-layer, 47.5 cm², qty 5 | ~$7 |
-| Assembly | ~541 joints | ~$1 |
-| **Marginal, per board** | | **~$37** |
+| **Fixed, per order** | PCBA setup $25 + feeder loading $39 (26 unique parts × $1.50) + component MOQ overage ~$20 + 4-layer fab tooling ~$15 | **$99.00** |
+| **Variable, per board** | parts $29.00 + fab $6.90 (69 cm² × $0.10) + assembly $0.92 (541 joints) | **$36.82** |
+| **Order of 10** | 99.00 + 10 × 36.82 | **$467.21** |
+| **Per instrument** | ÷ 10 | **$46.72** |
 
-**Plus ~$39 once per order** in feeder loading — about 26 part numbers unique to
-this board at $1.50, after excluding the generics (100 nF, 10 µF, common resistor
-values) the sensor/tee boards already load.
+**Soft in this:** the fab terms ($15 tooling + $0.10/cm²) are estimates — worth a
+JLC quote before trusting the absolutes, though the *shape* of the curve comes
+purely from the quantity ladder and does not depend on them. Parts are held flat
+at $29; LCSC volume breaks mean the real figure at 10 is a little lower.
 
-So: **~$37** for each additional board, **~$76** if you build exactly one, or
-**~$45 each** at the qty-5 PCBA minimum (with four spares).
+**Five lines are $26 of the $29** — MCU, photodiodes, op-amps, emitters, PHY. Two
+exist only for per-string audio: pitch-only would fit USB full-speed, deleting the
+PHY and allowing a cheaper MCU, so **the audio capability is about $9/board**.
 
-**Five lines are $26 of the $29** — MCU, photodiodes, op-amps, emitters, PHY.
-Two of them exist only for per-string audio: pitch-only would fit USB full-speed,
-deleting the PHY and allowing a much cheaper MCU, so **the 10-channel 48 kHz audio
-capability costs roughly $9/board**. The 20 photodiodes are the DIFF channel;
-halving them saves $4 but reintroduces the 2f₀ octave error, so that is not a
-trade worth making.
+**One free saving at layout:** the outline uses far less copper than its billed
+bounding rectangle. Two boards nested head-to-tail on the panel should recover a
+useful slice of the $6.90 fab line.
 
-**One free saving at layout:** the L-shaped outline uses 28.7 cm² of copper inside
-a 47.5 cm² billed rectangle — 40 % waste. Two boards nested head-to-tail on the
-panel should recover much of the $7.
+**Layer count is a PANEL decision, not a board one.** This board needs 4 layers —
+20 analog channels wanting a ground reference, a 96 kHz switching driver to
+isolate from them, and a 60 MHz ULPI bus. The tee and sensor boards do not; 2
+layers suits them. Panelising everything together forces 22 simple boards up a
+stackup tier, which is likely *more* expensive than splitting into two orders
+(~$25 second setup + ~$6–9 duplicated feeders). **Get both quoted before layout.**
 
 ## Tools (shop infrastructure — NOT per-instrument cost)
 

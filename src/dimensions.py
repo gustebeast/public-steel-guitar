@@ -112,22 +112,18 @@ NUT_BODY_LEN    = 7.0
 # no spanning bar, so the endplate prints with no overhang.
 # ─────────────────────────────────────────────────────────────────────────
 GUIDE_ROD_D     = 2.5
-GUIDE_ROD_DX    = 11.5      # screw→rod offset: rod X = SCREW_X + DX = +3.5 — the most
-                            # +X that still lets EVERY hole around it close into a full
-                            # O: the carriage foot's bore (+X wall 0.9, face 0.25 off
-                            # the cap), the stop bar's snug Ø2.55 drop-in hole, and the
-                            # lower ledge's blind socket (both walls 0.8). INSTALL
-                            # (top-down): the rod drops through the stop bar, through
-                            # the carriage's bore, into the blind socket — friction-
-                            # held top + bottom. The closed bore means the rod alone
-                            # fully captures a loose carriage during assembly:
-                            # carriage in place → rod drops in → screw threads in.
-GUIDE_FOOT_DZ   = -14.0     # foot TOP from the carriage centre (plate bottom −6,
-                            # then an 8.0 column — clears the upper ledge's Z band,
-                            # which sits 0.5 below the anchor cage's sweep bottom)
-GUIDE_FOOT_H    = 8.0       # foot height = guide-bore engagement length (the foot is
-                            # the carriage's stiffness-critical small feature — taller
-                            # foot = more rod engagement + a chunkier root)
+GUIDE_ROD_DX    = 12.95     # screw→rod offset: rod X = SCREW_X + DX = +4.95 (global). Moved +X
+                            # (user) so the rod's metal −X edge clears the anchor-cage OPENING
+                            # (POST_X1H, global +2.1) by 1.6 mm — was only 0.15, and that gap was
+                            # what pinned the guide foot LOW. INSTALL (top-down): the rod drops
+                            # through the stop bar, the carriage's closed bore, into the blind
+                            # socket — friction-held top + bottom; the closed bore captures a loose
+                            # carriage (carriage in place → rod drops in → screw threads in).
+GUIDE_FOOT_DZ   = 2.0       # foot TOP from the carriage centre. Now at the NUT LEVEL (user): the
+                            # guide bore rides in the body's own z-band (−6..+2, just below the
+                            # cage bottom 2.5), NOT on a hanging column — the carriage drops ~16 mm
+                            # in Z (a much stiffer part) and the bore ties straight into the body.
+GUIDE_FOOT_H    = 8.0       # foot height = guide-bore engagement length (rod engagement)
 
 # The bridge / string anchor sits at X=0; the screw can't occupy that spot, so
 # it is offset −X by ANCHOR_DX and the carriage reaches over to the anchor.
@@ -138,8 +134,10 @@ ANCHOR_DX       = BRIDGE_X - SCREW_X    # anchor is +X of the screw (8 mm)
 # String-end nut: a cylinder swaged on the string's bridge end (axis Y), slotted
 # into the carriage anchor. The string exits +Z and its pull seats the nut up
 # under the anchor roof (mechanical capture, no clamp). DEMO/purchased part.
-STRING_NUT_D    = 3.5
-STRING_NUT_L    = 6.0
+STRING_NUT_D    = 4.0       # measured (user): Ø4 x 3 tall ball-end nut
+STRING_NUT_L    = 3.0       # was modelled 6 -> oversize; the real 3 lets the carriage cage
+                            # Y-walls go to 2.7 (= (WIDTH 9 - (L+0.6))/2), well over 2 beads
+                            # (was 1.2 with the 6 mm nut)
 
 
 # ─────────────────────────────────────────────────────────────────────────
