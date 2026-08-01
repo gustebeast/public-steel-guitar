@@ -429,6 +429,20 @@ def _pickup_mount_components():
     # now part of the ENDPLATE (unioned there), not a part of its own.
     from . import optical_pickup as OP
     out.append(("optical_pcb", OP.opt_pcb()))
+    # The two M4 grips that locate the board: heat-set insert seated in the endplate's
+    # wrap plinth, button screw down through the board's clearance hole into it. Same
+    # fastener family as the pickup height jacks, so no new BOM line.
+    from . import bridge_endplate as _BE
+    _ohh = 2.2                                        # M4 button head height
+    # headed_screw draws head-top-at-0 with the shank running -Z, which is ALREADY the
+    # orientation for a screw entering downward -- no flip. (The old optical M2 went up
+    # from below and did need one; copying that was what put this one through the board.)
+    _oscr = headed_screw(M4, 12.0, head_d=7.0, head_h=_ohh, socket_af=2.5)
+    for _i, (_mx, _my) in enumerate(OP.mount_points()):
+        out.append((f"optical_insert_{_i}",
+                    seated_insert(M4, (_mx, _my, _BE.CARRIER_TOP), (0, 0, -1))))
+        out.append((f"optical_screw_{_i}",
+                    _oscr.translate((_mx, _my, OP.PCB_TOP + _ohh))))
     # TOP-ACCESS height (user): THREE M4×20 BUTTON-HEAD LEADSCREW jacks (real headed cap screw,
     # cadkit headed_screw -> hex-socket drive visible in the head top). Each head is captured in a
     # counterbore in the solid deck (JACK_HEAD_Z shoulder); the shank threads down through a HEAT-
@@ -892,6 +906,8 @@ _COLORS = {
     "analog_frontend": (0.20, 0.45, 0.40),   # bridge-end buffer + relay board
     "optical_pcb":     (0.12, 0.30, 0.55),   # per-string optical strip (blue solder mask,
                                              # so it reads apart from the green audio PCBs)
+    "optical_insert":  (0.72, 0.60, 0.30),   # M4 heat-set brass, board grips
+    "optical_screw":   (0.72, 0.74, 0.78),   # M4x12 button, down into it
     "optical_cover":   (0.18, 0.18, 0.20),   # slotted lid over the sensor row -- print it
                                              # DARK: it is the one surface facing the
                                              # detectors, so a light one would bounce IR
