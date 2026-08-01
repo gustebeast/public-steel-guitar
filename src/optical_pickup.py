@@ -171,7 +171,7 @@ PART_STRING_CLR = 1.5
 # geometric rejection is a few dB, and the heavy lifting against sun is an IR-pass
 # window (see BOM.md). What it definitely buys is the -X wall and the debris seal.
 COVER_GAP = 0.3                                  # sensor face -> cover underside
-COVER_T   = 1.6                                  # two-bead floor for added material
+COVER_T   = D.MIN_WALL_2P                        # two-bead floor for added material
 COVER_Z0  = SENSE_FACE_Z + COVER_GAP             # 12.411
 COVER_Z1  = COVER_Z0 + COVER_T                   # 14.011
 SLOT_DX   = 3.0                                  # aperture over the triplet, in X

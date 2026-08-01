@@ -58,7 +58,7 @@ PK_BOT  = PK_TOP - PK_H
 # mounting-ear holes (the pickup's own 4 corner holes; the tripod jacks reach the
 # two +Y ones from +Z THROUGH these holes -- see top_plate). Ø sized for M4 clear /
 # hex-driver access. Positions are relative to the pickup centre (X/Y).
-EAR_HOLE_D = 4.4                                 # M4 clearance / driver access
+EAR_HOLE_D = D.NUT_SCREW_D                       # M4 clearance / driver access (cadkit's M4)
 EAR_HOLE_X = 30.6 / 2                            # +/-15.3 (the 30.6 pattern, along neck)
 EAR_HOLE_Y = 84.0 / 2                            # +/-42.0 (the 84 pattern, across strings)
 EAR_HOLES  = [(sx * EAR_HOLE_X, sy * EAR_HOLE_Y)

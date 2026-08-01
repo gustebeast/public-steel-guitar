@@ -291,7 +291,7 @@ HS_BODY_LX = 3.0                    # piston body length in X (was 5; matched to
                                     #   spent on thread engagement without moving the leg-facing extent). The
                                     #   pilot + tongue add effective bearing length so 3mm won't cock.
 HS_CLR    = 0.4                     # piston/coil <-> channel slide clearance (per side)
-HS_WALL   = 1.6                     # cartridge STRUCTURAL wall (floor / front / back); the coil-region
+HS_WALL   = D.MIN_WALL_2P           # cartridge STRUCTURAL wall (floor / front / back); the coil-region
                                     #   SIDE walls end up thinner (~1.0, emergent) so the Ø6 coil fits Y
 HS_HOUS_WALL = 2.4                  # housing shell wall around the pocket -- CONSTANT thickness, the
                                     #   outer /\ bottom parallels the pocket /\ (no thick flat bottom)
