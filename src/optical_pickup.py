@@ -85,6 +85,7 @@ from __future__ import annotations
 import cadquery as cq
 
 from . import dimensions as D
+from . import chassis as CH
 from . import top_plate as TP
 from .helpers import box_at
 from cadkit.fasteners import M4
@@ -227,7 +228,21 @@ PCB_X1T = PCB_X1S                                             # -30.42
 # HEAD_Y0 clears the bearing arms (outer face +-54.25) before turning +X -- inboard of that
 # the comb brace occupies the same X band and the same Z.
 HEAD_Y0 = D.BRIDGE_AXLE_Y + D.BRIDGE_ARM_W / 2 + 0.75         # 55.00
-M4_BAND = 12.0                                                # room for an M4 head + boss
+# -X edge of the endplate's wrap plinths. The board overhangs it, so this -- not the board
+# outline -- is what limits how far -X the M4 grips can go.
+PLINTH_X0 = BAND_X0                                           # -16.60
+# The -Y side MIRRORS the head (user): the same Y length of full-width board, wrapping +X
+# over the endplate, and THAT band is the strip's structural and routing connection to the
+# compute block. Symmetric spans in X at both ends.
+# Below it the compute section pulls its -X edge back in -- everything -X of the MCU down
+# there was board doing no work, hanging over the deck.
+# +Y end sits FLUSH with the endplate's existing +Y extent (user): the head no longer sets
+# how far the endplate reaches. Affordable because the M4 grip moved inboard -- it needs
+# MIN_WALL_2P + pilot/2 = 4.60 to this edge and has 5.15.
+PCB_YP     = CH.Y_HI + CH.T / 2                               # 64.75, the rail outer face
+HEAD_LEN   = PCB_YP - HEAD_Y0                                 # 9.75, mirrored at -Y
+WRAP_Y     = Y_TAIL - HEAD_LEN                                # -65.80, compute starts here
+COMPUTE_X0 = TAIL_X1 - 25.4                                   # -18.40, 1.7 each side of U6
 # PCB_YP is an OUTPUT, set after the parts exist: the +Y-most quad's feedback grid sits
 # in the Y gap above it and reaches past the last detector, so sizing this end from the
 # sensing field alone ran parts off the board.
@@ -236,10 +251,9 @@ M4_BAND = 12.0                                                # room for an M4 h
 def section_at(y: float):
     """(x1, x0) = the board's -X and +X edges at Y. Three sections: the +X HEAD, the narrow
     sensing STRIP that has to stay inside the deck band, and the +X TAIL."""
-    if y >= HEAD_Y0:
-        return PCB_X1S, TAIL_X1
-    if y <= Y_TAIL:
-        return PCB_X1T, TAIL_X1
+    for y0, y1, x1, x0 in _SECTIONS:
+        if y0 - 1e-9 <= y <= y1 + 1e-9:
+            return x1, x0
     return PCB_X1S, PCB_X0
 
 
@@ -330,8 +344,8 @@ def _parts():
             add(ref, desc, "0402", px, py)
 
     # ---- 3. digital block, in the wide tail past the pickup cavity ----
-    x0, x1 = PCB_X1T + EDGE_KEEP, TAIL_X1 - EDGE_KEEP
-    y = Y_TAIL - M4_BAND      # M4 mount band between the waist and the MCU
+    x0, x1 = COMPUTE_X0 + EDGE_KEEP, TAIL_X1 - EDGE_KEEP
+    y = WRAP_Y - ROW_GAP      # compute starts clear of the -Y wrap band seam
 
     y -= PKG["LQFP144"][1] / 2
     add("U6", "MCU -- STM32H743ZIT6, 20x 16-bit ADC ch, USB OTG_HS via ULPI", "LQFP144",
@@ -343,9 +357,9 @@ def _parts():
     # LED current is the second-best SNR lever we have.
     y -= PKG["XH-SM-2"][1] / 2
     add("J2", "power in, 5V from the instrument rail -- side entry, -X edge",
-        "XH-SM-2", PCB_X1T + PKG["XH-SM-2"][0] / 2, y)
+        "XH-SM-2", COMPUTE_X0 + PKG["XH-SM-2"][0] / 2, y)
     _spread(P, y, [("C%d" % (140 + k), "power-input decoupling", "0402") for k in range(4)],
-            PCB_X1T + PKG["XH-SM-2"][0] + ROW_GAP, x1)
+            COMPUTE_X0 + PKG["XH-SM-2"][0] + ROW_GAP, x1)
     y -= PKG["XH-SM-2"][1] / 2 + ROW_GAP
 
     y = _block(P, y, [("C%d" % (100 + k), "MCU decoupling", "0402") for k in range(12)]
@@ -379,7 +393,7 @@ def _parts():
 
     y -= PKG["USB-C"][1] / 2
     add("J1", "USB-C receptacle -- 10ch audio + MIDI + DFU", "USB-C",
-        PCB_X1T + EDGE_KEEP + PKG["USB-C"][0] / 2, y)
+        COMPUTE_X0 + EDGE_KEEP + PKG["USB-C"][0] / 2, y)
     return P
 
 
@@ -399,19 +413,24 @@ def part_span(p):
 
 
 PCB_YM = part("J1")["y"] - PKG["USB-C"][1] / 2   # -Y end = the connector mouth
-PCB_YP = HEAD_Y0 + M4_BAND                                     # +Y end = past the head
 PCB_L  = PCB_YP - PCB_YM
-_SECTIONS = ((HEAD_Y0, PCB_YP, PCB_X1S, TAIL_X1),
-             (Y_TAIL, HEAD_Y0, PCB_X1S, PCB_X0),
-             (PCB_YM, Y_TAIL, PCB_X1T, TAIL_X1))
+_SECTIONS = ((HEAD_Y0, PCB_YP, PCB_X1S, TAIL_X1),      # +Y wrap, over the endplate
+             (Y_TAIL, HEAD_Y0, PCB_X1S, PCB_X0),       # sensing strip, in the deck band
+             (WRAP_Y, Y_TAIL, PCB_X1S, TAIL_X1),       # -Y wrap -- the head's mirror
+             (PCB_YM, WRAP_Y, COMPUTE_X0, TAIL_X1))    # compute, no -X overhang
 
 
 def mount_points():
     """The two M4 grips, one in each +X wrap -- same fastener as the pickup height jacks.
     Widely spaced on purpose: they are the board's Y datum, and the integrated lid's slots
     have to land on the sensor triplets."""
-    x = (PCB_X0 + TAIL_X1) / 2
-    return [(x, HEAD_Y0 + M4_BAND / 2), (x, Y_TAIL - M4_BAND / 2)]
+    # Pushed as far -X and as far INBOARD in Y as the material allows (user), to sit as
+    # close as possible to the position-critical end of the board. The binding surface is
+    # the WRAP PLINTH, not the board: the board is wider than the plinth at both ends, so
+    # the insert boss is what runs out of material first. MIN_WALL_2P of plinth all round.
+    keep = D.MIN_WALL_2P + M4.insert_pilot_d / 2
+    x = PLINTH_X0 + keep
+    return [(x, HEAD_Y0 + keep), (x, Y_TAIL - keep)]   # symmetric, one per wrap
 
 
 def _outline(grow=0.0, t=None, zc=None):
@@ -522,8 +541,10 @@ def _assert_field_clear():
     # 3. every part inside the board, clear of the routed edge, and of every other part
     for p in PARTS:
         x0, x1, y0, y1 = part_span(p)
+        # A part straddling a section seam must satisfy BOTH sections, i.e. the
+        # intersection of their X spans -- not some arbitrary fallback.
         a, b = section_at(y0), section_at(y1)
-        lim, hi = (a if a == b else (PCB_X1S, PCB_X0))
+        lim, hi = max(a[0], b[0]), min(a[1], b[1])
         kx = 0.0 if p["ref"] == "J2" else EDGE_KEEP        # J2's mouth IS the -X edge
         ky = 0.0 if p["ref"] == "J1" else EDGE_KEEP        # J1's mouth IS the -Y edge
         if (x0 < lim + kx - 1e-9 or x1 > hi - EDGE_KEEP + 1e-9
