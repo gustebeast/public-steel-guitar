@@ -202,7 +202,18 @@ SENSE_HL = _OUTER_Y + PD_DY                      # last sensor Y
 PCB_X0  = BAND_X0 - BAND_CLR                                  # -16.80, strip +X edge
 PCB_X1S = BAND_X1 + BAND_CLR                                  # -30.42, strip -X edge
 Y_TAIL  = TP.PK_ROOM_CTR_Y - TP.CAVITY_Y / 2 - 1.4            # step, clear of the cavity
-PCB_X1T = PCB_X0 - 30.0                                       # tail -X edge
+# TAIL WIDENS +X, OVER THE ENDPLATE -- not -X over the deck (user). Two things fall out
+# and both were open problems:
+#   SUPPORT. Past |y| 54 the endplate has no material above z6 for a plinth to start on,
+#     which is why the tail had nothing under it. But out here it has the FILL SLAB, whose
+#     top IS z6 -- so a plinth over the endplate merges straight into solid material and
+#     needs no deck standoffs, i.e. no top_plate change at all.
+#   THE DECK STAYS CLEAR. The tail no longer lies across the deck panel.
+# +X edge stops MIN_WALL_2P short of the endplate's outer face so the board is not flush
+# with the instrument's exterior.
+TAIL_X1 = D.BRIDGE_BASE_X1 - D.MIN_WALL_2P                    # 7.00
+PCB_X1T = TAIL_X1 - 25.4                                      # -18.40, 1.7 each side of
+                                                              # the 22 mm LQFP144
 # PCB_YP is an OUTPUT, set after the parts exist: the +Y-most quad's feedback grid sits
 # in the Y gap above it and reaches past the last detector, so sizing this end from the
 # sensing field alone ran parts off the board.
@@ -300,7 +311,7 @@ def _parts():
             add(ref, desc, "0402", px, py)
 
     # ---- 3. digital block, in the wide tail past the pickup cavity ----
-    x0, x1 = PCB_X1T + EDGE_KEEP, PCB_X0 - EDGE_KEEP
+    x0, x1 = PCB_X1T + EDGE_KEEP, TAIL_X1 - EDGE_KEEP
     y = Y_TAIL - ROW_GAP
 
     y -= PKG["LQFP144"][1] / 2
@@ -380,13 +391,14 @@ def _outline(grow=0.0, t=None, zc=None):
     t = PCB_T if t is None else t
     zc = PCB_BOT + PCB_T / 2 if zc is None else zc
     out = None
-    for y0, y1, x1 in ((Y_TAIL, PCB_YP, PCB_X1S), (PCB_YM, Y_TAIL, PCB_X1T)):
+    for y0, y1, x1, x0 in ((Y_TAIL, PCB_YP, PCB_X1S, PCB_X0),
+                           (PCB_YM, Y_TAIL, PCB_X1T, TAIL_X1)):
         # only the OUTER Y face of each section grows: the seam at Y_TAIL must not, or
         # the halves overlap by 2*grow and the step moves
         a = y0 - grow if y0 != Y_TAIL else y0
         b = y1 + grow if y1 != Y_TAIL else y1
-        blk = box_at((PCB_X0 + grow) - (x1 - grow), b - a, t,
-                     x=((PCB_X0 + grow) + (x1 - grow)) / 2, y=(a + b) / 2, z=zc)
+        blk = box_at((x0 + grow) - (x1 - grow), b - a, t,
+                     x=((x0 + grow) + (x1 - grow)) / 2, y=(a + b) / 2, z=zc)
         out = blk if out is None else out.union(blk)
     return out
 
@@ -480,14 +492,15 @@ def _assert_field_clear():
     for p in PARTS:
         x0, x1, y0, y1 = part_span(p)
         lim = board_x1(y0) if board_x1(y0) == board_x1(y1) else PCB_X1S
+        hi = TAIL_X1 if (y0 < Y_TAIL and y1 <= Y_TAIL) else PCB_X0
         kx = 0.0 if p["ref"] == "J2" else EDGE_KEEP        # J2's mouth IS the -X edge
         ky = 0.0 if p["ref"] == "J1" else EDGE_KEEP        # J1's mouth IS the -Y edge
-        if (x0 < lim + kx - 1e-9 or x1 > PCB_X0 - EDGE_KEEP + 1e-9
+        if (x0 < lim + kx - 1e-9 or x1 > hi - EDGE_KEEP + 1e-9
                 or y0 < PCB_YM + ky - 1e-9 or y1 > PCB_YP - EDGE_KEEP + 1e-9):
             raise AssertionError(
                 f"optical strip: {p['ref']} ({p['desc']}) at X {x0:.2f}..{x1:.2f} "
                 f"Y {y0:.2f}..{y1:.2f} breaks the {EDGE_KEEP} edge keep-out of board "
-                f"X {lim:.2f}..{PCB_X0:.2f} Y {PCB_YM:.2f}..{PCB_YP:.2f}")
+                f"X {lim:.2f}..{hi:.2f} Y {PCB_YM:.2f}..{PCB_YP:.2f}")
     for i, a in enumerate(PARTS):
         ax0, ax1, ay0, ay1 = part_span(a)
         for b in PARTS[i + 1:]:
