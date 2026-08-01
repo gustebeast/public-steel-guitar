@@ -38,13 +38,11 @@ POST_X1H = D.ANCHOR_DX + 2.1               # post +X face: 0.8 roof wall past th
 BODY_X  = X_HI - X_LO
 BODY_XC = (X_HI + X_LO) / 2
 
-# Guide foot: a thick column down the plate's +X face, then a leg whose closed
-# bore rides the rod. Foot top = D.GUIDE_FOOT_DZ (the top-stop face against the
-# endplate's stop bar); foot bottom lands on the lower ledge at full travel.
-COL_X0, COL_X1   = 4.5, X_HI               # column: clear of the screw bore; flush face
-FOOT_X0, FOOT_X1 = 6.5, 13.75              # leg: −X face clears the belt wrap, +X
-                                           # face 0.25 shy of the cap face (sliding
-                                           # clearance) to fit the bore's +X wall
+# Guide bore: rides the rod in the body's OWN z-band, at the NUT LEVEL (user) — a
+# boss off the plate's +X face, closed bore through it. Foot top = D.GUIDE_FOOT_DZ
+# (top-stop face vs the endplate stop bar); foot bottom lands on the lower ledge at
+# full travel. No hanging column: the carriage is ~16 mm shorter and stiffer.
+GUIDE_BOSS_X1 = D.GUIDE_ROD_DX + (D.GUIDE_ROD_D + D.FIT_CLR) / 2 + D.MIN_WALL_2P  # +X face: 2-bead wall past the bore
 SCREW_CLR_D  = D.SCREW_OD + 1.0
 GUIDE_CLR_D  = D.GUIDE_ROD_D + D.FIT_CLR
 # +Z hole the string exits through — must clear the heaviest string (C6 .070 ≈ 1.8 mm)
@@ -75,18 +73,17 @@ def _build() -> cq.Workplane:
     # Nut press-pocket from the bottom face (seat lip bears on the bottom).
     body = body.cut(cyl(NUT_POCKET_D, D.NUT_BODY_LEN, z=-THICK / 2 - 0.01))
 
-    # Guide FOOT: column + leg below the plate, guide bore through the leg.
-    col_h = -D.GUIDE_FOOT_DZ - THICK / 2                   # plate bottom → foot top
-    body = body.union(box_at(COL_X1 - COL_X0, WIDTH, col_h,
-                             x=(COL_X0 + COL_X1) / 2, y=0,
-                             z=-THICK / 2 - col_h / 2))
-    body = body.union(box_at(FOOT_X1 - FOOT_X0, WIDTH, D.GUIDE_FOOT_H,
-                             x=(FOOT_X0 + FOOT_X1) / 2, y=0,
-                             z=D.GUIDE_FOOT_DZ - D.GUIDE_FOOT_H / 2))
+    # Guide BOSS at the NUT LEVEL (user): a boss off the plate's +X face out to the rod,
+    # in the body's own z-band BELOW the string cage (z fz0..fz1), closed bore through it.
+    # No hanging column — the carriage is ~16 mm shorter in Z and the boss ties straight
+    # into the body (and, through the body, the anchor block above).
+    fz1 = D.GUIDE_FOOT_DZ                                  # foot top (+2, below the cage bottom 2.5)
+    fz0 = fz1 - D.GUIDE_FOOT_H                             # foot bottom (−6, the body bottom)
+    body = body.union(box_at(GUIDE_BOSS_X1 - X_HI, WIDTH, fz1 - fz0,
+                             x=(X_HI + GUIDE_BOSS_X1) / 2, y=0, z=(fz0 + fz1) / 2))
     # Closed guide bore: wraps the rod fully, so the rod alone captures a loose
     # carriage during assembly (carriage in place → rod drops in → screw last).
-    body = body.cut(cyl(GUIDE_CLR_D, D.GUIDE_FOOT_H + 2,
-                        z=D.GUIDE_FOOT_DZ - D.GUIDE_FOOT_H - 1)
+    body = body.cut(cyl(GUIDE_CLR_D, (fz1 - fz0) + 2, z=fz0 - 1)
                     .translate((D.GUIDE_ROD_DX, 0, 0)))
 
     # Anchor POST: a tall BALL CAGE toward the bridge bearing. Stringing: the
