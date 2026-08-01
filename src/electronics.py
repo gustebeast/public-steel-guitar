@@ -34,7 +34,7 @@ from . import dimensions as D
 from . import chassis as CH          # only early constants (X_*, Z_*) used here
 from .helpers import box_at, cyl
 from cadkit.fasteners import M2, cut_anchor
-from cadkit.pcb import jst_xh_header, xh_length, XH_POST_TAIL
+from cadkit.pcb import jst_xh_header
 
 # ---- bay geometry (chassis.py cuts the matching channels from these) ----
 TRAY_X0, TRAY_X1 = -607.0, -547.0

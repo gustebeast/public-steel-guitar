@@ -33,7 +33,6 @@ from .components import MOTOR_PULLEY_STANDOFF
 from .helpers import box_at, cyl
 from cadkit.fasteners import M2, cut_anchor
 from cadkit.joinery import PrintSpec, joint
-from .legs import DT_FACE_HW, DT_DEEP_HW, DT_DEPTH, DT_H
 
 T        = D.WALL_THICKNESS            # rail thickness (solid; slicer infills)
 X_BRIDGE = 6.0                         # +X (bridge) end — the rails end here; the bridge
