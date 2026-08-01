@@ -59,6 +59,16 @@ def _PB(attr):
     return getattr(__import__("src.pedal_bar", fromlist=["e"]), attr)()
 
 
+def _PB_bar(attr, x0, x1):
+    """A pedal-bar piece with its pedal HOUSINGS fused in (user: the housing is
+    not a separate part — see foot_pedal.fuse_into_bar). Fused here, not in
+    pedal_bar, because foot_pedal reads pedal_bar for the bar's faces and the
+    import has to stay one-way."""
+    FP = __import__("src.foot_pedal", fromlist=["e"])
+    PB = __import__("src.pedal_bar", fromlist=["e"])
+    return FP.fuse_into_bar(_PB(attr), x0, x1)
+
+
 PARTS = {
     "carriage":        (partial(heal, carriage),      "petg-gf/carriage.step",        "PETG-GF, load-critical — ×10 identical"),
     "bridge_endplate": (partial(heal, bridge_endplate), "petg-gf/bridge_endplate.step", "PETG-GF — fused bridge end (screw support + bearing support + axle comb + box closure)"),
@@ -114,14 +124,13 @@ PARTS = {
     # pedal bar + latch (one latched foot for now; mirror to -X once the feel
     # is validated). The bar itself is a DEMO prism (longer than the bed —
     # it gets segmented for printing once the pedals land on it).
-    "pedal_bar_a":     (lambda: heal(_PB("pedal_bar_a")), "petg-gf/pedal_bar_a.step", "PETG-GF — pedal bar, -X piece (35.6 wide, flush with the slimmed leg blocks; fused WIRED tower; trough + lid groove; splice tenons at +X). ~219 long: prints STRAIGHT; _b drops onto the tenons, the LID locks the stack — no glue"),
-    "pedal_bar_b":     (lambda: heal(_PB("pedal_bar_b")), "petg-gf/pedal_bar_b.step", "PETG-GF — pedal bar, MID piece (trough only; XS1 cavities -X, XS2 tenons +X). ~219 long: straight print; slides straight down onto _a's tenons (the lid is the Z lock — no glue)"),
-    "pedal_bar_c":     (lambda: heal(_PB("pedal_bar_c")), "petg-gf/pedal_bar_c.step", "PETG-GF — pedal bar, +X piece (35.6 wide, flush with the slimmed leg blocks; fused PLAIN tower; splice cavities at -X). ~215 long: straight print; slides straight down onto _b's tenons (the lid is the Z lock — no glue)"),
+    "pedal_bar_a":     (lambda: heal(_PB_bar("pedal_bar_a", -1e9, __import__("src.pedal_bar", fromlist=["e"]).XS1)), "petg-gf/pedal_bar_a.step", "PETG-GF — pedal bar, -X piece (35.6 wide, flush with the slimmed leg blocks; fused WIRED tower; trough + lid groove; splice tenons at +X). ~219 long: prints STRAIGHT; _b drops onto the tenons, the LID locks the stack — no glue"),
+    "pedal_bar_b":     (lambda: heal(_PB_bar("pedal_bar_b", __import__("src.pedal_bar", fromlist=["e"]).XS1, __import__("src.pedal_bar", fromlist=["e"]).XS2)), "petg-gf/pedal_bar_b.step", "PETG-GF — pedal bar, MID piece (trough only; XS1 cavities -X, XS2 tenons +X). ~219 long: straight print; slides straight down onto _a's tenons (the lid is the Z lock — no glue)"),
+    "pedal_bar_c":     (lambda: heal(_PB_bar("pedal_bar_c", __import__("src.pedal_bar", fromlist=["e"]).XS2, 1e9)), "petg-gf/pedal_bar_c.step", "PETG-GF — pedal bar, +X piece (35.6 wide, flush with the slimmed leg blocks; fused PLAIN tower; splice cavities at -X). ~215 long: straight print; slides straight down onto _b's tenons (the lid is the Z lock — no glue)"),
     "pedal_lid_a":     (lambda: heal(_PB("pedal_lid_a")), "petg-gf/pedal_lid_a.step", "PETG-GF — sliding dovetail lid, -X piece (covers the TRRS latch; bridges the bar splice). 241 long; print TOP-FACE DOWN (45-deg flanks)"),
     "pedal_lid_b":     (lambda: heal(_PB("pedal_lid_b")), "petg-gf/pedal_lid_b.step", "PETG-GF — sliding dovetail lid, +X piece (covers the plain latch; lock dimple clicks onto the bar-top nub, pinning both lid pieces — no screws). 322 long: diagonal, TOP-FACE DOWN"),
     # (pedal_bolt / pedal_bolt_trrs / pedal_latch_finger exports RETIRED by
     # ROUND 4 — the sliding latches are gone; the bar carries stub towers)
-    "pedal_housing":   (lambda: heal(__import__("src.foot_pedal", fromlist=["e"]).pedal_housing()), "pctg/pedal_housing.step", "PCTG — FOOT PEDAL housing ×3 (initial design): knee_lever's control core posed for a foot — same cartridges, pistons, guide posts, back-stop screws, drag pads, axle, magnet, bearings and MT6701 board. Hangs on the bar's player-side face; the spring column stands VERTICALLY above the bar in the envelope pedal_bar reserves. Prints along GUITAR +Z so the cartridge channels run along the build direction (no ceilings) and the bar-mount joint is an up+up cadkit site"),
     "pedal_lever":     (lambda: heal(__import__("src.foot_pedal", fromlist=["e"]).pedal_lever()), "pctg/pedal_lever.step", "PCTG — FOOT PEDAL lever ×3 (initial design): hub on the axle, leg carrying the return lobe at 13.2 (sized so the 20° throw gives the SAME 4.51 spring stroke as the knee levers — which is what lets the half stop transfer for free), a 90 mm arm running out to the player and the pedal board across its end (30.8 mm of travel, ~1.6→3 N at the board)"),
     "pedal_detent_nub": (lambda: heal(_PB("nub_part")), "tpu/pedal_detent_nub.step", "TPU — detent nub ×1 (Ø4×4): presses into the bar top as the LID lock"),
     # (pedal_bar_foot merged into the shared leg_foot SKU — one look ×4)
