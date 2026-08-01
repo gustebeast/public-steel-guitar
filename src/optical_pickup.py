@@ -131,7 +131,10 @@ PKG = {
                                       # the leads against TSSOP's 6.40, and X is the
                                       # scarce direction in a 14 mm band.
     "QFN-24":   (4.00, 4.00, 0.90),
-    "LQFP100":  (16.00, 16.00, 1.60), # JEDEC MS-026 BED: 14x14 body, 16x16 over leads
+    # LQFP144, not 100: the LQFP100 STM32H743VIT6 exposes only 16 ADC channels and this
+    # board needs 20. The 144 (STM32H743ZIT6) has exactly 20, and at ~$7.63 on LCSC it is
+    # CHEAPER than the 100-pin part. 22x22 over leads fits the 30 mm tail with 2.8 spare.
+    "LQFP144":  (22.00, 22.00, 1.60), # JEDEC MS-026: 20x20 body, 22x22 over leads
     "3225":     (3.20, 2.50, 0.90),
     "USB-C":    (8.94, 7.35, 3.16),   # TYPE-C-31-M-12 (LCSC C165948)
     "XH-SM-2":  (6.10, 10.00, 7.00),  # JST S2B-XH-SM4-TB class, SMT side entry
@@ -272,9 +275,9 @@ def _parts():
     # ---- 1. sensing row, ON THE STRING FAN, + per-string ballast in the Y gaps ----
     for i in range(D.N_STRINGS):
         n, sy = i + 1, string_y_at(i, SENSE_X)
-        add("D%d" % n, "IR emitter, 940 nm, NARROW beam", "0805OPT", SENSE_X, sy)
-        add("PD%dA" % n, "PIN photodiode, +Y of string", "0805OPT", SENSE_X, sy + PD_DY)
-        add("PD%dB" % n, "PIN photodiode, -Y of string", "0805OPT", SENSE_X, sy - PD_DY)
+        add("D%d" % n, "IR emitter, 940 nm, NARROW beam (VSMB1940X01 class)", "0805OPT", SENSE_X, sy)
+        add("PD%dA" % n, "PIN photodiode, Vishay VEMD4110X02 (daylight filter), +Y", "0805OPT", SENSE_X, sy + PD_DY)
+        add("PD%dB" % n, "PIN photodiode, Vishay VEMD4110X02 (daylight filter), -Y", "0805OPT", SENSE_X, sy - PD_DY)
         # ballast rides in the gap just -Y of its own emitter, same X band: no column to
         # spare, and it keeps the high-di/dt emitter loop a couple of mm long
         add("R%d" % n, "LED current-set (per-string value)", "0603", SENSE_X, sy - PITCH / 2)
@@ -300,10 +303,10 @@ def _parts():
     x0, x1 = PCB_X1T + EDGE_KEEP, PCB_X0 - EDGE_KEEP
     y = Y_TAIL - ROW_GAP
 
-    y -= PKG["LQFP100"][1] / 2
-    add("U6", "MCU -- Cortex-M7, 3x 16-bit ADC, USB OTG_HS via ULPI", "LQFP100",
+    y -= PKG["LQFP144"][1] / 2
+    add("U6", "MCU -- STM32H743ZIT6, 20x 16-bit ADC ch, USB OTG_HS via ULPI", "LQFP144",
         (x0 + x1) / 2, y)
-    y -= PKG["LQFP100"][1] / 2 + ROW_GAP
+    y -= PKG["LQFP144"][1] / 2 + ROW_GAP
 
     # POWER INPUT -- 5V from the instrument rail, NOT USB VBUS. MCU ~200-300 mA + PHY ~50
     # + 21 op-amp channels ~40 is already past a USB port before an emitter is lit, and
