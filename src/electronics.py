@@ -31,11 +31,20 @@ from __future__ import annotations
 import cadquery as cq
 
 from . import dimensions as D
-from . import chassis as CH          # only early constants (X_*, Z_*) used here
-from .helpers import box_at, cyl
-from cadkit.fasteners import M2, cut_anchor
-from cadkit.pcb import jst_xh_header
+# Everything chassis reaches BACK for lives above the chassis import -- see the note
+# below. AFE board footprint (the analog front end on the bridge rib):
+AFE_X0, AFE_X1 = -22.0, -2.0
+AFE_Y0, AFE_Y1 = -108.0, -78.0         # inboard of the pickup groove + leg barrel
+AFE_Z = -59.0                          # board bottom (on the bridge-rib boss)
+AFE_PED_TOP = -61.0                    # boss top (posts rise to the board)
 
+# NOTE: this block sits ABOVE the chassis import ON PURPOSE. chassis builds at
+# import time and reaches BACK here for TAB_X0/TAB_X1/CH_W/CH_D/TRAY_Z0 to cut its
+# matching channels. With the constants below the import, that reach-back hit a
+# half-initialised module and `import src.electronics` failed outright with a
+# circular-import ImportError -- only working at all because everything else
+# happened to import chassis first. These are plain literals, so hoisting them is
+# free and makes the module importable on its own.
 # ---- bay geometry (chassis.py cuts the matching channels from these) ----
 TRAY_X0, TRAY_X1 = -607.0, -547.0
 TRAY_Y0, TRAY_Y1 = -127.5, 53.5        # 1.25 off each rail inner face
@@ -48,6 +57,12 @@ TAB_X0, TAB_X1 = -572.0, -552.0        # one tab per side, in the only solid
                                        # diamonds (start -560)
 TAB_T = 2.7                            # into a 3-deep channel (0.3 floor gap)
 CH_W, CH_D = 20.6, 3.0                 # channel cut: width / depth into web
+
+
+from . import chassis as CH          # only early constants (X_*, Z_*) used here
+from .helpers import box_at, cyl
+from cadkit.fasteners import M2, cut_anchor
+from cadkit.pcb import jst_xh_header
 
 # ---- board footprints (x0, x1, y0, y1); board bottom z = TRAY_Z1 + post ----
 POST_H = 3.0
@@ -123,10 +138,6 @@ def joystick() -> cq.Workplane:
 # a local low-noise LDO fed from the nearby 24 V inlet. Clustering all the
 # noise-sensitive analog here (away from the motor drivers) is the whole point;
 # only buffered/line-level/logic runs make the long trip to the keyhead bay.
-AFE_X0, AFE_X1 = -22.0, -2.0
-AFE_Y0, AFE_Y1 = -108.0, -78.0         # inboard of the pickup groove + leg barrel
-AFE_Z = -59.0                          # board bottom (on the bridge-rib boss)
-AFE_PED_TOP = -61.0                    # boss top (posts rise to the board)
 
 
 def analog_frontend() -> cq.Workplane:

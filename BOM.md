@@ -28,14 +28,16 @@ is commodity.
 
 ## Electronics (compute bay)
 
-The printed tray in the keyhead bay carries tool-free snap mounts for the full
-PRO stack; a BASIC build populates only the first two rows and leaves the rest
-of the sockets empty (the upgrade is drop-in). Panel I/O (1/4" TS line out, DC
+The printed tray in the keyhead bay carries tool-free snap mounts for the whole
+stack. **There is no longer a basic/pro split** — every instrument gets a Pi, so
+the B/P column below is historical and every row is fitted. Panel I/O (1/4" TS line out, DC
 power inlet, USB-C) mounts through the recessed wall in the bridge endplate's
 lower corner — the instrument's right face.
 
-Prices verified June 2026 from live listings (qty 1). Build tier in the **B/P**
-column: **B** = both basic & pro, **P** = pro only.
+Prices were verified June 2026 from live listings (qty 1) — **treat them as stale
+and re-verify before ordering**; only the rows explicitly re-checked since are
+current. The **B/P** column is a leftover from the retired basic/pro split; every
+row is now fitted on every instrument.
 
 | Part | B/P | PN / source | ~Price | URL |
 |------|-----|-------------|--------|-----|
@@ -50,18 +52,19 @@ column: **B** = both basic & pro, **P** = pro only.
 | **USB-C panel coupler** | B | Adafruit 4261 F↔F (USB 2.0, Ø30 hole) | $7.50 | [DigiKey](https://www.digikey.com/en/products/detail/adafruit-industries-llc/4261/10287031) |
 | **Rotary/4-way joystick** | B | Alps RKJXT1F42001 (sole UI control) | $9.22 | [DigiKey](https://www.digikey.com/en/products/detail/alps-alpine/RKJXT1F42001/19529127) |
 | **OLED display** | B | 2.42" 128×64 SSD1309 SPI (UI screen) | ~$17 | [Waveshare](https://www.waveshare.com/2.42inch-oled-module.htm) |
-| **USB 2.0 hub** | P | Adafruit CH334F (share 1 port: Teensy+Pi) | $4.50 | [Adafruit](https://www.adafruit.com/product/5999) |
-| **Raspberry Pi 5, 8 GB** | P | 10ch A2M + Dexed + USB-audio gadget | $175 ⚠ | [PiShop](https://www.pishop.us/product/raspberry-pi-5-8gb/) |
-| **Buck 24→5 V ≥6 A** | P | Pololu D36V50F5 (Pi wants 5.1 V/5 A) | $39.95 | [Pololu](https://www.pololu.com/product/4091) |
-| **10-ch audio ADC** | P | TI **PCM1864DBT** ×3 (4-ch each, TDM) on a carrier PCB | $9.57 ea | [DigiKey](https://www.digikey.com/en/products/detail/texas-instruments/PCM1864DBT/5213896) |
+| **USB 2.0 hub** | B | Adafruit CH334F (share 1 port: Teensy+Pi) | $4.50 | [Adafruit](https://www.adafruit.com/product/5999) |
+| **Raspberry Pi 4, 2 GB** | B | Dexed + USB gadget (MIDI/audio/DFU) + USB host for the optical board | ~$45 ⚠ | [PiShop](https://www.pishop.us/product/raspberry-pi-4-model-b-2gb/) |
+| **Buck 24→5 V ≥3 A** | B | Pi 4 draws ~3 A, not the Pi 5's 5 A — smaller unit than the D36V50F5 this replaced | ~$25 ⚠ | [Pololu](https://www.pololu.com/category/electronics) |
+| ~~10-ch audio ADC~~ | — | **DELETED.** Three PCM1864 + a carrier PCB existed to digitise ten string signals for the Pi. The optical pickup board now does its own 20-channel conversion (STM32H743ZIT6, 20× 16-bit) and sends audio over USB, so this whole path is redundant — ~$29 of ICs plus an entire board's fab, assembly and feeder cost removed | — | — |
 
-⚠ **Pi 5** $175 is the current street price (MSRP ~$80; supply tight). The
-**10-ch ADC** replaces the obsolete CS42448: three **PCM1864** (4-ch, built-in
-line-level inputs, daisy-chain on one TDM bus → 12 ch, use 10) at ~$2.87/ch —
-**these need a small custom carrier PCB** (no stocked 8+ch line-in HAT exists).
-A USB-C panel part (Adafruit 4261) and both ADC routes are all orderable on
-**DigiKey** to keep the supplier count down. The panel **USB-C** only needs
-USB 2.0 (480 Mbps) — both the Teensy and the Pi 5 gadget port are USB 2.0.
+⚠ **Both marked prices are unverified estimates** — re-check before ordering.
+**Why the Pi dropped from a 5/8 GB to a 4/2 GB:** audio→MIDI now runs on the
+optical pickup's own MCU, so the Pi's remaining jobs are Dexed (a DX7 emulation,
+light), USB gadget duty, and hosting the optical board. None of that is Pi 5 work.
+Pi 4 is the floor rather than a Zero 2 W because the design needs USB **host and
+gadget simultaneously** — host for the optical board, gadget to the computer — and
+the Zero's single OTG port can only be one at a time. The panel **USB-C** still
+only needs USB 2.0 (480 Mbps).
 
 The **analog front-end** (buffer + true-bypass relay + driver + local LDO) is a
 small board at the bridge end. The relay defaults (de-energized) to passing the
@@ -96,7 +99,7 @@ rest + UI mount) — see `py -3.12 -m src.build --list`.
 
 ## Control sensors (knee levers + pedals)
 
-Every player input — 4 knee levers + 3 pedals — is a **contactless magnetic
+Every player input — **5 knee levers + 5 pedals** — is a **contactless magnetic
 angle sensor** rather than a switch or a pot: a diametrically-magnetised magnet
 rides the control's axle and an MT6701 reads its angle across an air gap. There
 is no wiper to wear out and no mechanical calibration. The boards are our own
@@ -105,10 +108,13 @@ populate them.
 
 | Part | Qty | ~Price | Source | Notes |
 |------|-----|--------|--------|-------|
-| **Angle sensor IC** | 8 | ~$1.2–2 ea | [LCSC](https://www.lcsc.com/search?q=MT6701) | MagnTek **MT6701QT-STD**, 14-bit on-axis magnetic encoder. Take the **QFN-16**, *not* the SOP-8 variant: the air gap is measured to the IC's own top surface, so the package height comes straight out of the gap budget, and the SOP-8 is ~1.5 mm tall — twice the QFN — on the axis where we have the least room. Datasheet §9.2: D = E = 2.900–3.100, **A (total height) = 0.700–0.800** (the model carries the 0.800 max). §1.2: *"Sensing Center at Geometry Center"* — so the package body centres on the axle axis with no per-package offset. Assembled by JLCPCB onto our sensor PCB alongside the tee boards — no hand soldering |
-| **Diametric magnet** | 8 | $0.40 / $0.33 @10 | [DigiKey](https://www.digikey.com/en/products/detail/radial-magnets-inc/8995/5126077) | Radial Magnets **8995** — NdFeB **N35, Ø6 × 2.5 mm, DIAMETRICALLY magnetised**, NiCuNi, 80 °C, 3873 G surface; ~9k in stock. ⚠ **Diametric, NOT axial** — axial discs are far more common and simply do not work here (DigiKey lists the direction in the specs, so it is checkable at order time). It is also the datasheet's own **recommended magnet** (§5: "Ø6mm x 2.5mm"), so this pair is the configuration the IC was characterised in. Drops into the axle's end pocket; `kl_magnet_cap` screws over it — no adhesive |
+| **Angle sensor IC** | 11 | ~$1.2–2 ea | [LCSC](https://www.lcsc.com/search?q=MT6701) | MagnTek **MT6701QT-STD**, 14-bit on-axis magnetic encoder. Take the **QFN-16**, *not* the SOP-8 variant: the air gap is measured to the IC's own top surface, so the package height comes straight out of the gap budget, and the SOP-8 is ~1.5 mm tall — twice the QFN — on the axis where we have the least room. Datasheet §9.2: D = E = 2.900–3.100, **A (total height) = 0.700–0.800** (the model carries the 0.800 max). §1.2: *"Sensing Center at Geometry Center"* — so the package body centres on the axle axis with no per-package offset. Assembled by JLCPCB onto our sensor PCB alongside the tee boards — no hand soldering |
+| **Diametric magnet** | 11 | $0.40 / $0.33 @10 | [DigiKey](https://www.digikey.com/en/products/detail/radial-magnets-inc/8995/5126077) | Radial Magnets **8995** — NdFeB **N35, Ø6 × 2.5 mm, DIAMETRICALLY magnetised**, NiCuNi, 80 °C, 3873 G surface; ~9k in stock. ⚠ **Diametric, NOT axial** — axial discs are far more common and simply do not work here (DigiKey lists the direction in the specs, so it is checkable at order time). It is also the datasheet's own **recommended magnet** (§5: "Ø6mm x 2.5mm"), so this pair is the configuration the IC was characterised in. Drops into the axle's end pocket; `kl_magnet_cap` screws over it — no adhesive |
 
-*(qty 8 = 7 controls + 1 spare)*
+*(qty 11 = **10 controls** + 1 spare. The controls are not modelled yet — only
+two knee levers exist in `src/` — but the count is fixed by the instrument: 5
+foot pedals + 5 knee levers, each with its own sensor board. An earlier revision
+of this section said 4 knee levers + 3 pedals and was sized for 7.)*
 
 **Board spec (ours, for layout).** Outline **17 × 19 × 1.6 mm**, strongly
 *asymmetric* about the sensor: the chip sits on the axle axis just **3.0 mm from
@@ -162,7 +168,7 @@ cycle, step up to an **N35H/SH** in the same Ø6 × 2.5 geometry (~120–150 °C
 Partial demagnetisation would weaken the field but not corrupt the angle — the
 sensor reads direction — so the failure mode is graceful, not silent.
 
-## Filament (printed parts, both tiers)
+## Filament (printed parts)
 
 Estimated at 2 perimeters (0.8 mm nozzle → 1.6 mm walls) + 15 % infill. Pickup
 parts excluded. PCTG $25/kg, PETG-GF $30/kg, TPU≈$30 (assumed). The build
@@ -216,8 +222,8 @@ twisting + the bridge-side AFE buffer, not conductor size):
 | logic (relay, link, TDM, OLED, joystick) | 28 AWG | ~1.4 |
 
 A 45 m hookup spool (~$20) covers power/CAN/control; ~1.5 m shielded pair
-(~$16) for the pickup/audio runs. **~$35.** Excludes pedal/lever sensor wiring
-(pedals not yet designed). All cross-rib raceways pass ≤ Ø2.6 and sit above the
+(~$16) for the pickup/audio runs. **~$35.** Excludes the **10 control sensor drops** (5 pedals + 5 knee levers,
+not yet modelled) and the optical pickup's USB + 5 V feed. All cross-rib raceways pass ≤ Ø2.6 and sit above the
 knee-lever mortise plane — route no fatter cable through the floor trunk.
 
 ## Connectors (wiring strategy, July 2026)
@@ -557,12 +563,31 @@ PHY and allowing a cheaper MCU, so **the audio capability is about $9/board**.
 bounding rectangle. Two boards nested head-to-tail on the panel should recover a
 useful slice of the $6.90 fab line.
 
-**Layer count is a PANEL decision, not a board one.** This board needs 4 layers —
-20 analog channels wanting a ground reference, a 96 kHz switching driver to
-isolate from them, and a 60 MHz ULPI bus. The tee and sensor boards do not; 2
-layers suits them. Panelising everything together forces 22 simple boards up a
-stackup tier, which is likely *more* expensive than splitting into two orders
-(~$25 second setup + ~$6–9 duplicated feeders). **Get both quoted before layout.**
+**Layer count is a PANEL decision — and ONE 4-LAYER PANEL WINS.** This board needs
+4 layers (20 analog channels wanting a ground reference, a 96 kHz switching driver
+to isolate from them, a 60 MHz ULPI bus). The tee and sensor boards do not. But
+panelising everything at 4 layers is *cheaper* than splitting the orders:
+
+| | Cost at 10 instruments |
+|---|---:|
+| Upgrade the 220 small boards (12 tee + 2 carrier + 8 sensor, ×10) to 4-layer | **$2 – $13** |
+| Second order to keep them 2-layer ($25 PCBA setup + ~$8 duplicated feeders) | **~$33** |
+
+So one panel saves roughly $20–30 across ten instruments — about $2–3 each, i.e.
+marginal, but it also keeps the "one assembly job" simplicity. 4 layers costs a tee
+board nothing but planes it does not need.
+
+*This corrects an earlier note in this file that said splitting was cheaper.* That
+used a $0.10/cm² fab rate, which is the PROTOTYPE regime; JLCPCB quotes 4-layer at
+**$70.60/m²** at panel quantities, an order of magnitude lower, and at that rate
+the fixed cost of a second order dominates. The conclusion inverted once the rate
+was real rather than assumed.
+
+**Measured, no longer an estimate:** the tee board is **22.0 × 24.0 = 5.28 cm²**
+(`electronics.tee_pcb`), so 220 small boards ≈ **0.117 m²** — within 6 % of the
+0.11 m² the table above assumes. The conclusion holds with margin; it would take
+the small boards being roughly *double* their modelled size to make splitting
+worthwhile.
 
 ## Tools (shop infrastructure — NOT per-instrument cost)
 
@@ -578,22 +603,30 @@ pros/cons when weighing approaches** (project policy).
 | **Hardened nozzle ≥0.4 (ideally 0.6)** | PETG-GF (vendor recommendation) | ~$15–30 | glass fiber eats brass nozzles |
 | **Wire strippers 20–30 AWG** | all harness work | — | presumed owned |
 
-## Cost summary (per instrument, June 2026)
+## Cost summary (per instrument)
 
-Approximate; motors dominate. Re-verify before ordering.
+**One model only** — the basic/pro split is gone, every instrument is fully
+populated. PCB lines use the 10-instruments-per-order basis above; everything
+else is per-unit. Motors still dominate. **Prices below are approximate and
+several are unverified — re-verify the whole file before ordering.**
 
-| Group | Basic | Pro |
-|-------|------:|----:|
-| Filament (printed) | ~$78 | ~$78 |
-| Mechanical hardware (motors, screws, bearings, belt, fasteners, dowels) | ~$640 | ~$640 |
-| Wire | ~$35 | ~$35 |
-| Electronics + UI | ~$110 | ~$335 + carrier PCB |
-| **Total** | **~$865** | **~$1,090** + PCB |
+| Group | Per instrument | Confidence |
+|-------|---------------:|------------|
+| Filament (printed) | ~$78 | estimate |
+| Mechanical hardware (motors, screws, bearings, belt, fasteners, dowels) | ~$640 | mostly verified 2026-07 |
+| Wire | ~$35 | estimate, excludes 10 control drops |
+| Electronics + UI (Teensy, audio shield, Pi 4, bucks, hub, jacks, joystick, OLED) | ~$185 | **Pi + buck unverified** |
+| Optical pickup board (141 parts, 4-layer, ÷10 basis) | ~$47 | modelled, fab terms estimated |
+| Control sensors, 10 controls (MT6701 + magnet + board) | ~$50 | boards not yet quoted |
+| Tee / carrier PCBs | ~$25 | estimate |
+| **Total** | **~$1,060** | |
 
 Mechanical detail: 10× MKS SERVO42D CAN MT (~$350) is the bulk; +10× Tr5×1 screw/nut
 (~$60, **confirm 1 mm lead / single-start**), 10× MR85ZZ (~$30), 10× 693ZZ
 (~$30), 10× shaft collars (~$25), Ø3 shaft (~$30), dowels (~$22), GT2 belt
 6.5 m (~$12–130 depending on genuine-Gates vs generic), M-hardware packs (~$50).
-Pro electronics adds the Pi 5 ($175 street), the ≥6 A buck, the USB hub, and the
-10-ch ADC (**3× PCM1864 on a small carrier PCB, ~$30 + PCB** — already substituted
-for the obsolete CS42448; see the electronics table).
+Electronics detail: the Pi 4 + its buck replace the Pi 5 + 6 A buck (~$130 saved,
+since audio→MIDI moved onto the optical board), and the 10-channel PCM1864 ADC
+path is **deleted outright** for the same reason — the optical board digitises its
+own twenty channels. Those two changes together take roughly **$160** off what
+this section previously totalled.
