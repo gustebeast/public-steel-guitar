@@ -90,6 +90,7 @@ from . import chassis as CH
 from . import top_plate as TP
 from .helpers import box_at
 from cadkit.fasteners import M4
+from cadkit.pcb import PCB_T as _PCB_T
 
 # ── where it sits ────────────────────────────────────────────────────────────
 # The speaking length ends at the BEARING TANGENT (directly over the axle), NOT at
@@ -115,7 +116,7 @@ BAND_X1    = TP.PICKUP_X_NOM + TP.CAVITY_X / 2                # -30.62, cavity's
 BAND_CLR   = 0.2                                              # keep off both band edges
 
 OPT_GAP = 3.0                                    # sensor face -> string UNDERSIDE
-PCB_T   = 1.6                                    # FR4
+PCB_T   = _PCB_T                                 # FR4 (cadkit.pcb owns the constant)
 
 # ── PACKAGE LIBRARY -- real outlines, (X, Y, Z) AS PLACED ────────────────────
 # Body + leads where leads protrude, at JEDEC/IPC MAX, so the model is the worst case an
