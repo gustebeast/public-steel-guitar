@@ -119,6 +119,8 @@ PARTS = {
     "pedal_lid_b":     (lambda: heal(_PB("pedal_lid_b")), "petg-gf/pedal_lid_b.step", "PETG-GF — sliding dovetail lid, +X piece (covers the plain latch; lock dimple clicks onto the bar-top nub, pinning both lid pieces — no screws). 322 long: diagonal, TOP-FACE DOWN"),
     # (pedal_bolt / pedal_bolt_trrs / pedal_latch_finger exports RETIRED by
     # ROUND 4 — the sliding latches are gone; the bar carries stub towers)
+    "pedal_housing":   (lambda: heal(__import__("src.foot_pedal", fromlist=["e"]).pedal_housing()), "pctg/pedal_housing.step", "PCTG — FOOT PEDAL housing ×3 (initial design): knee_lever's control core posed for a foot — same cartridges, pistons, guide posts, back-stop screws, drag pads, axle, magnet, bearings and MT6701 board. Hangs on the bar's player-side face; the spring column stands VERTICALLY above the bar in the envelope pedal_bar reserves. Prints along GUITAR +Z so the cartridge channels run along the build direction (no ceilings) and the bar-mount joint is an up+up cadkit site"),
+    "pedal_lever":     (lambda: heal(__import__("src.foot_pedal", fromlist=["e"]).pedal_lever()), "pctg/pedal_lever.step", "PCTG — FOOT PEDAL lever ×3 (initial design): hub on the axle, leg carrying the return lobe at 13.2 (sized so the 20° throw gives the SAME 4.51 spring stroke as the knee levers — which is what lets the half stop transfer for free), a 90 mm arm running out to the player and the pedal board across its end (30.8 mm of travel, ~1.6→3 N at the board)"),
     "pedal_detent_nub": (lambda: heal(_PB("nub_part")), "tpu/pedal_detent_nub.step", "TPU — detent nub ×1 (Ø4×4): presses into the bar top as the LID lock"),
     # (pedal_bar_foot merged into the shared leg_foot SKU — one look ×4)
     "leg_shaft_short": (lambda: heal(LG.leg_shaft_short()), "petg-gf/leg_shaft_short.step", "PETG-GF — SHORT +Y shaft ×1 (the wired one prints from leg_shaft_trrs): W28 dropped-octagon tenon ending in the 35.6-sq terminal block (4.2 inset on all four sides, symmetric; +Y face = the stem plane) whose octagon socket + point-side ledge take the bar tower's shaved tenon"),
@@ -668,6 +670,14 @@ def _pedal_bar_components():
     return [(n, wp.translate((0, 0, dz))) for n, wp in PB.assembly_parts()]
 
 
+def _foot_pedal_components():
+    """Foot pedals, drawn in the pedal bar's frame (z0 = plate bottom) and lifted
+    the same way it is. Three stations, all at REST."""
+    from . import foot_pedal as FP
+    dz = (CH.Z_BOT - LEG_HEIGHT) + LG.FOOT_H
+    return [(n, wp.translate((0, 0, dz))) for n, wp in FP.demo_parts()]
+
+
 def _electronics_components():
     """The compute bay (PRO population shown; a basic build leaves the Pi /
     CS stack / buck sockets empty) + panel jacks + the wire harness."""
@@ -760,6 +770,7 @@ def collect_components():
     comps += _pickup_mount_components()
     comps += _leg_components()
     comps += _pedal_bar_components()
+    comps += _foot_pedal_components()
     comps += _electronics_components()
     comps += _knee_lever_components()
     comps += _knee_vert_components()

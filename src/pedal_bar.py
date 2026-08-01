@@ -83,7 +83,17 @@ STUB_Z0 = 43.0                             # tower seat plane (bar frame): the
 # (user placeholder; reference point x -313.80, y 43.75 = the bar top
 # plane at z -699.15 global). Budget check: tower top = STUB_Z0 + 38 =
 # 81, leg block top = STUB_Z0 + 48 = 91, both <= 19 + 75 = 94.
-PEDAL_ASSEMBLY_Z_HEIGHT = 75.0
+PEDAL_ASSEMBLY_Z_HEIGHT = 90.0     # was 75 (a placeholder). foot_pedal.py now exists
+                                   # and its stack measures 85.1 from the bar top: the
+                                   # knee lever's cartridge, reused verbatim, is a 42
+                                   # free-length coil plus guide post plus back-stop
+                                   # screw. Raised to 90 with 4.9 to spare, and
+                                   # foot_pedal asserts against this number so the two
+                                   # cannot drift apart. NOTE the budget line below no
+                                   # longer has slack the way it did — the leg blocks
+                                   # (top 91) and the pedal stack (top ~104) now share
+                                   # a Z band and only their X separation keeps them
+                                   # apart; the overlap gate is what proves it.
 LID_Z0 = 15.0
 FOOT_PAD = 12.0
 
