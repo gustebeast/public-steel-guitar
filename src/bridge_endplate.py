@@ -34,6 +34,7 @@ from . import dimensions as D
 from . import chassis as CH
 from . import top_plate as TP
 from . import optical_pickup as OP
+from . import carriage as CR
 from .endplate_base import endplate_base
 from .screw_rail import screw_rail as _screw_rail, HEIGHT as _SR_H
 from .helpers import box_at, cyl, cyl_y
@@ -187,7 +188,13 @@ WIN_BORDER = 4.0
 WIN_HW     = D.BRIDGE_AXLE_Y - ARM_W / 2                  # out to the arm inner faces, so the
                                                           # edge carriages/string balls are reachable
 WIN_Z1     = CH.Z_TOP - WIN_BORDER                        # top (rim to the cap top)
-WIN_Z0     = GR_UTOP                                      # bottom = the upper guide ledge's top
+WIN_Z0     = D.CARRIAGE_NOM_Z - D.CARRIAGE_TRAVEL + CR.CAGE_BOT - 0.5   # bottom clears the string ANCHOR
+                                                         # across FULL travel (cage bottom at full down-travel).
+                                                         # DECOUPLED from the guide ledge (GR_UTOP): the guide
+                                                         # foot rides at the nut level now (user carriage rework),
+                                                         # so its ledge is high, but the string window must stay
+                                                         # LOW. Guide-ledge STOPS + rod retention are a deferred
+                                                         # endplate follow-up (user: ignore stops for now).
 
 
 Z6     = CH.TP_GZ1                 # deck/top-plate level = the bridge's general top
