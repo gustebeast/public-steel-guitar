@@ -347,7 +347,7 @@ ADC inputs plus a 12-signal ULPI bus will not fit a 64-pin part.
 
 | Qty | Ref | Part / role | Package | Envelope (mm) |
 |-----|-----|-------------|---------|---------------|
-| 1 | U6 | MCU — Cortex-M7, 3× 16-bit ADC, USB OTG_HS via ULPI | LQFP100 | 16.00 × 16.00 × 1.60 |
+| 1 | U6 | MCU — **STM32H743ZIT6**, 20× 16-bit ADC ch, USB OTG_HS via ULPI | LQFP144 | 22.00 × 22.00 × 1.60 |
 | 1 | J1 | USB-C receptacle — 10 ch audio + MIDI + DFU | USB-C | 8.94 × 7.35 × 3.16 |
 | 1 | J2 | power in, 5 V from the instrument rail — side entry, −X edge | XH-SM-2 | 6.10 × 10.00 × 7.00 |
 | 5 | U1–U5 | quad op-amp — 4× transimpedance amp | SOIC-14 | 6.00 × 8.65 × 1.75 |
@@ -360,8 +360,7 @@ ADC inputs plus a 12-signal ULPI bus will not fit a 64-pin part.
 | 1 | Q1 | N-ch MOSFET — LED row driver | SOT-23 | 2.90 × 2.40 × 1.30 |
 | 1 | U10 | USB data-line ESD array | SOT-563 | 1.60 × 1.60 × 0.60 |
 | 10 | D1–D10 | IR emitter, 940 nm — **narrow beam, see below** | 0805 (opto) | 2.00 × 1.25 × 0.85 |
-| 10 | PD1A–PD10A | PIN photodiode, +Y of string | 0805 (opto) | 2.00 × 1.25 × 0.85 |
-| 10 | PD1B–PD10B | PIN photodiode, −Y of string | 0805 (opto) | 2.00 × 1.25 × 0.85 |
+| 20 | PD1A–PD10B | PIN photodiode — **Vishay VEMD4110X02**, daylight filter | 0805 (opto) | 2.00 × 1.25 × 0.85 |
 | 5 | R1–R5 | LED current-set — **per-string value**, plain strings | 0603 | 1.60 × 0.80 × 0.95 |
 | 5 | R6–R10 | LED current-set — **per-string value**, wound strings | 0603 | 1.60 × 0.80 × 0.95 |
 | 1 | FB1 | ferrite bead — analog rail isolation | 0603 | 1.60 × 0.80 × 0.95 |
@@ -462,15 +461,26 @@ instead of ~1 µs. Per-string *current* is still set individually by R1–R10; w
 is common is only the on/off gate. The cost is optical crosstalk between
 neighbouring strings — one of the things the prototype needs to measure.
 
-**Open sourcing items** (project rule: NO consignment, all PCB parts
-LCSC-library — none of the below is confirmed orderable for assembly yet):
-- the exact **STM32H7 LQFP100** variant, and whether it exposes **20 ADC input
-  pins** on that package. If it comes up short, the fallback is muxing the ten
-  DIFF channels (they only run at the decimated rate) into one input.
+### Two open items, now closed
+
+**MCU — resolved to LQFP144, and the package is set by ADC pin count.** The
+LQFP100 `STM32H743VIT6` brings out only **16** ADC channels; this board digitises
+**20** (one per photodiode). The 144-pin **`STM32H743ZIT6`** has exactly 20, is in
+LCSC stock as **C114408**, and at **~$7.63** is *cheaper* than the 100-pin part —
+so no analog mux is needed and the fallback plan is retired. 22 × 22 over its
+leads fits the 30 mm tail with 4.0 mm clear.
+
+**Photodiode — resolved, and it takes a second problem with it.** Vishay
+**`VEMD4110X02`**: Si **PIN** photodiode (not a phototransistor, so the linearity
+the audio path needs survives), 0805, 0.42 mm² active area, ±55°, and it carries a
+**daylight-blocking filter matched to 830–950 nm emitters**. That is the IR-pass
+window this design was going to need as a separate bonded part against sun — it
+comes built into the detector. Confirm LCSC/JLC assembly stock at quote time; the
+`VEMD4010X02` (no filter, 910 nm peak) is the same outline if the filtered one is
+unavailable, but the filter is worth chasing.
+
+**Still open** (project rule: NO consignment, all PCB parts LCSC-library):
 - a **ULPI PHY** in JLC's library — USB3343-class QFN-24 is the envelope modelled.
-- the **PIN photodiode**. JLC's readily-available optoelectronics skew toward
-  *phototransistors*, which would undermine the linearity the audio path needs.
-  This is the part most likely to force a redesign.
 - the **IR emitter's beam angle** — ±20–30° at 940 nm in an 0805-class package.
   Worth more dB than anything else on this list; if the library has nothing
   narrow, that changes the signal budget more than any other substitution.
@@ -490,6 +500,45 @@ passives total about $1. Assembly follows the same per-*order* economics as the
 tee/sensor panel ($25 setup + ~$1.50 per unique feeder), so it should ride the
 **same JLCPCB panel** — the 0402 R/C and generic parts overlap with the existing
 boards, and only the specialised lines add feeders.
+
+### Cost — one board (estimate, unverified except where noted)
+
+141 parts, ~541 solder joints, 30 × 158.5 mm outline (47.5 cm²). The $25 PCBA
+order setup is **excluded** — the lever sensor board already pays it.
+
+| Line | Detail | ~Cost |
+|---|---|---:|
+| MCU | STM32H743ZIT6 LQFP144 — **LCSC C114408, verified $7.63** | $7.63 |
+| PIN photodiodes ×20 | VEMD4110X02 | $8.00 |
+| Quad op-amps ×5 | the 20 TIA channels | $4.50 |
+| IR emitters ×10 | 940 nm, narrow beam | $3.00 |
+| USB HS ULPI PHY | USB3343-class QFN-24 | $3.00 |
+| Crystals ×2, LDOs ×2, reference op-amp | | $1.20 |
+| USB-C + JST XH | J1, J2 | $0.60 |
+| MOSFET, ESD array, ferrite | | $0.22 |
+| 80 × 0402, 11 × 0603, 4 × 0805 | | $0.82 |
+| **Parts subtotal** | | **~$29** |
+| PCB fab | 4-layer, 47.5 cm², qty 5 | ~$7 |
+| Assembly | ~541 joints | ~$1 |
+| **Marginal, per board** | | **~$37** |
+
+**Plus ~$39 once per order** in feeder loading — about 26 part numbers unique to
+this board at $1.50, after excluding the generics (100 nF, 10 µF, common resistor
+values) the sensor/tee boards already load.
+
+So: **~$37** for each additional board, **~$76** if you build exactly one, or
+**~$45 each** at the qty-5 PCBA minimum (with four spares).
+
+**Five lines are $26 of the $29** — MCU, photodiodes, op-amps, emitters, PHY.
+Two of them exist only for per-string audio: pitch-only would fit USB full-speed,
+deleting the PHY and allowing a much cheaper MCU, so **the 10-channel 48 kHz audio
+capability costs roughly $9/board**. The 20 photodiodes are the DIFF channel;
+halving them saves $4 but reintroduces the 2f₀ octave error, so that is not a
+trade worth making.
+
+**One free saving at layout:** the L-shaped outline uses 28.7 cm² of copper inside
+a 47.5 cm² billed rectangle — 40 % waste. Two boards nested head-to-tail on the
+panel should recover much of the $7.
 
 ## Tools (shop infrastructure — NOT per-instrument cost)
 
