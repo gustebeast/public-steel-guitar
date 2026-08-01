@@ -771,7 +771,10 @@ TEN_ROOT = 1.0                      # root below the mating face — volumetric 
 # on a cadkit CONTACT RIB on the housing's outer face, so the magnet's Y — and
 # with it the sensor air gap — is set by a printed datum instead of by wherever
 # the stack happens to come to rest.
-RIB_T = RIB_PROUD = 0.85            # cadkit house contact-rib section
+RIB_T = RIB_PROUD = 1.6             # cadkit contact-rib section: TWO nozzles (quality tier, no 0.05
+                                   # buffer). The air gap is unaffected -- PCB_Y = MAG_Y1 + AIR_GAP +
+                                   # CHIP_H tracks the magnet, so raising RIB_PROUD shifts the whole
+                                   # axle->magnet->sensor stack +0.75 outboard together (AIR_GAP kept).
 AXLE_SHOULDER_Y = HOUS_HW + RIB_PROUD           # 14.75: flange face, ON the rib
 AXLE_FLANGE_D   = 9.0               # flange Ø (what seats on the rib). NOT the thread
                                     # major any more — the hex cap forced those apart
