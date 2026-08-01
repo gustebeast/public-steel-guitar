@@ -545,7 +545,36 @@ def bom_rows():
 def _assert_field_clear():
     """Guard the bugs this part can silently ship, NONE of which the assembly overlap
     gate can catch -- board and components are ONE unioned solid, and a pairwise checker
-    never tests a solid against itself."""
+    never tests a solid against itself.
+
+    A NOTE ON WHAT THESE ARE FOR, because two bugs got through that were nobody's typo.
+    COVER_HY was derived from the sensing field when the aperture was what actually
+    governed it; Y_TAIL was derived from the magnetic pickup's cavity, correct until the
+    tail stopped passing anywhere near that cavity. Both stayed legal, printable and
+    gate-clean while being wrong, because a derivation that has gone STALE still
+    evaluates. Nothing was violated -- the rule had simply stopped being the rule.
+
+    So these assertions state the INTENT, not the arithmetic. Each one re-checks the
+    property the design actually needs, independently of which constant it was computed
+    from. When a source stops governing, the value drifts but the assertion still holds
+    the design to the real requirement -- which is the only way this class of bug gets
+    caught by code rather than by someone noticing it in a render."""
+    # 0. SYMMETRY. Anything the design intends to be mirrored is asserted to be, because
+    # a stale derivation on ONE side is exactly how the -Y wrap ended up 1.05 slacker
+    # than the +Y one. Cheap, and it fails the moment the two ends drift apart.
+    if abs(HEAD_Y0 + Y_TAIL) > 1e-9:
+        raise AssertionError(
+            f"optical strip: wrap bands are not mirrored -- +Y turns at {HEAD_Y0:.2f}, "
+            f"-Y at {Y_TAIL:.2f}. They exist to grip the same feature at both ends.")
+    if abs((PCB_YP - HEAD_Y0) - (Y_TAIL - WRAP_Y)) > 1e-9:
+        raise AssertionError(
+            f"optical strip: wrap bands differ in length -- +Y {PCB_YP - HEAD_Y0:.2f}, "
+            f"-Y {Y_TAIL - WRAP_Y:.2f}")
+    _m = mount_points()
+    if abs(_m[0][0] - _m[1][0]) > 1e-9 or abs(_m[0][1] + _m[1][1]) > 1e-9:
+        raise AssertionError(
+            f"optical strip: the two M4 grips are not mirrored -- {_m[0]} and {_m[1]}. "
+            f"They are the board's Y datum; asymmetry means one of them moved alone.")
     # 1. the whole sensing strip must sit inside the deck band, or it fouls the magnetic
     # pickup's cavity (-X) or the endplate (+X). Both edges are read from top_plate, so
     # this fails loudly if the pickup's travel changes rather than overlapping quietly.
