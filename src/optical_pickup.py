@@ -83,6 +83,7 @@ Frames: absolute X/Y/Z. Components face +Z (UP, at the strings).
 from __future__ import annotations
 
 import cadquery as cq
+from cadquery.selectors import NearestToPointSelector
 
 from . import dimensions as D
 from . import chassis as CH
@@ -433,6 +434,21 @@ def mount_points():
     return [(x, HEAD_Y0 + keep), (x, Y_TAIL - keep)]   # symmetric, one per wrap
 
 
+# ROUTED-OUTLINE FILLETS. A PCB outline is CNC-ROUTED, not cut from plate, so any polygon
+# is fine -- but the mill cannot cut a sharp INTERNAL corner. Every concave corner comes
+# out with the cutter's radius whether it is drawn or not, so it is drawn: the model was
+# optimistic by ROUT_R at three places. External corners stay sharp (the mill goes round
+# the outside of those).
+ROUT_R = 1.0                                   # ~2 mm router bit
+
+
+def _concave():
+    """The three internal corners, where a section steps NARROWER than its neighbour."""
+    return [(PCB_X0, HEAD_Y0),                 # head -> strip, +X side
+            (PCB_X0, Y_TAIL),                  # strip -> -Y wrap, +X side
+            (COMPUTE_X0, WRAP_Y)]              # -Y wrap -> compute, -X side
+
+
 def _outline(grow=0.0, t=None, zc=None):
     """The board's footprint as a solid: narrow sensing strip over the strings, wide tail
     past the pickup cavity. `grow` inflates it for a slip fit."""
@@ -447,6 +463,8 @@ def _outline(grow=0.0, t=None, zc=None):
         blk = box_at((x0 + grow) - (x1 - grow), b - a, t,
                      x=((x0 + grow) + (x1 - grow)) / 2, y=(a + b) / 2, z=zc)
         out = blk if out is None else out.union(blk)
+    for fx, fy in _concave():
+        out = out.edges(NearestToPointSelector((fx, fy, zc))).fillet(ROUT_R + grow)
     return out
 
 

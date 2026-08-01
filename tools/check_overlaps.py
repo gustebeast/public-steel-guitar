@@ -67,6 +67,11 @@ PER_STRING_OK = {
 # The bridge endplate hosts the whole drive top end (screw rail fused in, axle
 # comb, guide ledges), so most per-string hardware legitimately touches it.
 GLOBAL_OK = {
+    # optical strip: two M4 grips locate the board -- each screw threads through its own
+    # heat-set insert, which is seated in the endplate's wrap plinth. Both are designed
+    # thread engagement, not interference.
+    frozenset({"optical_screw", "optical_insert"}),
+    frozenset({"optical_screw", "bridge_endplate"}),
     frozenset({"screw_bearing", "bridge_endplate"}), frozenset({"leadscrew", "bridge_endplate"}),
     frozenset({"locknut", "bridge_endplate"}), frozenset({"screw_pulley", "bridge_endplate"}),
     frozenset({"nut", "bridge_endplate"}), frozenset({"carriage", "bridge_endplate"}),
