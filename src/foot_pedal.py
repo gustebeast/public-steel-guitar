@@ -42,30 +42,28 @@ So this module keeps knee_lever's LOCAL FRAME verbatim and changes only:
     lb). That is in the normal pedal-steel band, and it tunes with the same
     back-stop screw.
 
-PRINT ORIENTATION — deliberately NOT the knee lever's. This housing builds along
-GUITAR +Z (local +X), where both knee housings build along their local +Z. The
-reason is the mount, and it is worth writing down because it drove the choice:
-the pedal bar prints bottom-down (builds guitar +Z), so if the pedal housing also
-builds guitar +Z the two hosts share a build axis and cadkit's install-z T joint
-applies (both halves 'up'). Every other orientation of this pair lands on a
-facing combination cadkit does not model — see the MOUNT note below. The happy
-side effect is that the cartridge channels, which run along local X, now run
-ALONG the build direction: they are vertical bores with no ceiling at all.
+THE HOUSING IS NOT A SEPARATE PART (user). It is fused straight into the pedal
+bar. There is nothing to adjust about a pedal's position, and the bar already
+prints -Z -> +Z, which is the orientation the housing wanted anyway — so it is
+simply bar geometry. That deleted three problems rather than solving them: the
+bar<->housing mount joint, the scheme for retaining it, and the fact that the two
+parts' print directions landed on a facing combination cadkit does not model.
+All three vanish when the joint does. What still prints separately is what has to
+MOVE or be assembled: this lever, the axle, the magnet and cap, the bearings, the
+cartridges and the sensor board.
 
-MOUNT + RETENTION, which is exactly the install order the user asked for:
-    1. connect the bar sections   2. drop the pedals in   3. slide the lid on
-The housing seats by dropping straight DOWN (install '-z') into a pocket in the
-bar, so the joint takes X and Y by shape and leaves +Z — and the LID, which goes
-on last and runs the length of the bar, closes +Z over the housing's shoulder.
-No fastener, no glue, and the pedals cannot be removed without pulling the lid.
+A consequence worth keeping in view: all three stations fall between XS1 and XS2,
+so every housing lands in pedal_bar_b. That piece goes from 136 cm3 to 293 and
+from 36 mm deep to 77 — still inside the 255 bed (212 x 77 x 96), but it is now
+the big print of the bar set, and adding a fourth pedal is what would break it.
 
 DEFERRED (this is the first round):
   * the REST STOP. Gravity pulls the pedal arm down and the spring pushes it up;
     the rest angle wants a hard stop like LKV's, not a spring balance.
   * the sensor CRADLE is inherited from knee_lever, which draws it to stand up
-    off a LOCAL +Z bed. In this housing's orientation that is a side wall, so the
-    cradle needs its own printability pass before this part is cut.
-  * the lever-room ceiling wants the same pass, for the same reason.
+    off a LOCAL +Z bed. Fused into the bar it builds along guitar +Z instead, so
+    that bed is now a side wall — the cradle and the lever-room ceiling both want
+    a printability pass in the bar's orientation before this is cut.
   * pedal STATIONS along X are placeholders until the copedent is fixed.
 """
 
@@ -232,18 +230,32 @@ def pedal_lever() -> cq.Workplane:
     return _lever()
 
 
-def pedal_housing() -> cq.Workplane:
-    return _housing()
+def fuse_into_bar(piece, x0, x1):
+    """Union every pedal housing whose station falls in [x0, x1) INTO a pedal-bar
+    piece. The housing is not a separate part (user): there is nothing to adjust
+    about a pedal's position, and the bar already prints -Z -> +Z, which is the
+    orientation the housing wanted anyway. So it is simply bar geometry.
+
+    That deletes a whole problem rather than solving it — no mount joint, no
+    retention scheme, and no need for the bar<->housing facing combination that
+    cadkit does not model. What still prints separately is what has to MOVE or be
+    assembled: the lever, the axle, the magnet and cap, the bearings, the
+    cartridges and the sensor board.
+
+    Called from build.py rather than pedal_bar, to keep the import one-way (this
+    module reads pedal_bar for the bar's own faces) — the same dodge chassis uses
+    for the motor plates and the tee cradles."""
+    for x in PEDAL_X:
+        if x0 <= x < x1:
+            piece = piece.union(place(_housing(), x))
+    return piece
 
 
 def demo_parts():
-    """(name, solid) in GUITAR coordinates, one set per station — for the
-    assembly and the overlap gate."""
-    out = []
-    for i, x in enumerate(PEDAL_X):
-        out.append((f"pedal_housing_{i}", place(_housing(), x)))
-        out.append((f"pedal_lever_{i}", place(swing(_lever(), 0.0), x)))
-    return out
+    """(name, solid) in GUITAR coordinates — the LEVERS only; the housings are
+    part of the bar now (fuse_into_bar)."""
+    return [(f"pedal_lever_{i}", place(swing(_lever(), 0.0), x))
+            for i, x in enumerate(PEDAL_X)]
 
 
 # ── sanity on the pose: three facts, each of which the naive mapping got wrong ──
