@@ -557,12 +557,31 @@ PHY and allowing a cheaper MCU, so **the audio capability is about $9/board**.
 bounding rectangle. Two boards nested head-to-tail on the panel should recover a
 useful slice of the $6.90 fab line.
 
-**Layer count is a PANEL decision, not a board one.** This board needs 4 layers —
-20 analog channels wanting a ground reference, a 96 kHz switching driver to
-isolate from them, and a 60 MHz ULPI bus. The tee and sensor boards do not; 2
-layers suits them. Panelising everything together forces 22 simple boards up a
-stackup tier, which is likely *more* expensive than splitting into two orders
-(~$25 second setup + ~$6–9 duplicated feeders). **Get both quoted before layout.**
+**Layer count is a PANEL decision — and ONE 4-LAYER PANEL WINS.** This board needs
+4 layers (20 analog channels wanting a ground reference, a 96 kHz switching driver
+to isolate from them, a 60 MHz ULPI bus). The tee and sensor boards do not. But
+panelising everything at 4 layers is *cheaper* than splitting the orders:
+
+| | Cost at 10 instruments |
+|---|---:|
+| Upgrade the 220 small boards (12 tee + 2 carrier + 8 sensor, ×10) to 4-layer | **$2 – $13** |
+| Second order to keep them 2-layer ($25 PCBA setup + ~$8 duplicated feeders) | **~$33** |
+
+So one panel saves roughly $20–30 across ten instruments — about $2–3 each, i.e.
+marginal, but it also keeps the "one assembly job" simplicity. 4 layers costs a tee
+board nothing but planes it does not need.
+
+*This corrects an earlier note in this file that said splitting was cheaper.* That
+used a $0.10/cm² fab rate, which is the PROTOTYPE regime; JLCPCB quotes 4-layer at
+**$70.60/m²** at panel quantities, an order of magnitude lower, and at that rate
+the fixed cost of a second order dominates. The conclusion inverted once the rate
+was real rather than assumed.
+
+**Measured, no longer an estimate:** the tee board is **22.0 × 24.0 = 5.28 cm²**
+(`electronics.tee_pcb`), so 220 small boards ≈ **0.117 m²** — within 6 % of the
+0.11 m² the table above assumes. The conclusion holds with margin; it would take
+the small boards being roughly *double* their modelled size to make splitting
+worthwhile.
 
 ## Tools (shop infrastructure — NOT per-instrument cost)
 
