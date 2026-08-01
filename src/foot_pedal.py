@@ -79,8 +79,6 @@ from . import knee_lever as KL
 from . import pedal_bar as PB
 from .helpers import box_at, cyl_y, heal
 
-from cadkit.fasteners import M2, cut_selftap
-from cadkit.supports import printable_bore, contact_rib
 
 # ── throw, arm and the lobe that keeps the feel identical ────────────────────
 THROW_P    = 20.0                   # pedal throw (deg, +theta about local +Y)
