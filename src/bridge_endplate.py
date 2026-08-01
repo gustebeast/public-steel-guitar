@@ -38,6 +38,14 @@ from .endplate_base import endplate_base
 from .screw_rail import screw_rail as _screw_rail, HEIGHT as _SR_H
 from .helpers import box_at, cyl, cyl_y
 from cadkit.fasteners import M2, cut_selftap
+from cadkit.supports import printable_bore
+
+# Build direction. The endplate prints FLAT on its +X face, so "up" out of the bed is -X.
+# Any round hole whose axis runs SIDEWAYS to that -- the Y-axis axle bores -- has a
+# circular ceiling that droops out of round without support. cadkit.supports.printable_bore
+# shapes a 45 deg teardrop peak from this vector (and returns a plain cylinder for bores
+# that run along it, so callers need not know which case they are in).
+PRINT_UP = (-1.0, 0.0, 0.0)
 
 X0   = CH.X_BRIDGE                 # cap -X face / field<->cap boundary: the field stays
                                    #   OPEN -X of here (carriage sweep / strings / rods)
@@ -107,6 +115,18 @@ UNDER_Z      = 6.5
 CARRIER_BOT  = UNDER_Z                        # 6.5 -- 0.5 over the deck, flush with the comb
 CARRIER_X1   = OP.PCB_X1S - 0.1               # -X face, inside the band by a hair
 CARRIER_HY   = 54.0                           # out to the arms
+
+# TAIL PLINTH -- the strip's digital block, now that it widens +X OVER THIS PART instead
+# of -X over the deck (user). That move is what makes it supportable at all: past
+# CARRIER_HY there is no endplate material above z6 for a plinth to start on, but out here
+# the FILL SLAB's top IS z6, so this plinth merges straight into solid material. It needs
+# no deck standoffs, so top_plate is untouched, and printing +X -> -X it is backed the
+# whole way. Bottom sits AT z6 (not UNDER_Z) precisely because it lands on the slab
+# rather than hovering over the deck panel.
+TAIL_X0 = XLO                                 # -16.60; the board overhangs 1.8 further -X
+TAIL_X1 = OP.TAIL_X1                          # 7.00, short of the outer face
+TAIL_Y0 = OP.PCB_YM                           # -110.95
+TAIL_Y1 = OP.Y_TAIL                           # -56.05
 
 # ── COMB BACK-BRACE (user's sketch) ──────────────────────────────────────────
 # The comb fingers root on the cap band at x 2.6..6.0 and reach out to -6.5 with the AXLE
@@ -236,8 +256,9 @@ def _arm(sy, blind=False) -> cq.Workplane:
                  x=(X1 + ARM_X) / 2, y=sy, z=(ARM_TOP + z_lo) / 2)
     y0 = sy - ARM_W / 2 + (AXLE_END_WALL if blind else -1.0)
     h = (ARM_W / 2 + 1.0) - (y0 - sy)
-    return arm.cut(cyl_y(AXLE_BORE, h, y0=y0,
-                         x=D.BRIDGE_AXLE_X, z=D.BRIDGE_BEARING_Z))
+    return arm.cut(printable_bore(
+        AXLE_BORE, h, axis_point=(D.BRIDGE_AXLE_X, y0, D.BRIDGE_BEARING_Z),
+        axis_dir=(0, 1, 0), print_up=PRINT_UP))
 
 
 _SRX = D.SCREW_X + 7.0            # screw-rail +X face (DEPTH/2 past the screw line)
@@ -279,6 +300,10 @@ def _build() -> cq.Workplane:
     body = body.union(box_at(XLO - CARRIER_X1, 2 * CARRIER_HY, CARRIER_TOP - CARRIER_BOT,
                              x=(XLO + CARRIER_X1) / 2, y=0,
                              z=(CARRIER_BOT + CARRIER_TOP) / 2))
+    # ...and the tail plinth, sitting on the fill slab out past the field centre
+    body = body.union(box_at(TAIL_X1 - TAIL_X0, TAIL_Y1 - TAIL_Y0, CARRIER_TOP - CH.TP_GZ1,
+                             x=(TAIL_X0 + TAIL_X1) / 2, y=(TAIL_Y0 + TAIL_Y1) / 2,
+                             z=(CH.TP_GZ1 + CARRIER_TOP) / 2))
     # FUSE IN the screw-support rail and bridge it to the cap at the bottom + tie it
     # up to the bearing arms at the edges — the whole bridge end becomes one solid
     # piece (screw support + bearing support + box closure) with continuous material.
@@ -354,8 +379,10 @@ def _build() -> cq.Workplane:
     for yc in _comb_y:
         body = body.union(_fpro.translate((0, yc, 0)))
         body = body.union(_comb_brace(yc, CB_W))
-        body = body.cut(cyl_y(D.BRIDGE_AXLE_D + 0.3, CB_W + 2, y0=yc - CB_W / 2 - 1,
-                              x=D.BRIDGE_AXLE_X, z=D.BRIDGE_BEARING_Z))
+        body = body.cut(printable_bore(
+            D.BRIDGE_AXLE_D + 0.3, CB_W + 2,
+            axis_point=(D.BRIDGE_AXLE_X, yc - CB_W / 2 - 1, D.BRIDGE_BEARING_Z),
+            axis_dir=(0, 1, 0), print_up=PRINT_UP))
 
     # LIGHT COVER for the optical strip, unioned in: its roof lands on the comb
     # brace at XLO and its slots sit over the sensor triplets.
