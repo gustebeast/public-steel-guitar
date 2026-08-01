@@ -160,7 +160,7 @@ AXLE_BORE = D.BRIDGE_AXLE_D + 0.4
 # are only 2.0 mm between the bore crown and the arm top, and 2.0 is five threads at
 # 0.4 pitch against a shaft that nothing pushes axially -- 10 bearing bores of friction
 # already hold it, and the blind end takes the other direction positively.
-AXLE_END_WALL = 1.6                                   # -Y blind-bore wall (2 beads)
+AXLE_END_WALL = MIN_ADDED                             # -Y blind-bore wall (the 2-bead tier)
 AXLE_GRUB_Z   = ARM_TOP                               # grub mouth: the arm's free top
 AXLE_GRUB_L   = ARM_TOP - (D.BRIDGE_BEARING_Z + D.BRIDGE_AXLE_D / 2) + 0.2
 

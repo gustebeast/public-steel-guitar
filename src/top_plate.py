@@ -192,7 +192,7 @@ HEIGHT_HOLE = PICKUP_X_NOM
 RET_WALL_T = 2.0                                   # +Y wall thickness (Y)
 RET_WALL_H = 8.0                                   # +Y wall height above the plate top (enough to lock, not tall)
 RET_SCREW_Z = ZPL_TOP + 3.0                        # grub axis height (bears low on the pickup base)
-RET_BOSS_L = 6.0                                   # -Y grub boss length (Y): insert pocket (5) + 1 to the boss +Y
+RET_BOSS_L = D.NUT_INSERT_L + 1.0                  # -Y grub boss length (Y): insert pocket + 1 to the boss +Y
                                                    # face at PK_MAX_YM (the LONGEST supported pickup's -Y face).
                                                    # Shorter pickups butt the +Y wall, so their -Y face sits +Y of
                                                    # here and the grub protrudes across open cavity to reach it.

@@ -49,6 +49,7 @@ from __future__ import annotations
 import cadquery as cq
 
 from cadkit.joinery import PrintSpec, joint
+from . import dimensions as D
 from .helpers import box_at, cyl
 from .chassis import LEG_STATIONS_X, LEG_Y
 from . import legs as LG
@@ -228,6 +229,13 @@ SPLICE_J  = tuple(joint(width=w, length=SPLICE_L, depth=SPLICE_D,
                         tenon=_UP, mortise=_UP, install="+z")   # signed: the +X piece
                         for w in SPLICE_W)                      # drops on, so relative
                                                                 # to it the tenon goes +Z
+# the trough walls hosting these are 7.8 (-Y) and 11.3 (+Y); what is left beside each
+# cavity is a printed wall, so hold it to the tier rather than trusting the comment
+_SPLICE_WALL = (7.8, 11.3)
+for _w, _t, _j in zip(SPLICE_W, _SPLICE_WALL, SPLICE_J):
+    assert (_t - _w) / 2 - _j.clearance >= D.MIN_WALL_2P, (
+        f"splice joint {_w} in a {_t} trough wall leaves "
+        f"{(_t - _w) / 2 - _j.clearance:.2f} per side, under the {D.MIN_WALL_2P} tier")
 
 
 def _splice_tenons(xs: float) -> cq.Workplane:
