@@ -144,11 +144,20 @@ HOUS_HW = HOUS_HW_P                 # the sensor-side alias the Y stack reads
 HOUS_Z1 = (vplace(KL._hs_pocket(KL.HS_YC, -20.0, KL.HS_BACK_X)).val()
            .BoundingBox().zmax + KL.HS_HOUS_WALL)
 # -Z is the deeper of two demands: clearing the hub/arm at rest, and giving the
-# SENSOR BOARD its floor. The board is one fixed design (user) and goes in TURNED
-# OVER here, so its bottom edge lands at -PCB_Z1; the cradle floor wants CR_FLOOR_T
-# under that. The hub alone would allow -7.80, which left the floor 0.8 thick.
+# SENSOR BOARD its floor. The board is one fixed design (user), and WHICH WAY UP it
+# goes is not a free choice about fit alone — it also decides WHICH END THE CAN PLUG
+# EXITS, because the only orientation freedom is a 180 deg turn about the axle axis
+# and that swaps left-for-right together with top-for-bottom. The user wants the plug
+# to face +Y in the guitar frame; local X maps to guitar -Y here (place() turns -90
+# about Z), so +Y means the connector at local -X, which is the board AS DRAWN.
+# So this floor is sized for the AS-DRAWN board (bottom edge PCB_Z0), not the
+# turned-over one (-PCB_Z1). That is the entire price of the connector side: 5.0 mm
+# of extra housing depth, -9.80 -> -14.80. The hub alone would allow -7.80.
 HOUS_Z0 = min(-(HUB_D / 2 + KL.HS_CLR + KL.HS_HOUS_WALL),
-              -KL.PCB_Z1 - KL.CR_FLOOR_T)               # -9.80
+              KL.PCB_Z0 - KL.CR_FLOOR_T)               # -14.80
+assert not KL.board_flip(HOUS_Z0, HOUS_Z1), (
+    "LKV wants the board AS DRAWN so its CAN plug exits +Y, but this housing only "
+    "fits it turned over — the floor must reach PCB_Z0 - CR_FLOOR_T")
 AXLE_DROP = HOUS_Z1 - KL.HOUS_Z1    # how much lower the axle sits than LKL's (+11.0..15.2)
 
 # ── mount tenons: slide along LOCAL X (see the docstring) ────────────────────
