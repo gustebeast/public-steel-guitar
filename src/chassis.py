@@ -95,6 +95,9 @@ TP_JOINT   = joint(width=TP_TG_W, length=1.0, tenon=_DECK_UP, mortise=_RAIL_DOWN
 assert TP_JOINT.height <= TP_TG_DEPTH, (
     f"deck joint swallows {TP_JOINT.height:.3f} but the reserved groove zone "
     f"TP_TG_DEPTH is {TP_TG_DEPTH} — deepen the zone or narrow TP_TG_W")
+assert (T - TP_TG_W) / 2 - TP_JOINT.clearance >= D.MIN_WALL_2P, (
+    f"deck groove leaves {(T - TP_TG_W) / 2 - TP_JOINT.clearance:.2f} of rail wall per "
+    f"side, under the {D.MIN_WALL_2P} two-bead tier — narrow TP_TG_W")
 
 
 def _deck_tg(yc, x0, x1, mortise):
@@ -205,6 +208,12 @@ _SEG_J    = joint(width=_SEG_JW, length=_SEG_JZ1 - Z_BOT, depth=_SEG_JD,
                   tenon=_UP, mortise=_UP, install="+z")   # signed: the +X segment is
                   # lowered on, so RELATIVE to it the tenon travels +Z to seat
 _SEG_JX1  = _SEG_J.dims["depth_used"]  # the tenon's +X reach past the seam plane
+# the rail wall left beside the cavity is a printed wall like any other, and the only
+# thing keeping it at tier is the hand-picked width above. Say so, so a later change to
+# either the width or the rail thickness fails here rather than quietly slicing it.
+assert (T - _SEG_JW) / 2 - _SEG_J.clearance >= D.MIN_WALL_2P, (
+    f"seam joint leaves {(T - _SEG_JW) / 2 - _SEG_J.clearance:.2f} of rail wall per "
+    f"side, under the {D.MIN_WALL_2P} two-bead tier — narrow _SEG_JW or thicken the rail")
 # guard: the seam JOINT (X-footprint s−ROOT .. s+reach, at the RAILS) must not overlap
 # a rib -- the rib runs to the rails there, so an overlap would slice it.
 for _s in SPLIT_X:

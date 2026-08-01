@@ -25,6 +25,7 @@ LAYOUT (under-string, vertical-screw):
 # ─────────────────────────────────────────────────────────────────────────
 # Print process — the min-material floor (cadkit.printing owns the rule)
 # ─────────────────────────────────────────────────────────────────────────
+from cadkit.fasteners import M4
 from cadkit.printing import min_wall
 NOZZLE_D        = 0.8       # this build runs a 0.8 mm nozzle
 MIN_WALL        = min_wall(NOZZLE_D)          # 0.8 — one-bead HARD floor (web/ceiling/rib).
@@ -252,10 +253,16 @@ BRIDGE_ARM_W      = 5.0     # bridge-endplate bearing-arm / edge-web thickness (
 # this width (the bridge centres it on the bearing axle) and the drivetrain base spans it,
 # so editing any buffer here resizes both ends together -- never a hardcoded tip. The
 # keyhead nut block (nut_block.py) reads these same constants to place its features.
-NUT_INSERT_D    = 6.0           # M4 heat-set insert install Ø — the shared SET-SCREW STANDARD
-NUT_INSERT_L    = 5.0           #   (freecad/fasteners.py M4_INSERT_D / M4_INSERT_L)
-NUT_SCREW_D     = 4.4           # M4 set-screw shaft clearance (M4_SHAFT_CLR_D)
-NUT_SCREW_L     = 10.0          # M4 set-screw length (DEMO). The boss is NOT one screw tall: the
+# These four ARE cadkit's M4 spec — read from it rather than repeated. They used to be
+# literals whose comment pointed at "freecad/fasteners.py", a path the cadkit migration
+# retired, so the numbers had already outlived their own citation. It matters more than
+# tidiness here: ENDPLATE_W is computed from NUT_INSERT_D, so BOTH endplates' width (and
+# with it the bridge's whole X datum chain) hangs off a heat-set insert's diameter. If
+# cadkit ever re-specs M4, that should follow by itself instead of silently not.
+NUT_INSERT_D    = M4.insert_pilot_d     # 6.0  — heat-set insert install Ø
+NUT_INSERT_L    = M4.insert_l           # 5.0
+NUT_SCREW_D     = M4.shaft_clr_d        # 4.4  — set-screw shaft clearance
+NUT_SCREW_L     = M4.screw_l            # 10.0. The boss is NOT one screw tall: the
                                 # insert sinks to a small gap off the string (nut_block.INSERT_GAP)
                                 # and this screw's surplus length stands PROUD of the top surface.
 NUT_PIN_D       = 2.0           # Ø2 break-dowel NOMINAL diameter
