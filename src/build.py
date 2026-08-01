@@ -173,9 +173,9 @@ for (_cnm, _cr), (_ctx, _cty, _ctd) in zip(_WR_FUSE.tee_cradles(), _WR_FUSE.tee_
             break
 for _i, _seg in enumerate(chassis_segments):     # chassis split into dovetailed segments
     PARTS[f"chassis_{_i}"] = (partial(heal, _seg), f"petg-gf/chassis_{_i}.step",
-                              "PETG-GF — chassis segment (cadkit slide-down T joint per rail + an "
-                              "outer LAP PLATE screwed with 2x M4 per rail = the Z lock; NO GLUE, "
-                              "the seams come apart with a hex key. + tee cradles)")
+                              "PETG-GF — chassis segment (cadkit slide-down T joint per rail; NO glue "
+                              "and NO seam fastener — the deck, endplates and finally the 4 leg screws "
+                              "close the seam's Z axis. + tee cradles)")
 # Print coupon for the cadkit octagon slide joint (the joint the knee levers key
 # into the body with). test_*.step at the project root; also rendered off to the
 # side in the assembly (see _joint_coupon_components) so it rebuilds every time.
