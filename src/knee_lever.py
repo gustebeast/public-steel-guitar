@@ -1238,6 +1238,88 @@ def _hs_block(yc, x0, x1):
     return box_at(x1 - x0, 2 * (hw + t), z_top - z_bot, x=(x0 + x1) / 2, y=yc, z=(z_bot + z_top) / 2)
 
 
+# ════════════════════════════════════════════════════════════════════════════
+# SHARED BY THE WHOLE LEVER FAMILY — LKL here, LKV in knee_lever_vert, and the
+# foot pedal in foot_pedal. All three are the same control core in different
+# POSES, so the three blocks below were three near-identical copies. They are
+# functions now, and one of them fixed a live bug on the way: LKL and the foot
+# pedal had the axle SET SCREW, LKV did not, so its axle had no axial retention
+# at all. The no-glue sweep missed it precisely because the block was pasted
+# rather than called. A copy that can drift, does.
+# ════════════════════════════════════════════════════════════════════════════
+def cut_axle_bore(body, hw=None):
+    """The lever's axle interface: the D-BORE through the hub plus the M2 SET
+    SCREW onto the axle's flat (its only axial retention — see the AXLE_SET_*
+    block for why it self-taps rather than taking an insert).
+
+    cadkit picks the bore shape from print_up: a lever prints lying on its -Y
+    face, so this bore runs ALONG the build direction and correctly comes back a
+    PLAIN cylinder where the same call hands the housing a teardrop."""
+    hw = LEVER_HW if hw is None else hw
+    bore = printable_bore(AXLE_BORE_D, 2 * hw, (0.0, -hw, 0.0),
+                          (0.0, 1.0, 0.0), (0.0, 1.0, 0.0), overshoot=1.0)
+    zhi, zlo = AXLE_FLAT_R + 0.1, -(AXLE_BORE_D / 2 + 1.0)
+    body = body.cut(bore.intersect(box_at(       # flatten the +Z side -> D
+        AXLE_BORE_D + 2.0, 2 * hw + 4.0, zhi - zlo,
+        x=0.0, y=0.0, z=(zhi + zlo) / 2)))
+    return cut_selftap(M2, body, (0.0, 0.0, AXLE_SET_R), (0.0, 0.0, -1.0),
+                       AXLE_SET_L, overshoot=0.5)
+
+
+def cut_axle_stack(w):
+    """The housing's whole Y stack: both BEARING SEATS, the CONTACT RIB on the
+    outer face, and the axle way out through it. Identical in every pose, because
+    nothing about the sensor stack depends on which way the lever swings.
+
+    Two orderings in here are load-bearing and were both found the hard way:
+
+      * the seats are TEARDROPS, not round bores. Printed -Z->+Z these run
+        sideways, and a drooping ceiling takes the seat OUT OF ROUND — the one
+        property a press fit needs. The load helps: the lever's weight presses
+        the axle DOWN onto round metal, so the opened top carries nothing.
+      * the rib is UNIONED BEFORE the axle way is cut. cadkit builds the ring
+        ROUND, so adding it after the bore lays a round aperture straight across
+        the teardrop's peak and undoes it (user spotted the round hole). Cutting
+        the way afterwards opens the rib's top too."""
+    for by in (BRG_Y0, -(BRG_Y0 + BRG_W + 0.3)):
+        w = w.cut(printable_bore(BRG_OD + 0.1, BRG_W + 0.3, (0.0, by, 0.0),
+                                 (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)))
+    w = w.union(contact_rib(AXLE_FLANGE_D - 1.5, RIB_PROUD, RIB_T,
+                            (0.0, HOUS_HW, 0.0), (0.0, 1.0, 0.0),
+                            (0.0, 0.0, 1.0)))
+    _y0 = BRG_Y0 + BRG_W + 0.2
+    return w.cut(printable_bore(AXLE_D + 1.0, (HOUS_HW + RIB_PROUD) - _y0,
+                                (0.0, _y0, 0.0),
+                                (0.0, 1.0, 0.0), (0.0, 0.0, 1.0), overshoot=0.6))
+
+
+def cut_feel_pockets(w, place, x_front=None):
+    """Both cartridge HOUSE-POCKETS and their TPU drag recesses, mapped into the
+    housing by `place` — which is the only thing that differs between poses
+    (feel_place here, the vertical lever's lift, the pedal's lift).
+
+    The house profile runs ALL THE WAY OUT the +X face (user: extend to the prism
+    edge) — one clean channel from the front face to the cartridge back, with the
+    threaded back-stop boss behind it left solid. `x_front` IS that face, and it
+    is a parameter rather than this module's HOUS_X1 for a reason a snapshot
+    caught: LKL's front is 5.0 but LKV's and the pedal's are 7.8, so hardcoding
+    LKL's left both of their channels 2.8 short of their own faces — 36 and 246
+    mm³ of material that should not have been there, and it does not read as a
+    defect in any view."""
+    x1 = HOUS_X1 if x_front is None else x_front
+    for dy in (MAIN_YC - HS_YC, 0.0):
+        dx = HS_SETBACK
+        yc = HS_YC + dy
+        w = w.cut(place(_hs_pocket(yc, -x1 - 1.0, HS_BACK_X + dx)))
+        sgn = 1.0 if yc > 0 else -1.0
+        y_wall = yc + sgn * hs_pocket_hw()                    # pocket wall inner face
+        y_back = yc + sgn * (hs_pocket_hw() + HS_DRAG_SEAT)   # recess back, into the wall
+        w = w.cut(place(box_at(HS_DRAG_LX + 0.4, abs(y_back - y_wall),
+                               HS_PISTON_WZ + 0.4, x=_drag_seat_xc(dx),
+                               y=(y_wall + y_back) / 2, z=HS_Z)))
+    return w
+
+
 def _housing() -> cq.Workplane:
     """ONE PARAMETRIC PRISM (user simplification round): the box spanned by
     HOUS_* (every face derived from the lever / cartridge / body extents),
@@ -1325,47 +1407,8 @@ def _housing() -> cq.Workplane:
     # (the axle continues to the magnet/sensor cluster); the -Y axle end
     # stops INSIDE its pocket (AXLE_Y0 -13.1). Horizontal round bores in
     # the -Z→+Z print — teardrop/roundness refinement rides the axle round.
-    # BEARING SEATS, also through cadkit (user). These run sideways in the
-    # -Z->+Z print exactly like the axle way, and a drooping ceiling here is
-    # worse than anywhere else: the droop is what takes the seat OUT OF ROUND,
-    # which is the one property a press fit needs. The teardrop keeps the bore
-    # round where the bearing actually seats and sends the overhang into an
-    # attic above it. The load helps — the lever's weight presses the axle DOWN
-    # onto round metal, so the opened top carries nothing.
-    for by in (BRG_Y0, -(BRG_Y0 + BRG_W + 0.3)):
-        w = w.cut(printable_bore(BRG_OD + 0.1, BRG_W + 0.3, (0.0, by, 0.0),
-                                 (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)))
-    # CONTACT RIB on the outer face: the axle's flange seats here, so this ring
-    # IS the air gap's datum. Narrow on purpose — the flange turns against it,
-    # and a ring costs a fraction of a full annulus's friction.
-    # UNIONED BEFORE THE BORE, and the order is the whole point: cadkit builds
-    # the ring ROUND, so adding it after the bore laid a round aperture right
-    # across the teardrop's peak and undid it (user spotted the round hole).
-    # Cutting the bore through the rib afterwards opens its top too.
-    w = w.union(contact_rib(AXLE_FLANGE_D - 1.5, RIB_PROUD, RIB_T,
-                            (0.0, HOUS_HW, 0.0), (0.0, 1.0, 0.0),
-                            (0.0, 0.0, 1.0)))
-    # axle way out through the +Y cheek AND the rib. TEARDROP — cadkit picks
-    # that itself from print_up: this bore runs SIDEWAYS in the -Z->+Z print,
-    # so a round ceiling would droop into it and take it out of round.
-    _bore_y0 = BRG_Y0 + BRG_W + 0.2
-    w = w.cut(printable_bore(AXLE_D + 1.0, (HOUS_HW + RIB_PROUD) - _bore_y0,
-                             (0.0, _bore_y0, 0.0),
-                             (0.0, 1.0, 0.0), (0.0, 0.0, 1.0), overshoot=0.6))
-    # cartridge house-pockets + drag recesses. The house profile runs ALL
-    # THE WAY OUT the +X face (user: extend to the prism edge, toward +x) —
-    # one clean house channel from the front face to the cartridge back;
-    # the 6mm threaded back-stop boss behind it stays solid. (Build frame
-    # is mirrored: placed +X face = build -HOUS_X1; 1.0 overshoot.)
-    for dy in (MAIN_YC - HS_YC, 0.0):
-        dx = HS_SETBACK
-        yc = HS_YC + dy
-        w = w.cut(feel_place(_hs_pocket(yc, -HOUS_X1 - 1.0, HS_BACK_X + dx)))
-        _sgn = 1.0 if yc > 0 else -1.0
-        _yw = yc + _sgn * hs_pocket_hw()                          # pocket wall inner face
-        _ys = yc + _sgn * (hs_pocket_hw() + HS_DRAG_SEAT)         # recess back (into the wall)
-        w = w.cut(feel_place(box_at(HS_DRAG_LX + 0.4, abs(_ys - _yw), HS_PISTON_WZ + 0.4,
-                                    x=_drag_seat_xc(dx), y=(_yw + _ys) / 2, z=HS_Z)))
+    w = cut_axle_stack(w)          # bearing seats + contact rib + axle way
+    w = cut_feel_pockets(w, feel_place)
     w = _cradle(w)                                                  # the MT6701 board cradle (user)
     w = heal(w)                                                     # heal EVERYTHING except the threads...
     # ...then cut the two FEMALE back-stop threads LAST and ALONE (thread rules: clean=False, and NEVER
@@ -1402,23 +1445,7 @@ def _lever() -> cq.Workplane:
     body = body.cut(_RECESS_SWEPT.translate((0, HS_YC - MAIN_YC, 0)))          # +Y (HALF-STOP) follower band
     body = body.union(cyl_y(2 * LOBE_R, 2 * LEVER_HW, y0=-LEVER_HW)        # ONE full-width lobe ridge; the
                       .translate((0, 0, -LOBE_RC)))                        #   spans between recesses bury in the arm
-    # AXLE THROUGH-BORE (user round 2: the axle is a separate full-length part
-    # now, so the hub simply takes a bore). D-BORE — the flat IS the key. cadkit
-    # picks the shape from print_up: the lever prints lying on its -Y face, so
-    # this bore runs ALONG the build direction, has no ceiling, and correctly
-    # comes back as a PLAIN cylinder — the same call site that hands the housing
-    # a teardrop.
-    _bore = printable_bore(AXLE_BORE_D, 2 * LEVER_HW, (0.0, -LEVER_HW, 0.0),
-                           (0.0, 1.0, 0.0), (0.0, 1.0, 0.0), overshoot=1.0)
-    _zhi, _zlo = AXLE_FLAT_R + 0.1, -(AXLE_BORE_D / 2 + 1.0)
-    body = body.cut(_bore.intersect(box_at(               # flatten the +Z side -> D
-        AXLE_BORE_D + 2.0, 2 * LEVER_HW + 4.0, _zhi - _zlo,
-        x=0.0, y=0.0, z=(_zhi + _zlo) / 2)))
-    # AXLE SET SCREW — radial, at the hub's Y centre (between the two follower
-    # recess bands), down the +Z side onto the axle's D-flat. This is the axle's
-    # only axial retention now that the glue is gone; see the AXLE_SET_* block.
-    body = cut_selftap(M2, body, (0.0, 0.0, AXLE_SET_R), (0.0, 0.0, -1.0),
-                       AXLE_SET_L, overshoot=0.5)
+    body = cut_axle_bore(body)
     return heal(body)
 
 

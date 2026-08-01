@@ -142,15 +142,7 @@ def _lever() -> cq.Workplane:
     body = body.union(box_at(PAD_T, PAD_WY, PAD_LZ,
                              x=ARM_TX / 2 - PAD_T / 2, y=0.0,
                              z=-(ARM_LEN_P - PAD_LZ / 2 + 4.0)))
-    # axle D-bore + the set screw onto its flat — identical to both knee levers
-    _bore = printable_bore(KL.AXLE_BORE_D, 2 * LEVER_HW, (0.0, -LEVER_HW, 0.0),
-                           (0.0, 1.0, 0.0), (0.0, 1.0, 0.0), overshoot=1.0)
-    _zhi, _zlo = KL.AXLE_FLAT_R + 0.1, -(KL.AXLE_BORE_D / 2 + 1.0)
-    body = body.cut(_bore.intersect(box_at(
-        KL.AXLE_BORE_D + 2.0, 2 * LEVER_HW + 4.0, _zhi - _zlo,
-        x=0.0, y=0.0, z=(_zhi + _zlo) / 2)))
-    body = cut_selftap(M2, body, (0.0, 0.0, KL.AXLE_SET_R), (0.0, 0.0, -1.0),
-                       KL.AXLE_SET_L, overshoot=0.5)
+    body = KL.cut_axle_bore(body)
     return heal(body)
 
 
@@ -193,28 +185,8 @@ def _housing() -> cq.Workplane:
         c = swing(_lever_envelope(), float(i))
         _env = c if _env is None else _env.union(c)
     w = w.cut(_env)
-    # BEARING SEATS + the sensor-side contact rib and axle way — the whole Y stack
-    # is knee_lever's, untouched
-    for by in (KL.BRG_Y0, -(KL.BRG_Y0 + KL.BRG_W + 0.3)):
-        w = w.cut(printable_bore(KL.BRG_OD + 0.1, KL.BRG_W + 0.3, (0.0, by, 0.0),
-                                 (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)))
-    w = w.union(contact_rib(KL.AXLE_FLANGE_D - 1.5, KL.RIB_PROUD, KL.RIB_T,
-                            (0.0, HOUS_HW, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)))
-    _by0 = KL.BRG_Y0 + KL.BRG_W + 0.2
-    w = w.cut(printable_bore(KL.AXLE_D + 1.0, (HOUS_HW + KL.RIB_PROUD) - _by0,
-                             (0.0, _by0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0),
-                             overshoot=0.6))
-    # cartridge house-pockets + drag recesses, raised with the feel block
-    for dy in (KL.MAIN_YC - KL.HS_YC, 0.0):
-        dx = KL.HS_SETBACK
-        yc = KL.HS_YC + dy
-        w = w.cut(pplace(KL._hs_pocket(yc, -HOUS_X1 - 1.0, KL.HS_BACK_X + dx)))
-        _sgn = 1.0 if yc > 0 else -1.0
-        _yw = yc + _sgn * KL.hs_pocket_hw()
-        _ys = yc + _sgn * (KL.hs_pocket_hw() + KL.HS_DRAG_SEAT)
-        w = w.cut(pplace(box_at(KL.HS_DRAG_LX + 0.4, abs(_ys - _yw),
-                                KL.HS_PISTON_WZ + 0.4,
-                                x=KL._drag_seat_xc(dx), y=(_yw + _ys) / 2, z=KL.HS_Z)))
+    w = KL.cut_axle_stack(w)       # bearing seats + contact rib + axle way
+    w = KL.cut_feel_pockets(w, pplace, HOUS_X1)
     return heal(w)
 
 
