@@ -338,11 +338,11 @@ def _build() -> cq.Workplane:
     # (no +X deck-lock shelf / capture groove / dropped section / -Y roof: the solid
     #  base over the rail ends now IS the cross-tie + the deck panels' +X stop; the
     #  deck is held in +Z by the rail-top grooves along its length, not by the bridge.)
-    # GUIDE-ROD LEDGES (see the GR_* block above): upper = stop bar + drop-in
-    # holes; lower = bottom stop + blind landing sockets. Arm to arm. Both bars
-    # reach X ≥ +1.4 so the Ø2.55 rod holes are fully enclosed (−X wall 0.8).
-    body = body.union(box_at(4.6, 2 * D.BRIDGE_AXLE_Y, GR_H,
-                             x=X0 - 2.3, y=0, z=(GR_UBOT + GR_UTOP) / 2))
+    # GUIDE-ROD LOWER LEDGE ONLY: bottom bar + blind landing sockets (rod bottom
+    # retention). The UPPER stop bar + drop-in holes are DEFERRED (user: ignore stops
+    # for now) -- the guide foot rides at the NUT LEVEL now, so an upper bar at that Z
+    # protrudes -X into the string-nut path. The rod top rides free in the open field;
+    # re-home the top retention + the top/bottom hard stops in a later endplate pass.
     body = body.union(box_at(4.6, 2 * D.BRIDGE_AXLE_Y, GR_H,
                              x=X0 - 2.3, y=0, z=(GR_LBOT + GR_LTOP) / 2))
     for i in range(D.N_STRINGS):
@@ -350,10 +350,6 @@ def _build() -> cq.Workplane:
         # blind landing socket: the rod drops until it bottoms at GR_LBOT+2
         body = body.cut(cyl(D.GUIDE_ROD_D + 0.05, (GR_LTOP + 1) - (GR_LBOT + 2),
                             z=GR_LBOT + 2).translate((GRX, sy, 0)))
-        # drop-in hole through the stop bar (a complete O — the bar is deep
-        # enough to wall it all round; the rod top stays friction-held in it)
-        body = body.cut(cyl(D.GUIDE_ROD_D + 0.05, GR_H + 2, z=GR_UBOT - 1)
-                        .translate((GRX, sy, 0)))
     # GUIDE-VIEW window: open the cap between the two ledges so the rods' free
     # span is visible/inspectable from outside. The ledge Z-bands stay solid —
     # they're the ledges' print backing and carry the stops + rod sockets.
