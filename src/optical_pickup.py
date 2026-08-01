@@ -87,7 +87,7 @@ import cadquery as cq
 from . import dimensions as D
 from . import top_plate as TP
 from .helpers import box_at
-from cadkit.fasteners import M2
+from cadkit.fasteners import M4
 
 # ── where it sits ────────────────────────────────────────────────────────────
 # The speaking length ends at the BEARING TANGENT (directly over the axle), NOT at
@@ -219,14 +219,28 @@ TAIL_X1 = D.BRIDGE_BASE_X1 - D.MIN_WALL_2P                    # 7.00
 # The -X part of the tail overhangs the plinth (which stops at the endplate face) by 13.8,
 # but that is 1.6 FR4 over open air 3.7 above the deck, not a load path.
 PCB_X1T = PCB_X1S                                             # -30.42
+# +Y HEAD -- the tail's mirror image (user). The board turns +X over the endplate at BOTH
+# Y ends, so it grips the instrument at two widely spaced points and its position becomes
+# a fixed, screwed thing rather than something that has to be eyeballed. That matters more
+# than it used to: the light cover is now part of the endplate, so the board's Y position
+# is what lines its apertures up with the sensor triplets.
+# HEAD_Y0 clears the bearing arms (outer face +-54.25) before turning +X -- inboard of that
+# the comb brace occupies the same X band and the same Z.
+HEAD_Y0 = D.BRIDGE_AXLE_Y + D.BRIDGE_ARM_W / 2 + 0.75         # 55.00
+M4_BAND = 12.0                                                # room for an M4 head + boss
 # PCB_YP is an OUTPUT, set after the parts exist: the +Y-most quad's feedback grid sits
 # in the Y gap above it and reaches past the last detector, so sizing this end from the
 # sensing field alone ran parts off the board.
 
 
-def board_x1(y: float) -> float:
-    """The board's -X edge at Y -- narrow over the strings, wide in the tail."""
-    return PCB_X1T if y < Y_TAIL else PCB_X1S
+def section_at(y: float):
+    """(x1, x0) = the board's -X and +X edges at Y. Three sections: the +X HEAD, the narrow
+    sensing STRIP that has to stay inside the deck band, and the +X TAIL."""
+    if y >= HEAD_Y0:
+        return PCB_X1S, TAIL_X1
+    if y <= Y_TAIL:
+        return PCB_X1T, TAIL_X1
+    return PCB_X1S, PCB_X0
 
 
 # ── ANALOG FIELD -- everything fits in the band, which is the point ─────────
@@ -317,7 +331,7 @@ def _parts():
 
     # ---- 3. digital block, in the wide tail past the pickup cavity ----
     x0, x1 = PCB_X1T + EDGE_KEEP, TAIL_X1 - EDGE_KEEP
-    y = Y_TAIL - ROW_GAP
+    y = Y_TAIL - M4_BAND      # M4 mount band between the waist and the MCU
 
     y -= PKG["LQFP144"][1] / 2
     add("U6", "MCU -- STM32H743ZIT6, 20x 16-bit ADC ch, USB OTG_HS via ULPI", "LQFP144",
@@ -385,9 +399,19 @@ def part_span(p):
 
 
 PCB_YM = part("J1")["y"] - PKG["USB-C"][1] / 2   # -Y end = the connector mouth
-PCB_YP = max(SENSE_HL + END_KEEP,
-             max(part_span(p)[3] for p in PARTS) + EDGE_KEEP)   # +Y end
+PCB_YP = HEAD_Y0 + M4_BAND                                     # +Y end = past the head
 PCB_L  = PCB_YP - PCB_YM
+_SECTIONS = ((HEAD_Y0, PCB_YP, PCB_X1S, TAIL_X1),
+             (Y_TAIL, HEAD_Y0, PCB_X1S, PCB_X0),
+             (PCB_YM, Y_TAIL, PCB_X1T, TAIL_X1))
+
+
+def mount_points():
+    """The two M4 grips, one in each +X wrap -- same fastener as the pickup height jacks.
+    Widely spaced on purpose: they are the board's Y datum, and the integrated lid's slots
+    have to land on the sensor triplets."""
+    x = (PCB_X0 + TAIL_X1) / 2
+    return [(x, HEAD_Y0 + M4_BAND / 2), (x, Y_TAIL - M4_BAND / 2)]
 
 
 def _outline(grow=0.0, t=None, zc=None):
@@ -396,8 +420,7 @@ def _outline(grow=0.0, t=None, zc=None):
     t = PCB_T if t is None else t
     zc = PCB_BOT + PCB_T / 2 if zc is None else zc
     out = None
-    for y0, y1, x1, x0 in ((Y_TAIL, PCB_YP, PCB_X1S, PCB_X0),
-                           (PCB_YM, Y_TAIL, PCB_X1T, TAIL_X1)):
+    for y0, y1, x1, x0 in _SECTIONS:
         # only the OUTER Y face of each section grows: the seam at Y_TAIL must not, or
         # the halves overlap by 2*grow and the step moves
         a = y0 - grow if y0 != Y_TAIL else y0
@@ -422,6 +445,9 @@ def opt_pcb() -> cq.Workplane:
     pcb = _outline()
     for p in PARTS:
         pcb = pcb.union(_part_solid(p))
+    for mx, my in mount_points():                     # M4 clearance, one per +X wrap
+        pcb = pcb.cut(box_at(M4.shaft_clr_d, M4.shaft_clr_d, PCB_T + 2,
+                             x=mx, y=my, z=PCB_BOT + PCB_T / 2))
     return pcb
 
 
@@ -496,8 +522,8 @@ def _assert_field_clear():
     # 3. every part inside the board, clear of the routed edge, and of every other part
     for p in PARTS:
         x0, x1, y0, y1 = part_span(p)
-        lim = board_x1(y0) if board_x1(y0) == board_x1(y1) else PCB_X1S
-        hi = TAIL_X1 if (y0 < Y_TAIL and y1 <= Y_TAIL) else PCB_X0
+        a, b = section_at(y0), section_at(y1)
+        lim, hi = (a if a == b else (PCB_X1S, PCB_X0))
         kx = 0.0 if p["ref"] == "J2" else EDGE_KEEP        # J2's mouth IS the -X edge
         ky = 0.0 if p["ref"] == "J1" else EDGE_KEEP        # J1's mouth IS the -Y edge
         if (x0 < lim + kx - 1e-9 or x1 > hi - EDGE_KEEP + 1e-9
@@ -545,6 +571,14 @@ def _assert_field_clear():
                 f"optical strip: {p['ref']} ({p['desc']}) stands to "
                 f"{PCB_TOP + PKG[p['pkg']][2]:.2f}, into the cover underside at "
                 f"{COVER_Z0:.2f}")
+    for mx, my in mount_points():
+        for q in PARTS:
+            x0, x1, y0, y1 = part_span(q)
+            r = M4.shaft_clr_d / 2 + 1.0
+            if x0 - r < mx < x1 + r and y0 - r < my < y1 + r:
+                raise AssertionError(
+                    f"optical strip: M4 mount at ({mx:.2f}, {my:.2f}) lands on "
+                    f"{q['ref']} ({q['desc']})")
     # 6. the lid must keep real material outboard of its last aperture, at both ends
     edge = COVER_HY - (_OUTER_Y + SLOT_DY / 2)
     if edge < D.MIN_WALL_2P - 1e-9:

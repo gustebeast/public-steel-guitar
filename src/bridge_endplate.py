@@ -37,7 +37,7 @@ from . import optical_pickup as OP
 from .endplate_base import endplate_base
 from .screw_rail import screw_rail as _screw_rail, HEIGHT as _SR_H
 from .helpers import box_at, cyl, cyl_y
-from cadkit.fasteners import M2, cut_selftap
+from cadkit.fasteners import M2, M4, cut_selftap, cut_anchor
 from cadkit.supports import printable_bore
 
 # Build direction. The endplate prints FLAT on its +X face, so "up" out of the bed is -X.
@@ -300,10 +300,20 @@ def _build() -> cq.Workplane:
     body = body.union(box_at(XLO - CARRIER_X1, 2 * CARRIER_HY, CARRIER_TOP - CARRIER_BOT,
                              x=(XLO + CARRIER_X1) / 2, y=0,
                              z=(CARRIER_BOT + CARRIER_TOP) / 2))
-    # ...and the tail plinth, sitting on the fill slab out past the field centre
-    body = body.union(box_at(TAIL_X1 - TAIL_X0, TAIL_Y1 - TAIL_Y0, CARRIER_TOP - CH.TP_GZ1,
-                             x=(TAIL_X0 + TAIL_X1) / 2, y=(TAIL_Y0 + TAIL_Y1) / 2,
-                             z=(CH.TP_GZ1 + CARRIER_TOP) / 2))
+    # ...and the TWO WRAP PLINTHS, +Y head and -Y tail, both sitting on the fill slab out
+    # past the field centre. These carry the board's two M4 grips: the plinth alone is only
+    # 3.66 thick, but it lands on solid slab, so the insert bores straight down through it
+    # into the endplate body and gets full depth.
+    for _y0, _y1 in ((TAIL_Y0, TAIL_Y1), (OP.HEAD_Y0, OP.PCB_YP)):
+        body = body.union(box_at(TAIL_X1 - TAIL_X0, _y1 - _y0, CARRIER_TOP - CH.TP_GZ1,
+                                 x=(TAIL_X0 + TAIL_X1) / 2, y=(_y0 + _y1) / 2,
+                                 z=(CH.TP_GZ1 + CARRIER_TOP) / 2))
+    for _mx, _my in OP.mount_points():
+        # Screw enters from ABOVE, down through the board's clearance hole. The plinth is
+        # only 3.66 thick but it sits ON the fill slab, so the anchor gets M4's full
+        # anchor_min_wall (8.5 = insert pocket + a real bite) inside solid material.
+        body = cut_anchor(M4, body, (_mx, _my, CARRIER_TOP), (0, 0, -1),
+                          depth=M4.anchor_min_wall)
     # FUSE IN the screw-support rail and bridge it to the cap at the bottom + tie it
     # up to the bearing arms at the edges — the whole bridge end becomes one solid
     # piece (screw support + bearing support + box closure) with continuous material.
