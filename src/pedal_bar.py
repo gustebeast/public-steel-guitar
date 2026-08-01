@@ -53,7 +53,6 @@ from . import dimensions as D
 from .helpers import box_at, cyl
 from .chassis import LEG_STATIONS_X, LEG_Y
 from . import legs as LG
-from .legs import _house
 
 YC = LEG_Y[0]                          # FLUSH round: the bar rides the +Y
                                        # legs' centreline, 17 inboard of the

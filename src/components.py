@@ -16,9 +16,7 @@ import cadquery as cq
 from . import dimensions as D
 from .helpers import cyl, cyl_y, box_at
 
-from cadkit.fasteners import (M4_SCREW_D, M4_SCREW_L, M4_INSERT_D,
-                       M4_INSERT_L, M4_SHAFT_CLR_D,
-                       set_screw, m4_insert)                # the ONE dummies now live in cadkit/fasteners.py;
+from cadkit.fasteners import set_screw, m4_insert                # the ONE dummies now live in cadkit/fasteners.py;
 # re-exported here so C.set_screw() / C.m4_insert() keep working across the project
 
 MOTOR_PULLEY_STANDOFF = 14.0   # pulley sits this far +Y of the motor faceplate

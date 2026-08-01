@@ -64,7 +64,6 @@ import cadquery as cq
 from . import knee_lever as KL
 from .helpers import box_at, cyl_y, heal
 
-from cadkit.supports import printable_bore, contact_rib
 
 # ── throw + the lobe that keeps the feel identical ───────────────────────────
 THROW_V     = 20.0                  # user: the vertical may have less than the horizontal

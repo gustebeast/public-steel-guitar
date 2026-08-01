@@ -42,7 +42,7 @@ from . import chassis as CH
 from . import electronics as EL
 from . import pickup_mount as PM
 from .helpers import box_at, cyl, cyl_y, heal
-from cadkit.fasteners import M4, cut_m4_boss, cut_insert_bore
+from cadkit.fasteners import M4, cut_insert_bore
 
 YL = CH.Y_LO + CH.T / 2                 # -Y rail inner face (-128.75)
 YH = CH.Y_HI - CH.T / 2                 # +Y rail inner face (+54.75)
