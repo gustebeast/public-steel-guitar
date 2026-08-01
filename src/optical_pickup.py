@@ -203,7 +203,13 @@ SENSE_HL = _OUTER_Y + PD_DY                      # last sensor Y
 # cavity's -Y edge, where the deck is solid again and nothing is overhead.
 PCB_X0  = BAND_X0 - BAND_CLR                                  # -16.80, strip +X edge
 PCB_X1S = BAND_X1 + BAND_CLR                                  # -30.42, strip -X edge
-Y_TAIL  = TP.PK_ROOM_CTR_Y - TP.CAVITY_Y / 2 - 1.4            # step, clear of the cavity
+# Both wraps turn +X at the SAME distance past the bearing arms. Y_TAIL used to be derived
+# from the magnetic pickup's CAVITY, which was correct while the tail widened -X over the
+# deck and had to clear it -- but the tail widens +X over the ENDPLATE now, so the cavity
+# stopped governing this and the leftover left -Y 1.05 slacker than +Y (user spotted the
+# asymmetry in the render). One constant, mirrored.
+WRAP_CLR = 0.75                                               # past the arm outer face
+Y_TAIL   = -(D.BRIDGE_AXLE_Y + D.BRIDGE_ARM_W / 2 + WRAP_CLR)  # -55.00
 # TAIL WIDENS +X, OVER THE ENDPLATE -- not -X over the deck (user). Two things fall out
 # and both were open problems:
 #   SUPPORT. Past |y| 54 the endplate has no material above z6 for a plinth to start on,
@@ -228,7 +234,7 @@ PCB_X1T = PCB_X1S                                             # -30.42
 # is what lines its apertures up with the sensor triplets.
 # HEAD_Y0 clears the bearing arms (outer face +-54.25) before turning +X -- inboard of that
 # the comb brace occupies the same X band and the same Z.
-HEAD_Y0 = D.BRIDGE_AXLE_Y + D.BRIDGE_ARM_W / 2 + 0.75         # 55.00
+HEAD_Y0 = -Y_TAIL                                             # 55.00, mirrored
 # -X edge of the endplate's wrap plinths. The board overhangs it, so this -- not the board
 # outline -- is what limits how far -X the M4 grips can go.
 PLINTH_X0 = BAND_X0                                           # -16.60
