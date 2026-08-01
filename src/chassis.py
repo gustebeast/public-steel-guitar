@@ -58,19 +58,54 @@ TP_X0, TP_X1   = -16.0, -638.0         # groove X span; open at the -X rail end 
                                        # (removable) keyhead endplate is off
 TP_GZ0, TP_GZ1 = 0.0, D.DECK_TOP_Z     # deck plate z-plane: bottom rests on the rail
                                        # top (lowered to z0 here), top = playing surface
-# DECK JOINT — a VERTICAL DOVETAIL tongue-and-groove. The deck plate caps the rail
-# (right-angle bend) and drops a dovetail tongue straight down into a groove milled
+# DECK JOINT — a cadkit slide joint. The deck plate caps the rail
+# (right-angle bend) and drops a tongue straight down into a groove milled
 # in the rail top. The foot is wider than the mouth, so the wide foot can't pull up
 # through the narrow mouth -> +Z retention (plates stay put when inverted). The
 # inboard groove wall is what the rail bears against if the rails try to spread, so
 # it also ties the rails in Y. The tongue runs along X -> plates still slide out -X.
 # top_plate.py builds the matching tongue; the rail top is lowered to z0 in the deck
 # X-span so the plate sits flush on top.
-TP_TG_DEPTH    = 6.0                    # tongue depth below the deck (z0 .. -DEPTH)
-TP_TG_MW       = 1.5                    # mouth half-width (at z0)
-TP_TG_FLR      = 0.8                    # dovetail flare per side over DEPTH (foot = MW+FLR)
+TP_TG_DEPTH    = 6.0                    # the reserved groove ZONE below the deck. The
+                                        # joint itself uses less (see TP_JOINT.height);
+                                        # other geometry keys off this envelope, so it
+                                        # stays the published number.
 TP_TG_YC       = {1: Y_HI, -1: Y_LO}   # groove centre = each rail centre-line
-TP_TG_CLR      = 0.25                  # sliding clearance (groove = tongue + CLR)
+# ── the joint itself is cadkit's, and the PRINT DIRECTION is what picks it ──────
+# Now that a PrintSpec carries an axis AND a direction, this site describes itself. The
+# deck panels print TOP-FACE-DOWN (their leadscrew head pockets open at the bed — see
+# top_plate.HEAD_POCKET_D), so a panel builds world −Z while the chassis builds world +Z.
+# In the joint's own frame — local +Z is the direction the tenon GROWS, i.e. downward off
+# the panel's underside — that reads as tenon facing 'up', mortise facing 'down', and
+# cadkit answers with the flat-top MUSHROOM. That is the right answer for a reason the
+# hand-rolled dovetail got wrong: the rail builds TOWARD the groove's opening, so the
+# cavity's WIDE end is reached first and prints as a supported floor. The dovetail's wide
+# foot was a bridge instead, and its acute plan corners are the same 0.8-nozzle rounding
+# problem that retired the dovetail everywhere else.
+_DECK_UP   = PrintSpec(nozzle=0.8, material="PCTG", facing="up")      # builds world −Z
+_RAIL_DOWN = PrintSpec(nozzle=0.8, material="PETG-GF", facing="down")  # builds world +Z
+TP_TG_W    = 6.4                       # across Y: leaves (T − W)/2 − clearance = 1.65 mm
+                                       # (2 beads) of rail wall per side. Wider than the
+                                       # old 4.6 foot, so the groove's inboard wall — what
+                                       # the rails bear on if they try to spread — gains.
+TP_JOINT   = joint(width=TP_TG_W, length=1.0, tenon=_DECK_UP, mortise=_RAIL_DOWN,
+                   install="+x")       # SIGNED: panels slide in travelling +X and butt the
+                                       # bridge endplate, which IS the stop; they come back
+                                       # out −X once the keyhead endplate is off.
+assert TP_JOINT.height <= TP_TG_DEPTH, (
+    f"deck joint swallows {TP_JOINT.height:.3f} but the reserved groove zone "
+    f"TP_TG_DEPTH is {TP_TG_DEPTH} — deepen the zone or narrow TP_TG_W")
+
+
+def _deck_tg(yc, x0, x1, mortise):
+    """The deck joint at rail Y=yc over x0..x1 — mortise (the rail-top groove) or tenon
+    (the panel's tongue; top_plate calls it). Rotated 180° about X so the joint's local
+    +Z points DOWN: the tenon grows off the panel's underside into the rail."""
+    L = (x1 - x0) + (2.0 if mortise else 0.0)
+    s = (TP_JOINT.mortise(drop=1.0, length=L) if mortise
+         else TP_JOINT.tenon(root=1.0, length=L))
+    return (s.rotate((0, 0, 0), (1, 0, 0), 180)
+            .translate((x0 - (1.0 if mortise else 0.0), yc, TP_GZ0)))
 # TOP L-joint X-clearance (housing<->endplate): the chassis rail end stops EP_TOP_CLR
 # short of each endplate's INBOARD face, so the endplate drops on without binding in X --
 # the same idea as the bottom L-joint's leg clearance (EP_LEG_CLR), and DERIVED from the
@@ -167,7 +202,8 @@ _SEG_JZ1  = TP_GZ0 - TP_TG_DEPTH       # tenon top = the deck-groove FLOOR (−6
                                        # seam joint never reaches into the deck groove
 _SEG_ROOT = 2.0                        # volumetric fusion depth back into the −X segment
 _SEG_J    = joint(width=_SEG_JW, length=_SEG_JZ1 - Z_BOT, depth=_SEG_JD,
-                  tenon=_UP, mortise=_UP, install="z")
+                  tenon=_UP, mortise=_UP, install="+z")   # signed: the +X segment is
+                  # lowered on, so RELATIVE to it the tenon travels +Z to seat
 _SEG_JX1  = _SEG_J.dims["depth_used"]  # the tenon's +X reach past the seam plane
 # guard: the seam JOINT (X-footprint s−ROOT .. s+reach, at the RAILS) must not overlap
 # a rib -- the rib runs to the rails there, so an overlap would slice it.
@@ -343,13 +379,7 @@ def _build_full() -> cq.Workplane:
         body = body.cut(box_at(TP_EP_GX - _gx0, T + 0.5, (Z_TOP + 1.0) - TP_GZ0,
                                x=(_gx0 + TP_EP_GX) / 2, y=_yc,
                                z=(TP_GZ0 + Z_TOP + 1.0) / 2))
-        MW, FLR, DEP, C = TP_TG_MW, TP_TG_FLR, TP_TG_DEPTH, TP_TG_CLR
-        prof = [(_yc - MW - C, TP_GZ0 + 0.1), (_yc + MW + C, TP_GZ0 + 0.1),
-                (_yc + MW + FLR + C, TP_GZ0 - DEP), (_yc - MW - FLR - C, TP_GZ0 - DEP)]
-        pts = [cq.Vector(_gx0, py, pz) for py, pz in prof]
-        face = cq.Face.makeFromWires(cq.Wire.makePolygon([*pts, pts[0]]))
-        body = body.cut(cq.Workplane("XY").add(
-            cq.Solid.extrudeLinear(face, cq.Vector(TP_EP_GX - _gx0, 0, 0))))
+        body = body.cut(_deck_tg(_yc, _gx0, TP_EP_GX, mortise=True))
     # NB: motor faceplate walls are NOT fused here -- _segments() adds each plate WHOLE to
     # the print segment that owns its motor (so a split can cross a plate without slicing it).
     # +X end: the bridge endplate TAKES OVER the +X end as a solid block (mirror of the
