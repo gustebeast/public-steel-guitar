@@ -212,8 +212,13 @@ Y_TAIL  = TP.PK_ROOM_CTR_Y - TP.CAVITY_Y / 2 - 1.4            # step, clear of t
 # +X edge stops MIN_WALL_2P short of the endplate's outer face so the board is not flush
 # with the instrument's exterior.
 TAIL_X1 = D.BRIDGE_BASE_X1 - D.MIN_WALL_2P                    # 7.00
-PCB_X1T = TAIL_X1 - 25.4                                      # -18.40, 1.7 each side of
-                                                              # the 22 mm LQFP144
+# -X edge runs out to the STRIP's own -X edge. Sized off the LQFP144 instead (-18.40) the
+# two sections overlapped by just 1.60 in X, so the whole board hung on a 1.6 mm waist:
+# brittle, and hopeless for routing -- 20 analog channels + 10 LED drives + power all have
+# to cross it to reach the MCU. Full width makes it a smooth transition rather than a neck.
+# The -X part of the tail overhangs the plinth (which stops at the endplate face) by 13.8,
+# but that is 1.6 FR4 over open air 3.7 above the deck, not a load path.
+PCB_X1T = PCB_X1S                                             # -30.42
 # PCB_YP is an OUTPUT, set after the parts exist: the +Y-most quad's feedback grid sits
 # in the Y gap above it and reaches past the last detector, so sizing this end from the
 # sensing field alone ran parts off the board.
