@@ -215,7 +215,9 @@ SPLICE_W  = (4.3, 6.4)
 SPLICE_L  = 15.0                       # Z engagement (the lid groove floor is 15)
 SPLICE_D  = 8.0                        # room into the +X piece
 SPLICE_J  = tuple(joint(width=w, length=SPLICE_L, depth=SPLICE_D,
-                        tenon=_UP, mortise=_UP, install="z") for w in SPLICE_W)
+                        tenon=_UP, mortise=_UP, install="+z")   # signed: the +X piece
+                        for w in SPLICE_W)                      # drops on, so relative
+                                                                # to it the tenon goes +Z
 
 
 def _splice_tenons(xs: float) -> cq.Workplane:
