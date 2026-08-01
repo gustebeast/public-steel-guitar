@@ -72,7 +72,7 @@ Z-ovality would eat the 0.2..0.4 fits and roughen the thread flanks):
 - SOCKET stays PETG-GF: 32 mm barrel = negligible moment arm across its
   layers, and it lives in the sustained ground-reaction path where GF's
   creep resistance pays. (This whole round-tube family is RETIRED; its
-  glued rail joint is not something to revive — see leg_socket.)
+  glued rail joint is not something to revive. DELETED 2026-08-01.)
 - SLEEVE was already PCTG (the pinch collar must flex). FOOT/WASHERS TPU.
 - Settings that buy Z-strength: LOW part-cooling fan (0-30%), dry filament,
   0.2 layers; the 4 mm tube walls resolve as solid perimeter rings.
@@ -98,21 +98,12 @@ import cadquery as cq
 from .helpers import box_at, cyl, heal
 
 # thread (shared by every junction)
-TH_MAJOR, TH_MINOR = 36.0, 30.0
-TH_LEAD, TH_STARTS = 18.0, 1          # SINGLE start (one seated rotation per
                                        # junction); lead 18 → still 1.4 turns
-TH_LEN  = 25.0
-TH_CLR  = 0.4                          # printed-thread fit (diametral-ish)
 
 # hard-stop junction: male shoulder collar + female rim gland (see header).
-COLLAR_D, COLLAR_H = 40.0, 2.0         # male collar; its height IS the drawn
                                        # junction gap → stack math unchanged
-GLAND_ID, GLAND_DEPTH = 36.4, 2.0      # female rim recess (clears the Ø35.6
                                        # male crests; open to the outside)
-WASHER_OD, WASHER_ID, WASHER_T = 42.0, 36.6, 2.5   # TPU ring, squeezed 2.5→2.0
 
-TUBE_OD, TUBE_ID = 30.0, 22.0
-SEG_L   = 165.0                        # incl. the 25 male thread → 140 effective;
                                        # step/segment = 142 — MUST stay < the
                                        # shaft's slide range so bands overlap
 SLEEVE_L = 200.0                       # groove-through. Retraction is
@@ -123,7 +114,6 @@ SLEEVE_L = 200.0                       # groove-through. Retraction is
                                        # law. (A +28 "range restoration" was
                                        # dead length — user-caught.)
                                        # Height bands: H = 590 + 142k − E
-SHAFT_D, SHAFT_L = 20.0, 212.0         # -Y long shaft: 197 sliding tenon + 15
                                        # foot zone. FINE-STAGE MATH (user):
                                        # travel = the 142 section pitch (so
                                        # height bands are CONTIGUOUS across
@@ -131,7 +121,6 @@ SHAFT_D, SHAFT_L = 20.0, 212.0         # -Y long shaft: 197 sliding tenon + 15
                                        # extended overlap (1.8× the 28-wide
                                        # tenon — mortise proportion; the pinch
                                        # preloads it) + 5 dead = 197 tenon
-SHAFT_FLAT_Y  = 6.8                    # SINGLE key flat (local +Y → the
                                        # rotated +Y-rail stacks aim it at the
                                        # bar MOUTH, i.e. INWARD): the
                                        # print-bed face, the sleeve key, AND
@@ -143,8 +132,6 @@ SHAFT_FLAT_Y  = 6.8                    # SINGLE key flat (local +Y → the
                                        # (< 45° overhang); single-D = one
                                        # unique orientation. The slot's back
                                        # is ROUND (r10.2 on the Ø20).
-SLEEVE_FLAT_Y = 7.0                    # matching sleeve-bore flat (0.2 clr)
-WAIST_Z0, WAIST_Z1 = 9.0, 29.0         # the FOOT BAND (z from the shaft
                                        # bottom: foot cap top → sleeve's
                                        # lowest reach): the bar plate rides
                                        # here; the TRRS shaft's corner-fill
@@ -154,121 +141,22 @@ FOOT_H  = 12.0
 # shaft exposure 24..184 + 3 foot floor → height = 217 + 142k + exposure
 
 # socket bracket
-BARREL_OD, BARREL_L = 44.0, 32.0
 # LEG_STATIONS_X (the two corner-station X's, both rails) is COMPUTED in chassis.py
 # from the shared endplate<->leg model (chassis.LEG_STATIONS_X = endplate tip -/+
 # LEG_W/2 -- FLUSH-X: each leg's outer X face lies ON its endplate's outer face).
 # It lives there (not here) because it depends on the endplate tip positions,
 # which are chassis constants. Result: (-13.4, -614.2).
 # rail joinery (chassis.py cuts the matching slots from these)
-DT_FACE_HW = 14.0                      # dovetail half-width at the rail face…
-DT_DEEP_HW = 18.0                      # …flaring 45° to this at full depth
-DT_DEPTH   = 4.0                       # into the Ø8-thick rail (half)
-DT_H       = 38.0                      # straight band above Z_BOT; the roof
                                        # rises 45° toward the face above it
 
 
-def _thread(rod_r: float, length: float, clr: float = 0.0,
-            phase_deg: float = 0.0) -> cq.Workplane:
-    """Thread ridges around a rod of radius rod_r: union for a male thread
-    (clr=0), cut from a bore for a female one (clr>0 fattens the profile).
-    Built as SEGMENTED straight prisms (skewed linear extrusions) — raw
-    helical sweeps make booleans fragile in OCC; this is the same robust
-    approach the belt model uses. IMPORTANT: a straight chord follows
-    r(psi) = a/cos(psi) between facets, so the female cut must be generated
-    on the MALE rod radius (clr only widens the profile) or the male skin
-    escapes the cut mid-facet; callers must also extend a female cut one
-    full lead past the mouth so out-of-band male prisms can't poke uncut
-    overshoot tails into the engagement band."""
-    depth = (TH_MAJOR - TH_MINOR) / 2 + clr
-    w_root, w_crest = 4.4 + clr, 2.2 + clr
-    n_turn = 48   # 7.5 deg facets — smooth enough to read as a helix. MUST
-                  # divide the 60 deg joint phase so male/female facet grids
-                  # coincide exactly when seated (60/7.5 = 8)
-    dthe = 2 * math.pi / n_turn
-    dz_seg = TH_LEAD / n_turn
-    n_seg = int(length / dz_seg) + 1
-    r0, r1 = rod_r - 0.2, rod_r + depth
-    out = cq.Workplane("XY")
-    for k in range(TH_STARTS):
-        the0 = 2 * math.pi * k / TH_STARTS + math.radians(phase_deg)
-        for j in range(n_seg):
-            the = the0 + j * dthe
-            zj = j * dz_seg
-            u = cq.Vector(math.cos(the), math.sin(the), 0)
-            zhat = cq.Vector(0, 0, 1)
-            corners = [u.multiply(r0) + zhat.multiply(zj - w_root / 2),
-                       u.multiply(r1) + zhat.multiply(zj - w_crest / 2),
-                       u.multiply(r1) + zhat.multiply(zj + w_crest / 2),
-                       u.multiply(r0) + zhat.multiply(zj + w_root / 2)]
-            f = cq.Face.makeFromWires(cq.Wire.makePolygon([*corners, corners[0]]))
-            # skewed extrusion along the (over-length) chord + the helical rise
-            t = cq.Vector(-math.sin(the), math.cos(the), 0)
-            chord = 2 * rod_r * math.sin(dthe / 2) * 1.3
-            vec = t.multiply(chord) + zhat.multiply(dz_seg * 1.3)
-            out = out.add(cq.Solid.extrudeLinear(f, vec))
-    # clip the stack to the 0..length band so ends are clean planes
-    band = cq.Solid.makeCylinder(r1 + 1, length, cq.Vector(0, 0, 0), zhat)
-    clipped = cq.Workplane("XY")
-    for s in out.vals():
-        c = s.intersect(band)
-        for ss in (c.Solids() if hasattr(c, "Solids") else []):
-            clipped = clipped.add(ss)
-    return clipped
 
 
-def leg_socket() -> cq.Workplane:
-    """RETIRED (round-tube legs; NOT exported — see build.py). Kept only as
-    reference during the staged swap to the square legs. It is GLUED, which
-    the project no longer permits: nothing here may be revived as drawn.
-
-    Glued joinery socket, no fasteners: a vertical dovetail tenon slides
-    UP into the rail-face slot from below until the barrel's top rim seats
-    flat under the rail's bottom flange (ground reaction = big-area
-    compression; the tenon's 45° matching top stops 0.3 shy so the rim is
-    the bearing surface). Dovetail flanks + glue take bending/torsion; the
-    tenon foot lands fully on the barrel's solid top disc. Prints barrel
-    mouth down, tenon up (its 45° top self-supports). Local: barrel axis at
-    origin under the rail centreline, rail outer face at y −4 (= chassis
-    T/2, keep in sync), Z0 = rail bottom = the chassis print bed."""
-    barrel = cyl(BARREL_OD, BARREL_L, z=-BARREL_L)
-    c = 0.3                                       # dovetail sliding clearance
-    tenon = (cq.Workplane("XY")
-             .polyline([(-(DT_FACE_HW - c), -4.0), (DT_FACE_HW - c, -4.0),
-                        (DT_DEEP_HW - 2 * c, -c), (-(DT_DEEP_HW - 2 * c), -c)])
-             .close().extrude(DT_H + DT_DEPTH))
-    # 45° top matching the slot roof (rises toward the face), dropped 0.3
-    keep = (cq.Workplane("YZ")
-            .polyline([(-5.0, 0.0), (-5.0, DT_H + 4.7), (1.0, DT_H - 1.3),
-                       (1.0, 0.0)])
-            .close().extrude(2 * DT_DEEP_HW + 4)
-            .translate((-(DT_DEEP_HW + 2), 0, 0)))
-    # tenon built on the OUTER face (y −4), then MIRRORED across the rail centreline to the INNER face
-    # (+y) so the joint hides inside the instrument and the outer face stays clean/flush.
-    body = barrel.union(tenon.intersect(keep).mirror("XZ"))
-    # rim GLAND: washer recess in the mouth face — the surviving inner
-    # Ø30.4..36.4 ring is the hard-stop face the male collar lands on
-    body = body.cut(cyl(BARREL_OD + 2, GLAND_DEPTH + 0.5, z=-BARREL_L - 0.5)
-                    .cut(cyl(GLAND_ID, GLAND_DEPTH + 2, z=-BARREL_L - 1)))
-    # female thread: bore + ridge grooves, opening DOWN
-    body = body.cut(cyl(TH_MINOR + TH_CLR, TH_LEN + 2, z=-BARREL_L - 1))
-    # one extra lead of groove BELOW the mouth (in free air): prisms whose
-    # faces sit under the band would otherwise poke uncut tails into it
-    body = body.cut(_thread((TH_MINOR - TH_CLR) / 2, TH_LEN + 2 + TH_LEAD,
-                            clr=0.8, phase_deg=60.0)
-                    .translate((0, 0, -BARREL_L - 1 - TH_LEAD)))
-    # bore-ceiling 45° cone (printed mouth-down, the bore roof was a flat
-    # Ø30.4 internal bridge): self-supporting to Ø24, the small remaining
-    # disc bridges cleanly; stops 2.8 under the tenon's solid top disc
-    body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCone(
-        (TH_MINOR + TH_CLR) / 2, 12.0, 3.2,
-        cq.Vector(0, 0, -BARREL_L - 1 + TH_LEN + 2), cq.Vector(0, 0, 1))))
-    return heal(body)   # helical-thread booleans need a ShapeFix pass
 
 
 # ── TRRS leg↔body BLIND-MATE (the -X/+Y leg's stack; see pedal_bar.py for
 # the bar joint). The chassis-side jack (Tensility 10-03404: Ø9.1 × 39.4
-# molded body on 0.91 m of cable) embeds VERTICALLY in leg_socket_trrs,
+# molded body on 0.91 m of cable) embeds VERTICALLY in the leg socket,
 # COAXIAL with the thread; the column-top plug (the second CA-354S,
 # recessed in the top segment's spigot bore) blind-mates during the final
 # thread turn — lead 18 > insertion 14, the plug's annular contacts spin
@@ -282,53 +170,8 @@ CHJ_MOUTH_Z = -9.3            # chassis-jack mouth plane (socket-local;
                               # re-based for the square latch socket:
                               # spigot top -10, plug tip +3.7)
 CHJ_D, CHJ_L = 9.1, 39.4      # 10-03404 molded body
-SEG_BORE_D = 11.0             # segment axial bore (Ø10 handle way)
-PLUG_TIP_Z = 4.8              # seated barrel tip (socket-local)
 
 
-def leg_segment() -> cq.Workplane:
-    """Stackable tube: male thread up top, female bell at the bottom. Two per
-    leg; print more/shorter to leave the typical height range. Z0 = bottom."""
-    body = cyl(TUBE_OD, SEG_L - TH_LEN, z=0.0)
-    # male threaded spigot on top
-    spigot = cyl(TH_MINOR - TH_CLR, TH_LEN + 2, z=SEG_L - TH_LEN - 2)
-    spigot = spigot.union(_thread((TH_MINOR - TH_CLR) / 2, TH_LEN + 2)
-                          .translate((0, 0, SEG_L - TH_LEN - 2)))
-    body = body.union(spigot)
-    # male shoulder COLLAR (the hard stop): Ø40 × 2 atop the tube; a 45° cone
-    # below keeps the printed overhang legal (prints standing, bell down)
-    body = body.union(cyl(COLLAR_D, COLLAR_H, z=SEG_L - TH_LEN))
-    body = body.union(cq.Workplane("XY").add(cq.Solid.makeCone(
-        TUBE_OD / 2, COLLAR_D / 2, 5.0,
-        cq.Vector(0, 0, SEG_L - TH_LEN - 5.0), cq.Vector(0, 0, 1))))
-    # female bell at the bottom
-    body = body.union(cyl(BARREL_OD, TH_LEN + 6, z=0.0))
-    # rim GLAND (washer recess; the inner ring is the hard-stop face)
-    body = body.cut(cyl(BARREL_OD + 2, GLAND_DEPTH + 0.5, z=-0.5)
-                    .cut(cyl(GLAND_ID, GLAND_DEPTH + 2, z=-1)))
-    body = body.cut(cyl(TH_MINOR + TH_CLR, TH_LEN + 1, z=-1))
-    body = body.cut(_thread((TH_MINOR - TH_CLR) / 2, TH_LEN + 1 + TH_LEAD,
-                            clr=0.8, phase_deg=60.0)
-                    .translate((0, 0, -1 - TH_LEAD)))   # extra lead below mouth
-    # hollow core (weight)
-    body = body.cut(cyl(TUBE_ID, SEG_L - 2 * TH_LEN - 14, z=TH_LEN + 4))
-    # bore-ceiling 45° cone (printed bell-down, the female bore's roof was a
-    # flat Ø30.4 internal bridge): rises into the core — fully self-
-    # supporting; the spigot-tip clearance below is untouched
-    body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCone(
-        (TH_MINOR + TH_CLR) / 2, TUBE_ID / 2,
-        (TH_MINOR + TH_CLR - TUBE_ID) / 2,
-        cq.Vector(0, 0, TH_LEN), cq.Vector(0, 0, 1))))
-    # TRRS column way (UNIVERSAL — every segment prints the same): a Ø11
-    # axial bore through the solid spigot top links the Ø22 core to the
-    # tip, sized for the CA-354S plug's Ø10 handle; the last 0.5 narrows
-    # to Ø9.4 — that lip retains the plug UPWARD against the ≤4 kgf TRRS
-    # withdrawal on the wired leg's TOP segment. Everywhere else it is
-    # just a lighter spigot (and the cable's way on the wired leg's lower
-    # segment).
-    body = body.cut(cyl(SEG_BORE_D, 36.5, z=SEG_L - 37.0))
-    body = body.cut(cyl(9.4, 1.7, z=SEG_L - 0.5))
-    return heal(body)   # helical-thread booleans need a ShapeFix pass
 
 
 def leg_sleeve() -> cq.Workplane:
@@ -482,12 +325,8 @@ def leg_shaft() -> cq.Workplane:
 # CENTER BORE to the shaft top, then inside the sleeve/segments to the
 # chassis. The jack body (14.5) is longer than the mating depth (14), so
 # the plug tip stays inside it — no tip well behind.
-TRRS_Z = 17.7                          # jack axis (shaft-local; = bar-local
                                        # 8.7 — low enough that the bar-side
                                        # cradle clears the lid plane)
-TRRS_JACK_L, TRRS_JACK_W, TRRS_JACK_H = 14.5, 6.0, 5.0    # X × Y × Z
-WIRE_BORE_D = 6.0                      # hollow centre: jack pocket → top
-SHELF_Z0, SHELF_Z1 = 26.0, 29.0        # small OUTBOARD corner fill at the TOP
                                        # of the foot band: its underside is a
                                        # SHELF over the bar's solid corner —
                                        # positive hold-down (the slot squares
@@ -586,7 +425,6 @@ def leg_shaft_trrs() -> cq.Workplane:
 # AFTER column assembly. Top joint = the SEATBELT LATCH head (separate
 # part; all mechanism on the leg, passive socket) — see latch_head().
 SQ_W = 44.0                    # outer square width (uniform, = old bell OD)
-SQ_CORE = 32.0                 # square core (was the couplers' pocket — they went
                                # at round 3; 45° crown corners print lying)
 SEG_BODY_L = 142.0             # ROUND 3 (user): NO THREADS, NO TPU
                                # GASKETS in the square legs — the thread
@@ -781,7 +619,6 @@ def _shaft_groove(length: float, drop: float = 2.0) -> cq.Workplane:
             .translate((0, SH_Y, 0)))
 
 
-PUCK_PLUG_L = 20.0             # coupler glue plug depth into the core
 # (CH_MOUTH/CH_DEEP retired with the face channel + leg_lid — user: the cable
 # runs up the CENTER of the column through the flush-octagon joints' Ø7 bores;
 # in-column access requires disassembly, accepted.)
@@ -858,57 +695,8 @@ def leg_seg_body_ch() -> cq.Workplane:
     return _sq_body(SEG_BODY_L, channel=True)
 
 
-def leg_coupler_m() -> cq.Workplane:
-    """RETIRED at round 3 (threadless, gasketless square legs; NOT exported).
-    GLUED — must not be revived as drawn, the project is glue-free.
-
-    PCTG male THREAD COUPLER (prints STANDING — thread quality): 44 sq
-    ×6 flange + Ø40×2 hard-stop collar + the same Ø36/30 single-start
-    spigot, square 32 glue plug below (0.3 fit into the body core; big
-    glue area, inherent anti-rotation). Ø14 cable way through. Z0 = the
-    flange's glue face (= body top end)."""
-    b = box_at(SQ_W, SQ_W, 6.0, z=3.0)
-    b = b.union(box_at(SQ_CORE - 0.3, SQ_CORE - 0.3, PUCK_PLUG_L,
-                       z=-PUCK_PLUG_L / 2))
-    b = b.union(cyl(COLLAR_D, COLLAR_H, z=6.0))
-    b = b.union(cyl(TH_MINOR - TH_CLR, TH_LEN + 2, z=6.0))
-    b = b.union(_thread((TH_MINOR - TH_CLR) / 2, TH_LEN + 2)
-                .translate((0, 0, 6.0)))
-    b = b.cut(cyl(14.0, PUCK_PLUG_L + 6 + TH_LEN + 4,
-                  z=-PUCK_PLUG_L - 1))                 # cable way
-    # M4 retention pilot (thread-forming; the plug's slide fit takes the
-    # loads, this only stops extraction)
-    b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        1.8, 8.0, cq.Vector(0, -SQ_CORE / 2 - 0.5, -12.0),
-        cq.Vector(0, 1, 0))))
-    return heal(b)
 
 
-def leg_coupler_f() -> cq.Workplane:
-    """PCTG female THREAD COUPLER (prints STANDING, mouth down): a 44-sq
-    ×28 BARREL that hosts the full internal thread (Ø36.4 crests cannot
-    fit inside the 32-square core — the barrel is exposed leg surface,
-    flush with the bodies) with the TPU-washer GLAND + rim hard-stop ring
-    in its mouth face, and a SHORT 32-sq locating plug (z 28..36) into
-    the body core, M4-retained. Z0 = the mouth face."""
-    b = box_at(SQ_W, SQ_W, 28.0, z=14.0)
-    b = b.union(box_at(SQ_CORE - 0.3, SQ_CORE - 0.3, 8.0, z=32.0))
-    b = b.cut(cyl(SQ_W + 4, GLAND_DEPTH + 0.5, z=-0.5)
-              .cut(cyl(GLAND_ID, GLAND_DEPTH + 2, z=-1)))
-    b = b.cut(cyl(TH_MINOR + TH_CLR, TH_LEN + 1, z=-1))
-    b = b.cut(_thread((TH_MINOR - TH_CLR) / 2, TH_LEN + 1 + TH_LEAD,
-                      clr=0.8, phase_deg=60.0)
-              .translate((0, 0, -1 - TH_LEAD)))
-    # bore ceiling 45° cone into the core (prints mouth-down)
-    b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCone(
-        (TH_MINOR + TH_CLR) / 2, 11.0, 4.2,
-        cq.Vector(0, 0, TH_LEN), cq.Vector(0, 0, 1))))
-    b = b.cut(cyl(22.0, 10.0, z=27.5))                 # open core way
-    # M4 retention pilot into the locating plug (see coupler_m note)
-    b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        1.8, 8.0, cq.Vector(0, -SQ_CORE / 2 - 0.5, 32.0),
-        cq.Vector(0, 1, 0))))
-    return heal(b)
 
 
 # (leg_lid RETIRED with the face channel — the wired cable runs up the
@@ -1280,27 +1068,6 @@ def leg_latch_btn() -> cq.Workplane:
     return b
 
 
-def leg_socket_trrs() -> cq.Workplane:
-    """RETIRED with leg_socket (round-tube legs, GLUED; NOT exported — the live
-    part is leg_socket_sq_trrs). Do not revive as drawn.
-
-    leg_socket() + the vertical CHASSIS-JACK pocket for the leg↔body
-    blind-mate (the -X/+Y station only — see the TRRS block above): a
-    Ø9.7 way COAXIAL with the thread, from the bore-ceiling void up
-    through the top disc and the tenon core (the dovetail FLANKS carry
-    the glue; a centre bore costs little), a MOUTH-SEAT boss hanging into
-    the void whose Ø4.8..9.7 bottom ring seats the jack face (withdrawal
-    backstop; the printed socket_jack_slug + the rail slot roof backstop
-    insertion after glue-up), and a 90° CABLE CHANNEL above the jack out
-    the tenon's inner face (local +y; the 180°-placed +Y-rail socket
-    turns it toward the body interior). The jack drops in from the tenon
-    top BEFORE glue-up — a 5000-cycle part that outlives the joint."""
-    body = leg_socket()
-    body = body.union(cyl(13.0, 6.2, z=-8.8))       # mouth-seat boss
-    body = body.cut(cyl(4.8, 1.2, z=-8.9))          # barrel way thru the ring
-    body = body.cut(cyl(9.7, 52.0, z=CHJ_MOUTH_Z))  # jack way, open to top
-    body = body.cut(box_at(4.4, 8.5, 9.0, y=4.25, z=35.5))   # cable channel
-    return body
 
 
 def leg_plug_retainer() -> cq.Workplane:
@@ -1362,10 +1129,3 @@ def leg_foot() -> cq.Workplane:
     return b
 
 
-def leg_washer() -> cq.Workplane:
-    """TPU gland washer: drops over the male thread onto the Ø40 collar and
-    lives in the female rim's 2.0-deep recess; bottoming the joint on its
-    hard stop squeezes it a fixed 2.5→2.0 (20%) — identical preload +
-    damping every assembly. (The drawn assembly shows it at free height,
-    0.5 proud into the recess roof — a designed compression.)"""
-    return cyl(WASHER_OD, WASHER_T, z=0.0).cut(cyl(WASHER_ID, WASHER_T + 2, z=-1))

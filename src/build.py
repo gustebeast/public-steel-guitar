@@ -82,7 +82,9 @@ PARTS = {
     # height plate lifted by 3 M4×20 button-head leadscrew jacks; a -Y M4 cup-tip grub
     # locks the pickup +Y against the plate's +Y wall. All hardware is stocked M4, all +Z.
     "pickup_zplate":   (lambda: heal(__import__("src.top_plate", fromlist=["e"]).pickup_zplate), "petg-gf/pickup_zplate.step", "PETG-GF — pickup height plate (green pickup area + nubs; 3 M4×20 button-head leadscrew jacks lift/tilt it via heat-set nuts on top, pickup rests on it and slides in X for tone; +Y retention wall + -Y cup-tip grub lock the pickup to the plate; GF keeps it flat on the point loads)"),
-    # (round leg_socket / leg_segment exports RETIRED by the square-leg
+    # (the whole round-tube leg family — sockets, segments, thread couplers and
+    #  washers — was DELETED 2026-08-01: 214 lines + 26 constants of unreachable
+    #  code, kept through the square-leg swap and then never removed.
     # redesign — generators remain in legs.py until the refinement pass
     # deletes them)
     "leg_sleeve":      (lambda: heal(LG.leg_sleeve()),  "petg-gf/leg_sleeve.step",  "PETG-GF — leg slider sleeve ×4 (44×40×200, +Y face thinned for the cover: truncated flush spigot up top — the cover tongue completes the joint — full-length dropped octagon GROOVE, two W5 cover-rail slots, EMBEDDED gib bay + ONE M4 grub flush in the +X face; prints LYING on the thinned +Y face)"),
@@ -824,8 +826,6 @@ _COLORS = {
     "pickup_zplate":   (0.85, 0.65, 0.30),   # PCTG height plate (under the pickup)
     "leg_body_stub":   (0.36, 0.42, 0.46),
     "leg_seg_body":    (0.42, 0.48, 0.52),   # square GF bodies
-    "leg_coupler_m":   (0.36, 0.42, 0.46),
-    "leg_coupler_f":   (0.36, 0.42, 0.46),
     "leg_latch_head":  (0.36, 0.42, 0.46),
     "leg_pinch_gib":   (0.85, 0.35, 0.20),   # clamp accent (matches bolts)
     "leg_latch_bolt":  (0.85, 0.35, 0.20),   # latch accent (matches pedal bolts)
@@ -837,12 +837,10 @@ _COLORS = {
     "leg_column_cable": (0.45, 0.45, 0.48),
     "leg_cable_coil":  (0.45, 0.45, 0.48),   # heat-set coil section (slack
                                              # take-up in the segment core)
-    "leg_segment":     (0.42, 0.48, 0.52),
     "leg_sleeve":      (0.36, 0.42, 0.46),
     "leg_sleeve_cover": (0.30, 0.36, 0.40),
     "leg_shaft":       (0.55, 0.58, 0.62),
     "leg_foot":        (0.12, 0.12, 0.13),   # TPU
-    "leg_washer":      (0.12, 0.12, 0.13),   # TPU
     # pedal bar (2 spliced pieces + 2 dovetail-lid pieces) + latches
     "pedal_bar_a":      (0.30, 0.45, 0.35),  # PETG-GF bar, -X piece
     "pedal_bar_b":      (0.33, 0.48, 0.38),  # PETG-GF bar, mid piece
