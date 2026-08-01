@@ -34,8 +34,6 @@ Both ride adjustment screws so tension is tunable.
 from __future__ import annotations
 
 import math
-import pathlib
-import sys
 
 import cadquery as cq
 
@@ -47,7 +45,7 @@ from cadkit.fasteners import (M4_SHAFT_CLR_D, M4_INSERT_D,
                        M4_INSERT_L, M4_SCREW_L, M2, M4, cut_insert_bore,
                        cut_selftap,
                        cut_m4_pocket, seated_m4_insert, cut_m4_boss, m4_boss_insert)
-from cadkit.pcb import (jst_xh_side_header, xh_side_length,
+from cadkit.pcb import (PCB_T as _PCB_T, jst_xh_side_header, xh_side_length,
                         XH_SIDE_H, XH_SIDE_D)
 from cadkit.joinery import PrintSpec, joint   # cadkit's one joinery entrypoint
 from cadkit.supports import printable_bore, contact_rib
@@ -114,7 +112,7 @@ AIR_GAP = 1.5                       # magnet face -> the IC's OWN TOP SURFACE. T
                                     # 2.5 — EXACTLY ours, so this is the nominal
                                     # configuration the part was characterised in.
 PCB_WZ = 19.0                       # ONE board for every lever. The outline is ours; what
-PCB_T = 1.6                         # sets it is the cradle + the reserved driver bore (see
+PCB_T = _PCB_T                      # sets it is the cradle + the reserved driver bore (see
                                     # the cradle block) and, in Z, the instrument itself —
                                     # the board runs from the chassis underside down.
 CHIP_W, CHIP_H = 3.0, 0.80          # MT6701QT-STD, QFN-16. DATASHEET §9.2 (verified):
@@ -771,7 +769,7 @@ TEN_ROOT = 1.0                      # root below the mating face — volumetric 
 # on a cadkit CONTACT RIB on the housing's outer face, so the magnet's Y — and
 # with it the sensor air gap — is set by a printed datum instead of by wherever
 # the stack happens to come to rest.
-RIB_T = RIB_PROUD = 1.6             # cadkit contact-rib section: TWO nozzles (quality tier, no 0.05
+RIB_T = RIB_PROUD = D.MIN_WALL_2P   # cadkit contact-rib section: TWO nozzles (quality tier, no 0.05
                                    # buffer). The air gap is unaffected -- PCB_Y = MAG_Y1 + AIR_GAP +
                                    # CHIP_H tracks the magnet, so raising RIB_PROUD shifts the whole
                                    # axle->magnet->sensor stack +0.75 outboard together (AIR_GAP kept).
