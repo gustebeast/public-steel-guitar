@@ -73,9 +73,22 @@ parts than analog sum AND difference stages.
 THE THIN-STRING PROBLEM. Optical signal scales with the string's DIAMETER (the string
 IS the target). .014 against .070 is 5.1x = 14.0 dB, and thin strings sit further from
 the sensor plane, which references the string nearest it. Levers, in order of value:
-EMITTER BEAM ANGLE (+9.5 dB at +-30 deg, +13.6 at +-20 -- free, and the primary
-selection criterion for D1-D10), per-string LED current (R1-R10 are per-string VALUES),
-per-string TIA gain (Rf likewise), then distance. See BOM.md.
+
+  1. EMITTER BEAM ANGLE -- +9.5 dB at +-30 deg, +13.6 at +-20, and free. *** THIS LEVER
+     IS UNAVAILABLE (2026-08-01). *** Narrow-beam is not made in 0805: every candidate in
+     the LCSC/JLC library is ~120 deg full angle, and the one 940 nm part that looked
+     narrower (IR19-21C) is 150 deg AND 0603. D1-D10 are IR17-21C/TR8 at ~120 deg.
+     NOTE the cover CANNOT recover this. An aperture DISCARDS off-axis flux, it does not
+     redirect it, so on-axis intensity at the string -- and therefore the returned signal
+     -- is unchanged. The dB in the budget come from a LENSED emitter putting the SAME
+     total flux into a narrower cone. Apertures buy crosstalk and ambient rejection,
+     which is worth having and is not this.
+  2. PER-STRING LED CURRENT (R1-R10 are per-string VALUES) -- now the FIRST lever, not
+     the second, and correspondingly more important. Drive current is why J2 exists.
+  3. PER-STRING TIA GAIN (Rf likewise), bounded by the op-amp's GBW, not the resistor.
+  4. DISTANCE from the termination -- the worst lever: signal is linear in d.
+
+See BOM.md.
 
 Frames: absolute X/Y/Z. Components face +Z (UP, at the strings).
 """
@@ -139,7 +152,13 @@ PKG = {
     "LQFP144":  (22.00, 22.00, 1.60), # JEDEC MS-026: 20x20 body, 22x22 over leads
     "3225":     (3.20, 2.50, 0.90),
     "USB-C":    (8.94, 7.35, 3.16),   # TYPE-C-31-M-12 (LCSC C165948)
-    "XH-SM-2":  (6.10, 10.00, 7.00),  # JST S2B-XH-SM4-TB class, SMT side entry
+    # J2 is a FOUR-way, not the two-way this once assumed: JST's SMT side-entry XH line
+    # STARTS at 4 way -- there is no S2B-XH-SM4-TB. Using S4B-XH-SM4-TB (C161861) is not a
+    # compromise: it is already the sensor boards' connector, so it adds no part number and
+    # no feeder, and doubling the pins (2x 5V, 2x GND) suits a rail pulling >500 mA better
+    # than a 2 way would have. Cost is 5.0 mm of Y. Figures are JST's drawing, as the
+    # sensor-board entry in BOM.md.
+    "XH-SM-4":  (6.10, 15.00, 7.00),  # JST S4B-XH-SM4-TB, SMT side entry, B = 15.0
 }
 LED_PKG = PKG["0805OPT"]
 PD_PKG  = PKG["0805OPT"]
@@ -326,9 +345,9 @@ def _parts():
     # ---- 1. sensing row, ON THE STRING FAN, + per-string ballast in the Y gaps ----
     for i in range(D.N_STRINGS):
         n, sy = i + 1, string_y_at(i, SENSE_X)
-        add("D%d" % n, "IR emitter, 940 nm, NARROW beam (VSMB1940X01 class)", "0805OPT", SENSE_X, sy)
-        add("PD%dA" % n, "PIN photodiode, Vishay VEMD4110X02 (daylight filter), +Y", "0805OPT", SENSE_X, sy + PD_DY)
-        add("PD%dB" % n, "PIN photodiode, Vishay VEMD4110X02 (daylight filter), -Y", "0805OPT", SENSE_X, sy - PD_DY)
+        add("D%d" % n, "IR emitter, 940 nm, Everlight IR17-21C (~120 deg -- see note)", "0805OPT", SENSE_X, sy)
+        add("PD%dA" % n, "PIN photodiode, Vishay VEMD4110X01 (daylight filter), +Y", "0805OPT", SENSE_X, sy + PD_DY)
+        add("PD%dB" % n, "PIN photodiode, Vishay VEMD4110X01 (daylight filter), -Y", "0805OPT", SENSE_X, sy - PD_DY)
         # ballast rides in the gap just -Y of its own emitter, same X band: no column to
         # spare, and it keeps the high-di/dt emitter loop a couple of mm long
         add("R%d" % n, "LED current-set (per-string value)", "0603", SENSE_X, sy - PITCH / 2)
@@ -362,12 +381,12 @@ def _parts():
     # POWER INPUT -- 5V from the instrument rail, NOT USB VBUS. MCU ~200-300 mA + PHY ~50
     # + 21 op-amp channels ~40 is already past a USB port before an emitter is lit, and
     # LED current is the second-best SNR lever we have.
-    y -= PKG["XH-SM-2"][1] / 2
+    y -= PKG["XH-SM-4"][1] / 2
     add("J2", "power in, 5V from the instrument rail -- side entry, -X edge",
-        "XH-SM-2", COMPUTE_X0 + PKG["XH-SM-2"][0] / 2, y)
+        "XH-SM-4", COMPUTE_X0 + PKG["XH-SM-4"][0] / 2, y)
     _spread(P, y, [("C%d" % (140 + k), "power-input decoupling", "0402") for k in range(4)],
-            COMPUTE_X0 + PKG["XH-SM-2"][0] + ROW_GAP, x1)
-    y -= PKG["XH-SM-2"][1] / 2 + ROW_GAP
+            COMPUTE_X0 + PKG["XH-SM-4"][0] + ROW_GAP, x1)
+    y -= PKG["XH-SM-4"][1] / 2 + ROW_GAP
 
     y = _block(P, y, [("C%d" % (100 + k), "MCU decoupling", "0402") for k in range(12)]
                      + [("R30", "BOOT0 pull-down", "0402"),
@@ -448,18 +467,22 @@ _MPN_RULES = (
     ("C14",  ("0402 X7R MLCC",   "BASIC",    0.002, "power-input decoupling")),
     ("R",    ("0603 thick-film R", "BASIC",  0.003, "per-string LED ballast")),
     # --- OPEN: see BOM.md. These three block ordering. ---
-    ("D",    (MPN_UNKNOWN,       "",         0.35,  "IR emitter 940 nm. The modelled "
-                                                    "VSMB1940X01 is NOT on LCSC and is +/-60 "
-                                                    "deg -- the worst case the signal budget "
-                                                    "argues against. 0805 IR is ~all 120 deg")),
-    ("PD",   ("VEMD4110X01",     "C3211080", 0.9334, "OPEN: the FILTERED X02 is not on LCSC at "
-                                                    "all. X01 is, but 72 in stock vs 200 needed")),
-    ("J2",   (MPN_UNKNOWN,       "",         0.33,  "OPEN: S2B-XH-SM4-TB does not exist -- JST's "
-                                                    "SMT side-entry XH starts at 4 way. Use "
-                                                    "S4B-XH-SM4-TB C161861 (already a project "
-                                                    "part = no new feeder) and double the pins, "
-                                                    "but its 15.0 body is 5 mm wider than the "
-                                                    "modelled XH-SM-2 -- refit before committing")),
+    # RESOLVED. The emitter is 0805 940 nm and WIDE (~120 deg full) because narrow-beam
+    # simply is not made in this package -- see the note below and BOM.md. Angle is the one
+    # spec to re-confirm on the datasheet at layout; everything else is checked.
+    ("D",    ("IR17-21C/TR8",    "C131250",  0.0283, "IR emitter 940 nm, 0805, Everlight. "
+                                                    "~120 deg full angle -- lever 1 of the "
+                                                    "signal budget is UNAVAILABLE, not merely "
+                                                    "unchosen. CONFIRM angle at layout")),
+    # RESOLVED, and the no-consignment dilemma was a false alarm: the LCSC-stocked X01
+    # CARRIES THE SAME DAYLIGHT FILTER (740-1040 nm, matched to 830-950 nm emitters),
+    # same 0.42 mm2 area, same 0805 2.0x1.25x0.7. It is a drop-in for the absent X02.
+    ("PD",   ("VEMD4110X01",     "C3211080", 0.58,  "filtered Si PIN, 0.42 mm2, +-55 deg. "
+                                                    "@100+ price; 10 boards = 200 pcs. "
+                                                    "STOCK 72 -- must recover or be pre-ordered")),
+    ("J2",   ("S4B-XH-SM4-TB",   "C161861",  0.3224, "4 way, not 2: JST's SMT side-entry XH "
+                                                    "starts at 4. Already the sensor boards' "
+                                                    "connector = no new part, no new feeder")),
 )
 
 
