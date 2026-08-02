@@ -408,6 +408,107 @@ def _parts():
 PARTS = _parts()
 
 
+# ── ORDERABILITY: every placed part -> a real LCSC/JLCPCB line ──────────────────────
+# PARTS above is a MODEL: description + package envelope, which is all the geometry and
+# the clearance assertions need. It is NOT orderable -- you cannot put "quad op-amp" on a
+# JLCPCB BOM line. This table closes that gap, and `_assert_every_part_orderable()` makes
+# the gap impossible to reopen silently: add a part above without a rule here and the
+# build fails.
+#
+# Prices are LCSC qty-1 unless noted, checked 2026-08-01. "BASIC" = JLCPCB Basic part
+# (no per-order feeder charge); everything else is Extended, at ~$1.50/unique part/order.
+MPN_UNKNOWN = "OPEN"        # deliberately unresolved -- see BOM.md, blocks ordering
+
+# ref-prefix -> (mpn, lcsc, unit_usd, note). Longest prefix wins, so "PD" beats "P".
+_MPN_RULES = (
+    # --- resolved, verified in LCSC stock 2026-08-01 ---
+    ("U6",   ("STM32H743ZIT6",   "C114408",  9.93,  "LQFP144; 20 ADC ch. @10 price. "
+                                                    "STOCK 7 -- short for a run of 10")),
+    ("U7",   ("USB3343-CP",      "C633347",  1.78,  "ULPI HS PHY, QFN-24. -TR reel = C112967 @2.07")),
+    ("U10",  ("USBLC6-2SC6",     "C7519",    0.0983, "USB ESD array. NOTE SOT-23-6, not the "
+                                                    "modelled SOT-563 -- envelope grows")),
+    ("U11",  ("TLV9061IDCKR",    "C693480",  0.36,  "single of the same family as U1-U5, "
+                                                    "so the mid-rail buffer matches the TIAs")),
+    ("U8",   ("SPX3819M5-L-3-3/TR", "C9055", 0.30,  "3V3 analog LDO, 40 uVrms. See BOM: the "
+                                                    "DIGITAL rail cannot be an LDO")),
+    ("U9",   ("SPX3819M5-L-3-3/TR", "C9055", 0.30,  "3V3 analog LDO, same part as U8 = one feeder")),
+    ("U",    ("TLV9064IDR",      "C388176",  0.2161, "quad op-amp, SOIC-14, 10 MHz GBW, "
+                                                    "500 fA Ib -- the TIA part. 10k in stock")),
+    ("Y",    ("X322525MSB4SI",   "C13740",   0.0334, "25 MHz 3225 crystal, BASIC. Y2 needs the "
+                                                    "PHY's reference freq -- confirm vs USB3343")),
+    ("Q1",   ("AO3400A",         "C20917",   0.0487, "N-ch logic-level FET, SOT-23, LED row gate")),
+    ("J1",   ("TYPE-C-31-M-12",  "C165948",  0.20,  "USB-C 16P; the modelled envelope IS this part")),
+    ("FB1",  ("GZ2012D601TF",    "C1017",    0.02,  "0603 ferrite bead, 600R@100MHz, BASIC class")),
+    # --- generic passives: JLCPCB BASIC classes, exact value set at schematic capture ---
+    ("Rf",   ("0402 thick-film R", "BASIC",  0.002, "TIA feedback, per-string value")),
+    ("Cf",   ("0402 C0G MLCC",   "BASIC",    0.004, "TIA feedback cap -- C0G, not X7R: the "
+                                                    "anti-alias pole must not drift with bias")),
+    ("Cd",   ("0402 X7R MLCC",   "BASIC",    0.002, "op-amp decoupling")),
+    ("C1",   ("0402 X7R MLCC",   "BASIC",    0.002, "decoupling / crystal load (load caps C0G)")),
+    ("C13",  ("0805 X7R MLCC",   "BASIC",    0.01,  "bulk")),
+    ("C14",  ("0402 X7R MLCC",   "BASIC",    0.002, "power-input decoupling")),
+    ("R",    ("0603 thick-film R", "BASIC",  0.003, "per-string LED ballast")),
+    # --- OPEN: see BOM.md. These three block ordering. ---
+    ("D",    (MPN_UNKNOWN,       "",         0.35,  "IR emitter 940 nm. The modelled "
+                                                    "VSMB1940X01 is NOT on LCSC and is +/-60 "
+                                                    "deg -- the worst case the signal budget "
+                                                    "argues against. 0805 IR is ~all 120 deg")),
+    ("PD",   ("VEMD4110X01",     "C3211080", 0.9334, "OPEN: the FILTERED X02 is not on LCSC at "
+                                                    "all. X01 is, but 72 in stock vs 200 needed")),
+    ("J2",   (MPN_UNKNOWN,       "",         0.33,  "OPEN: S2B-XH-SM4-TB does not exist -- JST's "
+                                                    "SMT side-entry XH starts at 4 way. Use "
+                                                    "S4B-XH-SM4-TB C161861 (already a project "
+                                                    "part = no new feeder) and double the pins, "
+                                                    "but its 15.0 body is 5 mm wider than the "
+                                                    "modelled XH-SM-2 -- refit before committing")),
+)
+
+
+# EXACT refs, checked before the prefix rules. These exist because reference designators
+# are NOT a clean namespace: the string-3 LED ballast is "R3" and the BOOT0 pull-down is
+# "R30", so any prefix rule for the R3x group silently swallows a ballast and quietly
+# reassigns it from 0603 to 0402. That is exactly the class of stale-derivation bug this
+# file guards against elsewhere -- it evaluates fine and is simply wrong -- so the
+# ambiguous group is spelled out instead of pattern-matched.
+_MPN_EXACT = {r: ("0402 thick-film R", "BASIC", 0.002, "pulls / divider / gate")
+              for r in ("R30", "R31", "R32", "R33", "R34", "R35", "R36")}
+
+
+def mpn(p):
+    """The orderable line for a placed part. Exact ref wins; else longest prefix."""
+    if p["ref"] in _MPN_EXACT:
+        return _MPN_EXACT[p["ref"]]
+    best = None
+    for pre, rec in _MPN_RULES:
+        if p["ref"].startswith(pre) and (best is None or len(pre) > len(best[0])):
+            best = (pre, rec)
+    if best is None:
+        raise KeyError("no MPN rule for %s (%s)" % (p["ref"], p["desc"]))
+    return best[1]
+
+
+def _assert_every_part_orderable():
+    """Nothing may be placed on this board without a sourcing decision attached -- even if
+    that decision is an explicit OPEN. Silence is the failure mode this prevents."""
+    for p in PARTS:
+        mpn(p)                                   # raises if unmapped
+    return sorted({mpn(p)[0] for p in PARTS if mpn(p)[0] != MPN_UNKNOWN})
+
+
+def open_lines():
+    """The refs still blocking a preassembled order."""
+    return sorted({p["ref"][:2].rstrip("0123456789") or p["ref"]
+                   for p in PARTS if mpn(p)[0] == MPN_UNKNOWN})
+
+
+def parts_cost():
+    """Board parts cost from the table -- so BOM.md's figure cannot drift from the model."""
+    return sum(mpn(p)[2] for p in PARTS)
+
+
+_assert_every_part_orderable()
+
+
 def part(ref):
     for p in PARTS:
         if p["ref"] == ref:
