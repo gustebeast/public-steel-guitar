@@ -42,14 +42,24 @@ WIDTH   = D.NUT_OD + 2 * 1.0               # across (Y), ≤ string pitch
 NUT_POCKET_D = D.NUT_OD + 0.2
 X_LO    = -(NUT_POCKET_D / 2 + 2.0)        # wall past the nut pocket (−X) = the bed face
 X_HI    = D.ANCHOR_DX + 0.9                # body/tower +X shoulder (boss overlaps it)
-# String EXIT hole (up through the roof, +Z): only has to pass the heaviest string with
-# clearance, and stays < the Ø4 nut so the nut is captured under the roof. It's a
-# printable_bore TEARDROP (apex +X) — the "45 /\" cap — so it self-supports in the +X
-# print with NO lead-in funnel.
-STRING_EXIT_D = 2.6                         # heaviest string (C6 .070 ≈ 1.8) + clearance
-# tower +X face: keep a 1-bead wall past the exit TEARDROP APEX (r·√2 out, ~0.41 r further
-# +X than a round bore — size to the apex, not the circle).
-POST_X1H = D.ANCHOR_DX + STRING_EXIT_D / 2 * math.sqrt(2.0) + D.MIN_WALL
+# Guide-rod bore — defined up here so the tower face can be sized off it (its real +X limit).
+GUIDE_CLR_D = D.GUIDE_ROD_D + D.FIT_CLR
+GUIDE_R     = GUIDE_CLR_D / 2
+# tower +X face — as far +X as it reaches: the guide-rod bore sits ROD_FACE_GAP outboard, and
+# closing that to a full 2 beads would shove the rod past the endplate edge (the known +X limit),
+# so the exit hole moves INBOARD to win its wall instead of growing the face.
+ROD_FACE_GAP = 0.9
+POST_X1H = D.GUIDE_ROD_DX - GUIDE_R - ROD_FACE_GAP
+# String EXIT hole up through the roof (+Z): a printable_bore TEARDROP (apex +X — the "45 /\" cap),
+# self-supporting in the +X print, Ø only enough to pass the heaviest string, < the Ø4 nut so the
+# nut is captured under the roof. Pulled INBOARD of the anchor (EXIT_DX) so its +X apex clears the
+# face by a full 2 beads (MIN_WALL_2P) — bought entirely on this side, no rod or bearing move (so
+# the scale length is untouched). The string still exits at the anchor (ANCHOR_DX), riding the
+# hole's +X side ~0.15 mm off the apex — a slight offset the user confirmed is fine. Ø is kept
+# small so the hole's −X edge still leaves a 1-bead roof lip to the cavity back wall, and the
+# leadscrew web (screw apex → back wall) stays a full 1.6 mm.
+STRING_EXIT_D = 2.2                         # heaviest string (C6 .070 ≈ 1.8) + threading clearance
+EXIT_DX = POST_X1H - D.MIN_WALL_2P - STRING_EXIT_D / 2 * math.sqrt(2.0)
 
 # Anchor tower (fused into prism A): a tall BALL CAGE toward the bridge bearing.
 ANCHOR_POST_H = 7.0                        # tower above the body: top 1 mm under the bearings
@@ -68,8 +78,6 @@ SEAT_Z   = CAGE_TOP - D.STRING_NUT_D / 2   # seated-nut centre (demo placement +
 #   web = CAVITY_X0 − apex = 5.5 − (5.5/2)·√2 = 1.61 ≥ MIN_WALL_2P.
 SCREW_CLR_D  = D.SCREW_OD + 0.5
 NUT_POCKET_D = D.NUT_OD + 0.2
-GUIDE_CLR_D  = D.GUIDE_ROD_D + D.FIT_CLR
-GUIDE_R      = GUIDE_CLR_D / 2
 # guide boss +X face: 2-bead wall past the TEARDROP APEX (the peak reaches r·√2, ~0.41 r
 # further +X than a round bore — size to the apex, not the circle).
 GUIDE_BOSS_X1 = D.GUIDE_ROD_DX + GUIDE_R * math.sqrt(2.0) + D.MIN_WALL_2P
@@ -117,10 +125,10 @@ def _build() -> cq.Workplane:
                            x=(CAVITY_X0 + POST_X1H + 2.0) / 2, y=0,
                            z=(CAGE_TOP + CAGE_FLOOR) / 2))
     # (2) STRING-EXIT hole up through the roof — a teardrop (apex +X), so it prints clean
-    #     with no lead-in funnel. Ø < the nut, so the seated nut bears on the roof lip and
-    #     the pull captures it (no clamp).
+    #     with no lead-in funnel. Ø < the nut, so the seated nut bears on the roof lip and the
+    #     pull captures it (no clamp). Pulled INBOARD to EXIT_DX (string rides its +X side).
     body = body.cut(_bore(STRING_EXIT_D, CAGE_TOP, POST_Z1 - CAGE_TOP,
-                          x=D.ANCHOR_DX, overshoot=1.0))
+                          x=EXIT_DX, overshoot=1.0))
     return body
 
 
