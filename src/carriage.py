@@ -14,10 +14,10 @@ Print orientation: build −X → +X (PRINT_UP = +X). The whole part lies on its
 −X face; the layer lines then run in Z (and Y), so the string-tension load — up
 the Z axis through the nut and cage — is carried ALONG the layers, not across
 them. Consequences of that choice, both handled here:
-  • The three bores (screw clearance, nut pocket, guide) have axis Z ⊥ the build
-    direction, so each is a `printable_bore` TEARDROP (apex toward +X) — a plain
-    cylinder would sag its ceiling. The round lower half is untouched (the nut
-    and rod ride the bottom exactly as in a round bore).
+  • The three bores (screw clearance, nut pocket, guide) AND the string EXIT hole
+    have axis Z ⊥ the build direction, so each is a `printable_bore` TEARDROP (apex
+    toward +X) — a plain cylinder would sag its ceiling. The round lower half is
+    untouched (the nut and rod ride the bottom exactly as in a round bore).
   • A tower rising off a lower shelf casts a −X-facing overhang. So the part is
     two SOLID PRISMS with the gap between them filled in (not a floating post):
     prism A = body + anchor tower as one block (Z −6..+13); prism B = the guide
@@ -42,7 +42,14 @@ WIDTH   = D.NUT_OD + 2 * 1.0               # across (Y), ≤ string pitch
 NUT_POCKET_D = D.NUT_OD + 0.2
 X_LO    = -(NUT_POCKET_D / 2 + 2.0)        # wall past the nut pocket (−X) = the bed face
 X_HI    = D.ANCHOR_DX + 0.9                # body/tower +X shoulder (boss overlaps it)
-POST_X1H = D.ANCHOR_DX + 2.1               # tower +X face: 0.8 roof wall past the string slot
+# String EXIT hole (up through the roof, +Z): only has to pass the heaviest string with
+# clearance, and stays < the Ø4 nut so the nut is captured under the roof. It's a
+# printable_bore TEARDROP (apex +X) — the "45 /\" cap — so it self-supports in the +X
+# print with NO lead-in funnel.
+STRING_EXIT_D = 2.6                         # heaviest string (C6 .070 ≈ 1.8) + clearance
+# tower +X face: keep a 1-bead wall past the exit TEARDROP APEX (r·√2 out, ~0.41 r further
+# +X than a round bore — size to the apex, not the circle).
+POST_X1H = D.ANCHOR_DX + STRING_EXIT_D / 2 * math.sqrt(2.0) + D.MIN_WALL
 
 # Anchor tower (fused into prism A): a tall BALL CAGE toward the bridge bearing.
 ANCHOR_POST_H = 7.0                        # tower above the body: top 1 mm under the bearings
@@ -68,10 +75,6 @@ GUIDE_R      = GUIDE_CLR_D / 2
 GUIDE_BOSS_X1 = D.GUIDE_ROD_DX + GUIDE_R * math.sqrt(2.0) + D.MIN_WALL_2P
 
 CAVITY_X0 = 5.5                            # cavity back wall (mouth depth); ≥1.6 off the screw apex
-# +Z string exit slot — clears the heaviest string (C6 .070 ≈ 1.8 mm) with bend room, and
-# stays < the Ø4 nut so the nut is captured in the cage.
-STRING_SLOT_W = 2.6
-STRING_SLOT_Y = 4.0
 
 # guide-boss z-band (nut level): top at D.GUIDE_FOOT_DZ, one bore-engagement tall.
 FZ1 = D.GUIDE_FOOT_DZ                       # +2 (below the cavity bottom 2.5)
@@ -104,26 +107,20 @@ def _build() -> cq.Workplane:
     # carriage during assembly (carriage in place → rod drops in → screw last).
     body = body.cut(_bore(GUIDE_CLR_D, FZ0 - 1, (FZ1 - FZ0) + 2, x=D.GUIDE_ROD_DX))
 
-    # Anchor CAGE cavity, open to the +X face — floor flush with the mouth bottom
-    # (solid Y walls, no through-seat; solid block below the floor). Stringing: the
-    # plain end enters the +X mouth at an angle, threads up out the roof slot, the
-    # whole string pulls through, and the ball-end cylinder NUT (axis Y) swings in
-    # last, seating UP against the roof — the slot is narrower than the nut, so the
-    # pull captures it (no clamp).
+    # TWO cuts make the cage (user):
+    # (1) NUT-ENTRY cavity, open to the +X face — big enough to install the nut. Floor
+    #     flush with the mouth bottom (solid Y walls, no through-seat; solid block below
+    #     the floor). Stringing: the plain end enters the +X mouth, threads up out the
+    #     roof exit hole, the whole string pulls through, and the ball-end cylinder NUT
+    #     (axis Y) swings in last, seating UP against the roof.
     body = body.cut(box_at(POST_X1H - CAVITY_X0 + 2.0, CAGE_W, CAGE_TOP - CAGE_FLOOR,
                            x=(CAVITY_X0 + POST_X1H + 2.0) / 2, y=0,
                            z=(CAGE_TOP + CAGE_FLOOR) / 2))
-    # +Z string slot through the roof (both spans < the nut → captured)
-    body = body.cut(box_at(STRING_SLOT_W, STRING_SLOT_Y, ROOF_T + 1,
-                           x=D.ANCHOR_DX, y=0, z=CAGE_TOP + (ROOF_T + 1) / 2))
-    # lead-in on the roof's UNDERSIDE so the threaded-up tip finds the slot. The
-    # flare stays smaller than the nut in X (3.2) so the seated nut bears on the
-    # slot edges and can't wedge in; Y can flare wide (the nut is long in Y).
-    lead = (cq.Workplane("XY", origin=(D.ANCHOR_DX, 0, CAGE_TOP))
-            .rect(3.2, 5.5)
-            .workplane(offset=1.2).rect(STRING_SLOT_W, STRING_SLOT_Y)
-            .loft(combine=False))
-    body = body.cut(lead)
+    # (2) STRING-EXIT hole up through the roof — a teardrop (apex +X), so it prints clean
+    #     with no lead-in funnel. Ø < the nut, so the seated nut bears on the roof lip and
+    #     the pull captures it (no clamp).
+    body = body.cut(_bore(STRING_EXIT_D, CAGE_TOP, POST_Z1 - CAGE_TOP,
+                          x=D.ANCHOR_DX, overshoot=1.0))
     return body
 
 
