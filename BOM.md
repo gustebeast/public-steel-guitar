@@ -10,7 +10,7 @@ is commodity.
 | Part | Spec | Qty | Source (verify stock) | ~Price | Notes |
 |------|------|-----|--------|--------|-------|
 | **Drive belt** | GT2 (2 mm pitch) open, **5 mm wide** | ~6.5 m | [Bulkman3D GT2 open belt](https://bulkman3d.com/product/gt000-gt0003/) | ~$0.5–1.7/m | cut-to-length, splice into loops with the printed clamp |
-| **Drive motor** | MKS SERVO42D closed-loop stepper, NEMA17, **CAN MT** (board + motor) | 10 | [P3D](https://p3d.mx/products/makerbase-mks-servo42d-nema17-foc-motor) · [ElectroPeak](https://electropeak.com/mks-servo42d-nema17-closed-loop-stepper-motor) | $35 ea | get **MT** (board + motor = the working actuator). The cheaper **MB ($22) is the board ONLY** — only worth it if sourcing bare 48 mm NEMA17s under ~$13 ea. makerbase3d.com sells direct ≈ $34 |
+| **Drive motor** | MKS SERVO42D closed-loop stepper, NEMA17, **CAN MT** (board + motor) | 10 | [P3D](https://p3d.mx/products/makerbase-mks-servo42d-nema17-foc-motor) · [ElectroPeak](https://electropeak.com/mks-servo42d-nema17-closed-loop-stepper-motor) | $35 ea | get **MT** (board + motor = the working actuator). The cheaper **MB ($22) is the board ONLY** — only worth it if sourcing bare 48 mm NEMA17s under ~$13 ea. makerbase3d.com sells direct ≈ $34 | **⚠ VARIANT CHECK 2026-08-01: the linked ElectroPeak page is the DRIVER ONLY, motor not included, listed 'as low as $12.50'. The $35 here is the MT bundle (board + motor). Confirm the exact SKU — this is the largest line in the BOM.**
 | **Lead screw + nut** | Tr5×1 trapezoidal (5 mm, 1 mm lead, 1-start, self-locking) + brass nut | 10 | [eBay Tr5×1 + brass nut](https://www.ebay.com/itm/396869709608) · mfr [ALM](https://www.autolinearmotion.com/5mm-trapezoidal-lead-screw.html) | ~$3 ea | cut to ~61 mm; eBay listings rotate—AliExpress/ALM are stable fallbacks |
 | **Screw support bearing** | MR85ZZ deep-groove, Ø5 × Ø8 × 2.5 | 10 | [Bearings Direct](https://bearingsdirect.com/mr85-zz-mini-ball-bearing-5x8x2-5-shielded-l850zz/) · [Trianglelab](https://trianglelab.net/products/mr85zz) | $0.5–4 ea | + a Ø5 thrust washer for the axial string pull |
 | **Axial retainer** | Ø5 set-screw shaft collar (or a 2nd Tr5 nut) | 10 | [ServoCity 5 mm collar](https://www.servocity.com/2920-series-steel-set-screw-collar-5mm-bore-2-pack/) | ~$2.5 ea | locks the screw against the support bearing |
@@ -34,14 +34,14 @@ the B/P column below is historical and every row is fitted. Panel I/O (1/4" TS l
 power inlet, USB-C) mounts through the recessed wall in the bridge endplate's
 lower corner — the instrument's right face.
 
-Prices were verified June 2026 from live listings (qty 1) — **treat them as stale
-and re-verify before ordering**; only the rows explicitly re-checked since are
-current. The **B/P** column is a leftover from the retired basic/pro split; every
+**Price verification status.** Rows marked **[v]** were re-checked against a live
+listing on **2026-08-01**. Everything else dates from June 2026 and should be
+treated as **stale** — re-verify before ordering. The **B/P** column is a leftover from the retired basic/pro split; every
 row is now fitted on every instrument.
 
 | Part | B/P | PN / source | ~Price | URL |
 |------|-----|-------------|--------|-----|
-| **Teensy 4.1** | B | PJRC via SparkFun | $31.50 | [SparkFun](https://www.sparkfun.com/teensy-4-1.html) |
+| **Teensy 4.1** | B | PJRC via SparkFun | **$31.50** [v] | [SparkFun](https://www.sparkfun.com/teensy-4-1.html) |
 | **Teensy 4 Audio Shield Rev D** | B | SGTL5000, SparkFun | $9.80 | [SparkFun](https://www.sparkfun.com/teensy-4-audio-shield-rev-d.html) |
 | **CAN transceiver** | B | SN65HVD230DR (DigiKey) | $2.45 | [DigiKey](https://www.digikey.com/en/products/detail/texas-instruments/SN65HVD230DR/404367) |
 | **Buck 24→5 V 1 A** | B | Pololu D24V10F5 (powers Teensy) | $12.95 | [Pololu](https://www.pololu.com/product/2831) |
@@ -53,7 +53,7 @@ row is now fitted on every instrument.
 | **Rotary/4-way joystick** | B | Alps RKJXT1F42001 (sole UI control) | $9.22 | [DigiKey](https://www.digikey.com/en/products/detail/alps-alpine/RKJXT1F42001/19529127) |
 | **OLED display** | B | 2.42" 128×64 SSD1309 SPI (UI screen) | ~$17 | [Waveshare](https://www.waveshare.com/2.42inch-oled-module.htm) |
 | **USB 2.0 hub** | B | Adafruit CH334F (share 1 port: Teensy+Pi) | $4.50 | [Adafruit](https://www.adafruit.com/product/5999) |
-| **Raspberry Pi 4, 2 GB** | B | Dexed + USB gadget (MIDI/audio/DFU) + USB host for the optical board | ~$45 ⚠ | [PiShop](https://www.pishop.us/product/raspberry-pi-4-model-b-2gb/) |
+| **Raspberry Pi 4, 2 GB** | B | Dexed + USB gadget (MIDI/audio/DFU) + USB host for the optical board | **$55.00** [v] | [PiShop](https://www.pishop.us/product/raspberry-pi-4-model-b-2gb/) |
 | **Buck 24→5 V ≥3 A** | B | Pi 4 draws ~3 A, not the Pi 5's 5 A — smaller unit than the D36V50F5 this replaced | ~$25 ⚠ | [Pololu](https://www.pololu.com/category/electronics) |
 | ~~10-ch audio ADC~~ | — | **DELETED.** Three PCM1864 + a carrier PCB existed to digitise ten string signals for the Pi. The optical pickup board now does its own 20-channel conversion (STM32H743ZIT6, 20× 16-bit) and sends audio over USB, so this whole path is redundant — ~$29 of ICs plus an entire board's fab, assembly and feeder cost removed | — | — |
 
