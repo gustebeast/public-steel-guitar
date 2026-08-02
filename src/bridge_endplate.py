@@ -243,13 +243,16 @@ def _cap() -> cq.Workplane:
     the window rim + axle comb + arm/tie roots. Foot clearance over each
     +X leg's kept chassis shell is pocketed afterward."""
     w = endplate_base(XLO, XHI, "hi")
-    # CHANGER-TOP PRISM (user): a SOLID flat-topped tail filled to the BEARING TOP, spanning
-    # from the string TERMINATION (D.BRIDGE_X = 0, +X of which no string runs) out to the +X
-    # tip. This replaces the old z6..10 field-centre band + its drop-down cap; the tail is now
-    # one flat block at the string plane. The strings' +X half and the carriage sweep are cut
-    # back out of it afterwards (the field-centre opening below + the string channels in _build).
-    w = w.union(box_at(X1 - D.BRIDGE_X, 2 * MECH_HW, BEAR_TOP - Z6,
-                       x=(D.BRIDGE_X + X1) / 2, y=0, z=(BEAR_TOP + Z6) / 2))
+    # CHANGER-TOP PRISM (user): a SOLID flat-topped shelf filled to the BEARING TOP, running from
+    # the string TERMINATION — where the string breaks over its bearing and stops vibrating, i.e.
+    # the bearing CENTRE, halfway along the bearing (D.BRIDGE_AXLE_X) — out to the +X tip. The
+    # shelf is HIGH all the way to the termination; only −X of it (the vibrating speaking length)
+    # does the top drop away. The bearings and their dead (non-vibrating) string rises are cut back
+    # out of this prism afterwards (the field-centre opening below clears the low carriage sweep;
+    # the bearing/string cuts in _build clear the rest). No +X drop past the termination — there is
+    # no vibrating string there to dampen.
+    w = w.union(box_at(X1 - D.BRIDGE_AXLE_X, 2 * MECH_HW, BEAR_TOP - Z6,
+                       x=(D.BRIDGE_AXLE_X + X1) / 2, y=0, z=(BEAR_TOP + Z6) / 2))
     # FIELD-CENTRE OPENING: clear x XLO..X0 between the arms from the lower
     # guide-ledge line (GR_LTOP) to the top — the guide ledges + windows are
     # re-added/cut by _build in this space exactly as before
@@ -416,20 +419,19 @@ def _build() -> cq.Workplane:
     # the tie bar, so the axle support, dovetails and screw rail are untouched.
     body = body.cut(box_at((X1 - X0) + 2.0, 2 * WIN_HW, WIN_Z1 - WIN_Z0,
                            x=(X0 + X1) / 2, y=0, z=(WIN_Z1 + WIN_Z0) / 2))
-    # STRING/BEARING OPENINGS (user): one slot per string, sized to the BEARING (not the thin
-    # string), so there's room to thread the string over its bearing on install. Each slot runs
-    # from the bearing CENTRE — the string break/termination point, halfway along the bearing
-    # (D.BRIDGE_AXLE_X) — out +X PAST the termination for stringing access, and is as wide as the
-    # bearing, landing flush against the comb fingers that flank each gap (OPEN_HW = bearing
-    # half-width + the gap the comb leaves). NOTE this string↔endplate clearance is INVISIBLE to
-    # the overlap gate (allowlisted contact), so it's verified by hand (probe_ep_map/probe_str_clr).
-    OPEN_X0 = D.BRIDGE_AXLE_X                       # -4: bearing centre = break/termination point
-    OPEN_X1 = D.BRIDGE_X + 2.5                      # +X stringing-access room past the termination
-    OPEN_HW = D.BRIDGE_BEARING_W / 2 + 0.2          # 2.2: match the bearing, flush to the comb fingers
+    # BEARING + DEAD-STRING cuts (user, "cut the bearings, then the strings"): the shelf now runs
+    # −X to the termination, so cut each BEARING (the rotating cylinder) and its DEAD (non-vibrating)
+    # string rise out of it. The slot stops +X at the dead string's rise edge — no drop past the
+    # termination, since there's no vibrating string out there to dampen. BOTH contacts are
+    # gate-BLIND: {bridge_endplate, bridge_bearings} AND {string, bridge_endplate} are allowlisted,
+    # so this is sized + verified BY HAND (probe_ep_map).
+    BR_HW = D.BRIDGE_BEARING_W / 2 + 0.4                     # 2.4: bearing half-width + rotation clr
+    BR_X0 = D.BRIDGE_AXLE_X - 0.5                            # -4.5: past the bearing centre (−X half is off-shelf)
+    BR_X1 = D.BRIDGE_X + max(D.STRING_GAUGE) / 2 + 0.5       # ~1.4: clear the dead rise's +X edge, no further
     for i in range(D.N_STRINGS):
         sy = D.string_y(i)
-        body = body.cut(box_at(OPEN_X1 - OPEN_X0, 2 * OPEN_HW, (BEAR_TOP + 1.0) - (Z6 - 1.0),
-                               x=(OPEN_X0 + OPEN_X1) / 2, y=sy,
+        body = body.cut(box_at(BR_X1 - BR_X0, 2 * BR_HW, (BEAR_TOP + 1.0) - (Z6 - 1.0),
+                               x=(BR_X0 + BR_X1) / 2, y=sy,
                                z=((Z6 - 1.0) + (BEAR_TOP + 1.0)) / 2))
     # FOOT POCKET: the chassis KEEPS a ~10 mm rail shell hugging each +X leg socket
     # (CH._leg_shell), capped at the foot line (z FOOT_Z = -23.15). Pocket exactly
