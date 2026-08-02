@@ -1,11 +1,27 @@
 """OPTICAL per-string pickup -- a reflective IR strip that reads all 10 strings
 individually, for pitch detection (calibration + audio->MIDI) and for per-string AUDIO.
 
-WHY optical, not a second magnetic hex pickup: a Cycfi Nu Multi is ~$33/string and a
-per-string magnetic coil bleeds into its neighbours at this pitch. Reflective IR has
-ZERO magnetic crosstalk -- which matters more here than on a normal instrument,
-because ten SERVO42D steppers with PWM current control live directly under the deck
-and would inject straight into ten passive coils.
+WHY optical, not a second magnetic hex pickup. Re-examined properly 2026-08-02 (full
+working in BOM.md) because the original one-liner was thinner than the decision
+deserved. What the check changed:
+
+  * The old reason "a Cycfi Nu Multi is ~$33/string" is NOT the reason. A per-string
+    magnetic board is CHEAPER than this one in parts -- PCB planar spiral coils are
+    etched copper, i.e. free, and positioned to layout tolerance, which is BETTER than
+    optical's placed parts. Manufacturability was never the obstacle.
+  * The turns deficit is survivable: ~44-50 dB below a real single-coil, so ~0.5-1 mV,
+    with ~84 dB of thermal SNR at the coil's ~6 ohms. Amplifiable, not marginal.
+  * THE REASON THAT SURVIVES is interference. A spiral is a ~17.7 cm^2 loop antenna
+    over ten SERVO42D steppers running PWM current control directly under the deck.
+    Reflective IR couples to that ZERO, not weakly.
+  * Two things that would NOT improve by switching, contrary to instinct: channel count
+    (hex pickups need TWO coils per string for the same even-function reason SUM/DIFF
+    exists here, so 21 channels against 20 -- the LQFP144 stays), and the thin-string
+    deficit (frequency helps, ferromagnetic mass hurts, they mostly cancel).
+  * One strike specific to THIS instrument: magnets LOAD THE STRING. Damping and
+    pitch-pulling are tolerated on a guitar; here they fight motorised tuning to a few
+    cents and the long sustain the whole design is built around. Optical exerts no
+    force on the string at all.
 
 MOUNTING -- UNDER THE STRINGS, UP-FIRING, ON A CARRIER THAT IS PART OF THE ENDPLATE
 AND RIDES ON TOP OF THE DECK (user, this round). The strip spent a while hanging
@@ -142,6 +158,14 @@ PKG = {
     "SOT-23":   (2.90, 2.40, 1.30),
     "SOT-23-5": (2.90, 2.80, 1.45),
     "SOT-563":  (1.60, 1.60, 0.60),
+    # U8's digital rail is ~300 mA, so 5V->3V3 burns 0.51 W. That is past a SOT-23-5
+    # (>100 degC rise), which is why U8 is NOT the same part as U9. A BUCK was the obvious
+    # answer and is the wrong one here: this board reads tens of nanoamps on 20 TIAs, and
+    # putting a ~1 MHz switcher next to them trades a thermal problem for a noise problem
+    # on the axis the design is most sensitive to. A tab package sheds the heat instead --
+    # SOT-223 is ~50 degC/W with a copper pour, i.e. ~25 degC rise, and the board stays
+    # switcher-free. 1.7 V of headroom against AMS1117's 1.3 V max dropout.
+    "SOT-223":  (6.50, 3.50, 1.80),   # tab package, JEDEC TO-261AA
     "SOIC-14":  (6.00, 8.65, 1.75),   # LONG AXIS ALONG Y: 8.65 body, 6.00 across leads.
                                       # Chosen over TSSOP-14 purely for X: 6.00 across
                                       # the leads against TSSOP's 6.40, and X is the
@@ -402,7 +426,7 @@ def _parts():
                x0, x1)
     # U11 is the mid-rail reference the 20 TIAs sit on: single-supply transimpedance needs
     # a bias for the non-inverting inputs, and all 20 quad channels are spoken for.
-    y = _block(P, y, [("U8", "LDO -- 3V3 digital", "SOT-23-5"),
+    y = _block(P, y, [("U8", "LDO -- 3V3 digital, TAB package (0.51 W)", "SOT-223"),
                       ("U9", "LDO -- 3V3 analog (low noise)", "SOT-23-5"),
                       ("U11", "single op-amp -- TIA mid-rail reference buffer", "SOT-23-5"),
                       ("Q1", "N-ch MOSFET -- LED row driver", "SOT-23"),
@@ -448,9 +472,11 @@ _MPN_RULES = (
                                                     "modelled SOT-563 -- envelope grows")),
     ("U11",  ("TLV9061IDCKR",    "C693480",  0.36,  "single of the same family as U1-U5, "
                                                     "so the mid-rail buffer matches the TIAs")),
-    ("U8",   ("SPX3819M5-L-3-3/TR", "C9055", 0.30,  "3V3 analog LDO, 40 uVrms. See BOM: the "
-                                                    "DIGITAL rail cannot be an LDO")),
-    ("U9",   ("SPX3819M5-L-3-3/TR", "C9055", 0.30,  "3V3 analog LDO, same part as U8 = one feeder")),
+    ("U8",   ("AMS1117-3.3",     "C6186",    0.1045, "3V3 DIGITAL, SOT-223 tab -- 0.51 W will "
+                                                    "not fit a SOT-23-5. Noisy, but it feeds "
+                                                    "the MCU, not the front end")),
+    ("U9",   ("SPX3819M5-L-3-3/TR", "C9055", 0.30,  "3V3 ANALOG, 40 uVrms, SOT-23-5. Low load "
+                                                    "(~40 mA) so the small package is fine")),
     ("U",    ("TLV9064IDR",      "C388176",  0.2161, "quad op-amp, SOIC-14, 10 MHz GBW, "
                                                     "500 fA Ib -- the TIA part. 10k in stock")),
     ("Y",    ("X322525MSB4SI",   "C13740",   0.0334, "25 MHz 3225 crystal, BASIC. Y2 needs the "
