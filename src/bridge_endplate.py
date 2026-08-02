@@ -416,6 +416,21 @@ def _build() -> cq.Workplane:
     # the tie bar, so the axle support, dovetails and screw rail are untouched.
     body = body.cut(box_at((X1 - X0) + 2.0, 2 * WIN_HW, WIN_Z1 - WIN_Z0,
                            x=(X0 + X1) / 2, y=0, z=(WIN_Z1 + WIN_Z0) / 2))
+    # STRING-CLEARANCE CHANNELS (user: "cut away where the strings pass"): each string RISES
+    # vertically at X = BRIDGE_X (the bearing's +X tangent), so its +X half pokes straight into
+    # the filled tail. Cut a per-string channel back out of it. NOTE the overlap gate CANNOT see
+    # this — {string, bridge_endplate} is an allowlisted contact (the string legitimately threads
+    # the bearing region) — so this is hand-sized: the heaviest string's +X edge is gauge/2 =
+    # 0.889 off the tangent; clear that + STRING_CLR each side. The channels sit ON the strings,
+    # the comb fingers sit in the GAPS, so they interleave without touching (and stop at x 1.4,
+    # short of the comb roots at x 2.6).
+    STRING_CLR = 0.5
+    for i in range(D.N_STRINGS):
+        sy = D.string_y(i)
+        xr = D.STRING_GAUGE[i] / 2 + STRING_CLR                  # +X reach past the tangent
+        body = body.cut(box_at(xr - (D.BRIDGE_X - 0.6), 2 * xr, (BEAR_TOP + 1.0) - (Z6 - 1.0),
+                               x=((D.BRIDGE_X - 0.6) + xr) / 2, y=sy,
+                               z=((Z6 - 1.0) + (BEAR_TOP + 1.0)) / 2))
     # FOOT POCKET: the chassis KEEPS a ~10 mm rail shell hugging each +X leg socket
     # (CH._leg_shell), capped at the foot line (z FOOT_Z = -23.15). Pocket exactly
     # that shell + a small assembly clearance out of the bridge so it nests over the
