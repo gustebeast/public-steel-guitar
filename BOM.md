@@ -460,21 +460,81 @@ resolved. **Microchip `USB3343-CP` is in LCSC stock at $1.78** (C633347; the
 `-TR` reel variant C112967 is $2.07) — QFN-24, matching the modelled envelope.
 That is the part the survey table assumed existed.
 
-**What "orderable preassembled" actually needs**, in order:
+### Part selection — done 2026-08-01, and now enforced by the model
 
-1. **Select 32 real MPNs** against JLCPCB's assembly library, preferring Basic
-   parts to avoid the $1.50/feeder extended-part charge already budgeted. This is
-   a schematic-capture task, not a sourcing task — it has not been started.
-2. **Resolve the photodiode**, which is a design decision (consignment vs.
-   unfiltered + a bonded IR window), not a purchase.
-3. **Choose a narrow-beam emitter** — the single highest-value part decision on
-   the board.
-4. **Re-check MCU stock**, or attack the 20-ADC-channel requirement that forces
-   LQFP144.
+**Every one of the 141 placed parts now maps to an orderable line.** The mapping
+lives in `src/optical_pickup.py::_MPN_RULES`, and `_assert_every_part_orderable()`
+runs at import: **add a part without a sourcing decision and the build fails.**
+The 141 parts collapse to **18 distinct order lines**, of which 5 are JLCPCB
+Basic classes (no feeder charge):
 
-Until 1–3 are done the board is not quotable, let alone orderable. The $59.32
-figure below is a **parametric estimate built from package counts and two
-verified prices** — it is not a quote, and 32 of its part costs are assumed.
+| Line | MPN | LCSC | Qty | Ext. | Note |
+|---|---|---|--:|--:|---|
+| PD1A–PD10B | `VEMD4110X01` | C3211080 | 20 | **$18.67** | ⚠ OPEN — filtered X02 absent, see above |
+| U6 | `STM32H743ZIT6` | C114408 | 1 | $9.93 | ⚠ 7 in stock |
+| D1–D10 | **OPEN** | — | 10 | ~$3.50 | ⚠ no narrow-beam 0805 found — see below |
+| U7 | `USB3343-CP` | C633347 | 1 | $1.78 | ULPI PHY, QFN-24 ✓ |
+| U1–U5 | `TLV9064IDR` | C388176 | 5 | $1.08 | **the TIA part** — see below ✓ |
+| U8, U9 | `SPX3819M5-L-3-3/TR` | C9055 | 2 | $0.60 | 40 µVrms LDO ✓ |
+| U11 | `TLV9061IDCKR` | C693480 | 1 | $0.36 | single of the U1–U5 family ✓ |
+| J2 | **OPEN** | — | 1 | ~$0.33 | ⚠ part does not exist — see below |
+| J1 | `TYPE-C-31-M-12` | C165948 | 1 | $0.20 | the modelled envelope *is* this part ✓ |
+| U10 | `USBLC6-2SC6` | C7519 | 1 | $0.10 | ⚠ SOT-23-6, not the modelled SOT-563 |
+| Y1, Y2 | `X322525MSB4SI` | C13740 | 2 | $0.07 | 25 MHz 3225, **Basic** ✓ |
+| Q1 | `AO3400A` | C20917 | 1 | $0.05 | logic-level FET ✓ |
+| FB1 | `GZ2012D601TF` | C1017 | 1 | $0.02 | 600 Ω @100 MHz ✓ |
+| Cf×20 | 0402 **C0G** MLCC | Basic | 20 | $0.08 | C0G not X7R — the anti-alias pole must not drift with bias |
+| C×33 | 0402 X7R MLCC | Basic | 33 | $0.07 | decoupling |
+| R×27 | 0402 thick-film | Basic | 27 | $0.05 | TIA feedback + pulls |
+| R1–R10 | 0603 thick-film | Basic | 10 | $0.03 | per-string LED ballast |
+| C130–C133 | 0805 X7R MLCC | Basic | 4 | $0.04 | bulk |
+| | | | **141** | **$36.95** | |
+
+**The op-amp is the happy surprise.** `TLV9064IDR` is a 4× CMOS RRIO part with
+**10 MHz GBW and 500 fA input bias current** — the bias figure is what a nanoamp
+TIA actually needs, and 500 fA against tens of nA is four orders of margin. It is
+SOIC-14 (the package already modelled, chosen for its 6.00 mm across-leads in a
+14 mm band), 10,148 in stock, and **$0.2161** — so all five cost **$1.08**
+against the $4 assumed. Cheapest part of the front end and the one with the most
+performance riding on it.
+
+**Parts cost is now computed, not estimated: `parts_cost()` = $36.95/board**,
+against the $41.60 I extrapolated yesterday and the $29 before that. BOM.md can
+no longer drift from the model here.
+
+### Three things part selection surfaced that were not price problems
+
+**1. The narrow-beam emitter may not exist in 0805.** The signal budget calls
+beam angle *"the largest [lever] and it is free"* — +9.5 dB at ±30°, +13.6 at
+±20°. Searching LCSC and JLCPCB's optoelectronics library, **0805 IR emitters
+are essentially all 120° full-angle** (Kingbright KP-2012F3C, APT2012F3C,
+Everlight IR17-21C — all 120°). Narrow beams live in bigger lensed packages.
+So the plan's largest and cheapest lever is the one the library does not stock.
+Three ways out, and they are not equivalent:
+   - **Lens the cover.** The printed lid already gives each string its own
+     aperture. Deepening those apertures into short collimating tubes recovers
+     some of it geometrically, for free, in a part we already print.
+   - **Bigger emitter package** (1206 / PLCC-2 with a lens). The band is 13.6 mm
+     wide, so there may be room — but it is the scarce axis.
+   - **Accept 120°** and spend the deficit on LED current and TIA gain, levers
+     2 and 3, which are already per-string.
+
+**2. J2 as specified does not exist.** `S2B-XH-SM4-TB` is not a JST part — the
+SMT side-entry XH line **starts at 4-way**. The clean fix is to use the
+**`S4B-XH-SM4-TB` (C161861) already used on the sensor boards**: no new part
+number, no new feeder, and doubling up the pins suits a rail pulling >500 mA.
+But its body is **15.0 mm against the modelled 10.0**, so the tail needs a refit
+before that is committed. Recorded as OPEN rather than silently swapped.
+
+**3. The digital 3V3 rail cannot be an LDO.** The MCU draws 200–300 mA. From
+5 V to 3.3 V that is **0.51 W in a SOT-23-5**, which at ~250 °C/W is a >100 °C
+rise — past the package, not marginally. U9 (analog, ~40 mA) is fine as the
+SPX3819; **U8 should be a small buck**, which adds an inductor and a few parts
+the model does not carry. Flagged, not modelled. This is a schematic-stage
+error that the geometry model had no way to catch.
+
+**Still blocking a preassembled order:** the photodiode decision, the emitter,
+and J2's refit. Everything else is chosen and in stock.
 
 **141 placed parts**, all on ONE side (single-sided, per project rule: one
 stencil, one reflow, no back-side placement). The model tracks 35 distinct
@@ -609,10 +669,14 @@ model and the footprint do not change under either resolution.
   ($0.3243) but check its angle before assuming it helps.
 - **32 of the 35 part lines have no MPN at all** — see the orderability audit
   above. This is the real blocker on ordering the board.
-- **quad op-amp** with low enough input bias current for a nanoamp TIA.
-- **J2**: JST S2B-XH-SM4-TB class, SMT side-entry 2-way. The envelope in the
-  model is scaled from the S4B figures already in this BOM — confirm against
-  JST's drawing before layout, as the S4B was.
+- ~~**quad op-amp** with low enough input bias current for a nanoamp TIA~~ —
+  **CLOSED 2026-08-01. `TLV9064IDR`** (C388176), SOIC-14, 10 MHz GBW,
+  **500 fA** input bias, RRIO CMOS, 10k in stock, **$0.2161**. Four orders of
+  margin on bias against a tens-of-nA signal, in the package already modelled.
+- **J2** — ⚠ **the specified part does not exist.** JST's SMT side-entry XH line
+  starts at **4-way**; there is no `S2B-XH-SM4-TB`. Use `S4B-XH-SM4-TB`
+  (C161861, already a project part) and double the pins — but its 15.0 mm body
+  is 5 mm wider than the modelled `XH-SM-2`, so the tail needs a refit first.
 
 **Prototype: the first measurement is now string 2, not `SENSE_D`.** Specifically
 a **.014 plain string at 22 mm with a narrow-beam emitter at a realistic drive
@@ -641,18 +705,18 @@ then multiples of 5** — you cannot order 3. So the per-instrument curve is a
 
 | Instruments | Order | Waste | Order total | Per instrument |
 |--:|--:|--:|--:|--:|
-| 1 | 2 | 1 | $197.84 | $197.84 |
-| 2 | 2 | 0 | $197.84 | $98.92 |
-| 3 | 5 | 2 | $346.10 | **$115.37** ↑ |
-| 5 | 5 | 0 | $346.10 | $69.22 |
-| 6 | 10 | 4 | $593.20 | **$98.87** ↑ |
-| **10** | **10** | **0** | **$593.20** | **$59.32** |
-| 15 | 15 | 0 | $840.30 | $56.02 |
-| 20 | 20 | 0 | $1,087.40 | $54.37 |
+| 1 | 2 | 1 | $169.04 | $169.04 |
+| 2 | 2 | 0 | $169.04 | $84.52 |
+| 3 | 5 | 2 | $303.35 | **$101.12** ↑ |
+| 5 | 5 | 0 | $303.35 | $60.67 |
+| 6 | 10 | 4 | $527.20 | **$87.87** ↑ |
+| **10** | **10** | **0** | **$527.20** | **$52.72** |
+| 15 | 15 | 0 | $751.05 | $50.07 |
+| 20 | 20 | 0 | $974.90 | $48.75 |
 
-*(Recomputed 2026-08-01 on the corrected $49.42 variable cost. The **shape** is
-unchanged — it comes from the quantity ladder, not the rates — so both
-conclusions below still hold; only the absolutes moved.)*
+*(Recomputed 2026-08-01 on the post-selection $79.50 fixed / $44.77 variable. The
+**shape** is unchanged — it comes from the quantity ladder, not the rates — so
+both conclusions below still hold; only the absolutes moved.)*
 
 Two consequences worth acting on:
 
@@ -661,7 +725,7 @@ Two consequences worth acting on:
 * **10 is the knee.** It is the first quantity within 30 % of the variable-cost
   floor; past 15 the gains are slow. Hence the convention.
 
-### Optical pickup board at that basis — $59.32 per instrument
+### Optical pickup board at that basis — $52.72 per instrument
 
 Board is **37.4 × 184.4 mm = 69.0 cm²**, 4-layer, 141 parts, ~541 solder joints.
 (An earlier revision of this section said 47.5 cm² — that predates the +X wraps
@@ -669,14 +733,17 @@ and the M4 bands.)
 
 | | | |
 |---|---|---:|
-| **Fixed, per order** | PCBA setup $25 + feeder loading $39 (26 unique parts × $1.50) + component MOQ overage ~$20 + 4-layer fab tooling ~$15 | **$99.00** |
-| **Variable, per board** | parts **$41.60** + fab $6.90 (69 cm² × $0.10) + assembly $0.92 (541 joints) | **$49.42** |
-| **Order of 10** | 99.00 + 10 × 49.42 | **$593.20** |
-| **Per instrument** | ÷ 10 | **$59.32** |
+| **Fixed, per order** | PCBA setup $25 + feeder loading **$19.50** (13 Extended lines × $1.50; **5 of the 18 lines are Basic**) + component MOQ overage ~$20 + 4-layer fab tooling ~$15 | **$79.50** |
+| **Variable, per board** | parts **$36.95** (computed, not estimated) + fab $6.90 (69 cm² × $0.10) + assembly $0.92 (541 joints) | **$44.77** |
+| **Order of 10** | 79.50 + 10 × 44.77 | **$527.20** |
+| **Per instrument** | ÷ 10 | **$52.72** |
 
-*(Was $46.72 on a $29.00 parts figure. The whole $12.60 increase is the two
-verified lines above — photodiodes +$11.67, MCU +$0.93. Nothing else moved, and
-the fixed-cost row is untouched.)*
+*(History: $46.72 → $59.32 → **$52.72**. The jump was the photodiodes at their
+real price; the fall back is part selection — the op-amps came in $2.90 under
+budget, and knowing the actual line count cut the feeder estimate from 26 unique
+parts to 13 Extended, since the ~94 passives collapse into 5 Basic classes that
+carry no feeder charge. **Feeder cost was overstated by half** because it was
+estimated from part *variety* before anyone counted the lines.)*
 
 **Soft in this:** the fab terms ($15 tooling + $0.10/cm²) are estimates — worth a
 JLC quote before trusting the absolutes, though the *shape* of the curve comes
@@ -754,16 +821,17 @@ several are unverified — re-verify the whole file before ordering.**
 | Mechanical hardware (motors, screws, bearings, belt, fasteners, dowels) | ~$620 | belt/collar/bearings **verified**; motor + all McMaster **[m]** |
 | Wire | ~$35 | estimate, excludes 10 control drops |
 | Electronics + UI (Teensy, audio shield, Pi 4, bucks, hub, jacks, joystick, OLED) | ~$190 | **all verified except the OLED [m]** |
-| Optical pickup board (141 parts, 4-layer, ÷10 basis) | **~$59** | ⚠ **+$12** — photodiodes and MCU re-priced |
+| Optical pickup board (141 parts, 4-layer, ÷10 basis) | **~$53** | parts cost now **computed from the model**; 3 lines still OPEN |
 | Control sensors, 10 controls (MT6701 + magnet + board) | ~$50 | IC + magnet **verified**; boards not yet quoted |
 | Tee / carrier PCBs | ~$25 | estimate |
 | **Total** | **~$1,060** | |
 
 **The total barely moved, and that is a coincidence worth spelling out.** The
-optical board went **up** $12 and the buck up $5; the bearings came **down**
-about $25 once the MR85ZZ was sourced at $0.49 instead of $4.38. Those roughly
-cancel. Do not read the unchanged total as "the estimate was fine" — six
-individual lines were wrong, two of them badly, and the offsets were luck.
+optical board went **up** $6 net (photodiodes +$12, part selection −$6) and the
+buck up $5; the bearings came **down** about $25 once the MR85ZZ was sourced at
+$0.49 instead of $4.38. Those roughly cancel. Do not read the unchanged total as
+"the estimate was fine" — six individual lines were wrong, two of them badly,
+and the offsets were luck.
 
 **The largest remaining uncertainty is still the motors**, at ~$350 of the
 ~$620 mechanical figure and **not verified** — see the drive-motor row. If the
