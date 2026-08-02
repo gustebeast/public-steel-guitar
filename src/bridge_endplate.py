@@ -79,8 +79,13 @@ ARM_W = D.BRIDGE_ARM_W             # arm / edge-web thickness (Y) — kept clear
 #
 # The arms sit at y +-51.75, 9.35 mm OUTBOARD of the outermost string (+-42.4), so their
 # height was never a string-clearance question either -- only the bar's span was.
-ARM_TOP = D.BRIDGE_BEARING_Z + (D.BRIDGE_AXLE_D + 0.4) / 2 + 2.0   # 15.70: bore + a real
-                                                                   # cap, and nothing more
+# FLAT CHANGER TOP (user): the +Z extent of the whole bridge is the BEARING TOP, and the
+# tail (string-termination → +X tip) is a solid prism filled to that height — no more
+# drop-down cap. BEAR_TOP is single-sourced from the bearing OD so it tracks the string plane.
+BEAR_TOP = D.STRING_Z                                              # 16.0 = bearing top = string plane
+ARM_TOP = BEAR_TOP                                                # side walls flush to the flat top
+#   (was 15.70 = bore + a 2 mm cap; now the arms rise the last 0.3 to the bearing top so the
+#    side walls match the filled tail — the axle grub just reaches 0.3 deeper, still fine)
 MIN_ADDED = D.MIN_WALL_2P         # 1.6 -- two-bead QUALITY floor for material this
                                   # feature ADDS (single-sourced via dimensions)
 
@@ -238,10 +243,13 @@ def _cap() -> cq.Workplane:
     the window rim + axle comb + arm/tie roots. Foot clearance over each
     +X leg's kept chassis shell is pocketed afterward."""
     w = endplate_base(XLO, XHI, "hi")
-    # field-centre upper band (z6..10): backs the window rim, the axle comb roots and
-    # the bearing-arm/tie roots (the mechanism above z6 lives here, in the centre only)
-    w = w.union(box_at(X1 - X0, 2 * MECH_HW, CH.Z_TOP - Z6,
-                       x=(X0 + X1) / 2, y=0, z=(CH.Z_TOP + Z6) / 2))
+    # CHANGER-TOP PRISM (user): a SOLID flat-topped tail filled to the BEARING TOP, spanning
+    # from the string TERMINATION (D.BRIDGE_X = 0, +X of which no string runs) out to the +X
+    # tip. This replaces the old z6..10 field-centre band + its drop-down cap; the tail is now
+    # one flat block at the string plane. The strings' +X half and the carriage sweep are cut
+    # back out of it afterwards (the field-centre opening below + the string channels in _build).
+    w = w.union(box_at(X1 - D.BRIDGE_X, 2 * MECH_HW, BEAR_TOP - Z6,
+                       x=(D.BRIDGE_X + X1) / 2, y=0, z=(BEAR_TOP + Z6) / 2))
     # FIELD-CENTRE OPENING: clear x XLO..X0 between the arms from the lower
     # guide-ledge line (GR_LTOP) to the top — the guide ledges + windows are
     # re-added/cut by _build in this space exactly as before
