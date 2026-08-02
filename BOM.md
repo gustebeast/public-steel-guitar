@@ -7,22 +7,48 @@ preference. See `electromechanical-pedal-steel-spec.md` §12 for the fuller
 rationale. The **motors dominate cost** (10 × ~$35 ≈ ~$350); everything else
 is commodity.
 
+## Price verification — full sweep, 2026-08-01
+
+Every line item in this file was pushed at a live listing on **2026-08-01**.
+Rows carrying **[v]** were confirmed against a fetched product page; rows
+carrying **[m]** could not be fetched and need a **manual check by a human** —
+see "Cannot verify — needs a manual check" at the bottom of this file for the
+list and the reason for each. Anything with neither marker is an internal
+estimate (printed-part filament mass, PCB fab terms) with no listing to check.
+
+**Six rows moved.** Four were priced too low, one vendor is out of stock, and
+one part is not stocked at all in the library we committed to:
+
+| Row | Was | Now | Impact |
+|---|---|---|---|
+| Optical photodiode (VEMD4110X02) | ~$0.35 ea | **not on LCSC**; X01 $0.9334, 72 in stock | **+$11.7/board**, and a sourcing block |
+| Optical MCU STM32H743ZIT6 | $7.63 | **$11.07 / $9.93 @10**, 7 in stock | +$2.30/board, and a stock block |
+| TRRS jack Tensility 10-03404 | $5.15 | **$8.19 / $6.96 @10** | +$3 |
+| Bridge bearing 693ZZ | ~$1 ea | **$3.00 ea** (VXB 10-pack) | row was wrong; summary was right |
+| PCTG filament | $25/kg | **$29.95/kg** | +$3 |
+| Pi buck ≥3 A | ~$25 | **$29.95** (D24V50F5) | +$5 |
+
+Two of those are **availability**, not price, and they matter more than the
+dollars: the filtered photodiode and the 144-pin MCU are the two parts the
+optical board is designed around, and neither can currently supply a run of ten.
+See the optical-pickup section for what that costs and what the alternatives are.
+
 | Part | Spec | Qty | Source (verify stock) | ~Price | Notes |
 |------|------|-----|--------|--------|-------|
-| **Drive belt** | GT2 (2 mm pitch) open, **5 mm wide** | ~6.5 m | [Bulkman3D GT2 open belt](https://bulkman3d.com/product/gt000-gt0003/) | ~$0.5–1.7/m | cut-to-length, splice into loops with the printed clamp |
-| **Drive motor** | MKS SERVO42D closed-loop stepper, NEMA17, **CAN MT** (board + motor) | 10 | [P3D](https://p3d.mx/products/makerbase-mks-servo42d-nema17-foc-motor) · [ElectroPeak](https://electropeak.com/mks-servo42d-nema17-closed-loop-stepper-motor) | $35 ea | get **MT** (board + motor = the working actuator). The cheaper **MB ($22) is the board ONLY** — only worth it if sourcing bare 48 mm NEMA17s under ~$13 ea. makerbase3d.com sells direct ≈ $34 | **⚠ VARIANT CHECK 2026-08-01: the linked ElectroPeak page is the DRIVER ONLY, motor not included, listed 'as low as $12.50'. The $35 here is the MT bundle (board + motor). Confirm the exact SKU — this is the largest line in the BOM.**
-| **Lead screw + nut** | Tr5×1 trapezoidal (5 mm, 1 mm lead, 1-start, self-locking) + brass nut | 10 | [eBay Tr5×1 + brass nut](https://www.ebay.com/itm/396869709608) · mfr [ALM](https://www.autolinearmotion.com/5mm-trapezoidal-lead-screw.html) | ~$3 ea | cut to ~61 mm; eBay listings rotate—AliExpress/ALM are stable fallbacks |
-| **Screw support bearing** | MR85ZZ deep-groove, Ø5 × Ø8 × 2.5 | 10 | [Bearings Direct](https://bearingsdirect.com/mr85-zz-mini-ball-bearing-5x8x2-5-shielded-l850zz/) · [Trianglelab](https://trianglelab.net/products/mr85zz) | $0.5–4 ea | + a Ø5 thrust washer for the axial string pull |
-| **Axial retainer** | Ø5 set-screw shaft collar (or a 2nd Tr5 nut) | 10 | [ServoCity 5 mm collar](https://www.servocity.com/2920-series-steel-set-screw-collar-5mm-bore-2-pack/) | ~$2.5 ea | locks the screw against the support bearing |
-| **Bridge bearing** | 693ZZ deep-groove, Ø3 × Ø8 × 4 | 10 | [VXB 693ZZ ×10](https://vxb.com/products/693zz-3x8-shielded-3x8x4-miniature-bearing-pack-of) · [Bearings Direct](https://bearingsdirect.com/693-zz-mini-ball-bearing-3x8x4-shielded-r830zz/) | ~$1 ea | one per string; string rides the Ø8 OD |
-| **Bridge axle** | Ø3 **g6/h6 precision shaft**, ~105 mm (e.g. hardened ground shafting) | 1 | [McMaster 3 mm shafts](https://www.mcmaster.com/products/linear-shafts/) | ~$3 | NOT an m6 dowel — m6 is press-fit in a 693ZZ bore; the shaft must slide through all 10 bearings + 9 comb fingers + both arms. NO GLUE: the −Y arm's bore is blind (the 1.6 wall is the −Y stop) and one M2 grub down the +Y arm's free top closes +Y — length must land between y −52.5 and past the grub at +51.75 |
-| **Guide rod** | Ø2.5 × 28 mm hardened/ground dowel (DIN 6325, standard length) | 10 | [McMaster](https://www.mcmaster.com/products/hardened-dowel-pins/) · [eBay DIN6325 2.5 mm](https://www.ebay.com/itm/303389911894) | ~$0.5 ea | anti-rotation; drops in from the top through the stop bar's snug hole + the carriage's C-bore, landing in a blind socket — friction-held both ends, and the ledges are hard stops at both ends of travel (no glue: the rod is captive between the upper bar it threads through and the blind lower socket) |
-| **Nut break dowel** | Ø2 × 4 mm steel dowel (52100) | 10 | [McMaster 91595A018](https://www.mcmaster.com/91595A018/) | $12.70 / pack | gauged break pins (the scale "0"); drop into their slots from above. (Clamps bear on solid PETG-GF — no anvil.) |
-| **M4 cup-tip set screw** | M4 × 0.7 cup-tip, 10 mm, alloy | 11 | [McMaster 91390A114](https://www.mcmaster.com/91390A114/) | $7.28 / pack 100 | clamps each plain string end onto its anvil (10) + 1 pickup -Y retention grub (threads its heat-set insert, cup tip pushes the pickup +Y against the plate's +Y wall — locks the pickup to the plate only, so the plate still travels) |
-| **M4 pickup-jack screw** | M4 × 0.7, 20 mm, 18-8 SS button head (hex drive) | 3 | [McMaster 92095A-series](https://www.mcmaster.com/92095A192/) | ~$12 / pack | pickup height LEADSCREW jacks: the button head is captured in a deck counterbore (free to rotate, axially fixed), the shank threads the plate's heat-set nut so turning it from +Z walks the pickup up/down; 20 mm spans the height-adjust range across the 15–22 mm pickup depths + string gap. **Confirm the ×20 length suffix (…A196-class) at purchase.** NEW part — replaces the stale "3 cup-tip height screws" (those pre-date the leadscrew jack) |
-| **M4 heat-set insert** | M4 × 0.7 brass heat-set, 4.7 mm | 18 | [McMaster 94459A150](https://www.mcmaster.com/94459A150/) | $10.82 / pack 50 | 10 nut clamps + 4 leg-sleeve pinch collars + 3 pickup-carrier jack nuts + 1 pickup -Y retention grub; deeply buried (no pull-out) |
-| **M4 mount screw** | M4 × 0.7, 12 mm, 18-8 SS (button or socket head) | 4 | [McMaster 92095A192](https://www.mcmaster.com/92095A192/) | $14.77 / pack | 4 leg-sleeve pinch bolts, into 94459A150 inserts; **M4 × 0.7** (coarse) to match the inserts — NOT the M4 × 0.5 fine-thread 90751A120. (The old "pickup X/Y clamp screw" is retired — the pickup Y-lock is now the -Y cup-tip retention grub above) |
-| **M4 hold-down screw** | M4 × 18 mm, thread-forming for plastic | 1 | [McMaster](https://www.mcmaster.com/) | ~$8 / pack | the single +Z screw locking the merged keyhead nut-block endplate down — up from the floor bottom, thread-forming into its PETG-GF boss (the rest of the body is held by joinery) |
+| **Drive belt** | GT2 (2 mm pitch) open, **5 mm wide** | ~6.5 m | [Bulkman3D GT2 open belt](https://bulkman3d.com/product/gt000-gt0003/) | **$0.54–1.73/m** [v] | cut-to-length, splice into loops with the printed clamp. Verified 2026-08-01: range confirmed, 5 mm width is GT2-5W-1000, sold 1 m per piece |
+| **Drive motor** | MKS SERVO42D closed-loop stepper, NEMA17, **CAN MT** (board + motor) | 10 | [P3D](https://p3d.mx/products/makerbase-mks-servo42d-nema17-foc-motor) · [ElectroPeak](https://electropeak.com/mks-servo42d-nema17-closed-loop-stepper-motor) | $35 ea [m] | get **MT** (board + motor = the working actuator); **MB is the board ONLY**. MB/MT confirmed 2026-08-01 from Makerbase's own listings — all four SKUs are SERVO42D {RS485,CAN} × {MB,MT}. **⚠ MANUAL CHECK — the MT price is behind a variant dropdown that no fetch can read.** What is confirmed: ElectroPeak's linked page is the **driver only at $12.50** (motor explicitly not included) — that link is WRONG for this row and should be replaced. P3D lists "from $22.00" and makerbase3d.com "from $22.99", both of which are the **MB** floor. $35 for MT is therefore *plausible* (MB ~$22 + a bare 42 mm NEMA17 ~$13) but is **not a verified figure**. This is the largest line in the BOM (10 × $35 = $350); select CAN MT in the cart and record the real number before ordering. |
+| **Lead screw + nut** | Tr5×1 trapezoidal (5 mm, 1 mm lead, 1-start, self-locking) + brass nut | 10 | [eBay Tr5×1 + brass nut](https://www.ebay.com/itm/396869709608) · mfr [ALM](https://www.autolinearmotion.com/5mm-trapezoidal-lead-screw.html) | ~$3 ea [m] | cut to ~61 mm; eBay listings rotate—AliExpress/ALM are stable fallbacks. **MANUAL CHECK 2026-08-01:** the eBay listing timed out on fetch and eBay item IDs rotate anyway; ALM (the manufacturer) publishes **no prices at all** — quote-only, "Inquire" button, sales@autolinearmotion.com. There is no fetchable listing for this row. |
+| **Screw support bearing** | MR85ZZ deep-groove, Ø5 × Ø8 × 2.5 | 10 | [Bearings Direct](https://bearingsdirect.com/mr85-zz-mini-ball-bearing-5x8x2-5-shielded-l850zz/) · [Trianglelab](https://trianglelab.net/products/mr85zz) | **$0.49–4.38 ea** [v] | + a Ø5 thrust washer for the axial string pull. Verified 2026-08-01 — the spread is real and worth acting on: **Trianglelab $0.49 ea** (71 sold, in stock) vs **Bearings Direct $4.38 ea** (160 in stock, 5 % off @10). Same bearing, 9× the price; buy Trianglelab unless you want the US warehouse. 10 off ≈ **$5**, not $30. |
+| **Axial retainer** | Ø5 set-screw shaft collar (or a 2nd Tr5 nut) | 10 | [ServoCity 5 mm collar](https://www.servocity.com/2920-series-steel-set-screw-collar-5mm-bore-2-pack/) | **$2.50 ea** [v] | locks the screw against the support bearing. Verified 2026-08-01: $4.99 / 2-pack, in stock — figure was exactly right |
+| **Bridge bearing** | 693ZZ deep-groove, Ø3 × Ø8 × 4 | 10 | [VXB 693ZZ ×10](https://vxb.com/products/693zz-3x8-shielded-3x8x4-miniature-bearing-pack-of) · [Bearings Direct](https://bearingsdirect.com/693-zz-mini-ball-bearing-3x8x4-shielded-r830zz/) | **$3.00 ea** [v] ⚠ | one per string; string rides the Ø8 OD. **Corrected 2026-08-01 — the old "~$1 ea" was wrong by 3×.** VXB sells a 10-pack at **$29.99** = $3.00 ea (5–10 business days to ship); Bearings Direct is **$4.38 ea**, 298 in stock, 5 % off @10. Note the cost summary's "10× 693ZZ ~$30" was already right — it was this row that disagreed with it. Unlike the MR85ZZ there is no $0.49 source here |
+| **Bridge axle** | Ø3 **g6/h6 precision shaft**, ~105 mm (e.g. hardened ground shafting) | 1 | [McMaster 3 mm shafts](https://www.mcmaster.com/products/linear-shafts/) | ~$3 [m] | NOT an m6 dowel — m6 is press-fit in a 693ZZ bore; the shaft must slide through all 10 bearings + 9 comb fingers + both arms. NO GLUE: the −Y arm's bore is blind (the 1.6 wall is the −Y stop) and one M2 grub down the +Y arm's free top closes +Y — length must land between y −52.5 and past the grub at +51.75 |
+| **Guide rod** | Ø2.5 × 28 mm hardened/ground dowel (DIN 6325, standard length) | 10 | [McMaster](https://www.mcmaster.com/products/hardened-dowel-pins/) · [eBay DIN6325 2.5 mm](https://www.ebay.com/itm/303389911894) | ~$0.5 ea [m] | anti-rotation; drops in from the top through the stop bar's snug hole + the carriage's C-bore, landing in a blind socket — friction-held both ends, and the ledges are hard stops at both ends of travel (no glue: the rod is captive between the upper bar it threads through and the blind lower socket) |
+| **Nut break dowel** | Ø2 × 4 mm steel dowel (52100) | 10 | [McMaster 91595A018](https://www.mcmaster.com/91595A018/) | $12.70 / pack [m] | gauged break pins (the scale "0"); drop into their slots from above. (Clamps bear on solid PETG-GF — no anvil.) |
+| **M4 cup-tip set screw** | M4 × 0.7 cup-tip, 10 mm, alloy | 11 | [McMaster 91390A114](https://www.mcmaster.com/91390A114/) | $7.28 / pack 100 [m] | clamps each plain string end onto its anvil (10) + 1 pickup -Y retention grub (threads its heat-set insert, cup tip pushes the pickup +Y against the plate's +Y wall — locks the pickup to the plate only, so the plate still travels) |
+| **M4 pickup-jack screw** | M4 × 0.7, 20 mm, 18-8 SS button head (hex drive) | 3 | [McMaster 92095A-series](https://www.mcmaster.com/92095A192/) | ~$12 / pack [m] | pickup height LEADSCREW jacks: the button head is captured in a deck counterbore (free to rotate, axially fixed), the shank threads the plate's heat-set nut so turning it from +Z walks the pickup up/down; 20 mm spans the height-adjust range across the 15–22 mm pickup depths + string gap. **Confirm the ×20 length suffix (…A196-class) at purchase.** NEW part — replaces the stale "3 cup-tip height screws" (those pre-date the leadscrew jack) |
+| **M4 heat-set insert** | M4 × 0.7 brass heat-set, 4.7 mm | 18 | [McMaster 94459A150](https://www.mcmaster.com/94459A150/) | $10.82 / pack 50 [m] | 10 nut clamps + 4 leg-sleeve pinch collars + 3 pickup-carrier jack nuts + 1 pickup -Y retention grub; deeply buried (no pull-out) |
+| **M4 mount screw** | M4 × 0.7, 12 mm, 18-8 SS (button or socket head) | 4 | [McMaster 92095A192](https://www.mcmaster.com/92095A192/) | $14.77 / pack [m] | 4 leg-sleeve pinch bolts, into 94459A150 inserts; **M4 × 0.7** (coarse) to match the inserts — NOT the M4 × 0.5 fine-thread 90751A120. (The old "pickup X/Y clamp screw" is retired — the pickup Y-lock is now the -Y cup-tip retention grub above) |
+| **M4 hold-down screw** | M4 × 18 mm, thread-forming for plastic | 1 | [McMaster](https://www.mcmaster.com/) | ~$8 / pack [m] | the single +Z screw locking the merged keyhead nut-block endplate down — up from the floor bottom, thread-forming into its PETG-GF boss (the rest of the body is held by joinery) |
 | **Fasteners** | M3 (NEMA17 mounts), M2 (belt clamps) | — | [McMaster](https://www.mcmaster.com/) | — | commodity |
 | **M2 grub screw** | M2 × 0.4 cup-tip set screw, 3 mm | 3 | [McMaster](https://www.mcmaster.com/) | commodity | axial retention where no shoulder can exist because the shaft installs THROUGH its bearings: 1 per knee-lever axle (onto the D-flat) × 2 levers + 1 in the bridge endplate's +Y arm onto the Ø3 bridge shaft. Self-tapped — the walls (2.9 / 2.0) are too thin for a heat-set pocket, and the load is only "stop it sliding" |
 
@@ -34,30 +60,42 @@ the B/P column below is historical and every row is fitted. Panel I/O (1/4" TS l
 power inlet, USB-C) mounts through the recessed wall in the bridge endplate's
 lower corner — the instrument's right face.
 
-**Price verification status.** Rows marked **[v]** were re-checked against a live
-listing on **2026-08-01**. Everything else dates from June 2026 and should be
-treated as **stale** — re-verify before ordering. The **B/P** column is a leftover from the retired basic/pro split; every
-row is now fitted on every instrument.
+**Price verification status.** Every row in this table was checked against a live
+listing on **2026-08-01**; see the sweep summary at the top of the file. The
+**B/P** column is a leftover from the retired basic/pro split; every row is now
+fitted on every instrument.
 
 | Part | B/P | PN / source | ~Price | URL |
 |------|-----|-------------|--------|-----|
 | **Teensy 4.1** | B | PJRC via SparkFun | **$31.50** [v] | [SparkFun](https://www.sparkfun.com/teensy-4-1.html) |
-| **Teensy 4 Audio Shield Rev D** | B | SGTL5000, SparkFun | $9.80 | [SparkFun](https://www.sparkfun.com/teensy-4-audio-shield-rev-d.html) |
-| **CAN transceiver** | B | SN65HVD230DR (DigiKey) | $2.45 | [DigiKey](https://www.digikey.com/en/products/detail/texas-instruments/SN65HVD230DR/404367) |
-| **Buck 24→5 V 1 A** | B | Pololu D24V10F5 (powers Teensy) | $12.95 | [Pololu](https://www.pololu.com/product/2831) |
-| **Signal relay** | B | Omron G5V-1-DC5 SPDT (true-bypass) | $2.74 | [DigiKey](https://www.digikey.com/en/products/detail/omron-electronics-inc-emc-div/G5V-1-DC5/87831) |
-| **Buffer op-amp** | B | OPA2134PA DIP + passives | ~$11 | [DigiKey](https://www.digikey.com/en/products/detail/texas-instruments/OPA2134PA/254686) |
-| **1/4" TS panel jack** | B | Neutrik NMJ4HCD2 (Ø11.4 hole) | $2.53 | [DigiKey](https://www.digikey.com/en/products/detail/neutrik-americas-inc/NMJ4HCD2/29371256) |
-| **DC barrel panel jack** | B | Same Sky PJ-005A (Ø8 hole, 2.0 pin) | $3.07 | [DigiKey](https://www.digikey.com/en/products/detail/same-sky-formerly-cui-devices/PJ-005A/165838) |
-| **USB-C panel coupler** | B | Adafruit 4261 F↔F (USB 2.0, Ø30 hole) | $7.50 | [DigiKey](https://www.digikey.com/en/products/detail/adafruit-industries-llc/4261/10287031) |
-| **Rotary/4-way joystick** | B | Alps RKJXT1F42001 (sole UI control) | $9.22 | [DigiKey](https://www.digikey.com/en/products/detail/alps-alpine/RKJXT1F42001/19529127) |
-| **OLED display** | B | 2.42" 128×64 SSD1309 SPI (UI screen) | ~$17 | [Waveshare](https://www.waveshare.com/2.42inch-oled-module.htm) |
-| **USB 2.0 hub** | B | Adafruit CH334F (share 1 port: Teensy+Pi) | $4.50 | [Adafruit](https://www.adafruit.com/product/5999) |
+| **Teensy 4 Audio Shield Rev D** | B | SGTL5000, SparkFun | **$9.80** [v] | [SparkFun](https://www.sparkfun.com/teensy-4-audio-shield-rev-d.html) |
+| **CAN transceiver** | B | SN65HVD230DR (DigiKey) | **$2.45** [v] ⚠ **stock 0** | [DigiKey](https://www.digikey.com/en/products/detail/texas-instruments/SN65HVD230DR/404367) |
+| **Buck 24→5 V 1 A** | B | Pololu D24V10F5 (powers Teensy) | **$12.95** [v] | [Pololu](https://www.pololu.com/product/2831) |
+| **Signal relay** | B | Omron G5V-1-DC5 SPDT (true-bypass) | **$2.74** [v] | [DigiKey](https://www.digikey.com/en/products/detail/omron-electronics-inc-emc-div/G5V-1-DC5/87831) |
+| **Buffer op-amp** | B | OPA2134PA DIP + passives | **~$11** [v] | [DigiKey](https://www.digikey.com/en/products/detail/texas-instruments/OPA2134PA/254686) |
+| **1/4" TS panel jack** | B | Neutrik NMJ4HCD2 (Ø11.4 hole) | **$2.53** [v] | [DigiKey](https://www.digikey.com/en/products/detail/neutrik-americas-inc/NMJ4HCD2/29371256) |
+| **DC barrel panel jack** | B | Same Sky PJ-005A (Ø8 hole, 2.0 pin) | **$3.07** [v] | [DigiKey](https://www.digikey.com/en/products/detail/same-sky-formerly-cui-devices/PJ-005A/165838) |
+| **USB-C panel coupler** | B | Adafruit 4261 F↔F (USB 2.0, Ø30 hole) | **$7.50** [v] | [DigiKey](https://www.digikey.com/en/products/detail/adafruit-industries-llc/4261/10287031) |
+| **Rotary/4-way joystick** | B | Alps RKJXT1F42001 (sole UI control) | **$9.22** [v] | [DigiKey](https://www.digikey.com/en/products/detail/alps-alpine/RKJXT1F42001/19529127) |
+| **OLED display** | B | 2.42" 128×64 SSD1309 SPI (UI screen) | ~$17 [m] | [Waveshare](https://www.waveshare.com/2.42inch-oled-module.htm) |
+| **USB 2.0 hub** | B | Adafruit CH334F (share 1 port: Teensy+Pi) | **$4.50** [v] | [Adafruit](https://www.adafruit.com/product/5999) |
 | **Raspberry Pi 4, 2 GB** | B | Dexed + USB gadget (MIDI/audio/DFU) + USB host for the optical board | **$55.00** [v] | [PiShop](https://www.pishop.us/product/raspberry-pi-4-model-b-2gb/) |
-| **Buck 24→5 V ≥3 A** | B | Pi 4 draws ~3 A, not the Pi 5's 5 A — smaller unit than the D36V50F5 this replaced | ~$25 ⚠ | [Pololu](https://www.pololu.com/category/electronics) |
+| **Buck 24→5 V ≥3 A** | B | Pololu **D24V50F5** (5 V, 5 A, in up to 24 V). Pi 4 draws ~3 A, but see note | **$29.95** [v] ⚠ | [Pololu 2851](https://www.pololu.com/product/2851) |
 | ~~10-ch audio ADC~~ | — | **DELETED.** Three PCM1864 + a carrier PCB existed to digitise ten string signals for the Pi. The optical pickup board now does its own 20-channel conversion (STM32H743ZIT6, 20× 16-bit) and sends audio over USB, so this whole path is redundant — ~$29 of ICs plus an entire board's fab, assembly and feeder cost removed | — | — |
 
-⚠ **Both marked prices are unverified estimates** — re-check before ordering.
+⚠ **The buck, and the "smaller unit" idea behind it, did not survive checking.**
+The row assumed the Pi-4 downgrade would also buy a cheaper regulator. It does
+not: Pololu's 5 V step-down line at ≥3 A and 24 V in **starts at the 5 A
+D24V50F5 at $29.95** (the next one up, the 9 A D24V90F5, is $36.82). There is no
+3 A part in between — so the ~$25 estimate was $5 low and the "smaller unit"
+saving is **zero**. The Pi-4 change still saves real money on the Pi itself;
+it just does not save anything here. If $30 matters, a non-Pololu 5 V/3 A module
+is the lever, at the cost of leaving a vendor the rest of the file already uses.
+
+⚠ **OLED [m]:** both the Waveshare product page and RobotShop return **HTTP 403**
+to automated fetches, so the ~$17 is unconfirmed. A German reseller lists the
+yellow variant at €18.00, which is at least consistent. Needs a manual look.
+
 **Why the Pi dropped from a 5/8 GB to a 4/2 GB:** audio→MIDI now runs on the
 optical pickup's own MCU, so the Pi's remaining jobs are Dexed (a DX7 emulation,
 light), USB gadget duty, and hosting the optical board. None of that is Pi 5 work.
@@ -108,8 +146,8 @@ populate them.
 
 | Part | Qty | ~Price | Source | Notes |
 |------|-----|--------|--------|-------|
-| **Angle sensor IC** | 11 | ~$1.2–2 ea | [LCSC](https://www.lcsc.com/search?q=MT6701) | MagnTek **MT6701QT-STD**, 14-bit on-axis magnetic encoder. Take the **QFN-16**, *not* the SOP-8 variant: the air gap is measured to the IC's own top surface, so the package height comes straight out of the gap budget, and the SOP-8 is ~1.5 mm tall — twice the QFN — on the axis where we have the least room. Datasheet §9.2: D = E = 2.900–3.100, **A (total height) = 0.700–0.800** (the model carries the 0.800 max). §1.2: *"Sensing Center at Geometry Center"* — so the package body centres on the axle axis with no per-package offset. Assembled by JLCPCB onto our sensor PCB alongside the tee boards — no hand soldering |
-| **Diametric magnet** | 11 | $0.40 / $0.33 @10 | [DigiKey](https://www.digikey.com/en/products/detail/radial-magnets-inc/8995/5126077) | Radial Magnets **8995** — NdFeB **N35, Ø6 × 2.5 mm, DIAMETRICALLY magnetised**, NiCuNi, 80 °C, 3873 G surface; ~9k in stock. ⚠ **Diametric, NOT axial** — axial discs are far more common and simply do not work here (DigiKey lists the direction in the specs, so it is checkable at order time). It is also the datasheet's own **recommended magnet** (§5: "Ø6mm x 2.5mm"), so this pair is the configuration the IC was characterised in. Drops into the axle's end pocket; `kl_magnet_cap` screws over it — no adhesive |
+| **Angle sensor IC** | 11 | **$1.11 ea** [v] | [LCSC C2913974](https://www.lcsc.com/product-detail/Position-Sensor_Magn-Tek-MT6701QT-STD_C2913974.html) | Verified 2026-08-01: **$1.1139**, in stock — inside the old ~$1.2–2 estimate, at the low end. Note the QFN part is **C2913974**; the more commonly cited **C2856764 is the MT6701*C*T-STD**, the SOP-8, which is the variant this row explicitly rejects — do not let the wrong LCSC code onto the BOM line. MagnTek **MT6701QT-STD**, 14-bit on-axis magnetic encoder. Take the **QFN-16**, *not* the SOP-8 variant: the air gap is measured to the IC's own top surface, so the package height comes straight out of the gap budget, and the SOP-8 is ~1.5 mm tall — twice the QFN — on the axis where we have the least room. Datasheet §9.2: D = E = 2.900–3.100, **A (total height) = 0.700–0.800** (the model carries the 0.800 max). §1.2: *"Sensing Center at Geometry Center"* — so the package body centres on the axle axis with no per-package offset. Assembled by JLCPCB onto our sensor PCB alongside the tee boards — no hand soldering |
+| **Diametric magnet** | 11 | **$0.40 / $0.332 @10** [v] | [DigiKey](https://www.digikey.com/en/products/detail/radial-magnets-inc/8995/5126077) | Radial Magnets **8995** — NdFeB **N35, Ø6 × 2.5 mm, DIAMETRICALLY magnetised**, NiCuNi, 80 °C, 3873 G surface; ~9k in stock. ⚠ **Diametric, NOT axial** — axial discs are far more common and simply do not work here (DigiKey lists the direction in the specs, so it is checkable at order time). It is also the datasheet's own **recommended magnet** (§5: "Ø6mm x 2.5mm"), so this pair is the configuration the IC was characterised in. Drops into the axle's end pocket; `kl_magnet_cap` screws over it — no adhesive |
 
 *(qty 11 = **10 controls** + 1 spare. The controls are not modelled yet — only
 two knee levers exist in `src/` — but the count is fixed by the instrument: 5
@@ -171,7 +209,11 @@ sensor reads direction — so the failure mode is graceful, not silent.
 ## Filament (printed parts)
 
 Estimated at 2 perimeters (0.8 mm nozzle → 1.6 mm walls) + 15 % infill. Pickup
-parts excluded. PCTG $25/kg, PETG-GF $30/kg, TPU≈$30 (assumed). The build
+parts excluded. **Prices verified 2026-08-01: PCTG $29.95/kg** (was $25 — 3D-Fuel
+Pro PCTG Natural), **PETG-GF $25.99/kg on sale, $29.99 list** (Tinmorry — the
+$30 assumption was right at list), **TPU $22.99** (Tinmorry 95A, ⚠ **currently
+SOLD OUT**). Net effect on the filament line is about **+$3**; the masses below
+are model estimates and were not re-derived. The build
 exports each part into its **material folder** (`petg-gf/`, `pctg/`, `tpu/`):
 PETG-GF = every stiffness/creep-critical part (sustained string-tension +
 ground-reaction paths); PCTG = compliant / snap-fit / fine-feature parts, and
@@ -202,6 +244,9 @@ Chosen spools:
   Elegoo PETG-GF (flex modulus 3345 MPa, published) is the documented fallback.
   Vendor recommends a hardened ≥0.4 mm (ideally 0.6 mm) nozzle.
 - **TPU — [Tinmorry TPU 95A](https://tinmorry.net/en-us/products/filament-tpu-1-75-mm-tinmorry-3d-printing-materials-tpu-filament-for-fdm-3d-printer-1-kg-1-spool-black)**
+  — **$22.99 (from $24.99), but ⚠ SOLD OUT as of 2026-08-01.** Only ~40 g is
+  needed, so any 95A spool serves; pick a substitute at order time rather than
+  waiting on this SKU.
   (Shore 95A±2 — right grade for floor grip + preload washers; 68D "AMS-safe"
   TPU is 5–10× stiffer and grips poorly). Dry 70 °C / 8 h before printing;
   **not AMS-compatible** — run the feet + washers from the external spool.
@@ -260,32 +305,32 @@ pigtails** (or XT30PW board-mount on the power distribution PCB) — pick
 whichever quotes cleaner at order time. NO consignment anywhere: all PCB
 parts are LCSC-library.
 
-Prices **verified on DigiKey 2026-07-09** (stock healthy unless noted);
-re-check at order time. XH harness = crimp-your-own (contacts ~$0.03 vs
+Prices **re-verified on DigiKey/LCSC 2026-08-01** (stock healthy unless noted).
+This whole table held up except the chassis TRRS jack, which was **$3 low**. XH harness = crimp-your-own (contacts ~$0.03 vs
 $0.59–0.78 per pre-crimped lead — 20×; needs a ~$25–45 tool, below).
 
 | Role | Part | Qty | Price (verified) | URL | Notes |
 |------|------|-----|------------------|-----|-------|
-| **TRRS plug + cable** (bar cradle) | Tensility **CA-354S** (053-0113R): molded plug Ø10, barrel Ø3.5×14, 1.83 m Ø3.7 shielded 26 AWG cable, tinned ends | 2 | $3.53 / $3.00 @10 | [DigiKey](https://www.digikey.com/en/products/detail/tensility-international-corp/CA-354S/382910) | zero-solder: cut cable to length, crimp XH on the cut end. #1 = bar cradle → first bar tee; +1 spare. (The old #2 "leg-column riser" is DELETED — the column is an off-the-shelf extension cable now, next row.) [Drawing](https://tensility.s3.us-west-2.amazonaws.com/uploads/pdffiles/053-0113R.pdf) |
+| **TRRS plug + cable** (bar cradle) | Tensility **CA-354S** (053-0113R): molded plug Ø10, barrel Ø3.5×14, 1.83 m Ø3.7 shielded 26 AWG cable, tinned ends | 2 | **$3.53 / $2.996 @10** [v] | [DigiKey](https://www.digikey.com/en/products/detail/tensility-international-corp/CA-354S/382910) | zero-solder: cut cable to length, crimp XH on the cut end. #1 = bar cradle → first bar tee; +1 spare. (The old #2 "leg-column riser" is DELETED — the column is an off-the-shelf extension cable now, next row.) [Drawing](https://tensility.s3.us-west-2.amazonaws.com/uploads/pdffiles/053-0113R.pdf) |
 | **TRRS M→F EXTENSION cable** (the WHOLE wired leg column) | Off-the-shelf 3.5 mm 4-pole (TRRS) headset extension, ~1.2 m, shielded; **pick at purchase & verify**: molded plug handle ≤ Ø10 (head seat), inline jack barrel ≈ Ø9.1–9.7 × ≤40 (shaft seat, 10-03404-class envelope) | 1 | ~$5–8 | (commodity; e.g. DigiKey/Amazon 4-pole extension) | ZERO connections on the leg (user): the molded PLUG sits captive in the latch head (blind-mates the chassis jack), the molded FEMALE barrel seats mouth-down in the shaft block (receives the bar tower's plug), the middle gets the heat-set slack COIL (Ø8 mandrel, 85 °C). No solder, no crimps, no junction anywhere in the column. |
-| **TRRS jack + cable** (chassis, above the -X/+Y socket) | Tensility **10-03404**: molded jack Ø9.1×39.4, 0.91 m Ø3.8 shielded 28 AWG cable | 1 | $5.15 / $4.4 @10 | [DigiKey](https://www.digikey.com/en/products/detail/tensility-international-corp/10-03404/11196637) | embedded VERTICALLY above the socket — the column-top plug BLIND-MATES on the latch press (plug spins freely in the jack → no wire twist); cable → tee 12 (crimp XH at the cut end — off-leg). [Drawing](https://tensility.s3.us-west-2.amazonaws.com/uploads/pdffiles/10-03404.pdf) |
+| **TRRS jack + cable** (chassis, above the -X/+Y socket) | Tensility **10-03404**: molded jack Ø9.1×39.4, 0.91 m Ø3.8 shielded 28 AWG cable | 1 | **$8.19 / $6.96 @10** [v] ⚠ | [DigiKey](https://www.digikey.com/en/products/detail/tensility-international-corp/10-03404/11196637) | embedded VERTICALLY above the socket — the column-top plug BLIND-MATES on the latch press (plug spins freely in the jack → no wire twist); cable → tee 12 (crimp XH at the cut end — off-leg). [Drawing](https://tensility.s3.us-west-2.amazonaws.com/uploads/pdffiles/10-03404.pdf) |
 | **TRRS jack, SMT** (leg-shaft auto-mate, on the leg carrier PCB) | LCSC-library compact SMT jack, **pick at PCB design** (SJ-4351X-class, ~13×6×5) | 2 | ~$0.30 | LCSC | the only form factor that fits the Ø20 shaft; factory-assembled on the carrier (no consignment). Pocket gets rebuilt around the chosen part's drawing. Fallback: Same Sky SJ-43514-SMT-TR via JLCPCB global sourcing |
-| **XH crimp contacts** | JST **SXH-001T-P0.6** | 300 | ~$0.024–0.047 | [DigiKey](https://www.digikey.com/en/products/result?keywords=SXH-001T-P0.6) | 22–30 AWG; qty includes learning-curve scrap |
-| **XH housings** | JST **XHP-2 / XHP-4 / XHP-6** | ~30 | ~$0.10 | [DigiKey](https://www.digikey.com/en/products/result?keywords=XHP-4) | contacts click in by hand, extractable; XHP-6 mates the SERVO42D pigtail |
-| **XH header**, SMT side-entry | JST **S4B-XH-SM4-TB** | 8 | $0.65 / $0.28 @800 | [LCSC C161861](https://lcsc.com/product-detail/Wire-To-Board-Connector_JST-S4B-XH-SM4-TB-LF-SN_C161861.html) | **Sensor boards only**, and it earns the second part number: it is the piece that lets the board be SINGLE-SIDED. SMT (no post tails through a face that has to seat), side entry (a top-entry plug would have to be inserted from inside the housing). B = 15.0, 7.0 tall, 6.1 body depth, 4.5 mouth. Mates the same XHP-4 plugs and crimps as everything else, so the harness is unaffected. ~40k in LCSC stock; in JLC's library as C161861 — check it is orderable for assembly at quote time |
-| **XH headers**, THT top-entry | JST **B2B/B4B/B6B-XH-A(LF)(SN)** | ~30 | $0.17 / $0.144 @10 | [DigiKey](https://www.digikey.com/en/products/result?keywords=B4B-XH-A) | on every custom PCB (sensor boards, Teensy carrier, leg breakout); B4B verified, other sizes same class. Modelled from JST's own drawing (`cadkit.pcb.jst_xh_header`): B4B is **12.4 × 5.75**, **7.0 mm** tall bare and **9.8 mm mated** — the mated figure is the one clearances must use — with □0.64 posts reaching 3.4 mm below the seating plane, i.e. **1.8 mm proud** of a 1.6 mm board's far face. The pin row is **2.0 mm from one long edge, 3.75 from the other**, so the part is not symmetric about its pins and which way it faces is a real layout decision |
-| **Power connector** (PSU trunk only) | XT30 pair — DFRobot **FIT0586** | 4 pr | $1.90 | [DigiKey](https://www.digikey.com/en/products/detail/dfrobot/FIT0586/9559255) | 15 A/30 A pk, gold; pigtails bench-soldered ONCE, field = plug/unplug only |
-| **CAN terminator R** | Yageo **CFR-25JB-52-120R** (120 Ω ¼ W) | 10 | $0.10 / $0.036 @10 | [DigiKey](https://www.digikey.com/en/products/result?keywords=CFR-25JB-52-120R) | Teensy carrier + last motor; bus-B termination lives ON the tees (SMT 120R there) |
+| **XH crimp contacts** | JST **SXH-001T-P0.6** | 300 | **$0.0235–0.047** [v] | [DigiKey](https://www.digikey.com/en/products/result?keywords=SXH-001T-P0.6) | 22–30 AWG; qty includes learning-curve scrap |
+| **XH housings** | JST **XHP-2 / XHP-4 / XHP-6** | ~30 | **$0.10** [v] | [DigiKey](https://www.digikey.com/en/products/result?keywords=XHP-4) | contacts click in by hand, extractable; XHP-6 mates the SERVO42D pigtail |
+| **XH header**, SMT side-entry | JST **S4B-XH-SM4-TB** | 8 | **$0.6577 / $0.2889 @800** [v] | [LCSC C161861](https://lcsc.com/product-detail/Wire-To-Board-Connector_JST-S4B-XH-SM4-TB-LF-SN_C161861.html) | **Sensor boards only**, and it earns the second part number: it is the piece that lets the board be SINGLE-SIDED. SMT (no post tails through a face that has to seat), side entry (a top-entry plug would have to be inserted from inside the housing). B = 15.0, 7.0 tall, 6.1 body depth, 4.5 mouth. Mates the same XHP-4 plugs and crimps as everything else, so the harness is unaffected. ~40k in LCSC stock; in JLC's library as C161861 — check it is orderable for assembly at quote time |
+| **XH headers**, THT top-entry | JST **B2B/B4B/B6B-XH-A(LF)(SN)** | ~30 | **$0.17** [v] | [DigiKey](https://www.digikey.com/en/products/result?keywords=B4B-XH-A) | on every custom PCB (sensor boards, Teensy carrier, leg breakout); B4B verified, other sizes same class. Modelled from JST's own drawing (`cadkit.pcb.jst_xh_header`): B4B is **12.4 × 5.75**, **7.0 mm** tall bare and **9.8 mm mated** — the mated figure is the one clearances must use — with □0.64 posts reaching 3.4 mm below the seating plane, i.e. **1.8 mm proud** of a 1.6 mm board's far face. The pin row is **2.0 mm from one long edge, 3.75 from the other**, so the part is not symmetric about its pins and which way it faces is a real layout decision |
+| **Power connector** (PSU trunk only) | XT30 pair — DFRobot **FIT0586** | 4 pr | **$1.90** [v] | [DigiKey](https://www.digikey.com/en/products/detail/dfrobot/FIT0586/9559255) | 15 A/30 A pk, gold; pigtails bench-soldered ONCE, field = plug/unplug only |
+| **CAN terminator R** | Yageo **CFR-25JB-52-120R** (120 Ω ¼ W) | 10 | **$0.10 / $0.036 @10** [v] | [DigiKey](https://www.digikey.com/en/products/result?keywords=CFR-25JB-52-120R) | Teensy carrier + last motor; bus-B termination lives ON the tees (SMT 120R there) |
 | **Tee PCB** | custom: 3× B4B-XH-A + 120 Ω + shunt jumper | 12 | ~$2 assembled (est.) | JLCPCB | panelized with the sensor boards; close the jumper on the LAST tee = bus-B termination |
 | **Leg carrier PCB** | custom: LCSC SMT jack + B4B-XH-A header | 2 | ~$2 assembled (est.) | JLCPCB | rides the same panel; sits in the shaft pocket — auto-mate jack's terminals land on XH, fully factory-soldered |
-| **FD-capable transceiver** (new PCBs) | Microchip **MCP2562FD-E/SN** | ~10 | $1.29 / $1.07 @25 | [DigiKey](https://www.digikey.com/en/products/result?keywords=MCP2562FD-E%2FSN) | rides the sensor-PCB assembly order (LCSC ~$0.50 there); VIO pin suits 3.3 V logic |
+| **FD-capable transceiver** (new PCBs) | Microchip **MCP2562FD-E/SN** | ~10 | **$1.29 / $1.07 @25** [v] | [DigiKey](https://www.digikey.com/en/products/result?keywords=MCP2562FD-E%2FSN) | rides the sensor-PCB assembly order (LCSC ~$0.50 there); VIO pin suits 3.3 V logic |
 
 ≈ **$40 of connectors + ~$25 of tee/carrier boards** (board figures are
 estimates until the JLCPCB quote; tools live in the Tools section — per
 project policy they're shop infrastructure, not a line item weighed against
 any one approach). Fallback if crimping
 frustrates: JST pre-crimped leads [ASXHSXH22K203](https://www.digikey.com/en/products/detail/jst-sales-america-inc/ASXHSXH22K203/9961918)
-($0.78 / $0.588 @50, 200 mm socket-socket — cut in half = 2 pigtails).
+(**$0.78 / $0.5878 @50** [v], 200 mm socket-socket — cut in half = 2 pigtails).
 Molded TRRS cables were dropped: DigiKey's are special-order/obsolete
 (SparkFun 14163/14164) and the lean topology needs none — if an external
 TRRS hop ever appears, any consumer 4-pole aux cable serves. Audio stays as
@@ -467,23 +512,44 @@ instead of ~1 µs. Per-string *current* is still set individually by R1–R10; w
 is common is only the on/off gate. The cost is optical crosstalk between
 neighbouring strings — one of the things the prototype needs to measure.
 
-### Two open items, now closed
+### Two items that were closed, and are open again after the 2026-08-01 check
 
-**MCU — resolved to LQFP144, and the package is set by ADC pin count.** The
-LQFP100 `STM32H743VIT6` brings out only **16** ADC channels; this board digitises
-**20** (one per photodiode). The 144-pin **`STM32H743ZIT6`** has exactly 20, is in
-LCSC stock as **C114408**, and at **~$7.63** is *cheaper* than the 100-pin part —
-so no analog mux is needed and the fallback plan is retired. 22 × 22 over its
-leads fits the 30 mm tail with 4.0 mm clear.
+**MCU — package still right; price and stock both wrong.** The LQFP100
+`STM32H743VIT6` brings out only **16** ADC channels; this board digitises **20**
+(one per photodiode). The 144-pin **`STM32H743ZIT6`** has exactly 20, and 22 × 22
+over its leads fits the 30 mm tail with 4.0 mm clear. That reasoning stands.
 
-**Photodiode — resolved, and it takes a second problem with it.** Vishay
-**`VEMD4110X02`**: Si **PIN** photodiode (not a phototransistor, so the linearity
-the audio path needs survives), 0805, 0.42 mm² active area, ±55°, and it carries a
-**daylight-blocking filter matched to 830–950 nm emitters**. That is the IR-pass
-window this design was going to need as a separate bonded part against sun — it
-comes built into the detector. Confirm LCSC/JLC assembly stock at quote time; the
-`VEMD4010X02` (no filter, 910 nm peak) is the same outline if the filtered one is
-unavailable, but the filter is worth chasing.
+⚠ **The ~$7.63 does not.** Verified on LCSC 2026-08-01 (**C114408**): **$11.07
+@1, $9.93 @10 — and 7 units in stock.** Ten boards need ten parts. So it is
+$2.30 dearer than budgeted *and* not presently orderable at the project's
+10-instrument convention. It also loses the "cheaper than the 100-pin part"
+argument that justified stopping the search here. Re-check at quote time; if
+stock has not recovered, the thing to attack is the **20-channel ADC
+requirement**, since that is what forced 144 pins to begin with.
+
+⚠ **Photodiode — the resolution did not survive checking.** Vishay
+**`VEMD4110X02`** is still the right part on the merits: Si **PIN** photodiode
+(not a phototransistor, so the linearity the audio path needs survives), 0805,
+0.42 mm² active area, ±55°, carrying a **daylight-blocking filter matched to
+830–950 nm emitters** — the IR-pass window this design would otherwise need as a
+separately bonded part.
+
+**It is not in LCSC's catalogue.** Searched 2026-08-01: LCSC lists only the
+**`VEMD4110X01`** (C3211080) at **$0.9334, 72 in stock**. Two consequences, and
+the second is worse than the first:
+
+1. **Price.** Twenty detectors at $0.9334 = **$18.67/board**, against the ~$7
+   this BOM assumed — **+$11.67/board**, the largest single error in the file.
+2. **Availability, and the no-consignment rule.** 72 units covers three boards;
+   ten need 200. And the X02 — the *filtered* variant, the one the sun-rejection
+   argument leans on — would have to arrive as **consignment**, which the project
+   rule forbids. So either the rule bends for this one part, or the design takes
+   an unfiltered detector and sun rejection goes back to being a bonded IR-pass
+   window in the cover (which the cover section already names as "the obvious
+   next addition"). That is a live design decision, not a footnote.
+
+The `VEMD4010X02` (no filter, 910 nm peak) remains the same outline, so the
+model and the footprint do not change under either resolution.
 
 **Still open** (project rule: NO consignment, all PCB parts LCSC-library):
 - a **ULPI PHY** in JLC's library — USB3343-class QFN-24 is the envelope modelled.
@@ -500,9 +566,10 @@ a **.014 plain string at 22 mm with a narrow-beam emitter at a realistic drive
 current**. Testing with a wide-angle emitter would understate the design by ~10 dB
 and could argue for playing-space intrusion that isn't needed.
 
-**Cost (estimate, not yet quoted)**: ~$30/board in parts — the MCU (~$9), 20
-photodiodes (~$7), 5 quad op-amps (~$4) and the PHY (~$2.50) dominate; ~95
-passives total about $1. Assembly follows the same per-*order* economics as the
+**Cost (updated 2026-08-01)**: **~$41.60/board in parts**, up from ~$30. The MCU
+(**$9.93** verified) and the 20 photodiodes (**$18.67** verified) dominate, with
+5 quad op-amps (~$4) and the PHY (~$2.50) behind them; ~95 passives total about
+$1. The two verified lines are $28.60 of it — the rest is still estimated. Assembly follows the same per-*order* economics as the
 tee/sensor panel ($25 setup + ~$1.50 per unique feeder), so it should ride the
 **same JLCPCB panel** — the 0402 R/C and generic parts overlap with the existing
 boards, and only the specialised lines add feeders.
@@ -521,14 +588,18 @@ then multiples of 5** — you cannot order 3. So the per-instrument curve is a
 
 | Instruments | Order | Waste | Order total | Per instrument |
 |--:|--:|--:|--:|--:|
-| 1 | 2 | 1 | $172.64 | $172.64 |
-| 2 | 2 | 0 | $172.64 | $86.32 |
-| 3 | 5 | 2 | $283.10 | **$94.37** ↑ |
-| 5 | 5 | 0 | $283.10 | $56.62 |
-| 6 | 10 | 4 | $467.21 | **$77.87** ↑ |
-| **10** | **10** | **0** | **$467.21** | **$46.72** |
-| 15 | 15 | 0 | $651.31 | $43.42 |
-| 20 | 20 | 0 | $835.42 | $41.77 |
+| 1 | 2 | 1 | $197.84 | $197.84 |
+| 2 | 2 | 0 | $197.84 | $98.92 |
+| 3 | 5 | 2 | $346.10 | **$115.37** ↑ |
+| 5 | 5 | 0 | $346.10 | $69.22 |
+| 6 | 10 | 4 | $593.20 | **$98.87** ↑ |
+| **10** | **10** | **0** | **$593.20** | **$59.32** |
+| 15 | 15 | 0 | $840.30 | $56.02 |
+| 20 | 20 | 0 | $1,087.40 | $54.37 |
+
+*(Recomputed 2026-08-01 on the corrected $49.42 variable cost. The **shape** is
+unchanged — it comes from the quantity ladder, not the rates — so both
+conclusions below still hold; only the absolutes moved.)*
 
 Two consequences worth acting on:
 
@@ -537,7 +608,7 @@ Two consequences worth acting on:
 * **10 is the knee.** It is the first quantity within 30 % of the variable-cost
   floor; past 15 the gains are slow. Hence the convention.
 
-### Optical pickup board at that basis — $46.72 per instrument
+### Optical pickup board at that basis — $59.32 per instrument
 
 Board is **37.4 × 184.4 mm = 69.0 cm²**, 4-layer, 141 parts, ~541 solder joints.
 (An earlier revision of this section said 47.5 cm² — that predates the +X wraps
@@ -546,18 +617,32 @@ and the M4 bands.)
 | | | |
 |---|---|---:|
 | **Fixed, per order** | PCBA setup $25 + feeder loading $39 (26 unique parts × $1.50) + component MOQ overage ~$20 + 4-layer fab tooling ~$15 | **$99.00** |
-| **Variable, per board** | parts $29.00 + fab $6.90 (69 cm² × $0.10) + assembly $0.92 (541 joints) | **$36.82** |
-| **Order of 10** | 99.00 + 10 × 36.82 | **$467.21** |
-| **Per instrument** | ÷ 10 | **$46.72** |
+| **Variable, per board** | parts **$41.60** + fab $6.90 (69 cm² × $0.10) + assembly $0.92 (541 joints) | **$49.42** |
+| **Order of 10** | 99.00 + 10 × 49.42 | **$593.20** |
+| **Per instrument** | ÷ 10 | **$59.32** |
+
+*(Was $46.72 on a $29.00 parts figure. The whole $12.60 increase is the two
+verified lines above — photodiodes +$11.67, MCU +$0.93. Nothing else moved, and
+the fixed-cost row is untouched.)*
 
 **Soft in this:** the fab terms ($15 tooling + $0.10/cm²) are estimates — worth a
 JLC quote before trusting the absolutes, though the *shape* of the curve comes
-purely from the quantity ladder and does not depend on them. Parts are held flat
-at $29; LCSC volume breaks mean the real figure at 10 is a little lower.
+purely from the quantity ladder and does not depend on them. Parts now use the
+**@10 price** where verified ($9.93 MCU) and @1 where not ($0.9334 photodiode,
+because LCSC showed no break at the quantity we need — and cannot supply it
+anyway).
 
-**Five lines are $26 of the $29** — MCU, photodiodes, op-amps, emitters, PHY. Two
-exist only for per-string audio: pitch-only would fit USB full-speed, deleting the
-PHY and allowing a cheaper MCU, so **the audio capability is about $9/board**.
+**Photodiodes alone are now $18.67 of the $41.60** — they have overtaken the MCU
+as the most expensive thing on the board, which was not true when the design was
+settled. Worth noting the sensitivity: the detector count is **two per string by
+choice**, for the SUM/DIFF pair that defends against the 2f₀ octave error. That
+choice now costs ~$9.30/board rather than ~$3.50. It is still the right call —
+a confident octave-up error is worse than any price — but it is no longer a
+rounding error, and a cheaper 0805 PIN diode is the highest-value substitution
+on this board.
+
+**Per-string audio remains about $9/board**: pitch-only would fit USB full-speed,
+deleting the PHY and allowing a cheaper MCU.
 
 **One free saving at layout:** the outline uses far less copper than its billed
 bounding rectangle. Two boards nested head-to-tail on the panel should recover a
@@ -612,21 +697,57 @@ several are unverified — re-verify the whole file before ordering.**
 
 | Group | Per instrument | Confidence |
 |-------|---------------:|------------|
-| Filament (printed) | ~$78 | estimate |
-| Mechanical hardware (motors, screws, bearings, belt, fasteners, dowels) | ~$640 | mostly verified 2026-07 |
+| Filament (printed) | ~$81 | estimate; **spool prices verified**, masses are model estimates |
+| Mechanical hardware (motors, screws, bearings, belt, fasteners, dowels) | ~$620 | belt/collar/bearings **verified**; motor + all McMaster **[m]** |
 | Wire | ~$35 | estimate, excludes 10 control drops |
-| Electronics + UI (Teensy, audio shield, Pi 4, bucks, hub, jacks, joystick, OLED) | ~$185 | **Pi + buck unverified** |
-| Optical pickup board (141 parts, 4-layer, ÷10 basis) | ~$47 | modelled, fab terms estimated |
-| Control sensors, 10 controls (MT6701 + magnet + board) | ~$50 | boards not yet quoted |
+| Electronics + UI (Teensy, audio shield, Pi 4, bucks, hub, jacks, joystick, OLED) | ~$190 | **all verified except the OLED [m]** |
+| Optical pickup board (141 parts, 4-layer, ÷10 basis) | **~$59** | ⚠ **+$12** — photodiodes and MCU re-priced |
+| Control sensors, 10 controls (MT6701 + magnet + board) | ~$50 | IC + magnet **verified**; boards not yet quoted |
 | Tee / carrier PCBs | ~$25 | estimate |
 | **Total** | **~$1,060** | |
 
+**The total barely moved, and that is a coincidence worth spelling out.** The
+optical board went **up** $12 and the buck up $5; the bearings came **down**
+about $25 once the MR85ZZ was sourced at $0.49 instead of $4.38. Those roughly
+cancel. Do not read the unchanged total as "the estimate was fine" — six
+individual lines were wrong, two of them badly, and the offsets were luck.
+
+**The largest remaining uncertainty is still the motors**, at ~$350 of the
+~$620 mechanical figure and **not verified** — see the drive-motor row. If the
+MT bundle is not $35, this total moves more than everything found today combined.
+
 Mechanical detail: 10× MKS SERVO42D CAN MT (~$350) is the bulk; +10× Tr5×1 screw/nut
-(~$60, **confirm 1 mm lead / single-start**), 10× MR85ZZ (~$30), 10× 693ZZ
-(~$30), 10× shaft collars (~$25), Ø3 shaft (~$30), dowels (~$22), GT2 belt
-6.5 m (~$12–130 depending on genuine-Gates vs generic), M-hardware packs (~$50).
+(~$60, **confirm 1 mm lead / single-start**), 10× MR85ZZ (**~$5** at Trianglelab,
+~$42 at Bearings Direct), 10× 693ZZ (**~$30**), 10× shaft collars (**$25**,
+verified), Ø3 shaft (~$30), dowels (~$22), GT2 belt 6.5 m (**~$3.50–11**
+verified at $0.54–1.73/m; the old "$12–130" range was wrong at both ends —
+it appears to have conflated per-metre with per-spool), M-hardware packs (~$50).
 Electronics detail: the Pi 4 + its buck replace the Pi 5 + 6 A buck (~$130 saved,
 since audio→MIDI moved onto the optical board), and the 10-channel PCM1864 ADC
 path is **deleted outright** for the same reason — the optical board digitises its
 own twenty channels. Those two changes together take roughly **$160** off what
 this section previously totalled.
+
+## Cannot verify — needs a manual check [m]
+
+Everything below was attempted on **2026-08-01** and could not be confirmed from
+a fetchable listing. These are not "probably fine" — they are unchecked. Ranked
+by how much money rides on each.
+
+| # | Row | Why it could not be checked | What to do |
+|--:|---|---|---|
+| 1 | **Drive motor, SERVO42D CAN MT** — $350/instrument | Price sits behind a **variant dropdown**; all three vendors publish only a "from" price, which is the **MB (board-only)** floor. The ElectroPeak link in the row is the **wrong SKU** — driver only, $12.50, motor explicitly excluded | Add CAN MT to a cart at [P3D](https://p3d.mx/products/makerbase-mks-servo42d-nema17-foc-motor) or [makerbase3d](https://makerbase3d.com/product/servo42d-nema17-closed-loop-stepper-motor-driver-cnc-3d-printer-for-gen_l-foc-quiet-and-efficient/), record the real number, and **replace the ElectroPeak link** |
+| 2 | **All eight McMaster rows** — dowels, cup-tip screws, heat-set inserts, mount screws, hold-down, shafts, guide rods, M2 grubs (~$50–70) | mcmaster.com serves **no product content** to automated fetches — every part URL returns the bare catalogue navigation. This is a site-wide block, not a bad URL | Open each part number in a browser. Part numbers themselves are stable and were previously correct |
+| 3 | **Tr5×1 lead screw + nut** — ~$30 | The eBay listing **timed out**, and eBay item IDs rotate regardless. The manufacturer (ALM) publishes **no prices at all** — quote-only, "Inquire" button | Get a quote from ALM, or re-source on AliExpress and paste a fresh link |
+| 4 | **2.42" OLED module** — ~$17 | Both Waveshare and RobotShop return **HTTP 403** to fetches | Check in a browser. A German reseller at €18.00 suggests ~$17 is close |
+| 5 | **Ø3 g6/h6 precision shaft** — ~$30 | McMaster (see #2); also the row points at a **category page**, not a part | Pick an actual part number while you are there |
+
+Two rows verified but flagged for **availability**, not price:
+
+* **SN65HVD230DR** — $2.45 correct, but DigiKey stock is **0** (backorder only).
+* **Tinmorry TPU 95A** — $22.99 correct, but **sold out**. Only ~40 g is needed,
+  so any 95A spool substitutes.
+
+Plus the two optical-board parts that cannot supply a run of ten — the
+**STM32H743ZIT6** (7 in stock) and the **VEMD4110X02** (not stocked at all) —
+documented in full in the optical pickup section.
