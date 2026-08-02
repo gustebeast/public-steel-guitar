@@ -430,6 +430,52 @@ ADC inputs plus a 12-signal ULPI bus will not fit a 64-pin part.
 | 1 | R36 | LED driver gate resistor | 0402 | 1.00 × 0.50 × 0.55 |
 | — | — | SWD programming pads (no component; first flash before USB DFU works) | pads | — |
 
+### ⚠ Orderability audit, 2026-08-01 — this board CANNOT be ordered preassembled
+
+Asked directly: is every part in LCSC's catalogue, in stock, in quantities that
+support a preassembled build? **No — and the gap is not mostly about stock.**
+
+**Only three of the 35 distinct lines carry a manufacturer part number at all.**
+The other 32 are a *functional description plus a package envelope* — "quad
+op-amp, SOIC-14", "LDO 3V3, SOT-23-5", "N-ch MOSFET, SOT-23". Those are
+placeholders that let the 3D model and the clearance assertions be correct; they
+are not orderable items. You cannot put "quad op-amp" on a JLCPCB BOM line.
+
+And all three parts that *do* have a number fail:
+
+| Line | MPN | LCSC status 2026-08-01 | Verdict |
+|---|---|---|---|
+| U6, MCU | STM32H743ZIT6 (C114408) | in catalogue, **7 in stock** (need 10) | ✗ short |
+| PD1A–PD10B ×20 | VEMD4110X02 | **not in catalogue**; only X01, 72 in stock (need 200) | ✗ absent + short |
+| D1–D10 ×10 | VSMB1940X01 | **not in catalogue**; VSMB1940**IT**X01 is, at $0.3243 | ✗ absent |
+
+The emitter is a placeholder twice over: this section's own signal budget calls
+**beam angle the largest and cheapest lever on the board**, wanting ±20–30°, and
+the VSMB1940X01 is **±60°** — the worst case the budget is written against. It
+was chosen for its outline, not its optics, and the BOM says so above. So even
+if it were stocked it would be the wrong part.
+
+**One genuine win from this audit:** the ULPI PHY, previously an open item, is
+resolved. **Microchip `USB3343-CP` is in LCSC stock at $1.78** (C633347; the
+`-TR` reel variant C112967 is $2.07) — QFN-24, matching the modelled envelope.
+That is the part the survey table assumed existed.
+
+**What "orderable preassembled" actually needs**, in order:
+
+1. **Select 32 real MPNs** against JLCPCB's assembly library, preferring Basic
+   parts to avoid the $1.50/feeder extended-part charge already budgeted. This is
+   a schematic-capture task, not a sourcing task — it has not been started.
+2. **Resolve the photodiode**, which is a design decision (consignment vs.
+   unfiltered + a bonded IR window), not a purchase.
+3. **Choose a narrow-beam emitter** — the single highest-value part decision on
+   the board.
+4. **Re-check MCU stock**, or attack the 20-ADC-channel requirement that forces
+   LQFP144.
+
+Until 1–3 are done the board is not quotable, let alone orderable. The $59.32
+figure below is a **parametric estimate built from package counts and two
+verified prices** — it is not a quote, and 32 of its part costs are assumed.
+
 **141 placed parts**, all on ONE side (single-sided, per project rule: one
 stencil, one reflow, no back-side placement). The model tracks 35 distinct
 (description, package) lines; the table above merges four bulk-cap variants and
@@ -552,10 +598,17 @@ The `VEMD4010X02` (no filter, 910 nm peak) remains the same outline, so the
 model and the footprint do not change under either resolution.
 
 **Still open** (project rule: NO consignment, all PCB parts LCSC-library):
-- a **ULPI PHY** in JLC's library — USB3343-class QFN-24 is the envelope modelled.
+- ~~a **ULPI PHY** in JLC's library~~ — **CLOSED 2026-08-01.** Microchip
+  **`USB3343-CP`** is in LCSC stock at **$1.78** (C633347), QFN-24, exactly the
+  envelope modelled. The `-TR` reel variant is C112967 at $2.07.
 - the **IR emitter's beam angle** — ±20–30° at 940 nm in an 0805-class package.
   Worth more dB than anything else on this list; if the library has nothing
   narrow, that changes the signal budget more than any other substitution.
+  ⚠ Note the modelled `VSMB1940X01` is **not in LCSC** *and* is **±60°** — the
+  worst case the signal budget argues against. `VSMB1940ITX01` **is** stocked
+  ($0.3243) but check its angle before assuming it helps.
+- **32 of the 35 part lines have no MPN at all** — see the orderability audit
+  above. This is the real blocker on ordering the board.
 - **quad op-amp** with low enough input bias current for a nanoamp TIA.
 - **J2**: JST S2B-XH-SM4-TB class, SMT side-entry 2-way. The envelope in the
   model is scaled from the S4B figures already in this BOM — confirm against
