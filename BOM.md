@@ -431,6 +431,92 @@ ADC inputs plus a 12-signal ULPI bus will not fit a 64-pin part.
 | 1 | R36 | LED driver gate resistor | 0402 | 1.00 × 0.50 × 0.55 |
 | — | — | SWD programming pads (no component; first flash before USB DFU works) | pads | — |
 
+### Was magnetic ruled out too early? — feasibility check, 2026-08-02
+
+The question asked: *can JLCPCB assemble magnetic coils at specific locations, so
+a per-string magnetic board is orderable the way this optical one is?*
+
+**The fabrication answer is better than hoped — and it is not about a part.**
+
+**You do not want an assembled coil, you want an etched one.** Planar spiral
+coils are **copper on the board itself**: free, positioned to layout tolerance
+(±0.05 mm, far better than a placed part's ±0.2 mm), and perfectly repeatable
+between boards. This is established prior art in exactly this application —
+the patent literature describes PCB-coil pickups directly (*"manufactured with
+high precision and highly reproducible results"*), and Cycfi's hexaphonic work
+uses the approach commercially. Positioning, which is the thing the question was
+worried about, is the part magnetic does **better** than optical.
+
+An assembled inductor would be strictly worse: JLCPCB's SMD inductors are wound
+on ferrite for **power conversion**, and many are **magnetically shielded** —
+built to reject external flux, which is precisely backwards for a pickup.
+
+So the question moves from "can it be built" to "would it work". Here the news
+is mixed, and worth having on record.
+
+**Turns budget — 44–50 dB down, which is survivable.** Each string owns
+**9.40 mm** of pitch at the sensing row. A square spiral filling ~8.5 mm of that:
+
+| Process | Turns/layer | Layers | N | N·A |
+|---|--:|--:|--:|--:|
+| 0.127/0.127 (standard) | 8 | 4 | 32 | 1,290 mm² |
+| 0.09/0.09 (fine) | 11 | 4 | 44 | 1,773 mm² |
+| 0.09/0.09 | 11 | 6 | 66 | 2,660 mm² |
+| *reference single-coil* | — | — | *6,000* | *432,000 mm²* |
+
+That is **162× down at best (44 dB), 335× at standard process (50 dB)** — so
+roughly **0.5–1 mV** against a normal pickup's ~150 mV. That is moving-coil
+cartridge territory: entirely amplifiable. And the coil is only ~6 Ω, so its
+Johnson noise is ~61 nV over 20 kHz — an **~84 dB** thermal SNR. **Thermal noise
+is not the problem.** Six layers instead of four is the obvious lever, at real
+but modest cost.
+
+**Interference is the problem, and it is the same objection as before.** The
+coil is a 17.7 cm² effective loop antenna sitting above **ten SERVO42D steppers
+with PWM current control, directly under the deck**. A rough estimate — 0.1 µT
+of switching ripple over a microsecond — gives ~180 µV induced, i.e. only
+**10–15 dB below the string signal**. That estimate is soft by an order of
+magnitude in either direction, which is exactly why it cannot be settled on
+paper. Optical coupling to that source is **zero**, not small.
+
+The standard mitigation is real and is visible in the prior art: hex pickups
+carry a **dedicated noise coil** with no string over it, subtracted from every
+channel (the 13-coil array in the patent is 6 strings × 2 + 1 noise reference).
+That works well against uniform fields and less well against ten independent
+near-field sources at varying distances.
+
+**Two things that do *not* favour magnetic, contrary to first instinct:**
+
+1. **It would not halve the channel count.** A single coil over a pole has the
+   *same* even-function problem in lateral motion that drove SUM/DIFF here — so
+   hex pickups use **two coils per string** for exactly our reason. 10 × 2 + 1
+   noise = **21 channels against optical's 20**. No MCU saving, so the LQFP144
+   stock problem is not solved by switching.
+2. **It does not fix the thin-string deficit.** Output rises with frequency,
+   which helps the high strings, but it also scales with ferromagnetic material,
+   which hurts them — the two partly cancel. Real pickups still need staggered
+   pole heights. This is not the escape from the .014 problem it looks like.
+
+**And one thing that is a genuine strike against it on *this* instrument:**
+magnets **pull on the strings**. Damping and pitch-pulling ("Stratitis") are
+tolerated on a guitar; on an instrument built around motorised tuning to a few
+cents and long sustain, adding a bridge-end magnetic load works directly against
+two of its headline goals. Optical exerts **no force on the string at all** —
+and there is already a Lace Alumitone in the instrument for the audio path,
+which ten new magnets at the bridge would sit right beside.
+
+**Verdict: optical stays, but the case is narrower than "no magnetic crosstalk".**
+Magnetic is manufacturable, cheaper in parts (coils free, ~$4 of magnets against
+$11.88 of emitters and detectors), and better positioned. It loses on motor
+interference, string loading, and — decisively for the effort involved — it
+would not simplify the channel count or the MCU.
+
+**The cheap experiment that would settle it**, if the optical prototype
+disappoints: etch a two-layer test coil, put it at the sensing station, and
+measure the induced voltage with the motors slewing. That is a $2 board and an
+afternoon, and it converts the one soft number above into a measurement. Worth
+doing *before* any magnetic redesign, not after.
+
 ### Orderability, 2026-08-01 — every part is now a real LCSC line
 
 Asked directly: is every part in LCSC's catalogue, in stock, in quantities that
@@ -468,7 +554,8 @@ Basic classes (no feeder charge):
 | U6 | `STM32H743ZIT6` | C114408 | 1 | $9.93 | ⚠ 7 in stock |
 | U7 | `USB3343-CP` | C633347 | 1 | $1.78 | ULPI PHY, QFN-24 ✓ |
 | U1–U5 | `TLV9064IDR` | C388176 | 5 | $1.08 | **the TIA part** — see below ✓ |
-| U8, U9 | `SPX3819M5-L-3-3/TR` | C9055 | 2 | $0.60 | 40 µVrms LDO · ⚠ U8 must become a buck |
+| U9 | `SPX3819M5-L-3-3/TR` | C9055 | 1 | $0.30 | 3V3 **analog**, 40 µVrms ✓ |
+| U8 | `AMS1117-3.3` | C6186 | 1 | $0.10 | 3V3 **digital**, SOT-223 tab — 0.51 W ✓ |
 | U11 | `TLV9061IDCKR` | C693480 | 1 | $0.36 | single of the U1–U5 family ✓ |
 | J2 | `S4B-XH-SM4-TB` | C161861 | 1 | $0.32 | 4-way; already a project part ✓ |
 | D1–D10 | `IR17-21C/TR8` | C131250 | 10 | $0.28 | 940 nm 0805 · ⚠ ~120°, confirm at layout |
@@ -482,7 +569,7 @@ Basic classes (no feeder charge):
 | C130–C133 | 0805 X7R MLCC | Basic | 4 | $0.04 | bulk |
 | R1–R10 | 0603 thick-film | Basic | 10 | $0.03 | per-string LED ballast |
 | FB1 | `GZ2012D601TF` | C1017 | 1 | $0.02 | 600 Ω @100 MHz ✓ |
-| | | | **141** | **$26.66** | **`open_lines()` is empty** |
+| | | | **141** | **$26.46** | **`open_lines()` is empty** |
 
 **The op-amp is the happy surprise.** `TLV9064IDR` is a 4× CMOS RRIO part with
 **10 MHz GBW and 500 fA input bias current** — the bias figure is what a nanoamp
@@ -557,14 +644,35 @@ four ways suits a rail pulling >500 mA better than two would have (2× 5 V,
 **70.8 cm²**, about $0.18/board of fab. The model carries the real JST envelope
 (`XH-SM-4`, 6.10 × 15.00 × 7.00) and all clearance assertions pass.
 
-### Still open — one design item the geometry model cannot catch
+### The digital rail — resolved, and NOT with the buck I proposed
 
-**The digital 3V3 rail cannot be an LDO.** The MCU draws 200–300 mA. From 5 V to
-3.3 V that is **0.51 W in a SOT-23-5**, which at ~250 °C/W is a >100 °C rise —
-past the package, not marginally. U9 (analog, ~40 mA) is fine as the SPX3819;
-**U8 should be a small buck**, which adds an inductor and a few parts the model
-does not carry. This is a schematic-stage error, flagged but not modelled, and
-it is the remaining thing between this board and a quote.
+The MCU draws 200–300 mA, so 5 V → 3.3 V burns **0.51 W**. In a SOT-23-5 at
+~250 °C/W that is a >100 °C rise — past the package, not marginally. So U8 could
+not stay an SPX3819. Correct.
+
+**But "make it a buck", which the previous revision recommended, is the wrong
+fix for this board.** A switching regulator at ~1 MHz sitting alongside **20
+transimpedance amps reading tens of nanoamps** trades a thermal problem for a
+noise problem on the axis this design is most sensitive to. The file already
+worries about exactly this in another place — the LED driver's switching noise
+being *synchronous with sampling* so ambient subtraction cannot remove it. Adding
+a second switcher to fix a heat problem is solving the cheap problem with the
+expensive one.
+
+**The heat is the cheap problem: spend package area on it.** U8 is now
+**`AMS1117-3.3` in SOT-223** (C6186, $0.1045) — a tab package at ~50 °C/W with a
+copper pour, so 0.51 W is a **~25 °C rise**. The board stays switcher-free.
+Headroom is fine: 1.7 V available against AMS1117's 1.3 V max dropout — though
+that is the one number to watch if the 5 V rail sags over the cable and the XH
+connector, and it is an argument for keeping J2's doubled pins.
+
+U8 and U9 are now **different parts**, which costs one line: U9 stays the
+low-noise `SPX3819` (40 µVrms) on the analog rail, where its ~40 mA load makes
+SOT-23-5 fine. The split is the point — the noisy cheap regulator feeds the MCU,
+the quiet one feeds the front end. Cost: **+0.7 mm of board**, and parts actually
+fall $0.20 because the AMS1117 is cheaper than a second SPX3819.
+
+**Nothing is now outstanding on this board's schematic.**
 
 **141 placed parts**, all on ONE side (single-sided, per project rule: one
 stencil, one reflow, no back-side placement). The model tracks 35 distinct
@@ -735,16 +843,16 @@ then multiples of 5** — you cannot order 3. So the per-instrument curve is a
 
 | Instruments | Order | Waste | Order total | Per instrument |
 |--:|--:|--:|--:|--:|
-| 1 | 2 | 1 | $148.82 | $148.82 |
-| 2 | 2 | 0 | $148.82 | $74.41 |
-| 3 | 5 | 2 | $252.80 | **$84.27** ↑ |
-| 5 | 5 | 0 | $252.80 | $50.56 |
-| 6 | 10 | 4 | $426.10 | **$71.02** ↑ |
-| **10** | **10** | **0** | **$426.10** | **$42.61** |
-| 15 | 15 | 0 | $599.40 | $39.96 |
-| 20 | 20 | 0 | $772.70 | $38.64 |
+| 1 | 2 | 1 | $148.48 | $148.48 |
+| 2 | 2 | 0 | $148.48 | $74.24 |
+| 3 | 5 | 2 | $251.95 | **$83.98** ↑ |
+| 5 | 5 | 0 | $251.95 | $50.39 |
+| 6 | 10 | 4 | $424.40 | **$70.73** ↑ |
+| **10** | **10** | **0** | **$424.40** | **$42.44** |
+| 15 | 15 | 0 | $596.85 | $39.79 |
+| 20 | 20 | 0 | $769.30 | $38.47 |
 
-*(Recomputed 2026-08-01 on the resolved $79.50 fixed / $34.66 variable. The
+*(Recomputed on the resolved $79.50 fixed / $34.49 variable. The
 **shape** is unchanged — it comes from the quantity ladder, not the rates — so
 both conclusions below still hold; only the absolutes moved.)*
 
@@ -755,18 +863,18 @@ Two consequences worth acting on:
 * **10 is the knee.** It is the first quantity within 30 % of the variable-cost
   floor; past 15 the gains are slow. Hence the convention.
 
-### Optical pickup board at that basis — $42.61 per instrument
+### Optical pickup board at that basis — $42.44 per instrument
 
-Board is **37.4 × 189.4 mm = 70.8 cm²**, 4-layer, 141 parts, ~543 solder joints.
+Board is **37.4 × 190.1 mm = 71.1 cm²**, 4-layer, 141 parts, ~543 solder joints.
 (Earlier revisions said 47.5 cm², which predates the +X wraps and the M4 bands,
 then 184.4 mm long, which predates J2 becoming a 4-way.)
 
 | | | |
 |---|---|---:|
 | **Fixed, per order** | PCBA setup $25 + feeder loading **$19.50** (13 Extended lines × $1.50; **5 of the 18 lines are Basic**) + component MOQ overage ~$20 + 4-layer fab tooling ~$15 | **$79.50** |
-| **Variable, per board** | parts **$26.66** (computed) + fab $7.08 (70.8 cm² × $0.10) + assembly $0.92 (543 joints) | **$34.66** |
-| **Order of 10** | 79.50 + 10 × 34.66 | **$426.10** |
-| **Per instrument** | ÷ 10 | **$42.61** |
+| **Variable, per board** | parts **$26.46** (computed) + fab $7.11 (71.1 cm² × $0.10) + assembly $0.92 (543 joints) | **$34.49** |
+| **Order of 10** | 79.50 + 10 × 34.49 | **$424.40** |
+| **Per instrument** | ÷ 10 | **$42.44** |
 
 *(History: $46.72 → $59.32 → $52.72 → **$42.61**. The spike was the photodiodes
 at their @1 price; the fall is resolution — detectors at the 100+ break, the
