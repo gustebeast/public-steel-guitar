@@ -416,20 +416,20 @@ def _build() -> cq.Workplane:
     # the tie bar, so the axle support, dovetails and screw rail are untouched.
     body = body.cut(box_at((X1 - X0) + 2.0, 2 * WIN_HW, WIN_Z1 - WIN_Z0,
                            x=(X0 + X1) / 2, y=0, z=(WIN_Z1 + WIN_Z0) / 2))
-    # STRING-CLEARANCE CHANNELS (user: "cut away where the strings pass"): each string RISES
-    # vertically at X = BRIDGE_X (the bearing's +X tangent), so its +X half pokes straight into
-    # the filled tail. Cut a per-string channel back out of it. NOTE the overlap gate CANNOT see
-    # this — {string, bridge_endplate} is an allowlisted contact (the string legitimately threads
-    # the bearing region) — so this is hand-sized: the heaviest string's +X edge is gauge/2 =
-    # 0.889 off the tangent; clear that + STRING_CLR each side. The channels sit ON the strings,
-    # the comb fingers sit in the GAPS, so they interleave without touching (and stop at x 1.4,
-    # short of the comb roots at x 2.6).
-    STRING_CLR = 0.5
+    # STRING/BEARING OPENINGS (user): one slot per string, sized to the BEARING (not the thin
+    # string), so there's room to thread the string over its bearing on install. Each slot runs
+    # from the bearing CENTRE — the string break/termination point, halfway along the bearing
+    # (D.BRIDGE_AXLE_X) — out +X PAST the termination for stringing access, and is as wide as the
+    # bearing, landing flush against the comb fingers that flank each gap (OPEN_HW = bearing
+    # half-width + the gap the comb leaves). NOTE this string↔endplate clearance is INVISIBLE to
+    # the overlap gate (allowlisted contact), so it's verified by hand (probe_ep_map/probe_str_clr).
+    OPEN_X0 = D.BRIDGE_AXLE_X                       # -4: bearing centre = break/termination point
+    OPEN_X1 = D.BRIDGE_X + 2.5                      # +X stringing-access room past the termination
+    OPEN_HW = D.BRIDGE_BEARING_W / 2 + 0.2          # 2.2: match the bearing, flush to the comb fingers
     for i in range(D.N_STRINGS):
         sy = D.string_y(i)
-        xr = D.STRING_GAUGE[i] / 2 + STRING_CLR                  # +X reach past the tangent
-        body = body.cut(box_at(xr - (D.BRIDGE_X - 0.6), 2 * xr, (BEAR_TOP + 1.0) - (Z6 - 1.0),
-                               x=((D.BRIDGE_X - 0.6) + xr) / 2, y=sy,
+        body = body.cut(box_at(OPEN_X1 - OPEN_X0, 2 * OPEN_HW, (BEAR_TOP + 1.0) - (Z6 - 1.0),
+                               x=(OPEN_X0 + OPEN_X1) / 2, y=sy,
                                z=((Z6 - 1.0) + (BEAR_TOP + 1.0)) / 2))
     # FOOT POCKET: the chassis KEEPS a ~10 mm rail shell hugging each +X leg socket
     # (CH._leg_shell), capped at the foot line (z FOOT_Z = -23.15). Pocket exactly
