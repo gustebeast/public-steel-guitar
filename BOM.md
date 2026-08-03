@@ -412,7 +412,7 @@ ADC inputs plus a 12-signal ULPI bus will not fit a 64-pin part.
 | 1 | Q1 | N-ch MOSFET — LED row driver | SOT-23 | 2.90 × 2.40 × 1.30 |
 | 1 | U10 | USB data-line ESD array | SOT-563 | 1.60 × 1.60 × 0.60 |
 | 10 | D1–D10 | IR emitter, 940 nm — **narrow beam, see below** | 0805 (opto) | 2.00 × 1.25 × 0.85 |
-| 20 | PD1A–PD10B | PIN photodiode — **Vishay VEMD4110X02**, daylight filter | 0805 (opto) | 2.00 × 1.25 × 0.85 |
+| 20 | PD1A–PD10B | PIN photodiode — **Vishay VEMD4110X01**, daylight filter (740–1040 nm) | 0805 (opto) | 2.00 × 1.25 × 0.85 |
 | 5 | R1–R5 | LED current-set — **per-string value**, plain strings | 0603 | 1.60 × 0.80 × 0.95 |
 | 5 | R6–R10 | LED current-set — **per-string value**, wound strings | 0603 | 1.60 × 0.80 × 0.95 |
 | 1 | FB1 | ferrite bead — analog rail isolation | 0603 | 1.60 × 0.80 × 0.95 |
@@ -700,16 +700,17 @@ the hard string for *SNR* (string 2, .014) are opposite ends of the set.
 
 Four levers, spent in order of cost:
 
-1. **Emitter beam angle — the largest and it is free.** At the 3 mm standoff a
+1. ~~**Emitter beam angle — the largest and it is free.**~~ ⚠ **UNAVAILABLE — see
+   the emitter note above.** The arithmetic still holds: at the 3 mm standoff a
    ±60° emitter throws a ~10.4 mm spot and a 0.356 mm string intercepts ~3 % of
-   it; the rest returns as pedestal and crosstalk. ±30° → 3.5 mm spot, ~10 %,
-   **+9.5 dB**. ±20° → **+13.6 dB**. Do not go tighter: below ~±20° the alignment
-   budget (fab ±0.2, string position, board seating) starts eating the gain.
-   **Beam angle is the primary selection criterion for D1–D10**, ahead of package
-   or price. The VSMB1940X01 whose outline the model uses is a placeholder chosen
-   for its dimensions, not its optics.
+   it; ±30° → 3.5 mm spot, ~10 %, **+9.5 dB**; ±20° → **+13.6 dB**. But **narrow
+   beam is not made in 0805**, so none of it is purchasable. D1–D10 are
+   `IR17-21C/TR8` at ~120°, i.e. the ±60° row of that table — the worst case the
+   analysis was written against. **Levers 2 and 3 are therefore the first and
+   second levers, not the second and third**, and are correspondingly more
+   important than their position here suggests.
 2. **Per-string LED current** (R1–R10, already ten independent parts). Roughly
-   linear in signal. This is what forces J2 — see below.
+   linear in signal. This is what forces J2 — see below. **Now lever 1.**
 3. **Per-string TIA gain** (Rf, already twenty independent parts). Bounded by the
    op-amp's gain–bandwidth product, not by the resistor: thin strings want more
    gain *and* more bandwidth, and Rf × Cin trades one against the other.
@@ -732,10 +733,15 @@ and offset but **not saturation**. An up-firing sensor also collects the skin an
 string shed a down-firing one sheds. The lid gives each string its own aperture
 and closes the shallow-angle path with a −X wall (from +X the endplate already
 does it). Be honest about the limit: at a 3 mm standoff a slot cannot collimate
-much — geometric rejection is a few dB, and the heavy lifting against sun would be
-an **IR-pass window** bonded into the slots, which is the obvious next addition if
-the prototype says sun is a problem. Print it **dark**: it is the one surface
+much — geometric rejection is a few dB. Print it **dark**: it is the one surface
 facing the detectors.
+
+**The spectral filtering is NOT in the cover — it is inside the detector**, and
+that is the better place for it. An earlier revision of this section named a
+bonded IR-pass window as "the obvious next addition if the prototype says sun is
+a problem". That is now largely done for free: the `VEMD4110X01` carries a
+**daylight-blocking filter, 740–1040 nm**, and the 940 nm emitter sits inside
+that window. See "optical filtering" below for what it does and does not cover.
 
 Z stack: deck 6.00 → board 9.66–11.26 → sensor faces 12.11 → cover 12.41–14.01 →
 lowest string 15.11. That leaves **1.10 mm** over the cover and **3.00 mm** of
@@ -771,29 +777,60 @@ argument that justified stopping the search here. Re-check at quote time; if
 stock has not recovered, the thing to attack is the **20-channel ADC
 requirement**, since that is what forced 144 pins to begin with.
 
-⚠ **Photodiode — the resolution did not survive checking.** Vishay
-**`VEMD4110X02`** is still the right part on the merits: Si **PIN** photodiode
-(not a phototransistor, so the linearity the audio path needs survives), 0805,
-0.42 mm² active area, ±55°, carrying a **daylight-blocking filter matched to
-830–950 nm emitters** — the IR-pass window this design would otherwise need as a
-separately bonded part.
+**Photodiode — `VEMD4110X01` (C3211080).** Si **PIN** photodiode (not a
+phototransistor, so the linearity the audio path needs survives), 0805, 0.42 mm²
+active area, ±55°, with a **daylight-blocking filter, 740–1040 nm**, matched to
+830–950 nm emitters. **$0.58** at the 100+ break; ⚠ 72 in stock against 200 for a
+run of ten. The X02 named in earlier revisions is not in LCSC's catalogue; the
+X01 has the same filter and the same outline, so nothing about the design changes.
 
-**It is not in LCSC's catalogue.** Searched 2026-08-01: LCSC lists only the
-**`VEMD4110X01`** (C3211080) at **$0.9334, 72 in stock**. Two consequences, and
-the second is worse than the first:
+### The optical filtering — what it is and what it actually rejects
 
-1. **Price.** Twenty detectors at $0.9334 = **$18.67/board**, against the ~$7
-   this BOM assumed — **+$11.67/board**, the largest single error in the file.
-2. **Availability, and the no-consignment rule.** 72 units covers three boards;
-   ten need 200. And the X02 — the *filtered* variant, the one the sun-rejection
-   argument leans on — would have to arrive as **consignment**, which the project
-   rule forbids. So either the rule bends for this one part, or the design takes
-   an unfiltered detector and sun rejection goes back to being a bonded IR-pass
-   window in the cover (which the cover section already names as "the obvious
-   next addition"). That is a live design decision, not a footnote.
+**There is no separate filter part on this board, and none is needed: the filter
+is inside the detector package.** That is the better place for it — a bonded
+window in the cover would be an extra part, an extra process, and would sit
+3 mm from the sensor instead of on it.
 
-The `VEMD4010X02` (no filter, 910 nm peak) remains the same outline, so the
-model and the footprint do not change under either resolution.
+The filter passes **740–1040 nm** and blocks the rest. The emitter is 940 nm,
+comfortably inside. So everything the detector sees outside that band — which is
+the whole visible spectrum — is gone before it becomes photocurrent.
+
+**Why that matters more than it sounds.** The board's own LED-on/LED-off
+subtraction already removes ambient *offset and flicker*. What it cannot remove
+is **shot noise** (∝ √photocurrent, irreducible once the photons are converted)
+and **saturation** — a detector pinned by sunlight has no headroom left for the
+string signal, and subtracting two saturated readings gives zero, not signal.
+The filter attacks both at the only point where they can be attacked: before
+conversion.
+
+**Ambient sources, ranked by how much trouble they actually cause:**
+
+| Source | Gets through the filter? | Why |
+|---|---|---|
+| **Sunlight** | ⚠ **the real threat** | ~50 % of solar energy is IR and it is broadband — a large fraction lands inside 740–1040 nm |
+| **Incandescent / halogen** | ⚠ **bad** | a ~2800 K blackbody peaks *in the near-IR*; these emit more 940 nm than visible |
+| **Fluorescent** | ✅ **almost entirely blocked** | output is overwhelmingly visible phosphor emission plus mercury lines at 405/436/546/578 nm — all outside the passband. Only a weak mercury IR line near 1014 nm creeps in at the band edge |
+| **White LED** | ✅ **blocked** | blue pump + phosphor; there is very little IR to pass |
+
+So **modern indoor lighting is the easy case** and the filter handles it. Note
+too that fluorescent flicker (100/120 Hz on magnetic ballasts, 20–60 kHz on
+electronic ones) is the part that would otherwise be dangerous — the electronic
+ballast rate lands squarely in a 48 kHz sampler's band and could alias — and
+blocking the light removes the problem at the source rather than relying on
+subtraction to catch it.
+
+**Sun and halogen are what remain**, and there the design gets one piece of luck
+it did not plan for: **940 nm sits in a water-vapour absorption band**, so solar
+irradiance is genuinely depressed there relative to 850 nm. That is a standard
+reason to choose 940 nm for IR sensing outdoors, and this design already picked
+940 nm for other reasons.
+
+**If the prototype still says sun is a problem**, the next step is a *narrow*
+bandpass (940 ± 25 nm interference filter) rather than the broad 300 nm
+daylight filter — that would be a bonded window in the cover slots, the part the
+earlier revision of this file anticipated. Worth measuring before buying: a
+gigging instrument mostly lives under stage and room lighting, which the table
+above says is already covered.
 
 **Still open** (project rule: NO consignment, all PCB parts LCSC-library):
 - ~~a **ULPI PHY** in JLC's library~~ — **CLOSED 2026-08-01.** Microchip
