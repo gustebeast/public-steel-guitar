@@ -223,8 +223,8 @@ LEG_SHELL_X0, LEG_SHELL_X1 = CH.LEG_SHELL_PX     # leg-wrap shell span (rail-tak
 # lip top both at z0), so once the deck is in the lip is trapped under it and the endplate
 # can't lift +Z. Internal (under the deck) -> nothing shows on the outside. The keyhead
 # is held in +Z separately (nut-block screw path), so it gets no lip.
-LIP_DX  = 5.0                                   # -X protrusion off the endplate -X face
-LIP_DZ  = 5.0                                   # Z height, hanging below the deck bottom
+LIP_DX  = 7 * D.NOZZLE_D                        # 5.6 -X protrusion off the endplate -X face (was 5.0)
+LIP_DZ  = 7 * D.NOZZLE_D                        # 5.6 Z height, hanging below the deck bottom (was 5.0)
 LIP_CLR = CH.EP_TOP_CLR                         # clearance to the rail inner face + skirt
 LIP_Y0  = CH.Y_LO + CH.T / 2 + LIP_CLR          # -Y rail inner face + clr (-128.35)
 LIP_Y1  = -(TP.HY_CLAMP + TP.SKIRT_T) - LIP_CLR # pickup -Y skirt outer face - clr; self-tracks the
