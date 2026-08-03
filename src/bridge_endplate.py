@@ -109,7 +109,11 @@ MIN_ADDED = D.MIN_WALL_2P         # 1.6 -- two-bead QUALITY floor for material t
 # On its own its first layer floated: the field-centre band above z6 is only unioned from
 # X0 (+6.0) to X1, so between XLO and +6 there is no material at this height for the
 # plinth to start on. (User-caught.)
-CARRIER_TOP  = OP.PCB_BOT                     # 9.661 -- the board bears directly on this
+CARRIER_TOP  = OP.PLINTH_TOP                  # 9.501 -- the board bears directly on this.
+                                              # PLINTH_TOP, not PCB_BOT: datumed off the
+                                              # board's WORST-CASE thickness so fab tolerance
+                                              # can only open the optical gap, never close the
+                                              # roof clearance the board slides through.
 # ONE underside plane for the plinth AND the brace, set by the comb finger's own underside
 # where the two meet (_fpro is flat at 6.5 from x -6.5 to -5.5). Sizing this off the deck
 # instead (6.2) left the brace hanging 0.3 below the finger, i.e. a lip running the whole
@@ -399,9 +403,14 @@ def _build() -> cq.Workplane:
     # 45° ramps keep every surface
     # self-supporting printing along X from the cap.
     CB_W = 5.2                                # finger width → 0.15 to each bearing face
+    # Finger head lowered 14.5 → BRACE_Z1 (14.01, the cover plane) so the −X region is ONE height,
+    # not the axle-wall bump the user flagged. Safe because the string wrap sits on the bearing's
+    # +X-top, so its load pushes the axle DOWN-and-−X — the bore's TOP wall carries none of it, and
+    # the finger still grips the shaft from below/−X (z6.5..13.65). The 0.36 mm cap over the bore
+    # is just a closure, not structure.
     _fpro = (cq.Workplane("XZ")
              .polyline([(6.0, 6.0), (2.6, 6.0), (2.6, 7.8), (-4.2, 7.8),
-                        (-5.5, 6.5), (-6.5, 6.5), (-6.5, 14.5), (-1.5, 14.5),
+                        (-5.5, 6.5), (-6.5, 6.5), (-6.5, BRACE_Z1), (-1.5, BRACE_Z1),
                         (3.0, 10.0), (6.0, 10.0)])
              .close().extrude(CB_W / 2, both=True))
     # A finger in every bearing GAP, plus one off EACH END of the axle (user), so all ten
@@ -430,19 +439,23 @@ def _build() -> cq.Workplane:
     body = body.cut(box_at((X1 - X0) + 2.0, 2 * WIN_HW, WIN_Z1 - WIN_Z0,
                            x=(X0 + X1) / 2, y=0, z=(WIN_Z1 + WIN_Z0) / 2))
     # BEARING + DEAD-STRING cuts (user, "cut the bearings, then the strings"): the shelf now runs
-    # −X to the termination, so cut each BEARING (the rotating cylinder) and its DEAD (non-vibrating)
-    # string rise out of it. The slot stops +X at the dead string's rise edge — no drop past the
-    # termination, since there's no vibrating string out there to dampen. BOTH contacts are
-    # gate-BLIND: {bridge_endplate, bridge_bearings} AND {string, bridge_endplate} are allowlisted,
-    # so this is sized + verified BY HAND (probe_ep_map).
-    BR_HW = D.BRIDGE_BEARING_W / 2 + 0.4                     # 2.4: bearing half-width + rotation clr
-    BR_X0 = D.BRIDGE_AXLE_X - 0.5                            # -4.5: past the bearing centre (−X half is off-shelf)
-    BR_X1 = D.BRIDGE_X + max(D.STRING_GAUGE) / 2 + 0.5       # ~1.4: clear the dead rise's +X edge, no further
+    # SINGLE HOUSE-SHAPED cut per bearing/string (user): ONE cut owns the whole opening — both
+    # sides of the termination — so the +X and −X Y-widths can't disagree (the old bug was my +X
+    # box disagreeing with the comb's −X gap). Profile lives in X–Y, cut length runs along Z:
+    #   floor at −X (the wide bearing side, ±BR_HW) → roof/PEAK at +X (tapering to a point at the
+    #   string). It reaches −X far enough to TRIM the comb fingers, so the CUT — not the comb — sets
+    #   the opening; the trimmed finger stays as the axle-support wall between cuts. Both bearing↔
+    #   and string↔endplate are gate-BLIND (allowlisted) → verified by hand (probe_ep_map/ywidth).
+    BR_HW      = D.BRIDGE_BEARING_W / 2 + 0.4               # 2.4: opening half-width (bearing + clr)
+    HOUSE_X0   = D.BRIDGE_AXLE_X - 2.5                      # -6.5: floor, −X into the comb-finger reach
+    HOUSE_EAVE = D.BRIDGE_X                                 # 0: bearing +X tangent, where the roof starts
+    HOUSE_PEAK = D.BRIDGE_X + max(D.STRING_GAUGE) / 2 + 0.5 # 1.4: +X peak, just past the dead-string rise
+    _house = (cq.Workplane("XY")
+              .polyline([(HOUSE_X0, -BR_HW), (HOUSE_X0, BR_HW), (HOUSE_EAVE, BR_HW),
+                         (HOUSE_PEAK, 0.0), (HOUSE_EAVE, -BR_HW)])
+              .close().extrude((BEAR_TOP + 1.0) - (Z6 - 1.0)))
     for i in range(D.N_STRINGS):
-        sy = D.string_y(i)
-        body = body.cut(box_at(BR_X1 - BR_X0, 2 * BR_HW, (BEAR_TOP + 1.0) - (Z6 - 1.0),
-                               x=(BR_X0 + BR_X1) / 2, y=sy,
-                               z=((Z6 - 1.0) + (BEAR_TOP + 1.0)) / 2))
+        body = body.cut(_house.translate((0.0, D.string_y(i), Z6 - 1.0)))
     # FOOT POCKET: the chassis KEEPS a ~10 mm rail shell hugging each +X leg socket
     # (CH._leg_shell), capped at the foot line (z FOOT_Z = -23.15). Pocket exactly
     # that shell + a small assembly clearance out of the bridge so it nests over the

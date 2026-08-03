@@ -144,7 +144,16 @@ BAND_X1    = TP.PICKUP_X_NOM + TP.CAVITY_X / 2                # -30.62, cavity's
 BAND_CLR   = 0.2                                              # keep off both band edges
 
 OPT_GAP = 3.0                                    # sensor face -> string UNDERSIDE
-PCB_T   = 1.6                                    # FR4
+PCB_T   = 1.6                                    # FR4, NOMINAL. Correct for 4 layer: 1.6 is
+                                                 # JLCPCB's standard 4-layer thickness and
+                                                 # also their standard at 6, so the "how many
+                                                 # layers" question does not move this number.
+# ...but 1.6 is a NOMINAL with a +-10% fab tolerance, and that tolerance lands on a
+# CLEARANCE. The board's TOP is the design datum (derived down from the string), while the
+# thing that physically exists is the printed PLINTH under it -- so a thicker board pushes
+# its own components UP, straight into the 0.30 roof gap it has to slide through.
+PCB_T_TOL = 0.10 * PCB_T                         # +-0.16; JLCPCB is +-10% over 1.0 mm
+PCB_T_MAX = PCB_T + PCB_T_TOL                    # 1.76, the worst case for clearance
 
 # ── PACKAGE LIBRARY -- real outlines, (X, Y, Z) AS PLACED ────────────────────
 # Body + leads where leads protrude, at JEDEC/IPC MAX, so the model is the worst case an
@@ -200,8 +209,18 @@ ROW_GAP   = 1.0
 STRING_BOT_MIN = D.STRING_Z - max(D.STRING_GAUGE) / 2         # 15.111
 SENSE_FACE_Z   = STRING_BOT_MIN - OPT_GAP                     # 12.111, emitter faces UP
 PCB_TOP        = SENSE_FACE_Z - LED_PKG[2]                    # 11.261
-PCB_BOT        = PCB_TOP - PCB_T                              # 9.661
-STANDOFF       = PCB_BOT - DECK_TOP                           # 3.661 under the board
+PCB_BOT        = PCB_TOP - PCB_T                              # 9.661, NOMINAL board underside
+# THE PLINTH IS DATUMED OFF THE WORST-CASE BOARD, NOT THE NOMINAL ONE. The printed plinth
+# is a fixed surface; the board thickness is not. Referencing the plinth to PCB_BOT (the
+# nominal) means a board at the +10% limit carries its components 0.16 HIGHER than modelled
+# and the 0.30 roof gap it must slide through drops to 0.14 -- a clearance the model would
+# have declared fine while the real assembly bound. Referencing PCB_T_MAX instead makes the
+# tolerance one-sided in the direction that is harmless: a thin board simply sits low and
+# OPENS the optical gap (signal is linear in standoff, and per-string gain trims it), while
+# clearance can only ever be at least what was designed. Trading a benign ~0.45 dB against a
+# mechanical interference is the right way round.
+PLINTH_TOP     = PCB_TOP - PCB_T_MAX                          # 9.501, what the endplate builds to
+STANDOFF       = PLINTH_TOP - DECK_TOP                        # 3.501 under the board
 # Anything over the sensing field must still clear the strings. The quad op-amps (1.75)
 # are the deep ones out there; this is the floor on what is left above them.
 PART_STRING_CLR = 1.5
@@ -677,8 +696,10 @@ def opt_cover() -> cq.Workplane:
 def opt_carrier_pocket() -> cq.Workplane:
     """Cutter the endplate's carrier uses: the board envelope plus its slip fit, opening
     UPWARD. Cut from the board's own numbers so the pocket is always the board."""
-    return _outline(grow=0.3, t=(COVER_Z1 + 0.3) - PCB_BOT,
-                    zc=(PCB_BOT + COVER_Z1 + 0.3) / 2)
+    # opens from PLINTH_TOP, not PCB_BOT: the pocket has to admit the thickest board the
+    # fab may ship, not the nominal one the model draws.
+    return _outline(grow=0.3, t=(COVER_Z1 + 0.3) - PLINTH_TOP,
+                    zc=(PLINTH_TOP + COVER_Z1 + 0.3) / 2)
 
 
 def bom_rows():
@@ -790,11 +811,13 @@ def _assert_field_clear():
         x0, x1, y0, y1 = part_span(p)
         if x1 <= COVER_X0 or y0 >= COVER_HY or y1 <= -COVER_HY:
             continue                                       # outside the lid's footprint
+        # PCB_TOP is the WORST-CASE board top by construction (PLINTH_TOP + PCB_T_MAX), so
+        # this tests the thickest board the fab may ship, not the nominal one drawn.
         if PCB_TOP + PKG[p["pkg"]][2] > COVER_Z0 + 1e-9:
             raise AssertionError(
                 f"optical strip: {p['ref']} ({p['desc']}) stands to "
-                f"{PCB_TOP + PKG[p['pkg']][2]:.2f}, into the cover underside at "
-                f"{COVER_Z0:.2f}")
+                f"{PCB_TOP + PKG[p['pkg']][2]:.2f} on a max-thickness board, into the "
+                f"cover underside at {COVER_Z0:.2f}")
     for mx, my in mount_points():
         for q in PARTS:
             x0, x1, y0, y1 = part_span(q)

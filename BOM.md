@@ -743,9 +743,55 @@ a problem". That is now largely done for free: the `VEMD4110X01` carries a
 **daylight-blocking filter, 740–1040 nm**, and the 940 nm emitter sits inside
 that window. See "optical filtering" below for what it does and does not cover.
 
-Z stack: deck 6.00 → board 9.66–11.26 → sensor faces 12.11 → cover 12.41–14.01 →
-lowest string 15.11. That leaves **1.10 mm** over the cover and **3.00 mm** of
-optical gap. Install order is board, cover, then strings.
+**What the slits actually are.** They are the **optical apertures** — one per
+string, 3.0 (X) × 5.0 (Y), each centred on its string and serving that string's
+emitter plus both photodiodes. The lid is otherwise solid, so without them the
+sensors see nothing: they are the hole the light goes out and comes back
+through, not an optional feature. On a 9.40 mm string pitch that leaves a
+**4.40 mm web** between neighbours.
+
+They are **not** a filter and not a substitute for one — the two do different
+jobs. The detector's filter is **spectral** (which wavelengths get in); the
+slits are **geometric** (from which directions, and whether dust lands on the
+optics). Their three jobs are: pass the beam; cut the shallow-angle ambient path
+and the crosstalk from neighbouring strings; and close the board off as a debris
+lid, which up-firing optics need because they collect the skin and string shed a
+down-firing sensor would simply drop.
+
+### PCB thickness — 1.6 mm, and the tolerance was landing on a clearance
+
+**1.6 mm is correct and is not a layer-count question:** it is JLCPCB's standard
+thickness at 4 layers *and* at 6, so even the 6-layer option raised in the
+magnetic study would not move it.
+
+⚠ **But 1.6 is a nominal with ±10 % (±0.16 mm), and the model was using the
+nominal on a dimension where the tolerance is a clearance.** The board's *top*
+is the design datum, derived downward from the string. The thing that physically
+exists is the printed *plinth* underneath. So a board at the +10 % limit carries
+its own components **0.16 mm higher than modelled**, straight into the 0.30 mm
+gap it has to slide through under the cover — leaving **0.14 mm**, over 5.4 mm of
+travel, with parts on the board. The model would have called that fine.
+
+**Fixed by datuming the plinth off the worst-case board, not the nominal one**
+(`PLINTH_TOP = PCB_TOP − PCB_T_MAX`, 9.501). That makes the tolerance one-sided
+in the harmless direction:
+
+| Board | Sensor face | Roof gap | Optical gap |
+|---|--:|--:|--:|
+| −10 % (1.44) | 11.79 | **0.62** | 3.32 |
+| nominal (1.60) | 11.95 | **0.46** | 3.16 |
+| +10 % (1.76) | 12.11 | **0.30** | 3.00 |
+
+Clearance is now **never worse than designed**; what varies instead is standoff,
+which is benign — signal is linear in it, and per-string gain trims it anyway.
+The cost is ~0.16 mm of extra nominal standoff, about **0.45 dB**. Trading half a
+dB against a mechanical interference is the right way round. `PCB_TOP` now means
+*the highest the board top can be*, so the roof-clearance assertion tests the
+thickest board the fab may ship rather than the one the model draws.
+
+Z stack (nominal board): deck 6.00 → plinth 9.50 → board 9.50–11.10 → sensor
+faces 11.95 → cover 12.41–14.01 → lowest string 15.11. That leaves **1.10 mm**
+over the cover. Install order is board, cover, then strings.
 
 **Power (J2): 5 V from the instrument rail, not USB VBUS.** MCU ~200–300 mA, PHY
 ~50, 21 op-amp channels ~40 — already past a USB port's 500 mA before a single
