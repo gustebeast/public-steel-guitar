@@ -750,8 +750,8 @@ otherwise solid, so without them the sensors see nothing: they are the hole the
 light goes out and comes back through, not an optional feature. On a 9.40 mm
 string pitch that leaves a **4.40 mm web** between neighbours.
 
-**Their −X end is a 45° V in plan, not a flat wall** — see "the aperture's
-printable end" below.
+**Their −X end is open, not a flat wall** — see "the aperture's printable end"
+below for the two shapes that failed first.
 
 **Why the triplet runs along Y (across the string) and not along X (down it).**
 This is forced, and the reason is *not* humbucking — there is no magnetic
@@ -791,34 +791,58 @@ and the crosstalk from neighbouring strings; and close the board off as a debris
 lid, which up-firing optics need because they collect the skin and string shed a
 down-firing sensor would simply drop.
 
-### The aperture's printable end — a 45° V, because the flat one bridged
+### The aperture's printable end — an open notch, after two shapes that failed
 
 The endplate builds **+X → −X**, so each layer is a Y–Z slice and anything it
-adds must sit within 45° of the layer at +X of it. A plain rectangular slot
-**fails that at its −X end**: the roof resumes across the full 5.0 × 1.6 mm face
-over void, anchored only at its two Y edges. That is a **5 mm bridge directly
-over the optics**, which is the worst place for one — sag lands in the aperture.
-Caught from a render; a layer-walk probe then found **33 unsupported samples**
-along one aperture, and **0** after the fix.
+adds must sit within 45° of the layer at +X of it. Two shapes were tried and
+both were caught from renders before printing:
 
-**The void has to close in Y, not Z.** Z is *in-plane* for these layers, so
-tapering the roof's thickness only makes the bridge thinner — still a bridge.
-Tapering in Y offsets each layer's edge from supported material of the layer
-behind it, which is the actual 45° stepover. So the −X end becomes a **45° V in
-plan** — the "/\" roof.
+**1. A closed rectangular slot bridges.** The roof resumes across the full
+5.0 × 1.6 mm face over void, anchored only at its two Y edges — a **5 mm bridge
+directly over the optics**, the worst place for one, since sag lands in the
+aperture. A layer-walk probe measures **33 unsupported samples** along one
+aperture.
 
-⚠ **It does not fully close, and that is a genuine limit rather than a
-shortcut.** The apex wants to land at X −23.00; the roof stops at **−22.00**,
-because the quad op-amps stand 1.75 mm above the board — taller than the roof
-underside — so the lid cannot reach further −X. The aperture therefore runs out
-of the roof's −X edge as a **~2.0 mm notch**. That is fine for printing: there is
-no unsupported material anywhere, because nothing ever closes over the void.
-Buying full closure would mean starting the taper at `SENSE_X` itself, clipping
-the aperture to ±1.5 mm over photodiodes that need ±2.225. Optics wins.
+**2. A 45° V ("/\") fixes the bridge but does not fit.** The void must close in
+**Y, not Z** — Z is *in-plane* for these layers, so tapering the roof's thickness
+only makes the bridge thinner, still a bridge. Tapering in Y gives the real 45°
+stepover. But the apex needs `SLOT_DY`/2 = 2.50 mm of X from the packages' −X
+edge at −20.50, landing at −23.00, and **the roof stops at −22.00** because the
+quad op-amps stand taller than the roof underside. Truncated there, the flank
+crosses the roof's −X boundary at 45° and leaves an acute **wedge of roof
+material tapering 1.50 → 0.00 mm** — a knife edge, under the 1.6 mm floor for its
+entire length. Measured, not estimated.
 
-Net optical effect: slightly more open to −X than the old flat end. The 0.30 mm
-roof-to-sensor gap over 5.4 mm of depth is still what does the real shallow-angle
-rejection, exactly as it does since the −X wall was removed.
+**3. What is built: the aperture runs out of the −X edge, sides parallel to X.**
+Nothing ever closes over the void, so there is no bridge; the sides are parallel
+to the build direction, so there is no stepover at all; and the material outboard
+of every aperture is the full 4.40 mm web rather than a taper. The roof becomes a
+comb of stubby teeth (4.40 × 5.40 × 1.60) joined at +X, which is where it fuses
+into the endplate's comb brace anyway.
+
+Every feature now clears the two-bead floor, including one that did **not**
+before and was nothing to do with the V — the strip of roof at +X of the aperture
+was **1.40 mm**, left over from the original 3.0 mm-wide slot. The aperture's +X
+edge is now derived (`APER_X1 = BAND_X0 − MIN_WALL_2P`) so it is 1.60 by
+construction, and it still clears the packages by 0.30 mm:
+
+| Feature | Size |
+|---|--:|
+| +X strip, roof edge to aperture | **1.60** |
+| web between adjacent apertures | 4.40 |
+| outboard of the outermost aperture | 1.60 |
+| roof thickness (Z) | 1.60 |
+
+**What the open end costs:** the −X end is no longer partly closed. Cheap — the
+shallow-angle ambient path was already handled by the 0.30 mm gap over 5.4 mm of
+depth rather than by this edge, and −X of the cover is instrument interior, not
+sky.
+
+**If a true gable is wanted**, the op-amp column would have to move ~1.5 mm −X so
+the roof could reach −23.50. That trades the TIA's distance from its photodiode —
+the noise-critical summing node this layout is organised around — for lid
+geometry, which is the wrong way round unless something else independently wants
+the op-amps moved.
 
 ### PCB thickness — 1.6 mm, and the tolerance was landing on a clearance
 
