@@ -27,7 +27,7 @@ from . import dimensions as D
 from .helpers import box_at, nema17_face_cutter_y
 from .components import MOTOR_PULLEY_STANDOFF
 
-PLATE_T      = 6.0
+PLATE_T      = 8 * D.NOZZLE_D    # 6.4 (was 6.0 = 7.5 beads)
 TENSION_SLOT = 3.0                          # ±1.5: belt slip-on slack + tension + the
                                             # 1-tooth (1 mm motor travel) cut quantum.
                                             # Small enough that neighbours never collide

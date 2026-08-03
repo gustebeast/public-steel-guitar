@@ -95,6 +95,7 @@ import math
 
 import cadquery as cq
 
+from . import dimensions as D
 from .helpers import box_at, cyl, heal
 
 # thread (shared by every junction)
@@ -732,7 +733,9 @@ STUB_H = 48.0                  # stub protrusion below the body bottom =
 # web into the inboard ridge is the Y-retention SHEAR PIN, and ONE
 # horizontal M4 through the endplate's end face cross-pins the tongue.
 # Every groove entry on the side face is FILLED flush when seated.
-STUB_WALL_D = 10.0             # endplate end-wall depth (= CH.T): the
+STUB_WALL_D = D.WALL_THICKNESS # endplate end-wall depth (= CH.T -- DERIVED now; it was a
+                               # hardcoded 10.0 whose comment already claimed it tracked the
+                               # chassis wall, so it silently would not have): the
                                # outboard 10 of the stub's 44 is under the
                                # end wall; the remaining 34 is the leg<->
                                # SIDE-PANEL overlap.
@@ -766,7 +769,7 @@ STUB_RIDGE_EP = 17.0           # end-wall TONGUE |local x| (= the endplate
 # member is maximized). Height 8 leaves 2.2 of cover above/below the
 # Ø3.6 M4 pilot crossing at mid-height. Fit = the PETG-GF coupon 0.1/side
 # (groove 5.2 wide x 8.1 deep).
-STUB_TNG_W = 5.0               # end-wall tongue thickness (x) = CH.T/2
+STUB_TNG_W = D.WALL_THICKNESS / 2   # end-wall tongue thickness (x) = CH.T/2 (was hardcoded 5.0)
 STUB_TNG_H = 8.0               # end-wall tongue height above the stub top
 # Crossing-ridge z placement: the octagon profile's z=0 IS the mating
 # plane (the stem runs from -root below it, through it, to the waist

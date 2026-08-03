@@ -107,13 +107,13 @@ KEY_X1 = PX1
 # a side CLAMP screw drives a protective shim that pins the pickup +Y against the
 # reference skirt (friction then holds X and, with the plate under it, Z).
 PIECE_CTR = (PIECE_X0 + PIECE_X1) / 2                      # -47.5
-WALL      = 3.5                                            # piece end walls
+WALL      = 5 * D.NOZZLE_D                                 # 4.0 piece end walls (was 3.5)
 OPEN_X0   = PIECE_X0 - WALL                                # +X opening edge (-21.0)
 OPEN_X1   = PIECE_X1 + WALL                                # -X opening edge (-74.0)
 OPEN_CTR  = (OPEN_X0 + OPEN_X1) / 2                        # -47.5
 OPEN_LEN  = OPEN_X0 - OPEN_X1                              # 53.0 = PK_W + 2*CLAMP
-SKIRT_T   = 3.0
-FLG_T     = 2.5                                            # Z-plate guide-flange thickness
+SKIRT_T   = 4 * D.NOZZLE_D                                 # 3.2 (was 3.0)
+FLG_T     = 4 * D.NOZZLE_D                                 # 3.2 Z-plate guide flange (was 2.5)
 # ── pickup Y placement + EXTENDED -Y utility zone (user) ─────────────────────
 # The pickup is placed by MAGNETIC coverage: its 88.9 MAGNETIC range must sit over
 # string 1 (there's a ~6.35mm DEAD FRAME at each Y end, so coverage is reckoned against
@@ -143,7 +143,7 @@ HY_CLAMP = -PK_MAX_YM + YZONE                             # -Y skirt inner = ext
 OPEN_YC  = (OPEN_YP - HY_CLAMP) / 2                       # opening/floor Y centre
 OPEN_YW  = OPEN_YP + HY_CLAMP                             # opening/floor Y width
 # Z-plate the pickup slides on in X (fine tone) -- lifted/tilted by the 3 jacks:
-ZPL_T    = 2.0
+ZPL_T    = 3 * D.NOZZLE_D  # 2.4 (was 2.0)
 ZPL_TOP  = PM.PK_BOT                                      # pickup rests on the plate top
 ZPL_BOT  = ZPL_TOP - ZPL_T
 FLG_BOT  = ZPL_BOT
@@ -189,7 +189,7 @@ HEIGHT_HOLE = PICKUP_X_NOM
 # ── pickup RETENTION (user): +Y WALL + -Y SCREW lock the pickup to the PLATE only ─
 # (so the plate still moves up/down freely). The pickup's +Y face butts a wall that rises
 # from the plate; a horizontal M4 grub through a -Y boss pushes the pickup +Y against it.
-RET_WALL_T = 2.0                                   # +Y wall thickness (Y)
+RET_WALL_T = 3 * D.NOZZLE_D                        # 2.4 +Y wall thickness (was 2.0)
 RET_WALL_H = 8.0                                   # +Y wall height above the plate top (enough to lock, not tall)
 RET_SCREW_Z = ZPL_TOP + 3.0                        # grub axis height (bears low on the pickup base)
 RET_BOSS_L = D.NUT_INSERT_L + 1.0                  # -Y grub boss length (Y): insert pocket + 1 to the boss +Y
