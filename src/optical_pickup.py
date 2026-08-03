@@ -674,38 +674,48 @@ def opt_pcb() -> cq.Workplane:
     return pcb
 
 
-# APERTURE PLAN SHAPE. The endplate builds +X -> -X, so each layer is a Y-Z slice and any
-# material it adds must sit within 45 deg of the layer at +X of it. A plain rectangular slot
-# fails that at its -X end: the roof resumes across the full SLOT_DY x COVER_T face over
-# void, anchored only at its two Y edges -- a 5.0 mm bridge directly over the optics, where
-# sag lands in the aperture (user-caught from the render).
+# APERTURE PLAN SHAPE -- an open-ended NOTCH, and the two shapes it is not.
 #
-# The fix has to close the void in Y, not Z. Z is IN-PLANE for these layers, so tapering the
-# roof's thickness only makes the bridge thinner; it is still a bridge. Tapering in Y instead
-# offsets each layer's edge from supported material of the layer behind it, which is the real
-# 45 deg stepover. So the -X end becomes a 45 deg V in PLAN -- the "/\" roof.
-APER_TAPER_X = SENSE_X - LED_PKG[0] / 2          # -20.50, the packages' -X edge: full width
-                                                 # is held across every part, then it closes
-APER_TIP_X   = APER_TAPER_X - SLOT_DY / 2        # -23.00, where 45 deg flanks would meet
+# The endplate builds +X -> -X, so each layer is a Y-Z slice and anything it adds must sit
+# within 45 deg of the layer at +X of it.
+#
+#   * A CLOSED rectangular slot fails that at its -X end: the roof resumes across the full
+#     SLOT_DY x COVER_T face over void, anchored only at its two Y edges. That is a 5.0 mm
+#     bridge directly over the optics, where sag lands in the aperture.
+#   * A 45 deg V ("/\") closing the -X end fixes the bridge -- the void must close in Y, not
+#     Z, since Z is in-plane for these layers and tapering thickness only thins the bridge --
+#     but IT DOES NOT FIT. The apex needs SLOT_DY/2 = 2.50 of X measured from the packages'
+#     -X edge at -20.50, landing at -23.00, and the roof stops at COVER_X0 = -22.00 because
+#     the quad op-amps stand taller than the roof underside. Truncated there, the flank
+#     crosses the roof's -X boundary at 45 deg and leaves an acute WEDGE of roof material
+#     tapering 1.50 -> 0.00: a knife edge, measured, and under the 1.6 floor for its whole
+#     length. Both failures were caught by the user from renders.
+#
+# So the aperture simply RUNS OUT of the roof's -X edge with sides parallel to X. Nothing
+# ever closes over the void, so there is no bridge; the sides are parallel to the build
+# direction, so there is no stepover at all; and the material outboard of every aperture is
+# the full 4.40 web rather than a taper. The roof becomes a comb of stubby teeth
+# (4.40 x 5.40 x 1.60) joined at +X, which is where it fuses into the endplate's comb brace.
+#
+# The cost is that the -X end is open rather than partly closed. Cheap: the shallow-angle
+# ambient path was already being handled by the 0.30 gap over 5.40 of depth, not by this
+# edge, and -X of the cover is instrument interior rather than sky.
+#
+# To get a true gable the op-amp column would have to move ~1.5 -X so the roof could reach
+# -23.50. That trades the TIA's distance from its photodiode -- the noise-critical summing
+# node -- for lid cosmetics, which is the wrong way round unless something else wants it.
+APER_X1 = BAND_X0 - D.MIN_WALL_2P                # -18.20: leaves a FULL two-bead strip of
+                                                 # roof at +X, where the old 3.0-wide slot
+                                                 # left only 1.40. Still clears the packages
+                                                 # (they end at -18.50) by 0.30.
 
 
 def _aperture_cutter(sy: float) -> cq.Workplane:
-    """One string's aperture: full-width over the triplet, then 45 deg flanks toward -X.
-
-    NOTE it does NOT fully close, and that is a real limit rather than an oversight. The
-    apex wants to land at -23.00 and the roof stops at COVER_X0 = -22.00, because the quad
-    op-amps stand 1.75 above the board -- taller than the roof underside -- so the lid cannot
-    reach further -X. The aperture therefore runs out of the roof's -X edge as a ~2.0 mm
-    notch. What matters is that there is no unsupported bridge anywhere: the flanks are 45
-    deg and the notch is simply an opening, with no material closing over it.
-    Buying full closure would mean starting the taper at SENSE_X itself, which would clip the
-    aperture to +-1.5 over photodiodes that need +-2.225. Optics wins over cosmetics.
-    """
-    hy, x1 = SLOT_DY / 2, SENSE_X + SLOT_DX / 2
-    pts = [(x1, sy + hy), (APER_TAPER_X, sy + hy), (APER_TIP_X, sy),
-           (APER_TAPER_X, sy - hy), (x1, sy - hy)]
-    return (cq.Workplane("XY", origin=(0, 0, COVER_Z0 - 1))
-            .polyline(pts).close().extrude(COVER_T + 2))
+    """One string's aperture: a constant-width notch, open at the roof's -X edge."""
+    hy = SLOT_DY / 2
+    return box_at(APER_X1 - (COVER_X0 - 1.0), SLOT_DY, COVER_T + 2,
+                  x=(APER_X1 + COVER_X0 - 1.0) / 2, y=sy,
+                  z=(COVER_Z0 + COVER_Z1) / 2)
 
 
 def opt_cover() -> cq.Workplane:
