@@ -438,24 +438,24 @@ def _build() -> cq.Workplane:
     # the tie bar, so the axle support, dovetails and screw rail are untouched.
     body = body.cut(box_at((X1 - X0) + 2.0, 2 * WIN_HW, WIN_Z1 - WIN_Z0,
                            x=(X0 + X1) / 2, y=0, z=(WIN_Z1 + WIN_Z0) / 2))
-    # BEARING + DEAD-STRING cuts (user, "cut the bearings, then the strings"): the shelf now runs
-    # SINGLE HOUSE-SHAPED cut per bearing/string (user): ONE cut owns the whole opening — both
-    # sides of the termination — so the +X and −X Y-widths can't disagree (the old bug was my +X
-    # box disagreeing with the comb's −X gap). Profile lives in X–Y, cut length runs along Z:
-    #   floor at −X (the wide bearing side, ±BR_HW) → roof/PEAK at +X (tapering to a point at the
-    #   string). It reaches −X far enough to TRIM the comb fingers, so the CUT — not the comb — sets
-    #   the opening; the trimmed finger stays as the axle-support wall between cuts. Both bearing↔
-    #   and string↔endplate are gate-BLIND (allowlisted) → verified by hand (probe_ep_map/ywidth).
-    BR_HW      = D.BRIDGE_BEARING_W / 2 + 0.4               # 2.4: opening half-width (bearing + clr)
-    HOUSE_X0   = D.BRIDGE_AXLE_X - 2.5                      # -6.5: floor, −X into the comb-finger reach
-    HOUSE_EAVE = D.BRIDGE_X                                 # 0: bearing +X tangent, where the roof starts
-    HOUSE_PEAK = D.BRIDGE_X + max(D.STRING_GAUGE) / 2 + 0.5 # 1.4: +X peak, just past the dead-string rise
-    _house = (cq.Workplane("XY")
-              .polyline([(HOUSE_X0, -BR_HW), (HOUSE_X0, BR_HW), (HOUSE_EAVE, BR_HW),
-                         (HOUSE_PEAK, 0.0), (HOUSE_EAVE, -BR_HW)])
-              .close().extrude((BEAR_TOP + 1.0) - (Z6 - 1.0)))
+    # BEARING + STRING opening: ONE cut per string owns the whole opening (user). A plain
+    # CONSTANT-WIDTH SLOT — a flat wall at BOTH ends (−X floor, +X face) and a constant ±BR_HW in
+    # Y — so the Y-thickness cannot vary along X and the +X end reads FLAT, not the pointed peak the
+    # user rejected. (The earlier "house" tapered the +X end to a knife point; that peak was only a
+    # print reflex and is unnecessary here — the slot is OPEN at the top (Z 16→17, above the shelf),
+    # so the +X end wall is a single-layer 4.8-wide bridge when the part builds along +X, which FDM
+    # spans cleanly.) The slot reaches −X to SLOT_X0, past the bearing top, so it TRIMS the comb
+    # finger/brace flare back to the wall line — the CUT, not the comb, sets the opening on BOTH Y
+    # faces (that flare was the −X "angled shoulder"/uneven-thickness the user flagged). Both
+    # bearing↔ and string↔endplate are gate-BLIND (allowlisted) → verified by hand (xsec/ywidth).
+    BR_HW    = D.BRIDGE_BEARING_W / 2 + 0.4               # 2.4: opening half-width (bearing + clr) → 4.8 wide
+    SLOT_X0  = D.BRIDGE_AXLE_X - 2.5                      # -6.5: −X flat wall (floor), past the bearing top
+    SLOT_X1  = D.BRIDGE_X + max(D.STRING_GAUGE) / 2 + 0.5 # 1.4: +X flat wall, just past the dead-string rise
+    SLOT_Z0, SLOT_Z1 = Z6 - 1.0, BEAR_TOP + 1.0          # 5 .. 17: through the shelf top, open above
+    _slot = box_at(SLOT_X1 - SLOT_X0, 2 * BR_HW, SLOT_Z1 - SLOT_Z0,
+                   x=(SLOT_X0 + SLOT_X1) / 2, y=0.0, z=(SLOT_Z0 + SLOT_Z1) / 2)
     for i in range(D.N_STRINGS):
-        body = body.cut(_house.translate((0.0, D.string_y(i), Z6 - 1.0)))
+        body = body.cut(_slot.translate((0.0, D.string_y(i), 0.0)))
     # FOOT POCKET: the chassis KEEPS a ~10 mm rail shell hugging each +X leg socket
     # (CH._leg_shell), capped at the foot line (z FOOT_Z = -23.15). Pocket exactly
     # that shell + a small assembly clearance out of the bridge so it nests over the
