@@ -280,7 +280,7 @@ def _rib(x, w=_RIB_W):
 
 
 RACE_HW   = 2.4     # wire-raceway half-width — passes the fattest cable (Ø2.6 USB)
-RACE_WALL = 2.0     # raceway vertical wall height above its floor
+RACE_WALL = 3 * D.NOZZLE_D   # 2.4 raceway vertical wall height above its floor (was 2.0)
 
 
 def _raceway(cy, z0, x, thick):

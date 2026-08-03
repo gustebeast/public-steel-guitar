@@ -44,7 +44,7 @@ STRING_FIELD_W  = (N_STRINGS - 1) * STRING_PITCH   # 85.5 mm
 MOUNTING_SPAN   = 615.0     # between a string's two mounting ends (~24.2" scale)
 XBAR            = 10.0      # the one "10 mm" module: square cross-rib section (10×10),
                             # end-crossbar width, and the leg/endplate border + L offset
-WALL_THICKNESS  = 10.0     # structural wall: I-beam rail thickness, the keyhead/bridge
+WALL_THICKNESS  = 13 * NOZZLE_D  # 10.4 (was 10.0 = 12.5 beads) structural wall: I-beam rail thickness, the keyhead/bridge
                             # endplate faces, and the deck inner/outer face references
 
 def string_y(i: int) -> float:
@@ -162,7 +162,10 @@ LOCKNUT_W       = 4.0
 PULLEY_OD       = 8.4       # over teeth
 PULLEY_W        = 8.0       # axial: ~6 mm toothed gap + 2 flanges (fits the 5 mm belt)
 PULLEY_FLANGE_OD = PULLEY_OD + 2.6
-PULLEY_FLANGE_T  = 1.0
+PULLEY_FLANGE_T  = MIN_WALL      # 0.8 (was 1.0 = 1.25 beads). Rounded DOWN, not up: at 1.6 the
+                                 # two flanges leave a 4.8 toothed gap for a 5.0 belt -- it would not
+                                 # fit. One bead is the hard floor and fine here (a guide lip, not
+                                 # structure); the gap goes to 6.4.
 PULLEY_BORE_SCREW = SCREW_OD
 PULLEY_BORE_MOTOR = 5.0
 BELT_PITCH      = 2.0       # GT2 tooth pitch
@@ -271,7 +274,7 @@ NUT_PIN_CLR     = 0.4           # clearance perimeter around the dowel in its po
 BREAK_PX_BUF    = 4.0           # +X of the dowel: the lip the deck/pickup plate seat against
 DOWEL_SCREW_RUN = 8.0           # dowel -> NEAR clamp row centre (the break run to the clamp)
 SCREW_ROW_GAP   = 8.0           # NEAR -> FAR clamp row centre (rows stagger so inserts keep Y pitch)
-SCREW_NX_WALL   = 2.2           # solid wall -X behind the far insert's OD (strength)
+SCREW_NX_WALL   = 3 * NOZZLE_D  # 2.4 solid wall -X behind the far insert's OD (was 2.2)
 
 ENDPLATE_W = (BREAK_PX_BUF + DOWEL_SCREW_RUN + SCREW_ROW_GAP
               + NUT_INSERT_D / 2 + SCREW_NX_WALL)            # = 25.0

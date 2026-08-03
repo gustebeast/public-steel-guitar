@@ -132,7 +132,7 @@ SENSE_X       = TERMINATION_X - SENSE_D          # -19.5
 # the string stops following the ideal mode shape -- and the effective termination point
 # turns frequency-dependent, which would put inharmonicity straight into a PITCH
 # measurement -- runs a few multiples of that, so 5-10 mm. SENSE_D keeps well over it.
-STIFF_FLOOR   = 10.0
+STIFF_FLOOR   = 13 * D.NOZZLE_D                  # 10.4 (was 10.0 = 12.5 beads)
 
 # ── THE DECK BAND -- the constraint this whole layout is shaped by ───────────
 # The carrier rides on the deck between the magnetic pickup's cavity and the deck's +X
