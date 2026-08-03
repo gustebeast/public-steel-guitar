@@ -210,7 +210,11 @@ LOBE_RC = 9.0                                # lobe axis radius (pivot -> lobe) 
                                              #   8N target). Raising THROW would swing the lobe higher,
                                              #   thinning the web -> raise LOBE_RC.
 LOBE_R  = 1.5                                # rounded lobe radius
-LOBE_WY = 6.0                                # each lobe's / follower-tongue Y width -> a 6×6 SQUARE face.
+LOBE_WY = 4.5                                # each lobe's / follower-tongue Y width. 6.0 -> 5.0 for the
+                                             #   CENTRE DIVIDER, then -> 4.5 when the cartridge side walls
+                                             #   went to the 2-bead tier: the divider is
+                                             #   10.6 - 2*LOBE_WY once the walls are 1.6, so 4.5 is what
+                                             #   keeps it at 1.6. See the assertion below.
                                              #   The two cartridges are flushed to the centre (dead wall gone)
                                              #   and the piston HEAD widened to (LOBE_WY+2) so the 0.8mm front
                                              #   lip survives -- so the tongue can be this wide within the 20mm
@@ -291,7 +295,7 @@ HS_BODY_LX = 3.0                    # piston body length in X (was 5; matched to
 HS_CLR    = 0.4                     # piston/coil <-> channel slide clearance (per side)
 HS_WALL   = D.MIN_WALL_2P           # cartridge STRUCTURAL wall (floor / front / back); the coil-region
                                     #   SIDE walls end up thinner (~1.0, emergent) so the Ø6 coil fits Y
-HS_HOUS_WALL = 2.4                  # housing shell wall around the pocket -- CONSTANT thickness, the
+HS_HOUS_WALL = D.MIN_WALL_2P        # housing shell wall around the pocket -- CONSTANT thickness, the
                                     #   outer /\ bottom parallels the pocket /\ (no thick flat bottom)
 HS_ROOF_TZ = 1.4                    # +Z CAP thickness -> cap top at the mount ceiling (~11.3), giving the
                                    #   0.8mm front-wall above the tall tongue window
@@ -318,8 +322,10 @@ HS_BACK_X   = HS_GPOST_BX + INSERT_L + 0.5   # cartridge back wall (hosts the te
 HS_CH_WY    = HS_PISTON_WY + 2 * HS_CLR      # channel clear width (Y) = 6.8 (Ø6 coil/piston + slide clr)
 HS_CH_WZ    = HS_PISTON_WZ + 2 * HS_CLR      # channel clear height (Z) = 6.8 (unchanged; ribs removed)
 HS_WIN_WY   = HS_FOLLOW_WY + 0.4             # front-lip opening in Y: passes the tongue, catches the body
-HS_CART_WY  = HS_CH_WY + 2.0                 # cartridge outer Y = channel + 1.0mm side walls (was fixed 8.8;
-                                             #   now derived so the wider head/channel carries its own walls)
+HS_CART_WALL = D.MIN_WALL_2P                 # cartridge SIDE wall. Was a bare 1.0 -- not a nozzle
+                                             #   multiple, so it slices as one bead plus a gap-fill
+                                             #   sliver (user). Now the 2-bead quality tier.
+HS_CART_WY  = HS_CH_WY + 2 * HS_CART_WALL    # cartridge outer Y = channel + its own side walls
 # cartridge Y placement: align each POCKET (the hole the cartridge slots into) so its outer edge is
 # flush with the bearing wall's INNER face on that side -- the cartridge shares the bearing wall (no
 # separate wall, no gap). (Earlier this aligned the block's OUTER face with the wall's outer face,
@@ -331,6 +337,31 @@ HS_POCKET_HW = HS_CART_WY / 2 + HS_CLR        # cartridge pocket (slot) half-wid
 _ARM_LOBE_WALL = 0.8
 HS_YC   =  (LEVER_HW - _ARM_LOBE_WALL - (LOBE_WY + 1) / 2)   # +Y lobe/cartridge centre (arm-outboard-wall limited)
 MAIN_YC = -(LEVER_HW - _ARM_LOBE_WALL - (LOBE_WY + 1) / 2)   # -Y
+
+# CENTRE DIVIDER — the wall BETWEEN the two cartridge pockets (user-caught in a render).
+# At LOBE_WY 6.0 this was -0.20: the pockets OVERLAPPED, so the two 45° gable roofs met in
+# a knife edge that tapered to nothing. Every CAD face was still 45° and a face-normal scan
+# found no flat overhang at all -- the defect only appears in the SLICER. Below the height
+# where that wedge falls under one bead it prints as nothing, the two cavities merge into
+# one ~23 mm span, and its ceiling is unsupported. That is the "overhang in the middle".
+#
+# The fix is a real 2-bead wall, and the room comes from the LOBE, not from moving anything:
+# narrowing LOBE_WY does double duty because HS_YC is measured INWARD from the lever edge
+# while the pocket width grows OUTWARD from the lobe --
+#     divider = 2*(HS_YC - HS_POCKET_HW) = 11.8 - 2*LOBE_WY
+# -- so 5.0 buys 1.80. And it is free where it counts: HOUS_HW is DERIVED from HS_YC plus
+# the cartridge half-width, and the two shifts cancel exactly, so the housing stays 13.90 and
+# the axle, flange, magnet, cap and board cradle do not move at all. The cost is real but
+# small and local: the lobe/follower contact line goes 6.0 -> 5.0 (line contact, so stress
+# rises ~10%), and the piston head 8.0 -> 7.0, still 1.0 wider than the Ø6 coil it seats.
+HS_DIVIDER = 2 * (HS_YC - HS_POCKET_HW)
+assert HS_DIVIDER >= D.MIN_WALL_2P - 1e-6, (          # 1e-6: this is a tier check on a
+    # float sum, and an exact-tier value lands a few ulp low — 1.5999999999999996 is a PASS.
+    f"the two cartridge pockets leave a {HS_DIVIDER:.2f} divider between them, under the "
+    f"{D.MIN_WALL_2P} two-bead tier — at or below 0 the gable roofs meet in a knife edge "
+    f"and the merged ceiling is a wide unsupported span. The knob is LOBE_WY: the divider "
+    f"is 2*(HS_YC - HS_POCKET_HW), and BOTH terms move with it, so a narrower lobe buys "
+    f"divider at ~2 mm per mm.")
 HS_CART_Z1  = HS_ROOF_SPLIT + HS_ROOF_TZ     # cartridge +Z CAP top (< mount boss ~11.3)
 # INVERTED-U cartridge, OPEN on -Z (no separate roof): a solid +Z cap (toward the axle, narrow arc) + side
 # walls, open on -Z where the arm's arc is WIDEST. The HOUSING floor is the -Z retaining wall (relieved to
@@ -1115,6 +1146,9 @@ def _half_stop_piston() -> cq.Workplane:
 HS_FLOOR_Z = HS_Z - HS_PISTON_WZ / 2               # piston underside = cartridge OPEN-bottom = housing floor
 
 
+ROOF_FLAT = D.NOZZLE_D              # gable roof cap: ONE bead. See _roof_gable.
+
+
 def _roof_gable(yc, hw, z_base, x0, x1):
     r"""A triangular GABLE prism (roof): base yc±hw at z_base, apex at (yc, z_base+hw) with
     45deg faces, extruded along X from x0 to x1. Unioned on top of a flat-topped cartridge/
@@ -1123,7 +1157,16 @@ def _roof_gable(yc, hw, z_base, x0, x1):
     of the piston (top HS_Z+HS_PISTON_WZ/2), so no running clearance changes -- it just replaces
     the flat lid with a peak. The two cartridges' peaks (at ±HS_YC) leave a solid ridge between
     them; below the eaves each pocket is the usual vertical-walled box."""
-    pts = [(yc - hw, z_base), (yc + hw, z_base), (yc, z_base + hw)]
+    # FLAT TOP, one nozzle wide (user), not a point. Same reason cadkit's octagon roof
+    # is capped: a 45° apex is a peak the nozzle rounds off, so it cannot print as drawn —
+    # it comes out a blob, and on the POCKET side that blob is what the cartridge has to
+    # slide under. Truncating at one bead gives the housing a roof it can actually bridge
+    # (this is the one intentionally-minimal segment, exactly like the octagon's cap) and
+    # gives the cartridge a matching flat instead of a rounded ridge. Costs flat/2 = 0.4
+    # of peak height on both halves, so the running clearance between them is unchanged.
+    pk = z_base + hw - ROOF_FLAT / 2.0
+    pts = [(yc - hw, z_base), (yc + hw, z_base),
+           (yc + ROOF_FLAT / 2.0, pk), (yc - ROOF_FLAT / 2.0, pk)]
     wire = cq.Wire.makePolygon([cq.Vector(x0, y, z) for (y, z) in pts] + [cq.Vector(x0, *pts[0])])
     face = cq.Face.makeFromWires(wire)
     return cq.Workplane("XY").add(cq.Solid.extrudeLinear(face, cq.Vector(x1 - x0, 0, 0)))
@@ -1279,8 +1322,16 @@ def cut_axle_stack(w):
         ROUND, so adding it after the bore lays a round aperture straight across
         the teardrop's peak and undoes it (user spotted the round hole). Cutting
         the way afterwards opens the rib's top too."""
-    for by in (BRG_Y0, -(BRG_Y0 + BRG_W + 0.3)):
-        w = w.cut(printable_bore(BRG_OD + 0.1, BRG_W + 0.3, (0.0, by, 0.0),
+    # The seats run OUT THROUGH THE OUTER FACE — the bearing is open to the air (user).
+    # There used to be a thin skin behind each one, and it was never real: at 0.70 (now
+    # 0.50) it is under one 0.8 bead, so the slicer puts NOTHING there. The bearing was
+    # already located by its press fit alone and the skin only existed in the CAD.
+    # Modelling it open is the honest version, and it also lets the bearing be pressed
+    # from outside rather than through the lever room.
+    _seat_out = HOUS_HW + 1.0
+    for sgn in (1.0, -1.0):
+        y0 = sgn * BRG_Y0 if sgn > 0 else -_seat_out
+        w = w.cut(printable_bore(BRG_OD + 0.1, _seat_out - BRG_Y0, (0.0, y0, 0.0),
                                  (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)))
     w = w.union(contact_rib(AXLE_FLANGE_D - 1.5, RIB_PROUD, RIB_T,
                             (0.0, HOUS_HW, 0.0), (0.0, 1.0, 0.0),
