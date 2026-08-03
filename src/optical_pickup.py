@@ -61,6 +61,17 @@ error into a PITCH measurement.
 
 SENSING LAYOUT -- per string, THREE parts in a row across Y:
       [PD] --PD_DY-- [IR LED] --PD_DY-- [PD]
+  ACROSS Y, NOT ALONG X, AND THAT IS FORCED. Y is the axis DIFF has to resolve. Lay the
+  same three parts along X (down the string) and both detectors sit under the SAME point
+  of the string's lateral motion: they see the same signal, DIFF collapses to ~zero, and
+  the octave-error defence below goes with it. The only difference left would be the
+  slight amplitude change from sensing at two distances from the termination, which is
+  common mode, not lateral information. (It is NOT a humbucking argument -- there is no
+  magnetic circuit here. The humbucking-LIKE benefit, that both detectors see the same
+  ambient so DIFF rejects it, works at any orientation and so does not set this one.)
+  An X-wise row would genuinely beat this on ONE axis -- it would keep both detectors on
+  their own string's centre line instead of 1.6 nearer the neighbour -- so we accept a few
+  dB more crosstalk to keep DIFF. A wrong octave beats a little pedestal.
   The string sits over the emitter. Light goes up, reflects off the string, and
   returns to both photodiodes.
     * SUM of the pair tracks the string's Z motion. This is the AUDIO signal.
@@ -665,6 +676,40 @@ def opt_pcb() -> cq.Workplane:
     return pcb
 
 
+# APERTURE PLAN SHAPE. The endplate builds +X -> -X, so each layer is a Y-Z slice and any
+# material it adds must sit within 45 deg of the layer at +X of it. A plain rectangular slot
+# fails that at its -X end: the roof resumes across the full SLOT_DY x COVER_T face over
+# void, anchored only at its two Y edges -- a 5.0 mm bridge directly over the optics, where
+# sag lands in the aperture (user-caught from the render).
+#
+# The fix has to close the void in Y, not Z. Z is IN-PLANE for these layers, so tapering the
+# roof's thickness only makes the bridge thinner; it is still a bridge. Tapering in Y instead
+# offsets each layer's edge from supported material of the layer behind it, which is the real
+# 45 deg stepover. So the -X end becomes a 45 deg V in PLAN -- the "/\" roof.
+APER_TAPER_X = SENSE_X - LED_PKG[0] / 2          # -20.50, the packages' -X edge: full width
+                                                 # is held across every part, then it closes
+APER_TIP_X   = APER_TAPER_X - SLOT_DY / 2        # -23.00, where 45 deg flanks would meet
+
+
+def _aperture_cutter(sy: float) -> cq.Workplane:
+    """One string's aperture: full-width over the triplet, then 45 deg flanks toward -X.
+
+    NOTE it does NOT fully close, and that is a real limit rather than an oversight. The
+    apex wants to land at -23.00 and the roof stops at COVER_X0 = -22.00, because the quad
+    op-amps stand 1.75 above the board -- taller than the roof underside -- so the lid cannot
+    reach further -X. The aperture therefore runs out of the roof's -X edge as a ~2.0 mm
+    notch. What matters is that there is no unsupported bridge anywhere: the flanks are 45
+    deg and the notch is simply an opening, with no material closing over it.
+    Buying full closure would mean starting the taper at SENSE_X itself, which would clip the
+    aperture to +-1.5 over photodiodes that need +-2.225. Optics wins over cosmetics.
+    """
+    hy, x1 = SLOT_DY / 2, SENSE_X + SLOT_DX / 2
+    pts = [(x1, sy + hy), (APER_TAPER_X, sy + hy), (APER_TIP_X, sy),
+           (APER_TAPER_X, sy - hy), (x1, sy - hy)]
+    return (cq.Workplane("XY", origin=(0, 0, COVER_Z0 - 1))
+            .polyline(pts).close().extrude(COVER_T + 2))
+
+
 def opt_cover() -> cq.Workplane:
     """Lid over the sensor row, UNIONED INTO THE ENDPLATE (user) rather than made as a
     separate printed part: the plinth is only 3.2 thick and cannot host an M2 anchor, so
@@ -689,9 +734,7 @@ def opt_cover() -> cq.Workplane:
     # ray from -X has to be within ~3 deg of horizontal to reach a detector -- the gap's
     # own aspect ratio does what the wall did.
     for i in range(D.N_STRINGS):                       # apertures
-        roof = roof.cut(box_at(SLOT_DX, SLOT_DY, COVER_T + 2,
-                               x=SENSE_X, y=string_y_at(i, SENSE_X),
-                               z=(COVER_Z0 + COVER_Z1) / 2))
+        roof = roof.cut(_aperture_cutter(string_y_at(i, SENSE_X)))
     return roof
 
 
