@@ -435,7 +435,9 @@ def _build() -> cq.Workplane:
     # termination, since there's no vibrating string out there to dampen. BOTH contacts are
     # gate-BLIND: {bridge_endplate, bridge_bearings} AND {string, bridge_endplate} are allowlisted,
     # so this is sized + verified BY HAND (probe_ep_map).
-    BR_HW = D.BRIDGE_BEARING_W / 2 + 0.4                     # 2.4: bearing half-width + rotation clr
+    BR_HW = D.BRIDGE_BEARING_W / 2 + 0.15                    # 2.15: MATCH the comb's 0.15 bearing-face
+                                                             # clearance, so the +X cut and the −X comb
+                                                             # gap are the SAME Y-width (user); was 0.4
     BR_X0 = D.BRIDGE_AXLE_X - 0.5                            # -4.5: past the bearing centre (−X half is off-shelf)
     BR_X1 = D.BRIDGE_X + max(D.STRING_GAUGE) / 2 + 0.5       # ~1.4: clear the dead rise's +X edge, no further
     for i in range(D.N_STRINGS):
