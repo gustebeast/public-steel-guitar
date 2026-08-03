@@ -390,7 +390,7 @@ HS_TH_MINOR     = HS_BSTOP_OD - 2 * HS_TH_DEPTH   # 8.0 -> wall to the Ø5 bore 
 HS_TH_CLR       = 0.4               # diametral thread clearance on the MALE side (TIGHTER than the 0.8 tested loose fit)
 HS_BSTOP_ENGAGE = 6.0               # engagement in the boss = 3 turns (the 2mm reclaimed from the piston head
                                     #   pulls this boss forward, so 6mm now fits at the SAME 1.44mm leg clearance)
-HS_BSTOP_FLANGE = 0.5               # +X drive flange (drive slots on its face; thin so the total extent clears the leg)
+HS_BSTOP_FLANGE = D.MIN_WALL        # 0.8 -- was 0.5, UNDER one bead, so it could not print at all               # +X drive flange (drive slots on its face; thin so the total extent clears the leg)
 HS_DRAG_LX, HS_DRAG_SEAT, HS_DRAG_BULGE = 6.0, 1.5, 0.4  # TPU drag: X length, wall-recess depth, interference into lane
 HS_HOUS_BACK = HS_BACK_X + HS_BSTOP_ENGAGE   # housing boss depth = engagement (no extra -- preserves the leg clearance)
 
@@ -921,7 +921,7 @@ CR_CLR   = 0.15                     # board slip fit, per face. The board's -Y f
                                     # PCB_Y and the 0.3 of slot slop all lands behind.
 CR_ENG   = 1.85                     # how deep each board edge sits in its groove
 CR_WEB_T = 4.0                      # web thickness in X, outboard of the groove
-CR_BACK  = 1.5                      # web material BEHIND the groove (the +Y flank)
+CR_BACK  = D.MIN_WALL_2P   # 1.6 (was 1.5)                      # web material BEHIND the groove (the +Y flank)
 # The board is DELIBERATELY ASYMMETRIC about the chip. Both edges are pushed out by
 # the socket cone (a groove wall may not come inside SOCK_R, so an edge may not come
 # inside SOCK_R + CR_ENG - CR_CLR = 8.70), and the -X edge is pushed out FURTHER by
