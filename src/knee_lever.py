@@ -219,7 +219,7 @@ LOBE_WY = 4.5                                # each lobe's / follower-tongue Y w
                                              #   and the piston HEAD widened to (LOBE_WY+2) so the 0.8mm front
                                              #   lip survives -- so the tongue can be this wide within the 20mm
                                              #   arm (0.8mm arm-outboard wall) without a bigger coil.
-CAM_TX  = 3.0                                # cam-plate thickness in X (the swing direction)
+CAM_TX  = 4 * D.NOZZLE_D                     # 3.2 cam-plate thickness in X (was 3.0 = 3.75 beads)
 CAM_Y0, CAM_Y1 = HUB_Y0 + 1.0, HUB_Y1 - 1.0  # cam-plate Y span (wide enough to span both followers,
                                              #   which sit flush against the bearing walls)
 # lobe +X extremum (what a follower touches) and its Z, at rest and at full throw:
@@ -297,9 +297,10 @@ HS_WALL   = D.MIN_WALL_2P           # cartridge STRUCTURAL wall (floor / front /
                                     #   SIDE walls end up thinner (~1.0, emergent) so the Ø6 coil fits Y
 HS_HOUS_WALL = D.MIN_WALL_2P        # housing shell wall around the pocket -- CONSTANT thickness, the
                                     #   outer /\ bottom parallels the pocket /\ (no thick flat bottom)
-HS_ROOF_TZ = 1.4                    # +Z CAP thickness -> cap top at the mount ceiling (~11.3), giving the
+HS_ROOF_TZ = D.MIN_WALL_2P          # +Z CAP thickness (was 1.4 = 1.75 beads) -> cap top at the mount ceiling, giving the
                                    #   0.8mm front-wall above the tall tongue window
-HS_LIP    = 1.5                     # front-lip depth in X (side lips that catch the piston body)
+HS_LIP    = D.MIN_WALL_2P           # front-lip depth in X (side lips that catch the piston body).
+                                    #   Was 1.5 -- a bare number, and 1.88 beads (user-caught).
 HS_TRAVEL = FOLL_TRAVEL + 0.5       # channel back-travel (>= follower travel)
 HS_SPR_BORE = HS_SPR_OD + 0.6       # coil clearance bore
 HS_ROOF_SPLIT = HS_Z + HS_PISTON_WZ / 2 + HS_CLR   # channel ceiling = +Z cap underside (just above piston)
@@ -958,7 +959,7 @@ CEIL_CLR = 0.4                      # board top edge -> the instrument's undersi
                                     # the board's own Y: the ceiling is real over x -9..-1.8
                                     # and 1.8..9.0, the gap being only the rib's own mortise
                                     # slot, which the rigid board simply bridges.
-CR_FLOOR_T = 2.8                    # cradle floor under the board
+CR_FLOOR_T = 4 * D.NOZZLE_D         # 3.2 (was 2.8 = 3.5 beads)                    # cradle floor under the board
 CONN_RISE  = 11.5                   # connector row above the board's bottom edge
 CHIP_DROP  = 7.0                    # chip below the board's TOP edge
 
