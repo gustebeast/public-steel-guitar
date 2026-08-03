@@ -744,11 +744,44 @@ a problem". That is now largely done for free: the `VEMD4110X01` carries a
 that window. See "optical filtering" below for what it does and does not cover.
 
 **What the slits actually are.** They are the **optical apertures** — one per
-string, 3.0 (X) × 5.0 (Y), each centred on its string and serving that string's
-emitter plus both photodiodes. The lid is otherwise solid, so without them the
-sensors see nothing: they are the hole the light goes out and comes back
-through, not an optional feature. On a 9.40 mm string pitch that leaves a
-**4.40 mm web** between neighbours.
+string, 5.0 mm wide in Y and running −X from the triplet, each centred on its
+string and serving that string's emitter plus both photodiodes. The lid is
+otherwise solid, so without them the sensors see nothing: they are the hole the
+light goes out and comes back through, not an optional feature. On a 9.40 mm
+string pitch that leaves a **4.40 mm web** between neighbours.
+
+**Their −X end is a 45° V in plan, not a flat wall** — see "the aperture's
+printable end" below.
+
+**Why the triplet runs along Y (across the string) and not along X (down it).**
+This is forced, and the reason is *not* humbucking — there is no magnetic
+circuit here to hum-cancel. It is that **Y is the axis DIFF has to resolve**.
+
+The two detectors flank the emitter so that SUM is an *even* function of lateral
+displacement and DIFF is *odd*; DIFF is what tracks the string's Y motion, and
+DIFF is the whole defence against the 2f₀ octave error when the vibration plane
+precesses toward horizontal. Put the same three parts along **X** instead and
+both detectors sit under the *same* point of the string's lateral motion —
+they see the same signal, **DIFF collapses to nearly zero**, and the octave-error
+defence goes with it. What little difference remained would be the small
+amplitude change from sensing at two distances from the termination: common-mode,
+not lateral information.
+
+There is a second, weaker reason pointing the same way: the sensing band is only
+14 mm in X and has to hold the row *and* the transimpedance amps. Three 2.0 mm
+packages in a line would spend 6 mm of it.
+
+Worth noting the one thing an X-wise row would actually do better: it would keep
+both detectors on their own string's axis, so **neighbour crosstalk would drop**.
+At ±1.6 mm the detectors sit 1.6 mm nearer the adjacent string (7.8 mm away
+instead of 9.4). That is a real cost, and it is the right trade — crosstalk is a
+few dB of pedestal, while losing DIFF means confidently reporting the wrong
+octave.
+
+The nearest thing here to humbucking is real but axis-independent: both
+detectors see the **same ambient**, so it appears as common mode and DIFF
+rejects it. That works whichever way the pair is oriented, so it is not what
+sets the orientation.
 
 They are **not** a filter and not a substitute for one — the two do different
 jobs. The detector's filter is **spectral** (which wavelengths get in); the
@@ -757,6 +790,35 @@ optics). Their three jobs are: pass the beam; cut the shallow-angle ambient path
 and the crosstalk from neighbouring strings; and close the board off as a debris
 lid, which up-firing optics need because they collect the skin and string shed a
 down-firing sensor would simply drop.
+
+### The aperture's printable end — a 45° V, because the flat one bridged
+
+The endplate builds **+X → −X**, so each layer is a Y–Z slice and anything it
+adds must sit within 45° of the layer at +X of it. A plain rectangular slot
+**fails that at its −X end**: the roof resumes across the full 5.0 × 1.6 mm face
+over void, anchored only at its two Y edges. That is a **5 mm bridge directly
+over the optics**, which is the worst place for one — sag lands in the aperture.
+Caught from a render; a layer-walk probe then found **33 unsupported samples**
+along one aperture, and **0** after the fix.
+
+**The void has to close in Y, not Z.** Z is *in-plane* for these layers, so
+tapering the roof's thickness only makes the bridge thinner — still a bridge.
+Tapering in Y offsets each layer's edge from supported material of the layer
+behind it, which is the actual 45° stepover. So the −X end becomes a **45° V in
+plan** — the "/\" roof.
+
+⚠ **It does not fully close, and that is a genuine limit rather than a
+shortcut.** The apex wants to land at X −23.00; the roof stops at **−22.00**,
+because the quad op-amps stand 1.75 mm above the board — taller than the roof
+underside — so the lid cannot reach further −X. The aperture therefore runs out
+of the roof's −X edge as a **~2.0 mm notch**. That is fine for printing: there is
+no unsupported material anywhere, because nothing ever closes over the void.
+Buying full closure would mean starting the taper at `SENSE_X` itself, clipping
+the aperture to ±1.5 mm over photodiodes that need ±2.225. Optics wins.
+
+Net optical effect: slightly more open to −X than the old flat end. The 0.30 mm
+roof-to-sensor gap over 5.4 mm of depth is still what does the real shallow-angle
+rejection, exactly as it does since the −X wall was removed.
 
 ### PCB thickness — 1.6 mm, and the tolerance was landing on a clearance
 
