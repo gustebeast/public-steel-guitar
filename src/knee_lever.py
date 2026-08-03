@@ -374,9 +374,9 @@ HS_POCKET_X0 = SWING_X              # housing pocket front (cartridge front cant
 # threaded into the housing back boss sets that back limit = the cartridge's X home (MAIN: rest / gravity-
 # hold bias; HALF-STOP: engagement angle). It's HOLLOW so the coaxial M4 TENSION screw (preload) still
 # reaches the cartridge insert THROUGH it -- the two adjustments stay independent. Compression-loaded (the
-# contact force seats it onto the cartridge back), so it holds the load and won't back out. A passive TPU
-# DRAG pad in the pocket resists transport drift when the lever is UNLOADED (the back-stop only holds the
-# loaded direction). [Stage 1: threads are smooth-cylinder envelopes; the printed coarse thread comes once
+# contact force seats it onto the cartridge back), so it holds the load and won't back out. The cartridge is otherwise FREE to slide between the
+# lever and the back-stop: a TPU drag pad used to add transport friction, but its recess left
+# unprintable walls in the pocket (user), and the pad was never part of the in-use load path. [Stage 1: threads are smooth-cylinder envelopes; the printed coarse thread comes once
 # packing is confirmed.]
 HS_BSTOP_BORE   = 5.0               # hollow bore -- clears the M4 tension-screw hex-key driver
 HS_BSTOP_OD     = 9.0               # thread crest (major) OD; the drive flange stays just under the cartridge pitch
@@ -391,7 +391,6 @@ HS_TH_CLR       = 0.4               # diametral thread clearance on the MALE sid
 HS_BSTOP_ENGAGE = 6.0               # engagement in the boss = 3 turns (the 2mm reclaimed from the piston head
                                     #   pulls this boss forward, so 6mm now fits at the SAME 1.44mm leg clearance)
 HS_BSTOP_FLANGE = D.MIN_WALL        # 0.8 -- was 0.5, UNDER one bead, so it could not print at all               # +X drive flange (drive slots on its face; thin so the total extent clears the leg)
-HS_DRAG_LX, HS_DRAG_SEAT, HS_DRAG_BULGE = 6.0, 1.5, 0.4  # TPU drag: X length, wall-recess depth, interference into lane
 HS_HOUS_BACK = HS_BACK_X + HS_BSTOP_ENGAGE   # housing boss depth = engagement (no extra -- preserves the leg clearance)
 
 # ── MOUNT (user): the housing's TOP FACE is already FLUSH with the chassis underside
@@ -486,12 +485,6 @@ def demo_parts():
         # HOLLOW back-stop screw: threads the housing boss, its -X face the adjustable stop the cartridge
         # back seats against (sets the X home). The tension screw above runs THROUGH its Ø5.5 bore.
         out.append((f"{nm}_cart_backstop", feel_place(cart_backstop.translate((dx, dy, 0)))))
-        # passive TPU drag pad (outboard wall): built at HS outboard; the MAIN copy is it mirrored in Y.
-        # BOTH pads sit at the RECESS X (dx = HS_SETBACK -- a fixed housing feature, same in both
-        # slots); the cartridge slides over the pad wherever it parks. (The old dx=0 main pad hung
-        # 1.86 out of its recess -- a latent misfit the prism-round probe caught.)
-        _drag = cart_drag if dy == 0 else cart_drag.mirror("XZ")
-        out.append((f"{nm}_cart_drag", feel_place(_drag.translate((HS_SETBACK, 0, 0)))))
     # (no travel-stop screw: the +Z-cam-era stop boss was removed -- see _housing)
     # (no retention set-screw dummy: the rib-mount tenons + their M2 lock are
     #  DEFERRED with the mount -- prism round; see _housing)
@@ -1222,22 +1215,6 @@ def _cart_backstop() -> cq.Workplane:
     return male.rotate((0, 0, 0), (0, 1, 0), 90).translate((0, HS_YC, HS_Z))    # NO heal on a threaded part
 
 
-def _drag_seat_xc(dx=0.0):
-    return (HS_BODY_BX + HS_GPOST_BX) / 2 + dx         # coil-bay X (solid floor, behind the swept relief)
-
-
-def _cart_drag() -> cq.Workplane:
-    """Passive TPU DRAG pad (printed TPU, print 2). Seats in the housing pocket OUTBOARD-wall recess and
-    bulges HS_DRAG_BULGE into the cartridge lane, so a few N of slide friction keeps the cartridge from
-    drifting in X during transport (the back-stop only holds the loaded direction; this never holds the
-    ~100N in-use load). Built at the HS cartridge's OUTBOARD (+Y) wall over the solid coil bay; the MAIN
-    copy is this mirrored in Y."""
-    y_tip  = HS_YC + HS_CART_WY / 2 - HS_DRAG_BULGE     # bulges past the cartridge outboard face into the lane
-    y_back = HS_YC + hs_pocket_hw() + HS_DRAG_SEAT      # recess back (into the wall)
-    pad = box_at(HS_DRAG_LX, y_back - y_tip, HS_PISTON_WZ, x=_drag_seat_xc(), y=(y_tip + y_back) / 2, z=HS_Z)
-    return heal(pad)
-
-
 def hs_pocket_hw():
     return HS_CART_WY / 2 + HS_CLR                          # pocket half-width (slot + slide clearance)
 
@@ -1344,7 +1321,7 @@ def cut_axle_stack(w):
 
 
 def cut_feel_pockets(w, place, x_front=None):
-    """Both cartridge HOUSE-POCKETS and their TPU drag recesses, mapped into the
+    """Both cartridge HOUSE-POCKETS, mapped into the
     housing by `place` — which is the only thing that differs between poses
     (feel_place here, the vertical lever's lift, the pedal's lift).
 
@@ -1361,12 +1338,6 @@ def cut_feel_pockets(w, place, x_front=None):
         dx = HS_SETBACK
         yc = HS_YC + dy
         w = w.cut(place(_hs_pocket(yc, -x1 - 1.0, HS_BACK_X + dx)))
-        sgn = 1.0 if yc > 0 else -1.0
-        y_wall = yc + sgn * hs_pocket_hw()                    # pocket wall inner face
-        y_back = yc + sgn * (hs_pocket_hw() + HS_DRAG_SEAT)   # recess back, into the wall
-        w = w.cut(place(box_at(HS_DRAG_LX + 0.4, abs(y_back - y_wall),
-                               HS_PISTON_WZ + 0.4, x=_drag_seat_xc(dx),
-                               y=(y_wall + y_back) / 2, z=HS_Z)))
     return w
 
 
@@ -1397,7 +1368,6 @@ def _housing() -> cq.Workplane:
         cartridge fits either slot; the MAIN one just parks HS_SETBACK
         forward on its back-stop screw. Their overlapping inner walls
         merge into one void (no unprintable centre sliver).
-      * the TPU drag-pad recesses in the outboard pocket walls.
       * the two female BACK-STOP THREADS in the solid behind the pockets
         (cut last, alone, un-healed — thread rules).
     SENSOR CRADLE (user, see _cradle): two webs + a plinth + a floor off the
@@ -1610,6 +1580,5 @@ cart_base = _half_stop_cart_base()             # printed: cartridge (inverted-U,
 cart_piston = _half_stop_piston()              # printed: piston (Ø6 body + follower tongue + coil pilot)
 guide_post = _guide_post()                     # printed: loose coil-back guide post (screw pushes it)
 cart_backstop = _cart_backstop()               # printed: hollow X-position back-stop screw (tension screw runs through it)
-cart_drag = _cart_drag()                       # printed TPU: passive drag pad (transport retention; print 2, MAIN mirrored)
 # (the FLOATING TENON is retired -- the octagon tenons are now FUSED onto the housing yoke, so
 # the lever mounts as a single part; the rib carries the matching octagon mortise. See _mount.)
