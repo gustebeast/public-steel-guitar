@@ -179,6 +179,10 @@ AXLE_GRUB_L   = ARM_TOP - (D.BRIDGE_BEARING_Z + D.BRIDGE_AXLE_D / 2) + 0.2
 # Ø2.55 drop-in hole per rod: the rod installs top-down through it (through the
 # carriage's closed bore) and its top stays friction-held in this hole. LOWER
 # bar: BLIND snug sockets the rods land in; its top face is the BOTTOM hard stop.
+# Carriage anchor-tower +X sweep: the tower tops at global z7 (1 mm into the shelf) and only
+# reaches this X. ABOVE the guide rod, the field-centre opening need only clear THIS (not its old
+# X0=6 cap boundary) — clearing to 6 up there just leaves a wide ledge under the shelf at z7.
+POST_SWEEP_X1 = D.SCREW_X + CR.POST_X1H + 0.4             # +3.05: tower +X face (2.65) + clearance
 GRX     = D.SCREW_X + D.GUIDE_ROD_DX                      # rod line (+3.5)
 GR_H    = 6.0                                             # ledge heights
 GR_UBOT = D.CARRIAGE_NOM_Z + D.GUIDE_FOOT_DZ              # upper bottom = top stop (−20)
@@ -253,12 +257,18 @@ def _cap() -> cq.Workplane:
     # no vibrating string there to dampen.
     w = w.union(box_at(X1 - D.BRIDGE_AXLE_X, 2 * MECH_HW, BEAR_TOP - Z6,
                        x=(D.BRIDGE_AXLE_X + X1) / 2, y=0, z=(BEAR_TOP + Z6) / 2))
-    # FIELD-CENTRE OPENING: clear x XLO..X0 between the arms from the lower
-    # guide-ledge line (GR_LTOP) to the top — the guide ledges + windows are
-    # re-added/cut by _build in this space exactly as before
-    w = w.cut(box_at(X0 - (XLO - 1.0), 2 * WIN_HW, (Z6 + 1.0) - GR_LTOP,
+    # FIELD-CENTRE OPENING: clear the field between the arms. Split the +X reach by Z so the
+    # bearing cutout stays a CONSISTENT thickness (user): LOW (to the rod top GR_UBOT) it keeps the
+    # full X0 width for the guide rod (global X 4.95); ABOVE the rod only the anchor TOWER sweeps
+    # in, reaching just POST_SWEEP_X1 — so it's tight there, instead of the old X0=6 that left a
+    # wide ledge under the shelf at z7. (The tower tops 1 mm into the shelf, so a small z6..7 relief
+    # is unavoidable — but it needn't be 6 wide.)
+    w = w.cut(box_at(X0 - (XLO - 1.0), 2 * WIN_HW, GR_UBOT - GR_LTOP,               # LOW: rod width
                      x=((XLO - 1.0) + X0) / 2, y=0,
-                     z=(GR_LTOP + (Z6 + 1.0)) / 2))
+                     z=(GR_LTOP + GR_UBOT) / 2))
+    w = w.cut(box_at(POST_SWEEP_X1 - (XLO - 1.0), 2 * WIN_HW, (Z6 + 1.0) - GR_UBOT,  # HIGH: tower only
+                     x=((XLO - 1.0) + POST_SWEEP_X1) / 2, y=0,
+                     z=(GR_UBOT + (Z6 + 1.0)) / 2))
     return w
 
 
