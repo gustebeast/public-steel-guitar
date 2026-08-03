@@ -155,7 +155,7 @@ FLG_TOP  = ZPL_TOP + PM.PK_H_MIN                          # -Y guide wall top (c
 # through a cadkit heat-set-insert NUT on a plate NUB. Turning the head from +Z (axially
 # fixed, free to rotate; gravity holds it on the shoulder) walks the plate up/down.
 JACK_D         = 4.0                             # M4 (cadkit heat-set-insert nut on the plate)
-BOSS_H         = 6.0                              # NUT boss height ABOVE the plate top (nut boss is on TOP now,
+BOSS_H         = 8 * D.NOZZLE_D   # 6.4 (was 6.0)                              # NUT boss height ABOVE the plate top (nut boss is on TOP now,
                                                  # so the plate BOTTOM stays flat -> prints -Z->+Z, user)
 JACK_MOUTH_Z   = ZPL_TOP + BOSS_H                  # plate NUT mouth = the boss TOP (screw threads down into it)
 # The leadscrew is a real M4 BUTTON-HEAD cap screw (headed, hex-socket drive) captured in the
@@ -209,7 +209,7 @@ RET_BOSS_TOP_Z = RET_SCREW_Z + M4.insert_pilot_d / 2 + D.MIN_WALL_2P   # 1.6 (2-
 X_SLIDE   = 6.0                                    # pickup X-position room on the plate (+/-)
 PLATE_X   = PM.PK_W + 2 * X_SLIDE                  # green X (pickup + slide) ~50.6
 PLATE_Y   = (PK_YP - PK_MAX_YM) + 2 * RET_WALL_T   # green Y (LONGEST pickup + wall room each side) ~106.0
-NUB_W     = 11.0                                   # nub/arm width (>= boss Ø8)
+NUB_W     = 14 * D.NOZZLE_D                        # 11.2 (was 11.0) nub/arm width (>= boss Ø8)
 CAVITY_X  = PLATE_X + 1.5                          # pickup cavity in the deck (green + clearance)
 CAVITY_Y  = PLATE_Y + 1.5
 # (Y hold-down CLAMP removed; retention above locks the pickup to the plate instead.)

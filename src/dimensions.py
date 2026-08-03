@@ -42,7 +42,7 @@ STRING_PITCH    = 9.5       # mm, changer pitch (across, Y)
 NUT_PITCH       = 6.5       # mm, spacing at the nut/keyhead end
 STRING_FIELD_W  = (N_STRINGS - 1) * STRING_PITCH   # 85.5 mm
 MOUNTING_SPAN   = 615.0     # between a string's two mounting ends (~24.2" scale)
-XBAR            = 10.0      # the one "10 mm" module: square cross-rib section (10×10),
+XBAR            = 12 * NOZZLE_D  # 9.6 (was 10.0) the one module: square cross-rib section,
                             # end-crossbar width, and the leg/endplate border + L offset
 WALL_THICKNESS  = 13 * NOZZLE_D  # 10.4 (was 10.0 = 12.5 beads) structural wall: I-beam rail thickness, the keyhead/bridge
                             # endplate faces, and the deck inner/outer face references
@@ -242,7 +242,7 @@ BRIDGE_BEARING_Z  = STRING_Z - BRIDGE_BEARING_OD / 2     # axle/bearing centre (
 # the bearing centre sits OD/2 to −X of the anchor line.
 BRIDGE_AXLE_X     = BRIDGE_X - BRIDGE_BEARING_OD / 2     # bearing/axle centre X
 BRIDGE_AXLE_Y     = STRING_FIELD_W / 2 + 9.0             # axle/support half-span
-BRIDGE_ARM_W      = 5.0     # bridge-endplate bearing-arm / edge-web thickness (Y); the
+BRIDGE_ARM_W      = 7 * NOZZLE_D  # 5.6 (was 5.0) bearing-arm / edge-web thickness (Y); the
                             # screw rail widens by this so the rib overlaps it cleanly
 
 # ── Keyhead nut-block hardware → ENDPLATE_W (BOTH ends + bridge base) ────────
