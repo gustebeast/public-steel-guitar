@@ -291,11 +291,59 @@ def fuse_into_bar(piece, x0, x1):
     return piece
 
 
+def cut_backstop_threads(piece, x0: float, x1: float):
+    """The two FEMALE back-stop threads per pedal, cut into the fused bar piece.
+
+    Separate from fuse_into_bar, and called AFTER the piece is healed, because the
+    thread rules say threads are cut last and alone and a threaded part is never
+    healed — and this housing is fused into a bar piece that heal()s. Cutting them
+    inside _housing would have put a heal after the threads.
+
+    They were missing entirely: knee_lever and knee_lever_vert both cut these, the
+    pedal did not, so its back-stop screws had nothing to thread into and sat
+    183 mm3 buried in solid bar. Invisible until the housings actually reached the
+    assembly."""
+    from cadkit.threads import threaded_rod
+    for x in PEDAL_X:
+        if not (x0 <= x < x1):
+            continue
+        for dy in (KL.MAIN_YC - KL.HS_YC, 0.0):
+            nut = (threaded_rod(KL.HS_TH_MINOR, KL.HS_BSTOP_OD, KL.HS_TH_PITCH,
+                                KL.HS_BSTOP_ENGAGE)
+                   .rotate((0, 0, 0), (0, 1, 0), 90)
+                   .translate((KL.HS_BACK_X + KL.HS_SETBACK,
+                               KL.HS_YC + dy, KL.HS_Z)))
+            piece = piece.cut(place(pplace(nut), x), clean=False)
+    return piece
+
+
 def demo_parts():
-    """(name, solid) in GUITAR coordinates — the LEVERS only; the housings are
-    part of the bar now (fuse_into_bar)."""
-    return [(f"pedal_lever_{i}", place(swing(_lever(), 0.0), x))
-            for i, x in enumerate(PEDAL_X)]
+    """(name, solid) in GUITAR coordinates — the WHOLE control core at each of the
+    three stations, not just the arm: bearings, magnet, sensor board, connector and
+    shim on the axle, and both feel cartridges with their coils, tension screws,
+    inserts and back-stops. The housing is not here because it is part of the bar
+    now (fuse_into_bar).
+
+    This used to emit the bare lever alone, which is why the pedal read as
+    non-working in the assembly — there was a lever and an empty housing and
+    nothing in between. Every part below is knee_lever's, placed through this
+    module's own pose, so what you see IS the knee lever 1:1, only posed as a
+    pedal. Nothing here is a pedal-specific copy."""
+    out = []
+    for i, x in enumerate(PEDAL_X):
+        pre = f"pedal{i}"
+        # lever frame -> guitar, and feel frame -> guitar, both bound to this station
+        def _P(s, _x=x):
+            return place(s, _x)
+
+        def _F(s, _x=x):
+            return place(pplace(s), _x)
+
+        out.append((f"pedal_lever_{i}", _P(swing(_lever(), 0.0))))
+        out += KL.axle_dummies(_P, pre, HOUS_Z0, HOUS_Z1)
+        out += KL.cart_dummies(_F, pre)
+        out += KL.feel_dummies(_F, pre)
+    return out
 
 
 # ── sanity on the pose: three facts, each of which the naive mapping got wrong ──
