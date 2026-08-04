@@ -402,7 +402,14 @@ def _build() -> cq.Workplane:
     # and add friction at the exact point the bearing exists to remove it.
     # 45° ramps keep every surface
     # self-supporting printing along X from the cap.
-    CB_W = 5.2                                # finger width → 0.15 to each bearing face
+    # CB_W = pitch(9.5) − slot(4.8) so each finger is FLUSH with the slot walls: inner faces land
+    # exactly on ±BR_HW, so the finger cannot poke into the opening (the old 5.2 sat at ±2.15, 0.25
+    # inside the 4.8 slot → the "4.3" the user measured). The single slot cut now owns the opening
+    # on BOTH Y faces; the finger is just the leftover between two slots. Cost the user accepted
+    # (4.8 uniform over min-wall): the Ø3.3 axle bore in a 4.7 finger leaves 0.70 mm bore-side walls
+    # — below the 0.8 1-bead floor, but SHORT and off the load path (the wrap loads the axle
+    # DOWN-and-−X, so the grip is the solid finger BELOW the bore, not these side walls).
+    CB_W = round(abs(D.string_y(1) - D.string_y(0)) - 2 * (D.BRIDGE_BEARING_W / 2 + 0.4), 3)  # 4.70: flush to the 4.8 slot
     # Finger head lowered 14.5 → BRACE_Z1 (14.01, the cover plane) so the −X region is ONE height,
     # not the axle-wall bump the user flagged. Safe because the string wrap sits on the bearing's
     # +X-top, so its load pushes the axle DOWN-and-−X — the bore's TOP wall carries none of it, and
