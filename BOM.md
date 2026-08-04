@@ -556,20 +556,21 @@ Basic classes (no feeder charge):
 | U1–U5 | `TLV9064IDR` | C388176 | 5 | $1.08 | **the TIA part** — see below ✓ |
 | U9 | `SPX3819M5-L-3-3/TR` | C9055 | 1 | $0.30 | 3V3 **analog**, 40 µVrms ✓ |
 | U8 | `AMS1117-3.3` | C6186 | 1 | $0.10 | 3V3 **digital**, SOT-223 tab — 0.51 W ✓ |
+| J2 | `S6B-XH-SM4-TB` | C191914 | 1 | $0.44 | 6-way, −Y edge: 2×5V, 2×PWR_GND, AUDIO, AUDIO_GND ✓ |
 | U11 | `TLV9061IDCKR` | C693480 | 1 | $0.36 | single of the U1–U5 family ✓ |
-| J2 | `S4B-XH-SM4-TB` | C161861 | 1 | $0.32 | 4-way; already a project part ✓ |
+| U12 | `PCM1808PWR` | C55513 | 1 | $0.34 | 24-bit audio ADC — magnetic pickup → I²S ✓ |
 | D1–D10 | `IR17-21C/TR8` | C131250 | 10 | $0.28 | 940 nm 0805 · ⚠ ~120°, confirm at layout |
 | J1 | `TYPE-C-31-M-12` | C165948 | 1 | $0.20 | the modelled envelope *is* this part ✓ |
 | U10 | `USBLC6-2SC6` | C7519 | 1 | $0.10 | ⚠ SOT-23-6, not the modelled SOT-563 |
 | Cf×20 | 0402 **C0G** MLCC | Basic | 20 | $0.08 | C0G not X7R — the anti-alias pole must not drift with bias |
+| C×7 | 0805 X7R MLCC | Basic | 7 | $0.07 | bulk + audio ADC bypass |
 | Y1, Y2 | `X322525MSB4SI` | C13740 | 2 | $0.07 | 25 MHz 3225, **Basic** ✓ |
-| C×33 | 0402 X7R MLCC | Basic | 33 | $0.07 | decoupling |
-| R×27 | 0402 thick-film | Basic | 27 | $0.05 | TIA feedback + pulls |
+| C×34 | 0402 X7R MLCC | Basic | 34 | $0.07 | decoupling |
+| R×29 | 0402 thick-film | Basic | 29 | $0.06 | TIA feedback + pulls |
 | Q1 | `AO3400A` | C20917 | 1 | $0.05 | logic-level FET ✓ |
-| C130–C133 | 0805 X7R MLCC | Basic | 4 | $0.04 | bulk |
 | R1–R10 | 0603 thick-film | Basic | 10 | $0.03 | per-string LED ballast |
 | FB1 | `GZ2012D601TF` | C1017 | 1 | $0.02 | 600 Ω @100 MHz ✓ |
-| | | | **141** | **$26.46** | **`open_lines()` is empty** |
+| | | | **148** | **$26.96** | **`open_lines()` is empty** |
 
 **The op-amp is the happy surprise.** `TLV9064IDR` is a 4× CMOS RRIO part with
 **10 MHz GBW and 500 fA input bias current** — the bias figure is what a nanoamp
@@ -879,6 +880,70 @@ Z stack (nominal board): deck 6.00 → plinth 9.50 → board 9.50–11.10 → se
 faces 11.95 → cover 12.41–14.01 → lowest string 15.11. That leaves **1.10 mm**
 over the cover. Install order is board, cover, then strings.
 
+### The magnetic pickup reaches the Pi through THIS board
+
+The magnetic pickup has to feed two places: the **TS jack** (which must not be degraded)
+and the **Pi**. Rather than run a second analog cable the length of the instrument, it is
+digitised here and travels to the Pi on the USB link this board already has. **Digitising
+early is the point** — once it is bits, the Pi's ground noise has no analog path back into
+the audio.
+
+**Split AFTER the buffer, never at the coil.** The tap comes off the AFE's buffer output,
+in parallel with the relay → TS branch. This is not fussiness: a magnetic pickup's tone is
+set by its L, R and **total C including cable**, so hanging a second cable directly on the
+coil adds capacitance, lowers and damps the resonant peak, and **changes the TS output's
+tone** with zero added noise. Buffering first makes the tap physically incapable of
+affecting the direct path — which is what actually delivers the "TS unaffected" requirement,
+not any amount of shielding downstream.
+
+**The audio gets its own ADC (U12), deliberately not the MCU's.** Two independent reasons,
+and the first is the real one:
+
+* **Crosstalk.** The MCU's SAR is multiplexed across 20 inputs reading **tens of
+  nanoamps**. The magnetic signal is line-level — four to five orders of magnitude louder.
+  Through the same sample-and-hold mux, that is exactly the contamination the whole board
+  is organised to prevent, and no downstream care undoes it.
+* **Pin count.** All 20 ADC channels are already one-per-photodiode. There is no 21st.
+
+`PCM1808PWR` sidesteps both and is better on merit: 24-bit delta-sigma, ~99 dB SNR, on the
+signal a listener actually hears — against a 16-bit SAR shared twenty ways. It arrives over
+I²S, a *peripheral* rather than an ADC pin. The mid-rail reference the TIAs already use
+(U11) is what an audio input wants for biasing, so that infrastructure is free.
+
+### All cabling exits −Y, and it made the board smaller
+
+Both connectors now sit on the **−Y edge with their mouths flush**, so the two plugs present
+as a single cable exit instead of two at different depths (a −X exit could not be routed
+cleanly). That required widening the compute section **25.40 → 32.34 mm**, derived from the
+edge budget rather than typed — the −Y edge, not the LQFP144, is now what sets that width.
+
+**Both changes were free or better than free:**
+
+* The widening costs **nothing in billed area**. The sensing strip already sets the bounding
+  box's −X extreme at −30.42; the compute section lands at −25.34, inside it, with 5.08 mm
+  of headroom before the box would move.
+* The board got **shorter**: 190.1 → **182.1 mm**, area 71.1 → **68.1 cm²**. Moving J2 off
+  the −X edge freed a whole 15 mm row; the audio ADC added ~6 mm back.
+
+**J2 is now a 6-way `S6B-XH-SM4-TB`** (C191914, $0.4417): **2×5V, 2×PWR_GND, AUDIO,
+AUDIO_GND**. Going from 4-way to 6-way adds **no harness part** — `XHP-6` housings are
+already bought to mate the ten SERVO42D pigtails, and `SXH-001T-P0.6` contacts are common to
+every XH size. The only new line is the board-side part itself, one feeder.
+
+⚠ The 6-way's 20.0 mm width is **derived** from XH's 2.5 mm pitch (4-way B = 15.0, plus two
+ways). Confirm against JST's drawing before layout, exactly as the S4B figures were.
+
+**Why AUDIO_GND is a dedicated pin.** Not USB ground, and not the power ground either. USB
+ground carries the Pi's return and its supply noise; a single-ended ADC measures its input
+*relative to its own ground*, so any difference between source and ADC ground **is** signal —
+routing the audio return through USB would sum the Pi's noise into the very signal the
+architecture exists to keep clean. The power ground is no better here: the **LED row driver
+switches at 96 kHz synchronously with sampling**, and that current flows in the power return,
+so sharing it would inject the one noise source ambient subtraction cannot remove.
+
+*(A 2-way THT header was considered and rejected: its post tails would protrude through the
+board's underside — the face that bears flat on the plinth.)*
+
 **Power (J2): 5 V from the instrument rail, not USB VBUS.** MCU ~200–300 mA, PHY
 ~50, 21 op-amp channels ~40 — already past a USB port's 500 mA before a single
 emitter is lit. Since LED current is the second-best SNR lever, capping it at
@@ -1012,16 +1077,16 @@ then multiples of 5** — you cannot order 3. So the per-instrument curve is a
 
 | Instruments | Order | Waste | Order total | Per instrument |
 |--:|--:|--:|--:|--:|
-| 1 | 2 | 1 | $148.48 | $148.48 |
-| 2 | 2 | 0 | $148.48 | $74.24 |
-| 3 | 5 | 2 | $251.95 | **$83.98** ↑ |
-| 5 | 5 | 0 | $251.95 | $50.39 |
-| 6 | 10 | 4 | $424.40 | **$70.73** ↑ |
-| **10** | **10** | **0** | **$424.40** | **$42.44** |
-| 15 | 15 | 0 | $596.85 | $39.79 |
-| 20 | 20 | 0 | $769.30 | $38.47 |
+| 1 | 2 | 1 | $151.94 | $151.94 |
+| 2 | 2 | 0 | $151.94 | $75.97 |
+| 3 | 5 | 2 | $256.10 | **$85.37** ↑ |
+| 5 | 5 | 0 | $256.10 | $51.22 |
+| 6 | 10 | 4 | $429.70 | **$71.62** ↑ |
+| **10** | **10** | **0** | **$429.70** | **$42.97** |
+| 15 | 15 | 0 | $603.30 | $40.22 |
+| 20 | 20 | 0 | $776.90 | $38.85 |
 
-*(Recomputed on the resolved $79.50 fixed / $34.49 variable. The
+*(Recomputed on the $82.50 fixed / $34.72 variable. The
 **shape** is unchanged — it comes from the quantity ladder, not the rates — so
 both conclusions below still hold; only the absolutes moved.)*
 
@@ -1032,18 +1097,22 @@ Two consequences worth acting on:
 * **10 is the knee.** It is the first quantity within 30 % of the variable-cost
   floor; past 15 the gains are slow. Hence the convention.
 
-### Optical pickup board at that basis — $42.44 per instrument
+### Optical pickup board at that basis — $42.97 per instrument
 
-Board is **37.4 × 190.1 mm = 71.1 cm²**, 4-layer, 141 parts, ~543 solder joints.
+Board is **37.4 × 182.1 mm = 68.1 cm²**, 4-layer, 148 parts, ~560 solder joints.
 (Earlier revisions said 47.5 cm², which predates the +X wraps and the M4 bands,
 then 184.4 mm long, which predates J2 becoming a 4-way.)
 
 | | | |
 |---|---|---:|
-| **Fixed, per order** | PCBA setup $25 + feeder loading **$19.50** (13 Extended lines × $1.50; **5 of the 18 lines are Basic**) + component MOQ overage ~$20 + 4-layer fab tooling ~$15 | **$79.50** |
-| **Variable, per board** | parts **$26.46** (computed) + fab $7.11 (71.1 cm² × $0.10) + assembly $0.92 (543 joints) | **$34.49** |
-| **Order of 10** | 79.50 + 10 × 34.49 | **$424.40** |
-| **Per instrument** | ÷ 10 | **$42.44** |
+| **Fixed, per order** | PCBA setup $25 + feeder loading **$22.50** (15 Extended lines × $1.50; **5 of the 20 lines are Basic**) + component MOQ overage ~$20 + 4-layer fab tooling ~$15 | **$82.50** |
+| **Variable, per board** | parts **$26.96** (computed) + fab $6.81 (68.1 cm² × $0.10) + assembly $0.95 (~560 joints) | **$34.72** |
+| **Order of 10** | 82.50 + 10 × 34.72 | **$429.70** |
+| **Per instrument** | ÷ 10 | **$42.97** |
+
+*(The magnetic-pickup channel and the single-ended cable exit together cost **$0.53 per
+instrument**. The audio ADC and the 6-way connector add $0.78 of parts and one feeder, and
+the board getting 8 mm shorter gives $0.30 of it back.)*
 
 *(History: $46.72 → $59.32 → $52.72 → **$42.61**. The spike was the photodiodes
 at their @1 price; the fall is resolution — detectors at the 100+ break, the
@@ -1129,7 +1198,7 @@ several are unverified — re-verify the whole file before ordering.**
 | Mechanical hardware (motors, screws, bearings, belt, fasteners, dowels) | ~$620 | belt/collar/bearings **verified**; motor + all McMaster **[m]** |
 | Wire | ~$35 | estimate, excludes 10 control drops |
 | Electronics + UI (Teensy, audio shield, Pi 4, bucks, hub, jacks, joystick, OLED) | ~$190 | **all verified except the OLED [m]** |
-| Optical pickup board (141 parts, 4-layer, ÷10 basis) | **~$43** | parts cost **computed from the model**; all 18 lines have real MPNs |
+| Optical pickup board (148 parts, 4-layer, ÷10 basis) | **~$43** | parts cost **computed from the model**; all 18 lines have real MPNs |
 | Control sensors, 10 controls (MT6701 + magnet + board) | ~$50 | IC + magnet **verified**; boards not yet quoted |
 | Tee / carrier PCBs | ~$25 | estimate |
 | **Total** | **~$1,060** | |
