@@ -938,7 +938,7 @@ out of its way.
 |---|--:|--:|
 | MCU | X −20.17…1.83, Y −87.75…−65.75 | **X −24.14…−2.14, Y −78.00…−56.00** |
 | Tail screw | (−12.00, −59.60) | **(+2.40, −59.60)** |
-| Board | 182.1 mm | **172.4 mm** |
+| Board | 182.1 mm | **171.6 mm** |
 | Cantilever past the tail screw | 51.75 | **48.00 mm** |
 
 Both screws keep the full **4.60 mm of plinth wall**; the MCU clears the tail screw's
@@ -957,6 +957,47 @@ It also gained a check it never had: that **each grip actually lands in the wrap
 with its full wall. That is the real requirement — a screw with nothing to thread into is
 the failure that matters — and until now the X-equality test had been standing in for it by
 accident.
+
+### Routing headroom — the funnel was fine, the MCU escape was not
+
+Two questions that look like one, with opposite answers.
+
+**The sensor → compute funnel was never tight.** Everything from the sensing strip has to
+pass through its 13.62 mm width: **20 TIA outputs + ~5 power/reference nets = 25**. At
+JLCPCB's standard 0.127/0.127 that is **49 traces per layer**, so ~98 across two
+inner/bottom routing layers (L2 stays a solid ground plane for the analog). **~4× margin**,
+and the fine 0.09/0.09 tier is not needed. This had been worked out in discussion but never
+written down, which is why it kept being re-asked.
+
+⚠ **The MCU's escape annulus was the real constraint**, and briefly it was bad:
+
+| Side | Stepped-in compute | −X edge straightened |
+|---|--:|--:|
+| **−X** | **1.20 mm** — 4 lanes | **6.62 mm** — 26 lanes |
+| +X | 9.14 | 8.80 |
+| **+Y** | **1.00** | **1.00** |
+| −Y | 29.60 | 28.85 |
+
+1.20 mm on a side carrying **36 pins** is not merely tight — it is under what a staggered via
+fanout needs (36 vias at 0.65 mm pitch want 23.4 mm of run against a 22.0 mm package side).
+Two of the LQFP144's four sides were effectively blocked.
+
+**Fixed by running the compute section −X to `PCB_X1S`**, so the board's −X side is **one
+straight line end to end** rather than stepping in near −Y. Free, because the strip already
+sets the bounding box there — and the board came out marginally *shorter* (172.4 → 171.6 mm)
+because the wider section packs its rows better.
+
+**The MCU had to be re-anchored for that to help.** It was placed at `x0 + half-width`, i.e.
+relative to the section edge — so widening the section would have slid the package along
+with it and preserved the same useless 1.20 mm. It is now anchored to the **tail screw's
+keep-out**, the only hard obstacle on that row, which is what converts the new width into
+annulus instead of travel.
+
+⚠ **+Y is still 1.00 mm and is not fixed.** Only 7.00 mm of the MCU's 22 mm top edge sits
+under the sensing strip; the rest has 1 mm before the board ends. Those pins must via down at
+their pads and route back south — normal practice, and viable *because* −X and −Y now have
+room to receive them. If layout disagrees, the lever is moving the MCU −Y, paid for in board
+length, which is the opposite of what straightening the edge just bought.
 
 **J2 is now a 6-way `S6B-XH-SM4-TB`** (C191914, $0.4417): **2×5V, 2×PWR_GND, AUDIO,
 AUDIO_GND**. Going from 4-way to 6-way adds **no harness part** — `XHP-6` housings are
@@ -1115,7 +1156,7 @@ then multiples of 5** — you cannot order 3. So the per-instrument curve is a
 | 3 | 5 | 2 | $254.30 | **$84.77** ↑ |
 | 5 | 5 | 0 | $254.30 | $50.86 |
 | 6 | 10 | 4 | $426.10 | **$71.02** ↑ |
-| **10** | **10** | **0** | **$426.10** | **$42.61** |
+| **10** | **10** | **0** | **$425.80** | **$42.58** |
 | 15 | 15 | 0 | $597.90 | $39.86 |
 | 20 | 20 | 0 | $769.70 | $38.49 |
 
@@ -1130,18 +1171,18 @@ Two consequences worth acting on:
 * **10 is the knee.** It is the first quantity within 30 % of the variable-cost
   floor; past 15 the gains are slow. Hence the convention.
 
-### Optical pickup board at that basis — $42.61 per instrument
+### Optical pickup board at that basis — $42.58 per instrument
 
-Board is **37.4 × 172.4 mm = 64.5 cm²**, 4-layer, 148 parts, ~560 solder joints.
+Board is **37.4 × 171.6 mm = 64.2 cm²**, 4-layer, 148 parts, ~560 solder joints.
 (Earlier revisions said 47.5 cm², which predates the +X wraps and the M4 bands,
 then 184.4 mm long, which predates J2 becoming a 4-way.)
 
 | | | |
 |---|---|---:|
 | **Fixed, per order** | PCBA setup $25 + feeder loading **$22.50** (15 Extended lines × $1.50; **5 of the 20 lines are Basic**) + component MOQ overage ~$20 + 4-layer fab tooling ~$15 | **$82.50** |
-| **Variable, per board** | parts **$26.96** (computed) + fab $6.45 (64.5 cm² × $0.10) + assembly $0.95 (~560 joints) | **$34.36** |
-| **Order of 10** | 82.50 + 10 × 34.36 | **$426.10** |
-| **Per instrument** | ÷ 10 | **$42.61** |
+| **Variable, per board** | parts **$26.96** (computed) + fab $6.42 (64.2 cm² × $0.10) + assembly $0.95 (~560 joints) | **$34.33** |
+| **Order of 10** | 82.50 + 10 × 34.33 | **$425.80** |
+| **Per instrument** | ÷ 10 | **$42.58** |
 
 *(The magnetic-pickup channel and the single-ended cable exit together cost **$0.53 per
 instrument**. The audio ADC and the 6-way connector add $0.78 of parts and one feeder, and
