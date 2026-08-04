@@ -340,8 +340,30 @@ WRAP_Y     = Y_TAIL - HEAD_LEN                                # -65.80, compute 
 # The widening is FREE in billed area: the SENSING STRIP already sets the bounding box's
 # -X extreme at PCB_X1S (-30.42), and this lands at -25.34, inside it. There is 5.08 mm of
 # further headroom before the bbox -- and therefore the fab charge -- would move at all.
-COMPUTE_W  = (2 * EDGE_KEEP + PKG["USB-C"][0] + ROW_GAP + PKG["XH-SM-6Y"][0])
-COMPUTE_X0 = TAIL_X1 - COMPUTE_W                              # -25.34
+COMPUTE_W_MIN = (2 * EDGE_KEEP + PKG["USB-C"][0] + ROW_GAP + PKG["XH-SM-6Y"][0])   # 32.34
+# ...but the compute section runs -X to the STRIP'S OWN EDGE, so the board's -X side is ONE
+# STRAIGHT LINE end to end (user) rather than stepping in near the -Y end. Two reasons, and
+# the second is the one that forced it:
+#   * It is free. PCB_X1S already sets the bounding box's -X extreme, so widening to meet it
+#     changes no billed area at all -- only the copper inside a rectangle already paid for.
+#   * MCU ESCAPE ROUTING. At the stepped-in -25.34 the LQFP144 had 1.20 mm of annulus on its
+#     -X side -- 4 top-layer lanes at 0.127/0.127, for a side carrying 36 pins, and not even
+#     enough for a staggered via fanout (36 vias at 0.65 pitch want 23.4 mm against a 22.0 mm
+#     package side). Two of the MCU's four sides were effectively blocked. Straightening the
+#     edge takes that side to 6.6 mm and makes three of four comfortable.
+# The -Y edge connectors get the extra width for free as well.
+COMPUTE_X0 = PCB_X1S                                          # -30.42, flush with the strip
+assert TAIL_X1 - COMPUTE_X0 >= COMPUTE_W_MIN - 1e-9, \
+    "compute section too narrow for the -Y edge connectors"
+
+# ── M4 GRIP X, hoisted ───────────────────────────────────────────────────────
+# Module level because the MCU is placed AGAINST the tail screw and _parts() runs before
+# mount_points() is defined. One source, so the screw and the part that dodges it cannot
+# drift apart. MIN_WALL_2P of plinth on the outboard side of each.
+MOUNT_KEEP   = D.MIN_WALL_2P + M4.insert_pilot_d / 2          # 4.60
+MOUNT_X_HEAD = PLINTH_X0 + MOUNT_KEEP                         # -12.00, hard -X
+MOUNT_X_TAIL = TAIL_X1 - MOUNT_KEEP                           # +2.40, hard +X
+MOUNT_CLR    = M4.shaft_clr_d / 2 + 1.0                       # keep-out radius, 3.20
 # PCB_YP is an OUTPUT, set after the parts exist: the +Y-most quad's feedback grid sits
 # in the Y gap above it and reaches past the last detector, so sizing this end from the
 # sensing field alone ran parts off the board.
@@ -452,8 +474,13 @@ def _parts():
     # here is worth more than the same length taken off anywhere else.
     y = Y_TAIL - ROW_GAP
     y -= PKG["LQFP144"][1] / 2
+    # X is anchored to the TAIL SCREW, not to the board edge. The screw is the only hard
+    # obstacle on this row, so the MCU sits as far +X as it may -- which is what turns the
+    # straightened -X edge into ESCAPE ANNULUS (6.6 mm) instead of just sliding the package
+    # along with it. Anchoring to x0 would have kept the old 1.20 mm and wasted the change.
+    _mcu_x1 = MOUNT_X_TAIL - MOUNT_CLR - ROW_GAP
     add("U6", "MCU -- STM32H743ZIT6, 20x 16-bit ADC ch, USB OTG_HS via ULPI", "LQFP144",
-        x0 + PKG["LQFP144"][0] / 2, y)                 # hard -X, against the edge keep-out
+        _mcu_x1 - PKG["LQFP144"][0] / 2, y)
     y -= PKG["LQFP144"][1] / 2 + ROW_GAP
 
     # POWER + AUDIO INPUT is no longer here -- J2 moved to the -Y EDGE, beside the USB-C,
@@ -712,9 +739,8 @@ def mount_points():
     # end that is already a cantilever. Both still land in the plinth, which is the only
     # hard requirement. The two screws still define the Y datum; a skewed line between them
     # locates the board just as well as a parallel one.
-    keep = D.MIN_WALL_2P + M4.insert_pilot_d / 2
-    return [(PLINTH_X0 + keep, HEAD_Y0 + keep),        # -12.00, hard -X
-            (TAIL_X1 - keep, Y_TAIL - keep)]           # +2.40, hard +X
+    return [(MOUNT_X_HEAD, HEAD_Y0 + MOUNT_KEEP),      # -12.00, hard -X
+            (MOUNT_X_TAIL, Y_TAIL - MOUNT_KEEP)]       # +2.40, hard +X
 
 
 # ROUTED-OUTLINE FILLETS. A PCB outline is CNC-ROUTED, not cut from plate, so any polygon
@@ -726,10 +752,18 @@ ROUT_R = 1.0                                   # ~2 mm router bit
 
 
 def _concave():
-    """The three internal corners, where a section steps NARROWER than its neighbour."""
-    return [(PCB_X0, HEAD_Y0),                 # head -> strip, +X side
-            (PCB_X0, Y_TAIL),                  # strip -> -Y wrap, +X side
-            (COMPUTE_X0, WRAP_Y)]              # -Y wrap -> compute, -X side
+    """The internal corners, where a section steps NARROWER than its neighbour.
+
+    The -Y wrap -> compute step at (COMPUTE_X0, WRAP_Y) USED to be one. It is not any more:
+    the compute section now runs -X to PCB_X1S, the same edge the wrap and the strip use, so
+    that side of the board is a single straight line and there is no corner there to cut.
+    Filleting a point that sits mid-edge would notch the outline rather than relieve it, so
+    the entry is generated from the geometry instead of listed."""
+    corners = [(PCB_X0, HEAD_Y0),              # head -> strip, +X side
+               (PCB_X0, Y_TAIL)]               # strip -> -Y wrap, +X side
+    if COMPUTE_X0 > PCB_X1S + 1e-9:            # only if the compute section really steps in
+        corners.append((COMPUTE_X0, WRAP_Y))   # -Y wrap -> compute, -X side
+    return corners
 
 
 def _outline(grow=0.0, t=None, zc=None):
