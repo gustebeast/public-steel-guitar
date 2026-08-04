@@ -16,6 +16,7 @@ import argparse
 import math
 import os
 import pathlib
+import re
 import sys
 from functools import partial
 
@@ -59,14 +60,22 @@ def _PB(attr):
     return getattr(__import__("src.pedal_bar", fromlist=["e"]), attr)()
 
 
-def _PB_bar(attr, x0, x1):
+def _PB_bar(attr):
     """A pedal-bar piece with its pedal HOUSINGS fused in (user: the housing is
     not a separate part — see foot_pedal.fuse_into_bar). Fused here, not in
     pedal_bar, because foot_pedal reads pedal_bar for the bar's faces and the
-    import has to stay one-way."""
+    import has to stay one-way.
+
+    The piece's X span comes from pedal_bar.PIECE_SPAN, not from the caller: the
+    assembly needs the same fusion and passing the range in twice is what let the
+    two disagree (the assembly kept the unfused bar for the pedals' whole life)."""
     FP = __import__("src.foot_pedal", fromlist=["e"])
     PB = __import__("src.pedal_bar", fromlist=["e"])
-    return FP.fuse_into_bar(_PB(attr), x0, x1)
+    span = PB.PIECE_SPAN[attr]
+    # heal BEFORE the threads and not after: thread rules (cut last and alone,
+    # never heal a threaded part). That is also why the heal lives here rather
+    # than in the PARTS lambda, which used to wrap this call.
+    return FP.cut_backstop_threads(heal(FP.fuse_into_bar(_PB(attr), *span)), *span)
 
 
 PARTS = {
@@ -123,9 +132,9 @@ PARTS = {
     # pedal bar + latch (one latched foot for now; mirror to -X once the feel
     # is validated). The bar itself is a DEMO prism (longer than the bed —
     # it gets segmented for printing once the pedals land on it).
-    "pedal_bar_a":     (lambda: heal(_PB_bar("pedal_bar_a", -1e9, __import__("src.pedal_bar", fromlist=["e"]).XS1)), "petg-gf/pedal_bar_a.step", "PETG-GF — pedal bar, -X piece (35.6 wide, flush with the slimmed leg blocks; fused WIRED tower; trough + lid groove; splice tenons at +X). ~219 long: prints STRAIGHT; _b drops onto the tenons, the LID locks the stack — no glue"),
-    "pedal_bar_b":     (lambda: heal(_PB_bar("pedal_bar_b", __import__("src.pedal_bar", fromlist=["e"]).XS1, __import__("src.pedal_bar", fromlist=["e"]).XS2)), "petg-gf/pedal_bar_b.step", "PETG-GF — pedal bar, MID piece (trough only; XS1 cavities -X, XS2 tenons +X). ~219 long: straight print; slides straight down onto _a's tenons (the lid is the Z lock — no glue)"),
-    "pedal_bar_c":     (lambda: heal(_PB_bar("pedal_bar_c", __import__("src.pedal_bar", fromlist=["e"]).XS2, 1e9)), "petg-gf/pedal_bar_c.step", "PETG-GF — pedal bar, +X piece (35.6 wide, flush with the slimmed leg blocks; fused PLAIN tower; splice cavities at -X). ~215 long: straight print; slides straight down onto _b's tenons (the lid is the Z lock — no glue)"),
+    "pedal_bar_a":     (lambda: _PB_bar("pedal_bar_a"), "petg-gf/pedal_bar_a.step", "PETG-GF — pedal bar, -X piece (35.6 wide, flush with the slimmed leg blocks; fused WIRED tower; trough + lid groove; splice tenons at +X). ~219 long: prints STRAIGHT; _b drops onto the tenons, the LID locks the stack — no glue"),
+    "pedal_bar_b":     (lambda: _PB_bar("pedal_bar_b"), "petg-gf/pedal_bar_b.step", "PETG-GF — pedal bar, MID piece (trough only; XS1 cavities -X, XS2 tenons +X). ~219 long: straight print; slides straight down onto _a's tenons (the lid is the Z lock — no glue)"),
+    "pedal_bar_c":     (lambda: _PB_bar("pedal_bar_c"), "petg-gf/pedal_bar_c.step", "PETG-GF — pedal bar, +X piece (35.6 wide, flush with the slimmed leg blocks; fused PLAIN tower; splice cavities at -X). ~215 long: straight print; slides straight down onto _b's tenons (the lid is the Z lock — no glue)"),
     "pedal_lid_a":     (lambda: heal(_PB("pedal_lid_a")), "petg-gf/pedal_lid_a.step", "PETG-GF — sliding dovetail lid, -X piece (covers the TRRS latch; bridges the bar splice). 241 long; print TOP-FACE DOWN (45-deg flanks)"),
     "pedal_lid_b":     (lambda: heal(_PB("pedal_lid_b")), "petg-gf/pedal_lid_b.step", "PETG-GF — sliding dovetail lid, +X piece (covers the plain latch; lock dimple clicks onto the bar-top nub, pinning both lid pieces — no screws). 322 long: diagonal, TOP-FACE DOWN"),
     # (pedal_bolt / pedal_bolt_trrs / pedal_latch_finger exports RETIRED by
@@ -690,8 +699,22 @@ def _pedal_bar_components():
     """Pedal bar + latch, modelled in absolute X/Y with z0 = plate bottom =
     the shaft waist's lower shoulder (foot top): lift by ground + FOOT_H."""
     from . import pedal_bar as PB
+    from . import foot_pedal as FP
     dz = (CH.Z_BOT - LEG_HEIGHT) + LG.FOOT_H
-    return [(n, wp.translate((0, 0, dz))) for n, wp in PB.assembly_parts()]
+    # The pedal HOUSINGS are fused into the bar pieces (foot_pedal.fuse_into_bar),
+    # and that fusion has to happen HERE as well as in the export registry
+    # (_PB_bar). It did not, so every assembly and every overlap-gate run since the
+    # pedals landed saw the PLAIN bar: all three housings — 205,061 mm3, 61% of
+    # pedal_bar_b — were absent from the assembly while present in the STEP the
+    # printer gets. That is why the pedal read as non-working on screen (a lever and
+    # springs in front of nothing) and why the gate never checked a single pedal
+    # part against the structure it mounts to.
+    out = []
+    for n, wp in PB.assembly_parts():
+        if n in PB.PIECE_SPAN:
+            wp = _PB_bar(n)      # the SAME finished piece the printer gets
+        out.append((n, wp.translate((0, 0, dz))))
+    return out
 
 
 def _foot_pedal_components():
@@ -963,7 +986,25 @@ def _color_for(name):
     base = head if (head and tail.isdigit()) else name
     if base in _TPU_BASES or any(base.endswith(k) for k in _TPU_BASES):
         return cq.Color(*_TPU_BLACK)             # TPU is always black
-    return cq.Color(*_COLORS.get(base, _DEFAULT_COLOR))
+    if base in _COLORS:
+        return cq.Color(*_COLORS[base])
+    # The three foot pedals are the knee-lever core VERBATIM, only posed and named
+    # pedal{i}_<knee part>. Strip that station prefix and inherit the sibling's
+    # colour rather than adding 66 near-duplicate entries — otherwise every pedal
+    # part falls through to default grey and the whole assembly reads as one blank
+    # mass (user: "the pedals are all white rather than using the same colour
+    # scheme as the levers").
+    # The axle group is named kl_* on the knee lever and pedal{i}_* here, so try the
+    # kl_ sibling too: pedal0_pcb -> kl_pcb, pedal0_bearing -> kl_bearing. The feel
+    # lanes need no prefix (main_cart_base is already unqualified).
+    _st = re.match(r"pedal\d+_(.+)$", base)
+    if _st:
+        for k in (_st.group(1), f"kl_{_st.group(1)}"):
+            if k in _COLORS:
+                return cq.Color(*_COLORS[k])
+    if base == "pedal_lever":
+        return cq.Color(*_COLORS["knee_lever"])   # it IS the knee lever, posed
+    return cq.Color(*_DEFAULT_COLOR)
 
 
 def _export_assembly(publish=True):
