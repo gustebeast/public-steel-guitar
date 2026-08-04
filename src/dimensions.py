@@ -47,6 +47,18 @@ XBAR            = 12 * NOZZLE_D  # 9.6 (was 10.0) the one module: square cross-r
 WALL_THICKNESS  = 13 * NOZZLE_D  # 10.4 (was 10.0 = 12.5 beads) structural wall: I-beam rail thickness, the keyhead/bridge
                             # endplate faces, and the deck inner/outer face references
 
+# The pedal bar's Z height. Lives HERE, not in pedal_bar, because legs.py needs it
+# too (the -Y legs' wide block must equal foot + bar + tower + block on all four
+# legs — the user's equal-wide-section rule) and legs cannot import pedal_bar
+# without a cycle. Sized by the LID: the bar now prints -Y -> +Y, so the sliding
+# dovetail moved from the +Z face to the +Y face, and that face spans Z. The
+# dovetail's foot is the widest thing in it.
+PEDAL_LID_FOOT_W = 23.8     # dovetail foot (cavity, not material — off-grid by design)
+PEDAL_BAR_H      = PEDAL_LID_FOOT_W + 2 * MIN_WALL_2P   # 27.0 (was a hardcoded 19.0,
+                            # which could not host the dovetail once it moved to a face
+                            # that spans Z: 23.8 of foot into 19.0 of bar)
+PEDAL_TOWER_BAND = 24.0     # bar top -> tower seat: the latch button band
+
 def string_y(i: int) -> float:
     """Y centre of string i (0..9) at the changer. Index 0 = string 1 (lightest) sits at
     +Y; the index rises toward −Y (the player side), where string 10 (heaviest) sits."""

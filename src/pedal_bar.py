@@ -21,24 +21,43 @@ TPU feet stay 44 (proud ground boots, like under the -Y blocks). The
 feet are the shared legs.leg_foot dovetail inserts (mortise opens at
 the bar's -Y face).
 
-A WIRING TROUGH runs between the towers under a full-length 45° sliding-
+PRINTS -Y -> +Y (user). The bar used to build bottom-up with its lid on
+the +Z face; it now lies on its -Y face so that the fused foot-pedal
+housings sit AT THE BED in the very orientation the knee lever already
+prints in — same bed plane, no reorientation, and the pedal ends up on
+the bar's -Y surface, closest to the player. Two things follow from the
+flip and neither is a rotation:
+
+  * THE LID MOVED TO THE +Y FACE, the top of the print. That is what
+    makes the wiring trough ceiling-free — it opens skyward, so there is
+    nothing to bridge. But the +Y face spans Z where the +Z face spanned
+    Y, and the dovetail's 23.8 foot did not fit the old 19-tall bar; see
+    dimensions.PEDAL_BAR_H, which now sizes BAR_H at 27.0 from the lid.
+
+  * THE SPLICE INSTALL AXIS FOLLOWED, because it was never world Z — it
+    was the PRINT axis, which is now world Y (see SPLICE_J).
+
+A WIRING TROUGH runs between the towers under a full-length sliding-
 DOVETAIL LID — no screws: the lid pieces slide in from the +X end; a TPU
-detent nub in the bar top clicks into lid B's underside dimple, setting
-the position and locking the stack (B butts A). The wired tower's cable
-enters from the trough through a Ø8 side way and rises to the plug seat.
+detent nub in the groove floor clicks into lid B's underside dimple,
+setting the position and locking the stack (B butts A). The wired tower's
+cable enters from the trough through a Ø8 side way and rises to the plug
+seat. The trough is deliberately shorter in Z than the dovetail's foot,
+leaving groove floor for that nub — but not so short that it stops
+clearing the splice mortises, which open through it.
 
 SEGMENTED FOR THE 255×255 BED: FLUSH-X grew the bar to the full
-instrument span (644.8) — THREE ~215 pieces now, each printing STRAIGHT
-(cadkit install-z joints at XS1/XS2, one per trough wall), and two ~278
-lid pieces (butt splice at XL, mid-span, so each lid piece BRIDGES one
-bar joint).
+instrument span (644.8) — THREE ~215 pieces now, each lying on its -Y
+face (220.6×89, 212.3×27, 215.0×89, all 35.6 tall in the build axis), and
+two ~278 lid pieces (butt splice at XL, mid-span, so each lid piece
+BRIDGES one bar joint).
 
-NO GLUE, and NO fastener either: the splice joints take X and Y by shape
-and leave Z — the install axis — to the LID. A lid piece spans each
-splice, and its 45° foot (23.8 wide) cannot rise back through either
-piece's 20.6 groove mouth, so neither bar piece can lift off the other
-while the lid is in. That is what "the lid is structure" already meant;
-the glue was only ever belt-and-braces on top of it.
+NO GLUE, and NO fastener either: the splice joints take X and Z by shape
+and leave Y — the install axis — to the LID. A lid piece spans each
+splice, and its foot cannot rise back through either piece's narrower
+groove mouth, so neither bar piece can move off the other while the lid
+is in. That is what "the lid is structure" already meant; the glue was
+only ever belt-and-braces on top of it.
 
 FRAME: modelled at ABSOLUTE X/Y (the legs' real stations, +Y rail); Z is
 local with 0 = the plate bottom (build.py translates by ground + FOOT_H).
@@ -50,7 +69,7 @@ import cadquery as cq
 
 from cadkit.joinery import PrintSpec, joint
 from . import dimensions as D
-from .helpers import box_at, cyl
+from .helpers import box_at, cyl, cyl_y
 from .chassis import LEG_STATIONS_X, LEG_Y
 from . import legs as LG
 
@@ -62,7 +81,10 @@ YC = LEG_Y[0]                          # FLUSH round: the bar rides the +Y
 LATCHES = ((LEG_STATIONS_X[0], -1.0),  # +X leg → plain snap latch, extends -X
            (LEG_STATIONS_X[1], +1.0))  # -X leg → TRRS latch, extends +X
 
-BAR_H = 19.0
+BAR_H = D.PEDAL_BAR_H                      # 27.0 — sized by the LID (see below and
+                                           # dimensions.PEDAL_BAR_H). Shared with
+                                           # legs.py, which needs the same number to
+                                           # keep all four wide sections equal.
 BAR_Y0 = YC - LG.BLK_W / 2                 # BLK_W (35.6) wide — matches
 BAR_Y1 = YC + LG.BLK_W / 2                 # the slimmed towers/blocks: the
                                            # +Y stacks are FLUSH columns at
@@ -75,9 +97,11 @@ BAR_X0 = LEG_STATIONS_X[1] - END_MARGIN
 BAR_X1 = LEG_STATIONS_X[0] + END_MARGIN
 
 
-STUB_Z0 = 43.0                             # tower seat plane (bar frame): the
-                                           # leg block's mouth face lands here
-                                           # (bar top 19 + 24 button band)
+STUB_Z0 = LG.BAR_STUB_Z0                   # 51.0 — tower seat plane (bar frame): the
+                                           # leg block's mouth face lands here (bar top
+                                           # + the 24 button band). Owned by legs.py so
+                                           # SHORT_SHAFT_L can close the level-top loop
+                                           # against it; was a hardcoded 43.0.
 # Future pedals mount spring carriages vertically (lever pattern) above
 # the bar: the legs' WIDE bottom sections must stay below this envelope
 # (user placeholder; reference point x -313.80, y 43.75 = the bar top
@@ -94,8 +118,46 @@ PEDAL_ASSEMBLY_Z_HEIGHT = 90.0     # was 75 (a placeholder). foot_pedal.py now e
                                    # (top 91) and the pedal stack (top ~104) now share
                                    # a Z band and only their X separation keeps them
                                    # apart; the overlap gate is what proves it.
-LID_Z0 = 15.0
 FOOT_PAD = 12.0
+
+# ── the LID's face, after the -Y -> +Y print flip ────────────────────────────
+# The bar used to build bottom-up (+Z) with the lid on its +Z face; it now builds
+# -Y -> +Y so the pedal housings sit AT THE BED, in the orientation the knee lever
+# already prints in. The lid therefore moves to the +Y face — the top of the print
+# — which is also what makes the trough ceiling-free (it opens skyward, so there is
+# nothing to bridge).
+#
+# The move is a rigid rotation of the profile about X, but it swaps which bar
+# dimension the lid has to fit inside: the +Z face spans Y (35.6, roomy), the +Y
+# face spans Z. That is why BAR_H had to grow from 19.0 — see D.PEDAL_BAR_H.
+LID_T        = 4.0                         # lid plate thickness = groove depth in Y
+LID_Y0       = BAR_Y1 - LID_T              # groove floor plane (the lid's inner face)
+LID_ZC       = BAR_H / 2.0                 # centred in the face's Z span (the old
+                                           # -3.5 bias was the +Z face's trough offset
+                                           # and has no meaning on this face)
+LID_FOOT_HW  = D.PEDAL_LID_FOOT_W / 2.0    # 11.90 — widest, at the groove floor
+LID_RAIL     = D.MIN_WALL_2P               # 1.6 step per side = the rail the dovetail
+                                           # hooks; it is printed material, so it is
+                                           # held to the 2-bead tier
+LID_MOUTH_HW = LID_FOOT_HW - LID_RAIL      # 10.30 — at the face
+TROUGH_D     = 15.0                        # wiring cavity depth in Y behind the floor
+# The trough is deliberately SHORTER in Z than the dovetail's foot, exactly as it
+# used to be narrower in Y than the foot was wide. Two things need that leftover
+# groove-floor material: the lid-lock detent nub has to be bored into solid, and
+# the floor is what the dovetail rails stand on. But it also cannot be too short —
+# the splice mortises open through it (that is the tenons' entry path from +Y), so
+# every joint has to fall inside this band. It is squeezed from both sides.
+TROUGH_HZ    = 16.5                        # cavity height in Z (the proven section)
+TROUGH_Z0    = LID_ZC - 1.75 - TROUGH_HZ / 2.0     # 3.50
+TROUGH_Z1    = TROUGH_Z0 + TROUGH_HZ               # 20.00
+
+_LID_SKIN = (BAR_H - 2 * LID_FOOT_HW) / 2.0
+assert _LID_SKIN >= D.MIN_WALL_2P - 1e-6, (
+    f"the lid groove leaves {_LID_SKIN:.2f} of bar above/below it, under the "
+    f"{D.MIN_WALL_2P} tier — raise D.PEDAL_BAR_H or narrow the dovetail")
+_BACK_WALL = (LID_Y0 - TROUGH_D) - BAR_Y0
+assert _BACK_WALL >= D.MIN_WALL_2P, (
+    f"the trough leaves a {_BACK_WALL:.2f} back wall on the player side")
 
 # ── SEGMENTATION (255×255 bed) + the full-length sliding-DOVETAIL lid ──
 # everything here DERIVES from the leg stations (they are chassis-owned and
@@ -113,7 +175,17 @@ LID_XA = LATCHES[1][0] + LG.BLK_W / 2 + 0.4   # lid span: between the
 LID_XB = LATCHES[0][0] - LG.BLK_W / 2 - 0.4   # FUSED towers, 0.4 tip gaps
 TROUGH_X0 = LATCHES[1][0] + LG.BLK_W / 2 + 0.6   # wiring trough: runs
 TROUGH_X1 = LATCHES[0][0] - LG.BLK_W / 2 - 0.6   # right up to the towers
-LOCK_X, LOCK_Y = LID_XB - 4.6, 7.6  # lid-lock detent nub: bar-top pocket; a
+LOCK_D = 3.8                       # detent pocket diameter
+LOCK_X = LID_XB - 4.6
+LOCK_Z = (TROUGH_Z1 + LID_ZC + LID_FOOT_HW) / 2.0   # 22.70 — centred in the groove
+                                   # floor left ABOVE the trough (the wider of the
+                                   # two leftover bands)
+assert (LID_ZC + LID_FOOT_HW - TROUGH_Z1) >= LOCK_D + 2 * 0.8 - 1e-6, (
+    f"only {LID_ZC + LID_FOOT_HW - TROUGH_Z1:.2f} of groove floor above the trough "
+    f"for a {LOCK_D} detent pocket")
+                                   # lid-lock detent nub: now a pocket in
+                                   # the GROOVE FLOOR (the +Y face's inner plane)
+                                   # rather than the old bar top; a
                                    # groove+dimple in lid B's underside sets
                                    # the final position, stops over-insert
                                    # and detents extraction (locks BOTH lid
@@ -154,6 +226,10 @@ def _stub_tower(lx: float, wired: bool) -> cq.Workplane:
                      z=STUB_Z0 - 11.0))
     b = b.rotate((0, 0, 0), (0, 0, 1), 180).translate((lx, YC, 0))
     return b
+# Print-orientation note: the tower's octagon spigot has a constant Z section, so
+# with the bar now lying on its -Y face the spigot builds ACROSS its octagon —
+# which is exactly how the leg shaft it mates with already prints. The two halves
+# of that joint finally share a build direction.
 
 
 def _foot_mortise_cutter(lx: float) -> cq.Workplane:
@@ -193,68 +269,98 @@ def _bar_full() -> cq.Workplane:
         4.0, 28.0, cq.Vector(wlx - 2.0, wly + 3.5, 11.0),
         cq.Vector(1, 0, 0))))
 
-    # wiring TROUGH (open top; the lid roofs it)
-    body = body.cut(box_at(TROUGH_X1 - TROUGH_X0, 16.5, BAR_H - 4.0 + 1,
-                           x=(TROUGH_X0 + TROUGH_X1) / 2, y=YC - 1.75,
-                           z=(4.0 + BAR_H + 1) / 2))
+    # wiring TROUGH — now opens +Y (the top of the print), directly behind the
+    # groove floor and exactly as tall in Z as the dovetail's foot, so the two
+    # cavities merge into one channel and the 1.6 rails survive as ledges. No
+    # ceiling anywhere in it: that is what the print flip bought.
+    body = body.cut(box_at(TROUGH_X1 - TROUGH_X0, TROUGH_D + LID_T + 1.0, TROUGH_HZ,
+                           x=(TROUGH_X0 + TROUGH_X1) / 2,
+                           y=(LID_Y0 - TROUGH_D + BAR_Y1 + 1.0) / 2,
+                           z=(TROUGH_Z0 + TROUGH_Z1) / 2))
 
-    # full-length dovetail lid GROOVE (45° flanks — the rails print as
-    # self-supporting overhangs with the bar lying bottom-down): runs out
-    # the +X end face for lid insertion (the short open stub over the +X
-    # slot region is cosmetic)
+    # full-length dovetail lid GROOVE in the +Y FACE: runs out the +X end face
+    # for lid insertion (the short open stub over the +X slot region is
+    # cosmetic). Profile is the old one rotated about X — same rail step, same
+    # self-supporting flanks, now measured across Z instead of Y.
     groove = (cq.Workplane("YZ")
-              .polyline([(-15.4, 15.0), (8.4, 15.0), (6.8, 19.0),
-                         (6.8, 20.0), (-13.8, 20.0), (-13.8, 19.0)])
+              .polyline([(LID_Y0 - YC,      LID_ZC - LID_FOOT_HW),
+                         (LID_Y0 - YC,      LID_ZC + LID_FOOT_HW),
+                         (BAR_Y1 - YC,      LID_ZC + LID_MOUTH_HW),
+                         (BAR_Y1 + 1 - YC,  LID_ZC + LID_MOUTH_HW),
+                         (BAR_Y1 + 1 - YC,  LID_ZC - LID_MOUTH_HW),
+                         (BAR_Y1 - YC,      LID_ZC - LID_MOUTH_HW)])
               .close().extrude(BAR_X1 + 1 - LID_XA))
     body = body.cut(cq.Workplane("XY").add(groove.val())
                     .translate((LID_XA, YC, 0)))
-    # lid-lock detent pocket (a TPU nub sits 1.2 proud of the groove floor)
-    body = body.cut(cyl(3.8, 3.2, z=LID_Z0 - 3.1)
-                    .translate((LOCK_X, YC + LOCK_Y, 0)))
+    # lid-lock detent pocket, bored -Y into the groove floor (a TPU nub sits 1.2
+    # proud of it, into lid B's underside groove)
+    body = body.cut(cyl_y(LOCK_D, 3.2, y0=LID_Y0 - 3.1, x=LOCK_X, z=LOCK_Z))
     return body
 
 
-# SPLICE JOINTS — cadkit, install='z' (both pieces print bottom-down, so the
-# profile lies in the plan plane and every working face is a vertical wall). One
-# per trough wall. Width is what each wall can host with 1.6 (2 beads) of printed
-# wall left on BOTH sides after the mortise's clearance dilation: the -Y wall runs
-# YC-17.8..YC-10 (7.8 thick), the +Y wall YC+6.5..YC+17.8 (11.3).
+# SPLICE JOINTS — cadkit install-z, ROTATED. cadkit only models ±x and ±z because
+# its frame is PRINT-relative: its Z is the build axis, not world Z. The bar now
+# builds -Y -> +Y, so cadkit's Z *is* world Y here, and an install-z joint is
+# exactly right — it just has to be rotated -90 about X to land, which maps local
+# +Z -> world +Y and local +Y -> world -Z. (There is no install='y' to reach for,
+# and there should not be: the axis that matters to a joint is the print axis.)
+#
+# install='-z': the tenon seats travelling local -Z = world -Y, so the STOP closes
+# the -Y end and the cavity opens +Y — no ceiling to bridge, and the LID (which caps
+# +Y) is what blocks the escape direction. Same bargain as before, one axis over.
 _UP = PrintSpec(nozzle=0.8, material="PETG-GF", facing="up")
-SPLICE_YC = (YC - 13.9, YC + 12.15)    # centred in each trough wall
-SPLICE_W  = (4.3, 6.4)
-SPLICE_L  = 15.0                       # Z engagement (the lid groove floor is 15)
-SPLICE_D  = 8.0                        # room into the +X piece
-SPLICE_J  = tuple(joint(width=w, length=SPLICE_L, depth=SPLICE_D,
-                        tenon=_UP, mortise=_UP, install="+z")   # signed: the +X piece
-                        for w in SPLICE_W)                      # drops on, so relative
-                                                                # to it the tenon goes +Z
-# the trough walls hosting these are 7.8 (-Y) and 11.3 (+Y); what is left beside each
-# cavity is a printed wall, so hold it to the tier rather than trusting the comment
-_SPLICE_WALL = (7.8, 11.3)
-for _w, _t, _j in zip(SPLICE_W, _SPLICE_WALL, SPLICE_J):
-    assert (_t - _w) / 2 - _j.clearance >= D.MIN_WALL_2P, (
-        f"splice joint {_w} in a {_t} trough wall leaves "
-        f"{(_t - _w) / 2 - _j.clearance:.2f} per side, under the {D.MIN_WALL_2P} tier")
+# Both joints now live in the trough's solid BACK WALL and stack along world Z
+# (the old pair straddled the trough in Y; that room is the lid's now).
+SPLICE_ZC = (TROUGH_Z0 + 3.5, TROUGH_Z1 - 3.5)  # 7.00 / 16.50 — INSIDE the trough
+                                                # band, or the tenons have no way in
+SPLICE_W  = 6.4                                 # across, world Z
+SPLICE_L  = _BACK_WALL - D.MIN_WALL_2P          # 15.0 engagement along world Y,
+                                                # leaving a 1.6 stop floor at -Y
+SPLICE_D  = 8.0                                 # room into the +X piece (world X)
+SPLICE_J  = tuple(joint(width=SPLICE_W, length=SPLICE_L, depth=SPLICE_D,
+                        tenon=_UP, mortise=_UP, install="-z")
+                  for _ in SPLICE_ZC)
+# what is left beside each cavity in Z is printed wall — hold it to the tier
+_SPLICE_EDGES = [0.0] + [z for zc in SPLICE_ZC for z in
+                         (zc - SPLICE_W / 2, zc + SPLICE_W / 2)] + [BAR_H]
+for _i, _j in enumerate(SPLICE_J):
+    _lo = _SPLICE_EDGES[2 * _i + 1] - _SPLICE_EDGES[2 * _i] - _j.clearance
+    _hi = _SPLICE_EDGES[2 * _i + 3] - _SPLICE_EDGES[2 * _i + 2] - _j.clearance
+    assert min(_lo, _hi) >= D.MIN_WALL_2P, (
+        f"splice joint at z {SPLICE_ZC[_i]:.1f} leaves {min(_lo, _hi):.2f} of bar "
+        f"beside it, under the {D.MIN_WALL_2P} tier")
+    assert (TROUGH_Z0 <= SPLICE_ZC[_i] - SPLICE_W / 2 - _j.clearance
+            and SPLICE_ZC[_i] + SPLICE_W / 2 + _j.clearance <= TROUGH_Z1), (
+        f"splice joint at z {SPLICE_ZC[_i]:.1f} pokes outside the trough band "
+        f"{TROUGH_Z0:.2f}..{TROUGH_Z1:.2f} — its mortise opens through the trough, "
+        f"so any part outside it is a blind pocket the tenon cannot enter")
+
+
+def _splice_pose(s, xs: float, zc: float) -> cq.Workplane:
+    """cadkit frame -> bar frame: rotate the print axis onto world Y, then land the
+    joint at splice `xs` and Z centre `zc`. Authored at local y=0 so the rotation
+    puts it on the bar's Z axis; the world-Y offset seats it in the back wall."""
+    return (s.rotate((0, 0, 0), (1, 0, 0), -90.0)
+             .translate((xs, BAR_Y0 + D.MIN_WALL_2P, zc)))
 
 
 def _splice_tenons(xs: float) -> cq.Workplane:
     """The -X piece's half of both splice joints at bar splice `xs`."""
     out = None
-    for j, yc in zip(SPLICE_J, SPLICE_YC):
-        p = j.tenon(root=2.0).translate((xs, yc, 0.0))
+    for j, zc in zip(SPLICE_J, SPLICE_ZC):
+        p = _splice_pose(j.tenon(root=2.0), xs, zc)
         out = p if out is None else out.union(p)
     return out
 
 
 def _splice_mortises(xs: float) -> cq.Workplane:
-    """The +X piece's cavities — THROUGH slots, open at the piece's BOTTOM face
-    (the tenons enter there as it is lowered on) and out through the top, so
-    neither cavity has a ceiling to bridge. Z is unretained BY DESIGN — it is the
-    install axis, and the LID closes it (see the module docstring); the two
-    pieces' coplanar bottom faces set the height on the assembly bench."""
+    """The +X piece's cavities — open at the piece's +Y face (the top of the print,
+    so no ceiling to bridge) and stopped at -Y by the back wall's 1.6 floor, which
+    is what sets the depth on the assembly bench. Y is unretained BY DESIGN — it is
+    the install axis, and the LID closes it (see the module docstring)."""
     out = None
-    for j, yc in zip(SPLICE_J, SPLICE_YC):
-        p = j.mortise(drop=3.0, length=BAR_H + 2.0).translate((xs, yc, -1.0))
+    for j, zc in zip(SPLICE_J, SPLICE_ZC):
+        p = _splice_pose(j.mortise(drop=3.0), xs, zc)
         out = p if out is None else out.union(p)
     return out
 
@@ -294,16 +400,18 @@ def _lid_full() -> cq.Workplane:
     nub pockets, and the underside LOCK groove (both pieces slide over the
     bar-top nub; lid B's groove ends in a dimple that clicks in at the
     final position). Prints TOP-FACE DOWN: the flanks are 45°."""
+    _c = 0.1                                   # per-side sliding clearance
     prof = (cq.Workplane("YZ")
-            .polyline([(-15.3, 15.0), (8.3, 15.0), (6.7, 19.0), (-13.7, 19.0)])
+            .polyline([(LID_Y0 - YC, LID_ZC - LID_FOOT_HW + _c),
+                       (LID_Y0 - YC, LID_ZC + LID_FOOT_HW - _c),
+                       (BAR_Y1 - YC, LID_ZC + LID_MOUTH_HW - _c),
+                       (BAR_Y1 - YC, LID_ZC - LID_MOUTH_HW + _c)])
             .close().extrude(LID_XB - LID_XA))
     body = cq.Workplane("XY").add(prof.val()).translate((LID_XA, YC, 0))
-    # underside LOCK groove (rides the bar-top nub, 0.5 squeeze) + dimple
-    body = body.cut(box_at(LID_XB - LID_XA + 2, 4.3, 0.7,
-                           x=(LID_XA + LID_XB) / 2, y=YC + LOCK_Y,
-                           z=LID_Z0 + 0.35))
-    body = body.cut(cyl(4.4, 1.7, z=LID_Z0 - 0.1)
-                    .translate((LOCK_X, YC + LOCK_Y, 0)))
+    # underside LOCK groove (rides the groove-floor nub, 0.5 squeeze) + dimple
+    body = body.cut(box_at(LID_XB - LID_XA + 2, 0.7, LOCK_D + 0.5,
+                           x=(LID_XA + LID_XB) / 2, y=LID_Y0 + 0.35, z=LOCK_Z))
+    body = body.cut(cyl_y(LOCK_D + 0.6, 1.7, y0=LID_Y0 - 0.1, x=LOCK_X, z=LOCK_Z))
     return body
 
 
@@ -323,7 +431,7 @@ def pedal_lid_b() -> cq.Workplane:
 def _lock_nub() -> cq.Workplane:
     """The lid-lock instance: same printed nub, pressed into the bar-top
     pocket; sits 1.2 proud of the groove floor into lid B's lock groove."""
-    return cyl(4.0, 4.0, z=LID_Z0 - 2.8).translate((LOCK_X, YC + LOCK_Y, 0))
+    return cyl_y(4.0, 4.0, y0=LID_Y0 - 2.8, x=LOCK_X, z=LOCK_Z)
 
 
 def nub_part() -> cq.Workplane:
@@ -338,7 +446,9 @@ def _cable_runs():
     from the station, matching the down-way and the plug seat."""
     lx = LATCHES[1][0]
     wly = YC - LG.TRRS_DY
-    pts = [(lx + 24.0, YC - 3.0, 11.0), (lx + 14.0, wly + 3.5, 11.0),
+    pts = [(lx + 24.0, YC + 2.0, 11.0), (lx + 14.0, wly + 3.5, 11.0),
+           #        ^ the trough moved to the +Y side with the lid; YC-3.0 is
+           #          solid bar now (the run used to sit in the +Z trough)
            (lx + 5.0, wly, 11.0), (lx + 5.0, wly, 26.0)]
     out = None
     for a, bpt in zip(pts[:-1], pts[1:]):
