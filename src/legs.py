@@ -336,22 +336,35 @@ def leg_shaft() -> cq.Workplane:
 
 TENON_L = 197.0                # every shaft's sliding tenon: travel 142
                                # + overlap 50 + 5 dead (the fine-stage law)
-SHORT_SHAFT_L = 245.0          # +Y shafts: 197 tenon + the 48 block
-                               # (prints LYING, straight, <255)
 BLOCK_H = 48.0                 # +Y 44-sq terminal block = the bar-joint
                                # mortise (socket 41, spigot 38 — reduced
                                # overlap per user: this joint's moment is
                                # small, and the wide stack must stay
                                # within PEDAL_ASSEMBLY_Z_HEIGHT (75 above
                                # the bar top) for the future pedals)
-TALL_BLOCK_H = 91.0            # -Y 44-sq terminal block, printed SOLID:
-                               # user requires EQUAL wide-section heights
-                               # on all four legs — foot 12 + 91 = 103 =
-                               # foot 12 + bar 19 + tower 24 + block 48.
-                               # Same silhouette, TPU foot mortise below.
-TALL_SHAFT_L = TENON_L + TALL_BLOCK_H   # 288: prints LYING on the bed
-                               # DIAGONAL ((288+44)/sqrt(2) = 235 < 255),
+# -Y 44-sq terminal block, printed SOLID. The user requires EQUAL wide-section
+# heights on all four legs, so this block must match what the +Y side stacks
+# under its own block: bar + tower band. DERIVED (was a hardcoded 91.0 that
+# silently encoded a 19.0 bar) — the bar grew to 27.0 when its lid moved to the
+# +Y face, and the equality has to follow it rather than be re-typed.
+TALL_BLOCK_H = D.PEDAL_BAR_H + D.PEDAL_TOWER_BAND + BLOCK_H     # 99.0 (was 91.0)
+BAR_STUB_Z0  = D.PEDAL_BAR_H + D.PEDAL_TOWER_BAND               # 51.0: the bar
+                               # tower's seat plane, in the bar's own frame.
+                               # pedal_bar re-exports this as STUB_Z0; it lives
+                               # here so SHORT_SHAFT_L below can close the loop.
+TALL_SHAFT_L = TENON_L + TALL_BLOCK_H   # 296: prints LYING on the bed
+                               # DIAGONAL ((296+44)/sqrt(2) = 240 < 255),
                                # like the bar pieces
+SHORT_SHAFT_L = TALL_SHAFT_L - BAR_STUB_Z0   # 245.0: +Y shafts start BAR_STUB_Z0
+                               # up the tower, so they end short by exactly that
+                               # much and both sides' tops land level. Was a
+                               # hardcoded 245.0 — it happens to be unchanged
+                               # (block and seat plane both grew by 8), which is
+                               # precisely why it needed deriving: a coincidence
+                               # that survives one edit will not survive the next.
+assert abs(D.PEDAL_BAR_H + D.PEDAL_TOWER_BAND + SHORT_SHAFT_L - TALL_SHAFT_L) < 1e-9, (
+    "the +Y stack (bar + tower band + short shaft) must equal the -Y stack "
+    "(tall shaft) or the instrument sits crooked")
 
 
 def foot_mortise_cutter() -> cq.Workplane:
