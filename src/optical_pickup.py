@@ -192,19 +192,28 @@ PKG = {
                                       # the leads against TSSOP's 6.40, and X is the
                                       # scarce direction in a 14 mm band.
     "QFN-24":   (4.00, 4.00, 0.90),
+    "TSSOP-16": (6.40, 5.00, 1.20),   # 4.40 body + leads; PCM1808 audio ADC
     # LQFP144, not 100: the LQFP100 STM32H743VIT6 exposes only 16 ADC channels and this
     # board needs 20. The 144 (STM32H743ZIT6) has exactly 20, and at ~$7.63 on LCSC it is
     # CHEAPER than the 100-pin part. 22x22 over leads fits the 30 mm tail with 2.8 spare.
     "LQFP144":  (22.00, 22.00, 1.60), # JEDEC MS-026: 20x20 body, 22x22 over leads
     "3225":     (3.20, 2.50, 0.90),
     "USB-C":    (8.94, 7.35, 3.16),   # TYPE-C-31-M-12 (LCSC C165948)
-    # J2 is a FOUR-way, not the two-way this once assumed: JST's SMT side-entry XH line
-    # STARTS at 4 way -- there is no S2B-XH-SM4-TB. Using S4B-XH-SM4-TB (C161861) is not a
-    # compromise: it is already the sensor boards' connector, so it adds no part number and
-    # no feeder, and doubling the pins (2x 5V, 2x GND) suits a rail pulling >500 mA better
-    # than a 2 way would have. Cost is 5.0 mm of Y. Figures are JST's drawing, as the
-    # sensor-board entry in BOM.md.
-    "XH-SM-4":  (6.10, 15.00, 7.00),  # JST S4B-XH-SM4-TB, SMT side entry, B = 15.0
+    # J2 is a SIX-way on the -Y EDGE, mouth facing -Y alongside the USB-C, so every cable
+    # leaves the board at one end (user: a -X exit is unmanageable). Six ways because the
+    # magnetic pickup's buffered audio tap arrives here too and MUST bring its own return:
+    # 2x 5V, 2x PWR_GND, AUDIO, AUDIO_GND.
+    #
+    # Note there is no S2B -- JST's SMT side-entry XH line starts at 4 way -- and the 6 way
+    # costs nothing on the harness side, because XHP-6 housings are ALREADY bought to mate
+    # the ten SERVO42D pigtails and SXH-001T contacts are common to every XH size. The only
+    # new line is the board-side part itself.
+    #
+    # ORIENTED FOR A -Y MOUNT: 20.0 runs along X (the edge), 6.10 is the body's reach into
+    # the board in Y. The 4-way entry it replaces was (6.10, 15.00, 7.00) for a -X mount.
+    # 20.0 is DERIVED from XH's 2.5 pitch (4 way B = 15.0, +2 ways) -- CONFIRM against JST's
+    # drawing before layout, exactly as the S4B figures were.
+    "XH-SM-6Y": (20.00, 6.10, 7.00),  # JST S6B-XH-SM4-TB (C191914), SMT side entry, -Y
 }
 LED_PKG = PKG["0805OPT"]
 PD_PKG  = PKG["0805OPT"]
@@ -324,7 +333,17 @@ PLINTH_X0 = BAND_X0                                           # -16.60
 PCB_YP     = CH.Y_HI + CH.T / 2                               # 64.75, the rail outer face
 HEAD_LEN   = PCB_YP - HEAD_Y0                                 # 9.75, mirrored at -Y
 WRAP_Y     = Y_TAIL - HEAD_LEN                                # -65.80, compute starts here
-COMPUTE_X0 = TAIL_X1 - 25.4                                   # -18.40, 1.7 each side of U6
+# COMPUTE SECTION WIDTH is set by the -Y EDGE, not by the MCU any more. Every cable now
+# leaves at -Y (user: a -X exit cannot be routed cleanly), so that edge has to carry the
+# USB-C AND the 6-way XH side by side, and THAT is the binding dimension -- the LQFP144
+# only needs 24.4 of the 32.34 this produces. Derived, not typed, so it tracks either
+# connector's envelope; the assertion below re-checks the MCU still fits.
+#
+# The widening is FREE in billed area: the SENSING STRIP already sets the bounding box's
+# -X extreme at PCB_X1S (-30.42), and this lands at -25.34, inside it. There is 5.08 mm of
+# further headroom before the bbox -- and therefore the fab charge -- would move at all.
+COMPUTE_W  = (2 * EDGE_KEEP + PKG["USB-C"][0] + ROW_GAP + PKG["XH-SM-6Y"][0])
+COMPUTE_X0 = TAIL_X1 - COMPUTE_W                              # -25.34
 # PCB_YP is an OUTPUT, set after the parts exist: the +Y-most quad's feedback grid sits
 # in the Y gap above it and reaches past the last detector, so sizing this end from the
 # sensing field alone ran parts off the board.
@@ -434,15 +453,12 @@ def _parts():
         (x0 + x1) / 2, y)
     y -= PKG["LQFP144"][1] / 2 + ROW_GAP
 
-    # POWER INPUT -- 5V from the instrument rail, NOT USB VBUS. MCU ~200-300 mA + PHY ~50
-    # + 21 op-amp channels ~40 is already past a USB port before an emitter is lit, and
-    # LED current is the second-best SNR lever we have.
-    y -= PKG["XH-SM-4"][1] / 2
-    add("J2", "power in, 5V from the instrument rail -- side entry, -X edge",
-        "XH-SM-4", COMPUTE_X0 + PKG["XH-SM-4"][0] / 2, y)
-    _spread(P, y, [("C%d" % (140 + k), "power-input decoupling", "0402") for k in range(4)],
-            COMPUTE_X0 + PKG["XH-SM-4"][0] + ROW_GAP, x1)
-    y -= PKG["XH-SM-4"][1] / 2 + ROW_GAP
+    # POWER + AUDIO INPUT is no longer here -- J2 moved to the -Y EDGE, beside the USB-C,
+    # so both cables leave the board at the same end (see the placement after this block).
+    # Its decoupling stays in the digital block, near where the rail is consumed.
+    _spread(P, y - 0.5, [("C%d" % (140 + k), "power-input decoupling", "0402")
+                         for k in range(4)], x0, x1)
+    y -= 1.0 + ROW_GAP
 
     y = _block(P, y, [("C%d" % (100 + k), "MCU decoupling", "0402") for k in range(12)]
                      + [("R30", "BOOT0 pull-down", "0402"),
@@ -473,9 +489,53 @@ def _parts():
                       ("R35", "mid-rail divider", "0402"),
                       ("R36", "LED driver gate resistor", "0402")], x0, x1)
 
+    # ---- 3b. MAGNETIC PICKUP CHANNEL -- its own ADC, deliberately NOT the MCU's ----
+    # The magnetic pickup reaches the Pi by being digitised HERE and sent over the USB link
+    # this board already has, instead of running a second analog cable the length of the
+    # instrument. Digitising early is the whole point: once it is bits, the Pi's ground
+    # noise has no analog path back.
+    #
+    # It does NOT share the MCU's SAR ADC, for two independent reasons:
+    #   CROSSTALK, which is the real one. That ADC is multiplexed across 20 inputs reading
+    #     TENS OF NANOAMPS. The magnetic signal is line level -- four to five orders of
+    #     magnitude louder. Putting it through the same sample-and-hold mux as the
+    #     photodiode channels invites exactly the contamination this board is organised to
+    #     prevent, and no layout care downstream can undo it.
+    #   PIN COUNT. All 20 of the LQFP144's ADC channels are already spoken for, one per
+    #     photodiode. There is no 21st.
+    # A dedicated codec sidesteps both and is better on its own merits: 24-bit delta-sigma
+    # at ~99 dB SNR against a 16-bit SAR shared twenty ways, on the signal a listener
+    # actually hears. It arrives over I2S/SAI -- a peripheral, not an ADC pin.
+    #
+    # Placed at the -Y end, next to J2 where the audio lands, so the analog input is short
+    # and stays away from the emitter driver's 96 kHz switching.
+    y = _block(P, y, [("U12", "audio ADC -- PCM1808, magnetic pickup -> I2S", "TSSOP-16"),
+                      ("C150", "ADC analog supply bypass", "0805C"),
+                      ("C151", "ADC digital supply bypass", "0402"),
+                      ("C152", "ADC VREF bypass", "0805C"),
+                      ("C153", "audio input DC block", "0805C"),
+                      ("R37", "audio input series / anti-alias", "0402"),
+                      ("R38", "audio input bias to mid-rail", "0402")], x0, x1)
+
+    # ---- 4. the -Y EDGE: every cable leaves the board here ----
+    # Both mouths face -Y and their outer faces are FLUSH, so the two plugs present as one
+    # cable exit rather than two at different depths. J1 sets PCB_YM; J2 is referenced to
+    # the same face so a deeper or shallower connector cannot silently step one of them.
     y -= PKG["USB-C"][1] / 2
     add("J1", "USB-C receptacle -- 10ch audio + MIDI + DFU", "USB-C",
         COMPUTE_X0 + EDGE_KEEP + PKG["USB-C"][0] / 2, y)
+    edge_y = y - PKG["USB-C"][1] / 2                      # the board's -Y face
+    # J2 -- POWER *AND* the magnetic pickup's audio tap. 5V from the instrument rail, NOT
+    # USB VBUS: MCU ~200-300 mA + PHY ~50 + 21 op-amp channels ~40 is already past a USB
+    # port before an emitter is lit, and LED current is now the FIRST SNR lever we have.
+    # AUDIO_GND is a dedicated pin, not shared with PWR_GND and emphatically not with USB
+    # ground: the LED row driver switches at 96 kHz SYNCHRONOUSLY WITH SAMPLING and that
+    # current flows in the power return, so sharing it would inject the one noise source
+    # ambient subtraction cannot cancel straight into the audio reference.
+    add("J2", "power 5V + magnetic audio tap -- 2x5V, 2x PWR_GND, AUDIO, AUDIO_GND",
+        "XH-SM-6Y",
+        COMPUTE_X0 + EDGE_KEEP + PKG["USB-C"][0] + ROW_GAP + PKG["XH-SM-6Y"][0] / 2,
+        edge_y + PKG["XH-SM-6Y"][1] / 2)
     return P
 
 
@@ -503,6 +563,10 @@ _MPN_RULES = (
                                                     "modelled SOT-563 -- envelope grows")),
     ("U11",  ("TLV9061IDCKR",    "C693480",  0.36,  "single of the same family as U1-U5, "
                                                     "so the mid-rail buffer matches the TIAs")),
+    ("U12",  ("PCM1808PWR",      "C55513",   0.3419, "24-bit 99 dB 96 kHz stereo audio ADC, "
+                                                    "I2S. Keeps the line-level magnetic "
+                                                    "signal OFF the MCU's nanoamp SAR mux. "
+                                                    "8.2k in LCSC stock")),
     ("U8",   ("AMS1117-3.3",     "C6186",    0.1045, "3V3 DIGITAL, SOT-223 tab -- 0.51 W will "
                                                     "not fit a SOT-23-5. Noisy, but it feeds "
                                                     "the MCU, not the front end")),
@@ -538,9 +602,11 @@ _MPN_RULES = (
     ("PD",   ("VEMD4110X01",     "C3211080", 0.58,  "filtered Si PIN, 0.42 mm2, +-55 deg. "
                                                     "@100+ price; 10 boards = 200 pcs. "
                                                     "STOCK 72 -- must recover or be pre-ordered")),
-    ("J2",   ("S4B-XH-SM4-TB",   "C161861",  0.3224, "4 way, not 2: JST's SMT side-entry XH "
-                                                    "starts at 4. Already the sensor boards' "
-                                                    "connector = no new part, no new feeder")),
+    ("J2",   ("S6B-XH-SM4-TB",   "C191914",  0.4417, "6 way on the -Y edge: 2x5V, 2x PWR_GND, "
+                                                    "AUDIO, AUDIO_GND. Only new line here is "
+                                                    "the board-side part -- XHP-6 housings are "
+                                                    "already bought for the SERVO42D pigtails "
+                                                    "and SXH-001T contacts are common to all XH")),
 )
 
 
@@ -551,7 +617,11 @@ _MPN_RULES = (
 # file guards against elsewhere -- it evaluates fine and is simply wrong -- so the
 # ambiguous group is spelled out instead of pattern-matched.
 _MPN_EXACT = {r: ("0402 thick-film R", "BASIC", 0.002, "pulls / divider / gate")
-              for r in ("R30", "R31", "R32", "R33", "R34", "R35", "R36")}
+              for r in ("R30", "R31", "R32", "R33", "R34", "R35", "R36", "R37", "R38")}
+# The audio-ADC bulk/bypass caps are 0805, but "C150".startswith("C1") would file them
+# under the 0402 line -- the same namespace collision as R3 vs R30. Spelled out.
+_MPN_EXACT.update({r: ("0805 X7R MLCC", "BASIC", 0.01, "audio ADC bypass / DC block")
+                   for r in ("C150", "C152", "C153")})
 
 
 def mpn(p):
@@ -569,9 +639,23 @@ def mpn(p):
 
 def _assert_every_part_orderable():
     """Nothing may be placed on this board without a sourcing decision attached -- even if
-    that decision is an explicit OPEN. Silence is the failure mode this prevents."""
+    that decision is an explicit OPEN. Silence is the failure mode this prevents.
+
+    AND the decision has to MATCH the part. The first version of this guard only checked
+    that a rule existed, which let two real mismatches through unnoticed: R37/R38 are 0402
+    in the model but fell to the 0603 ballast rule, and C150/C152/C153 are 0805 but fell to
+    the 0402 rule. Both would have shipped a BOM line that disagreed with the footprint --
+    the exact "it evaluates fine and is simply wrong" failure this file guards against
+    elsewhere. Generic passive lines name their package first in the description, so the
+    two can be cross-checked rather than trusted."""
     for p in PARTS:
-        mpn(p)                                   # raises if unmapped
+        rec = mpn(p)                             # raises if unmapped
+        if rec[1] == "BASIC":                    # a generic passive class, e.g. "0402 X7R MLCC"
+            want = rec[0].split()[0]
+            if not p["pkg"].startswith(want):
+                raise AssertionError(
+                    f"optical strip: {p['ref']} is package {p['pkg']} but its BOM line is "
+                    f"'{rec[0]}' -- the sourcing rule does not match the footprint")
     return sorted({mpn(p)[0] for p in PARTS if mpn(p)[0] != MPN_UNKNOWN})
 
 
@@ -824,8 +908,11 @@ def _assert_field_clear():
         # intersection of their X spans -- not some arbitrary fallback.
         a, b = section_at(y0), section_at(y1)
         lim, hi = max(a[0], b[0]), min(a[1], b[1])
-        kx = 0.0 if p["ref"] == "J2" else EDGE_KEEP        # J2's mouth IS the -X edge
-        ky = 0.0 if p["ref"] == "J1" else EDGE_KEEP        # J1's mouth IS the -Y edge
+        # A connector's MOUTH is allowed to sit on the board edge -- that is the point of a
+        # side-entry part. J2 used to be the exception on -X; both connectors now exit -Y,
+        # so -Y is the only edge with exceptions and -X has none.
+        kx = EDGE_KEEP
+        ky = 0.0 if p["ref"] in ("J1", "J2") else EDGE_KEEP
         if (x0 < lim + kx - 1e-9 or x1 > hi - EDGE_KEEP + 1e-9
                 or y0 < PCB_YM + ky - 1e-9 or y1 > PCB_YP - EDGE_KEEP + 1e-9):
             raise AssertionError(
