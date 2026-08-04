@@ -43,14 +43,22 @@ So this module keeps knee_lever's LOCAL FRAME verbatim and changes only:
     back-stop screw.
 
 THE HOUSING IS NOT A SEPARATE PART (user). It is fused straight into the pedal
-bar. There is nothing to adjust about a pedal's position, and the bar already
-prints -Z -> +Z, which is the orientation the housing wanted anyway — so it is
-simply bar geometry. That deleted three problems rather than solving them: the
-bar<->housing mount joint, the scheme for retaining it, and the fact that the two
-parts' print directions landed on a facing combination cadkit does not model.
-All three vanish when the joint does. What still prints separately is what has to
-MOVE or be assembled: this lever, the axle, the magnet and cap, the bearings, the
-cartridges and the sensor board.
+bar. There is nothing to adjust about a pedal's position, so it is simply bar
+geometry. That deleted three problems rather than solving them: the bar<->housing
+mount joint, the scheme for retaining it, and the fact that the two parts' print
+directions landed on a facing combination cadkit does not model. All three vanish
+when the joint does. What still prints separately is what has to MOVE or be
+assembled: this lever, the axle, the magnet and cap, the bearings, the cartridges
+and the sensor board.
+
+AND THE PRINT DIRECTIONS NOW AGREE, which is the point of the bar's -Y -> +Y flip
+(user). The bar's bed is its -Y face; the housing's local -Z end is the bed the
+knee lever already prints from; and the pose maps local +Z onto guitar +Y. So the
+two bed planes coincide and the fused housing builds in exactly the orientation it
+was designed in — no re-pass, no reorientation, nothing owed. The housing sits
+INSET in the bar's Y band (32.45 of the bar's 35.6, flush at the bed face) and
+stands ON the bar top, so the bar's own features — trough, lid groove, splices,
+all below BAR_H — never contend with it.
 
 A consequence worth keeping in view: all three stations fall between XS1 and XS2,
 so every housing lands in pedal_bar_b. That piece goes from 136 cm3 to 293 and
@@ -60,10 +68,10 @@ the big print of the bar set, and adding a fourth pedal is what would break it.
 DEFERRED (this is the first round):
   * the REST STOP. Gravity pulls the pedal arm down and the spring pushes it up;
     the rest angle wants a hard stop like LKV's, not a spring balance.
-  * the sensor CRADLE is inherited from knee_lever, which draws it to stand up
-    off a LOCAL +Z bed. Fused into the bar it builds along guitar +Z instead, so
-    that bed is now a side wall — the cradle and the lever-room ceiling both want
-    a printability pass in the bar's orientation before this is cut.
+  * the sensor CRADLE geometry. Its ENVELOPE is now settled — the board hangs
+    local -X (guitar +Z), up alongside the cartridges rather than out toward the
+    player, which is what keeps the housing inside the bar (see HOUS_Z0) — but the
+    cradle itself is not cut yet.
   * pedal STATIONS along X are placeholders until the copedent is fixed.
 """
 
@@ -162,10 +170,27 @@ HOUS_HW = KL.HOUS_HW                       # the sensor side sets Y — untouche
                                            # axle / flange / magnet / cap / board all hold
 HOUS_Z1 = (pplace(KL._hs_pocket(KL.HS_YC, -20.0, KL.HS_BACK_X)).val()
            .BoundingBox().zmax + KL.HS_HOUS_WALL)
-# -Z: deep enough to clear the hub and let the arm swing out, and to floor the
-# sensor board. Same two demands the vertical lever balances.
-HOUS_Z0 = min(-(HUB_D / 2 + KL.HS_CLR + KL.HS_HOUS_WALL),
-              KL.PCB_Z0 - KL.CR_FLOOR_T)
+# -Z: just deep enough to clear the hub and let the arm swing out.
+#
+# It used to ALSO floor the sensor board (min(..., PCB_Z0 - CR_FLOOR_T) = -15.2),
+# copying the knee lever. That was wrong here, and the print flip is what exposed
+# it. In the knee lever the cartridges and the board share the -Z side, so their
+# spans OVERLAP and the housing is 21.4 deep. This pedal lifts the feel block to
+# +Z (it has to — the contact must oppose the arm for a downward press to push the
+# springs UP), so the two spans stopped overlapping and started ADDING: 40.65 deep,
+# 5.05 more than the bar is wide, which no amount of mounting cleverness fixes.
+#
+# The board never needed that side. Its only real constraint is that the MT6701
+# sits on the axle axis reading the magnet; which way the board hangs from there is
+# free. Hanging it local -X — guitar +Z, up alongside the spring cartridges, which
+# already own that direction and are outboard of it in Y — costs nothing and takes
+# the housing to 32.45, comfortably inside the bar's 35.6. (The cradle geometry
+# itself is still deferred; this fixes the ENVELOPE it has to live in.)
+HOUS_Z0 = -(HUB_D / 2 + KL.HS_CLR + KL.HS_HOUS_WALL)        # -7.0
+assert HOUS_Z1 - HOUS_Z0 <= PB.BAR_Y1 - PB.BAR_Y0, (
+    f"the pedal housing is {HOUS_Z1 - HOUS_Z0:.2f} deep in guitar Y against a "
+    f"{PB.BAR_Y1 - PB.BAR_Y0:.2f} bar — it would hang past the bar's -Y face, which "
+    f"IS the print bed, leaving the whole bar prism floating on three islands")
 
 
 def _housing() -> cq.Workplane:
@@ -209,16 +234,22 @@ def _to_guitar(s):
 
 # the bar's -Y face and top, in guitar coordinates (pedal_bar is drawn at
 # absolute X/Y with local Z; build.py lifts it by ground + FOOT_H)
-BAR_FACE_Y = PB.BAR_Y0                     # the player-side face the pedals hang on
-BAR_TOP_Z  = PB.BAR_H                      # bar top (bar-local Z, = the lid groove floor
-                                           # datum the lid then closes over)
+BAR_FACE_Y = PB.BAR_Y0                     # the player-side face = THE PRINT BED
+BAR_TOP_Z  = PB.BAR_H + HOUS_X1            # axle datum: local +X is guitar -Z, so
+                                           # putting the housing's local x = HOUS_X1
+                                           # face at the bar top makes the housing sit
+                                           # squarely ON the bar rather than sinking
+                                           # into it — and everything the bar owns
+                                           # (trough, lid groove, splices) lives below
+                                           # BAR_H, so the two never contend.
 
 
-# The housing hangs on the bar's PLAYER-SIDE face, flush against it: local +Z is
-# guitar +Y, so its +Y-most feature (the sensor side, local z = HOUS_Z1) lands ON
-# BAR_FACE_Y and everything else is -Y of the bar. Nothing intrudes into the bar's
-# own footprint, which is what lets the trough and the lid groove stay untouched.
-MOUNT_DY = BAR_FACE_Y - HOUS_Z1
+# The housing is INSET IN the bar's Y band, not hung off it. The bar builds
+# -Y -> +Y, so its -Y face is the bed; the housing's own bed face (local z =
+# HOUS_Z0, the side the knee lever already prints from) lands flush ON it and the
+# leftover 3.15 falls on the +Y side. That is both the printable arrangement and
+# the one that keeps the pedal as close to the player as the bar allows.
+MOUNT_DY = BAR_FACE_Y - HOUS_Z0
 
 
 def place(s, x):
@@ -241,6 +272,9 @@ def fuse_into_bar(piece, x0, x1):
     cadkit does not model. What still prints separately is what has to MOVE or be
     assembled: the lever, the axle, the magnet and cap, the bearings, the
     cartridges and the sensor board.
+
+    All three stations fall between XS1 and XS2, so every housing lands in
+    pedal_bar_b — the piece that is otherwise just trough.
 
     Called from build.py rather than pedal_bar, to keep the import one-way (this
     module reads pedal_bar for the bar's own faces) — the same dodge chassis uses
