@@ -446,11 +446,16 @@ def _parts():
 
     # ---- 3. digital block, in the wide tail past the pickup cavity ----
     x0, x1 = COMPUTE_X0 + EDGE_KEEP, TAIL_X1 - EDGE_KEEP
-    y = WRAP_Y - ROW_GAP      # compute starts clear of the -Y wrap band seam
-
+    # THE MCU CLIMBS INTO THE WRAP BAND (user). It used to start below WRAP_Y, clear of the
+    # seam, which cost ~9.75 mm of board on the -Y end for nothing: the wrap band is WIDER
+    # in X than the compute section, and the only thing in it is the tail screw. Tucking the
+    # LQFP144 hard -X and moving that screw hard +X lets the two share the band, and every
+    # row below inherits the saving. The board's -Y end is a cantilever, so length taken off
+    # here is worth more than the same length taken off anywhere else.
+    y = Y_TAIL - ROW_GAP
     y -= PKG["LQFP144"][1] / 2
     add("U6", "MCU -- STM32H743ZIT6, 20x 16-bit ADC ch, USB OTG_HS via ULPI", "LQFP144",
-        (x0 + x1) / 2, y)
+        x0 + PKG["LQFP144"][0] / 2, y)                 # hard -X, against the edge keep-out
     y -= PKG["LQFP144"][1] / 2 + ROW_GAP
 
     # POWER + AUDIO INPUT is no longer here -- J2 moved to the -Y EDGE, beside the USB-C,
@@ -697,13 +702,21 @@ def mount_points():
     """The two M4 grips, one in each +X wrap -- same fastener as the pickup height jacks.
     Widely spaced on purpose: they are the board's Y datum, and the integrated lid's slots
     have to land on the sensor triplets."""
-    # Pushed as far -X and as far INBOARD in Y as the material allows (user), to sit as
-    # close as possible to the position-critical end of the board. The binding surface is
-    # the WRAP PLINTH, not the board: the board is wider than the plinth at both ends, so
-    # the insert boss is what runs out of material first. MIN_WALL_2P of plinth all round.
+    # Both are pushed as far INBOARD in Y as the material allows (user), to sit as close as
+    # possible to the position-critical end of the board. The binding surface is the WRAP
+    # PLINTH, not the board: the board is wider than the plinth at both ends, so the insert
+    # boss is what runs out of material first. MIN_WALL_2P of plinth all round.
+    #
+    # THEY ARE NOT AT THE SAME X, and that asymmetry is deliberate (user). The HEAD screw
+    # stays hard -X, closest to the sensor row. The TAIL screw is pushed hard +X instead, to
+    # get out of the MCU's way: that lets the LQFP144 tuck -X and climb +Y INTO the wrap
+    # band rather than starting below it, which takes ~9.75 mm off the board's -Y end -- the
+    # end that is already a cantilever. Both still land in the plinth, which is the only
+    # hard requirement. The two screws still define the Y datum; a skewed line between them
+    # locates the board just as well as a parallel one.
     keep = D.MIN_WALL_2P + M4.insert_pilot_d / 2
-    x = PLINTH_X0 + keep
-    return [(x, HEAD_Y0 + keep), (x, Y_TAIL - keep)]   # symmetric, one per wrap
+    return [(PLINTH_X0 + keep, HEAD_Y0 + keep),        # -12.00, hard -X
+            (TAIL_X1 - keep, Y_TAIL - keep)]           # +2.40, hard +X
 
 
 # ROUTED-OUTLINE FILLETS. A PCB outline is CNC-ROUTED, not cut from plate, so any polygon
@@ -881,10 +894,26 @@ def _assert_field_clear():
             f"optical strip: wrap bands differ in length -- +Y {PCB_YP - HEAD_Y0:.2f}, "
             f"-Y {Y_TAIL - WRAP_Y:.2f}")
     _m = mount_points()
-    if abs(_m[0][0] - _m[1][0]) > 1e-9 or abs(_m[0][1] + _m[1][1]) > 1e-9:
+    # Y ONLY. The grips are the board's Y DATUM, so their Y must stay mirrored -- equal
+    # leverage about the sensing field, and a stale derivation on one side is exactly how
+    # the -Y wrap once ended up 1.05 slacker than the +Y one.
+    #
+    # Their X deliberately does NOT match (user): the tail screw is hard +X to clear the
+    # MCU, the head screw hard -X to stay near the sensor row. X is not part of the datum
+    # -- two points at different X locate the board just as well, the line between them is
+    # merely skewed -- so asserting it would only forbid a change that is actually wanted.
+    # What DOES still matter is that each lands in the plinth, which is checked below.
+    if abs(_m[0][1] + _m[1][1]) > 1e-9:
         raise AssertionError(
-            f"optical strip: the two M4 grips are not mirrored -- {_m[0]} and {_m[1]}. "
-            f"They are the board's Y datum; asymmetry means one of them moved alone.")
+            f"optical strip: the two M4 grips are not mirrored IN Y -- {_m[0][1]:.2f} and "
+            f"{_m[1][1]:.2f}. They are the board's Y datum; asymmetry there means one of "
+            f"them moved alone.")
+    for _mx, _my in _m:
+        if not (PLINTH_X0 + D.MIN_WALL_2P <= _mx <= TAIL_X1 - D.MIN_WALL_2P):
+            raise AssertionError(
+                f"optical strip: M4 grip at x {_mx:.2f} is outside the wrap plinth "
+                f"({PLINTH_X0:.2f}..{TAIL_X1:.2f}) with its {D.MIN_WALL_2P} wall -- it has "
+                f"nothing to screw into.")
     # 1. the whole sensing strip must sit inside the deck band, or it fouls the magnetic
     # pickup's cavity (-X) or the endplate (+X). Both edges are read from top_plate, so
     # this fails loudly if the pickup's travel changes rather than overlapping quietly.
