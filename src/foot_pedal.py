@@ -57,9 +57,13 @@ knee lever already prints from; and the pose maps local +Z onto guitar +Y. So th
 two bed planes coincide and the fused housing builds in exactly the orientation it
 was designed in — no re-pass, no reorientation, nothing owed. The housing seats
 FLUSH ON that face and stands ON the bar top, so the bar's own features — trough,
-lid groove, splices, all below BAR_H — never contend with it, and the 5.05 by
-which the housing outreaches the bar's 35.6 width stands proud of the +Y face in
-free air above the bar, where there is nothing to clear.
+lid groove, splices, all below BAR_H — never contend with it.
+
+AND IT FITS THE BAR'S Y EXACTLY (user: move the axles -Y into the 35.6 budget).
+The printed housing spans BAR_Y0..BAR_Y1 dead on, flush plastic on BOTH faces —
+an earlier round let it outreach the bar by 5.05 and stand proud of the +Y face,
+which is what this replaces. The axle moved 5.05 -Y with it. What paid for the
+room is the sensor board's -Y retention: see HOUS_Z0 and CRADLE_Z0.
 
 A consequence worth keeping in view: all three stations fall between XS1 and XS2,
 so every housing lands in pedal_bar_b. That piece goes from 136 cm3 to 293 and
@@ -69,11 +73,20 @@ the big print of the bar set, and adding a fourth pedal is what would break it.
 DEFERRED (this is the first round):
   * the REST STOP. Gravity pulls the pedal arm down and the spring pushes it up;
     the rest angle wants a hard stop like LKV's, not a spring balance.
-  * the sensor CRADLE geometry. Its ENVELOPE is now settled — the board hangs
-    local -X (guitar +Z), up alongside the cartridges rather than out toward the
-    player, which is what keeps the housing inside the bar (see HOUS_Z0) — but the
-    cradle itself is not cut yet.
+  * the board's -Z STOP. The cradle's floor was the board's seat and the clip that
+    fits this housing into the bar's Y removes it, so nothing yet stops the board
+    sliding out the open -Y end — and pcb_shim presses that way. The side grooves
+    still take Y and X over 17.15 of the board's 19. Needs a positive stop before
+    it is buildable.
   * pedal STATIONS along X are placeholders until the copedent is fixed.
+
+WHAT IS SHARED AND WHAT BRANCHES (user). Shared: the whole feel system — the
+cartridges are the SAME PRINTED SKUs across all three levers (cart_base,
+cart_piston, guide_post, and the coils/screws/inserts/back-stops that
+knee_lever.feel_dummies emits), plus the axle, bearings, magnet, board and cradle
+builder. Branching: the pose, the lobe radius, the throw, the housing envelope,
+and now the cradle's clip — this is the only lever whose housing has an external
+Y budget to satisfy.
 """
 
 from __future__ import annotations
@@ -171,24 +184,34 @@ HOUS_HW = KL.HOUS_HW                       # the sensor side sets Y — untouche
                                            # axle / flange / magnet / cap / board all hold
 HOUS_Z1 = (pplace(KL._hs_pocket(KL.HS_YC, -20.0, KL.HS_BACK_X)).val()
            .BoundingBox().zmax + KL.HS_HOUS_WALL)
-# -Z: deep enough to clear the hub and let the arm swing out, and to floor the
-# sensor board. Same two demands the vertical lever balances.
+# -Z: THE AXLE MOVES -Y (user). The printed housing is held to the bar's own Y
+# width so its plastic is FLUSH on both faces — nothing proud of the +Y face, which
+# is what the earlier "the depth is free, let it overhang" arrangement gave. The
+# housing spans exactly BAR_Y0..BAR_Y1 and the axle lands Y_BUDGET - HOUS_Z1 = 10.15
+# in from the player-side face instead of 15.20, i.e. 5.05 further -Y.
 #
-# The board's depth here (-15.2, so the housing is 40.65 in guitar Y against a 35.6
-# bar) is NOT a constraint violation, and it took a wrong turn to establish that.
-# What matters is only that nothing sits BELOW THE BED, and the bed is the bar's -Y
-# face. Seating the housing flush ON that face (see MOUNT_DY) satisfies it for any
-# depth; the leftover 5.05 simply stands proud of the bar's +Y face, in free air
-# ABOVE the bar top, where there is nothing to clear. The earlier arrangement hung
-# the housing off the -Y face instead, which put it below the bed and left the bar
-# prism floating on three islands — that was the real defect, and it was in the
-# MOUNTING, not the depth.
+# What paid for it is the SENSOR BOARD's -Y retention (user): the board is 19 tall
+# and sat 12 below the axle with a 3.2 floor under it, which is the whole 5.05. It
+# now runs OUT THROUGH the housing's -Y face — _cradle drops the floor and opens the
+# slot's bottom when the board overruns z_bot — and pokes 1.85 into open air on the
+# player side, where there is nothing to hit. Printed plastic stays inside the
+# budget; only the bought board leaves it.
 #
-# Worth stating because the alternative was expensive: moving the board to local -X
-# to buy depth would have cost a re-modelled cradle, since _cradle grows along local
-# Z by construction and board_z only ever FLIPS the board, never shifts it.
-HOUS_Z0 = min(-(HUB_D / 2 + KL.HS_CLR + KL.HS_HOUS_WALL),
-              KL.PCB_Z0 - KL.CR_FLOOR_T)
+# RETENTION CONSEQUENCE, stated because it is a real loss and not yet resolved: the
+# floor was the board's -Z seat, and the pcb_shim presses DOWN onto it. With the
+# floor gone the shim would push the board straight out the open bottom. The side
+# grooves still hold Y and X over 17.15 of the board's 19, so it cannot fall out
+# sideways, but the pedal needs a positive -Z stop before this is buildable.
+Y_BUDGET = PB.BAR_Y1 - PB.BAR_Y0            # 35.6 — the bar's own width
+CRADLE_Z0 = KL.PCB_Z0 - KL.CR_FLOOR_T       # -15.2: the z_bot the cradle is BUILT
+                                            # against (then clipped to HOUS_Z0).
+                                            # Everything that asks knee_lever where
+                                            # the board goes must pass THIS, not
+                                            # HOUS_Z0 — board_flip keys off z_bot and
+                                            # the two values disagree about it, so
+                                            # mixing them would flip the demo board
+                                            # inside an unflipped cradle.
+HOUS_Z0 = HOUS_Z1 - Y_BUDGET
 
 
 def _housing() -> cq.Workplane:
@@ -212,7 +235,24 @@ def _housing() -> cq.Workplane:
     # built guitar +Z, local +Z was a side wall. The flip makes local +Z guitar +Y,
     # the bar's build axis, so the helper's guarantee holds again and this is a
     # plain call. board_z picks the flip from the housing's own Z bounds.
-    w = KL._cradle(w, HOUS_Z0, HOUS_Z1, x_max=HOUS_X1)
+    # SENSOR CRADLE — knee_lever's, but built against the board's OWN floor
+    # (PCB_Z0 - CR_FLOOR_T) and then CLIPPED to the housing at HOUS_Z0. That is the
+    # whole of the pedal's branch, and building it this way rather than by teaching
+    # board_flip about overrun is deliberate:
+    #
+    #   * asking _cradle for z_bot = HOUS_Z0 directly makes board_flip turn the
+    #     board over (as-drawn no longer fits above the raised floor). Flipped, the
+    #     board runs to local x +14 against HOUS_X1 = 7 — it would hang 7 into the
+    #     bar — and the FAR web runs out to 18.15, because x_max caps only the near
+    #     one. Both are worse than the overhang the clip costs.
+    #   * clipping keeps the board in its as-drawn orientation, so the grooves, the
+    #     connector relief and the socket cone are all the proven geometry.
+    #
+    # What the clip removes is the floor and the lowest 5.05 of both webs. The board
+    # then pokes 1.85 out through the -Y face into open air on the player side.
+    w = KL._cradle(w, CRADLE_Z0, HOUS_Z1, x_max=HOUS_X1)
+    w = w.cut(box_at(200.0, 200.0, 100.0, x=(HOUS_X0 + HOUS_X1) / 2, y=0.0,
+                     z=HOUS_Z0 - 50.0))
     return heal(w)
 
 
@@ -340,7 +380,7 @@ def demo_parts():
             return place(pplace(s), _x)
 
         out.append((f"pedal_lever_{i}", _P(swing(_lever(), 0.0))))
-        out += KL.axle_dummies(_P, pre, HOUS_Z0, HOUS_Z1)
+        out += KL.axle_dummies(_P, pre, CRADLE_Z0, HOUS_Z1)
         out += KL.cart_dummies(_F, pre)
         out += KL.feel_dummies(_F, pre)
     return out
