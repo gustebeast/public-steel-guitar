@@ -392,6 +392,15 @@ def pedal_bar_c() -> cq.Workplane:
             .cut(_splice_mortises(XS2)))
 
 
+# X span each bar piece OWNS, for deciding which pedal housings fuse into it.
+# Single-sourced because it is needed twice in build.py — once for the exported
+# STEP and once for the assembly — and when those two carried their own copies the
+# assembly silently kept the UNFUSED bar.
+PIECE_SPAN = {"pedal_bar_a": (-1e9, XS1),
+              "pedal_bar_b": (XS1, XS2),
+              "pedal_bar_c": (XS2, 1e9)}
+
+
 def _lid_full() -> cq.Workplane:
     """The full sliding-dovetail lid (pre-split): a 4-thick plate with 45°
     dovetail flanks riding the bar's top groove — ONE lid roofs the wiring

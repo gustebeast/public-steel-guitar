@@ -458,33 +458,72 @@ def _bearing():
     return o.cut(b)
 
 
-def demo_parts():
-    """Bought-part dummies in the local frame: (name, shape). Assembly-only."""
+def feel_dummies(place, prefix=""):
+    """The two feel cartridges' hardware, posed by `place` — the caller's own
+    feel_place (horizontal), vplace (vertical) or pplace (pedal).
+
+    Shared because all three levers carry the SAME cartridge: MAIN (at MAIN_YC)
+    whose follower touches the lobe at REST (sets the rest angle), and HALF-STOP
+    (at HS_YC, slid +X by HS_SETBACK) that engages partway. Each has a coil, a
+    back TENSION screw (preload), a seated insert, and a HOLLOW back-stop screw
+    whose -X face is the adjustable stop the cartridge back seats against (the
+    tension screw runs through its Ø5.5 bore).
+
+    Extracted so a lever cannot quietly show different hardware from its
+    siblings: the vertical lever was emitting its cartridge bodies with NO
+    springs, screws or back-stops at all, which read in the assembly as a lever
+    with no feel system.
+    """
+    p = f"{prefix}_" if prefix else ""
     out = []
-    # (no kl_axle dummy: the axle is PRINTED now — +Y journal integral to
-    #  the lever, -Y journal = the kl_axle_insert part)
-    for i, by in enumerate((-(BRG_Y0 + BRG_W), BRG_Y0)):    # inner faces at ±BRG_Y0,
-        out.append((f"kl_bearing_{i}", _bearing().translate((0, by, 0))))  # enclosed in the cheeks
-    out.append(("kl_magnet", cyl_y(MAG_D, MAG_T, y0=MAG_Y0)))
-    out += sensor_parts(HOUS_Z0, HOUS_Z1)
-    # BOTH springs are the SAME cartridge: MAIN (at MAIN_YC) whose follower touches the lobe at REST
-    # (sets the rest angle), and HALF-STOP (at HS_YC, slid +X by HS_SETBACK) that engages partway. Each
-    # has a coil, a back TENSION screw (preload), and a FROM-BELOW CLAMP screw that jams the cartridge
-    # up against the pocket ceiling -- locking its slid X (= rest / engagement) and retaining the roof.
     for nm, dx, dy in (("main", 0.0, MAIN_YC - HS_YC), ("half_stop", HS_SETBACK, 0.0)):
-        # every dummy is BUILT in the +Z/+X frame then feel_place()d to its installed spot (below the axle,
+        # every dummy is BUILT in the +Z/+X frame then placed to its installed spot (below the axle,
         # coil -X) -- same map as the cartridge, so they track AXLE_Z too.
-        out.append((f"{nm}_spring", feel_place((cyl(HS_SPR_OD, HS_SPR_INST, z=HS_BODY_BX)   # Ø6 coil (tube:
-                    .cut(cyl(HS_SPR_ID, HS_SPR_INST + 2, z=HS_BODY_BX - 1)))                #  pilots thru ID)
+        out.append((f"{p}{nm}_spring", place((cyl(HS_SPR_OD, HS_SPR_INST, z=HS_BODY_BX)   # Ø6 coil (tube:
+                    .cut(cyl(HS_SPR_ID, HS_SPR_INST + 2, z=HS_BODY_BX - 1)))              #  pilots thru ID)
                     .rotate((0, 0, 0), (0, 1, 0), 90).translate((dx, HS_YC + dy, HS_Z)))))
         # CUP tip bears on the GUIDE-POST back (HS_GPOST_BX); driving it in compresses the coil (preload).
-        out.append((f"{nm}_spring_tension_setscrew", feel_place(C.set_screw().rotate((0, 0, 0), (0, 1, 0), 90)
+        out.append((f"{p}{nm}_spring_tension_setscrew", place(C.set_screw().rotate((0, 0, 0), (0, 1, 0), 90)
                     .translate((HS_GPOST_BX + M4_SCREW_L + dx, HS_YC + dy, HS_Z)))))
-        out.append((f"{nm}_spring_tension_insert",                      # Ø6×5 insert, flush at the back wall
-                    feel_place(_seated_insert((HS_BACK_X + dx, HS_YC + dy, HS_Z), (0, 1, 0), -90))))
-        # HOLLOW back-stop screw: threads the housing boss, its -X face the adjustable stop the cartridge
-        # back seats against (sets the X home). The tension screw above runs THROUGH its Ø5.5 bore.
-        out.append((f"{nm}_cart_backstop", feel_place(cart_backstop.translate((dx, dy, 0)))))
+        out.append((f"{p}{nm}_spring_tension_insert",                    # Ø6×5 insert, flush at the back wall
+                    place(_seated_insert((HS_BACK_X + dx, HS_YC + dy, HS_Z), (0, 1, 0), -90))))
+        out.append((f"{p}{nm}_cart_backstop", place(cart_backstop.translate((dx, dy, 0)))))
+    return out
+
+
+def cart_dummies(place, prefix="", stroke=(0.0, 0.0)):
+    """The two cartridges themselves — base, piston, guide post. `stroke` is the
+    (main, half_stop) piston retraction for a posed throw; 0 at rest."""
+    p = f"{prefix}_" if prefix else ""
+    out = []
+    for nm, off, s in (("main", CART_MAIN_OFFSET, stroke[0]),
+                       ("half_stop", CART_HALFSTOP_OFFSET, stroke[1])):
+        out.append((f"{p}{nm}_cart_base", place(cart_base.translate(off))))
+        out.append((f"{p}{nm}_cart_piston",
+                    place(cart_piston.translate(off)).translate((-s, 0, 0))))
+        out.append((f"{p}{nm}_guide_post", place(guide_post.translate(off))))
+    return out
+
+
+def axle_dummies(place, prefix, z_bot, z_top):
+    """Bearings, magnet and the sensor stack — everything on the axle that is not
+    the lever. `place` poses the whole group; z_bot/z_top size the board."""
+    out = [(f"{prefix}_bearing_{i}", place(_bearing().translate((0, by, 0))))
+           for i, by in enumerate((-(BRG_Y0 + BRG_W), BRG_Y0))]   # inner faces at ±BRG_Y0
+    out.append((f"{prefix}_magnet", place(cyl_y(MAG_D, MAG_T, y0=MAG_Y0))))
+    out += [(n, place(s)) for n, s in sensor_parts(z_bot, z_top, prefix=prefix)]
+    _sh = pcb_shim(z_bot, z_top)
+    if _sh is not None:
+        out.append((f"{prefix}_pcb_shim", place(_sh)))
+    return out
+
+
+def demo_parts():
+    """Bought-part dummies in the local frame: (name, shape). Assembly-only."""
+    # (no kl_axle dummy: the axle is PRINTED now — +Y journal integral to
+    #  the lever, -Y journal = the kl_axle_insert part)
+    out = axle_dummies(lambda s: s, "kl", HOUS_Z0, HOUS_Z1)
+    out += feel_dummies(feel_place)
     # (no travel-stop screw: the +Z-cam-era stop boss was removed -- see _housing)
     # (no retention set-screw dummy: the rib-mount tenons + their M2 lock are
     #  DEFERRED with the mount -- prism round; see _housing)

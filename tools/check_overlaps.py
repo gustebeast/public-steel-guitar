@@ -188,20 +188,42 @@ PEDAL_FAMILY = {"pedal_bar_a", "pedal_bar_b", "pedal_bar_c",
 # magnet, sensor board, springs, set screws, housing and lever are ALL designed to
 # touch/run on each other. Whitelist any pair WITHIN the family (this never masks a
 # housing<->chassis / housing<->motor clash, since those involve a non-family part).
-KNEE_FAMILY = {"knee_housing", "knee_lever", "kv_housing", "kv_lever", "kv_bearing",
-               "kv_magnet", "kv_pcb", "kv_chip", "kv_can_header" "kv_pcb_shim", "kv_main_cart_base", "kv_main_cart_piston", "kv_main_guide_post",
-               "kv_half_stop_cart_base", "kv_half_stop_cart_piston", "kv_half_stop_guide_post", "kl_axle", "kl_magnet_cap", "kl_chip",
-               "kl_bearing", "kl_magnet", "kl_pcb", "kl_can_header",
-               "main_spring", "half_stop_spring", "floating_tenon", "retention_setscrew",
-               "main_cart_base", "main_cart_piston", "main_guide_post", "main_cart_backstop", "main_cart_drag",
-               "half_stop_cart_base", "half_stop_cart_piston", "half_stop_guide_post", "half_stop_cart_backstop", "half_stop_cart_drag",
-               "main_spring_tension_setscrew", "half_stop_spring_tension_setscrew"}
+_CORE = {"bearing", "magnet", "pcb", "chip", "can_header", "pcb_shim", "axle",
+         "magnet_cap"}
+# the two feel lanes, each with the same hardware
+_LANE = {f"{lane}_{part}"
+         for lane in ("main", "half_stop")
+         for part in ("cart_base", "cart_piston", "guide_post", "cart_backstop",
+                      "cart_drag", "spring", "spring_tension_setscrew",
+                      "spring_tension_insert")}
+# Built rather than typed out: the hand-written list had drifted badly. It was
+# missing every kv_* spring/screw/back-stop (those parts did not exist yet), and
+# "kv_can_header" "kv_pcb_shim" had NO COMMA between them — Python concatenated
+# them into one nonsense key, so BOTH were silently absent from the family.
+KNEE_FAMILY = ({"knee_housing", "knee_lever", "kv_housing", "kv_lever",
+                "floating_tenon", "retention_setscrew"}
+               | {f"kl_{p}" for p in _CORE} | {f"kv_{p}" for p in _CORE}
+               | _LANE | {f"kv_{p}" for p in _LANE})
+
+
+def _knee(n) -> bool:
+    """Knee-lever family membership, including the three FOOT PEDALS. Each pedal is
+    the knee core verbatim, posed and named pedal{i}_<knee part>; the pedal's
+    HOUSING is fused into the bar, so the bar pieces count as family too — that
+    fusion is the housing, not a clash."""
+    b = base(n)
+    if b in KNEE_FAMILY or b in ("pedal_lever", "pedal_bar_a", "pedal_bar_b",
+                                 "pedal_bar_c"):
+        return True
+    m = re.match(r"pedal\d+_(.+)$", b)
+    # the axle group is kl_* on the knee lever, so check that sibling too
+    return bool(m) and (m.group(1) in KNEE_FAMILY or f"kl_{m.group(1)}" in KNEE_FAMILY)
 
 
 def intended(na, nb) -> bool:
     if "build_counter" in (na, nb):
         return True
-    if base(na) in KNEE_FAMILY and base(nb) in KNEE_FAMILY:
+    if _knee(na) and _knee(nb):
         return True
     if base(na) in PEDAL_FAMILY and base(nb) in PEDAL_FAMILY:
         return True

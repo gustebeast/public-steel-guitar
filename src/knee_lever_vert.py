@@ -244,18 +244,11 @@ kv_housing = _housing()
 
 def demo_parts():
     """Bought/printed dummies in the local frame, for the assembly."""
-    out = []
-    for i, by in enumerate((-(KL.BRG_Y0 + KL.BRG_W), KL.BRG_Y0)):
-        out.append((f"kv_bearing_{i}", KL._bearing().translate((0, by, 0))))
-    out.append(("kv_magnet", cyl_y(KL.MAG_D, KL.MAG_T, y0=KL.MAG_Y0)))
-    out += KL.sensor_parts(HOUS_Z0, HOUS_Z1, prefix="kv")
-    _sh = KL.pcb_shim(HOUS_Z0, HOUS_Z1)
-    if _sh is not None:
-        out.append(("kv_pcb_shim", _sh))
-    for nm, off in (("main", KL.CART_MAIN_OFFSET), ("half_stop", KL.CART_HALFSTOP_OFFSET)):
-        out.append((f"kv_{nm}_cart_base", vplace(KL.cart_base.translate(off))))
-        out.append((f"kv_{nm}_cart_piston", vplace(KL.cart_piston.translate(off))))
-        out.append((f"kv_{nm}_guide_post", vplace(KL.guide_post.translate(off))))
+    out = KL.axle_dummies(lambda s: s, "kv", HOUS_Z0, HOUS_Z1)
+    out += KL.cart_dummies(vplace, "kv")
+    # the springs, tension screws, inserts and back-stops were MISSING here — this
+    # lever was drawn with cartridge bodies and no feel system inside them
+    out += KL.feel_dummies(vplace, "kv")
     return out
 
 
