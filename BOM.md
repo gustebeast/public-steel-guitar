@@ -922,8 +922,41 @@ edge budget rather than typed — the −Y edge, not the LQFP144, is now what se
 * The widening costs **nothing in billed area**. The sensing strip already sets the bounding
   box's −X extreme at −30.42; the compute section lands at −25.34, inside it, with 5.08 mm
   of headroom before the box would move.
-* The board got **shorter**: 190.1 → **182.1 mm**, area 71.1 → **68.1 cm²**. Moving J2 off
-  the −X edge freed a whole 15 mm row; the audio ADC added ~6 mm back.
+* The board got **shorter**: 190.1 → **182.1 mm**. Moving J2 off the −X edge freed a whole
+  15 mm row; the audio ADC added ~6 mm back. Then the MCU/tail-screw swap below took
+  another 9.75 mm, landing at **172.4 mm**, area 71.1 → **64.5 cm²**.
+
+### The MCU and the tail screw swap sides — another 9.75 mm off the cantilever
+
+The MCU used to start *below* `WRAP_Y`, clear of the wrap-band seam, which cost ~9.75 mm of
+board for nothing. The wrap band is **wider in X** (−30.42) than the compute section
+(−25.34), and the only thing occupying it was the tail M4. So the two now share it: the
+LQFP144 tucks hard −X and climbs **into** the band, and the tail screw moves hard +X to get
+out of its way.
+
+| | Before | After |
+|---|--:|--:|
+| MCU | X −20.17…1.83, Y −87.75…−65.75 | **X −24.14…−2.14, Y −78.00…−56.00** |
+| Tail screw | (−12.00, −59.60) | **(+2.40, −59.60)** |
+| Board | 182.1 mm | **172.4 mm** |
+| Cantilever past the tail screw | 51.75 | **48.00 mm** |
+
+Both screws keep the full **4.60 mm of plinth wall**; the MCU clears the tail screw's
+keep-out by 1.34 mm and stops 1.00 mm below the seam. Length taken off *this* end is worth
+more than the same length taken off anywhere else, because this end is the cantilever.
+
+**The two grips are no longer at the same X, and that is deliberate.** The head screw stays
+hard −X, nearest the sensor row; only the tail one moved. The mount-symmetry assertion
+caught this immediately — it was written to catch exactly "one of them moved alone" — and
+was **narrowed rather than disabled**: mirrored **Y** still matters (equal leverage about the
+sensing field; a stale one-sided derivation is how the −Y wrap once ended up 1.05 mm
+slacker), but X never was part of the datum — two points at different X locate the board
+just as well, the line between them is merely skewed.
+
+It also gained a check it never had: that **each grip actually lands in the wrap plinth**
+with its full wall. That is the real requirement — a screw with nothing to thread into is
+the failure that matters — and until now the X-equality test had been standing in for it by
+accident.
 
 **J2 is now a 6-way `S6B-XH-SM4-TB`** (C191914, $0.4417): **2×5V, 2×PWR_GND, AUDIO,
 AUDIO_GND**. Going from 4-way to 6-way adds **no harness part** — `XHP-6` housings are
@@ -1077,16 +1110,16 @@ then multiples of 5** — you cannot order 3. So the per-instrument curve is a
 
 | Instruments | Order | Waste | Order total | Per instrument |
 |--:|--:|--:|--:|--:|
-| 1 | 2 | 1 | $151.94 | $151.94 |
-| 2 | 2 | 0 | $151.94 | $75.97 |
-| 3 | 5 | 2 | $256.10 | **$85.37** ↑ |
-| 5 | 5 | 0 | $256.10 | $51.22 |
-| 6 | 10 | 4 | $429.70 | **$71.62** ↑ |
-| **10** | **10** | **0** | **$429.70** | **$42.97** |
-| 15 | 15 | 0 | $603.30 | $40.22 |
-| 20 | 20 | 0 | $776.90 | $38.85 |
+| 1 | 2 | 1 | $151.22 | $151.22 |
+| 2 | 2 | 0 | $151.22 | $75.61 |
+| 3 | 5 | 2 | $254.30 | **$84.77** ↑ |
+| 5 | 5 | 0 | $254.30 | $50.86 |
+| 6 | 10 | 4 | $426.10 | **$71.02** ↑ |
+| **10** | **10** | **0** | **$426.10** | **$42.61** |
+| 15 | 15 | 0 | $597.90 | $39.86 |
+| 20 | 20 | 0 | $769.70 | $38.49 |
 
-*(Recomputed on the $82.50 fixed / $34.72 variable. The
+*(Recomputed on the $82.50 fixed / $34.36 variable. The
 **shape** is unchanged — it comes from the quantity ladder, not the rates — so
 both conclusions below still hold; only the absolutes moved.)*
 
@@ -1097,18 +1130,18 @@ Two consequences worth acting on:
 * **10 is the knee.** It is the first quantity within 30 % of the variable-cost
   floor; past 15 the gains are slow. Hence the convention.
 
-### Optical pickup board at that basis — $42.97 per instrument
+### Optical pickup board at that basis — $42.61 per instrument
 
-Board is **37.4 × 182.1 mm = 68.1 cm²**, 4-layer, 148 parts, ~560 solder joints.
+Board is **37.4 × 172.4 mm = 64.5 cm²**, 4-layer, 148 parts, ~560 solder joints.
 (Earlier revisions said 47.5 cm², which predates the +X wraps and the M4 bands,
 then 184.4 mm long, which predates J2 becoming a 4-way.)
 
 | | | |
 |---|---|---:|
 | **Fixed, per order** | PCBA setup $25 + feeder loading **$22.50** (15 Extended lines × $1.50; **5 of the 20 lines are Basic**) + component MOQ overage ~$20 + 4-layer fab tooling ~$15 | **$82.50** |
-| **Variable, per board** | parts **$26.96** (computed) + fab $6.81 (68.1 cm² × $0.10) + assembly $0.95 (~560 joints) | **$34.72** |
-| **Order of 10** | 82.50 + 10 × 34.72 | **$429.70** |
-| **Per instrument** | ÷ 10 | **$42.97** |
+| **Variable, per board** | parts **$26.96** (computed) + fab $6.45 (64.5 cm² × $0.10) + assembly $0.95 (~560 joints) | **$34.36** |
+| **Order of 10** | 82.50 + 10 × 34.36 | **$426.10** |
+| **Per instrument** | ÷ 10 | **$42.61** |
 
 *(The magnetic-pickup channel and the single-ended cable exit together cost **$0.53 per
 instrument**. The audio ADC and the 6-way connector add $0.78 of parts and one feeder, and
