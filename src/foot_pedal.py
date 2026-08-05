@@ -62,8 +62,10 @@ lid groove, splices, all below BAR_H — never contend with it.
 AND IT FITS THE BAR'S Y EXACTLY (user: move the axles -Y into the 35.6 budget).
 The printed housing spans BAR_Y0..BAR_Y1 dead on, flush plastic on BOTH faces —
 an earlier round let it outreach the bar by 5.05 and stand proud of the +Y face,
-which is what this replaces. The axle moved 5.05 -Y with it. What paid for the
-room is the sensor board's -Y retention: see HOUS_Z0 and CRADLE_Z0.
+which is what this replaces. The axle moved 5.05 -Y with it. That was paid for at
+the time by giving up the sensor board's -Y retention — but the board has since
+been trimmed of its dead strip (PCB_WZ 19 -> 16) and now ends at -9.00, inside
+this housing's -10.15, so the retention came back for free. See HOUS_Z0/CRADLE_Z0.
 
 A consequence worth keeping in view: all three stations fall between XS1 and XS2,
 so every housing lands in pedal_bar_b. That piece goes from 136 cm3 to 293 and
@@ -73,11 +75,12 @@ the big print of the bar set, and adding a fourth pedal is what would break it.
 DEFERRED (this is the first round):
   * the REST STOP. Gravity pulls the pedal arm down and the spring pushes it up;
     the rest angle wants a hard stop like LKV's, not a spring balance.
-  * the board's -Z STOP. The cradle's floor was the board's seat and the clip that
-    fits this housing into the bar's Y removes it, so nothing yet stops the board
-    sliding out the open -Y end — and pcb_shim presses that way. The side grooves
-    still take Y and X over 17.15 of the board's 19. Needs a positive stop before
-    it is buildable.
+  * (RESOLVED) the board's -Z stop. The clip used to remove the cradle floor, leaving
+    nothing to stop the board sliding out the open -Y end while pcb_shim pressed it
+    that way. Trimming the board's dead 4.0 strip (PCB_WZ 19 -> 16) lifted its bottom
+    edge to -9.00, inside this housing's -10.15, so there is a 1.15 floor again and
+    the board no longer overhangs at all. The deferral went away rather than being
+    solved — which is the second time shrinking the board fixed a mechanical problem.
   * pedal STATIONS along X are placeholders until the copedent is fixed.
 
 WHAT IS SHARED AND WHAT BRANCHES (user). Shared: the whole feel system — the
@@ -248,8 +251,10 @@ def _housing() -> cq.Workplane:
     #   * clipping keeps the board in its as-drawn orientation, so the grooves, the
     #     connector relief and the socket cone are all the proven geometry.
     #
-    # What the clip removes is the floor and the lowest 5.05 of both webs. The board
-    # then pokes 1.85 out through the -Y face into open air on the player side.
+    # What the clip removes is the lowest 5.05 of both webs. It USED to remove the
+    # floor too, with the board poking 1.85 out through the -Y face; trimming the
+    # board's dead strip (PCB_WZ 19 -> 16) lifted its bottom edge to -9.00, inside
+    # this housing, so the floor survives at 1.15 and nothing overhangs.
     w = KL._cradle(w, CRADLE_Z0, HOUS_Z1, x_max=HOUS_X1)
     w = w.cut(box_at(200.0, 200.0, 100.0, x=(HOUS_X0 + HOUS_X1) / 2, y=0.0,
                      z=HOUS_Z0 - 50.0))

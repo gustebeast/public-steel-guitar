@@ -70,7 +70,7 @@ fitted on every instrument.
 |------|-----|-------------|--------|-----|
 | **Teensy 4.1** | B | PJRC via SparkFun | **$31.50** [v] | [SparkFun](https://www.sparkfun.com/teensy-4-1.html) |
 | **Teensy 4 Audio Shield Rev D** | B | SGTL5000, SparkFun | **$9.80** [v] | [SparkFun](https://www.sparkfun.com/teensy-4-audio-shield-rev-d.html) |
-| **CAN transceiver** | B | SN65HVD230DR (DigiKey) | **$2.45** [v] ⚠ **stock 0** | [DigiKey](https://www.digikey.com/en/products/detail/texas-instruments/SN65HVD230DR/404367) |
+| **CAN transceiver** | B | SN65HVD230DR | **$0.6185 @10** [v] — **32,557 in stock** | [LCSC C12084](https://www.lcsc.com/product-detail/C12084.html) — was priced from DigiKey at $2.45/stock 0, which made it look unavailable; LCSC has it 4× cheaper and deep. Also the sensor boards' transceiver (3.3 V — single rail) |
 | **Buck 24→5 V 1 A** | B | Pololu D24V10F5 (powers Teensy) | **$12.95** [v] | [Pololu](https://www.pololu.com/product/2831) |
 | **Signal relay** | B | Omron G5V-1-DC5 SPDT (true-bypass) | **$2.74** [v] | [DigiKey](https://www.digikey.com/en/products/detail/omron-electronics-inc-emc-div/G5V-1-DC5/87831) |
 | **Buffer op-amp** | B | OPA2134PA DIP + passives | **~$11** [v] | [DigiKey](https://www.digikey.com/en/products/detail/texas-instruments/OPA2134PA/254686) |
@@ -155,9 +155,25 @@ two knee levers exist in `src/` — but the count is fixed by the instrument: 5
 foot pedals + 5 knee levers, each with its own sensor board. An earlier revision
 of this section said 4 knee levers + 3 pedals and was sized for 7.)*
 
-**Board spec (ours, for layout).** Outline **17 × 19 × 1.6 mm**, strongly
+**Board spec (ours, for layout).** Outline **28 × 19 × 1.6 mm**, strongly
 *asymmetric* about the sensor: the chip sits on the axle axis just **3.0 mm from
-the +X edge**, 14.0 mm from the −X edge and 7.0 mm below the top edge. The 3.0 is
+the +X edge**, 25.0 mm from the −X edge and 7.0 mm below the top edge.
+
+⚠ **This board was 17 × 19 and specified as two parts — the sensor and the
+connector. That board cannot work.** It sits on a CAN bus, so it needs a
+controller, a transceiver and a 3.3 V rail off the 24 V trunk; the Connectors
+table below was already *buying* it a transceiver (~10 off) while this section
+placed neither that nor any MCU. The real population is the table below, and it
+comes to ~168 mm² — 69 % of a 17 × 19's usable area, which is not routable
+single-sided, against 36 % at 28 × 19.
+
+**28 is the MAXIMUM width**, and the foot pedal sets it: the pedal turns the board
+90° to put its near edge toward the player, which swaps X and Z, and at 29 the
+turned board's +Z reach passes the pedal's ceiling and the pedal loses *every*
+orientation. All the growth goes −X because that is the only free direction — +X
+is the face nearest the player, and Z is nearly frozen by the horizontal lever,
+whose window is 21.4 mm for a 19 mm board (it has exactly ONE valid orientation,
+with no margin). The 3.0 is
 deliberately tight — the QFN body ends at 1.5, leaving 1.5 of edge keepout, over
 JLCPCB's 1.0 mm component-to-edge rule — because every millimetre there is
 millimetres off the lever's +X extent, which is the face nearest the player. **No mounting
@@ -167,8 +183,37 @@ on its floor, and the instrument's own underside closes over it as the lid. So
 
 **SINGLE-SIDED: everything goes on the −Y (magnet-facing) face**, which is what
 keeps this to one assembly setup. The QFN sits on the axle axis. The CAN drop is
-an **S4B-XH-SM4-TB**, mouth facing −X, its body occupying x −11.9 to −5.8 and
-z −8.0 to +7.0. Both of those placements are forced, not chosen: the board is
+an **S4B-XH-SM4-TB**, mouth facing −X **at the −X edge (x −23.15)**, body running
++X to −17.05. It used to sit at x −11.9 — as close to the cap as the sweep allowed,
+because the board only reached −14. With the board out at −25 the connector moves
+to the edge, and that matters more than the 11.25 mm it travels: the **mated plug
+runs 7.5 mm further −X still**, so at −11.9 the header *plus its plug* occupied
+x −19.4…−5.8 straight across the middle of the board — 204 mm², the single largest
+obstruction on it. At the edge the plug runs off the board entirely.
+
+**Populated parts** (all prices/stock read from `lcsc.com/product-detail/C<n>.html`):
+
+| Ref | Part | LCSC | Package | Body mm | Stock | $ @10 |
+|-----|------|------|---------|---------|-------|-------|
+| U1 | MT6701QT-STD angle sensor | C2913974 | QFN-16 | 3.00 × 3.00 × 0.80 | — | 1.68 |
+| U2 | **CH32V203G6U6** MCU, classic CAN 2.0B | C5142280 | QFN-28 | 4.00 × 4.00 × 0.90 | 1,057 | **0.5733** |
+| U3 | **SN65HVD230DR** CAN transceiver, **3.3 V** | C12084 | SOIC-8 | 6.00 × 4.90 × 1.75 | 32,557 | **0.6185** |
+| U4 | **LMR16006XDDCR** buck, 4–60 V in | C87080 | SOT-23-6 | 2.90 × 1.60 × 1.10 | 18,666 | **0.5312** |
+| L1 | inductor (buck) | — | 3030 | 3.00 × 3.00 × 1.50 | — | ~0.05 |
+| Y1 | crystal | — | 3225 | 3.20 × 2.50 × 0.90 | — | ~0.05 |
+| J1 | S4B-XH-SM4-TB CAN drop | C161861 | SMT side-entry | 6.10 × 15.00 | — | 0.6577 |
+
+≈ **$4.36/board, ≈$48 for 11** — inside the ~$50 this section budgets.
+
+**Why classic CAN 2.0B and not FD** (user): the motors are classic-only, but they
+are on **bus A** and these boards are on **bus B**, so the motor does *not* force
+this — bus B was genuinely free to be FD. The reason is bandwidth and cost. Ten
+controls sending 2-byte frames is ~76 bits each; at 500 Hz that is 38 % of a
+**1 Mbps** bus B (and 76 % of the BOM's 500 kbps, which is why bus B should run at
+1 Mbps). FD's 64-byte payload buys nothing here. Classic also lets the transceiver
+be a **3.3 V** part, which deletes the entire 5 V stage — the MCP2562FD needs
+4.5–5.5 V while everything else on the board is 3.3 V. Cost: **$4.36/board versus
+~$10.50** for an FD MCU + FD transceiver + two regulators. Both of those placements are forced, not chosen: the board is
 installed by lowering it past the rotating magnet cap, so anything on this face
 deeper than 1.5 mm must keep its whole footprint outside the cap's 5.4 mm radius.
 The housing is relieved 0.85 mm behind the connector and tunnelled through the
@@ -324,7 +369,7 @@ $0.59–0.78 per pre-crimped lead — 20×; needs a ~$25–45 tool, below).
 | **CAN terminator R** | Yageo **CFR-25JB-52-120R** (120 Ω ¼ W) | 10 | **$0.10 / $0.036 @10** [v] | [DigiKey](https://www.digikey.com/en/products/result?keywords=CFR-25JB-52-120R) | Teensy carrier + last motor; bus-B termination lives ON the tees (SMT 120R there) |
 | **Tee PCB** | custom: 3× B4B-XH-A + 120 Ω + shunt jumper | 12 | ~$2 assembled (est.) | JLCPCB | panelized with the sensor boards; close the jumper on the LAST tee = bus-B termination |
 | **Leg carrier PCB** | custom: LCSC SMT jack + B4B-XH-A header | 2 | ~$2 assembled (est.) | JLCPCB | rides the same panel; sits in the shaft pocket — auto-mate jack's terminals land on XH, fully factory-soldered |
-| **FD-capable transceiver** (new PCBs) | Microchip **MCP2562FD-E/SN** | ~10 | **$1.29 / $1.07 @25** [v] | [DigiKey](https://www.digikey.com/en/products/result?keywords=MCP2562FD-E%2FSN) | rides the sensor-PCB assembly order (LCSC ~$0.50 there); VIO pin suits 3.3 V logic |
+| ~~**FD-capable transceiver**~~ | ~~Microchip **MCP2562FD-E/SN**~~ | — | **DROPPED** | — | Superseded by **SN65HVD230DR** (`C12084`, $0.6185 @10, 32,557 stock) on the sensor boards — see Control sensors. Two corrections this row carried: LCSC is **$1.85 @10**, not the “~$0.50” claimed here, and it needs **4.5–5.5 V**, so it dragged a second regulator onto the most area-constrained board in the project. FD is moot now that the sensor MCU is classic-only — bus B could have been FD (the motors are on bus A), but the payload does not want it |
 
 ≈ **$40 of connectors + ~$25 of tee/carrier boards** (board figures are
 estimates until the JLCPCB quote; tools live in the Tools section — per
@@ -1397,7 +1442,7 @@ by how much money rides on each.
 
 Two rows verified but flagged for **availability**, not price:
 
-* **SN65HVD230DR** — $2.45 correct, but DigiKey stock is **0** (backorder only).
+* **SN65HVD230DR** — $2.45/stock-0 was **DigiKey only**. On LCSC (`C12084`) it is **$0.6185 @10 with 32,557 in stock**. Sourcing a part from one distributor and concluding it is scarce is its own failure mode: check the distributor we actually assemble through first.
 * **Tinmorry TPU 95A** — $22.99 correct, but **sold out**. Only ~40 g is needed,
   so any 95A spool substitutes.
 
