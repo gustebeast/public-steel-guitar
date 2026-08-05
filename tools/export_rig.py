@@ -53,19 +53,36 @@ RIG = REPO / "docs" / "rig.json"
 # On a mechanical steel a split is a compromise stop where two pull-rods fight over
 # one string; with an independent motor per string the controller just commands the
 # pitch, so no split hardware exists to model.
+# RE-READ FROM THE RAW SHEET, cell by cell. The first pass at this table went
+# through a SUMMARISED read of the spreadsheet and landed a column out of step,
+# with sign errors on top. Round-tripping each move back to a note name did not
+# catch it, because that only proved the table was self-consistent — it checked
+# arithmetic against my own transcription, never against the source. Every move
+# below is now derived from the exported CSV's own cells, and the chart's target
+# note is quoted beside each one so the next reader can check it without me.
+#
+# The chart's C6 pedal columns are 4..8 — contiguous, which is the "3 higher"
+# offset the user described (its 1..3 are the E9 top neck's).
 _COPEDENT = {
     # pedals — keys 1..5, left to right as they sit on the bar
-    "P1": {"key": "1", "moves": {2: -1, 6: -1, 10: +2}},   # chart P3
-    "P2": {"key": "2", "moves": {2: +1, 6: +1, 10: +2}},   # chart P4
-    "P3": {"key": "3", "moves": {3: +2, 5: -1, 9: +1}},    # chart P5  (3 is a split)
-    "P4": {"key": "4", "moves": {7: +1}},                  # chart P6
-    "P5": {"key": "5", "moves": {3: -1, 4: +2, 9: -1, 10: -3}},   # chart P7 (4 split)
-    # knee levers — left knee on a/s/d, right knee on k/l, mirroring the knees
-    "LKL": {"key": "a", "moves": {4: +1}},
-    "VKL": {"key": "s", "moves": {1: +1}},
-    "LKR": {"key": "d", "moves": {4: -1, 8: -1}},
-    "RKL": {"key": "k", "moves": {7: +1}},
-    "RKR": {"key": "l", "moves": {3: +1}},
+    "P1": {"key": "1", "moves": {2: +1, 6: +1, 10: +2}},   # chart 4: E->F  E->F  C->D
+    "P2": {"key": "2", "moves": {5: -1, 9: +1, 10: +2}},   # chart 5: G->F# F->F# C->D
+    "P3": {"key": "3", "moves": {2: -1, 6: -1}},           # chart 6: E->D# E->D#
+    "P4": {"key": "4", "moves": {3: +2, 4: +2}},           # chart 7: C->D* A->B*  (both split)
+    "P5": {"key": "5", "moves": {7: +1, 9: -1, 10: -3}},   # chart 8: C->C# F->E  C->A
+    # KNEE LEVERS — keyed a..h strictly LEFT TO RIGHT from the player's seat
+    # (user's rule), which is ascending X, the same direction the pedals run.
+    # ILKL therefore takes 'a': it sits one slot -X of LKL. The user's earlier
+    # "a is LKL" predates their own correction that a sixth (inner) lever exists.
+    "ILKL": {"key": "a", "moves": {}},   # the chart assigns it on the E9 neck ONLY
+    #                                      (G#->A#/B); on C6 the lever is fitted
+    #                                      but unassigned. Kept so the hardware,
+    #                                      the UI and the chart all show six.
+    "LKL": {"key": "s", "moves": {4: +1}},             # A->A#
+    "VKL": {"key": "d", "moves": {1: +1}},             # D->D#
+    "LKR": {"key": "f", "moves": {4: -1, 8: -1}},      # A->G#  A->G#
+    "RKL": {"key": "g", "moves": {3: -1}},             # C->B
+    "RKR": {"key": "h", "moves": {3: +1, 7: +1}},      # C->C#  C->C#
 }
 OPEN_TUNING = ("D4", "E4", "C4", "A3", "G3", "E3", "C3", "A2", "F2", "C2")
 
