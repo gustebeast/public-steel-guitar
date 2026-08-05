@@ -230,8 +230,13 @@ def _inlay_w(n):
     return HI_INLAY_W if n >= HI_FRET else INLAY_W
 # border X: the fretted length — from the bridge end of the fretboard (just -X of the pickup region) to
 # the nut/keyhead end. Absolute coords; _split gives each panel its portion so the frame is continuous.
-FRET_AREA_X0 = SLOT_X[PIECE_SHOWN + PIECE_SLOTS]   # +X (bridge) end of the fretboard
+FRET_AREA_X0 = SLOT_X[PIECE_SHOWN + PIECE_SLOTS]   # +X (bridge) end of the FRET FIELD (lines + markers)
 FRET_AREA_X1 = PX1                                 # -X (nut / keyhead) end
+# The BORDER's side bands run further +X than the field, all the way to the deck's bridge end, so the
+# band-region fillers carry the same top/bottom border as the rest of the fretboard (user). Those slots
+# only ever hold the pickup piece OR a filler, and whichever fillers aren't covered are installed — an
+# unbordered band there read as the fretboard just stopping short of the bridge.
+BORDER_X0 = PX0                                    # +X (bridge) end of the border side bands
 # The strings FAN (nut pitch 6.5 -> changer pitch 9.5), so size the fret BOX (border included) in Y to
 # the OUTER-string span at its WIDEST edge (the +X / bridge end); the frets then finish INLAY_W short.
 
@@ -242,7 +247,11 @@ def _string_half_span(x):
     return D.nut_y(0) + (D.string_y(0) - D.nut_y(0)) * t
 
 
-BORDER_HY = _string_half_span(FRET_AREA_X0)   # box half-Y = outer-string half-span at the +X edge
+BORDER_HY = _string_half_span(BORDER_X0)      # box half-Y = outer-string half-span at the frame's WIDEST
+                                              # (+X) edge -- which is BORDER_X0, not FRET_AREA_X0, now that
+                                              # the side bands run on to the bridge end. Datuming to the
+                                              # field edge instead would leave the outer strings crossing
+                                              # OUT over the band across the last ~80 mm of fan.
 FRET_HY   = BORDER_HY - INLAY_W               # frets end one border-width short of the box edge
 
 
@@ -268,8 +277,12 @@ def _border_frame():
     -X (nut/keyhead) end. OPEN at the +X (bridge) end: there is no fretboard edge there — the field
     just runs out under the pickup, whose seam X MOVES with the pickup's slot position (user), so a
     fixed +X edge would be both wrong and a false 'fret' on the seam. Same inlay/material as the fret
-    lines, in the colour band (TZ-FRET_T .. TZ); _split clips it to each panel so the U reads continuous."""
-    x_hi, x_lo = FRET_AREA_X0, FRET_AREA_X1                       # +X (bridge) end, -X (nut) end
+    lines, in the colour band (TZ-FRET_T .. TZ); _split clips it to each panel so the U reads continuous.
+
+    The side bands run to BORDER_X0 (the deck's bridge end), PAST the fret field, so the band-region
+    fillers are bordered too. The pickup PIECE is split lines=False and never takes any of this; where
+    it sits, its cavity is wider than the frame anyway, so the border could not survive there."""
+    x_hi, x_lo = BORDER_X0, FRET_AREA_X1                          # +X (bridge) end, -X (nut) end
     outer = box_at(x_hi - x_lo, 2 * BORDER_HY, FRET_T,
                    x=(x_hi + x_lo) / 2, y=0.0, z=TZ - FRET_T / 2)
     ix_lo, ix_hi = x_lo + INLAY_W, x_hi + 1.0                     # inset the -X end; RUN PAST the +X end
