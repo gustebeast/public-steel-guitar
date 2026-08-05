@@ -3,14 +3,19 @@ piece as FUSED STUB TOWERS.
 
 The bar is the mounting rail for the (future) sensor pedals. Each end
 carries a 44-sq STUB TOWER printed WITH the bar: the shortened +Y leg
-shafts press DOWN onto the towers' house spigots — the leg↔body seatbelt
-latch, verbatim (wedging bolt + recessed button live on the tower; the
-leg block's socket is passive) — and the wired (-X) tower adds the second
+shafts press DOWN onto the towers' octagon spigots — the leg↔body joint,
+verbatim — and the wired (-X) tower adds the second
 vertical TRRS blind-mate: its captive CA-354S plug (threaded up through
 the foot-mortise access) points UP into the 10-03404 jack in the shaft,
 on the TRRS axis at station +5. Pedal height is constant regardless of
 instrument height, and stomp loads go floor-direct through the bar's
-feet, never through a latch.
+feet, never through the joint.
+
+NO Z RETENTION (user): the seatbelt quick-release this joint shared with the
+leg↔body one — wedging bolt + recessed button on the tower, bearing ledge in
+the leg block — is GONE from both. The spigot still fixes X, Y and rotation
+and takes the load; nothing holds the bar down onto the legs, so they part as
+easily as they went together. Deliberate: a blank slate to redesign against.
 
 FLUSH 35.6 COLUMN (user, symmetry round: match the leg shafts): the bar
 prism is BLK_W wide (Y = YC ± 17.8) and 19 tall, and its END faces sit
@@ -58,9 +63,11 @@ YC = LEG_Y[0]                          # FLUSH round: the bar rides the +Y
                                        # legs' centreline, 17 inboard of the
                                        # rail — its outer face continues the
                                        # body wall plane to the floor
-# one latch per foot, each opening INBOARD: (leg station, side sign)
-LATCHES = ((LEG_STATIONS_X[0], -1.0),  # +X leg → plain snap latch, extends -X
-           (LEG_STATIONS_X[1], +1.0))  # -X leg → TRRS latch, extends +X
+# one foot per +Y leg: (leg station, inboard side sign). The side sign is the
+# legacy latch-opening direction, kept because the TRRS way still keys off it.
+# (Was LATCHES, back when each foot carried a snap/TRRS latch.)
+FEET = ((LEG_STATIONS_X[0], -1.0),     # +X leg → plain tower
+        (LEG_STATIONS_X[1], +1.0))     # -X leg → wired (TRRS) tower
 
 BAR_H = 19.0
 BAR_Y0 = YC - LG.BLK_W / 2                 # BLK_W (35.6) wide — matches
@@ -105,14 +112,14 @@ FOOT_PAD = 12.0
 # install-z joints (the chassis-segment pattern).
 XS1 = BAR_X0 + 215.0   # -X splice (mid-trough)
 XS2 = BAR_X1 - 215.0   # +X splice (mid-trough)
-XL = (LATCHES[0][0] + LATCHES[1][0]) / 2   # lid butt-splice: mid-span,
+XL = (FEET[0][0] + FEET[1][0]) / 2   # lid butt-splice: mid-span,
                    # ~107 from each bar splice so each lid piece BRIDGES
                    # one bar joint — the lid IS the splice's Z lock (the
                    # install axis the joint leaves free), not just a roof
-LID_XA = LATCHES[1][0] + LG.BLK_W / 2 + 0.4   # lid span: between the
-LID_XB = LATCHES[0][0] - LG.BLK_W / 2 - 0.4   # FUSED towers, 0.4 tip gaps
-TROUGH_X0 = LATCHES[1][0] + LG.BLK_W / 2 + 0.6   # wiring trough: runs
-TROUGH_X1 = LATCHES[0][0] - LG.BLK_W / 2 - 0.6   # right up to the towers
+LID_XA = FEET[1][0] + LG.BLK_W / 2 + 0.4   # lid span: between the
+LID_XB = FEET[0][0] - LG.BLK_W / 2 - 0.4   # FUSED towers, 0.4 tip gaps
+TROUGH_X0 = FEET[1][0] + LG.BLK_W / 2 + 0.6   # wiring trough: runs
+TROUGH_X1 = FEET[0][0] - LG.BLK_W / 2 - 0.6   # right up to the towers
 LOCK_X, LOCK_Y = LID_XB - 4.6, 7.6  # lid-lock detent nub: bar-top pocket; a
                                    # groove+dimple in lid B's underside sets
                                    # the final position, stops over-insert
@@ -123,11 +130,8 @@ def _stub_tower(lx: float, wired: bool) -> cq.Workplane:
     """FUSED stub tower (user: single printed piece — the tenon is part of
     the bar): BLK_W-sq button body (19..43 — slimmed with the leg blocks
     to the 4.2 inset, symmetry round) + octagon spigot (43..81) with the
-    wedging-bolt channel + recessed button pocket (leg_latch_bolt/btn
-    SKUs reuse verbatim; the button pocket shifts inboard to (x -10.5,
-    face BLK_W/2) — at the old (x -14, face 22) the shared button pad
-    would float outside the slim tower; build.py offsets the bar-tower
-    button dummies to match). Authored at the ORIGIN and ROTATED 180°
+    no bolt channel or button pocket any more (the quick-release is gone —
+    the spigot is a plain sliding fit). Authored at the ORIGIN and ROTATED 180°
     like the +Y leg stacks. The wired tower's captive CA-354S threads UP
     from the foot-mortise access below; its cable enters from the trough
     side way. Prints WITH the bar, bottom-down — plain standing
@@ -142,16 +146,12 @@ def _stub_tower(lx: float, wired: bool) -> cq.Workplane:
     # SHAVED, INCLUDING the 1-embed slab below the seat plane (the slim
     # BLK_W body no longer buries it — it poked out as a 1-tall fin): the
     # truncated tenon lands FLUSH with the block's thinned face
-    # (waist-vs-slit capture + the bolt latch are untouched)
+    # (waist-vs-slit capture untouched)
     b = b.cut(box_at(LG.SQ_W + 2.0, 6.0, 42.0, y=LG.SH_Y + 3.0,
                      z=STUB_Z0 + 19.0))
-    # bolt channel hooks the thick authored -Y (point-side) wall of the
-    # block's mortise (the +Y face is the open groove); x +8 dodges the
-    # TRRS way at authored (-5, +TRRS_DY)
-    b = b.cut(box_at(LG.BOLT_W + 0.4, 34.0, LG.BOLT_H + 0.4,
-                     x=8.0, y=2.5, z=STUB_Z0 + 31.8))
-    b = b.cut(box_at(12.4, 9.0, 10.4, x=-10.5, y=LG.BLK_W / 2 - 4.4,
-                     z=STUB_Z0 - 11.0))
+    # (the bolt channel through the spigot and the recessed button pocket in
+    # the tower body are GONE with the quick-release — the tenon is unbroken
+    # and the bar↔leg joint has no Z retention, same as the leg↔body one)
     b = b.rotate((0, 0, 0), (0, 0, 1), 180).translate((lx, YC, 0))
     return b
 
@@ -163,21 +163,19 @@ def _foot_mortise_cutter(lx: float) -> cq.Workplane:
 
 
 def _bar_full() -> cq.Workplane:
-    """The full bar (pre-split): slim prism − slots − latch cavities −
-    wiring TROUGH − the full-length dovetail lid GROOVE − the lid-lock
-    detent pocket. The trough connects both latch cavities (the TRRS
-    pigtail routes to the mid-bar electronics without crossing a slot)."""
+    """The full bar (pre-split): slim prism − slots − wiring TROUGH −
+    the full-length dovetail lid GROOVE − the lid-lock detent pocket."""
     body = box_at(BAR_X1 - BAR_X0, BAR_Y1 - BAR_Y0, BAR_H,
                   x=(BAR_X0 + BAR_X1) / 2, y=(BAR_Y0 + BAR_Y1) / 2, z=BAR_H / 2)
-    body = body.union(_stub_tower(LATCHES[0][0], False))
-    body = body.union(_stub_tower(LATCHES[1][0], True))
-    body = body.cut(_foot_mortise_cutter(LATCHES[0][0]))
-    body = body.cut(_foot_mortise_cutter(LATCHES[1][0]))
+    body = body.union(_stub_tower(FEET[0][0], False))
+    body = body.union(_stub_tower(FEET[1][0], True))
+    body = body.cut(_foot_mortise_cutter(FEET[0][0]))
+    body = body.cut(_foot_mortise_cutter(FEET[1][0]))
     # wired tower's ways — cut AFTER the union (they pierce both the tower
     # and the bar prism beneath it): captive plug seat, Ø8 down-way to the
     # foot-mortise access, Ø8 side way to the trough
-    wlx = LATCHES[1][0] + 5.0     # TRRS axis: +5 in x (the bolt owns the
-    #                               other x side) and -13 in world y — the
+    wlx = FEET[1][0] + 5.0        # TRRS axis: +5 in x (the old bolt owned
+    #                               the other x side) and -13 in world y — the
     #                               fat flare band of the tower's octagon
     #                               (authored (-5, +13), tower rotated 180)
     wly = YC - LG.TRRS_DY
@@ -282,9 +280,8 @@ def pedal_bar_c() -> cq.Workplane:
 def _lid_full() -> cq.Workplane:
     """The full sliding-dovetail lid (pre-split): a 4-thick plate with 45°
     dovetail flanks riding the bar's top groove — ONE lid roofs the wiring
-    trough AND both latch cavities (no separate latch lids, no screws). It
-    carries the thumb-post slots, the TPU finger sockets, the latch detent
-    nub pockets, and the underside LOCK groove (both pieces slide over the
+    trough (no screws). It carries the thumb-post slots and the underside
+    LOCK groove (both pieces slide over the
     bar-top nub; lid B's groove ends in a dimple that clicks in at the
     final position). Prints TOP-FACE DOWN: the flanks are 45°."""
     prof = (cq.Workplane("YZ")
@@ -329,7 +326,7 @@ def _cable_runs():
     up its core to the captive plug seat (the column-side cable is placed
     by build.py with the leg stack). Rises on the TRRS axis — offset +5
     from the station, matching the down-way and the plug seat."""
-    lx = LATCHES[1][0]
+    lx = FEET[1][0]
     wly = YC - LG.TRRS_DY
     pts = [(lx + 24.0, YC - 3.0, 11.0), (lx + 14.0, wly + 3.5, 11.0),
            (lx + 5.0, wly, 11.0), (lx + 5.0, wly, 26.0)]
@@ -354,6 +351,6 @@ def assembly_parts():
             ("pedal_lid_b", pedal_lid_b()),
             ("pedal_detent_nub_0", _lock_nub()),
             ("leg_foot_4",
-             LG.leg_foot().translate((LATCHES[1][0], YC, -12.0))),
+             LG.leg_foot().translate((FEET[1][0], YC, -12.0))),
             ("leg_foot_5",
-             LG.leg_foot().translate((LATCHES[0][0], YC, -12.0)))] + _cable_runs()
+             LG.leg_foot().translate((FEET[0][0], YC, -12.0)))] + _cable_runs()
