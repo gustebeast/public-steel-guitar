@@ -54,9 +54,21 @@ WALL_THICKNESS  = 13 * NOZZLE_D  # 10.4 (was 10.0 = 12.5 beads) structural wall:
 # dovetail moved from the +Z face to the +Y face, and that face spans Z. The
 # dovetail's foot is the widest thing in it.
 PEDAL_LID_FOOT_W = 23.8     # dovetail foot (cavity, not material — off-grid by design)
-PEDAL_BAR_H      = PEDAL_LID_FOOT_W + 2 * MIN_WALL_2P   # 27.0 (was a hardcoded 19.0,
-                            # which could not host the dovetail once it moved to a face
-                            # that spans Z: 23.8 of foot into 19.0 of bar)
+# WHAT SETS THE HEIGHT NOW: the user's playing datum, the height of the pedal AXLE
+# centre above the floor (the TPU feet's underside) — 0.8*60, on the nozzle grid.
+# The bar carries the pedal housings, so the axle rides FOOT_H + BAR_H + the
+# housing's own standoff; inverting that gives the bar. foot_pedal asserts the
+# achieved height against this datum, which is what keeps the chain honest if any
+# of the three terms moves.
+PEDAL_AXLE_H     = 0.8 * 60   # 48.0 — axle centre above the floor (user)
+PEDAL_BAR_H      = 29.0     # = PEDAL_AXLE_H - legs.FOOT_H(12) - foot_pedal.HOUS_X1(7.0);
+                            # spelled out rather than imported (legs/foot_pedal both
+                            # read this module — the import only goes one way).
+                            # Must still HOST the lid, which is the constraint that
+                            # used to set it (23.8 of dovetail + 2 skins = 27.0 floor):
+assert PEDAL_BAR_H >= PEDAL_LID_FOOT_W + 2 * MIN_WALL_2P, (
+    f"a {PEDAL_BAR_H} bar cannot host the {PEDAL_LID_FOOT_W} dovetail with "
+    f"{MIN_WALL_2P} skins")
 PEDAL_TOWER_BAND = 24.0     # bar top -> tower seat: the latch button band
 
 def string_y(i: int) -> float:

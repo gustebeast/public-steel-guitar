@@ -135,8 +135,8 @@ PARTS = {
     "pedal_bar_a":     (lambda: _PB_bar("pedal_bar_a"), "petg-gf/pedal_bar_a.step", "PETG-GF — pedal bar, -X piece (35.6 wide, flush with the slimmed leg blocks; fused WIRED tower; trough + lid groove; splice tenons at +X). ~219 long: prints STRAIGHT; _b drops onto the tenons, the LID locks the stack — no glue"),
     "pedal_bar_b":     (lambda: _PB_bar("pedal_bar_b"), "petg-gf/pedal_bar_b.step", "PETG-GF — pedal bar, MID piece (trough only; XS1 cavities -X, XS2 tenons +X). ~219 long: straight print; slides straight down onto _a's tenons (the lid is the Z lock — no glue)"),
     "pedal_bar_c":     (lambda: _PB_bar("pedal_bar_c"), "petg-gf/pedal_bar_c.step", "PETG-GF — pedal bar, +X piece (35.6 wide, flush with the slimmed leg blocks; fused PLAIN tower; splice cavities at -X). ~215 long: straight print; slides straight down onto _b's tenons (the lid is the Z lock — no glue)"),
-    "pedal_lid_a":     (lambda: heal(_PB("pedal_lid_a")), "petg-gf/pedal_lid_a.step", "PETG-GF — sliding dovetail lid, -X piece (covers the TRRS latch; bridges the bar splice). 241 long; print TOP-FACE DOWN (45-deg flanks)"),
-    "pedal_lid_b":     (lambda: heal(_PB("pedal_lid_b")), "petg-gf/pedal_lid_b.step", "PETG-GF — sliding dovetail lid, +X piece (covers the plain latch; lock dimple clicks onto the bar-top nub, pinning both lid pieces — no screws). 322 long: diagonal, TOP-FACE DOWN"),
+    "pedal_lid_a":     (lambda: heal(_PB("pedal_lid_a")), "petg-gf/pedal_lid_a.step", "PETG-GF — sliding dovetail lid, -X piece (covers the TRRS latch; bridges bar splice XS1; carries the lock dimple). Goes in SECOND, and its -X end finishes FLUSH with the bar. 318 long: diagonal, TOP-FACE DOWN (45-deg flanks)"),
+    "pedal_lid_b":     (lambda: heal(_PB("pedal_lid_b")), "petg-gf/pedal_lid_b.step", "PETG-GF — sliding dovetail lid, +X piece (covers the plain latch; bridges XS2). INSTALL BOTH FROM THE -X END: B first, run it the whole bar until it butts the 1.6 end wall, then A behind it — A's dimple clicks the nub and pins the stack. 317 long: diagonal, TOP-FACE DOWN"),
     # (pedal_bolt / pedal_bolt_trrs / pedal_latch_finger exports RETIRED by
     # ROUND 4 — the sliding latches are gone; the bar carries stub towers)
     "pedal_lever":     (lambda: heal(__import__("src.foot_pedal", fromlist=["e"]).pedal_lever()), "pctg/pedal_lever.step", "PCTG — FOOT PEDAL lever ×3 (initial design): hub on the axle, leg carrying the return lobe at 13.2 (sized so the 20° throw gives the SAME 4.51 spring stroke as the knee levers — which is what lets the half stop transfer for free), a 90 mm arm running out to the player and the pedal board across its end (30.8 mm of travel, ~1.6→3 N at the board)"),
@@ -512,6 +512,13 @@ LEG_HEIGHT = 655.0   # floor → body bottom (user reference). Fine-stage
 LEG_SEGMENTS = 2     # index stride / band count; the drawn chain places
                      # LEG_SEGMENTS−1 bodies per leg (k=1 at 655)
 
+# The pedal bar and the pedals on it are both drawn in the bar's own frame
+# (z0 = plate bottom = the shaft waist's lower shoulder) and lifted into the
+# guitar by the same amount. Named once so the bar, the pedals and the viewer's
+# animation rig (tools/export_rig.py, which needs the axle centre in guitar
+# coordinates) can't drift apart.
+PEDAL_LIFT_DZ = (CH.Z_BOT - LEG_HEIGHT) + LG.FOOT_H
+
 
 def _leg_components():
     """FLUSH SQUARE-LEG stack (leg centres = CH.LEG_Y, 17 inboard of the
@@ -714,7 +721,7 @@ def _pedal_bar_components():
     the shaft waist's lower shoulder (foot top): lift by ground + FOOT_H."""
     from . import pedal_bar as PB
     from . import foot_pedal as FP
-    dz = (CH.Z_BOT - LEG_HEIGHT) + LG.FOOT_H
+    dz = PEDAL_LIFT_DZ
     # The pedal HOUSINGS are fused into the bar pieces (foot_pedal.fuse_into_bar),
     # and that fusion has to happen HERE as well as in the export registry
     # (_PB_bar). It did not, so every assembly and every overlap-gate run since the
@@ -735,8 +742,7 @@ def _foot_pedal_components():
     """Foot pedals, drawn in the pedal bar's frame (z0 = plate bottom) and lifted
     the same way it is. Three stations, all at REST."""
     from . import foot_pedal as FP
-    dz = (CH.Z_BOT - LEG_HEIGHT) + LG.FOOT_H
-    return [(n, wp.translate((0, 0, dz))) for n, wp in FP.demo_parts()]
+    return [(n, wp.translate((0, 0, PEDAL_LIFT_DZ))) for n, wp in FP.demo_parts()]
 
 
 def _electronics_components():

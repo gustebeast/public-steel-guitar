@@ -74,6 +74,49 @@ def _idx(string_no: int) -> int:
     return string_no - 1                           # N = index + 1  <=>  index = N - 1
 
 
+def _pedals() -> list[dict]:
+    """The foot pedals' own kinematics, so the viewer can show them DEPRESS.
+
+    Everything here is read from the model, not restated:
+
+      * centre  — the axle, at (station x, MOUNT_DY, BAR_TOP_Z + the bar's lift).
+      * axis    — foot_pedal._to_guitar maps the lever's local +Y axle to guitar
+                  -X, so the pedal swings about -X (along the bar).
+      * throw   — foot_pedal.THROW_P, and NEGATIVE is the pressed direction: the
+                  cartridges sit above the lobe pushing down, so the foot drives
+                  -theta (see _to_guitar's docstring). Probed, not assumed —
+                  swing(-20) is the pose whose pad ends up lowest.
+      * lobe_rc — the piston stroke is EXACT, not a visual gain: a flat lobe face
+                  at radius RC swept through theta retracts the piston by
+                  RC*sin(theta). 13.2*sin(20) = 4.514, which is the 4.51 the pedal
+                  arm was sized around, and 9*sin(30) = 4.50 on the knee lever.
+
+    The pistons retract along guitar +Z (the cartridge bases sit above them). The
+    springs are NOT animated — a compressing helix isn't a rigid transform, same
+    reason the belt loop and leadscrew aren't (see the module docstring).
+    """
+    from src import foot_pedal as FP
+    from src.build import PEDAL_LIFT_DZ
+
+    out = []
+    for i, x in enumerate(FP.PEDAL_X):
+        out.append({
+            "i": i,
+            "center": [x, FP.MOUNT_DY, FP.BAR_TOP_Z + PEDAL_LIFT_DZ],
+            "axis": [-1, 0, 0],
+            "throw_deg": -FP.THROW_P,               # signed: pressed = -theta
+            "lobe_rc": FP.LOBE_RC_P,                # stroke = rc*sin(theta)
+            # on the axle, so they swing with the arm (the bearings, board and
+            # sensor stack do not — they stay with the housing)
+            "swing_nodes": [f"pedal_lever_{i}", f"pedal{i}_magnet"],
+            # pushed back into their cartridges as the lobe comes round
+            "piston_nodes": [f"pedal{i}_main_cart_piston",
+                             f"pedal{i}_half_stop_cart_piston"],
+            "piston_dir": [0, 0, 1],
+        })
+    return out
+
+
 def build_rig(build_n=None) -> pathlib.Path:
     if build_n is None:
         from tools.export_glb import _current_build_n
@@ -104,14 +147,24 @@ def build_rig(build_n=None) -> pathlib.Path:
             "belt_clamp": {"node": f"belt_clamp_{i}", "dir": list(tan)},
         })
 
+    # P1..P5 are the bar's stations left to right, and foot_pedal.PEDAL_X is in
+    # that same order (index 0 = most -X = flush end, the leg side), so the
+    # control's number IS its station index. Levers carry no pedal index — the
+    # knee hardware isn't posed by the viewer yet.
+    pedals = _pedals()
     copedent = []
     for name, spec in _COPEDENT.items():
-        copedent.append({
+        entry = {
             "name": name, "key": spec["key"],
             # JSON key stays "raises" (the viewer's contract); values are SIGNED
             "raises": [{"i": _idx(n), "semitones": st}
                        for n, st in spec["moves"].items()],
-        })
+        }
+        if name.startswith("P"):
+            entry["pedal"] = int(name[1:]) - 1
+        copedent.append(entry)
+    _np = sum(1 for c in copedent if "pedal" in c)
+    assert _np == len(pedals), f"{_np} pedal controls vs {len(pedals)} stations"
 
     rig = {
         "build": build_n,
@@ -125,12 +178,14 @@ def build_rig(build_n=None) -> pathlib.Path:
         },
         "open_tuning": list(OPEN_TUNING),
         "strings": strings,
+        "pedals": pedals,
         "copedent": copedent,
     }
     RIG.parent.mkdir(parents=True, exist_ok=True)
     RIG.write_text(json.dumps(rig, indent=1))
     print(f"wrote {RIG.relative_to(REPO).as_posix()}  "
-          f"({len(strings)} strings, {len(copedent)} controls "
+          f"({len(strings)} strings, {len(pedals)} posed pedals, "
+          f"{len(copedent)} controls "
           f"({sum(1 for k in _COPEDENT if k.startswith('P'))} pedals + "
           f"{sum(1 for k in _COPEDENT if not k.startswith('P'))} levers), "
           f"build #{build_n})")

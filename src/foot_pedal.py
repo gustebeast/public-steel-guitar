@@ -328,6 +328,15 @@ BAR_TOP_Z  = PB.BAR_H + HOUS_X1            # axle datum: local +X is guitar -Z, 
                                            # into it — and everything the bar owns
                                            # (trough, lid groove, splices) lives below
                                            # BAR_H, so the two never contend.
+# THE PLAYING DATUM. The user sizes this instrument's pedal geometry by how high the
+# axle centre sits above the floor, and dimensions.PEDAL_BAR_H is solved backwards
+# from it. That inversion is only safe while the other two terms hold, so check the
+# height the model ACTUALLY builds rather than trusting the arithmetic: the foot's
+# underside is FOOT_H below the bar's z0, and the axle is BAR_TOP_Z above it.
+_AXLE_H = PB.LG.FOOT_H + BAR_TOP_Z
+assert abs(_AXLE_H - D.PEDAL_AXLE_H) < 1e-9, (
+    f"pedal axle sits {_AXLE_H:.2f} above the floor, not the {D.PEDAL_AXLE_H} datum "
+    f"— re-solve dimensions.PEDAL_BAR_H (= PEDAL_AXLE_H - FOOT_H - HOUS_X1)")
 
 
 # The housing SITS ON the bar's -Y face, it does not hang off it. The bar builds

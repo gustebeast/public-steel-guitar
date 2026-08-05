@@ -38,9 +38,11 @@ flip and neither is a rotation:
     was the PRINT axis, which is now world Y (see SPLICE_J).
 
 A WIRING TROUGH runs between the towers under a full-length sliding-
-DOVETAIL LID — no screws: the lid pieces slide in from the +X end; a TPU
-detent nub in the groove floor clicks into lid B's underside dimple,
-setting the position and locking the stack (B butts A). The wired tower's
+DOVETAIL LID — no screws: the lid pieces slide in from the -X end (user),
+which is the WIRED tower's end, so the open mouth doubles as the access
+you thread the leg wiring through before closing the bar up. A TPU detent
+nub in the groove floor clicks into lid A's underside dimple, setting the
+position and locking the stack (A butts B). The wired tower's
 cable enters from the trough through a Ø8 side way and rises to the plug
 seat. The trough is deliberately shorter in Z than the dovetail's foot,
 leaving groove floor for that nub — but not so short that it stops
@@ -223,12 +225,35 @@ XL = (LATCHES[0][0] + LATCHES[1][0]) / 2   # lid butt-splice: mid-span,
                    # ~107 from each bar splice so each lid piece BRIDGES
                    # one bar joint — the lid IS the splice's Z lock (the
                    # install axis the joint leaves free), not just a roof
-LID_XA = LATCHES[1][0] + LG.BLK_W / 2 + 0.4   # lid span: between the
-LID_XB = LATCHES[0][0] - LG.BLK_W / 2 - 0.4   # FUSED towers, 0.4 tip gaps
+# LID SPAN — END TO END (user round: install runs -X -> +X). The lid used to
+# sit BETWEEN the fused towers and slide in from +X. Both ends changed:
+#
+#   -X  FLUSH with the bar's end face. The groove runs out of it, so that mouth
+#       is the lid's entry AND the opening the leg wiring is installed through
+#       (the -X tower is the WIRED one — its Ø8 side way feeds the trough).
+#   +X  the groove STOPS short, leaving MIN_WALL_2P of bar as an end wall. That
+#       1.6 is the whole retention story on this end: the lid cannot slide out
+#       the far side, so the nub at the near end pins the stack against it.
+LID_END_STOP = D.MIN_WALL_2P                  # 1.6 — the +X end wall (user)
+LID_XA = BAR_X0                               # -X: flush, open (wiring access)
+LID_XB = BAR_X1 - LID_END_STOP                # +X: hard stop, 1.6 of bar left
 TROUGH_X0 = LATCHES[1][0] + LG.BLK_W / 2 + 0.6   # wiring trough: runs
 TROUGH_X1 = LATCHES[0][0] - LG.BLK_W / 2 - 0.6   # right up to the towers
+# End-to-end, the two lid pieces are ~318 each — they no longer fit the bed
+# STRAIGHT and never did (they printed diagonally at ~278 already). A part laid on
+# the diagonal has BED*sqrt(2) to work with, less its own width.
+_LID_L = (XL - LID_XA, LID_XB - XL)
+assert max(_LID_L) <= BED * 2 ** 0.5 - D.PEDAL_LID_FOOT_W, (
+    f"lid pieces {tuple(round(v, 1) for v in _LID_L)} — one exceeds the "
+    f"{BED * 2 ** 0.5 - D.PEDAL_LID_FOOT_W:.1f} diagonal a {D.PEDAL_LID_FOOT_W}-wide "
+    f"part gets on the {BED} bed")
+
 LOCK_D = 3.8                       # detent pocket diameter
-LOCK_X = LID_XB - 4.6
+LOCK_X = LID_XA + 4.6              # the nub FOLLOWED the install flip: it has to
+                                   # sit at the OPEN end, because that is the only
+                                   # end anything can escape from. Piece B goes in
+                                   # first and runs to the +X stop wall; A follows
+                                   # and its dimple clicks here, trapping B
 LOCK_Z = (TROUGH_Z1 + LID_ZC + LID_FOOT_HW) / 2.0   # 22.70 — centred in the groove
                                    # floor left ABOVE the trough (the wider of the
                                    # two leftover bands)
@@ -330,10 +355,10 @@ def _bar_full() -> cq.Workplane:
                            y=(LID_Y0 - TROUGH_D + BAR_Y1 + 1.0) / 2,
                            z=(TROUGH_Z0 + TROUGH_Z1) / 2))
 
-    # full-length dovetail lid GROOVE in the +Y FACE: runs out the +X end face
-    # for lid insertion (the short open stub over the +X slot region is
-    # cosmetic). Profile is the old one rotated about X — same rail step, same
-    # self-supporting flanks, now measured across Z instead of Y.
+    # full-length dovetail lid GROOVE in the +Y FACE: runs out the -X end face
+    # (the install mouth + the leg-wiring access) and dies 1.6 short of the +X
+    # end, leaving the wall that stops the lid. Profile is the old one rotated
+    # about X — same rail step, same self-supporting flanks, now across Z.
     groove = (cq.Workplane("YZ")
               .polyline([(LID_Y0 - YC,      LID_ZC - LID_FOOT_HW),
                          (LID_Y0 - YC,      LID_ZC + LID_FOOT_HW),
@@ -341,9 +366,9 @@ def _bar_full() -> cq.Workplane:
                          (BAR_Y1 + 1 - YC,  LID_ZC + LID_MOUTH_HW),
                          (BAR_Y1 + 1 - YC,  LID_ZC - LID_MOUTH_HW),
                          (BAR_Y1 - YC,      LID_ZC - LID_MOUTH_HW)])
-              .close().extrude(BAR_X1 + 1 - LID_XA))
+              .close().extrude(LID_XB - (BAR_X0 - 1.0)))
     body = body.cut(cq.Workplane("XY").add(groove.val())
-                    .translate((LID_XA, YC, 0)))
+                    .translate((BAR_X0 - 1.0, YC, 0)))
     # lid-lock detent pocket, bored -Y into the groove floor (a TPU nub sits 1.2
     # proud of it, into lid B's underside groove)
     body = body.cut(cyl_y(LOCK_D, 3.2, y0=LID_Y0 - 3.1, x=LOCK_X, z=LOCK_Z))
@@ -459,7 +484,7 @@ def _lid_full() -> cq.Workplane:
     trough AND both latch cavities (no separate latch lids, no screws). It
     carries the thumb-post slots, the TPU finger sockets, the latch detent
     nub pockets, and the underside LOCK groove (both pieces slide over the
-    bar-top nub; lid B's groove ends in a dimple that clicks in at the
+    groove-floor nub; lid A's groove ends in a dimple that clicks in at the
     final position). Prints TOP-FACE DOWN: the flanks are 45°."""
     _c = 0.1                                   # per-side sliding clearance
     prof = (cq.Workplane("YZ")
@@ -477,15 +502,19 @@ def _lid_full() -> cq.Workplane:
 
 
 def pedal_lid_a() -> cq.Workplane:
-    """-X lid piece (~278 — diagonal print; bridges bar splice XS1)."""
+    """-X lid piece (bridges bar splice XS1 + carries the lock dimple).
+    Goes in SECOND now that install runs -X -> +X: it follows B through the
+    same mouth, butts it, and its dimple clicks onto the groove-floor nub —
+    pinning both pieces against the +X end wall. Its -X end is FLUSH with
+    the bar's, so the closed bar shows no mouth."""
     return _lid_full().intersect(_clip(LID_XA - 1.0, XL))
 
 
 def pedal_lid_b() -> cq.Workplane:
-    """+X lid piece (~278 — diagonal print; bridges bar splice XS2 +
-    carries the lock dimple). Slides in last: its dimple clicks onto the
-    bar-top nub, pinning BOTH lid pieces (B butts A, A butts nothing —
-    the stack is set by the nub)."""
+    """+X lid piece (bridges bar splice XS2). Goes in FIRST and runs the
+    whole bar to the 1.6 end wall, riding over the nub on its lock groove
+    (which is why that groove is full length and only A's ends in a
+    dimple)."""
     return _lid_full().intersect(_clip(XL, LID_XB + 1.0))
 
 
