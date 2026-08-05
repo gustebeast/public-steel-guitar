@@ -917,18 +917,81 @@ _XH6_W, _XH6_D = 12.4 + 2.5 * 2, 5.75                         # 17.40 x 5.75
 _USBC_W, _USBC_H = 12.35, 6.50                                # USB-IF MAX overmold
 # Plug body length along the mating axis. ASSUMPTIONS, and the ones to check against real
 # cable before cutting metal -- overmolds are not standardised.
-PLUG_L = {"J1": 20.0, "J2": 14.0}                             # USB-C boot; XHP-6 + relief
+# J1 is a RIGHT-ANGLE USB-C (user). Two reasons, and the second is the real one:
+#   * Its socket sits at x -24.75 while the shaft is at x -4.05, so the lead has to travel
+#     ~20 mm +X whatever happens. A straight plug spends 20 mm going -Y first and then
+#     doubles across; a side-exit plug leaves +X immediately -- one bend instead of two,
+#     and 8 mm less protrusion over the endplate's open top face.
+#   * USB-C is REVERSIBLE, so a left/right-exit cable gives either direction by flipping
+#     the plug at assembly. No handedness to get wrong when ordering.
+# J2 stays STRAIGHT: the XH sits nearly over the shaft already, so an angled plug would buy
+# almost nothing (it remains an option if bench experience wants it).
+PLUG_L = {"J1": 12.0, "J2": 14.0}                             # right-angle body; XHP-6 + relief
 CONDUIT_W = max(_XH6_D, _USBC_H) + 2 * CONDUIT_CLR            #  9.50, along X (thin axis)
+# Y answers TWO separate requirements and must satisfy the larger. Sizing it on the span
+# alone was a latent bug: it happened to be big enough only because the straight USB-C plug
+# was longer than the XH is wide, so shortening a plug would have quietly made the shaft too
+# narrow to PASS one.
+_COND_PASS = max(_XH6_W, _USBC_W) + 2 * CONDUIT_CLR           # 20.40: get a plug THROUGH
+_COND_SPAN = max(PLUG_L.values()) + 2 * CONDUIT_CLR           # 17.00: reach past a MATED plug
+CONDUIT_D = max(_COND_PASS, _COND_SPAN)                       # 20.40, along Y
 CONDUIT_Y1 = PCB_YM - 2.0                                     # -108.85, clear of the board
-CONDUIT_Y0 = CONDUIT_Y1 - (max(PLUG_L.values()) + 2 * CONDUIT_CLR)   # past the longest plug
-CONDUIT_D = CONDUIT_Y1 - CONDUIT_Y0                           # 23.00, along Y
+CONDUIT_Y0 = CONDUIT_Y1 - CONDUIT_D
 CONDUIT_XC = (BAND_X0 + D.BRIDGE_BASE_X1) / 2                 # centred in the endplate band
 
 
+# The channel is OPEN TO -X, and that is a printing requirement, not a convenience. The
+# endplate builds +X -> -X, so a blind vertical shaft would have material RESUME across its
+# whole -X face -- a 20.40 x 21 bridge over void, anchored only at its Y edges. Chamfering
+# that face at 45 deg cannot close it either: 20.40 of Y needs 10.2 mm of X and the shaft
+# would run out through XLO before it got there. Running the void out through the -X face
+# instead means material never resumes at all, every layer is a simple notch rooted on the
+# one below, and the cable arrives directly in the chassis interior where it needs to be.
+CONDUIT_X1 = D.BRIDGE_BASE_X1 - D.MIN_WALL_2P                 # 7.00, +X wall kept
+RUN_Z      = DECK_TOP - 16.0                                  # harness plane in the box
+CONDUIT_Z0 = RUN_Z - 4.75                                     # floor, half a bundle below
+
+
 def opt_conduit(grow: float = 0.0) -> cq.Workplane:
-    """The shaft cutter. Vertical, through the endplate's top face into the foot box."""
-    return box_at(CONDUIT_W + 2 * grow, CONDUIT_D + 2 * grow, 60.0,
-                  x=CONDUIT_XC, y=(CONDUIT_Y0 + CONDUIT_Y1) / 2, z=DECK_TOP - 30.0 + 0.001)
+    """The channel cutter: down from the endplate's top face, then out its -X face."""
+    x1 = CONDUIT_X1 + grow
+    # -X limit is the endplate's OWN FACE, not past it. Running 4 mm further -X (the first
+    # attempt) chewed 19.5 mm out of the 57.4 mm +Z RETENTION LIP, which protrudes -X in
+    # exactly this -Y bay and is what stops the endplate lifting out of the deck. Stopping
+    # at the face keeps the lip whole AND still prints: the void ends at the part's own -X
+    # surface, so material never resumes behind it. The cable clears the lip by height
+    # instead -- the lip hangs in the deck-bottom Z band and the harness plane is well below
+    # it, so the run passes underneath rather than through.
+    x0 = BAND_X0 - grow
+    return box_at(x1 - x0, CONDUIT_D + 2 * grow, (DECK_TOP + 1.0) - (CONDUIT_Z0 - grow),
+                  x=(x0 + x1) / 2, y=(CONDUIT_Y0 + CONDUIT_Y1) / 2,
+                  z=((CONDUIT_Z0 - grow) + DECK_TOP + 1.0) / 2)
+
+
+def pi_target():
+    """The Pi's centre in world coords -- where the USB run terminates.
+
+    LAZY import: electronics imports chassis, and THIS module is imported by
+    bridge_endplate, so a module-level import risks the cycle that already had to be
+    untangled once in electronics.py."""
+    from . import electronics as EL
+    bb = EL.pi5().val().BoundingBox()
+    return ((bb.xmin + bb.xmax) / 2, (bb.ymin + bb.ymax) / 2, (bb.zmin + bb.zmax) / 2)
+
+
+def usb_run_length():
+    """Routed path length, board plug -> Pi, as (segments, total_mm). Orthogonal, because a
+    harness follows the box rather than flying point to point. This is what picks the cable
+    length off the shelf, so it is computed rather than eyeballed."""
+    px, py, pz = pi_target()
+    zc = PCB_TOP + PKG["USB-C"][2] / 2
+    y_turn = PCB_YM - PLUG_L["J1"] / 2
+    segs = [("+X to the shaft", abs((CONDUIT_XC - 2.2) - part("J1")["x"])),
+            ("down the shaft", zc - RUN_Z),
+            ("along Y", abs(py - y_turn)),
+            ("-X to the keyhead", abs(px - (CONDUIT_XC - 2.2))),
+            ("up into the Pi", abs(pz - RUN_Z))]
+    return segs, sum(v for _, v in segs)
 
 
 def opt_cables() -> cq.Workplane:
@@ -949,18 +1012,29 @@ def opt_cables() -> cq.Workplane:
                                 ("J2", _XH6_W, _XH6_D, XH_OD, +2.2)):
         p, plen = part(ref), PLUG_L[ref]
         zc = PCB_TOP + PKG[p["pkg"]][2] / 2                   # cable/plug centre height
-        y_back = PCB_YM - plen                                # plug's back face
         add(box_at(w, plen, h, x=p["x"], y=PCB_YM - plen / 2, z=zc))
-        # The turn is just past the plug's own back face, so the cable never doubles back.
-        y_turn = y_back - CONDUIT_CLR
+        # J1 exits SIDEWAYS at the plug (right-angle); J2 exits the back face and turns.
+        y_turn = (PCB_YM - plen / 2) if ref == "J1" else (PCB_YM - plen - CONDUIT_CLR)
         assert CONDUIT_Y0 < y_turn < CONDUIT_Y1, \
             f"{ref}: cable turns down at y {y_turn:.2f}, outside the conduit"
-        # The +X shift the USB-C needs because its socket sits -X of the endplate entirely.
         add(box_at(abs(CONDUIT_XC + xoff - p["x"]) + od, od, od,
                    x=(CONDUIT_XC + xoff + p["x"]) / 2, y=y_turn, z=zc))
-        # ...then straight down the shaft into the body
-        add(cyl(od, zc - (DECK_TOP - 16.0), z=DECK_TOP - 16.0)
-            .translate((CONDUIT_XC + xoff, y_turn, 0)))
+        add(cyl(od, zc - RUN_Z, z=RUN_Z).translate((CONDUIT_XC + xoff, y_turn, 0)))
+    # ---- and the USB run onward to the Pi, which is what sets the cable LENGTH ----
+    # Orthogonal inside the box, the way a harness actually lies: along Y to the Pi's Y,
+    # then the long haul -X down the instrument, then up into the Pi. 2.6 mm OD is exactly
+    # the Ø2.6 raceway limit the chassis already publishes, so it uses the existing route.
+    # ORDER MATTERS. Going to the Pi's Y first and then running -X puts the cable straight
+    # through the string mechanism -- the gate caught it hitting four leadscrews, three nuts
+    # and a carriage. The long -X haul therefore stays out at the conduit's own Y, which is
+    # ~119 mm off centre and clear of everything the strings drive, and only turns +Y once it
+    # is down at the keyhead. Same total length, completely different path.
+    px, py, pz = pi_target()
+    y_run = CONDUIT_Y1 - CONDUIT_D / 2
+    add(box_at(abs(px - (CONDUIT_XC - 2.2)), USB_OD, USB_OD,
+               x=(px + CONDUIT_XC - 2.2) / 2, y=y_run, z=RUN_Z))
+    add(cyl_y(USB_OD, abs(py - y_run), y0=min(py, y_run), x=px, z=RUN_Z))
+    add(cyl(USB_OD, abs(pz - RUN_Z), z=min(RUN_Z, pz)).translate((px, py, 0)))
     return out
 
 
