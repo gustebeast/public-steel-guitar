@@ -904,6 +904,13 @@ _COLORS = {
     "kl_axle":         (0.30, 0.54, 0.68),   # PCTG full-length axle (near the lever blue)
     "kl_magnet_cap":   (0.24, 0.44, 0.56),   # PCTG magnet retainer
     "kl_chip":         (0.12, 0.12, 0.14),   # MT6701 package (black)
+    # the rest of the sensor board's real population (knee_lever.SENSOR_BOM). The
+    # kv_/pedal{i}_ instances inherit these by the prefix rules in _color_for.
+    "kl_mcu":          (0.16, 0.16, 0.19),   # CH32V203G6U6 QFN-28 (black, slightly lifted)
+    "kl_transceiver":  (0.20, 0.20, 0.23),   # SN65HVD230DR SOIC-8 (black)
+    "kl_buck":         (0.24, 0.24, 0.27),   # LMR16006XDDCR SOT-23-6 (black)
+    "kl_inductor":     (0.35, 0.30, 0.28),   # shielded inductor (dark ferrite)
+    "kl_crystal":      (0.72, 0.74, 0.78),   # 3225 crystal can (bright metal)
     "kl_bearing":      (0.69, 0.77, 0.87),   # MR85ZZ
     "kl_magnet":       (0.80, 0.20, 0.20),   # diametric magnet
     "kl_pcb":          (0.05, 0.35, 0.15),   # MT6701 board (green)
@@ -1002,9 +1009,13 @@ def _color_for(name):
     # The axle group is named kl_* on the knee lever and pedal{i}_* here, so try the
     # kl_ sibling too: pedal0_pcb -> kl_pcb, pedal0_bearing -> kl_bearing. The feel
     # lanes need no prefix (main_cart_base is already unqualified).
-    _st = re.match(r"pedal\d+_(.+)$", base)
+    # Every lever carries the SAME sensor stack, named kl_* / kv_* / pedal{i}_*. Strip
+    # whichever station prefix this is and inherit the kl_ sibling's colour rather than
+    # triplicating the table. kl_ FIRST, then the bare name: bare-name-first collided,
+    # because the sensor board's "buck" is not the project's other "buck".
+    _st = re.match(r"(?:pedal\d+|kv|kl)_(.+)$", base)
     if _st:
-        for k in (_st.group(1), f"kl_{_st.group(1)}"):
+        for k in (f"kl_{_st.group(1)}", _st.group(1)):
             if k in _COLORS:
                 return cq.Color(*_COLORS[k])
     if base == "pedal_lever":
