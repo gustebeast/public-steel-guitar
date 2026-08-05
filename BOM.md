@@ -1060,6 +1060,45 @@ so sharing it would inject the one noise source ambient subtraction cannot remov
 *(A 2-way THT header was considered and rejected: its post tails would protrude through the
 board's underside — the face that bears flat on the plinth.)*
 
+### Cable conduit — connectors reach the body without touching the pickup panel
+
+Both plugs leave the board at −Y and have to get down into the instrument. The requirement
+was a channel that passes a **connector**, one at a time — not merely a cable — and **no
+cut-out in the magnetic pickup's top panel**.
+
+**The deck is never touched, and that falls out of the geometry rather than needing a
+dodge:** the deck's +X edge is `TP.PX0` = −16.60 and the **endplate begins exactly there**,
+so out past the board the endplate's own top face is open sky. The conduit is a plain
+vertical shaft in that face, dropping through the fill slab into the foot box. Verified open
+at every z from +5 down to −24, and its −X edge sits **7.85 mm clear of the deck**.
+
+**Sized by what must pass:**
+
+| | Envelope | Source |
+|---|--:|---|
+| XHP-6 plug | 17.40 × 5.75 | JST's 4-way drawing (12.4) + 2.5 mm pitch × 2 |
+| USB-C overmold | 12.35 × 6.50 | **USB-IF maximum** — so *any* cable passes |
+| **Shaft** | **9.50 (X) × 23.00 (Y)** | +3.75 / +3.00 clearance |
+
+**Orientation is the whole trick.** Plugs feed through with their **wide axis along Y** —
+the direction the endplate has 27 mm to spare — so X only has to clear the plug's *thin*
+axis. Sized the other way up the shaft needed 20.40 of X and left **2.40 mm walls in a
+structural slab**; this way X needs 9.50 and the walls are **7.85**. Y has to be long
+anyway, because the shaft must span past the back face of a *mated* plug so the cable can
+turn down without doubling back.
+
+**Cables and male connectors are modelled at true diameter** (`optical_cables`: USB-2 slim
+shielded 2.6 mm, 6-way XH bundle 4.0 mm, plus both plug bodies) so the route is *planned*
+rather than assumed. They are in the overlap gate — 391 components, no new collisions — so
+if the conduit or the plinth ever moves into the cable's path, the gate says so.
+
+The model makes one thing visible that a side view would hide: **the USB-C socket sits
+entirely −X of the endplate**, so its lead travels +X as well as −Y to reach the shaft.
+
+⚠ **`PLUG_L` (USB-C 20.0, XHP-6 14.0) is an assumption.** Overmold *length* is not
+specified by USB-IF — only the cross-section is — and it sets the shaft's Y extent. Measure
+a real cable before this is final; everything else above is from a drawing or a spec.
+
 **Power (J2): 5 V from the instrument rail, not USB VBUS.** MCU ~200–300 mA, PHY
 ~50, 21 op-amp channels ~40 — already past a USB port's 500 mA before a single
 emitter is lit. Since LED current is the second-best SNR lever, capping it at
