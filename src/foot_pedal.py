@@ -206,7 +206,7 @@ HOUS_Z1 = (pplace(KL._hs_pocket(KL.HS_YC, -20.0, KL.HS_BACK_X)).val()
 # grooves still hold Y and X over 17.15 of the board's 19, so it cannot fall out
 # sideways, but the pedal needs a positive -Z stop before this is buildable.
 Y_BUDGET = PB.BAR_Y1 - PB.BAR_Y0            # 35.6 — the bar's own width
-CRADLE_Z0 = KL.PCB_Z0 - KL.CR_FLOOR_T       # -15.2: the z_bot the cradle is BUILT
+CRADLE_Z0 = KL.PCB_Z0 - KL.CR_FLOOR_T       # the z_bot the cradle is BUILT
                                             # against (then clipped to HOUS_Z0).
                                             # Everything that asks knee_lever where
                                             # the board goes must pass THIS, not
@@ -215,6 +215,16 @@ CRADLE_Z0 = KL.PCB_Z0 - KL.CR_FLOOR_T       # -15.2: the z_bot the cradle is BUI
                                             # mixing them would flip the demo board
                                             # inside an unflipped cradle.
 HOUS_Z0 = HOUS_Z1 - Y_BUDGET
+
+assert KL.PCB_Z0 >= HOUS_Z0, (
+    f"the sensor board reaches z {KL.PCB_Z0:.2f}, below this housing's {HOUS_Z0:.2f} — it "
+    f"would poke through the -Y face and the clip would take the cradle floor with it, "
+    f"leaving nothing to stop the board sliding out while pcb_shim presses that way. "
+    f"That was the state before PCB_WZ came down to {KL.PCB_WZ:.0f}; keep it fitting.")
+# Unguarded until now, and the one direction nothing else checks: board_flip polices
+# the board against a housing's Z WINDOW, but this housing is clipped to a Y budget
+# that is tighter than the window its cradle is built against, so the board can fit
+# board_flip and still overhang here.
 
 
 def _housing() -> cq.Workplane:
