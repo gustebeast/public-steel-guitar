@@ -274,24 +274,23 @@ def _housing() -> cq.Workplane:
     # built guitar +Z, local +Z was a side wall. The flip makes local +Z guitar +Y,
     # the bar's build axis, so the helper's guarantee holds again and this is a
     # plain call. board_z picks the flip from the housing's own Z bounds.
-    # SENSOR CRADLE — knee_lever's, but built against the board's OWN floor
-    # (PCB_Z0 - CR_FLOOR_T) and then CLIPPED to the housing at HOUS_Z0. That is the
-    # whole of the pedal's branch, and building it this way rather than by teaching
-    # board_flip about overrun is deliberate:
+    # SENSOR CRADLE — knee_lever's, TURNED OVER (user: rotate the pedal boards so
+    # the connector faces DOWN into the bar, where the wiring can be hidden).
     #
-    #   * asking _cradle for z_bot = HOUS_Z0 directly makes board_flip turn the
-    #     board over (as-drawn no longer fits above the raised floor). Flipped, the
-    #     board runs to local x +14 against HOUS_X1 = 7 — it would hang 7 into the
-    #     bar — and the FAR web runs out to 18.15, because x_max caps only the near
-    #     one. Both are worse than the overhang the clip costs.
-    #   * clipping keeps the board in its as-drawn orientation, so the grooves, the
-    #     connector relief and the socket cone are all the proven geometry.
+    # This reverses an earlier call recorded here, and the reason it reverses is
+    # that the cost changed. The old note rejected the flip because "the board runs
+    # past HOUS_X1 = 7 — it would hang into the bar", and with a solid bar that was
+    # simply a clash. Now the bar OPENS to receive it: board_bay_cutter() takes a
+    # bay out of the bar top at every station, so the flipped board's lower half,
+    # its connector and the mated plug all live INSIDE the beam, and the bay breaks
+    # into the wiring trough — which is what actually hides the loom, and is also
+    # how a hand reaches the plug (through the open lid channel, before the lid
+    # goes on). Local +X is guitar -Z, so "past HOUS_X1" IS "down into the bar".
     #
-    # What the clip removes is the lowest 5.05 of both webs. It USED to remove the
-    # floor too, with the board poking 1.85 out through the -Y face; trimming the
-    # board's dead strip (PCB_WZ 19 -> 16) lifted its bottom edge to -9.00, inside
-    # this housing, so the floor survives at 1.15 and nothing overhangs.
-    w = KL._cradle(w, CRADLE_Z0, HOUS_Z1, x_max=HOUS_X1)
+    # The orientation is now REQUESTED, not inferred. Both ways up fit this housing
+    # in Z, so the fit-based default would have picked as-drawn forever; flip=True
+    # states the design intent and board_flip still checks it fits.
+    w = KL._cradle(w, CRADLE_Z0, HOUS_Z1, x_max=CRADLE_X_MAX, flip=BOARD_FLIP)
     w = w.cut(box_at(200.0, 200.0, 100.0, x=(HOUS_X0 + HOUS_X1) / 2, y=0.0,
                      z=HOUS_Z0 - 50.0))
     return heal(w)
@@ -348,6 +347,57 @@ assert abs(_AXLE_H - D.PEDAL_AXLE_H) < 1e-9, (
 MOUNT_DY = BAR_FACE_Y - HOUS_Z0
 
 
+# ── the board goes in UPSIDE DOWN, and the bar opens to take it ──────────────
+BOARD_FLIP = True                   # user: connector DOWN into the bar (see _housing)
+# Flipped, the board's far edge is at local +X = -PCB_X0, so the cradle is allowed
+# out that far instead of stopping at the bar top. On the knee lever the rule is
+# "nothing +X of the housing prism's face"; here +X is INTO the bar, and the bay
+# below is what makes that legal.
+CRADLE_X_MAX = -KL.PCB_X0                          # 25.0
+# Everything that has to live inside the beam: the board's lower half, the mated
+# connector and the plug's reach past the mouth.
+BAY_X1 = -KL.CONN_MOUTH_X + KL.CONN_PLUG_RUN       # 30.65 — deepest hardware
+BAY_CLR = 0.6                                      # printed clearance around the bay
+# WHERE THE SHIM STOPS. The knee lever's shim runs to the housing ceiling and the
+# chassis underside presses it. The pedal's ceiling IS the bar's +Y face — and that
+# face carries the lid groove, so a full-height shim runs straight into the lid (the
+# gate caught it on all five stations). It stops at the groove floor instead and the
+# LID becomes the retainer: the same scheme, with the bar's lid standing in for the
+# instrument's underside. Local z maps to guitar Y through MOUNT_DY.
+SHIM_TOP = PB.LID_Y0 - MOUNT_DY                    # 21.45
+
+
+def board_bay_cutter():
+    """The pocket the bar gives up at each station, in the pedal's LOCAL frame.
+
+    Sized from the placed hardware rather than typed: take everything the flipped
+    board puts below the bar top — cradle, board, sensor parts, connector, plug —
+    bound it, and open that box from the bar's top face downward. Because the box
+    is derived, trimming the board or moving the connector re-sizes the bay instead
+    of quietly clashing with it.
+
+    It deliberately runs OUT through the top face (local -X, guitar +Z): the bay has
+    to be open upward or the board could never be lowered in.
+    """
+    parts = [KL.sensor_board(), KL.sensor_connector()]
+    parts += [s for _, s in KL.sensor_hardware()]
+    parts = [p.rotate((0.0, 0.0, 0.0), (0.0, 1.0, 0.0), 180.0) for p in parts]
+    y0 = y1 = z0 = z1 = None
+    for p in parts:
+        b = p.val().BoundingBox()
+        y0 = b.ymin if y0 is None else min(y0, b.ymin)
+        y1 = b.ymax if y1 is None else max(y1, b.ymax)
+        z0 = b.zmin if z0 is None else min(z0, b.zmin)
+        z1 = b.zmax if z1 is None else max(z1, b.zmax)
+    # widen to the CRADLE's own footprint — the webs and floor stand outside the
+    # board in both local Y and Z, and they descend with it
+    y0, y1 = min(y0, KL.CR_Y0) - BAY_CLR, max(y1, KL.CR_Y1) + BAY_CLR
+    z0, z1 = z0 - KL.CR_WEB_T - BAY_CLR, z1 + KL.CR_WEB_T + BAY_CLR
+    x0, x1 = HOUS_X1 - 20.0, BAY_X1 + BAY_CLR      # -20: run out through the top
+    return box_at(x1 - x0, y1 - y0, z1 - z0,
+                  x=(x0 + x1) / 2, y=(y0 + y1) / 2, z=(z0 + z1) / 2)
+
+
 def place(s, x):
     """Pose a local solid onto the bar at guitar station `x`."""
     return _to_guitar(s).translate((x, MOUNT_DY, BAR_TOP_Z))
@@ -374,10 +424,18 @@ def fuse_into_bar(piece, x0, x1):
 
     Called from build.py rather than pedal_bar, to keep the import one-way (this
     module reads pedal_bar for the bar's own faces) — the same dodge chassis uses
-    for the motor plates and the tee cradles."""
+    for the motor plates and the tee cradles.
+
+    ORDER MATTERS: the bay comes out of the BAR first, then the housing goes in.
+    The housing's own cradle descends into that bay, so cutting the other way round
+    takes the cradle straight back out — which is exactly what happened, and the
+    tell was the piece falling into 3 and 4 disconnected solids as each far web was
+    severed from its housing. A solid count is a good check on a cut you cannot
+    see."""
+    bay = board_bay_cutter()
     for x in PEDAL_X:
         if x0 <= x < x1:
-            piece = piece.union(place(_housing(), x))
+            piece = piece.cut(place(bay, x)).union(place(_housing(), x))
     return piece
 
 
@@ -430,7 +488,8 @@ def demo_parts():
             return place(pplace(s), _x)
 
         out.append((f"pedal_lever_{i}", _P(swing(_lever(), 0.0))))
-        out += KL.axle_dummies(_P, pre, CRADLE_Z0, HOUS_Z1)
+        out += KL.axle_dummies(_P, pre, CRADLE_Z0, HOUS_Z1, flip=BOARD_FLIP,
+                               shim_top=SHIM_TOP)
         out += KL.cart_dummies(_F, pre)
         out += KL.feel_dummies(_F, pre)
     return out

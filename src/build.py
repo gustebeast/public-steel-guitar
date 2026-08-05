@@ -851,17 +851,19 @@ _LEVER_SLOT = 1 * _RIB                       # 23.0 — ILKL -> LKL, all the leg
 #   originally-requested slot (69) is only affordable at a 69 knee gap, which is
 #   worse where it matters — the knee has to fit.
 
-# VKL IS THE ONE EXCEPTION, and the gate found it: the rib mortises stop at MID_Y
-# (the guitar's Y midpoint) by design, and the KV housing is 77.4 deep in +Y — at the
-# shared plane its tail ran 10.4 past the slot's end into solid rib. It therefore
-# sits at the deepest Y its own slot allows. That is no real loss: a VERTICAL lever
-# is lifted by the knee along its whole arm, so it never had a 20 mm contact plane to
-# share in the first place. Derived from the solid so it cannot drift.
+# VKL sits at the SHARED PLANE like everything else, now that the mortise runs to the
+# inside edge of the instrument (knee_lever.MORT_Y_END). It could not before: the
+# slots stopped at mid-Y, the KV housing is 77.4 deep in +Y, and its tail ran 10.4
+# into solid rib — so it had to sit that much further -Y, which put its arm in FRONT
+# of the knee. The player would have had to pull back to reach it, defeating the one
+# thing a vertical lever is for: lift without moving (user). Lengthening the slot
+# bought the whole 10.4 back and then some. Still derived, still clamped, so the day
+# the housing gets deeper this reports instead of burying itself in a rib.
 def _vkl_mount_y() -> float:
     from . import knee_lever as KL
     from . import knee_lever_vert as KV
     tail = KV.place(KV.kv_housing).val().BoundingBox().ymax - KV.MOUNT_Y
-    return min(_LEVER_Y, KL.MID_Y - tail)
+    return min(_LEVER_Y, KL.MORT_Y_END - tail)
 
 
 #   name    kind   station x        mount y     mirrored?
