@@ -358,6 +358,12 @@ def _build() -> cq.Workplane:
         body = body.union(box_at(TAIL_X1 - TAIL_X0, _y1 - _y0, CARRIER_TOP - CH.TP_GZ1,
                                  x=(TAIL_X0 + TAIL_X1) / 2, y=(_y0 + _y1) / 2,
                                  z=(CH.TP_GZ1 + CARRIER_TOP) / 2))
+    # CABLE CONDUIT: a vertical shaft -Y of the board, from this part's own top face down
+    # through the fill slab into the foot box. Sized to pass a CONNECTOR one at a time, not
+    # just a cable -- see optical_pickup.opt_conduit. The magnetic pickup's top panel is
+    # untouched: the deck ends at TP.PX0 = -16.60 and this shaft lives entirely in the
+    # endplate band +X of it, which is open sky out past the board.
+    body = body.cut(OP.opt_conduit())
     for _mx, _my in OP.mount_points():
         # Screw enters from ABOVE, down through the board's clearance hole. The plinth is
         # only 3.66 thick but it sits ON the fill slab, so the anchor gets M4's full
