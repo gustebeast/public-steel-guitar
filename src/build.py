@@ -214,15 +214,16 @@ PARTS["test_cover_plate"] = (
     "TEST COUPON — 40-long slice of the leg sleeve cover (44-wide plate + both W5 "
     "octagon rails); prints lying on its outer face")
 
-# Belt-tensioner mechanism coupon (anchor + slider, real geometry, tunnel-up print
-# orientation). Print both, splice a GT2 scrap, drive the M4×20 to prove the grip holds
-# and the tension winds in smoothly and stays put. Step 1 of the fixed-motor rework.
+# Belt-tensioner mechanism coupon — FOUR parts (anchor + slider + two lifter bars), real
+# geometry, print orientation. Step 1 of the fixed-motor rework: prove the belt drops in
+# free with the screw out, LOCKS on a positive tooth mesh when the M4 lifts the bars, and
+# the tension winds in smoothly and holds without creep.
 PARTS["test_belt_tensioner"] = (
     lambda: heal(__import__("src.belt_tensioner", fromlist=["e"]).tensioner_coupon()),
     "test_belt_tensioner.step",
-    "TEST COUPON — belt-tension clamp (anchor + slider, printed tunnel-up side by side). "
-    "Mesh a GT2 scrap teeth-up in each, join with an M4×20 button + M4 brass insert, and "
-    "wind the screw to check the grip holds and tension sets fine without creep")
+    "TEST COUPON — belt-tension clamp, 4 parts (anchor, slider, 2 lifter bars). Drop a GT2 "
+    "scrap through with the M4×30 out (bars low = free), seat the screw (bars ride the crest "
+    "up → teeth mesh), and wind it to check the grip holds and tension sets fine without creep")
 
 
 # Anchor ALL outputs to the project folder (never the cwd — see Archive/3D/CLAUDE.md)
@@ -795,9 +796,13 @@ def _tensioner_coupon_components():
     from . import belt_tensioner as BTn
     o = cq.Vector(150.0, 90.0, 40.0)
     def at(p): return p.translate((o.x, o.y, o.z))
+    la = BTn.seated_lifter(BTn.lifter_a(), (BTn.GA0 + BTn.GA1) / 2, locked=True)
+    lb = BTn.seated_lifter(BTn.lifter_b(), (BTn.GB0 + BTn.GB1) / 2, locked=True)
     return [
         ("belt_tensioner_anchor_coupon", at(BTn.anchor())),
         ("belt_tensioner_slider_coupon", at(BTn.slider())),
+        ("belt_tensioner_lifter_a_coupon", at(la)),
+        ("belt_tensioner_lifter_b_coupon", at(lb)),
         ("belt_tensioner_screw_coupon",  at(BTn.screw_dummy())),
         ("belt_tensioner_insert_coupon", at(BTn.insert_dummy())),
     ]
@@ -833,6 +838,8 @@ _COLORS = {
     "belt_clamp":      (0.95, 0.55, 0.15),   # PETG
     "belt_tensioner_anchor_coupon": (0.20, 0.70, 0.45),   # coupon — green = test piece
     "belt_tensioner_slider_coupon": (0.30, 0.80, 0.55),
+    "belt_tensioner_lifter_a_coupon": (0.40, 0.85, 0.65),  # lifter bars
+    "belt_tensioner_lifter_b_coupon": (0.40, 0.85, 0.65),
     "belt_tensioner_screw_coupon":  (0.55, 0.55, 0.58),   # steel M4
     "belt_tensioner_insert_coupon": (0.72, 0.60, 0.30),   # brass insert
     "screw_pulley":    (0.00, 0.55, 0.55),
