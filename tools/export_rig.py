@@ -38,21 +38,21 @@ RIG = REPO / "docs" / "rig.json"
 #
 # WAS the Emmons E9 A/B/C — three pedals, all raises. That was wrong twice over: the
 # instrument's design bounds are C6, not E9, and the hardware has FIVE pedals and
-# FIVE levers, so the viewer was claiming three-sevenths of the controls.
+# SIX levers, so the viewer was claiming three-elevenths of the controls.
 #
 # PEDAL NUMBERING: the user's chart is a DOUBLE-NECK layout whose pedal columns are
-# shared with an E9 top neck, so its C6 moves sit on columns 3..7. Ours are P1..P5;
+# shared with an E9 top neck, so its C6 moves sit on columns 4..8. Ours are P1..P5;
 # the chart's number is 3 higher throughout (user).
 #
-# SEMITONES ARE SIGNED. The E9 set happened to be all raises, and this is not: P1
-# lowers strings 2 and 6, P5 drops string 10 a minor third. That is fine mechanically
-# — the carriage travels either way, tension up or down — and the viewer only sums
-# them, so a negative simply runs the carriage the other way.
+# SEMITONES ARE SIGNED. The E9 set happened to be all raises, and this is not: P3
+# lowers both its strings, P5 drops string 10 a minor third. That is fine
+# mechanically — the carriage travels either way, tension up or down — and the
+# viewer only sums them, so a negative simply runs the carriage the other way.
 #
-# SPLITS COST NOTHING HERE. The chart marks two (P3 on string 3, P5 on string 4).
-# On a mechanical steel a split is a compromise stop where two pull-rods fight over
-# one string; with an independent motor per string the controller just commands the
-# pitch, so no split hardware exists to model.
+# SPLITS COST NOTHING HERE. The chart marks two, and BOTH land on P4 (strings 3 and
+# 4). On a mechanical steel a split is a compromise stop where two pull-rods fight
+# over one string; with an independent motor per string the controller just commands
+# the pitch, so no split hardware exists to model.
 # RE-READ FROM THE RAW SHEET, cell by cell. The first pass at this table went
 # through a SUMMARISED read of the spreadsheet and landed a column out of step,
 # with sign errors on top. Round-tripping each move back to a note name did not
@@ -70,19 +70,21 @@ _COPEDENT = {
     "P3": {"key": "3", "moves": {2: -1, 6: -1}},           # chart 6: E->D# E->D#
     "P4": {"key": "4", "moves": {3: +2, 4: +2}},           # chart 7: C->D* A->B*  (both split)
     "P5": {"key": "5", "moves": {7: +1, 9: -1, 10: -3}},   # chart 8: C->C# F->E  C->A
-    # KNEE LEVERS — keyed a..h strictly LEFT TO RIGHT from the player's seat
+    # KNEE LEVERS — keyed q..y (the QWERTY home row above the pedals' number
+    # row, so the two UI rows sit the same way round as the keyboard) strictly LEFT TO RIGHT from the player's seat
     # (user's rule), which is ascending X, the same direction the pedals run.
-    # ILKL therefore takes 'a': it sits one slot -X of LKL. The user's earlier
-    # "a is LKL" predates their own correction that a sixth (inner) lever exists.
-    "ILKL": {"key": "a", "moves": {}},   # the chart assigns it on the E9 neck ONLY
+    # ILKL therefore takes the leftmost key: it sits one slot -X of LKL. The user
+    # confirmed strict left-to-right over their earlier "a is LKL" example, which
+    # predated their own note that a sixth (inner) lever exists.
+    "ILKL": {"key": "q", "moves": {}},   # the chart assigns it on the E9 neck ONLY
     #                                      (G#->A#/B); on C6 the lever is fitted
     #                                      but unassigned. Kept so the hardware,
     #                                      the UI and the chart all show six.
-    "LKL": {"key": "s", "moves": {4: +1}},             # A->A#
-    "VKL": {"key": "d", "moves": {1: +1}},             # D->D#
-    "LKR": {"key": "f", "moves": {4: -1, 8: -1}},      # A->G#  A->G#
-    "RKL": {"key": "g", "moves": {3: -1}},             # C->B
-    "RKR": {"key": "h", "moves": {3: +1, 7: +1}},      # C->C#  C->C#
+    "LKL": {"key": "w", "moves": {4: +1}},             # A->A#
+    "VKL": {"key": "e", "moves": {1: +1}},             # D->D#
+    "LKR": {"key": "r", "moves": {4: -1, 8: -1}},      # A->G#  A->G#
+    "RKL": {"key": "t", "moves": {3: -1}},             # C->B
+    "RKR": {"key": "y", "moves": {3: +1, 7: +1}},      # C->C#  C->C#
 }
 OPEN_TUNING = ("D4", "E4", "C4", "A3", "G3", "E3", "C3", "A2", "F2", "C2")
 
