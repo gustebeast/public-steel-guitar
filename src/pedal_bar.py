@@ -165,8 +165,60 @@ assert _BACK_WALL >= D.MIN_WALL_2P, (
 # FLUSH-X: the bar spans the WHOLE instrument (644.8) — past any two-piece
 # diagonal — so THREE ~215 pieces, each printing STRAIGHT, joined by cadkit
 # install-z joints (the chassis-segment pattern).
-XS1 = BAR_X0 + 215.0   # -X splice (mid-trough)
-XS2 = BAR_X1 - 215.0   # +X splice (mid-trough)
+# ── PEDAL STATIONS, and the splices DERIVED from them ────────────────────────
+# The stations live HERE, not in foot_pedal, because the BAR is what has to be cut
+# up and a splice may not land on a pedal. They used to be foot_pedal's, and the
+# splices were a flat BAR_X0 + 215 that knew nothing about them — so XS1 fell at
+# -417.20, inside the -413.20 pedal's -426.9..-399.5 housing. It cut a pedal in
+# half. foot_pedal reads PEDAL_X back from here; the import stays one-way.
+PEDAL_PITCH = 78 * D.NOZZLE_D               # 62.4 centre-to-centre, on the nozzle grid
+PEDAL_W     = 28.0                          # a pedal's X footprint (the PAD, which is
+                                            # marginally wider than its 27.4 housing)
+N_PEDALS    = 5
+SLOT1_X     = LATCHES[1][0] + LG.BLK_W / 2.0    # -596.60: slot 1 starts FLUSH WITH THE
+                                            # LEFT (keyhead-side) leg and is left EMPTY
+                                            # for breathing room; slots 2..6 carry the
+                                            # pedals.
+                                            #
+                                            # "Flush with the leg" means the leg's
+                                            # INBOARD FACE, not its centre station. It
+                                            # was the station (-614.40), and the test that
+                                            # catches it is to put a pedal in slot 1: at
+                                            # the station it spans -614.40..-586.40 while
+                                            # the tower occupies -632.20..-596.60, so it
+                                            # drives 17.8 INTO the leg. Off the face a
+                                            # slot-1 pedal butts the tower exactly, which
+                                            # is what "flush" has to mean for the empty
+                                            # slot to be a real pedal's worth of room.
+PEDAL_X     = tuple(SLOT1_X + PEDAL_PITCH * n + PEDAL_W / 2.0
+                    for n in range(1, N_PEDALS + 1))
+
+BED = 255.0
+_SPLICE_KEEP = (PEDAL_W + 2 * 6.4) / 2.0    # a splice must clear a pedal's centre by
+                                            # half its width plus room for the joint
+
+def _clears_pedals(x):
+    return all(abs(x - px) >= _SPLICE_KEEP for px in PEDAL_X)
+
+# XS1 goes in a GAP BETWEEN NEIGHBOURING PEDALS; XS2 then halves what is left. Pick
+# the gap that minimises the longest piece, so no piece is near the bed by accident.
+_best = None
+for _i in range(len(PEDAL_X) - 1):
+    _g = (PEDAL_X[_i] + PEDAL_X[_i + 1]) / 2.0      # gap midpoint (pitch is uniform)
+    _h = (_g + BAR_X1) / 2.0                        # halve the remainder
+    if not _clears_pedals(_h):
+        continue
+    _lens = (_g - BAR_X0, _h - _g, BAR_X1 - _h)
+    if _best is None or max(_lens) < max(_best[2]):
+        _best = (_g, _h, _lens)
+assert _best is not None, "no pedal gap gives a splice pair that clears every pedal"
+XS1, XS2, _PIECE_L = _best
+assert max(_PIECE_L) <= BED, (
+    f"bar pieces {tuple(round(v, 1) for v in _PIECE_L)} — one exceeds the {BED} bed")
+for _x, _n in ((XS1, "XS1"), (XS2, "XS2")):
+    assert _clears_pedals(_x), (
+        f"{_n} at {_x:.2f} lands within {_SPLICE_KEEP:.2f} of a pedal centre "
+        f"{PEDAL_X} — a splice may not cut a pedal in half")
 XL = (LATCHES[0][0] + LATCHES[1][0]) / 2   # lid butt-splice: mid-span,
                    # ~107 from each bar splice so each lid piece BRIDGES
                    # one bar joint — the lid IS the splice's Z lock (the
