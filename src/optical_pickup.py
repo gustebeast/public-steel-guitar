@@ -917,16 +917,21 @@ _XH6_W, _XH6_D = 12.4 + 2.5 * 2, 5.75                         # 17.40 x 5.75
 _USBC_W, _USBC_H = 12.35, 6.50                                # USB-IF MAX overmold
 # Plug body length along the mating axis. ASSUMPTIONS, and the ones to check against real
 # cable before cutting metal -- overmolds are not standardised.
-# J1 is a RIGHT-ANGLE USB-C (user). Two reasons, and the second is the real one:
-#   * Its socket sits at x -24.75 while the shaft is at x -4.05, so the lead has to travel
-#     ~20 mm +X whatever happens. A straight plug spends 20 mm going -Y first and then
-#     doubles across; a side-exit plug leaves +X immediately -- one bend instead of two,
-#     and 8 mm less protrusion over the endplate's open top face.
-#   * USB-C is REVERSIBLE, so a left/right-exit cable gives either direction by flipping
-#     the plug at assembly. No handedness to get wrong when ordering.
-# J2 stays STRAIGHT: the XH sits nearly over the shaft already, so an angled plug would buy
-# almost nothing (it remains an option if bench experience wants it).
-PLUG_L = {"J1": 12.0, "J2": 14.0}                             # right-angle body; XHP-6 + relief
+# J1 IS A STRAIGHT PLUG, and the right-angle idea it replaces was wrong -- J2 is what kills
+# it. J1 sits -X of J2, so its lead must cross J2's footprint to reach the shaft. A
+# right-angle leaves +X *at the plug*, which is exactly where J2's body is: the cable turned
+# +X at y -112.85, dead inside J2's -120.85..-106.85 span, and clipped straight through it
+# (user-caught from a render).
+#
+# The escape is not a detour but a LONGER plug. A straight USB-C's own back face lands at
+# -126.85, already 6.00 mm clear of J2's -120.85, so the lead turns +X in free space with a
+# single bend and no doubling back. A right-angle would have needed exit +X, turn -Y, turn
+# +X again -- three bends to solve a problem the straight plug does not have.
+#
+# So the earlier claim that the angled plug saved a bend was true only in isolation; once
+# the neighbouring connector is in the picture it costs two. J2 stays straight for its own
+# reason: it sits nearly over the shaft already.
+PLUG_L = {"J1": 20.0, "J2": 14.0}                             # USB-C boot; XHP-6 + relief
 CONDUIT_W = max(_XH6_D, _USBC_H) + 2 * CONDUIT_CLR            #  9.50, along X (thin axis)
 # Y answers TWO separate requirements and must satisfy the larger. Sizing it on the span
 # alone was a latent bug: it happened to be big enough only because the straight USB-C plug
@@ -1013,10 +1018,22 @@ def opt_cables() -> cq.Workplane:
         p, plen = part(ref), PLUG_L[ref]
         zc = PCB_TOP + PKG[p["pkg"]][2] / 2                   # cable/plug centre height
         add(box_at(w, plen, h, x=p["x"], y=PCB_YM - plen / 2, z=zc))
-        # J1 exits SIDEWAYS at the plug (right-angle); J2 exits the back face and turns.
-        y_turn = (PCB_YM - plen / 2) if ref == "J1" else (PCB_YM - plen - CONDUIT_CLR)
+        # Both leads leave their plug's BACK FACE and turn there.
+        y_turn = PCB_YM - plen - CONDUIT_CLR
         assert CONDUIT_Y0 < y_turn < CONDUIT_Y1, \
             f"{ref}: cable turns down at y {y_turn:.2f}, outside the conduit"
+        # A lead that has to cross a neighbour in X must turn -Y of that neighbour's BACK
+        # FACE, or it drives through the plug body. This is the check that would have caught
+        # the right-angle clash before a render did.
+        for q in ("J1", "J2"):
+            if q == ref:
+                continue
+            qx, qw = part(q)["x"], (_USBC_W if q == "J1" else _XH6_W)
+            crosses = min(p["x"], CONDUIT_XC + xoff) < qx + qw / 2 and \
+                max(p["x"], CONDUIT_XC + xoff) > qx - qw / 2
+            assert not crosses or y_turn < PCB_YM - PLUG_L[q], (
+                f"{ref}'s lead turns +X at y {y_turn:.2f} and crosses {q}, whose plug "
+                f"reaches y {PCB_YM - PLUG_L[q]:.2f} -- it would clip the plug body")
         add(box_at(abs(CONDUIT_XC + xoff - p["x"]) + od, od, od,
                    x=(CONDUIT_XC + xoff + p["x"]) / 2, y=y_turn, z=zc))
         add(cyl(od, zc - RUN_Z, z=RUN_Z).translate((CONDUIT_XC + xoff, y_turn, 0)))
