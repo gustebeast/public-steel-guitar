@@ -179,8 +179,32 @@ deliberately tight — the QFN body ends at 1.5, leaving 1.5 of edge keepout, ov
 JLCPCB's 1.0 mm component-to-edge rule — because every millimetre there is
 millimetres off the lever's +X extent, which is the face nearest the player. **No mounting
 holes** — the board drops into two grooves in the housing's printed cradle, rests
-on its floor, and the instrument's own underside closes over it as the lid. So
-**1.85 mm of each side edge is mechanical** — keep copper and parts out of it.
+on its floor, and the instrument's own underside closes over it as the lid.
+
+**Keepouts — PARTS and COPPER are different, and conflating them cost 60 mm² of
+routing area.** The 1.85 mm is `CR_ENG`, the cradle groove's engagement depth: a
+*component* there fouls the plastic groove wall. Copper does not — a trace under a
+plastic groove shorts nothing and abrades nothing in a 0.15 mm slip fit assembled
+once. And only the **±X** edges sit in grooves at all; the ±Z edges are free (the
+top clears the chassis by 0.4, the bottom rests on the cradle floor, both *below*
+the board rather than on its face).
+
+| edge | parts keepout | copper keepout |
+|------|---------------|----------------|
+| ±X (in the grooves) | **1.85** (`CR_ENG`) | **0.5** |
+| ±Z (free) | **1.0** (JLCPCB assembly) | **0.5** |
+
+0.5 is the safe number for a routed outline and for V-score panelisation alike
+(JLCPCB's absolute floor is 0.3). That leaves **432 mm² routable** on the 28 × 16
+outline against ~168 mm² of parts — under 40 % — for ~20 nets across 6 ICs.
+
+**4 LAYERS**, and not for density: the buck switches ~10 mm from a magnetic angle
+sensor whose entire job is reading a small field. A solid ground plane between them
+is worth more than the couple of dollars it costs.
+
+⚠ **Confirm at quote time:** the connector is deliberately **flush with the top
+edge (0.00 margin)**, which violates JLCPCB's 1.0 mm component-to-edge assembly
+rule. Better raised in the quote than discovered at assembly.
 
 **SINGLE-SIDED: everything goes on the −Y (magnet-facing) face**, which is what
 keeps this to one assembly setup. The QFN sits on the axle axis. The CAN drop is
