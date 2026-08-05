@@ -358,12 +358,6 @@ def _build() -> cq.Workplane:
         body = body.union(box_at(TAIL_X1 - TAIL_X0, _y1 - _y0, CARRIER_TOP - CH.TP_GZ1,
                                  x=(TAIL_X0 + TAIL_X1) / 2, y=(_y0 + _y1) / 2,
                                  z=(CH.TP_GZ1 + CARRIER_TOP) / 2))
-    # CABLE CONDUIT: a vertical shaft -Y of the board, from this part's own top face down
-    # through the fill slab into the foot box. Sized to pass a CONNECTOR one at a time, not
-    # just a cable -- see optical_pickup.opt_conduit. The magnetic pickup's top panel is
-    # untouched: the deck ends at TP.PX0 = -16.60 and this shaft lives entirely in the
-    # endplate band +X of it, which is open sky out past the board.
-    body = body.cut(OP.opt_conduit())
     for _mx, _my in OP.mount_points():
         # Screw enters from ABOVE, down through the board's clearance hole. The plinth is
         # only 3.66 thick but it sits ON the fill slab, so the anchor gets M4's full
@@ -558,6 +552,26 @@ def _build() -> cq.Workplane:
     body = body.union(box_at(LIP_DX, LIP_Y1 - LIP_Y0, LIP_DZ,
                              x=XLO - LIP_DX / 2, y=(LIP_Y0 + LIP_Y1) / 2,
                              z=CH.TP_GZ0 - LIP_DZ / 2))
+    # ── CABLE CONDUIT, cut LAST so nothing unioned later refills it ──────────────────
+    # Down from this part's top face, then out its -X face into the chassis interior.
+    # Sized to pass a CONNECTOR one at a time -- see optical_pickup.opt_conduit. The
+    # magnetic pickup's top panel is never touched: the deck ends at TP.PX0 = -16.60 and
+    # the endplate begins there, so out past the board this face is open sky.
+    #
+    # IT MUST BE LAST. Cut earlier, the +Z RETENTION LIP above was unioned afterwards and
+    # partly refilled it -- leaving a 0.25 mm sliver that read as a printability blip when
+    # the real fault was structural.
+    #
+    # AND THE LIP HAS TO GO WITH IT across this Y band. The lip hangs off the -X FACE, and
+    # the conduit removes that face here, so leaving the lip would leave a 5 x 5 tab rooted
+    # on nothing -- worse than not having it. Trimming it costs 19.5 mm of its 57.4 mm run,
+    # leaving 37.6 mm contiguous (65%) still trapped by the deck panels. Flagged for the
+    # lead: this is the one piece of load-bearing material the conduit spends.
+    body = body.cut(OP.opt_conduit())
+    body = body.cut(box_at(LIP_DX + 2.0, OP.CONDUIT_D, LIP_DZ + 2.0,
+                           x=XLO - (LIP_DX + 2.0) / 2 + 1.0,
+                           y=(OP.CONDUIT_Y0 + OP.CONDUIT_Y1) / 2,
+                           z=CH.TP_GZ0 - LIP_DZ / 2))
     return body
 
 
