@@ -133,10 +133,20 @@ CARRIER_HY   = 54.0                           # out to the arms
 # no deck standoffs, so top_plate is untouched, and printing +X -> -X it is backed the
 # whole way. Bottom sits AT z6 (not UNDER_Z) precisely because it lands on the slab
 # rather than hovering over the deck panel.
-TAIL_X0 = XLO                                 # -16.60; the board overhangs 1.8 further -X
-TAIL_X1 = OP.TAIL_X1                          # 7.00, short of the outer face
-TAIL_Y0 = OP.PCB_YM                           # -110.95
-TAIL_Y1 = OP.Y_TAIL                           # -56.05
+TAIL_X0 = XLO                                 # -16.60; the -X half is the carrier's job
+# +X RUNS TO THE OUTER FACE, i.e. TO THE BUILD PLATE (user). It used to stop at OP.TAIL_X1
+# (7.00), which is where the BOARD stops -- but the board's edge and the plinth's edge are
+# different requirements. Printing +X -> -X the outer face IS the bed, so a plinth beginning
+# at 7.00 starts its first layer 1.6 mm in mid-air, with the endplate's z6..9.5 band empty
+# behind it out here (the tail prism only fills to z16 inboard of the arms). Probed: at
+# y +-60 and -90 the solid ran out at 7.00 while at y 0 it reached 8.5. Running to XHI roots
+# every layer on the plate. Costs a 1.6 mm ledge on the exterior face in the wrap/compute Y
+# zones, below the board and out of the player's way.
+TAIL_X1 = XHI                                 # 8.60 = the build plate
+TAIL_Y0 = OP.PCB_YM                           # -106.85
+TAIL_Y1 = -CARRIER_HY                         # -54.0: OVERLAP the carrier band rather than
+                                              # meeting it at OP.Y_TAIL (-55.0), which left a
+                                              # 1 mm strip with neither piece under it
 
 # ── COMB BACK-BRACE (user's sketch) ──────────────────────────────────────────
 # The comb fingers root on the cap band at x 2.6..6.0 and reach out to -6.5 with the AXLE
@@ -329,17 +339,31 @@ def _build() -> cq.Workplane:
     # OPTICAL-STRIP CARRIER: a plinth reaching -X over the deck, top face at the board's
     # underside. Prints with the rest -- at x = XLO its whole cross-section is backed by
     # the endplate's z6..10 field-centre band, which is why CARRIER_HY stops at 54.
-    body = body.union(box_at(XLO - CARRIER_X1, 2 * CARRIER_HY, CARRIER_TOP - CARRIER_BOT,
-                             x=(XLO + CARRIER_X1) / 2, y=0,
+    # ...RUNNING THE BOARD'S WHOLE Y LENGTH, not just the sensing field (user). It used to
+    # stop at +-CARRIER_HY because at x = XLO only the endplate's z6..10 field-centre band
+    # backs it, and that band ends at the arms. Past there the WRAP/COMPUTE PLINTHS below
+    # now provide the same backing, so the carrier can continue on top of them -- and it has
+    # to: probed, the compute section and both wrap bands had NO material at x -29, -24 or
+    # -18, i.e. ~20 mm of the board's 37.4 mm width was hanging over nothing.
+    body = body.union(box_at(XLO - CARRIER_X1, OP.PCB_YP - OP.PCB_YM,
+                             CARRIER_TOP - CARRIER_BOT,
+                             x=(XLO + CARRIER_X1) / 2, y=(OP.PCB_YM + OP.PCB_YP) / 2,
                              z=(CARRIER_BOT + CARRIER_TOP) / 2))
     # ...and the TWO WRAP PLINTHS, +Y head and -Y tail, both sitting on the fill slab out
     # past the field centre. These carry the board's two M4 grips: the plinth alone is only
     # 3.66 thick, but it lands on solid slab, so the insert bores straight down through it
-    # into the endplate body and gets full depth.
-    for _y0, _y1 in ((TAIL_Y0, TAIL_Y1), (OP.HEAD_Y0, OP.PCB_YP)):
+    # into the endplate body and gets full depth. Their inner Y edges OVERLAP the carrier
+    # band so the -X carrier is backed continuously along its whole length.
+    for _y0, _y1 in ((TAIL_Y0, TAIL_Y1), (CARRIER_HY, OP.PCB_YP)):
         body = body.union(box_at(TAIL_X1 - TAIL_X0, _y1 - _y0, CARRIER_TOP - CH.TP_GZ1,
                                  x=(TAIL_X0 + TAIL_X1) / 2, y=(_y0 + _y1) / 2,
                                  z=(CH.TP_GZ1 + CARRIER_TOP) / 2))
+    # CABLE CONDUIT: a vertical shaft -Y of the board, from this part's own top face down
+    # through the fill slab into the foot box. Sized to pass a CONNECTOR one at a time, not
+    # just a cable -- see optical_pickup.opt_conduit. The magnetic pickup's top panel is
+    # untouched: the deck ends at TP.PX0 = -16.60 and this shaft lives entirely in the
+    # endplate band +X of it, which is open sky out past the board.
+    body = body.cut(OP.opt_conduit())
     for _mx, _my in OP.mount_points():
         # Screw enters from ABOVE, down through the board's clearance hole. The plinth is
         # only 3.66 thick but it sits ON the fill slab, so the anchor gets M4's full
