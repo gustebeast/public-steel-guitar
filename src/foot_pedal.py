@@ -73,8 +73,17 @@ from 36 mm deep to 77 — still inside the 255 bed (212 x 77 x 96), but it is no
 the big print of the bar set, and adding a fourth pedal is what would break it.
 
 DEFERRED (this is the first round):
-  * the REST STOP. Gravity pulls the pedal arm down and the spring pushes it up;
-    the rest angle wants a hard stop like LKV's, not a spring balance.
+  * (RESOLVED — it was never needed) the REST STOP. The worry was that gravity pulls
+    the pedal arm down while the spring pushes it up, so the rest angle would be a
+    spring balance rather than a hard stop. Two things say otherwise. FIRST, the
+    MAIN cartridge already IS the rest stop, here as on the knee lever: its follower
+    touches the lobe with the piston at full extension, which is why knee_lever says
+    "sets the rest angle -> no rest screw". The pedal inherits it because LOBE_RC_P
+    was picked to give the identical 4.51 stroke, and the back-stop screw adjusts it.
+    SECOND, the direction is favourable: gravity pulls the arm the SAME way the foot
+    presses — into the spring — so it is resisted, not assisted. Measured: the lever
+    is 23.0 cm3, ~29 g, CoM 41.4 from the axle, so gravity is 0.0117 N.m against the
+    spring's 0.1452 N.m of preload torque. 12.5x margin. It cannot sag.
   * (RESOLVED) the board's -Z stop. The clip used to remove the cradle floor, leaving
     nothing to stop the board sliding out the open -Y end while pcb_shim pressed it
     that way. Trimming the board's dead 4.0 strip (PCB_WZ 19 -> 16) lifted its bottom
