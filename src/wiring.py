@@ -427,7 +427,7 @@ WIRE_OK = {
     "leg_column_cable": {"leg_body_stub", "leg_segment", "leg_sleeve",
                          "leg_shaft", "leg_column_plug",
                          "leg_plug_retainer", "leg_cable_coil",
-                         "leg_latch_head", "leg_junction_pcb",
+                         "leg_head", "leg_junction_pcb",
                          "leg_seg_body", "leg_lid",
                          # the shaft-side model of the SAME physical
                          # CA-354S — they abut inside the shaft channel
@@ -436,7 +436,7 @@ WIRE_OK = {
                          "leg_column_cable", "shaft_trrs_cable"},
     "shaft_trrs_cable": {"leg_shaft", "leg_sleeve", "leg_seg_body",
                          "shaft_trrs_jack", "leg_cable_coil",
-                         "leg_junction_pcb", "leg_latch_head"},
+                         "leg_junction_pcb", "leg_head"},
     "wire_pwr_hot":   {"dc_jack", "buck", "tee_pcb", "analog_frontend"},
     "wire_pwr_gnd":   {"dc_jack", "buck", "tee_pcb", "analog_frontend"},
     "wire_usb":       {"usbc_jack", "pi5"},
