@@ -32,7 +32,7 @@ import cadquery as cq
 from . import dimensions as D
 from .helpers import box_at, cyl_y
 from cadkit.fasteners import (M4, cut_insert_bore, cut_clearance, cut_m4_pocket,
-                              m4_button_screw, seated_m4_insert)
+                              m4_button_screw, seated_insert)
 
 # ── belt cross-section ───────────────────────────────────────────────────────
 BW  = D.BELT_W            # 5.0  belt width (Y)
@@ -126,13 +126,15 @@ def slider() -> cq.Workplane:
 
 # ── dummies for the assembly render (purchased, no standalone STEP) ───────────
 def screw_dummy() -> cq.Workplane:
-    """M4×20 button, head at the slider +X face, pointing -X into the insert."""
-    scr = m4_button_screw(20.0).rotate((0, 0, 0), (0, 1, 0), -90)   # axis -X, head at +X end
+    """M4×20 button: head at the slider +X face, shank running -X into the insert."""
+    scr = m4_button_screw(20.0).rotate((0, 0, 0), (0, 1, 0), 90)    # native -Z shank → -X
     return scr.translate((HEAD_X, 0.0, Z_SCR))
 
 
 def insert_dummy() -> cq.Workplane:
-    return seated_m4_insert((INS_X, 0.0, Z_SCR), (-1.0, 0.0, 0.0), 0.0)
+    """Brass insert seated in the anchor bore, mouth at the +X face, barrel -X —
+    same (point, direction) convention as the cut_insert_bore that made the pocket."""
+    return seated_insert(M4, (INS_X, 0.0, Z_SCR), (-1.0, 0.0, 0.0))
 
 
 # ── coupon: both parts in PRINT orientation (tunnel-up), split apart in Y so the

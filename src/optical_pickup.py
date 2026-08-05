@@ -929,7 +929,23 @@ _USBC_W, _USBC_H = 12.35, 6.50                                # USB-IF MAX overm
 # So the earlier claim that the angled plug saved a bend was true only in isolation; once
 # the neighbouring connector is in the picture it costs two. J2 stays straight for its own
 # reason: it sits nearly over the shaft already.
+#
+# PLUG_L IS A PURCHASING SPEC, NOT A MEASUREMENT. Nothing is ordered yet, and overmold
+# LENGTH is not standardised -- USB-IF fixes the cross-section (12.35 x 6.50) but not this,
+# and surveyed parts run ~10-25 mm. So rather than guess a number and hope, the geometry is
+# made insensitive to it in the direction that matters and the number becomes a rule for
+# what to BUY, which is checkable at order time:
+#
+#   SHORT plug -- the dangerous case, because it was what put J1's lead into J2. Removed as
+#     a risk entirely: a lead that crosses a neighbour now turns at whichever back face is
+#     further -Y, ITS OWN OR THE NEIGHBOUR'S. A short plug just runs a little further in
+#     free air before turning. No length can make it clip.
+#   LONG plug -- only eats conduit depth, and the endplate has a hard limit: the conduit may
+#     not pass y -132.15 or the -Y exterior wall drops under MIN_WALL_2P. That backs out to
+#     20.3 mm of plug, so the BOM specifies <= 20 mm overmold and the assertion below holds
+#     the model to it.
 PLUG_L = {"J1": 20.0, "J2": 14.0}                             # USB-C boot; XHP-6 + relief
+_WALL_Y = CH.Y_LO + D.MIN_WALL_2P                             # -132.15, conduit's -Y limit
 CONDUIT_W = max(_XH6_D, _USBC_H) + 2 * CONDUIT_CLR            #  9.50, along X (thin axis)
 # Y answers TWO separate requirements and must satisfy the larger. Sizing it on the span
 # alone was a latent bug: it happened to be big enough only because the straight USB-C plug
@@ -940,6 +956,10 @@ _COND_SPAN = max(PLUG_L.values()) + 2 * CONDUIT_CLR           # 17.00: reach pas
 CONDUIT_D = max(_COND_PASS, _COND_SPAN)                       # 20.40, along Y
 CONDUIT_Y1 = PCB_YM - 2.0                                     # -108.85, clear of the board
 CONDUIT_Y0 = CONDUIT_Y1 - CONDUIT_D
+assert CONDUIT_Y0 >= _WALL_Y - 1e-9, (
+    f"conduit reaches y {CONDUIT_Y0:.2f}, past the {D.MIN_WALL_2P} exterior wall limit "
+    f"{_WALL_Y:.2f} -- the longest plug ({max(PLUG_L.values()):.1f}) no longer fits the "
+    f"endplate. Specify a shorter overmold or move the board +Y.")
 CONDUIT_XC = (BAND_X0 + D.BRIDGE_BASE_X1) / 2                 # centred in the endplate band
 
 
@@ -1016,22 +1036,22 @@ def opt_cables() -> cq.Workplane:
         p, plen = part(ref), PLUG_L[ref]
         zc = PCB_TOP + PKG[p["pkg"]][2] / 2                   # cable/plug centre height
         add(box_at(w, plen, h, x=p["x"], y=PCB_YM - plen / 2, z=zc))
-        # Both leads leave their plug's BACK FACE and turn there.
-        y_turn = PCB_YM - plen - CONDUIT_CLR
-        assert CONDUIT_Y0 < y_turn < CONDUIT_Y1, \
-            f"{ref}: cable turns down at y {y_turn:.2f}, outside the conduit"
-        # A lead that has to cross a neighbour in X must turn -Y of that neighbour's BACK
-        # FACE, or it drives through the plug body. This is the check that would have caught
-        # the right-angle clash before a render did.
+        # TURN AT WHICHEVER BACK FACE IS FURTHER -Y -- its own, or that of any neighbour the
+        # lead has to cross in X. Deriving it from the plug's own length alone is what let
+        # the right-angle J1 drive through J2; deriving it from the neighbour alone would
+        # make a LONG plug double back on itself. Taking the deeper of the two is correct
+        # for every plug length, so no overmold dimension can produce a clash.
+        backs = [PCB_YM - plen]
         for q in ("J1", "J2"):
             if q == ref:
                 continue
             qx, qw = part(q)["x"], (_USBC_W if q == "J1" else _XH6_W)
-            crosses = min(p["x"], CONDUIT_XC + xoff) < qx + qw / 2 and \
-                max(p["x"], CONDUIT_XC + xoff) > qx - qw / 2
-            assert not crosses or y_turn < PCB_YM - PLUG_L[q], (
-                f"{ref}'s lead turns +X at y {y_turn:.2f} and crosses {q}, whose plug "
-                f"reaches y {PCB_YM - PLUG_L[q]:.2f} -- it would clip the plug body")
+            if min(p["x"], CONDUIT_XC + xoff) < qx + qw / 2 and \
+                    max(p["x"], CONDUIT_XC + xoff) > qx - qw / 2:
+                backs.append(PCB_YM - PLUG_L[q])       # crosses q: clear q's back face too
+        y_turn = min(backs) - CONDUIT_CLR
+        assert CONDUIT_Y0 < y_turn < CONDUIT_Y1, \
+            f"{ref}: cable turns down at y {y_turn:.2f}, outside the conduit"
         add(box_at(abs(CONDUIT_XC + xoff - p["x"]) + od, od, od,
                    x=(CONDUIT_XC + xoff + p["x"]) / 2, y=y_turn, z=zc))
         add(cyl(od, zc - RUN_Z, z=RUN_Z).translate((CONDUIT_XC + xoff, y_turn, 0)))
