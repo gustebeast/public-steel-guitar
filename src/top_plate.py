@@ -78,8 +78,12 @@ PITCH    = BAND_W + GAP                # slot pitch = band + the gap after it
 SLOT_X   = [PX0 - i * PITCH for i in range(N_SLOTS + 1)]   # +X face of each slot
 PIECE_SLOTS = 4                        # the pickup piece spans 4 slots (enlarged one slot so the
                                        # 38.6-wide Alumitone still has >= +/-10 continuous X slide)
-N_POS    = N_SLOTS - PIECE_SLOTS + 1   # = 5 coarse swap positions
+N_POS    = N_SLOTS - PIECE_SLOTS + 1   # = 4 coarse swap positions
 CLAMP    = 10.0                        # +/- fine X-adjust (= BAND_W/2 -> continuous)
+# Slots the piece covers in EVERY position -- their fillers could never be installed, so they are not
+# printed (user). The piece spans [p, p+PIECE_SLOTS) for p in 0..N_POS-1, so the intersection of all
+# positions is [N_POS-1, PIECE_SLOTS): slot 3 alone as drawn. Derived, so it tracks the slot counts.
+DEAD_SLOTS = set(range(N_POS - 1, PIECE_SLOTS))
 
 # shown installed state: piece in the 3 bridge-most slots, fillers behind it
 PIECE_SHOWN = 0                        # piece occupies slots [0 .. PIECE_SLOTS)
@@ -256,15 +260,20 @@ FRET_HY   = BORDER_HY - INLAY_W               # frets end one border-width short
 
 
 def _fret_positions(x0, x1):
-    """(n, absolute X) of every 12-TET fret line landing on panel x0(+X)..x1:
-    fret n at nut + scale*(1 - 2^(-n/12)) — they compress toward the bridge."""
+    """(n, absolute X) of every 12-TET fret line landing on panel x0(+X)..x1 AND inside the fret
+    FIELD: fret n at nut + scale*(1 - 2^(-n/12)) — they compress toward the bridge.
+
+    The field ends at FRET_AREA_X0. Frets run monotonically +X toward the bridge, so passing it
+    ends the walk. Without that clamp this emitted any fret that merely LANDED on a panel, which
+    put frets 33-35 on the band-region fillers — lines +X of the fretboard, in the region the
+    pickup piece occupies. Those panels get the BORDER only (user)."""
     nut = D.NUT_BLOCK_X
     scale = D.BRIDGE_X - nut                     # full speaking length (nut->bridge)
     out, n = [], 1
     while True:
         fx = nut + scale * (1 - 2 ** (-n / 12.0))
         nxt = nut + scale * (1 - 2 ** (-(n + 1) / 12.0))
-        if fx >= D.BRIDGE_X or nxt - fx < (_inlay_w(n) + _inlay_w(n + 1)) / 2 + MIN_WEB:
+        if fx > FRET_AREA_X0 or nxt - fx < (_inlay_w(n) + _inlay_w(n + 1)) / 2 + MIN_WEB:
             break
         if x1 + 0.8 < fx < x0 - 0.8:
             out.append((n, fx))
@@ -503,6 +512,7 @@ _shown_pairs = [_filler_pairs[i] for i in range(PIECE_SHOWN + PIECE_SLOTS, N_SLO
 _seg_pairs   = [_piece_pair, *_shown_pairs, _mid_pair, _key_pair]
 segments        = [b for b, _ in _seg_pairs]
 segments_color  = [c for _, c in _seg_pairs]
-_spare_pairs = [_filler_pairs[i] for i in range(PIECE_SHOWN, PIECE_SHOWN + PIECE_SLOTS)]
+_spare_pairs = [_filler_pairs[i] for i in range(PIECE_SHOWN, PIECE_SHOWN + PIECE_SLOTS)
+                if i not in DEAD_SLOTS]      # DEAD_SLOTS never surface -> nothing to print
 spare_fillers       = [b for b, _ in _spare_pairs]
 spare_fillers_color = [c for _, c in _spare_pairs]
