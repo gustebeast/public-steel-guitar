@@ -67,10 +67,13 @@ the time by giving up the sensor board's -Y retention — but the board has sinc
 been trimmed of its dead strip (PCB_WZ 19 -> 16) and now ends at -9.00, inside
 this housing's -10.15, so the retention came back for free. See HOUS_Z0/CRADLE_Z0.
 
-A consequence worth keeping in view: all three stations fall between XS1 and XS2,
-so every housing lands in pedal_bar_b. That piece goes from 136 cm3 to 293 and
-from 36 mm deep to 77 — still inside the 255 bed (212 x 77 x 96), but it is now
-the big print of the bar set, and adding a fourth pedal is what would break it.
+WHERE THE HOUSINGS LAND. Five pedals on the 62.4 pitch span 277.6 (10.93 in),
+which crosses the XS1 splice: pedal_bar_a takes 2 housings and pedal_bar_b takes 3
+(c takes none). That is better than it sounds — the two loaded pieces come out at
+299.0 and 299.4 cm3, almost exactly matched, where the earlier 3-pedal layout piled
+everything into b. Bed, lying on the -Y face: 220.6 x 111.4 and 232.7 x 111.4, both
+inside 255, print height 35.6. Nearest pad edge to a leg tower is 44.6 (the
+keyhead-side one, across the deliberately empty slot 1).
 
 DEFERRED (this is the first round):
   * (RESOLVED — it was never needed) the REST STOP. The worry was that gravity pulls
@@ -90,7 +93,10 @@ DEFERRED (this is the first round):
     edge to -9.00, inside this housing's -10.15, so there is a 1.15 floor again and
     the board no longer overhangs at all. The deferral went away rather than being
     solved — which is the second time shrinking the board fixed a mechanical problem.
-  * pedal STATIONS along X are placeholders until the copedent is fixed.
+  * (RESOLVED) pedal STATIONS. Fixed by the user and NOT copedent-dependent: five
+    pedals on a PEDAL_PITCH slot scheme, slot 1 flush with the left (keyhead) leg
+    and left empty for breathing room, slots 2..6 filled. Nothing is deferred on
+    this module now.
 
 WHAT IS SHARED AND WHAT BRANCHES (user). Shared: the whole feel system — the
 cartridges are the SAME PRINTED SKUs across all three levers (cart_base,
@@ -107,6 +113,7 @@ import math
 
 import cadquery as cq
 
+from . import dimensions as D
 from . import knee_lever as KL
 from . import pedal_bar as PB
 from .helpers import box_at, cyl_y, heal
@@ -135,9 +142,29 @@ REC_X      = 3.5                    # follower recess depth into the leg's -X fa
 REC_Z      = 7.0                    # recess height (the follower's swept band)
 LEG_TOP    = LOBE_RC_P + 3.0        # the leg reaches past the lobe station
 
-PEDAL_X    = (-260.0, -313.8, -367.6)   # PLACEHOLDER stations along the bar (guitar X),
-                                        # centred on the bar's mid-span at the classic
-                                        # ~54 mm pedal pitch; the copedent fixes these
+# ── PEDAL STATIONS (user) ────────────────────────────────────────────────────
+# FIVE pedals on a 40 mm GAP, laid out in "slots": notional bins one pedal wide plus
+# one gap, abutting, with SLOT 1 STARTING FLUSH WITH THE LEFT LEG and left EMPTY for
+# breathing room. Slots 2..6 carry the pedals. The slots are a description of the
+# spacing, not geometry — nothing is drawn for them.
+#
+# LEFT is the KEYHEAD end. keyhead_endplate sits at x -636.4..-611.0 and the bridge
+# at -30.6..+8.7, and a player sits with the keyhead to their left — which is also
+# where a pedal-steel's pedal cluster belongs, under the left foot.
+#
+# PITCH is the constant (user), because that is how spacing is naturally described —
+# the clear gap is what falls out of it once the pad width is known, not the other
+# way round. On the project's nozzle grid at 78 beads.
+PEDAL_PITCH = 78 * D.NOZZLE_D                   # 62.4 centre-to-centre
+PEDAL_GAP   = PEDAL_PITCH - PAD_WY              # 34.4 clear between adjacent PADS.
+                                                # DERIVED: the pads are what the foot
+                                                # sees and are marginally wider than
+                                                # the housings (28.0 vs 27.4), so the
+                                                # housings clear each other by 35.0
+SLOT1_X     = PB.LATCHES[1][0]                  # -614.4: slot 1 starts flush here
+N_PEDALS    = 5
+PEDAL_X     = tuple(SLOT1_X + PEDAL_PITCH * n + PAD_WY / 2.0
+                    for n in range(1, N_PEDALS + 1))     # slots 2..6
 
 
 def swing(s, deg):
