@@ -80,7 +80,7 @@ fitted on every instrument.
 | **Rotary/4-way joystick** | B | Alps RKJXT1F42001 (sole UI control) | **$9.22** [v] | [DigiKey](https://www.digikey.com/en/products/detail/alps-alpine/RKJXT1F42001/19529127) |
 | **OLED display** | B | 2.42" 128×64 SSD1309 SPI (UI screen) | ~$17 [m] | [Waveshare](https://www.waveshare.com/2.42inch-oled-module.htm) |
 | **USB 2.0 hub** | B | Adafruit CH334F (share 1 port: Teensy+Pi) | **$4.50** [v] | [Adafruit](https://www.adafruit.com/product/5999) |
-| **USB cable, optical board → Pi** | B | **USB-A ↔ USB-C, 1 m, USB 2.0, RIGHT-ANGLE at the C end** | ~$5–8 [m] | commodity |
+| **USB cable, optical board → Pi** | B | **USB-A ↔ USB-C, 1 m, USB 2.0, STRAIGHT plug** | ~$5–8 [m] | commodity |
 | **Raspberry Pi 4, 2 GB** | B | Dexed + USB gadget (MIDI/audio/DFU) + USB host for the optical board | **$55.00** [v] | [PiShop](https://www.pishop.us/product/raspberry-pi-4-model-b-2gb/) |
 | **Buck 24→5 V ≥3 A** | B | Pololu **D24V50F5** (5 V, 5 A, in up to 24 V). Pi 4 draws ~3 A, but see note | **$29.95** [v] ⚠ | [Pololu 2851](https://www.pololu.com/product/2851) |
 | ~~10-ch audio ADC~~ | — | **DELETED.** Three PCM1864 + a carrier PCB existed to digitise ten string signals for the Pi. The optical pickup board now does its own 20-channel conversion (STM32H743ZIT6, 20× 16-bit) and sends audio over USB, so this whole path is redundant — ~$29 of ICs plus an entire board's fab, assembly and feeder cost removed | — | — |
@@ -1165,19 +1165,26 @@ if the conduit or the plinth ever moves into the cable's path, the gate says so.
 The model makes one thing visible that a side view would hide: **the USB-C socket sits
 entirely −X of the endplate**, so its lead travels +X as well as −Y to reach the shaft.
 
-### The USB cable — right-angle, and 1 m, both for reasons the model produced
+### The USB cable — STRAIGHT, and 1 m; the right-angle idea was wrong
 
-**Right-angle at the USB-C end.** The socket sits at x −24.75 while the shaft is at −4.05,
-so the lead has to travel ~20 mm **+X whatever happens**. A straight plug spends 20 mm going
-−Y first and then doubles across — two bends and 8 mm more protrusion over the endplate's
-open top face. A side-exit plug leaves +X immediately: one bend, less strain on the socket,
-and less of the plug hanging in the open.
+A right-angle USB-C looked obviously better and **is not**, because of where J2 sits.
 
-Handedness is a non-issue: **USB-C is reversible**, so a left/right-exit cable gives either
-direction by flipping the plug at assembly. Nothing to get wrong when ordering.
+J1 is −X of J2, so its lead must cross J2's footprint to reach the shaft. A right-angle
+leaves +X **at the plug** — which is exactly where J2's body is. Modelled, the lead turned
++X at y −112.85, dead inside J2's −120.85…−106.85 span, and drove straight through it
+(caught from a render).
 
-**J2 stays straight.** The XH already sits nearly over the shaft, so an angled plug would
-buy almost nothing. It remains an option if bench experience wants it.
+**The escape is a longer plug, not a detour.** A straight USB-C's own back face lands at
+−126.85, already clear of J2's −120.85, so the lead turns +X in free space with a **single
+bend**. The right-angle would have needed exit +X → turn −Y → turn +X: three bends to solve
+a problem the straight plug does not have. "Angled saves a bend" was true only in isolation;
+with the neighbour in the picture it costs two.
+
+The lead now turns at −128.35, clearing J2 by **7.50 mm**. An assertion enforces it: any lead
+crossing a neighbour in X must turn −Y of that neighbour's back face, so a future change to
+plug length or socket position fails at import instead of in a render.
+
+**J2 stays straight** for its own reason — it sits nearly over the shaft already.
 
 **Length = 1.0 m**, from the routed path rather than a guess. `usb_run_length()` walks it
 orthogonally — a harness follows the box, it does not fly point to point:
@@ -1186,15 +1193,15 @@ orthogonally — a harness follows the box, it does not fly point to point:
 |---|--:|
 | +X to the shaft | 18.6 |
 | down the shaft | 22.8 |
-| along Y | 105.3 |
+| along Y | 109.3 |
 | **−X to the keyhead** | **568.8** |
 | up into the Pi | 40.2 |
-| **Total** | **755.7** |
+| **Total** | **759.7** |
 
 | Stock length | |
 |---|---|
-| 0.5 m | **too short by 256 mm** |
-| **1.0 m** | **244 mm spare — 32 % slack** ✅ |
+| 0.5 m | **too short by 260 mm** |
+| **1.0 m** | **240 mm spare — 32 % slack** ✅ |
 | 1.5 m | 98 % slack — 744 mm to hide |
 
 At 2.6 mm OD it is exactly the **Ø2.6 raceway limit the chassis already publishes**, so it
@@ -1207,7 +1214,7 @@ the straight USB-C plug was longer than the XH is wide. Shortening a plug — ex
 right-angle does — would have quietly made the shaft too narrow to pass one. Now `max()` of
 both.
 
-⚠ **`PLUG_L` (USB-C 12.0 right-angle, XHP-6 14.0) is an assumption.** Overmold *length* is not
+⚠ **`PLUG_L` (USB-C 20.0, XHP-6 14.0) is an assumption.** Overmold *length* is not
 specified by USB-IF — only the cross-section is — and it sets the shaft's Y extent. Measure
 a real cable before this is final; everything else above is from a drawing or a spec.
 
