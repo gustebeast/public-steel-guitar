@@ -2,7 +2,7 @@
 
 Splices each cut GT2 belt into a loop, dials its tension, AND lets the belt drop in
 freely then lock. Four printed parts:
-  • ANCHOR + SLIDER — the two tension halves. One M4×30 turnbuckle screw (head bearing
+  • ANCHOR + SLIDER — the two tension halves. One M4×40 turnbuckle screw (head bearing
     on the ANCHOR's −X face, threaded into a brass insert in the SLIDER) draws them
     together; turning it takes up slack CONTINUOUSLY, not in belt-tooth steps. Gap travel
     = 4 mm = 2 belt teeth of range (need ≥1 for continuous coverage; pitch 2 mm → 1 tooth
@@ -63,7 +63,7 @@ SCR_CLR  = M4.shaft_clr_d                 # 4.4  screw channel Ø
 # ── X layout: derived from the tooth count, so grip WIDTH is a single knob ────
 # ~6 teeth per bar reaches the GT2 belt's full working rating (mirrors the "6 teeth in
 # mesh" pulley rule); fewer derates the joint and overstresses the lead tooth. The screw
-# must run under BOTH wells to lift both bars, so it spans the whole clamp → M4×30 → ×40.
+# must run under BOTH wells to lift both bars, so it spans the whole ~42 mm clamp → M4×40.
 N_TEETH  = 6                              # teeth gripped per bar
 LIFT_LEN = N_TEETH * BP + 0.2             # 12.2  bar length (fits N_TEETH ridges)
 GRIP     = LIFT_LEN + 0.4                 # 12.6  well length (bar slides in it)
@@ -117,7 +117,7 @@ def anchor() -> cq.Workplane:
 
 def slider() -> cq.Workplane:
     """+X half: belt well for LIFTER_B; holds the brass insert (mouth −X, bore +X). The
-    M4×30 tip lands flush at the +X face."""
+    M4×40 tip lands flush at the +X face."""
     body = _half_body(S_X0, S_X1, GB0, GB1)
     body = body.cut(cyl_x(SCR_CLR, INS_X - (S_X0 - 1), S_X0 - 1, Z_SCR))
     body = cut_insert_bore(M4, body, (INS_X, 0.0, Z_SCR), (1.0, 0.0, 0.0),
@@ -126,19 +126,28 @@ def slider() -> cq.Workplane:
     return body
 
 
-def _lifter(length: float) -> cq.Workplane:
-    """Ridged bar: BAR_H body with GT2 ridges on top (ridge centre = bar top). Prints
-    ridges-up; local origin at the bar underside centre (z=0)."""
+SEAT_DEPTH = 0.7                          # concave screw-seat depth into the −Z edge
+
+
+def _lifter(length: float = LIFT_LEN) -> cq.Workplane:
+    """Ridged bar (N_TEETH ridges): BAR_H body, GT2 ridges on top, and a shallow CONCAVE
+    seat on the −Z edge that the screw crest centres into (2-line contact → self-centring,
+    no rock). Modelled in the WORKING pose (ridges +Z). The coupon rotates it to the
+    −Y→+Y PRINT pose so the ridge curves and the seat land IN the layer plane — smooth
+    mesh faces, and the seat prints without the down-facing overhang a tunnel-up bar has."""
     bar = box_at(length, BW, BAR_H, x=0.0, y=0.0, z=BAR_H / 2)
-    return bar.union(_ridges(-length / 2, length / 2, BAR_H, BW))
+    bar = bar.union(_ridges(-length / 2, length / 2, BAR_H, BW))
+    seat = cyl_x(M4.screw_d + 0.6, length + 2, -length / 2 - 1,
+                 z=-(M4.screw_d + 0.6) / 2 + SEAT_DEPTH)
+    return bar.cut(seat)
 
 
 def lifter_a() -> cq.Workplane:
-    return _lifter(GA1 - GA0 - 0.4)
+    return _lifter()
 
 
 def lifter_b() -> cq.Workplane:
-    return _lifter(GB1 - GB0 - 0.4)
+    return _lifter()
 
 
 # ── dummies for the assembly render (purchased, no standalone STEP) ──────────
@@ -162,8 +171,12 @@ def seated_lifter(bar, well_mid: float, locked: bool = True) -> cq.Workplane:
 def tensioner_coupon() -> cq.Workplane:
     a  = anchor().translate((0.0, -(BODY_W + 4.0), -BOT))
     s  = slider().translate((0.0, -(BODY_W + 4.0), -BOT))          # inline: same belt line
-    la = lifter_a().translate((-6.0, +(BODY_W / 2 + 4.0), 0.0))
-    lb = lifter_b().translate((+6.0, +(BODY_W / 2 + 4.0), 0.0))
+    # bars in the −Y→+Y PRINT pose: rotate belt-width Y up to Z so the ridge curves + seat
+    # land in the layer plane, then sit on the bed.
+    def _print_bar(bar):
+        return bar.rotate((0, 0, 0), (1, 0, 0), 90).translate((0, 0, BW / 2))
+    la = _print_bar(lifter_a()).translate((0.0, +(BODY_W / 2 + 6.0), 0.0))
+    lb = _print_bar(lifter_b()).translate((0.0, +(BODY_W / 2 + 6.0 + BW + 3.0), 0.0))
     return a.union(s).union(la).union(lb)
 
 
