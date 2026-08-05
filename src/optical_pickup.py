@@ -128,7 +128,7 @@ from cadquery.selectors import NearestToPointSelector
 from . import dimensions as D
 from . import chassis as CH
 from . import top_plate as TP
-from .helpers import box_at
+from .helpers import box_at, cyl, cyl_y
 from cadkit.fasteners import M4
 
 # ── where it sits ────────────────────────────────────────────────────────────
@@ -882,6 +882,84 @@ def opt_cover() -> cq.Workplane:
     for i in range(D.N_STRINGS):                       # apertures
         roof = roof.cut(_aperture_cutter(string_y_at(i, SENSE_X)))
     return roof
+
+
+# ── CABLE CONDUIT -- both plugs leave the board and drop into the body here ──────────
+# REQUIREMENT (user): get the USB-C and the 6-way XH down into the instrument WITHOUT any
+# cut-out in the magnetic pickup's top panel, through a channel big enough to pass a
+# CONNECTOR -- one at a time -- not merely a cable.
+#
+# The deck is never touched, and the reason is a happy accident of where the two parts end:
+# the deck's +X edge is TP.PX0 = -16.60 and the ENDPLATE begins there, so -Y of the board
+# the endplate's own top face is open sky at x -16.60..8.60. The conduit is a plain vertical
+# shaft in that face. Probed: the endplate is solid at every z from 6.00 down through the
+# fill slab across y -100..-131, so the shaft has material to pass through for its whole
+# depth and breaks out into the foot box below.
+#
+# SIZED BY WHAT MUST PASS, not by the cable:
+#   XHP-6 plug      17.40 x 5.75 -- B4B-XH-A 4-way is 12.4 on JST's drawing (already in
+#                                   BOM.md) and XH pitch is 2.5. The same extrapolation
+#                                   predicted the S6B's B = 20.0, which the LCSC page then
+#                                   confirmed, so it is a checked method rather than a guess.
+#   USB-C overmold  12.35 x 6.50 -- the USB-IF MAXIMUM, so ANY cable passes, not just one
+#                                   particular vendor's boot.
+# Worst of each axis + 1.5 clearance for a hand-fed pass-through.
+# ORIENTATION: the shaft is LONG IN Y and NARROW IN X, and that is the whole trick. A plug
+# is fed through with its wide axis along Y -- the direction the endplate has 27 mm to
+# spare -- so X only has to clear the plug's THIN axis. Sizing it the other way up needed
+# 20.40 of X and left 2.40 mm walls in a structural slab; this way X needs 9.50 and the
+# walls are 7.85. Y is generous anyway because it also has to span where the cable turns
+# down, which is past the back of a mated plug.
+CONDUIT_CLR = 1.5
+_XH6_W, _XH6_D = 12.4 + 2.5 * 2, 5.75                         # 17.40 x 5.75
+_USBC_W, _USBC_H = 12.35, 6.50                                # USB-IF MAX overmold
+# Plug body length along the mating axis. ASSUMPTIONS, and the ones to check against real
+# cable before cutting metal -- overmolds are not standardised.
+PLUG_L = {"J1": 20.0, "J2": 14.0}                             # USB-C boot; XHP-6 + relief
+CONDUIT_W = max(_XH6_D, _USBC_H) + 2 * CONDUIT_CLR            #  9.50, along X (thin axis)
+CONDUIT_Y1 = PCB_YM - 2.0                                     # -108.85, clear of the board
+CONDUIT_Y0 = CONDUIT_Y1 - (max(PLUG_L.values()) + 2 * CONDUIT_CLR)   # past the longest plug
+CONDUIT_D = CONDUIT_Y1 - CONDUIT_Y0                           # 23.00, along Y
+CONDUIT_XC = (BAND_X0 + D.BRIDGE_BASE_X1) / 2                 # centred in the endplate band
+
+
+def opt_conduit(grow: float = 0.0) -> cq.Workplane:
+    """The shaft cutter. Vertical, through the endplate's top face into the foot box."""
+    return box_at(CONDUIT_W + 2 * grow, CONDUIT_D + 2 * grow, 60.0,
+                  x=CONDUIT_XC, y=(CONDUIT_Y0 + CONDUIT_Y1) / 2, z=DECK_TOP - 30.0 + 0.001)
+
+
+def opt_cables() -> cq.Workplane:
+    """The MALE connectors and their cable, at true diameter -- an assembly aid, not a part.
+
+    Modelled so the route can be planned rather than assumed: each plug leaves its socket
+    along -Y, runs to the conduit's mouth and turns down it. The USB-C socket sits -X of the
+    endplate, so its lead also has to travel +X to reach the shaft -- which is the one thing
+    about this route that is not obvious from a side view."""
+    USB_OD, XH_OD = 2.6, 4.0          # slim shielded USB-2 (BOM wire table); 6x 26 AWG bundle
+    out = None
+
+    def add(s):
+        nonlocal out
+        out = s if out is None else out.union(s)
+
+    for ref, w, h, od, xoff in (("J1", _USBC_W, _USBC_H, USB_OD, -2.2),
+                                ("J2", _XH6_W, _XH6_D, XH_OD, +2.2)):
+        p, plen = part(ref), PLUG_L[ref]
+        zc = PCB_TOP + PKG[p["pkg"]][2] / 2                   # cable/plug centre height
+        y_back = PCB_YM - plen                                # plug's back face
+        add(box_at(w, plen, h, x=p["x"], y=PCB_YM - plen / 2, z=zc))
+        # The turn is just past the plug's own back face, so the cable never doubles back.
+        y_turn = y_back - CONDUIT_CLR
+        assert CONDUIT_Y0 < y_turn < CONDUIT_Y1, \
+            f"{ref}: cable turns down at y {y_turn:.2f}, outside the conduit"
+        # The +X shift the USB-C needs because its socket sits -X of the endplate entirely.
+        add(box_at(abs(CONDUIT_XC + xoff - p["x"]) + od, od, od,
+                   x=(CONDUIT_XC + xoff + p["x"]) / 2, y=y_turn, z=zc))
+        # ...then straight down the shaft into the body
+        add(cyl(od, zc - (DECK_TOP - 16.0), z=DECK_TOP - 16.0)
+            .translate((CONDUIT_XC + xoff, y_turn, 0)))
+    return out
 
 
 def opt_carrier_pocket() -> cq.Workplane:
