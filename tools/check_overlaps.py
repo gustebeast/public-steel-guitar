@@ -71,8 +71,8 @@ GLOBAL_OK = {
     # heat-set insert, which is seated in the endplate's wrap plinth. Both are designed
     # thread engagement, not interference.
     frozenset({"optical_screw", "optical_insert"}),
-    # belt-tensioner coupon: the M4 brass insert seats INSIDE the anchor's bore (designed)
-    frozenset({"belt_tensioner_anchor_coupon", "belt_tensioner_insert_coupon"}),
+    # belt-tensioner coupon: the M4 brass insert seats INSIDE the slider's bore (designed)
+    frozenset({"belt_tensioner_slider_coupon", "belt_tensioner_insert_coupon"}),
     frozenset({"optical_screw", "bridge_endplate"}),
     frozenset({"screw_bearing", "bridge_endplate"}), frozenset({"leadscrew", "bridge_endplate"}),
     frozenset({"locknut", "bridge_endplate"}), frozenset({"screw_pulley", "bridge_endplate"}),
