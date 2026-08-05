@@ -118,26 +118,22 @@ GLOBAL_OK = {
     frozenset({"tee_pcb", "motor"}),
     # legs (FLUSH round): the BODY STUB's octagon wall tenons mortise the
     # rail band (0.1 fit) and its top face butts the body bottom; the
-    # latch head engages its socket; the stack below is designed contact
+    # leg head enters its socket; the stack below is designed contact
     frozenset({"leg_body_stub", "chassis"}),
-    frozenset({"leg_body_stub", "leg_latch_head"}),
-    frozenset({"leg_latch_bolt", "leg_body_stub"}),
+    frozenset({"leg_body_stub", "leg_head"}),
     frozenset({"chassis_trrs_jack", "leg_body_stub"}),
     frozenset({"jack_seat_ring", "leg_body_stub"}),
     frozenset({"leg_column_plug", "leg_body_stub"}),
     frozenset({"leg_sleeve", "leg_shaft"}), frozenset({"leg_shaft", "leg_foot"}),
     frozenset({"leg_washer", "leg_sleeve"}),
     frozenset({"leg_seg_body", "leg_seg_body"}),
-    frozenset({"leg_seg_body", "leg_latch_head"}),
+    frozenset({"leg_seg_body", "leg_head"}),
     frozenset({"leg_seg_body", "leg_sleeve"}),
-    frozenset({"leg_latch_bolt", "leg_latch_head"}),
-    frozenset({"leg_latch_btn", "leg_latch_head"}),
-    frozenset({"leg_column_plug", "leg_latch_head"}),
-    frozenset({"leg_plug_retainer", "leg_latch_head"}),
+    frozenset({"leg_column_plug", "leg_head"}),
+    frozenset({"leg_plug_retainer", "leg_head"}),
     frozenset({"leg_lid", "leg_seg_body"}),
     # pedal bar: the C-slots wrap the shaft waists (0.2 clr, touch at the
-    # shoulder plane), the plate rests on the foot caps, and the closed
-    # bolts (one latch per foot) block the waists
+    # shoulder plane) and the plate rests on the foot caps
     frozenset({"pedal_bar_a", "leg_shaft"}),
     frozenset({"pedal_bar_c", "leg_shaft"}),
     frozenset({"pedal_bolt", "leg_shaft"}), frozenset({"pedal_bolt_trrs", "leg_shaft"}),
@@ -159,26 +155,20 @@ GLOBAL_OK = {
     # CA-354S in two modeling domains; they abut/overlap inside the bore
     frozenset({"leg_column_cable", "pedal_trrs_cable_leg"}),
     # ROUND 4: the bar carries the +Y legs' stub towers — the short
-    # shaft's block seats the stub plate, the latch bolt bears its ledge,
-    # the second TRRS pair mates inside, the stub takes a leg foot
+    # shaft's block seats the stub plate, the second TRRS pair mates
+    # inside, the stub takes a leg foot
     frozenset({"leg_foot", "pedal_bar_a"}),
     frozenset({"leg_foot", "pedal_bar_c"}),
-    frozenset({"leg_latch_bolt", "pedal_bar_a"}),
-    frozenset({"leg_latch_bolt", "pedal_bar_c"}),
-    frozenset({"leg_latch_btn", "pedal_bar_a"}),
-    frozenset({"leg_latch_btn", "pedal_bar_c"}),
     frozenset({"leg_column_plug", "pedal_bar_a"}),
     frozenset({"leg_plug_retainer", "pedal_bar_a"}),
-    frozenset({"leg_latch_bolt", "leg_shaft"}),
     frozenset({"shaft_trrs_jack", "leg_shaft"}),
     frozenset({"shaft_trrs_jack", "leg_column_plug"}),
     frozenset({"shaft_trrs_jack", "jack_seat_ring"}),
     frozenset({"jack_seat_ring", "leg_shaft"}),
 }
 
-# The pedal-bar latches are a self-contained subassembly (bolt in its
-# channel, TPU finger potted in the lid, lid recessed into the bar; one
-# mirrored latch per foot): whitelist any pair WITHIN the family — a pedal
+# The pedal bar is a self-contained subassembly (bar pieces + the sliding
+# dovetail lid and its detent nub): whitelist any pair WITHIN the family — a pedal
 # part clashing with a leg/chassis part (other than the GLOBAL_OK contacts
 # above) stays a reportable bug.
 PEDAL_FAMILY = {"pedal_bar_a", "pedal_bar_b", "pedal_bar_c",

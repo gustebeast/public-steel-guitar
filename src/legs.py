@@ -38,10 +38,12 @@ wrong at assembly). The flat is on the ROOT side (global +Y on the rotated
 +Y-rail stacks): the pedal bar's slot is a plain rectangular pocket — Ø20.4
 walls register X on the shaft's rounds, the flat back at 7.0 is a proper
 FACE seat on the key flat (0.2). The only other shaft feature is the CHORD
-NOTCH at z 9..29 (local +Y → the bar-mouth side): the latch bolt's head
-bears flat-on-flat on it, its crescent shoulders + the foot cap set the
-bar's Z, and the CLOSED bolt head under the upper shoulder is the
-anti-lift. The notch never enters the sleeve (exposure stays ≥ ~30).
+NOTCH at z 9..29 (local +Y → the bar-mouth side): its crescent shoulders +
+the foot cap set the bar's Z. The notch never enters the sleeve (exposure
+stays ≥ ~30). It USED to double as the latch bolt's bearing face, the bolt
+head under the upper shoulder being the bar's anti-lift; with the
+quick-release gone the notch keeps its other jobs (print-bed face, sleeve
+key, X registration) and the bar has no anti-lift.
 
 The BODY STUB joins the body with SLIDE-ALONG-Y OCTAGON JOINERY, no glue
 (user: the stub prints ON ITS SIDE for layer strength, so the joint must
@@ -124,11 +126,10 @@ SLEEVE_L = 200.0                       # groove-through. Retraction is
                                        # preloads it) + 5 dead = 197 tenon
                                        # rotated +Y-rail stacks aim it at the
                                        # bar MOUTH, i.e. INWARD): the
-                                       # print-bed face, the sleeve key, AND
-                                       # the latch bolt's bearing face — the
-                                       # head bears flat-on-flat on the bed
-                                       # surface itself (normal pure Y, no
-                                       # cam-open component, 0.2 play). 6.8
+                                       # print-bed face AND the sleeve key
+                                       # (it was also the latch bolt's
+                                       # bearing face, before the
+                                       # quick-release came out). 6.8
                                        # keeps the flat→round junction at 43°
                                        # (< 45° overhang); single-D = one
                                        # unique orientation. The slot's back
@@ -179,7 +180,7 @@ FOOT_TENON_Y1 = 13.6
 # jack mouth -8.2 → 13.0 insertion (the same DELIBERATE 1.0 shortfall as
 # the bar joint — it buys the mouth-seat ring its thickness).
 CHJ_MOUTH_Z = -9.3            # chassis-jack mouth plane (socket-local;
-                              # re-based for the square latch socket:
+                              # re-based for the square socket:
                               # spigot top -10, plug tip +3.7)
 CHJ_D, CHJ_L = 9.1, 39.4      # 10-03404 molded body
 
@@ -326,23 +327,12 @@ def leg_shaft() -> cq.Workplane:
     return body
 
 
-# TRRS dock (the -X/+Y leg only — see pedal_bar.py for the mating story):
-# the FEMALE jack is a Same Sky SJ-43514-SMT (DigiKey SJ-43514-SMT-TR —
-# the no-switch 4-terminal variant: we carry exactly 4 signals,
-# ~14.5×6×5 body, 14.0 mating depth), embedded in the shaft with its mating
-# axis along X, mouth flush with the Ø20 at the INBOARD face (local -X; the
-# rotated +Y-rail stack turns that toward the bar's latch side). The bar's
-# latch slider carries the male plug (Same Sky SP-3541) and drives it
-# in/out along X. Wires solder to the jack pads and run UP the Ø6 hollow
-# CENTER BORE to the shaft top, then inside the sleeve/segments to the
-# chassis. The jack body (14.5) is longer than the mating depth (14), so
-# the plug tip stays inside it — no tip well behind.
-                                       # 8.7 — low enough that the bar-side
-                                       # cradle clears the lid plane)
-                                       # of the foot band: its underside is a
-                                       # SHELF over the bar's solid corner —
-                                       # positive hold-down (the slot squares
-                                       # only its top 2.4 to slide past)
+# (The X-axis TRRS dock block that lived here is GONE with the quick-release:
+# it described a bar-mounted LATCH SLIDER carrying the male plug and driving it
+# along X, and its seven constants — TRRS_Z, TRRS_JACK_*, WIRE_BORE_D,
+# SHELF_Z0/1 — were dead, each with no reference but its own definition. The
+# live blind-mate is the VERTICAL one: a captive CA-354S pressed straight up,
+# see leg_shaft_trrs / leg_head. The SHELF was that design's anti-lift.)
 
 
 TENON_L = 197.0                # every shaft's sliding tenon: travel 142
@@ -405,8 +395,8 @@ def leg_shaft_short() -> cq.Workplane:
     body = _shaft_prism(SHORT_SHAFT_L)
     body = body.union(box_at(BLK_W, BLK_W, BLOCK_H, z=BLOCK_H / 2))
     body = body.cut(_section_mortise(length=39.4).translate((0, 0, -1.0)))
-    body = body.cut(box_at(BOLT_W + 2.0, 6.4, 9.0, x=8.0, y=-9.6, z=31.9))
-    body = body.cut(box_at(BOLT_W + 2.4, 9.6, 9.4, x=8.0, y=17.7, z=31.9))
+    # (the ledge pocket + bolt tail window that took the tower's latch bolt are
+    # GONE with the quick-release — the socket is now purely passive)
     return body
 
 
@@ -414,7 +404,7 @@ def leg_shaft_trrs() -> cq.Workplane:
     """The -X/+Y leg's shaft (ROUND 4): leg_shaft_short() + the SECOND
     vertical TRRS blind-mate — a 10-03404 jack (mouth DOWN) coaxial above
     the socket roof, mating the bar stub's captive CA-354S plug on the
-    same straight press that clicks the latch. Its factory cable runs UP
+    same straight press that seats the joint. Its factory cable runs UP
     the column to the mini junction PCB. The side dock / carrier PCB /
     corner channel of the sideways design are GONE."""
     body = leg_shaft_short()
@@ -423,9 +413,9 @@ def leg_shaft_trrs() -> cq.Workplane:
     # verify the SKU) loads DOWN from the shaft's open top onto the
     # integral mouth-seat BOSS (withdrawal backstop); a pressed
     # jack_seat_ring ABOVE it takes insertion. Jack mouth +42.7, plug tip
-    # +55.7 = 13.0 insertion on the same press that clicks the latch.
-    # TRRS axis at local (-5, +13): x -5 dodges the latch bolt (global +5
-    # after the 180 placement); +13 rides the octagon's fat flare band —
+    # +55.7 = 13.0 insertion on the same press that seats the joint.
+    # TRRS axis at local (-5, +13): x -5 kept clear of the old latch bolt
+    # (global +5 after the 180 placement); +13 rides the fat flare band —
     # the way keeps a ~1.3 wall to the tenon's taper flank
     body = body.union(cyl(13.0, 1.9, z=38.2).translate((-5.0, TRRS_DY, 0)))
     body = body.cut(cyl(4.8, 2.0, z=38.0).translate((-5.0, TRRS_DY, 0)))
@@ -447,8 +437,8 @@ def leg_shaft_trrs() -> cq.Workplane:
 # gland washer — is UNCHANGED, so the 142 step and clocking phase carry
 # over. The face CABLE CHANNEL + sliding lid (pedal-bar pattern) aligns
 # across joints BECAUSE of the deterministic clocking: the cable lays in
-# AFTER column assembly. Top joint = the SEATBELT LATCH head (separate
-# part; all mechanism on the leg, passive socket) — see latch_head().
+# AFTER column assembly. Top joint = the LEG HEAD (separate part, passive
+# octagon spigot into the stub's socket) — see leg_head().
 SQ_W = 44.0                    # outer square width (uniform, = old bell OD)
                                # at round 3; 45° crown corners print lying)
 SEG_BODY_L = 142.0             # ROUND 3 (user): NO THREADS, NO TPU
@@ -496,8 +486,8 @@ SEC_BORE_Y  = 13.0    # wired: cable-bore centre (in the fat flare band; clears
                       # the M4 at x+7 and stays inside the profile walls)
 SEC_CABLE_D = 7.0     # wired leg: axial cable bore through the spigot + socket roof
 # ROUND 3 (user): EVERY leg joint is this flush octagon now — sections, the
-# latch head↔body stub, the sleeve↔segment, the shaft↔sleeve fine-adjust
-# SLIDER, and the bar tower↔block latch (the shaft lying on +Y flipped the old
+# head↔body stub, the sleeve↔segment, the shaft↔sleeve fine-adjust
+# SLIDER, and the bar tower↔block joint (the shaft lying on +Y flipped the old
 # house sockets' flat floors into unprintable 28-wide ceiling bridges). The
 # slider pair uses a looser SLIDE clearance; the fixed joints keep the 0.1
 # assembly fit. TRRS blind-mate axes move into the profile's fat flare band
@@ -728,7 +718,7 @@ def leg_seg_body_ch() -> cq.Workplane:
 # column CENTER through the flush-octagon joints' Ø7 bores.)
 
 
-# ── stage 2: seatbelt-latch top joint (all mechanism ON the leg) ────────
+# ── stage 2: the leg↔body top joint ────────────────────────────────────
 # ── the leg↔body joint (FLUSH round, replaces the 52-sq outset socket):
 # a 44-sq BODY STUB per corner — "a regular leg section, as short as
 # possible" (user) — semi-permanently attached via TWO tall octagon
@@ -736,15 +726,17 @@ def leg_seg_body_ch() -> cq.Workplane:
 # sliding UP into closed mortises in the rail band / kept shells, ONE
 # vertical M4 dropped down the rail web (head hidden under the deck) =
 # extraction retention only. Below the body the stub carries the SAME
-# passive latch socket as the leg↔bar joint (house 28.1 × 41 + ledge);
-# the latch head engages it exactly like a bar tower — but the whole
-# joint is authored FLIPPED 180° so the bolt channel opens INBOARD
-# (never through the flush outer wall).
-SPG_W = 36.0                   # latch-bolt sizing datum (legacy spigot
-                               # width — the bolt SKU spans SPG_W/2+2.6)
-HEAD_BODY_L = 42.0             # head body (30-deep plug socket + button
-                               # band + plug seat)
-BOLT_W, BOLT_H, BOLT_X = 12.0, 8.0, -12.0
+# passive octagon socket as the leg↔bar joint; the leg head enters it
+# exactly like a bar tower.
+#
+# NO Z RETENTION (user, this round). The seatbelt quick-release that used
+# to lock this joint — sliding bolt, release button, and the bearing
+# ledge/tail window each socket cut for them — is GONE from BOTH joints,
+# back to a blank slate. What remains is pure joinery: the octagon spigot
+# and mortise fix X, Y and rotation and carry the load, but nothing holds
+# the joint together along Z, so a leg pulls out as easily as it goes in.
+# Whatever replaces it gets a clean, fully passive socket to work against.
+HEAD_BODY_L = 42.0             # head body (30-deep plug socket + plug seat)
 STUB_H = 48.0                  # stub protrusion below the body bottom =
                                # the disassembled-instrument z cost (the
                                # old 52-sq socket hung 50)
@@ -930,26 +922,21 @@ def _body_stub(wired: bool, eps: float) -> cq.Workplane:
     endwall_screw_negatives). The stub slides in ALONG +local-y until
     the tongue tip butts its blind groove end (outer faces flush); every
     groove entry in the side face is filled flush by its ridge/tongue
-    end. Bottom = the flush OCTAGON latch socket (round 3 — mortise open
-    through the bottom face + the local +Y groove; ledge pocket + bolt
-    tail window in/through the thick -Y wall). Wired: + the mouth-seat boss,
+    end. Bottom = the flush OCTAGON socket (round 3 — mortise open
+    through the bottom face + the local +Y groove; fully passive now the
+    quick-release ledge pocket and bolt tail window are gone). Wired: + the mouth-seat boss,
     barrel way and the Ø9.7 jack way opening through the FLAT top face
     (see TRRS_DX — no fin/chimney: the naked 10-03404 drops in through
     the wide rib's well AFTER the stub seats, and an M2 set screw from
     the inboard-y face clamps it)."""
     b = box_at(SQ_W, SQ_W, STUB_H, z=STUB_H / 2)
-    # latch SOCKET: the flush OCTAGON mortise (net 40 deep from the mouth,
+    # SOCKET: the flush OCTAGON mortise (net 40 deep from the mouth,
     # spigot 38 → mouth-butt hard stop), opening through the bottom face AND
     # the local +Y face (the groove — user round 3: every leg joint is the
     # flush octagon; no 180 flip any more, the bed face fixes the orientation)
     b = b.cut(_section_mortise(length=39.4).translate((0, 0, -1.0)))
-    # ledge POCKET in the thick -Y (point-side) wall at x -8 (matches the
-    # head's bolt channel): 6.4 deep so the whole 20.6 bolt nests inside the
-    # face plane when engaged; the wall below z 27.4 is the bearing ledge
-    b = b.cut(box_at(BOLT_W + 2.0, 6.4, 9.0, x=-8.0, y=-9.6, z=31.9))
-    # bolt TAIL WINDOW through the 1.7 face skin (the retract stroke pokes
-    # the tail past the inner face — open air under the body)
-    b = b.cut(box_at(BOLT_W + 2.4, 9.6, 9.4, x=-8.0, y=17.7, z=31.9))
+    # (the bearing-ledge pocket + bolt tail window are GONE with the
+    # quick-release — the -Y point-side wall is solid again)
     ca, cb = _cross_x(eps)
     for rx in (ca, cb):
         b = b.union(_stub_ridge(SQ_W).translate((rx, -SQ_W / 2, STUB_H)))
@@ -1014,33 +1001,31 @@ def leg_body_stub_trrs() -> cq.Workplane:
     return _body_stub(True, 1.0)
 
 
-def leg_latch_head() -> cq.Workplane:
-    """LATCH HEAD x4 (PCTG, prints LYING on its +Y bed face — round 3,
+def leg_head() -> cq.Workplane:
+    """LEG HEAD x4 (PCTG, prints LYING on its +Y bed face — round 3,
     all-octagon): octagon section socket below (mates the top segment), flush
-    octagon SPIGOT above (into the body stub), bolt channel hooking the stub
-    mortise's thick -Y point-side wall, TRRS plug seat + ways on the (+5,+13)
-    axis (the flare band). PRINT-REFINEMENT FLAG: the lying TRRS seat/way
-    bores are horizontal — want teardrops / a roundness print-check.
-    The head is otherwise the bar-tower pattern: the leg column's
-    top piece
-    = the INSERTING half of the leg<->body latch, the bar-tower pattern
-    VERBATIM but authored FLIPPED 180 deg so the bolt channel opens
-    INBOARD (under the body's shadow - never through the flush outer
-    wall): 44-sq body with the 27.7 house SPIGOT (38, into the body
-    stub's 41 socket + ledge), wedging-bolt channel + recessed seatbelt
-    BUTTON pocket, the standard section house socket below (any
-    segment's integral plug + one M4), and the captive TRRS plug seat +
-    cable ways on the flipped +5 axis (every head carries them
-    invisibly - ONE SKU for all four legs). The 50-sq shoulder plate is
-    GONE (user: consistent 44 everywhere); the body top face butting
-    the stub mouth is the hard stop. Local z0 = the body TOP face
-    (mounted at global Z_BOT - 48)."""
+    octagon SPIGOT above (into the body stub), TRRS plug seat + ways on the
+    (+5,+13) axis (the flare band). PRINT-REFINEMENT FLAG: the lying TRRS
+    seat/way bores are horizontal — want teardrops / a roundness print-check.
+
+    The leg column's top piece = the INSERTING half of the leg<->body joint,
+    the bar-tower pattern: 44-sq body with the octagon SPIGOT (38, into the
+    body stub's socket), the standard section socket below (any segment's
+    integral plug + one M4), and the captive TRRS plug seat + cable ways
+    (every head carries them invisibly - ONE SKU for all four legs). The
+    50-sq shoulder plate is GONE (user: consistent 44 everywhere); the body
+    top face butting the stub mouth is the hard stop. Local z0 = the body
+    TOP face (mounted at global Z_BOT - 48).
+
+    The wedging-bolt channel and recessed seatbelt-button pocket are GONE
+    with the quick-release (user): the spigot is now a plain sliding fit,
+    so this joint has no Z retention at all. Was named leg_latch_head."""
     b = box_at(SQ_W, SQ_W, HEAD_BODY_L, z=-HEAD_BODY_L / 2)
     # section socket below (STANDARD stack orientation - the segment chain
     # underneath is not flipped): the OCTAGON section mortise, opening through
     # the head's bottom face AND its +Y face (the flush-joint groove) + the M4
     # retention clearance from the OUTER -Y face at x +7 (same scheme as the
-    # segment sockets; the button pocket at x 7.8..20.2, z -16..-6 clears it)
+    # segment sockets; nothing shares that band now the button pocket is gone)
     b = b.cut(_section_mortise(length=SEC_MOR_L + 1.0)
               .translate((0, 0, -HEAD_BODY_L - 1.0)))
     b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
@@ -1050,13 +1035,8 @@ def leg_latch_head() -> cq.Workplane:
     # body top; stem base ON the +Y bed face — user round 3, replaces the
     # house). Slides -Z-relative into the stub's mortise; mouth-butt stop.
     b = b.union(_section_tenon(39.0).translate((0, 0, -1.0)))
-    # bolt channel: hooks the thick -Y (point-side) wall of the stub now
-    # (the +Y face is the open groove — nothing left to hook there): a
-    # through-notch in the spigot at x -8, spanning past both flanks
-    b = b.cut(box_at(BOLT_W + 0.4, 34.0, BOLT_H + 0.4,
-                     x=-8.0, y=2.5, z=31.8))
-    b = b.cut(box_at(12.4, 9.0, 10.4, x=14.0, y=-(SQ_W / 2 - 4.4),
-                     z=-11.0))                      # recessed button pocket
+    # (the spigot's bolt through-notch and the button pocket in the body are
+    # GONE with the quick-release — the spigot is an unbroken octagon tenon)
     # captive CA-354S seat + cable ways on the TRRS axis (+5, +13 — moved
     # into the fat flare band): tip lip, handle way, Ø8 down-way to the core
     b = b.cut(cyl(9.4, 1.7, z=37.4).translate((5.0, TRRS_DY, 0)))
@@ -1067,32 +1047,12 @@ def leg_latch_head() -> cq.Workplane:
     return heal(b)
 
 
-def leg_latch_bolt() -> cq.Workplane:
-    """Latch BOLT ×4 (PCTG): rigid slider in the spigot channel, 45° nose
-    chamfer self-latches on push-in; underside bears on the socket's
-    ledge (washer preload = zero play). Drawn ENGAGED. Local = head
-    frame."""
-    b = box_at(BOLT_W, SPG_W / 2 + 2.6, BOLT_H,
-               x=BOLT_X, y=SPG_W / 4 + 0.7, z=31.8)   # bottom at the ledge;
-    #                                       rear at y -0.6 so the bar-joint
-    #                                       placement (ry - 1.4) clears the
-    #                                       shaft block's descending gable
-    b = b.cut(cq.Workplane("YZ")                     # 45° insertion chamfer
-              .polyline([(SPG_W / 2 + 2.0, 31.8 + BOLT_H / 2),
-                         (SPG_W / 2 - 1.0, 31.8 + BOLT_H / 2),
-                         (SPG_W / 2 + 2.0, 31.8 - BOLT_H / 2 + 1.0)])
-              .close().extrude(BOLT_W + 2).translate((BOLT_X - BOLT_W / 2 - 1, 0, 0)))
-    return b
-
-
-def leg_latch_btn() -> cq.Workplane:
-    """Latch BUTTON ×4 (PCTG): recessed seatbelt-style pad on the head
-    body's inboard face + stem into the mechanism cavity (35° wedge to
-    the bolt at refinement). Local = head frame. Stem tip lands ON the
-    pocket floor (y 13.1) — not through it."""
-    b = box_at(12.0, 3.0, 10.0, x=-14.0, y=SQ_W / 2 - 1.6, z=-11.0)
-    b = b.union(box_at(8.0, 5.9, 6.0, x=-14.0, y=SQ_W / 2 - 5.95, z=-11.0))
-    return b
+# leg_latch_bolt() / leg_latch_btn() REMOVED (user): the seatbelt quick-release
+# is gone from both the leg↔body and the leg↔bar joints. They were one shared
+# SKU pair — bolt ×4 on the leg heads, ×2 more on the pedal-bar towers — and
+# with them go the BOLT_W/BOLT_H/BOLT_X and SPG_W datums, the ledge pockets and
+# tail windows in leg_body_stub + leg_shaft_short, and the channel/pocket in
+# leg_head + pedal_bar._stub_tower. Neither joint retains in Z now, by design.
 
 
 
