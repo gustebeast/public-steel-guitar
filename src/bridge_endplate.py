@@ -565,8 +565,12 @@ def _build() -> cq.Workplane:
     # AND THE LIP HAS TO GO WITH IT across this Y band. The lip hangs off the -X FACE, and
     # the conduit removes that face here, so leaving the lip would leave a 5 x 5 tab rooted
     # on nothing -- worse than not having it. Trimming it costs 19.5 mm of its 57.4 mm run,
-    # leaving 37.6 mm contiguous (65%) still trapped by the deck panels. Flagged for the
-    # lead: this is the one piece of load-bearing material the conduit spends.
+    # leaving 37.6 mm CONTIGUOUS (65%) still trapped by the deck panels, which is the one
+    # piece of load-bearing material the conduit spends. There is no placement that avoids
+    # it: the lip spans y -128.35..-71.30 and the conduit must sit -Y of the board at
+    # -108.85..-131.85, so they overlap wherever it goes inside the endplate. The only
+    # alternative was routing the USB lead ~47 mm back +Y to clear the lip entirely, which
+    # buys whole-lip retention at the cost of a doubled-back cable and a longer run.
     body = body.cut(OP.opt_conduit())
     body = body.cut(box_at(LIP_DX + 2.0, OP.CONDUIT_D, LIP_DZ + 2.0,
                            x=XLO - (LIP_DX + 2.0) / 2 + 1.0,
