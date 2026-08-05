@@ -806,8 +806,31 @@ def _electronics_components():
 # that already exist. Nothing in the chassis changes for any of this.
 _LEVER_PADDLE_D = 20.0                       # KL paddle depth in Y
 _ILKL_Y = CH.Y_LO + _LEVER_PADDLE_D / 2      # -123.95: paddle -Y face on the body edge
-_LEVER_Y = _ILKL_Y + _LEVER_PADDLE_D         # -103.95: flush BEHIND it (+Y = away from
-#                                              the player), the shared contact plane
+
+
+def _lever_plane_y() -> float:
+    """The shared contact plane, set by CLEARING ILKL'S HOUSING — not by the paddle.
+
+    First cut put this one paddle-depth behind ILKL, which reads right but is not
+    what governs: the housing is 38.1 deep in Y against a 20 paddle, so at that
+    spacing the two housings still overlapped and the only way to keep them apart
+    was to push LKL far away in X. The user's call, and it is the right one — move
+    the plane +Y until the housings clear, and X is free again.
+
+    Derived from the housing solid so it tracks the design.
+    """
+    from . import knee_lever as KL
+    b = KL.knee_housing.translate(KL.MOUNT_POSE).val().BoundingBox()
+    return _ILKL_Y + (b.ymax - b.ymin) + 0.4     # housing depth + a print clearance
+
+
+_LEVER_Y = _lever_plane_y()                  # -85.45
+
+# ONE SLOT for the levers, quantised to the rib comb. The pedals' 62.4 pitch is the
+# spacing the user thinks in, but a lever's tenons only land in rib mortises if its
+# station IS a rib X, so the nearest whole rib count (3 × 23 = 69) is what a lever
+# slot can actually be. ILKL -> LKL is one of these.
+_LEVER_SLOT = 3 * 23.0                       # 69.0 ~= the 62.4 pedal pitch, on the comb
 
 # VKL IS THE ONE EXCEPTION, and the gate found it: the rib mortises stop at MID_Y
 # (the guitar's Y midpoint) by design, and the KV housing is 77.4 deep in +Y — at the
@@ -833,15 +856,16 @@ def _vkl_mount_y() -> float:
 # clears it is -501. Both bounds together pin ILKL and push the left group +X:
 # ILKL -501, LKL -409 is exactly the 92 one-slot step the user described.
 LEVER_STATIONS = (
-    ("ilkl", "kl", -501.0,   _ILKL_Y,  False),   # -X bound: the left leg block
-    # left knee: the LKL/LKR pair nests one rib apart, VKL clears them to +X
-    ("lkl",  "kl", -409.0,   _LEVER_Y, False),
-    ("lkr",  "kl", -386.0,   _LEVER_Y, True),
-    ("vkl",  "kv", -281.4,   None,     False),   # rib-derived: stations at -294/-271
-    #                                              None -> _vkl_mount_y() (see above)
-    # right knee, ~230 from the left one
-    ("rkl",  "kl", -179.0,   _LEVER_Y, False),
-    ("rkr",  "kl", -156.0,   _LEVER_Y, True),
+    ("ilkl", "kl", -501.0,           _ILKL_Y,  False),   # -X bound: the left leg block
+    # left knee: LKL sits ONE SLOT +X of ILKL (user) — only possible because the
+    # plane above clears their housings in Y; LKR then nests one rib off LKL.
+    ("lkl",  "kl", -501.0 + _LEVER_SLOT, _LEVER_Y, False),   # -432
+    ("lkr",  "kl", -409.0,           _LEVER_Y, True),
+    ("vkl",  "kv", -304.4,           None,     False),   # rib-derived: stations at -317/-294
+    #                                                      None -> _vkl_mount_y() (see above)
+    # right knee, ~250 from the left one
+    ("rkl",  "kl", -179.0,           _LEVER_Y, False),
+    ("rkr",  "kl", -156.0,           _LEVER_Y, True),
 )
 
 
