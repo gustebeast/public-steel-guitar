@@ -144,11 +144,13 @@ def _levers() -> dict:
       * axis   — a KL station's axle is local +Y and the station applies no rotation,
                  so it stays guitar +Y. A KV station is posed with -90° about Z,
                  which carries +Y to +X.
-      * throw  — KL 30°, KV 20°. A MIRRORED station ("…R", the knee pushing the
-                 other way) is the design reflected in X, and reflecting a rotation
-                 about Y negates it — so the sign flips with the mirror. Not
-                 reasoned about and hoped for: build_rig asserts every station's
-                 transform against the CAD-swung part.
+      * throw  — KL +30°, KV **-20°**, both PROBED (see _verify_levers), because the
+                 designs disagree about which way positive goes: +30 swings a KL
+                 paddle -X, which is what an "…L" lever does, but +20 drives the KV
+                 arm DOWN and the knee LIFTS that one. Shipping +20 swung the
+                 vertical lever backwards. A MIRRORED station ("…R") is the design
+                 reflected in X, and reflecting a rotation about Y negates it, so
+                 the sign flips again with the mirror.
       * lobe_rc — piston stroke = rc*sin(theta), exact, as on the pedals.
 
     Only the arm and the parts ON the axle swing. Housing, bearings, board and
@@ -186,7 +188,8 @@ def _levers() -> dict:
                            f"{pre}kl_magnet_cap", f"{pre}kl_magnet"]
             pistons = [f"{pre}main_cart_piston", f"{pre}half_stop_cart_piston"]
         else:
-            mz, axis, throw, rc = KV.MOUNT_Z, [1, 0, 0], KV.THROW_V, KV.LOBE_RC_V
+            # NEGATIVE: the knee lifts this arm, and +THROW_V drives it down
+            mz, axis, throw, rc = KV.MOUNT_Z, [1, 0, 0], -KV.THROW_V, KV.LOBE_RC_V
             swing_nodes = [f"{pre}kv_lever", f"{pre}kv_magnet"]
             pistons = [f"{pre}kv_main_cart_piston", f"{pre}kv_half_stop_cart_piston"]
         out[name.upper()] = {
@@ -203,12 +206,20 @@ def _levers() -> dict:
 
 
 def _verify_levers(levers) -> None:
-    """Rebuild the VIEWER's transform in CAD and compare it to the CAD-swung part.
+    """Check the levers TWO ways: does the transform match CAD, and does it move the
+    lever the way a knee actually drives it.
 
-    The throw SIGN is the thing worth checking — a mirrored station reflects the
-    design in X, which negates a rotation about Y, and getting that backwards would
-    swing "…R" levers the wrong way while still looking plausible in a still frame.
-    This is the same 0.0 mm check the pedals get.
+    The second check exists because the first one alone shipped a bug. Matching the
+    CAD swing only proves the viewer agrees with whatever sign I fed it — it takes
+    the premise on trust, exactly the way round-tripping the copedent to note names
+    validated arithmetic against my own transcription. The vertical lever went out
+    swinging DOWN when a knee lifts it, and a same-sign check had nothing to say
+    about that.
+
+    So: apply the EXPORTED transform to the rest part and assert the physics.
+      * a horizontal lever's paddle travels -X, or +X when mirrored (an "…L" lever
+        is one the knee pushes left; "…R" is the reflection)
+      * a vertical lever's arm RISES
     """
     import cadquery as cq
     from src import build as B
@@ -219,13 +230,18 @@ def _verify_levers(levers) -> None:
         if sy is None:
             sy = B._vkl_mount_y()
         spec = levers[name.upper()]
+        # The LOCAL angle that the exported (guitar-frame) one must correspond to.
+        # Mirroring in X negates a rotation about Y, so it comes back out here.
+        # Deriving it rather than re-stating the throw is what keeps this check
+        # about the PIVOT (centre/axis/mirror) and leaves the SIGN to the physics
+        # assert below — otherwise the two would just agree with each other.
+        th = spec["throw_deg"] * (-1 if mirrored else 1)
         if kind == "kl":
-            local, throw, mz = KL.knee_lever, KL.THROW, KL.MOUNT_Z
-            swung = local.rotate((0, 0, 0), (0, 1, 0), throw)
+            local, mz = KL.knee_lever, KL.MOUNT_Z
+            swung = local.rotate((0, 0, 0), (0, 1, 0), th)
         else:
-            local, throw, mz = KV.kv_lever, KV.THROW_V, KV.MOUNT_Z
-            local = local.rotate((0, 0, 0), (0, 0, 1), -90)
-            swung = (KV.kv_lever.rotate((0, 0, 0), (0, 1, 0), throw)
+            local, mz = KV.kv_lever.rotate((0, 0, 0), (0, 0, 1), -90), KV.MOUNT_Z
+            swung = (KV.kv_lever.rotate((0, 0, 0), (0, 1, 0), th)
                      .rotate((0, 0, 0), (0, 0, 1), -90))
 
         def _pose(s):
@@ -243,6 +259,21 @@ def _verify_levers(levers) -> None:
         assert err < 1e-6, (
             f"{name}: the viewer's pivot does not reproduce the CAD swing "
             f"({err:.4f} mm) — check axis/sign against the mirror")
+
+        # ...and does it move the way the knee drives it?
+        r = rest.val().BoundingBox()
+        if kind == "kv":
+            assert a.zmax > r.zmax + 1.0, (
+                f"{name}: the vertical lever's arm goes DOWN ({r.zmax:.2f} -> "
+                f"{a.zmax:.2f}); a knee LIFTS it — the throw sign is inverted")
+        elif mirrored:
+            assert a.xmax > r.xmax + 1.0, (
+                f"{name}: an '…R' lever's paddle must travel +X "
+                f"({r.xmax:.2f} -> {a.xmax:.2f})")
+        else:
+            assert a.xmin < r.xmin - 1.0, (
+                f"{name}: an '…L' lever's paddle must travel -X "
+                f"({r.xmin:.2f} -> {a.xmin:.2f})")
 
 
 def build_rig(build_n=None) -> pathlib.Path:
