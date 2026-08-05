@@ -208,18 +208,33 @@ KNEE_FAMILY = ({"knee_housing", "knee_lever", "kv_housing", "kv_lever",
                | _LANE | {f"kv_{p}" for p in _LANE})
 
 
+# The six knee-lever STATIONS (build.LEVER_STATIONS). LKL keeps the bare names; the
+# other five prefix them. Same parts, same designed contacts — the family test has to
+# see through the prefix or every station re-reports LKL's allowlisted interferences.
+_STATION = r"(?:pedal\d+|ilkl|lkr|vkl|rkl|rkr)"
+
+
 def _knee(n) -> bool:
-    """Knee-lever family membership, including the three FOOT PEDALS. Each pedal is
-    the knee core verbatim, posed and named pedal{i}_<knee part>; the pedal's
-    HOUSING is fused into the bar, so the bar pieces count as family too — that
-    fusion is the housing, not a clash."""
+    """Knee-lever family membership, including the FOOT PEDALS and all six lever
+    stations. Each pedal is the knee core verbatim, posed and named
+    pedal{i}_<knee part>; the pedal's HOUSING is fused into the bar, so the bar
+    pieces count as family too — that fusion is the housing, not a clash.
+
+    NOTE this only ever whitelists a pair when BOTH sides are family, so a station
+    running into the chassis, a leg or another station's housing still reports. That
+    is how ILKL's collision with the left leg block was caught."""
     b = base(n)
     if b in KNEE_FAMILY or b in ("pedal_lever", "pedal_bar_a", "pedal_bar_b",
                                  "pedal_bar_c"):
         return True
-    m = re.match(r"pedal\d+_(.+)$", b)
-    # the axle group is kl_* on the knee lever, so check that sibling too
-    return bool(m) and (m.group(1) in KNEE_FAMILY or f"kl_{m.group(1)}" in KNEE_FAMILY)
+    m = re.match(rf"{_STATION}_(.+)$", b)
+    if not m:
+        return False
+    inner = m.group(1)
+    # the axle group is kl_* on the knee lever, so check that sibling too; a KV
+    # station also prefixes its own kv_ names (vkl_kv_housing)
+    return (inner in KNEE_FAMILY or f"kl_{inner}" in KNEE_FAMILY
+            or f"kv_{inner}" in KNEE_FAMILY)
 
 
 def intended(na, nb) -> bool:

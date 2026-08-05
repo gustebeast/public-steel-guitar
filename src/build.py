@@ -778,6 +778,72 @@ def _electronics_components():
     return out
 
 
+# ── THE SIX KNEE LEVERS ──────────────────────────────────────────────────────
+# The copedent needs six (user): ILKL, LKL, VKL, LKR, RKL, RKR. Only LKL and VKL
+# were ever modelled, each hardcoded at its own MOUNT_POSE; this table makes the
+# station the variable and reuses those two designs for all six.
+#
+# TWO Y PLANES, which is all the user asked for: ILKL is the INNER lever, closest
+# to the player, its paddle's -Y face FLUSH with the body edge; everything else
+# sits one paddle-depth behind it, sharing one contact plane.
+#
+# X: THE MIRROR IS WHAT MAKES CLUSTERS POSSIBLE. The KL housing is 82.36 wide in X
+# and almost all of it lies -X of its axle (-77.36..+5), because the two feel
+# cartridges sit beside the lever. Two levers of the SAME hand therefore cannot come
+# closer than 92 (4 rib pitches) — but an "…R" lever is the design REFLECTED, so it
+# occupies +X of its axle instead, and an L/R pair NESTS at 23 (one rib). That is
+# also what they physically are: LKL and LKR are one knee pushing left or right, so
+# their axles belong next to each other. The pairs below sit a rib apart and the two
+# knees land ~250 apart, which is a seated player's stance.
+#
+# VKL cannot join the nesting — it is a different housing and has to clear the pair
+# outright, so it sits +X of them rather than between.
+#
+# Every station is a RIB X (23 pitch), because both designs' tenons are generated on
+# a plain rib walk from the axle — and the rib mortises chassis.py cuts run from the
+# player face all the way to MID_Y, so the Y placement below is a slide along slots
+# that already exist. Nothing in the chassis changes for any of this.
+_LEVER_PADDLE_D = 20.0                       # KL paddle depth in Y
+_ILKL_Y = CH.Y_LO + _LEVER_PADDLE_D / 2      # -123.95: paddle -Y face on the body edge
+_LEVER_Y = _ILKL_Y + _LEVER_PADDLE_D         # -103.95: flush BEHIND it (+Y = away from
+#                                              the player), the shared contact plane
+
+# VKL IS THE ONE EXCEPTION, and the gate found it: the rib mortises stop at MID_Y
+# (the guitar's Y midpoint) by design, and the KV housing is 77.4 deep in +Y — at the
+# shared plane its tail ran 10.4 past the slot's end into solid rib. It therefore
+# sits at the deepest Y its own slot allows. That is no real loss: a VERTICAL lever
+# is lifted by the knee along its whole arm, so it never had a 20 mm contact plane to
+# share in the first place. Derived from the solid so it cannot drift.
+def _vkl_mount_y() -> float:
+    from . import knee_lever as KL
+    from . import knee_lever_vert as KV
+    tail = KV.place(KV.kv_housing).val().BoundingBox().ymax - KV.MOUNT_Y
+    return min(_LEVER_Y, KL.MID_Y - tail)
+
+
+#   name    kind   station x        mount y     mirrored?
+# `mirror` is the throw DIRECTION: a "…R" lever is struck by the knee moving +X, so
+# it is the LKL design reflected. Reflection keeps the tenons on ribs (their offsets
+# are rib multiples either way), but it does make a separate printed SKU — flagged,
+# not exported yet.
+# ILKL still needs X clearance from LKL even though their PADDLES are in different
+# planes: the housings are deeper in Y than the paddles and their bands overlap. And
+# its -X limit is the left leg, whose block ends at -596.6 — the first station that
+# clears it is -501. Both bounds together pin ILKL and push the left group +X:
+# ILKL -501, LKL -409 is exactly the 92 one-slot step the user described.
+LEVER_STATIONS = (
+    ("ilkl", "kl", -501.0,   _ILKL_Y,  False),   # -X bound: the left leg block
+    # left knee: the LKL/LKR pair nests one rib apart, VKL clears them to +X
+    ("lkl",  "kl", -409.0,   _LEVER_Y, False),
+    ("lkr",  "kl", -386.0,   _LEVER_Y, True),
+    ("vkl",  "kv", -281.4,   None,     False),   # rib-derived: stations at -294/-271
+    #                                              None -> _vkl_mount_y() (see above)
+    # right knee, ~230 from the left one
+    ("rkl",  "kl", -179.0,   _LEVER_Y, False),
+    ("rkr",  "kl", -156.0,   _LEVER_Y, True),
+)
+
+
 def _knee_vert_components():
     """LKV, posed by its own 90°-about-Z mount (see knee_lever_vert.place). Drawn at
     REST; the throw would lift the arm. The rib mortises chassis.py already cuts take
@@ -786,7 +852,7 @@ def _knee_vert_components():
     from . import knee_lever_vert as KV
     out = [("kv_housing", KV.kv_housing), ("kv_lever", KV.kv_lever)]
     out += KV.demo_parts()
-    return [(n, KV.place(s)) for n, s in out]
+    return out
 
 
 def _knee_lever_components():
@@ -813,7 +879,40 @@ def _knee_lever_components():
     for n, s in KL.demo_parts():                         # magnet spins with the lever; the rest are stationary
         out.append((n, swing(s) if n == "kl_magnet" else s))
     # (the octagon mount tenons are FUSED onto knee_housing now -- no separate floating_tenon parts)
-    return [(n, s.translate(pose)) for n, s in out]
+    return out
+
+
+def _lever_stations_components():
+    """All six knee levers, each design posed at its station (LEVER_STATIONS).
+
+    Both source modules build their parts in a LOCAL frame and hand them to a
+    module-level pose, so a station is just that pose with x/y replaced — the Z
+    (housing top flush with the chassis underside) is the design's and stays put.
+
+    NAMING: the LKL station keeps the bare part names the colour map, the export
+    registry and the overlap gate's KNEE_FAMILY already know. The five new stations
+    take a prefix, and _color_for's existing sibling rule gives them LKL's colours
+    for free rather than needing 60 near-duplicate entries.
+    """
+    from . import knee_lever as KL
+    from . import knee_lever_vert as KV
+
+    kl_parts, kv_parts = _knee_lever_components(), _knee_vert_components()
+    out = []
+    for name, kind, sx, sy, mirrored in LEVER_STATIONS:
+        if sy is None:
+            sy = _vkl_mount_y()
+        if kind == "kl":
+            parts, mz = kl_parts, KL.MOUNT_Z
+        else:                                   # KV carries its own -90° about Z
+            parts = [(n, s.rotate((0, 0, 0), (0, 0, 1), -90)) for n, s in kv_parts]
+            mz = KV.MOUNT_Z
+        for n, s in parts:
+            if mirrored:
+                s = s.mirror("YZ")              # local +X -> -X: the opposite throw
+            out.append((n if name == "lkl" else f"{name}_{n}",
+                        s.translate((sx, sy, mz))))
+    return out
 
 
 def _joint_coupon_components():
@@ -854,8 +953,7 @@ def collect_components():
     comps += _pedal_bar_components()
     comps += _foot_pedal_components()
     comps += _electronics_components()
-    comps += _knee_lever_components()
-    comps += _knee_vert_components()
+    comps += _lever_stations_components()      # all six, LKL/VKL included
     comps += _joint_coupon_components()
     comps += _tensioner_coupon_components()
     for i in range(D.N_STRINGS):
@@ -1049,9 +1147,15 @@ def _color_for(name):
     # whichever station prefix this is and inherit the kl_ sibling's colour rather than
     # triplicating the table. kl_ FIRST, then the bare name: bare-name-first collided,
     # because the sensor board's "buck" is not the project's other "buck".
-    _st = re.match(r"(?:pedal\d+|kv|kl)_(.+)$", base)
+    # The five non-LKL LEVER STATIONS prefix the same way (ilkl_knee_housing,
+    # vkl_kv_lever, ...), so they ride this rule too — the alternative was six
+    # copies of the same 29 entries, and any station left out would have gone grey
+    # exactly the way the pedals did.
+    _st = re.match(r"(?:pedal\d+|ilkl|lkr|vkl|rkl|rkr|kv|kl)_(.+)$", base)
     if _st:
-        for k in (f"kl_{_st.group(1)}", _st.group(1)):
+        inner = _st.group(1)
+        # a KV station is doubly prefixed (vkl_kv_housing): peel to kv_housing too
+        for k in (f"kl_{inner}", inner, f"kv_{inner}"):
             if k in _COLORS:
                 return cq.Color(*_COLORS[k])
     if base == "pedal_lever":
