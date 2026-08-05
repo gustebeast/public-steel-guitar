@@ -206,6 +206,23 @@ def _lever_envelope() -> cq.Workplane:
     return heal(hub.union(leg).union(arm))
 
 
+def lever_room() -> cq.Workplane:
+    """The arm's swept envelope through the throw — the room BOTH the housing and
+    the bar under it have to give up.
+
+    Public because the bar needs it too. The housing alone is not enough: the arm
+    swings down PAST the housing's floor and clips the bar's top -Y corner, which
+    is how 111 mm3 survived after the sweep direction was fixed. The housing owns
+    the room above BAR_H and the bar owns the room below it, and they are the same
+    solid, so neither can drift from the other.
+    """
+    env = None
+    for i in range(int(THROW_P) + 1):
+        c = swing(_lever_envelope(), -float(i))
+        env = c if env is None else env.union(c)
+    return env
+
+
 # ── housing envelope ─────────────────────────────────────────────────────────
 HOUS_X0 = KL.HOUS_X0                       # cartridge back + back-stop engagement
 HOUS_X1 = HUB_D / 2 + KL.HS_CLR + KL.HS_HOUS_WALL       # +7.8
@@ -261,11 +278,15 @@ def _housing() -> cq.Workplane:
                x=(HOUS_X0 + HOUS_X1) / 2, y=0.0, z=(HOUS_Z0 + HOUS_Z1) / 2)
     # LEVER ROOM = the lever's own swept envelope through the throw (LKV's finding:
     # a single planar polygon slopes above the arm's rest underside and fouls early)
-    _env = None
-    for i in range(int(THROW_P) + 1):
-        c = swing(_lever_envelope(), float(i))
-        _env = c if _env is None else _env.union(c)
-    w = w.cut(_env)
+    #
+    # SWEPT THE WAY THE PEDAL ACTUALLY GOES, which is -theta. This used to run 0..+20
+    # and the pedal presses 0..-20, so the room was carved out of the half of the arc
+    # the arm never visits: the lever fouled its own housing from 2 deg of travel and
+    # was 611 mm3 into it at full throw. Nothing caught it because the overlap gate
+    # only ever sees the REST pose, and at rest it is clean. _to_guitar's docstring
+    # has said "the FOOT has to drive -theta" all along — the sweep just did not read
+    # it. Probed after the change, not assumed: 0 contact across 21 samples.
+    w = w.cut(lever_room())
     w = KL.cut_axle_stack(w)       # bearing seats + contact rib + axle way
     w = KL.cut_feel_pockets(w, pplace, HOUS_X1)
     # SENSOR CRADLE, verbatim from knee_lever. It could not be cut before the print
@@ -432,10 +453,12 @@ def fuse_into_bar(piece, x0, x1):
     tell was the piece falling into 3 and 4 disconnected solids as each far web was
     severed from its housing. A solid count is a good check on a cut you cannot
     see."""
-    bay = board_bay_cutter()
+    bay, room = board_bay_cutter(), lever_room()
     for x in PEDAL_X:
         if x0 <= x < x1:
-            piece = piece.cut(place(bay, x)).union(place(_housing(), x))
+            piece = (piece.cut(place(bay, x))
+                          .cut(place(room, x))
+                          .union(place(_housing(), x)))
     return piece
 
 
