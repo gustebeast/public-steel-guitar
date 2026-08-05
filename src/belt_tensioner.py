@@ -60,17 +60,25 @@ WELL_W   = BW + 0.6                       # 5.6  well width (bar slide clearance
 BODY_W   = WELL_W + 2 * WALL              # 8.8  (Y) — one belt lane with cheeks
 SCR_CLR  = M4.shaft_clr_d                 # 4.4  screw channel Ø
 
-# ── X layout (M4×30; head at anchor −X, insert in slider +X) ─────────────────
-HEAD_X   = -16.0                          # anchor −X outer face = screw head bearing face
-SCREW_L  = 30.0
-A_X1     = -4.0                           # anchor +X face
+# ── X layout: derived from the tooth count, so grip WIDTH is a single knob ────
+# ~6 teeth per bar reaches the GT2 belt's full working rating (mirrors the "6 teeth in
+# mesh" pulley rule); fewer derates the joint and overstresses the lead tooth. The screw
+# must run under BOTH wells to lift both bars, so it spans the whole clamp → M4×30 → ×40.
+N_TEETH  = 6                              # teeth gripped per bar
+LIFT_LEN = N_TEETH * BP + 0.2             # 12.2  bar length (fits N_TEETH ridges)
+GRIP     = LIFT_LEN + 0.4                 # 12.6  well length (bar slides in it)
 GAP      = 4.0                            # travel = 2 teeth
-S_X0     = A_X1 + GAP                      # 0.0  slider −X face
-S_X1     = 14.0                            # slider +X face (screw tip lands flush here)
-INS_X    = 7.0                            # slider insert mouth (faces −X); bore runs +X
-GRIP     = 6.0                            # each bar grips 3 teeth
-GA0, GA1 = -13.0, -7.0                    # anchor bar well
-GB0, GB1 = 1.0, 7.0                       # slider bar well
+_MRG     = 2.0                            # head-face / +X-face margins
+HEAD_X   = -20.0                          # anchor −X face = screw head bearing face
+GA0      = HEAD_X + _MRG                  # anchor bar well
+GA1      = GA0 + GRIP
+A_X1     = GA1 + _MRG                     # anchor +X face
+S_X0     = A_X1 + GAP                     # slider −X face
+GB0      = S_X0 + _MRG                    # slider bar well
+GB1      = GB0 + GRIP
+INS_X    = GB1                            # insert mouth (+X end of grip B, faces −X)
+S_X1     = INS_X + M4.insert_l + 2.0      # slider +X face (insert pocket + tip clr)
+SCREW_L  = 40.0                           # M4×40 spans head → insert
 
 
 def cyl_x(d: float, length: float, x0: float, z: float = 0.0) -> cq.Workplane:
