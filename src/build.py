@@ -826,11 +826,30 @@ def _lever_plane_y() -> float:
 
 _LEVER_Y = _lever_plane_y()                  # -85.45
 
-# ONE SLOT for the levers, quantised to the rib comb. The pedals' 62.4 pitch is the
-# spacing the user thinks in, but a lever's tenons only land in rib mortises if its
-# station IS a rib X, so the nearest whole rib count (3 × 23 = 69) is what a lever
-# slot can actually be. ILKL -> LKL is one of these.
-_LEVER_SLOT = 3 * 23.0                       # 69.0 ~= the 62.4 pedal pitch, on the comb
+# ONE SLOT for the levers, quantised to the rib comb. A lever's tenons only land in
+# rib mortises if its station IS a rib X, so any lever spacing is a whole rib count.
+_RIB = 23.0
+
+# THE KNEE GAP. The player's knee sits BETWEEN a pair (LKL/LKR, RKL/RKR) and pushes
+# one or the other; the vertical lever goes in the same gap, above the knee (user).
+# The user's own steel measures ~120 here and asked for the closest step — but the
+# step is NOT what binds. Each horizontal lever carries 82.36 of housing, almost all
+# of it on the far side of its axle from the knee (an "…L" lever's cartridges run -X,
+# an "…R" lever's +X), so a pair occupies gap + 154.72. Two pairs must fit between
+# the left leg block (-592.4) and the right one (-35.3):
+#
+#     2 * (gap + 154.72) + clearance  <=  522.7   ->  gap <= ~106
+#
+# so 5 ribs (115) does not fit and 4 ribs (92) is the closest reachable step. Getting
+# to 120 needs a NARROWER HOUSING, not a different station — the same 82.36 that
+# already dictated the cluster spacing. Flagged rather than silently rounded.
+_KNEE_GAP = 4 * _RIB                         # 92.0 — closest achievable to the user's 120
+_LEVER_SLOT = 1 * _RIB                       # 23.0 — ILKL -> LKL, all the leg leaves
+#   ILKL lives in the FORWARD plane, which is exactly the band the -Y leg blocks
+#   occupy (y -139.15..-95.15), so its housing must clear -592.4 in X: it cannot go
+#   -X of -501. That pins the pair, and one rib is all the offset left over. The
+#   originally-requested slot (69) is only affordable at a 69 knee gap, which is
+#   worse where it matters — the knee has to fit.
 
 # VKL IS THE ONE EXCEPTION, and the gate found it: the rib mortises stop at MID_Y
 # (the guitar's Y midpoint) by design, and the KV housing is 77.4 deep in +Y — at the
@@ -855,17 +874,22 @@ def _vkl_mount_y() -> float:
 # its -X limit is the left leg, whose block ends at -596.6 — the first station that
 # clears it is -501. Both bounds together pin ILKL and push the left group +X:
 # ILKL -501, LKL -409 is exactly the 92 one-slot step the user described.
+_ILKL_X = -501.0                             # hard -X bound: the left leg block
+_LKL_X = _ILKL_X + _LEVER_SLOT               # -478
+_RKL_X = -225.0                              # right knee, 253 from the left one
+
 LEVER_STATIONS = (
-    ("ilkl", "kl", -501.0,           _ILKL_Y,  False),   # -X bound: the left leg block
-    # left knee: LKL sits ONE SLOT +X of ILKL (user) — only possible because the
-    # plane above clears their housings in Y; LKR then nests one rib off LKL.
-    ("lkl",  "kl", -501.0 + _LEVER_SLOT, _LEVER_Y, False),   # -432
-    ("lkr",  "kl", -409.0,           _LEVER_Y, True),
-    ("vkl",  "kv", -304.4,           None,     False),   # rib-derived: stations at -317/-294
-    #                                                      None -> _vkl_mount_y() (see above)
-    # right knee, ~250 from the left one
-    ("rkl",  "kl", -179.0,           _LEVER_Y, False),
-    ("rkr",  "kl", -156.0,           _LEVER_Y, True),
+    ("ilkl", "kl", _ILKL_X,              _ILKL_Y,  False),
+    # LEFT KNEE: the knee sits in the gap between LKL and LKR, and VKL sits in that
+    # same gap so the vertical arm is directly above it (user). VKL's station is
+    # rib-DERIVED (MOUNT_X = rib - 10.4) so its own two tenons land on ribs.
+    ("lkl",  "kl", _LKL_X,               _LEVER_Y, False),
+    ("vkl",  "kv", -432.0 - 10.4,        None,     False),   # -442.4, mid-gap
+    #                                                          None -> _vkl_mount_y()
+    ("lkr",  "kl", _LKL_X + _KNEE_GAP,   _LEVER_Y, True),    # -386
+    # RIGHT KNEE: same gap, no vertical lever in this copedent
+    ("rkl",  "kl", _RKL_X,               _LEVER_Y, False),
+    ("rkr",  "kl", _RKL_X + _KNEE_GAP,   _LEVER_Y, True),    # -133
 )
 
 

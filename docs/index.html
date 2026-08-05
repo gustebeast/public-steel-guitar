@@ -52,7 +52,7 @@
       left to right (hold to combo) · <b>space</b> = <span id="deckstate">hide deck</span></div>
   </div>
   <div id="build">build #—</div>
-  <div class="hint">drag orbit · scroll zoom · right-drag pan · the pedals depress as you play them</div>
+  <div class="hint">drag orbit · scroll zoom · right-drag pan · pedals and knee levers move as you play them</div>
   <div id="controls"></div>
   <div id="loading">loading model…</div>
 
@@ -167,6 +167,25 @@
     }
   }
 
+  // The knee levers, same idea as the pedals but keyed by control name: each has its
+  // own axle centre/axis and a SIGNED throw (an "…R" lever is the design mirrored,
+  // which negates the rotation — the exporter checks that against CAD, not by eye).
+  const curSwing = {};
+  function applyLevers(dt, k) {
+    const on = new Set(activePedals().map(p => p.name));
+    for (const c of rig.copedent) {
+      const L = c.lever; if (!L) continue;
+      const e = (curSwing[c.name] = (curSwing[c.name] || 0) +
+                 ((on.has(c.name) ? 1 : 0) - (curSwing[c.name] || 0)) * k);
+      if (e < 1e-4 && !on.has(c.name)) continue;
+      const ang = L.throw_deg * e * Math.PI / 180;
+      for (const n of L.swing_nodes) spinNode(n, L.center, L.axis, ang);
+      const s = L.lobe_rc * Math.sin(Math.abs(ang)), d = L.piston_dir;
+      if (d) for (const n of L.piston_nodes)
+        translateNode(n, d[0] * s, d[1] * s, d[2] * s);
+    }
+  }
+
   function applyRig(dt) {
     if (!rig) return;
     const g = rig.gains, tgtSt = targetRaise();
@@ -174,6 +193,7 @@
                      curCarr = new Array(rig.n_strings).fill(0); }
     const k = 1 - Math.pow(0.0001, dt);              // ~critically damped ease
     applyPedals(dt, k);
+    applyLevers(dt, k);
     for (const s of strings) {
       const raiseTgt = Math.min(tgtSt[s.i] * g.mm_per_semitone, rig.carriage_travel);
       curRaise[s.i] += (raiseTgt - curRaise[s.i]) * k;
@@ -206,8 +226,6 @@
         el.className = 'pedal' + ('pedal' in p ? '' : ' lever');
         el.dataset.name = p.name;
         // signed: this copedent lowers as well as raises, so "3" alone would lie
-        // ILKL is fitted but unassigned on the C6 neck — the chart only uses it
-        // on the E9 top neck, so it has a button and no moves.
         const moves = p.raises.length
           ? [...p.raises].sort((a, b) => a.i - b.i).map(r =>
               `<span class="${r.semitones < 0 ? 'dn' : ''}">${r.i + 1}` +

@@ -76,10 +76,7 @@ _COPEDENT = {
     # ILKL therefore takes the leftmost key: it sits one slot -X of LKL. The user
     # confirmed strict left-to-right over their earlier "a is LKL" example, which
     # predated their own note that a sixth (inner) lever exists.
-    "ILKL": {"key": "q", "moves": {}},   # the chart assigns it on the E9 neck ONLY
-    #                                      (G#->A#/B); on C6 the lever is fitted
-    #                                      but unassigned. Kept so the hardware,
-    #                                      the UI and the chart all show six.
+    "ILKL": {"key": "q", "moves": {1: +2}},            # D->E  (whole step)
     "LKL": {"key": "w", "moves": {4: +1}},             # A->A#
     "VKL": {"key": "e", "moves": {1: +1}},             # D->D#
     "LKR": {"key": "r", "moves": {4: -1, 8: -1}},      # A->G#  A->G#
@@ -136,6 +133,118 @@ def _pedals() -> list[dict]:
     return out
 
 
+def _levers() -> dict:
+    """The six KNEE LEVERS' kinematics, keyed by control name, so the viewer can
+    show them swing on q/w/e/r/t/y.
+
+    Same shape as _pedals(), read from build.LEVER_STATIONS rather than restated:
+
+      * centre — the station pose. Both designs build in a local frame whose ORIGIN
+                 is the axle, so the pose IS the pivot.
+      * axis   — a KL station's axle is local +Y and the station applies no rotation,
+                 so it stays guitar +Y. A KV station is posed with -90° about Z,
+                 which carries +Y to +X.
+      * throw  — KL 30°, KV 20°. A MIRRORED station ("…R", the knee pushing the
+                 other way) is the design reflected in X, and reflecting a rotation
+                 about Y negates it — so the sign flips with the mirror. Not
+                 reasoned about and hoped for: build_rig asserts every station's
+                 transform against the CAD-swung part.
+      * lobe_rc — piston stroke = rc*sin(theta), exact, as on the pedals.
+
+    Only the arm and the parts ON the axle swing. Housing, bearings, board and
+    sensor stack are stationary, as they are on the pedal.
+    """
+    from src import build as B
+    from src import knee_lever as KL
+    from src import knee_lever_vert as KV
+
+    # The piston retracts INTO its cartridge, so the direction is piston -> base.
+    # Measured off the placed solids rather than copied from cart_dummies' own
+    # `translate((-s, 0, 0))`: that line is written in the KNEE lever's frame and is
+    # applied AFTER the pose, so it is only correct for the design it was authored
+    # for. Deriving it here makes the mirror and the KV rotation come out right for
+    # free, and never silently disagrees with the geometry.
+    placed = dict(B._lever_stations_components())
+
+    def _piston_dir(piston, basen):
+        if piston not in placed or basen not in placed:
+            return None
+        pc = placed[piston].val().Center()
+        bc = placed[basen].val().Center()
+        v = (bc.x - pc.x, bc.y - pc.y, bc.z - pc.z)
+        n = sum(c * c for c in v) ** 0.5
+        return [round(c / n, 6) for c in v] if n > 1e-9 else None
+
+    out = {}
+    for name, kind, sx, sy, mirrored in B.LEVER_STATIONS:
+        if sy is None:
+            sy = B._vkl_mount_y()
+        pre = "" if name == "lkl" else f"{name}_"
+        if kind == "kl":
+            mz, axis, throw, rc = KL.MOUNT_Z, [0, 1, 0], KL.THROW, KL.LOBE_RC
+            swing_nodes = [f"{pre}knee_lever", f"{pre}kl_axle",
+                           f"{pre}kl_magnet_cap", f"{pre}kl_magnet"]
+            pistons = [f"{pre}main_cart_piston", f"{pre}half_stop_cart_piston"]
+        else:
+            mz, axis, throw, rc = KV.MOUNT_Z, [1, 0, 0], KV.THROW_V, KV.LOBE_RC_V
+            swing_nodes = [f"{pre}kv_lever", f"{pre}kv_magnet"]
+            pistons = [f"{pre}kv_main_cart_piston", f"{pre}kv_half_stop_cart_piston"]
+        out[name.upper()] = {
+            "center": [sx, sy, mz],
+            "axis": axis,
+            "throw_deg": -throw if mirrored else throw,
+            "lobe_rc": rc,
+            "swing_nodes": swing_nodes,
+            "piston_nodes": pistons,
+            "piston_dir": _piston_dir(pistons[0], pistons[0].replace("_piston", "_base")),
+            "mirrored": mirrored,
+        }
+    return out
+
+
+def _verify_levers(levers) -> None:
+    """Rebuild the VIEWER's transform in CAD and compare it to the CAD-swung part.
+
+    The throw SIGN is the thing worth checking — a mirrored station reflects the
+    design in X, which negates a rotation about Y, and getting that backwards would
+    swing "…R" levers the wrong way while still looking plausible in a still frame.
+    This is the same 0.0 mm check the pedals get.
+    """
+    import cadquery as cq
+    from src import build as B
+    from src import knee_lever as KL
+    from src import knee_lever_vert as KV
+
+    for name, kind, sx, sy, mirrored in B.LEVER_STATIONS:
+        if sy is None:
+            sy = B._vkl_mount_y()
+        spec = levers[name.upper()]
+        if kind == "kl":
+            local, throw, mz = KL.knee_lever, KL.THROW, KL.MOUNT_Z
+            swung = local.rotate((0, 0, 0), (0, 1, 0), throw)
+        else:
+            local, throw, mz = KV.kv_lever, KV.THROW_V, KV.MOUNT_Z
+            local = local.rotate((0, 0, 0), (0, 0, 1), -90)
+            swung = (KV.kv_lever.rotate((0, 0, 0), (0, 1, 0), throw)
+                     .rotate((0, 0, 0), (0, 0, 1), -90))
+
+        def _pose(s):
+            return (s.mirror("YZ") if mirrored else s).translate((sx, sy, mz))
+
+        truth, rest = _pose(swung), _pose(local)
+        c, ax = spec["center"], spec["axis"]
+        viewer = (rest.translate((-c[0], -c[1], -c[2]))
+                      .rotate((0, 0, 0), tuple(ax), spec["throw_deg"])
+                      .translate((c[0], c[1], c[2])))
+        a, b = viewer.val().BoundingBox(), truth.val().BoundingBox()
+        err = max(abs(u - v) for u, v in
+                  ((a.xmin, b.xmin), (a.xmax, b.xmax), (a.ymin, b.ymin),
+                   (a.ymax, b.ymax), (a.zmin, b.zmin), (a.zmax, b.zmax)))
+        assert err < 1e-6, (
+            f"{name}: the viewer's pivot does not reproduce the CAD swing "
+            f"({err:.4f} mm) — check axis/sign against the mirror")
+
+
 def build_rig(build_n=None) -> pathlib.Path:
     if build_n is None:
         from tools.export_glb import _current_build_n
@@ -171,6 +280,8 @@ def build_rig(build_n=None) -> pathlib.Path:
     # control's number IS its station index. Levers carry no pedal index — the
     # knee hardware isn't posed by the viewer yet.
     pedals = _pedals()
+    levers = _levers()
+    _verify_levers(levers)
     copedent = []
     for name, spec in _COPEDENT.items():
         entry = {
@@ -181,7 +292,11 @@ def build_rig(build_n=None) -> pathlib.Path:
         }
         if name.startswith("P"):
             entry["pedal"] = int(name[1:]) - 1
+        elif name in levers:
+            entry["lever"] = levers[name]
         copedent.append(entry)
+    _nl = sum(1 for c in copedent if "lever" in c)
+    assert _nl == len(levers), f"{_nl} lever controls vs {len(levers)} stations"
     _np = sum(1 for c in copedent if "pedal" in c)
     assert _np == len(pedals), f"{_np} pedal controls vs {len(pedals)} stations"
 
