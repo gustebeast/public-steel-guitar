@@ -448,7 +448,15 @@ MOUNT_POSE = (MOUNT_X, MOUNT_Y, MOUNT_Z)
 # the mortise (slot) runs from the player face ALL THE WAY to the guitar's Y midpoint -- the lever's
 # nub slides +Y along it to the player's chosen knee depth, then the retention screw locks it.
 MID_Y     = -37.0                   # guitar Y-midpoint (= chassis (Y_LO + Y_HI)/2)
-MORT_Y1   = MID_Y - MOUNT_Y         # mortise +Y end at mid-Y (in the local frame)
+# The mortise used to stop at MID_Y, which was arbitrary — it was "halfway in" and
+# nothing needed more. It does now: the VERTICAL lever is 77.4 deep in +Y, so a slot
+# ending at mid-Y forced it to sit that much further -Y than the horizontal levers,
+# putting its arm out in FRONT of the knee instead of above it. The player would have
+# had to pull their knee back to reach it, when the whole point of a vertical lever is
+# to lift without moving (user). The slot now runs to the inside edge of the
+# instrument, which is as far as it can go and enough for any of them.
+MORT_Y_END = 54.75                  # +Y end of the knee-depth slide, guitar Y (user)
+MORT_Y1   = MORT_Y_END - MOUNT_Y    # ...in the local frame
 # DEPTH LOCK — still DEFERRED (it lands with the sensor mount, which shares the same +Y
 # region). Plan of record: an M2 SELF-TAPPING set screw threading UP through the housing
 # top beside one tenon, its cup pressing the rib's side column so the Y slide friction-
@@ -512,14 +520,20 @@ def cart_dummies(place, prefix="", stroke=(0.0, 0.0)):
     return out
 
 
-def axle_dummies(place, prefix, z_bot, z_top):
+def axle_dummies(place, prefix, z_bot, z_top, flip=None, shim_top=None):
     """Bearings, magnet and the sensor stack — everything on the axle that is not
-    the lever. `place` poses the whole group; z_bot/z_top size the board."""
+    the lever. `place` poses the whole group; z_bot/z_top size the board.
+
+    `shim_top` overrides where the SHIM stops. It defaults to the housing ceiling,
+    which is right when the thing pressing the shim is the chassis — but the foot
+    pedal's ceiling is the bar's +Y face, and the lid groove is cut INTO that face,
+    so the shim has to stop at the groove floor and let the LID do the pressing."""
     out = [(f"{prefix}_bearing_{i}", place(_bearing().translate((0, by, 0))))
            for i, by in enumerate((-(BRG_Y0 + BRG_W), BRG_Y0))]   # inner faces at ±BRG_Y0
     out.append((f"{prefix}_magnet", place(cyl_y(MAG_D, MAG_T, y0=MAG_Y0))))
-    out += [(n, place(s)) for n, s in sensor_parts(z_bot, z_top, prefix=prefix)]
-    _sh = pcb_shim(z_bot, z_top)
+    out += [(n, place(s))
+            for n, s in sensor_parts(z_bot, z_top, prefix=prefix, flip=flip)]
+    _sh = pcb_shim(z_bot, z_top if shim_top is None else shim_top, flip)
     if _sh is not None:
         out.append((f"{prefix}_pcb_shim", place(_sh)))
     return out
@@ -556,24 +570,26 @@ def sensor_connector():
             .translate((CONN_MOUTH_X, PCB_Y, PCB_Z0 + CONN_RISE)))
 
 
-def _install(s, z_bot, z_top):
+def _install(s, z_bot, z_top, flip=None):
     """Pose a board-frame solid into a housing: identity, or turned over."""
     return (s.rotate((0, 0, 0), (0, 1, 0), 180)
-            if board_flip(z_bot, z_top) else s)
+            if board_flip(z_bot, z_top, flip) else s)
 
 
-def sensor_parts(z_bot, z_top, prefix="kl"):
+def sensor_parts(z_bot, z_top, prefix="kl", flip=None):
     """Board + MT6701 + mated connector, posed for this housing. The board and the
     connector come from sensor_board/sensor_connector unchanged and are only ROTATED,
     so there is exactly one board design in the project."""
-    out = [(f"{prefix}_pcb", _install(sensor_board(), z_bot, z_top))]
+    out = [(f"{prefix}_pcb", _install(sensor_board(), z_bot, z_top, flip))]
     # every populated part, not just the sensor — see SENSOR_BOM
-    out += [(f"{prefix}_{n}", _install(s, z_bot, z_top)) for n, s in sensor_hardware()]
-    out.append((f"{prefix}_can_header", _install(sensor_connector(), z_bot, z_top)))
+    out += [(f"{prefix}_{n}", _install(s, z_bot, z_top, flip))
+            for n, s in sensor_hardware()]
+    out.append((f"{prefix}_can_header",
+                _install(sensor_connector(), z_bot, z_top, flip)))
     return out
 
 
-def pcb_shim(z_bot, z_top):
+def pcb_shim(z_bot, z_top, flip=None):
     """PRINTED SHIM (user): the board is one size and the housings are not, so the
     slack between the board's top edge and the instrument is taken up by a plastic
     block that slides down the SAME grooves on top of it. The chassis then presses
@@ -581,16 +597,16 @@ def pcb_shim(z_bot, z_top):
     was — no fastener, no second board design. Returns None where the board already
     reaches the ceiling (the horizontal lever), so the part only exists where it is
     needed."""
-    gap = (z_top - CEIL_CLR) - board_z(z_bot, z_top)[1]
+    gap = (z_top - CEIL_CLR) - board_z(z_bot, z_top, flip)[1]
     if gap <= CR_CLR:
         return None
-    bx0, bx1 = board_x(z_bot, z_top)
+    bx0, bx1 = board_x(z_bot, z_top, flip)
     return box_at(bx1 - bx0, PCB_T, gap - CR_CLR, x=(bx0 + bx1) / 2,
                   y=PCB_Y + PCB_T / 2,
-                  z=board_z(z_bot, z_top)[1] + CR_CLR + (gap - CR_CLR) / 2)
+                  z=board_z(z_bot, z_top, flip)[1] + CR_CLR + (gap - CR_CLR) / 2)
 
 
-def _cradle(w, z_bot=None, z_top=None, x_max=None):
+def _cradle(w, z_bot=None, z_top=None, x_max=None, flip=None):
     """Add the MT6701 board cradle to the housing (user). Everything here grows UP
     off the same bed as the housing and has no ceiling anywhere, so it needs no
     supports; see the constant block for the retention scheme and the socket cone.
@@ -601,11 +617,11 @@ def _cradle(w, z_bot=None, z_top=None, x_max=None):
     groove's outer wall."""
     z_bot = HOUS_Z0 if z_bot is None else z_bot
     z_top = HOUS_Z1 if z_top is None else z_top
-    pcb_z0, pcb_z1 = board_z(z_bot, z_top)
-    conn_zc = conn_z(z_bot, z_top)
-    bx0, bx1 = board_x(z_bot, z_top)      # installed edges — the flip swaps them
-    conn_mx = conn_mouth_x(z_bot, z_top)
-    _sx = -1.0 if board_flip(z_bot, z_top) else 1.0
+    pcb_z0, pcb_z1 = board_z(z_bot, z_top, flip)
+    conn_zc = conn_z(z_bot, z_top, flip)
+    bx0, bx1 = board_x(z_bot, z_top, flip)   # installed edges — the flip swaps them
+    conn_mx = conn_mouth_x(z_bot, z_top, flip)
+    _sx = -1.0 if board_flip(z_bot, z_top, flip) else 1.0
     x_max = CR_X1_MAX if x_max is None else x_max
     # The BOARD ITSELF must fit the housing's +X face, not just its groove web.
     # x_max below only caps the NEAR web, on the assumption the far side is never the
@@ -1089,8 +1105,14 @@ def sensor_hardware():
 
 
 
-def board_flip(z_bot, z_top):
+def board_flip(z_bot, z_top, prefer=None):
     """Which way up the board goes in a housing spanning z_bot..z_top.
+
+    `prefer` FORCES an orientation (the caller's design intent) and is checked for
+    fit rather than trusted. Orientation is not purely a fit outcome: the FOOT PEDAL
+    fits both ways up and chooses flipped so its CAN connector points DOWN into the
+    pedal bar, where the wiring can be hidden (user). Fit still decides when the
+    caller has no preference.
 
     There is no freedom in the board's Z once the chip is on the axle axis, so the
     only lever available is turning it over — a rotation of 180° about the AXLE
@@ -1109,6 +1131,12 @@ def board_flip(z_bot, z_top):
     ceil = z_top - CEIL_CLR
     as_drawn = PCB_Z0 >= z_bot and PCB_Z1 <= ceil
     flipped = -PCB_Z1 >= z_bot and -PCB_Z0 <= ceil
+    if prefer is not None:
+        if not (flipped if prefer else as_drawn):
+            raise ValueError(
+                f"a housing spanning {z_bot:.2f}..{z_top:.2f} cannot take the board "
+                f"{'flipped' if prefer else 'as drawn'}, which is what it asked for")
+        return prefer
     if as_drawn:
         return False
     if flipped:
@@ -1118,25 +1146,25 @@ def board_flip(z_bot, z_top):
         "neither way up — move the housing's floor or its ceiling, not the board")
 
 
-def board_z(z_bot, z_top):
+def board_z(z_bot, z_top, flip=None):
     """(bottom, top) of the board as INSTALLED in this housing."""
-    return (-PCB_Z1, -PCB_Z0) if board_flip(z_bot, z_top) else (PCB_Z0, PCB_Z1)
+    return (-PCB_Z1, -PCB_Z0) if board_flip(z_bot, z_top, flip) else (PCB_Z0, PCB_Z1)
 
 
-def board_x(z_bot, z_top):
+def board_x(z_bot, z_top, flip=None):
     """(-X, +X) edges as INSTALLED — turning the board over swaps them too."""
-    return (-PCB_X1, -PCB_X0) if board_flip(z_bot, z_top) else (PCB_X0, PCB_X1)
+    return (-PCB_X1, -PCB_X0) if board_flip(z_bot, z_top, flip) else (PCB_X0, PCB_X1)
 
 
-def conn_z(z_bot, z_top):
+def conn_z(z_bot, z_top, flip=None):
     """Connector row Z as installed: a fixed rise off the board's own bottom edge,
     carried through the flip with it."""
-    f = board_flip(z_bot, z_top)
+    f = board_flip(z_bot, z_top, flip)
     return -(PCB_Z0 + CONN_RISE) if f else PCB_Z0 + CONN_RISE
 
 
-def conn_mouth_x(z_bot, z_top):
-    return -CONN_MOUTH_X if board_flip(z_bot, z_top) else CONN_MOUTH_X
+def conn_mouth_x(z_bot, z_top, flip=None):
+    return -CONN_MOUTH_X if board_flip(z_bot, z_top, flip) else CONN_MOUTH_X
 
 
 PCB_TOP = PCB_Z1
