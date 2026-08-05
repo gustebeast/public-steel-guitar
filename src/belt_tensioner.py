@@ -31,8 +31,8 @@ import cadquery as cq
 
 from . import dimensions as D
 from .helpers import box_at, cyl_y
-from cadkit.fasteners import (M4, cut_insert_bore, cut_clearance, cut_m4_pocket,
-                              m4_button_screw, seated_m4_insert)
+from cadkit.fasteners import (M4, cut_insert_bore, cut_clearance,
+                              m4_button_screw, seated_insert)
 
 # ── belt cross-section ───────────────────────────────────────────────────────
 BW  = D.BELT_W            # 5.0  belt width (Y)
@@ -58,7 +58,8 @@ TOP      = CEIL + WALL              # 4.05 top of the ceiling wall
 # lives in the ANCHOR grip block (not a thin tongue). A low keying TAB/GROOVE below
 # the screw resists the offset screw's tip-over moment.
 Z_SCR    = -5.0                     # screw centreline, below the belt floor
-BOT      = -8.5                     # boss bottom (M4 head Ø7.6 clears the belt floor from here)
+HEAD_D   = 7.6                      # M4 button head (ISO 7380) — single-sourced to the dummy below
+HEAD_H   = 2.2
 GRIP     = 8.0                      # each end gripped over 4 teeth
 GAP      = 4.0                      # travel: the gap the screw winds closed
 
@@ -68,12 +69,21 @@ S_X0 = A_X1 + GAP                  # slider -X face             (-1.0)
 S_X1 = S_X0 + 4.0 + GRIP           # slider +X outer face       (+11.0) = screw head
 GB0  = S_X1 - GRIP                 # slider grip-B ridge start  (+3.0)
 INS_X  = A_X1                      # insert mouth (+X face of the anchor block)
-HEAD_X = S_X1                      # screw head at the slider +X outer face
+BEAR_X = S_X1                      # head BEARING FACE = the slider +X outer face. m4_button_screw is
+HEAD_X = BEAR_X + HEAD_H           # authored head-top-at-origin, shank -X, so the DUMMY sits one head
+                                   # height further +X or the head models INSIDE the slider.
 
 TAB_W    = 5.0                     # keying tab width (Y)
-TAB_TOP  = -6.5                    # tab top (well below the screw)
+# Tab roof clears the Ø4 shank, which sweeps this whole span in OPEN AIR (the travel gap) between the
+# anchor insert and the slider bore — so this is a hard clearance, not a wall. -6.5 cut 0.5 into it.
+SHANK_CLR = 0.6
+TAB_TOP  = Z_SCR - M4.screw_d / 2 - SHANK_CLR                  # -7.6
 TAB_X0   = A_X1                    # tab runs +X from the anchor face
 TAB_X1   = A_X1 + GRIP - 2.0       # into the slider groove (+1.0)
+# Boss bottom takes the DEEPER of the two things below the screw axis: the head circle must land wholly
+# on the bearing face, and the keying tab must still be a 2-bead section under its clearance. (Both land
+# on -9.2 as drawn; whichever wins, the head still clears the belt floor by HEAD_D/2 above the axis.)
+BOT      = min(Z_SCR - HEAD_D / 2 - 0.4, TAB_TOP - D.MIN_WALL_2P)
 
 
 def _belt_slot(x0: float, x1: float) -> cq.Workplane:
@@ -103,7 +113,10 @@ def anchor() -> cq.Workplane:
                              x=(TAB_X0 + TAB_X1) / 2, y=0.0, z=(TAB_TOP + BOT) / 2))
     body = body.cut(_belt_slot(A_X0, A_X1)).union(_ridges(A_X0, A_X1))
     # M4 brass insert, mouth at the +X face; the screw threads in -X (metal thread).
-    body = cut_insert_bore(M4, body, (INS_X, 0.0, Z_SCR), (-1.0, 0.0, 0.0), clr_len=8.0,
+    # Clearance runs THROUGH the -X face (GRIP + 1) so the screw can never bottom out before it reaches
+    # tension: the tip advances by GAP as the joint winds closed, and a blind bore sized to the -X face
+    # exactly would have it touching down at full travel.
+    body = cut_insert_bore(M4, body, (INS_X, 0.0, Z_SCR), (-1.0, 0.0, 0.0), clr_len=GRIP + 1.0,
                            reason="belt tensioner: metal thread, must not self-tap (anti-creep)")
     return body
 
@@ -118,21 +131,24 @@ def slider() -> cq.Workplane:
     gr_x0, gr_x1 = S_X0 - 1.0, TAB_X1 + GAP
     body = body.cut(box_at(gr_x1 - gr_x0, TAB_W + 0.6, (TAB_TOP + 0.2) - BOT,
                            x=(gr_x0 + gr_x1) / 2, y=0.0, z=((TAB_TOP + 0.2) + BOT) / 2))
-    # M4 clearance from the +X face across to the anchor insert, + a button-head seat
-    body = cut_clearance(M4, body, (HEAD_X, 0.0, Z_SCR), (-1.0, 0.0, 0.0), length=S_X1 - S_X0 + 1.0)
-    body = cut_m4_pocket(body, (HEAD_X, 0.0, Z_SCR), (-1.0, 0.0, 0.0), 0.0)
+    # M4 clearance from the +X bearing face across to the anchor insert. NO pocket here: the head bears
+    # FLUSH on this face (docstring), and cut_m4_pocket is the Ø6x5 HEAT-SET pocket, not a head seat --
+    # calling it put a second insert pocket in the slider that neither the design nor the BOM has.
+    body = cut_clearance(M4, body, (BEAR_X, 0.0, Z_SCR), (-1.0, 0.0, 0.0), length=S_X1 - S_X0 + 1.0)
     return body
 
 
 # ── dummies for the assembly render (purchased, no standalone STEP) ───────────
 def screw_dummy() -> cq.Workplane:
-    """M4×20 button, head at the slider +X face, pointing -X into the insert."""
-    scr = m4_button_screw(20.0).rotate((0, 0, 0), (0, 1, 0), -90)   # axis -X, head at +X end
-    return scr.translate((HEAD_X, 0.0, Z_SCR))
+    """M4×20 button: head BEARING on the slider +X face, shank running -X into the insert."""
+    scr = m4_button_screw(20.0, head_d=HEAD_D, head_h=HEAD_H).rotate((0, 0, 0), (0, 1, 0), 90)
+    return scr.translate((HEAD_X, 0.0, Z_SCR))                      # native -Z shank → -X
 
 
 def insert_dummy() -> cq.Workplane:
-    return seated_m4_insert((INS_X, 0.0, Z_SCR), (-1.0, 0.0, 0.0), 0.0)
+    """Brass insert seated in the anchor bore, mouth at the +X face, barrel -X —
+    same (point, direction) convention as the cut_insert_bore that made the pocket."""
+    return seated_insert(M4, (INS_X, 0.0, Z_SCR), (-1.0, 0.0, 0.0))
 
 
 # ── coupon: both parts in PRINT orientation (tunnel-up), split apart in Y so the

@@ -80,7 +80,7 @@ fitted on every instrument.
 | **Rotary/4-way joystick** | B | Alps RKJXT1F42001 (sole UI control) | **$9.22** [v] | [DigiKey](https://www.digikey.com/en/products/detail/alps-alpine/RKJXT1F42001/19529127) |
 | **OLED display** | B | 2.42" 128×64 SSD1309 SPI (UI screen) | ~$17 [m] | [Waveshare](https://www.waveshare.com/2.42inch-oled-module.htm) |
 | **USB 2.0 hub** | B | Adafruit CH334F (share 1 port: Teensy+Pi) | **$4.50** [v] | [Adafruit](https://www.adafruit.com/product/5999) |
-| **USB cable, optical board → Pi** | B | **USB-A ↔ USB-C, 1 m, USB 2.0, STRAIGHT plug** | ~$5–8 [m] | commodity |
+| **USB cable, optical board → Pi** | B | **USB-A ↔ USB-C, 1 m, USB 2.0, STRAIGHT plug, overmold ≤ 20 mm** (mating face → cable exit) | ~$5–8 [m] | commodity |
 | **Raspberry Pi 4, 2 GB** | B | Dexed + USB gadget (MIDI/audio/DFU) + USB host for the optical board | **$55.00** [v] | [PiShop](https://www.pishop.us/product/raspberry-pi-4-model-b-2gb/) |
 | **Buck 24→5 V ≥3 A** | B | Pololu **D24V50F5** (5 V, 5 A, in up to 24 V). Pi 4 draws ~3 A, but see note | **$29.95** [v] ⚠ | [Pololu 2851](https://www.pololu.com/product/2851) |
 | ~~10-ch audio ADC~~ | — | **DELETED.** Three PCM1864 + a carrier PCB existed to digitise ten string signals for the Pi. The optical pickup board now does its own 20-channel conversion (STM32H743ZIT6, 20× 16-bit) and sends audio over USB, so this whole path is redundant — ~$29 of ICs plus an entire board's fab, assembly and feeder cost removed | — | — |
@@ -1214,9 +1214,37 @@ the straight USB-C plug was longer than the XH is wide. Shortening a plug — ex
 right-angle does — would have quietly made the shaft too narrow to pass one. Now `max()` of
 both.
 
-⚠ **`PLUG_L` (USB-C 20.0, XHP-6 14.0) is an assumption.** Overmold *length* is not
-specified by USB-IF — only the cross-section is — and it sets the shaft's Y extent. Measure
-a real cable before this is final; everything else above is from a drawing or a spec.
+### `PLUG_L` is a PURCHASING SPEC, not a measurement
+
+Nothing is ordered yet, and overmold **length** is not standardised — USB-IF fixes the
+cross-section (12.35 × 6.50) but not this, and surveyed parts run **~10–25 mm**. So instead
+of guessing a number and hoping, the geometry was made insensitive to it in the direction
+that matters, and the number became a rule for what to **buy** — checkable at order time.
+
+**Short plug — the dangerous case, now impossible.** A short boot was exactly what put J1's
+lead into J2. A lead crossing a neighbour now turns at **whichever back face is further −Y,
+its own or the neighbour's**. A short plug simply runs further in free air before turning.
+Deriving the turn from the plug's own length alone caused the clash; deriving it from the
+neighbour alone would make a *long* plug double back. Taking the deeper of the two is right
+for every length.
+
+**Long plug — only eats conduit depth, and the endplate has a hard limit.** The conduit may
+not pass y −132.15 or the −Y exterior wall drops under `MIN_WALL_2P`. That backs out to
+**20.3 mm of plug**, so the BOM specifies **≤ 20 mm** and an assertion holds the model to it.
+
+Swept across the plausible range, with the conduit as built:
+
+| Overmold | Turn at | Clears J2 | In conduit | |
+|--:|--:|---|---|---|
+| 10.0 | −122.35 | yes | yes | ✅ |
+| 14.0 | −122.35 | yes | yes | ✅ |
+| 18.0 | −126.35 | yes | yes | ✅ |
+| 20.0 | −128.35 | yes | yes | ✅ |
+| 22.0 | −130.35 | yes | yes | ✅ |
+| 25.0 | −133.35 | yes | **no** | too long for the duct |
+
+So **anything from 10 to 22 mm works** and only the extreme fails. Once a real cable is in
+hand, set `PLUG_L["J1"]` to the measured value; nothing else has to move.
 
 **Power (J2): 5 V from the instrument rail, not USB VBUS.** MCU ~200–300 mA, PHY
 ~50, 21 op-amp channels ~40 — already past a USB port's 500 mA before a single
