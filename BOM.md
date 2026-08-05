@@ -147,7 +147,7 @@ populate them.
 
 | Part | Qty | ~Price | Source | Notes |
 |------|-----|--------|--------|-------|
-| **Angle sensor IC** | 11 | **$1.11 ea** [v] | [LCSC C2913974](https://www.lcsc.com/product-detail/Position-Sensor_Magn-Tek-MT6701QT-STD_C2913974.html) | Verified 2026-08-01: **$1.1139**, in stock — inside the old ~$1.2–2 estimate, at the low end. Note the QFN part is **C2913974**; the more commonly cited **C2856764 is the MT6701*C*T-STD**, the SOP-8, which is the variant this row explicitly rejects — do not let the wrong LCSC code onto the BOM line. MagnTek **MT6701QT-STD**, 14-bit on-axis magnetic encoder. Take the **QFN-16**, *not* the SOP-8 variant: the air gap is measured to the IC's own top surface, so the package height comes straight out of the gap budget, and the SOP-8 is ~1.5 mm tall — twice the QFN — on the axis where we have the least room. Datasheet §9.2: D = E = 2.900–3.100, **A (total height) = 0.700–0.800** (the model carries the 0.800 max). §1.2: *"Sensing Center at Geometry Center"* — so the package body centres on the axle axis with no per-package offset. Assembled by JLCPCB onto our sensor PCB alongside the tee boards — no hand soldering |
+| **Angle sensor IC** | 11 | **$1.68 ea** [v] | [LCSC C2913974](https://www.lcsc.com/product-detail/Position-Sensor_Magn-Tek-MT6701QT-STD_C2913974.html) | ⚠ **Corrected 2026-08-04: $1.6815 at the 10+ break** (4,207 in stock). The $1.1139 recorded on 08-01 came from a search snippet, which reports LCSC's *volume-floor* price (the 1,000+ break is $1.1161) — not the price at the 11 pieces we buy. See the snippet-bias note in the optical section. Note the QFN part is **C2913974**; the more commonly cited **C2856764 is the MT6701*C*T-STD**, the SOP-8, which is the variant this row explicitly rejects — do not let the wrong LCSC code onto the BOM line. MagnTek **MT6701QT-STD**, 14-bit on-axis magnetic encoder. Take the **QFN-16**, *not* the SOP-8 variant: the air gap is measured to the IC's own top surface, so the package height comes straight out of the gap budget, and the SOP-8 is ~1.5 mm tall — twice the QFN — on the axis where we have the least room. Datasheet §9.2: D = E = 2.900–3.100, **A (total height) = 0.700–0.800** (the model carries the 0.800 max). §1.2: *"Sensing Center at Geometry Center"* — so the package body centres on the axle axis with no per-package offset. Assembled by JLCPCB onto our sensor PCB alongside the tee boards — no hand soldering |
 | **Diametric magnet** | 11 | **$0.40 / $0.332 @10** [v] | [DigiKey](https://www.digikey.com/en/products/detail/radial-magnets-inc/8995/5126077) | Radial Magnets **8995** — NdFeB **N35, Ø6 × 2.5 mm, DIAMETRICALLY magnetised**, NiCuNi, 80 °C, 3873 G surface; ~9k in stock. ⚠ **Diametric, NOT axial** — axial discs are far more common and simply do not work here (DigiKey lists the direction in the specs, so it is checkable at order time). It is also the datasheet's own **recommended magnet** (§5: "Ø6mm x 2.5mm"), so this pair is the configuration the IC was characterised in. Drops into the axle's end pocket; `kl_magnet_cap` screws over it — no adhesive |
 
 *(qty 11 = **10 controls** + 1 spare. The controls are not modelled yet — only
@@ -539,6 +539,48 @@ JLCPCB BOM line. And all three that did have numbers failed:
 Microchip `USB3343-CP`, in LCSC stock at **$1.78** (C633347; `-TR` reel C112967
 at $2.07), QFN-24, matching the modelled envelope — the part the survey table
 assumed existed. And the **quad op-amp** is `TLV9064IDR`, below.
+
+### ⚠ Search snippets report the VOLUME-FLOOR price — every one of them was wrong
+
+Re-checked 2026-08-04 by fetching each LCSC product page directly, after another agent
+flagged that they could not read stock and would rather report unresolved than quote an
+unread number. That caution was right, and checking proved it: **every price taken from a
+web-search snippet was wrong, systematically in the same direction.**
+
+LCSC's pages advertise **"from $X"**, which is the *highest volume break* — the 1,000+ or
+6,000+ price. Search snippets quote that figure. It is not the price at the ten or fifty
+pieces this project buys. The gap is large:
+
+| Part | Recorded (snippet) | Actual at our qty | |
+|---|--:|--:|--|
+| `USB3343-CP` PHY | $1.78 | **$2.6398** @10 | +48 %, **and OUT OF STOCK** |
+| `TLV9064IDR` ×5 | $0.2161 | **$0.3297** @30 | +53 % |
+| `PCM1808PWR` | $0.3419 | **$0.642** @10 | +88 % |
+| `MT6701QT-STD` ×11 | $1.1139 | **$1.6815** @10 | +51 % |
+| `X322525MSB4SI` ×2 | $0.0334 | **$0.0959** @5 | +187 % |
+| `USBLC6-2SC6` | $0.0983 | **$0.1829** @5 | +86 % |
+| `AO3400A` | $0.0487 | **$0.0849** @5 | +74 % |
+| `SPX3819` | $0.30 | **$0.1903** @10 | −37 % (one of two that went the other way) |
+
+**Two part numbers were outright wrong**, which no amount of price-checking would have
+caught: `C693480` is a **P6KE39CA TVS diode**, not the `TLV9061IDCKR` op-amp it was recorded
+as (correct code: **`C398357`**); and `C1017`, recorded for the ferrite bead, **404s** — that
+part number does not exist. FB1 is now an explicit OPEN.
+
+Board parts cost **$26.96 → $29.07**, per instrument **$42.58 → $44.69**.
+
+**Method that works**, for anyone repeating this:
+
+* **Fetch `lcsc.com/product-detail/C<number>.html`** — the short canonical form. It returns
+  the full quantity-break table *and* exact stock. It is not client-side rendered.
+* **Never fetch `lcsc.com/search?q=…`** — that one *is* client-side and returns only page
+  furniture, which is what makes LCSC look unfetchable.
+* **Use web search only to find the C-number**, never to read a price off the snippet.
+* **Take the break matching your build quantity**, not the headline. Ten instruments means
+  10 of a per-board part and 100–200 of a per-string part — different breaks.
+* ⚠ **LCSC stock ≠ JLCPCB assembly stock.** Everything here is LCSC's figure. For a PCBA
+  order JLC's own inventory governs, and that is on `jlcpcb.com/partdetail/…`, which *is*
+  client-side. Treat these as a strong proxy and confirm at quote time.
 
 ### Part selection — done 2026-08-01, and now enforced by the model
 
@@ -1151,16 +1193,16 @@ then multiples of 5** — you cannot order 3. So the per-instrument curve is a
 
 | Instruments | Order | Waste | Order total | Per instrument |
 |--:|--:|--:|--:|--:|
-| 1 | 2 | 1 | $151.22 | $151.22 |
-| 2 | 2 | 0 | $151.22 | $75.61 |
-| 3 | 5 | 2 | $254.30 | **$84.77** ↑ |
-| 5 | 5 | 0 | $254.30 | $50.86 |
-| 6 | 10 | 4 | $426.10 | **$71.02** ↑ |
-| **10** | **10** | **0** | **$425.80** | **$42.58** |
-| 15 | 15 | 0 | $597.90 | $39.86 |
-| 20 | 20 | 0 | $769.70 | $38.49 |
+| 1 | 2 | 1 | $155.38 | $155.38 |
+| 2 | 2 | 0 | $155.38 | $77.69 |
+| 3 | 5 | 2 | $264.70 | **$88.23** ↑ |
+| 5 | 5 | 0 | $264.70 | $52.94 |
+| 6 | 10 | 4 | $446.90 | **$74.48** ↑ |
+| **10** | **10** | **0** | **$446.90** | **$44.69** |
+| 15 | 15 | 0 | $629.10 | $41.94 |
+| 20 | 20 | 0 | $811.30 | $40.57 |
 
-*(Recomputed on the $82.50 fixed / $34.36 variable. The
+*(Recomputed on the $82.50 fixed / $36.44 variable. The
 **shape** is unchanged — it comes from the quantity ladder, not the rates — so
 both conclusions below still hold; only the absolutes moved.)*
 
@@ -1171,7 +1213,7 @@ Two consequences worth acting on:
 * **10 is the knee.** It is the first quantity within 30 % of the variable-cost
   floor; past 15 the gains are slow. Hence the convention.
 
-### Optical pickup board at that basis — $42.58 per instrument
+### Optical pickup board at that basis — $44.69 per instrument
 
 Board is **37.4 × 171.6 mm = 64.2 cm²**, 4-layer, 148 parts, ~560 solder joints.
 (Earlier revisions said 47.5 cm², which predates the +X wraps and the M4 bands,
@@ -1180,9 +1222,9 @@ then 184.4 mm long, which predates J2 becoming a 4-way.)
 | | | |
 |---|---|---:|
 | **Fixed, per order** | PCBA setup $25 + feeder loading **$22.50** (15 Extended lines × $1.50; **5 of the 20 lines are Basic**) + component MOQ overage ~$20 + 4-layer fab tooling ~$15 | **$82.50** |
-| **Variable, per board** | parts **$26.96** (computed) + fab $6.42 (64.2 cm² × $0.10) + assembly $0.95 (~560 joints) | **$34.33** |
-| **Order of 10** | 82.50 + 10 × 34.33 | **$425.80** |
-| **Per instrument** | ÷ 10 | **$42.58** |
+| **Variable, per board** | parts **$29.07** (computed, quantity-correct) + fab $6.42 (64.2 cm² × $0.10) + assembly $0.95 (~560 joints) | **$36.44** |
+| **Order of 10** | 82.50 + 10 × 36.44 | **$446.90** |
+| **Per instrument** | ÷ 10 | **$44.69** |
 
 *(The magnetic-pickup channel and the single-ended cable exit together cost **$0.53 per
 instrument**. The audio ADC and the 6-way connector add $0.78 of parts and one feeder, and
@@ -1272,7 +1314,7 @@ several are unverified — re-verify the whole file before ordering.**
 | Mechanical hardware (motors, screws, bearings, belt, fasteners, dowels) | ~$620 | belt/collar/bearings **verified**; motor + all McMaster **[m]** |
 | Wire | ~$35 | estimate, excludes 10 control drops |
 | Electronics + UI (Teensy, audio shield, Pi 4, bucks, hub, jacks, joystick, OLED) | ~$190 | **all verified except the OLED [m]** |
-| Optical pickup board (148 parts, 4-layer, ÷10 basis) | **~$43** | parts cost **computed from the model**; all 18 lines have real MPNs |
+| Optical pickup board (148 parts, 4-layer, ÷10 basis) | **~$45** | parts cost **computed from the model**; all 18 lines have real MPNs |
 | Control sensors, 10 controls (MT6701 + magnet + board) | ~$50 | IC + magnet **verified**; boards not yet quoted |
 | Tee / carrier PCBs | ~$25 | estimate |
 | **Total** | **~$1,060** | |
