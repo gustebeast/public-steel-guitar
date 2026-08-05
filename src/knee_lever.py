@@ -1066,7 +1066,15 @@ SENSOR_BOM = (
     ("crystal",     None,       3.20, 2.50, 0.90,  -8.5,  -4.0),
 )
 CR_EDGE_KEEP = 1.85                 # the groove takes this much of each X edge — mechanical
-CAP_SWEEP_R  = 5.4                  # the magnet cap's circumradius (see CONN_MOUTH_X)
+# The magnet cap's SWEEP, which is what forces the empty annulus around the chip
+# (user asked whether that gap was intentional — it is, and this is the number).
+# Measured off kl_magnet_cap: 5.312 true circumradius about the axle. The bare 5.4
+# it used to carry left only 0.088, which is LESS THAN THE BOARD'S OWN SLIP in its
+# grooves (CR_CLR = 0.15): a part sitting exactly on the old limit could be swept
+# just by the board resting 0.09 toward the cap. Nothing does today — the nearest
+# part is 7.00 out — but the guard was thinner than it looked, so it now carries
+# the slip and a print allowance instead of pretending the board is located.
+CAP_SWEEP_R  = 5.312 + CR_CLR + 0.2     # 5.66
 CAP_CLR_H    = 1.5                  # board-to-cap gap: anything TALLER must clear the sweep
 
 
