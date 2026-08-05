@@ -138,6 +138,17 @@ SLEEVE_L = 200.0                       # groove-through. Retraction is
                                        # here; the TRRS shaft's corner-fill
                                        # extension is limited to this band
 FOOT_H  = 12.0
+# The shared foot's dovetail tenon stops HERE in local +Y, and the mortise's
+# closed end sits 0.5 beyond it (that butt is the foot's Y registration).
+#
+# It used to reach 15.5. The pedal bar's lid now runs END TO END — over both foot
+# stations — and the lid's dovetail occupies the last 4 mm of the +Y face, so a
+# tenon poking past the groove floor sat in the lid's path for the whole install
+# stroke. A local relief in the lid can't fix a moving part: the clearance has to
+# hold everywhere the lid travels, so the tenon gave way instead. Costs 1.9 of a
+# 33 tenon (5.8%) on a TPU pad that works in compression; the registration butt
+# survives because the mortise end moved with it.
+FOOT_TENON_Y1 = 13.6
 # stack at k segments: 32 barrel + (k+1)×2 collar gaps + k×140 + 180 sleeve +
 # shaft exposure 24..184 + 3 foot floor → height = 217 + 142k + exposure
 
@@ -374,7 +385,7 @@ def foot_mortise_cutter() -> cq.Workplane:
     return (cq.Workplane("XZ")
             .polyline([(-15.0, 0.0), (-13.4, 6.0), (13.4, 6.0),
                        (15.0, 0.0)])
-            .close().extrude(40.0).translate((0, 16.0, 0)))
+            .close().extrude(40.0).translate((0, FOOT_TENON_Y1 + 0.5, 0)))
 
 
 def leg_shaft_short() -> cq.Workplane:
@@ -1133,15 +1144,17 @@ def leg_foot() -> cq.Workplane:
     """SHARED TPU foot ×4 (user: one look everywhere — the same dovetail
     insert serves the -Y leg blocks AND the pedal bar): 44-sq ground pad
     + dovetail tenon sliding into the underside mortise from -Y local;
-    compression-loaded, TPU-grippy, no fastener. Tenon 33 long (y -17.5
-    ..15.5): inside the 35.6 BLK_W block faces (and the 44 bar; the +Y
-    end still butts the slot's closed end at 16 = the Y registration).
-    Z0 = ground."""
+    compression-loaded, TPU-grippy, no fastener. Tenon 31.1 long (y -17.5
+    ..FOOT_TENON_Y1): inside the 35.6 BLK_W block faces (and the 44 bar;
+    the +Y end still butts the slot's closed end 0.5 beyond it = the Y
+    registration), and now clear of the pedal lid's groove — see
+    FOOT_TENON_Y1. Z0 = ground."""
     b = box_at(SQ_W, SQ_W, FOOT_H, z=FOOT_H / 2)
     b = b.union(cq.Workplane("XZ")
                 .polyline([(-14.8, FOOT_H), (-13.3, FOOT_H + 5.8),
                            (13.3, FOOT_H + 5.8), (14.8, FOOT_H)])
-                .close().extrude(33.0).translate((0, 15.5, 0)))
+                .close().extrude(FOOT_TENON_Y1 + 17.5)
+                .translate((0, FOOT_TENON_Y1, 0)))
     return b
 
 

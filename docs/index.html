@@ -15,18 +15,24 @@
     .label .sub { opacity: .6; font-size: 12px; }
     #build { position: fixed; right: 16px; top: 14px; opacity: .5; font-variant-numeric: tabular-nums; }
     .hint { position: fixed; left: 16px; bottom: 14px; opacity: .5; font-size: 12px; }
-    /* pedal legend / buttons */
-    #pedals { position: fixed; right: 16px; bottom: 14px; display: flex; gap: 8px; }
-    .pedal { min-width: 116px; padding: 8px 10px; border: 1px solid #333842;
+    /* control legend / buttons — two rows (5 pedals, 5 knee levers) */
+    #controls { position: fixed; right: 16px; bottom: 14px;
+                display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+    .row { display: flex; gap: 6px; align-items: center; }
+    .row > .rl { font-size: 11px; opacity: .45; text-transform: uppercase;
+                 letter-spacing: .06em; margin-right: 2px; }
+    .pedal { min-width: 84px; padding: 6px 8px; border: 1px solid #333842;
              border-radius: 8px; background: #1c1f25; cursor: pointer; user-select: none;
              transition: background .08s, border-color .08s, box-shadow .08s; }
+    .pedal.lever { opacity: .78; }
     .pedal:hover { border-color: #4a515c; }
     .pedal.on { background: #23405a; border-color: #4d84b8;
                 box-shadow: 0 0 0 1px #4d84b8 inset; }
     .pedal .k { display: inline-block; min-width: 15px; text-align: center;
                 border: 1px solid #454b55; border-radius: 4px; padding: 0 4px;
                 margin-right: 6px; font-size: 12px; color: #e6eaf0; }
-    .pedal .t { color: #aab2bd; font-size: 12px; }
+    .pedal .t { color: #aab2bd; font-size: 11px; font-variant-numeric: tabular-nums; }
+    .pedal .t .dn { color: #d08a6a; }        /* lowers read differently to raises */
     .pedal.on .t { color: #e6eaf0; }
     #loading { position: fixed; inset: 0; display: grid; place-items: center;
                background: #16181c; transition: opacity .4s; }
@@ -41,11 +47,12 @@
 <body>
   <div id="view"></div>
   <div class="label"><b>Public Steel Guitar</b>
-    <div class="sub">full assembly · press <b>1 2 3</b> for pedals A B C (hold to combo) · <b>space</b> = <span id="deckstate">hide deck</span></div>
+    <div class="sub">full assembly · C6 copedent · <b>1</b>–<b>5</b> pedals, <b>a s d</b> / <b>k l</b> knee levers
+      (hold to combo) · <b>space</b> = <span id="deckstate">hide deck</span></div>
   </div>
   <div id="build">build #—</div>
-  <div class="hint">drag orbit · scroll zoom · right-drag pan · space toggles the top panels</div>
-  <div id="pedals"></div>
+  <div class="hint">drag orbit · scroll zoom · right-drag pan · the pedals depress as you play them</div>
+  <div id="controls"></div>
   <div id="loading">loading model…</div>
 
   <script type="module">
@@ -137,13 +144,35 @@
   // carr eases from 0 (the baked demo pose) to -rest_dz (neutral) at load, then to
   // -rest_dz - raise as pedals engage — so pulleys spin ONLY for pedal actuation,
   // not the one-time neutralization glide.
-  let curRaise = null, curCarr = null;
+  let curRaise = null, curCarr = null, curPress = null;
+
+  // The pedals themselves: each engaged station swings its arm down about the
+  // axle through its full throw, and the lobe pushes both feel-cartridge pistons
+  // back into their bases. The piston stroke is not a fudge — a flat lobe face at
+  // radius rc swept through theta retracts by rc*sin(theta), which is the same
+  // relation the arm length was sized from (13.2*sin20 = 4.51 mm).
+  function applyPedals(dt, k) {
+    if (!rig.pedals) return;
+    if (!curPress) curPress = new Array(rig.pedals.length).fill(0);
+    const on = new Set(activePedals().map(p => p.pedal));
+    for (const p of rig.pedals) {
+      curPress[p.i] += ((on.has(p.i) ? 1 : 0) - curPress[p.i]) * k;
+      const e = curPress[p.i];
+      if (e < 1e-4 && !on.has(p.i)) continue;        // parked: leave it identity
+      const ang = p.throw_deg * e * Math.PI / 180;   // signed; pressed = negative
+      for (const n of p.swing_nodes) spinNode(n, p.center, p.axis, ang);
+      const s = p.lobe_rc * Math.sin(Math.abs(ang)), d = p.piston_dir;
+      for (const n of p.piston_nodes) translateNode(n, d[0] * s, d[1] * s, d[2] * s);
+    }
+  }
+
   function applyRig(dt) {
     if (!rig) return;
     const g = rig.gains, tgtSt = targetRaise();
     if (!curRaise) { curRaise = new Array(rig.n_strings).fill(0);
                      curCarr = new Array(rig.n_strings).fill(0); }
     const k = 1 - Math.pow(0.0001, dt);              // ~critically damped ease
+    applyPedals(dt, k);
     for (const s of strings) {
       const raiseTgt = Math.min(tgtSt[s.i] * g.mm_per_semitone, rig.carriage_travel);
       curRaise[s.i] += (raiseTgt - curRaise[s.i]) * k;
@@ -159,18 +188,33 @@
     }
   }
 
-  // ── pedal UI (buttons = toggle; keys 1/2/3 = momentary hold) ──────────────
+  // ── control UI (buttons = toggle; keys = momentary hold) ──────────────────
+  // Two rows: the five foot pedals, then the five knee levers. Ten controls no
+  // longer fit the one 116px row the three-pedal E9 set used.
   function buildPedalUI() {
-    const wrap = document.getElementById('pedals');
-    for (const p of rig.copedent) {
-      const el = document.createElement('div');
-      el.className = 'pedal'; el.dataset.name = p.name;
-      const strs = p.raises.map(r => r.i + 1).sort((a, b) => a - b).join(',');
-      el.innerHTML = `<span class="k">${p.key}</span><b>${p.name}</b>` +
-                     `<div class="t">strings ${strs}</div>`;
-      el.onclick = () => { latched.has(p.name) ? latched.delete(p.name)
-                                               : latched.add(p.name); syncUI(); };
-      wrap.appendChild(el);
+    const wrap = document.getElementById('controls');
+    const rows = [['pedals', rig.copedent.filter(p => 'pedal' in p)],
+                  ['knees',  rig.copedent.filter(p => !('pedal' in p))]];
+    for (const [title, group] of rows) {
+      if (!group.length) continue;
+      const row = document.createElement('div');
+      row.className = 'row';
+      row.innerHTML = `<span class="rl">${title}</span>`;
+      for (const p of group) {
+        const el = document.createElement('div');
+        el.className = 'pedal' + ('pedal' in p ? '' : ' lever');
+        el.dataset.name = p.name;
+        // signed: this copedent lowers as well as raises, so "3" alone would lie
+        const moves = [...p.raises].sort((a, b) => a.i - b.i).map(r =>
+          `<span class="${r.semitones < 0 ? 'dn' : ''}">${r.i + 1}` +
+          `${r.semitones > 0 ? '+' : '−'}${Math.abs(r.semitones)}</span>`).join(' ');
+        el.innerHTML = `<span class="k">${p.key}</span><b>${p.name}</b>` +
+                       `<div class="t">${moves}</div>`;
+        el.onclick = () => { latched.has(p.name) ? latched.delete(p.name)
+                                                 : latched.add(p.name); syncUI(); };
+        row.appendChild(el);
+      }
+      wrap.appendChild(row);
     }
   }
   function syncUI() {
