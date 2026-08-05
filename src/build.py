@@ -429,6 +429,10 @@ def _pickup_mount_components():
     # now part of the ENDPLATE (unioned there), not a part of its own.
     from . import optical_pickup as OP
     out.append(("optical_pcb", OP.opt_pcb()))
+    # MALE connectors + cable at true diameter. Not a printed part -- it exists so the
+    # route can be PLANNED rather than assumed, and so the overlap gate has something to
+    # complain about if the conduit or the plinth ever moves into the cable's path.
+    out.append(("optical_cables", OP.opt_cables()))
     # The two M4 grips that locate the board: heat-set insert seated in the endplate's
     # wrap plinth, button screw down through the board's clearance hole into it. Same
     # fastener family as the pickup height jacks, so no new BOM line.
@@ -906,6 +910,7 @@ _COLORS = {
     "analog_frontend": (0.20, 0.45, 0.40),   # bridge-end buffer + relay board
     "optical_pcb":     (0.12, 0.30, 0.55),   # per-string optical strip (blue solder mask,
                                              # so it reads apart from the green audio PCBs)
+    "optical_cables":  (0.15, 0.15, 0.17),   # USB-C + XHP-6 plugs and their leads
     "optical_insert":  (0.72, 0.60, 0.30),   # M4 heat-set brass, board grips
     "optical_screw":   (0.72, 0.74, 0.78),   # M4x12 button, down into it
     "optical_cover":   (0.18, 0.18, 0.20),   # slotted lid over the sensor row -- print it
