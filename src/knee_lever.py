@@ -111,10 +111,17 @@ AIR_GAP = 1.5                       # magnet face -> the IC's OWN TOP SURFACE. T
                                     # 0.5 / 1.0 / 2.0 min/typ/max; recommended magnet Ø6 x
                                     # 2.5 — EXACTLY ours, so this is the nominal
                                     # configuration the part was characterised in.
-PCB_WZ = 19.0                       # ONE board for every lever. The outline is ours; what
-PCB_T = _PCB_T                      # sets it is the cradle + the reserved driver bore (see
-                                    # the cradle block) and, in Z, the instrument itself —
-                                    # the board runs from the chassis underside down.
+PCB_WZ = 16.0                       # ONE board for every lever. WAS 19.0, and that was 3.0
+PCB_T = _PCB_T                      # taller than anything on it: the board ran to z -12 while
+                                    # the lowest feature — the CONNECTOR, which is the tallest
+                                    # thing in Z at 15.0 — bottomed at -8.0, leaving a 4.0 x 28
+                                    # strip of dead FR4 (112 mm2) with nothing on it at all
+                                    # (user spotted it). Now DERIVED: the connector's 15.0 plus
+                                    # CONN_EDGE below it, topped out flush (see CONN_RISE — the
+                                    # connector is deliberately flush with the top edge, and the
+                                    # chip's CHIP_DROP fixes that edge relative to the axle).
+                                    # In X the outline is already tight: the chip's keepout sets
+                                    # +X and the connector's groove band sets -X.
 CHIP_W, CHIP_H = 3.0, 0.80          # MT6701QT-STD, QFN-16. DATASHEET §9.2 (verified):
                                     # D = E = 2.900..3.100 (3.0 nominal) and A, the TOTAL
                                     # package height, = 0.700..0.800. CHIP_H takes the MAX,
@@ -559,12 +566,11 @@ def sensor_parts(z_bot, z_top, prefix="kl"):
     """Board + MT6701 + mated connector, posed for this housing. The board and the
     connector come from sensor_board/sensor_connector unchanged and are only ROTATED,
     so there is exactly one board design in the project."""
-    return [
-        (f"{prefix}_pcb", _install(sensor_board(), z_bot, z_top)),
-        (f"{prefix}_chip", box_at(CHIP_W, CHIP_H, CHIP_W,
-                                  x=0.0, y=PCB_Y - CHIP_H / 2, z=0.0)),
-        (f"{prefix}_can_header", _install(sensor_connector(), z_bot, z_top)),
-    ]
+    out = [(f"{prefix}_pcb", _install(sensor_board(), z_bot, z_top))]
+    # every populated part, not just the sensor — see SENSOR_BOM
+    out += [(f"{prefix}_{n}", _install(s, z_bot, z_top)) for n, s in sensor_hardware()]
+    out.append((f"{prefix}_can_header", _install(sensor_connector(), z_bot, z_top)))
+    return out
 
 
 def pcb_shim(z_bot, z_top):
@@ -601,6 +607,14 @@ def _cradle(w, z_bot=None, z_top=None, x_max=None):
     conn_mx = conn_mouth_x(z_bot, z_top)
     _sx = -1.0 if board_flip(z_bot, z_top) else 1.0
     x_max = CR_X1_MAX if x_max is None else x_max
+    # The BOARD ITSELF must fit the housing's +X face, not just its groove web.
+    # x_max below only caps the NEAR web, on the assumption the far side is never the
+    # long one — and that assumption breaks the moment the board is turned or flipped
+    # (a 180 puts the -25 edge at +25; the pedal's 90 puts a 7 edge here). Both were
+    # caught by hand; this is the guard so they cannot come back silently.
+    assert max(bx0, bx1) <= x_max + 1e-6, (
+        f"the board as installed reaches x {max(bx0, bx1):.2f}, past the housing's "
+        f"{x_max:.2f} +X face — it would stand outside the part")
 
     inner0, slot0, outer0 = _cr_faces(bx0)
     inner1, slot1, outer1 = _cr_faces(bx1)
@@ -971,14 +985,36 @@ PCB_X1  =  3.0                                  # +X edge: as close to the CHIP 
                                                 # no longer binds because the +X groove carrier
                                                 # is now confined BELOW the bore (see CR_X1_MAX
                                                 # and _cradle) instead of running full height.
-PCB_X0  = -14.0                                 # -X edge: CONNECTOR-limited, and by a lot. The
-                                                # connector now lives on the MAGNET side and has
-                                                # to sit entirely outside the cap's sweep, so the
-                                                # board has to reach far enough -X to carry it
-                                                # there and still have 1.85 of edge left for the
-                                                # groove. Asymmetry is free: the outline is ours
-                                                # and only the chip's position is fixed.
-PCB_WX  = PCB_X1 - PCB_X0                       # 23.0
+PCB_X0  = -25.0                                 # -X edge: was -14.0, CONNECTOR-limited. It is now
+                                                # CIRCUIT-limited, and the board had to grow.
+                                                #
+                                                # The board was modelled as a sensor plus a
+                                                # connector, and that board cannot work: it has to
+                                                # speak CAN, so it needs an MCU, a transceiver and
+                                                # a 3.3 V rail off the 24 V bus. (The BOM already
+                                                # BOUGHT a transceiver for it — ~10 off — while
+                                                # the layout spec placed neither that nor any
+                                                # controller. See SENSOR_BOM for the real parts.)
+                                                # Those come to ~173 mm2 against 253 mm2 of usable
+                                                # 17x19 board: 69% covered, not routable
+                                                # single-sided. At 28 wide it is 38%.
+                                                #
+                                                # ALL the growth goes -X because that is the only
+                                                # free direction: the chip sits on the axle axis,
+                                                # so +X is the face nearest the player (every mm
+                                                # there is a mm of lever depth), and Z is nearly
+                                                # frozen by the HORIZONTAL lever, whose window is
+                                                # 21.4 for a 19 board. -X is deep in all three
+                                                # housings.
+                                                #
+                                                # 28.0 is the MAXIMUM, and the FOOT PEDAL sets it:
+                                                # the pedal turns the board 90 deg to put its near
+                                                # edge toward the player, which swaps X and Z, and
+                                                # at 29 the turned board's +Z reach passes the
+                                                # pedal's ceiling and the pedal loses EVERY
+                                                # orientation. Checked against all 4 in-plane
+                                                # orientations of all 3 housings.
+PCB_WX  = PCB_X1 - PCB_X0                       # 28.0
 CEIL_CLR = 0.4                      # board top edge -> the instrument's underside. THE
                                     # INSTRUMENT IS THE BOARD'S +Z RETAINER (user), which is
                                     # why there is no retaining screw: the board goes in with
@@ -992,7 +1028,12 @@ CEIL_CLR = 0.4                      # board top edge -> the instrument's undersi
                                     # and 1.8..9.0, the gap being only the rib's own mortise
                                     # slot, which the rigid board simply bridges.
 CR_FLOOR_T = 4 * D.NOZZLE_D         # 3.2 (was 2.8 = 3.5 beads)                    # cradle floor under the board
-CONN_RISE  = 11.5                   # connector row above the board's bottom edge
+CONN_EDGE  = 1.0                    # connector body -> board's bottom edge (JLCPCB's
+                                    # component-to-edge rule; the TOP end stays flush)
+CONN_RISE  = 8.5                    # connector row above the board's bottom edge. Was 11.5;
+                                    # it moves with PCB_WZ so the connector keeps spanning
+                                    # z -8..+7 — flush at the top, CONN_EDGE clear at the
+                                    # bottom — while the dead strip under it is cut away.
 CHIP_DROP  = 7.0                    # chip below the board's TOP edge
 
 # THE BOARD IS ONE DESIGN, FIXED (user: "the boards should be fully identical").
@@ -1001,6 +1042,43 @@ CHIP_DROP  = 7.0                    # chip below the board's TOP edge
 # What varies between levers is which way up it goes in.
 PCB_Z1 = CHIP_DROP                              # +7.0
 PCB_Z0 = PCB_Z1 - PCB_WZ                        # -12.0
+
+# ── WHAT IS ACTUALLY ON THE SENSOR BOARD ─────────────────────────────────────
+# Modelled the way the optical board is (user): every part that has to be there,
+# at its real package size, so the outline is sized by hardware instead of by
+# guesswork. Sizes are package BODY from the datasheet / LCSC; prices and stock
+# were read from lcsc.com/product-detail/C<n>.html, never a search snippet (that
+# is what put three wrong numbers in the BOM).
+#
+# The board runs CLASSIC CAN 2.0B (user). That decision is what makes it small:
+# the MCU is $0.57 instead of $5.15, and the transceiver can be a 3.3 V part, so
+# there is ONE rail and no 5 V stage. Bus B carries no motors, so it is free to
+# run at 1 Mbps — 10 controls x 76-bit frames at 500 Hz is 38% loaded there,
+# against 76% at the BOM's 500 kbps.
+#
+#              LCSC        Lx    Wz    Hy      x       z
+SENSOR_BOM = (
+    ("chip",        "C2913974", CHIP_W, CHIP_W, CHIP_H,   0.0,   0.0),
+    ("mcu",         "C5142280", 4.00, 4.00, 0.90, -13.5,  -4.0),
+    ("transceiver", "C12084",   6.00, 4.90, 1.75, -13.5,   3.0),
+    ("buck",        "C87080",   2.90, 1.60, 1.10,  -8.5,   4.5),
+    ("inductor",    None,       3.00, 3.00, 1.50,  -8.5,   0.5),
+    ("crystal",     None,       3.20, 2.50, 0.90,  -8.5,  -4.0),
+)
+CR_EDGE_KEEP = 1.85                 # the groove takes this much of each X edge — mechanical
+CAP_SWEEP_R  = 5.4                  # the magnet cap's circumradius (see CONN_MOUTH_X)
+CAP_CLR_H    = 1.5                  # board-to-cap gap: anything TALLER must clear the sweep
+
+
+def sensor_hardware():
+    """(name, solid) for every populated part, on the board's -Y (magnet) face.
+    Single-sided by design — one assembly setup."""
+    out = []
+    for n, _lcsc, lx, wz, hy, cx, cz in SENSOR_BOM:
+        out.append((n, box_at(lx, hy, wz, x=cx, y=PCB_Y - hy / 2, z=cz)))
+    return out
+
+
 
 
 def board_flip(z_bot, z_top):
@@ -1100,7 +1178,20 @@ CONN_N     = 4
 # face must keep its WHOLE footprint outside the cap's 5.4 circumradius + clearance.
 # The body is XH_SIDE_D deep, so the mouth goes at -11.9 and the body runs +X to -5.8
 # — 0.4 clear of the cap for the entire stroke, not just at rest.
-CONN_MOUTH_X = -11.9                # mouth face; body extends +X from here
+CONN_MOUTH_X = PCB_X0 + CR_EDGE_KEEP    # -23.15: mouth face; body extends +X from here.
+                                    # WAS -11.9, jammed as close to the cap as the 5.4 sweep
+                                    # allowed, because the board only reached -14 and the
+                                    # connector had to fit between the cap and that edge.
+                                    # Now that the board reaches -25 for the circuit, the
+                                    # connector moves out to the -X edge, and that is worth
+                                    # far more than the 11.25 it travels: the MATED PLUG runs
+                                    # 7.5 further -X still, so at -11.9 the header plus its
+                                    # plug occupied x -19.4..-5.8 straight ACROSS the middle
+                                    # of the board — 204 mm2, the single biggest obstruction
+                                    # on it, and the MCU and transceiver landed inside it.
+                                    # At the edge the plug runs OFF the board into the web
+                                    # tunnel that already exists for it, and the whole
+                                    # -17.05..+3 span opens up for the circuit.
 CONN_ZC      = conn_z(HOUS_Z0, HOUS_Z1)   # -0.5 here. A fixed RISE off the board's
                                     # bottom edge rather than an absolute Z, so the same
                                     # rule lands it on the vertical lever too (conn_z).
@@ -1120,6 +1211,41 @@ CR_PLINTH_Z1 = -SOCK_R              # -7.0: front plinth top = the driver bore's
 # (the swept-arm relief _cam_swept — a union of rotated hub/arm copies — is
 #  PULLED for now (user: no curved geometry around the axle; keep it simple,
 #  build back up later). The lever room is all planar cuts in _housing.)
+
+# ── SENSOR_BOM validation (here, not at the table: it needs the connector) ──
+def _conn_keepout():
+    """(x0, x1, z0, z1) the CONNECTOR forbids to other parts: the header body AND the
+    mated plug's run. It is the biggest single obstruction on the board — 204 mm2 —
+    and placing the MCU and transceiver inside it is a mistake this catches."""
+    mx = CONN_MOUTH_X
+    return (mx - CONN_PLUG_RUN, mx + XH_SIDE_D,
+            CONN_ZC - xh_side_length(CONN_N) / 2, CONN_ZC + xh_side_length(CONN_N) / 2)
+
+for _n, _lcsc, _lx, _wz, _hy, _cx, _cz in SENSOR_BOM:
+    _x0, _x1 = _cx - _lx / 2, _cx + _lx / 2
+    _z0, _z1 = _cz - _wz / 2, _cz + _wz / 2
+    assert PCB_Z0 <= _z0 and _z1 <= PCB_Z1, f"{_n} hangs off the board in Z"
+    if _n != "chip":
+        # the chip is the one part allowed into the groove band: it is 0.80 tall and
+        # its position is FIXED on the axle axis, so the outline is drawn around it
+        assert PCB_X0 + CR_EDGE_KEEP <= _x0 and _x1 <= PCB_X1 - CR_EDGE_KEEP, (
+            f"{_n} at x {_x0:.2f}..{_x1:.2f} intrudes on the {CR_EDGE_KEEP} groove band")
+    if _hy > CAP_CLR_H:
+        # the board is installed by dropping it PAST the rotating magnet cap, so a part
+        # deeper than the gap must clear the cap's sweep — measured as the true distance
+        # from the axle axis to the part's FOOTPRINT RECTANGLE, not to its centre
+        _dx = max(_x0, -_x1, 0.0)
+        _dz = max(_z0, -_z1, 0.0)
+        assert math.hypot(_dx, _dz) > CAP_SWEEP_R, (
+            f"{_n} is {_hy} tall and comes within {math.hypot(_dx, _dz):.2f} of the axle "
+            f"— inside the cap's {CAP_SWEEP_R} sweep, so the board could not be installed")
+    if _n != "chip":
+        _kx0, _kx1, _kz0, _kz1 = _conn_keepout()
+        assert not (_x0 < _kx1 and _x1 > _kx0 and _z0 < _kz1 and _z1 > _kz0), (
+            f"{_n} at x {_x0:.2f}..{_x1:.2f} z {_z0:.2f}..{_z1:.2f} sits under the "
+            f"connector or its mated plug (x {_kx0:.2f}..{_kx1:.2f} z {_kz0:.2f}..{_kz1:.2f})")
+
+
 
 
 def _recess_swept(yc, step=3.0, fold=45.0):
