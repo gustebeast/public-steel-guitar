@@ -588,27 +588,33 @@ _MPN_RULES = (
     # --- resolved, verified in LCSC stock 2026-08-01 ---
     ("U6",   ("STM32H743ZIT6",   "C114408",  9.93,  "LQFP144; 20 ADC ch. @10 price. "
                                                     "STOCK 7 -- short for a run of 10")),
-    ("U7",   ("USB3343-CP",      "C633347",  1.78,  "ULPI HS PHY, QFN-24. -TR reel = C112967 @2.07")),
-    ("U10",  ("USBLC6-2SC6",     "C7519",    0.0983, "USB ESD array. NOTE SOT-23-6, not the "
+    ("U7",   ("USB3343-CP",      "C633347",  2.6398, "ULPI HS PHY, QFN-24. @10 price. "
+                                                "*** OUT OF STOCK at LCSC 2026-08-04 ***")),
+    ("U10",  ("USBLC6-2SC6",     "C7519",    0.1829, "USB ESD array, @5+. NOTE SOT-23-6, not the "
                                                     "modelled SOT-563 -- envelope grows")),
-    ("U11",  ("TLV9061IDCKR",    "C693480",  0.36,  "single of the same family as U1-U5, "
-                                                    "so the mid-rail buffer matches the TIAs")),
-    ("U12",  ("PCM1808PWR",      "C55513",   0.3419, "24-bit 99 dB 96 kHz stereo audio ADC, "
+    ("U11",  ("TLV9061IDCKR",    "C398357",  0.2505, "single of the same family as U1-U5, so the "
+                                                    "mid-rail buffer matches the TIAs. @5+. "
+                                                    "NOTE package is SC-70-5, not the modelled "
+                                                    "SOT-23-5 -- envelope is oversized, safe. "
+                                                    "C693480 was WRONG: that is a P6KE39CA TVS")),
+    ("U12",  ("PCM1808PWR",      "C55513",   0.642,  "24-bit 99 dB 96 kHz stereo audio ADC, @10+. "
                                                     "I2S. Keeps the line-level magnetic "
                                                     "signal OFF the MCU's nanoamp SAR mux. "
                                                     "8.2k in LCSC stock")),
-    ("U8",   ("AMS1117-3.3",     "C6186",    0.1045, "3V3 DIGITAL, SOT-223 tab -- 0.51 W will "
+    ("U8",   ("AMS1117-3.3",     "C6186",    0.2028, "3V3 DIGITAL, SOT-223 tab, @5+. 0.51 W will "
                                                     "not fit a SOT-23-5. Noisy, but it feeds "
                                                     "the MCU, not the front end")),
-    ("U9",   ("SPX3819M5-L-3-3/TR", "C9055", 0.30,  "3V3 ANALOG, 40 uVrms, SOT-23-5. Low load "
+    ("U9",   ("SPX3819M5-L-3-3/TR", "C9055", 0.1903, "3V3 ANALOG, 40 uVrms, SOT-23-5, @10+. Low load "
                                                     "(~40 mA) so the small package is fine")),
-    ("U",    ("TLV9064IDR",      "C388176",  0.2161, "quad op-amp, SOIC-14, 10 MHz GBW, "
+    ("U",    ("TLV9064IDR",      "C388176",  0.3297, "quad op-amp, SOIC-14, 10 MHz GBW, @30+ "
                                                     "500 fA Ib -- the TIA part. 10k in stock")),
-    ("Y",    ("X322525MSB4SI",   "C13740",   0.0334, "25 MHz 3225 crystal, BASIC. Y2 needs the "
+    ("Y",    ("X322525MSB4SI",   "C13740",   0.0959, "25 MHz 3225 crystal, @5+. Y2 needs the "
                                                     "PHY's reference freq -- confirm vs USB3343")),
-    ("Q1",   ("AO3400A",         "C20917",   0.0487, "N-ch logic-level FET, SOT-23, LED row gate")),
-    ("J1",   ("TYPE-C-31-M-12",  "C165948",  0.20,  "USB-C 16P; the modelled envelope IS this part")),
-    ("FB1",  ("GZ2012D601TF",    "C1017",    0.02,  "0603 ferrite bead, 600R@100MHz, BASIC class")),
+    ("Q1",   ("AO3400A",         "C20917",   0.0849, "N-ch logic-level FET, SOT-23, LED row gate, @5+")),
+    ("J1",   ("TYPE-C-31-M-12",  "C165948",  0.1709, "USB-C 16P, @5+; the modelled envelope IS this part")),
+    ("FB1",  (MPN_UNKNOWN,       "",         0.05,  "0603 ferrite bead, 600R@100MHz. OPEN: the "
+                                                    "GZ2012D601TF/C1017 recorded here was a bad "
+                                                    "number -- C1017 404s. Pick a real one")),
     # --- generic passives: JLCPCB BASIC classes, exact value set at schematic capture ---
     ("Rf",   ("0402 thick-film R", "BASIC",  0.002, "TIA feedback, per-string value")),
     ("Cf",   ("0402 C0G MLCC",   "BASIC",    0.004, "TIA feedback cap -- C0G, not X7R: the "
@@ -622,8 +628,8 @@ _MPN_RULES = (
     # RESOLVED. The emitter is 0805 940 nm and WIDE (~120 deg full) because narrow-beam
     # simply is not made in this package -- see the note below and BOM.md. Angle is the one
     # spec to re-confirm on the datasheet at layout; everything else is checked.
-    ("D",    ("IR17-21C/TR8",    "C131250",  0.0283, "IR emitter 940 nm, 0805, Everlight. "
-                                                    "~120 deg full angle -- lever 1 of the "
+    ("D",    ("IR17-21C/TR8",    "C131250",  0.0424, "IR emitter 940 nm, 0805, Everlight, @100+. "
+                                                    "120 deg CONFIRMED on the LCSC page -- lever 1 of the "
                                                     "signal budget is UNAVAILABLE, not merely "
                                                     "unchosen. CONFIRM angle at layout")),
     # RESOLVED, and the no-consignment dilemma was a false alarm: the LCSC-stocked X01
@@ -632,7 +638,8 @@ _MPN_RULES = (
     ("PD",   ("VEMD4110X01",     "C3211080", 0.58,  "filtered Si PIN, 0.42 mm2, +-55 deg. "
                                                     "@100+ price; 10 boards = 200 pcs. "
                                                     "STOCK 72 -- must recover or be pre-ordered")),
-    ("J2",   ("S6B-XH-SM4-TB",   "C191914",  0.4417, "6 way on the -Y edge: 2x5V, 2x PWR_GND, "
+    ("J2",   ("S6B-XH-SM4-TB",   "C191914",  0.5598, "6 way on the -Y edge, @10+. B = 20.0 CONFIRMED "
+                                                    "on the LCSC page. 2x5V, 2x PWR_GND, "
                                                     "AUDIO, AUDIO_GND. Only new line here is "
                                                     "the board-side part -- XHP-6 housings are "
                                                     "already bought for the SERVO42D pigtails "
