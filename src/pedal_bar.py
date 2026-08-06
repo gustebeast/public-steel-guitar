@@ -305,6 +305,7 @@ def _stub_tower(lx: float, wired: bool) -> cq.Workplane:
     # 44-wide leg head gets one instead to match. The button lands on the BAR,
     # facing outboard: the piece you lift off (user).
     b = b.cut(LT.male_cutter(cx=LT.LX_TOWER).translate((0, 0, STUB_Z0)))
+    b = b.union(LT.male_post(cx=LT.LX_TOWER).translate((0, 0, STUB_Z0)))
     b = b.rotate((0, 0, 0), (0, 0, 1), 180).translate((lx, YC, 0))
     return b
 # Print-orientation note: the tower's octagon spigot has a constant Z section, so

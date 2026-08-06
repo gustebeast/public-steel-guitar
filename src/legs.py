@@ -1045,6 +1045,7 @@ def leg_head() -> cq.Workplane:
     # cover dovetail, and the finger well that sinks this 44 face to the tower's
     # 35.6 so ONE slider + cover SKU serves both joints. See latch.py.
     b = b.cut(LT.well_cutter(-SQ_W / 2)).cut(LT.male_cutter())
+    b = b.union(LT.male_post())          # coil guide post (union AFTER the tunnel cut)
     # captive CA-354S seat + cable ways on the TRRS axis (+5, +13 — moved
     # into the fat flare band): tip lip, handle way, Ø8 down-way to the core
     b = b.cut(cyl(9.4, 1.7, z=37.4).translate((5.0, TRRS_DY, 0)))
