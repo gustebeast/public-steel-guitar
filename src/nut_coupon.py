@@ -218,11 +218,32 @@ def demo_parts():
 
 
 # ════════════════════════════════════════════════════════════════════════════
-# VARIANT B — ONE SHARED ROD ALONG Y, designed around the INSTALL (user)
+# VARIANT B — ONE SHARED ROD ALONG Y, on the CHANGER'S OWN SHAFT (user)
 # ════════════════════════════════════════════════════════════════════════════
 # The user's idea, and the better one: it is the TUNER CROSS SHAFT every keyless
-# steel already uses, and this instrument already buys a shared O3 shaft spanning
-# all ten strings for the bridge axle. Ten bought posts collapse to one.
+# steel already uses. Ten bought posts collapse to one — and to the SAME one the
+# +X changer already buys, which is the part of it that pays twice.
+#
+# THE ROD IS O3, the bridge axle's own g6/h6 precision shaft, cut to a second
+# length. The first cut of this demo used O6, which was not a part this project
+# buys at all (the user spotted that). What O3 costs and buys, measured:
+#
+#     rod     bend strain on the .070     sag per 9.5 span     rod bending stress
+#     O6              22.9%                   0.00003 mm            6 MPa
+#     O3              37.2%  (1.63x)          0.00046 mm           48 MPa
+#     O1.5            54.2%  (2.37x)          0.00729 mm          388 MPa
+#
+# O1.5 is the one to avoid: 2.4x O6's bend on the fattest wound string, on a rod
+# whose own bending stress has climbed 8x. O3 is the sweet spot — the bend is
+# worse than a guitar tuner post's but the rod is a part we already own, and
+# halving the rod also shrinks the threading bay by 3 mm, which is what finally
+# brings the whole termination inside the endplate's X budget.
+#
+# HONEST RISK: wrap-area breakage is a KNOWN pedal-steel failure (the steel forum
+# reports .011s cracking at the wrap at 28-33 lbf, and this instrument runs
+# 26-33 lbf), and this instrument cycles tension far more than a guitar does
+# because the motors are always moving. O3 makes that bend 1.63x sharper. If
+# strings start letting go at the nut, O6 is the fallback and costs only depth.
 #
 # THE INSTALL IS THE DESIGN DRIVER (user). Working from the +X side, you:
 #
@@ -231,51 +252,73 @@ def demo_parts():
 #     push under a third time                ->  and this time it leaves by the
 #                                                EXIT HOLE, out to the clamp
 #
-# Three pushes = 2.5 turns, which is exactly the wrap the capstan sums wanted. The
-# winding sense is right-handed about +Y, and that is what sends the tip UNDER the
-# rod first rather than over it — probed off the curve, not assumed.
+# Three pushes = 2.5 turns, exactly the wrap the capstan sums wanted. Right-handed
+# about +Y is what sends the tip UNDER the rod first — probed off the curve.
 #
-# What the install costs the geometry, in the order the user raised it:
+#  1. THREADING ROOM: a 3 mm annulus round the rod, OPEN TO THE TOP, so a stiff
+#     .070 tip can be pushed round and then grabbed.
+#  2. ENTRY ROOM: the +X lane is open the full bay height, for all three passes.
+#  3. THE SCREW GATES THE EXIT HOLE. The string passes the -X side THREE times and
+#     only the last should find the hole; the earlier two are 2p and 1p away in Y,
+#     and at the bass end 1p is smaller than the hole's own half width. Wound IN,
+#     the screw fills the passage and the hole is not there. gate_check() measures
+#     it rather than assuming.
 #
-#  1. THREADING ROOM. The bay is a full BAY_R annulus round the rod and OPEN TO THE
-#     TOP, so a stiff .070 tip can be pushed round and then grabbed. A wrap-tight
-#     bay would be unthreadable.
-#  2. ENTRY ROOM. The +X approach lane is open for the whole height of the bay, so
-#     the string can be presented on each of the three passes.
-#  3. THE EXIT HOLE IS GATED BY THE CLAMP SCREW. This is the subtle one and it is
-#     worth the trouble: the string passes the -X side of the rod THREE times (at
-#     0.5, 1.5 and 2.5 turns) and only the last should find the hole. The earlier
-#     two are 2p and 1p away in Y — and at the bass end 1p is smaller than the
-#     hole's own half width, so an early pass really can catch it. With the screw
-#     wound IN its shank fills the passage and the hole is not there at all. On the
-#     final pass you back the screw out, the hole opens, the tail goes through, and
-#     winding the screw down clamps it. One screw, two jobs, and the clunky "pull it
-#     back out and try again" the user wanted to avoid cannot happen.
-ROD_D  = 6.0                        # the shared rod: O6 ground shaft, ONE part
-ROD_X  = POST_X
+# PRINTS -X -> +X (user). The -X end face is the bed. Every bore here runs
+# PERPENDICULAR to that build axis — the rod along Y, the screws and inserts along
+# Z — so each one is a "horizontal" hole in the print sense and takes cadkit's 45°
+# TEARDROP with print_up = +X. Without it they print as sagging round ceilings and
+# come out oval.
+from cadkit.holes import teardrop_hole
+
+ROD_D  = 3.0                        # = the bridge axle's shaft. ONE line, qty 2.
+ROD_X  = -7.0
 ROD_Z  = -1.0                       # rod centre; strings arrive at -g/2 and meet
                                     # its +X face. One height for every gauge
-BAY_R  = 6.0                        # threading annulus — 3 clear of the rod
-EXIT_X = ROD_X - BAY_R              # -15: the wall the exit hole pierces
-GATE_X = -17.5                      # clamp screw. It crosses the exit passage, so
-                                    # wound IN it is a GATE, and wound down on the
+BAY_R  = ROD_D / 2.0 + 3.0          # 4.5 — threading annulus, 3 mm clear of the rod
+EXIT_X = ROD_X - BAY_R              # -11.5: the wall the exit hole pierces
+GATE_X = -13.5                      # clamp screw: it crosses the exit passage, so
+                                    # wound IN it is a GATE and wound down on the
                                     # string it is the CLAMP
-X_BACK_B = -22.0
-WRAP_F_B = 1.15                     # turns lie close (they must not cross) while
-                                    # still leaving a lane for the comb finger
-# COMB FINGERS ONLY WHERE THERE IS ROOM. Every string pulls on the same rod, so an
-# unsupported O6 across the field sags 0.94 mm at mid-span and the middle strings go
-# flat. But support every THIRD string already holds it to 0.002 mm — and that
-# freedom matters, because a .070's wrap eats 8.9 of its 9.5 lane while a .014's
-# eats 3.4. So the fingers live in the TREBLE lanes where the wrap is narrow, and
-# the bass end carries none and needs none.
-FINGER_AFTER = (0,)                 # demo: one finger, in the thin string's gap
-FINGER_T = 2.4                      # 3 beads
+X_BACK_B = -19.0
+WRAP_F_B = 1.05                     # turns lie all but touching. Tightening this
+                                    # from 1.15 is part of what buys a finger in
+                                    # EVERY lane (see below)
+LANE_CLR = 0.5                      # air each side of a wrap, before its finger
+PRINT_UP = (1.0, 0.0, 0.0)          # the build axis: -X -> +X
 
 
 def _adv(g: float) -> float:
     """How far this string's wrap marches along the rod: one diameter per turn."""
     return TURNS * WRAP_F_B * g
+
+
+# A FINGER IN EVERY LANE (user: two of the three strings had none).
+#
+# The first cut supported the rod only where it was easy, on the argument that a
+# .070's wrap eats its whole lane. That argument was wrong, and wrong in an
+# interesting way: it measured the .070's OWN lane without asking which neighbour
+# the wrap marches toward. The wrap marches +Y, D.string_y falls with index, so
+# string i marches at string i-1 and the binding gap is the one between the .070
+# and the .054 — not the .070's own. With the clearance at 0.5 a side and the wrap
+# pitch at 1.05, that gap leaves 2.26 mm, comfortably over the 1.6 two-bead floor:
+#
+#     factor 1.15, clr 1.0  ->  0.81 mm   TOO THIN   (what the first cut assumed)
+#     factor 1.15, clr 0.5  ->  1.81 mm
+#     factor 1.05, clr 0.5  ->  2.26 mm   <- and every other lane is wider
+#
+# So every string gets its own bay, the rod is supported at 9.5 throughout (the
+# best case, 0.00003 mm), and the bay walls guide the tip while threading instead
+# of letting it wander into next door. Better on all three counts.
+def finger_span(n: int):
+    """(y0, y1) of the printed web between string n and string n+1, or None."""
+    if n + 1 >= len(GAUGE_IDX):
+        return None
+    g0 = D.STRING_GAUGE[GAUGE_IDX[n]]
+    g1 = D.STRING_GAUGE[GAUGE_IDX[n + 1]]
+    a = _y(n) + _adv(g0) + g0 / 2.0 + LANE_CLR
+    b = _y(n + 1) - g1 / 2.0 - LANE_CLR
+    return (a, b) if b - a > 0 else None
 
 
 def _string_rod(n: int):
@@ -295,14 +338,11 @@ def _string_rod(n: int):
     # the string has to leave it flat), then down to the rod's +X face
     out = seg((X_FRONT + 14.0, y0, -r), (DOWEL_X, y0, -r))
     out = out.union(seg((DOWEL_X, y0, -r), (ROD_X + hr, y0, ROD_Z)))
-    # THE WRAP — right-handed about +Y, which sends the tip UNDER the rod first.
-    # makeHelix builds about Z; -90 about X carries +Z onto +Y.
     helix = cq.Wire.makeHelix(pitch=p, height=h, radius=hr)
     coil = (cq.Workplane("XZ").center(hr, 0).circle(r)
             .sweep(cq.Workplane("XY").add(helix), isFrenet=True))
     out = out.union(coil.rotate((0, 0, 0), (1, 0, 0), -90.0)
                         .translate((ROD_X, y0, ROD_Z)))
-    # ...and out through the EXIT HOLE, one march further along Y
     y1 = y0 + h
     out = out.union(seg((ROD_X - hr, y1, ROD_Z), (X_BACK_B - 3.0, y1, ROD_Z)))
     return out
@@ -327,29 +367,36 @@ def _hardware_rod(n: int):
 
 
 def block_rod():
-    """The printed body: slab, the comb the rod threads, the open threading bay,
-    the +X entry lanes, and the gated exit passages."""
+    """The printed body: slab, the comb the rod threads, one threading bay per
+    string, the +X entry lanes, and the gated exit passages. Builds -X -> +X."""
     w = box_at(X_FRONT - X_BACK_B, 2 * HW, SLAB_Z1 - SLAB_Z0,
                x=(X_BACK_B + X_FRONT) / 2.0, y=0.0, z=(SLAB_Z0 + SLAB_Z1) / 2.0)
-    w = w.union(box_at(9.0, 2 * HW, BOSS_Z1 - SLAB_Z1,
-                       x=GATE_X, y=0.0, z=(SLAB_Z1 + BOSS_Z1) / 2.0))
-    # the comb block the rod threads
+    # the clamp boss runs BACK TO THE BED FACE. Floating it around GATE_X left its
+    # -X wall as a 369 mm2, 11 mm tall ledge starting in mid-print — the largest
+    # unsupported face in the part, and pure overhang. Taken back to X_BACK_B its
+    # -X face IS the first layer, and it also buries the comb's own -X wall, which
+    # was the next offender. Costs a little material and no print time.
+    w = w.union(box_at((GATE_X + 4.0) - X_BACK_B, 2 * HW, BOSS_Z1 - SLAB_Z1,
+                       x=(X_BACK_B + GATE_X + 4.0) / 2.0, y=0.0,
+                       z=(SLAB_Z1 + BOSS_Z1) / 2.0))
     w = w.union(box_at(2 * BAY_R, 2 * HW, (ROD_Z + BAY_R) - SLAB_Z1,
                        x=ROD_X, y=0.0, z=(SLAB_Z1 + ROD_Z + BAY_R) / 2.0))
-    w = w.cut(cyl_y(ROD_D + 0.4, 4 * HW, y0=-2 * HW, x=ROD_X, z=ROD_Z))
 
-    # ONE open bay across the strings, then the fingers put BACK. Cutting the bay
-    # first and restoring fingers is what makes "fingers only where there is room"
-    # expressible at all; a bay-per-string leaves the bass lanes no wall to build.
-    w = w.cut(box_at(2 * BAY_R, 2 * HW, (SLAB_Z1 + 12.0) - (ROD_Z - BAY_R),
-                     x=ROD_X, y=0.0, z=((ROD_Z - BAY_R) + SLAB_Z1 + 12.0) / 2.0))
-    for i in FINGER_AFTER:
-        g = D.STRING_GAUGE[GAUGE_IDX[i]]
-        yf = _y(i) + _adv(g) + (PITCH - _adv(g)) / 2.0      # mid-gap
-        fin = box_at(2 * BAY_R, FINGER_T, (ROD_Z + BAY_R) - SLAB_Z0,
-                     x=ROD_X, y=yf, z=(SLAB_Z0 + ROD_Z + BAY_R) / 2.0)
-        w = w.union(fin.cut(cyl_y(ROD_D + 0.4, 4 * HW, y0=-2 * HW,
-                                  x=ROD_X, z=ROD_Z)))
+    # ONE bay per string, so every gap keeps its comb finger
+    for n, gi in enumerate(GAUGE_IDX):
+        g = D.STRING_GAUGE[gi]
+        y0 = _y(n)
+        bay_y0 = y0 - g / 2.0 - LANE_CLR
+        bay_y1 = y0 + _adv(g) + g / 2.0 + LANE_CLR
+        w = w.cut(box_at(2 * BAY_R, bay_y1 - bay_y0,
+                         (SLAB_Z1 + 12.0) - (ROD_Z - BAY_R),
+                         x=ROD_X, y=(bay_y0 + bay_y1) / 2.0,
+                         z=((ROD_Z - BAY_R) + SLAB_Z1 + 12.0) / 2.0))
+
+    # the rod's own bore — PERPENDICULAR to the build axis, so it teardrops
+    w = w.cut(teardrop_hole(ROD_D + 0.4, 4 * HW,
+                            axis_point=(ROD_X, -2 * HW, ROD_Z),
+                            axis_dir=(0.0, 1.0, 0.0), print_up=PRINT_UP))
 
     for n, gi in enumerate(GAUGE_IDX):
         g = D.STRING_GAUGE[gi]
@@ -357,37 +404,32 @@ def block_rod():
         y1 = y0 + _adv(g)
         w = w.cut(cyl_y(PIN_D + 0.4, PIN_L + 0.4, y0=y0 - (PIN_L + 0.4) / 2.0,
                         x=DOWEL_X, z=-g - PIN_D / 2.0 - CONTACT_CLR))
-        # ENTRY LANE — open the full bay height, so the string can be presented on
-        # each of the three passes
+        # ENTRY LANE — open the full bay height, for all three passes
         w = w.cut(box_at(X_FRONT - ROD_X, g + 2.0,
                          (SLAB_Z1 + 12.0) - (ROD_Z - g),
                          x=(ROD_X + X_FRONT) / 2.0, y=y0,
                          z=((ROD_Z - g) + SLAB_Z1 + 12.0) / 2.0))
-        # EXIT PASSAGE — a HOLE, not an open channel: it has to be something the
-        # screw can plug. Its FLOOR is exactly where the screw tip lands (= the
-        # anvil top); centring it on the rod instead left a 0.35 slot underneath
-        # the tip, which the gate check caught and which is precisely the gap a
-        # thin string would find on an early pass.
+        # EXIT PASSAGE — a HOLE the screw can plug. Its FLOOR is exactly where the
+        # tip lands; centring it on the rod left a slot under the tip, which is the
+        # gap a thin string would find on an early pass.
         _floor = ROD_Z - g / 2.0 - CONTACT_CLR
         w = w.cut(box_at(EXIT_X - (X_BACK_B - 4.0), g + 0.8, g + 0.8,
                          x=(EXIT_X + X_BACK_B - 4.0) / 2.0, y=y1,
                          z=_floor + (g + 0.8) / 2.0))
         w = w.cut(cyl_y(PIN_D + 0.4, PIN_L + 0.4, y0=y1 - (PIN_L + 0.4) / 2.0,
-                        x=GATE_X, z=ROD_Z - g / 2.0 - PIN_D / 2.0 - CONTACT_CLR))
-        w = w.cut(cyl(INSERT_D, INSERT_L + 0.2, z=BOSS_Z1 - INSERT_L)
-                  .translate((GATE_X, y1, 0)))
-        w = w.cut(cyl(SCREW_D + 0.4, 40.0, z=ROD_Z - 2.0).translate((GATE_X, y1, 0)))
+                        x=GATE_X, z=_floor - PIN_D / 2.0))
+        # insert pocket + screw bore: also perpendicular to the build axis
+        w = w.cut(teardrop_hole(INSERT_D, INSERT_L + 0.2,
+                                axis_point=(GATE_X, y1, BOSS_Z1 - INSERT_L),
+                                axis_dir=(0.0, 0.0, 1.0), print_up=PRINT_UP))
+        w = w.cut(teardrop_hole(SCREW_D + 0.4, 40.0,
+                                axis_point=(GATE_X, y1, ROD_Z - 2.0),
+                                axis_dir=(0.0, 0.0, 1.0), print_up=PRINT_UP))
     return w
 
 
 def gate_check():
-    """Does the screw, wound fully IN, actually close the exit passage?
-
-    The whole anti-clunk trick rests on this, so it gets measured rather than
-    asserted: drop the screw to the passage floor and subtract it from the
-    passage's own cross-section. Anything left over is a gap a thin string could
-    still find on an early pass.
-    """
+    """Does the screw, wound fully IN, actually close the exit passage?"""
     out = []
     for n, gi in enumerate(GAUGE_IDX):
         g = D.STRING_GAUGE[gi]
@@ -399,6 +441,11 @@ def gate_check():
         out.append((gi, round(window.val().Volume(), 3),
                     round(window.cut(shut).val().Volume(), 3)))
     return out
+
+
+def depth() -> float:
+    """X the whole termination occupies — against the endplate's 25.4 budget."""
+    return X_FRONT - X_BACK_B
 
 
 def demo_parts_rod():
