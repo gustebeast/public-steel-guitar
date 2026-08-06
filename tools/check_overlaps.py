@@ -73,9 +73,6 @@ GLOBAL_OK = {
     frozenset({"optical_screw", "optical_insert"}),
     # belt-tensioner coupon: the M4 brass insert seats INSIDE the slider's bore (designed)
     frozenset({"belt_tensioner_slider_coupon", "belt_tensioner_insert_coupon"}),
-    # nut-termination DEMO: the set screw threads its own brass insert, the same
-    # designed engagement every other screw/insert pair in the model has
-    frozenset({"nutdemo_screw", "nutdemo_insert"}),
     frozenset({"optical_screw", "bridge_endplate"}),
     frozenset({"screw_bearing", "bridge_endplate"}), frozenset({"leadscrew", "bridge_endplate"}),
     frozenset({"locknut", "bridge_endplate"}), frozenset({"screw_pulley", "bridge_endplate"}),

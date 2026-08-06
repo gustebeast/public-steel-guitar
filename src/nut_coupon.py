@@ -43,6 +43,7 @@ import math
 import cadquery as cq
 
 from . import dimensions as D
+from cadkit.fasteners import M4, screw as _screw, insert as _insert
 from .helpers import box_at, cyl, cyl_y
 
 
@@ -149,14 +150,15 @@ def _hardware(n: int):
     out.append((f"nutdemo_anvil_{n}",
                 cyl_y(PIN_D, PIN_L, y0=y - PIN_L / 2.0, x=CLAMP_X,
                       z=z_end - g / 2.0 - PIN_D / 2.0 - CONTACT_CLR)))
-    # the EXISTING clamp: brass insert + M4 cup-tip set screw, tip on the string
+    # the EXISTING clamp, drawn with CADKIT's own dummies rather than bare
+    # cylinders — so the set screw shows its 2 mm hex drive and the insert its real
+    # knurled form. A hand-rolled cylinder hid the one feature that tells you which
+    # end you turn.
     out.append((f"nutdemo_insert_{n}",
-                cyl(INSERT_D, INSERT_L, z=BOSS_Z1 - INSERT_L)
-                .translate((CLAMP_X, y, 0))))
+                _insert(M4).translate((CLAMP_X, y, BOSS_Z1))))
+    _tip = z_end + g / 2.0 + CONTACT_CLR          # cup tip, resting on the string
     out.append((f"nutdemo_screw_{n}",
-                cyl(SCREW_D, BOSS_Z1 - (z_end + g / 2.0 + CONTACT_CLR),
-                    z=z_end + g / 2.0 + CONTACT_CLR)
-                .translate((CLAMP_X, y, 0))))
+                _screw(M4, BOSS_Z1 - _tip).translate((CLAMP_X, y, BOSS_Z1))))
     return out
 
 
