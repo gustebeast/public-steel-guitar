@@ -951,6 +951,15 @@ def _joint_coupon_components():
     return [("test_octagon_tenon_coupon", ten), ("test_octagon_mortise_coupon", mor)]
 
 
+def _nut_coupon_components():
+    """The string-termination DEMO — the WRAP POST scheme — parked off the +X end
+    beside the other coupons. Not a printed part and not the real nut block yet: it
+    exists so the mechanism can be SEEN (user), and it is built from dimensions.py's
+    own gauges so it cannot drift from the instrument it is proposing a change to."""
+    from . import nut_coupon as NC
+    return [(n, s.translate((150.0, -90.0, 40.0))) for n, s in NC.demo_parts()]
+
+
 def _tensioner_coupon_components():
     """The belt-tension clamp, shown ASSEMBLED (working position) with its M4 screw +
     brass insert, parked off the +X end clear of every real part. Rebuilds with the
@@ -984,6 +993,7 @@ def collect_components():
     comps += _electronics_components()
     comps += _lever_stations_components()      # all six, LKL/VKL included
     comps += _joint_coupon_components()
+    comps += _nut_coupon_components()
     comps += _tensioner_coupon_components()
     for i in range(D.N_STRINGS):
         comps.extend(_string_components(i))
@@ -1016,6 +1026,14 @@ _COLORS = {
     "belt":            (0.13, 0.13, 0.13),   # GT2 black
     "string":          (0.85, 0.85, 0.85),
     "break_dowel":     (0.75, 0.75, 0.78),   # steel dowel (gauged break pin)
+    # nut-termination DEMO (nut_coupon.py) — parked off +X, not a printed part
+    "nutdemo_block":       (0.30, 0.45, 0.35),   # PETG-GF, as the real nut block
+    "nutdemo_break_dowel": (0.75, 0.75, 0.78),   # existing O2 dowel
+    "nutdemo_anvil":       (0.75, 0.75, 0.78),   # the OPTIONAL second O2 dowel
+    "nutdemo_post":        (0.62, 0.66, 0.72),   # THE NEW PART: O6 wrap post
+    "nutdemo_screw":       (0.55, 0.55, 0.58),   # existing M4 cup-tip set screw
+    "nutdemo_insert":      (0.80, 0.62, 0.28),   # existing brass heat-set insert
+    "nutdemo_string":      (0.85, 0.85, 0.85),   # string
     "set_screw":       (0.55, 0.55, 0.58),   # alloy set screw
     "pickup_jack_screw":  (0.55, 0.55, 0.58),  # M4 top-access height set-screw jack
     "pickup_jack_insert":  (0.80, 0.60, 0.35),  # brass heat-set insert (jack)
