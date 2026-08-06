@@ -957,7 +957,12 @@ def _nut_coupon_components():
     exists so the mechanism can be SEEN (user), and it is built from dimensions.py's
     own gauges so it cannot drift from the instrument it is proposing a change to."""
     from . import nut_coupon as NC
-    return [(n, s.translate((150.0, -90.0, 40.0))) for n, s in NC.demo_parts()]
+    out = [(n, s.translate((150.0, -90.0, 40.0))) for n, s in NC.demo_parts()]
+    # VARIANT B beside it (user): one shared rod along Y instead of ten posts
+    # along Z. Same three gauges, same clamp — only the winding changes, so the
+    # two sit side by side and the difference is the only thing you see.
+    out += [(n, s.translate((150.0, -150.0, 40.0))) for n, s in NC.demo_parts_rod()]
+    return out
 
 
 def _tensioner_coupon_components():
@@ -1034,6 +1039,14 @@ _COLORS = {
     "nutdemo_screw":       (0.55, 0.55, 0.58),   # existing M4 cup-tip set screw
     "nutdemo_insert":      (0.80, 0.62, 0.28),   # existing brass heat-set insert
     "nutdemo_string":      (0.85, 0.85, 0.85),   # string
+    # variant B — the shared Y rod
+    "rodnut_block":        (0.30, 0.45, 0.35),
+    "rodnut_break_dowel":  (0.75, 0.75, 0.78),
+    "rodnut_anvil":        (0.75, 0.75, 0.78),
+    "rodnut_rod":          (0.62, 0.66, 0.72),   # ONE part, not ten
+    "rodnut_screw":        (0.55, 0.55, 0.58),
+    "rodnut_insert":       (0.80, 0.62, 0.28),
+    "rodnut_string":       (0.85, 0.85, 0.85),
     "set_screw":       (0.55, 0.55, 0.58),   # alloy set screw
     "pickup_jack_screw":  (0.55, 0.55, 0.58),  # M4 top-access height set-screw jack
     "pickup_jack_insert":  (0.80, 0.60, 0.35),  # brass heat-set insert (jack)
