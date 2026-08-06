@@ -521,11 +521,19 @@ def _leg_components():
     ZM = -LG.STUB_H                        # stub mouth / head seat (rel Z_BOT)
     k = 0
     for sx in CH.LEG_STATIONS_X:           # stations computed from the shared endplate model
-        for ly, rot in ((CH.LEG_Y[0], 180), (CH.LEG_Y[1], 0)):   # flush centres
+        # EVERY leg is placed rot 180 (user): the octagon's groove side -- which is
+        # also the print-bed face -- then points world -Y on BOTH rails, so all four
+        # legs read the same way round. The -Y pair used to sit at rot 0, which put
+        # their bed face and their apex on the opposite sides from the +Y pair.
+        for ly, rot in ((CH.LEG_Y[0], 180), (CH.LEG_Y[1], 180)):   # flush centres
             wired = (sx, ly) == (CH.LEG_STATIONS_X[1], CH.LEG_Y[0])
-            # the bridge/-Y corner takes the JACK-corner stub SKU (its
-            # endplate side is local +x and one ep tenon is the short one)
-            jack = (sx, ly) == (CH.LEG_STATIONS_X[0], CH.LEG_Y[1])
+            # The stub SKU is chosen by eps, the LOCAL tongue side, and rot 180 maps
+            # local x to world -x -- so eps = -egx, where egx is the outboard x sign
+            # the chassis cuts its grooves with. (At rot 0 it was eps = +egx, which
+            # is why the two -Y corners swap SKU with this change.) Getting this
+            # wrong points the end-wall tongue away from its endplate.
+            egx = -1.0 if sum(CH.LEG_STATIONS_X) / 2 > sx else 1.0
+            eps = -egx
 
             def R(wp, dz=0.0, dx=0.0, dy=0.0):
                 return (wp.translate((dx, dy, dz))
@@ -534,7 +542,7 @@ def _leg_components():
 
             out.append((f"leg_body_stub_{k}",
                         R(LG.leg_body_stub_trrs() if wired
-                          else stub_jk if jack else stub_p, ZM)))
+                          else (stub_jk if eps > 0 else stub_p), ZM)))
             out.append((f"leg_head_{k}", R(head, ZM)))
             # LEG-JOINT LATCH: slider + cover ride the HEAD (the leg is the piece
             # you pull off, so the button is on it). Drawn LATCHED. The bar-joint
@@ -563,7 +571,12 @@ def _leg_components():
                         R(LG.leg_pinch_gib(), top - 195.0)))
             # +Y legs end SHORT (the bar carries their last piece as stub
             # towers); only the -Y legs run to the floor with feet.
-            if rot == 180:
+            # Key on the RAIL, not on rot: rot used to double as "which rail",
+            # and now that every leg is placed 180 it no longer discriminates.
+            # Left as rot == 180 this branch swallowed all four legs -- the -Y
+            # pair lost their feet and got the short bar-tower shaft, i.e. they
+            # stopped reaching the floor.
+            if ly == CH.LEG_Y[0]:
                 sh = LG.leg_shaft_trrs() if wired else LG.leg_shaft_short()
                 # short-shaft seat plane on the bar tower — also the datum the
                 # wired branch below hangs the second TRRS blind-mate off
