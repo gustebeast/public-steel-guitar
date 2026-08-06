@@ -309,3 +309,59 @@ def cover(cx: float = LX_C) -> cq.Workplane:
 def slider_pressed(cx: float = LX_C) -> cq.Workplane:
     """The slider drawn RELEASED (pressed in by STROKE) -- for clearance checks."""
     return slider(cx).translate((0, STROKE, 0))
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# hardware dummy
+# ═══════════════════════════════════════════════════════════════════════════
+SPR_TURNS_DEAD = 1.0              # closed coil at each end (closed-and-ground)
+SPR_TURNS = SPR_N + 2 * SPR_TURNS_DEAD                 # 8.0 total
+
+
+def spring_length(pressed: bool = False) -> float:
+    """Installed coil length: SEAT (inside the slider's blind bore) + GAP (open,
+    to the tunnel's back wall). Pressing the button closes the GAP by STROKE."""
+    return SPR_SEAT + SPR_GAP - (STROKE if pressed else 0.0)
+
+
+def spring_force(pressed: bool = False) -> float:
+    return (SPR_FREE - spring_length(pressed)) * SPR_RATE
+
+
+def spring(cx: float = LX_C, pressed: bool = False) -> cq.Workplane:
+    """The steel compression coil, as a real swept helix -- axis along Y (the
+    slider's travel), seated in the slider's blind bore and bearing on the
+    tunnel's back wall. Pass pressed=True for the released state.
+
+    Exact where it matters: OD, wire diameter, turn count, and OVERALL length
+    (the helix PATH is built one wire-diameter short, because the swept tube
+    adds a wire radius past the path at each end -- built to the full length it
+    models 0.6 too long and would read as fouling the tunnel's back wall).
+
+    Simplified where it does not: the coil is uniform-pitch, so the closed-and-
+    ground END coils are drawn pitched rather than touching. No interface cares
+    -- OD sets the bore fit, overall length sets the gap, and solid height is
+    turns*wire (4.8) by definition either way. Modelling the dead coils properly
+    means three helix segments whose pitch junctions are not tangent, and the
+    fuse of those is not reliably a single solid."""
+    L = spring_length(pressed)
+    r_mid = (SPR_OD - SPR_WIRE) / 2.0                  # 2.2 mean radius
+    path_h = L - SPR_WIRE                              # see docstring
+    wire = cq.Wire.makeHelix(pitch=path_h / SPR_TURNS, height=path_h, radius=r_mid)
+    coil = (cq.Workplane("XZ").center(r_mid, 0).circle(SPR_WIRE / 2)
+            .sweep(cq.Workplane("XY").add(wire), isFrenet=True))
+    # helix is built about +Z; stand it along +Y with its base at the bore bottom
+    coil = coil.rotate((0, 0, 0), (1, 0, 0), -90)
+    # Anchor on the TUNNEL BACK, which is the end that does not move. Anchoring
+    # on the slider's bore bottom instead leaves the pressed state drawn a full
+    # STROKE too far -Y, and the coil then reads as buried in the slider.
+    return coil.translate((cx, BACK_Y - L + SPR_WIRE / 2, (PAD_Z0 + PAD_Z1) / 2))
+
+
+def _assert_spring():
+    assert abs(SPR_TURNS * SPR_WIRE - SPR_SOLID) < 1e-6, "solid height must be turns*wire"
+    assert spring_length(True) > SPR_SOLID + 0.5, "coil binds before the button bottoms"
+    assert SPR_OD + 0.4 <= SPR_BORE_D + 1e-9, "coil does not clear its bore"
+
+
+_assert_spring()

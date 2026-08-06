@@ -567,6 +567,7 @@ def _leg_components():
             # pair, indices 4-5, travel with the bar — pedal_bar._latch_parts.
             out.append((f"latch_slider_{k}", R(LT.slider(), ZM)))
             out.append((f"latch_cover_{k}", R(LT.cover(), ZM)))
+            out.append((f"latch_spring_{k}", R(LT.spring(), ZM)))
             # threadless chain: butt faces, integral plugs. Head bottom
             # face at ZM - 42 = -90; each body IS the 142 pitch.
             top = ZM - LG.HEAD_BODY_L
@@ -1068,6 +1069,7 @@ _COLORS = {
     "leg_head":        (0.36, 0.42, 0.46),
     "latch_slider":    (0.85, 0.35, 0.20),   # latch accent
     "latch_cover":     (0.55, 0.30, 0.22),
+    "latch_spring":    (0.62, 0.64, 0.67),   # stainless coil (purchased)
     "leg_pinch_gib":   (0.85, 0.35, 0.20),   # clamp accent (matches bolts)
     "leg_plug_retainer": (0.42, 0.48, 0.52),
     "chassis_trrs_jack": (0.62, 0.64, 0.67),
