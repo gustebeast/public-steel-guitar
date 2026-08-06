@@ -57,6 +57,7 @@ from cadkit.joinery import PrintSpec, joint
 from .helpers import box_at, cyl
 from .chassis import LEG_STATIONS_X, LEG_Y
 from . import legs as LG
+from . import latch as LT
 from .legs import _house
 
 YC = LEG_Y[0]                          # FLUSH round: the bar rides the +Y
@@ -149,9 +150,11 @@ def _stub_tower(lx: float, wired: bool) -> cq.Workplane:
     # (waist-vs-slit capture untouched)
     b = b.cut(box_at(LG.SQ_W + 2.0, 6.0, 42.0, y=LG.SH_Y + 3.0,
                      z=STUB_Z0 + 19.0))
-    # (the bolt channel through the spigot and the recessed button pocket in
-    # the tower body are GONE with the quick-release — the tenon is unbroken
-    # and the bar↔leg joint has no Z retention, same as the leg↔body one)
+    # LATCH (male half), butt plane at STUB_Z0. The tower is already BLK_W wide,
+    # i.e. the face the mechanism is datumed to, so it needs no finger well — the
+    # 44-wide leg head gets one instead to match. The button lands on the BAR,
+    # facing outboard: the piece you lift off (user).
+    b = b.cut(LT.male_cutter(cx=LT.LX_TOWER).translate((0, 0, STUB_Z0)))
     b = b.rotate((0, 0, 0), (0, 0, 1), 180).translate((lx, YC, 0))
     return b
 
@@ -353,4 +356,20 @@ def assembly_parts():
             ("leg_foot_4",
              LG.leg_foot().translate((FEET[1][0], YC, -12.0))),
             ("leg_foot_5",
-             LG.leg_foot().translate((FEET[0][0], YC, -12.0)))] + _cable_runs()
+             LG.leg_foot().translate((FEET[0][0], YC, -12.0)))]         + _latch_parts() + _cable_runs()
+
+
+def _latch_parts():
+    """The two bar-joint latches. They live in the TOWERS, so they travel with
+    the BAR -- which is the piece you lift off, and therefore the piece the
+    button has to be on (user). Authored at the tower origin, then through the
+    tower's own 180 rotation so the button faces outboard like the legs'."""
+    out = []
+    for i, (lx, _s) in enumerate(FEET):
+        for nm, wp in (("latch_slider", LT.slider(LT.LX_TOWER)),
+                       ("latch_cover", LT.cover(LT.LX_TOWER))):
+            out.append(("%s_%d" % (nm, 4 + i),
+                        wp.translate((0, 0, STUB_Z0))
+                        .rotate((0, 0, 0), (0, 0, 1), 180)
+                        .translate((lx, YC, 0))))
+    return out
