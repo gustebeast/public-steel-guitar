@@ -24,8 +24,14 @@ Frame: belt runs along X, teeth DOWN (mesh the FLOOR-side lifter ridges — they
 UPWARD, clean; the flat ceiling is a non-critical belt-retention bridge), +Z up, belt
 back plane on z = 0. The screw runs below the belt at z = −4.5: low enough its Ø7.6 head
 clears the belt floor (0.7 mm), high enough its crest stands proud in the wells. The head
-is at the −X (motor-pulley) end for a right-angle / ball hex key. All four parts print
-flat; each bar prints ridges-up as a small solid.
+is at the −X (motor-pulley) end for a right-angle / ball hex key.
+
+PRINT: the two HALVES build +X (on the −X face) — the belt tunnel, screw channel and Ø6
+insert bore all run along the build, so they come out as clean walls and round bores (a
+sagging ceiling-bridge and out-of-round bores if built +Z), and the head-bearing face is
+the flat first layer. The BARS build −Y→+Y (belt-width vertical) so the ridge curves and
+the concave seat land in the layer plane. No supports needed either way (the only −X-facing
+feature is the well's +X end, a one-layer bridge over the well — cosmetic, non-critical).
 """
 
 from __future__ import annotations
@@ -169,14 +175,16 @@ def seated_lifter(bar, well_mid: float, locked: bool = True) -> cq.Workplane:
 
 # ── coupon: all four parts in PRINT orientation, spread in Y ─────────────────
 def tensioner_coupon() -> cq.Workplane:
-    a  = anchor().translate((0.0, -(BODY_W + 4.0), -BOT))
-    s  = slider().translate((0.0, -(BODY_W + 4.0), -BOT))          # inline: same belt line
-    # bars in the −Y→+Y PRINT pose: rotate belt-width Y up to Z so the ridge curves + seat
-    # land in the layer plane, then sit on the bed.
-    def _print_bar(bar):
-        return bar.rotate((0, 0, 0), (1, 0, 0), 90).translate((0, 0, BW / 2))
-    la = _print_bar(lifter_a()).translate((0.0, +(BODY_W / 2 + 6.0), 0.0))
-    lb = _print_bar(lifter_b()).translate((0.0, +(BODY_W / 2 + 6.0 + BW + 3.0), 0.0))
+    """All four parts in their PRINT poses. HALVES build +X: the belt tunnel, screw
+    channel and Ø6 insert bore all run along the build → clean walls + round bores (a
+    ceiling-bridge and sagging bores if built +Z), and the head-bearing face is the flat
+    first layer. BARS build −Y→+Y: the ridge curves + concave seat land in the layer plane."""
+    def _on_bed(w):
+        return w.translate((0.0, 0.0, -w.val().BoundingBox().zmin))
+    a = _on_bed(anchor().rotate((0, 0, 0), (0, 1, 0), -90)).translate((0.0, -14.0, 0.0))
+    s = _on_bed(slider().rotate((0, 0, 0), (0, 1, 0), -90)).translate((0.0, +2.0, 0.0))
+    la = _on_bed(lifter_a().rotate((0, 0, 0), (1, 0, 0), 90)).translate((22.0, -6.0, 0.0))
+    lb = _on_bed(lifter_b().rotate((0, 0, 0), (1, 0, 0), 90)).translate((22.0, +6.0, 0.0))
     return a.union(s).union(la).union(lb)
 
 
