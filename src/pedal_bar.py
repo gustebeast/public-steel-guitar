@@ -576,7 +576,8 @@ def _latch_parts():
     out = []
     for i, (lx, _s) in enumerate(FEET):
         for nm, wp in (("latch_slider", LT.slider(LT.LX_TOWER)),
-                       ("latch_cover", LT.cover(LT.LX_TOWER))):
+                       ("latch_cover", LT.cover(LT.LX_TOWER)),
+                       ("latch_spring", LT.spring(LT.LX_TOWER))):
             out.append(("%s_%d" % (nm, 4 + i),
                         wp.translate((0, 0, STUB_Z0))
                         .rotate((0, 0, 0), (0, 0, 1), 180)
