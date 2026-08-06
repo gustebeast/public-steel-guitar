@@ -115,9 +115,13 @@ STROKE = 2.8                      # press travel. MUST EXCEED HOOK_ENGAGE -- equ
 # 1.6 two-bead floor. Below +6.3 only the D8 way is alongside and the wall is
 # 2.25. So the whole mechanism stays BELOW the D11 way.
 TRRS_WAY_Z0 = 6.3                 # D11 handle way opens here (legs.leg_head)
-HOOK_Z0, HOOK_Z1 = 1.0, 5.5       # hook, inside the female
+# HOOK_Z0 is also the LEDGE THICKNESS: the ledge is the material between the
+# female's mouth (z0) and the pocket floor, so a low hook means a wafer of a
+# shelf carrying the whole pull-out load. At 1.0 it was 0.75 mm. 2.0 gives 1.75,
+# just over the two-bead floor, and still keeps the pocket top under the TRRS way.
+HOOK_Z0, HOOK_Z1 = 2.0, 5.0       # hook, inside the female
 PAD_Z0, PAD_Z1 = -9.0, -2.0       # button pad, on the male body
-BODY_Z0, BODY_Z1 = -12.0, 5.5     # slider overall
+BODY_Z0, BODY_Z1 = -12.0, 5.0     # slider overall
 LOAD_Z = -14.0                    # tunnel/cover bottom (load window bottom)
 
 # ── spring (NEW BOM SKU) ─────────────────────────────────────────────────────
@@ -128,6 +132,9 @@ SPR_N = 6.0                       # active coils
 SPR_SOLID = (SPR_N + 2) * SPR_WIRE                     # 4.8
 SPR_RATE = 2.51                   # N/mm (G=79300, see the BOM line)
 SPR_BORE_D = SPR_OD + 0.4         # 5.4 pocket in the slider
+SPR_ID = SPR_OD - 2 * SPR_WIRE    # 3.8 coil bore
+POST_D = SPR_ID - 0.8             # 3.0 guide post (0.4 radial clearance in the coil)
+POST_L = 5.0                      # post length off the tunnel's back wall
 SPR_SEAT = 6.0                    # blind-bore depth in the slider
 SPR_GAP = 4.0                     # slider back face -> tunnel back at REST.
                                   # MUST EXCEED STROKE or the slider bottoms on the
@@ -155,6 +162,8 @@ def _assert_sane():
     assert BODY_Z0 <= PAD_Z0 and BODY_Z1 >= HOOK_Z1
     assert LOAD_Z < BODY_Z0, "load window must clear the slider's home position"
     assert BODY_Z1 <= TRRS_WAY_Z0 - 0.5,         "tunnel reaches the D11 TRRS way: the wall between them drops under MIN_WALL_2P"
+    assert HOOK_Z0 - CLR >= D.MIN_WALL_2P,         "retention LEDGE too thin -- it is the material between the female mouth and the pocket floor"
+    assert HOOK_Z1 > HOOK_Z0 + 1.0, "hook too short to carry the pull-out load"
     assert PAD_W < LX_W - 2 * D.MIN_WALL, "cover lip too thin to stop the slider"
     assert LX1 < -0.5, "latch band fouls the TRRS way at x +5 (D11)"
 
@@ -211,8 +220,11 @@ def female_cutter(engage_z: float, cx: float = LX_C) -> cq.Workplane:
 
       * CHANNEL: the hook's retracted travel path, from the mouth up. Its floor
         (CH_FLOOR) is what cams the hook in on the way past.
-      * MOUTH LEAD-IN: 45 deg, so the push-together cams the hook rather than
-        butting it.
+      * (NO mouth lead-in. One used to sit here and it destroyed the whole
+        mechanism: a 3 mm wedge from the mouth upward removes exactly the
+        material the LEDGE is made of, so the hook passed straight through and
+        the latch retained nothing. The camming is done by the hook's own 45 deg
+        top chamfer, which is the half that should carry it anyway.)
       * POCKET: the hook's home, 3.0 deeper. Its floor is a FLAT 90 deg ledge
         -- the retention face. Its roof is gabled 45 deg so the pocket does not
         put a flat ceiling in the female's print.
@@ -221,13 +233,8 @@ def female_cutter(engage_z: float, cx: float = LX_C) -> cq.Workplane:
     z0, z1 = engage_z, engage_z + HOOK_Z1 + 30.0
     ch = box_at(LX_W + 2 * CLR, BACK_Y - CH_FLOOR, z1 - z0,
                 x=cx, y=(CH_FLOOR + BACK_Y) / 2, z=(z0 + z1) / 2)
-    # 45 deg lead-in at the mouth: a wedge that opens the channel floor downward
-    lead = (cq.Workplane("YZ")
-            .polyline([(CH_FLOOR, z0), (CH_FLOOR - 3.0, z0), (CH_FLOOR, z0 + 3.0)])
-            .close().extrude(LX_W + 2 * CLR)
-            .translate((cx - LX_W / 2 - CLR, 0, 0)))
     pk = _pocket(engage_z, cx)
-    return ch.union(lead).union(pk)
+    return ch.union(pk)
 
 
 def _pocket(engage_z: float, cx: float = LX_C) -> cq.Workplane:
@@ -260,7 +267,10 @@ def slider(cx: float = LX_C) -> cq.Workplane:
     Prints flat on its BACK face: the hook lead and the pad both face up, so
     there is nothing to support."""
     back = BACK_Y - SPR_GAP                     # -1.5  back face at REST
-    up_front = CH_FLOOR - 0.1                   # -13.7 upper step front
+    # Clearance is toward +Y: the female's material starts BELOW CH_FLOOR (more
+    # -Y), so the step has to sit ABOVE it. CH_FLOOR - 0.1 read as clearance but
+    # is 0.1 the wrong way, and jammed the step 1.75 mm^3 into the wall.
+    up_front = CH_FLOOR + CLR                   # -13.35 upper step front
 
     def span(y0, y1, z0, z1):
         return box_at(LX_W, y1 - y0, z1 - z0,
@@ -358,10 +368,30 @@ def spring(cx: float = LX_C, pressed: bool = False) -> cq.Workplane:
     return coil.translate((cx, BACK_Y - L + SPR_WIRE / 2, (PAD_Z0 + PAD_Z1) / 2))
 
 
+def male_post(cx: float = LX_C) -> cq.Workplane:
+    """GUIDE POST for the coil, standing off the tunnel's back wall into the
+    spring's ID -- the project's coil pattern (see the knee-lever cartridge:
+    a pilot into the coil ID, not a cup on its end).
+
+    Without it the coil is located at ONE end only: its seated end is 6 mm down
+    the slider's blind bore, but the far end merely bears on a flat wall, free to
+    wander sideways in a 10 x 20 tunnel or to buckle. The post carries the ID
+    from the wall inward, and because it reaches PAST the slider's back face it
+    also pilots the slider itself against tilt.
+
+    Length is bounded by the slider's bore floor at FULL PRESS: the floor comes
+    to y -4.7 there, so a 5.0 post (tip at -2.5) keeps 2.2 mm of daylight."""
+    return cyl_y(POST_D, POST_L, y0=BACK_Y - POST_L, x=cx, z=(PAD_Z0 + PAD_Z1) / 2)
+
+
 def _assert_spring():
     assert abs(SPR_TURNS * SPR_WIRE - SPR_SOLID) < 1e-6, "solid height must be turns*wire"
     assert spring_length(True) > SPR_SOLID + 0.5, "coil binds before the button bottoms"
     assert SPR_OD + 0.4 <= SPR_BORE_D + 1e-9, "coil does not clear its bore"
+    assert POST_D < SPR_ID - 0.4, "guide post binds inside the coil"
+    # the post must never reach the slider's bore floor, which is closest at full press
+    floor_pressed = (BACK_Y - SPR_GAP) - SPR_SEAT + STROKE
+    assert BACK_Y - POST_L > floor_pressed + 1.0, "guide post bottoms in the slider's bore"
 
 
 _assert_spring()
