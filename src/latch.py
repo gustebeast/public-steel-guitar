@@ -109,9 +109,15 @@ STROKE = 2.8                      # press travel. MUST EXCEED HOOK_ENGAGE -- equ
                                   # reads as a proper button throw under the thumb.
 
 # ── Z bands (about the butt plane) ───────────────────────────────────────────
-HOOK_Z0, HOOK_Z1 = 2.0, 9.0       # hook, inside the female
+# The hook's TOP is capped by the TRRS way, not by anything in the latch. The
+# D11 handle way opens at z +6.3 and runs to +37.5; where the tunnel reached up
+# beside it the wall between the two cavities thinned to 1.25 mm -- under the
+# 1.6 two-bead floor. Below +6.3 only the D8 way is alongside and the wall is
+# 2.25. So the whole mechanism stays BELOW the D11 way.
+TRRS_WAY_Z0 = 6.3                 # D11 handle way opens here (legs.leg_head)
+HOOK_Z0, HOOK_Z1 = 1.0, 5.5       # hook, inside the female
 PAD_Z0, PAD_Z1 = -9.0, -2.0       # button pad, on the male body
-BODY_Z0, BODY_Z1 = -12.0, 9.0     # slider overall
+BODY_Z0, BODY_Z1 = -12.0, 5.5     # slider overall
 LOAD_Z = -14.0                    # tunnel/cover bottom (load window bottom)
 
 # ── spring (NEW BOM SKU) ─────────────────────────────────────────────────────
@@ -148,6 +154,7 @@ def _assert_sane():
     assert HOOK_Z0 > 0.0 and PAD_Z1 < 0.0, "hook belongs above the butt plane, pad below"
     assert BODY_Z0 <= PAD_Z0 and BODY_Z1 >= HOOK_Z1
     assert LOAD_Z < BODY_Z0, "load window must clear the slider's home position"
+    assert BODY_Z1 <= TRRS_WAY_Z0 - 0.5,         "tunnel reaches the D11 TRRS way: the wall between them drops under MIN_WALL_2P"
     assert PAD_W < LX_W - 2 * D.MIN_WALL, "cover lip too thin to stop the slider"
     assert LX1 < -0.5, "latch band fouls the TRRS way at x +5 (D11)"
 
