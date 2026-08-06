@@ -37,21 +37,22 @@ COMMANDS
   Either:
     status               role, branch, worktrees, pending requests
 
-NOTIFICATION -- two independent channels, so a request is never lost:
-  1. AUTO WAKE (no human). The lead arms `wait` as a BACKGROUND command; the cheap
-     shell poll (not the model) sits idle until a contributor's `submit` drops a
-     request file, then exits -- which auto re-invokes the lead. Fully hands-free,
-     BUT only while `wait` is actually armed (re-arm it after every `take`).
-  2. DESKTOP POKE (backstop, needs zero cooperation from the lead). `submit` ALSO
-     fires an OS notification on the machine, so an IDLE lead that never armed
-     `wait` -- or the human sitting next to it -- is poked the instant a request
-     lands. This is the channel that survives a forgotten/dead `wait`. The toast
-     carries its OWN app identity, so Windows' native per-app switch ('Turn off
-     all notifications for agent_sync') silences exactly these. Code-level
-     override: env AGENT_SYNC_NOTIFY = toast (default) | dialog (modal) | off.
-Plus a loud PENDING banner on every lead command (`status`/`build`/`take`), so a
-queued request can't be walked past. The contributor never has to ping anyone by
-hand; `submit` does all three.
+NOTIFICATION -- two layers, no desktop pop-ups, the human is NEVER the relay:
+  1. AUTO WAKE (fully hands-free, WHEN ARMED). The lead arms `wait` as a BACKGROUND
+     command; the cheap shell poll (not the model) sits idle until a contributor's
+     `submit` drops a request file, then exits -- which auto re-invokes the lead. Its
+     one blind spot is a `wait` that is NOT armed (never started, died, or a missed
+     re-arm) -- then a fresh request just sits in the inbox.
+  2. PROMPT-TIME NUDGE (covers the blind spot). The `hook` command, wired as the
+     lead's `UserPromptSubmit` hook, runs on the lead's NEXT prompt -- whatever it is
+     about -- and, if the inbox holds a request, injects a loud notice into the lead's
+     context: take it AND (re-)arm `wait`. So a down `wait` self-heals the instant the
+     lead is prompted for anything; no human has to notice or forward. (We cannot wake
+     a truly idle, unarmed session with no prompt -- nothing on one machine can -- but
+     the request is never lost and surfaces the moment the lead does ANYTHING.)
+Plus a loud PENDING banner on every lead command (`status`/`build`/`take`). The
+contributor never pings anyone by hand; `submit` files the request and both layers
+carry it from there.
 
 Typical flow (<name> is the contributor's task, e.g. the subsystem they own)
   human: "let's go multi-agent; the second chat is a sub-agent named <name>"
@@ -74,13 +75,6 @@ import time
 from pathlib import Path
 
 STALE_LOCK_S = 1200          # a build.lock older than this is presumed dead and stolen
-
-# Our OWN toast identity (AppUserModelID). Registering it under HKCU means the toast shows
-# as "agent_sync merge requests" -- not "Windows PowerShell" -- so the native Windows
-# per-app switch ("Turn off all notifications for agent_sync") silences ONLY our toasts,
-# with no collateral to other PowerShell notifications.
-_AUMID       = "cadkit.agent_sync"
-_AUMID_LABEL = "agent_sync merge requests"
 
 
 # ── git helpers ───────────────────────────────────────────────────────────────
@@ -123,53 +117,6 @@ def is_dirty() -> bool:
     return bool(git("status", "--porcelain"))
 
 
-# ── notification ──────────────────────────────────────────────────────────────
-def _notify(title: str, body: str) -> None:
-    """Best-effort desktop poke so an IDLE lead (or the human next to it) learns of a
-    request the instant it lands -- the one channel that needs ZERO cooperation from the
-    lead session (no armed `wait`, no polling). NEVER raises: a failed notification must
-    never fail a submit.
-
-    Silencing: the toast carries our OWN app identity (`agent_sync merge requests`), so the
-    native Windows notification switch ('Turn off all notifications for agent_sync', or
-    Settings > Notifications) silences exactly these and nothing else -- the intended user
-    control. AGENT_SYNC_NOTIFY = toast (default) | dialog (modal) | off is only a code-level
-    override for headless/non-Windows use. The terminal bell always fires as a backstop."""
-    mode = os.environ.get("AGENT_SYNC_NOTIFY", "toast").lower()
-    sys.stdout.write("\a")                                    # cheap always-on backstop
-    sys.stdout.flush()
-    if mode == "off" or sys.platform != "win32":
-        return
-    try:
-        if mode == "dialog":                                  # modal box: impossible to miss
-            subprocess.Popen(["msg", "*", "/TIME:0", f"{title}\n\n{body}"],
-                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            return
-        env = dict(os.environ, AS_TITLE=title, AS_BODY=body,  # via env -> no quoting hazards
-                   AS_AUMID=_AUMID, AS_LABEL=_AUMID_LABEL)
-        ps = (
-            # register our AUMID under HKCU (idempotent, per-user, no admin) so the toast is
-            # attributed to us -> the native per-app silence switch targets only agent_sync.
-            "$k='HKCU:\\Software\\Classes\\AppUserModelId\\'+$env:AS_AUMID;"
-            "if(-not(Test-Path $k)){New-Item -Path $k -Force|Out-Null};"
-            "New-ItemProperty -Path $k -Name DisplayName -Value $env:AS_LABEL "
-            "-PropertyType String -Force|Out-Null;"
-            "[Windows.UI.Notifications.ToastNotificationManager,Windows.UI.Notifications,"
-            "ContentType=WindowsRuntime]|Out-Null;"
-            "$x=[Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent("
-            "[Windows.UI.Notifications.ToastTemplateType]::ToastText02);"
-            "$t=$x.GetElementsByTagName('text');"
-            "$t.Item(0).AppendChild($x.CreateTextNode($env:AS_TITLE))|Out-Null;"
-            "$t.Item(1).AppendChild($x.CreateTextNode($env:AS_BODY))|Out-Null;"
-            "$n=[Windows.UI.Notifications.ToastNotification]::new($x);"
-            "[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("
-            "$env:AS_AUMID).Show($n)")
-        subprocess.Popen(["powershell", "-NoProfile", "-Command", ps], env=env,
-                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    except Exception:
-        pass                                                  # backstop bell already fired
-
-
 # ── contributor commands ──────────────────────────────────────────────────────
 def cmd_join(name: str):
     branch = f"agent/{name}"
@@ -203,10 +150,10 @@ def cmd_submit(summary: str):
            "time": time.strftime("%Y-%m-%d %H:%M:%S")}
     path = sync_dir() / "inbox" / f"{slug(branch)}.json"
     path.write_text(json.dumps(req, indent=2))
-    _notify(f"merge request: {branch}", f"{summary}\n-> agent_sync take {name}")
     print(f"merge request filed for {branch} @ {sha[:8]}\n"
           f"  \"{summary}\"\n"
-          f"LEAD notified (desktop toast; if `wait` is armed it also woke). Take with:\n"
+          f"If the LEAD's `wait` is armed it just woke; otherwise the `hook` surfaces this on\n"
+          f"the LEAD's next prompt. Take with:\n"
           f"  py -3.12 cadkit/tools/agent_sync.py take {name}")
 
 
@@ -264,8 +211,6 @@ def cmd_wait(timeout, poll):
     deadline = (time.time() + timeout) if timeout > 0 else None
     while True:
         if _requests():
-            r = json.loads(_requests()[0].read_text())
-            _notify(f"merge request: {r['branch']}", f"{r['summary']}\n-> agent_sync take {r['name']}")
             cmd_inbox()
             print(_REARM)
             return
@@ -351,6 +296,39 @@ def cmd_status():
     _print_pending_banner()
 
 
+def cmd_hook():
+    """The LEAD's `UserPromptSubmit` hook (wire it in .claude/settings.json). It runs on the
+    lead's NEXT prompt -- whatever that prompt is about -- and, if the inbox holds a request,
+    prints a loud notice that Claude Code injects into the lead's context: take it AND re-arm
+    `wait`. This is how a DOWN `wait` self-heals the moment the lead is prompted for anything,
+    with no human relay. Stays SILENT (no output) when the inbox is empty or this isn't the
+    lead session, so a normal turn is never cluttered. ALWAYS exits 0 -- a hook must never
+    block or fail the prompt."""
+    try:
+        if cur_branch() != "main":        # only the lead takes/merges; contributor sessions: silent
+            return
+        reqs = _requests()
+        if not reqs:                      # nothing waiting -> don't nag every prompt
+            return
+        bar = "=" * 68
+        out = [bar,
+               f"[agent_sync] ACTION REQUIRED before you continue: {len(reqs)} merge "
+               f"request(s) are waiting in your inbox.",
+               "Your `wait` listener did NOT catch them (they would be merged already), so it "
+               "is down. Do BOTH now:",
+               "  1. take each below:   py -3.12 cadkit/tools/agent_sync.py take <name>",
+               "  2. RE-ARM the listener IN THE BACKGROUND so future ones auto-wake you:",
+               "        py -3.12 cadkit/tools/agent_sync.py wait",
+               "pending:"]
+        for p in reqs:
+            r = json.loads(p.read_text())
+            out.append(f"  * agent/{r['name']}  {r['sha'][:8]}  \"{r['summary']}\"")
+        out.append(bar)
+        print("\n".join(out))
+    except Exception:
+        pass                              # a hook must never fail the prompt -> swallow everything
+
+
 def main():
     # Contributor summaries carry arbitrary Unicode (arrows, bullets, °, Ø). The default Windows console
     # is cp1252, which raises UnicodeEncodeError on those and would KILL the lead's `wait` notifier mid
@@ -373,12 +351,13 @@ def main():
     sub.add_parser("drop").add_argument("name")
     b = sub.add_parser("build"); b.add_argument("args", nargs=argparse.REMAINDER)
     sub.add_parser("status")
+    sub.add_parser("hook")          # the lead's UserPromptSubmit hook (see .claude/settings.json)
     a = ap.parse_args()
     {"join": lambda: cmd_join(a.name), "submit": lambda: cmd_submit(a.summary),
      "sync": cmd_sync, "done": cmd_done, "inbox": cmd_inbox,
      "wait": lambda: cmd_wait(a.timeout, a.poll),
      "take": lambda: cmd_take(a.name), "drop": lambda: cmd_drop(a.name),
-     "build": lambda: cmd_build(a.args), "status": cmd_status}[a.cmd]()
+     "build": lambda: cmd_build(a.args), "status": cmd_status, "hook": cmd_hook}[a.cmd]()
 
 
 if __name__ == "__main__":

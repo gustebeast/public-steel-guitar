@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py -3.12 \"${CLAUDE_PROJECT_DIR}/cadkit/tools/agent_sync.py\" hook"
+          }
+        ]
+      }
+    ]
+  }
+}
