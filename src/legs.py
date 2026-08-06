@@ -1138,9 +1138,14 @@ def _body_stub(wired: bool, eps: float) -> cq.Workplane:
     # M4 SHEAR-PIN pilots down through the crossing ridges at the wall
     # band (local y -17 = the rail-web access-bore line; only the
     # inboard one gets a screw, the SKU keeps both for every corner)
+    # BOTH y stations, not just -17: every leg is placed rot 180 now, so the rail
+    # the pin drops down is at local -17 on the +Y rail and +17 on the -Y rail.
+    # Cutting both keeps ONE SKU per eps serving both rails -- the same reason the
+    # SKU already carries both x stations and only lets the inboard one take a screw.
     for tx in (ca, cb):
-        b = b.cut(cyl(3.6, 12.0, z=STUB_H + 7.24 - 12.0)
-                  .translate((tx, -17.0, 0)))
+        for ty in (-17.0, 17.0):
+            b = b.cut(cyl(3.6, 12.0, z=STUB_H + 7.24 - 12.0)
+                      .translate((tx, ty, 0)))
     if wired:
         # TRRS axis at (TRRS_DX, TRRS_DY) — the fat flare band of the flush
         # octagon (the old y-0 axis has no material around it any more)
