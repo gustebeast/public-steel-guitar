@@ -99,6 +99,7 @@ import cadquery as cq
 
 from . import dimensions as D
 from .helpers import box_at, cyl, heal
+from . import latch as LT
 
 # thread (shared by every junction)
                                        # junction); lead 18 → still 1.4 turns
@@ -395,8 +396,10 @@ def leg_shaft_short() -> cq.Workplane:
     body = _shaft_prism(SHORT_SHAFT_L)
     body = body.union(box_at(BLK_W, BLK_W, BLOCK_H, z=BLOCK_H / 2))
     body = body.cut(_section_mortise(length=39.4).translate((0, 0, -1.0)))
-    # (the ledge pocket + bolt tail window that took the tower's latch bolt are
-    # GONE with the quick-release — the socket is now purely passive)
+    # LATCH (female half) for the bar joint — same cutter as the body stub. This
+    # is the THIN wall of the pair (BLK_W leaves 3.7 from the apex), which is what
+    # capped HOOK_ENGAGE at 1.8 for BOTH joints; 2.4 mm of wall survives here.
+    body = body.cut(LT.female_cutter(engage_z=0.0, cx=LT.LX_TOWER))
     return body
 
 
@@ -935,8 +938,10 @@ def _body_stub(wired: bool, eps: float) -> cq.Workplane:
     # the local +Y face (the groove — user round 3: every leg joint is the
     # flush octagon; no 180 flip any more, the bed face fixes the orientation)
     b = b.cut(_section_mortise(length=39.4).translate((0, 0, -1.0)))
-    # (the bearing-ledge pocket + bolt tail window are GONE with the
-    # quick-release — the -Y point-side wall is solid again)
+    # LATCH (female half): hook channel + 45 deg mouth lead-in + retention
+    # pocket, ALL INTERNAL — the outer wall keeps 6.6 mm and is never broken,
+    # so no button and no hole appears on the body (user). Mouth is local z0.
+    b = b.cut(LT.female_cutter(engage_z=0.0))
     ca, cb = _cross_x(eps)
     for rx in (ca, cb):
         b = b.union(_stub_ridge(SQ_W).translate((rx, -SQ_W / 2, STUB_H)))
@@ -1035,8 +1040,11 @@ def leg_head() -> cq.Workplane:
     # body top; stem base ON the +Y bed face — user round 3, replaces the
     # house). Slides -Z-relative into the stub's mortise; mouth-butt stop.
     b = b.union(_section_tenon(39.0).translate((0, 0, -1.0)))
-    # (the spigot's bolt through-notch and the button pocket in the body are
-    # GONE with the quick-release — the spigot is an unbroken octagon tenon)
+    # LATCH (male half): the slider tunnel — which also takes the octagon apex
+    # away across the band, opening the channel the hook travels in — plus the
+    # cover dovetail, and the finger well that sinks this 44 face to the tower's
+    # 35.6 so ONE slider + cover SKU serves both joints. See latch.py.
+    b = b.cut(LT.well_cutter(-SQ_W / 2)).cut(LT.male_cutter())
     # captive CA-354S seat + cable ways on the TRRS axis (+5, +13 — moved
     # into the fat flare band): tip lip, handle way, Ø8 down-way to the core
     b = b.cut(cyl(9.4, 1.7, z=37.4).translate((5.0, TRRS_DY, 0)))
