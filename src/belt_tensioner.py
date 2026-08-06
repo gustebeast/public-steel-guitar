@@ -2,7 +2,7 @@
 
 Splices each cut GT2 belt into a loop, dials its tension, AND lets the belt drop in
 freely then lock. Four printed parts:
-  • ANCHOR + SLIDER — the two tension halves. One M4×40 turnbuckle screw (head bearing
+  • ANCHOR + SLIDER — the two tension halves. One M4×45 turnbuckle screw (head bearing
     on the ANCHOR's −X face, threaded into a brass insert in the SLIDER) draws them
     together; turning it takes up slack CONTINUOUSLY, not in belt-tooth steps. Gap travel
     = 4 mm = 2 belt teeth of range (need ≥1 for continuous coverage; pitch 2 mm → 1 tooth
@@ -29,9 +29,11 @@ is at the −X (motor-pulley) end for a right-angle / ball hex key.
 PRINT: the two HALVES build +X (on the −X face) — the belt tunnel, screw channel and Ø6
 insert bore all run along the build, so they come out as clean walls and round bores (a
 sagging ceiling-bridge and out-of-round bores if built +Z), and the head-bearing face is
-the flat first layer. The BARS build −Y→+Y (belt-width vertical) so the ridge curves and
-the concave seat land in the layer plane. No supports needed either way (the only −X-facing
-feature is the well's +X end, a one-layer bridge over the well — cosmetic, non-critical).
+the flat first layer. Each well's +X end is closed by a 45° self-supporting RAMP (springs
+from the solid base, closes toward the open tunnel), so nothing bridges — the halves print
+support-free. The BARS build −Y→+Y (belt-width vertical) so the ridge curves and the concave
+seat land in the layer plane. (The one remaining down-face is the slider's insert-pocket
+bottom — a standard heat-set-insert annular seat that bridges fine.)
 """
 
 from __future__ import annotations
@@ -69,22 +71,24 @@ SCR_CLR  = M4.shaft_clr_d                 # 4.4  screw channel Ø
 # ── X layout: derived from the tooth count, so grip WIDTH is a single knob ────
 # ~6 teeth per bar reaches the GT2 belt's full working rating (mirrors the "6 teeth in
 # mesh" pulley rule); fewer derates the joint and overstresses the lead tooth. The screw
-# must run under BOTH wells to lift both bars, so it spans the whole ~42 mm clamp → M4×40.
+# must run under BOTH wells to lift both bars, so it spans the whole ~48 mm clamp → M4×45
+# (the clamp grew ~6 mm when the 45° end ramps pushed the +X faces + the slider insert out).
 N_TEETH  = 6                              # teeth gripped per bar
 LIFT_LEN = N_TEETH * BP + 0.2             # 12.2  bar length (fits N_TEETH ridges)
 GRIP     = LIFT_LEN + 0.4                 # 12.6  well length (bar slides in it)
-GAP      = 4.0                            # travel = 2 teeth
-_MRG     = 2.0                            # head-face / +X-face margins
-HEAD_X   = -20.0                          # anchor −X face = screw head bearing face
-GA0      = HEAD_X + _MRG                  # anchor bar well
+GAP      = 4.0                            # travel = 2 teeth (unchanged — we GROW, not eat it)
+_MRG     = 2.0                            # −X (bed-end) margins — that end needs no ramp
+RAMP_RUN = -WELL_FLR                      # 4.0  a 45° self-supporting ramp needs run = well depth
+HEAD_X   = -20.0                          # anchor −X face = screw head bearing face (the print BED)
+GA0      = HEAD_X + _MRG                  # anchor bar well (−X end = bed, no ramp)
 GA1      = GA0 + GRIP
-A_X1     = GA1 + _MRG                     # anchor +X face
+A_X1     = GA1 + RAMP_RUN                 # anchor +X face — the well ramp closes exactly here
 S_X0     = A_X1 + GAP                     # slider −X face
-GB0      = S_X0 + _MRG                    # slider bar well
+GB0      = S_X0 + _MRG                    # slider bar well (−X end = bed, no ramp)
 GB1      = GB0 + GRIP
-INS_X    = GB1                            # insert mouth (+X end of grip B, faces −X)
+INS_X    = GB1 + RAMP_RUN                 # insert mouth — AFTER the well-B ramp, so it keeps a full collar
 S_X1     = INS_X + M4.insert_l + 2.0      # slider +X face (insert pocket + tip clr)
-SCREW_L  = 40.0                           # M4×40 spans head → insert
+SCREW_L  = 45.0                           # M4×45 spans head → insert (grew with the ramp; new BOM length)
 
 
 def cyl_x(d: float, length: float, x0: float, z: float = 0.0) -> cq.Workplane:
@@ -102,14 +106,27 @@ def _ridges(x0: float, x1: float, zc: float, width: float) -> cq.Workplane:
     return out
 
 
+def _end_ramp(w1: float) -> cq.Workplane:
+    """45° self-supporting closure of a well's +X end. A right-triangle prism (X-Z section,
+    full well width in Y) that carves the floor UP from WELL_FLR at x=w1 to z0 at x=w1+RAMP_RUN.
+    Standing the half on +X, the build direction is +X: this ramp springs from the solid base
+    below the floor and closes toward the (already-open) belt tunnel at 45°, so it prints with
+    no ceiling/bridge. It also becomes the bar's +X end-stop (the bar's flat floor meets the
+    rising ramp at x=w1), so no bar travel is lost."""
+    pts = [(w1, WELL_FLR), (w1, 0.0), (w1 + RAMP_RUN, 0.0)]
+    return cq.Workplane("XZ").polyline(pts).close().extrude(WELL_W / 2, both=True)
+
+
 def _half_body(x0: float, x1: float, w0: float, w1: float) -> cq.Workplane:
-    """Solid block + flat belt tunnel (full length) + one bar WELL over [w0,w1]. The
-    Ø4.4 screw channel is added by the caller (its X extent differs per half)."""
+    """Solid block + flat belt tunnel (full length) + one bar WELL over [w0,w1] closed at its
+    +X end by a 45° self-supporting ramp. The Ø4.4 screw channel is added by the caller (its X
+    extent differs per half)."""
     body = box_at(x1 - x0, BODY_W, TOP - BOT, x=(x0 + x1) / 2, y=0.0, z=(TOP + BOT) / 2)
     body = body.cut(box_at(x1 - x0 + 2, TUN_W, CEIL_UZ,                 # belt tunnel (flat ceiling)
                            x=(x0 + x1) / 2, y=0.0, z=CEIL_UZ / 2))
     body = body.cut(box_at(w1 - w0, WELL_W, -WELL_FLR,                  # bar well down to the floor
                            x=(w0 + w1) / 2, y=0.0, z=WELL_FLR / 2))
+    body = body.cut(_end_ramp(w1))                                     # 45° self-supporting +X closure
     return body
 
 
@@ -123,7 +140,7 @@ def anchor() -> cq.Workplane:
 
 def slider() -> cq.Workplane:
     """+X half: belt well for LIFTER_B; holds the brass insert (mouth −X, bore +X). The
-    M4×40 tip lands flush at the +X face."""
+    M4×45 tip lands in the insert."""
     body = _half_body(S_X0, S_X1, GB0, GB1)
     body = body.cut(cyl_x(SCR_CLR, INS_X - (S_X0 - 1), S_X0 - 1, Z_SCR))
     body = cut_insert_bore(M4, body, (INS_X, 0.0, Z_SCR), (1.0, 0.0, 0.0),
