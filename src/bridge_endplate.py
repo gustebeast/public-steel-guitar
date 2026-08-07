@@ -19,11 +19,12 @@ the rail takeovers: the chassis removes the rail ends at x > -17.5 and this piec
 IS the rail there). Each rail end sockets a low keyhead-style dovetail (wide +X /
 narrow -X, gripping the bearing wrap's -X pull). Above z6 only the string-holding
 mechanism: the bearing AXLE on two short ARM stubs (the 90° turn) and the
-axle-support COMB. The +X carriages move in Z and install from +X, so the
-stringing window + guide ledges + screw rail + carriage sweep are OPENED out of
-the base's field centre (below the lower guide ledge nothing sweeps — the base
-stays solid to the bed); foot clearance is pocketed only over the +X legs' kept
-chassis shells, and the panel-jack corner is recessed back to a 4 mm panel.
+axle-support COMB. The +X carriages move in Z and install from +X; their whole
+clearance volume is THE CHANGER ROOM — one prism with one ceiling (see ROOM_Z1)
+cut through the base's field centre (below the lower guide ledge nothing sweeps —
+the base stays solid to the bed); foot clearance is pocketed only over the +X
+legs' kept chassis shells, and the panel-jack corner is recessed back to a 4 mm
+panel.
 """
 
 from __future__ import annotations
@@ -34,7 +35,6 @@ from . import dimensions as D
 from . import chassis as CH
 from . import top_plate as TP
 from . import optical_pickup as OP
-from . import carriage as CR
 from .endplate_base import endplate_base
 from .screw_rail import screw_rail as _screw_rail, HEIGHT as _SR_H
 from .helpers import box_at, cyl, cyl_y
@@ -114,15 +114,25 @@ CARRIER_TOP  = OP.PLINTH_TOP                  # 9.501 -- the board bears directl
                                               # board's WORST-CASE thickness so fab tolerance
                                               # can only open the optical gap, never close the
                                               # roof clearance the board slides through.
-# ONE underside plane for the plinth AND the brace, set by the comb finger's own underside
-# where the two meet (_fpro is flat at 6.5 from x -6.5 to -5.5). Sizing this off the deck
-# instead (6.2) left the brace hanging 0.3 below the finger, i.e. a lip running the whole
-# length of every flare at well under one 0.8 bead -- unprintable detail on a face that
-# does nothing. Matching the finger removes the step entirely: the underside is now a
-# single flat plane from the plinth's -X edge all the way to x -5.5, where the finger's
-# existing 45 deg arch ramp takes over. Still 0.5 clear of the deck.
-UNDER_Z      = 6.5
-CARRIER_BOT  = UNDER_Z                        # 6.5 -- 0.5 over the deck, flush with the comb
+# ── THE CHANGER ROOM: ONE PRISM, ONE CEILING (user) ─────────────────────────
+# The changer hardware's clearance volume is a single rectangular prism, cut once
+# in _cap: y ±WIN_HW (the arm inner faces), z GR_LTOP (the bottom-stop plane) up
+# to ROOM_Z1, running straight through the whole X. It replaces four overlapping
+# cuts — the field-centre LOW + HIGH boxes, the stringing-access window and the
+# guide-view window — whose union left a stepped ceiling measured at FOUR values
+# on the finished underside (5.6 cap band / 6.0 finger roots / 6.5 carrier+brace
+# / 7.4 tower relief). ROOM_Z1 keeps the deepest requirement: the anchor-tower
+# sweep relief (the old HIGH cut's Z6 + 1.0 — the tower runs 1.0 into the shelf
+# band, clearance included; its X reach no longer matters because the whole room
+# is that deep). Everything structural now puts its underside ON the ceiling —
+# fingers, braces, carrier plinth: UNDER_Z = ROOM_Z1, one plane, so no later
+# union can hang back down into the room. (The old 6.5 story — brace matched to
+# the finger flat to kill a 0.3 lip — is subsumed: every underside is the SAME
+# plane now.) The deep screw drivetrain (support rail at z ≈ −52) is the
+# deliberate lead-screw exception, an added prism living below the room floor.
+ROOM_Z1      = CH.TP_GZ1 + 1.0                # 7.4 — the tower-sweep relief plane
+UNDER_Z      = ROOM_Z1                        # plinth/brace/finger undersides = the ceiling
+CARRIER_BOT  = UNDER_Z                        # 1.4 over the deck, flush with the comb
 CARRIER_X1   = OP.PCB_X1S - 0.1               # -X face, inside the band by a hair
 CARRIER_HY   = 68 * D.BEAD                    # 54.4 out to the arms
 
@@ -193,31 +203,20 @@ AXLE_GRUB_L   = ARM_TOP - (D.BRIDGE_BEARING_Z + D.BRIDGE_AXLE_D / 2) + 0.2
 # Ø2.55 drop-in hole per rod: the rod installs top-down through it (through the
 # carriage's closed bore) and its top stays friction-held in this hole. LOWER
 # bar: BLIND snug sockets the rods land in; its top face is the BOTTOM hard stop.
-# Carriage anchor-tower +X sweep: the tower tops at global z7 (1 mm into the shelf) and only
-# reaches this X. ABOVE the guide rod, the field-centre opening need only clear THIS (not its old
-# X0=6 cap boundary) — clearing to 6 up there just leaves a wide ledge under the shelf at z7.
-POST_SWEEP_X1 = D.SCREW_X + CR.POST_X1H + 0.4             # +3.05: tower +X face (2.65) + clearance
 GRX     = D.SCREW_X + D.GUIDE_ROD_DX                      # rod line (+3.5)
 GR_H    = 8 * D.BEAD                                      # 6.4 ledge heights
 GR_UBOT = D.CARRIAGE_NOM_Z + D.GUIDE_FOOT_DZ              # upper bottom = top stop (−20)
-GR_UTOP = GR_UBOT + GR_H                                  # = the window sill (−14)
-GR_LTOP = GR_UBOT - D.CARRIAGE_TRAVEL - D.GUIDE_FOOT_H    # lower top = bottom stop (−38)
+GR_LTOP = GR_UBOT - D.CARRIAGE_TRAVEL - D.GUIDE_FOOT_H    # lower top = bottom stop; ALSO the
+                                                          # changer room's FLOOR — below it nothing
+                                                          # sweeps, so the base stays solid to the bed
+                                                          # (GR_UTOP deleted with the windows: it only
+                                                          # ever named the old stringing-window sill,
+                                                          # and the upper ledge is deferred anyway)
 GR_LBOT = GR_LTOP - GR_H
 
-# Stringing-access cutout (over the field): a clean rectangle with a UNIFORM cap
-# border on every side. WIN_BORDER is that border to the cap top and the bearing
-# arms; the diamond lightening is kept the same distance clear of it below.
-WIN_BORDER = 4.0
-WIN_HW     = D.BRIDGE_AXLE_Y - ARM_W / 2                  # out to the arm inner faces, so the
-                                                          # edge carriages/string balls are reachable
-WIN_Z1     = CH.Z_TOP - WIN_BORDER                        # top (rim to the cap top)
-WIN_Z0     = D.CARRIAGE_NOM_Z - D.CARRIAGE_TRAVEL + CR.CAGE_BOT - 0.5   # bottom clears the string ANCHOR
-                                                         # across FULL travel (cage bottom at full down-travel).
-                                                         # DECOUPLED from the guide ledge (GR_UTOP): the guide
-                                                         # foot rides at the nut level now (user carriage rework),
-                                                         # so its ledge is high, but the string window must stay
-                                                         # LOW. Guide-ledge STOPS + rod retention are a deferred
-                                                         # endplate follow-up (user: ignore stops for now).
+# Room half-width: out to the arm inner faces, so the edge carriages / string
+# balls are reachable through the room's +X opening (everything installs from +X).
+WIN_HW     = D.BRIDGE_AXLE_Y - ARM_W / 2
 
 
 Z6     = CH.TP_GZ1                 # deck/top-plate level = the bridge's general top
@@ -253,10 +252,10 @@ def _cap() -> cq.Workplane:
     foot box below it whose kept exterior walls are the +X END face
     (x -1.4..8.6, CH.T thick — no more 2.6 sliver) and the two +-Y side
     faces (= the rail takeovers; the chassis drops the rail ends here).
-    Then cut only what the mechanism needs: the FIELD-CENTRE OPENING
-    (|y| <= WIN_HW, x < X0) from the lower guide-ledge line up — the
-    carriage sweep, guide feet, strings and screw rail live there (below
-    GR_LTOP nothing sweeps, so the base stays SOLID down to the bed).
+    Then cut only what the mechanism needs: THE CHANGER ROOM — one prism,
+    |y| <= WIN_HW, GR_LTOP..ROOM_Z1, through the whole X — where the
+    carriage sweep, guide feet, strings and towers live (below GR_LTOP
+    nothing sweeps, so the base stays SOLID down to the bed).
     Only a field-centre upper band (z6..10) reaches the body top to back
     the window rim + axle comb + arm/tie roots. Foot clearance over each
     +X leg's kept chassis shell is pocketed afterward."""
@@ -271,18 +270,13 @@ def _cap() -> cq.Workplane:
     # no vibrating string there to dampen.
     w = w.union(box_at(X1 - D.BRIDGE_AXLE_X, 2 * MECH_HW, BEAR_TOP - Z6,
                        x=(D.BRIDGE_AXLE_X + X1) / 2, y=0, z=(BEAR_TOP + Z6) / 2))
-    # FIELD-CENTRE OPENING: clear the field between the arms. Split the +X reach by Z so the
-    # bearing cutout stays a CONSISTENT thickness (user): LOW (to the rod top GR_UBOT) it keeps the
-    # full X0 width for the guide rod (global X 4.95); ABOVE the rod only the anchor TOWER sweeps
-    # in, reaching just POST_SWEEP_X1 — so it's tight there, instead of the old X0=6 that left a
-    # wide ledge under the shelf at z7. (The tower tops 1 mm into the shelf, so a small z6..7 relief
-    # is unavoidable — but it needn't be 6 wide.)
-    w = w.cut(box_at(X0 - (XLO - 1.0), 2 * WIN_HW, GR_UBOT - GR_LTOP,               # LOW: rod width
-                     x=((XLO - 1.0) + X0) / 2, y=0,
-                     z=(GR_LTOP + GR_UBOT) / 2))
-    w = w.cut(box_at(POST_SWEEP_X1 - (XLO - 1.0), 2 * WIN_HW, (Z6 + 1.0) - GR_UBOT,  # HIGH: tower only
-                     x=((XLO - 1.0) + POST_SWEEP_X1) / 2, y=0,
-                     z=(GR_UBOT + (Z6 + 1.0)) / 2))
+    # THE CHANGER ROOM (see ROOM_Z1): one prism, arm face to arm face, the
+    # bottom-stop plane up to the tower-relief ceiling, straight through the
+    # whole X — the opening it leaves in the +X face IS the stringing access
+    # (strings, balls and carriages all install from +X).
+    w = w.cut(box_at((X1 + 1.0) - (XLO - 1.0), 2 * WIN_HW, ROOM_Z1 - GR_LTOP,
+                     x=((XLO - 1.0) + (X1 + 1.0)) / 2, y=0,
+                     z=(GR_LTOP + ROOM_Z1) / 2))
     return w
 
 
@@ -393,19 +387,19 @@ def _build() -> cq.Workplane:
         # blind landing socket: the rod drops until it bottoms at GR_LBOT+2
         body = body.cut(cyl(D.GUIDE_ROD_D + 0.05, (GR_LTOP + 1) - (GR_LBOT + 2),
                             z=GR_LBOT + 2).translate((GRX, sy, 0)))
-    # GUIDE-VIEW window: open the cap between the two ledges so the rods' free
-    # span is visible/inspectable from outside. The ledge Z-bands stay solid —
-    # they're the ledges' print backing and carry the stops + rod sockets.
-    body = body.cut(box_at((X1 - X0) + 2.0, 2 * WIN_HW, GR_UBOT - GR_LTOP,
-                           x=(X0 + X1) / 2, y=0, z=(GR_UBOT + GR_LTOP) / 2))
+    # (No separate guide-view or stringing-access window cuts any more: the
+    #  CHANGER ROOM prism in _cap opens the cap band down to GR_LTOP, so the
+    #  rods' free span is visible and the strings thread in from +X through the
+    #  one opening. The lower ledge's Z-band below GR_LTOP stays solid — it is
+    #  the ledge's print backing and carries the stop face + rod sockets.)
 
     # AXLE-SUPPORT COMB: nine fingers from the cap band above the stringing
     # window, one in each gap between bridge bearings. Without them the Ø3 axle
     # spans 103.5 mm carrying ~1.5 kN of string wrap load (≈28 mm computed
     # deflection — it would simply bend); the fingers cut the free span to one
     # string pitch (δ ≈ 0.004 mm, ~140 MPa in the shaft). Each finger: a ROOT on
-    # the cap band (Z 6..10), an ARCH whose underside clears the anchor post's
-    # sweep by 0.8, and a HEAD with a Ø3.3 bore on the axle line. Assembly is
+    # the cap band, a flat underside riding the room ceiling (UNDER_Z), and a
+    # HEAD with the axle bore on the axle line. Assembly is
     # still "set all 10 bearings in their slots, then slide the axle through
     # arms + finger bores + bearing bores in one pass" (axle must be a g6/h6
     # precision shaft, NOT an m6 dowel — see BOM), but the bearings are now held
@@ -431,11 +425,14 @@ def _build() -> cq.Workplane:
     # Finger head lowered 14.5 → BRACE_Z1 (14.01, the cover plane) so the −X region is ONE height,
     # not the axle-wall bump the user flagged. Safe because the string wrap sits on the bearing's
     # +X-top, so its load pushes the axle DOWN-and-−X — the bore's TOP wall carries none of it, and
-    # the finger still grips the shaft from below/−X (z6.5..13.65). The 0.36 mm cap over the bore
-    # is just a closure, not structure.
+    # the finger still grips the shaft from below/−X. The thin cap over the bore is just a
+    # closure, not structure.
+    # UNDERSIDE: one flat line at the room ceiling (UNDER_Z = ROOM_Z1). The old profile stepped
+    # root 6.0 / web 7.8 / tip 6.5 with 45° ramps between — each step hugging a different ceiling
+    # of the old four-cut field opening. One room plane deletes all of it.
     _fpro = (cq.Workplane("XZ")
-             .polyline([(6.0, 6.0), (2.6, 6.0), (2.6, 7.8), (-4.2, 7.8),
-                        (-5.5, 6.5), (-6.5, 6.5), (-6.5, BRACE_Z1), (-1.5, BRACE_Z1),
+             .polyline([(6.0, UNDER_Z), (-6.5, UNDER_Z),
+                        (-6.5, BRACE_Z1), (-1.5, BRACE_Z1),
                         (3.0, 10.0), (6.0, 10.0)])
              .close().extrude(CB_W / 2, both=True))
     # A finger in every bearing GAP, plus one off EACH END of the axle (user), so all ten
@@ -457,12 +454,6 @@ def _build() -> cq.Workplane:
     # LIGHT COVER for the optical strip, unioned in: its roof lands on the comb
     # brace at XLO and its slots sit over the sensor triplets.
     body = body.union(OP.opt_cover())
-    # STRINGING-ACCESS window: open the cap over the field (top-centre, between the
-    # bearing arms) so each string threads over its bridge bearing and its end-nut
-    # slots into the carriage from +X. Inboard of the arms (±BRIDGE_AXLE_Y) and below
-    # the tie bar, so the axle support, dovetails and screw rail are untouched.
-    body = body.cut(box_at((X1 - X0) + 2.0, 2 * WIN_HW, WIN_Z1 - WIN_Z0,
-                           x=(X0 + X1) / 2, y=0, z=(WIN_Z1 + WIN_Z0) / 2))
     # BEARING + STRING opening: ONE cut per string owns the whole opening (user). Constant ±BR_HW
     # width in Y over the whole rectangle, flat +X face — but a HOUSE plan (user), not a plain
     # prism: the −X end closes at 45° in plan to a ridge on the string line, because that end IS
