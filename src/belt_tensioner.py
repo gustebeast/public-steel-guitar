@@ -15,10 +15,11 @@ freely then lock. Four printed parts:
     no captive retention by request — keep the parts printable and easy to assemble).
 
 HOLD / ANTI-CREEP: belt teeth → lifter ridges (positive mesh) → STEEL M4 screw (tension)
-→ brass insert; plastic seats in COMPRESSION. No friction clamp anywhere (that is what
-crept in the old motor slots). The insert takes the belt preload (~30 N) at ~10 % of its
-pull-out — creep negligible. Retires the motor-slot + tension_fork scheme so the motors
-can be fixed.
+→ M4 insert used as a CAPTIVE NUT. The screw pulls the insert against a solid Ø4.4→Ø6
+SHOULDER, so the ~30 N belt preload bears on SOLID PCTG (compression), NOT the heat-set
+melt bond — the melt (or a press fit) only has to ANTI-ROTATE the insert. Same insert as
+elsewhere in the BOM (no new line item). No friction clamp anywhere (that is what crept in
+the old motor slots). Retires the motor-slot + tension_fork scheme so the motors can be fixed.
 
 Frame: belt runs along X, teeth DOWN (mesh the FLOOR-side lifter ridges — they print
 UPWARD, clean; the flat ceiling is a non-critical belt-retention bridge), +Z up, belt
@@ -32,8 +33,9 @@ sagging ceiling-bridge and out-of-round bores if built +Z), and the head-bearing
 the flat first layer. Each well's +X end is closed by a 45° self-supporting RAMP (springs
 from the solid base, closes toward the open tunnel), so nothing bridges — the halves print
 support-free. The BARS build −Y→+Y (belt-width vertical) so the ridge curves and the concave
-seat land in the layer plane. (The one remaining down-face is the slider's insert-pocket
-bottom — a standard heat-set-insert annular seat that bridges fine.)
+seat land in the layer plane. The insert pocket opens to the +X (up) face, so the insert
+installs from the top AND both halves now print FULLY support-free (the old insert-pocket-
+bottom bridge is gone).
 """
 
 from __future__ import annotations
@@ -42,7 +44,7 @@ import cadquery as cq
 
 from . import dimensions as D
 from .helpers import box_at, cyl_y
-from cadkit.fasteners import M4, cut_insert_bore, m4_button_screw, seated_insert
+from cadkit.fasteners import M4, m4_button_screw, seated_insert
 
 # ── belt cross-section ───────────────────────────────────────────────────────
 BW  = D.BELT_W            # 5.0  belt width (Y)
@@ -139,13 +141,16 @@ def anchor() -> cq.Workplane:
 
 
 def slider() -> cq.Workplane:
-    """+X half: belt well for LIFTER_B; holds the brass insert (mouth −X, bore +X). The
-    M4×45 tip lands in the insert."""
+    """+X half: belt well for LIFTER_B; holds the M4 insert used as a CAPTIVE NUT. The Ø4.4
+    screw channel ends at INS_X in a Ø4.4→Ø6 SHOULDER — the screw pulls the insert −X against
+    that solid PCTG shoulder, so the belt tension bears on SOLID PLASTIC, not the heat-set melt
+    bond (the melt/press only has to ANTI-ROTATE the insert while the screw threads in). The Ø6
+    pocket is OPEN to the +X face — the print's UP face — so the insert can actually be
+    INSTALLED: the old bore was Ø6 buried behind Ø4.4 at BOTH ends, which trapped the Ø6 insert
+    (it couldn't pass either face). Opening it also deletes the old insert-pocket-bottom bridge."""
     body = _half_body(S_X0, S_X1, GB0, GB1)
-    body = body.cut(cyl_x(SCR_CLR, INS_X - (S_X0 - 1), S_X0 - 1, Z_SCR))
-    body = cut_insert_bore(M4, body, (INS_X, 0.0, Z_SCR), (1.0, 0.0, 0.0),
-                           clr_len=(S_X1 - INS_X) - M4.insert_l + 1.0,
-                           reason="belt tensioner: metal thread, must not self-tap (anti-creep)")
+    body = body.cut(cyl_x(SCR_CLR, INS_X - (S_X0 - 1), S_X0 - 1, Z_SCR))            # screw channel; its +X end IS the bearing shoulder
+    body = body.cut(cyl_x(M4.insert_pilot_d, (S_X1 - INS_X) + 1.0, INS_X, Z_SCR))   # Ø6 insert pocket, OPEN at the +X face to install
     return body
 
 
