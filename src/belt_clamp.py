@@ -17,12 +17,27 @@ import cadquery as cq
 from . import dimensions as D
 from .helpers import cyl, box_at
 
-LEN    = 22.0                          # along the belt (X) — laps several teeth
-WIDTH  = D.BELT_W + 4.0                # across (Y)
-HEIGHT = 8.0                           # Z
-SLOT_H = D.BELT_T + D.BELT_TOOTH_H + 0.5   # belt back + teeth + clearance
-SCREW_DX = 7.0                         # M2 squeeze screws
-M2_CLR_D = 2.2
+BELT_SLOT_CLR = 0.5                    # belt drop-in clearance in the slot
+
+# ── this part prints on a FINE nozzle ────────────────────────────────────────
+# The grid is a property of the PART, not the project (user). Everything the
+# gripping face does happens at the GT2 tooth pitch -- 2.0 mm, with a 0.75 mm
+# tooth height -- and a 0.8 bead cannot resolve a 0.75 mm ridge at 2.0 pitch:
+# one bead per tooth IS the tooth, so the ridges come out as a smear and the
+# mesh that stops the splice slipping stops existing. 0.2 gives 10 beads per
+# pitch and ~4 across the ridge height, so the profile survives slicing.
+# Consequence for MATING: a 0.2 grid is FINER, and every 0.8 length is a whole
+# number of 0.2 beads, so anything inherited from the 0.8 world (D.BELT_*) is
+# automatically legal here. The reverse would not be.
+NOZZLE_D = 0.2                         # GT2 ridges; see above
+B        = NOZZLE_D
+
+LEN    = 110 * B                       # 22.0 along the belt (X) — laps several teeth
+WIDTH  = D.BELT_W + 20 * B             # 9.0 across (Y)
+HEIGHT = 40 * B                        # 8.0 Z
+SLOT_H = D.BELT_T + D.BELT_TOOTH_H + BELT_SLOT_CLR   # belt back + teeth + clearance
+SCREW_DX = 35 * B                      # 7.0 M2 squeeze screws
+M2_CLR_D = 2.2                         # M2 clearance hole (a gap, not material)
 
 
 def _build() -> cq.Workplane:

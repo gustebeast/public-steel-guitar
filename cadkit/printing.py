@@ -68,6 +68,23 @@ walk its own constants with on_grid() (see the pedal-steel's tools/check_beads.p
 for the shape: an exemption table keyed by name, each entry carrying its reason,
 and a non-zero exit for anything off-grid that has none).
 
+THE GRID IS A PROPERTY OF THE PART, NOT THE PROJECT (user, 2026-08-06). A
+project sets a DEFAULT nozzle because most of it is structure, but a part whose
+detail is finer than a bead can resolve gets printed with a finer nozzle and is
+designed on ITS grid. The pedal-steel's belt splice clamp is the case: its grip
+face has GT2 ridges at a 2.0 mm tooth pitch, 0.75 mm tall, and a 0.8 bead cannot
+resolve that -- one bead per tooth IS the tooth, so the ridges smear and the
+mesh that stops the splice slipping stops existing. It prints 0.2 (10 beads per
+pitch) and is graded against 0.2.
+
+MATING ACROSS TWO GRIDS is safe in ONE direction, and it is worth knowing which:
+a coarse length is always a whole number of fine beads (0.8 = exactly two 0.4s,
+four 0.2s), but a fine length is generally NOT a whole number of coarse ones. So
+a face SHARED between a 0.8 part and a 0.4 part must sit on the COARSER grid --
+size shared features from the coarse part and let the fine part inherit them.
+Getting this backwards puts the off-grid dimension on the part that can least
+afford it.
+
 CHOOSING A COUNT: round the way the feature fails. Load-bearing or sealing —
 snap UP, since the cost is a little material and the risk is a crack. A
 clearance-side pocket or a cosmetic relief — snap DOWN or nearest. When a snap
@@ -80,7 +97,8 @@ ONE bead is the hard floor, but a lone bead slices a bit mushy; TWO beads
 beads on anything load- or seal-bearing; drop to one only in a genuinely tight
 room. (This mirrors joinery._bead / _bead_pref and contact.contact_rib_size.)
 
-Set the nozzle ONCE per project and derive every minimum from it:
+Set the DEFAULT nozzle once per project and derive every minimum from it (a part
+that prints finer declares its own, as above):
 
     from cadkit.printing import min_wall
     NOZZLE_D    = 0.8

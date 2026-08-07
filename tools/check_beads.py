@@ -115,8 +115,8 @@ _ex("hardware",
     SPR_ID="= SPR_OD - 2*wire, the coil bore",
     POST_D="= SPR_ID - clearance; guides the purchased coil",
     latch__TRRS_WAY_Z0="TRRS D11 jack handle way (legs.leg_head owns it)",
-    latch__FACE_Y="= legs.BLK_W/2 -- a MATING datum owned by legs.py",
-    latch__LG_BLK_HALF="= legs.BLK_W/2 -- a MATING datum owned by legs.py",
+    latch__FACE_Y="= legs.BLK_W/2 = SQ_W/2 - COVER_T - SH_CLR: grid minus a CLEARANCE",
+    latch__LG_BLK_HALF="= legs.BLK_W/2 = SQ_W/2 - COVER_T - SH_CLR: grid minus a CLEARANCE",
     latch__OCT_TOP="measured octagon apex within the band",
     )
 
@@ -130,6 +130,8 @@ _ex("clearance",
     latch__CLR="latch sliding fit",
     latch__OCT_CLR="channel floor standoff from the octagon",
     SPR_BORE_D="= SPR_OD + drop-in clearance",
+    belt_clamp__M2_CLR_D="M2 clearance hole",
+    belt_clamp__BELT_SLOT_CLR="belt drop-in clearance in the slot",
     )
 
 # Where PURCHASED parts sit relative to each other. No bead is laid to define a
@@ -209,6 +211,20 @@ def _offsets(node: ast.AST) -> list[float]:
     return out
 
 
+def module_nozzle(mod_name: str) -> float:
+    """This module's nozzle. THE GRID IS A PROPERTY OF THE PART (user).
+
+    Most of the instrument is structure and prints 0.8, but a part with detail
+    finer than a 0.8 bead can resolve -- the belt clamp's 2.0 mm GT2 tooth pitch
+    -- is printed with a finer nozzle and is graded on ITS grid, not the
+    project's. A module opts in by declaring its own NOZZLE_D."""
+    mod = importlib.import_module("src." + mod_name)
+    n = getattr(mod, "NOZZLE_D", None)
+    if isinstance(n, (int, float)) and not isinstance(n, bool) and n > 0:
+        return float(n)
+    return float(D.NOZZLE_D)
+
+
 def module_constants(mod_name: str):
     """(name, value, line, kind, offsets) per module-level UPPERCASE constant.
 
@@ -252,16 +268,20 @@ def main() -> int:
     exempted: list[tuple[str, str, float, str, str]] = []
     n_on = n_tot = 0
 
+    nozzles: dict[str, float] = {}
     for m in mods:
+        nz = nozzles[m] = module_nozzle(m)
         for name, v, line, kind, offs in module_constants(m):
+            if name == "NOZZLE_D":       # the grid itself, not a length on it
+                continue
             n_tot += 1
             cat = classify(name, m)
             if kind == "literal":
-                bad = [] if on_grid(v, D.NOZZLE_D) else [v]
+                bad = [] if on_grid(v, nz) else [v]
             else:
                 # derived: the RESULT may sit anywhere (it inherits a musical or
                 # hardware datum); what must be on grid is what we ADDED to it
-                bad = [o for o in offs if not on_grid(o, D.NOZZLE_D)]
+                bad = [o for o in offs if not on_grid(o, nz)]
             if not bad:
                 n_on += 1
                 continue
@@ -271,7 +291,11 @@ def main() -> int:
             for o in bad:
                 findings.append((m, name, line, kind, o))
 
-    print("bead grid = %.2f mm (nozzle)" % D.NOZZLE_D)
+    print("bead grid = %.2f mm (project default nozzle)" % D.NOZZLE_D)
+    fine = {m: n for m, n in nozzles.items() if abs(n - D.NOZZLE_D) > 1e-9}
+    if fine:
+        print("per-part grids: " + ", ".join(
+            "%s %.2f" % (m, n) for m, n in sorted(fine.items())))
     print("%d module constants: %d clean, %d exempt, %d with OFF-GRID lengths"
           % (n_tot, n_on, len(exempted),
              len({(f[0], f[1]) for f in findings})))
@@ -289,10 +313,10 @@ def main() -> int:
             if m != cur:
                 print("\n  -- src/%s.py --" % m)
                 cur = m
-            b = abs(o) / D.NOZZLE_D
+            nz = nozzles[m]
+            b = abs(o) / nz
             print("    :%-4d %-24s %-8s %9.3f = %6.2f beads -> %.2f or %.2f"
-                  % (line, name, kind, o, b,
-                     int(b) * D.NOZZLE_D, (int(b) + 1) * D.NOZZLE_D))
+                  % (line, name, kind, o, b, int(b) * nz, (int(b) + 1) * nz))
     else:
         print("\nclean: every printed length is a whole number of beads.")
     return len({(f[0], f[1]) for f in findings})
