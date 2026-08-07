@@ -98,6 +98,8 @@ import math
 import cadquery as cq
 
 from . import dimensions as D
+
+B = D.BEAD                             # bead grid unit (cadkit.printing)
 from .helpers import box_at, cyl, heal
 from . import latch as LT
 
@@ -524,11 +526,16 @@ COVER_T    = 4.0      # cover plate thickness = the face-thinning depth
 SLV_FACE_Y = SQ_W / 2 - COVER_T        # 18.0: the sleeve's thinned +Y face
 SH_Y       = SLV_FACE_Y - SH_CLR       # 17.8: slider stem plane (0.2 running
                                        # clearance under the cover's inner face)
-SH_H       = SH_Y + 14.0               # 31.8: slider octagon height (roof -14)
+SH_H       = SH_Y + 18 * B             # 32.2: slider octagon height (roof -18 beads;
+                                       # was a bare 14.0 = 17.5 beads, the only OFF-GRID
+                                       # offset in the leg joinery)
 CVR_RAIL_X = 21 * D.BEAD   # 16.8: rail centres ±x — the outer ±X skin GROWS to
                       # 2.6, the web to the groove's lip band stays ~7
-CVR_RAIL_W = 5.0      # rail octagon flat-to-flat (cadkit h_min 4.95 at n0.8)
+CVR_RAIL_W = 7 * B    # 5.6 rail octagon flat-to-flat. 6 beads (4.8) is BELOW cadkit's
+                      # family floor for this width (h_min 4.95 at nozzle 0.8), so 7 is
+                      # the smallest legal bead count -- the floor picks it, not taste
 from cadkit.joinery import PrintSpec as _PrintSpec, joint as _joint
+from cadkit.printing import snap as _snap
 # cadkit collapsed the per-family entrypoints into ONE `joint()` (you describe the
 # SITE, it picks the geometry), so this file now says how its halves PRINT instead
 # of naming the octagon. Both are PETG-GF printed -Z->+Z.
@@ -539,7 +546,12 @@ def _octagon_height(width, nozzle=0.8, clearance=0.1, height=None):
     """Height of a joint of this width — the sizing figure the cover rail needs."""
     return _joint(width, 1.0, tenon=_UP, mortise=_UP, clearance=clearance,
                   depth=height).height
-CVR_RAIL_H = _octagon_height(CVR_RAIL_W, 0.8)   # ASK cadkit, don't hand-write it: the
+CVR_RAIL_H = _snap(_octagon_height(CVR_RAIL_W, 0.8), D.NOZZLE_D, "up")
+#   ASK cadkit for the floor, then round UP to the next whole bead -- both properties at
+#   once. Hand-writing a bead-aligned height would break the moment cadkit tightens the
+#   family; taking cadkit's raw number leaves the groove depth off the grid (7.283 =
+#   9.10 beads). snap(..., 'up') can only ever ADD material to a floor, never violate it.
+#   ORIGINAL NOTE: the
 #   octagon's height is not free — 45° diagonals plus two-nozzle verticals set a floor
 #   per width, and this was a hard 5.0 until cadkit raised the verticals to the
 #   two-bead quality tier and started REJECTING it (min for W5 is 6.591). Deriving it
