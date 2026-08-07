@@ -100,11 +100,20 @@ _ex("hardware",
     STRING_NUT_D="Ø4 swaged ball-end nut (measured)",
     STRING_NUT_L="Ø4x3 ball-end nut length (measured)",
     NUT_INSERT_D="M4 heat-set insert install Ø6.0",
+    WIRE_D="Ø2 shielded-pair cable (harness dummy)",
+    JACK_FACE_DX="connector dummies authored with panel face at x=14; DX slides them to the tip",
+    TEE_BOARD_X="custom tee PCB outline 22 x 24 (fabbed board, not printed)",
+    TEE_CONN_DX="tee PCB connector-row pitch (on the fabbed board)",
+    TEE_CONN_CY="tee PCB connector-row centre (board-local)",
+    HDR_Z="lifted XH header wire-entry top (connector body stack, purchased)",
     NUT_INSERT_L="M4 heat-set insert length 5.0",
     NUT_SCREW_L="M4 screw stock length",
     NUT_PIN_D="Ø2 dowel pin nominal",
     NUT_PIN_L="Ø2x4 dowel pin length",
     GUIDE_ROD_D="Ø2.5 precision rod",
+    _GROOVE_R="GT2 groove profile radius (belt tooth form)",
+    _FLAT_LEN="belt dummy: flat splice-zone length of the purchased belt's centreline model",
+    _AUX_OFF="belt dummy: sweep-spine offset (centreline model, nothing printed)",
     # latch return spring -- a purchased coil (BOM SKU); OD/wire/free length and
     # rate are the spring's, and the bore/ID/post derive from them
     SPR_OD="latch spring Ø5.0 OD (BOM SKU)",
@@ -118,6 +127,68 @@ _ex("hardware",
     latch__FACE_Y="= legs.BLK_W/2 = SQ_W/2 - COVER_T - SH_CLR: grid minus a CLEARANCE",
     latch__LG_BLK_HALF="= legs.BLK_W/2 = SQ_W/2 - COVER_T - SH_CLR: grid minus a CLEARANCE",
     latch__OCT_TOP="measured octagon apex within the band",
+    PK_MAG_L="Lace Alumitone magnetic (sensing) range 88.9",
+    PK_FLG_T="Alumitone mounting-flange thickness 3.3 (datasheet)",
+    PK_COIL_W="Alumitone coil-core width 31.0 (datasheet)",
+    PK_H_MIN="shortest supported pickup DEPTH (the 15..22 window edge); caps carrier walls",
+    EAR_HOLE_X="Alumitone ear-hole pattern 30.6 x 84.0",
+    PK_MAX_L="pickup-length WINDOW top = 101.6 Alumitone + 0.4 headroom (decision 94c0a711)",
+    GRUB_SWEEP="M4x10 cup-tip usable travel = screw_l - min_bite - ~1 tip",
+    JACK_HEAD_D="ISO 7380 M4 button head Ø7.6",
+    JACK_HEAD_H="ISO 7380 M4 button head height 2.2",
+    AXLE_D="Ø5 journal = the 695ZZ bearing bore",
+    AIR_GAP="MT6701 air-gap window (datasheet 0.5..2.0): 1.5 nominal, 1.1 at full float",
+    CHIP_DISP_MAX="MT6701 datasheet max sensing-centre misalignment",
+    HS_SPR_OD="feel coil Ø6 OD (arm-width-limited)",
+    HS_SPR_WIRE="feel coil 1.4 music wire (fatigue-sized)",
+    HS_SPR_FREE="feel coil free length = solid + throw + preload margin",
+    HS_SPR_INST="feel coil drawn at bay length (lightest preload)",
+    M4_SELFTAP="M4 thread-forming pilot Ø (minor-diameter bite)",
+    SOCK_D="3/8-inch socket driver clearance bore (12.5-13.5 OD + room)",
+    CAP_HEX_AF="hex for a 3/8-inch (9.525 AF) socket; printed-oversize allowance",
+    AXLE_FLAT_DEPTH="D-flat depth: magnet-tilt margin vs key-face width (0.5 not 0.7)",
+    knee_lever__PCB_X0="sensor PCB outline -X edge (fabbed board; circuit-limited)",
+    knee_lever__PCB_X1="sensor PCB outline +X edge (fabbed board; edge keepout)",
+    CONN_EDGE="JLCPCB component-to-edge rule on the sensor board",
+    CONN_RISE="connector row placement on the fabbed board (flush-top chain)",
+    CHIP_DROP="chip below the board top edge (fabbed-board layout)",
+    CONN_PLUG_RUN="mated XH plug reach past the housing mouth (purchased plug)",
+    CAP_SWEEP_R="= hex across-corners circumradius (AF/sqrt3 = 5.312) + slip + print allowance",
+    CR_ENG="groove engagement inside the board's edge-keepout band",
+    CR_EDGE_KEEP="groove takes this much X edge (JLCPCB +-0.2 + slip budget)",
+    HS_BSTOP_BORE="hollow bore clears the M4 tension-screw hex driver",
+    HS_BSTOP_OD="thread crest squeezed between the Ø5 driver bore and the cartridge pitch",
+    HS_BSTOP_ENGAGE="= 2 turns of the pitch-3 printed thread; capped by the leg clearance",
+    HS_TH_PITCH="printed 45-deg thread form (cadkit.threads): helical form, not wall",
+    HS_TH_DEPTH="printed thread flank depth (form, not wall)",
+    HS_TH_CLR="printed thread male-side diametral fit",
+    MAG_TH_PITCH="printed cap-thread form (cadkit.threads)",
+    MAG_TH_DEPTH="printed cap-thread flank depth (valley-overlap-limited)",
+    MAG_TH_CLR="printed cap-thread male-side fit",
+    BED="printer bed limit (256 bed minus margin)",
+    CHJ_MOUTH_Z="10-03404 chassis-jack mouth plane (molded-body insertion chain)",
+    belt_tensioner__HEAD_D="ISO 7380 M4 button head Ø7.6",
+    belt_tensioner__HEAD_H="ISO 7380 M4 button head height 2.2",
+    belt_tensioner__SCREW_L="M4x45 stock screw (spans head -> insert; BOM length)",
+    CVR_RAIL_W="octagon rail at cadkit's family floor (h_min 4.95 at 0.8) + margin; "
+               "4.8 is below the floor",
+    SPLICE_LAP="open-belt lap allowance in the splice clamp (cut-length spec, soft)",
+    ANCHOR_POST_H="tower top = bearing underside - 1.0 asserted (_BRG_GAP); pinned by "
+                  "the CARRIAGE_NOM_Z travel chain against the 695ZZ OD",
+    UNDER_Z="comb-finger underside plane (must stay flush with _fpro's 6.5 flat); "
+            "LEAD PASS FLAGGED: deck rose to 6.4 so only 0.1 clears the deck panel",
+    SENSE_D="sensing station: as close to the termination as the stiffness boundary "
+            "layer allows; sets the fabbed board's sensor row",
+    END_KEEP="PCB layout rule (strip-end keep-out on the fabbed board)",
+    PART_KEEP="PCB layout rule (sensor row to anything else, on the fabbed board)",
+    EDGE_KEEP="JLCPCB 1.0 edge rule + 0.2 routed-outline tolerance",
+    ROW_GAP="PCB layout rule (component row gap on the fabbed board)",
+    PKG_CLR="PCB layout rule (least placement gap between packages)",
+    ROUT_R="PCB routed-outline internal-corner radius (~2 mm router bit)",
+    SLOT_DX="optical aperture over the 0805 triplet (sized by optics, not material)",
+    SLOT_DY="optical aperture over the 0805 triplet (spans +-2.225; optics)",
+    WRAP_F_B="dimensionless wrap-pitch factor (x gauge per turn), not a length",
+    PCB_T_TOL="+-10% FR4 fab tolerance FACTOR (dimensionless x PCB_T)",
     )
 
 # Gaps, not material. Always sub-bead; the grid does not apply.
@@ -132,6 +203,72 @@ _ex("clearance",
     SPR_BORE_D="= SPR_OD + drop-in clearance",
     belt_clamp__M2_CLR_D="M2 clearance hole",
     belt_clamp__BELT_SLOT_CLR="belt drop-in clearance in the slot",
+    joint_coupon__CLR="octagon slide-joint fit (tenon shrunk by this)",
+    tension_fork__BODY_H="= M3_CLR_D - 0.15: slips the M3 slot height",
+    tension_fork__BODY_D="= PLATE_T - 0.3: stops shy of the motor face",
+    screw_rail__SEAT_LEDGE_D="= BRG_OD - 2.5: ledge bore = Ø5 screw + washer pass room",
+    ZHOLE_D="string-stow bore: string coil + pliers grip room",
+    electronics__CH_D="tray-tab channel = TAB_T + 0.3 floor gap",
+    top_plate__GAP="deck-panel assembly clearance (0.05 between consecutive panels)",
+    top_plate__OPEN_YP="piece opening = pickup +Y body edge + 0.6 assembly gap",
+    top_plate__JACK_HEAD_Z="head pocket floor = deck top - head height - 0.3 recess",
+    HEAD_POCKET_D="= JACK_HEAD_D + 0.4 drop-in fit",
+    CAVITY_X="deck cavity = plate + 1.5 fit clearance",
+    CAVITY_Y="deck cavity = plate + 1.5 fit clearance",
+    pickup_mount__GAP="pickup-top to heaviest-string air gap (demo height setpoint)",
+    EP_TOP_CLR="endplate drop-on X clearance to the rail end",
+    KH_DT_CLR="endplate dovetail socket Y fit",
+    KH_DT_SEAT="lower-dovetail seating gap (tenon seats on the L-foot, not the ceiling)",
+    NUT_POCKET_D="= NUT_OD + 0.2 press-in fit for the brass leadscrew nut",
+    CAGE_W="= STRING_NUT_L + 0.6: the ball-end nut slides in freely",
+    SCREW_CLR_D="= SCREW_OD + 0.5: non-contact bore trimmed so the teardrop apex keeps a 2-bead web",
+    STRING_EXIT_D="string threading bore = .070 C6 string + clearance; kept under the Ø4 nut",
+    AXLE_BORE="= axle Ø5 + 0.4 slide-through fit (10 bearings + 9 fingers)",
+    AXLE_GRUB_L="M2 self-tap reach = bore crown to arm top + 0.2 bite-through",
+    CARRIER_X1="= OP.PCB_X1S - 0.1: a hair inside the band",
+    POST_SWEEP_X1="carriage tower +X face + 0.4 travel-sweep clearance",
+    WIN_Z0="window bottom = cage bottom at full down-travel - 0.5 sweep room",
+    CONTACT_CLR="drawing convention: hair of air at working contacts (boolean noise guard)",
+    LANE_CLR="air each side of a wrap, before its finger",
+    BAY_R="threading annulus around the wrap rod (trimmed to stay inside the 25.4)",
+    BAND_CLR="carrier keep-off from both deck-band edges",
+    OPT_GAP="sensor-face to string optical air gap (signal-critical standoff)",
+    PART_STRING_CLR="tallest component to string air floor",
+    COVER_GAP="sensor face to cover underside slide gap",
+    COVER_X0="lid -X edge = op-amp column edge + 0.5 (lid stops short of the quads)",
+    WRAP_CLR="wrap turn past the arm outer face (mirrored both Y)",
+    CONDUIT_CLR="hand-fed plug pass-through allowance",
+    CONDUIT_Z0="= RUN_Z - half the Ø9.5 harness bundle",
+    PIVOT_CLR="hub-face to thrust-boss running clearance",
+    HS_CLR="piston/coil to channel slide fit, per side",
+    HS_PILOT_D="= coil ID - 0.4 nose fit",
+    HS_TRAVEL="= follower travel + 0.5 margin (sweep room, not material)",
+    HS_SPR_BORE="= coil OD + 0.6 drop-in bore",
+    HS_WIN_WY="= tongue + 0.4: passes the tongue, catches the body",
+    CEIL_CLR="board top to chassis underside slide gap (the lid IS the retainer)",
+    CR_CLR="board slip fit per groove face",
+    MAG_POCKET_D="= magnet Ø + 0.2 slip",
+    MAG_COLLAR_H="collar stops 0.1 short so the cap lands on the MAGNET",
+    CAP_BASE_CLR="cap rim stops short of the flange (same anti-rattle trap)",
+    AXLE_FLAT_Y="flat runs 0.1 past the hub half-width",
+    AXLE_SET_L="set-screw way: through the wall + 0.2 past the flat",
+    AXLE_BORE_D="= axle Ø + 0.2 slip (the set screw holds it)",
+    CAP_CLR_H="board-to-cap gap rule: taller parts must clear the sweep",
+    CONN_POCKET="connector pocket relief",
+    HS_BACK_X="back wall = guide-post back + insert + 0.5 assembly slack (leg-capped)",
+    knee_lever__MORT_CLR="octagon mount-joint slide fit (tenon shrunk by this)",
+    BAY_CLR="printed clearance around the pedal's board bay",
+    TROUGH_X0="trough stops 0.6 off the -X tower face",
+    TROUGH_X1="trough stops 0.6 off the +X tower face",
+    SEC_MOR_L="= spigot + 0.4 tip gap (slack at the tip, never the shoulder stop)",
+    SEC_CABLE_D="axial cable way through the spigot + socket roof (wires, not material)",
+    belt_tensioner__CEIL_UZ="0.15 running clearance over the belt back",
+    belt_tensioner__LIFT_LEN="= N_TEETH*pitch + 0.2 ridge-fit slack",
+    belt_tensioner__GRIP="= bar + 0.4 slide clearance (well length)",
+    belt_tensioner__TUN_W="= belt + 0.4 tunnel clearance",
+    belt_tensioner__WELL_W="= belt + 0.6 bar-slide clearance",
+    GROOVE_W="string lay-in channel = string + 2x0.4 side gaps",
+    GROOVE_FLOOR="string channel depth; per-string floor = gauge + break-angle physics",
     )
 
 # Where PURCHASED parts sit relative to each other. No bead is laid to define a
@@ -143,6 +280,48 @@ _ex("clearance",
 _ex("layout",
     MOTOR_X0="first motor offset -- sized for a >=100 mm free belt span",
     MOTOR_X_STEP="motor pitch = 42.3 body + tension slot; drives the rib comb",
+    MOTOR_PULLEY_STANDOFF="pulley clamp position on the motor shaft (purchased-part pose)",
+    TENSION_SLOT="+-1.5 belt-tension travel; interlocks with MOTOR_X_STEP (see above)",
+    PEDAL_BAR_H="= PEDAL_AXLE_H(48, on grid) - FOOT_H(12) - HOUS_X1(8.1): a derived "
+                "value spelled literal to break the legs/foot_pedal import cycle; "
+                "foot_pedal asserts the chain",
+    # harness ROUTING: positions of WIRES, which are purchased and never printed.
+    # No bead is laid along a cable run, so the grid has nothing to say about
+    # where one sits -- these stay where clearance to tees/motors/rails put them.
+    CAN_OFF="CAN H/L conductor separation inside the old single-jacket envelope",
+    PWR_OFF="24V pair separation; lane edges 2.1 < RACE_HW 2.4",
+    LANE_CAN="trunk lane Z, 2.0 pitch stack (wires, not printed)",
+    LANE_USB="trunk lane Z, 2.0 pitch stack (wires, not printed)",
+    LANE_CTRL="trunk lane Z, 2.0 pitch stack (wires, not printed)",
+    RAIL_Y="trunk corridor centre hugging the rail (wire run)",
+    CUTOUT_Y="trunk dip into the m9 rail notch; keeps the Ø2.6 USB inside the cut",
+    TEE_YSHIFT="tee board centre shift; -Y edge pinned at station y-7",
+    _M9X="= motor_pos(9)[0]; the 9 is a STRING INDEX, not a length",
+    X_SLIDE="+-6 fine-X pickup slide travel (user spec; a range, not material)",
+    _ILKL_X="a rib-comb station (_RIB0 + 5*_RIB); the comb inherits MOTOR_X_STEP",
+    _RKL_X="a rib-comb station (_RIB0 + 17*_RIB); the comb inherits MOTOR_X_STEP",
+    _KNEE_GAP_L="5 rib-comb steps (odd ON PURPOSE so VKL can centre); comb inherits MOTOR_X_STEP",
+    LOBE_RC="tuned feel knob: 100/9 ratio, coil fatigue headroom, 2.6 web (measured)",
+    LOBE_WY="divider/contact-stress trade knob: the asserted pocket divider moves "
+            "~4 mm per mm of lobe (a 4.8 snap left 1.0 < the 1.6 tier), while a "
+            "narrower lobe raises line-contact stress ~10%/0.5",
+    LOBE_RC_V="RC*sin(20 deg) == the horizontal lever's 4.5 stroke (feel-transfer solve)",
+    LOBE_RC_P="RC*sin(20 deg) == the horizontal lever's 4.5 stroke (feel-transfer solve)",
+    HS_SETBACK="solid-contact solve: first lobe contact at HS_ENGAGE_DEG = 15 deg",
+    FOLL_DZ="flushness solve: window bottom lands on the -Z open face",
+    MID_Y="spelled chassis Y midpoint (legacy mortise stop; import direction forbids chassis)",
+    knee_lever_vert__MOUNT_X="-455 is a rib-comb X; stations land on ribs -478/-455",
+    knee_lever_vert__MOUNT_Y="knee-depth slide default pose (continuous adjustment)",
+    TROUGH_HZ="print-proven trough section, squeezed between splice mortises and the detent/rail floor",
+    LOCK_D="detent pocket sized to the groove-floor band above the trough (asserted at limit)",
+    TROUGH_Z0="band bias within the groove floor (see TROUGH_HZ)",
+    SEG_BODY_L="the 142 leg-section pitch (H = 590 + 142k - E; clocking phase carries over)",
+    TENON_L="the fine-stage law: travel 142 + overlap 50 + 5 dead",
+    SH_CLR="shaft-sleeve octagon SLIDE fit per side (the fine stage strokes)",
+    SH_H="slider roof pinned at the section joints' -14 roof plane (shared profile)",
+    STUB_RIDGE_EP="end-wall tongue at the endplate end wall's centreline (tip - 5)",
+    TRRS_DX="TRRS blind-mate axis in the octagon flare band (clearances quoted in situ)",
+    TRRS_DY="TRRS axes ride the profile's deep waist (= groove inscribed-circle centre)",
     )
 
 # The instrument, not the printer.
@@ -154,6 +333,7 @@ _ex("musical",
     NUT_BLOCK_X="-MOUNTING_SPAN",
     STRING_Z="string plane height (set by the bearing stack)",
     DL_OPEN="string stretch at pitch (physics)",
+    LEG_HEIGHT="floor -> body bottom playing height (user ergonomic reference)",
     )
 
 
@@ -170,9 +350,11 @@ STRUCTURAL = {0.0, 1.0, 2.0, 90.0, 180.0, 270.0, 360.0}
 # refactor exists to introduce.
 BEAD_NAMES = {"BEAD", "B", "NOZZLE_D", "MIN_WALL"}
 
-# Constants that are not lengths at all, by name. Counts and angles.
+# Constants that are not lengths at all, by name. Counts and angles. An "N_"
+# prefix is the project's count idiom (N_PEDALS, N_SLOTS) -- handled in
+# module_constants alongside these substrings.
 NON_LENGTH = ("N_STRINGS", "N_TEETH", "SEGMENTS", "COUNT", "_N", "TURNS",
-              "_DEG", "ANGLE", "TEETH")
+              "_DEG", "ANGLE", "TEETH", "THROW")   # THROW/THROW_P/THROW_V are degrees
 
 
 def _is_bead_unit(node: ast.AST) -> bool:
@@ -242,8 +424,8 @@ def module_constants(mod_name: str):
             v = getattr(mod, t.id, None)
             if not isinstance(v, (int, float)) or isinstance(v, bool):
                 continue
-            if any(k in t.id for k in NON_LENGTH):     # a count or an angle
-                continue
+            if t.id.startswith("N_") or any(k in t.id for k in NON_LENGTH):
+                continue                               # a count or an angle
             bare = isinstance(node.value, ast.Constant) or (
                 isinstance(node.value, ast.UnaryOp)
                 and isinstance(node.value.operand, ast.Constant))

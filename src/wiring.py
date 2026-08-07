@@ -123,7 +123,7 @@ LANE_USB   = -46.0       # USB-C -> Pi
 LANE_DAC   = -44.0       # DAC -> AFE
 LANE_CTRL  = -42.0       # relay control / CAN bus B
 # NOTE: LANE_* are now Z heights along the RAIL_Y corridor (not lane y's).
-TEE_Z = _RIB_TOP + 3.0                                   # tee board rides a cradle on the rib tops
+TEE_Z = _RIB_TOP + 4 * D.BEAD                            # 3.2 of printed cradle on the rib tops
 HDR_Z = -54.0                                            # lifted tee header top (wire entry z)
 
 

@@ -48,8 +48,10 @@ YL = CH.Y_LO + CH.T / 2                 # -Y rail inner face (-128.75)
 YH = CH.Y_HI - CH.T / 2                 # +Y rail inner face (+54.75)
 BY0 = CH.Y_LO - CH.T / 2                # deck cap -Y edge (-Y rail OUTER face)
 BY1 = CH.Y_HI + CH.T / 2                # deck cap +Y edge (+Y rail OUTER face)
-TZ = EL.DECK_TOP                        # deck surface (10 mm under strings = +6)
-BZ = TZ - 6.0                           # 6 mm deck, recessed between the rails
+TZ = EL.DECK_TOP                        # deck surface = D.DECK_TOP_Z (+6.4)
+BZ = TZ - 8 * D.BEAD                    # 6.4 deck, bottom at 0 = the chassis groove
+                                        # plane TP_GZ0 (the old 6.0 left a 0.4 gap
+                                        # under the plate once the datum snapped)
 
 # Deck joint: each plate CAPS both rails and drops a vertical DOVETAIL tongue down
 # the rail centre-line into a rail-top groove (chassis.py). Wide foot, narrow mouth
@@ -79,7 +81,8 @@ SLOT_X   = [PX0 - i * PITCH for i in range(N_SLOTS + 1)]   # +X face of each slo
 PIECE_SLOTS = 4                        # the pickup piece spans 4 slots (enlarged one slot so the
                                        # 38.6-wide Alumitone still has >= +/-10 continuous X slide)
 N_POS    = N_SLOTS - PIECE_SLOTS + 1   # = 4 coarse swap positions
-CLAMP    = 10.0                        # +/- fine X-adjust (= BAND_W/2 -> continuous)
+CLAMP    = BAND_W / 2                  # 10.0 +/- fine X-adjust (BAND_W/2 -> continuous
+                                       # by construction, so the identity is now literal)
 # Slots the piece covers in EVERY position -- their fillers could never be installed, so they are not
 # printed (user). The piece spans [p, p+PIECE_SLOTS) for p in 0..N_POS-1, so the intersection of all
 # positions is [N_POS-1, PIECE_SLOTS): slot 3 alone as drawn. Derived, so it tracks the slot counts.
@@ -96,7 +99,7 @@ REGION_X1 = SLOT_X[-1]                  # -X end of the band region (after the l
 
 # the two long panels behind the band region
 MID_X0 = REGION_X1                      # carries the UI (string-10 deck band)
-MID_X1 = MID_X0 - 226.0                # length picked so the mid/key seam lands in the CLEAR gap between
+MID_X1 = MID_X0 - 283 * D.BEAD         # 226.4: length picked so the mid/key seam lands in the CLEAR gap between
                                        #   the fret-9 pentagon marker and the fret-8 line (was 220 -> the
                                        #   seam ran through the pentagon); both panels stay < 255 mm bed
 KEY_X0 = MID_X1 - GAP                   # keyhead panel, sized so its -X face lands on PX1
@@ -172,15 +175,16 @@ HEAD_POCKET_D  = JACK_HEAD_D + 0.4                 # Ø8 head counterbore, opens
 JACK_SCREW_L   = 20.0                              # NEW BOM part: M4×20 button-head leadscrew. 20 mm shank
                                                    # spans the full height-adjust travel (15..22 mm pickup
                                                    # depths + string-gap set) with the nut engaged throughout.
-FLOOR_BOT = ZPL_BOT - 5.0                          # -Y skirt / end-wall bottom (structure / endplate-lip datum)
+FLOOR_BOT = ZPL_BOT - 6 * D.BEAD                   # 4.8 below the plate: -Y skirt / end-wall bottom
+                                                   # (structure / endplate-lip datum)
 # TOP-ACCESS at the PLATE's clear zones (pickup-agnostic): TWO +Y plate corners + ONE
 # deep -Y. Equalise the two +Y = X LEVEL; the -Y jack = across-string tilt. The -Y jack is
 # nudged slightly off-CENTRE (JACK_MX_OFF) to free the CENTRE for the retention setscrew --
 # a plane is set by any 3 non-collinear points, so an off-centre tilt jack still levels fully.
 PICKUP_X_NOM  = OPEN_CTR                          # nominal pickup centre X
-JACK_INSET_X  = 31.5                              # +Y jacks near the plate X-ends (toward the corners)
-JACK_YP       = 45.5                               # +Y corner jacks: outboard of string 1, on the nubs
-JACK_YM       = PK_MAX_YM - 10.0                    # -Y jack deep in the -Y zone (~-61.9), below the room edge, on its nub
+JACK_INSET_X  = 39 * D.BEAD                       # 31.2: +Y jacks near the plate X-ends (toward the corners)
+JACK_YP       = 57 * D.BEAD                        # 45.6: +Y corner jacks outboard of string 1, on the nubs
+JACK_YM       = PK_MAX_YM - 13 * D.BEAD             # -Y jack deep in the -Y zone (~-62.3), below the room edge, on its nub
 JACK_MX_OFF   = 8.0                                # -Y jack X-nudge off centre (frees the centre for the setscrew)
 JACK_POS      = [(PICKUP_X_NOM + JACK_INSET_X, JACK_YP),
                  (PICKUP_X_NOM - JACK_INSET_X, JACK_YP),
@@ -195,7 +199,7 @@ HEIGHT_HOLE = PICKUP_X_NOM
 # from the plate; a horizontal M4 grub through a -Y boss pushes the pickup +Y against it.
 RET_WALL_T = 3 * D.NOZZLE_D                        # 2.4 +Y wall thickness (was 2.0)
 RET_WALL_H = 8.0                                   # +Y wall height above the plate top (enough to lock, not tall)
-RET_SCREW_Z = ZPL_TOP + 3.0                        # grub axis height (bears low on the pickup base)
+RET_SCREW_Z = ZPL_TOP + 4 * D.BEAD                 # 3.2 grub axis height (bears low on the pickup base)
 RET_BOSS_L = D.NUT_INSERT_L + 1.0                  # -Y grub boss length (Y): insert pocket + 1 to the boss +Y
                                                    # face at PK_MAX_YM (the LONGEST supported pickup's -Y face).
                                                    # Shorter pickups butt the +Y wall, so their -Y face sits +Y of
@@ -303,7 +307,7 @@ def _border_frame():
 # ── fret-position MARKERS (between the lines, not on them) ───────────────────
 # Different symbols mark the frets, keyed by the fret's position in the octave (n % 12) and REPEATING
 # every octave: circle, triangle, square, pentagon, and a 4-circle octave marker (12 & 24).
-MARK_D     = 5.0                       # marker circumscribed size
+MARK_D     = 6 * D.BEAD                # 4.8 marker circumscribed size
 MARK_SHAPE = {3: "circle", 5: "triangle", 7: "square", 9: "pentagon", 0: "quad"}
 # Per-marker X nudge for panel-edge printability: the fret-24 quad sits right at the mid panel's +X
 # edge (its dots were 0.12 mm off it); shift it -X so ≥0.8 mm of material backs the dots (0.8 nozzle).

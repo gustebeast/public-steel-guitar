@@ -118,7 +118,7 @@ STUB_Z0 = LG.BAR_STUB_Z0                   # 51.0 — tower seat plane (bar fram
 # (user placeholder; reference point x -313.80, y 43.75 = the bar top
 # plane at z -699.15 global). Budget check: tower top = STUB_Z0 + 38 =
 # 81, leg block top = STUB_Z0 + 48 = 91, both <= 19 + 75 = 94.
-PEDAL_ASSEMBLY_Z_HEIGHT = 90.0     # was 75 (a placeholder). foot_pedal.py now exists
+PEDAL_ASSEMBLY_Z_HEIGHT = 113 * D.NOZZLE_D   # 90.4 (was 75, a placeholder). foot_pedal.py exists
                                    # and its stack measures 85.1 from the bar top: the
                                    # knee lever's cartridge, reused verbatim, is a 42
                                    # free-length coil plus guide post plus back-stop
@@ -151,7 +151,7 @@ LID_RAIL     = D.MIN_WALL_2P               # 1.6 step per side = the rail the do
                                            # hooks; it is printed material, so it is
                                            # held to the 2-bead tier
 LID_MOUTH_HW = LID_FOOT_HW - LID_RAIL      # 10.30 — at the face
-TROUGH_D     = 15.0                        # wiring cavity depth in Y behind the floor
+TROUGH_D     = 19 * D.NOZZLE_D             # 15.2 wiring cavity depth in Y behind the floor
 # The trough is deliberately SHORTER in Z than the dovetail's foot, exactly as it
 # used to be narrower in Y than the foot was wide. Two things need that leftover
 # groove-floor material: the lid-lock detent nub has to be bored into solid, and
@@ -257,8 +257,10 @@ assert max(_LID_L) <= BED * 2 ** 0.5 - D.PEDAL_LID_FOOT_W, (
     f"{BED * 2 ** 0.5 - D.PEDAL_LID_FOOT_W:.1f} diagonal a {D.PEDAL_LID_FOOT_W}-wide "
     f"part gets on the {BED} bed")
 
-LOCK_D = 3.8                       # detent pocket diameter
-LOCK_X = LID_XA + 4.6              # the nub FOLLOWED the install flip: it has to
+LOCK_D = 3.8                       # detent pocket diameter — sized to the groove-floor
+                                   # band above the trough, which the assert below holds
+                                   # at its exact limit (a 4.0 snap left it 0.1 short)
+LOCK_X = LID_XA + 6 * D.NOZZLE_D   # +4.8: the nub FOLLOWED the install flip: it has to
                                    # sit at the OPEN end, because that is the only
                                    # end anything can escape from. Piece B goes in
                                    # first and runs to the +X stop wall; A follows

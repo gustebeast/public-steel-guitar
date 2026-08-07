@@ -39,6 +39,8 @@ import cadquery as cq
 
 from . import dimensions as D
 from . import components as C
+from . import motor_bank as MB          # for BED_Z, the chassis print-bed datum
+                                        # (chassis imports knee_lever, so not chassis)
 from .helpers import box_at, cyl, cyl_y, heal
 
 from cadkit.fasteners import (M4_SHAFT_CLR_D, M4_INSERT_D,
@@ -162,7 +164,9 @@ SCREW_CLR = M4_SHAFT_CLR_D          # M4 set-screw shaft clearance (Ø4.4)
 
 # ── housing envelope ─────────────────────────────────────────────────────────
 WALL    = 4.0                       # bearing-wall thickness (Y)
-HALF_X  = 11.0                      # housing half-width in X (the bearing block; sits in the bay)
+HALF_X  = 14 * D.BEAD               # 11.2 housing half-width in X (the bearing block; sits
+                                    #   in the bay). Snapped UP: wider extents can only KEEP
+                                    #   or ADD tenon stations, never drop one
 WALL_Z0, WALL_Z1 = -9.0, 5.5        # bearing walls (axle plates) span this in Z (bearing centred z=0);
                                     #   top just clears the Ø10 hub (z 5) -- the mount is now to the -X SIDE
                                     #   (rails), NOT a yoke above the lever, so the plates stop at the lever top
@@ -184,7 +188,7 @@ WP_Y0, WP_Y1   = HUB_Y1, HUB_Y1 + 4.0   # +Y bearing wall (10 .. 14)
 HUB_YC  = (HUB_Y0 + HUB_Y1) / 2     # hub / cam / feel centre Y (0)
 
 # ── lever ────────────────────────────────────────────────────────────────────
-HUB_D   = 10.0                      # ONE lever constant: the hub OD *and* the arm depth (ARM_TX). Keeps
+HUB_D   = 13 * D.BEAD               # 10.4: ONE lever constant: the hub OD *and* the arm depth (ARM_TX). Keeps
                                     # the feel on the clear cam above the round hub, and the arm as deep
                                     # as the hub is wide for a solid root.
 ARM_LEN = 100.0                     # hub centre -> arm tip (knee reach, -Z)
@@ -225,7 +229,7 @@ LOBE_RC = 9.0                                # lobe axis radius (pivot -> lobe) 
                                              #   fatigue headroom for the setscrew (10.3N knee ceiling vs
                                              #   8N target). Raising THROW would swing the lobe higher,
                                              #   thinning the web -> raise LOBE_RC.
-LOBE_R  = 1.5                                # rounded lobe radius
+LOBE_R  = 2 * D.BEAD                         # 1.6 rounded lobe radius
 LOBE_WY = 4.5                                # each lobe's / follower-tongue Y width. 6.0 -> 5.0 for the
                                              #   CENTRE DIVIDER, then -> 4.5 when the cartridge side walls
                                              #   went to the 2-bead tier: the divider is
@@ -277,17 +281,17 @@ HS_SPR_ID   = HS_SPR_OD - 2 * HS_SPR_WIRE      # 3.2 -> guide-post / piston pilo
 HS_SPR_FREE = 42.0                  # coil free length = solid(34.5) + throw(4.5) + preload/clash margin
 HS_SPR_INST = 41.4                  # coil length DRAWN = bay (lightest preload ~0.6mm; full throw clears solid)
 HS_PILOT_D  = HS_SPR_ID - 0.4       # 2.8: centre pilot (piston back + guide-post front) into the coil ID
-HS_GPOST_LX = 3.0                   # guide-post body: coil-shoulder -> cup face (screw bears here)
-HS_PILOT_LX = 5.0                   # pilot length reaching into the coil ID (piston back & guide post)
+HS_GPOST_LX = 4 * D.BEAD            # 3.2 guide-post body: coil-shoulder -> cup face (screw bears here)
+HS_PILOT_LX = 6 * D.BEAD            # 4.8 pilot length reaching into the coil ID (piston back & guide post)
 HS_ARM    = 4.0                     # follower-tongue Y width band
-FOLL_H    = 6.0                    # follower FLAT-face height (Z) = LOBE_WY -> SQUARE face. Centred (FOLL_DZ)
+FOLL_H    = 7 * D.BEAD             # 5.6 follower FLAT-face height (Z). Centred (FOLL_DZ)
                                    #   so the window BOTTOM lands at the cartridge's already-open -Z bottom
                                    #   (no thin wall, no extra -Z) and the window TOP clears the +Z cap by
                                    #   0.8mm once the cap is raised to the mount (HS_ROOF_TZ). ~1.5mm tracks
                                    #   the lobe; the rest is strength.
 FOLL_DZ   = 0.5                    # follower centre offset up from HS_Z: puts the window bottom on the -Z open
                                    #   face and the window top 0.8mm under the mount-height cap
-HS_Z      = HUB_TOP + 1.5           # piston / follower centre Z: the HS_ARM tongue spans the lobe band
+HS_Z      = HUB_TOP + 2 * D.BEAD    # piston / follower centre Z: the HS_ARM tongue spans the lobe band
                                     #   (5.66..8) and clears the hub below; the Ø6 body clears the boss
 HS_PISTON_WY = LOBE_WY + 2.0        # piston HEAD width (Y): DECOUPLED from the Ø6 coil -- a wider plate that
                                    #   the coil still pushes on-centre, so the front lip = (head-(LOBE_WY+0.4))/2
@@ -304,7 +308,7 @@ HS_NOSE_PROTRUDE = FOLL_TRAVEL + 1.0 + CART_RECEDE  # tongue -X of the front (> 
                                                    #   extra CART_RECEDE lengthens the tongue = body recede.
                                                    #   8 mm clears the plain-prism cartridge to ~33° with NO
                                                    #   carve -- just push the whole box out of the arm's arc)
-HS_BODY_LX = 3.0                    # piston body length in X (was 5; matched to the 3mm guide post -- the 2mm
+HS_BODY_LX = 4 * D.BEAD             # 3.2 piston body length in X (was 5; matched to the guide post -- the
                                     #   saved pulls the whole cartridge + its back-stop boss 2mm forward, all
                                     #   spent on thread engagement without moving the leg-facing extent). The
                                     #   pilot + tongue add effective bearing length so 3mm won't cock.
@@ -415,12 +419,13 @@ HS_HOUS_BACK = HS_BACK_X + HS_BSTOP_ENGAGE   # housing boss depth = engagement (
 # cross-ribs. (The old double-christmas-tree floating tenon + its yoke plate are gone: they
 # existed because the housing used to print +Z→-Z and could not carry a protruding tenon.
 # It prints -Z→+Z now, so the tenon is just part of the part.) ──
-RIB_PITCH = 46.0                    # MOTOR pitch. The chassis rib comb is HALF this (23 mm: a
+RIB_PITCH = D.MOTOR_X_STEP          # 46, THE motor pitch (derived — a MOTOR_X_STEP change
+                                    # moves the tenon stations WITH the comb). The rib comb is HALF this (23 mm: a
                                     # crossbar per motor plus one between each pair), and the
                                     # tenon stations are generated on that finer pitch — see
                                     # TEN_X down in the prism block, where the housing X extents
                                     # that bound them are finally known.
-BODY_Z    = 5.0 + 2.4               # body underside in local Z: the lever's Ø10 hub top (z=5) + a 2.4mm AIR
+BODY_Z    = HUB_TOP + 3 * D.BEAD    # body underside in local Z: the hub top (5.2) + a 2.4mm AIR
                                     #   gap (no material between the lever and the body). Raising the axle
                                     #   is equivalent to lowering BODY_Z here; MOUNT_Z tracks it (= -82.55)
 # ── OCTAGON slide-joint (cadkit): cadkit's octagon slides along its extrude axis, so we
@@ -428,7 +433,8 @@ BODY_Z    = 5.0 + 2.4               # body underside in local Z: the lever's Ø1
 # stays +Z. Both halves print -Z->+Z (facing 'up') -> the octagon family -> self-supporting
 # on BOTH sides. One joint SIZE, two LENGTHS: short TENONS on the housing (its own Y span)
 # and a long RIB MORTISE (the whole knee-depth range).
-_JW       = 6.0                   # octagon flat-to-flat width. Sized on the MECHANICS (knee-strike
+_JW       = 8 * D.BEAD            # 6.4 octagon flat-to-flat width (joint_coupon.WIDTH
+#                                    matches it). Sized on the MECHANICS (knee-strike
 #                                    pull-out): ~3x the shear area and 2x the retention shoulder of the
 #                                    old 3mm, while the rib keeps ~77% of its section as a sound arch
 #                                    (2mm side columns + 4.2mm top beam). The mortise roof now rises
@@ -440,8 +446,9 @@ def _lever_joint(length):
     """The mount joint at a given SLIDE length (Y). MORT_CLR shrinks the tenon for fit."""
     return joint(_JW, length, tenon=_JUP, mortise=_JUP, clearance=MORT_CLR)
 MORT_CLR  = 0.3                     # mortise clearance (slide fit)
-TEN_H     = _lever_joint(10.0).height   # how far a tenon rises above its mating face (5.82)
-MORT_Y0   = -2.0                  # mortise -Y mouth (opens outboard of the -Y rail for slide-in)
+TEN_H     = _lever_joint(8.0).height    # how far a tenon rises above its mating face (5.82;
+                                        # the length arg is a probe — height ignores it)
+MORT_Y0   = -3 * D.BEAD           # -2.4 mortise -Y mouth (opens outboard of the -Y rail for slide-in)
 # global mount: MOUNT_X = -501 is itself a rib X in the half-pitch comb, which is what lets
 # the tenon stations be generated on a plain 23 mm walk from the axle. build.py poses the
 # lever here; chassis.py cuts the rib mortises into EVERY rib at the same Y.
@@ -455,7 +462,9 @@ MORT_Y0   = -2.0                  # mortise -Y mouth (opens outboard of the -Y r
 # MOUNT_Z tracks the housing TOP, not BODY_Z: with the bigger race the top is set by
 # the bearing seat, and the TOP is what must stay flush on the chassis underside.
 # The axle simply sits lower in the guitar by the difference.
-MOUNT_X, MOUNT_Y, MOUNT_Z = -501.0, -148.75, -75.15 - max(BODY_Z, BRG_OD / 2 + BRG_WALL)
+MOUNT_X, MOUNT_Y, MOUNT_Z = -501.0, -148.75, MB.BED_Z - max(BODY_Z, BRG_OD / 2 + BRG_WALL)
+# (MOUNT_Z read the bed as a spelled -75.15, which went stale when SCREW_TOP_Z /
+#  SCREW_PULLEY_Z / XBAR snapped to the grid — the live bed is MB.BED_Z = -74.95.)
 MOUNT_POSE = (MOUNT_X, MOUNT_Y, MOUNT_Z)
 # the mortise (slot) runs from the player face ALL THE WAY to the guitar's Y midpoint -- the lever's
 # nub slides +Y along it to the player's chosen knee depth, then the retention screw locks it.
@@ -467,7 +476,10 @@ MID_Y     = -37.0                   # guitar Y-midpoint (= chassis (Y_LO + Y_HI)
 # had to pull their knee back to reach it, when the whole point of a vertical lever is
 # to lift without moving (user). The slot now runs to the inside edge of the
 # instrument, which is as far as it can go and enough for any of them.
-MORT_Y_END = 54.75                  # +Y end of the knee-depth slide, guitar Y (user)
+MORT_Y_END = D.BRIDGE_AXLE_Y + 4 * D.BEAD   # 55.55: +Y end of the knee-depth slide, guitar Y
+                                    # = the chassis +Y rail INNER face, spelled via the same
+                                    # D constants chassis.Y_HI uses (import direction forbids
+                                    # chassis; the old 54.75 had gone stale twice over)
 MORT_Y1   = MORT_Y_END - MOUNT_Y    # ...in the local frame
 # DEPTH LOCK — still DEFERRED (it lands with the sensor mount, which shares the same +Y
 # region). Plan of record: an M2 SELF-TAPPING set screw threading UP through the housing
@@ -867,7 +879,7 @@ TEN_X = tuple(-k * _TEN_PITCH for k in range(20)
 # construction, not by special-casing: the tenons are unioned BEFORE the lever-room
 # cut, so the same sweep that clears the lever trims the tenon.
 TEN_Y0, TEN_Y1 = -HOUS_HW, HOUS_HW
-TEN_ROOT = 1.0                      # root below the mating face — volumetric fuse into the
+TEN_ROOT = D.MIN_WALL               # 0.8 root below the mating face — volumetric fuse into the
                                     # prism, never a coplanar touch (cadkit joinery rule)
 # SENSOR-SIDE Y (re-anchored here — see the note up in the layout block): the
 # magnet rides the integral +Y stub just past the HOUSING FACE, not past the
@@ -887,7 +899,7 @@ RIB_T = RIB_PROUD = D.MIN_WALL_2P   # cadkit contact-rib section: TWO nozzles (q
                                    # CHIP_H tracks the magnet, so raising RIB_PROUD shifts the whole
                                    # axle->magnet->sensor stack +0.75 outboard together (AIR_GAP kept).
 AXLE_SHOULDER_Y = HOUS_HW + RIB_PROUD           # 14.75: flange face, ON the rib
-AXLE_FLANGE_D   = 9.0               # flange Ø (what seats on the rib). NOT the thread
+AXLE_FLANGE_D   = 12 * D.BEAD       # 9.6 flange Ø (what seats on the rib). NOT the thread
                                     # major any more — the hex cap forced those apart
 MAG_FLANGE_T    = 0.8                           # pocket floor under the magnet
 MAG_Y0  = AXLE_SHOULDER_Y + MAG_FLANGE_T        # 15.55: magnet seat
@@ -924,7 +936,7 @@ CAP_BASE_CLR = 0.3                  # the cap's rim stops SHORT of the axle flan
                                     # can only ever land on the MAGNET; bottoming on the
                                     # flange would leave the disc loose — the same trap the
                                     # collar height already dodges at the other end
-CAP_APERTURE = 5.0                  # open on the axis so the cap never intrudes on the
+CAP_APERTURE = 6 * D.BEAD           # 4.8 open on the axis so the cap never intrudes on the
                                     # field path or on any future gap reduction
 # D-FLAT key. The user asked for a tongue; a PROTRUDING one is impossible here —
 # it would have to pass through the Ø5 bearing bore on the way in — so the key

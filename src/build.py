@@ -837,7 +837,11 @@ _LEVER_Y = _lever_plane_y()                  # -85.45
 
 # ONE SLOT for the levers, quantised to the rib comb. A lever's tenons only land in
 # rib mortises if its station IS a rib X, so any lever spacing is a whole rib count.
-_RIB = 23.0
+# DERIVED from the motor pitch (the comb is its half-pitch — chassis._rib_positions)
+# so a MOTOR_X_STEP change moves the stations WITH the comb instead of out from
+# under it (that walk-off already happened once — see the layout exemptions).
+_RIB = D.MOTOR_X_STEP / 2                    # 23.0 rib-comb pitch
+_RIB0 = D.motor_pos(0)[0] - 2 * D.MOTOR_X_STEP   # -616: comb origin (2 pitches past m0)
 
 # THE KNEE GAP. The player's knee sits BETWEEN a pair (LKL/LKR, RKL/RKR) and pushes
 # one or the other; the vertical lever goes in the same gap, above the knee (user).
@@ -923,7 +927,7 @@ def _vkl_station() -> float:
     from . import knee_lever_vert as KV
     mid = _LKL_X + _KNEE_GAP_L / 2.0
     best = min((abs(rib - KV.TEN_Y[1] - mid), rib - KV.TEN_Y[1])
-               for rib in (-616.0 + 23.0 * k for k in range(30)))
+               for rib in (_RIB0 + _RIB * k for k in range(30)))
     return best[1]
 
 
