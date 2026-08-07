@@ -113,7 +113,18 @@ LX_TOWER = -LX_C                  # bar tower <-> shaft block (mirrored)
 # SMALLER one so a single slider + cover SKU serves both; the 44-wide head gets
 # a finger recess (well_cutter) sinking its face to match -- which doubles as
 # the thumb well that keeps the button from being pressed by accident.
-FACE_Y = 17.8                     # = +BLK_W/2, the SHALLOWER of the two faces
+FACE_Y = 22.0                     # = legs.SQ_W/2, the LEG HEAD'S OWN outer face.
+                                  # Was 17.8 -- the tower/shaft block's face -- so that
+                                  # one slider + cover SKU could serve both joints. The
+                                  # bar joint is gone and re-use is explicitly not a
+                                  # concern any more (user), so the mechanism sits on
+                                  # the face it actually lives on. Everything the old
+                                  # compromise cost goes with it: no finger well sunk
+                                  # into the head (that was a 422 mm^2 flat ceiling ON
+                                  # the print bed), no 4.2-thick second cover, no thumb
+                                  # dish to claw the recess back. The cover is a plain
+                                  # flat plate flush with the leg, and the button sits
+                                  # flush with it -- nothing proud to be knocked.
 COVER_T = 3 * B                   # 2.4 cover plate thickness
 COVER_LIP = 3 * B                 # 2.4 the aperture lip each side: what the pad
                                   # shoulders against as the slider's OUT stop
@@ -186,8 +197,7 @@ SPR_GAP = 5 * B                   # 4.0 slider back face -> tunnel back at REST.
 # installed = SEAT + GAP = 10.4 -> 1.6 preload -> 4.0 N holding the button out;
 # at full press 4.8 compression -> 12.0 N. Never reaches solid (4.8 vs 7.2).
 
-LG_HEAD_FACE_Y = 22.0             # = legs.SQ_W/2, the 44-wide head's own face
-LG_BLK_HALF = 17.8                # = BLK_W/2; the thin female's outer face (legs.BLK_W
+LG_BLK_HALF = FACE_Y                # = BLK_W/2; the thin female's outer face (legs.BLK_W
                                   # owns this number; latch cannot import legs -- legs
                                   # imports latch -- so _assert_sane cross-checks it)
 PAD_W = LOW_W - 2 * COVER_LIP     # 8.0 button pad width. NARROWER than LOW_W so
@@ -238,41 +248,30 @@ def _yz(dx, y0, y1, z0, z1, x):
 # ═══════════════════════════════════════════════════════════════════════════
 # MALE cutters (leg head / bar tower)
 # ═══════════════════════════════════════════════════════════════════════════
-def male_cutter(cx: float = LX_C, face_y: float = FACE_Y) -> cq.Workplane:
+def male_cutter(cx: float = LX_C) -> cq.Workplane:
     """What the MALE half loses: the slider TUNNEL -- which also takes the
     octagon's +Y shoulder away across the band, opening the void the hook
     travels in -- plus the cover's dovetail. One cutter, so the head and the
     tower cannot drift apart."""
     up = _yz(LX_W + 2 * CLR, FACE_Y, BACK_Y, 0.0, BODY_Z1, cx)     # in the spigot
     low = _yz(LOW_W + 2 * CLR, FACE_Y, BACK_Y, LOAD_Z, 0.0, cx)    # in the body
-    return up.union(low).union(_cover_slot(cx, face_y))
+    return up.union(low).union(_cover_slot(cx))
 
 
 SLOT_W = LOW_W + 2 * COVER_T      # 17.6 slot mouth (the cover's outer width)
-DISH_W = 18 * B                   # 14.4 thumb dish, inside SLOT_W with 1.6 (two
-                                  # beads) of cover wall each side
 
 
-def _cover_slot(cx: float = LX_C, face_y: float = FACE_Y) -> cq.Workplane:
+def _cover_slot(cx: float = LX_C) -> cq.Workplane:
     """Dovetail pocket for the cover: 45 deg flanks, narrow at the FACE and wide
     at the root, open at the TOP (z0, the butt plane) so the cover installs
     downward onto a hard stop and can only leave upward -- which the female half
     blocks once the joint is together.
-
-    `face_y` is the HOST'S OWN outer face. The dovetail itself is identical at
-    both joints (FACE_Y -> COVER_IN, so the retaining geometry never varies);
-    a host whose face stands proud of FACE_Y -- the 44-wide leg head, at 22.0 --
-    simply gets a STRAIGHT extension out to it. That keeps the host's bed face
-    FLAT (see cover() for why that matters) and 45 deg flanks over 6.6 mm would
-    have needed a 13.2 mm width swing anyway."""
+"""
     w0, w1 = SLOT_W, LOW_W + 4 * COVER_T
     pts = [(-w0 / 2, FACE_Y), (w0 / 2, FACE_Y), (w1 / 2, COVER_IN), (-w1 / 2, COVER_IN)]
     prof = (cq.Workplane("XY").polyline([(x + cx, y) for x, y in pts])
             .close().extrude(LOAD_Z))
-    slot = cq.Workplane("XY").add(prof.val())
-    if face_y - FACE_Y > 0.01:                  # straight run out to a proud face
-        slot = slot.union(_yz(w0, face_y, FACE_Y, LOAD_Z, 0.0, cx))
-    return slot
+    return cq.Workplane("XY").add(prof.val())
 
 
 def male_post(cx: float = LX_C) -> cq.Workplane:
@@ -346,44 +345,15 @@ def slider(cx: float = LX_C) -> cq.Workplane:
     return b
 
 
-def cover(cx: float = LX_C, face_y: float = FACE_Y) -> cq.Workplane:
-    """LATCH COVER (PCTG). Closes the slider's load window; its aperture lip is
-    the slider's outward stop AND its Z lock. Slides DOWN its dovetail onto a
-    hard stop, and is captive once the joint is assembled.
-
-    TWO SKUs, and the reason is PRINTABILITY, not fit. The mechanism is datumed
-    to the SHALLOWER of the two male faces (FACE_Y 17.8, the tower/shaft block)
-    so the slider can be one part. The 44-wide leg head's face stands 4.2 proud
-    of that, and the head used to be sunk back to meet it -- a 26.4 x 16 finger
-    well. But the head prints lying on exactly that face, so the well floor was
-    a 422 mm^2 FLAT CEILING right at the build plate: a bridge over open air on
-    layer one, which is the worst place in the part to put one (user).
-
-    So the step moves to the part that can absorb it. The head's cover is simply
-    4.2 THICKER, its outer face flush with the head, and the thumb dish is
-    milled into ITS outer face instead. Same recess, same function -- the dish
-    still keeps a stray knock off the button -- but now it belongs to a small
-    flat plate that prints dish-up with no overhang anywhere, and the structural
-    leg gets its bed face back SOLID.
-
-    The SLIDER is untouched and stays ONE SKU: its pad face is still FACE_Y and
-    it still shoulders on the dovetail's inner lip. Only the material outboard
-    of that lip differs between the two covers."""
-    b = _cover_slot(cx, face_y)
-    b = b.cut(_yz(PAD_W + 2 * CLR, face_y + 1.0, COVER_IN - 1.0,
+def cover(cx: float = LX_C) -> cq.Workplane:
+    """LATCH COVER (PCTG) -- ONE flat plate, flush with the leg head's face.
+    Closes the slider's load window; its aperture lip is the slider's outward
+    stop AND its Z lock. Slides DOWN its dovetail onto a hard stop, and is
+    captive once the joint is assembled. Prints flat, no overhang."""
+    b = _cover_slot(cx)
+    b = b.cut(_yz(PAD_W + 2 * CLR, FACE_Y + 1.0, COVER_IN - 1.0,
                   PAD_Z0 - CLR, PAD_Z1 + CLR, cx))
-    if face_y - FACE_Y > 0.01:
-        # thumb dish through the proud extension: its FLOOR is the old well
-        # floor (FACE_Y), so the button sits exactly where it always did
-        b = b.cut(_yz(DISH_W, face_y + 1.0, FACE_Y,
-                      PAD_Z0 - 3 * B, PAD_Z1 + 3 * B, cx))
     return b
-
-
-def cover_head(cx: float = LX_C) -> cq.Workplane:
-    """The leg head's cover -- the thick one with the thumb dish. Named so the
-    build and the BOM can tell the two SKUs apart at a glance."""
-    return cover(cx, LG_HEAD_FACE_Y)
 
 
 def slider_pressed(cx: float = LX_C) -> cq.Workplane:

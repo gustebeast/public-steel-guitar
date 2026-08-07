@@ -89,11 +89,12 @@ YC = LEG_Y[0]                          # FLUSH round: the bar rides the +Y
 # one foot per +Y leg: (leg station, inboard side sign). The side sign is the
 # legacy latch-opening direction, kept because the TRRS way still keys off it.
 # (Was LATCHES, back when each foot carried a snap/TRRS latch.)
-# The latch is being iterated on ONE joint pair (user, 2026-08-06): the -X/+Y
-# leg, which is also the TRRS leg -- the most awkward case, so whatever works
-# there works everywhere. That is FEET[1] (x = LEG_STATIONS_X[1] = -614.4).
-# Set to None to build the bar with no latch at all.
-LATCH_FOOT = 1
+# NO bar-joint latch (user, 2026-08-06). The latch is being taken to a finished
+# state on ONE joint only -- the leg-to-body joint at the -X/+Y (TRRS) leg -- so
+# the bar simply drops onto its towers with no z-retention, the blank-slate state
+# the legs were left in when the old quick-release came out. Set to a FEET index
+# to put the mechanism back on that tower.
+LATCH_FOOT = None
 
 FEET = ((LEG_STATIONS_X[0], -1.0),     # +X leg → plain tower
         (LEG_STATIONS_X[1], +1.0))     # -X leg → wired (TRRS) tower
