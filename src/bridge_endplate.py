@@ -121,18 +121,33 @@ CARRIER_TOP  = OP.PLINTH_TOP                  # 9.501 -- the board bears directl
 # cuts — the field-centre LOW + HIGH boxes, the stringing-access window and the
 # guide-view window — whose union left a stepped ceiling measured at FOUR values
 # on the finished underside (5.6 cap band / 6.0 finger roots / 6.5 carrier+brace
-# / 7.4 tower relief). ROOM_Z1 keeps the deepest requirement: the anchor-tower
-# sweep relief (the old HIGH cut's Z6 + 1.0 — the tower runs 1.0 into the shelf
-# band, clearance included; its X reach no longer matters because the whole room
-# is that deep). Everything structural now puts its underside ON the ceiling —
-# fingers, braces, carrier plinth: UNDER_Z = ROOM_Z1, one plane, so no later
-# union can hang back down into the room. (The old 6.5 story — brace matched to
-# the finger flat to kill a 0.3 lip — is subsumed: every underside is the SAME
-# plane now.) The deep screw drivetrain (support rail at z ≈ −52) is the
-# deliberate lead-screw exception, an added prism living below the room floor.
-ROOM_Z1      = CH.TP_GZ1 + 1.0                # 7.4 — the tower-sweep relief plane
-UNDER_Z      = ROOM_Z1                        # plinth/brace/finger undersides = the ceiling
-CARRIER_BOT  = UNDER_Z                        # 1.4 over the deck, flush with the comb
+# / 7.4 tower relief). Each was justified; the staircase was nobody's design.
+#
+# THE CEILING IS SET BY THE TALLEST THING IN THE ROOM (user), which is the ten
+# LEADSCREW TOPS at SCREW_TOP_Z — above the carriage's own tower (2.0 at the top
+# of travel), the string nuts and the guide rods. Clearance ≥ 1.0 over them, and
+# the SHELF LEFT ABOVE the cut lands on a whole number of beads: the shelf is
+# BEAR_TOP − ROOM_Z1, so 15 beads = 12.0 puts the ceiling at 4.00 and clears the
+# screws by 1.60. (16 beads would clear by only 0.80 — under the rule. Measured
+# before this: the shelf was 8.60 = 10.75 beads, and the room had 5.0 of slack it
+# was never using.) Writing it as `BEAR_TOP − N × BEAD` is what puts the SHELF on
+# the grid rather than the ceiling's absolute height: the shelf is the material,
+# the ceiling is just where it stops.
+ROOM_Z1      = BEAR_TOP - 15 * D.BEAD         # 4.00 — ceiling; shelf above = 12.0 = 15 beads
+assert ROOM_Z1 - D.SCREW_TOP_Z >= 1.0 - 1e-9, (
+    f"the changer room clears the leadscrew tops by only {ROOM_Z1 - D.SCREW_TOP_Z:.2f} "
+    f"(want 1.0): take a bead off the shelf, or drop SCREW_TOP_Z")
+# Fingers and braces — everything INSIDE the endplate — put their underside on the
+# ceiling, so no later union can hang back down into the room.
+UNDER_Z      = ROOM_Z1
+# ...but the CARRIER PLINTH cannot: it is the one piece that reaches −X PAST the
+# endplate face, out over the deck panel, so its floor is set by the DECK, not by
+# the room. (It was flush with the comb while the ceiling happened to be above the
+# deck; at a 4.00 ceiling that would bury it 2.4 mm inside the deck.) The step
+# between the two planes falls exactly at XLO, and it faces −X — away from the bed
+# in this +X → −X build — so it is an upward face, not an overhang, and the plinth
+# is fully backed by the deeper brace behind it.
+CARRIER_BOT  = CH.TP_GZ1 + 1.0                # 7.4 — 1.0 over the deck top
 CARRIER_X1   = OP.PCB_X1S - 0.1               # -X face, inside the band by a hair
 CARRIER_HY   = 68 * D.BEAD                    # 54.4 out to the arms
 
