@@ -27,7 +27,27 @@ LAYOUT (under-string, vertical-screw):
 # ─────────────────────────────────────────────────────────────────────────
 from cadkit.fasteners import M4
 from cadkit.printing import min_wall
-NOZZLE_D        = 0.8       # this build runs a 0.8 mm nozzle
+NOZZLE_D        = 0.8       # the PROJECT DEFAULT nozzle. Most of this instrument is
+                            # structure -- rails, legs, housings -- and prints 0.8.
+BEAD            = NOZZLE_D  # THE UNIT. Every printed length is N * BEAD, or another
+                            # feature +- N * BEAD (cadkit.printing documents the rule and
+                            # the three exemptions; tools/check_beads.py enforces it).
+                            # Write lengths as counts -- `13 * BEAD`, not `10.4` -- so the
+                            # bead count is what you read and what you edit.
+# PER-PART OVERRIDE (user): the nozzle is a property of the PART, not the project.
+# A part with fine detail -- the belt clamp's tooth pitch is 2.0 mm, which 0.8 cannot
+# resolve -- is printed with a finer nozzle and gets a finer grid. Such a module
+# declares its own at the top and derives its own bead:
+#
+#     NOZZLE_D = 0.4                  # this part prints 0.4 (GT2 teeth)
+#     B        = NOZZLE_D
+#
+# tools/check_beads reads that per module and grades the part against ITS grid.
+# MATING is safe in one direction only, and it is worth knowing which: a coarse
+# length is always valid on a finer grid (0.8 is exactly two 0.4 beads), but not
+# the reverse. So a face SHARED between a 0.8 part and a 0.4 part must sit on the
+# COARSER grid -- size shared features from the coarse part and let the fine part
+# inherit them.
 MIN_WALL        = min_wall(NOZZLE_D)          # 0.8 — one-bead HARD floor (web/ceiling/rib).
                                               # A lone bead slices mushy, so PREFER MIN_WALL_2P;
                                               # drop to MIN_WALL only in a genuinely tight room.
@@ -42,9 +62,9 @@ STRING_PITCH    = 9.5       # mm, changer pitch (across, Y)
 NUT_PITCH       = 6.5       # mm, spacing at the nut/keyhead end
 STRING_FIELD_W  = (N_STRINGS - 1) * STRING_PITCH   # 85.5 mm
 MOUNTING_SPAN   = 615.0     # between a string's two mounting ends (~24.2" scale)
-XBAR            = 12 * NOZZLE_D  # 9.6 (was 10.0) the one module: square cross-rib section,
+XBAR            = 13 * BEAD  # 10.4 - the one square-module cross-section: square cross-rib section (10×10),
                             # end-crossbar width, and the leg/endplate border + L offset
-WALL_THICKNESS  = 13 * NOZZLE_D  # 10.4 (was 10.0 = 12.5 beads) structural wall: I-beam rail thickness, the keyhead/bridge
+WALL_THICKNESS  = 13 * BEAD  # 10.4 structural wall: I-beam rail thickness, the keyhead/bridge
                             # endplate faces, and the deck inner/outer face references
 
 # The pedal bar's Z height. Lives HERE, not in pedal_bar, because legs.py needs it
@@ -85,9 +105,9 @@ def nut_y(i: int) -> float:
 # Heights (Z). Speaking length on top; mechanism below.
 # ─────────────────────────────────────────────────────────────────────────
 STRING_Z        = 16.0      # speaking-length / bridge-bearing top
-DECK_TOP_Z      = 6.0       # deck-plate top = playing-surface datum; the chassis deck
+DECK_TOP_Z      = 8 * BEAD  # 6.4 deck-plate top = playing-surface datum; the chassis deck
                             # plane (TP_GZ0/1) and the keyhead nut-block base both sit here
-SCREW_TOP_Z     = 2.0       # screw top, below the bend / carriage travel
+SCREW_TOP_Z     = 3 * BEAD  # 2.4 screw top, below the bend / carriage travel
 # Travel budget from string physics. f ∝ √(stretch) ⇒ stretch ∝ f², so the
 # carriage travel between two pitches is the change in stretch:
 #   travel(f1→f2) = DL_OPEN · ((f2/f_open)² − (f1/f_open)²)
@@ -119,11 +139,11 @@ SCREW_BOT_Z     = SCREW_TOP_Z - SCREW_LEN          # -59
 # is what had to give. There was 8.00 mm of slack between the carriage at full-down
 # travel and the screw-pulley top; 5 of it buys a Ø13 race and leaves 3.0 spare.
 # (Ø16 would have taken all 8 and left the carriage kissing the pulley.)
-CARRIAGE_NOM_Z  = SCREW_TOP_Z - 13.0               # default = TOP of travel; the anchor post
+CARRIAGE_NOM_Z  = SCREW_TOP_Z - 13.4               # default = TOP of travel; the anchor post
                                                    # clears the bridge bearings by 1 mm (the
                                                    # endplate's upper guide ledge hard-stops
                                                    # the carriage foot here, protecting them)
-SCREW_PULLEY_Z  = SCREW_BOT_Z + 15.0               # screw drive pulley near bottom (-36)
+SCREW_PULLEY_Z  = SCREW_BOT_Z + 19 * BEAD  # 15.2               # screw drive pulley near bottom (-36)
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -143,14 +163,14 @@ NUT_BODY_LEN    = 7.0
 # no spanning bar, so the endplate prints with no overhang.
 # ─────────────────────────────────────────────────────────────────────────
 GUIDE_ROD_D     = 2.5
-GUIDE_ROD_DX    = 12.95     # screw→rod offset: rod X = SCREW_X + DX = +4.95 (global). Moved +X
+GUIDE_ROD_DX    = 17 * BEAD  # 13.6 screw→rod offset: rod X = SCREW_X + DX = +4.95 (global). Moved +X
                             # (user) so the rod's metal −X edge clears the anchor-cage OPENING
                             # (POST_X1H, global +2.1) by 1.6 mm — was only 0.15, and that gap was
                             # what pinned the guide foot LOW. INSTALL (top-down): the rod drops
                             # through the stop bar, the carriage's closed bore, into the blind
                             # socket — friction-held top + bottom; the closed bore captures a loose
                             # carriage (carriage in place → rod drops in → screw threads in).
-GUIDE_FOOT_DZ   = 2.0       # foot TOP from the carriage centre. Now at the NUT LEVEL (user): the
+GUIDE_FOOT_DZ   = 3 * BEAD  # 2.4 foot TOP from the carriage centre. Now at the NUT LEVEL (user): the
                             # guide bore rides in the body's own z-band (−6..+2, just below the
                             # cage bottom 2.5), NOT on a hanging column — the carriage drops ~16 mm
                             # in Z (a much stiffer part) and the bore ties straight into the body.
@@ -181,7 +201,7 @@ STRING_NUT_L    = 3.0       # was modelled 6 -> oversize; the real 3 lets the ca
 SUPPORT_BRG_OD  = 8.0
 SUPPORT_BRG_ID  = SCREW_OD
 SUPPORT_BRG_W   = 5.0
-SUPPORT_BRG_Z   = SCREW_PULLEY_Z - 8.5     # below the pulley; clears the 5 mm belt wrap
+SUPPORT_BRG_Z   = SCREW_PULLEY_Z - 11 * BEAD  # 8.8     # below the pulley; clears the 5 mm belt wrap
 LOCKNUT_OD      = 8.0
 LOCKNUT_W       = 4.0
 
@@ -197,7 +217,7 @@ PULLEY_FLANGE_T  = MIN_WALL      # 0.8 (was 1.0 = 1.25 beads). Rounded DOWN, not
                                  # fit. One bead is the hard floor and fine here (a guide lip, not
                                  # structure); the gap goes to 6.4.
 PULLEY_BORE_SCREW = SCREW_OD
-PULLEY_BORE_MOTOR = 5.0
+PULLEY_BORE_MOTOR = 5.0     # = MOTOR_SHAFT_D (declared below); the motor's own shaft
 BELT_PITCH      = 2.0       # GT2 tooth pitch
 BELT_TOOTH_H    = 0.75      # tooth height (rounded GT2 profile)
 # 5 mm-wide GT2 (open, cut-to-length): the narrowest STANDARD-STOCK GT2 open belt
@@ -244,7 +264,7 @@ MOTOR_BELT_Z    = SCREW_PULLEY_Z    # motors all sit at the (even) screw-pulley 
 # into a second Z plane so neighbours always differ by BELT_PLANE_DZ. Only the
 # pulley moves — the motors stay coplanar and the bottom hardware is unchanged;
 # the odd belt simply rises this much over its run.
-BELT_PLANE_DZ   = 10.0
+BELT_PLANE_DZ   = 13 * BEAD  # 10.4
 
 def screw_pulley_z(i: int) -> float:
     # raise alternate pulleys a belt-plane so neighbours never collide; phased off the
@@ -285,8 +305,8 @@ BRIDGE_BEARING_Z  = STRING_Z - BRIDGE_BEARING_OD / 2     # axle/bearing centre (
 # bearing's +X extent, wraps 90° over the top, then leaves −X along the top. So
 # the bearing centre sits OD/2 to −X of the anchor line.
 BRIDGE_AXLE_X     = BRIDGE_X - BRIDGE_BEARING_OD / 2     # bearing/axle centre X
-BRIDGE_AXLE_Y     = STRING_FIELD_W / 2 + 9.0             # axle/support half-span
-BRIDGE_ARM_W      = 7 * NOZZLE_D  # 5.6 (was 5.0) bearing-arm / edge-web thickness (Y); the
+BRIDGE_AXLE_Y     = STRING_FIELD_W / 2 + 12 * BEAD  # 9.6             # axle/support half-span
+BRIDGE_ARM_W      = 6 * BEAD  # 4.8 bridge-endplate bearing-arm / edge-web thickness (Y); the
                             # screw rail widens by this so the rib overlaps it cleanly
 
 # ── Keyhead nut-block hardware → ENDPLATE_W (BOTH ends + bridge base) ────────
@@ -318,7 +338,7 @@ NUT_PIN_CLR     = 0.4           # clearance perimeter around the dowel in its po
 BREAK_PX_BUF    = 4.0           # +X of the dowel: the lip the deck/pickup plate seat against
 DOWEL_SCREW_RUN = 8.0           # dowel -> NEAR clamp row centre (the break run to the clamp)
 SCREW_ROW_GAP   = 8.0           # NEAR -> FAR clamp row centre (rows stagger so inserts keep Y pitch)
-SCREW_NX_WALL   = 3 * NOZZLE_D  # 2.4 solid wall -X behind the far insert's OD (was 2.2)
+SCREW_NX_WALL   = 3 * BEAD      # 2.4 solid wall -X behind the far insert's OD (strength)
 
 ENDPLATE_W = (BREAK_PX_BUF + DOWEL_SCREW_RUN + SCREW_ROW_GAP
               + NUT_INSERT_D / 2 + SCREW_NX_WALL)            # = 25.0
