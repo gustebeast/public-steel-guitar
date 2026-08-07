@@ -870,6 +870,18 @@ def _vkl_mount_y() -> float:
 # its -X limit is the left leg, whose block ends at -596.6 — the first station that
 # clears it is -501. Both bounds together pin ILKL and push the left group +X:
 # ILKL -501, LKL -409 is exactly the 92 one-slot step the user described.
+def _vkl_station() -> float:
+    """VKL's mount X, DERIVED so its two tenons land on ribs.
+
+    It was hardcoded (-432 - 10.4). Then the lever housing widened for a bigger
+    bearing, KV.TEN_Y moved with it, and the constant silently put both tenons 0.7
+    off their ribs — where they promptly dug into rib material on every build. The
+    offset is KV's own, so read it from KV.
+    """
+    from . import knee_lever_vert as KV
+    return -432.0 - KV.TEN_Y[1]
+
+
 _ILKL_X = -501.0                             # hard -X bound: the left leg block
 _LKL_X = _ILKL_X + _LEVER_SLOT               # -478
 _RKL_X = -225.0                              # right knee, 253 from the left one
@@ -880,7 +892,7 @@ LEVER_STATIONS = (
     # same gap so the vertical arm is directly above it (user). VKL's station is
     # rib-DERIVED (MOUNT_X = rib - 10.4) so its own two tenons land on ribs.
     ("lkl",  "kl", _LKL_X,               _LEVER_Y, False),
-    ("vkl",  "kv", -432.0 - 10.4,        None,     False),   # -442.4, mid-gap
+    ("vkl",  "kv", _vkl_station(),       None,     False),   # mid-gap, rib-derived
     #                                                          None -> _vkl_mount_y()
     ("lkr",  "kl", _LKL_X + _KNEE_GAP,   _LEVER_Y, True),    # -386
     # RIGHT KNEE: same gap, no vertical lever in this copedent

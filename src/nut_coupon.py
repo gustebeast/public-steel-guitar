@@ -271,11 +271,17 @@ def demo_parts():
 # come out oval.
 from cadkit.holes import teardrop_hole
 
-ROD_D  = 3.0                        # = the bridge axle's shaft. ONE line, qty 2.
+ROD_D  = D.BRIDGE_AXLE_D            # Ø5 — literally the bridge axle's own shaft, read
+                                    # from dimensions so it cannot drift. The 695ZZ
+                                    # round put BOTH endplates and every lever axle on
+                                    # one Ø5 stock. Better here too: Ø5 bends the .070
+                                    # at 26.2% against Ø3's 37.2% (Ø6 would be 22.9%).
 ROD_X  = -7.0
 ROD_Z  = -1.0                       # rod centre; strings arrive at -g/2 and meet
                                     # its +X face. One height for every gauge
-BAY_R  = ROD_D / 2.0 + 3.0          # 4.5 — threading annulus, 3 mm clear of the rod
+BAY_R  = ROD_D / 2.0 + 2.5          # 5.0 — threading annulus. Trimmed 3.0 -> 2.5 to
+                                    # pay for the fatter rod and keep the whole
+                                    # termination inside the endplate's 25.4
 EXIT_X = ROD_X - BAY_R              # -11.5: the wall the exit hole pierces
 GATE_X = -13.5                      # clamp screw: it crosses the exit passage, so
                                     # wound IN it is a GATE and wound down on the
