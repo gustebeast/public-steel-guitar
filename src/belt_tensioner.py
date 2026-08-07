@@ -51,11 +51,11 @@ BTH = D.BELT_TOOTH_H     # 0.75 tooth height
 BP  = D.BELT_PITCH       # 2.0  pitch
 
 # ── Z levels ─────────────────────────────────────────────────────────────────
-Z_SCR    = -4.5                          # screw centreline
+Z_SCR    = -6 * D.BEAD                   # -4.8 screw centreline
 HEAD_D   = 7.6                           # M4 button head (ISO 7380)
 HEAD_H   = 2.2
-CREST    = Z_SCR + M4.screw_d / 2        # -2.5  Ø4 crest — the bar rides this when locked
-DROP     = 1.5                           # bar drop when the screw is out (> tooth height, clears)
+CREST    = Z_SCR + M4.screw_d / 2        # -2.8  Ø4 crest — the bar rides this when locked
+DROP     = 2 * D.BEAD                    # 1.6 bar drop when the screw is out (> tooth height, clears)
 WELL_FLR = CREST - DROP                  # -4.0  bar rests here (on the well-floor shoulders) unlocked
 BAR_H    = -CREST                        # 2.5   bar body height → ridges land on z0 when locked
 CEIL_UZ  = BT + BTH + 0.15               # 2.30  ceiling underside (0.15 over the belt back)
@@ -77,7 +77,7 @@ N_TEETH  = 6                              # teeth gripped per bar
 LIFT_LEN = N_TEETH * BP + 0.2             # 12.2  bar length (fits N_TEETH ridges)
 GRIP     = LIFT_LEN + 0.4                 # 12.6  well length (bar slides in it)
 GAP      = 4.0                            # travel = 2 teeth (unchanged — we GROW, not eat it)
-_MRG     = 2.0                            # −X (bed-end) margins — that end needs no ramp
+_MRG     = 2 * D.BEAD                     # 1.6 −X (bed-end) margins — that end needs no ramp
 RAMP_RUN = -WELL_FLR                      # 4.0  a 45° self-supporting ramp needs run = well depth
 HEAD_X   = -20.0                          # anchor −X face = screw head bearing face (the print BED)
 GA0      = HEAD_X + _MRG                  # anchor bar well (−X end = bed, no ramp)
@@ -149,7 +149,9 @@ def slider() -> cq.Workplane:
     return body
 
 
-SEAT_DEPTH = 0.7                          # concave screw-seat depth into the −Z edge
+SEAT_DEPTH = D.MIN_WALL                   # 0.8 concave screw-seat depth into the −Z edge
+                                          # (force-closed: the screw lifts until the belt
+                                          # pinches, so the extra 0.1 lands in travel)
 
 
 def _lifter(length: float = LIFT_LEN) -> cq.Workplane:

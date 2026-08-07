@@ -13,16 +13,17 @@ import cadquery as cq
 
 from cadkit.joinery import PrintSpec, joint
 
-NOZZLE = 0.8          # pedal-steel nozzle
-WIDTH  = 6.0          # flat-to-flat room (well above the ~1.93 mm floor)
-LENGTH = 14.0         # slide / engagement depth along X (the real load path)
-CLR    = 0.1          # mortise↔tenon fit clearance (tenon is shrunk by this)
-PLATE  = 4.0          # coupon base-plate / floor thickness
-CEIL   = 3 * 0.8   # 2.4 (was 2.0)          # mortise ceiling over the roof = the printed bridge
-MARGIN = 6.0          # material each side of the joint in Y
+NOZZLE_D = 0.8            # pedal-steel nozzle; the coupon's bead grid
+WIDTH  = 8 * NOZZLE_D     # 6.4 flat-to-flat room (well above the ~1.93 mm floor);
+                          # keep = knee_lever._JW (the real joint width)
+LENGTH = 18 * NOZZLE_D    # 14.4 slide / engagement depth along X (the real load path)
+CLR    = 0.1              # mortise↔tenon fit clearance (tenon is shrunk by this)
+PLATE  = 4.0              # coupon base-plate / floor thickness
+CEIL   = 3 * NOZZLE_D     # 2.4 mortise ceiling over the roof = the printed bridge
+MARGIN = 8 * NOZZLE_D     # 6.4 material each side of the joint in Y
 
 # both halves print -Z→+Z (facing 'up') → slide_joint picks the octagon family
-_UP = PrintSpec(nozzle=NOZZLE, material="PETG-GF", facing="up")
+_UP = PrintSpec(nozzle=NOZZLE_D, material="PETG-GF", facing="up")
 _J = joint(WIDTH, LENGTH, tenon=_UP, mortise=_UP, clearance=CLR)
 _H = _J.height                       # mortise depth above the mating plane
 

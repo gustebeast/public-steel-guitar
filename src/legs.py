@@ -475,7 +475,7 @@ SEC_H       = 36.0    # profile HEIGHT (the cadkit room bound past the mating
                       # minimum 22.24; the extra 13.76 grows the two verticals
                       # to 7.68 each (deeper lip engagement + flank bearing)
 SEC_TEN_L   = 28.0    # spigot engagement along Z (= the old SEG_PLUG_L)
-SEC_MOR_L   = 28.4    # socket depth: spigot 28 + a 0.4 tip gap (user: near-flush
+SEC_MOR_L   = SEC_TEN_L + 0.4   # socket depth: spigot 28 + a 0.4 tip gap (user: near-flush
                       # tips — the tolerance slack belongs HERE, never at the big
                       # shoulder faces, which are the ground-reaction hard stop)
 # FLUSH AT THE BED FACE (user round 2): the joint is NOT hidden inside the leg.
@@ -485,7 +485,7 @@ SEC_MOR_L   = 28.4    # socket depth: spigot 28 + a 0.4 tip gap (user: near-flus
 # — the open air gap the next tenon slides into. Capture survives: the face
 # slit is the 14-wide stem, the 28 waist can't pass it. Profile spans local
 # y +22 (base) .. -0.24 (point); the outer (-Y) wall keeps ~21 of material.
-SEC_BORE_Y  = 13.0    # wired: cable-bore centre (in the fat flare band; clears
+SEC_BORE_Y  = 16 * D.BEAD   # 12.8 wired: cable-bore centre (in the fat flare band; clears
                       # the M4 at x+7 and stays inside the profile walls)
 SEC_CABLE_D = 7.0     # wired leg: axial cable bore through the spigot + socket roof
 # ROUND 3 (user): EVERY leg joint is this flush octagon now — sections, the
@@ -524,8 +524,8 @@ SLV_FACE_Y = SQ_W / 2 - COVER_T        # 18.0: the sleeve's thinned +Y face
 SH_Y       = SLV_FACE_Y - SH_CLR       # 17.8: slider stem plane (0.2 running
                                        # clearance under the cover's inner face)
 SH_H       = SH_Y + 14.0               # 31.8: slider octagon height (roof -14)
-CVR_RAIL_X = 17.0     # rail centres ±x: slot spans 14.4..19.6 dilated — 7.2
-                      # web to the groove's lip band, 2.4 outer ±X skin
+CVR_RAIL_X = 21 * D.BEAD   # 16.8: rail centres ±x — the outer ±X skin GROWS to
+                      # 2.6, the web to the groove's lip band stays ~7
 CVR_RAIL_W = 5.0      # rail octagon flat-to-flat (cadkit h_min 4.95 at n0.8)
 from cadkit.joinery import PrintSpec as _PrintSpec, joint as _joint
 # cadkit collapsed the per-family entrypoints into ONE `joint()` (you describe the
@@ -739,7 +739,7 @@ def leg_seg_body_ch() -> cq.Workplane:
 # and mortise fix X, Y and rotation and carry the load, but nothing holds
 # the joint together along Z, so a leg pulls out as easily as it goes in.
 # Whatever replaces it gets a clean, fully passive socket to work against.
-HEAD_BODY_L = 42.0             # head body (30-deep plug socket + plug seat)
+HEAD_BODY_L = 53 * D.BEAD      # 42.4 head body (30-deep plug socket + plug seat)
 STUB_H = 48.0                  # stub protrusion below the body bottom =
                                # the disassembled-instrument z cost (the
                                # old 52-sq socket hung 50)

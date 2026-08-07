@@ -73,7 +73,9 @@ WALL_THICKNESS  = 13 * BEAD  # 10.4 structural wall: I-beam rail thickness, the 
 # without a cycle. Sized by the LID: the bar now prints -Y -> +Y, so the sliding
 # dovetail moved from the +Z face to the +Y face, and that face spans Z. The
 # dovetail's foot is the widest thing in it.
-PEDAL_LID_FOOT_W = 23.8     # dovetail foot (cavity, not material — off-grid by design)
+PEDAL_LID_FOOT_W = 30 * BEAD   # 24.0 dovetail foot (both asserts hold: bar skin
+                               # (27.9-24)/2 = 1.95 >= 1.6, and the bar still hosts
+                               # foot + 2 skins = 27.2 <= 27.9)
 # WHAT SETS THE HEIGHT NOW: the user's playing datum, the height of the pedal AXLE
 # centre above the floor (the TPU feet's underside) — 0.8*60, on the nozzle grid.
 # The bar carries the pedal housings, so the axle rides FOOT_H + BAR_H + the
