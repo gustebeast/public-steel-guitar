@@ -157,11 +157,15 @@ CadQuery on Python 3.12 generates a STEP file per printed part plus a colored
 `assembly.step` (~233 placed components including purchased-part dummies).
 
 ```bash
-py -3.12 -m src.build              # all parts + assembly.step
-py -3.12 -m src.build --part NAME  # one part (fast iteration)
+py -3.12 -m src.build              # all parts + assembly.step (the guaranteed full build)
+py -3.12 -m src.build --part NAME  # one part, but still pays the ~26s module-level import
 py -3.12 -m src.build --list       # list part names
 py -3.12 -m src.build --geom       # belt-geometry report
+py -3.12 -m tools.fast_build NAME  # ITERATION: rebuild one part in <1s-9s — imports ONLY that
+                                   #   part's module, not all of src.build. Builds FRESH (no
+                                   #   stale cache); handles 59/71 parts, falls back for the rest.
 py -3.12 -m tools.check_overlaps   # design gate: any unintended interpenetration
+py -3.12 -m tools.build_profile    # per-part/module build-cost + face-count regression gate
 py -3.12 -m tools.export_glb       # simplified colored GLB for the web viewer (docs/)
 ```
 
@@ -188,7 +192,7 @@ a keyboard rig. 10 strings at 9.5 mm pitch at the bridge.
 | Path | What |
 |---|---|
 | `src/` | CadQuery source — one module per printed part + helpers |
-| `tools/` | the overlap-check design gate + the web-viewer GLB exporter |
+| `tools/` | overlap gate + `fast_build` (fast single-part iteration) + `build_profile` (build-cost/regression gate) + web-viewer GLB exporter |
 | `docs/` | GitHub Pages 3D viewer (`index.html` + `assembly.glb`) |
 | `BOM.md` | purchased parts with sourcing links and prices |
 | `electromechanical-pedal-steel-spec.md` | the full design specification and rationale |
