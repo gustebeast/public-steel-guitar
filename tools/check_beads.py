@@ -325,6 +325,7 @@ _ex("layout",
     STUB_RIDGE_EP="end-wall tongue at the endplate end wall's centreline (tip - 5)",
     TRRS_DX="TRRS blind-mate axis in the octagon flare band (clearances quoted in situ)",
     TRRS_DY="TRRS axes ride the profile's deep waist (= groove inscribed-circle centre)",
+    LATCH_FOOT="FEET index (which foot carries the latch; None = no latch) -- not a length",
     )
 
 # The instrument, not the printer.
