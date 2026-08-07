@@ -322,6 +322,19 @@ own constants with `on_grid()` — see the pedal-steel's `tools/check_beads.py`:
 an exemption table keyed by name, every entry carrying its reason, non-zero exit
 for off-grid values that have none.
 
+**The grid is a property of the PART, not the project.** A project sets a default
+nozzle because most of it is structure, but a part whose detail is finer than a
+bead can resolve gets a finer nozzle *and a finer grid*. The pedal-steel's belt
+splice clamp is the case: GT2 ridges at a 2.0 mm tooth pitch, 0.75 mm tall — a
+0.8 bead cannot resolve that (one bead per tooth *is* the tooth, so the ridges
+smear and the mesh that stops the splice slipping stops existing). It declares
+its own `NOZZLE_D = 0.2` and is graded against 0.2.
+
+Mating across two grids is safe in **one direction**: a coarse length is always a
+whole number of fine beads (0.8 = two 0.4s), but not the reverse. So a face
+**shared** between a 0.8 part and a 0.4 part must sit on the **coarser** grid —
+size shared features from the coarse part and let the fine part inherit them.
+
 **Round the way the feature fails.** Load-bearing or sealing → snap **up** (cost:
 a little material; risk avoided: a crack). Clearance-side pocket or cosmetic
 relief → down or nearest. And when a snap would move a **mating** face, move the

@@ -26,12 +26,27 @@ LAYOUT (under-string, vertical-screw):
 # Print process — the min-material floor (cadkit.printing owns the rule)
 # ─────────────────────────────────────────────────────────────────────────
 from cadkit.printing import min_wall
-NOZZLE_D        = 0.8       # this build runs a 0.8 mm nozzle
+NOZZLE_D        = 0.8       # the PROJECT DEFAULT nozzle. Most of this instrument is
+                            # structure -- rails, legs, housings -- and prints 0.8.
 BEAD            = NOZZLE_D  # THE UNIT. Every printed length is N * BEAD, or another
                             # feature +- N * BEAD (cadkit.printing documents the rule and
                             # the three exemptions; tools/check_beads.py enforces it).
                             # Write lengths as counts -- `13 * BEAD`, not `10.4` -- so the
                             # bead count is what you read and what you edit.
+# PER-PART OVERRIDE (user): the nozzle is a property of the PART, not the project.
+# A part with fine detail -- the belt clamp's tooth pitch is 2.0 mm, which 0.8 cannot
+# resolve -- is printed with a finer nozzle and gets a finer grid. Such a module
+# declares its own at the top and derives its own bead:
+#
+#     NOZZLE_D = 0.4                  # this part prints 0.4 (GT2 teeth)
+#     B        = NOZZLE_D
+#
+# tools/check_beads reads that per module and grades the part against ITS grid.
+# MATING is safe in one direction only, and it is worth knowing which: a coarse
+# length is always valid on a finer grid (0.8 is exactly two 0.4 beads), but not
+# the reverse. So a face SHARED between a 0.8 part and a 0.4 part must sit on the
+# COARSER grid -- size shared features from the coarse part and let the fine part
+# inherit them.
 MIN_WALL        = min_wall(NOZZLE_D)          # 0.8 — one-bead HARD floor (web/ceiling/rib).
                                               # A lone bead slices mushy, so PREFER MIN_WALL_2P;
                                               # drop to MIN_WALL only in a genuinely tight room.
