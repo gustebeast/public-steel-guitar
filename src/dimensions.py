@@ -61,7 +61,7 @@ PEDAL_LID_FOOT_W = 23.8     # dovetail foot (cavity, not material — off-grid b
 # achieved height against this datum, which is what keeps the chain honest if any
 # of the three terms moves.
 PEDAL_AXLE_H     = 0.8 * 60   # 48.0 — axle centre above the floor (user)
-PEDAL_BAR_H      = 29.0     # = PEDAL_AXLE_H - legs.FOOT_H(12) - foot_pedal.HOUS_X1(7.0);
+PEDAL_BAR_H      = 27.9     # = PEDAL_AXLE_H - legs.FOOT_H(12) - foot_pedal.HOUS_X1(8.1);
                             # spelled out rather than imported (legs/foot_pedal both
                             # read this module — the import only goes one way).
                             # Must still HOST the lid, which is the constraint that
@@ -113,7 +113,13 @@ SCREW_LEN       = 61.0      # +8 vs the minimum: drops the whole drive stack (pu
                             # from here) 8 mm so the raised odd pulleys clear the carriage's
                             # full down-travel + a bottom stop, restoring the travel margin
 SCREW_BOT_Z     = SCREW_TOP_Z - SCREW_LEN          # -59
-CARRIAGE_NOM_Z  = SCREW_TOP_Z - 8.0                # default = TOP of travel; the anchor post
+# DROPPED 5 mm (was SCREW_TOP_Z - 8.0) to make room at the CHANGER (user asked
+# whether the mechanism could move down, and it can): the bearing OD is capped by
+# the gap between the string plane and the carriage's ball-cage top, and the cage
+# is what had to give. There was 8.00 mm of slack between the carriage at full-down
+# travel and the screw-pulley top; 5 of it buys a Ø13 race and leaves 3.0 spare.
+# (Ø16 would have taken all 8 and left the carriage kissing the pulley.)
+CARRIAGE_NOM_Z  = SCREW_TOP_Z - 13.0               # default = TOP of travel; the anchor post
                                                    # clears the bridge bearings by 1 mm (the
                                                    # endplate's upper guide ledge hard-stops
                                                    # the carriage foot here, protecting them)
@@ -257,9 +263,23 @@ def motor_pos(i: int):
 # bearing keeps the bend near-frictionless so the two sides' tensions equalize
 # (a fixed surface would mismatch them ~37% at 90° and cause tuning hysteresis).
 # ─────────────────────────────────────────────────────────────────────────
-BRIDGE_BEARING_OD = 8.0     # MR builds (e.g. 693 Ø3×8); fits the 9.5 mm pitch
-BRIDGE_BEARING_W  = 4.0     # along the axle (Y); string rides a groove in the OD
-BRIDGE_AXLE_D     = 3.0     # shared axle (axis Y)
+# 695ZZ (Ø5×13×4) — ONE bearing for the changer AND the levers (user), and its Ø5
+# bore is what makes the bridge axle, both lever axles and the nut wrap rod ONE
+# stock shaft.
+#
+# THE 693ZZ IT REPLACES WAS OVER ITS RATING. The string turns 90° here — level in
+# from the nut, straight down to the carriage beneath — so each bearing carries
+# sqrt(2)×147 = 208 N permanently, against a 693ZZ static rating of 177 N. C0 is the
+# BRINELLING threshold: the races dent and the bearing stops doing its only job,
+# letting the two sides of the string equalise. 695ZZ is 346 N -> 1.66×.
+#
+# WHY NOT BIGGER: OD is capped by the VERTICAL gap between STRING_Z and the
+# carriage's ball cage, because the string rides the OD so the axle is pinned at
+# STRING_Z - OD/2. Ø16 needs the whole 8 mm of slack under the carriage; Ø13 needs
+# 5 and leaves 3. Y is not the constraint (4 wide in a 9.5 lane) and neither is X.
+BRIDGE_BEARING_OD = 13.0    # 695ZZ; string rides a groove in the OD
+BRIDGE_BEARING_W  = 4.0     # along the axle (Y) — unchanged, so the comb fingers stay 5.5
+BRIDGE_AXLE_D     = 5.0     # shared axle (axis Y) — the ONE Ø5 shaft
 BRIDGE_BEARING_Z  = STRING_Z - BRIDGE_BEARING_OD / 2     # axle/bearing centre (12)
 # The string rises vertically from the anchor (at BRIDGE_X) tangent to the
 # bearing's +X extent, wraps 90° over the top, then leaves −X along the top. So

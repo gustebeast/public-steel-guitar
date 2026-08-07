@@ -33,7 +33,12 @@ import cadquery as cq
 from . import dimensions as D
 # Everything chassis reaches BACK for lives above the chassis import -- see the note
 # below. AFE board footprint (the analog front end on the bridge rib):
-AFE_X0, AFE_X1 = -22.0, -2.0
+# DERIVED from the bridge axle, not hardcoded. The endplate's inboard wall follows
+# BRIDGE_AXLE_X (= BRIDGE_X - OD/2, because the string rides the OD and has to leave
+# at x = 0), so when the bearing grew Ø8 -> Ø13 the axle stepped 2.5 -X and the wall
+# came with it — straight through this board's +X edge, which sat at a constant.
+AFE_X1 = D.BRIDGE_AXLE_X + 2.0         # tuck 2.0 clear of the axle line
+AFE_X0 = AFE_X1 - 20.0                 # 20 long
 AFE_Y0, AFE_Y1 = -108.0, -78.0         # inboard of the pickup groove + leg barrel
 AFE_Z = -59.0                          # board bottom (on the bridge-rib boss)
 AFE_PED_TOP = -61.0                    # boss top (posts rise to the board)
