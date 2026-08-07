@@ -35,16 +35,19 @@ from cadkit.fasteners import M2, cut_anchor
 from cadkit.joinery import PrintSpec, joint
 
 T        = D.WALL_THICKNESS            # rail thickness (solid; slicer infills)
-X_BRIDGE = 6.0                         # +X (bridge) end — the rails end here; the bridge
-                                       #   endplate caps them (a separate flat-printed part)
+X_BRIDGE = D.BRIDGE_BASE_X1 - 3 * D.BEAD   # 6.1: +X (bridge) end — the rails end here; the
+                                       #   bridge endplate caps them (a separate flat-printed
+                                       #   part). Anchored to the endplate's hardware-chained
+                                       #   +X tip so the CAP it bounds is an on-grid 2.4 thick
 X_NUT    = -(D.MOUNTING_SPAN + 24.0)   # −X end, extended to carry the nut block;
                                        # rail ends FLUSH with the end bulkhead's
                                        # outer face (NUT_BLOCK_X − 9 − 15)
-Z_TOP    = D.STRING_Z - 6.0            # body deck, 6 mm under the strings (normal action)
+Z_TOP    = D.STRING_Z - 8 * D.BEAD     # 9.6: rail top, 6.4 under the strings (normal
+                                       # action; snapped AWAY from the strings)
 Z_BOT    = MB.BED_Z                    # print bed (shared with the motor walls)
 # Rail CENTRES, defined so the INNER faces stay fixed as the wall T changes (the wall
 # grows outward): +Y inner clears the bearing arm, -Y inner clears the motor PCBs.
-Y_HI     = D.BRIDGE_AXLE_Y + 3.0 + T / 2          # +Y rail (inner face = axle_Y + 3)
+Y_HI     = D.BRIDGE_AXLE_Y + 4 * D.BEAD + T / 2   # +Y rail (inner face = axle_Y + 3.2)
 Y_LO     = (D.string_y(D.N_STRINGS - 1) - MOTOR_PULLEY_STANDOFF - D.MOTOR_BODY_LEN
             - D.MOTOR_PCB_LEN - 2.0) - T / 2      # −Y rail off the −Y-most string (last index)
 _XC, _ZC = (X_BRIDGE + X_NUT) / 2, (Z_TOP + Z_BOT) / 2
@@ -65,7 +68,7 @@ TP_GZ0, TP_GZ1 = 0.0, D.DECK_TOP_Z     # deck plate z-plane: bottom rests on the
 # it also ties the rails in Y. The tongue runs along X -> plates still slide out -X.
 # top_plate.py builds the matching tongue; the rail top is lowered to z0 in the deck
 # X-span so the plate sits flush on top.
-TP_TG_DEPTH    = 6.0                    # the reserved groove ZONE below the deck. The
+TP_TG_DEPTH    = 8 * D.BEAD             # 6.4: the reserved groove ZONE below the deck. The
                                         # joint itself uses less (see TP_JOINT.height);
                                         # other geometry keys off this envelope, so it
                                         # stays the published number.
@@ -123,7 +126,7 @@ TP_EP_GX       = D.BRIDGE_BASE_X0 - EP_TOP_CLR   # rail +X end / deck +X face (-
 # -X END: the keyhead takes over the whole -X end as one solid block (the -X cross-tie,
 # held by the rail-end dovetails, no screw). KH_X is the keyhead INBOARD FACE; the rail
 # -X end (KH_RAIL_X) stops EP_TOP_CLR +X of it.
-KH_X           = -611.0                          # keyhead inboard face (-611)
+KH_X           = -764 * D.BEAD                   # keyhead inboard face (-611.2)
 KH_RAIL_X      = KH_X + EP_TOP_CLR               # rail -X end / keyhead dovetail face (-610.6)
 # Endplate JOINERY (both ends, shared — see _end_dt / _kh_tongue / _br_tongue): each
 # endplate is held by Y-flaring vertical dovetails that follow the L-shaped body<->
@@ -141,8 +144,13 @@ KH_DT_WR, KH_DT_WT = 2.0, 3.0          # narrow / wide half-widths (Y). Sized so
                                        # 5 - WT - KH_DT_CLR = 1.7 mm. 1:8 flank flare (WT-WR=1.0
                                        # over DEPTH), so the wall comfortably backs the undercut.
 KH_DT_DEPTH    = 8.0                    # dovetail reach into the endplate (X)
-KH_DT_Z0       = -23.15                 # foot line = leg-tenon top (-33.15) + XBAR; also the
-                                       # LOWER/UPPER dovetail split (the L-corner / drop stop)
+KH_DT_Z0       = -29 * D.BEAD           # -23.2 foot line; also the LOWER/UPPER dovetail
+                                       # split (the L-corner / drop stop). Every mate
+                                       # (keyhead FOOT_Z, leg shells, both dovetails)
+                                       # derives from here. (The old -23.15 was "leg-tenon
+                                       # top -33.15 + XBAR" -- arithmetic that had ALREADY
+                                       # gone stale when the bed and XBAR moved onto the
+                                       # grid, so the snap replaces a dead formula.)
 KH_DT_CLR      = 0.3                    # socket clearance (Y fit)
 KH_DT_SEAT     = 0.1                    # lower-dovetail seating clearance: the mortise face stays
                                        # ON the foot line (KH_DT_Z0 = -23.15) and the TENON is
@@ -202,7 +210,7 @@ _SEG_JW   = 6.4                        # width across Y — leaves (T − JW)/2 
 _SEG_JD   = 8.0                        # room into the +X segment (the T uses 5.63 of it)
 _SEG_JZ1  = TP_GZ0 - TP_TG_DEPTH       # tenon top = the deck-groove FLOOR (−6), so the
                                        # seam joint never reaches into the deck groove
-_SEG_ROOT = 2.0                        # volumetric fusion depth back into the −X segment
+_SEG_ROOT = 3 * D.BEAD                 # 2.4 volumetric fusion depth back into the −X segment
 _SEG_J    = joint(width=_SEG_JW, length=_SEG_JZ1 - Z_BOT, depth=_SEG_JD,
                   tenon=_UP, mortise=_UP, install="+z")   # signed: the +X segment is
                   # lowered on, so RELATIVE to it the tenon travels +Z to seat
