@@ -287,6 +287,31 @@ def intended(na, nb) -> bool:
 DEFAULT_SKIP = {"belt", "belt_clamp"}
 
 
+def gate(comps, *, full=False, only=(), exclude=(), jobs=None, show_all=False) -> int:
+    """Scan ALREADY-BUILT components and return the unintended-overlap count.
+
+    ``comps`` is ``[(name, cq.Shape), ...]`` — i.e. what ``collect_components()``
+    yields, already ``.val()``-ed. Split out of ``main()`` so the BUILD can gate
+    the model it just built instead of paying for a second full build: the
+    pairwise scan is ~13 s, the build behind it is ~5.5 min.
+    """
+    global WIRE_OK
+    if WIRE_OK is None:
+        import src.wiring                          # safe: src.build is imported by now
+        WIRE_OK = src.wiring.WIRE_OK
+
+    only = set(only)
+    if only:
+        comps = [(n, s) for n, s in comps if base(n) in only]
+        print(f"checking ONLY base names: {sorted(only)}")
+    else:
+        skip = (set() if full else set(DEFAULT_SKIP)) | set(exclude)
+        if skip:
+            comps = [(n, s) for n, s in comps if base(n) not in skip]
+            print(f"skipping base names (pass --full to include): {sorted(skip)}")
+    return run(comps, intended, jobs=jobs, show_all=show_all)
+
+
 def main():
     ap = argparse.ArgumentParser(description="Pedal-steel assembly overlap checker.")
     ap.add_argument("--all", action="store_true", help="also list intended contacts")
@@ -301,25 +326,15 @@ def main():
                     help="worker processes (default: cores/2)")
     args = ap.parse_args()
 
-    global WIRE_OK
     from src.build import collect_components       # heavy: deferred so workers skip it
-    import src.wiring                              # safe now (src.build imported first)
-    WIRE_OK = src.wiring.WIRE_OK
 
     comps = [(n, wp.val()) for n, wp in collect_components()]
-    only = {s for s in args.only.split(",") if s}
-    if only:
-        comps = [(n, s) for n, s in comps if base(n) in only]
-        print(f"checking ONLY base names: {sorted(only)}")
-    else:
-        skip = set() if args.full else set(DEFAULT_SKIP)
-        skip |= {s for s in args.exclude.split(",") if s}
-        if skip:
-            comps = [(n, s) for n, s in comps if base(n) not in skip]
-            print(f"skipping base names (pass --full to include): {sorted(skip)}")
-
-    jobs = 1 if args.serial else args.jobs
-    sys.exit(run(comps, intended, jobs=jobs, show_all=args.all))
+    sys.exit(gate(comps,
+                  full=args.full,
+                  only=[s for s in args.only.split(",") if s],
+                  exclude=[s for s in args.exclude.split(",") if s],
+                  jobs=1 if args.serial else args.jobs,
+                  show_all=args.all))
 
 
 if __name__ == "__main__":
