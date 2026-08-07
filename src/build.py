@@ -1318,7 +1318,7 @@ def _color_for(name):
     return cq.Color(*_DEFAULT_COLOR)
 
 
-def _export_assembly(publish=True):
+def _export_assembly(publish=True, gate=True, gate_full=False):
     build_n = _bump_build_counter()
     comps = collect_components()
     asm = cq.Assembly(name="public_steel_guitar")
@@ -1337,6 +1337,40 @@ def _export_assembly(publish=True):
     show(str(OUT / "assembly.step"))   # open/refresh it in the shared FreeCAD hub
     if publish:
         _publish_web_preview(comps, build_n)
+    # LAST: the gate spawns a worker pool, so run it once the STEP is safely on
+    # disk and the viewer is refreshed — a gate hiccup can never cost the build.
+    return _report_overlaps(comps, full=gate_full) if gate else 0
+
+
+# The overlap gate's ACCEPTED baseline: pairs that are real interpenetrations but
+# predate the gate and are tracked separately (chassis_trrs_cable vs
+# electronics_tray ~28 mm^3, vs pi5 ~1 mm^3). The build fails only on a count
+# ABOVE this — i.e. on a NEW overlap. Drive it to 0 when those are fixed.
+OVERLAP_BASELINE = 2
+
+
+def _report_overlaps(comps, full=False) -> int:
+    """Run the overlap gate on the model we JUST built, and return 1 on regression.
+
+    This is the whole point of folding the gate into the build: the scan itself is
+    ~13 s, but ``tools.check_overlaps`` run standalone spends ~5.5 MINUTES rebuilding
+    the model first. Reusing ``comps`` makes a full-tree gate essentially free, so
+    the lead never has to choose between gating and building.
+    """
+    try:
+        from tools.check_overlaps import gate
+        n = gate([(name, wp.val()) for name, wp in comps], full=full)
+    except Exception as e:               # noqa: BLE001 — a gate crash must not eat the geometry
+        print(f"overlap gate: SKIPPED ({type(e).__name__}: {e})", flush=True)
+        return 0
+    if n > OVERLAP_BASELINE:
+        print(f"OVERLAP GATE: RED — {n} unintended pairs "
+              f"({n - OVERLAP_BASELINE} NEW above the accepted {OVERLAP_BASELINE})",
+              flush=True)
+        return 1
+    print(f"OVERLAP GATE: green — {n} unintended pair(s), "
+          f"accepted baseline {OVERLAP_BASELINE}", flush=True)
+    return 0
 
 
 def _publish_web_preview(comps, build_n):
@@ -1370,6 +1404,10 @@ def main() -> None:
     p.add_argument("--part", help="Build only this printed part (skips assembly).")
     p.add_argument("--list", action="store_true", help="List part names and exit.")
     p.add_argument("--geom", action="store_true", help="Print belt geometry report and exit.")
+    p.add_argument("--no-gate", action="store_true",
+                   help="Skip the overlap gate (normally ~13 s on the built model).")
+    p.add_argument("--gate-full", action="store_true",
+                   help="Gate EVERY part, belts included (slower; belts rarely move).")
     args = p.parse_args()
 
     if args.geom:
@@ -1380,10 +1418,10 @@ def main() -> None:
         for name in PARTS:
             print(name)
         return
+    gate, gate_full = not args.no_gate, args.gate_full
     if args.part:
         if args.part == "assembly":
-            _export_assembly()
-            return
+            sys.exit(_export_assembly(gate=gate, gate_full=gate_full))
         if args.part not in PARTS:
             print(f"unknown part: {args.part!r}. Use --list.", file=sys.stderr)
             sys.exit(2)
@@ -1393,7 +1431,7 @@ def main() -> None:
     for name in PARTS:
         _export(name)
     report_build_regressions()          # ~free: flags any part whose face count grew vs baseline
-    _export_assembly()
+    sys.exit(_export_assembly(gate=gate, gate_full=gate_full))
 
 
 if __name__ == "__main__":

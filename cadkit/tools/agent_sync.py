@@ -278,7 +278,15 @@ def cmd_inbox():
 
 
 def cmd_take(name: str):
-    branch = f"agent/{name}"
+    # accept both `take branner` and `take agent/branner` -- the inbox banner
+    # prints the FULL branch name, so pasting it used to build 'agent/agent/branner'
+    # and (with check=False below) fail SILENTLY, printing "merged" for a no-op.
+    branch = name if name.startswith("agent/") else f"agent/{name}"
+    name = branch[len("agent/"):]
+    if not git("rev-parse", "--verify", "--quiet", branch, check=False).strip():
+        print(f"no such branch: {branch}. Pending requests:")
+        cmd_inbox()
+        raise SystemExit(2)
     if cur_branch() != "main":
         print(f"WARNING: you are on '{cur_branch()}', not main. Merges normally land on main.")
     git("merge", "--no-ff", branch, "-m", f"Merge {branch}", check=False)
@@ -289,6 +297,13 @@ def cmd_take(name: str):
               "conflicted:")
         print("  " + "\n  ".join(sorted(set(l.split()[-1] for l in git("ls-files", "-u").splitlines()))))
         return
+    # PROVE it landed before clearing the request: `git merge` above runs with
+    # check=False (a conflict is a normal, handled outcome), so any OTHER failure
+    # would otherwise be reported as a successful merge.
+    if not _is_ancestor(branch, "HEAD"):
+        print(f"MERGE DID NOT LAND: {branch} is still not an ancestor of HEAD. "
+              f"Request kept. Investigate with:\n  git log --oneline -5 {branch}")
+        raise SystemExit(1)
     (sync_dir() / "inbox" / f"{slug(branch)}.json").unlink(missing_ok=True)
     print(f"merged {branch} into {cur_branch()}. Now build:\n"
           f"  py -3.12 cadkit/tools/agent_sync.py build")
