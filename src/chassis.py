@@ -537,8 +537,14 @@ EP_TIP_PX = D.BRIDGE_BASE_X1              # bridge +X outer tip (8.5) -- the ACT
                                           # so the leg/shell/wall track it (10 mm wall preserved)
 
 
-LEG_W = 44.0                  # = legs.SQ_W (legs.py owns the part; the chassis
-                              # owns the placement)
+# legs.py owns the leg's SECTION; the chassis owns its PLACEMENT. That split is
+# fine, but this used to be a hand-copied 44.0 -- and when SQ_W moved 44.0 -> 44.8
+# (odd -> even bead count) the copy went stale silently: `station` below puts the
+# leg LEG_W/2 inboard of the endplate tip to make its outer face FLUSH, so a
+# too-small LEG_W leaves the real leg standing 0.4 proud of the tip. The overlap
+# gate cannot catch it -- leg_body_stub<->chassis is an allowlisted designed
+# contact, so it is blind to that pair forever. Import the real value instead.
+from .legs import SQ_W as LEG_W
 
 
 def _leg_geom(tip, sign):
