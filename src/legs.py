@@ -411,7 +411,7 @@ def leg_shaft_trrs() -> cq.Workplane:
     same straight press that seats the joint. Its factory cable runs UP
     the column to the mini junction PCB. The side dock / carrier PCB /
     corner channel of the sideways design are GONE."""
-    body = leg_shaft_short(latch=True)   # the TRRS leg carries the bar-joint latch
+    body = leg_shaft_short()             # no bar-joint latch (user)
     # vertical jack way, Ø9.7 CLEAN THROUGH to the tenon top: the leg
     # EXTENSION cable's molded jack barrel (10-03404-class envelope,
     # verify the SKU) loads DOWN from the shaft's open top onto the
@@ -1049,12 +1049,15 @@ def leg_head(latch: bool = False) -> cq.Workplane:
     b = b.union(_section_tenon(39.0).translate((0, 0, -1.0)))
     # LATCH (male half): the slider tunnel — which also takes the octagon apex
     # away across the band, opening the channel the hook travels in — plus the
-    # cover dovetail -- cut to THIS face (44/2 = 22.0), not sunk back to the
-    # tower's 17.8. The head prints lying on this face, so the old finger well
-    # put a 422 mm^2 flat ceiling at the build plate; the recess now lives in
-    # the head's own (thicker) cover instead. See latch.cover.
+    # cover dovetail, cut to THIS face -- latch.FACE_Y IS SQ_W/2 now that the
+    # mechanism is datumed to the head instead of to the (gone) bar joint. No
+    # finger well any more: sinking this face to match the tower used to put a
+    # 422 mm^2 flat ceiling right on the print bed.
     if latch:
-        b = b.cut(LT.male_cutter(face_y=SQ_W / 2))
+        assert abs(LT.FACE_Y - SQ_W / 2) < 1e-9, (
+            "latch.FACE_Y %.2f is no longer the head face %.2f -- the cover would "
+            "not sit flush and the bed face would step" % (LT.FACE_Y, SQ_W / 2))
+        b = b.cut(LT.male_cutter())
         b = b.union(LT.male_post())      # coil guide post (union AFTER the tunnel cut)
     # captive CA-354S seat + cable ways on the TRRS axis (+5, +13 — moved
     # into the fat flare band): tip lip, handle way, Ø8 down-way to the core
