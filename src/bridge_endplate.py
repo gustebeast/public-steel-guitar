@@ -463,15 +463,21 @@ def _build() -> cq.Workplane:
     # the tie bar, so the axle support, dovetails and screw rail are untouched.
     body = body.cut(box_at((X1 - X0) + 2.0, 2 * WIN_HW, WIN_Z1 - WIN_Z0,
                            x=(X0 + X1) / 2, y=0, z=(WIN_Z1 + WIN_Z0) / 2))
-    # BEARING + STRING opening: ONE cut per string owns the whole opening (user). A plain
-    # CONSTANT-WIDTH SLOT — a flat wall at BOTH ends (−X floor, +X face) and a constant ±BR_HW in
-    # Y — so the Y-thickness cannot vary along X and the +X end reads FLAT, not the pointed peak the
-    # user rejected. (The earlier "house" tapered the +X end to a knife point; that peak was only a
-    # print reflex and is unnecessary here — the slot is OPEN at the top (Z 16→17, above the shelf),
-    # so the +X end wall is a single-layer 4.8-wide bridge when the part builds along +X, which FDM
-    # spans cleanly.) The slot reaches −X to SLOT_X0, past the bearing top, so it TRIMS the comb
-    # finger/brace flare back to the wall line — the CUT, not the comb, sets the opening on BOTH Y
-    # faces (that flare was the −X "angled shoulder"/uneven-thickness the user flagged). Both
+    # BEARING + STRING opening: ONE cut per string owns the whole opening (user). Constant ±BR_HW
+    # width in Y over the whole rectangle, flat +X face — but a HOUSE plan (user), not a plain
+    # prism: the −X end closes at 45° in plan to a ridge on the string line, because that end IS
+    # the print ceiling. In the +X → −X build the +X end wall faces the bed (a floor — nothing to
+    # fix, and the knife point the earlier "house" put THERE was rejected as a print reflex), but
+    # the −X wall is backed by the brace/plinth from z 6.5 to 14.01, so a flat wall there is a
+    # 4.8 × 7.5 downward-facing ceiling per slot — measured on the finished solid: ten 36 mm²
+    # faces with n = (+1,0,0), the largest overhangs on the part. The gable is the comb
+    # back-brace doctrine (45° in plan = self-supporting, see BRACE) applied to the cut: roof
+    # planes at exactly 45°, ridge depth = BR_HW, peak buried 0.5 −X of the race, invisible in
+    # use. The apex leaves 0.6–0.7 to the plinth/brace −X face, but that web is LAYER-direction
+    # thickness (3–4 solid top layers over an already-closed void), not a bead-width wall — the
+    # in-plan walls stay ≥ the slot's own. The slot still reaches −X past the bearing top and
+    # TRIMS the comb finger/brace flare back to the wall line — the CUT, not the comb, sets the
+    # opening on BOTH Y faces (that flare was the −X "angled shoulder" the user flagged). Both
     # bearing↔ and string↔endplate are gate-BLIND (allowlisted) → verified by hand (xsec/ywidth).
     # SIZED FROM THE BEARING AND THE FATTEST STRING (user), not from constants. The
     # slot has to contain the bearing's whole CIRCLE, because the bearing sits in this
@@ -493,8 +499,11 @@ def _build() -> cq.Workplane:
                    _br_x1 + BR_CLR)                       # +X face: dead-string rise OR the race
     SLOT_Z0  = min(Z6 - 1.0, _br_z0 - BR_CLR)             # floor: the shelf OR the race's underside
     SLOT_Z1  = BEAR_TOP + 1.0                             # open above the string plane
-    _slot = box_at(SLOT_X1 - SLOT_X0, 2 * BR_HW, SLOT_Z1 - SLOT_Z0,
-                   x=(SLOT_X0 + SLOT_X1) / 2, y=0.0, z=(SLOT_Z0 + SLOT_Z1) / 2)
+    # the house pentagon in plan: |_| spanning SLOT_X0..X1, /\ ridge at SLOT_X0 − BR_HW on y 0
+    _slot = (cq.Workplane("XY", origin=(0.0, 0.0, SLOT_Z0))
+             .polyline([(SLOT_X1, -BR_HW), (SLOT_X1, BR_HW), (SLOT_X0, BR_HW),
+                        (SLOT_X0 - BR_HW, 0.0), (SLOT_X0, -BR_HW)])
+             .close().extrude(SLOT_Z1 - SLOT_Z0))
     for i in range(D.N_STRINGS):
         body = body.cut(_slot.translate((0.0, D.string_y(i), 0.0)))
     # FOOT POCKET: the chassis KEEPS a ~10 mm rail shell hugging each +X leg socket
