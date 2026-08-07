@@ -445,7 +445,14 @@ def leg_shaft_trrs() -> cq.Workplane:
 # across joints BECAUSE of the deterministic clocking: the cable lays in
 # AFTER column assembly. Top joint = the LEG HEAD (separate part, passive
 # octagon spigot into the stub's socket) — see leg_head().
-SQ_W = 44.0                    # outer square width (uniform, = old bell OD)
+SQ_W = 56 * B                  # 44.8 outer square width (uniform). 56 beads, and the
+                               # EVENNESS is the point (user): the leg's half-width is a
+                               # datum for half the joinery -- SLV_FACE_Y, SH_Y, BLK_W and
+                               # the latch's FACE_Y are all SQ_W/2 minus material. At the
+                               # old 44.0 = 55 beads, an ODD count, that half was 22.0 and
+                               # could never land on the grid, so the whole chain inherited
+                               # the miss. 56/2 = 28 beads exactly, and the chain cleans up
+                               # at the source rather than one constant at a time.
                                # at round 3; 45° crown corners print lying)
 SEG_BODY_L = 142.0             # ROUND 3 (user): NO THREADS, NO TPU
                                # GASKETS in the square legs — the thread
@@ -1066,6 +1073,17 @@ def leg_head(latch: bool = False) -> cq.Workplane:
     # finger well any more: sinking this face to match the tower used to put a
     # 422 mm^2 flat ceiling right on the print bed.
     if latch:
+        # OCT_TOP is measured off THIS spigot but lives in latch.py, which cannot
+        # import legs. One cheap boolean keeps them honest: the channel floor must
+        # be clear of the spigot across the band, or the channel is cutting into
+        # the octagon instead of standing off it.
+        _probe = box_at(LT.LX1 - LT.LX0, 6.0, 8.0,
+                        x=(LT.LX0 + LT.LX1) / 2, y=LT.CH_FLOOR + 3.0, z=10.0)
+        assert not _section_tenon(39.0).translate((0, 0, -1.0))                    .intersect(_probe).solids().vals(), (
+            "latch.OCT_TOP (%.2f) is STALE: the spigot reaches past CH_FLOOR %.2f "
+            "across the latch band, so the channel cuts INTO the octagon. Re-measure "
+            "the spigot's max +Y over x %.2f..%.2f." % (
+                LT.OCT_TOP, LT.CH_FLOOR, LT.LX0, LT.LX1))
         assert abs(LT.FACE_Y - SQ_W / 2) < 1e-9, (
             "latch.FACE_Y %.2f is no longer the head face %.2f -- the cover would "
             "not sit flush and the bed face would step" % (LT.FACE_Y, SQ_W / 2))
