@@ -17,6 +17,7 @@ import math
 import os
 import pathlib
 import sys
+import time
 from functools import partial
 
 import cadquery as cq
@@ -25,6 +26,11 @@ import cadquery as cq
 # build's output viewable — opens/refreshes its tab in the FreeCAD hub. Never raises.
 from cadkit.freecad import show
 from cadkit.step_export import export_step
+try:                                    # optional on-every-build face-count regression gate
+    from tools.build_profile import record_part, report_build_regressions
+except Exception:                       # a profiling hook must NEVER break a build
+    def record_part(*a, **k): pass
+    def report_build_regressions(): return 0
 
 from . import dimensions as D
 from .helpers import heal, cyl, cyl_y
@@ -108,6 +114,11 @@ PARTS = {
     "leg_body_stub_trrs": (lambda: heal(LG.leg_body_stub_trrs()), "petg-gf/leg_body_stub_trrs.step", "PETG-GF — body stub ×1 (the -X/+Y WIRED corner; end-wall tongue local +x): NOTHING above the top face (user killed the jack fin) - the mouth-seat boss, barrel way and Ø9.7 jack way open through the FLAT top; the naked 10-03404 DROPS IN through the wide rib's Ø10.5 well AFTER the slide, seats on the boss, and an M2 set screw from the stub's inboard-y face (reachable under the assembled body) clamps its barrel; the pigtail rides the over-rib raceway (y 50.5) east to the bus-B tee"),
     "leg_head":        (lambda: heal(LG.leg_head()), "pctg/leg_head.step", "PCTG — LEG HEAD ×4 (all-octagon; prints LYING on the +Y bed face): 44-sq, flush octagon spigot into the stub socket, octagon section socket below, captive TRRS plug seat on the (+5,+13) axis (one SKU for all legs). NO Z RETENTION — the seatbelt quick-release (bolt + button) is gone; the spigot is a plain sliding fit"),
     "latch_slider":    (lambda: heal(LT.slider()), "pctg/latch_slider.step", "PCTG — LATCH SLIDER ×6 (4 leg—body + 2 bar—leg; ONE SKU): the whole quick-release. Push-to-connect (45° hook lead cams it in against the coil, springs out at depth); press the pad and pull to release, one-handed. Steel coil seats in its blind bore. Prints flat on its back face — the hook lead and the pad both face up, nothing to support"),
+    "latch_cover_head": (lambda: heal(LT.cover_head()), "pctg/latch_cover_head.step",
+        "PCTG — LATCH COVER, LEG-JOINT ×4: the leg head's face stands 4.2 proud of the "
+        "tower's, so this one is 6.6 thick and carries the THUMB DISH in its own outer "
+        "face. That keeps the head's bed face flat — the dish used to be a well in the "
+        "leg, i.e. a 422 mm² flat ceiling on layer one. Prints dish-UP, no overhang"),
     "latch_cover":     (lambda: heal(LT.cover()), "pctg/latch_cover.step", "PCTG — LATCH COVER ×6 (ONE SKU): closes the slider load window; its aperture lip is the slider outward stop AND its Z lock. Slides DOWN a 45° dovetail onto a hard stop and can only leave upward, which the mating half blocks once assembled — captive, zero fasteners. Prints flat"),
     # ("leg_washer" export retired — ROUND 3: threadless, gasketless square legs)
     # pedal bar (the per-foot latches are gone — the towers are passive
@@ -250,7 +261,9 @@ def _export(name):
     builder, path, note = PARTS[name]
     dest = OUT / path
     dest.parent.mkdir(parents=True, exist_ok=True)   # material folder (petg-gf/pctg/tpu)
-    export_step(builder(), str(dest))
+    t = time.perf_counter(); wp = builder(); build_s = time.perf_counter() - t
+    t = time.perf_counter(); export_step(wp, str(dest)); export_s = time.perf_counter() - t
+    record_part(name, build_s, export_s, wp.val() if hasattr(wp, "val") else wp)   # ~free profiling hook
     print(f"Wrote {path}" + (f"  ({note})" if note else ""))
 
 
@@ -528,7 +541,7 @@ def _leg_components():
     from .helpers import box_at
     out = []
     seg_body, seg_body_ch = LG.leg_seg_body(), LG.leg_seg_body_ch()
-    head = LG.leg_head()
+    head, head_latch = LG.leg_head(), LG.leg_head(latch=True)
     stub_p, stub_jk = LG.leg_body_stub(), LG.leg_body_stub_jk()
     sleeve, cover = LG.leg_sleeve(), LG.leg_sleeve_cover()
     shaft, foot = LG.leg_shaft(), LG.leg_foot()
@@ -558,13 +571,14 @@ def _leg_components():
             out.append((f"leg_body_stub_{k}",
                         R(LG.leg_body_stub_trrs() if wired
                           else (stub_jk if eps > 0 else stub_p), ZM)))
-            out.append((f"leg_head_{k}", R(head, ZM)))
+            out.append((f"leg_head_{k}", R(head_latch if wired else head, ZM)))
             # LEG-JOINT LATCH: slider + cover ride the HEAD (the leg is the piece
             # you pull off, so the button is on it). Drawn LATCHED. The bar-joint
             # pair, indices 4-5, travel with the bar — pedal_bar._latch_parts.
-            out.append((f"latch_slider_{k}", R(LT.slider(), ZM)))
-            out.append((f"latch_cover_{k}", R(LT.cover(), ZM)))
-            out.append((f"latch_spring_{k}", R(LT.spring(), ZM)))
+            if wired:                       # ONE joint pair while the latch is iterated
+                out.append((f"latch_slider_{k}", R(LT.slider(), ZM)))
+                out.append((f"latch_cover_{k}", R(LT.cover_head(), ZM)))
+                out.append((f"latch_spring_{k}", R(LT.spring(), ZM)))
             # threadless chain: butt faces, integral plugs. Head bottom
             # face at ZM - 42 = -90; each body IS the 142 pitch.
             top = ZM - LG.HEAD_BODY_L
@@ -879,6 +893,7 @@ _COLORS = {
     "leg_head":        (0.36, 0.42, 0.46),
     "latch_slider":    (0.85, 0.35, 0.20),   # latch accent
     "latch_cover":     (0.55, 0.30, 0.22),
+    "latch_cover_head": (0.55, 0.30, 0.22),
     "latch_spring":    (0.62, 0.64, 0.67),   # stainless coil (purchased)
     "leg_pinch_gib":   (0.85, 0.35, 0.20),   # clamp accent (matches bolts)
     "leg_plug_retainer": (0.42, 0.48, 0.52),
@@ -1086,6 +1101,7 @@ def main() -> None:
 
     for name in PARTS:
         _export(name)
+    report_build_regressions()          # ~free: flags any part whose face count grew vs baseline
     _export_assembly()
 
 
