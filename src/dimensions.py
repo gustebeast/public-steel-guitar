@@ -130,10 +130,16 @@ CARRIAGE_TRAVEL = 2 * DL_OPEN + 2.0    # ≈10 mm; open sits ~DL_OPEN up from sl
 # Ø5×1 single-start: lead angle ~3.6° (very self-locking) and fast enough (a
 # semitone is only ~1.5 mm). Vertical ⇒ short (no whip).
 SCREW_OD        = 5.0       # Ø5, single-start, 1 mm lead
-SCREW_LEN       = 61.0      # +8 vs the minimum: drops the whole drive stack (pulleys,
-                            # belts, motors, support bearing, chassis floor — all derive
-                            # from here) 8 mm so the raised odd pulleys clear the carriage's
-                            # full down-travel + a bottom stop, restoring the travel margin
+SCREW_LEN       = 61.0 + 7 * BEAD   # 66.6. The +8 over the minimum drops the whole drive
+                            # stack (pulleys, belts, support bearing — all derive from here)
+                            # so the raised odd pulleys clear the carriage's full down-travel
+                            # plus a bottom stop. The extra 5.6 is the BELT-PLANE CENTRING
+                            # (user): it lowers both pulley rows by half a belt plane so the
+                            # motor plane lands midway between them — see MOTOR_BELT_Z. The
+                            # screw grows instead of the stack sliding down, because the
+                            # support bearing already sits only 3.9 above the screw's bottom
+                            # end; dropping the pulley without lengthening the rod would hang
+                            # the bearing 1.3 mm past it. Still short enough not to whip.
 SCREW_BOT_Z     = SCREW_TOP_Z - SCREW_LEN          # -59
 # DROPPED 5 mm (was SCREW_TOP_Z - 8.0) to make room at the CHANGER (user asked
 # whether the mechanism could move down, and it can): the bearing OD is capped by
@@ -259,14 +265,23 @@ MOTOR_X_STEP    = 46.0      # along-X step between motors. Body is 42.3 sq; with
                             # every motor keeps a full 3 mm (>1 belt tooth) of
                             # independent tension travel. (44 left only 1.7 mm and
                             # the slots overlapped - motors could collide.)
-MOTOR_BELT_Z    = SCREW_PULLEY_Z    # motors all sit at the (even) screw-pulley height
-
 # Belt-plane cascade: a Ø8.4 pulley + belt wrap is wider than the 9.5 mm string
 # pitch, so adjacent screw pulleys' belts would collide. Raise the ODD pulleys
 # into a second Z plane so neighbours always differ by BELT_PLANE_DZ. Only the
-# pulley moves — the motors stay coplanar and the bottom hardware is unchanged;
-# the odd belt simply rises this much over its run.
-BELT_PLANE_DZ   = 13 * BEAD  # 10.4
+# pulley moves — the motors stay coplanar and the bottom hardware is unchanged.
+# 14 beads, not 13, so HALF a plane is a whole 7 beads — the centring below wants
+# the half, and it also buys 0.8 more belt-to-belt room at no cost.
+BELT_PLANE_DZ   = 14 * BEAD  # 11.2
+
+# MOTORS SIT MIDWAY BETWEEN THE TWO PULLEY ROWS (user). They used to be coplanar
+# with the LOW row (MOTOR_BELT_Z = SCREW_PULLEY_Z), so half the belts ran dead
+# flat and the other half climbed a full belt plane — the whole Z change was paid
+# by the odd strings alone. Splitting it means every belt rises or falls the SAME
+# ±BELT_PLANE_DZ/2, so the twist develops symmetrically and no belt takes the
+# full plane. The motors do NOT move to do this: SCREW_LEN grew by exactly half a
+# plane above, which drops both pulley rows around the unchanged motor line, so
+# motor_bank's floor/bed (derived from here) and the chassis are untouched.
+MOTOR_BELT_Z    = SCREW_PULLEY_Z + BELT_PLANE_DZ / 2
 
 def screw_pulley_z(i: int) -> float:
     # raise alternate pulleys a belt-plane so neighbours never collide; phased off the
