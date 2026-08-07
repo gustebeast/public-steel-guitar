@@ -28,7 +28,7 @@ from .helpers import box_at
 BODY_H   = D.M3_CLR_D - 0.15     # slips the slot height
 BODY_D   = MB.PLATE_T - 0.3      # wall thickness minus motor-face clearance
 HEAD_T   = D.MIN_WALL_2P         # 1.6 flange proud of the wall's +Y face (was 1.2)
-HEAD_H   = 5.0
+HEAD_H   = 6 * D.BEAD            # 4.8 flange height (fingernail grip; was 5.0)
 SIZES    = [round(3.0 + 0.2 * i, 1) for i in range(16)]   # 3.0 .. 6.0
 
 

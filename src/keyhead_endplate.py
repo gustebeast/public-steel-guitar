@@ -74,7 +74,7 @@ LEG_CLR = CH.EP_LEG_CLR                    # assembly clearance around the kept 
 LEG_SHELL_X0, LEG_SHELL_X1 = CH.LEG_SHELL_NX     # -625.6 .. -610.6 (rail-takeover region)
 
 ZHOLE_D = 5.0                              # string-stow bore Ø (string + pliers grip; pitch is 9.5)
-ZHOLE_X = XLO + 6.0                         # -630: keeps ~3.5 mm of wall -X of the bore
+ZHOLE_X = XLO + 8 * D.BEAD                 # -629.6: keeps ~3.9 mm of wall -X of the bore
 
 
 def _build():

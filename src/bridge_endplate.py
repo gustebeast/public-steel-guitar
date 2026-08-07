@@ -303,7 +303,7 @@ def _arm(sy, blind=False) -> cq.Workplane:
         axis_dir=(0, 1, 0), print_up=PRINT_UP))
 
 
-_SRX = D.SCREW_X + 7.0            # screw-rail +X face (DEPTH/2 past the screw line)
+_SRX = D.SCREW_X + 9 * D.BEAD     # 7.2: screw-rail +X face (keep = screw_rail.X_PX)
 
 
 def _comb_brace(yc: float, cb_w: float) -> cq.Workplane:
