@@ -100,6 +100,12 @@ _ex("hardware",
     STRING_NUT_D="Ø4 swaged ball-end nut (measured)",
     STRING_NUT_L="Ø4x3 ball-end nut length (measured)",
     NUT_INSERT_D="M4 heat-set insert install Ø6.0",
+    WIRE_D="Ø2 shielded-pair cable (harness dummy)",
+    JACK_FACE_DX="connector dummies authored with panel face at x=14; DX slides them to the tip",
+    TEE_BOARD_X="custom tee PCB outline 22 x 24 (fabbed board, not printed)",
+    TEE_CONN_DX="tee PCB connector-row pitch (on the fabbed board)",
+    TEE_CONN_CY="tee PCB connector-row centre (board-local)",
+    HDR_Z="lifted XH header wire-entry top (connector body stack, purchased)",
     NUT_INSERT_L="M4 heat-set insert length 5.0",
     NUT_SCREW_L="M4 screw stock length",
     NUT_PIN_D="Ø2 dowel pin nominal",
@@ -140,6 +146,7 @@ _ex("clearance",
     tension_fork__BODY_D="= PLATE_T - 0.3: stops shy of the motor face",
     screw_rail__SEAT_LEDGE_D="= BRG_OD - 2.5: ledge bore = Ø5 screw + washer pass room",
     ZHOLE_D="string-stow bore: string coil + pliers grip room",
+    electronics__CH_D="tray-tab channel = TAB_T + 0.3 floor gap",
     GROOVE_W="string lay-in channel = string + 2x0.4 side gaps",
     GROOVE_FLOOR="string channel depth; per-string floor = gauge + break-angle physics",
     )
@@ -158,6 +165,18 @@ _ex("layout",
     PEDAL_BAR_H="= PEDAL_AXLE_H(48, on grid) - FOOT_H(12) - HOUS_X1(8.1): a derived "
                 "value spelled literal to break the legs/foot_pedal import cycle; "
                 "foot_pedal asserts the chain",
+    # harness ROUTING: positions of WIRES, which are purchased and never printed.
+    # No bead is laid along a cable run, so the grid has nothing to say about
+    # where one sits -- these stay where clearance to tees/motors/rails put them.
+    CAN_OFF="CAN H/L conductor separation inside the old single-jacket envelope",
+    PWR_OFF="24V pair separation; lane edges 2.1 < RACE_HW 2.4",
+    LANE_CAN="trunk lane Z, 2.0 pitch stack (wires, not printed)",
+    LANE_USB="trunk lane Z, 2.0 pitch stack (wires, not printed)",
+    LANE_CTRL="trunk lane Z, 2.0 pitch stack (wires, not printed)",
+    RAIL_Y="trunk corridor centre hugging the rail (wire run)",
+    CUTOUT_Y="trunk dip into the m9 rail notch; keeps the Ø2.6 USB inside the cut",
+    TEE_YSHIFT="tee board centre shift; -Y edge pinned at station y-7",
+    _M9X="= motor_pos(9)[0]; the 9 is a STRING INDEX, not a length",
     )
 
 # The instrument, not the printer.
