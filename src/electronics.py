@@ -40,8 +40,8 @@ from . import dimensions as D
 AFE_X1 = D.BRIDGE_AXLE_X + 2.0         # tuck 2.0 clear of the axle line
 AFE_X0 = AFE_X1 - 20.0                 # 20 long
 AFE_Y0, AFE_Y1 = -108.0, -78.0         # inboard of the pickup groove + leg barrel
-AFE_Z = -59.0                          # board bottom (on the bridge-rib boss)
-AFE_PED_TOP = -61.0                    # boss top (posts rise to the board)
+AFE_Z = -74 * D.BEAD                   # -59.2 board bottom (on the bridge-rib boss)
+AFE_PED_TOP = AFE_Z - 3 * D.BEAD       # -61.6 boss top (2.4 of printed post to the board)
 
 # NOTE: this block sits ABOVE the chassis import ON PURPOSE. chassis builds at
 # import time and reaches BACK here for TAB_X0/TAB_X1/CH_W/CH_D/TRAY_Z0 to cut its
@@ -60,8 +60,8 @@ TAB_X0, TAB_X1 = -572.0, -552.0        # one tab per side, in the only solid
                                        # web window between the leg dovetail
                                        # slot (ends -582) and the rail web
                                        # diamonds (start -560)
-TAB_T = 2.7                            # into a 3-deep channel (0.3 floor gap)
-CH_W, CH_D = 20.6, 3.0                 # channel cut: width / depth into web
+TAB_T = 3 * D.BEAD                     # 2.4 tab, into a 2.7-deep channel (0.3 floor gap)
+CH_W, CH_D = 20.6, TAB_T + 0.3         # channel cut: tab + 0.3 clearance each way
 
 
 from . import chassis as CH          # only early constants (X_*, Z_*) used here
@@ -70,7 +70,7 @@ from cadkit.fasteners import M2, cut_anchor
 from cadkit.pcb import jst_xh_header
 
 # ---- board footprints (x0, x1, y0, y1); board bottom z = TRAY_Z1 + post ----
-POST_H = 3.0
+POST_H = 4 * D.BEAD                    # 3.2 printed standoff posts under each board
 BD_T = 1.6
 PI_FP     = (-603.0, -547.0, -50.0, 35.0)     # Pi 5: 56 x 85 (long side on Y);
                                        # slid 19 SOUTH (FLUSH round): the wired
@@ -102,7 +102,7 @@ BOARD_Z = TRAY_Z1 + POST_H             # every bottom board sits at -67
 JACK_TIP = D.BRIDGE_AXLE_X + CH.KH_EP_THK / 2        # bridge +X face = centred 25 mm block (8.5)
 JACK_WALL_X = JACK_TIP - 4.0                          # inner face of the 4 mm panel (4.5)
 JACK_FACE_DX = JACK_TIP - 14.0                        # authored face sits at x~14; ride the +X tip
-JACK_Z = -41.0
+JACK_Z = -51 * D.BEAD                  # -40.8 jack row centre height
 TS_Y, DC_Y, USB_Y = -68.0, -86.0, -104.0
 
 # ---- UI: OLED + joystick on the top deck (mounted to the top plate) ----
@@ -112,13 +112,14 @@ TS_Y, DC_Y, USB_Y = -68.0, -86.0, -104.0
 # band (86 mm, over the motor PCBs, clear of the strings). The joystick (Alps
 # RKJXT1F42001: 2-way rotary + 4-way + push) is the sole control.
 UI_X      = (CH.X_BRIDGE + CH.X_NUT) / 2     # instrument X centre
-DECK_TOP  = D.STRING_Z - 10.0                 # deck surface 10 mm under the
-                                              # strings (bar can press strings
-                                              # down without bottoming out) = +6
+DECK_TOP  = D.DECK_TOP_Z                      # 6.4 — THE deck datum (was a stale
+                                              # STRING_Z - 10 = 6.0, which sank the UI
+                                              # dummies 0.4 into the deck plate); 9.6
+                                              # under the strings, bar still can't bottom
 OLED_Y    = -100.0                            # wide -Y deck band (clear of strings)
 OLED_W, OLED_L, OLED_T = 38.0, 72.0, 1.6      # 2.42" module PCB (Y x X)
-JOY_X     = UI_X + 56.0                       # just +X of the screen
-JOY_Y     = -82.0
+JOY_X     = UI_X + 70 * D.BEAD                # 56: just +X of the screen
+JOY_Y     = -102 * D.BEAD                     # -81.6
 
 
 def oled() -> cq.Workplane:
@@ -300,8 +301,13 @@ def teensy_ifc() -> cq.Workplane:
     return b
 
 
-# floor plane (bed top) — tee PCBs and the trunk-and-drop harness live here
-FLOOR_Z = -75.15
+# floor plane (bed top) — tee PCBs and the trunk-and-drop harness live here.
+# = the LIVE chassis print-bed datum. Was a spelled-out -75.15, which had gone
+# STALE: SCREW_TOP_Z, SCREW_PULLEY_Z and XBAR each moved onto the bead grid and
+# the copy silently ended 0.2 below the real bed (-74.95). The off-grid audit is
+# what caught it — a derived value that can't land on the grid means a parent
+# moved without it.
+FLOOR_Z = CH.Z_BOT
 
 
 # ── CAN bus TEE PCB ──────────────────────────────────────────────────────────
