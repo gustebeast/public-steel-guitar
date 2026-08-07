@@ -127,6 +127,16 @@ _ex("hardware",
     latch__FACE_Y="= legs.BLK_W/2 = SQ_W/2 - COVER_T - SH_CLR: grid minus a CLEARANCE",
     latch__LG_BLK_HALF="= legs.BLK_W/2 = SQ_W/2 - COVER_T - SH_CLR: grid minus a CLEARANCE",
     latch__OCT_TOP="measured octagon apex within the band",
+    PK_MAG_L="Lace Alumitone magnetic (sensing) range 88.9",
+    PK_FLG_T="Alumitone mounting-flange thickness 3.3 (datasheet)",
+    PK_COIL_W="Alumitone coil-core width 31.0 (datasheet)",
+    PK_H_MIN="shortest supported pickup DEPTH (the 15..22 window edge); caps carrier walls",
+    EAR_HOLE_X="Alumitone ear-hole pattern 30.6 x 84.0",
+    PK_MAX_L="pickup-length WINDOW top = 101.6 Alumitone + 0.4 headroom (decision 94c0a711)",
+    GRUB_SWEEP="M4x10 cup-tip usable travel = screw_l - min_bite - ~1 tip",
+    JACK_HEAD_D="ISO 7380 M4 button head Ø7.6",
+    JACK_HEAD_H="ISO 7380 M4 button head height 2.2",
+    SPLICE_LAP="open-belt lap allowance in the splice clamp (cut-length spec, soft)",
     )
 
 # Gaps, not material. Always sub-bead; the grid does not apply.
@@ -147,6 +157,16 @@ _ex("clearance",
     screw_rail__SEAT_LEDGE_D="= BRG_OD - 2.5: ledge bore = Ø5 screw + washer pass room",
     ZHOLE_D="string-stow bore: string coil + pliers grip room",
     electronics__CH_D="tray-tab channel = TAB_T + 0.3 floor gap",
+    top_plate__GAP="deck-panel assembly clearance (0.05 between consecutive panels)",
+    top_plate__OPEN_YP="piece opening = pickup +Y body edge + 0.6 assembly gap",
+    top_plate__JACK_HEAD_Z="head pocket floor = deck top - head height - 0.3 recess",
+    HEAD_POCKET_D="= JACK_HEAD_D + 0.4 drop-in fit",
+    CAVITY_X="deck cavity = plate + 1.5 fit clearance",
+    CAVITY_Y="deck cavity = plate + 1.5 fit clearance",
+    pickup_mount__GAP="pickup-top to heaviest-string air gap (demo height setpoint)",
+    EP_TOP_CLR="endplate drop-on X clearance to the rail end",
+    KH_DT_CLR="endplate dovetail socket Y fit",
+    KH_DT_SEAT="lower-dovetail seating gap (tenon seats on the L-foot, not the ceiling)",
     GROOVE_W="string lay-in channel = string + 2x0.4 side gaps",
     GROOVE_FLOOR="string channel depth; per-string floor = gauge + break-angle physics",
     )
@@ -177,6 +197,10 @@ _ex("layout",
     CUTOUT_Y="trunk dip into the m9 rail notch; keeps the Ø2.6 USB inside the cut",
     TEE_YSHIFT="tee board centre shift; -Y edge pinned at station y-7",
     _M9X="= motor_pos(9)[0]; the 9 is a STRING INDEX, not a length",
+    X_SLIDE="+-6 fine-X pickup slide travel (user spec; a range, not material)",
+    _ILKL_X="a rib-comb station (_RIB0 + 5*_RIB); the comb inherits MOTOR_X_STEP",
+    _RKL_X="a rib-comb station (_RIB0 + 17*_RIB); the comb inherits MOTOR_X_STEP",
+    _KNEE_GAP_L="5 rib-comb steps (odd ON PURPOSE so VKL can centre); comb inherits MOTOR_X_STEP",
     )
 
 # The instrument, not the printer.
@@ -188,6 +212,7 @@ _ex("musical",
     NUT_BLOCK_X="-MOUNTING_SPAN",
     STRING_Z="string plane height (set by the bearing stack)",
     DL_OPEN="string stretch at pitch (physics)",
+    LEG_HEIGHT="floor -> body bottom playing height (user ergonomic reference)",
     )
 
 
