@@ -118,6 +118,8 @@ _ex("hardware",
     latch__FACE_Y="= legs.BLK_W/2 = SQ_W/2 - COVER_T - SH_CLR: grid minus a CLEARANCE",
     latch__LG_BLK_HALF="= legs.BLK_W/2 = SQ_W/2 - COVER_T - SH_CLR: grid minus a CLEARANCE",
     latch__OCT_TOP="measured octagon apex within the band",
+    latch__LG_HEAD_FACE_Y="= legs.SQ_W/2; SQ_W is 55 beads and half an ODD count "
+                          "is never on the grid -- a centre-line, not a thickness",
     )
 
 # Gaps, not material. Always sub-bead; the grid does not apply.
