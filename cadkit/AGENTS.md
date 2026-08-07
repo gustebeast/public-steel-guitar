@@ -277,6 +277,58 @@ NOZZLE_D    = 0.8                        # set ONCE per project (this repo runs 
 MIN_WALL    = min_wall(NOZZLE_D)         # 0.8 — one-bead HARD floor
 MIN_WALL_2P = min_wall(NOZZLE_D, beads=2)   # 1.6 — two-bead quality target (prefer this)
 ```
+### The bead GRID — every length, not just the thin ones
+
+`min_wall` answers *"how thin may this get?"*. That leaves the middle of the
+range unmanaged, and that is where the slicer starts improvising. The rule is
+bigger than the floor:
+
+> **Every printed length is either `N × BEAD`, or another feature `± N × BEAD`.**
+
+A 1.75 mm wall clears a 1.6 floor and is **2.19 beads.** Arachne cannot lay 2.19
+beads — it stretches two to 0.875 each, or squeezes in a starved third. Harmless
+on a cosmetic face; on a load-bearing ledge that improvised bead is exactly where
+the part delaminates, and *you* did not choose it. On the grid, the extruded part
+is the part you drew.
+
+The `± N beads` half carries as much weight as the multiples: derived constants
+then land on the grid **for free**, so an off-grid *derived* value means one of
+its parents is off-grid — which is the bug worth chasing.
+
+```python
+from cadkit.printing import beads, on_grid, snap
+beads(3, 0.8)              # 2.4  — the ruler (no floor; 0 beads is legal)
+on_grid(1.75, 0.8)         # False — 2.19 beads
+snap(1.75, 0.8, "up")      # 2.4  — load-bearing rounds UP; 'down' for clearance pockets
+```
+
+**Three kinds of length are legitimately off-grid** — each for a reason about the
+world, and each needing that reason written down, because a bare off-grid number
+is indistinguishable from an oversight:
+
+- **hardware** — a dummy modelling a REAL object. A NEMA17 is 42.3 mm whether or
+  not that suits your nozzle. Rounding it doesn't print better, it makes the
+  model **lie about what has to fit**. Model it true; put the *printed material
+  around it* on the grid. (A soft spec — a coil's free length, a cut rod — may be
+  rounded to a bead for convenience; that's a choice, so say so.)
+- **clearance** — a slip fit is 0.25 mm by necessity and is always sub-bead.
+  Clearances are **gaps, not material**: no bead is laid across one, so the grid
+  has nothing to say. The only exemption needing no per-case justification.
+- **domain** — scale length, string pitch, a mounting standard. The printer
+  doesn't get a vote.
+
+Anything else off-grid is an oversight. Enforce it per project by walking your
+own constants with `on_grid()` — see the pedal-steel's `tools/check_beads.py`:
+an exemption table keyed by name, every entry carrying its reason, non-zero exit
+for off-grid values that have none.
+
+**Round the way the feature fails.** Load-bearing or sealing → snap **up** (cost:
+a little material; risk avoided: a crack). Clearance-side pocket or cosmetic
+relief → down or nearest. And when a snap would move a **mating** face, move the
+mate with it — otherwise you've traded a slicer problem for a fit problem. That
+is exactly why the rule reads *"another feature ± N beads"* and not *"round every
+number independently"*.
+
 Size features from these (e.g. a boss ceiling over a cross-bore = `axis_z + bore_r
 + MIN_WALL_2P`). Same rule lives in `joinery._bead`/`_bead_pref` and
 `contact.contact_rib_size`. It bites hardest at **hidden** thin spots — a boss
