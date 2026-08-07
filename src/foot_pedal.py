@@ -225,7 +225,11 @@ def lever_room() -> cq.Workplane:
 
 # ── housing envelope ─────────────────────────────────────────────────────────
 HOUS_X0 = KL.HOUS_X0                       # cartridge back + back-stop engagement
-HOUS_X1 = HUB_D / 2 + KL.HS_CLR + KL.HS_HOUS_WALL       # +7.8
+HOUS_X1 = max(HUB_D / 2 + KL.HS_CLR + KL.HS_HOUS_WALL,
+              KL.BRG_OD / 2 + KL.BRG_WALL)              # 8.1 with the 695ZZ: the Ø13
+#           race needs more standoff than the hub does, and THIS face sits on the bar
+#           top — so it sets how high the axle rides. At 8.1 the bar lands 27.9, still
+#           clear of the lid's 27.0 floor, so the 48.0 axle datum survives untouched
 HOUS_HW = KL.HOUS_HW                       # the sensor side sets Y — untouched, so the
                                            # axle / flange / magnet / cap / board all hold
 HOUS_Z1 = (pplace(KL._hs_pocket(KL.HS_YC, -20.0, KL.HS_BACK_X)).val()

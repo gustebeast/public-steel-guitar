@@ -65,7 +65,16 @@ AXLE_D  = 5.0                       # Ø5 axle journals — PCTG now (user: no s
                                     # races take all the wear. (HISTORICAL: this described
                                     # the integral-stub + glued-insert pair, retired at
                                     # round 2 — the axle is ONE part now, see kl_axle.)
-BRG_OD, BRG_ID, BRG_W = 8.0, 5.0, 2.5   # MR85ZZ — shared with the screw-support bearings
+BRG_OD, BRG_ID, BRG_W = 13.0, 5.0, 4.0  # 695ZZ — ONE bearing for the levers, the
+                                    # foot pedals AND the changer (user). Was MR85ZZ
+                                    # (Ø8×2.5), which sat at exactly 1.0x its 130 N
+                                    # static rating here; 695ZZ is 346 N -> 2.7x.
+                                    # SAME Ø5 bore, so friction is unchanged (deep-
+                                    # groove drag is mu*P*d/2 and d is the BORE), and
+                                    # it adds no inertia — the bearing lives in the
+                                    # HOUSING, not on the swinging lever. The cost is
+                                    # bulk: the housing grows to clear the race.
+BRG_WALL = 1.6                      # 2-bead seat wall around the outer race
 MAG_D, MAG_T = 6.0, 2.5             # DIAMETRICALLY-magnetised NdFeB disc on the axle end
                                     # = DigiKey/Radial Magnets 8995 (N35, NiCuNi, 80 °C),
                                     # an EXISTING supplier, in stock, $0.33–0.40. SOURCING
@@ -443,7 +452,10 @@ MORT_Y0   = -2.0                  # mortise -Y mouth (opens outboard of the -Y r
 # is not an installed one: engagement only starts once the lever is pushed +Y, and equals
 # (slide - 1.1). If the assembly should SHOW the lever mounted, MOUNT_Y wants to move +Y by
 # the intended depth; that changes where the whole lever appears, so it is left alone here.
-MOUNT_X, MOUNT_Y, MOUNT_Z = -501.0, -148.75, -75.15 - BODY_Z
+# MOUNT_Z tracks the housing TOP, not BODY_Z: with the bigger race the top is set by
+# the bearing seat, and the TOP is what must stay flush on the chassis underside.
+# The axle simply sits lower in the guitar by the difference.
+MOUNT_X, MOUNT_Y, MOUNT_Z = -501.0, -148.75, -75.15 - max(BODY_Z, BRG_OD / 2 + BRG_WALL)
 MOUNT_POSE = (MOUNT_X, MOUNT_Y, MOUNT_Z)
 # the mortise (slot) runs from the player face ALL THE WAY to the guitar's Y midpoint -- the lever's
 # nub slides +Y along it to the player's chosen knee depth, then the retention screw locks it.
@@ -768,7 +780,11 @@ def rib_mortise(rib_x):
     cuts this into every rib so a lever can mount in ANY bay."""
     m = (_lever_joint(MORT_Y1 - MORT_Y0).mortise(drop=2.0)
          .rotate((0, 0, 0), (0, 0, 1), 90)                     # slide axis X -> Y
-         .translate((0.0, MORT_Y0, BODY_Z)))                   # centred x=0, -Y mouth, mate at rib bottom
+         .translate((0.0, MORT_Y0, HOUS_Z1)))                 # centred x=0, -Y mouth, mate at rib bottom
+    #        ^ HOUS_Z1, not BODY_Z. The TENON mates at the housing top (_top_tenon),
+    #          and with a bigger bearing the top is set by the seat, not by BODY_Z.
+    #          Keyed to BODY_Z the mortise sat 0.7 low and every tenon on all six
+    #          stations dug into its rib — which is exactly what the gate reported.
     return m.translate((rib_x, MOUNT_Y, MOUNT_Z))
 
 
@@ -819,10 +835,13 @@ def feel_unplace(s):                                # inverse of feel_place: pla
 #   -Z  the cartridge bottom (piston underside) + slide clearance + one wall
 # Globals (MOUNT_POSE + these): x -578.26..-496.00, y -162.65..-134.85,
 # z -97.35..-75.15 (top now flush with the chassis underside Z_BOT).
-HOUS_X1 = ARM_TX / 2                                     # +5.0
+HOUS_X1 = max(ARM_TX / 2, BRG_OD / 2 + BRG_WALL)         # +8.1 (was +5.0: the Ø13
+#           race needs 6.5 of radius plus its wall, where the arm wanted 5.0)
 HOUS_X0 = -(HS_HOUS_BACK + HS_SETBACK)                   # -77.26
-HOUS_HW = abs(HS_YC) + HS_CART_WY / 2 + HS_CLR + HS_HOUS_WALL   # 13.9
-HOUS_Z1 = BODY_Z                                         # +7.4 (flush: BODY_Z
+HOUS_HW = max(abs(HS_YC) + HS_CART_WY / 2 + HS_CLR + HS_HOUS_WALL,
+              LEVER_HW + HS_CLR + BRG_W + 1.0)           # 15.4 — the 4.0-wide seats
+#           now set the cheeks, not the cartridges: 10.4 + 4.0 + 1.0 outboard skin
+HOUS_Z1 = max(BODY_Z, BRG_OD / 2 + BRG_WALL)             # +8.1 (flush: BODY_Z
 #           = HUB_TOP + 2.4 — the designed 2.4 stands between lever and body)
 HOUS_Z0 = (HS_Z - HS_PISTON_WZ / 2) + _FEEL_DZ - HS_CLR - HS_HOUS_WALL  # -14.8
 #           ^ = HS_FLOOR_Z (defined below, after the piston) placed

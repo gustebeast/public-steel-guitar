@@ -328,7 +328,12 @@ def build_wires():
     # 24 V pair (2 × 22 AWG per rail): DC inlet -> AFE tee (10) -> tee 0 ... tee 9 -> buck;
     # the AFE's LDO feed is tee 10's DROP. hot/gnd offset ±PWR_OFF.
     x10, y10 = hdrA[10]
-    heads = [(-5.5, EL.DC_Y, EL.JACK_Z), (-5.5, EL.DC_Y, -52.0), (-5.5, TEE_Y, -52.0),
+    # the power heads drop just inboard of the bridge endplate's wall, and that wall
+    # follows BRIDGE_AXLE_X -- so this lane does too. It was a constant -5.5, and when
+    # the bearing grew O8 -> O13 the axle (and the wall) stepped 2.5 -X and clipped the
+    # ground wire.
+    _PWR_X = D.BRIDGE_AXLE_X - 1.5                              # -8.0
+    heads = [(_PWR_X, EL.DC_Y, EL.JACK_Z), (_PWR_X, EL.DC_Y, -52.0), (_PWR_X, TEE_Y, -52.0),
              (x10, TEE_Y, -52.0), (x10, TEE_Y, HDR_Z)]
     tail = ([(hdrA[west[0]][0], hdrA[west[0]][1], HDR_Z)]
             + _rail_pts(hdrA[west[0]][0], RISE_X, LANE_PWR)
