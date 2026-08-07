@@ -62,6 +62,9 @@ import math
 import cadquery as cq
 
 from . import knee_lever as KL
+from .motor_bank import BED_Z as _BED_Z     # the chassis print-bed datum (= chassis.Z_BOT;
+                                            # imported from motor_bank to stay out of the
+                                            # chassis import cycle)
 from .helpers import box_at, cyl_y, heal
 
 
@@ -88,11 +91,11 @@ ARM_LEN_V   = 80.0                  # axle -> paddle end (user; was 50). 80 give
                                     # the arm off the solid and re-centres it on the
                                     # shared contact plane automatically.
 ARM_TZ      = 8.0                   # arm thickness in Z (it is the arm's bending depth now)
-LEG_TOP     = LOBE_RC_V + 3.0       # leg reaches past the lobe station
+LEG_TOP     = LOBE_RC_V + 4 * KL.D.BEAD     # leg reaches 3.2 past the lobe station
 HUB_D       = KL.HUB_D              # Ø10 hub on the axle — unchanged
 LEVER_HW    = KL.LEVER_HW           # ±10 in Y — unchanged, so every bearing/sensor Y holds
-REC_X       = 3.5                   # follower recess depth into the leg's -X face
-REC_Z       = 7.0                   # recess height (the follower's swept band)
+REC_X       = 5 * KL.D.BEAD         # 4.0 follower recess depth into the leg's -X face
+REC_Z       = 9 * KL.D.BEAD         # 7.2 recess height (the follower's swept band)
 
 
 def _lever() -> cq.Workplane:
@@ -135,7 +138,7 @@ HOUS_X1 = HUB_D / 2 + KL.HS_CLR + KL.HS_HOUS_WALL       # +7.8: the arm exits th
 # margin either side of each tenon that is 30.0 of span against the 27.8 we had —
 # 2.2, ALL of it on -Y. (Bare minimum, tenons flush with the faces, is 1.2.)
 HOUS_HW_P = KL.HOUS_HW              # +13.9 — the sensor side, untouched on purpose
-TEN_MARGIN = 0.5                    # material outboard of each tenon's edge
+TEN_MARGIN = KL.D.MIN_WALL          # 0.8 (one bead) of material outboard of each tenon's edge
 HOUS_HW_N = (TEN_PITCH + 2 * KL._JHW + 2 * TEN_MARGIN) - HOUS_HW_P      # 16.1
 HOUS_HW = HOUS_HW_P                 # the sensor-side alias the Y stack reads
 # +Z comes from the RAISED POCKET's own measured extent, not from the piston: the
@@ -279,8 +282,9 @@ if __name__ == "__main__":
 # slot of this width running along global Y in every rib, so it accepts these
 # tenons as they are. What has to line up is X: the two stations sit at local
 # y -12.60 / +10.40, so MOUNT_X is chosen to land them on two real ribs.
-_Z_BOT = -75.15                     # chassis underside (chassis.Z_BOT; not imported to
-                                    # keep this module out of the chassis import cycle)
+_Z_BOT = _BED_Z                     # -74.95 chassis underside (= chassis.Z_BOT, via
+                                    # motor_bank.BED_Z — the spelled -75.15 it replaces had
+                                    # gone stale when the bed datum snapped to the grid)
 MOUNT_X = -455.0 - TEN_Y[1]         # -465.40 -> stations at ribs -478.0 and -455.0
 MOUNT_Y = -130.0                    # axle 3.75 inboard of the -Y rail, so the housing
                                     # runs inboard under the body and the arm reaches out

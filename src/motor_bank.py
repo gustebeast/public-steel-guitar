@@ -32,10 +32,13 @@ TENSION_SLOT = 3.0                          # ±1.5: belt slip-on slack + tensio
                                             # 1-tooth (1 mm motor travel) cut quantum.
                                             # Small enough that neighbours never collide
                                             # at the 46 mm pitch (see MOTOR_X_STEP).
-_BOLT_EDGE   = 6.0                          # material around the NEMA17 bolt square
+_BOLT_EDGE   = 7 * D.BEAD                   # 5.6 material around the NEMA17 bolt square
+                                            # (was 6.0 = 7.5 beads; snapped DOWN — the
+                                            # gaps to the chassis split planes and the
+                                            # neighbouring motor GROW)
 
-WALL_W = D.NEMA17_BOLT_SQ + 2 * _BOLT_EDGE  # 43: 0.5 to the chassis split planes,
-                                            # 1.35 to the neighbouring motor body
+WALL_W = D.NEMA17_BOLT_SQ + 2 * _BOLT_EDGE  # 42.2: 0.9 to the chassis split planes,
+                                            # 1.75 to the neighbouring motor body
 
 # Per-motor faceplate wall CENTRE Y. The motor faceplate (component) is at
 # string_y(i) − STANDOFF; the wall's −Y face must sit there so the faceplate

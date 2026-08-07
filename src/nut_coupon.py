@@ -62,16 +62,16 @@ PIN_D     = D.NUT_PIN_D             # O2 break dowel + O2 anvil — the SAME par
 PIN_L     = D.NUT_PIN_L             # (BOM: bump the existing line 10 -> 20)
 
 DOWEL_X   = 0.0                     # break edge = the scale "0"
-POST_X    = -9.0                    # post centre
+POST_X    = -11 * D.BEAD            # -8.8 post centre
 CLAMP_X   = -16.0                   # clamp / anvil
-X_BACK    = -21.0                   # block -X face (matches nut_block's prism)
-X_FRONT   = 6.0
+X_BACK    = -26 * D.BEAD            # -20.8 block -X face (~nut_block's prism)
+X_FRONT   = 8 * D.BEAD              # 6.4
 
-HW        = PITCH * len(GAUGE_IDX) / 2.0 + 3.0     # block half-width in Y
-SLAB_Z0   = -14.0                                  # block underside
-SLAB_Z1   = -2.0                                   # block top (strings run above it)
-BOSS_Z1   = 9.0                                    # clamp boss top (hosts the insert)
-POST_Z1   = 2.0                                    # post top — PROUD of the string plane
+HW        = PITCH * len(GAUGE_IDX) / 2.0 + 4 * D.BEAD   # block half-width in Y
+SLAB_Z0   = -18 * D.BEAD                           # -14.4 block underside
+SLAB_Z1   = -3 * D.BEAD                            # -2.4 block top (strings run above it)
+BOSS_Z1   = 12 * D.BEAD                            # 9.6 clamp boss top (hosts the insert)
+POST_Z1   = 3 * D.BEAD                             # 2.4 post top — PROUD of the string plane
 # The string TOUCHES the post, the dowels and the screw tip — those are the
 # working contacts. Drawn exactly tangent they are boolean noise (one wrap
 # reported 12 mm3 against its own post), so every contact carries this hair of
@@ -276,17 +276,17 @@ ROD_D  = D.BRIDGE_AXLE_D            # Ø5 — literally the bridge axle's own sh
                                     # round put BOTH endplates and every lever axle on
                                     # one Ø5 stock. Better here too: Ø5 bends the .070
                                     # at 26.2% against Ø3's 37.2% (Ø6 would be 22.9%).
-ROD_X  = -7.0
-ROD_Z  = -1.0                       # rod centre; strings arrive at -g/2 and meet
+ROD_X  = -9 * D.BEAD                # -7.2
+ROD_Z  = -D.BEAD                    # -0.8 rod centre; strings arrive at -g/2 and meet
                                     # its +X face. One height for every gauge
 BAY_R  = ROD_D / 2.0 + 2.5          # 5.0 — threading annulus. Trimmed 3.0 -> 2.5 to
                                     # pay for the fatter rod and keep the whole
                                     # termination inside the endplate's 25.4
 EXIT_X = ROD_X - BAY_R              # -11.5: the wall the exit hole pierces
-GATE_X = -13.5                      # clamp screw: it crosses the exit passage, so
+GATE_X = -17 * D.BEAD               # -13.6 clamp screw: it crosses the exit passage, so
                                     # wound IN it is a GATE and wound down on the
                                     # string it is the CLAMP
-X_BACK_B = -19.0
+X_BACK_B = -24 * D.BEAD             # -19.2
 WRAP_F_B = 1.05                     # turns lie all but touching. Tightening this
                                     # from 1.15 is part of what buys a finger in
                                     # EVERY lane (see below)

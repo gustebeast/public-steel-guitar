@@ -41,14 +41,15 @@ THICK   = 12.0                              # Z height of the body band
 WIDTH   = D.NUT_OD + 2 * 1.0               # across (Y), ≤ string pitch
 NUT_POCKET_D = D.NUT_OD + 0.2
 X_LO    = -(NUT_POCKET_D / 2 + 2.0)        # wall past the nut pocket (−X) = the bed face
-X_HI    = D.ANCHOR_DX + 0.9                # body/tower +X shoulder (boss overlaps it)
+X_HI    = D.ANCHOR_DX + D.BEAD             # body/tower +X shoulder, 1 bead past the
+                                           # anchor line (boss overlaps it; was 0.9)
 # Guide-rod bore — defined up here so the tower face can be sized off it (its real +X limit).
 GUIDE_CLR_D = D.GUIDE_ROD_D + D.FIT_CLR
 GUIDE_R     = GUIDE_CLR_D / 2
 # tower +X face — as far +X as it reaches: the guide-rod bore sits ROD_FACE_GAP outboard, and
 # closing that to a full 2 beads would shove the rod past the endplate edge (the known +X limit),
 # so the exit hole moves INBOARD to win its wall instead of growing the face.
-ROD_FACE_GAP = 0.9
+ROD_FACE_GAP = D.MIN_WALL                  # one bead (was 0.9; the face slides +X 0.1)
 POST_X1H = D.GUIDE_ROD_DX - GUIDE_R - ROD_FACE_GAP
 # String EXIT hole up through the roof (+Z): a printable_bore TEARDROP (apex +X — the "45 /\" cap),
 # self-supporting in the +X print, Ø only enough to pass the heaviest string, < the Ø4 nut so the
@@ -75,7 +76,7 @@ assert _BRG_GAP >= 1.0 - 1e-9, (
     f"(want 1.0): drop CARRIAGE_NOM_Z, or shrink BRIDGE_BEARING_OD")
 ROOF_T   = 3.2                             # capture roof — its slot edges bear the string pull
 CAGE_TOP = POST_Z1 - ROOF_T                # roof underside: the nut seats up against it
-CAGE_BOT = 2.5                             # cavity mouth bottom, dropped into the body
+CAGE_BOT = 3 * D.BEAD                      # 2.4 cavity mouth bottom, dropped into the body
 CAGE_W   = D.STRING_NUT_L + 0.6            # cavity width (Y): the nut slides in freely
 CAGE_FLOOR = CAGE_BOT + 2.0               # cavity floor, FLUSH with the mouth bottom (solid base
                                            # under the side walls; string tension holds the nut up)
@@ -91,7 +92,8 @@ NUT_POCKET_D = D.NUT_OD + 0.2
 # further +X than a round bore — size to the apex, not the circle).
 GUIDE_BOSS_X1 = D.GUIDE_ROD_DX + GUIDE_R * math.sqrt(2.0) + D.MIN_WALL_2P
 
-CAVITY_X0 = 5.5                            # cavity back wall (mouth depth); ≥1.6 off the screw apex
+CAVITY_X0 = 7 * D.BEAD                     # 5.6 cavity back wall (mouth depth); web to the
+                                           # screw teardrop apex = 5.6 - 3.89 = 1.71 ≥ 1.6
 
 # guide-boss z-band (nut level): top at D.GUIDE_FOOT_DZ, one bore-engagement tall.
 FZ1 = D.GUIDE_FOOT_DZ                       # +2 (below the cavity bottom 2.5)

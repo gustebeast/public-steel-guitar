@@ -131,19 +131,20 @@ LOBE_RC_P  = 13.2                   # so LOBE_RC_P·sin(THROW_P) == the horizont
 _STROKE    = LOBE_RC_P * math.sin(math.radians(THROW_P))
 _FEEL_DZ_P = LOBE_RC_P + KL.LOBE_RC          # +22.2: how far the feel block rises
 
-ARM_LEN_P  = 90.0                   # axle -> pedal-board centre
+ARM_LEN_P  = 112 * KL.D.BEAD        # 89.6 axle -> pedal-board centre
 ARM_TX     = KL.ARM_TX              # arm depth in X = the bending axis (the foot
                                     # presses along -X), same section as the knee arm
 HUB_D      = KL.HUB_D               # Ø10 hub on the axle — unchanged
 LEVER_HW   = KL.LEVER_HW            # ±10 in Y — unchanged, so the whole bearing /
                                     # axle / magnet / board stack transfers verbatim
-PAD_LZ     = 70.0                   # board length along local Z (= guitar Y, the
+PAD_LZ     = 88 * KL.D.BEAD         # 70.4 board length along local Z (= guitar Y, the
                                     # foot's own direction)
 PAD_WY     = 28.0                   # board width along local Y (= guitar X, across)
 PAD_T      = 4.0                    # board thickness
-REC_X      = 3.5                    # follower recess depth into the leg's -X face
-REC_Z      = 7.0                    # recess height (the follower's swept band)
-LEG_TOP    = LOBE_RC_P + 3.0        # the leg reaches past the lobe station
+REC_X      = 5 * KL.D.BEAD          # 4.0 follower recess depth into the leg's -X face
+                                    # (keep = knee_lever_vert.REC_X)
+REC_Z      = 9 * KL.D.BEAD          # 7.2 recess height (keep = knee_lever_vert.REC_Z)
+LEG_TOP    = LOBE_RC_P + 4 * KL.D.BEAD   # the leg reaches 3.2 past the lobe station
 
 # ── PEDAL STATIONS ───────────────────────────────────────────────────────────
 # Owned by pedal_bar now (PB.PEDAL_X): the BAR is what gets cut into printable
