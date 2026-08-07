@@ -164,7 +164,12 @@ py -3.12 -m src.build --geom       # belt-geometry report
 py -3.12 -m tools.fast_build NAME  # ITERATION: rebuild one part in <1s-9s — imports ONLY that
                                    #   part's module, not all of src.build. Builds FRESH (no
                                    #   stale cache); handles 59/71 parts, falls back for the rest.
-py -3.12 -m tools.check_overlaps   # design gate: any unintended interpenetration
+py -3.12 -m tools.check_overlaps   # design gate: any unintended interpenetration.
+                                   #   NOTE: a full build runs this gate ITSELF (~15s, on the
+                                   #   model it just made). Standalone costs ~5m51s, because
+                                   #   it must rebuild the model first — the printed scan time
+                                   #   is not the real cost. Use it when NOT building; the
+                                   #   build's own gate covers you when you are. --no-gate opts out.
 py -3.12 -m tools.build_profile    # per-part/module build-cost + face-count regression gate
 py -3.12 -m tools.export_glb       # simplified colored GLB for the web viewer (docs/)
 ```
