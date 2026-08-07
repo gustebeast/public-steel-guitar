@@ -113,7 +113,7 @@ LX_TOWER = -LX_C                  # bar tower <-> shaft block (mirrored)
 # SMALLER one so a single slider + cover SKU serves both; the 44-wide head gets
 # a finger recess (well_cutter) sinking its face to match -- which doubles as
 # the thumb well that keeps the button from being pressed by accident.
-FACE_Y = 22.0                     # = legs.SQ_W/2, the LEG HEAD'S OWN outer face.
+FACE_Y = 28 * B                   # 22.4 = legs.SQ_W/2, the LEG HEAD'S OWN outer face.
                                   # Was 17.8 -- the tower/shaft block's face -- so that
                                   # one slider + cover SKU could serve both joints. The
                                   # bar joint is gone and re-use is explicitly not a
@@ -129,7 +129,14 @@ COVER_T = 3 * B                   # 2.4 cover plate thickness
 COVER_LIP = 3 * B                 # 2.4 the aperture lip each side: what the pad
                                   # shoulders against as the slider's OUT stop
 COVER_IN = FACE_Y - COVER_T       # 15.8  cover inner face = slider's OUT stop
-OCT_TOP = 12.8                    # octagon's max +Y within the band (measured)
+OCT_TOP = 13.8                    # octagon's max +Y within the band. MEASURED off the
+                                  # real spigot, not derived -- cadkit owns the octagon's
+                                  # profile and latch cannot import legs (legs imports
+                                  # latch). So it is a STALE-DATUM RISK by construction,
+                                  # and legs.leg_head asserts it: widening SQ_W 44.0 ->
+                                  # 44.8 moved this 12.8 -> 13.8, which silently put the
+                                  # channel floor 0.9 mm INSIDE the spigot until the
+                                  # assert below was added.
 CH_FLOOR = OCT_TOP + OCT_CLR      # 12.9 female CHANNEL floor: the hook rides
                                   # this, fully retracted, through the whole
                                   # engagement. Just clear of the octagon so the
