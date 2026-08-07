@@ -75,8 +75,18 @@ _FEEL_DZ_V  = LOBE_RC_V + KL.LOBE_RC        # +22.2: how far the whole feel bloc
 
 # ── the lever ────────────────────────────────────────────────────────────────
 TEN_PITCH   = KL.RIB_PITCH / 2.0    # the chassis rib comb, along local Y once posed
-ARM_LEN_V   = 50.0                  # axle -> paddle end. 50 gives 17.1 of paddle lift at
-                                    # 20°, about an inch, which is a normal knee rise.
+ARM_LEN_V   = 80.0                  # axle -> paddle end (user; was 50). 80 gives 27.4 of
+                                    # paddle lift at 20° instead of 17.1 — a bigger knee
+                                    # rise, and a LIGHTER one: the feel spring makes a
+                                    # fixed torque, so the force the knee feels scales
+                                    # as 1/arm. 50 -> 80 is x0.625, which brings the
+                                    # vertical lever's ~2->16 N down to ~1.25->10 N,
+                                    # i.e. closer to the horizontal lever's own 1->8 N
+                                    # than it has ever been. Longer also means the arm
+                                    # reaches further -Y toward the player, so where it
+                                    # SITS has to follow — build._vkl_mount_y measures
+                                    # the arm off the solid and re-centres it on the
+                                    # shared contact plane automatically.
 ARM_TZ      = 8.0                   # arm thickness in Z (it is the arm's bending depth now)
 LEG_TOP     = LOBE_RC_V + 3.0       # leg reaches past the lobe station
 HUB_D       = KL.HUB_D              # Ø10 hub on the axle — unchanged
