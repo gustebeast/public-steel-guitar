@@ -67,6 +67,7 @@ import cadquery as cq
 
 from . import dimensions as D
 from .helpers import box_at, cyl_y
+from cadkit.printing import snap as _snap
 
 # ── the bead grid ────────────────────────────────────────────────────────────
 # Every printed length below is a whole number of beads, written as the COUNT so
@@ -78,7 +79,8 @@ B = D.BEAD
 
 # ── clearances (sub-bead BY NECESSITY -- see above) ──────────────────────────
 CLR = 0.25                        # sliding clearance on the guided faces
-OCT_CLR = 0.1                     # channel floor standoff from the octagon
+OCT_CLR_MIN = 0.1                 # LEAST standoff of the channel floor from the octagon
+TIP_GAP = 0.1                     # hook tip -> pocket back, so the hook never bottoms
 
 # ── the latch band ───────────────────────────────────────────────────────────
 # X band, kept clear of the TRRS blind-mate way (x +5, D8..11) and the M4
@@ -137,7 +139,19 @@ OCT_TOP = 13.8                    # octagon's max +Y within the band. MEASURED o
                                   # 44.8 moved this 12.8 -> 13.8, which silently put the
                                   # channel floor 0.9 mm INSIDE the spigot until the
                                   # assert below was added.
-CH_FLOOR = OCT_TOP + OCT_CLR      # 12.9 female CHANNEL floor: the hook rides
+CH_FLOOR = _snap(OCT_TOP + OCT_CLR_MIN + TIP_GAP, B, "up") - TIP_GAP
+OCT_CLR = CH_FLOOR - OCT_TOP      # 0.50 the standoff that actually results
+#   THE CLEARANCE IS WHAT ABSORBS THE OCTAGON (user: position the latch so the LEG comes
+#   out bead-aligned). The octagon's apex within the band is 13.8 -- 17.25 beads -- and it
+#   CANNOT be moved onto the grid: the flank is 45 deg, so the apex tracks the band 1:1 and
+#   shifting the band by whole beads shifts the apex by whole beads, leaving the same 0.15
+#   remainder every time (measured across five positions). The band's X placement is already
+#   on-grid and stays there.
+#   So the standoff takes the remainder instead. Snapping (apex + least standoff + tip gap)
+#   UP to a bead and backing off TIP_GAP puts the POCKET BACK on the grid, which is what
+#   makes the material behind it -- FACE_Y minus pocket back -- a whole 7 beads instead of
+#   7.5. Self-adjusting: re-measure OCT_TOP after any leg resize and the wall stays on-grid.
+#   12.9 -> 14.3 female CHANNEL floor: the hook rides
                                   # this, fully retracted, through the whole
                                   # engagement. Just clear of the octagon so the
                                   # channel is a real cut in the wall.
@@ -340,7 +354,7 @@ def _pocket(engage_z: float, cx: float = LX_C) -> cq.Workplane:
     """Retention pocket. Floor FLAT (the ledge). No gable: on this face the
     pocket's outer boundary is the BED side in the female's print, so it is a
     floor rather than a ceiling and needs no roof relief."""
-    return _yz(LX_W + 2 * CLR, CH_FLOOR, HOOK_TIP + 0.1,
+    return _yz(LX_W + 2 * CLR, CH_FLOOR, HOOK_TIP + TIP_GAP,
                engage_z + HOOK_Z0 - CLR, engage_z + HOOK_Z1 + CLR, cx)
 
 
