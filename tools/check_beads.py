@@ -189,6 +189,8 @@ _ex("hardware",
     SLOT_DY="optical aperture over the 0805 triplet (spans +-2.225; optics)",
     WRAP_F_B="dimensionless wrap-pitch factor (x gauge per turn), not a length",
     PCB_T_TOL="+-10% FR4 fab tolerance FACTOR (dimensionless x PCB_T)",
+    latch__LG_HEAD_FACE_Y="= legs.SQ_W/2; SQ_W is 55 beads and half an ODD count "
+                          "is never on the grid -- a centre-line, not a thickness",
     )
 
 # Gaps, not material. Always sub-bead; the grid does not apply.
