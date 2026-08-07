@@ -473,10 +473,26 @@ def _build() -> cq.Workplane:
     # finger/brace flare back to the wall line — the CUT, not the comb, sets the opening on BOTH Y
     # faces (that flare was the −X "angled shoulder"/uneven-thickness the user flagged). Both
     # bearing↔ and string↔endplate are gate-BLIND (allowlisted) → verified by hand (xsec/ywidth).
-    BR_HW    = D.BRIDGE_BEARING_W / 2 + 0.4               # 2.4: opening half-width (bearing + clr) → 4.8 wide
-    SLOT_X0  = D.BRIDGE_AXLE_X - 2.5                      # -6.5: −X flat wall (floor), past the bearing top
-    SLOT_X1  = D.BRIDGE_X + max(D.STRING_GAUGE) / 2 + 0.5 # 1.4: +X flat wall, just past the dead-string rise
-    SLOT_Z0, SLOT_Z1 = Z6 - 1.0, BEAR_TOP + 1.0          # 5 .. 17: through the shelf top, open above
+    # SIZED FROM THE BEARING AND THE FATTEST STRING (user), not from constants. The
+    # slot has to contain the bearing's whole CIRCLE, because the bearing sits in this
+    # opening between two comb fingers -- so every face of it derives from the OD and
+    # the axle, and the +X face from the largest gauge's rise.
+    #
+    # This was -2.5 and Z6-1.0, tuned by hand when the bearing was O8. The 695ZZ round
+    # took it to O13 and 788 mm3 of bearing ended up buried in endplate material --
+    # and NOTHING REPORTED IT, because bearing<->endplate is one of the allowlisted
+    # pairs. An allowlist is a promise that a contact is intended; it does not stay
+    # true when the part it excuses changes size. Derived, it cannot go stale again.
+    BR_CLR   = 0.5                                        # air round the race
+    BR_HW    = D.BRIDGE_BEARING_W / 2 + 0.4               # opening half-width (bearing + clr)
+    _br_x0   = D.BRIDGE_AXLE_X - D.BRIDGE_BEARING_OD / 2  # bearing -X extent
+    _br_x1   = D.BRIDGE_AXLE_X + D.BRIDGE_BEARING_OD / 2  # bearing +X extent
+    _br_z0   = D.BRIDGE_BEARING_Z - D.BRIDGE_BEARING_OD / 2   # bearing bottom
+    SLOT_X0  = _br_x0 - BR_CLR                            # −X floor, clear of the race
+    SLOT_X1  = max(D.BRIDGE_X + max(D.STRING_GAUGE) / 2 + 0.5,
+                   _br_x1 + BR_CLR)                       # +X face: dead-string rise OR the race
+    SLOT_Z0  = min(Z6 - 1.0, _br_z0 - BR_CLR)             # floor: the shelf OR the race's underside
+    SLOT_Z1  = BEAR_TOP + 1.0                             # open above the string plane
     _slot = box_at(SLOT_X1 - SLOT_X0, 2 * BR_HW, SLOT_Z1 - SLOT_Z0,
                    x=(SLOT_X0 + SLOT_X1) / 2, y=0.0, z=(SLOT_Z0 + SLOT_Z1) / 2)
     for i in range(D.N_STRINGS):
