@@ -60,7 +60,7 @@ CH_W, CH_D = 20.6, 3.0                 # channel cut: width / depth into web
 
 
 from . import chassis as CH          # only early constants (X_*, Z_*) used here
-from .helpers import box_at, cyl
+from .helpers import box_at, cyl, cyl_x
 from cadkit.fasteners import M2, cut_anchor
 from cadkit.pcb import jst_xh_header, xh_length, XH_POST_TAIL
 
@@ -360,33 +360,25 @@ def tee_pcb(x: float, y: float, drop: int = 1, accurate: bool = True) -> cq.Work
     return b
 
 
-_AX = cq.Vector(1, 0, 0)                # plugs insert from +X (the panel face)
-
-
-def _cyl_x(d, length, x, y, z) -> cq.Workplane:
-    return cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        d / 2, length, cq.Vector(x, y, z), _AX))
-
-
 def ts_jack() -> cq.Workplane:
     """1/4-inch TS panel jack — Neutrik NMJ4HCD2 dims: Ø11.4 panel bushing,
     Ø~15 body ~22 mm deep BEHIND the panel, nut outside. Female socket bore
     Ø6.5 for the 6.35 mm plug."""
-    b = _cyl_x(15.0, 22.0, -16.0, TS_Y, JACK_Z)            # deep body, behind cap
-    b = b.union(_cyl_x(11.4, 8.05, 6.0, TS_Y, JACK_Z))     # bushing through cap
-    b = b.union(_cyl_x(13.0, 2.0, 14.05, TS_Y, JACK_Z))    # nut, outside
-    b = b.cut(_cyl_x(6.5, 33.0, -15.0, TS_Y, JACK_Z))      # female plug socket
+    b = cyl_x(15.0, 22.0, -16.0, TS_Y, JACK_Z)            # deep body, behind cap
+    b = b.union(cyl_x(11.4, 8.05, 6.0, TS_Y, JACK_Z))     # bushing through cap
+    b = b.union(cyl_x(13.0, 2.0, 14.05, TS_Y, JACK_Z))    # nut, outside
+    b = b.cut(cyl_x(6.5, 33.0, -15.0, TS_Y, JACK_Z))      # female plug socket
     return b.translate((JACK_FACE_DX, 0, 0))               # ride the (thicker) +X face
 
 
 def dc_jack() -> cq.Workplane:
     """DC barrel power inlet — Same Sky PJ-005A dims: Ø10.8 face, Ø5.7 thread,
     ~15.5 mm overall. Female Ø5.5 barrel bore with the Ø2.0 centre pin."""
-    b = _cyl_x(10.8, 10.0, -4.0, DC_Y, JACK_Z)             # body behind the cap
-    b = b.union(_cyl_x(5.7, 8.05, 6.0, DC_Y, JACK_Z))      # thread through cap
-    b = b.union(_cyl_x(10.8, 2.0, 14.05, DC_Y, JACK_Z))    # front face, outside
-    b = b.cut(_cyl_x(5.5, 22.0, -3.0, DC_Y, JACK_Z))       # female barrel bore
-    b = b.union(_cyl_x(2.0, 17.0, -3.0, DC_Y, JACK_Z))     # centre pin
+    b = cyl_x(10.8, 10.0, -4.0, DC_Y, JACK_Z)             # body behind the cap
+    b = b.union(cyl_x(5.7, 8.05, 6.0, DC_Y, JACK_Z))      # thread through cap
+    b = b.union(cyl_x(10.8, 2.0, 14.05, DC_Y, JACK_Z))    # front face, outside
+    b = b.cut(cyl_x(5.5, 22.0, -3.0, DC_Y, JACK_Z))       # female barrel bore
+    b = b.union(cyl_x(2.0, 17.0, -3.0, DC_Y, JACK_Z))     # centre pin
     return b.translate((JACK_FACE_DX, 0, 0))               # ride the (thicker) +X face
 
 
@@ -399,7 +391,7 @@ def usbc_jack() -> cq.Workplane:
     # racetrack cavity (8.34 wide x 2.56 tall) + centre PCB tongue
     cav = box_at(7.0, 5.78, 2.56, x=12.5, y=USB_Y, z=JACK_Z)
     for dy in (-2.89, 2.89):
-        cav = cav.union(_cyl_x(2.56, 7.0, 9.0, USB_Y + dy, JACK_Z))
+        cav = cav.union(cyl_x(2.56, 7.0, 9.0, USB_Y + dy, JACK_Z))
     b = b.cut(cav)
     b = b.union(box_at(5.5, 6.7, 0.7, x=11.75, y=USB_Y, z=JACK_Z))
     return b.translate((JACK_FACE_DX, 0, 0))               # ride the (thicker) +X face
