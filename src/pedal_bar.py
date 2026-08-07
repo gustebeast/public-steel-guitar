@@ -89,6 +89,12 @@ YC = LEG_Y[0]                          # FLUSH round: the bar rides the +Y
 # one foot per +Y leg: (leg station, inboard side sign). The side sign is the
 # legacy latch-opening direction, kept because the TRRS way still keys off it.
 # (Was LATCHES, back when each foot carried a snap/TRRS latch.)
+# The latch is being iterated on ONE joint pair (user, 2026-08-06): the -X/+Y
+# leg, which is also the TRRS leg -- the most awkward case, so whatever works
+# there works everywhere. That is FEET[1] (x = LEG_STATIONS_X[1] = -614.4).
+# Set to None to build the bar with no latch at all.
+LATCH_FOOT = 1
+
 FEET = ((LEG_STATIONS_X[0], -1.0),     # +X leg → plain tower
         (LEG_STATIONS_X[1], +1.0))     # -X leg → wired (TRRS) tower
 
@@ -279,7 +285,7 @@ assert (LID_ZC + LID_FOOT_HW - TROUGH_Z1) >= LOCK_D + 2 * 0.8 - 1e-6, (
                                    # and detents extraction (locks BOTH lid
                                    # pieces: B butts A). No screws anywhere.
 
-def _stub_tower(lx: float, wired: bool) -> cq.Workplane:
+def _stub_tower(lx: float, wired: bool, latch: bool = False) -> cq.Workplane:
     """FUSED stub tower (user: single printed piece — the tenon is part of
     the bar): BLK_W-sq button body (19..43 — slimmed with the leg blocks
     to the 4.2 inset, symmetry round) + octagon spigot (43..81) with the
@@ -306,8 +312,9 @@ def _stub_tower(lx: float, wired: bool) -> cq.Workplane:
     # i.e. the face the mechanism is datumed to, so it needs no finger well — the
     # 44-wide leg head gets one instead to match. The button lands on the BAR,
     # facing outboard: the piece you lift off (user).
-    b = b.cut(LT.male_cutter(cx=LT.LX_TOWER).translate((0, 0, STUB_Z0)))
-    b = b.union(LT.male_post(cx=LT.LX_TOWER).translate((0, 0, STUB_Z0)))
+    if latch:
+        b = b.cut(LT.male_cutter(cx=LT.LX_TOWER).translate((0, 0, STUB_Z0)))
+        b = b.union(LT.male_post(cx=LT.LX_TOWER).translate((0, 0, STUB_Z0)))
     b = b.rotate((0, 0, 0), (0, 0, 1), 180).translate((lx, YC, 0))
     return b
 # Print-orientation note: the tower's octagon spigot has a constant Z section, so
@@ -327,8 +334,8 @@ def _bar_full() -> cq.Workplane:
     the full-length dovetail lid GROOVE − the lid-lock detent pocket."""
     body = box_at(BAR_X1 - BAR_X0, BAR_Y1 - BAR_Y0, BAR_H,
                   x=(BAR_X0 + BAR_X1) / 2, y=(BAR_Y0 + BAR_Y1) / 2, z=BAR_H / 2)
-    body = body.union(_stub_tower(FEET[0][0], False))
-    body = body.union(_stub_tower(FEET[1][0], True))
+    body = body.union(_stub_tower(FEET[0][0], False, latch=(LATCH_FOOT == 0)))
+    body = body.union(_stub_tower(FEET[1][0], True,  latch=(LATCH_FOOT == 1)))
     body = body.cut(_foot_mortise_cutter(FEET[0][0]))
     body = body.cut(_foot_mortise_cutter(FEET[1][0]))
     # wired tower's ways — cut AFTER the union (they pierce both the tower
@@ -572,12 +579,14 @@ def assembly_parts():
 
 
 def _latch_parts():
-    """The two bar-joint latches. They live in the TOWERS, so they travel with
+    """The bar-joint latch. It lives in the TOWER, so they travel with
     the BAR -- which is the piece you lift off, and therefore the piece the
     button has to be on (user). Authored at the tower origin, then through the
     tower's own 180 rotation so the button faces outboard like the legs'."""
     out = []
     for i, (lx, _s) in enumerate(FEET):
+        if i != LATCH_FOOT:                 # one joint pair while the latch is iterated
+            continue
         for nm, wp in (("latch_slider", LT.slider(LT.LX_TOWER)),
                        ("latch_cover", LT.cover(LT.LX_TOWER)),
                        ("latch_spring", LT.spring(LT.LX_TOWER))):

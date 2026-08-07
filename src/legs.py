@@ -379,7 +379,7 @@ def foot_mortise_cutter() -> cq.Workplane:
             .close().extrude(40.0).translate((0, FOOT_TENON_Y1 + 0.5, 0)))
 
 
-def leg_shaft_short() -> cq.Workplane:
+def leg_shaft_short(latch: bool = False) -> cq.Workplane:
     """+Y shaft ×2: the 28×26 tenon ends in the 44-sq terminal BLOCK
     whose downward socket + ledge take the bar tower's spigot/bolt.
     ROUND 3: tenon = the W28 flush OCTAGON prism; the bar-joint socket =
@@ -399,7 +399,8 @@ def leg_shaft_short() -> cq.Workplane:
     # LATCH (female half) for the bar joint — same cutter as the body stub. This
     # is the THIN wall of the pair (BLK_W leaves 3.7 from the apex), which is what
     # capped HOOK_ENGAGE at 1.8 for BOTH joints; 2.4 mm of wall survives here.
-    body = body.cut(LT.female_cutter(engage_z=0.0, cx=LT.LX_TOWER))
+    if latch:
+        body = body.cut(LT.female_cutter(engage_z=0.0, cx=LT.LX_TOWER))
     return body
 
 
@@ -410,7 +411,7 @@ def leg_shaft_trrs() -> cq.Workplane:
     same straight press that seats the joint. Its factory cable runs UP
     the column to the mini junction PCB. The side dock / carrier PCB /
     corner channel of the sideways design are GONE."""
-    body = leg_shaft_short()
+    body = leg_shaft_short(latch=True)   # the TRRS leg carries the bar-joint latch
     # vertical jack way, Ø9.7 CLEAN THROUGH to the tenon top: the leg
     # EXTENSION cable's molded jack barrel (10-03404-class envelope,
     # verify the SKU) loads DOWN from the shaft's open top onto the
@@ -911,7 +912,7 @@ def endwall_screw_negatives(station: float, ly: float, egx: float,
     return negs
 
 
-def _body_stub(wired: bool, eps: float) -> cq.Workplane:
+def _body_stub(wired: bool, eps: float, latch: bool = False) -> cq.Workplane:
     """BODY STUB ×4 (PETG-GF, prints LYING ON ITS LOCAL +Y FACE — the
     Y-install round's point: layer lines run in x-z, so BOTH leg-bending
     directions load within layers, and the house-socket gable points up
@@ -941,7 +942,8 @@ def _body_stub(wired: bool, eps: float) -> cq.Workplane:
     # LATCH (female half): hook channel + 45 deg mouth lead-in + retention
     # pocket, ALL INTERNAL — the outer wall keeps 6.6 mm and is never broken,
     # so no button and no hole appears on the body (user). Mouth is local z0.
-    b = b.cut(LT.female_cutter(engage_z=0.0))
+    if latch:
+        b = b.cut(LT.female_cutter(engage_z=0.0))
     ca, cb = _cross_x(eps)
     for rx in (ca, cb):
         b = b.union(_stub_ridge(SQ_W).translate((rx, -SQ_W / 2, STUB_H)))
@@ -1008,10 +1010,10 @@ def leg_body_stub_trrs() -> cq.Workplane:
     local +x): carries the chassis-side 10-03404 of the leg↔body
     blind-mate on the flipped TRRS axis (local +5) — dropped into the
     Ø9.7 way from above after install; NOTHING above the top face."""
-    return _body_stub(True, 1.0)
+    return _body_stub(True, 1.0, latch=True)   # the TRRS leg IS the latch pilot
 
 
-def leg_head() -> cq.Workplane:
+def leg_head(latch: bool = False) -> cq.Workplane:
     """LEG HEAD x4 (PCTG, prints LYING on its +Y bed face — round 3,
     all-octagon): octagon section socket below (mates the top segment), flush
     octagon SPIGOT above (into the body stub), TRRS plug seat + ways on the
@@ -1047,10 +1049,13 @@ def leg_head() -> cq.Workplane:
     b = b.union(_section_tenon(39.0).translate((0, 0, -1.0)))
     # LATCH (male half): the slider tunnel — which also takes the octagon apex
     # away across the band, opening the channel the hook travels in — plus the
-    # cover dovetail, and the finger well that sinks this 44 face to the tower's
-    # 35.6 so ONE slider + cover SKU serves both joints. See latch.py.
-    b = b.cut(LT.well_cutter(SQ_W / 2)).cut(LT.male_cutter())
-    b = b.union(LT.male_post())          # coil guide post (union AFTER the tunnel cut)
+    # cover dovetail -- cut to THIS face (44/2 = 22.0), not sunk back to the
+    # tower's 17.8. The head prints lying on this face, so the old finger well
+    # put a 422 mm^2 flat ceiling at the build plate; the recess now lives in
+    # the head's own (thicker) cover instead. See latch.cover.
+    if latch:
+        b = b.cut(LT.male_cutter(face_y=SQ_W / 2))
+        b = b.union(LT.male_post())      # coil guide post (union AFTER the tunnel cut)
     # captive CA-354S seat + cable ways on the TRRS axis (+5, +13 — moved
     # into the fat flare band): tip lip, handle way, Ø8 down-way to the core
     b = b.cut(cyl(9.4, 1.7, z=37.4).translate((5.0, TRRS_DY, 0)))
