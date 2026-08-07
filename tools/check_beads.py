@@ -75,7 +75,12 @@ _ex("hardware",
     NEMA17_BOLT_SQ="NEMA17 bolt circle 31.0",
     NEMA17_PILOT_D="NEMA17 pilot boss 22.0",
     PULLEY_OD="GT2 14T over-teeth 8.4",
+    PULLEY_FLANGE_OD="GT2 14T flange OD (pulley OD + stock flange)",
     PULLEY_FLANGE_T="GT2 pulley flange stock",
+    PULLEY_BORE_MOTOR="= MOTOR_SHAFT_D, the NEMA17 shaft Ø5",
+    PULLEY_BORE_SCREW="= SCREW_OD, the Tr5x1 screw",
+    BELT_PITCH="GT2 tooth pitch 2.0",
+    BELT_W="5 mm GT2 open belt (narrowest standard stock)",
     BELT_TOOTH_H="GT2 tooth profile 0.75",
     BELT_T="GT2 belt back thickness 1.4",
     SUPPORT_BRG_OD="MR85 bearing OD 8.0",
@@ -111,6 +116,17 @@ _ex("clearance",
     NUT_SCREW_D="M4 shaft clearance",
     )
 
+# Where PURCHASED parts sit relative to each other. No bead is laid to define a
+# motor pitch, so the grid buys nothing -- and these are load-bearing for the
+# LAYOUT: the rib comb is generated from the motor pitch, and the knee-lever
+# mount hardcodes a rib X, so a 0.4 mm snap here walked the comb out from under
+# the lever and buried its tenons in solid rib (3021 mm^3). Snapped and reverted
+# 2026-08-06; chassis now asserts MOUNT_X lands on a rib.
+_ex("layout",
+    MOTOR_X0="first motor offset -- sized for a >=100 mm free belt span",
+    MOTOR_X_STEP="motor pitch = 42.3 body + tension slot; drives the rib comb",
+    )
+
 # The instrument, not the printer.
 _ex("musical",
     STRING_PITCH="changer string spacing",
@@ -131,19 +147,41 @@ def classify(name: str, mod: str) -> tuple[str, str] | None:
 # the /2 of a centre-line, 360 degrees of a circle, unit scale factors.
 STRUCTURAL = {0.0, 1.0, 2.0, 90.0, 180.0, 270.0, 360.0}
 
+# Names that ARE the bead. `13 * BEAD` states a length in the grid's own unit, so
+# the 13 is a COUNT -- checking it as a length would reject the very idiom this
+# refactor exists to introduce.
+BEAD_NAMES = {"BEAD", "NOZZLE_D", "MIN_WALL"}
+
+# Constants that are not lengths at all, by name. Counts and angles.
+NON_LENGTH = ("N_STRINGS", "N_TEETH", "SEGMENTS", "COUNT", "_N", "TURNS",
+              "_DEG", "ANGLE", "TEETH")
+
+
+def _is_bead_unit(node: ast.AST) -> bool:
+    return (isinstance(node, ast.Name) and node.id in BEAD_NAMES) or (
+        isinstance(node, ast.Attribute) and node.attr in BEAD_NAMES)
+
 
 def _offsets(node: ast.AST) -> list[float]:
     """Numeric literals in an expression that act as LENGTHS.
 
-    Skips the structural ones (a `/ 2` centre-line, a 180 deg rotate, an index)
-    -- they are arithmetic, not material. Everything else in a geometry
-    expression is an offset someone chose, and is fair game."""
+    Two things are skipped. STRUCTURAL literals (a `/ 2` centre-line, a 180 deg
+    rotate, an index) are arithmetic, not material. And the coefficient of a
+    `n * BEAD` product is a bead COUNT already stated in grid units -- flagging
+    it would reject the idiom the grid is written in. Everything else in a
+    geometry expression is an offset someone chose, and is fair game."""
+    skip = set()
+    for n in ast.walk(node):
+        if isinstance(n, ast.BinOp) and isinstance(n.op, ast.Mult):
+            if _is_bead_unit(n.right):
+                skip.add(id(n.left))
+            if _is_bead_unit(n.left):
+                skip.add(id(n.right))
     out = []
     for n in ast.walk(node):
         if isinstance(n, ast.Constant) and isinstance(n.value, (int, float)) \
-           and not isinstance(n.value, bool):
-            v = abs(float(n.value))
-            if v not in STRUCTURAL:
+           and not isinstance(n.value, bool) and id(n) not in skip:
+            if abs(float(n.value)) not in STRUCTURAL:
                 out.append(float(n.value))
     return out
 
@@ -164,6 +202,8 @@ def module_constants(mod_name: str):
                 continue
             v = getattr(mod, t.id, None)
             if not isinstance(v, (int, float)) or isinstance(v, bool):
+                continue
+            if any(k in t.id for k in NON_LENGTH):     # a count or an angle
                 continue
             bare = isinstance(node.value, ast.Constant) or (
                 isinstance(node.value, ast.UnaryOp)
