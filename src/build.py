@@ -852,7 +852,22 @@ _RIB = 23.0
 # so 5 ribs (115) does not fit and 4 ribs (92) is the closest reachable step. Getting
 # to 120 needs a NARROWER HOUSING, not a different station — the same 82.36 that
 # already dictated the cluster spacing. Flagged rather than silently rounded.
-_KNEE_GAP = 4 * _RIB                         # 92.0 — closest achievable to the user's 120
+# TWO GAPS NOW, and the LEFT one is ODD ON PURPOSE (user: the vertical lever is not
+# centred between LKL and LKR). KV's two tenons are one rib apart, so a legal KV
+# station is always rib - TEN_Y[1] = 11.9 off a rib — never ON one. An EVEN rib gap
+# puts the pair's midpoint ON a rib, so the vertical lever could never be closer
+# than ~11.9 to it, which is exactly what the user was looking at. An ODD gap puts
+# the midpoint BETWEEN ribs, which is where a legal station already lives: 5 ribs
+# lands it 0.4 off centre instead of 11.9.
+#
+# 115 is also nearer the user's original 120 knee-width target than 92 was. The right
+# knee keeps 92 because the two pairs plus their housings have to fit between the leg
+# blocks, and 115/115 does not — that is also why LKL sits at ILKL's own station
+# rather than one slot +X of it. The ILKL offset is what pays for the wider left gap
+# AND the centred vertical lever; the two levers simply stack front-to-back on one X,
+# which is what an INNER lever is anyway.
+_KNEE_GAP_L = 5 * _RIB                       # 115.0 — odd, so VKL can centre
+_KNEE_GAP_R = 4 * _RIB                       # 92.0
 _LEVER_SLOT = 1 * _RIB                       # 23.0 — ILKL -> LKL, all the leg leaves
 #   ILKL lives in the FORWARD plane, which is exactly the band the -Y leg blocks
 #   occupy (y -139.15..-95.15), so its housing must clear -592.4 in X: it cannot go
@@ -869,10 +884,21 @@ _LEVER_SLOT = 1 * _RIB                       # 23.0 — ILKL -> LKL, all the leg
 # bought the whole 10.4 back and then some. Still derived, still clamped, so the day
 # the housing gets deeper this reports instead of burying itself in a rib.
 def _vkl_mount_y() -> float:
+    """VKL's mount Y: put the ARM'S CENTRE on the shared contact plane.
+
+    Not the axle. The axle was on the plane and the user still read the lever as too
+    far forward — because a KV arm runs 50 -Y of its axle and only 5 +Y, so an axle
+    on the plane leaves the arm's centre 22.5 in FRONT of it, out where the knee has
+    to be pulled back to meet it. What the knee actually touches is the arm, so the
+    arm is what gets centred. Measured off the solid, and still clamped to the
+    mortise so it cannot bury itself in a rib.
+    """
     from . import knee_lever as KL
     from . import knee_lever_vert as KV
+    b = KV.place(KV.kv_lever).val().BoundingBox()
+    arm_off = (b.ymin + b.ymax) / 2.0 - KV.MOUNT_Y          # -22.5
     tail = KV.place(KV.kv_housing).val().BoundingBox().ymax - KV.MOUNT_Y
-    return min(_LEVER_Y, KL.MORT_Y_END - tail)
+    return min(_LEVER_Y - arm_off, KL.MORT_Y_END - tail)
 
 
 #   name    kind   station x        mount y     mirrored?
@@ -886,20 +912,24 @@ def _vkl_mount_y() -> float:
 # clears it is -501. Both bounds together pin ILKL and push the left group +X:
 # ILKL -501, LKL -409 is exactly the 92 one-slot step the user described.
 def _vkl_station() -> float:
-    """VKL's mount X, DERIVED so its two tenons land on ribs.
+    """VKL's mount X: the LEGAL station nearest the LKL/LKR midpoint.
 
-    It was hardcoded (-432 - 10.4). Then the lever housing widened for a bigger
-    bearing, KV.TEN_Y moved with it, and the constant silently put both tenons 0.7
-    off their ribs — where they promptly dug into rib material on every build. The
-    offset is KV's own, so read it from KV.
+    Legal means both its tenons land on ribs, which pins the station to
+    rib - TEN_Y[1]. Rather than hardcode one (the last constant here silently put
+    both tenons 0.7 off their ribs when the housing widened), walk the ribs and take
+    whichever legal station sits closest to the midpoint the user wants it centred
+    on. With the odd left gap that comes out 0.4 off.
     """
     from . import knee_lever_vert as KV
-    return -432.0 - KV.TEN_Y[1]
+    mid = _LKL_X + _KNEE_GAP_L / 2.0
+    best = min((abs(rib - KV.TEN_Y[1] - mid), rib - KV.TEN_Y[1])
+               for rib in (-616.0 + 23.0 * k for k in range(30)))
+    return best[1]
 
 
 _ILKL_X = -501.0                             # hard -X bound: the left leg block
-_LKL_X = _ILKL_X + _LEVER_SLOT               # -478
-_RKL_X = -225.0                              # right knee, 253 from the left one
+_LKL_X = _ILKL_X                             # -501: see _KNEE_GAP_L
+_RKL_X = -225.0                              # right knee
 
 LEVER_STATIONS = (
     ("ilkl", "kl", _ILKL_X,              _ILKL_Y,  False),
@@ -909,10 +939,10 @@ LEVER_STATIONS = (
     ("lkl",  "kl", _LKL_X,               _LEVER_Y, False),
     ("vkl",  "kv", _vkl_station(),       None,     False),   # mid-gap, rib-derived
     #                                                          None -> _vkl_mount_y()
-    ("lkr",  "kl", _LKL_X + _KNEE_GAP,   _LEVER_Y, True),    # -386
+    ("lkr",  "kl", _LKL_X + _KNEE_GAP_L, _LEVER_Y, True),    # -386
     # RIGHT KNEE: same gap, no vertical lever in this copedent
     ("rkl",  "kl", _RKL_X,               _LEVER_Y, False),
-    ("rkr",  "kl", _RKL_X + _KNEE_GAP,   _LEVER_Y, True),    # -133
+    ("rkr",  "kl", _RKL_X + _KNEE_GAP_R, _LEVER_Y, True),    # -133
 )
 
 
