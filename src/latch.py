@@ -142,11 +142,16 @@ HOOK_ENGAGE = 3 * B               # 2.4 -- up again from 2.0 on the snap. Load-
                                   # bearing, so it rounds UP; the thin female still
                                   # keeps 17.8 - 15.3 = 2.5 mm behind the pocket.
 HOOK_TIP = CH_FLOOR + HOOK_ENGAGE                      # 14.9 when ENGAGED
-BACK_Y = -3 * B                   # -2.4 tunnel back wall: the spring reacts here
+BACK_Y = -3 * B                   # -2.4 tunnel back wall: the spring reacts here.
+                                  # MALE-FRAME ONLY -- the female must never use it
+                                  # (see female_cutter; it did, and left a sliver).
+HOOK_BACK = CH_FLOOR - CLR        # 12.65 the hook's INBOARD face at rest (the
+                                  # slider's upper step rides here)
 STROKE = 4 * B                    # 3.2 press travel. MUST EXCEED HOOK_ENGAGE -- equal
                                   # would put the hook exactly on the channel floor
                                   # at full press, i.e. zero clearance. 2.8 also
                                   # reads as a proper button throw under the thumb.
+
 
 # ── Z bands (about the butt plane) ───────────────────────────────────────────
 # The hook's TOP is capped by the TRRS way, not by anything in the latch. The
@@ -196,6 +201,15 @@ SPR_GAP = 5 * B                   # 4.0 slider back face -> tunnel back at REST.
                                   # tunnel wall before the hook has cleared.
 # installed = SEAT + GAP = 10.4 -> 1.6 preload -> 4.0 N holding the button out;
 # at full press 4.8 compression -> 12.0 N. Never reaches solid (4.8 vs 7.2).
+
+SLIDER_BACK = BACK_Y + SPR_GAP       # 1.60 the slider's back face at REST
+CH_BACK = SLIDER_BACK - STROKE - CLR # -1.85 the female channel's inboard limit.
+                                     # NOT the hook's back face: the slider's upper
+                                     # STEP crosses the butt plane too, so the female
+                                     # has to clear the whole pressed slider, not just
+                                     # the hook. (Bounding it to the hook made release
+                                     # jam -- caught by the release/insertion test.)
+                                     # Derived from the slider so they cannot drift.
 
 LG_BLK_HALF = FACE_Y                # = BLK_W/2; the thin female's outer face (legs.BLK_W
                                   # owns this number; latch cannot import legs -- legs
@@ -290,9 +304,19 @@ def female_cutter(engage_z: float, cx: float = LX_C) -> cq.Workplane:
     """What the FEMALE half loses -- all INTERNAL; the outer wall is never
     broken, so no button and no hole appears on the body (user).
 
-      * CHANNEL: the hook's retracted travel path. The octagon's +Y flank slopes
+      * CHANNEL: the hook's retracted travel path, spanning exactly the hook's
+        OWN retracted Y band (CH_BACK..CH_FLOOR). The octagon's +Y flank slopes
         across the band, so the mortise void alone does not clear a rectangular
         hook -- this squares it off out to CH_FLOOR.
+
+        This used to run to BACK_Y, which is a MALE-frame datum: the male's
+        slider-tunnel back wall, 15.3 mm inboard. Nothing in the FEMALE needs
+        the channel that deep -- only the hook ever crosses the butt plane --
+        and the excess mostly landed harmlessly inside the octagon mortise
+        (already void). Mostly: where the mortise's flank cut away, a
+        0.75 x 0.75 x 35 mm sliver of real material survived and got sliced
+        off, leaving a full-height notch visible on leg_body_stub_2 and on no
+        other stub, since it is the only one carrying a latch (user report).
       * POCKET: the hook's home. Its floor is a FLAT 90 deg ledge, the retention
         face; the ledge is the material between the female's MOUTH and that
         floor, which is why HOOK_Z0 is also the ledge thickness.
@@ -301,7 +325,7 @@ def female_cutter(engage_z: float, cx: float = LX_C) -> cq.Workplane:
     the ledge is made of, so the hook passed straight through and the latch
     retained nothing. The camming is the hook's own 45 deg top chamfer."""
     z0, z1 = engage_z, engage_z + HOOK_Z1 + 30.0
-    ch = _yz(LX_W + 2 * CLR, CH_FLOOR, BACK_Y, z0, z1, cx)
+    ch = _yz(LX_W + 2 * CLR, CH_FLOOR, CH_BACK, z0, z1, cx)
     return ch.union(_pocket(engage_z, cx))
 
 
