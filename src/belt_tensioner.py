@@ -133,10 +133,24 @@ def _half_body(x0: float, x1: float, w0: float, w1: float) -> cq.Workplane:
 
 
 def anchor() -> cq.Workplane:
-    """−X half: belt well for LIFTER_A; the M4 head bears FLUSH on its −X face; the screw
-    channel opens up into the well so the crest lifts the bar."""
-    body = _half_body(HEAD_X, A_X1, GA0, GA1)
-    body = body.cut(cyl_x(SCR_CLR, (A_X1 + 1) - HEAD_X, HEAD_X, Z_SCR))
+    """−X half (the SIMPLE one — no insert): belt well for LIFTER_A, the M4 HEAD bears flush on
+    the −X face, and the screw channel runs through to the slider (crest lifts the bar).
+
+    ENTRY / RETENTION (user): the well is OPEN at the +X face and SIZED to the lifter, so
+    LIFTER_A installs by sliding in from +X. That direction is LOAD-ALIGNED — the belt tension
+    pulls this (motor-pulley-end) lifter −X, seating it against the well's −X back wall, so the
+    belt can never push it back out the mouth it entered. No +X end wall (no ramp): the BELT
+    does the X-retention; the cheeks + ceiling hold Y/Z. Open +X also prints support-free (an
+    open slot mouth needs no bridge), and shrinks the half from the lifter+ramp+margins to
+    lifter+one margin.  [Belt pull assumed −X = toward the anchor's motor pulley — flip if the
+    drivetrain routes the anchor's belt end the other way.]"""
+    x0, x1 = HEAD_X, GA1                                    # +X face = the well's +X end (sized to the lifter)
+    body = box_at(x1 - x0, BODY_W, TOP - BOT, x=(x0 + x1) / 2, y=0.0, z=(TOP + BOT) / 2)
+    body = body.cut(box_at((x1 - x0) + 2, TUN_W, CEIL_UZ,                    # belt tunnel (full length)
+                           x=(x0 + x1) / 2, y=0.0, z=CEIL_UZ / 2))
+    body = body.cut(box_at((GA1 - GA0) + 1, WELL_W, -WELL_FLR,               # bar well — OPEN at the +X face
+                           x=(GA0 + GA1) / 2 + 0.5, y=0.0, z=WELL_FLR / 2))
+    body = body.cut(cyl_x(SCR_CLR, (GA1 + 1) - HEAD_X, HEAD_X, Z_SCR))       # screw channel through to +X
     return body
 
 
