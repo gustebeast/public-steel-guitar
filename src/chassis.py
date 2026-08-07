@@ -309,6 +309,16 @@ def _build_full() -> cq.Workplane:
     # any bay -- its two tenons drop into the two ribs flanking the chosen bay). Even rib pitch -> the
     # one tenon fits all. (Retention is a set screw that presses the rib ledge -- no per-bay pilot.)
     from . import knee_lever as _KL
+    # knee_lever.MOUNT_X is a hardcoded -501.0 that MUST land on a rib -- the lever's
+    # tenons drop into the comb, and the comb is generated from the motor pitch.
+    # knee_lever cannot derive it (chassis imports knee_lever, not the other way), so
+    # the relationship is only ever true by hand. Assert it here, where both are in
+    # scope: change the motor pitch and this fires immediately instead of silently
+    # burying the tenons in solid rib (3021 mm^3, found the hard way).
+    assert any(abs(_rx - _KL.MOUNT_X) < 1e-6 for _rx in _RIB_X), (
+        "knee_lever.MOUNT_X %.2f is not a rib X -- the comb is at %s. The lever "
+        "mount must sit ON a rib; move MOUNT_X to one." % (
+            _KL.MOUNT_X, [round(r, 2) for r in _RIB_X if abs(r - _KL.MOUNT_X) < 40]))
     for _rx in _RIB_X:
         body = body.cut(_KL.rib_mortise(_rx))
     # (the pickup now mounts entirely in its deck cover piece — top_plate.py — so

@@ -68,20 +68,38 @@ import cadquery as cq
 from . import dimensions as D
 from .helpers import box_at, cyl_y
 
+# ── the bead grid ────────────────────────────────────────────────────────────
+# Every printed length below is a whole number of beads, written as the COUNT so
+# the count is what you read (cadkit.printing documents the rule). The three
+# exemptions all appear in this module and are worth naming where they sit:
+# CLR/OCT_CLR are CLEARANCES (gaps, never material -- no bead is laid across
+# one), and the spring block is HARDWARE.
+B = D.BEAD
+
+# ── clearances (sub-bead BY NECESSITY -- see above) ──────────────────────────
+CLR = 0.25                        # sliding clearance on the guided faces
+OCT_CLR = 0.1                     # channel floor standoff from the octagon
+
 # ── the latch band ───────────────────────────────────────────────────────────
 # X band, kept clear of the TRRS blind-mate way (x +5, D8..11) and the M4
 # retention clearance at x +7 -- both live on the +X half, so the latch takes
 # the -X half exactly as the old bolt did.
-LX_C = -11.0                      # band centre X, HEAD/STUB side
-LX_W = 5.0                        # band width X (bounded by the stem at |x| 6
-                                  # and the spigot edge at |x| 14)
+LX_C = -13 * B                    # -10.4 band centre X, HEAD/STUB side. Moved in
+                                  # one bead from -11.0 when everything went on the
+                                  # grid: it buys the LOWER band the room to reach
+                                  # 16 beads, which is what lets the pad be WIDER
+                                  # than it was (8.0 vs 7.5) with an on-grid lip.
+LX_W = 6 * B                      # 4.8 band width X (bounded by the stem at |x| 6
+                                  # and the spigot edge at |x| 14; -12.8..-8.0
+                                  # clears both, where a 7-bead 5.6 would have run
+                                  # the band onto the spigot edge exactly)
 LX0, LX1 = LX_C - LX_W / 2, LX_C + LX_W / 2      # -13.5 .. -8.5
 # LX_W is bounded ABOVE the butt plane, where the slider is inside the spigot and
 # has to miss the stem. BELOW it the male body is a full 44 square with nothing
 # in the way, so the lower half runs WIDER -- otherwise the button pad inherits
 # the 5 mm hook band minus its lip and ends up ~3 mm, which is not a thumb
 # target. The slider is a T in plan: narrow hook, wide pad.
-LOW_W = 11.0                      # lower band (pad + load window)
+LOW_W = 16 * B                    # 12.8 lower band (pad + load window)
 # The band still MIRRORS per joint, because the two joints carry the TRRS way on
 # opposite authored sides (head/stub +5, tower/shaft block -5). The slider and
 # cover are symmetric about their own centre, so that costs nothing: ONE SKU,
@@ -96,10 +114,12 @@ LX_TOWER = -LX_C                  # bar tower <-> shaft block (mirrored)
 # a finger recess (well_cutter) sinking its face to match -- which doubles as
 # the thumb well that keeps the button from being pressed by accident.
 FACE_Y = 17.8                     # = +BLK_W/2, the SHALLOWER of the two faces
-COVER_T = 2.0                     # cover plate thickness
+COVER_T = 3 * B                   # 2.4 cover plate thickness
+COVER_LIP = 3 * B                 # 2.4 the aperture lip each side: what the pad
+                                  # shoulders against as the slider's OUT stop
 COVER_IN = FACE_Y - COVER_T       # 15.8  cover inner face = slider's OUT stop
 OCT_TOP = 12.8                    # octagon's max +Y within the band (measured)
-CH_FLOOR = OCT_TOP + 0.1          # 12.9 female CHANNEL floor: the hook rides
+CH_FLOOR = OCT_TOP + OCT_CLR      # 12.9 female CHANNEL floor: the hook rides
                                   # this, fully retracted, through the whole
                                   # engagement. Just clear of the octagon so the
                                   # channel is a real cut in the wall.
@@ -107,10 +127,12 @@ CH_FLOOR = OCT_TOP + 0.1          # 12.9 female CHANNEL floor: the hook rides
 # 3.7 mm from the mortise apex to its face. 3.0 deep would leave 0.7 mm there --
 # under the 1.6 two-bead floor. 1.8 leaves 1.9 mm, and the same hook then serves
 # the stub too (which keeps 6.1 mm). One hook, both joints.
-HOOK_ENGAGE = 2.0                 # up from 1.8: this face leaves more wall
+HOOK_ENGAGE = 3 * B               # 2.4 -- up again from 2.0 on the snap. Load-
+                                  # bearing, so it rounds UP; the thin female still
+                                  # keeps 17.8 - 15.3 = 2.5 mm behind the pocket.
 HOOK_TIP = CH_FLOOR + HOOK_ENGAGE                      # 14.9 when ENGAGED
-BACK_Y = -2.5                     # tunnel back wall: the spring reacts here
-STROKE = 2.8                      # press travel. MUST EXCEED HOOK_ENGAGE -- equal
+BACK_Y = -3 * B                   # -2.4 tunnel back wall: the spring reacts here
+STROKE = 4 * B                    # 3.2 press travel. MUST EXCEED HOOK_ENGAGE -- equal
                                   # would put the hook exactly on the channel floor
                                   # at full press, i.e. zero clearance. 2.8 also
                                   # reads as a proper button throw under the thumb.
@@ -126,10 +148,21 @@ TRRS_WAY_Z0 = 6.3                 # D11 handle way opens here (legs.leg_head)
 # female's mouth (z0) and the pocket floor, so a low hook means a wafer of a
 # shelf carrying the whole pull-out load. At 1.0 it was 0.75 mm. 2.0 gives 1.75,
 # just over the two-bead floor, and still keeps the pocket top under the TRRS way.
-HOOK_Z0, HOOK_Z1 = 2.0, 5.0       # hook, inside the female
-PAD_Z0, PAD_Z1 = -8.0, -2.0       # button pad, on the male body
-BODY_Z0, BODY_Z1 = -10.0, 5.0     # slider overall
-LOAD_Z = -12.0                    # tunnel/cover bottom (load window bottom).
+LEDGE_T = 3 * B                   # 2.4 the RETENTION LEDGE itself -- the one
+                                  # surface carrying the whole instrument's weight
+                                  # in shear. Was 1.75 = 2.19 beads, exactly the
+                                  # case that makes Arachne improvise a bead; now
+                                  # 3 clean ones. Named, because it is the number
+                                  # that matters, not the z it happens to sit at.
+HOOK_Z0 = LEDGE_T + CLR           # 2.65 -- ledge + the sliding gap above it
+HOOK_Z1 = HOOK_Z0 + 3 * B         # 5.05 hook 2.4 tall, inside the female. 4 beads
+                                  # would put the slider's top at 6.4 and the whole
+                                  # mechanism has to stay under the D11 TRRS way at
+                                  # 6.3 -- so the TRRS way is once again what caps
+                                  # the hook, exactly as the comment above says.
+PAD_Z0, PAD_Z1 = -10 * B, -3 * B  # -8.0 .. -2.4 button pad, on the male body
+BODY_Z0, BODY_Z1 = -13 * B, 7 * B # -10.4 .. 5.6 slider overall
+LOAD_Z = -15 * B                  # -12.0 tunnel/cover bottom (load window bottom).
                                   # Kept above the head's SECTION SOCKET, whose
                                   # roof is at -12.6: dip past it and the tunnel
                                   # opens into the socket, where the segment's
@@ -145,20 +178,24 @@ SPR_RATE = 2.51                   # N/mm (G=79300, see the BOM line)
 SPR_BORE_D = SPR_OD + 0.4         # 5.4 pocket in the slider
 SPR_ID = SPR_OD - 2 * SPR_WIRE    # 3.8 coil bore
 POST_D = SPR_ID - 0.8             # 3.0 guide post (0.4 radial clearance in the coil)
-POST_L = 5.0                      # post length off the tunnel's back wall
-SPR_SEAT = 6.0                    # blind-bore depth in the slider
-SPR_GAP = 4.0                     # slider back face -> tunnel back at REST.
+POST_L = 6 * B                    # 4.8 post length off the tunnel's back wall
+SPR_SEAT = 8 * B                  # 6.4 blind-bore depth in the slider
+SPR_GAP = 5 * B                   # 4.0 slider back face -> tunnel back at REST.
                                   # MUST EXCEED STROKE or the slider bottoms on the
                                   # tunnel wall before the hook has cleared.
-# installed = SEAT + GAP = 10.0 -> 2.0 preload -> 5 N holding the button out;
-# at full press 5.6 compression -> 14 N. Never reaches solid (4.8).
+# installed = SEAT + GAP = 10.4 -> 1.6 preload -> 4.0 N holding the button out;
+# at full press 4.8 compression -> 12.0 N. Never reaches solid (4.8 vs 7.2).
 
-LG_BLK_HALF = 17.8                # = BLK_W/2; the thin female's outer face
-CLR = 0.25                        # sliding clearance on the guided faces
-PAD_W = 7.5                       # button pad width. NARROWER than LOW_W so the
-                                  # slider body cannot pass the cover aperture --
-                                  # that lip is the slider's outward stop (1.75
-                                  # each side).
+LG_BLK_HALF = 17.8                # = BLK_W/2; the thin female's outer face (legs.BLK_W
+                                  # owns this number; latch cannot import legs -- legs
+                                  # imports latch -- so _assert_sane cross-checks it)
+PAD_W = LOW_W - 2 * COVER_LIP     # 8.0 button pad width. NARROWER than LOW_W so
+                                  # the slider body cannot pass the cover aperture.
+                                  # Derived from the LIP rather than set directly:
+                                  # the lip is the slider's outward stop and the
+                                  # thing that must be a whole number of beads, so
+                                  # it is what gets stated. (Both were off-grid
+                                  # before -- 7.5 pad, 1.75 lip.)
 
 
 def _assert_sane():
