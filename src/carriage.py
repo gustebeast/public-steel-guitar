@@ -64,6 +64,15 @@ EXIT_DX = POST_X1H - D.MIN_WALL_2P - STRING_EXIT_D / 2 * math.sqrt(2.0)
 # Anchor tower (fused into prism A): a tall BALL CAGE toward the bridge bearing.
 ANCHOR_POST_H = 7.0                        # tower above the body: top 1 mm under the bearings
 POST_Z1  = THICK / 2 + ANCHOR_POST_H       # tower top (+13) = prism A top
+# THE CAGE IS WHAT CAPS THE BRIDGE BEARING'S OD, so assert the gap rather than
+# trusting two constants in different files to stay in step. The string rides the
+# bearing OD, so its underside sits at STRING_Z - OD; the cage top is right beneath.
+# This fired once already: a bead-grid round moved SCREW_TOP_Z 2.0 -> 2.4, which
+# quietly ate 0.4 of the clearance the 695ZZ round had just bought.
+_BRG_GAP = (D.STRING_Z - D.BRIDGE_BEARING_OD) - (D.CARRIAGE_NOM_Z + POST_Z1)
+assert _BRG_GAP >= 1.0 - 1e-9, (
+    f"the carriage's ball cage clears the bridge bearings by only {_BRG_GAP:.2f} "
+    f"(want 1.0): drop CARRIAGE_NOM_Z, or shrink BRIDGE_BEARING_OD")
 ROOF_T   = 3.2                             # capture roof — its slot edges bear the string pull
 CAGE_TOP = POST_Z1 - ROOF_T                # roof underside: the nut seats up against it
 CAGE_BOT = 2.5                             # cavity mouth bottom, dropped into the body

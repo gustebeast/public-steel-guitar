@@ -188,11 +188,26 @@ for _i in range(len(_TP.spare_fillers)):         # fillers for the other pickup-
 from . import wiring as _WR_FUSE
 _seg_edges = [CH._SHELL_PX + CH.KH_DT_DEPTH + 2.0] + sorted(CH.SPLIT_X, reverse=True) + [CH.X_NUT]
 chassis_segments = list(chassis_segments)
+_fused_segs = set()
 for (_cnm, _cr), (_ctx, _cty, _ctd) in zip(_WR_FUSE.tee_cradles(), _WR_FUSE.tee_stations()):
     for _csi in range(len(_seg_edges) - 1):
         if _seg_edges[_csi + 1] < _ctx < _seg_edges[_csi]:
             chassis_segments[_csi] = chassis_segments[_csi].union(_cr)
+            _fused_segs.add(_csi)
             break
+# ...then RE-CUT the knee/pedal lever rib mortises in whatever segment just gained a
+# cradle. chassis._build_full() already cut them, but the fuse above puts material back
+# INTO the segment and cradle 1 lands squarely in rib -478's mortise (24.9 mm^3 of it).
+# That was latent until the cadkit fiber-clearance work grew the octagon 2.33 mm: the old
+# tenon stopped short of the refill, the new one reaches it. A mortise has to survive
+# everything fused in after it, so the cut belongs at the END of the segment pipeline.
+from . import knee_lever as _KL_FUSE
+for _csi in sorted(_fused_segs):
+    _seg = chassis_segments[_csi]
+    for _rx in CH._RIB_X:
+        if _seg_edges[_csi + 1] < _rx < _seg_edges[_csi]:
+            _seg = _seg.cut(_KL_FUSE.rib_mortise(_rx))
+    chassis_segments[_csi] = _seg
 for _i, _seg in enumerate(chassis_segments):     # chassis split into dovetailed segments
     PARTS[f"chassis_{_i}"] = (partial(heal, _seg), f"petg-gf/chassis_{_i}.step",
                               "PETG-GF — chassis segment (cadkit slide-down T joint per rail; NO glue "
