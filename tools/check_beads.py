@@ -105,6 +105,9 @@ _ex("hardware",
     NUT_PIN_D="Ø2 dowel pin nominal",
     NUT_PIN_L="Ø2x4 dowel pin length",
     GUIDE_ROD_D="Ø2.5 precision rod",
+    _GROOVE_R="GT2 groove profile radius (belt tooth form)",
+    _FLAT_LEN="belt dummy: flat splice-zone length of the purchased belt's centreline model",
+    _AUX_OFF="belt dummy: sweep-spine offset (centreline model, nothing printed)",
     # latch return spring -- a purchased coil (BOM SKU); OD/wire/free length and
     # rate are the spring's, and the bore/ID/post derive from them
     SPR_OD="latch spring Ø5.0 OD (BOM SKU)",
@@ -132,6 +135,13 @@ _ex("clearance",
     SPR_BORE_D="= SPR_OD + drop-in clearance",
     belt_clamp__M2_CLR_D="M2 clearance hole",
     belt_clamp__BELT_SLOT_CLR="belt drop-in clearance in the slot",
+    joint_coupon__CLR="octagon slide-joint fit (tenon shrunk by this)",
+    tension_fork__BODY_H="= M3_CLR_D - 0.15: slips the M3 slot height",
+    tension_fork__BODY_D="= PLATE_T - 0.3: stops shy of the motor face",
+    screw_rail__SEAT_LEDGE_D="= BRG_OD - 2.5: ledge bore = Ø5 screw + washer pass room",
+    ZHOLE_D="string-stow bore: string coil + pliers grip room",
+    GROOVE_W="string lay-in channel = string + 2x0.4 side gaps",
+    GROOVE_FLOOR="string channel depth; per-string floor = gauge + break-angle physics",
     )
 
 # Where PURCHASED parts sit relative to each other. No bead is laid to define a
@@ -143,6 +153,11 @@ _ex("clearance",
 _ex("layout",
     MOTOR_X0="first motor offset -- sized for a >=100 mm free belt span",
     MOTOR_X_STEP="motor pitch = 42.3 body + tension slot; drives the rib comb",
+    MOTOR_PULLEY_STANDOFF="pulley clamp position on the motor shaft (purchased-part pose)",
+    TENSION_SLOT="+-1.5 belt-tension travel; interlocks with MOTOR_X_STEP (see above)",
+    PEDAL_BAR_H="= PEDAL_AXLE_H(48, on grid) - FOOT_H(12) - HOUS_X1(8.1): a derived "
+                "value spelled literal to break the legs/foot_pedal import cycle; "
+                "foot_pedal asserts the chain",
     )
 
 # The instrument, not the printer.
@@ -170,7 +185,9 @@ STRUCTURAL = {0.0, 1.0, 2.0, 90.0, 180.0, 270.0, 360.0}
 # refactor exists to introduce.
 BEAD_NAMES = {"BEAD", "B", "NOZZLE_D", "MIN_WALL"}
 
-# Constants that are not lengths at all, by name. Counts and angles.
+# Constants that are not lengths at all, by name. Counts and angles. An "N_"
+# prefix is the project's count idiom (N_PEDALS, N_SLOTS) -- handled in
+# module_constants alongside these substrings.
 NON_LENGTH = ("N_STRINGS", "N_TEETH", "SEGMENTS", "COUNT", "_N", "TURNS",
               "_DEG", "ANGLE", "TEETH")
 
@@ -242,8 +259,8 @@ def module_constants(mod_name: str):
             v = getattr(mod, t.id, None)
             if not isinstance(v, (int, float)) or isinstance(v, bool):
                 continue
-            if any(k in t.id for k in NON_LENGTH):     # a count or an angle
-                continue
+            if t.id.startswith("N_") or any(k in t.id for k in NON_LENGTH):
+                continue                               # a count or an angle
             bare = isinstance(node.value, ast.Constant) or (
                 isinstance(node.value, ast.UnaryOp)
                 and isinstance(node.value.operand, ast.Constant))

@@ -22,8 +22,9 @@ ACROSS  = 2 * D.BRIDGE_AXLE_Y + D.BRIDGE_ARM_W   # reach the endplate edge-ribs'
 # drivetrain-mount base is the full 25 mm wide (matching the endplate); the +X face stops
 # at SCREW_X+7, where the bridge's bottom-bridge takes over up to the +X tip.
 X_NX    = D.BRIDGE_BASE_X0                 # -X face (= endplate -X edge, -16.5)
-X_PX    = D.SCREW_X + 7.0                  # +X face (bottom-bridge takeover, -1)
-HEIGHT  = D.SUPPORT_BRG_W + 5.0            # Z
+X_PX    = D.SCREW_X + 9 * D.BEAD           # 7.2: +X face (bottom-bridge takeover, -0.8;
+                                           # keep = bridge_endplate._SRX)
+HEIGHT  = D.SUPPORT_BRG_W + 7 * D.BEAD     # 5.6 of ledge over the bushing seat (Z)
 SEAT_LEDGE_D = D.SUPPORT_BRG_OD - 2.5      # top-ledge bore (< OD, backs the washer)
 
 
