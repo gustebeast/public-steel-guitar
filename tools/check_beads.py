@@ -1,4 +1,4 @@
-"""Bead-grid checker: every PRINTED length must be a whole multiple of the nozzle.
+﻿"""Bead-grid checker: every PRINTED length must be a whole multiple of the nozzle.
 
   py -3.12 -m tools.check_beads             # report off-grid constants
   py -3.12 -m tools.check_beads --all       # also list what is exempt, and why
@@ -39,24 +39,25 @@ THREE THINGS ARE LEGITIMATELY OFF-GRID, and each needs a reason in EXEMPT below:
                across a clearance, so the grid has nothing to say about them.
   musical   -- scale length, string pitch, gauges. Set by the instrument.
 
+(plus "layout" for where purchased parts sit, rib-comb stations and tuned
+knobs pinned by model asserts.)
+
 Anything else off-grid is a finding. Exit code = number of findings.
+This file is the project DRIVER; the walker itself is cadkit.bead_check
+(literal-vs-derived logic, count/angle skipping, per-part NOZZLE_D grids).
 """
 
 from __future__ import annotations
 
-import argparse
-import ast
-import importlib
-import os
 import pathlib
 
-from cadkit.printing import on_grid
+from cadkit import bead_check
 
 import src.dimensions as D
 
 SRC = pathlib.Path(__file__).resolve().parent.parent / "src"
 
-# ── exemptions ──────────────────────────────────────────────────────────────
+# â”€â”€ exemptions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # name -> (category, reason). A bare name matches in EVERY module; "mod.NAME"
 # pins it to one. Keep the reason specific -- "it's hardware" is not a reason,
 # "MR85 bearing OD" is.
@@ -77,7 +78,7 @@ _ex("hardware",
     PULLEY_OD="GT2 14T over-teeth 8.4",
     PULLEY_FLANGE_OD="GT2 14T flange OD (pulley OD + stock flange)",
     PULLEY_FLANGE_T="GT2 pulley flange stock",
-    PULLEY_BORE_MOTOR="= MOTOR_SHAFT_D, the NEMA17 shaft Ø5",
+    PULLEY_BORE_MOTOR="= MOTOR_SHAFT_D, the NEMA17 shaft Ã˜5",
     PULLEY_BORE_SCREW="= SCREW_OD, the Tr5x1 screw",
     BELT_PITCH="GT2 tooth pitch 2.0",
     BELT_W="5 mm GT2 open belt (narrowest standard stock)",
@@ -87,20 +88,20 @@ _ex("hardware",
     SUPPORT_BRG_W="MR85 bearing width 5.0",
     BRIDGE_BEARING_OD="693 bearing OD 8.0",
     BRIDGE_BEARING_W="693 bearing width 4.0",
-    BRIDGE_AXLE_D="Ø3 precision shaft",
+    BRIDGE_AXLE_D="Ã˜3 precision shaft",
     SCREW_OD="Tr5x1 lead screw OD",
     SCREW_LEN="lead screw cut length (stock, not printed)",
-    MOTOR_SHAFT_D="NEMA17 shaft Ø5",
+    MOTOR_SHAFT_D="NEMA17 shaft Ã˜5",
     NUT_OD="brass leadscrew nut OD",
     NUT_FLANGE_OD="brass leadscrew nut flange OD",
     NUT_FLANGE_T="brass leadscrew nut flange thickness",
     NUT_BODY_LEN="brass leadscrew nut body length",
     LOCKNUT_OD="M5 locknut across flats",
     LOCKNUT_W="M5 locknut height",
-    STRING_NUT_D="Ø4 swaged ball-end nut (measured)",
-    STRING_NUT_L="Ø4x3 ball-end nut length (measured)",
-    NUT_INSERT_D="M4 heat-set insert install Ø6.0",
-    WIRE_D="Ø2 shielded-pair cable (harness dummy)",
+    STRING_NUT_D="Ã˜4 swaged ball-end nut (measured)",
+    STRING_NUT_L="Ã˜4x3 ball-end nut length (measured)",
+    NUT_INSERT_D="M4 heat-set insert install Ã˜6.0",
+    WIRE_D="Ã˜2 shielded-pair cable (harness dummy)",
     JACK_FACE_DX="connector dummies authored with panel face at x=14; DX slides them to the tip",
     TEE_BOARD_X="custom tee PCB outline 22 x 24 (fabbed board, not printed)",
     TEE_CONN_DX="tee PCB connector-row pitch (on the fabbed board)",
@@ -108,15 +109,15 @@ _ex("hardware",
     HDR_Z="lifted XH header wire-entry top (connector body stack, purchased)",
     NUT_INSERT_L="M4 heat-set insert length 5.0",
     NUT_SCREW_L="M4 screw stock length",
-    NUT_PIN_D="Ø2 dowel pin nominal",
-    NUT_PIN_L="Ø2x4 dowel pin length",
-    GUIDE_ROD_D="Ø2.5 precision rod",
+    NUT_PIN_D="Ã˜2 dowel pin nominal",
+    NUT_PIN_L="Ã˜2x4 dowel pin length",
+    GUIDE_ROD_D="Ã˜2.5 precision rod",
     _GROOVE_R="GT2 groove profile radius (belt tooth form)",
     _FLAT_LEN="belt dummy: flat splice-zone length of the purchased belt's centreline model",
     _AUX_OFF="belt dummy: sweep-spine offset (centreline model, nothing printed)",
     # latch return spring -- a purchased coil (BOM SKU); OD/wire/free length and
     # rate are the spring's, and the bore/ID/post derive from them
-    SPR_OD="latch spring Ø5.0 OD (BOM SKU)",
+    SPR_OD="latch spring Ã˜5.0 OD (BOM SKU)",
     SPR_WIRE="latch spring 0.6 music wire",
     SPR_FREE="latch spring 12.0 free length",
     SPR_SOLID="= (N+2)*wire, the spring's solid height",
@@ -134,16 +135,16 @@ _ex("hardware",
     EAR_HOLE_X="Alumitone ear-hole pattern 30.6 x 84.0",
     PK_MAX_L="pickup-length WINDOW top = 101.6 Alumitone + 0.4 headroom (decision 94c0a711)",
     GRUB_SWEEP="M4x10 cup-tip usable travel = screw_l - min_bite - ~1 tip",
-    JACK_HEAD_D="ISO 7380 M4 button head Ø7.6",
+    JACK_HEAD_D="ISO 7380 M4 button head Ã˜7.6",
     JACK_HEAD_H="ISO 7380 M4 button head height 2.2",
-    AXLE_D="Ø5 journal = the 695ZZ bearing bore",
+    AXLE_D="Ã˜5 journal = the 695ZZ bearing bore",
     AIR_GAP="MT6701 air-gap window (datasheet 0.5..2.0): 1.5 nominal, 1.1 at full float",
     CHIP_DISP_MAX="MT6701 datasheet max sensing-centre misalignment",
-    HS_SPR_OD="feel coil Ø6 OD (arm-width-limited)",
+    HS_SPR_OD="feel coil Ã˜6 OD (arm-width-limited)",
     HS_SPR_WIRE="feel coil 1.4 music wire (fatigue-sized)",
     HS_SPR_FREE="feel coil free length = solid + throw + preload margin",
     HS_SPR_INST="feel coil drawn at bay length (lightest preload)",
-    M4_SELFTAP="M4 thread-forming pilot Ø (minor-diameter bite)",
+    M4_SELFTAP="M4 thread-forming pilot Ã˜ (minor-diameter bite)",
     SOCK_D="3/8-inch socket driver clearance bore (12.5-13.5 OD + room)",
     CAP_HEX_AF="hex for a 3/8-inch (9.525 AF) socket; printed-oversize allowance",
     AXLE_FLAT_DEPTH="D-flat depth: magnet-tilt margin vs key-face width (0.5 not 0.7)",
@@ -157,7 +158,7 @@ _ex("hardware",
     CR_ENG="groove engagement inside the board's edge-keepout band",
     CR_EDGE_KEEP="groove takes this much X edge (JLCPCB +-0.2 + slip budget)",
     HS_BSTOP_BORE="hollow bore clears the M4 tension-screw hex driver",
-    HS_BSTOP_OD="thread crest squeezed between the Ø5 driver bore and the cartridge pitch",
+    HS_BSTOP_OD="thread crest squeezed between the Ã˜5 driver bore and the cartridge pitch",
     HS_BSTOP_ENGAGE="= 2 turns of the pitch-3 printed thread; capped by the leg clearance",
     HS_TH_PITCH="printed 45-deg thread form (cadkit.threads): helical form, not wall",
     HS_TH_DEPTH="printed thread flank depth (form, not wall)",
@@ -167,7 +168,7 @@ _ex("hardware",
     MAG_TH_CLR="printed cap-thread male-side fit",
     BED="printer bed limit (256 bed minus margin)",
     CHJ_MOUTH_Z="10-03404 chassis-jack mouth plane (molded-body insertion chain)",
-    belt_tensioner__HEAD_D="ISO 7380 M4 button head Ø7.6",
+    belt_tensioner__HEAD_D="ISO 7380 M4 button head Ã˜7.6",
     belt_tensioner__HEAD_H="ISO 7380 M4 button head height 2.2",
     belt_tensioner__SCREW_L="M4x45 stock screw (spans head -> insert; BOM length)",
     CVR_RAIL_W="octagon rail at cadkit's family floor (h_min 4.95 at 0.8) + margin; "
@@ -206,7 +207,7 @@ _ex("clearance",
     joint_coupon__CLR="octagon slide-joint fit (tenon shrunk by this)",
     tension_fork__BODY_H="= M3_CLR_D - 0.15: slips the M3 slot height",
     tension_fork__BODY_D="= PLATE_T - 0.3: stops shy of the motor face",
-    screw_rail__SEAT_LEDGE_D="= BRG_OD - 2.5: ledge bore = Ø5 screw + washer pass room",
+    screw_rail__SEAT_LEDGE_D="= BRG_OD - 2.5: ledge bore = Ã˜5 screw + washer pass room",
     ZHOLE_D="string-stow bore: string coil + pliers grip room",
     electronics__CH_D="tray-tab channel = TAB_T + 0.3 floor gap",
     top_plate__GAP="deck-panel assembly clearance (0.05 between consecutive panels)",
@@ -222,8 +223,8 @@ _ex("clearance",
     NUT_POCKET_D="= NUT_OD + 0.2 press-in fit for the brass leadscrew nut",
     CAGE_W="= STRING_NUT_L + 0.6: the ball-end nut slides in freely",
     SCREW_CLR_D="= SCREW_OD + 0.5: non-contact bore trimmed so the teardrop apex keeps a 2-bead web",
-    STRING_EXIT_D="string threading bore = .070 C6 string + clearance; kept under the Ø4 nut",
-    AXLE_BORE="= axle Ø5 + 0.4 slide-through fit (10 bearings + 9 fingers)",
+    STRING_EXIT_D="string threading bore = .070 C6 string + clearance; kept under the Ã˜4 nut",
+    AXLE_BORE="= axle Ã˜5 + 0.4 slide-through fit (10 bearings + 9 fingers)",
     AXLE_GRUB_L="M2 self-tap reach = bore crown to arm top + 0.2 bite-through",
     CARRIER_X1="= OP.PCB_X1S - 0.1: a hair inside the band",
     POST_SWEEP_X1="carriage tower +X face + 0.4 travel-sweep clearance",
@@ -238,7 +239,7 @@ _ex("clearance",
     COVER_X0="lid -X edge = op-amp column edge + 0.5 (lid stops short of the quads)",
     WRAP_CLR="wrap turn past the arm outer face (mirrored both Y)",
     CONDUIT_CLR="hand-fed plug pass-through allowance",
-    CONDUIT_Z0="= RUN_Z - half the Ø9.5 harness bundle",
+    CONDUIT_Z0="= RUN_Z - half the Ã˜9.5 harness bundle",
     PIVOT_CLR="hub-face to thrust-boss running clearance",
     HS_CLR="piston/coil to channel slide fit, per side",
     HS_PILOT_D="= coil ID - 0.4 nose fit",
@@ -247,12 +248,12 @@ _ex("clearance",
     HS_WIN_WY="= tongue + 0.4: passes the tongue, catches the body",
     CEIL_CLR="board top to chassis underside slide gap (the lid IS the retainer)",
     CR_CLR="board slip fit per groove face",
-    MAG_POCKET_D="= magnet Ø + 0.2 slip",
+    MAG_POCKET_D="= magnet Ã˜ + 0.2 slip",
     MAG_COLLAR_H="collar stops 0.1 short so the cap lands on the MAGNET",
     CAP_BASE_CLR="cap rim stops short of the flange (same anti-rattle trap)",
     AXLE_FLAT_Y="flat runs 0.1 past the hub half-width",
     AXLE_SET_L="set-screw way: through the wall + 0.2 past the flat",
-    AXLE_BORE_D="= axle Ø + 0.2 slip (the set screw holds it)",
+    AXLE_BORE_D="= axle Ã˜ + 0.2 slip (the set screw holds it)",
     CAP_CLR_H="board-to-cap gap rule: taller parts must clear the sweep",
     CONN_POCKET="connector pocket relief",
     HS_BACK_X="back wall = guide-post back + insert + 0.5 assembly slack (leg-capped)",
@@ -294,7 +295,7 @@ _ex("layout",
     LANE_USB="trunk lane Z, 2.0 pitch stack (wires, not printed)",
     LANE_CTRL="trunk lane Z, 2.0 pitch stack (wires, not printed)",
     RAIL_Y="trunk corridor centre hugging the rail (wire run)",
-    CUTOUT_Y="trunk dip into the m9 rail notch; keeps the Ø2.6 USB inside the cut",
+    CUTOUT_Y="trunk dip into the m9 rail notch; keeps the Ã˜2.6 USB inside the cut",
     TEE_YSHIFT="tee board centre shift; -Y edge pinned at station y-7",
     _M9X="= motor_pos(9)[0]; the 9 is a STRING INDEX, not a length",
     X_SLIDE="+-6 fine-X pickup slide travel (user spec; a range, not material)",
@@ -337,171 +338,14 @@ _ex("musical",
     )
 
 
-def classify(name: str, mod: str) -> tuple[str, str] | None:
-    return EXEMPT.get("%s.%s" % (mod, name)) or EXEMPT.get(name)
-
-
-# Literals that are never a length, so the grid does not apply: array indices,
-# the /2 of a centre-line, 360 degrees of a circle, unit scale factors.
-STRUCTURAL = {0.0, 1.0, 2.0, 90.0, 180.0, 270.0, 360.0}
-
-# Names that ARE the bead. `13 * BEAD` states a length in the grid's own unit, so
-# the 13 is a COUNT -- checking it as a length would reject the very idiom this
-# refactor exists to introduce.
-BEAD_NAMES = {"BEAD", "B", "NOZZLE_D", "MIN_WALL"}
-
-# Constants that are not lengths at all, by name. Counts and angles. An "N_"
-# prefix is the project's count idiom (N_PEDALS, N_SLOTS) -- handled in
-# module_constants alongside these substrings.
-NON_LENGTH = ("N_STRINGS", "N_TEETH", "SEGMENTS", "COUNT", "_N", "TURNS",
-              "_DEG", "ANGLE", "TEETH", "THROW")   # THROW/THROW_P/THROW_V are degrees
-
-
-def _is_bead_unit(node: ast.AST) -> bool:
-    return (isinstance(node, ast.Name) and node.id in BEAD_NAMES) or (
-        isinstance(node, ast.Attribute) and node.attr in BEAD_NAMES)
-
-
-def _offsets(node: ast.AST) -> list[float]:
-    """Numeric literals in an expression that act as LENGTHS.
-
-    Two things are skipped. STRUCTURAL literals (a `/ 2` centre-line, a 180 deg
-    rotate, an index) are arithmetic, not material. And the coefficient of a
-    `n * BEAD` product is a bead COUNT already stated in grid units -- flagging
-    it would reject the idiom the grid is written in. Everything else in a
-    geometry expression is an offset someone chose, and is fair game."""
-    skip = set()
-
-    def _skip_subtree(sub: ast.AST) -> None:
-        # the whole operand, not just a bare Constant: `-13 * B` parses as
-        # UnaryOp(13) * B, so skipping only the top node still leaves the 13
-        for k in ast.walk(sub):
-            skip.add(id(k))
-
-    for n in ast.walk(node):
-        if isinstance(n, ast.BinOp) and isinstance(n.op, ast.Mult):
-            if _is_bead_unit(n.right):
-                _skip_subtree(n.left)
-            if _is_bead_unit(n.left):
-                _skip_subtree(n.right)
-    out = []
-    for n in ast.walk(node):
-        if isinstance(n, ast.Constant) and isinstance(n.value, (int, float)) \
-           and not isinstance(n.value, bool) and id(n) not in skip:
-            if abs(float(n.value)) not in STRUCTURAL:
-                out.append(float(n.value))
-    return out
-
-
-def module_nozzle(mod_name: str) -> float:
-    """This module's nozzle. THE GRID IS A PROPERTY OF THE PART (user).
-
-    Most of the instrument is structure and prints 0.8, but a part with detail
-    finer than a 0.8 bead can resolve -- the belt clamp's 2.0 mm GT2 tooth pitch
-    -- is printed with a finer nozzle and is graded on ITS grid, not the
-    project's. A module opts in by declaring its own NOZZLE_D."""
-    mod = importlib.import_module("src." + mod_name)
-    n = getattr(mod, "NOZZLE_D", None)
-    if isinstance(n, (int, float)) and not isinstance(n, bool) and n > 0:
-        return float(n)
-    return float(D.NOZZLE_D)
-
-
-def module_constants(mod_name: str):
-    """(name, value, line, kind, offsets) per module-level UPPERCASE constant.
-
-    kind is 'literal' (RHS is a bare number -> check the value) or 'derived'
-    (RHS references something -> check the offsets it adds to that something)."""
-    text = (SRC / (mod_name + ".py")).read_text(encoding="utf-8")
-    mod = importlib.import_module("src." + mod_name)
-    out = []
-    for node in ast.parse(text).body:
-        if not isinstance(node, ast.Assign):
-            continue
-        for t in node.targets:
-            if not (isinstance(t, ast.Name) and t.id.isupper()):
-                continue
-            v = getattr(mod, t.id, None)
-            if not isinstance(v, (int, float)) or isinstance(v, bool):
-                continue
-            if t.id.startswith("N_") or any(k in t.id for k in NON_LENGTH):
-                continue                               # a count or an angle
-            bare = isinstance(node.value, ast.Constant) or (
-                isinstance(node.value, ast.UnaryOp)
-                and isinstance(node.value.operand, ast.Constant))
-            kind = "literal" if bare else "derived"
-            out.append((t.id, float(v), node.lineno, kind,
-                        [] if bare else _offsets(node.value)))
-    return out
-
 
 def main() -> int:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--all", action="store_true", help="list exempt constants too")
-    ap.add_argument("--only", help="comma-separated module names")
-    a = ap.parse_args()
-
-    mods = sorted(p.stem for p in SRC.glob("*.py") if p.stem != "__init__")
-    if a.only:
-        want = {s.strip() for s in a.only.split(",")}
-        mods = [m for m in mods if m in want]
-
-    findings: list[tuple[str, str, int, str, float]] = []
-    exempted: list[tuple[str, str, float, str, str]] = []
-    n_on = n_tot = 0
-
-    nozzles: dict[str, float] = {}
-    for m in mods:
-        nz = nozzles[m] = module_nozzle(m)
-        for name, v, line, kind, offs in module_constants(m):
-            if name == "NOZZLE_D":       # the grid itself, not a length on it
-                continue
-            n_tot += 1
-            cat = classify(name, m)
-            if kind == "literal":
-                bad = [] if on_grid(v, nz) else [v]
-            else:
-                # derived: the RESULT may sit anywhere (it inherits a musical or
-                # hardware datum); what must be on grid is what we ADDED to it
-                bad = [o for o in offs if not on_grid(o, nz)]
-            if not bad:
-                n_on += 1
-                continue
-            if cat:
-                exempted.append((m, name, v, cat[0], cat[1]))
-                continue
-            for o in bad:
-                findings.append((m, name, line, kind, o))
-
-    print("bead grid = %.2f mm (project default nozzle)" % D.NOZZLE_D)
-    fine = {m: n for m, n in nozzles.items() if abs(n - D.NOZZLE_D) > 1e-9}
-    if fine:
-        print("per-part grids: " + ", ".join(
-            "%s %.2f" % (m, n) for m, n in sorted(fine.items())))
-    print("%d module constants: %d clean, %d exempt, %d with OFF-GRID lengths"
-          % (n_tot, n_on, len(exempted),
-             len({(f[0], f[1]) for f in findings})))
-
-    if a.all and exempted:
-        print("\nexempt (off-grid on purpose):")
-        for m, name, v, cat, why in sorted(exempted):
-            print("  %-9s %-22s %9.3f  %-9s %s" % (m, name, v, cat, why))
-
-    if findings:
-        print("\nOFF GRID -- snap these, or add an exemption with a reason.")
-        print("('derived' shows the OFFSET at fault, not the constant's value.)")
-        cur = None
-        for m, name, line, kind, o in sorted(findings):
-            if m != cur:
-                print("\n  -- src/%s.py --" % m)
-                cur = m
-            nz = nozzles[m]
-            b = abs(o) / nz
-            print("    :%-4d %-24s %-8s %9.3f = %6.2f beads -> %.2f or %.2f"
-                  % (line, name, kind, o, b, int(b) * nz, (int(b) + 1) * nz))
-    else:
-        print("\nclean: every printed length is a whole number of beads.")
-    return len({(f[0], f[1]) for f in findings})
+    # all machinery lives in the shared engine (cadkit.bead_check) -- this file
+    # is the project driver: the WHY up top, and the exemption table with a
+    # written reason per entry. NON_LENGTH, N_* counts, angle names and n*BEAD
+    # coefficients are the engine's business.
+    return bead_check.cli(src=SRC, package="src", exempt=EXEMPT,
+                          default_nozzle=float(D.NOZZLE_D))
 
 
 if __name__ == "__main__":
