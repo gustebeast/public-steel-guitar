@@ -26,28 +26,41 @@ import json
 import pathlib
 import sys
 import time
+import types
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 BUILD_PY = ROOT / "src" / "build.py"
 MAP_FILE = pathlib.Path(__file__).with_name("fast_build_map.json")
 
 
-def _reconstruct(builder):
-    """Recover (module, attr, heal) from a `[heal](__import__("src.X",...).ATTR)` builder, or
-    None if it's a shape we can't rebuild from a lazy import (partial(), fused multi-module, ...)."""
+def _reconstruct(builder, buildmod):
+    """Recover {module, attr, heal} from a builder we can rebuild via a LAZY import:
+      * [heal](__import__("src.X", ...).ATTR)                  -> module src.X, member ATTR
+      * [heal](ALIAS.member[()]) where ALIAS is a module bound -> that module, member
+        at build.py top (`from . import legs as LG`, `import components as C`, ...)
+    Returns None for shapes we can't (partial(pre-built object), fused multi-module bars, ...).
+    At REBUILD the member is called iff it's callable, so both a function (LG.leg_sleeve())
+    and a pre-built object (mod.kv_housing) come out right."""
     code = getattr(builder, "__code__", None)
     if code is None:
-        return None
-    mods = [c for c in code.co_consts if isinstance(c, str) and c.startswith("src.")]
-    if len(mods) != 1:
-        return None
-    attr = None
-    for ins in dis.get_instructions(builder):
-        if ins.opname == "LOAD_ATTR":
-            attr = ins.argval
-    if attr is None:
-        return None
-    return {"module": mods[0], "attr": attr, "heal": "heal" in code.co_names, "src": mods[0]}
+        return None                                   # functools.partial etc. -> fall back
+    heal = "heal" in code.co_names
+    instrs = list(dis.get_instructions(builder))
+    members = [i.argval for i in instrs if i.opname in ("LOAD_ATTR", "LOAD_METHOD")]
+
+    srcs = [c for c in code.co_consts if isinstance(c, str) and c.startswith("src.")]
+    if len(srcs) == 1 and members:                    # __import__("src.X").MEMBER
+        return {"module": srcs[0], "attr": members[-1], "heal": heal}
+
+    for k, ins in enumerate(instrs):                  # ALIAS.member, ALIAS a build.py module
+        if ins.opname in ("LOAD_GLOBAL", "LOAD_NAME", "LOAD_DEREF") and isinstance(ins.argval, str):
+            obj = getattr(buildmod, ins.argval, None)
+            if isinstance(obj, types.ModuleType) and obj.__name__.split(".")[0] in ("src", "cadkit"):
+                mem = next((i.argval for i in instrs[k + 1:k + 3]
+                            if i.opname in ("LOAD_ATTR", "LOAD_METHOD")), None)
+                if mem:
+                    return {"module": obj.__name__, "attr": mem, "heal": heal}
+    return None
 
 
 def _build_map():
@@ -56,7 +69,7 @@ def _build_map():
     from src import build as B
     entries = {}
     for name, (builder, path, _note) in B.PARTS.items():
-        rec = _reconstruct(builder)
+        rec = _reconstruct(builder, B)
         if rec:
             rec["path"] = path
             entries[name] = rec
@@ -88,6 +101,8 @@ def fast_build(name, entries):
     t = time.perf_counter()
     mod = import_module(rec["module"])
     obj = getattr(mod, rec["attr"])
+    if callable(obj):                    # a function (LG.leg_sleeve()) -> call it; a pre-built
+        obj = obj()                      # Workplane/Assembly (mod.kv_housing) is not callable
     if rec["heal"]:
         from src.helpers import heal
         obj = heal(obj)
