@@ -294,18 +294,41 @@ def male_cutter(cx: float = LX_C) -> cq.Workplane:
 
 
 SLOT_W = LOW_W + 2 * COVER_T      # 17.6 slot mouth (the cover's outer width)
+# THE COVER'S X RUN. It enters at the head's +X face and slides -X until it butts
+# the solid head beyond the load window -- that butt IS the insertion stop, so no
+# separate stop feature is needed. HOST_HALF works because the head is SQUARE: its
+# +X wall and its +Y face are both SQ_W/2, which is exactly what FACE_Y already is.
+HOST_HALF = FACE_Y                # 22.4 = legs.SQ_W/2 (square section)
+COVER_X0 = LX_C - SLOT_W / 2      # -19.2 (24 beads) blind end, past the load window
+COVER_X1 = HOST_HALF              # 22.4 flush with the head's +X wall
+COVER_LEN = COVER_X1 - COVER_X0   # 41.6 (52 beads)
 
 
 def _cover_slot(cx: float = LX_C) -> cq.Workplane:
-    """Dovetail pocket for the cover: 45 deg flanks, narrow at the FACE and wide
-    at the root, open at the TOP (z0, the butt plane) so the cover installs
-    downward onto a hard stop and can only leave upward -- which the female half
-    blocks once the joint is together.
-"""
-    w0, w1 = SLOT_W, LOW_W + 4 * COVER_T
-    pts = [(-w0 / 2, FACE_Y), (w0 / 2, FACE_Y), (w1 / 2, COVER_IN), (-w1 / 2, COVER_IN)]
-    prof = (cq.Workplane("XY").polyline([(x + cx, y) for x, y in pts])
-            .close().extrude(LOAD_Z))
+    """Dovetail pocket for the cover -- an X SLIDE, open at the head's +X face.
+
+    IT USED TO BE A Z DROP and that had NO INSTALL PATH AT ALL (user). The
+    docstring claimed the cover slid down onto a hard stop and could only leave
+    upward, which the female would block once assembled. But the octagon SPIGOT
+    stands directly above the slot, so the cover fouled it after 1 mm of travel
+    (15.8 mm^3, rising to 177 once clear). The part could be printed and never
+    assembled.
+
+    So the dovetail turns 90 degrees: the trapezoid now lies in the Y-Z plane --
+    narrow at FACE_Y, wide at COVER_IN, 45 degree flanks top and bottom -- and
+    extrudes along X. Same retention (the wide root cannot pass the narrow
+    mouth, so the cover cannot leave in +Y), but the free axis is now X, and the
+    head's +X face is open sky.
+
+    The whole trapezoid stays at or below z0. Flaring past the butt plane would
+    put the slot back into the spigot, which is the mistake this replaces."""
+    z_root0, z_root1 = LOAD_Z, 0.0                     # wide root, at COVER_IN
+    z_mouth0, z_mouth1 = LOAD_Z + COVER_T, -COVER_T    # narrow mouth, at FACE_Y
+    pts = [(COVER_IN, z_root0), (FACE_Y, z_mouth0),
+           (FACE_Y, z_mouth1), (COVER_IN, z_root1)]
+    prof = (cq.Workplane("YZ").polyline(pts).close()
+            .extrude(COVER_X1 - COVER_X0)
+            .translate((COVER_X0, 0, 0)))
     return cq.Workplane("XY").add(prof.val())
 
 
