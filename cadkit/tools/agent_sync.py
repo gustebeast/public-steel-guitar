@@ -52,7 +52,9 @@ NOTIFICATION -- two layers, no desktop pop-ups, the human is NEVER the relay:
      the request is never lost and surfaces the moment the lead does ANYTHING.)
 Plus a loud PENDING banner on every lead command (`status`/`build`/`take`). The
 contributor never pings anyone by hand; `submit` files the request and both layers
-carry it from there.
+carry it from there. SELF-HEAL: a request whose work already reached `main` — merged by
+hand, not via `take` (the only thing that unlinks it) — is pruned on the next inbox read,
+so a manual merge never leaves the hook/banner nagging forever.
 
 Typical flow (<name> is the contributor's task, e.g. the subsystem they own)
   human: "let's go multi-agent; the second chat is a sub-agent named <name>"
@@ -177,9 +179,34 @@ def cmd_done():
 
 
 # ── lead commands ─────────────────────────────────────────────────────────────
+def _is_ancestor(sha: str, ref: str = "main") -> bool:
+    """True if <sha> is already in <ref>'s history — i.e. the request was merged, whether via
+    `take` (which unlinks it) or MANUALLY (which doesn't). The basis for self-healing the inbox."""
+    return subprocess.run(["git", "merge-base", "--is-ancestor", sha, ref],
+                          cwd=os.getcwd(), capture_output=True).returncode == 0
+
+
+def _prune_merged(paths):
+    """Keep only the still-PENDING requests, UNLINKING any whose sha already reached main. Self-heal:
+    an MR resolved OUTSIDE `take` (merged by hand) no longer nags the hook/banner forever — the next
+    inbox read clears it. An unreadable file is left alone (never guessed away)."""
+    live = []
+    for p in paths:
+        try:
+            sha = json.loads(p.read_text()).get("sha", "")
+        except Exception:
+            live.append(p)
+            continue
+        if sha and _is_ancestor(sha):
+            p.unlink(missing_ok=True)          # merged -> done -> stop reporting it
+        else:
+            live.append(p)
+    return live
+
+
 def _requests():
     box = sync_dir() / "inbox"
-    return sorted(box.glob("*.json"))
+    return _prune_merged(sorted(box.glob("*.json")))
 
 
 def _load_reqs(paths=None):
@@ -198,7 +225,8 @@ def _hook_reqs():
     if len(lines) < 2:
         return "", []
     inbox = Path(lines[1]) / "agent-sync" / "inbox"
-    return lines[0], (sorted(inbox.glob("*.json")) if inbox.is_dir() else [])
+    paths = sorted(inbox.glob("*.json")) if inbox.is_dir() else []
+    return lines[0], _prune_merged(paths)      # self-heal stale (already-merged) entries
 
 
 def _print_pending_banner():
