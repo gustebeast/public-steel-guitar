@@ -15,20 +15,21 @@ on the FEMALE -- the body at one joint, the leg at the other. Both are the
 wrong part here. So the slider has to reach ACROSS the butt plane: hook above
 it, button below it, one rigid piece.
 
-WHY THE -Y SIDE: authored -Y is the only face that is the SAME face on every
-leg. The stacks are placed rot 0 / 180, so authored -Y lands OUTBOARD on both
-rails (measured: the -Y face reaches y +64.75 and -138.75, each 5 mm proud of
-its rail plane), while authored +-X flips -- a +-X button would face the
-instrument's end on one rail and its middle on the other. And the INBOARD face
-is not available at all: that is where the octagon mortise opens its groove,
-so the female has no wall there to hook.
+WHY THE AUTHORED +Y SIDE: every leg is now placed rot 180, so authored +Y lands
+world -Y on BOTH rails. All six buttons therefore end up on the single -Y face
+-- hidden from an audience in front of the instrument, and all reachable from
+one side when it is turned over for assembly (user).
 
-So all six buttons sit on the OUTBOARD face, the +Y ones facing the player.
-Visible, but on the leg and the bar -- never on the body -- and far easier to
-find one-handed than a hidden one. The cost is that -Y is the octagon's POINT,
-not a flat: the male's apex is cut away across the latch band, which is what
-opens the channel the hook travels in. The female mortise is NOT reshaped -- it
-keeps its gable, so the stub still prints without a flat roof.
+That face is the octagon's GROOVE side, so the band has to dodge the STEM, which
+runs out to the full 44 face over x -6..+6. Outside the stem there is real wall:
+measured over x -13.5..-8.5 the octagon tops out at 12.80, leaving 5.00 mm to
+the thin female's face (17.8) and 9.20 to the stub's (22.0). That is MORE wall
+than the old -Y apex band had (3.70), so the engagement went up with the move.
+
+The band also has to clear the TRRS D11 way -- x +5 on the head/stub (reaching
+x -0.5) and mirrored to x -5 on the tower/shaft block. x -13.5..-8.5 clears both
+by 8 mm, which is why the D11 z-cap that used to constrain the hook height is no
+longer the binding constraint (the assertion stays as a guard).
 
 SEQUENCE (no buttons pressed to connect -- user goal 2):
   push together -> the hook's 45 deg lead meets the female channel floor and
@@ -71,14 +72,20 @@ from .helpers import box_at, cyl_y
 # X band, kept clear of the TRRS blind-mate way (x +5, D8..11) and the M4
 # retention clearance at x +7 -- both live on the +X half, so the latch takes
 # the -X half exactly as the old bolt did.
-LX_C = -6.5                       # band centre X, HEAD/STUB side
-LX_W = 10.0                       # band width X
-LX0, LX1 = LX_C - LX_W / 2, LX_C + LX_W / 2      # -11.5 .. -1.5
-# The band has to dodge the TRRS blind-mate way (D11), and the two joints put it
-# on OPPOSITE authored sides: the head/stub carry it at authored x +5, while the
-# tower/shaft block are authored rotated 180 and carry it at x -5. So the band
-# MIRRORS per joint -- and because the slider and cover are symmetric about their
-# own centre, that costs nothing: still ONE SKU, just placed at +-LX_C.
+LX_C = -11.0                      # band centre X, HEAD/STUB side
+LX_W = 5.0                        # band width X (bounded by the stem at |x| 6
+                                  # and the spigot edge at |x| 14)
+LX0, LX1 = LX_C - LX_W / 2, LX_C + LX_W / 2      # -13.5 .. -8.5
+# LX_W is bounded ABOVE the butt plane, where the slider is inside the spigot and
+# has to miss the stem. BELOW it the male body is a full 44 square with nothing
+# in the way, so the lower half runs WIDER -- otherwise the button pad inherits
+# the 5 mm hook band minus its lip and ends up ~3 mm, which is not a thumb
+# target. The slider is a T in plan: narrow hook, wide pad.
+LOW_W = 11.0                      # lower band (pad + load window)
+# The band still MIRRORS per joint, because the two joints carry the TRRS way on
+# opposite authored sides (head/stub +5, tower/shaft block -5). The slider and
+# cover are symmetric about their own centre, so that costs nothing: ONE SKU,
+# placed at +-LX_C.
 LX_HEAD = LX_C                    # leg head <-> body stub
 LX_TOWER = -LX_C                  # bar tower <-> shaft block (mirrored)
 
@@ -88,21 +95,21 @@ LX_TOWER = -LX_C                  # bar tower <-> shaft block (mirrored)
 # SMALLER one so a single slider + cover SKU serves both; the 44-wide head gets
 # a finger recess (well_cutter) sinking its face to match -- which doubles as
 # the thumb well that keeps the button from being pressed by accident.
-FACE_Y = -17.8                    # = -BLK_W/2, the SHALLOWER of the two faces
+FACE_Y = 17.8                     # = +BLK_W/2, the SHALLOWER of the two faces
 COVER_T = 2.0                     # cover plate thickness
-COVER_IN = FACE_Y + COVER_T       # -20.0  cover inner face = slider's OUT stop
-MORT_APEX = -14.1                 # female mortise apex (octagon point)
-CH_FLOOR = -13.6                  # female CHANNEL floor: the hook rides this,
-                                  # fully retracted, through the engagement.
-                                  # 0.5 inboard of the apex so the channel is a
-                                  # real cut in the wall, not a sliver of it.
+COVER_IN = FACE_Y - COVER_T       # 15.8  cover inner face = slider's OUT stop
+OCT_TOP = 12.8                    # octagon's max +Y within the band (measured)
+CH_FLOOR = OCT_TOP + 0.1          # 12.9 female CHANNEL floor: the hook rides
+                                  # this, fully retracted, through the whole
+                                  # engagement. Just clear of the octagon so the
+                                  # channel is a real cut in the wall.
 # Engagement is set by the THINNER female wall, which is the shaft block's: only
 # 3.7 mm from the mortise apex to its face. 3.0 deep would leave 0.7 mm there --
 # under the 1.6 two-bead floor. 1.8 leaves 1.9 mm, and the same hook then serves
 # the stub too (which keeps 6.1 mm). One hook, both joints.
-HOOK_ENGAGE = 1.8
-HOOK_TIP = CH_FLOOR - HOOK_ENGAGE                      # -15.4 when ENGAGED
-BACK_Y = 2.5                      # tunnel back wall: the spring reacts here
+HOOK_ENGAGE = 2.0                 # up from 1.8: this face leaves more wall
+HOOK_TIP = CH_FLOOR + HOOK_ENGAGE                      # 14.9 when ENGAGED
+BACK_Y = -2.5                     # tunnel back wall: the spring reacts here
 STROKE = 2.8                      # press travel. MUST EXCEED HOOK_ENGAGE -- equal
                                   # would put the hook exactly on the channel floor
                                   # at full press, i.e. zero clearance. 2.8 also
@@ -120,9 +127,13 @@ TRRS_WAY_Z0 = 6.3                 # D11 handle way opens here (legs.leg_head)
 # shelf carrying the whole pull-out load. At 1.0 it was 0.75 mm. 2.0 gives 1.75,
 # just over the two-bead floor, and still keeps the pocket top under the TRRS way.
 HOOK_Z0, HOOK_Z1 = 2.0, 5.0       # hook, inside the female
-PAD_Z0, PAD_Z1 = -9.0, -2.0       # button pad, on the male body
-BODY_Z0, BODY_Z1 = -12.0, 5.0     # slider overall
-LOAD_Z = -14.0                    # tunnel/cover bottom (load window bottom)
+PAD_Z0, PAD_Z1 = -8.0, -2.0       # button pad, on the male body
+BODY_Z0, BODY_Z1 = -10.0, 5.0     # slider overall
+LOAD_Z = -12.0                    # tunnel/cover bottom (load window bottom).
+                                  # Kept above the head's SECTION SOCKET, whose
+                                  # roof is at -12.6: dip past it and the tunnel
+                                  # opens into the socket, where the segment's
+                                  # plug lives.
 
 # ── spring (NEW BOM SKU) ─────────────────────────────────────────────────────
 SPR_OD = 5.0
@@ -144,9 +155,10 @@ SPR_GAP = 4.0                     # slider back face -> tunnel back at REST.
 
 LG_BLK_HALF = 17.8                # = BLK_W/2; the thin female's outer face
 CLR = 0.25                        # sliding clearance on the guided faces
-PAD_W = 6.0                       # button pad width. NARROWER than LX_W so the
+PAD_W = 7.5                       # button pad width. NARROWER than LOW_W so the
                                   # slider body cannot pass the cover aperture --
-                                  # that lip is the slider's outward stop.
+                                  # that lip is the slider's outward stop (1.75
+                                  # each side).
 
 
 def _assert_sane():
@@ -155,7 +167,7 @@ def _assert_sane():
     assert installed - STROKE > SPR_SOLID + 0.5, "spring goes solid before full press"
     # the hook must clear the female channel floor when fully pressed
     assert STROKE > HOOK_ENGAGE + 0.4, "stroke too short: hook fouls the channel"
-    assert LG_BLK_HALF - (-HOOK_TIP) >= D.MIN_WALL_2P,         "pocket breaks the thin (shaft-block) female wall"
+    assert LG_BLK_HALF - HOOK_TIP >= D.MIN_WALL_2P,         "pocket breaks the thin (shaft-block) female wall"
     assert SPR_GAP > STROKE, "slider bottoms on the tunnel back before full press"
     # ...but must NOT retract so far it leaves the male's own tunnel unsupported
     assert HOOK_Z0 > 0.0 and PAD_Z1 < 0.0, "hook belongs above the butt plane, pad below"
@@ -164,161 +176,146 @@ def _assert_sane():
     assert BODY_Z1 <= TRRS_WAY_Z0 - 0.5,         "tunnel reaches the D11 TRRS way: the wall between them drops under MIN_WALL_2P"
     assert HOOK_Z0 - CLR >= D.MIN_WALL_2P,         "retention LEDGE too thin -- it is the material between the female mouth and the pocket floor"
     assert HOOK_Z1 > HOOK_Z0 + 1.0, "hook too short to carry the pull-out load"
-    assert PAD_W < LX_W - 2 * D.MIN_WALL, "cover lip too thin to stop the slider"
-    assert LX1 < -0.5, "latch band fouls the TRRS way at x +5 (D11)"
+    assert PAD_W < LOW_W - 2 * D.MIN_WALL_2P, "cover lip too thin to stop the slider"
+    assert LOW_W > LX_W, "lower band should be the wide one"
+    assert abs(LX_C) + LOW_W / 2 + 2 * COVER_T < 22.0, "cover dovetail runs off the 44 face"
+    assert LX1 < -0.5 and LX0 > -14.0, "band must clear the TRRS way and stay on the spigot"
+    assert abs(LX0) > 6.0 and abs(LX1) > 6.0, "band must clear the octagon STEM (|x| <= 6)"
 
 
 _assert_sane()
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+# geometry helpers
+# ═══════════════════════════════════════════════════════════════════════════
+def _yz(dx, y0, y1, z0, z1, x):
+    """Box spanning y0..y1 and z0..z1, whichever way round the bounds come.
+    The latch was authored on -Y and now lives on +Y; sign-agnostic spans are
+    what stop that move from turning into a crop of negative-length boxes."""
+    return box_at(dx, abs(y1 - y0), abs(z1 - z0),
+                  x=x, y=(y0 + y1) / 2.0, z=(z0 + z1) / 2.0)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 # MALE cutters (leg head / bar tower)
 # ═══════════════════════════════════════════════════════════════════════════
 def male_cutter(cx: float = LX_C) -> cq.Workplane:
-    """Everything the MALE half loses: the slider TUNNEL (which also cuts the
-    octagon apex away across the band -- that void is the hook's travel
-    channel), the -Y load window the slider enters through, and the cover's
-    dovetail. One cutter so the head and the tower cannot drift apart."""
-    # tunnel: -Y face inward to the spring's back wall, over the slider's Z span
-    tun = box_at(LX_W + 2 * CLR, BACK_Y - FACE_Y, BODY_Z1 - LOAD_Z,
-                 x=cx, y=(FACE_Y + BACK_Y) / 2, z=(LOAD_Z + BODY_Z1) / 2)
-    return tun.union(_cover_slot(cx))
+    """What the MALE half loses: the slider TUNNEL -- which also takes the
+    octagon's +Y shoulder away across the band, opening the void the hook
+    travels in -- plus the cover's dovetail. One cutter, so the head and the
+    tower cannot drift apart."""
+    up = _yz(LX_W + 2 * CLR, FACE_Y, BACK_Y, 0.0, BODY_Z1, cx)     # in the spigot
+    low = _yz(LOW_W + 2 * CLR, FACE_Y, BACK_Y, LOAD_Z, 0.0, cx)    # in the body
+    return up.union(low).union(_cover_slot(cx))
 
 
 def well_cutter(face_y: float, cx: float = LX_C) -> cq.Workplane:
-    """FINGER WELL -- only for the 44-wide male (the leg head). Sinks its -Y
+    """FINGER WELL -- only for the 44-wide male (the leg head). Sinks its +Y
     face back to FACE_Y so the tower's cover and slider fit it unchanged, and
-    leaves a recess your thumb drops into. The tower is already at FACE_Y and
-    needs none of this."""
+    leaves a recess your thumb drops into. The tower is already at FACE_Y."""
     if abs(face_y - FACE_Y) < 0.01:
         return None
-    w = LX_W + 2 * COVER_T + 2 * COVER_T + 4.0
-    return box_at(w, FACE_Y - face_y, (0.0 - LOAD_Z) + 4.0,
-                  x=cx, y=(face_y + FACE_Y) / 2, z=(LOAD_Z - 4.0 + 0.0) / 2)
+    w = LOW_W + 4 * COVER_T + 4.0
+    return _yz(w, FACE_Y, face_y, LOAD_Z - 4.0, 0.0, cx)
 
 
 def _cover_slot(cx: float = LX_C) -> cq.Workplane:
-    """Dovetail pocket for the cover: a 45 deg-flanked slot in the -Y face,
-    open at the TOP (z0, the butt plane) so the cover installs DOWNWARD onto a
-    hard stop, and can only leave upward -- which the female blocks once the
-    joint is together. 45 deg flanks print without support in both the head's
-    (build +-Y) and the tower's (build Z) orientations."""
-    w0, w1 = LX_W + 2 * COVER_T, LX_W + 2 * COVER_T + 2 * COVER_T   # mouth, root
-    pts = [(-w0 / 2, FACE_Y), (w0 / 2, FACE_Y),
-           (w1 / 2, COVER_IN), (-w1 / 2, COVER_IN)]
+    """Dovetail pocket for the cover: 45 deg flanks, narrow at the FACE and wide
+    at the root, open at the TOP (z0, the butt plane) so the cover installs
+    downward onto a hard stop and can only leave upward -- which the female half
+    blocks once the joint is together."""
+    w0, w1 = LOW_W + 2 * COVER_T, LOW_W + 4 * COVER_T
+    pts = [(-w0 / 2, FACE_Y), (w0 / 2, FACE_Y), (w1 / 2, COVER_IN), (-w1 / 2, COVER_IN)]
     prof = (cq.Workplane("XY").polyline([(x + cx, y) for x, y in pts])
-            .close().extrude(-(0.0 - LOAD_Z)))
-    return cq.Workplane("XY").add(prof.val()).translate((0, 0, 0.0))
+            .close().extrude(LOAD_Z))
+    return cq.Workplane("XY").add(prof.val())
+
+
+def male_post(cx: float = LX_C) -> cq.Workplane:
+    """GUIDE POST for the coil, standing off the tunnel's back wall into the
+    spring's ID -- the project's coil pattern (the knee-lever cartridge pilots
+    its coil ID rather than cupping the end). Without it the coil is located at
+    ONE end only. It also reaches past the slider's back face, so it pilots the
+    slider against tilt."""
+    return cyl_y(POST_D, POST_L, y0=BACK_Y, x=cx, z=(PAD_Z0 + PAD_Z1) / 2)
 
 
 # ═══════════════════════════════════════════════════════════════════════════
 # FEMALE cutters (body stub / shaft block)
 # ═══════════════════════════════════════════════════════════════════════════
 def female_cutter(engage_z: float, cx: float = LX_C) -> cq.Workplane:
-    """Everything the FEMALE half loses -- all INTERNAL, nothing breaks the
-    outer wall (user: no buttons, no holes on the body).
+    """What the FEMALE half loses -- all INTERNAL; the outer wall is never
+    broken, so no button and no hole appears on the body (user).
 
-      * CHANNEL: the hook's retracted travel path, from the mouth up. Its floor
-        (CH_FLOOR) is what cams the hook in on the way past.
-      * (NO mouth lead-in. One used to sit here and it destroyed the whole
-        mechanism: a 3 mm wedge from the mouth upward removes exactly the
-        material the LEDGE is made of, so the hook passed straight through and
-        the latch retained nothing. The camming is done by the hook's own 45 deg
-        top chamfer, which is the half that should carry it anyway.)
-      * POCKET: the hook's home, 3.0 deeper. Its floor is a FLAT 90 deg ledge
-        -- the retention face. Its roof is gabled 45 deg so the pocket does not
-        put a flat ceiling in the female's print.
+      * CHANNEL: the hook's retracted travel path. The octagon's +Y flank slopes
+        across the band, so the mortise void alone does not clear a rectangular
+        hook -- this squares it off out to CH_FLOOR.
+      * POCKET: the hook's home. Its floor is a FLAT 90 deg ledge, the retention
+        face; the ledge is the material between the female's MOUTH and that
+        floor, which is why HOOK_Z0 is also the ledge thickness.
 
-    `engage_z` is the female-local z of the butt plane (its mouth)."""
+    NO mouth lead-in. One used to sit here and it removed exactly the material
+    the ledge is made of, so the hook passed straight through and the latch
+    retained nothing. The camming is the hook's own 45 deg top chamfer."""
     z0, z1 = engage_z, engage_z + HOOK_Z1 + 30.0
-    ch = box_at(LX_W + 2 * CLR, BACK_Y - CH_FLOOR, z1 - z0,
-                x=cx, y=(CH_FLOOR + BACK_Y) / 2, z=(z0 + z1) / 2)
-    pk = _pocket(engage_z, cx)
-    return ch.union(pk)
+    ch = _yz(LX_W + 2 * CLR, CH_FLOOR, BACK_Y, z0, z1, cx)
+    return ch.union(_pocket(engage_z, cx))
 
 
 def _pocket(engage_z: float, cx: float = LX_C) -> cq.Workplane:
-    """Retention pocket + its 45 deg gable roof (printability), floor FLAT."""
-    zl = engage_z + HOOK_Z0 - CLR          # the LEDGE (retention face)
-    zt = engage_z + HOOK_Z1 + CLR
-    body = box_at(LX_W + 2 * CLR, CH_FLOOR - HOOK_TIP, zt - zl,
-                  x=cx, y=(HOOK_TIP + CH_FLOOR) / 2, z=(zl + zt) / 2)
-    # gable the pocket's -Y extremity (its roof in the female's print)
-    gab = (cq.Workplane("YZ")
-           .polyline([(HOOK_TIP, zt), (CH_FLOOR, zt), (CH_FLOOR, zt + (CH_FLOOR - HOOK_TIP))])
-           .close().extrude(LX_W + 2 * CLR)
-           .translate((cx - LX_W / 2 - CLR, 0, 0)))
-    return body.union(gab)
+    """Retention pocket. Floor FLAT (the ledge). No gable: on this face the
+    pocket's outer boundary is the BED side in the female's print, so it is a
+    floor rather than a ceiling and needs no roof relief."""
+    return _yz(LX_W + 2 * CLR, CH_FLOOR, HOOK_TIP + 0.1,
+               engage_z + HOOK_Z0 - CLR, engage_z + HOOK_Z1 + CLR, cx)
 
 
 # ═══════════════════════════════════════════════════════════════════════════
 # the printed parts
 # ═══════════════════════════════════════════════════════════════════════════
 def slider(cx: float = LX_C) -> cq.Workplane:
-    """LATCH SLIDER (PCTG) -- one SKU for both joints. Drawn at its ENGAGED
-    (rest) position in the male frame.
+    """LATCH SLIDER (PCTG) -- one SKU for both joints, drawn ENGAGED.
 
-    A STEPPED bar. The step exists because the two ends work at very different
-    radii: below the butt plane the male body runs out to FACE_Y (-22), while
-    above it there is only the octagon spigot, whose apex the tunnel cut away.
-    So the lower step reaches out to the cover (its OUT stop) and the upper step
-    stops at the female channel floor, with the HOOK protruding from it.
-
-    Prints flat on its BACK face: the hook lead and the pad both face up, so
-    there is nothing to support."""
-    back = BACK_Y - SPR_GAP                     # -1.5  back face at REST
-    # Clearance is toward +Y: the female's material starts BELOW CH_FLOOR (more
-    # -Y), so the step has to sit ABOVE it. CH_FLOOR - 0.1 read as clearance but
-    # is 0.1 the wrong way, and jammed the step 1.75 mm^3 into the wall.
-    up_front = CH_FLOOR + CLR                   # -13.35 upper step front
-
-    def span(y0, y1, z0, z1):
-        return box_at(LX_W, y1 - y0, z1 - z0,
-                      x=cx, y=(y0 + y1) / 2, z=(z0 + z1) / 2)
-
-    b = span(COVER_IN, back, BODY_Z0, PAD_Z1)          # lower step
-    b = b.union(span(up_front, back, PAD_Z1, BODY_Z1))  # upper step
+    A STEPPED bar: the two ends work at different radii, because below the butt
+    plane the male body runs out to FACE_Y while above it there is only the
+    spigot, whose shoulder the tunnel cut away. The lower step reaches the cover
+    (its OUT stop); the upper step stops just short of the female channel floor,
+    with the HOOK protruding from it."""
+    back = BACK_Y + SPR_GAP                     # 1.5  back face at REST
+    up_front = CH_FLOOR - CLR                   # 12.65 upper step front:
+    #   the female's material starts ABOVE CH_FLOOR, so the step sits below it.
+    b = _yz(LOW_W, COVER_IN, back, BODY_Z0, PAD_Z1, cx)         # lower step (wide)
+    b = b.union(_yz(LX_W, up_front, back, PAD_Z1, BODY_Z1, cx))  # upper step
     # HOOK: out to HOOK_TIP. BOTTOM face flat = the retention face; TOP face
     # chamfered 45 deg = the push-together cam.
-    b = b.union(span(HOOK_TIP, up_front, HOOK_Z0, HOOK_Z1))
+    b = b.union(_yz(LX_W, up_front, HOOK_TIP, HOOK_Z0, HOOK_Z1, cx))
     lead = (cq.Workplane("YZ")
             .polyline([(HOOK_TIP, HOOK_Z1), (up_front, HOOK_Z1),
-                       (HOOK_TIP, HOOK_Z1 - (up_front - HOOK_TIP))])
+                       (HOOK_TIP, HOOK_Z1 - (HOOK_TIP - up_front))])
             .close().extrude(LX_W).translate((cx - LX_W / 2, 0, 0)))
     b = b.cut(lead)
     # PAD: through the cover aperture, flush with the outer face at rest
-    b = b.union(box_at(PAD_W, COVER_IN - FACE_Y, PAD_Z1 - PAD_Z0,
-                       x=cx, y=(FACE_Y + COVER_IN) / 2,
-                       z=(PAD_Z0 + PAD_Z1) / 2))
+    b = b.union(_yz(PAD_W, FACE_Y, COVER_IN, PAD_Z0, PAD_Z1, cx))
     # spring blind bore, into the back face
-    b = b.cut(cyl_y(SPR_BORE_D, SPR_SEAT + 0.2, y0=back - SPR_SEAT,
+    b = b.cut(cyl_y(SPR_BORE_D, SPR_SEAT + 0.2, y0=back - 0.2,
                     x=cx, z=(PAD_Z0 + PAD_Z1) / 2))
     return b
 
 
 def cover(cx: float = LX_C) -> cq.Workplane:
-    """LATCH COVER (PCTG) -- one SKU for both joints. The plate that closes the
-    slider's load window: it is the slider's OUTWARD stop (so the pad cannot
-    push out past its aperture) and its Z lock. Slides DOWN its 45 deg dovetail
-    onto a hard stop; only leaves upward, which the female half blocks once the
-    joint is assembled -> captive, no fasteners. Prints flat."""
-    w0, w1 = LX_W + 2 * COVER_T, LX_W + 2 * COVER_T + 2 * COVER_T
-    pts = [(-w0 / 2, FACE_Y), (w0 / 2, FACE_Y),
-           (w1 / 2, COVER_IN), (-w1 / 2, COVER_IN)]
-    prof = (cq.Workplane("XY").polyline([(x + cx, y) for x, y in pts])
-            .close().extrude(-(0.0 - LOAD_Z)))
-    b = cq.Workplane("XY").add(prof.val())
-    # button APERTURE: the pad passes, the slider's body cannot
-    b = b.cut(box_at(PAD_W + 2 * CLR, COVER_T + 2.0,
-                     (PAD_Z1 - PAD_Z0) + 2 * CLR,
-                     x=cx, y=(FACE_Y + COVER_IN) / 2,
-                     z=(PAD_Z0 + PAD_Z1) / 2))
+    """LATCH COVER (PCTG) -- one SKU. Closes the slider's load window; its
+    aperture lip is the slider's outward stop AND its Z lock. Slides DOWN its
+    dovetail onto a hard stop, and is captive once the joint is assembled."""
+    b = _cover_slot(cx)
+    b = b.cut(_yz(PAD_W + 2 * CLR, FACE_Y + 1.0, COVER_IN - 1.0,
+                  PAD_Z0 - CLR, PAD_Z1 + CLR, cx))
     return b
 
 
 def slider_pressed(cx: float = LX_C) -> cq.Workplane:
-    """The slider drawn RELEASED (pressed in by STROKE) -- for clearance checks."""
-    return slider(cx).translate((0, STROKE, 0))
+    """The slider RELEASED -- pressed in by STROKE, i.e. away from the face."""
+    return slider(cx).translate((0, -STROKE, 0))
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -341,47 +338,27 @@ def spring_force(pressed: bool = False) -> float:
 def spring(cx: float = LX_C, pressed: bool = False) -> cq.Workplane:
     """The steel compression coil, as a real swept helix -- axis along Y (the
     slider's travel), seated in the slider's blind bore and bearing on the
-    tunnel's back wall. Pass pressed=True for the released state.
+    tunnel's back wall. pressed=True for the released state.
 
     Exact where it matters: OD, wire diameter, turn count, and OVERALL length
     (the helix PATH is built one wire-diameter short, because the swept tube
-    adds a wire radius past the path at each end -- built to the full length it
-    models 0.6 too long and would read as fouling the tunnel's back wall).
+    adds a wire radius past the path at each end).
 
-    Simplified where it does not: the coil is uniform-pitch, so the closed-and-
-    ground END coils are drawn pitched rather than touching. No interface cares
-    -- OD sets the bore fit, overall length sets the gap, and solid height is
-    turns*wire (4.8) by definition either way. Modelling the dead coils properly
-    means three helix segments whose pitch junctions are not tangent, and the
-    fuse of those is not reliably a single solid."""
+    Simplified where it does not: uniform pitch, so the closed-and-ground END
+    coils are drawn pitched rather than touching. No interface cares -- OD sets
+    the bore fit, overall length sets the gap, and solid height is turns*wire
+    either way. The three-segment version has non-tangent pitch junctions whose
+    fuse is not reliably a single solid."""
     L = spring_length(pressed)
-    r_mid = (SPR_OD - SPR_WIRE) / 2.0                  # 2.2 mean radius
-    path_h = L - SPR_WIRE                              # see docstring
+    r_mid = (SPR_OD - SPR_WIRE) / 2.0
+    path_h = L - SPR_WIRE
     wire = cq.Wire.makeHelix(pitch=path_h / SPR_TURNS, height=path_h, radius=r_mid)
     coil = (cq.Workplane("XZ").center(r_mid, 0).circle(SPR_WIRE / 2)
             .sweep(cq.Workplane("XY").add(wire), isFrenet=True))
-    # helix is built about +Z; stand it along +Y with its base at the bore bottom
     coil = coil.rotate((0, 0, 0), (1, 0, 0), -90)
-    # Anchor on the TUNNEL BACK, which is the end that does not move. Anchoring
-    # on the slider's bore bottom instead leaves the pressed state drawn a full
-    # STROKE too far -Y, and the coil then reads as buried in the slider.
-    return coil.translate((cx, BACK_Y - L + SPR_WIRE / 2, (PAD_Z0 + PAD_Z1) / 2))
-
-
-def male_post(cx: float = LX_C) -> cq.Workplane:
-    """GUIDE POST for the coil, standing off the tunnel's back wall into the
-    spring's ID -- the project's coil pattern (see the knee-lever cartridge:
-    a pilot into the coil ID, not a cup on its end).
-
-    Without it the coil is located at ONE end only: its seated end is 6 mm down
-    the slider's blind bore, but the far end merely bears on a flat wall, free to
-    wander sideways in a 10 x 20 tunnel or to buckle. The post carries the ID
-    from the wall inward, and because it reaches PAST the slider's back face it
-    also pilots the slider itself against tilt.
-
-    Length is bounded by the slider's bore floor at FULL PRESS: the floor comes
-    to y -4.7 there, so a 5.0 post (tip at -2.5) keeps 2.2 mm of daylight."""
-    return cyl_y(POST_D, POST_L, y0=BACK_Y - POST_L, x=cx, z=(PAD_Z0 + PAD_Z1) / 2)
+    # Anchor on the TUNNEL BACK, the end that does not move. Anchoring on the
+    # slider's bore floor leaves the pressed state drawn a full STROKE out.
+    return coil.translate((cx, BACK_Y + SPR_WIRE / 2, (PAD_Z0 + PAD_Z1) / 2))
 
 
 def _assert_spring():
@@ -389,9 +366,9 @@ def _assert_spring():
     assert spring_length(True) > SPR_SOLID + 0.5, "coil binds before the button bottoms"
     assert SPR_OD + 0.4 <= SPR_BORE_D + 1e-9, "coil does not clear its bore"
     assert POST_D < SPR_ID - 0.4, "guide post binds inside the coil"
-    # the post must never reach the slider's bore floor, which is closest at full press
-    floor_pressed = (BACK_Y - SPR_GAP) - SPR_SEAT + STROKE
-    assert BACK_Y - POST_L > floor_pressed + 1.0, "guide post bottoms in the slider's bore"
+    # the post must never reach the slider's bore floor, closest at full press
+    floor_pressed = BACK_Y + SPR_GAP + SPR_SEAT - STROKE
+    assert BACK_Y + POST_L < floor_pressed - 1.0, "guide post bottoms in the slider's bore"
 
 
 _assert_spring()
