@@ -41,7 +41,7 @@ from __future__ import annotations
 import cadquery as cq
 
 from . import dimensions as D
-from .helpers import box_at, cyl_y
+from .helpers import box_at, cyl_x, cyl_y
 from cadkit.fasteners import M4, cut_insert_bore, m4_button_screw, seated_insert
 
 # ── belt cross-section ───────────────────────────────────────────────────────
@@ -67,6 +67,7 @@ TUN_W    = BW + 0.4                       # 5.4  belt width in the tunnel
 WELL_W   = BW + 0.6                       # 5.6  well width (bar slide clearance)
 BODY_W   = WELL_W + 2 * WALL              # 8.8  (Y) — one belt lane with cheeks
 SCR_CLR  = M4.shaft_clr_d                 # 4.4  screw channel Ø
+SEAT_DEPTH = 0.7                          # concave screw-seat depth into the bar's −Z edge
 
 # ── X layout: derived from the tooth count, so grip WIDTH is a single knob ────
 # ~6 teeth per bar reaches the GT2 belt's full working rating (mirrors the "6 teeth in
@@ -88,22 +89,21 @@ GB0      = S_X0 + _MRG                    # slider bar well (−X end = bed, no 
 GB1      = GB0 + GRIP
 INS_X    = GB1 + RAMP_RUN                 # insert mouth — AFTER the well-B ramp, so it keeps a full collar
 S_X1     = INS_X + M4.insert_l + 2.0      # slider +X face (insert pocket + tip clr)
-SCREW_L  = 45.0                           # M4×45 spans head → insert (grew with the ramp; new BOM length)
-
-
-def cyl_x(d: float, length: float, x0: float, z: float = 0.0) -> cq.Workplane:
-    """Solid cylinder along +X, base at x0, centred on (y=0, z)."""
-    return cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        d / 2, length, pnt=cq.Vector(x0, 0.0, z), dir=cq.Vector(1, 0, 0)))
+# The screw is DERIVED, not a frozen literal: it spans the head-bearing face (HEAD_X) to the
+# insert, so its length is a consequence of the same layout chain. Pick the longest STOCK M4
+# button that reaches the insert without protruding past the slider +X face — so bumping
+# N_TEETH / GAP / RAMP_RUN re-sizes the BOM screw automatically (no half-knob).
+_M4_STOCK = (16, 20, 25, 30, 35, 40, 45, 50, 55, 60)
+SCREW_L  = max(L for L in _M4_STOCK if L <= S_X1 - HEAD_X)   # ~45: tip lands in the insert
 
 
 def _ridges(x0: float, x1: float, zc: float, width: float) -> cq.Workplane:
-    """GT2 half-round ridges (axis Y) at pitch BP over [x0,x1], centred at z=zc."""
-    out = None
-    for k in range(int((x1 - x0) / BP)):
-        c = cyl_y(2 * BTH, width, y0=-width / 2, x=x0 + BP * (k + 0.5), z=zc)
-        out = c if out is None else out.union(c)
-    return out
+    """GT2 half-round ridges (axis Y) at pitch BP over [x0,x1], centred at z=zc. The ridges
+    are disjoint, so they're collected and fused in ONE boolean (not a progressive per-ridge
+    union over a growing solid)."""
+    ridges = [cyl_y(2 * BTH, width, y0=-width / 2, x=x0 + BP * (k + 0.5), z=zc).val()
+              for k in range(int((x1 - x0) / BP))]
+    return cq.Workplane("XY").newObject([cq.Compound.makeCompound(ridges)])
 
 
 def _end_ramp(w1: float) -> cq.Workplane:
@@ -134,7 +134,7 @@ def anchor() -> cq.Workplane:
     """−X half: belt well for LIFTER_A; the M4 head bears FLUSH on its −X face; the screw
     channel opens up into the well so the crest lifts the bar."""
     body = _half_body(HEAD_X, A_X1, GA0, GA1)
-    body = body.cut(cyl_x(SCR_CLR, (A_X1 + 1) - HEAD_X, HEAD_X, Z_SCR))
+    body = body.cut(cyl_x(SCR_CLR, (A_X1 + 1) - HEAD_X, HEAD_X, z=Z_SCR))
     return body
 
 
@@ -142,14 +142,11 @@ def slider() -> cq.Workplane:
     """+X half: belt well for LIFTER_B; holds the brass insert (mouth −X, bore +X). The
     M4×45 tip lands in the insert."""
     body = _half_body(S_X0, S_X1, GB0, GB1)
-    body = body.cut(cyl_x(SCR_CLR, INS_X - (S_X0 - 1), S_X0 - 1, Z_SCR))
+    body = body.cut(cyl_x(SCR_CLR, INS_X - (S_X0 - 1), S_X0 - 1, z=Z_SCR))
     body = cut_insert_bore(M4, body, (INS_X, 0.0, Z_SCR), (1.0, 0.0, 0.0),
                            clr_len=(S_X1 - INS_X) - M4.insert_l + 1.0,
                            reason="belt tensioner: metal thread, must not self-tap (anti-creep)")
     return body
-
-
-SEAT_DEPTH = 0.7                          # concave screw-seat depth into the −Z edge
 
 
 def _lifter(length: float = LIFT_LEN) -> cq.Workplane:
@@ -165,12 +162,17 @@ def _lifter(length: float = LIFT_LEN) -> cq.Workplane:
     return bar.cut(seat)
 
 
+# LIFTER_A and LIFTER_B are the SAME bar — two physical copies with two registry names — so
+# the geometry is built ONCE here and shared (callers only rotate/translate copies).
+_LIFTER = _lifter()
+
+
 def lifter_a() -> cq.Workplane:
-    return _lifter()
+    return _LIFTER
 
 
 def lifter_b() -> cq.Workplane:
-    return _lifter()
+    return _LIFTER
 
 
 # ── dummies for the assembly render (purchased, no standalone STEP) ──────────
@@ -198,10 +200,10 @@ def tensioner_coupon() -> cq.Workplane:
     first layer. BARS build −Y→+Y: the ridge curves + concave seat land in the layer plane."""
     def _on_bed(w):
         return w.translate((0.0, 0.0, -w.val().BoundingBox().zmin))
-    a = _on_bed(anchor().rotate((0, 0, 0), (0, 1, 0), -90)).translate((0.0, -14.0, 0.0))
-    s = _on_bed(slider().rotate((0, 0, 0), (0, 1, 0), -90)).translate((0.0, +2.0, 0.0))
-    la = _on_bed(lifter_a().rotate((0, 0, 0), (1, 0, 0), 90)).translate((22.0, -6.0, 0.0))
-    lb = _on_bed(lifter_b().rotate((0, 0, 0), (1, 0, 0), 90)).translate((22.0, +6.0, 0.0))
+    a = _on_bed(anchor_part.rotate((0, 0, 0), (0, 1, 0), -90)).translate((0.0, -14.0, 0.0))
+    s = _on_bed(slider_part.rotate((0, 0, 0), (0, 1, 0), -90)).translate((0.0, +2.0, 0.0))
+    la = _on_bed(_LIFTER.rotate((0, 0, 0), (1, 0, 0), 90)).translate((22.0, -6.0, 0.0))
+    lb = _on_bed(_LIFTER.rotate((0, 0, 0), (1, 0, 0), 90)).translate((22.0, +6.0, 0.0))
     return a.union(s).union(la).union(lb)
 
 
