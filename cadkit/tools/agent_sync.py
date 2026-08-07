@@ -182,6 +182,25 @@ def _requests():
     return sorted(box.glob("*.json"))
 
 
+def _load_reqs(paths=None):
+    """Read each pending request file -> list of dicts. The single place that knows the
+    request schema; callers just format the dicts differently."""
+    return [json.loads(p.read_text()) for p in (_requests() if paths is None else paths)]
+
+
+def _hook_reqs():
+    """Hot path -- runs on EVERY lead prompt. ONE git call for branch + common-dir (not two),
+    and a READ-ONLY inbox glob (no mkdir, unlike sync_dir()). Returns (branch, [request paths]);
+    ("", []) if git can't answer, so the hook stays silent instead of erroring."""
+    out = git("rev-parse", "--path-format=absolute", "--abbrev-ref", "HEAD",
+              "--git-common-dir", check=False)
+    lines = out.splitlines()
+    if len(lines) < 2:
+        return "", []
+    inbox = Path(lines[1]) / "agent-sync" / "inbox"
+    return lines[0], (sorted(inbox.glob("*.json")) if inbox.is_dir() else [])
+
+
 def _print_pending_banner():
     """Loud, impossible-to-miss banner of every queued request. Printed by the lead's
     routine commands so a pending merge can't be walked past even if `wait` never fired."""
@@ -191,8 +210,7 @@ def _print_pending_banner():
     bar = "!" * 64
     print(bar)
     print(f"  {len(reqs)} PENDING MERGE REQUEST(S) -- take them before you move on:")
-    for p in reqs:
-        r = json.loads(p.read_text())
+    for r in _load_reqs(reqs):
         print(f"    * agent/{r['name']:12s} {r['sha'][:8]}  \"{r['summary']}\"")
     print(f"  ->  py -3.12 cadkit/tools/agent_sync.py take <name>")
     print(bar)
@@ -226,8 +244,7 @@ def cmd_inbox():
         print("inbox empty -- no pending merge requests.")
         return
     print(f"{len(reqs)} pending merge request(s):")
-    for p in reqs:
-        r = json.loads(p.read_text())
+    for r in _load_reqs(reqs):
         print(f"  • {r['branch']:20s} {r['sha'][:8]}  {r['time']}  \"{r['summary']}\"")
     print("Take one with:  py -3.12 cadkit/tools/agent_sync.py take <name>")
 
@@ -305,14 +322,12 @@ def cmd_hook():
     lead session, so a normal turn is never cluttered. ALWAYS exits 0 -- a hook must never
     block or fail the prompt."""
     try:
-        if cur_branch() != "main":        # only the lead takes/merges; contributor sessions: silent
-            return
-        reqs = _requests()
-        if not reqs:                      # nothing waiting -> don't nag every prompt
+        branch, paths = _hook_reqs()
+        if branch != "main" or not paths:     # only the lead acts; silent when nothing waits
             return
         bar = "=" * 68
         out = [bar,
-               f"[agent_sync] ACTION REQUIRED before you continue: {len(reqs)} merge "
+               f"[agent_sync] ACTION REQUIRED before you continue: {len(paths)} merge "
                f"request(s) are waiting in your inbox.",
                "Your `wait` listener did NOT catch them (they would be merged already), so it "
                "is down. Do BOTH now:",
@@ -320,9 +335,7 @@ def cmd_hook():
                "  2. RE-ARM the listener IN THE BACKGROUND so future ones auto-wake you:",
                "        py -3.12 cadkit/tools/agent_sync.py wait",
                "pending:"]
-        for p in reqs:
-            r = json.loads(p.read_text())
-            out.append(f"  * agent/{r['name']}  {r['sha'][:8]}  \"{r['summary']}\"")
+        out += [f"  * agent/{r['name']}  {r['sha'][:8]}  \"{r['summary']}\"" for r in _load_reqs(paths)]
         out.append(bar)
         print("\n".join(out))
     except Exception:
