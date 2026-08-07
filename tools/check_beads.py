@@ -105,6 +105,19 @@ _ex("hardware",
     NUT_PIN_D="Ø2 dowel pin nominal",
     NUT_PIN_L="Ø2x4 dowel pin length",
     GUIDE_ROD_D="Ø2.5 precision rod",
+    # latch return spring -- a purchased coil (BOM SKU); OD/wire/free length and
+    # rate are the spring's, and the bore/ID/post derive from them
+    SPR_OD="latch spring Ø5.0 OD (BOM SKU)",
+    SPR_WIRE="latch spring 0.6 music wire",
+    SPR_FREE="latch spring 12.0 free length",
+    SPR_SOLID="= (N+2)*wire, the spring's solid height",
+    SPR_RATE="N/mm, not a length at all",
+    SPR_ID="= SPR_OD - 2*wire, the coil bore",
+    POST_D="= SPR_ID - clearance; guides the purchased coil",
+    latch__TRRS_WAY_Z0="TRRS D11 jack handle way (legs.leg_head owns it)",
+    latch__FACE_Y="= legs.BLK_W/2 -- a MATING datum owned by legs.py",
+    latch__LG_BLK_HALF="= legs.BLK_W/2 -- a MATING datum owned by legs.py",
+    latch__OCT_TOP="measured octagon apex within the band",
     )
 
 # Gaps, not material. Always sub-bead; the grid does not apply.
@@ -114,6 +127,9 @@ _ex("clearance",
     BOOL_OVERSHOOT="boolean cutter overshoot, not a feature",
     M3_CLR_D="M3 clearance hole",
     NUT_SCREW_D="M4 shaft clearance",
+    latch__CLR="latch sliding fit",
+    latch__OCT_CLR="channel floor standoff from the octagon",
+    SPR_BORE_D="= SPR_OD + drop-in clearance",
     )
 
 # Where PURCHASED parts sit relative to each other. No bead is laid to define a
@@ -150,7 +166,7 @@ STRUCTURAL = {0.0, 1.0, 2.0, 90.0, 180.0, 270.0, 360.0}
 # Names that ARE the bead. `13 * BEAD` states a length in the grid's own unit, so
 # the 13 is a COUNT -- checking it as a length would reject the very idiom this
 # refactor exists to introduce.
-BEAD_NAMES = {"BEAD", "NOZZLE_D", "MIN_WALL"}
+BEAD_NAMES = {"BEAD", "B", "NOZZLE_D", "MIN_WALL"}
 
 # Constants that are not lengths at all, by name. Counts and angles.
 NON_LENGTH = ("N_STRINGS", "N_TEETH", "SEGMENTS", "COUNT", "_N", "TURNS",
@@ -171,12 +187,19 @@ def _offsets(node: ast.AST) -> list[float]:
     it would reject the idiom the grid is written in. Everything else in a
     geometry expression is an offset someone chose, and is fair game."""
     skip = set()
+
+    def _skip_subtree(sub: ast.AST) -> None:
+        # the whole operand, not just a bare Constant: `-13 * B` parses as
+        # UnaryOp(13) * B, so skipping only the top node still leaves the 13
+        for k in ast.walk(sub):
+            skip.add(id(k))
+
     for n in ast.walk(node):
         if isinstance(n, ast.BinOp) and isinstance(n.op, ast.Mult):
             if _is_bead_unit(n.right):
-                skip.add(id(n.left))
+                _skip_subtree(n.left)
             if _is_bead_unit(n.left):
-                skip.add(id(n.right))
+                _skip_subtree(n.right)
     out = []
     for n in ast.walk(node):
         if isinstance(n, ast.Constant) and isinstance(n.value, (int, float)) \
