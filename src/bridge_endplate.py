@@ -124,7 +124,7 @@ CARRIER_TOP  = OP.PLINTH_TOP                  # 9.501 -- the board bears directl
 UNDER_Z      = 6.5
 CARRIER_BOT  = UNDER_Z                        # 6.5 -- 0.5 over the deck, flush with the comb
 CARRIER_X1   = OP.PCB_X1S - 0.1               # -X face, inside the band by a hair
-CARRIER_HY   = 54.0                           # out to the arms
+CARRIER_HY   = 68 * D.BEAD                    # 54.4 out to the arms
 
 # TAIL PLINTH -- the strip's digital block, now that it widens +X OVER THIS PART instead
 # of -X over the deck (user). That move is what makes it supportable at all: past
@@ -162,7 +162,7 @@ TAIL_Y1 = -CARRIER_HY                         # -54.0: OVERLAP the carrier band 
 # And the same bar keeps running -X to BECOME the PCB plinth, which is what fixes that
 # part's floating first layer: the whole path from the cap band to the optical strip is
 # now continuous material in the build direction.
-BRACE_X0 = -8.6                  # start of the flare: 0.6 clear of the bearing OD (x -8..0)
+BRACE_X0 = -11 * D.BEAD          # -8.8: start of the flare, 0.8 clear of the bearing OD
 BRACE_X1 = XLO                   # -16.60, where the plinth takes over
 BRACE_Z0 = UNDER_Z               # flush with the finger underside -- see UNDER_Z
 # Raised to meet the light cover's top, since the brace is what the cover's roof lands on
@@ -198,7 +198,7 @@ AXLE_GRUB_L   = ARM_TOP - (D.BRIDGE_BEARING_Z + D.BRIDGE_AXLE_D / 2) + 0.2
 # X0=6 cap boundary) — clearing to 6 up there just leaves a wide ledge under the shelf at z7.
 POST_SWEEP_X1 = D.SCREW_X + CR.POST_X1H + 0.4             # +3.05: tower +X face (2.65) + clearance
 GRX     = D.SCREW_X + D.GUIDE_ROD_DX                      # rod line (+3.5)
-GR_H    = 6.0                                             # ledge heights
+GR_H    = 8 * D.BEAD                                      # 6.4 ledge heights
 GR_UBOT = D.CARRIAGE_NOM_Z + D.GUIDE_FOOT_DZ              # upper bottom = top stop (−20)
 GR_UTOP = GR_UBOT + GR_H                                  # = the window sill (−14)
 GR_LTOP = GR_UBOT - D.CARRIAGE_TRAVEL - D.GUIDE_FOOT_H    # lower top = bottom stop (−38)
