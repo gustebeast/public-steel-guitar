@@ -35,6 +35,7 @@ from . import dimensions as D
 from . import chassis as CH
 from . import top_plate as TP
 from . import optical_pickup as OP
+from . import carriage as CR
 from .endplate_base import endplate_base
 from .screw_rail import screw_rail as _screw_rail, HEIGHT as _SR_H
 from .helpers import box_at, cyl, cyl_y
@@ -123,20 +124,24 @@ CARRIER_TOP  = OP.PLINTH_TOP                  # 9.501 -- the board bears directl
 # on the finished underside (5.6 cap band / 6.0 finger roots / 6.5 carrier+brace
 # / 7.4 tower relief). Each was justified; the staircase was nobody's design.
 #
-# THE CEILING IS SET BY THE TALLEST THING IN THE ROOM (user), which is the ten
-# LEADSCREW TOPS at SCREW_TOP_Z — above the carriage's own tower (2.0 at the top
-# of travel), the string nuts and the guide rods. Clearance ≥ 1.0 over them, and
-# the SHELF LEFT ABOVE the cut lands on a whole number of beads: the shelf is
-# BEAR_TOP − ROOM_Z1, so 15 beads = 12.0 puts the ceiling at 4.00 and clears the
-# screws by 1.60. (16 beads would clear by only 0.80 — under the rule. Measured
-# before this: the shelf was 8.60 = 10.75 beads, and the room had 5.0 of slack it
-# was never using.) Writing it as `BEAR_TOP − N × BEAD` is what puts the SHELF on
-# the grid rather than the ceiling's absolute height: the shelf is the material,
-# the ceiling is just where it stops.
-ROOM_Z1      = BEAR_TOP - 15 * D.BEAD         # 4.00 — ceiling; shelf above = 12.0 = 15 beads
+# THE CEILING IS SET BY THE TALLEST THING IN THE ROOM (user), clearing it by ≥ 1.0,
+# with the SHELF LEFT ABOVE the cut on a whole number of beads. That tallest thing is
+# now the CARRIAGE'S ANCHOR TOWER at the top of its travel. It used to be the ten
+# leadscrew tops, until the screws were cut back to the nut they actually drive
+# (D.SCREW_TOP_Z, once 2.4, now −7.6) — so this ceiling is re-datumed with them
+# rather than left pointing at a rod that no longer comes near it.
+# The shelf is BEAR_TOP − ROOM_Z1: 16 beads = 12.8 puts the ceiling at 3.20 and
+# clears the tower by 1.20. (17 beads would clear by 0.40 — under the rule.)
+# Writing it as `BEAR_TOP − N × BEAD` is what puts the SHELF on the grid rather than
+# the ceiling's absolute height: the shelf is the material, the ceiling is only where
+# it stops. For scale, the shelf was 8.60 = 10.75 beads when the user measured it.
+_TOWER_TOP   = D.CARRIAGE_NOM_Z + CR.POST_Z1  # 2.00 — cage top at the TOP of travel
+ROOM_Z1      = BEAR_TOP - 16 * D.BEAD         # 3.20 — ceiling; shelf above = 12.8 = 16 beads
+assert ROOM_Z1 - _TOWER_TOP >= 1.0 - 1e-9, (
+    f"the changer room clears the carriage tower by only {ROOM_Z1 - _TOWER_TOP:.2f} "
+    f"(want 1.0): take a bead off the shelf")
 assert ROOM_Z1 - D.SCREW_TOP_Z >= 1.0 - 1e-9, (
-    f"the changer room clears the leadscrew tops by only {ROOM_Z1 - D.SCREW_TOP_Z:.2f} "
-    f"(want 1.0): take a bead off the shelf, or drop SCREW_TOP_Z")
+    f"the changer room clears the leadscrew tops by only {ROOM_Z1 - D.SCREW_TOP_Z:.2f}")
 # Fingers and braces — everything INSIDE the endplate — put their underside on the
 # ceiling, so no later union can hang back down into the room.
 UNDER_Z      = ROOM_Z1

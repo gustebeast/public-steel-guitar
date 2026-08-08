@@ -109,7 +109,6 @@ def nut_y(i: int) -> float:
 STRING_Z        = 16.0      # speaking-length / bridge-bearing top
 DECK_TOP_Z      = 8 * BEAD  # 6.4 deck-plate top = playing-surface datum; the chassis deck
                             # plane (TP_GZ0/1) and the keyhead nut-block base both sit here
-SCREW_TOP_Z     = 3 * BEAD  # 2.4 screw top, below the bend / carriage travel
 # Travel budget from string physics. f ∝ √(stretch) ⇒ stretch ∝ f², so the
 # carriage travel between two pitches is the change in stretch:
 #   travel(f1→f2) = DL_OPEN · ((f2/f_open)² − (f1/f_open)²)
@@ -123,6 +122,36 @@ SCREW_TOP_Z     = 3 * BEAD  # 2.4 screw top, below the bend / carriage travel
 DL_OPEN         = 4.0
 CARRIAGE_TRAVEL = 2 * DL_OPEN + 2.0    # ≈10 mm; open sits ~DL_OPEN up from slack
 
+# The carriage's REST HEIGHT is set by the BRIDGE BEARING, not by the screw. Its
+# ball-cage top must stay 1.0 under the bearing's underside (STRING_Z − OD), which
+# is what caps the bearing OD in the first place. Spelled here rather than imported
+# from carriage.py (that module imports THIS one), and ASSERTED there against the
+# live carriage geometry — see carriage._BRG_GAP, which has already caught one
+# regrid that quietly ate 0.4 of this gap.
+# It used to read `SCREW_TOP_Z − 13.4`, which had the dependency backwards: the
+# screw's length was setting where the carriage lived. Now the carriage is the
+# datum and the screw is sized to reach it.
+CARRIAGE_NOM_Z  = -11.0     # default = TOP of travel (travel runs DOWNWARD from here)
+CARRIAGE_THICK  = 12.0      # carriage body band in Z; single-sourced here because the
+                            # nut placement and the screw length both need it (carriage.py
+                            # re-exports it as THICK)
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# Leadscrew nut (round brass, pressed into the carriage) — declared BEFORE the
+# screw because the screw's length is derived from where this nut travels.
+# ─────────────────────────────────────────────────────────────────────────
+NUT_OD          = 7.0
+NUT_FLANGE_OD   = 9.0
+NUT_FLANGE_T    = 2.0
+NUT_BODY_LEN    = 7.0
+# The nut seats flange-down against the carriage's bottom face, body up into its
+# pocket — so it rides the BOTTOM of the carriage, and these two planes are the
+# only part of the carriage the screw has to reach.
+NUT_TOP_MAX     = CARRIAGE_NOM_Z - CARRIAGE_THICK / 2 + NUT_BODY_LEN   # -10.0, at TOP of travel
+NUT_BOT_MIN     = (CARRIAGE_NOM_Z - CARRIAGE_TRAVEL
+                   - CARRIAGE_THICK / 2 - NUT_FLANGE_T)                # -29.0, at BOTTOM of travel
+
 
 # ─────────────────────────────────────────────────────────────────────────
 # Vertical leadscrew (single-start, self-locking — the keystone, §3) — axis Z
@@ -130,37 +159,22 @@ CARRIAGE_TRAVEL = 2 * DL_OPEN + 2.0    # ≈10 mm; open sits ~DL_OPEN up from sl
 # Ø5×1 single-start: lead angle ~3.6° (very self-locking) and fast enough (a
 # semitone is only ~1.5 mm). Vertical ⇒ short (no whip).
 SCREW_OD        = 5.0       # Ø5, single-start, 1 mm lead
-SCREW_LEN       = 61.0 + 7 * BEAD   # 66.6. The +8 over the minimum drops the whole drive
-                            # stack (pulleys, belts, support bearing — all derive from here)
-                            # so the raised odd pulleys clear the carriage's full down-travel
-                            # plus a bottom stop. The extra 5.6 is the BELT-PLANE CENTRING
-                            # (user): it lowers both pulley rows by half a belt plane so the
-                            # motor plane lands midway between them — see MOTOR_BELT_Z. The
-                            # screw grows instead of the stack sliding down, because the
-                            # support bearing already sits only 3.9 above the screw's bottom
-                            # end; dropping the pulley without lengthening the rod would hang
-                            # the bearing 1.3 mm past it. Still short enough not to whip.
-SCREW_BOT_Z     = SCREW_TOP_Z - SCREW_LEN          # -59
-# DROPPED 5 mm (was SCREW_TOP_Z - 8.0) to make room at the CHANGER (user asked
-# whether the mechanism could move down, and it can): the bearing OD is capped by
-# the gap between the string plane and the carriage's ball-cage top, and the cage
-# is what had to give. There was 8.00 mm of slack between the carriage at full-down
-# travel and the screw-pulley top; 5 of it buys a Ø13 race and leaves 3.0 spare.
-# (Ø16 would have taken all 8 and left the carriage kissing the pulley.)
-CARRIAGE_NOM_Z  = SCREW_TOP_Z - 13.4               # default = TOP of travel; the anchor post
-                                                   # clears the bridge bearings by 1 mm (the
-                                                   # endplate's upper guide ledge hard-stops
-                                                   # the carriage foot here, protecting them)
-SCREW_PULLEY_Z  = SCREW_BOT_Z + 19 * BEAD  # 15.2               # screw drive pulley near bottom (-36)
-
-
-# ─────────────────────────────────────────────────────────────────────────
-# Leadscrew nut (round brass, pressed into the carriage)
-# ─────────────────────────────────────────────────────────────────────────
-NUT_OD          = 7.0
-NUT_FLANGE_OD   = 9.0
-NUT_FLANGE_T    = 2.0
-NUT_BODY_LEN    = 7.0
+# BOTH ENDS ARE DERIVED, and the length follows — the rod is stock, cut to fit.
+# TOP: the nut is at the carriage's BOTTOM, so the screw only has to clear the nut,
+# NOT the carriage (user). It used to run to the carriage's TOP, which left 12.4 mm
+# of thread above the highest the nut ever reaches — dead rod that bought nothing.
+# The nut is fully engaged the moment the screw passes its top face; RUNOUT is pure
+# insurance for build tolerance and the first threads.
+SCREW_RUNOUT    = 3 * BEAD                          # 2.4 proud of the nut at top of travel
+SCREW_TOP_Z     = NUT_TOP_MAX + SCREW_RUNOUT        # -7.6
+# BOTTOM: set by the DRIVE STACK hanging under the nut's lowest point — pulley,
+# support bearing, locknut — not by the carriage. The 44 beads include the BELT-PLANE
+# CENTRING (user): 7 of them lower both pulley rows by half a belt plane so the motor
+# plane lands midway between them (see MOTOR_BELT_Z). The stack has to hang off the
+# screw's own bottom because the support bearing sits only 3.9 above the rod's end.
+SCREW_BOT_Z     = NUT_BOT_MIN - 44 * BEAD           # -64.2
+SCREW_LEN       = SCREW_TOP_Z - SCREW_BOT_Z         # 56.6 — the cut length (BOM)
+SCREW_PULLEY_Z  = SCREW_BOT_Z + 19 * BEAD           # -49.0, drive pulley near the bottom
 
 
 # ─────────────────────────────────────────────────────────────────────────
