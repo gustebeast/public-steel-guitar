@@ -37,7 +37,9 @@ from cadkit.supports import printable_bore
 
 PRINT_UP = (1.0, 0.0, 0.0)                 # build −X → +X (layer lines run in Z at the nut)
 
-THICK   = 12.0                              # Z height of the body band
+THICK   = D.CARRIAGE_THICK                  # Z height of the body band (single-sourced in
+                                            # dimensions: the nut placement and the screw
+                                            # length are both derived from it)
 WIDTH   = D.NUT_OD + 2 * 1.0               # across (Y), ≤ string pitch
 NUT_POCKET_D = D.NUT_OD + 0.2
 X_LO    = -(NUT_POCKET_D / 2 + 2.0)        # wall past the nut pocket (−X) = the bed face
