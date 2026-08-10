@@ -158,7 +158,14 @@ NUT_BOT_MIN     = (CARRIAGE_NOM_Z - CARRIAGE_TRAVEL
 # ─────────────────────────────────────────────────────────────────────────
 # Ø5×1 single-start: lead angle ~3.6° (very self-locking) and fast enough (a
 # semitone is only ~1.5 mm). Vertical ⇒ short (no whip).
-SCREW_OD        = 5.0       # Ø5, single-start, 1 mm lead
+SCREW_OD        = 5.0       # Ø5, single-start, 1 mm lead.
+# WHY Ø5 AND NOT THE USUAL Tr8 — do not "upgrade" this. The ten screws sit on one X
+# line at the STRING_PITCH (9.5), so each screw's NUT has to live inside a 9.5 mm lane.
+# NUT_FLANGE_OD is already 9.0 in that lane (0.5 to its neighbour). A Tr8 nut — even a
+# plain round one, let alone the usual Ø22 flanged 3D-printer part — cannot fit. The
+# string pitch picks the screw, and it picks a size BELOW the ISO/DIN 103 trapezoidal
+# series (which starts at Tr8), so this is a specialty part, not a catalogue one: see
+# the BOM row for what that means for sourcing.
 # BOTH ENDS ARE DERIVED, and the length follows — the rod is stock, cut to fit.
 # TOP: the nut is at the carriage's BOTTOM, so the screw only has to clear the nut,
 # NOT the carriage (user). It used to run to the carriage's TOP, which left 12.4 mm
