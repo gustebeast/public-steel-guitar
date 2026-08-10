@@ -173,7 +173,11 @@ SCREW_TOP_Z     = NUT_TOP_MAX + SCREW_RUNOUT        # -7.6
 # plane lands midway between them (see MOTOR_BELT_Z). The stack has to hang off the
 # screw's own bottom because the support bearing sits only 3.9 above the rod's end.
 SCREW_BOT_Z     = NUT_BOT_MIN - 44 * BEAD           # -64.2
-SCREW_LEN       = SCREW_TOP_Z - SCREW_BOT_Z         # 56.6 — the cut length (BOM)
+SCREW_LEN       = SCREW_TOP_Z - SCREW_BOT_Z         # 56.6 — the CUT length (see BOM).
+# Not a purchasable length: Tr5x1 stock starts at 100 mm, so every screw is cut from a
+# longer blank. That is fine because the requirement is a WINDOW, not a number — the rod
+# only has to clear the nut's top at the top of travel (>= ~55) and stay under the
+# changer-room ceiling (<= ~66). 56.6 sits mid-window, so saw accuracy is a non-issue.
 SCREW_PULLEY_Z  = SCREW_BOT_Z + 19 * BEAD           # -49.0, drive pulley near the bottom
 
 
