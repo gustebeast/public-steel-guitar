@@ -133,24 +133,34 @@ def _half_body(x0: float, x1: float, w0: float, w1: float) -> cq.Workplane:
 
 
 def anchor() -> cq.Workplane:
-    """−X half (the SIMPLE one — no insert): belt well for LIFTER_A, the M4 HEAD bears flush on
-    the −X face, and the screw channel runs through to the slider (crest lifts the bar).
+    """−X half (the SIMPLE one — no insert): the M4 head bears flush on the −X (bed) face and the
+    screw runs through, its crest lifting LIFTER_A. THREE cuts, all keyed off the belt/lifter so
+    the belt tunnel and the lifter well share walls EXACTLY — no ledge where they meet (the old lip
+    came from the tunnel being 0.2 mm narrower than the well):
 
-    ENTRY / RETENTION (user): the well is OPEN at the +X face and SIZED to the lifter, so
-    LIFTER_A installs by sliding in from +X. That direction is LOAD-ALIGNED — the belt tension
-    pulls this (motor-pulley-end) lifter −X, seating it against the well's −X back wall, so the
-    belt can never push it back out the mouth it entered. No +X end wall (no ramp): the BELT
-    does the X-retention; the cheeks + ceiling hold Y/Z. Open +X also prints support-free (an
-    open slot mouth needs no bridge), and shrinks the half from the lifter+ramp+margins to
-    lifter+one margin.  [Belt pull assumed −X = toward the anchor's motor pulley — flip if the
-    drivetrain routes the anchor's belt end the other way.]"""
-    x0, x1 = HEAD_X, GA1                                    # +X face = the well's +X end (sized to the lifter)
-    body = box_at(x1 - x0, BODY_W, TOP - BOT, x=(x0 + x1) / 2, y=0.0, z=(TOP + BOT) / 2)
-    body = body.cut(box_at((x1 - x0) + 2, TUN_W, CEIL_UZ,                    # belt tunnel (full length)
-                           x=(x0 + x1) / 2, y=0.0, z=CEIL_UZ / 2))
-    body = body.cut(box_at((GA1 - GA0) + 1, WELL_W, -WELL_FLR,               # bar well — OPEN at the +X face
-                           x=(GA0 + GA1) / 2 + 0.5, y=0.0, z=WELL_FLR / 2))
-    body = body.cut(cyl_x(SCR_CLR, (GA1 + 1) - HEAD_X, HEAD_X, Z_SCR))       # screw channel through to +X
+      1. screw channel — a Ø4.4 cylinder on the screw axis, full length (head → gap → slider).
+      2. lifter well   — a LANE-wide slot down to the well floor, spanning the lifter GRIP but
+                         STOPPING SHORT of the −X face: the _MRG-thick wall at GA0 is the load
+                         back-stop the belt pulls LIFTER_A into, so the bar can't escape the −X
+                         (belt-entry) side. OPEN at the shared +X mouth — the install entry.
+      3. belt tunnel   — the SAME LANE width and the SAME +X mouth as the well, but run all the
+                         way OUT the −X face so the belt threads in from the pulley.
+
+    #2 and #3 share LANE and the +X mouth, so their Y walls and +X wall coincide; the ONLY
+    difference is the −X end (belt open, lifter walled). LIFTER_A installs through the +X mouth
+    (load-aligned — the belt pulls it −X, away from the mouth) and the belt keeps that mouth shut
+    in service, so no +X end wall/ramp is needed — which also lets the half print support-free (an
+    open slot mouth needs no bridge) and sizes it to lifter + one wall."""
+    LANE   = WELL_W                                 # ONE Y width for BOTH cuts → their walls coincide (no lip)
+    x1     = GA1                                    # lifter well +X end = the +X face (sized to the lifter)
+    mouth  = x1 + 1.0                               # shared +X mouth (overshoot → cleanly open)
+    bx0    = HEAD_X - 1.0                            # belt runs OUT the −X face (overshoot → cleanly open)
+    body = box_at(x1 - HEAD_X, BODY_W, TOP - BOT, x=(HEAD_X + x1) / 2, y=0.0, z=(TOP + BOT) / 2)
+    body = body.cut(cyl_x(SCR_CLR, mouth - HEAD_X, HEAD_X, Z_SCR))                    # 1  screw channel
+    body = body.cut(box_at(mouth - GA0, LANE, -WELL_FLR,                              # 2  lifter well
+                           x=(GA0 + mouth) / 2, y=0.0, z=WELL_FLR / 2))               #    (−X wall at GA0)
+    body = body.cut(box_at(mouth - bx0, LANE, CEIL_UZ,                                # 3  belt tunnel
+                           x=(bx0 + mouth) / 2, y=0.0, z=CEIL_UZ / 2))                #    (open at −X)
     return body
 
 
