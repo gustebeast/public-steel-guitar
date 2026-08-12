@@ -37,7 +37,7 @@ from . import top_plate as TP
 from . import optical_pickup as OP
 from . import carriage as CR
 from .endplate_base import endplate_base
-from .screw_rail import screw_rail as _screw_rail, HEIGHT as _SR_H
+from .screw_rail import screw_rail as _screw_rail, seat_cutter as _seat_cutter, BOT as _SR_BOT
 from .helpers import box_at, cyl, cyl_y
 from cadkit.fasteners import M2, M4, cut_selftap, cut_anchor
 from cadkit.supports import printable_bore
@@ -234,6 +234,27 @@ GR_LTOP = GR_UBOT - D.CARRIAGE_TRAVEL - D.GUIDE_FOOT_H    # lower top = bottom s
                                                           # and the upper ledge is deferred anyway)
 GR_LBOT = GR_LTOP - GR_H
 
+# ── NUT-SWEEP SLOT: the one extra prism the drivetrain gets ─────────────────
+# The changer room's floor is GR_LTOP because "below it nothing sweeps" — which
+# stopped being true when the leadscrew nut became an H-type. Its Ø8 boss cannot
+# live inside a 9.0 mm wide carriage at any printable wall thickness, so it hangs
+# BELOW the carriage, and at the bottom of travel it reaches NUT_BOT_MIN (−36.8),
+# a full 10 mm under the room. Rather than drop the whole room ceiling-to-floor
+# prism 10 mm — which would delete the guide-rod lower ledge and gut the +X end
+# wall across the entire X depth — the sweep gets its own prism, stopping short in
+# X of everything the room floor was protecting.
+#
+# It is cut LAST, after the guide-ledge bar is unioned in, so it also trims that
+# bar back off its −X end. That is safe and deliberate: the bar's live job is the
+# rods' blind landing sockets, and those sit at x 4.33..6.88, well +X of this cut.
+# Its −X half only ever carried the BOTTOM HARD STOP, which is deferred anyway.
+NUT_SWEEP_X1 = D.SCREW_X + D.NUT_FLANGE_L / 2 + 1.0       # 2.05 — the ear tip + 1.0
+NUT_SWEEP_Z0 = D.NUT_BOT_MIN - 1.0                        # -37.8
+_SOCKET_X0 = (D.SCREW_X + D.GUIDE_ROD_DX) - (D.GUIDE_ROD_D + 0.05) / 2
+assert NUT_SWEEP_X1 + 1.0 <= _SOCKET_X0 + 1e-9, (
+    f"the nut sweep reaches x {NUT_SWEEP_X1:.2f} and the guide-rod sockets start at "
+    f"{_SOCKET_X0:.2f} — the H-nut's ears are too long for the rod line to stay put")
+
 # Room half-width: out to the arm inner faces, so the edge carriages / string
 # balls are reachable through the room's +X opening (everything installs from +X).
 WIN_HW     = D.BRIDGE_AXLE_Y - ARM_W / 2
@@ -388,10 +409,14 @@ def _build() -> cq.Workplane:
     body = body.union(box_at(X1 - _SRX, 2 * D.BRIDGE_AXLE_Y, 10.0,    # bottom bridge → tip
                              x=(X1 + _SRX) / 2, y=0, z=D.SUPPORT_BRG_Z))
     z_lo = CH.Z_TOP - 4.0
-    sr_bot = D.SUPPORT_BRG_Z - _SR_H / 2                              # screw-rail −Z extent
+    sr_bot = _SR_BOT                                                  # screw-rail −Z extent
     for sy in (-D.BRIDGE_AXLE_Y, D.BRIDGE_AXLE_Y):                    # edge webs rail→arm
         body = body.union(box_at(X1 - _SRX, ARM_W, z_lo - sr_bot,     # down to the rail bottom
                                  x=(X1 + _SRX) / 2, y=sy, z=(z_lo + sr_bot) / 2))
+    # RE-CUT the bearing seats. The foot block below reaches -X to ~-4.2, which is
+    # inside the +X sliver of every Ø8.2 seat, so the unions above refill 0.2 mm of
+    # each bore. Cutting again here is the only place that sees the finished solid.
+    body = body.cut(_seat_cutter())
     # (no +X deck-lock shelf / capture groove / dropped section / -Y roof: the solid
     #  base over the rail ends now IS the cross-tie + the deck panels' +X stop; the
     #  deck is held in +Z by the rail-top grooves along its length, not by the bridge.)
@@ -407,6 +432,14 @@ def _build() -> cq.Workplane:
         # blind landing socket: the rod drops until it bottoms at GR_LBOT+2
         body = body.cut(cyl(D.GUIDE_ROD_D + 0.05, (GR_LTOP + 1) - (GR_LBOT + 2),
                             z=GR_LBOT + 2).translate((GRX, sy, 0)))
+    # NUT-SWEEP SLOT (see NUT_SWEEP_X1): the changer room's floor, extended down
+    # over the leadscrew line only, so the H-nuts' bosses have somewhere to go at
+    # the bottom of travel. Cut after the ledge union on purpose — it trims the
+    # ledge bar's dead -X half back out of the sweep.
+    body = body.cut(box_at(NUT_SWEEP_X1 - (XLO - 1.0), 2 * WIN_HW,
+                           GR_LTOP - NUT_SWEEP_Z0,
+                           x=((XLO - 1.0) + NUT_SWEEP_X1) / 2, y=0,
+                           z=(NUT_SWEEP_Z0 + GR_LTOP) / 2))
     # (No separate guide-view or stringing-access window cuts any more: the
     #  CHANGER ROOM prism in _cap opens the cap band down to GR_LTOP, so the
     #  rods' free span is visible and the strings thread in from +X through the
