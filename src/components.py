@@ -30,11 +30,12 @@ def screw(length: float = D.SCREW_LEN) -> cq.Workplane:
 
 # ── Leadscrew nut (H-type brass flange nut, axis Z) ──────────────────────
 def nut() -> cq.Workplane:
-    """H-type brass leadscrew nut, axis Z, mounted FLANGE DOWN / BOSS UP.
+    """H-type brass leadscrew nut, axis Z, mounted FLANGE UP / BOSS DOWN.
 
-    Origin = the flange's TOP face, which is the clamp plane against the
-    carriage's bottom; the flange hangs -Z and the boss rises +Z into the
-    carriage's Y-open recess. The flange is the round
+    THIS PART IS THE CARRIAGE. Its +X ear anchors the string (ball end
+    underneath) and its -X ear rides the guide rod; nothing else moves. Origin =
+    the flange's TOP face, so the flange hangs the first NUT_FLANGE_T below it and
+    the boss the rest — see dimensions' MOUNTING note for why flange-up. The flange is the round
     Ø20 disc with two flats milled tangent to the boss (that IS the "H"), so it
     is modelled as the intersection of the disc and an AF-wide slab — which is
     what puts the long ends' ROUNDED profile in the assembly, the thing that
@@ -47,8 +48,9 @@ def nut() -> cq.Workplane:
     slab = box_at(D.NUT_FLANGE_L + 2, D.NUT_AF, D.NUT_FLANGE_T,
                   x=0, y=0, z=z0 + D.NUT_FLANGE_T / 2)
     out = disc.intersect(slab)
-    out = out.union(cyl(D.NUT_BOSS_D, D.NUT_BOSS_L, z=0.0))      # boss rises +Z
-    out = out.cut(cyl(D.SCREW_OD, D.NUT_H + 2, z=z0 - 1))        # the thread bore
+    out = out.union(cyl(D.NUT_BOSS_D, D.NUT_BOSS_L,               # boss hangs -Z
+                        z=z0 - D.NUT_BOSS_L))
+    out = out.cut(cyl(D.SCREW_OD, D.NUT_H + 2, z=z0 - D.NUT_BOSS_L - 1))   # thread bore
     for sx in (-1, 1):                                           # the two ears
         out = out.cut(cyl(D.NUT_HOLE_D, D.NUT_FLANGE_T + 2, z=z0 - 1)
                       .translate((sx * D.NUT_HOLE_DX, 0, 0)))
