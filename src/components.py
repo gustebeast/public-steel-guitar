@@ -15,6 +15,7 @@ from . import dimensions as D
 from .helpers import cyl, cyl_y, box_at
 
 from cadkit.fasteners import M2, cut_selftap
+from cadkit.threads import threaded_rod
 from cadkit.fasteners import set_screw, m4_insert                # the ONE dummies now live in cadkit/fasteners.py;
 # re-exported here so C.set_screw() / C.m4_insert() keep working across the project
 
@@ -125,10 +126,20 @@ def screw_pulley() -> cq.Workplane:
     # cutters cannot reach into it)
     hub_z0 = w / 2
     out = out.union(cyl(D.PULLEY_FLANGE_OD, D.PULLEY_HUB_H, z=hub_z0))
-    # THREAD-FORMING bore, full height — no slit anywhere. Slitting the pulley to
-    # make a clamp is what this replaces: closing the gap shortens the pitch circle
-    # and the teeth stop matching the belt.
-    out = out.cut(cyl(D.PULLEY_BORE_SCREW, w + D.PULLEY_HUB_H + 2, z=-w / 2 - 1))
+    # PILOT THREAD, full height — no slit anywhere. Slitting the pulley to make a
+    # clamp is what this replaces: closing the gap shortens the pitch circle and the
+    # teeth stop matching the belt. Same helix as the retaining collar (the rod swages
+    # the last 0.1); see dimensions.FORM_MINOR and screw_collar.py for the overrides.
+    _bore_h = int(w + D.PULLEY_HUB_H + 2)
+    out = out.cut(threaded_rod(D.FORM_MINOR, D.FORM_MAJOR, D.SCREW_PITCH, _bore_h,
+                               z=-w / 2 - 1, overshoot=0.05, bevel_ends=False),
+                  clean=False)
+    # lead-in at both ends, so the rod meets the helix square
+    _li = 0.4
+    for zc, d0, d1 in ((-w / 2 - 0.01, D.FORM_MAJOR + 2 * _li, D.FORM_MAJOR),
+                       (w / 2 + D.PULLEY_HUB_H - _li, D.FORM_MAJOR, D.FORM_MAJOR + 2 * _li)):
+        out = out.cut(_cone(d0 / 2, d1 / 2, _li + 0.01,
+                            cq.Vector(0, 0, zc), cq.Vector(0, 0, 1)), clean=False)
     # Secondary lock: one M2 grub, radial, out the -X side where a driver can reach
     # (along Y it would have to pass every other station in the row). Self-tapped —
     # an M2 insert pocket is 3.5 deep and there is only 3.2 of wall to the bore — and
