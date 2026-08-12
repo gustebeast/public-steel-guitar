@@ -170,23 +170,33 @@ NUT_BOSS_L      = 6.6
 NUT_H           = NUT_FLANGE_T + NUT_BOSS_L                            # 9.8
 NUT_HOLE_D      = 3.0       # the ears' through-holes (M2 screws pass with room)
 NUT_HOLE_DX     = 6.5       # ± from the axis
-# MOUNTING — flange UP flat against the carriage's BOTTOM FACE, boss DOWN into
-# free air, two M2 screws up through the ears. Three things force this:
-#   • The boss CANNOT go inside the carriage. Ø8 boss + any clearance in a 9.0
-#     wide carriage leaves ≤0.65 mm side walls, under the one-bead floor, and
-#     the carriage prints on its -X face so a wall thin in Y is a single bead or
-#     nothing. The old Ø7 pocket only worked because the boss had been turned.
+# MOUNTING — flange DOWN clamped flat under the carriage's BOTTOM FACE, boss UP
+# into a Y-OPEN RECESS in the carriage, two M2 screws up through the ears.
 #   • The load direction picks the face. String pulls the carriage +Z, so the
 #     nut has to pull it back -Z: the nut's DOWN-facing surface must bear on the
-#     carriage's UP-facing surface, or fasteners must span the gap. The old
+#     carriage's UP-facing surface, or fasteners must span the gap. The original
 #     "flange-down against the bottom face" seat had those two backwards — it
-#     could only ever have held by the press fit's friction.
-#   • With the ears bolted, the screws take the pull in tension and the flats
-#     are not doing anti-rotation work, which is just as well: an 8.5 flat in a
-#     8.8 carriage leaves 0.15 mm of wall to react torque against.
-NUT_TOP_MAX     = CARRIAGE_NOM_Z - CARRIAGE_THICK / 2                  # -17.0, at TOP of travel
+#     could only ever have held by the press fit's friction. Bolted ears put the
+#     pull in tension, which is an ordinary joint and needs no seat at all.
+#   • The boss CANNOT go in a BORE. Ø8 plus clearance in an 8.8 wide carriage
+#     leaves ≤0.3 mm side walls — under the one-bead floor, and the carriage
+#     prints on its -X face, so a wall thin in Y is one bead or nothing. Its
+#     recess is therefore Y-OPEN, a channel straight through the part's width,
+#     which has no side walls to be thin. (The old Ø7 pocket only worked because
+#     the boss had been turned down on a lathe.)
+#   • The boss CANNOT hang below the carriage either, and THAT is what forces a
+#     recess rather than simply inverting the nut. The drive pulleys alternate
+#     between two Z planes to fit the 9.5 lane, and the RAISED plane's top sits at
+#     -31.4. A nut hanging its full 9.8 reaches -36.8 at the bottom of travel and
+#     drives into five of the ten pulleys. Recessed, only the 3.2 flange hangs and
+#     the nut stops at -30.2. The carriage cannot move up to dodge it: its ball
+#     cage already clears the bridge bearings by exactly the 1.0 minimum.
+#   • The flats do no anti-rotation work, which is just as well — an 8.5 flat in
+#     an 8.8 carriage leaves 0.15 mm of wall to react torque against.
+NUT_TOP_MAX     = (CARRIAGE_NOM_Z - CARRIAGE_THICK / 2
+                   + NUT_BOSS_L)                                       # -10.4, at TOP of travel
 NUT_BOT_MIN     = (CARRIAGE_NOM_Z - CARRIAGE_TRAVEL
-                   - CARRIAGE_THICK / 2 - NUT_H)                       # -36.8, at BOTTOM of travel
+                   - CARRIAGE_THICK / 2 - NUT_FLANGE_T)                # -30.2, at BOTTOM of travel
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -202,11 +212,10 @@ SCREW_OD        = 5.0       # Ø5, single-start, 1 mm lead.
 # string pitch picks the screw, and it picks a size BELOW the ISO/DIN 103 trapezoidal
 # series (which starts at Tr8), so this is a specialty part, not a catalogue one: see
 # the BOM row for what that means for sourcing.
-# TOP: the nut hangs entirely BELOW the carriage now, so the screw only has to clear
-# the nut's top face — which IS the carriage's bottom face. It used to run to the
-# carriage's TOP, then (when the nut was still inside) to the nut's top; each step
-# deleted dead rod that bought nothing. The nut is fully engaged the moment the screw
-# passes its top face; RUNOUT is pure insurance for build tolerance.
+# TOP: the screw only has to clear the NUT, not the carriage (user) — it used to run
+# all the way to the carriage's top, which left 12.4 mm of thread above the highest the
+# nut ever reaches. The nut's top is now its boss top, sitting NUT_BOSS_L up inside the
+# carriage's recess. RUNOUT is pure insurance for build tolerance.
 SCREW_RUNOUT    = 3 * BEAD                          # 2.4 proud of the nut at top of travel
 SCREW_TOP_Z     = NUT_TOP_MAX + SCREW_RUNOUT        # -14.6
 
@@ -260,15 +269,25 @@ PULLEY_FLANGE_T  = MIN_WALL      # 0.8 (was 1.0 = 1.25 beads). Rounded DOWN, not
 PULLEY_BORE_SCREW = SCREW_OD + 0.2   # slip fit over the Tr5 crests
 PULLEY_BORE_MOTOR = 5.0     # = MOTOR_SHAFT_D (declared below); the motor's own shaft
 # THE SCREW PULLEY HAD NO TORQUE PATH AT ALL — a plain Ø5 bore on a round rod (user
-# caught it). It gets a GRUB SCREW, in a lug that grows -X off the hub rather than
-# a boss around it: the pulleys alternate Z planes to fit the 9.5 lane, so anything
-# added radially collides with the neighbour's flange, while -X is open all the way
-# to the endplate edge. M2 is ample — 0.072 N·m of drive torque is only 29 N at the
-# rod surface — and the tip lands on a Tr thread, which is a better bite than the
-# smooth shaft a set screw usually gets. Insert, not self-tap: a set screw holds
-# position under load and must never cut its own thread (cadkit.fasteners).
-PULLEY_LUG_X1   = -8.0      # lug -X face, from the pulley axis
-PULLEY_LUG_W    = 8 * BEAD  # 6.4 lug Y width and Z height (M2 insert Ø3.3 + 1.55 wall)
+# caught it). It is now a C-CLAMP: one full-height slit and an M2 screw squeezing the
+# bore onto the rod. Three constraints shaped it, two of them learned the hard way:
+#   • A GRUB was the first attempt and it is the wrong part here (user). A set screw
+#     bearing on a thread crest is a point contact relying on preload staying put; a
+#     clamp grips the whole circumference and cannot back off into a valley.
+#   • The clamp screw must sit ABOVE THE BELT (user). Anything at r > the tooth OD
+#     inside the toothed band jams the belt once per turn. So the screw lives in a hub
+#     stacked on the top flange, and the hub is at the FLANGE Ø so it adds nothing to
+#     the swept envelope — an earlier -X lug reached r 8.6 and swept a Ø17 circle.
+#   • The screw axis must be X. Along Y a driver would have to reach past every other
+#     station in the row; -X is open all the way to the motors.
+# The SLIT does cross the toothed band — it has to, or the hub is fused to the body
+# below and squeezing it does nothing. It is clocked to a tooth VALLEY so it notches no
+# crest, and being axial it splits one tooth lengthwise rather than removing any.
+PULLEY_HUB_H    = 3 * BEAD  # 2.4 of hub above the top flange, at the flange Ø
+PULLEY_SLIT_W   = 1 * BEAD  # 0.8 — one bead, the narrowest gap that prints open
+PULLEY_CLAMP_DY = 4.0       # clamp-screw axis, +Y of the bore, crossing the slit
+PULLEY_CLAMP_Z  = PULLEY_W / 2      # its height: the cone/hub junction, so the cone
+                                    # backs the hole from below and the hub from above
 # ─────────────────────────────────────────────────────────────────────────
 # BOTTOM OF THE SCREW — drive pulley, thrust bearings, retaining collar (axis Z)
 # ─────────────────────────────────────────────────────────────────────────
@@ -342,20 +361,20 @@ SUPPORT_BRG_BOT = SUPPORT_BRG_Z - SUPPORT_BRG_W     # -60.0, stack bottom
 # guideline, but only just, and it is the tightest margin in the drivetrain. If it
 # ever needs more, the lever is the chassis end block, not anything in this file.
 COLLAR_BORE     = 4.6       # thread-FORMING bore (minor 4.0 < this < major 5.0)
-COLLAR_AF       = 10 * BEAD # 8.0 across flats (Y): clears the 9.5 lane AND an 8 mm spanner
-# X is ASYMMETRIC about the screw, and that is not tidiness — it is the only shape
-# that fits. The endplate's foot block runs -X to x -4.2 at this height (measured off
-# the finished solid), which is 3.8 mm from the screw axis: even a plain Ø8 round
-# collar would foul it. So the body stops 4 beads +X of the axis and takes all its
-# grip length on the -X side, where nothing is until the endplate's -X face at -19.2.
-EP_FOOT_NX      = -4.2      # measured: bridge_endplate's -X-most face in the collar band
-COLLAR_X1       = 4 * BEAD  # 3.2 (+X face; global -4.8, so 0.6 clear of the foot)
-COLLAR_X0       = -12 * BEAD                        # -9.6 (global -17.6)
-assert SCREW_X + COLLAR_X1 <= EP_FOOT_NX - 0.4 + 1e-9, (
-    f"the collar's +X face reaches {SCREW_X + COLLAR_X1:.2f} and the endplate foot "
-    f"starts at {EP_FOOT_NX}: trim COLLAR_X1")
-assert COLLAR_X1 - COLLAR_BORE / 2 >= MIN_WALL - 1e-9, (
-    "the collar's +X wall is under one bead — nothing left to form a thread into")
+# THE COLLAR IS A BODY OF REVOLUTION, and that is not a style choice — IT TURNS WITH
+# THE SCREW. It was first drawn as a 12.8 x 8.0 prism with spanner flats, which sweeps
+# a Ø20.8 circle in a 9.5 mm lane: every collar would have milled both its neighbours
+# on the first move (user caught it). The envelope is a cylinder at COLLAR_OD and the
+# wrench flats are milled INTO that, which costs nothing — the swept circle is the
+# cylinder either way.
+COLLAR_OD       = 11 * BEAD # 8.8 — THE SWEPT ENVELOPE. 0.7 to the next screw's.
+COLLAR_AF       = 10 * BEAD # 8.0 across flats, for a stock 8 mm spanner. Only 0.4/side
+                            # off the cylinder, so the hoop round the forming bore stays
+                            # almost continuous.
+assert COLLAR_OD <= STRING_PITCH - 0.5 + 1e-9, (
+    f"collars at Ø{COLLAR_OD} sweep into each other at the {STRING_PITCH} string pitch")
+assert (COLLAR_AF - COLLAR_BORE) / 2 >= MIN_WALL_2P - 1e-9, (
+    "the collar's wall at the flats is under two beads")
 COLLAR_H        = 5 * BEAD                          # 4.0 TOTAL, boss included — the
                                                     # bore runs the full height, so this
                                                     # is also the thread engagement
@@ -435,6 +454,17 @@ BELT_PLANE_DZ   = 14 * BEAD  # 11.2
 # plane above, which drops both pulley rows around the unchanged motor line, so
 # motor_bank's floor/bed (derived from here) and the chassis are untouched.
 MOTOR_BELT_Z    = SCREW_PULLEY_Z + BELT_PLANE_DZ / 2
+
+# The clearance the frozen SCREW_PULLEY_Z used to get for free from being derived off
+# NUT_BOT_MIN. It MUST be read against the RAISED pulley plane: five of the ten pulleys
+# sit BELT_PLANE_DZ higher, and taking the base plane here is exactly how a 3 mm
+# nut-into-pulley collision walked straight past this assert once already.
+PULLEY_TOP_MAX  = SCREW_PULLEY_Z + BELT_PLANE_DZ + PULLEY_W / 2 + PULLEY_HUB_H
+_NUT_PULLEY_GAP = NUT_BOT_MIN - PULLEY_TOP_MAX
+assert _NUT_PULLEY_GAP >= 1.0 - 1e-9, (
+    f"the nut's lowest point clears the RAISED-plane pulleys by only "
+    f"{_NUT_PULLEY_GAP:.2f} (want 1.0): recess more of the nut into the carriage, or "
+    f"shorten PULLEY_HUB_H — moving the pulley moves the whole motor bank with it")
 
 def screw_pulley_z(i: int) -> float:
     # raise alternate pulleys a belt-plane so neighbours never collide; phased off the

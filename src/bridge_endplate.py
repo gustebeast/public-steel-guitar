@@ -234,22 +234,35 @@ GR_LTOP = GR_UBOT - D.CARRIAGE_TRAVEL - D.GUIDE_FOOT_H    # lower top = bottom s
                                                           # and the upper ledge is deferred anyway)
 GR_LBOT = GR_LTOP - GR_H
 
-# ── NUT-SWEEP SLOT: the one extra prism the drivetrain gets ─────────────────
-# The changer room's floor is GR_LTOP because "below it nothing sweeps" — which
-# stopped being true when the leadscrew nut became an H-type. Its Ø8 boss cannot
-# live inside a 9.0 mm wide carriage at any printable wall thickness, so it hangs
-# BELOW the carriage, and at the bottom of travel it reaches NUT_BOT_MIN (−36.8),
-# a full 10 mm under the room. Rather than drop the whole room ceiling-to-floor
-# prism 10 mm — which would delete the guide-rod lower ledge and gut the +X end
-# wall across the entire X depth — the sweep gets its own prism, stopping short in
-# X of everything the room floor was protecting.
+# ── DRIVETRAIN CLEARANCE: two more prisms under the changer room ────────────
+# The changer room's floor is GR_LTOP because "below it nothing sweeps", and below
+# that the base was left solid to the bed. Both halves of that stopped being true
+# once the drivetrain was worked through, and for two different reasons.
 #
-# It is cut LAST, after the guide-ledge bar is unioned in, so it also trims that
-# bar back off its −X end. That is safe and deliberate: the bar's live job is the
-# rods' blind landing sockets, and those sit at x 4.33..6.88, well +X of this cut.
-# Its −X half only ever carried the BOTTOM HARD STOP, which is deferred anyway.
+# (1) NUT SWEEP. The H-nut's flange hangs 3.2 below the carriage and its ears reach
+#     x +1.05, so at the bottom of travel it sweeps a slab under the room floor.
+#
+# (2) DRIVE RELIEF, and this is the one that matters. The pulleys and the retaining
+#     collar TURN, so what has to clear is their SWEPT CIRCLE, not their outline:
+#     Ø11 for a pulley, Ø8.8 for a collar, both centred on the screw line at x −8.
+#     That reaches x −2.5, and the endplate's foot block starts at x −4.2 — so the
+#     pulleys have always been buried ~1.7 mm into it. It never showed up because
+#     the overlap gate compares parts where they sit, and where they sit they only
+#     graze; the pair even sat in the allow list as an intended contact. Nothing was
+#     ever going to catch it but a swept check (tools/check_sweep.py now does).
+#
+# The drive relief is cut BEFORE the screw rail is unioned in, so the rail — which
+# lives inside the same band — survives intact. The nut sweep is cut LAST, after the
+# guide-ledge bar, so it also trims that bar back off its −X end: safe and deliberate,
+# since the bar's live job is the rods' blind landing sockets at x 4.33..6.88, well
+# +X of the cut, and its −X half only carried the deferred BOTTOM HARD STOP.
 NUT_SWEEP_X1 = D.SCREW_X + D.NUT_FLANGE_L / 2 + 1.0       # 2.05 — the ear tip + 1.0
-NUT_SWEEP_Z0 = D.NUT_BOT_MIN - 1.0                        # -37.8
+NUT_SWEEP_Z0 = D.NUT_BOT_MIN - 1.0                        # -31.2
+# Swept radius of the widest turning thing on the screw line, + a running gap.
+DRIVE_SWEPT_R = max(D.PULLEY_FLANGE_OD, D.COLLAR_OD) / 2  # 5.5
+DRIVE_X1 = D.SCREW_X + DRIVE_SWEPT_R + 0.4                # -2.1
+DRIVE_Z1 = D.PULLEY_TOP_MAX + 0.4                         # -31.0
+DRIVE_Z0 = D.COLLAR_Z0 - 0.4                              # -64.4
 _SOCKET_X0 = (D.SCREW_X + D.GUIDE_ROD_DX) - (D.GUIDE_ROD_D + 0.05) / 2
 assert NUT_SWEEP_X1 + 1.0 <= _SOCKET_X0 + 1e-9, (
     f"the nut sweep reaches x {NUT_SWEEP_X1:.2f} and the guide-rod sockets start at "
@@ -405,6 +418,10 @@ def _build() -> cq.Workplane:
     # up to the bearing arms at the edges — the whole bridge end becomes one solid
     # piece (screw support + bearing support + box closure) with continuous material.
     # The bottom + edge bridges run the FULL X-depth (screw line → +X tip).
+    # DRIVE RELIEF (see DRIVE_X1) — cut FIRST, so the rail unioned in next survives.
+    body = body.cut(box_at(DRIVE_X1 - (XLO - 1.0), 2 * WIN_HW, DRIVE_Z1 - DRIVE_Z0,
+                           x=((XLO - 1.0) + DRIVE_X1) / 2, y=0,
+                           z=(DRIVE_Z0 + DRIVE_Z1) / 2))
     body = body.union(_screw_rail)
     body = body.union(box_at(X1 - _SRX, 2 * D.BRIDGE_AXLE_Y, 10.0,    # bottom bridge → tip
                              x=(X1 + _SRX) / 2, y=0, z=D.SUPPORT_BRG_Z))
@@ -432,10 +449,10 @@ def _build() -> cq.Workplane:
         # blind landing socket: the rod drops until it bottoms at GR_LBOT+2
         body = body.cut(cyl(D.GUIDE_ROD_D + 0.05, (GR_LTOP + 1) - (GR_LBOT + 2),
                             z=GR_LBOT + 2).translate((GRX, sy, 0)))
-    # NUT-SWEEP SLOT (see NUT_SWEEP_X1): the changer room's floor, extended down
-    # over the leadscrew line only, so the H-nuts' bosses have somewhere to go at
-    # the bottom of travel. Cut after the ledge union on purpose — it trims the
-    # ledge bar's dead -X half back out of the sweep.
+    # NUT SWEEP (see NUT_SWEEP_X1): the changer room's floor, extended down over the
+    # leadscrew line only, so the H-nut flanges have somewhere to go at the bottom of
+    # travel. Cut after the ledge union on purpose — it trims the ledge bar's dead -X
+    # half back out of the sweep.
     body = body.cut(box_at(NUT_SWEEP_X1 - (XLO - 1.0), 2 * WIN_HW,
                            GR_LTOP - NUT_SWEEP_Z0,
                            x=((XLO - 1.0) + NUT_SWEEP_X1) / 2, y=0,
