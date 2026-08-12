@@ -37,6 +37,9 @@ that lands on the bearings' inner rings. Everything hangs -Z from there.
 Print orientation: bore axis UP (+Z), flat on the body's bottom face. Every face
 is then either vertical or horizontal — no overhang anywhere, and the formed
 thread cuts across the layers rather than peeling them.
+
+It ROTATES with the screw (the bearings above it are the stationary interface), so
+everything about its shape is governed by the SWEPT circle — see OD below.
 """
 
 from __future__ import annotations
@@ -48,12 +51,15 @@ from .helpers import cyl, box_at
 
 PRINT_UP = (0.0, 0.0, 1.0)          # bore axis up; flat bottom on the bed
 
-# Across flats is BOTH constraints at once: 8.0 clears the 9.5 mm string lane and is
-# a stock 8 mm spanner size — which the part needs, because seating it is four turns
-# of a formed thread, not a push fit. X is asymmetric about the bore; see
-# dimensions.COLLAR_X1 for the endplate foot that forces it.
-AF   = D.COLLAR_AF                  # 8.0 (Y)
-X0, X1 = D.COLLAR_X0, D.COLLAR_X1   # -9.6 .. +3.2 (X)
+# THE COLLAR TURNS WITH THE SCREW, so its envelope is a SWEPT CIRCLE, not its
+# outline. That kills any prismatic body: the first version was a 12.8 x 8.0 block
+# with spanner flats, which sweeps Ø20.8 in a 9.5 mm lane and would have milled both
+# neighbours on the first move. So the body is a cylinder at OD, and the wrench flats
+# are milled into it — the swept circle is the cylinder either way, so the flats are
+# free. 8.0 across them is a stock spanner size, which the part needs: seating it is
+# four turns of a formed thread, not a push fit.
+OD   = D.COLLAR_OD                  # 8.8 — the swept envelope
+AF   = D.COLLAR_AF                  # 8.0 across the wrench flats
 H    = D.COLLAR_H                   # 4.0 (Z) TOTAL, boss included
 
 # The pilot boss reaches up through the SEAT_CLR slop at the bottom of the rail's
@@ -63,22 +69,20 @@ H    = D.COLLAR_H                   # 4.0 (Z) TOTAL, boss included
 BOSS_D = D.COLLAR_BOSS_D            # 5.6
 BOSS_H = D.COLLAR_BOSS_H            # 0.8
 
-# Wall around the forming bore. ±Y gets the two-bead quality target; the +X side is
-# capped at one bead by the endplate foot and is the weak spot — during forming the
-# rod displaces material outward, and a lone bead there can split. The Y walls are
-# thick enough to absorb that flow, which is what makes the one bead survivable.
-_WALL_Y = (AF - D.COLLAR_BORE) / 2
-_WALL_X = X1 - D.COLLAR_BORE / 2
-assert _WALL_Y >= D.MIN_WALL_2P - 1e-9, (
-    f"the collar's Y wall is only {_WALL_Y:.2f} across the flats (want "
-    f"{D.MIN_WALL_2P}): widen COLLAR_AF or narrow COLLAR_BORE")
-assert _WALL_X >= D.MIN_WALL - 1e-9, (
-    f"the collar's +X wall is only {_WALL_X:.2f} (one bead is the floor)")
+# Wall around the forming bore, measured at the flats (its thinnest). It matters more
+# than the load suggests: during forming the rod displaces material outward, and a thin
+# ring can split rather than flow.
+_WALL = (AF - D.COLLAR_BORE) / 2
+assert _WALL >= D.MIN_WALL_2P - 1e-9, (
+    f"the collar's wall at the flats is only {_WALL:.2f} (want {D.MIN_WALL_2P}): "
+    f"widen COLLAR_AF or narrow COLLAR_BORE")
 
 
 def _build() -> cq.Workplane:
     body_h = H - BOSS_H
-    body = box_at(X1 - X0, AF, body_h, x=(X0 + X1) / 2, y=0, z=-BOSS_H - body_h / 2)
+    body = cyl(OD, body_h, z=-H)
+    body = body.intersect(box_at(OD + 2, AF, body_h + 2,     # the two wrench flats
+                                 x=0, y=0, z=-BOSS_H - body_h / 2))
     body = body.union(cyl(BOSS_D, BOSS_H, z=-BOSS_H))
     # ONE bore, straight through boss and body: the rod threads its own way in
     # from the bottom, so the bore must be the same Ø the whole height.
