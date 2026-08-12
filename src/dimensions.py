@@ -122,19 +122,33 @@ DECK_TOP_Z      = 8 * BEAD  # 6.4 deck-plate top = playing-surface datum; the ch
 DL_OPEN         = 4.0
 CARRIAGE_TRAVEL = 2 * DL_OPEN + 2.0    # ≈10 mm; open sits ~DL_OPEN up from slack
 
-# The carriage's REST HEIGHT is set by the BRIDGE BEARING, not by the screw. Its
-# ball-cage top must stay 1.0 under the bearing's underside (STRING_Z − OD), which
-# is what caps the bearing OD in the first place. Spelled here rather than imported
-# from carriage.py (that module imports THIS one), and ASSERTED there against the
-# live carriage geometry — see carriage._BRG_GAP, which has already caught one
-# regrid that quietly ate 0.4 of this gap.
-# It used to read `SCREW_TOP_Z − 13.4`, which had the dependency backwards: the
-# screw's length was setting where the carriage lived. Now the carriage is the
-# datum and the screw is sized to reach it.
-CARRIAGE_NOM_Z  = -11.0     # default = TOP of travel (travel runs DOWNWARD from here)
-CARRIAGE_THICK  = 12.0      # carriage body band in Z; single-sourced here because the
-                            # nut placement and the screw length both need it (carriage.py
-                            # re-exports it as THICK)
+# ── THE NUT IS THE CARRIAGE (user) ─────────────────────────────────────────
+# There is no printed carriage any more. The H-nut's own two mounting ears do
+# both jobs it did: the +X ear ANCHORS THE STRING (ball end underneath, string up
+# through the Ø3 hole — tension pulls the ball against the ear, exactly a guitar
+# bridge plate) and the -X ear RIDES THE GUIDE ROD. That deletes a printed part
+# ×10, twenty M2 screws, ten spacers, and with them the whole boss-recess / Y-open
+# channel / 45° ramp chain — every one of which existed only to marry the nut to a
+# carriage that is now gone.
+#
+# It also unpins the Z datum. The carriage's height was set by its BALL CAGE, which
+# cleared the bridge bearings by exactly the 1.0 minimum and could not rise; that is
+# what forced the boss to be recessed in the first place. With no cage the nut is
+# free, and it now sits where the PULLEYS want it — high enough that the boss clears
+# the raised plane by a comfortable margin instead of fighting for a millimetre.
+#
+# WHY THE STRING TAKES THE +X EAR (user): it has to be reachable, and the changer
+# room already opens +X for exactly that. The cost is that the ear sits at
+# SCREW_X + NUT_HOLE_DX = -1.5 rather than on the bearing's tangent at 0, so the
+# dead run leaves the bearing ~2.6° off vertical over its ~33 mm drop — an ordinary
+# break angle. THE POINT of accepting that angle is that SCREW_X DOES NOT MOVE. Put
+# the string on the -X ear instead and the screw line would have to shift to suit a
+# GUESSED hole pitch, dragging the rail, both pulley planes, ten belt runs and the
+# motor bank with it. This way a wrong guess costs a fraction of a degree on a dead
+# length and nothing else.
+NUT_TOP_Z       = -10.0     # flange TOP at the top of travel. A FROZEN datum, not a
+                            # derivation: it is asserted against the raised pulley
+                            # plane below, where PULLEY_TOP_MAX finally exists.
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -170,33 +184,14 @@ NUT_BOSS_L      = 6.6
 NUT_H           = NUT_FLANGE_T + NUT_BOSS_L                            # 9.8
 NUT_HOLE_D      = 3.0       # the ears' through-holes (M2 screws pass with room)
 NUT_HOLE_DX     = 6.5       # ± from the axis
-# MOUNTING — flange DOWN clamped flat under the carriage's BOTTOM FACE, boss UP
-# into a Y-OPEN RECESS in the carriage, two M2 screws up through the ears.
-#   • The load direction picks the face. String pulls the carriage +Z, so the
-#     nut has to pull it back -Z: the nut's DOWN-facing surface must bear on the
-#     carriage's UP-facing surface, or fasteners must span the gap. The original
-#     "flange-down against the bottom face" seat had those two backwards — it
-#     could only ever have held by the press fit's friction. Bolted ears put the
-#     pull in tension, which is an ordinary joint and needs no seat at all.
-#   • The boss CANNOT go in a BORE. Ø8 plus clearance in an 8.8 wide carriage
-#     leaves ≤0.3 mm side walls — under the one-bead floor, and the carriage
-#     prints on its -X face, so a wall thin in Y is one bead or nothing. Its
-#     recess is therefore Y-OPEN, a channel straight through the part's width,
-#     which has no side walls to be thin. (The old Ø7 pocket only worked because
-#     the boss had been turned down on a lathe.)
-#   • The boss CANNOT hang below the carriage either, and THAT is what forces a
-#     recess rather than simply inverting the nut. The drive pulleys alternate
-#     between two Z planes to fit the 9.5 lane, and the RAISED plane's top sits at
-#     -31.4. A nut hanging its full 9.8 reaches -36.8 at the bottom of travel and
-#     drives into five of the ten pulleys. Recessed, only the 3.2 flange hangs and
-#     the nut stops at -30.2. The carriage cannot move up to dodge it: its ball
-#     cage already clears the bridge bearings by exactly the 1.0 minimum.
-#   • The flats do no anti-rotation work, which is just as well — an 8.5 flat in
-#     an 8.8 carriage leaves 0.15 mm of wall to react torque against.
-NUT_TOP_MAX     = (CARRIAGE_NOM_Z - CARRIAGE_THICK / 2
-                   + NUT_BOSS_L)                                       # -10.4, at TOP of travel
-NUT_BOT_MIN     = (CARRIAGE_NOM_Z - CARRIAGE_TRAVEL
-                   - CARRIAGE_THICK / 2 - NUT_FLANGE_T)                # -30.2, at BOTTOM of travel
+# MOUNTING — FLANGE UP, BOSS DOWN, and nothing bolts to anything.
+# Flange up puts the EARS at the top of the nut, which is what keeps the string's
+# ball end as high as possible: it hangs one flange-thickness below the ear, so at
+# the bottom of travel it stops well clear of the drive pulleys instead of reaching
+# down among them. The boss hangs below on the screw axis, where the pulley's own
+# swept circle is the only thing nearby and NUT_BOT_MIN is asserted against it.
+NUT_TOP_MAX     = NUT_TOP_Z                                            # -10.0
+NUT_BOT_MIN     = NUT_TOP_Z - CARRIAGE_TRAVEL - NUT_H                  # -29.8, at BOTTOM of travel
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -212,10 +207,9 @@ SCREW_OD        = 5.0       # Ø5, single-start, 1 mm lead.
 # string pitch picks the screw, and it picks a size BELOW the ISO/DIN 103 trapezoidal
 # series (which starts at Tr8), so this is a specialty part, not a catalogue one: see
 # the BOM row for what that means for sourcing.
-# TOP: the screw only has to clear the NUT, not the carriage (user) — it used to run
-# all the way to the carriage's top, which left 12.4 mm of thread above the highest the
-# nut ever reaches. The nut's top is now its boss top, sitting NUT_BOSS_L up inside the
-# carriage's recess. RUNOUT is pure insurance for build tolerance.
+# TOP: the screw only has to clear the NUT, and the nut is now the whole moving
+# assembly — so the screw stops SCREW_RUNOUT above the flange's top face and nothing
+# else needs reaching. RUNOUT is pure insurance for build tolerance.
 # THREAD-FORMING BORE — shared by the retaining collar and the drive pulley. Both grip
 # a rod whose thread we cannot merely clamp (screw_collar.py has that arithmetic).
 #
@@ -247,31 +241,37 @@ SCREW_TOP_Z     = NUT_TOP_MAX + SCREW_RUNOUT        # -14.6
 
 
 # ─────────────────────────────────────────────────────────────────────────
-# Guide rod (anti-rotation) — axis Z, on the +X (cap) side of the screw, BELOW
-# the stringing window. The carriage reaches it with a low FOOT (column + leg
-# hanging under the plate), keeping the whole window clear for string access.
-# Both rod seats and both hard stops are cap-backed ledges on the endplate —
-# no spanning bar, so the endplate prints with no overhang.
 # ─────────────────────────────────────────────────────────────────────────
-GUIDE_ROD_D     = 2.5
-GUIDE_ROD_DX    = 17 * BEAD  # 13.6 screw→rod offset: rod X = SCREW_X + DX = +4.95 (global). Moved +X
-                            # (user) so the rod's metal −X edge clears the anchor-cage OPENING
-                            # (POST_X1H, global +2.1) by 1.6 mm — was only 0.15, and that gap was
-                            # what pinned the guide foot LOW. INSTALL (top-down): the rod drops
-                            # through the stop bar, the carriage's closed bore, into the blind
-                            # socket — friction-held top + bottom; the closed bore captures a loose
-                            # carriage (carriage in place → rod drops in → screw threads in).
-GUIDE_FOOT_DZ   = 3 * BEAD  # 2.4 foot TOP from the carriage centre. Now at the NUT LEVEL (user): the
-                            # guide bore rides in the body's own z-band (−6..+2, just below the
-                            # cage bottom 2.5), NOT on a hanging column — the carriage drops ~16 mm
-                            # in Z (a much stiffer part) and the bore ties straight into the body.
-GUIDE_FOOT_H    = 8.0       # foot height = guide-bore engagement length (rod engagement)
+# Guide rod (anti-rotation) — axis Z, through the nut's -X EAR
+# ─────────────────────────────────────────────────────────────────────────
+# It hangs from the endplate's guide RIB above and cantilevers DOWN through the ear
+# (user). The other end has nowhere to go: the drive relief and nut sweep between
+# them removed every scrap of endplate below the room at this X line, so the top is
+# the only end left to anchor to — which is also the end that prints cleanly, since
+# a rib is a straight -X extension of solid cap and every layer of it is backed.
+#
+# Ø3, NOT the Ø2.5 dowel, and the reason is slop rather than strength. The ear's hole
+# is the nut's own Ø3: a Ø2.5 rod leaves 0.5 mm of play, which lets the nut rotate
+# 38 mrad and walks the string 0.25 mm. A Ø3 g6 shaft leaves 0.01 and 0.8 mrad — 50×
+# better — and it is 2.1× stiffer into the bargain. It is also the SAME PART as the
+# bridge axle, so it costs no new BOM line, just ten more pieces.
+# Bending was never the problem and an earlier note here overstated it: the rod only
+# spans the ear's travel plus the ear, ~15 mm, not the room's height, and deflects
+# 0.016 mm under the 11 N anti-rotation load. What matters is the SOCKET — over the
+# rib's grip any clearance is amplified across that 15 mm, so it is a PRESS fit.
+GUIDE_ROD_D     = 3.0       # Ø3 g6 precision shaft (shared with BRIDGE_AXLE_D)
+GUIDE_ROD_FIT   = 0.0       # press: the rib grips it, nothing else holds it up
 
 # The bridge / string anchor sits at X=0; the screw can't occupy that spot, so
 # it is offset −X by ANCHOR_DX and the carriage reaches over to the anchor.
 BRIDGE_X        = 0.0
 SCREW_X         = -8.0      # all 10 vertical screws sit on this X line
 ANCHOR_DX       = BRIDGE_X - SCREW_X    # anchor is +X of the screw (8 mm)
+# The two ears, as global X lines. Everything that used to be a carriage feature is
+# now one of these.
+STRING_ANCHOR_X = SCREW_X + NUT_HOLE_DX     # -1.5, the +X ear: ball end under it
+GUIDE_ROD_X     = SCREW_X - NUT_HOLE_DX     # -14.5, the -X ear: rides the rod
+
 
 # String-end nut: a cylinder swaged on the string's bridge end (axis Y), slotted
 # into the carriage anchor. The string exits +Z and its pull seats the nut up
