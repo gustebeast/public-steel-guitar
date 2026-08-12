@@ -35,7 +35,6 @@ from . import dimensions as D
 from . import chassis as CH
 from . import top_plate as TP
 from . import optical_pickup as OP
-from . import carriage as CR
 from .endplate_base import endplate_base
 from .screw_rail import screw_rail as _screw_rail, seat_cutter as _seat_cutter, BOT as _SR_BOT
 from .screw_rail import PRINT_UP as _SR_PRINT_UP
@@ -121,7 +120,7 @@ CARRIER_TOP  = OP.PLINTH_TOP                  # 9.501 -- the board bears directl
                                               # roof clearance the board slides through.
 # ── THE CHANGER ROOM: ONE PRISM, ONE CEILING (user) ─────────────────────────
 # The changer hardware's clearance volume is a single rectangular prism, cut once
-# in _cap: y ±WIN_HW (the arm inner faces), z GR_LTOP (the bottom-stop plane) up
+# in _cap: y ±WIN_HW (the arm inner faces), z ROOM_Z0 (under the nut's sweep) up
 # to ROOM_Z1, running straight through the whole X. It replaces four overlapping
 # cuts — the field-centre LOW + HIGH boxes, the stringing-access window and the
 # guide-view window — whose union left a stepped ceiling measured at FOUR values
@@ -139,13 +138,16 @@ CARRIER_TOP  = OP.PLINTH_TOP                  # 9.501 -- the board bears directl
 # Writing it as `BEAR_TOP − N × BEAD` is what puts the SHELF on the grid rather than
 # the ceiling's absolute height: the shelf is the material, the ceiling is only where
 # it stops. For scale, the shelf was 8.60 = 10.75 beads when the user measured it.
-_TOWER_TOP   = D.CARRIAGE_NOM_Z + CR.POST_Z1  # 2.00 — cage top at the TOP of travel
-ROOM_Z1      = BEAR_TOP - 16 * D.BEAD         # 3.20 — ceiling; shelf above = 12.8 = 16 beads
-assert ROOM_Z1 - _TOWER_TOP >= 1.0 - 1e-9, (
-    f"the changer room clears the carriage tower by only {ROOM_Z1 - _TOWER_TOP:.2f} "
-    f"(want 1.0): take a bead off the shelf")
+# FLOOR and CEILING are both the nut's now — there is no carriage to clear. The old
+# ceiling was held up by the carriage's ball cage (_TOWER_TOP), which cleared the
+# bridge bearings by exactly its 1.0 minimum and so could never move; that is what
+# forced the nut's boss to be recessed at all. With the cage gone the ceiling drops
+# to just over the screw tops, and everything it used to squeeze goes away with it.
+ROOM_Z0      = D.NUT_BOT_MIN - 1.0            # -30.8, under the nut's lowest sweep
+ROOM_Z1      = D.SCREW_TOP_Z + 2 * D.BEAD     # -6.0, two beads over the screw tops
 assert ROOM_Z1 - D.SCREW_TOP_Z >= 1.0 - 1e-9, (
     f"the changer room clears the leadscrew tops by only {ROOM_Z1 - D.SCREW_TOP_Z:.2f}")
+assert D.NUT_TOP_MAX < ROOM_Z1, "the nut's top of travel is above the room ceiling"
 # Fingers and braces — everything INSIDE the endplate — put their underside on the
 # ceiling, so no later union can hang back down into the room.
 UNDER_Z      = ROOM_Z1
@@ -218,66 +220,51 @@ AXLE_END_WALL = MIN_ADDED                             # -Y blind-bore wall (the 
 AXLE_GRUB_Z   = ARM_TOP                               # grub mouth: the arm's free top
 AXLE_GRUB_L   = ARM_TOP - (D.BRIDGE_BEARING_Z + D.BRIDGE_AXLE_D / 2) + 0.2
 
-# Guide-rod LEDGES: two shallow bars protruding −X from the cap face below the
-# stringing window, spanning arm to arm — straight X-extensions of solid cap, so
-# (printing along X) every layer is backed: no overhang. (The cap band between
-# the ledges is opened — see the guide-view window.)
-# UPPER bar: the TOP hard stop — flush with the carriage foot at default (the
-# anchor post can never reach the bridge bearings) — and it carries a snug
-# Ø2.55 drop-in hole per rod: the rod installs top-down through it (through the
-# carriage's closed bore) and its top stays friction-held in this hole. LOWER
-# bar: BLIND snug sockets the rods land in; its top face is the BOTTOM hard stop.
-GRX     = D.SCREW_X + D.GUIDE_ROD_DX                      # rod line (+3.5)
-GR_H    = 8 * D.BEAD                                      # 6.4 ledge heights
-GR_UBOT = D.CARRIAGE_NOM_Z + D.GUIDE_FOOT_DZ              # upper bottom = top stop (−20)
-GR_LTOP = GR_UBOT - D.CARRIAGE_TRAVEL - D.GUIDE_FOOT_H    # lower top = bottom stop; ALSO the
-                                                          # changer room's FLOOR — below it nothing
-                                                          # sweeps, so the base stays solid to the bed
-                                                          # (GR_UTOP deleted with the windows: it only
-                                                          # ever named the old stringing-window sill,
-                                                          # and the upper ledge is deferred anyway)
-GR_LBOT = GR_LTOP - GR_H
+Z6     = CH.TP_GZ1                 # deck/top-plate level = the bridge's general top
+# ── GUIDE RODS: SOCKETED FROM ABOVE, HANGING DOWN (user) ────────────────────
+# The rods used to stand in blind sockets in a ledge BELOW. That end no longer
+# exists: the drive relief and the nut's own sweep between them take out every scrap
+# of endplate under the room at this X line. The top is the only end left — and it is
+# also the end that prints, since everything up there is a straight -X extension of
+# solid cap and every layer of it is backed.
+#
+# What holds them is the slab between the room ceiling and the deck plane. That slab
+# is FREE: dropping ROOM_Z1 to just over the screw tops (see above) stops the room cut
+# eating it, so the same change that unpinned the nut also handed the rods something
+# to hang from. Grip is a PRESS fit — with only this much socket, any clearance up
+# here is amplified over the rod's ~15 mm reach (0.05 of slop would be 0.24 mm at the
+# ear), and nothing else holds the rod up.
+GUIDE_SOCKET_H = 8 * D.BEAD                     # 6.4 of grip in the slab
+GUIDE_SOCKET_Z = ROOM_Z1                        # socket mouth = the room's ceiling
+assert GUIDE_SOCKET_Z + GUIDE_SOCKET_H <= Z6 + 1e-9, (
+    "the guide sockets would break out through the deck plane")
 
-# ── DRIVETRAIN CLEARANCE: two more prisms under the changer room ────────────
-# The changer room's floor is GR_LTOP because "below it nothing sweeps", and below
-# that the base was left solid to the bed. Both halves of that stopped being true
-# once the drivetrain was worked through, and for two different reasons.
-#
-# (1) NUT SWEEP. The H-nut's flange hangs 3.2 below the carriage and its ears reach
-#     x +1.05, so at the bottom of travel it sweeps a slab under the room floor.
-#
-# (2) DRIVE RELIEF, and this is the one that matters. The pulleys and the retaining
-#     collar TURN, so what has to clear is their SWEPT CIRCLE, not their outline:
-#     Ø11 for a pulley, Ø8.8 for a collar, both centred on the screw line at x −8.
-#     That reaches x −2.5, and the endplate's foot block starts at x −4.2 — so the
-#     pulleys have always been buried ~1.7 mm into it. It never showed up because
-#     the overlap gate compares parts where they sit, and where they sit they only
-#     graze; the pair even sat in the allow list as an intended contact. Nothing was
-#     ever going to catch it but a swept check (tools/check_sweep.py now does).
-#
-# The drive relief is cut BEFORE the screw rail is unioned in, so the rail — which
-# lives inside the same band — survives intact. The nut sweep is cut LAST, after the
-# guide-ledge bar, so it also trims that bar back off its −X end: safe and deliberate,
-# since the bar's live job is the rods' blind landing sockets at x 4.33..6.88, well
-# +X of the cut, and its −X half only carried the deferred BOTTOM HARD STOP.
-NUT_SWEEP_X1 = D.SCREW_X + D.NUT_FLANGE_L / 2 + 1.0       # 2.05 — the ear tip + 1.0
-NUT_SWEEP_Z0 = D.NUT_BOT_MIN - 1.0                        # -31.2
-# Swept radius of the widest turning thing on the screw line, + a running gap.
+# STRING SLOTS. The strings rise from the +X ears at D.STRING_ANCHOR_X and have to
+# cross that same slab. They get a slot per string running OUT to the +X face rather
+# than a hole, so a string DROPS IN SIDEWAYS once its ball is seated — the whole point
+# of anchoring on the +X ear was that stringing stays a reach-in job, and threading a
+# second blind hole 12 mm up would have given that back.
+STRING_SLOT_W = 4 * D.BEAD                      # 3.2, clears the heaviest C6 string
+
+# ── DRIVE RELIEF: the one extra prism under the changer room ───────────────
+# The room's own floor now follows the nut down (ROOM_Z0), so the separate nut-sweep
+# prism this used to need is gone with the carriage. What is still needed is relief
+# for the things that TURN. The pulleys and the retaining collar sweep CIRCLES, not
+# outlines — Ø11 and Ø8.8 about the screw line — which reaches x -2.5, and the
+# endplate's foot block starts at x -4.2, so the pulleys were buried ~1.7 mm in it.
+# That never showed up in the overlap gate because it compares parts where they SIT,
+# and where they sit they only graze; the pair even sat in the allow list as an
+# intended contact. Only a swept check finds it (tools/check_sweep.py).
 DRIVE_SWEPT_R = max(D.PULLEY_FLANGE_OD, D.COLLAR_OD) / 2  # 5.5
 DRIVE_X1 = D.SCREW_X + DRIVE_SWEPT_R + 0.4                # -2.1
 DRIVE_Z1 = D.PULLEY_TOP_MAX + 0.4                         # -31.0
 DRIVE_Z0 = D.COLLAR_Z0 - 0.4                              # -64.4
-_SOCKET_X0 = (D.SCREW_X + D.GUIDE_ROD_DX) - (D.GUIDE_ROD_D + 0.05) / 2
-assert NUT_SWEEP_X1 + 1.0 <= _SOCKET_X0 + 1e-9, (
-    f"the nut sweep reaches x {NUT_SWEEP_X1:.2f} and the guide-rod sockets start at "
-    f"{_SOCKET_X0:.2f} — the H-nut's ears are too long for the rod line to stay put")
 
 # Room half-width: out to the arm inner faces, so the edge carriages / string
 # balls are reachable through the room's +X opening (everything installs from +X).
 WIN_HW     = D.BRIDGE_AXLE_Y - ARM_W / 2
 
 
-Z6     = CH.TP_GZ1                 # deck/top-plate level = the bridge's general top
 MECH_HW = D.BRIDGE_AXLE_Y + ARM_W / 2   # field-centre upper-cap half-span (arm outer)
 # +X-leg foot POCKET: the chassis now KEEPS a ~10 mm rail shell hugging the +X leg
 # socket (CH._leg_shell over CH.LEG_SHELL_PX), so the leg is wrapped by body. The
@@ -311,8 +298,8 @@ def _cap() -> cq.Workplane:
     (x -1.4..8.6, CH.T thick — no more 2.6 sliver) and the two +-Y side
     faces (= the rail takeovers; the chassis drops the rail ends here).
     Then cut only what the mechanism needs: THE CHANGER ROOM — one prism,
-    |y| <= WIN_HW, GR_LTOP..ROOM_Z1, through the whole X — where the
-    carriage sweep, guide feet, strings and towers live (below GR_LTOP
+    |y| <= WIN_HW, ROOM_Z0..ROOM_Z1, through the whole X — where the
+    nut sweep and the strings live (below ROOM_Z0
     nothing sweeps, so the base stays SOLID down to the bed).
     Only a field-centre upper band (z6..10) reaches the body top to back
     the window rim + axle comb + arm/tie roots. Foot clearance over each
@@ -332,9 +319,9 @@ def _cap() -> cq.Workplane:
     # bottom-stop plane up to the tower-relief ceiling, straight through the
     # whole X — the opening it leaves in the +X face IS the stringing access
     # (strings, balls and carriages all install from +X).
-    w = w.cut(box_at((X1 + 1.0) - (XLO - 1.0), 2 * WIN_HW, ROOM_Z1 - GR_LTOP,
+    w = w.cut(box_at((X1 + 1.0) - (XLO - 1.0), 2 * WIN_HW, ROOM_Z1 - ROOM_Z0,
                      x=((XLO - 1.0) + (X1 + 1.0)) / 2, y=0,
-                     z=(GR_LTOP + ROOM_Z1) / 2))
+                     z=(ROOM_Z0 + ROOM_Z1) / 2))
     return w
 
 
@@ -446,26 +433,28 @@ def _build() -> cq.Workplane:
     # for now) -- the guide foot rides at the NUT LEVEL now, so an upper bar at that Z
     # protrudes -X into the string-nut path. The rod top rides free in the open field;
     # re-home the top retention + the top/bottom hard stops in a later endplate pass.
-    body = body.union(box_at(4.6, 2 * D.BRIDGE_AXLE_Y, GR_H,
-                             x=X0 - 2.3, y=0, z=(GR_LBOT + GR_LTOP) / 2))
+    # GUIDE-ROD SOCKETS, bored UP into the slab that the lowered room ceiling left
+    # (see GUIDE_SOCKET_H). Teardrops, like every Z bore in this part: their axis runs
+    # sideways to the -X build, so a plain cylinder would droop out of round — and a
+    # socket that is not round cannot hold a press fit square, which is the whole job.
     for i in range(D.N_STRINGS):
         sy = D.string_y(i)
-        # blind landing socket: the rod drops until it bottoms at GR_LBOT+2
-        body = body.cut(cyl(D.GUIDE_ROD_D + 0.05, (GR_LTOP + 1) - (GR_LBOT + 2),
-                            z=GR_LBOT + 2).translate((GRX, sy, 0)))
-    # NUT SWEEP (see NUT_SWEEP_X1): the changer room's floor, extended down over the
-    # leadscrew line only, so the H-nut flanges have somewhere to go at the bottom of
-    # travel. Cut after the ledge union on purpose — it trims the ledge bar's dead -X
-    # half back out of the sweep.
-    body = body.cut(box_at(NUT_SWEEP_X1 - (XLO - 1.0), 2 * WIN_HW,
-                           GR_LTOP - NUT_SWEEP_Z0,
-                           x=((XLO - 1.0) + NUT_SWEEP_X1) / 2, y=0,
-                           z=(NUT_SWEEP_Z0 + GR_LTOP) / 2))
+        body = body.cut(printable_bore(
+            D.GUIDE_ROD_D + D.GUIDE_ROD_FIT, GUIDE_SOCKET_H + 0.01,
+            axis_point=(D.GUIDE_ROD_X, sy, GUIDE_SOCKET_Z - 0.01),
+            axis_dir=(0.0, 0.0, 1.0), print_up=PRINT_UP))
+    # STRING SLOTS through the same slab, one per string, running OUT to the +X face
+    # so a string drops in sideways instead of being threaded down a second hole.
+    for i in range(D.N_STRINGS):
+        sy = D.string_y(i)
+        body = body.cut(box_at((X1 + 1.0) - D.STRING_ANCHOR_X, STRING_SLOT_W,
+                               (Z6 + 1.0) - GUIDE_SOCKET_Z,
+                               x=(D.STRING_ANCHOR_X + X1 + 1.0) / 2, y=sy,
+                               z=(GUIDE_SOCKET_Z + Z6 + 1.0) / 2))
     # (No separate guide-view or stringing-access window cuts any more: the
-    #  CHANGER ROOM prism in _cap opens the cap band down to GR_LTOP, so the
+    #  CHANGER ROOM prism in _cap opens the cap band down to ROOM_Z0, so the
     #  rods' free span is visible and the strings thread in from +X through the
-    #  one opening. The lower ledge's Z-band below GR_LTOP stays solid — it is
-    #  the ledge's print backing and carries the stop face + rod sockets.)
+    #  one opening. Below ROOM_Z0 the base stays solid.)
 
     # AXLE-SUPPORT COMB: nine fingers from the cap band above the stringing
     # window, one in each gap between bridge bearings. Without them the Ø3 axle
