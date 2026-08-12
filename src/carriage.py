@@ -1,11 +1,11 @@
 """Carriage (×10) — PETG-GF, load-critical (§8 item 1).
 
 The moving element, riding a VERTICAL leadscrew (axis Z) — it travels in Z. It
-presses the round nut into its pocket, rides the guide rod (anti-rotation), and
+bolts the H-nut to its underside, rides the guide rod (anti-rotation), and
 anchors the string ball-end directly under the bridge bearing, reaching +X over
 the screw to do so. Tension path: string → carriage → nut → screw → support brg.
 
-Local frame: origin on the SCREW axis (axis Z). The nut presses in from below;
+Local frame: origin on the SCREW axis (axis Z). The nut bolts on from below;
 the string ball-end anchor is at X=+ANCHOR_DX (under the bridge bearing),
 opening +Z so the string runs up to it. The guide bore lives in a +X BOSS at
 the nut level (no hanging column) — the rod sits below the stringing window.
@@ -14,10 +14,10 @@ Print orientation: build −X → +X (PRINT_UP = +X). The whole part lies on its
 −X face; the layer lines then run in Z (and Y), so the string-tension load — up
 the Z axis through the nut and cage — is carried ALONG the layers, not across
 them. Consequences of that choice, both handled here:
-  • The three bores (screw clearance, nut pocket, guide) AND the string EXIT hole
-    have axis Z ⊥ the build direction, so each is a `printable_bore` TEARDROP (apex
-    toward +X) — a plain cylinder would sag its ceiling. The round lower half is
-    untouched (the nut and rod ride the bottom exactly as in a round bore).
+  • Every Z bore (screw clearance, the two nut-screw self-taps, guide) AND the
+    string EXIT hole has axis Z ⊥ the build direction, so each is a `printable_bore`
+    TEARDROP (apex toward +X) — a plain cylinder would sag its ceiling. The round
+    lower half is untouched (the rod rides the bottom exactly as in a round bore).
   • A tower rising off a lower shelf casts a −X-facing overhang. So the part is
     two SOLID PRISMS with the gap between them filled in (not a floating post):
     prism A = body + anchor tower as one block (Z −6..+13); prism B = the guide
@@ -33,6 +33,7 @@ import cadquery as cq
 
 from . import dimensions as D
 from .helpers import box_at
+from cadkit.fasteners import M2
 from cadkit.supports import printable_bore
 
 PRINT_UP = (1.0, 0.0, 0.0)                 # build −X → +X (layer lines run in Z at the nut)
@@ -40,9 +41,16 @@ PRINT_UP = (1.0, 0.0, 0.0)                 # build −X → +X (layer lines run 
 THICK   = D.CARRIAGE_THICK                  # Z height of the body band (single-sourced in
                                             # dimensions: the nut placement and the screw
                                             # length are both derived from it)
-WIDTH   = D.NUT_OD + 2 * 1.0               # across (Y), ≤ string pitch
-NUT_POCKET_D = D.NUT_OD + 0.2
-X_LO    = -(NUT_POCKET_D / 2 + 2.0)        # wall past the nut pocket (−X) = the bed face
+WIDTH   = 11 * D.BEAD                      # 8.8 across (Y), ≤ string pitch (9.5). Used to be
+                                           # NUT_OD + 2, i.e. sized around the pocket the
+                                           # round nut pressed into; the H-nut bolts UNDER
+                                           # the part instead, so this is now just "as wide
+                                           # as the lane allows" and nothing is derived from it.
+# −X face: set by the H-nut's -X mounting ear, which is the furthest -X anything on
+# this part now reaches. It has to hold an M2 self-tap with a two-bead wall outboard
+# of it. That lands at global −17.2, which is inside the endplate's −X face (−19.2)
+# and 2.4 clear of the chassis rail end (−19.6), so the carriage still sweeps free.
+X_LO    = -(D.NUT_HOLE_DX + M2.selftap_d / 2 + D.MIN_WALL_2P)   # -9.2
 X_HI    = D.ANCHOR_DX + D.BEAD             # body/tower +X shoulder, 1 bead past the
                                            # anchor line (boss overlaps it; was 0.9)
 # Guide-rod bore — defined up here so the tower face can be sized off it (its real +X limit).
@@ -89,7 +97,16 @@ SEAT_Z   = CAGE_TOP - D.STRING_NUT_D / 2   # seated-nut centre (demo placement +
 # the teardrop apex, which pokes +X toward the cavity, still leaves a 2-bead tension web:
 #   web = CAVITY_X0 − apex = 5.5 − (5.5/2)·√2 = 1.61 ≥ MIN_WALL_2P.
 SCREW_CLR_D  = D.SCREW_OD + 0.5
-NUT_POCKET_D = D.NUT_OD + 0.2
+# H-NUT MOUNT: no pocket at all. The nut hangs entirely below this part — flange up
+# flat against the bottom face, boss down in free air — held by two M2 screws driven
+# up through its ears. The old Ø7.2 press pocket is gone twice over: the H-nut's boss
+# is Ø8 and will not fit inside an 8.8 wide carriage at any wall thickness a 0.8 nozzle
+# can print, and the press fit was carrying the string pull in friction anyway (the
+# seat was the wrong way up for the load — see dimensions' MOUNTING note). In tension
+# through two screws it is a normal bolted joint: 73.5 N each, ~2.4 MPa on the
+# self-tapped thread over a 4.8 mm bite.
+NUT_BOLT_DEPTH = 6 * D.BEAD                # 4.8 self-tap depth up from the bottom face
+assert NUT_BOLT_DEPTH >= M2.min_bite, "the H-nut screws need a real bite"
 # guide boss +X face: 2-bead wall past the TEARDROP APEX (the peak reaches r·√2, ~0.41 r
 # further +X than a round bore — size to the apex, not the circle).
 GUIDE_BOSS_X1 = D.GUIDE_ROD_DX + GUIDE_R * math.sqrt(2.0) + D.MIN_WALL_2P
@@ -122,8 +139,12 @@ def _build() -> cq.Workplane:
     # ── Cuts ──────────────────────────────────────────────────────────────────
     # Screw clearance, full Z (the screw runs on up past the carriage), teardrop.
     body = body.cut(_bore(SCREW_CLR_D, -THICK / 2, THICK / 2 + POST_Z1, overshoot=1.0))
-    # Nut press-pocket from the bottom face (seat lip bears on the bottom), teardrop.
-    body = body.cut(_bore(NUT_POCKET_D, -THICK / 2 - 0.01, D.NUT_BODY_LEN))
+    # H-nut mounting screws: two blind self-taps up from the bottom face. Teardrops
+    # like every other Z bore here — the axis is ⊥ the +X build, so even at Ø2.2 the
+    # crown would print as a sag rather than a hole.
+    for sx in (-1, 1):
+        body = body.cut(_bore(M2.selftap_d, -THICK / 2 - 0.01, NUT_BOLT_DEPTH,
+                              x=sx * D.NUT_HOLE_DX))
     # Guide bore through the boss — closed, so the rod alone captures a loose
     # carriage during assembly (carriage in place → rod drops in → screw last).
     body = body.cut(_bore(GUIDE_CLR_D, FZ0 - 1, (FZ1 - FZ0) + 2, x=D.GUIDE_ROD_DX))
