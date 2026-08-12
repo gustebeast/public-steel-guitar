@@ -14,7 +14,7 @@ import cadquery as cq
 from . import dimensions as D
 from .helpers import cyl, cyl_y, box_at
 
-from cadkit.fasteners import M2, cut_head_bore, cut_selftap
+from cadkit.fasteners import M2, cut_selftap
 from cadkit.fasteners import set_screw, m4_insert                # the ONE dummies now live in cadkit/fasteners.py;
 # re-exported here so C.set_screw() / C.m4_insert() keep working across the project
 
@@ -111,10 +111,10 @@ def screw_pulley() -> cq.Workplane:
     axis-up: full bottom flange (printable wall, where the belt is biased) and a
     45°-chamfered TOP flange (a cone — printable, no overhang) per the print plan.
 
-    Carries the drive torque as a C-CLAMP: a full-height slit and one M2 screw
-    squeezing the bore onto the rod. The screw sits in a HUB above the top flange
-    — clear of the belt, and at the flange Ø so it adds nothing to the swept
-    circle. See dimensions.PULLEY_HUB_H for the three constraints behind that."""
+    Carries the drive torque on a THREAD-FORMING bore (the rod cuts its own thread
+    on the way in) plus one M2 grub as a secondary lock, in a HUB above the top
+    flange — clear of the belt, and at the flange Ø so it adds nothing to the swept
+    circle. See dimensions.PULLEY_HUB_H for the three shapes this replaced."""
     w, ft = D.PULLEY_W, D.PULLEY_FLANGE_T
     out = (cyl(D.PULLEY_OD, w, z=-w / 2)
            .union(cyl(D.PULLEY_FLANGE_OD, ft, z=-w / 2))                 # full bottom flange
@@ -125,24 +125,17 @@ def screw_pulley() -> cq.Workplane:
     # cutters cannot reach into it)
     hub_z0 = w / 2
     out = out.union(cyl(D.PULLEY_FLANGE_OD, D.PULLEY_HUB_H, z=hub_z0))
+    # THREAD-FORMING bore, full height — no slit anywhere. Slitting the pulley to
+    # make a clamp is what this replaces: closing the gap shortens the pitch circle
+    # and the teeth stop matching the belt.
     out = out.cut(cyl(D.PULLEY_BORE_SCREW, w + D.PULLEY_HUB_H + 2, z=-w / 2 - 1))
-    # THE SLIT — full height, or the hub is fused to the body below and squeezing
-    # it does nothing. Clocked to a tooth VALLEY (half a pitch off a crest) so it
-    # notches no crest, and it runs +Y out of the bore so the clamp screw's axis
-    # comes out at -X, where a driver can actually reach it.
-    slit_len = D.PULLEY_FLANGE_OD
-    out = out.cut(box_at(D.PULLEY_SLIT_W, slit_len, w + D.PULLEY_HUB_H + 2,
-                         x=0, y=slit_len / 2, z=(hub_z0 + D.PULLEY_HUB_H
-                                                 + (-w / 2 - 1)) / 2)
-                  .rotate((0, 0, 0), (0, 0, 1), 360.0 / _N_TEETH / 2))
-    # clamp screw: head + clearance through the -X ear, self-tap in the +X ear.
-    # Self-tap and not an insert because an M2 pocket is 3.5 deep and the ear is
-    # only 3.4 long; this is a CLAMP screw, not a set screw bearing on the shaft.
-    mouth = (-D.PULLEY_FLANGE_OD / 2 - 0.5, D.PULLEY_CLAMP_DY, D.PULLEY_CLAMP_Z)
-    out = cut_head_bore(M2, out, mouth, (1, 0, 0),
-                        clr_len=D.PULLEY_FLANGE_OD / 2 + 0.5)
-    return cut_selftap(M2, out, (0.0, D.PULLEY_CLAMP_DY, D.PULLEY_CLAMP_Z), (1, 0, 0),
-                       length=D.PULLEY_FLANGE_OD / 2 + 0.5)
+    # Secondary lock: one M2 grub, radial, out the -X side where a driver can reach
+    # (along Y it would have to pass every other station in the row). Self-tapped —
+    # an M2 insert pocket is 3.5 deep and there is only 3.2 of wall to the bore — and
+    # defensible here because the FORMED THREAD is the torque path; this only stops
+    # the pulley walking along it.
+    return cut_selftap(M2, out, (-D.PULLEY_FLANGE_OD / 2 - 0.2, 0.0, D.PULLEY_GRUB_Z),
+                       (1, 0, 0), length=D.PULLEY_FLANGE_OD / 2 + 0.2 - D.PULLEY_BORE_SCREW / 2)
 
 
 # ── Motor pulley (axis Y) ────────────────────────────────────────────────
