@@ -216,12 +216,32 @@ SCREW_OD        = 5.0       # Ø5, single-start, 1 mm lead.
 # all the way to the carriage's top, which left 12.4 mm of thread above the highest the
 # nut ever reaches. The nut's top is now its boss top, sitting NUT_BOSS_L up inside the
 # carriage's recess. RUNOUT is pure insurance for build tolerance.
-# THREAD-FORMING BORE — shared by the retaining collar and the drive pulley. Printed
-# PLAIN at this Ø, between the Tr5x1 minor (4.0) and major (5.0); the steel rod cuts
-# its own mating thread on the way in, the way a self-tapper does. It is how both
-# printed parts grip a rod whose thread we cannot print and dare not merely clamp
-# (see screw_collar.py for the arithmetic on both of those).
-COLLAR_BORE     = 4.6
+# THREAD-FORMING BORE — shared by the retaining collar and the drive pulley. Both grip
+# a rod whose thread we cannot merely clamp (screw_collar.py has that arithmetic).
+#
+# It is a PILOT THREAD, not a plain cylinder (user). A Tr lead screw has blunt 30°
+# flanks and no cutting edges, so it FORMS rather than cuts — the better process for
+# plastic, but it needs somewhere to track. A plain bore gives it nothing: nothing sets
+# the lead, nothing resists starting a turn crooked, and nothing pulls it back once it
+# has. A printed helix at the true pitch is a track it can only follow.
+#
+# The two diameters are picked against the ROD, not against each other:
+#   FORM_MINOR  the printed ridge. 0.1 mm radially CLEAR of the rod's root (Ø4.0), so
+#               the ridge never bottoms out — root interference is all torque, no grip.
+#   FORM_MAJOR  the printed groove. 0.1 mm radially UNDER the rod's crest (Ø5.0), so
+#               the crest swages it going in. That 0.1 is the entire forming allowance,
+#               and it is the usual figure for thread-forming into plastic.
+# After forming, the plastic ridge spans 4.2..5.0 — 0.4 of the 0.5 radial full form,
+# ~80% engagement, reached by displacement rather than by hoping a plain cylinder would
+# flow into the right shape on its own.
+# Depth is (4.8-4.2)/2 = 0.3 — inside cadkit.threads' depth <= pitch/2 rule, and 45°
+# flanks, so it is self-supporting with the bore axis vertical, which is how both parts
+# print. It does NOT resolve on the project's 0.8 nozzle (0.3 radial is under half a
+# bead) — both parts are 0.2-NOZZLE prints and therefore unfilled, the same call
+# belt_clamp already makes for GT2 ridges. At 0.2 the groove is a 1.5-bead feature.
+SCREW_PITCH     = 1.0       # Tr5x1: 1 mm pitch, single start
+FORM_MINOR      = 4.2       # printed ridge Ø
+FORM_MAJOR      = 4.8       # printed groove Ø
 SCREW_RUNOUT    = 3 * BEAD                          # 2.4 proud of the nut at top of travel
 SCREW_TOP_Z     = NUT_TOP_MAX + SCREW_RUNOUT        # -14.6
 
@@ -272,7 +292,7 @@ PULLEY_FLANGE_T  = MIN_WALL      # 0.8 (was 1.0 = 1.25 beads). Rounded DOWN, not
                                  # two flanges leave a 4.8 toothed gap for a 5.0 belt -- it would not
                                  # fit. One bead is the hard floor and fine here (a guide lip, not
                                  # structure); the gap goes to 6.4.
-PULLEY_BORE_SCREW = COLLAR_BORE      # THREAD-FORMING: the rod cuts its own thread
+PULLEY_BORE_SCREW = FORM_MAJOR       # PILOT THREAD: the rod finishes its own
 PULLEY_BORE_MOTOR = 5.0     # = MOTOR_SHAFT_D (declared below); the motor's own shaft
 # THE SCREW PULLEY HAD NO TORQUE PATH AT ALL — a plain Ø5 bore on a round rod (user
 # caught it). It now gets it the same way the retaining collar does: a THREAD-FORMING
@@ -381,8 +401,9 @@ COLLAR_AF       = 10 * BEAD # 8.0 across flats, for a stock 8 mm spanner. Only 0
                             # almost continuous.
 assert COLLAR_OD <= STRING_PITCH - 0.5 + 1e-9, (
     f"collars at Ø{COLLAR_OD} sweep into each other at the {STRING_PITCH} string pitch")
-assert (COLLAR_AF - COLLAR_BORE) / 2 >= MIN_WALL_2P - 1e-9, (
-    "the collar's wall at the flats is under two beads")
+assert (COLLAR_AF - FORM_MAJOR) / 2 >= MIN_WALL_2P - 1e-9, (
+    "the collar's wall at the flats, measured over the thread GROOVE — its thinnest "
+    "line — is under two beads")
 COLLAR_H        = 5 * BEAD                          # 4.0 TOTAL, boss included — the
                                                     # bore runs the full height, so this
                                                     # is also the thread engagement
