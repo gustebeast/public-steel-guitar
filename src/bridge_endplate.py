@@ -38,6 +38,7 @@ from . import optical_pickup as OP
 from . import carriage as CR
 from .endplate_base import endplate_base
 from .screw_rail import screw_rail as _screw_rail, seat_cutter as _seat_cutter, BOT as _SR_BOT
+from .screw_rail import PRINT_UP as _SR_PRINT_UP
 from .helpers import box_at, cyl, cyl_y
 from cadkit.fasteners import M2, M4, cut_selftap, cut_anchor
 from cadkit.supports import printable_bore
@@ -48,6 +49,9 @@ from cadkit.supports import printable_bore
 # shapes a 45 deg teardrop peak from this vector (and returns a plain cylinder for bores
 # that run along it, so callers need not know which case they are in).
 PRINT_UP = (-1.0, 0.0, 0.0)
+assert _SR_PRINT_UP == PRINT_UP, (
+    "the screw rail is FUSED into this part, so its teardrops must be shaped from "
+    "the same build direction — one of the two copies has drifted")
 
 X0   = CH.X_BRIDGE                 # cap -X face / field<->cap boundary: the field stays
                                    #   OPEN -X of here (carriage sweep / strings / rods)
