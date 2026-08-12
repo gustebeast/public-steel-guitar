@@ -1443,7 +1443,13 @@ def _cart_backstop() -> cq.Workplane:
     blank = (cyl(maj, HS_BSTOP_ENGAGE, z=HS_BACK_X)                             # SMOOTH crest-Ø body...
              .union(cyl(fl_od, HS_BSTOP_FLANGE, z=HS_BACK_X + HS_BSTOP_ENGAGE)) # ...+ drive flange...
              .cut(cyl(HS_BSTOP_BORE, HS_BSTOP_ENGAGE + HS_BSTOP_FLANGE + 2, z=HS_BACK_X - 1)))  # ...hollowed
-    male = cut_thread(blank, minor_d=mnr, major_d=maj, pitch=HS_TH_PITCH, length=HS_BSTOP_ENGAGE, z=HS_BACK_X)
+    # allow_wider_above: the drive flange sits directly on top of the thread span, which
+    # trips cut_thread's proximity guard — but that guard tests whether wider material is
+    # NEAR the span's top, not whether the cutter reaches it. PROBED 2026-08-12 with the
+    # guard bypassed: 56.35 mm^3 removed and the radius undulates the full root..crest
+    # (3.55..4.31, spread 0.76) at every sampled height, i.e. the thread cuts correctly.
+    male = cut_thread(blank, minor_d=mnr, major_d=maj, pitch=HS_TH_PITCH, length=HS_BSTOP_ENGAGE,
+                      z=HS_BACK_X, allow_wider_above=True)
     return male.rotate((0, 0, 0), (0, 1, 0), 90).translate((0, HS_YC, HS_Z))    # NO heal on a threaded part
 
 
