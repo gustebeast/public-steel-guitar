@@ -40,6 +40,7 @@ from . import chassis as CH
 from .carriage import carriage, THICK as CARRIAGE_THICK, SEAT_Z as CARRIAGE_SEAT_Z
 from .bridge_endplate import bridge_endplate
 from .belt_clamp import belt_clamp
+from .screw_collar import screw_collar
 from .chassis import segments as chassis_segments
 from . import nut_block as NB
 from . import tension_fork as TF
@@ -100,7 +101,8 @@ PARTS = {
     "cart_piston": (lambda: __import__("src.knee_lever", fromlist=["e"]).cart_piston, "pctg/cart_piston.step", "PCTG — spring-cartridge piston, flat follower tongue (shared: print 2)"),
     "guide_post": (lambda: __import__("src.knee_lever", fromlist=["e"]).guide_post, "pctg/guide_post.step", "PCTG — coil-back guide post, screw pushes it (shared: print 2)"),
     "cart_backstop": (lambda: __import__("src.knee_lever", fromlist=["e"]).cart_backstop, "pctg/cart_backstop.step", "PCTG — hollow X-position back-stop screw: threads the housing boss, tension screw runs through the Ø5.5 bore (shared: print 2)"),
-    "screw_pulley":    (lambda: heal(C.screw_pulley()),  "pctg/screw_pulley.step",  "PCTG — flanged 14T GT2 pulley, 45° top flange — ×10 (fine teeth need unfilled resolution)"),
+    "screw_pulley":    (lambda: heal(C.screw_pulley()),  "pctg/screw_pulley.step",  "PCTG — flanged 14T GT2 pulley, 45° top flange, M2 grub lug for the torque path — ×10 (fine teeth need unfilled resolution)"),
+    "screw_collar":    (lambda: heal(screw_collar),      "petg-gf/screw_collar.step", "PETG-GF — leadscrew retaining collar ×10: the screw's axial anchor, driving both MR85 inner rings up against the rail ledge. Bore prints PLAIN at 4.6 and the Tr5×1 rod FORMS its own thread on the way in (a Tr thread cannot be printed at 0.8 mm, and a friction clamp would creep out under 147 N). 8 mm across flats = the 9.5 lane AND a stock spanner. Prints bore-up, flat, no supports"),
     "motor_pulley":    (lambda: heal(C.motor_pulley()),  "pctg/motor_pulley.step",  "PCTG — flanged 14T GT2 pulley, 45° outer flange — ×10"),
     "tension_fork":    (lambda: TF.tension_forks,    "pctg/tension_fork.step",    "PCTG — belt-tension lock forks, graded 3.0–6.0 set (4 of the fitting size per motor; positive stop in the slot, no friction reliance)"),
     # pickup carrier: the deck pickup-piece (a top_plate panel) holds the pickup on a
@@ -365,10 +367,10 @@ def _string_components(i):
     # string-end cylinder nut, seated in the carriage anchor (DEMO — purchased)
     out.append((f"string_nut_{i}", C.string_nut().translate(
         (D.BRIDGE_X, sy, cz + CARRIAGE_SEAT_Z))))
-    # round nut pressed up into the carriage from below — flange seats flush
-    # against the carriage bottom face, body up into the pocket
+    # H-type nut bolted UNDER the carriage — flange top flat against the carriage
+    # bottom face (that plane is the nut's own origin), boss hanging down in free air
     out.append((f"nut_{i}", C.nut().translate(
-        (D.SCREW_X, sy, cz - CARRIAGE_THICK / 2 - D.NUT_FLANGE_T))))
+        (D.SCREW_X, sy, cz - CARRIAGE_THICK / 2))))
     # guide rod (anti-rotation), +X of the screw below the stringing window:
     # dropped in from the top through the stop bar's snug hole + the carriage's
     # closed bore, landing in the lower ledge's blind socket (bottom = blind
@@ -377,13 +379,15 @@ def _string_components(i):
                - D.CARRIAGE_TRAVEL - D.GUIDE_FOOT_H - 4.0)   # GR_LBOT + 2
     out.append((f"guide_rod_{i}", C.guide_rod(28.0).translate(
         (D.SCREW_X + D.GUIDE_ROD_DX, sy, rod_bot))))
-    # screw drive pulley (odd ones raised one belt-plane), support bearing
-    # (in the shared rail), locknut below
+    # screw drive pulley (odd ones raised one belt-plane), then the thrust stack:
+    # TWO MR85s in TANDEM seated up against the rail's ledge, and under them the
+    # printed collar that drives their inner rings up (see screw_collar.py)
     spz = D.screw_pulley_z(i)
     out.append((f"screw_pulley_{i}", C.screw_pulley().translate((D.SCREW_X, sy, spz))))
-    out.append((f"screw_bearing_{i}", C.support_bearing().translate((D.SCREW_X, sy, D.SUPPORT_BRG_Z))))
-    out.append((f"locknut_{i}", C.locknut().translate(
-        (D.SCREW_X, sy, D.SUPPORT_BRG_Z - D.SUPPORT_BRG_W / 2 - D.LOCKNUT_W / 2))))
+    for k in range(D.SUPPORT_BRG_N):
+        bz = D.SUPPORT_BRG_BOT + (k + 0.5) * D.MR85_W
+        out.append((f"screw_bearing_{i}_{k}", C.support_bearing().translate((D.SCREW_X, sy, bz))))
+    out.append((f"screw_collar_{i}", screw_collar.translate((D.SCREW_X, sy, D.COLLAR_Z1))))
     # motor (shaft +Y, body −Y toward player) + its pulley + twisted belt
     out.append((f"motor_{i}", C.motor().translate((mx, my, mz))))
     out.append((f"motor_pulley_{i}", C.motor_pulley().translate((mx, my, mz))))
@@ -1115,7 +1119,7 @@ _COLORS = {
     "bridge_bearings": (0.69, 0.77, 0.87),
     "nut":             (0.82, 0.60, 0.20),   # brass
     "string_nut":      (0.82, 0.60, 0.20),   # brass string-end fitting (demo)
-    "locknut":         (0.82, 0.60, 0.20),
+    "screw_collar":    (0.30, 0.65, 0.80),   # printed — the screw's axial anchor
     "guide_rod":       (0.35, 0.35, 0.38),
     "motor":           (0.22, 0.25, 0.27),   # charcoal
     "belt":            (0.13, 0.13, 0.13),   # GT2 black
