@@ -123,11 +123,14 @@ def envelope(shape, ax, ay, eps=1e-3):
     return env, rmax
 
 
-def main() -> int:
-    from src.build import collect_components
-    comps = [(n, wp.val()) for n, wp in collect_components()]
-    by_name = dict(comps)
+def gate(comps) -> int:
+    """Sweep-check ALREADY-BUILT components; return the collision count.
 
+    Split out of main() for the same reason as ``check_overlaps.gate``: run
+    standalone this tool spends ~5.5 minutes rebuilding the model and seconds
+    checking it, so the BUILD calls this with what it already has and the check
+    is effectively free. ``comps`` is ``[(name, cq.Shape)]``.
+    """
     spun = []
     for name, shape in comps:
         base, i = _base(name), _index(name)
@@ -174,6 +177,11 @@ def main() -> int:
     for v, name, r, other in hits:
         print(f"  {v:10.1f} mm^3   {name:18s} (swept Ø{2 * r:.1f})  <->  {other}")
     return 1
+
+
+def main() -> int:
+    from src.build import collect_components       # heavy: deferred
+    return gate([(n, wp.val()) for n, wp in collect_components()])
 
 
 if __name__ == "__main__":

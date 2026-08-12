@@ -1343,7 +1343,10 @@ def _export_assembly(publish=True, gate=True, gate_full=False):
         _publish_web_preview(comps, build_n)
     # LAST: the gate spawns a worker pool, so run it once the STEP is safely on
     # disk and the viewer is refreshed — a gate hiccup can never cost the build.
-    return _report_overlaps(comps, full=gate_full) if gate else 0
+    if not gate:
+        return 0
+    # both gates always run, so one RED doesn't hide the other's result
+    return _report_overlaps(comps, full=gate_full) | _report_sweep(comps)
 
 
 # The overlap gate's ACCEPTED baseline: pairs that are real interpenetrations but
@@ -1375,6 +1378,21 @@ def _report_overlaps(comps, full=False) -> int:
     print(f"OVERLAP GATE: green — {n} unintended pair(s), "
           f"accepted baseline {OVERLAP_BASELINE}", flush=True)
     return 0
+
+
+def _report_sweep(comps) -> int:
+    """Swept-envelope gate on the model we JUST built (see _report_overlaps for why
+    reusing ``comps`` matters). This catches the class ``check_overlaps`` is
+    STRUCTURALLY blind to: a part that clears everything at rest and fouls once it
+    turns. Baseline is 0 — unlike the overlap gate there is no inherited debt."""
+    try:
+        from tools.check_sweep import gate
+        n = gate([(name, wp.val()) for name, wp in comps])
+    except Exception as e:               # noqa: BLE001 — never let a gate eat the geometry
+        print(f"sweep gate: SKIPPED ({type(e).__name__}: {e})", flush=True)
+        return 0
+    print(f"SWEEP GATE: {'green' if n == 0 else f'RED — {n} swept collision(s)'}", flush=True)
+    return 1 if n else 0
 
 
 def _publish_web_preview(comps, build_n):
