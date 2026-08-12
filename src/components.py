@@ -14,7 +14,7 @@ import cadquery as cq
 from . import dimensions as D
 from .helpers import cyl, cyl_y, box_at
 
-from cadkit.fasteners import M2, insert_bore_cutter
+from cadkit.fasteners import M2, cut_head_bore, cut_selftap
 from cadkit.fasteners import set_screw, m4_insert                # the ONE dummies now live in cadkit/fasteners.py;
 # re-exported here so C.set_screw() / C.m4_insert() keep working across the project
 
@@ -29,10 +29,11 @@ def screw(length: float = D.SCREW_LEN) -> cq.Workplane:
 
 # ── Leadscrew nut (H-type brass flange nut, axis Z) ──────────────────────
 def nut() -> cq.Workplane:
-    """H-type brass leadscrew nut, axis Z, mounted FLANGE UP / BOSS DOWN.
+    """H-type brass leadscrew nut, axis Z, mounted FLANGE DOWN / BOSS UP.
 
-    Origin = the flange's TOP face, which is the mating plane against the
-    carriage's bottom; everything hangs -Z from there. The flange is the round
+    Origin = the flange's TOP face, which is the clamp plane against the
+    carriage's bottom; the flange hangs -Z and the boss rises +Z into the
+    carriage's Y-open recess. The flange is the round
     Ø20 disc with two flats milled tangent to the boss (that IS the "H"), so it
     is modelled as the intersection of the disc and an AF-wide slab — which is
     what puts the long ends' ROUNDED profile in the assembly, the thing that
@@ -45,8 +46,8 @@ def nut() -> cq.Workplane:
     slab = box_at(D.NUT_FLANGE_L + 2, D.NUT_AF, D.NUT_FLANGE_T,
                   x=0, y=0, z=z0 + D.NUT_FLANGE_T / 2)
     out = disc.intersect(slab)
-    out = out.union(cyl(D.NUT_BOSS_D, D.NUT_BOSS_L, z=z0 - D.NUT_BOSS_L))
-    out = out.cut(cyl(D.SCREW_OD, D.NUT_H + 2, z=-D.NUT_H - 1))  # the thread bore
+    out = out.union(cyl(D.NUT_BOSS_D, D.NUT_BOSS_L, z=0.0))      # boss rises +Z
+    out = out.cut(cyl(D.SCREW_OD, D.NUT_H + 2, z=z0 - 1))        # the thread bore
     for sx in (-1, 1):                                           # the two ears
         out = out.cut(cyl(D.NUT_HOLE_D, D.NUT_FLANGE_T + 2, z=z0 - 1)
                       .translate((sx * D.NUT_HOLE_DX, 0, 0)))
@@ -110,25 +111,38 @@ def screw_pulley() -> cq.Workplane:
     axis-up: full bottom flange (printable wall, where the belt is biased) and a
     45°-chamfered TOP flange (a cone — printable, no overhang) per the print plan.
 
-    Carries the drive torque on an M2 GRUB SCREW through a -X lug (see
-    dimensions.PULLEY_LUG_X1 for why a lug and not a boss). The lug is a plain
-    prism straddling the pulley's mid-plane, so it prints as backed wall on
-    either side of the toothed band."""
+    Carries the drive torque as a C-CLAMP: a full-height slit and one M2 screw
+    squeezing the bore onto the rod. The screw sits in a HUB above the top flange
+    — clear of the belt, and at the flange Ø so it adds nothing to the swept
+    circle. See dimensions.PULLEY_HUB_H for the three constraints behind that."""
     w, ft = D.PULLEY_W, D.PULLEY_FLANGE_T
     out = (cyl(D.PULLEY_OD, w, z=-w / 2)
            .union(cyl(D.PULLEY_FLANGE_OD, ft, z=-w / 2))                 # full bottom flange
            .union(_cone(D.PULLEY_OD / 2, D.PULLEY_FLANGE_OD / 2, _CHAMFER,
                         cq.Vector(0, 0, w / 2 - _CHAMFER), cq.Vector(0, 0, 1))))  # 45° top
     out = out.cut(_tooth_cutter("Z"))                                # 14 GT2 grooves
-    # the grub lug, added AFTER the teeth so the cutters can't eat into it
-    lug_x1 = D.PULLEY_LUG_X1
-    out = out.union(box_at(-lug_x1, D.PULLEY_LUG_W, D.PULLEY_LUG_W,
-                           x=lug_x1 / 2, y=0, z=0))
-    out = out.cut(cyl(D.PULLEY_BORE_SCREW, w + 2, z=-w / 2 - 1))
-    # insert pocket at the lug's -X mouth, then clearance on through to the bore
-    return out.cut(insert_bore_cutter(
-        M2, (lug_x1, 0.0, 0.0), (1, 0, 0), clr_len=-lug_x1, overshoot=0.2,
-        reason="set screw: must not self-tap (it holds the drive torque)"))
+    # clamp hub, stacked on the top flange (added after the teeth so the groove
+    # cutters cannot reach into it)
+    hub_z0 = w / 2
+    out = out.union(cyl(D.PULLEY_FLANGE_OD, D.PULLEY_HUB_H, z=hub_z0))
+    out = out.cut(cyl(D.PULLEY_BORE_SCREW, w + D.PULLEY_HUB_H + 2, z=-w / 2 - 1))
+    # THE SLIT — full height, or the hub is fused to the body below and squeezing
+    # it does nothing. Clocked to a tooth VALLEY (half a pitch off a crest) so it
+    # notches no crest, and it runs +Y out of the bore so the clamp screw's axis
+    # comes out at -X, where a driver can actually reach it.
+    slit_len = D.PULLEY_FLANGE_OD
+    out = out.cut(box_at(D.PULLEY_SLIT_W, slit_len, w + D.PULLEY_HUB_H + 2,
+                         x=0, y=slit_len / 2, z=(hub_z0 + D.PULLEY_HUB_H
+                                                 + (-w / 2 - 1)) / 2)
+                  .rotate((0, 0, 0), (0, 0, 1), 360.0 / _N_TEETH / 2))
+    # clamp screw: head + clearance through the -X ear, self-tap in the +X ear.
+    # Self-tap and not an insert because an M2 pocket is 3.5 deep and the ear is
+    # only 3.4 long; this is a CLAMP screw, not a set screw bearing on the shaft.
+    mouth = (-D.PULLEY_FLANGE_OD / 2 - 0.5, D.PULLEY_CLAMP_DY, D.PULLEY_CLAMP_Z)
+    out = cut_head_bore(M2, out, mouth, (1, 0, 0),
+                        clr_len=D.PULLEY_FLANGE_OD / 2 + 0.5)
+    return cut_selftap(M2, out, (0.0, D.PULLEY_CLAMP_DY, D.PULLEY_CLAMP_Z), (1, 0, 0),
+                       length=D.PULLEY_FLANGE_OD / 2 + 0.5)
 
 
 # ── Motor pulley (axis Y) ────────────────────────────────────────────────
