@@ -18,6 +18,8 @@ them. Consequences of that choice, both handled here:
     string EXIT hole has axis Z ⊥ the build direction, so each is a `printable_bore`
     TEARDROP (apex toward +X) — a plain cylinder would sag its ceiling. The round
     lower half is untouched (the rod rides the bottom exactly as in a round bore).
+  • The H-nut's boss recess is a Y-OPEN channel whose +X end would otherwise be a
+    flat ceiling, so it closes with a 45° ramp instead (NUT_RAMP_X1).
   • A tower rising off a lower shelf casts a −X-facing overhang. So the part is
     two SOLID PRISMS with the gap between them filled in (not a floating post):
     prism A = body + anchor tower as one block (Z −6..+13); prism B = the guide
@@ -97,16 +99,38 @@ SEAT_Z   = CAGE_TOP - D.STRING_NUT_D / 2   # seated-nut centre (demo placement +
 # the teardrop apex, which pokes +X toward the cavity, still leaves a 2-bead tension web:
 #   web = CAVITY_X0 − apex = 5.5 − (5.5/2)·√2 = 1.61 ≥ MIN_WALL_2P.
 SCREW_CLR_D  = D.SCREW_OD + 0.5
-# H-NUT MOUNT: no pocket at all. The nut hangs entirely below this part — flange up
-# flat against the bottom face, boss down in free air — held by two M2 screws driven
-# up through its ears. The old Ø7.2 press pocket is gone twice over: the H-nut's boss
-# is Ø8 and will not fit inside an 8.8 wide carriage at any wall thickness a 0.8 nozzle
-# can print, and the press fit was carrying the string pull in friction anyway (the
-# seat was the wrong way up for the load — see dimensions' MOUNTING note). In tension
-# through two screws it is a normal bolted joint: 73.5 N each, ~2.4 MPa on the
-# self-tapped thread over a 4.8 mm bite.
+# ── H-NUT MOUNT: a Y-OPEN BOSS RECESS + two M2 screws ────────────────────────
+# The nut clamps FLANGE-DOWN under the bottom face with its BOSS UP inside this
+# recess. Why not the two simpler options:
+#   • Not a BORE for the boss. Ø8.4 in an 8.8 wide part leaves 0.2 mm side walls,
+#     and this part prints on its -X face, so a wall thin in Y is one bead or
+#     nothing. Y-OPEN — a channel straight through the width — has no side walls
+#     at all to be thin, and the flats' 8.5 would have been just as impossible.
+#   • Not hanging free below. The drive pulleys alternate Z planes and the raised
+#     plane tops out at -31.4; a nut hanging its full 9.8 reaches -36.8 and drives
+#     into five of them. Recessed, only the 3.2 flange hangs.
+# The old Ø7.2 press pocket is gone twice over: that boss had been turned down on a
+# lathe to fit, and the press fit was carrying the string pull in friction anyway —
+# the seat was the wrong way up for the load (see dimensions' MOUNTING note).
+NUT_RECESS_D  = D.NUT_BOSS_D + 0.4         # 8.4 — Y-open channel width in X
+NUT_RECESS_H  = D.NUT_BOSS_L + 0.4         # 7.0 — up from the bottom face
+# The recess's +X end is a CEILING in this part's build direction, so it cannot be a
+# wall: it closes at 45°, the void's floor rising to meet the roof. That ramp is what
+# decides how much material the +X mounting screw has under it.
+NUT_RAMP_X1   = NUT_RECESS_D / 2 + NUT_RECESS_H          # 11.2, where the void ends
 NUT_BOLT_DEPTH = 6 * D.BEAD                # 4.8 self-tap depth up from the bottom face
 assert NUT_BOLT_DEPTH >= M2.min_bite, "the H-nut screws need a real bite"
+# In tension through two screws this is an ordinary bolted joint — 73.5 N each, ~2.4
+# MPa on the self-tapped thread. The -X screw bites full-depth solid. The +X one sits
+# on the ramp, so what it has under it is a TONGUE as thick as its distance past the
+# recess edge; check that rather than assume, because NUT_HOLE_DX is still a guess.
+_TONGUE = D.NUT_HOLE_DX - NUT_RECESS_D / 2
+assert _TONGUE >= D.MIN_WALL_2P - 1e-9, (
+    f"the +X nut screw lands on a {_TONGUE:.2f} mm tongue over the boss recess "
+    f"(want {D.MIN_WALL_2P}) — measure the real NUT_HOLE_DX")
+assert NUT_RAMP_X1 <= D.GUIDE_ROD_DX - GUIDE_R - 1e-9, (
+    f"the boss recess's ramp reaches x {NUT_RAMP_X1:.2f} and the guide bore starts at "
+    f"{D.GUIDE_ROD_DX - GUIDE_R:.2f}")
 # guide boss +X face: 2-bead wall past the TEARDROP APEX (the peak reaches r·√2, ~0.41 r
 # further +X than a round bore — size to the apex, not the circle).
 GUIDE_BOSS_X1 = D.GUIDE_ROD_DX + GUIDE_R * math.sqrt(2.0) + D.MIN_WALL_2P
@@ -139,11 +163,22 @@ def _build() -> cq.Workplane:
     # ── Cuts ──────────────────────────────────────────────────────────────────
     # Screw clearance, full Z (the screw runs on up past the carriage), teardrop.
     body = body.cut(_bore(SCREW_CLR_D, -THICK / 2, THICK / 2 + POST_Z1, overshoot=1.0))
+    # H-nut BOSS RECESS: a Y-open channel, closed toward +X by a 45° ramp (see
+    # NUT_RAMP_X1). Cut as one prism plus one wedge — the wedge's sloped face is the
+    # void's floor rising at 45°, so every layer of the roof lands on the one below.
+    z0 = -THICK / 2
+    body = body.cut(box_at(NUT_RECESS_D, WIDTH + 2, NUT_RECESS_H,
+                           x=0, y=0, z=z0 + NUT_RECESS_H / 2))
+    _rx0 = NUT_RECESS_D / 2
+    body = body.cut(cq.Workplane("XZ")
+                    .polyline([(_rx0, z0), (NUT_RAMP_X1, z0 + NUT_RECESS_H),
+                               (_rx0, z0 + NUT_RECESS_H)])
+                    .close().extrude((WIDTH + 2) / 2, both=True))
     # H-nut mounting screws: two blind self-taps up from the bottom face. Teardrops
     # like every other Z bore here — the axis is ⊥ the +X build, so even at Ø2.2 the
     # crown would print as a sag rather than a hole.
     for sx in (-1, 1):
-        body = body.cut(_bore(M2.selftap_d, -THICK / 2 - 0.01, NUT_BOLT_DEPTH,
+        body = body.cut(_bore(M2.selftap_d, z0 - 0.01, NUT_BOLT_DEPTH,
                               x=sx * D.NUT_HOLE_DX))
     # Guide bore through the boss — closed, so the rod alone captures a loose
     # carriage during assembly (carriage in place → rod drops in → screw last).
