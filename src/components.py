@@ -14,6 +14,7 @@ import cadquery as cq
 from . import dimensions as D
 from .helpers import cyl, cyl_y, box_at
 
+from cadkit.fasteners import M2, insert_bore_cutter
 from cadkit.fasteners import set_screw, m4_insert                # the ONE dummies now live in cadkit/fasteners.py;
 # re-exported here so C.set_screw() / C.m4_insert() keep working across the project
 
@@ -26,13 +27,30 @@ def screw(length: float = D.SCREW_LEN) -> cq.Workplane:
     return cyl(D.SCREW_OD, length, z=0.0)
 
 
-# ── Leadscrew nut (round brass, axis Z) ──────────────────────────────────
+# ── Leadscrew nut (H-type brass flange nut, axis Z) ──────────────────────
 def nut() -> cq.Workplane:
-    """Round brass nut, axis Z. Seat lip (−Z face) at z=0; body extends +Z."""
-    lip = cyl(D.NUT_FLANGE_OD, D.NUT_FLANGE_T, z=0.0)
-    body = cyl(D.NUT_OD, D.NUT_BODY_LEN, z=D.NUT_FLANGE_T)
-    bore = cyl(D.SCREW_OD + 0.4, D.NUT_FLANGE_T + D.NUT_BODY_LEN + 2, z=-1.0)
-    return lip.union(body).cut(bore)
+    """H-type brass leadscrew nut, axis Z, mounted FLANGE UP / BOSS DOWN.
+
+    Origin = the flange's TOP face, which is the mating plane against the
+    carriage's bottom; everything hangs -Z from there. The flange is the round
+    Ø20 disc with two flats milled tangent to the boss (that IS the "H"), so it
+    is modelled as the intersection of the disc and an AF-wide slab — which is
+    what puts the long ends' ROUNDED profile in the assembly, the thing that
+    decides how far the ears sweep. Two Ø3 ears carry the M2 mounting screws.
+    DEMO/purchased — and every dimension is a guess until the part arrives
+    (see dimensions.NUT_AF).
+    """
+    z0 = -D.NUT_FLANGE_T
+    disc = cyl(D.NUT_FLANGE_L, D.NUT_FLANGE_T, z=z0)            # ends stay round
+    slab = box_at(D.NUT_FLANGE_L + 2, D.NUT_AF, D.NUT_FLANGE_T,
+                  x=0, y=0, z=z0 + D.NUT_FLANGE_T / 2)
+    out = disc.intersect(slab)
+    out = out.union(cyl(D.NUT_BOSS_D, D.NUT_BOSS_L, z=z0 - D.NUT_BOSS_L))
+    out = out.cut(cyl(D.SCREW_OD, D.NUT_H + 2, z=-D.NUT_H - 1))  # the thread bore
+    for sx in (-1, 1):                                           # the two ears
+        out = out.cut(cyl(D.NUT_HOLE_D, D.NUT_FLANGE_T + 2, z=z0 - 1)
+                      .translate((sx * D.NUT_HOLE_DX, 0, 0)))
+    return out
 
 
 # ── String-end nut (swaged cylinder on the string's bridge end) ──────────
@@ -90,14 +108,27 @@ def _tooth_cutter(axis: str):
 def screw_pulley() -> cq.Workplane:
     """Flanged GT2 pulley on the vertical screw, axis Z, centred at z=0. Printed
     axis-up: full bottom flange (printable wall, where the belt is biased) and a
-    45°-chamfered TOP flange (a cone — printable, no overhang) per the print plan."""
+    45°-chamfered TOP flange (a cone — printable, no overhang) per the print plan.
+
+    Carries the drive torque on an M2 GRUB SCREW through a -X lug (see
+    dimensions.PULLEY_LUG_X1 for why a lug and not a boss). The lug is a plain
+    prism straddling the pulley's mid-plane, so it prints as backed wall on
+    either side of the toothed band."""
     w, ft = D.PULLEY_W, D.PULLEY_FLANGE_T
     out = (cyl(D.PULLEY_OD, w, z=-w / 2)
            .union(cyl(D.PULLEY_FLANGE_OD, ft, z=-w / 2))                 # full bottom flange
            .union(_cone(D.PULLEY_OD / 2, D.PULLEY_FLANGE_OD / 2, _CHAMFER,
                         cq.Vector(0, 0, w / 2 - _CHAMFER), cq.Vector(0, 0, 1))))  # 45° top
     out = out.cut(_tooth_cutter("Z"))                                # 14 GT2 grooves
-    return out.cut(cyl(D.PULLEY_BORE_SCREW, w + 2, z=-w / 2 - 1))
+    # the grub lug, added AFTER the teeth so the cutters can't eat into it
+    lug_x1 = D.PULLEY_LUG_X1
+    out = out.union(box_at(-lug_x1, D.PULLEY_LUG_W, D.PULLEY_LUG_W,
+                           x=lug_x1 / 2, y=0, z=0))
+    out = out.cut(cyl(D.PULLEY_BORE_SCREW, w + 2, z=-w / 2 - 1))
+    # insert pocket at the lug's -X mouth, then clearance on through to the bore
+    return out.cut(insert_bore_cutter(
+        M2, (lug_x1, 0.0, 0.0), (1, 0, 0), clr_len=-lug_x1, overshoot=0.2,
+        reason="set screw: must not self-tap (it holds the drive torque)"))
 
 
 # ── Motor pulley (axis Y) ────────────────────────────────────────────────
@@ -113,18 +144,14 @@ def motor_pulley() -> cq.Workplane:
     return out.cut(cyl_y(D.PULLEY_BORE_MOTOR, w + 2, y0=-w / 2 - 1))
 
 
-# ── Screw support bearing + locknut (axis Z) ─────────────────────────────
+# ── Screw thrust bearing (axis Z) ────────────────────────────────────────
 def support_bearing() -> cq.Workplane:
-    """Single deep-groove ball bearing (radial + axial), axis Z, centred z=0."""
-    o = cyl(D.SUPPORT_BRG_OD, D.SUPPORT_BRG_W, z=-D.SUPPORT_BRG_W / 2)
-    return o.cut(cyl(D.SUPPORT_BRG_ID, D.SUPPORT_BRG_W + 2, z=-D.SUPPORT_BRG_W / 2 - 1))
-
-
-def locknut() -> cq.Workplane:
-    """Locknut on the screw end (axial retainer), axis Z, centred z=0. Bore = screw
-    OD so it sleeves the thread cleanly (the real thread interference isn't modelled)."""
-    o = cyl(D.LOCKNUT_OD, D.LOCKNUT_W, z=-D.LOCKNUT_W / 2)
-    return o.cut(cyl(D.SCREW_OD, D.LOCKNUT_W + 2, z=-D.LOCKNUT_W / 2 - 1))
+    """ONE MR85ZZ deep-groove ball bearing, axis Z, centred z=0. Two of these go
+    on each screw in TANDEM — build.py stacks them; see dimensions.SUPPORT_BRG_N
+    for why two and why not preloaded. (The purchased LOCKNUT that used to sit
+    under them is gone: the printed screw_collar retains the screw now.)"""
+    o = cyl(D.MR85_OD, D.MR85_W, z=-D.MR85_W / 2)
+    return o.cut(cyl(D.MR85_ID, D.MR85_W + 2, z=-D.MR85_W / 2 - 1))
 
 
 # ── Motor: MKS SERVO42D, lies flat, shaft +Y ─────────────────────────────
