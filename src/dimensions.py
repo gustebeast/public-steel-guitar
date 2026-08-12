@@ -216,6 +216,12 @@ SCREW_OD        = 5.0       # Ø5, single-start, 1 mm lead.
 # all the way to the carriage's top, which left 12.4 mm of thread above the highest the
 # nut ever reaches. The nut's top is now its boss top, sitting NUT_BOSS_L up inside the
 # carriage's recess. RUNOUT is pure insurance for build tolerance.
+# THREAD-FORMING BORE — shared by the retaining collar and the drive pulley. Printed
+# PLAIN at this Ø, between the Tr5x1 minor (4.0) and major (5.0); the steel rod cuts
+# its own mating thread on the way in, the way a self-tapper does. It is how both
+# printed parts grip a rod whose thread we cannot print and dare not merely clamp
+# (see screw_collar.py for the arithmetic on both of those).
+COLLAR_BORE     = 4.6
 SCREW_RUNOUT    = 3 * BEAD                          # 2.4 proud of the nut at top of travel
 SCREW_TOP_Z     = NUT_TOP_MAX + SCREW_RUNOUT        # -14.6
 
@@ -266,27 +272,30 @@ PULLEY_FLANGE_T  = MIN_WALL      # 0.8 (was 1.0 = 1.25 beads). Rounded DOWN, not
                                  # two flanges leave a 4.8 toothed gap for a 5.0 belt -- it would not
                                  # fit. One bead is the hard floor and fine here (a guide lip, not
                                  # structure); the gap goes to 6.4.
-PULLEY_BORE_SCREW = SCREW_OD + 0.2   # slip fit over the Tr5 crests
+PULLEY_BORE_SCREW = COLLAR_BORE      # THREAD-FORMING: the rod cuts its own thread
 PULLEY_BORE_MOTOR = 5.0     # = MOTOR_SHAFT_D (declared below); the motor's own shaft
 # THE SCREW PULLEY HAD NO TORQUE PATH AT ALL — a plain Ø5 bore on a round rod (user
-# caught it). It is now a C-CLAMP: one full-height slit and an M2 screw squeezing the
-# bore onto the rod. Three constraints shaped it, two of them learned the hard way:
-#   • A GRUB was the first attempt and it is the wrong part here (user). A set screw
-#     bearing on a thread crest is a point contact relying on preload staying put; a
-#     clamp grips the whole circumference and cannot back off into a valley.
-#   • The clamp screw must sit ABOVE THE BELT (user). Anything at r > the tooth OD
-#     inside the toothed band jams the belt once per turn. So the screw lives in a hub
-#     stacked on the top flange, and the hub is at the FLANGE Ø so it adds nothing to
-#     the swept envelope — an earlier -X lug reached r 8.6 and swept a Ø17 circle.
-#   • The screw axis must be X. Along Y a driver would have to reach past every other
-#     station in the row; -X is open all the way to the motors.
-# The SLIT does cross the toothed band — it has to, or the hub is fused to the body
-# below and squeezing it does nothing. It is clocked to a tooth VALLEY so it notches no
-# crest, and being axial it splits one tooth lengthwise rather than removing any.
+# caught it). It now gets it the same way the retaining collar does: a THREAD-FORMING
+# BORE, plus one M2 grub as a secondary lock. Three earlier attempts are recorded here
+# because each was killed by a different constraint and the next one kept walking into
+# the one before:
+#   • A GRUB ALONE is the wrong primary path (user). A set screw bearing on a single
+#     thread crest is a point contact that relies on its preload staying put.
+#   • A -X LUG to hold that grub reached r 8.6 and swept a Ø17 circle — the pulley
+#     TURNS, so a side lug is an envelope, not an outline (tools/check_sweep.py).
+#   • A C-CLAMP needs a full-height slit, or the hub is fused to the body below and
+#     squeezing it does nothing — and slitting the pulley is fatal (user): closing an
+#     0.8 mm gap shortens the pitch circle ~3%, so the tooth spacing no longer matches
+#     the belt, and rib spacing is not something a clamped split part holds.
+# What survives all three: the bore prints plain at COLLAR_BORE and the Tr5×1 rod cuts
+# its own mating thread through the full height on the way in. That is concentric, it
+# cannot rattle, and it is a real interference fit — the grub then only has to stop the
+# pulley WALKING along that thread under torque reversals, which is a far smaller job
+# than holding the torque outright. The grub lives in a hub stacked on the top flange:
+# above the belt (anything at r > the tooth OD inside the band jams it once per turn)
+# and at the FLANGE Ø, so it adds nothing at all to the swept circle.
 PULLEY_HUB_H    = 3 * BEAD  # 2.4 of hub above the top flange, at the flange Ø
-PULLEY_SLIT_W   = 1 * BEAD  # 0.8 — one bead, the narrowest gap that prints open
-PULLEY_CLAMP_DY = 4.0       # clamp-screw axis, +Y of the bore, crossing the slit
-PULLEY_CLAMP_Z  = PULLEY_W / 2      # its height: the cone/hub junction, so the cone
+PULLEY_GRUB_Z   = PULLEY_W / 2      # grub axis: the cone/hub junction, so the cone
                                     # backs the hole from below and the hub from above
 # ─────────────────────────────────────────────────────────────────────────
 # BOTTOM OF THE SCREW — drive pulley, thrust bearings, retaining collar (axis Z)
@@ -360,7 +369,6 @@ SUPPORT_BRG_BOT = SUPPORT_BRG_Z - SUPPORT_BRG_W     # -60.0, stack bottom
 # ALONG the layer bond). ~21-26% of strength: inside the usual 25% static-creep
 # guideline, but only just, and it is the tightest margin in the drivetrain. If it
 # ever needs more, the lever is the chassis end block, not anything in this file.
-COLLAR_BORE     = 4.6       # thread-FORMING bore (minor 4.0 < this < major 5.0)
 # THE COLLAR IS A BODY OF REVOLUTION, and that is not a style choice — IT TURNS WITH
 # THE SCREW. It was first drawn as a 12.8 x 8.0 prism with spanner flats, which sweeps
 # a Ø20.8 circle in a 9.5 mm lane: every collar would have milled both its neighbours
