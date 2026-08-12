@@ -115,19 +115,34 @@ SCREW_CLR_D  = D.SCREW_OD + 0.5
 NUT_RECESS_D  = D.NUT_BOSS_D + 0.4         # 8.4 — Y-open channel width in X
 NUT_RECESS_H  = D.NUT_BOSS_L + 0.4         # 7.0 — up from the bottom face
 # The recess's +X end is a CEILING in this part's build direction, so it cannot be a
-# wall: it closes at 45°, the void's floor rising to meet the roof. That ramp is what
-# decides how much material the +X mounting screw has under it.
+# wall — it closes at 45°. WHICH WAY the ramp runs is the whole point, and getting it
+# backwards is not a marginal-angle problem, it is unprintable (user caught it):
+#   • Closing from the BOTTOM UP — material reappearing at z -6 and climbing — puts a
+#     floating ISLAND in every layer from x 4.2 to 11.2. There is nothing under it: at
+#     that x the only material in the layer is the body above z +1.0, 7 mm away. The
+#     island grows for the full 7 mm before it finally merges.
+#   • Closing from the TOP DOWN — material growing down off the body that is ALREADY
+#     there above z +1.0 — is an ordinary 45° chamfer. Every new bead lands beside one
+#     laid in the previous layer.
+# The cost is real and is paid at the +X mounting screw: the bottom face does not come
+# back until x 11.2, so that ear stands off the part and needs NUT_SPACER_H of packing.
 NUT_RAMP_X1   = NUT_RECESS_D / 2 + NUT_RECESS_H          # 11.2, where the void ends
 NUT_BOLT_DEPTH = 6 * D.BEAD                # 4.8 self-tap depth up from the bottom face
 assert NUT_BOLT_DEPTH >= M2.min_bite, "the H-nut screws need a real bite"
-# In tension through two screws this is an ordinary bolted joint — 73.5 N each, ~2.4
-# MPa on the self-tapped thread. The -X screw bites full-depth solid. The +X one sits
-# on the ramp, so what it has under it is a TONGUE as thick as its distance past the
-# recess edge; check that rather than assume, because NUT_HOLE_DX is still a guess.
-_TONGUE = D.NUT_HOLE_DX - NUT_RECESS_D / 2
-assert _TONGUE >= D.MIN_WALL_2P - 1e-9, (
-    f"the +X nut screw lands on a {_TONGUE:.2f} mm tongue over the boss recess "
-    f"(want {D.MIN_WALL_2P}) — measure the real NUT_HOLE_DX")
+# BOTH ears have to be tied, and it is the +X one that does the work. The string
+# enters the carriage at the anchor (x +8) and leaves through the nut on the screw
+# axis (x 0), so there is a standing 1176 N·mm couple; split across ears at ±6.5 that
+# is ±90 N, trivial. On the -X screw ALONE it would be 2132 N·mm about that screw with
+# no arm to react it, and the carriage would cock until the screw bore and guide bore
+# took up their slop — about 0.2 mm at the anchor, ~13 cents of pitch.
+# The -X screw bites full-depth solid. The +X one is out over the ramp, where the
+# bottom face is missing, so it clamps through a SPACER (see nut_spacer.py). How tall
+# that spacer is falls straight out of the ramp, and both depend on NUT_HOLE_DX, which
+# is still a guess — so derive it rather than write a number.
+NUT_SPACER_H  = D.NUT_HOLE_DX - NUT_RECESS_D / 2     # 2.3: ramp height at the +X ear
+assert 0.0 < NUT_SPACER_H < NUT_RECESS_H, (
+    f"the +X nut ear at x {D.NUT_HOLE_DX} is not over the ramp at all "
+    f"({NUT_SPACER_H:.2f}) — re-derive its mounting once the real nut is measured")
 assert NUT_RAMP_X1 <= D.GUIDE_ROD_DX - GUIDE_R - 1e-9, (
     f"the boss recess's ramp reaches x {NUT_RAMP_X1:.2f} and the guide bore starts at "
     f"{D.GUIDE_ROD_DX - GUIDE_R:.2f}")
@@ -169,16 +184,17 @@ def _build() -> cq.Workplane:
     z0 = -THICK / 2
     body = body.cut(box_at(NUT_RECESS_D, WIDTH + 2, NUT_RECESS_H,
                            x=0, y=0, z=z0 + NUT_RECESS_H / 2))
-    _rx0 = NUT_RECESS_D / 2
-    body = body.cut(cq.Workplane("XZ")
-                    .polyline([(_rx0, z0), (NUT_RAMP_X1, z0 + NUT_RECESS_H),
-                               (_rx0, z0 + NUT_RECESS_H)])
+    _rx0, _z1 = NUT_RECESS_D / 2, z0 + NUT_RECESS_H
+    body = body.cut(cq.Workplane("XZ")            # closes DOWNWARD off the body above
+                    .polyline([(_rx0, z0), (_rx0, _z1), (NUT_RAMP_X1, z0)])
                     .close().extrude((WIDTH + 2) / 2, both=True))
     # H-nut mounting screws: two blind self-taps up from the bottom face. Teardrops
     # like every other Z bore here — the axis is ⊥ the +X build, so even at Ø2.2 the
     # crown would print as a sag rather than a hole.
     for sx in (-1, 1):
-        body = body.cut(_bore(M2.selftap_d, z0 - 0.01, NUT_BOLT_DEPTH,
+        # the +X one starts up on the ramp face, not at the bottom face
+        _z = z0 - 0.01 if sx < 0 else z0 + NUT_SPACER_H - 0.01
+        body = body.cut(_bore(M2.selftap_d, _z, NUT_BOLT_DEPTH,
                               x=sx * D.NUT_HOLE_DX))
     # Guide bore through the boss — closed, so the rod alone captures a loose
     # carriage during assembly (carriage in place → rod drops in → screw last).
