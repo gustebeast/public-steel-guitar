@@ -37,11 +37,10 @@ from . import dimensions as D
 from .helpers import heal, cyl, cyl_y
 from . import components as C
 from . import chassis as CH
-from .carriage import carriage, THICK as CARRIAGE_THICK, SEAT_Z as CARRIAGE_SEAT_Z
 from .bridge_endplate import bridge_endplate
+from . import bridge_endplate as BE
 from .belt_clamp import belt_clamp
 from .screw_collar import screw_collar
-from .nut_spacer import nut_spacer
 from .chassis import segments as chassis_segments
 from . import nut_block as NB
 from . import tension_fork as TF
@@ -88,7 +87,6 @@ def _PB_bar(attr):
 
 
 PARTS = {
-    "carriage":        (partial(heal, carriage),      "petg-gf/carriage.step",        "PETG-GF, load-critical — ×10 identical"),
     "bridge_endplate": (partial(heal, bridge_endplate), "petg-gf/bridge_endplate.step", "PETG-GF — fused bridge end (screw support + bearing support + axle comb + box closure)"),
     "keyhead_endplate": (lambda: heal(__import__("src.keyhead_endplate", fromlist=["e"]).keyhead_endplate), "petg-gf/keyhead_endplate.step", "PETG-GF — merged keyhead (-X) endplate + nut block (25 mm, one piece): closes the box, caps the deck grooves, gauged break-edge + 2-row clamps; drops in last, held by 1 screw"),
     "belt_clamp":      (partial(heal, belt_clamp),    "pctg/belt_clamp.step",      "PCTG — GT2 belt splice clamp (print 2 per splice ×10)"),
@@ -105,7 +103,6 @@ PARTS = {
     # NOT healed: cadkit.threads is explicit that heal()'s unify chokes on a threaded
     # solid. Both of these carry a pilot thread and both export fine unhealed.
     "screw_pulley":    (lambda: C.screw_pulley(),        "pctg/screw_pulley.step",  "PCTG at a 0.2 NOZZLE — flanged 14T GT2 pulley, 45° top flange ×10. Bore is a PILOT THREAD the Tr5x1 rod swages to size (that is the torque path); one M2 grub in the hub above the belt is only a secondary lock against walking. Fine teeth AND a 0.3 mm thread groove both need the small nozzle and unfilled material"),
-    "nut_spacer":      (lambda: heal(nut_spacer),        "petg-gf/nut_spacer.step",  "PETG-GF — H-nut +X mounting spacer ×10: packs the standoff the boss recess's 45deg ramp leaves under that ear, so the screw clamps against something instead of cocking the nut. Compression only (~20 MPa). Height is DERIVED from the ramp — it moves when the real NUT_HOLE_DX is measured"),
     "screw_collar":    (lambda: screw_collar,            "pctg/screw_collar.step", "PCTG at a 0.2 NOZZLE — leadscrew retaining collar ×10: the screw's axial anchor, driving both MR85 inner rings up against the rail ledge. Bore prints as a PILOT THREAD at the true 1 mm pitch and the Tr5×1 rod swages the last 0.1 going in — a Tr screw has blunt flanks and no cutting edges, so it forms rather than cuts and needs a helix to track; a plain bore gave it nothing, and a friction clamp would creep out under 147 N. The 0.3 mm groove is why this is a 0.2-nozzle, unfilled part. TURNED, not prismatic: it rotates with the screw, so Ø8.8 is the SWEPT envelope and the 8 mm wrench flats are milled into it. Prints bore-up, flat, no supports"),
     "motor_pulley":    (lambda: heal(C.motor_pulley()),  "pctg/motor_pulley.step",  "PCTG — flanged 14T GT2 pulley, 45° outer flange — ×10"),
     "tension_fork":    (lambda: TF.tension_forks,    "pctg/tension_fork.step",    "PCTG — belt-tension lock forks, graded 3.0–6.0 set (4 of the fitting size per motor; positive stop in the slot, no friction reliance)"),
@@ -362,31 +359,24 @@ DEMO_POSE_DZ = {i: -D.CARRIAGE_TRAVEL for i in (0, 1, 8, 9)}
 def _string_components(i):
     sy = D.string_y(i)
     mx, my, mz = D.motor_pos(i)
-    cz = D.CARRIAGE_NOM_Z + DEMO_POSE_DZ.get(i, 0.0)
+    cz = D.NUT_TOP_Z + DEMO_POSE_DZ.get(i, 0.0)      # the NUT's flange top
     out = []
     # vertical leadscrew
     out.append((f"leadscrew_{i}", C.screw().translate((D.SCREW_X, sy, D.SCREW_BOT_Z))))
-    # carriage (origin = screw axis) at its demo-pose travel position
-    out.append((f"carriage_{i}", carriage.translate((D.SCREW_X, sy, cz))))
-    # string-end cylinder nut, seated in the carriage anchor (DEMO — purchased)
+    # THE NUT IS THE CARRIAGE. Nothing else moves: its +X ear anchors the string and
+    # its -X ear rides the guide rod. Origin = the flange's top face.
+    out.append((f"nut_{i}", C.nut().translate((D.SCREW_X, sy, cz))))
+    # string BALL END, hanging UNDER the +X ear — tension pulls it up against the
+    # ear's underside, and that IS the retention (a guitar bridge plate, exactly)
     out.append((f"string_nut_{i}", C.string_nut().translate(
-        (D.BRIDGE_X, sy, cz + CARRIAGE_SEAT_Z))))
-    # H-type nut bolted UNDER the carriage — flange top flat against the carriage
-    # bottom face (that plane is the nut's own origin), boss hanging down in free air
-    out.append((f"nut_{i}", C.nut().translate(
-        (D.SCREW_X, sy, cz - CARRIAGE_THICK / 2))))
-    # ...and the +X ear's spacer, packing the gap the boss recess's ramp leaves
-    from .carriage import NUT_SPACER_H as _NSH
-    out.append((f"nut_spacer_{i}", nut_spacer.translate(
-        (D.SCREW_X + D.NUT_HOLE_DX, sy, cz - CARRIAGE_THICK / 2))))
-    # guide rod (anti-rotation), +X of the screw below the stringing window:
-    # dropped in from the top through the stop bar's snug hole + the carriage's
-    # closed bore, landing in the lower ledge's blind socket (bottom = blind
-    # floor, 2 above the ledge bottom). Friction-held both ends. Ø2.5×28 (DIN 6325).
-    rod_bot = (D.CARRIAGE_NOM_Z + D.GUIDE_FOOT_DZ
-               - D.CARRIAGE_TRAVEL - D.GUIDE_FOOT_H - 4.0)   # GR_LBOT + 2
-    out.append((f"guide_rod_{i}", C.guide_rod(28.0).translate(
-        (D.SCREW_X + D.GUIDE_ROD_DX, sy, rod_bot))))
+        (D.STRING_ANCHOR_X, sy, cz - D.NUT_FLANGE_T - D.STRING_NUT_D / 2))))
+    # guide rod: pressed into the endplate's slab above and CANTILEVERED down through
+    # the -X ear. It reaches the ear's underside at full travel plus a lead-in; there
+    # is no bottom socket, because the drive relief left nothing down there to bore.
+    rod_top = BE.GUIDE_SOCKET_Z + BE.GUIDE_SOCKET_H
+    rod_bot = D.NUT_TOP_Z - D.CARRIAGE_TRAVEL - D.NUT_FLANGE_T - 2.0
+    out.append((f"guide_rod_{i}", C.guide_rod(rod_top - rod_bot).translate(
+        (D.GUIDE_ROD_X, sy, rod_bot))))
     # screw drive pulley (odd ones raised one belt-plane), then the thrust stack:
     # TWO MR85s in TANDEM seated up against the rail's ledge, and under them the
     # printed collar that drives their inner rings up (see screw_collar.py)
@@ -425,12 +415,16 @@ def _string_path(i, sy):
     """Vertical rise → 90° wrap around the bridge bearing → speaking length."""
     r = D.BRIDGE_BEARING_OD / 2
     cx, cz = D.BRIDGE_AXLE_X, D.BRIDGE_BEARING_Z      # bearing centre
-    az = (D.CARRIAGE_NOM_Z + DEMO_POSE_DZ.get(i, 0.0)
-          + CARRIAGE_SEAT_Z)                          # anchor (string-end nut in the carriage)
+    # anchor = the ball end hanging under the nut's +X ear
+    az = (D.NUT_TOP_Z + DEMO_POSE_DZ.get(i, 0.0)
+          - D.NUT_FLANGE_T - D.STRING_NUT_D / 2)
     g = D.STRING_GAUGE[i]
     rad = g / 2.0                                     # actual string gauge
-    # vertical rise to the +X tangent point (cx+r, cz)
-    p0 = cq.Vector(cx + r, sy, az)
+    # rise to the +X tangent point (cx+r, cz). NOT quite vertical any more: the ear
+    # sits STRING_ANCHOR_X, a shade -X of the tangent line, so the dead run leans a
+    # couple of degrees. Deliberate — see dimensions on why the string takes the +X
+    # ear and SCREW_X therefore stays exactly where it is.
+    p0 = cq.Vector(D.STRING_ANCHOR_X, sy, az)
     prev = cq.Vector(cx + r, sy, cz)
     out = _rod(p0, prev, rad)
     # 90° arc, +X extent → top, approximated by short rods
@@ -1110,7 +1104,6 @@ def collect_components():
 # Per-part colours, baked into the assembly STEP (single source of truth — they
 # show in the shared FreeCAD live viewer and any STEP viewer). RGB floats 0..1.
 _COLORS = {
-    "carriage":        (0.27, 0.51, 0.71),   # PETG-GF — load-critical
     "bridge_endplate": (0.39, 0.58, 0.93),   # PETG-GF — load-critical
     "keyhead_endplate": (0.42, 0.50, 0.62),   # PETG-GF — keyhead endplate + nut block (merged)
     "belt_clamp":      (0.95, 0.55, 0.15),   # PETG
@@ -1128,7 +1121,6 @@ _COLORS = {
     "nut":             (0.82, 0.60, 0.20),   # brass
     "string_nut":      (0.82, 0.60, 0.20),   # brass string-end fitting (demo)
     "screw_collar":    (0.30, 0.65, 0.80),
-    "nut_spacer":      (0.30, 0.65, 0.80),   # printed — the screw's axial anchor
     "guide_rod":       (0.35, 0.35, 0.38),
     "motor":           (0.22, 0.25, 0.27),   # charcoal
     "belt":            (0.13, 0.13, 0.13),   # GT2 black

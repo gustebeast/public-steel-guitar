@@ -47,13 +47,14 @@ def idx(name: str):
 
 # Designed contacts that SHOULD interpenetrate / touch — not problems.
 PER_STRING_OK = {
-    frozenset({"leadscrew", "nut"}), frozenset({"leadscrew", "carriage"}),
-    frozenset({"nut", "carriage"}), frozenset({"guide_rod", "carriage"}),
+    # the H-nut IS the carriage: it rides the screw and the guide rod itself,
+    # and the string's ball end hangs off its +X ear
+    frozenset({"leadscrew", "nut"}), frozenset({"guide_rod", "nut"}),
+    frozenset({"string_nut", "nut"}),
     frozenset({"leadscrew", "screw_bearing"}), frozenset({"leadscrew", "screw_pulley"}),
     frozenset({"belt", "screw_pulley"}), frozenset({"belt", "motor_pulley"}),
     frozenset({"motor", "motor_pulley"}),
-    frozenset({"string", "carriage"}),
-    frozenset({"string_nut", "carriage"}), frozenset({"string_nut", "string"}),
+    frozenset({"string_nut", "string"}),
     # nut-block hardware (per string): break pin sets the scale, set screw clamps the
     # string, threading through its own heat-set insert
     frozenset({"break_dowel", "string"}), frozenset({"set_screw", "string"}),
@@ -78,7 +79,7 @@ GLOBAL_OK = {
     frozenset({"optical_screw", "bridge_endplate"}),
     frozenset({"screw_bearing", "bridge_endplate"}), frozenset({"leadscrew", "bridge_endplate"}),
     frozenset({"screw_pulley", "bridge_endplate"}),
-    frozenset({"nut", "bridge_endplate"}), frozenset({"carriage", "bridge_endplate"}),
+    frozenset({"nut", "bridge_endplate"}),
     frozenset({"bridge_endplate", "bridge_bearings"}),
     frozenset({"string", "bridge_bearings"}), frozenset({"string", "bridge_endplate"}),
     # guide rods drop through the endplate's stop bar into its blind sockets
