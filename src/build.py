@@ -255,16 +255,17 @@ PARTS["test_cover_plate"] = (
     "TEST COUPON — 40-long slice of the leg sleeve cover (44-wide plate + both W5 "
     "octagon rails); prints lying on its outer face")
 
-# Belt-tensioner mechanism coupon — FOUR parts (anchor + slider + two lifter bars), real
+# Belt-tensioner mechanism coupon — TWO identical clamp_halves + two identical lifter bars, real
 # geometry, print orientation. Step 1 of the fixed-motor rework: prove the belt drops in
 # free with the screw out, LOCKS on a positive tooth mesh when the M4 lifts the bars, and
 # the tension winds in smoothly and holds without creep.
 PARTS["test_belt_tensioner"] = (
     lambda: heal(__import__("src.belt_tensioner", fromlist=["e"]).tensioner_coupon()),
     "test_belt_tensioner.step",
-    "TEST COUPON — belt-tension clamp, 4 parts (anchor, slider, 2 lifter bars). Drop a GT2 "
-    "scrap through with the M4×30 out (bars low = free), seat the screw (bars ride the crest "
-    "up → teeth mesh), and wind it to check the grip holds and tension sets fine without creep")
+    "TEST COUPON — belt-tension clamp: 2 identical clamp_half (one turned 180°) + 2 identical "
+    "lifter bars. Drop a GT2 scrap through with the M4×40 out (bars low = free), seat the screw "
+    "(bars ride the crest up → teeth mesh), and wind it against the external insert-nut to check "
+    "the grip holds and tension sets fine without creep")
 
 
 # Anchor ALL outputs to the project folder (never the cwd — see Archive/3D/CLAUDE.md)
@@ -1056,17 +1057,18 @@ def _nut_coupon_components():
 
 
 def _tensioner_coupon_components():
-    """The belt-tension clamp, shown ASSEMBLED (working position) with its M4 screw +
-    brass insert, parked off the +X end clear of every real part. Rebuilds with the
-    model so it can't drift from belt_tensioner.py."""
+    """The belt-tension clamp, shown ASSEMBLED (working position), parked off the +X end clear of
+    every real part. BOTH halves are ONE SKU (`clamp_half`): half-B is that part turned 180° about
+    Z (`place_b`). The M4 head bears on half-A's −X face; the insert — a plain EXTERNAL nut, not
+    heat-set — bears on half-B's +X face. Rebuilds with the model so it can't drift."""
     from . import belt_tensioner as BTn
     o = cq.Vector(150.0, 90.0, 40.0)
     def at(p): return p.translate((o.x, o.y, o.z))
-    la = BTn.seated_lifter(BTn.lifter_a(), (BTn.GA0 + BTn.GA1) / 2, locked=True)
-    lb = BTn.seated_lifter(BTn.lifter_b(), (BTn.GB0 + BTn.GB1) / 2, locked=True)
+    la = BTn.seated_lifter(BTn.lifter_a(), BTn.WELL_MID_A, locked=True)
+    lb = BTn.seated_lifter(BTn.lifter_b(), BTn.WELL_MID_B, locked=True)   # SAME lifter, un-rotated
     return [
-        ("belt_tensioner_anchor_coupon", at(BTn.anchor())),
-        ("belt_tensioner_slider_coupon", at(BTn.slider())),
+        ("belt_tensioner_half_a_coupon", at(BTn.clamp_half())),
+        ("belt_tensioner_half_b_coupon", at(BTn.place_b(BTn.clamp_half()))),
         ("belt_tensioner_lifter_a_coupon", at(la)),
         ("belt_tensioner_lifter_b_coupon", at(lb)),
         ("belt_tensioner_screw_coupon",  at(BTn.screw_dummy())),
@@ -1102,8 +1104,8 @@ _COLORS = {
     "bridge_endplate": (0.39, 0.58, 0.93),   # PETG-GF — load-critical
     "keyhead_endplate": (0.42, 0.50, 0.62),   # PETG-GF — keyhead endplate + nut block (merged)
     "belt_clamp":      (0.95, 0.55, 0.15),   # PETG
-    "belt_tensioner_anchor_coupon": (0.20, 0.70, 0.45),   # coupon — green = test piece
-    "belt_tensioner_slider_coupon": (0.30, 0.80, 0.55),
+    "belt_tensioner_half_a_coupon": (0.20, 0.70, 0.45),   # coupon — green = test piece (ONE SKU)
+    "belt_tensioner_half_b_coupon": (0.30, 0.80, 0.55),   # same part, turned 180° about Z
     "belt_tensioner_lifter_a_coupon": (0.40, 0.85, 0.65),  # lifter bars
     "belt_tensioner_lifter_b_coupon": (0.40, 0.85, 0.65),
     "belt_tensioner_screw_coupon":  (0.55, 0.55, 0.58),   # steel M4
