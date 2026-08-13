@@ -83,10 +83,6 @@ RET_RUN  = 2 * D.BEAD                    # 1.6  ramp run = rise (45°) — the "
 RET_TOP  = WELL_FLR + RET_RUN            # -2.65  ramp top (above LOCK_Z → the locked bar stays blocked)
 RET_CH   = 0.6                           # 45° chamfer on the lifter's +X-bottom clears the ramp
 
-# install pose — the bar's +Z-most extent: lifted up into the belt tunnel (belt out) so it clears the
-# retention ramp and slides in. Capped by the tunnel ceiling; sits 0.1 under it so it can't interpenetrate.
-INSTALL_Z = CEIL_UZ - BAR_H - BTH - 0.1  # -1.75  bar-bottom at install (rib tops 0.1 below CEIL_UZ)
-
 # auto-lift — a 45° lead-in on the lifter's −X-bottom so the entering crest cams the bar up to the seat
 LEADIN   = 2.0                           # −X lead-in chamfer height (spans the crest at the unlocked rest)
 
@@ -264,16 +260,10 @@ def insert_dummy() -> cq.Workplane:
     return seated_insert(M4, (INS_X, 0.0, Z_SCR), (1.0, 0.0, 0.0))
 
 
-_POSE_Z = {"locked": LOCK_Z, "unlocked": WELL_FLR, "install": INSTALL_Z}
-
-
-def seated_lifter(bar, well_mid: float, pose: str = "locked") -> cq.Workplane:
-    """Place a bar in its well at one of three heights:
-      • locked   — flush on the screw crest (LOCK_Z), ribs meshing the belt.
-      • unlocked — resting on the well floor (WELL_FLR), ribs just clear of the belt.
-      • install  — lifted to its +Z-most extent (INSTALL_Z), clear above the retention ramp so it
-                   slides in (belt out) — the initial-installation pose."""
-    return bar.translate((well_mid, 0.0, _POSE_Z[pose]))
+def seated_lifter(bar, well_mid: float, locked: bool = True) -> cq.Workplane:
+    """Place a bar in its well: flush on the screw crest (locked = LOCK_Z) or on the well floor
+    (unlocked = WELL_FLR, ribs just clear of the belt)."""
+    return bar.translate((well_mid, 0.0, (LOCK_Z if locked else WELL_FLR)))
 
 
 # ── coupon: all four parts in PRINT orientation, spread in Y ─────────────────
