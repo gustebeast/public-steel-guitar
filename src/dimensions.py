@@ -340,34 +340,42 @@ PULLEY_BORE_MOTOR = 5.0     # = MOTOR_SHAFT_D (declared below); the motor's own 
 #   • a grub in a hub above the belt — worked, but it is still a screw to install per
 #     station and a thing to come loose.
 #
-# TWO SKUs, EACH PRINTING FLANGE-DOWN (user). A single part that FLIPPED was tried
-# and dropped: it worked and it levelled the thread engagement, but it could only print
-# standing on a Ø5.6 boss — 20.8 mm tall on a 25 mm² footprint, brim and all — and a
-# solid Ø11 flange flat on the bed is worth more than the engagement it bought. Which
-# the arithmetic agrees with: the SHORT variant has 8.3 mm of formed thread, ~59 mm² of
-# shear area, 2.5 MPa under the 147 N it carries — 10-12% of interlayer strength. The
-# flip's 20.8 was never needed; it was the retaining collar's starved 4.0 that was.
+# TWO SKUs, EACH SPANNING THE WHOLE SCREW, EACH PRINTING ON ITS OWN GOOD FACE (user).
+# Both pulleys run the full length of rod between the thrust plane and the screw's
+# bottom, so BOTH get the same ~19.5 mm of formed-thread engagement — the pulley is
+# what carries the 147 N and holds itself on the rod, so an 8 mm variant and a 20 mm
+# one was never a sensible pair. Two SKUs rather than one flipping part because a part
+# that flips can only stand on whichever end is smallest; two can each be printed on
+# the face that suits them.
 #
-# The two differ by ONE term. Both tops must land on the single thrust plane while
-# their bands sit BELT_PLANE_DZ apart, so the low-plane part carries a column of
-# exactly that and the high-plane part carries none.
+# They differ in WHERE the column sits, and that decides which way each prints:
+#   LOW SKU  (belt low)  — column ABOVE the band. Prints FLANGE-DOWN, a full Ø11 disc
+#                          flat on the bed, everything above it stepping inward.
+#   HIGH SKU (belt high) — column BELOW the band. Prints COLUMN-DOWN, so its lower
+#                          flange cannot be a disc: going up from Ø7.2 to Ø11 is an
+#                          outward step, and it is a 45° CONE (user) so it carries
+#                          itself. The belt is retained just as well by a cone.
 PULLEY_GAP      = 5.4               # toothed gap = the 5 mm GT2 belt + 0.4
-PULLEY_CONE     = (PULLEY_FLANGE_OD - PULLEY_OD) / 2        # 1.3, the TOP flange, a 45°
-                                    # cone so it is self-supporting flange-down
+PULLEY_CONE     = (PULLEY_FLANGE_OD - PULLEY_OD) / 2        # 1.3, top flange, 45° cone
 PULLEY_SPACER_D = 9 * BEAD          # 7.2 column: it has to slip past the NEIGHBOUR's
                                     # Ø11 flange at the 9.5 pitch, so 7.6 is the ceiling
+PULLEY_CONE_B   = (PULLEY_FLANGE_OD - PULLEY_SPACER_D) / 2  # 1.9, the HIGH SKU's lower
+                                    # flange: a 45° cone off the column, not a disc
 PULLEY_BOSS_D   = 7 * BEAD          # 5.6 pilot on top: lands on the bearings' INNER
                                     # rings only (their OD is ~6.3). Anything wider would
                                     # drag the stationary outer ring against a pulley
                                     # that turns with the screw.
 PULLEY_BOSS_H   = 1 * BEAD          # 0.8
-PULLEY_COL_H    = BELT_PLANE_DZ     # 11.2 on the low-plane SKU, 0 on the high-plane one
-# PRINT: FLANGE-DOWN, both SKUs, no brim and no support. Every step after the bed is
-# inward (Ø11 flange → Ø8.4 band → [45° cone back out to Ø11] → Ø7.2 column → Ø5.6
-# boss), and the one outward step is the top flange, which is the 45° cone.
-PULLEY_BOT      = PULLEY_GAP / 2 + PULLEY_FLANGE_T          # 3.5, band centre → bed face
-PULLEY_END_A    = PULLEY_GAP / 2 + PULLEY_CONE + PULLEY_BOSS_H          # 4.8, high SKU
-PULLEY_END_B    = PULLEY_END_A + PULLEY_COL_H                           # 16.0, low SKU
+# The LOW SKU's column is BELT_PLANE_DZ exactly — that is its whole job, lifting its
+# boss to the same thrust plane the high one already reaches. Everything else follows
+# from making both parts span the same rod.
+PULLEY_COL_H    = BELT_PLANE_DZ                                         # 11.2, LOW, above
+PULLEY_END_A    = PULLEY_GAP / 2 + PULLEY_CONE + PULLEY_BOSS_H          # 4.8, band→boss top
+PULLEY_END_B    = PULLEY_END_A + PULLEY_COL_H                           # 16.0, LOW's top
+PULLEY_BOT      = PULLEY_GAP / 2 + PULLEY_FLANGE_T                      # 3.5, LOW's bed face
+PULLEY_SPAN     = PULLEY_END_B + PULLEY_BOT                             # 19.5, both SKUs
+PULLEY_COL_BELOW = (PULLEY_SPAN - PULLEY_END_A
+                    - PULLEY_GAP / 2 - PULLEY_CONE_B)                   # 10.1, HIGH, below
                                     # backs the hole from below and the hub from above
 # ─────────────────────────────────────────────────────────────────────────
 # BOTTOM OF THE SCREW — drive pulley, thrust bearings, retaining collar (axis Z)
@@ -422,7 +430,7 @@ assert _NUT_PULLEY_GAP >= 1.0 - 1e-9, (
     f"the nut's lowest sweep clears the thrust ledge by only {_NUT_PULLEY_GAP:.2f} "
     f"(want 1.0): raise NUT_TOP_Z or shorten CARRIAGE_TRAVEL")
 # BOTTOM of the rod: it simply ends inside the drive pulley — there is nothing below.
-# The rod ends at the LOW SKU's bed face, the deepest thing on the screw line.
+# The rod ends where BOTH pulleys end — they span the same length, by design.
 SCREW_BOT_Z     = SCREW_PULLEY_Z - PULLEY_BOT       # -52.5
 SCREW_LEN       = SCREW_TOP_Z - SCREW_BOT_Z         # 52.3 — the CUT length (see BOM).
 # Not a purchasable length: Tr5x1 stock starts at 100 mm, so every screw is cut from a
