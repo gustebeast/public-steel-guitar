@@ -32,21 +32,20 @@ ACROSS  = 2 * D.BRIDGE_AXLE_Y + D.BRIDGE_ARM_W   # reach the endplate edge-ribs'
 X_NX    = D.BRIDGE_BASE_X0                 # -X face (= endplate -X edge, -16.5)
 X_PX    = D.SCREW_X + 9 * D.BEAD           # 7.2: +X face (bottom-bridge takeover, -0.8;
                                            # keep = bridge_endplate._SRX)
-# Z EXTENTS, datumed off the THRUST LEDGE (D.SUPPORT_BRG_Z) rather than off the rail's
-# own centre. The old form put the rail's TOP at −52.5, which is 0.5 mm INSIDE the drive
-# pulley's bottom flange — a real collision that only stayed quiet because the pair sits
-# in check_overlaps' allow list. Ledge-first also removes a second inconsistency: HEIGHT
-# happened to make the seat's top land on SUPPORT_BRG_Z, so the constant read as "ledge"
-# here and as "stack centre" in build.py, and the bearings were placed half a stack high.
-# Both ends are pinned by things that will not move, and between them there is
-# only 10.7 mm for ledge + bearings + collar (see dimensions.COLLAR_H).
+# Z EXTENTS, datumed off the THRUST LEDGE (D.SUPPORT_BRG_Z). The stack now sits ON
+# the pulleys rather than under them, so this rail rode up with it — and everything
+# that used to live below the pulley went away in the move: no retaining collar, no
+# 10.7 mm budget squeezed against the chassis end block, ~9 mm off the screw.
+# The belts do not object, which was the objection when this was first considered:
+# they wrap the toothed band, whose top is 1.5 mm below the pulley's own top
+# (measured off the built belts), so a rail seated on the tops clears them.
 SEAT_CLR = 0.3                              # slop under the stack (it seats UP on the ledge)
-BOT      = D.SUPPORT_BRG_BOT - SEAT_CLR     # -60.3, rail underside = seat mouth
-TOP      = D.SUPPORT_BRG_Z + D.BRG_LEDGE_T  # -53.4, RAIL_PULLEY_CLR under the pulley
+BOT      = D.SUPPORT_BRG_BOT - SEAT_CLR     # -33.3, rail underside = seat mouth
+TOP      = D.SUPPORT_BRG_Z + D.BRG_LEDGE_T  # -26.4
 HEIGHT   = TOP - BOT                        # 6.9
-_PULLEY_GAP = (D.SCREW_PULLEY_Z - D.PULLEY_W / 2) - TOP
-assert _PULLEY_GAP >= D.RAIL_PULLEY_CLR - 1e-9, (
-    f"the screw rail's top fouls the drive pulley by {-_PULLEY_GAP:.2f}: thin BRG_LEDGE_T")
+_NUT_GAP = D.NUT_BOT_MIN - TOP
+assert _NUT_GAP >= 1.0 - 1e-9, (
+    f"the nut's lowest sweep clears this rail's top by only {_NUT_GAP:.2f}")
 
 # TOP-LEDGE BORE. It has to be a window that lands on the OUTER rings and NOTHING
 # else: the ledge is part of the endplate and never turns, while the inner rings turn
