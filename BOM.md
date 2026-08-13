@@ -1522,7 +1522,7 @@ and the offsets were luck.
 MT bundle is not $35, this total moves more than everything found today combined.
 
 Mechanical detail: 10× MKS SERVO42D CAN MT (~$350) is the bulk; +Tr5×1 screw stock
-(**$10.97** for 2×350 mm = 14 pieces) and 10× H-flange nuts (**$65**), **20**× MR85ZZ
+(**$10.97** for 2×350 mm = **12** pieces — 700/52.3 = 13.4 counts the two rods as one continuous 700; each 350 yields floor(350/52.3) = 6, so 6+6 and 10× H-flange nuts (**$65**), **30**× MR85ZZ (3 per screw: two thrust + one top)
 (**~$10** at Trianglelab, ~$88 at Bearings Direct — two per screw now, see that row),
 **32**× 695ZZ (**~$44** at Fast Eddy / ~$158 at Bearings Direct — ONE part number for bridge + levers + pedals; the count is 10+12+10, not 10), shaft collars **deleted** (−$25: the retainer is printed),
 Ø3 shaft (~$30), dowels (~$22), GT2 belt 6.5 m (**~$3.50–11**
