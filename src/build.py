@@ -410,13 +410,13 @@ def _string_components(i):
     out.append((f"break_dowel_{i}", C.dowel().translate(               # centred in its seat (0.4 clr
         (D.NUT_BLOCK_X, ny, D.STRING_Z - g - D.NUT_PIN_D / 2))))       # all round); pin top at Z-g
     out.append((f"anvil_dowel_{i}", C.dowel().translate(               # the clamp pinches the tail onto
-        (D.NUT_BLOCK_X + NB.GATE_X, wy,                                # STEEL, not onto the plastic floor
+        (D.NUT_BLOCK_X + NB.clamp_row_x(i), wy,                                # STEEL, not onto the plastic floor
          tail_z - g / 2 - D.NUT_PIN_D / 2))))
     out.append((f"set_screw_{i}", C.set_screw().translate(             # cup tip on the CLAMPED tail;
-        (D.NUT_BLOCK_X + NB.GATE_X, wy,                                # tail stands proud of the boss
+        (D.NUT_BLOCK_X + NB.clamp_row_x(i), wy,                                # tail stands proud of the boss
          tail_z + g / 2 + D.NUT_SCREW_L))))
     out.append((f"nut_insert_{i}", C.m4_insert().translate(           # Ø6×5 heat-set insert (the screw
-        (D.NUT_BLOCK_X + NB.GATE_X, wy,                                # threads into it), in its roof pocket
+        (D.NUT_BLOCK_X + NB.clamp_row_x(i), wy,                                # threads into it), in its roof pocket
          D.STRING_Z + NB.INSERT_GAP + NB.INSERT_L))))                  # (pocket floor INSERT_GAP, up INSERT_L)
     return out
 
@@ -462,7 +462,7 @@ def _string_path(i, sy):
     out = out.union(_rod(brk, cq.Vector(rx + hr, ny, rz), rad))
     out = out.union(_wrap_coil(i, rad, hr))
     out = out.union(_rod(cq.Vector(rx - hr, wy, rz),
-                         cq.Vector(D.NUT_BLOCK_X + NB.GATE_X, wy, rz), rad))
+                         cq.Vector(D.NUT_BLOCK_X + NB.clamp_row_x(i), wy, rz), rad))
     out = out.union(_stow_tail(i, rad))
     return out
 
@@ -490,7 +490,7 @@ def _stow_tail(i, rad):
     from . import keyhead_endplate as KE
     ny = NB.wrap_y(i)[1]                                                # the WRAP's far end
     cz = D.STRING_Z + NB.ROD_Z                                          # the tail runs at rod height
-    pts = [cq.Vector(D.NUT_BLOCK_X + NB.GATE_X, ny, cz),                # clamp
+    pts = [cq.Vector(D.NUT_BLOCK_X + NB.clamp_row_x(i), ny, cz),                # clamp
            cq.Vector(D.NUT_BLOCK_X + NB.X_BACK, ny, cz)]                # straight out the -X face
     # the stow bore: -X-face mouth, a 45° inward arc to x=ZHOLE_X, then straight down to the bed
     R = (KE.ZHOLE_X - KE.XLO) / (1.0 - math.cos(math.radians(45.0)))
