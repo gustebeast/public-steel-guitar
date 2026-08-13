@@ -260,7 +260,10 @@ SCREW_TOP_Z     = NUT_TOP_MAX + SCREW_RUNOUT        # -14.6
 # 0.016 mm under the 11 N anti-rotation load. What matters is the SOCKET — over the
 # rib's grip any clearance is amplified across that 15 mm, so it is a PRESS fit.
 GUIDE_ROD_D     = 3.0       # Ø3 g6 precision shaft (shared with BRIDGE_AXLE_D)
-GUIDE_ROD_FIT   = 0.0       # press: the rib grips it, nothing else holds it up
+GUIDE_ROD_FIT   = 0.05      # SNUG PRESS. Not zero: at zero the socket is drawn the
+                            # rod's own Ø, which is not a hole you can install into,
+                            # and coincident cylinders make the boolean unreliable
+                            # too. 0.05 is the same snug the old rod sockets used.
 
 # The bridge / string anchor sits at X=0; the screw can't occupy that spot, so
 # it is offset −X by ANCHOR_DX and the carriage reaches over to the anchor.

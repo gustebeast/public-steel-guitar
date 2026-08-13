@@ -433,24 +433,6 @@ def _build() -> cq.Workplane:
     # for now) -- the guide foot rides at the NUT LEVEL now, so an upper bar at that Z
     # protrudes -X into the string-nut path. The rod top rides free in the open field;
     # re-home the top retention + the top/bottom hard stops in a later endplate pass.
-    # GUIDE-ROD SOCKETS, bored UP into the slab that the lowered room ceiling left
-    # (see GUIDE_SOCKET_H). Teardrops, like every Z bore in this part: their axis runs
-    # sideways to the -X build, so a plain cylinder would droop out of round — and a
-    # socket that is not round cannot hold a press fit square, which is the whole job.
-    for i in range(D.N_STRINGS):
-        sy = D.string_y(i)
-        body = body.cut(printable_bore(
-            D.GUIDE_ROD_D + D.GUIDE_ROD_FIT, GUIDE_SOCKET_H + 0.01,
-            axis_point=(D.GUIDE_ROD_X, sy, GUIDE_SOCKET_Z - 0.01),
-            axis_dir=(0.0, 0.0, 1.0), print_up=PRINT_UP))
-    # STRING SLOTS through the same slab, one per string, running OUT to the +X face
-    # so a string drops in sideways instead of being threaded down a second hole.
-    for i in range(D.N_STRINGS):
-        sy = D.string_y(i)
-        body = body.cut(box_at((X1 + 1.0) - D.STRING_ANCHOR_X, STRING_SLOT_W,
-                               (Z6 + 1.0) - GUIDE_SOCKET_Z,
-                               x=(D.STRING_ANCHOR_X + X1 + 1.0) / 2, y=sy,
-                               z=(GUIDE_SOCKET_Z + Z6 + 1.0) / 2))
     # (No separate guide-view or stringing-access window cuts any more: the
     #  CHANGER ROOM prism in _cap opens the cap band down to ROOM_Z0, so the
     #  rods' free span is visible and the strings thread in from +X through the
@@ -514,6 +496,30 @@ def _build() -> cq.Workplane:
             axis_point=(D.BRIDGE_AXLE_X, yc - CB_W / 2 - 1, D.BRIDGE_BEARING_Z),
             axis_dir=(0, 1, 0), print_up=PRINT_UP))
 
+    # GUIDE-ROD SOCKETS. CUT HERE, AFTER THE COMB, and that ordering is load-bearing:
+    # BRACE_Z0 is UNDER_Z is ROOM_Z1, so dropping the room ceiling 9.2 mm grew the comb
+    # brace down by the same 9.2 and it swallowed these sockets whole — cut earlier,
+    # they were unioned shut again and the rod ended up buried in solid plastic (user
+    # caught it). The brace is no accident though: it flares 45° in plan until
+    # neighbouring flares merge into one solid bar, so it IS the slab these bore into,
+    # and it reaches from XLO to -6.5 — more depth than the socket asks for.
+    # Teardrops, like every Z bore in this part: the axis runs sideways to the -X
+    # build, so a plain cylinder droops out of round, and a socket that is not round
+    # cannot hold a press fit square — which here is the entire job.
+    for i in range(D.N_STRINGS):
+        sy = D.string_y(i)
+        body = body.cut(printable_bore(
+            D.GUIDE_ROD_D + D.GUIDE_ROD_FIT, GUIDE_SOCKET_H + 0.01,
+            axis_point=(D.GUIDE_ROD_X, sy, GUIDE_SOCKET_Z - 0.01),
+            axis_dir=(0.0, 0.0, 1.0), print_up=PRINT_UP))
+    # STRING SLOTS through the same slab, one per string, running OUT to the +X face
+    # so a string drops in sideways instead of being threaded down a second hole.
+    for i in range(D.N_STRINGS):
+        sy = D.string_y(i)
+        body = body.cut(box_at((X1 + 1.0) - D.STRING_ANCHOR_X, STRING_SLOT_W,
+                               (Z6 + 1.0) - GUIDE_SOCKET_Z,
+                               x=(D.STRING_ANCHOR_X + X1 + 1.0) / 2, y=sy,
+                               z=(GUIDE_SOCKET_Z + Z6 + 1.0) / 2))
     # LIGHT COVER for the optical strip, unioned in: its roof lands on the comb
     # brace at XLO and its slots sit over the sensor triplets.
     body = body.union(OP.opt_cover())
