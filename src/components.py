@@ -239,7 +239,11 @@ def bridge_bearings() -> cq.Workplane:
     bend near-frictionless so the two sides' tensions equalize. Built in global
     position; bearing tops at STRING_Z."""
     x, z = D.BRIDGE_AXLE_X, D.BRIDGE_BEARING_Z
-    out = cyl_y(D.BRIDGE_AXLE_D, 2 * D.BRIDGE_AXLE_Y, y0=-D.BRIDGE_AXLE_Y, x=x, z=z)
+    # The shaft runs from the -Y arm's BLIND wall out to the +Y arm's outer face, where
+    # the optical strip's head caps it — see dimensions.BRIDGE_AXLE_Y0/Y1. It used to
+    # stop at the two arm CENTRELINES, i.e. half a bore short of being supported at all.
+    out = cyl_y(D.BRIDGE_AXLE_D, D.BRIDGE_AXLE_Y1 - D.BRIDGE_AXLE_Y0,
+                y0=D.BRIDGE_AXLE_Y0, x=x, z=z)
     for i in range(D.N_STRINGS):
         y0 = D.string_y(i) - D.BRIDGE_BEARING_W / 2
         brg = cyl_y(D.BRIDGE_BEARING_OD, D.BRIDGE_BEARING_W, y0=y0, x=x, z=z)

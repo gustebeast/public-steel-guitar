@@ -25,6 +25,19 @@ cut through the base's field centre (below the lower guide ledge nothing sweeps 
 the base stays solid to the bed); foot clearance is pocketed only over the +X
 legs' kept chassis shells, and the panel-jack corner is recessed back to a 4 mm
 panel.
+
+ASSEMBLY ORDER IS LOAD-BEARING HERE. Three parts in this piece are retained by
+nothing but the order they go in, so the sequence is a design constraint, not a
+suggestion. Build it in this order and every one of them ends up captive; build it
+in any other and something either will not fit or will not stay:
+
+  1. screws + thrust stacks (the pulleys ARE the retaining collars — see
+     components.screw_pulley; the string's own load jams them)
+  2. bearings and comb fingers aligned, then the AXLE from +Y (see AXLE_BORE)
+  3. the GUIDE RODS, dropped in from +Z (see GUIDE_DROP_Z1) — last before stringing,
+     since the strings then run over their tops
+  4. the OPTICAL STRIP, screwed down: it closes the axle's install channel, which
+     is the only way the axle could ever come back out
 """
 
 from __future__ import annotations
@@ -40,7 +53,7 @@ from .screw_rail import screw_rail as _screw_rail, seat_cutter as _seat_cutter
 from .screw_rail import BOT as _SR_BOT, TOP as _SR_TOP
 from .screw_rail import PRINT_UP as _SR_PRINT_UP
 from .helpers import box_at, cyl, cyl_y
-from cadkit.fasteners import M2, M4, cut_selftap, cut_anchor
+from cadkit.fasteners import M4, cut_anchor
 from cadkit.supports import printable_bore
 
 # Build direction. The endplate prints FLAT on its +X face, so "up" out of the bed is -X.
@@ -209,19 +222,37 @@ BRACE_Z0 = UNDER_Z               # flush with the finger underside -- see UNDER_
 # first layer would have floated. Same 1.10 string clearance the cover already carries.
 BRACE_Z1 = OP.COVER_Z1           # 14.011; still covers the bore (10.3..13.7) entirely
 AXLE_BORE = D.BRIDGE_AXLE_D + 0.4
-# AXLE RETENTION, NO GLUE (user: every part comes apart). The Ø3 ground shaft slides
-# -Y through both arms, 10 bearings and 9 comb fingers, so it can carry no shoulder;
-# a glue dab at the arms used to hold it. Instead: the -Y arm's bore is BLIND (that
-# wall is the -Y hard stop) and one M2 grub in the +Y arm's TOP bears on the shaft to
-# close +Y. Deleting the tie bar freed that top face, so the grub is now reachable
-# from straight above with the strings off. It self-taps in AXLE_GRUB_L of material
-# rather than taking a heat-set insert (cadkit's usual set-screw preference): there
-# are only 2.0 mm between the bore crown and the arm top, and 2.0 is five threads at
-# 0.4 pitch against a shaft that nothing pushes axially -- 10 bearing bores of friction
-# already hold it, and the blind end takes the other direction positively.
+# AXLE INSTALLATION AND RETENTION, NO FASTENER (user). The Ø5 ground shaft slides
+# +Y -> -Y through the +Y arm, 10 bearings and 11 comb fingers in one pass, so it can
+# carry no shoulder and nothing can be fitted to it afterwards from the side.
+#
+#   -Y stop: the -Y arm's bore is BLIND. That AXLE_END_WALL of material is the stop.
+#   +Y stop: the OPTICAL STRIP (user). Its +X head turns over the endplate at
+#            OP.HEAD_Y0, 0.75 outboard of the arm face the shaft ends flush with, and
+#            its underside is 2.34 BELOW the shaft's crown -- so with the board screwed
+#            down the shaft cannot move +Y without driving its crown into FR4. See
+#            _AXLE_STOP_PLAY / _AXLE_STOP_BITE, which is what those two asserts check.
+#
+# That replaces an M2 grub through the +Y arm's top. The grub worked, but it was a
+# fastener bearing on a precision shaft, reachable only with the strings off, in an arm
+# with 2.0 mm between bore crown and top face. The board has to come off for service
+# anyway and is already held by two M4 anchors -- so the retention is free.
+#
+# WHAT IT COSTS: an install PATH. Outboard of the +Y arm the board's wrap plinth fills
+# the shaft's lower half (its top is 9.501, the shaft centre 9.5), so AXLE_CHAN opens a
+# channel through it -- open upward, since there was never any plinth above the axle
+# line to keep. That channel is only reachable with the board off, which is precisely
+# why the board closes it: the escape route and the install route are the same one.
 AXLE_END_WALL = MIN_ADDED                             # -Y blind-bore wall (the 2-bead tier)
-AXLE_GRUB_Z   = ARM_TOP                               # grub mouth: the arm's free top
-AXLE_GRUB_L   = ARM_TOP - (D.BRIDGE_BEARING_Z + D.BRIDGE_AXLE_D / 2) + 0.2
+AXLE_CHAN_Y1  = OP.PCB_YP + 1.0                       # channel runs out past the plinth end
+_AXLE_STOP_PLAY = OP.HEAD_Y0 - D.BRIDGE_AXLE_Y1       # 0.75 of +Y travel before it stops
+_AXLE_STOP_BITE = (D.BRIDGE_BEARING_Z + D.BRIDGE_AXLE_D / 2) - OP.PCB_BOT   # 2.34 of overlap
+assert 0.0 <= _AXLE_STOP_PLAY <= 1.0, (
+    f"the axle's +Y stop is the optical strip's head edge, and it is {_AXLE_STOP_PLAY:.2f} "
+    f"from the shaft end -- either the shaft rattles or it fouls the board on assembly")
+assert _AXLE_STOP_BITE >= 1.0, (
+    f"the board's underside is only {_AXLE_STOP_BITE:.2f} below the axle crown; it has to "
+    f"overlap the shaft properly to stop it, or the shaft slides out under it")
 
 Z6     = CH.TP_GZ1                 # deck/top-plate level = the bridge's general top
 # ── GUIDE RODS: SOCKETED FROM ABOVE, HANGING DOWN (user) ────────────────────
@@ -294,7 +325,10 @@ DRIVE_Z0 = D.SCREW_BOT_Z - 0.4                            # -53.4
 WIN_HW     = D.BRIDGE_AXLE_Y - ARM_W / 2
 
 
-MECH_HW = D.BRIDGE_AXLE_Y + ARM_W / 2   # field-centre upper-cap half-span (arm outer)
+MECH_HW = D.BRIDGE_ARM_OUT   # 54.75, field-centre upper-cap half-span = the arm outer face.
+                             # Single-sourced: the axle's ends and the optical strip's wrap
+                             # bands both derive from this same face, so it cannot be a
+                             # second copy of the arithmetic.
 # +X-leg foot POCKET: the chassis now KEEPS a ~10 mm rail shell hugging the +X leg
 # socket (CH._leg_shell over CH.LEG_SHELL_PX), so the leg is wrapped by body. The
 # bridge's foot is therefore NOT a big empty box -- it is just the chassis-shell
@@ -354,21 +388,39 @@ def _cap() -> cq.Workplane:
     return w
 
 
-def _arm(sy, blind=False) -> cq.Workplane:
+def _arm(sy) -> cq.Workplane:
     """Edge arm (clear of the strings) holding the axle. Spans the FULL endplate
     X-depth (axle line → +X tip) so it fuses solidly to the cap and prints with no
     overhang when built up along X.
 
-    `blind=True` (the -Y arm) stops the bore AXLE_END_WALL short of the outer face:
-    that wall is the shaft's -Y hard stop. See AXLE_END_WALL for why."""
+    NO BORE HERE. It used to cut its own, and that bore did not survive: the cap's
+    field-centre band spans x BRIDGE_AXLE_X..X1 over the same Y and Z, and it is unioned
+    in AFTER the arms, so it refilled the +X half of both bores -- the axle had a
+    half-moon slot to slide through and could not be fitted at all. The comb fingers
+    already dodge this by boring after they union; _axle_negative does the same for
+    the arms, cut once on the finished solid."""
     z_lo = CH.Z_TOP - 4.0
-    arm = box_at(X1 - ARM_X, ARM_W, ARM_TOP - z_lo,
-                 x=(X1 + ARM_X) / 2, y=sy, z=(ARM_TOP + z_lo) / 2)
-    y0 = sy - ARM_W / 2 + (AXLE_END_WALL if blind else -1.0)
-    h = (ARM_W / 2 + 1.0) - (y0 - sy)
-    return arm.cut(printable_bore(
-        AXLE_BORE, h, axis_point=(D.BRIDGE_AXLE_X, y0, D.BRIDGE_BEARING_Z),
-        axis_dir=(0, 1, 0), print_up=PRINT_UP))
+    return box_at(X1 - ARM_X, ARM_W, ARM_TOP - z_lo,
+                  x=(X1 + ARM_X) / 2, y=sy, z=(ARM_TOP + z_lo) / 2)
+
+
+def _axle_negative() -> cq.Workplane:
+    """The shaft's whole path through the arms, CUT LAST. Three pieces of one line:
+
+      -Y arm   blind, stopping AXLE_END_WALL short of the outer face (the -Y stop);
+      +Y arm   through, and on out through the board's wrap plinth (AXLE_CHAN_Y1) --
+               that channel is the INSTALL path, and it is open upward because the
+               plinth top sits level with the axle centre. The board closes it.
+
+    Teardrops throughout: the axis runs sideways to the -X build, so a plain cylinder
+    droops out of round, and these bores locate a precision shaft across 108 mm."""
+    def bore(y0, y1):
+        return printable_bore(
+            AXLE_BORE, y1 - y0,
+            axis_point=(D.BRIDGE_AXLE_X, y0, D.BRIDGE_BEARING_Z),
+            axis_dir=(0, 1, 0), print_up=PRINT_UP)
+    neg = bore(-D.BRIDGE_ARM_OUT + AXLE_END_WALL, -D.BRIDGE_AXLE_Y + ARM_W / 2 + 1.0)
+    return neg.union(bore(D.BRIDGE_AXLE_Y - ARM_W / 2 - 1.0, AXLE_CHAN_Y1))
 
 
 _SRX = D.SCREW_X + 9 * D.BEAD     # 7.2: screw-rail +X face (keep = screw_rail.X_PX)
@@ -397,10 +449,7 @@ def _comb_brace(yc: float, cb_w: float) -> cq.Workplane:
 def _build() -> cq.Workplane:
     body = _cap()
     for sy in (-D.BRIDGE_AXLE_Y, D.BRIDGE_AXLE_Y):
-        body = body.union(_arm(sy, blind=sy < 0))     # -Y arm: blind bore = the -Y stop
-    # +Y arm: the M2 grub that closes the shaft's one remaining direction
-    body = cut_selftap(M2, body, (D.BRIDGE_AXLE_X, D.BRIDGE_AXLE_Y, AXLE_GRUB_Z),
-                       (0.0, 0.0, -1.0), AXLE_GRUB_L, overshoot=0.5)
+        body = body.union(_arm(sy))      # bores come later — see _axle_negative
     # Tie bar linking the arm tops above the strings. Runs from the +X tip out to
     # TIE_X0 -- past the endplate block -- so its underside can carry the DOWN-FIRING
     # optical strip at OP.SENSE_X, ~20 mm off the string termination.
@@ -681,6 +730,8 @@ def _build() -> cq.Workplane:
     body = body.union(box_at(LIP_DX, LIP_Y1 - LIP_Y0, LIP_DZ,
                              x=XLO - LIP_DX / 2, y=(LIP_Y0 + LIP_Y1) / 2,
                              z=CH.TP_GZ0 - LIP_DZ / 2))
+    # ── AXLE PATH, cut after every union for the reason written in _arm ──────────────
+    body = body.cut(_axle_negative())
     # ── CABLE CONDUIT, cut LAST so nothing unioned later refills it ──────────────────
     # Down from this part's top face, then out its -X face into the chassis interior.
     # Sized to pass a CONNECTOR one at a time -- see optical_pickup.opt_conduit. The
