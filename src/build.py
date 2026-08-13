@@ -402,18 +402,31 @@ def _string_components(i):
     # string: rises from the anchor tangent to the bearing's +X extent, wraps 90°
     # over the top, then runs the speaking length to the nut block.
     out.append((f"string_{i}", _string_path(i, sy)))
-    # nut-block hardware (DEMO): gauged break pin + clamp set screw
+    # nut-block hardware (DEMO): gauged break pin, then the WRAP's clamp -- which sits
+    # at the far end of the coil, not on the string's own lane (see nut_block.wrap_y)
     g = D.STRING_GAUGE[i]
-    row_x = NB.clamp_row_x(i)
+    ny, wy = NB.wrap_y(i)
+    tail_z = D.STRING_Z + NB.ROD_Z                                     # the tail runs at rod height
     out.append((f"break_dowel_{i}", C.dowel().translate(               # centred in its seat (0.4 clr
-        (D.NUT_BLOCK_X, D.nut_y(i), D.STRING_Z - g - D.NUT_PIN_D / 2))))  # all round); pin top at Z−g
-    out.append((f"set_screw_{i}", C.set_screw().translate(             # cup tip on the CLAMPED string
-        (D.NUT_BLOCK_X + row_x, D.nut_y(i),                            # (per-string floor); tail proud
-         D.STRING_Z + NB.clamp_floor(i) + D.NUT_SCREW_L + g))))
+        (D.NUT_BLOCK_X, ny, D.STRING_Z - g - D.NUT_PIN_D / 2))))       # all round); pin top at Z-g
+    out.append((f"anvil_dowel_{i}", C.dowel().translate(               # the clamp pinches the tail onto
+        (D.NUT_BLOCK_X + NB.GATE_X, wy,                                # STEEL, not onto the plastic floor
+         tail_z - g / 2 - D.NUT_PIN_D / 2))))
+    out.append((f"set_screw_{i}", C.set_screw().translate(             # cup tip on the CLAMPED tail;
+        (D.NUT_BLOCK_X + NB.GATE_X, wy,                                # tail stands proud of the boss
+         tail_z + g / 2 + D.NUT_SCREW_L))))
     out.append((f"nut_insert_{i}", C.m4_insert().translate(           # Ø6×5 heat-set insert (the screw
-        (D.NUT_BLOCK_X + row_x, D.nut_y(i),                            # threads into it), in its roof pocket
+        (D.NUT_BLOCK_X + NB.GATE_X, wy,                                # threads into it), in its roof pocket
          D.STRING_Z + NB.INSERT_GAP + NB.INSERT_L))))                  # (pocket floor INSERT_GAP, up INSERT_L)
     return out
+
+
+def _wrap_rod_component():
+    """The nut's WRAP ROD -- one part for all ten strings, and the SAME Ø5 g6 shaft the
+    bridge axle is cut from (nut_block.ROD_D reads D.BRIDGE_AXLE_D). It is what the
+    capstan turns around, so it is the reason the clamps hold 5-36 N instead of 490."""
+    return [("nut_wrap_rod",
+             NB.rod().translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z)))]
 
 
 def _string_path(i, sy):
@@ -442,25 +455,43 @@ def _string_path(i, sy):
     # speaking length to the break edge: string sits on the gauged pin, TOP at STRING_Z
     brk = cq.Vector(D.NUT_BLOCK_X, D.nut_y(i), D.STRING_Z - g / 2.0)
     out = out.union(_rod(prev, brk, rad))
-    # dead end: break edge → clamp, then on out the exit curve and down into the Z stow bore
-    out = out.union(_rod(brk, cq.Vector(D.NUT_BLOCK_X + NB.clamp_row_x(i), D.nut_y(i),
-                                        D.STRING_Z + NB.clamp_floor(i) + g / 2.0), rad))
+    # dead end: break edge -> down to the wrap rod -> N turns around it -> out to the clamp
+    ny, wy = NB.wrap_y(i)
+    rx, rz = D.NUT_BLOCK_X + NB.ROD_X, D.STRING_Z + NB.ROD_Z
+    hr = NB.ROD_D / 2.0 + rad + 0.05                       # helix radius: the string ON the rod
+    out = out.union(_rod(brk, cq.Vector(rx + hr, ny, rz), rad))
+    out = out.union(_wrap_coil(i, rad, hr))
+    out = out.union(_rod(cq.Vector(rx - hr, wy, rz),
+                         cq.Vector(D.NUT_BLOCK_X + NB.GATE_X, wy, rz), rad))
     out = out.union(_stow_tail(i, rad))
     return out
 
 
+def _wrap_coil(i, rad, hr):
+    """The capstan itself: NB turns of string around the shared rod, marching -Y. Same
+    sweep recipe cadkit/threads.py uses for a real thread. The march is what makes the
+    turn count a geometry question -- each turn eats NUT_PITCH, see nut_block._turns."""
+    ny, wy = NB.wrap_y(i)
+    p = NB.WRAP_F * D.STRING_GAUGE[i]
+    h = abs(wy - ny)
+    helix = cq.Wire.makeHelix(pitch=p, height=h, radius=hr)
+    coil = (cq.Workplane("XZ").center(hr, 0).circle(rad)
+            .sweep(cq.Workplane("XY").add(helix), isFrenet=True))
+    # +90 about X (not -90): that lays the helix axis along -Y, so the coil marches
+    # toward the THICKER neighbour and the fattest one runs out into free air.
+    return coil.rotate((0, 0, 0), (1, 0, 0), 90.0).translate((
+        D.NUT_BLOCK_X + NB.ROD_X, ny, D.STRING_Z + NB.ROD_Z))
+
+
 def _stow_tail(i, rad):
     """DEMO: the clamped string's free end continuing past the clamp -- flat to the exit-curve
-    start, angled down (EXIT_ANGLE) out the -X face, then looping into the keyhead Z stow bore
+    start, straight out the -X face at rod height, then looping into the keyhead Z stow bore
     (face mouth → inward arc → straight down to the bed). Shows where each cut end tucks away."""
     from . import keyhead_endplate as KE
-    ny = D.nut_y(i)
-    cz = D.STRING_Z + NB.clamp_floor(i) + D.STRING_GAUGE[i] / 2.0       # centreline on the clamp floor
-    R_e = (NB.EXIT_X0 - NB.EXIT_X1) / math.sin(math.radians(NB.EXIT_ANGLE))
-    drop = R_e * (1.0 - math.cos(math.radians(NB.EXIT_ANGLE)))          # exit-curve drop at the -X face
-    pts = [cq.Vector(D.NUT_BLOCK_X + NB.clamp_row_x(i), ny, cz),        # clamp
-           cq.Vector(D.NUT_BLOCK_X + NB.EXIT_X0,        ny, cz),        # flat run to the exit start
-           cq.Vector(D.NUT_BLOCK_X + NB.EXIT_X1,        ny, cz - drop)] # down the exit to the face
+    ny = NB.wrap_y(i)[1]                                                # the WRAP's far end
+    cz = D.STRING_Z + NB.ROD_Z                                          # the tail runs at rod height
+    pts = [cq.Vector(D.NUT_BLOCK_X + NB.GATE_X, ny, cz),                # clamp
+           cq.Vector(D.NUT_BLOCK_X + NB.X_BACK, ny, cz)]                # straight out the -X face
     # the stow bore: -X-face mouth, a 45° inward arc to x=ZHOLE_X, then straight down to the bed
     R = (KE.ZHOLE_X - KE.XLO) / (1.0 - math.cos(math.radians(45.0)))
     zj, cx = KE.Z6 - R * math.sin(math.radians(45.0)), KE.ZHOLE_X - R
@@ -1052,20 +1083,6 @@ def _joint_coupon_components():
     return [("test_octagon_tenon_coupon", ten), ("test_octagon_mortise_coupon", mor)]
 
 
-def _nut_coupon_components():
-    """The string-termination DEMO — the WRAP POST scheme — parked off the +X end
-    beside the other coupons. Not a printed part and not the real nut block yet: it
-    exists so the mechanism can be SEEN (user), and it is built from dimensions.py's
-    own gauges so it cannot drift from the instrument it is proposing a change to."""
-    from . import nut_coupon as NC
-    out = [(n, s.translate((150.0, -90.0, 40.0))) for n, s in NC.demo_parts()]
-    # VARIANT B beside it (user): one shared rod along Y instead of ten posts
-    # along Z. Same three gauges, same clamp — only the winding changes, so the
-    # two sit side by side and the difference is the only thing you see.
-    out += [(n, s.translate((150.0, -150.0, 40.0))) for n, s in NC.demo_parts_rod()]
-    return out
-
-
 def _tensioner_coupon_components():
     """The belt-tension clamp, shown ASSEMBLED (working position) with its M4 screw +
     brass insert, parked off the +X end clear of every real part. Rebuilds with the
@@ -1099,7 +1116,7 @@ def collect_components():
     comps += _electronics_components()
     comps += _lever_stations_components()      # all six, LKL/VKL included
     comps += _joint_coupon_components()
-    comps += _nut_coupon_components()
+    comps += _wrap_rod_component()
     comps += _tensioner_coupon_components()
     for i in range(D.N_STRINGS):
         comps.extend(_string_components(i))
@@ -1131,22 +1148,10 @@ _COLORS = {
     "belt":            (0.13, 0.13, 0.13),   # GT2 black
     "string":          (0.85, 0.85, 0.85),
     "break_dowel":     (0.75, 0.75, 0.78),   # steel dowel (gauged break pin)
-    # nut-termination DEMO (nut_coupon.py) — parked off +X, not a printed part
-    "nutdemo_block":       (0.30, 0.45, 0.35),   # PETG-GF, as the real nut block
-    "nutdemo_break_dowel": (0.75, 0.75, 0.78),   # existing O2 dowel
-    "nutdemo_anvil":       (0.75, 0.75, 0.78),   # the OPTIONAL second O2 dowel
-    "nutdemo_post":        (0.62, 0.66, 0.72),   # THE NEW PART: O6 wrap post
-    "nutdemo_screw":       (0.55, 0.55, 0.58),   # existing M4 cup-tip set screw
-    "nutdemo_insert":      (0.80, 0.62, 0.28),   # existing brass heat-set insert
-    "nutdemo_string":      (0.85, 0.85, 0.85),   # string
-    # variant B — the shared Y rod
-    "rodnut_block":        (0.30, 0.45, 0.35),
-    "rodnut_break_dowel":  (0.75, 0.75, 0.78),
-    "rodnut_anvil":        (0.75, 0.75, 0.78),
-    "rodnut_rod":          (0.62, 0.66, 0.72),   # ONE part, not ten
-    "rodnut_screw":        (0.55, 0.55, 0.58),
-    "rodnut_insert":       (0.80, 0.62, 0.28),
-    "rodnut_string":       (0.85, 0.85, 0.85),
+    "anvil_dowel":     (0.75, 0.75, 0.78),   # O2 anvil under the clamped tail (same part
+                                             # number as the break dowel)
+    "nut_wrap_rod":    (0.62, 0.66, 0.72),   # THE CAPSTAN -- one rod, and it is the bridge
+                                             # axle's own O5 g6 shaft
     "set_screw":       (0.55, 0.55, 0.58),   # alloy set screw
     "pickup_jack_screw":  (0.55, 0.55, 0.58),  # M4 top-access height set-screw jack
     "pickup_jack_insert":  (0.80, 0.60, 0.35),  # brass heat-set insert (jack)
