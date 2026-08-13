@@ -101,8 +101,8 @@ PARTS = {
     "cart_backstop": (lambda: __import__("src.knee_lever", fromlist=["e"]).cart_backstop, "pctg/cart_backstop.step", "PCTG — hollow X-position back-stop screw: threads the housing boss, tension screw runs through the Ø5.5 bore (shared: print 2)"),
     # NOT healed: cadkit.threads is explicit that heal()'s unify chokes on a threaded
     # solid. Both of these carry a pilot thread and both export fine unhealed.
-    "screw_pulley_hi": (lambda: C.screw_pulley(0.0),     "pctg/screw_pulley_hi.step",  "PCTG at a 0.2 NOZZLE — HIGH-plane screw pulley ×5. Prints FLANGE-DOWN — the full Ø11 bottom flange is the bed face and everything above it steps inward except the top flange, which is a 45° cone. No brim, no support. (A single part that FLIPPED to serve both planes was tried and dropped: it could only stand on a Ø5.6 boss, and a solid bed surface is worth more than the engagement it levelled — this SKU's 8.3 mm of formed thread is 2.5 MPa under the 147 N, ~10% of interlayer.) IT IS ALSO THE RETAINING COLLAR: its pilot-thread bore grips the rod and the string's 147 N jams it UP into the thrust bearings stacked straight on its pilot boss, so it needs no set screw, no clamp and no separate collar. Fine teeth AND a 0.3 mm thread groove both need the small nozzle and unfilled material"),
-    "screw_pulley_lo": (lambda: C.screw_pulley(D.PULLEY_COL_H), "pctg/screw_pulley_lo.step", "PCTG at a 0.2 NOZZLE — LOW-plane screw pulley ×5. The high-plane SKU plus an 11.2 mm column, which is what puts both SKUs' bosses on the ONE thrust plane while their bands sit BELT_PLANE_DZ apart. Prints FLANGE-DOWN like its twin"),
+    "screw_pulley_hi": (lambda: C.screw_pulley(high=True), "pctg/screw_pulley_hi.step",  "PCTG at a 0.2 NOZZLE — HIGH-plane screw pulley ×5. Prints FLANGE-DOWN — the full Ø11 bottom flange is the bed face and everything above it steps inward except the top flange, which is a 45° cone. No brim, no support. (A single part that FLIPPED to serve both planes was tried and dropped: it could only stand on a Ø5.6 boss, and a solid bed surface is worth more than the engagement it levelled — this SKU's 8.3 mm of formed thread is 2.5 MPa under the 147 N, ~10% of interlayer.) IT IS ALSO THE RETAINING COLLAR: its pilot-thread bore grips the rod and the string's 147 N jams it UP into the thrust bearings stacked straight on its pilot boss, so it needs no set screw, no clamp and no separate collar. Fine teeth AND a 0.3 mm thread groove both need the small nozzle and unfilled material"),
+    "screw_pulley_lo": (lambda: C.screw_pulley(high=False), "pctg/screw_pulley_lo.step", "PCTG at a 0.2 NOZZLE — LOW-plane screw pulley ×5. The high-plane SKU plus an 11.2 mm column, which is what puts both SKUs' bosses on the ONE thrust plane while their bands sit BELT_PLANE_DZ apart. Prints FLANGE-DOWN like its twin"),
     "motor_pulley":    (lambda: heal(C.motor_pulley()),  "pctg/motor_pulley.step",  "PCTG — flanged 14T GT2 pulley, 45° outer flange — ×10"),
     "tension_fork":    (lambda: TF.tension_forks,    "pctg/tension_fork.step",    "PCTG — belt-tension lock forks, graded 3.0–6.0 set (4 of the fitting size per motor; positive stop in the slot, no friction reliance)"),
     # pickup carrier: the deck pickup-piece (a top_plate panel) holds the pickup on a
@@ -372,7 +372,7 @@ def _string_components(i):
     # guide rod: dropped in from +Z through the slab, through the -X ear, into a blind
     # socket in the screw rail — SUPPORTED AT BOTH ENDS, so it is a beam and not a
     # cantilever. Gravity seats it; the string overhead keeps it there.
-    rod_top = BE.GUIDE_DROP_Z1
+    rod_top = BE.GUIDE_ROD_TOP          # stops under the bridge bearing, not at the bore's top
     rod_bot = BE.GUIDE_SOCKET_Z
     out.append((f"guide_rod_{i}", C.guide_rod(rod_top - rod_bot).translate(
         (D.GUIDE_ROD_X, sy, rod_bot))))
@@ -380,8 +380,8 @@ def _string_components(i):
     spz = D.screw_pulley_z(i)
     # TWO SKUs: the low-plane stations carry the column that lifts their boss to the
     # same thrust plane the high-plane ones already reach.
-    _col = 0.0 if spz > D.SCREW_PULLEY_Z else D.PULLEY_COL_H
-    out.append((f"screw_pulley_{i}", C.screw_pulley(_col).translate((D.SCREW_X, sy, spz))))
+    out.append((f"screw_pulley_{i}",
+                C.screw_pulley(high=spz > D.SCREW_PULLEY_Z).translate((D.SCREW_X, sy, spz))))
     # THRUST STACK, seated straight on the pulley's pilot boss. The string's pull jams
     # the pulley up into it, and that one jam does BOTH jobs: it retains the screw and
     # it holds the pulley on the rod. No collar, no set screw.
