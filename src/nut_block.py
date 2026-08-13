@@ -302,6 +302,32 @@ def _dowel_pocket(seat_z, y):
     return prof.extrude(PIN_SEAT_L / 2.0, both=True).translate((0.0, y, 0.0))
 
 
+def _seat_wall_top(i: int) -> cq.Workplane:
+    """Takes the top off the wall between dowel seats i and i+1 (user).
+
+    That wall is 1.7 thick -- 6.5 of pitch less the 4.8 the seats take -- and it used to
+    run the block's full height, ~9 mm of it. Thickness was never the problem; the ASPECT
+    RATIO was. Its whole job is to stop a loose Ø2 pin walking along Y, so it only has to
+    reach the pin's crown, and everything above that was a tall thin fin holding nothing.
+
+    HEIGHT IS PER WALL, because the dowels are GAUGED: each sits at -g - PIN_D/2 so that
+    every string TOP lands on one plane, which puts each crown at -g. A wall touches two
+    dowels at two different heights, so it is cut to the LOWER crown -- i.e. the THICKER
+    string's, max(g). Cut to the higher one it would stand proud of its own neighbour for
+    no reason; cut lower it would stop covering the pin it is meant to block.
+
+    Only spans the DOWEL ZONE (the bay's +X edge out to the +X face). The comb webs at the
+    rod are untouched -- those carry the rod and are the one thing in here that is
+    structural."""
+    z_top = -max(D.STRING_GAUGE[i], D.STRING_GAUGE[i + 1])      # the lower of the two crowns
+    y_hi = D.nut_y(i) - PIN_SEAT_L / 2                          # the seats' facing edges
+    y_lo = D.nut_y(i + 1) + PIN_SEAT_L / 2
+    x0 = ROD_X + BAY_R
+    return box_at(X_FRONT - x0, y_hi - y_lo, (NUT_TOP + 1.0) - z_top,
+                  x=(x0 + X_FRONT) / 2, y=(y_hi + y_lo) / 2,
+                  z=(z_top + NUT_TOP + 1.0) / 2)
+
+
 def _build() -> cq.Workplane:
     # ONE solid prism, the endplate footprint, and every feature is CUT from it.
     body = box_at(X_FRONT - X_BACK, 2 * HW, NUT_TOP - NUT_BASE,
@@ -324,6 +350,8 @@ def _build() -> cq.Workplane:
                                x=((-PIN_D / 2) + (ROD_X + BAY_R)) / 2, y=y0,
                                z=(ROOF_CLR + ROD_Z - g) / 2))
         body = body.cut(_dowel_pocket(seat_z, y0))
+        if i + 1 < D.N_STRINGS:
+            body = body.cut(_seat_wall_top(i))
 
         # THE BAY: the room the coil lives in and the tail is threaded through. Open to
         # the TOP, because that is how a string is wound on -- down the -X side, under the
