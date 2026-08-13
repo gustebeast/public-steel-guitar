@@ -99,11 +99,13 @@ _GROOVE_R = 0.55
 _GROOVE_RC = D.PULLEY_OD / 2 - D.BELT_TOOTH_H + _GROOVE_R
 
 
-def _tooth_cutter(axis: str):
+def _tooth_cutter(axis: str, lo: float = None, length: float = None):
     """Union of the 14 groove-cutting cylinders, axis 'Z' (screw) or 'Y' (motor),
     spanning the toothed band between the two flanges."""
-    lo = -D.PULLEY_W / 2 + D.PULLEY_FLANGE_T
-    length = D.PULLEY_W - D.PULLEY_FLANGE_T - _CHAMFER
+    if lo is None:
+        lo = -D.PULLEY_W / 2 + D.PULLEY_FLANGE_T
+    if length is None:
+        length = D.PULLEY_W - D.PULLEY_FLANGE_T - _CHAMFER
     tool = None
     for k in range(_N_TEETH):
         a = 2 * math.pi * k / _N_TEETH
@@ -115,47 +117,61 @@ def _tooth_cutter(axis: str):
 
 
 # ── Screw drive pulley (axis Z) ──────────────────────────────────────────
-def screw_pulley(spacer_h: float = 0.0) -> cq.Workplane:
-    """Flanged GT2 pulley on the vertical screw, axis Z, centred at z=0. Printed
-    axis-up: full bottom flange (printable wall, where the belt is biased) and a
-    45°-chamfered TOP flange (a cone — printable, no overhang) per the print plan.
+def screw_pulley() -> cq.Workplane:
+    """ONE pulley, fitted either way up, origin at the TOOTHED BAND'S CENTRE.
 
-    THIS PULLEY IS ALSO THE RETAINING COLLAR. Its pilot-thread bore grips the rod
-    and the string's 147 N jams it UP into the thrust bearings stacked directly on
-    top — so it needs no set screw, no clamp and no separate collar part. The pilot
-    BOSS on top lands on those bearings' inner rings only.
+    It is also the retaining collar: its pilot-thread bore grips the rod and the
+    string's 147 N jams whichever end is up into the thrust bearings stacked on
+    that end's pilot boss. No set screw, no clamp, no separate collar.
 
-    `spacer_h` is the STAGGER: the two pulley planes are BELT_PLANE_DZ apart but the
-    thrust stack is one plane for all ten, so the low-plane pulleys carry a column of
-    exactly that height and the high-plane ones carry none."""
-    w, ft = D.PULLEY_W, D.PULLEY_FLANGE_T
-    out = (cyl(D.PULLEY_OD, w, z=-w / 2)
-           .union(cyl(D.PULLEY_FLANGE_OD, ft, z=-w / 2))                 # full bottom flange
-           .union(_cone(D.PULLEY_OD / 2, D.PULLEY_FLANGE_OD / 2, _CHAMFER,
-                        cq.Vector(0, 0, w / 2 - _CHAMFER), cq.Vector(0, 0, 1))))  # 45° top
-    out = out.cut(_tooth_cutter("Z"))                                # 14 GT2 grooves
-    # stagger spacer + pilot boss, stacked on the top flange (added after the teeth
-    # so the groove cutters cannot reach into them)
-    top = w / 2
-    if spacer_h > 0.0:
-        out = out.union(cyl(D.PULLEY_SPACER_D, spacer_h, z=top))
-        top += spacer_h
-    out = out.union(cyl(D.PULLEY_BOSS_D, D.PULLEY_BOSS_H, z=top))
-    top += D.PULLEY_BOSS_H
-    # PILOT THREAD, full height — no slit anywhere. Slitting the pulley to make a
-    # clamp is what this replaces: closing the gap shortens the pitch circle and the
-    # teeth stop matching the belt. Same helix as the retaining collar (the rod swages
-    # the last 0.1); see dimensions.FORM_MINOR and screw_collar.py for the overrides.
-    # whole turns (pitch 1.0) AND comfortably past the part's top: cadkit warns that a
-    # sweep ending right at a non-whole-turn blank's top wipes the solid, and it does
-    _bore_h = int(w + spacer_h + D.PULLEY_BOSS_H) + 4
-    out = out.cut(threaded_rod(D.FORM_MINOR, D.FORM_MAJOR, D.SCREW_PITCH, _bore_h,
-                               z=-w / 2 - 1, overshoot=0.05, bevel_ends=False),
-                  clean=False)
-    # lead-in at both ends, so the rod meets the helix square
-    _li = 0.4
-    for zc, d0, d1 in ((-w / 2 - 0.01, D.FORM_MAJOR + 2 * _li, D.FORM_MAJOR),
-                       (top - _li, D.FORM_MAJOR, D.FORM_MAJOR + 2 * _li)):
+    THE FLIP. The two pulley planes are BELT_PLANE_DZ apart while the thrust stack
+    is one plane for all ten. Turning the part over changes how far the band sits
+    below the upper face, so a single part covers both planes as long as
+    (band→end B) − (band→end A) = BELT_PLANE_DZ — which is what the end-B column is
+    for. Boss-A up = the high plane; flipped = the low one. The envelope is identical
+    either way, so the rod reaches the same depth for every station.
+
+    Origin at the band centre means the flip is a plain 180° rotation about it, and
+    it lands the band on the pulley plane in both orientations with no offset to get
+    wrong. See dimensions.PULLEY_END_A for why end A is 4.8 and why that number is
+    not free to move.
+
+    Prints COLUMN-END-DOWN, WITH A BRIM (Ø5.6 on the bed for a 20.8 mm part). That
+    orientation is not cosmetic: it keeps every outward step at 45° or less. The
+    other way up, the boss meeting the flange is a 2.7 mm unsupported annulus.
+    """
+    g, ca, cb = D.PULLEY_GAP, D.PULLEY_CONE_A, D.PULLEY_CONE_B
+    ro, rf = D.PULLEY_OD / 2, D.PULLEY_FLANGE_OD / 2
+    rc, rb = D.PULLEY_SPACER_D / 2, D.PULLEY_BOSS_D / 2
+
+    out = cyl(D.PULLEY_OD, g, z=-g / 2)                              # toothed band
+    # END A: flange cone out to Ø11, then the pilot boss. Both are inward steps in
+    # the print (this end faces up on the plate), so neither needs a taper.
+    out = out.union(_cone(ro, rf, ca, cq.Vector(0, 0, g / 2), cq.Vector(0, 0, 1)))
+    out = out.union(cyl(D.PULLEY_BOSS_D, D.PULLEY_BOSS_H, z=g / 2 + ca))
+    # END B: the same flange cone (wide end DOWN), then the column that carries this
+    # end BELT_PLANE_DZ further from the band, then its own pilot boss.
+    zb = -g / 2
+    out = out.union(_cone(rf, ro, cb, cq.Vector(0, 0, zb - cb), cq.Vector(0, 0, 1)))
+    zb -= cb
+    out = out.union(cyl(D.PULLEY_SPACER_D, D.PULLEY_COL_H, z=zb - D.PULLEY_COL_H))
+    zb -= D.PULLEY_COL_H
+    out = out.union(_cone(rb, rc, D.PULLEY_BOSS_TPR,                  # 45° boss→column
+                          cq.Vector(0, 0, zb - D.PULLEY_BOSS_TPR), cq.Vector(0, 0, 1)))
+    zb -= D.PULLEY_BOSS_TPR
+    out = out.union(cyl(D.PULLEY_BOSS_D, D.PULLEY_BOSS_H, z=zb - D.PULLEY_BOSS_H))
+
+    out = out.cut(_tooth_cutter("Z", lo=-g / 2, length=g))           # 14 GT2 grooves
+    # PILOT THREAD, full height, same helix as everywhere else on this rod: the bore
+    # prints as a shallow female thread and the Tr5×1 rod swages the last 0.1 going in.
+    # It is the torque path AND the retention, so it runs the whole 20.8.
+    _h = int(D.PULLEY_L) + 4                                         # whole turns, past both ends
+    out = out.cut(threaded_rod(D.FORM_MINOR, D.FORM_MAJOR, D.SCREW_PITCH, _h,
+                               z=-D.PULLEY_END_B - 2, overshoot=0.05,
+                               bevel_ends=False), clean=False)
+    _li = 0.4                                                        # lead-in, both ends
+    for zc, d0, d1 in ((-D.PULLEY_END_B - 0.01, D.FORM_MAJOR + 2 * _li, D.FORM_MAJOR),
+                       (D.PULLEY_END_A - _li, D.FORM_MAJOR, D.FORM_MAJOR + 2 * _li)):
         out = out.cut(_cone(d0 / 2, d1 / 2, _li + 0.01,
                             cq.Vector(0, 0, zc), cq.Vector(0, 0, 1)), clean=False)
     return out

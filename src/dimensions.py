@@ -340,18 +340,48 @@ PULLEY_BORE_MOTOR = 5.0     # = MOTOR_SHAFT_D (declared below); the motor's own 
 #   • a grub in a hub above the belt — worked, but it is still a screw to install per
 #     station and a thing to come loose.
 #
-# THE STAGGER SPACER. The two pulley planes are BELT_PLANE_DZ apart but the thrust
-# stack is ONE plane for all ten, so the lower pulleys make up the difference with a
-# column on top — which is exactly BELT_PLANE_DZ, not a tuned number. Its Ø is set by
-# the NEIGHBOUR: it has to slip past their Ø11 flange at the 9.5 pitch, so 7.6 is the
-# ceiling and 7.2 leaves a little.
-PULLEY_SPACER_H = BELT_PLANE_DZ     # 11.2 on the low plane, 0 on the high one
-PULLEY_SPACER_D = 9 * BEAD          # 7.2, clearing the neighbour's flange by 0.4
-PULLEY_BOSS_D   = 7 * BEAD          # 5.6 pilot on top: lands on the bearings' INNER
-                                    # rings only (their OD is ~6.3). Anything wider
-                                    # would drag the stationary outer ring against a
-                                    # pulley that turns with the screw.
+# ONE PART, TWO ORIENTATIONS (user). The two pulley planes are BELT_PLANE_DZ apart
+# and the thrust stack is ONE plane for all ten, so the obvious answer was two parts —
+# a short one and a tall one. It is better to make a single part that FLIPS, and the
+# relation that allows it is small: turning it over changes how far the toothed band
+# sits below whichever end is up, so all that is needed is
+#
+#     (band → end B) − (band → end A) = BELT_PLANE_DZ
+#
+# A pilot boss at BOTH ends, and a plain column on the B side to make up the difference.
+# Boss-A up gives the high plane, flipped gives the low one, and the envelope is
+# identical either way up.
+#
+# The payoff is ENGAGEMENT. The pulley carries the full 147 N of string pull through
+# its pilot thread now — it is the retaining collar — and the two-part scheme gave the
+# high-plane half only 8.8 mm of it against the low half's 20.0. One part gives every
+# station 20.8.
+#
+# END A costs nothing to keep as it is: 4.8 is exactly what the old high-plane pulley
+# already measured from its top face to its band, so the thrust plane, the nut, the
+# travel and the bridge-bearing gap above all stay put. END B is where the column goes.
+PULLEY_GAP      = 5.4               # toothed gap = the 5 mm GT2 belt + 0.4
+PULLEY_CONE_A   = (PULLEY_FLANGE_OD - PULLEY_OD) / 2        # 1.3, flange cone at end A
+PULLEY_SPACER_D = 9 * BEAD          # 7.2 column: it has to slip past the NEIGHBOUR's
+                                    # Ø11 flange at the 9.5 pitch, so 7.6 is the ceiling
+PULLEY_CONE_B   = (PULLEY_FLANGE_OD - PULLEY_SPACER_D) / 2  # 1.9, flange cone at end B
+PULLEY_BOSS_D   = 7 * BEAD          # 5.6 pilot at each end: lands on the bearings' INNER
+                                    # rings only (their OD is ~6.3). Anything wider would
+                                    # drag the stationary outer ring against a pulley that
+                                    # turns with the screw.
 PULLEY_BOSS_H   = 1 * BEAD          # 0.8
+PULLEY_BOSS_TPR = 1 * BEAD          # 0.8, the 45° step from boss to column at end B
+# PRINT ORIENTATION IS LOAD-BEARING HERE, not cosmetic. Printed COLUMN-END-DOWN every
+# outward step is 45° or less (boss → taper → column → taper → flange → band, then
+# Ø11 → Ø5.6 at end A, which is inward and free). Printed the other way up, the boss
+# meeting the flange is a 2.7 mm unsupported annulus, and tapering that away would push
+# the band 1.4 lower — moving the thrust plane, raising the nut, and eating into the
+# clearance under the bridge bearing. Ø5.6 on the bed for a 20.8 part wants a brim.
+PULLEY_END_A    = PULLEY_GAP / 2 + PULLEY_CONE_A + PULLEY_BOSS_H            # 4.8
+PULLEY_END_B    = PULLEY_END_A + BELT_PLANE_DZ                              # 16.0
+PULLEY_COL_H    = (PULLEY_END_B - PULLEY_GAP / 2 - PULLEY_CONE_B
+                   - PULLEY_BOSS_TPR - PULLEY_BOSS_H)                       # 9.8
+PULLEY_L        = PULLEY_END_A + PULLEY_END_B                               # 20.8
                                     # backs the hole from below and the hub from above
 # ─────────────────────────────────────────────────────────────────────────
 # BOTTOM OF THE SCREW — drive pulley, thrust bearings, retaining collar (axis Z)
@@ -398,7 +428,7 @@ BRG_LEDGE_T     = 2 * BEAD                          # 1.6 of rail over the outer
 # collar, no fight for the 10.7 mm between the bottom flange and the chassis end block,
 # and ~9 mm off the screw.
 PULLEY_TOP_MAX  = (SCREW_PULLEY_Z + BELT_PLANE_DZ
-                   + PULLEY_W / 2 + PULLEY_BOSS_H)  # -33.0, the HIGH plane's boss top
+                   + PULLEY_END_A)                  # -33.0, the HIGH plane's boss top
 SUPPORT_BRG_BOT = PULLEY_TOP_MAX                    # the stack seats straight on it
 SUPPORT_BRG_Z   = SUPPORT_BRG_BOT + SUPPORT_BRG_W   # -28.0, thrust ledge underside
 _NUT_PULLEY_GAP = NUT_BOT_MIN - (SUPPORT_BRG_Z + BRG_LEDGE_T)
@@ -406,7 +436,10 @@ assert _NUT_PULLEY_GAP >= 1.0 - 1e-9, (
     f"the nut's lowest sweep clears the thrust ledge by only {_NUT_PULLEY_GAP:.2f} "
     f"(want 1.0): raise NUT_TOP_Z or shorten CARRIAGE_TRAVEL")
 # BOTTOM of the rod: it simply ends inside the drive pulley — there is nothing below.
-SCREW_BOT_Z     = SCREW_PULLEY_Z - PULLEY_W / 2     # -53.0
+# The rod ends at the pulley's far boss — the same depth either way up, because the
+# flip leaves the envelope unchanged.
+SCREW_BOT_Z     = (SCREW_PULLEY_Z + BELT_PLANE_DZ
+                   - PULLEY_END_B)                  # -53.8
 SCREW_LEN       = SCREW_TOP_Z - SCREW_BOT_Z         # 52.3 — the CUT length (see BOM).
 # Not a purchasable length: Tr5x1 stock starts at 100 mm, so every screw is cut from a
 # longer blank. That is fine because the requirement is a WINDOW, not a number — the
