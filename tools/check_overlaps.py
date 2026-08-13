@@ -62,7 +62,7 @@ PER_STRING_OK = {
     frozenset({"nut", "screw_pulley"}), frozenset({"screw_bearing", "screw_pulley"}),
     # the collar's bore is 4.6 and the rod is Ø5: the interference IS the design —
     # the steel FORMS its mating thread in the plastic on the way in (screw_collar.py)
-    frozenset({"leadscrew", "screw_collar"}), frozenset({"screw_collar", "screw_bearing"}),
+    frozenset({"leadscrew", "screw_top_bearing"}), frozenset({"screw_pulley", "screw_bearing"}),
     # a belt connects its OWN motor and screw, so it touches both there
     frozenset({"belt", "motor"}), frozenset({"belt", "leadscrew"}),
     frozenset({"belt", "belt_clamp"}),   # splice clamp grips its own belt
@@ -78,6 +78,7 @@ GLOBAL_OK = {
     frozenset({"belt_tensioner_slider_coupon", "belt_tensioner_insert_coupon"}),
     frozenset({"optical_screw", "bridge_endplate"}),
     frozenset({"screw_bearing", "bridge_endplate"}), frozenset({"leadscrew", "bridge_endplate"}),
+    frozenset({"screw_top_bearing", "bridge_endplate"}),
     frozenset({"screw_pulley", "bridge_endplate"}),
     frozenset({"nut", "bridge_endplate"}),
     frozenset({"bridge_endplate", "bridge_bearings"}),
