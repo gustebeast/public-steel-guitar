@@ -31,8 +31,16 @@ nothing but the order they go in, so the sequence is a design constraint, not a
 suggestion. Build it in this order and every one of them ends up captive; build it
 in any other and something either will not fit or will not stay:
 
-  1. screws + thrust stacks (the pulleys ARE the retaining collars — see
-     components.screw_pulley; the string's own load jams them)
+  1. THE SCREWS, AND THEY GO IN FROM BELOW (user). Both bearings seated first, then
+     the pulley threaded onto its screw OFF the instrument — the pulley IS the
+     retaining collar (components.screw_pulley), so it cannot be fitted afterwards —
+     and that subassembly raised up through both bearings. The whole ascent has to be
+     clear, which is why DRIVE_Z0 is the bed and not the seated pulley's underside.
+     THE H-NUT CANNOT BE ON THE SCREW FOR THAT. It is 8.5 across flats and the support
+     bearing's bore is Ø5, so it will not follow the screw through. Raise the screw
+     until its top clears the rail into the changer room, spin the nut on THERE, then
+     carry on up into the top bearing — so the room has to stay reachable at that
+     moment, and anything that later claims that space has to answer for this.
   2. bearings and comb fingers aligned, then the AXLE from +Y (see AXLE_BORE)
   3. the GUIDE RODS, dropped in from +Z (see GUIDE_DROP_Z1) — last before stringing,
      since the strings then run over their tops
@@ -314,11 +322,30 @@ STRING_SLOT_W = 4 * D.BEAD                      # 3.2, clears the heaviest C6 st
 # That never showed up in the overlap gate because it compares parts where they SIT,
 # and where they sit they only graze; the pair even sat in the allow list as an
 # intended contact. Only a swept check finds it (tools/check_sweep.py).
+#
+# AND IT RUNS TO THE FLOOR, because the screw goes in FROM BELOW (user). The pulley is
+# the retaining collar, so it is threaded onto the screw BEFORE the screw is fitted, and
+# that subassembly then slides up through both bearings into place. So the pulley does
+# not merely have to fit where it ends up — its whole ASCENT has to be clear, and the
+# ascent starts under the instrument. Stopping the relief 0.4 below the seated pulley
+# (the old DRIVE_Z0 = -53.4) meant the last 20.75 mm of that stroke ran into the end
+# wall, and the only way in would have been to enter at an angle and straighten up once
+# clear -- which the bearings cannot allow, since the screw is already captured in them
+# by the time the pulley reaches the obstruction.
+#
+# WHAT IT COSTS is small and already precedented: probed, the ONLY material in the
+# extended band is a 2.1 mm strip of the +X END WALL's inner face at x -4.2..-2.1,
+# 4332 mm^3, 2.2% of the part. That wall is CH.T (10) thick, so it keeps 8.3 -- and the
+# relief above already thins it to exactly the same 8.3 over its own 21.6 mm band. This
+# just continues an existing cut down to the bed instead of ending it in mid-air.
 DRIVE_SWEPT_R = D.PULLEY_FLANGE_OD / 2                    # 5.5 — the pulley is the
                                                           # widest turning thing left
 DRIVE_X1 = D.SCREW_X + DRIVE_SWEPT_R + 0.4                # -2.1
 DRIVE_Z1 = D.PULLEY_TOP_MAX + 0.4                         # -32.6
-DRIVE_Z0 = D.SCREW_BOT_Z - 0.4                            # -53.4
+DRIVE_Z0 = CH.Z_BOT                                       # -74.95: OPEN TO THE FLOOR
+assert DRIVE_Z0 <= CH.Z_BOT + 1e-9, (
+    f"the drive relief stops at {DRIVE_Z0:.2f}, above the part's floor ({CH.Z_BOT:.2f}) — "
+    f"the screw+pulley subassembly installs UPWARD and would have to enter at an angle")
 
 # Room half-width: out to the arm inner faces, so the edge carriages / string
 # balls are reachable through the room's +X opening (everything installs from +X).
@@ -488,9 +515,11 @@ def _build() -> cq.Workplane:
     # piece (screw support + bearing support + box closure) with continuous material.
     # The bottom + edge bridges run the FULL X-depth (screw line → +X tip).
     # DRIVE RELIEF (see DRIVE_X1) — cut FIRST, so the rail unioned in next survives.
-    body = body.cut(box_at(DRIVE_X1 - (XLO - 1.0), 2 * WIN_HW, DRIVE_Z1 - DRIVE_Z0,
+    # ...and it BREAKS OUT of the floor: DRIVE_Z0 is the bed plane itself, so the cut
+    # runs 1.0 past it rather than landing coplanar with the part's own bottom face.
+    body = body.cut(box_at(DRIVE_X1 - (XLO - 1.0), 2 * WIN_HW, DRIVE_Z1 - (DRIVE_Z0 - 1.0),
                            x=((XLO - 1.0) + DRIVE_X1) / 2, y=0,
-                           z=(DRIVE_Z0 + DRIVE_Z1) / 2))
+                           z=((DRIVE_Z0 - 1.0) + DRIVE_Z1) / 2))
     body = body.union(_screw_rail)
     body = body.union(box_at(X1 - _SRX, 2 * D.BRIDGE_AXLE_Y,          # bottom bridge → tip
                              _SR_TOP - _SR_BOT,                       # tied to the rail, which
