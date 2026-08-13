@@ -19,6 +19,12 @@ from cadkit.threads import threaded_rod
 from cadkit.fasteners import set_screw, m4_insert                # the ONE dummies now live in cadkit/fasteners.py;
 # re-exported here so C.set_screw() / C.m4_insert() keep working across the project
 
+# PER-PART NOZZLE. The two GT2 pulleys are the only PRINTED parts in this module of
+# dummies, and they need the fine nozzle twice over: 2 mm tooth pitch, and a 0.3 mm
+# pilot-thread groove that 0.8 would smear into a smooth bore. (screw_collar used to
+# carry this declaration for the pair of them; it is gone, so it lives here now.)
+NOZZLE_D = 0.2
+
 MOTOR_PULLEY_STANDOFF = 14.0   # pulley sits this far +Y of the motor faceplate
 
 
@@ -109,46 +115,50 @@ def _tooth_cutter(axis: str):
 
 
 # ── Screw drive pulley (axis Z) ──────────────────────────────────────────
-def screw_pulley() -> cq.Workplane:
+def screw_pulley(spacer_h: float = 0.0) -> cq.Workplane:
     """Flanged GT2 pulley on the vertical screw, axis Z, centred at z=0. Printed
     axis-up: full bottom flange (printable wall, where the belt is biased) and a
     45°-chamfered TOP flange (a cone — printable, no overhang) per the print plan.
 
-    Carries the drive torque on a THREAD-FORMING bore (the rod cuts its own thread
-    on the way in) plus one M2 grub as a secondary lock, in a HUB above the top
-    flange — clear of the belt, and at the flange Ø so it adds nothing to the swept
-    circle. See dimensions.PULLEY_HUB_H for the three shapes this replaced."""
+    THIS PULLEY IS ALSO THE RETAINING COLLAR. Its pilot-thread bore grips the rod
+    and the string's 147 N jams it UP into the thrust bearings stacked directly on
+    top — so it needs no set screw, no clamp and no separate collar part. The pilot
+    BOSS on top lands on those bearings' inner rings only.
+
+    `spacer_h` is the STAGGER: the two pulley planes are BELT_PLANE_DZ apart but the
+    thrust stack is one plane for all ten, so the low-plane pulleys carry a column of
+    exactly that height and the high-plane ones carry none."""
     w, ft = D.PULLEY_W, D.PULLEY_FLANGE_T
     out = (cyl(D.PULLEY_OD, w, z=-w / 2)
            .union(cyl(D.PULLEY_FLANGE_OD, ft, z=-w / 2))                 # full bottom flange
            .union(_cone(D.PULLEY_OD / 2, D.PULLEY_FLANGE_OD / 2, _CHAMFER,
                         cq.Vector(0, 0, w / 2 - _CHAMFER), cq.Vector(0, 0, 1))))  # 45° top
     out = out.cut(_tooth_cutter("Z"))                                # 14 GT2 grooves
-    # clamp hub, stacked on the top flange (added after the teeth so the groove
-    # cutters cannot reach into it)
-    hub_z0 = w / 2
-    out = out.union(cyl(D.PULLEY_FLANGE_OD, D.PULLEY_HUB_H, z=hub_z0))
+    # stagger spacer + pilot boss, stacked on the top flange (added after the teeth
+    # so the groove cutters cannot reach into them)
+    top = w / 2
+    if spacer_h > 0.0:
+        out = out.union(cyl(D.PULLEY_SPACER_D, spacer_h, z=top))
+        top += spacer_h
+    out = out.union(cyl(D.PULLEY_BOSS_D, D.PULLEY_BOSS_H, z=top))
+    top += D.PULLEY_BOSS_H
     # PILOT THREAD, full height — no slit anywhere. Slitting the pulley to make a
     # clamp is what this replaces: closing the gap shortens the pitch circle and the
     # teeth stop matching the belt. Same helix as the retaining collar (the rod swages
     # the last 0.1); see dimensions.FORM_MINOR and screw_collar.py for the overrides.
-    _bore_h = int(w + D.PULLEY_HUB_H + 2)
+    # whole turns (pitch 1.0) AND comfortably past the part's top: cadkit warns that a
+    # sweep ending right at a non-whole-turn blank's top wipes the solid, and it does
+    _bore_h = int(w + spacer_h + D.PULLEY_BOSS_H) + 4
     out = out.cut(threaded_rod(D.FORM_MINOR, D.FORM_MAJOR, D.SCREW_PITCH, _bore_h,
                                z=-w / 2 - 1, overshoot=0.05, bevel_ends=False),
                   clean=False)
     # lead-in at both ends, so the rod meets the helix square
     _li = 0.4
     for zc, d0, d1 in ((-w / 2 - 0.01, D.FORM_MAJOR + 2 * _li, D.FORM_MAJOR),
-                       (w / 2 + D.PULLEY_HUB_H - _li, D.FORM_MAJOR, D.FORM_MAJOR + 2 * _li)):
+                       (top - _li, D.FORM_MAJOR, D.FORM_MAJOR + 2 * _li)):
         out = out.cut(_cone(d0 / 2, d1 / 2, _li + 0.01,
                             cq.Vector(0, 0, zc), cq.Vector(0, 0, 1)), clean=False)
-    # Secondary lock: one M2 grub, radial, out the -X side where a driver can reach
-    # (along Y it would have to pass every other station in the row). Self-tapped —
-    # an M2 insert pocket is 3.5 deep and there is only 3.2 of wall to the bore — and
-    # defensible here because the FORMED THREAD is the torque path; this only stops
-    # the pulley walking along it.
-    return cut_selftap(M2, out, (-D.PULLEY_FLANGE_OD / 2 - 0.2, 0.0, D.PULLEY_GRUB_Z),
-                       (1, 0, 0), length=D.PULLEY_FLANGE_OD / 2 + 0.2 - D.PULLEY_BORE_SCREW / 2)
+    return out
 
 
 # ── Motor pulley (axis Y) ────────────────────────────────────────────────

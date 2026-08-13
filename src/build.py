@@ -40,7 +40,6 @@ from . import chassis as CH
 from .bridge_endplate import bridge_endplate
 from . import bridge_endplate as BE
 from .belt_clamp import belt_clamp
-from .screw_collar import screw_collar
 from .chassis import segments as chassis_segments
 from . import nut_block as NB
 from . import tension_fork as TF
@@ -102,8 +101,8 @@ PARTS = {
     "cart_backstop": (lambda: __import__("src.knee_lever", fromlist=["e"]).cart_backstop, "pctg/cart_backstop.step", "PCTG — hollow X-position back-stop screw: threads the housing boss, tension screw runs through the Ø5.5 bore (shared: print 2)"),
     # NOT healed: cadkit.threads is explicit that heal()'s unify chokes on a threaded
     # solid. Both of these carry a pilot thread and both export fine unhealed.
-    "screw_pulley":    (lambda: C.screw_pulley(),        "pctg/screw_pulley.step",  "PCTG at a 0.2 NOZZLE — flanged 14T GT2 pulley, 45° top flange ×10. Bore is a PILOT THREAD the Tr5x1 rod swages to size (that is the torque path); one M2 grub in the hub above the belt is only a secondary lock against walking. Fine teeth AND a 0.3 mm thread groove both need the small nozzle and unfilled material"),
-    "screw_collar":    (lambda: screw_collar,            "pctg/screw_collar.step", "PCTG at a 0.2 NOZZLE — leadscrew retaining collar ×10: the screw's axial anchor, driving both MR85 inner rings up against the rail ledge. Bore prints as a PILOT THREAD at the true 1 mm pitch and the Tr5×1 rod swages the last 0.1 going in — a Tr screw has blunt flanks and no cutting edges, so it forms rather than cuts and needs a helix to track; a plain bore gave it nothing, and a friction clamp would creep out under 147 N. The 0.3 mm groove is why this is a 0.2-nozzle, unfilled part. TURNED, not prismatic: it rotates with the screw, so Ø8.8 is the SWEPT envelope and the 8 mm wrench flats are milled into it. Prints bore-up, flat, no supports"),
+    "screw_pulley_hi": (lambda: C.screw_pulley(0.0),     "pctg/screw_pulley_hi.step",  "PCTG at a 0.2 NOZZLE — HIGH-plane screw pulley ×5. IT IS ALSO THE RETAINING COLLAR: its pilot-thread bore grips the rod and the string's 147 N jams it UP into the thrust bearings stacked straight on its pilot boss, so it needs no set screw, no clamp and no separate collar. Fine teeth AND a 0.3 mm thread groove both need the small nozzle and unfilled material"),
+    "screw_pulley_lo": (lambda: C.screw_pulley(D.PULLEY_SPACER_H), "pctg/screw_pulley_lo.step", "PCTG at a 0.2 NOZZLE — LOW-plane screw pulley ×5. Identical to the high-plane one but carrying an 11.2 mm STAGGER SPACER on top: the two pulley planes are BELT_PLANE_DZ apart while the thrust stack is ONE plane for all ten, so this variant makes up the difference. That column is what the string load pushes into the bearings, so it is structural, not packing"),
     "motor_pulley":    (lambda: heal(C.motor_pulley()),  "pctg/motor_pulley.step",  "PCTG — flanged 14T GT2 pulley, 45° outer flange — ×10"),
     "tension_fork":    (lambda: TF.tension_forks,    "pctg/tension_fork.step",    "PCTG — belt-tension lock forks, graded 3.0–6.0 set (4 of the fitting size per motor; positive stop in the slot, no friction reliance)"),
     # pickup carrier: the deck pickup-piece (a top_plate panel) holds the pickup on a
@@ -378,14 +377,20 @@ def _string_components(i):
     out.append((f"guide_rod_{i}", C.guide_rod(rod_top - rod_bot).translate(
         (D.GUIDE_ROD_X, sy, rod_bot))))
     # screw drive pulley (odd ones raised one belt-plane), then the thrust stack:
-    # TWO MR85s in TANDEM seated up against the rail's ledge, and under them the
-    # printed collar that drives their inner rings up (see screw_collar.py)
     spz = D.screw_pulley_z(i)
-    out.append((f"screw_pulley_{i}", C.screw_pulley().translate((D.SCREW_X, sy, spz))))
+    # the LOW-plane pulleys carry the stagger spacer, the high-plane ones do not — both
+    # tops then land on the single thrust plane the bearings sit on
+    _sp = 0.0 if spz > D.SCREW_PULLEY_Z else D.PULLEY_SPACER_H
+    out.append((f"screw_pulley_{i}", C.screw_pulley(_sp).translate((D.SCREW_X, sy, spz))))
+    # THRUST STACK, seated straight on the pulley's pilot boss. The string's pull jams
+    # the pulley up into it, and that one jam does BOTH jobs: it retains the screw and
+    # it holds the pulley on the rod. No collar, no set screw.
     for k in range(D.SUPPORT_BRG_N):
         bz = D.SUPPORT_BRG_BOT + (k + 0.5) * D.MR85_W
         out.append((f"screw_bearing_{i}_{k}", C.support_bearing().translate((D.SCREW_X, sy, bz))))
-    out.append((f"screw_collar_{i}", screw_collar.translate((D.SCREW_X, sy, D.COLLAR_Z1))))
+    # TOP radial bearing, floating in the slab — see dimensions.TOP_BRG_Z0
+    out.append((f"screw_top_bearing_{i}", C.support_bearing().translate(
+        (D.SCREW_X, sy, D.TOP_BRG_Z0 + D.MR85_W / 2))))
     # motor (shaft +Y, body −Y toward player) + its pulley + twisted belt
     out.append((f"motor_{i}", C.motor().translate((mx, my, mz))))
     out.append((f"motor_pulley_{i}", C.motor_pulley().translate((mx, my, mz))))
@@ -1114,13 +1119,13 @@ _COLORS = {
     "belt_tensioner_screw_coupon":  (0.55, 0.55, 0.58),   # steel M4
     "belt_tensioner_insert_coupon": (0.72, 0.60, 0.30),   # brass insert
     "screw_pulley":    (0.00, 0.55, 0.55),
+    "screw_top_bearing": (0.69, 0.77, 0.87),
     "motor_pulley":    (0.00, 0.55, 0.55),
     "leadscrew":       (0.75, 0.75, 0.78),   # steel
     "screw_bearing":   (0.69, 0.77, 0.87),
     "bridge_bearings": (0.69, 0.77, 0.87),
     "nut":             (0.82, 0.60, 0.20),   # brass
     "string_nut":      (0.82, 0.60, 0.20),   # brass string-end fitting (demo)
-    "screw_collar":    (0.30, 0.65, 0.80),
     "guide_rod":       (0.35, 0.35, 0.38),
     "motor":           (0.22, 0.25, 0.27),   # charcoal
     "belt":            (0.13, 0.13, 0.13),   # GT2 black
