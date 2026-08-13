@@ -244,8 +244,19 @@ Z6     = CH.TP_GZ1                 # deck/top-plate level = the bridge's general
 # RETENTION IS FREE: gravity seats it in the blind socket, and once the instrument is
 # strung the string runs directly over this line 16 mm up, so the rod cannot be lifted
 # out. No grub, no clip — captive by assembly order, the same trick the bridge axle uses.
-GUIDE_DROP_Z1  = BRACE_Z1                       # 14.01, the top of the slab: rods drop
-                                                # in from here, LAST before stringing
+GUIDE_DROP_Z1  = BRACE_Z1                       # 14.01, the top of the slab: the BORE
+                                                # runs to here so the rods drop in from +Z,
+                                                # LAST before stringing
+# ...but the ROD ITSELF stops short of that. Its bore sits 0.025 mm INSIDE the bridge
+# bearing's outer diameter — the rod line is 14.5 -X of the screw and the bearing
+# reaches -13.0, so over z 3.0..14.0 they interfere rather than merely pass (user spotted
+# it). Shortening the rod is the cheap half of the fix: the alternative, moving the rod
+# further -X, drags the nut and therefore the string anchor with it and steepens a break
+# angle that is already past 90°. The BORE keeps its full length, so the drop-in path is
+# unaffected; only 0.025 of a slot wall is grazed, which is nothing.
+GUIDE_ROD_TOP  = (D.STRING_Z - D.BRIDGE_BEARING_OD) - 1.0   # 2.0, a mm under the bearing
+assert GUIDE_ROD_TOP <= D.STRING_Z - D.BRIDGE_BEARING_OD - 1.0 + 1e-9, (
+    "the guide rod reaches into the bridge bearing's Z band")
 GUIDE_SOCKET_H = 5 * D.BEAD                     # 4.0 of blind socket in the rail
 GUIDE_SOCKET_Z = _SR_TOP - GUIDE_SOCKET_H       # -30.4, the socket's floor
 # The web between this bore and the top bearing's pocket is the tight spot, and it is
