@@ -1056,14 +1056,15 @@ def _nut_coupon_components():
 
 
 def _tensioner_coupon_components():
-    """The belt-tension clamp, shown ASSEMBLED (working position) with its M4 screw +
-    brass insert, parked off the +X end clear of every real part. Rebuilds with the
-    model so it can't drift from belt_tensioner.py."""
+    """The belt-tension clamp, parked off the +X end clear of every real part, with its M4 screw
+    + brass insert. The lifters are shown in the INSTALL pose (their +Z-most extent) — lifted up
+    into the belt tunnel where they clear the retention ramp and slide in during initial assembly.
+    Rebuilds with the model so it can't drift from belt_tensioner.py."""
     from . import belt_tensioner as BTn
     o = cq.Vector(150.0, 90.0, 40.0)
     def at(p): return p.translate((o.x, o.y, o.z))
-    la = BTn.seated_lifter(BTn.lifter_a(), (BTn.GA0 + BTn.GA1) / 2, locked=True)
-    lb = BTn.seated_lifter(BTn.lifter_b(), (BTn.GB0 + BTn.GB1) / 2, locked=True)
+    la = BTn.seated_lifter(BTn.lifter_a(), (BTn.GA0 + BTn.GA1) / 2, pose="install")
+    lb = BTn.seated_lifter(BTn.lifter_b(), (BTn.GB0 + BTn.GB1) / 2, pose="install")
     return [
         ("belt_tensioner_anchor_coupon", at(BTn.anchor())),
         ("belt_tensioner_slider_coupon", at(BTn.slider())),
