@@ -372,10 +372,16 @@ PULLEY_BOSS_H   = 1 * BEAD          # 0.8
 PULLEY_COL_H    = BELT_PLANE_DZ                                         # 11.2, LOW, above
 PULLEY_END_A    = PULLEY_GAP / 2 + PULLEY_CONE + PULLEY_BOSS_H          # 4.8, band→boss top
 PULLEY_END_B    = PULLEY_END_A + PULLEY_COL_H                           # 16.0, LOW's top
-PULLEY_BOT      = PULLEY_GAP / 2 + PULLEY_FLANGE_T                      # 3.5, LOW's bed face
+# BOTH FLANGES CHAMFER TOWARD THE BELT (user). The belt used to run out of the ribs
+# straight into a flat wall on the lower side; now each flange presents a 45° face to
+# it, so the pair is a shallow V and the belt self-centres. The lower flange is a
+# BICONE: it flares out to Ø11 away from the band and back in to Ø8.4 at the band.
+# Both halves still print, because the belt-side half NARROWS going up.
+PULLEY_BOT      = (PULLEY_GAP / 2 + PULLEY_FLANGE_T
+                   + PULLEY_CONE)                                       # 4.8, LOW's bed face
 PULLEY_SPAN     = PULLEY_END_B + PULLEY_BOT                             # 19.5, both SKUs
-PULLEY_COL_BELOW = (PULLEY_SPAN - PULLEY_END_A
-                    - PULLEY_GAP / 2 - PULLEY_CONE_B)                   # 10.1, HIGH, below
+PULLEY_COL_BELOW = (PULLEY_SPAN - PULLEY_END_A - PULLEY_GAP / 2
+                    - PULLEY_CONE - PULLEY_CONE_B)                      # 10.1, HIGH, below
                                     # backs the hole from below and the hub from above
 # ─────────────────────────────────────────────────────────────────────────
 # BOTTOM OF THE SCREW — drive pulley, thrust bearings, retaining collar (axis Z)
