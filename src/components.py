@@ -155,17 +155,23 @@ def screw_pulley(high: bool = False) -> cq.Workplane:
     out = out.union(cyl(D.PULLEY_BOSS_D, D.PULLEY_BOSS_H, z=top))
     top += D.PULLEY_BOSS_H
 
+    # LOWER FLANGE, both SKUs: a 45° face toward the BELT so it self-centres instead of
+    # running out of the ribs into a wall. It narrows going up, so it prints.
+    bot = -g / 2 - cn
+    out = out.union(_cone(rf, ro, cn, cq.Vector(0, 0, bot), cq.Vector(0, 0, 1)))
     if high:
-        # lower flange as a 45° CONE off the column, wide end up against the band
-        bot = -g / 2 - cb
+        # ...and away from the belt it flares back OUT to the column: the pair makes a
+        # bicone, and this half is the 45° step the column needs to print under it.
         out = out.union(_cone(D.PULLEY_SPACER_D / 2, rf, cb,
-                              cq.Vector(0, 0, bot), cq.Vector(0, 0, 1)))
+                              cq.Vector(0, 0, bot - cb), cq.Vector(0, 0, 1)))
+        bot -= cb
         out = out.union(cyl(D.PULLEY_SPACER_D, D.PULLEY_COL_BELOW,
                             z=bot - D.PULLEY_COL_BELOW))
         bot -= D.PULLEY_COL_BELOW
     else:
-        bot = -g / 2 - D.PULLEY_FLANGE_T                             # full disc = bed face
-        out = out.union(cyl(D.PULLEY_FLANGE_OD, D.PULLEY_FLANGE_T, z=bot))
+        out = out.union(cyl(D.PULLEY_FLANGE_OD, D.PULLEY_FLANGE_T,   # full disc = bed face
+                            z=bot - D.PULLEY_FLANGE_T))
+        bot -= D.PULLEY_FLANGE_T
 
     out = out.cut(_tooth_cutter("Z", lo=-g / 2, length=g))           # 14 GT2 grooves
     # PILOT THREAD, full height: the bore prints as a shallow female helix and the
