@@ -43,9 +43,9 @@ from src import dimensions as D
 # a Y axis and is checked by hand (they are nowhere near anything).
 ROTATING = {
     "screw_pulley": lambda i: (D.SCREW_X, D.string_y(i)),
-    "screw_collar": lambda i: (D.SCREW_X, D.string_y(i)),
     "leadscrew":    lambda i: (D.SCREW_X, D.string_y(i)),
     "screw_bearing": lambda i: (D.SCREW_X, D.string_y(i)),
+    "screw_top_bearing": lambda i: (D.SCREW_X, D.string_y(i)),
 }
 
 # Pairs whose swept overlap is BY DESIGN — the same idea as check_overlaps'
@@ -55,8 +55,8 @@ SWEPT_OK = {
     # concentric and overlap trivially; their real clearances are asserted in
     # dimensions.py (PULLEY_TOP_MAX, COLLAR_Z1, SUPPORT_BRG_BOT).
     ("screw_pulley", "leadscrew"), ("screw_collar", "leadscrew"),
-    ("screw_bearing", "leadscrew"), ("screw_collar", "screw_bearing"),
-    ("screw_pulley", "screw_bearing"), ("screw_collar", "screw_pulley"),
+    ("screw_bearing", "leadscrew"), ("screw_pulley", "screw_bearing"),
+    ("screw_top_bearing", "leadscrew"), ("screw_top_bearing", "bridge_endplate"),
     ("screw_pulley", "belt"),        # the belt is what the pulley is for
     ("leadscrew", "nut"), ("leadscrew", "carriage"),
     ("screw_bearing", "bridge_endplate"),   # seated in the rail, by design
