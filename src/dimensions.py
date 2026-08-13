@@ -545,6 +545,23 @@ BRIDGE_AXLE_X     = BRIDGE_X - BRIDGE_BEARING_OD / 2     # bearing/axle centre X
 BRIDGE_AXLE_Y     = STRING_FIELD_W / 2 + 12 * BEAD  # 9.6             # axle/support half-span
 BRIDGE_ARM_W      = 6 * BEAD  # 4.8 bridge-endplate bearing-arm / edge-web thickness (Y); the
                             # screw rail widens by this so the rib overlaps it cleanly
+# THE AXLE'S TWO ENDS. It is a plain ground shaft with no shoulder — it has to be, since
+# it threads through 10 bearings and 11 comb fingers in one pass — so both ends are held
+# by the STRUCTURE, and it goes in from +Y (user):
+#   -Y  the +Y arm's opposite number is BLIND. That 1.6 wall IS the -Y hard stop.
+#   +Y  the shaft ends FLUSH with the +Y arm's outer face, and the optical strip's +X
+#       head turns over the endplate 0.75 further out (optical_pickup.HEAD_Y0, which
+#       derives from this same face). The board's underside sits 2.34 BELOW the shaft's
+#       crown, so once it is screwed down the shaft cannot travel +Y without driving its
+#       own crown into FR4 — a positive stop, from a part that is already there and
+#       already fastened. That replaces the M2 grub that used to close this direction:
+#       one less fastener, one less thing to back out, and nothing to reach in and turn.
+# Install order, and it is now load-bearing: bearings and fingers aligned → shaft in from
+# +Y → optical strip on. Same trick the guide rods use at the other end of this part.
+BRIDGE_ARM_OUT    = BRIDGE_AXLE_Y + BRIDGE_ARM_W / 2    # 54.75, the arms' outer faces
+BRIDGE_AXLE_END_W = MIN_WALL_2P                         # 1.6, the -Y blind wall = the stop
+BRIDGE_AXLE_Y0    = -BRIDGE_ARM_OUT + BRIDGE_AXLE_END_W # -53.15, against the blind wall
+BRIDGE_AXLE_Y1    = BRIDGE_ARM_OUT                      # +54.75, flush with the arm face
 
 # ── Keyhead nut-block hardware → ENDPLATE_W (BOTH ends + bridge base) ────────
 # The endplate THICKNESS in X is not a round number -- it's exactly what the string-
