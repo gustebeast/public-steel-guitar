@@ -1355,11 +1355,18 @@ def _export_assembly(publish=True, gate=True, gate_full=False):
     return _report_overlaps(comps, full=gate_full) | _report_sweep(comps)
 
 
-# The overlap gate's ACCEPTED baseline: pairs that are real interpenetrations but
-# predate the gate and are tracked separately (chassis_trrs_cable vs
-# electronics_tray ~28 mm^3, vs pi5 ~1 mm^3). The build fails only on a count
-# ABOVE this — i.e. on a NEW overlap. Drive it to 0 when those are fixed.
-OVERLAP_BASELINE = 2
+# The overlap gate's ACCEPTED baseline — every entry is a REAL defect that is
+# tracked elsewhere, not a blessed contact. The build fails ABOVE this count, so a
+# NEW overlap still stops it. Drive it to 0.
+#   chassis_trrs_cable <-> electronics_tray  ~28.0 mm^3   inherited
+#   chassis_trrs_cable <-> pi5                ~1.0 mm^3   inherited
+#   chassis <-> wire_pwr_hot_10               ~0.6 mm^3   revealed by MIN_VOL 1.0 -> 0.05
+#   bridge_endplate <-> wire_out              ~0.2 mm^3   revealed by MIN_VOL 1.0 -> 0.05
+# The last two are not new damage: they were always there, under the old 1.0 mm^3
+# floor that was blind to thin, tall overlaps. Both are wire-clips-solid, which
+# this project's WIRE_OK doctrine calls real routing bugs, and both are assigned
+# out for rerouting. When they land this returns to 2.
+OVERLAP_BASELINE = 4
 
 
 def _report_overlaps(comps, full=False) -> int:
