@@ -36,7 +36,8 @@ from . import chassis as CH
 from . import top_plate as TP
 from . import optical_pickup as OP
 from .endplate_base import endplate_base
-from .screw_rail import screw_rail as _screw_rail, seat_cutter as _seat_cutter, BOT as _SR_BOT
+from .screw_rail import screw_rail as _screw_rail, seat_cutter as _seat_cutter
+from .screw_rail import BOT as _SR_BOT, TOP as _SR_TOP
 from .screw_rail import PRINT_UP as _SR_PRINT_UP
 from .helpers import box_at, cyl, cyl_y
 from cadkit.fasteners import M2, M4, cut_selftap, cut_anchor
@@ -143,11 +144,13 @@ CARRIER_TOP  = OP.PLINTH_TOP                  # 9.501 -- the board bears directl
 # bridge bearings by exactly its 1.0 minimum and so could never move; that is what
 # forced the nut's boss to be recessed at all. With the cage gone the ceiling drops
 # to just over the screw tops, and everything it used to squeeze goes away with it.
-ROOM_Z0      = D.NUT_BOT_MIN - 1.0            # -30.8, under the nut's lowest sweep
-ROOM_Z1      = D.SCREW_TOP_Z + 2 * D.BEAD     # -6.0, two beads over the screw tops
-assert ROOM_Z1 - D.SCREW_TOP_Z >= 1.0 - 1e-9, (
-    f"the changer room clears the leadscrew tops by only {ROOM_Z1 - D.SCREW_TOP_Z:.2f}")
-assert D.NUT_TOP_MAX < ROOM_Z1, "the nut's top of travel is above the room ceiling"
+ROOM_Z0      = D.NUT_BOT_MIN - 1.0            # -26.35, under the nut's lowest sweep
+ROOM_Z1      = D.TOP_BRG_Z0                   # -3.2 — the ceiling IS the top bearing's
+                                              # seat mouth. The screw no longer stops
+                                              # under the ceiling; it runs on past the
+                                              # nut INTO the slab, to its top bearing.
+assert D.NUT_TOP_MAX < ROOM_Z1 - 1.0 + 1e-9, (
+    f"the nut's top of travel ({D.NUT_TOP_MAX}) does not clear the room ceiling")
 # Fingers and braces — everything INSIDE the endplate — put their underside on the
 # ceiling, so no later union can hang back down into the room.
 UNDER_Z      = ROOM_Z1
@@ -255,10 +258,11 @@ STRING_SLOT_W = 4 * D.BEAD                      # 3.2, clears the heaviest C6 st
 # That never showed up in the overlap gate because it compares parts where they SIT,
 # and where they sit they only graze; the pair even sat in the allow list as an
 # intended contact. Only a swept check finds it (tools/check_sweep.py).
-DRIVE_SWEPT_R = max(D.PULLEY_FLANGE_OD, D.COLLAR_OD) / 2  # 5.5
+DRIVE_SWEPT_R = D.PULLEY_FLANGE_OD / 2                    # 5.5 — the pulley is the
+                                                          # widest turning thing left
 DRIVE_X1 = D.SCREW_X + DRIVE_SWEPT_R + 0.4                # -2.1
-DRIVE_Z1 = D.PULLEY_TOP_MAX + 0.4                         # -31.0
-DRIVE_Z0 = D.COLLAR_Z0 - 0.4                              # -64.4
+DRIVE_Z1 = D.PULLEY_TOP_MAX + 0.4                         # -32.6
+DRIVE_Z0 = D.SCREW_BOT_Z - 0.4                            # -53.4
 
 # Room half-width: out to the arm inner faces, so the edge carriages / string
 # balls are reachable through the room's +X opening (everything installs from +X).
@@ -414,8 +418,10 @@ def _build() -> cq.Workplane:
                            x=((XLO - 1.0) + DRIVE_X1) / 2, y=0,
                            z=(DRIVE_Z0 + DRIVE_Z1) / 2))
     body = body.union(_screw_rail)
-    body = body.union(box_at(X1 - _SRX, 2 * D.BRIDGE_AXLE_Y, 10.0,    # bottom bridge → tip
-                             x=(X1 + _SRX) / 2, y=0, z=D.SUPPORT_BRG_Z))
+    body = body.union(box_at(X1 - _SRX, 2 * D.BRIDGE_AXLE_Y,          # bottom bridge → tip
+                             _SR_TOP - _SR_BOT,                       # tied to the rail, which
+                             x=(X1 + _SRX) / 2, y=0,                  # moved up onto the pulleys
+                             z=(_SR_BOT + _SR_TOP) / 2))
     z_lo = CH.Z_TOP - 4.0
     sr_bot = _SR_BOT                                                  # screw-rail −Z extent
     for sy in (-D.BRIDGE_AXLE_Y, D.BRIDGE_AXLE_Y):                    # edge webs rail→arm
@@ -511,6 +517,16 @@ def _build() -> cq.Workplane:
         body = body.cut(printable_bore(
             D.GUIDE_ROD_D + D.GUIDE_ROD_FIT, GUIDE_SOCKET_H + 0.01,
             axis_point=(D.GUIDE_ROD_X, sy, GUIDE_SOCKET_Z - 0.01),
+            axis_dir=(0.0, 0.0, 1.0), print_up=PRINT_UP))
+    # TOP RADIAL BEARING seats, bored UP into the same slab. FLOATING: the pocket is
+    # half a millimetre deeper than the bearing and has no shoulder either side, so it
+    # can only locate the shaft radially — give it a face to push on and it would fight
+    # the thrust stack for the string load and over-constrain the screw.
+    for i in range(D.N_STRINGS):
+        sy = D.string_y(i)
+        body = body.cut(printable_bore(
+            D.MR85_OD + 0.2, D.MR85_W + 0.5 + 0.01,
+            axis_point=(D.SCREW_X, sy, D.TOP_BRG_Z0 - 0.01),
             axis_dir=(0.0, 0.0, 1.0), print_up=PRINT_UP))
     # STRING SLOTS through the same slab, one per string, running OUT to the +X face
     # so a string drops in sideways instead of being threaded down a second hole.

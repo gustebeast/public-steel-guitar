@@ -349,6 +349,7 @@ _ex("layout",
 # The instrument, not the printer.
 _ex("musical",
     STRING_PITCH="changer string spacing",
+    CARRIAGE_TRAVEL="the 6 in 2**(n/6) is MUSICAL — stretch is proportional to f^2 and f = 2^(n/12) — not a length",
     NUT_PITCH="nut string spacing",
     STRING_FIELD_W="derived from STRING_PITCH",
     MOUNTING_SPAN="scale length",
