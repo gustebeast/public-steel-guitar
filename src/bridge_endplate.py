@@ -231,16 +231,30 @@ Z6     = CH.TP_GZ1                 # deck/top-plate level = the bridge's general
 # also the end that prints, since everything up there is a straight -X extension of
 # solid cap and every layer of it is backed.
 #
-# What holds them is the slab between the room ceiling and the deck plane. That slab
-# is FREE: dropping ROOM_Z1 to just over the screw tops (see above) stops the room cut
-# eating it, so the same change that unpinned the nut also handed the rods something
-# to hang from. Grip is a PRESS fit — with only this much socket, any clearance up
-# here is amplified over the rod's ~15 mm reach (0.05 of slop would be 0.24 mm at the
-# ear), and nothing else holds the rod up.
-GUIDE_SOCKET_H = 8 * D.BEAD                     # 6.4 of grip in the slab
-GUIDE_SOCKET_Z = ROOM_Z1                        # socket mouth = the room's ceiling
-assert GUIDE_SOCKET_Z + GUIDE_SOCKET_H <= Z6 + 1e-9, (
-    "the guide sockets would break out through the deck plane")
+# SUPPORTED AT BOTH ENDS, INSTALLED FROM +Z (user). The rod passes clean through the
+# slab and lands in a blind socket in the SCREW RAIL below, so it is a beam rather
+# than a cantilever and lateral load on it stops being a question. That bottom socket
+# only exists because the thrust stack moved up onto the pulleys and took the rail
+# with it — in the old layout the drive relief had cut away everything down there.
+#
+# It also stops the press fit mattering. A single-ended rod depended on that fit
+# staying tight, and an interference fit in plastic sheds stress over time; located at
+# two ends it is held whether or not the fit relaxes.
+#
+# RETENTION IS FREE: gravity seats it in the blind socket, and once the instrument is
+# strung the string runs directly over this line 16 mm up, so the rod cannot be lifted
+# out. No grub, no clip — captive by assembly order, the same trick the bridge axle uses.
+GUIDE_DROP_Z1  = BRACE_Z1                       # 14.01, the top of the slab: rods drop
+                                                # in from here, LAST before stringing
+GUIDE_SOCKET_H = 5 * D.BEAD                     # 4.0 of blind socket in the rail
+GUIDE_SOCKET_Z = _SR_TOP - GUIDE_SOCKET_H       # -30.4, the socket's floor
+# The web between this bore and the top bearing's pocket is the tight spot, and it is
+# a teardrop-apex-to-bore-wall distance, not a wall anyone chose:
+_GUIDE_WEB = ((D.GUIDE_ROD_X + (D.GUIDE_ROD_D + D.GUIDE_ROD_FIT) / 2)
+              - (D.SCREW_X - (D.MR85_OD + 0.2) / 2 * 1.4143))
+assert _GUIDE_WEB >= D.MIN_WALL - 1e-9, (
+    f"only {_GUIDE_WEB:.2f} of slab between the guide-rod bore and the top bearing's "
+    f"pocket (one bead is {D.MIN_WALL}) — it is set by NUT_HOLE_DX, still a guess")
 
 # STRING SLOTS. The strings rise from the +X ears at D.STRING_ANCHOR_X and have to
 # cross that same slab. They get a slot per string running OUT to the +X face rather
@@ -514,9 +528,12 @@ def _build() -> cq.Workplane:
     # cannot hold a press fit square — which here is the entire job.
     for i in range(D.N_STRINGS):
         sy = D.string_y(i)
+        # ONE bore, all the way from the slab's top down to the blind socket floor in
+        # the rail. Everything it crosses on the way — slab, changer room, rail — is
+        # either open or wants the hole, so it is a single cut rather than three.
         body = body.cut(printable_bore(
-            D.GUIDE_ROD_D + D.GUIDE_ROD_FIT, GUIDE_SOCKET_H + 0.01,
-            axis_point=(D.GUIDE_ROD_X, sy, GUIDE_SOCKET_Z - 0.01),
+            D.GUIDE_ROD_D + D.GUIDE_ROD_FIT, GUIDE_DROP_Z1 - GUIDE_SOCKET_Z,
+            axis_point=(D.GUIDE_ROD_X, sy, GUIDE_SOCKET_Z),
             axis_dir=(0.0, 0.0, 1.0), print_up=PRINT_UP))
     # TOP RADIAL BEARING seats, bored UP into the same slab. FLOATING: the pocket is
     # half a millimetre deeper than the bearing and has no shoulder either side, so it
