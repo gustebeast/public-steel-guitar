@@ -80,12 +80,18 @@ ROD_FIT = 0.4                                   # the rod is LOCATED, not grippe
 ROD_BORE = ROD_D + ROD_FIT
 
 # ── X layout (local frame) ─────────────────────────────────────────────────
-# The prism is still exactly the endplate footprint, and that is a CONSTRAINT now
-# rather than a derivation: D.ENDPLATE_W is computed from the OLD two-clamp-row walk
-# and it sets the bridge base as well (D.BRIDGE_BASE_X0/X1), so this scheme has to fit
-# INSIDE 25.0, not re-derive it. It does, with room: the capstan walk is 23.0.
+# The prism is the KEYHEAD's footprint, D.KEYHEAD_W -- which is 4.2 thicker than the
+# bridge's D.ENDPLATE_W, and this module is the reason why (user: extend the thickness
+# along X to fit). The capstan spends X the old scheme did not: the rod, and the
+# threading bay a hand needs around it. Behind that the clamp inserts STILL need two
+# staggered rows, because O6 pockets on a 6.5 string pitch cannot share one row at all
+# -- perfectly spaced they leave 0.5 mm of wall, and the turn counts differ so the
+# worst pair closes to 5.78 and interferes outright.
+#
+# The growth is all -X, AWAY FROM THE STRINGS: X_FRONT and the break edge at X=0 do not
+# move, so the scale length is untouched and the bridge stays exactly where it is.
 X_FRONT = D.BREAK_PX_BUF                        # +4: +X lip / inboard face
-X_BACK  = X_FRONT - D.ENDPLATE_W                # -21: -X outer face (the bed face)
+X_BACK  = X_FRONT - D.KEYHEAD_W                 # -25.6: -X outer face (the bed face)
 DOWEL_X = 0.0                                   # break edge = the scale "0"
 ROD_X   = -8 * D.BEAD                           # -6.4 rod centre
 # ROD_Z IS SET BY THE BREAK ANGLE, not by taste. The dowel -- not the rod -- has to
@@ -99,14 +105,32 @@ ROD_Z   = -3 * D.BEAD                           # -2.4 rod centre
 BAY_R   = ROD_D / 2 + 2.5                       # 5.0 threading annulus around the rod --
                                                 # the room a hand needs to pass the tail
                                                 # around it, not a clearance
-GATE_X  = -19 * D.BEAD                          # -15.2 clamp screw. It crosses the exit
-                                                # passage, so wound OUT it is a GATE the
-                                                # tail threads past, wound IN it is the CLAMP
-_NX_WALL = abs(X_BACK - (GATE_X - INSERT_D / 2))
+# TWO CLAMP ROWS, adjacent strings alternating. The near row clears the threading bay;
+# the far row sits ROW_DX behind it, and ROW_DX is not a round number -- it is what the
+# insert pitch demands. Neighbouring strings are always in DIFFERENT rows, so what has
+# to clear O6 is the DIAGONAL between them: the tightest pair is 5.78 apart in Y (the
+# wrap ends differ, since the turn counts do), and sqrt(5.78^2 + 5.6^2) = 8.05 leaves
+# 2.05 of wall. Same-row neighbours are two strings apart and never closer than 11.88.
+ROW_A   = -19 * D.BEAD                          # -15.2 near row: +X edge 0.8 clear of the bay
+ROW_DX  = 7 * D.BEAD                            # 5.6 row separation -- see the diagonal above
+ROW_B   = ROW_A - ROW_DX                        # -20.8 far row
+GATE_X  = ROW_A                                 # the gate/clamp X for the near row. Either row
+                                                # crosses its string's exit passage, so wound OUT
+                                                # it is a GATE the tail threads past and wound IN
+                                                # it is the CLAMP
+
+
+def clamp_row_x(i: int) -> float:
+    """X of string i's clamp. Adjacent strings alternate rows so the O6 inserts never
+    share one; phased off the -Y end so the heaviest string lands on the NEAR row."""
+    return ROW_A if (D.N_STRINGS - 1 - i) % 2 == 0 else ROW_B
+
+
+_NX_WALL = abs(X_BACK - (ROW_B - INSERT_D / 2))
 assert _NX_WALL >= D.SCREW_NX_WALL - 1e-9, (
-    f"only {_NX_WALL:.2f} of wall behind the clamp insert (floor {D.SCREW_NX_WALL})")
-assert ROD_X - BAY_R > GATE_X + INSERT_D / 2, (
-    "the threading bay has eaten into the clamp insert's column")
+    f"only {_NX_WALL:.2f} of wall behind the far clamp insert (floor {D.SCREW_NX_WALL})")
+assert ROD_X - BAY_R > ROW_A + INSERT_D / 2, (
+    "the threading bay has eaten into the near clamp insert's column")
 
 # ── Y/Z extent ─────────────────────────────────────────────────────────────
 Y_WALL   = 8.0
@@ -278,13 +302,14 @@ def _build() -> cq.Workplane:
                                z=(ROOF_CLR + ROD_Z - g) / 2))
         # ANVIL: a second Ø2 dowel under the tail at the clamp, so the pinch is
         # metal-on-metal and the plastic floor is not the thing being squeezed.
+        gx = clamp_row_x(i)
         anvil_z = ROD_Z - g / 2 - PIN_D / 2
-        body = body.cut(_anvil_pocket(anvil_z + PIN_CLR, y1))
+        body = body.cut(_anvil_pocket(anvil_z + PIN_CLR, y1, gx))
         # CLAMP: buried M4 insert from +Z and the set-screw bore down onto the tail.
         body = body.cut(cyl(INSERT_D, INSERT_POCKET + 0.5, z=INSERT_GAP)
-                        .translate((GATE_X, y1, 0)))
+                        .translate((gx, y1, 0)))
         body = body.cut(cyl(SCREW_D, NUT_TOP - (ROD_Z - g) + 1, z=ROD_Z - g)
-                        .translate((GATE_X, y1, 0)))
+                        .translate((gx, y1, 0)))
 
     # THE ROD BORE, cut LAST so none of the unions above can refill it (the bridge end
     # lost both its axle bores exactly that way). BLIND at +Y: that wall is the rod's +Y
@@ -296,16 +321,16 @@ def _build() -> cq.Workplane:
     return body
 
 
-def _anvil_pocket(seat_z, y):
+def _anvil_pocket(seat_z, y, gx):
     """The anvil dowel's seat: the same cradle as the break dowel's, opening +X so it
     drops in from the bay side rather than needing its own access."""
     R = PIN_SEAT_D / 2.0
     s = R * math.sin(math.radians(45.0))
     prof = (cq.Workplane("XZ")
-            .moveTo(GATE_X - R, NUT_TOP)
-            .lineTo(GATE_X - R, seat_z)
-            .threePointArc((GATE_X, seat_z - R), (GATE_X + s, seat_z - s))
-            .lineTo(GATE_X + s, NUT_TOP)
+            .moveTo(gx - R, NUT_TOP)
+            .lineTo(gx - R, seat_z)
+            .threePointArc((gx, seat_z - R), (gx + s, seat_z - s))
+            .lineTo(gx + s, NUT_TOP)
             .close())
     return prof.extrude(PIN_SEAT_L / 2.0, both=True).translate((0.0, y, 0.0))
 

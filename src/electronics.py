@@ -99,7 +99,10 @@ BOARD_Z = TRAY_Z1 + POST_H             # every bottom board sits at -67
 # X_BRIDGE+WALL -- the block is centred on the axle, not pinned to the rail end. Keep a
 # 4 mm panel at that tip and slide the connectors (authored with their panel face at
 # x~14) by JACK_FACE_DX so they ride the tip wherever it lands.
-JACK_TIP = D.BRIDGE_AXLE_X + CH.KH_EP_THK / 2        # bridge +X face = centred 25 mm block (8.5)
+JACK_TIP = D.BRIDGE_AXLE_X + D.ENDPLATE_W / 2        # bridge +X face = centred block (8.5).
+                                                     # Reads the BRIDGE's width, not the keyhead's:
+                                                     # it used KH_EP_THK back when they were one
+                                                     # number, which is now simply the wrong end
 JACK_WALL_X = JACK_TIP - 4.0                          # inner face of the 4 mm panel (4.5)
 JACK_FACE_DX = JACK_TIP - 14.0                        # authored face sits at x~14; ride the +X tip
 JACK_Z = -51 * D.BEAD                  # -40.8 jack row centre height
