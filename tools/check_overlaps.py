@@ -37,11 +37,19 @@ WIRE_OK = None      # set in main() (src.wiring needs src.build imported first)
 
 
 def base(name: str) -> str:
-    return re.sub(r"_\d+$", "", name)
+    # Strip EVERY trailing index group, not just the last one. Parts numbered per
+    # string used to be `screw_bearing_4`, but a second index arrived when each
+    # screw grew three bearings (`screw_bearing_4_1` = string 4, position 1). A
+    # single-group strip left base = "screw_bearing_4", which matches nothing in
+    # the allow list — so the designed bearing-in-rail contact quietly stopped
+    # being allow-listed, and only stayed silent because it sits under VOL_EPS.
+    return re.sub(r"(_\d+)+$", "", name)
 
 
 def idx(name: str):
-    m = re.search(r"_(\d+)$", name)
+    """The per-STRING index — the first of the trailing group, so `belt_3` pairs
+    with `screw_bearing_3_1`. Later indices are positions within that string."""
+    m = re.search(r"_(\d+)(?:_\d+)*$", name)
     return int(m.group(1)) if m else None
 
 
@@ -291,6 +299,16 @@ def intended(na, nb) -> bool:
 DEFAULT_SKIP = {"belt", "belt_clamp"}
 
 
+# A 0.025 mm bite over an 11 mm run is only ~0.21 mm^3, so the engine's 1.0 default
+# is BLIND to thin, tall interferences — exactly the shape a bearing bore, a press
+# fit or two near-parallel walls make. One such (guide-rod bore into a bridge
+# bearing) sat green until it was found by hand. Measured cost of dropping to 0.05
+# on this assembly: 392 -> 492 interpenetrating pairs, but only 2 extra UNINTENDED,
+# and both are wire-vs-solid clips, which this project's own WIRE_OK doctrine calls
+# real routing bugs. So it buys sensitivity at no noise cost.
+MIN_VOL = 0.05
+
+
 def gate(comps, *, full=False, only=(), exclude=(), jobs=None, show_all=False) -> int:
     """Scan ALREADY-BUILT components and return the unintended-overlap count.
 
@@ -313,7 +331,7 @@ def gate(comps, *, full=False, only=(), exclude=(), jobs=None, show_all=False) -
         if skip:
             comps = [(n, s) for n, s in comps if base(n) not in skip]
             print(f"skipping base names (pass --full to include): {sorted(skip)}")
-    return run(comps, intended, jobs=jobs, show_all=show_all)
+    return run(comps, intended, jobs=jobs, show_all=show_all, min_vol=MIN_VOL)
 
 
 def main():
