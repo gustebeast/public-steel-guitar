@@ -53,17 +53,38 @@ BTH = D.BELT_TOOTH_H     # 0.75 tooth height
 BP  = D.BELT_PITCH       # 2.0  pitch
 
 # ── Z levels ─────────────────────────────────────────────────────────────────
-Z_SCR    = -6 * D.BEAD                   # -4.8 screw centreline
+Z_SCR    = -6 * D.BEAD                   # -4.8  screw centreline
 HEAD_D   = 7.6                           # M4 button head (ISO 7380)
 HEAD_H   = 2.2
-CREST    = Z_SCR + M4.screw_d / 2        # -2.8  Ø4 crest — the bar rides this when locked
-DROP     = 2 * D.BEAD                    # 1.6 bar drop when the screw is out (> tooth height, clears)
-WELL_FLR = CREST - DROP                  # -4.0  bar rests here (on the well-floor shoulders) unlocked
-BAR_H    = -CREST                        # 2.5   bar body height → ridges land on z0 when locked
+CREST    = Z_SCR + M4.screw_d / 2        # -2.8  Ø4 screw crest (the bar rides on it when locked)
+
+# concave seat — the crest seats FLUSH into it (was a shallow dimple that floated 0.8 mm above it)
+SEAT_CLR = 0.2                           # lifter prints at a 0.2 mm nozzle → 1-bead seat clearance
+SEAT_RC  = M4.screw_d / 2 + SEAT_CLR     # 2.2  cradle radius: hugs the Ø4 crest
+SEAT_STRADDLE = 0.4                      # bar-bottom flanks wrap this far below the crest (anti-roll)
+LOCK_Z   = CREST - SEAT_STRADDLE         # -3.2  locked bar-bottom height (cradle tangent on the crest)
+SEAT_ZG  = CREST - SEAT_RC - LOCK_Z      # -1.8  cradle axis in the BAR-LOCAL frame (flanks at z0)
+
 CEIL_UZ  = BT + BTH + 0.15               # 2.30  ceiling underside (0.15 over the belt back)
 WALL     = 1.6
 TOP      = CEIL_UZ + WALL                # 3.90  part top
-BOT      = Z_SCR - M4.screw_d / 2 - 2.0  # -8.5  part bottom (below the Ø4.4 channel)
+BAR_H    = -LOCK_Z                       # 3.2  body height → ribs reach the belt valley floor (z=BTH) locked
+
+# unlocked rest — ribs sit JUST below the belt teeth: enough to thread the belt, no more. Extra
+# clearance would only drop the bar lower and make it harder for the screw to cam up. Tips are at z0.
+RIB_CLR  = 0.3                           # unlocked rib clearance below the belt tooth tips (z0)
+WELL_FLR = -RIB_CLR - BAR_H - BTH        # -4.25  well floor = unlocked rest (rib tops at −RIB_CLR)
+BOT      = Z_SCR - M4.screw_d / 2 - 2.0  # -8.8  part bottom (below the Ø4.4 channel)
+
+# +X retention (anchor) — a 45°-supported ramp of RET_RUN added material at the mouth blocks the
+# lifter's +X exit at every operating Z. Only lifting the bar to its highest Z (up into the belt
+# tunnel, belt out) clears it; once the belt is threaded it caps the rise, so the bar never gets there.
+RET_RUN  = 2 * D.BEAD                    # 1.6  ramp run = rise (45°) — the "1.6 mm of added material"
+RET_TOP  = WELL_FLR + RET_RUN            # -2.65  ramp top (above LOCK_Z → the locked bar stays blocked)
+RET_CH   = 0.6                           # 45° chamfer on the lifter's +X-bottom clears the ramp
+
+# auto-lift — a 45° lead-in on the lifter's −X-bottom so the entering crest cams the bar up to the seat
+LEADIN   = 2.0                           # −X lead-in chamfer height (spans the crest at the unlocked rest)
 
 TUN_W    = BW + 0.4                       # 5.4  belt width in the tunnel
 WELL_W   = BW + 0.6                       # 5.6  well width (bar slide clearance)
@@ -119,6 +140,18 @@ def _end_ramp(w1: float) -> cq.Workplane:
     return cq.Workplane("XZ").polyline(pts).close().extrude(WELL_W / 2, both=True)
 
 
+def _ret_ramp(x1: float) -> cq.Workplane:
+    """+X RETENTION ramp for the anchor: a 45° wedge (full well width in Y) filling the well's
+    +X-bottom corner — floor rising from WELL_FLR at x=x1−RET_RUN up to RET_TOP at the +X mouth
+    (x=x1). Building +X it is an up-facing floor, so it self-supports (a vertical stop face can't
+    print in this orientation). It blocks the lifter's +X exit at every operating Z; the bar only
+    clears it above RET_TOP — a height it reaches only lifted into the belt tunnel with the belt
+    out, since the threaded belt caps its rise. The lifter's +X-bottom is chamfered (RET_CH) to
+    clear the ramp face."""
+    pts = [(x1 - RET_RUN, WELL_FLR), (x1, WELL_FLR), (x1, RET_TOP)]
+    return cq.Workplane("XZ").polyline(pts).close().extrude(WELL_W / 2, both=True)
+
+
 def _half_body(x0: float, x1: float, w0: float, w1: float) -> cq.Workplane:
     """Solid block + flat belt tunnel (full length) + one bar WELL over [w0,w1] closed at its
     +X end by a 45° self-supporting ramp. The Ø4.4 screw channel is added by the caller (its X
@@ -134,34 +167,37 @@ def _half_body(x0: float, x1: float, w0: float, w1: float) -> cq.Workplane:
 
 def anchor() -> cq.Workplane:
     """−X half (the SIMPLE one — no insert): the M4 head bears flush on the −X (bed) face and the
-    screw runs through, its crest lifting LIFTER_A. THREE cuts, all keyed off the belt/lifter so
-    the belt tunnel and the lifter well share walls EXACTLY — no ledge where they meet (the old lip
-    came from the tunnel being 0.2 mm narrower than the well):
+    screw runs through, its crest lifting LIFTER_A. Three cuts + one retention ramp, all keyed off
+    the belt/lifter so the belt tunnel and the lifter well share walls EXACTLY — no ledge where they
+    meet (the old lip came from the tunnel being 0.2 mm narrower than the well):
 
       1. screw channel — a Ø4.4 cylinder on the screw axis, full length (head → gap → slider).
       2. lifter well   — a LANE-wide slot down to the well floor, spanning the lifter GRIP but
                          STOPPING SHORT of the −X face: the _MRG-thick wall at GA0 is the load
                          back-stop the belt pulls LIFTER_A into, so the bar can't escape the −X
-                         (belt-entry) side. OPEN at the shared +X mouth — the install entry.
-      3. belt tunnel   — the SAME LANE width and the SAME +X mouth as the well, but run all the
+                         (belt-entry) side.
+      3. belt tunnel   — the SAME LANE width and the SAME +X extent as the well, but run all the
                          way OUT the −X face so the belt threads in from the pulley.
+      4. +X retention  — a 45°-supported ramp (`_ret_ramp`) UNIONED back into the well's +X-bottom
+                         corner. It blocks LIFTER_A from being pushed out the +X mouth (by the
+                         entering screw) at every operating Z; the bar clears it only lifted up into
+                         the belt tunnel (belt out), so once the belt is threaded it can never eject.
 
-    #2 and #3 share LANE and the +X mouth, so their Y walls and +X wall coincide; the ONLY
-    difference is the −X end (belt open, lifter walled). LIFTER_A installs through the +X mouth
-    (load-aligned — the belt pulls it −X, away from the mouth) and the belt keeps that mouth shut
-    in service, so no +X end wall/ramp is needed — which also lets the half print support-free (an
-    open slot mouth needs no bridge) and sizes it to lifter + one wall."""
+    #2 and #3 share LANE and the +X extent, so their Y walls coincide; they differ only at the −X
+    end (belt open, lifter walled). LIFTER_A drops in from the top with the belt out, then rests low
+    behind the retention ramp."""
     LANE   = WELL_W                                 # ONE Y width for BOTH cuts → their walls coincide (no lip)
-    x1     = GA1                                    # lifter well +X end = the +X face (sized to the lifter)
-    mouth  = x1 + 1.0                               # shared +X mouth (overshoot → cleanly open)
+    x1     = GA1                                    # lifter well +X end = the +X mouth (sized to the lifter)
+    mouth  = x1 + 1.0                               # +X mouth (overshoot → cleanly open above the ramp)
     bx0    = HEAD_X - 1.0                            # belt runs OUT the −X face (overshoot → cleanly open)
     body = box_at(x1 - HEAD_X, BODY_W, TOP - BOT, x=(HEAD_X + x1) / 2, y=0.0, z=(TOP + BOT) / 2)
-    body = body.cut(cyl_x(SCR_CLR, mouth - HEAD_X, HEAD_X, Z_SCR))                    # 1  screw channel
     body = body.cut(box_at(mouth - GA0, LANE, -WELL_FLR,                              # 2  lifter well
                            x=(GA0 + mouth) / 2, y=0.0, z=WELL_FLR / 2))               #    (−X wall at GA0)
     body = body.cut(box_at(mouth - bx0, LANE, CEIL_UZ,                                # 3  belt tunnel
                            x=(bx0 + mouth) / 2, y=0.0, z=CEIL_UZ / 2))                #    (open at −X)
-    return body
+    body = body.union(_ret_ramp(x1))                                                 # 4  +X retention ramp
+    body = body.cut(cyl_x(SCR_CLR, mouth - HEAD_X, HEAD_X, Z_SCR))                    # 1  screw channel — cut
+    return body                                                                      #    LAST, so it clears the ramp too
 
 
 def slider() -> cq.Workplane:
@@ -178,21 +214,29 @@ def slider() -> cq.Workplane:
     return body
 
 
-SEAT_DEPTH = D.MIN_WALL                   # 0.8 concave screw-seat depth into the −Z edge
-                                          # (force-closed: the screw lifts until the belt
-                                          # pinches, so the extra 0.1 lands in travel)
-
-
 def _lifter(length: float = LIFT_LEN) -> cq.Workplane:
-    """Ridged bar (N_TEETH ridges): BAR_H body, GT2 ridges on top, and a shallow CONCAVE
-    seat on the −Z edge that the screw crest centres into (2-line contact → self-centring,
-    no rock). Modelled in the WORKING pose (ridges +Z). The coupon rotates it to the
-    −Y→+Y PRINT pose so the ridge curves and the seat land IN the layer plane — smooth
-    mesh faces, and the seat prints without the down-facing overhang a tunnel-up bar has."""
-    bar = box_at(length, BW, BAR_H, x=0.0, y=0.0, z=BAR_H / 2)
-    bar = bar.union(_ridges(-length / 2, length / 2, BAR_H, BW))
-    seat = cyl_x(M4.screw_d + 0.6, length + 2, -length / 2 - 1,
-                 z=-(M4.screw_d + 0.6) / 2 + SEAT_DEPTH)
+    """Ridged bar (N_TEETH ridges), printed at a 0.2 mm nozzle (the ONLY 0.2 mm part — the ribs and
+    seat need the resolution; everything else is 0.8 mm). The XZ body profile carries both end
+    chamfers, then GT2 ridges union on top and a CONCAVE screw seat cuts the underside:
+
+      • SEAT — a Ø(2·SEAT_RC) groove that hugs the Ø4 crest so the screw seats FLUSH (was a shallow
+        dimple whose apex floated 0.8 mm above the crest). Sits tangent on the crest at LOCK_Z.
+      • −X LEAD-IN — a 45° chamfer on the −X-bottom: the crest, entering from −X, rides UP it and
+        cams the bar into the seat (no manual lift).
+      • +X CHAMFER — a 45° cut on the +X-bottom (RET_CH) that clears the anchor's retention ramp.
+
+    Modelled in the WORKING pose (ribs +Z); the coupon rotates it to the −Y→+Y PRINT pose so the
+    ridge curves and the seat land in the layer plane."""
+    L = length
+    prof = [(-L / 2 + LEADIN, 0.0),       # −X-bottom: 45° lead-in for the entering crest
+            (L / 2 - RET_CH, 0.0),        # +X-bottom: 45° chamfer clearing the retention ramp
+            (L / 2, RET_CH),
+            (L / 2, BAR_H),               # +X face, full height
+            (-L / 2, BAR_H),              # −X face, full height
+            (-L / 2, LEADIN)]
+    bar = cq.Workplane("XZ").polyline(prof).close().extrude(BW / 2, both=True)
+    bar = bar.union(_ridges(-L / 2, L / 2, BAR_H, BW))
+    seat = cyl_x(2 * SEAT_RC, L + 2, -L / 2 - 1, z=SEAT_ZG)                 # flush concave crest seat
     return bar.cut(seat)
 
 
@@ -217,8 +261,9 @@ def insert_dummy() -> cq.Workplane:
 
 
 def seated_lifter(bar, well_mid: float, locked: bool = True) -> cq.Workplane:
-    """Place a bar in its well: bottom on the screw crest (locked) or the well floor."""
-    return bar.translate((well_mid, 0.0, (CREST if locked else WELL_FLR)))
+    """Place a bar in its well: flush on the screw crest (locked = LOCK_Z) or on the well floor
+    (unlocked = WELL_FLR, ribs just clear of the belt)."""
+    return bar.translate((well_mid, 0.0, (LOCK_Z if locked else WELL_FLR)))
 
 
 # ── coupon: all four parts in PRINT orientation, spread in Y ─────────────────
