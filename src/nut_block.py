@@ -36,8 +36,10 @@ under the two-bead floor. Marching -Y instead lands the fattest coil — the .07
 which needs 6.53 mm of rod — in the OPEN AIR outboard of the field where there is no
 neighbour at all, and every web in the comb clears 1.6:
 
-    s1..s6  3.5 turns     s7  2.5     s8, s9  1.5     s10  3.5 (marches out free)
-    thinnest web 1.76 mm (s9 -> s10), worst residual 35.8 N (s8, s9)
+    2.5 turns on EVERY string (user) -> 13.9 N residual on all ten, 46 N of clamp.
+    The webs that survive are gaps 1-7; s8->s9 (1.48) and s9->s10 (0.32) fall under the
+    two-bead floor, so those bays MERGE and the rod spans 22.74 mm there -- 102 MPa and
+    0.011 mm of sag. See bays().
 
 Local frame: X=0 at the break edge, +X toward the bridge (speaking length); Z=0 at
 the string-top plane (= STRING_Z global); body hangs -Z to the deck plane.
@@ -149,52 +151,75 @@ WRAP_F   = 1.05                                 # axial rise per turn, as a mult
                                                 # touching. They must NOT cross -- under tension
                                                 # a string crossing itself can cut itself in two
 LANE_CLR = 0.5                                  # air each side of a coil, before its comb web
-TURN_CHOICES = (3.5, 2.5, 1.5)                  # half-turns only: a whole number would put the
-                                                # tail back out the +X side, facing the wrong way
+TURNS    = 2.5                                  # THE SAME FOR EVERY STRING (user). Half-turns only:
+                                                # a whole 3.0 would put the tail back out the +X side
+                                                # facing the bridge, where it would have to cross its
+                                                # own coil to reach the clamp. 3.5 uniform is not
+                                                # available at all -- s9->s10 comes out at -1.12, i.e.
+                                                # the COILS intersect, which no amount of removing
+                                                # plastic fixes. So 2.5, and it is the better number
+                                                # anyway: 13.9 N residual on all ten, against a
+                                                # per-string scheme whose worst was 36
 MU = 0.15                                       # steel on steel, dry, deliberately pessimistic
 STRING_T = 147.0                                # per-string tension the capstan is dividing
 
 
 def _adv(i: int) -> float:
     """How far string i's coil marches along the rod (always -Y)."""
-    return _turns(i) * WRAP_F * D.STRING_GAUGE[i]
-
-
-def _web(i: int, t: float) -> float:
-    """Printed web left between string i's coil and its -Y neighbour, if it took t turns.
-    The outermost string has no -Y neighbour, so its coil is free to run out into air."""
-    if i + 1 >= D.N_STRINGS:
-        return math.inf
-    return (D.NUT_PITCH - t * WRAP_F * D.STRING_GAUGE[i]
-            - D.STRING_GAUGE[i] / 2 - D.STRING_GAUGE[i + 1] / 2 - 2 * LANE_CLR)
-
-
-def _turns(i: int) -> float:
-    """Turns for string i: the MOST it can take and still leave its neighbour a
-    two-bead web. More turns is strictly better (it is what divides the 147 N), so
-    this takes the largest that fits rather than a number someone picked."""
-    for t in TURN_CHOICES:
-        if _web(i, t) >= D.MIN_WALL_2P - 1e-9:
-            return t
-    raise AssertionError(
-        f"string {i + 1} (g {D.STRING_GAUGE[i]:.3f}) cannot take even {TURN_CHOICES[-1]} "
-        f"turns at {D.NUT_PITCH} pitch — its web would be {_web(i, TURN_CHOICES[-1]):.2f}")
+    return TURNS * WRAP_F * D.STRING_GAUGE[i]
 
 
 def residual(i: int) -> float:
     """Tension still left at the clamp after the wrap — what the clamp actually holds."""
-    return STRING_T * math.exp(-MU * _turns(i) * 2 * math.pi)
+    return STRING_T * math.exp(-MU * TURNS * 2 * math.pi)
 
 
-# Every string is checked at import: the webs are what make the comb printable and the
-# residual is what makes the clamp credible, and both are functions of the gauge table,
-# so a different string set has to re-pass them rather than quietly go out of spec.
-_WORST_WEB = min(_web(i, _turns(i)) for i in range(D.N_STRINGS - 1))
-_WORST_RES = max(residual(i) for i in range(D.N_STRINGS))
-assert _WORST_WEB >= D.MIN_WALL_2P - 1e-9, f"thinnest comb web is {_WORST_WEB:.2f}"
-assert _WORST_RES <= 60.0, (
-    f"the worst string still leaves {_WORST_RES:.1f} N at the clamp — the wrap is not "
-    f"doing its job and the clamp is back to bearing on plastic")
+def _lane(i: int):
+    """(+Y edge, -Y edge) of string i's coil plus its air. It marches -Y, so the +Y edge
+    is where the string arrives and the -Y edge is where its last turn ends."""
+    y0, y1 = wrap_y(i)
+    g = D.STRING_GAUGE[i]
+    return y0 + g / 2 + LANE_CLR, y1 - g / 2 - LANE_CLR
+
+
+def bays():
+    """(-Y, +Y) of each string's threading bay, WITH THIN WEBS MERGED AWAY (user).
+
+    At a uniform 2.5 turns every coil clears its neighbour with air to spare. What stops
+    being printable down at the bass end is the material LEFT BETWEEN two lanes: 1.48 mm
+    at s8->s9 and 0.32 at s9->s10, against the 1.6 two-bead floor. A fin that thin is
+    worse than no fin -- it is the first thing to break and it guides nothing. So where
+    the web falls under the floor the two bays MERGE into one open pocket and the rod
+    simply spans it.
+
+    IT CAN AFFORD TO. Dropping both bass webs leaves 22.74 mm unsupported with all three
+    bass strings pulling on it: 102 MPa in a hardened O5 shaft and 0.011 mm of sag, a 4x
+    margin. _SPAN_MPA asserts it, so a heavier string set has to re-earn it rather than
+    quietly bend the rod."""
+    hi = [_lane(i)[0] for i in range(D.N_STRINGS)]
+    lo = [_lane(i)[1] for i in range(D.N_STRINGS)]
+    for i in range(D.N_STRINGS - 1):
+        if lo[i] - hi[i + 1] < D.MIN_WALL_2P - 1e-9:        # web too thin to print...
+            mid = (lo[i] + hi[i + 1]) / 2.0
+            lo[i] = hi[i + 1] = mid                         # ...so there is no web at all
+    return [(lo[i], hi[i]) for i in range(D.N_STRINGS)]
+
+
+def finger_gaps():
+    """Gaps that still carry a printed comb web -- the rod's intermediate supports."""
+    b = bays()
+    return [i for i in range(D.N_STRINGS - 1) if b[i][0] - b[i + 1][1] > 1e-9]
+
+
+def _supports():
+    """Every Y at which the rod is held: the two end walls and each surviving web."""
+    b = bays()
+    return ([b[0][1] + 2 * D.BEAD]
+            + [(b[i][0] + b[i + 1][1]) / 2.0 for i in finger_gaps()]
+            + [b[-1][0] - 2 * D.BEAD])
+
+
+# (the span + residual checks live below, once wrap_y exists to feed them)
 
 
 def wrap_y(i: int) -> tuple[float, float]:
@@ -205,7 +230,7 @@ def wrap_y(i: int) -> tuple[float, float]:
 
 def rod_span() -> tuple[float, float]:
     """(y0, y1) the rod has to cover: every bay plus a bearing length in the end walls."""
-    lo = min(wrap_y(i)[1] for i in range(D.N_STRINGS)) - D.STRING_GAUGE[-1] / 2 - LANE_CLR
+    lo = min(_lane(i)[1] for i in range(D.N_STRINGS))
     return lo - 2 * D.BEAD, D.nut_y(0) + 2 * D.BEAD
 
 
@@ -219,6 +244,21 @@ ROD_END_W = D.MIN_WALL_2P                       # the +Y bore is BLIND; that wal
 _HW_NEED = max(_HW_CLAMP, ROD_END_W - ROD_Y0)
 HW = D.nut_y(0) + math.ceil((_HW_NEED - D.nut_y(0)) / D.BEAD - 1e-9) * D.BEAD
 assert ROD_Y0 - ROD_END_W >= -HW, "the rod's -Y end has run out of block to sit in"
+
+# Checked at import, because both are functions of the GAUGE TABLE: a different string
+# set has to re-earn them rather than quietly go out of spec.
+_SUP = _supports()
+_MAX_SPAN = max(abs(_SUP[k] - _SUP[k + 1]) for k in range(len(_SUP) - 1))
+# Bending in the rod over its worst span, with every string crossing it pulling at once.
+_I = math.pi * ROD_D ** 4 / 64.0
+_SPAN_MPA = ((3 * STRING_T / _MAX_SPAN) * _MAX_SPAN ** 2 / 8.0) / (_I / (ROD_D / 2))
+_WORST_RES = max(residual(i) for i in range(D.N_STRINGS))
+assert _SPAN_MPA <= 250.0, (
+    f"the rod carries {_SPAN_MPA:.0f} MPa over its {_MAX_SPAN:.1f} mm unsupported span — "
+    f"too many comb webs have been merged away, or the string set got heavier")
+assert _WORST_RES <= 60.0, (
+    f"the worst string still leaves {_WORST_RES:.1f} N at the clamp — the wrap is not "
+    f"doing its job and the clamp is back to bearing on plastic")
 
 GROOVE_W = 1.8
 ROOF_CLR = 0.8
@@ -289,8 +329,7 @@ def _build() -> cq.Workplane:
         # the TOP, because that is how a string is wound on -- down the -X side, under the
         # rod, up the +X side, and round again, one lane per string so the walls guide the
         # tip instead of letting it wander next door.
-        bay_y1 = y0 + g / 2 + LANE_CLR
-        bay_y0 = y1 - g / 2 - LANE_CLR
+        bay_y0, bay_y1 = bays()[i]
         body = body.cut(box_at(2 * BAY_R, bay_y1 - bay_y0, (NUT_TOP + 1.0) - (ROD_Z - BAY_R),
                                x=ROD_X, y=(bay_y0 + bay_y1) / 2,
                                z=((ROD_Z - BAY_R) + NUT_TOP + 1.0) / 2))
