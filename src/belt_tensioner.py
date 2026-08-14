@@ -253,32 +253,32 @@ def tensioner_coupon() -> cq.Workplane:
     return h1.union(h2).union(la).union(lb)
 
 
-clamp_half_part = clamp_half()            # built once; reused for both real placements
+clamp_half_part = clamp_half()            # built ONCE; every real placement re-places this shape
+_SCREW  = screw_dummy()                   # built ONCE (head anchored at HEAD_X — gap-independent)
+_LIFTER = lifter_a()                       # built ONCE ( == _lifter())
+
+_CLAMP_ZC = BTH + BT / 2                    # 1.45  belt-back centreline in the clamp frame → maps to z0
 
 
-# ── whole-clamp placement (the real per-string positions) ────────────────────────────────────
-_CLAMP_XC = TB / 2                         # -3.8  clamp X-centre = the splice (belt ends meet at the gap centre)
-_CLAMP_ZC = BTH + BT / 2                   # 1.45  belt-back centreline in the clamp frame
+def clamp_components(gap: float = GAP, with_lifters: bool = True):
+    """The whole tension clamp as named (name, Workplane) parts in the BELT-LOCAL frame (splice at
+    the origin, belt back on z=0), posed at a given tension GAP:
 
+        gap = GAP (4) → fully LOOSE  (halves apart, screw just started, belt slack)
+        gap = 0       → fully TIGHT  (halves drawn together, screw wound in)
 
-def _belt_frame(p: cq.Workplane) -> cq.Workplane:
-    """Shift a clamp part from its build frame into the BELT-LOCAL frame: splice at the origin,
-    belt back centred on z=0, belt along X — so ONE Location drops the clamp onto a belt flat zone."""
-    return p.translate((-_CLAMP_XC, 0.0, -_CLAMP_ZC))
-
-
-# built ONCE at import; per-string placement only .moved()s these (cheap) → 10 clamps = one build
-_HALVES = [("half_a", _belt_frame(clamp_half_part)),
-           ("half_b", _belt_frame(place_b(clamp_half_part))),
-           ("screw",  _belt_frame(screw_dummy())),
-           ("insert", _belt_frame(insert_dummy()))]
-_BARS   = [("lifter_a", _belt_frame(seated_lifter(lifter_a(), WELL_MID_A, locked=True))),
-           ("lifter_b", _belt_frame(seated_lifter(lifter_b(), WELL_MID_B, locked=True)))]
-
-
-def clamp_components(with_lifters: bool = True):
-    """The whole tension clamp as named (name, Workplane) parts in the belt-local frame (splice at
-    origin, belt back on z=0). build.py drops each onto a string's belt flat zone with one Location.
-    `with_lifters=False` omits the two ridged bars — a build-time saver where they'd be hidden anyway
-    (only the last string shows them)."""
-    return _HALVES + (_BARS if with_lifters else [])
+    Only RE-PLACES the pre-built shapes (cheap moves), so any gap costs nothing extra to build.
+    half-A + its lifter + the screw are anchored to HEAD_X; half-B + its lifter + the nut ride the
+    gap; both halves stay symmetric about the splice, which stays on the belt. `with_lifters=False`
+    omits the two ridged bars — a build-time saver where they'd be hidden anyway."""
+    tb = 2 * GA1 + gap                      # half-B build-frame translation for this gap
+    xc = tb / 2                             # splice (gap centre) → origin
+    def bf(p): return p.translate((-xc, 0.0, -_CLAMP_ZC))
+    half_b = clamp_half_part.rotate((0, 0, 0), (0, 0, 1), 180).translate((tb, 0.0, 0.0))
+    nut    = seated_insert(M4, (-HEAD_X + tb, 0.0, Z_SCR), (1.0, 0.0, 0.0))
+    parts = [("half_a", bf(clamp_half_part)), ("half_b", bf(half_b)),
+             ("screw",  bf(_SCREW)),          ("insert", bf(nut))]
+    if with_lifters:
+        parts += [("lifter_a", bf(seated_lifter(_LIFTER, WELL_MID_A, locked=True))),
+                  ("lifter_b", bf(seated_lifter(_LIFTER, -WELL_MID_A + tb, locked=True)))]
+    return parts
