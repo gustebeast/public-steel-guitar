@@ -127,7 +127,20 @@ FACE_Y = 28 * B                   # 22.4 = legs.SQ_W/2, the LEG HEAD'S OWN outer
                                   # dish to claw the recess back. The cover is a plain
                                   # flat plate flush with the leg, and the button sits
                                   # flush with it -- nothing proud to be knocked.
-COVER_T = 3 * B                   # 2.4 cover plate thickness
+COVER_T = 4 * B                   # 3.2 cover plate thickness. Sized BY THE LOCK
+                                  # (user): cut 1.6 away for the post and 1.6 is
+                                  # left as skin -- two beads each side, which is
+                                  # the floor. At 3 beads the only split that kept
+                                  # the skin legal gave a 1-bead blade.
+FLARE = 2 * B                     # 1.6 the dovetail's flare PER SIDE. Was COVER_T,
+                                  # which tied the root width to the plate
+                                  # thickness: the root grows 4x the flare, so
+                                  # thickening the cover a bead for the lock cost
+                                  # 3.2 of root and ran it off the leg's -X face.
+                                  # The flare only has to be enough to RETAIN, so
+                                  # it is now its own number. Still 45 deg (it
+                                  # rises FLARE in Y over FLARE in Z); the plate is
+                                  # simply thicker than the flank is deep.
 COVER_LIP = 3 * B                 # 2.4 the aperture lip each side: what the pad
                                   # shoulders against as the slider's OUT stop
 COVER_IN = FACE_Y - COVER_T       # 15.8  cover inner face = slider's OUT stop
@@ -197,7 +210,11 @@ HOOK_Z1 = HOOK_Z0 + 3 * B         # 5.05 hook 2.4 tall, inside the female. 4 bea
                                   # mechanism has to stay under the D11 TRRS way at
                                   # 6.3 -- so the TRRS way is once again what caps
                                   # the hook, exactly as the comment above says.
-PAD_Z0, PAD_Z1 = -10 * B, -3 * B  # -8.0 .. -2.4 button pad, on the male body
+PAD_Z0, PAD_Z1 = -10 * B, -3 * B  # -8.0 .. -2.4 button pad, on the male body. Its
+                                  # TOP is pinned by the cover's dovetail mouth
+                                  # (LOAD_Z+FLARE .. -FLARE). Decoupling FLARE from
+                                  # COVER_T kept that mouth where it was, so the
+                                  # pad keeps its full 5.6 (7 beads).
 BODY_Z0, BODY_Z1 = -13 * B, 7 * B # -10.4 .. 5.6 slider overall
 LOAD_Z = -15 * B                  # -12.0 tunnel/cover bottom (load window bottom).
                                   # Kept above the head's SECTION SOCKET, whose
@@ -261,7 +278,10 @@ def _assert_sane():
     assert HOOK_Z1 > HOOK_Z0 + 1.0, "hook too short to carry the pull-out load"
     assert PAD_W < LOW_W - 2 * D.MIN_WALL_2P, "cover lip too thin to stop the slider"
     assert LOW_W > LX_W, "lower band should be the wide one"
-    assert abs(LX_C) + LOW_W / 2 + 2 * COVER_T < 22.0, "cover dovetail runs off the 44 face"
+    assert abs(LX_C) + LOW_W / 2 + 2 * FLARE < FACE_Y - D.MIN_WALL_2P, (
+        "cover dovetail root runs off the leg's -X face (or leaves under two beads "
+        "of wall). Was hardcoded 22.0 -- the OLD SQ_W/2, stale since the leg went "
+        "to 44.8; it reads FACE_Y now so a resize cannot outrun it again.")
     assert LX1 < -0.5 and LX0 > -14.0, "band must clear the TRRS way and stay on the spigot"
     assert abs(LX0) > 6.0 and abs(LX1) > 6.0, "band must clear the octagon STEM (|x| <= 6)"
 
@@ -293,7 +313,7 @@ def male_cutter(cx: float = LX_C) -> cq.Workplane:
     return up.union(low).union(_cover_slot(cx))
 
 
-SLOT_W = LOW_W + 2 * COVER_T      # 17.6 slot mouth (the cover's outer width)
+SLOT_W = LOW_W + 2 * FLARE        # 16.0 slot mouth (the cover's outer width)
 # THE COVER'S X RUN. It enters at the head's +X face and slides -X until it butts
 # the solid head beyond the load window -- that butt IS the insertion stop, so no
 # separate stop feature is needed. HOST_HALF works because the head is SQUARE: its
@@ -311,11 +331,13 @@ COVER_LEN = COVER_X1 - COVER_X0   # 41.6 (52 beads)
 # already open sky from the plug's top face straight up to the cover's underside,
 # and a post there fouls nothing.
 LOCK_W = 6 * B                    # 4.8 across X, inside the 12 mm groove
-LOCK_T = 1 * B                    # 0.8 into the cover's THICKNESS. The cover is
-                                  # only 3 beads thick, so this is the one split
-                                  # that leaves the outer skin a full 2 beads --
-                                  # a one-bead blade, but captured on every face
-                                  # and loaded in pure shear along X (19 mm^2).
+LOCK_T = 2 * B                    # 1.6 into the cover's THICKNESS. The cover is
+                                  # 4 beads thick and this takes exactly half:
+                                  # 2 beads of post, 2 beads of skin. NO Y
+                                  # CLEARANCE on that interface, deliberately --
+                                  # the post rises in Z and never slides in Y, so
+                                  # the faces meet line-to-line and the 0.25 does
+                                  # not have to come out of anybody's wall.
 LOCK_Z0 = LOAD_Z - 3 * B          # -14.4 the segment plug's top face
 LOCK_Z1 = LOAD_Z + 5 * B          # -8.0 how far it reaches INTO the cover, up
                                   # where the cover is at full thickness
@@ -341,7 +363,7 @@ def cover_lock_way() -> cq.Workplane:
 def _cover_lock_pocket() -> cq.Workplane:
     """Its home in the cover -- open at the bottom so the post enters as the
     segment comes up, blind at the top so it cannot pass through."""
-    return _yz(LOCK_W + 2 * CLR, COVER_IN + LOCK_T + CLR, COVER_IN - 1.0,
+    return _yz(LOCK_W + 2 * CLR, COVER_IN + LOCK_T, COVER_IN - 1.0,
                LOAD_Z - 1.0, LOCK_Z1 + CLR, 0.0)
 
 
@@ -364,7 +386,7 @@ def _cover_slot(cx: float = LX_C) -> cq.Workplane:
     The whole trapezoid stays at or below z0. Flaring past the butt plane would
     put the slot back into the spigot, which is the mistake this replaces."""
     z_root0, z_root1 = LOAD_Z, 0.0                     # wide root, at COVER_IN
-    z_mouth0, z_mouth1 = LOAD_Z + COVER_T, -COVER_T    # narrow mouth, at FACE_Y
+    z_mouth0, z_mouth1 = LOAD_Z + FLARE, -FLARE        # narrow mouth, at FACE_Y
     pts = [(COVER_IN, z_root0), (FACE_Y, z_mouth0),
            (FACE_Y, z_mouth1), (COVER_IN, z_root1)]
     prof = (cq.Workplane("YZ").polyline(pts).close()
