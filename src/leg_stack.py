@@ -85,7 +85,13 @@ def _profile_area(w: float, cham: float = CHAM) -> float:
 
 
 # ── lengths (a single leg; the height range lives in the adjust section) ─────
-ENGAGE = 60 * B                   # 48.0 least engagement of any tenon in a sleeve
+# STRENGTH BUDGET: least engagement of a tenon in its mortise. Two tenon widths
+# is the joinery rule of thumb, and it is what stops the joint hinging open --
+# the moment at a slide joint resolves into a couple over the engagement, so the
+# bearing force is M/L and shortening L raises it hyperbolically. At 2 x TEN_W
+# the adjust joint's ~26 N.m gives ~540 N on the walls; halve the engagement and
+# it doubles.
+ENGAGE = 2 * TEN_W                # 48.0
 ADAPT_L = 60 * B                  # 48.0 body adapter: the tenon's extension
                                   # and no more -- same section as every sleeve
 BED = 315 * B                     # 252.0 longest printed part. The bed is 255 sq,
@@ -95,8 +101,16 @@ ADJ_L = BED                       # 252.0 adjust sleeve -- AS LONG AS THE BED
                                   # ALLOWS, because its length is what buys height
                                   # adjustment; the fixed section takes the rest
 FIX_L = 185 * B                   # 148.0 fixed sleeve = the remainder
-ADJ_TEN_L = BED                   # 252.0 adjust tenon, also bed-limited: its
-                                  # length past the sleeve IS the adjustment
+# ADJUST TENON -- DERIVED, not chosen (user). Two constraints set it:
+#   SHORTEST setting: as much of it hidden as possible. It cannot hide entirely,
+#     because the bottom end must always be engaged in the PEDAL BAR -- so the
+#     least it can ever show is ENGAGE. Buried length is then ADJ_TEN_L - ENGAGE,
+#     which must fit its mortise: ADJ_TEN_L <= ADJ_L + ENGAGE.
+#   LONGEST setting: out as far as the strength budget allows, i.e. until only
+#     ENGAGE remains in the sleeve.
+# and the bed caps it. Travel is what is left between the two.
+ADJ_TEN_L = min(BED, ADJ_L + ENGAGE)          # 252.0
+ADJ_TRAVEL = ADJ_TEN_L - 2 * ENGAGE           # 156.0 usable height adjustment
 FIX_TEN_L = FIX_L + 2 * ENGAGE    # 296.0 fixed tenon: the FULL length of its own
                                   # sleeve PLUS an extension at each end, so the
                                   # one bar does the work of a tenon at BOTH
@@ -109,7 +123,7 @@ ADJ_WEB = 2 * B                   # 1.6 material between holes -- this web, not
                                   # the screw, is what tears out under load, so
                                   # it is the number that sets pull-out strength
 ADJ_PITCH = ADJ_HOLE_D + ADJ_WEB  # 5.6 and therefore the HEIGHT STEP
-ADJ_N = 26                        # -> 26 * 5.6 = 145.6 mm of adjustment
+ADJ_N = int(ADJ_TRAVEL / ADJ_PITCH)           # 27 holes, filling the travel
 # Two rows, offset half a pitch, on opposite faces: halves the step to 2.8
 # without thinning any web (each row keeps its full 1.6).
 ADJ_ROWS = (0.0, ADJ_PITCH / 2.0)
@@ -241,6 +255,15 @@ for _n, _l in (("adjust sleeve", ADJ_L), ("fixed sleeve", FIX_L),
     assert _l <= BED + 1e-9, (
         "%s is %.1f long -- over the %.1f square-bed limit, so it would need the "
         "diagonal and could not be plated with anything else" % (_n, _l, BED))
+
+
+assert ADJ_TEN_L - ENGAGE <= ADJ_L + 1e-9, (
+    "at its SHORTEST the adjust tenon buries %.1f but its mortise is only %.1f "
+    "long -- it would bottom out before the leg is fully down"
+    % (ADJ_TEN_L - ENGAGE, ADJ_L))
+assert ADJ_N * ADJ_PITCH <= ADJ_TRAVEL + 1e-9, (
+    "the hole ladder (%.1f) is longer than the travel the joint can give (%.1f)"
+    % (ADJ_N * ADJ_PITCH, ADJ_TRAVEL))
 
 
 PARTS = {
