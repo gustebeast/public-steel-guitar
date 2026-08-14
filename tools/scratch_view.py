@@ -77,6 +77,12 @@ VIEW = ScratchView(
     replaced=REPLACED,
     crop=_crop(),
     pose=_pose,
+    # The LIVE set wears the same colours the full build gives it, so the part under
+    # work reads as the material it is instead of one flat highlight. Resolved through
+    # src.build._color_for -- the very function the real build uses -- so this view
+    # cannot drift from the finished assembly. Cached context stays grey on purpose:
+    # that contrast is what tells you which parts are live and which may be stale.
+    colors=lambda n: importlib.import_module("src.build")._color_for(n),
 )
 
 if __name__ == "__main__":
