@@ -29,13 +29,25 @@ def _station():
 
 
 def _live():
-    from src import leg_stack as LS
-    return [(n, w) for n, w in LS.assembly() if not n.endswith("_CONTEXT")]
+    """What gets rebuilt FRESH every iteration.
+
+    The pedal bar is in here as well as the leg (user): the mechanism joining the
+    adjustable floating tenon to the bar still has to be designed, so caching the
+    bar would freeze exactly the thing being changed. Anything you are editing
+    belongs on this side; the cache is only for scenery."""
+    from src import leg_stack as LS, pedal_bar as PB
+    out = [(n, w) for n, w in LS.assembly() if not n.endswith("_CONTEXT")]
+    out += [(n, w) for n, w in PB.assembly_parts()]
+    return out
 
 
 def _pose(name, wp):
-    """leg_stack is authored +Z up from its adapter; the instrument has the body
+    """Only leg_stack needs posing -- the bar is already in global coordinates.
+
+    leg_stack is authored +Z up from its adapter; the instrument has the body
     at +Z and the bar at -Z, so it hangs off the chassis bottom, flipped."""
+    if not name.startswith(("body_adapter", "fixed_", "adjust_")):
+        return wp                       # already global (the pedal bar)
     lx, ly, zt = _station()
     return wp.rotate((0, 0, 0), (1, 0, 0), 180).translate((lx, ly, zt))
 
@@ -51,7 +63,7 @@ VIEW = ScratchView(
     root=ROOT,
     context=lambda: __import__("src.build", fromlist=["e"]).collect_components(),
     live=_live,
-    replaced=("leg_", "latch_"),
+    replaced=("leg_", "latch_", "pedal_bar", "pedal_"),
     crop=_crop(),
     pose=_pose,
 )
