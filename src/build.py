@@ -1362,18 +1362,20 @@ def _export_assembly(publish=True, gate=True, gate_full=False):
     return _report_overlaps(comps, full=gate_full) | _report_sweep(comps)
 
 
-# The overlap gate's ACCEPTED baseline — every entry is a REAL defect that is
-# tracked elsewhere, not a blessed contact. The build fails ABOVE this count, so a
-# NEW overlap still stops it. Drive it to 0.
-#   chassis_trrs_cable <-> electronics_tray  ~28.0 mm^3   inherited
-#   chassis_trrs_cable <-> pi5                ~1.0 mm^3   inherited
-#   chassis <-> wire_pwr_hot_10               ~0.6 mm^3   revealed by MIN_VOL 1.0 -> 0.05
-#   bridge_endplate <-> wire_out              ~0.2 mm^3   revealed by MIN_VOL 1.0 -> 0.05
-# The last two are not new damage: they were always there, under the old 1.0 mm^3
-# floor that was blind to thin, tall overlaps. Both are wire-clips-solid, which
-# this project's WIRE_OK doctrine calls real routing bugs, and both are assigned
-# out for rerouting. When they land this returns to 2.
-OVERLAP_BASELINE = 4
+# The overlap gate's ACCEPTED baseline. Every entry is a REAL defect tracked
+# elsewhere, never a blessed contact; the build fails ABOVE this, so a NEW overlap
+# still stops it.
+#   chassis <-> wire_pwr_hot_10    ~0.6 mm^3   assigned out for rerouting
+#   bridge_endplate <-> wire_out   ~0.2 mm^3   assigned out for rerouting
+# Both surfaced when MIN_VOL went 1.0 -> 0.05; they are not new damage, just newly
+# visible. Drive this to 0 when they land.
+#
+# The three chassis_trrs_cable pairs are NOT here: check_overlaps.DEFERRED now
+# carries them and prints a loud line per pair every run. That is a deliberately
+# noisier arrangement than counting them, and the baseline drops to match — 4
+# would now silently absorb TWO new overlaps, which is exactly the failure this
+# number exists to prevent. Keep it equal to the count you can name.
+OVERLAP_BASELINE = 2
 
 
 def _report_overlaps(comps, full=False) -> int:
