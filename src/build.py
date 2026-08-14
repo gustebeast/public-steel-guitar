@@ -408,8 +408,11 @@ def _string_components(i):
     g = D.STRING_GAUGE[i]
     ny, wy = NB.wrap_y(i)
     tail_z = D.STRING_Z + NB.ROD_Z                                     # the tail runs at rod height
-    out.append((f"break_dowel_{i}", C.dowel().translate(               # centred in its seat (0.4 clr
-        (D.NUT_BLOCK_X, ny, D.STRING_Z - g - D.NUT_PIN_D / 2))))       # all round); pin top at Z-g
+    out.append((f"break_dowel_{i}", C.dowel().translate(               # gauged: pin top at Z-g, so
+        (D.NUT_BLOCK_X + NB.DOWEL_X, ny,                               # every string top lands on
+         D.STRING_Z - g - D.NUT_PIN_D / 2))))                          # one plane. DOWEL_X, not 0:
+                                                                       # the dowels sit 1.6 back from
+                                                                       # the block's front face now
     out.append((f"set_screw_{i}", C.set_screw().translate(             # cup tip on the CLAMPED tail;
         (D.NUT_BLOCK_X + NB.clamp_row_x(i), wy,                                # tail stands proud of the boss
          tail_z + g / 2 + D.NUT_SCREW_L))))
