@@ -27,7 +27,7 @@ Two layers of reusable capability back a cadkit project:
   (git subtree; canonical upstream github.com/gustebeast/cadkit). Imported as
   `cadkit.*` — NO sys.path hack, because every build runs via `-m` from the project
   root, so the vendored package is already importable:
-  - `cadkit.step_export` — `export_step()` (names the STEP product after the file stem)
+  - `cadkit.step_export` — `export_step()` (names the STEP product after the file stem) · `print_pose()` (per-part STEPs export print-oriented — see STEP conventions)
   - `cadkit.overlap_check` — the parallel interpenetration engine (see the overlap gate)
   - `cadkit.threads` — **self-supporting 45° screw threads**; read **`cadkit/THREADS_README.md`**
     before changing any thread (OCCT fails *silently* in ~7 documented ways — a smooth
@@ -114,6 +114,22 @@ from the project folder instead.)
   `.step` instead.
 - **One STEP per printed part** (`housing.step`, `axle.step`, …) — one printable
   solid each; the slicer imports these.
+- **Per-part STEPs export in PRINT POSE** (user, cable-spool #935): each file
+  lands in the slicer already print-oriented — rotated onto its documented bed
+  face, dropped to z = 0, centred on x/y — so nothing ever needs flipping in
+  Bambu. Use the shared helper, **at export ONLY**; the assembly keeps every
+  part as-modeled (add the untransformed part to `cq.Assembly`):
+  ```python
+  from cadkit.step_export import export_step, print_pose
+  PRINT_ROT = {              # one table beside PARTS: bed face declared once
+      "lid": "flip",                     # prints +z→−z (modeled top = bed)
+      "lever": ((1, 0, 0), -90),         # stands on its +y face
+      # parts that model as printed just get the drop-and-centre
+  }
+  export_step(print_pose(part, PRINT_ROT.get(name)), fname)
+  ```
+  When a part's print direction changes, update its `PRINT_ROT` entry in the
+  same commit — the table is the print-orientation record of the project.
 - **Name every product to match its filename.** A bare
   `cq.exporters.export(part, "housing.step")` names the STEP product *"Open
   CASCADE STEP translator 7.8 …"*, which is what Bambu/FreeCAD then display. Use
@@ -175,6 +191,23 @@ designed contacts, then calls `overlap_check.run(components, intended)`:
 py -3.12 -m tools.check_overlaps        # exit code = unintended pairs; 0 = clean
 py -3.12 -m tools.check_overlaps --all  # also list the intended contacts
 ```
+
+**Know what a standalone gate run actually costs.** The time the gate prints
+(~13-20 s) is only the *pairwise scan*. Everything before it is
+`collect_components()` — a COMPLETE model build, the same one `src.build` does.
+Measured on this project: `check_overlaps` end-to-end is **5 m 51 s**, of which
+13 s is checking. So gate-then-build pays for **two** full model builds.
+
+The fix is to fold the scan into the build, which already has the components in
+memory: `src/build.py` runs it at the end of `_export_assembly()` (see
+`_report_overlaps`), making a whole-tree gate cost ~+15 s instead of ~+6 min, and
+the build's exit code non-zero on a NEW overlap (`OVERLAP_BASELINE` holds the
+accepted, separately-tracked ones). `--no-gate` / `--gate-full` override it.
+`tools/check_overlaps.gate(comps, ...)` is the shared entry point both use — a
+project's `main()` builds then calls it; the build calls it with what it has.
+This is only safe because `overlap_check._detached_main()` stops the spawned
+workers from re-importing the caller's `__main__` (which, called from the build
+script, would re-run its module-level geometry in EVERY worker).
 
 Caveats: it only finds *interpenetration* — NOT too-thin walls, too-tight
 clearances, or missing/should-touch contact (use point-probes / cross-sections for
@@ -412,7 +445,20 @@ editing anything:
    work in the lead's main dir, `git stash` it BEFORE `join`, then `git stash pop`
    once you're in your worktree — that carries it over without losing anything.)
 2. **Never run `src.build` or open the viewer** — that's the lead's single tab.
-   Verify with `py -3.12 -m tools.check_overlaps` (writes no assembly, opens no tab).
+   **Validating your change is YOUR job, not the lead's** — the lead merges and
+   builds, and does not re-derive whether your geometry is right. Before every
+   `submit`, on your own branch:
+   - `py -3.12 -m tools.check_overlaps` — the full gate. Say the result in your
+     submit summary ("gate green, N inherited"). Inner-loop iterations can use
+     `--only <your,bases>`, which skips the pairwise cost but NOT the model build,
+     so it saves less than you'd think; the full gate is the one that counts.
+   - the project's other checks (bead/grid, min-wall, thread rules) — same rule.
+   - **anything that MOVES: probe it swept, by hand.** The gate only ever sees the
+     rest pose, and allowlisted pairs are invisible to it forever. A mechanism that
+     collides at 20° of throw passes a green gate.
+   If you genuinely can't verify something without a build, say so in the submit
+   summary rather than shipping it silently — the lead's build is a real failure
+   check, but only for import/geometry errors, not for your design intent.
 3. **`sync` BEFORE you start each task — not only between rounds.** Run
    `py -3.12 cadkit/tools/agent_sync.py sync` to pull the lead's latest `main` into
    your branch *before you edit anything*, every round. The lead is landing commits
@@ -425,6 +471,19 @@ editing anything:
 4. Hand off: `py -3.12 cadkit/tools/agent_sync.py submit "<summary>"` — commits your
    branch and files a merge request. That request itself wakes the lead, so you
    don't ping anyone. Then loop back to step 3 (`sync` first!) for the next round.
+5. **Ask questions DIRECTLY — the lead is not a relay.** A merge request carries
+   WORK, not correspondence.
+   - **For the human: ask in YOUR OWN chat.** You have your own human-facing
+     session; that is where a question belongs, and you can wait there for the
+     answer. Never bury a question for the human in a submit summary hoping the
+     lead forwards it — the lead can't answer for them, and it adds a whole round
+     trip (you → lead → human → lead → you) to something you could have asked
+     directly.
+   - **For another agent: `msg <who> "<text>"`** (`<who>` = their name, or `lead`).
+     It lands in their context on their next prompt — the hook delivers it in
+     every session, so nobody polls and the lead isn't in the middle. Read yours
+     with `mail` (the hook shows them automatically; `mail` is for checking early).
+   Keep the submit summary about the change itself: what moved, why, how verified.
 
 **► You're the LEAD** (original/only chat; the human said "multi-agent" or named
 another agent alongside you). Keep working in the main worktree on `main`. You OWN
@@ -436,6 +495,14 @@ take contributors' work **hands-free**:
    you, no human relay.
 2. When it wakes you: `take <name>` (resolve any conflicts) → `build` (announce the
    build #) → **re-arm** `wait` in the background for the next one.
+3. **Batch.** If several requests are queued, `take` them ALL first, then run ONE
+   `build`. A build is minutes; merging is seconds. Never build per-request.
+4. **Don't re-run the contributors' validation** — they gate their own branch and
+   report it (see the sub-agent block). What you owe is the thing none of them can
+   see: the **combination**. Two branches that are each green alone can collide
+   once merged, and only the post-merge whole-tree check catches it — which is why
+   the gate is folded into the build (above) and costs you ~15 s rather than a
+   second 6-minute model build. Read the gate line before you push.
 
 Rules that keep it from clobbering:
 - **Only the lead builds / opens the viewer.** `agent_sync.py build` refuses
@@ -451,6 +518,13 @@ Rules that keep it from clobbering:
 - **The merge request IS the notification.** `submit` writing the request file is
   exactly what ends the lead's background `wait` and re-invokes it — fully
   hands-free, no human in the loop.
+- **The lead is not a message relay.** If a contributor needs something from YOU,
+  they `msg` you and it arrives on your next prompt; if they need something from
+  the human, they ask in their own chat. When YOU need something from a
+  contributor — a re-measure, a rationale, a heads-up that their datum moved —
+  `msg <name> "<text>"` them directly rather than saving it up for the next merge.
+  A question routed through a third party costs an extra round trip each way and
+  arrives without the asker's context.
 - **Shared `cadkit/` edits are now normal tracked diffs** (cadkit is a git subtree,
   not the old on-disk `freecad/`). A contributor who changes a shared util just commits
   `cadkit/*` and `submit`s like any other change — the lead `take`s it normally. (The
