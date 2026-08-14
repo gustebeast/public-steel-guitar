@@ -103,7 +103,14 @@ ROD_BORE = ROD_D + ROD_FIT
 X_FRONT = D.KEYHEAD_PX_BUF                      # +2.4: +X lip, reclaimed from 4.0 -- see
                                                 # dimensions.KEYHEAD_PX_BUF for the walk
 X_BACK  = X_FRONT - D.KEYHEAD_W                 # -25.6: -X outer face (the bed face)
-DOWEL_X = 0.0                                   # break edge = the scale "0"
+# THE DOWELS SIT AS FAR +X AS 1.6 OF MATERIAL ALLOWS (user). Derived, not chosen: the
+# bore's +X wall stands DOWEL_KEEP back from the block's front face, so if the front
+# moves or the clearance changes the dowels follow instead of silently thinning that
+# wall. At the old DOWEL_X = 0 there was only 1.25 of material there -- the 2.4 front
+# buffer was sized against the OLD Ø2.8 seat, and the Ø2.30 bore left less behind it
+# than intended.
+DOWEL_KEEP = D.MIN_WALL_2P                      # 1.6 of material +X of the bore
+DOWEL_X = X_FRONT - DOWEL_KEEP - (PIN_D + 0.3) / 2      # -0.35, the break edge
 ROD_X   = -8 * D.BEAD                           # -6.4 rod centre
 # ROD_Z IS SET BY THE BREAK ANGLE, not by taste. The dowel -- not the rod -- has to
 # terminate the speaking length, which means the string must leave the dowel at a real
@@ -333,6 +340,48 @@ BAY_D = 2 * BAY_R                               # 10.0 — ONE trough diameter f
 _EXTRA_CUTS = False
 
 
+# ── CAP CUT: everything above the trough goes (user) ───────────────────────
+# The block was full height all the way over the axle, and none of that material was
+# doing anything: the trough's roof only has to hold itself, and the clamp inserts stop
+# well below the top. So keep a two-bead roof over the trough and chop the rest.
+#
+# THE -X LIMIT IS THE SETSCREW TEARDROPS' TIPS, not the bore centres. A cadkit teardrop
+# puts its apex at r * sqrt(2) from the axis, pointing +X (the build direction), so the
+# insert's Ø6 bore reaches CAP_KEEP further +X than its centreline suggests -- and it is
+# the INSERT, not the screw, that reaches furthest. Cutting to the centre would have
+# sliced the tips off the very holes the cut is supposed to clear.
+CAP_KEEP   = D.MIN_WALL_2P                          # 1.6 of roof, and the same as clearance
+# MEASURED OFF THE AXLE BORE, NOT THE TROUGH (user). The two are very different planes:
+# the string-clearance trough tops out at 2.60 and the Ø5.4 axle bore at 0.30, so sizing
+# from the trough put the chop 2.3 too high and left a slab that was never wanted. The
+# roof that has to survive is the one over the SHAFT.
+AXLE_TOP   = ROD_Z + ROD_BORE / 2                   # 0.30, the axle bore's +Z extent
+CAP_Z      = AXLE_TOP + CAP_KEEP                    # 1.90, the chop plane
+_APEX      = math.sqrt(2.0)                         # cadkit teardrop apex, in radii
+CAP_X0     = ROW_A + INSERT_D / 2 * _APEX + CAP_KEEP   # -9.36, clear of the near row's tip
+assert CAP_X0 > ROW_A + INSERT_D / 2, "the cap cut starts inside the clamp insert"
+assert CAP_Z < NUT_TOP, "the cap cut is above the block: nothing would be removed"
+
+# ── STRING SLOT: the whole +X end opens down to under the strings (user) ───
+# Everything +X of the axle is cleared across the FULL width -- no per-string lanes and
+# no fingers, one rectangular slot -- from just clear of the axle bore out to the +X face.
+#
+# ITS -X EDGE IS THE AXLE TEARDROP'S TIP, not the bore's centre or its Ø5.4 wall. The
+# teardrop's apex points +X (the build direction), so the bore actually reaches
+# ROD_BORE/2 * sqrt(2) = 3.82 from the axis, and cutting to anything less would have left
+# a sliver of the tip standing in the slot.
+#
+# ITS FLOOR IS THE THICKEST STRING'S UNDERSIDE, less the same clearance. One slot serves
+# ten strings, so the floor is set by the lowest of them: the .070 hangs to -1.78 and
+# every thinner string clears by more.
+AXLE_APEX  = ROD_X + ROD_BORE / 2 * _APEX            # -2.58, the bore's real +X reach
+SLOT_X0    = AXLE_APEX + CAP_KEEP                    # -0.98
+STRING_BOT = -max(D.STRING_GAUGE)                    # -1.78, the .070's underside
+SLOT_Z0    = STRING_BOT - CAP_KEEP                   # -3.38, the slot floor
+assert SLOT_X0 > AXLE_APEX, "the string slot would clip the axle bore's teardrop tip"
+assert SLOT_Z0 < CAP_Z, "the string slot is shallower than the cap it sits inside"
+
+
 def _bay_trough(y0: float, y1: float) -> cq.Workplane:
     """The threading trough: ONE shape, cut the same way for every string (user).
 
@@ -354,6 +403,64 @@ def _bay_trough(y0: float, y1: float) -> cq.Workplane:
     return teardrop_hole(BAY_D, y1 - y0,
                          axis_point=(ROD_X, y0, ROD_Z),
                          axis_dir=(0.0, 1.0, 0.0), print_up=PRINT_UP)
+
+
+DOWEL_CLR = 0.15                                # all round the dowel (user)
+DOWEL_BORE_D = PIN_D + 2 * DOWEL_CLR            # 2.30
+DOWEL_BORE_L = PIN_L + 2 * DOWEL_CLR            # 4.30
+
+
+def _all_dowels() -> cq.Workplane:
+    """One cylinder per break dowel: the dowel's own geometry grown by DOWEL_CLR on every
+    face (user), so 0.3 on both the diameter and the length.
+
+    GAUGED, as the dowels always were: each sits at -g - PIN_D/2, which puts its crown at
+    -g and therefore every string's TOP on one plane at z=0. That is the whole reason
+    there are ten of them instead of one shared rod."""
+    out = None
+    for i in range(D.N_STRINGS):
+        pin_z = -D.STRING_GAUGE[i] - PIN_D / 2
+        c = cyl_y(DOWEL_BORE_D, DOWEL_BORE_L, y0=D.nut_y(i) - DOWEL_BORE_L / 2,
+                  x=DOWEL_X, z=pin_z)
+        out = c if out is None else out.union(c)
+    return out
+
+
+def _all_skies() -> cq.Workplane:
+    """Open every lane to the sky, from the ROD'S CENTRE-PLANE up. Fused, cut once.
+
+    This is what removes the beams the trough left behind -- the wedges standing between
+    each trough's crown and the cap -- and the rule is chosen so they cannot come back:
+
+        ROD_Z IS THE TROUGH'S WIDEST POINT. An opening that starts at the widest point of
+        the shape below it can never narrow going up, so nothing spans the lane and there
+        is no overhang to argue about. Cut from any higher and the trough's own crown
+        closes over the opening; cut from lower and material is spent for nothing.
+
+    ITS -X EDGE IS THE TEARDROPS' CENTRE (user), i.e. the rod axis, not the trough's -X
+    wall: the lane opens over the +X half only and the -X half keeps its roof.
+
+    The FINGERS are untouched -- they sit between lanes, keep their full height, and are
+    what still captures the rod, since their material stands above the bore's top (0.30)
+    up to the cap at 1.90. So the rod cannot lift out even though its lane is open."""
+    out = None
+    for i in range(D.N_STRINGS):
+        y0, y1 = bays()[i]
+        k = box_at(X_FRONT - ROD_X, y1 - y0, (NUT_TOP + 1.0) - ROD_Z,
+                   x=(ROD_X + X_FRONT) / 2, y=(y0 + y1) / 2,
+                   z=(ROD_Z + NUT_TOP + 1.0) / 2)
+        out = k if out is None else out.union(k)
+    return out
+
+
+def _all_troughs() -> cq.Workplane:
+    """Every string's trough, FUSED into one cutter. The merged 8-10 window comes out as
+    one continuous solid because those lanes already share their boundaries."""
+    out = None
+    for i in range(D.N_STRINGS):
+        t = _bay_trough(*bays()[i])
+        out = t if out is None else out.union(t)
+    return out
 
 
 def _seat_wall_lead(i: int) -> cq.Workplane:
@@ -438,12 +545,7 @@ def _build() -> cq.Workplane:
                 body = body.cut(_seat_wall_top(i))
                 body = body.cut(_seat_wall_lead(i))
 
-        # THE BAY: the room the coil lives in and the tail is threaded through. Open to
-        # the TOP, because that is how a string is wound on -- down the -X side, under the
-        # rod, up the +X side, and round again, one lane per string so the walls guide the
-        # tip instead of letting it wander next door.
-        bay_y0, bay_y1 = bays()[i]
-        body = body.cut(_bay_trough(bay_y0, bay_y1))
+        # (the troughs are cut ONCE, after this loop -- see _all_troughs)
 
         # EXIT: the tail leaves the rod's -X tangent at the coil's far end and runs out the
         # back face, crossing the clamp screw's column on the way -- see GATE_X.
@@ -464,6 +566,34 @@ def _build() -> cq.Workplane:
         body = body.cut(teardrop_hole(SCREW_D, NUT_TOP - (ROD_Z - g) + 1,
                                       axis_point=(gx, y1, ROD_Z - g),
                                       axis_dir=(0.0, 0.0, 1.0), print_up=PRINT_UP))
+
+    # THE TROUGHS, FUSED AND SUBTRACTED ONCE (user). Ten separate short booleans against
+    # a body already carrying this many nearby features left a CORE behind in the two
+    # narrowest lanes -- strings 1 and 2 came out with a ~135 mm^3 island sitting inside
+    # their own trough, smaller than the cutter that should have removed it, which is the
+    # signature of a tolerance artifact rather than a wrong shape (the cutters themselves
+    # all probe as single valid solids scaling cleanly with lane length). One fused cutter
+    # and one subtraction is both more robust numerically and closer to what this geometry
+    # is meant to BE: the same trough everywhere, made once.
+    body = body.cut(_all_troughs())
+
+    body = body.cut(_all_dowels())
+
+    # ...and open each lane to the sky above the rod's centre-plane, which is what stops
+    # a beam being left between the trough's crown and the cap. Fused and cut once, for
+    # the same reason the troughs are.
+    body = body.cut(_all_skies())
+
+    # CAP: take the block down to CAP_Z over the axle, from the setscrew teardrops' tips
+    # out to the +X face. Full width in Y -- there is nothing up there worth keeping.
+    body = body.cut(box_at(X_FRONT - CAP_X0, 2 * HW + 2.0, (NUT_TOP + 1.0) - CAP_Z,
+                           x=(CAP_X0 + X_FRONT) / 2, y=0.0,
+                           z=(CAP_Z + NUT_TOP + 1.0) / 2))
+
+    # STRING SLOT: full width, axle tip out to the +X face, down to under the strings.
+    body = body.cut(box_at(X_FRONT - SLOT_X0, 2 * HW + 2.0, (NUT_TOP + 1.0) - SLOT_Z0,
+                           x=(SLOT_X0 + X_FRONT) / 2, y=0.0,
+                           z=(SLOT_Z0 + NUT_TOP + 1.0) / 2))
 
     # THE ROD BORE, cut LAST so none of the unions above can refill it (the bridge end
     # lost both its axle bores exactly that way). BLIND at +Y: that wall is the rod's +Y

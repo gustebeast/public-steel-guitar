@@ -29,18 +29,29 @@ from cadkit.scratch import ScratchView, main
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 # ── CONFIG: the only part you edit ──────────────────────────────────────────
-LIVE_MODULE = "src.leg_stack"      # the module you are working on
-LIVE_ATTR = "assembly"             # a callable on it -> [(name, Workplane), ...]
-REPLACED = ("leg_", "latch_")      # context parts the live one SUPERSEDES, so the
-                                   # old ones are not drawn beside their successor
-CROP_SIZE = (400.0, 400.0, 900.0)  # box around the region of interest; None = all
+LIVE_MODULE = "src.keyhead_endplate"   # the module you are working on
+LIVE_ATTR = "keyhead_endplate"         # callable -> [(name, Workplane)], or a bare Workplane
+# Context parts the live one SUPERSEDES. Two kinds go in here (user):
+#   the PART ITSELF, so the cached copy is not drawn beside its successor; and
+#   ALL HARDWARE THAT LIVES INSIDE IT -- the wrap rod, the break dowels, the clamp
+#   screws and their inserts, and the strings. Those are what the part is being
+#   designed AROUND, so a CACHED one is worse than none: it shows a dowel sitting in
+#   a cradle that no longer exists, at a position derived from geometry that has since
+#   moved, and it looks exactly as authoritative as the live part beside it.
+#
+# What the cache IS for is the things this part has to INTERFACE with and which are
+# not moving -- the chassis segments, the top panel, the deck. Those stay cached.
+REPLACED = ("keyhead_endplate", "nut_wrap_rod", "break_dowel",
+            "set_screw", "nut_insert", "string")
+CROP_SIZE = (120.0, 140.0, 90.0)       # box around the region of interest; None = all
 # ────────────────────────────────────────────────────────────────────────────
 
 
 def _station():
-    """The region of interest. Here: the -X/+Y (TRRS) leg station."""
-    from src import chassis as CH
-    return CH.LEG_STATIONS_X[1], CH.LEG_Y[0], CH.Z_BOT
+    """The region of interest. Here: the keyhead nut block -- the break edge (the
+    scale "0") at the string plane, which is what the capstan is built around."""
+    from src import dimensions as D
+    return D.NUT_BLOCK_X, 0.0, D.STRING_Z
 
 
 def _live():
@@ -51,23 +62,40 @@ def _live():
             "scratch_view: LIVE_MODULE %r does not exist.\n"
             "Edit the CONFIG block at the top of tools/scratch_view.py to name\n"
             "the module you are working on." % LIVE_MODULE)
-    parts = getattr(mod, LIVE_ATTR)()
-    return [(n, w) for n, w in parts if not n.endswith("_CONTEXT")]
+    attr = getattr(mod, LIVE_ATTR)
+    # the attr may be a callable returning [(name, wp), ...] or a bare Workplane
+    parts = attr() if callable(attr) else [(LIVE_ATTR, attr)]
+    return ([(n, w) for n, w in parts if not n.endswith("_CONTEXT")] + _hardware())
 
 
-def _pose(name, wp):
-    """leg_stack is authored +Z up from its own base; the instrument has the body
-    at +Z, so it hangs off the chassis bottom, flipped. Drop this (pose=None) if
-    your part is already authored in global coordinates."""
-    lx, ly, zt = _station()
-    return wp.rotate((0, 0, 0), (1, 0, 0), 180).translate((lx, ly, zt))
+def _hardware():
+    """The in-part hardware, REBUILT LIVE beside the endplate rather than cached.
+
+    These are the things the part is designed around -- the wrap rod, the gauged break
+    dowels and the strings -- and every one of them is positioned from constants in the
+    module under work (nut_block.DOWEL_X, .rod(), .wrap_y()). A CACHED copy would be
+    drawn at wherever those constants stood when the cache was made, which is exactly
+    the lie the cache is meant not to tell. So they are excluded from the cache (see
+    REPLACED) and rebuilt here instead."""
+    from src import dimensions as D, nut_block as NB, components as C, build as B
+    out = [("nut_wrap_rod", NB.rod().translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z)))]
+    for i in range(D.N_STRINGS):
+        pin_z = -D.STRING_GAUGE[i] - NB.PIN_D / 2
+        out.append((f"break_dowel_{i}", C.dowel().translate(
+            (D.NUT_BLOCK_X + NB.DOWEL_X, D.nut_y(i), D.STRING_Z + pin_z))))
+        out.append((f"string_{i}", B._string_path(i, D.string_y(i))))
+    return out
+
+
+# keyhead_endplate is authored in GLOBAL coordinates already, so there is no pose
+# to apply -- see the ScratchView(pose=None) below.
 
 
 def _crop():
     if CROP_SIZE is None:
         return None
     lx, ly, zt = _station()
-    return CROP_SIZE + (lx, ly, zt - 300.0)
+    return CROP_SIZE + (lx, ly, zt)
 
 
 VIEW = ScratchView(
@@ -76,7 +104,11 @@ VIEW = ScratchView(
     live=_live,
     replaced=REPLACED,
     crop=_crop(),
-    pose=_pose,
+    pose=None,
+    # The live set wears the SAME colours the full build gives it, so the part under
+    # work reads as the material it is instead of one flat highlight. Cached context
+    # stays grey -- that contrast is what tells you which is which.
+    colors=lambda n: importlib.import_module("src.build")._color_for(n),
 )
 
 if __name__ == "__main__":
