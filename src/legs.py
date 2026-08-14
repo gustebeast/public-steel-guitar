@@ -98,6 +98,8 @@ import math
 import cadquery as cq
 
 from . import dimensions as D
+
+B = D.BEAD                             # bead grid unit (cadkit.printing)
 from .helpers import box_at, cyl, heal
 from . import latch as LT
 
@@ -443,7 +445,14 @@ def leg_shaft_trrs() -> cq.Workplane:
 # across joints BECAUSE of the deterministic clocking: the cable lays in
 # AFTER column assembly. Top joint = the LEG HEAD (separate part, passive
 # octagon spigot into the stub's socket) — see leg_head().
-SQ_W = 44.0                    # outer square width (uniform, = old bell OD)
+SQ_W = 56 * B                  # 44.8 outer square width (uniform). 56 beads, and the
+                               # EVENNESS is the point (user): the leg's half-width is a
+                               # datum for half the joinery -- SLV_FACE_Y, SH_Y, BLK_W and
+                               # the latch's FACE_Y are all SQ_W/2 minus material. At the
+                               # old 44.0 = 55 beads, an ODD count, that half was 22.0 and
+                               # could never land on the grid, so the whole chain inherited
+                               # the miss. 56/2 = 28 beads exactly, and the chain cleans up
+                               # at the source rather than one constant at a time.
                                # at round 3; 45° crown corners print lying)
 SEG_BODY_L = 142.0             # ROUND 3 (user): NO THREADS, NO TPU
                                # GASKETS in the square legs — the thread
@@ -524,11 +533,16 @@ COVER_T    = 4.0      # cover plate thickness = the face-thinning depth
 SLV_FACE_Y = SQ_W / 2 - COVER_T        # 18.0: the sleeve's thinned +Y face
 SH_Y       = SLV_FACE_Y - SH_CLR       # 17.8: slider stem plane (0.2 running
                                        # clearance under the cover's inner face)
-SH_H       = SH_Y + 14.0               # 31.8: slider octagon height (roof -14)
+SH_H       = SH_Y + 18 * B             # 32.2: slider octagon height (roof -18 beads;
+                                       # was a bare 14.0 = 17.5 beads, the only OFF-GRID
+                                       # offset in the leg joinery)
 CVR_RAIL_X = 21 * D.BEAD   # 16.8: rail centres ±x — the outer ±X skin GROWS to
                       # 2.6, the web to the groove's lip band stays ~7
-CVR_RAIL_W = 5.0      # rail octagon flat-to-flat (cadkit h_min 4.95 at n0.8)
+CVR_RAIL_W = 7 * B    # 5.6 rail octagon flat-to-flat. 6 beads (4.8) is BELOW cadkit's
+                      # family floor for this width (h_min 4.95 at nozzle 0.8), so 7 is
+                      # the smallest legal bead count -- the floor picks it, not taste
 from cadkit.joinery import PrintSpec as _PrintSpec, joint as _joint
+from cadkit.printing import snap as _snap
 # cadkit collapsed the per-family entrypoints into ONE `joint()` (you describe the
 # SITE, it picks the geometry), so this file now says how its halves PRINT instead
 # of naming the octagon. Both are PETG-GF printed -Z->+Z.
@@ -539,7 +553,12 @@ def _octagon_height(width, nozzle=0.8, clearance=0.1, height=None):
     """Height of a joint of this width — the sizing figure the cover rail needs."""
     return _joint(width, 1.0, tenon=_UP, mortise=_UP, clearance=clearance,
                   depth=height).height
-CVR_RAIL_H = _octagon_height(CVR_RAIL_W, 0.8)   # ASK cadkit, don't hand-write it: the
+CVR_RAIL_H = _snap(_octagon_height(CVR_RAIL_W, 0.8), D.NOZZLE_D, "up")
+#   ASK cadkit for the floor, then round UP to the next whole bead -- both properties at
+#   once. Hand-writing a bead-aligned height would break the moment cadkit tightens the
+#   family; taking cadkit's raw number leaves the groove depth off the grid (7.283 =
+#   9.10 beads). snap(..., 'up') can only ever ADD material to a floor, never violate it.
+#   ORIGINAL NOTE: the
 #   octagon's height is not free — 45° diagonals plus two-nozzle verticals set a floor
 #   per width, and this was a hard 5.0 until cadkit raised the verticals to the
 #   two-bead quality tier and started REJECTING it (min for W5 is 6.591). Deriving it
@@ -684,6 +703,12 @@ def _sq_body(length: float, channel: bool = False) -> cq.Workplane:
         plug = plug.cut(cyl(SEC_CABLE_D, SEG_PLUG_L + 3.0, z=length - 2.0)
                         .translate((0, SEC_BORE_Y, 0)))
     b = b.union(plug)
+    # LATCH COVER LOCK: a post on the plug's top face that rises into a pocket in
+    # the cover's underside, so the cover cannot slide back out +X even with the
+    # button pressed (user). Authored in the COVER's frame (head-local, cover
+    # bottom at latch.LOAD_Z); the head's bottom face butts this segment's TOP
+    # face, so head z + length + HEAD_BODY_L lands it here.
+    b = b.union(LT.cover_lock_tenon().translate((0, 0, length + HEAD_BODY_L)))
     # M4 retention (user rule: joinery takes the force, the screw only stops
     # extraction): ONE M4×25 button per joint from the OUTER (-Y) face — the +Y
     # face is the open groove, so the screw comes through the point-side wall
@@ -1054,10 +1079,21 @@ def leg_head(latch: bool = False) -> cq.Workplane:
     # finger well any more: sinking this face to match the tower used to put a
     # 422 mm^2 flat ceiling right on the print bed.
     if latch:
+        # OCT_TOP is measured off THIS spigot but lives in latch.py, which cannot
+        # import legs. One cheap boolean keeps them honest: the channel floor must
+        # be clear of the spigot across the band, or the channel is cutting into
+        # the octagon instead of standing off it.
+        _probe = box_at(LT.LX1 - LT.LX0, 6.0, 8.0,
+                        x=(LT.LX0 + LT.LX1) / 2, y=LT.CH_FLOOR + 3.0, z=10.0)
+        assert not _section_tenon(39.0).translate((0, 0, -1.0))                    .intersect(_probe).solids().vals(), (
+            "latch.OCT_TOP (%.2f) is STALE: the spigot reaches past CH_FLOOR %.2f "
+            "across the latch band, so the channel cuts INTO the octagon. Re-measure "
+            "the spigot's max +Y over x %.2f..%.2f." % (
+                LT.OCT_TOP, LT.CH_FLOOR, LT.LX0, LT.LX1))
         assert abs(LT.FACE_Y - SQ_W / 2) < 1e-9, (
             "latch.FACE_Y %.2f is no longer the head face %.2f -- the cover would "
             "not sit flush and the bed face would step" % (LT.FACE_Y, SQ_W / 2))
-        b = b.cut(LT.male_cutter())
+        b = b.cut(LT.male_cutter()).cut(LT.cover_lock_way())
         b = b.union(LT.male_post())      # coil guide post (union AFTER the tunnel cut)
     # captive CA-354S seat + cable ways on the TRRS axis (+5, +13 — moved
     # into the fat flare band): tip lip, handle way, Ø8 down-way to the core

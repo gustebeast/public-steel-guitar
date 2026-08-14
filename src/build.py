@@ -257,16 +257,17 @@ PARTS["test_cover_plate"] = (
     "TEST COUPON — 40-long slice of the leg sleeve cover (44-wide plate + both W5 "
     "octagon rails); prints lying on its outer face")
 
-# Belt-tensioner mechanism coupon — FOUR parts (anchor + slider + two lifter bars), real
+# Belt-tensioner mechanism coupon — TWO identical clamp_halves + two identical lifter bars, real
 # geometry, print orientation. Step 1 of the fixed-motor rework: prove the belt drops in
 # free with the screw out, LOCKS on a positive tooth mesh when the M4 lifts the bars, and
 # the tension winds in smoothly and holds without creep.
 PARTS["test_belt_tensioner"] = (
     lambda: heal(__import__("src.belt_tensioner", fromlist=["e"]).tensioner_coupon()),
     "test_belt_tensioner.step",
-    "TEST COUPON — belt-tension clamp, 4 parts (anchor, slider, 2 lifter bars). Drop a GT2 "
-    "scrap through with the M4×30 out (bars low = free), seat the screw (bars ride the crest "
-    "up → teeth mesh), and wind it to check the grip holds and tension sets fine without creep")
+    "TEST COUPON — belt-tension clamp: 2 identical clamp_half (one turned 180°) + 2 identical "
+    "lifter bars. Drop a GT2 scrap through with the M4×35 out (bars low = free), seat the screw "
+    "(bars ride the crest up → teeth mesh), and wind it against the external insert-nut to check "
+    "the grip holds and tension sets fine without creep")
 
 
 # Anchor ALL outputs to the project folder (never the cwd — see Archive/3D/CLAUDE.md)
@@ -1081,17 +1082,18 @@ def _joint_coupon_components():
 
 
 def _tensioner_coupon_components():
-    """The belt-tension clamp, shown ASSEMBLED (working position) with its M4 screw +
-    brass insert, parked off the +X end clear of every real part. Rebuilds with the
-    model so it can't drift from belt_tensioner.py."""
+    """The belt-tension clamp, shown ASSEMBLED (working position), parked off the +X end clear of
+    every real part. BOTH halves are ONE SKU (`clamp_half`): half-B is that part turned 180° about
+    Z (`place_b`). The M4 head bears on half-A's −X face; the insert — a plain EXTERNAL nut, not
+    heat-set — bears on half-B's +X face. Rebuilds with the model so it can't drift."""
     from . import belt_tensioner as BTn
     o = cq.Vector(150.0, 90.0, 40.0)
     def at(p): return p.translate((o.x, o.y, o.z))
-    la = BTn.seated_lifter(BTn.lifter_a(), (BTn.GA0 + BTn.GA1) / 2, locked=True)
-    lb = BTn.seated_lifter(BTn.lifter_b(), (BTn.GB0 + BTn.GB1) / 2, locked=True)
+    la = BTn.seated_lifter(BTn.lifter_a(), BTn.WELL_MID_A, locked=True)
+    lb = BTn.seated_lifter(BTn.lifter_b(), BTn.WELL_MID_B, locked=True)   # SAME lifter, un-rotated
     return [
-        ("belt_tensioner_anchor_coupon", at(BTn.anchor())),
-        ("belt_tensioner_slider_coupon", at(BTn.slider())),
+        ("belt_tensioner_half_a_coupon", at(BTn.clamp_half())),
+        ("belt_tensioner_half_b_coupon", at(BTn.place_b(BTn.clamp_half()))),
         ("belt_tensioner_lifter_a_coupon", at(la)),
         ("belt_tensioner_lifter_b_coupon", at(lb)),
         ("belt_tensioner_screw_coupon",  at(BTn.screw_dummy())),
@@ -1126,8 +1128,8 @@ _COLORS = {
     "bridge_endplate": (0.39, 0.58, 0.93),   # PETG-GF — load-critical
     "keyhead_endplate": (0.42, 0.50, 0.62),   # PETG-GF — keyhead endplate + nut block (merged)
     "belt_clamp":      (0.95, 0.55, 0.15),   # PETG
-    "belt_tensioner_anchor_coupon": (0.20, 0.70, 0.45),   # coupon — green = test piece
-    "belt_tensioner_slider_coupon": (0.30, 0.80, 0.55),
+    "belt_tensioner_half_a_coupon": (0.20, 0.70, 0.45),   # coupon — green = test piece (ONE SKU)
+    "belt_tensioner_half_b_coupon": (0.30, 0.80, 0.55),   # same part, turned 180° about Z
     "belt_tensioner_lifter_a_coupon": (0.40, 0.85, 0.65),  # lifter bars
     "belt_tensioner_lifter_b_coupon": (0.40, 0.85, 0.65),
     "belt_tensioner_screw_coupon":  (0.55, 0.55, 0.58),   # steel M4
@@ -1328,7 +1330,7 @@ def _color_for(name):
     return cq.Color(*_DEFAULT_COLOR)
 
 
-def _export_assembly(publish=True):
+def _export_assembly(publish=True, gate=True, gate_full=False):
     build_n = _bump_build_counter()
     comps = collect_components()
     asm = cq.Assembly(name="public_steel_guitar")
@@ -1347,6 +1349,67 @@ def _export_assembly(publish=True):
     show(str(OUT / "assembly.step"))   # open/refresh it in the shared FreeCAD hub
     if publish:
         _publish_web_preview(comps, build_n)
+    # LAST: the gate spawns a worker pool, so run it once the STEP is safely on
+    # disk and the viewer is refreshed — a gate hiccup can never cost the build.
+    if not gate:
+        return 0
+    # both gates always run, so one RED doesn't hide the other's result
+    return _report_overlaps(comps, full=gate_full) | _report_sweep(comps)
+
+
+# The overlap gate's ACCEPTED baseline. Every entry is a REAL defect tracked
+# elsewhere, never a blessed contact; the build fails ABOVE this, so a NEW overlap
+# still stops it.
+#   chassis <-> wire_pwr_hot_10    ~0.6 mm^3   assigned out for rerouting
+#   bridge_endplate <-> wire_out   ~0.2 mm^3   assigned out for rerouting
+# Both surfaced when MIN_VOL went 1.0 -> 0.05; they are not new damage, just newly
+# visible. Drive this to 0 when they land.
+#
+# The three chassis_trrs_cable pairs are NOT here: check_overlaps.DEFERRED now
+# carries them and prints a loud line per pair every run. That is a deliberately
+# noisier arrangement than counting them, and the baseline drops to match — 4
+# would now silently absorb TWO new overlaps, which is exactly the failure this
+# number exists to prevent. Keep it equal to the count you can name.
+OVERLAP_BASELINE = 2
+
+
+def _report_overlaps(comps, full=False) -> int:
+    """Run the overlap gate on the model we JUST built, and return 1 on regression.
+
+    This is the whole point of folding the gate into the build: the scan itself is
+    ~13 s, but ``tools.check_overlaps`` run standalone spends ~5.5 MINUTES rebuilding
+    the model first. Reusing ``comps`` makes a full-tree gate essentially free, so
+    the lead never has to choose between gating and building.
+    """
+    try:
+        from tools.check_overlaps import gate
+        n = gate([(name, wp.val()) for name, wp in comps], full=full)
+    except Exception as e:               # noqa: BLE001 — a gate crash must not eat the geometry
+        print(f"overlap gate: SKIPPED ({type(e).__name__}: {e})", flush=True)
+        return 0
+    if n > OVERLAP_BASELINE:
+        print(f"OVERLAP GATE: RED — {n} unintended pairs "
+              f"({n - OVERLAP_BASELINE} NEW above the accepted {OVERLAP_BASELINE})",
+              flush=True)
+        return 1
+    print(f"OVERLAP GATE: green — {n} unintended pair(s), "
+          f"accepted baseline {OVERLAP_BASELINE}", flush=True)
+    return 0
+
+
+def _report_sweep(comps) -> int:
+    """Swept-envelope gate on the model we JUST built (see _report_overlaps for why
+    reusing ``comps`` matters). This catches the class ``check_overlaps`` is
+    STRUCTURALLY blind to: a part that clears everything at rest and fouls once it
+    turns. Baseline is 0 — unlike the overlap gate there is no inherited debt."""
+    try:
+        from tools.check_sweep import gate
+        n = gate([(name, wp.val()) for name, wp in comps])
+    except Exception as e:               # noqa: BLE001 — never let a gate eat the geometry
+        print(f"sweep gate: SKIPPED ({type(e).__name__}: {e})", flush=True)
+        return 0
+    print(f"SWEEP GATE: {'green' if n == 0 else f'RED — {n} swept collision(s)'}", flush=True)
+    return 1 if n else 0
 
 
 def _publish_web_preview(comps, build_n):
@@ -1380,6 +1443,10 @@ def main() -> None:
     p.add_argument("--part", help="Build only this printed part (skips assembly).")
     p.add_argument("--list", action="store_true", help="List part names and exit.")
     p.add_argument("--geom", action="store_true", help="Print belt geometry report and exit.")
+    p.add_argument("--no-gate", action="store_true",
+                   help="Skip the overlap gate (normally ~13 s on the built model).")
+    p.add_argument("--gate-full", action="store_true",
+                   help="Gate EVERY part, belts included (slower; belts rarely move).")
     args = p.parse_args()
 
     if args.geom:
@@ -1390,10 +1457,10 @@ def main() -> None:
         for name in PARTS:
             print(name)
         return
+    gate, gate_full = not args.no_gate, args.gate_full
     if args.part:
         if args.part == "assembly":
-            _export_assembly()
-            return
+            sys.exit(_export_assembly(gate=gate, gate_full=gate_full))
         if args.part not in PARTS:
             print(f"unknown part: {args.part!r}. Use --list.", file=sys.stderr)
             sys.exit(2)
@@ -1403,7 +1470,7 @@ def main() -> None:
     for name in PARTS:
         _export(name)
     report_build_regressions()          # ~free: flags any part whose face count grew vs baseline
-    _export_assembly()
+    sys.exit(_export_assembly(gate=gate, gate_full=gate_full))
 
 
 if __name__ == "__main__":

@@ -67,6 +67,7 @@ import cadquery as cq
 
 from . import dimensions as D
 from .helpers import box_at, cyl_y
+from cadkit.printing import snap as _snap
 
 # ── the bead grid ────────────────────────────────────────────────────────────
 # Every printed length below is a whole number of beads, written as the COUNT so
@@ -78,7 +79,8 @@ B = D.BEAD
 
 # ── clearances (sub-bead BY NECESSITY -- see above) ──────────────────────────
 CLR = 0.25                        # sliding clearance on the guided faces
-OCT_CLR = 0.1                     # channel floor standoff from the octagon
+OCT_CLR_MIN = 0.1                 # LEAST standoff of the channel floor from the octagon
+TIP_GAP = 0.1                     # hook tip -> pocket back, so the hook never bottoms
 
 # ── the latch band ───────────────────────────────────────────────────────────
 # X band, kept clear of the TRRS blind-mate way (x +5, D8..11) and the M4
@@ -113,7 +115,7 @@ LX_TOWER = -LX_C                  # bar tower <-> shaft block (mirrored)
 # SMALLER one so a single slider + cover SKU serves both; the 44-wide head gets
 # a finger recess (well_cutter) sinking its face to match -- which doubles as
 # the thumb well that keeps the button from being pressed by accident.
-FACE_Y = 22.0                     # = legs.SQ_W/2, the LEG HEAD'S OWN outer face.
+FACE_Y = 28 * B                   # 22.4 = legs.SQ_W/2, the LEG HEAD'S OWN outer face.
                                   # Was 17.8 -- the tower/shaft block's face -- so that
                                   # one slider + cover SKU could serve both joints. The
                                   # bar joint is gone and re-use is explicitly not a
@@ -129,8 +131,27 @@ COVER_T = 3 * B                   # 2.4 cover plate thickness
 COVER_LIP = 3 * B                 # 2.4 the aperture lip each side: what the pad
                                   # shoulders against as the slider's OUT stop
 COVER_IN = FACE_Y - COVER_T       # 15.8  cover inner face = slider's OUT stop
-OCT_TOP = 12.8                    # octagon's max +Y within the band (measured)
-CH_FLOOR = OCT_TOP + OCT_CLR      # 12.9 female CHANNEL floor: the hook rides
+OCT_TOP = 13.8                    # octagon's max +Y within the band. MEASURED off the
+                                  # real spigot, not derived -- cadkit owns the octagon's
+                                  # profile and latch cannot import legs (legs imports
+                                  # latch). So it is a STALE-DATUM RISK by construction,
+                                  # and legs.leg_head asserts it: widening SQ_W 44.0 ->
+                                  # 44.8 moved this 12.8 -> 13.8, which silently put the
+                                  # channel floor 0.9 mm INSIDE the spigot until the
+                                  # assert below was added.
+CH_FLOOR = _snap(OCT_TOP + OCT_CLR_MIN + TIP_GAP, B, "up") - TIP_GAP
+OCT_CLR = CH_FLOOR - OCT_TOP      # 0.50 the standoff that actually results
+#   THE CLEARANCE IS WHAT ABSORBS THE OCTAGON (user: position the latch so the LEG comes
+#   out bead-aligned). The octagon's apex within the band is 13.8 -- 17.25 beads -- and it
+#   CANNOT be moved onto the grid: the flank is 45 deg, so the apex tracks the band 1:1 and
+#   shifting the band by whole beads shifts the apex by whole beads, leaving the same 0.15
+#   remainder every time (measured across five positions). The band's X placement is already
+#   on-grid and stays there.
+#   So the standoff takes the remainder instead. Snapping (apex + least standoff + tip gap)
+#   UP to a bead and backing off TIP_GAP puts the POCKET BACK on the grid, which is what
+#   makes the material behind it -- FACE_Y minus pocket back -- a whole 7 beads instead of
+#   7.5. Self-adjusting: re-measure OCT_TOP after any leg resize and the wall stays on-grid.
+#   12.9 -> 14.3 female CHANNEL floor: the hook rides
                                   # this, fully retracted, through the whole
                                   # engagement. Just clear of the octagon so the
                                   # channel is a real cut in the wall.
@@ -142,11 +163,16 @@ HOOK_ENGAGE = 3 * B               # 2.4 -- up again from 2.0 on the snap. Load-
                                   # bearing, so it rounds UP; the thin female still
                                   # keeps 17.8 - 15.3 = 2.5 mm behind the pocket.
 HOOK_TIP = CH_FLOOR + HOOK_ENGAGE                      # 14.9 when ENGAGED
-BACK_Y = -3 * B                   # -2.4 tunnel back wall: the spring reacts here
+BACK_Y = -3 * B                   # -2.4 tunnel back wall: the spring reacts here.
+                                  # MALE-FRAME ONLY -- the female must never use it
+                                  # (see female_cutter; it did, and left a sliver).
+HOOK_BACK = CH_FLOOR - CLR        # 12.65 the hook's INBOARD face at rest (the
+                                  # slider's upper step rides here)
 STROKE = 4 * B                    # 3.2 press travel. MUST EXCEED HOOK_ENGAGE -- equal
                                   # would put the hook exactly on the channel floor
                                   # at full press, i.e. zero clearance. 2.8 also
                                   # reads as a proper button throw under the thumb.
+
 
 # ── Z bands (about the butt plane) ───────────────────────────────────────────
 # The hook's TOP is capped by the TRRS way, not by anything in the latch. The
@@ -196,6 +222,15 @@ SPR_GAP = 5 * B                   # 4.0 slider back face -> tunnel back at REST.
                                   # tunnel wall before the hook has cleared.
 # installed = SEAT + GAP = 10.4 -> 1.6 preload -> 4.0 N holding the button out;
 # at full press 4.8 compression -> 12.0 N. Never reaches solid (4.8 vs 7.2).
+
+SLIDER_BACK = BACK_Y + SPR_GAP       # 1.60 the slider's back face at REST
+CH_BACK = SLIDER_BACK - STROKE - CLR # -1.85 the female channel's inboard limit.
+                                     # NOT the hook's back face: the slider's upper
+                                     # STEP crosses the butt plane too, so the female
+                                     # has to clear the whole pressed slider, not just
+                                     # the hook. (Bounding it to the hook made release
+                                     # jam -- caught by the release/insertion test.)
+                                     # Derived from the slider so they cannot drift.
 
 LG_BLK_HALF = FACE_Y                # = BLK_W/2; the thin female's outer face (legs.BLK_W
                                   # owns this number; latch cannot import legs -- legs
@@ -259,18 +294,82 @@ def male_cutter(cx: float = LX_C) -> cq.Workplane:
 
 
 SLOT_W = LOW_W + 2 * COVER_T      # 17.6 slot mouth (the cover's outer width)
+# THE COVER'S X RUN. It enters at the head's +X face and slides -X until it butts
+# the solid head beyond the load window -- that butt IS the insertion stop, so no
+# separate stop feature is needed. HOST_HALF works because the head is SQUARE: its
+# +X wall and its +Y face are both SQ_W/2, which is exactly what FACE_Y already is.
+HOST_HALF = FACE_Y                # 22.4 = legs.SQ_W/2 (square section)
+COVER_X0 = LX_C - SLOT_W / 2      # -19.2 (24 beads) blind end, past the load window
+COVER_X1 = HOST_HALF              # 22.4 flush with the head's +X wall
+COVER_LEN = COVER_X1 - COVER_X0   # 41.6 (52 beads)
+
+# ── SEGMENT LOCK: the permanent stop, carried by the leg segment below ───────
+# The pad blocks the cover only while the button is OUT; press it to release the
+# leg and the cover is free again. So a second, unconditional stop rides the NEXT
+# -Z LEG SEGMENT (user). Its octagon plug tops out at LOAD_Z - 2.4 = -14.4, and
+# the section socket's groove EXITS the +Y face over x -6..+6 -- so there is
+# already open sky from the plug's top face straight up to the cover's underside,
+# and a post there fouls nothing.
+LOCK_W = 6 * B                    # 4.8 across X, inside the 12 mm groove
+LOCK_T = 1 * B                    # 0.8 into the cover's THICKNESS. The cover is
+                                  # only 3 beads thick, so this is the one split
+                                  # that leaves the outer skin a full 2 beads --
+                                  # a one-bead blade, but captured on every face
+                                  # and loaded in pure shear along X (19 mm^2).
+LOCK_Z0 = LOAD_Z - 3 * B          # -14.4 the segment plug's top face
+LOCK_Z1 = LOAD_Z + 5 * B          # -8.0 how far it reaches INTO the cover, up
+                                  # where the cover is at full thickness
+
+
+def cover_lock_tenon() -> cq.Workplane:
+    """The segment's lock post, in the COVER's frame. legs._segment places it."""
+    return _yz(LOCK_W, COVER_IN + LOCK_T, COVER_IN, LOCK_Z0, LOCK_Z1, 0.0)
+
+
+def cover_lock_way() -> cq.Workplane:
+    """The post's path THROUGH the head. The section socket tops out 1.6 mm
+    below the cover, so that last sliver of head material stands between the
+    plug's top face and the cover's underside -- the post cannot reach without
+    it (9.2 mm^3 of interference, measured). Runs the post's FULL height, not
+    just to the cover's underside: the dovetail's 45 deg flank leaves head
+    material just above LOAD_Z at this y, which stopped the post again (1.5
+    mm^3). Cut in leg_head."""
+    return _yz(LOCK_W + 2 * CLR, COVER_IN + LOCK_T + CLR, COVER_IN - CLR,
+               LOCK_Z0 - 1.0, LOCK_Z1, 0.0)
+
+
+def _cover_lock_pocket() -> cq.Workplane:
+    """Its home in the cover -- open at the bottom so the post enters as the
+    segment comes up, blind at the top so it cannot pass through."""
+    return _yz(LOCK_W + 2 * CLR, COVER_IN + LOCK_T + CLR, COVER_IN - 1.0,
+               LOAD_Z - 1.0, LOCK_Z1 + CLR, 0.0)
 
 
 def _cover_slot(cx: float = LX_C) -> cq.Workplane:
-    """Dovetail pocket for the cover: 45 deg flanks, narrow at the FACE and wide
-    at the root, open at the TOP (z0, the butt plane) so the cover installs
-    downward onto a hard stop and can only leave upward -- which the female half
-    blocks once the joint is together.
-"""
-    w0, w1 = SLOT_W, LOW_W + 4 * COVER_T
-    pts = [(-w0 / 2, FACE_Y), (w0 / 2, FACE_Y), (w1 / 2, COVER_IN), (-w1 / 2, COVER_IN)]
-    prof = (cq.Workplane("XY").polyline([(x + cx, y) for x, y in pts])
-            .close().extrude(LOAD_Z))
+    """Dovetail pocket for the cover -- an X SLIDE, open at the head's +X face.
+
+    IT USED TO BE A Z DROP and that had NO INSTALL PATH AT ALL (user). The
+    docstring claimed the cover slid down onto a hard stop and could only leave
+    upward, which the female would block once assembled. But the octagon SPIGOT
+    stands directly above the slot, so the cover fouled it after 1 mm of travel
+    (15.8 mm^3, rising to 177 once clear). The part could be printed and never
+    assembled.
+
+    So the dovetail turns 90 degrees: the trapezoid now lies in the Y-Z plane --
+    narrow at FACE_Y, wide at COVER_IN, 45 degree flanks top and bottom -- and
+    extrudes along X. Same retention (the wide root cannot pass the narrow
+    mouth, so the cover cannot leave in +Y), but the free axis is now X, and the
+    head's +X face is open sky.
+
+    The whole trapezoid stays at or below z0. Flaring past the butt plane would
+    put the slot back into the spigot, which is the mistake this replaces."""
+    z_root0, z_root1 = LOAD_Z, 0.0                     # wide root, at COVER_IN
+    z_mouth0, z_mouth1 = LOAD_Z + COVER_T, -COVER_T    # narrow mouth, at FACE_Y
+    pts = [(COVER_IN, z_root0), (FACE_Y, z_mouth0),
+           (FACE_Y, z_mouth1), (COVER_IN, z_root1)]
+    prof = (cq.Workplane("YZ").polyline(pts).close()
+            .extrude(COVER_X1 - COVER_X0)
+            .translate((COVER_X0, 0, 0)))
     return cq.Workplane("XY").add(prof.val())
 
 
@@ -290,9 +389,19 @@ def female_cutter(engage_z: float, cx: float = LX_C) -> cq.Workplane:
     """What the FEMALE half loses -- all INTERNAL; the outer wall is never
     broken, so no button and no hole appears on the body (user).
 
-      * CHANNEL: the hook's retracted travel path. The octagon's +Y flank slopes
+      * CHANNEL: the hook's retracted travel path, spanning exactly the hook's
+        OWN retracted Y band (CH_BACK..CH_FLOOR). The octagon's +Y flank slopes
         across the band, so the mortise void alone does not clear a rectangular
         hook -- this squares it off out to CH_FLOOR.
+
+        This used to run to BACK_Y, which is a MALE-frame datum: the male's
+        slider-tunnel back wall, 15.3 mm inboard. Nothing in the FEMALE needs
+        the channel that deep -- only the hook ever crosses the butt plane --
+        and the excess mostly landed harmlessly inside the octagon mortise
+        (already void). Mostly: where the mortise's flank cut away, a
+        0.75 x 0.75 x 35 mm sliver of real material survived and got sliced
+        off, leaving a full-height notch visible on leg_body_stub_2 and on no
+        other stub, since it is the only one carrying a latch (user report).
       * POCKET: the hook's home. Its floor is a FLAT 90 deg ledge, the retention
         face; the ledge is the material between the female's MOUTH and that
         floor, which is why HOOK_Z0 is also the ledge thickness.
@@ -301,7 +410,7 @@ def female_cutter(engage_z: float, cx: float = LX_C) -> cq.Workplane:
     the ledge is made of, so the hook passed straight through and the latch
     retained nothing. The camming is the hook's own 45 deg top chamfer."""
     z0, z1 = engage_z, engage_z + HOOK_Z1 + 30.0
-    ch = _yz(LX_W + 2 * CLR, CH_FLOOR, BACK_Y, z0, z1, cx)
+    ch = _yz(LX_W + 2 * CLR, CH_FLOOR, CH_BACK, z0, z1, cx)
     return ch.union(_pocket(engage_z, cx))
 
 
@@ -309,7 +418,7 @@ def _pocket(engage_z: float, cx: float = LX_C) -> cq.Workplane:
     """Retention pocket. Floor FLAT (the ledge). No gable: on this face the
     pocket's outer boundary is the BED side in the female's print, so it is a
     floor rather than a ceiling and needs no roof relief."""
-    return _yz(LX_W + 2 * CLR, CH_FLOOR, HOOK_TIP + 0.1,
+    return _yz(LX_W + 2 * CLR, CH_FLOOR, HOOK_TIP + TIP_GAP,
                engage_z + HOOK_Z0 - CLR, engage_z + HOOK_Z1 + CLR, cx)
 
 
@@ -353,7 +462,7 @@ def cover(cx: float = LX_C) -> cq.Workplane:
     b = _cover_slot(cx)
     b = b.cut(_yz(PAD_W + 2 * CLR, FACE_Y + 1.0, COVER_IN - 1.0,
                   PAD_Z0 - CLR, PAD_Z1 + CLR, cx))
-    return b
+    return b.cut(_cover_lock_pocket())
 
 
 def slider_pressed(cx: float = LX_C) -> cq.Workplane:
