@@ -231,6 +231,28 @@ PARTS = {
 }
 
 
+# ── CONTEXT (not printed parts -- just enough to read the chain end to end) ──
+BODY_T = 20 * B                   # 16.0 slab standing in for the chassis underside
+BAR_W = 56 * B                    # 44.8 pedal bar section, same as the leg
+BAR_L = 200 * B                   # 160.0 of bar shown either side of the joint
+
+
+def body_stub_context():
+    """The chassis underside the adapter bolts to. NOT a printed part."""
+    w = LEG_W + 8 * D.MIN_WALL_2P
+    return box_at(w, w, BODY_T, z=-70 * B - BODY_T / 2)
+
+
+def pedal_bar_context():
+    """A length of pedal bar with the mortise that receives the adjust tenon.
+    NOT a printed part -- the real bar lives in pedal_bar.py; this is the
+    socket end only, so the chain can be read end to end."""
+    top = FIX_L + FIX_TEN_L - 2 * ENGAGE + ADJ_L - ENGAGE + ADJ_TEN_L
+    b = box_at(BAR_W, BAR_L, BAR_W, z=top - BAR_W / 2 + ENGAGE / 2)
+    b = b.cut(mortise_cutter(BAR_W + 2.0).translate((0, 0, top - BAR_W - 1.0 + ENGAGE / 2)))
+    return b
+
+
 def assembly():
     """The chain, posed. Z=0 is the body adapter's mouth; the leg runs +Z."""
     out = []
@@ -242,4 +264,6 @@ def assembly():
     out.append(("adjust_tenon",
                 adjust_tenon().translate(
                     (0, 0, FIX_L + FIX_TEN_L - 2 * ENGAGE + ADJ_L - ENGAGE))))
+    out.append(("body_CONTEXT", body_stub_context()))
+    out.append(("pedal_bar_CONTEXT", pedal_bar_context()))
     return out
