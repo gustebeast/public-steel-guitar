@@ -231,8 +231,35 @@ def _knee(n) -> bool:
             or f"kv_{inner}" in KNEE_FAMILY)
 
 
+# ── DEFERRED, NOT INTENDED — MUST BE RESOLVED BEFORE THE INSTRUMENT IS FINALISED ──
+# These are REAL interpenetrations parked so the rest of the model can be gated. They are
+# NOT designed contacts and they do not belong in intended() on their merits; the only
+# reason they sit here is that the fix is a routing decision the user is taking later.
+#
+# THE LEG'S TRRS CABLE (user, deferred 2026-08-13). Three pairs, one cause each:
+#   chassis <-> cable      the cable's -X end cap, ~(-624, 50.5, -65.7), buried in the
+#                          keyhead-end segment. CAUSED ON THIS BRANCH: chassis.EP_TIP_NX
+#                          feeds _leg_geom, so growing the keyhead 5.0 along X moved the
+#                          -X leg station with it and took the cable along. Fix is either
+#                          a reroute or pinning the leg station to its own datum.
+#   electronics_tray, pi5  PRE-EXISTING, older than this branch.
+# Each one is a cable DUMMY clipping a solid, i.e. exactly the "real routing bug" the wire
+# rule below is written to catch — which is why they must not be left here quietly.
+DEFERRED = {frozenset({"chassis", "chassis_trrs_cable"}),
+            frozenset({"chassis_trrs_cable", "electronics_tray"}),
+            frozenset({"chassis_trrs_cable", "pi5"})}
+_DEFERRED_SEEN = set()
+
+
 def intended(na, nb) -> bool:
     if "build_counter" in (na, nb):
+        return True
+    _pair = frozenset({base(na), base(nb)})
+    if _pair in DEFERRED:
+        if _pair not in _DEFERRED_SEEN:                 # announce once, never silently
+            _DEFERRED_SEEN.add(_pair)
+            print("  !! DEFERRED overlap (NOT a designed contact, must be fixed before "
+                  "the instrument is finalised): %s <-> %s" % (na, nb))
         return True
     if _knee(na) and _knee(nb):
         return True
