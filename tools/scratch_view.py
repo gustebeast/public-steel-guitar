@@ -37,7 +37,15 @@ def _live():
     belongs on this side; the cache is only for scenery."""
     from src import leg_stack as LS, pedal_bar as PB
     out = [(n, w) for n, w in LS.assembly() if not n.endswith("_CONTEXT")]
-    out += [(n, w) for n, w in PB.assembly_parts()]
+    # assembly_parts() hands back the bar in its OWN frame (z 0..90); build.py is
+    # what drops it to the floor. Reuse that same offset and the same finished
+    # pieces the printer gets -- without this the bar renders up at the body and
+    # LOOKS like it vanished, leaving the pedal hardware floating in space.
+    from src.build import PEDAL_LIFT_DZ, _PB_bar
+    for n, w in PB.assembly_parts():
+        if n in PB.PIECE_SPAN:
+            w = _PB_bar(n)
+        out.append((n, w.translate((0, 0, PEDAL_LIFT_DZ))))
     return out
 
 
