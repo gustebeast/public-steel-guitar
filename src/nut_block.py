@@ -302,6 +302,68 @@ def _dowel_pocket(seat_z, y):
     return prof.extrude(PIN_SEAT_L / 2.0, both=True).translate((0.0, y, 0.0))
 
 
+def _bay_profile(i: int, y0: float, y1: float) -> cq.Workplane:
+    """The threading bay, as an X-Z profile extruded across the lane. NOT a box any more.
+
+    TWO 45 deg RAMPS OFF THE FLOOR, and they do two different jobs (user):
+
+      +X  PRINTABILITY. The block builds -X -> +X, so the bay's +X wall is where material
+          has to resume across the whole void with nothing behind it -- the one real
+          overhang in this part. A vertical wall there is a bridge; a 45 deg ramp is
+          self-supporting.
+      -X  RESTRINGING. Nothing needs it to print. A square inside corner down there CATCHES
+          the tail: you feed the string under the rod and it jams in the corner instead of
+          coming back up. The same ramp mirrored gives it a surface to follow round.
+
+    THE RAMP TOP IS THIS LANE'S CHANNEL FLOOR (ROD_Z - g), not some fixed height, because
+    that is exactly how high material resumes at +X for this string. And the ramp always
+    clears the wrap, for every gauge -- it is not a per-string escape:
+
+        distance from the rod axis to the 45 deg line = (BAY_R + g) / sqrt(2)
+        wrap envelope radius                          = ROD_D/2 + g
+        clears while  g <= 3.54   (the fattest C6 string is 1.78)
+
+    Above the ramp tops the walls stay vertical out to +-BAY_R: that part of the void is
+    open sky in the print (the seat walls stop at their dowel's crown, well below), so
+    there is nothing up there to bridge."""
+    g = D.STRING_GAUGE[i]
+    z_f = ROD_Z - BAY_R                      # -7.4, the floor the tail passes under
+    z_r = ROD_Z - g                          # ramp top = where material resumes at +X
+    x_m, x_p = ROD_X - BAY_R, ROD_X + BAY_R
+    run = z_r - z_f                          # 45 deg, so the run IS the rise
+    _clr = (BAY_R + g) / math.sqrt(2.0) - (ROD_D / 2 + g)
+    assert _clr > 0.0, (
+        f"string {i + 1}: the 45 deg bay ramp cuts into its own wrap by {-_clr:.2f}")
+    prof = (cq.Workplane("XZ")
+            .polyline([(x_m, NUT_TOP + 1.0), (x_m, z_r),
+                       (x_m + run, z_f), (x_p - run, z_f),
+                       (x_p, z_r), (x_p, NUT_TOP + 1.0)])
+            .close())
+    return prof.extrude((y1 - y0) / 2.0, both=True).translate((0.0, (y0 + y1) / 2.0, 0.0))
+
+
+def _seat_wall_lead(i: int) -> cq.Workplane:
+    """45 deg lead-in on the -X END of the wall between seats i and i+1.
+
+    The bay ramp carries the print up to the channel floor, but the seat walls stand 2.4
+    higher than that -- up to their dowel's crown -- and that last 2.4 would still start in
+    mid-air at the bay wall. So the wall's -X end slopes up at 45 deg over the same 2.4,
+    landing on the ramp rather than on nothing. It costs the wall its -X corner, where it
+    was doing the least: the dowel it blocks sits at x=0, a millimetre further in."""
+    z_r = ROD_Z - max(D.STRING_GAUGE[i], D.STRING_GAUGE[i + 1])     # meets the bay ramp
+    crown = -max(D.STRING_GAUGE[i], D.STRING_GAUGE[i + 1])          # the wall's own top
+    x_p = ROD_X + BAY_R
+    x_e = x_p + (crown - z_r)                                        # 45 deg -> 2.4 of run
+    y_hi = D.nut_y(i) - PIN_SEAT_L / 2
+    y_lo = D.nut_y(i + 1) + PIN_SEAT_L / 2
+    prof = (cq.Workplane("XZ")
+            .polyline([(x_p, z_r), (x_e, crown),
+                       (x_e, NUT_TOP + 1.0), (x_p, NUT_TOP + 1.0)])
+            .close())
+    return prof.extrude((y_hi - y_lo) / 2.0, both=True).translate(
+        (0.0, (y_hi + y_lo) / 2.0, 0.0))
+
+
 def _seat_wall_top(i: int) -> cq.Workplane:
     """Takes the top off the wall between dowel seats i and i+1 (user).
 
@@ -352,15 +414,14 @@ def _build() -> cq.Workplane:
         body = body.cut(_dowel_pocket(seat_z, y0))
         if i + 1 < D.N_STRINGS:
             body = body.cut(_seat_wall_top(i))
+            body = body.cut(_seat_wall_lead(i))
 
         # THE BAY: the room the coil lives in and the tail is threaded through. Open to
         # the TOP, because that is how a string is wound on -- down the -X side, under the
         # rod, up the +X side, and round again, one lane per string so the walls guide the
         # tip instead of letting it wander next door.
         bay_y0, bay_y1 = bays()[i]
-        body = body.cut(box_at(2 * BAY_R, bay_y1 - bay_y0, (NUT_TOP + 1.0) - (ROD_Z - BAY_R),
-                               x=ROD_X, y=(bay_y0 + bay_y1) / 2,
-                               z=((ROD_Z - BAY_R) + NUT_TOP + 1.0) / 2))
+        body = body.cut(_bay_profile(i, bay_y0, bay_y1))
 
         # EXIT: the tail leaves the rod's -X tangent at the coil's far end and runs out the
         # back face, crossing the clamp screw's column on the way -- see GATE_X.
@@ -373,10 +434,16 @@ def _build() -> cq.Workplane:
         anvil_z = ROD_Z - g / 2 - PIN_D / 2
         body = body.cut(_anvil_pocket(anvil_z + PIN_CLR, y1, gx))
         # CLAMP: buried M4 insert from +Z and the set-screw bore down onto the tail.
-        body = body.cut(cyl(INSERT_D, INSERT_POCKET + 0.5, z=INSERT_GAP)
-                        .translate((gx, y1, 0)))
-        body = body.cut(cyl(SCREW_D, NUT_TOP - (ROD_Z - g) + 1, z=ROD_Z - g)
-                        .translate((gx, y1, 0)))
+        # TEARDROPPED, both of them. Their axis is Z and the block builds along X, so each
+        # is a "horizontal" hole in the print sense -- a plain cylinder gives it a curved
+        # -X ceiling that droops. (They were plain cyl() before the capstan too; the
+        # overhang audit is what turned them up.)
+        body = body.cut(teardrop_hole(INSERT_D, INSERT_POCKET + 0.5,
+                                      axis_point=(gx, y1, INSERT_GAP),
+                                      axis_dir=(0.0, 0.0, 1.0), print_up=PRINT_UP))
+        body = body.cut(teardrop_hole(SCREW_D, NUT_TOP - (ROD_Z - g) + 1,
+                                      axis_point=(gx, y1, ROD_Z - g),
+                                      axis_dir=(0.0, 0.0, 1.0), print_up=PRINT_UP))
 
     # THE ROD BORE, cut LAST so none of the unions above can refill it (the bridge end
     # lost both its axle bores exactly that way). BLIND at +Y: that wall is the rod's +Y
