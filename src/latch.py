@@ -303,6 +303,47 @@ COVER_X0 = LX_C - SLOT_W / 2      # -19.2 (24 beads) blind end, past the load wi
 COVER_X1 = HOST_HALF              # 22.4 flush with the head's +X wall
 COVER_LEN = COVER_X1 - COVER_X0   # 41.6 (52 beads)
 
+# ── SEGMENT LOCK: the permanent stop, carried by the leg segment below ───────
+# The pad blocks the cover only while the button is OUT; press it to release the
+# leg and the cover is free again. So a second, unconditional stop rides the NEXT
+# -Z LEG SEGMENT (user). Its octagon plug tops out at LOAD_Z - 2.4 = -14.4, and
+# the section socket's groove EXITS the +Y face over x -6..+6 -- so there is
+# already open sky from the plug's top face straight up to the cover's underside,
+# and a post there fouls nothing.
+LOCK_W = 6 * B                    # 4.8 across X, inside the 12 mm groove
+LOCK_T = 1 * B                    # 0.8 into the cover's THICKNESS. The cover is
+                                  # only 3 beads thick, so this is the one split
+                                  # that leaves the outer skin a full 2 beads --
+                                  # a one-bead blade, but captured on every face
+                                  # and loaded in pure shear along X (19 mm^2).
+LOCK_Z0 = LOAD_Z - 3 * B          # -14.4 the segment plug's top face
+LOCK_Z1 = LOAD_Z + 5 * B          # -8.0 how far it reaches INTO the cover, up
+                                  # where the cover is at full thickness
+
+
+def cover_lock_tenon() -> cq.Workplane:
+    """The segment's lock post, in the COVER's frame. legs._segment places it."""
+    return _yz(LOCK_W, COVER_IN + LOCK_T, COVER_IN, LOCK_Z0, LOCK_Z1, 0.0)
+
+
+def cover_lock_way() -> cq.Workplane:
+    """The post's path THROUGH the head. The section socket tops out 1.6 mm
+    below the cover, so that last sliver of head material stands between the
+    plug's top face and the cover's underside -- the post cannot reach without
+    it (9.2 mm^3 of interference, measured). Runs the post's FULL height, not
+    just to the cover's underside: the dovetail's 45 deg flank leaves head
+    material just above LOAD_Z at this y, which stopped the post again (1.5
+    mm^3). Cut in leg_head."""
+    return _yz(LOCK_W + 2 * CLR, COVER_IN + LOCK_T + CLR, COVER_IN - CLR,
+               LOCK_Z0 - 1.0, LOCK_Z1, 0.0)
+
+
+def _cover_lock_pocket() -> cq.Workplane:
+    """Its home in the cover -- open at the bottom so the post enters as the
+    segment comes up, blind at the top so it cannot pass through."""
+    return _yz(LOCK_W + 2 * CLR, COVER_IN + LOCK_T + CLR, COVER_IN - 1.0,
+               LOAD_Z - 1.0, LOCK_Z1 + CLR, 0.0)
+
 
 def _cover_slot(cx: float = LX_C) -> cq.Workplane:
     """Dovetail pocket for the cover -- an X SLIDE, open at the head's +X face.
@@ -421,7 +462,7 @@ def cover(cx: float = LX_C) -> cq.Workplane:
     b = _cover_slot(cx)
     b = b.cut(_yz(PAD_W + 2 * CLR, FACE_Y + 1.0, COVER_IN - 1.0,
                   PAD_Z0 - CLR, PAD_Z1 + CLR, cx))
-    return b
+    return b.cut(_cover_lock_pocket())
 
 
 def slider_pressed(cx: float = LX_C) -> cq.Workplane:
