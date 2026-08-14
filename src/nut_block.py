@@ -311,44 +311,49 @@ def _dowel_pocket(seat_z, y):
     return prof.extrude(PIN_SEAT_L / 2.0, both=True).translate((0.0, y, 0.0))
 
 
-def _bay_profile(i: int, y0: float, y1: float) -> cq.Workplane:
-    """The threading bay, as an X-Z profile extruded across the lane. NOT a box any more.
+BAY_D = 2 * BAY_R                               # 10.0 — ONE trough diameter for all ten
 
-    TWO 45 deg RAMPS OFF THE FLOOR, and they do two different jobs (user):
+# ── WORK IN PROGRESS: THE DOWEL ZONE IS BARE PRISM (user) ──────────────────
+# False switches off every cut +X of the troughs -- the two entry channel runs, the
+# dowel cradle, and the two seat-wall trims -- leaving that region as the solid prism it
+# started as. It is the starting point the +Z half of this block is being rebuilt from,
+# and the reason is that those four cuts were each derived from a DIFFERENT datum (the
+# gauged pin height, the channel floor, the dowel crown, the bay ramp), which is what
+# made them hard to reason about together.
+#
+# Everything -X of the troughs is untouched and still cut: the exit passages and the
+# clamp bores (user).
+#
+# Switched off rather than deleted, so the derivations survive to be reused or
+# consciously discarded -- _dowel_pocket, _seat_wall_top and _seat_wall_lead are all
+# still below, unused.
+#
+# NO STRING CAN BE TERMINATED IN THIS STATE: nothing holds a break dowel and there is no
+# path from the bridge into a trough. Do not read a clean gate as a working part.
+_EXTRA_CUTS = False
 
-      +X  PRINTABILITY. The block builds -X -> +X, so the bay's +X wall is where material
-          has to resume across the whole void with nothing behind it -- the one real
-          overhang in this part. A vertical wall there is a bridge; a 45 deg ramp is
-          self-supporting.
-      -X  RESTRINGING. Nothing needs it to print. A square inside corner down there CATCHES
-          the tail: you feed the string under the rod and it jams in the corner instead of
-          coming back up. The same ramp mirrored gives it a surface to follow round.
 
-    THE RAMP TOP IS THIS LANE'S CHANNEL FLOOR (ROD_Z - g), not some fixed height, because
-    that is exactly how high material resumes at +X for this string. And the ramp always
-    clears the wrap, for every gauge -- it is not a per-string escape:
+def _bay_trough(y0: float, y1: float) -> cq.Workplane:
+    """The threading trough: ONE shape, cut the same way for every string (user).
 
-        distance from the rod axis to the 45 deg line = (BAY_R + g) / sqrt(2)
-        wrap envelope radius                          = ROD_D/2 + g
-        clears while  g <= 3.54   (the fattest C6 string is 1.78)
+    It is a cadkit TEARDROP BORE along Y -- the same profile, from the same helper, as the
+    axle bore it surrounds. That is the point of doing it this way: the trough and the hole
+    through it are the same construction, so they cannot drift apart, and the trough is
+    printable by the same argument that makes any teardrop printable rather than by a
+    hand-built 45 that has to be re-argued whenever a gauge moves.
 
-    Above the ramp tops the walls stay vertical out to +-BAY_R: that part of the void is
-    open sky in the print (the seat walls stop at their dowel's crown, well below), so
-    there is nothing up there to bridge."""
-    g = D.STRING_GAUGE[i]
-    z_f = ROD_Z - BAY_R                      # -7.4, the floor the tail passes under
-    z_r = ROD_Z - g                          # ramp top = where material resumes at +X
-    x_m, x_p = ROD_X - BAY_R, ROD_X + BAY_R
-    run = z_r - z_f                          # 45 deg, so the run IS the rise
-    _clr = (BAY_R + g) / math.sqrt(2.0) - (ROD_D / 2 + g)
-    assert _clr > 0.0, (
-        f"string {i + 1}: the 45 deg bay ramp cuts into its own wrap by {-_clr:.2f}")
-    prof = (cq.Workplane("XZ")
-            .polyline([(x_m, NUT_TOP + 1.0), (x_m, z_r),
-                       (x_m + run, z_f), (x_p - run, z_f),
-                       (x_p, z_r), (x_p, NUT_TOP + 1.0)])
-            .close())
-    return prof.extrude((y1 - y0) / 2.0, both=True).translate((0.0, (y0 + y1) / 2.0, 0.0))
+    ONE DIAMETER, sized on the WORST case -- string 10's winding needs
+    ROD_D/2 + g + g/2 = 4.28 of radius, so BAY_D's 5.0 clears it -- and then every string
+    gets that same trough regardless of its own gauge. Uniform beats optimal here: it is
+    the difference between one number to check and ten.
+
+    WHERE IT IS APPLIED comes from bays(): one window spanning strings 8-10, where the
+    coils have already merged into a single pocket, and a separate window per string for
+    1 through 7. What is left between those windows is the material the axle fingers are
+    cut from."""
+    return teardrop_hole(BAY_D, y1 - y0,
+                         axis_point=(ROD_X, y0, ROD_Z),
+                         axis_dir=(0.0, 1.0, 0.0), print_up=PRINT_UP)
 
 
 def _seat_wall_lead(i: int) -> cq.Workplane:
@@ -417,26 +422,28 @@ def _build() -> cq.Workplane:
         pin_z = -g - PIN_D / 2                  # dowel centre: its top at -g, string top at 0
         seat_z = pin_z + PIN_CLR                # seat raised so its BOTTOM is flush with the
                                                 # dowel's -- no Z slop under the gauge datum
-        # ENTRY: level over the dowel (the dowel is the scale, so the string leaves it flat),
-        # then on -X to the bay. Two floors: the +X run keeps SOLID under the dowel so it is
-        # supported across the channel and not only at its ends.
-        body = body.cut(box_at(X_FRONT - (-PIN_D / 2), gw, ROOF_CLR - pin_z,
-                               x=(X_FRONT + -PIN_D / 2) / 2, y=y0,
-                               z=(ROOF_CLR + pin_z) / 2))
-        body = body.cut(box_at((-PIN_D / 2) - (ROD_X + BAY_R), gw, ROOF_CLR - (ROD_Z - g),
-                               x=((-PIN_D / 2) + (ROD_X + BAY_R)) / 2, y=y0,
-                               z=(ROOF_CLR + ROD_Z - g) / 2))
-        body = body.cut(_dowel_pocket(seat_z, y0))
-        if i + 1 < D.N_STRINGS:
-            body = body.cut(_seat_wall_top(i))
-            body = body.cut(_seat_wall_lead(i))
+        # ── STRIPPED BACK TO PRISM + TROUGHS (user, in progress) ──────────────────
+        # See _EXTRA_CUTS. Everything except the prism, the ten teardrop troughs and the
+        # rod bore is switched off: the entry channels, the dowel cradle, the seat-wall
+        # trims, the exit passage and the clamp bores.
+        if _EXTRA_CUTS:
+            body = body.cut(box_at(X_FRONT - (-PIN_D / 2), gw, ROOF_CLR - pin_z,
+                                   x=(X_FRONT + -PIN_D / 2) / 2, y=y0,
+                                   z=(ROOF_CLR + pin_z) / 2))
+            body = body.cut(box_at((-PIN_D / 2) - (ROD_X + BAY_R), gw, ROOF_CLR - (ROD_Z - g),
+                                   x=((-PIN_D / 2) + (ROD_X + BAY_R)) / 2, y=y0,
+                                   z=(ROOF_CLR + ROD_Z - g) / 2))
+            body = body.cut(_dowel_pocket(seat_z, y0))
+            if i + 1 < D.N_STRINGS:
+                body = body.cut(_seat_wall_top(i))
+                body = body.cut(_seat_wall_lead(i))
 
         # THE BAY: the room the coil lives in and the tail is threaded through. Open to
         # the TOP, because that is how a string is wound on -- down the -X side, under the
         # rod, up the +X side, and round again, one lane per string so the walls guide the
         # tip instead of letting it wander next door.
         bay_y0, bay_y1 = bays()[i]
-        body = body.cut(_bay_profile(i, bay_y0, bay_y1))
+        body = body.cut(_bay_trough(bay_y0, bay_y1))
 
         # EXIT: the tail leaves the rod's -X tangent at the coil's far end and runs out the
         # back face, crossing the clamp screw's column on the way -- see GATE_X.
