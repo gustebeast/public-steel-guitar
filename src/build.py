@@ -1148,6 +1148,13 @@ _COLORS = {
     "pickup":          (0.10, 0.10, 0.12),   # DEMO pickup body
     "pickup_zplate":   (0.85, 0.65, 0.30),   # PCTG height plate (under the pickup)
     "leg_body_stub":   (0.36, 0.42, 0.46),
+    # redesigned leg (src.leg_stack): sleeves read as the GF structure they are,
+    # tenons a shade warmer so the floating pieces are tellable at a glance
+    "body_adapter":    (0.36, 0.42, 0.46),   # PETG-GF, same family as leg_head
+    "fixed_sleeve":    (0.42, 0.48, 0.52),   # PETG-GF, as the old segment bodies
+    "adjust_sleeve":   (0.42, 0.48, 0.52),
+    "fixed_tenon":     (0.55, 0.52, 0.44),   # PETG-GF floating tenons
+    "adjust_tenon":    (0.62, 0.56, 0.42),
     "leg_seg_body":    (0.42, 0.48, 0.52),   # square GF bodies
     "leg_coupler_m":   (0.36, 0.42, 0.46),
     "leg_coupler_f":   (0.36, 0.42, 0.46),
