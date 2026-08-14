@@ -703,6 +703,12 @@ def _sq_body(length: float, channel: bool = False) -> cq.Workplane:
         plug = plug.cut(cyl(SEC_CABLE_D, SEG_PLUG_L + 3.0, z=length - 2.0)
                         .translate((0, SEC_BORE_Y, 0)))
     b = b.union(plug)
+    # LATCH COVER LOCK: a post on the plug's top face that rises into a pocket in
+    # the cover's underside, so the cover cannot slide back out +X even with the
+    # button pressed (user). Authored in the COVER's frame (head-local, cover
+    # bottom at latch.LOAD_Z); the head's bottom face butts this segment's TOP
+    # face, so head z + length + HEAD_BODY_L lands it here.
+    b = b.union(LT.cover_lock_tenon().translate((0, 0, length + HEAD_BODY_L)))
     # M4 retention (user rule: joinery takes the force, the screw only stops
     # extraction): ONE M4×25 button per joint from the OUTER (-Y) face — the +Y
     # face is the open groove, so the screw comes through the point-side wall
@@ -1087,7 +1093,7 @@ def leg_head(latch: bool = False) -> cq.Workplane:
         assert abs(LT.FACE_Y - SQ_W / 2) < 1e-9, (
             "latch.FACE_Y %.2f is no longer the head face %.2f -- the cover would "
             "not sit flush and the bed face would step" % (LT.FACE_Y, SQ_W / 2))
-        b = b.cut(LT.male_cutter())
+        b = b.cut(LT.male_cutter()).cut(LT.cover_lock_way())
         b = b.union(LT.male_post())      # coil guide post (union AFTER the tunnel cut)
     # captive CA-354S seat + cable ways on the TRRS axis (+5, +13 — moved
     # into the fat flare band): tip lip, handle way, Ø8 down-way to the core
