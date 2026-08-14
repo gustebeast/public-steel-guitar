@@ -88,10 +88,15 @@ def _profile_area(w: float, cham: float = CHAM) -> float:
 ENGAGE = 60 * B                   # 48.0 least engagement of any tenon in a sleeve
 ADAPT_L = 60 * B                  # 48.0 body adapter: the tenon's extension
                                   # and no more -- same section as every sleeve
-ADJ_L = 250 * B                   # 200.0 adjust sleeve
-FIX_L = 250 * B                   # 200.0 fixed sleeve
-ADJ_TEN_L = 220 * B               # 176.0 adjust tenon: reaches the bar and sinks
-                                  # a long way into the adjust sleeve
+BED = 315 * B                     # 252.0 longest printed part. The bed is 255 sq,
+                                  # but sizing to the DIAGONAL would mean one part
+                                  # per plate (user), so this is the square limit.
+ADJ_L = BED                       # 252.0 adjust sleeve -- AS LONG AS THE BED
+                                  # ALLOWS, because its length is what buys height
+                                  # adjustment; the fixed section takes the rest
+FIX_L = 185 * B                   # 148.0 fixed sleeve = the remainder
+ADJ_TEN_L = BED                   # 252.0 adjust tenon, also bed-limited: its
+                                  # length past the sleeve IS the adjustment
 FIX_TEN_L = FIX_L + 2 * ENGAGE    # 296.0 fixed tenon: the FULL length of its own
                                   # sleeve PLUS an extension at each end, so the
                                   # one bar does the work of a tenon at BOTH
@@ -104,7 +109,7 @@ ADJ_WEB = 2 * B                   # 1.6 material between holes -- this web, not
                                   # the screw, is what tears out under load, so
                                   # it is the number that sets pull-out strength
 ADJ_PITCH = ADJ_HOLE_D + ADJ_WEB  # 5.6 and therefore the HEIGHT STEP
-ADJ_N = 12                        # -> 12 * 5.6 = 67.2 mm of adjustment
+ADJ_N = 26                        # -> 26 * 5.6 = 145.6 mm of adjustment
 # Two rows, offset half a pitch, on opposite faces: halves the step to 2.8
 # without thinning any web (each row keeps its full 1.6).
 ADJ_ROWS = (0.0, ADJ_PITCH / 2.0)
@@ -227,6 +232,15 @@ def body_adapter():
 
     So the load path is the joint, not the bar. Keep the faces butted."""
     return _sleeve(ADAPT_L)
+
+
+# Nothing may need the bed's diagonal: that would mean one part per plate.
+for _n, _l in (("adjust sleeve", ADJ_L), ("fixed sleeve", FIX_L),
+               ("adjust tenon", ADJ_TEN_L), ("fixed tenon", FIX_TEN_L),
+               ("adapter", ADAPT_L)):
+    assert _l <= BED + 1e-9, (
+        "%s is %.1f long -- over the %.1f square-bed limit, so it would need the "
+        "diagonal and could not be plated with anything else" % (_n, _l, BED))
 
 
 PARTS = {
