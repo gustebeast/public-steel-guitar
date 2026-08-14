@@ -77,6 +77,13 @@ WALL_MIN = LEG_W / 2 - (TEN_W + 2 * FIT) * math.sqrt(2) / 2
 assert WALL_MIN >= 2 * D.MIN_WALL_2P, (
     "mortise wall %.2f is under two two-bead walls -- shrink TEN_W" % WALL_MIN)
 
+# A self-crossing profile still EXTRUDES -- it just yields a mangled corner and a
+# wrong section. Gate it on the one number that cannot lie: a chamfered square is
+# the square minus its four corner triangles, w^2 - cham^2 exactly.
+def _profile_area(w: float, cham: float = CHAM) -> float:
+    return octagon(w, cham).extrude(1.0).val().Volume()
+
+
 # ── lengths (a single leg; the height range lives in the adjust section) ─────
 ADJ_L = 250 * B                   # 200.0 adjust sleeve
 FIX_L = 250 * B                   # 200.0 fixed sleeve
@@ -111,8 +118,15 @@ def octagon(w: float, cham: float = CHAM):
     for sx, sy in ((1, 1), (-1, 1), (-1, -1), (1, -1)):
         pts.append((sx * (h - c), sy * h))
         pts.append((sx * h, sy * (h - c)))
-    # order them into a single loop, then rotate 45 for the install pose
-    loop = [pts[0], pts[1], pts[7], pts[6], pts[5], pts[4], pts[3], pts[2]]
+    # WALK THE PERIMETER. Getting this order wrong does not fail -- it makes a
+    # self-crossing polygon that still extrudes, and the damage shows up as one
+    # mangled corner (the -Y one) while the other three chamfer correctly. The
+    # area check below is what actually catches it.
+    #   flat, chamfer, flat, chamfer, ... counter-clockwise from the +Y top edge
+    loop = [pts[0], pts[2],      # top flat      (h-c, h) -> (-(h-c), h)
+            pts[3], pts[5],      # -X flat       (-h, h-c) -> (-h, -(h-c))
+            pts[4], pts[6],      # bottom flat   (-(h-c), -h) -> (h-c, -h)
+            pts[7], pts[1]]      # +X flat       (h, -(h-c)) -> (h, h-c)
     # NB: draw it SQUARE-ON and rotate the SOLID after extruding. Rotating the
     # Workplane here does nothing -- polyline().close() leaves a PENDING wire,
     # not an object on the stack, so extrude() would consume the unrotated
@@ -201,6 +215,11 @@ def body_adapter():
     b = box_at(LEG_W + 2 * wall, LEG_W + 2 * wall, h, z=h / 2)
     b = b.cut(box_at(LEG_W + 2 * FIT, LEG_W + 2 * FIT, h + 2.0, z=h / 2 + 1.0))
     return b
+
+
+assert abs(_profile_area(TEN_W) - (TEN_W ** 2 - CHAM ** 2)) < 1e-6, (
+    "octagon() is not a chamfered square -- the perimeter order is wrong. It "
+    "extrudes anyway; only the area catches it (one corner comes out jagged).")
 
 
 PARTS = {
