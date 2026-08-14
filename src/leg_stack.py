@@ -86,6 +86,8 @@ def _profile_area(w: float, cham: float = CHAM) -> float:
 
 # ── lengths (a single leg; the height range lives in the adjust section) ─────
 ENGAGE = 60 * B                   # 48.0 least engagement of any tenon in a sleeve
+ADAPT_L = 60 * B                  # 48.0 body adapter: the tenon's extension
+                                  # and no more -- same section as every sleeve
 ADJ_L = 250 * B                   # 200.0 adjust sleeve
 FIX_L = 250 * B                   # 200.0 fixed sleeve
 ADJ_TEN_L = 220 * B               # 176.0 adjust tenon: reaches the bar and sinks
@@ -210,27 +212,21 @@ def fixed_tenon():
 
 
 def body_adapter():
-    """Quick-release adapter: bolts to the body, receives the leg's OUTER 44.8
-    section. Unchanged in role from the old design -- only the socket shape
-    moved to the chamfered square. The latch female would be cut in this wall."""
-    wall = 2 * D.MIN_WALL_2P
-    h = 125 * B                                  # 100.0 socket depth. Deep enough
-                                                 # that the SLEEVE still engages it
-                                                 # over 52 mm and carries the kick
-                                                 # through the full 44.8 section --
-                                                 # the tenon's extension into the
-                                                 # adapter only ALIGNS.
-    b = box_at(LEG_W + 2 * wall, LEG_W + 2 * wall, h, z=h / 2)
-    b = b.cut(box_at(LEG_W + 2 * FIT, LEG_W + 2 * FIT, h - ENGAGE,
-                     z=(h - ENGAGE) / 2 + ENGAGE))
-    # blind bore for the fixed tenon's upper extension
-    b = b.cut(mortise_cutter(ENGAGE + 1.0).translate((0, 0, -1.0)))
-    return b
+    """Quick-release adapter: bolts to the body, and is otherwise JUST ANOTHER
+    MORTISE SECTION -- same 44.8 outer as every sleeve, so it ends FLUSH with
+    the rest of the leg (user). It wraps the fixed tenon's upper extension; the
+    sleeve BUTTS it face to face rather than plugging into it.
 
+    THAT BUTT IS WHAT CARRIES THE KICK, and it is why this works where my
+    earlier objection said it would not. I had the tenon BRIDGING a gap, so the
+    175 N.m appeared as BENDING in a 24 mm section: Z 1629 mm^3, 107 MPa,
+    SF 0.47. With the faces in contact the moment resolves instead into a
+    couple -- COMPRESSION carried by the butted 44.8 faces (which cannot fail
+    that way) and TENSION carried by the tenon. Tension is the cheap direction:
+    ~5.8 kN over the tenon's ~576 mm^2 is about 10 MPa, SF ~5.
 
-assert abs(_profile_area(TEN_W) - (TEN_W ** 2 - CHAM ** 2)) < 1e-6, (
-    "octagon() is not a chamfered square -- the perimeter order is wrong. It "
-    "extrudes anyway; only the area catches it (one corner comes out jagged).")
+    So the load path is the joint, not the bar. Keep the faces butted."""
+    return _sleeve(ADAPT_L)
 
 
 PARTS = {
@@ -281,15 +277,14 @@ def assembly():
     out = []
     # adapter first: it surrounds the fixed sleeve's top and hangs below the body
     out.append(("body_adapter", body_adapter()))
-    # the sleeve sits ENGAGE down inside the adapter, so the adapter grips its
-    # full 44.8 section over 52 mm -- that joint carries the kick, not the tenon
-    out.append(("fixed_sleeve", fixed_sleeve().translate((0, 0, ENGAGE))))
+    # BUTTED, not nested: same section, flush faces, moment through the joint
+    out.append(("fixed_sleeve", fixed_sleeve().translate((0, 0, ADAPT_L))))
     # runs the sleeve's WHOLE length and out both ends: ENGAGE up into the
     # adapter's blind bore, ENGAGE down into the adjust sleeve
     out.append(("fixed_tenon", fixed_tenon()))
     out.append(("adjust_sleeve",
-                adjust_sleeve().translate((0, 0, ENGAGE + FIX_L))))
+                adjust_sleeve().translate((0, 0, ADAPT_L + FIX_L))))
     # the ONE exposed tenon: how much stands proud IS the height setting
     out.append(("adjust_tenon",
-                adjust_tenon().translate((0, 0, ENGAGE + FIX_L + ADJ_L - ENGAGE))))
+                adjust_tenon().translate((0, 0, ADAPT_L + FIX_L + ADJ_L - ENGAGE))))
     return out
