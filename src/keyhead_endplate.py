@@ -134,9 +134,14 @@ def _build():
     # arc, and 45-deg face lead-in -- is one swept solid, so there's no seam where the
     # curve meets the bore (one continuous wall to push the string against). Restringing:
     # pull the end back out with pliers for a hand-hold while setting the new string hand-tight.
+    # ON THE WRAP'S FAR END, NOT ON THE STRING'S OWN LANE (user caught this). Since the
+    # capstan the tail does not leave at nut_y any more: it leaves where its coil ends,
+    # nut_y - adv, which is 0.9 to 4.7 further -Y depending on gauge. The bores had stayed
+    # on the old line, so every tail was aimed a little wide of its own hole and the fattest
+    # was aimed at its neighbour's. Reading nut_block.wrap_y ties them to the wrap for good.
     bore = _stow_bore(ZHOLE_D, ZHOLE_X, XLO, Z6, CH.Z_BOT - 1.0)
     for i in range(D.N_STRINGS):
-        w = w.cut(bore.translate((0, D.nut_y(i), 0)))
+        w = w.cut(bore.translate((0, NB.wrap_y(i)[1], 0)))
     return heal(w)
 
 
