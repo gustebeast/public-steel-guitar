@@ -400,7 +400,10 @@ def _string_components(i):
     # zone. Lifter bars only on the last string (build-time saver — same geometry, hidden elsewhere).
     so, sxd, sn = C.splice_frame((mx, my, mz), (D.SCREW_X, sy, spz))
     cloc = cq.Location(cq.Plane(origin=so, xDir=sxd, normal=sn))
-    for _nm, _shp in BTn.clamp_components(with_lifters=(i == D.N_STRINGS - 1)):
+    # tension state (DEMO): strings 1,2,9,10 fully TIGHT (gap 0), the rest fully LOOSE (gap = GAP)
+    _tight = i in (0, 1, D.N_STRINGS - 2, D.N_STRINGS - 1)
+    _gap = 0.0 if _tight else BTn.GAP
+    for _nm, _shp in BTn.clamp_components(gap=_gap, with_lifters=(i == D.N_STRINGS - 1)):
         out.append((f"belt_tensioner_{_nm}_{i}", cq.Workplane("XY").add(_shp.val().moved(cloc))))
     # string: rises from the anchor tangent to the bearing's +X extent, wraps 90°
     # over the top, then runs the speaking length to the nut block.
