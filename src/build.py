@@ -409,9 +409,6 @@ def _string_components(i):
     tail_z = D.STRING_Z + NB.ROD_Z                                     # the tail runs at rod height
     out.append((f"break_dowel_{i}", C.dowel().translate(               # centred in its seat (0.4 clr
         (D.NUT_BLOCK_X, ny, D.STRING_Z - g - D.NUT_PIN_D / 2))))       # all round); pin top at Z-g
-    out.append((f"anvil_dowel_{i}", C.dowel().translate(               # the clamp pinches the tail onto
-        (D.NUT_BLOCK_X + NB.clamp_row_x(i), wy,                                # STEEL, not onto the plastic floor
-         tail_z - g / 2 - D.NUT_PIN_D / 2))))
     out.append((f"set_screw_{i}", C.set_screw().translate(             # cup tip on the CLAMPED tail;
         (D.NUT_BLOCK_X + NB.clamp_row_x(i), wy,                                # tail stands proud of the boss
          tail_z + g / 2 + D.NUT_SCREW_L))))
@@ -1148,8 +1145,6 @@ _COLORS = {
     "belt":            (0.13, 0.13, 0.13),   # GT2 black
     "string":          (0.85, 0.85, 0.85),
     "break_dowel":     (0.75, 0.75, 0.78),   # steel dowel (gauged break pin)
-    "anvil_dowel":     (0.75, 0.75, 0.78),   # O2 anvil under the clamped tail (same part
-                                             # number as the break dowel)
     "nut_wrap_rod":    (0.62, 0.66, 0.72),   # THE CAPSTAN -- one rod, and it is the bridge
                                              # axle's own O5 g6 shaft
     "set_screw":       (0.55, 0.55, 0.58),   # alloy set screw
