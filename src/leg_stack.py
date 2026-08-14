@@ -254,16 +254,28 @@ def pedal_bar_context():
 
 
 def assembly():
-    """The chain, posed. Z=0 is the body adapter's mouth; the leg runs +Z."""
+    """The chain, posed in the LEG's own frame: local z0 is the body adapter's
+    TOP, and the leg runs +Z away from the instrument.
+
+    TWO RULES the render caught (user):
+      * THE ADAPTER SITS UNDER THE INSTRUMENT. It used to span z -56..0, which
+        after the flip put it 56 mm UP INSIDE the chassis (2694 mm^3 into
+        chassis_2). It now starts at z0 and grows AWAY, so it hangs below.
+      * ONLY THE HEIGHT-ADJUST TENON IS EXPOSED. The fixed tenon is a fixed
+        length, so there is no reason to see it: the two sleeves BUTT and it is
+        fully encased, straddling the seam. It was showing 96 mm of bare bar.
+        The adjust tenon is exposed BY DESIGN -- its exposed length IS the
+        height setting.
+    """
     out = []
-    out.append(("body_adapter", body_adapter().translate((0, 0, -70 * B))))
+    # adapter first: it surrounds the fixed sleeve's top and hangs below the body
+    out.append(("body_adapter", body_adapter()))
     out.append(("fixed_sleeve", fixed_sleeve()))
-    out.append(("fixed_tenon", fixed_tenon().translate((0, 0, FIX_L - ENGAGE))))
-    out.append(("adjust_sleeve",
-                adjust_sleeve().translate((0, 0, FIX_L + FIX_TEN_L - 2 * ENGAGE))))
+    # straddles the sleeve seam at FIX_L, buried in both -- nothing on show
+    out.append(("fixed_tenon",
+                fixed_tenon().translate((0, 0, FIX_L - FIX_TEN_L / 2.0))))
+    out.append(("adjust_sleeve", adjust_sleeve().translate((0, 0, FIX_L))))
+    # the ONE exposed tenon: how much of it stands proud is the height setting
     out.append(("adjust_tenon",
-                adjust_tenon().translate(
-                    (0, 0, FIX_L + FIX_TEN_L - 2 * ENGAGE + ADJ_L - ENGAGE))))
-    out.append(("body_CONTEXT", body_stub_context()))
-    out.append(("pedal_bar_CONTEXT", pedal_bar_context()))
+                adjust_tenon().translate((0, 0, FIX_L + ADJ_L - ENGAGE))))
     return out
