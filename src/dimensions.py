@@ -605,7 +605,22 @@ ENDPLATE_W = (BREAK_PX_BUF + DOWEL_SCREW_RUN + SCREW_ROW_GAP
 # fit: even perfectly spaced it leaves 0.5 mm of wall. So the keyhead grows -X, away
 # from the strings -- the break edge (the scale "0") does not move, only the block's
 # back face -- and the bridge is left exactly where it is (user).
-KEYHEAD_W  = 38 * BEAD                              # 30.4 = 25.4 + 5.0 of clamp room
+KEYHEAD_W  = 36 * BEAD                              # 28.8 = 25.4 + 5.0 of clamp room,
+                                                    # less the 1.6 reclaimed at the front
+# ...AND ITS FRONT BUFFER IS ITS OWN NUMBER TOO (user: decouple the endplates). The
+# keyhead needs far less material +X of the break dowel than BREAK_PX_BUF's 4.0 -- just
+# enough to grow a 45 deg up to the dowel's MIDPOINT, since a dowel cradled to its own
+# centreline can only lift, not roll out, and the string lies across it:
+#
+#     seat +X tangent          PIN_SEAT_D/2 = 1.4
+#     45 deg rise to midpoint                 1.0
+#                                       ---> 2.4
+#
+# BREAK_PX_BUF stays 4.0 because ENDPLATE_W is computed from it and that sets the BRIDGE
+# base -- this is the same split KEYHEAD_W itself needed. The dowel does not move (it is
+# the scale "0", and NUT_BLOCK_X puts the block's local origin exactly there), so the
+# scale length is untouched; what shortens is the lip that protruded past it.
+KEYHEAD_PX_BUF = 3 * BEAD                           # 2.4, was BREAK_PX_BUF's 4.0
 BRIDGE_BASE_X0 = BRIDGE_AXLE_X - ENDPLATE_W / 2     # -16.5  (-X inboard face)
 BRIDGE_BASE_X1 = BRIDGE_AXLE_X + ENDPLATE_W / 2     #  8.5   (+X outer tip)
 

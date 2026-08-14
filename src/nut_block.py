@@ -100,7 +100,8 @@ ROD_BORE = ROD_D + ROD_FIT
 #
 # The growth is all -X, AWAY FROM THE STRINGS: X_FRONT and the break edge at X=0 do not
 # move, so the scale length is untouched and the bridge stays exactly where it is.
-X_FRONT = D.BREAK_PX_BUF                        # +4: +X lip / inboard face
+X_FRONT = D.KEYHEAD_PX_BUF                      # +2.4: +X lip, reclaimed from 4.0 -- see
+                                                # dimensions.KEYHEAD_PX_BUF for the walk
 X_BACK  = X_FRONT - D.KEYHEAD_W                 # -25.6: -X outer face (the bed face)
 DOWEL_X = 0.0                                   # break edge = the scale "0"
 ROD_X   = -8 * D.BEAD                           # -6.4 rod centre
@@ -389,7 +390,13 @@ def _seat_wall_top(i: int) -> cq.Workplane:
     Only spans the DOWEL ZONE (the bay's +X edge out to the +X face). The comb webs at the
     rod are untouched -- those carry the rod and are the one thing in here that is
     structural."""
-    z_top = -max(D.STRING_GAUGE[i], D.STRING_GAUGE[i + 1])      # the lower of the two crowns
+    # THE MIDPOINT, NOT THE CROWN (user). The wall used to run up to the dowel's top; it
+    # only has to reach the dowel's CENTRELINE. A cylinder cradled to its own mid-height
+    # cannot roll out sideways -- it can only lift -- and the string lies across it, plus
+    # a dab of glue holds it during restringing before the string is on. That last 1.0 mm
+    # was buying nothing and it is what made these read as thin triangles hugging each
+    # string. Still the LOWER of the two dowels, for the reason below.
+    z_top = -max(D.STRING_GAUGE[i], D.STRING_GAUGE[i + 1]) - PIN_D / 2
     y_hi = D.nut_y(i) - PIN_SEAT_L / 2                          # the seats' facing edges
     y_lo = D.nut_y(i + 1) + PIN_SEAT_L / 2
     x0 = ROD_X + BAY_R
