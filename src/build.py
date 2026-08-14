@@ -263,7 +263,7 @@ PARTS["test_belt_tensioner"] = (
     lambda: heal(__import__("src.belt_tensioner", fromlist=["e"]).tensioner_coupon()),
     "test_belt_tensioner.step",
     "TEST COUPON — belt-tension clamp: 2 identical clamp_half (one turned 180°) + 2 identical "
-    "lifter bars. Drop a GT2 scrap through with the M4×40 out (bars low = free), seat the screw "
+    "lifter bars. Drop a GT2 scrap through with the M4×35 out (bars low = free), seat the screw "
     "(bars ride the crest up → teeth mesh), and wind it against the external insert-nut to check "
     "the grip holds and tension sets fine without creep")
 
