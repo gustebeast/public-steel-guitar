@@ -17,6 +17,14 @@ was being asked for 490 N. Every string still terminates on the SAME clamp hardw
 it did before (M4 cup-tip set screw in a brass heat-set insert) — it is only the
 load that changed.
 
+NO ANVIL (user). A second Ø2 dowel used to sit under the tail so the screw pinched it
+against STEEL rather than against the plastic floor. It existed for load that no longer
+happens: at 46 N of clamp force the floor sees a fraction of what made the plain clamp
+untenable, and the pocket it needed was the last real overhang in the part — a vertical
++X wall the -X -> +X build had to bridge, with no +X face to open toward the way the
+break dowel's pocket has. Deleting it takes ten overhangs, ten pockets and a BOM line
+with it, and leaves the part simpler rather than more complicated.
+
 THE ROD IS THE BRIDGE AXLE'S OWN PART. Ø5 g6 precision shaft, D.BRIDGE_AXLE_D, the
 same stock the changer end already buys — one shaft diameter now serves the bridge
 axle and this rod, so a wrap post is not a new line in the BOM. Ø5 also bends the
@@ -69,7 +77,7 @@ PRINT_UP = (1.0, 0.0, 0.0)                      # build axis: the -X face is the
 INSERT_D = D.NUT_INSERT_D
 INSERT_L = D.NUT_INSERT_L
 SCREW_D  = D.NUT_SCREW_D
-PIN_D    = D.NUT_PIN_D                          # Ø2 break dowel — AND the Ø2 anvil
+PIN_D    = D.NUT_PIN_D                          # Ø2 break dowel (one per string)
 PIN_L    = D.NUT_PIN_L
 PIN_CLR  = D.NUT_PIN_CLR
 PIN_SEAT_D = PIN_D + 2 * PIN_CLR
@@ -431,8 +439,6 @@ def _build() -> cq.Workplane:
         # ANVIL: a second Ø2 dowel under the tail at the clamp, so the pinch is
         # metal-on-metal and the plastic floor is not the thing being squeezed.
         gx = clamp_row_x(i)
-        anvil_z = ROD_Z - g / 2 - PIN_D / 2
-        body = body.cut(_anvil_pocket(anvil_z + PIN_CLR, y1, gx))
         # CLAMP: buried M4 insert from +Z and the set-screw bore down onto the tail.
         # TEARDROPPED, both of them. Their axis is Z and the block builds along X, so each
         # is a "horizontal" hole in the print sense -- a plain cylinder gives it a curved
@@ -453,20 +459,6 @@ def _build() -> cq.Workplane:
                                   axis_point=(ROD_X, ROD_Y0 - 20.0, ROD_Z),
                                   axis_dir=(0.0, 1.0, 0.0), print_up=PRINT_UP))
     return body
-
-
-def _anvil_pocket(seat_z, y, gx):
-    """The anvil dowel's seat: the same cradle as the break dowel's, opening +X so it
-    drops in from the bay side rather than needing its own access."""
-    R = PIN_SEAT_D / 2.0
-    s = R * math.sin(math.radians(45.0))
-    prof = (cq.Workplane("XZ")
-            .moveTo(gx - R, NUT_TOP)
-            .lineTo(gx - R, seat_z)
-            .threePointArc((gx, seat_z - R), (gx + s, seat_z - s))
-            .lineTo(gx + s, NUT_TOP)
-            .close())
-    return prof.extrude(PIN_SEAT_L / 2.0, both=True).translate((0.0, y, 0.0))
 
 
 def rod() -> cq.Workplane:
