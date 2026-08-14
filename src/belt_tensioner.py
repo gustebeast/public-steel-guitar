@@ -109,9 +109,12 @@ HALF_B_OUTER = -HEAD_X + TB               # 12.4   half-B +X (outer) face — th
 WELL_MID_B = -WELL_MID_A + TB             # 4.5    lifter_b well centre (SAME lifter, placed un-rotated)
 
 # ONE M4 screw: head on half-A's −X face → both Ø4.4 channels → the insert used as an EXTERNAL nut
-# on half-B's +X face. Reach the insert's far end for full engagement, then round up to stock length.
-_SCREW_MIN = (HALF_B_OUTER + M4.insert_l) - HEAD_X       # 37.4  head bearing face → insert far end
-SCREW_L  = 40.0                           # M4×40 (nearest stock ≥ min; ~2.6 mm proud past the nut)
+# on half-B's +X face. Sized for ~2 teeth (= GAP) of tightening take-up (recovers a 1-tooth belt
+# mis-cut) while staying threaded in the 5 mm nut. Min = reach the nut at the loosest gap + ~2 mm
+# engagement; M4×35 gives 2.6 mm engaged at GAP and only ≤1.6 mm proud when fully closed. (M4×40 also
+# works but over-reaches — a permanent 2.6–6.6 mm stub past the nut.)
+_SCREW_MIN = (HALF_B_OUTER - HEAD_X) + 2.0               # 34.4  reach the nut at GAP + 2 mm engagement
+SCREW_L  = 35.0                           # M4×35 (nearest stock ≥ min; see the take-up table)
 
 
 def cyl_x(d: float, length: float, x0: float, z: float = 0.0) -> cq.Workplane:
