@@ -72,6 +72,12 @@ VIEW = ScratchView(
     context=lambda: __import__("src.build", fromlist=["e"]).collect_components(),
     live=_live,
     replaced=("leg_", "latch_", "pedal_bar", "pedal_"),
+    # the live parts wear their REAL assembly colours (user) -- the same resolver
+    # the full build uses, so a part looks in here exactly as it will in the
+    # finished instrument. One flat highlight colour read every piece as the same
+    # material and hid which was which. The CACHED context stays grey; that
+    # contrast is now what tells you live from cached, rather than the hue.
+    colors=lambda n: __import__("src.build", fromlist=["e"])._color_for(n),
     crop=_crop(),
     pose=_pose,
 )
