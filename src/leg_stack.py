@@ -85,13 +85,16 @@ def _profile_area(w: float, cham: float = CHAM) -> float:
 
 
 # ── lengths (a single leg; the height range lives in the adjust section) ─────
+ENGAGE = 60 * B                   # 48.0 least engagement of any tenon in a sleeve
 ADJ_L = 250 * B                   # 200.0 adjust sleeve
 FIX_L = 250 * B                   # 200.0 fixed sleeve
 ADJ_TEN_L = 220 * B               # 176.0 adjust tenon: reaches the bar and sinks
                                   # a long way into the adjust sleeve
-FIX_TEN_L = 240 * B               # 192.0 fixed tenon: spans the fixed sleeve and
-                                  # protrudes UP into the adjust sleeve only
-ENGAGE = 60 * B                   # 48.0 least engagement of any tenon in a sleeve
+FIX_TEN_L = FIX_L + 2 * ENGAGE    # 296.0 fixed tenon: the FULL length of its own
+                                  # sleeve PLUS an extension at each end, so the
+                                  # one bar does the work of a tenon at BOTH
+                                  # neighbouring joints (user). It is never seen:
+                                  # a fixed-length tenon has no reason to show.
 
 # ── height adjust: a ladder of holes, not friction ──────────────────────────
 ADJ_HOLE_D = 5 * B                # 4.0 through-hole for the M4 locking screw
@@ -211,9 +214,17 @@ def body_adapter():
     section. Unchanged in role from the old design -- only the socket shape
     moved to the chamfered square. The latch female would be cut in this wall."""
     wall = 2 * D.MIN_WALL_2P
-    h = 70 * B                                   # 56.0 socket depth
+    h = 125 * B                                  # 100.0 socket depth. Deep enough
+                                                 # that the SLEEVE still engages it
+                                                 # over 52 mm and carries the kick
+                                                 # through the full 44.8 section --
+                                                 # the tenon's extension into the
+                                                 # adapter only ALIGNS.
     b = box_at(LEG_W + 2 * wall, LEG_W + 2 * wall, h, z=h / 2)
-    b = b.cut(box_at(LEG_W + 2 * FIT, LEG_W + 2 * FIT, h + 2.0, z=h / 2 + 1.0))
+    b = b.cut(box_at(LEG_W + 2 * FIT, LEG_W + 2 * FIT, h - ENGAGE,
+                     z=(h - ENGAGE) / 2 + ENGAGE))
+    # blind bore for the fixed tenon's upper extension
+    b = b.cut(mortise_cutter(ENGAGE + 1.0).translate((0, 0, -1.0)))
     return b
 
 
@@ -270,12 +281,15 @@ def assembly():
     out = []
     # adapter first: it surrounds the fixed sleeve's top and hangs below the body
     out.append(("body_adapter", body_adapter()))
-    out.append(("fixed_sleeve", fixed_sleeve()))
-    # straddles the sleeve seam at FIX_L, buried in both -- nothing on show
-    out.append(("fixed_tenon",
-                fixed_tenon().translate((0, 0, FIX_L - FIX_TEN_L / 2.0))))
-    out.append(("adjust_sleeve", adjust_sleeve().translate((0, 0, FIX_L))))
-    # the ONE exposed tenon: how much of it stands proud is the height setting
+    # the sleeve sits ENGAGE down inside the adapter, so the adapter grips its
+    # full 44.8 section over 52 mm -- that joint carries the kick, not the tenon
+    out.append(("fixed_sleeve", fixed_sleeve().translate((0, 0, ENGAGE))))
+    # runs the sleeve's WHOLE length and out both ends: ENGAGE up into the
+    # adapter's blind bore, ENGAGE down into the adjust sleeve
+    out.append(("fixed_tenon", fixed_tenon()))
+    out.append(("adjust_sleeve",
+                adjust_sleeve().translate((0, 0, ENGAGE + FIX_L))))
+    # the ONE exposed tenon: how much stands proud IS the height setting
     out.append(("adjust_tenon",
-                adjust_tenon().translate((0, 0, FIX_L + ADJ_L - ENGAGE))))
+                adjust_tenon().translate((0, 0, ENGAGE + FIX_L + ADJ_L - ENGAGE))))
     return out
