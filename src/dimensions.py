@@ -596,6 +596,16 @@ SCREW_NX_WALL   = 3 * BEAD      # 2.4 solid wall -X behind the far insert's OD (
 
 ENDPLATE_W = (BREAK_PX_BUF + DOWEL_SCREW_RUN + SCREW_ROW_GAP
               + NUT_INSERT_D / 2 + SCREW_NX_WALL)            # = 25.0
+# THE KEYHEAD IS THICKER THAN THE BRIDGE, and the two are now separate numbers.
+# ENDPLATE_W above is the BRIDGE's (and the shared base's) 25.4, frozen: the whole
+# changer end is built on it. The keyhead needs more, and for a reason that only
+# exists at that end -- the WRAP CAPSTAN (nut_block) spends X on the rod and its
+# threading bay, and the clamp inserts behind it still have to stagger across TWO
+# rows to keep O6 pockets apart at a 6.5 string pitch. One row cannot be made to
+# fit: even perfectly spaced it leaves 0.5 mm of wall. So the keyhead grows -X, away
+# from the strings -- the break edge (the scale "0") does not move, only the block's
+# back face -- and the bridge is left exactly where it is (user).
+KEYHEAD_W  = 38 * BEAD                              # 30.4 = 25.4 + 5.0 of clamp room
 BRIDGE_BASE_X0 = BRIDGE_AXLE_X - ENDPLATE_W / 2     # -16.5  (-X inboard face)
 BRIDGE_BASE_X1 = BRIDGE_AXLE_X + ENDPLATE_W / 2     #  8.5   (+X outer tip)
 
