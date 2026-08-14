@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <title>Public Steel Guitar — assembly</title>
+  <style>
+    :root { color-scheme: dark; }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #16181c;
+                 color: #c9ced6; font: 14px/1.4 system-ui, sans-serif; }
+    #view { position: fixed; inset: 0; }
+    .label { position: fixed; left: 16px; top: 14px; opacity: .9; pointer-events: none; }
+    .label b { color: #e6eaf0; }
+    .label .sub { opacity: .6; font-size: 12px; }
+    #build { position: fixed; right: 16px; top: 14px; opacity: .5; font-variant-numeric: tabular-nums; }
+    .hint { position: fixed; left: 16px; bottom: 14px; opacity: .5; font-size: 12px; }
+    /* control legend / buttons — two rows (5 pedals, 5 knee levers) */
+    #controls { position: fixed; right: 16px; bottom: 14px;
+                display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+    .row { display: flex; gap: 6px; align-items: center; }
+    .row > .rl { font-size: 11px; opacity: .45; text-transform: uppercase;
+                 letter-spacing: .06em; margin-right: 2px; }
+    .pedal { min-width: 84px; padding: 6px 8px; border: 1px solid #333842;
+             border-radius: 8px; background: #1c1f25; cursor: pointer; user-select: none;
+             transition: background .08s, border-color .08s, box-shadow .08s; }
+    .pedal.lever { opacity: .78; }
+    .pedal:hover { border-color: #4a515c; }
+    .pedal.on { background: #23405a; border-color: #4d84b8;
+                box-shadow: 0 0 0 1px #4d84b8 inset; }
+    .pedal .k { display: inline-block; min-width: 15px; text-align: center;
+                border: 1px solid #454b55; border-radius: 4px; padding: 0 4px;
+                margin-right: 6px; font-size: 12px; color: #e6eaf0; }
+    .pedal .t { color: #aab2bd; font-size: 11px; font-variant-numeric: tabular-nums; }
+    .pedal .t .dn { color: #d08a6a; }        /* lowers read differently to raises */
+    .pedal .t .na { opacity: .45; font-style: italic; }
+    .pedal.on .t { color: #e6eaf0; }
+    #loading { position: fixed; inset: 0; display: grid; place-items: center;
+               background: #16181c; transition: opacity .4s; }
+  </style>
+  <script type="importmap">
+  { "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  } }
+  </script>
+</head>
+<body>
+  <div id="view"></div>
+  <div class="label"><b>Public Steel Guitar</b>
+    <div class="sub">full assembly · C6 copedent · <b>1</b>–<b>5</b> pedals, <b>a</b>–<b>h</b> knee levers
+      left to right (hold to combo) · <b>space</b> = <span id="deckstate">hide deck</span></div>
+  </div>
+  <div id="build">build #—</div>
+  <div class="hint">drag orbit · scroll zoom · right-drag pan · pedals and knee levers move as you play them</div>
+  <div id="controls"></div>
+  <div id="loading">loading model…</div>
+
+  <script type="module">
+  import * as THREE from 'three';
+  import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+  import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+  import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+  const TAU = Math.PI * 2;
+  const view = document.getElementById('view');
+
+  // ── renderer / scene / camera ────────────────────────────────────────────
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 0.85;
+  view.appendChild(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x16181c);
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
+  const camera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 1, 20000);
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+
+  // Even lighting: image-based ambient from the room environment (set above) plus
+  // a hemisphere, a flat ambient fill, and directional fills from several angles
+  // so nothing occluded from one light falls to black.
+  scene.add(new THREE.HemisphereLight(0xdfe6f0, 0x2a2e36, 0.85));
+  scene.add(new THREE.AmbientLight(0xffffff, 0.2));
+  for (const [x, y, z, intensity] of [
+      [ 3,  4,  2, 0.85], [-3,  2, -2, 0.5], [ 2, 1, -3, 0.4],
+      [-2,  3,  3, 0.4 ], [ 0, -3,  0, 0.3]]) {   // last = up-fill from below
+    const L = new THREE.DirectionalLight(0xffffff, intensity);
+    L.position.set(x, y, z);
+    scene.add(L);
+  }
+
+  addEventListener('resize', () => {
+    camera.aspect = innerWidth / innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+  });
+
+  // ── the animation rig: per-part pivots (CAD coords) + the copedent ────────
+  // Part nodes have identity transforms under a root that converts CAD Z-up ->
+  // glTF Y-up, so every pivot centre / axis / direction below is in CAD space
+  // and we drive each node's LOCAL matrix directly (no coord conversion here).
+  let rig = null, nodes = {}, strings = [];
+  const held = new Set();          // pedals engaged by held keys (momentary)
+  const latched = new Set();       // pedals engaged by button click (toggle)
+
+  const mtmp = new THREE.Matrix4(), mrot = new THREE.Matrix4();
+  const tA = new THREE.Matrix4(), tB = new THREE.Matrix4();
+
+  function translateNode(name, x, y, z) {
+    const o = nodes[name]; if (!o) return;
+    o.matrixAutoUpdate = false;
+    o.matrix.makeTranslation(x, y, z);
+  }
+  function spinNode(name, center, axis, angle) {
+    const o = nodes[name]; if (!o) return;
+    o.matrixAutoUpdate = false;
+    const ax = new THREE.Vector3(axis[0], axis[1], axis[2]);
+    mrot.makeRotationAxis(ax, angle);
+    tA.makeTranslation(center[0], center[1], center[2]);
+    tB.makeTranslation(-center[0], -center[1], -center[2]);
+    o.matrix.copy(tA).multiply(mrot).multiply(tB);   // T(C)·R·T(-C)
+  }
+
+  // net semitone raise per string index, from all engaged pedals
+  function activePedals() {
+    const s = new Set([...held, ...latched]);
+    return rig.copedent.filter(p => s.has(p.name));
+  }
+  function targetRaise() {
+    const raise = new Array(rig.n_strings).fill(0);
+    for (const p of activePedals())
+      for (const r of p.raises) raise[r.i] += r.semitones;
+    return raise;
+  }
+
+  // Two eased state arrays per string: `raise` = the pedal actuation (mm, drives
+  // pulleys + belt), `carr` = the carriage's absolute Z offset from its baked pose.
+  // carr eases from 0 (the baked demo pose) to -rest_dz (neutral) at load, then to
+  // -rest_dz - raise as pedals engage — so pulleys spin ONLY for pedal actuation,
+  // not the one-time neutralization glide.
+  let curRaise = null, curCarr = null, curPress = null;
+
+  // The pedals themselves: each engaged station swings its arm down about the
+  // axle through its full throw, and the lobe pushes both feel-cartridge pistons
+  // back into their bases. The piston stroke is not a fudge — a flat lobe face at
+  // radius rc swept through theta retracts by rc*sin(theta), which is the same
+  // relation the arm length was sized from (13.2*sin20 = 4.51 mm).
+  function applyPedals(dt, k) {
+    if (!rig.pedals) return;
+    if (!curPress) curPress = new Array(rig.pedals.length).fill(0);
+    const on = new Set(activePedals().map(p => p.pedal));
+    for (const p of rig.pedals) {
+      curPress[p.i] += ((on.has(p.i) ? 1 : 0) - curPress[p.i]) * k;
+      const e = curPress[p.i];
+      if (e < 1e-4 && !on.has(p.i)) continue;        // parked: leave it identity
+      const ang = p.throw_deg * e * Math.PI / 180;   // signed; pressed = negative
+      for (const n of p.swing_nodes) spinNode(n, p.center, p.axis, ang);
+      const s = p.lobe_rc * Math.sin(Math.abs(ang)), d = p.piston_dir;
+      for (const n of p.piston_nodes) translateNode(n, d[0] * s, d[1] * s, d[2] * s);
+    }
+  }
+
+  // The knee levers, same idea as the pedals but keyed by control name: each has its
+  // own axle centre/axis and a SIGNED throw (an "…R" lever is the design mirrored,
+  // which negates the rotation — the exporter checks that against CAD, not by eye).
+  const curSwing = {};
+  function applyLevers(dt, k) {
+    const on = new Set(activePedals().map(p => p.name));
+    for (const c of rig.copedent) {
+      const L = c.lever; if (!L) continue;
+      const e = (curSwing[c.name] = (curSwing[c.name] || 0) +
+                 ((on.has(c.name) ? 1 : 0) - (curSwing[c.name] || 0)) * k);
+      if (e < 1e-4 && !on.has(c.name)) continue;
+      const ang = L.throw_deg * e * Math.PI / 180;
+      for (const n of L.swing_nodes) spinNode(n, L.center, L.axis, ang);
+      const s = L.lobe_rc * Math.sin(Math.abs(ang)), d = L.piston_dir;
+      if (d) for (const n of L.piston_nodes)
+        translateNode(n, d[0] * s, d[1] * s, d[2] * s);
+    }
+  }
+
+  function applyRig(dt) {
+    if (!rig) return;
+    const g = rig.gains, tgtSt = targetRaise();
+    if (!curRaise) { curRaise = new Array(rig.n_strings).fill(0);
+                     curCarr = new Array(rig.n_strings).fill(0); }
+    const k = 1 - Math.pow(0.0001, dt);              // ~critically damped ease
+    applyPedals(dt, k);
+    applyLevers(dt, k);
+    for (const s of strings) {
+      const raiseTgt = Math.min(tgtSt[s.i] * g.mm_per_semitone, rig.carriage_travel);
+      curRaise[s.i] += (raiseTgt - curRaise[s.i]) * k;
+      const raise = curRaise[s.i];
+      const carrTgt = -(s.rest_dz || 0) - raise;     // cancel demo pose, then tension -Z
+      curCarr[s.i] += (carrTgt - curCarr[s.i]) * k;
+      for (const n of s.carriage_nodes) translateNode(n, 0, 0, curCarr[s.i]);
+      const ang = -TAU * g.pulley_turns_per_mm * raise;   // 1:1 pulleys, same angle
+      spinNode(s.screw_pulley.node, s.screw_pulley.center, s.screw_pulley.axis, ang);
+      spinNode(s.motor_pulley.node, s.motor_pulley.center, s.motor_pulley.axis, ang);
+      const d = s.belt_clamp.dir, bs = g.belt_mm_per_mm * raise;
+      translateNode(s.belt_clamp.node, d[0] * bs, d[1] * bs, d[2] * bs);
+    }
+  }
+
+  // ── control UI (buttons = toggle; keys = momentary hold) ──────────────────
+  // Two rows: the five foot pedals, then the five knee levers. Ten controls no
+  // longer fit the one 116px row the three-pedal E9 set used.
+  function buildPedalUI() {
+    const wrap = document.getElementById('controls');
+    const rows = [['pedals', rig.copedent.filter(p => 'pedal' in p)],
+                  ['knees',  rig.copedent.filter(p => !('pedal' in p))]];
+    for (const [title, group] of rows) {
+      if (!group.length) continue;
+      const row = document.createElement('div');
+      row.className = 'row';
+      row.innerHTML = `<span class="rl">${title}</span>`;
+      for (const p of group) {
+        const el = document.createElement('div');
+        el.className = 'pedal' + ('pedal' in p ? '' : ' lever');
+        el.dataset.name = p.name;
+        // signed: this copedent lowers as well as raises, so "3" alone would lie
+        const moves = p.raises.length
+          ? [...p.raises].sort((a, b) => a.i - b.i).map(r =>
+              `<span class="${r.semitones < 0 ? 'dn' : ''}">${r.i + 1}` +
+              `${r.semitones > 0 ? '+' : '−'}${Math.abs(r.semitones)}</span>`).join(' ')
+          : '<span class="na">unassigned on C6</span>';
+        el.innerHTML = `<span class="k">${p.key}</span><b>${p.name}</b>` +
+                       `<div class="t">${moves}</div>`;
+        el.onclick = () => { latched.has(p.name) ? latched.delete(p.name)
+                                                 : latched.add(p.name); syncUI(); };
+        row.appendChild(el);
+      }
+      wrap.appendChild(row);
+    }
+  }
+  function syncUI() {
+    const on = new Set([...held, ...latched]);
+    for (const el of document.querySelectorAll('.pedal'))
+      el.classList.toggle('on', on.has(el.dataset.name));
+  }
+  const keyToPedal = {};   // '1' -> 'A'
+  let deck = [], deckVisible = true;
+  function toggleDeck() {
+    deckVisible = !deckVisible;
+    for (const o of deck) o.visible = deckVisible;
+    document.getElementById('deckstate').textContent = deckVisible ? 'hide deck' : 'show deck';
+  }
+  addEventListener('keydown', e => {
+    if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) toggleDeck(); return; }
+    const p = keyToPedal[e.key]; if (!p || e.repeat) return;
+    held.add(p); syncUI();
+  });
+  addEventListener('keyup', e => {
+    const p = keyToPedal[e.key]; if (!p) return;
+    held.delete(p); syncUI();
+  });
+
+  // ── frame camera to the model ─────────────────────────────────────────────
+  function frame(obj) {
+    const box = new THREE.Box3().setFromObject(obj);
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+    const radius = 0.5 * Math.max(size.x, size.y, size.z);
+    const dist = radius / Math.sin((camera.fov * Math.PI / 180) / 2) * 1.15;
+    camera.position.copy(center).add(new THREE.Vector3(0.55, 0.5, 1).normalize().multiplyScalar(dist));
+    camera.near = dist / 100; camera.far = dist * 100; camera.updateProjectionMatrix();
+    controls.target.copy(center); controls.update();
+  }
+
+  // ── load rig + model ──────────────────────────────────────────────────────
+  async function init() {
+    rig = await (await fetch('rig.json?v=' + Date.now())).json();
+    strings = rig.strings;
+    for (const p of rig.copedent) keyToPedal[p.key] = p.name;
+    document.getElementById('build').textContent = 'build #' + rig.build;
+    buildPedalUI();
+
+    new GLTFLoader().load('assembly.glb?v=' + rig.build, gltf => {
+      const root = gltf.scene;
+      // index by name, OUTERMOST wins (GLTFLoader can repeat a name on the inner
+      // mesh primitive; we want the top node so pivots apply to the whole part)
+      root.traverse(o => { if (o.name && !(o.name in nodes)) nodes[o.name] = o; });
+      // cadquery's GLB omits metallicFactor, so glTF defaults every material to
+      // metalness=1 (metal) — metals have no diffuse response and read black under
+      // lights. These are printed plastic: force dielectric so the light rig + env
+      // illuminate them evenly and their true colors show.
+      root.traverse(o => {
+        if (!o.isMesh || !o.material) return;
+        for (const m of (Array.isArray(o.material) ? o.material : [o.material])) {
+          m.metalness = 0.0; m.roughness = 0.65; m.needsUpdate = true;
+        }
+      });
+      deck = Object.keys(nodes).filter(n => n.startsWith('top_plate')).map(n => nodes[n]);
+      scene.add(root);
+      frame(root);
+      document.getElementById('loading').style.opacity = '0';
+      setTimeout(() => document.getElementById('loading').remove(), 400);
+    }, undefined, err => {
+      document.getElementById('loading').textContent = 'failed to load model';
+      console.error(err);
+    });
+  }
+
+  let last = performance.now();
+  function tick(now) {
+    const dt = Math.min((now - last) / 1000, 0.05); last = now;
+    applyRig(dt);
+    controls.update();
+    renderer.render(scene, camera);
+    requestAnimationFrame(tick);
+  }
+  init();
+  requestAnimationFrame(tick);
+  </script>
+</body>
+</html>
