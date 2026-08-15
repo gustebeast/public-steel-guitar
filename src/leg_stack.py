@@ -104,8 +104,12 @@ ENGAGE = 50 * B                   # 40.0 = 1.67 x TEN_W, down from the 2.00 rule
                                   # force at a slide joint is M/L, so this raises it
                                   # 20% (the adjust joint's ~26 N.m over 40 rather
                                   # than 48 mm: ~650 N instead of ~540).
-ADAPT_L = 60 * B                  # 48.0 body adapter: the tenon's extension
-                                  # and no more -- same section as every sleeve
+ADAPT_WALL = 16 * B               # 12.8 the adapter's CLOSED END: a solid wall that
+                                  # hugs the body and carries the joinery attaching
+                                  # the leg to it (user). The mortise is BLIND, not
+                                  # through -- the tenon used to run to the adapter's
+                                  # very top face, leaving nothing to bolt through.
+ADAPT_L = ADAPT_WALL + ENGAGE     # 52.8 wall + the tenon's engagement, no more
 BED = 315 * B                     # 252.0 longest printed part. The bed is 255 sq,
                                   # but sizing to the DIAGONAL would mean one part
                                   # per plate (user), so this is the square limit.
@@ -258,7 +262,9 @@ def body_adapter():
     ~5.8 kN over the tenon's ~576 mm^2 is about 10 MPa, SF ~5.
 
     So the load path is the joint, not the bar. Keep the faces butted."""
-    return _sleeve(ADAPT_L)
+    b = box_at(LEG_W, LEG_W, ADAPT_L, z=ADAPT_L / 2.0)
+    # BLIND mortise: stops ADAPT_WALL short of the top face
+    return b.cut(mortise_cutter(ENGAGE + 1.0).translate((0, 0, ADAPT_WALL)))
 
 
 # Nothing may need the bed's diagonal: that would mean one part per plate.
@@ -331,7 +337,7 @@ def assembly():
     out.append(("fixed_sleeve", fixed_sleeve().translate((0, 0, ADAPT_L))))
     # runs the sleeve's WHOLE length and out both ends: ENGAGE up into the
     # adapter's blind bore, ENGAGE down into the adjust sleeve
-    out.append(("fixed_tenon", fixed_tenon()))
+    out.append(("fixed_tenon", fixed_tenon().translate((0, 0, ADAPT_WALL))))
     out.append(("adjust_sleeve",
                 adjust_sleeve().translate((0, 0, ADAPT_L + FIX_L))))
     # the ONE exposed tenon: how much stands proud IS the height setting
