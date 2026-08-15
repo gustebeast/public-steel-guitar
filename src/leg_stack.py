@@ -91,7 +91,19 @@ def _profile_area(w: float, cham: float = CHAM) -> float:
 # bearing force is M/L and shortening L raises it hyperbolically. At 2 x TEN_W
 # the adjust joint's ~26 N.m gives ~540 N on the walls; halve the engagement and
 # it doubles.
-ENGAGE = 2 * TEN_W                # 48.0
+ENGAGE = 50 * B                   # 40.0 = 1.67 x TEN_W, down from the 2.00 rule of
+                                  # thumb. SPENT DELIBERATELY ON REACH (user): the
+                                  # tenon is bed-capped, so every mm off the
+                                  # engagement buys TWO mm of fixed sleeve, and the
+                                  # whole leg reaches 804 - 3 * ENGAGE. 48 tops out
+                                  # at 660 and the 95th-percentile player needs
+                                  # 674.9; 40 reaches 684. It also lengthens the
+                                  # travel, since ADJ_TRAVEL = ADJ_TEN_L - 2*ENGAGE
+                                  # -- 156 -> 172. Two wins from one number, which
+                                  # is why it is worth spending carefully: the wall
+                                  # force at a slide joint is M/L, so this raises it
+                                  # 20% (the adjust joint's ~26 N.m over 40 rather
+                                  # than 48 mm: ~650 N instead of ~540).
 ADAPT_L = 60 * B                  # 48.0 body adapter: the tenon's extension
                                   # and no more -- same section as every sleeve
 BED = 315 * B                     # 252.0 longest printed part. The bed is 255 sq,
@@ -100,7 +112,8 @@ BED = 315 * B                     # 252.0 longest printed part. The bed is 255 s
 ADJ_L = BED                       # 252.0 adjust sleeve -- AS LONG AS THE BED
                                   # ALLOWS, because its length is what buys height
                                   # adjustment; the fixed section takes the rest
-FIX_L = 185 * B                   # 148.0 fixed sleeve = the remainder
+FIX_L = BED - 2 * ENGAGE          # 172.0 fixed sleeve: as long as the bed lets its
+                                  # own tenon be (FIX_L + 2*ENGAGE = BED exactly)
 # ADJUST TENON -- DERIVED, not chosen (user). Two constraints set it:
 #   SHORTEST setting: as much of it hidden as possible. It cannot hide entirely,
 #     because the bottom end must always be engaged in the PEDAL BAR -- so the
