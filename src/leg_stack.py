@@ -145,6 +145,13 @@ ADJ_N = int(ADJ_TRAVEL / ADJ_PITCH)           # 27 holes, filling the travel
 # without thinning any web (each row keeps its full 1.6).
 ADJ_ROWS = (0.0, ADJ_PITCH / 2.0)
 
+# BODY JOINERY on the adapter's closed end: four M4 through the wall on a square
+# pattern, which is what actually carries the leg's load into the body. Placed at
+# the CORNERS of the section, as far apart as the wall allows -- a bolt pattern
+# resists the kick's moment as a couple, so spread is worth more than bolt count.
+ADAPT_BOLT_D = 4.4                # M4 clearance (a hole, not material)
+ADAPT_BOLT_PCD = LEG_W - 2 * (4 * B)   # 38.4 across the square pattern
+
 TRRS_D = 12 * B                   # 9.6 reserved bore for the TRRS jack body
 TRRS_Z = 40 * B                   # 32.0 up from the sleeve's bottom face
 
@@ -264,7 +271,13 @@ def body_adapter():
     So the load path is the joint, not the bar. Keep the faces butted."""
     b = box_at(LEG_W, LEG_W, ADAPT_L, z=ADAPT_L / 2.0)
     # BLIND mortise: stops ADAPT_WALL short of the top face
-    return b.cut(mortise_cutter(ENGAGE + 1.0).translate((0, 0, ADAPT_WALL)))
+    b = b.cut(mortise_cutter(ENGAGE + 1.0).translate((0, 0, ADAPT_WALL)))
+    h = ADAPT_BOLT_PCD / 2.0
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            b = b.cut(cyl(ADAPT_BOLT_D, ADAPT_WALL + 2.0, z=ADAPT_WALL / 2.0)
+                      .translate((sx * h, sy * h, 0)))
+    return b
 
 
 # Nothing may need the bed's diagonal: that would mean one part per plate.

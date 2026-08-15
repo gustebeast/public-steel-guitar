@@ -28,6 +28,11 @@ def _station():
     return CH.LEG_STATIONS_X[1], CH.LEG_Y[0], CH.Z_BOT
 
 
+def LS_assembly():
+    from src import leg_stack as LS
+    return LS.assembly()
+
+
 def _live():
     """What gets rebuilt FRESH every iteration.
 
@@ -42,10 +47,22 @@ def _live():
     # pieces the printer gets -- without this the bar renders up at the body and
     # LOOKS like it vanished, leaving the pedal hardware floating in space.
     from src.build import PEDAL_LIFT_DZ, _PB_bar
+    bar = []
     for n, w in PB.assembly_parts():
         if n in PB.PIECE_SPAN:
             w = _PB_bar(n)
-        out.append((n, w.translate((0, 0, PEDAL_LIFT_DZ))))
+        bar.append((n, w.translate((0, 0, PEDAL_LIFT_DZ))))
+    # THE BAR HANGS OFF THE LEG, so its height is a CONSEQUENCE of the adjust
+    # tenon, not a constant (user). PEDAL_LIFT_DZ is the old fixed leg's number;
+    # with an adjustable leg the bar has to follow the tenon's tip, or the render
+    # shows the bar at a height the instrument can no longer be set to.
+    lx, ly, zt = _station()
+    tip = min(_pose(n, w).val().BoundingBox().zmin
+              for n, w in LS_assembly() if n == "adjust_tenon")
+    want_top = tip + LS.ENGAGE            # the tenon sinks ENGAGE into the bar
+    have_top = max(w.val().BoundingBox().zmax for _, w in bar)
+    dz = want_top - have_top
+    out += [(n, w.translate((0, 0, dz))) for n, w in bar]
     return out
 
 
