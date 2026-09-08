@@ -309,8 +309,6 @@ PARTS = {
 
 # ── CONTEXT (not printed parts -- just enough to read the chain end to end) ──
 BODY_T = 20 * B                   # 16.0 slab standing in for the chassis underside
-BAR_W = 56 * B                    # 44.8 pedal bar section, same as the leg
-BAR_L = 200 * B                   # 160.0 of bar shown either side of the joint
 
 
 def body_stub_context():
@@ -319,14 +317,57 @@ def body_stub_context():
     return box_at(w, w, BODY_T, z=-70 * B - BODY_T / 2)
 
 
+# WHERE THE PEDAL BAR GOES. Published as a datum, because the bar does not get to
+# choose: it hangs off the END OF THE ADJUST TENON, and the adjust tenon's end is
+# wherever the height setting put it. The old dummy bar computed its own `top`
+# from a formula that had gone stale (it still summed FIX_TEN_L and never counted
+# the adapter at all) -- the same stale-datum failure this file has been bitten by
+# four times. There is now ONE expression for the tenon's far end and everything
+# downstream reads it.
+ADJ_TEN_Z0 = ADAPT_L + FIX_L + ADJ_L - ENGAGE   # 436.8 tenon's top (buried end)
+ADJ_TEN_Z1 = ADJ_TEN_Z0 + ADJ_TEN_L             # 688.8 tenon's far end, at the bar
+BAR_SEAT = ADJ_TEN_Z1 - ENGAGE                  # 648.8 the bar's mating plane: the
+                                                # tenon buries ENGAGE into the bar's
+                                                # tower, the same rule as every other
+                                                # joint in the chain
+
+
 def pedal_bar_context():
-    """A length of pedal bar with the mortise that receives the adjust tenon.
-    NOT a printed part -- the real bar lives in pedal_bar.py; this is the
-    socket end only, so the chain can be read end to end."""
-    top = FIX_L + FIX_TEN_L - 2 * ENGAGE + ADJ_L - ENGAGE + ADJ_TEN_L
-    b = box_at(BAR_W, BAR_L, BAR_W, z=top - BAR_W / 2 + ENGAGE / 2)
-    b = b.cut(mortise_cutter(BAR_W + 2.0).translate((0, 0, top - BAR_W - 1.0 + ENGAGE / 2)))
-    return b
+    """The REAL pedal bar (+ its pedals), posed FROM THE ADJUST TENON.
+
+    NOT a printed part of this module and NOT a stand-in: this is the actual
+    src.pedal_bar geometry -- the same fused pieces the printer gets, via
+    build._PB_bar -- so the joint is read against real walls rather than a box.
+
+    The bar is authored in ABSOLUTE X/Y with z0 = plate bottom, and lands in the
+    instrument via build.PEDAL_LIFT_DZ, which is keyed to the OLD leg stack
+    (Z_BOT - LEG_HEIGHT + legs.FOOT_H). That number knows nothing about this
+    chain, which is why the bar rendered adrift of the tenon. Here it is placed
+    the other way round: the bar's tower seat plane (pedal_bar.STUB_Z0) is put on
+    BAR_SEAT, so moving the height adjustment MOVES THE BAR, as it must.
+
+    Returned in the LEG's own frame (+Z away from the instrument), which is
+    upside down relative to the instrument -- hence the 180 about X. The station
+    translate is the view pose's own, undone here so the pose can redo it; the
+    zt term cancels out entirely, so this does not depend on the chassis height.
+    """
+    from . import build as BUILD
+    from . import chassis as CH
+    from . import pedal_bar as PB
+
+    lx, ly = CH.LEG_STATIONS_X[1], CH.LEG_Y[0]
+    dz = -(BAR_SEAT + PB.STUB_Z0)
+
+    parts = []
+    for n, wp in PB.assembly_parts():
+        if n in PB.PIECE_SPAN:
+            wp = BUILD._PB_bar(n)       # the fused piece, pedal housings and all
+        parts.append((n, wp))
+    # The pedal MECHANISMS are deliberately not here (user: "we don't need all
+    # the pedals and springs"). The housings still are -- they are FUSED INTO the
+    # bar pieces, so they arrive with the real geometry rather than as a demo.
+    return [(n, wp.translate((-lx, -ly, dz)).rotate((0, 0, 0), (1, 0, 0), 180))
+            for n, wp in parts]
 
 
 def assembly():
@@ -354,6 +395,8 @@ def assembly():
     out.append(("adjust_sleeve",
                 adjust_sleeve().translate((0, 0, ADAPT_L + FIX_L))))
     # the ONE exposed tenon: how much stands proud IS the height setting
-    out.append(("adjust_tenon",
-                adjust_tenon().translate((0, 0, ADAPT_L + FIX_L + ADJ_L - ENGAGE))))
+    out.append(("adjust_tenon", adjust_tenon().translate((0, 0, ADJ_TEN_Z0))))
+    # ...and the bar hangs off its far end. Context, not a printed part of this
+    # module -- but posed from ADJ_TEN_Z1, so it cannot drift from the tenon.
+    out += pedal_bar_context()
     return out
