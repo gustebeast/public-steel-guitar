@@ -47,8 +47,20 @@ if SCOPE is None:
         "Then see who owns what with:  agent_sync.py scope")
 
 LIVE_MODULE = SCOPE["module"]
-LIVE_ATTR = SCOPE.get("attr", "assembly")
+# Default to the module's OWN TAIL NAME, which is how nearly every part module in
+# this project is written: src/bridge_endplate.py ends in `bridge_endplate = _build()`.
+# Defaulting to "assembly" named a callable that exists nowhere here, so a bare
+# `scope --set src.<module>` could never work and every agent had to guess an --attr.
+LIVE_ATTR = SCOPE.get("attr") or LIVE_MODULE.rpartition(".")[2]
 REPLACED = tuple(SCOPE.get("replaced", ()))
+
+# A scope may name a BUILD PART instead of a module attribute:
+#     scope --set part:bridge_endplate
+# Some parts are only ever assembled in src/build.py, so "point it at the right
+# module attribute" has no correct answer for them (brenner, 2026-09-07).
+# PARTS[name][0] is a zero-arg builder returning one Workplane -- exactly a live set
+# of one.
+PART_KEY = LIVE_MODULE[len("part:"):] if LIVE_MODULE.startswith("part:") else None
 
 
 # ── optional per-part helpers ────────────────────────────────────────────────
@@ -69,7 +81,24 @@ def _pose_leg_stack(name, wp):
     return wp.rotate((0, 0, 0), (1, 0, 0), 180).translate((lx, ly, zt))
 
 
-POSES = {"leg_stack": _pose_leg_stack}
+def _pose_belt_tensioner(name, wp):
+    """belt_tensioner authors the clamp in the BELT-LOCAL frame (splice at the origin,
+    belt back on z=0), because one clamp SKU is placed ten times. Unposed it would render
+    at the world origin with no context near it. Placed here on the LAST string: the short
+    belt run, which is where clamp-vs-pulley clearance is actually decided, and the one
+    string the full build gives lifter bars to."""
+    import cadquery as cq
+    from src import components as C, dimensions as D
+    i = D.N_STRINGS - 1
+    so, sxd, sn = C.splice_frame(D.motor_pos(i),
+                                 (D.SCREW_X, D.string_y(i), D.screw_pulley_z(i)))
+    loc = cq.Location(cq.Plane(origin=so, xDir=sxd, normal=sn))
+    return cq.Workplane("XY").add(wp.val().moved(loc))
+
+
+POSES = {"leg_stack": _pose_leg_stack, "belt_tensioner": _pose_belt_tensioner}
+
+
 def _crop_leg_station():
     """400 sq x 900 box round the leg station. Spelled out rather than built by
     tuple concatenation -- the one-liner read `(w,d,h) + station[:2] + (z-300.0)`,
@@ -84,20 +113,49 @@ CROPS = {"leg_station": _crop_leg_station}
 
 
 def _live():
+    if PART_KEY is not None:
+        parts = importlib.import_module("src.build").PARTS
+        if PART_KEY not in parts:
+            raise SystemExit(f"scratch_view: no build part {PART_KEY!r}. "
+                             "List them with:  py -3.12 -m src.build --list")
+        return [(PART_KEY, parts[PART_KEY][0]())]
     try:
         mod = importlib.import_module(LIVE_MODULE)
     except ModuleNotFoundError:
         raise SystemExit(
             f"scratch_view: your scope names {LIVE_MODULE!r}, which does not exist.\n"
             "Re-point it with:  agent_sync.py scope --set src.<your_module>")
-    try:
-        parts = getattr(mod, LIVE_ATTR)()
-    except AttributeError:
+    obj = getattr(mod, LIVE_ATTR, None)
+    if obj is None:
+        cands = [n for n in vars(mod)
+                 if not n.startswith("_") and hasattr(getattr(mod, n), "val")]
         raise SystemExit(
-            f"scratch_view: {LIVE_MODULE} has no {LIVE_ATTR!r}. Name the callable that\n"
-            "returns [(name, Workplane), ...]:  agent_sync.py scope --set "
-            f"{LIVE_MODULE} --attr <fn>")
+            f"scratch_view: {LIVE_MODULE} has no {LIVE_ATTR!r}.\n"
+            + (f"  solids it exports: {', '.join(cands)}\n" if cands else "")
+            + "  agent_sync.py scope --set " + LIVE_MODULE + " --attr <name>")
+    # THREE SHAPES, because the part modules here follow no single convention:
+    #   a bare solid         bridge_endplate = _build()        <- the common case
+    #   a callable -> solid  belt_tensioner.tensioner_coupon()
+    #   a callable -> list   build.py's _*_components()
+    # Accepting only the third is what made BOTH seeded scopes wrong on their first
+    # run, and it would have kept being wrong for every module shaped like the others.
+    if callable(obj):
+        obj = obj()
+    parts = [(LIVE_ATTR, obj)] if hasattr(obj, "val") else list(obj)
     return [(n, w) for n, w in parts if not n.endswith("_CONTEXT")]
+
+
+def _lookup(table, key, what):
+    """Resolve a POSES/CROPS key, LOUDLY. `dict.get` returned None for an unknown key,
+    so a typo rendered the part unposed (or uncropped) with no warning at all -- the
+    silent-wrong-answer failure this project keeps paying for."""
+    if not key:
+        return None
+    if key not in table:
+        raise SystemExit(f"scratch_view: unknown {what} {key!r}. Registered: "
+                         f"{sorted(table) or '(none)'}. Add one in tools/scratch_view.py, "
+                         "or drop it from your scope.")
+    return table[key]
 
 
 VIEW = ScratchView(
@@ -105,8 +163,8 @@ VIEW = ScratchView(
     context=lambda: importlib.import_module("src.build").collect_components(),
     live=_live,
     replaced=REPLACED,
-    crop=CROPS[SCOPE["crop"]]() if SCOPE.get("crop") in CROPS else None,
-    pose=POSES.get(SCOPE.get("pose")),
+    crop=(lambda f: f() if f else None)(_lookup(CROPS, SCOPE.get("crop"), "crop")),
+    pose=_lookup(POSES, SCOPE.get("pose"), "pose"),
     # The LIVE set wears the same colours the full build gives it, so the part under
     # work reads as the material it is instead of one flat highlight. Resolved through
     # src.build._color_for -- the very function the real build uses -- so this view

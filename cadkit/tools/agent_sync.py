@@ -21,14 +21,23 @@ one produced by a real `src.build`. Two agents rendering at the same moment writ
 different STEPs into different tabs, so there is nothing to race: the single-build
 lock guards the FULL build only.
 
+WORK FLOWS agent -> LEAD -> main -> agents, AND ONLY THAT WAY. `take` and `drop`
+are the LEAD's and refuse to run anywhere else; an agent receives another agent's
+work by `sync`ing main, never by merging their branch. Two agents integrating
+independently produce two different "main"s and neither is the one that gets built
+and pushed. Agents also message the LEAD, not each other -- cross-talk makes side
+agreements the lead never sees and cannot reconcile at merge, and the lead is the
+only one holding every branch at once.
+
 THE LEAD IS NOT A RELAY. Merge requests carry WORK, not correspondence:
   * A question for the HUMAN goes to YOUR OWN chat -- every agent has its own
     human-facing session, so ask there and wait for the answer. Do NOT bury it in
     a submit summary hoping the lead passes it along: the lead cannot answer for
     the human, and routing through it adds a whole round trip to every question.
-  * A question for ANOTHER AGENT goes direct:  `msg <who> "<text>"`. It lands in
-    their context on their next prompt (the hook delivers it, in every session --
-    lead and contributor alike). Nobody polls, and the lead is not in the middle.
+  * Something ANOTHER AGENT needs to know goes to the LEAD (`msg lead "<text>"`),
+    which is holding every branch and can act on it. The lead can `msg <who>` anyone;
+    an agent can only message the lead. Delivery is by the hook, on their next
+    prompt -- nobody polls.
 Keep the submit summary about the change: what moved, why, and how you verified.
 
 Coordination state lives in  <git-common-dir>/agent-sync/  -- inside .git, so it
@@ -107,9 +116,17 @@ STALE_LOCK_S = 1200          # a build.lock older than this is presumed dead and
 
 
 # ── git helpers ───────────────────────────────────────────────────────────────
+# CREATE_NO_WINDOW on every child. The background `watch` runs DETACHED, i.e. with
+# no console of its own, so on Windows each `git` it spawns allocated a fresh
+# console -- a terminal window flashing on screen every poll, forever (user,
+# 2026-09-07). Harmless to the logic and impossible to ignore on the desktop.
+_NO_WINDOW = 0x08000000 if os.name == "nt" else 0
+
+
 def git(*args, check=True, capture=True):
     r = subprocess.run(["git", *args], text=True,
-                       capture_output=capture, cwd=os.getcwd())
+                       capture_output=capture, cwd=os.getcwd(),
+                       creationflags=_NO_WINDOW)
     if check and r.returncode != 0:
         sys.stderr.write((r.stderr or r.stdout or "").strip() + "\n")
         raise SystemExit(f"git {' '.join(args)} failed ({r.returncode})")
@@ -206,11 +223,19 @@ def cmd_done():
 
 
 # ── lead commands ─────────────────────────────────────────────────────────────
+def _lead_only(what: str, why: str):
+    """Refuse a LEAD-only verb anywhere but main. Integration has exactly one owner;
+    a warning was not enough, because a warning still merges."""
+    if cur_branch() != "main":
+        raise SystemExit(
+            f"`{what}` is the LEAD's, and you are on '{cur_branch()}'. " + why + " "
+            "->  py -3.12 cadkit/tools/agent_sync.py sync   (take main's latest instead)")
 def _is_ancestor(sha: str, ref: str = "main") -> bool:
     """True if <sha> is already in <ref>'s history — i.e. the request was merged, whether via
     `take` (which unlinks it) or MANUALLY (which doesn't). The basis for self-healing the inbox."""
     return subprocess.run(["git", "merge-base", "--is-ancestor", sha, ref],
-                          cwd=os.getcwd(), capture_output=True).returncode == 0
+                          cwd=os.getcwd(), capture_output=True,
+                          creationflags=_NO_WINDOW).returncode == 0
 
 
 def _prune_merged(paths):
@@ -273,6 +298,14 @@ def cmd_msg(to: str, text: str):
     me = cur_branch()
     if dest == me:
         raise SystemExit("that's your own mailbox.")
+    # Agents route through the lead (user, 2026-09-07). Cross-talk between agents
+    # produces side agreements the lead never sees and cannot reconcile at merge --
+    # and the lead is the only one holding every branch at once.
+    if me != "main" and dest != "main":
+        raise SystemExit(
+            f"agents message the LEAD, not each other (you: {me}, target: {dest}). "
+            "Send it to the lead and it will carry what matters:  "
+            "py -3.12 cadkit/tools/agent_sync.py msg lead '<text>'")
     box = _mail_dir(dest, make=True)
     (box / f"{int(time.time() * 1000)}-{slug(me)}.json").write_text(
         json.dumps({"from": me, "to": dest, "text": text,
@@ -417,7 +450,8 @@ def _spawn_successor():
     and every future request would be announced twice.""" 
     flags = 0
     if os.name == "nt":
-        flags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+        flags = (subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+                 | _NO_WINDOW)
     try:
         subprocess.Popen([sys.executable, os.path.abspath(__file__),
                           "watch", "--takeover"],
@@ -492,8 +526,11 @@ def cmd_take(name: str):
         print(f"no such branch: {branch}. Pending requests:")
         cmd_inbox()
         raise SystemExit(2)
-    if cur_branch() != "main":
-        print(f"WARNING: you are on '{cur_branch()}', not main. Merges normally land on main.")
+    _lead_only("take", "An agent took ANOTHER agent's merge request (user, 2026-09-07). "
+                       "Work flows agent -> LEAD -> main -> agents: you receive other "
+                       "people's work by `sync`ing main, never by merging their branch. "
+                       "Two agents integrating independently produce two different "
+                       "'main's, and neither is the one that gets built and pushed.")
     git("merge", "--no-ff", branch, "-m", f"Merge {branch}", check=False)
     if git("ls-files", "-u"):
         print(f"CONFLICTS merging {branch}. Resolve the files below, then:\n"
@@ -517,6 +554,7 @@ def cmd_take(name: str):
 
 
 def cmd_drop(name: str):
+    _lead_only("drop", "Discarding a merge request is an integration decision.")
     p = sync_dir() / "inbox" / f"{slug('agent/' + name)}.json"
     if p.exists():
         p.unlink()
@@ -708,15 +746,22 @@ def main():
                     help="CROPS key, to cache only a region of the instrument")
     sc.add_argument("--clear", action="store_true", help="give the portion up")
     sc.add_argument("--all", dest="list_all", action="store_true")
-    v = sub.add_parser("view")      # render YOUR portion into YOUR tab
-    v.add_argument("args", nargs=argparse.REMAINDER)
+    # `view` forwards flags to the project's scratch view. NOT nargs=REMAINDER:
+    # argparse refuses a LEADING option there, so `view --start` errored out --
+    # and --start/--merge ARE the cache lifecycle, i.e. every documented flow
+    # (branner, 2026-09-07). parse_known_args below collects them instead.
+    sub.add_parser("view")
     m = sub.add_parser("msg")       # direct agent -> agent message (NOT via the lead)
     m.add_argument("to", help="agent name, or 'lead'")
     m.add_argument("text")
     sub.add_parser("mail").add_argument("--peek", action="store_true",
                                         help="show without consuming")
     sub.add_parser("hook")          # UserPromptSubmit hook (see .claude/settings.json)
-    a = ap.parse_args()
+    a, extra = ap.parse_known_args()
+    if a.cmd == "view":
+        a.args = extra                      # everything else goes to scratch_view
+    elif extra:
+        ap.error(f"unrecognized arguments: {' '.join(extra)}")
     {"join": lambda: cmd_join(a.name), "submit": lambda: cmd_submit(a.summary),
      "sync": cmd_sync, "done": cmd_done, "inbox": cmd_inbox,
      "wait": lambda: cmd_wait(a.timeout, a.poll),
