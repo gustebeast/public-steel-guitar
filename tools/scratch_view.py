@@ -70,8 +70,16 @@ def _pose_leg_stack(name, wp):
 
 
 POSES = {"leg_stack": _pose_leg_stack}
-CROPS = {"leg_station": lambda: (400.0, 400.0, 900.0) + _leg_station()[:2]
-                                + (_leg_station()[2] - 300.0)}
+def _crop_leg_station():
+    """400 sq x 900 box round the leg station. Spelled out rather than built by
+    tuple concatenation -- the one-liner read `(w,d,h) + station[:2] + (z-300.0)`,
+    and that last term is a FLOAT, not a 1-tuple, so it raised the moment anyone
+    actually used a crop. Nobody had until now."""
+    lx, ly, zt = _leg_station()
+    return (400.0, 400.0, 900.0, lx, ly, zt - 300.0)
+
+
+CROPS = {"leg_station": _crop_leg_station}
 # ─────────────────────────────────────────────────────────────────────────────
 
 
