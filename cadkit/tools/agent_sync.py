@@ -10,40 +10,59 @@ ROLES
                the build + the FreeCAD tab. Pulls in contributors' branches.
   CONTRIBUTOR  an added session. Works in its OWN git worktree on branch
                `agent/<name>` -- a SEPARATE directory, so its edits never touch
-               the lead's files. It NEVER builds the shared tab; it files a
-               MERGE REQUEST and the lead integrates + builds.
+               the lead's files. It OWNS A PORTION of the model, iterates on that
+               portion in ITS OWN FreeCAD tab, and files a MERGE REQUEST at each
+               good checkpoint; the lead integrates and builds the whole thing.
 
-Only the lead ever writes assembly.step / calls show(), so there is exactly one
-FreeCAD tab and one build at a time. Contributors verify with `check_overlaps`
-(which never writes the assembly or opens the viewer) or ask the lead to build.
+EACH AGENT HAS ITS OWN TAB. `scope` records which portion is yours; `view` renders
+it -- your part FRESH against a cached rest-of-instrument -- into a tab named after
+your worktree, in seconds. The lead's tab shows the WHOLE instrument and is the only
+one produced by a real `src.build`. Two agents rendering at the same moment write
+different STEPs into different tabs, so there is nothing to race: the single-build
+lock guards the FULL build only.
+
+WORK FLOWS agent -> LEAD -> main -> agents, AND ONLY THAT WAY. `take` and `drop`
+are the LEAD's and refuse to run anywhere else; an agent receives another agent's
+work by `sync`ing main, never by merging their branch. Two agents integrating
+independently produce two different "main"s and neither is the one that gets built
+and pushed. Agents also message the LEAD, not each other -- cross-talk makes side
+agreements the lead never sees and cannot reconcile at merge, and the lead is the
+only one holding every branch at once.
 
 THE LEAD IS NOT A RELAY. Merge requests carry WORK, not correspondence:
   * A question for the HUMAN goes to YOUR OWN chat -- every agent has its own
     human-facing session, so ask there and wait for the answer. Do NOT bury it in
     a submit summary hoping the lead passes it along: the lead cannot answer for
     the human, and routing through it adds a whole round trip to every question.
-  * A question for ANOTHER AGENT goes direct:  `msg <who> "<text>"`. It lands in
-    their context on their next prompt (the hook delivers it, in every session --
-    lead and contributor alike). Nobody polls, and the lead is not in the middle.
+  * Something ANOTHER AGENT needs to know goes to the LEAD (`msg lead "<text>"`),
+    which is holding every branch and can act on it. The lead can `msg <who>` anyone;
+    an agent can only message the lead. Delivery is by the hook, on their next
+    prompt -- nobody polls.
 Keep the submit summary about the change: what moved, why, and how you verified.
 
 Coordination state lives in  <git-common-dir>/agent-sync/  -- inside .git, so it
 is shared by every worktree and never committed:
     mail/<branch>/*.json  direct messages awaiting that agent's next prompt
     inbox/<branch>.json   one pending merge request per contributor branch
-    build.lock            single-build mutex (auto-stolen if stale)
+    scopes.json           who owns which portion of the model (see cadkit.agents)
+    announced.json        request shas `watch` has already reported (no re-wake loop)
+    watch.lock            single-listener heartbeat
+    build.lock            single-build mutex (auto-stolen if stale), FULL builds only
 
 COMMANDS
   Contributor:
     join <name>          create + print a worktree on agent/<name> (off main)
     submit "<summary>"   commit this branch, then file a merge request
     sync                 merge the latest main into this branch (pick up merges)
+    scope [--set MOD]    claim / show which portion of the model you own
+    view [args...]       render YOUR portion into YOUR OWN FreeCAD tab (seconds)
     done                 (after all merged) remove this worktree
   Lead:
     inbox                list pending merge requests
     msg <who> "<text>"   send a DIRECT message to another agent ('lead' = the lead)
     mail                 read (and consume) messages sent to you
-    wait                 BLOCK until a request arrives, then print it (run in the BACKGROUND)
+    watch                SELF-RE-ARMING listener -- prefer this over `wait` (BACKGROUND)
+    wait                 one-shot block until a request arrives (needs manual re-arming)
     take <name>          merge agent/<name> into the current branch
     drop <name>          discard a merge request without merging
     build [args...]      run `src.build` under the single-build lock
@@ -51,11 +70,14 @@ COMMANDS
     status               role, branch, worktrees, pending requests
 
 NOTIFICATION -- two layers, no desktop pop-ups, the human is NEVER the relay:
-  1. AUTO WAKE (fully hands-free, WHEN ARMED). The lead arms `wait` as a BACKGROUND
-     command; the cheap shell poll (not the model) sits idle until a contributor's
-     `submit` drops a request file, then exits -- which auto re-invokes the lead. Its
-     one blind spot is a `wait` that is NOT armed (never started, died, or a missed
-     re-arm) -- then a fresh request just sits in the inbox.
+  1. AUTO WAKE (fully hands-free, and it STAYS armed). The lead runs `watch` once as a
+     BACKGROUND command; a cheap shell poll (not the model) sits idle until a
+     contributor's `submit` drops a request file, then exits -- which auto re-invokes
+     the lead. A listener MUST exit to wake anyone, so before exiting it SPAWNS A
+     DETACHED SUCCESSOR: the exiting process wakes the lead, the successor covers the
+     window while the lead works, and nobody re-arms anything. (`wait` is the old
+     one-shot form; it covers exactly one request and then the repo is deaf, which in
+     practice meant the hook nagged about a down listener on nearly every prompt.)
   2. PROMPT-TIME NUDGE (covers the blind spot). The `hook` command, wired as the
      lead's `UserPromptSubmit` hook, runs on the lead's NEXT prompt -- whatever it is
      about -- and, if the inbox holds a request, injects a loud notice into the lead's
@@ -71,13 +93,14 @@ so a manual merge never leaves the hook/banner nagging forever.
 
 Typical flow (<name> is the contributor's task, e.g. the subsystem they own)
   human: "let's go multi-agent; the second chat is a sub-agent named <name>"
-  lead (once):  py -3.12 cadkit/tools/agent_sync.py wait      # <-- in the BACKGROUND; re-arm after each take
+  lead (once):  py -3.12 cadkit/tools/agent_sync.py watch     # <-- in the BACKGROUND; re-arms ITSELF
   contributor:  py -3.12 cadkit/tools/agent_sync.py join <name>   # -> cd the printed dir
                 ...edit, then...
-                py -3.12 cadkit/tools/agent_sync.py submit "<summary of your round>"   # ends the lead's wait
+                py -3.12 cadkit/tools/agent_sync.py scope --set src.<your_module>  # once
+                py -3.12 cadkit/tools/agent_sync.py view    # your part, your tab, seconds
+                py -3.12 cadkit/tools/agent_sync.py submit "<summary of your round>"   # wakes the lead
   lead (auto-woken): py -3.12 cadkit/tools/agent_sync.py take <name>   # resolve any conflicts
-                     py -3.12 cadkit/tools/agent_sync.py build
-                     py -3.12 cadkit/tools/agent_sync.py wait          # re-arm for the next one
+                     py -3.12 cadkit/tools/agent_sync.py build        # WHOLE instrument -> lead's tab
 """
 from __future__ import annotations
 
@@ -93,9 +116,17 @@ STALE_LOCK_S = 1200          # a build.lock older than this is presumed dead and
 
 
 # ── git helpers ───────────────────────────────────────────────────────────────
+# CREATE_NO_WINDOW on every child. The background `watch` runs DETACHED, i.e. with
+# no console of its own, so on Windows each `git` it spawns allocated a fresh
+# console -- a terminal window flashing on screen every poll, forever (user,
+# 2026-09-07). Harmless to the logic and impossible to ignore on the desktop.
+_NO_WINDOW = 0x08000000 if os.name == "nt" else 0
+
+
 def git(*args, check=True, capture=True):
     r = subprocess.run(["git", *args], text=True,
-                       capture_output=capture, cwd=os.getcwd())
+                       capture_output=capture, cwd=os.getcwd(),
+                       creationflags=_NO_WINDOW)
     if check and r.returncode != 0:
         sys.stderr.write((r.stderr or r.stdout or "").strip() + "\n")
         raise SystemExit(f"git {' '.join(args)} failed ({r.returncode})")
@@ -192,11 +223,19 @@ def cmd_done():
 
 
 # ── lead commands ─────────────────────────────────────────────────────────────
+def _lead_only(what: str, why: str):
+    """Refuse a LEAD-only verb anywhere but main. Integration has exactly one owner;
+    a warning was not enough, because a warning still merges."""
+    if cur_branch() != "main":
+        raise SystemExit(
+            f"`{what}` is the LEAD's, and you are on '{cur_branch()}'. " + why + " "
+            "->  py -3.12 cadkit/tools/agent_sync.py sync   (take main's latest instead)")
 def _is_ancestor(sha: str, ref: str = "main") -> bool:
     """True if <sha> is already in <ref>'s history — i.e. the request was merged, whether via
     `take` (which unlinks it) or MANUALLY (which doesn't). The basis for self-healing the inbox."""
     return subprocess.run(["git", "merge-base", "--is-ancestor", sha, ref],
-                          cwd=os.getcwd(), capture_output=True).returncode == 0
+                          cwd=os.getcwd(), capture_output=True,
+                          creationflags=_NO_WINDOW).returncode == 0
 
 
 def _prune_merged(paths):
@@ -259,6 +298,14 @@ def cmd_msg(to: str, text: str):
     me = cur_branch()
     if dest == me:
         raise SystemExit("that's your own mailbox.")
+    # Agents route through the lead (user, 2026-09-07). Cross-talk between agents
+    # produces side agreements the lead never sees and cannot reconcile at merge --
+    # and the lead is the only one holding every branch at once.
+    if me != "main" and dest != "main":
+        raise SystemExit(
+            f"agents message the LEAD, not each other (you: {me}, target: {dest}). "
+            "Send it to the lead and it will carry what matters:  "
+            "py -3.12 cadkit/tools/agent_sync.py msg lead '<text>'")
     box = _mail_dir(dest, make=True)
     (box / f"{int(time.time() * 1000)}-{slug(me)}.json").write_text(
         json.dumps({"from": me, "to": dest, "text": text,
@@ -338,6 +385,108 @@ _REARM = ("RE-ARM the notifier (its trip consumed it) or the NEXT submit is sile
           "  py -3.12 cadkit/tools/agent_sync.py wait      # in the BACKGROUND")
 
 
+# ── the SELF-RE-ARMING listener ───────────────────────────────────────────────
+# `wait` has one structural flaw as a notifier: it must EXIT to wake the lead
+# (a finishing background command is the wake signal), so it covers exactly one
+# request and then the repo is deaf until somebody re-arms it by hand. In practice
+# that meant the hook nagged "your listener is down" on nearly every prompt.
+#
+# `watch` fixes it without pretending a loop can wake anyone: before exiting, it
+# SPAWNS A DETACHED SUCCESSOR. The exiting process wakes the lead; the successor
+# covers the window while the lead is busy. So a listener is always armed and
+# nobody re-arms anything.
+#
+# Two things keep that from running away:
+#   * ANNOUNCED SET -- a request is announced once, by sha. Without it the
+#     successor would see the still-pending request its parent just reported and
+#     fire instantly, forever.
+#   * SINGLE-WATCHER LOCK -- a heartbeat file. A second watcher started while one
+#     is alive exits quietly, so `watch` is safe to run twice by mistake.
+_WATCH_LOCK_STALE_S = 30.0
+
+
+def _announced_path():
+    return sync_dir() / "announced.json"
+
+
+def _load_announced() -> set:
+    try:
+        return set(json.loads(_announced_path().read_text()))
+    except Exception:
+        return set()
+
+
+def _mark_announced(shas):
+    """Record shas as reported, dropping any already merged so this cannot grow
+    without bound (the same ancestor test the inbox self-heal uses)."""
+    keep = {s for s in (_load_announced() | set(shas)) if not _is_ancestor(s)}
+    try:
+        _announced_path().write_text(json.dumps(sorted(keep)))
+    except OSError:
+        pass
+
+
+def _watch_lock_fresh() -> bool:
+    p = sync_dir() / "watch.lock"
+    try:
+        return (time.time() - float(p.read_text().split()[-1])) < _WATCH_LOCK_STALE_S
+    except Exception:
+        return False
+
+
+def _touch_watch_lock():
+    try:
+        (sync_dir() / "watch.lock").write_text(f"pid={os.getpid()} {time.time()}")
+    except OSError:
+        pass
+
+
+def _spawn_successor():
+    """Start the next watcher DETACHED, so coverage never lapses while the lead works.
+
+    The successor is launched with --takeover, which skips the already-armed check.
+    The obvious alternative -- delete the lock so the successor passes that check --
+    leaves a ~1 s window with NO lock, during which a stray `watch` would double-arm
+    and every future request would be announced twice.""" 
+    flags = 0
+    if os.name == "nt":
+        flags = (subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+                 | _NO_WINDOW)
+    try:
+        subprocess.Popen([sys.executable, os.path.abspath(__file__),
+                          "watch", "--takeover"],
+                         cwd=os.getcwd(), close_fds=True, creationflags=flags,
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return True
+    except Exception:
+        return False
+
+
+def cmd_watch(poll=5.0, takeover=False):
+    """Block until a NOT-YET-ANNOUNCED merge request lands, print it, arm a
+    successor, and exit — so the lead is woken AND the repo stays covered."""
+    if not takeover and _watch_lock_fresh():
+        print("a watcher is already armed (watch.lock is fresh) — nothing to do.")
+        return
+    while True:
+        _touch_watch_lock()
+        new = [r for r in _load_reqs() if r.get("sha") not in _load_announced()]
+        if new:
+            _mark_announced([r["sha"] for r in new])
+            armed = _spawn_successor()
+            bar = "!" * 64
+            print(bar)
+            print(f"  {len(new)} NEW merge request(s):")
+            for r in new:
+                print(f"    * {r['branch']:20s} {r['sha'][:8]}  \"{r['summary']}\"")
+            print(f"  ->  py -3.12 cadkit/tools/agent_sync.py take <name>")
+            print("  successor watcher ARMED — no re-arm needed." if armed else
+                  "  WARNING: could not arm a successor; run `watch` again.")
+            print(bar)
+            return
+        time.sleep(poll)
+
+
 def cmd_wait(timeout, poll):
     """Block until >=1 merge request is pending, then print it and exit 0. The LEAD runs this in the
     BACKGROUND: the cheap shell poll (not the model) sits until a contributor's `submit` drops a request
@@ -377,8 +526,11 @@ def cmd_take(name: str):
         print(f"no such branch: {branch}. Pending requests:")
         cmd_inbox()
         raise SystemExit(2)
-    if cur_branch() != "main":
-        print(f"WARNING: you are on '{cur_branch()}', not main. Merges normally land on main.")
+    _lead_only("take", "An agent took ANOTHER agent's merge request (user, 2026-09-07). "
+                       "Work flows agent -> LEAD -> main -> agents: you receive other "
+                       "people's work by `sync`ing main, never by merging their branch. "
+                       "Two agents integrating independently produce two different "
+                       "'main's, and neither is the one that gets built and pushed.")
     git("merge", "--no-ff", branch, "-m", f"Merge {branch}", check=False)
     if git("ls-files", "-u"):
         print(f"CONFLICTS merging {branch}. Resolve the files below, then:\n"
@@ -402,6 +554,7 @@ def cmd_take(name: str):
 
 
 def cmd_drop(name: str):
+    _lead_only("drop", "Discarding a merge request is an integration decision.")
     p = sync_dir() / "inbox" / f"{slug('agent/' + name)}.json"
     if p.exists():
         p.unlink()
@@ -434,6 +587,64 @@ def cmd_build(extra):
     raise SystemExit(rc)
 
 
+# ── ownership: each agent iterates ITS OWN portion, in ITS OWN tab ─────────────
+# The scope registry itself lives in cadkit.agents (shared by every worktree, never
+# committed -- see that module for why it is not a tracked config block). agent_sync
+# just puts a CLI on it, because this is where agents already look.
+def _agents_mod():
+    """Import cadkit.agents from a script that is run by PATH, not as a module."""
+    root = Path(__file__).resolve().parents[2]      # <project>/cadkit/tools/x.py
+    if str(root) not in sys.path:
+        sys.path.insert(0, str(root))
+    from cadkit import agents
+    return agents
+
+
+def cmd_scope(module, attr, replaced, note, clear, list_all, pose, crop):
+    A = _agents_mod()
+    me = A.current_agent()
+    if clear:
+        print(f"scope cleared for {me}." if A.clear_scope() else f"{me} had no scope.")
+        return
+    if module:
+        sc = A.set_scope(module, attr=attr, note=note, pose=pose, crop=crop,
+                         replaced=[r for r in (replaced or "").split(",") if r])
+        print(f"{me} now owns {sc['module']}.{sc['attr']}"
+              + (f"  (supersedes {', '.join(sc['replaced'])})" if sc["replaced"] else ""))
+    scopes = A.load_scopes()
+    if not scopes:
+        print("no scopes registered. Claim one with:  scope --set <module> [--attr fn]")
+        return
+    print()
+    print(f"WHO OWNS WHAT ({len(scopes)} registered)"
+          + ("" if list_all else f" -- you are {me}"))
+    for name, sc in sorted(scopes.items()):
+        mark = " <- you" if name == me else ""
+        print(f"  {name:14s} {sc.get('module','?')}.{sc.get('attr','?')}{mark}")
+        if sc.get("note"):
+            print(f"                 {sc['note']}")
+
+
+def cmd_view(extra):
+    """Render YOUR portion into YOUR OWN FreeCAD tab (the project's scratch view).
+
+    Deliberately separate from `build`: `build` is the WHOLE instrument and stays
+    the lead's, `view` is your part and is the thing you run all day. It needs no
+    build lock -- each worktree writes its own STEP, and the hub names tabs after
+    the folder, so two agents rendering at once land in two different tabs."""
+    if Path(os.getcwd()).resolve() == main_worktree().resolve():
+        raise SystemExit("`view` renders ONE agent's portion; the lead's tab shows the whole "
+                         "instrument, so use `build` here.")
+    A = _agents_mod()
+    if A.get_scope() is None:
+        raise SystemExit(
+            f"{A.current_agent()} has no scope yet. Claim one first:  "
+            "py -3.12 cadkit/tools/agent_sync.py scope --set src.<your_module>")
+    rc = subprocess.run(["py", "-3.12", "-m", "tools.scratch_view", *extra],
+                        cwd=os.getcwd()).returncode
+    raise SystemExit(rc)
+
+
 # ── either ────────────────────────────────────────────────────────────────────
 def cmd_status():
     branch = cur_branch()
@@ -449,8 +660,11 @@ def cmd_status():
 def cmd_hook():
     """The LEAD's `UserPromptSubmit` hook (wire it in .claude/settings.json). It runs on the
     lead's NEXT prompt -- whatever that prompt is about -- and, if the inbox holds a request,
-    prints a loud notice that Claude Code injects into the lead's context: take it AND re-arm
-    `wait`. This is how a DOWN `wait` self-heals the moment the lead is prompted for anything,
+    prints a loud notice that Claude Code injects into the lead's context. It reports
+    whether a listener is actually armed (`watch` keeps one alive by spawning its own
+    successor), so the banner nags to START one only when there really is none —
+    a pending request that a live listener has simply not been taken from yet is not a
+    fault. This is how a missing listener self-heals the moment the lead is prompted,
     with no human relay. Stays SILENT (no output) when the inbox is empty or this isn't the
     lead session, so a normal turn is never cluttered. ALWAYS exits 0 -- a hook must never
     block or fail the prompt.
@@ -480,11 +694,11 @@ def cmd_hook():
         out = [bar,
                f"[agent_sync] ACTION REQUIRED before you continue: {len(paths)} merge "
                f"request(s) are waiting in your inbox.",
-               "Your `wait` listener did NOT catch them (they would be merged already), so it "
-               "is down. Do BOTH now:",
-               "  1. take each below:   py -3.12 cadkit/tools/agent_sync.py take <name>",
-               "  2. RE-ARM the listener IN THE BACKGROUND so future ones auto-wake you:",
-               "        py -3.12 cadkit/tools/agent_sync.py wait",
+               ("A listener is armed, so these are simply not taken yet."
+                if _watch_lock_fresh() else
+                "NO listener is armed - start one (it re-arms itself from then on):"
+                "  ->  py -3.12 cadkit/tools/agent_sync.py watch   (in the BACKGROUND)"),
+               "  take each below:   py -3.12 cadkit/tools/agent_sync.py take <name>",
                "pending:"]
         out += [f"  * agent/{r['name']}  {r['sha'][:8]}  \"{r['summary']}\"" for r in _load_reqs(paths)]
         out.append(bar)
@@ -515,19 +729,48 @@ def main():
     sub.add_parser("drop").add_argument("name")
     b = sub.add_parser("build"); b.add_argument("args", nargs=argparse.REMAINDER)
     sub.add_parser("status")
+    w2 = sub.add_parser("watch")    # SELF-RE-ARMING listener (prefer over `wait`)
+    w2.add_argument("--poll", type=float, default=5.0)
+    w2.add_argument("--takeover", action="store_true",
+                    help=argparse.SUPPRESS)      # internal: I am the spawned successor
+    sc = sub.add_parser("scope")    # who owns which portion of the model
+    sc.add_argument("--set", dest="module", metavar="MODULE",
+                    help="claim a portion, e.g. src.leg_stack")
+    sc.add_argument("--attr", default="assembly", help="callable on it (default: assembly)")
+    sc.add_argument("--replaced", default="", metavar="A,B",
+                    help="context part prefixes yours supersedes")
+    sc.add_argument("--note", default="", help="one line for the other agents")
+    sc.add_argument("--pose", default="", metavar="KEY",
+                    help="POSES key, if your part is not authored in global coords")
+    sc.add_argument("--crop", default="", metavar="KEY",
+                    help="CROPS key, to cache only a region of the instrument")
+    sc.add_argument("--clear", action="store_true", help="give the portion up")
+    sc.add_argument("--all", dest="list_all", action="store_true")
+    # `view` forwards flags to the project's scratch view. NOT nargs=REMAINDER:
+    # argparse refuses a LEADING option there, so `view --start` errored out --
+    # and --start/--merge ARE the cache lifecycle, i.e. every documented flow
+    # (branner, 2026-09-07). parse_known_args below collects them instead.
+    sub.add_parser("view")
     m = sub.add_parser("msg")       # direct agent -> agent message (NOT via the lead)
     m.add_argument("to", help="agent name, or 'lead'")
     m.add_argument("text")
     sub.add_parser("mail").add_argument("--peek", action="store_true",
                                         help="show without consuming")
     sub.add_parser("hook")          # UserPromptSubmit hook (see .claude/settings.json)
-    a = ap.parse_args()
+    a, extra = ap.parse_known_args()
+    if a.cmd == "view":
+        a.args = extra                      # everything else goes to scratch_view
+    elif extra:
+        ap.error(f"unrecognized arguments: {' '.join(extra)}")
     {"join": lambda: cmd_join(a.name), "submit": lambda: cmd_submit(a.summary),
      "sync": cmd_sync, "done": cmd_done, "inbox": cmd_inbox,
      "wait": lambda: cmd_wait(a.timeout, a.poll),
      "take": lambda: cmd_take(a.name), "drop": lambda: cmd_drop(a.name),
      "build": lambda: cmd_build(a.args), "status": cmd_status, "hook": cmd_hook,
-     "msg": lambda: cmd_msg(a.to, a.text), "mail": lambda: cmd_mail(a.peek)}[a.cmd]()
+     "msg": lambda: cmd_msg(a.to, a.text), "mail": lambda: cmd_mail(a.peek),
+     "watch": lambda: cmd_watch(a.poll, a.takeover), "view": lambda: cmd_view(a.args),
+     "scope": lambda: cmd_scope(a.module, a.attr, a.replaced, a.note,
+                                a.clear, a.list_all, a.pose, a.crop)}[a.cmd]()
 
 
 if __name__ == "__main__":

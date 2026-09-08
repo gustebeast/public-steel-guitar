@@ -253,4 +253,32 @@ def tensioner_coupon() -> cq.Workplane:
     return h1.union(h2).union(la).union(lb)
 
 
-clamp_half_part = clamp_half()
+clamp_half_part = clamp_half()            # built ONCE; every real placement re-places this shape
+_SCREW  = screw_dummy()                   # built ONCE (head anchored at HEAD_X — gap-independent)
+_LIFTER = lifter_a()                       # built ONCE ( == _lifter())
+
+_CLAMP_ZC = BTH + BT / 2                    # 1.45  belt-back centreline in the clamp frame → maps to z0
+
+
+def clamp_components(gap: float = GAP, with_lifters: bool = True):
+    """The whole tension clamp as named (name, Workplane) parts in the BELT-LOCAL frame (splice at
+    the origin, belt back on z=0), posed at a given tension GAP:
+
+        gap = GAP (4) → fully LOOSE  (halves apart, screw just started, belt slack)
+        gap = 0       → fully TIGHT  (halves drawn together, screw wound in)
+
+    Only RE-PLACES the pre-built shapes (cheap moves), so any gap costs nothing extra to build.
+    half-A + its lifter + the screw are anchored to HEAD_X; half-B + its lifter + the nut ride the
+    gap; both halves stay symmetric about the splice, which stays on the belt. `with_lifters=False`
+    omits the two ridged bars — a build-time saver where they'd be hidden anyway."""
+    tb = 2 * GA1 + gap                      # half-B build-frame translation for this gap
+    xc = tb / 2                             # splice (gap centre) → origin
+    def bf(p): return p.translate((-xc, 0.0, -_CLAMP_ZC))
+    half_b = clamp_half_part.rotate((0, 0, 0), (0, 0, 1), 180).translate((tb, 0.0, 0.0))
+    nut    = seated_insert(M4, (-HEAD_X + tb, 0.0, Z_SCR), (1.0, 0.0, 0.0))
+    parts = [("half_a", bf(clamp_half_part)), ("half_b", bf(half_b)),
+             ("screw",  bf(_SCREW)),          ("insert", bf(nut))]
+    if with_lifters:
+        parts += [("lifter_a", bf(seated_lifter(_LIFTER, WELL_MID_A, locked=True))),
+                  ("lifter_b", bf(seated_lifter(_LIFTER, -WELL_MID_A + tb, locked=True)))]
+    return parts

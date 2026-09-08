@@ -39,7 +39,7 @@ from . import components as C
 from . import chassis as CH
 from .bridge_endplate import bridge_endplate
 from . import bridge_endplate as BE
-from .belt_clamp import belt_clamp
+from . import belt_tensioner as BTn
 from .chassis import segments as chassis_segments
 from . import nut_block as NB
 from . import tension_fork as TF
@@ -88,7 +88,6 @@ def _PB_bar(attr):
 PARTS = {
     "bridge_endplate": (partial(heal, bridge_endplate), "petg-gf/bridge_endplate.step", "PETG-GF — fused bridge end (screw support + bearing support + axle comb + box closure)"),
     "keyhead_endplate": (lambda: heal(__import__("src.keyhead_endplate", fromlist=["e"]).keyhead_endplate), "petg-gf/keyhead_endplate.step", "PETG-GF — merged keyhead (-X) endplate + nut block (25 mm, one piece): closes the box, caps the deck grooves, gauged break-edge + 2-row clamps; drops in last, held by 1 screw"),
-    "belt_clamp":      (partial(heal, belt_clamp),    "pctg/belt_clamp.step",      "PCTG — GT2 belt splice clamp (print 2 per splice ×10)"),
     "knee_housing":    (lambda: __import__("src.knee_lever", fromlist=["e"]).knee_housing, "petg-gf/knee_housing.step", "PETG-GF — knee-lever (LKL) housing: ONE parametric prism derived from the lever/cartridge/body extents, minus the house-pockets, backstop threads + lever room, plus FOUR fused octagon mount tenons on the top face (one per chassis rib crossing; the +X-most survives only as a stub over each cheek) and the MT6701 board CRADLE on the +Y face (grooves + plinth + floor; the board drops in from +Z with the lever OFF the instrument and the chassis underside becomes its lid — no retaining screw. Ø14 driver bore reserved for the magnet cap, plus a relief channel through the cheek and the -X web for the board's side-entry CAN connector and its plug). Retention is all on -X: the +X web stops at the plinth top so NOTHING stands +X of the prism face. Depth lock deferred"),
     "knee_lever":      (lambda: __import__("src.knee_lever", fromlist=["e"]).knee_lever,   "pctg/knee_lever.step",   "PCTG — knee-lever (LKL) arm + knee paddle (takes knee strikes: toughness over stiffness); the +Y axle journal + magnet stub print INTEGRAL (stand off the lying -Y bed face)"),
     "kl_axle": (lambda: __import__("src.knee_lever", fromlist=["e"]).kl_axle, "pctg/kl_axle.step", "PCTG — knee-lever AXLE ×1: ONE full-length part fitted LAST, slid +Y→−Y through bearing/lever/bearing (the old integral stub could never enter its bearing). Ø5 round journals, D-FLAT key through the hub, flange seating on the housing contact rib (= the air-gap datum), threaded magnet pocket. Prints STANDING, POCKET-DOWN, with a brim"),
@@ -314,7 +313,8 @@ def geometry_report() -> str:
         total += cut
         lines.append(f"    {i:>4} {span:>6.0f} {90.0 / span:>6.2f}°/mm {cut:>8.0f}")
     lines.append(f"  total open GT2 to buy: ~{total/1000:.2f} m "
-                 f"(+ {D.N_STRINGS} printed splice clamps)")
+                 f"(+ {2 * D.N_STRINGS} printed clamp_half + {2 * D.N_STRINGS} lifter bars, "
+                 f"{D.N_STRINGS}× M4×35 + insert-nut)")
     lines.append("")
     return "\n".join(lines)
 
@@ -395,11 +395,15 @@ def _string_components(i):
     # motor (shaft +Y, body −Y toward player) + its pulley + twisted belt
     out.append((f"motor_{i}", C.motor().translate((mx, my, mz))))
     out.append((f"motor_pulley_{i}", C.motor_pulley().translate((mx, my, mz))))
-    out.append((f"belt_{i}", C.belt((mx, my, mz), (D.SCREW_X, sy, spz), teeth=(i == 0))))
-    # splice clamp, oriented to the belt's flat zone (no twist within the clamp)
+    out.append((f"belt_{i}", C.belt((mx, my, mz), (D.SCREW_X, sy, spz))))   # all belts modelled smooth
+    # belt-tension clamp (unified clamp_half ×2 + screw + external nut), oriented to the belt's flat
+    # zone. Lifter bars only on the last string (build-time saver — same geometry, hidden elsewhere).
     so, sxd, sn = C.splice_frame((mx, my, mz), (D.SCREW_X, sy, spz))
     cloc = cq.Location(cq.Plane(origin=so, xDir=sxd, normal=sn))
-    out.append((f"belt_clamp_{i}", cq.Workplane("XY").add(belt_clamp.val().moved(cloc))))
+    # all tensioners shown FULLY LOOSE (splice take-up gap open); the clamp's belt-position vs the
+    # carriage is a separate question (see the belt-travel note) — held at the flat-zone reference here.
+    for _nm, _shp in BTn.clamp_components(with_lifters=(i == D.N_STRINGS - 1)):
+        out.append((f"belt_tensioner_{_nm}_{i}", cq.Workplane("XY").add(_shp.val().moved(cloc))))
     # string: rises from the anchor tangent to the bearing's +X extent, wraps 90°
     # over the top, then runs the speaking length to the nut block.
     out.append((f"string_{i}", _string_path(i, sy)))
@@ -1122,23 +1126,13 @@ def _joint_coupon_components():
 
 
 def _tensioner_coupon_components():
-    """The belt-tension clamp, shown ASSEMBLED (working position), parked off the +X end clear of
-    every real part. BOTH halves are ONE SKU (`clamp_half`): half-B is that part turned 180° about
-    Z (`place_b`). The M4 head bears on half-A's −X face; the insert — a plain EXTERNAL nut, not
-    heat-set — bears on half-B's +X face. Rebuilds with the model so it can't drift."""
-    from . import belt_tensioner as BTn
+    """The unified belt clamp shown ASSEMBLED, parked off the +X end for a clear look (the real
+    clamps ride each string's belt). ONE SKU per half (`clamp_half`; half-B is it turned 180° about
+    Z), the M4 head on half-A's −X face, the insert used as a plain EXTERNAL nut on half-B's +X face.
+    Reuses the pre-built clamp parts (no extra geometry) so it can't drift from the real placements."""
     o = cq.Vector(150.0, 90.0, 40.0)
-    def at(p): return p.translate((o.x, o.y, o.z))
-    la = BTn.seated_lifter(BTn.lifter_a(), BTn.WELL_MID_A, locked=True)
-    lb = BTn.seated_lifter(BTn.lifter_b(), BTn.WELL_MID_B, locked=True)   # SAME lifter, un-rotated
-    return [
-        ("belt_tensioner_half_a_coupon", at(BTn.clamp_half())),
-        ("belt_tensioner_half_b_coupon", at(BTn.place_b(BTn.clamp_half()))),
-        ("belt_tensioner_lifter_a_coupon", at(la)),
-        ("belt_tensioner_lifter_b_coupon", at(lb)),
-        ("belt_tensioner_screw_coupon",  at(BTn.screw_dummy())),
-        ("belt_tensioner_insert_coupon", at(BTn.insert_dummy())),
-    ]
+    return [(f"belt_tensioner_{nm}_coupon", cq.Workplane("XY").add(shp.val().translate((o.x, o.y, o.z))))
+            for nm, shp in BTn.clamp_components(with_lifters=True)]
 
 
 def collect_components():
@@ -1167,13 +1161,20 @@ def collect_components():
 _COLORS = {
     "bridge_endplate": (0.39, 0.58, 0.93),   # PETG-GF — load-critical
     "keyhead_endplate": (0.42, 0.50, 0.62),   # PETG-GF — keyhead endplate + nut block (merged)
-    "belt_clamp":      (0.95, 0.55, 0.15),   # PETG
-    "belt_tensioner_half_a_coupon": (0.20, 0.70, 0.45),   # coupon — green = test piece (ONE SKU)
-    "belt_tensioner_half_b_coupon": (0.30, 0.80, 0.55),   # same part, turned 180° about Z
-    "belt_tensioner_lifter_a_coupon": (0.40, 0.85, 0.65),  # lifter bars
+    # belt-tension clamp — real per-string parts (PETG halves, PCTG 0.2 mm lifter, steel/brass fasteners)
+    "belt_tensioner_half_a": (0.95, 0.55, 0.15),
+    "belt_tensioner_half_b": (0.90, 0.50, 0.12),
+    "belt_tensioner_lifter_a": (0.85, 0.65, 0.30),
+    "belt_tensioner_lifter_b": (0.85, 0.65, 0.30),
+    "belt_tensioner_screw":  (0.55, 0.55, 0.58),   # steel M4
+    "belt_tensioner_insert": (0.72, 0.60, 0.30),   # brass insert (used as an external nut)
+    # …and the parked assembled coupon (green = clearly a reference, not a product part)
+    "belt_tensioner_half_a_coupon": (0.20, 0.70, 0.45),
+    "belt_tensioner_half_b_coupon": (0.30, 0.80, 0.55),
+    "belt_tensioner_lifter_a_coupon": (0.40, 0.85, 0.65),
     "belt_tensioner_lifter_b_coupon": (0.40, 0.85, 0.65),
-    "belt_tensioner_screw_coupon":  (0.55, 0.55, 0.58),   # steel M4
-    "belt_tensioner_insert_coupon": (0.72, 0.60, 0.30),   # brass insert
+    "belt_tensioner_screw_coupon":  (0.55, 0.55, 0.58),
+    "belt_tensioner_insert_coupon": (0.72, 0.60, 0.30),
     "screw_pulley":    (0.00, 0.55, 0.55),
     "screw_top_bearing": (0.69, 0.77, 0.87),
     "motor_pulley":    (0.00, 0.55, 0.55),
@@ -1198,6 +1199,13 @@ _COLORS = {
     "pickup":          (0.10, 0.10, 0.12),   # DEMO pickup body
     "pickup_zplate":   (0.85, 0.65, 0.30),   # PCTG height plate (under the pickup)
     "leg_body_stub":   (0.36, 0.42, 0.46),
+    # redesigned leg (src.leg_stack): sleeves read as the GF structure they are,
+    # tenons a shade warmer so the floating pieces are tellable at a glance
+    "body_adapter":    (0.36, 0.42, 0.46),   # PETG-GF, same family as leg_head
+    "fixed_sleeve":    (0.42, 0.48, 0.52),   # PETG-GF, as the old segment bodies
+    "adjust_sleeve":   (0.42, 0.48, 0.52),
+    "fixed_tenon":     (0.55, 0.52, 0.44),   # PETG-GF floating tenons
+    "adjust_tenon":    (0.62, 0.56, 0.42),
     "leg_seg_body":    (0.42, 0.48, 0.52),   # square GF bodies
     "leg_coupler_m":   (0.36, 0.42, 0.46),
     "leg_coupler_f":   (0.36, 0.42, 0.46),
