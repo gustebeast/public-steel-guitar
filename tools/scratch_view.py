@@ -69,7 +69,22 @@ def _pose_leg_stack(name, wp):
     return wp.rotate((0, 0, 0), (1, 0, 0), 180).translate((lx, ly, zt))
 
 
-POSES = {"leg_stack": _pose_leg_stack}
+def _pose_belt_tensioner(name, wp):
+    """belt_tensioner authors the clamp in the BELT-LOCAL frame (splice at the origin,
+    belt back on z=0), because one clamp SKU is placed ten times. Unposed it would render
+    at the world origin with no context near it. Placed here on the LAST string: the short
+    belt run, which is where clamp-vs-pulley clearance is actually decided, and the one
+    string the full build gives lifter bars to."""
+    import cadquery as cq
+    from src import components as C, dimensions as D
+    i = D.N_STRINGS - 1
+    so, sxd, sn = C.splice_frame(D.motor_pos(i),
+                                 (D.SCREW_X, D.string_y(i), D.screw_pulley_z(i)))
+    loc = cq.Location(cq.Plane(origin=so, xDir=sxd, normal=sn))
+    return cq.Workplane("XY").add(wp.val().moved(loc))
+
+
+POSES = {"leg_stack": _pose_leg_stack, "belt_tensioner": _pose_belt_tensioner}
 CROPS = {"leg_station": lambda: (400.0, 400.0, 900.0) + _leg_station()[:2]
                                 + (_leg_station()[2] - 300.0)}
 # ─────────────────────────────────────────────────────────────────────────────
