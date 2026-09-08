@@ -1,22 +1,32 @@
-"""Scratch view for THIS project -- config only; the machinery is cadkit.scratch.
+"""Scratch view for THIS project -- renders YOUR portion into YOUR OWN FreeCAD tab.
 
-    py -3.12 -m tools.scratch_view --start   # BEGIN a flow: re-cache, then render
-    py -3.12 -m tools.scratch_view           # iterate: live part fresh, rest cached
-    py -3.12 -m tools.scratch_view --merge   # END a flow: DELETE the cache
+    py -3.12 cadkit/tools/agent_sync.py view            # the normal way to run this
+    py -3.12 -m tools.scratch_view --start              # BEGIN a flow: re-cache, render
+    py -3.12 -m tools.scratch_view                      # iterate: your part fresh
+    py -3.12 -m tools.scratch_view --merge              # END a flow: DELETE the cache
 
 WHY: a full `src.build` is minutes, and nearly all of it is geometry you are not
 touching. This caches the surroundings and rebuilds only the part under work --
 measured here at ~14 s per iteration against a ~4 min build.
 
-TO POINT IT AT YOUR PART, edit the three lines in the CONFIG block below:
-LIVE_MODULE, LIVE_ATTR and REPLACED. Nothing else needs changing. If the module
-you name does not exist yet, this prints what to do rather than a traceback.
+WHICH PART IS YOURS COMES FROM THE SCOPE REGISTRY, NOT FROM THIS FILE. Claim it once:
 
-READ cadkit/scratch.py before trusting the cache. Short version: the LIFECYCLE
-is the invalidation strategy (re-cache on --start, delete on --merge, so a cache
-never outlives one sitting), and the cache is for the VIEW ONLY -- `src.build`
-and tools.check_overlaps never read it, so a drift costs a surprise at merge
-rather than a wrong part. Do not "improve" it into something the gate reads.
+    py -3.12 cadkit/tools/agent_sync.py scope --set src.<your_module> [--attr assembly]
+
+That deliberately does NOT live here. This file is TRACKED, so a per-agent config
+block would put every agent's "which part am I on" edit on the same three lines --
+a guaranteed conflict on every merge request, between two agents who are both
+right. The registry is per-worktree state under .git instead (cadkit/agents.py).
+
+The only thing you may need to add here is a POSE or CROP helper, and only if your
+part is not authored in global coordinates -- see POSES / CROPS below. Those are
+additive, so two agents adding one do not collide.
+
+READ cadkit/scratch.py before trusting the cache. Short version: the LIFECYCLE is
+the invalidation strategy (re-cache on --start, delete on --merge, so a cache never
+outlives one sitting), and the cache is for the VIEW ONLY -- `src.build` and
+tools.check_overlaps never read it, so a drift costs a surprise at merge rather
+than a wrong part. Do not "improve" it into something the gate reads.
 """
 
 from __future__ import annotations
@@ -24,78 +34,128 @@ from __future__ import annotations
 import importlib
 import pathlib
 
+from cadkit.agents import current_agent, get_scope
 from cadkit.scratch import ScratchView, main
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
-# ── CONFIG: the only part you edit ──────────────────────────────────────────
-LIVE_MODULE = "src.keyhead_endplate"   # the module you are working on
-LIVE_ATTR = "keyhead_endplate"         # callable -> [(name, Workplane)], or a bare Workplane
-# Context parts the live one SUPERSEDES. Two kinds go in here (user):
-#   the PART ITSELF, so the cached copy is not drawn beside its successor; and
-#   ALL HARDWARE THAT LIVES INSIDE IT -- the wrap rod, the break dowels, the clamp
-#   screws and their inserts, and the strings. Those are what the part is being
-#   designed AROUND, so a CACHED one is worse than none: it shows a dowel sitting in
-#   a cradle that no longer exists, at a position derived from geometry that has since
-#   moved, and it looks exactly as authoritative as the live part beside it.
-#
-# What the cache IS for is the things this part has to INTERFACE with and which are
-# not moving -- the chassis segments, the top panel, the deck. Those stay cached.
-REPLACED = ("keyhead_endplate", "nut_wrap_rod", "break_dowel",
-            "set_screw", "nut_insert", "string")
-CROP_SIZE = (120.0, 140.0, 90.0)       # box around the region of interest; None = all
-# ────────────────────────────────────────────────────────────────────────────
+SCOPE = get_scope()
+if SCOPE is None:
+    raise SystemExit(
+        f"scratch_view: {current_agent()} has not claimed a portion yet.\n"
+        "  py -3.12 cadkit/tools/agent_sync.py scope --set src.<your_module>\n"
+        "Then see who owns what with:  agent_sync.py scope")
+
+LIVE_MODULE = SCOPE["module"]
+# Default to the module's OWN TAIL NAME, which is how nearly every part module in
+# this project is written: src/bridge_endplate.py ends in `bridge_endplate = _build()`.
+# Defaulting to "assembly" named a callable that exists nowhere here, so a bare
+# `scope --set src.<module>` could never work and every agent had to guess an --attr.
+LIVE_ATTR = SCOPE.get("attr") or LIVE_MODULE.rpartition(".")[2]
+REPLACED = tuple(SCOPE.get("replaced", ()))
+
+# A scope may name a BUILD PART instead of a module attribute:
+#     scope --set part:bridge_endplate
+# Some parts are only ever assembled in src/build.py, so "point it at the right
+# module attribute" has no correct answer for them (brenner, 2026-09-07).
+# PARTS[name][0] is a zero-arg builder returning one Workplane -- exactly a live set
+# of one.
+PART_KEY = LIVE_MODULE[len("part:"):] if LIVE_MODULE.startswith("part:") else None
 
 
-def _station():
-    """The region of interest. Here: the keyhead nut block -- the break edge (the
-    scale "0") at the string plane, which is what the capstan is built around."""
-    from src import dimensions as D
-    return D.NUT_BLOCK_X, 0.0, D.STRING_Z
+# ── optional per-part helpers ────────────────────────────────────────────────
+# Only needed when a part is NOT authored in global coordinates, or when you want
+# the context cropped to a region. Add yours; a scope opts in with
+#   scope --set ... --pose <key> --crop <key>
+# and anything unregistered simply gets no pose and the whole instrument.
+def _leg_station():
+    """The -X/+Y (TRRS) leg station."""
+    from src import chassis as CH
+    return CH.LEG_STATIONS_X[1], CH.LEG_Y[0], CH.Z_BOT
+
+
+def _pose_leg_stack(name, wp):
+    """leg_stack is authored +Z up from its own base; on the instrument it hangs
+    off the chassis bottom, flipped."""
+    lx, ly, zt = _leg_station()
+    return wp.rotate((0, 0, 0), (1, 0, 0), 180).translate((lx, ly, zt))
+
+
+def _pose_belt_tensioner(name, wp):
+    """belt_tensioner authors the clamp in the BELT-LOCAL frame (splice at the origin,
+    belt back on z=0), because one clamp SKU is placed ten times. Unposed it would render
+    at the world origin with no context near it. Placed here on the LAST string: the short
+    belt run, which is where clamp-vs-pulley clearance is actually decided, and the one
+    string the full build gives lifter bars to."""
+    import cadquery as cq
+    from src import components as C, dimensions as D
+    i = D.N_STRINGS - 1
+    so, sxd, sn = C.splice_frame(D.motor_pos(i),
+                                 (D.SCREW_X, D.string_y(i), D.screw_pulley_z(i)))
+    loc = cq.Location(cq.Plane(origin=so, xDir=sxd, normal=sn))
+    return cq.Workplane("XY").add(wp.val().moved(loc))
+
+
+POSES = {"leg_stack": _pose_leg_stack, "belt_tensioner": _pose_belt_tensioner}
+
+
+def _crop_leg_station():
+    """400 sq x 900 box round the leg station. Spelled out rather than built by
+    tuple concatenation -- the one-liner read `(w,d,h) + station[:2] + (z-300.0)`,
+    and that last term is a FLOAT, not a 1-tuple, so it raised the moment anyone
+    actually used a crop. Nobody had until now."""
+    lx, ly, zt = _leg_station()
+    return (400.0, 400.0, 900.0, lx, ly, zt - 300.0)
+
+
+CROPS = {"leg_station": _crop_leg_station}
+# ─────────────────────────────────────────────────────────────────────────────
 
 
 def _live():
+    if PART_KEY is not None:
+        parts = importlib.import_module("src.build").PARTS
+        if PART_KEY not in parts:
+            raise SystemExit(f"scratch_view: no build part {PART_KEY!r}. "
+                             "List them with:  py -3.12 -m src.build --list")
+        return [(PART_KEY, parts[PART_KEY][0]())]
     try:
         mod = importlib.import_module(LIVE_MODULE)
     except ModuleNotFoundError:
         raise SystemExit(
-            "scratch_view: LIVE_MODULE %r does not exist.\n"
-            "Edit the CONFIG block at the top of tools/scratch_view.py to name\n"
-            "the module you are working on." % LIVE_MODULE)
-    attr = getattr(mod, LIVE_ATTR)
-    # the attr may be a callable returning [(name, wp), ...] or a bare Workplane
-    parts = attr() if callable(attr) else [(LIVE_ATTR, attr)]
-    return ([(n, w) for n, w in parts if not n.endswith("_CONTEXT")] + _hardware())
+            f"scratch_view: your scope names {LIVE_MODULE!r}, which does not exist.\n"
+            "Re-point it with:  agent_sync.py scope --set src.<your_module>")
+    obj = getattr(mod, LIVE_ATTR, None)
+    if obj is None:
+        cands = [n for n in vars(mod)
+                 if not n.startswith("_") and hasattr(getattr(mod, n), "val")]
+        raise SystemExit(
+            f"scratch_view: {LIVE_MODULE} has no {LIVE_ATTR!r}.\n"
+            + (f"  solids it exports: {', '.join(cands)}\n" if cands else "")
+            + "  agent_sync.py scope --set " + LIVE_MODULE + " --attr <name>")
+    # THREE SHAPES, because the part modules here follow no single convention:
+    #   a bare solid         bridge_endplate = _build()        <- the common case
+    #   a callable -> solid  belt_tensioner.tensioner_coupon()
+    #   a callable -> list   build.py's _*_components()
+    # Accepting only the third is what made BOTH seeded scopes wrong on their first
+    # run, and it would have kept being wrong for every module shaped like the others.
+    if callable(obj):
+        obj = obj()
+    parts = [(LIVE_ATTR, obj)] if hasattr(obj, "val") else list(obj)
+    return [(n, w) for n, w in parts if not n.endswith("_CONTEXT")]
 
 
-def _hardware():
-    """The in-part hardware, REBUILT LIVE beside the endplate rather than cached.
-
-    These are the things the part is designed around -- the wrap rod, the gauged break
-    dowels and the strings -- and every one of them is positioned from constants in the
-    module under work (nut_block.DOWEL_X, .rod(), .wrap_y()). A CACHED copy would be
-    drawn at wherever those constants stood when the cache was made, which is exactly
-    the lie the cache is meant not to tell. So they are excluded from the cache (see
-    REPLACED) and rebuilt here instead."""
-    from src import dimensions as D, nut_block as NB, components as C, build as B
-    out = [("nut_wrap_rod", NB.rod().translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z)))]
-    for i in range(D.N_STRINGS):
-        pin_z = -D.STRING_GAUGE[i] - NB.PIN_D / 2
-        out.append((f"break_dowel_{i}", C.dowel().translate(
-            (D.NUT_BLOCK_X + NB.DOWEL_X, D.nut_y(i), D.STRING_Z + pin_z))))
-        out.append((f"string_{i}", B._string_path(i, D.string_y(i))))
-    return out
-
-
-# keyhead_endplate is authored in GLOBAL coordinates already, so there is no pose
-# to apply -- see the ScratchView(pose=None) below.
-
-
-def _crop():
-    if CROP_SIZE is None:
+def _lookup(table, key, what):
+    """Resolve a POSES/CROPS key, LOUDLY. `dict.get` returned None for an unknown key,
+    so a typo rendered the part unposed (or uncropped) with no warning at all -- the
+    silent-wrong-answer failure this project keeps paying for."""
+    if not key:
         return None
-    lx, ly, zt = _station()
-    return CROP_SIZE + (lx, ly, zt)
+    if key not in table:
+        raise SystemExit(f"scratch_view: unknown {what} {key!r}. Registered: "
+                         f"{sorted(table) or '(none)'}. Add one in tools/scratch_view.py, "
+                         "or drop it from your scope.")
+    return table[key]
 
 
 VIEW = ScratchView(
@@ -103,11 +163,13 @@ VIEW = ScratchView(
     context=lambda: importlib.import_module("src.build").collect_components(),
     live=_live,
     replaced=REPLACED,
-    crop=_crop(),
-    pose=None,
-    # The live set wears the SAME colours the full build gives it, so the part under
-    # work reads as the material it is instead of one flat highlight. Cached context
-    # stays grey -- that contrast is what tells you which is which.
+    crop=(lambda f: f() if f else None)(_lookup(CROPS, SCOPE.get("crop"), "crop")),
+    pose=_lookup(POSES, SCOPE.get("pose"), "pose"),
+    # The LIVE set wears the same colours the full build gives it, so the part under
+    # work reads as the material it is instead of one flat highlight. Resolved through
+    # src.build._color_for -- the very function the real build uses -- so this view
+    # cannot drift from the finished assembly. Cached context stays grey on purpose:
+    # that contrast is what tells you which parts are live and which may be stale.
     colors=lambda n: importlib.import_module("src.build")._color_for(n),
 )
 
