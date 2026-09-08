@@ -47,7 +47,11 @@ if SCOPE is None:
         "Then see who owns what with:  agent_sync.py scope")
 
 LIVE_MODULE = SCOPE["module"]
-LIVE_ATTR = SCOPE.get("attr", "assembly")
+# Default to the module's OWN TAIL NAME, which is how nearly every part module in
+# this project is written: src/bridge_endplate.py ends in `bridge_endplate = _build()`.
+# Defaulting to "assembly" named a callable that exists nowhere here, so a bare
+# `scope --set src.<module>` could never work and every agent had to guess an --attr.
+LIVE_ATTR = SCOPE.get("attr") or LIVE_MODULE.rpartition(".")[2]
 REPLACED = tuple(SCOPE.get("replaced", ()))
 
 
@@ -82,13 +86,23 @@ def _live():
         raise SystemExit(
             f"scratch_view: your scope names {LIVE_MODULE!r}, which does not exist.\n"
             "Re-point it with:  agent_sync.py scope --set src.<your_module>")
-    try:
-        parts = getattr(mod, LIVE_ATTR)()
-    except AttributeError:
+    obj = getattr(mod, LIVE_ATTR, None)
+    if obj is None:
+        cands = [n for n in vars(mod)
+                 if not n.startswith("_") and hasattr(getattr(mod, n), "val")]
         raise SystemExit(
-            f"scratch_view: {LIVE_MODULE} has no {LIVE_ATTR!r}. Name the callable that\n"
-            "returns [(name, Workplane), ...]:  agent_sync.py scope --set "
-            f"{LIVE_MODULE} --attr <fn>")
+            f"scratch_view: {LIVE_MODULE} has no {LIVE_ATTR!r}.\n"
+            + (f"  solids it exports: {', '.join(cands)}\n" if cands else "")
+            + "  agent_sync.py scope --set " + LIVE_MODULE + " --attr <name>")
+    # THREE SHAPES, because the part modules here follow no single convention:
+    #   a bare solid         bridge_endplate = _build()        <- the common case
+    #   a callable -> solid  belt_tensioner.tensioner_coupon()
+    #   a callable -> list   build.py's _*_components()
+    # Accepting only the third is what made BOTH seeded scopes wrong on their first
+    # run, and it would have kept being wrong for every module shaped like the others.
+    if callable(obj):
+        obj = obj()
+    parts = [(LIVE_ATTR, obj)] if hasattr(obj, "val") else list(obj)
     return [(n, w) for n, w in parts if not n.endswith("_CONTEXT")]
 
 
