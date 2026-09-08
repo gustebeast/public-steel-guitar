@@ -469,9 +469,24 @@ def _string_path(i, sy):
     phi = NB.touch_angle(i)          # nut_block owns this -- see its docstring on why
     tang = cq.Vector(rx + hr * math.cos(phi), ny, rz + hr * math.sin(phi))
     tail_z = rz + hr                                       # the TOP: where it leaves
-    out = out.union(_rod(brk, tang, rad))
+    # RUN THE STRAIGHT RUNS PAST THE TANGENT POINT, or they do not touch the coil.
+    # A tangent meets its circle at ONE POINT: the lead rod ends exactly where the helix
+    # begins, so the union of the two has literally nothing to fuse and OCC hands back a
+    # two-solid compound with the coil floating free. It came out as strings 8 and 10
+    # rendering with no winding at all -- and the giveaway was that the union's volume was
+    # the EXACT SUM of its parts, i.e. zero overlap, not a boolean that had gone wrong.
+    # The other eight only survived on the odd micron of floating-point slop.
+    #
+    # Carrying each straight run ONE STRING DIAMETER past the touch point gives a real
+    # overlap without moving anything that matters: the tangent line separates from the
+    # circle as d^2/2r, so at d = 2*rad the centrelines are 2*rad^2/hr apart -- 0.02 mm on
+    # the .015 and 0.46 on the .070, well inside the string's own radius either way. The
+    # wrap itself is untouched; this is the DEMO path's joinery, not the capstan geometry.
+    _LAP = 2.0 * rad                                       # one string diameter of overlap
+    t_in = cq.Vector(-math.sin(phi), 0.0, math.cos(phi))   # the coil's heading at the touch
+    out = out.union(_rod(brk, tang + t_in.multiply(_LAP), rad))
     out = out.union(_wrap_coil(i, rad, hr))
-    out = out.union(_rod(cq.Vector(rx, wy, tail_z),
+    out = out.union(_rod(cq.Vector(rx + _LAP, wy, tail_z),   # ...and start the tail early:
                          cq.Vector(D.NUT_BLOCK_X + NB.TAIL_X, wy, tail_z), rad))
     out = out.union(_stow_tail(i, rad))
     return out
