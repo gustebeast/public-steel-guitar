@@ -417,12 +417,8 @@ def _string_components(i):
          D.STRING_Z - g - D.NUT_PIN_D / 2))))                          # one plane. DOWEL_X, not 0:
                                                                        # the dowels sit 1.6 back from
                                                                        # the block's front face now
-    out.append((f"set_screw_{i}", C.set_screw().translate(             # cup tip on the CLAMPED tail;
-        (D.NUT_BLOCK_X + NB.clamp_row_x(i), wy,                                # tail stands proud of the boss
-         tail_z + g / 2 + D.NUT_SCREW_L))))
-    out.append((f"nut_insert_{i}", C.m4_insert().translate(           # Ø6×5 heat-set insert (the screw
-        (D.NUT_BLOCK_X + NB.clamp_row_x(i), wy,                                # threads into it), in its roof pocket
-         D.STRING_Z + NB.INSERT_GAP + NB.INSERT_L))))                  # (pocket floor INSERT_GAP, up INSERT_L)
+    # (no clamp set screw or heat-set insert: the sliding insert IS the clamp, and
+    #  the tail is pinched against the wrap on the rod rather than against the floor)
     return out
 
 
@@ -470,31 +466,15 @@ def _string_path(i, sy):
     # -X to the clamp. TANGENCY is the part that has to be right -- aiming at the
     # circle's lowest point instead would draw the string cutting through the rod on the
     # way in. The touch point sits BREAK_ANGLE round from the bottom, +X side.
-    phi = _touch_angle(i, hr)                              # where it actually touches
+    phi = NB.touch_angle(i)          # nut_block owns this -- see its docstring on why
     tang = cq.Vector(rx + hr * math.cos(phi), ny, rz + hr * math.sin(phi))
-    tail_z = rz - hr                                       # the bottom: where it leaves
+    tail_z = rz + hr                                       # the TOP: where it leaves
     out = out.union(_rod(brk, tang, rad))
     out = out.union(_wrap_coil(i, rad, hr))
     out = out.union(_rod(cq.Vector(rx, wy, tail_z),
-                         cq.Vector(D.NUT_BLOCK_X + NB.clamp_row_x(i), wy, tail_z), rad))
+                         cq.Vector(D.NUT_BLOCK_X + NB.TAIL_X, wy, tail_z), rad))
     out = out.union(_stow_tail(i, rad))
     return out
-
-
-def _touch_angle(i, hr):
-    """Angle about the rod axis (in the XZ plane, from +X) at which string i first TOUCHES
-    the wrap circle, coming down off its dowel. This is the ONE number the straight run and
-    the coil must agree on -- they were computed separately before, so the coil began at the
-    rod's bottom while the string arrived somewhere else, leaving a visible gap between the
-    two. Now both read this."""
-    import src.nut_block as _NB
-    g = D.STRING_GAUGE[i]
-    cx, cz = D.NUT_BLOCK_X + _NB.ROD_X, D.STRING_Z + _NB.ROD_Z
-    px, pz = D.NUT_BLOCK_X + _NB.DOWEL_X, D.STRING_Z - g / 2.0
-    dx, dz = px - cx, pz - cz
-    d = math.hypot(dx, dz)
-    # the LOWER of the two tangents: the string wraps the underside
-    return math.atan2(dz, dx) - math.acos(hr / d)
 
 
 def _wrap_coil(i, rad, hr):
@@ -504,11 +484,11 @@ def _wrap_coil(i, rad, hr):
     ny, wy = NB.wrap_y(i)
     p = NB.WRAP_F * D.STRING_GAUGE[i]
     h = abs(wy - ny)
-    # LEFT-HAND: the wrap has to go round the underside in the direction the string
-    # ARRIVES, i.e. on from the entry tangent, not back against it. A right-hand helix
-    # winds the opposite way about this axis and draws the string crossing its own
-    # entry.
-    helix = cq.Wire.makeHelix(pitch=p, height=h, radius=hr, lefthand=True)
+    # RIGHT-HAND. Rotated +90 about X the helix axis lies along -Y (the march), and a
+    # right-handed helix then turns +X toward +Z -- phi INCREASING, which is the way the
+    # string is already going when it meets the rod's top. Left-hand reverses that and
+    # draws the coil winding back into its own entry.
+    helix = cq.Wire.makeHelix(pitch=p, height=h, radius=hr, lefthand=False)
     coil = (cq.Workplane("XZ").center(hr, 0).circle(rad)
             .sweep(cq.Workplane("XY").add(helix), isFrenet=True))
     # +90 about X (not -90): that lays the helix axis along -Y, so the coil marches
@@ -520,7 +500,7 @@ def _wrap_coil(i, rad, hr):
     coil = coil.rotate((0, 0, 0), (1, 0, 0), 90.0)
     # START THE WRAP WHERE THE STRING LANDS. makeHelix begins at angle 0 (+X); spinning it
     # to the touch angle is what closes the gap between the straight run and the coil.
-    coil = coil.rotate((0, 0, 0), (0, 1, 0), -math.degrees(_touch_angle(i, hr)))
+    coil = coil.rotate((0, 0, 0), (0, 1, 0), -math.degrees(NB.touch_angle(i)))
     return coil.translate((D.NUT_BLOCK_X + NB.ROD_X, ny, D.STRING_Z + NB.ROD_Z))
 
 
@@ -531,8 +511,8 @@ def _stow_tail(i, rad):
     from . import keyhead_endplate as KE
     ny = NB.wrap_y(i)[1]                                                # the WRAP's far end
     cz = (D.STRING_Z + NB.ROD_Z                                         # the tail runs at the rod's
-          - (NB.ROD_D / 2 + D.STRING_GAUGE[i] / 2))                     # -Z TANGENT, not its centre
-    pts = [cq.Vector(D.NUT_BLOCK_X + NB.clamp_row_x(i), ny, cz),                # clamp
+          + (NB.ROD_D / 2 + D.STRING_GAUGE[i] / 2))                     # +Z TANGENT, not its centre
+    pts = [cq.Vector(D.NUT_BLOCK_X + NB.TAIL_X, ny, cz),                        # off the insert
            cq.Vector(D.NUT_BLOCK_X + NB.X_BACK, ny, cz)]                # straight out the -X face
     # the stow bore: -X-face mouth, a 45° inward arc to x=ZHOLE_X, then straight down to the bed
     R = (KE.ZHOLE_X - KE.XLO) / (1.0 - math.cos(math.radians(45.0)))
@@ -1187,7 +1167,10 @@ _COLORS = {
     "motor":           (0.22, 0.25, 0.27),   # charcoal
     "belt":            (0.13, 0.13, 0.13),   # GT2 black
     "string":          (0.85, 0.85, 0.85),
-    "break_dowel":     (0.75, 0.75, 0.78),   # steel dowel (gauged break pin)
+    "break_dowel":     (0.75, 0.75, 0.78),
+    "nut_slide_insert": (0.86, 0.72, 0.30),   # the sliding insert -- brass-ish, so it
+                                              # reads apart from the steel it presses on
+   # steel dowel (gauged break pin)
     "nut_wrap_rod":    (0.62, 0.66, 0.72),   # THE CAPSTAN -- one rod, and it is the bridge
                                              # axle's own O5 g6 shaft
     "set_screw":       (0.55, 0.55, 0.58),   # alloy set screw
