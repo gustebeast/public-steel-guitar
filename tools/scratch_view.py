@@ -108,7 +108,21 @@ def _crop_leg_station():
     return (400.0, 400.0, 900.0, lx, ly, zt - 300.0)
 
 
-CROPS = {"leg_station": _crop_leg_station}
+def _crop_keyhead():
+    """The whole keyhead endplate and what it mates with, at the -X end.
+
+    Z IS SPANNED FROM THE BED TO OVER THE NUT BLOCK, not centred on the string plane.
+    Centring on STRING_Z with 90 of height put the floor at -29 and spent 45 on empty air
+    above the instrument -- which clipped chassis_2 to a 29 mm band that the deck panel
+    then sat on top of, so the chassis read as MISSING from the render. Everything this
+    part actually mates with is BELOW that line: the rail-end dovetail sockets at -23.15,
+    the leg shell, the fill band down to the bed."""
+    from src import dimensions as D, chassis as CH
+    z0, z1 = CH.Z_BOT - 5.0, D.STRING_Z + 10.0
+    return (120.0, 140.0, z1 - z0, D.NUT_BLOCK_X, 0.0, (z0 + z1) / 2)
+
+
+CROPS = {"leg_station": _crop_leg_station, "keyhead": _crop_keyhead}
 # ─────────────────────────────────────────────────────────────────────────────
 
 
