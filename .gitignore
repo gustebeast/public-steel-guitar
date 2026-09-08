@@ -12,3 +12,5 @@ __pycache__/
 docs/assembly.glb
 docs/rig.json
 fast_build_map.json
+.scratch_cache/
+scratch.step
