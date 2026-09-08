@@ -620,7 +620,13 @@ KEYHEAD_W  = 36 * BEAD                              # 28.8 = 25.4 + 5.0 of clamp
 # base -- this is the same split KEYHEAD_W itself needed. The dowel does not move (it is
 # the scale "0", and NUT_BLOCK_X puts the block's local origin exactly there), so the
 # scale length is untouched; what shortens is the lip that protruded past it.
-KEYHEAD_PX_BUF = 3 * BEAD                           # 2.4, was BREAK_PX_BUF's 4.0
+# FLUSH WITH THE ENDPLATE'S +X FACE (user). At 2.4 the nut block stopped 1.4 short of
+# it and still carried 0.8 of its own material +X of the inserts -- and BOTH are
+# overhangs in a -X -> +X build, printed out over the insert slot with nothing behind
+# them. Nothing needs to be there: the dowel is carried by the INSERT now, not by the
+# block, so the insert can run right out to the face and bear against the deck panel
+# that butts it.
+KEYHEAD_PX_BUF = 19 * BEAD / 4                      # 3.8 = KH_X - NUT_BLOCK_X, flush
 BRIDGE_BASE_X0 = BRIDGE_AXLE_X - ENDPLATE_W / 2     # -16.5  (-X inboard face)
 BRIDGE_BASE_X1 = BRIDGE_AXLE_X + ENDPLATE_W / 2     #  8.5   (+X outer tip)
 

@@ -88,6 +88,10 @@ def _build():
     # plane (Z6) up to the boss top, fused on -- it bridges down to the fill zone itself,
     # so no separate riser
     w = w.union(NB.nut_block.translate((D.NUT_BLOCK_X, 0, D.STRING_Z)))
+    # THE INSERT SLOTS RUN PAST THE NUT BLOCK'S BASE, so they have to be cut HERE too --
+    # nut_block can only cut its own prism, and an insert at its lowest travel hangs well
+    # below that, into this piece's fill slab.
+    w = w.cut(NB.all_pockets().translate((D.NUT_BLOCK_X, 0, D.STRING_Z)))
     w = w.intersect(box_at(T_EP, 4000.0, 4000.0, x=KX, y=0, z=0))
     # FOOT POCKET: pocket exactly the kept chassis rail shell (+ clearance) out of each
     # -X leg station so the keyhead nests over it as it drops -Z. It ONLY clears z =
@@ -171,4 +175,6 @@ def assembly():
         out.append((f"break_dowel_{i}", C.dowel().translate(
             (D.NUT_BLOCK_X + NB.DOWEL_X, D.nut_y(i), D.STRING_Z + pin_z))))
         out.append((f"string_{i}", B._string_path(i, D.string_y(i))))
+        out.append((f"nut_slide_insert_{i}",
+                    NB.slide_insert(i).translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z))))
     return out

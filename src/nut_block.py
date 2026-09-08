@@ -44,10 +44,10 @@ under the two-bead floor. Marching -Y instead lands the fattest coil — the .07
 which needs 6.53 mm of rod — in the OPEN AIR outboard of the field where there is no
 neighbour at all, and every web in the comb clears 1.6:
 
-    2.5 turns on EVERY string (user) -> 13.9 N residual on all ten, 46 N of clamp.
-    The webs that survive are gaps 1-7; s8->s9 (1.48) and s9->s10 (0.32) fall under the
-    two-bead floor, so those bays MERGE and the rod spans 22.74 mm there -- 102 MPa and
-    0.011 mm of sag. See bays().
+    ~2.94 turns on every string, set so the CLAMP AREA is three string widths wide
+    (CLAMP_WIDTHS) -> 9.0-9.2 N left at the tail out of 147.
+    The webs that survive are gaps 1-8; only s9->s10 merges, where the two coils'
+    lanes overlap outright, and the rod spans 16.69 mm there -- 75 MPa. See bays().
 
 Local frame: X=0 at the break edge, +X toward the bridge (speaking length); Z=0 at
 the string-top plane (= STRING_Z global); body hangs -Z to the deck plane.
@@ -109,8 +109,12 @@ X_BACK  = X_FRONT - D.KEYHEAD_W                 # -25.6: -X outer face (the bed 
 # wall. At the old DOWEL_X = 0 there was only 1.25 of material there -- the 2.4 front
 # buffer was sized against the OLD Ø2.8 seat, and the Ø2.30 bore left less behind it
 # than intended.
-DOWEL_KEEP = D.MIN_WALL_2P                      # 1.6 of material +X of the bore
-DOWEL_X = X_FRONT - DOWEL_KEEP - (PIN_D + 0.3) / 2      # -0.35, the break edge
+# THE DOWEL IS SET BY THE INSERT THAT CARRIES IT, not by block material +X of it.
+# DOWEL_KEEP used to reserve BLOCK behind the bore; there is no block there any more
+# (see dimensions.KEYHEAD_PX_BUF), so what stands +X of the dowel is the INSERT's own
+# wall, and the dowel sits that far back from the face.
+DOWEL_KEEP = D.MIN_WALL                         # 0.8 of INSERT wall +X of the cradle
+DOWEL_X = X_FRONT - DOWEL_KEEP - (PIN_D + 0.3) / 2
 ROD_X   = -8 * D.BEAD                           # -6.4 rod centre
 # ROD_Z IS SET BY THE BREAK ANGLE, not by taste. The dowel -- not the rod -- has to
 # terminate the speaking length, which means the string must leave the dowel at a real
@@ -150,76 +154,384 @@ ROD_X   = -8 * D.BEAD                           # -6.4 rod centre
 # (Our case is easier than a guitar's in one way -- the forum worry about strings jumping
 # out of the slot does not apply, since ours is clamped and the capstan holds it. The
 # requirement here is only that the DOWEL, not the clamp, terminates the speaking length.)
-BREAK_TARGET = 15.0                             # deg, what ROD_Z is solved for
-ROD_Z   = ROD_D / 2 - (DOWEL_X - ROD_X) * math.tan(math.radians(BREAK_TARGET))
+BREAK_TARGET_DEG = 15.0                             # deg, what ROD_Z is solved for
+# THE STRING WRAPS OVER THE TOP, WHICH IS WHAT PUTS THE ROD BELOW THE STRINGS (user).
+#
+# The underside wrap read better on paper -- it gave a gauge-free break angle and put the
+# clamp and the dowel at similar heights. But it forced the rod ABOVE the string plane,
+# and that is unplayable: the bar rides ON the strings, so at fret 0 a O19 bar's underside
+# is only 2.18 above the plane where the rod sits 6.05 behind the dowel -- and the rod's
+# top stood at 3.38. It fouled the bar by 1.20, which costs the first ~centimetre of every
+# string. A tuning mechanism that cannot be barred at the first fret is not a mechanism.
+#
+# Wrapping the other way lets the rod drop to -4.477, top at -1.977, clearing the bar by
+# 4.16. What it costs is listed honestly:
+#   * THE BREAK ANGLE IS NO LONGER GAUGE-FREE. Underneath, the -g/2 at the dowel and the
+#     +g/2 in the wrap radius cancelled. Over the top they ADD, so the drop carries a -g
+#     and thick strings break steeper than thin. ROD_Z is therefore solved for the
+#     THINNEST string, the shallowest case: every other string then exceeds the target
+#     rather than falling short of it.
+#   * THE INSERT GROWS A NECK. Its flat now bears on the wrap far below the dowel, so it
+#     has to reach back up -- DIVOT_OFF goes from 0.62 to 5.98. That is the trade the user
+#     named, and it is the right way round: a taller printed part is cheap, an unplayable
+#     first fret is not.
+# THE THICKEST STRING SETS THE ROD, not the thinnest. Over the top the wrap radius grows
+# with gauge faster than the drop does, so a FAT string breaks SHALLOWER -- the reverse of
+# the underside wrap, where the thick one was steepest. Solving for the thin string left
+# the .070 at 2.7 deg against a 10 deg floor.
+_G_MAX  = max(D.STRING_GAUGE)                   # the shallowest break: sets the rod
+
+
+def _break_at(rod_z: float, g: float) -> float:
+    """True tangent angle, in degrees, for a rod at rod_z under string gauge g."""
+    hr = ROD_D / 2 + g / 2
+    dx, dz = DOWEL_X - ROD_X, -g / 2 - rod_z
+    return math.degrees(math.atan2(dz, dx)) - math.degrees(math.asin(hr / math.hypot(dx, dz)))
+
+
+def _solve_rod_z(g: float, target: float) -> float:
+    """ROD_Z that gives string g the target break angle, by bisection.
+
+    SOLVED, NOT WRITTEN IN CLOSED FORM. The obvious algebra -- drop to the wrap's top over
+    the run -- is a CHORD, and over the top the chord and the tangent diverge badly: it
+    put the rod where the real angle was 1.9 deg while claiming 15. The tangent is what
+    the string follows, and it is transcendental in rod_z, so it gets solved."""
+    lo, hi = -80.0, -ROD_D / 2 - g - 0.001      # the rod must clear the string
+    for _ in range(200):                        # angle falls monotonically as rod_z rises
+        mid = (lo + hi) / 2.0
+        if _break_at(mid, g) > target:
+            lo = mid
+        else:
+            hi = mid
+    return (lo + hi) / 2.0
+
+
+ROD_Z   = _solve_rod_z(_G_MAX, BREAK_TARGET_DEG)
+# THE BAR HAS TO CLEAR IT. A round bar resting on the strings at fret 0 rises
+# R - sqrt(R^2 - d^2) above the string plane d behind its contact point; nothing may
+# stand higher than that anywhere behind the nut.
+BAR_R   = 19.0 / 2                              # a typical steel bar
+_BAR_UNDER = BAR_R - math.sqrt(BAR_R ** 2 - (DOWEL_X - ROD_X) ** 2)
+assert ROD_Z + ROD_D / 2 <= _BAR_UNDER - 0.8, (
+    f"the rod's top ({ROD_Z + ROD_D / 2:+.2f}) reaches the bar's underside "
+    f"({_BAR_UNDER:+.2f}) at fret 0 -- the first centimetre could not be barred")
+
+# ── Z extent ───────────────────────────────────────────────────────────────
+# ONE PRISM, AND A SHORT ONE. NUT_TOP used to be INSERT_GAP + INSERT_POCKET -- whatever
+# height the M4 clamp inserts needed to drop in from +Z. Those screws are gone (the
+# sliding insert IS the clamp) and with them the only reason this block stood above the
+# strings. What is left to cover is the ROD BORE, so that sets it.
+NUT_TOP  = ROD_Z + ROD_BORE / 2 + D.MIN_WALL_2P  # a two-bead lid over the rod
+NUT_BASE = D.DECK_TOP_Z - D.STRING_Z             # prism base sits on the deck plane
+
 BAY_R   = ROD_D / 2 + 2.5                       # 5.0 threading annulus around the rod --
                                                 # the room a hand needs to pass the tail
                                                 # around it, not a clearance
-# TWO CLAMP ROWS, adjacent strings alternating. The near row clears the threading bay;
-# the far row sits ROW_DX behind it, and ROW_DX is not a round number -- it is what the
-# insert pitch demands. Neighbouring strings are always in DIFFERENT rows, so what has
-# to clear O6 is the DIAGONAL between them: the tightest pair is 5.78 apart in Y (the
-# wrap ends differ, since the turn counts do), and sqrt(5.78^2 + 5.6^2) = 8.05 leaves
-# 2.05 of wall. Same-row neighbours are two strings apart and never closer than 11.88.
-ROW_A   = -19 * D.BEAD                          # -15.2 near row: +X edge 0.8 clear of the bay
-ROW_DX  = 7 * D.BEAD                            # 5.6 row separation -- see the diagonal above
-ROW_B   = ROW_A - ROW_DX                        # -20.8 far row
-GATE_X  = ROW_A                                 # the gate/clamp X for the near row. Either row
-                                                # crosses its string's exit passage, so wound OUT
-                                                # it is a GATE the tail threads past and wound IN
-                                                # it is the CLAMP
+# THE TWO CLAMP ROWS ARE GONE with the screws that needed them. They sat at -15.2 and
+# -20.8 and were staggered so O6 heat-set inserts could clear each other at a 6.5 pitch;
+# the sliding insert clamps the string against the rod instead, so none of that layout --
+# nor the wall behind it that _NX_WALL policed -- has anything left to protect.
+TAIL_X  = None                                  # set below, once INS_X0 exists
 
 
-def clamp_row_x(i: int) -> float:
-    """X of string i's clamp. Adjacent strings alternate rows so the O6 inserts never
-    share one; phased off the -Y end so the heaviest string lands on the NEAR row."""
-    return ROW_A if (D.N_STRINGS - 1 - i) % 2 == 0 else ROW_B
+def touch_angle(i: int) -> float:
+    """Angle about the rod axis (in the XZ plane, from +X) at which string i first
+    TOUCHES the wrap circle, coming down off its dowel. The LOWER of the two tangents,
+    because the string wraps the underside.
+
+    THE ONE PLACE THIS IS COMPUTED. The turn count, the drawn string path and the coil's
+    start phase all read it; when build.py owned a second copy the straight run and the
+    coil disagreed and left a visible gap in the wrap."""
+    g = D.STRING_GAUGE[i]
+    hr = ROD_D / 2 + g / 2                       # the string's centre-path radius
+    dx, dz = DOWEL_X - ROD_X, -g / 2 - ROD_Z     # rod axis -> dowel (the rod sits BELOW)
+    # the UPPER of the two tangents: the string now comes down onto the rod's top
+    return math.atan2(dz, dx) + math.acos(hr / math.hypot(dx, dz))
 
 
-_NX_WALL = abs(X_BACK - (ROW_B - INSERT_D / 2))
-assert _NX_WALL >= D.SCREW_NX_WALL - 1e-9, (
-    f"only {_NX_WALL:.2f} of wall behind the far clamp insert (floor {D.SCREW_NX_WALL})")
-assert ROD_X - BAY_R > ROW_A + INSERT_D / 2, (
-    "the threading bay has eaten into the near clamp insert's column")
-
-# ── Y/Z extent ─────────────────────────────────────────────────────────────
-Y_WALL   = 8.0
-_HW_CLAMP = D.nut_y(0) + INSERT_D / 2 + Y_WALL  # ≈40.25 — what the CLAMP field needs
-                                                # (HW itself is settled below: the wrap
-                                                # field now reaches further -Y than this)
-INSERT_GAP = 1.6
-INSERT_POCKET_EXTRA = 0.8
-INSERT_POCKET = INSERT_L + INSERT_POCKET_EXTRA  # 5.5
-NUT_TOP  = INSERT_GAP + INSERT_POCKET           # 7.1 boss top / ceiling
-NUT_BASE = D.DECK_TOP_Z - D.STRING_Z            # -10: prism base on the deck plane
-
-# ── the wrap ───────────────────────────────────────────────────────────────
 WRAP_F   = 1.05                                 # axial rise per turn, as a multiple of the
                                                 # string's own diameter: the turns lie all but
                                                 # touching. They must NOT cross -- under tension
                                                 # a string crossing itself can cut itself in two
 LANE_CLR = 0.5                                  # air each side of a coil, before its comb web
-TURNS    = 2.5                                  # THE SAME FOR EVERY STRING (user). Half-turns only:
-                                                # a whole 3.0 would put the tail back out the +X side
-                                                # facing the bridge, where it would have to cross its
-                                                # own coil to reach the clamp. 3.5 uniform is not
-                                                # available at all -- s9->s10 comes out at -1.12, i.e.
-                                                # the COILS intersect, which no amount of removing
-                                                # plastic fixes. So 2.5, and it is the better number
-                                                # anyway: 13.9 N residual on all ten, against a
-                                                # per-string scheme whose worst was 36
+# ── HOW MANY TURNS: set by the CLAMP AREA, then snapped to a clean exit (user) ──
+# The insert presses up against the WOUND string on the rod's underside, so the clamp
+# area is however much coil crosses the bottom tangent. Three string widths of it (user):
+#
+#     clamp width, in string widths = (TURNS - 1) * WRAP_F + 1
+#
+# GAUGE-INDEPENDENT, and pleasingly so: the coil's axial pitch and the string's own width
+# both scale with g, so the ratio does not. One turn count serves all ten.
+CLAMP_WIDTHS = 3.0                              # string widths of contact at the clamp
+_N_WANT = 1.0 + (CLAMP_WIDTHS - 1.0) / WRAP_F   # 2.905 turns, if turns were free
+
+# ...but they are NOT free, because the TAIL HAS TO LEAVE POINTING AT THE CLAMP. It
+# exits wherever the winding stops, and the exit passage, the clamp screw and the
+# insert's own flat all sit on the bottom tangent running -X. So the wrap must stop AT
+# THE BOTTOM (-90 deg), which quantises TURNS: the coil enters at touch_angle (~-74 deg,
+# set by the break geometry) and must sweep to -90 plus a whole number of turns.
+#
+# That is the same constraint the old half-turn rule was groping at, but stated properly.
+# The old rule ("half turns only, or the tail exits +X") was a rule of thumb for the
+# over-the-top wrap; underneath, what matters is landing on the bottom, and the fraction
+# that achieves it is set by where the string first touches -- not by halves.
+# TURNS IS PER STRING NOW, and it has to be. Over the top, touch_angle carries the
+# gauge (the wrap radius does), so the entry spreads 12.38 deg across the set against
+# 0.29 underneath -- and a single count would leave the worst tail 9 deg off the bottom,
+# exiting into the trough wall instead of running -X to the clamp.
+#
+# It costs almost nothing: the counts differ by hundredths of a turn, so the clamp area
+# barely moves, and the inserts are already per-string in plan. What it buys is every
+# tail leaving exactly on the bottom tangent.
+def turns(i: int) -> float:
+    """Turns for string i: sweep from where it touches, round to the bottom tangent, plus
+    whichever whole count lands the clamp area nearest CLAMP_WIDTHS."""
+    # THE WRAP CONTINUES THE WAY THE STRING IS ALREADY TRAVELLING -- phi INCREASING.
+    # It arrives heading -X and downward and touches the rod's top, so it carries on over
+    # and down the FAR side. Sweeping phi the other way makes it reverse at the touch
+    # point: a sharp 180 and then a coil wound backwards.
+    # ...AND IT LEAVES AT THE TOP, not the bottom (user). Sweeping forward, the tangent
+    # at phi is (-sin phi, cos phi): at the TOP that points -X, straight at the clamp; at
+    # the BOTTOM it points +X, back toward the bridge. So the wrap must stop at +90 deg.
+    sweep0 = (math.pi / 2 - touch_angle(i)) % (2 * math.pi)       # entry -> the TOP
+    k = max(1, round((_N_WANT * 2 * math.pi - sweep0) / (2 * math.pi)))
+    return (sweep0 + k * 2 * math.pi) / (2 * math.pi)
+
+
+def clamp_widths(i: int) -> float:
+    """Contact at the clamp, in string widths -- what CLAMP_WIDTHS asked for."""
+    return (turns(i) - 1.0) * WRAP_F + 1.0
+
+
+def exit_angle(i: int) -> float:
+    """Where string i's tail leaves the rod -- the TOP tangent, by construction, since
+    that is the only place a forward-swept wrap points -X at the clamp."""
+    return touch_angle(i) + turns(i) * 2 * math.pi
+
+
+_EXIT_ERR = max(abs(math.degrees(exit_angle(i)) % 360.0 - 90.0)
+                for i in range(D.N_STRINGS))
+assert _EXIT_ERR <= 0.01, (
+    f"a tail leaves {_EXIT_ERR:.2f} deg off the top tangent -- turns() is meant to "
+    f"make that exact, so the derivation has drifted")
+
+
 MU = 0.15                                       # steel on steel, dry, deliberately pessimistic
 STRING_T = 147.0                                # per-string tension the capstan is dividing
 
 
 def _adv(i: int) -> float:
     """How far string i's coil marches along the rod (always -Y)."""
-    return TURNS * WRAP_F * D.STRING_GAUGE[i]
+    return turns(i) * WRAP_F * D.STRING_GAUGE[i]
 
 
 def residual(i: int) -> float:
     """Tension still left at the clamp after the wrap — what the clamp actually holds."""
-    return STRING_T * math.exp(-MU * TURNS * 2 * math.pi)
+    return STRING_T * math.exp(-MU * turns(i) * 2 * math.pi)
+
+
+# ── THE SLIDING INSERT (user) ─────────────────────────────────────────────
+# One per string, entering from BELOW. Its flat top presses the wound string up against
+# the rod, which does two jobs at once: it clamps the string (no separate cup-tip screw)
+# and it makes the STRING ITSELF the gauge block.
+#
+# WHY THAT MATTERS. The dowels are gauged so every string TOP lands on one plane, which
+# in the old scheme meant ten different printed pocket depths -- and the smallest step
+# between neighbours is 0.025 mm, unrepresentable at any layer height we print. The
+# insert converts that per-string difference into a COMMON dimension: it rises until the
+# string stops it, so its own position encodes the gauge, and the cradle is a fixed
+# offset from there. Printer error is then the same on all ten -- a systematic offset the
+# setup absorbs -- instead of per-string scatter. It also drops STRING_GAUGE out of the
+# endplate's geometry entirely, so a different string set no longer needs a new endplate.
+#
+# THE OFFSET IS GAUGE-FREE, which is the whole trick:
+#     flat        = ROD_Z - ROD_D/2 - g      the wrap's lowest surface, where it bears
+#     dowel centre= -g - PIN_D/2             gauged, so string tops stay coplanar
+#     difference  = ROD_D/2 - PIN_D/2 - ROD_Z = 0.621, with no g in it
+INS_CLR   = 0.3                                 # Y clearance in its pocket, each side
+INS_W     = D.NUT_PITCH - 2 * INS_CLR           # 5.9 wide -- the pitch, less its slip fit
+INS_DROP  = 4 * D.BEAD                          # 3.2: how far below its bearing height an
+                                                # insert must be able to sit. At the
+                                                # NOMINAL height its flat IS the wrap's
+                                                # underside, so with the insert there a
+                                                # string cannot be wound at all -- it has
+                                                # to drop clear of the whole coil first,
+                                                # which is a fat string's diameter plus
+                                                # room to pass. 3.2 covers the .070 (1.78)
+                                                # with margin.
+INS_H     = 5 * D.BEAD                          # 4.0 of body below the flat
+DIVOT_OFF = ROD_D / 2 - PIN_D / 2 - ROD_Z       # 0.621, cradle centre ABOVE the flat
+DIVOT_D   = PIN_D + 0.3                         # 2.3, the dowel's cradle
+# The insert reaches from just past the dowel back under the rod, so the flat spans both
+# the cradle and the clamp area. It stops short of the trough's -X wall.
+INS_X1    = X_FRONT                             # FLUSH with the block's +X face: the
+                                                # insert is the last thing at this end, so
+                                                # it bears on the deck panel butting it and
+                                                # no block prints out over its slot
+# ON THE GRID, and rounded the safe way. The derivation is still the trough's own wall,
+# so this tracks BAY_R, but ROD_D/2 drags 2.5 into it and the result landed on 13.25
+# beads. Rounding UP (toward +X) can only thicken that wall, never thin it.
+INS_X0    = math.ceil((ROD_X - BAY_R + D.MIN_WALL) / D.BEAD) * D.BEAD
+TAIL_X    = INS_X0                              # where the tail leaves the insert and
+                                                # runs on -X to its stow bore
+
+
+def insert_flat_z(i: int) -> float:
+    """Z of string i's insert top face -- set by the STRING, not by the printer: it rises
+    until the wound string stops it against the rod."""
+    return ROD_Z - ROD_D / 2 - D.STRING_GAUGE[i]
+
+
+def clamp_span(i: int) -> float:
+    """Y width of the coil's contact with the insert -- CLAMP_WIDTHS string widths of it,
+    measured as the spread of the turns that cross the bottom tangent."""
+    g = D.STRING_GAUGE[i]
+    return (turns(i) - 1.0) * WRAP_F * g + g
+
+
+def clamp_y(i: int) -> float:
+    """Y centre of that contact. It sits -Y of the string's own lane because the coil
+    marches that way, by half the advance."""
+    return D.nut_y(i) - _adv(i) / 2.0
+
+
+# ── WHY THE INSERT IS STEPPED IN PLAN, not a rectangle ─────────────────────
+# One insert has to cover TWO things at different Y: the dowel, which must sit on the
+# string's own lane, and the clamp area, which sits -Y of it by half the coil's advance.
+# On the .070 that is 2.84 apart, and the two together need 7.64 mm of Y -- inside a
+# 6.5 mm pitch. A rectangle spanning both cannot fit, and shrinking it drops one job.
+#
+# THEY ARE AT DIFFERENT X, though, so the part can step: a narrow DOWEL LOBE at the +X
+# end on the string's lane, and a wider CLAMP LOBE at the -X end offset -Y. Neighbouring
+# inserts then overlap in Y while never sharing an X, so they interleave instead of
+# colliding -- s9's clamp lobe and s10's dowel lobe overlap 0.45 in Y at X stations that
+# do not touch.
+#
+# The cost is that the inserts are PER STRING in plan (the advance differs with gauge),
+# so there are ten variants rather than one. That is the right trade and worth naming:
+# what used to be per-string was a POCKET DEPTH differing by 0.025 mm, which no printer
+# here can hold. What is per-string now is a Y layout differing by millimetres, which any
+# printer holds trivially. The precision moved off the machine and onto the string.
+INS_STEP_X  = (DOWEL_X + ROD_X) / 2.0           # -3.4, where the plan steps
+# Both lobes are the FEATURE plus a hair, not a round number -- the padding is wall
+# taken from the neighbour, and at the bass end there is none to spare. 4.3 puts the
+# dowel-lobe wall on the 1.6 two-bead target exactly.
+INS_LOBE_W  = PIN_L + 0.3                       # 4.3, the dowel lobe
+
+
+def insert_lobes(i: int):
+    """(dowel lobe, clamp lobe) as (y_centre, width) pairs -- the insert's plan."""
+    return ((D.nut_y(i), INS_LOBE_W),
+            (clamp_y(i), clamp_span(i) + 0.2))
+
+
+def _plan(i: int):
+    """The insert's PLAN: clamp lobe, a 45 deg taper, then the dowel lobe.
+
+    THE SQUARE STEP HAD TO GO (user). Jumping straight from one lobe's Y band to the
+    other left a finger face standing in mid-air -- printing -X -> +X the block reaches
+    the step and must lay that face with nothing behind it. A 45 deg transition carries
+    each layer on the one before, the same rule the comb braces at the bridge end follow.
+    The taper runs over whichever side moves further, so the steeper side is exactly 45
+    and the other is shallower -- which is the safe direction to err."""
+    (dy, dw), (cy, cw) = insert_lobes(i)
+    yhd, yld = dy + dw / 2, dy - dw / 2
+    yhc, ylc = cy + cw / 2, cy - cw / 2
+    run = max(abs(yhd - yhc), abs(yld - ylc))          # 45 deg: Y travel == X run
+    x_s = INS_STEP_X
+    x_e = min(x_s + run, INS_X1 - 0.01)
+    return [(INS_X0, ylc), (x_s, ylc), (x_e, yld), (INS_X1, yld),
+            (INS_X1, yhd), (x_e, yhd), (x_s, yhc), (INS_X0, yhc)]
+
+
+def _plan_wire(i: int):
+    return cq.Workplane("XY").polyline(_plan(i)).close()
+
+
+def slide_insert(i: int) -> cq.Workplane:
+    """String i's insert, placed where the string will hold it. `clr` grows it all round,
+    which is how the POCKET is cut -- so the pocket is the part's own shape by
+    construction and the two cannot drift."""
+    fz = insert_flat_z(i)
+    (dy, dw), (cy, cw) = insert_lobes(i)
+    # the dowel lobe, plus a NECK rising from the flat to the cradle. The flat bears on
+    # the wrap far below the dowel now, so the insert has to carry the dowel back up; the
+    # neck stops AT the cradle centre, which is a dowel-radius under the crown and so
+    # still below the string plane -- nothing of the insert can foul the bar either.
+    body = _plan_wire(i).extrude(INS_H).translate((0, 0, fz - INS_H))
+    # THE NECK STARTS CLEAR OF THE COIL, not at the lobe's step. The wrap reaches
+    # ROD_X + ROD_D/2 + g on its +X side, and a neck beginning further -X than that drives
+    # straight through the winding -- 10 mm^3 of it on the .070. So it is set from the
+    # coil's own extent, per string, which is also why it moves with the gauge.
+    nx0 = ROD_X + ROD_D / 2 + D.STRING_GAUGE[i] + 0.4
+    # CLIPPED TO THE PLAN. nx0 sits -X of the taper, where the profile has already
+    # narrowed to the clamp lobe -- a neck drawn at the dowel lobe's full width there
+    # juts sideways out of its own slot and into the block (10 mm^3 on string 1).
+    # Intersecting with the plan means the neck can never exceed the part's footprint,
+    # whatever nx0 does as the gauge changes.
+    neck = box_at(INS_X1 - nx0, dw, DIVOT_OFF,
+                  x=(nx0 + INS_X1) / 2, y=dy, z=fz + DIVOT_OFF / 2)
+    body = body.union(neck.intersect(
+        _plan_wire(i).extrude(DIVOT_OFF + 2).translate((0, 0, fz - 1))))
+    body = body.cut(cyl_y(DIVOT_D, dw + 2, y0=dy - dw / 2 - 1,
+                          x=DOWEL_X, z=fz + DIVOT_OFF))
+    return body
+
+
+def insert_pocket(i: int) -> cq.Workplane:
+    """The slot string i's insert rises through: its own PLAN, cut clean through the block
+    from underside to top face.
+
+    IT HAS TO REACH THE TOP (user). The insert is fitted from below and then rises until
+    the string stops it, so anything left capping it does two bad things at once -- it
+    limits the travel that makes the whole scheme self-referencing, and it is a ceiling
+    over a slot, i.e. an overhang in a part that prints -X -> +X. Running the slot right
+    through removes both, and costs nothing: the material over an insert was doing no
+    work, since what holds the string down is the ROD, not the block.
+
+    The plan is the part's own, grown by INS_CLR, so pocket and insert cannot drift."""
+    # THE POCKET IS THE PART'S OWN PLAN, OFFSET (user). It used to be built from two
+    # boxes -- one per lobe -- which squared off the transition the part tapers through,
+    # so the block kept a step where the insert has a 45 and printed that face over thin
+    # air. Two descriptions of one shape is the bug we keep re-making here; there is only
+    # one now, and offsetting it means the slot tracks any future change to the profile
+    # for free.
+    #
+    # offset2D IS A TRUE OFFSET, which matters on the diagonal: padding the Y bounds by
+    # INS_CLR moves a 45 deg edge only INS_CLR/sqrt(2) away from itself, so the old
+    # rectangles were UNDER-cleared exactly where the taper runs. kind="intersection"
+    # extends the edges to meet rather than rounding the corners, so the pocket is the
+    # profile grown, not the profile blurred.
+    (dy, dw), (cy, cw) = insert_lobes(i)
+    fz  = insert_flat_z(i)
+    lo  = fz - INS_DROP                     # the flat at its lowest adjustment
+    z0  = lo - INS_H - 1.0                  # ...and the body hanging under it
+    z1  = NUT_TOP + 1.0
+    # a FUNCTION, not a value: extruding a Workplane consumes its pending wires, and
+    # this profile is extruded twice.
+    grown = lambda: _plan_wire(i).offset2D(INS_CLR, kind="intersection")
+
+    # THE POCKET IS THE PART SWEPT THROUGH ITS TRAVEL, NOT THE PLAN EXTRUDED. Extruding
+    # the whole plan the block's full height cut a slot the width of the CLAMP LOBE all
+    # the way to the top -- and nothing of the insert is up there. Only the neck is: the
+    # body's top face IS the flat, which sits at the block's base plane, so above that the
+    # part is a single narrow finger reaching up to the cradle.
+    #
+    # The cost of the old version was structural, not cosmetic. The clamp lobes are wide
+    # and the walls between them are all that is left of the block in a merged bay -- so
+    # taking those walls to full height, with the trough having already taken the floor
+    # and the sky the roof, left them attached to nothing. Two of them came out as loose
+    # 23 mm^3 fragments at the bass end. Cutting only where the part actually goes leaves
+    # a band of solid block above the flat that ties every wall back to the end walls.
+    body = grown().extrude(fz - z0).translate((0, 0, z0))
+    # ...and the neck, from the flat's LOWEST travel right through the top face. Built the
+    # same way the part's neck is -- same nx0, clipped to the same profile -- so the two
+    # move together; only the clearance differs.
+    nx0 = ROD_X + ROD_D / 2 + D.STRING_GAUGE[i] + 0.4 - INS_CLR
+    x1 = INS_X1 + INS_CLR
+    neck = box_at(x1 - nx0, dw + 2 * INS_CLR, z1 - lo,
+                  x=(nx0 + x1) / 2, y=dy, z=(lo + z1) / 2)
+    return body.union(neck.intersect(grown().extrude(z1 - lo).translate((0, 0, lo))))
 
 
 def _lane(i: int):
@@ -230,24 +542,47 @@ def _lane(i: int):
     return y0 + g / 2 + LANE_CLR, y1 - g / 2 - LANE_CLR
 
 
+# WHAT A WEB HAS TO BEAT BEFORE IT IS MERGED AWAY. This was MIN_WALL_2P, the two-bead
+# quality target, and dropping it to the one-bead FLOOR is a deliberate demotion.
+#
+# The reason is that merging is not free, which is what the 1.6 rule missed. A web is not
+# only a fin standing in a trough -- it is the ONLY thing holding up the wall between two
+# insert pockets. The trough clears the whole block height in a merged bay and the two
+# pockets take everything either side, so with the web gone that wall is attached to
+# nothing at all: it came out as a loose 49 mm^3 fragment between strings 8 and 9, which
+# the slicer would have printed as debris rattling around inside the part.
+#
+# So the trade at s8-s9 is a 0.98 web against no wall. 0.98 is a printable bead, and
+# MIN_WALL_2P is the target to PREFER, not a floor to delete material under. Below the
+# one-bead floor the fin really is unprintable and the merge is still right: s9-s10's
+# lanes actually OVERLAP by 0.33, so that one still merges -- and its wall survives
+# anyway, carried round by the web at s8-s9 that this threshold puts back.
+#
+# It buys back stiffness too, which was not the point but is worth recording: the
+# unsupported rod span drops from 22.74 to 16.69 mm and the bending stress with it,
+# 102 -> 75 MPa.
+WEB_MIN = D.MIN_WALL                            # see bays()
+
+
 def bays():
     """(-Y, +Y) of each string's threading bay, WITH THIN WEBS MERGED AWAY (user).
 
-    At a uniform 2.5 turns every coil clears its neighbour with air to spare. What stops
-    being printable down at the bass end is the material LEFT BETWEEN two lanes: 1.48 mm
-    at s8->s9 and 0.32 at s9->s10, against the 1.6 two-bead floor. A fin that thin is
-    worse than no fin -- it is the first thing to break and it guides nothing. So where
-    the web falls under the floor the two bays MERGE into one open pocket and the rod
-    simply spans it.
+    Every coil clears its neighbour with air to spare. What gets tight down at the bass
+    end is the material LEFT BETWEEN two lanes: 0.98 mm at s8->s9, and at s9->s10 the
+    lanes overlap outright.
+    Where a web falls under WEB_MIN the two bays MERGE into one open pocket and the rod
+    simply spans it -- but see WEB_MIN for why that threshold is the one-bead floor and
+    not the two-bead target: a merged bay costs the WALL BETWEEN THE INSERT POCKETS its
+    only support, so merging one web too eagerly leaves loose material behind.
 
-    IT CAN AFFORD TO. Dropping both bass webs leaves 22.74 mm unsupported with all three
-    bass strings pulling on it: 102 MPa in a hardened O5 shaft and 0.011 mm of sag, a 4x
-    margin. _SPAN_MPA asserts it, so a heavier string set has to re-earn it rather than
-    quietly bend the rod."""
+    IT CAN AFFORD TO. The longest run the rod is left to span is 16.69 mm, with the bass
+    strings pulling on it: 75 MPa in a hardened 5 mm shaft, a comfortable margin.
+    _SPAN_MPA asserts it, so a heavier string set has to re-earn it rather than quietly
+    bend the rod."""
     hi = [_lane(i)[0] for i in range(D.N_STRINGS)]
     lo = [_lane(i)[1] for i in range(D.N_STRINGS)]
     for i in range(D.N_STRINGS - 1):
-        if lo[i] - hi[i + 1] < D.MIN_WALL_2P - 1e-9:        # web too thin to print...
+        if lo[i] - hi[i + 1] < WEB_MIN - 1e-9:              # web too thin to print...
             mid = (lo[i] + hi[i + 1]) / 2.0
             lo[i] = hi[i + 1] = mid                         # ...so there is no web at all
     return [(lo[i], hi[i]) for i in range(D.N_STRINGS)]
@@ -289,6 +624,10 @@ ROD_END_W = D.MIN_WALL_2P                       # the +Y bore is BLIND; that wal
 # 3.5 turns -- so the -Y end of the rod lands 0.12 outside the old half-width. Take the
 # wider of the two requirements and put the surplus on the bead grid, so the block grows
 # by whole beads rather than by whatever the gauge table happens to ask for.
+# The block reaches the OUTERMOST INSERT plus a wall. It used to be sized from the
+# clamp inserts' O6 pockets, which no longer exist.
+Y_WALL    = 8.0                                 # outer wall past the last insert
+_HW_CLAMP = D.nut_y(0) + INS_LOBE_W / 2 + Y_WALL
 _HW_NEED = max(_HW_CLAMP, ROD_END_W - ROD_Y0)
 HW = D.nut_y(0) + math.ceil((_HW_NEED - D.nut_y(0)) / D.BEAD - 1e-9) * D.BEAD
 assert ROD_Y0 - ROD_END_W >= -HW, "the rod's -Y end has run out of block to sit in"
@@ -331,7 +670,11 @@ def _break_deg(i: int) -> float:
     # The rod axis sits ABOVE the dowel, so the line to it RISES; the tangent to the
     # underside lies asin(hr/d) BELOW that line. Subtract -- adding gives the upper
     # tangent, i.e. a string wrapping over the top, which is the arrangement we left.
-    return math.degrees(math.asin(hr / d)) - math.degrees(math.atan2(-dz, dx))
+    # UPPER tangent: the rod sits BELOW the dowel now, so the line to its axis DESCENDS
+    # and the tangent lies asin(hr/d) shallower than that line. (This read the lower
+    # tangent while the rod was above -- the same formula gives 56-59 deg here, which is
+    # what a stale sign looks like rather than a real break.)
+    return math.degrees(math.atan2(dz, dx)) - math.degrees(math.asin(hr / d))
 
 
 _WORST_BREAK = min(_break_deg(i) for i in range(D.N_STRINGS))
@@ -385,28 +728,6 @@ BAY_D = 2 * BAY_R                               # 10.0 — ONE trough diameter f
 _EXTRA_CUTS = False
 
 
-# ── CAP CUT: everything above the trough goes (user) ───────────────────────
-# The block was full height all the way over the axle, and none of that material was
-# doing anything: the trough's roof only has to hold itself, and the clamp inserts stop
-# well below the top. So keep a two-bead roof over the trough and chop the rest.
-#
-# THE -X LIMIT IS THE SETSCREW TEARDROPS' TIPS, not the bore centres. A cadkit teardrop
-# puts its apex at r * sqrt(2) from the axis, pointing +X (the build direction), so the
-# insert's Ø6 bore reaches CAP_KEEP further +X than its centreline suggests -- and it is
-# the INSERT, not the screw, that reaches furthest. Cutting to the centre would have
-# sliced the tips off the very holes the cut is supposed to clear.
-CAP_KEEP   = D.MIN_WALL_2P                          # 1.6 of roof, and the same as clearance
-# MEASURED OFF THE AXLE BORE, NOT THE TROUGH (user). The two are very different planes:
-# the string-clearance trough tops out at 2.60 and the Ø5.4 axle bore at 0.30, so sizing
-# from the trough put the chop 2.3 too high and left a slab that was never wanted. The
-# roof that has to survive is the one over the SHAFT.
-AXLE_TOP   = ROD_Z + ROD_BORE / 2                   # 0.30, the axle bore's +Z extent
-CAP_Z      = AXLE_TOP + CAP_KEEP                    # 1.90, the chop plane
-_APEX      = math.sqrt(2.0)                         # cadkit teardrop apex, in radii
-CAP_X0     = ROW_A + INSERT_D / 2 * _APEX + CAP_KEEP   # -9.36, clear of the near row's tip
-assert CAP_X0 > ROW_A + INSERT_D / 2, "the cap cut starts inside the clamp insert"
-assert CAP_Z < NUT_TOP, "the cap cut is above the block: nothing would be removed"
-
 # ── STRING SLOT: the whole +X end opens down to under the strings (user) ───
 # Everything +X of the axle is cleared across the FULL width -- no per-string lanes and
 # no fingers, one rectangular slot -- from just clear of the axle bore out to the +X face.
@@ -419,12 +740,14 @@ assert CAP_Z < NUT_TOP, "the cap cut is above the block: nothing would be remove
 # ITS FLOOR IS THE THICKEST STRING'S UNDERSIDE, less the same clearance. One slot serves
 # ten strings, so the floor is set by the lowest of them: the .070 hangs to -1.78 and
 # every thinner string clears by more.
-AXLE_APEX  = ROD_X + ROD_BORE / 2 * _APEX            # -2.58, the bore's real +X reach
-SLOT_X0    = AXLE_APEX + CAP_KEEP                    # -0.98
+_APEX      = math.sqrt(2.0)                          # cadkit teardrop apex, in radii
+SLOT_KEEP  = D.MIN_WALL_2P                           # 1.6, clearance off the bore's tip
+AXLE_APEX  = ROD_X + ROD_BORE / 2 * _APEX            # the bore's real +X reach
+SLOT_X0    = AXLE_APEX + SLOT_KEEP                   # clear of the bore's tip
 STRING_BOT = -max(D.STRING_GAUGE)                    # -1.78, the .070's underside
-SLOT_Z0    = STRING_BOT - CAP_KEEP                   # -3.38, the slot floor
+SLOT_Z0    = STRING_BOT - SLOT_KEEP                  # the slot floor
 assert SLOT_X0 > AXLE_APEX, "the string slot would clip the axle bore's teardrop tip"
-assert SLOT_Z0 < CAP_Z, "the string slot is shallower than the cap it sits inside"
+assert SLOT_Z0 < NUT_TOP, "the string slot is shallower than the block it cuts"
 
 
 def _bay_trough(y0: float, y1: float) -> cq.Workplane:
@@ -494,6 +817,17 @@ def _all_skies() -> cq.Workplane:
         k = box_at(X_FRONT - ROD_X, y1 - y0, (NUT_TOP + 1.0) - ROD_Z,
                    x=(ROD_X + X_FRONT) / 2, y=(y0 + y1) / 2,
                    z=(ROD_Z + NUT_TOP + 1.0) / 2)
+        out = k if out is None else out.union(k)
+    return out
+
+
+def all_pockets() -> cq.Workplane:
+    """Every insert's slot, FUSED and subtracted once -- the same lesson the troughs
+    taught: ten short booleans against a body this busy left cores behind, one fused
+    cutter does not."""
+    out = None
+    for i in range(D.N_STRINGS):
+        k = insert_pocket(i)
         out = k if out is None else out.union(k)
     return out
 
@@ -596,23 +930,12 @@ def _build() -> cq.Workplane:
         # STRAIGHT out the back face at that same height -- no bend at all now the wrap
         # is on the underside. tail_z is where the string actually is, so the passage and
         # the clamp below both hang off it rather than off the rod's centre.
-        tail_z = ROD_Z - (ROD_D / 2 + g / 2)
+        tail_z = ROD_Z + (ROD_D / 2 + g / 2)      # the TOP tangent -- see exit_angle
         body = body.cut(box_at((ROD_X - BAY_R) - X_BACK, gw, gw,
                                x=(X_BACK + ROD_X - BAY_R) / 2, y=y1, z=tail_z))
         # ANVIL: a second Ø2 dowel under the tail at the clamp, so the pinch is
         # metal-on-metal and the plastic floor is not the thing being squeezed.
-        gx = clamp_row_x(i)
-        # CLAMP: buried M4 insert from +Z and the set-screw bore down onto the tail.
-        # TEARDROPPED, both of them. Their axis is Z and the block builds along X, so each
-        # is a "horizontal" hole in the print sense -- a plain cylinder gives it a curved
-        # -X ceiling that droops. (They were plain cyl() before the capstan too; the
-        # overhang audit is what turned them up.)
-        body = body.cut(teardrop_hole(INSERT_D, INSERT_POCKET + 0.5,
-                                      axis_point=(gx, y1, INSERT_GAP),
-                                      axis_dir=(0.0, 0.0, 1.0), print_up=PRINT_UP))
-        body = body.cut(teardrop_hole(SCREW_D, NUT_TOP - tail_z + 1,
-                                      axis_point=(gx, y1, tail_z),
-                                      axis_dir=(0.0, 0.0, 1.0), print_up=PRINT_UP))
+        # (no clamp bores: the sliding insert IS the clamp now)
 
     # THE TROUGHS, FUSED AND SUBTRACTED ONCE (user). Ten separate short booleans against
     # a body already carrying this many nearby features left a CORE behind in the two
@@ -624,18 +947,16 @@ def _build() -> cq.Workplane:
     # is meant to BE: the same trough everywhere, made once.
     body = body.cut(_all_troughs())
 
+    # ...and the slots the INSERTS rise through, cut from the parts' own profiles so the
+    # pocket cannot drift from the thing it has to accept.
+    body = body.cut(all_pockets())
+
     body = body.cut(_all_dowels())
 
     # ...and open each lane to the sky above the rod's centre-plane, which is what stops
     # a beam being left between the trough's crown and the cap. Fused and cut once, for
     # the same reason the troughs are.
     body = body.cut(_all_skies())
-
-    # CAP: take the block down to CAP_Z over the axle, from the setscrew teardrops' tips
-    # out to the +X face. Full width in Y -- there is nothing up there worth keeping.
-    body = body.cut(box_at(X_FRONT - CAP_X0, 2 * HW + 2.0, (NUT_TOP + 1.0) - CAP_Z,
-                           x=(CAP_X0 + X_FRONT) / 2, y=0.0,
-                           z=(CAP_Z + NUT_TOP + 1.0) / 2))
 
     # STRING SLOT: full width, axle tip out to the +X face, down to under the strings.
     body = body.cut(box_at(X_FRONT - SLOT_X0, 2 * HW + 2.0, (NUT_TOP + 1.0) - SLOT_Z0,
