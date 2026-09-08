@@ -54,6 +54,14 @@ LIVE_MODULE = SCOPE["module"]
 LIVE_ATTR = SCOPE.get("attr") or LIVE_MODULE.rpartition(".")[2]
 REPLACED = tuple(SCOPE.get("replaced", ()))
 
+# A scope may name a BUILD PART instead of a module attribute:
+#     scope --set part:bridge_endplate
+# Some parts are only ever assembled in src/build.py, so "point it at the right
+# module attribute" has no correct answer for them (brenner, 2026-09-07).
+# PARTS[name][0] is a zero-arg builder returning one Workplane -- exactly a live set
+# of one.
+PART_KEY = LIVE_MODULE[len("part:"):] if LIVE_MODULE.startswith("part:") else None
+
 
 # ── optional per-part helpers ────────────────────────────────────────────────
 # Only needed when a part is NOT authored in global coordinates, or when you want
@@ -89,12 +97,28 @@ def _pose_belt_tensioner(name, wp):
 
 
 POSES = {"leg_stack": _pose_leg_stack, "belt_tensioner": _pose_belt_tensioner}
-CROPS = {"leg_station": lambda: (400.0, 400.0, 900.0) + _leg_station()[:2]
-                                + (_leg_station()[2] - 300.0)}
+
+
+def _crop_leg_station():
+    """400 sq x 900 box round the leg station. Spelled out rather than built by
+    tuple concatenation -- the one-liner read `(w,d,h) + station[:2] + (z-300.0)`,
+    and that last term is a FLOAT, not a 1-tuple, so it raised the moment anyone
+    actually used a crop. Nobody had until now."""
+    lx, ly, zt = _leg_station()
+    return (400.0, 400.0, 900.0, lx, ly, zt - 300.0)
+
+
+CROPS = {"leg_station": _crop_leg_station}
 # ─────────────────────────────────────────────────────────────────────────────
 
 
 def _live():
+    if PART_KEY is not None:
+        parts = importlib.import_module("src.build").PARTS
+        if PART_KEY not in parts:
+            raise SystemExit(f"scratch_view: no build part {PART_KEY!r}. "
+                             "List them with:  py -3.12 -m src.build --list")
+        return [(PART_KEY, parts[PART_KEY][0]())]
     try:
         mod = importlib.import_module(LIVE_MODULE)
     except ModuleNotFoundError:
@@ -121,13 +145,26 @@ def _live():
     return [(n, w) for n, w in parts if not n.endswith("_CONTEXT")]
 
 
+def _lookup(table, key, what):
+    """Resolve a POSES/CROPS key, LOUDLY. `dict.get` returned None for an unknown key,
+    so a typo rendered the part unposed (or uncropped) with no warning at all -- the
+    silent-wrong-answer failure this project keeps paying for."""
+    if not key:
+        return None
+    if key not in table:
+        raise SystemExit(f"scratch_view: unknown {what} {key!r}. Registered: "
+                         f"{sorted(table) or '(none)'}. Add one in tools/scratch_view.py, "
+                         "or drop it from your scope.")
+    return table[key]
+
+
 VIEW = ScratchView(
     root=ROOT,
     context=lambda: importlib.import_module("src.build").collect_components(),
     live=_live,
     replaced=REPLACED,
-    crop=CROPS[SCOPE["crop"]]() if SCOPE.get("crop") in CROPS else None,
-    pose=POSES.get(SCOPE.get("pose")),
+    crop=(lambda f: f() if f else None)(_lookup(CROPS, SCOPE.get("crop"), "crop")),
+    pose=_lookup(POSES, SCOPE.get("pose"), "pose"),
     # The LIVE set wears the same colours the full build gives it, so the part under
     # work reads as the material it is instead of one flat highlight. Resolved through
     # src.build._color_for -- the very function the real build uses -- so this view
