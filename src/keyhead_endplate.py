@@ -143,9 +143,8 @@ def _build():
     # nut_y - adv, which is 0.9 to 4.7 further -Y depending on gauge. The bores had stayed
     # on the old line, so every tail was aimed a little wide of its own hole and the fattest
     # was aimed at its neighbour's. Reading nut_block.wrap_y ties them to the wrap for good.
-    bore = _stow_bore(ZHOLE_D, ZHOLE_X, XLO, Z6, CH.Z_BOT - 1.0)
-    for i in range(D.N_STRINGS):
-        w = w.cut(bore.translate((0, NB.wrap_y(i)[1], 0)))
+    w = w.cut(NB.all_stow_channels(CH.Z_BOT - 1.0 - D.STRING_Z)
+              .translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z)))
     return heal(w)
 
 
