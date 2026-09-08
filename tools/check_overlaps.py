@@ -37,29 +37,40 @@ WIRE_OK = None      # set in main() (src.wiring needs src.build imported first)
 
 
 def base(name: str) -> str:
-    return re.sub(r"_\d+$", "", name)
+    # Strip EVERY trailing index group, not just the last one. Parts numbered per
+    # string used to be `screw_bearing_4`, but a second index arrived when each
+    # screw grew three bearings (`screw_bearing_4_1` = string 4, position 1). A
+    # single-group strip left base = "screw_bearing_4", which matches nothing in
+    # the allow list — so the designed bearing-in-rail contact quietly stopped
+    # being allow-listed, and only stayed silent because it sits under VOL_EPS.
+    return re.sub(r"(_\d+)+$", "", name)
 
 
 def idx(name: str):
-    m = re.search(r"_(\d+)$", name)
+    """The per-STRING index — the first of the trailing group, so `belt_3` pairs
+    with `screw_bearing_3_1`. Later indices are positions within that string."""
+    m = re.search(r"_(\d+)(?:_\d+)*$", name)
     return int(m.group(1)) if m else None
 
 
 # Designed contacts that SHOULD interpenetrate / touch — not problems.
 PER_STRING_OK = {
-    frozenset({"leadscrew", "nut"}), frozenset({"leadscrew", "carriage"}),
-    frozenset({"nut", "carriage"}), frozenset({"guide_rod", "carriage"}),
+    # the H-nut IS the carriage: it rides the screw and the guide rod itself,
+    # and the string's ball end hangs off its +X ear
+    frozenset({"leadscrew", "nut"}), frozenset({"guide_rod", "nut"}),
+    frozenset({"string_nut", "nut"}),
     frozenset({"leadscrew", "screw_bearing"}), frozenset({"leadscrew", "screw_pulley"}),
     frozenset({"belt", "screw_pulley"}), frozenset({"belt", "motor_pulley"}),
     frozenset({"motor", "motor_pulley"}),
-    frozenset({"string", "carriage"}),
-    frozenset({"string_nut", "carriage"}), frozenset({"string_nut", "string"}),
+    frozenset({"string_nut", "string"}),
     # nut-block hardware (per string): break pin sets the scale, set screw clamps the
     # string, threading through its own heat-set insert
     frozenset({"break_dowel", "string"}), frozenset({"set_screw", "string"}),
     frozenset({"set_screw", "nut_insert"}),
     frozenset({"nut", "screw_pulley"}), frozenset({"screw_bearing", "screw_pulley"}),
-    frozenset({"locknut", "leadscrew"}), frozenset({"locknut", "screw_bearing"}),
+    # the collar's bore is 4.6 and the rod is Ø5: the interference IS the design —
+    # the steel FORMS its mating thread in the plastic on the way in (screw_collar.py)
+    frozenset({"leadscrew", "screw_top_bearing"}), frozenset({"screw_pulley", "screw_bearing"}),
     # a belt connects its OWN motor and screw, so it touches both there
     frozenset({"belt", "motor"}), frozenset({"belt", "leadscrew"}),
     frozenset({"belt", "belt_clamp"}),   # splice clamp grips its own belt
@@ -75,8 +86,9 @@ GLOBAL_OK = {
     frozenset({"belt_tensioner_slider_coupon", "belt_tensioner_insert_coupon"}),
     frozenset({"optical_screw", "bridge_endplate"}),
     frozenset({"screw_bearing", "bridge_endplate"}), frozenset({"leadscrew", "bridge_endplate"}),
-    frozenset({"locknut", "bridge_endplate"}), frozenset({"screw_pulley", "bridge_endplate"}),
-    frozenset({"nut", "bridge_endplate"}), frozenset({"carriage", "bridge_endplate"}),
+    frozenset({"screw_top_bearing", "bridge_endplate"}),
+    frozenset({"screw_pulley", "bridge_endplate"}),
+    frozenset({"nut", "bridge_endplate"}),
     frozenset({"bridge_endplate", "bridge_bearings"}),
     frozenset({"string", "bridge_bearings"}), frozenset({"string", "bridge_endplate"}),
     # guide rods drop through the endplate's stop bar into its blind sockets
@@ -227,8 +239,35 @@ def _knee(n) -> bool:
             or f"kv_{inner}" in KNEE_FAMILY)
 
 
+# ── DEFERRED, NOT INTENDED — MUST BE RESOLVED BEFORE THE INSTRUMENT IS FINALISED ──
+# These are REAL interpenetrations parked so the rest of the model can be gated. They are
+# NOT designed contacts and they do not belong in intended() on their merits; the only
+# reason they sit here is that the fix is a routing decision the user is taking later.
+#
+# THE LEG'S TRRS CABLE (user, deferred 2026-08-13). Three pairs, one cause each:
+#   chassis <-> cable      the cable's -X end cap, ~(-624, 50.5, -65.7), buried in the
+#                          keyhead-end segment. CAUSED ON THIS BRANCH: chassis.EP_TIP_NX
+#                          feeds _leg_geom, so growing the keyhead 5.0 along X moved the
+#                          -X leg station with it and took the cable along. Fix is either
+#                          a reroute or pinning the leg station to its own datum.
+#   electronics_tray, pi5  PRE-EXISTING, older than this branch.
+# Each one is a cable DUMMY clipping a solid, i.e. exactly the "real routing bug" the wire
+# rule below is written to catch — which is why they must not be left here quietly.
+DEFERRED = {frozenset({"chassis", "chassis_trrs_cable"}),
+            frozenset({"chassis_trrs_cable", "electronics_tray"}),
+            frozenset({"chassis_trrs_cable", "pi5"})}
+_DEFERRED_SEEN = set()
+
+
 def intended(na, nb) -> bool:
     if "build_counter" in (na, nb):
+        return True
+    _pair = frozenset({base(na), base(nb)})
+    if _pair in DEFERRED:
+        if _pair not in _DEFERRED_SEEN:                 # announce once, never silently
+            _DEFERRED_SEEN.add(_pair)
+            print("  !! DEFERRED overlap (NOT a designed contact, must be fixed before "
+                  "the instrument is finalised): %s <-> %s" % (na, nb))
         return True
     if _knee(na) and _knee(nb):
         return True
@@ -287,6 +326,16 @@ def intended(na, nb) -> bool:
 DEFAULT_SKIP = {"belt", "belt_clamp"}
 
 
+# A 0.025 mm bite over an 11 mm run is only ~0.21 mm^3, so the engine's 1.0 default
+# is BLIND to thin, tall interferences — exactly the shape a bearing bore, a press
+# fit or two near-parallel walls make. One such (guide-rod bore into a bridge
+# bearing) sat green until it was found by hand. Measured cost of dropping to 0.05
+# on this assembly: 392 -> 492 interpenetrating pairs, but only 2 extra UNINTENDED,
+# and both are wire-vs-solid clips, which this project's own WIRE_OK doctrine calls
+# real routing bugs. So it buys sensitivity at no noise cost.
+MIN_VOL = 0.05
+
+
 def gate(comps, *, full=False, only=(), exclude=(), jobs=None, show_all=False) -> int:
     """Scan ALREADY-BUILT components and return the unintended-overlap count.
 
@@ -309,7 +358,7 @@ def gate(comps, *, full=False, only=(), exclude=(), jobs=None, show_all=False) -
         if skip:
             comps = [(n, s) for n, s in comps if base(n) not in skip]
             print(f"skipping base names (pass --full to include): {sorted(skip)}")
-    return run(comps, intended, jobs=jobs, show_all=show_all)
+    return run(comps, intended, jobs=jobs, show_all=show_all, min_vol=MIN_VOL)
 
 
 def main():

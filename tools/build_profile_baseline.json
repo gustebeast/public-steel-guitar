@@ -1,385 +1,384 @@
 {
-  "lib_s": 1.055014,
-  "real_total_s": 46.33452770079711,
+  "lib_s": 1.127266,
+  "real_total_s": 52.24107250003482,
   "modules": {
-    "src.dimensions": 1.0035712525283827e-05,
-    "src.helpers": 9.452993733493153e-06,
-    "src.components": 9.496158088440612e-06,
-    "src.motor_bank": 0.047619801247311334,
-    "src.latch": 1.2517662934762623e-05,
-    "src.legs": 1.6834098429508354e-05,
-    "src.knee_lever": 0.03947589607066467,
-    "src.electronics": 1.767580335098377e-05,
-    "src.chassis": 0.14608470909014046,
-    "src.carriage": 0.0018146726463460533,
-    "src.pickup_mount": 8.546542279596548e-06,
-    "src.top_plate": 0.04927783044955307,
-    "src.optical_pickup": 0.0001210112690951966,
-    "src.endplate_base": 1.0424191719810943e-05,
-    "src.screw_rail": 0.0031130564431655697,
-    "src.bridge_endplate": 0.07750762073567478,
-    "src.belt_clamp": 0.0023905930522325025,
-    "src.nut_block": 0.02678967632983223,
-    "src.tension_fork": 0.002939967379826266,
-    "src.wiring": 1.3251456968869397e-05,
-    "src.knee_lever_vert": 0.04768137519964388,
-    "src.build": 0.08602938667553149
+    "src.dimensions": 9.666723438720816e-06,
+    "src.helpers": 8.652196028320413e-06,
+    "src.components": 8.843616294433697e-06,
+    "src.motor_bank": 0.043782791787026876,
+    "src.latch": 8.977610480712994e-06,
+    "src.legs": 1.0719534902343873e-05,
+    "src.knee_lever": 0.03300211725168642,
+    "src.electronics": 1.5198769129394707e-05,
+    "src.chassis": 0.1257527015739507,
+    "src.pickup_mount": 8.690480081543069e-06,
+    "src.top_plate": 0.04246141769004688,
+    "src.optical_pickup": 0.00010801845616772586,
+    "src.endplate_base": 8.824474267822367e-06,
+    "src.screw_rail": 0.007433384909923914,
+    "src.bridge_endplate": 0.11179833645253182,
+    "src.belt_clamp": 0.0021052975127937258,
+    "src.nut_block": 0.051679126610545766,
+    "src.tension_fork": 0.0027641852107822586,
+    "src.wiring": 1.4337377931884932e-05,
+    "src.knee_lever_vert": 0.03955115967419357,
+    "src.build": 0.07220359038374426
   },
   "parts": [
     {
-      "part": "carriage",
-      "share": 0.0006524119573580193,
-      "faces": 28
-    },
-    {
       "part": "bridge_endplate",
-      "share": 0.00598912978142755,
-      "faces": 357
+      "share": 0.007737532573036641,
+      "faces": 528
     },
     {
       "part": "keyhead_endplate",
-      "share": 0.029557495630232647,
-      "faces": 283
+      "share": 0.04057407512281295,
+      "faces": 478
     },
     {
       "part": "belt_clamp",
-      "share": 0.0007982319417937578,
+      "share": 0.0008634011108116895,
       "faces": 41
     },
     {
       "part": "knee_housing",
-      "share": 0.0016331363173933285,
+      "share": 0.0013647154718752128,
       "faces": 146
     },
     {
       "part": "knee_lever",
-      "share": 0.0008610188081912818,
+      "share": 0.0006940209724245206,
       "faces": 83
     },
     {
       "part": "kl_axle",
-      "share": 0.0003762377891035216,
+      "share": 0.0003252632313166794,
       "faces": 18
     },
     {
       "part": "kl_magnet_cap",
-      "share": 0.0005962443474565257,
+      "share": 0.0003868354749868232,
       "faces": 23
     },
     {
       "part": "kv_housing",
-      "share": 0.0016453194614083162,
+      "share": 0.0013948737393703098,
       "faces": 151
     },
     {
       "part": "kv_lever",
-      "share": 0.0003245441559470298,
+      "share": 0.00024833908128537864,
       "faces": 23
     },
     {
       "part": "cart_base",
-      "share": 0.00032191975825777974,
+      "share": 0.00025037387860913805,
       "faces": 21
     },
     {
       "part": "cart_piston",
-      "share": 0.0002449577152835788,
+      "share": 0.00019145854617944342,
       "faces": 14
     },
     {
       "part": "guide_post",
-      "share": 0.00018524846067836064,
+      "share": 0.00015330083393287204,
       "faces": 5
     },
     {
       "part": "cart_backstop",
-      "share": 0.00040822473418959204,
+      "share": 0.0003698871248207125,
       "faces": 14
     },
     {
-      "part": "screw_pulley",
-      "share": 0.0035159654857136323,
-      "faces": 48
+      "part": "screw_pulley_hi",
+      "share": 0.027420754044274517,
+      "faces": 92
+    },
+    {
+      "part": "screw_pulley_lo",
+      "share": 0.02878048110614224,
+      "faces": 93
     },
     {
       "part": "motor_pulley",
-      "share": 0.0027132466026948093,
+      "share": 0.0023831248850244634,
       "faces": 48
     },
     {
       "part": "tension_fork",
-      "share": 0.0009536430435554544,
+      "share": 0.0008444332770597139,
       "faces": 8
     },
     {
       "part": "pickup_zplate",
-      "share": 0.0007563020846977126,
+      "share": 0.0006615446079114659,
       "faces": 45
     },
     {
       "part": "leg_sleeve",
-      "share": 0.0034544109484210554,
+      "share": 0.0028059244015887184,
       "faces": 55
     },
     {
       "part": "leg_sleeve_cover",
-      "share": 0.0018333757621438326,
+      "share": 0.0012775254572545982,
       "faces": 30
     },
     {
       "part": "leg_pinch_gib",
-      "share": 0.0004957512505679422,
+      "share": 0.00039410944254767024,
       "faces": 8
     },
     {
       "part": "leg_shaft",
-      "share": 0.0009320608675691234,
+      "share": 0.00084290000019515,
       "faces": 20
     },
     {
       "part": "leg_shaft_trrs",
-      "share": 0.0017095415459987883,
+      "share": 0.0014284124833076717,
       "faces": 31
     },
     {
       "part": "leg_foot",
-      "share": 0.00048581481577300687,
+      "share": 0.0004111056503731265,
       "faces": 11
     },
     {
       "part": "leg_plug_retainer",
-      "share": 0.0005193470464827657,
+      "share": 0.0004310305882866598,
       "faces": 6
     },
     {
       "part": "leg_seg_body",
-      "share": 0.0015266779114780863,
-      "faces": 31
+      "share": 0.0014426273446301596,
+      "faces": 35
     },
     {
       "part": "leg_seg_body_ch",
-      "share": 0.0024052387164436115,
-      "faces": 42
+      "share": 0.0022567147698192695,
+      "faces": 46
     },
     {
       "part": "leg_body_stub",
-      "share": 0.002970109047271517,
+      "share": 0.002721844961008403,
       "faces": 53
     },
     {
       "part": "leg_body_stub_jk",
-      "share": 0.003160418529417133,
+      "share": 0.002579767100283253,
       "faces": 53
     },
     {
       "part": "leg_body_stub_trrs",
-      "share": 0.0055973701027433025,
-      "faces": 76
+      "share": 0.004740126650204787,
+      "faces": 77
     },
     {
       "part": "leg_head",
-      "share": 0.0020498018326028443,
+      "share": 0.001757161475243066,
       "faces": 34
     },
     {
       "part": "latch_slider",
-      "share": 0.0011876478032822847,
+      "share": 0.0010091331877292449,
       "faces": 19
     },
     {
       "part": "latch_cover",
-      "share": 0.0005063502607439813,
-      "faces": 10
+      "share": 0.0005812591236102684,
+      "faces": 14
     },
     {
       "part": "pedal_bar_a",
-      "share": 0.11370992133562166,
+      "share": 0.09429750509279074,
       "faces": 415
     },
     {
       "part": "pedal_bar_b",
-      "share": 0.1589983078643327,
+      "share": 0.134433999224958,
       "faces": 584
     },
     {
       "part": "pedal_bar_c",
-      "share": 0.024504572646548685,
+      "share": 0.020948808046951883,
       "faces": 46
     },
     {
       "part": "pedal_lid_a",
-      "share": 0.0011229422792602367,
+      "share": 0.0007361315187524406,
       "faces": 15
     },
     {
       "part": "pedal_lid_b",
-      "share": 0.0008045274631626221,
+      "share": 0.000692937529925333,
       "faces": 10
     },
     {
       "part": "pedal_lever",
-      "share": 0.00206224612044125,
+      "share": 0.0016974039005997234,
       "faces": 26
     },
     {
       "part": "pedal_detent_nub",
-      "share": 0.00021201899646112833,
+      "share": 0.0001706454248385785,
       "faces": 3
     },
     {
       "part": "leg_shaft_short",
-      "share": 0.0011857679938730207,
+      "share": 0.0009452811313858795,
       "faces": 26
     },
     {
       "part": "jack_seat_ring",
-      "share": 0.000397608458140104,
+      "share": 0.0002978480170661136,
       "faces": 4
     },
     {
       "part": "electronics_tray",
-      "share": 0.0074519827234044884,
+      "share": 0.006072072889014988,
       "faces": 131
     },
     {
       "part": "top_plate_0",
-      "share": 0.0007848445181806889,
+      "share": 0.0006314246336748061,
       "faces": 43
     },
     {
       "part": "top_plate_0_color",
-      "share": 0.00036803871523690497,
+      "share": 0.0003164617228577033,
       "faces": 13
     },
     {
       "part": "top_plate_1",
-      "share": 0.0007914313936265144,
+      "share": 0.0006349716537019497,
       "faces": 44
     },
     {
       "part": "top_plate_1_color",
-      "share": 0.0006497681380736354,
+      "share": 0.0005003591733476276,
       "faces": 36
     },
     {
       "part": "top_plate_2",
-      "share": 0.0007233223619383173,
+      "share": 0.0006412598060711119,
       "faces": 44
     },
     {
       "part": "top_plate_2_color",
-      "share": 0.0005568460764424545,
+      "share": 0.0005333619409155312,
       "faces": 36
     },
     {
       "part": "top_plate_3",
-      "share": 0.0008255636084136289,
+      "share": 0.0006846758396408399,
       "faces": 47
     },
     {
       "part": "top_plate_3_color",
-      "share": 0.0006524421726365548,
+      "share": 0.0005363595828241337,
       "faces": 38
     },
     {
       "part": "top_plate_4",
-      "share": 0.0025851887549197873,
+      "share": 0.002079239471361935,
       "faces": 160
     },
     {
       "part": "top_plate_4_color",
-      "share": 0.002543006386937049,
+      "share": 0.0019300981980582869,
       "faces": 155
     },
     {
       "part": "top_plate_5",
-      "share": 0.001326084521346873,
+      "share": 0.001304490828226087,
       "faces": 81
     },
     {
       "part": "top_plate_5_color",
-      "share": 0.0010990249089649243,
+      "share": 0.0008832226809944347,
       "faces": 74
     },
     {
       "part": "top_plate_spare_0",
-      "share": 0.0005973623027123549,
+      "share": 0.0005041990708404292,
       "faces": 30
     },
     {
       "part": "top_plate_spare_0_color",
-      "share": 0.0003630186977065946,
+      "share": 0.00030177021921482276,
       "faces": 18
     },
     {
       "part": "top_plate_spare_1",
-      "share": 0.0005670414943141304,
+      "share": 0.00047707098471853546,
       "faces": 30
     },
     {
       "part": "top_plate_spare_1_color",
-      "share": 0.0003399775654638195,
+      "share": 0.00029396601570780273,
       "faces": 18
     },
     {
       "part": "top_plate_spare_2",
-      "share": 0.0005829864128693311,
+      "share": 0.0005019288225681162,
       "faces": 30
     },
     {
       "part": "top_plate_spare_2_color",
-      "share": 0.0003805563830374681,
+      "share": 0.00029069081452828713,
       "faces": 18
     },
     {
       "part": "chassis_0",
-      "share": 0.008933038071765105,
+      "share": 0.007736194541873382,
       "faces": 569
     },
     {
       "part": "chassis_1",
-      "share": 0.010629278518493076,
+      "share": 0.008836862986152862,
       "faces": 641
     },
     {
       "part": "chassis_2",
-      "share": 0.0076773546117317884,
-      "faces": 495
+      "share": 0.006942734570095292,
+      "faces": 499
     },
     {
       "part": "test_octagon_tenon",
-      "share": 0.0007507252527986611,
+      "share": 0.0006183563728781946,
       "faces": 16
     },
     {
       "part": "test_octagon_mortise",
-      "share": 0.0006564413529366897,
+      "share": 0.0007566173156310856,
       "faces": 16
     },
     {
       "part": "test_section_tenon",
-      "share": 0.0006536399850695812,
+      "share": 0.0005657732220425342,
       "faces": 16
     },
     {
       "part": "test_section_mortise",
-      "share": 0.0006786192015570063,
+      "share": 0.0005449256447914066,
       "faces": 16
     },
     {
       "part": "test_cover_seat",
-      "share": 0.0011476970343678344,
+      "share": 0.0009676964458686841,
       "faces": 26
     },
     {
       "part": "test_cover_plate",
-      "share": 0.001087053271899685,
+      "share": 0.0009849989195383302,
       "faces": 26
     },
     {
       "part": "test_belt_tensioner",
-      "share": 0.007509227294674851,
-      "faces": 83
+      "share": 0.0050694039616406925,
+      "faces": 76
     }
   ]
 }

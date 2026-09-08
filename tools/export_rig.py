@@ -296,7 +296,8 @@ def build_rig(build_n=None) -> pathlib.Path:
             "string": i + 1,                          # string number (1 = highest, far edge)
             "rest_dz": DEMO_POSE_DZ.get(i, 0.0),      # baked demo offset (viewer cancels it)
             # carriage assembly: pure Z translation (raise = -Z, toward more tension)
-            "carriage_nodes": [f"carriage_{i}", f"nut_{i}", f"string_nut_{i}"],
+            # the H-nut IS the carriage now: it, its ball end and nothing else
+            "carriage_nodes": [f"nut_{i}", f"string_nut_{i}"],
             # pulleys: spin about their own axis, centre in CAD space
             "screw_pulley": {"node": f"screw_pulley_{i}",
                              "center": [D.SCREW_X, sy, scz], "axis": [0, 0, 1]},

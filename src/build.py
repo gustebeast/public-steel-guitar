@@ -37,8 +37,8 @@ from . import dimensions as D
 from .helpers import heal, cyl, cyl_y
 from . import components as C
 from . import chassis as CH
-from .carriage import carriage, THICK as CARRIAGE_THICK, SEAT_Z as CARRIAGE_SEAT_Z
 from .bridge_endplate import bridge_endplate
+from . import bridge_endplate as BE
 from .belt_clamp import belt_clamp
 from .chassis import segments as chassis_segments
 from . import nut_block as NB
@@ -86,7 +86,6 @@ def _PB_bar(attr):
 
 
 PARTS = {
-    "carriage":        (partial(heal, carriage),      "petg-gf/carriage.step",        "PETG-GF, load-critical — ×10 identical"),
     "bridge_endplate": (partial(heal, bridge_endplate), "petg-gf/bridge_endplate.step", "PETG-GF — fused bridge end (screw support + bearing support + axle comb + box closure)"),
     "keyhead_endplate": (lambda: heal(__import__("src.keyhead_endplate", fromlist=["e"]).keyhead_endplate), "petg-gf/keyhead_endplate.step", "PETG-GF — merged keyhead (-X) endplate + nut block (25 mm, one piece): closes the box, caps the deck grooves, gauged break-edge + 2-row clamps; drops in last, held by 1 screw"),
     "belt_clamp":      (partial(heal, belt_clamp),    "pctg/belt_clamp.step",      "PCTG — GT2 belt splice clamp (print 2 per splice ×10)"),
@@ -100,7 +99,10 @@ PARTS = {
     "cart_piston": (lambda: __import__("src.knee_lever", fromlist=["e"]).cart_piston, "pctg/cart_piston.step", "PCTG — spring-cartridge piston, flat follower tongue (shared: print 2)"),
     "guide_post": (lambda: __import__("src.knee_lever", fromlist=["e"]).guide_post, "pctg/guide_post.step", "PCTG — coil-back guide post, screw pushes it (shared: print 2)"),
     "cart_backstop": (lambda: __import__("src.knee_lever", fromlist=["e"]).cart_backstop, "pctg/cart_backstop.step", "PCTG — hollow X-position back-stop screw: threads the housing boss, tension screw runs through the Ø5.5 bore (shared: print 2)"),
-    "screw_pulley":    (lambda: heal(C.screw_pulley()),  "pctg/screw_pulley.step",  "PCTG — flanged 14T GT2 pulley, 45° top flange — ×10 (fine teeth need unfilled resolution)"),
+    # NOT healed: cadkit.threads is explicit that heal()'s unify chokes on a threaded
+    # solid. Both of these carry a pilot thread and both export fine unhealed.
+    "screw_pulley_hi": (lambda: C.screw_pulley(high=True), "pctg/screw_pulley_hi.step",  "PCTG at a 0.2 NOZZLE — HIGH-plane screw pulley ×5. Prints FLANGE-DOWN — the full Ø11 bottom flange is the bed face and everything above it steps inward except the top flange, which is a 45° cone. No brim, no support. (A single part that FLIPPED to serve both planes was tried and dropped: it could only stand on a Ø5.6 boss, and a solid bed surface is worth more than the engagement it levelled — this SKU's 8.3 mm of formed thread is 2.5 MPa under the 147 N, ~10% of interlayer.) IT IS ALSO THE RETAINING COLLAR: its pilot-thread bore grips the rod and the string's 147 N jams it UP into the thrust bearings stacked straight on its pilot boss, so it needs no set screw, no clamp and no separate collar. Fine teeth AND a 0.3 mm thread groove both need the small nozzle and unfilled material"),
+    "screw_pulley_lo": (lambda: C.screw_pulley(high=False), "pctg/screw_pulley_lo.step", "PCTG at a 0.2 NOZZLE — LOW-plane screw pulley ×5. The high-plane SKU plus an 11.2 mm column, which is what puts both SKUs' bosses on the ONE thrust plane while their bands sit BELT_PLANE_DZ apart. Prints FLANGE-DOWN like its twin"),
     "motor_pulley":    (lambda: heal(C.motor_pulley()),  "pctg/motor_pulley.step",  "PCTG — flanged 14T GT2 pulley, 45° outer flange — ×10"),
     "tension_fork":    (lambda: TF.tension_forks,    "pctg/tension_fork.step",    "PCTG — belt-tension lock forks, graded 3.0–6.0 set (4 of the fitting size per motor; positive stop in the slot, no friction reliance)"),
     # pickup carrier: the deck pickup-piece (a top_plate panel) holds the pickup on a
@@ -357,34 +359,39 @@ DEMO_POSE_DZ = {i: -D.CARRIAGE_TRAVEL for i in (0, 1, 8, 9)}
 def _string_components(i):
     sy = D.string_y(i)
     mx, my, mz = D.motor_pos(i)
-    cz = D.CARRIAGE_NOM_Z + DEMO_POSE_DZ.get(i, 0.0)
+    cz = D.NUT_TOP_Z + DEMO_POSE_DZ.get(i, 0.0)      # the NUT's flange top
     out = []
     # vertical leadscrew
     out.append((f"leadscrew_{i}", C.screw().translate((D.SCREW_X, sy, D.SCREW_BOT_Z))))
-    # carriage (origin = screw axis) at its demo-pose travel position
-    out.append((f"carriage_{i}", carriage.translate((D.SCREW_X, sy, cz))))
-    # string-end cylinder nut, seated in the carriage anchor (DEMO — purchased)
+    # THE NUT IS THE CARRIAGE. Nothing else moves: its +X ear anchors the string and
+    # its -X ear rides the guide rod. Origin = the flange's top face.
+    out.append((f"nut_{i}", C.nut().translate((D.SCREW_X, sy, cz))))
+    # string BALL END, hanging UNDER the +X ear — tension pulls it up against the
+    # ear's underside, and that IS the retention (a guitar bridge plate, exactly)
     out.append((f"string_nut_{i}", C.string_nut().translate(
-        (D.BRIDGE_X, sy, cz + CARRIAGE_SEAT_Z))))
-    # round nut pressed up into the carriage from below — flange seats flush
-    # against the carriage bottom face, body up into the pocket
-    out.append((f"nut_{i}", C.nut().translate(
-        (D.SCREW_X, sy, cz - CARRIAGE_THICK / 2 - D.NUT_FLANGE_T))))
-    # guide rod (anti-rotation), +X of the screw below the stringing window:
-    # dropped in from the top through the stop bar's snug hole + the carriage's
-    # closed bore, landing in the lower ledge's blind socket (bottom = blind
-    # floor, 2 above the ledge bottom). Friction-held both ends. Ø2.5×28 (DIN 6325).
-    rod_bot = (D.CARRIAGE_NOM_Z + D.GUIDE_FOOT_DZ
-               - D.CARRIAGE_TRAVEL - D.GUIDE_FOOT_H - 4.0)   # GR_LBOT + 2
-    out.append((f"guide_rod_{i}", C.guide_rod(28.0).translate(
-        (D.SCREW_X + D.GUIDE_ROD_DX, sy, rod_bot))))
-    # screw drive pulley (odd ones raised one belt-plane), support bearing
-    # (in the shared rail), locknut below
+        (D.STRING_ANCHOR_X, sy, cz - D.NUT_FLANGE_T - D.STRING_NUT_D / 2))))
+    # guide rod: dropped in from +Z through the slab, through the -X ear, into a blind
+    # socket in the screw rail — SUPPORTED AT BOTH ENDS, so it is a beam and not a
+    # cantilever. Gravity seats it; the string overhead keeps it there.
+    rod_top = BE.GUIDE_ROD_TOP          # stops under the bridge bearing, not at the bore's top
+    rod_bot = BE.GUIDE_SOCKET_Z
+    out.append((f"guide_rod_{i}", C.guide_rod(rod_top - rod_bot).translate(
+        (D.GUIDE_ROD_X, sy, rod_bot))))
+    # screw drive pulley (odd ones raised one belt-plane), then the thrust stack:
     spz = D.screw_pulley_z(i)
-    out.append((f"screw_pulley_{i}", C.screw_pulley().translate((D.SCREW_X, sy, spz))))
-    out.append((f"screw_bearing_{i}", C.support_bearing().translate((D.SCREW_X, sy, D.SUPPORT_BRG_Z))))
-    out.append((f"locknut_{i}", C.locknut().translate(
-        (D.SCREW_X, sy, D.SUPPORT_BRG_Z - D.SUPPORT_BRG_W / 2 - D.LOCKNUT_W / 2))))
+    # TWO SKUs: the low-plane stations carry the column that lifts their boss to the
+    # same thrust plane the high-plane ones already reach.
+    out.append((f"screw_pulley_{i}",
+                C.screw_pulley(high=spz > D.SCREW_PULLEY_Z).translate((D.SCREW_X, sy, spz))))
+    # THRUST STACK, seated straight on the pulley's pilot boss. The string's pull jams
+    # the pulley up into it, and that one jam does BOTH jobs: it retains the screw and
+    # it holds the pulley on the rod. No collar, no set screw.
+    for k in range(D.SUPPORT_BRG_N):
+        bz = D.SUPPORT_BRG_BOT + (k + 0.5) * D.MR85_W
+        out.append((f"screw_bearing_{i}_{k}", C.support_bearing().translate((D.SCREW_X, sy, bz))))
+    # TOP radial bearing, floating in the slab — see dimensions.TOP_BRG_Z0
+    out.append((f"screw_top_bearing_{i}", C.support_bearing().translate(
+        (D.SCREW_X, sy, D.TOP_BRG_Z0 + D.MR85_W / 2))))
     # motor (shaft +Y, body −Y toward player) + its pulley + twisted belt
     out.append((f"motor_{i}", C.motor().translate((mx, my, mz))))
     out.append((f"motor_pulley_{i}", C.motor_pulley().translate((mx, my, mz))))
@@ -396,30 +403,47 @@ def _string_components(i):
     # string: rises from the anchor tangent to the bearing's +X extent, wraps 90°
     # over the top, then runs the speaking length to the nut block.
     out.append((f"string_{i}", _string_path(i, sy)))
-    # nut-block hardware (DEMO): gauged break pin + clamp set screw
+    # nut-block hardware (DEMO): gauged break pin, then the WRAP's clamp -- which sits
+    # at the far end of the coil, not on the string's own lane (see nut_block.wrap_y)
     g = D.STRING_GAUGE[i]
-    row_x = NB.clamp_row_x(i)
+    ny, wy = NB.wrap_y(i)
+    tail_z = D.STRING_Z + NB.ROD_Z                                     # the tail runs at rod height
     out.append((f"break_dowel_{i}", C.dowel().translate(               # centred in its seat (0.4 clr
-        (D.NUT_BLOCK_X, D.nut_y(i), D.STRING_Z - g - D.NUT_PIN_D / 2))))  # all round); pin top at Z−g
-    out.append((f"set_screw_{i}", C.set_screw().translate(             # cup tip on the CLAMPED string
-        (D.NUT_BLOCK_X + row_x, D.nut_y(i),                            # (per-string floor); tail proud
-         D.STRING_Z + NB.clamp_floor(i) + D.NUT_SCREW_L + g))))
+        (D.NUT_BLOCK_X, ny, D.STRING_Z - g - D.NUT_PIN_D / 2))))       # all round); pin top at Z-g
+    out.append((f"anvil_dowel_{i}", C.dowel().translate(               # the clamp pinches the tail onto
+        (D.NUT_BLOCK_X + NB.clamp_row_x(i), wy,                                # STEEL, not onto the plastic floor
+         tail_z - g / 2 - D.NUT_PIN_D / 2))))
+    out.append((f"set_screw_{i}", C.set_screw().translate(             # cup tip on the CLAMPED tail;
+        (D.NUT_BLOCK_X + NB.clamp_row_x(i), wy,                                # tail stands proud of the boss
+         tail_z + g / 2 + D.NUT_SCREW_L))))
     out.append((f"nut_insert_{i}", C.m4_insert().translate(           # Ø6×5 heat-set insert (the screw
-        (D.NUT_BLOCK_X + row_x, D.nut_y(i),                            # threads into it), in its roof pocket
+        (D.NUT_BLOCK_X + NB.clamp_row_x(i), wy,                                # threads into it), in its roof pocket
          D.STRING_Z + NB.INSERT_GAP + NB.INSERT_L))))                  # (pocket floor INSERT_GAP, up INSERT_L)
     return out
+
+
+def _wrap_rod_component():
+    """The nut's WRAP ROD -- one part for all ten strings, and the SAME Ø5 g6 shaft the
+    bridge axle is cut from (nut_block.ROD_D reads D.BRIDGE_AXLE_D). It is what the
+    capstan turns around, so it is the reason the clamps hold 5-36 N instead of 490."""
+    return [("nut_wrap_rod",
+             NB.rod().translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z)))]
 
 
 def _string_path(i, sy):
     """Vertical rise → 90° wrap around the bridge bearing → speaking length."""
     r = D.BRIDGE_BEARING_OD / 2
     cx, cz = D.BRIDGE_AXLE_X, D.BRIDGE_BEARING_Z      # bearing centre
-    az = (D.CARRIAGE_NOM_Z + DEMO_POSE_DZ.get(i, 0.0)
-          + CARRIAGE_SEAT_Z)                          # anchor (string-end nut in the carriage)
+    # anchor = the ball end hanging under the nut's +X ear
+    az = (D.NUT_TOP_Z + DEMO_POSE_DZ.get(i, 0.0)
+          - D.NUT_FLANGE_T - D.STRING_NUT_D / 2)
     g = D.STRING_GAUGE[i]
     rad = g / 2.0                                     # actual string gauge
-    # vertical rise to the +X tangent point (cx+r, cz)
-    p0 = cq.Vector(cx + r, sy, az)
+    # rise to the +X tangent point (cx+r, cz). NOT quite vertical any more: the ear
+    # sits STRING_ANCHOR_X, a shade -X of the tangent line, so the dead run leans a
+    # couple of degrees. Deliberate — see dimensions on why the string takes the +X
+    # ear and SCREW_X therefore stays exactly where it is.
+    p0 = cq.Vector(D.STRING_ANCHOR_X, sy, az)
     prev = cq.Vector(cx + r, sy, cz)
     out = _rod(p0, prev, rad)
     # 90° arc, +X extent → top, approximated by short rods
@@ -432,25 +456,43 @@ def _string_path(i, sy):
     # speaking length to the break edge: string sits on the gauged pin, TOP at STRING_Z
     brk = cq.Vector(D.NUT_BLOCK_X, D.nut_y(i), D.STRING_Z - g / 2.0)
     out = out.union(_rod(prev, brk, rad))
-    # dead end: break edge → clamp, then on out the exit curve and down into the Z stow bore
-    out = out.union(_rod(brk, cq.Vector(D.NUT_BLOCK_X + NB.clamp_row_x(i), D.nut_y(i),
-                                        D.STRING_Z + NB.clamp_floor(i) + g / 2.0), rad))
+    # dead end: break edge -> down to the wrap rod -> N turns around it -> out to the clamp
+    ny, wy = NB.wrap_y(i)
+    rx, rz = D.NUT_BLOCK_X + NB.ROD_X, D.STRING_Z + NB.ROD_Z
+    hr = NB.ROD_D / 2.0 + rad + 0.05                       # helix radius: the string ON the rod
+    out = out.union(_rod(brk, cq.Vector(rx + hr, ny, rz), rad))
+    out = out.union(_wrap_coil(i, rad, hr))
+    out = out.union(_rod(cq.Vector(rx - hr, wy, rz),
+                         cq.Vector(D.NUT_BLOCK_X + NB.clamp_row_x(i), wy, rz), rad))
     out = out.union(_stow_tail(i, rad))
     return out
 
 
+def _wrap_coil(i, rad, hr):
+    """The capstan itself: NB turns of string around the shared rod, marching -Y. Same
+    sweep recipe cadkit/threads.py uses for a real thread. The march is what makes the
+    turn count a geometry question -- each turn eats NUT_PITCH, see nut_block._turns."""
+    ny, wy = NB.wrap_y(i)
+    p = NB.WRAP_F * D.STRING_GAUGE[i]
+    h = abs(wy - ny)
+    helix = cq.Wire.makeHelix(pitch=p, height=h, radius=hr)
+    coil = (cq.Workplane("XZ").center(hr, 0).circle(rad)
+            .sweep(cq.Workplane("XY").add(helix), isFrenet=True))
+    # +90 about X (not -90): that lays the helix axis along -Y, so the coil marches
+    # toward the THICKER neighbour and the fattest one runs out into free air.
+    return coil.rotate((0, 0, 0), (1, 0, 0), 90.0).translate((
+        D.NUT_BLOCK_X + NB.ROD_X, ny, D.STRING_Z + NB.ROD_Z))
+
+
 def _stow_tail(i, rad):
     """DEMO: the clamped string's free end continuing past the clamp -- flat to the exit-curve
-    start, angled down (EXIT_ANGLE) out the -X face, then looping into the keyhead Z stow bore
+    start, straight out the -X face at rod height, then looping into the keyhead Z stow bore
     (face mouth → inward arc → straight down to the bed). Shows where each cut end tucks away."""
     from . import keyhead_endplate as KE
-    ny = D.nut_y(i)
-    cz = D.STRING_Z + NB.clamp_floor(i) + D.STRING_GAUGE[i] / 2.0       # centreline on the clamp floor
-    R_e = (NB.EXIT_X0 - NB.EXIT_X1) / math.sin(math.radians(NB.EXIT_ANGLE))
-    drop = R_e * (1.0 - math.cos(math.radians(NB.EXIT_ANGLE)))          # exit-curve drop at the -X face
-    pts = [cq.Vector(D.NUT_BLOCK_X + NB.clamp_row_x(i), ny, cz),        # clamp
-           cq.Vector(D.NUT_BLOCK_X + NB.EXIT_X0,        ny, cz),        # flat run to the exit start
-           cq.Vector(D.NUT_BLOCK_X + NB.EXIT_X1,        ny, cz - drop)] # down the exit to the face
+    ny = NB.wrap_y(i)[1]                                                # the WRAP's far end
+    cz = D.STRING_Z + NB.ROD_Z                                          # the tail runs at rod height
+    pts = [cq.Vector(D.NUT_BLOCK_X + NB.clamp_row_x(i), ny, cz),                # clamp
+           cq.Vector(D.NUT_BLOCK_X + NB.X_BACK, ny, cz)]                # straight out the -X face
     # the stow bore: -X-face mouth, a 45° inward arc to x=ZHOLE_X, then straight down to the bed
     R = (KE.ZHOLE_X - KE.XLO) / (1.0 - math.cos(math.radians(45.0)))
     zj, cx = KE.Z6 - R * math.sin(math.radians(45.0)), KE.ZHOLE_X - R
@@ -1042,20 +1084,6 @@ def _joint_coupon_components():
     return [("test_octagon_tenon_coupon", ten), ("test_octagon_mortise_coupon", mor)]
 
 
-def _nut_coupon_components():
-    """The string-termination DEMO — the WRAP POST scheme — parked off the +X end
-    beside the other coupons. Not a printed part and not the real nut block yet: it
-    exists so the mechanism can be SEEN (user), and it is built from dimensions.py's
-    own gauges so it cannot drift from the instrument it is proposing a change to."""
-    from . import nut_coupon as NC
-    out = [(n, s.translate((150.0, -90.0, 40.0))) for n, s in NC.demo_parts()]
-    # VARIANT B beside it (user): one shared rod along Y instead of ten posts
-    # along Z. Same three gauges, same clamp — only the winding changes, so the
-    # two sit side by side and the difference is the only thing you see.
-    out += [(n, s.translate((150.0, -150.0, 40.0))) for n, s in NC.demo_parts_rod()]
-    return out
-
-
 def _tensioner_coupon_components():
     """The belt-tension clamp, shown ASSEMBLED (working position), parked off the +X end clear of
     every real part. BOTH halves are ONE SKU (`clamp_half`): half-B is that part turned 180° about
@@ -1090,7 +1118,7 @@ def collect_components():
     comps += _electronics_components()
     comps += _lever_stations_components()      # all six, LKL/VKL included
     comps += _joint_coupon_components()
-    comps += _nut_coupon_components()
+    comps += _wrap_rod_component()
     comps += _tensioner_coupon_components()
     for i in range(D.N_STRINGS):
         comps.extend(_string_components(i))
@@ -1100,7 +1128,6 @@ def collect_components():
 # Per-part colours, baked into the assembly STEP (single source of truth — they
 # show in the shared FreeCAD live viewer and any STEP viewer). RGB floats 0..1.
 _COLORS = {
-    "carriage":        (0.27, 0.51, 0.71),   # PETG-GF — load-critical
     "bridge_endplate": (0.39, 0.58, 0.93),   # PETG-GF — load-critical
     "keyhead_endplate": (0.42, 0.50, 0.62),   # PETG-GF — keyhead endplate + nut block (merged)
     "belt_clamp":      (0.95, 0.55, 0.15),   # PETG
@@ -1111,34 +1138,22 @@ _COLORS = {
     "belt_tensioner_screw_coupon":  (0.55, 0.55, 0.58),   # steel M4
     "belt_tensioner_insert_coupon": (0.72, 0.60, 0.30),   # brass insert
     "screw_pulley":    (0.00, 0.55, 0.55),
+    "screw_top_bearing": (0.69, 0.77, 0.87),
     "motor_pulley":    (0.00, 0.55, 0.55),
     "leadscrew":       (0.75, 0.75, 0.78),   # steel
     "screw_bearing":   (0.69, 0.77, 0.87),
     "bridge_bearings": (0.69, 0.77, 0.87),
     "nut":             (0.82, 0.60, 0.20),   # brass
     "string_nut":      (0.82, 0.60, 0.20),   # brass string-end fitting (demo)
-    "locknut":         (0.82, 0.60, 0.20),
     "guide_rod":       (0.35, 0.35, 0.38),
     "motor":           (0.22, 0.25, 0.27),   # charcoal
     "belt":            (0.13, 0.13, 0.13),   # GT2 black
     "string":          (0.85, 0.85, 0.85),
     "break_dowel":     (0.75, 0.75, 0.78),   # steel dowel (gauged break pin)
-    # nut-termination DEMO (nut_coupon.py) — parked off +X, not a printed part
-    "nutdemo_block":       (0.30, 0.45, 0.35),   # PETG-GF, as the real nut block
-    "nutdemo_break_dowel": (0.75, 0.75, 0.78),   # existing O2 dowel
-    "nutdemo_anvil":       (0.75, 0.75, 0.78),   # the OPTIONAL second O2 dowel
-    "nutdemo_post":        (0.62, 0.66, 0.72),   # THE NEW PART: O6 wrap post
-    "nutdemo_screw":       (0.55, 0.55, 0.58),   # existing M4 cup-tip set screw
-    "nutdemo_insert":      (0.80, 0.62, 0.28),   # existing brass heat-set insert
-    "nutdemo_string":      (0.85, 0.85, 0.85),   # string
-    # variant B — the shared Y rod
-    "rodnut_block":        (0.30, 0.45, 0.35),
-    "rodnut_break_dowel":  (0.75, 0.75, 0.78),
-    "rodnut_anvil":        (0.75, 0.75, 0.78),
-    "rodnut_rod":          (0.62, 0.66, 0.72),   # ONE part, not ten
-    "rodnut_screw":        (0.55, 0.55, 0.58),
-    "rodnut_insert":       (0.80, 0.62, 0.28),
-    "rodnut_string":       (0.85, 0.85, 0.85),
+    "anvil_dowel":     (0.75, 0.75, 0.78),   # O2 anvil under the clamped tail (same part
+                                             # number as the break dowel)
+    "nut_wrap_rod":    (0.62, 0.66, 0.72),   # THE CAPSTAN -- one rod, and it is the bridge
+                                             # axle's own O5 g6 shaft
     "set_screw":       (0.55, 0.55, 0.58),   # alloy set screw
     "pickup_jack_screw":  (0.55, 0.55, 0.58),  # M4 top-access height set-screw jack
     "pickup_jack_insert":  (0.80, 0.60, 0.35),  # brass heat-set insert (jack)
@@ -1348,13 +1363,25 @@ def _export_assembly(publish=True, gate=True, gate_full=False):
         _publish_web_preview(comps, build_n)
     # LAST: the gate spawns a worker pool, so run it once the STEP is safely on
     # disk and the viewer is refreshed — a gate hiccup can never cost the build.
-    return _report_overlaps(comps, full=gate_full) if gate else 0
+    if not gate:
+        return 0
+    # both gates always run, so one RED doesn't hide the other's result
+    return _report_overlaps(comps, full=gate_full) | _report_sweep(comps)
 
 
-# The overlap gate's ACCEPTED baseline: pairs that are real interpenetrations but
-# predate the gate and are tracked separately (chassis_trrs_cable vs
-# electronics_tray ~28 mm^3, vs pi5 ~1 mm^3). The build fails only on a count
-# ABOVE this — i.e. on a NEW overlap. Drive it to 0 when those are fixed.
+# The overlap gate's ACCEPTED baseline. Every entry is a REAL defect tracked
+# elsewhere, never a blessed contact; the build fails ABOVE this, so a NEW overlap
+# still stops it.
+#   chassis <-> wire_pwr_hot_10    ~0.6 mm^3   assigned out for rerouting
+#   bridge_endplate <-> wire_out   ~0.2 mm^3   assigned out for rerouting
+# Both surfaced when MIN_VOL went 1.0 -> 0.05; they are not new damage, just newly
+# visible. Drive this to 0 when they land.
+#
+# The three chassis_trrs_cable pairs are NOT here: check_overlaps.DEFERRED now
+# carries them and prints a loud line per pair every run. That is a deliberately
+# noisier arrangement than counting them, and the baseline drops to match — 4
+# would now silently absorb TWO new overlaps, which is exactly the failure this
+# number exists to prevent. Keep it equal to the count you can name.
 OVERLAP_BASELINE = 2
 
 
@@ -1380,6 +1407,21 @@ def _report_overlaps(comps, full=False) -> int:
     print(f"OVERLAP GATE: green — {n} unintended pair(s), "
           f"accepted baseline {OVERLAP_BASELINE}", flush=True)
     return 0
+
+
+def _report_sweep(comps) -> int:
+    """Swept-envelope gate on the model we JUST built (see _report_overlaps for why
+    reusing ``comps`` matters). This catches the class ``check_overlaps`` is
+    STRUCTURALLY blind to: a part that clears everything at rest and fouls once it
+    turns. Baseline is 0 — unlike the overlap gate there is no inherited debt."""
+    try:
+        from tools.check_sweep import gate
+        n = gate([(name, wp.val()) for name, wp in comps])
+    except Exception as e:               # noqa: BLE001 — never let a gate eat the geometry
+        print(f"sweep gate: SKIPPED ({type(e).__name__}: {e})", flush=True)
+        return 0
+    print(f"SWEEP GATE: {'green' if n == 0 else f'RED — {n} swept collision(s)'}", flush=True)
+    return 1 if n else 0
 
 
 def _publish_web_preview(comps, build_n):

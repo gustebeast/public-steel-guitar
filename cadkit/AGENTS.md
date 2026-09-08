@@ -27,7 +27,7 @@ Two layers of reusable capability back a cadkit project:
   (git subtree; canonical upstream github.com/gustebeast/cadkit). Imported as
   `cadkit.*` — NO sys.path hack, because every build runs via `-m` from the project
   root, so the vendored package is already importable:
-  - `cadkit.step_export` — `export_step()` (names the STEP product after the file stem)
+  - `cadkit.step_export` — `export_step()` (names the STEP product after the file stem) · `print_pose()` (per-part STEPs export print-oriented — see STEP conventions)
   - `cadkit.overlap_check` — the parallel interpenetration engine (see the overlap gate)
   - `cadkit.threads` — **self-supporting 45° screw threads**; read **`cadkit/THREADS_README.md`**
     before changing any thread (OCCT fails *silently* in ~7 documented ways — a smooth
@@ -43,6 +43,8 @@ Two layers of reusable capability back a cadkit project:
     diagonal — don't reinvent this joint, call the library.
   - `cadkit.fasteners` — shared M2/M4 hole/insert dims · `cadkit.cq_colors` — baked STEP colours
   - `cadkit.freecad` — the FreeCAD viewer hub (`from cadkit.freecad import show`) + `view_assembly.cmd` launcher
+  - `cadkit.scratch` — the fast per-part iteration loop (cache the surroundings,
+    rebuild only the part under work); `cadkit.agents` — which agent owns which portion
   - `cadkit/tools/agent_sync.py` — the multi-agent worktree/merge CLI (run as a script)
 
   **Changing a shared util — edit the canonical repo, then PROPAGATE.** cadkit is
@@ -114,6 +116,22 @@ from the project folder instead.)
   `.step` instead.
 - **One STEP per printed part** (`housing.step`, `axle.step`, …) — one printable
   solid each; the slicer imports these.
+- **Per-part STEPs export in PRINT POSE** (user, cable-spool #935): each file
+  lands in the slicer already print-oriented — rotated onto its documented bed
+  face, dropped to z = 0, centred on x/y — so nothing ever needs flipping in
+  Bambu. Use the shared helper, **at export ONLY**; the assembly keeps every
+  part as-modeled (add the untransformed part to `cq.Assembly`):
+  ```python
+  from cadkit.step_export import export_step, print_pose
+  PRINT_ROT = {              # one table beside PARTS: bed face declared once
+      "lid": "flip",                     # prints +z→−z (modeled top = bed)
+      "lever": ((1, 0, 0), -90),         # stands on its +y face
+      # parts that model as printed just get the drop-and-centre
+  }
+  export_step(print_pose(part, PRINT_ROT.get(name)), fname)
+  ```
+  When a part's print direction changes, update its `PRINT_ROT` entry in the
+  same commit — the table is the print-orientation record of the project.
 - **Name every product to match its filename.** A bare
   `cq.exporters.export(part, "housing.step")` names the STEP product *"Open
   CASCADE STEP translator 7.8 …"*, which is what Bambu/FreeCAD then display. Use
@@ -428,7 +446,16 @@ editing anything:
    directory, so you never collide with the lead. (If you already had uncommitted
    work in the lead's main dir, `git stash` it BEFORE `join`, then `git stash pop`
    once you're in your worktree — that carries it over without losing anything.)
-2. **Never run `src.build` or open the viewer** — that's the lead's single tab.
+2. **You own a PORTION, and you render it to YOUR OWN tab.** Claim it once:
+   `py -3.12 cadkit/tools/agent_sync.py scope --set src.<your_module> [--attr assembly]
+   [--replaced <prefix>,] [--note "one line"]`, and see everyone's with `scope`.
+   Then iterate with `py -3.12 cadkit/tools/agent_sync.py view` — it renders YOUR
+   portion (fresh) against a cached rest-of-instrument, into a FreeCAD tab named
+   after your worktree. Seconds, not minutes. The lead's tab keeps showing the
+   WHOLE instrument; yours shows your part in context. Two agents rendering at the
+   same moment land in two different tabs and cannot race.
+   **Still never run `src.build`** — the full build is the lead's, and it is what
+   the lead does when it takes your merge request.
    **Validating your change is YOUR job, not the lead's** — the lead merges and
    builds, and does not re-derive whether your geometry is right. Before every
    `submit`, on your own branch:
@@ -455,17 +482,32 @@ editing anything:
 4. Hand off: `py -3.12 cadkit/tools/agent_sync.py submit "<summary>"` — commits your
    branch and files a merge request. That request itself wakes the lead, so you
    don't ping anyone. Then loop back to step 3 (`sync` first!) for the next round.
+5. **Ask questions DIRECTLY — the lead is not a relay.** A merge request carries
+   WORK, not correspondence.
+   - **For the human: ask in YOUR OWN chat.** You have your own human-facing
+     session; that is where a question belongs, and you can wait there for the
+     answer. Never bury a question for the human in a submit summary hoping the
+     lead forwards it — the lead can't answer for them, and it adds a whole round
+     trip (you → lead → human → lead → you) to something you could have asked
+     directly.
+   - **For another agent: `msg <who> "<text>"`** (`<who>` = their name, or `lead`).
+     It lands in their context on their next prompt — the hook delivers it in
+     every session, so nobody polls and the lead isn't in the middle. Read yours
+     with `mail` (the hook shows them automatically; `mail` is for checking early).
+   Keep the submit summary about the change itself: what moved, why, how verified.
 
 **► You're the LEAD** (original/only chat; the human said "multi-agent" or named
 another agent alongside you). Keep working in the main worktree on `main`. You OWN
 the build + the FreeCAD tab — the ONLY chat that runs `src.build` / `show()`. To
 take contributors' work **hands-free**:
 1. Arm the notifier ONCE, in the **BACKGROUND**:
-   `py -3.12 cadkit/tools/agent_sync.py wait`  (run_in_background). It blocks in the
-   shell until a request lands, then exits and auto re-invokes you — no polling by
-   you, no human relay.
+   `py -3.12 cadkit/tools/agent_sync.py watch`  (run_in_background). It blocks until
+   a request lands, then exits — which auto re-invokes you — **and spawns a detached
+   successor on its way out**, so a listener is always armed and you never re-arm
+   anything. (`wait` is the old one-shot form: it covers exactly one request and then
+   the repo is deaf, which is why the hook used to nag about a down listener.)
 2. When it wakes you: `take <name>` (resolve any conflicts) → `build` (announce the
-   build #) → **re-arm** `wait` in the background for the next one.
+   build #). No re-arming — the successor is already listening.
 3. **Batch.** If several requests are queued, `take` them ALL first, then run ONE
    `build`. A build is minutes; merging is seconds. Never build per-request.
 4. **Don't re-run the contributors' validation** — they gate their own branch and
@@ -476,7 +518,9 @@ take contributors' work **hands-free**:
    second 6-minute model build. Read the gate line before you push.
 
 Rules that keep it from clobbering:
-- **Only the lead builds / opens the viewer.** `agent_sync.py build` refuses
+- **Only the lead runs the FULL BUILD.** Every agent renders its own portion to its
+  own tab (`view`); the whole instrument is built once, by the lead, on merge.
+  `agent_sync.py build` refuses
   outside the main worktree and holds a single-build lock — never a second tab or
   a concurrent build. Contributors verify with the overlap gate only.
 - **Contributors edit ONLY in their own worktree**, never in the lead's directory.
@@ -486,9 +530,34 @@ Rules that keep it from clobbering:
   arrives on a stale base, the lead should **inspect the diff before `take`**
   (`git diff --stat main..agent/<name>`); if it reverts current work, `drop` it and
   have the contributor `sync` and resubmit rather than resolving by hand.
+- **ONE PORTION PER AGENT, ONE TAB PER AGENT.** The working model is that each
+  contributor owns a piece of the model and iterates on it in its own FreeCAD tab,
+  sending the lead a merge request at each good checkpoint. Three commands carry it:
+  `scope` (claim/see who owns what), `view` (render YOUR piece into YOUR tab, in
+  seconds), `submit` (checkpoint). The lead does `take` → `build`, and the lead's
+  tab is the only one showing the whole instrument.
+  Why the scope registry is not a config block in the project's scratch-view script:
+  that file is TRACKED, so every agent's "which part am I on" edit would land on the
+  same three lines and conflict on every merge request — between two agents who are
+  both right. It lives in `.git/agent-sync/scopes.json` instead (`cadkit.agents`),
+  shared by every worktree, never committed, keyed by branch so nobody edits anyone
+  else's entry.
+  **Tabs cannot collide**: the hub names a document after the folder its STEP sits
+  in, and every agent has its own worktree, so two agents rendering at the same
+  moment land in two different tabs. The build lock guards the FULL build only.
+  **The scratch cache is for the VIEW only** — `src.build` and the gates never read
+  it, so a drift costs a surprise at merge instead of a wrong part. Don't wire it
+  into anything that gates.
 - **The merge request IS the notification.** `submit` writing the request file is
   exactly what ends the lead's background `wait` and re-invokes it — fully
   hands-free, no human in the loop.
+- **The lead is not a message relay.** If a contributor needs something from YOU,
+  they `msg` you and it arrives on your next prompt; if they need something from
+  the human, they ask in their own chat. When YOU need something from a
+  contributor — a re-measure, a rationale, a heads-up that their datum moved —
+  `msg <name> "<text>"` them directly rather than saving it up for the next merge.
+  A question routed through a third party costs an extra round trip each way and
+  arrives without the asker's context.
 - **Shared `cadkit/` edits are now normal tracked diffs** (cadkit is a git subtree,
   not the old on-disk `freecad/`). A contributor who changes a shared util just commits
   `cadkit/*` and `submit`s like any other change — the lead `take`s it normally. (The

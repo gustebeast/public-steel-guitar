@@ -55,6 +55,18 @@ MIN_WALL_2P     = min_wall(NOZZLE_D, beads=2) # 1.6 — two-bead QUALITY target 
                                               # No buffer: Arachne fills exact nozzle multiples cleanly.
 
 # ─────────────────────────────────────────────────────────────────────────
+# MR85 (Ø5×8×2.5) — the ONE bearing, used at BOTH ends of every leadscrew.
+# Hoisted up here because the thrust stack, the top radial bearing and the screw's
+# own length all derive from it and they are declared far apart.
+# ─────────────────────────────────────────────────────────────────────────
+MR85_OD, MR85_ID, MR85_W = 8.0, 5.0, 2.5
+BELT_PLANE_DZ   = 14 * BEAD  # 11.2 — the two screw-pulley planes' Z separation.
+                             # Declared here rather than with the belts because the
+                             # pulleys' STAGGER SPACER is exactly this, and the thrust
+                             # stack sits on top of that.
+
+
+# ─────────────────────────────────────────────────────────────────────────
 # String field (strings spaced ACROSS, along Y; lowest pitch at −Y / player)
 # ─────────────────────────────────────────────────────────────────────────
 N_STRINGS       = 10
@@ -109,7 +121,6 @@ def nut_y(i: int) -> float:
 STRING_Z        = 16.0      # speaking-length / bridge-bearing top
 DECK_TOP_Z      = 8 * BEAD  # 6.4 deck-plate top = playing-surface datum; the chassis deck
                             # plane (TP_GZ0/1) and the keyhead nut-block base both sit here
-SCREW_TOP_Z     = 3 * BEAD  # 2.4 screw top, below the bend / carriage travel
 # Travel budget from string physics. f ∝ √(stretch) ⇒ stretch ∝ f², so the
 # carriage travel between two pitches is the change in stretch:
 #   travel(f1→f2) = DL_OPEN · ((f2/f_open)² − (f1/f_open)²)
@@ -121,7 +132,85 @@ SCREW_TOP_Z     = 3 * BEAD  # 2.4 screw top, below the bend / carriage travel
 #   tightness; +6 semitones (3 whole steps) above open = DL_OPEN·(2^(6/6)−1) =
 #   DL_OPEN. So usable travel = DL_OPEN (slack→open) + DL_OPEN (+6 st) + margin.
 DL_OPEN         = 4.0
-CARRIAGE_TRAVEL = 2 * DL_OPEN + 2.0    # ≈10 mm; open sits ~DL_OPEN up from slack
+# 4 SEMITONES of upward bend, not 6 (user) — traded for the travel it frees, which is
+# what lets the nut ride high enough for the thrust stack to move above the pulleys.
+# stretch ∝ f², so the bend costs DL_OPEN·(2^(n/6) − 1): 4.00 at six semitones, 2.35 at
+# four. The other two terms are unchanged — a full DL_OPEN of slack→open take-up (that
+# is the "hand tight" allowance, and it is bounded by DL_OPEN however loosely you pull)
+# plus 2.0 of margin for new-string break-in.
+PITCH_UP_ST     = 4
+CARRIAGE_TRAVEL = DL_OPEN * 2 ** (PITCH_UP_ST / 6) + 2.0    # 8.35
+
+# ── THE NUT IS THE CARRIAGE (user) ─────────────────────────────────────────
+# There is no printed carriage any more. The H-nut's own two mounting ears do
+# both jobs it did: the +X ear ANCHORS THE STRING (ball end underneath, string up
+# through the Ø3 hole — tension pulls the ball against the ear, exactly a guitar
+# bridge plate) and the -X ear RIDES THE GUIDE ROD. That deletes a printed part
+# ×10, twenty M2 screws, ten spacers, and with them the whole boss-recess / Y-open
+# channel / 45° ramp chain — every one of which existed only to marry the nut to a
+# carriage that is now gone.
+#
+# It also unpins the Z datum. The carriage's height was set by its BALL CAGE, which
+# cleared the bridge bearings by exactly the 1.0 minimum and could not rise; that is
+# what forced the boss to be recessed in the first place. With no cage the nut is
+# free, and it now sits where the PULLEYS want it — high enough that the boss clears
+# the raised plane by a comfortable margin instead of fighting for a millimetre.
+#
+# WHY THE STRING TAKES THE +X EAR (user): it has to be reachable, and the changer
+# room already opens +X for exactly that. The cost is that the ear sits at
+# SCREW_X + NUT_HOLE_DX = -1.5 rather than on the bearing's tangent at 0, so the
+# dead run leaves the bearing ~2.6° off vertical over its ~33 mm drop — an ordinary
+# break angle. THE POINT of accepting that angle is that SCREW_X DOES NOT MOVE. Put
+# the string on the -X ear instead and the screw line would have to shift to suit a
+# GUESSED hole pitch, dragging the rail, both pulley planes, ten belt runs and the
+# motor bank with it. This way a wrong guess costs a fraction of a degree on a dead
+# length and nothing else.
+NUT_TOP_Z       = -7.2      # flange TOP at the top of travel. A FROZEN datum, not a
+                            # derivation: it is asserted below against the THRUST STACK,
+                            # which now sits on top of the pulleys rather than under them.
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# Leadscrew nut — H-TYPE brass flange nut, BOLTED under the carriage.
+# Declared BEFORE the screw because the screw's length derives from its travel.
+# ─────────────────────────────────────────────────────────────────────────
+# The round Ø20-flange nut is gone. Its flange had to be turned to Ø9 and its
+# boss to Ø7 to fit the 9.5 mm string lane — a two-cut lathe job on ten parts,
+# which is not something an open-source build should demand. The H-TYPE nut is
+# the same part with the flange already milled to two flats tangent to the boss,
+# so it arrives lane-ready: ACROSS FLATS is the dimension that has to fit 9.5,
+# and it does.
+#
+# ⚠ EVERY NUMBER IN THIS BLOCK IS A GUESS. The part is on order and unmeasured;
+# the seller publishes no drawing for the H version. They are derived from the
+# CONFIRMED drawing of the round-flange T5 nut (flange Ø20 × 3.2, boss Ø8 × 6.6,
+# total 9.8, three Ø3 holes on a Ø13 bolt circle) by taking the H cut to be
+# exactly that disc with two flats milled at ±AF/2:
+#   AF        — flats tangent to the Ø8 boss, +0.25 each side for a real cut
+#   FLANGE_L  — the chord that survives: 2·√(10² − (AF/2)²) = 18.1
+#   HOLE_DX   — the Ø13 bolt circle, re-drilled on the long axis (the disc's
+#               120° pattern does not survive the flats: two of its three holes
+#               sit at |y| 5.63, outside AF/2)
+# CONFIRM ALL SIX ON ARRIVAL. FLANGE_L and HOLE_DX are the load-bearing guesses:
+# FLANGE_L sets how far the ears sweep -X (see bridge_endplate's nut-sweep slot)
+# and HOLE_DX sets the carriage's -X face. Both are asserted downstream, so a
+# wrong guess fails the build loudly rather than quietly fouling something.
+NUT_AF          = 8.5       # across flats (Y) — THE lane-critical dimension
+NUT_FLANGE_L    = 18.1      # long axis (X)
+NUT_FLANGE_T    = 3.2
+NUT_BOSS_D      = 8.0
+NUT_BOSS_L      = 6.6
+NUT_H           = NUT_FLANGE_T + NUT_BOSS_L                            # 9.8
+NUT_HOLE_D      = 3.0       # the ears' through-holes (M2 screws pass with room)
+NUT_HOLE_DX     = 6.5       # ± from the axis
+# MOUNTING — FLANGE UP, BOSS DOWN, and nothing bolts to anything.
+# Flange up puts the EARS at the top of the nut, which is what keeps the string's
+# ball end as high as possible: it hangs one flange-thickness below the ear, so at
+# the bottom of travel it stops well clear of the drive pulleys instead of reaching
+# down among them. The boss hangs below on the screw axis, where the pulley's own
+# swept circle is the only thing nearby and NUT_BOT_MIN is asserted against it.
+NUT_TOP_MAX     = NUT_TOP_Z                                            # -10.0
+NUT_BOT_MIN     = NUT_TOP_Z - CARRIAGE_TRAVEL - NUT_H                  # -29.8, at BOTTOM of travel
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -129,66 +218,93 @@ CARRIAGE_TRAVEL = 2 * DL_OPEN + 2.0    # ≈10 mm; open sits ~DL_OPEN up from sl
 # ─────────────────────────────────────────────────────────────────────────
 # Ø5×1 single-start: lead angle ~3.6° (very self-locking) and fast enough (a
 # semitone is only ~1.5 mm). Vertical ⇒ short (no whip).
-SCREW_OD        = 5.0       # Ø5, single-start, 1 mm lead
-SCREW_LEN       = 61.0 + 7 * BEAD   # 66.6. The +8 over the minimum drops the whole drive
-                            # stack (pulleys, belts, support bearing — all derive from here)
-                            # so the raised odd pulleys clear the carriage's full down-travel
-                            # plus a bottom stop. The extra 5.6 is the BELT-PLANE CENTRING
-                            # (user): it lowers both pulley rows by half a belt plane so the
-                            # motor plane lands midway between them — see MOTOR_BELT_Z. The
-                            # screw grows instead of the stack sliding down, because the
-                            # support bearing already sits only 3.9 above the screw's bottom
-                            # end; dropping the pulley without lengthening the rod would hang
-                            # the bearing 1.3 mm past it. Still short enough not to whip.
-SCREW_BOT_Z     = SCREW_TOP_Z - SCREW_LEN          # -59
-# DROPPED 5 mm (was SCREW_TOP_Z - 8.0) to make room at the CHANGER (user asked
-# whether the mechanism could move down, and it can): the bearing OD is capped by
-# the gap between the string plane and the carriage's ball-cage top, and the cage
-# is what had to give. There was 8.00 mm of slack between the carriage at full-down
-# travel and the screw-pulley top; 5 of it buys a Ø13 race and leaves 3.0 spare.
-# (Ø16 would have taken all 8 and left the carriage kissing the pulley.)
-CARRIAGE_NOM_Z  = SCREW_TOP_Z - 13.4               # default = TOP of travel; the anchor post
-                                                   # clears the bridge bearings by 1 mm (the
-                                                   # endplate's upper guide ledge hard-stops
-                                                   # the carriage foot here, protecting them)
-SCREW_PULLEY_Z  = SCREW_BOT_Z + 19 * BEAD  # 15.2               # screw drive pulley near bottom (-36)
+SCREW_OD        = 5.0       # Ø5, single-start, 1 mm lead.
+# WHY Ø5 AND NOT THE USUAL Tr8 — do not "upgrade" this. The ten screws sit on one X
+# line at the STRING_PITCH (9.5), so each screw's NUT has to live inside a 9.5 mm lane.
+# NUT_FLANGE_OD is already 9.0 in that lane (0.5 to its neighbour). A Tr8 nut — even a
+# plain round one, let alone the usual Ø22 flanged 3D-printer part — cannot fit. The
+# string pitch picks the screw, and it picks a size BELOW the ISO/DIN 103 trapezoidal
+# series (which starts at Tr8), so this is a specialty part, not a catalogue one: see
+# the BOM row for what that means for sourcing.
+# TOP: the screw only has to clear the NUT, and the nut is now the whole moving
+# assembly — so the screw stops SCREW_RUNOUT above the flange's top face and nothing
+# else needs reaching. RUNOUT is pure insurance for build tolerance.
+# THREAD-FORMING BORE — shared by the retaining collar and the drive pulley. Both grip
+# a rod whose thread we cannot merely clamp (screw_collar.py has that arithmetic).
+#
+# It is a PILOT THREAD, not a plain cylinder (user). A Tr lead screw has blunt 30°
+# flanks and no cutting edges, so it FORMS rather than cuts — the better process for
+# plastic, but it needs somewhere to track. A plain bore gives it nothing: nothing sets
+# the lead, nothing resists starting a turn crooked, and nothing pulls it back once it
+# has. A printed helix at the true pitch is a track it can only follow.
+#
+# The two diameters are picked against the ROD, not against each other:
+#   FORM_MINOR  the printed ridge. 0.1 mm radially CLEAR of the rod's root (Ø4.0), so
+#               the ridge never bottoms out — root interference is all torque, no grip.
+#   FORM_MAJOR  the printed groove. 0.1 mm radially UNDER the rod's crest (Ø5.0), so
+#               the crest swages it going in. That 0.1 is the entire forming allowance,
+#               and it is the usual figure for thread-forming into plastic.
+# After forming, the plastic ridge spans 4.2..5.0 — 0.4 of the 0.5 radial full form,
+# ~80% engagement, reached by displacement rather than by hoping a plain cylinder would
+# flow into the right shape on its own.
+# Depth is (4.8-4.2)/2 = 0.3 — inside cadkit.threads' depth <= pitch/2 rule, and 45°
+# flanks, so it is self-supporting with the bore axis vertical, which is how both parts
+# print. It does NOT resolve on the project's 0.8 nozzle (0.3 radial is under half a
+# bead) — both parts are 0.2-NOZZLE prints and therefore unfilled, the same call
+# belt_clamp already makes for GT2 ridges. At 0.2 the groove is a 1.5-bead feature.
+SCREW_PITCH     = 1.0       # Tr5x1: 1 mm pitch, single start
+FORM_MINOR      = 4.2       # printed ridge Ø
+FORM_MAJOR      = 4.8       # printed groove Ø
+SCREW_RUNOUT    = 3 * BEAD                          # 2.4 proud of the nut at top of travel
+# TOP RADIAL BEARING. The screw runs on past the nut into one MR85 up in the endplate's
+# slab, and this is not a refinement — it is what makes anchoring the string off-axis
+# sound at all. The string pulls 147 N at the ear, NUT_HOLE_DX off the screw axis, which
+# is a standing ~956 N·mm couple. The thrust stack alone would have to react that across
+# two bearings 2.5 mm apart — about 382 N radial each, ~1.5× MR85's static radial rating.
+# A second support ~28 mm away turns it into ~34 N.
+# It must FLOAT axially (a plain slip-fit seat, no shoulder either side) or it fights the
+# thrust stack for the string load and over-constrains the shaft: the classic
+# fixed/floating pair, thrust at one end, alignment at the other.
+TOP_BRG_Z0      = NUT_TOP_Z + SCREW_RUNOUT + 2 * BEAD   # -3.2, seat mouth
+TOP_BRG_Z1      = TOP_BRG_Z0 + MR85_W                   # -0.7
+SCREW_TOP_Z     = TOP_BRG_Z1                            # the rod ends flush in that bearing
 
 
 # ─────────────────────────────────────────────────────────────────────────
-# Leadscrew nut (round brass, pressed into the carriage)
 # ─────────────────────────────────────────────────────────────────────────
-NUT_OD          = 7.0
-NUT_FLANGE_OD   = 9.0
-NUT_FLANGE_T    = 2.0
-NUT_BODY_LEN    = 7.0
-
-
+# Guide rod (anti-rotation) — axis Z, through the nut's -X EAR
 # ─────────────────────────────────────────────────────────────────────────
-# Guide rod (anti-rotation) — axis Z, on the +X (cap) side of the screw, BELOW
-# the stringing window. The carriage reaches it with a low FOOT (column + leg
-# hanging under the plate), keeping the whole window clear for string access.
-# Both rod seats and both hard stops are cap-backed ledges on the endplate —
-# no spanning bar, so the endplate prints with no overhang.
-# ─────────────────────────────────────────────────────────────────────────
-GUIDE_ROD_D     = 2.5
-GUIDE_ROD_DX    = 17 * BEAD  # 13.6 screw→rod offset: rod X = SCREW_X + DX = +4.95 (global). Moved +X
-                            # (user) so the rod's metal −X edge clears the anchor-cage OPENING
-                            # (POST_X1H, global +2.1) by 1.6 mm — was only 0.15, and that gap was
-                            # what pinned the guide foot LOW. INSTALL (top-down): the rod drops
-                            # through the stop bar, the carriage's closed bore, into the blind
-                            # socket — friction-held top + bottom; the closed bore captures a loose
-                            # carriage (carriage in place → rod drops in → screw threads in).
-GUIDE_FOOT_DZ   = 3 * BEAD  # 2.4 foot TOP from the carriage centre. Now at the NUT LEVEL (user): the
-                            # guide bore rides in the body's own z-band (−6..+2, just below the
-                            # cage bottom 2.5), NOT on a hanging column — the carriage drops ~16 mm
-                            # in Z (a much stiffer part) and the bore ties straight into the body.
-GUIDE_FOOT_H    = 8.0       # foot height = guide-bore engagement length (rod engagement)
+# It hangs from the endplate's guide RIB above and cantilevers DOWN through the ear
+# (user). The other end has nowhere to go: the drive relief and nut sweep between
+# them removed every scrap of endplate below the room at this X line, so the top is
+# the only end left to anchor to — which is also the end that prints cleanly, since
+# a rib is a straight -X extension of solid cap and every layer of it is backed.
+#
+# Ø3, NOT the Ø2.5 dowel, and the reason is slop rather than strength. The ear's hole
+# is the nut's own Ø3: a Ø2.5 rod leaves 0.5 mm of play, which lets the nut rotate
+# 38 mrad and walks the string 0.25 mm. A Ø3 g6 shaft leaves 0.01 and 0.8 mrad — 50×
+# better — and it is 2.1× stiffer into the bargain. It is also the SAME PART as the
+# bridge axle, so it costs no new BOM line, just ten more pieces.
+# Bending was never the problem and an earlier note here overstated it: the rod only
+# spans the ear's travel plus the ear, ~15 mm, not the room's height, and deflects
+# 0.016 mm under the 11 N anti-rotation load. What matters is the SOCKET — over the
+# rib's grip any clearance is amplified across that 15 mm, so it is a PRESS fit.
+GUIDE_ROD_D     = 3.0       # Ø3 g6 precision shaft (shared with BRIDGE_AXLE_D)
+GUIDE_ROD_FIT   = 0.05      # SNUG PRESS. Not zero: at zero the socket is drawn the
+                            # rod's own Ø, which is not a hole you can install into,
+                            # and coincident cylinders make the boolean unreliable
+                            # too. 0.05 is the same snug the old rod sockets used.
 
 # The bridge / string anchor sits at X=0; the screw can't occupy that spot, so
 # it is offset −X by ANCHOR_DX and the carriage reaches over to the anchor.
 BRIDGE_X        = 0.0
 SCREW_X         = -8.0      # all 10 vertical screws sit on this X line
 ANCHOR_DX       = BRIDGE_X - SCREW_X    # anchor is +X of the screw (8 mm)
+# The two ears, as global X lines. Everything that used to be a carriage feature is
+# now one of these.
+STRING_ANCHOR_X = SCREW_X + NUT_HOLE_DX     # -1.5, the +X ear: ball end under it
+GUIDE_ROD_X     = SCREW_X - NUT_HOLE_DX     # -14.5, the -X ear: rides the rod
+
 
 # String-end nut: a cylinder swaged on the string's bridge end (axis Y), slotted
 # into the carriage anchor. The string exits +Z and its pull seats the nut up
@@ -197,21 +313,6 @@ STRING_NUT_D    = 4.0       # measured (user): Ø4 x 3 tall ball-end nut
 STRING_NUT_L    = 3.0       # was modelled 6 -> oversize; the real 3 lets the carriage cage
                             # Y-walls go to 2.7 (= (WIDTH 9 - (L+0.6))/2), well over 2 beads
                             # (was 1.2 with the 6 mm nut)
-
-
-# ─────────────────────────────────────────────────────────────────────────
-# Screw support bushing (Ø8, fits the pitch) + locknut — axis Z
-# ─────────────────────────────────────────────────────────────────────────
-# Ø8 so it fits the 9.5 mm pitch inline: a bushing or MR85 (Ø5×8) for radial
-# location + a thrust washer for the axial string pull (~93 N near-static, held
-# mostly by the self-locking screw — the support only rotates during a move).
-# The 10 supports live in a single shared rail (no overlapping per-screw cradles).
-SUPPORT_BRG_OD  = 8.0
-SUPPORT_BRG_ID  = SCREW_OD
-SUPPORT_BRG_W   = 5.0
-SUPPORT_BRG_Z   = SCREW_PULLEY_Z - 11 * BEAD  # 8.8     # below the pulley; clears the 5 mm belt wrap
-LOCKNUT_OD      = 8.0
-LOCKNUT_W       = 4.0
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -224,8 +325,127 @@ PULLEY_FLANGE_T  = MIN_WALL      # 0.8 (was 1.0 = 1.25 beads). Rounded DOWN, not
                                  # two flanges leave a 4.8 toothed gap for a 5.0 belt -- it would not
                                  # fit. One bead is the hard floor and fine here (a guide lip, not
                                  # structure); the gap goes to 6.4.
-PULLEY_BORE_SCREW = SCREW_OD
+PULLEY_BORE_SCREW = FORM_MAJOR       # PILOT THREAD: the rod finishes its own
 PULLEY_BORE_MOTOR = 5.0     # = MOTOR_SHAFT_D (declared below); the motor's own shaft
+# THE PULLEY IS THE COLLAR (user). It is threaded on the rod by its pilot thread and
+# the string's own 147 N jams it UP into the thrust bearings that now sit directly on
+# top of it — the same jam that has always held the retaining collar, which is why that
+# part never needed a set screw either. So the pulley needs no set screw, no clamp and
+# no separate collar: the load that has to be carried anyway is what holds it.
+# Four earlier attempts at a torque path are all dead, and each died differently:
+#   • a GRUB alone — a tip on one thread crest is a point contact relying on preload.
+#   • a -X LUG to hold that grub — r 8.6, swept Ø17 straight through the endplate.
+#   • a C-CLAMP — needs a full-height slit, and closing an 0.8 mm gap shortens the
+#     pitch circle ~3%, so the teeth stop matching the belt.
+#   • a grub in a hub above the belt — worked, but it is still a screw to install per
+#     station and a thing to come loose.
+#
+# TWO SKUs, EACH SPANNING THE WHOLE SCREW, EACH PRINTING ON ITS OWN GOOD FACE (user).
+# Both pulleys run the full length of rod between the thrust plane and the screw's
+# bottom, so BOTH get the same ~19.5 mm of formed-thread engagement — the pulley is
+# what carries the 147 N and holds itself on the rod, so an 8 mm variant and a 20 mm
+# one was never a sensible pair. Two SKUs rather than one flipping part because a part
+# that flips can only stand on whichever end is smallest; two can each be printed on
+# the face that suits them.
+#
+# They differ in WHERE the column sits, and that decides which way each prints:
+#   LOW SKU  (belt low)  — column ABOVE the band. Prints FLANGE-DOWN, a full Ø11 disc
+#                          flat on the bed, everything above it stepping inward.
+#   HIGH SKU (belt high) — column BELOW the band. Prints COLUMN-DOWN, so its lower
+#                          flange cannot be a disc: going up from Ø7.2 to Ø11 is an
+#                          outward step, and it is a 45° CONE (user) so it carries
+#                          itself. The belt is retained just as well by a cone.
+PULLEY_GAP      = 5.4               # toothed gap = the 5 mm GT2 belt + 0.4
+PULLEY_CONE     = (PULLEY_FLANGE_OD - PULLEY_OD) / 2        # 1.3, top flange, 45° cone
+PULLEY_SPACER_D = 9 * BEAD          # 7.2 column: it has to slip past the NEIGHBOUR's
+                                    # Ø11 flange at the 9.5 pitch, so 7.6 is the ceiling
+PULLEY_CONE_B   = (PULLEY_FLANGE_OD - PULLEY_SPACER_D) / 2  # 1.9, the HIGH SKU's lower
+                                    # flange: a 45° cone off the column, not a disc
+PULLEY_BOSS_D   = 7 * BEAD          # 5.6 pilot on top: lands on the bearings' INNER
+                                    # rings only (their OD is ~6.3). Anything wider would
+                                    # drag the stationary outer ring against a pulley
+                                    # that turns with the screw.
+PULLEY_BOSS_H   = 1 * BEAD          # 0.8
+# The LOW SKU's column is BELT_PLANE_DZ exactly — that is its whole job, lifting its
+# boss to the same thrust plane the high one already reaches. Everything else follows
+# from making both parts span the same rod.
+PULLEY_COL_H    = BELT_PLANE_DZ                                         # 11.2, LOW, above
+PULLEY_END_A    = PULLEY_GAP / 2 + PULLEY_CONE + PULLEY_BOSS_H          # 4.8, band→boss top
+PULLEY_END_B    = PULLEY_END_A + PULLEY_COL_H                           # 16.0, LOW's top
+# BOTH FLANGES CHAMFER TOWARD THE BELT (user). The belt used to run out of the ribs
+# straight into a flat wall on the lower side; now each flange presents a 45° face to
+# it, so the pair is a shallow V and the belt self-centres. The lower flange is a
+# BICONE: it flares out to Ø11 away from the band and back in to Ø8.4 at the band.
+# Both halves still print, because the belt-side half NARROWS going up.
+PULLEY_BOT      = (PULLEY_GAP / 2 + PULLEY_FLANGE_T
+                   + PULLEY_CONE)                                       # 4.8, LOW's bed face
+PULLEY_SPAN     = PULLEY_END_B + PULLEY_BOT                             # 19.5, both SKUs
+PULLEY_COL_BELOW = (PULLEY_SPAN - PULLEY_END_A - PULLEY_GAP / 2
+                    - PULLEY_CONE - PULLEY_CONE_B)                      # 10.1, HIGH, below
+                                    # backs the hole from below and the hub from above
+# ─────────────────────────────────────────────────────────────────────────
+# BOTTOM OF THE SCREW — drive pulley, thrust bearings, retaining collar (axis Z)
+# ─────────────────────────────────────────────────────────────────────────
+# THE PULLEY PLANE IS A ROOT DATUM — DO NOT DERIVE IT FROM THE NUT. motor_bank's
+# floor and the whole belt plane hang off it (see MOTOR_BELT_Z), so when the H-nut
+# moved the nut's lowest point 7.8 mm down, the old `NUT_BOT_MIN - 25·BEAD` form
+# would have dragged the entire motor bank down with it for no reason at all.
+# Frozen here at the value belt-plane centring settled on; the nut clearance that
+# expression used to guarantee is now an assert (below, once PULLEY_W exists).
+SCREW_PULLEY_Z  = -49.0     # drive pulley, near the bottom of the screw
+# THRUST STACK: TWO MR85ZZ (Ø5×8×2.5) in TANDEM per screw, not one bearing.
+# Sizing is by STATIC capacity, not life. Per-string tension runs 88–147 N and a
+# single MR85's permissible static axial load is ~130 N (C0r ≈ 260 N — a typical
+# supplier figure, CONFIRM against the datasheet of whatever gets bought), so
+# strings 1 and 5 are over the limit on one bearing. Two clear it at any plausible
+# split: 50/50 gives 1.77× margin, a pessimistic 80/20 still gives 1.11×. The
+# split is uncertain because two loose MR85s are NOT a ground duplex set — they
+# share unevenly, whichever has less internal clearance seating first — but even
+# the pessimistic case passes, so the uncertainty does not change the answer.
+# The arrangement must be TANDEM (both inner rings stacked, both outer rings
+# stacked, load in parallel). Back-to-back/face-to-face would preload the pair
+# but then only ONE of them would carry a unidirectional pull — which defeats the
+# entire point of the second bearing. And preload is unnecessary anyway: string
+# tension is a permanent 88–147 N axial load, one to two orders of magnitude more
+# than any deliberate miniature-bearing preload, so the internal clearance is
+# taken up and the contact angle fully developed before we do anything.
+# The other two failure modes are non-issues here, which is why static capacity
+# governs: fatigue, because half a turn per move over a plausible life is only
+# ~300k revolutions against millions for L10; and false brinelling, because each
+# move rotates 180° and carries every ball onto fresh track — unlike the bridge
+# bearing, which only rocks 4.3° and IS a genuine fretting risk.
+SUPPORT_BRG_N   = 2
+SUPPORT_BRG_OD  = MR85_OD   # Ø8 is what fits the 9.5 mm pitch inline
+SUPPORT_BRG_ID  = MR85_ID
+SUPPORT_BRG_W   = SUPPORT_BRG_N * MR85_W            # 5.0 — the STACK, not one bearing
+BRG_LEDGE_T     = 2 * BEAD                          # 1.6 of rail over the outer rings
+# THE STACK SITS ON THE PULLEYS, and moving it here is what deleted the retaining
+# collar. The screw is pulled +Z, so whatever grips it has to bottom against something
+# grounded ABOVE; put the bearings on the pulley tops and the PULLEY is that thing.
+# The belts do not object, which was the objection: they wrap the toothed band, whose
+# top is 1.5 mm below the pulley's own top (measured), so a rail seated on the tops
+# clears them. Everything that used to live under the pulley is gone with it — no
+# collar, no fight for the 10.7 mm between the bottom flange and the chassis end block,
+# and ~9 mm off the screw.
+PULLEY_TOP_MAX  = (SCREW_PULLEY_Z + BELT_PLANE_DZ
+                   + PULLEY_END_A)                  # -33.0, the HIGH SKU's boss top
+SUPPORT_BRG_BOT = PULLEY_TOP_MAX                    # the stack seats straight on it
+SUPPORT_BRG_Z   = SUPPORT_BRG_BOT + SUPPORT_BRG_W   # -28.0, thrust ledge underside
+_NUT_PULLEY_GAP = NUT_BOT_MIN - (SUPPORT_BRG_Z + BRG_LEDGE_T)
+assert _NUT_PULLEY_GAP >= 1.0 - 1e-9, (
+    f"the nut's lowest sweep clears the thrust ledge by only {_NUT_PULLEY_GAP:.2f} "
+    f"(want 1.0): raise NUT_TOP_Z or shorten CARRIAGE_TRAVEL")
+# BOTTOM of the rod: it simply ends inside the drive pulley — there is nothing below.
+# The rod ends where BOTH pulleys end — they span the same length, by design.
+SCREW_BOT_Z     = SCREW_PULLEY_Z - PULLEY_BOT       # -52.5
+SCREW_LEN       = SCREW_TOP_Z - SCREW_BOT_Z         # 52.3 — the CUT length (see BOM).
+# Not a purchasable length: Tr5x1 stock starts at 100 mm, so every screw is cut from a
+# longer blank. That is fine because the requirement is a WINDOW, not a number — the
+# rod has to clear the nut's top at the top of travel and fill the collar at the
+# bottom, and both ends are derived above, so saw accuracy is a non-issue. Ten pieces
+# plus nine kerfs need ~500 mm; the BOM's 2×350 mm buy yields 7 per rod, 14 in all.
+
+
 BELT_PITCH      = 2.0       # GT2 tooth pitch
 BELT_TOOTH_H    = 0.75      # tooth height (rounded GT2 profile)
 # 5 mm-wide GT2 (open, cut-to-length): the narrowest STANDARD-STOCK GT2 open belt
@@ -271,7 +491,6 @@ MOTOR_X_STEP    = 46.0      # along-X step between motors. Body is 42.3 sq; with
 # pulley moves — the motors stay coplanar and the bottom hardware is unchanged.
 # 14 beads, not 13, so HALF a plane is a whole 7 beads — the centring below wants
 # the half, and it also buys 0.8 more belt-to-belt room at no cost.
-BELT_PLANE_DZ   = 14 * BEAD  # 11.2
 
 # MOTORS SIT MIDWAY BETWEEN THE TWO PULLEY ROWS (user). They used to be coplanar
 # with the LOW row (MOTOR_BELT_Z = SCREW_PULLEY_Z), so half the belts ran dead
@@ -282,6 +501,7 @@ BELT_PLANE_DZ   = 14 * BEAD  # 11.2
 # plane above, which drops both pulley rows around the unchanged motor line, so
 # motor_bank's floor/bed (derived from here) and the chassis are untouched.
 MOTOR_BELT_Z    = SCREW_PULLEY_Z + BELT_PLANE_DZ / 2
+
 
 def screw_pulley_z(i: int) -> float:
     # raise alternate pulleys a belt-plane so neighbours never collide; phased off the
@@ -325,6 +545,23 @@ BRIDGE_AXLE_X     = BRIDGE_X - BRIDGE_BEARING_OD / 2     # bearing/axle centre X
 BRIDGE_AXLE_Y     = STRING_FIELD_W / 2 + 12 * BEAD  # 9.6             # axle/support half-span
 BRIDGE_ARM_W      = 6 * BEAD  # 4.8 bridge-endplate bearing-arm / edge-web thickness (Y); the
                             # screw rail widens by this so the rib overlaps it cleanly
+# THE AXLE'S TWO ENDS. It is a plain ground shaft with no shoulder — it has to be, since
+# it threads through 10 bearings and 11 comb fingers in one pass — so both ends are held
+# by the STRUCTURE, and it goes in from +Y (user):
+#   -Y  the +Y arm's opposite number is BLIND. That 1.6 wall IS the -Y hard stop.
+#   +Y  the shaft ends FLUSH with the +Y arm's outer face, and the optical strip's +X
+#       head turns over the endplate 0.75 further out (optical_pickup.HEAD_Y0, which
+#       derives from this same face). The board's underside sits 2.34 BELOW the shaft's
+#       crown, so once it is screwed down the shaft cannot travel +Y without driving its
+#       own crown into FR4 — a positive stop, from a part that is already there and
+#       already fastened. That replaces the M2 grub that used to close this direction:
+#       one less fastener, one less thing to back out, and nothing to reach in and turn.
+# Install order, and it is now load-bearing: bearings and fingers aligned → shaft in from
+# +Y → optical strip on. Same trick the guide rods use at the other end of this part.
+BRIDGE_ARM_OUT    = BRIDGE_AXLE_Y + BRIDGE_ARM_W / 2    # 54.75, the arms' outer faces
+BRIDGE_AXLE_END_W = MIN_WALL_2P                         # 1.6, the -Y blind wall = the stop
+BRIDGE_AXLE_Y0    = -BRIDGE_ARM_OUT + BRIDGE_AXLE_END_W # -53.15, against the blind wall
+BRIDGE_AXLE_Y1    = BRIDGE_ARM_OUT                      # +54.75, flush with the arm face
 
 # ── Keyhead nut-block hardware → ENDPLATE_W (BOTH ends + bridge base) ────────
 # The endplate THICKNESS in X is not a round number -- it's exactly what the string-
@@ -359,6 +596,16 @@ SCREW_NX_WALL   = 3 * BEAD      # 2.4 solid wall -X behind the far insert's OD (
 
 ENDPLATE_W = (BREAK_PX_BUF + DOWEL_SCREW_RUN + SCREW_ROW_GAP
               + NUT_INSERT_D / 2 + SCREW_NX_WALL)            # = 25.0
+# THE KEYHEAD IS THICKER THAN THE BRIDGE, and the two are now separate numbers.
+# ENDPLATE_W above is the BRIDGE's (and the shared base's) 25.4, frozen: the whole
+# changer end is built on it. The keyhead needs more, and for a reason that only
+# exists at that end -- the WRAP CAPSTAN (nut_block) spends X on the rod and its
+# threading bay, and the clamp inserts behind it still have to stagger across TWO
+# rows to keep O6 pockets apart at a 6.5 string pitch. One row cannot be made to
+# fit: even perfectly spaced it leaves 0.5 mm of wall. So the keyhead grows -X, away
+# from the strings -- the break edge (the scale "0") does not move, only the block's
+# back face -- and the bridge is left exactly where it is (user).
+KEYHEAD_W  = 38 * BEAD                              # 30.4 = 25.4 + 5.0 of clamp room
 BRIDGE_BASE_X0 = BRIDGE_AXLE_X - ENDPLATE_W / 2     # -16.5  (-X inboard face)
 BRIDGE_BASE_X1 = BRIDGE_AXLE_X + ENDPLATE_W / 2     #  8.5   (+X outer tip)
 
