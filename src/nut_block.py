@@ -119,7 +119,39 @@ ROD_X   = -8 * D.BEAD                           # -6.4 rod centre
 # so one rod height for all ten is set by the .070 and every thinner string simply gets
 # a steeper break. At -0.8 the .070 broke at 5.5 deg, half the floor -- three beads down
 # fixes every string at once. See _break_deg, which is asserted below.
-ROD_Z   = -3 * D.BEAD                           # -2.4 rod centre
+# THE STRING ENTERS AND LEAVES ON THE ROD'S -Z SIDE (user), so ROD_Z is DERIVED from
+# the break angle rather than chosen. Wrapping the underside is what removes the two
+# sharp reversals the old path had -- the string used to run DOWN off the dowel, hit the
+# rod's mid-height and turn back UP, then reverse again to reach the exit. Now it leaves
+# the dowel already heading down, meets the rod underneath, wraps, and leaves on the same
+# side pointing straight at the clamp.
+#
+# The rod ends up ABOVE the string plane, which is the trade: -z is the accessible side
+# for restringing, and it is the only option that leaves room to grow a 45 from the
+# trough up to the dowels without widening the block in X (user's reasoning, and it
+# matches what the +X ramp measured twice: there is no X to spare).
+#
+# GAUGE-INDEPENDENT, which the +z arrangement was not. The string sits on the dowel crown
+# at -g and meets the wrap circle at ROD_Z - (ROD_D/2 + g/2); the g/2 appears on both
+# sides and cancels, so the drop is ROD_D/2 - ROD_Z for every string. One rod height, one
+# break angle, all ten -- against 26-31 deg of spread before.
+# THE TARGET IS NOT THE FLOOR, and keeping them separate is the point. BREAK_ANGLE
+# (below) is the inherited MINIMUM -- down-bearing T*sin(a) must beat the string's
+# vibrational lift, which bounds the angle from below and says nothing about where to
+# aim. Solving ROD_Z for the floor itself left ~0.4 deg of margin, which is no margin.
+#
+# 15 deg is the builders' consensus target for a nut break: production tilted headstocks
+# run 10-14, ~15 is the commonly stated aim, and the practical minimum is 5-7. The
+# recurring caveat is the one that stops us going higher -- once downforce is adequate,
+# more angle buys nothing, and what does the damage is the RADIUS being bent over. Ours
+# is a O2 dowel, a 1 mm radius, far sharper than a nut, and the .070 is the least
+# tolerant string of a tight bend. So: adequate and no more.
+#
+# (Our case is easier than a guitar's in one way -- the forum worry about strings jumping
+# out of the slot does not apply, since ours is clamped and the capstan holds it. The
+# requirement here is only that the DOWEL, not the clamp, terminates the speaking length.)
+BREAK_TARGET = 15.0                             # deg, what ROD_Z is solved for
+ROD_Z   = ROD_D / 2 - (DOWEL_X - ROD_X) * math.tan(math.radians(BREAK_TARGET))
 BAY_R   = ROD_D / 2 + 2.5                       # 5.0 threading annulus around the rod --
                                                 # the room a hand needs to pass the tail
                                                 # around it, not a clearance
@@ -283,10 +315,23 @@ BREAK_ANGLE = 10.0                              # MIN break angle over the dowel
 
 
 def _break_deg(i: int) -> float:
-    """Down-angle string i takes as it leaves the break dowel for the rod. The string
-    runs level over the dowel at -g/2 and meets the rod's +X tangent at ROD_Z."""
-    run = DOWEL_X - (ROD_X + ROD_D / 2 + D.STRING_GAUGE[i] / 2)   # dowel -> rod tangent
-    return math.degrees(math.atan2(abs(ROD_Z) - D.STRING_GAUGE[i] / 2, run))
+    """Down-angle string i takes as it leaves the break dowel, running to where it first
+    TOUCHES the wrap circle on the rod's underside."""
+    # TRUE TANGENCY, not the chord to the circle's lowest point. The chord is
+    # gauge-independent (the -g/2 at the dowel and the +g/2 in the wrap radius cancel),
+    # which is a pleasing result and the WRONG one -- the string follows the tangent, and
+    # that depends on the wrap radius, so it does vary with gauge. Only slightly: ~0.1 deg
+    # across the set. But sizing ROD_Z off the chord lands the real angle ~0.5 deg
+    # steeper than intended, which matters when the target is chosen for margin.
+    g = D.STRING_GAUGE[i]
+    hr = ROD_D / 2 + g / 2                                # the string's centre-path radius
+    dx = DOWEL_X - ROD_X                                  # dowel -> rod axis
+    dz = -g / 2 - ROD_Z                                   # (negative: the rod sits above)
+    d = math.hypot(dx, dz)
+    # The rod axis sits ABOVE the dowel, so the line to it RISES; the tangent to the
+    # underside lies asin(hr/d) BELOW that line. Subtract -- adding gives the upper
+    # tangent, i.e. a string wrapping over the top, which is the arrangement we left.
+    return math.degrees(math.asin(hr / d)) - math.degrees(math.atan2(-dz, dx))
 
 
 _WORST_BREAK = min(_break_deg(i) for i in range(D.N_STRINGS))
@@ -547,11 +592,13 @@ def _build() -> cq.Workplane:
 
         # (the troughs are cut ONCE, after this loop -- see _all_troughs)
 
-        # EXIT: the tail leaves the rod's -X tangent at the coil's far end and runs out the
-        # back face, crossing the clamp screw's column on the way -- see GATE_X.
-        body = body.cut(box_at((ROD_X - BAY_R) - X_BACK, gw, ROOF_CLR - (ROD_Z - g),
-                               x=(X_BACK + ROD_X - BAY_R) / 2, y=y1,
-                               z=(ROOF_CLR + ROD_Z - g) / 2))
+        # EXIT: the tail leaves the rod's -Z TANGENT at the coil's far end and runs
+        # STRAIGHT out the back face at that same height -- no bend at all now the wrap
+        # is on the underside. tail_z is where the string actually is, so the passage and
+        # the clamp below both hang off it rather than off the rod's centre.
+        tail_z = ROD_Z - (ROD_D / 2 + g / 2)
+        body = body.cut(box_at((ROD_X - BAY_R) - X_BACK, gw, gw,
+                               x=(X_BACK + ROD_X - BAY_R) / 2, y=y1, z=tail_z))
         # ANVIL: a second Ø2 dowel under the tail at the clamp, so the pinch is
         # metal-on-metal and the plastic floor is not the thing being squeezed.
         gx = clamp_row_x(i)
@@ -563,8 +610,8 @@ def _build() -> cq.Workplane:
         body = body.cut(teardrop_hole(INSERT_D, INSERT_POCKET + 0.5,
                                       axis_point=(gx, y1, INSERT_GAP),
                                       axis_dir=(0.0, 0.0, 1.0), print_up=PRINT_UP))
-        body = body.cut(teardrop_hole(SCREW_D, NUT_TOP - (ROD_Z - g) + 1,
-                                      axis_point=(gx, y1, ROD_Z - g),
+        body = body.cut(teardrop_hole(SCREW_D, NUT_TOP - tail_z + 1,
+                                      axis_point=(gx, y1, tail_z),
                                       axis_dir=(0.0, 0.0, 1.0), print_up=PRINT_UP))
 
     # THE TROUGHS, FUSED AND SUBTRACTED ONCE (user). Ten separate short booleans against

@@ -460,12 +460,37 @@ def _string_path(i, sy):
     ny, wy = NB.wrap_y(i)
     rx, rz = D.NUT_BLOCK_X + NB.ROD_X, D.STRING_Z + NB.ROD_Z
     hr = NB.ROD_D / 2.0 + rad + 0.05                       # helix radius: the string ON the rod
-    out = out.union(_rod(brk, cq.Vector(rx + hr, ny, rz), rad))
+    # THE WRAP IS ON THE ROD'S UNDERSIDE (-Z), so the path has no reversal left in it:
+    # the string leaves the dowel already descending, becomes TANGENT to the wrap circle
+    # on the way down, goes round underneath, and leaves at the bottom running straight
+    # -X to the clamp. TANGENCY is the part that has to be right -- aiming at the
+    # circle's lowest point instead would draw the string cutting through the rod on the
+    # way in. The touch point sits BREAK_ANGLE round from the bottom, +X side.
+    phi = _touch_angle(i, hr)                              # where it actually touches
+    tang = cq.Vector(rx + hr * math.cos(phi), ny, rz + hr * math.sin(phi))
+    tail_z = rz - hr                                       # the bottom: where it leaves
+    out = out.union(_rod(brk, tang, rad))
     out = out.union(_wrap_coil(i, rad, hr))
-    out = out.union(_rod(cq.Vector(rx - hr, wy, rz),
-                         cq.Vector(D.NUT_BLOCK_X + NB.clamp_row_x(i), wy, rz), rad))
+    out = out.union(_rod(cq.Vector(rx, wy, tail_z),
+                         cq.Vector(D.NUT_BLOCK_X + NB.clamp_row_x(i), wy, tail_z), rad))
     out = out.union(_stow_tail(i, rad))
     return out
+
+
+def _touch_angle(i, hr):
+    """Angle about the rod axis (in the XZ plane, from +X) at which string i first TOUCHES
+    the wrap circle, coming down off its dowel. This is the ONE number the straight run and
+    the coil must agree on -- they were computed separately before, so the coil began at the
+    rod's bottom while the string arrived somewhere else, leaving a visible gap between the
+    two. Now both read this."""
+    import src.nut_block as _NB
+    g = D.STRING_GAUGE[i]
+    cx, cz = D.NUT_BLOCK_X + _NB.ROD_X, D.STRING_Z + _NB.ROD_Z
+    px, pz = D.NUT_BLOCK_X + _NB.DOWEL_X, D.STRING_Z - g / 2.0
+    dx, dz = px - cx, pz - cz
+    d = math.hypot(dx, dz)
+    # the LOWER of the two tangents: the string wraps the underside
+    return math.atan2(dz, dx) - math.acos(hr / d)
 
 
 def _wrap_coil(i, rad, hr):
@@ -475,13 +500,24 @@ def _wrap_coil(i, rad, hr):
     ny, wy = NB.wrap_y(i)
     p = NB.WRAP_F * D.STRING_GAUGE[i]
     h = abs(wy - ny)
-    helix = cq.Wire.makeHelix(pitch=p, height=h, radius=hr)
+    # LEFT-HAND: the wrap has to go round the underside in the direction the string
+    # ARRIVES, i.e. on from the entry tangent, not back against it. A right-hand helix
+    # winds the opposite way about this axis and draws the string crossing its own
+    # entry.
+    helix = cq.Wire.makeHelix(pitch=p, height=h, radius=hr, lefthand=True)
     coil = (cq.Workplane("XZ").center(hr, 0).circle(rad)
             .sweep(cq.Workplane("XY").add(helix), isFrenet=True))
     # +90 about X (not -90): that lays the helix axis along -Y, so the coil marches
     # toward the THICKER neighbour and the fattest one runs out into free air.
-    return coil.rotate((0, 0, 0), (1, 0, 0), 90.0).translate((
-        D.NUT_BLOCK_X + NB.ROD_X, ny, D.STRING_Z + NB.ROD_Z))
+    # ...then -90 about its OWN axis, which is what puts the start of the wrap on the
+    # ROD'S UNDERSIDE. makeHelix begins at angle 0 -- the +X side -- and leaving it there
+    # would draw the string entering at the rod's mid-height, which is the reversal this
+    # whole change exists to remove.
+    coil = coil.rotate((0, 0, 0), (1, 0, 0), 90.0)
+    # START THE WRAP WHERE THE STRING LANDS. makeHelix begins at angle 0 (+X); spinning it
+    # to the touch angle is what closes the gap between the straight run and the coil.
+    coil = coil.rotate((0, 0, 0), (0, 1, 0), -math.degrees(_touch_angle(i, hr)))
+    return coil.translate((D.NUT_BLOCK_X + NB.ROD_X, ny, D.STRING_Z + NB.ROD_Z))
 
 
 def _stow_tail(i, rad):
@@ -490,7 +526,8 @@ def _stow_tail(i, rad):
     (face mouth → inward arc → straight down to the bed). Shows where each cut end tucks away."""
     from . import keyhead_endplate as KE
     ny = NB.wrap_y(i)[1]                                                # the WRAP's far end
-    cz = D.STRING_Z + NB.ROD_Z                                          # the tail runs at rod height
+    cz = (D.STRING_Z + NB.ROD_Z                                         # the tail runs at the rod's
+          - (NB.ROD_D / 2 + D.STRING_GAUGE[i] / 2))                     # -Z TANGENT, not its centre
     pts = [cq.Vector(D.NUT_BLOCK_X + NB.clamp_row_x(i), ny, cz),                # clamp
            cq.Vector(D.NUT_BLOCK_X + NB.X_BACK, ny, cz)]                # straight out the -X face
     # the stow bore: -X-face mouth, a 45° inward arc to x=ZHOLE_X, then straight down to the bed
