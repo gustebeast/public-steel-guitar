@@ -21,14 +21,23 @@ one produced by a real `src.build`. Two agents rendering at the same moment writ
 different STEPs into different tabs, so there is nothing to race: the single-build
 lock guards the FULL build only.
 
+WORK FLOWS agent -> LEAD -> main -> agents, AND ONLY THAT WAY. `take` and `drop`
+are the LEAD's and refuse to run anywhere else; an agent receives another agent's
+work by `sync`ing main, never by merging their branch. Two agents integrating
+independently produce two different "main"s and neither is the one that gets built
+and pushed. Agents also message the LEAD, not each other -- cross-talk makes side
+agreements the lead never sees and cannot reconcile at merge, and the lead is the
+only one holding every branch at once.
+
 THE LEAD IS NOT A RELAY. Merge requests carry WORK, not correspondence:
   * A question for the HUMAN goes to YOUR OWN chat -- every agent has its own
     human-facing session, so ask there and wait for the answer. Do NOT bury it in
     a submit summary hoping the lead passes it along: the lead cannot answer for
     the human, and routing through it adds a whole round trip to every question.
-  * A question for ANOTHER AGENT goes direct:  `msg <who> "<text>"`. It lands in
-    their context on their next prompt (the hook delivers it, in every session --
-    lead and contributor alike). Nobody polls, and the lead is not in the middle.
+  * Something ANOTHER AGENT needs to know goes to the LEAD (`msg lead "<text>"`),
+    which is holding every branch and can act on it. The lead can `msg <who>` anyone;
+    an agent can only message the lead. Delivery is by the hook, on their next
+    prompt -- nobody polls.
 Keep the submit summary about the change: what moved, why, and how you verified.
 
 Coordination state lives in  <git-common-dir>/agent-sync/  -- inside .git, so it
