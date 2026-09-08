@@ -131,13 +131,26 @@ class ScratchView:
               % (kept, time.time() - t0, skipped))
 
     def load_cache(self):
+        """Load the cached surroundings, re-applying `replaced` ON THE WAY IN.
+
+        Filtering only at build_cache() time was a silent-staleness bug, and of
+        exactly the kind this module exists to prevent. `replaced` is the set the
+        live part SUPERSEDES, and it lives in per-agent state that changes mid-flow:
+        grow your scope to cover another part and its cached copy is already on
+        disk, so the render served BOTH -- the fresh live one and the superseded
+        grey one, interpenetrating, with the stale copy drawn on top. It reads as
+        "my part did not render". The cache does not need rebuilding for this; the
+        filter just has to run on both ends.
+        """
         import cadquery as cq
         stamp = self.cache / "STAMP"
         if not stamp.exists():
             return None
         age = time.time() - float(stamp.read_text())
+        files = [f for f in sorted(self.cache.glob("*.brep"))
+                 if not f.stem.startswith(self.replaced)]
         out = [(f.stem, cq.Workplane("XY").add(cq.Shape.importBrep(str(f))))
-               for f in sorted(self.cache.glob("*.brep"))]
+               for f in files]
         return age, out
 
     # ── render ──────────────────────────────────────────────────────────────
