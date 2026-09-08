@@ -157,8 +157,7 @@ def _crop_leg_station():
     return (400.0, 400.0, 900.0, lx, ly, zt - 300.0)
 
 
-CROPS = {"leg_station": _crop_leg_station,
-         "belt_run": _belt_run_box}
+CROPS = {"leg_station": _crop_leg_station, "belt_run": _belt_run_box}
 # ─────────────────────────────────────────────────────────────────────────────
 
 
