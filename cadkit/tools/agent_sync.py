@@ -214,6 +214,13 @@ def cmd_done():
 
 
 # ── lead commands ─────────────────────────────────────────────────────────────
+def _lead_only(what: str, why: str):
+    """Refuse a LEAD-only verb anywhere but main. Integration has exactly one owner;
+    a warning was not enough, because a warning still merges."""
+    if cur_branch() != "main":
+        raise SystemExit(
+            f"`{what}` is the LEAD's, and you are on '{cur_branch()}'. " + why + " "
+            "->  py -3.12 cadkit/tools/agent_sync.py sync   (take main's latest instead)")
 def _is_ancestor(sha: str, ref: str = "main") -> bool:
     """True if <sha> is already in <ref>'s history — i.e. the request was merged, whether via
     `take` (which unlinks it) or MANUALLY (which doesn't). The basis for self-healing the inbox."""
@@ -282,6 +289,14 @@ def cmd_msg(to: str, text: str):
     me = cur_branch()
     if dest == me:
         raise SystemExit("that's your own mailbox.")
+    # Agents route through the lead (user, 2026-09-07). Cross-talk between agents
+    # produces side agreements the lead never sees and cannot reconcile at merge --
+    # and the lead is the only one holding every branch at once.
+    if me != "main" and dest != "main":
+        raise SystemExit(
+            f"agents message the LEAD, not each other (you: {me}, target: {dest}). "
+            "Send it to the lead and it will carry what matters:  "
+            "py -3.12 cadkit/tools/agent_sync.py msg lead '<text>'")
     box = _mail_dir(dest, make=True)
     (box / f"{int(time.time() * 1000)}-{slug(me)}.json").write_text(
         json.dumps({"from": me, "to": dest, "text": text,
@@ -502,8 +517,11 @@ def cmd_take(name: str):
         print(f"no such branch: {branch}. Pending requests:")
         cmd_inbox()
         raise SystemExit(2)
-    if cur_branch() != "main":
-        print(f"WARNING: you are on '{cur_branch()}', not main. Merges normally land on main.")
+    _lead_only("take", "An agent took ANOTHER agent's merge request (user, 2026-09-07). "
+                       "Work flows agent -> LEAD -> main -> agents: you receive other "
+                       "people's work by `sync`ing main, never by merging their branch. "
+                       "Two agents integrating independently produce two different "
+                       "'main's, and neither is the one that gets built and pushed.")
     git("merge", "--no-ff", branch, "-m", f"Merge {branch}", check=False)
     if git("ls-files", "-u"):
         print(f"CONFLICTS merging {branch}. Resolve the files below, then:\n"
@@ -527,6 +545,7 @@ def cmd_take(name: str):
 
 
 def cmd_drop(name: str):
+    _lead_only("drop", "Discarding a merge request is an integration decision.")
     p = sync_dir() / "inbox" / f"{slug('agent/' + name)}.json"
     if p.exists():
         p.unlink()
