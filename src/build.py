@@ -459,7 +459,7 @@ def _string_path(i, sy):
     # dead end: break edge -> down to the wrap rod -> N turns around it -> out to the clamp
     ny, wy = NB.wrap_y(i)
     rx, rz = D.NUT_BLOCK_X + NB.ROD_X, D.STRING_Z + NB.ROD_Z
-    hr = NB.ROD_D / 2.0 + rad + 0.05                       # helix radius: the string ON the rod
+    hr = NB.wrap_radius(i)                                 # helix radius: nut_block owns it
     # THE WRAP IS ON THE ROD'S UNDERSIDE (-Z), so the path has no reversal left in it:
     # the string leaves the dowel already descending, becomes TANGENT to the wrap circle
     # on the way down, goes round underneath, and leaves at the bottom running straight
@@ -486,9 +486,19 @@ def _string_path(i, sy):
     t_in = cq.Vector(-math.sin(phi), 0.0, math.cos(phi))   # the coil's heading at the touch
     out = out.union(_rod(brk, tang + t_in.multiply(_LAP), rad))
     out = out.union(_wrap_coil(i, rad, hr))
-    out = out.union(_rod(cq.Vector(rx + _LAP, wy, tail_z),   # ...and start the tail early:
-                         cq.Vector(D.NUT_BLOCK_X + NB.TAIL_X, wy, tail_z), rad))
-    out = out.union(_stow_tail(i, rad))
+    # THE TAIL FOLLOWS THE CHANNEL'S OWN CENTRELINE, from nut_block, so the string and the
+    # passage it lives in cannot drift apart -- the same one-description rule the pocket
+    # and the insert follow. It leaves at EXIT_DEG already descending, so there is no
+    # corner here at all: the -X run and the separate stow bore are both gone.
+    ex, ez = NB.exit_dir(i)
+    pts = NB.stow_path(i, (CH.Z_BOT + 8.4) - D.STRING_Z)    # stop above the tongue top
+    x0, z0 = pts[0]
+    prev = cq.Vector(D.NUT_BLOCK_X + x0 - ex * _LAP, wy,    # start INSIDE the coil, or the
+                     D.STRING_Z + z0 - ez * _LAP)           # tangency leaves them unfused
+    for x, z in pts:
+        cur = cq.Vector(D.NUT_BLOCK_X + x, wy, D.STRING_Z + z)
+        out = out.union(_rod(prev, cur, rad))
+        prev = cur
     return out
 
 
@@ -517,35 +527,6 @@ def _wrap_coil(i, rad, hr):
     # to the touch angle is what closes the gap between the straight run and the coil.
     coil = coil.rotate((0, 0, 0), (0, 1, 0), -math.degrees(NB.touch_angle(i)))
     return coil.translate((D.NUT_BLOCK_X + NB.ROD_X, ny, D.STRING_Z + NB.ROD_Z))
-
-
-def _stow_tail(i, rad):
-    """DEMO: the clamped string's free end continuing past the clamp -- flat to the exit-curve
-    start, straight out the -X face at rod height, then looping into the keyhead Z stow bore
-    (face mouth → inward arc → straight down to the bed). Shows where each cut end tucks away."""
-    from . import keyhead_endplate as KE
-    ny = NB.wrap_y(i)[1]                                                # the WRAP's far end
-    cz = (D.STRING_Z + NB.ROD_Z                                         # the tail runs at the rod's
-          + (NB.ROD_D / 2 + D.STRING_GAUGE[i] / 2))                     # +Z TANGENT, not its centre
-    pts = [cq.Vector(D.NUT_BLOCK_X + NB.TAIL_X, ny, cz),                        # off the insert
-           cq.Vector(D.NUT_BLOCK_X + NB.X_BACK, ny, cz)]                # straight out the -X face
-    # the stow bore: -X-face mouth, a 45° inward arc to x=ZHOLE_X, then straight down to the bed
-    R = (KE.ZHOLE_X - KE.XLO) / (1.0 - math.cos(math.radians(45.0)))
-    zj, cx = KE.Z6 - R * math.sin(math.radians(45.0)), KE.ZHOLE_X - R
-    pts.append(cq.Vector(KE.XLO, ny, KE.Z6))                            # bore mouth at the -X face
-    M = 8
-    for k in range(1, M + 1):
-        th = math.radians(45.0 * (1.0 - k / M))                        # 45° → 0° around the arc
-        pts.append(cq.Vector(cx + R * math.cos(th), ny, zj + R * math.sin(th)))
-    pts.append(cq.Vector(KE.ZHOLE_X, ny, CH.Z_BOT + 8.4))              # down the bore, stopping
-    #                                    just above the corner stubs' end-wall TONGUE top
-    #                                    (bed + 8.0): the two +Y-corner bores land on the
-    #                                    keyhead stub's tongue
-    out = None
-    for a, b in zip(pts[:-1], pts[1:]):
-        seg = _rod(a, b, rad)
-        out = seg if out is None else out.union(seg)
-    return out
 
 
 def _pickup_mount_components():
