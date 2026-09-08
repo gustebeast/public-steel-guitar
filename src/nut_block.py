@@ -464,74 +464,61 @@ def slide_insert(i: int) -> cq.Workplane:
     # straight through the winding -- 10 mm^3 of it on the .070. So it is set from the
     # coil's own extent, per string, which is also why it moves with the gauge.
     nx0 = ROD_X + ROD_D / 2 + D.STRING_GAUGE[i] + 0.4
-    # CLIPPED TO THE PLAN. nx0 sits -X of the taper, where the profile has already
-    # narrowed to the clamp lobe -- a neck drawn at the dowel lobe's full width there
-    # juts sideways out of its own slot and into the block (10 mm^3 on string 1).
-    # Intersecting with the plan means the neck can never exceed the part's footprint,
-    # whatever nx0 does as the gauge changes.
-    neck = box_at(INS_X1 - nx0, dw, DIVOT_OFF,
-                  x=(nx0 + INS_X1) / 2, y=dy, z=fz + DIVOT_OFF / 2)
-    body = body.union(neck.intersect(
-        _plan_wire(i).extrude(DIVOT_OFF + 2).translate((0, 0, fz - 1))))
+    # THE NECK FILLS THE WHOLE PLAN, not just the dowel lobe's width (user). It used to be
+    # a box the width of the dowel lobe, clipped to the plan -- so everywhere the plan is
+    # WIDER than that box (the taper, and the clamp lobe on the bass strings, which is the
+    # wider of the two there) the insert stepped down to the flat and left a notch.
+    #
+    # There was never a reason for it: the pocket is the plan extruded, so that notch was
+    # empty slot, not clearance for anything. Filling it is free material exactly where the
+    # part is weakest -- the neck is 8.11 tall standing on a 4.00 body -- and it puts the
+    # insert's own profile alongside the block's ramp instead of a step floating over it.
+    #
+    # ITS -X FACE IS STILL nx0, WHICH IS THE ONE THING HERE THAT IS NOT FREE. The wrap
+    # reaches ROD_X + ROD_D/2 + g on its +X side, and anything -X of that drives through
+    # the winding (10 mm^3 of it on the .070 when this was a plain box). So the neck starts
+    # from the COIL's own extent, per string, and moves with the gauge.
+    neck = (_plan_wire(i).extrude(DIVOT_OFF).translate((0, 0, fz))
+            .intersect(box_at((INS_X1 + 1.0) - nx0, 4000.0, DIVOT_OFF + 2.0,
+                              x=(nx0 + INS_X1 + 1.0) / 2, y=0.0, z=fz + DIVOT_OFF / 2)))
+    body = body.union(neck)
     body = body.cut(cyl_y(DIVOT_D, dw + 2, y0=dy - dw / 2 - 1,
                           x=DOWEL_X, z=fz + DIVOT_OFF))
     return body
 
 
 def insert_pocket(i: int) -> cq.Workplane:
-    """The slot string i's insert rises through: its own PLAN, cut clean through the block
-    from underside to top face.
+    """The slot string i's insert slides in: its PLAN SILHOUETTE, grown by INS_CLR and
+    extruded straight through the block.
 
-    IT HAS TO REACH THE TOP (user). The insert is fitted from below and then rises until
-    the string stops it, so anything left capping it does two bad things at once -- it
-    limits the travel that makes the whole scheme self-referencing, and it is a ceiling
-    over a slot, i.e. an overhang in a part that prints -X -> +X. Running the slot right
-    through removes both, and costs nothing: the material over an insert was doing no
-    work, since what holds the string down is the ROD, not the block.
+    A PRISMATIC SLOT, WITH NO Z VARIATION AT ALL (user), and that is the whole point of
+    it. The insert is not seated in this pocket, it TRAVELS in it -- it is fitted from
+    below and then rises until the wound string stops it, which is what makes the scheme
+    self-referencing. So the pocket cannot be the part's shape at any one height: cut to
+    where the part happens to sit and the part can no longer move, because the first thing
+    it meets on the way up is the ceiling of its own pocket. Only the plan is shared
+    between every position the insert can occupy, so only the plan may be cut.
 
-    The plan is the part's own, grown by INS_CLR, so pocket and insert cannot drift."""
-    # THE POCKET IS THE PART'S OWN PLAN, OFFSET (user). It used to be built from two
-    # boxes -- one per lobe -- which squared off the transition the part tapers through,
-    # so the block kept a step where the insert has a 45 and printed that face over thin
-    # air. Two descriptions of one shape is the bug we keep re-making here; there is only
-    # one now, and offsetting it means the slot tracks any future change to the profile
-    # for free.
-    #
-    # offset2D IS A TRUE OFFSET, which matters on the diagonal: padding the Y bounds by
-    # INS_CLR moves a 45 deg edge only INS_CLR/sqrt(2) away from itself, so the old
-    # rectangles were UNDER-cleared exactly where the taper runs. kind="intersection"
-    # extends the edges to meet rather than rounding the corners, so the pocket is the
-    # profile grown, not the profile blurred.
-    (dy, dw), (cy, cw) = insert_lobes(i)
-    fz  = insert_flat_z(i)
-    lo  = fz - INS_DROP                     # the flat at its lowest adjustment
-    z0  = lo - INS_H - 1.0                  # ...and the body hanging under it
-    z1  = NUT_TOP + 1.0
-    # a FUNCTION, not a value: extruding a Workplane consumes its pending wires, and
-    # this profile is extruded twice.
-    grown = lambda: _plan_wire(i).offset2D(INS_CLR, kind="intersection")
+    (I got this wrong in the obvious direction: the body's top face IS the flat, so
+    nothing of the part is above it, and cutting only where material actually is looked
+    like the tidy answer. It is the answer for a part that is placed. This one slides.)
 
-    # THE POCKET IS THE PART SWEPT THROUGH ITS TRAVEL, NOT THE PLAN EXTRUDED. Extruding
-    # the whole plan the block's full height cut a slot the width of the CLAMP LOBE all
-    # the way to the top -- and nothing of the insert is up there. Only the neck is: the
-    # body's top face IS the flat, which sits at the block's base plane, so above that the
-    # part is a single narrow finger reaching up to the cradle.
-    #
-    # The cost of the old version was structural, not cosmetic. The clamp lobes are wide
-    # and the walls between them are all that is left of the block in a merged bay -- so
-    # taking those walls to full height, with the trough having already taken the floor
-    # and the sky the roof, left them attached to nothing. Two of them came out as loose
-    # 23 mm^3 fragments at the bass end. Cutting only where the part actually goes leaves
-    # a band of solid block above the flat that ties every wall back to the end walls.
-    body = grown().extrude(fz - z0).translate((0, 0, z0))
-    # ...and the neck, from the flat's LOWEST travel right through the top face. Built the
-    # same way the part's neck is -- same nx0, clipped to the same profile -- so the two
-    # move together; only the clearance differs.
-    nx0 = ROD_X + ROD_D / 2 + D.STRING_GAUGE[i] + 0.4 - INS_CLR
-    x1 = INS_X1 + INS_CLR
-    neck = box_at(x1 - nx0, dw + 2 * INS_CLR, z1 - lo,
-                  x=(nx0 + x1) / 2, y=dy, z=(lo + z1) / 2)
-    return body.union(neck.intersect(grown().extrude(z1 - lo).translate((0, 0, lo))))
+    IT ALSO HAS TO REACH THE TOP. Anything left capping the slot limits the same travel,
+    and it is a ceiling over a slot -- an overhang in a part that prints -X -> +X. The
+    material over an insert was doing no work either way: what holds the string down is
+    the ROD, not the block.
+
+    THE SILHOUETTE IS _plan_wire's, not a bounding box and not a second description of
+    it. The neck is already clipped to that same profile in slide_insert, so the plan IS
+    the part's full X/Y extent, and offsetting it is enough. offset2D is a TRUE offset,
+    which matters on the diagonal: padding the Y bounds instead would move a 45 deg edge
+    only INS_CLR/sqrt(2) away from itself and under-clear the taper exactly where the part
+    is tightest. kind="intersection" extends the edges to meet rather than rounding the
+    corners, so the slot is the profile grown, not the profile blurred."""
+    z0 = insert_flat_z(i) - INS_DROP - INS_H - 1.0   # the body at its lowest adjustment
+    z1 = NUT_TOP + 1.0
+    return (_plan_wire(i).offset2D(INS_CLR, kind="intersection")
+            .extrude(z1 - z0).translate((0, 0, z0)))
 
 
 def _lane(i: int):
@@ -553,10 +540,15 @@ def _lane(i: int):
 # the slicer would have printed as debris rattling around inside the part.
 #
 # So the trade at s8-s9 is a 0.98 web against no wall. 0.98 is a printable bead, and
-# MIN_WALL_2P is the target to PREFER, not a floor to delete material under. Below the
-# one-bead floor the fin really is unprintable and the merge is still right: s9-s10's
-# lanes actually OVERLAP by 0.33, so that one still merges -- and its wall survives
-# anyway, carried round by the web at s8-s9 that this threshold puts back.
+# MIN_WALL_2P is the target to PREFER, not a floor to delete material under.
+#
+# s9-s10 IS NOT RECOVERABLE THIS WAY and the threshold is not what is stopping it: those
+# two coils are 0.67 mm apart with no clearance allowed for at all, so there is no web to
+# keep at any threshold. That pair still merges, and the wall between their two insert
+# pockets is still orphaned -- 24 mm^3 of it. Fixing that means shortening the bass coils
+# (fewer turns, i.e. less than CLAMP_WIDTHS of clamp) or giving up the wall and letting
+# the two inserts locate against each other. Both are the user's call, so neither is
+# taken here; see the open item rather than reading this gate as clean.
 #
 # It buys back stiffness too, which was not the point but is worth recording: the
 # unsupported rod span drops from 22.74 to 16.69 mm and the bending stress with it,
@@ -794,6 +786,29 @@ def _all_dowels() -> cq.Workplane:
     return out
 
 
+# ── THE RAMP CARRIES ON (user) ─────────────────────────────────────────────
+# The trough's teardrop puts a 45 deg flank under each lane, rising toward +X and ending
+# at the apex. The sky cut used to flatten everything off at ROD_Z from there to the
+# face, which threw away the one thing that ramp was good for: every millimetre of height
+# it reaches +X of the trough is another millimetre of GUIDE around the insert sliding
+# through it. So the ramp simply keeps going at the same 45, and the sky's floor follows
+# it rather than cutting across it.
+#
+# IT FLATTENS OFF 0.8 SHORT OF THE FACE (user). Run at 45 right up to the +X face and the
+# material arrives as a feather edge -- a corner thinner than the nozzle can lay, which
+# prints as a ragged lip on the face the inserts bear against. One bead of flat gives that
+# edge a thickness the slicer can actually build.
+#
+# Nothing is ADDED to do this: the block is still one prism and this is still only a cut,
+# just a cut that stops where the ramp wants to be (user's rule -- grow the prism and cut
+# away, never glue a wedge on afterwards).
+RAMP_X0 = ROD_X + BAY_D / 2 * _APEX              # the teardrop's apex: where the flank ends
+RAMP_X1 = X_FRONT - D.MIN_WALL                   # ...and where it flattens, a bead short
+RAMP_Z1 = ROD_Z + (RAMP_X1 - RAMP_X0)            # 45 deg: the rise IS the run
+assert RAMP_Z1 < SLOT_Z0, (
+    f"the ramp's crest ({RAMP_Z1:+.2f}) reaches the string slot's floor ({SLOT_Z0:+.2f})")
+
+
 def _all_skies() -> cq.Workplane:
     """Open every lane to the sky, from the ROD'S CENTRE-PLANE up. Fused, cut once.
 
@@ -805,18 +820,26 @@ def _all_skies() -> cq.Workplane:
         is no overhang to argue about. Cut from any higher and the trough's own crown
         closes over the opening; cut from lower and material is spent for nothing.
 
+    ...and +X OF THE TROUGH ITS FLOOR RIDES THE RAMP instead, climbing at the same 45 the
+    teardrop's flank does and levelling off RAMP_X1. That is a floor that only ever gets
+    HIGHER going +X, so the no-narrowing rule still holds and the lane is still open to
+    the sky the whole way; it just stops throwing away the ramp. See the RAMP_ block.
+
     ITS -X EDGE IS THE TEARDROPS' CENTRE (user), i.e. the rod axis, not the trough's -X
     wall: the lane opens over the +X half only and the -X half keeps its roof.
 
     The FINGERS are untouched -- they sit between lanes, keep their full height, and are
-    what still captures the rod, since their material stands above the bore's top (0.30)
-    up to the cap at 1.90. So the rod cannot lift out even though its lane is open."""
+    what still captures the rod, since their material stands above the bore's top up to
+    the cap. So the rod cannot lift out even though its lane is open."""
+    top = NUT_TOP + 1.0
+    xe = X_FRONT + 1.0
+    prof = [(ROD_X, ROD_Z), (RAMP_X0, ROD_Z), (RAMP_X1, RAMP_Z1),
+            (xe, RAMP_Z1), (xe, top), (ROD_X, top)]
     out = None
     for i in range(D.N_STRINGS):
         y0, y1 = bays()[i]
-        k = box_at(X_FRONT - ROD_X, y1 - y0, (NUT_TOP + 1.0) - ROD_Z,
-                   x=(ROD_X + X_FRONT) / 2, y=(y0 + y1) / 2,
-                   z=(ROD_Z + NUT_TOP + 1.0) / 2)
+        k = (cq.Workplane("XZ").polyline(prof).close()
+             .extrude(y1 - y0).translate((0.0, y1, 0.0)))
         out = k if out is None else out.union(k)
     return out
 
