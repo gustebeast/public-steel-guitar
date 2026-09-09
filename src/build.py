@@ -403,7 +403,7 @@ def _string_components(i):
     # all tensioners shown FULLY LOOSE (splice take-up gap open); the clamp's belt-position vs the
     # carriage is a separate question (see the belt-travel note) — held at the flat-zone reference here.
     for _nm, _shp in BTn.clamp_components(with_lifters=(i == D.N_STRINGS - 1)):
-        out.append((f"belt_tensioner_{_nm}_{i}", cq.Workplane("XY").add(_shp.val().moved(cloc))))
+        out.append((f"{_nm}_{i}", cq.Workplane("XY").add(_shp.val().moved(cloc))))
     # string: rises from the anchor tangent to the bearing's +X extent, wraps 90°
     # over the top, then runs the speaking length to the nut block.
     out.append((f"string_{i}", _string_path(i, sy)))
@@ -1094,7 +1094,7 @@ def _tensioner_coupon_components():
     Z), the M4 head on half-A's −X face, the insert used as a plain EXTERNAL nut on half-B's +X face.
     Reuses the pre-built clamp parts (no extra geometry) so it can't drift from the real placements."""
     o = cq.Vector(150.0, 90.0, 40.0)
-    return [(f"belt_tensioner_{nm}_coupon", cq.Workplane("XY").add(shp.val().translate((o.x, o.y, o.z))))
+    return [(f"{nm}_coupon", cq.Workplane("XY").add(shp.val().translate((o.x, o.y, o.z))))
             for nm, shp in BTn.clamp_components(with_lifters=True)]
 
 
@@ -1125,17 +1125,25 @@ _COLORS = {
     "bridge_endplate": (0.39, 0.58, 0.93),   # PETG-GF — load-critical
     "keyhead_endplate": (0.42, 0.50, 0.62),   # PETG-GF — keyhead endplate + nut block (merged)
     # belt-tension clamp — real per-string parts (PETG halves, PCTG 0.2 mm lifter, steel/brass fasteners)
-    "belt_tensioner_half_a": (0.95, 0.55, 0.15),
-    "belt_tensioner_half_b": (0.90, 0.50, 0.12),
-    "belt_tensioner_lifter_a": (0.85, 0.65, 0.30),
-    "belt_tensioner_lifter_b": (0.85, 0.65, 0.30),
+    # One HUE PER COMPONENT. half_a/half_b are the same printed SKU (half-B is it
+    # turned 180 about Z) and so were the two lifters, so the table gave the pair
+    # members the same -- or near-identical -- colour. That is true about the SKU and
+    # useless in a view: the clamp read as one orange mass with no way to see which
+    # end takes the screw head, which takes the nut, or which well each bar sits in.
+    # The colours here distinguish POSITION, not part number.
+    "belt_tensioner_half_a": (0.95, 0.55, 0.15),   # -X half: takes the M4 head
+    "belt_tensioner_half_b": (0.20, 0.55, 0.85),   # +X half: takes the insert-nut
+    "belt_tensioner_lifter_a": (0.30, 0.75, 0.40),  # bar in half-A's well
+    "belt_tensioner_lifter_b": (0.75, 0.35, 0.75),  # bar in half-B's well
     "belt_tensioner_screw":  (0.55, 0.55, 0.58),   # steel M4
     "belt_tensioner_insert": (0.72, 0.60, 0.30),   # brass insert (used as an external nut)
     # …and the parked assembled coupon (green = clearly a reference, not a product part)
+    # The coupon keeps its own COOL family so the parked copy never reads as a real
+    # clamp, but spread apart for the same reason as above.
     "belt_tensioner_half_a_coupon": (0.20, 0.70, 0.45),
-    "belt_tensioner_half_b_coupon": (0.30, 0.80, 0.55),
-    "belt_tensioner_lifter_a_coupon": (0.40, 0.85, 0.65),
-    "belt_tensioner_lifter_b_coupon": (0.40, 0.85, 0.65),
+    "belt_tensioner_half_b_coupon": (0.15, 0.50, 0.75),
+    "belt_tensioner_lifter_a_coupon": (0.50, 0.85, 0.35),
+    "belt_tensioner_lifter_b_coupon": (0.60, 0.55, 0.85),
     "belt_tensioner_screw_coupon":  (0.55, 0.55, 0.58),
     "belt_tensioner_insert_coupon": (0.72, 0.60, 0.30),
     "screw_pulley":    (0.00, 0.55, 0.55),
