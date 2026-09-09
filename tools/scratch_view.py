@@ -188,8 +188,24 @@ def _crop_bridge():
     return (90.0, 130.0, z1 - z0, D.BRIDGE_AXLE_X, 0.0, (z0 + z1) / 2)
 
 
+def _crop_screw_rows():
+    """The +X end INCLUDING the drivetrain -- the two Tr8 screw rows and the endplate
+    that hosts them.
+
+    Distinct from _crop_bridge, which deliberately stops at the deck to frame the bearing
+    arms and leaves the drivetrain out. The work here is the opposite: the rows, their
+    nuts, bearings and guide rods, and how the endplate closes around them. So Z runs
+    from under the drive pulleys to over the strings."""
+    from src import dimensions as D
+    x0, x1 = D.BRIDGE_BASE_X0 - 25.0, D.BRIDGE_BASE_X1 + 25.0
+    z0, z1 = D.SCREW_BOT_Z - 12.0, D.STRING_Z + 10.0
+    return (x1 - x0, D.STRING_FIELD_W + 40.0, z1 - z0,
+            (x0 + x1) / 2, 0.0, (z0 + z1) / 2)
+
+
 CROPS = {"leg_station": _crop_leg_station, "belt_run": _belt_run_box,
-         "keyhead": _crop_keyhead, "bridge": _crop_bridge}
+         "keyhead": _crop_keyhead, "bridge": _crop_bridge,
+         "screw_rows": _crop_screw_rows}
 # ─────────────────────────────────────────────────────────────────────────────
 
 
