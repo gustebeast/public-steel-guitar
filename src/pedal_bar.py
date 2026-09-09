@@ -72,12 +72,20 @@ Drawn SEATED."""
 
 from __future__ import annotations
 
+import math
+
 import cadquery as cq
 
 from cadkit.joinery import PrintSpec, joint
 from . import dimensions as D
 from .helpers import box_at, cyl, cyl_y
 from .chassis import LEG_STATIONS_X, LEG_Y
+# The redesigned leg owns the SECTION -- profile, fit and engagement all come from
+# there, so the mortise in this bar cannot drift from the tenon that enters it.
+# Safe to import at module level: leg_stack reaches back for pedal_bar only from
+# inside a function (its context poser), so there is no cycle.
+from .leg_stack import (ENGAGE as LS_ENGAGE, mortise_cutter as LS_mortise,
+                        TEN_W as LS_TEN_W, FIT as LS_FIT)
 from . import legs as LG
 from . import latch as LT
 from .legs import _house
@@ -286,6 +294,117 @@ assert (LID_ZC + LID_FOOT_HW - TROUGH_Z1) >= LOCK_D + 2 * 0.8 - 1e-6, (
                                    # and detents extraction (locks BOTH lid
                                    # pieces: B butts A). No screws anywhere.
 
+# ── MORTISE TOWER (the redesigned leg's end of the chain) ───────────────────
+# The bar used to present a male SPIGOT and the leg swallowed it. The redesigned
+# leg (src.leg_stack) is a chain of through-mortise sleeves joined by FLOATING
+# TENONS, so the adjust tenon arrives here as a male -- and the bar has to be the
+# female. This is that end, and it is per-station on purpose: leg_stack redesigns
+# ONE leg (the -X/+Y TRRS station), so FEET[1] gets the mortise and FEET[0] keeps
+# the old spigot until its leg is redone too.
+#
+# WHAT SETS THE TOWER'S SIZE, because it is NOT the mortise. Three things live in
+# this tower and the mortise is the smallest of them:
+#
+#   mortise    the tenon is 24.0 across flats, 24.6 with the slide fit, used at
+#              45 degrees -- so its apex reaches 17.4 and its flats sit 12.3 off
+#              the axis.
+#   TRRS       a 9.6 jack body needs ~9.6 + walls of clear material.
+#   LATCH      MEASURED off the built mechanism, not guessed: src.latch spans
+#              24.8 in Y from its tunnel back wall to its outer face (slider
+#              20.8 + the spring reacting 2.4 behind it + a 3.2 cover). That is
+#              the whole stack, and mirrored onto a mortise it must ALL fit
+#              outboard of the tenon, with the hook tip reaching HOOK_ENGAGE
+#              (2.4) inside. Required room off the tenon's surface: 22.4.
+#
+# A tower at the leg's own 44.8 gives 5.0 of wall at the face centres -- nowhere
+# near it, and this is exactly why the latch's handedness mattered: on a tenon
+# the mechanism buries itself in the section, on a mortise it has only the wall.
+#
+# THE 45 DEGREES IS WHAT PAYS FOR IT. The tenon is rotated, so its FLATS face the
+# tower's CORNERS and its apexes face the face centres. The corners are the deep
+# direction (half-diagonal, not half-width) AND the direction where the tenon
+# presents a flat -- the ideal surface for a hook pocket. So both the latch and
+# the TRRS jack go in corners, and the tower only has to be big enough for the
+# corner to be deep enough.
+TOWER_W = 64 * D.BEAD              # 51.2 across flats. Chosen so the corner room
+                                   # clears the latch stack: half-diagonal 36.2
+                                   # minus the tenon's 12.3 flat = 23.9 against
+                                   # the 22.4 needed, 1.5 spare. 49.6 also fits
+                                   # but leaves 0.37, which is not margin on a
+                                   # mechanism that is not designed yet.
+TOWER_FLOOR = 4 * D.BEAD           # 3.2 the mortise's blind floor. BLIND, not
+                                   # through: this joint is NOT height-adjustable
+                                   # (user) -- the floor is the fixed, repeatable
+                                   # installation stop the tenon bottoms on. It
+                                   # works in compression against the bar prism
+                                   # right beneath it.
+TOWER_TOP = BAR_H + LS_ENGAGE + TOWER_FLOOR    # 71.1 the MOUTH plane, in bar
+                                   # coordinates. This is the datum leg_stack
+                                   # poses the bar from -- the tenon's far end
+                                   # lands on the floor, so the mouth sits
+                                   # ENGAGE above it.
+TOWER_CORNER = TOWER_W / 2.0 * math.sqrt(2.0)  # 36.2 axis -> corner
+
+
+def _corner(d: float, sx: float, sy: float):
+    """A point `d` out along one of the tower's diagonals, where the tenon shows
+    a flat and the wall is deepest."""
+    return (sx * d / math.sqrt(2.0), sy * d / math.sqrt(2.0))
+
+
+# The tenon's FLAT, measured off leg_stack's own numbers rather than typed in:
+# rotated 45 degrees, the octagon's flats face the corners at half its across-flats.
+TEN_FLAT = (LS_TEN_W + 2 * LS_FIT) / 2.0       # 12.30 axis -> tenon flat
+TRRS_BORE_D = 14 * D.BEAD          # 11.2 -- the CA-354S body way, the Ø11 the old
+                                   # axial route already used, rounded onto the grid
+TRRS_CORNER_D = TEN_FLAT + 2 * D.MIN_WALL_2P + TRRS_BORE_D / 2.0
+LATCH_CORNER = (-1, -1)            # reserved: the diagonal the mirrored latch
+                                   # takes. Opposite the TRRS so neither has to
+                                   # dodge the other.
+
+# THE THREE THINGS THE TOWER MUST HOLD, each asserted against the number that
+# actually constrains it. These are what stop the tower being quietly shrunk back
+# to the leg's own width, which does not work and does not look like it fails.
+LATCH_STACK = LT.FACE_Y - LT.BACK_Y            # 24.80 tunnel back -> outer face,
+                                               # read off latch.py, not guessed
+LATCH_ROOM = TOWER_CORNER - (TEN_FLAT - LT.HOOK_ENGAGE)
+assert LATCH_ROOM >= LATCH_STACK, (
+    "no room for the mirrored latch: the corner gives %.2f off the tenon and the "
+    "mechanism is %.2f deep. Widen TOWER_W or make the latch shallower."
+    % (LATCH_ROOM, LATCH_STACK))
+assert TOWER_CORNER - TRRS_CORNER_D >= TRRS_BORE_D / 2 + D.MIN_WALL_2P, (
+    "the TRRS bore breaks out of the tower's corner")
+assert TOWER_W / 2 - TRRS_CORNER_D / math.sqrt(2) >= TRRS_BORE_D / 2 + D.MIN_WALL_2P, (
+    "the TRRS bore breaks out of the tower's flat face")
+# and the mortise itself must not eat the bar underneath it
+assert TOWER_TOP - LS_ENGAGE >= BAR_H + D.MIN_WALL_2P, (
+    "the blind mortise floor is inside the bar prism")
+
+
+def _mortise_tower(lx: float, wired: bool) -> cq.Workplane:
+    """The FEMALE tower: a TOWER_W prism carrying a blind octagon mortise that
+    the leg's adjust tenon drops into. Authored at the origin and rotated 180
+    like the spigot towers, so the outboard face stays outboard.
+
+    Prints WITH the bar, which lies on its -Y face -- and that is what the 45
+    buys again: the mortise's roof is two 45-degree flanks rather than a flat
+    bridge, so a 40-deep blind pocket needs no support. The one ceiling in it is
+    the FLOOR seen from the mouth, and that is a floor, not a ceiling.
+    """
+    b = box_at(TOWER_W, TOWER_W, TOWER_TOP - BAR_H, z=(BAR_H + TOWER_TOP) / 2)
+    # the mortise: ENGAGE deep from the mouth, overshooting the top so the cut
+    # opens cleanly, floored TOWER_FLOOR above the bar
+    b = b.cut(LS_mortise(LS_ENGAGE + 2.0).translate((0, 0, TOWER_TOP - LS_ENGAGE)))
+    if wired:
+        # TRRS jack, moved OUT OF THE AXIS. It used to thread up the middle of
+        # the spigot -- which is now the mortise, so it goes in a corner.
+        cx, cy = _corner(TRRS_CORNER_D, +1, +1)
+        b = b.cut(cyl(TRRS_BORE_D, TOWER_TOP - BAR_H + 2.0, z=BAR_H - 1.0)
+                  .translate((cx, cy, 0)))
+    b = b.rotate((0, 0, 0), (0, 0, 1), 180).translate((lx, YC, 0))
+    return b
+
+
 def _stub_tower(lx: float, wired: bool, latch: bool = False) -> cq.Workplane:
     """FUSED stub tower (user: single printed piece — the tenon is part of
     the bar): BLK_W-sq button body (19..43 — slimmed with the leg blocks
@@ -336,28 +455,27 @@ def _bar_full() -> cq.Workplane:
     body = box_at(BAR_X1 - BAR_X0, BAR_Y1 - BAR_Y0, BAR_H,
                   x=(BAR_X0 + BAR_X1) / 2, y=(BAR_Y0 + BAR_Y1) / 2, z=BAR_H / 2)
     body = body.union(_stub_tower(FEET[0][0], False, latch=(LATCH_FOOT == 0)))
-    body = body.union(_stub_tower(FEET[1][0], True,  latch=(LATCH_FOOT == 1)))
+    # FEET[1] is the -X/+Y TRRS station -- the ONE leg src.leg_stack redesigns, so
+    # it is the one end that has flipped to a mortise. FEET[0] keeps the spigot
+    # until its leg is redone; the two towers are deliberately different right now
+    # and this is the line that says so.
+    body = body.union(_mortise_tower(FEET[1][0], True))
     body = body.cut(_foot_mortise_cutter(FEET[0][0]))
     body = body.cut(_foot_mortise_cutter(FEET[1][0]))
-    # wired tower's ways — cut AFTER the union (they pierce both the tower
-    # and the bar prism beneath it): captive plug seat, Ø8 down-way to the
-    # foot-mortise access, Ø8 side way to the trough
-    wlx = FEET[1][0] + 5.0        # TRRS axis: +5 in x (the old bolt owned
-    #                               the other x side) and -13 in world y — the
-    #                               fat flare band of the tower's octagon
-    #                               (authored (-5, +13), tower rotated 180)
-    wly = YC - LG.TRRS_DY
-    body = body.cut(cyl(9.4, 1.7, z=STUB_Z0 + 37.4).translate((wlx, wly, 0)))
-    body = body.cut(cyl(11.0, 31.2, z=STUB_Z0 + 6.3).translate((wlx, wly, 0)))
-    #                    ^ way starts +6.3: the press retainer (bottom +6.4)
-    #                      sits fully in Ø11 (probe-caught collar burial)
-    body = body.cut(cyl(8.0, STUB_Z0 + 9.0, z=-0.5).translate((wlx, wly, 0)))
-    # side way to the trough: at y wly+3.5 the Ø8 bore overlaps BOTH the
-    # down-way column (wly±4) and the trough band (YC-10..YC+6.5) — a
-    # snaked but continuous cable passage
+    # WIRED TOWER'S WAYS. The old route threaded the jack straight UP THE AXIS of
+    # the spigot; that axis is now the mortise, so the jack moved into a corner
+    # (_mortise_tower) and its cable drops from the corner bore into the trough.
+    # Cut AFTER the union because it pierces both the tower and the bar beneath.
+    cx, cy = _corner(TRRS_CORNER_D, +1, +1)
+    # the tower is authored at the origin and rotated 180, so the corner lands
+    # mirrored about the station -- take it through the same turn
+    wlx, wly = FEET[1][0] - cx, YC - cy
+    # down-way: corner bore -> the trough band, opening out the bar's underside
+    # for assembly access the way the old foot-mortise route did
+    body = body.cut(cyl(8 * D.BEAD, BAR_H + 2.0, z=-1.0).translate((wlx, wly, 0)))
+    # side way into the trough itself, along -Y
     body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        4.0, 28.0, cq.Vector(wlx - 2.0, wly + 3.5, 11.0),
-        cq.Vector(1, 0, 0))))
+        4.0, 24.0, cq.Vector(wlx, wly, BAR_H / 2.0), cq.Vector(0, 1, 0))))
 
     # wiring TROUGH — now opens +Y (the top of the print), directly behind the
     # groove floor and exactly as tall in Z as the dovetail's foot, so the two

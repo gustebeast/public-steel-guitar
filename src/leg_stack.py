@@ -326,7 +326,7 @@ def body_stub_context():
 # downstream reads it.
 ADJ_TEN_Z0 = ADAPT_L + FIX_L + ADJ_L - ENGAGE   # 436.8 tenon's top (buried end)
 ADJ_TEN_Z1 = ADJ_TEN_Z0 + ADJ_TEN_L             # 688.8 tenon's far end, at the bar
-BAR_SEAT = ADJ_TEN_Z1 - ENGAGE                  # 648.8 the bar's mating plane: the
+BAR_SEAT = ADJ_TEN_Z1 - ENGAGE                  # 648.8 the bar's MOUTH plane: the
                                                 # tenon buries ENGAGE into the bar's
                                                 # tower, the same rule as every other
                                                 # joint in the chain
@@ -343,8 +343,11 @@ def pedal_bar_context():
     instrument via build.PEDAL_LIFT_DZ, which is keyed to the OLD leg stack
     (Z_BOT - LEG_HEIGHT + legs.FOOT_H). That number knows nothing about this
     chain, which is why the bar rendered adrift of the tenon. Here it is placed
-    the other way round: the bar's tower seat plane (pedal_bar.STUB_Z0) is put on
-    BAR_SEAT, so moving the height adjustment MOVES THE BAR, as it must.
+    the other way round: the bar's mortise MOUTH (pedal_bar.TOWER_TOP) is put on
+    BAR_SEAT, so moving the height adjustment MOVES THE BAR, as it must. The tenon
+    then runs ENGAGE past the mouth and bottoms on the mortise's blind floor --
+    which is the fixed, repeatable install stop for this joint (user: the height
+    adjustment happens at the OTHER end of this tenon, not here).
 
     Returned in the LEG's own frame (+Z away from the instrument), which is
     upside down relative to the instrument -- hence the 180 about X. The station
@@ -356,7 +359,7 @@ def pedal_bar_context():
     from . import pedal_bar as PB
 
     lx, ly = CH.LEG_STATIONS_X[1], CH.LEG_Y[0]
-    dz = -(BAR_SEAT + PB.STUB_Z0)
+    dz = -(BAR_SEAT + PB.TOWER_TOP)
 
     parts = []
     for n, wp in PB.assembly_parts():
