@@ -443,7 +443,10 @@ def residual(i: int) -> float:
 #     flat        = ROD_Z - ROD_D/2 - g      the wrap's lowest surface, where it bears
 #     dowel centre= -g - PIN_D/2             gauged, so string tops stay coplanar
 #     difference  = ROD_D/2 - PIN_D/2 - ROD_Z = 0.621, with no g in it
-INS_CLR   = 0.3                                 # Y clearance in its pocket, each side
+INS_CLR   = 0.2                                 # Y clearance in its pocket, each side
+                                                # (0.3 before: see TAPER_TAN, where every
+                                                # 0.1 of it comes straight off the wall
+                                                # between neighbouring pockets)
 INS_W     = D.NUT_PITCH - 2 * INS_CLR           # 5.9 wide -- the pitch, less its slip fit
 INS_DROP  = 4 * D.BEAD                          # 3.2: how far below its bearing height an
                                                 # insert must be able to sit. At the
@@ -466,7 +469,10 @@ INS_X1    = X_FRONT                             # FLUSH with the block's +X face
 # ON THE GRID, and rounded the safe way. The derivation is still the trough's own wall,
 # so this tracks BAY_R, but ROD_D/2 drags 2.5 into it and the result landed on 13.25
 # beads. Rounding UP (toward +X) can only thicken that wall, never thin it.
-INS_X0    = math.ceil((ROD_X - BAY_R + D.MIN_WALL) / D.BEAD) * D.BEAD
+# -X END: far enough back to clear the fattest winding, on the grid, rounded the safe
+# way (DOWN, i.e. -X: rounding the other way would pinch the coil).
+INS_X0    = math.floor((ROD_X - ROD_D / 2 - max(D.STRING_GAUGE) - D.MIN_WALL)
+                       / D.BEAD) * D.BEAD
 TAIL_X    = INS_X0                              # where the tail leaves the insert and
                                                 # runs on -X to its stow bore
 
@@ -507,11 +513,12 @@ def clamp_y(i: int) -> float:
 # what used to be per-string was a POCKET DEPTH differing by 0.025 mm, which no printer
 # here can hold. What is per-string now is a Y layout differing by millimetres, which any
 # printer holds trivially. The precision moved off the machine and onto the string.
-INS_STEP_X  = (DOWEL_X + ROD_X) / 2.0           # -3.4, where the plan steps
+INS_STEP_X  = (DOWEL_X + ROD_X) / 2.0           # (unused: the step is derived in _plan)
 # Both lobes are the FEATURE plus a hair, not a round number -- the padding is wall
 # taken from the neighbour, and at the bass end there is none to spare. 4.3 puts the
 # dowel-lobe wall on the 1.6 two-bead target exactly.
 INS_LOBE_W  = PIN_L + 0.3                       # 4.3, the dowel lobe
+
 
 
 # SKU B's insert is a PITCH WIDE and butts its neighbours. That is what replaces the
@@ -543,6 +550,56 @@ def _clr(i: int) -> float:
     return INS_CLR if i < N_FINGERED else BASS_CLR
 
 
+# ── HOW WIDE THE CLAMP LOBE HAS TO BE: the CONTACT, not the lane ───────────
+# It was the lane less its pocket clearance, which made the pocket exactly as wide as the
+# lane and the wall between neighbours exactly MIN_WALL_2P -- on the STRAIGHT sections.
+# With nothing spare there, the taper had nowhere to take its cosine from and the finger
+# came out at 0.96 (user).
+#
+# The lane is what the COIL needs; the lobe only has to cover where the flat actually
+# TOUCHES that coil, which is a good deal narrower -- 3.21 against the lane's 4.9,
+# because the contact is the turns that cross the bottom tangent, not the whole winding.
+# Sizing it to the contact hands the difference back as wall, and it is measured over
+# every string in the zone so a gauge change re-derives it rather than silently eating
+# the margin.
+_CT = [(clamp_y(i) + clamp_span(i) / 2 - D.nut_y(i),
+        clamp_y(i) - clamp_span(i) / 2 - D.nut_y(i)) for i in range(N_FINGERED)]
+CLAMP_PAD = 0.2                                 # each side of the contact
+CLAMP_HI = max(h for h, _ in _CT) + CLAMP_PAD
+CLAMP_LO = min(l for _, l in _CT) - CLAMP_PAD
+CLAMP_W = CLAMP_HI - CLAMP_LO
+CLAMP_C = (CLAMP_HI + CLAMP_LO) / 2.0
+assert CLAMP_HI <= LANE_HI and CLAMP_LO >= LANE_LO, (
+    "the clamp lobe has grown outside the lane the coil was fitted into")
+
+# ── HOW SHALLOW THE PLAN'S TAPER HAS TO BE ─────────────────────────────────
+# The taper used to be 45 deg because that is the steepest a -X -> +X print will carry.
+# But steepest is not free: two neighbouring plans put two PARALLEL diagonals either side
+# of the finger between them, and the perpendicular distance between parallel diagonals is
+# only cos(theta) of their Y gap. At 45 the 2.2 gap became 1.556, and the two pocket
+# clearances took it to 0.96 -- a one-bead finger where the design calls for two.
+#
+# So the angle is derived from the WALL instead, and 45 becomes the limit it never
+# reaches rather than the value it takes:
+#
+#     wall = gap * cos(theta) - 2 * INS_CLR  >=  MIN_WALL_2P
+#
+# A shallower taper is strictly better for printing as well -- material arrives more
+# gradually, not less -- so the only thing it costs is X, and the run is short enough to
+# finish before the dowel's cradle needs full lobe width.
+#
+# INS_CLR pulls its weight here twice over: it comes off the wall directly AND it raises
+# the cosine the taper has to beat. At 0.3 there is no solution at all (the budget is
+# 6.5 = 4.3 + 0.6 + 1.6 with nothing spare, so cos(theta) would have to exceed 1); at
+# 0.2 the taper comes out around 25 deg.
+TAPER_GAP = D.NUT_PITCH - max(INS_LOBE_W, CLAMP_W)   # the Y gap on the straights
+_TAPER_COS = (D.MIN_WALL_2P + 2 * INS_CLR) / TAPER_GAP
+assert _TAPER_COS < 1.0, (
+    f"no taper angle can hold a {D.MIN_WALL_2P} wall: the Y gap is {TAPER_GAP:.2f} and "
+    f"the two clearances alone take {2 * INS_CLR:.2f} of it")
+TAPER_TAN = math.sqrt(1.0 - _TAPER_COS ** 2) / _TAPER_COS
+
+
 def insert_lobes(i: int):
     """(dowel lobe, clamp lobe) as (y_centre, width) pairs -- the insert's plan.
 
@@ -551,28 +608,54 @@ def insert_lobes(i: int):
     them all the same one, and the window is guaranteed to contain the coil because
     turns() is what fits the coil into it."""
     if i < N_FINGERED:
-        return ((D.nut_y(i), INS_LOBE_W),
-                (D.nut_y(i) + (LANE_HI + LANE_LO) / 2,
-                 (LANE_HI - LANE_LO) - 2 * INS_CLR))
-    return ((D.nut_y(i), BASS_W),
+        return ((D.nut_y(i), INS_LOBE_W), (D.nut_y(i) + CLAMP_C, CLAMP_W))
+    # SKU B's dowel lobe is OFFSET -Y, not centred. Centred, a 6.4 lobe reaches 3.2 past
+    # the string and left string 7 a 0.79 wall (user). It only has to CONTAIN the dowel,
+    # so it is hung from just clear of the dowel's own end and runs -Y from there: the
+    # bass three still abut each other, and s7 gets its 1.6 back.
+    return ((D.nut_y(i) + INS_LOBE_W / 2 - BASS_W / 2, BASS_W),
             (D.nut_y(i) + BASS_OFF - BASS_W / 2, BASS_W))
 
 
 def _plan(i: int):
     """The insert's PLAN: clamp lobe, a 45 deg taper, then the dowel lobe.
 
-    THE SQUARE STEP HAD TO GO (user). Jumping straight from one lobe's Y band to the
-    other left a finger face standing in mid-air -- printing -X -> +X the block reaches
-    the step and must lay that face with nothing behind it. A 45 deg transition carries
-    each layer on the one before, the same rule the comb braces at the bridge end follow.
-    The taper runs over whichever side moves further, so the steeper side is exactly 45
-    and the other is shallower -- which is the safe direction to err."""
+    ONLY THE -Y EDGE IS TAPERED, and that is not a shortcut -- it is what buys the wall
+    back (user: the fingers between the inserts were 0.96 where they had to be 1.6).
+
+    THE TAPER IS ONLY NEEDED WHERE MATERIAL APPEARS. Printing -X -> +X, both lobes step
+    +Y going forward, so on the plan's -Y side the pocket RETREATS and block material
+    arrives with nothing behind it -- an overhang, and the one the user photographed. On
+    the +Y side the pocket GROWS and block material leaves, which no printer has ever had
+    trouble with. Tapering that side too was symmetry, not physics.
+
+    AND SYMMETRY WAS EXPENSIVE. Two neighbouring plans put two PARALLEL 45 deg edges
+    either side of a finger, and the perpendicular distance between parallel diagonals is
+    only cos 45 of their Y gap: 2.2 becomes 1.556, and the two pocket clearances take it
+    to 0.956. No taper angle fixes that -- the Y budget is 6.5 = 4.3 lobe + 0.6 clearance
+    + 1.6 wall with nothing spare, so any slope at all eats into the wall, and even a
+    zero-clearance 45 leaves 1.556.
+
+    With one edge square the finger is bounded by a diagonal on one side and a HORIZONTAL
+    on the other, and the closest approach between those is the plain Y gap again. The
+    square edge sits at x_e, the far end of the taper, so the neighbour's diagonal has
+    already finished travelling before this edge jumps."""
     (dy, dw), (cy, cw) = insert_lobes(i)
     yhd, yld = dy + dw / 2, dy - dw / 2
     yhc, ylc = cy + cw / 2, cy - cw / 2
-    run = max(abs(yhd - yhc), abs(yld - ylc))          # 45 deg: Y travel == X run
-    x_s = INS_STEP_X
-    x_e = min(x_s + run, INS_X1 - 0.01)
+    # THE TAPER IS SHALLOWER THAN 45, and it has to be (user: the fingers between the
+    # inserts were 0.96 where they had to be 1.6). See TAPER_TAN -- 45 was the STEEPEST
+    # slope printability allows, and taking it was throwing the wall away for nothing.
+    x_e = DOWEL_X - DIVOT_D / 2                        # the cradle's -X edge: the lobe is
+    x_s = x_e - max(abs(yhd - yhc), abs(yld - ylc)) / TAPER_TAN
+    # The taper must finish narrowing +X of the ROD, because the flat bears on the coil's
+    # UNDERSIDE -- a line along Y at about the rod's axis. The coil's +X flank reaches
+    # further than this, but nothing touches the insert there: it is at mid-height, well
+    # above the flat.
+    assert x_s >= ROD_X + ROD_D / 2, (
+        f"string {i + 1}'s taper starts at {x_s:.2f}, -X of the rod's own face "
+        f"({ROD_X + ROD_D / 2:.2f}) -- the clamp lobe would narrow over the contact")
+    assert x_s > INS_X0, f"string {i + 1}'s taper starts -X of the insert itself"
     return [(INS_X0, ylc), (x_s, ylc), (x_e, yld), (INS_X1, yld),
             (INS_X1, yhd), (x_e, yhd), (x_s, yhc), (INS_X0, yhc)]
 
@@ -620,6 +703,41 @@ def slide_insert(i: int) -> cq.Workplane:
     return body
 
 
+# ── THE SOCKET GIVES THE WINDING ITS ROOM (user) ───────────────────────────
+# There used to be a separate cut for that -- a teardrop TROUGH round the rod, per bay,
+# plus a SKY over each bay to take the beam the trough left behind. Between them they
+# opened the whole rod zone, and they are the reason the fingers stopped short: the sky's
+# floor ramped up to RAMP_Z1 and levelled off, so every finger was capped at -4.28 instead
+# of running to NUT_TOP at -2.31.
+#
+# They are gone. The socket the insert rises through is already a full-height opening in
+# the right place; all it lacked was reach. So it grows to swallow the coil as well, and
+# the block becomes four cuts instead of six: sockets, dowels, channels, rod bore.
+#
+# WHAT THE RELIEF HAS TO COVER is the coil's own envelope, and the socket already covers
+# most of it. In X it fell 0.28 short of the fattest winding, which INS_X0 now fixes at
+# source. In Y it covers every SKU A coil outright, and falls about 0.6 short only on the
+# outermost string, whose winding runs on past the insert stack into the outboard air --
+# so that last stretch is relief, not socket, and it is the one place the two differ.
+COIL_CLR_X = D.MIN_WALL                         # air -X of the fattest coil
+# ...and its own Y clearance, which is NOT LANE_CLR. LANE_CLR is what a coil needs beside
+# a printed FINGER, whose position carries print tolerance; this is a coil beside nothing
+# at all -- the relief is a void, and the only thing on the far side of it is the wall to
+# the next socket. Charging the coil 0.5 a side here took three of those walls under
+# MIN_WALL_2P (1.55 to 1.62) for clearance nothing was using.
+COIL_CLR_Y = 0.3
+
+
+def _coil_relief(i: int, z0: float, z1: float) -> cq.Workplane:
+    """The room string i's winding needs, as part of its socket."""
+    g = D.STRING_GAUGE[i]
+    y0, y1 = wrap_y(i)
+    hi, lo = y0 + g / 2 + COIL_CLR_Y, y1 - g / 2 - COIL_CLR_Y
+    x1 = ROD_X + ROD_D / 2 + g + COIL_CLR_X
+    return box_at(x1 - INS_X0, hi - lo, z1 - z0,
+                  x=(INS_X0 + x1) / 2, y=(lo + hi) / 2, z=(z0 + z1) / 2)
+
+
 def insert_pocket(i: int) -> cq.Workplane:
     """The slot string i's insert slides in: its PLAN SILHOUETTE, grown by INS_CLR and
     extruded straight through the block.
@@ -650,8 +768,9 @@ def insert_pocket(i: int) -> cq.Workplane:
     corners, so the slot is the profile grown, not the profile blurred."""
     z0 = insert_flat_z(i) - INS_DROP - INS_H - 1.0   # the body at its lowest adjustment
     z1 = NUT_TOP + 1.0
-    return (_plan_wire(i).offset2D(_clr(i), kind="intersection")
+    sock = (_plan_wire(i).offset2D(_clr(i), kind="intersection")
             .extrude(z1 - z0).translate((0, 0, z0)))
+    return sock.union(_coil_relief(i, z0, z1))
 
 
 def _lane(i: int):
@@ -986,40 +1105,19 @@ def all_pockets() -> cq.Workplane:
 # projection of PRINT_UP onto that section's own normal plane, so the roof is 45 deg
 # supported all the way round the bend rather than only where the axis happens to be
 # square to the bed.
-STOW_D = 6 * D.BEAD                             # 4.8: the bore the cut tail is
-                                                # stowed in -- the .070 plus room to
-                                                # get pliers on the end at restring
+STOW_D = 4 * D.BEAD                             # 3.2: the bore the cut tail is stowed
+                                                # in. It was 6 beads, which is far more
+                                                # than a .070 tail needs (user) -- and an
+                                                # oversized bore here is not free: the
+                                                # teardrop's apex reaches d/2*sqrt(2), so
+                                                # every extra bead of diameter pushes the
+                                                # whole channel another 0.57 -X to keep
+                                                # its wall off the trough.
 STOW_R = 8 * D.BEAD                             # 6.4 bend radius: the string already
                                                 # wraps a 2.5 radius rod, so this is a
                                                 # gentle bend by comparison
-STOW_SEGS = 8                                   # chords in the bend
-
-
-def _tear_seg(d: float, p0, p1, print_up=PRINT_UP) -> cq.Workplane:
-    """One straight teardrop section from p0 to p1, apex toward `print_up`.
-
-    A generalisation of cadkit's teardrop_hole for an axis that is NOT square to the
-    build direction: the apex points along the component of print_up that survives
-    projection into the section's normal plane. Where the axis IS the build direction
-    that component vanishes and the section is drawn round -- correctly, since a hole
-    bored along the build axis needs no teardrop at all."""
-    a = cq.Vector(*p1).sub(cq.Vector(*p0))
-    L = a.Length
-    if L < 1e-9:
-        raise ValueError("zero-length teardrop section")
-    a = a.multiply(1.0 / L)
-    u = cq.Vector(*print_up)
-    u = u.sub(a.multiply(u.dot(a)))                       # print_up, minus its axial part
-    r = d / 2.0
-    if u.Length < 1e-6:                                   # axis == build dir: plain bore
-        return cq.Workplane(cq.Plane(origin=cq.Vector(*p0), normal=a)).circle(r).extrude(L)
-    u = u.multiply(1.0 / u.Length)
-    plane = cq.Plane(origin=cq.Vector(*p0), xDir=u.cross(a), normal=a)
-    k = r / math.sqrt(2.0)
-    bore = cq.Workplane(plane).circle(r).extrude(L)
-    peak = (cq.Workplane(plane)
-            .polyline([(-k, k), (0.0, r * math.sqrt(2.0)), (k, k)]).close().extrude(L))
-    return bore.union(peak)
+STOW_N_SEGS = 8                                   # chords in the bend
+STOW_N_SLABS = 6                                  # Y bands the bore is stepped into
 
 
 WRAP_EPS = 0.05                                 # the coil is drawn a hair off the rod
@@ -1034,9 +1132,65 @@ def wrap_radius(i: int) -> float:
     return ROD_D / 2.0 + D.STRING_GAUGE[i] / 2.0 + WRAP_EPS
 
 
+def _hull2d(pts):
+    """Convex hull (monotone chain) of 2D points, counter-clockwise."""
+    pts = sorted(set((round(x, 9), round(z, 9)) for x, z in pts))
+    if len(pts) < 3:
+        return pts
+
+    def half(ps):
+        out = []
+        for q in ps:
+            while len(out) >= 2:
+                (x1, z1), (x2, z2) = out[-2], out[-1]
+                if (x2 - x1) * (q[1] - z1) - (z2 - z1) * (q[0] - x1) > 1e-12:
+                    break
+                out.pop()
+            out.append(q)
+        return out
+
+    return half(pts)[:-1] + half(pts[::-1])[:-1]
+
+
+def _tear2d(x, z, r):
+    """The teardrop SECTION in the XZ plane about (x, z) -- a circle plus the 45 deg peak,
+    the peak pointing +X. Returned as points, for hulling."""
+    n = 24
+    out = [(x + r * math.cos(2 * math.pi * k / n), z + r * math.sin(2 * math.pi * k / n))
+           for k in range(n)]
+    out.append((x + r * math.sqrt(2.0), z))               # the apex
+    return out
+
+
+# WHERE THE VERTICAL RUN SITS, AND IT IS SET BY THE TROUGH (user). The channel's own
+# TEARDROP TIP is the thing that has to keep its distance, not its centreline: the apex
+# points +X (the build direction) and reaches STOW_D/2 * sqrt(2) off centre, so a channel
+# placed by its axis would put 1.6 of wall on paper and 1.6 - 2.26 of it in the part.
+#
+# It was not being controlled at all before -- the vertical run landed wherever the bend
+# radius happened to leave it, about 1.2 mm of wall, and that is a wall between two large
+# voids with the whole string tension pulling across it.
+# The block only spans down to NUT_BASE, but the channel's BEND finishes below that, so
+# the block's own cut still has to be asked for the full depth -- it is intersected with
+# the prism anyway, and stopping short would round the mouth off inside the part.
+STOW_Z_END = -40.0                              # deep enough to be past the bend
+STOW_KEEP = D.MIN_WALL_2P                       # wall between the channel's tip and the socket
+STOW_APEX = STOW_D / 2.0 * _APEX                # the teardrop's real +X reach
+STOW_X = INS_X0 - STOW_KEEP - STOW_APEX
+assert STOW_X - STOW_D / 2.0 > X_BACK, (
+    f"the stow channel ({STOW_X:.2f}) has walked out through the block's -X face "
+    f"({X_BACK:.2f}) -- the trough or the channel has grown")
+
+
 def stow_path(i: int, z_end: float):
-    """The channel's centreline for string i: the 45 deg run off the rod, the bend to
-    vertical, then straight down to z_end. Returned as points to be chorded."""
+    """The channel's centreline for string i: the 45 deg run off the rod, a straight
+    stretch on that same line, the bend to vertical, then down to z_end.
+
+    THE STRAIGHT STRETCH IS WHAT REACHES STOW_X. The bend alone only carries the bore
+    -X by R*(1 - sin 45) = 0.29 R, so putting the vertical run where the trough wall
+    demands it would need a bend radius of 27 mm -- which drops the channel far deeper
+    than the endplate is. Running straight at 45 first costs nothing: the string is
+    already travelling that way when it leaves the rod."""
     hr = wrap_radius(i)
     a = exit_angle(i)
     x0 = ROD_X + hr * math.cos(a)
@@ -1045,24 +1199,78 @@ def stow_path(i: int, z_end: float):
     # phi, the heading's angle off -X: T(phi) = (-cos phi, -sin phi), so the centre of
     # curvature sits R along the normal and the arc is a plain circle about it.
     phi0 = math.radians(180.0 - EXIT_DEG)                 # 45 deg for EXIT_DEG 135
-    cx = x0 + STOW_R * math.sin(phi0)
-    cz = z0 - STOW_R * math.cos(phi0)
-    pts = []
-    for n in range(STOW_SEGS + 1):
-        phi = phi0 + (math.pi / 2 - phi0) * n / STOW_SEGS
+    run = ((x0 - STOW_R * (1.0 - math.sin(phi0)) - STOW_X)  # straight, to land the bend
+           / math.cos(phi0))                                # where STOW_X wants it
+    assert run >= 0.0, (
+        f"string {i + 1}'s bore cannot reach STOW_X ({STOW_X:.2f}) even with no straight "
+        f"run -- STOW_R is too big for the offset the trough asks for")
+    ax = x0 - run * math.cos(phi0)
+    az = z0 - run * math.sin(phi0)
+    cx = ax + STOW_R * math.sin(phi0)
+    cz = az - STOW_R * math.cos(phi0)
+    pts = [(x0, z0)]
+    for n in range(STOW_N_SEGS + 1):
+        phi = phi0 + (math.pi / 2 - phi0) * n / STOW_N_SEGS
         pts.append((cx - STOW_R * math.sin(phi), cz + STOW_R * math.cos(phi)))
-    pts.append((pts[-1][0], z_end))                       # straight down and out
+    # ...then straight down and out. THE BEND ALREADY ENDS BELOW THE BLOCK, so a caller
+    # that only cares about the block must still ask for a z_end below the bend: passing
+    # one ABOVE it used to append a segment running back UPWARD, and the rounded cap on
+    # that reversed segment poked into the block and pinched the channel's mouth at the
+    # base plane (user: a small section indented further than it should).
+    assert z_end <= pts[-1][1] + 1e-9, (
+        f"stow_path asked to end at z {z_end:.2f}, which is ABOVE where the bend finishes "
+        f"({pts[-1][1]:.2f}) -- the channel would double back on itself")
+    pts.append((pts[-1][0], z_end))
     return pts
 
 
 def stow_channel(i: int, y: float, z_end: float) -> cq.Workplane:
-    """String i's stow passage, as a cutter in the nut block's local frame."""
+    """String i's stow passage, as a cutter in the nut block's local frame.
+
+    BUILT AS Y SLABS OF A 2D SWEEP, which is the third construction this channel has had
+    and the first that is both pointed and clean. The two it replaces are worth recording
+    because each failed for its own reason:
+
+      * A STRING OF 3D TEARDROP BORES, one per chord, is the shape you actually want --
+        the section is normal to the axis, so it tapers to a point in BOTH directions and
+        the roof is a proper ridge. But the apex sits r*sqrt(2) off the axis and the axis
+        turns between chords, so consecutive apexes miss each other by a micron or two and
+        OCC fills the mismatch with near-degenerate faces: 394 of 576 faces under
+        0.05 mm^2, the smallest 1e-6. Those are the "infinitely thin sheets" (user), and
+        fusing in one boolean and cleaning afterwards does not remove them.
+      * A SINGLE Y PRISM of the 2D sweep is perfectly clean -- every section is a plain
+        translate of the last -- but it holds full width in Y right up to the apex, so the
+        roof comes out FLAT the whole 3.2 across (user). A flat roof is the one thing this
+        cannot have.
+
+    So: slabs. Each slab is a Y band of the bore, and within a band the section is the 2D
+    sweep of a teardrop whose radius is the bore's HALF-WIDTH at that Y -- so the bore
+    narrows as it approaches its own side walls, and the roof steps down with it. Every
+    slab is a clean 2D prism, so there is nothing for a boolean to make a sliver out of,
+    and the roof is a stepped gable rather than a flat.
+
+    The radius is taken at the band's INNER edge, so each slab is a hair larger than the
+    true bore rather than smaller: a cutter may err big, and the wall this has to keep is
+    measured off the apex, which is exact."""
+    r = STOW_D / 2.0
     pts = stow_path(i, z_end)
-    out = None
-    for (xa, za), (xb, zb) in zip(pts[:-1], pts[1:]):
-        seg = _tear_seg(STOW_D, (xa, y, za), (xb, y, zb))
-        out = seg if out is None else out.union(seg)
-    return out
+    # FUSED IN ONE BOOLEAN PER SLAB, then the slabs in one more. Accumulating a union a
+    # chord at a time is O(n) full booleans against a shape that keeps growing, and at
+    # STOW_N_SLABS x STOW_N_SEGS x ten strings that is over a thousand of them -- minutes per
+    # rebuild. OCC's multi-argument fuse does the same work in one pass.
+    solids = []
+    for j in range(STOW_N_SLABS):
+        y0 = -r + 2.0 * r * j / STOW_N_SLABS
+        y1 = -r + 2.0 * r * (j + 1) / STOW_N_SLABS
+        rj = math.sqrt(max(r * r - min(abs(y0), abs(y1)) ** 2, 0.0))
+        if rj < 1e-6:
+            continue
+        segs = [(cq.Workplane("XZ")
+                 .polyline(_hull2d(_tear2d(xa, za, rj) + _tear2d(xb, zb, rj))).close()
+                 .extrude(y1 - y0).translate((0.0, y + y1, 0.0)).val())
+                for (xa, za), (xb, zb) in zip(pts[:-1], pts[1:])]
+        solids.append(segs[0].fuse(*segs[1:]) if len(segs) > 1 else segs[0])
+    return cq.Workplane("XY").add(solids[0].fuse(*solids[1:]).clean())
 
 
 def all_stow_channels(z_end: float) -> cq.Workplane:
@@ -1183,9 +1391,8 @@ def _build() -> cq.Workplane:
     # all probe as single valid solids scaling cleanly with lane length). One fused cutter
     # and one subtraction is both more robust numerically and closer to what this geometry
     # is meant to BE: the same trough everywhere, made once.
-    body = body.cut(_all_troughs())
-
-    # ...and the slots the INSERTS rise through, cut from the parts' own profiles so the
+    # SOCKETS FIRST, and they carry the winding relief -- see _coil_relief.
+    # ...the slots the INSERTS rise through, cut from the parts' own profiles so the
     # pocket cannot drift from the thing it has to accept.
     body = body.cut(all_pockets())
 
@@ -1194,17 +1401,22 @@ def _build() -> cq.Workplane:
     # ...and the stow passages, swept from each tail's exit tangent down and out the
     # bottom. Cut to just under the block's base: the endplate this block is fused into
     # carries the same passage the rest of the way to the bed.
-    body = body.cut(all_stow_channels(NUT_BASE - 1.0))
+    body = body.cut(all_stow_channels(STOW_Z_END))
 
-    # ...and open each lane to the sky above the rod's centre-plane, which is what stops
-    # a beam being left between the trough's crown and the cap. Fused and cut once, for
-    # the same reason the troughs are.
-    body = body.cut(_all_skies())
-
-    # STRING SLOT: full width, axle tip out to the +X face, down to under the strings.
-    body = body.cut(box_at(X_FRONT - SLOT_X0, 2 * HW + 2.0, (NUT_TOP + 1.0) - SLOT_Z0,
-                           x=(SLOT_X0 + X_FRONT) / 2, y=0.0,
-                           z=(SLOT_Z0 + NUT_TOP + 1.0) / 2))
+    # THE STRING SLOT IS GONE (user), and it turns out it had been redundant for a while.
+    # It cut the whole +X end, FULL WIDTH IN Y, from SLOT_Z0 up -- which beheaded every
+    # finger between the dowel pockets, leaving them 1.07 shorter than the axle fingers
+    # behind them. What it was for was clearing the strings, and it dates from when this
+    # block stood to +7.1: NUT_TOP is -2.31 now, a good 2.3 BELOW the string plane, so
+    # there is no longer any block material that could foul a string to begin with.
+    #
+    # Nothing replaces it. Each string's own lane is already opened by the two cuts that
+    # have to be there regardless -- the sky over the bay and the insert's pocket -- and
+    # what those two leave standing between the lanes is exactly the finger, now running
+    # its full height to the cap like the ones at the axle do.
+    assert SLOT_Z0 < NUT_TOP, (
+        f"the block ({NUT_TOP:+.2f}) now reaches the strings' clearance line "
+        f"({SLOT_Z0:+.2f}) -- it needs a string slot again")
 
     # THE ROD BORE, cut LAST so none of the unions above can refill it (the bridge end
     # lost both its axle bores exactly that way). BLIND at +Y: that wall is the rod's +Y
