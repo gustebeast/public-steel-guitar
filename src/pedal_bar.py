@@ -115,11 +115,25 @@ BAR_Y0 = YC - LG.BLK_W / 2                 # BLK_W (35.6) wide — matches
 BAR_Y1 = YC + LG.BLK_W / 2                 # the slimmed towers/blocks: the
                                            # +Y stacks are FLUSH columns at
                                            # the legs' 4.2 inset (user)
-END_MARGIN = LG.BLK_W / 2                  # bar END faces at station ±17.8,
-                                           # flush with the tower faces
-                                           # (15 used to shear the towers'
-                                           # outer 6 via the piece clips)
-BAR_X0 = LEG_STATIONS_X[1] - END_MARGIN
+# TOWER_W lives up here because the bar's END FACES are derived from it -- see
+# _mortise_tower for what sets the number.
+TOWER_W = 64 * D.BEAD                      # 51.2 across flats. Chosen so the corner
+                                           # room clears the latch stack: half-diagonal
+                                           # 36.2 minus the tenon's 12.3 flat = 23.9
+                                           # against the 22.4 needed, 1.5 spare. 49.6
+                                           # also fits, at 0.37 -- not margin on a
+                                           # mechanism that is not designed yet.
+
+# END MARGIN IS PER END, because the two towers are no longer the same size. The
+# rule has not changed -- "the bar's end face is flush with the tower's" -- but the
+# -X station now carries the 51.2 MORTISE tower while +X still has the 36.4 spigot.
+# Sharing one margin silently AMPUTATED the wide tower: the piece clip runs at
+# BAR_X0 - 1, so 7.4 of tower was sliced off, taking the wall of the TRRS bore with
+# it (the bore ran -639.7..-628.5 against a piece starting at -638.4). Nothing
+# failed; the part just came out with a hole in its end face.
+END_MARGIN = LG.BLK_W / 2                  # +X end: the spigot tower's face
+END_MARGIN_X0 = TOWER_W / 2                # -X end: the mortise tower is wider
+BAR_X0 = LEG_STATIONS_X[1] - END_MARGIN_X0
 BAR_X1 = LEG_STATIONS_X[0] + END_MARGIN
 
 
@@ -326,12 +340,6 @@ assert (LID_ZC + LID_FOOT_HW - TROUGH_Z1) >= LOCK_D + 2 * 0.8 - 1e-6, (
 # presents a flat -- the ideal surface for a hook pocket. So both the latch and
 # the TRRS jack go in corners, and the tower only has to be big enough for the
 # corner to be deep enough.
-TOWER_W = 64 * D.BEAD              # 51.2 across flats. Chosen so the corner room
-                                   # clears the latch stack: half-diagonal 36.2
-                                   # minus the tenon's 12.3 flat = 23.9 against
-                                   # the 22.4 needed, 1.5 spare. 49.6 also fits
-                                   # but leaves 0.37, which is not margin on a
-                                   # mechanism that is not designed yet.
 TOWER_FLOOR = 4 * D.BEAD           # 3.2 the mortise's blind floor. BLIND, not
                                    # through: this joint is NOT height-adjustable
                                    # (user) -- the floor is the fixed, repeatable
@@ -344,6 +352,8 @@ TOWER_TOP = BAR_H + LS_ENGAGE + TOWER_FLOOR    # 71.1 the MOUTH plane, in bar
                                    # lands on the floor, so the mouth sits
                                    # ENGAGE above it.
 TOWER_CORNER = TOWER_W / 2.0 * math.sqrt(2.0)  # 36.2 axis -> corner
+assert BAR_X0 <= FEET[1][0] - TOWER_W / 2 + 1e-9, (
+    "the bar's -X end face cuts into the mortise tower")
 
 
 def _corner(d: float, sx: float, sy: float):
@@ -358,6 +368,12 @@ TEN_FLAT = (LS_TEN_W + 2 * LS_FIT) / 2.0       # 12.30 axis -> tenon flat
 TRRS_BORE_D = 14 * D.BEAD          # 11.2 -- the CA-354S body way, the Ø11 the old
                                    # axial route already used, rounded onto the grid
 TRRS_CORNER_D = TEN_FLAT + 2 * D.MIN_WALL_2P + TRRS_BORE_D / 2.0
+TRRS_ROOF = 4 * D.BEAD             # 3.2 solid roof over the jack way. The way is
+                                   # blind from BELOW: the bar's underside is the
+                                   # assembly access (as it already is for the foot
+                                   # mortise), and this roof is what the jack's
+                                   # shoulder presses up against.
+TRRS_WAY_TOP = TOWER_TOP - TRRS_ROOF
 LATCH_CORNER = (-1, -1)            # reserved: the diagonal the mirrored latch
                                    # takes. Opposite the TRRS so neither has to
                                    # dodge the other.
@@ -379,6 +395,13 @@ assert TOWER_W / 2 - TRRS_CORNER_D / math.sqrt(2) >= TRRS_BORE_D / 2 + D.MIN_WAL
 # and the mortise itself must not eat the bar underneath it
 assert TOWER_TOP - LS_ENGAGE >= BAR_H + D.MIN_WALL_2P, (
     "the blind mortise floor is inside the bar prism")
+# The jack way must NOT surface on the mouth -- that face is a mating face, and a
+# hole in it is either a blind-mate connector or a mistake. It is a mistake here.
+assert TRRS_WAY_TOP <= TOWER_TOP - D.MIN_WALL_2P, (
+    "the TRRS way breaks out through the mortise's MOUTH face")
+assert TRRS_WAY_TOP - (BAR_H - 1.0) >= 30.0, (
+    "the TRRS way is %.1f long; the CA-354S body needs ~31"
+    % (TRRS_WAY_TOP - (BAR_H - 1.0)))
 
 
 def _mortise_tower(lx: float, wired: bool) -> cq.Workplane:
@@ -398,8 +421,16 @@ def _mortise_tower(lx: float, wired: bool) -> cq.Workplane:
     if wired:
         # TRRS jack, moved OUT OF THE AXIS. It used to thread up the middle of
         # the spigot -- which is now the mortise, so it goes in a corner.
+        #
+        # IT DOES NOT REACH THE MOUTH, and that is the point. A bore that opens
+        # on the mouth face only earns its keep if the jack BLIND-MATES as the
+        # leg seats, the way the old spigot's captive plug did. On this chain it
+        # cannot: what enters the mouth is the floating tenon, which is solid and
+        # moving. The leg's own TRRS bore is up on the adjust sleeve, so this
+        # boundary is a patch cable -- which means the jack wants a closed roof
+        # to press up against, not an exit.
         cx, cy = _corner(TRRS_CORNER_D, +1, +1)
-        b = b.cut(cyl(TRRS_BORE_D, TOWER_TOP - BAR_H + 2.0, z=BAR_H - 1.0)
+        b = b.cut(cyl(TRRS_BORE_D, TRRS_WAY_TOP - (BAR_H - 1.0), z=BAR_H - 1.0)
                   .translate((cx, cy, 0)))
     b = b.rotate((0, 0, 0), (0, 0, 1), 180).translate((lx, YC, 0))
     return b
