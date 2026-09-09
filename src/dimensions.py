@@ -757,8 +757,17 @@ KEYHEAD_PX_BUF = 19 * BEAD / 4                      # 3.8 = KH_X - NUT_BLOCK_X, 
 # socket is the thing that must live in solid material. Containing the flange as well
 # cost 1.5 mm per side, and every mm here comes straight off the DECK, whose +X end is
 # flush with this face (top_plate.PX0).
-BRIDGE_BASE_HALF = (SCREW_ROW_DX + NUT_HOLE_DX
-                    + GUIDE_ROD_D / 2 + MIN_WALL_2P)               # 23.1
+# The binding feature is the BEARING SEAT'S TEARDROP, not the guide rod. Every Z bore
+# in this part runs sideways to its -X build, so each is a teardrop, and a teardrop's
+# APEX stands r*1.4143 from the axis — not r. The Ø16.2 seat therefore reaches 11.46
+# from the screw axis, further than the guide rod's bore does at NUT_HOLE_DX + 2.16.
+# At the old 23.10 face the apex stood 0.36 PROUD of it, i.e. the seat broke out through
+# the -X face. Sized from whichever of the two reaches further, plus a 2-bead wall.
+_BRG_TEARDROP = (SUPPORT_BRG_OD + 0.2) / 2 * 1.4143            # 11.46, seat apex
+_ROD_TEARDROP = (GUIDE_ROD_D + GUIDE_ROD_FIT) / 2 * 1.4143     # 2.16, rod-bore apex
+BRIDGE_BASE_HALF = (SCREW_ROW_DX
+                    + max(_BRG_TEARDROP, NUT_HOLE_DX + _ROD_TEARDROP)
+                    + MIN_WALL_2P)                             # 25.06
 BRIDGE_BASE_X0 = BRIDGE_X - BRIDGE_BASE_HALF        # -23.1  (-X face)
 BRIDGE_BASE_X1 = BRIDGE_X + BRIDGE_BASE_HALF        # +23.1  (+X face)
 

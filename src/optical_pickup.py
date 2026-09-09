@@ -147,7 +147,7 @@ TERMINATION_X = D.BRIDGE_AXLE_X                  # -4.0
 # with room. The alternative -- running the board on under the endplate -- would have
 # needed a relief modelled through it for no gain. Sensing further from the termination
 # also reads a LARGER displacement, so the signal improves rather than degrades.
-SENSE_D       = 20.0                             # sensing station, out from the termination
+SENSE_D       = 21.5                             # sensing station, out from the termination
 SENSE_X       = TERMINATION_X - SENSE_D          # -19.5
 # Floor, from the string's bending-stiffness length sqrt(EI/T): ~1.2 mm for the plain
 # .015 core at ~120 N, ~1.7 mm for the wound .070 at ~150 N. The boundary layer where
