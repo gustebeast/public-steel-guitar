@@ -283,6 +283,19 @@ def _export(name):
     print(f"Wrote {path}" + (f"  ({note})" if note else ""))
 
 
+def _bead(p, r):
+    """A ball at a joint in the string path.
+
+    WHY A BALL AND NOT AN OVERLAP. Where the tail leaves the coil the two are TANGENT --
+    the chord sets off in the direction the helix is already going -- and a tangential
+    overlap between a swept helix and a cylinder is the case OCC handles worst. Running
+    the chord back into the coil (a string diameter of lap) fused seven of the ten and
+    quietly dropped the coil on strings 4, 7 and 8: the union came back smaller than the
+    tail alone. A ball centred ON the joint overlaps both solids in three dimensions
+    instead of along a line, and all ten fuse."""
+    return cq.Workplane("XY").add(cq.Solid.makeSphere(r, pnt=p, angleDegrees1=-90))
+
+
 def _rod(p0, p1, r):
     v = p1.sub(p0)
     return cq.Workplane("XY").add(cq.Solid.makeCylinder(r, v.Length, pnt=p0, dir=v))
@@ -490,12 +503,11 @@ def _string_path(i, sy):
     # passage it lives in cannot drift apart -- the same one-description rule the pocket
     # and the insert follow. It leaves at EXIT_DEG already descending, so there is no
     # corner here at all: the -X run and the separate stow bore are both gone.
-    ex, ez = NB.exit_dir(i)
     pts = NB.stow_path(i, (CH.Z_BOT + 8.4) - D.STRING_Z)    # stop above the tongue top
     x0, z0 = pts[0]
-    prev = cq.Vector(D.NUT_BLOCK_X + x0 - ex * _LAP, wy,    # start INSIDE the coil, or the
-                     D.STRING_Z + z0 - ez * _LAP)           # tangency leaves them unfused
-    for x, z in pts:
+    prev = cq.Vector(D.NUT_BLOCK_X + x0, wy, D.STRING_Z + z0)
+    out = out.union(_bead(prev, rad * 1.05))                # see _bead: the tail leaves
+    for x, z in pts[1:]:                                    # TANGENT to the coil
         cur = cq.Vector(D.NUT_BLOCK_X + x, wy, D.STRING_Z + z)
         out = out.union(_rod(prev, cur, rad))
         prev = cur
