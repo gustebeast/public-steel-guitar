@@ -402,9 +402,16 @@ def _string_components(i):
     for k in range(D.SUPPORT_BRG_N):
         bz = D.SUPPORT_BRG_BOT + (k + 0.5) * D.BRG688_W
         out.append((f"screw_bearing_{i}_{k}", C.support_bearing().translate((D.screw_x(i), sy, bz))))
-    # TOP radial bearing, floating in the slab — see dimensions.TOP_BRG_Z0
-    out.append((f"screw_top_bearing_{i}", C.support_bearing().translate(
-        (D.screw_x(i), sy, D.TOP_BRG_Z0 + D.BRG688_W / 2))))
+    # NO TOP RADIAL BEARING — deleted 2026-09-09 (user), and Tr8 is what allows it.
+    # It existed to react the string's off-axis couple: the pull lands NUT_HOLE_DX from
+    # the screw axis, and a Ø5 screw cantilevering from the thrust bearing was too limp
+    # to take that alone. At Ø8 the screw is 6.55x stiffer in bending (d^4) and deflects
+    # 0.006 mm over the 21 mm from the thrust bearing to the nut — so the second bearing
+    # is now reacting nothing the screw was not already handling.
+    # It also could not have stayed: at Ø8 bore the smallest bearing available is Ø16
+    # OD, whose radius reaches EXACTLY the guide rod at NUT_HOLE_DX 8.0 (the bought
+    # nut's own hole pitch), so the seat and the rod occupied the same space. The
+    # overlap gate caught it. Deleting the bearing is what resolves that, not a fit.
     # motor (shaft +Y, body −Y toward player) + its pulley + twisted belt
     out.append((f"motor_{i}", C.motor().translate((mx, my, mz))))
     out.append((f"motor_pulley_{i}", C.motor_pulley().translate((mx, my, mz))))
