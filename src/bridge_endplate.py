@@ -274,12 +274,23 @@ GUIDE_DROP_Z1  = BRACE_Z1                       # 14.01, the top of the slab: th
 GUIDE_ROD_TOP  = (D.STRING_Z - D.BRIDGE_BEARING_OD) - 1.0   # 2.0, a mm under the bearing
 assert GUIDE_ROD_TOP <= D.STRING_Z - D.BRIDGE_BEARING_OD - 1.0 + 1e-9, (
     "the guide rod reaches into the bridge bearing's Z band")
-GUIDE_SOCKET_H = 5 * D.BEAD                     # 4.0 of blind socket in the rail
-GUIDE_SOCKET_Z = _SR_TOP - GUIDE_SOCKET_H       # -30.4, the socket's floor
+# THE ROD NO LONGER SOCKETS INTO THE RAIL. It used to drop 4.0 into a blind socket so
+# it was a beam supported at both ends. At Ø8 bore the thrust bearing is Ø16 OD, and its
+# radius reaches EXACTLY the rod line at NUT_HOLE_DX 8.0 — there is no rail material
+# left between them to socket into, at any depth. So the rod now STOPS just above the
+# bearing and cantilevers from the slab.
+# That is affordable because the rod is back to anti-rotation duty only (the top bearing
+# is gone, but the Ø8 screw absorbs the couple itself), and because the LOAD POINT is
+# the ear, ~17 mm from the slab, not the rod's free end: ~0.02 mm under the 11 N
+# anti-rotation load. The rod runs on past the ear purely to stay engaged at the bottom
+# of travel.
+GUIDE_ROD_BOT_CLR = 1.0                         # over the thrust bearing's top
+GUIDE_SOCKET_Z = (D.SUPPORT_BRG_BOT + D.SUPPORT_BRG_W
+                  + GUIDE_ROD_BOT_CLR)          # rod's bottom end, in free air
 # The web between this bore and the top bearing's pocket is the tight spot, and it is
 # a teardrop-apex-to-bore-wall distance, not a wall anyone chose:
-_GUIDE_WEB = ((D.GUIDE_ROD_X + (D.GUIDE_ROD_D + D.GUIDE_ROD_FIT) / 2)
-              - (D.SCREW_X - (D.MR85_OD + 0.2) / 2 * 1.4143))
+_GUIDE_WEB = ((-D.SCREW_ROW_DX - D.NUT_HOLE_DX + (D.GUIDE_ROD_D + D.GUIDE_ROD_FIT) / 2)
+              - (-D.SCREW_ROW_DX - (D.BRG688_OD + 0.2) / 2 * 1.4143))
 assert _GUIDE_WEB >= D.MIN_WALL - 1e-9, (
     f"only {_GUIDE_WEB:.2f} of slab between the guide-rod bore and the top bearing's "
     f"pocket (one bead is {D.MIN_WALL}) — it is set by NUT_HOLE_DX, still a guess")
@@ -318,7 +329,16 @@ STRING_SLOT_W = 4 * D.BEAD                      # 3.2, clears the heaviest C6 st
 # just continues an existing cut down to the bed instead of ending it in mid-air.
 DRIVE_SWEPT_R = D.PULLEY_FLANGE_OD / 2                    # 5.5 — the pulley is the
                                                           # widest turning thing left
-DRIVE_X1 = D.SCREW_X + DRIVE_SWEPT_R + 0.4                # -2.1
+DRIVE_X1 = D.SCREW_ROW_DX + DRIVE_SWEPT_R + 0.4      # far row's pulley, +X-most
+# THE DRIVE RELIEF GETS ITS OWN Y HALF-WIDTH. It used to borrow WIN_HW, which is an ARM
+# number (BRIDGE_ARM_Y - ARM_W/2) describing the window up at the bearing arms — a
+# different feature at a different height. Two things then broke it at once: the arms
+# moved in (BRIDGE_ARM_OUT 54.75 -> 50.80), taking WIN_HW to 46.0, and the far screw row
+# put string 10's pulley where that mattered. Its SWEPT disc reaches |y| 48.25, so 2.25
+# of it was left buried in endplate material and the sweep gate caught it.
+# Sized here from the outermost pulley's swept circle, which is what this cut is for.
+DRIVE_HW = (max(abs(D.string_y(i)) for i in range(D.N_STRINGS))
+            + DRIVE_SWEPT_R + 0.4)                   # outermost swept pulley + clearance
 DRIVE_Z1 = D.PULLEY_TOP_MAX + 0.4                         # -32.6
 DRIVE_Z0 = CH.Z_BOT                                       # -74.95: OPEN TO THE FLOOR
 assert DRIVE_Z0 <= CH.Z_BOT + 1e-9, (
@@ -440,7 +460,7 @@ def _axle_negative() -> cq.Workplane:
         axis_dir=(0, 1, 0), print_up=PRINT_UP)
 
 
-_SRX = D.SCREW_X + 9 * D.BEAD     # 7.2: screw-rail +X face (keep = screw_rail.X_PX)
+_SRX = D.BRIDGE_BASE_X1           # screw-rail +X face (keep = screw_rail.X_PX)
 
 
 def _comb_brace(yc: float, cb_w: float) -> cq.Workplane:
@@ -548,19 +568,26 @@ def _build() -> cq.Workplane:
     # DRIVE RELIEF (see DRIVE_X1) — cut FIRST, so the rail unioned in next survives.
     # ...and it BREAKS OUT of the floor: DRIVE_Z0 is the bed plane itself, so the cut
     # runs 1.0 past it rather than landing coplanar with the part's own bottom face.
-    body = body.cut(box_at(DRIVE_X1 - (XLO - 1.0), 2 * WIN_HW, DRIVE_Z1 - (DRIVE_Z0 - 1.0),
+    body = body.cut(box_at(DRIVE_X1 - (XLO - 1.0), 2 * DRIVE_HW, DRIVE_Z1 - (DRIVE_Z0 - 1.0),
                            x=((XLO - 1.0) + DRIVE_X1) / 2, y=0,
                            z=((DRIVE_Z0 - 1.0) + DRIVE_Z1) / 2))
     body = body.union(_screw_rail)
-    body = body.union(box_at(X1 - _SRX, 2 * D.BRIDGE_AXLE_Y,          # bottom bridge → tip
-                             _SR_TOP - _SR_BOT,                       # tied to the rail, which
-                             x=(X1 + _SRX) / 2, y=0,                  # moved up onto the pulleys
-                             z=(_SR_BOT + _SR_TOP) / 2))
+    # BOTTOM BRIDGE — only if the rail leaves anything to bridge. It used to carry the
+    # floor from the rail's +X face out to the tip, because the rail stopped at the
+    # single screw line (SCREW_X + 7.2). With the screws in TWO ROWS the rail spans the
+    # whole base to reach both, so _SRX == X1 and this span is zero — an empty box_at
+    # is a hard OCC DomainError, not a no-op.
+    if X1 - _SRX > 1e-9:
+        body = body.union(box_at(X1 - _SRX, 2 * D.BRIDGE_AXLE_Y,      # bottom bridge → tip
+                                 _SR_TOP - _SR_BOT,                   # tied to the rail, which
+                                 x=(X1 + _SRX) / 2, y=0,              # moved up onto the pulleys
+                                 z=(_SR_BOT + _SR_TOP) / 2))
     z_lo = CH.Z_TOP - 4.0
     sr_bot = _SR_BOT                                                  # screw-rail −Z extent
-    for sy in (-D.BRIDGE_ARM_Y, D.BRIDGE_ARM_Y):                      # edge webs rail→arm
-        body = body.union(box_at(X1 - _SRX, ARM_W, z_lo - sr_bot,     # down to the rail bottom
-                                 x=(X1 + _SRX) / 2, y=sy, z=(z_lo + sr_bot) / 2))
+    if X1 - _SRX > 1e-9:                                              # same zero span as above
+        for sy in (-D.BRIDGE_ARM_Y, D.BRIDGE_ARM_Y):                  # edge webs rail→arm
+            body = body.union(box_at(X1 - _SRX, ARM_W, z_lo - sr_bot, # down to the rail bottom
+                                     x=(X1 + _SRX) / 2, y=sy, z=(z_lo + sr_bot) / 2))
     # RE-CUT the bearing seats. The foot block below reaches -X to ~-4.2, which is
     # inside the +X sliver of every Ø8.2 seat, so the unions above refill 0.2 mm of
     # each bore. Cutting again here is the only place that sees the finished solid.
@@ -650,25 +677,17 @@ def _build() -> cq.Workplane:
         # either open or wants the hole, so it is a single cut rather than three.
         body = body.cut(printable_bore(
             D.GUIDE_ROD_D + D.GUIDE_ROD_FIT, GUIDE_DROP_Z1 - GUIDE_SOCKET_Z,
-            axis_point=(D.GUIDE_ROD_X, sy, GUIDE_SOCKET_Z),
+            axis_point=(D.guide_rod_x(i), sy, GUIDE_SOCKET_Z),
             axis_dir=(0.0, 0.0, 1.0), print_up=PRINT_UP))
-    # TOP RADIAL BEARING seats, bored UP into the same slab. FLOATING: the pocket is
-    # half a millimetre deeper than the bearing and has no shoulder either side, so it
-    # can only locate the shaft radially — give it a face to push on and it would fight
-    # the thrust stack for the string load and over-constrain the screw.
-    for i in range(D.N_STRINGS):
-        sy = D.string_y(i)
-        body = body.cut(printable_bore(
-            D.MR85_OD + 0.2, D.MR85_W + 0.5 + 0.01,
-            axis_point=(D.SCREW_X, sy, D.TOP_BRG_Z0 - 0.01),
-            axis_dir=(0.0, 0.0, 1.0), print_up=PRINT_UP))
+    # NO TOP RADIAL BEARING SEATS — the bearing is gone (see build._string_components).
+    # The slab keeps its guide-rod bores; nothing is bored for a screw bearing up here.
     # STRING SLOTS through the same slab, one per string, running OUT to the +X face
     # so a string drops in sideways instead of being threaded down a second hole.
     for i in range(D.N_STRINGS):
         sy = D.string_y(i)
-        body = body.cut(box_at((X1 + 1.0) - D.STRING_ANCHOR_X, STRING_SLOT_W,
+        body = body.cut(box_at((X1 + 1.0) - D.string_anchor_x(i), STRING_SLOT_W,
                                (Z6 + 1.0) - GUIDE_SOCKET_Z,
-                               x=(D.STRING_ANCHOR_X + X1 + 1.0) / 2, y=sy,
+                               x=(D.string_anchor_x(i) + X1 + 1.0) / 2, y=sy,
                                z=(GUIDE_SOCKET_Z + Z6 + 1.0) / 2))
     # LIGHT COVER for the optical strip, unioned in: its roof lands on the comb
     # brace at XLO and its slots sit over the sensor triplets.

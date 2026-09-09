@@ -42,10 +42,10 @@ from src import dimensions as D
 # turns about its own screw; the motor pulleys turn about the motor shaft, which is
 # a Y axis and is checked by hand (they are nowhere near anything).
 ROTATING = {
-    "screw_pulley": lambda i: (D.SCREW_X, D.string_y(i)),
-    "leadscrew":    lambda i: (D.SCREW_X, D.string_y(i)),
-    "screw_bearing": lambda i: (D.SCREW_X, D.string_y(i)),
-    "screw_top_bearing": lambda i: (D.SCREW_X, D.string_y(i)),
+    "screw_pulley": lambda i: (D.screw_x(i), D.string_y(i)),
+    "leadscrew":    lambda i: (D.screw_x(i), D.string_y(i)),
+    "screw_bearing": lambda i: (D.screw_x(i), D.string_y(i)),
+    "screw_top_bearing": lambda i: (D.screw_x(i), D.string_y(i)),
 }
 
 # Pairs whose swept overlap is BY DESIGN — the same idea as check_overlaps'
