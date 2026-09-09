@@ -293,7 +293,10 @@ PCB_X1S = BAND_X1 + BAND_CLR                                  # -30.42, strip -X
 # stopped governing this and the leftover left -Y 1.05 slacker than +Y (user spotted the
 # asymmetry in the render). One constant, mirrored.
 WRAP_CLR = 0.75                                               # past the arm outer face
-Y_TAIL   = -(D.BRIDGE_AXLE_Y + D.BRIDGE_ARM_W / 2 + WRAP_CLR)  # -55.00
+# OFF THE ARM'S OUTER FACE, which is BRIDGE_ARM_OUT -- the same arithmetic, but named
+# once instead of re-added here. It moved when the axle became a 100 SKU, and this
+# board has to move with it: HEAD_Y0 is what stops the shaft sliding +Y.
+Y_TAIL   = -(D.BRIDGE_ARM_OUT + WRAP_CLR)
 # TAIL WIDENS +X, OVER THE ENDPLATE -- not -X over the deck (user). Two things fall out
 # and both were open problems:
 #   SUPPORT. Past |y| 54 the endplate has no material above z6 for a plinth to start on,
