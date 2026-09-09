@@ -498,15 +498,24 @@ INS_CLR   = 0.2                                 # Y clearance in its pocket, eac
                                                 # 0.1 of it comes straight off the wall
                                                 # between neighbouring pockets)
 INS_W     = D.NUT_PITCH - 2 * INS_CLR           # 5.9 wide -- the pitch, less its slip fit
-INS_DROP  = 4 * D.BEAD                          # 3.2: how far below its bearing height an
-                                                # insert must be able to sit. At the
-                                                # NOMINAL height its flat IS the wrap's
-                                                # underside, so with the insert there a
-                                                # string cannot be wound at all -- it has
-                                                # to drop clear of the whole coil first,
-                                                # which is a fat string's diameter plus
-                                                # room to pass. 3.2 covers the .070 (1.78)
-                                                # with margin.
+# HOW FAR THE INSERT HAS TO DROP TO BE "UNINSTALLED" (user), which is the position the
+# pocket depth is measured from -- not the working one.
+#
+# At its NOMINAL height the flat IS the wrap's underside, so with the insert there a
+# string cannot be threaded at all. Uninstalled means dropped far enough that a THICK
+# GAUGE string can be passed between the flat and the coil already on the rod: the gap
+# has to admit the string's own diameter, plus room for it to be worked round rather
+# than forced. Both terms are the thickest string in the set, since one pocket depth
+# serves all ten.
+#
+# DERIVED, and it lands on the 3.2 it was already set to -- but as a number that moves if
+# the string set does, instead of a round one justified after the fact.
+THREAD_CLR = D.MIN_WALL                         # room to work the string round, not force it
+# ...and the 45 deg lead-ins that get it there: a full thickest-gauge diameter, so a fat
+# string meets the chamfer before it can reach the square corner behind it.
+THREAD_LEAD = math.ceil(max(D.STRING_GAUGE) / D.BEAD) * D.BEAD    # 2.4
+_DROP_NEED = max(D.STRING_GAUGE) + THREAD_CLR   # 2.578 for the .070
+INS_DROP  = math.ceil(_DROP_NEED / D.BEAD) * D.BEAD          # 3.2, on the grid
 INS_H     = 5 * D.BEAD                          # 4.0 of body below the flat
 DIVOT_OFF = ROD_D / 2 - PIN_D / 2 - ROD_Z       # 0.621, cradle centre ABOVE the flat
 DIVOT_D   = PIN_D + 0.3                         # 2.3, the dowel's cradle
@@ -568,6 +577,12 @@ INS_STEP_X  = (DOWEL_X + ROD_X) / 2.0           # (unused: the step is derived i
 # taken from the neighbour, and at the bass end there is none to spare. 4.3 puts the
 # dowel-lobe wall on the 1.6 two-bead target exactly.
 INS_LOBE_W  = PIN_L + 0.3                       # 4.3, the dowel lobe
+CRADLE_L  = INS_LOBE_W                          # the trough is the DOWEL LOBE's width,
+                                                # anchored on that lobe's +Y edge -- see
+                                                # slide_insert. Cutting it to PIN_L + a
+                                                # float instead leaves a 0.05 rind of
+                                                # insert standing at the lobe's edge,
+                                                # which is a sliver on both SKUs.
 
 
 
@@ -714,6 +729,55 @@ def _plan_wire(i: int):
     return cq.Workplane("XY").polyline(_plan(i)).close()
 
 
+NECK_CLR_X = 0.4                                # air +X of the coil, before the neck
+
+
+def _neck_x0(i: int) -> float:
+    """Where string i's neck starts. The wrap reaches ROD_X + ROD_D/2 + g on its +X side
+    and anything -X of that drives through the winding, so the neck starts from the COIL's
+    own extent and moves with the gauge. THE ONE PLACE THIS IS COMPUTED."""
+    return ROD_X + ROD_D / 2.0 + D.STRING_GAUGE[i] + NECK_CLR_X
+
+
+# ── HOW BIG THE THREADING RAMPS MAY BE ─────────────────────────────────────
+# They are added material sitting right where the coil does, so their size is not a taste
+# question: each is the largest 45 deg ramp that still clears EVERY string's wound
+# envelope by RAMP_CLR. Both limits fall out of string 10, whose coil is fattest and whose
+# flat therefore sits lowest.
+RAMP_CLR = 0.4                                  # air between a ramp and a wound string
+
+
+def _ramp_fits(L: float, x0: float, sgn: float, i: int) -> bool:
+    """Does a 45 deg ramp of rise L, running sgn from x0, clear string i's coil?"""
+    g = D.STRING_GAUGE[i]
+    r = ROD_D / 2.0 + g                          # the wound coil's outer envelope
+    fz = insert_flat_z(i)
+    for k in range(41):
+        t = k / 40.0
+        dx = (x0 + sgn * L * t) - ROD_X
+        if abs(dx) >= r:
+            continue
+        if fz + L * (1.0 - t) > ROD_Z - math.sqrt(r * r - dx * dx) - RAMP_CLR:
+            return False
+    return True
+
+
+def _max_ramp(x0_of, sgn: float) -> float:
+    """The biggest such ramp that suits all ten, snapped DOWN to the bead grid."""
+    worst = 99.0
+    for i in range(D.N_STRINGS):
+        lo, hi = 0.0, 8.0
+        for _ in range(40):
+            mid = (lo + hi) / 2.0
+            lo, hi = (mid, hi) if _ramp_fits(mid, x0_of(i), sgn, i) else (lo, mid)
+        worst = min(worst, lo)
+    return math.floor(worst / D.BEAD) * D.BEAD
+
+
+RAMP_END  = _max_ramp(lambda i: INS_X0, +1.0)   # at the flat's -X end
+RAMP_NECK = _max_ramp(_neck_x0, -1.0)           # at the neck's foot
+
+
 def slide_insert(i: int) -> cq.Workplane:
     """String i's insert, placed where the string will hold it. `clr` grows it all round,
     which is how the POCKET is cut -- so the pocket is the part's own shape by
@@ -729,7 +793,7 @@ def slide_insert(i: int) -> cq.Workplane:
     # ROD_X + ROD_D/2 + g on its +X side, and a neck beginning further -X than that drives
     # straight through the winding -- 10 mm^3 of it on the .070. So it is set from the
     # coil's own extent, per string, which is also why it moves with the gauge.
-    nx0 = ROD_X + ROD_D / 2 + D.STRING_GAUGE[i] + 0.4
+    nx0 = _neck_x0(i)
     # THE NECK FILLS THE WHOLE PLAN, not just the dowel lobe's width (user). It used to be
     # a box the width of the dowel lobe, clipped to the plan -- so everywhere the plan is
     # WIDER than that box (the taper, and the clamp lobe on the bass strings, which is the
@@ -748,44 +812,58 @@ def slide_insert(i: int) -> cq.Workplane:
             .intersect(box_at((INS_X1 + 1.0) - nx0, 4000.0, DIVOT_OFF + 2.0,
                               x=(nx0 + INS_X1 + 1.0) / 2, y=0.0, z=fz + DIVOT_OFF / 2)))
     body = body.union(neck)
-    body = body.cut(cyl_y(DIVOT_D, dw + 2, y0=dy - dw / 2 - 1,
+    # THE CRADLE IS THE DOWEL'S LENGTH, NOT THE LOBE'S (user). It used to run the full
+    # width of the dowel lobe and a millimetre past each end -- which on SKU A is nearly
+    # the same thing, since that lobe is only PIN_L + 0.3 wide, but on SKU B's 6.4 lobe it
+    # left an 8.4 trough for a 4.0 dowel. A dowel can then be dropped anywhere along it,
+    # and where it lands is the string's BREAK POINT: put it 2 mm off and that string's
+    # speaking length starts in the wrong place.
+    #
+    # ANCHORED ON THE DOWEL LOBE'S +Y EDGE and run -Y from there. That edge is the same
+    # place on both SKUs -- nut_y + INS_LOBE_W/2, since SKU B's lobe is hung from it --
+    # so one rule serves both: on SKU A the trough spans its lobe exactly and is open at
+    # both ends, and on SKU B it stops 2.1 short of the far side, which is the wall the
+    # dowel seats against. Either way the dowel has INS_LOBE_W - PIN_L of float, and no
+    # rind of insert is left standing anywhere.
+    #
+    # It stays open at the TOP: the cradle centre IS the neck's top face, so the cut
+    # leaves a half-round and the dowel drops straight in.
+    y_hi = dy + dw / 2.0
+    body = body.cut(cyl_y(DIVOT_D, CRADLE_L, y0=y_hi - CRADLE_L,
                           x=DOWEL_X, z=fz + DIVOT_OFF))
+
+    # ── TWO 45 DEG LEAD-INS FOR THREADING (user) ──────────────────────────
+    # The flat meets the insert's -X end face, and it meets the neck's -X face, at square
+    # corners, and a string worked round the axle has to get past both. They are RAMPS
+    # ADDED, not chamfers cut.
+    #
+    # I built them as cuts first and that was exactly backwards: a chamfer cut into a
+    # corner does not remove the corner, it replaces it with a POCKET -- a notch the
+    # string end drops into and will not come back out of (user). Filling the corner gives
+    # the string a face to ride up; cutting it gives the string somewhere to hide.
+    #
+    # SIZED SO THEY CANNOT TOUCH A WOUND STRING, which is the constraint that matters once
+    # they are material rather than air. See RAMP_END and RAMP_NECK.
+    #
+    # Clipped to the plan, so neither can escape the silhouette the socket is cut from.
+    keep = (_plan_wire(i).extrude(DIVOT_OFF + INS_H + 2.0)
+            .translate((0, 0, fz - INS_H - 1.0)))
+    for x0, run in ((INS_X0, +RAMP_END), (nx0, -RAMP_NECK)):
+        ramp = (cq.Workplane("XZ")
+                .polyline([(x0, fz), (x0 + run, fz), (x0, fz + abs(run))]).close()
+                .extrude(2 * HW).translate((0.0, HW, 0.0)))
+        body = body.union(ramp.intersect(keep))
     return body
 
 
-# ── THE SOCKET GIVES THE WINDING ITS ROOM (user) ───────────────────────────
-# There used to be a separate cut for that -- a teardrop TROUGH round the rod, per bay,
-# plus a SKY over each bay to take the beam the trough left behind. Between them they
-# opened the whole rod zone, and they are the reason the fingers stopped short: the sky's
-# floor ramped up to RAMP_Z1 and levelled off, so every finger was capped at -4.28 instead
-# of running to NUT_TOP at -2.31.
+# ONE POCKET DEPTH FOR ALL TEN (user). It used to come off insert_flat_z, which carries
+# the gauge -- the flat is ROD_Z - ROD_D/2 - g, so a thick string's insert rides lower and
+# its pocket was cut deeper. Strings 8-10 came out visibly deeper than the rest.
 #
-# They are gone. The socket the insert rises through is already a full-height opening in
-# the right place; all it lacked was reach. So it grows to swallow the coil as well, and
-# the block becomes four cuts instead of six: sockets, dowels, channels, rod bore.
-#
-# WHAT THE RELIEF HAS TO COVER is the coil's own envelope, and the socket already covers
-# most of it. In X it fell 0.28 short of the fattest winding, which INS_X0 now fixes at
-# source. In Y it covers every SKU A coil outright, and falls about 0.6 short only on the
-# outermost string, whose winding runs on past the insert stack into the outboard air --
-# so that last stretch is relief, not socket, and it is the one place the two differ.
-COIL_CLR_X = D.MIN_WALL                         # air -X of the fattest coil
-# ...and its own Y clearance, which is NOT LANE_CLR. LANE_CLR is what a coil needs beside
-# a printed FINGER, whose position carries print tolerance; this is a coil beside nothing
-# at all -- the relief is a void, and the only thing on the far side of it is the wall to
-# the next socket. Charging the coil 0.5 a side here took three of those walls under
-# MIN_WALL_2P (1.55 to 1.62) for clearance nothing was using.
-COIL_CLR_Y = 0.3
-
-
-def _coil_relief(i: int, z0: float, z1: float) -> cq.Workplane:
-    """The room string i's winding needs, as part of its socket."""
-    g = D.STRING_GAUGE[i]
-    y0, y1 = wrap_y(i)
-    hi, lo = y0 + g / 2 + COIL_CLR_Y, y1 - g / 2 - COIL_CLR_Y
-    x1 = ROD_X + ROD_D / 2 + g + COIL_CLR_X
-    return box_at(x1 - INS_X0, hi - lo, z1 - z0,
-                  x=(INS_X0 + x1) / 2, y=(lo + hi) / 2, z=(z0 + z1) / 2)
+# It is measured from the UNINSTALLED position (user): far enough down that a thick gauge
+# string can be threaded between the flat and the coil already on the rod. See INS_DROP.
+POCKET_Z0 = (ROD_Z - ROD_D / 2.0 - max(D.STRING_GAUGE)   # the lowest flat any string sets
+             - INS_DROP - INS_H - 1.0)                   # ...its body, and its travel
 
 
 def insert_pocket(i: int) -> cq.Workplane:
@@ -816,11 +894,28 @@ def insert_pocket(i: int) -> cq.Workplane:
     only INS_CLR/sqrt(2) away from itself and under-clear the taper exactly where the part
     is tightest. kind="intersection" extends the edges to meet rather than rounding the
     corners, so the slot is the profile grown, not the profile blurred."""
-    z0 = insert_flat_z(i) - INS_DROP - INS_H - 1.0   # the body at its lowest adjustment
+    z0 = POCKET_Z0                               # ONE depth for all ten -- see POCKET_Z0
     z1 = NUT_TOP + 1.0
-    sock = (_plan_wire(i).offset2D(_clr(i), kind="intersection")
+    # THE INSERT'S OWN PLAN, SWEPT ALONG Z AND OFFSET BY ITS FIT (user). One profile,
+    # one operation -- which is what keeps the cut clean. Everything that ever put a step
+    # or an overhang in this socket came from it being TWO shapes: a plan plus a
+    # rectangular winding relief whose square +X face landed mid-taper.
+    #
+    # kind="arc" IS THE TRUE OFFSET, and here that matters twice over. It is the Minkowski
+    # sum with a disc, so the clearance is exactly _clr(i) EVERYWHERE, including along the
+    # taper -- "intersection" instead extends each corner out to where its two offset
+    # edges meet, which overshoots by clr/cos(half-angle) and spends wall that the taper
+    # has none of to spare. It also leaves the block's internal corners filleted at the
+    # clearance radius rather than sharp, which is free and better to print into.
+    #
+    # THE PLAN *IS* THE Z SILHOUETTE, which is what makes this exact rather than
+    # approximate: the neck is already clipped to the plan in slide_insert, so no part of
+    # the insert ever reaches outside that profile at any height. Sweeping the solid along
+    # Z therefore sweeps exactly this outline, and extruding the outline is the same
+    # solid. Sweeping is also the only modification the socket needs: the insert does not
+    # sit in it, it TRAVELS in it.
+    return (_plan_wire(i).offset2D(_clr(i), kind="arc")
             .extrude(z1 - z0).translate((0, 0, z0)))
-    return sock.union(_coil_relief(i, z0, z1))
 
 
 def _lane(i: int):
@@ -1047,25 +1142,16 @@ def _bay_trough(y0: float, y1: float) -> cq.Workplane:
                          axis_dir=(0.0, 1.0, 0.0), print_up=PRINT_UP)
 
 
-DOWEL_CLR = 0.15                                # all round the dowel (user)
-DOWEL_BORE_D = PIN_D + 2 * DOWEL_CLR            # 2.30
-DOWEL_BORE_L = PIN_L + 2 * DOWEL_CLR            # 4.30
-
-
-def _all_dowels() -> cq.Workplane:
-    """One cylinder per break dowel: the dowel's own geometry grown by DOWEL_CLR on every
-    face (user), so 0.3 on both the diameter and the length.
-
-    GAUGED, as the dowels always were: each sits at -g - PIN_D/2, which puts its crown at
-    -g and therefore every string's TOP on one plane at z=0. That is the whole reason
-    there are ten of them instead of one shared rod."""
-    out = None
-    for i in range(D.N_STRINGS):
-        pin_z = -D.STRING_GAUGE[i] - PIN_D / 2
-        c = cyl_y(DOWEL_BORE_D, DOWEL_BORE_L, y0=D.nut_y(i) - DOWEL_BORE_L / 2,
-                  x=DOWEL_X, z=pin_z)
-        out = c if out is None else out.union(c)
-    return out
+# NO DOWEL BORE IN THE BLOCK (user spotted the cuts). There used to be one per string --
+# the dowel's own geometry grown by DOWEL_CLR -- from when the BLOCK carried the dowels.
+# The insert carries them now, in its cradle, and the socket the insert travels in
+# already clears the dowel completely: the block comes out byte-identical with the bores
+# and without them (9638.6 mm^3 either way), and with them suppressed the dowel still
+# touches 0.000 mm^3 of block material.
+#
+# It was invisible while it was redundant and only showed up with the sockets switched
+# off for inspection, which is a fair argument for looking at parts with their cuts
+# disabled now and then.
 
 
 # ── THE RAMP CARRIES ON (user) ─────────────────────────────────────────────
@@ -1343,12 +1429,10 @@ def _build() -> cq.Workplane:
     # all probe as single valid solids scaling cleanly with lane length). One fused cutter
     # and one subtraction is both more robust numerically and closer to what this geometry
     # is meant to BE: the same trough everywhere, made once.
-    # SOCKETS FIRST, and they carry the winding relief -- see _coil_relief.
+    # SOCKETS FIRST -- the plan, swept, offset by the fit. Nothing else.
     # ...the slots the INSERTS rise through, cut from the parts' own profiles so the
     # pocket cannot drift from the thing it has to accept.
     body = body.cut(all_pockets())
-
-    body = body.cut(_all_dowels())
 
     # ...and the stow passages, swept from each tail's exit tangent down and out the
     # bottom. Cut to just under the block's base: the endplate this block is fused into
