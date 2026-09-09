@@ -122,7 +122,25 @@ def _crop_keyhead():
     return (120.0, 140.0, z1 - z0, D.NUT_BLOCK_X, 0.0, (z0 + z1) / 2)
 
 
-CROPS = {"leg_station": _crop_leg_station, "keyhead": _crop_keyhead}
+def _crop_bridge():
+    """The bridge endplate's UPPER BLOCK and what it mates with, at the +X end.
+
+    NARROWER IN Y THAN THE KEYHEAD'S. The part itself runs -139..+66 because the screw
+    rail and the foot reach right down the instrument, but the work here is the bearing
+    arms and the axle between them -- +-51 -- and the optical board that stops the shaft.
+    Cropping to that keeps the strings, the carriages and the arms in frame and leaves the
+    drivetrain out of it.
+
+    Z SPANS THE DECK TO OVER THE STRINGS, not the whole part: the arms stand above the
+    deck and everything they mate with is up there. The foot and the rail below are
+    context this view does not need, and they are most of the solids."""
+    from src import dimensions as D, chassis as CH
+    z0, z1 = CH.Z_TOP - 10.0, D.STRING_Z + 12.0
+    return (90.0, 130.0, z1 - z0, D.BRIDGE_AXLE_X, 0.0, (z0 + z1) / 2)
+
+
+CROPS = {"leg_station": _crop_leg_station, "keyhead": _crop_keyhead,
+         "bridge": _crop_bridge}
 # ─────────────────────────────────────────────────────────────────────────────
 
 
