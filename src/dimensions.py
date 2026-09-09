@@ -287,11 +287,16 @@ SCREW_OD        = 8.0       # Tr8x2: Ø8, SINGLE-start, 2 mm lead.
 # bead) — both parts are 0.2-NOZZLE prints and therefore unfilled, the same call
 # belt_clamp already makes for GT2 ridges. At 0.2 the groove is a 1.5-bead feature.
 SCREW_PITCH     = 2.0       # Tr8x2: 2 mm pitch, single start => 2 mm LEAD
-FORM_MINOR      = 5.8       # printed ridge Ø (Tr8x2 root is Ø5.5; 0.15 radial clear)
+FORM_MINOR      = 6.2       # printed ridge Ø (Tr8x2 root is Ø5.5; 0.35 radial clear)
 FORM_MAJOR      = 7.8       # printed groove Ø (0.1 radial under the Ø8 crest)
-                            # depth (7.8-5.8)/2 = 1.0 = SCREW_PITCH/2, exactly the
-                            # cadkit.threads limit — the coarser 2 mm pitch is what
-                            # allows a form this deep to stay self-supporting.
+                            # Depth (7.8-6.2)/2 = 0.80, NOT the pitch/2 = 1.0 ceiling.
+                            # cadkit.threads measures the valley AT THE OVERSHOOT:
+                            # valley = 2*depth + 0.2, and it must stay UNDER the 2.0
+                            # turn spacing or adjacent turns merge into an invalid
+                            # cutter that silently no-ops. Depth 1.0 gave 2.10 and 0.90
+                            # gave exactly 2.00 — both rejected. 0.80 leaves 1.80.
+                            # Engagement is 0.80 of the rod's 1.25 radial full form,
+                            # ~64%, reached by displacement rather than by hoping.
 SCREW_RUNOUT    = 3 * BEAD                          # 2.4 proud of the nut at top of travel
 # TOP RADIAL BEARING. The screw runs on past the nut into one MR85 up in the endplate's
 # slab, and this is not a refinement — it is what makes anchoring the string off-axis
