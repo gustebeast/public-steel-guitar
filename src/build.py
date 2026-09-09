@@ -1120,6 +1120,25 @@ def _joint_coupon_components():
     return [("test_octagon_tenon_coupon", ten), ("test_octagon_mortise_coupon", mor)]
 
 
+SCREW_ROW_PARTS = ("leadscrew", "nut_", "string_nut", "guide_rod",
+                   "screw_pulley", "screw_bearing")
+
+
+def screw_rows_components():
+    """The +X drivetrain as ONE named set: both Tr8x2 screw rows and the endplate that
+    hosts them.
+
+    The build does not need this — collect_components already composes the same parts per
+    string. It exists so the per-agent scratch view can make the whole two-row assembly
+    LIVE, because that is the unit the work actually changes. A `part:` scope resolves to
+    exactly one part, which left the rows sitting in grey cache next to the endplate they
+    determine."""
+    out = [(n, w) for i in range(D.N_STRINGS) for n, w in _string_components(i)
+           if n.startswith(SCREW_ROW_PARTS)]
+    out.append(("bridge_endplate", PARTS["bridge_endplate"][0]()))
+    return out
+
+
 def _tensioner_coupon_components():
     """The unified belt clamp shown ASSEMBLED, parked off the +X end for a clear look (the real
     clamps ride each string's belt). ONE SKU per half (`clamp_half`; half-B is it turned 180° about
