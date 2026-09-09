@@ -503,7 +503,7 @@ def _string_path(i, sy):
     # passage it lives in cannot drift apart -- the same one-description rule the pocket
     # and the insert follow. It leaves at EXIT_DEG already descending, so there is no
     # corner here at all: the -X run and the separate stow bore are both gone.
-    pts = NB.stow_path(i, (CH.Z_BOT + 8.4) - D.STRING_Z)    # stop above the tongue top
+    pts = NB.stow_route(i, (CH.Z_BOT + 8.4) - D.STRING_Z)   # stop above the tongue top
     x0, z0 = pts[0]
     prev = cq.Vector(D.NUT_BLOCK_X + x0, wy, D.STRING_Z + z0)
     out = out.union(_bead(prev, rad * 1.05))                # see _bead: the tail leaves
