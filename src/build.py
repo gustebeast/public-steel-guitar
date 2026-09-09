@@ -1125,25 +1125,26 @@ _COLORS = {
     "bridge_endplate": (0.39, 0.58, 0.93),   # PETG-GF — load-critical
     "keyhead_endplate": (0.42, 0.50, 0.62),   # PETG-GF — keyhead endplate + nut block (merged)
     # belt-tension clamp — real per-string parts (PETG halves, PCTG 0.2 mm lifter, steel/brass fasteners)
-    # One HUE PER COMPONENT. half_a/half_b are the same printed SKU (half-B is it
-    # turned 180 about Z) and so were the two lifters, so the table gave the pair
-    # members the same -- or near-identical -- colour. That is true about the SKU and
-    # useless in a view: the clamp read as one orange mass with no way to see which
-    # end takes the screw head, which takes the nut, or which well each bar sits in.
-    # The colours here distinguish POSITION, not part number.
-    "belt_tensioner_half_a": (0.95, 0.55, 0.15),   # -X half: takes the M4 head
-    "belt_tensioner_half_b": (0.20, 0.55, 0.85),   # +X half: takes the insert-nut
-    "belt_tensioner_lifter_a": (0.30, 0.75, 0.40),  # bar in half-A's well
-    "belt_tensioner_lifter_b": (0.75, 0.35, 0.75),  # bar in half-B's well
+    # ONE HUE PER SKU (user). The a/b pairs are deliberately EQUAL, not an oversight
+    # to be "fixed": clamp_half is one printed part fitted twice (half-B is it turned
+    # 180 about Z) and both lifter bars are one part, so colouring the pair members
+    # differently would assert a distinction that does not exist in the BOM. What has
+    # to be distinguishable is the four SKUs, which is what the old table got wrong --
+    # the lifter tan sat next to the brass insert, and the two halves differed by 0.05
+    # in a single channel while every one of them fell through to grey anyway.
+    "belt_tensioner_half_a": (0.95, 0.55, 0.15),    # clamp_half  x2  printed
+    "belt_tensioner_half_b": (0.95, 0.55, 0.15),    #   ""  same SKU, same colour
+    "belt_tensioner_lifter_a": (0.30, 0.75, 0.40),  # lifter bar  x2  printed (0.2 nozzle)
+    "belt_tensioner_lifter_b": (0.30, 0.75, 0.40),  #   ""  same SKU, same colour
     "belt_tensioner_screw":  (0.55, 0.55, 0.58),   # steel M4
     "belt_tensioner_insert": (0.72, 0.60, 0.30),   # brass insert (used as an external nut)
     # …and the parked assembled coupon (green = clearly a reference, not a product part)
     # The coupon keeps its own COOL family so the parked copy never reads as a real
-    # clamp, but spread apart for the same reason as above.
+    # clamp; same one-hue-per-SKU rule within it.
     "belt_tensioner_half_a_coupon": (0.20, 0.70, 0.45),
-    "belt_tensioner_half_b_coupon": (0.15, 0.50, 0.75),
-    "belt_tensioner_lifter_a_coupon": (0.50, 0.85, 0.35),
-    "belt_tensioner_lifter_b_coupon": (0.60, 0.55, 0.85),
+    "belt_tensioner_half_b_coupon": (0.20, 0.70, 0.45),
+    "belt_tensioner_lifter_a_coupon": (0.15, 0.50, 0.75),
+    "belt_tensioner_lifter_b_coupon": (0.15, 0.50, 0.75),
     "belt_tensioner_screw_coupon":  (0.55, 0.55, 0.58),
     "belt_tensioner_insert_coupon": (0.72, 0.60, 0.30),
     "screw_pulley":    (0.00, 0.55, 0.55),
