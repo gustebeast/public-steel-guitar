@@ -305,7 +305,7 @@ def geometry_report() -> str:
     total = 0.0
     for i in range(D.N_STRINGS):
         mx, my, mz = D.motor_pos(i)
-        run = abs(mx - D.SCREW_X)
+        run = abs(mx - D.screw_x(i))
         rise = D.screw_pulley_z(i) - mz          # odd pulleys sit one belt-plane up
         span = math.hypot(run, rise)
         loop = 2 * span + math.pi * D.PULLEY_OD
@@ -362,43 +362,43 @@ def _string_components(i):
     cz = D.NUT_TOP_Z + DEMO_POSE_DZ.get(i, 0.0)      # the NUT's flange top
     out = []
     # vertical leadscrew
-    out.append((f"leadscrew_{i}", C.screw().translate((D.SCREW_X, sy, D.SCREW_BOT_Z))))
+    out.append((f"leadscrew_{i}", C.screw().translate((D.screw_x(i), sy, D.SCREW_BOT_Z))))
     # THE NUT IS THE CARRIAGE. Nothing else moves: its +X ear anchors the string and
     # its -X ear rides the guide rod. Origin = the flange's top face.
-    out.append((f"nut_{i}", C.nut().translate((D.SCREW_X, sy, cz))))
+    out.append((f"nut_{i}", C.nut().translate((D.screw_x(i), sy, cz))))
     # string BALL END, hanging UNDER the +X ear — tension pulls it up against the
     # ear's underside, and that IS the retention (a guitar bridge plate, exactly)
     out.append((f"string_nut_{i}", C.string_nut().translate(
-        (D.STRING_ANCHOR_X, sy, cz - D.NUT_FLANGE_T - D.STRING_NUT_D / 2))))
+        (D.string_anchor_x(i), sy, cz - D.NUT_FLANGE_T - D.STRING_NUT_D / 2))))
     # guide rod: dropped in from +Z through the slab, through the -X ear, into a blind
     # socket in the screw rail — SUPPORTED AT BOTH ENDS, so it is a beam and not a
     # cantilever. Gravity seats it; the string overhead keeps it there.
     rod_top = BE.GUIDE_ROD_TOP          # stops under the bridge bearing, not at the bore's top
     rod_bot = BE.GUIDE_SOCKET_Z
     out.append((f"guide_rod_{i}", C.guide_rod(rod_top - rod_bot).translate(
-        (D.GUIDE_ROD_X, sy, rod_bot))))
+        (D.guide_rod_x(i), sy, rod_bot))))
     # screw drive pulley (odd ones raised one belt-plane), then the thrust stack:
     spz = D.screw_pulley_z(i)
     # TWO SKUs: the low-plane stations carry the column that lifts their boss to the
     # same thrust plane the high-plane ones already reach.
     out.append((f"screw_pulley_{i}",
-                C.screw_pulley(high=spz > D.SCREW_PULLEY_Z).translate((D.SCREW_X, sy, spz))))
+                C.screw_pulley(high=spz > D.SCREW_PULLEY_Z).translate((D.screw_x(i), sy, spz))))
     # THRUST STACK, seated straight on the pulley's pilot boss. The string's pull jams
     # the pulley up into it, and that one jam does BOTH jobs: it retains the screw and
     # it holds the pulley on the rod. No collar, no set screw.
     for k in range(D.SUPPORT_BRG_N):
-        bz = D.SUPPORT_BRG_BOT + (k + 0.5) * D.MR85_W
-        out.append((f"screw_bearing_{i}_{k}", C.support_bearing().translate((D.SCREW_X, sy, bz))))
+        bz = D.SUPPORT_BRG_BOT + (k + 0.5) * D.BRG688_W
+        out.append((f"screw_bearing_{i}_{k}", C.support_bearing().translate((D.screw_x(i), sy, bz))))
     # TOP radial bearing, floating in the slab — see dimensions.TOP_BRG_Z0
     out.append((f"screw_top_bearing_{i}", C.support_bearing().translate(
-        (D.SCREW_X, sy, D.TOP_BRG_Z0 + D.MR85_W / 2))))
+        (D.screw_x(i), sy, D.TOP_BRG_Z0 + D.BRG688_W / 2))))
     # motor (shaft +Y, body −Y toward player) + its pulley + twisted belt
     out.append((f"motor_{i}", C.motor().translate((mx, my, mz))))
     out.append((f"motor_pulley_{i}", C.motor_pulley().translate((mx, my, mz))))
-    out.append((f"belt_{i}", C.belt((mx, my, mz), (D.SCREW_X, sy, spz))))   # all belts modelled smooth
+    out.append((f"belt_{i}", C.belt((mx, my, mz), (D.screw_x(i), sy, spz))))   # all belts modelled smooth
     # belt-tension clamp (unified clamp_half ×2 + screw + external nut), oriented to the belt's flat
     # zone. Lifter bars only on the last string (build-time saver — same geometry, hidden elsewhere).
-    so, sxd, sn = C.splice_frame((mx, my, mz), (D.SCREW_X, sy, spz))
+    so, sxd, sn = C.splice_frame((mx, my, mz), (D.screw_x(i), sy, spz))
     cloc = cq.Location(cq.Plane(origin=so, xDir=sxd, normal=sn))
     # all tensioners shown FULLY LOOSE (splice take-up gap open); the clamp's belt-position vs the
     # carriage is a separate question (see the belt-travel note) — held at the flat-zone reference here.
@@ -443,11 +443,11 @@ def _string_path(i, sy):
           - D.NUT_FLANGE_T - D.STRING_NUT_D / 2)
     g = D.STRING_GAUGE[i]
     rad = g / 2.0                                     # actual string gauge
-    # rise to the +X tangent point (cx+r, cz). NOT quite vertical any more: the ear
-    # sits STRING_ANCHOR_X, a shade -X of the tangent line, so the dead run leans a
-    # couple of degrees. Deliberate — see dimensions on why the string takes the +X
-    # ear and SCREW_X therefore stays exactly where it is.
-    p0 = cq.Vector(D.STRING_ANCHOR_X, sy, az)
+    # rise to the +X tangent point (cx+r, cz). NOT vertical: with the screws in two
+    # rows the ear sits ANCHOR_DX either side of the tangent — near-row strings lean
+    # one way, far-row the other — so the dead run breaks ~10° off vertical. That
+    # SPLIT is the point: both rows on one side would cost 47-53°. See dimensions.
+    p0 = cq.Vector(D.string_anchor_x(i), sy, az)
     prev = cq.Vector(cx + r, sy, cz)
     out = _rod(p0, prev, rad)
     # 90° arc, +X extent → top, approximated by short rods
