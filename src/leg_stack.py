@@ -225,9 +225,14 @@ def adjust_sleeve():
 
 
 def fixed_sleeve():
-    """The FIXED section. Its own 44.8 body is what enters the body adapter, so
-    the kick moment never passes through a tenon (see the module docstring)."""
-    return _sleeve(FIX_L)
+    """The FIXED section. Its own 44.8 body BUTTS the body adapter, so the kick
+    moment never passes through a tenon (see the module docstring).
+
+    Carries the latch NOTCH -- the way the button reaches the outside, and the
+    part that stands over the slider in place of a cover."""
+    from . import leg_latch as LL          # late: leg_latch reads this module
+    b = _sleeve(FIX_L)
+    return b.cut(LL.sleeve_notch().translate((0, 0, -ADAPT_L)))
 
 
 def adjust_tenon():
@@ -248,10 +253,15 @@ def adjust_tenon():
 
 
 def fixed_tenon():
-    """Floating tenon, adjust sleeve <-> fixed sleeve. Spans the fixed sleeve
-    and protrudes UP only; the bottom end stops inside, because the body joint
-    is carried by the sleeve's own section."""
-    return tenon(FIX_TEN_L)
+    """Floating tenon, adjust sleeve <-> fixed sleeve. Spans the fixed sleeve and
+    protrudes UP into the adapter; the bottom end stops inside the adjust sleeve.
+
+    This is the piece that HOLDS THE LEG ON THE BODY (user), and it is also the
+    only solid section at that joint -- so it hosts the latch's pocket. What that
+    costs the tenon is measured in leg_latch.SECTION_LOSS."""
+    from . import leg_latch as LL
+    t = tenon(FIX_TEN_L)
+    return t.cut(LL.tenon_pocket().translate((0, 0, -ADAPT_WALL)))
 
 
 def body_adapter():
@@ -272,6 +282,9 @@ def body_adapter():
     b = box_at(LEG_W, LEG_W, ADAPT_L, z=ADAPT_L / 2.0)
     # BLIND mortise: stops ADAPT_WALL short of the top face
     b = b.cut(mortise_cutter(ENGAGE + 1.0).translate((0, 0, ADAPT_WALL)))
+    # the latch's retention pocket -- the ledge the whole leg hangs on
+    from . import leg_latch as LL
+    b = b.cut(LL.adapter_pocket())
     h = ADAPT_BOLT_PCD / 2.0
     for sx in (-1, 1):
         for sy in (-1, 1):
@@ -399,6 +412,10 @@ def assembly():
                 adjust_sleeve().translate((0, 0, ADAPT_L + FIX_L))))
     # the ONE exposed tenon: how much stands proud IS the height setting
     out.append(("adjust_tenon", adjust_tenon().translate((0, 0, ADJ_TEN_Z0))))
+    # the body latch, drawn AT REST (hook out, button proud)
+    from . import leg_latch as LL
+    out.append(("latch_slider", LL.slider()))
+    out.append(("latch_spring", LL.spring()))
     # ...and the bar hangs off its far end. Context, not a printed part of this
     # module -- but posed from ADJ_TEN_Z1, so it cannot drift from the tenon.
     out += pedal_bar_context()
