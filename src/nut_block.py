@@ -304,7 +304,27 @@ LANE_LO = -(D.NUT_PITCH - D.MIN_WALL_2P - LANE_HI)
 # what the new channel wants -- it leaves the rod already descending, so the passage can
 # start as a 45 cut and bend to vertical without the string ever having to turn a corner
 # it is not already turning.
-EXIT_DEG = 135.0                                # -X and 45 deg down
+# WHERE THE TAIL LEAVES, AND IT IS QUANTISED BY THE CLAMP. The wrap is the entry sweep
+# plus a WHOLE number of turns, so the exit angle picks the fraction -- and the fraction
+# decides whether the whole turn count that meets CLAMP_WIDTHS is 2 or 3.
+#
+# It must ALSO leave heading -X and NOT DOWNWARD, because the tail's route to its stow
+# bore is up out of the socket, over the wall and down the hole (see stow_route). That
+# rules out the old 135, which left the rod descending because the passage used to start
+# there and bend; with a straight vertical bore there is nothing to descend into.
+#
+# Those two together are a narrow window, and the numbers are worth keeping:
+#
+#     exit    turns          widths       climbs?
+#      45     3.81..3.83     3.95..3.98   yes  -- a whole extra wrap on every string
+#      75     2.91..3.90     3.00..4.05   yes  -- k splits across the set
+#      85     2.92..2.94     3.02..3.04   yes  <- here
+#      90     2.94..2.96     3.03..3.06   NO   -- leaves dead horizontal
+#     135     3.06..3.08     3.16..3.19   NO   -- leaves descending
+#
+# Anything under about 75 costs a full extra turn, which the bass lanes cannot pay for;
+# anything from 90 on stops climbing.
+EXIT_DEG = 85.0                                 # -X, and just above horizontal
 
 # ...but they are NOT free, because the TAIL HAS TO LEAVE POINTING AT THE CLAMP. It
 # exits wherever the winding stops, and the exit passage, the clamp screw and the
@@ -395,6 +415,36 @@ def exit_angle(i: int) -> float:
     """Where string i's tail leaves the rod -- EXIT_DEG, by construction, since turns()
     is built as the entry sweep plus a whole number of revolutions."""
     return touch_angle(i) + turns(i) * 2 * math.pi
+
+
+def exit_point(i: int):
+    """(x, z) where string i's tail leaves the rod, in the block's local frame. THE ONE
+    PLACE THIS IS COMPUTED -- build.py used to derive it from its own wrap radius, which
+    differed from this one by 0.05 and left every tail starting inside its own coil."""
+    a = exit_angle(i)
+    hr = wrap_radius(i)
+    return ROD_X + hr * math.cos(a), ROD_Z + hr * math.sin(a)
+
+
+def stow_route(i: int, z_end: float):
+    """The tail's route from the rod to the bottom of its stow bore, as (x, z) points.
+
+    UP, OVER, DOWN -- and the 'over' is the point of it. The socket and the bore both open
+    at the block's upper face and the wall between them stops at NUT_TOP, so the wound end
+    leaves the rod climbing, clears that wall, and drops into the hole. There is no
+    passage joining the two below the top face and there does not need to be one: the tail
+    is cut to length and fed in by hand."""
+    x0, z0 = exit_point(i)
+    ex, ez = exit_dir(i)
+    assert ez > 1e-6, (
+        f"the tail leaves string {i + 1} descending (EXIT_DEG {EXIT_DEG:.0f}), so it "
+        f"cannot climb over the wall into its stow bore")
+    z_over = NUT_TOP + D.MIN_WALL_2P             # clear of the block's upper face
+    stub = 3.0                                   # a little of the tangent before it bends
+    return [(x0, z0),
+            (x0 + ex * stub, z0 + ez * stub),    # off the rod on its own tangent...
+            (STOW_X, z_over),                    # ...then bent up over the wall by hand
+            (STOW_X, z_end)]                     # and down the bore
 
 
 def exit_dir(i: int):
@@ -1113,11 +1163,6 @@ STOW_D = 4 * D.BEAD                             # 3.2: the bore the cut tail is 
                                                 # every extra bead of diameter pushes the
                                                 # whole channel another 0.57 -X to keep
                                                 # its wall off the trough.
-STOW_R = 8 * D.BEAD                             # 6.4 bend radius: the string already
-                                                # wraps a 2.5 radius rod, so this is a
-                                                # gentle bend by comparison
-STOW_N_SEGS = 8                                   # chords in the bend
-STOW_N_SLABS = 6                                  # Y bands the bore is stepped into
 
 
 WRAP_EPS = 0.05                                 # the coil is drawn a hair off the rod
@@ -1132,145 +1177,52 @@ def wrap_radius(i: int) -> float:
     return ROD_D / 2.0 + D.STRING_GAUGE[i] / 2.0 + WRAP_EPS
 
 
-def _hull2d(pts):
-    """Convex hull (monotone chain) of 2D points, counter-clockwise."""
-    pts = sorted(set((round(x, 9), round(z, 9)) for x, z in pts))
-    if len(pts) < 3:
-        return pts
-
-    def half(ps):
-        out = []
-        for q in ps:
-            while len(out) >= 2:
-                (x1, z1), (x2, z2) = out[-2], out[-1]
-                if (x2 - x1) * (q[1] - z1) - (z2 - z1) * (q[0] - x1) > 1e-12:
-                    break
-                out.pop()
-            out.append(q)
-        return out
-
-    return half(pts)[:-1] + half(pts[::-1])[:-1]
-
-
-def _tear2d(x, z, r):
-    """The teardrop SECTION in the XZ plane about (x, z) -- a circle plus the 45 deg peak,
-    the peak pointing +X. Returned as points, for hulling."""
-    n = 24
-    out = [(x + r * math.cos(2 * math.pi * k / n), z + r * math.sin(2 * math.pi * k / n))
-           for k in range(n)]
-    out.append((x + r * math.sqrt(2.0), z))               # the apex
-    return out
-
-
-# WHERE THE VERTICAL RUN SITS, AND IT IS SET BY THE TROUGH (user). The channel's own
-# TEARDROP TIP is the thing that has to keep its distance, not its centreline: the apex
-# points +X (the build direction) and reaches STOW_D/2 * sqrt(2) off centre, so a channel
-# placed by its axis would put 1.6 of wall on paper and 1.6 - 2.26 of it in the part.
-#
-# It was not being controlled at all before -- the vertical run landed wherever the bend
-# radius happened to leave it, about 1.2 mm of wall, and that is a wall between two large
-# voids with the whole string tension pulling across it.
-# The block only spans down to NUT_BASE, but the channel's BEND finishes below that, so
-# the block's own cut still has to be asked for the full depth -- it is intersected with
-# the prism anyway, and stopping short would round the mouth off inside the part.
-STOW_Z_END = -40.0                              # deep enough to be past the bend
+# WHERE THE CHANNEL SITS, AND IT IS SET BY THE SOCKET (user). The bore's own TEARDROP
+# TIP is what has to keep its distance, not its axis: the apex points +X (the build
+# direction) and reaches STOW_D/2 * sqrt(2) off centre, so a bore placed by its axis would
+# put 1.6 of wall on paper and 1.6 - 2.26 of it in the part.
+# The block only spans down to NUT_BASE, but the bore carries on into the endplate this
+# block is fused into, so the block's own cut is asked for the full depth and simply
+# intersected with the prism.
+STOW_Z_END = -40.0                              # well past the block's base
 STOW_KEEP = D.MIN_WALL_2P                       # wall between the channel's tip and the socket
 STOW_APEX = STOW_D / 2.0 * _APEX                # the teardrop's real +X reach
 STOW_X = INS_X0 - STOW_KEEP - STOW_APEX
 assert STOW_X - STOW_D / 2.0 > X_BACK, (
     f"the stow channel ({STOW_X:.2f}) has walked out through the block's -X face "
-    f"({X_BACK:.2f}) -- the trough or the channel has grown")
-
-
-def stow_path(i: int, z_end: float):
-    """The channel's centreline for string i: the 45 deg run off the rod, a straight
-    stretch on that same line, the bend to vertical, then down to z_end.
-
-    THE STRAIGHT STRETCH IS WHAT REACHES STOW_X. The bend alone only carries the bore
-    -X by R*(1 - sin 45) = 0.29 R, so putting the vertical run where the trough wall
-    demands it would need a bend radius of 27 mm -- which drops the channel far deeper
-    than the endplate is. Running straight at 45 first costs nothing: the string is
-    already travelling that way when it leaves the rod."""
-    hr = wrap_radius(i)
-    a = exit_angle(i)
-    x0 = ROD_X + hr * math.cos(a)
-    z0 = ROD_Z + hr * math.sin(a)
-    # the tangent turns from EXIT_DEG's heading round to straight down. Parameterised by
-    # phi, the heading's angle off -X: T(phi) = (-cos phi, -sin phi), so the centre of
-    # curvature sits R along the normal and the arc is a plain circle about it.
-    phi0 = math.radians(180.0 - EXIT_DEG)                 # 45 deg for EXIT_DEG 135
-    run = ((x0 - STOW_R * (1.0 - math.sin(phi0)) - STOW_X)  # straight, to land the bend
-           / math.cos(phi0))                                # where STOW_X wants it
-    assert run >= 0.0, (
-        f"string {i + 1}'s bore cannot reach STOW_X ({STOW_X:.2f}) even with no straight "
-        f"run -- STOW_R is too big for the offset the trough asks for")
-    ax = x0 - run * math.cos(phi0)
-    az = z0 - run * math.sin(phi0)
-    cx = ax + STOW_R * math.sin(phi0)
-    cz = az - STOW_R * math.cos(phi0)
-    pts = [(x0, z0)]
-    for n in range(STOW_N_SEGS + 1):
-        phi = phi0 + (math.pi / 2 - phi0) * n / STOW_N_SEGS
-        pts.append((cx - STOW_R * math.sin(phi), cz + STOW_R * math.cos(phi)))
-    # ...then straight down and out. THE BEND ALREADY ENDS BELOW THE BLOCK, so a caller
-    # that only cares about the block must still ask for a z_end below the bend: passing
-    # one ABOVE it used to append a segment running back UPWARD, and the rounded cap on
-    # that reversed segment poked into the block and pinched the channel's mouth at the
-    # base plane (user: a small section indented further than it should).
-    assert z_end <= pts[-1][1] + 1e-9, (
-        f"stow_path asked to end at z {z_end:.2f}, which is ABOVE where the bend finishes "
-        f"({pts[-1][1]:.2f}) -- the channel would double back on itself")
-    pts.append((pts[-1][0], z_end))
-    return pts
+    f"({X_BACK:.2f}) -- the socket or the channel has grown")
 
 
 def stow_channel(i: int, y: float, z_end: float) -> cq.Workplane:
-    """String i's stow passage, as a cutter in the nut block's local frame.
+    """String i's stow passage: ONE STRAIGHT TEARDROP BORE ALONG Z (user).
 
-    BUILT AS Y SLABS OF A 2D SWEEP, which is the third construction this channel has had
-    and the first that is both pointed and clean. The two it replaces are worth recording
-    because each failed for its own reason:
+    This channel has had four constructions and this is the only simple one, so it is
+    worth saying what the other three were paying for and why the bill is no longer worth
+    it. They all tried to carry the string CONTINUOUSLY from the wrap into the passage --
+    the tail left the rod already descending at 45, the passage started on that same line
+    and bent smoothly to vertical, and the string never turned a corner it was not already
+    turning. That is a nice property and it cost:
 
-      * A STRING OF 3D TEARDROP BORES, one per chord, is the shape you actually want --
-        the section is normal to the axis, so it tapers to a point in BOTH directions and
-        the roof is a proper ridge. But the apex sits r*sqrt(2) off the axis and the axis
-        turns between chords, so consecutive apexes miss each other by a micron or two and
-        OCC fills the mismatch with near-degenerate faces: 394 of 576 faces under
-        0.05 mm^2, the smallest 1e-6. Those are the "infinitely thin sheets" (user), and
-        fusing in one boolean and cleaning afterwards does not remove them.
-      * A SINGLE Y PRISM of the 2D sweep is perfectly clean -- every section is a plain
-        translate of the last -- but it holds full width in Y right up to the apex, so the
-        roof comes out FLAT the whole 3.2 across (user). A flat roof is the one thing this
-        cannot have.
+      * a swept cutter, which cadkit's teardrop_hole cannot make (it refuses an axis that
+        is not square to the build direction, and a bending one never is);
+      * chording it instead, which rolls the apex between chords and fills the roof with
+        micron-thick sheets;
+      * or sweeping a section in the XZ plane instead, which is clean but leaves the roof
+        FLAT the full width of the bore;
+      * or slabbing that in Y to get the roof back, at 105 s a rebuild.
 
-    So: slabs. Each slab is a Y band of the bore, and within a band the section is the 2D
-    sweep of a teardrop whose radius is the bore's HALF-WIDTH at that Y -- so the bore
-    narrows as it approaches its own side walls, and the roof steps down with it. Every
-    slab is a clean 2D prism, so there is nothing for a boolean to make a sliver out of,
-    and the roof is a stepped gable rather than a flat.
+    A straight bore needs none of it. The string is CUT TO LENGTH and pushed down the hole
+    by hand at restring (user), so it does not need a fair curve to follow -- it needs a
+    hole it can be fed into. teardrop_hole makes exactly that, its axis is square to the
+    build direction so the helper is happy, and the apex points +X with no argument.
 
-    The radius is taken at the band's INNER edge, so each slab is a hair larger than the
-    true bore rather than smaller: a cutter may err big, and the wall this has to keep is
-    measured off the apex, which is exact."""
-    r = STOW_D / 2.0
-    pts = stow_path(i, z_end)
-    # FUSED IN ONE BOOLEAN PER SLAB, then the slabs in one more. Accumulating a union a
-    # chord at a time is O(n) full booleans against a shape that keeps growing, and at
-    # STOW_N_SLABS x STOW_N_SEGS x ten strings that is over a thousand of them -- minutes per
-    # rebuild. OCC's multi-argument fuse does the same work in one pass.
-    solids = []
-    for j in range(STOW_N_SLABS):
-        y0 = -r + 2.0 * r * j / STOW_N_SLABS
-        y1 = -r + 2.0 * r * (j + 1) / STOW_N_SLABS
-        rj = math.sqrt(max(r * r - min(abs(y0), abs(y1)) ** 2, 0.0))
-        if rj < 1e-6:
-            continue
-        segs = [(cq.Workplane("XZ")
-                 .polyline(_hull2d(_tear2d(xa, za, rj) + _tear2d(xb, zb, rj))).close()
-                 .extrude(y1 - y0).translate((0.0, y + y1, 0.0)).val())
-                for (xa, za), (xb, zb) in zip(pts[:-1], pts[1:])]
-        solids.append(segs[0].fuse(*segs[1:]) if len(segs) > 1 else segs[0])
-    return cq.Workplane("XY").add(solids[0].fuse(*solids[1:]).clean())
+    The tail reaches it OVER THE TOP: the socket and this bore both open at the block's
+    upper face, and the wall between them stops at NUT_TOP, so the wound end comes up out
+    of the socket, over that wall and down the hole. That is why the wrap now leaves at
+    EXIT_DEG 45, heading -X and UP, instead of down."""
+    z1 = NUT_TOP + 1.0
+    return teardrop_hole(STOW_D, z1 - z_end, axis_point=(STOW_X, y, z_end),
+                         axis_dir=(0.0, 0.0, 1.0), print_up=PRINT_UP)
 
 
 def all_stow_channels(z_end: float) -> cq.Workplane:
