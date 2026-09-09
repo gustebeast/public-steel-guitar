@@ -2,8 +2,8 @@
 
 Not a standalone print: bridge_endplate unions this rail in and bridges it to
 the cap, so the whole bridge end is one solid. The 10 vertical screws' bottom
-supports live in ONE rail spanning the field at the screw line (X=SCREW_X).
-Each station seats a TANDEM PAIR of MR85 bearings (Ø8 OD, 5.0 mm stacked) with a
+supports live in ONE rail spanning the field across BOTH screw rows (+/-SCREW_ROW_DX).
+Each station seats ONE 688ZZ bearing (Ø16 OD, 5.0 wide) with a
 top ledge that backs their OUTER RINGS against the screw's UPWARD pull (the string
 pulls each carriage toward its bridge bearing, +Z). The inner rings are driven up
 from below by the printed screw_collar, so the load crosses the balls in parallel
@@ -29,9 +29,11 @@ ACROSS  = 2 * D.BRIDGE_AXLE_Y + D.BRIDGE_ARM_W   # reach the endplate edge-ribs'
 # X span: the -X face reaches the endplate's own -X edge (BRIDGE_BASE_X0) so the
 # drivetrain-mount base is the full 25 mm wide (matching the endplate); the +X face stops
 # at SCREW_X+7, where the bridge's bottom-bridge takes over up to the +X tip.
-X_NX    = D.BRIDGE_BASE_X0                 # -X face (= endplate -X edge, -16.5)
-X_PX    = D.SCREW_X + 9 * D.BEAD           # 7.2: +X face (bottom-bridge takeover, -0.8;
-                                           # keep = bridge_endplate._SRX)
+# The rail now spans the WHOLE bridge base. It used to stop at SCREW_X+7 and hand over
+# to the bridge's bottom-bridge, which worked when every seat sat on one X line; with
+# TWO ROWS the seats are at -/+SCREW_ROW_DX and the rail has to reach both.
+X_NX    = D.BRIDGE_BASE_X0                 # -X face (= endplate -X edge)
+X_PX    = D.BRIDGE_BASE_X1                 # +X face (= endplate +X edge)
 # Z EXTENTS, datumed off the THRUST LEDGE (D.SUPPORT_BRG_Z). The stack now sits ON
 # the pulleys rather than under them, so this rail rode up with it — and everything
 # that used to live below the pulley went away in the move: no retaining collar, no
@@ -55,9 +57,9 @@ assert _NUT_GAP >= 1.0 - 1e-9, (
 # inner ring by ~0.4, still covering the outer ring (bore ~7.0-7.2) by ~0.8.
 # It is the mirror of the constraint on screw_collar's Ø5.6 pilot boss, which lands on
 # the inner rings only for the same reason from the other side.
-SEAT_LEDGE_D = 8 * D.BEAD                  # 6.4
-assert SEAT_LEDGE_D >= 6.2, "the ledge would foul the MR85's rotating inner ring"
-assert SEAT_LEDGE_D <= 6.8, "the ledge no longer backs the MR85's outer ring"
+SEAT_LEDGE_D = 15 * D.BEAD                 # 12.0 — re-datumed to 688ZZ (Ø8x16)
+assert SEAT_LEDGE_D >= 11.0, "the ledge would foul the 688's rotating inner ring"
+assert SEAT_LEDGE_D <= 13.4, "the ledge no longer backs the 688's outer ring"
 
 # WHY THE LEDGE IS ON TOP, not underneath (user asked, and the answer is the load).
 # The string pulls every carriage +Z, so the screw is pulled +Z at 88-147 N. The
@@ -97,10 +99,10 @@ def seat_cutter() -> cq.Workplane:
         y = D.string_y(i)
         # bearing seat: counterbore from the bottom (−Z) up to the thrust ledge
         seat = _bore(D.SUPPORT_BRG_OD + 0.2, D.SUPPORT_BRG_W + SEAT_CLR,
-                     (D.SCREW_X, y, BOT - 0.01))
+                     (D.screw_x(i), y, BOT - 0.01))
         # screw clearance through the top ledge (Ø < the bearing OD — that step IS
         # the face the outer rings push against, and the whole string load with them)
-        clr = _bore(SEAT_LEDGE_D, HEIGHT + 2, (D.SCREW_X, y, BOT - 1))
+        clr = _bore(SEAT_LEDGE_D, HEIGHT + 2, (D.screw_x(i), y, BOT - 1))
         cut = seat.union(clr)
         tool = cut if tool is None else tool.union(cut)
     return tool

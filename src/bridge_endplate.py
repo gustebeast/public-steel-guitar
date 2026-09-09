@@ -300,8 +300,8 @@ GUIDE_SOCKET_H = 5 * D.BEAD                     # 4.0 of blind socket in the rai
 GUIDE_SOCKET_Z = _SR_TOP - GUIDE_SOCKET_H       # -30.4, the socket's floor
 # The web between this bore and the top bearing's pocket is the tight spot, and it is
 # a teardrop-apex-to-bore-wall distance, not a wall anyone chose:
-_GUIDE_WEB = ((D.GUIDE_ROD_X + (D.GUIDE_ROD_D + D.GUIDE_ROD_FIT) / 2)
-              - (D.SCREW_X - (D.MR85_OD + 0.2) / 2 * 1.4143))
+_GUIDE_WEB = ((-D.SCREW_ROW_DX - D.NUT_HOLE_DX + (D.GUIDE_ROD_D + D.GUIDE_ROD_FIT) / 2)
+              - (-D.SCREW_ROW_DX - (D.BRG688_OD + 0.2) / 2 * 1.4143))
 assert _GUIDE_WEB >= D.MIN_WALL - 1e-9, (
     f"only {_GUIDE_WEB:.2f} of slab between the guide-rod bore and the top bearing's "
     f"pocket (one bead is {D.MIN_WALL}) — it is set by NUT_HOLE_DX, still a guess")
@@ -340,7 +340,7 @@ STRING_SLOT_W = 4 * D.BEAD                      # 3.2, clears the heaviest C6 st
 # just continues an existing cut down to the bed instead of ending it in mid-air.
 DRIVE_SWEPT_R = D.PULLEY_FLANGE_OD / 2                    # 5.5 — the pulley is the
                                                           # widest turning thing left
-DRIVE_X1 = D.SCREW_X + DRIVE_SWEPT_R + 0.4                # -2.1
+DRIVE_X1 = D.SCREW_ROW_DX + DRIVE_SWEPT_R + 0.4      # far row's pulley, +X-most
 DRIVE_Z1 = D.PULLEY_TOP_MAX + 0.4                         # -32.6
 DRIVE_Z0 = CH.Z_BOT                                       # -74.95: OPEN TO THE FLOOR
 assert DRIVE_Z0 <= CH.Z_BOT + 1e-9, (
@@ -450,7 +450,7 @@ def _axle_negative() -> cq.Workplane:
     return neg.union(bore(D.BRIDGE_AXLE_Y - ARM_W / 2 - 1.0, AXLE_CHAN_Y1))
 
 
-_SRX = D.SCREW_X + 9 * D.BEAD     # 7.2: screw-rail +X face (keep = screw_rail.X_PX)
+_SRX = D.BRIDGE_BASE_X1           # screw-rail +X face (keep = screw_rail.X_PX)
 
 
 def _comb_brace(yc: float, cb_w: float) -> cq.Workplane:
@@ -622,7 +622,7 @@ def _build() -> cq.Workplane:
         # either open or wants the hole, so it is a single cut rather than three.
         body = body.cut(printable_bore(
             D.GUIDE_ROD_D + D.GUIDE_ROD_FIT, GUIDE_DROP_Z1 - GUIDE_SOCKET_Z,
-            axis_point=(D.GUIDE_ROD_X, sy, GUIDE_SOCKET_Z),
+            axis_point=(D.guide_rod_x(i), sy, GUIDE_SOCKET_Z),
             axis_dir=(0.0, 0.0, 1.0), print_up=PRINT_UP))
     # TOP RADIAL BEARING seats, bored UP into the same slab. FLOATING: the pocket is
     # half a millimetre deeper than the bearing and has no shoulder either side, so it
@@ -631,16 +631,16 @@ def _build() -> cq.Workplane:
     for i in range(D.N_STRINGS):
         sy = D.string_y(i)
         body = body.cut(printable_bore(
-            D.MR85_OD + 0.2, D.MR85_W + 0.5 + 0.01,
-            axis_point=(D.SCREW_X, sy, D.TOP_BRG_Z0 - 0.01),
+            D.BRG688_OD + 0.2, D.BRG688_W + 0.5 + 0.01,
+            axis_point=(D.screw_x(i), sy, D.TOP_BRG_Z0 - 0.01),
             axis_dir=(0.0, 0.0, 1.0), print_up=PRINT_UP))
     # STRING SLOTS through the same slab, one per string, running OUT to the +X face
     # so a string drops in sideways instead of being threaded down a second hole.
     for i in range(D.N_STRINGS):
         sy = D.string_y(i)
-        body = body.cut(box_at((X1 + 1.0) - D.STRING_ANCHOR_X, STRING_SLOT_W,
+        body = body.cut(box_at((X1 + 1.0) - D.string_anchor_x(i), STRING_SLOT_W,
                                (Z6 + 1.0) - GUIDE_SOCKET_Z,
-                               x=(D.STRING_ANCHOR_X + X1 + 1.0) / 2, y=sy,
+                               x=(D.string_anchor_x(i) + X1 + 1.0) / 2, y=sy,
                                z=(GUIDE_SOCKET_Z + Z6 + 1.0) / 2))
     # LIGHT COVER for the optical strip, unioned in: its roof lands on the comb
     # brace at XLO and its slots sit over the sensor triplets.
