@@ -157,7 +157,39 @@ def _crop_leg_station():
     return (400.0, 400.0, 900.0, lx, ly, zt - 300.0)
 
 
-CROPS = {"leg_station": _crop_leg_station, "belt_run": _belt_run_box}
+def _crop_keyhead():
+    """The whole keyhead endplate and what it mates with, at the -X end.
+
+    Z IS SPANNED FROM THE BED TO OVER THE NUT BLOCK, not centred on the string plane.
+    Centring on STRING_Z with 90 of height put the floor at -29 and spent 45 on empty air
+    above the instrument -- which clipped chassis_2 to a 29 mm band that the deck panel
+    then sat on top of, so the chassis read as MISSING from the render. Everything this
+    part actually mates with is BELOW that line: the rail-end dovetail sockets at -23.15,
+    the leg shell, the fill band down to the bed."""
+    from src import dimensions as D, chassis as CH
+    z0, z1 = CH.Z_BOT - 5.0, D.STRING_Z + 10.0
+    return (120.0, 140.0, z1 - z0, D.NUT_BLOCK_X, 0.0, (z0 + z1) / 2)
+
+
+def _crop_bridge():
+    """The bridge endplate's UPPER BLOCK and what it mates with, at the +X end.
+
+    NARROWER IN Y THAN THE KEYHEAD'S. The part itself runs -139..+66 because the screw
+    rail and the foot reach right down the instrument, but the work here is the bearing
+    arms and the axle between them -- +-51 -- and the optical board that stops the shaft.
+    Cropping to that keeps the strings, the carriages and the arms in frame and leaves the
+    drivetrain out of it.
+
+    Z SPANS THE DECK TO OVER THE STRINGS, not the whole part: the arms stand above the
+    deck and everything they mate with is up there. The foot and the rail below are
+    context this view does not need, and they are most of the solids."""
+    from src import dimensions as D, chassis as CH
+    z0, z1 = CH.Z_TOP - 10.0, D.STRING_Z + 12.0
+    return (90.0, 130.0, z1 - z0, D.BRIDGE_AXLE_X, 0.0, (z0 + z1) / 2)
+
+
+CROPS = {"leg_station": _crop_leg_station, "belt_run": _belt_run_box,
+         "keyhead": _crop_keyhead, "bridge": _crop_bridge}
 # ─────────────────────────────────────────────────────────────────────────────
 
 

@@ -283,6 +283,19 @@ def _export(name):
     print(f"Wrote {path}" + (f"  ({note})" if note else ""))
 
 
+def _bead(p, r):
+    """A ball at a joint in the string path.
+
+    WHY A BALL AND NOT AN OVERLAP. Where the tail leaves the coil the two are TANGENT --
+    the chord sets off in the direction the helix is already going -- and a tangential
+    overlap between a swept helix and a cylinder is the case OCC handles worst. Running
+    the chord back into the coil (a string diameter of lap) fused seven of the ten and
+    quietly dropped the coil on strings 4, 7 and 8: the union came back smaller than the
+    tail alone. A ball centred ON the joint overlaps both solids in three dimensions
+    instead of along a line, and all ten fuse."""
+    return cq.Workplane("XY").add(cq.Solid.makeSphere(r, pnt=p, angleDegrees1=-90))
+
+
 def _rod(p0, p1, r):
     v = p1.sub(p0)
     return cq.Workplane("XY").add(cq.Solid.makeCylinder(r, v.Length, pnt=p0, dir=v))
@@ -412,17 +425,13 @@ def _string_components(i):
     g = D.STRING_GAUGE[i]
     ny, wy = NB.wrap_y(i)
     tail_z = D.STRING_Z + NB.ROD_Z                                     # the tail runs at rod height
-    out.append((f"break_dowel_{i}", C.dowel().translate(               # centred in its seat (0.4 clr
-        (D.NUT_BLOCK_X, ny, D.STRING_Z - g - D.NUT_PIN_D / 2))))       # all round); pin top at Z-g
-    out.append((f"anvil_dowel_{i}", C.dowel().translate(               # the clamp pinches the tail onto
-        (D.NUT_BLOCK_X + NB.clamp_row_x(i), wy,                                # STEEL, not onto the plastic floor
-         tail_z - g / 2 - D.NUT_PIN_D / 2))))
-    out.append((f"set_screw_{i}", C.set_screw().translate(             # cup tip on the CLAMPED tail;
-        (D.NUT_BLOCK_X + NB.clamp_row_x(i), wy,                                # tail stands proud of the boss
-         tail_z + g / 2 + D.NUT_SCREW_L))))
-    out.append((f"nut_insert_{i}", C.m4_insert().translate(           # Ø6×5 heat-set insert (the screw
-        (D.NUT_BLOCK_X + NB.clamp_row_x(i), wy,                                # threads into it), in its roof pocket
-         D.STRING_Z + NB.INSERT_GAP + NB.INSERT_L))))                  # (pocket floor INSERT_GAP, up INSERT_L)
+    out.append((f"break_dowel_{i}", C.dowel().translate(               # gauged: pin top at Z-g, so
+        (D.NUT_BLOCK_X + NB.DOWEL_X, ny,                               # every string top lands on
+         D.STRING_Z - g - D.NUT_PIN_D / 2))))                          # one plane. DOWEL_X, not 0:
+                                                                       # the dowels sit 1.6 back from
+                                                                       # the block's front face now
+    # (no clamp set screw or heat-set insert: the sliding insert IS the clamp, and
+    #  the tail is pinched against the wrap on the rod rather than against the floor)
     return out
 
 
@@ -463,12 +472,45 @@ def _string_path(i, sy):
     # dead end: break edge -> down to the wrap rod -> N turns around it -> out to the clamp
     ny, wy = NB.wrap_y(i)
     rx, rz = D.NUT_BLOCK_X + NB.ROD_X, D.STRING_Z + NB.ROD_Z
-    hr = NB.ROD_D / 2.0 + rad + 0.05                       # helix radius: the string ON the rod
-    out = out.union(_rod(brk, cq.Vector(rx + hr, ny, rz), rad))
+    hr = NB.wrap_radius(i)                                 # helix radius: nut_block owns it
+    # THE WRAP IS ON THE ROD'S UNDERSIDE (-Z), so the path has no reversal left in it:
+    # the string leaves the dowel already descending, becomes TANGENT to the wrap circle
+    # on the way down, goes round underneath, and leaves at the bottom running straight
+    # -X to the clamp. TANGENCY is the part that has to be right -- aiming at the
+    # circle's lowest point instead would draw the string cutting through the rod on the
+    # way in. The touch point sits BREAK_ANGLE round from the bottom, +X side.
+    phi = NB.touch_angle(i)          # nut_block owns this -- see its docstring on why
+    tang = cq.Vector(rx + hr * math.cos(phi), ny, rz + hr * math.sin(phi))
+    tail_z = rz + hr                                       # the TOP: where it leaves
+    # RUN THE STRAIGHT RUNS PAST THE TANGENT POINT, or they do not touch the coil.
+    # A tangent meets its circle at ONE POINT: the lead rod ends exactly where the helix
+    # begins, so the union of the two has literally nothing to fuse and OCC hands back a
+    # two-solid compound with the coil floating free. It came out as strings 8 and 10
+    # rendering with no winding at all -- and the giveaway was that the union's volume was
+    # the EXACT SUM of its parts, i.e. zero overlap, not a boolean that had gone wrong.
+    # The other eight only survived on the odd micron of floating-point slop.
+    #
+    # Carrying each straight run ONE STRING DIAMETER past the touch point gives a real
+    # overlap without moving anything that matters: the tangent line separates from the
+    # circle as d^2/2r, so at d = 2*rad the centrelines are 2*rad^2/hr apart -- 0.02 mm on
+    # the .015 and 0.46 on the .070, well inside the string's own radius either way. The
+    # wrap itself is untouched; this is the DEMO path's joinery, not the capstan geometry.
+    _LAP = 2.0 * rad                                       # one string diameter of overlap
+    t_in = cq.Vector(-math.sin(phi), 0.0, math.cos(phi))   # the coil's heading at the touch
+    out = out.union(_rod(brk, tang + t_in.multiply(_LAP), rad))
     out = out.union(_wrap_coil(i, rad, hr))
-    out = out.union(_rod(cq.Vector(rx - hr, wy, rz),
-                         cq.Vector(D.NUT_BLOCK_X + NB.clamp_row_x(i), wy, rz), rad))
-    out = out.union(_stow_tail(i, rad))
+    # THE TAIL FOLLOWS THE CHANNEL'S OWN CENTRELINE, from nut_block, so the string and the
+    # passage it lives in cannot drift apart -- the same one-description rule the pocket
+    # and the insert follow. It leaves at EXIT_DEG already descending, so there is no
+    # corner here at all: the -X run and the separate stow bore are both gone.
+    pts = NB.stow_route(i, (CH.Z_BOT + 8.4) - D.STRING_Z)   # stop above the tongue top
+    x0, z0 = pts[0]
+    prev = cq.Vector(D.NUT_BLOCK_X + x0, wy, D.STRING_Z + z0)
+    out = out.union(_bead(prev, rad * 1.05))                # see _bead: the tail leaves
+    for x, z in pts[1:]:                                    # TANGENT to the coil
+        cur = cq.Vector(D.NUT_BLOCK_X + x, wy, D.STRING_Z + z)
+        out = out.union(_rod(prev, cur, rad))
+        prev = cur
     return out
 
 
@@ -479,41 +521,24 @@ def _wrap_coil(i, rad, hr):
     ny, wy = NB.wrap_y(i)
     p = NB.WRAP_F * D.STRING_GAUGE[i]
     h = abs(wy - ny)
-    helix = cq.Wire.makeHelix(pitch=p, height=h, radius=hr)
+    # RIGHT-HAND. Rotated +90 about X the helix axis lies along -Y (the march), and a
+    # right-handed helix then turns +X toward +Z -- phi INCREASING, which is the way the
+    # string is already going when it meets the rod's top. Left-hand reverses that and
+    # draws the coil winding back into its own entry.
+    helix = cq.Wire.makeHelix(pitch=p, height=h, radius=hr, lefthand=False)
     coil = (cq.Workplane("XZ").center(hr, 0).circle(rad)
             .sweep(cq.Workplane("XY").add(helix), isFrenet=True))
     # +90 about X (not -90): that lays the helix axis along -Y, so the coil marches
     # toward the THICKER neighbour and the fattest one runs out into free air.
-    return coil.rotate((0, 0, 0), (1, 0, 0), 90.0).translate((
-        D.NUT_BLOCK_X + NB.ROD_X, ny, D.STRING_Z + NB.ROD_Z))
-
-
-def _stow_tail(i, rad):
-    """DEMO: the clamped string's free end continuing past the clamp -- flat to the exit-curve
-    start, straight out the -X face at rod height, then looping into the keyhead Z stow bore
-    (face mouth → inward arc → straight down to the bed). Shows where each cut end tucks away."""
-    from . import keyhead_endplate as KE
-    ny = NB.wrap_y(i)[1]                                                # the WRAP's far end
-    cz = D.STRING_Z + NB.ROD_Z                                          # the tail runs at rod height
-    pts = [cq.Vector(D.NUT_BLOCK_X + NB.clamp_row_x(i), ny, cz),                # clamp
-           cq.Vector(D.NUT_BLOCK_X + NB.X_BACK, ny, cz)]                # straight out the -X face
-    # the stow bore: -X-face mouth, a 45° inward arc to x=ZHOLE_X, then straight down to the bed
-    R = (KE.ZHOLE_X - KE.XLO) / (1.0 - math.cos(math.radians(45.0)))
-    zj, cx = KE.Z6 - R * math.sin(math.radians(45.0)), KE.ZHOLE_X - R
-    pts.append(cq.Vector(KE.XLO, ny, KE.Z6))                            # bore mouth at the -X face
-    M = 8
-    for k in range(1, M + 1):
-        th = math.radians(45.0 * (1.0 - k / M))                        # 45° → 0° around the arc
-        pts.append(cq.Vector(cx + R * math.cos(th), ny, zj + R * math.sin(th)))
-    pts.append(cq.Vector(KE.ZHOLE_X, ny, CH.Z_BOT + 8.4))              # down the bore, stopping
-    #                                    just above the corner stubs' end-wall TONGUE top
-    #                                    (bed + 8.0): the two +Y-corner bores land on the
-    #                                    keyhead stub's tongue
-    out = None
-    for a, b in zip(pts[:-1], pts[1:]):
-        seg = _rod(a, b, rad)
-        out = seg if out is None else out.union(seg)
-    return out
+    # ...then -90 about its OWN axis, which is what puts the start of the wrap on the
+    # ROD'S UNDERSIDE. makeHelix begins at angle 0 -- the +X side -- and leaving it there
+    # would draw the string entering at the rod's mid-height, which is the reversal this
+    # whole change exists to remove.
+    coil = coil.rotate((0, 0, 0), (1, 0, 0), 90.0)
+    # START THE WRAP WHERE THE STRING LANDS. makeHelix begins at angle 0 (+X); spinning it
+    # to the touch angle is what closes the gap between the straight run and the coil.
+    coil = coil.rotate((0, 0, 0), (0, 1, 0), -math.degrees(NB.touch_angle(i)))
+    return coil.translate((D.NUT_BLOCK_X + NB.ROD_X, ny, D.STRING_Z + NB.ROD_Z))
 
 
 def _pickup_mount_components():
@@ -545,7 +570,7 @@ def _pickup_mount_components():
     _oscr = headed_screw(M4, 12.0, head_d=7.0, head_h=_ohh, socket_af=2.5)
     for _i, (_mx, _my) in enumerate(OP.mount_points()):
         out.append((f"optical_insert_{_i}",
-                    seated_insert(M4, (_mx, _my, _BE.CARRIER_TOP), (0, 0, -1))))
+                    seated_insert(M4, (_mx, _my, _BE.PCB_PAD_TOP), (0, 0, -1))))
         out.append((f"optical_screw_{_i}",
                     _oscr.translate((_mx, _my, OP.PCB_TOP + _ohh))))
     # TOP-ACCESS height (user): THREE M4×20 BUTTON-HEAD LEADSCREW jacks (real headed cap screw,
@@ -1159,9 +1184,10 @@ _COLORS = {
     "motor":           (0.22, 0.25, 0.27),   # charcoal
     "belt":            (0.13, 0.13, 0.13),   # GT2 black
     "string":          (0.85, 0.85, 0.85),
-    "break_dowel":     (0.75, 0.75, 0.78),   # steel dowel (gauged break pin)
-    "anvil_dowel":     (0.75, 0.75, 0.78),   # O2 anvil under the clamped tail (same part
-                                             # number as the break dowel)
+    "break_dowel":     (0.75, 0.75, 0.78),
+    "nut_slide_insert": (0.86, 0.72, 0.30),   # the sliding insert -- brass-ish, so it
+                                              # reads apart from the steel it presses on
+   # steel dowel (gauged break pin)
     "nut_wrap_rod":    (0.62, 0.66, 0.72),   # THE CAPSTAN -- one rod, and it is the bridge
                                              # axle's own O5 g6 shaft
     "set_screw":       (0.55, 0.55, 0.58),   # alloy set screw
