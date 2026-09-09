@@ -3,6 +3,7 @@
     py -3.12 cadkit/tools/agent_sync.py view            # the normal way to run this
     py -3.12 -m tools.scratch_view --start              # BEGIN a flow: re-cache, render
     py -3.12 -m tools.scratch_view                      # iterate: your part fresh
+    py -3.12 -m tools.scratch_view --gate               # fast gate on the cache
     py -3.12 -m tools.scratch_view --merge              # END a flow: DELETE the cache
 
 WHY: a full `src.build` is minutes, and nearly all of it is geometry you are not
@@ -268,6 +269,15 @@ VIEW = ScratchView(
     # cannot drift from the finished assembly. Cached context stays grey on purpose:
     # that contrast is what tells you which parts are live and which may be stale.
     colors=lambda n: importlib.import_module("src.build")._color_for(n),
+    # INNER-LOOP gates (`--gate`): the project's real gate functions, handed the
+    # cached context instead of a fresh 5.5-min rebuild. Scoping a gate by NAME
+    # never helped -- the build is ~95% of its cost, not the checking -- so this
+    # scopes what gets BUILT, exactly as the view does. Still not the submit gate:
+    # nothing authoritative reads the cache, and `--gate` says so every run.
+    gates=(("overlaps", lambda comps:
+            importlib.import_module("tools.check_overlaps").gate(comps)),
+           ("sweep", lambda comps:
+            importlib.import_module("tools.check_sweep").gate(comps))),
 )
 
 if __name__ == "__main__":
