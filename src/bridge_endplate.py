@@ -349,7 +349,7 @@ assert DRIVE_Z0 <= CH.Z_BOT + 1e-9, (
 
 # Room half-width: out to the arm inner faces, so the edge carriages / string
 # balls are reachable through the room's +X opening (everything installs from +X).
-WIN_HW     = D.BRIDGE_AXLE_Y - ARM_W / 2
+WIN_HW     = D.BRIDGE_ARM_Y - ARM_W / 2
 
 
 MECH_HW = D.BRIDGE_ARM_OUT   # 54.75, field-centre upper-cap half-span = the arm outer face.
@@ -446,8 +446,8 @@ def _axle_negative() -> cq.Workplane:
             AXLE_BORE, y1 - y0,
             axis_point=(D.BRIDGE_AXLE_X, y0, D.BRIDGE_BEARING_Z),
             axis_dir=(0, 1, 0), print_up=PRINT_UP)
-    neg = bore(-D.BRIDGE_ARM_OUT + AXLE_END_WALL, -D.BRIDGE_AXLE_Y + ARM_W / 2 + 1.0)
-    return neg.union(bore(D.BRIDGE_AXLE_Y - ARM_W / 2 - 1.0, AXLE_CHAN_Y1))
+    neg = bore(-D.BRIDGE_ARM_OUT + AXLE_END_WALL, -D.BRIDGE_ARM_Y + ARM_W / 2 + 1.0)
+    return neg.union(bore(D.BRIDGE_ARM_Y - ARM_W / 2 - 1.0, AXLE_CHAN_Y1))
 
 
 _SRX = D.SCREW_X + 9 * D.BEAD     # 7.2: screw-rail +X face (keep = screw_rail.X_PX)
@@ -467,7 +467,7 @@ def _comb_brace(yc: float, cb_w: float) -> cq.Workplane:
              .extrude(BRACE_Z1 - BRACE_Z0).translate((0, 0, BRACE_Z0)))
     # The END fingers sit close enough to the arms that their flare would otherwise run
     # out past the arm outer face and into the rail. Clamp every flare there.
-    lim = D.BRIDGE_AXLE_Y + ARM_W / 2
+    lim = D.BRIDGE_ARM_Y + ARM_W / 2
     return flare.intersect(box_at(40.0, 2 * lim, BRACE_Z1 - BRACE_Z0,
                                   x=BRACE_X1 + 20.0, y=0.0,
                                   z=(BRACE_Z0 + BRACE_Z1) / 2))
@@ -475,7 +475,7 @@ def _comb_brace(yc: float, cb_w: float) -> cq.Workplane:
 
 def _build() -> cq.Workplane:
     body = _cap()
-    for sy in (-D.BRIDGE_AXLE_Y, D.BRIDGE_AXLE_Y):
+    for sy in (-D.BRIDGE_ARM_Y, D.BRIDGE_ARM_Y):
         body = body.union(_arm(sy))      # bores come later — see _axle_negative
     # Tie bar linking the arm tops above the strings. Runs from the +X tip out to
     # TIE_X0 -- past the endplate block -- so its underside can carry the DOWN-FIRING
@@ -527,7 +527,7 @@ def _build() -> cq.Workplane:
                              z=(_SR_BOT + _SR_TOP) / 2))
     z_lo = CH.Z_TOP - 4.0
     sr_bot = _SR_BOT                                                  # screw-rail −Z extent
-    for sy in (-D.BRIDGE_AXLE_Y, D.BRIDGE_AXLE_Y):                    # edge webs rail→arm
+    for sy in (-D.BRIDGE_ARM_Y, D.BRIDGE_ARM_Y):                      # edge webs rail→arm
         body = body.union(box_at(X1 - _SRX, ARM_W, z_lo - sr_bot,     # down to the rail bottom
                                  x=(X1 + _SRX) / 2, y=sy, z=(z_lo + sr_bot) / 2))
     # RE-CUT the bearing seats. The foot block below reaches -X to ~-4.2, which is
@@ -789,3 +789,21 @@ def _build() -> cq.Workplane:
 
 
 bridge_endplate = _build()
+
+
+def assembly():
+    """The bridge end as the SCRATCH VIEW should draw it: the printed piece plus the two
+    things whose position is derived from its arm faces, all rebuilt LIVE.
+
+    THE AXLE AND THE OPTICAL BOARD BOTH READ THIS PART'S GEOMETRY -- the shaft spans
+    BRIDGE_AXLE_Y0..Y1, which come off BRIDGE_ARM_OUT, and the board's head is what stops
+    the shaft sliding +Y. A cached copy of either would be drawn wherever those constants
+    stood when the cache was made, which is exactly the lie the cache exists not to tell,
+    so the scope excludes them from the context and they are rebuilt here.
+
+    Same reasoning, and same shape, as keyhead_endplate.assembly at the other end."""
+    from . import components as C
+    from . import optical_pickup as OP
+    return [("bridge_endplate", bridge_endplate),
+            ("bridge_bearings", C.bridge_bearings()),
+            ("optical_pcb", OP.opt_pcb())]
