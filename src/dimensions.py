@@ -635,7 +635,9 @@ BRIDGE_BEARING_Z  = STRING_Z - BRIDGE_BEARING_OD / 2     # axle/bearing centre (
 # bearing's +X extent, wraps 90° over the top, then leaves −X along the top. So
 # the bearing centre sits OD/2 to −X of the anchor line.
 BRIDGE_AXLE_X     = BRIDGE_X - BRIDGE_BEARING_OD / 2     # bearing/axle centre X
-BRIDGE_AXLE_Y     = STRING_FIELD_W / 2 + 12 * BEAD  # 9.6             # axle/support half-span
+# WIDTH DATUM (not the axle's span any more -- see BRIDGE_AXLE_L). chassis.Y_HI,
+# knee_lever.MORT_Y_END and screw_rail.ACROSS are measured from this.
+BRIDGE_AXLE_Y     = STRING_FIELD_W / 2 + 12 * BEAD  # 52.35
 BRIDGE_ARM_W      = 6 * BEAD  # 4.8 bridge-endplate bearing-arm / edge-web thickness (Y); the
                             # screw rail widens by this so the rib overlaps it cleanly
 # THE AXLE'S TWO ENDS. It is a plain ground shaft with no shoulder — it has to be, since
@@ -651,10 +653,30 @@ BRIDGE_ARM_W      = 6 * BEAD  # 4.8 bridge-endplate bearing-arm / edge-web thick
 #       one less fastener, one less thing to back out, and nothing to reach in and turn.
 # Install order, and it is now load-bearing: bearings and fingers aligned → shaft in from
 # +Y → optical strip on. Same trick the guide rods use at the other end of this part.
-BRIDGE_ARM_OUT    = BRIDGE_AXLE_Y + BRIDGE_ARM_W / 2    # 54.75, the arms' outer faces
+# ── THE AXLE IS A PURCHASED LENGTH NOW, AND IT DRIVES THE ARMS ──────────────
+# It used to run the other way: the arms sat at BRIDGE_AXLE_Y and the shaft came out
+# 107.9 long, which is not a length anyone sells. Locking the SKU and deriving the arms
+# from it makes the shaft a BOM line instead of an offcut.
+#
+# THIS SPLITS A CONSTANT THAT WAS DOING TWO JOBS. BRIDGE_AXLE_Y is the axle's support
+# half-span AND the instrument's width datum -- chassis.Y_HI, knee_lever.MORT_Y_END and
+# screw_rail.ACROSS all hang off it. Shortening the shaft must not narrow the guitar, so
+# BRIDGE_AXLE_Y keeps the width job and the ARMS move to their own constant. Only the
+# upper block and the optical PCB that references its faces are affected (user).
+#
+# NOTHING IS LOST AT THE ENDS. Shaft and arms shorten together, so both engagements come
+# out exactly as before -- 3.20 into the blind -Y bore, 4.80 through the +Y arm. What
+# shrinks is the margin outboard of the string field, 9.60 -> 5.65, and nothing lives
+# there but the arm itself.
+BRIDGE_AXLE_L     = 100.0                               # the Ø5 shaft, as bought
 BRIDGE_AXLE_END_W = MIN_WALL_2P                         # 1.6, the -Y blind wall = the stop
-BRIDGE_AXLE_Y0    = -BRIDGE_ARM_OUT + BRIDGE_AXLE_END_W # -53.15, against the blind wall
-BRIDGE_AXLE_Y1    = BRIDGE_ARM_OUT                      # +54.75, flush with the arm face
+BRIDGE_ARM_OUT    = (BRIDGE_AXLE_L + BRIDGE_AXLE_END_W) / 2   # 50.80, the arms' outer faces
+BRIDGE_ARM_Y      = BRIDGE_ARM_OUT - BRIDGE_ARM_W / 2   # 48.40, the arm centres
+BRIDGE_AXLE_Y0    = -BRIDGE_ARM_OUT + BRIDGE_AXLE_END_W # -49.20, against the blind wall
+BRIDGE_AXLE_Y1    = BRIDGE_ARM_OUT                      # +50.80, flush with the arm face
+assert BRIDGE_AXLE_Y1 - BRIDGE_AXLE_Y0 == BRIDGE_AXLE_L, "the axle is not its own SKU length"
+assert BRIDGE_ARM_Y - BRIDGE_ARM_W / 2 > STRING_FIELD_W / 2, (
+    "the bearing arms have come inboard of the string field")
 
 # ── Keyhead nut-block hardware → ENDPLATE_W (BOTH ends + bridge base) ────────
 # The endplate THICKNESS in X is not a round number -- it's exactly what the string-
@@ -698,24 +720,47 @@ ENDPLATE_W = (BREAK_PX_BUF + DOWEL_SCREW_RUN + SCREW_ROW_GAP
 # fit: even perfectly spaced it leaves 0.5 mm of wall. So the keyhead grows -X, away
 # from the strings -- the break edge (the scale "0") does not move, only the block's
 # back face -- and the bridge is left exactly where it is (user).
-KEYHEAD_W  = 38 * BEAD                              # 30.4 = 25.4 + 5.0 of clamp room
+KEYHEAD_W  = 36 * BEAD                              # 28.8 = 25.4 + 5.0 of clamp room,
+                                                    # less the 1.6 reclaimed at the front
+# ...AND ITS FRONT BUFFER IS ITS OWN NUMBER TOO (user: decouple the endplates). The
+# keyhead needs far less material +X of the break dowel than BREAK_PX_BUF's 4.0 -- just
+# enough to grow a 45 deg up to the dowel's MIDPOINT, since a dowel cradled to its own
+# centreline can only lift, not roll out, and the string lies across it:
+#
+#     seat +X tangent          PIN_SEAT_D/2 = 1.4
+#     45 deg rise to midpoint                 1.0
+#                                       ---> 2.4
+#
+# BREAK_PX_BUF stays 4.0 because ENDPLATE_W is computed from it and that sets the BRIDGE
+# base -- this is the same split KEYHEAD_W itself needed. The dowel does not move (it is
+# the scale "0", and NUT_BLOCK_X puts the block's local origin exactly there), so the
+# scale length is untouched; what shortens is the lip that protruded past it.
+# FLUSH WITH THE ENDPLATE'S +X FACE (user). At 2.4 the nut block stopped 1.4 short of
+# it and still carried 0.8 of its own material +X of the inserts -- and BOTH are
+# overhangs in a -X -> +X build, printed out over the insert slot with nothing behind
+# them. Nothing needs to be there: the dowel is carried by the INSERT now, not by the
+# block, so the insert can run right out to the face and bear against the deck panel
+# that butts it.
+KEYHEAD_PX_BUF = 19 * BEAD / 4                      # 3.8 = KH_X - NUT_BLOCK_X, flush
+
 # THE BRIDGE BASE IS NO LONGER ENDPLATE_W WIDE. That width is the KEYHEAD's, derived
 # from ITS nut-block hardware, and the bridge merely shared it back when ten screws sat
 # on one line 8 mm off the axle. With the screws in TWO ROWS the bridge end has to host
-# both rows, their nut flanges and both guide-rod lines, so its span is DERIVED from the
-# rows and centred on the BEARING TANGENT (BRIDGE_X) instead of on the axle — the rows
-# are symmetric about the tangent, so anything centred elsewhere wastes width on one
-# side and runs short on the other. ENDPLATE_W keeps its keyhead job untouched.
+# both rows and both guide-rod lines, so its span is DERIVED from the rows and centred
+# on the BEARING TANGENT (BRIDGE_X) instead of on the axle — the rows are symmetric
+# about the tangent, so anything centred elsewhere wastes width on one side and runs
+# short on the other. ENDPLATE_W keeps its keyhead job untouched.
+#
 # Sized to the GUIDE ROD, not to the nut flange. The flange tip reaches further (-23.0),
-# but the nut SWEEPS in Z through the changer room -- it wants a slot, not containment,
+# but the nut SWEEPS in Z through the changer room — it wants a slot, not containment,
 # and the old single-row nut already overhung this face (-17.05 against -16.50). The rod
-# socket is the thing that must actually live in solid material. Containing the flange as
-# well cost 1.5 mm per side, and every mm here comes straight off the DECK, whose +X end
-# is flush with this face (top_plate.PX0).
+# socket is the thing that must live in solid material. Containing the flange as well
+# cost 1.5 mm per side, and every mm here comes straight off the DECK, whose +X end is
+# flush with this face (top_plate.PX0).
 BRIDGE_BASE_HALF = (SCREW_ROW_DX + NUT_HOLE_DX
                     + GUIDE_ROD_D / 2 + MIN_WALL_2P)               # 23.1
-BRIDGE_BASE_X0 = BRIDGE_X - BRIDGE_BASE_HALF        # -24.6  (-X face)
-BRIDGE_BASE_X1 = BRIDGE_X + BRIDGE_BASE_HALF        # +24.6  (+X face)
+BRIDGE_BASE_X0 = BRIDGE_X - BRIDGE_BASE_HALF        # -23.1  (-X face)
+BRIDGE_BASE_X1 = BRIDGE_X + BRIDGE_BASE_HALF        # +23.1  (+X face)
 
 
 # ─────────────────────────────────────────────────────────────────────────

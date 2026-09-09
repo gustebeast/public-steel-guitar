@@ -136,7 +136,18 @@ from cadkit.pcb import PCB_T as _PCB_T
 # The speaking length ends at the BEARING TANGENT (directly over the axle), NOT at
 # BRIDGE_X (which is the ball-end anchor, past the bearing).
 TERMINATION_X = D.BRIDGE_AXLE_X                  # -4.0
-SENSE_D       = 15.5                             # sensing station, out from the termination
+# 15.5 -> 20.0 (branner 2026-09-09), forced by the TWO SCREW ROWS at the bridge end.
+# The endplate had to widen to host the near row's guide-rod socket, which moved its -X
+# face -16.50 -> -23.10; the DECK is flush with that face (top_plate.PX0), so the deck --
+# and this strip with it -- lost 6.6 mm off its +X end. At SENSE_D 15.5 the sensing row
+# stayed put at X -19.5 while the board's +X edge retreated to -23.30, leaving the
+# emitters standing 3.5 mm OFF the board.
+# Moving the STATION is the cheap fix, and the only asserted constraint on it is a FLOOR
+# (STIFF_FLOOR 10.4, the string's bending-stiffness boundary layer) which 20.0 clears
+# with room. The alternative -- running the board on under the endplate -- would have
+# needed a relief modelled through it for no gain. Sensing further from the termination
+# also reads a LARGER displacement, so the signal improves rather than degrades.
+SENSE_D       = 20.0                             # sensing station, out from the termination
 SENSE_X       = TERMINATION_X - SENSE_D          # -19.5
 # Floor, from the string's bending-stiffness length sqrt(EI/T): ~1.2 mm for the plain
 # .015 core at ~120 N, ~1.7 mm for the wound .070 at ~150 N. The boundary layer where
@@ -293,7 +304,10 @@ PCB_X1S = BAND_X1 + BAND_CLR                                  # -30.42, strip -X
 # stopped governing this and the leftover left -Y 1.05 slacker than +Y (user spotted the
 # asymmetry in the render). One constant, mirrored.
 WRAP_CLR = 0.75                                               # past the arm outer face
-Y_TAIL   = -(D.BRIDGE_AXLE_Y + D.BRIDGE_ARM_W / 2 + WRAP_CLR)  # -55.00
+# OFF THE ARM'S OUTER FACE, which is BRIDGE_ARM_OUT -- the same arithmetic, but named
+# once instead of re-added here. It moved when the axle became a 100 SKU, and this
+# board has to move with it: HEAD_Y0 is what stops the shaft sliding +Y.
+Y_TAIL   = -(D.BRIDGE_ARM_OUT + WRAP_CLR)
 # TAIL WIDENS +X, OVER THE ENDPLATE -- not -X over the deck (user). Two things fall out
 # and both were open problems:
 #   SUPPORT. Past |y| 54 the endplate has no material above z6 for a plinth to start on,
