@@ -81,7 +81,7 @@ class ScratchView:
     def __init__(self, root, context, live, replaced=(), crop=None,
                  out="scratch.step", cache_dir=".scratch_cache",
                  live_color=(0.85, 0.45, 0.20), context_color=(0.32, 0.36, 0.40),
-                 pose=None, colors=None):
+                 pose=None, colors=None, gates=()):
         self.root = pathlib.Path(root)
         self.context = context          # () -> iterable of (name, Workplane)
         self.live = live                # () -> iterable of (name, Workplane)
@@ -99,6 +99,7 @@ class ScratchView:
         # every part as the same material and hides which piece is which. The CONTEXT
         # stays deliberately grey -- that is what distinguishes cached from live.
         self.colors = colors            # optional (name) -> cq.Color for the live set
+        self.gates = tuple(gates)       # optional ((label, fn(comps) -> int), ...)
 
     # ── cache ───────────────────────────────────────────────────────────────
     def _crop_solid(self):
@@ -139,6 +140,49 @@ class ScratchView:
         out = [(f.stem, cq.Workplane("XY").add(cq.Shape.importBrep(str(f))))
                for f in sorted(self.cache.glob("*.brep"))]
         return age, out
+
+    # ── inner-loop gate ─────────────────────────────────────────────────────
+    def check(self) -> int:
+        """Run the project's gates over CACHED context + the FRESH live part.
+
+        This is an INNER-LOOP check, not the submit gate, and the distinction is the
+        whole point. The gates themselves are unchanged and still rebuild the model
+        from scratch when run normally -- what this does is hand them the same
+        cache the view uses, so an agent can ask "did I just break something?" in
+        seconds instead of the ~5.5 min a full gate spends REBUILDING geometry it is
+        not going to look at. Scoping a gate by name (--only) never helped, because
+        the build is ~95% of its cost, not the checking.
+
+        The cache boundary still holds: nothing authoritative reads it. A drift shows
+        up as a surprise at the pre-submit gate -- which is exactly when you want
+        surprises -- rather than as a wrong part. So this NEVER replaces the full run
+        before `submit`, and it says so on every invocation."""
+        if not self.gates:
+            print("no gates registered — pass gates=((label, fn), ...) to ScratchView")
+            return 0
+        loaded = self.load_cache()
+        if loaded is None:
+            print("no cache -- begin a flow with:  --start")
+            return 1
+        age, ctx = loaded
+        comps = ([(n, wp.val()) for n, wp in self.live()]
+                 + [(n, wp.val()) for n, wp in ctx])
+        print("=" * 70)
+        print(" INNER-LOOP GATE -- live part FRESH, %d context solids CACHED (%.0f min old)"
+              % (len(ctx), age / 60.0))
+        print(" NOT the submit gate: context is cached and may be CROPPED, so it can")
+        print(" only find faults involving what is loaded. Run the FULL gates before")
+        print(" `submit` -- that is the one whose result you report.")
+        print("=" * 70)
+        bad = 0
+        for label, fn in self.gates:
+            print()
+            print("--- %s ---" % label)
+            try:
+                bad += fn(comps)
+            except Exception as exc:                  # a gate crash must not end the loop
+                print("[scratch] %s skipped: %s" % (label, exc))
+        return 1 if bad else 0
 
     # ── render ──────────────────────────────────────────────────────────────
     def render(self):
@@ -182,8 +226,13 @@ def main(view: ScratchView, argv=None) -> int:
                     help="BEGIN a flow: rebuild the cache from scratch, then render")
     ap.add_argument("--merge", action="store_true",
                     help="END a flow: delete the cache, then do the real build")
+    ap.add_argument("--gate", action="store_true",
+                    help="run the project's gates over cached context + your fresh "
+                         "part (seconds) -- an INNER-LOOP check, never the submit gate")
     a = ap.parse_args(argv)
 
+    if a.gate:
+        return view.check()
     if a.merge:
         shutil.rmtree(view.cache, ignore_errors=True)
         print("cache DELETED -- now merge back with the project's REAL build,")
