@@ -20,11 +20,17 @@ work, so the inner loop is seconds. On the pedal-steel that is 12 s against a
     if __name__ == "__main__":
         raise SystemExit(main(VIEW))
 
-Gives the project a three-command loop:
+Gives the project a four-command loop:
 
     --start    BEGIN a flow: rebuild the cache from scratch, then render
     (bare)     iterate -- the LIVE part is rebuilt fresh, context comes from cache
+    --gate     run the project's own gates over that cache (~30 s vs ~6 min) --
+               an INNER-LOOP check; the full gate is still what you report
     --merge    END a flow: DELETE the cache, then do the real build
+
+Register gates as `gates=(("label", fn(comps) -> int), ...)`; they receive
+[(name, cq.Shape)] exactly as the real gates do, so the project passes the SAME
+functions rather than a second implementation that could disagree.
 
 ────────────────────────────────────────────────────────────────────────────
 WHY A GEOMETRY CACHE IS SAFE HERE, WHICH IS THE ONLY INTERESTING PART
@@ -57,6 +63,15 @@ And the boundary that makes the whole thing acceptable: THE CACHE IS FOR THE
 VIEW ONLY. The canonical build and the overlap gate must never read it, so a
 drift costs a surprise at merge — which is exactly when you are looking for
 surprises — instead of a wrong part.
+
+`--gate` lives inside that boundary rather than breaking it. The gates it runs are
+the project's own, unchanged, and still rebuild everything when invoked normally --
+what changes is only that this hands them the cache. So the AUTHORITATIVE run is
+still cache-free, a cropped cache is loudly declared as unable to see what it did
+not load, and the fast check is a way to notice a mistake sooner, never a way to
+certify anything. The reason scoping had to work this way: `--only <names>` scopes
+what gets CHECKED, and the model build is ~95% of a gate's cost, so name-scoping
+saves almost nothing. What has to be scoped is what gets BUILT.
 
 That boundary is also why the default output is `scratch.step` and NOT
 `assembly.step`. Writing the canonical name would let a scratch render overwrite
