@@ -284,9 +284,13 @@ assert GUIDE_ROD_TOP <= D.STRING_Z - D.BRIDGE_BEARING_OD - 1.0 + 1e-9, (
 # the ear, ~17 mm from the slab, not the rod's free end: ~0.02 mm under the 11 N
 # anti-rotation load. The rod runs on past the ear purely to stay engaged at the bottom
 # of travel.
-GUIDE_ROD_BOT_CLR = 1.0                         # over the thrust bearing's top
-GUIDE_SOCKET_Z = (D.SUPPORT_BRG_BOT + D.SUPPORT_BRG_W
-                  + GUIDE_ROD_BOT_CLR)          # rod's bottom end, in free air
+# The rod stops ON the rail's top face and does NOT bore into it. A socket here would
+# come straight out of BRG_LEDGE_T: the ledge is 1.60 thick and is what backs the
+# bearing's outer ring against the whole string load, so a 0.60 socket left only 1.00 of
+# it (user measured both faces of exactly that trade). The two cannot both be 1.60 —
+# they are one budget. The ledge wins, because the rod does not need the socket: it is
+# a cantilever off the slab and its LOAD POINT is the ear ~17 mm up, not its free end.
+GUIDE_SOCKET_Z = _SR_TOP                        # rod bottoms on the rail top, no socket
 # The web between this bore and the top bearing's pocket is the tight spot, and it is
 # a teardrop-apex-to-bore-wall distance, not a wall anyone chose:
 _GUIDE_WEB = ((-D.SCREW_ROW_DX - D.NUT_HOLE_DX + (D.GUIDE_ROD_D + D.GUIDE_ROD_FIT) / 2)
