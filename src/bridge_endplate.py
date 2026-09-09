@@ -521,15 +521,22 @@ def _build() -> cq.Workplane:
                            x=((XLO - 1.0) + DRIVE_X1) / 2, y=0,
                            z=((DRIVE_Z0 - 1.0) + DRIVE_Z1) / 2))
     body = body.union(_screw_rail)
-    body = body.union(box_at(X1 - _SRX, 2 * D.BRIDGE_AXLE_Y,          # bottom bridge → tip
-                             _SR_TOP - _SR_BOT,                       # tied to the rail, which
-                             x=(X1 + _SRX) / 2, y=0,                  # moved up onto the pulleys
-                             z=(_SR_BOT + _SR_TOP) / 2))
+    # BOTTOM BRIDGE — only if the rail leaves anything to bridge. It used to carry the
+    # floor from the rail's +X face out to the tip, because the rail stopped at the
+    # single screw line (SCREW_X + 7.2). With the screws in TWO ROWS the rail spans the
+    # whole base to reach both, so _SRX == X1 and this span is zero — an empty box_at
+    # is a hard OCC DomainError, not a no-op.
+    if X1 - _SRX > 1e-9:
+        body = body.union(box_at(X1 - _SRX, 2 * D.BRIDGE_AXLE_Y,      # bottom bridge → tip
+                                 _SR_TOP - _SR_BOT,                   # tied to the rail, which
+                                 x=(X1 + _SRX) / 2, y=0,              # moved up onto the pulleys
+                                 z=(_SR_BOT + _SR_TOP) / 2))
     z_lo = CH.Z_TOP - 4.0
     sr_bot = _SR_BOT                                                  # screw-rail −Z extent
-    for sy in (-D.BRIDGE_AXLE_Y, D.BRIDGE_AXLE_Y):                    # edge webs rail→arm
-        body = body.union(box_at(X1 - _SRX, ARM_W, z_lo - sr_bot,     # down to the rail bottom
-                                 x=(X1 + _SRX) / 2, y=sy, z=(z_lo + sr_bot) / 2))
+    if X1 - _SRX > 1e-9:                                              # same zero span as above
+        for sy in (-D.BRIDGE_AXLE_Y, D.BRIDGE_AXLE_Y):                # edge webs rail→arm
+            body = body.union(box_at(X1 - _SRX, ARM_W, z_lo - sr_bot, # down to the rail bottom
+                                     x=(X1 + _SRX) / 2, y=sy, z=(z_lo + sr_bot) / 2))
     # RE-CUT the bearing seats. The foot block below reaches -X to ~-4.2, which is
     # inside the +X sliver of every Ø8.2 seat, so the unions above refill 0.2 mm of
     # each bore. Cutting again here is the only place that sees the finished solid.
