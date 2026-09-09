@@ -570,7 +570,7 @@ def _pickup_mount_components():
     _oscr = headed_screw(M4, 12.0, head_d=7.0, head_h=_ohh, socket_af=2.5)
     for _i, (_mx, _my) in enumerate(OP.mount_points()):
         out.append((f"optical_insert_{_i}",
-                    seated_insert(M4, (_mx, _my, _BE.CARRIER_TOP), (0, 0, -1))))
+                    seated_insert(M4, (_mx, _my, _BE.PCB_PAD_TOP), (0, 0, -1))))
         out.append((f"optical_screw_{_i}",
                     _oscr.translate((_mx, _my, OP.PCB_TOP + _ohh))))
     # TOP-ACCESS height (user): THREE M4×20 BUTTON-HEAD LEADSCREW jacks (real headed cap screw,
