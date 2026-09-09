@@ -107,10 +107,10 @@ def _belt_run_box(pad=12.0, back_pad=8.0, top_pad=2.0):
     # dragging in top_plate, pickup, optical and bridge_endplate -- none of which the
     # clamp can reach. It still renders, clipped to its drive end, which is the part
     # the belt wraps and the only part the clamp comes near.
-    bbs = [C.belt(m, (D.SCREW_X, sy, spz)).val().BoundingBox(),
+    bbs = [C.belt(m, (D.screw_x(i), sy, spz)).val().BoundingBox(),
            C.motor().translate(m).val().BoundingBox(),
            C.screw_pulley(high=spz > D.SCREW_PULLEY_Z)
-            .translate((D.SCREW_X, sy, spz)).val().BoundingBox()]
+            .translate((D.screw_x(i), sy, spz)).val().BoundingBox()]
     lo = [min(b.xmin for b in bbs) - pad, min(b.ymin for b in bbs) - pad,
           min(b.zmin for b in bbs) - pad]
     hi = [max(b.xmax for b in bbs) + pad, max(b.ymax for b in bbs) + pad,
@@ -140,7 +140,7 @@ def _pose_belt_tensioner(name, wp):
     from src import components as C, dimensions as D
     i = _tensioner_string()
     so, sxd, sn = C.splice_frame(D.motor_pos(i),
-                                 (D.SCREW_X, D.string_y(i), D.screw_pulley_z(i)))
+                                 (D.screw_x(i), D.string_y(i), D.screw_pulley_z(i)))
     loc = cq.Location(cq.Plane(origin=so, xDir=sxd, normal=sn))
     return cq.Workplane("XY").add(wp.val().moved(loc))
 

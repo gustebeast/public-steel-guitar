@@ -38,16 +38,23 @@ def screw(length: float = D.SCREW_LEN) -> cq.Workplane:
 def nut() -> cq.Workplane:
     """H-type brass leadscrew nut, axis Z, mounted FLANGE UP / BOSS DOWN.
 
-    THIS PART IS THE CARRIAGE. Its +X ear anchors the string (ball end
-    underneath) and its -X ear rides the guide rod; nothing else moves. Origin =
-    the flange's TOP face, so the flange hangs the first NUT_FLANGE_T below it and
-    the boss the rest — see dimensions' MOUNTING note for why flange-up. The flange is the round
-    Ø20 disc with two flats milled tangent to the boss (that IS the "H"), so it
-    is modelled as the intersection of the disc and an AF-wide slab — which is
-    what puts the long ends' ROUNDED profile in the assembly, the thing that
-    decides how far the ears sweep. Two Ø3 ears carry the M2 mounting screws.
-    DEMO/purchased — and every dimension is a guess until the part arrives
-    (see dimensions.NUT_AF).
+    THIS PART IS THE CARRIAGE. One ear anchors the string (ball end underneath),
+    the other rides the guide rod; nothing else moves. WHICH ear does which is
+    per-ROW, not per-part: the two screw rows are mirrored, so the near row takes
+    its +X ear and the far row its -X ear. This solid is SYMMETRIC about x=0, so
+    that mirroring needs no second SKU and no rotation — it is entirely carried by
+    dimensions.string_anchor_x() / guide_rod_x() picking opposite ears.
+
+    Origin = the flange's TOP face, so the flange hangs the first NUT_FLANGE_T
+    below it and the boss the rest — see dimensions' MOUNTING note for why
+    flange-up. The flange is the round Ø22 disc with two flats cut to NUT_AF (that
+    IS the "H"), modelled as disc ∩ slab, which is what puts the long ends'
+    ROUNDED profile in the assembly and decides how far the ears sweep.
+
+    Tr8x2 H-flange, DEMO/purchased. Dimensions are now READ OFF THE SELLER'S
+    DRAWING rather than guessed, but the listing states its own error as 0.5-1 mm
+    and none has been measured yet — see dimensions.NUT_AF and the BOM's
+    buy-one-and-measure gate.
     """
     z0 = -D.NUT_FLANGE_T
     disc = cyl(D.NUT_FLANGE_L, D.NUT_FLANGE_T, z=z0)            # ends stay round
@@ -202,12 +209,12 @@ def motor_pulley() -> cq.Workplane:
 
 # ── Screw thrust bearing (axis Z) ────────────────────────────────────────
 def support_bearing() -> cq.Workplane:
-    """ONE MR85ZZ deep-groove ball bearing, axis Z, centred z=0. Two of these go
+    """ONE 688ZZ deep-groove ball bearing (Ø8x16x5), axis Z, centred z=0. Goes
     on each screw in TANDEM — build.py stacks them; see dimensions.SUPPORT_BRG_N
     for why two and why not preloaded. (The purchased LOCKNUT that used to sit
     under them is gone: the printed screw_collar retains the screw now.)"""
-    o = cyl(D.MR85_OD, D.MR85_W, z=-D.MR85_W / 2)
-    return o.cut(cyl(D.MR85_ID, D.MR85_W + 2, z=-D.MR85_W / 2 - 1))
+    o = cyl(D.BRG688_OD, D.BRG688_W, z=-D.BRG688_W / 2)
+    return o.cut(cyl(D.BRG688_ID, D.BRG688_W + 2, z=-D.BRG688_W / 2 - 1))
 
 
 # ── Motor: MKS SERVO42D, lies flat, shaft +Y ─────────────────────────────
