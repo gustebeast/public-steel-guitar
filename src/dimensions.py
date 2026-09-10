@@ -838,17 +838,9 @@ SCREW_NX_WALL   = 3 * BEAD      # 2.4 solid wall -X behind the far insert's OD (
 
 ENDPLATE_W = (BREAK_PX_BUF + DOWEL_SCREW_RUN + SCREW_ROW_GAP
               + NUT_INSERT_D / 2 + SCREW_NX_WALL)            # = 25.0
-# THE KEYHEAD IS THICKER THAN THE BRIDGE, and the two are now separate numbers.
-# ENDPLATE_W above is the BRIDGE's (and the shared base's) 25.4, frozen: the whole
-# changer end is built on it. The keyhead needs more, and for a reason that only
-# exists at that end -- the WRAP CAPSTAN (nut_block) spends X on the rod and its
-# threading bay, and the clamp inserts behind it still have to stagger across TWO
-# rows to keep O6 pockets apart at a 6.5 string pitch. One row cannot be made to
-# fit: even perfectly spaced it leaves 0.5 mm of wall. So the keyhead grows -X, away
-# from the strings -- the break edge (the scale "0") does not move, only the block's
-# back face -- and the bridge is left exactly where it is (user).
-KEYHEAD_W  = 36 * BEAD                              # 28.8 = 25.4 + 5.0 of clamp room,
-                                                    # less the 1.6 reclaimed at the front
+# THE KEYHEAD'S THICKNESS IS NOT SET HERE ANY MORE (user). It was a 28.8 literal sized for
+# two staggered rows of clamp inserts that no longer exist. nut_block.KEYHEAD_W now derives it
+# from the stow bores (two beads of bed face behind them), and chassis.KH_EP_THK reads that.
 # ...AND ITS FRONT BUFFER IS ITS OWN NUMBER TOO (user: decouple the endplates). The
 # keyhead needs far less material +X of the break dowel than BREAK_PX_BUF's 4.0 -- just
 # enough to grow a 45 deg up to the dowel's MIDPOINT, since a dowel cradled to its own
@@ -900,11 +892,14 @@ BRIDGE_BASE_X1 = BRIDGE_X + BRIDGE_BASE_HALF        # +23.1  (+X face)
 
 
 # ─────────────────────────────────────────────────────────────────────────
-# String gauges → the nut break inserts are GAUGED to these so the string TOPS
-# sit coplanar at STRING_Z. Reprint the (bolt-on) nut block to switch sets.
+# String gauges — the DEMO SET the model is drawn strung with. The keyhead does NOT take
+# its shape from it: each sliding insert rises until its own string stops it, so the string
+# sets its own height, and every insert SKU is sized for the heaviest gauge its slots take
+# (nut_block.sku_gauge_max; string 10 up to STRING_GAUGE_MAX below). Clearances to the
+# lowest string read STRING_GAUGE_MAX too. Two things still read THIS table: the SKU A/B
+# zone maxima (nut_block.sku_gauge_max) and the rod height (nut_block._G_MAX).
 # Index i = string (i+1), low to high: index 0 = string 1 (lightest, +Y); index 9 =
-# string 10 (heaviest, −Y player side). Edit GAUGES_C6_IN (or swap in another set in
-# the same string-1→10 order) and rebuild to regenerate the endplate for that set.
+# string 10 (heaviest, −Y player side).
 # ─────────────────────────────────────────────────────────────────────────
 GAUGES_E9_IN = (.013, .015, .011, .014, .017, .020, .026, .030, .034, .038)  # str 1→10
 GAUGES_C6_IN = (.015, .014, .017, .020, .024, .030, .036, .042, .054, .070)  # str 1→10

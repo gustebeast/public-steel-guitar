@@ -340,7 +340,6 @@ _ex("clearance",
     belt_tensioner__GRIP="= bar + 0.4 slide clearance (well length)",
     belt_tensioner__TUN_W="= belt + 0.4 tunnel clearance",
     belt_tensioner__WELL_W="= belt + 0.6 bar-slide clearance",
-    GROOVE_W="string lay-in channel = string + 2x0.4 side gaps",
     GROOVE_FLOOR="string channel depth; per-string floor = gauge + break-angle physics",
     )
 

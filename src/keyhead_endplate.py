@@ -56,11 +56,11 @@ def _stow_bore(d, x_hole, x_face, z_top, z_bot):
 # dropping straight DOWN (+Z→−Z): it sockets a dovetail tongue on each rail end (X+Y
 # lock + grip vs the +X string tension) and is held by those alone (no screw). Nut
 # block fused in (~15 % infill).
-T_EP = CH.KH_EP_THK                        # FULL thickness (X), at the top only (=25; the leg
+T_EP = CH.KH_EP_THK                        # FULL thickness (X), derived in nut_block (the leg
                                            # shell's -X edge is pinned to this so the -X wall = T)
 XHI  = CH.KH_X                             # +X (inboard) face (-611); the rail end stops
                                            # EP_TOP_CLR short of it (CH.KH_RAIL_X)
-XLO  = XHI - T_EP                          # = -636
+XLO  = XHI - T_EP                          # -X outer (bed) face
 KX   = (XLO + XHI) / 2
 YFL  = CH.Y_LO - CH.T / 2                   # full width: -Y rail outer face
 YFH  = CH.Y_HI + CH.T / 2                   # +Y rail outer face
@@ -74,8 +74,6 @@ FOOT_Z = CH.KH_DT_Z0                       # foot line (-23.15): fill band botto
 LEG_CLR = CH.EP_LEG_CLR                    # assembly clearance around the kept chassis shell (shared)
 LEG_SHELL_X0, LEG_SHELL_X1 = CH.LEG_SHELL_NX     # -625.6 .. -610.6 (rail-takeover region)
 
-ZHOLE_D = 5.0                              # string-stow bore Ø (string + pliers grip; pitch is 9.5)
-ZHOLE_X = XLO + 8 * D.BEAD                 # -629.6: keeps ~3.9 mm of wall -X of the bore
 
 
 def _build():
@@ -131,7 +129,7 @@ def _build():
         for _n in _esn(CH.LEG_STATIONS_X[1], _ly, -1.0, CH.Z_BOT):
             w = w.cut(_n)
     # STRING-END STOWAGE (one per string): a vertical bore set INBOARD of the -X face
-    # (ZHOLE_X, ~3.5 mm of wall left -X of it) running from near the body top straight DOWN
+    # (the stow bores, 1.6 of wall -X of them) running from near the body top straight DOWN
     # and out through the bed -- the cut string end tucks into it, so almost nothing
     # protrudes -X and what does is a smooth loop, not a sharp tail. The string can't drop
     # in from straight above (the nut-block riser caps that), so the bore curves smoothly
