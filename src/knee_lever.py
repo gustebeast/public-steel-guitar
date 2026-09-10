@@ -226,12 +226,14 @@ HUB_TOP = HUB_D / 2                          # top of the round hub -- feel clea
 AXLE_Z  = 0.0                                # lever AXLE centre Z. The whole feel block is anchored to
                                              #   this (via feel_place()), so RAISING the axle later slides
                                              #   the cartridges up automatically -- no other edits needed.
-LOBE_RC = 9.0                                # lobe axis radius (pivot -> lobe) = axle->lobe Z. The whole
+LOBE_RC = 9.5                                # lobe axis radius (pivot -> lobe) = axle->lobe Z. The whole
                                              #   feel block tracks -LOBE_RC (feel_place), so this sets how
                                              #   close the contact -- and the swept recess above it -- ride
                                              #   toward the axle. The recess just carves the hub as it
                                              #   rises, so the real limit is the solid WEB it leaves to the
-                                             #   Ø5 axle bore: 9.0 leaves ~2.6mm (measured; each -1mm of
+                                             #   Ø8.2 axle bore: 9.5 leaves 1.7mm (measured; 9.0 left 1.2 once
+                                             #   the 688ZZ bore arrived, so the user took 9.5 for the 1.6
+                                             #   tier; 9.0 had left ~2.6 on the Ø5.2 bore; each -1mm of
                                              #   LOBE_RC costs 1mm of web, 0.8mm being the thin-wall floor).
                                              #   Ratio ARM_LEN/LOBE_RC = 100/9 = 11.1:1, follower travel =
                                              #   9*sin30 = 4.5mm. 9 (not 8) so the Ø1.4 feel coil keeps
