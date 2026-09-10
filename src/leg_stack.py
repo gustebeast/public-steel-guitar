@@ -56,6 +56,7 @@ import cadquery as cq
 
 from . import dimensions as D
 from .helpers import box_at, cyl
+from cadkit.holes import teardrop_hole
 
 B = D.BEAD
 
@@ -140,17 +141,41 @@ ADJ_WEB = 2 * B                   # 1.6 material between holes -- this web, not
                                   # the screw, is what tears out under load, so
                                   # it is the number that sets pull-out strength
 ADJ_PITCH = ADJ_HOLE_D + ADJ_WEB  # 5.6 and therefore the HEIGHT STEP
-ADJ_N = int(ADJ_TRAVEL / ADJ_PITCH)           # 27 holes, filling the travel
-# Two rows, offset half a pitch, on opposite faces: halves the step to 2.8
-# without thinning any web (each row keeps its full 1.6).
-ADJ_ROWS = (0.0, ADJ_PITCH / 2.0)
+ADJ_N = int(ADJ_TRAVEL / ADJ_PITCH)           # 30 steps -> ADJ_N + 1 holes
+# ONE ROW. There used to be two, half a pitch apart, meant to halve the step
+# "without thinning any web". They could not: both ran along the same axis, so
+# Ø4.0 holes at 2.8 spacing OVERLAP and the row becomes a slot with no web at
+# all. (It never showed, because the cutters were also dead -- see below.) Two
+# rows on crossing axes do not rescue it either: through-holes both pass the
+# tenon's centre, so they still meet there. A finer step needs a different
+# mechanism, not a second row.
+ADJ_ROWS = (0.0,)
+# WHERE THE SCREW GOES. The screw must pass through BURIED tenon at every
+# setting, and the tenon is only guaranteed buried over the sleeve's last ENGAGE
+# (at the LONGEST setting that is all that is left inside). So the sleeve's hole
+# sits in the middle of that zone -- and the ladder is whatever tenon positions
+# that one hole sees across the travel, which is exactly ENGAGE/2 .. + ADJ_TRAVEL.
+# The old placement (mid-sleeve) only met the tenon over 46 of the 172 mm.
+LADDER_SLEEVE_Z = ADJ_L - ENGAGE / 2.0        # 232.0 in the adjust sleeve
+LADDER_TENON_Z0 = ENGAGE / 2.0                # 20.0 first hole, tenon-local
+assert (LADDER_TENON_Z0 + ADJ_N * ADJ_PITCH + ADJ_HOLE_D / 2
+        <= ADJ_TEN_L - ENGAGE), (
+    "the ladder's last hole reaches into the bar-engaged end of the tenon")
 
 # BODY JOINERY on the adapter's closed end: four M4 through the wall on a square
 # pattern, which is what actually carries the leg's load into the body. Placed at
 # the CORNERS of the section, as far apart as the wall allows -- a bolt pattern
 # resists the kick's moment as a couple, so spread is worth more than bolt count.
 ADAPT_BOLT_D = 4.4                # M4 clearance (a hole, not material)
-ADAPT_BOLT_PCD = LEG_W - 2 * (4 * B)   # 38.4 across the square pattern
+ADAPT_BOLT_PCD = LEG_W - 2 * (6 * B)   # 32.0 across the square pattern. Was
+                                       # 38.4 (4 beads in from the faces), which
+                                       # is fine for a round hole and not for a
+                                       # TEARDROP: the adapter prints +Y -> -Y,
+                                       # so these bolts run sideways, and the
+                                       # peak (r*sqrt2 = 3.11) left 0.09 of skin
+                                       # on the -Y face. At 6 beads in it leaves
+                                       # 1.69. Costs the bolt couple 17% of its
+                                       # arm, so the kick loads each bolt ~20% more.
 
 TRRS_D = 12 * B                   # 9.6 reserved bore for the TRRS jack body
 TRRS_Z = 40 * B                   # 32.0 up from the sleeve's bottom face
@@ -219,11 +244,15 @@ def adjust_sleeve():
     b = _sleeve(ADJ_L, trrs=True)
     # pinned to the FIXED tenon near the joint -- what stops this sleeve, its tenon
     # and the pedal bar sliding off when the instrument is lifted
-    b = b.cut(_join_screw(_CLR_D, ADJ_SCREW_Z).translate((0, 0, -SLEEVE_JOINT_Z)))
-    for dz in ADJ_ROWS:
-        b = b.cut(cyl(ADJ_HOLE_D + 0.8, LEG_W + 4.0, z=ADJ_L * 0.5 + dz)
-                  .rotate((0, 0, 0), (1, 0, 0), 90)
-                  .translate((0, LEG_W / 2 + 2.0, 0)))
+    b = b.cut(_join_screw(_CLR_D, ADJ_SCREW_Z, SLEEVE_UP)
+              .translate((0, 0, -SLEEVE_JOINT_Z)))
+    # the ladder screw's clearance: along Y, which is THIS part's build axis, so
+    # it prints round as it is -- cadkit's cutter rightly refuses a hole along
+    # the build direction. Rotated about its OWN centre and then placed: rotating
+    # a cylinder already sitting at z about the origin swings it out of the part.
+    b = b.cut(cyl(ADJ_HOLE_D + 0.8, LEG_W + 4.0, z=0.0)
+              .rotate((0, 0, 0), (1, 0, 0), 90)
+              .translate((0, 0, LADDER_SLEEVE_Z)))
     return b
 
 
@@ -251,11 +280,13 @@ assert (ADAPT_WALL + FIX_TEN_L) - ADJ_SCREW_Z - ADJ_HOLE_D / 2 >= 2 * _CLR_D, (
     "the adjust-side screw is too close to the fixed tenon's tip")
 
 
-def _join_screw(d: float, z: float):
-    """A sleeve-joint screw hole, along X, at LEG-LOCAL z."""
-    return (cyl(d, LEG_W + 4.0, z=0.0)
-            .rotate((0, 0, 0), (0, 1, 0), 90)
-            .translate((0, 0, z)))
+def _join_screw(d: float, z: float, print_up):
+    """A sleeve-joint screw hole, along X, at LEG-LOCAL z, through cadkit so it
+    is shaped for the part it is cut into: a teardrop in a sleeve (sideways to
+    its build), a plain round bore in a tenon (45 to its build, which cadkit
+    works out for itself -- the round bore already self-supports there)."""
+    return teardrop_hole(d, LEG_W + 4.0, (-(LEG_W / 2.0 + 2.0), 0.0, z),
+                         (1.0, 0.0, 0.0), print_up)
 
 
 def fixed_sleeve():
@@ -267,7 +298,8 @@ def fixed_sleeve():
     from . import leg_latch as LL          # late: leg_latch reads this module
     b = _sleeve(FIX_L)
     b = b.cut(LL.sleeve_notch().translate((0, 0, -ADAPT_L)))
-    return b.cut(_join_screw(_CLR_D, FIX_SCREW_Z).translate((0, 0, -ADAPT_L)))
+    return b.cut(_join_screw(_CLR_D, FIX_SCREW_Z, SLEEVE_UP)
+                 .translate((0, 0, -ADAPT_L)))
 
 
 def adjust_tenon():
@@ -276,14 +308,12 @@ def adjust_tenon():
     hole index is at the same height -- repeatable without measuring, which
     friction alone never is."""
     t = tenon(ADJ_TEN_L)
-    for row, dz0 in enumerate(ADJ_ROWS):
-        for i in range(ADJ_N):
-            z = ENGAGE + dz0 + i * ADJ_PITCH
-            if z > ADJ_TEN_L - ENGAGE / 2:
-                break
-            t = t.cut(cyl(ADJ_HOLE_D, TEN_W + 8.0, z=z)
-                      .rotate((0, 0, 0), (1, 0, 0), 90)
-                      .translate((0, TEN_W / 2 + 4.0, 0)))
+    for i in range(ADJ_N + 1):
+            z = LADDER_TENON_Z0 + i * ADJ_PITCH
+            # through cadkit (user): along Y, 45 to the tenon's diagonal build,
+            # so it comes back as a plain round bore -- see cadkit.holes
+            t = t.cut(teardrop_hole(ADJ_HOLE_D, 2 * TEN_W, (0.0, -TEN_W, z),
+                                    (0.0, 1.0, 0.0), TENON_UP))
     return t
 
 
@@ -299,7 +329,8 @@ def fixed_tenon():
     t = t.cut(LL.tenon_pocket().translate((0, 0, -ADAPT_WALL)))
     # both sleeve-joint screws bite the tenon: one per sleeve
     for z in (FIX_SCREW_Z, ADJ_SCREW_Z):
-        t = t.cut(_join_screw(ADJ_HOLE_D, z).translate((0, 0, -ADAPT_WALL)))
+        t = t.cut(_join_screw(ADJ_HOLE_D, z, TENON_UP)
+                  .translate((0, 0, -ADAPT_WALL)))
     return t
 
 
@@ -327,8 +358,10 @@ def body_adapter():
     h = ADAPT_BOLT_PCD / 2.0
     for sx in (-1, 1):
         for sy in (-1, 1):
-            b = b.cut(cyl(ADAPT_BOLT_D, ADAPT_WALL + 2.0, z=ADAPT_WALL / 2.0)
-                      .translate((sx * h, sy * h, 0)))
+            # sideways to the adapter's +Y -> -Y build: a teardrop
+            b = b.cut(teardrop_hole(ADAPT_BOLT_D, ADAPT_WALL + 2.0,
+                                    (sx * h, sy * h, -1.0), (0.0, 0.0, 1.0),
+                                    SLEEVE_UP))
     return b
 
 
@@ -348,6 +381,45 @@ assert ADJ_TEN_L - ENGAGE <= ADJ_L + 1e-9, (
 assert ADJ_N * ADJ_PITCH <= ADJ_TRAVEL + 1e-9, (
     "the hole ladder (%.1f) is longer than the travel the joint can give (%.1f)"
     % (ADJ_N * ADJ_PITCH, ADJ_TRAVEL))
+
+
+# ── PRINT ORIENTATION (user) -- the record, declared once per part ─────────
+# PRINT_UP is the build direction each part is modelled against; the hole
+# cutters read it, so a hole is shaped for the way its part actually prints.
+# PRINT_ROT is the same fact as cadkit.step_export.print_pose wants it, for the
+# per-part STEPs. The assert below makes the two unable to disagree.
+_S2 = 1.0 / math.sqrt(2.0)
+SLEEVE_UP = (0.0, -1.0, 0.0)       # sleeves + adapter print +Y -> -Y: the +Y face
+                                   # is the bed, and the mortise's 45 apex is up
+TENON_UP = (-_S2, -_S2, 0.0)       # tenons print +X+Y -> -X-Y: lying on the flat
+                                   # that faces +X+Y, the section's own 45 flank
+PRINT_UP = {"adjust_sleeve": SLEEVE_UP, "fixed_sleeve": SLEEVE_UP,
+            "body_adapter": SLEEVE_UP,
+            "adjust_tenon": TENON_UP, "fixed_tenon": TENON_UP}
+PRINT_ROT = {"adjust_sleeve": ((1, 0, 0), -90), "fixed_sleeve": ((1, 0, 0), -90),
+             "body_adapter": ((1, 0, 0), -90),
+             "adjust_tenon": ((-1, 1, 0), 90), "fixed_tenon": ((-1, 1, 0), 90)}
+
+
+def _rotated(v, axis, deg):
+    """v rotated about `axis` by `deg` (Rodrigues) -- to check PRINT_ROT."""
+    k = [c / math.sqrt(sum(q * q for q in axis)) for c in axis]
+    th = math.radians(deg)
+    kv = sum(k[i] * v[i] for i in range(3))
+    kx = (k[1] * v[2] - k[2] * v[1], k[2] * v[0] - k[0] * v[2],
+          k[0] * v[1] - k[1] * v[0])
+    return tuple(v[i] * math.cos(th) + kx[i] * math.sin(th)
+                 + k[i] * kv * (1 - math.cos(th)) for i in range(3))
+
+
+for _n, _up in PRINT_UP.items():
+    _z = _rotated(_up, *PRINT_ROT[_n])
+    assert abs(_z[2] - 1.0) < 1e-9, (
+        "%s: PRINT_ROT does not stand the part on the bed PRINT_UP says it "
+        "prints from (build axis lands on %s, not +Z)" % (_n, _z))
+_ADAPT_SKIN = LEG_W / 2 - ADAPT_BOLT_PCD / 2 - ADAPT_BOLT_D / 2 * math.sqrt(2.0)
+assert _ADAPT_SKIN >= D.MIN_WALL_2P, (
+    "the adapter bolts' teardrop peaks leave %.2f of skin" % _ADAPT_SKIN)
 
 
 PARTS = {
