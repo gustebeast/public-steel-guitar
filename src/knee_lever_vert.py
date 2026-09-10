@@ -227,15 +227,29 @@ def _housing() -> cq.Workplane:
     _env = _env.intersect(box_at(400.0, 400.0, HOUS_Z1 - (HOUS_Z0 - 50.0),
                                  x=0.0, y=0.0, z=(HOUS_Z1 + HOUS_Z0 - 50.0) / 2))
     w = w.cut(_env)
-    # OPEN THE TOP over the leg AND over the arm's exit, out through the +X face.
-    # Both halves of that are needed: the leg band so the leg has a slot, and the
-    # +X reach because stopping at the leg left a 53 mm² flat ceiling roofing the
-    # arm's full-throw position — the one thing this part cannot print.
+    # SLOT OVER THE ARM'S EXIT, out through the +X face, shaped as a HOUSE (user, 2026-09-10).
+    # It used to be a box open all the way up through the top face and the tenons. The arm
+    # meets the instrument's underside at ~15.7 deg, and inside this X span it never climbs
+    # above ~z 17.6, so the walls stop at the swept envelope's own top there (clearance is
+    # already in the envelope) and a 45 deg roof closes the rest. The roof's peak lands above
+    # the top face, so it opens through as a narrow slot with no flat ceiling anywhere (the
+    # reason the top was opened in the first place: a flat roof over the arm's full-throw
+    # position was a 53 mm2 overhang). Both mount tenons now stand on solid material.
     _x0 = -(KL.ARM_TX / 2 + KL.HS_CLR)
     _x1 = HOUS_X1 + 1.0
-    _zt = HOUS_Z1                    # out through the top FACE only, not up through the tenons
-    w = w.cut(box_at(_x1 - _x0, 2 * _hw, _zt - (-HUB_D / 2),
-                     x=(_x0 + _x1) / 2, y=0.0, z=((-HUB_D / 2) + _zt) / 2))
+    # WALL HEIGHT: as high as it can go WITHOUT cutting under a tenon stem's root, so the slot
+    # still takes everything it used to over the cartridge pockets while the stems stay rooted
+    # (the roof passes the nearest stem edge exactly at the bottom of its TEN_ROOT). The arm's
+    # real reach in this span, from the swept envelope, has to stay under it.
+    _reach = (_env.intersect(box_at(_x1 - _x0, 2 * _hw + 2.0, 400.0, x=(_x0 + _x1) / 2, y=0.0, z=0.0))
+              .val().BoundingBox().zmax)
+    _stem = min(abs(ty) - KL._JW / 4 for ty in TEN_Y)          # nearest stem edge to the slot centre
+    _zw = HOUS_Z1 - KL.TEN_ROOT - max(0.0, _hw - _stem)
+    assert _zw >= _reach - 1e-6, (
+        f"the slot wall ({_zw:.2f}) is under the arm's reach ({_reach:.2f}) in its own span")
+    _pts = [(-_hw, -HUB_D / 2), (_hw, -HUB_D / 2), (_hw, _zw), (0.0, _zw + _hw), (-_hw, _zw)]
+    w = w.cut(cq.Workplane("YZ", origin=(_x0, 0.0, 0.0)).polyline(_pts).close()
+              .extrude(_x1 - _x0))
     w = KL.cut_axle_stack(w)       # bearing seats + contact rib + axle way
     w = KL.cut_feel_pockets(w, vplace, HOUS_X1)
     # SENSOR CRADLE — knee_lever's, parameterised by this housing's Z extents
