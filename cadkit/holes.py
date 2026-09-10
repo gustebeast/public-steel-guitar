@@ -78,19 +78,21 @@ def teardrop_hole(d, length, axis_point=(0.0, 0.0, 0.0),
 
 
 def house_hole(d, length, axis_point=(0.0, 0.0, 0.0),
-               axis_dir=(1.0, 0.0, 0.0), print_up=(0.0, 0.0, 1.0)):
-    """CUTTER for a sideways CLEARANCE passage: the pentagon that bounds a
-    Ø`d` teardrop - flat floor at d/2 below the axis, walls at ±d/2, a 45°
-    roof tangent to the circle with its apex at (d/2)*sqrt(2) toward
-    `print_up` (the teardrop's apex exactly). Anything Ø<=d passes. Same
-    argument conventions as teardrop_hole."""
-    if d <= 0.0 or length <= 0.0:
-        raise ValueError("d and length must be > 0")
-    plane = _hole_plane(axis_point, axis_dir, print_up, "house_hole")
+               axis_dir=(1.0, 0.0, 0.0), print_up=(0.0, 0.0, 1.0), wall=None):
+    """CUTTER for a sideways CLEARANCE passage: a `d`-wide rectangle `wall`
+    tall with a 45° roof on top (roof height d/2), apex toward `print_up`.
+    The axis sits d/2 above the flat floor, so the apex is `wall` above it.
+    Default wall = (d/2)*sqrt(2): the pentagon that bounds a Ø`d` teardrop
+    (same roof, same apex), so anything Ø<=d passes. A shorter wall cuts into
+    that circle. Same argument conventions as teardrop_hole."""
     r = d / 2.0
-    eave = r * (math.sqrt(2.0) - 1.0)             # wall top: roof tangent to the circle
+    if wall is None:
+        wall = r * math.sqrt(2.0)
+    if d <= 0.0 or length <= 0.0 or wall <= 0.0:
+        raise ValueError("d, length and wall must be > 0")
+    plane = _hole_plane(axis_point, axis_dir, print_up, "house_hole")
     return (cq.Workplane(plane)
-            .polyline([(-r, -r), (r, -r), (r, eave), (0.0, r * math.sqrt(2.0)), (-r, eave)])
+            .polyline([(-r, -r), (r, -r), (r, wall - r), (0.0, wall), (-r, wall - r)])
             .close().extrude(length))
 
 
@@ -172,6 +174,14 @@ if __name__ == "__main__":
           f"teardrop {cont:.3f}/{want_v:.3f}, apex x={bbh.xmax:.3f}{'' if ok else '  <-- FAIL'}")
     if not ok:
         fails.append("house_hole geometry wrong")
+    hw = house_hole(D, L, wall=2.0 * R)           # explicit wall: area d*wall + r^2, apex at wall
+    bbw = hw.val().BoundingBox()
+    ok = (abs(hw.val().Volume() - (D * 2.0 * R + R * R) * L) < 1e-3
+          and abs(bbw.zmax - 2.0 * R) < 1e-6 and abs(bbw.zmin + R) < 1e-6)
+    print(f"house wall    vol {hw.val().Volume():.3f} apex z={bbw.zmax:.3f}"
+          f"{'' if ok else '  <-- FAIL'}")
+    if not ok:
+        fails.append("house_hole wall geometry wrong")
 
     # vertical axis must raise; zero size must raise
     for label, kwargs in (("parallel axis", dict(axis_dir=(0, 0, 1))),

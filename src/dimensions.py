@@ -596,25 +596,32 @@ assert _NUT_BRG_GAP >= 1.0 - 1e-9, (
 # axis, exactly the 688ZZ's outer radius, so a channel there runs through the thrust bearing.
 # It stands off sideways instead, as close to the bearing as the seat allows, and the last
 # few mm to the ear are a step the builder pushes across with a long thin tool from +X.
-# The channel is a HOUSE cut (cadkit.holes.house_hole, user 2026-09-10): the teardrop's roof
-# and apex toward -X (the endplate's print direction) over straight walls and a flat floor.
-# STANDOFF = the Ø4.6 passage circle just touches the Ø16.2 seat bore, the same for both rows.
-# There is no wall between them — only the house's corners break into the seat:
-#   NEAR row — the channel's ROOF points at its seat and pokes ~0.95 past the bore, notching
-#              a ±1 mm arc of the seat round and the ledge's outer edge (r 7.15..8.1). The
-#              bearing still locates on the rest of the round; the ledge loses ~2% of its
-#              thrust annulus.
-#   FAR row  — the channel's FLOOR faces the seat, and lands inside the seat's own teardrop
+# The channel is a HOUSE cut (cadkit.holes.house_hole, user 2026-09-10): a 4.8 x 4.8 rectangle
+# with a 45° roof on top, apex toward -X (the endplate's print direction). Its BEARING-FACING end
+# is placed so the Ø4.6 barrel passage just touches the Ø16.2 seat bore; the extra size grows
+# AWAY from the bearing. There is no wall between channel and seat — only the house breaks in:
+#   NEAR row — the ROOF points at its seat. The passage circle nestled in the roof is tangent to
+#              the bore, so the apex pokes ~0.95 past it, notching a short arc of the seat round
+#              and the ledge's outer edge (r 7.15..8.1): a few % of the thrust annulus.
+#   FAR row  — the FLOOR faces the seat, tangent to the bore, inside the seat's own teardrop
 #              apex void, so nothing is notched.
-# The barrel passes the 688's OD with 0.3 to spare (8.0 + 2.0 + 0.3 = 10.3 < 10.4).
-STRING_ACCESS_D = STRING_NUT_D + 0.6            # 4.6 — the Ø4 swaged string end passes
+# Either way the barrel passes the 688's OD with 0.3 to spare (8.0 + 2.0 + 0.3 = 10.3 < 10.4).
+STRING_ACCESS_D = 6 * BEAD                      # 4.8 house width (user)
+STRING_ACCESS_H = 6 * BEAD                      # 4.8 house wall height, roof on top (user)
+_ACCESS_PASS_R  = STRING_NUT_D / 2 + 0.3        # 2.3 — the Ø4 swaged end's passage, for the standoff
 
 
 def string_access_x(i: int) -> float:
     """X of string i's vertical access channel, stood off its screw AWAY from the screw axis
-    (toward the bearing tangent): its passage circle tangent to the thrust-bearing seat bore."""
+    (toward the bearing tangent) — the house_hole axis point; its bearing-facing end sits on the seat bore."""
+    seat_r = (SUPPORT_BRG_OD + 0.2) / 2
     toward = 1.0 if screw_x(i) < 0 else -1.0    # away from its own screw, toward X = 0
-    return screw_x(i) + toward * ((SUPPORT_BRG_OD + 0.2) / 2 + STRING_ACCESS_D / 2)
+    if screw_far(i):                            # floor faces the seat, tangent to the bore
+        off = seat_r + STRING_ACCESS_D / 2
+    else:                                       # roof faces it: apex where the nestled passage
+        apex = seat_r + _ACCESS_PASS_R - _ACCESS_PASS_R * 2 ** 0.5   # circle touches the bore
+        off = apex + STRING_ACCESS_H            # house_hole's apex is `wall` above its axis
+    return screw_x(i) + toward * off
 # BOTTOM of the rod: it ends in the pulley's BLIND SOCKET, a hair short of the floor so it
 # never bottoms and preloads the formed thread. Both SKUs share the top (PULLEY_TOP_MAX)
 # and the socket depth, so the rod ends at the same Z on every station.
