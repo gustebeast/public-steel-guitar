@@ -220,6 +220,12 @@ def _housing() -> cq.Workplane:
     for i in range(int(THROW_V) + 1):
         c = swing(_lever_envelope(), float(i))
         _env = c if _env is None else _env.union(c)
+    # ...CAPPED AT THE HOUSING TOP (user, 2026-09-10). The top is flush with the instrument's
+    # underside, so the arm cannot swing above it: past ~15 deg it meets the body, not air.
+    # Sweeping the full envelope up through it hollowed out the inner halves of both mount
+    # tenons, which left the rib mortises half empty.
+    _env = _env.intersect(box_at(400.0, 400.0, HOUS_Z1 - (HOUS_Z0 - 50.0),
+                                 x=0.0, y=0.0, z=(HOUS_Z1 + HOUS_Z0 - 50.0) / 2))
     w = w.cut(_env)
     # OPEN THE TOP over the leg AND over the arm's exit, out through the +X face.
     # Both halves of that are needed: the leg band so the leg has a slot, and the
@@ -227,7 +233,7 @@ def _housing() -> cq.Workplane:
     # arm's full-throw position — the one thing this part cannot print.
     _x0 = -(KL.ARM_TX / 2 + KL.HS_CLR)
     _x1 = HOUS_X1 + 1.0
-    _zt = HOUS_Z1 + KL.TEN_H + 2.0
+    _zt = HOUS_Z1                    # out through the top FACE only, not up through the tenons
     w = w.cut(box_at(_x1 - _x0, 2 * _hw, _zt - (-HUB_D / 2),
                      x=(_x0 + _x1) / 2, y=0.0, z=((-HUB_D / 2) + _zt) / 2))
     w = KL.cut_axle_stack(w)       # bearing seats + contact rib + axle way
