@@ -81,6 +81,7 @@ _ex("hardware",
 
 _ex("clearance",
     bridge_endplate__GUIDE_BOSS_R="guide-rod collar radius capped 0.2 clear of the bought nut's Ø10.2 boss",
+    bridge_endplate__DRIVE_HW="outermost pulley swept circle + 0.4 running clearance",
 )
 
 
@@ -139,7 +140,7 @@ _ex("hardware",
     NUT_SCREW_L="M4 screw stock length",
     NUT_PIN_D="Ø2 dowel pin nominal",
     NUT_PIN_L="Ø2x4 dowel pin length",
-    GUIDE_ROD_D="Ø3 g6 precision shaft — the SAME part as the bridge axle",
+    GUIDE_ROD_D="= NUT_HOLE_D, the Tr8x2 H-nut ear hole (drill blank matched to the measured hole)",
     GUIDE_ROD_FIT="snug press for the Ø3 rod in its socket — a FIT, i.e. a gap, not material",
     NUT_PIN_CLR="slip fit for the Ø2 dowel in its seat — a gap, not material",
     nut_block__ROD_FIT="slide fit for the wrap rod through ten comb webs — a gap, not material",

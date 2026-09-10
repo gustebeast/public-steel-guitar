@@ -344,7 +344,14 @@ SCREW_TOP_Z     = NUT_TOP_Z + SCREW_RUNOUT              # -4.80
 # spans the ear's travel plus the ear, ~15 mm, not the room's height, and deflects
 # 0.016 mm under the 11 N anti-rotation load. What matters is the SOCKET — over the
 # rib's grip any clearance is amplified across that 15 mm, so it is a PRESS fit.
-GUIDE_ROD_D     = 3.0       # Ø3 g6 precision shaft (shared with BRIDGE_AXLE_D)
+# MATCHED TO THE NUT'S EAR HOLE (user, 2026-09-10). Ø3 was chosen to take the slop out of
+# the old nut's Ø3 ear; the Tr8x2 H-flange nut's ears are Ø3.5, so a Ø3 rod had put back
+# exactly the 0.5 mm of play the Ø2.5 dowel was rejected for (~38 mrad of nut rotation).
+# DERIVED from NUT_HOLE_D so the two cannot drift apart again. No longer the same stock
+# as the bridge axle (Ø5): buy it as a Ø3.5 DRILL BLANK, which is sold in 0.1 mm steps —
+# the seller's drawing is only +/-0.5-1, so MEASURE the real ear hole and pick the blank
+# to it; that is the whole point of choosing a stock sold that finely.
+GUIDE_ROD_D     = NUT_HOLE_D  # 3.5 — slide fit in the nut's ear, press in the endplate
 GUIDE_ROD_FIT   = 0.05      # SNUG PRESS. Not zero: at zero the socket is drawn the
                             # rod's own Ø, which is not a hole you can install into,
                             # and coincident cylinders make the boolean unreliable
