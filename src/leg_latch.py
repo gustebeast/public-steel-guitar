@@ -45,11 +45,13 @@ tenon's pocket is closed at both ends. The order that does work (user's sequence
      of the sleeve, so the latch cannot fall out.
   4. offer the leg up to the body: push to connect, no button.
 
-WHY THE HOOK NEEDS NO RUN-IN CHANNEL. It sits within HOOK_Z of the butt plane, so
-it is outside the adapter for all but the last 4.8 of a 40 mm insertion: it meets
-the adapter's MOUTH EDGE, cams in on its 45 lead, and springs into a pocket that
-is open to that mouth. The pocket's far face is a flat 90 ledge, so pulling on the
-leg loads it in shear with no cam-out.
+WHY THE HOOK NEEDS NO LONG RUN-IN CHANNEL. It sits just inside the butt plane, so
+it is outside the adapter for all but the last HOOK_Z + RUN (8.0) of a 40 mm
+insertion: it meets the adapter's MOUTH EDGE, cams in on its 45 lead, rides the
+bore retracted for RUN, and springs out into a pocket ENCLOSED on its +Z side. (An
+earlier version put the pocket open to the mouth. That retains nothing -- there is
+no +Z face for the hook to catch on.) The pocket's far face is a flat 90 ledge, so
+pulling on the leg loads it in shear with no cam-out.
 
 FRAME: leg-local -- the same one leg_stack assembles in. +Z runs AWAY from the
 instrument, so the ADAPTER is at low z and the SLEEVE at high, and BUTT is the
@@ -94,8 +96,14 @@ STROKE = LT.STROKE                 # 3.2 -- MUST exceed HOOK_ENGAGE, or pressing
 assert HOOK_TIP - STROKE < BORE_TOP, (
     "pressed, the hook still stands %.2f into the bore -- the leg cannot come off"
     % (HOOK_TIP - STROKE - BORE_TOP))
-assert FACE_Y - HOOK_TIP >= D.MIN_WALL_2P, (
-    "only %.2f of adapter skin over the retention pocket" % (FACE_Y - HOOK_TIP))
+# BRIDGE SAG over the hook. The adapter prints button-face UP, so the retention
+# pocket's outer skin is its ROOF: a 13.3 x 5.3 opening walled on all four sides,
+# i.e. a 5.3 mm bridge -- routine, but a bridge droops, and the hook tip sat only
+# CLR (0.25) under it. This is room for the droop, not material.
+BRIDGE_SAG = 0.3
+POCKET_TOP = HOOK_TIP + CLR + BRIDGE_SAG                # 20.04
+assert FACE_Y - POCKET_TOP >= D.MIN_WALL_2P, (
+    "only %.2f of adapter skin over the retention pocket" % (FACE_Y - POCKET_TOP))
 
 # -- the band ---------------------------------------------------------------
 BUTT = LS.ADAPT_L                  # 52.8 the butt plane, in leg-local z
@@ -263,7 +271,13 @@ def slider() -> cq.Workplane:
             .close().extrude(BAND_W))
     s = s.cut(cq.Workplane("XY").add(lead.val()).translate((-BAND_W / 2.0, 0, 0)))
     # neck, out through the sleeve wall...
-    s = s.union(_band(BORE_TOP - 1.0, FACE_Y - PAD_T, BUTT + e, BUTT + PAD_L - e,
+    # ROOTED DOWN IN THE BODY, not started at the bore's crown (user). The body is
+    # clipped to the bore's 45 roof, which at the neck's edges sits ~2.3 below
+    # the crown -- so a neck starting near the crown joined the body only across
+    # its middle, with an open triangle either side: a notch right at the root of
+    # the part that takes the thumb load. Everything this fills is void in every
+    # host (the tenon's pocket, the sleeve's slot, which runs down to the bore).
+    s = s.union(_band(SLIDER_BACK, FACE_Y - PAD_T, BUTT + e, BUTT + PAD_L - e,
                       NECK_W - 2 * e))
     # ...and the 20 x 20 thumb plate on its end, flush with the outer face at rest
     s = s.union(_band(FACE_Y - PAD_T, FACE_Y, BUTT + e, BUTT + PAD_L - e,
@@ -332,5 +346,5 @@ def adapter_pocket() -> cq.Workplane:
     # Reaches down past the bore on purpose: below the bore's roof there is
     # nothing to remove (that is the mortise), so this cuts only the sliver of
     # wall the hook actually stands in.
-    return _band(0.0, HOOK_TIP + CLR, HOOK_Z0 - CLR, HOOK_Z1 + CLR,
+    return _band(0.0, POCKET_TOP, HOOK_Z0 - CLR, HOOK_Z1 + CLR,
                  BAND_W + 2 * CLR)
