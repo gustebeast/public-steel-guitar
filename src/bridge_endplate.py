@@ -552,6 +552,12 @@ def _build() -> cq.Workplane:
                            DECK_CLR, x=((OP.PCB_X1S - 1.0) + XLO) / 2,
                            y=(OP.PCB_YM + OP.PCB_YP) / 2,
                            z=CH.TP_GZ1 + DECK_CLR / 2))
+    # THE PICKUP JACK'S ACCESS HOLE goes through the pad too, not just the board. The
+    # +Y jack nearest the bridge lands under both, and the plate has no room to move it,
+    # so the same cutter the board uses comes through here -- which is what keeps the two
+    # concentric. Grown half a bead: the pad is structure, the board is not, and a driver
+    # that just clears the board should not scrape the plastic.
+    body = body.cut(OP.jack_access(grow=D.MIN_WALL / 2))
     # ...and the board's M4 ANCHORS, back now that there is something to sink them into.
     # The screw enters from ABOVE, down through the board's clearance hole, into the pad.
     #
