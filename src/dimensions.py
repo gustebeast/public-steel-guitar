@@ -730,8 +730,8 @@ assert _BELT_PLANE_CLR >= 0.4 - 1e-9, (
 # ─────────────────────────────────────────────────────────────────────────
 # 688ZZ (Ø8×16×5) — the SAME part as the ten screw thrust bearings (user, 2026-09-10:
 # one bearing SKU everywhere, since the Tr8 screw already forces a Ø8 bore), so the bridge
-# axle goes Ø8 with it. The knee-lever and pedal axles follow in their own rounds; the nut
-# wrap rod stays Ø5 (NUT_WRAP_ROD_D) — it carries no bearing.
+# axle goes Ø8 with it. The knee-lever and pedal axles follow in their own rounds, and the nut
+# wrap rod is now the SAME Ø8 x BRIDGE_AXLE_L shaft (user) — one shaft SKU at both ends.
 #
 # (history) 695ZZ (Ø5×13×4) was the one bearing before this, and its Ø5 bore made the
 # bridge axle, both lever axles and the nut wrap rod one stock shaft.
@@ -752,9 +752,6 @@ assert _BELT_PLANE_CLR >= 0.4 - 1e-9, (
 BRIDGE_BEARING_OD = BRG688_OD   # 16 — 688ZZ; the string rides the OD
 BRIDGE_BEARING_W  = BRG688_W    # 5 along the axle (Y)
 BRIDGE_AXLE_D     = BRG688_ID   # Ø8 shared axle (axis Y), the 688's bore
-NUT_WRAP_ROD_D    = 5.0         # nut_block's capstan rod: a Ø5 g6 shaft. It was the bridge
-                                # axle's stock until that went Ø8; nut_block is built around
-                                # Ø5, so moving it is that part's own round, not a side effect.
 BRIDGE_BEARING_Z  = STRING_Z - BRIDGE_BEARING_OD / 2     # axle/bearing centre (8)
 _BRIDGE_BRG_BOT   = STRING_Z - BRIDGE_BEARING_OD         # 0, the bearing's underside
 assert _BRIDGE_BRG_BOT - NUT_TOP_MAX >= 1.0, (
@@ -843,17 +840,9 @@ SCREW_NX_WALL   = 3 * BEAD      # 2.4 solid wall -X behind the far insert's OD (
 
 ENDPLATE_W = (BREAK_PX_BUF + DOWEL_SCREW_RUN + SCREW_ROW_GAP
               + NUT_INSERT_D / 2 + SCREW_NX_WALL)            # = 25.0
-# THE KEYHEAD IS THICKER THAN THE BRIDGE, and the two are now separate numbers.
-# ENDPLATE_W above is the BRIDGE's (and the shared base's) 25.4, frozen: the whole
-# changer end is built on it. The keyhead needs more, and for a reason that only
-# exists at that end -- the WRAP CAPSTAN (nut_block) spends X on the rod and its
-# threading bay, and the clamp inserts behind it still have to stagger across TWO
-# rows to keep O6 pockets apart at a 6.5 string pitch. One row cannot be made to
-# fit: even perfectly spaced it leaves 0.5 mm of wall. So the keyhead grows -X, away
-# from the strings -- the break edge (the scale "0") does not move, only the block's
-# back face -- and the bridge is left exactly where it is (user).
-KEYHEAD_W  = 36 * BEAD                              # 28.8 = 25.4 + 5.0 of clamp room,
-                                                    # less the 1.6 reclaimed at the front
+# THE KEYHEAD'S THICKNESS IS NOT SET HERE ANY MORE (user). It was a 28.8 literal sized for
+# two staggered rows of clamp inserts that no longer exist. nut_block.KEYHEAD_W now derives it
+# from the stow bores (two beads of bed face behind them), and chassis.KH_EP_THK reads that.
 # ...AND ITS FRONT BUFFER IS ITS OWN NUMBER TOO (user: decouple the endplates). The
 # keyhead needs far less material +X of the break dowel than BREAK_PX_BUF's 4.0 -- just
 # enough to grow a 45 deg up to the dowel's MIDPOINT, since a dowel cradled to its own
@@ -905,15 +894,29 @@ BRIDGE_BASE_X1 = BRIDGE_X + BRIDGE_BASE_HALF        # +23.1  (+X face)
 
 
 # ─────────────────────────────────────────────────────────────────────────
-# String gauges → the nut break inserts are GAUGED to these so the string TOPS
-# sit coplanar at STRING_Z. Reprint the (bolt-on) nut block to switch sets.
+# String gauges — the DEMO SET the model is drawn strung with. The keyhead does NOT take
+# its shape from it: each sliding insert rises until its own string stops it, so the string
+# sets its own height, and every insert SKU is sized for the heaviest gauge its slots take
+# (nut_block.sku_gauge_max; string 10 up to STRING_GAUGE_MAX below). Clearances to the
+# lowest string read STRING_GAUGE_MAX too. Two things still read THIS table: the SKU A/B
+# zone maxima (nut_block.sku_gauge_max) and the rod height (nut_block._G_MAX).
 # Index i = string (i+1), low to high: index 0 = string 1 (lightest, +Y); index 9 =
-# string 10 (heaviest, −Y player side). Edit GAUGES_C6_IN (or swap in another set in
-# the same string-1→10 order) and rebuild to regenerate the endplate for that set.
+# string 10 (heaviest, −Y player side).
 # ─────────────────────────────────────────────────────────────────────────
 GAUGES_E9_IN = (.013, .015, .011, .014, .017, .020, .026, .030, .034, .038)  # str 1→10
 GAUGES_C6_IN = (.015, .014, .017, .020, .024, .030, .036, .042, .054, .070)  # str 1→10
 STRING_GAUGE = tuple(g * 25.4 for g in GAUGES_C6_IN)            # mm, index 0..9 = str 1..10 (C6)
+
+# THE HEAVIEST GAUGE THE KEYHEAD IS BUILT TO TAKE -- the ENVELOPE, not the demo SET above.
+# STRING_GAUGE is what this model happens to be strung with; a printed part has to clear
+# whatever a player may fit, or a heavier set means a reprint. Published pedal steel gauge
+# charts put the lowest wound string at up to .080: steelguitar.com's string-gauge chart
+# gives ".070 - .080 Wound" for A and ".072 - .080" for G# (b0b.com's gauge guide tops out
+# lower, G#/Ab ".072 or .074"). Only the outermost slot, string 10, ever carries it.
+GAUGE_MAX_IN     = .080
+STRING_GAUGE_MAX = GAUGE_MAX_IN * 25.4                          # 2.032 mm
+assert STRING_GAUGE_MAX >= max(STRING_GAUGE), (
+    "the demo string set is heavier than the gauge envelope the keyhead is built to take")
 
 # Nut block sits with its break edge (the open-string scale endpoint) here.
 NUT_BLOCK_X  = -MOUNTING_SPAN

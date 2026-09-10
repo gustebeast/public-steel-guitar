@@ -120,7 +120,8 @@ ARM_W = D.BRIDGE_ARM_W             # arm / edge-web thickness (Y) — kept clear
 BEAR_TOP = D.STRING_Z                                              # 16.0 = bearing top = string plane
 ARM_TOP = BEAR_TOP                                                # side walls flush to the flat top
 #   (was 15.70 = bore + a 2 mm cap; now the arms rise the last 0.3 to the bearing top so the
-#    side walls match the filled tail — the axle grub just reaches 0.3 deeper, still fine)
+#    side walls match the filled tail. There is no axle grub any more to care -- the optical
+#    strip is the +Y stop; see AXLE_END_WALL)
 MIN_ADDED = D.MIN_WALL_2P         # 1.6 -- two-bead QUALITY floor for material this
                                   # feature ADDS (single-sourced via dimensions)
 
@@ -380,7 +381,7 @@ WIN_HW     = D.BRIDGE_ARM_Y - ARM_W / 2
 ROOM_HW    = max(abs(D.string_y(i)) for i in range(D.N_STRINGS)) + D.NUT_AF / 2 + 1.0   # 49.0
 
 
-MECH_HW = D.BRIDGE_ARM_OUT   # 54.75, field-centre upper-cap half-span = the arm outer face.
+MECH_HW = D.BRIDGE_ARM_OUT   # 50.80, field-centre upper-cap half-span = the arm outer face.
                              # Single-sourced: the axle's ends and the optical strip's wrap
                              # bands both derive from this same face, so it cannot be a
                              # second copy of the arithmetic.
@@ -780,7 +781,7 @@ def _build() -> cq.Workplane:
     # +X face: the fattest string RIDING ON the race (its centreline wraps at OD/2 + gauge/2,
     # so it reaches a whole gauge past the race), or the race itself. It used to take half a
     # gauge off BRIDGE_X, for a string drawn centred on the OD, and the .070 cut the wall.
-    SLOT_X1  = _br_x1 + max(max(D.STRING_GAUGE) + 0.5, BR_CLR)
+    SLOT_X1  = _br_x1 + max(D.STRING_GAUGE_MAX + 0.5, BR_CLR)   # the heaviest string that fits
     SLOT_Z0  = min(Z6 - 1.0, _br_z0 - BR_CLR)             # floor: the shelf OR the race's underside
     SLOT_Z1  = BEAR_TOP + 1.0                             # open above the string plane
     # the house pentagon in plan: |_| spanning SLOT_X0..X1, /\ ridge at SLOT_X0 − BR_HW on y 0
