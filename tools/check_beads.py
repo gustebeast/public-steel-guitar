@@ -339,6 +339,10 @@ _ex("clearance",
 # the lever and buried its tenons in solid rib (3021 mm^3). Snapped and reverted
 # 2026-08-06; chassis now asserts MOUNT_X lands on a rib.
 _ex("layout",
+    leg_latch__BUTTON_SIDE="a direction SIGN (-1: the latch button faces -Y), "
+                           "not a length",
+)
+_ex("layout",
     MOTOR_X0="first motor offset -- sized for a >=100 mm free belt span",
     MOTOR_X_STEP="motor pitch = 42.3 body + tension slot; drives the rib comb",
     MOTOR_PULLEY_STANDOFF="pulley clamp position on the motor shaft (purchased-part pose)",

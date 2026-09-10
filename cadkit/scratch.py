@@ -193,7 +193,13 @@ class ScratchView:
             print("no cache -- begin a flow with:  --start")
             return 1
         age, ctx = loaded
-        comps = ([(n, wp.val()) for n, wp in self.live()]
+        comps = ([(n, (self.pose(n, wp) if self.pose else wp).val())
+                  # POSED, exactly as render() draws them. This used to hand the
+                  # gates the RAW live parts, so any scope with a pose was gated
+                  # wherever its module happened to author it -- the redesigned
+                  # leg was checked floating clear of the instrument for weeks and
+                  # reported clean while overlapping four TRRS parts in place.
+                  for n, wp in self.live()]
                  + [(n, wp.val()) for n, wp in ctx])
         print("=" * 70)
         print(" INNER-LOOP GATE -- live part FRESH, %d context solids CACHED (%.0f min old)"
