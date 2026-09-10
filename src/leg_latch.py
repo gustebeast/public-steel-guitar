@@ -46,11 +46,12 @@ sequence, and swept -- see the fit tests):
      of the sleeve, so the latch cannot fall out.
   4. offer the leg up to the body: push to connect, no button.
 
-WHY THE HOOK NEEDS NO LONG RUN-IN CHANNEL. It sits just above the butt plane, so
-it is outside the adapter for all but the last HOOK_Z + RUN (8.0) of a 40 mm
-insertion: it meets the adapter's MOUTH EDGE, cams in on its lead-in, rides the
-bore retracted for RUN, and springs out into a pocket that is CLOSED on its mouth
-side. (An earlier version left the pocket open to the mouth. That retains nothing
+PUSH TO CONNECT, NO BUTTON (user). The hook sits just above the butt plane, so it
+is outside the adapter for all but the last HOOK_Z + RUN of a 40 mm insertion: it
+meets the adapter's MOUTH EDGE, cams in up its lead-in RAMP, rides the bore
+retracted for RUN, and springs out into a pocket that is CLOSED on its mouth
+side. The ramp has to follow the bore's 45-degree V -- see LEAD_DEG for the jam a
+flat ramp produced. (An earlier version left the pocket open to the mouth. That retains nothing
 -- there is no face for the hook to catch on.) That closed side is a flat 90
 ledge, so pulling the leg down loads it in shear with no cam-out.
 
@@ -99,12 +100,11 @@ STROKE = LT.STROKE                 # 3.2 -- MUST exceed HOOK_ENGAGE, or pressing
 assert HOOK_R - STROKE < BORE_R, (
     "pressed, the hook still stands %.2f into the bore -- the leg cannot come off"
     % (HOOK_R - STROKE - BORE_R))
-# BRIDGE SAG over the hook. The adapter prints button-face UP, so the retention
-# pocket's outer skin is its ROOF: a 13.3 x 5.3 opening walled on all four sides,
-# i.e. a 5.3 mm bridge -- routine, but a bridge droops, and the hook tip sat only
-# CLR (0.25) under it. This is room for the droop, not material.
-BRIDGE_SAG = 0.3
-POCKET_R = HOOK_R + CLR + BRIDGE_SAG                   # 20.04
+# The adapter prints BUTTON FACE DOWN (leg_stack.ADAPTER_UP), so the retention
+# pocket's outer skin is a FLOOR in the print, not a roof: nothing is bridged, so
+# nothing droops onto the hook. (Printed the other way up it was a 5.3 mm bridge
+# and needed 0.3 of sag room.)
+POCKET_R = HOOK_R + CLR                                # 19.74
 assert FACE_R - POCKET_R >= D.MIN_WALL_2P, (
     "only %.2f of adapter skin over the retention pocket" % (FACE_R - POCKET_R))
 
@@ -113,7 +113,23 @@ BAND_W = 16 * B                    # 12.8 across X. Centred on the axis, where t
                                    # tenon reaches FURTHEST toward the button: its
                                    # apex falls away at 45 degrees either side, so
                                    # an off-centre band would have less under it.
-HOOK_Z = 6 * B                     # 4.8 the hook's own length along the leg
+HOOK_Z = 7 * B                     # 5.6 the hook's own length along the leg: the
+                                   # lead-in ramp (LEAD_L) plus a real LAND of full
+                                   # engagement before the ledge
+# THE LEAD-IN, and why it cannot be a flat cut. The hook is the bore's own 45-degree
+# V lifted HOOK_ENGAGE toward the button, so across the band its top sits lower
+# and lower away from the centreline. The first lead-in was ONE PLANE across the
+# band: at the band's edges the whole hook sat below where that plane started, so
+# there its leading end was a flat square face. Simulated insertion with no hand on
+# the button (scratch latch_insert_sim): the needed retraction jumped 2.05 mm in
+# 0.1 mm of travel at first contact -- 87 degrees from the push axis, a WALL, and
+# the joint self-locked at any real friction. Push-to-connect did not exist.
+#
+# So the ramp is a LOFT of the bore profile: lifted 0 at the leading end, lifted
+# HOOK_ENGAGE LEAD_L further down, ruled between. Every point across the band then
+# rises at the same LEAD_DEG, measured from the push axis.
+LEAD_DEG = 30.0
+LEAD_L_MAX = HOOK_Z - B            # leave at least one bead of full-height land
 RUN = 4 * B                        # 3.2 how far ABOVE the mouth the pocket sits.
                                    # It cannot sit AT the mouth: a pocket open to
                                    # the mouth has no face on that side, so the
@@ -189,12 +205,31 @@ def _radial_cyl(d: float, r0: float, length: float, z: float):
         cq.Vector(0, BUTTON_SIDE, 0)))
 
 
-def _radial_prism(pts, w: float = BAND_W):
-    """A prism across the band from a profile of (radius, world z) points."""
-    prof = (cq.Workplane("YZ")
-            .polyline([(LS.LEG_Y + BUTTON_SIDE * r, z) for r, z in pts])
-            .close().extrude(w))
-    return cq.Workplane("XY").add(prof.val()).translate((LS.LEG_X - w / 2.0, 0, 0))
+def lead_l() -> float:
+    """The ramp's length along the leg, from LEAD_DEG (read at call time)."""
+    return LT.HOOK_ENGAGE / math.tan(math.radians(LEAD_DEG))
+
+
+def _bore_wire(z: float, lift: float, shrink: float = CLR):
+    """The mortise's 45-degree octagon at height z, lifted toward the button, as a
+    closed world-space wire -- the two ends of the lead-in loft."""
+    w = LS.TEN_W + 2 * LS.FIT - 2 * shrink
+    h, c = w / 2.0, LS.CHAM / math.sqrt(2.0)
+    # the same perimeter walk as leg_stack.octagon, square-on...
+    sq = [(h - c, h), (-(h - c), h), (-h, h - c), (-h, -(h - c)),
+          (-(h - c), -h), (h - c, -h), (h, -(h - c)), (h, h - c)]
+    k = math.sqrt(0.5)
+    # ...turned 45 degrees and placed on the leg's axis
+    pts = [cq.Vector(LS.LEG_X + k * (x - y),
+                     LS.LEG_Y + k * (x + y) + BUTTON_SIDE * lift, z) for x, y in sq]
+    return cq.Wire.makePolygon(pts + [pts[0]])
+
+
+def _lead_ramp(z_lo: float, z_hi: float):
+    """Fully lifted at z_lo, not lifted at all at z_hi (the leading end), ruled
+    between: the hook's lead-in, rising at LEAD_DEG everywhere across the V."""
+    return cq.Workplane("XY").add(cq.Solid.makeLoft(
+        [_bore_wire(z_lo, LT.HOOK_ENGAGE), _bore_wire(z_hi, 0.0)], True))
 
 
 # The slider body must house the spring's seat and still have a back wall.
@@ -237,16 +272,23 @@ assert PAD_W + 2 * CLR <= LS.LEG_W - 4 * D.MIN_WALL_2P, (
 # off the constants. Load path when the leg hangs: adapter ledge -> hook -> slider
 # -> the tenon pocket's upper end wall -> tenon -> screw -> sleeve.
 #
-#   ledge bearing (hook on adapter)     25.2 mm2 x 30 MPa  ~  760 N  <- weakest
-#   adapter ledge shear-out             63.5 mm2 x 12 MPa  ~  760 N  <- weakest
-#   hook root shear (off the slider)    74.8 mm2 x 12 MPa  ~  900 N
+#   hook root shear (off the slider)    53.8 mm2 x 12 MPa  ~  650 N  <- weakest
+#   ledge bearing (hook on adapter)     25.2 mm2 x 30 MPa  ~  760 N
+#   adapter ledge shear-out             63.5 mm2 x 12 MPa  ~  760 N
 #   tenon pocket end wall bearing       81.7 mm2 x 30 MPa  ~ 2450 N
+#
+# THE LEAD-IN IS WHAT COSTS THE HOOK. Its 30-degree ramp takes 4.16 of the 5.6 hook:
+# protrusion beyond the bore 80.9 mm3 against 112.5 for a full-height hook, and the
+# root shear above (74.8 mm2 measured on the full-height hook) is scaled by that
+# ratio. 45 degrees keeps ~850 N but doubles the push to seat -- simulated with no
+# hand on the button, 17-21 N against 10-12 N at 30 (mu 0.3-0.4; guide friction not
+# included, so real pushes run higher). 30 was chosen: seating easily is the point.
 #
 # Allowables are deliberately conservative for printed PETG-GF/PCTG: 12 MPa is an
 # INTERLAYER shear figure, used for every shear plane because the slider's print
 # orientation is not fixed yet. Against that, the heaviest thing it holds is the
 # whole leg below the adapter -- 1.19 kg printed SOLID (an upper bound) = 11.7 N,
-# 58 N at a x5 handling jolt. ~13x margin; strength is not what limits this latch.
+# 58 N at a x5 handling jolt. ~11x margin; strength is not what limits this latch.
 # What does is ACCIDENTAL RELEASE: see the pad.
 
 
@@ -280,16 +322,20 @@ def slider() -> cq.Workplane:
     e = CLR
     env = _band(SLIDER_BACK, HOOK_R + 1.0, Z_PAD_BOT + e, Z_HOOK_LEAD - e,
                 BAND_W - 2 * e)
+    L = lead_l()
+    assert L <= LEAD_L_MAX + 1e-9, (
+        "a %.0f-degree lead-in needs %.2f of hook but only %.2f is spare -- "
+        "lengthen HOOK_Z or steepen LEAD_DEG" % (LEAD_DEG, L, LEAD_L_MAX))
     # body: everything that must stay inside the bore
     keep = _bore_prism(Z_PAD_BOT - 1.0, Z_HOOK_LEDGE)
-    # hook: the same profile, lifted, over its own stretch only
-    keep = keep.union(_bore_prism(Z_HOOK_LEDGE, Z_HOOK_LEAD, lift=LT.HOOK_ENGAGE))
+    # the hook's LAND: the same profile, fully lifted, from the ledge up...
+    keep = keep.union(_bore_prism(Z_HOOK_LEDGE, Z_HOOK_LEAD - L,
+                                  lift=LT.HOOK_ENGAGE))
+    # ...then the LEAD-IN RAMP to the leading end, where it is not lifted at all,
+    # so the adapter's mouth edge meets a slope, never a face (user: push to
+    # connect with no button pressed)
+    keep = keep.union(_lead_ramp(Z_HOOK_LEAD - L, Z_HOOK_LEAD))
     s = env.intersect(keep)
-    # LEAD-IN on the leading (upper) end, so the joint closes with no button
-    # pressed (user: push to connect). The hook meets the adapter's mouth on it.
-    s = s.cut(_radial_prism([(HOOK_R + 2.0, Z_HOOK_LEAD + 1.0),
-                             (HOOK_R + 2.0, Z_HOOK_LEAD - LT.HOOK_ENGAGE),
-                             (BORE_R - LT.HOOK_ENGAGE, Z_HOOK_LEAD + 1.0)]))
     # neck, out through the sleeve wall. ROOTED DOWN IN THE BODY, not started at
     # the bore's apex (user): the body is clipped to the bore's 45 V, which at the
     # neck's edges sits ~2.3 further in than at the apex -- so a neck starting near
