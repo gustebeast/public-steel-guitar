@@ -529,7 +529,8 @@ def tenon_pocket() -> cq.Workplane:
     divot = teardrop_hole(
         LT.SPR_BORE_D, DIVOT + 0.01,
         (LS.LEG_X, LS.LEG_Y + BUTTON_SIDE * (TUNNEL_BACK - DIVOT), SPR_Z),
-        (0.0, BUTTON_SIDE, 0.0), LS.PRINT_UP["fixed_tenon"])
+        (0.0, BUTTON_SIDE, 0.0), LS.PRINT_UP["fixed_tenon"],
+        limit_deg=LS.TEN_HOLE_LIMIT_DEG)  # 45 to the tenon's build: see leg_stack
     return pocket.union(divot)
 
 
