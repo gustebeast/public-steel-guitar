@@ -225,6 +225,18 @@ for _i in range(D.N_STRINGS):
         if _seg_edges[_csi + 1] < _ax < _seg_edges[_csi]:
             chassis_segments[_csi] = chassis_segments[_csi].cut(
                 BE.access_cutter(_i, CH.Z_BOT - 1.0, CH.Z_BOT + 2 * D.XBAR + 1.0))
+
+# ...and RE-BORE each M4-held tee's hold-down. pcb_cradle bores the anchor and head notch in
+# the CRADLE, but the fuse above unions it into the segment, and the segment's own rib and
+# rail material fills the hole straight back in -- the same refill trap as the mortises. The
+# gate found it the moment the screws had dummies: a uniform 27.0 mm3 of screw and 23.3 of
+# insert buried in chassis on nearly every tee. The M4's 8.5 anchor puts the cradle base 5.3
+# into that material. Cut at the END of the pipeline, where nothing unions over it again.
+for _ctx, _cutters in _WR_FUSE.tee_hold_negatives():
+    for _csi in range(len(_seg_edges) - 1):
+        if _seg_edges[_csi + 1] < _ctx < _seg_edges[_csi]:
+            for _cut in _cutters:
+                chassis_segments[_csi] = chassis_segments[_csi].cut(_cut)
             break
 for _i, _seg in enumerate(chassis_segments):     # chassis split into dovetailed segments
     PARTS[f"chassis_{_i}"] = (partial(heal, _seg), f"petg-gf/chassis_{_i}.step",
@@ -456,15 +468,19 @@ def _string_components(i):
          D.STRING_Z - g - D.NUT_PIN_D / 2))))                          # one plane. DOWEL_X, not 0:
                                                                        # the dowels sit 1.6 back from
                                                                        # the block's front face now
-    # (no clamp set screw or heat-set insert: the sliding insert IS the clamp, and
-    #  the tail is pinched against the wrap on the rod rather than against the floor)
+    # THE SLIDING INSERT IS THE CLAMP (no set screw, no heat-set insert): the tail is pinched
+    # against the wrap on the rod rather than against the floor. It was only ever drawn by
+    # keyhead_endplate.assembly() -- the scratch view -- so the full assembly, and everyone
+    # viewing it, never saw one. Same placement as there, from the same module.
+    out.append((f"nut_slide_insert_{i}",
+                NB.slide_insert(i).translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z))))
     return out
 
 
 def _wrap_rod_component():
-    """The nut's WRAP ROD -- one part for all ten strings, and the SAME Ø5 g6 shaft the
-    bridge axle is cut from (nut_block.ROD_D reads D.BRIDGE_AXLE_D). It is what the
-    capstan turns around, so it is the reason the clamps hold 5-36 N instead of 490."""
+    """The nut's WRAP ROD -- one part for all ten strings, and the SAME Ø8 x 100 shaft the
+    bridge axle is (nut_block.ROD_D / ROD_L read D.BRIDGE_AXLE_D / _L): one SKU at both
+    ends. It is what the capstan turns around, so it is what lets a light clamp hold."""
     return [("nut_wrap_rod",
              NB.rod().translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z)))]
 
@@ -541,11 +557,16 @@ def _string_path(i, sy):
     # and the insert follow. It leaves at EXIT_DEG already descending, so there is no
     # corner here at all: the -X run and the separate stow bore are both gone.
     pts = NB.stow_route(i, (CH.Z_BOT + 8.4) - D.STRING_Z)   # stop above the tongue top
+    # The tail leaves the rod at the COIL's Y, but its bore sits behind the INSERT (nut_block.
+    # stow_y), so it crosses to the bore's Y as it rises in the socket: the exit and its stub
+    # stay on the coil, every point from the rise on follows the bore's axis -- which leans -Y
+    # as it descends (nut_block.STOW_TILT), so the descent is read off stow_y_at, not stow_y.
+    ys = [wy, wy] + [NB.stow_y_at(i, z) for _x, z in pts[2:]]
     x0, z0 = pts[0]
     prev = cq.Vector(D.NUT_BLOCK_X + x0, wy, D.STRING_Z + z0)
     out = out.union(_bead(prev, rad * 1.05))                # see _bead: the tail leaves
-    for x, z in pts[1:]:                                    # TANGENT to the coil
-        cur = cq.Vector(D.NUT_BLOCK_X + x, wy, D.STRING_Z + z)
+    for (x, z), y in zip(pts[1:], ys[1:]):                  # TANGENT to the coil
+        cur = cq.Vector(D.NUT_BLOCK_X + x, y, D.STRING_Z + z)
         out = out.union(_rod(prev, cur, rad))
         prev = cur
     return out
@@ -600,11 +621,11 @@ def _pickup_mount_components():
     # wrap plinth, button screw down through the board's clearance hole into it. Same
     # fastener family as the pickup height jacks, so no new BOM line.
     from . import bridge_endplate as _BE
-    _ohh = 2.2                                        # M4 button head height
+    _ohh = TP.JACK_HEAD_H                             # the jacks' ISO 7380 button head
     # headed_screw draws head-top-at-0 with the shank running -Z, which is ALREADY the
     # orientation for a screw entering downward -- no flip. (The old optical M2 went up
     # from below and did need one; copying that was what put this one through the board.)
-    _oscr = headed_screw(M4, 12.0, head_d=7.0, head_h=_ohh, socket_af=2.5)
+    _oscr = headed_screw(M4, 12.0, head_d=TP.JACK_HEAD_D, head_h=_ohh, socket_af=2.5)
     for _i, (_mx, _my) in enumerate(OP.mount_points()):
         out.append((f"optical_insert_{_i}",
                     seated_insert(M4, (_mx, _my, _BE.PCB_PAD_TOP), (0, 0, -1))))
@@ -1359,7 +1380,9 @@ _COLORS = {
     "teensy_ifc":      (0.55, 0.25, 0.25),   # Teensy interface PCB (2x CAN
                                              # transceiver + XH headers)
     "tee_pcb":         (0.10, 0.42, 0.18),   # trunk-and-drop bus tee PCBs
-    "tee_cradle":      (0.32, 0.55, 0.42),   # PCTG 3-wall drop-in PCB cradle (pcb_cradle)
+    "tee_cradle":      (0.32, 0.55, 0.42),   # PCTG drop-in PCB cradle (pcb_cradle, side hold-down)
+    "tee_screw":       (0.72, 0.74, 0.78),   # M4x10 button, BESIDE the tee board
+    "tee_insert":      (0.72, 0.60, 0.30),   # M4 heat-set brass, in the cradle boss
     "analog_frontend": (0.20, 0.45, 0.40),   # bridge-end buffer + relay board
     "optical_pcb":     (0.12, 0.30, 0.55),   # per-string optical strip (blue solder mask,
                                              # so it reads apart from the green audio PCBs)
