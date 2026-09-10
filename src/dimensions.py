@@ -724,24 +724,41 @@ assert _BELT_PLANE_CLR >= 0.4 - 1e-9, (
 # bearing keeps the bend near-frictionless so the two sides' tensions equalize
 # (a fixed surface would mismatch them ~37% at 90° and cause tuning hysteresis).
 # ─────────────────────────────────────────────────────────────────────────
-# 695ZZ (Ø5×13×4) — ONE bearing for the changer AND the levers (user), and its Ø5
-# bore is what makes the bridge axle, both lever axles and the nut wrap rod ONE
-# stock shaft.
+# 688ZZ (Ø8×16×5) — the SAME part as the ten screw thrust bearings (user, 2026-09-10:
+# one bearing SKU everywhere, since the Tr8 screw already forces a Ø8 bore), so the bridge
+# axle goes Ø8 with it. The knee-lever and pedal axles follow in their own rounds; the nut
+# wrap rod stays Ø5 (NUT_WRAP_ROD_D) — it carries no bearing.
+#
+# (history) 695ZZ (Ø5×13×4) was the one bearing before this, and its Ø5 bore made the
+# bridge axle, both lever axles and the nut wrap rod one stock shaft.
 #
 # THE 693ZZ IT REPLACES WAS OVER ITS RATING. The string turns 90° here — level in
 # from the nut, straight down to the carriage beneath — so each bearing carries
 # sqrt(2)×147 = 208 N permanently, against a 693ZZ static rating of 177 N. C0 is the
 # BRINELLING threshold: the races dent and the bearing stops doing its only job,
-# letting the two sides of the string equalise. 695ZZ is 346 N -> 1.66×.
+# letting the two sides of the string equalise. 695ZZ was 346 N -> 1.66×; 688ZZ
+# publishes C0r 474-710 N -> 2.3-3.4×.
 #
-# WHY NOT BIGGER: OD is capped by the VERTICAL gap between STRING_Z and the
-# carriage's ball cage, because the string rides the OD so the axle is pinned at
-# STRING_Z - OD/2. Ø16 needs the whole 8 mm of slack under the carriage; Ø13 needs
-# 5 and leaves 3. Y is not the constraint (4 wide in a 9.5 lane) and neither is X.
-BRIDGE_BEARING_OD = 13.0    # 695ZZ; string rides a groove in the OD
-BRIDGE_BEARING_W  = 4.0     # along the axle (Y) — unchanged, so the comb fingers stay 5.5
-BRIDGE_AXLE_D     = 5.0     # shared axle (axis Y) — the ONE Ø5 shaft
-BRIDGE_BEARING_Z  = STRING_Z - BRIDGE_BEARING_OD / 2     # axle/bearing centre (12)
+# WHY Ø16 FITS NOW. The OD used to be capped at 13 by the carriage's ball cage under
+# the bearing (the string rides the OD, so the axle is pinned at STRING_Z - OD/2 and a
+# bigger bearing reaches lower). The carriage is gone — the nut is the carriage — so the
+# bearing's underside (STRING_Z - OD = 0) only has to clear the nut and screw tops below
+# it, which the asserts under these constants check. In Y it is 5 wide in the 9.5 lane,
+# which leaves the comb fingers 3.7.
+BRIDGE_BEARING_OD = BRG688_OD   # 16 — 688ZZ; the string rides the OD
+BRIDGE_BEARING_W  = BRG688_W    # 5 along the axle (Y)
+BRIDGE_AXLE_D     = BRG688_ID   # Ø8 shared axle (axis Y), the 688's bore
+NUT_WRAP_ROD_D    = 5.0         # nut_block's capstan rod: a Ø5 g6 shaft. It was the bridge
+                                # axle's stock until that went Ø8; nut_block is built around
+                                # Ø5, so moving it is that part's own round, not a side effect.
+BRIDGE_BEARING_Z  = STRING_Z - BRIDGE_BEARING_OD / 2     # axle/bearing centre (8)
+_BRIDGE_BRG_BOT   = STRING_Z - BRIDGE_BEARING_OD         # 0, the bearing's underside
+assert _BRIDGE_BRG_BOT - NUT_TOP_MAX >= 1.0, (
+    f"the bridge bearing's underside clears the nut's top of travel by only "
+    f"{_BRIDGE_BRG_BOT - NUT_TOP_MAX:.2f}")
+assert _BRIDGE_BRG_BOT - SCREW_TOP_Z >= 1.0, (
+    f"the bridge bearing's underside clears the leadscrew tops by only "
+    f"{_BRIDGE_BRG_BOT - SCREW_TOP_Z:.2f}")
 # The string rises vertically from the anchor (at BRIDGE_X) tangent to the
 # bearing's +X extent, wraps 90° over the top, then leaves −X along the top. So
 # the bearing centre sits OD/2 to −X of the anchor line.
@@ -779,7 +796,7 @@ BRIDGE_ARM_W      = 6 * BEAD  # 4.8 bridge-endplate bearing-arm / edge-web thick
 # out exactly as before -- 3.20 into the blind -Y bore, 4.80 through the +Y arm. What
 # shrinks is the margin outboard of the string field, 9.60 -> 5.65, and nothing lives
 # there but the arm itself.
-BRIDGE_AXLE_L     = 100.0                               # the Ø5 shaft, as bought
+BRIDGE_AXLE_L     = 100.0                               # the Ø8 shaft, as bought
 BRIDGE_AXLE_END_W = MIN_WALL_2P                         # 1.6, the -Y blind wall = the stop
 BRIDGE_ARM_OUT    = (BRIDGE_AXLE_L + BRIDGE_AXLE_END_W) / 2   # 50.80, the arms' outer faces
 BRIDGE_ARM_Y      = BRIDGE_ARM_OUT - BRIDGE_ARM_W / 2   # 48.40, the arm centres
