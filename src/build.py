@@ -318,7 +318,7 @@ def geometry_report() -> str:
     total = 0.0
     for i in range(D.N_STRINGS):
         mx, my, mz = D.motor_pos(i)
-        run = abs(mx - D.SCREW_X)
+        run = abs(mx - D.screw_x(i))
         rise = D.screw_pulley_z(i) - mz          # odd pulleys sit one belt-plane up
         span = math.hypot(run, rise)
         loop = 2 * span + math.pi * D.PULLEY_OD
@@ -375,48 +375,55 @@ def _string_components(i):
     cz = D.NUT_TOP_Z + DEMO_POSE_DZ.get(i, 0.0)      # the NUT's flange top
     out = []
     # vertical leadscrew
-    out.append((f"leadscrew_{i}", C.screw().translate((D.SCREW_X, sy, D.SCREW_BOT_Z))))
+    out.append((f"leadscrew_{i}", C.screw().translate((D.screw_x(i), sy, D.SCREW_BOT_Z))))
     # THE NUT IS THE CARRIAGE. Nothing else moves: its +X ear anchors the string and
     # its -X ear rides the guide rod. Origin = the flange's top face.
-    out.append((f"nut_{i}", C.nut().translate((D.SCREW_X, sy, cz))))
+    out.append((f"nut_{i}", C.nut().translate((D.screw_x(i), sy, cz))))
     # string BALL END, hanging UNDER the +X ear — tension pulls it up against the
     # ear's underside, and that IS the retention (a guitar bridge plate, exactly)
     out.append((f"string_nut_{i}", C.string_nut().translate(
-        (D.STRING_ANCHOR_X, sy, cz - D.NUT_FLANGE_T - D.STRING_NUT_D / 2))))
+        (D.string_anchor_x(i), sy, cz - D.NUT_FLANGE_T - D.STRING_NUT_D / 2))))
     # guide rod: dropped in from +Z through the slab, through the -X ear, into a blind
     # socket in the screw rail — SUPPORTED AT BOTH ENDS, so it is a beam and not a
     # cantilever. Gravity seats it; the string overhead keeps it there.
     rod_top = BE.GUIDE_ROD_TOP          # stops under the bridge bearing, not at the bore's top
     rod_bot = BE.GUIDE_SOCKET_Z
     out.append((f"guide_rod_{i}", C.guide_rod(rod_top - rod_bot).translate(
-        (D.GUIDE_ROD_X, sy, rod_bot))))
+        (D.guide_rod_x(i), sy, rod_bot))))
     # screw drive pulley (odd ones raised one belt-plane), then the thrust stack:
     spz = D.screw_pulley_z(i)
     # TWO SKUs: the low-plane stations carry the column that lifts their boss to the
     # same thrust plane the high-plane ones already reach.
     out.append((f"screw_pulley_{i}",
-                C.screw_pulley(high=spz > D.SCREW_PULLEY_Z).translate((D.SCREW_X, sy, spz))))
+                C.screw_pulley(high=spz > D.SCREW_PULLEY_Z).translate((D.screw_x(i), sy, spz))))
     # THRUST STACK, seated straight on the pulley's pilot boss. The string's pull jams
     # the pulley up into it, and that one jam does BOTH jobs: it retains the screw and
     # it holds the pulley on the rod. No collar, no set screw.
     for k in range(D.SUPPORT_BRG_N):
-        bz = D.SUPPORT_BRG_BOT + (k + 0.5) * D.MR85_W
-        out.append((f"screw_bearing_{i}_{k}", C.support_bearing().translate((D.SCREW_X, sy, bz))))
-    # TOP radial bearing, floating in the slab — see dimensions.TOP_BRG_Z0
-    out.append((f"screw_top_bearing_{i}", C.support_bearing().translate(
-        (D.SCREW_X, sy, D.TOP_BRG_Z0 + D.MR85_W / 2))))
+        bz = D.SUPPORT_BRG_BOT + (k + 0.5) * D.BRG688_W
+        out.append((f"screw_bearing_{i}_{k}", C.support_bearing().translate((D.screw_x(i), sy, bz))))
+    # NO TOP RADIAL BEARING — deleted 2026-09-09 (user), and Tr8 is what allows it.
+    # It existed to react the string's off-axis couple: the pull lands NUT_HOLE_DX from
+    # the screw axis, and a Ø5 screw cantilevering from the thrust bearing was too limp
+    # to take that alone. At Ø8 the screw is 6.55x stiffer in bending (d^4) and deflects
+    # 0.006 mm over the 21 mm from the thrust bearing to the nut — so the second bearing
+    # is now reacting nothing the screw was not already handling.
+    # It also could not have stayed: at Ø8 bore the smallest bearing available is Ø16
+    # OD, whose radius reaches EXACTLY the guide rod at NUT_HOLE_DX 8.0 (the bought
+    # nut's own hole pitch), so the seat and the rod occupied the same space. The
+    # overlap gate caught it. Deleting the bearing is what resolves that, not a fit.
     # motor (shaft +Y, body −Y toward player) + its pulley + twisted belt
     out.append((f"motor_{i}", C.motor().translate((mx, my, mz))))
     out.append((f"motor_pulley_{i}", C.motor_pulley().translate((mx, my, mz))))
-    out.append((f"belt_{i}", C.belt((mx, my, mz), (D.SCREW_X, sy, spz))))   # all belts modelled smooth
+    out.append((f"belt_{i}", C.belt((mx, my, mz), (D.screw_x(i), sy, spz))))   # all belts modelled smooth
     # belt-tension clamp (unified clamp_half ×2 + screw + external nut), oriented to the belt's flat
     # zone. Lifter bars only on the last string (build-time saver — same geometry, hidden elsewhere).
-    so, sxd, sn = C.splice_frame((mx, my, mz), (D.SCREW_X, sy, spz))
+    so, sxd, sn = C.splice_frame((mx, my, mz), (D.screw_x(i), sy, spz))
     cloc = cq.Location(cq.Plane(origin=so, xDir=sxd, normal=sn))
     # all tensioners shown FULLY LOOSE (splice take-up gap open); the clamp's belt-position vs the
     # carriage is a separate question (see the belt-travel note) — held at the flat-zone reference here.
     for _nm, _shp in BTn.clamp_components(with_lifters=(i == D.N_STRINGS - 1)):
-        out.append((f"belt_tensioner_{_nm}_{i}", cq.Workplane("XY").add(_shp.val().moved(cloc))))
+        out.append((f"{_nm}_{i}", cq.Workplane("XY").add(_shp.val().moved(cloc))))
     # string: rises from the anchor tangent to the bearing's +X extent, wraps 90°
     # over the top, then runs the speaking length to the nut block.
     out.append((f"string_{i}", _string_path(i, sy)))
@@ -452,11 +459,11 @@ def _string_path(i, sy):
           - D.NUT_FLANGE_T - D.STRING_NUT_D / 2)
     g = D.STRING_GAUGE[i]
     rad = g / 2.0                                     # actual string gauge
-    # rise to the +X tangent point (cx+r, cz). NOT quite vertical any more: the ear
-    # sits STRING_ANCHOR_X, a shade -X of the tangent line, so the dead run leans a
-    # couple of degrees. Deliberate — see dimensions on why the string takes the +X
-    # ear and SCREW_X therefore stays exactly where it is.
-    p0 = cq.Vector(D.STRING_ANCHOR_X, sy, az)
+    # rise to the +X tangent point (cx+r, cz). NOT vertical: with the screws in two
+    # rows the ear sits ANCHOR_DX either side of the tangent — near-row strings lean
+    # one way, far-row the other — so the dead run breaks ~10° off vertical. That
+    # SPLIT is the point: both rows on one side would cost 47-53°. See dimensions.
+    p0 = cq.Vector(D.string_anchor_x(i), sy, az)
     prev = cq.Vector(cx + r, sy, cz)
     out = _rod(p0, prev, rad)
     # 90° arc, +X extent → top, approximated by short rods
@@ -1113,13 +1120,32 @@ def _joint_coupon_components():
     return [("test_octagon_tenon_coupon", ten), ("test_octagon_mortise_coupon", mor)]
 
 
+SCREW_ROW_PARTS = ("leadscrew", "nut_", "string_nut", "guide_rod",
+                   "screw_pulley", "screw_bearing")
+
+
+def screw_rows_components():
+    """The +X drivetrain as ONE named set: both Tr8x2 screw rows and the endplate that
+    hosts them.
+
+    The build does not need this — collect_components already composes the same parts per
+    string. It exists so the per-agent scratch view can make the whole two-row assembly
+    LIVE, because that is the unit the work actually changes. A `part:` scope resolves to
+    exactly one part, which left the rows sitting in grey cache next to the endplate they
+    determine."""
+    out = [(n, w) for i in range(D.N_STRINGS) for n, w in _string_components(i)
+           if n.startswith(SCREW_ROW_PARTS)]
+    out.append(("bridge_endplate", PARTS["bridge_endplate"][0]()))
+    return out
+
+
 def _tensioner_coupon_components():
     """The unified belt clamp shown ASSEMBLED, parked off the +X end for a clear look (the real
     clamps ride each string's belt). ONE SKU per half (`clamp_half`; half-B is it turned 180° about
     Z), the M4 head on half-A's −X face, the insert used as a plain EXTERNAL nut on half-B's +X face.
     Reuses the pre-built clamp parts (no extra geometry) so it can't drift from the real placements."""
     o = cq.Vector(150.0, 90.0, 40.0)
-    return [(f"belt_tensioner_{nm}_coupon", cq.Workplane("XY").add(shp.val().translate((o.x, o.y, o.z))))
+    return [(f"{nm}_coupon", cq.Workplane("XY").add(shp.val().translate((o.x, o.y, o.z))))
             for nm, shp in BTn.clamp_components(with_lifters=True)]
 
 
@@ -1150,17 +1176,26 @@ _COLORS = {
     "bridge_endplate": (0.39, 0.58, 0.93),   # PETG-GF — load-critical
     "keyhead_endplate": (0.42, 0.50, 0.62),   # PETG-GF — keyhead endplate + nut block (merged)
     # belt-tension clamp — real per-string parts (PETG halves, PCTG 0.2 mm lifter, steel/brass fasteners)
-    "belt_tensioner_half_a": (0.95, 0.55, 0.15),
-    "belt_tensioner_half_b": (0.90, 0.50, 0.12),
-    "belt_tensioner_lifter_a": (0.85, 0.65, 0.30),
-    "belt_tensioner_lifter_b": (0.85, 0.65, 0.30),
+    # ONE HUE PER SKU (user). The a/b pairs are deliberately EQUAL, not an oversight
+    # to be "fixed": clamp_half is one printed part fitted twice (half-B is it turned
+    # 180 about Z) and both lifter bars are one part, so colouring the pair members
+    # differently would assert a distinction that does not exist in the BOM. What has
+    # to be distinguishable is the four SKUs, which is what the old table got wrong --
+    # the lifter tan sat next to the brass insert, and the two halves differed by 0.05
+    # in a single channel while every one of them fell through to grey anyway.
+    "belt_tensioner_half_a": (0.95, 0.55, 0.15),    # clamp_half  x2  printed
+    "belt_tensioner_half_b": (0.95, 0.55, 0.15),    #   ""  same SKU, same colour
+    "belt_tensioner_lifter_a": (0.30, 0.75, 0.40),  # lifter bar  x2  printed (0.2 nozzle)
+    "belt_tensioner_lifter_b": (0.30, 0.75, 0.40),  #   ""  same SKU, same colour
     "belt_tensioner_screw":  (0.55, 0.55, 0.58),   # steel M4
     "belt_tensioner_insert": (0.72, 0.60, 0.30),   # brass insert (used as an external nut)
     # …and the parked assembled coupon (green = clearly a reference, not a product part)
+    # The coupon keeps its own COOL family so the parked copy never reads as a real
+    # clamp; same one-hue-per-SKU rule within it.
     "belt_tensioner_half_a_coupon": (0.20, 0.70, 0.45),
-    "belt_tensioner_half_b_coupon": (0.30, 0.80, 0.55),
-    "belt_tensioner_lifter_a_coupon": (0.40, 0.85, 0.65),
-    "belt_tensioner_lifter_b_coupon": (0.40, 0.85, 0.65),
+    "belt_tensioner_half_b_coupon": (0.20, 0.70, 0.45),
+    "belt_tensioner_lifter_a_coupon": (0.15, 0.50, 0.75),
+    "belt_tensioner_lifter_b_coupon": (0.15, 0.50, 0.75),
     "belt_tensioner_screw_coupon":  (0.55, 0.55, 0.58),
     "belt_tensioner_insert_coupon": (0.72, 0.60, 0.30),
     "screw_pulley":    (0.00, 0.55, 0.55),
