@@ -43,8 +43,9 @@ Two layers of reusable capability back a cadkit project:
     diagonal — don't reinvent this joint, call the library.
   - `cadkit.fasteners` — shared M2/M4 hole/insert dims · `cadkit.cq_colors` — baked STEP colours
   - `cadkit.freecad` — the FreeCAD viewer hub (`from cadkit.freecad import show`) + `view_assembly.cmd` launcher
-  - `cadkit.scratch` — the fast per-part iteration loop (cache the surroundings,
-    rebuild only the part under work); `cadkit.agents` — which agent owns which portion
+  - `cadkit.scratch` — the fast per-part iteration loop: cache the surroundings,
+    rebuild only the part under work, and (`--gate`) run the project's own gates over
+    that cache instead of a full rebuild; `cadkit.agents` — who owns which portion
   - `cadkit/tools/agent_sync.py` — the multi-agent worktree/merge CLI (run as a script)
 
   **Changing a shared util — edit the canonical repo, then PROPAGATE.** cadkit is
@@ -451,7 +452,7 @@ editing anything:
    [--replaced <prefix>,] [--note "one line"]`, and see everyone's with `scope`.
    Then iterate with `py -3.12 cadkit/tools/agent_sync.py view` — it renders YOUR
    portion (fresh) against a cached rest-of-instrument, into a FreeCAD tab named
-   after your worktree. Seconds, not minutes. The lead's tab keeps showing the
+   after your worktree; add `--gate` to check it in ~30 s instead of ~6 min. Seconds, not minutes. The lead's tab keeps showing the
    WHOLE instrument; yours shows your part in context. Two agents rendering at the
    same moment land in two different tabs and cannot race.
    **Still never run `src.build`** — the full build is the lead's, and it is what
@@ -459,10 +460,20 @@ editing anything:
    **Validating your change is YOUR job, not the lead's** — the lead merges and
    builds, and does not re-derive whether your geometry is right. Before every
    `submit`, on your own branch:
-   - `py -3.12 -m tools.check_overlaps` — the full gate. Say the result in your
-     submit summary ("gate green, N inherited"). Inner-loop iterations can use
-     `--only <your,bases>`, which skips the pairwise cost but NOT the model build,
-     so it saves less than you'd think; the full gate is the one that counts.
+   - `py -3.12 -m tools.check_overlaps` — the FULL gate. Say the result in your
+     submit summary ("gate green, N inherited"). This is the one that counts, and it
+     rebuilds the model from scratch on purpose.
+   - **For the inner loop, use `view --gate` instead** (`scratch_view --gate`). It
+     runs the SAME gate functions over your cached context plus your fresh part:
+     ~30 s against the full gate's ~6 min. Note what that fixes and what it does
+     not: `--only <bases>` scopes what gets CHECKED, but the model BUILD is ~95% of
+     a gate's cost, so name-scoping barely helps — `--gate` scopes what gets BUILT,
+     exactly as the view does.
+     **It is not a substitute for the full gate.** The context is cached and may be
+     CROPPED, so it can only find faults involving what is loaded — crop to the deck
+     and the drivetrain is not in the check at all (it will say so). Nothing
+     authoritative reads the cache, which is the point: a drift surfaces at the
+     pre-submit gate, when you are looking for surprises, instead of as a wrong part.
    - the project's other checks (bead/grid, min-wall, thread rules) — same rule.
    - **anything that MOVES: probe it swept, by hand.** The gate only ever sees the
      rest pose, and allowlisted pairs are invisible to it forever. A mechanism that
@@ -500,22 +511,19 @@ editing anything:
 another agent alongside you). Keep working in the main worktree on `main`. You OWN
 the build + the FreeCAD tab — the ONLY chat that runs `src.build` / `show()`. To
 take contributors' work **hands-free**:
-1. Arm the notifier ONCE, in the **BACKGROUND**:
+1. Arm the notifier, in the **BACKGROUND**:
    `py -3.12 cadkit/tools/agent_sync.py watch`  (run_in_background). It blocks until
-   a request lands, then exits — which auto re-invokes you — **and spawns a detached
-   successor on its way out**, so a listener is always armed and you never re-arm
-   anything. (`wait` is the old one-shot form: it covers exactly one request and then
-   the repo is deaf, which is why the hook used to nag about a down listener.)
+   a request lands, prints it and exits — and the harness noticing that TRACKED task
+   exit is what re-invokes you. **Re-arm after each wake.** That is inherent, not a
+   rough edge: a listener must exit to wake anyone, and only a task the harness
+   tracks can wake anything. (Do not "fix" it by spawning a detached successor. That
+   was tried: an untracked process woke nobody when it fired, and it still marked the
+   request announced, so the next tracked watcher stayed silent on it — strictly
+   worse than no listener. Coverage was never the problem; a merge request is a file
+   and waits indefinitely.)
 2. When it wakes you: `take <name>` (resolve any conflicts) → `build` (announce the
-   build #). No re-arming — the successor is already listening.
-3. **Batch.** If several requests are queued, `take` them ALL first, then run ONE
-   `build`. A build is minutes; merging is seconds. Never build per-request.
-4. **Don't re-run the contributors' validation** — they gate their own branch and
-   report it (see the sub-agent block). What you owe is the thing none of them can
-   see: the **combination**. Two branches that are each green alone can collide
-   once merged, and only the post-merge whole-tree check catches it — which is why
-   the gate is folded into the build (above) and costs you ~15 s rather than a
-   second 6-minute model build. Read the gate line before you push.
+   build #) → **re-arm** `watch`. The hook reports whether a listener is actually
+   armed, so a missed re-arm surfaces on your next prompt rather than silently.
 
 Rules that keep it from clobbering:
 - **Only the lead runs the FULL BUILD.** Every agent renders its own portion to its

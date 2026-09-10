@@ -135,7 +135,6 @@ MIN_ADDED = D.MIN_WALL_2P         # 1.6 -- two-bead QUALITY floor for material t
 # On its own its first layer floated: the field-centre band above z6 is only unioned from
 # X0 (+6.0) to X1, so between XLO and +6 there is no material at this height for the
 # plinth to start on. (User-caught.)
-CARRIER_TOP  = OP.PLINTH_TOP                  # 9.501 -- the board bears directly on this.
                                               # PLINTH_TOP, not PCB_BOT: datumed off the
                                               # board's WORST-CASE thickness so fab tolerance
                                               # can only open the optical gap, never close the
@@ -175,38 +174,11 @@ assert D.NUT_TOP_MAX < ROOM_Z1 - 1.0 + 1e-9, (
 # Fingers and braces — everything INSIDE the endplate — put their underside on the
 # ceiling, so no later union can hang back down into the room.
 UNDER_Z      = ROOM_Z1
-# ...but the CARRIER PLINTH cannot: it is the one piece that reaches −X PAST the
-# endplate face, out over the deck panel, so its floor is set by the DECK, not by
-# the room. (It was flush with the comb while the ceiling happened to be above the
-# deck; at a 4.00 ceiling that would bury it 2.4 mm inside the deck.) The step
-# between the two planes falls exactly at XLO, and it faces −X — away from the bed
-# in this +X → −X build — so it is an upward face, not an overhang, and the plinth
-# is fully backed by the deeper brace behind it.
-CARRIER_BOT  = CH.TP_GZ1 + 1.0                # 7.4 — 1.0 over the deck top
-CARRIER_X1   = OP.PCB_X1S - 0.1               # -X face, inside the band by a hair
-CARRIER_HY   = 68 * D.BEAD                    # 54.4 out to the arms
-
-# TAIL PLINTH -- the strip's digital block, now that it widens +X OVER THIS PART instead
-# of -X over the deck (user). That move is what makes it supportable at all: past
-# CARRIER_HY there is no endplate material above z6 for a plinth to start on, but out here
-# the FILL SLAB's top IS z6, so this plinth merges straight into solid material. It needs
-# no deck standoffs, so top_plate is untouched, and printing +X -> -X it is backed the
-# whole way. Bottom sits AT z6 (not UNDER_Z) precisely because it lands on the slab
-# rather than hovering over the deck panel.
+# (the OPTICAL CARRIER's constants lived here: CARRIER_BOT/X1/HY and the tail plinth's
+#  TAIL_Y0/Y1. The board's seat is one prism now -- see _pcb_pad -- and none of them
+#  had a reader left.)
 TAIL_X0 = XLO                                 # -16.60; the -X half is the carrier's job
-# +X RUNS TO THE OUTER FACE, i.e. TO THE BUILD PLATE (user). It used to stop at OP.TAIL_X1
-# (7.00), which is where the BOARD stops -- but the board's edge and the plinth's edge are
-# different requirements. Printing +X -> -X the outer face IS the bed, so a plinth beginning
-# at 7.00 starts its first layer 1.6 mm in mid-air, with the endplate's z6..9.5 band empty
-# behind it out here (the tail prism only fills to z16 inboard of the arms). Probed: at
-# y +-60 and -90 the solid ran out at 7.00 while at y 0 it reached 8.5. Running to XHI roots
-# every layer on the plate. Costs a 1.6 mm ledge on the exterior face in the wrap/compute Y
-# zones, below the board and out of the player's way.
 TAIL_X1 = XHI                                 # 8.60 = the build plate
-TAIL_Y0 = OP.PCB_YM                           # -106.85
-TAIL_Y1 = -CARRIER_HY                         # -54.0: OVERLAP the carrier band rather than
-                                              # meeting it at OP.Y_TAIL (-55.0), which left a
-                                              # 1 mm strip with neither piece under it
 
 # ── COMB BACK-BRACE (user's sketch) ──────────────────────────────────────────
 # The comb fingers root on the cap band at x 2.6..6.0 and reach out to -6.5 with the AXLE
@@ -258,6 +230,12 @@ _AXLE_STOP_BITE = (D.BRIDGE_BEARING_Z + D.BRIDGE_AXLE_D / 2) - OP.PCB_BOT   # 2.
 assert 0.0 <= _AXLE_STOP_PLAY <= 1.0, (
     f"the axle's +Y stop is the optical strip's head edge, and it is {_AXLE_STOP_PLAY:.2f} "
     f"from the shaft end -- either the shaft rattles or it fouls the board on assembly")
+# ...and the -Y wall has to SURVIVE every other cut in this part, not merely be drawn.
+# The comb-finger bores used to eat it whole -- see the clamp in _build's comb loop.
+_AXLE_BLIND_WALL = D.BRIDGE_AXLE_Y0 - -D.BRIDGE_ARM_OUT
+assert _AXLE_BLIND_WALL >= D.MIN_WALL_2P - 1e-9, (
+    f"the axle's -Y blind wall is {_AXLE_BLIND_WALL:.2f}, under the {D.MIN_WALL_2P} floor -- "
+    f"that wall is the shaft's install stop")
 assert _AXLE_STOP_BITE >= 1.0, (
     f"the board's underside is only {_AXLE_STOP_BITE:.2f} below the axle crown; it has to "
     f"overlap the shaft properly to stop it, or the shaft slides out under it")
@@ -296,12 +274,27 @@ GUIDE_DROP_Z1  = BRACE_Z1                       # 14.01, the top of the slab: th
 GUIDE_ROD_TOP  = (D.STRING_Z - D.BRIDGE_BEARING_OD) - 1.0   # 2.0, a mm under the bearing
 assert GUIDE_ROD_TOP <= D.STRING_Z - D.BRIDGE_BEARING_OD - 1.0 + 1e-9, (
     "the guide rod reaches into the bridge bearing's Z band")
-GUIDE_SOCKET_H = 5 * D.BEAD                     # 4.0 of blind socket in the rail
-GUIDE_SOCKET_Z = _SR_TOP - GUIDE_SOCKET_H       # -30.4, the socket's floor
+# THE ROD NO LONGER SOCKETS INTO THE RAIL. It used to drop 4.0 into a blind socket so
+# it was a beam supported at both ends. At Ø8 bore the thrust bearing is Ø16 OD, and its
+# radius reaches EXACTLY the rod line at NUT_HOLE_DX 8.0 — there is no rail material
+# left between them to socket into, at any depth. So the rod now STOPS just above the
+# bearing and cantilevers from the slab.
+# That is affordable because the rod is back to anti-rotation duty only (the top bearing
+# is gone, but the Ø8 screw absorbs the couple itself), and because the LOAD POINT is
+# the ear, ~17 mm from the slab, not the rod's free end: ~0.02 mm under the 11 N
+# anti-rotation load. The rod runs on past the ear purely to stay engaged at the bottom
+# of travel.
+# The rod stops ON the rail's top face and does NOT bore into it. A socket here would
+# come straight out of BRG_LEDGE_T: the ledge is 1.60 thick and is what backs the
+# bearing's outer ring against the whole string load, so a 0.60 socket left only 1.00 of
+# it (user measured both faces of exactly that trade). The two cannot both be 1.60 —
+# they are one budget. The ledge wins, because the rod does not need the socket: it is
+# a cantilever off the slab and its LOAD POINT is the ear ~17 mm up, not its free end.
+GUIDE_SOCKET_Z = _SR_TOP                        # rod bottoms on the rail top, no socket
 # The web between this bore and the top bearing's pocket is the tight spot, and it is
 # a teardrop-apex-to-bore-wall distance, not a wall anyone chose:
-_GUIDE_WEB = ((D.GUIDE_ROD_X + (D.GUIDE_ROD_D + D.GUIDE_ROD_FIT) / 2)
-              - (D.SCREW_X - (D.MR85_OD + 0.2) / 2 * 1.4143))
+_GUIDE_WEB = ((-D.SCREW_ROW_DX - D.NUT_HOLE_DX + (D.GUIDE_ROD_D + D.GUIDE_ROD_FIT) / 2)
+              - (-D.SCREW_ROW_DX - (D.BRG688_OD + 0.2) / 2 * 1.4143))
 assert _GUIDE_WEB >= D.MIN_WALL - 1e-9, (
     f"only {_GUIDE_WEB:.2f} of slab between the guide-rod bore and the top bearing's "
     f"pocket (one bead is {D.MIN_WALL}) — it is set by NUT_HOLE_DX, still a guess")
@@ -340,7 +333,16 @@ STRING_SLOT_W = 4 * D.BEAD                      # 3.2, clears the heaviest C6 st
 # just continues an existing cut down to the bed instead of ending it in mid-air.
 DRIVE_SWEPT_R = D.PULLEY_FLANGE_OD / 2                    # 5.5 — the pulley is the
                                                           # widest turning thing left
-DRIVE_X1 = D.SCREW_X + DRIVE_SWEPT_R + 0.4                # -2.1
+DRIVE_X1 = D.SCREW_ROW_DX + DRIVE_SWEPT_R + 0.4      # far row's pulley, +X-most
+# THE DRIVE RELIEF GETS ITS OWN Y HALF-WIDTH. It used to borrow WIN_HW, which is an ARM
+# number (BRIDGE_ARM_Y - ARM_W/2) describing the window up at the bearing arms — a
+# different feature at a different height. Two things then broke it at once: the arms
+# moved in (BRIDGE_ARM_OUT 54.75 -> 50.80), taking WIN_HW to 46.0, and the far screw row
+# put string 10's pulley where that mattered. Its SWEPT disc reaches |y| 48.25, so 2.25
+# of it was left buried in endplate material and the sweep gate caught it.
+# Sized here from the outermost pulley's swept circle, which is what this cut is for.
+DRIVE_HW = (max(abs(D.string_y(i)) for i in range(D.N_STRINGS))
+            + DRIVE_SWEPT_R + 0.4)                   # outermost swept pulley + clearance
 DRIVE_Z1 = D.PULLEY_TOP_MAX + 0.4                         # -32.6
 DRIVE_Z0 = CH.Z_BOT                                       # -74.95: OPEN TO THE FLOOR
 assert DRIVE_Z0 <= CH.Z_BOT + 1e-9, (
@@ -349,7 +351,7 @@ assert DRIVE_Z0 <= CH.Z_BOT + 1e-9, (
 
 # Room half-width: out to the arm inner faces, so the edge carriages / string
 # balls are reachable through the room's +X opening (everything installs from +X).
-WIN_HW     = D.BRIDGE_AXLE_Y - ARM_W / 2
+WIN_HW     = D.BRIDGE_ARM_Y - ARM_W / 2
 
 
 MECH_HW = D.BRIDGE_ARM_OUT   # 54.75, field-centre upper-cap half-span = the arm outer face.
@@ -432,25 +434,37 @@ def _arm(sy) -> cq.Workplane:
 
 
 def _axle_negative() -> cq.Workplane:
-    """The shaft's whole path through the arms, CUT LAST. Three pieces of one line:
+    """The shaft's whole path -- arms AND comb fingers -- as ONE bore, CUT LAST.
 
-      -Y arm   blind, stopping AXLE_END_WALL short of the outer face (the -Y stop);
-      +Y arm   through, and on out through the board's wrap plinth (AXLE_CHAN_Y1) --
-               that channel is the INSTALL path, and it is open upward because the
-               plinth top sits level with the axle centre. The board closes it.
+    It runs from the -Y blind floor (AXLE_END_WALL short of that arm's outer face: the
+    shaft's -Y stop) straight out through the +Y arm and on through the board's wrap
+    plinth to AXLE_CHAN_Y1. That last stretch is the INSTALL path, open upward because
+    the plinth top sits level with the axle centre; the board closes it.
 
-    Teardrops throughout: the axis runs sideways to the -X build, so a plain cylinder
-    droops out of round, and these bores locate a precision shaft across 108 mm."""
-    def bore(y0, y1):
-        return printable_bore(
-            AXLE_BORE, y1 - y0,
-            axis_point=(D.BRIDGE_AXLE_X, y0, D.BRIDGE_BEARING_Z),
-            axis_dir=(0, 1, 0), print_up=PRINT_UP)
-    neg = bore(-D.BRIDGE_ARM_OUT + AXLE_END_WALL, -D.BRIDGE_AXLE_Y + ARM_W / 2 + 1.0)
-    return neg.union(bore(D.BRIDGE_AXLE_Y - ARM_W / 2 - 1.0, AXLE_CHAN_Y1))
+    IT USED TO BE THREE CUTS FOR ONE HOLE: this function bored the two arms, and the comb
+    loop bored each finger separately as it unioned it. They did not even agree on the
+    hole -- 5.4 here against BRIDGE_AXLE_D + 0.3 = 5.3 there, so the shaft had 0.20 of
+    radial clearance in the arms and 0.15 through the fingers, with nothing saying why.
+    And the per-finger version needed a millimetre of overshoot at each end to be sure of
+    clearing its own finger, which on the two OUTERMOST fingers landed in the arms: at -Y
+    it ran 1.65 past the blind floor and 0.05 past the outer face, taking the whole 1.6
+    wall with it (user). One bore cannot overshoot itself.
+
+    CUT LAST is the only ordering constraint, and it is why the comb loop could not
+    simply be given this bore: everything unioned after it -- the fingers, the braces,
+    the cover, the lip -- would refill it. This part has lost both its axle bores that
+    way before.
+
+    Teardrop: the axis runs sideways to the -X build, so a plain cylinder droops out of
+    round, and this bore locates a precision shaft across its whole length."""
+    y0 = -D.BRIDGE_ARM_OUT + AXLE_END_WALL
+    return printable_bore(
+        AXLE_BORE, AXLE_CHAN_Y1 - y0,
+        axis_point=(D.BRIDGE_AXLE_X, y0, D.BRIDGE_BEARING_Z),
+        axis_dir=(0, 1, 0), print_up=PRINT_UP)
 
 
-_SRX = D.SCREW_X + 9 * D.BEAD     # 7.2: screw-rail +X face (keep = screw_rail.X_PX)
+_SRX = D.BRIDGE_BASE_X1           # screw-rail +X face (keep = screw_rail.X_PX)
 
 
 def _comb_brace(yc: float, cb_w: float) -> cq.Workplane:
@@ -467,49 +481,96 @@ def _comb_brace(yc: float, cb_w: float) -> cq.Workplane:
              .extrude(BRACE_Z1 - BRACE_Z0).translate((0, 0, BRACE_Z0)))
     # The END fingers sit close enough to the arms that their flare would otherwise run
     # out past the arm outer face and into the rail. Clamp every flare there.
-    lim = D.BRIDGE_AXLE_Y + ARM_W / 2
+    lim = D.BRIDGE_ARM_Y + ARM_W / 2
     return flare.intersect(box_at(40.0, 2 * lim, BRACE_Z1 - BRACE_Z0,
                                   x=BRACE_X1 + 20.0, y=0.0,
                                   z=(BRACE_Z0 + BRACE_Z1) / 2))
 
 
+# ── THE BOARD'S PAD: ONE PRISM, DRAWN WITH THE OTHERS (user) ────────────────
+# A plain box over the board's whole envelope, thick enough to bring its underside to
+# PLINTH_TOP and no thicker. It is unioned with the cap and the arms as an INITIAL prism,
+# so every cut in _build trims it the way they trim everything else.
+#
+# THAT ORDERING IS THE POINT. What was here before was a carrier plinth plus two wrap
+# plinths, each shaped around a piece of the board's own outline and each added late,
+# and it was wrong in a new place every time it was touched: the carrier stopped at the
+# sensing field until 20 mm of board turned out to overhang nothing; the plinths were
+# pinned to a bead count that meant "the arms" until the arms moved for the 100 mm axle;
+# closing those left 17 mm^2 open at the -Y wrap's +X corner (user). Chasing an outline
+# with a shape that mirrors it will always leave the next gap somewhere.
+#
+# One rectangle cannot have a gap in it. Where the board does not need it, a later cut
+# takes it away -- which is the same way the rest of this part is built.
+#
+# IT RUNS +X TO THE PART'S OWN FACE (user), not to the board's edge at 4.60. This part
+# builds +X -> -X with XHI on the plate, so a prism that stops short of XHI starts its
+# first layer in mid-air; carrying it to the face roots every layer. The 1.6 of ledge that
+# leaves proud of the board is below it and out of the player's way -- the same trade the
+# tail prism already makes.
+#
+# AND ITS FLOOR REACHES THE PRISM BELOW (user), rather than hovering over it. At 7.4 it
+# cleared the deck by 1.0 and met nothing outboard: the fill slab tops at 6.40 there, so
+# the pad floated over a 1.0 void along both wrap bands instead of fusing to what it
+# stands on. Landing it ON 6.40 makes one solid of the two.
+PCB_PAD_TOP = OP.PLINTH_TOP                   # the board bears on this face
+PCB_PAD_BOT = CH.TP_GZ1                       # 6.40 -- the slab's top, so they fuse
+PCB_PAD_X1  = XHI                             # the build plate
+DECK_CLR    = D.BEAD                          # 0.8 of air under the pad's -X overhang, so
+                                              # the top plate can slide out from under it.
+                                              # One bead: it is a sliding gap, not a fit,
+                                              # and nothing is laid across it
+assert PCB_PAD_TOP > PCB_PAD_BOT, "the board's pad has no thickness"
+
+
+def _pcb_pad() -> cq.Workplane:
+    """The board's seat: a box over its full X/Y envelope, PCB_PAD_BOT to PCB_PAD_TOP."""
+    x0, x1 = OP.PCB_X1S, PCB_PAD_X1
+    y0, y1 = OP.PCB_YM, OP.PCB_YP
+    return box_at(x1 - x0, y1 - y0, PCB_PAD_TOP - PCB_PAD_BOT,
+                  x=(x0 + x1) / 2, y=(y0 + y1) / 2,
+                  z=(PCB_PAD_BOT + PCB_PAD_TOP) / 2)
+
+
 def _build() -> cq.Workplane:
     body = _cap()
-    for sy in (-D.BRIDGE_AXLE_Y, D.BRIDGE_AXLE_Y):
+    for sy in (-D.BRIDGE_ARM_Y, D.BRIDGE_ARM_Y):
         body = body.union(_arm(sy))      # bores come later — see _axle_negative
+    body = body.union(_pcb_pad())        # ...and one more prism, cut like the rest
     # Tie bar linking the arm tops above the strings. Runs from the +X tip out to
     # TIE_X0 -- past the endplate block -- so its underside can carry the DOWN-FIRING
     # optical strip at OP.SENSE_X, ~20 mm off the string termination.
-    # OPTICAL-STRIP CARRIER: a plinth reaching -X over the deck, top face at the board's
-    # underside. Prints with the rest -- at x = XLO its whole cross-section is backed by
-    # the endplate's z6..10 field-centre band, which is why CARRIER_HY stops at 54.
-    # ...RUNNING THE BOARD'S WHOLE Y LENGTH, not just the sensing field (user). It used to
-    # stop at +-CARRIER_HY because at x = XLO only the endplate's z6..10 field-centre band
-    # backs it, and that band ends at the arms. Past there the WRAP/COMPUTE PLINTHS below
-    # now provide the same backing, so the carrier can continue on top of them -- and it has
-    # to: probed, the compute section and both wrap bands had NO material at x -29, -24 or
-    # -18, i.e. ~20 mm of the board's 37.4 mm width was hanging over nothing.
-    body = body.union(box_at(XLO - CARRIER_X1, OP.PCB_YP - OP.PCB_YM,
-                             CARRIER_TOP - CARRIER_BOT,
-                             x=(XLO + CARRIER_X1) / 2, y=(OP.PCB_YM + OP.PCB_YP) / 2,
-                             z=(CARRIER_BOT + CARRIER_TOP) / 2))
-    # ...and the TWO WRAP PLINTHS, +Y head and -Y tail, both sitting on the fill slab out
-    # past the field centre. These carry the board's two M4 grips: the plinth alone is only
-    # 3.66 thick, but it lands on solid slab, so the insert bores straight down through it
-    # into the endplate body and gets full depth. Their inner Y edges OVERLAP the carrier
-    # band so the -X carrier is backed continuously along its whole length.
-    for _y0, _y1 in ((TAIL_Y0, TAIL_Y1), (CARRIER_HY, OP.PCB_YP)):
-        body = body.union(box_at(TAIL_X1 - TAIL_X0, _y1 - _y0, CARRIER_TOP - CH.TP_GZ1,
-                                 x=(TAIL_X0 + TAIL_X1) / 2, y=(_y0 + _y1) / 2,
-                                 z=(CH.TP_GZ1 + CARRIER_TOP) / 2))
+    # (the board's pad is one of the INITIAL PRISMS now -- see _pcb_pad, unioned above
+    #  with the cap and the arms, so every cut in this function trims it too)
+    #
+    # ...and the first of those cuts gives the DECK ITS AIR BACK. The pad's floor sits on
+    # the fill slab at TP_GZ1 so the two fuse, but -X of XLO there is no slab under it --
+    # there is the top plate, a separate part that SLIDES OFF -X for service. Coplanar
+    # faces would rub the whole way. So the cantilevered half is trimmed back to the
+    # 1.0 of clearance the old carrier plinth carried, and the pad stays one prism.
+    body = body.cut(box_at(XLO - (OP.PCB_X1S - 1.0), OP.PCB_YP - OP.PCB_YM,
+                           DECK_CLR, x=((OP.PCB_X1S - 1.0) + XLO) / 2,
+                           y=(OP.PCB_YM + OP.PCB_YP) / 2,
+                           z=CH.TP_GZ1 + DECK_CLR / 2))
+    # THE PICKUP JACK'S ACCESS HOLE goes through the pad too, not just the board. The
+    # +Y jack nearest the bridge lands under both, and the plate has no room to move it,
+    # so the same cutter the board uses comes through here -- which is what keeps the two
+    # concentric. Grown half a bead: the pad is structure, the board is not, and a driver
+    # that just clears the board should not scrape the plastic.
+    body = body.cut(OP.jack_access(grow=D.MIN_WALL / 2))
+    # ...and the board's M4 ANCHORS, back now that there is something to sink them into.
+    # The screw enters from ABOVE, down through the board's clearance hole, into the pad.
+    #
+    # THE PAD IS THIN -- 3.10 -- BUT THE ANCHOR IS NOT, because the pad lands on the fill
+    # slab and the two are one solid: probed at both points, there is 19.9 mm of material
+    # under the pad's top face. So the insert pocket and a real bite past it both sit in
+    # solid plastic. 11.0 is deeper than M4's anchor_min_wall (8.5) so a stock M4x12 --
+    # the length already in the BOM -- cannot bottom out.
+    #
+    # This is what fusing the pad to the slab bought, beyond closing the void: an anchor
+    # into a 3.10 pad hovering over a 1.0 gap would have had 3.10 of thread and then air.
     for _mx, _my in OP.mount_points():
-        # Screw enters from ABOVE, down through the board's clearance hole. The plinth is
-        # only 3.66 thick but it sits ON the fill slab, so the anchor gets M4's full
-        # anchor_min_wall (8.5 = insert pocket + a real bite) inside solid material.
-        # Deeper than M4.anchor_min_wall (8.5) so a stock M4x12 -- the length already in
-        # the BOM -- cannot bottom out: it reaches z -0.74 and the anchor floor is -1.34.
-        # Depth is free here, the plinth sits on ~29 mm of fill slab.
-        body = cut_anchor(M4, body, (_mx, _my, CARRIER_TOP), (0, 0, -1), depth=11.0)
+        body = cut_anchor(M4, body, (_mx, _my, PCB_PAD_TOP), (0, 0, -1), depth=11.0)
     # FUSE IN the screw-support rail and bridge it to the cap at the bottom + tie it
     # up to the bearing arms at the edges — the whole bridge end becomes one solid
     # piece (screw support + bearing support + box closure) with continuous material.
@@ -517,19 +578,26 @@ def _build() -> cq.Workplane:
     # DRIVE RELIEF (see DRIVE_X1) — cut FIRST, so the rail unioned in next survives.
     # ...and it BREAKS OUT of the floor: DRIVE_Z0 is the bed plane itself, so the cut
     # runs 1.0 past it rather than landing coplanar with the part's own bottom face.
-    body = body.cut(box_at(DRIVE_X1 - (XLO - 1.0), 2 * WIN_HW, DRIVE_Z1 - (DRIVE_Z0 - 1.0),
+    body = body.cut(box_at(DRIVE_X1 - (XLO - 1.0), 2 * DRIVE_HW, DRIVE_Z1 - (DRIVE_Z0 - 1.0),
                            x=((XLO - 1.0) + DRIVE_X1) / 2, y=0,
                            z=((DRIVE_Z0 - 1.0) + DRIVE_Z1) / 2))
     body = body.union(_screw_rail)
-    body = body.union(box_at(X1 - _SRX, 2 * D.BRIDGE_AXLE_Y,          # bottom bridge → tip
-                             _SR_TOP - _SR_BOT,                       # tied to the rail, which
-                             x=(X1 + _SRX) / 2, y=0,                  # moved up onto the pulleys
-                             z=(_SR_BOT + _SR_TOP) / 2))
+    # BOTTOM BRIDGE — only if the rail leaves anything to bridge. It used to carry the
+    # floor from the rail's +X face out to the tip, because the rail stopped at the
+    # single screw line (SCREW_X + 7.2). With the screws in TWO ROWS the rail spans the
+    # whole base to reach both, so _SRX == X1 and this span is zero — an empty box_at
+    # is a hard OCC DomainError, not a no-op.
+    if X1 - _SRX > 1e-9:
+        body = body.union(box_at(X1 - _SRX, 2 * D.BRIDGE_AXLE_Y,      # bottom bridge → tip
+                                 _SR_TOP - _SR_BOT,                   # tied to the rail, which
+                                 x=(X1 + _SRX) / 2, y=0,              # moved up onto the pulleys
+                                 z=(_SR_BOT + _SR_TOP) / 2))
     z_lo = CH.Z_TOP - 4.0
     sr_bot = _SR_BOT                                                  # screw-rail −Z extent
-    for sy in (-D.BRIDGE_AXLE_Y, D.BRIDGE_AXLE_Y):                    # edge webs rail→arm
-        body = body.union(box_at(X1 - _SRX, ARM_W, z_lo - sr_bot,     # down to the rail bottom
-                                 x=(X1 + _SRX) / 2, y=sy, z=(z_lo + sr_bot) / 2))
+    if X1 - _SRX > 1e-9:                                              # same zero span as above
+        for sy in (-D.BRIDGE_ARM_Y, D.BRIDGE_ARM_Y):                  # edge webs rail→arm
+            body = body.union(box_at(X1 - _SRX, ARM_W, z_lo - sr_bot, # down to the rail bottom
+                                     x=(X1 + _SRX) / 2, y=sy, z=(z_lo + sr_bot) / 2))
     # RE-CUT the bearing seats. The foot block below reaches -X to ~-4.2, which is
     # inside the +X sliver of every Ø8.2 seat, so the unions above refill 0.2 mm of
     # each bore. Cutting again here is the only place that sees the finished solid.
@@ -600,10 +668,7 @@ def _build() -> cq.Workplane:
     for yc in _comb_y:
         body = body.union(_fpro.translate((0, yc, 0)))
         body = body.union(_comb_brace(yc, CB_W))
-        body = body.cut(printable_bore(
-            D.BRIDGE_AXLE_D + 0.3, CB_W + 2,
-            axis_point=(D.BRIDGE_AXLE_X, yc - CB_W / 2 - 1, D.BRIDGE_BEARING_Z),
-            axis_dir=(0, 1, 0), print_up=PRINT_UP))
+        # (no bore here: ONE bore does the whole line, cut last -- see _axle_negative)
 
     # GUIDE-ROD SOCKETS. CUT HERE, AFTER THE COMB, and that ordering is load-bearing:
     # BRACE_Z0 is UNDER_Z is ROOM_Z1, so dropping the room ceiling 9.2 mm grew the comb
@@ -622,25 +687,17 @@ def _build() -> cq.Workplane:
         # either open or wants the hole, so it is a single cut rather than three.
         body = body.cut(printable_bore(
             D.GUIDE_ROD_D + D.GUIDE_ROD_FIT, GUIDE_DROP_Z1 - GUIDE_SOCKET_Z,
-            axis_point=(D.GUIDE_ROD_X, sy, GUIDE_SOCKET_Z),
+            axis_point=(D.guide_rod_x(i), sy, GUIDE_SOCKET_Z),
             axis_dir=(0.0, 0.0, 1.0), print_up=PRINT_UP))
-    # TOP RADIAL BEARING seats, bored UP into the same slab. FLOATING: the pocket is
-    # half a millimetre deeper than the bearing and has no shoulder either side, so it
-    # can only locate the shaft radially — give it a face to push on and it would fight
-    # the thrust stack for the string load and over-constrain the screw.
-    for i in range(D.N_STRINGS):
-        sy = D.string_y(i)
-        body = body.cut(printable_bore(
-            D.MR85_OD + 0.2, D.MR85_W + 0.5 + 0.01,
-            axis_point=(D.SCREW_X, sy, D.TOP_BRG_Z0 - 0.01),
-            axis_dir=(0.0, 0.0, 1.0), print_up=PRINT_UP))
+    # NO TOP RADIAL BEARING SEATS — the bearing is gone (see build._string_components).
+    # The slab keeps its guide-rod bores; nothing is bored for a screw bearing up here.
     # STRING SLOTS through the same slab, one per string, running OUT to the +X face
     # so a string drops in sideways instead of being threaded down a second hole.
     for i in range(D.N_STRINGS):
         sy = D.string_y(i)
-        body = body.cut(box_at((X1 + 1.0) - D.STRING_ANCHOR_X, STRING_SLOT_W,
+        body = body.cut(box_at((X1 + 1.0) - D.string_anchor_x(i), STRING_SLOT_W,
                                (Z6 + 1.0) - GUIDE_SOCKET_Z,
-                               x=(D.STRING_ANCHOR_X + X1 + 1.0) / 2, y=sy,
+                               x=(D.string_anchor_x(i) + X1 + 1.0) / 2, y=sy,
                                z=(GUIDE_SOCKET_Z + Z6 + 1.0) / 2))
     # LIGHT COVER for the optical strip, unioned in: its roof lands on the comb
     # brace at XLO and its slots sit over the sensor triplets.
@@ -789,3 +846,21 @@ def _build() -> cq.Workplane:
 
 
 bridge_endplate = _build()
+
+
+def assembly():
+    """The bridge end as the SCRATCH VIEW should draw it: the printed piece plus the two
+    things whose position is derived from its arm faces, all rebuilt LIVE.
+
+    THE AXLE AND THE OPTICAL BOARD BOTH READ THIS PART'S GEOMETRY -- the shaft spans
+    BRIDGE_AXLE_Y0..Y1, which come off BRIDGE_ARM_OUT, and the board's head is what stops
+    the shaft sliding +Y. A cached copy of either would be drawn wherever those constants
+    stood when the cache was made, which is exactly the lie the cache exists not to tell,
+    so the scope excludes them from the context and they are rebuilt here.
+
+    Same reasoning, and same shape, as keyhead_endplate.assembly at the other end."""
+    from . import components as C
+    from . import optical_pickup as OP
+    return [("bridge_endplate", bridge_endplate),
+            ("bridge_bearings", C.bridge_bearings()),
+            ("optical_pcb", OP.opt_pcb())]
