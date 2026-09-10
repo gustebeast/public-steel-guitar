@@ -721,19 +721,26 @@ def _build() -> cq.Workplane:
             axis_dir=(0.0, 0.0, 1.0), print_up=PRINT_UP))
     # NO TOP RADIAL BEARING SEATS — the bearing is gone (see build._string_components).
     # The slab keeps its guide-rod bores; nothing is bored for a screw bearing up here.
-    # STRING SLOTS through the same slab, one per string, running OUT to the +X face
-    # so a string drops in sideways instead of being threaded down a second hole.
+    # STRING SLOTS through the slab, one per string, SCOPED TO THE STRING (user). They used to
+    # run out to the +X face so a string could drop in sideways; strings now feed UP from below
+    # through the access channels, so a slot only has to clear the string's own rise. In X that
+    # rise runs between the ear and the bearing tangent (BRIDGE_X) at every nut height -- the
+    # far row's ear is +X of the tangent and its string leans back -X, the near row's leans +X
+    # -- so the slot spans those two plus half a slot either side, which also covers the
+    # string's radius (the arc over the bearing is the bearing slot's job, from z -0.5 up).
+    # PLAN IS A HOUSE, the bearing slot's doctrine: the -X end is a print ceiling in the
+    # +X -> -X build, so it closes at 45 deg to a ridge on the string line instead of a flat
+    # end wall. The +X end faces away from the bed and stays square.
+    hw = STRING_SLOT_W / 2
     for i in range(D.N_STRINGS):
         sy = D.string_y(i)
-        # -X END: the -X-most of the ear and the bearing tangent (BRIDGE_X), less half a slot.
-        # The far row's ear is +X of the tangent, so its string leans back -X as it rises; a
-        # slot starting AT the ear left that lean cutting through the slot's end wall (user
-        # saw the far-row strings clipping). Half a slot also covers the string's own radius.
-        sx0 = min(D.string_anchor_x(i), D.BRIDGE_X) - STRING_SLOT_W / 2
-        body = body.cut(box_at((X1 + 1.0) - sx0, STRING_SLOT_W,
-                               (Z6 + 1.0) - _SR_TOP,
-                               x=(sx0 + X1 + 1.0) / 2, y=sy,
-                               z=(_SR_TOP + Z6 + 1.0) / 2))   # from the plate top, not the rod socket
+        ax = D.string_anchor_x(i)
+        sx0 = min(ax, D.BRIDGE_X) - hw
+        sx1 = max(ax, D.BRIDGE_X) + hw
+        body = body.cut(cq.Workplane("XY", origin=(0.0, 0.0, _SR_TOP))   # from the plate top
+                        .polyline([(sx1, sy - hw), (sx1, sy + hw), (sx0, sy + hw),
+                                   (sx0 - hw, sy), (sx0, sy - hw)])
+                        .close().extrude((Z6 + 1.0) - _SR_TOP))
     # LIGHT COVER for the optical strip, unioned in: its roof lands on the comb
     # brace at XLO and its slots sit over the sensor triplets.
     body = body.union(OP.opt_cover())
