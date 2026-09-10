@@ -54,6 +54,7 @@ import cadquery as cq
 from cadkit.holes import teardrop_hole
 from . import chassis as CH
 from . import dimensions as D
+from . import legs as LG
 from .helpers import box_at
 
 B = D.BEAD
@@ -212,21 +213,51 @@ assert SCREW_OFF - _CLR_D / 2 >= 2 * _CLR_D, (
 assert Z_ADJ_SCREW - Z_FIX_TEN_BOT - ADJ_HOLE_D / 2 >= 2 * _CLR_D, (
     "the adjust-side screw is too close to the fixed tenon's bottom end")
 
-# BODY JOINERY on the adapter's closed end: four M4 through the wall on a square
-# pattern. Placed at the CORNERS of the section, as far apart as the wall allows
-# -- a bolt pattern resists the kick's moment as a couple, so spread is worth more
-# than bolt count.
-ADAPT_BOLT_D = 4.4                # M4 clearance (a hole, not material)
-ADAPT_BOLT_PCD = LEG_W - 2 * (6 * B)   # 32.0 across the square pattern. Was
-                                       # 38.4 (4 beads in from the faces), which
-                                       # is fine for a round hole and not for a
-                                       # TEARDROP: the adapter prints on its side,
-                                       # so these bolts run sideways, and the
-                                       # peak (r*sqrt2 = 3.11) left 0.09 of skin
-                                       # on the top face. At 6 beads in it leaves
-                                       # 1.69 -- either way up, the pattern is
-                                       # square. Costs the bolt couple 17% of its
-                                       # arm, so the kick loads each bolt ~20% more.
+# EVERY SCREW GOES IN FROM +X, AND THE -X FACE STAYS WHOLE (user). The two kinds of
+# screw carry very different loads, so they stop in different places:
+#
+#   SLEEVE-JOINT screws only see load when the leg HANGS (lifting the instrument):
+#     the lower leg's weight, ~20 N, ~100 N with a jolt. They go JOIN_SEAT into the
+#     tenon from its +X apex and stop -- 4 x 12 = 48 mm2 of bearing at 30 MPa is
+#     ~1.4 kN against that.
+#
+#   The LADDER screw carries the WHOLE LEG LOAD whenever the instrument stands:
+#     body -> butts -> adjust sleeve -> ladder screw -> adjust tenon -> bar ->
+#     floor. Blind in the tenon it would be a cantilever pin: 400 N (someone
+#     leaning on the instrument) bends an M4's ~3.1 core to roughly 400-800 MPa,
+#     at or past yield. So it goes ALL THE WAY THROUGH the tenon and into the -X
+#     wall, supported both sides (near pure shear, ~53 MPa), and stops LADDER_SKIN
+#     short of the -X face -- the user's stop point, and the clean exposed face.
+JOIN_SEAT = 15 * B                 # 12.0 sleeve-joint screw depth into the tenon, 3 x d
+LADDER_SKIN = D.MIN_WALL_2P        # 1.6 of the -X wall left whole under the ladder
+                                   # screw's tip
+TEN_APEX = TEN_W / math.sqrt(2.0) - CHAM / 2.0   # 16.171 axis -> the tenon's apex,
+                                                 # which faces +X as well as +Y
+assert JOIN_SEAT < TEN_APEX, "a sleeve-joint screw would come out of the tenon's -X side"
+assert LADDER_SKIN >= D.MIN_WALL_2P
+
+# BODY JOINERY (user): TENONS on the adapter's top face, into mortises the body
+# ALREADY HAS -- the ones the old body stub used. They are cut into the chassis
+# and the keyhead endplate by legs.corner_groove_negatives, the one shared source
+# both parts use, so the tenons here come from that same module (legs._stub_ridge,
+# legs._cross_x, the STUB_TNG_* numbers) and line up BY CONSTRUCTION, not by
+# copied numbers. (The first version bolted the adapter up with four M4s through
+# the closed end -- joinery the body has no holes for.) Per corner:
+#   * two Y-running octagon RIDGES at the thirds of the side-panel overlap
+#   * one rectangular END-WALL TONGUE into the endplate; its blind groove end is
+#     the flush hard stop
+#   * an M4 SHEAR PIN dropping down the rail web into the INBOARD ridge (Y
+#     retention; the chassis already has its way)
+#   * an M4 LOCK SCREW along X in through the endplate's end face, across the
+#     tongue (the endplate already has its way)
+# The ridges are undercut, so this joint SLIDES IN ALONG Y from outboard -- the
+# adapter cannot go straight up. It is the semi-permanent half: fitted once.
+assert abs(LG.SQ_W - LEG_W) < 1e-9, "the body's mortises were cut for a %.1f leg" % LG.SQ_W
+EGX = -1.0 if sum(CH.LEG_STATIONS_X) / 2 > LEG_X else 1.0   # this corner's outboard
+                                                            # X sign, as the chassis
+                                                            # computes it
+M4_PILOT_D = 3.6                  # thread-forming M4 pilot (the chassis-side ways
+                                  # are the clearance holes)
 
 
 # ── the section, as solids on the leg's axis ────────────────────────────────
@@ -288,20 +319,13 @@ def _sleeve(z0: float, z1: float):
     return b.cut(mortise_cutter(z0 - 1.0, z1 + 1.0))
 
 
-def _across_y(d: float, z: float, length: float = LEG_W + 4.0):
-    """A round hole straight through the leg along Y, centred on its axis."""
-    return cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        d / 2.0, length, cq.Vector(LEG_X, LEG_Y - length / 2.0, z),
-        cq.Vector(0, 1, 0)))
-
-
-def _join_screw(d: float, z: float, print_up):
-    """A sleeve-joint screw hole, straight through along X at height z, via cadkit
-    so it is shaped for the part it is cut into: a teardrop in a sleeve (sideways
-    to its build), a plain round bore in a tenon (45 degrees to its build, which
-    cadkit works out for itself -- the round bore already self-supports there)."""
-    return teardrop_hole(d, LEG_W + 4.0, (LEG_X - (LEG_W / 2.0 + 2.0), LEG_Y, z),
-                         (1.0, 0.0, 0.0), print_up)
+def _from_plus_x(d: float, z: float, x_end: float, print_up):
+    """A hole along X, entering from outside the +X face and stopping at world
+    x_end, at height z. Via cadkit, so it is shaped for the part it is cut into: a
+    teardrop in a sleeve (sideways to its build), a plain round bore in a tenon
+    (45 degrees to its build -- the round bore already self-supports there)."""
+    x0 = LEG_X + LEG_W / 2.0 + 2.0
+    return teardrop_hole(d, x0 - x_end, (x0, LEG_Y, z), (-1.0, 0.0, 0.0), print_up)
 
 
 # ── the printed parts ───────────────────────────────────────────────────────
@@ -311,11 +335,14 @@ def adjust_sleeve():
     b = _sleeve(Z_ADJ_BOT, Z_JOINT)
     # pinned to the FIXED tenon near the joint -- what stops this sleeve, its tenon
     # and the pedal bar sliding off when the instrument is lifted
-    b = b.cut(_join_screw(_CLR_D, Z_ADJ_SCREW, SLEEVE_UP))
-    # the ladder screw's clearance, through BOTH walls. Along Y, which is this
-    # part's build axis, so it prints round as it is -- cadkit's cutter rightly
-    # refuses a hole along the build direction.
-    return b.cut(_across_y(_CLR_D, Z_LADDER))
+    # clearance through the +X wall only; the -X wall is untouched
+    b = b.cut(_from_plus_x(_CLR_D, Z_ADJ_SCREW, LEG_X, SLEEVE_UP))
+    # the LADDER screw: clearance through the +X wall, then a close seat in the -X
+    # wall for its tip, stopping LADDER_SKIN short of the -X face
+    b = b.cut(_from_plus_x(_CLR_D, Z_LADDER, LEG_X, SLEEVE_UP))
+    return b.cut(teardrop_hole(ADJ_HOLE_D, LEG_W / 2.0 - LADDER_SKIN,
+                               (LEG_X, LEG_Y, Z_LADDER), (-1.0, 0.0, 0.0),
+                               SLEEVE_UP))
 
 
 def fixed_sleeve():
@@ -327,7 +354,8 @@ def fixed_sleeve():
     from . import leg_latch as LL          # late: leg_latch reads this module
     b = _sleeve(Z_JOINT, Z_BUTT)
     b = b.cut(LL.sleeve_notch())
-    return b.cut(_join_screw(_CLR_D, Z_FIX_SCREW, SLEEVE_UP))
+    # clearance through the +X wall only; the -X wall is untouched
+    return b.cut(_from_plus_x(_CLR_D, Z_FIX_SCREW, LEG_X, SLEEVE_UP))
 
 
 def adjust_tenon(top: float = Z_ADJ_TEN_TOP):
@@ -340,10 +368,11 @@ def adjust_tenon(top: float = Z_ADJ_TEN_TOP):
     t = tenon(top - ADJ_TEN_L, top)
     for i in range(ADJ_N + 1):
         z = top - (LADDER_OFF + i * ADJ_PITCH)
-        # through cadkit (user): along Y, 45 to the tenon's diagonal build, so it
-        # comes back as a plain round bore -- see cadkit.holes
-        t = t.cut(teardrop_hole(ADJ_HOLE_D, 2 * TEN_W, (LEG_X, LEG_Y - TEN_W, z),
-                                (0.0, 1.0, 0.0), TENON_UP))
+        # along X, straight through (the ladder screw is supported in both sleeve
+        # walls); via cadkit, which returns a plain round bore at 45 to the
+        # tenon's diagonal build
+        t = t.cut(teardrop_hole(ADJ_HOLE_D, 2 * TEN_W, (LEG_X - TEN_W, LEG_Y, z),
+                                (1.0, 0.0, 0.0), TENON_UP))
     return t
 
 
@@ -357,9 +386,11 @@ def fixed_tenon():
     from . import leg_latch as LL
     t = tenon(Z_FIX_TEN_BOT, Z_MORTISE_ROOF)
     t = t.cut(LL.tenon_pocket())
-    # both sleeve-joint screws bite the tenon: one per sleeve
+    # both sleeve-joint screws bite the tenon, one per sleeve: in from the +X
+    # apex JOIN_SEAT deep, and no further
     for z in (Z_FIX_SCREW, Z_ADJ_SCREW):
-        t = t.cut(_join_screw(ADJ_HOLE_D, z, TENON_UP))
+        t = t.cut(_from_plus_x(ADJ_HOLE_D, z, LEG_X + TEN_APEX - JOIN_SEAT,
+                               TENON_UP))
     return t
 
 
@@ -383,14 +414,27 @@ def body_adapter():
     b = b.cut(mortise_cutter(Z_BUTT - 1.0, Z_MORTISE_ROOF))
     # the latch's retention pocket -- the ledge the whole leg hangs on
     b = b.cut(LL.adapter_pocket())
-    h = ADAPT_BOLT_PCD / 2.0
-    for sx in (-1, 1):
-        for sy in (-1, 1):
-            # sideways to the adapter's build: a teardrop
-            b = b.cut(teardrop_hole(ADAPT_BOLT_D, ADAPT_WALL + 2.0,
-                                    (LEG_X + sx * h, LEG_Y + sy * h,
-                                     Z_MORTISE_ROOF - 1.0),
-                                    (0.0, 0.0, 1.0), SLEEVE_UP))
+    # BODY TENONS, on the top face (see BODY JOINERY). Both ridges and the tongue
+    # run the full LEG_W along Y, the slide axis.
+    ridge_roof = Z_TOP
+    for dx in LG._cross_x(EGX):
+        ridge = LG._stub_ridge(LEG_W).translate((LEG_X + dx, LEG_Y - LEG_W / 2.0, Z_TOP))
+        ridge_roof = max(ridge_roof, ridge.val().BoundingBox().zmax)
+        b = b.union(ridge)
+    b = b.union(box_at(LG.STUB_TNG_W, LEG_W, LG.STUB_TNG_H,
+                       x=LEG_X + EGX * LG.STUB_RIDGE_EP, y=LEG_Y,
+                       z=Z_TOP + LG.STUB_TNG_H / 2.0))
+    # M4 SHEAR PIN pilot: down into the INBOARD ridge, on the rail's centreline
+    # where the chassis drops its way. Sideways to the print: via cadkit.
+    x_pin = LEG_X + LG._cross_x(EGX)[1]
+    b = b.cut(teardrop_hole(M4_PILOT_D, 12.0, (x_pin, CH.Y_HI, ridge_roof - 12.0),
+                            (0.0, 0.0, 1.0), ADAPTER_UP))
+    # M4 LOCK SCREW pilot: along X across the tongue, at its mid-height, on the
+    # leg's centreline -- where the endplate's end-face way points
+    x_tip = LEG_X + EGX * (LG.STUB_RIDGE_EP + LG.STUB_TNG_W / 2.0 + 1.0)
+    b = b.cut(teardrop_hole(M4_PILOT_D, LG.STUB_TNG_W + 2.0,
+                            (x_tip, LEG_Y, Z_TOP + LG.STUB_TNG_H / 2.0),
+                            (-EGX, 0.0, 0.0), ADAPTER_UP))
     return b
 
 
@@ -417,16 +461,23 @@ assert ADJ_N * ADJ_PITCH <= ADJ_TRAVEL + 1e-9, (
 # cadkit.step_export.print_pose wants it, for the per-part STEPs. The assert below
 # makes the two unable to disagree.
 _S2 = 1.0 / math.sqrt(2.0)
-SLEEVE_UP = (0.0, -1.0, 0.0)       # all three sections: the bed is the +Y face (at
-                                   # Y 65.95 on this station) and the part builds
-                                   # toward -Y, so the BUTTON face is the top (user)
+SLEEVE_UP = (0.0, -1.0, 0.0)       # both sleeves: the bed is the +Y face (at Y 65.95
+                                   # on this station) and the part builds toward -Y,
+                                   # so the BUTTON face is the top (user)
+ADAPTER_UP = (0.0, 1.0, 0.0)       # the adapter the OTHER way up, -Y -> +Y (user):
+                                   # button face down. Built like the sleeves, its
+                                   # latch pocket's outer skin was a 5.3 mm flat
+                                   # bridge over the hook; this way up it is a floor.
+                                   # (The sleeve's pad recess is the mirror case --
+                                   # it wants the button face UP -- which is why the
+                                   # two differ.)
 TENON_UP = (-_S2, -_S2, 0.0)       # both floating tenons: +X+Y -> -X-Y, lying on
                                    # the section's own 45 flat that faces +X+Y
 PRINT_UP = {"adjust_sleeve": SLEEVE_UP, "fixed_sleeve": SLEEVE_UP,
-            "body_adapter": SLEEVE_UP,
+            "body_adapter": ADAPTER_UP,
             "adjust_tenon": TENON_UP, "fixed_tenon": TENON_UP}
 PRINT_ROT = {"adjust_sleeve": ((1, 0, 0), -90), "fixed_sleeve": ((1, 0, 0), -90),
-             "body_adapter": ((1, 0, 0), -90),
+             "body_adapter": ((1, 0, 0), 90),
              "adjust_tenon": ((-1, 1, 0), 90), "fixed_tenon": ((-1, 1, 0), 90)}
 
 
@@ -446,9 +497,6 @@ for _n, _up in PRINT_UP.items():
     assert abs(_z[2] - 1.0) < 1e-9, (
         "%s: PRINT_ROT does not stand the part on the bed PRINT_UP says it "
         "prints from (build axis lands on %s, not +Z)" % (_n, _z))
-_ADAPT_SKIN = LEG_W / 2 - ADAPT_BOLT_PCD / 2 - ADAPT_BOLT_D / 2 * math.sqrt(2.0)
-assert _ADAPT_SKIN >= D.MIN_WALL_2P, (
-    "the adapter bolts' teardrop peaks leave %.2f of skin" % _ADAPT_SKIN)
 
 
 PARTS = {
