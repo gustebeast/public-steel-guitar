@@ -547,6 +547,10 @@ EP_TIP_PX = D.BRIDGE_BASE_X1              # bridge +X outer tip (8.5) -- the ACT
 # gate cannot catch it -- leg_body_stub<->chassis is an allowlisted designed
 # contact, so it is blind to that pair forever. Import the real value instead.
 from .legs import SQ_W as LEG_W
+from .legs import STUB_TNG_REBATE_IN as _TNG_REBATE_IN
+assert _TNG_REBATE_IN < EP_LEG_CLR, (
+    "the leg tongue's rebate reaches past the endplate<->shell gap and would notch the "
+    "kept shell")
 
 
 def _leg_geom(tip, sign):
