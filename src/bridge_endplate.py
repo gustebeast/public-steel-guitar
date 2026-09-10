@@ -120,7 +120,8 @@ ARM_W = D.BRIDGE_ARM_W             # arm / edge-web thickness (Y) — kept clear
 BEAR_TOP = D.STRING_Z                                              # 16.0 = bearing top = string plane
 ARM_TOP = BEAR_TOP                                                # side walls flush to the flat top
 #   (was 15.70 = bore + a 2 mm cap; now the arms rise the last 0.3 to the bearing top so the
-#    side walls match the filled tail — the axle grub just reaches 0.3 deeper, still fine)
+#    side walls match the filled tail. There is no axle grub any more to care -- the optical
+#    strip is the +Y stop; see AXLE_END_WALL)
 MIN_ADDED = D.MIN_WALL_2P         # 1.6 -- two-bead QUALITY floor for material this
                                   # feature ADDS (single-sourced via dimensions)
 
@@ -380,7 +381,7 @@ WIN_HW     = D.BRIDGE_ARM_Y - ARM_W / 2
 ROOM_HW    = max(abs(D.string_y(i)) for i in range(D.N_STRINGS)) + D.NUT_AF / 2 + 1.0   # 49.0
 
 
-MECH_HW = D.BRIDGE_ARM_OUT   # 54.75, field-centre upper-cap half-span = the arm outer face.
+MECH_HW = D.BRIDGE_ARM_OUT   # 50.80, field-centre upper-cap half-span = the arm outer face.
                              # Single-sourced: the axle's ends and the optical strip's wrap
                              # bands both derive from this same face, so it cannot be a
                              # second copy of the arithmetic.

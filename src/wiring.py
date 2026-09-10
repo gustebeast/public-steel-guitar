@@ -198,32 +198,109 @@ def tee_stations():
 _TEE_LIFT = TEE_Z - EL.FLOOR_Z          # lift the tee dummy onto its cradle, above the rib tops
 
 
+# ── TEE RETENTION: ONE M4 BESIDE THE BOARD (user: one driver, one insert SKU) ──────
+# It was one M2 down through a board hole. cadkit's pcb_cradle now takes the screw BESIDE
+# the board (hold_edge): the walls capture every direction but +Z, and the button head laps
+# the board edge to close +Z, so the board needs no hole at all. tee_hold() is the ONE
+# table of per-tee choices, and it feeds the cradle, the dummy screw AND the post-fuse
+# re-bore -- so the part that is bored and the screw the overlap gate checks cannot disagree.
+TEE_SCREW_L   = 10.0        # M4x10 button: head on the board top, tip inside the anchor
+TEE_CLR       = 0.3         # board fit gap in the cradle; also sets where the hold screw sits
+TEE_WALL_OVER = 1.2         # cradle walls stand this far above the board top
+_BUS_B_M2_XY  = (6.5, -4.0) # the bus-B placeholders' M2 hole (see tee_hold)
+from cadkit.fasteners import M4 as _M4
+from cadkit.pcb import PCB_T as _PCB_T
+assert TEE_SCREW_L - _PCB_T <= _M4.anchor_min_wall + 1e-9, (
+    f"tee hold-down M4x{TEE_SCREW_L:g} reaches {TEE_SCREW_L - _PCB_T:.2f} below the board's "
+    f"underside, past the {_M4.anchor_min_wall} anchor the cradle bores -- it would bottom out")
+
+
+def tee_hold(i, x, y, d):
+    """(board_w, board_l, centre_x, centre_y, open_edge, hold_edge, hold_at) for tee i.
+    hold_edge None = this tee still takes the old M2 through the board (_BUS_B_M2_XY)."""
+    if i >= 11:
+        # bus-B PLACEHOLDERS (18 x 14) keep their M2 for now. There is no clear spot for an
+        # M4 beside them: tee 11 sits on rib -501 hard against bus-A tee 1's board, tee 12
+        # against the knee housing, and every edge the head could lap is crowded by their
+        # own connectors (the gate put the screws into tee_pcb_1, knee_housing and the rib).
+        # They are slated to disappear anyway -- the TODO in _tee_pcb_placeholder folds the
+        # bus-B tap into the lever PCBs -- so these are the LAST two M2s in the tee family.
+        return 18.0, 14.0, x, y, "-y", None, None
+    # bus-A (22 x 24): hold on the +X edge, toward the -Y rail end (hold_at -8).
+    #   +Y (the obvious spot) lands under the -Y ends of motors 6-8: 115 mm3 of screw into
+    #      motor_7 and motor_8 -- the board grows +Y into the corridor the motors reach into.
+    #   -X clips the connectors (0.7-3.2 mm3): the rotated XH body reaches x -10.25.
+    #   +X clears the mated connectors and the 120R at every hold_at tried (-9..0); -8 keeps
+    #      the head 12 back from the motor ends and inside the board's own Y span, so it
+    #      stays off the rail. All four walls close -- the connectors are top-entry now.
+    return EL.TEE_BOARD_X, EL.TEE_BOARD_Y, x, EL.tee_board_cy(y), None, "+x", -8.0
+
+
 def tee_components():
     """The tee-PCB dummies for the assembly, lifted onto their -Y-rail cradles (above the
-    rib tops so no tee sits in a rib). See tee_cradles()."""
-    return [(f"tee_pcb_{i}", EL.tee_pcb(x, y, d, accurate=i < 11).translate((0, 0, _TEE_LIFT)))
-            for i, (x, y, d) in enumerate(tee_stations())]
+    rib tops so no tee sits in a rib), each M4-held tee with its screw and insert placed
+    from the same tee_hold() the cradle is bored from. See tee_cradles()."""
+    from cadkit.fasteners import M4_BUTTON_HEAD_H, m4_button_screw, seated_insert
+    from cadkit.pcb import pcb_hold_xy
+    out = []
+    for i, (x, y, d) in enumerate(tee_stations()):
+        out.append((f"tee_pcb_{i}", EL.tee_pcb(x, y, d, accurate=i < 11).translate((0, 0, _TEE_LIFT))))
+        w, l, cx, cy, _open, hold_edge, hold_at = tee_hold(i, x, y, d)
+        if hold_edge is None:
+            continue
+        hx, hy = pcb_hold_xy(w, l, hold_edge, hold_at=hold_at, clr=TEE_CLR)
+        out.append((f"tee_insert_{i}", seated_insert(_M4, (cx + hx, cy + hy, TEE_Z), (0, 0, -1))))
+        out.append((f"tee_screw_{i}", m4_button_screw(TEE_SCREW_L).translate(
+            (cx + hx, cy + hy, TEE_Z + _PCB_T + M4_BUTTON_HEAD_H))))       # head seated on the board top
+    return out
 
 
 def tee_cradles():
     """A drop-in pcb_cradle under each tee, on the -Y-rail corridor. The cradle base sits on the
-    rib tops; the tee drops in from +Z and one M2 screw retains it. The tee connectors are TOP-
-    entry (cables up), so a relief WINDOW is cut in the base under them for the THT post tails
-    (3.4 below the board vs the 3.0 standoff)."""
+    rib tops; the tee drops in from +Z and ONE M4 beside it retains it (tee_hold). The tee
+    connectors are TOP-entry (cables up), so a relief WINDOW is cut in the base under them for
+    the THT post tails (3.4 below the board vs the 3.2 standoff). The M4 anchor is 8.5 deep
+    against the M2's 5.5, so an M4-held cradle's base reaches 5.3 below the rib tops, not 2.3
+    -- which is why build.py re-bores it after the fuse (tee_hold_negatives)."""
     from cadkit.pcb import pcb_cradle
     from .helpers import box_at
     rw, rl = EL.TEE_RELIEF
+    so = TEE_Z - _RIB_TOP                                        # pads meet the lifted tee board bottom (TEE_Z)
     out = []
     for i, (x, y, d) in enumerate(tee_stations()):
-        so = TEE_Z - _RIB_TOP                                    # pads meet the lifted tee board bottom (TEE_Z)
-        if i >= 11:                                              # bus-B: compact placeholder cradle (see tee_pcb)
-            cr = pcb_cradle(18.0, 14.0, screw_xy=(6.5, -4.0), open_edge="-y", standoff=so, wall_over=1.2)
-            out.append((f"tee_cradle_{i}", cr.translate((x, y, _RIB_TOP))))
+        w, l, cx, cy, open_edge, hold_edge, hold_at = tee_hold(i, x, y, d)
+        if hold_edge is None:
+            cr = pcb_cradle(w, l, screw_xy=_BUS_B_M2_XY, open_edge=open_edge, standoff=so,
+                            wall_over=TEE_WALL_OVER, clr=TEE_CLR)
+        else:
+            cr = pcb_cradle(w, l, open_edge=open_edge, hold_edge=hold_edge, hold_at=hold_at,
+                            standoff=so, wall_over=TEE_WALL_OVER, clr=TEE_CLR)
+        if i < 11:                                               # bus-A: THT-tail relief window in the base
+            cr = cr.cut(box_at(rw, rl, 4.0, x=0.0, y=EL.TEE_CONN_CY, z=-1.5))
+        out.append((f"tee_cradle_{i}", cr.translate((cx, cy, _RIB_TOP))))
+    return out
+
+
+def tee_hold_negatives():
+    """[(station_x, [world-space cutters])] for every M4-held tee: the SAME anchor and head
+    notch pcb_cradle bores, placed in the world. build.py cuts them AFTER fusing the cradles
+    into the chassis segments, because that fuse fills them straight back in with the
+    segment's own rib and rail material (a feature cut before a union does not survive it)."""
+    import cadquery as cq
+    from cadkit.fasteners import M4_BUTTON_HEAD_D, anchor_cutter
+    from cadkit.pcb import pcb_hold_xy
+    notch_h = _PCB_T + TEE_WALL_OVER + 1.0
+    out = []
+    for i, (x, y, d) in enumerate(tee_stations()):
+        w, l, cx, cy, _open, hold_edge, hold_at = tee_hold(i, x, y, d)
+        if hold_edge is None:
             continue
-        cr = pcb_cradle(EL.TEE_BOARD_X, EL.TEE_BOARD_Y, screw_xy=EL.TEE_SCREW_XY, open_edge="+y",
-                        standoff=so, wall_over=1.2)
-        cr = cr.cut(box_at(rw, rl, 4.0, x=0.0, y=EL.TEE_CONN_CY, z=-1.5))   # THT-tail relief window in the base
-        out.append((f"tee_cradle_{i}", cr.translate((x, EL.tee_board_cy(y), _RIB_TOP))))
+        hx, hy = pcb_hold_xy(w, l, hold_edge, hold_at=hold_at, clr=TEE_CLR)
+        px, py = cx + hx, cy + hy
+        anchor = anchor_cutter(_M4, (px, py, TEE_Z), (0, 0, -1), _M4.anchor_min_wall)
+        notch = cq.Workplane("XY").add(cq.Solid.makeCylinder(
+            (M4_BUTTON_HEAD_D + 2 * TEE_CLR) / 2, notch_h, cq.Vector(px, py, TEE_Z)))
+        out.append((x, [anchor, notch]))
     return out
 
 
