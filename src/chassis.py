@@ -525,13 +525,14 @@ def _build_full() -> cq.Workplane:
 # The end removal would otherwise strip the rail off the leg + leave the endplate
 # clearing it with a big empty box; instead we KEEP a rail shell (its T wall IS the
 # body wrap) over the leg, re-cutting the leg dovetail slot in it (_leg_shell).
-KH_EP_THK     = D.KEYHEAD_W  # keyhead endplate thickness in X (= keyhead_endplate.T_EP).
-                             # NOT D.ENDPLATE_W any more -- the keyhead is the thicker of
-                             # the two ends now, see dimensions.KEYHEAD_W
+from . import nut_block as _NB                # nut_block imports only dimensions: no cycle
+KH_EP_THK     = _NB.KEYHEAD_W  # keyhead endplate thickness in X (= keyhead_endplate.T_EP),
+                               # DERIVED from its stow bores (user). The -X legs, their shells
+                               # and dovetails below all follow it by the flush-X rule.
 EP_LEG_CLR    = EP_TOP_CLR    # assembly clearance: endplate foot pocket vs the kept shell
                               # (= the top-joint clearance -- ONE value for both L joints)
 EP_LEG_BUFFER = D.XBAR        # 10 mm solid body between the leg tenon and the endplate wall
-EP_TIP_NX = KH_X - KH_EP_THK              # keyhead -X outer face (-636)
+EP_TIP_NX = KH_X - KH_EP_THK              # keyhead -X outer face
 EP_TIP_PX = D.BRIDGE_BASE_X1              # bridge +X outer tip (8.5) -- the ACTUAL outer face,
                                           # so the leg/shell/wall track it (10 mm wall preserved)
 
