@@ -42,12 +42,13 @@ X_PX    = D.BRIDGE_BASE_X1                 # +X face (= endplate +X edge)
 # they wrap the toothed band, whose top is 1.5 mm below the pulley's own top
 # (measured off the built belts), so a rail seated on the tops clears them.
 SEAT_CLR = 0.3                              # slop under the stack (it seats UP on the ledge)
-BOT      = D.SUPPORT_BRG_BOT - SEAT_CLR     # -33.3, rail underside = seat mouth
-TOP      = D.SUPPORT_BRG_Z + D.BRG_LEDGE_T  # -26.4
-HEIGHT   = TOP - BOT                        # 6.9
-_NUT_GAP = D.NUT_BOT_MIN - TOP
-assert _NUT_GAP >= 1.0 - 1e-9, (
-    f"the nut's lowest sweep clears this rail's top by only {_NUT_GAP:.2f}")
+BOT      = D.SUPPORT_BRG_BOT - SEAT_CLR     # -38.9, rail underside = seat mouth
+TOP      = D.SUPPORT_BRG_Z + D.BRG_LEDGE_T  # -30.4
+HEIGHT   = TOP - BOT                        # 8.5
+# (No plane-vs-plane nut check here any more. It compared NUT_BOT_MIN with this TOP as if
+# the rail were solid, but the nut's lowest part is its Ø10.2 boss, which passes DOWN
+# THROUGH the ledge bore. The real checks are the bore's radial clearance, below SEAT_LEDGE_D,
+# and the boss-to-bearing gap in dimensions._NUT_BRG_GAP.)
 
 # TOP-LEDGE BORE. It has to be a window that lands on the OUTER rings and NOTHING
 # else: the ledge is part of the endplate and never turns, while the inner rings turn
@@ -63,6 +64,12 @@ SEAT_LEDGE_D = 18 * D.BEAD                 # 14.4 — lands on 688ZZ's OUTER rin
 # at ~13.8, so the bore has to clear that before it bears on anything real.
 assert SEAT_LEDGE_D >= 13.8, "the ledge would press the 688's SHIELD, not its outer ring"
 assert SEAT_LEDGE_D <= 15.4, "the ledge no longer backs the 688's outer ring"
+# The nut's Ø10.2 boss sweeps DOWN INTO this bore at the bottom of travel whenever the
+# ledge top sits above NUT_BOT_MIN, so the bore — not the ledge plane — is its clearance.
+if D.NUT_BOT_MIN < TOP:
+    assert SEAT_LEDGE_D / 2 - D.NUT_BOSS_D / 2 >= 1.0 - 1e-9, (
+        f"the nut boss sweeps into the ledge bore with only "
+        f"{SEAT_LEDGE_D / 2 - D.NUT_BOSS_D / 2:.2f} radial clearance (want 1.0)")
 
 # WHY THE LEDGE IS ON TOP, not underneath (user asked, and the answer is the load).
 # The string pulls every carriage +Z, so the screw is pulled +Z at 88-147 N. The

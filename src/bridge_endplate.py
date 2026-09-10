@@ -63,6 +63,7 @@ from .screw_rail import PRINT_UP as _SR_PRINT_UP
 from .helpers import box_at, cyl, cyl_y
 from cadkit.fasteners import M4, cut_anchor
 from cadkit.supports import printable_bore
+from cadkit.holes import teardrop_hole
 
 # Build direction. The endplate prints FLAT on its +X face, so "up" out of the bed is -X.
 # Any round hole whose axis runs SIDEWAYS to that -- the Y-axis axle bores -- has a
@@ -284,25 +285,15 @@ assert GUIDE_ROD_TOP <= D.STRING_Z - D.BRIDGE_BEARING_OD - 1.0 + 1e-9, (
 # the ear, ~17 mm from the slab, not the rod's free end: ~0.02 mm under the 11 N
 # anti-rotation load. The rod runs on past the ear purely to stay engaged at the bottom
 # of travel.
-# The rod stops ON the rail's top face and does NOT bore into it. A socket here would
-# come straight out of BRG_LEDGE_T: the ledge is 1.60 thick and is what backs the
-# bearing's outer ring against the whole string load, so a 0.60 socket left only 1.00 of
-# it (user measured both faces of exactly that trade). The two cannot both be 1.60 —
-# they are one budget. The ledge wins, because the rod does not need the socket: it is
-# a cantilever off the slab and its LOAD POINT is the ear ~17 mm up, not its free end.
-GUIDE_SOCKET_Z = _SR_TOP                        # rod bottoms on the rail top, no socket
-# COLLAR ROUND THE ROD'S BASE, so the rod gets engagement without a socket (user). A
-# socket would have come straight out of BRG_LEDGE_T -- the ledge is 1.60 and is what
-# backs the bearing's outer ring under the whole string load, so boring 1.60 into it
-# would have taken all of it. Building UP costs nothing that is spoken for.
-# The radius is capped by the NUT'S OWN BOSS, which is Ø10.2 on the screw axis and
-# sweeps down to NUT_BOT_MIN, 0.15 below this collar's top -- so the two overlap in Z
-# and the collar has to clear it in X instead. That leaves 1.17 of wall round the rod:
-# over the one-bead floor, under the two-bead preference, and set by the bought nut
-# rather than by choice.
-GUIDE_BOSS_H = 2 * D.BEAD                       # 1.6 of collar above the rail top
-GUIDE_BOSS_R = min((D.GUIDE_ROD_D + D.GUIDE_ROD_FIT) / 2 + D.MIN_WALL_2P,
-                   D.NUT_HOLE_DX - D.NUT_BOSS_D / 2 - 0.2)
+# THE ROD SOCKETS 1.6 INTO THE PLATE, and its length is unchanged. The plate it stands in
+# used to be only 1.6 thick (BRG_LEDGE_T), so the rod bottomed on its top face and a printed
+# collar was built up round its base for engagement — a free-standing ring on a face that
+# prints sideways, which is an overhang (user). The plate is now 3.2 thick, i.e. thickened to
+# the collar's top, so the collar is gone and the rod drops into a 1.6 socket in solid plate.
+# GUIDE_SOCKET_Z is pinned to the OLD top, so a thicker plate moves the socket's mouth, not
+# the rod's bottom.
+GUIDE_SOCKET_H = 2 * D.BEAD                     # 1.6 of blind socket
+GUIDE_SOCKET_Z = _SR_TOP - GUIDE_SOCKET_H       # -32.0, the rod's bottom (unchanged)
 # The web between this bore and the top bearing's pocket is the tight spot, and it is
 # a teardrop-apex-to-bore-wall distance, not a wall anyone chose:
 _GUIDE_WEB = ((-D.SCREW_ROW_DX - D.NUT_HOLE_DX + (D.GUIDE_ROD_D + D.GUIDE_ROD_FIT) / 2)
@@ -614,6 +605,14 @@ def _build() -> cq.Workplane:
     # inside the +X sliver of every Ø8.2 seat, so the unions above refill 0.2 mm of
     # each bore. Cutting again here is the only place that sees the finished solid.
     body = body.cut(_seat_cutter())
+    # STRING ACCESS CHANNELS through the rail plate (see dimensions.string_access_x). Cut
+    # AFTER the seat re-cut and every union above, so nothing fuses back into them. Straight
+    # up the Z axis, which the -X print direction makes a sideways hole: hence the teardrop.
+    for i in range(D.N_STRINGS):
+        body = body.cut(teardrop_hole(
+            D.STRING_ACCESS_D, (_SR_TOP + 1.0) - (_SR_BOT - 1.0),
+            axis_point=(D.string_access_x(i), D.string_y(i), _SR_BOT - 1.0),
+            axis_dir=(0.0, 0.0, 1.0), print_up=PRINT_UP))
     # (no +X deck-lock shelf / capture groove / dropped section / -Y roof: the solid
     #  base over the rail ends now IS the cross-tie + the deck panels' +X stop; the
     #  deck is held in +Z by the rail-top grooves along its length, not by the bridge.)
@@ -692,11 +691,6 @@ def _build() -> cq.Workplane:
     # Teardrops, like every Z bore in this part: the axis runs sideways to the -X
     # build, so a plain cylinder droops out of round, and a socket that is not round
     # cannot hold a press fit square — which here is the entire job.
-    # COLLARS FIRST, then the bores through them. Unioning after the cut would refill
-    # every rod bore over the collar's height -- the failure this file keeps paying for.
-    for i in range(D.N_STRINGS):
-        body = body.union(cyl(2 * GUIDE_BOSS_R, GUIDE_BOSS_H,
-                              z=_SR_TOP).translate((D.guide_rod_x(i), D.string_y(i), 0.0)))
     for i in range(D.N_STRINGS):
         sy = D.string_y(i)
         # ONE bore, all the way from the slab's top down to the blind socket floor in
@@ -713,9 +707,9 @@ def _build() -> cq.Workplane:
     for i in range(D.N_STRINGS):
         sy = D.string_y(i)
         body = body.cut(box_at((X1 + 1.0) - D.string_anchor_x(i), STRING_SLOT_W,
-                               (Z6 + 1.0) - GUIDE_SOCKET_Z,
+                               (Z6 + 1.0) - _SR_TOP,
                                x=(D.string_anchor_x(i) + X1 + 1.0) / 2, y=sy,
-                               z=(GUIDE_SOCKET_Z + Z6 + 1.0) / 2))
+                               z=(_SR_TOP + Z6 + 1.0) / 2))   # from the plate top, not the rod socket
     # LIGHT COVER for the optical strip, unioned in: its roof lands on the comb
     # brace at XLO and its slots sit over the sensor triplets.
     body = body.union(OP.opt_cover())

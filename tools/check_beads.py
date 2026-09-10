@@ -76,11 +76,11 @@ _ex("hardware",
     _BRG_TEARDROP="teardrop apex = r*sqrt(2) with a 0.2 bore clearance: geometry, not a wall",
     _ROD_TEARDROP="teardrop apex = r*sqrt(2) with the rod's press fit: geometry, not a wall",
     _BELT_HALF_DIAG="half-diagonal of the 5 x 1.4 GT2 belt section: geometry, not a wall",
+    STRING_ACCESS_D="Ø4 swaged string end + 0.6 passage clearance",
 )
 
 
 _ex("clearance",
-    bridge_endplate__GUIDE_BOSS_R="guide-rod collar radius capped 0.2 clear of the bought nut's Ø10.2 boss",
     bridge_endplate__DRIVE_HW="outermost pulley swept circle + 0.4 running clearance",
 )
 
