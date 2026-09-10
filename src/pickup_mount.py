@@ -52,7 +52,7 @@ PK_H_MIN = 15.0                                 # carrier-wall cap datum: walls 
                                                # above the plate so they never top the pickup
                                                # (< PK_H) even raised -- never foul bar/strings
 GAP     = 3.0                                   # pickup top -> heaviest string bottom
-PK_TOP  = D.STRING_Z - max(D.STRING_GAUGE) - GAP
+PK_TOP  = D.STRING_Z - D.STRING_GAUGE_MAX - GAP   # clear the heaviest string that fits, not the demo set's
 PK_BOT  = PK_TOP - PK_H
 
 # mounting-ear holes (the pickup's own 4 corner holes; the tripod jacks reach the
