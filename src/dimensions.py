@@ -559,7 +559,9 @@ SUPPORT_BRG_N   = 1
 SUPPORT_BRG_OD  = BRG688_OD # Ø16 — 1.4 mm of web each side at the 19.0 in-row pitch
 SUPPORT_BRG_ID  = BRG688_ID # Ø8 — the bore the Tr8 screw actually passes through
 SUPPORT_BRG_W   = SUPPORT_BRG_N * BRG688_W          # 5.0 — ONE bearing now, not a stack
-BRG_LEDGE_T     = 4 * BEAD                          # 3.2 of rail over the outer rings
+BRG_LEDGE_T     = 5 * BEAD                          # 4.0 of rail over the outer rings: a 1.6
+                                                    # lip + 2.4 of nut band, whose lowest 0.8
+                                                    # is the guide-rod sockets' solid floor (user)
 # 2 -> 4 beads (user, 2026-09-10). The plate the guide rods stand in was only 1.6 thick,
 # so each rod had a printed collar built up round its base for engagement — a free-standing
 # ring on a face that prints sideways, i.e. an overhang. Thickening the whole plate to the
