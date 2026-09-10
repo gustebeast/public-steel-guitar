@@ -285,12 +285,12 @@ GUIDE_DROP_Z1  = BEAR_TOP + 1.0                 # 17.0, out through the endplate
 # unaffected; only 0.025 of a slot wall is grazed, which is nothing.
 # TWO ROWS moved every rod OUTBOARD of the bridge bearing in X (rods at ±20, the bearing
 # spans the axle ± OD/2), so that cap only applies while a rod line is still inside the
-# bearing's X extent. Otherwise the top stays at 2.0, where the Ø13 bearing put it, and
-# the ~34 mm rod keeps its length through the 688ZZ swap.
+# bearing's X extent. Otherwise the top sits where it keeps the ~34 mm rod: 2.0 on the
+# 3.2 plate, 2.8 since the plate went 4.0 and lifted the socket floor 0.8 with it.
 _ROD_UNDER_BRG = any(abs(D.guide_rod_x(i) - D.BRIDGE_AXLE_X)
                      < D.BRIDGE_BEARING_OD / 2 + D.GUIDE_ROD_D / 2 + 1.0
                      for i in range(D.N_STRINGS))
-GUIDE_ROD_TOP  = (D.STRING_Z - D.BRIDGE_BEARING_OD) - 1.0 if _ROD_UNDER_BRG else 2.0
+GUIDE_ROD_TOP  = (D.STRING_Z - D.BRIDGE_BEARING_OD) - 1.0 if _ROD_UNDER_BRG else 2.8
 # THE ROD NO LONGER SOCKETS INTO THE RAIL. It used to drop 4.0 into a blind socket so
 # it was a beam supported at both ends. At Ø8 bore the thrust bearing is Ø16 OD, and its
 # radius reaches EXACTLY the rod line at NUT_HOLE_DX 8.0 — there is no rail material
@@ -304,8 +304,9 @@ GUIDE_ROD_TOP  = (D.STRING_Z - D.BRIDGE_BEARING_OD) - 1.0 if _ROD_UNDER_BRG else
 # THE ROD SOCKETS 1.6 INTO THE PLATE, and its length is unchanged. The plate it stands in
 # used to be only 1.6 thick (BRG_LEDGE_T), so the rod bottomed on its top face and a printed
 # collar was built up round its base for engagement — a free-standing ring on a face that
-# prints sideways, which is an overhang (user). The plate is now 3.2 thick, i.e. thickened to
-# the collar's top, so the collar is gone and the rod drops into a 1.6 socket in solid plate.
+# prints sideways, which is an overhang (user). The plate went to 3.2 (the collar's top), so
+# the collar is gone; then to 4.0 (user), so the 1.6 socket stands on 0.8 of SOLID FLOOR above
+# the bearing lip's Ø14.4 window, whose teardrop otherwise undercut the near row's sockets.
 # GUIDE_SOCKET_Z is pinned to the OLD top, so a thicker plate moves the socket's mouth, not
 # the rod's bottom.
 GUIDE_SOCKET_H = 2 * D.BEAD                     # 1.6 of blind socket

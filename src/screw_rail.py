@@ -43,8 +43,8 @@ X_PX    = D.BRIDGE_BASE_X1                 # +X face (= endplate +X edge)
 # (measured off the built belts), so a rail seated on the tops clears them.
 SEAT_CLR = 0.3                              # slop under the stack (it seats UP on the ledge)
 BOT      = D.SUPPORT_BRG_BOT - SEAT_CLR     # -38.9, rail underside = seat mouth
-TOP      = D.SUPPORT_BRG_Z + D.BRG_LEDGE_T  # -30.4
-HEIGHT   = TOP - BOT                        # 8.5
+TOP      = D.SUPPORT_BRG_Z + D.BRG_LEDGE_T  # -29.6
+HEIGHT   = TOP - BOT                        # 9.3
 # (No plane-vs-plane nut check here any more. It compared NUT_BOT_MIN with this TOP as if
 # the rail were solid, but the nut's lowest part is its Ø10.2 boss, which passes DOWN
 # THROUGH the ledge bore. The real checks are the bore's radial clearance, below SEAT_LEDGE_D,
