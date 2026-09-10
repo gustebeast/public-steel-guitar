@@ -263,8 +263,17 @@ def _knee(n) -> bool:
 # the keyhead/bridge endplate rework moved the -X leg station off the cable.
 # The other two are UNCHANGED and still real (28.0 and 1.0 mm^3), both the cable
 # dummy clipping a solid, i.e. exactly the routing bug WIRE_OK is written to catch.
+#
+# THE PICKUP HEIGHT PLATE INTO THE DECK (deferred 2026-09-10, owner UNASSIGNED --
+# see fastener-migration-todo.md section 2). The +Y jacks' X-arms poke 0.72 into the
+# pickup panel's end walls: 37.2 mm^3 at the demo pose (22 mm Alumitone, lowest
+# plate), and ~308 mm^3 across the jack bosses and the retention boss at a 15 mm
+# pickup. The gate never reported it: TP_FAMILY accepted ANY deck contact with
+# pickup_zplate, so a real collision read as a designed one. Note the gate still
+# only checks the demo pose; the 308 mm^3 case needs a sweep across the depth window.
 DEFERRED = {frozenset({"chassis_trrs_cable", "electronics_tray"}),
-            frozenset({"chassis_trrs_cable", "pi5"})}
+            frozenset({"chassis_trrs_cable", "pi5"}),
+            frozenset({"pickup_zplate", "top_plate"})}
 _DEFERRED_SEEN = set()
 
 
@@ -310,7 +319,11 @@ def intended(na, nb) -> bool:
     tp = {base(na), base(nb)}
     TP_FAMILY = {"top_plate", "top_plate_color"}
     if tp & TP_FAMILY and tp <= (TP_FAMILY | {"chassis", "oled", "joystick",
-                                              "pickup", "pickup_zplate", "pickup_jack_screw",
+                                              # pickup_zplate is NOT here: the height plate
+                                              # genuinely interpenetrates the deck (37.2 mm^3
+                                              # at the demo pose) and this line was silencing
+                                              # it. It lives in DEFERRED now, where it is loud.
+                                              "pickup", "pickup_jack_screw",
                                               "pickup_jack_insert",
                                               "bridge_endplate", "keyhead_endplate"}):
         return True
