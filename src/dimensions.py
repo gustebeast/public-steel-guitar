@@ -71,20 +71,25 @@ MR85_OD, MR85_ID, MR85_W = 8.0, 5.0, 2.5     # Ø5 bore — KNEE LEVER / pedal a
 # ⚠ C0r spans 474-710 ACROSS MAKERS, which is wider than the 1.6x worst-case margin:
 # buy a branded part and read its real C0r. See SUPPORT_BRG_N for the stacking story.
 BRG688_OD, BRG688_ID, BRG688_W = 16.0, 8.0, 5.0  # 688ZZ — Ø8 bore, the leadscrew's
-BELT_PLANE_DZ   = 7 * BEAD   # 5.6 — the two screw-pulley planes' Z separation.
-# HALVED (was 14*BEAD = 11.2) once the screws went into TWO ROWS. The full separation
-# existed because ten pulleys shared one X line at the 9.5 string pitch, and
-# PULLEY_FLANGE_OD is 11.0 — neighbours physically overlapped, so alternate ones had to
-# be lifted clear. In-row pitch is now 19.0, so the flanges no longer touch and the
-# plane split has only ONE job left: keeping far-row BELTS off near-row PULLEYS, which
-# 5.6 does. Halving it is what pays for the Tr8 nut: the nut is 15 tall against the old
-# 9.8, so its lowest sweep dropped 5.2 and fouled the thrust ledge (the assert below
-# caught it). Lowering the HIGH plane gives that back without touching NUT_TOP_Z --
-# which matters, because raising the nut would shorten the dead run and push the
-# string's break angle from 10.0 deg to 12.9.
-                             # Declared here rather than with the belts because the
-                             # pulleys' STAGGER SPACER is exactly this, and the thrust
-                             # stack sits on top of that.
+BELT_PLANE_DZ   = 11 * BEAD  # 8.8 — the two screw-pulley planes' Z separation.
+# History: 14*BEAD = 11.2 while ten pulleys shared one X line at the 9.5 string pitch,
+# where neighbouring Ø11 flanges physically overlapped and alternate ones had to be lifted
+# clear. Two rows took the in-row pitch to 19.0, so that job went away and it was halved
+# to 5.6. THAT WAS TOO FAR. The split's remaining job is keeping far-row BELTS off the
+# near-row PULLEYS they run past, and the claim that those "clear laterally by 1.5 on
+# their own" assumed a flat belt at its own string Y. It is not flat there — it is partway
+# through its 90° twist, which widens it sideways into the neighbour's lower flange. Every
+# far-row belt clipped its near-row neighbours (up to 9.8 mm^3), and no gate said so,
+# because check_overlaps skips belts unless it is run with --full.
+# The real bound is in Z: the near pulley reaches PULLEY_BOT below its band, and the far belt
+# reaches above its own band by its section's HALF-DIAGONAL (a twisted 5 x 1.4 ribbon, not
+# the 2.5 half-width) PLUS the rise of its centreline toward the motor plane by the time it
+# gets to the near row — asserted after motor_pos, which the run length needs. A first
+# pass at 8.0 used the half-width and no rise, and left two belts grazing at 0 clearance. It costs nothing
+# at the thrust stack (the pulley TOP is the frozen datum, see PULLEY_TOP_Z); the LOW band
+# drops instead, and the motors, riding midway between the planes, drop half of that.
+# Declared up here because the pulleys' plane split is exactly this, and the thrust stack
+# sits on top of the pulleys.
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -501,15 +506,17 @@ PULLEY_SOCKET_L = PULLEY_END_A - PULLEY_GAP / 2 - PULLEY_SOCKET_FLOOR_CLR  # 4.1
 # would have dragged the entire motor bank down with it for no reason at all.
 # Frozen here at the value belt-plane centring settled on; the nut clearance that
 # expression used to guarantee is now an assert (below, once PULLEY_W exists).
-# MOVED -49.0 -> -51.4 (user, 2026-09-10), deliberately: this is the datum the whole
-# chassis floor hangs from (MOTOR_BELT_Z -> motor_bank.FLOOR_TOP -> BED_Z -> chassis.Z_BOT
-# and the knee-lever mounts), so the instrument gets 2.4 deeper. The endcap pulleys need
-# PULLEY_COL_HI of new height above their bands, and it cannot come from above — the nut
-# gap is 1.45. Dropping only the pulleys would have kept the chassis but put far-row belts
-# 6.8 off their motors (~3° on string 10's short run); moving the root keeps every belt
-# exactly as aligned as before. The thrust stack does NOT move: PULLEY_END_A grew by the
-# same COL_HI, so PULLEY_TOP_MAX is unchanged.
-SCREW_PULLEY_Z  = -49.0 - PULLEY_COL_HI     # -51.4, drive pulley band (LOW plane)
+# THE FROZEN DATUM IS THE PULLEY TOP — the thrust seat the nut-sweep gap depends on — and
+# the band plane DERIVES from it, so a change to BELT_PLANE_DZ or to the pulley column moves
+# the band and never the thrust stack. (It used to be frozen the other way round, at -49.0;
+# the warning above against deriving it from the NUT still stands.)
+# The band has moved twice for the endcap pulleys (user, 2026-09-10): -49.0 -> -51.4 for
+# the socket's column, then -> -54.6 when BELT_PLANE_DZ went back up to 8.8. Every belt
+# stays aligned with its motor, because MOTOR_BELT_Z rides midway between the planes. The
+# cost is that the chassis floor hangs off MOTOR_BELT_Z (-> motor_bank.FLOOR_TOP -> BED_Z
+# -> chassis.Z_BOT and the knee-lever mounts): 4.0 deeper than before the endcap.
+PULLEY_TOP_Z    = -38.6
+SCREW_PULLEY_Z  = PULLEY_TOP_Z - BELT_PLANE_DZ - PULLEY_END_A   # -54.6, LOW-plane band
 # THRUST STACK: TWO MR85ZZ (Ø5×8×2.5) in TANDEM per screw, not one bearing.
 # Sizing is by STATIC capacity, not life. Per-string tension runs 88–147 N and a
 # single MR85's permissible static axial load is ~130 N (C0r ≈ 260 N — a typical
@@ -641,6 +648,21 @@ def motor_pos(i: int):
     """Return (x, y, z) of string i's motor pulley (on the string's Y line). The −Y
     string (last index) is closest to the bridge, stepping out toward +Y (see above)."""
     return (-(MOTOR_X0 + (N_STRINGS - 1 - i) * MOTOR_X_STEP), string_y(i), MOTOR_BELT_Z)
+
+
+# FAR-ROW BELTS vs NEAR-ROW PULLEYS (see BELT_PLANE_DZ). Each far-row belt passes the near
+# row 2*SCREW_ROW_DX along its run, where its centreline has already climbed that fraction
+# of the DZ/2 up to the motor plane; its section reaches the HALF-DIAGONAL above that
+# (upper bound over every twist angle). Worst case is the SHORTEST run, where the climb is
+# steepest. The overlap gate only sees this with --full, so it is asserted here.
+_BELT_HALF_DIAG = (BELT_W ** 2 + BELT_T ** 2) ** 0.5 / 2
+_BELT_PLANE_CLR = min(
+    BELT_PLANE_DZ - PULLEY_BOT - _BELT_HALF_DIAG
+    - (BELT_PLANE_DZ / 2) * (2 * SCREW_ROW_DX) / abs(screw_x(i) - motor_pos(i)[0])
+    for i in range(N_STRINGS) if screw_far(i))
+assert _BELT_PLANE_CLR >= 0.4 - 1e-9, (
+    f"far-row belts clear the near-row pulleys' lower flange by only {_BELT_PLANE_CLR:.2f} "
+    f"(want 0.4): raise BELT_PLANE_DZ")
 
 
 # ─────────────────────────────────────────────────────────────────────────
