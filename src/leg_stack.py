@@ -265,12 +265,12 @@ assert LADDER_SKIN >= D.MIN_WALL_2P
 # copied numbers. (The first version bolted the adapter up with four M4s through
 # the closed end -- joinery the body has no holes for.) Per corner:
 #   * two Y-running octagon RIDGES at the thirds of the side-panel overlap
-#   * one rectangular END-WALL TONGUE into the endplate; its blind groove end is
-#     the flush hard stop
+#   * one rectangular END-WALL TONGUE into a rebate against the endplate wall's
+#     inner face; its blind end is the flush hard stop
 #   * an M4 SHEAR PIN dropping down the rail web into the INBOARD ridge (Y
 #     retention; the chassis already has its way)
-#   * an M4 LOCK SCREW along X in through the endplate's end face, across the
-#     tongue (the endplate already has its way)
+#   * an M4 set-screw LOCK PIN along X, threaded in a heat-set insert in the
+#     endplate's end wall and crossing the tongue through a clearance hole
 # The ridges are undercut, so this joint SLIDES IN ALONG Y from outboard -- the
 # adapter cannot go straight up. It is the semi-permanent half: fitted once.
 assert abs(LG.SQ_W - LEG_W) < 1e-9, "the body's mortises were cut for a %.1f leg" % LG.SQ_W
@@ -451,12 +451,10 @@ def body_adapter():
     x_pin = LEG_X + LG._cross_x(EGX)[1]
     b = b.cut(teardrop_hole(M4_PILOT_D, 12.0, (x_pin, CH.Y_HI, ridge_roof - 12.0),
                             (0.0, 0.0, 1.0), ADAPTER_UP))
-    # M4 LOCK SCREW pilot: along X across the tongue, at its mid-height, on the
-    # leg's centreline -- where the endplate's end-face way points
-    x_tip = LEG_X + EGX * (LG.STUB_RIDGE_EP + LG.STUB_TNG_W / 2.0 + 1.0)
-    b = b.cut(teardrop_hole(M4_PILOT_D, LG.STUB_TNG_W + 2.0,
-                            (x_tip, LEG_Y, Z_TOP + LG.STUB_TNG_H / 2.0),
-                            (-EGX, 0.0, 0.0), ADAPTER_UP))
+    # M4 LOCK PIN: the set screw from the endplate's insert crosses the tongue here,
+    # through a clearance hole -- the same legs helper the endplate's half comes from,
+    # shaped by cadkit from this part's print direction
+    b = b.cut(LG.tongue_pin_cutter(LEG_X, LEG_Y, EGX, Z_TOP, ADAPTER_UP))
     return b
 
 
