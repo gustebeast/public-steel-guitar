@@ -132,65 +132,48 @@ def _tooth_cutter(axis: str, lo: float = None, length: float = None):
 
 # ── Screw drive pulley (axis Z) ──────────────────────────────────────────
 def screw_pulley(high: bool = False) -> cq.Workplane:
-    """Screw drive pulley, origin at the TOOTHED BAND'S CENTRE. TWO SKUs.
+    """Screw drive pulley, origin at the TOOTHED BAND'S CENTRE. An ENDCAP, in TWO SKUs.
 
-    Both span the SAME length of rod — thrust plane down to the screw's bottom — so
-    both get the same ~19.5 mm of formed-thread engagement. That matters because this
-    part IS the retaining collar: its pilot-thread bore grips the rod and the string's
-    147 N jams the boss on top up into the thrust bearings, so it needs no set screw
-    and no separate collar, and it should not come in a strong and a weak version.
+    The rod ends in a BLIND pilot-thread socket in the column above the band; the band's
+    core is solid. A through-bore is impossible at Tr8 — the Ø7.8 pilot groove is wider
+    than a 14T band's tooth root — and the endcap is what lets the pulley stay 14T.
 
-    What differs is WHERE the column sits, which is also what decides how each prints:
+    This part is still the retaining collar: the socket's formed thread grips the rod and
+    the string's 147 N jams the boss on top up into the thrust bearing's inner ring.
 
-      high=False (LOW plane, belt low)  — column ABOVE the band, so the part prints
-          FLANGE-DOWN: a full Ø11 disc flat on the bed, everything above stepping
-          inward except the top flange's 45° cone.
-      high=True  (HIGH plane, belt high) — column BELOW the band, so the part prints
-          COLUMN-DOWN and its lower flange cannot be a disc: Ø7.2 out to Ø11 is an
-          outward step and it is a 45° CONE instead. A cone retains the belt just as
-          well; what it also does is carry itself.
+    The SKUs differ only in COLUMN LENGTH (PULLEY_COL_HI vs PULLEY_COL_H, BELT_PLANE_DZ
+    apart). That is what puts their bands on the two belt planes while their tops — and so
+    their sockets — sit at the same Z. Both print FLANGE-DOWN.
     """
-    g, cn, cb = D.PULLEY_GAP, D.PULLEY_CONE, D.PULLEY_CONE_B
+    g, cn = D.PULLEY_GAP, D.PULLEY_CONE
     ro, rf = D.PULLEY_OD / 2, D.PULLEY_FLANGE_OD / 2
-    out = cyl(D.PULLEY_OD, g, z=-g / 2)                              # toothed band
+    col = D.PULLEY_COL_HI if high else D.PULLEY_COL_H
+    out = cyl(D.PULLEY_OD, g, z=-g / 2)                              # toothed band, solid
     out = out.union(_cone(ro, rf, cn, cq.Vector(0, 0, g / 2),        # 45° top flange
                           cq.Vector(0, 0, 1)))
     top = g / 2 + cn
-    if not high:                                                     # LOW: column above
-        out = out.union(cyl(D.PULLEY_SPACER_D, D.PULLEY_COL_H, z=top))
-        top += D.PULLEY_COL_H
-    out = out.union(cyl(D.PULLEY_BOSS_D, D.PULLEY_BOSS_H, z=top))
+    out = out.union(cyl(D.PULLEY_COL_D, col, z=top))                 # column, above the band
+    top += col
+    out = out.union(cyl(D.PULLEY_BOSS_D, D.PULLEY_BOSS_H, z=top))    # pilot onto inner ring
     top += D.PULLEY_BOSS_H
 
-    # LOWER FLANGE, both SKUs: a 45° face toward the BELT so it self-centres instead of
-    # running out of the ribs into a wall. It narrows going up, so it prints.
+    # LOWER FLANGE: a 45° face toward the belt so it self-centres, then a full disc as the
+    # bed face. It narrows going up, so it prints.
     bot = -g / 2 - cn
     out = out.union(_cone(rf, ro, cn, cq.Vector(0, 0, bot), cq.Vector(0, 0, 1)))
-    if high:
-        # ...and away from the belt it flares back OUT to the column: the pair makes a
-        # bicone, and this half is the 45° step the column needs to print under it.
-        out = out.union(_cone(D.PULLEY_SPACER_D / 2, rf, cb,
-                              cq.Vector(0, 0, bot - cb), cq.Vector(0, 0, 1)))
-        bot -= cb
-        out = out.union(cyl(D.PULLEY_SPACER_D, D.PULLEY_COL_BELOW,
-                            z=bot - D.PULLEY_COL_BELOW))
-        bot -= D.PULLEY_COL_BELOW
-    else:
-        out = out.union(cyl(D.PULLEY_FLANGE_OD, D.PULLEY_FLANGE_T,   # full disc = bed face
-                            z=bot - D.PULLEY_FLANGE_T))
-        bot -= D.PULLEY_FLANGE_T
+    out = out.union(cyl(D.PULLEY_FLANGE_OD, D.PULLEY_FLANGE_T, z=bot - D.PULLEY_FLANGE_T))
 
     out = out.cut(_tooth_cutter("Z", lo=-g / 2, length=g))           # 14 GT2 grooves
-    # PILOT THREAD, full height: the bore prints as a shallow female helix and the
-    # Tr5×1 rod swages the last 0.1 going in. Torque path AND retention, both SKUs.
-    _h = int(top - bot) + 4                                          # whole turns, past both
-    out = out.cut(threaded_rod(D.FORM_MINOR, D.FORM_MAJOR, D.SCREW_PITCH, _h,
-                               z=bot - 2, overshoot=0.05, bevel_ends=False), clean=False)
-    _li = 0.4                                                        # lead-in, both ends
-    for zc, d0, d1 in ((bot - 0.01, D.FORM_MAJOR + 2 * _li, D.FORM_MAJOR),
-                       (top - _li, D.FORM_MAJOR, D.FORM_MAJOR + 2 * _li)):
-        out = out.cut(_cone(d0 / 2, d1 / 2, _li + 0.01,
-                            cq.Vector(0, 0, zc), cq.Vector(0, 0, 1)), clean=False)
+    # BLIND PILOT-THREAD SOCKET from the top. The cutter runs whole turns and overshoots
+    # the mouth; only its floor is placed.
+    floor = top - D.PULLEY_SOCKET_L
+    turns = math.ceil((D.PULLEY_SOCKET_L + 2.0) / D.SCREW_PITCH)
+    out = out.cut(threaded_rod(D.FORM_MINOR, D.FORM_MAJOR, D.SCREW_PITCH,
+                               turns * D.SCREW_PITCH, z=floor, overshoot=0.05,
+                               bevel_ends=False), clean=False)
+    _li = 0.4                                                        # lead-in at the mouth
+    out = out.cut(_cone(D.FORM_MAJOR / 2, D.FORM_MAJOR / 2 + _li, _li + 0.01,
+                        cq.Vector(0, 0, top - _li), cq.Vector(0, 0, 1)), clean=False)
     return out
 
 
