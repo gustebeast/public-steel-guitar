@@ -31,7 +31,6 @@ from . import dimensions as D
 from . import motor_bank as MB
 from .components import MOTOR_PULLEY_STANDOFF
 from .helpers import box_at, cyl
-from cadkit.fasteners import M2, cut_anchor
 from cadkit.joinery import PrintSpec, joint
 
 T        = D.WALL_THICKNESS            # rail thickness (solid; slicer infills)
@@ -375,17 +374,12 @@ def _build_full() -> cq.Workplane:
                              x=(AFE_X0 - 2 + AFE_X1 + 2) / 2,
                              y=(AFE_Y0 - 2 + AFE_Y1 + 2) / 2,
                              z=(Z_BOT + AFE_PED_TOP) / 2))
-    # two posts hold the board (tops flush -> it RESTS on them); the -X/-Y post
-    # is a fat boss carrying one M2 anchor so a single screw retains the AFE (no
-    # snap/flexure -- the deliberate rule). The pedestal is solid below, so the
-    # self-tap runs full depth.
-    _afe_scr = (AFE_X0 + 4, AFE_Y0 + 4)
-    for _px, _py in (_afe_scr, (AFE_X1 - 4, AFE_Y1 - 4)):
-        _is_scr = _px == _afe_scr[0] and _py == _afe_scr[1]
-        body = body.union(cyl(7.0 if _is_scr else 6.0, AFE_Z - AFE_PED_TOP, z=AFE_PED_TOP)
+    # two posts carry the board (tops flush -> it RESTS on them). NO retention yet (user,
+    # 2026-09-10): the M2 anchor in the -X/-Y post and its fat boss are gone, and the AFE is
+    # revisited later under the one-M4-beside-the-board rule (cadkit pcb_cradle hold_edge).
+    for _px, _py in ((AFE_X0 + 4, AFE_Y0 + 4), (AFE_X1 - 4, AFE_Y1 - 4)):
+        body = body.union(cyl(6.0, AFE_Z - AFE_PED_TOP, z=AFE_PED_TOP)
                           .translate((_px, _py, 0)))
-    body = cut_anchor(M2, body, (_afe_scr[0], _afe_scr[1], AFE_Z), (0, 0, -1),
-                      M2.anchor_min_wall)
     # NO wire raceways through the ribs. The ribs are for STRUCTURE and holding LEVERS
     # only: every rib carries the knee/pedal-lever octagon mortise along its whole Y, and
     # a lever slides to ANY knee depth in ANY bay -- so a cable sitting in a rib would
@@ -487,9 +481,12 @@ def _build_full() -> cq.Workplane:
     # gets tunnelled for extra engagement. The end-wall groove's blind end
     # (in the endplate) is the flush hard stop. ONE vertical M4 per stub
     # drops down the rail web from under the deck into the INBOARD ridge
-    # = the Y-retention SHEAR PIN: Ø8.4 head well to Z_BOT+30 (3 mm hex
+    # = the Y-retention SHEAR PIN: Ø8.4 head well to Z_BOT+30 (the 2.5 mm
     # key reaches through it), Ø4.6 shaft way on down to the groove, Ø3.6
-    # pilot in the ridge. Screw: M4×35 (head -45.15, tip -80.15).
+    # pilot in the ridge. Screw: M4×35 BUTTON head (ISO 7380, Ø7.6 in the Ø8.4
+    # well; head -45.15, tip -80.15) -- the belt tensioner's SKU. It was a
+    # 3 mm-key socket cap; the button head is what puts it on the instrument's
+    # one 2.5 mm key (user), and a shear pin never needed the cap's torque.
     from .legs import corner_groove_negatives as _cgn, _cross_x as _cx
     _xc_mid = sum(LEG_STATIONS_X) / 2
     for _sx in LEG_STATIONS_X:
@@ -528,13 +525,14 @@ def _build_full() -> cq.Workplane:
 # The end removal would otherwise strip the rail off the leg + leave the endplate
 # clearing it with a big empty box; instead we KEEP a rail shell (its T wall IS the
 # body wrap) over the leg, re-cutting the leg dovetail slot in it (_leg_shell).
-KH_EP_THK     = D.KEYHEAD_W  # keyhead endplate thickness in X (= keyhead_endplate.T_EP).
-                             # NOT D.ENDPLATE_W any more -- the keyhead is the thicker of
-                             # the two ends now, see dimensions.KEYHEAD_W
+from . import nut_block as _NB                # nut_block imports only dimensions: no cycle
+KH_EP_THK     = _NB.KEYHEAD_W  # keyhead endplate thickness in X (= keyhead_endplate.T_EP),
+                               # DERIVED from its stow bores (user). The -X legs, their shells
+                               # and dovetails below all follow it by the flush-X rule.
 EP_LEG_CLR    = EP_TOP_CLR    # assembly clearance: endplate foot pocket vs the kept shell
                               # (= the top-joint clearance -- ONE value for both L joints)
 EP_LEG_BUFFER = D.XBAR        # 10 mm solid body between the leg tenon and the endplate wall
-EP_TIP_NX = KH_X - KH_EP_THK              # keyhead -X outer face (-636)
+EP_TIP_NX = KH_X - KH_EP_THK              # keyhead -X outer face
 EP_TIP_PX = D.BRIDGE_BASE_X1              # bridge +X outer tip (8.5) -- the ACTUAL outer face,
                                           # so the leg/shell/wall track it (10 mm wall preserved)
 

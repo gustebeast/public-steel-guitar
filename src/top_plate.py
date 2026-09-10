@@ -408,12 +408,8 @@ def _band(xa, xb, *, ui=False):
                                z=(BZ + TZ) / 2))
         body = body.cut(cyl(9.0, TZ - BZ + 2, z=BZ - 1).translate(
             (EL.JOY_X, EL.JOY_Y, 0)))
-        for dx in (-34, 34):                        # OLED mount bosses (M2 self-tap)
-            for dy in (-15, 15):
-                body = body.union(cyl(5.0, TZ - BZ, z=BZ).translate(
-                    (EL.UI_X + dx, EL.OLED_Y + dy, 0)))
-                body = body.cut(cyl(1.6, TZ - BZ + 1, z=BZ - 0.5).translate(
-                    (EL.UI_X + dx, EL.OLED_Y + dy, 0)))
+        # (OLED: NO fasteners or retention yet -- user, 2026-09-10. The four M2 self-tap
+        #  pilots are gone; revisited later under the one-M4-beside-the-board rule.)
     return body
 
 

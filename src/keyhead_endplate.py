@@ -8,10 +8,11 @@ with the deck panels already in place. It:
   - terminates the strings (gauged break edge + 2-row clamps), bearing on solid
     PETG-GF — no separate nut block, no 4 corner bolts;
   - sockets a dovetail tongue on each rail end (mirrors the bridge joint) -> X+Y lock
-    + grip against the +X string tension; locked in +Z by ONE thread-forming screw up
-    from the chassis floor bottom into the solid body.
+    + grip against the +X string tension; locked in +Z by ONE M4×18 button-head screw
+    up from the chassis floor bottom, forming its own thread in the solid body
+    (2.5 mm key -- the same one every other screw on the instrument takes).
 
-Service: send motors slack, back off the clamp set screws, remove the +Z screw,
+Service: send motors slack, remove the +Z screw,
 lift this piece out, slide the deck panels off -X.
 """
 
@@ -55,11 +56,11 @@ def _stow_bore(d, x_hole, x_face, z_top, z_bot):
 # dropping straight DOWN (+Z→−Z): it sockets a dovetail tongue on each rail end (X+Y
 # lock + grip vs the +X string tension) and is held by those alone (no screw). Nut
 # block fused in (~15 % infill).
-T_EP = CH.KH_EP_THK                        # FULL thickness (X), at the top only (=25; the leg
+T_EP = CH.KH_EP_THK                        # FULL thickness (X), derived in nut_block (the leg
                                            # shell's -X edge is pinned to this so the -X wall = T)
 XHI  = CH.KH_X                             # +X (inboard) face (-611); the rail end stops
                                            # EP_TOP_CLR short of it (CH.KH_RAIL_X)
-XLO  = XHI - T_EP                          # = -636
+XLO  = XHI - T_EP                          # -X outer (bed) face
 KX   = (XLO + XHI) / 2
 YFL  = CH.Y_LO - CH.T / 2                   # full width: -Y rail outer face
 YFH  = CH.Y_HI + CH.T / 2                   # +Y rail outer face
@@ -73,8 +74,6 @@ FOOT_Z = CH.KH_DT_Z0                       # foot line (-23.15): fill band botto
 LEG_CLR = CH.EP_LEG_CLR                    # assembly clearance around the kept chassis shell (shared)
 LEG_SHELL_X0, LEG_SHELL_X1 = CH.LEG_SHELL_NX     # -625.6 .. -610.6 (rail-takeover region)
 
-ZHOLE_D = 5.0                              # string-stow bore Ø (string + pliers grip; pitch is 9.5)
-ZHOLE_X = XLO + 8 * D.BEAD                 # -629.6: keeps ~3.9 mm of wall -X of the bore
 
 
 def _build():
@@ -130,7 +129,7 @@ def _build():
         for _n in _esn(CH.LEG_STATIONS_X[1], _ly, -1.0, CH.Z_BOT):
             w = w.cut(_n)
     # STRING-END STOWAGE (one per string): a vertical bore set INBOARD of the -X face
-    # (ZHOLE_X, ~3.5 mm of wall left -X of it) running from near the body top straight DOWN
+    # (the stow bores, 1.6 of wall -X of them) running from near the body top straight DOWN
     # and out through the bed -- the cut string end tucks into it, so almost nothing
     # protrudes -X and what does is a smooth loop, not a sharp tail. The string can't drop
     # in from straight above (the nut-block riser caps that), so the bore curves smoothly
@@ -145,6 +144,11 @@ def _build():
     # was aimed at its neighbour's. Reading nut_block.wrap_y ties them to the wrap for good.
     w = w.cut(NB.all_stow_channels(CH.Z_BOT - 1.0 - D.STRING_Z)
               .translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z)))
+    # RE-BORE THE WRAP ROD, after every union. The Ø8 rod dips below the deck plane, where the
+    # nut block stops and this part's base prism begins, and that prism filled the bottom of
+    # the bore back in (the gate: 905 mm3 of rod inside the endplate). Same cutter as the
+    # nut block's own, from the module that owns the rod.
+    w = w.cut(NB.rod_bore().translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z)))
     return heal(w)
 
 
