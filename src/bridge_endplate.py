@@ -165,7 +165,7 @@ MIN_ADDED = D.MIN_WALL_2P         # 1.6 -- two-bead QUALITY floor for material t
 # forced the nut's boss to be recessed at all. With the cage gone the ceiling drops
 # to just over the screw tops, and everything it used to squeeze goes away with it.
 ROOM_Z0      = D.NUT_BOT_MIN - 1.0            # -26.35, under the nut's lowest sweep
-ROOM_Z1      = D.TOP_BRG_Z0                   # -3.2 — the ceiling IS the top bearing's
+ROOM_Z1      = D.CHANGER_CEIL_Z               # -3.2 — the changer room's
                                               # seat mouth. The screw no longer stops
                                               # under the ceiling; it runs on past the
                                               # nut INTO the slab, to its top bearing.
@@ -291,6 +291,18 @@ assert GUIDE_ROD_TOP <= D.STRING_Z - D.BRIDGE_BEARING_OD - 1.0 + 1e-9, (
 # they are one budget. The ledge wins, because the rod does not need the socket: it is
 # a cantilever off the slab and its LOAD POINT is the ear ~17 mm up, not its free end.
 GUIDE_SOCKET_Z = _SR_TOP                        # rod bottoms on the rail top, no socket
+# COLLAR ROUND THE ROD'S BASE, so the rod gets engagement without a socket (user). A
+# socket would have come straight out of BRG_LEDGE_T -- the ledge is 1.60 and is what
+# backs the bearing's outer ring under the whole string load, so boring 1.60 into it
+# would have taken all of it. Building UP costs nothing that is spoken for.
+# The radius is capped by the NUT'S OWN BOSS, which is Ø10.2 on the screw axis and
+# sweeps down to NUT_BOT_MIN, 0.15 below this collar's top -- so the two overlap in Z
+# and the collar has to clear it in X instead. That leaves 1.17 of wall round the rod:
+# over the one-bead floor, under the two-bead preference, and set by the bought nut
+# rather than by choice.
+GUIDE_BOSS_H = 2 * D.BEAD                       # 1.6 of collar above the rail top
+GUIDE_BOSS_R = min((D.GUIDE_ROD_D + D.GUIDE_ROD_FIT) / 2 + D.MIN_WALL_2P,
+                   D.NUT_HOLE_DX - D.NUT_BOSS_D / 2 - 0.2)
 # The web between this bore and the top bearing's pocket is the tight spot, and it is
 # a teardrop-apex-to-bore-wall distance, not a wall anyone chose:
 _GUIDE_WEB = ((-D.SCREW_ROW_DX - D.NUT_HOLE_DX + (D.GUIDE_ROD_D + D.GUIDE_ROD_FIT) / 2)
@@ -680,6 +692,11 @@ def _build() -> cq.Workplane:
     # Teardrops, like every Z bore in this part: the axis runs sideways to the -X
     # build, so a plain cylinder droops out of round, and a socket that is not round
     # cannot hold a press fit square — which here is the entire job.
+    # COLLARS FIRST, then the bores through them. Unioning after the cut would refill
+    # every rod bore over the collar's height -- the failure this file keeps paying for.
+    for i in range(D.N_STRINGS):
+        body = body.union(cyl(2 * GUIDE_BOSS_R, GUIDE_BOSS_H,
+                              z=_SR_TOP).translate((D.guide_rod_x(i), D.string_y(i), 0.0)))
     for i in range(D.N_STRINGS):
         sy = D.string_y(i)
         # ONE bore, all the way from the slab's top down to the blind socket floor in

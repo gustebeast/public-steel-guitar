@@ -57,9 +57,12 @@ assert _NUT_GAP >= 1.0 - 1e-9, (
 # inner ring by ~0.4, still covering the outer ring (bore ~7.0-7.2) by ~0.8.
 # It is the mirror of the constraint on screw_collar's Ø5.6 pilot boss, which lands on
 # the inner rings only for the same reason from the other side.
-SEAT_LEDGE_D = 15 * D.BEAD                 # 12.0 — re-datumed to 688ZZ (Ø8x16)
-assert SEAT_LEDGE_D >= 11.0, "the ledge would foul the 688's rotating inner ring"
-assert SEAT_LEDGE_D <= 13.4, "the ledge no longer backs the 688's outer ring"
+SEAT_LEDGE_D = 18 * D.BEAD                 # 14.4 — lands on 688ZZ's OUTER ring
+# 12.0 was wrong: it sat in the SHIELD zone (~10.2..13.8), so the ledge would have
+# pressed on a shield rather than the outer ring it has to back. The outer ring starts
+# at ~13.8, so the bore has to clear that before it bears on anything real.
+assert SEAT_LEDGE_D >= 13.8, "the ledge would press the 688's SHIELD, not its outer ring"
+assert SEAT_LEDGE_D <= 15.4, "the ledge no longer backs the 688's outer ring"
 
 # WHY THE LEDGE IS ON TOP, not underneath (user asked, and the answer is the load).
 # The string pulls every carriage +Z, so the screw is pulled +Z at 88-147 N. The
