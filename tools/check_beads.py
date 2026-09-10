@@ -71,6 +71,10 @@ def _ex(cat: str, **kv) -> None:
 
 # Real objects. These are measurements, not choices.
 _ex("hardware",
+    leg_stack__M4_PILOT_D="thread-forming pilot for an M4 screw, the one the body "
+                          "stub's pins already use",
+)
+_ex("hardware",
     MOTOR_SQ="NEMA17 body 42.3 sq (SERVO42D)",
     MOTOR_PCB_LEN="SERVO42D driver PCB stack",
     NEMA17_BOLT_SQ="NEMA17 bolt circle 31.0",
@@ -239,8 +243,6 @@ _ex("clearance",
     leg_latch__CLR="latch slider sliding clearance in its pocket, notch and recess",
     leg_latch__CH_FLOOR="= the mortise's roof + 0.5 standoff so the hook never rubs "
                         "the tenon beside it: grid-derived plus a CLEARANCE",
-    leg_latch__BRIDGE_SAG="room over the hook tip for the adapter pocket's 5.3 mm "
-                          "bridge to droop into: a gap, never material",
 )
 _ex("clearance",
     FIT_CLR="slip fit",
