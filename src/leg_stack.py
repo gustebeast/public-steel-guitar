@@ -223,14 +223,35 @@ assert Z_ADJ_SCREW - Z_FIX_TEN_BOT - ADJ_HOLE_D / 2 >= 2 * _CLR_D, (
 #
 #   The LADDER screw carries the WHOLE LEG LOAD whenever the instrument stands:
 #     body -> butts -> adjust sleeve -> ladder screw -> adjust tenon -> bar ->
-#     floor. Blind in the tenon it would be a cantilever pin: 400 N (someone
-#     leaning on the instrument) bends an M4's ~3.1 core to roughly 400-800 MPa,
-#     at or past yield. So it goes ALL THE WAY THROUGH the tenon and into the -X
-#     wall, supported both sides (near pure shear, ~53 MPa), and stops LADDER_SKIN
-#     short of the -X face -- the user's stop point, and the clean exposed face.
+#     floor. It goes in from +X and stops BLIND IN THE TENON, LADDER_SKIN short of
+#     the tenon's -X faces. It used to run through the tenon into a seat in the
+#     sleeve's -X wall, for support both sides -- but the adjust tenon is the one
+#     part of the leg that is EXPOSED, and that left every ladder hole open on its
+#     -X side (user: keep the exposed -X face clean).
+#     What that costs, stated: with ~29 mm of engagement the screw's only bending
+#     arm is the 0.3 fit gap at the +X wall, so the M4 is still in near-pure shear
+#     (~53 MPa at a hard 400 N lean). What drops is BEARING -- only the +X sleeve
+#     wall carries it now: 4 x 5.8 = 23 mm2, ~700 N at 30 MPa, SF ~1.75 on 400 N.
 JOIN_SEAT = 15 * B                 # 12.0 sleeve-joint screw depth into the tenon, 3 x d
-LADDER_SKIN = D.MIN_WALL_2P        # 1.6 of the -X wall left whole under the ladder
-                                   # screw's tip
+LADDER_SKIN = D.MIN_WALL_2P        # 1.6 of tenon left over the ladder hole's blind end,
+                                   # measured SQUARE to the tenon's 45-degree -X flanks
+# The blind end sits where the hole's EDGE (not its centre) keeps LADDER_SKIN to the
+# flank: the flank is |x| + |y| = TEN_W/sqrt2, the hole edge is at |y| = d/2, and a
+# 45-degree face puts sqrt2 x the skin along X.
+# THE TENON'S HOLES run exactly 45 degrees to its build, so a plain round bore sits
+# exactly AT the self-support limit -- and at each +X mouth its crown runs downhill
+# out through the flank and the last of it hangs (layer-support check: ~0.15 mm2 per
+# hole; a face-angle probe could not see it). Cut with a STRICTER limit, the crown
+# gets a peak and clears, mouth included (cadkit.holes). How strict is MEASURED, not
+# picked: 50 still left 0.17 mm2 across three holes; 60 leaves 0.0 even with the
+# check's noise threshold dropped to 0.02.
+TEN_HOLE_LIMIT_DEG = 60.0
+_TEN_HOLE_TILT_DEG = 45.0          # every tenon hole is 45 to the tenon's build
+# ...and the peak reaches further than the round bore, toward the build direction
+TEN_HOLE_REACH = (ADJ_HOLE_D / 2.0) / (math.cos(math.radians(TEN_HOLE_LIMIT_DEG))
+                                       / math.sin(math.radians(_TEN_HOLE_TILT_DEG)))  # 2.83
+LADDER_BOTTOM_X = -(TEN_W / math.sqrt(2.0) - TEN_HOLE_REACH
+                    - LADDER_SKIN * math.sqrt(2.0))           # -11.88 from the axis
 TEN_APEX = TEN_W / math.sqrt(2.0) - CHAM / 2.0   # 16.171 axis -> the tenon's apex,
                                                  # which faces +X as well as +Y
 assert JOIN_SEAT < TEN_APEX, "a sleeve-joint screw would come out of the tenon's -X side"
@@ -319,13 +340,15 @@ def _sleeve(z0: float, z1: float):
     return b.cut(mortise_cutter(z0 - 1.0, z1 + 1.0))
 
 
-def _from_plus_x(d: float, z: float, x_end: float, print_up):
+def _from_plus_x(d: float, z: float, x_end: float, print_up,
+                 limit_deg: float = 45.0):
     """A hole along X, entering from outside the +X face and stopping at world
     x_end, at height z. Via cadkit, so it is shaped for the part it is cut into: a
     teardrop in a sleeve (sideways to its build), a plain round bore in a tenon
     (45 degrees to its build -- the round bore already self-supports there)."""
     x0 = LEG_X + LEG_W / 2.0 + 2.0
-    return teardrop_hole(d, x0 - x_end, (x0, LEG_Y, z), (-1.0, 0.0, 0.0), print_up)
+    return teardrop_hole(d, x0 - x_end, (x0, LEG_Y, z), (-1.0, 0.0, 0.0), print_up,
+                         limit_deg=limit_deg)
 
 
 # ── the printed parts ───────────────────────────────────────────────────────
@@ -337,12 +360,9 @@ def adjust_sleeve():
     # and the pedal bar sliding off when the instrument is lifted
     # clearance through the +X wall only; the -X wall is untouched
     b = b.cut(_from_plus_x(_CLR_D, Z_ADJ_SCREW, LEG_X, SLEEVE_UP))
-    # the LADDER screw: clearance through the +X wall, then a close seat in the -X
-    # wall for its tip, stopping LADDER_SKIN short of the -X face
-    b = b.cut(_from_plus_x(_CLR_D, Z_LADDER, LEG_X, SLEEVE_UP))
-    return b.cut(teardrop_hole(ADJ_HOLE_D, LEG_W / 2.0 - LADDER_SKIN,
-                               (LEG_X, LEG_Y, Z_LADDER), (-1.0, 0.0, 0.0),
-                               SLEEVE_UP))
+    # the LADDER screw: clearance through the +X wall only. Its tip ends blind in
+    # the tenon, so the -X wall is untouched too.
+    return b.cut(_from_plus_x(_CLR_D, Z_LADDER, LEG_X, SLEEVE_UP))
 
 
 def fixed_sleeve():
@@ -368,11 +388,11 @@ def adjust_tenon(top: float = Z_ADJ_TEN_TOP):
     t = tenon(top - ADJ_TEN_L, top)
     for i in range(ADJ_N + 1):
         z = top - (LADDER_OFF + i * ADJ_PITCH)
-        # along X, straight through (the ladder screw is supported in both sleeve
-        # walls); via cadkit, which returns a plain round bore at 45 to the
-        # tenon's diagonal build
-        t = t.cut(teardrop_hole(ADJ_HOLE_D, 2 * TEN_W, (LEG_X - TEN_W, LEG_Y, z),
-                                (1.0, 0.0, 0.0), TENON_UP))
+        # in from +X, BLIND: stops LADDER_SKIN short of the -X flanks, so the
+        # exposed tenon's -X side shows no holes (user). Via cadkit, which returns
+        # a plain round bore at 45 to the tenon's diagonal build.
+        t = t.cut(_from_plus_x(ADJ_HOLE_D, z, LEG_X + LADDER_BOTTOM_X, TENON_UP,
+                               limit_deg=TEN_HOLE_LIMIT_DEG))
     return t
 
 
@@ -390,7 +410,7 @@ def fixed_tenon():
     # apex JOIN_SEAT deep, and no further
     for z in (Z_FIX_SCREW, Z_ADJ_SCREW):
         t = t.cut(_from_plus_x(ADJ_HOLE_D, z, LEG_X + TEN_APEX - JOIN_SEAT,
-                               TENON_UP))
+                               TENON_UP, limit_deg=TEN_HOLE_LIMIT_DEG))
     return t
 
 

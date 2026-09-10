@@ -32,12 +32,18 @@ Every case leaves the steepest ceiling at exactly the limit and no steeper. A
 fixed 45 teardrop on an oblique hole is not wrong, just wasteful: it slits
 walls the hole never needed to touch.
 
-THE HOLE'S MOUTH adds no overhang of its own. Where a bore breaks out through
-a surface the only faces are the bore (at the slope above) and that surface
-(which is whatever it already was); the rim between them is an EDGE, and an
-edge has no area to sag. Measured, not argued: a 45-built floating tenon with
-Ø4 holes tilted exactly 45 has no surface steeper than 45 anywhere, mouths
-included. The one case that still raises is PARALLEL -- a hole along the build
+THE HOLE'S MOUTH, AT EXACTLY THE LIMIT -- and an earlier version of this note
+was WRONG. It claimed the mouth adds no overhang, "measured": but the
+measurement was a FACE-ANGLE probe, and every face there really is at 45. What
+it cannot see is a 45-degree crown that DESCENDS toward the mouth, so the last
+of it hangs from its low, outer end. A slicer-style layer-support check found
+it: ~0.15 mm2 per hole at the +X mouths of Ø4 holes tilted exactly 45 in a
+45-built floating tenon. So a hole tilted at (or within a hair of) the limit
+that exits on its crown's downhill side should be cut with a stricter
+`limit_deg`, and HOW strict is worth measuring rather than guessing: for those
+tenon holes 50 still left 0.17 mm2 across three mouths, 60 left nothing. The
+crown then gets a peak and the mouth prints. The default stays 45, so sideways holes
+keep their classic teardrop. PARALLEL still raises -- a hole along the build
 axis prints round on its own.
 
 Mind the apex room: the peak reaches r*sqrt(2) from the axis in the
@@ -63,7 +69,8 @@ def _unit(v):
 
 
 def teardrop_hole(d, length, axis_point=(0.0, 0.0, 0.0),
-                  axis_dir=(1.0, 0.0, 0.0), print_up=(0.0, 0.0, 1.0)):
+                  axis_dir=(1.0, 0.0, 0.0), print_up=(0.0, 0.0, 1.0),
+                  limit_deg=SELF_SUPPORT_DEG):
     """CUTTER for a round hole: a Ø`d` cylinder from `axis_point` along
     `axis_dir` for `length`, its ceiling peaked toward `print_up` only as far
     as the hole's tilt requires (see OBLIQUE HOLES above). Square to print_up
@@ -90,7 +97,9 @@ def teardrop_hole(d, length, axis_point=(0.0, 0.0, 0.0),
     plane = cq.Plane(origin=cq.Vector(*axis_point), xDir=cq.Vector(*x),
                      normal=cq.Vector(*a))
     bore = cq.Workplane(plane).circle(r).extrude(length)
-    cos_psi = math.cos(math.radians(SELF_SUPPORT_DEG)) / sin_t
+    # limit_deg: the steepest ceiling allowed. Stricter than the default gives a
+    # peak where the plain bore would sit exactly AT 45 (see THE HOLE'S MOUTH).
+    cos_psi = math.cos(math.radians(limit_deg)) / sin_t
     if cos_psi >= 1.0 - 1e-9:
         return bore                               # tilt <= limit: round is fine
     psi = math.acos(cos_psi)
@@ -203,6 +212,17 @@ if __name__ == "__main__":
               f"vol {vol:7.3f}" + ("" if ok else "  <-- FAIL"))
         if not ok:
             fails.append(f"oblique tilt {tilt}: worst {w:.4f}, vol {vol:.3f}")
+    # a STRICTER limit peaks a hole the default would leave round at exactly 45
+    ax45 = (math.sqrt(0.5), 0.0, math.sqrt(0.5))
+    strict = teardrop_hole(D, L, (0.0, 0.0, 0.0), ax45, (0.0, 0.0, 1.0), limit_deg=50.0)
+    w = _worst_ceiling(strict, ax45, (0.0, 0.0, 1.0))
+    ok = (strict.val().Volume() > math.pi * R * R * L + 1e-3
+          and w <= math.cos(math.radians(50.0)) + 2e-3)
+    print("limit 50 @45  peaked, steepest ceiling %.1f deg from down%s"
+          % (math.degrees(math.acos(max(-1.0, min(1.0, w)))), "" if ok else "  <-- FAIL"))
+    if not ok:
+        fails.append("limit_deg=50 did not peak a 45-degree hole")
+
     # the PLAIN bore must fail that same check sideways, or it proves nothing
     plain = (cq.Workplane(cq.Plane((0, 0, 0), (0, 1, 0), (1, 0, 0)))
              .circle(R).extrude(L))
