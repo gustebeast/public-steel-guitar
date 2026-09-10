@@ -559,8 +559,9 @@ def _string_path(i, sy):
     pts = NB.stow_route(i, (CH.Z_BOT + 8.4) - D.STRING_Z)   # stop above the tongue top
     # The tail leaves the rod at the COIL's Y, but its bore sits behind the INSERT (nut_block.
     # stow_y), so it crosses to the bore's Y as it rises in the socket: the exit and its stub
-    # stay on the coil, every point from the rise on is at the bore.
-    ys = [wy, wy] + [NB.stow_y(i)] * (len(pts) - 2)
+    # stay on the coil, every point from the rise on follows the bore's axis -- which leans -Y
+    # as it descends (nut_block.STOW_TILT), so the descent is read off stow_y_at, not stow_y.
+    ys = [wy, wy] + [NB.stow_y_at(i, z) for _x, z in pts[2:]]
     x0, z0 = pts[0]
     prev = cq.Vector(D.NUT_BLOCK_X + x0, wy, D.STRING_Z + z0)
     out = out.union(_bead(prev, rad * 1.05))                # see _bead: the tail leaves
