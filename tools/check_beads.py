@@ -75,6 +75,7 @@ _ex("hardware",
     SCREW_SOCKET_GAP="steel rod end to socket floor: an assembly clearance, not a printed length",
     _BRG_TEARDROP="teardrop apex = r*sqrt(2) with a 0.2 bore clearance: geometry, not a wall",
     _ROD_TEARDROP="teardrop apex = r*sqrt(2) with the rod's press fit: geometry, not a wall",
+    _BELT_HALF_DIAG="half-diagonal of the 5 x 1.4 GT2 belt section: geometry, not a wall",
 )
 
 
@@ -102,7 +103,8 @@ _ex("hardware",
     SUPPORT_BRG_OD="688ZZ bearing OD 16.0",
     SUPPORT_BRG_W="= 1 x 688ZZ width 5.0, purchased geometry",
     MR85_W="MR85 bearing width 2.5",
-    SCREW_PULLEY_Z="frozen root datum (the motor bank derives from it) -- a POSITION, not a printed length",
+    SCREW_PULLEY_Z="band plane, derived from the frozen PULLEY_TOP_Z -- a POSITION, not a printed length",
+    PULLEY_TOP_Z="frozen thrust-seat datum (the band plane and motor bank derive from it) -- a POSITION",
     BRIDGE_BEARING_OD="693 bearing OD 8.0",
     BRIDGE_BEARING_W="693 bearing width 4.0",
     BRIDGE_AXLE_D="Ø3 precision shaft",
