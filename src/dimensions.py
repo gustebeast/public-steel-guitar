@@ -910,6 +910,17 @@ GAUGES_E9_IN = (.013, .015, .011, .014, .017, .020, .026, .030, .034, .038)  # s
 GAUGES_C6_IN = (.015, .014, .017, .020, .024, .030, .036, .042, .054, .070)  # str 1→10
 STRING_GAUGE = tuple(g * 25.4 for g in GAUGES_C6_IN)            # mm, index 0..9 = str 1..10 (C6)
 
+# THE HEAVIEST GAUGE THE KEYHEAD IS BUILT TO TAKE -- the ENVELOPE, not the demo SET above.
+# STRING_GAUGE is what this model happens to be strung with; a printed part has to clear
+# whatever a player may fit, or a heavier set means a reprint. Published pedal steel gauge
+# charts put the lowest wound string at up to .080: steelguitar.com's string-gauge chart
+# gives ".070 - .080 Wound" for A and ".072 - .080" for G# (b0b.com's gauge guide tops out
+# lower, G#/Ab ".072 or .074"). Only the outermost slot, string 10, ever carries it.
+GAUGE_MAX_IN     = .080
+STRING_GAUGE_MAX = GAUGE_MAX_IN * 25.4                          # 2.032 mm
+assert STRING_GAUGE_MAX >= max(STRING_GAUGE), (
+    "the demo string set is heavier than the gauge envelope the keyhead is built to take")
+
 # Nut block sits with its break edge (the open-string scale endpoint) here.
 NUT_BLOCK_X  = -MOUNTING_SPAN
 
