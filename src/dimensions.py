@@ -596,24 +596,25 @@ assert _NUT_BRG_GAP >= 1.0 - 1e-9, (
 # axis, exactly the 688ZZ's outer radius, so a channel there runs through the thrust bearing.
 # It stands off sideways instead, as close to the bearing as the seat allows, and the last
 # few mm to the ear are a step the builder pushes across with a long thin tool from +X.
-# Both cutters in the endplate are teardrops pointing -X (its print direction), and that is
-# what sets the standoff per row:
-#   NEAR row — the channel's own apex points AT its seat's round wall (the face the bearing
-#              locates against), so the APEX keeps a one-bead web to it.
-#   FAR row  — the SEAT's apex points at the channel instead. That apex is only a print-support
-#              void, so the channel may break into it; its ROUND edge keeps the web to the
-#              seat's round wall.
+# The channel is a HOUSE cut (cadkit.holes.house_hole, user 2026-09-10): the teardrop's roof
+# and apex toward -X (the endplate's print direction) over straight walls and a flat floor.
+# STANDOFF = the Ø4.6 passage circle just touches the Ø16.2 seat bore, the same for both rows.
+# There is no wall between them — only the house's corners break into the seat:
+#   NEAR row — the channel's ROOF points at its seat and pokes ~0.95 past the bore, notching
+#              a ±1 mm arc of the seat round and the ledge's outer edge (r 7.15..8.1). The
+#              bearing still locates on the rest of the round; the ledge loses ~2% of its
+#              thrust annulus.
+#   FAR row  — the channel's FLOOR faces the seat, and lands inside the seat's own teardrop
+#              apex void, so nothing is notched.
+# The barrel passes the 688's OD with 0.3 to spare (8.0 + 2.0 + 0.3 = 10.3 < 10.4).
 STRING_ACCESS_D = STRING_NUT_D + 0.6            # 4.6 — the Ø4 swaged string end passes
 
 
 def string_access_x(i: int) -> float:
     """X of string i's vertical access channel, stood off its screw AWAY from the screw axis
-    (toward the bearing tangent) as closely as the thrust-bearing seat allows."""
-    seat_r = (SUPPORT_BRG_OD + 0.2) / 2
-    r = STRING_ACCESS_D / 2
+    (toward the bearing tangent): its passage circle tangent to the thrust-bearing seat bore."""
     toward = 1.0 if screw_x(i) < 0 else -1.0    # away from its own screw, toward X = 0
-    off = (seat_r + MIN_WALL + r) if screw_far(i) else (seat_r + MIN_WALL + r * 2 ** 0.5)
-    return screw_x(i) + toward * off
+    return screw_x(i) + toward * ((SUPPORT_BRG_OD + 0.2) / 2 + STRING_ACCESS_D / 2)
 # BOTTOM of the rod: it ends in the pulley's BLIND SOCKET, a hair short of the floor so it
 # never bottoms and preloads the formed thread. Both SKUs share the top (PULLEY_TOP_MAX)
 # and the socket depth, so the rod ends at the same Z on every station.

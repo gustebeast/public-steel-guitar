@@ -1,5 +1,12 @@
 """Print-aware HOLE cutters.
 
+`house_hole(d, length, axis_point, axis_dir, print_up)` is the teardrop's
+bounding "house": the same 45° roof and apex, but straight walls tangent to
+the Ø`d` circle and a flat floor tangent to it - a pentagon. Use it for
+CLEARANCE passages (something Ø<d must pass, nothing rides the bore): the
+square corners are free room, and where a round floor would have left a thin
+cusp against a neighbouring cut the flat one merges cleanly.
+
 `teardrop_hole(d, length, axis_point, axis_dir, print_up)` returns a CUTTER
 for a round hole whose axis runs PERPENDICULAR to the print direction (a
 "sideways" hole). A plain cylinder cut prints with an unsupported sagging
@@ -27,7 +34,7 @@ import math
 
 import cadquery as cq
 
-__all__ = ["teardrop_hole"]
+__all__ = ["teardrop_hole", "house_hole"]
 
 
 def _unit(v):
@@ -35,6 +42,20 @@ def _unit(v):
     if n < 1e-12:
         raise ValueError("zero-length direction")
     return (v[0] / n, v[1] / n, v[2] / n)
+
+
+def _hole_plane(axis_point, axis_dir, print_up, who):
+    a = _unit(axis_dir)
+    u = _unit(print_up)
+    if abs(a[0] * u[0] + a[1] * u[1] + a[2] * u[2]) > 1e-6:
+        raise ValueError(f"{who} needs axis_dir PERPENDICULAR to "
+                         "print_up - a hole along the build direction "
+                         "prints round; no teardrop needed there")
+    x = (u[1] * a[2] - u[2] * a[1],               # x = print_up x axis ->
+         u[2] * a[0] - u[0] * a[2],               # plane yDir = axis x x
+         u[0] * a[1] - u[1] * a[0])               #            = print_up
+    return cq.Plane(origin=cq.Vector(*axis_point), xDir=cq.Vector(*x),
+                    normal=cq.Vector(*a))
 
 
 def teardrop_hole(d, length, axis_point=(0.0, 0.0, 0.0),
@@ -46,24 +67,31 @@ def teardrop_hole(d, length, axis_point=(0.0, 0.0, 0.0),
     overshoot the mouth by passing a longer length / earlier axis_point."""
     if d <= 0.0 or length <= 0.0:
         raise ValueError("d and length must be > 0")
-    a = _unit(axis_dir)
-    u = _unit(print_up)
-    if abs(a[0] * u[0] + a[1] * u[1] + a[2] * u[2]) > 1e-6:
-        raise ValueError("teardrop_hole needs axis_dir PERPENDICULAR to "
-                         "print_up - a hole along the build direction "
-                         "prints round; no teardrop needed there")
+    plane = _hole_plane(axis_point, axis_dir, print_up, "teardrop_hole")
     r = d / 2.0
     k = r / math.sqrt(2.0)                        # 45° tangent point
-    x = (u[1] * a[2] - u[2] * a[1],               # x = print_up x axis ->
-         u[2] * a[0] - u[0] * a[2],               # plane yDir = axis x x
-         u[0] * a[1] - u[1] * a[0])               #            = print_up
-    plane = cq.Plane(origin=cq.Vector(*axis_point), xDir=cq.Vector(*x),
-                     normal=cq.Vector(*a))
     bore = cq.Workplane(plane).circle(r).extrude(length)
     peak = (cq.Workplane(plane)
             .polyline([(-k, k), (0.0, r * math.sqrt(2.0)), (k, k)])
             .close().extrude(length))
     return bore.union(peak)
+
+
+def house_hole(d, length, axis_point=(0.0, 0.0, 0.0),
+               axis_dir=(1.0, 0.0, 0.0), print_up=(0.0, 0.0, 1.0)):
+    """CUTTER for a sideways CLEARANCE passage: the pentagon that bounds a
+    Ø`d` teardrop - flat floor at d/2 below the axis, walls at ±d/2, a 45°
+    roof tangent to the circle with its apex at (d/2)*sqrt(2) toward
+    `print_up` (the teardrop's apex exactly). Anything Ø<=d passes. Same
+    argument conventions as teardrop_hole."""
+    if d <= 0.0 or length <= 0.0:
+        raise ValueError("d and length must be > 0")
+    plane = _hole_plane(axis_point, axis_dir, print_up, "house_hole")
+    r = d / 2.0
+    eave = r * (math.sqrt(2.0) - 1.0)             # wall top: roof tangent to the circle
+    return (cq.Workplane(plane)
+            .polyline([(-r, -r), (r, -r), (r, eave), (0.0, r * math.sqrt(2.0)), (-r, eave)])
+            .close().extrude(length))
 
 
 # ── Self-test: geometry gates (run `py -3.12 holes.py`) ──────────────────────
@@ -129,6 +157,21 @@ if __name__ == "__main__":
     print(f"rod clearance {inter:.6f} mm3 (must be 0){'' if ok else '  <-- FAIL'}")
     if not ok:
         fails.append(f"rod interferes {inter}")
+
+    # house: pentagon area = d*(r+eave) + r*(r*sqrt2-eave); apex = teardrop's; holds the round
+    eave = R * (math.sqrt(2.0) - 1.0)
+    want_h = (2 * R * (R + eave) + R * (R * math.sqrt(2.0) - eave)) * L
+    h = house_hole(D, L, (1.0, 2.0, 3.0), (0.0, 1.0, 0.0), (1.0, 0.0, 0.0))
+    bbh = h.val().BoundingBox()
+    cont = h.intersect(teardrop_hole(D, L, (1.0, 2.0, 3.0), (0.0, 1.0, 0.0),
+                                     (1.0, 0.0, 0.0))).val().Volume()
+    ok = (abs(h.val().Volume() - want_h) < 1e-3 and abs(cont - want_v) < 1e-3
+          and abs(bbh.xmax - (1.0 + R * math.sqrt(2.0))) < 1e-6
+          and abs(bbh.xmin - (1.0 - R)) < 1e-6 and abs(bbh.zmax - (3.0 + R)) < 1e-6)
+    print(f"house         vol {h.val().Volume():.3f} (want {want_h:.3f}), holds the "
+          f"teardrop {cont:.3f}/{want_v:.3f}, apex x={bbh.xmax:.3f}{'' if ok else '  <-- FAIL'}")
+    if not ok:
+        fails.append("house_hole geometry wrong")
 
     # vertical axis must raise; zero size must raise
     for label, kwargs in (("parallel axis", dict(axis_dir=(0, 0, 1))),

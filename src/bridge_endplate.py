@@ -63,7 +63,7 @@ from .screw_rail import PRINT_UP as _SR_PRINT_UP
 from .helpers import box_at, cyl, cyl_y
 from cadkit.fasteners import M4, cut_anchor
 from cadkit.supports import printable_bore
-from cadkit.holes import teardrop_hole
+from cadkit.holes import house_hole
 
 # Build direction. The endplate prints FLAT on its +X face, so "up" out of the bed is -X.
 # Any round hole whose axis runs SIDEWAYS to that -- the Y-axis axle bores -- has a
@@ -607,9 +607,9 @@ def _build() -> cq.Workplane:
     body = body.cut(_seat_cutter())
     # STRING ACCESS CHANNELS through the rail plate (see dimensions.string_access_x). Cut
     # AFTER the seat re-cut and every union above, so nothing fuses back into them. Straight
-    # up the Z axis, which the -X print direction makes a sideways hole: hence the teardrop.
+    # up the Z axis, which the -X print direction makes a sideways hole: hence the house cut.
     for i in range(D.N_STRINGS):
-        body = body.cut(teardrop_hole(
+        body = body.cut(house_hole(
             D.STRING_ACCESS_D, (_SR_TOP + 1.0) - (_SR_BOT - 1.0),
             axis_point=(D.string_access_x(i), D.string_y(i), _SR_BOT - 1.0),
             axis_dir=(0.0, 0.0, 1.0), print_up=PRINT_UP))
