@@ -83,7 +83,7 @@ PIN_CLR  = D.NUT_PIN_CLR
 PIN_SEAT_D = PIN_D + 2 * PIN_CLR
 PIN_SEAT_L = PIN_L + 2 * PIN_CLR
 
-ROD_D = D.BRIDGE_AXLE_D                         # Ø5 — the bridge axle's own shaft
+ROD_D = D.NUT_WRAP_ROD_D                        # Ø5 (was the bridge axle's stock until that went Ø8)
 ROD_FIT = 0.4                                   # the rod is LOCATED, not gripped: the wraps
                                                 # load it -X and the comb takes that; it only
                                                 # has to slide in through 10 fingers at once

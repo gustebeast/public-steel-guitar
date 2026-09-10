@@ -280,9 +280,14 @@ GUIDE_DROP_Z1  = BRACE_Z1                       # 14.01, the top of the slab: th
 # further -X, drags the nut and therefore the string anchor with it and steepens a break
 # angle that is already past 90°. The BORE keeps its full length, so the drop-in path is
 # unaffected; only 0.025 of a slot wall is grazed, which is nothing.
-GUIDE_ROD_TOP  = (D.STRING_Z - D.BRIDGE_BEARING_OD) - 1.0   # 2.0, a mm under the bearing
-assert GUIDE_ROD_TOP <= D.STRING_Z - D.BRIDGE_BEARING_OD - 1.0 + 1e-9, (
-    "the guide rod reaches into the bridge bearing's Z band")
+# TWO ROWS moved every rod OUTBOARD of the bridge bearing in X (rods at ±20, the bearing
+# spans the axle ± OD/2), so that cap only applies while a rod line is still inside the
+# bearing's X extent. Otherwise the top stays at 2.0, where the Ø13 bearing put it, and
+# the ~34 mm rod keeps its length through the 688ZZ swap.
+_ROD_UNDER_BRG = any(abs(D.guide_rod_x(i) - D.BRIDGE_AXLE_X)
+                     < D.BRIDGE_BEARING_OD / 2 + D.GUIDE_ROD_D / 2 + 1.0
+                     for i in range(D.N_STRINGS))
+GUIDE_ROD_TOP  = (D.STRING_Z - D.BRIDGE_BEARING_OD) - 1.0 if _ROD_UNDER_BRG else 2.0
 # THE ROD NO LONGER SOCKETS INTO THE RAIL. It used to drop 4.0 into a blind socket so
 # it was a beam supported at both ends. At Ø8 bore the thrust bearing is Ø16 OD, and its
 # radius reaches EXACTLY the rod line at NUT_HOLE_DX 8.0 — there is no rail material
@@ -711,9 +716,14 @@ def _build() -> cq.Workplane:
     # so a string drops in sideways instead of being threaded down a second hole.
     for i in range(D.N_STRINGS):
         sy = D.string_y(i)
-        body = body.cut(box_at((X1 + 1.0) - D.string_anchor_x(i), STRING_SLOT_W,
+        # -X END: the -X-most of the ear and the bearing tangent (BRIDGE_X), less half a slot.
+        # The far row's ear is +X of the tangent, so its string leans back -X as it rises; a
+        # slot starting AT the ear left that lean cutting through the slot's end wall (user
+        # saw the far-row strings clipping). Half a slot also covers the string's own radius.
+        sx0 = min(D.string_anchor_x(i), D.BRIDGE_X) - STRING_SLOT_W / 2
+        body = body.cut(box_at((X1 + 1.0) - sx0, STRING_SLOT_W,
                                (Z6 + 1.0) - _SR_TOP,
-                               x=(D.string_anchor_x(i) + X1 + 1.0) / 2, y=sy,
+                               x=(sx0 + X1 + 1.0) / 2, y=sy,
                                z=(_SR_TOP + Z6 + 1.0) / 2))   # from the plate top, not the rod socket
     # LIGHT COVER for the optical strip, unioned in: its roof lands on the comb
     # brace at XLO and its slots sit over the sensor triplets.
@@ -750,8 +760,10 @@ def _build() -> cq.Workplane:
     _br_x1   = D.BRIDGE_AXLE_X + D.BRIDGE_BEARING_OD / 2  # bearing +X extent
     _br_z0   = D.BRIDGE_BEARING_Z - D.BRIDGE_BEARING_OD / 2   # bearing bottom
     SLOT_X0  = _br_x0 - BR_CLR                            # −X floor, clear of the race
-    SLOT_X1  = max(D.BRIDGE_X + max(D.STRING_GAUGE) / 2 + 0.5,
-                   _br_x1 + BR_CLR)                       # +X face: dead-string rise OR the race
+    # +X face: the fattest string RIDING ON the race (its centreline wraps at OD/2 + gauge/2,
+    # so it reaches a whole gauge past the race), or the race itself. It used to take half a
+    # gauge off BRIDGE_X, for a string drawn centred on the OD, and the .070 cut the wall.
+    SLOT_X1  = _br_x1 + max(max(D.STRING_GAUGE) + 0.5, BR_CLR)
     SLOT_Z0  = min(Z6 - 1.0, _br_z0 - BR_CLR)             # floor: the shelf OR the race's underside
     SLOT_Z1  = BEAR_TOP + 1.0                             # open above the string plane
     # the house pentagon in plan: |_| spanning SLOT_X0..X1, /\ ridge at SLOT_X0 − BR_HW on y 0

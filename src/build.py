@@ -312,6 +312,14 @@ def _rod(p0, p1, r):
     return cq.Workplane("XY").add(cq.Solid.makeCylinder(r, v.Length, pnt=p0, dir=v))
 
 
+def _tangent_angle(cx, cz, px, pz, R, side):
+    """Angle (XZ plane) of the point where a line from (px, pz) touches the circle of radius
+    R about (cx, cz). side +1 = the touch point counter-clockwise of the centre line, -1 =
+    clockwise."""
+    dx, dz = px - cx, pz - cz
+    return math.atan2(dz, dx) + side * math.acos(R / math.hypot(dx, dz))
+
+
 # ─────────────────────────────────────────────────────────────────────────
 # Belt geometry report
 # ─────────────────────────────────────────────────────────────────────────
@@ -470,23 +478,34 @@ def _string_path(i, sy):
           - D.NUT_FLANGE_T - D.STRING_NUT_D / 2)
     g = D.STRING_GAUGE[i]
     rad = g / 2.0                                     # actual string gauge
-    # rise to the +X tangent point (cx+r, cz). NOT vertical: with the screws in two
-    # rows the ear sits ANCHOR_DX either side of the tangent — near-row strings lean
-    # one way, far-row the other — so the dead run breaks ~10° off vertical. That
-    # SPLIT is the point: both rows on one side would cost 47-53°. See dimensions.
+    # THE STRING RIDES ON THE OD. A 688ZZ has a plain outer ring, no groove, so the string's
+    # CENTRELINE wraps at the OD radius plus half its gauge, and both straight runs leave that
+    # circle TANGENTIALLY. The path used to centre the string ON the OD and aim the rise at the
+    # fixed +X extent, which buried half the gauge in every bearing and more wherever the rise
+    # leans (user saw strings clipping). The rise is still NOT vertical: the ear sits ANCHOR_DX
+    # either side of the tangent, near row one way and far row the other (~10°) -- that split
+    # is the point, see dimensions.
     p0 = cq.Vector(D.string_anchor_x(i), sy, az)
-    prev = cq.Vector(cx + r, sy, cz)
-    out = _rod(p0, prev, rad)
-    # 90° arc, +X extent → top, approximated by short rods
-    N = 10
-    for k in range(1, N + 1):
-        ang = (k / N) * (math.pi / 2)
-        p = cq.Vector(cx + r * math.cos(ang), sy, cz + r * math.sin(ang))
-        out = out.union(_rod(prev, p, rad))
-        prev = p
     # speaking length to the break edge: string sits on the gauged pin, TOP at STRING_Z
     brk = cq.Vector(D.NUT_BLOCK_X, D.nut_y(i), D.STRING_Z - g / 2.0)
-    out = out.union(_rod(prev, brk, rad))
+    R0 = r + rad
+    th0 = _tangent_angle(cx, cz, p0.x, p0.z, R0, +1)       # rise touches on the +X side
+    th1 = _tangent_angle(cx, cz, brk.x, brk.z, R0, -1)     # speaking length leaves over the top
+    N = max(8, math.ceil((th1 - th0) / math.radians(10.0)))
+    # Chords cut inside an arc. Vertices on R0/cos(half-step) put every chord's MIDPOINT on R0,
+    # so the polygon touches the race and never dips into it; the tangents are re-taken on that
+    # radius so the straight runs still meet the first and last vertex exactly.
+    R = R0 / math.cos((th1 - th0) / N / 2)
+    th0 = _tangent_angle(cx, cz, p0.x, p0.z, R, +1)
+    th1 = _tangent_angle(cx, cz, brk.x, brk.z, R, -1)
+    pts = [cq.Vector(cx + R * math.cos(th0 + (th1 - th0) * k / N), sy,
+                     cz + R * math.sin(th0 + (th1 - th0) * k / N)) for k in range(N + 1)]
+    # a bead at every vertex: a tangent join between two cylinders shares no volume, and OCC
+    # hands back a compound with the pieces floating free (see the wrap below)
+    out = _rod(p0, pts[0], rad).union(_bead(pts[0], rad))
+    for pa, pb in zip(pts, pts[1:]):
+        out = out.union(_rod(pa, pb, rad)).union(_bead(pb, rad))
+    out = out.union(_rod(pts[-1], brk, rad))
     # dead end: break edge -> down to the wrap rod -> N turns around it -> out to the clamp
     ny, wy = NB.wrap_y(i)
     rx, rz = D.NUT_BLOCK_X + NB.ROD_X, D.STRING_Z + NB.ROD_Z
@@ -1131,7 +1150,7 @@ def _joint_coupon_components():
     return [("test_octagon_tenon_coupon", ten), ("test_octagon_mortise_coupon", mor)]
 
 
-SCREW_ROW_PARTS = ("leadscrew", "nut_", "string_nut", "guide_rod",
+SCREW_ROW_PARTS = ("leadscrew", "nut_", "string_", "guide_rod",
                    "screw_pulley", "screw_bearing")
 
 
@@ -1147,6 +1166,9 @@ def screw_rows_components():
     out = [(n, w) for i in range(D.N_STRINGS) for n, w in _string_components(i)
            if n.startswith(SCREW_ROW_PARTS)]
     out.append(("bridge_endplate", PARTS["bridge_endplate"][0]()))
+    # the bridge bearings + axle, and the strings over them (string_ above): the 688ZZ swap
+    # and the string path from ear to bearing are part of the same unit
+    out.append(("bridge_bearings", C.bridge_bearings()))
     return out
 
 
