@@ -75,6 +75,14 @@ assert _SR_PRINT_UP == PRINT_UP, (
     "the screw rail is FUSED into this part, so its teardrops must be shaped from "
     "the same build direction — one of the two copies has drifted")
 
+
+def access_cutter(i: int, z0: float, z1: float) -> cq.Workplane:
+    """String i's vertical access channel from z0 to z1: the 4.8 x 4.8 house, roof toward
+    PRINT_UP (see dimensions.string_access_x). The chassis cuts the same outline under it."""
+    return house_hole(D.STRING_ACCESS_D, z1 - z0,
+                      axis_point=(D.string_access_x(i), D.string_y(i), z0),
+                      axis_dir=(0.0, 0.0, 1.0), print_up=PRINT_UP, wall=D.STRING_ACCESS_H)
+
 X0   = CH.X_BRIDGE                 # cap -X face / field<->cap boundary: the field stays
                                    #   OPEN -X of here (carriage sweep / strings / rods)
 # 25 mm block CENTERED on the bearing axle (the highest-load string-turn point), so the
@@ -609,10 +617,7 @@ def _build() -> cq.Workplane:
     # AFTER the seat re-cut and every union above, so nothing fuses back into them. Straight
     # up the Z axis, which the -X print direction makes a sideways hole: hence the house cut.
     for i in range(D.N_STRINGS):
-        body = body.cut(house_hole(
-            D.STRING_ACCESS_D, (_SR_TOP + 1.0) - (_SR_BOT - 1.0),
-            axis_point=(D.string_access_x(i), D.string_y(i), _SR_BOT - 1.0),
-            axis_dir=(0.0, 0.0, 1.0), print_up=PRINT_UP))
+        body = body.cut(access_cutter(i, _SR_BOT - 1.0, _SR_TOP + 1.0))
     # (no +X deck-lock shelf / capture groove / dropped section / -Y roof: the solid
     #  base over the rail ends now IS the cross-tie + the deck panels' +X stop; the
     #  deck is held in +Z by the rail-top grooves along its length, not by the bridge.)
