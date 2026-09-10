@@ -215,6 +215,18 @@ for _csi in sorted(_fused_segs):
         if _seg_edges[_csi + 1] < _rx < _seg_edges[_csi]:
             _seg = _seg.cut(_KL_FUSE.rib_mortise(_rx))
     chassis_segments[_csi] = _seg
+# ...and RE-BORE each M4-held tee's hold-down. pcb_cradle bores the anchor and head notch in
+# the CRADLE, but the fuse above unions it into the segment, and the segment's own rib and
+# rail material fills the hole straight back in -- the same refill trap as the mortises. The
+# gate found it the moment the screws had dummies: a uniform 27.0 mm3 of screw and 23.3 of
+# insert buried in chassis on nearly every tee. The M4's 8.5 anchor puts the cradle base 5.3
+# into that material. Cut at the END of the pipeline, where nothing unions over it again.
+for _ctx, _cutters in _WR_FUSE.tee_hold_negatives():
+    for _csi in range(len(_seg_edges) - 1):
+        if _seg_edges[_csi + 1] < _ctx < _seg_edges[_csi]:
+            for _cut in _cutters:
+                chassis_segments[_csi] = chassis_segments[_csi].cut(_cut)
+            break
 for _i, _seg in enumerate(chassis_segments):     # chassis split into dovetailed segments
     PARTS[f"chassis_{_i}"] = (partial(heal, _seg), f"petg-gf/chassis_{_i}.step",
                               "PETG-GF — chassis segment (cadkit slide-down T joint per rail; NO glue "
@@ -1317,7 +1329,9 @@ _COLORS = {
     "teensy_ifc":      (0.55, 0.25, 0.25),   # Teensy interface PCB (2x CAN
                                              # transceiver + XH headers)
     "tee_pcb":         (0.10, 0.42, 0.18),   # trunk-and-drop bus tee PCBs
-    "tee_cradle":      (0.32, 0.55, 0.42),   # PCTG 3-wall drop-in PCB cradle (pcb_cradle)
+    "tee_cradle":      (0.32, 0.55, 0.42),   # PCTG drop-in PCB cradle (pcb_cradle, side hold-down)
+    "tee_screw":       (0.72, 0.74, 0.78),   # M4x10 button, BESIDE the tee board
+    "tee_insert":      (0.72, 0.60, 0.30),   # M4 heat-set brass, in the cradle boss
     "analog_frontend": (0.20, 0.45, 0.40),   # bridge-end buffer + relay board
     "optical_pcb":     (0.12, 0.30, 0.55),   # per-string optical strip (blue solder mask,
                                              # so it reads apart from the green audio PCBs)
