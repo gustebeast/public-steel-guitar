@@ -76,11 +76,11 @@ _ex("hardware",
     _BRG_TEARDROP="teardrop apex = r*sqrt(2) with a 0.2 bore clearance: geometry, not a wall",
     _ROD_TEARDROP="teardrop apex = r*sqrt(2) with the rod's press fit: geometry, not a wall",
     _BELT_HALF_DIAG="half-diagonal of the 5 x 1.4 GT2 belt section: geometry, not a wall",
+    _ACCESS_PASS_R="Ø4 swaged string end + 0.6 passage, radius: clearance geometry, not a wall",
 )
 
 
 _ex("clearance",
-    bridge_endplate__GUIDE_BOSS_R="guide-rod collar radius capped 0.2 clear of the bought nut's Ø10.2 boss",
     bridge_endplate__DRIVE_HW="outermost pulley swept circle + 0.4 running clearance",
 )
 
@@ -106,9 +106,12 @@ _ex("hardware",
     MR85_W="MR85 bearing width 2.5",
     SCREW_PULLEY_Z="band plane, derived from the frozen PULLEY_TOP_Z -- a POSITION, not a printed length",
     PULLEY_TOP_Z="frozen thrust-seat datum (the band plane and motor bank derive from it) -- a POSITION",
-    BRIDGE_BEARING_OD="693 bearing OD 8.0",
-    BRIDGE_BEARING_W="693 bearing width 4.0",
-    BRIDGE_AXLE_D="Ø3 precision shaft",
+    BRIDGE_BEARING_OD="688ZZ bearing OD 16",
+    BRIDGE_BEARING_W="688ZZ bearing width 5.0",
+    BRIDGE_AXLE_D="Ø8 precision shaft (the 688ZZ bore)",
+    NUT_WRAP_ROD_D="Ø5 g6 purchased capstan rod",
+    NUT_BOSS_CLR="radial air round the nut boss: clearance, not a wall",
+    GUIDE_ROD_TOP="rod top Z, set to keep the ~34 mm rod length -- a POSITION, not a printed length",
     SCREW_OD="Tr8x2 lead screw OD",
     SCREW_LEN="lead screw cut length (stock, not printed)",
     MOTOR_SHAFT_D="NEMA17 shaft Ø5",

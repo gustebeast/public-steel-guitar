@@ -149,7 +149,10 @@ TERMINATION_X = D.BRIDGE_AXLE_X                  # -4.0
 # with room. The alternative -- running the board on under the endplate -- would have
 # needed a relief modelled through it for no gain. Sensing further from the termination
 # also reads a LARGER displacement, so the signal improves rather than degrades.
-SENSE_D       = 21.5                             # sensing station, out from the termination
+# 21.5 -> 20.0 (branner 2026-09-10): the bridge bearing went Ø13 -> Ø16 (688ZZ), which moved
+# the termination (the axle line) 1.5 mm -X. Taking the same 1.5 off SENSE_D keeps the sensing
+# row at X -28.0, so the whole board and every part on it stay where they were verified.
+SENSE_D       = 20.0                             # sensing station, out from the termination
 SENSE_X       = TERMINATION_X - SENSE_D          # -19.5
 # Floor, from the string's bending-stiffness length sqrt(EI/T): ~1.2 mm for the plain
 # .015 core at ~120 N, ~1.7 mm for the wound .070 at ~150 N. The boundary layer where
