@@ -1292,14 +1292,20 @@ def _assert_field_clear():
                 f"optical strip: {p['ref']} ({p['desc']}) stands to "
                 f"{PCB_TOP + PKG[p['pkg']][2]:.2f} on a max-thickness board, into the "
                 f"cover underside at {COVER_Z0:.2f}")
+    # Against the HEAD, not the hole. This used to keep parts 3.2 from the screw axis --
+    # a clearance-hole ring -- while the button head that actually lands on the board
+    # reaches 3.8 (and was drawn at 3.5, which hid it). A part inside that radius is
+    # crushed by the screw that is supposed to be holding the board.
+    _head_r = TP.JACK_HEAD_D / 2
     for mx, my in mount_points():
         for q in PARTS:
             x0, x1, y0, y1 = part_span(q)
-            r = M4.shaft_clr_d / 2 + 1.0
-            if x0 - r < mx < x1 + r and y0 - r < my < y1 + r:
+            gap = math.hypot(max(x0 - mx, mx - x1, 0.0), max(y0 - my, my - y1, 0.0)) - _head_r
+            if gap < PKG_CLR - 1e-9:
                 raise AssertionError(
-                    f"optical strip: M4 mount at ({mx:.2f}, {my:.2f}) lands on "
-                    f"{q['ref']} ({q['desc']})")
+                    f"optical strip: {q['ref']} ({q['desc']}) is {gap:.2f} from the "
+                    f"O{TP.JACK_HEAD_D} button head of the M4 mount at ({mx:.2f}, "
+                    f"{my:.2f}) -- under PKG_CLR {PKG_CLR}; the head would crush it")
     # 6. the lid must keep real material outboard of its last aperture, at both ends
     edge = COVER_HY - (_OUTER_Y + SLOT_DY / 2)
     if edge < D.MIN_WALL_2P - 1e-9:
