@@ -224,6 +224,22 @@ def adjust_sleeve():
     return b
 
 
+# THE FIXED JOINT'S SCREW (user): tenon to fixed sleeve, the step that locks the
+# latch in. Same M4 convention as the adjust ladder -- clearance in the sleeve,
+# ADJ_HOLE_D in the tenon -- so the leg takes one screw and one hole size. It
+# goes in the MIDDLE of the fixed sleeve, and it runs along X, not Y: along Y it
+# would pass through the button face, and the middle keeps it clear of the latch
+# band (which ends at leg_latch's BUTT + PAD_L) with the whole sleeve to spare.
+FIX_SCREW_Z = ADAPT_L + FIX_L / 2.0    # 138.8 leg-local
+
+
+def _fix_screw(d: float):
+    """The fixed joint's screw hole, along X, in LEG-LOCAL z."""
+    return (cyl(d, LEG_W + 4.0, z=0.0)
+            .rotate((0, 0, 0), (0, 1, 0), 90)
+            .translate((0, 0, FIX_SCREW_Z)))
+
+
 def fixed_sleeve():
     """The FIXED section. Its own 44.8 body BUTTS the body adapter, so the kick
     moment never passes through a tenon (see the module docstring).
@@ -232,7 +248,8 @@ def fixed_sleeve():
     part that stands over the slider in place of a cover."""
     from . import leg_latch as LL          # late: leg_latch reads this module
     b = _sleeve(FIX_L)
-    return b.cut(LL.sleeve_notch().translate((0, 0, -ADAPT_L)))
+    b = b.cut(LL.sleeve_notch().translate((0, 0, -ADAPT_L)))
+    return b.cut(_fix_screw(ADJ_HOLE_D + 0.8).translate((0, 0, -ADAPT_L)))
 
 
 def adjust_tenon():
@@ -261,7 +278,8 @@ def fixed_tenon():
     costs the tenon is measured in leg_latch.SECTION_LOSS."""
     from . import leg_latch as LL
     t = tenon(FIX_TEN_L)
-    return t.cut(LL.tenon_pocket().translate((0, 0, -ADAPT_WALL)))
+    t = t.cut(LL.tenon_pocket().translate((0, 0, -ADAPT_WALL)))
+    return t.cut(_fix_screw(ADJ_HOLE_D).translate((0, 0, -ADAPT_WALL)))
 
 
 def body_adapter():
