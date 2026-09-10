@@ -475,7 +475,16 @@ MORT_Y0   = -3 * D.BEAD           # -2.4 mortise -Y mouth (opens outboard of the
 # MOUNT_Z tracks the housing TOP, not BODY_Z: with the bigger race the top is set by
 # the bearing seat, and the TOP is what must stay flush on the chassis underside.
 # The axle simply sits lower in the guitar by the difference.
-MOUNT_X, MOUNT_Y, MOUNT_Z = -501.0, -148.75, MB.BED_Z - max(BODY_Z, BRG_OD / 2 + BRG_WALL)
+# SEAT ROOF (user, 2026-09-10). The springs load the axle into the +X side of each bearing, and
+# with the +X face open that side is held from below only unless something ties the two
+# sides together OVER the seat. So the top carries a BRG_WALL (1.6) band parallel to the
+# seat's 45° print peak, and where that band's outer edge meets the top face it has to land
+# INSIDE the mount tenon's stem (beside the stem is the rib's lip, not free space). The
+# band's outer edge is the line x + z = (seat radius + wall)·√2, so the top sits where it
+# crosses the stem wall (half-width _JW/4). The whole lever drops by the difference.
+_SEAT_ROOF_Z = (BRG_SEAT_D / 2 + BRG_WALL) * math.sqrt(2.0) - _JW / 4
+HOUS_TOP_Z = max(BODY_Z, BRG_OD / 2 + BRG_WALL, _SEAT_ROOF_Z)
+MOUNT_X, MOUNT_Y, MOUNT_Z = -501.0, -148.75, MB.BED_Z - HOUS_TOP_Z
 # (MOUNT_Z read the bed as a spelled -75.15, which went stale when SCREW_TOP_Z /
 #  SCREW_PULLEY_Z / XBAR snapped to the grid — the live bed is MB.BED_Z = -74.95.)
 MOUNT_POSE = (MOUNT_X, MOUNT_Y, MOUNT_Z)
@@ -866,7 +875,7 @@ HOUS_X0 = -(HS_HOUS_BACK + HS_SETBACK)                   # -77.26
 HOUS_HW = max(abs(HS_YC) + HS_CART_WY / 2 + HS_CLR + HS_HOUS_WALL,
               LEVER_HW + HS_CLR + BRG_W + 1.0)           # 15.4 — the 4.0-wide seats
 #           now set the cheeks, not the cartridges: 10.4 + 4.0 + 1.0 outboard skin
-HOUS_Z1 = max(BODY_Z, BRG_OD / 2 + BRG_WALL)             # +8.1 (flush: BODY_Z
+HOUS_Z1 = HOUS_TOP_Z                                     # +12.0, the seat roof (was 9.6; flush: BODY_Z
 #           = HUB_TOP + 2.4 — the designed 2.4 stands between lever and body)
 HOUS_Z0 = (HS_Z - HS_PISTON_WZ / 2) + _FEEL_DZ - HS_CLR - HS_HOUS_WALL  # -14.8
 #           ^ = HS_FLOOR_Z (defined below, after the piston) placed
@@ -892,7 +901,7 @@ _SEAT_RS = BRG_SEAT_D / 2                               # the seat bore's radius
 _SEAT_OPEN_HW = max(0.0, _SEAT_RS * math.sqrt(2.0) - HOUS_Z1)   # peak's width at the top face
 TEN_X = tuple(-k * _TEN_PITCH for k in range(20)
               if HOUS_X0 + _JHW <= -k * _TEN_PITCH <= HOUS_X1 - _JHW
-              and abs(-k * _TEN_PITCH) >= _SEAT_OPEN_HW + _JHW)
+              and (_SEAT_OPEN_HW <= 0.0 or abs(-k * _TEN_PITCH) >= _SEAT_OPEN_HW + _JHW))
 # Each tenon runs the housing's FULL Y depth: it is a rail, and every millimetre of it
 # is engagement the player can buy by sliding the lever inboard. The +X-most station
 # (x=0) sits directly over the lever, where the lever-room slot opens the top face —
