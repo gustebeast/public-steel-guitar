@@ -276,9 +276,15 @@ def clamp_components(gap: float = GAP, with_lifters: bool = True):
     def bf(p): return p.translate((-xc, 0.0, -_CLAMP_ZC))
     half_b = clamp_half_part.rotate((0, 0, 0), (0, 0, 1), 180).translate((tb, 0.0, 0.0))
     nut    = seated_insert(M4, (-HEAD_X + tb, 0.0, Z_SCR), (1.0, 0.0, 0.0))
-    parts = [("half_a", bf(clamp_half_part)), ("half_b", bf(half_b)),
-             ("screw",  bf(_SCREW)),          ("insert", bf(nut))]
+    # Parts name THEMSELVES, prefix included. The callers used to add "belt_tensioner_",
+    # which meant the names this returns (half_a, screw, ...) matched nothing in
+    # build._COLORS -- so anything rendering these directly, like the per-agent scratch
+    # view, drew the whole clamp in default grey. The assembled names are unchanged:
+    # the callers now append only their own suffix.
+    P = "belt_tensioner_"
+    parts = [(P + "half_a", bf(clamp_half_part)), (P + "half_b", bf(half_b)),
+             (P + "screw",  bf(_SCREW)),          (P + "insert", bf(nut))]
     if with_lifters:
-        parts += [("lifter_a", bf(seated_lifter(_LIFTER, WELL_MID_A, locked=True))),
-                  ("lifter_b", bf(seated_lifter(_LIFTER, -WELL_MID_A + tb, locked=True)))]
+        parts += [(P + "lifter_a", bf(seated_lifter(_LIFTER, WELL_MID_A, locked=True))),
+                  (P + "lifter_b", bf(seated_lifter(_LIFTER, -WELL_MID_A + tb, locked=True)))]
     return parts

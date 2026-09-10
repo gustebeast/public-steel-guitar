@@ -136,7 +136,18 @@ from cadkit.pcb import PCB_T as _PCB_T
 # The speaking length ends at the BEARING TANGENT (directly over the axle), NOT at
 # BRIDGE_X (which is the ball-end anchor, past the bearing).
 TERMINATION_X = D.BRIDGE_AXLE_X                  # -4.0
-SENSE_D       = 15.5                             # sensing station, out from the termination
+# 15.5 -> 20.0 (branner 2026-09-09), forced by the TWO SCREW ROWS at the bridge end.
+# The endplate had to widen to host the near row's guide-rod socket, which moved its -X
+# face -16.50 -> -23.10; the DECK is flush with that face (top_plate.PX0), so the deck --
+# and this strip with it -- lost 6.6 mm off its +X end. At SENSE_D 15.5 the sensing row
+# stayed put at X -19.5 while the board's +X edge retreated to -23.30, leaving the
+# emitters standing 3.5 mm OFF the board.
+# Moving the STATION is the cheap fix, and the only asserted constraint on it is a FLOOR
+# (STIFF_FLOOR 10.4, the string's bending-stiffness boundary layer) which 20.0 clears
+# with room. The alternative -- running the board on under the endplate -- would have
+# needed a relief modelled through it for no gain. Sensing further from the termination
+# also reads a LARGER displacement, so the signal improves rather than degrades.
+SENSE_D       = 21.5                             # sensing station, out from the termination
 SENSE_X       = TERMINATION_X - SENSE_D          # -19.5
 # Floor, from the string's bending-stiffness length sqrt(EI/T): ~1.2 mm for the plain
 # .015 core at ~120 N, ~1.7 mm for the wound .070 at ~150 N. The boundary layer where
@@ -293,7 +304,10 @@ PCB_X1S = BAND_X1 + BAND_CLR                                  # -30.42, strip -X
 # stopped governing this and the leftover left -Y 1.05 slacker than +Y (user spotted the
 # asymmetry in the render). One constant, mirrored.
 WRAP_CLR = 0.75                                               # past the arm outer face
-Y_TAIL   = -(D.BRIDGE_AXLE_Y + D.BRIDGE_ARM_W / 2 + WRAP_CLR)  # -55.00
+# OFF THE ARM'S OUTER FACE, which is BRIDGE_ARM_OUT -- the same arithmetic, but named
+# once instead of re-added here. It moved when the axle became a 100 SKU, and this
+# board has to move with it: HEAD_Y0 is what stops the shaft sliding +Y.
+Y_TAIL   = -(D.BRIDGE_ARM_OUT + WRAP_CLR)
 # TAIL WIDENS +X, OVER THE ENDPLATE -- not -X over the deck (user). Two things fall out
 # and both were open problems:
 #   SUPPORT. Past |y| 54 the endplate has no material above z6 for a plinth to start on,
@@ -395,6 +409,20 @@ COVER_X0  = COL_OPA + PKG["SOIC-14"][0] / 2 + 0.5             # lid's -X edge, -
 # (user-caught). Two full beads past the aperture instead.
 COVER_HY  = _OUTER_Y + SLOT_DY / 2 + D.MIN_WALL_2P
 FB_PITCH, FB_ROWS = 2.0, (5.6, 6.8, 8.0, 9.2)                 # 0402 grid in the Y gaps
+FB_ROW_PITCH = FB_ROWS[1] - FB_ROWS[0]                        # 1.2, the row spacing
+# U1's cluster sits in the gap BELOW its quad, because the jack's access hole took the
+# gap above (see JACK_ACCESS_XY). It has to be pulled IN from the shared FB_ROWS to fit
+# between the quad and U2's cluster, and the window is narrow enough to be worth deriving
+# rather than guessing:
+#
+#   pulled too far  -> the nearest row fouls the SOIC-14 itself (at one full row in, by
+#                      0.18; at two, by 0.50 -- the placement assert caught both)
+#   pulled too little -> the farthest row fouls U2's cluster below (0.38 at no pull)
+#
+#   nearest row  >= SOIC_Y/2 + 0402_Y/2 + PKG_CLR from the quad centre  -> pull <= 0.775
+#   farthest row >= 0402_Y + PKG_CLR clear of U2's top row             -> pull >= 0.366
+FB_PULL_U1 = 0.57                             # the middle of 0.366..0.775
+FB_ROWS_U1 = tuple(r - FB_PULL_U1 for r in FB_ROWS)
 
 
 def _spread(out, y, items, x0, x1):
@@ -431,6 +459,24 @@ def _block(out, y, items, x0, x1):
     return flush(row, y)
 
 
+# ── ACCESS HOLE FOR THE PICKUP'S +Y HEIGHT JACK (user) ──────────────────────
+# One of the pickup plate's three M4 height jacks lands under this board -- at the +Y
+# corner nearest the bridge -- and there is nowhere for it to go: the plate needs it out
+# at that corner for leverage. So the board gets out of its way instead.
+#
+# WHAT IT COST, so the next person does not undo it by tidying: the hole sits ON the
+# op-amp column, 0.08 mm from where Cf14 used to be, and U1's whole feedback/decoupling
+# cluster had to move. There was no free gap to move it to -- every quad already uses the
+# Y gap above itself -- so U1 alone now uses the gap BELOW, and its rows are pulled in
+# closer to the quad than the shared FB_ROWS to clear U2's cluster underneath. That is
+# electrically fine and arguably better: the feedback loop got shorter, not longer.
+JACK_ACCESS_XY = TP.JACK_POS[0]                 # THE JACK'S OWN POSITION, read from
+                                                # top_plate -- not a copy of it, so the
+                                                # hole cannot drift off the screw
+JACK_ACCESS_D  = 8.0                            # clears the M4 button head (O7.6) so the
+                                                # screw itself can pass, not just a driver
+
+
 def _parts():
     """EVERY component on the strip, with its package and placed centre. ONE source of
     truth for the 3D model, the area budget, the clearance assertions and BOM.md."""
@@ -460,8 +506,11 @@ def _parts():
                  + [("Cf%d%d" % (q + 1, k + 1), "TIA feedback cap (anti-alias pole)")
                     for k in range(4)]
                  + [("Cd%d%d" % (q + 1, k + 1), "op-amp decoupling") for k in range(2)])
-        s = -1 if q == D.N_STRINGS // 2 - 1 else 1        # last quad uses the gap below
-        slots = [(COL_OPA + (c - 1) * FB_PITCH, cy + s * r) for r in FB_ROWS
+        # U1 ALSO uses the gap below, and pulled in -- see JACK_ACCESS_XY. The jack's
+        # access hole occupies the gap above it, which is where this cluster used to sit.
+        s = -1 if q in (0, D.N_STRINGS // 2 - 1) else 1
+        rows = FB_ROWS_U1 if q == 0 else FB_ROWS
+        slots = [(COL_OPA + (c - 1) * FB_PITCH, cy + s * r) for r in rows
                  for c in range(3)]
         for (ref, desc), (px, py) in zip(items, slots):
             add(ref, desc, "0402", px, py)
@@ -811,7 +860,18 @@ def opt_pcb() -> cq.Workplane:
     for mx, my in mount_points():                     # M4 clearance, one per +X wrap
         pcb = pcb.cut(box_at(M4.shaft_clr_d, M4.shaft_clr_d, PCB_T + 2,
                              x=mx, y=my, z=PCB_BOT + PCB_T / 2))
+    pcb = pcb.cut(jack_access())                      # see JACK_ACCESS_XY
     return pcb
+
+
+def jack_access(grow: float = 0.0) -> cq.Workplane:
+    """The pickup jack's access hole, as a cutter. Shared: the board cuts it, and
+    the endplate cuts the SAME hole through the pad under it -- both are in the
+    screw's way, and one description keeps them concentric."""
+    jx, jy = JACK_ACCESS_XY
+    return (cq.Workplane("XY")
+            .add(cq.Solid.makeCylinder(JACK_ACCESS_D / 2 + grow, 40.0,
+                                       pnt=cq.Vector(jx, jy, PCB_BOT - 20.0))))
 
 
 # APERTURE PLAN SHAPE -- an open-ended NOTCH, and the two shapes it is not.
