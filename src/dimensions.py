@@ -59,8 +59,29 @@ MIN_WALL_2P     = min_wall(NOZZLE_D, beads=2) # 1.6 — two-bead QUALITY target 
 # Hoisted up here because the thrust stack, the top radial bearing and the screw's
 # own length all derive from it and they are declared far apart.
 # ─────────────────────────────────────────────────────────────────────────
-MR85_OD, MR85_ID, MR85_W = 8.0, 5.0, 2.5
-BELT_PLANE_DZ   = 14 * BEAD  # 11.2 — the two screw-pulley planes' Z separation.
+MR85_OD, MR85_ID, MR85_W = 8.0, 5.0, 2.5     # Ø5 bore — KNEE LEVER / pedal axles only
+# THE SCREW'S BEARING IS NO LONGER MR85. Tr8 made that impossible rather than merely
+# undesirable: MR85's bore is Ø5 and the screw is now Ø8, so the shaft does not pass
+# through it at all. 688ZZ (Ø8 x Ø16 x 5) is the replacement, chosen over the closer-
+# fitting MR148 (Ø14) on CAPACITY: MR148 publishes C0r 144-309 N, which as a thrust
+# bearing is 72-154 N permissible axial against the 147 N a string actually pulls —
+# inadequate. 688ZZ is 474-710 N, i.e. 237-355 N axial, so ONE clears it. The cost is
+# OD: Ø16 in the 19.0 in-row pitch leaves 1.4 mm of web per side, over the one-bead
+# floor but under the two-bead preference — the tightest spot in the new layout.
+# ⚠ C0r spans 474-710 ACROSS MAKERS, which is wider than the 1.6x worst-case margin:
+# buy a branded part and read its real C0r. See SUPPORT_BRG_N for the stacking story.
+BRG688_OD, BRG688_ID, BRG688_W = 16.0, 8.0, 5.0  # 688ZZ — Ø8 bore, the leadscrew's
+BELT_PLANE_DZ   = 7 * BEAD   # 5.6 — the two screw-pulley planes' Z separation.
+# HALVED (was 14*BEAD = 11.2) once the screws went into TWO ROWS. The full separation
+# existed because ten pulleys shared one X line at the 9.5 string pitch, and
+# PULLEY_FLANGE_OD is 11.0 — neighbours physically overlapped, so alternate ones had to
+# be lifted clear. In-row pitch is now 19.0, so the flanges no longer touch and the
+# plane split has only ONE job left: keeping far-row BELTS off near-row PULLEYS, which
+# 5.6 does. Halving it is what pays for the Tr8 nut: the nut is 15 tall against the old
+# 9.8, so its lowest sweep dropped 5.2 and fouled the thrust ledge (the assert below
+# caught it). Lowering the HIGH plane gives that back without touching NUT_TOP_Z --
+# which matters, because raising the nut would shorten the dead run and push the
+# string's break angle from 10.0 deg to 12.9.
                              # Declared here rather than with the belts because the
                              # pulleys' STAGGER SPACER is exactly this, and the thrust
                              # stack sits on top of that.
@@ -195,14 +216,22 @@ NUT_TOP_Z       = -7.2      # flange TOP at the top of travel. A FROZEN datum, n
 # FLANGE_L sets how far the ears sweep -X (see bridge_endplate's nut-sweep slot)
 # and HOLE_DX sets the carriage's -X face. Both are asserted downstream, so a
 # wrong guess fails the build loudly rather than quietly fouling something.
-NUT_AF          = 8.5       # across flats (Y) — THE lane-critical dimension
-NUT_FLANGE_L    = 18.1      # long axis (X)
-NUT_FLANGE_T    = 3.2
-NUT_BOSS_D      = 8.0
-NUT_BOSS_L      = 6.6
-NUT_H           = NUT_FLANGE_T + NUT_BOSS_L                            # 9.8
-NUT_HOLE_D      = 3.0       # the ears' through-holes (M2 screws pass with room)
-NUT_HOLE_DX     = 6.5       # ± from the axis
+# Tr8x2 H-FLANGE brass nut, read off the seller's dimensioned drawing 2026-09-08
+# (AliExpress 3256804704147842, SKU "Pitch 2mm Lead 2mm"). These are no longer
+# extrapolated from a disc: the drawing gives every one directly. The listing still
+# states its own accuracy as "a normal error of 0.5-1 mm", so the BOM keeps a
+# buy-one-and-MEASURE gate -- see the row-spacing note under SCREW_ROW_DX, which is
+# what spends that tolerance.
+NUT_AF          = 10.5      # across flats (Y) — was THE lane-critical dimension, and
+                            # is why the screws are now in TWO ROWS: 10.5 cannot live
+                            # in a 9.5 lane at any screw size.
+NUT_FLANGE_L    = 22.0      # long axis (X), tip to tip (R11 ears)
+NUT_FLANGE_T    = 4.0
+NUT_BOSS_D      = 10.2
+NUT_BOSS_L      = 11.0      # 15 overall - 4 flange
+NUT_H           = NUT_FLANGE_T + NUT_BOSS_L                            # 15.0
+NUT_HOLE_D      = 3.5       # the ears' through-holes
+NUT_HOLE_DX     = 8.0       # ± from the axis (16 mm hole pitch)
 # MOUNTING — FLANGE UP, BOSS DOWN, and nothing bolts to anything.
 # Flange up puts the EARS at the top of the nut, which is what keeps the string's
 # ball end as high as possible: it hangs one flange-thickness below the ear, so at
@@ -218,14 +247,19 @@ NUT_BOT_MIN     = NUT_TOP_Z - CARRIAGE_TRAVEL - NUT_H                  # -29.8, 
 # ─────────────────────────────────────────────────────────────────────────
 # Ø5×1 single-start: lead angle ~3.6° (very self-locking) and fast enough (a
 # semitone is only ~1.5 mm). Vertical ⇒ short (no whip).
-SCREW_OD        = 5.0       # Ø5, single-start, 1 mm lead.
-# WHY Ø5 AND NOT THE USUAL Tr8 — do not "upgrade" this. The ten screws sit on one X
-# line at the STRING_PITCH (9.5), so each screw's NUT has to live inside a 9.5 mm lane.
-# NUT_FLANGE_OD is already 9.0 in that lane (0.5 to its neighbour). A Tr8 nut — even a
-# plain round one, let alone the usual Ø22 flanged 3D-printer part — cannot fit. The
-# string pitch picks the screw, and it picks a size BELOW the ISO/DIN 103 trapezoidal
-# series (which starts at Tr8), so this is a specialty part, not a catalogue one: see
-# the BOM row for what that means for sourcing.
+SCREW_OD        = 8.0       # Tr8x2: Ø8, SINGLE-start, 2 mm lead.
+# WAS Ø5x1, AND THE REASON IT IS NOT ANY MORE (2026-09-09). The old note here argued
+# Ø5 was forced: ten screws on ONE X line at the 9.5 string pitch leave each nut a
+# 9.5 mm lane, and no Tr8 nut fits that. Both halves of that have since failed.
+#   The LANE was the wrong thing to hold. Ø5x1's 1 mm lead circulates the belt ~28 mm
+#   per mm of carriage, so the splice clamp cannot stay inside the short strings' belt
+#   runs at all -- a defect no nut choice fixes. The 2 mm lead halves that.
+#   The ONE LINE was not required. Alternating strings between two rows doubles the
+#   in-row pitch to 19.0, which fits the 10.5 across-flats nut with 8.5 to spare, and
+#   costs nothing in string spacing (see SCREW_ROW_DX).
+# Tr8x2 is also a CATALOGUE part where Tr5x1 was a specialty one -- it is the base of
+# the ISO/DIN 103 series -- and single-start keeps the 5.2 deg lead angle that makes it
+# self-locking, which is what holds tuning with the motors unpowered.
 # TOP: the screw only has to clear the NUT, and the nut is now the whole moving
 # assembly — so the screw stops SCREW_RUNOUT above the flange's top face and nothing
 # else needs reaching. RUNOUT is pure insurance for build tolerance.
@@ -252,9 +286,17 @@ SCREW_OD        = 5.0       # Ø5, single-start, 1 mm lead.
 # print. It does NOT resolve on the project's 0.8 nozzle (0.3 radial is under half a
 # bead) — both parts are 0.2-NOZZLE prints and therefore unfilled, the same call
 # belt_clamp already makes for GT2 ridges. At 0.2 the groove is a 1.5-bead feature.
-SCREW_PITCH     = 1.0       # Tr5x1: 1 mm pitch, single start
-FORM_MINOR      = 4.2       # printed ridge Ø
-FORM_MAJOR      = 4.8       # printed groove Ø
+SCREW_PITCH     = 2.0       # Tr8x2: 2 mm pitch, single start => 2 mm LEAD
+FORM_MINOR      = 6.2       # printed ridge Ø (Tr8x2 root is Ø5.5; 0.35 radial clear)
+FORM_MAJOR      = 7.8       # printed groove Ø (0.1 radial under the Ø8 crest)
+                            # Depth (7.8-6.2)/2 = 0.80, NOT the pitch/2 = 1.0 ceiling.
+                            # cadkit.threads measures the valley AT THE OVERSHOOT:
+                            # valley = 2*depth + 0.2, and it must stay UNDER the 2.0
+                            # turn spacing or adjacent turns merge into an invalid
+                            # cutter that silently no-ops. Depth 1.0 gave 2.10 and 0.90
+                            # gave exactly 2.00 — both rejected. 0.80 leaves 1.80.
+                            # Engagement is 0.80 of the rod's 1.25 radial full form,
+                            # ~64%, reached by displacement rather than by hoping.
 SCREW_RUNOUT    = 3 * BEAD                          # 2.4 proud of the nut at top of travel
 # TOP RADIAL BEARING. The screw runs on past the nut into one MR85 up in the endplate's
 # slab, and this is not a refinement — it is what makes anchoring the string off-axis
@@ -298,12 +340,53 @@ GUIDE_ROD_FIT   = 0.05      # SNUG PRESS. Not zero: at zero the socket is drawn 
 # The bridge / string anchor sits at X=0; the screw can't occupy that spot, so
 # it is offset −X by ANCHOR_DX and the carriage reaches over to the anchor.
 BRIDGE_X        = 0.0
-SCREW_X         = -8.0      # all 10 vertical screws sit on this X line
-ANCHOR_DX       = BRIDGE_X - SCREW_X    # anchor is +X of the screw (8 mm)
-# The two ears, as global X lines. Everything that used to be a carriage feature is
-# now one of these.
-STRING_ANCHOR_X = SCREW_X + NUT_HOLE_DX     # -1.5, the +X ear: ball end under it
-GUIDE_ROD_X     = SCREW_X - NUT_HOLE_DX     # -14.5, the -X ear: rides the rod
+# TWO ROWS OF SCREWS (user, 2026-09-09). One row is impossible now: the Tr8 nut is
+# NUT_AF 10.5 across flats and the string pitch is 9.5, so ten nuts cannot share an X
+# line at any screw size. Alternating strings between two rows doubles the IN-ROW pitch
+# to 19.0 and leaves 8.5 mm of clearance, at no cost to string spacing or playability.
+#
+# The rows are MIRRORED and SYMMETRIC about the bearing tangent (BRIDGE_X = 0), which
+# is what keeps the string's break angle small. The dead run leaves the bearing at
+# X = 0 and drops ~33 mm to the ball end; every mm the anchor sits off that line is
+# break angle. Putting both rows on one side would cost 47-53 deg. Splitting them
+# +/-ANCHOR_DX shares it: each row leaves the bearing at the SAME modest angle, in
+# opposite directions, so the worst case is halved rather than doubled.
+#
+# ANCHOR_DX IS NOT FREELY CHOSEN. Mirrored rows put the screws (2*ANCHOR_DX +
+# 2*NUT_HOLE_DX) apart, and cross-row flanges must clear by the full NUT_FLANGE_L
+# (their Y overlap is unavoidable: 10.5 across flats on a 9.5 pitch). That floors
+# ANCHOR_DX at 3.0 -> 5.2 deg. We take 4.0 -> 6.9 deg instead, because 3.0 leaves the
+# rows exactly NUT_FLANGE_L apart -- ZERO clearance against a part whose own stated
+# error is 0.5-1 mm, so a nut half a millimetre over nominal would not assemble. The
+# 1.7 deg that buys is worth ~3% of string tension in bearing side load (sin 5.2 vs
+# sin 6.9) and nothing else. Re-tighten to 3.5 once a real nut has been measured.
+ANCHOR_DX       = 4.0       # anchor's |X| from the tangent -> break angle 6.9 deg
+SCREW_ROW_DX    = ANCHOR_DX + NUT_HOLE_DX   # 12.0 — each row's |X|; rows 24.0 apart
+                                            # (NUT_FLANGE_L 22 + 2.0 clearance)
+
+
+def screw_far(i: int) -> bool:
+    """Is string i on the FAR (+X) row? Reuses the belt-plane parity EXACTLY, so the
+    two rows are also the two pulley planes -- far-row belts run BELT_PLANE_DZ below
+    the near row's pulleys and never cross them. Phased so string 10 (last index) is
+    FAR, which is what its short belt needs (user)."""
+    return (N_STRINGS - 1 - i) % 2 == 0
+
+
+def screw_x(i: int) -> float:
+    """X of string i's leadscrew axis: +SCREW_ROW_DX on the far row, -on the near."""
+    return SCREW_ROW_DX if screw_far(i) else -SCREW_ROW_DX
+
+
+def string_anchor_x(i: int) -> float:
+    """The ball-end ear. MIRRORED: the near row reaches +X to the tangent, the far row
+    reaches -X to it, so both land ANCHOR_DX from BRIDGE_X on opposite sides."""
+    return screw_x(i) - NUT_HOLE_DX if screw_far(i) else screw_x(i) + NUT_HOLE_DX
+
+
+def guide_rod_x(i: int) -> float:
+    """The anti-rotation ear — always the ear the string does NOT take."""
+    return screw_x(i) + NUT_HOLE_DX if screw_far(i) else screw_x(i) - NUT_HOLE_DX
 
 
 # String-end nut: a cylinder swaged on the string's bridge end (axis Y), slotted
@@ -414,10 +497,20 @@ SCREW_PULLEY_Z  = -49.0     # drive pulley, near the bottom of the screw
 # ~300k revolutions against millions for L10; and false brinelling, because each
 # move rotates 180° and carries every ball onto fresh track — unlike the bridge
 # bearing, which only rocks 4.3° and IS a genuine fretting risk.
-SUPPORT_BRG_N   = 2
-SUPPORT_BRG_OD  = MR85_OD   # Ø8 is what fits the 9.5 mm pitch inline
-SUPPORT_BRG_ID  = MR85_ID
-SUPPORT_BRG_W   = SUPPORT_BRG_N * MR85_W            # 5.0 — the STACK, not one bearing
+SUPPORT_BRG_N   = 1
+# ONE, not the old TANDEM PAIR — and the pair was never about redundancy. It existed
+# because a single MR85's permissible static axial load (~130 N, C0r ~260) sat UNDER the
+# 88-147 N per-string tension, so strings 1 and 5 were over the limit on one bearing and
+# two were needed to share it. 688ZZ is a much larger bearing: C0r 474-710 N gives ONE
+# 237-355 N permissible axial = 1.6-2.4x on the worst string (P0/C0 = 0.21-0.31, inside
+# the normal smooth-running band), so the second buys nothing but stack height
+# — and stack height is exactly what the taller Tr8 nut needs back; a second 688 does
+# not even FIT (it drives the thrust ledge 3.55 into the nut's sweep). Still no preload
+# wanted: the string's 147 N is a permanent axial load that has long since taken up the
+# internal clearance. ⚠ CONFIRM C0r on the datasheet of whatever is actually bought.
+SUPPORT_BRG_OD  = BRG688_OD # Ø16 — 1.4 mm of web each side at the 19.0 in-row pitch
+SUPPORT_BRG_ID  = BRG688_ID # Ø8 — the bore the Tr8 screw actually passes through
+SUPPORT_BRG_W   = SUPPORT_BRG_N * BRG688_W          # 5.0 — ONE bearing now, not a stack
 BRG_LEDGE_T     = 2 * BEAD                          # 1.6 of rail over the outer rings
 # THE STACK SITS ON THE PULLEYS, and moving it here is what deleted the retaining
 # collar. The screw is pulled +Z, so whatever grips it has to bottom against something
@@ -649,8 +742,34 @@ KEYHEAD_W  = 36 * BEAD                              # 28.8 = 25.4 + 5.0 of clamp
 # block, so the insert can run right out to the face and bear against the deck panel
 # that butts it.
 KEYHEAD_PX_BUF = 19 * BEAD / 4                      # 3.8 = KH_X - NUT_BLOCK_X, flush
-BRIDGE_BASE_X0 = BRIDGE_AXLE_X - ENDPLATE_W / 2     # -16.5  (-X inboard face)
-BRIDGE_BASE_X1 = BRIDGE_AXLE_X + ENDPLATE_W / 2     #  8.5   (+X outer tip)
+
+# THE BRIDGE BASE IS NO LONGER ENDPLATE_W WIDE. That width is the KEYHEAD's, derived
+# from ITS nut-block hardware, and the bridge merely shared it back when ten screws sat
+# on one line 8 mm off the axle. With the screws in TWO ROWS the bridge end has to host
+# both rows and both guide-rod lines, so its span is DERIVED from the rows and centred
+# on the BEARING TANGENT (BRIDGE_X) instead of on the axle — the rows are symmetric
+# about the tangent, so anything centred elsewhere wastes width on one side and runs
+# short on the other. ENDPLATE_W keeps its keyhead job untouched.
+#
+# Sized to the GUIDE ROD, not to the nut flange. The flange tip reaches further (-23.0),
+# but the nut SWEEPS in Z through the changer room — it wants a slot, not containment,
+# and the old single-row nut already overhung this face (-17.05 against -16.50). The rod
+# socket is the thing that must live in solid material. Containing the flange as well
+# cost 1.5 mm per side, and every mm here comes straight off the DECK, whose +X end is
+# flush with this face (top_plate.PX0).
+# The binding feature is the BEARING SEAT'S TEARDROP, not the guide rod. Every Z bore
+# in this part runs sideways to its -X build, so each is a teardrop, and a teardrop's
+# APEX stands r*1.4143 from the axis — not r. The Ø16.2 seat therefore reaches 11.46
+# from the screw axis, further than the guide rod's bore does at NUT_HOLE_DX + 2.16.
+# At the old 23.10 face the apex stood 0.36 PROUD of it, i.e. the seat broke out through
+# the -X face. Sized from whichever of the two reaches further, plus a 2-bead wall.
+_BRG_TEARDROP = (SUPPORT_BRG_OD + 0.2) / 2 * 1.4143            # 11.46, seat apex
+_ROD_TEARDROP = (GUIDE_ROD_D + GUIDE_ROD_FIT) / 2 * 1.4143     # 2.16, rod-bore apex
+BRIDGE_BASE_HALF = (SCREW_ROW_DX
+                    + max(_BRG_TEARDROP, NUT_HOLE_DX + _ROD_TEARDROP)
+                    + MIN_WALL_2P)                             # 25.06
+BRIDGE_BASE_X0 = BRIDGE_X - BRIDGE_BASE_HALF        # -23.1  (-X face)
+BRIDGE_BASE_X1 = BRIDGE_X + BRIDGE_BASE_HALF        # +23.1  (+X face)
 
 
 # ─────────────────────────────────────────────────────────────────────────
