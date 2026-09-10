@@ -1404,7 +1404,7 @@ def _color_for(name):
     return cq.Color(*_DEFAULT_COLOR)
 
 
-def _export_assembly(publish=True, gate=True, gate_full=False):
+def _export_assembly(publish=True, gate=True, gate_full=True):
     build_n = _bump_build_counter()
     comps = collect_components()
     asm = cq.Assembly(name="public_steel_guitar")
@@ -1514,8 +1514,15 @@ def main() -> None:
     p.add_argument("--geom", action="store_true", help="Print belt geometry report and exit.")
     p.add_argument("--no-gate", action="store_true",
                    help="Skip the overlap gate (normally ~13 s on the built model).")
+    # Belts are gated BY DEFAULT on the lead's build. It is the one authoritative
+    # whole-tree check, and skipping belts is how far-row belts clipping near-row
+    # pulley flanges (up to 9.8 mm^3) went out under a green gate. It costs ~225 s of
+    # pairwise scan against ~15 s -- the price of the check meaning what it says.
+    # Agents iterate with `view --gate`, which is where speed belongs.
+    p.add_argument("--gate-fast", action="store_true",
+                   help="Skip belts in the gate (~15 s scan vs ~225 s). Inner-loop only.")
     p.add_argument("--gate-full", action="store_true",
-                   help="Gate EVERY part, belts included (slower; belts rarely move).")
+                   help="(default now; accepted for compatibility)")
     args = p.parse_args()
 
     if args.geom:
@@ -1526,7 +1533,7 @@ def main() -> None:
         for name in PARTS:
             print(name)
         return
-    gate, gate_full = not args.no_gate, args.gate_full
+    gate, gate_full = not args.no_gate, not args.gate_fast
     if args.part:
         if args.part == "assembly":
             sys.exit(_export_assembly(gate=gate, gate_full=gate_full))
