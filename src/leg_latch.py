@@ -38,7 +38,8 @@ tenon's pocket is closed at both ends. The order that does work (user's sequence
      BUTT end, pad held flush. Everything but the neck and pad lies inside the
      bore's own profile, so it passes straight through; the neck and pad ride into
      the notch, which is open at that end, over the last 20 mm.
-  3. SCREW THE TENON TO THE FIXED SLEEVE (leg_stack.FIX_SCREW_Z). The slider's body
+  3. SCREW THE TENON TO THE FIXED SLEEVE (leg_stack.FIX_SCREW_Z; its twin,
+     ADJ_SCREW_Z, pins the adjust sleeve when that goes on). The slider's body
      shoulders now sit under the sleeve's bore, which holds it in against the
      spring -- the SLEEVE IS THE COVER -- and the screw stops the tenon backing out
      of the sleeve, so the latch cannot fall out.

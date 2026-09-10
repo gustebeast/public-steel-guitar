@@ -217,6 +217,9 @@ def adjust_sleeve():
     """The HEIGHT-ADJUST section: the long one, so the tenon can be set over a
     wide range. Carries the locking screw's clearance hole."""
     b = _sleeve(ADJ_L, trrs=True)
+    # pinned to the FIXED tenon near the joint -- what stops this sleeve, its tenon
+    # and the pedal bar sliding off when the instrument is lifted
+    b = b.cut(_join_screw(_CLR_D, ADJ_SCREW_Z).translate((0, 0, -SLEEVE_JOINT_Z)))
     for dz in ADJ_ROWS:
         b = b.cut(cyl(ADJ_HOLE_D + 0.8, LEG_W + 4.0, z=ADJ_L * 0.5 + dz)
                   .rotate((0, 0, 0), (1, 0, 0), 90)
@@ -224,20 +227,35 @@ def adjust_sleeve():
     return b
 
 
-# THE FIXED JOINT'S SCREW (user): tenon to fixed sleeve, the step that locks the
-# latch in. Same M4 convention as the adjust ladder -- clearance in the sleeve,
-# ADJ_HOLE_D in the tenon -- so the leg takes one screw and one hole size. It
-# goes in the MIDDLE of the fixed sleeve, and it runs along X, not Y: along Y it
-# would pass through the button face, and the middle keeps it clear of the latch
-# band (which ends at leg_latch's BUTT + PAD_L) with the whole sleeve to spare.
-FIX_SCREW_Z = ADAPT_L + FIX_L / 2.0    # 138.8 leg-local
+# THE SLEEVE-JOINT SCREWS (user): TWO, one each side of the fixed/adjust sleeve
+# joint and equidistant from it, each pinning ONE sleeve to the fixed tenon. That
+# tenon is what holds the two sleeves together, and before this only the fixed
+# sleeve was pinned -- the adjust sleeve, its tenon and the pedal bar rode on a
+# bare slide fit and would have slid off the moment the instrument was lifted.
+#
+# Both land in the tenon's ENGAGE-long overlap zone, which is the one stretch of
+# the leg where tenon, both sleeves and nothing else coexist. Same M4 convention
+# as the adjust ladder (clearance in the sleeve, ADJ_HOLE_D in the tenon), and
+# along X, not Y -- along Y they would line up with the button face.
+SLEEVE_JOINT_Z = ADAPT_L + FIX_L                 # 224.8 leg-local
+SCREW_OFF = 16 * B                               # 12.8 either side of the joint
+FIX_SCREW_Z = SLEEVE_JOINT_Z - SCREW_OFF         # 212.0 in the FIXED sleeve
+ADJ_SCREW_Z = SLEEVE_JOINT_Z + SCREW_OFF         # 237.6 in the ADJUST sleeve
+_CLR_D = ADJ_HOLE_D + 0.8                        # 4.8 clearance in a sleeve
+# Edge distance: each hole sits near an END -- its sleeve's butt face on one side,
+# the tenon's tip on the other for the adjust one -- and that end is the direction
+# a hanging load tears it out. Two hole diameters of material is the floor.
+assert SCREW_OFF - _CLR_D / 2 >= 2 * _CLR_D, (
+    "only %.1f from each screw to the sleeve joint face" % (SCREW_OFF - _CLR_D / 2))
+assert (ADAPT_WALL + FIX_TEN_L) - ADJ_SCREW_Z - ADJ_HOLE_D / 2 >= 2 * _CLR_D, (
+    "the adjust-side screw is too close to the fixed tenon's tip")
 
 
-def _fix_screw(d: float):
-    """The fixed joint's screw hole, along X, in LEG-LOCAL z."""
+def _join_screw(d: float, z: float):
+    """A sleeve-joint screw hole, along X, at LEG-LOCAL z."""
     return (cyl(d, LEG_W + 4.0, z=0.0)
             .rotate((0, 0, 0), (0, 1, 0), 90)
-            .translate((0, 0, FIX_SCREW_Z)))
+            .translate((0, 0, z)))
 
 
 def fixed_sleeve():
@@ -249,7 +267,7 @@ def fixed_sleeve():
     from . import leg_latch as LL          # late: leg_latch reads this module
     b = _sleeve(FIX_L)
     b = b.cut(LL.sleeve_notch().translate((0, 0, -ADAPT_L)))
-    return b.cut(_fix_screw(ADJ_HOLE_D + 0.8).translate((0, 0, -ADAPT_L)))
+    return b.cut(_join_screw(_CLR_D, FIX_SCREW_Z).translate((0, 0, -ADAPT_L)))
 
 
 def adjust_tenon():
@@ -279,7 +297,10 @@ def fixed_tenon():
     from . import leg_latch as LL
     t = tenon(FIX_TEN_L)
     t = t.cut(LL.tenon_pocket().translate((0, 0, -ADAPT_WALL)))
-    return t.cut(_fix_screw(ADJ_HOLE_D).translate((0, 0, -ADAPT_WALL)))
+    # both sleeve-joint screws bite the tenon: one per sleeve
+    for z in (FIX_SCREW_Z, ADJ_SCREW_Z):
+        t = t.cut(_join_screw(ADJ_HOLE_D, z).translate((0, 0, -ADAPT_WALL)))
+    return t
 
 
 def body_adapter():
