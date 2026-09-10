@@ -185,6 +185,11 @@ BREAK_TARGET_DEG = 15.0                             # deg, what ROD_Z is solved 
 # the underside wrap, where the thick one was steepest. Solving for the thin string left
 # the .070 at 2.7 deg against a 10 deg floor.
 _G_MAX  = max(D.STRING_GAUGE)                   # the shallowest break: sets the rod
+# THE INSERT'S TRAVEL IS SIZED FOR THE ENVELOPE, not the demo set: a heavier string must still
+# thread and clamp without a reprint (D.STRING_GAUGE_MAX). The ROD stays solved for the set
+# above -- its break angle is a target, and a heavier string only breaks a little shallower
+# (asserted against BREAK_ANGLE below).
+G_ENVELOPE = max(_G_MAX, D.STRING_GAUGE_MAX)
 
 
 def _break_at(rod_z: float, g: float) -> float:
@@ -242,7 +247,7 @@ BAY_R   = ROD_D / 2 + 2.5                       # 5.0 threading annulus around t
 TAIL_X  = None                                  # set below, once INS_X0 exists
 
 
-def touch_angle(i: int) -> float:
+def _touch_angle_g(g: float) -> float:
     """Angle about the rod axis (in the XZ plane, from +X) at which string i first
     TOUCHES the wrap circle, coming down off its dowel. The LOWER of the two tangents,
     because the string wraps the underside.
@@ -250,11 +255,16 @@ def touch_angle(i: int) -> float:
     THE ONE PLACE THIS IS COMPUTED. The turn count, the drawn string path and the coil's
     start phase all read it; when build.py owned a second copy the straight run and the
     coil disagreed and left a visible gap in the wrap."""
-    g = D.STRING_GAUGE[i]
     hr = ROD_D / 2 + g / 2                       # the string's centre-path radius
     dx, dz = DOWEL_X - ROD_X, -g / 2 - ROD_Z     # rod axis -> dowel (the rod sits BELOW)
     # the UPPER of the two tangents: the string now comes down onto the rod's top
     return math.atan2(dz, dx) + math.acos(hr / math.hypot(dx, dz))
+
+
+def touch_angle(i: int) -> float:
+    """_touch_angle_g at string i's own gauge. The core takes ANY gauge so the outermost
+    insert can be sized for a string heavier than the demo set (SKU C)."""
+    return _touch_angle_g(D.STRING_GAUGE[i])
 
 
 WRAP_F   = 1.05                                 # axial rise per turn, as a multiple of the
@@ -275,7 +285,7 @@ LANE_CLR = 0.5                                  # air each side of a coil, befor
 # from ten designs to two, because the clamp lobe is then sized to the LANE (a fixed
 # window) rather than to the coil, and a fixed window is the same shape on every string.
 #
-# TWO ZONES, TWO SKUS:
+# TWO ZONES, THREE SKUS (SKU C is string 10 on its own -- see SKU_C):
 #
 #   SKU A, strings 1..N_FINGERED -- each keeps a printed FINGER of MIN_WALL_2P to its
 #       neighbour, so the rod is held at every one of those stations. The lane is the
@@ -352,9 +362,14 @@ EXIT_DEG = 85.0                                 # -X, and just above horizontal
 # It costs almost nothing: the counts differ by hundredths of a turn, so the clamp area
 # barely moves, and the inserts are already per-string in plan. What it buys is every
 # tail leaving exactly on the bottom tangent.
+def _sweep0_g(g: float) -> float:
+    """Turns from where a string of gauge g touches the rod round to the exit tangent."""
+    return ((math.radians(EXIT_DEG) - _touch_angle_g(g)) % (2 * math.pi)) / (2 * math.pi)
+
+
 def _sweep0(i: int) -> float:
     """Turns from where the string touches the rod round to the exit tangent."""
-    return ((math.radians(EXIT_DEG) - touch_angle(i)) % (2 * math.pi)) / (2 * math.pi)
+    return _sweep0_g(D.STRING_GAUGE[i])
 
 
 def _adv_at(i: int, k: int) -> float:
@@ -370,8 +385,21 @@ def _k_min(i: int) -> int:
     deg left only 0.08 of a turn between touch and exit instead of 0.94, so a hard-coded
     floor of 2 quietly started delivering 2.13 widths instead of 3.04. Deriving it from
     CLAMP_WIDTHS means the guarantee survives anyone moving EXIT_DEG again."""
+    return _k_min_g(D.STRING_GAUGE[i])
+
+
+def _k_min_g(g: float) -> int:
+    """_k_min for any gauge g -- see outer_coil_lo."""
     need = 1.0 + (CLAMP_WIDTHS - 1.0) / WRAP_F
-    return max(1, math.ceil(need - _sweep0(i) - 1e-9))
+    return max(1, math.ceil(need - _sweep0_g(g) - 1e-9))
+
+
+def outer_coil_lo(g: float) -> float:
+    """-Y edge of the OUTERMOST string's coil if it carried gauge g. That string is held at
+    _K_MIN (see _adv_cap), so its coil marches (entry sweep + _K_MIN) * WRAP_F * g from its
+    own Y, and its last turn reaches half a gauge past that. What SKU C is sized from."""
+    i = D.N_STRINGS - 1
+    return D.nut_y(i) - (_sweep0_g(g) + _k_min_g(g)) * WRAP_F * g - g / 2
 
 
 def _adv_cap(i: int) -> float:
@@ -449,9 +477,16 @@ def stow_route(i: int, z_end: float):
         f"cannot climb over the wall into its stow bore")
     z_over = NUT_TOP + D.MIN_WALL_2P             # clear of the block's upper face
     stub = 3.0                                   # a little of the tangent before it bends
+    # UP FIRST, INSIDE ITS OWN SOCKET. Going straight from the stub to the over-the-wall point
+    # drew a diagonal that shaved the wall's top +X corner -- the last of string 10's clip
+    # once SKU C had moved its end wall (0.14 mm3), and a sliver on 7-9 as well. The socket is
+    # open to the top, so the tail rises in it to half a gauge short of its -X face, then
+    # crosses the wall level. That is the 'UP' this docstring always described.
+    x_rise = INS_X0 - _clr(i) + D.STRING_GAUGE[i] / 2.0
     return [(x0, z0),
             (x0 + ex * stub, z0 + ez * stub),    # off the rod on its own tangent...
-            (STOW_X, z_over),                    # ...then bent up over the wall by hand
+            (x_rise, z_over),                    # ...up inside the socket...
+            (STOW_X, z_over),                    # ...level over the wall by hand
             (STOW_X, z_end)]                     # and down the bore
 
 
@@ -521,8 +556,8 @@ INS_W     = D.NUT_PITCH - 2 * INS_CLR           # 5.9 wide -- the pitch, less it
 THREAD_CLR = D.MIN_WALL                         # room to work the string round, not force it
 # ...and the 45 deg lead-ins that get it there: a full thickest-gauge diameter, so a fat
 # string meets the chamfer before it can reach the square corner behind it.
-THREAD_LEAD = math.ceil(max(D.STRING_GAUGE) / D.BEAD) * D.BEAD    # 2.4
-_DROP_NEED = max(D.STRING_GAUGE) + THREAD_CLR   # 2.578 for the .070
+THREAD_LEAD = math.ceil(G_ENVELOPE / D.BEAD) * D.BEAD             # 2.4
+_DROP_NEED = G_ENVELOPE + THREAD_CLR            # 2.832 for a .080
 INS_DROP  = math.ceil(_DROP_NEED / D.BEAD) * D.BEAD          # 3.2, on the grid
 INS_H     = 5 * D.BEAD                          # 4.0 of body below the flat
 DIVOT_OFF = ROD_D / 2 - PIN_D / 2 - ROD_Z       # 0.621, cradle centre ABOVE the flat
@@ -538,7 +573,7 @@ INS_X1    = X_FRONT                             # FLUSH with the block's +X face
 # beads. Rounding UP (toward +X) can only thicken that wall, never thin it.
 # -X END: far enough back to clear the fattest winding, on the grid, rounded the safe
 # way (DOWN, i.e. -X: rounding the other way would pinch the coil).
-INS_X0    = math.floor((ROD_X - ROD_D / 2 - max(D.STRING_GAUGE) - D.MIN_WALL)
+INS_X0    = math.floor((ROD_X - ROD_D / 2 - G_ENVELOPE - D.MIN_WALL)
                        / D.BEAD) * D.BEAD
 TAIL_X    = INS_X0                              # where the tail leaves the insert and
                                                 # runs on -X to its stow bore
@@ -618,8 +653,33 @@ BASS_OFF  = 0.4                                 # the clamp lobe's +Y edge above
                                                 # coil, high enough to abut the neighbour
 
 
+# ── SKU C: STRING 10 ON ITS OWN, AS WIDE AS IT LIKES (user) ─────────────────────
+# The longstanding string-10 clip was SKU B's clamp lobe. It hangs BASS_W from BASS_OFF above
+# its string, which covers strings 8 and 9 with 1.1 to spare but not the outermost: that coil
+# marches -Y furthest, and at the .070 its last turn ran 0.33 past the lobe into the end wall
+# for the whole insert run (2.6 mm3, invisible to the gate, which lets keyhead_endplate touch
+# any string). At a .080 it would have been 1.24.
+#
+# String 10 has nothing -Y of it, so its insert can simply be wider. SKU C keeps SKU B's +Y
+# edges -- it still abuts string 9 -- and runs BOTH lobes out to ONE flat -Y edge, so the plan
+# has no -Y step to taper and nothing to print over. That edge covers the coil for every gauge
+# up to D.STRING_GAUGE_MAX with LANE_CLR of air (it is a printed wall, like a finger), on the
+# bead grid from the string's own Y. SAMPLED, not just the two ends: the whole-turn count
+# (_k_min_g) can step between them, and a step is where the coil jumps.
+SKU_C = D.N_STRINGS - 1
+_SKU_C_GAUGES = [D.STRING_GAUGE[SKU_C] + (D.STRING_GAUGE_MAX - D.STRING_GAUGE[SKU_C]) * t / 40.0
+                 for t in range(41)]
+SKU_C_COIL_LO = min(outer_coil_lo(g) for g in _SKU_C_GAUGES)
+SKU_C_LO = D.nut_y(SKU_C) - math.ceil((D.nut_y(SKU_C) - (SKU_C_COIL_LO - LANE_CLR)) / D.BEAD
+                                      - 1e-9) * D.BEAD
+assert all(outer_coil_lo(g) - (SKU_C_LO - BASS_CLR) >= LANE_CLR - 1e-9 for g in _SKU_C_GAUGES), (
+    f"string 10's coil reaches past its insert's -Y edge for some gauge up to "
+    f"{D.GAUGE_MAX_IN:.3f} in -- the old end-wall clip is back")
+
+
 def _clr(i: int) -> float:
-    """Pocket clearance for string i -- the two SKUs are fitted differently."""
+    """Pocket clearance for string i. SKU A sits between fingers; SKUs B and C abut in the
+    shared slot, so they take the stack fit."""
     return INS_CLR if i < N_FINGERED else BASS_CLR
 
 
@@ -682,6 +742,10 @@ def insert_lobes(i: int):
     turns() is what fits the coil into it."""
     if i < N_FINGERED:
         return ((D.nut_y(i), INS_LOBE_W), (D.nut_y(i) + CLAMP_C, CLAMP_W))
+    if i == SKU_C:
+        # SKU C keeps SKU B's +Y edges (it abuts string 9) and runs both lobes to SKU_C_LO.
+        dhi, chi = D.nut_y(i) + INS_LOBE_W / 2, D.nut_y(i) + BASS_OFF
+        return (((dhi + SKU_C_LO) / 2, dhi - SKU_C_LO), ((chi + SKU_C_LO) / 2, chi - SKU_C_LO))
     # SKU B's dowel lobe is OFFSET -Y, not centred. Centred, a 6.4 lobe reaches 3.2 past
     # the string and left string 7 a 0.79 wall (user). It only has to CONTAIN the dowel,
     # so it is hung from just clear of the dowel's own end and runs -Y from there: the
@@ -870,7 +934,7 @@ def slide_insert(i: int) -> cq.Workplane:
 #
 # It is measured from the UNINSTALLED position (user): far enough down that a thick gauge
 # string can be threaded between the flat and the coil already on the rod. See INS_DROP.
-POCKET_Z0 = (ROD_Z - ROD_D / 2.0 - max(D.STRING_GAUGE)   # the lowest flat any string sets
+POCKET_Z0 = (ROD_Z - ROD_D / 2.0 - G_ENVELOPE           # the lowest flat any string may set
              - INS_DROP - INS_H - 1.0)                   # ...its body, and its travel
 
 
@@ -944,7 +1008,8 @@ def bass_bay():
     the rod is held, so it is the thing worth pinning. Its -Y edge is the deepest bass
     coil plus its air."""
     hi = D.nut_y(N_FINGERED - 1) + LANE_LO - D.MIN_WALL_2P
-    lo = min(_lane(i)[1] for i in range(N_FINGERED, D.N_STRINGS))
+    lo = min(min(_lane(i)[1] for i in range(N_FINGERED, D.N_STRINGS)),
+             SKU_C_COIL_LO - COIL_CLR)          # string 10's coil at the heaviest gauge it may carry
     return lo, hi
 
 
@@ -1004,6 +1069,9 @@ ROD_Y0 = ROD_Y1 - ROD_L
 assert ROD_Y0 <= _ROD_NEED_Y0 + 1e-9, (
     f"the {ROD_L:g} mm rod reaches only {ROD_Y0:.2f}, short of the {_ROD_NEED_Y0:.2f} its bays need")
 ROD_END_W = D.MIN_WALL_2P                       # the +Y bore is BLIND; that wall is the stop
+assert abs(outer_coil_lo(D.STRING_GAUGE[SKU_C])
+           - (wrap_y(SKU_C)[1] - D.STRING_GAUGE[SKU_C] / 2)) < 1e-9, (
+    "outer_coil_lo has drifted from wrap_y -- SKU C would be sized off a coil that is not the one drawn")
 # THE BLOCK IS NOW AS WIDE AS THE WRAP FIELD, not as wide as the clamp field. The .070
 # marches 6.53 mm OUTWARD past the last string -- that free air is exactly what buys it
 # 3.5 turns -- so the -Y end of the rod lands 0.12 outside the old half-width. Take the
@@ -1041,6 +1109,9 @@ GROOVE_W = 1.8
 ROOF_CLR = 0.8
 BREAK_ANGLE = 10.0                              # MIN break angle over the dowel, so the DOWEL
                                                 # (not the rod) terminates the speaking length
+assert _break_at(ROD_Z, D.STRING_GAUGE_MAX) >= BREAK_ANGLE, (
+    f"a {D.GAUGE_MAX_IN:.3f} in string breaks only {_break_at(ROD_Z, D.STRING_GAUGE_MAX):.2f} deg over its "
+    f"dowel -- under the {BREAK_ANGLE} floor, so the rod would end the speaking length, not the dowel")
 
 
 def _break_deg(i: int) -> float:
@@ -1295,6 +1366,21 @@ STOW_Z_END = -40.0                              # well past the block's base
 STOW_KEEP = D.MIN_WALL_2P                       # wall between the channel's tip and the socket
 STOW_APEX = STOW_D / 2.0 * _APEX                # the teardrop's real +X reach
 STOW_X = INS_X0 - STOW_KEEP - STOW_APEX
+
+
+def stow_y(i: int) -> float:
+    """Y of string i's stow bore: the centre of its insert's -X end (the clamp lobe), which the
+    bore sits directly behind. FROM THE INSERT, NOT THE COIL (user): the coil's end moves with
+    the gauge and the turn count, and a hole in a printed part must not move when the strings
+    change. The tail is fed down it by hand, so it simply crosses to this Y in the socket."""
+    (_dy, _dw), (cy, _cw) = insert_lobes(i)
+    return cy
+
+
+_STOW_WEBS = [abs(stow_y(i) - stow_y(i + 1)) - STOW_D for i in range(D.N_STRINGS - 1)]
+assert min(_STOW_WEBS) >= D.MIN_WALL_2P - 1e-9, (
+    f"two neighbouring stow bores leave only {min(_STOW_WEBS):.2f} of web between them -- "
+    f"under the {D.MIN_WALL_2P} two-bead floor")
 assert STOW_X - STOW_D / 2.0 > X_BACK, (
     f"the stow channel ({STOW_X:.2f}) has walked out through the block's -X face "
     f"({X_BACK:.2f}) -- the socket or the channel has grown")
@@ -1336,7 +1422,7 @@ def all_stow_channels(z_end: float) -> cq.Workplane:
     """Every tail's passage, fused and cut once -- the lesson the troughs taught."""
     out = None
     for i in range(D.N_STRINGS):
-        k = stow_channel(i, wrap_y(i)[1], z_end)
+        k = stow_channel(i, stow_y(i), z_end)            # from the insert, not the coil
         out = k if out is None else out.union(k)
     return out
 

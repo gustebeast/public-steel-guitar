@@ -557,11 +557,15 @@ def _string_path(i, sy):
     # and the insert follow. It leaves at EXIT_DEG already descending, so there is no
     # corner here at all: the -X run and the separate stow bore are both gone.
     pts = NB.stow_route(i, (CH.Z_BOT + 8.4) - D.STRING_Z)   # stop above the tongue top
+    # The tail leaves the rod at the COIL's Y, but its bore sits behind the INSERT (nut_block.
+    # stow_y), so it crosses to the bore's Y as it rises in the socket: the exit and its stub
+    # stay on the coil, every point from the rise on is at the bore.
+    ys = [wy, wy] + [NB.stow_y(i)] * (len(pts) - 2)
     x0, z0 = pts[0]
     prev = cq.Vector(D.NUT_BLOCK_X + x0, wy, D.STRING_Z + z0)
     out = out.union(_bead(prev, rad * 1.05))                # see _bead: the tail leaves
-    for x, z in pts[1:]:                                    # TANGENT to the coil
-        cur = cq.Vector(D.NUT_BLOCK_X + x, wy, D.STRING_Z + z)
+    for (x, z), y in zip(pts[1:], ys[1:]):                  # TANGENT to the coil
+        cur = cq.Vector(D.NUT_BLOCK_X + x, y, D.STRING_Z + z)
         out = out.union(_rod(prev, cur, rad))
         prev = cur
     return out
