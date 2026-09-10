@@ -226,11 +226,15 @@ def lever_room() -> cq.Workplane:
 
 # ── housing envelope ─────────────────────────────────────────────────────────
 HOUS_X0 = KL.HOUS_X0                       # cartridge back + back-stop engagement
-HOUS_X1 = max(HUB_D / 2 + KL.HS_CLR + KL.HS_HOUS_WALL,
-              KL.BRG_OD / 2 + KL.BRG_WALL)              # 8.1 with the 695ZZ: the Ø13
-#           race needs more standoff than the hub does, and THIS face sits on the bar
-#           top — so it sets how high the axle rides. At 8.1 the bar lands 27.9, still
-#           clear of the lid's 27.0 floor, so the 48.0 axle datum survives untouched
+# THIS FACE SITS ON THE BAR TOP, so it is the axle's standoff above the bar, and the
+# PLAYING DATUM sets it — not the race and not the hub (user, 2026-09-10). It used to be
+# max(hub + clearance + wall, race + wall), which the Ø16 688ZZ and the Ø13.6 hub took to
+# 9.6 and the axle to 49.5. That is no longer a constraint, because the housing is FUSED
+# into the bar (fuse_into_bar): one printed part, so whatever the race wall and the hub's
+# swing need below the bar top simply comes out of bar material. The seat itself still
+# bottoms out above the bar top (8.1 standoff vs the Ø16.1 seat's 8.05 radius), and the
+# lever room is cut from the bar before the housing is unioned in.
+HOUS_X1 = D.PEDAL_AXLE_H - PB.LG.FOOT_H - PB.BAR_H      # 8.1 = 48.0 - 12 - 27.9
 HOUS_HW = KL.HOUS_HW                       # the sensor side sets Y — untouched, so the
                                            # axle / flange / magnet / cap / board all hold
 HOUS_Z1 = (pplace(KL._hs_pocket(KL.HS_YC, -20.0, KL.HS_BACK_X)).val()

@@ -58,7 +58,7 @@ _insert_boss_cut, _insert_dummy = cut_m4_boss, m4_boss_insert
 # ── bought parts (assembly dummies). REUSE existing line items where possible so they buy in
 # bulk: MR85ZZ bearings + the M4×10 cup-tip set screws + M4 heat-set inserts are ALL already in
 # the BOM (nut-block / screw-support). New: the Ø6 magnet, the MT6701 board, the springs.
-AXLE_D  = 5.0                       # Ø5 axle journals — PCTG now (user: no steel pin).
+AXLE_D  = D.BRG688_ID               # Ø8 axle journals (the 688ZZ bore, user 2026-09-10) — PCTG (user: no steel pin).
                                     # Zero torque lives on the axle (the springs act on
                                     # the LOBE; the magnet only co-rotates for the
                                     # sensor) and the radial bearing reactions (~4-5x
@@ -67,8 +67,11 @@ AXLE_D  = 5.0                       # Ø5 axle journals — PCTG now (user: no s
                                     # races take all the wear. (HISTORICAL: this described
                                     # the integral-stub + glued-insert pair, retired at
                                     # round 2 — the axle is ONE part now, see kl_axle.)
-BRG_OD, BRG_ID, BRG_W = 13.0, 5.0, 4.0  # 695ZZ — ONE bearing for the levers, the
-                                    # foot pedals AND the changer (user). Was MR85ZZ
+BRG_OD, BRG_ID, BRG_W = D.BRG688_OD, D.BRG688_ID, D.BRG688_W   # 688ZZ (Ø8×16×5) — the ONE
+                                    # bearing everywhere (user, 2026-09-10): the screws, the bridge,
+                                    # these levers and the foot pedals, which share these constants.
+                                    # 688ZZ C0r 474-710 N, so the ~130 N worst case is 3.6-5.5x.
+                                    # (history) 695ZZ (Ø5×13×4) before that. Was MR85ZZ
                                     # (Ø8×2.5), which sat at exactly 1.0x its 130 N
                                     # static rating here; 695ZZ is 346 N -> 2.7x.
                                     # SAME Ø5 bore, so friction is unchanged (deep-
@@ -188,7 +191,8 @@ WP_Y0, WP_Y1   = HUB_Y1, HUB_Y1 + 4.0   # +Y bearing wall (10 .. 14)
 HUB_YC  = (HUB_Y0 + HUB_Y1) / 2     # hub / cam / feel centre Y (0)
 
 # ── lever ────────────────────────────────────────────────────────────────────
-HUB_D   = 13 * D.BEAD               # 10.4: ONE lever constant: the hub OD *and* the arm depth (ARM_TX). Keeps
+HUB_D   = 17 * D.BEAD               # 13.6 (was 10.4 on the Ø5 axle): the Ø8.2 bore keeps a 2.7 wall, the
+                                    # 2.6 it had. ONE lever constant: the hub OD *and* the arm depth (ARM_TX). Keeps
                                     # the feel on the clear cam above the round hub, and the arm as deep
                                     # as the hub is wide for a solid root.
 ARM_LEN = 100.0                     # hub centre -> arm tip (knee reach, -Z)
@@ -870,8 +874,16 @@ BRG_Y0 = LEVER_HW + HS_CLR          # bearing INNER faces at ±10.4 = the lever-
 # the comb re-solves). Generated here rather than in the mount block because it is
 # HOUS_X0/X1 that bound them, and those aren't known until this point.
 _TEN_PITCH = RIB_PITCH / 2.0        # = the chassis half-pitch rib comb
+# ...and a station must ROOT ON SOLID. The bearing seats are teardrops whose print peak
+# can break out through the top face over the axle (it always did a little; the Ø16
+# 688ZZ opens it 1.78 either side of x = 0), and a tenon whose root sits in that
+# opening floats free. So a station within that half-width + the tenon's own half-width
+# of the axle is skipped (user: dropping the x = 0 stubs is fine).
+_SEAT_RS = (BRG_OD + 0.1) / 2                           # the seat bore's radius
+_SEAT_OPEN_HW = max(0.0, _SEAT_RS * math.sqrt(2.0) - HOUS_Z1)   # peak's width at the top face
 TEN_X = tuple(-k * _TEN_PITCH for k in range(20)
-              if HOUS_X0 + _JHW <= -k * _TEN_PITCH <= HOUS_X1 - _JHW)
+              if HOUS_X0 + _JHW <= -k * _TEN_PITCH <= HOUS_X1 - _JHW
+              and abs(-k * _TEN_PITCH) >= _SEAT_OPEN_HW + _JHW)
 # Each tenon runs the housing's FULL Y depth: it is a rail, and every millimetre of it
 # is engagement the player can buy by sliding the lever inboard. The +X-most station
 # (x=0) sits directly over the lever, where the lever-room slot opens the top face —
@@ -899,7 +911,9 @@ RIB_T = RIB_PROUD = D.MIN_WALL_2P   # cadkit contact-rib section: TWO nozzles (q
                                    # CHIP_H tracks the magnet, so raising RIB_PROUD shifts the whole
                                    # axle->magnet->sensor stack +0.75 outboard together (AIR_GAP kept).
 AXLE_SHOULDER_Y = HOUS_HW + RIB_PROUD           # 14.75: flange face, ON the rib
-AXLE_FLANGE_D   = 12 * D.BEAD       # 9.6 flange Ø (what seats on the rib). NOT the thread
+AXLE_FLANGE_D   = 16 * D.BEAD       # 12.8 flange Ø (what seats on the rib; was 9.6 over the Ø5 journal —
+                                    # the rib's mean Ø is this - 1.5 and its inner edge has to stay outside
+                                    # the Ø9 axle way). NOT the thread
                                     # major any more — the hex cap forced those apart
 MAG_FLANGE_T    = 0.8                           # pocket floor under the magnet
 MAG_Y0  = AXLE_SHOULDER_Y + MAG_FLANGE_T        # 15.55: magnet seat
