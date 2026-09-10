@@ -487,9 +487,12 @@ def _build_full() -> cq.Workplane:
     # gets tunnelled for extra engagement. The end-wall groove's blind end
     # (in the endplate) is the flush hard stop. ONE vertical M4 per stub
     # drops down the rail web from under the deck into the INBOARD ridge
-    # = the Y-retention SHEAR PIN: Ø8.4 head well to Z_BOT+30 (3 mm hex
+    # = the Y-retention SHEAR PIN: Ø8.4 head well to Z_BOT+30 (the 2.5 mm
     # key reaches through it), Ø4.6 shaft way on down to the groove, Ø3.6
-    # pilot in the ridge. Screw: M4×35 (head -45.15, tip -80.15).
+    # pilot in the ridge. Screw: M4×35 BUTTON head (ISO 7380, Ø7.6 in the Ø8.4
+    # well; head -45.15, tip -80.15) -- the belt tensioner's SKU. It was a
+    # 3 mm-key socket cap; the button head is what puts it on the instrument's
+    # one 2.5 mm key (user), and a shear pin never needed the cap's torque.
     from .legs import corner_groove_negatives as _cgn, _cross_x as _cx
     _xc_mid = sum(LEG_STATIONS_X) / 2
     for _sx in LEG_STATIONS_X:
