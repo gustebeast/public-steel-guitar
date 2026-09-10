@@ -66,6 +66,9 @@ PER_STRING_OK = {
     # nut-block hardware (per string): break pin sets the scale, set screw clamps the
     # string, threading through its own heat-set insert
     frozenset({"break_dowel", "string"}), frozenset({"set_screw", "string"}),
+    # the SLIDING INSERT is the clamp: its flat pinches the string's tail against the wrap on
+    # the rod (nut_block.slide_insert) -- a designed contact, on its own string only
+    frozenset({"nut_slide_insert", "string"}),
     frozenset({"set_screw", "nut_insert"}),
     frozenset({"nut", "screw_pulley"}), frozenset({"screw_bearing", "screw_pulley"}),
     # the collar's bore is 4.6 and the rod is Ø5: the interference IS the design —

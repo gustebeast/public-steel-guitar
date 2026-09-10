@@ -25,11 +25,12 @@ untenable, and the pocket it needed was the last real overhang in the part — a
 break dowel's pocket has. Deleting it takes ten overhangs, ten pockets and a BOM line
 with it, and leaves the part simpler rather than more complicated.
 
-THE ROD IS THE BRIDGE AXLE'S OWN PART. Ø5 g6 precision shaft, D.BRIDGE_AXLE_D, the
-same stock the changer end already buys — one shaft diameter now serves the bridge
-axle and this rod, so a wrap post is not a new line in the BOM. Ø5 also bends the
-.070 at 26.2% outer-fibre strain against Ø3's 37.2% (Ø6 would be 22.9%), i.e. it
-sits where a guitar tuner post sits, which is the thing this is imitating.
+THE ROD IS THE BRIDGE AXLE'S OWN PART (user). The Ø8 x 100 precision shaft the +X
+endplate carries its 688ZZ bearings on -- D.BRIDGE_AXLE_D and D.BRIDGE_AXLE_L, read
+here rather than copied -- so both ends of the instrument buy ONE shaft SKU. Ø8 bends
+the .070 at 18.2% outer-fibre strain (d/(D+d)), gentler than the Ø5 it replaced
+(26.2%) and than a guitar tuner post. The move from Ø5 was paid for in X (ROD_X) and in
+the block's -Y reach (Y_LO), not in the break angle, which re-solves itself.
 
 ONE ROD, NOT TEN POSTS (user). Ten vertical posts would let each wrap climb in Z,
 where height is free. A shared rod along Y makes the wrap climb ACROSS THE STRINGS
@@ -83,7 +84,7 @@ PIN_CLR  = D.NUT_PIN_CLR
 PIN_SEAT_D = PIN_D + 2 * PIN_CLR
 PIN_SEAT_L = PIN_L + 2 * PIN_CLR
 
-ROD_D = D.NUT_WRAP_ROD_D                        # Ø5 (was the bridge axle's stock until that went Ø8)
+ROD_D = D.BRIDGE_AXLE_D                         # Ø8 -- the bridge axle's own shaft (user)
 ROD_FIT = 0.4                                   # the rod is LOCATED, not gripped: the wraps
                                                 # load it -X and the comb takes that; it only
                                                 # has to slide in through 10 fingers at once
@@ -115,7 +116,11 @@ X_BACK  = X_FRONT - D.KEYHEAD_W                 # -25.6: -X outer face (the bed 
 # wall, and the dowel sits that far back from the face.
 DOWEL_KEEP = D.MIN_WALL                         # 0.8 of INSERT wall +X of the cradle
 DOWEL_X = X_FRONT - DOWEL_KEEP - (PIN_D + 0.3) / 2
-ROD_X   = -8 * D.BEAD                           # -6.4 rod centre
+# THE ROD'S +X FACE MUST STAY -X OF THE INSERT TAPER (asserted in _plan). The taper starts
+# where the DOWEL puts it (string 1: -3.57), whatever the rod does. At Ø5 the centre sat at
+# -6.4 with its face at -3.9; Ø8 adds 1.5 of radius, so the centre steps two beads -X to
+# hold the face at -4.0. INS_X0 and the stow bores follow it -X by derivation.
+ROD_X   = -10 * D.BEAD                          # -8.0 rod centre
 # ROD_Z IS SET BY THE BREAK ANGLE, not by taste. The dowel -- not the rod -- has to
 # terminate the speaking length, which means the string must leave the dowel at a real
 # down-angle rather than drifting off it. The angle is worst for the THICKEST string
@@ -207,14 +212,17 @@ def _solve_rod_z(g: float, target: float) -> float:
 
 
 ROD_Z   = _solve_rod_z(_G_MAX, BREAK_TARGET_DEG)
-# THE BAR HAS TO CLEAR IT. A round bar resting on the strings at fret 0 rises
-# R - sqrt(R^2 - d^2) above the string plane d behind its contact point; nothing may
-# stand higher than that anywhere behind the nut.
+# THE BAR HAS TO CLEAR IT. A round bar resting on the strings at fret 0 is a circle of
+# BAR_R centred BAR_R above the string plane over the dowel; the rod must stay a margin
+# outside it. Tested circle-to-circle, not as the bar's height above the rod's AXIS: that
+# closed form, R - sqrt(R^2 - d^2), only exists while the rod sits less than one bar
+# radius behind the nut, and the Ø8 rod's step -X (ROD_X) put it past that -- the old
+# test did not fail, it stopped being computable.
 BAR_R   = 19.0 / 2                              # a typical steel bar
-_BAR_UNDER = BAR_R - math.sqrt(BAR_R ** 2 - (DOWEL_X - ROD_X) ** 2)
-assert ROD_Z + ROD_D / 2 <= _BAR_UNDER - 0.8, (
-    f"the rod's top ({ROD_Z + ROD_D / 2:+.2f}) reaches the bar's underside "
-    f"({_BAR_UNDER:+.2f}) at fret 0 -- the first centimetre could not be barred")
+_BAR_CLR = math.hypot(DOWEL_X - ROD_X, BAR_R - ROD_Z) - BAR_R - ROD_D / 2
+assert _BAR_CLR >= 0.8, (
+    f"the rod (O{ROD_D} at x {ROD_X:+.2f}, z {ROD_Z:+.2f}) comes within {_BAR_CLR:.2f} of a "
+    f"bar resting at fret 0 -- the first centimetre could not be barred")
 
 # ── Z extent ───────────────────────────────────────────────────────────────
 # ONE PRISM, AND A SHORT ONE. NUT_TOP used to be INSERT_GAP + INSERT_POCKET -- whatever
@@ -986,7 +994,15 @@ def rod_span() -> tuple[float, float]:
     return lo - 2 * D.BEAD, D.nut_y(0) + 2 * D.BEAD
 
 
-ROD_Y0, ROD_Y1 = rod_span()
+# THE ROD IS A PURCHASED LENGTH (user: the bridge axle's Ø8 x 100), so it no longer ends where
+# the bays do. The +Y end keeps its place against the blind wall; the surplus runs -Y past the
+# last bay, outboard of the string field, and the block grows that way to carry it (Y_LO). The
+# instrument's -Y rail stands much further out than the +Y one, so that is where the room is.
+ROD_L = D.BRIDGE_AXLE_L
+_ROD_NEED_Y0, ROD_Y1 = rod_span()
+ROD_Y0 = ROD_Y1 - ROD_L
+assert ROD_Y0 <= _ROD_NEED_Y0 + 1e-9, (
+    f"the {ROD_L:g} mm rod reaches only {ROD_Y0:.2f}, short of the {_ROD_NEED_Y0:.2f} its bays need")
 ROD_END_W = D.MIN_WALL_2P                       # the +Y bore is BLIND; that wall is the stop
 # THE BLOCK IS NOW AS WIDE AS THE WRAP FIELD, not as wide as the clamp field. The .070
 # marches 6.53 mm OUTWARD past the last string -- that free air is exactly what buys it
@@ -997,9 +1013,14 @@ ROD_END_W = D.MIN_WALL_2P                       # the +Y bore is BLIND; that wal
 # clamp inserts' O6 pockets, which no longer exist.
 Y_WALL    = 8.0                                 # outer wall past the last insert
 _HW_CLAMP = D.nut_y(0) + INS_LOBE_W / 2 + Y_WALL
-_HW_NEED = max(_HW_CLAMP, ROD_END_W - ROD_Y0)
-HW = D.nut_y(0) + math.ceil((_HW_NEED - D.nut_y(0)) / D.BEAD - 1e-9) * D.BEAD
-assert ROD_Y0 - ROD_END_W >= -HW, "the rod's -Y end has run out of block to sit in"
+_HW_NEED = max(_HW_CLAMP, ROD_Y1 + ROD_END_W)
+HW = D.nut_y(0) + math.ceil((_HW_NEED - D.nut_y(0)) / D.BEAD - 1e-9) * D.BEAD   # the +Y face
+# THE -Y FACE: the clamp field's mirror of HW, or ROD_END_W past the rod's -Y end so the rod
+# sits recessed in its open entry bore rather than flush with the face -- whichever is further.
+# With the 100 mm rod it is the rod, by a long way. Same bead grid as HW.
+_YLO_NEED = max(_HW_CLAMP, ROD_END_W - ROD_Y0)
+Y_LO = -(D.nut_y(0) + math.ceil((_YLO_NEED - D.nut_y(0)) / D.BEAD - 1e-9) * D.BEAD)
+assert ROD_Y0 - ROD_END_W >= Y_LO - 1e-9, "the rod's -Y end has run out of block to sit in"
 
 # Checked at import, because both are functions of the GAUGE TABLE: a different string
 # set has to re-earn them rather than quietly go out of spec.
@@ -1386,8 +1407,8 @@ def _seat_wall_top(i: int) -> cq.Workplane:
 
 def _build() -> cq.Workplane:
     # ONE solid prism, the endplate footprint, and every feature is CUT from it.
-    body = box_at(X_FRONT - X_BACK, 2 * HW, NUT_TOP - NUT_BASE,
-                  x=(X_FRONT + X_BACK) / 2, y=0, z=(NUT_TOP + NUT_BASE) / 2)
+    body = box_at(X_FRONT - X_BACK, HW - Y_LO, NUT_TOP - NUT_BASE,
+                  x=(X_FRONT + X_BACK) / 2, y=(HW + Y_LO) / 2, z=(NUT_TOP + NUT_BASE) / 2)
 
     for i in range(D.N_STRINGS):
         y0, y1 = wrap_y(i)
@@ -1458,15 +1479,24 @@ def _build() -> cq.Workplane:
     # lost both its axle bores exactly that way). BLIND at +Y: that wall is the rod's +Y
     # stop, the same trick the bridge axle uses. It slides in from -Y through all ten
     # comb webs at once, so it must be a precision shaft and not a dowel.
-    body = body.cut(teardrop_hole(ROD_BORE, (ROD_Y1 - ROD_Y0) + 20.0,
-                                  axis_point=(ROD_X, ROD_Y0 - 20.0, ROD_Z),
-                                  axis_dir=(0.0, 1.0, 0.0), print_up=PRINT_UP))
+    body = body.cut(rod_bore())
     return body
 
 
 def rod() -> cq.Workplane:
     """The wrap rod itself, in the nut block's local frame — the bridge axle's shaft."""
     return cyl_y(ROD_D, ROD_Y1 - ROD_Y0, y0=ROD_Y0, x=ROD_X, z=ROD_Z)
+
+
+def rod_bore() -> cq.Workplane:
+    """The rod's bore, in the local frame: open at -Y (the rod slides in there), BLIND at +Y.
+    ONE definition, because it is cut twice. The Ø8 rod dips below the deck plane, where this
+    block stops and the keyhead endplate's base prism begins -- and that prism, fused in
+    afterwards, fills the bottom of the bore straight back in (905 mm3 of rod buried in the
+    endplate, the refill trap). So keyhead_endplate re-cuts this after its unions."""
+    return teardrop_hole(ROD_BORE, (ROD_Y1 - ROD_Y0) + 20.0,
+                         axis_point=(ROD_X, ROD_Y0 - 20.0, ROD_Z),
+                         axis_dir=(0.0, 1.0, 0.0), print_up=PRINT_UP)
 
 
 nut_block = _build()
