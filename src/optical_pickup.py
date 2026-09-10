@@ -122,6 +122,8 @@ Frames: absolute X/Y/Z. Components face +Z (UP, at the strings).
 
 from __future__ import annotations
 
+import math
+
 import cadquery as cq
 from cadquery.selectors import NearestToPointSelector
 
@@ -470,11 +472,22 @@ def _block(out, y, items, x0, x1):
 # Y gap above itself -- so U1 alone now uses the gap BELOW, and its rows are pulled in
 # closer to the quad than the shared FB_ROWS to clear U2's cluster underneath. That is
 # electrically fine and arguably better: the feedback loop got shorter, not longer.
+#
+# Shrinking the hole to driver size does NOT buy that move back -- checked, not assumed:
+# the hole is centred in the gap above U1, so a shared-row cluster there still fouls it by
+# 2.20 at O4.4. And the pull is not the hole's doing either; it is U2's cluster below that
+# sets it. Both survive the diameter change untouched.
 JACK_ACCESS_XY = TP.JACK_POS[0]                 # THE JACK'S OWN POSITION, read from
                                                 # top_plate -- not a copy of it, so the
                                                 # hole cannot drift off the screw
-JACK_ACCESS_D  = 8.0                            # clears the M4 button head (O7.6) so the
-                                                # screw itself can pass, not just a driver
+# SIZED FOR THE DRIVER, NOT THE SCREW (user). It was O8.0 -- big enough to pass the M4
+# button head, so the jack could be removed through the board. It does not need to be:
+# the screw is captured in the deck and stays there; all this hole has to do is let a key
+# reach its socket to tighten or slacken it. An ISO 7380 M4 takes a 2.5 hex, 2.887 across
+# corners, so M4's own clearance hole passes it with 1.5 of slop for the board's
+# positional tolerance -- and it is a number this project already has rather than one
+# invented here.
+JACK_ACCESS_D  = M4.shaft_clr_d                 # 4.4
 
 
 def _parts():
@@ -1301,7 +1314,27 @@ def _assert_field_clear():
                 raise AssertionError(
                     f"optical strip: string {i + 1}'s detector at {s:+.2f} reaches past "
                     f"the {SLOT_DY} aperture -- the cover would blind it")
-    # 7. the board must clear the deck it rides over
+    # 8. NOTHING may stand in the jack's access hole. This is the one feature on the
+    # board that is defined by ABSENCE, which makes it the easiest to lose: the parts are
+    # unioned onto the board AFTER the hole is cut, so a component that drifts over it
+    # simply plugs it back up. The result is still one clean printable solid, still gate-
+    # green, and still wrong -- the screw underneath becomes unreachable and nobody finds
+    # out until an assembled instrument needs its pickup height set. Assert the intent
+    # (a clear line of sight to the screw) rather than the placement that happens to give
+    # it, so this survives the cluster being moved again.
+    _jx, _jy = JACK_ACCESS_XY
+    for p in PARTS:
+        x0, x1, y0, y1 = part_span(p)
+        dx = max(x0 - _jx, _jx - x1, 0.0)
+        dy = max(y0 - _jy, _jy - y1, 0.0)
+        gap = math.hypot(dx, dy) - JACK_ACCESS_D / 2
+        if gap < PKG_CLR - 1e-9:
+            raise AssertionError(
+                f"optical strip: {p['ref']} ({p['desc']}, {p['pkg']}) is {gap:.2f} from "
+                f"the jack's O{JACK_ACCESS_D} access hole at ({_jx:.2f}, {_jy:.2f}) -- "
+                f"under PKG_CLR {PKG_CLR}. That hole is a driver's only route to the "
+                f"pickup-height screw; a part over it plugs it silently.")
+    # 9. the board must clear the deck it rides over
     if STANDOFF < 1.6:
         raise AssertionError(
             f"optical strip: only {STANDOFF:.2f} between the board and the deck at "
