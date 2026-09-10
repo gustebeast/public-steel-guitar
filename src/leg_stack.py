@@ -412,8 +412,10 @@ def body_adapter():
     b = box_at(LEG_W, LEG_W, ADAPT_L, x=LEG_X, y=LEG_Y, z=(Z_BUTT + Z_TOP) / 2.0)
     # BLIND mortise: open at the butt face, closed at the mortise roof
     b = b.cut(mortise_cutter(Z_BUTT - 1.0, Z_MORTISE_ROOF))
-    # the latch's retention pocket -- the ledge the whole leg hangs on
+    # the latch's retention pocket -- the ledge the whole leg hangs on -- and the
+    # chamfered mouth that lets a printed hook ride in without catching
     b = b.cut(LL.adapter_pocket())
+    b = b.cut(LL.mouth_chamfer())
     # BODY TENONS, on the top face (see BODY JOINERY). Both ridges and the tongue
     # run the full LEG_W along Y, the slide axis.
     ridge_roof = Z_TOP
@@ -473,12 +475,27 @@ ADAPTER_UP = (0.0, 1.0, 0.0)       # the adapter the OTHER way up, -Y -> +Y (use
                                    # two differ.)
 TENON_UP = (-_S2, -_S2, 0.0)       # both floating tenons: +X+Y -> -X-Y, lying on
                                    # the section's own 45 flat that faces +X+Y
+SLIDER_UP = (0.0, 0.0, -1.0)       # the latch slider STANDS ON ITS HOOK END, pad at
+                                   # the top. Every other way up fails: hook end up
+                                   # leaves the retention ledge a flat 2.4 overhang
+                                   # (and a ledge cannot be chamfered without turning
+                                   # it into a cam that releases under load); pad face
+                                   # down leaves the hook's tip starting in mid-air;
+                                   # on its back or side, the plate hangs 6 past the
+                                   # neck; diagonal clears every face but steps the
+                                   # ramp into 0.49 mm risers facing the push. This
+                                   # way the ledge faces up, the ramp faces lean
+                                   # 22-30 degrees off vertical, the ramp's layer
+                                   # steps are ~0.1, and the pad is corbelled on
+                                   # (leg_latch.CORBEL).
 PRINT_UP = {"adjust_sleeve": SLEEVE_UP, "fixed_sleeve": SLEEVE_UP,
             "body_adapter": ADAPTER_UP,
-            "adjust_tenon": TENON_UP, "fixed_tenon": TENON_UP}
+            "adjust_tenon": TENON_UP, "fixed_tenon": TENON_UP,
+            "latch_slider": SLIDER_UP}
 PRINT_ROT = {"adjust_sleeve": ((1, 0, 0), -90), "fixed_sleeve": ((1, 0, 0), -90),
              "body_adapter": ((1, 0, 0), 90),
-             "adjust_tenon": ((-1, 1, 0), 90), "fixed_tenon": ((-1, 1, 0), 90)}
+             "adjust_tenon": ((-1, 1, 0), 90), "fixed_tenon": ((-1, 1, 0), 90),
+             "latch_slider": ((1, 0, 0), 180)}
 
 
 def _rotated(v, axis, deg):
@@ -499,12 +516,19 @@ for _n, _up in PRINT_UP.items():
         "prints from (build axis lands on %s, not +Z)" % (_n, _z))
 
 
+def latch_slider():
+    """The body latch's slider -- built in leg_latch, printed with the leg."""
+    from . import leg_latch as LL
+    return LL.slider()
+
+
 PARTS = {
     "adjust_sleeve": adjust_sleeve,
     "adjust_tenon": adjust_tenon,
     "fixed_sleeve": fixed_sleeve,
     "fixed_tenon": fixed_tenon,
     "body_adapter": body_adapter,
+    "latch_slider": latch_slider,
 }
 
 

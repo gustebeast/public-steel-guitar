@@ -241,6 +241,11 @@ _ex("clearance",
     leg_stack__FIT="tenon-in-mortise slide fit on every face of the octagon",
     leg_stack__ADAPT_BOLT_D="M4 clearance hole through the adapter's end wall",
     leg_latch__CLR="latch slider sliding clearance in its pocket, notch and recess",
+    leg_latch__SLIDE_CLR="latch slider body's clearance to the bore, sized for two "
+                         "oversize prints",
+    leg_latch__REST_OUT="= CLR * sqrt2: how far the spring pushes the slider out "
+                        "before its flanks meet the bore -- a clearance, not material",
+    leg_latch__SHRINK_ADAPTER="= SLIDE_CLR + REST_OUT: clearances only",
     leg_latch__CH_FLOOR="= the mortise's roof + 0.5 standoff so the hook never rubs "
                         "the tenon beside it: grid-derived plus a CLEARANCE",
 )
