@@ -475,19 +475,19 @@ ADAPTER_UP = (0.0, 1.0, 0.0)       # the adapter the OTHER way up, -Y -> +Y (use
                                    # two differ.)
 TENON_UP = (-_S2, -_S2, 0.0)       # both floating tenons: +X+Y -> -X-Y, lying on
                                    # the section's own 45 flat that faces +X+Y
-SLIDER_UP = (0.0, 0.0, -1.0)       # the latch slider STANDS ON ITS HOOK END, pad at
-                                   # the top. Every other way up fails: hook end up
-                                   # leaves the retention ledge a flat 2.4 overhang
-                                   # (and a ledge cannot be chamfered without turning
-                                   # it into a cam that releases under load); pad face
-                                   # down leaves the hook's tip starting in mid-air;
-                                   # on its back or side, the plate hangs 6 past the
-                                   # neck; diagonal clears every face but steps the
-                                   # ramp into 0.49 mm risers facing the push. This
-                                   # way the ledge faces up, the ramp faces lean
-                                   # 22-30 degrees off vertical, the ramp's layer
-                                   # steps are ~0.1, and the pad is corbelled on
-                                   # (leg_latch.CORBEL).
+SLIDER_UP = (1.0, 0.0, 0.0)        # the latch slider builds -X -> +X (user): its -X
+                                   # side is the bed. Every Z- and Y-facing face then
+                                   # stands vertical -- the retention ledge, the pad's
+                                   # top edge, the flush thumb face -- and the body's and
+                                   # hook's V flanks lean out as 45-degree eaves off it.
+                                   # Two things make it rest on the bed properly: the
+                                   # pad sits +X of centre so its -X edge lands there
+                                   # with the body (leg_latch.PAD_X), and the neck has a
+                                   # hidden notch so it grows off body and plate
+                                   # (leg_latch._neck_support). Checked with a slicer-
+                                   # style LAYER-SUPPORT test, not just face angles: a
+                                   # face-angle probe passed an earlier diagonal build
+                                   # whose pad wing hung from its tip in mid-air.
 PRINT_UP = {"adjust_sleeve": SLEEVE_UP, "fixed_sleeve": SLEEVE_UP,
             "body_adapter": ADAPTER_UP,
             "adjust_tenon": TENON_UP, "fixed_tenon": TENON_UP,
@@ -495,7 +495,7 @@ PRINT_UP = {"adjust_sleeve": SLEEVE_UP, "fixed_sleeve": SLEEVE_UP,
 PRINT_ROT = {"adjust_sleeve": ((1, 0, 0), -90), "fixed_sleeve": ((1, 0, 0), -90),
              "body_adapter": ((1, 0, 0), 90),
              "adjust_tenon": ((-1, 1, 0), 90), "fixed_tenon": ((-1, 1, 0), 90),
-             "latch_slider": ((1, 0, 0), 180)}
+             "latch_slider": ((0, 1, 0), -90)}
 
 
 def _rotated(v, axis, deg):

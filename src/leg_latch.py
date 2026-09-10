@@ -186,16 +186,22 @@ RUN = 7 * B                        # 5.6 how far ABOVE the mouth the pocket sits
 # only the plate has to be big. The plate sits in a RECESS in the sleeve face,
 # flush at rest; the recess floor is the hard stop at full stroke.
 PAD_W = 25 * B                     # 20.0 across X
-PAD_FLAT = 25 * B                  # 20.0 of FLAT thumb face down the sleeve
-# The slider prints STANDING ON ITS HOOK END (leg_stack.PRINT_UP), so the pad is at
-# the top of the print -- and the plate reaches well outside the body it grows
-# from, which would leave its upper end hanging over air. So that end is
-# CORBELLED: a 45-degree draft out from the body's own outline (_corbel_draft).
-# That draft takes CORBEL off the top of the plate, so the pad is longer by that
-# much and the flat 20 x 20 face survives whole below it.
-CORBEL = 14 * B                    # 11.2 the draft's depth: enough to reach the
-                                   # plate's far corners (asserted)
-PAD_SPAN = CORBEL + PAD_FLAT       # 31.2 the whole pad, from the butt plane down
+PAD_FLAT = 25 * B                  # 20.0 down the sleeve from the butt plane -- ALL of
+                                   # it flat thumb face, filling its recess flush with
+                                   # the leg (user). A standing print once corbelled
+                                   # the plate's top corners away and left visible
+                                   # divots in the recess.
+PAD_SPAN = PAD_FLAT
+# THE PAD IS OFF-CENTRE IN X, because of how the slider prints (user: -X -> +X,
+# leg_stack.SLIDER_UP). Building along +X, the -X side is the BED, and everything
+# has to rest on it or grow off something that does. The body is only BAND_W wide
+# (the tenon's pocket allows no more), so its -X side sits at -hx; a 20-wide plate
+# centred on the leg would put its -X edge 3.6 further out, and the body would then
+# start in mid-air above it (the layer-support check: 111 mm2 unsupported). So the
+# plate slides +X until its -X edge is FLUSH WITH THE BODY'S -X SIDE: both on the
+# bed. Still 20 x 20, still flush with the leg face -- centred 3.6 off the leg's
+# axis. The recess in the sleeve moves with it; the neck stays on the axis.
+PAD_X = (PAD_W - BAND_W) / 2.0     # 3.6
 PAD_T = 3 * B                      # 2.4 plate thickness: a thumb load at a corner
                                    # cantilevers it 6 past the neck, and 1.6 bent
                                    # at ~14 MPa there against ~6 at 2.4
@@ -242,18 +248,19 @@ assert SLIDER_BACK - STROKE > TUNNEL_BACK, (
     "the slider bottoms on the tunnel back before the stroke is done")
 
 
-def _band(r0: float, r1: float, z0: float, z1: float, w: float = BAND_W):
-    """A block across the band: `w` wide in X, from radius r0 out to r1 toward the
-    button, from world z0 up to z1."""
-    return box_at(w, r1 - r0, z1 - z0, x=LS.LEG_X,
+def _band(r0: float, r1: float, z0: float, z1: float, w: float = BAND_W,
+          x: float = 0.0):
+    """A block `w` wide in X centred x off the leg's axis, from radius r0 out to r1
+    toward the button, from world z0 up to z1."""
+    return box_at(w, r1 - r0, z1 - z0, x=LS.LEG_X + x,
                   y=LS.LEG_Y + BUTTON_SIDE * (r0 + r1) / 2.0, z=(z0 + z1) / 2.0)
 
 
-def _radial_cyl(d: float, r0: float, length: float, z: float):
-    """A cylinder on the band's centreline pointing at the button: starting at
+def _radial_cyl(d: float, r0: float, length: float, z: float, x: float = 0.0):
+    """A cylinder pointing at the button, x off the band's centreline: starting at
     radius r0 and running `length` further out, at height z."""
     return cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        d / 2.0, length, cq.Vector(LS.LEG_X, LS.LEG_Y + BUTTON_SIDE * r0, z),
+        d / 2.0, length, cq.Vector(LS.LEG_X + x, LS.LEG_Y + BUTTON_SIDE * r0, z),
         cq.Vector(0, BUTTON_SIDE, 0)))
 
 
@@ -315,41 +322,6 @@ def _lead_ramp(z_lo: float, z_hi: float):
          _bore_wire(z_hi, REST_OUT - TIP_RELIEF)], True))
 
 
-def _corbel_draft():
-    """The room the PAD may fill. Below the corbel, anything. Within it, only what
-    a 45-degree draft out from the body's outline reaches -- so no layer of the pad
-    overhangs the layer printed before it (the slider prints hook end down)."""
-    # the body's outline where the pad meets it: the sleeve-zone profile, at rest
-    a = (LS.TEN_W + 2 * LS.FIT - 2 * CLR) / math.sqrt(2.0) + REST_OUT
-    z_top = Z_BUTT - CLR                     # the pad's own top face
-    hx = BAND_W / 2.0 - CLR
-    xa = LS.CHAM / 2.0                       # half the apex chamfer
-    outline = [(-hx, SLIDER_BACK), (hx, SLIDER_BACK), (hx, a - hx),
-               (xa, a - xa), (-xa, a - xa), (-hx, a - hx)]
-    # The draft's zero plane is the pad's TOP FACE, not the butt plane: set at the
-    # butt plane, the pad (which stops CLR short of it) was already allowed CLR of
-    # growth on its first layer -- a 0.25 lip, flat, overhanging. The probe found it.
-    pts = [cq.Vector(LS.LEG_X + x, LS.LEG_Y + BUTTON_SIDE * r, z_top)
-           for x, r in outline]
-    top = cq.Wire.makePolygon(pts + [pts[0]])
-    # grow it OUTWARD. Which sign OCC's offset takes depends on the wire's winding,
-    # and the inward one simply collapses on an outline this small (it returns no
-    # wire at all), so keep whichever result exists and is bigger than the outline.
-    grown = None
-    for d in (CORBEL, -CORBEL):
-        res = top.offset2D(d, "intersection")
-        if res and res[0].BoundingBox().xlen > top.BoundingBox().xlen:
-            grown = res[0]
-            break
-    assert grown is not None, "could not grow the body outline for the pad's corbel"
-    low = grown.translate(cq.Vector(0, 0, -CORBEL))
-    draft = cq.Workplane("XY").add(cq.Solid.makeLoft([low, top], True))
-    z_lo = Z_PAD_BOT - 2.0
-    below = box_at(4 * LS.LEG_W, 4 * LS.LEG_W, (z_top - CORBEL) - z_lo,
-                   x=LS.LEG_X, y=LS.LEG_Y, z=(z_top - CORBEL + z_lo) / 2.0)
-    return draft.union(below)
-
-
 # The slider body must house the spring's seat and still have a back wall.
 assert TEN_R - CLR - SLIDER_BACK >= SLIDER_SEAT + D.MIN_WALL_2P, (
     "the slider is %.2f deep; its spring seat needs %.2f plus a wall"
@@ -381,16 +353,10 @@ _BORE_AT_SLOT_EDGE = (LS.TEN_W + 2 * LS.FIT) / math.sqrt(2.0) - _SLOT_EDGE
 assert RECESS_FLOOR - _BORE_AT_SLOT_EDGE >= D.MIN_WALL_2P, (
     "only %.2f of sleeve wall under the pad recess at the neck slot's edge"
     % (RECESS_FLOOR - _BORE_AT_SLOT_EDGE))
-assert PAD_W + 2 * CLR <= LS.LEG_W - 4 * D.MIN_WALL_2P, (
-    "the pad recess leaves too little of the sleeve face either side")
-# The corbel must reach the plate's far corners, or they would still hang.
-_A_BODY = (LS.TEN_W + 2 * LS.FIT - 2 * CLR) / math.sqrt(2.0) + REST_OUT
-_CORNER_REACH = ((PAD_W / 2.0 - CLR) + FACE_R - _A_BODY) / math.sqrt(2.0)
-assert _CORNER_REACH <= CORBEL, (
-    "the pad's corners sit %.2f from the body outline; the corbel reaches %.2f"
-    % (_CORNER_REACH, CORBEL))
-
-
+assert abs(PAD_X) + PAD_W / 2.0 + CLR <= LS.LEG_W / 2.0 - 2 * D.MIN_WALL_2P, (
+    "the off-centre pad recess leaves too little of the sleeve face on its +X side")
+assert abs((PAD_X - (PAD_W / 2.0 - CLR)) + (BAND_W / 2.0 - CLR)) < 1e-9, (
+    "the pad's -X edge must land on the bed with the body's -X side")
 # -- HOLDING FORCE (user: reliable when lifting/moving the instrument) ------
 # MEASURED off the solids by closing each gap and pushing 0.2 further, not read
 # off the constants. Load path when the leg hangs: adapter ledge -> hook -> slider
@@ -409,17 +375,55 @@ assert _CORNER_REACH <= CORBEL, (
 # and the root shear (74.8 mm2, measured on that full-height hook) is scaled by the
 # ratio. What it buys, simulated with no hand on the button from the slider's TRUE
 # rest: as drawn, no jam and 9-13 N to seat (mu 0.3-0.5); as a worst-case print
-# (both parts 0.15 oversize, the ramp as 0.2 mm stairs taken at their worst, a
-# sharp adapter edge), still no jam at mu 0.5, 17-28 N, retraction 2.11 of the 3.2
-# stroke. Guide friction is not included, so real pushes run somewhat higher.
+# (both parts 0.15 oversize, the ramp as 0.2 mm stairs along the slider's REAL
+# build direction, +X, taken at their worst, a sharp adapter edge), still no
+# jam at mu 0.5, 11-16 N, retraction 2.31 of the 3.2 stroke. Guide friction is not
+# included, so real pushes run somewhat higher.
 #
 # Allowables are deliberately conservative for printed PETG-GF/PCTG: 12 MPa is an
-# INTERLAYER shear figure. The slider prints hook end down, which puts its root
-# shear plane ACROSS the layers rather than along one, so that is conservative
-# there. Against it, the heaviest thing the latch holds is the whole leg below the
+# INTERLAYER shear figure. The slider builds along +X, so the hook's root planes
+# (its V flanks) cross the layers at 45 degrees -- partly interlayer, so 12 MPa is
+# the honest figure. Against it, the heaviest thing the latch holds is the whole leg below the
 # adapter -- 1.19 kg printed SOLID (an upper bound) = 11.7 N, 58 N at a x5 handling
 # jolt. ~6.5x margin; strength is still not what limits this latch.
 # What does is ACCIDENTAL RELEASE: see the pad.
+
+
+# The neck's -X face, printing -X -> +X, can only grow off something below it: the
+# body under its flank, or the GUSSET above a 45-degree line rising off the plate's
+# inner face from the bed. A notch-only version left that face resting on air
+# between the two -- 47 mm2, caught by the layer-support check -- because the eave
+# it assumed had no material under it until the gusset existed.
+GUSSET_LINE = (FACE_R - PAD_T) - (BAND_W / 2.0 - CLR)   # r + x along the gusset face
+# Pressing drives the gusset STROKE inward, below the recess floor on that side, so
+# the sleeve gets a matching 45-degree relief there (sleeve_notch). What that leaves
+# of the sleeve wall over the bore, at the neck slot's edge where it is thinnest:
+_RELIEF_LINE = GUSSET_LINE - STROKE - CLR * math.sqrt(2.0)
+_X_SLOT = -(NECK_W / 2.0 + CLR)
+_RELIEF_WALL = (_RELIEF_LINE - _X_SLOT) - ((LS.TEN_W + 2 * LS.FIT) / math.sqrt(2.0) + _X_SLOT)
+assert _RELIEF_WALL >= D.MIN_WALL, (
+    "the gusset's relief leaves only %.2f of sleeve wall over the bore" % _RELIEF_WALL)
+
+
+def _neck_support() -> cq.Workplane:
+    """Where the NECK may be, printing -X -> +X: under the body's -X flank (grown
+    off the body) or above the gusset line (grown off the gusset). The small V
+    between the two on the neck's -X side is cut away. Inside the sleeve's slot, so
+    never seen; the neck keeps its full width on its +X side."""
+    hx = BAND_W / 2.0 - CLR
+    a = (LS.TEN_W + 2 * LS.FIT - 2 * CLR) / math.sqrt(2.0) + REST_OUT  # r - x on the flank
+    e = (FACE_R - PAD_T) - hx                                          # r + x on the eave
+    big = 60.0
+    under_flank = [(-big, -big), (big, -big), (big, a + big), (-big, a - big)]
+    over_eave = [(-big, e + big), (big, e - big), (big, big), (-big, big)]
+    z0, z1 = Z_PAD_BOT - 2.0, Z_BUTT + 2.0
+    out = None
+    for poly in (under_flank, over_eave):
+        pts = [(LS.LEG_X + x, LS.LEG_Y + BUTTON_SIDE * r) for x, r in poly]
+        prism = (cq.Workplane("XY").workplane(offset=z0).polyline(pts).close()
+                 .extrude(z1 - z0))
+        out = prism if out is None else out.union(prism)
+    return out
 
 
 def _bore_prism(z0: float, z1: float, lift: float = 0.0,
@@ -482,12 +486,19 @@ def slider() -> cq.Workplane:
     # load. Everything this fills is void in every host (the tenon's pocket, the
     # sleeve's slot, which runs in to the axis).
     pad = _band(SLIDER_BACK, FACE_R - PAD_T, Z_PAD_BOT + e, Z_BUTT - e,
-                NECK_W - 2 * e)
+                NECK_W - 2 * e).intersect(_neck_support())
+    # the GUSSET: plate to neck on the -X side, its face on the 45-degree gusset line
+    xg0, xg1 = -(BAND_W / 2.0 - CLR), -(NECK_W / 2.0 - e)
+    rp = FACE_R - PAD_T
+    tri = [(xg0, rp), (xg1, rp), (xg1, GUSSET_LINE - xg1)]
+    tri_w = [(LS.LEG_X + x, LS.LEG_Y + BUTTON_SIDE * r) for x, r in tri]
+    pad = pad.union(cq.Workplane("XY").workplane(offset=Z_PAD_BOT + e)
+                    .polyline(tri_w).close()
+                    .extrude((Z_BUTT - e) - (Z_PAD_BOT + e)))
     # ...and the thumb plate on its end, flush with the outer face at rest
     pad = pad.union(_band(FACE_R - PAD_T, FACE_R, Z_PAD_BOT + e, Z_BUTT - e,
-                          PAD_W - 2 * e))
-    # both corbelled into the body at 45 degrees, so the pad prints on the body
-    s = s.union(pad.intersect(_corbel_draft()))
+                          PAD_W - 2 * e, x=PAD_X))
+    s = s.union(pad)
     # the spring's blind bore, opening at the back face (starts 0.01 inside it, so
     # it runs 0.01 longer to keep its full depth). Sideways to the slider's print,
     # so via cadkit: a teardrop.
@@ -539,8 +550,22 @@ def sleeve_notch() -> cq.Workplane:
     # sees more than it was sized for. The button face is the top of the print,
     # so it is a plain open pocket with no overhang.
     recess = _band(RECESS_FLOOR, FACE_R + 1.0, Z_PAD_BOT, Z_BUTT + 1.0,
-                   PAD_W + 2 * CLR)
-    return slot.union(recess)
+                   PAD_W + 2 * CLR, x=PAD_X)
+    # the gusset's RELIEF: where the pressed gusset reaches below the recess floor on
+    # the -X side, a 45-degree cut clearing it by CLR. Behind the pad, never seen.
+    er = _RELIEF_LINE
+    xa = er - RECESS_FLOOR                    # where the relief line meets the floor
+    xb = _X_SLOT + 1.0                        # overlaps the slot, already open
+    # Starts EXACTLY where the line meets the floor, inside the recess edge, and
+    # rises to its overlap on a 45: an earlier corner 0.5 further out cut a sliver
+    # past the recess edge whose roof was a flat 7 mm2 ceiling in the sleeve's print.
+    assert xa >= PAD_X - PAD_W / 2.0 - CLR, "the relief starts outside the recess"
+    tri = [(xa, RECESS_FLOOR), (xb, er - xb), (xb, RECESS_FLOOR + 0.5),
+           (xa + 0.5, RECESS_FLOOR + 0.5)]
+    tri_w = [(LS.LEG_X + x, LS.LEG_Y + BUTTON_SIDE * r) for x, r in tri]
+    relief = (cq.Workplane("XY").workplane(offset=Z_PAD_BOT).polyline(tri_w).close()
+              .extrude((Z_BUTT + 1.0) - Z_PAD_BOT))
+    return slot.union(recess).union(relief)
 
 
 def adapter_pocket() -> cq.Workplane:
