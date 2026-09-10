@@ -233,6 +233,14 @@ _ex("hardware",
 
 # Gaps, not material. Always sub-bead; the grid does not apply.
 _ex("clearance",
+    # the redesigned leg -- every one a GAP or a hole, not material
+    leg_stack__FIT="tenon-in-mortise slide fit on every face of the octagon",
+    leg_stack__ADAPT_BOLT_D="M4 clearance hole through the adapter's end wall",
+    leg_latch__CLR="latch slider sliding clearance in its pocket, notch and recess",
+    leg_latch__CH_FLOOR="= the mortise's roof + 0.5 standoff so the hook never rubs "
+                        "the tenon beside it: grid-derived plus a CLEARANCE",
+)
+_ex("clearance",
     FIT_CLR="slip fit",
     NUT_PIN_CLR="dowel drop-in fit",
     BOOL_OVERSHOOT="boolean cutter overshoot, not a feature",
