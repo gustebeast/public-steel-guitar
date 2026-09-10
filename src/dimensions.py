@@ -71,20 +71,25 @@ MR85_OD, MR85_ID, MR85_W = 8.0, 5.0, 2.5     # Ø5 bore — KNEE LEVER / pedal a
 # ⚠ C0r spans 474-710 ACROSS MAKERS, which is wider than the 1.6x worst-case margin:
 # buy a branded part and read its real C0r. See SUPPORT_BRG_N for the stacking story.
 BRG688_OD, BRG688_ID, BRG688_W = 16.0, 8.0, 5.0  # 688ZZ — Ø8 bore, the leadscrew's
-BELT_PLANE_DZ   = 7 * BEAD   # 5.6 — the two screw-pulley planes' Z separation.
-# HALVED (was 14*BEAD = 11.2) once the screws went into TWO ROWS. The full separation
-# existed because ten pulleys shared one X line at the 9.5 string pitch, and
-# PULLEY_FLANGE_OD is 11.0 — neighbours physically overlapped, so alternate ones had to
-# be lifted clear. In-row pitch is now 19.0, so the flanges no longer touch and the
-# plane split has only ONE job left: keeping far-row BELTS off near-row PULLEYS, which
-# 5.6 does. Halving it is what pays for the Tr8 nut: the nut is 15 tall against the old
-# 9.8, so its lowest sweep dropped 5.2 and fouled the thrust ledge (the assert below
-# caught it). Lowering the HIGH plane gives that back without touching NUT_TOP_Z --
-# which matters, because raising the nut would shorten the dead run and push the
-# string's break angle from 10.0 deg to 12.9.
-                             # Declared here rather than with the belts because the
-                             # pulleys' STAGGER SPACER is exactly this, and the thrust
-                             # stack sits on top of that.
+BELT_PLANE_DZ   = 11 * BEAD  # 8.8 — the two screw-pulley planes' Z separation.
+# History: 14*BEAD = 11.2 while ten pulleys shared one X line at the 9.5 string pitch,
+# where neighbouring Ø11 flanges physically overlapped and alternate ones had to be lifted
+# clear. Two rows took the in-row pitch to 19.0, so that job went away and it was halved
+# to 5.6. THAT WAS TOO FAR. The split's remaining job is keeping far-row BELTS off the
+# near-row PULLEYS they run past, and the claim that those "clear laterally by 1.5 on
+# their own" assumed a flat belt at its own string Y. It is not flat there — it is partway
+# through its 90° twist, which widens it sideways into the neighbour's lower flange. Every
+# far-row belt clipped its near-row neighbours (up to 9.8 mm^3), and no gate said so,
+# because check_overlaps skips belts unless it is run with --full.
+# The real bound is in Z: the near pulley reaches PULLEY_BOT below its band, and the far belt
+# reaches above its own band by its section's HALF-DIAGONAL (a twisted 5 x 1.4 ribbon, not
+# the 2.5 half-width) PLUS the rise of its centreline toward the motor plane by the time it
+# gets to the near row — asserted after motor_pos, which the run length needs. A first
+# pass at 8.0 used the half-width and no rise, and left two belts grazing at 0 clearance. It costs nothing
+# at the thrust stack (the pulley TOP is the frozen datum, see PULLEY_TOP_Z); the LOW band
+# drops instead, and the motors, riding midway between the planes, drop half of that.
+# Declared up here because the pulleys' plane split is exactly this, and the thrust stack
+# sits on top of the pulleys.
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -307,9 +312,17 @@ SCREW_RUNOUT    = 3 * BEAD                          # 2.4 proud of the nut at to
 # It must FLOAT axially (a plain slip-fit seat, no shoulder either side) or it fights the
 # thrust stack for the string load and over-constrains the shaft: the classic
 # fixed/floating pair, thrust at one end, alignment at the other.
-TOP_BRG_Z0      = NUT_TOP_Z + SCREW_RUNOUT + 2 * BEAD   # -3.2, seat mouth
-TOP_BRG_Z1      = TOP_BRG_Z0 + MR85_W                   # -0.7
-SCREW_TOP_Z     = TOP_BRG_Z1                            # the rod ends flush in that bearing
+# THE TOP BEARING IS GONE (see build._string_components), so this is no longer a seat
+# mouth — it is only the CHANGER ROOM'S CEILING, which is the other job it was doing.
+# Renamed to say so. Its formula is kept as-is deliberately: the ceiling wants to sit a
+# clear 2 beads over the screw's own top, which is exactly what it already computed.
+CHANGER_CEIL_Z  = NUT_TOP_Z + SCREW_RUNOUT + 2 * BEAD   # -3.2, changer room ceiling
+# THE SCREW ONLY HAS TO CLEAR THE NUT. It used to end flush inside the top bearing
+# (SCREW_TOP_Z = TOP_BRG_Z1, built on MR85_W — a bearing this design no longer uses at
+# all). With that bearing deleted the screw was still running up to where it had been,
+# 4.10 INTO the solid endplate slab (user saw it clipping). Nothing up there needs
+# reaching now, so it stops SCREW_RUNOUT proud of the flange's top face and no further.
+SCREW_TOP_Z     = NUT_TOP_Z + SCREW_RUNOUT              # -4.80
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -331,7 +344,14 @@ SCREW_TOP_Z     = TOP_BRG_Z1                            # the rod ends flush in 
 # spans the ear's travel plus the ear, ~15 mm, not the room's height, and deflects
 # 0.016 mm under the 11 N anti-rotation load. What matters is the SOCKET — over the
 # rib's grip any clearance is amplified across that 15 mm, so it is a PRESS fit.
-GUIDE_ROD_D     = 3.0       # Ø3 g6 precision shaft (shared with BRIDGE_AXLE_D)
+# MATCHED TO THE NUT'S EAR HOLE (user, 2026-09-10). Ø3 was chosen to take the slop out of
+# the old nut's Ø3 ear; the Tr8x2 H-flange nut's ears are Ø3.5, so a Ø3 rod had put back
+# exactly the 0.5 mm of play the Ø2.5 dowel was rejected for (~38 mrad of nut rotation).
+# DERIVED from NUT_HOLE_D so the two cannot drift apart again. No longer the same stock
+# as the bridge axle (Ø5): buy it as a Ø3.5 DRILL BLANK, which is sold in 0.1 mm steps —
+# the seller's drawing is only +/-0.5-1, so MEASURE the real ear hole and pick the blank
+# to it; that is the whole point of choosing a stock sold that finely.
+GUIDE_ROD_D     = NUT_HOLE_D  # 3.5 — slide fit in the nut's ear, press in the endplate
 GUIDE_ROD_FIT   = 0.05      # SNUG PRESS. Not zero: at zero the socket is drawn the
                             # rod's own Ø, which is not a hole you can install into,
                             # and coincident cylinders make the boolean unreliable
@@ -431,41 +451,59 @@ PULLEY_BORE_MOTOR = 5.0     # = MOTOR_SHAFT_D (declared below); the motor's own 
 # that flips can only stand on whichever end is smallest; two can each be printed on
 # the face that suits them.
 #
-# They differ in WHERE the column sits, and that decides which way each prints:
-#   LOW SKU  (belt low)  — column ABOVE the band. Prints FLANGE-DOWN, a full Ø11 disc
-#                          flat on the bed, everything above it stepping inward.
-#   HIGH SKU (belt high) — column BELOW the band. Prints COLUMN-DOWN, so its lower
-#                          flange cannot be a disc: going up from Ø7.2 to Ø11 is an
-#                          outward step, and it is a 45° CONE (user) so it carries
-#                          itself. The belt is retained just as well by a cone.
+# THE SKUs ARE ENDCAPS (user, 2026-09-10). Neither passes the screw through its teeth
+# any more. A Tr8 bore CANNOT pass through a 14T band at all: the Ø7.8 pilot groove is
+# wider than the ~Ø6.9 tooth root, so the old through-bored pulley was not thin, it was
+# impossible. Growing the teeth to clear it would have been a gear reduction and more
+# belt circulation, and 18T+ fouls the guide rod. So the rod ENDS in a blind socket
+# above the band, and the toothed band's core is SOLID.
+#
+# Both SKUs therefore put their column ABOVE the band — the socket has to live there —
+# and they differ only in column LENGTH, by exactly BELT_PLANE_DZ. Both now print the
+# same way: FLANGE-DOWN, a full Ø11 disc on the bed, the lower 45° cone narrowing up to
+# the band, the upper cone flaring out, the column stepping in on top. The socket opens
+# UP, so its floor is a supported floor, not a ceiling.
 PULLEY_GAP      = 5.4               # toothed gap = the 5 mm GT2 belt + 0.4
 PULLEY_CONE     = (PULLEY_FLANGE_OD - PULLEY_OD) / 2        # 1.3, top flange, 45° cone
-PULLEY_SPACER_D = 9 * BEAD          # 7.2 column: it has to slip past the NEIGHBOUR's
-                                    # Ø11 flange at the 9.5 pitch, so 7.6 is the ceiling
-PULLEY_CONE_B   = (PULLEY_FLANGE_OD - PULLEY_SPACER_D) / 2  # 1.9, the HIGH SKU's lower
-                                    # flange: a 45° cone off the column, not a disc
-PULLEY_BOSS_D   = 7 * BEAD          # 5.6 pilot on top: lands on the bearings' INNER
+# RE-SIZED FOR 688ZZ. At 7*BEAD = 5.6 this was sized for MR85's Ø5 bore and is now
+# SMALLER than the Ø8 bore it is supposed to seat against -- it would have slid straight
+# up through the bearing and the pulley's flange face would have landed on the SHIELD
+# instead. That would have broken the screw's entire retention path, which is exactly
+# this jam. 12*BEAD = 9.6 sits inside the inner ring's ~Ø8..10.2 with margin either side.
+# Boss wall over the Ø7.8 pilot bore is 0.9 -- one bead, and it is pure COMPRESSION
+# (147 N over 24.6 mm^2 = 6.0 MPa).
+# ⚠ Ring diameters are the usual d + 0.28*(D-d) rule, not read values. CONFIRM against
+# the datasheet of whichever 688 is actually bought -- same gate the BOM already carries.
+PULLEY_BOSS_D   = 12 * BEAD         # 9.6 pilot on top: lands on the bearings' INNER
                                     # rings only (their OD is ~6.3). Anything wider would
                                     # drag the stationary outer ring against a pulley
                                     # that turns with the screw.
 PULLEY_BOSS_H   = 1 * BEAD          # 0.8
-# The LOW SKU's column is BELT_PLANE_DZ exactly — that is its whole job, lifting its
-# boss to the same thrust plane the high one already reaches. Everything else follows
-# from making both parts span the same rod.
-PULLEY_COL_H    = BELT_PLANE_DZ                                         # 11.2, LOW, above
-PULLEY_END_A    = PULLEY_GAP / 2 + PULLEY_CONE + PULLEY_BOSS_H          # 4.8, band→boss top
-PULLEY_END_B    = PULLEY_END_A + PULLEY_COL_H                           # 16.0, LOW's top
-# BOTH FLANGES CHAMFER TOWARD THE BELT (user). The belt used to run out of the ribs
-# straight into a flat wall on the lower side; now each flange presents a 45° face to
-# it, so the pair is a shallow V and the belt self-centres. The lower flange is a
-# BICONE: it flares out to Ø11 away from the band and back in to Ø8.4 at the band.
-# Both halves still print, because the belt-side half NARROWS going up.
+# COLUMN = BOSS Ø. It was Ø7.2 because it had to slip past the NEIGHBOUR's Ø11 flange at
+# the 9.5 string pitch. In two rows the in-row pitch is 19.0, so that ceiling is ~Ø27 and
+# the column can be as fat as the boss — which it must be: at Ø7.2 it could not even
+# contain the Ø7.8 socket.
+PULLEY_COL_D    = PULLEY_BOSS_D                                         # 9.6
+# HIGH SKU's column is the SHORT one, and the only new height this design spends: it is
+# the socket's depth budget on the tighter SKU. It comes out of the pulley PLANE, not the
+# thrust stack — see SCREW_PULLEY_Z. 3 beads gives a 4.1 socket at ~2.0 MPa on the formed
+# thread, under a third of the 6.5 MPa the old collar was accepted at.
+PULLEY_COL_HI   = 3 * BEAD                                              # 2.4, HIGH
+PULLEY_COL_H    = PULLEY_COL_HI + BELT_PLANE_DZ                         # 8.0, LOW
+PULLEY_END_A    = (PULLEY_GAP / 2 + PULLEY_CONE
+                   + PULLEY_COL_HI + PULLEY_BOSS_H)                     # 7.2, HIGH band→top
+PULLEY_END_B    = PULLEY_END_A + BELT_PLANE_DZ                          # 12.8, LOW band→top
+# BOTH FLANGES CHAMFER TOWARD THE BELT (user): each presents a 45° face, so the pair is a
+# shallow V and the belt self-centres. Below the lower cone a full disc is the bed face.
 PULLEY_BOT      = (PULLEY_GAP / 2 + PULLEY_FLANGE_T
-                   + PULLEY_CONE)                                       # 4.8, LOW's bed face
-PULLEY_SPAN     = PULLEY_END_B + PULLEY_BOT                             # 19.5, both SKUs
-PULLEY_COL_BELOW = (PULLEY_SPAN - PULLEY_END_A - PULLEY_GAP / 2
-                    - PULLEY_CONE - PULLEY_CONE_B)                      # 10.1, HIGH, below
-                                    # backs the hole from below and the hub from above
+                   + PULLEY_CONE)                                       # 4.8, both, bed face
+# BLIND SOCKET, bored down from the top. Its floor stops above the band's top, inside the
+# upper cone: that cone flares 45° from the band's Ø8.4, so the wall over the Ø7.8 groove is
+# 0.3 at the band and grows 1:1 going up — 0.4 above it gives 0.7, three-and-a-half traces
+# of this part's 0.2 nozzle. Identical on both SKUs, so the rod ends at the same Z on every
+# station and there is still ONE screw length.
+PULLEY_SOCKET_FLOOR_CLR = 2 * 0.2                                       # 0.4, 0.2-nozzle part
+PULLEY_SOCKET_L = PULLEY_END_A - PULLEY_GAP / 2 - PULLEY_SOCKET_FLOOR_CLR  # 4.1
 # ─────────────────────────────────────────────────────────────────────────
 # BOTTOM OF THE SCREW — drive pulley, thrust bearings, retaining collar (axis Z)
 # ─────────────────────────────────────────────────────────────────────────
@@ -475,7 +513,17 @@ PULLEY_COL_BELOW = (PULLEY_SPAN - PULLEY_END_A - PULLEY_GAP / 2
 # would have dragged the entire motor bank down with it for no reason at all.
 # Frozen here at the value belt-plane centring settled on; the nut clearance that
 # expression used to guarantee is now an assert (below, once PULLEY_W exists).
-SCREW_PULLEY_Z  = -49.0     # drive pulley, near the bottom of the screw
+# THE FROZEN DATUM IS THE PULLEY TOP — the thrust seat the nut-sweep gap depends on — and
+# the band plane DERIVES from it, so a change to BELT_PLANE_DZ or to the pulley column moves
+# the band and never the thrust stack. (It used to be frozen the other way round, at -49.0;
+# the warning above against deriving it from the NUT still stands.)
+# The band has moved twice for the endcap pulleys (user, 2026-09-10): -49.0 -> -51.4 for
+# the socket's column, then -> -54.6 when BELT_PLANE_DZ went back up to 8.8. Every belt
+# stays aligned with its motor, because MOTOR_BELT_Z rides midway between the planes. The
+# cost is that the chassis floor hangs off MOTOR_BELT_Z (-> motor_bank.FLOOR_TOP -> BED_Z
+# -> chassis.Z_BOT and the knee-lever mounts): 4.0 deeper than before the endcap.
+PULLEY_TOP_Z    = -38.6
+SCREW_PULLEY_Z  = PULLEY_TOP_Z - BELT_PLANE_DZ - PULLEY_END_A   # -54.6, LOW-plane band
 # THRUST STACK: TWO MR85ZZ (Ø5×8×2.5) in TANDEM per screw, not one bearing.
 # Sizing is by STATIC capacity, not life. Per-string tension runs 88–147 N and a
 # single MR85's permissible static axial load is ~130 N (C0r ≈ 260 N — a typical
@@ -521,16 +569,18 @@ BRG_LEDGE_T     = 2 * BEAD                          # 1.6 of rail over the outer
 # collar, no fight for the 10.7 mm between the bottom flange and the chassis end block,
 # and ~9 mm off the screw.
 PULLEY_TOP_MAX  = (SCREW_PULLEY_Z + BELT_PLANE_DZ
-                   + PULLEY_END_A)                  # -33.0, the HIGH SKU's boss top
+                   + PULLEY_END_A)                  # -38.6, BOTH SKUs' top (same Z)
 SUPPORT_BRG_BOT = PULLEY_TOP_MAX                    # the stack seats straight on it
 SUPPORT_BRG_Z   = SUPPORT_BRG_BOT + SUPPORT_BRG_W   # -28.0, thrust ledge underside
 _NUT_PULLEY_GAP = NUT_BOT_MIN - (SUPPORT_BRG_Z + BRG_LEDGE_T)
 assert _NUT_PULLEY_GAP >= 1.0 - 1e-9, (
     f"the nut's lowest sweep clears the thrust ledge by only {_NUT_PULLEY_GAP:.2f} "
     f"(want 1.0): raise NUT_TOP_Z or shorten CARRIAGE_TRAVEL")
-# BOTTOM of the rod: it simply ends inside the drive pulley — there is nothing below.
-# The rod ends where BOTH pulleys end — they span the same length, by design.
-SCREW_BOT_Z     = SCREW_PULLEY_Z - PULLEY_BOT       # -52.5
+# BOTTOM of the rod: it ends in the pulley's BLIND SOCKET, a hair short of the floor so it
+# never bottoms and preloads the formed thread. Both SKUs share the top (PULLEY_TOP_MAX)
+# and the socket depth, so the rod ends at the same Z on every station.
+SCREW_SOCKET_GAP = 0.2
+SCREW_BOT_Z     = PULLEY_TOP_MAX - PULLEY_SOCKET_L + SCREW_SOCKET_GAP   # -42.5
 SCREW_LEN       = SCREW_TOP_Z - SCREW_BOT_Z         # 52.3 — the CUT length (see BOM).
 # Not a purchasable length: Tr5x1 stock starts at 100 mm, so every screw is cut from a
 # longer blank. That is fine because the requirement is a WINDOW, not a number — the
@@ -605,6 +655,21 @@ def motor_pos(i: int):
     """Return (x, y, z) of string i's motor pulley (on the string's Y line). The −Y
     string (last index) is closest to the bridge, stepping out toward +Y (see above)."""
     return (-(MOTOR_X0 + (N_STRINGS - 1 - i) * MOTOR_X_STEP), string_y(i), MOTOR_BELT_Z)
+
+
+# FAR-ROW BELTS vs NEAR-ROW PULLEYS (see BELT_PLANE_DZ). Each far-row belt passes the near
+# row 2*SCREW_ROW_DX along its run, where its centreline has already climbed that fraction
+# of the DZ/2 up to the motor plane; its section reaches the HALF-DIAGONAL above that
+# (upper bound over every twist angle). Worst case is the SHORTEST run, where the climb is
+# steepest. The overlap gate only sees this with --full, so it is asserted here.
+_BELT_HALF_DIAG = (BELT_W ** 2 + BELT_T ** 2) ** 0.5 / 2
+_BELT_PLANE_CLR = min(
+    BELT_PLANE_DZ - PULLEY_BOT - _BELT_HALF_DIAG
+    - (BELT_PLANE_DZ / 2) * (2 * SCREW_ROW_DX) / abs(screw_x(i) - motor_pos(i)[0])
+    for i in range(N_STRINGS) if screw_far(i))
+assert _BELT_PLANE_CLR >= 0.4 - 1e-9, (
+    f"far-row belts clear the near-row pulleys' lower flange by only {_BELT_PLANE_CLR:.2f} "
+    f"(want 0.4): raise BELT_PLANE_DZ")
 
 
 # ─────────────────────────────────────────────────────────────────────────
