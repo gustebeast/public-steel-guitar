@@ -781,7 +781,7 @@ def _build() -> cq.Workplane:
     # +X face: the fattest string RIDING ON the race (its centreline wraps at OD/2 + gauge/2,
     # so it reaches a whole gauge past the race), or the race itself. It used to take half a
     # gauge off BRIDGE_X, for a string drawn centred on the OD, and the .070 cut the wall.
-    SLOT_X1  = _br_x1 + max(max(D.STRING_GAUGE) + 0.5, BR_CLR)
+    SLOT_X1  = _br_x1 + max(D.STRING_GAUGE_MAX + 0.5, BR_CLR)   # the heaviest string that fits
     SLOT_Z0  = min(Z6 - 1.0, _br_z0 - BR_CLR)             # floor: the shelf OR the race's underside
     SLOT_Z1  = BEAR_TOP + 1.0                             # open above the string plane
     # the house pentagon in plan: |_| spanning SLOT_X0..X1, /\ ridge at SLOT_X0 − BR_HW on y 0
