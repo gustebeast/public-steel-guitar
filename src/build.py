@@ -1404,7 +1404,7 @@ def _color_for(name):
     return cq.Color(*_DEFAULT_COLOR)
 
 
-def _export_assembly(publish=True, gate=True, gate_full=False):
+def _export_assembly(publish=True, gate=True, gate_full=True):
     build_n = _bump_build_counter()
     comps = collect_components()
     asm = cq.Assembly(name="public_steel_guitar")
@@ -1431,20 +1431,15 @@ def _export_assembly(publish=True, gate=True, gate_full=False):
     return _report_overlaps(comps, full=gate_full) | _report_sweep(comps)
 
 
-# The overlap gate's ACCEPTED baseline. Every entry is a REAL defect tracked
-# elsewhere, never a blessed contact; the build fails ABOVE this, so a NEW overlap
-# still stops it.
-#   chassis <-> wire_pwr_hot_10    ~0.6 mm^3   assigned out for rerouting
-#   bridge_endplate <-> wire_out   ~0.2 mm^3   assigned out for rerouting
-# Both surfaced when MIN_VOL went 1.0 -> 0.05; they are not new damage, just newly
-# visible. Drive this to 0 when they land.
-#
-# The three chassis_trrs_cable pairs are NOT here: check_overlaps.DEFERRED now
-# carries them and prints a loud line per pair every run. That is a deliberately
-# noisier arrangement than counting them, and the baseline drops to match — 4
-# would now silently absorb TWO new overlaps, which is exactly the failure this
-# number exists to prevent. Keep it equal to the count you can name.
-OVERLAP_BASELINE = 2
+# The overlap gate's ACCEPTED baseline: the count of REAL defects tracked
+# elsewhere. The build fails ABOVE it, so a NEW overlap still stops it, and it must
+# always equal the count you can NAME -- a baseline kept above the real number is
+# just a licence for the next fault to arrive unnoticed.
+#   chassis <-> wire_pwr_hot_10   ~0.6 mm^3   a wire clipping a solid; assigned out
+# Was 2. The bridge_endplate <-> wire_out clip went away with the endplate rework,
+# and the three deferred chassis_trrs_cable pairs are gone from DEFERRED entirely
+# (see check_overlaps). Drive this to 0 when the last wire is rerouted.
+OVERLAP_BASELINE = 1
 
 
 def _report_overlaps(comps, full=False) -> int:
@@ -1519,8 +1514,15 @@ def main() -> None:
     p.add_argument("--geom", action="store_true", help="Print belt geometry report and exit.")
     p.add_argument("--no-gate", action="store_true",
                    help="Skip the overlap gate (normally ~13 s on the built model).")
+    # Belts are gated BY DEFAULT on the lead's build. It is the one authoritative
+    # whole-tree check, and skipping belts is how far-row belts clipping near-row
+    # pulley flanges (up to 9.8 mm^3) went out under a green gate. It costs ~225 s of
+    # pairwise scan against ~15 s -- the price of the check meaning what it says.
+    # Agents iterate with `view --gate`, which is where speed belongs.
+    p.add_argument("--gate-fast", action="store_true",
+                   help="Skip belts in the gate (~15 s scan vs ~225 s). Inner-loop only.")
     p.add_argument("--gate-full", action="store_true",
-                   help="Gate EVERY part, belts included (slower; belts rarely move).")
+                   help="(default now; accepted for compatibility)")
     args = p.parse_args()
 
     if args.geom:
@@ -1531,7 +1533,7 @@ def main() -> None:
         for name in PARTS:
             print(name)
         return
-    gate, gate_full = not args.no_gate, args.gate_full
+    gate, gate_full = not args.no_gate, not args.gate_fast
     if args.part:
         if args.part == "assembly":
             sys.exit(_export_assembly(gate=gate, gate_full=gate_full))

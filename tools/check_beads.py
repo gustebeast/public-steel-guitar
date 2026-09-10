@@ -69,6 +69,22 @@ def _ex(cat: str, **kv) -> None:
         EXEMPT[k.replace("__", ".")] = (cat, v)
 
 
+# Screw-drive endcap + two-row endplate (branner). Each is off the 0.8 grid FOR A REASON.
+_ex("hardware",
+    PULLEY_SOCKET_FLOOR_CLR="2 traces of the 0.2 nozzle the screw pulley prints at, not 0.8 beads",
+    SCREW_SOCKET_GAP="steel rod end to socket floor: an assembly clearance, not a printed length",
+    _BRG_TEARDROP="teardrop apex = r*sqrt(2) with a 0.2 bore clearance: geometry, not a wall",
+    _ROD_TEARDROP="teardrop apex = r*sqrt(2) with the rod's press fit: geometry, not a wall",
+    _BELT_HALF_DIAG="half-diagonal of the 5 x 1.4 GT2 belt section: geometry, not a wall",
+)
+
+
+_ex("clearance",
+    bridge_endplate__GUIDE_BOSS_R="guide-rod collar radius capped 0.2 clear of the bought nut's Ø10.2 boss",
+    bridge_endplate__DRIVE_HW="outermost pulley swept circle + 0.4 running clearance",
+)
+
+
 # Real objects. These are measurements, not choices.
 _ex("hardware",
     MOTOR_SQ="NEMA17 body 42.3 sq (SERVO42D)",
@@ -79,29 +95,31 @@ _ex("hardware",
     PULLEY_FLANGE_OD="GT2 14T flange OD (pulley OD + stock flange)",
     PULLEY_FLANGE_T="GT2 pulley flange stock",
     PULLEY_BORE_MOTOR="= MOTOR_SHAFT_D, the NEMA17 shaft Ø5",
-    PULLEY_BORE_SCREW="= SCREW_OD + 0.2 slip fit over the Tr5x1 crests",
+    PULLEY_BORE_SCREW="= FORM_MAJOR, the Tr8x2 pilot-thread groove",
     BELT_PITCH="GT2 tooth pitch 2.0",
     BELT_W="5 mm GT2 open belt (narrowest standard stock)",
     PULLEY_GAP="= the 5 mm GT2 belt + 0.4 running clearance, so it is belt stock + a gap",
     BELT_TOOTH_H="GT2 tooth profile 0.75",
     BELT_T="GT2 belt back thickness 1.4",
-    SUPPORT_BRG_OD="MR85 bearing OD 8.0",
-    SUPPORT_BRG_W="= 2 x MR85 width: the TANDEM stack, purchased geometry",
+    SUPPORT_BRG_OD="688ZZ bearing OD 16.0",
+    SUPPORT_BRG_W="= 1 x 688ZZ width 5.0, purchased geometry",
     MR85_W="MR85 bearing width 2.5",
-    SCREW_PULLEY_Z="frozen root datum (the motor bank derives from it) -- a POSITION, not a printed length",
+    SCREW_PULLEY_Z="band plane, derived from the frozen PULLEY_TOP_Z -- a POSITION, not a printed length",
+    PULLEY_TOP_Z="frozen thrust-seat datum (the band plane and motor bank derive from it) -- a POSITION",
     BRIDGE_BEARING_OD="693 bearing OD 8.0",
     BRIDGE_BEARING_W="693 bearing width 4.0",
     BRIDGE_AXLE_D="Ø3 precision shaft",
-    SCREW_OD="Tr5x1 lead screw OD",
+    SCREW_OD="Tr8x2 lead screw OD",
     SCREW_LEN="lead screw cut length (stock, not printed)",
     MOTOR_SHAFT_D="NEMA17 shaft Ø5",
     # H-type brass leadscrew nut -- purchased, and every one of these is a GUESS
     # until the part arrives (see dimensions.NUT_AF). Do NOT snap them to the grid:
     # snapping would hide the measurement when it lands.
-    NUT_AF="H-nut across flats (purchased, GUESSED)",
-    NUT_FLANGE_L="H-nut flange long axis (purchased, GUESSED)",
-    NUT_FLANGE_T="H-nut flange thickness (purchased, GUESSED)",
-    NUT_BOSS_L="H-nut boss length (purchased, GUESSED)",
+    NUT_AF="Tr8x2 H-flange nut across flats (purchased, off the seller drawing)",
+    NUT_FLANGE_L="Tr8x2 H-flange nut flange long axis (purchased, off the seller drawing)",
+    NUT_FLANGE_T="Tr8x2 H-flange nut flange thickness (purchased, off the seller drawing)",
+    NUT_BOSS_L="Tr8x2 H-flange nut boss length (purchased, off the seller drawing)",
+    NUT_BOSS_D="Tr8x2 H-flange nut boss OD 10.2 (purchased, off the seller drawing)",
     NUT_HOLE_D="H-nut ear through-hole (purchased, GUESSED)",
     NUT_HOLE_DX="H-nut ear hole pitch (purchased, GUESSED)",
     NUT_TOP_Z="frozen datum: the H-nut flange top at the top of travel, asserted against PULLEY_TOP_MAX -- a POSITION, not a printed length",
@@ -122,7 +140,7 @@ _ex("hardware",
     NUT_SCREW_L="M4 screw stock length",
     NUT_PIN_D="Ø2 dowel pin nominal",
     NUT_PIN_L="Ø2x4 dowel pin length",
-    GUIDE_ROD_D="Ø3 g6 precision shaft — the SAME part as the bridge axle",
+    GUIDE_ROD_D="= NUT_HOLE_D, the Tr8x2 H-nut ear hole (drill blank matched to the measured hole)",
     GUIDE_ROD_FIT="snug press for the Ø3 rod in its socket — a FIT, i.e. a gap, not material",
     NUT_PIN_CLR="slip fit for the Ø2 dowel in its seat — a gap, not material",
     nut_block__ROD_FIT="slide fit for the wrap rod through ten comb webs — a gap, not material",
