@@ -146,6 +146,11 @@ def _build():
     # was aimed at its neighbour's. Reading nut_block.wrap_y ties them to the wrap for good.
     w = w.cut(NB.all_stow_channels(CH.Z_BOT - 1.0 - D.STRING_Z)
               .translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z)))
+    # RE-BORE THE WRAP ROD, after every union. The Ø8 rod dips below the deck plane, where the
+    # nut block stops and this part's base prism begins, and that prism filled the bottom of
+    # the bore back in (the gate: 905 mm3 of rod inside the endplate). Same cutter as the
+    # nut block's own, from the module that owns the rod.
+    w = w.cut(NB.rod_bore().translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z)))
     return heal(w)
 
 

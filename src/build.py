@@ -468,15 +468,19 @@ def _string_components(i):
          D.STRING_Z - g - D.NUT_PIN_D / 2))))                          # one plane. DOWEL_X, not 0:
                                                                        # the dowels sit 1.6 back from
                                                                        # the block's front face now
-    # (no clamp set screw or heat-set insert: the sliding insert IS the clamp, and
-    #  the tail is pinched against the wrap on the rod rather than against the floor)
+    # THE SLIDING INSERT IS THE CLAMP (no set screw, no heat-set insert): the tail is pinched
+    # against the wrap on the rod rather than against the floor. It was only ever drawn by
+    # keyhead_endplate.assembly() -- the scratch view -- so the full assembly, and everyone
+    # viewing it, never saw one. Same placement as there, from the same module.
+    out.append((f"nut_slide_insert_{i}",
+                NB.slide_insert(i).translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z))))
     return out
 
 
 def _wrap_rod_component():
-    """The nut's WRAP ROD -- one part for all ten strings, and the SAME Ø5 g6 shaft the
-    bridge axle is cut from (nut_block.ROD_D reads D.BRIDGE_AXLE_D). It is what the
-    capstan turns around, so it is the reason the clamps hold 5-36 N instead of 490."""
+    """The nut's WRAP ROD -- one part for all ten strings, and the SAME Ø8 x 100 shaft the
+    bridge axle is (nut_block.ROD_D / ROD_L read D.BRIDGE_AXLE_D / _L): one SKU at both
+    ends. It is what the capstan turns around, so it is what lets a light clamp hold."""
     return [("nut_wrap_rod",
              NB.rod().translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z)))]
 
