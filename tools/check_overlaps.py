@@ -253,8 +253,17 @@ def _knee(n) -> bool:
 #   electronics_tray, pi5  PRE-EXISTING, older than this branch.
 # Each one is a cable DUMMY clipping a solid, i.e. exactly the "real routing bug" the wire
 # rule below is written to catch — which is why they must not be left here quietly.
-DEFERRED = {frozenset({"chassis", "chassis_trrs_cable"}),
-            frozenset({"chassis_trrs_cable", "electronics_tray"}),
+# DEFERRED, NOT INTENDED -- real interpenetrations parked so the rest of the model
+# can be gated. Each needs a named cause and an owner, and each prints LOUDLY on
+# every run; this is the opposite of an allow list, which goes silent forever.
+#
+# A pair leaves this set the moment it stops overlapping -- leaving a resolved entry
+# listed would mean a regression that reintroduces it gets a polite "deferred" line
+# instead of failing the gate. chassis <-> chassis_trrs_cable left on 2026-09-09:
+# the keyhead/bridge endplate rework moved the -X leg station off the cable.
+# The other two are UNCHANGED and still real (28.0 and 1.0 mm^3), both the cable
+# dummy clipping a solid, i.e. exactly the routing bug WIRE_OK is written to catch.
+DEFERRED = {frozenset({"chassis_trrs_cable", "electronics_tray"}),
             frozenset({"chassis_trrs_cable", "pi5"})}
 _DEFERRED_SEEN = set()
 

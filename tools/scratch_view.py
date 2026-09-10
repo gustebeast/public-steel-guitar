@@ -199,7 +199,8 @@ def _crop_screw_rows():
     from under the drive pulleys to over the strings."""
     from src import dimensions as D
     x0, x1 = D.BRIDGE_BASE_X0 - 25.0, D.BRIDGE_BASE_X1 + 25.0
-    z0, z1 = D.SCREW_BOT_Z - 12.0, D.STRING_Z + 10.0
+    # floor from the PULLEY bottoms, not the screw: the endcap screw now stops well above them
+    z0, z1 = D.SCREW_PULLEY_Z - D.PULLEY_BOT - 8.0, D.STRING_Z + 10.0
     return (x1 - x0, D.STRING_FIELD_W + 40.0, z1 - z0,
             (x0 + x1) / 2, 0.0, (z0 + z1) / 2)
 
