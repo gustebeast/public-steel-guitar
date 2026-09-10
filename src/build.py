@@ -215,6 +215,18 @@ for _csi in sorted(_fused_segs):
         if _seg_edges[_csi + 1] < _rx < _seg_edges[_csi]:
             _seg = _seg.cut(_KL_FUSE.rib_mortise(_rx))
     chassis_segments[_csi] = _seg
+# STRING ACCESS through the chassis floor, under each string's endplate channel (see
+# dimensions.string_access_x). LAST in the segment pipeline, like the mortise re-cut, so no
+# later fuse refills it. The chassis prints Z-up (Z_BOT is the bed), so a vertical hole is
+# round on its own: a plain cylinder, not a teardrop.
+for _i in range(D.N_STRINGS):
+    _ax = D.string_access_x(_i)
+    for _csi in range(len(_seg_edges) - 1):
+        if _seg_edges[_csi + 1] < _ax < _seg_edges[_csi]:
+            chassis_segments[_csi] = chassis_segments[_csi].cut(
+                cq.Workplane("XY").circle(D.STRING_ACCESS_D / 2).extrude(2 * D.XBAR + 2.0)
+                .translate((_ax, D.string_y(_i), CH.Z_BOT - 1.0)))
+            break
 for _i, _seg in enumerate(chassis_segments):     # chassis split into dovetailed segments
     PARTS[f"chassis_{_i}"] = (partial(heal, _seg), f"petg-gf/chassis_{_i}.step",
                               "PETG-GF — chassis segment (cadkit slide-down T joint per rail; NO glue "

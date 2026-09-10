@@ -559,7 +559,12 @@ SUPPORT_BRG_N   = 1
 SUPPORT_BRG_OD  = BRG688_OD # Ø16 — 1.4 mm of web each side at the 19.0 in-row pitch
 SUPPORT_BRG_ID  = BRG688_ID # Ø8 — the bore the Tr8 screw actually passes through
 SUPPORT_BRG_W   = SUPPORT_BRG_N * BRG688_W          # 5.0 — ONE bearing now, not a stack
-BRG_LEDGE_T     = 2 * BEAD                          # 1.6 of rail over the outer rings
+BRG_LEDGE_T     = 4 * BEAD                          # 3.2 of rail over the outer rings
+# 2 -> 4 beads (user, 2026-09-10). The plate the guide rods stand in was only 1.6 thick,
+# so each rod had a printed collar built up round its base for engagement — a free-standing
+# ring on a face that prints sideways, i.e. an overhang. Thickening the whole plate to the
+# collar's top deletes the collar and gives each rod a 1.6 socket in solid plate instead.
+# It does NOT count against the nut — see the nut assert below.
 # THE STACK SITS ON THE PULLEYS, and moving it here is what deleted the retaining
 # collar. The screw is pulled +Z, so whatever grips it has to bottom against something
 # grounded ABOVE; put the bearings on the pulley tops and the PULLEY is that thing.
@@ -572,10 +577,43 @@ PULLEY_TOP_MAX  = (SCREW_PULLEY_Z + BELT_PLANE_DZ
                    + PULLEY_END_A)                  # -38.6, BOTH SKUs' top (same Z)
 SUPPORT_BRG_BOT = PULLEY_TOP_MAX                    # the stack seats straight on it
 SUPPORT_BRG_Z   = SUPPORT_BRG_BOT + SUPPORT_BRG_W   # -28.0, thrust ledge underside
-_NUT_PULLEY_GAP = NUT_BOT_MIN - (SUPPORT_BRG_Z + BRG_LEDGE_T)
-assert _NUT_PULLEY_GAP >= 1.0 - 1e-9, (
-    f"the nut's lowest sweep clears the thrust ledge by only {_NUT_PULLEY_GAP:.2f} "
+# THE NUT'S LOWEST SWEEP. The deepest part of the nut is its Ø10.2 BOSS, and it descends
+# INSIDE the thrust ledge's bore (screw_rail.SEAT_LEDGE_D — asserted there, radially), so
+# the thing it has to clear vertically is the BEARING at the bottom of that bore, not the
+# ledge plane. The old form, NUT_BOT_MIN - (ledge top), stopped being true the moment the
+# ledge grew thicker than the gap: it would have blocked a change that collides with nothing.
+_NUT_BRG_GAP = NUT_BOT_MIN - SUPPORT_BRG_Z
+assert _NUT_BRG_GAP >= 1.0 - 1e-9, (
+    f"the nut boss's lowest sweep clears the thrust bearing by only {_NUT_BRG_GAP:.2f} "
     f"(want 1.0): raise NUT_TOP_Z or shorten CARRIAGE_TRAVEL")
+
+
+# STRING ACCESS CHANNELS (user, 2026-09-10). With two screw rows, a string can no longer be
+# threaded into its nut ear from the +X face: the far row is buried behind the near one.
+# Instead each string feeds UP from underneath, through a straight vertical channel in the
+# rail plate and the chassis floor, already pointing along Z the way it has to leave the ear.
+# The channel CANNOT sit under the ear itself: the ear is NUT_HOLE_DX = 8.0 off the screw
+# axis, exactly the 688ZZ's outer radius, so a channel there runs through the thrust bearing.
+# It stands off sideways instead, as close to the bearing as the seat allows, and the last
+# few mm to the ear are a step the builder pushes across with a long thin tool from +X.
+# Both cutters in the endplate are teardrops pointing -X (its print direction), and that is
+# what sets the standoff per row:
+#   NEAR row — the channel's own apex points AT its seat's round wall (the face the bearing
+#              locates against), so the APEX keeps a one-bead web to it.
+#   FAR row  — the SEAT's apex points at the channel instead. That apex is only a print-support
+#              void, so the channel may break into it; its ROUND edge keeps the web to the
+#              seat's round wall.
+STRING_ACCESS_D = STRING_NUT_D + 0.6            # 4.6 — the Ø4 swaged string end passes
+
+
+def string_access_x(i: int) -> float:
+    """X of string i's vertical access channel, stood off its screw AWAY from the screw axis
+    (toward the bearing tangent) as closely as the thrust-bearing seat allows."""
+    seat_r = (SUPPORT_BRG_OD + 0.2) / 2
+    r = STRING_ACCESS_D / 2
+    toward = 1.0 if screw_x(i) < 0 else -1.0    # away from its own screw, toward X = 0
+    off = (seat_r + MIN_WALL + r) if screw_far(i) else (seat_r + MIN_WALL + r * 2 ** 0.5)
+    return screw_x(i) + toward * off
 # BOTTOM of the rod: it ends in the pulley's BLIND SOCKET, a hair short of the floor so it
 # never bottoms and preloads the formed thread. Both SKUs share the top (PULLEY_TOP_MAX)
 # and the socket depth, so the rod ends at the same Z on every station.
