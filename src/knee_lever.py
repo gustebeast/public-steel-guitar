@@ -80,6 +80,11 @@ BRG_OD, BRG_ID, BRG_W = D.BRG688_OD, D.BRG688_ID, D.BRG688_W   # 688ZZ (Ø8×16�
                                     # HOUSING, not on the swinging lever. The cost is
                                     # bulk: the housing grows to clear the race.
 BRG_WALL = 1.6                      # 2-bead seat wall around the outer race
+BRG_SEAT_D = BRG_OD + 0.1           # the seat bore (race + press clearance) — walls measure from THIS
+BRG_WALL_X = 4 * D.BEAD             # 3.2 +X of the seat (user): with the lever room open through the
+                                    # +X face the cheek holds that side of the race from below only
+                                    # (the seat's print peak opens its top), so it gets double the tier.
+                                    # 1.6 measured off the RACE had left 1.55 off the seat.
 MAG_D, MAG_T = 6.0, 2.5             # DIAMETRICALLY-magnetised NdFeB disc on the axle end
                                     # = DigiKey/Radial Magnets 8995 (N35, NiCuNi, 80 °C),
                                     # an EXISTING supplier, in stock, $0.33–0.40. SOURCING
@@ -851,7 +856,7 @@ def feel_unplace(s):                                # inverse of feel_place: pla
 #   -Z  the cartridge bottom (piston underside) + slide clearance + one wall
 # Globals (MOUNT_POSE + these): x -578.26..-496.00, y -162.65..-134.85,
 # z -97.35..-75.15 (top now flush with the chassis underside Z_BOT).
-HOUS_X1 = max(ARM_TX / 2, BRG_OD / 2 + BRG_WALL)         # +8.1 (was +5.0: the Ø13
+HOUS_X1 = max(ARM_TX / 2, BRG_SEAT_D / 2 + BRG_WALL_X)   # +11.25 (was +5.0, then 8.1: the Ø13
 #           race needs 6.5 of radius plus its wall, where the arm wanted 5.0)
 HOUS_X0 = -(HS_HOUS_BACK + HS_SETBACK)                   # -77.26
 HOUS_HW = max(abs(HS_YC) + HS_CART_WY / 2 + HS_CLR + HS_HOUS_WALL,
@@ -879,7 +884,7 @@ _TEN_PITCH = RIB_PITCH / 2.0        # = the chassis half-pitch rib comb
 # 688ZZ opens it 1.78 either side of x = 0), and a tenon whose root sits in that
 # opening floats free. So a station within that half-width + the tenon's own half-width
 # of the axle is skipped (user: dropping the x = 0 stubs is fine).
-_SEAT_RS = (BRG_OD + 0.1) / 2                           # the seat bore's radius
+_SEAT_RS = BRG_SEAT_D / 2                               # the seat bore's radius
 _SEAT_OPEN_HW = max(0.0, _SEAT_RS * math.sqrt(2.0) - HOUS_Z1)   # peak's width at the top face
 TEN_X = tuple(-k * _TEN_PITCH for k in range(20)
               if HOUS_X0 + _JHW <= -k * _TEN_PITCH <= HOUS_X1 - _JHW
@@ -1561,7 +1566,7 @@ def cut_axle_stack(w):
     _seat_out = HOUS_HW + 1.0
     for sgn in (1.0, -1.0):
         y0 = sgn * BRG_Y0 if sgn > 0 else -_seat_out
-        w = w.cut(printable_bore(BRG_OD + 0.1, _seat_out - BRG_Y0, (0.0, y0, 0.0),
+        w = w.cut(printable_bore(BRG_SEAT_D, _seat_out - BRG_Y0, (0.0, y0, 0.0),
                                  (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)))
     w = w.union(contact_rib(AXLE_FLANGE_D - 1.5, RIB_PROUD, RIB_T,
                             (0.0, HOUS_HW, 0.0), (0.0, 1.0, 0.0),
@@ -1665,8 +1670,16 @@ def _housing() -> cq.Workplane:
     # hub-top → hub-side → slant → bottom → rest-side
     _zc = (-_e + (_e + ARM_TX / 2 * (1 / math.cos(_THR) - 1) + 0.4)) / math.tan(_THR)
     _zt = HOUS_Z1 + TEN_H + 1.0                       # ABOVE the tenons, so the sweep
-    _p = [(_e, _zt), (-_e, _zt), (-_e, _zc),          #   trims the x=0 station too
-          (_slant(_zb), _zb), (_e, _zb)]
+    # +X EDGE OUT THROUGH THE +X FACE (user, 2026-09-10). The rest-side boundary used to be
+    # +_e, which left the whole +X half-space open only while the prism's +X face sat
+    # INSIDE it. The bearing rounds pushed HOUS_X1 out past it (8.1 for the 695ZZ race, 9.6
+    # for the 688ZZ), which quietly put a panel back between the cheeks, and the storage
+    # fold hit it from -3 deg. Carrying this edge out past HOUS_X1 opens the +X end between
+    # the cheeks again — there it is just the two walls. Lever Y-span only, so the cheeks
+    # and the bearing seats in them are untouched; open top and bottom, so no ceiling.
+    _xo = HOUS_X1 + 1.0
+    _p = [(_xo, _zt), (-_e, _zt), (-_e, _zc),         #   trims the x=0 station too
+          (_slant(_zb), _zb), (_xo, _zb)]
     _face = cq.Face.makeFromWires(cq.Wire.makePolygon(
         [cq.Vector(x, -_hw, z) for x, z in _p] + [cq.Vector(_p[0][0], -_hw, _p[0][1])]))
     w = w.cut(cq.Workplane("XY").add(

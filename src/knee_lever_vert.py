@@ -129,9 +129,9 @@ def vplace(s):
 
 HOUS_X0 = KL.HOUS_X0                # cartridge back + back-stop engagement — unchanged
 HOUS_X1 = max(HUB_D / 2 + KL.HS_CLR + KL.HS_HOUS_WALL,  # the arm exits through here...
-              KL.BRG_OD / 2 + KL.BRG_WALL)              # ...or the race + its wall, whichever is
+              KL.BRG_SEAT_D / 2 + KL.BRG_WALL_X)        # ...or the seat + its +X wall, whichever is
               # bigger — same rule as knee_lever's housing. With the Ø16 688ZZ the race wins
-              # (9.6); sizing off the hub alone let it poke 0.8 out of the +X face.
+              # (11.25); sizing off the hub alone let it poke 0.8 out of the +X face.
 # Y IS ASYMMETRIC, and only one side moved. +Y is the SENSOR side: HOUS_HW is the
 # datum the contact rib, the axle flange, the magnet, the cap and the whole board
 # cradle cascade off, so touching it would lengthen the axle and grow the magnet's
