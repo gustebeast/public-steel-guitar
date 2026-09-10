@@ -13,9 +13,12 @@ import cadquery as cq
 
 from cadkit.joinery import PrintSpec, joint
 
+from .knee_lever import _JW as _REAL_JW
+
 NOZZLE_D = 0.8            # pedal-steel nozzle; the coupon's bead grid
-WIDTH  = 8 * NOZZLE_D     # 6.4 flat-to-flat room (well above the ~1.93 mm floor);
-                          # keep = knee_lever._JW (the real joint width)
+WIDTH  = _REAL_JW         # 6.6 flat-to-flat: READ from knee_lever, so the coupon tests the
+                          # joint the levers actually use (it is sized off the rib now: the rib
+                          # minus a two-bead wall and the mortise clearance on each side)
 LENGTH = 18 * NOZZLE_D    # 14.4 slide / engagement depth along X (the real load path)
 CLR    = 0.1              # mortise↔tenon fit clearance (tenon is shrunk by this)
 PLATE  = 4.0              # coupon base-plate / floor thickness

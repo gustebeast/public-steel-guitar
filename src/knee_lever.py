@@ -442,7 +442,12 @@ BODY_Z    = HUB_TOP + 3 * D.BEAD    # body underside in local Z: the hub top (5.
 # stays +Z. Both halves print -Z->+Z (facing 'up') -> the octagon family -> self-supporting
 # on BOTH sides. One joint SIZE, two LENGTHS: short TENONS on the housing (its own Y span)
 # and a long RIB MORTISE (the whole knee-depth range).
-_JW       = 8 * D.BEAD            # 6.4 octagon flat-to-flat width (joint_coupon.WIDTH
+MORT_CLR  = 0.3                     # mortise clearance (slide fit)
+# THE JOINT'S BOUNDING BOX IS THE RIB (user, 2026-09-10): the rib (D.XBAR wide) keeps a
+# two-bead wall either side of the MORTISE, and the mortise is the tenon + MORT_CLR, so the
+# tenon's flat-to-flat is what is left. It used to be a flat 8 beads (6.4), which put the
+# 1.6 on the octagon's own shoulder and left the rib 1.7 beside the mortise.
+_JW       = D.XBAR - 2 * D.MIN_WALL_2P - 2 * MORT_CLR   # 6.6 octagon flat-to-flat width (joint_coupon.WIDTH
 #                                    matches it). Sized on the MECHANICS (knee-strike
 #                                    pull-out): ~3x the shear area and 2x the retention shoulder of the
 #                                    old 3mm, while the rib keeps ~77% of its section as a sound arch
@@ -454,7 +459,6 @@ _JUP      = PrintSpec(nozzle=0.8, material="PETG-GF", facing="up")
 def _lever_joint(length):
     """The mount joint at a given SLIDE length (Y). MORT_CLR shrinks the tenon for fit."""
     return joint(_JW, length, tenon=_JUP, mortise=_JUP, clearance=MORT_CLR)
-MORT_CLR  = 0.3                     # mortise clearance (slide fit)
 TEN_H     = _lever_joint(8.0).height    # how far a tenon rises above its mating face (5.82;
                                         # the length arg is a probe — height ignores it)
 MORT_Y0   = -3 * D.BEAD           # -2.4 mortise -Y mouth (opens outboard of the -Y rail for slide-in)
