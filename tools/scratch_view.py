@@ -3,6 +3,7 @@
     py -3.12 cadkit/tools/agent_sync.py view            # the normal way to run this
     py -3.12 -m tools.scratch_view --start              # BEGIN a flow: re-cache, render
     py -3.12 -m tools.scratch_view                      # iterate: your part fresh
+    py -3.12 -m tools.scratch_view --gate               # fast gate on the cache
     py -3.12 -m tools.scratch_view --merge              # END a flow: DELETE the cache
 
 WHY: a full `src.build` is minutes, and nearly all of it is geometry you are not
@@ -81,6 +82,55 @@ def _pose_leg_stack(name, wp):
     return wp.rotate((0, 0, 0), (1, 0, 0), 180).translate((lx, ly, zt))
 
 
+def _tensioner_string():
+    """The string the belt-tensioner work sits on: the LAST one -- the short belt run,
+    where clamp-vs-pulley clearance is decided. Shared by the pose and the crop so the
+    two cannot drift onto different strings."""
+    from src import dimensions as D
+    return D.N_STRINGS - 1
+
+
+def _belt_run_box(pad=12.0, back_pad=8.0, top_pad=2.0):
+    """Crop for the belt tensioner: ONLY what bears on the clamp -- this string's motor,
+    the belt it drives, the leadscrew and pulley at the far end, and whatever chassis runs
+    between them. The crop CLIPS rather than filters, so chassis_0 comes back as the local
+    slab instead of the whole instrument, and the +Y pad catches the neighbouring string's
+    belt, which is the thing the clamp can actually foul.
+
+    Derived from the real parts, not hardcoded, so it follows the layout if that moves."""
+    from src import components as C, dimensions as D
+    i = _tensioner_string()
+    sy, spz = D.string_y(i), D.screw_pulley_z(i)
+    m = D.motor_pos(i)
+    # Sized from the BELT PLANE only -- motor, belt, screw pulley. The leadscrew is
+    # deliberately NOT in this list even though it is wanted in view: it stands 53mm
+    # up to the carriage, and sizing to its top raised the ceiling through the deck,
+    # dragging in top_plate, pickup, optical and bridge_endplate -- none of which the
+    # clamp can reach. It still renders, clipped to its drive end, which is the part
+    # the belt wraps and the only part the clamp comes near.
+    bbs = [C.belt(m, (D.screw_x(i), sy, spz)).val().BoundingBox(),
+           C.motor().translate(m).val().BoundingBox(),
+           C.screw_pulley(high=spz > D.SCREW_PULLEY_Z)
+            .translate((D.screw_x(i), sy, spz)).val().BoundingBox()]
+    lo = [min(b.xmin for b in bbs) - pad, min(b.ymin for b in bbs) - pad,
+          min(b.zmin for b in bbs) - pad]
+    hi = [max(b.xmax for b in bbs) + pad, max(b.ymax for b in bbs) + pad,
+          max(b.zmax for b in bbs) + pad]
+    # -Y is cut just behind the motor PULLEY rather than behind the motor. The motor
+    # body + driver stack runs 88mm toward the player, and everything living in that
+    # band -- the CAN wiring, tee PCBs, knee lever, panel jacks, analog front end --
+    # came into the view while being unable to touch the clamp. The drive end is the
+    # only part of the motor the belt (and so the clamp) actually relates to.
+    lo[1] = C.motor_pulley().translate(m).val().BoundingBox().ymin - back_pad
+    # +Z stops at the top of the drive itself. A full pad above it reached into the
+    # deck and brought back 0.4-3mm SLIVERS of top_plate, pickup and pickup_zplate --
+    # shavings clipped exactly at the ceiling, which read as debris in the view and
+    # are the one thing that cannot reach a clamp sitting in the chassis cavity.
+    hi[2] = max(b.zmax for b in bbs) + top_pad
+    return (hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2],
+            (lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2)
+
+
 def _pose_belt_tensioner(name, wp):
     """belt_tensioner authors the clamp in the BELT-LOCAL frame (splice at the origin,
     belt back on z=0), because one clamp SKU is placed ten times. Unposed it would render
@@ -89,9 +139,9 @@ def _pose_belt_tensioner(name, wp):
     string the full build gives lifter bars to."""
     import cadquery as cq
     from src import components as C, dimensions as D
-    i = D.N_STRINGS - 1
+    i = _tensioner_string()
     so, sxd, sn = C.splice_frame(D.motor_pos(i),
-                                 (D.SCREW_X, D.string_y(i), D.screw_pulley_z(i)))
+                                 (D.screw_x(i), D.string_y(i), D.screw_pulley_z(i)))
     loc = cq.Location(cq.Plane(origin=so, xDir=sxd, normal=sn))
     return cq.Workplane("XY").add(wp.val().moved(loc))
 
@@ -139,8 +189,24 @@ def _crop_bridge():
     return (90.0, 130.0, z1 - z0, D.BRIDGE_AXLE_X, 0.0, (z0 + z1) / 2)
 
 
-CROPS = {"leg_station": _crop_leg_station, "keyhead": _crop_keyhead,
-         "bridge": _crop_bridge}
+def _crop_screw_rows():
+    """The +X end INCLUDING the drivetrain -- the two Tr8 screw rows and the endplate
+    that hosts them.
+
+    Distinct from _crop_bridge, which deliberately stops at the deck to frame the bearing
+    arms and leaves the drivetrain out. The work here is the opposite: the rows, their
+    nuts, bearings and guide rods, and how the endplate closes around them. So Z runs
+    from under the drive pulleys to over the strings."""
+    from src import dimensions as D
+    x0, x1 = D.BRIDGE_BASE_X0 - 25.0, D.BRIDGE_BASE_X1 + 25.0
+    z0, z1 = D.SCREW_BOT_Z - 12.0, D.STRING_Z + 10.0
+    return (x1 - x0, D.STRING_FIELD_W + 40.0, z1 - z0,
+            (x0 + x1) / 2, 0.0, (z0 + z1) / 2)
+
+
+CROPS = {"leg_station": _crop_leg_station, "belt_run": _belt_run_box,
+         "keyhead": _crop_keyhead, "bridge": _crop_bridge,
+         "screw_rows": _crop_screw_rows}
 # ─────────────────────────────────────────────────────────────────────────────
 
 
@@ -203,6 +269,15 @@ VIEW = ScratchView(
     # cannot drift from the finished assembly. Cached context stays grey on purpose:
     # that contrast is what tells you which parts are live and which may be stale.
     colors=lambda n: importlib.import_module("src.build")._color_for(n),
+    # INNER-LOOP gates (`--gate`): the project's real gate functions, handed the
+    # cached context instead of a fresh 5.5-min rebuild. Scoping a gate by NAME
+    # never helped -- the build is ~95% of its cost, not the checking -- so this
+    # scopes what gets BUILT, exactly as the view does. Still not the submit gate:
+    # nothing authoritative reads the cache, and `--gate` says so every run.
+    gates=(("overlaps", lambda comps:
+            importlib.import_module("tools.check_overlaps").gate(comps)),
+           ("sweep", lambda comps:
+            importlib.import_module("tools.check_sweep").gate(comps))),
 )
 
 if __name__ == "__main__":

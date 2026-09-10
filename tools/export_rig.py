@@ -290,7 +290,7 @@ def build_rig(build_n=None) -> pathlib.Path:
         sy = D.string_y(i)
         scz = D.screw_pulley_z(i)
         mpos = D.motor_pos(i)                        # (mx, my, mz)
-        _, tan, _ = C.splice_frame(mpos, (D.SCREW_X, sy, scz))   # belt-clamp travel dir
+        _, tan, _ = C.splice_frame(mpos, (D.screw_x(i), sy, scz))   # belt-clamp travel dir
         strings.append({
             "i": i,
             "string": i + 1,                          # string number (1 = highest, far edge)
@@ -300,7 +300,7 @@ def build_rig(build_n=None) -> pathlib.Path:
             "carriage_nodes": [f"nut_{i}", f"string_nut_{i}"],
             # pulleys: spin about their own axis, centre in CAD space
             "screw_pulley": {"node": f"screw_pulley_{i}",
-                             "center": [D.SCREW_X, sy, scz], "axis": [0, 0, 1]},
+                             "center": [D.screw_x(i), sy, scz], "axis": [0, 0, 1]},
             "motor_pulley": {"node": f"motor_pulley_{i}",
                              "center": list(mpos), "axis": [0, 1, 0]},
             # belt clamp: rides the belt -> slides along the belt tangent
