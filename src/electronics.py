@@ -66,7 +66,6 @@ CH_W, CH_D = 20.6, TAB_T + 0.3         # channel cut: tab + 0.3 clearance each w
 
 from . import chassis as CH          # only early constants (X_*, Z_*) used here
 from .helpers import box_at, cyl, cyl_x
-from cadkit.fasteners import M2, cut_anchor
 from cadkit.pcb import jst_xh_header
 
 # ---- board footprints (x0, x1, y0, y1); board bottom z = TRAY_Z1 + post ----
@@ -163,39 +162,22 @@ def analog_frontend() -> cq.Workplane:
     return b
 
 
-def _screw_xy(fp, corner):
-    """One board corner (5 mm inset, at a real corner mounting-hole position)."""
+def _support_posts(fp, bz):
+    """Four plain corner posts for one board footprint (tops flush with the board bottom --
+    the board RESTS on them). Support only: NO retention for now (user, 2026-09-10). The M2
+    corner anchor, its fat boss and the two locator strips that used to live here are gone;
+    these boards are revisited later under the one-M4-beside-the-board rule
+    (cadkit.pcb.pcb_cradle hold_edge), so nothing here should grow an M2 back."""
     x0, x1, y0, y1 = fp
-    return (x0 + 5 if corner[0] < 0 else x1 - 5,
-            y0 + 5 if corner[1] < 0 else y1 - 5)
-
-
-def _posts_strips_screw(fp, bz, corner):
-    """Drop-in, SCREW-RETAINED mount for one board footprint (no snap/flexure --
-    a deliberate rule; plastic snaps aren't trusted). 4 corner support posts
-    (tops flush with the board bottom -- the board RESTS on them), 2 locator
-    strips along the x edges (0.3 plan fit) that locate the board in the pocket,
-    and ONE fat boss at `corner` carrying an M2 anchor: the board drops into the
-    strip-located pocket and a single screw through its corner mounting hole
-    stops lift-out. The anchor itself is cut in electronics_tray() (after the
-    boss fuses into the tray plate, so the self-tap runs full depth)."""
-    x0, x1, y0, y1 = fp
-    sx, sy = _screw_xy(fp, corner)
     out = cq.Workplane("XY")
     for px in (x0 + 5, x1 - 5):
         for py in (y0 + 5, y1 - 5):
-            is_screw = abs(px - sx) < 1e-6 and abs(py - sy) < 1e-6
-            out = out.add(cyl(7.0 if is_screw else 5.0, bz - TRAY_Z1, z=TRAY_Z1)
-                          .translate((px, py, 0)))
-    for sy2 in (y0 - 1.0, y1 + 1.0):    # strips: 0.3 plan gap to the board
-        out = out.add(box_at(x1 - x0 - 16.0, 1.4, bz + 1.0 - TRAY_Z1,
-                             x=(x0 + x1) / 2, y=sy2,
-                             z=(TRAY_Z1 + bz + 1.0) / 2))
+            out = out.add(cyl(5.0, bz - TRAY_Z1, z=TRAY_Z1).translate((px, py, 0)))
     return out
 
 
 def electronics_tray() -> cq.Workplane:
-    """The printed tray: plate + drop-in side tabs + all snap-mount sets.
+    """The printed tray: plate + drop-in side tabs + board support posts.
     Prints flat (plate on the bed, posts/fingers up, no overhangs beyond
     the 45-degree nubs)."""
     body = box_at(TRAY_X1 - TRAY_X0, TRAY_Y1 - TRAY_Y0, TRAY_Z1 - TRAY_Z0,
@@ -206,16 +188,10 @@ def electronics_tray() -> cq.Workplane:
                                  x=(TAB_X0 + TAB_X1) / 2,
                                  y=ye + s * (TAB_T + 1.25) / 2 - s * 0.001,
                                  z=TRAY_Z0 + 3.0))
-    # each board: strip-located drop-in pocket + ONE M2 screw at a chosen corner
-    # (a corner clear of the board's top-side components / neighbours).
-    for fp, bz, corner in ((PI_FP, BOARD_Z, (-1, -1)),
-                           (TEENSY_FP, BOARD_Z + 1.0, (-1, -1)),
-                           (ADC_FP, BOARD_Z, (+1, -1)),
-                           (BUCK_FP, BOARD_Z, (+1, +1)),
-                           (XCVR_FP, BOARD_Z, (-1, -1))):
-        body = body.union(_posts_strips_screw(fp, bz, corner))
-        sx, sy = _screw_xy(fp, corner)
-        body = cut_anchor(M2, body, (sx, sy, bz), (0, 0, -1), M2.anchor_min_wall)
+    # each board rests on four plain posts -- no retention yet (see _support_posts)
+    for fp, bz in ((PI_FP, BOARD_Z), (TEENSY_FP, BOARD_Z + 1.0), (ADC_FP, BOARD_Z),
+                   (BUCK_FP, BOARD_Z), (XCVR_FP, BOARD_Z)):
+        body = body.union(_support_posts(fp, bz))
     # NORTH-SHELF LANE CHANNEL (Y-INSTALL round; supersedes the old
     # west-north chimney bite - the jack chimney/fin is gone): the wired
     # leg's Ø3.8 factory pigtail rides the chassis' over-rib raceway east
@@ -330,7 +306,6 @@ TEE_BOARD_Y  = 24.0                                  # grows +Y off the rail int
 TEE_YSHIFT   = 5.0                                   # board centre shift +Y so the -Y edge stays at y-7
 TEE_CONN_DX  = 6.5                                   # trunk-in / drop / trunk-out X spacing
 TEE_CONN_CY  = -1.0                                  # connector row centre (board-local Y)
-TEE_SCREW_XY = (0.0, 9.0)                            # cradle retention hole (top band, clear of connectors)
 TEE_RELIEF   = (16.0, 11.0)                          # base tail-relief window (w × l), board-local, at (0, CONN_CY)
 
 
@@ -359,7 +334,7 @@ def tee_pcb(x: float, y: float, drop: int = 1, accurate: bool = True) -> cq.Work
     L-to-R, cables up -- plus the 120 Ω-behind-jumper terminator (closed only on
     each bus's LAST tee). Serves the 10 bus-A motor tees on the open -Y rail. `drop`
     = ±1 marks the device side (cables are top-entry, so it doesn't change the board
-    geometry). Mount: drop-in cradle + one M2. `accurate=False` -> the compact bus-B
+    geometry). Mount: drop-in cradle + one M4 BESIDE the board (wiring.tee_hold) -- no hole. `accurate=False` -> the compact bus-B
     placeholder (see _tee_pcb_placeholder)."""
     if not accurate:
         return _tee_pcb_placeholder(x, y, drop)

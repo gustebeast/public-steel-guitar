@@ -225,6 +225,18 @@ for _i in range(D.N_STRINGS):
         if _seg_edges[_csi + 1] < _ax < _seg_edges[_csi]:
             chassis_segments[_csi] = chassis_segments[_csi].cut(
                 BE.access_cutter(_i, CH.Z_BOT - 1.0, CH.Z_BOT + 2 * D.XBAR + 1.0))
+
+# ...and RE-BORE each M4-held tee's hold-down. pcb_cradle bores the anchor and head notch in
+# the CRADLE, but the fuse above unions it into the segment, and the segment's own rib and
+# rail material fills the hole straight back in -- the same refill trap as the mortises. The
+# gate found it the moment the screws had dummies: a uniform 27.0 mm3 of screw and 23.3 of
+# insert buried in chassis on nearly every tee. The M4's 8.5 anchor puts the cradle base 5.3
+# into that material. Cut at the END of the pipeline, where nothing unions over it again.
+for _ctx, _cutters in _WR_FUSE.tee_hold_negatives():
+    for _csi in range(len(_seg_edges) - 1):
+        if _seg_edges[_csi + 1] < _ctx < _seg_edges[_csi]:
+            for _cut in _cutters:
+                chassis_segments[_csi] = chassis_segments[_csi].cut(_cut)
             break
 for _i, _seg in enumerate(chassis_segments):     # chassis split into dovetailed segments
     PARTS[f"chassis_{_i}"] = (partial(heal, _seg), f"petg-gf/chassis_{_i}.step",
@@ -600,11 +612,11 @@ def _pickup_mount_components():
     # wrap plinth, button screw down through the board's clearance hole into it. Same
     # fastener family as the pickup height jacks, so no new BOM line.
     from . import bridge_endplate as _BE
-    _ohh = 2.2                                        # M4 button head height
+    _ohh = TP.JACK_HEAD_H                             # the jacks' ISO 7380 button head
     # headed_screw draws head-top-at-0 with the shank running -Z, which is ALREADY the
     # orientation for a screw entering downward -- no flip. (The old optical M2 went up
     # from below and did need one; copying that was what put this one through the board.)
-    _oscr = headed_screw(M4, 12.0, head_d=7.0, head_h=_ohh, socket_af=2.5)
+    _oscr = headed_screw(M4, 12.0, head_d=TP.JACK_HEAD_D, head_h=_ohh, socket_af=2.5)
     for _i, (_mx, _my) in enumerate(OP.mount_points()):
         out.append((f"optical_insert_{_i}",
                     seated_insert(M4, (_mx, _my, _BE.PCB_PAD_TOP), (0, 0, -1))))
@@ -1350,7 +1362,9 @@ _COLORS = {
     "teensy_ifc":      (0.55, 0.25, 0.25),   # Teensy interface PCB (2x CAN
                                              # transceiver + XH headers)
     "tee_pcb":         (0.10, 0.42, 0.18),   # trunk-and-drop bus tee PCBs
-    "tee_cradle":      (0.32, 0.55, 0.42),   # PCTG 3-wall drop-in PCB cradle (pcb_cradle)
+    "tee_cradle":      (0.32, 0.55, 0.42),   # PCTG drop-in PCB cradle (pcb_cradle, side hold-down)
+    "tee_screw":       (0.72, 0.74, 0.78),   # M4x10 button, BESIDE the tee board
+    "tee_insert":      (0.72, 0.60, 0.30),   # M4 heat-set brass, in the cradle boss
     "analog_frontend": (0.20, 0.45, 0.40),   # bridge-end buffer + relay board
     "optical_pcb":     (0.12, 0.30, 0.55),   # per-string optical strip (blue solder mask,
                                              # so it reads apart from the green audio PCBs)
