@@ -570,11 +570,11 @@ def _pickup_mount_components():
     # wrap plinth, button screw down through the board's clearance hole into it. Same
     # fastener family as the pickup height jacks, so no new BOM line.
     from . import bridge_endplate as _BE
-    _ohh = 2.2                                        # M4 button head height
+    _ohh = TP.JACK_HEAD_H                             # the jacks' ISO 7380 button head
     # headed_screw draws head-top-at-0 with the shank running -Z, which is ALREADY the
     # orientation for a screw entering downward -- no flip. (The old optical M2 went up
     # from below and did need one; copying that was what put this one through the board.)
-    _oscr = headed_screw(M4, 12.0, head_d=7.0, head_h=_ohh, socket_af=2.5)
+    _oscr = headed_screw(M4, 12.0, head_d=TP.JACK_HEAD_D, head_h=_ohh, socket_af=2.5)
     for _i, (_mx, _my) in enumerate(OP.mount_points()):
         out.append((f"optical_insert_{_i}",
                     seated_insert(M4, (_mx, _my, _BE.PCB_PAD_TOP), (0, 0, -1))))

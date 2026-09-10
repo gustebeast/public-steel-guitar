@@ -8,10 +8,11 @@ with the deck panels already in place. It:
   - terminates the strings (gauged break edge + 2-row clamps), bearing on solid
     PETG-GF — no separate nut block, no 4 corner bolts;
   - sockets a dovetail tongue on each rail end (mirrors the bridge joint) -> X+Y lock
-    + grip against the +X string tension; locked in +Z by ONE thread-forming screw up
-    from the chassis floor bottom into the solid body.
+    + grip against the +X string tension; locked in +Z by ONE M4×18 button-head screw
+    up from the chassis floor bottom, forming its own thread in the solid body
+    (2.5 mm key -- the same one every other screw on the instrument takes).
 
-Service: send motors slack, back off the clamp set screws, remove the +Z screw,
+Service: send motors slack, remove the +Z screw,
 lift this piece out, slide the deck panels off -X.
 """
 
