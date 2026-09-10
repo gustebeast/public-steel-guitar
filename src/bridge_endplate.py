@@ -150,7 +150,7 @@ MIN_ADDED = D.MIN_WALL_2P         # 1.6 -- two-bead QUALITY floor for material t
                                               # roof clearance the board slides through.
 # ── THE CHANGER ROOM: ONE PRISM, ONE CEILING (user) ─────────────────────────
 # The changer hardware's clearance volume is a single rectangular prism, cut once
-# in _cap: y ±WIN_HW (the arm inner faces), z ROOM_Z0 (under the nut's sweep) up
+# in _cap: y ±ROOM_HW (just past the edge nuts), z ROOM_Z0 (under the nut's sweep) up
 # to ROOM_Z1, running straight through the whole X. It replaces four overlapping
 # cuts — the field-centre LOW + HIGH boxes, the stringing-access window and the
 # guide-view window — whose union left a stepped ceiling measured at FOUR values
@@ -270,9 +270,12 @@ Z6     = CH.TP_GZ1                 # deck/top-plate level = the bridge's general
 # RETENTION IS FREE: gravity seats it in the blind socket, and once the instrument is
 # strung the string runs directly over this line 16 mm up, so the rod cannot be lifted
 # out. No grub, no clip — captive by assembly order, the same trick the bridge axle uses.
-GUIDE_DROP_Z1  = BRACE_Z1                       # 14.01, the top of the slab: the BORE
+GUIDE_DROP_Z1  = BEAR_TOP + 1.0                 # 17.0, out through the endplate's TOP: the BORE
                                                 # runs to here so the rods drop in from +Z,
-                                                # LAST before stringing
+                                                # LAST before stringing. It stopped at the -X
+                                                # slab (BRACE_Z1 14.01), which left the +X row's
+                                                # rods under 2 mm of the changer-top prism (top
+                                                # 16) with no way in (user).
 # ...but the ROD ITSELF stops short of that. Its bore sits 0.025 mm INSIDE the bridge
 # bearing's outer diameter — the rod line is 14.5 -X of the screw and the bearing
 # reaches -13.0, so over z 3.0..14.0 they interfere rather than merely pass (user spotted
@@ -368,6 +371,12 @@ assert DRIVE_Z0 <= CH.Z_BOT + 1e-9, (
 # Room half-width: out to the arm inner faces, so the edge carriages / string
 # balls are reachable through the room's +X opening (everything installs from +X).
 WIN_HW     = D.BRIDGE_ARM_Y - ARM_W / 2
+# THE ROOM IS WIDER THAN THE ARM GAP. It used to stop at WIN_HW (46.0), but the edge strings'
+# nuts are NUT_AF 10.5 across the flats, so at string_y ±42.75 they reach ±48.0 and cut 2 mm
+# into both side walls, with the edge leadscrews 0.75 in (user saw string 10's). The arms only
+# need their width up at the axle, above ROOM_Z1, so the room takes its own half-width: the
+# edge nut plus 1.0 of air. Outboard of it the +Y side keeps >6 mm to the foot pocket.
+ROOM_HW    = max(abs(D.string_y(i)) for i in range(D.N_STRINGS)) + D.NUT_AF / 2 + 1.0   # 49.0
 
 
 MECH_HW = D.BRIDGE_ARM_OUT   # 54.75, field-centre upper-cap half-span = the arm outer face.
@@ -406,7 +415,7 @@ def _cap() -> cq.Workplane:
     (x -1.4..8.6, CH.T thick — no more 2.6 sliver) and the two +-Y side
     faces (= the rail takeovers; the chassis drops the rail ends here).
     Then cut only what the mechanism needs: THE CHANGER ROOM — one prism,
-    |y| <= WIN_HW, ROOM_Z0..ROOM_Z1, through the whole X — where the
+    |y| <= ROOM_HW, ROOM_Z0..ROOM_Z1, through the whole X — where the
     nut sweep and the strings live (below ROOM_Z0
     nothing sweeps, so the base stays SOLID down to the bed).
     Only a field-centre upper band (z6..10) reaches the body top to back
@@ -427,7 +436,7 @@ def _cap() -> cq.Workplane:
     # bottom-stop plane up to the tower-relief ceiling, straight through the
     # whole X — the opening it leaves in the +X face IS the stringing access
     # (strings, balls and carriages all install from +X).
-    w = w.cut(box_at((X1 + 1.0) - (XLO - 1.0), 2 * WIN_HW, ROOM_Z1 - ROOM_Z0,
+    w = w.cut(box_at((X1 + 1.0) - (XLO - 1.0), 2 * ROOM_HW, ROOM_Z1 - ROOM_Z0,
                      x=((XLO - 1.0) + (X1 + 1.0)) / 2, y=0,
                      z=(ROOM_Z0 + ROOM_Z1) / 2))
     return w
