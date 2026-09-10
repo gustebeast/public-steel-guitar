@@ -170,11 +170,12 @@ ADAPT_BOLT_D = 4.4                # M4 clearance (a hole, not material)
 ADAPT_BOLT_PCD = LEG_W - 2 * (6 * B)   # 32.0 across the square pattern. Was
                                        # 38.4 (4 beads in from the faces), which
                                        # is fine for a round hole and not for a
-                                       # TEARDROP: the adapter prints +Y -> -Y,
+                                       # TEARDROP: the adapter prints on its side,
                                        # so these bolts run sideways, and the
                                        # peak (r*sqrt2 = 3.11) left 0.09 of skin
-                                       # on the -Y face. At 6 beads in it leaves
-                                       # 1.69. Costs the bolt couple 17% of its
+                                       # on the top face. At 6 beads in it leaves
+                                       # 1.69 -- either way up, the pattern is
+                                       # square. Costs the bolt couple 17% of its
                                        # arm, so the kick loads each bolt ~20% more.
 
 TRRS_D = 12 * B                   # 9.6 reserved bore for the TRRS jack body
@@ -389,16 +390,27 @@ assert ADJ_N * ADJ_PITCH <= ADJ_TRAVEL + 1e-9, (
 # PRINT_ROT is the same fact as cadkit.step_export.print_pose wants it, for the
 # per-part STEPs. The assert below makes the two unable to disagree.
 _S2 = 1.0 / math.sqrt(2.0)
-SLEEVE_UP = (0.0, -1.0, 0.0)       # sleeves + adapter print +Y -> -Y: the +Y face
-                                   # is the bed, and the mortise's 45 apex is up
-TENON_UP = (-_S2, -_S2, 0.0)       # tenons print +X+Y -> -X-Y: lying on the flat
-                                   # that faces +X+Y, the section's own 45 flank
+#
+# THE USER GIVES ORIENTATIONS IN WORLD COORDINATES, and these parts are authored in
+# the LEG'S frame -- which is posed 180 degrees about X on the instrument (see
+# tools/scratch_view._pose_leg_stack), so leg-local +Y is world -Y and +Z is -Z.
+# Getting that backwards put every leg part on the wrong face once already: the
+# "+Y -> -Y" the user gave was read as leg-local, landing the button face on the
+# bed. Convert first, then write the number here.
+#
+#   user (world)                          leg-local build direction
+#   sections: bed at world Y 65.95,       (0, +1, 0)  -- the button face (world -Y,
+#     printing toward 21.15                            leg-local +Y) is UP
+#   tenons: +X+Y -> -X-Y                  (-1, +1, 0)/sqrt2 -- on the flat facing
+#                                                        world +X+Y
+SLEEVE_UP = (0.0, 1.0, 0.0)        # all three sections: adapter + both sleeves
+TENON_UP = (-_S2, _S2, 0.0)        # both floating tenons, on a 45 flat
 PRINT_UP = {"adjust_sleeve": SLEEVE_UP, "fixed_sleeve": SLEEVE_UP,
             "body_adapter": SLEEVE_UP,
             "adjust_tenon": TENON_UP, "fixed_tenon": TENON_UP}
-PRINT_ROT = {"adjust_sleeve": ((1, 0, 0), -90), "fixed_sleeve": ((1, 0, 0), -90),
-             "body_adapter": ((1, 0, 0), -90),
-             "adjust_tenon": ((-1, 1, 0), 90), "fixed_tenon": ((-1, 1, 0), 90)}
+PRINT_ROT = {"adjust_sleeve": ((1, 0, 0), 90), "fixed_sleeve": ((1, 0, 0), 90),
+             "body_adapter": ((1, 0, 0), 90),
+             "adjust_tenon": ((1, 1, 0), 90), "fixed_tenon": ((1, 1, 0), 90)}
 
 
 def _rotated(v, axis, deg):

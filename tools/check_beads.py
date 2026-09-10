@@ -239,6 +239,8 @@ _ex("clearance",
     leg_latch__CLR="latch slider sliding clearance in its pocket, notch and recess",
     leg_latch__CH_FLOOR="= the mortise's roof + 0.5 standoff so the hook never rubs "
                         "the tenon beside it: grid-derived plus a CLEARANCE",
+    leg_latch__BRIDGE_SAG="room over the hook tip for the adapter pocket's 5.3 mm "
+                          "bridge to droop into: a gap, never material",
 )
 _ex("clearance",
     FIT_CLR="slip fit",
