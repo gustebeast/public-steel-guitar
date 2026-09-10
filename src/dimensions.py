@@ -728,8 +728,8 @@ assert _BELT_PLANE_CLR >= 0.4 - 1e-9, (
 # ─────────────────────────────────────────────────────────────────────────
 # 688ZZ (Ø8×16×5) — the SAME part as the ten screw thrust bearings (user, 2026-09-10:
 # one bearing SKU everywhere, since the Tr8 screw already forces a Ø8 bore), so the bridge
-# axle goes Ø8 with it. The knee-lever and pedal axles follow in their own rounds; the nut
-# wrap rod stays Ø5 (NUT_WRAP_ROD_D) — it carries no bearing.
+# axle goes Ø8 with it. The knee-lever and pedal axles follow in their own rounds, and the nut
+# wrap rod is now the SAME Ø8 x BRIDGE_AXLE_L shaft (user) — one shaft SKU at both ends.
 #
 # (history) 695ZZ (Ø5×13×4) was the one bearing before this, and its Ø5 bore made the
 # bridge axle, both lever axles and the nut wrap rod one stock shaft.
@@ -750,9 +750,6 @@ assert _BELT_PLANE_CLR >= 0.4 - 1e-9, (
 BRIDGE_BEARING_OD = BRG688_OD   # 16 — 688ZZ; the string rides the OD
 BRIDGE_BEARING_W  = BRG688_W    # 5 along the axle (Y)
 BRIDGE_AXLE_D     = BRG688_ID   # Ø8 shared axle (axis Y), the 688's bore
-NUT_WRAP_ROD_D    = 5.0         # nut_block's capstan rod: a Ø5 g6 shaft. It was the bridge
-                                # axle's stock until that went Ø8; nut_block is built around
-                                # Ø5, so moving it is that part's own round, not a side effect.
 BRIDGE_BEARING_Z  = STRING_Z - BRIDGE_BEARING_OD / 2     # axle/bearing centre (8)
 _BRIDGE_BRG_BOT   = STRING_Z - BRIDGE_BEARING_OD         # 0, the bearing's underside
 assert _BRIDGE_BRG_BOT - NUT_TOP_MAX >= 1.0, (
