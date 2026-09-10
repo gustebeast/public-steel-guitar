@@ -559,7 +559,14 @@ SUPPORT_BRG_N   = 1
 SUPPORT_BRG_OD  = BRG688_OD # Ø16 — 1.4 mm of web each side at the 19.0 in-row pitch
 SUPPORT_BRG_ID  = BRG688_ID # Ø8 — the bore the Tr8 screw actually passes through
 SUPPORT_BRG_W   = SUPPORT_BRG_N * BRG688_W          # 5.0 — ONE bearing now, not a stack
-BRG_LEDGE_T     = 2 * BEAD                          # 1.6 of rail over the outer rings
+BRG_LEDGE_T     = 5 * BEAD                          # 4.0 of rail over the outer rings: a 1.6
+                                                    # lip + 2.4 of nut band, whose lowest 0.8
+                                                    # is the guide-rod sockets' solid floor (user)
+# 2 -> 4 beads (user, 2026-09-10). The plate the guide rods stand in was only 1.6 thick,
+# so each rod had a printed collar built up round its base for engagement — a free-standing
+# ring on a face that prints sideways, i.e. an overhang. Thickening the whole plate to the
+# collar's top deletes the collar and gives each rod a 1.6 socket in solid plate instead.
+# It does NOT count against the nut — see the nut assert below.
 # THE STACK SITS ON THE PULLEYS, and moving it here is what deleted the retaining
 # collar. The screw is pulled +Z, so whatever grips it has to bottom against something
 # grounded ABOVE; put the bearings on the pulley tops and the PULLEY is that thing.
@@ -572,10 +579,51 @@ PULLEY_TOP_MAX  = (SCREW_PULLEY_Z + BELT_PLANE_DZ
                    + PULLEY_END_A)                  # -38.6, BOTH SKUs' top (same Z)
 SUPPORT_BRG_BOT = PULLEY_TOP_MAX                    # the stack seats straight on it
 SUPPORT_BRG_Z   = SUPPORT_BRG_BOT + SUPPORT_BRG_W   # -28.0, thrust ledge underside
-_NUT_PULLEY_GAP = NUT_BOT_MIN - (SUPPORT_BRG_Z + BRG_LEDGE_T)
-assert _NUT_PULLEY_GAP >= 1.0 - 1e-9, (
-    f"the nut's lowest sweep clears the thrust ledge by only {_NUT_PULLEY_GAP:.2f} "
+# THE NUT'S LOWEST SWEEP. The deepest part of the nut is its Ø10.2 BOSS, and it descends
+# INSIDE the thrust ledge's bore (screw_rail.SEAT_LEDGE_D — asserted there, radially), so
+# the thing it has to clear vertically is the BEARING at the bottom of that bore, not the
+# ledge plane. The old form, NUT_BOT_MIN - (ledge top), stopped being true the moment the
+# ledge grew thicker than the gap: it would have blocked a change that collides with nothing.
+_NUT_BRG_GAP = NUT_BOT_MIN - SUPPORT_BRG_Z
+assert _NUT_BRG_GAP >= 1.0 - 1e-9, (
+    f"the nut boss's lowest sweep clears the thrust bearing by only {_NUT_BRG_GAP:.2f} "
     f"(want 1.0): raise NUT_TOP_Z or shorten CARRIAGE_TRAVEL")
+
+
+# STRING ACCESS CHANNELS (user, 2026-09-10). With two screw rows, a string can no longer be
+# threaded into its nut ear from the +X face: the far row is buried behind the near one.
+# Instead each string feeds UP from underneath, through a straight vertical channel in the
+# rail plate and the chassis floor, already pointing along Z the way it has to leave the ear.
+# The channel CANNOT sit under the ear itself: the ear is NUT_HOLE_DX = 8.0 off the screw
+# axis, exactly the 688ZZ's outer radius, so a channel there runs through the thrust bearing.
+# It stands off sideways instead, as close to the bearing as the seat allows, and the last
+# few mm to the ear are a step the builder pushes across with a long thin tool from +X.
+# The channel is a HOUSE cut (cadkit.holes.house_hole, user 2026-09-10): a 4.8 x 4.8 rectangle
+# with a 45° roof on top, apex toward -X (the endplate's print direction). Its BEARING-FACING end
+# is placed so the Ø4.6 barrel passage just touches the Ø16.2 seat bore; the extra size grows
+# AWAY from the bearing. There is no wall between channel and seat — only the house breaks in:
+#   NEAR row — the ROOF points at its seat. The passage circle nestled in the roof is tangent to
+#              the bore, so the apex pokes ~0.95 past it, notching a short arc of the seat round
+#              and the ledge's outer edge (r 7.15..8.1): a few % of the thrust annulus.
+#   FAR row  — the FLOOR faces the seat, tangent to the bore, inside the seat's own teardrop
+#              apex void, so nothing is notched.
+# Either way the barrel passes the 688's OD with 0.3 to spare (8.0 + 2.0 + 0.3 = 10.3 < 10.4).
+STRING_ACCESS_D = 6 * BEAD                      # 4.8 house width (user)
+STRING_ACCESS_H = 6 * BEAD                      # 4.8 house wall height, roof on top (user)
+_ACCESS_PASS_R  = STRING_NUT_D / 2 + 0.3        # 2.3 — the Ø4 swaged end's passage, for the standoff
+
+
+def string_access_x(i: int) -> float:
+    """X of string i's vertical access channel, stood off its screw AWAY from the screw axis
+    (toward the bearing tangent) — the house_hole axis point; its bearing-facing end sits on the seat bore."""
+    seat_r = (SUPPORT_BRG_OD + 0.2) / 2
+    toward = 1.0 if screw_x(i) < 0 else -1.0    # away from its own screw, toward X = 0
+    if screw_far(i):                            # floor faces the seat, tangent to the bore
+        off = seat_r + STRING_ACCESS_D / 2
+    else:                                       # roof faces it: apex where the nestled passage
+        apex = seat_r + _ACCESS_PASS_R - _ACCESS_PASS_R * 2 ** 0.5   # circle touches the bore
+        off = apex + STRING_ACCESS_H            # house_hole's apex is `wall` above its axis
+    return screw_x(i) + toward * off
 # BOTTOM of the rod: it ends in the pulley's BLIND SOCKET, a hair short of the floor so it
 # never bottoms and preloads the formed thread. Both SKUs share the top (PULLEY_TOP_MAX)
 # and the socket depth, so the rod ends at the same Z on every station.
@@ -678,24 +726,41 @@ assert _BELT_PLANE_CLR >= 0.4 - 1e-9, (
 # bearing keeps the bend near-frictionless so the two sides' tensions equalize
 # (a fixed surface would mismatch them ~37% at 90° and cause tuning hysteresis).
 # ─────────────────────────────────────────────────────────────────────────
-# 695ZZ (Ø5×13×4) — ONE bearing for the changer AND the levers (user), and its Ø5
-# bore is what makes the bridge axle, both lever axles and the nut wrap rod ONE
-# stock shaft.
+# 688ZZ (Ø8×16×5) — the SAME part as the ten screw thrust bearings (user, 2026-09-10:
+# one bearing SKU everywhere, since the Tr8 screw already forces a Ø8 bore), so the bridge
+# axle goes Ø8 with it. The knee-lever and pedal axles follow in their own rounds; the nut
+# wrap rod stays Ø5 (NUT_WRAP_ROD_D) — it carries no bearing.
+#
+# (history) 695ZZ (Ø5×13×4) was the one bearing before this, and its Ø5 bore made the
+# bridge axle, both lever axles and the nut wrap rod one stock shaft.
 #
 # THE 693ZZ IT REPLACES WAS OVER ITS RATING. The string turns 90° here — level in
 # from the nut, straight down to the carriage beneath — so each bearing carries
 # sqrt(2)×147 = 208 N permanently, against a 693ZZ static rating of 177 N. C0 is the
 # BRINELLING threshold: the races dent and the bearing stops doing its only job,
-# letting the two sides of the string equalise. 695ZZ is 346 N -> 1.66×.
+# letting the two sides of the string equalise. 695ZZ was 346 N -> 1.66×; 688ZZ
+# publishes C0r 474-710 N -> 2.3-3.4×.
 #
-# WHY NOT BIGGER: OD is capped by the VERTICAL gap between STRING_Z and the
-# carriage's ball cage, because the string rides the OD so the axle is pinned at
-# STRING_Z - OD/2. Ø16 needs the whole 8 mm of slack under the carriage; Ø13 needs
-# 5 and leaves 3. Y is not the constraint (4 wide in a 9.5 lane) and neither is X.
-BRIDGE_BEARING_OD = 13.0    # 695ZZ; string rides a groove in the OD
-BRIDGE_BEARING_W  = 4.0     # along the axle (Y) — unchanged, so the comb fingers stay 5.5
-BRIDGE_AXLE_D     = 5.0     # shared axle (axis Y) — the ONE Ø5 shaft
-BRIDGE_BEARING_Z  = STRING_Z - BRIDGE_BEARING_OD / 2     # axle/bearing centre (12)
+# WHY Ø16 FITS NOW. The OD used to be capped at 13 by the carriage's ball cage under
+# the bearing (the string rides the OD, so the axle is pinned at STRING_Z - OD/2 and a
+# bigger bearing reaches lower). The carriage is gone — the nut is the carriage — so the
+# bearing's underside (STRING_Z - OD = 0) only has to clear the nut and screw tops below
+# it, which the asserts under these constants check. In Y it is 5 wide in the 9.5 lane,
+# which leaves the comb fingers 3.7.
+BRIDGE_BEARING_OD = BRG688_OD   # 16 — 688ZZ; the string rides the OD
+BRIDGE_BEARING_W  = BRG688_W    # 5 along the axle (Y)
+BRIDGE_AXLE_D     = BRG688_ID   # Ø8 shared axle (axis Y), the 688's bore
+NUT_WRAP_ROD_D    = 5.0         # nut_block's capstan rod: a Ø5 g6 shaft. It was the bridge
+                                # axle's stock until that went Ø8; nut_block is built around
+                                # Ø5, so moving it is that part's own round, not a side effect.
+BRIDGE_BEARING_Z  = STRING_Z - BRIDGE_BEARING_OD / 2     # axle/bearing centre (8)
+_BRIDGE_BRG_BOT   = STRING_Z - BRIDGE_BEARING_OD         # 0, the bearing's underside
+assert _BRIDGE_BRG_BOT - NUT_TOP_MAX >= 1.0, (
+    f"the bridge bearing's underside clears the nut's top of travel by only "
+    f"{_BRIDGE_BRG_BOT - NUT_TOP_MAX:.2f}")
+assert _BRIDGE_BRG_BOT - SCREW_TOP_Z >= 1.0, (
+    f"the bridge bearing's underside clears the leadscrew tops by only "
+    f"{_BRIDGE_BRG_BOT - SCREW_TOP_Z:.2f}")
 # The string rises vertically from the anchor (at BRIDGE_X) tangent to the
 # bearing's +X extent, wraps 90° over the top, then leaves −X along the top. So
 # the bearing centre sits OD/2 to −X of the anchor line.
@@ -733,7 +798,7 @@ BRIDGE_ARM_W      = 6 * BEAD  # 4.8 bridge-endplate bearing-arm / edge-web thick
 # out exactly as before -- 3.20 into the blind -Y bore, 4.80 through the +Y arm. What
 # shrinks is the margin outboard of the string field, 9.60 -> 5.65, and nothing lives
 # there but the arm itself.
-BRIDGE_AXLE_L     = 100.0                               # the Ø5 shaft, as bought
+BRIDGE_AXLE_L     = 100.0                               # the Ø8 shaft, as bought
 BRIDGE_AXLE_END_W = MIN_WALL_2P                         # 1.6, the -Y blind wall = the stop
 BRIDGE_ARM_OUT    = (BRIDGE_AXLE_L + BRIDGE_AXLE_END_W) / 2   # 50.80, the arms' outer faces
 BRIDGE_ARM_Y      = BRIDGE_ARM_OUT - BRIDGE_ARM_W / 2   # 48.40, the arm centres

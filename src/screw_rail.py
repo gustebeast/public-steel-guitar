@@ -42,12 +42,13 @@ X_PX    = D.BRIDGE_BASE_X1                 # +X face (= endplate +X edge)
 # they wrap the toothed band, whose top is 1.5 mm below the pulley's own top
 # (measured off the built belts), so a rail seated on the tops clears them.
 SEAT_CLR = 0.3                              # slop under the stack (it seats UP on the ledge)
-BOT      = D.SUPPORT_BRG_BOT - SEAT_CLR     # -33.3, rail underside = seat mouth
-TOP      = D.SUPPORT_BRG_Z + D.BRG_LEDGE_T  # -26.4
-HEIGHT   = TOP - BOT                        # 6.9
-_NUT_GAP = D.NUT_BOT_MIN - TOP
-assert _NUT_GAP >= 1.0 - 1e-9, (
-    f"the nut's lowest sweep clears this rail's top by only {_NUT_GAP:.2f}")
+BOT      = D.SUPPORT_BRG_BOT - SEAT_CLR     # -38.9, rail underside = seat mouth
+TOP      = D.SUPPORT_BRG_Z + D.BRG_LEDGE_T  # -29.6
+HEIGHT   = TOP - BOT                        # 9.3
+# (No plane-vs-plane nut check here any more. It compared NUT_BOT_MIN with this TOP as if
+# the rail were solid, but the nut's lowest part is its Ø10.2 boss, which passes DOWN
+# THROUGH the ledge bore. The real checks are the bore's radial clearance, below SEAT_LEDGE_D,
+# and the boss-to-bearing gap in dimensions._NUT_BRG_GAP.)
 
 # TOP-LEDGE BORE. It has to be a window that lands on the OUTER rings and NOTHING
 # else: the ledge is part of the endplate and never turns, while the inner rings turn
@@ -63,6 +64,25 @@ SEAT_LEDGE_D = 18 * D.BEAD                 # 14.4 — lands on 688ZZ's OUTER rin
 # at ~13.8, so the bore has to clear that before it bears on anything real.
 assert SEAT_LEDGE_D >= 13.8, "the ledge would press the 688's SHIELD, not its outer ring"
 assert SEAT_LEDGE_D <= 15.4, "the ledge no longer backs the 688's outer ring"
+
+# STEPPED BORE (user). The Ø14.4 window only has to exist where the plate actually lands on
+# the outer ring, so it is a 1.6 LIP right on the bearing. Above the lip the bore steps IN as
+# tight as the nut's boss allows — the boss is the only thing that ever comes down into it —
+# which puts back the plate material the full-height Ø14.4 used to take out from under the
+# guide-rod sockets and around them.
+LEDGE_LIP_T  = 2 * D.BEAD                  # 1.6 of Ø14.4 lip on the outer ring
+LEDGE_TOP    = D.SUPPORT_BRG_Z + LEDGE_LIP_T   # -32.0, where the bore steps in
+NUT_BOSS_CLR = 0.5                         # radial air round the Ø10.2 boss: ~0.2 print
+                                           # tolerance + runout. Low-risk tight: the boss only
+                                           # reaches 0.15 into the plate at the bottom of travel.
+                                           # ⚠ the boss is off the seller's ±0.5-1 drawing, so
+                                           # re-check this once one is measured.
+NUT_PASS_D   = D.NUT_BOSS_D + 2 * NUT_BOSS_CLR   # 11.2
+assert LEDGE_TOP < TOP - D.BEAD + 1e-9, "the lip has eaten the whole plate"
+assert NUT_PASS_D > D.SCREW_OD + 2 * D.BEAD, "the stepped bore no longer clears the Ø8 screw"
+# the boss must never reach down into the lip band, where the bore is wider than it needs
+assert D.NUT_BOT_MIN - LEDGE_TOP >= 1.0 - 1e-9, (
+    f"the nut boss comes within {D.NUT_BOT_MIN - LEDGE_TOP:.2f} of the ledge lip (want 1.0)")
 
 # WHY THE LEDGE IS ON TOP, not underneath (user asked, and the answer is the load).
 # The string pulls every carriage +Z, so the screw is pulled +Z at 88-147 N. The
@@ -103,10 +123,12 @@ def seat_cutter() -> cq.Workplane:
         # bearing seat: counterbore from the bottom (−Z) up to the thrust ledge
         seat = _bore(D.SUPPORT_BRG_OD + 0.2, D.SUPPORT_BRG_W + SEAT_CLR,
                      (D.screw_x(i), y, BOT - 0.01))
-        # screw clearance through the top ledge (Ø < the bearing OD — that step IS
-        # the face the outer rings push against, and the whole string load with them)
-        clr = _bore(SEAT_LEDGE_D, HEIGHT + 2, (D.screw_x(i), y, BOT - 1))
-        cut = seat.union(clr)
+        # the 1.6 LIP window (Ø < the bearing OD — that step IS the face the outer ring
+        # pushes against, and the whole string load with it)
+        lip = _bore(SEAT_LEDGE_D, LEDGE_TOP - (BOT - 1), (D.screw_x(i), y, BOT - 1))
+        # above the lip: stepped in to the nut boss's passage, out through the plate top
+        boss = _bore(NUT_PASS_D, (TOP + 1) - (LEDGE_TOP - 0.01), (D.screw_x(i), y, LEDGE_TOP - 0.01))
+        cut = seat.union(lip).union(boss)
         tool = cut if tool is None else tool.union(cut)
     return tool
 
