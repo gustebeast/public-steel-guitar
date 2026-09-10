@@ -3,49 +3,46 @@
 Built fresh alongside the old legs.py (which is untouched) so it can be looked at
 without destabilising the build. ONE leg only: the -X/+Y (TRRS) station.
 
+EVERY PART IS AUTHORED WHERE IT ACTUALLY IS: world X/Y on the leg's station, world
+Z hanging down from the chassis underside. Nothing is built in a private frame
+and moved into place, so a direction in this file means what it means in the
+viewer -- +Y is +Y, up is up -- and every height is a named plane (Z_TOP, Z_BUTT,
+Z_JOINT, ...) you can find on the model.
+
 THE CHAIN, top to bottom:
 
-    pedal bar (mortise)
-      |__ HEIGHT-ADJUST floating tenon   <- sets leg height; screw through a hole
-    height-adjust leg (mortise)
-      |__ FIXED floating tenon           <- joins the two sleeves; screw-locked
-    fixed-height leg (mortise)
-      |__ ...and the leg's OWN 44.8 section plugs the body adapter
-    body quick-release adapter (mortise) -> body
+    instrument body -- chassis underside                      Z_TOP
+    body adapter (blind mortise)                    Z_TOP   .. Z_BUTT
+      |__ the fixed sleeve BUTTS it; the fixed tenon runs up into it
+    fixed sleeve (through mortise)                  Z_BUTT  .. Z_JOINT
+      |__ FIXED floating tenon      joins the sleeves; screwed to each
+    adjust sleeve (through mortise)                 Z_JOINT .. Z_ADJ_BOT
+      |__ HEIGHT-ADJUST floating tenon   sets the height: a screw through a hole
+    pedal bar (blind mortise)
 
-WHY THE BODY END IS NOT A FLOATING TENON (design change, and it is load-driven).
-The user's chain had the fixed tenon protrude out the bottom into the adapter.
-It cannot: the kick case (250 N at 100 mm, leg at ~800 max = 175 N.m) puts the
-instrument's worst moment at exactly that joint, and a 45-degree tenon is capped
-at 24.6 mm across flats by the 44.8 leg and a 5 mm wall. That gives
+WHY THE SLEEVE BUTTS THE ADAPTER instead of plugging into it (load-driven). The
+kick case (250 N at 100 mm, leg at ~800 max = 175 N.m) puts the instrument's worst
+moment at exactly the body joint. A tenon BRIDGING that joint takes the moment as
+bending, and a 45-degree tenon is capped at 24.6 mm across flats by the 44.8 leg:
 
     sleeve 44.8 sq   Z 13937 mm^3   12.6 MPa   SF 4.0
-    tenon  24.0      Z  1629 mm^3  107.4 MPa   SF 0.47   <- fails
-    tenon  31.7 (zero wall!)        46.6 MPa   SF 1.07
+    tenon  24.0      Z  1629 mm^3  107.4 MPa   SF 0.47   <- fails in bending
 
-which is the SAME argument that ruled out a tenon-shaped adapter (user): bending
-strength goes as the cube of the section, and the smallest section in the stack
-must not be the one at the largest moment. So the fixed sleeve's own 44.8 body
-enters the adapter and the full section carries the kick. The floating tenon
-still runs the sleeve's length -- it just terminates inside rather than
-protruding, so it aligns and stiffens instead of carrying.
-
-That also keeps the LATCH handedness we already have: the removed piece (the
-leg) presents the outer 44.8 section as the male, the adapter is the mortise, so
-the button rides the male and the hook grabs OUTWARD into the adapter wall --
-exactly latch.py as built. Only the PEDAL BAR end needs the mirrored variant
-(button on a mortise, hook inward), because there the removed piece is the bar.
+With the faces BUTTED the moment resolves instead into a couple -- compression
+through the 44.8 faces, tension in the tenon -- and tension is the cheap
+direction (~10 MPa, SF ~5). See body_adapter.
 
 PROFILE: a square with its corners chamfered to a CHAM-wide flat -- an octagon
-whose four extra sides are 1.6 (user: sharp corners cause joint fit issues).
-Used rotated 45 degrees, which is what makes the mortise self-supporting: the
-leg prints ON ITS SIDE, so a rotated square puts an APEX at the top and the
-mortise roof is two 45-degree faces instead of a flat bridge down the whole
-length.
+whose four extra sides are 1.6 (user: sharp corners cause joint fit issues). Used
+turned 45 degrees about the leg's axis, which is what makes the mortise
+self-supporting: the leg prints ON ITS SIDE, so the turned square puts an APEX at
+the top of the print and the mortise roof is two 45-degree faces instead of a flat
+bridge down the whole length.
 
-NOT DONE YET / deliberately out of scope: cable management (space is reserved
-for the TRRS jacks, nothing is routed), the mirrored bar-end latch, and the
-detent rack for the height adjust (holes are drawn, the screw is not).
+NOT DONE YET: cable management and the TRRS jacks (no space is modelled -- the
+pocket once "reserved" for them never cut anything, and a straight fix would bore
+into the fixed tenon's overlap zone, so where they go is still open), and the
+bar-end latch.
 """
 
 from __future__ import annotations
@@ -54,11 +51,17 @@ import math
 
 import cadquery as cq
 
-from . import dimensions as D
-from .helpers import box_at, cyl
 from cadkit.holes import teardrop_hole
+from . import chassis as CH
+from . import dimensions as D
+from .helpers import box_at
 
 B = D.BEAD
+
+# ── where the leg is ────────────────────────────────────────────────────────
+LEG_X = CH.LEG_STATIONS_X[1]      # the -X station: the TRRS leg
+LEG_Y = CH.LEG_Y[0]               # on the +Y rail
+Z_TOP = CH.Z_BOT                  # the adapter's top face, against the chassis underside
 
 # ── the section ─────────────────────────────────────────────────────────────
 LEG_W = 56 * B                    # 44.8 outer square of every sleeve (unchanged
@@ -72,17 +75,11 @@ CHAM = 2 * B                      # 1.6 chamfer face width -- the octagon's four
 FIT = 0.30                        # slide fit, tenon in mortise (a CLEARANCE: it
                                   # is a gap, so the bead grid does not apply)
 
-# The 45-degree rotation is what makes the mortise printable, and it also sets
-# the wall: the octagon's DIAGONAL points at the sleeve's faces.
+# The 45-degree turn is what makes the mortise printable, and it also sets the
+# wall: the octagon's DIAGONAL points at the sleeve's faces.
 WALL_MIN = LEG_W / 2 - (TEN_W + 2 * FIT) * math.sqrt(2) / 2
 assert WALL_MIN >= 2 * D.MIN_WALL_2P, (
     "mortise wall %.2f is under two two-bead walls -- shrink TEN_W" % WALL_MIN)
-
-# A self-crossing profile still EXTRUDES -- it just yields a mangled corner and a
-# wrong section. Gate it on the one number that cannot lie: a chamfered square is
-# the square minus its four corner triangles, w^2 - cham^2 exactly.
-def _profile_area(w: float, cham: float = CHAM) -> float:
-    return octagon(w, cham).extrude(1.0).val().Volume()
 
 
 # ── lengths (a single leg; the height range lives in the adjust section) ─────
@@ -109,7 +106,7 @@ ADAPT_WALL = 16 * B               # 12.8 the adapter's CLOSED END: a solid wall 
                                   # hugs the body and carries the joinery attaching
                                   # the leg to it (user). The mortise is BLIND, not
                                   # through -- the tenon used to run to the adapter's
-                                  # very top face, leaving nothing to bolt through.
+                                  # very top face, leaving nothing to fix it by.
 ADAPT_L = ADAPT_WALL + ENGAGE     # 52.8 wall + the tenon's engagement, no more
 BED = 315 * B                     # 252.0 longest printed part. The bed is 255 sq,
                                   # but sizing to the DIAGONAL would mean one part
@@ -120,20 +117,41 @@ ADJ_L = BED                       # 252.0 adjust sleeve -- AS LONG AS THE BED
 FIX_L = BED - 2 * ENGAGE          # 172.0 fixed sleeve: as long as the bed lets its
                                   # own tenon be (FIX_L + 2*ENGAGE = BED exactly)
 # ADJUST TENON -- DERIVED, not chosen (user). Two constraints set it:
-#   SHORTEST setting: as much of it hidden as possible. It cannot hide entirely,
-#     because the bottom end must always be engaged in the PEDAL BAR -- so the
+#   SHORTEST leg: the tenon pushed up as far as it goes. It cannot hide entirely,
+#     because its bottom end must always be engaged in the PEDAL BAR -- so the
 #     least it can ever show is ENGAGE. Buried length is then ADJ_TEN_L - ENGAGE,
 #     which must fit its mortise: ADJ_TEN_L <= ADJ_L + ENGAGE.
-#   LONGEST setting: out as far as the strength budget allows, i.e. until only
+#   LONGEST leg: out as far as the strength budget allows, i.e. until only
 #     ENGAGE remains in the sleeve.
 # and the bed caps it. Travel is what is left between the two.
 ADJ_TEN_L = min(BED, ADJ_L + ENGAGE)          # 252.0
-ADJ_TRAVEL = ADJ_TEN_L - 2 * ENGAGE           # 156.0 usable height adjustment
-FIX_TEN_L = FIX_L + 2 * ENGAGE    # 296.0 fixed tenon: the FULL length of its own
+ADJ_TRAVEL = ADJ_TEN_L - 2 * ENGAGE           # 172.0 usable height adjustment
+FIX_TEN_L = FIX_L + 2 * ENGAGE    # 252.0 fixed tenon: the FULL length of its own
                                   # sleeve PLUS an extension at each end, so the
                                   # one bar does the work of a tenon at BOTH
                                   # neighbouring joints (user). It is never seen:
                                   # a fixed-length tenon has no reason to show.
+
+# ── the planes, top to bottom (world Z) ─────────────────────────────────────
+Z_MORTISE_ROOF = Z_TOP - ADAPT_WALL        # the adapter's closed end stops here --
+                                           # and the fixed tenon's top end sits on it
+Z_BUTT = Z_TOP - ADAPT_L                   # adapter <-> fixed sleeve, face to face
+Z_JOINT = Z_BUTT - FIX_L                   # fixed sleeve <-> adjust sleeve
+Z_ADJ_BOT = Z_JOINT - ADJ_L                # the adjust sleeve's bottom face
+Z_FIX_TEN_BOT = Z_MORTISE_ROOF - FIX_TEN_L # the fixed tenon's bottom end, ENGAGE
+                                           # down inside the adjust sleeve
+# The adjust tenon's TOP END is the height setting. Its range:
+Z_ADJ_TEN_TOP_LONG = Z_ADJ_BOT + ENGAGE              # longest leg: only ENGAGE
+                                                     # left inside the sleeve
+Z_ADJ_TEN_TOP_SHORT = Z_ADJ_BOT - ENGAGE + ADJ_TEN_L # shortest: only ENGAGE left
+                                                     # showing, for the bar
+Z_ADJ_TEN_TOP = Z_ADJ_TEN_TOP_LONG         # AS DRAWN: the longest setting
+Z_ADJ_TEN_BOT = Z_ADJ_TEN_TOP - ADJ_TEN_L
+# WHERE THE PEDAL BAR GOES. It does not get to choose: it hangs off the adjust
+# tenon's bottom end, which is wherever the height setting put it. The tenon
+# buries ENGAGE into the bar's tower, the same rule as every other joint, so the
+# tower's mouth sits ENGAGE above the tenon's end. ONE expression, read by the bar.
+Z_BAR_MOUTH = Z_ADJ_TEN_BOT + ENGAGE
 
 # ── height adjust: a ladder of holes, not friction ──────────────────────────
 ADJ_HOLE_D = 5 * B                # 4.0 through-hole for the M4 locking screw
@@ -144,28 +162,60 @@ ADJ_PITCH = ADJ_HOLE_D + ADJ_WEB  # 5.6 and therefore the HEIGHT STEP
 ADJ_N = int(ADJ_TRAVEL / ADJ_PITCH)           # 30 steps -> ADJ_N + 1 holes
 # ONE ROW. There used to be two, half a pitch apart, meant to halve the step
 # "without thinning any web". They could not: both ran along the same axis, so
-# Ø4.0 holes at 2.8 spacing OVERLAP and the row becomes a slot with no web at
-# all. (It never showed, because the cutters were also dead -- see below.) Two
-# rows on crossing axes do not rescue it either: through-holes both pass the
+# Ø4.0 holes at 2.8 spacing OVERLAP and the row becomes a slot with no web at all.
+# Two rows on crossing axes do not rescue it either: through-holes both pass the
 # tenon's centre, so they still meet there. A finer step needs a different
 # mechanism, not a second row.
-ADJ_ROWS = (0.0,)
-# WHERE THE SCREW GOES. The screw must pass through BURIED tenon at every
-# setting, and the tenon is only guaranteed buried over the sleeve's last ENGAGE
-# (at the LONGEST setting that is all that is left inside). So the sleeve's hole
-# sits in the middle of that zone -- and the ladder is whatever tenon positions
-# that one hole sees across the travel, which is exactly ENGAGE/2 .. + ADJ_TRAVEL.
-# The old placement (mid-sleeve) only met the tenon over 46 of the 172 mm.
-LADDER_SLEEVE_Z = ADJ_L - ENGAGE / 2.0        # 232.0 in the adjust sleeve
-LADDER_TENON_Z0 = ENGAGE / 2.0                # 20.0 first hole, tenon-local
-assert (LADDER_TENON_Z0 + ADJ_N * ADJ_PITCH + ADJ_HOLE_D / 2
-        <= ADJ_TEN_L - ENGAGE), (
+#
+# WHERE THE SCREW GOES. It must pass through BURIED tenon at every setting, and
+# the tenon is only guaranteed buried over the sleeve's bottom ENGAGE (at the
+# LONGEST setting that is all that is left inside). So the sleeve's hole sits in
+# the middle of that zone, and the ladder is exactly the tenon positions that one
+# hole sees across the travel.
+Z_LADDER = Z_ADJ_BOT + ENGAGE / 2.0           # the adjust sleeve's screw hole
+LADDER_OFF = ENGAGE / 2.0                     # 20.0 first tenon hole, down from
+                                              # the tenon's top end
+
+
+def ladder_top(i: int) -> float:
+    """The adjust tenon's top end at ladder setting i (0 = longest leg): the
+    height at which tenon hole i sits on the sleeve's hole."""
+    return Z_LADDER + LADDER_OFF + i * ADJ_PITCH
+
+
+assert LADDER_OFF + ADJ_N * ADJ_PITCH + ADJ_HOLE_D / 2 <= ADJ_TEN_L - ENGAGE, (
     "the ladder's last hole reaches into the bar-engaged end of the tenon")
+assert (ladder_top(0) >= Z_ADJ_TEN_TOP_LONG - 1e-9
+        and ladder_top(ADJ_N) <= Z_ADJ_TEN_TOP_SHORT + 1e-9), (
+    "the ladder asks for settings outside the travel")
+
+# ── the sleeve-joint screws (user) ──────────────────────────────────────────
+# TWO, one each side of the fixed/adjust sleeve joint and equidistant from it,
+# each pinning ONE sleeve to the fixed tenon. That tenon is what holds the two
+# sleeves together; with only one sleeve pinned, the adjust sleeve, its tenon and
+# the pedal bar rode on a bare slide fit and would slide off the moment the
+# instrument was lifted.
+#
+# Both land in the tenon's ENGAGE-long overlap zone, the one stretch of the leg
+# where tenon and both sleeves coexist. Same M4 convention as the ladder
+# (clearance in the sleeve, ADJ_HOLE_D in the tenon), and along X, not Y: along Y
+# they would line up with the button face.
+SCREW_OFF = 16 * B                               # 12.8 either side of the joint
+Z_FIX_SCREW = Z_JOINT + SCREW_OFF                # in the FIXED sleeve, above
+Z_ADJ_SCREW = Z_JOINT - SCREW_OFF                # in the ADJUST sleeve, below
+_CLR_D = ADJ_HOLE_D + 0.8                        # 4.8 clearance in a sleeve
+# Edge distance: each hole sits near an END -- the sleeve joint face on one side,
+# the fixed tenon's bottom end for the adjust one -- and that end is the direction
+# a hanging load tears it out. Two hole diameters of material is the floor.
+assert SCREW_OFF - _CLR_D / 2 >= 2 * _CLR_D, (
+    "only %.1f from each screw to the sleeve joint face" % (SCREW_OFF - _CLR_D / 2))
+assert Z_ADJ_SCREW - Z_FIX_TEN_BOT - ADJ_HOLE_D / 2 >= 2 * _CLR_D, (
+    "the adjust-side screw is too close to the fixed tenon's bottom end")
 
 # BODY JOINERY on the adapter's closed end: four M4 through the wall on a square
-# pattern, which is what actually carries the leg's load into the body. Placed at
-# the CORNERS of the section, as far apart as the wall allows -- a bolt pattern
-# resists the kick's moment as a couple, so spread is worth more than bolt count.
+# pattern. Placed at the CORNERS of the section, as far apart as the wall allows
+# -- a bolt pattern resists the kick's moment as a couple, so spread is worth more
+# than bolt count.
 ADAPT_BOLT_D = 4.4                # M4 clearance (a hole, not material)
 ADAPT_BOLT_PCD = LEG_W - 2 * (6 * B)   # 32.0 across the square pattern. Was
                                        # 38.4 (4 beads in from the faces), which
@@ -178,14 +228,12 @@ ADAPT_BOLT_PCD = LEG_W - 2 * (6 * B)   # 32.0 across the square pattern. Was
                                        # square. Costs the bolt couple 17% of its
                                        # arm, so the kick loads each bolt ~20% more.
 
-TRRS_D = 12 * B                   # 9.6 reserved bore for the TRRS jack body
-TRRS_Z = 40 * B                   # 32.0 up from the sleeve's bottom face
 
-
+# ── the section, as solids on the leg's axis ────────────────────────────────
 def octagon(w: float, cham: float = CHAM):
     """Square of `w` across flats with its corners chamfered to `cham`-wide
-    faces, as a closed 2-D wire on XY. Drawn at 45 degrees -- the pose it is
-    USED in -- so an apex points +Y and the mortise roof self-supports."""
+    faces, as a closed 2-D wire on XY, centred on the origin and drawn
+    square-on. `section` is what turns it 45 degrees and stands it on the leg."""
     h = w / 2.0
     c = cham / math.sqrt(2.0)          # the corner leg the chamfer cuts off
     pts = []
@@ -194,100 +242,80 @@ def octagon(w: float, cham: float = CHAM):
         pts.append((sx * h, sy * (h - c)))
     # WALK THE PERIMETER. Getting this order wrong does not fail -- it makes a
     # self-crossing polygon that still extrudes, and the damage shows up as one
-    # mangled corner (the -Y one) while the other three chamfer correctly. The
-    # area check below is what actually catches it.
-    #   flat, chamfer, flat, chamfer, ... counter-clockwise from the +Y top edge
-    loop = [pts[0], pts[2],      # top flat      (h-c, h) -> (-(h-c), h)
-            pts[3], pts[5],      # -X flat       (-h, h-c) -> (-h, -(h-c))
-            pts[4], pts[6],      # bottom flat   (-(h-c), -h) -> (h-c, -h)
-            pts[7], pts[1]]      # +X flat       (h, -(h-c)) -> (h, h-c)
-    # NB: draw it SQUARE-ON and rotate the SOLID after extruding. Rotating the
-    # Workplane here does nothing -- polyline().close() leaves a PENDING wire,
-    # not an object on the stack, so extrude() would consume the unrotated
-    # profile and the 45 would silently vanish (caught by the bounding box:
-    # 24.0 across instead of 24 * sqrt2 = 33.9).
+    # mangled corner while the other three chamfer correctly. The area assert
+    # below is what actually catches it.
+    #   flat, chamfer, flat, chamfer, ... counter-clockwise from the +Y edge
+    loop = [pts[0], pts[2],      # +Y flat      (h-c, h) -> (-(h-c), h)
+            pts[3], pts[5],      # -X flat      (-h, h-c) -> (-h, -(h-c))
+            pts[4], pts[6],      # -Y flat      (-(h-c), -h) -> (h-c, -h)
+            pts[7], pts[1]]      # +X flat      (h, -(h-c)) -> (h, h-c)
+    # NB: rotate the SOLID after extruding, never the Workplane here --
+    # polyline().close() leaves a PENDING wire, not an object on the stack, so
+    # extrude() would consume the unrotated profile and the 45 would silently
+    # vanish (caught by the bounding box: 24.0 across instead of 33.9).
     return cq.Workplane("XY").polyline(loop).close()
 
 
-def _at45(solid):
-    """Into the INSTALL pose. The leg prints on its side, so an apex must point
-    up: that turns the mortise roof into two 45-degree faces instead of a flat
-    bridge running the whole length."""
-    return solid.rotate((0, 0, 0), (0, 0, 1), 45)
+# A self-crossing profile still EXTRUDES -- it just yields a mangled corner and a
+# wrong section. Gate it on the one number that cannot lie: a chamfered square is
+# the square minus its four corner triangles, w^2 - cham^2 exactly.
+assert abs(octagon(TEN_W).extrude(1.0).val().Volume() - (TEN_W ** 2 - CHAM ** 2)) < 1e-6, (
+    "the octagon profile is self-crossing -- check the perimeter walk")
 
 
-def tenon(length: float, w: float = TEN_W):
-    """A floating tenon: the octagon bar, extruded along +Z."""
-    return _at45(octagon(w).extrude(length))
+def section(w: float, z0: float, z1: float, cham: float = CHAM):
+    """The leg's section, `w` across flats and turned 45 degrees, as a prism on the
+    leg's axis from world z0 up to z1. The turn puts an APEX where the print's
+    top will be, so the mortise roof is two 45-degree faces, not a bridge."""
+    prism = octagon(w, cham).extrude(z1 - z0).rotate((0, 0, 0), (0, 0, 1), 45)
+    return prism.translate((LEG_X, LEG_Y, z0))
 
 
-def mortise_cutter(length: float, w: float = TEN_W, fit: float = FIT):
-    """The matching through-hole, grown by the slide fit on every face."""
-    return _at45(octagon(w + 2 * fit).extrude(length))
+def tenon(z0: float, z1: float, w: float = TEN_W):
+    """A floating tenon running from world z0 up to z1."""
+    return section(w, z0, z1)
 
 
-def _sleeve(length: float, trrs: bool = False):
-    """A leg section: LEG_W square, octagon mortise straight through."""
-    b = box_at(LEG_W, LEG_W, length, z=length / 2.0)
-    b = b.cut(mortise_cutter(length + 2.0).translate((0, 0, -1.0)))
-    if trrs:
-        # SPACE ONLY -- nothing is routed yet (user). A blind pocket in the wall
-        # on the +X side, clear of the mortise, big enough for the jack body.
-        b = b.cut(cyl(TRRS_D, 20.0, z=TRRS_Z)
-                  .rotate((0, 0, 0), (0, 1, 0), 90)
-                  .translate((LEG_W / 2 - 6.0, 0, TRRS_Z)))
-    return b
+def mortise_cutter(z0: float, z1: float, w: float = TEN_W, fit: float = FIT):
+    """The matching hole from z0 up to z1, grown by the slide fit on every face."""
+    return section(w + 2 * fit, z0, z1)
 
 
-def adjust_sleeve():
-    """The HEIGHT-ADJUST section: the long one, so the tenon can be set over a
-    wide range. Carries the locking screw's clearance hole."""
-    b = _sleeve(ADJ_L, trrs=True)
-    # pinned to the FIXED tenon near the joint -- what stops this sleeve, its tenon
-    # and the pedal bar sliding off when the instrument is lifted
-    b = b.cut(_join_screw(_CLR_D, ADJ_SCREW_Z, SLEEVE_UP)
-              .translate((0, 0, -SLEEVE_JOINT_Z)))
-    # the ladder screw's clearance: along Y, which is THIS part's build axis, so
-    # it prints round as it is -- cadkit's cutter rightly refuses a hole along
-    # the build direction. Rotated about its OWN centre and then placed: rotating
-    # a cylinder already sitting at z about the origin swings it out of the part.
-    b = b.cut(cyl(ADJ_HOLE_D + 0.8, LEG_W + 4.0, z=0.0)
-              .rotate((0, 0, 0), (1, 0, 0), 90)
-              .translate((0, 0, LADDER_SLEEVE_Z)))
-    return b
+def _sleeve(z0: float, z1: float):
+    """A leg section from z0 up to z1: LEG_W square, octagon mortise straight
+    through."""
+    b = box_at(LEG_W, LEG_W, z1 - z0, x=LEG_X, y=LEG_Y, z=(z0 + z1) / 2.0)
+    return b.cut(mortise_cutter(z0 - 1.0, z1 + 1.0))
 
 
-# THE SLEEVE-JOINT SCREWS (user): TWO, one each side of the fixed/adjust sleeve
-# joint and equidistant from it, each pinning ONE sleeve to the fixed tenon. That
-# tenon is what holds the two sleeves together, and before this only the fixed
-# sleeve was pinned -- the adjust sleeve, its tenon and the pedal bar rode on a
-# bare slide fit and would have slid off the moment the instrument was lifted.
-#
-# Both land in the tenon's ENGAGE-long overlap zone, which is the one stretch of
-# the leg where tenon, both sleeves and nothing else coexist. Same M4 convention
-# as the adjust ladder (clearance in the sleeve, ADJ_HOLE_D in the tenon), and
-# along X, not Y -- along Y they would line up with the button face.
-SLEEVE_JOINT_Z = ADAPT_L + FIX_L                 # 224.8 leg-local
-SCREW_OFF = 16 * B                               # 12.8 either side of the joint
-FIX_SCREW_Z = SLEEVE_JOINT_Z - SCREW_OFF         # 212.0 in the FIXED sleeve
-ADJ_SCREW_Z = SLEEVE_JOINT_Z + SCREW_OFF         # 237.6 in the ADJUST sleeve
-_CLR_D = ADJ_HOLE_D + 0.8                        # 4.8 clearance in a sleeve
-# Edge distance: each hole sits near an END -- its sleeve's butt face on one side,
-# the tenon's tip on the other for the adjust one -- and that end is the direction
-# a hanging load tears it out. Two hole diameters of material is the floor.
-assert SCREW_OFF - _CLR_D / 2 >= 2 * _CLR_D, (
-    "only %.1f from each screw to the sleeve joint face" % (SCREW_OFF - _CLR_D / 2))
-assert (ADAPT_WALL + FIX_TEN_L) - ADJ_SCREW_Z - ADJ_HOLE_D / 2 >= 2 * _CLR_D, (
-    "the adjust-side screw is too close to the fixed tenon's tip")
+def _across_y(d: float, z: float, length: float = LEG_W + 4.0):
+    """A round hole straight through the leg along Y, centred on its axis."""
+    return cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        d / 2.0, length, cq.Vector(LEG_X, LEG_Y - length / 2.0, z),
+        cq.Vector(0, 1, 0)))
 
 
 def _join_screw(d: float, z: float, print_up):
-    """A sleeve-joint screw hole, along X, at LEG-LOCAL z, through cadkit so it
-    is shaped for the part it is cut into: a teardrop in a sleeve (sideways to
-    its build), a plain round bore in a tenon (45 to its build, which cadkit
-    works out for itself -- the round bore already self-supports there)."""
-    return teardrop_hole(d, LEG_W + 4.0, (-(LEG_W / 2.0 + 2.0), 0.0, z),
+    """A sleeve-joint screw hole, straight through along X at height z, via cadkit
+    so it is shaped for the part it is cut into: a teardrop in a sleeve (sideways
+    to its build), a plain round bore in a tenon (45 degrees to its build, which
+    cadkit works out for itself -- the round bore already self-supports there)."""
+    return teardrop_hole(d, LEG_W + 4.0, (LEG_X - (LEG_W / 2.0 + 2.0), LEG_Y, z),
                          (1.0, 0.0, 0.0), print_up)
+
+
+# ── the printed parts ───────────────────────────────────────────────────────
+def adjust_sleeve():
+    """The HEIGHT-ADJUST section: the long one, so the tenon can be set over a
+    wide range. Carries the ladder screw's clearance hole."""
+    b = _sleeve(Z_ADJ_BOT, Z_JOINT)
+    # pinned to the FIXED tenon near the joint -- what stops this sleeve, its tenon
+    # and the pedal bar sliding off when the instrument is lifted
+    b = b.cut(_join_screw(_CLR_D, Z_ADJ_SCREW, SLEEVE_UP))
+    # the ladder screw's clearance, through BOTH walls. Along Y, which is this
+    # part's build axis, so it prints round as it is -- cadkit's cutter rightly
+    # refuses a hole along the build direction.
+    return b.cut(_across_y(_CLR_D, Z_LADDER))
 
 
 def fixed_sleeve():
@@ -297,72 +325,72 @@ def fixed_sleeve():
     Carries the latch NOTCH -- the way the button reaches the outside, and the
     part that stands over the slider in place of a cover."""
     from . import leg_latch as LL          # late: leg_latch reads this module
-    b = _sleeve(FIX_L)
-    b = b.cut(LL.sleeve_notch().translate((0, 0, -ADAPT_L)))
-    return b.cut(_join_screw(_CLR_D, FIX_SCREW_Z, SLEEVE_UP)
-                 .translate((0, 0, -ADAPT_L)))
+    b = _sleeve(Z_JOINT, Z_BUTT)
+    b = b.cut(LL.sleeve_notch())
+    return b.cut(_join_screw(_CLR_D, Z_FIX_SCREW, SLEEVE_UP))
 
 
-def adjust_tenon():
-    """Floating tenon, pedal bar <-> adjust sleeve. The LADDER of holes is the
-    height setting: pick a hole, drop the screw, and every leg set to the same
-    hole index is at the same height -- repeatable without measuring, which
-    friction alone never is."""
-    t = tenon(ADJ_TEN_L)
+def adjust_tenon(top: float = Z_ADJ_TEN_TOP):
+    """Floating tenon, adjust sleeve <-> pedal bar, with its top end at `top`
+    (default: as drawn, the longest leg; ladder_top(i) gives setting i).
+
+    The LADDER of holes is the height setting: pick a hole, drop the screw, and
+    every leg set to the same hole index is at the same height -- repeatable
+    without measuring, which friction alone never is."""
+    t = tenon(top - ADJ_TEN_L, top)
     for i in range(ADJ_N + 1):
-            z = LADDER_TENON_Z0 + i * ADJ_PITCH
-            # through cadkit (user): along Y, 45 to the tenon's diagonal build,
-            # so it comes back as a plain round bore -- see cadkit.holes
-            t = t.cut(teardrop_hole(ADJ_HOLE_D, 2 * TEN_W, (0.0, -TEN_W, z),
-                                    (0.0, 1.0, 0.0), TENON_UP))
+        z = top - (LADDER_OFF + i * ADJ_PITCH)
+        # through cadkit (user): along Y, 45 to the tenon's diagonal build, so it
+        # comes back as a plain round bore -- see cadkit.holes
+        t = t.cut(teardrop_hole(ADJ_HOLE_D, 2 * TEN_W, (LEG_X, LEG_Y - TEN_W, z),
+                                (0.0, 1.0, 0.0), TENON_UP))
     return t
 
 
 def fixed_tenon():
-    """Floating tenon, adjust sleeve <-> fixed sleeve. Spans the fixed sleeve and
-    protrudes UP into the adapter; the bottom end stops inside the adjust sleeve.
+    """Floating tenon, fixed sleeve <-> adjust sleeve. Its top end sits on the
+    adapter's mortise roof, its bottom end ENGAGE down inside the adjust sleeve.
 
     This is the piece that HOLDS THE LEG ON THE BODY (user), and it is also the
     only solid section at that joint -- so it hosts the latch's pocket. What that
     costs the tenon is measured in leg_latch.SECTION_LOSS."""
     from . import leg_latch as LL
-    t = tenon(FIX_TEN_L)
-    t = t.cut(LL.tenon_pocket().translate((0, 0, -ADAPT_WALL)))
+    t = tenon(Z_FIX_TEN_BOT, Z_MORTISE_ROOF)
+    t = t.cut(LL.tenon_pocket())
     # both sleeve-joint screws bite the tenon: one per sleeve
-    for z in (FIX_SCREW_Z, ADJ_SCREW_Z):
-        t = t.cut(_join_screw(ADJ_HOLE_D, z, TENON_UP)
-                  .translate((0, 0, -ADAPT_WALL)))
+    for z in (Z_FIX_SCREW, Z_ADJ_SCREW):
+        t = t.cut(_join_screw(ADJ_HOLE_D, z, TENON_UP))
     return t
 
 
 def body_adapter():
     """Quick-release adapter: bolts to the body, and is otherwise JUST ANOTHER
-    MORTISE SECTION -- same 44.8 outer as every sleeve, so it ends FLUSH with
-    the rest of the leg (user). It wraps the fixed tenon's upper extension; the
-    sleeve BUTTS it face to face rather than plugging into it.
+    MORTISE SECTION -- same 44.8 outer as every sleeve, so it ends FLUSH with the
+    rest of the leg (user). It wraps the fixed tenon's upper end; the sleeve BUTTS
+    it face to face rather than plugging into it.
 
-    THAT BUTT IS WHAT CARRIES THE KICK, and it is why this works where my
-    earlier objection said it would not. I had the tenon BRIDGING a gap, so the
-    175 N.m appeared as BENDING in a 24 mm section: Z 1629 mm^3, 107 MPa,
-    SF 0.47. With the faces in contact the moment resolves instead into a
-    couple -- COMPRESSION carried by the butted 44.8 faces (which cannot fail
-    that way) and TENSION carried by the tenon. Tension is the cheap direction:
-    ~5.8 kN over the tenon's ~576 mm^2 is about 10 MPa, SF ~5.
+    THAT BUTT IS WHAT CARRIES THE KICK. A tenon BRIDGING a gap here would take the
+    175 N.m as BENDING in a 24 mm section: Z 1629 mm^3, 107 MPa, SF 0.47. With
+    the faces in contact the moment resolves instead into a couple -- COMPRESSION
+    carried by the butted 44.8 faces (which cannot fail that way) and TENSION
+    carried by the tenon. Tension is the cheap direction: ~5.8 kN over the
+    tenon's ~576 mm^2 is about 10 MPa, SF ~5.
 
     So the load path is the joint, not the bar. Keep the faces butted."""
-    b = box_at(LEG_W, LEG_W, ADAPT_L, z=ADAPT_L / 2.0)
-    # BLIND mortise: stops ADAPT_WALL short of the top face
-    b = b.cut(mortise_cutter(ENGAGE + 1.0).translate((0, 0, ADAPT_WALL)))
-    # the latch's retention pocket -- the ledge the whole leg hangs on
     from . import leg_latch as LL
+    b = box_at(LEG_W, LEG_W, ADAPT_L, x=LEG_X, y=LEG_Y, z=(Z_BUTT + Z_TOP) / 2.0)
+    # BLIND mortise: open at the butt face, closed at the mortise roof
+    b = b.cut(mortise_cutter(Z_BUTT - 1.0, Z_MORTISE_ROOF))
+    # the latch's retention pocket -- the ledge the whole leg hangs on
     b = b.cut(LL.adapter_pocket())
     h = ADAPT_BOLT_PCD / 2.0
     for sx in (-1, 1):
         for sy in (-1, 1):
-            # sideways to the adapter's +Y -> -Y build: a teardrop
+            # sideways to the adapter's build: a teardrop
             b = b.cut(teardrop_hole(ADAPT_BOLT_D, ADAPT_WALL + 2.0,
-                                    (sx * h, sy * h, -1.0), (0.0, 0.0, 1.0),
-                                    SLEEVE_UP))
+                                    (LEG_X + sx * h, LEG_Y + sy * h,
+                                     Z_MORTISE_ROOF - 1.0),
+                                    (0.0, 0.0, 1.0), SLEEVE_UP))
     return b
 
 
@@ -374,10 +402,9 @@ for _n, _l in (("adjust sleeve", ADJ_L), ("fixed sleeve", FIX_L),
         "%s is %.1f long -- over the %.1f square-bed limit, so it would need the "
         "diagonal and could not be plated with anything else" % (_n, _l, BED))
 
-
 assert ADJ_TEN_L - ENGAGE <= ADJ_L + 1e-9, (
     "at its SHORTEST the adjust tenon buries %.1f but its mortise is only %.1f "
-    "long -- it would bottom out before the leg is fully down"
+    "long -- it would bottom out before the leg is fully up"
     % (ADJ_TEN_L - ENGAGE, ADJ_L))
 assert ADJ_N * ADJ_PITCH <= ADJ_TRAVEL + 1e-9, (
     "the hole ladder (%.1f) is longer than the travel the joint can give (%.1f)"
@@ -385,32 +412,22 @@ assert ADJ_N * ADJ_PITCH <= ADJ_TRAVEL + 1e-9, (
 
 
 # ── PRINT ORIENTATION (user) -- the record, declared once per part ─────────
-# PRINT_UP is the build direction each part is modelled against; the hole
-# cutters read it, so a hole is shaped for the way its part actually prints.
-# PRINT_ROT is the same fact as cadkit.step_export.print_pose wants it, for the
-# per-part STEPs. The assert below makes the two unable to disagree.
+# PRINT_UP is each part's build direction; the hole cutters read it, so a hole is
+# shaped for the way its part actually prints. PRINT_ROT is the same fact as
+# cadkit.step_export.print_pose wants it, for the per-part STEPs. The assert below
+# makes the two unable to disagree.
 _S2 = 1.0 / math.sqrt(2.0)
-#
-# THE USER GIVES ORIENTATIONS IN WORLD COORDINATES, and these parts are authored in
-# the LEG'S frame -- which is posed 180 degrees about X on the instrument (see
-# tools/scratch_view._pose_leg_stack), so leg-local +Y is world -Y and +Z is -Z.
-# Getting that backwards put every leg part on the wrong face once already: the
-# "+Y -> -Y" the user gave was read as leg-local, landing the button face on the
-# bed. Convert first, then write the number here.
-#
-#   user (world)                          leg-local build direction
-#   sections: bed at world Y 65.95,       (0, +1, 0)  -- the button face (world -Y,
-#     printing toward 21.15                            leg-local +Y) is UP
-#   tenons: +X+Y -> -X-Y                  (-1, +1, 0)/sqrt2 -- on the flat facing
-#                                                        world +X+Y
-SLEEVE_UP = (0.0, 1.0, 0.0)        # all three sections: adapter + both sleeves
-TENON_UP = (-_S2, _S2, 0.0)        # both floating tenons, on a 45 flat
+SLEEVE_UP = (0.0, -1.0, 0.0)       # all three sections: the bed is the +Y face (at
+                                   # Y 65.95 on this station) and the part builds
+                                   # toward -Y, so the BUTTON face is the top (user)
+TENON_UP = (-_S2, -_S2, 0.0)       # both floating tenons: +X+Y -> -X-Y, lying on
+                                   # the section's own 45 flat that faces +X+Y
 PRINT_UP = {"adjust_sleeve": SLEEVE_UP, "fixed_sleeve": SLEEVE_UP,
             "body_adapter": SLEEVE_UP,
             "adjust_tenon": TENON_UP, "fixed_tenon": TENON_UP}
-PRINT_ROT = {"adjust_sleeve": ((1, 0, 0), 90), "fixed_sleeve": ((1, 0, 0), 90),
-             "body_adapter": ((1, 0, 0), 90),
-             "adjust_tenon": ((1, 1, 0), 90), "fixed_tenon": ((1, 1, 0), 90)}
+PRINT_ROT = {"adjust_sleeve": ((1, 0, 0), -90), "fixed_sleeve": ((1, 0, 0), -90),
+             "body_adapter": ((1, 0, 0), -90),
+             "adjust_tenon": ((-1, 1, 0), 90), "fixed_tenon": ((-1, 1, 0), 90)}
 
 
 def _rotated(v, axis, deg):
@@ -443,59 +460,25 @@ PARTS = {
 }
 
 
-# ── CONTEXT (not printed parts -- just enough to read the chain end to end) ──
-BODY_T = 20 * B                   # 16.0 slab standing in for the chassis underside
-
-
-def body_stub_context():
-    """The chassis underside the adapter bolts to. NOT a printed part."""
-    w = LEG_W + 8 * D.MIN_WALL_2P
-    return box_at(w, w, BODY_T, z=-70 * B - BODY_T / 2)
-
-
-# WHERE THE PEDAL BAR GOES. Published as a datum, because the bar does not get to
-# choose: it hangs off the END OF THE ADJUST TENON, and the adjust tenon's end is
-# wherever the height setting put it. The old dummy bar computed its own `top`
-# from a formula that had gone stale (it still summed FIX_TEN_L and never counted
-# the adapter at all) -- the same stale-datum failure this file has been bitten by
-# four times. There is now ONE expression for the tenon's far end and everything
-# downstream reads it.
-ADJ_TEN_Z0 = ADAPT_L + FIX_L + ADJ_L - ENGAGE   # 436.8 tenon's top (buried end)
-ADJ_TEN_Z1 = ADJ_TEN_Z0 + ADJ_TEN_L             # 688.8 tenon's far end, at the bar
-BAR_SEAT = ADJ_TEN_Z1 - ENGAGE                  # 648.8 the bar's MOUTH plane: the
-                                                # tenon buries ENGAGE into the bar's
-                                                # tower, the same rule as every other
-                                                # joint in the chain
-
-
+# ── CONTEXT (not printed parts of this module) ──────────────────────────────
 def pedal_bar_context():
-    """The REAL pedal bar (+ its pedals), posed FROM THE ADJUST TENON.
+    """The REAL pedal bar, hanging off the adjust tenon.
 
-    NOT a printed part of this module and NOT a stand-in: this is the actual
-    src.pedal_bar geometry -- the same fused pieces the printer gets, via
-    build._PB_bar -- so the joint is read against real walls rather than a box.
+    NOT a stand-in: this is the actual src.pedal_bar geometry -- the same fused
+    pieces the printer gets, via build._PB_bar -- so the joint is read against
+    real walls rather than a box.
 
-    The bar is authored in ABSOLUTE X/Y with z0 = plate bottom, and lands in the
-    instrument via build.PEDAL_LIFT_DZ, which is keyed to the OLD leg stack
-    (Z_BOT - LEG_HEIGHT + legs.FOOT_H). That number knows nothing about this
-    chain, which is why the bar rendered adrift of the tenon. Here it is placed
-    the other way round: the bar's mortise MOUTH (pedal_bar.TOWER_TOP) is put on
-    BAR_SEAT, so moving the height adjustment MOVES THE BAR, as it must. The tenon
-    then runs ENGAGE past the mouth and bottoms on the mortise's blind floor --
-    which is the fixed, repeatable install stop for this joint (user: the height
-    adjustment happens at the OTHER end of this tenon, not here).
-
-    Returned in the LEG's own frame (+Z away from the instrument), which is
-    upside down relative to the instrument -- hence the 180 about X. The station
-    translate is the view pose's own, undone here so the pose can redo it; the
-    zt term cancels out entirely, so this does not depend on the chassis height.
+    The bar is modelled with z0 at its plate bottom and normally lands in the
+    instrument via build.PEDAL_LIFT_DZ, which is keyed to the OLD leg stack and
+    knows nothing about this chain. Here it is placed the other way round: the
+    bar's mortise MOUTH (pedal_bar.TOWER_TOP) goes on Z_BAR_MOUTH, so moving the
+    height setting MOVES THE BAR, as it must. The tenon then runs ENGAGE past the
+    mouth and bottoms on the mortise's blind floor -- the fixed, repeatable
+    install stop for this joint (user: the height adjusts at the OTHER end of
+    this tenon, not here).
     """
     from . import build as BUILD
-    from . import chassis as CH
     from . import pedal_bar as PB
-
-    lx, ly = CH.LEG_STATIONS_X[1], CH.LEG_Y[0]
-    dz = -(BAR_SEAT + PB.TOWER_TOP)
 
     parts = []
     for n, wp in PB.assembly_parts():
@@ -505,41 +488,28 @@ def pedal_bar_context():
     # The pedal MECHANISMS are deliberately not here (user: "we don't need all
     # the pedals and springs"). The housings still are -- they are FUSED INTO the
     # bar pieces, so they arrive with the real geometry rather than as a demo.
-    return [(n, wp.translate((-lx, -ly, dz)).rotate((0, 0, 0), (1, 0, 0), 180))
-            for n, wp in parts]
+    dz = Z_BAR_MOUTH - PB.TOWER_TOP
+    return [(n, wp.translate((0, 0, dz))) for n, wp in parts]
 
 
 def assembly():
-    """The chain, posed in the LEG's own frame: local z0 is the body adapter's
-    TOP, and the leg runs +Z away from the instrument.
+    """The chain. Every part is already where it goes, so this is only the list.
 
     TWO RULES the render caught (user):
-      * THE ADAPTER SITS UNDER THE INSTRUMENT. It used to span z -56..0, which
-        after the flip put it 56 mm UP INSIDE the chassis (2694 mm^3 into
-        chassis_2). It now starts at z0 and grows AWAY, so it hangs below.
+      * THE ADAPTER SITS UNDER THE INSTRUMENT: its top face is Z_TOP, the chassis
+        underside, and it hangs down from there.
       * ONLY THE HEIGHT-ADJUST TENON IS EXPOSED. The fixed tenon is a fixed
         length, so there is no reason to see it: the two sleeves BUTT and it is
-        fully encased, straddling the seam. It was showing 96 mm of bare bar.
-        The adjust tenon is exposed BY DESIGN -- its exposed length IS the
-        height setting.
+        fully encased, straddling the seam. The adjust tenon is exposed BY DESIGN
+        -- its exposed length IS the height setting.
     """
-    out = []
-    # adapter first: it surrounds the fixed sleeve's top and hangs below the body
-    out.append(("body_adapter", body_adapter()))
-    # BUTTED, not nested: same section, flush faces, moment through the joint
-    out.append(("fixed_sleeve", fixed_sleeve().translate((0, 0, ADAPT_L))))
-    # runs the sleeve's WHOLE length and out both ends: ENGAGE up into the
-    # adapter's blind bore, ENGAGE down into the adjust sleeve
-    out.append(("fixed_tenon", fixed_tenon().translate((0, 0, ADAPT_WALL))))
-    out.append(("adjust_sleeve",
-                adjust_sleeve().translate((0, 0, ADAPT_L + FIX_L))))
-    # the ONE exposed tenon: how much stands proud IS the height setting
-    out.append(("adjust_tenon", adjust_tenon().translate((0, 0, ADJ_TEN_Z0))))
-    # the body latch, drawn AT REST (hook out, button proud)
     from . import leg_latch as LL
-    out.append(("latch_slider", LL.slider()))
-    out.append(("latch_spring", LL.spring()))
-    # ...and the bar hangs off its far end. Context, not a printed part of this
-    # module -- but posed from ADJ_TEN_Z1, so it cannot drift from the tenon.
-    out += pedal_bar_context()
-    return out
+    out = [("body_adapter", body_adapter()),
+           ("fixed_sleeve", fixed_sleeve()),
+           ("fixed_tenon", fixed_tenon()),
+           ("adjust_sleeve", adjust_sleeve()),
+           ("adjust_tenon", adjust_tenon()),
+           # the body latch, drawn AT REST (hook out, button proud)
+           ("latch_slider", LL.slider()),
+           ("latch_spring", LL.spring())]
+    return out + pedal_bar_context()

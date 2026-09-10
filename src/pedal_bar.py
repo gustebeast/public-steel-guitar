@@ -85,7 +85,8 @@ from .chassis import LEG_STATIONS_X, LEG_Y
 # Safe to import at module level: leg_stack reaches back for pedal_bar only from
 # inside a function (its context poser), so there is no cycle.
 from .leg_stack import (ENGAGE as LS_ENGAGE, mortise_cutter as LS_mortise,
-                        TEN_W as LS_TEN_W, FIT as LS_FIT)
+                        TEN_W as LS_TEN_W, FIT as LS_FIT,
+                        LEG_X as LS_LEG_X, LEG_Y as LS_LEG_Y)
 from . import legs as LG
 from . import latch as LT
 from .legs import _house
@@ -374,7 +375,8 @@ TRRS_ROOF = 4 * D.BEAD             # 3.2 solid roof over the jack way. The way i
                                    # mortise), and this roof is what the jack's
                                    # shoulder presses up against.
 TRRS_WAY_TOP = TOWER_TOP - TRRS_ROOF
-LATCH_CORNER = (-1, -1)            # reserved: the diagonal the mirrored latch
+TRRS_CORNER = (-1, -1)             # the -X-Y corner of the tower
+LATCH_CORNER = (+1, +1)            # reserved: the diagonal the mirrored latch
                                    # takes. Opposite the TRRS so neither has to
                                    # dodge the other.
 
@@ -406,18 +408,21 @@ assert TRRS_WAY_TOP - (BAR_H - 1.0) >= 30.0, (
 
 def _mortise_tower(lx: float, wired: bool) -> cq.Workplane:
     """The FEMALE tower: a TOWER_W prism carrying a blind octagon mortise that
-    the leg's adjust tenon drops into. Authored at the origin and rotated 180
-    like the spigot towers, so the outboard face stays outboard.
+    the leg's adjust tenon drops into, built in place on the redesigned leg's
+    axis (the tenon's mortise cutter comes from leg_stack already positioned).
 
     Prints WITH the bar, which lies on its -Y face -- and that is what the 45
     buys again: the mortise's roof is two 45-degree flanks rather than a flat
     bridge, so a 40-deep blind pocket needs no support. The one ceiling in it is
     the FLOOR seen from the mouth, and that is a floor, not a ceiling.
     """
-    b = box_at(TOWER_W, TOWER_W, TOWER_TOP - BAR_H, z=(BAR_H + TOWER_TOP) / 2)
+    assert (lx, YC) == (LS_LEG_X, LS_LEG_Y), (
+        "the mortise tower must stand on the redesigned leg's axis")
+    b = box_at(TOWER_W, TOWER_W, TOWER_TOP - BAR_H, x=lx, y=YC,
+               z=(BAR_H + TOWER_TOP) / 2)
     # the mortise: ENGAGE deep from the mouth, overshooting the top so the cut
     # opens cleanly, floored TOWER_FLOOR above the bar
-    b = b.cut(LS_mortise(LS_ENGAGE + 2.0).translate((0, 0, TOWER_TOP - LS_ENGAGE)))
+    b = b.cut(LS_mortise(TOWER_TOP - LS_ENGAGE, TOWER_TOP + 2.0))
     if wired:
         # TRRS jack, moved OUT OF THE AXIS. It used to thread up the middle of
         # the spigot -- which is now the mortise, so it goes in a corner.
@@ -429,10 +434,9 @@ def _mortise_tower(lx: float, wired: bool) -> cq.Workplane:
         # moving. The leg's own TRRS bore is up on the adjust sleeve, so this
         # boundary is a patch cable -- which means the jack wants a closed roof
         # to press up against, not an exit.
-        cx, cy = _corner(TRRS_CORNER_D, +1, +1)
+        cx, cy = _corner(TRRS_CORNER_D, *TRRS_CORNER)
         b = b.cut(cyl(TRRS_BORE_D, TRRS_WAY_TOP - (BAR_H - 1.0), z=BAR_H - 1.0)
-                  .translate((cx, cy, 0)))
-    b = b.rotate((0, 0, 0), (0, 0, 1), 180).translate((lx, YC, 0))
+                  .translate((lx + cx, YC + cy, 0)))
     return b
 
 
@@ -497,10 +501,8 @@ def _bar_full() -> cq.Workplane:
     # the spigot; that axis is now the mortise, so the jack moved into a corner
     # (_mortise_tower) and its cable drops from the corner bore into the trough.
     # Cut AFTER the union because it pierces both the tower and the bar beneath.
-    cx, cy = _corner(TRRS_CORNER_D, +1, +1)
-    # the tower is authored at the origin and rotated 180, so the corner lands
-    # mirrored about the station -- take it through the same turn
-    wlx, wly = FEET[1][0] - cx, YC - cy
+    cx, cy = _corner(TRRS_CORNER_D, *TRRS_CORNER)
+    wlx, wly = FEET[1][0] + cx, YC + cy
     # down-way: corner bore -> the trough band, opening out the bar's underside
     # for assembly access the way the old foot-mortise route did
     body = body.cut(cyl(8 * D.BEAD, BAR_H + 2.0, z=-1.0).translate((wlx, wly, 0)))
