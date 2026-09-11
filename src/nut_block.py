@@ -1485,30 +1485,35 @@ def height_screw_xy(i: int):
 
 
 def _roof_groups():
-    """The +X ROOF spans, as (y_lo, y_hi) of the dowel lobes (fit included). Pockets whose lobes abut --
-    the bass SKUs, 8-10 -- take ONE roof over the lot: give each its own and the roofs meet in a peak and
-    a valley between the strings (user caught this), where the bridge has to stay flat."""
+    """The +X ROOF spans, as (y_lo, y_hi, clr) of the dowel lobes (the fit included in lo/hi, and kept so
+    the roof can start exactly at the pockets' own +X face). Pockets whose lobes abut -- the bass SKUs,
+    8-10 -- take ONE roof over the lot: give each its own and the roofs meet in a peak and a valley
+    between the strings (user caught this), where the bridge has to stay flat."""
     out = []
     for i in range(D.N_STRINGS):                  # string 1 is +Y, so each next string is -Y of the last
         (dy, dw), _cl = insert_lobes(i)
         c = _clr(i)
         lo, hi = dy - dw / 2.0 - c, dy + dw / 2.0 + c
         if out and out[-1][0] - hi < D.MIN_WALL_2P:
-            out[-1] = (min(out[-1][0], lo), max(out[-1][1], hi))
+            out[-1] = (min(out[-1][0], lo), max(out[-1][1], hi), max(out[-1][2], c))
         else:
-            out.append((lo, hi))
+            out.append((lo, hi, c))
     return out
 
 
-def _roof_cutter(lo: float, hi: float, z_top: float) -> cq.Workplane:
-    """One group's roof, floor to the prism's top: 45 deg off its outer corners to a flat HS_ROOF_T past
-    the inserts' +X face. It runs the FULL height of the prism because that is how far the prism stands
-    +X of those faces: roofed, the -X -> +X print never meets a ceiling there and the prism's own +X wall
-    stays whole. (It used to be cut out to that wall instead, which left a band of fingers -- user.)"""
+def _roof_cutter(lo: float, hi: float, c: float, z_top: float) -> cq.Workplane:
+    """One group's roof, floor to the prism's top: full width until the pockets' own +X face (INS_X1 + the
+    fit), then a TRUE 45 deg ramp -- rise HS_ROOF_T over the same run -- to a flat HS_ROOF_T past that
+    face. Starting the ramp anywhere -X of that face would leave the pocket at full width under part of
+    it, and the material would then arrive in one step: a narrow flat ledge, which is neither a ramp the
+    printer can climb nor a span it can bridge (user). It runs the FULL height of the prism because that
+    is how far the prism stands +X of those faces: roofed, the -X -> +X print never meets a ceiling there
+    and the prism's own +X wall stays whole."""
     t = HS_ROOF_T
     assert hi - lo > 2 * t, f"a {hi - lo:.2f} roof span has no room for its flat top"
-    x0 = INS_X1 - 0.5                              # back into the pockets, so the two fuse
-    pts = [(x0, lo), (INS_X1 + t, lo + t), (INS_X1 + t, hi - t), (x0, hi)]
+    x0 = INS_X1 + c                                # the pockets' +X face: where the ramp starts
+    pts = [(x0 - 0.5, lo), (x0, lo), (x0 + t, lo + t),
+           (x0 + t, hi - t), (x0, hi), (x0 - 0.5, hi)]
     return (cq.Workplane("XY").polyline(pts).close()
             .extrude(z_top - HS_FLOOR).translate((0, 0, HS_FLOOR)))
 
@@ -1521,8 +1526,8 @@ def lower_pockets(z_top: float) -> cq.Workplane:
         k = (_plan_wire(i).offset2D(_clr(i), kind="arc")
              .extrude((POCKET_Z0 + 0.5) - HS_FLOOR).translate((0, 0, HS_FLOOR)))
         out = k if out is None else out.union(k)
-    for lo, hi in _roof_groups():
-        out = out.union(_roof_cutter(lo, hi, z_top))
+    for lo, hi, c in _roof_groups():
+        out = out.union(_roof_cutter(lo, hi, c, z_top))
     return out
 
 
