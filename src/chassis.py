@@ -463,6 +463,15 @@ def _build_full() -> cq.Workplane:
     #   ^ the TRRS axis rides the octagon's deep waist (legs.TRRS_DY) — the
     #     well tracks the stub's relocated jack way
     body = body.cut(_raceway(50.5, -67.0, -604.75, 31.5))
+    # KEY ACCESS FOR THE KEYHEAD'S INSERT HEIGHT SCREWS (bronner prototype, user's height adjust).
+    # The -X wide corner rib sits right under them, so a 2.5 mm key could not reach one from
+    # below. One M4-clearance hole per screw, straight up the rib, placed from nut_block's own
+    # height_screw_xy so the hole cannot drift off its screw. Flagged for the chassis owner.
+    for _hi in range(D.N_STRINGS):
+        _hx, _hy = _NB.height_screw_xy(_hi)
+        body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+            _NB.M4.shaft_clr_d / 2.0, (MB.FLOOR_TOP - Z_BOT) + 2.0,
+            cq.Vector(D.NUT_BLOCK_X + _hx, _hy, Z_BOT - 1.0), cq.Vector(0, 0, 1))))
     # +X tee-10 clearance notch out of the bridge rib's west face (the
     # tee pokes 2.4 into it; box clears the PCB + header margin)
     body = body.cut(box_at(4.0, 17.0, (MB.FLOOR_TOP - Z_BOT) + 2.0,
@@ -525,7 +534,7 @@ def _build_full() -> cq.Workplane:
 # The end removal would otherwise strip the rail off the leg + leave the endplate
 # clearing it with a big empty box; instead we KEEP a rail shell (its T wall IS the
 # body wrap) over the leg, re-cutting the leg dovetail slot in it (_leg_shell).
-from . import nut_block as _NB                # nut_block imports only dimensions: no cycle
+from . import nut_block as _NB                # nut_block imports dimensions + motor_bank only: no cycle
 KH_EP_THK     = _NB.KEYHEAD_W  # keyhead endplate thickness in X (= keyhead_endplate.T_EP),
                                # DERIVED from its stow bores (user). The -X legs, their shells
                                # and dovetails below all follow it by the flush-X rule.
