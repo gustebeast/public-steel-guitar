@@ -109,13 +109,12 @@ def _height_prism():
 
 def _height_negatives():
     """Everything the prism needs cut, fused and subtracted once, in the nut block's local frame:
-    the main pockets again (they run through it), the extensions' house pockets, the +X openings over
-    the band the full-profile bodies travel, and every screw's cavity, heat-set pocket and bore."""
-    x_to = (HS_X1 - D.NUT_BLOCK_X) + 1.0
+    the main pockets again (they run through it), the extension pockets under their roofs (which run
+    the prism's whole height), and every screw's heat-set pocket and bore."""
     z_top = (HS_Z1 - D.STRING_Z) + 1.0
-    out = NB.all_pockets().union(NB.lower_pockets())
+    out = NB.all_pockets().union(NB.lower_pockets(z_top))
     for i in range(D.N_STRINGS):
-        for k in [NB.pocket_x_slot(i, x_to, z_top)] + NB.height_screw_negatives(i):
+        for k in NB.height_screw_negatives(i):
             out = out.union(k)
     return out.translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z))
 
@@ -231,4 +230,12 @@ def assembly():
                     NB.height_screw(i).translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z))))
         out.append((f"nut_height_insert_{i}",
                     NB.height_insert(i).translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z))))
+    # THE CHASSIS SEGMENT UNDER THIS END IS LIVE TOO (user). chassis.py cuts a head cavity per
+    # height screw, placed from nut_block's own positions, so a CACHED copy of it goes stale the
+    # moment those move -- exactly the drift the scratch view exists to prevent. The -X-most
+    # segment is the one this endplate sits against; found by extent, not by a pinned index, and
+    # named as build.py names it so the scope's `chassis_` supersedes the cached one.
+    # (build.py adds its knee-station work to the segments afterwards; that is all far +X of here.)
+    ci = min(range(len(CH.segments)), key=lambda k: CH.segments[k].val().BoundingBox().xmin)
+    out.append((f"chassis_{ci}", CH.segments[ci]))
     return out
