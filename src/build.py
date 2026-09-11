@@ -1017,6 +1017,27 @@ def screw_rows_components():
     return out
 
 
+BODY_WORK_PARTS = SCREW_ROW_PARTS + (
+    "bridge_endplate", "bridge_bearings", "motor", "chassis_",
+    "electronics_tray", "pi5", "teensy_", "adc_stack", "buck", "tee_", "wire_",
+    "analog_frontend", "dc_jack", "ts_jack", "usbc_jack", "joystick", "oled",
+    "body_adapter", "lock_pin_", "adjust_", "fixed_", "bar_latch_", "leg_latch_")
+
+
+def body_work_components():
+    """The motor bank, the standing electronics and their harness, the chassis, the legs and
+    the +X screw rows as ONE live set -- for work that runs the length of the body (the bank
+    packed against the electronics, the rib comb, the legs' service slide over the string
+    access channels). The deck stays cached: nothing here changes it."""
+    out = screw_rows_components()
+    out += [(n, w) for i in range(D.N_STRINGS) for n, w in _string_components(i)
+            if n.startswith("motor")]
+    out += [(n, w) for n, w in _electronics_components() if not n.startswith("top_plate")]
+    out += [(f"chassis_{i}", seg) for i, seg in enumerate(chassis_segments)]
+    out += _leg_components()
+    return out
+
+
 def lever_components():
     """Every lever as ONE named set: the six knee-lever stations and the foot pedals.
 

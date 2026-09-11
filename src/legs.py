@@ -892,7 +892,13 @@ from . import nut_block as _NB                # nut_block imports dimensions + m
 LEG_NY_FACE = D.BRIDGE_AXLE_Y + 4 * D.BEAD + D.WALL_THICKNESS - SQ_W     # a +Y leg's -Y face
 KEYHEAD_CLEAR_Y = (max(_NB.height_screw_xy(i)[1] for i in range(D.N_STRINGS))
                    + _NB.HS_HEAD_CAV_D / 2.0 + D.MIN_WALL_2P)   # +Y edge of the room the heads need
-SERVICE_SLIDE = math.ceil(max(0.0, KEYHEAD_CLEAR_Y - LEG_NY_FACE) / D.BEAD - 1e-9) * D.BEAD
+# ...and the BRIDGE's string access channels (user, 2026-09-11). The +Y bridge-end leg stands under
+# strings 1-3's channels; slid out, it clears the +Y-most one (string 1's) by a two-bead margin, so
+# a hand can feed every string up from below. bridge_endplate.access_blocked tests the SLID leg.
+BRIDGE_CLEAR_Y = (max(D.string_y(i) for i in range(D.N_STRINGS))
+                  + D.STRING_ACCESS_D / 2.0 + D.MIN_WALL_2P)    # +Y edge of the room the channels need
+SERVICE_SLIDE = math.ceil(max(0.0, max(KEYHEAD_CLEAR_Y, BRIDGE_CLEAR_Y) - LEG_NY_FACE)
+                          / D.BEAD - 1e-9) * D.BEAD
 SERVICE_CORNERS = ((-1.0, 1.0), (1.0, 1.0))
 # The LOCK PIN sits LOCK_PIN_DY OUTBOARD of the leg's centreline (user), which is what
 # leaves the tongue room for a long service slide: the second hole goes SERVICE_SLIDE
