@@ -927,7 +927,10 @@ def _electronics_components():
     return out
 
 
-# ── THE SIX KNEE LEVERS ──────────────────────────────────────────────────────
+# ── THE FIVE KNEE LEVERS ─────────────────────────────────────────────────────
+# FIVE since 2026-09-11 (user): ILKL, the inner lever, is removed. Its forward plane
+# (_ILKL_Y) stays as the datum the shared contact plane is measured from, and its
+# station X stays as LKL's (_LKL_X), so the other five did not move.
 # The copedent needs six (user): ILKL, LKL, VKL, LKR, RKL, RKR. Only LKL and VKL
 # were ever modelled, each hardcoded at its own MOUNT_POSE; this table makes the
 # station the variable and reuses those two designs for all six.
@@ -1070,12 +1073,11 @@ def _vkl_station() -> float:
     return best[1]
 
 
-_ILKL_X = -501.0                             # hard -X bound: the left leg block
-_LKL_X = _ILKL_X                             # -501: see _KNEE_GAP_L
+_LKL_X = -501.0                              # hard -X bound: the left leg block (ILKL's old
+                                             # station; LKL always shared it — see _KNEE_GAP_L)
 _RKL_X = -225.0                              # right knee
 
 LEVER_STATIONS = (
-    ("ilkl", "kl", _ILKL_X,              _ILKL_Y,  False),
     # LEFT KNEE: the knee sits in the gap between LKL and LKR, and VKL sits in that
     # same gap so the vertical arm is directly above it (user). VKL's station is
     # rib-DERIVED (MOUNT_X = rib - 10.4) so its own two tenons land on ribs.
@@ -1453,11 +1455,11 @@ def _color_for(name):
     # whichever station prefix this is and inherit the kl_ sibling's colour rather than
     # triplicating the table. kl_ FIRST, then the bare name: bare-name-first collided,
     # because the sensor board's "buck" is not the project's other "buck".
-    # The five non-LKL LEVER STATIONS prefix the same way (ilkl_knee_housing,
+    # The four non-LKL LEVER STATIONS prefix the same way (lkr_knee_housing,
     # vkl_kv_lever, ...), so they ride this rule too — the alternative was six
     # copies of the same 29 entries, and any station left out would have gone grey
     # exactly the way the pedals did.
-    _st = re.match(r"(?:pedal\d+|ilkl|lkr|vkl|rkl|rkr|kv|kl)_(.+)$", base)
+    _st = re.match(r"(?:pedal\d+|lkr|vkl|rkl|rkr|kv|kl)_(.+)$", base)
     if _st:
         inner = _st.group(1)
         # a KV station is doubly prefixed (vkl_kv_housing): peel to kv_housing too
