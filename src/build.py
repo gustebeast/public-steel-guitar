@@ -629,7 +629,10 @@ def _leg_components():
         for ly in CH.LEG_Y:
             if (sx, ly) == (LS.LEG_X, LS.LEG_Y):
                 continue
+            egx = -1.0 if sum(CH.LEG_STATIONS_X) / 2 > sx else 1.0
+            syg = 1.0 if ly > sum(CH.LEG_Y) / 2 else -1.0
             out.append(("body_adapter_%d" % k, LS.body_adapter(sx, ly)))
+            out += LG.lock_pin_dummies(sx, ly, egx, syg, CH.Z_BOT, k)   # its one screw
             k += 1
     return out
 
@@ -1054,6 +1057,8 @@ _COLORS = {
     "adjust_tenon":    (0.62, 0.56, 0.42),
     "leg_latch_slider": (0.85, 0.35, 0.20),  # body latch accent
     "leg_latch_spring": (0.62, 0.64, 0.67),  # stainless coil (purchased)
+    "lock_pin_screw":  (0.55, 0.55, 0.58),   # M4x12 button head (purchased)
+    "lock_pin_insert": (0.80, 0.60, 0.35),   # brass heat-set insert
     "bar_latch_frame": (0.85, 0.35, 0.20),   # pedal bar latch accent
     "bar_latch_collar": (0.36, 0.42, 0.46),  # PETG-GF, the bar tower's family
     "bar_latch_spring": (0.62, 0.64, 0.67),
