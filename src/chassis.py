@@ -487,9 +487,10 @@ def _build_full() -> cq.Workplane:
     # gets tunnelled for extra engagement. The end-wall groove's blind end
     # (in the endplate) is the flush hard stop. There is NO screw down the rail web
     # any more (user): the leg's one screw is the endplate's lock pin across the
-    # end-wall tongue (legs.endwall_screw_negatives), which also locks the endplate
-    # to the chassis.
-    from .legs import corner_groove_negatives as _cgn
+    # end-wall tongue, which also locks the endplate to the chassis. It ENDS here: its
+    # heat-set insert sits in the kept shell (legs.lock_pin_joint), the hole stopping
+    # short of the middle ridge's groove. The chassis prints Z-up, so cadkit teardrops it.
+    from .legs import corner_groove_negatives as _cgn, lock_pin_joint as _lpj
     _xc_mid = sum(LEG_STATIONS_X) / 2
     for _sx in LEG_STATIONS_X:
         _egx = -1.0 if _xc_mid > _sx else 1.0       # outboard x sign
@@ -497,6 +498,7 @@ def _build_full() -> cq.Workplane:
             _lc = LEG_Y[0] if _s > 0 else LEG_Y[1]  # flush leg centreline
             for _n in _cgn(_sx, _lc, float(_s), _egx, Z_BOT):
                 body = body.cut(_n)
+            body = body.cut(_lpj(_sx, _lc, _egx, float(_s), Z_BOT).cutter((0.0, 0.0, 1.0)))
     # (the old y-33 / z-70.6 Ø7 harness window is GONE — the wired
     # corner's pigtail now rides the OVER-RIB raceway lane at y 50.5,
     # cut with the wide corner ribs above)
@@ -539,6 +541,9 @@ EP_TIP_PX = D.BRIDGE_BASE_X1              # bridge +X outer tip (8.5) -- the ACT
 # contact, so it is blind to that pair forever. Import the real value instead.
 from .legs import SQ_W as LEG_W
 from .legs import STUB_TNG_REBATE_IN as _TNG_REBATE_IN
+from .legs import SHELL_GAP as _SHELL_GAP
+assert abs(_SHELL_GAP - EP_LEG_CLR) < 1e-9, (
+    "legs.SHELL_GAP must equal EP_LEG_CLR: the leg screw's insert opens on the shell face")
 assert _TNG_REBATE_IN < EP_LEG_CLR, (
     "the leg tongue's rebate reaches past the endplate<->shell gap and would notch the "
     "kept shell")

@@ -101,8 +101,7 @@ from . import dimensions as D
 
 B = D.BEAD                             # bead grid unit (cadkit.printing)
 from .helpers import box_at, cyl, heal
-from cadkit.fasteners import (M4 as _M4, clearance_cutter as _clearance_cutter,
-                              insert_bore_cutter as _insert_bore_cutter)
+from cadkit.fasteners import M4 as _M4, ScrewJoint as _ScrewJoint
 from . import latch as LT
 
 # thread (shared by every junction)
@@ -813,7 +812,10 @@ STUB_TEN_W = 8.0               # CROSSING-ridge octagon width (flat-to-
 # stop. What sizes the split now is the LOCK PIN (endwall_screw_negatives): an M4 set
 # screw in a heat-set insert in the wall behind the rebate, so that wall must hold the
 # insert pocket plus a floor, and the tongue gets what is left.
-STUB_TNG_H = 8.0               # end-wall tongue height above the stub top
+STUB_TNG_H = 12 * D.BEAD       # 9.6 end-wall tongue height above the stub top: tall
+                               # enough for the leg screw (lock_pin_joint) to sit high
+                               # enough that its head recess keeps a floor over the
+                               # endplate's underside, with a wall over it in the tongue
 STUB_TNG_FIT = 0.1             # the PETG-GF coupon fit, on the rebate's outboard face
 STUB_TNG_W = 5 * D.BEAD        # tongue thickness (x)
 STUB_WALL_IN = SQ_W / 2 - STUB_WALL_D           # the end wall's inner face, |local x|
@@ -887,6 +889,18 @@ SERVICE_CORNERS = ((-1.0, 1.0), (1.0, 1.0))
 # inboard of it and must stay on the tongue. Its insert pocket in the endplate then
 # comes within ~0.5 of the rail band (ly+10.5), where the endplate's rail socket is.
 LOCK_PIN_DY = 7.0
+# ...and the screw itself (lock_pin_joint): a stock M4 button head recessed in the end
+# face, into a heat-set insert on the kept shell's face across the endplate<->shell gap
+SHELL_GAP = 0.4                    # that gap: chassis.EP_LEG_CLR, asserted equal there
+LOCK_SCREW_L = 12.0                # M4x12 button head
+LOCK_HEAD_D, LOCK_HEAD_H = 7.6, 2.2   # cadkit.fasteners.m4_button_screw's head
+LOCK_RECESS = 3 * D.BEAD           # 2.4: the head sits just under the end face
+# the screw's axis above the mating plane: its head recess (head + 0.4 of air) keeps a
+# 2-bead floor over the endplate's underside, which also keeps it off the adapter's top
+LOCK_Z = LOCK_HEAD_D / 2 + 0.4 + D.MIN_WALL_2P
+assert STUB_TNG_H - (LOCK_Z + _M4.shaft_clr_d / 2) >= D.MIN_WALL_2P - 1e-9, (
+    "the tongue leaves only %.2f over the leg screw's hole"
+    % (STUB_TNG_H - (LOCK_Z + _M4.shaft_clr_d / 2)))
 assert LOCK_PIN_DY + _M4.shaft_clr_d / 2 + D.MIN_WALL_2P <= SQ_W / 2, (
     "the lock pin falls off the tongue's outboard end")
 # ...and the most the slide can be
@@ -966,36 +980,42 @@ def corner_groove_negatives(station: float, ly: float, syg: float,
     return negs
 
 
+def lock_pin_joint(station: float, ly: float, egx: float, syg: float, z_bot: float,
+                   dy: float = 0.0) -> _ScrewJoint:
+    """THE LEG'S ONE SCREW (user), defined once for every part it crosses: an M4 button
+    head recessed in the ENDPLATE's end face, clearance on through the endplate wall and
+    the adapter's TONGUE, and a heat-set insert in the CHASSIS's kept shell, the hole
+    stopping D.MIN_WALL_2P short of the middle ridge's octagon groove so that joint is
+    left alone. Tightening pinches the tongue between endplate and chassis: it locks the
+    leg in the body and the endplate to the chassis. On the axis LOCK_PIN_DY outboard of
+    the leg's centreline, LOCK_Z up; `dy` moves it along Y (the tongue's
+    service hole, SERVICE_SLIDE inboard)."""
+    zc = z_bot + LOCK_Z
+    entry = (station + egx * SQ_W / 2, ly + syg * LOCK_PIN_DY + dy, zc)
+    groove_edge = egx * _cross_x(egx)[0] + STUB_TEN_W / 2 + 0.1   # its outboard flank
+    return _ScrewJoint(_M4, entry, (-egx, 0.0, 0.0), LOCK_SCREW_L,
+                       insert_at=STUB_WALL_D + SHELL_GAP,
+                       end_at=SQ_W / 2 - (groove_edge + D.MIN_WALL_2P),
+                       head_d=LOCK_HEAD_D, head_h=LOCK_HEAD_H, recess=LOCK_RECESS)
+
+
 def endwall_screw_negatives(station: float, ly: float, egx: float,
                             z_bot: float, print_up, syg: float) -> list:
-    """The per-leg M4 LOCK PIN (user): one M4x10 SET SCREW per leg, along X in from
-    the instrument's end face, threaded through a heat-set INSERT melted into the
-    endplate's outer wall and on across the tongue, which has only a clearance hole
-    (tongue_pin_cutter). So the endplate holds the thread, the screw is a cross PIN
-    (holds the stub against y slide-out and z pull-off), and it sits flush in the end
-    face with its tip inside the tongue (an M4x10 in the 10.4 wall). Drawn by cadkit from the
-    endplate's own `print_up`: round while the endplate builds along X, teardropped by
-    itself if that ever changes. Axis on the leg centreline at tongue mid-height --
-    clear of the rail-band relief wedge (ly+10.5..23) and the KH stow bores
-    (|y| <= 31.75). WORLD-space cutters for the ENDPLATES."""
-    zc = z_bot + STUB_TNG_H / 2
-    face = (station + egx * SQ_W / 2, ly + syg * LOCK_PIN_DY, zc)   # LOCK_PIN_DY outboard
-    return [_insert_bore_cutter(
-        _M4, face, (-egx, 0.0, 0.0), _PIN_FLOOR + STUB_TNG_FIT + 1.0, overshoot=1.0,
-        reason="set-screw cross pin: must never self-tap; the endplate holds the "
-               "thread and the tongue only a clearance hole",
-        print_up=print_up)]
+    """The leg screw's hole in an ENDPLATE (lock_pin_joint), shaped from its print_up."""
+    return [lock_pin_joint(station, ly, egx, syg, z_bot).cutter(print_up)]
 
 
 def tongue_pin_cutter(station: float, ly: float, egx: float, z_bot: float,
                       print_up, syg: float) -> cq.Workplane:
-    """The tongue's half of the LOCK PIN (endwall_screw_negatives): an M4 clearance
-    hole along X right across the tongue, at mid-height on the leg centreline, drawn
-    by cadkit from the tongue part's `print_up`."""
-    zc = z_bot + STUB_TNG_H / 2
-    face = (station + egx * (STUB_WALL_IN + STUB_TNG_W), ly + syg * LOCK_PIN_DY, zc)
-    return _clearance_cutter(_M4, face, (-egx, 0.0, 0.0), STUB_TNG_W + 1.0,
-                             overshoot=1.0, print_up=print_up)
+    """The leg screw's hole across the adapter's TONGUE (lock_pin_joint)."""
+    return lock_pin_joint(station, ly, egx, syg, z_bot).cutter(print_up)
+
+
+def lock_pin_dummies(station: float, ly: float, egx: float, syg: float, z_bot: float,
+                     k: int) -> list:
+    """The leg screw and its insert as assembly dummies, for corner `k`."""
+    return lock_pin_joint(station, ly, egx, syg, z_bot).dummies(
+        "lock_pin_screw_%d" % k, "lock_pin_insert_%d" % k)
 
 
 def _body_stub(wired: bool, eps: float, latch: bool = False, mid_cut: float = 0.0,
