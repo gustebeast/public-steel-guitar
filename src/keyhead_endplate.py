@@ -64,6 +64,11 @@ XLO  = XHI - T_EP                          # -X outer (bed) face
 KX   = (XLO + XHI) / 2
 YFL  = CH.Y_LO - CH.T / 2                   # full width: -Y rail outer face
 YFH  = CH.Y_HI + CH.T / 2                   # +Y rail outer face
+# The wrap rod slides in from -Y along the whole of NB.rod_bore, so that run has to come out
+# through this part's -Y face -- anything short of it is material the rod cannot be pushed past.
+assert NB.ROD_Y0 - NB.ROD_L < YFL, (
+    f"the rod's insertion run ends at y {NB.ROD_Y0 - NB.ROD_L:.2f}, inside the keyhead's -Y face "
+    f"({YFL:.2f}) -- the {NB.ROD_L:g} mm rod could not be slid into position")
 Z6    = CH.TP_GZ1                          # deck/top-plate level = general plate top
 FOOT_Z = CH.KH_DT_Z0                       # foot line (-23.15): fill band bottom / wall-box top
 # FOOT POCKET: the chassis now KEEPS a ~10 mm rail shell hugging each -X leg socket
