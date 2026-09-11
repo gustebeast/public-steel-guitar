@@ -87,7 +87,7 @@ from .chassis import LEG_STATIONS_X, LEG_Y
 # inside a function (its context poser), so there is no cycle.
 from .leg_stack import (ENGAGE as LS_ENGAGE, mortise_cutter as LS_mortise,
                         TEN_W as LS_TEN_W, FIT as LS_FIT,
-                        LEG_X as LS_LEG_X, LEG_Y as LS_LEG_Y)
+                        LEG_X as LS_LEG_X, LEG_Y as LS_LEG_Y, CHAM as LS_CHAM)
 from . import bar_latch as BL
 from . import legs as LG
 from . import latch as LT
@@ -365,13 +365,12 @@ def _corner(d: float, sx: float, sy: float):
 # The tenon's FLAT, measured off leg_stack's own numbers rather than typed in:
 # rotated 45 degrees, the octagon's flats face the corners at half its across-flats.
 TEN_FLAT = (LS_TEN_W + 2 * LS_FIT) / 2.0       # 12.30 axis -> tenon flat
-TRRS_BORE_D = 14 * D.BEAD          # 11.2 -- the CA-354S body way, the Ø11 the old
-                                   # axial route already used, rounded onto the grid
-TRRS_CORNER_D = TEN_FLAT + 2 * D.MIN_WALL_2P + TRRS_BORE_D / 2.0
-# The way stops a 2-bead web UNDER the latch's slot: the slot's ring spans this
-# corner, so the jack sits below it. That web is the roof the jack's shoulder
-# presses up against.
-TRRS_WAY_TOP = BL.planes(TOWER_TOP)["z_cb"] - D.MIN_WALL_2P
+TRRS_BORE_D = BL.TRRS_BORE_D       # 11.2 the CA-354S body way. The latch's COLLAR shares
+TRRS_CORNER_D = BL.TRRS_D          # this corner layout (its screws take the other three
+                                   # corners), so bar_latch owns it
+# The way runs up through the tower's top face into the COLLAR, which closes it: the
+# collar is the roof the jack's shoulder presses up against.
+TRRS_WAY_TOP = BAR_H - 1.0 + 40 * D.BEAD
 TRRS_CORNER = (-1, -1)             # the -X-Y corner of the tower
 BAR_UP = (0.0, 1.0, 0.0)           # the bar prints lying on its -Y face
 
@@ -382,6 +381,10 @@ BAR_UP = (0.0, 1.0, 0.0)           # the bar prints lying on its -Y face
 assert abs(TOWER_W / 2 - BL.FACE_R) < 1e-9, (
     "bar_latch sized the yoke for faces %.1f off the axis; the tower's are %.1f"
     % (BL.FACE_R, TOWER_W / 2))
+assert TRRS_CORNER == BL.TRRS_CORNER and BAR_UP == BL.BAR_UP, (
+    "bar_latch laid out its collar for a different TRRS corner or print direction")
+assert TRRS_WAY_TOP > TOWER_TOP - BL.COLLAR_H + D.MIN_WALL_2P, (
+    "the TRRS way no longer reaches the collar that closes it")
 assert TOWER_CORNER - TRRS_CORNER_D >= TRRS_BORE_D / 2 + D.MIN_WALL_2P, (
     "the TRRS bore breaks out of the tower's corner")
 assert TOWER_W / 2 - TRRS_CORNER_D / math.sqrt(2) >= TRRS_BORE_D / 2 + D.MIN_WALL_2P, (
@@ -410,13 +413,21 @@ def _mortise_tower(lx: float, wired: bool) -> cq.Workplane:
     """
     assert (lx, YC) == (LS_LEG_X, LS_LEG_Y), (
         "the mortise tower must stand on the redesigned leg's axis")
-    b = box_at(TOWER_W, TOWER_W, TOWER_TOP - BAR_H, x=lx, y=YC,
-               z=(BAR_H + TOWER_TOP) / 2)
+    # the tower stops at the SPLIT: the top BL.COLLAR_H is the latch's collar, its own part
+    z_split = TOWER_TOP - BL.COLLAR_H
+    b = box_at(TOWER_W, TOWER_W, z_split - BAR_H, x=lx, y=YC, z=(BAR_H + z_split) / 2)
     # the mortise: ENGAGE deep from the mouth, overshooting the top so the cut
     # opens cleanly, floored TOWER_FLOOR above the bar
     b = b.cut(LS_mortise(TOWER_TOP - LS_ENGAGE, TOWER_TOP + 2.0))
-    # the pedal bar's LATCH (src.bar_latch): the yoke's slot under the mouth, the
-    # pad's recess in the -Y face and the spring pockets, on this same axis
+    # the mortise's +Y apex is a 1.6 flat: a ceiling in the bar's -Y -> +Y print. Peak
+    # it at 45 degrees -- only more clearance over the tenon's apex
+    br = (LS_TEN_W + 2 * LS_FIT) / math.sqrt(2.0) - LS_CHAM / 2.0
+    h = LS_CHAM / 2.0 + 0.05
+    b = b.cut(cq.Workplane("XY").workplane(offset=TOWER_TOP - LS_ENGAGE - 0.01)
+              .polyline([(lx - h, YC + br - 0.05), (lx + h, YC + br - 0.05), (lx, YC + br + h)])
+              .close().extrude(LS_ENGAGE + 0.02))
+    # the LATCH lives in the collar on this top face (src.bar_latch); the tower gives it
+    # only the anchors for the collar's screws
     b = b.cut(BL.tower_cut(TOWER_TOP))
     if wired:
         # TRRS jack, moved OUT OF THE AXIS. It used to thread up the middle of
@@ -431,7 +442,7 @@ def _mortise_tower(lx: float, wired: bool) -> cq.Workplane:
         # to press up against, not an exit.
         cx, cy = _corner(TRRS_CORNER_D, *TRRS_CORNER)
         # upright in the tower, so SIDEWAYS to the bar's print: via cadkit, a teardrop
-        b = b.cut(teardrop_hole(TRRS_BORE_D, TRRS_WAY_TOP - (BAR_H - 1.0),
+        b = b.cut(teardrop_hole(TRRS_BORE_D, (z_split + 1.0) - (BAR_H - 1.0),
                                 (lx + cx, YC + cy, BAR_H - 1.0), (0.0, 0.0, 1.0), BAR_UP))
     return b
 

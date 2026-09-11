@@ -509,17 +509,20 @@ SLIDER_UP = (1.0, 0.0, 0.0)        # the latch slider builds -X -> +X (user): it
                                    # style LAYER-SUPPORT test, not just face angles: a
                                    # face-angle probe passed an earlier diagonal build
                                    # whose pad wing hung from its tip in mid-air.
-BAR_FRAME_UP = (0.0, 0.0, -1.0)    # the pedal bar's yoke latch prints TOP FACE DOWN:
-                                   # its pad and spring lugs grow up off the ring
-                                   # (src.bar_latch)
+BAR_FRAME_UP = (0.0, 0.0, 1.0)     # the pedal bar's yoke: ring on the bed, pad and
+                                   # spring lugs growing up off it (src.bar_latch)
+BAR_COLLAR_UP = (0.0, 0.0, -1.0)   # its collar prints MOUTH FACE DOWN: every latch
+                                   # cavity opens at its underside, the top of the print
 PRINT_UP = {"adjust_sleeve": SLEEVE_UP, "fixed_sleeve": SLEEVE_UP,
             "body_adapter": ADAPTER_UP,
             "adjust_tenon": TENON_UP, "fixed_tenon": TENON_UP,
-            "latch_slider": SLIDER_UP, "bar_latch_frame": BAR_FRAME_UP}
+            "latch_slider": SLIDER_UP, "bar_latch_frame": BAR_FRAME_UP,
+            "bar_latch_collar": BAR_COLLAR_UP}
 PRINT_ROT = {"adjust_sleeve": ((1, 0, 0), -90), "fixed_sleeve": ((1, 0, 0), -90),
              "body_adapter": ((1, 0, 0), 90),
              "adjust_tenon": ((-1, 1, 0), 90), "fixed_tenon": ((-1, 1, 0), 90),
-             "latch_slider": ((0, 1, 0), -90), "bar_latch_frame": ((1, 0, 0), 180)}
+             "latch_slider": ((0, 1, 0), -90), "bar_latch_frame": ((1, 0, 0), 0),
+             "bar_latch_collar": ((1, 0, 0), 180)}
 
 
 def _rotated(v, axis, deg):
@@ -552,6 +555,18 @@ def bar_latch_frame():
     return BL.frame(Z_BAR_MOUTH)
 
 
+def _bar_trrs_top():
+    """The bar's TRRS jack way top in world z (the bar is posed from its mouth)."""
+    from . import pedal_bar as PB
+    return Z_BAR_MOUTH - (PB.TOWER_TOP - PB.TRRS_WAY_TOP)
+
+
+def bar_latch_collar():
+    """The pedal bar latch's COLLAR -- printed on its own, screwed onto the bar's tower."""
+    from . import bar_latch as BL
+    return BL.collar(Z_BAR_MOUTH, _bar_trrs_top())
+
+
 PARTS = {
     "adjust_sleeve": adjust_sleeve,
     "adjust_tenon": adjust_tenon,
@@ -560,6 +575,7 @@ PARTS = {
     "body_adapter": body_adapter,
     "latch_slider": latch_slider,
     "bar_latch_frame": bar_latch_frame,
+    "bar_latch_collar": bar_latch_collar,
 }
 
 
@@ -618,5 +634,6 @@ def assembly():
     # the pedal bar latch, AT REST (hook in, pad flush)
     from . import bar_latch as BL
     out.append(("bar_latch_frame", BL.frame(Z_BAR_MOUTH)))
+    out.append(("bar_latch_collar", BL.collar(Z_BAR_MOUTH, _bar_trrs_top())))
     out += [("bar_latch_spring_%d" % i, s) for i, s in enumerate(BL.springs(Z_BAR_MOUTH))]
     return out + pedal_bar_context()
