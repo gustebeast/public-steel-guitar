@@ -87,7 +87,8 @@ nine-finger **support comb** (the Ø3 axle alone would bend under ~1.5 kN of
 string wrap load; the comb cuts its free span to one string pitch *and* acts
 as the assembly jig — drop the ten bearings into the comb slots and slide the
 shaft through everything in one pass). Motors mount on faceplate walls with
-slotted holes for belt tensioning. Every printed part is self-supporting at
+round bolt holes, packed 1.6 mm apart — a screw-driven clamp on each belt
+takes up the tension, so the motors never slide. Every printed part is self-supporting at
 45° for a 0.8 mm nozzle. Materials (the build exports into per-material
 folders): **PETG-GF** for every stiffness/creep-critical part — chassis,
 both endplates, carriages, leg tubes — **PCTG** for compliant, snap-fit and
@@ -109,8 +110,8 @@ segments cover 525–675 mm; add or drop segments from there).
 
 **Electronics** (architecture level; firmware not in this repo): a Teensy 4.1
 reads pedal/lever angle sensors and speaks CAN to the ten servos. The compute
-bay — a printed tray that drops into rail channels at the keyhead end — has
-tool-free snap mounts for the full **pro** stack (Teensy 4.1 + audio shield,
+bay — a printed tray that stands on end against the keyhead endplate, so the
+motor bank packs right up to it — has mounts for the full **pro** stack (Teensy 4.1 + audio shield,
 CAN transceiver, Raspberry Pi 5, 3× PCM1864 TDM ADCs, buck converter); a
 **basic** build populates only the Teensy row and leaves the other sockets
 empty as the upgrade path. Panel I/O (1/4" TS line out, DC power inlet,

@@ -1083,6 +1083,21 @@ def pi_target():
     return ((bb.xmin + bb.xmax) / 2, (bb.ymin + bb.ymax) / 2, (bb.zmin + bb.zmax) / 2)
 
 
+PI_RUN_Z = D.MOTOR_BELT_Z + D.MOTOR_SQ / 2 + 2.6          # the USB run's last legs: one cable OD
+                                                          # over string 1's motor, under the bay wiring
+
+
+def pi_column_x():
+    """X of the USB run's last +Y leg: three cable diameters +X of the Pi's +X face. The
+    compute boards stand against the keyhead endplate with string 1's motor 1.6 mm off the
+    Pi, so the run crosses that motor's Y band here, down at PI_RUN_Z just over the motor
+    top, and turns -X into the Pi only once it is at the Pi's Y. Three diameters, not one,
+    keeps it off the bay wiring's riser column (wiring.BAY_X, one mm inside the motor's
+    -X face). Lazy import, as pi_target."""
+    from . import electronics as EL
+    return EL.pi5().val().BoundingBox().xmax + 3 * 2.6
+
+
 def usb_run_length():
     """Routed path length, board plug -> Pi, as (segments, total_mm). Orthogonal, because a
     harness follows the box rather than flying point to point. This is what picks the cable
@@ -1093,8 +1108,10 @@ def usb_run_length():
     segs = [("+X to the shaft", abs((CONDUIT_XC - 2.2) - part("J1")["x"])),
             ("down the shaft", zc - RUN_Z),
             ("along Y", abs(py - y_turn)),
-            ("-X to the keyhead", abs(px - (CONDUIT_XC - 2.2))),
-            ("up into the Pi", abs(pz - RUN_Z))]
+            ("-X to the keyhead", abs(pi_column_x() - (CONDUIT_XC - 2.2))),
+            ("down over the motor bank", RUN_Z - PI_RUN_Z),
+            ("-X into the Pi", abs(pi_column_x() - px)),
+            ("down into the Pi", abs(pz - PI_RUN_Z))]
     return segs, sum(v for _, v in segs)
 
 
@@ -1145,12 +1162,20 @@ def opt_cables() -> cq.Workplane:
     # and a carriage. The long -X haul therefore stays out at the conduit's own Y, which is
     # ~119 mm off centre and clear of everything the strings drive, and only turns +Y once it
     # is down at the keyhead. Same total length, completely different path.
+    # At the keyhead the boards stand on end with string 1's motor right against them, so the
+    # run drops to PI_RUN_Z at pi_column_x(), crosses the motor's Y band just over its top, and
+    # turns into the Pi only at the Pi's Y.
     px, py, pz = pi_target()
+    xc = pi_column_x()
+    assert PI_RUN_Z - USB_OD / 2 > D.MOTOR_BELT_Z + D.MOTOR_SQ / 2, \
+        "the USB run's +Y leg has come down onto string 1's motor"
     y_run = CONDUIT_Y1 - CONDUIT_D / 2
-    add(box_at(abs(px - (CONDUIT_XC - 2.2)), USB_OD, USB_OD,
-               x=(px + CONDUIT_XC - 2.2) / 2, y=y_run, z=RUN_Z))
-    add(cyl_y(USB_OD, abs(py - y_run), y0=min(py, y_run), x=px, z=RUN_Z))
-    add(cyl(USB_OD, abs(pz - RUN_Z), z=min(RUN_Z, pz)).translate((px, py, 0)))
+    add(box_at(abs(xc - (CONDUIT_XC - 2.2)), USB_OD, USB_OD,
+               x=(xc + CONDUIT_XC - 2.2) / 2, y=y_run, z=RUN_Z))
+    add(cyl(USB_OD, RUN_Z - PI_RUN_Z, z=PI_RUN_Z).translate((xc, y_run, 0)))
+    add(cyl_y(USB_OD, abs(py - y_run), y0=min(py, y_run), x=xc, z=PI_RUN_Z))
+    add(box_at(xc - px, USB_OD, USB_OD, x=(xc + px) / 2, y=py, z=PI_RUN_Z))
+    add(cyl(USB_OD, abs(pz - PI_RUN_Z), z=min(PI_RUN_Z, pz)).translate((px, py, 0)))
     return out
 
 
