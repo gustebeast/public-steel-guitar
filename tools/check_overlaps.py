@@ -268,8 +268,8 @@ def _knee(n) -> bool:
 # listed would mean a regression that reintroduces it gets a polite "deferred" line
 # instead of failing the gate. chassis <-> chassis_trrs_cable left on 2026-09-09:
 # the keyhead/bridge endplate rework moved the -X leg station off the cable.
-# The other two are UNCHANGED and still real (28.0 and 1.0 mm^3), both the cable
-# dummy clipping a solid, i.e. exactly the routing bug WIRE_OK is written to catch.
+# chassis_trrs_cable <-> electronics_tray and <-> pi5 left on 2026-09-11: the
+# electronics now STAND against the keyhead endplate, bottom edge above the cable.
 #
 # THE PICKUP HEIGHT PLATE INTO THE DECK (deferred 2026-09-10, owner UNASSIGNED --
 # see fastener-migration-todo.md section 2). The +Y jacks' X-arms poke 0.72 into the
@@ -278,9 +278,7 @@ def _knee(n) -> bool:
 # pickup. The gate never reported it: TP_FAMILY accepted ANY deck contact with
 # pickup_zplate, so a real collision read as a designed one. Note the gate still
 # only checks the demo pose; the 308 mm^3 case needs a sweep across the depth window.
-DEFERRED = {frozenset({"chassis_trrs_cable", "electronics_tray"}),
-            frozenset({"chassis_trrs_cable", "pi5"}),
-            frozenset({"pickup_zplate", "top_plate"})}
+DEFERRED = {frozenset({"pickup_zplate", "top_plate"})}
 _DEFERRED_SEEN = set()
 
 

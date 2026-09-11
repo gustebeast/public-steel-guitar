@@ -152,7 +152,7 @@ PARTS = {
     # (pedal_bar_foot merged into the shared leg_foot SKU — one look ×4)
     "leg_shaft_short": (lambda: heal(LG.leg_shaft_short()), "petg-gf/leg_shaft_short.step", "PETG-GF — SHORT +Y shaft ×1 (the wired one prints from leg_shaft_trrs): W28 dropped-octagon tenon ending in the 35.6-sq terminal block (4.2 inset on all four sides, symmetric; +Y face = the stem plane) whose octagon socket + point-side ledge take the bar tower's shaved tenon"),
     "jack_seat_ring":  (lambda: heal(LG.jack_seat_ring()), "pctg/jack_seat_ring.step", "PCTG — press ring ×1: down the wired short shaft's way onto the leg extension cable's molded jack barrel (insertion backstop; the integral boss takes withdrawal)"),
-    "electronics_tray": (lambda: heal(__import__("src.electronics", fromlist=["e"]).electronics_tray()), "pctg/electronics_tray.step", "PCTG — compute-bay tray (drops into rail channels from above; tool-free SNAP mounts for Teensy+shield, Pi 5, 2x CS42448, buck, CAN transceiver — snap fingers need PCTG's ductility)"),
+    "electronics_tray": (lambda: heal(__import__("src.electronics", fromlist=["e"]).electronics_tray(standing=False)), "pctg/electronics_tray.step", "PCTG — compute-bay tray, exported FLAT (its print pose); in the instrument it STANDS against the keyhead endplate's inboard face (mount pending the keyhead round). Board support posts for Teensy+shield, Pi 5, ADC stack, buck, CAN interface"),
 }
 # Deck panels: each is a (base, colour) PAIR — same origin, print as ONE object
 # with two filaments (the ha-keypad keycaps/keycaps_text pattern). The base is
@@ -387,6 +387,22 @@ def _build_counter_model(n: int):
 # side. Everything riding the carriage (string nut, brass nut, string anchor)
 # follows; the guide rod, screw and stops are fixed.
 DEMO_POSE_DZ = {i: -D.CARRIAGE_TRAVEL for i in (0, 1, 8, 9)}
+
+# BELT CLAMP TRAVEL (user, 2026-09-11). Each belt's tension clamp rides the belt, and the
+# belt moves PULLEY_TEETH x BELT_PITCH per screw turn over the carriage's whole travel, so
+# the clamp has to fit on the straight run between the two pulleys' flanges at both ends of
+# that travel. The motor bank is packed toward the keyhead for exactly this; if the shortest
+# run stops covering it, move the bank or shorten the travel -- do not just nudge this.
+_CLAMP_XS = [v for _n, _s in BTn.clamp_components(with_lifters=True)
+             for v in (_s.val().BoundingBox().xmin, _s.val().BoundingBox().xmax)]
+_CLAMP_L = max(_CLAMP_XS) - min(_CLAMP_XS)
+_BELT_TRAVEL = D.CARRIAGE_TRAVEL / D.SCREW_PITCH * D.PULLEY_TEETH * D.BELT_PITCH
+_CLAMP_RUN_NEED = _BELT_TRAVEL + _CLAMP_L + D.PULLEY_FLANGE_OD
+_SHORTEST_RUN = min(math.hypot(D.motor_pos(i)[0] - D.screw_x(i), D.screw_pulley_z(i) - D.motor_pos(i)[2])
+                    for i in range(D.N_STRINGS))
+assert _SHORTEST_RUN >= _CLAMP_RUN_NEED - 1e-6, (
+    f"the shortest belt run ({_SHORTEST_RUN:.1f}) cannot hold the clamp through its travel: "
+    f"{_BELT_TRAVEL:.1f} of belt travel + {_CLAMP_L:.1f} of clamp + two flanges = {_CLAMP_RUN_NEED:.1f}")
 
 
 def _string_components(i):
@@ -843,18 +859,21 @@ def _leg_components():
                 # north of the electronics tray) and drops into the
                 # OVER-RIB raceway lane (floor -67.3, cut across the
                 # wide rib + station rib), riding it east ABOVE the
-                # full-length ridge roofs (-67.91), then diagonally down
-                # to the bus-B tee. Unplug at the tee to extract.
+                # full-length ridge roofs (-67.91), under the standing
+                # electronics (bottom edge -62), and turning UP in the gap
+                # between the CAN interface board and string 1's motor.
+                # STUB END: the motor bank now packs against the boards
+                # (1.6 mm), so the old diagonal toward the bus-B tee ran
+                # into motor 0; the last leg to tee 12 (over the motor, as
+                # the bay wiring does) is a follow-up. Unplug at the tee
+                # to extract.
                 out.append(("chassis_trrs_cable", WR._wire([
                     (sx - 5.0, yj, CH.Z_BOT + 30.4),
                     (sx - 5.0, yj, -42.9),
                     (sx - 5.0, 50.5, -42.9),
                     (sx - 5.0, 50.5, -65.0),
-                    (-586.5, 50.5, -65.0),
-                    (-581.5, 35.5, WR.HDR_Z)], 3.8)))
-                #   ^ the descent elbow sits 2.5 east of the station
-                #     rib's face (-589) so the fat diagonal rod clears
-                #     its corner south of the raceway band
+                    ((D.motor_pos(0)[0] - D.MOTOR_SQ / 2 - 4.0), 50.5, -65.0),
+                    ((D.motor_pos(0)[0] - D.MOTOR_SQ / 2 - 4.0), 50.5, -55.0)], 3.8)))
             k += 1
     return out
 
@@ -1067,9 +1086,9 @@ def _vkl_station() -> float:
     return best[1]
 
 
-_LKL_X = -501.0                              # hard -X bound: the left leg block (ILKL's old
+_LKL_X = D.rib_comb_x(-501.0)                # hard -X bound: the left leg block (ILKL's old
                                              # station; LKL always shared it — see _KNEE_GAP_L)
-_RKL_X = -225.0                              # right knee
+_RKL_X = D.rib_comb_x(-225.0)                # right knee (snapped to the rib comb)
 
 LEVER_STATIONS = (
     # LEFT KNEE: the knee sits in the gap between LKL and LKR, and VKL sits in that
