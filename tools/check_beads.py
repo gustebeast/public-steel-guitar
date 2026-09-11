@@ -71,6 +71,7 @@ def _ex(cat: str, **kv) -> None:
 
 # Real objects. These are measurements, not choices.
 _ex("hardware",
+    legs__LOCK_PIN_DY="lock pin offset chosen so SERVICE_SLIDE can reach the bridge's 25.6 (user)",
     bar_latch__SCREW_L="a stock M4x30 button head's length (hardware)",
     bar_latch__SPR_REST_L="the coil's installed length: its free length less a light preload (hardware)",
 )

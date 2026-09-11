@@ -879,12 +879,18 @@ def _groove(length: float) -> cq.Workplane:
 # Only SERVICE_CORNERS get it, keyed (egx, syg) by outboard x and y sign: the strings
 # span Y +-42.8, so only the +Y legs sit under them. The leg's own material is untouched.
 # The cost is pull-off capacity against a kick toward/away from the player: the two
-# ridges share that along their length, so each mm is ~1/(2 SQ_W) of it (18.6 -> 21%).
+# ridges share that along their length, so each mm is ~1/(2 SQ_W) of it (25.6 -> 29%).
 SERVICE_SLIDE = 0.0                # set by whoever needs the room; 0 = no service position
 SERVICE_CORNERS = ((-1.0, 1.0), (1.0, 1.0))
-# ...and the most it can be: the second hole has to stay on the tongue, which runs the
-# leg's SQ_W along Y with the first hole at its middle
-SERVICE_SLIDE_MAX = SQ_W / 2 - (_M4.shaft_clr_d / 2 + D.MIN_WALL_2P)
+# The LOCK PIN sits LOCK_PIN_DY OUTBOARD of the leg's centreline (user), which is what
+# leaves the tongue room for a long service slide: the second hole goes SERVICE_SLIDE
+# inboard of it and must stay on the tongue. Its insert pocket in the endplate then
+# comes within ~0.5 of the rail band (ly+10.5), where the endplate's rail socket is.
+LOCK_PIN_DY = 7.0
+assert LOCK_PIN_DY + _M4.shaft_clr_d / 2 + D.MIN_WALL_2P <= SQ_W / 2, (
+    "the lock pin falls off the tongue's outboard end")
+# ...and the most the slide can be
+SERVICE_SLIDE_MAX = SQ_W / 2 - (_M4.shaft_clr_d / 2 + D.MIN_WALL_2P) + LOCK_PIN_DY
 
 
 def service_slide(egx: float, syg: float) -> float:
@@ -961,7 +967,7 @@ def corner_groove_negatives(station: float, ly: float, syg: float,
 
 
 def endwall_screw_negatives(station: float, ly: float, egx: float,
-                            z_bot: float, print_up) -> list:
+                            z_bot: float, print_up, syg: float) -> list:
     """The per-leg M4 LOCK PIN (user): one M4x10 SET SCREW per leg, along X in from
     the instrument's end face, threaded through a heat-set INSERT melted into the
     endplate's outer wall and on across the tongue, which has only a clearance hole
@@ -973,7 +979,7 @@ def endwall_screw_negatives(station: float, ly: float, egx: float,
     clear of the rail-band relief wedge (ly+10.5..23) and the KH stow bores
     (|y| <= 31.75). WORLD-space cutters for the ENDPLATES."""
     zc = z_bot + STUB_TNG_H / 2
-    face = (station + egx * SQ_W / 2, ly, zc)
+    face = (station + egx * SQ_W / 2, ly + syg * LOCK_PIN_DY, zc)   # LOCK_PIN_DY outboard
     return [_insert_bore_cutter(
         _M4, face, (-egx, 0.0, 0.0), _PIN_FLOOR + STUB_TNG_FIT + 1.0, overshoot=1.0,
         reason="set-screw cross pin: must never self-tap; the endplate holds the "
@@ -982,12 +988,12 @@ def endwall_screw_negatives(station: float, ly: float, egx: float,
 
 
 def tongue_pin_cutter(station: float, ly: float, egx: float, z_bot: float,
-                      print_up) -> cq.Workplane:
+                      print_up, syg: float) -> cq.Workplane:
     """The tongue's half of the LOCK PIN (endwall_screw_negatives): an M4 clearance
     hole along X right across the tongue, at mid-height on the leg centreline, drawn
     by cadkit from the tongue part's `print_up`."""
     zc = z_bot + STUB_TNG_H / 2
-    face = (station + egx * (STUB_WALL_IN + STUB_TNG_W), ly, zc)   # outboard face
+    face = (station + egx * (STUB_WALL_IN + STUB_TNG_W), ly + syg * LOCK_PIN_DY, zc)
     return _clearance_cutter(_M4, face, (-egx, 0.0, 0.0), STUB_TNG_W + 1.0,
                              overshoot=1.0, print_up=print_up)
 
@@ -1039,7 +1045,7 @@ def _body_stub(wired: bool, eps: float, latch: bool = False, mid_cut: float = 0.
     # prints lying on its local +Y face, so its build direction is local -Y.
     b = b.union(box_at(STUB_TNG_W, SQ_W, STUB_TNG_H,
                        x=eps * STUB_RIDGE_EP, z=STUB_H + STUB_TNG_H / 2))
-    b = b.cut(tongue_pin_cutter(0.0, 0.0, eps, STUB_H, (0.0, -1.0, 0.0)))
+    b = b.cut(tongue_pin_cutter(0.0, 0.0, eps, STUB_H, (0.0, -1.0, 0.0), 0.0))  # retired SKU
     # M4 SHEAR-PIN pilots down through the crossing ridges at the wall
     # band (local y -17 = the rail-web access-bore line; only the
     # inboard one gets a screw, the SKU keeps both for every corner)
