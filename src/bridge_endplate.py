@@ -94,7 +94,16 @@ def access_blocked(i: int) -> bool:
 
     Plan-view overlap of the channel's house footprint (X from apex to floor, Y the house
     width) with every leg's square, read from chassis' own leg stations and the legs' own
-    service slide, so the answer moves with both."""
+    service slide, so the answer moves with both.
+
+    KNOWN AND ACCEPTED (user, 2026-09-11): strings 1 and 3's channels break into the +Y
+    bridge leg's -X CROSSING GROOVE by ~0.6 mm3 each -- that groove is not cut back by the
+    service slide (only the middle one is), and these two channels land on its outboard
+    flank. Threading happens with the leg slid out, so the ridge is not there; what is left
+    is a thin edge where a string end could catch. Cutting that ridge back too would about
+    double the pull-off capacity the slide already spends, and the channels' X is tangent to
+    the bearing seat bore, so neither fix is free. NOTE THE OVERLAP GATE CANNOT SEE THIS:
+    both are cutters, and two cavities merging is not a solid-solid overlap."""
     ax, y = D.string_access_x(i), D.string_y(i)
     x0, x1 = ax - D.STRING_ACCESS_H, ax + D.STRING_ACCESS_D / 2
     y0, y1 = y - D.STRING_ACCESS_D / 2, y + D.STRING_ACCESS_D / 2
