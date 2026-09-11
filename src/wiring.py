@@ -189,7 +189,9 @@ def tee_stations():
     out.append((-48.0, TEE_Y, -1))            # 10 AFE power (rail; -X of the +X leg stub at -13.4)
     # bus B (knee + leg-socket): NOT on the crowded motor rail -- inboard of it, near the knee
     # station, clear of the bay tray/buck and the motor tees.
-    out.append((-500.0, -100.0, -1))          # 11 knee (LKL): inboard, +X of the housing
+    # 11 knee (LKL): inboard, +X of the housing. Its X overlaps the motor tees' Y band, so it sits
+    # MIDWAY between motor 1's and motor 2's tees and follows them when the bank moves
+    out.append(((D.motor_pos(1)[0] + D.motor_pos(2)[0]) / 2, -100.0, -1))
     out.append((-538.0, -94.0, +1))           # 12 leg-socket landing: inboard, +X of the bay tray
                                               # (nudged +Y to clear the grown accurate bus-A tee_0 at -524)
     return out

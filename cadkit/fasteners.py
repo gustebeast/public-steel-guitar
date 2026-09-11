@@ -54,6 +54,18 @@ Prefer measuring over trusting: `measured_bite(solid, …)` reports the real
 self-tap length left in the finished solid. A nominal `depth` says nothing about
 a through-bore crossing a thin wall — only the solid knows.
 
+════════════════════════════════════════════════════════════════════════════
+PRINT DIRECTION — pass the part's print_up and the hole shapes itself.
+════════════════════════════════════════════════════════════════════════════
+Every hole cutter takes `print_up`, the part's build direction as a vector. A
+hole running ALONG it prints round and stays a plain bore; a hole SIDEWAYS or
+oblique to it gets the peak `holes.teardrop_hole` sizes for its tilt — insert
+pocket, self-tap and clearance alike. Cut with its part's print_up, a hole
+follows the part if its print orientation ever changes. A step from a wide
+bore to a narrow one drilled INTO the build (mouth on the bed side) is a flat
+ceiling, so it also gets a 45 degree cone. print_up=None (the
+default, so existing call sites are unchanged) draws the plain cylinder.
+
 Import from the vendored package (no path hack — builds run via `-m` from the
 project root, so `cadkit` is already importable):
 
@@ -66,6 +78,11 @@ from dataclasses import dataclass
 from typing import Optional
 
 import cadquery as cq
+
+try:
+    from .holes import teardrop_hole
+except ImportError:                    # run directly as a script
+    from holes import teardrop_hole
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -161,6 +178,38 @@ def _cyl(d, h, pnt, direction):
     return cq.Solid.makeCylinder(d / 2.0, h, cq.Vector(*pnt), cq.Vector(*direction))
 
 
+def _bore(d, h, pnt, direction, print_up=None):
+    """A HOLE of Ø d × h (see PRINT DIRECTION): the plain cylinder when print_up
+    is None or the hole runs along it, otherwise holes.teardrop_hole's shape."""
+    if print_up is None:
+        return _cyl(d, h, pnt, direction)
+    a, u = _unit(direction), _unit(print_up)
+    if abs(a.dot(u)) > 1.0 - 1e-9:
+        return _cyl(d, h, pnt, direction)
+    return teardrop_hole(d, h, tuple(pnt), a.toTuple(), u.toTuple()).val()
+
+
+def _step(big_d, small_d, pnt, direction, print_up=None):
+    """Where a wide bore (a pocket, a head recess) steps down to a narrower one at
+    `pnt`, drilled along `direction`. Drilled INTO the build (the mouth on the bed
+    side), that step is a flat ceiling over the wide bore, so it gets a 45 degree
+    cone down to the narrow one: the insert or the head still seats on its rim.
+    Otherwise (sideways, drilled from the top, no print_up) the step prints as it is
+    and this adds nothing (None)."""
+    if print_up is None or big_d <= small_d:
+        return None
+    a, u = _unit(direction), _unit(print_up)
+    if a.dot(u) <= 1e-9:
+        return None
+    h = (big_d - small_d) / 2.0
+    return cq.Solid.makeCone(big_d / 2.0, small_d / 2.0, h, cq.Vector(*pnt), a)
+
+
+def _with_step(bore, big_d, small_d, pnt, direction, print_up):
+    cone = _step(big_d, small_d, pnt, direction, print_up)
+    return bore if cone is None else bore.fuse(cone)
+
+
 def _unit(direction):
     return cq.Vector(*direction).normalized()
 
@@ -188,38 +237,43 @@ def _oriented(s, axis, deg, pt):
 # ════════════════════════════════════════════════════════════════════════════
 # CUTTERS — each returns the bare solid; each has a `cut_*` sibling.
 # ════════════════════════════════════════════════════════════════════════════
-def pocket_cutter(spec, pnt, direction, overshoot=0.0):
+def pocket_cutter(spec, pnt, direction, overshoot=0.0, print_up=None):
     """The heat-set insert pocket alone: Ø insert_pilot_d × insert_depth."""
     mouth = _back(pnt, direction, overshoot)
-    return cq.Workplane(obj=_cyl(spec.insert_pilot_d, spec.insert_depth + overshoot,
-                                 mouth, direction))
+    return cq.Workplane(obj=_bore(spec.insert_pilot_d, spec.insert_depth + overshoot,
+                                  mouth, direction, print_up))
 
 
-def selftap_cutter(spec, pnt, direction, length, overshoot=0.0):
+def selftap_cutter(spec, pnt, direction, length, overshoot=0.0, print_up=None):
     """Ø selftap_d bore — the screw cuts its own thread in this."""
     mouth = _back(pnt, direction, overshoot)
-    return cq.Workplane(obj=_cyl(spec.selftap_d, length + overshoot, mouth, direction))
+    return cq.Workplane(obj=_bore(spec.selftap_d, length + overshoot, mouth, direction,
+                                  print_up))
 
 
-def clearance_cutter(spec, pnt, direction, length, overshoot=0.0):
+def clearance_cutter(spec, pnt, direction, length, overshoot=0.0, print_up=None):
     """Ø shaft_clr_d bore — the screw spins free (it threads in the FAR part)."""
     mouth = _back(pnt, direction, overshoot)
-    return cq.Workplane(obj=_cyl(spec.shaft_clr_d, length + overshoot, mouth, direction))
+    return cq.Workplane(obj=_bore(spec.shaft_clr_d, length + overshoot, mouth, direction,
+                                  print_up))
 
 
-def head_bore_cutter(spec, pnt, direction, clr_len, overshoot=0.0):
+def head_bore_cutter(spec, pnt, direction, clr_len, overshoot=0.0, print_up=None):
     """Cap-head counterbore + shaft clearance, both opening at the mouth."""
     if spec.head_recess_d is None:
         raise ValueError("%s is headless (a set screw) — it has no head recess."
                          % spec.name)
     mouth = _back(pnt, direction, overshoot)
-    recess = _cyl(spec.head_recess_d, spec.head_recess_h + overshoot, mouth, direction)
-    clr = _cyl(spec.shaft_clr_d, clr_len + overshoot, mouth, direction)
-    return cq.Workplane(obj=recess.fuse(clr))
+    recess = _bore(spec.head_recess_d, spec.head_recess_h + overshoot, mouth, direction,
+                   print_up)
+    clr = _bore(spec.shaft_clr_d, clr_len + overshoot, mouth, direction, print_up)
+    cut = _with_step(recess.fuse(clr), spec.head_recess_d, spec.shaft_clr_d,
+                     _fwd(pnt, direction, spec.head_recess_h), direction, print_up)
+    return cq.Workplane(obj=cut)
 
 
 def anchor_cutter(spec, pnt, direction, depth, pocket=True, overshoot=0.0,
-                  reason=None, short_bite=None):
+                  reason=None, short_bite=None, print_up=None):
     """THE standard hole — self-tap now, heat-set insert later.
 
     Ø selftap_d running `depth` from the mouth `pnt` along `direction`, plus a
@@ -245,7 +299,7 @@ def anchor_cutter(spec, pnt, direction, depth, pocket=True, overshoot=0.0,
                 "the pocket will not fit (e.g. 'floor thinner than the pocket'). "
                 "Try cut_boss_anchor() first: grow a boss and make the room."
                 % spec.name)
-        return selftap_cutter(spec, pnt, direction, depth, overshoot)
+        return selftap_cutter(spec, pnt, direction, depth, overshoot, print_up)
 
     bite = depth - spec.insert_depth
     if bite <= 0:
@@ -263,13 +317,16 @@ def anchor_cutter(spec, pnt, direction, depth, pocket=True, overshoot=0.0,
             % (spec.name, bite, spec.min_bite, spec.anchor_min_wall))
 
     mouth = _back(pnt, direction, overshoot)
-    bore = _cyl(spec.selftap_d, depth + overshoot, mouth, direction)
-    bore = bore.fuse(_cyl(spec.insert_pilot_d, spec.insert_depth + overshoot,
-                          mouth, direction))
+    bore = _bore(spec.selftap_d, depth + overshoot, mouth, direction, print_up)
+    bore = bore.fuse(_bore(spec.insert_pilot_d, spec.insert_depth + overshoot,
+                           mouth, direction, print_up))
+    bore = _with_step(bore, spec.insert_pilot_d, spec.selftap_d,
+                      _fwd(pnt, direction, spec.insert_depth), direction, print_up)
     return cq.Workplane(obj=bore)
 
 
-def insert_bore_cutter(spec, pnt, direction, clr_len, overshoot=0.0, reason=None):
+def insert_bore_cutter(spec, pnt, direction, clr_len, overshoot=0.0, reason=None,
+                       print_up=None):
     """DEVIATION — insert MANDATORY, no self-tap fallback.
 
     Pocket at the mouth, then Ø shaft_clr_d *clearance* running `clr_len` further
@@ -286,36 +343,41 @@ def insert_bore_cutter(spec, pnt, direction, clr_len, overshoot=0.0, reason=None
             "or 'only 3.6 mm of wall')." % spec.name)
     mouth = _back(pnt, direction, overshoot)
     inner = _fwd(pnt, direction, spec.insert_depth)
-    pocket = _cyl(spec.insert_pilot_d, spec.insert_depth + overshoot, mouth, direction)
-    clr = _cyl(spec.shaft_clr_d, clr_len, inner, direction)
-    return cq.Workplane(obj=pocket.fuse(clr))
+    pocket = _bore(spec.insert_pilot_d, spec.insert_depth + overshoot, mouth, direction,
+                   print_up)
+    clr = _bore(spec.shaft_clr_d, clr_len, inner, direction, print_up)
+    cut = _with_step(pocket.fuse(clr), spec.insert_pilot_d, spec.shaft_clr_d, inner,
+                     direction, print_up)
+    return cq.Workplane(obj=cut)
 
 
 # --- `cut_*` siblings: apply the cutter to a workplane. ----------------------
-def cut_pocket(spec, w, pnt, direction, overshoot=0.0):
-    return w.cut(pocket_cutter(spec, pnt, direction, overshoot))
+def cut_pocket(spec, w, pnt, direction, overshoot=0.0, print_up=None):
+    return w.cut(pocket_cutter(spec, pnt, direction, overshoot, print_up))
 
 
-def cut_selftap(spec, w, pnt, direction, length, overshoot=0.0):
-    return w.cut(selftap_cutter(spec, pnt, direction, length, overshoot))
+def cut_selftap(spec, w, pnt, direction, length, overshoot=0.0, print_up=None):
+    return w.cut(selftap_cutter(spec, pnt, direction, length, overshoot, print_up))
 
 
-def cut_clearance(spec, w, pnt, direction, length, overshoot=0.0):
-    return w.cut(clearance_cutter(spec, pnt, direction, length, overshoot))
+def cut_clearance(spec, w, pnt, direction, length, overshoot=0.0, print_up=None):
+    return w.cut(clearance_cutter(spec, pnt, direction, length, overshoot, print_up))
 
 
-def cut_head_bore(spec, w, pnt, direction, clr_len, overshoot=0.0):
-    return w.cut(head_bore_cutter(spec, pnt, direction, clr_len, overshoot))
+def cut_head_bore(spec, w, pnt, direction, clr_len, overshoot=0.0, print_up=None):
+    return w.cut(head_bore_cutter(spec, pnt, direction, clr_len, overshoot, print_up))
 
 
 def cut_anchor(spec, w, pnt, direction, depth, pocket=True, overshoot=0.0,
-               reason=None, short_bite=None):
+               reason=None, short_bite=None, print_up=None):
     return w.cut(anchor_cutter(spec, pnt, direction, depth, pocket, overshoot,
-                               reason, short_bite))
+                               reason, short_bite, print_up))
 
 
-def cut_insert_bore(spec, w, pnt, direction, clr_len, overshoot=0.0, reason=None):
-    return w.cut(insert_bore_cutter(spec, pnt, direction, clr_len, overshoot, reason))
+def cut_insert_bore(spec, w, pnt, direction, clr_len, overshoot=0.0, reason=None,
+                    print_up=None):
+    return w.cut(insert_bore_cutter(spec, pnt, direction, clr_len, overshoot, reason,
+                                    print_up))
 
 
 def anchor_bite(spec, depth):
@@ -326,7 +388,7 @@ def anchor_bite(spec, depth):
 # ════════════════════════════════════════════════════════════════════════════
 # BOSSES — grow material instead of deviating. Try this FIRST.
 # ════════════════════════════════════════════════════════════════════════════
-def cut_boss_anchor(spec, w, pt, direction, depth=None):
+def cut_boss_anchor(spec, w, pt, direction, depth=None, print_up=None):
     """Where the wall is too thin, add a protruding boss and put a standard
     ANCHOR in it. `direction` points INTO the material (the screw's travel);
     the boss protrudes boss_prot backwards from `pt`, so the pocket opens on
@@ -340,23 +402,24 @@ def cut_boss_anchor(spec, w, pt, direction, depth=None):
         depth = bp
     base = _back(pt, direction, bp)
     w = w.union(cq.Workplane(obj=_cyl(spec.boss_od, bp, base, direction)))
-    return cut_anchor(spec, w, base, direction, depth)
+    return cut_anchor(spec, w, base, direction, depth, print_up=print_up)
 
 
-def cut_boss_insert_bore(spec, w, pt, direction, clr_len, reason=None):
+def cut_boss_insert_bore(spec, w, pt, direction, clr_len, reason=None, print_up=None):
     """Thin-wall boss hosting an insert-MANDATORY bore (pocket + clearance to the
     working tip). This is the SET-SCREW shape. Requires reason='…' like any
     insert-mandatory hole."""
     bp = spec.boss_prot
     base = _back(pt, direction, bp)
     w = w.union(cq.Workplane(obj=_cyl(spec.boss_od, bp, base, direction)))
-    w = w.cut(pocket_cutter(spec, base, direction))
+    w = w.cut(pocket_cutter(spec, base, direction, print_up=print_up))
     if not reason:
         raise ValueError(
             "cut_boss_insert_bore(%s): insert-mandatory. Pass reason='…', or use "
             "cut_boss_anchor() for the standard self-tap+pocket boss." % spec.name)
     inner = _fwd(base, direction, spec.insert_depth)
-    return w.cut(cq.Workplane(obj=_cyl(spec.shaft_clr_d, clr_len, inner, direction)))
+    return w.cut(cq.Workplane(obj=_bore(spec.shaft_clr_d, clr_len, inner, direction,
+                                        print_up)))
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -545,41 +608,41 @@ def assert_bite(solid, pnt, direction, spec, short_bite=None, label=""):
 # BOUND ALIASES — same geometry, spec pre-bound. Existing call sites use these.
 # ════════════════════════════════════════════════════════════════════════════
 def m2_anchor_cutter(pnt, direction, depth, pocket=True, overshoot=0.0,
-                     reason=None, short_bite=None):
-    return anchor_cutter(M2, pnt, direction, depth, pocket, overshoot, reason, short_bite)
+                     reason=None, short_bite=None, print_up=None):
+    return anchor_cutter(M2, pnt, direction, depth, pocket, overshoot, reason, short_bite, print_up=print_up)
 
 
 def cut_m2_anchor(w, pnt, direction, depth, pocket=True, overshoot=0.0,
-                  reason=None, short_bite=None):
-    return cut_anchor(M2, w, pnt, direction, depth, pocket, overshoot, reason, short_bite)
+                  reason=None, short_bite=None, print_up=None):
+    return cut_anchor(M2, w, pnt, direction, depth, pocket, overshoot, reason, short_bite, print_up=print_up)
 
 
-def m2_insert_bore_cutter(pnt, direction, clr_len, overshoot=0.0, reason=None):
-    return insert_bore_cutter(M2, pnt, direction, clr_len, overshoot, reason)
+def m2_insert_bore_cutter(pnt, direction, clr_len, overshoot=0.0, reason=None, print_up=None):
+    return insert_bore_cutter(M2, pnt, direction, clr_len, overshoot, reason, print_up=print_up)
 
 
-def cut_m2_insert_bore(w, pnt, direction, clr_len, overshoot=0.0, reason=None):
-    return cut_insert_bore(M2, w, pnt, direction, clr_len, overshoot, reason)
+def cut_m2_insert_bore(w, pnt, direction, clr_len, overshoot=0.0, reason=None, print_up=None):
+    return cut_insert_bore(M2, w, pnt, direction, clr_len, overshoot, reason, print_up=print_up)
 
 
-def m2_clearance_cutter(pnt, direction, length, overshoot=0.0):
-    return clearance_cutter(M2, pnt, direction, length, overshoot)
+def m2_clearance_cutter(pnt, direction, length, overshoot=0.0, print_up=None):
+    return clearance_cutter(M2, pnt, direction, length, overshoot, print_up=print_up)
 
 
-def cut_m2_clearance(w, pnt, direction, length, overshoot=0.0):
-    return cut_clearance(M2, w, pnt, direction, length, overshoot)
+def cut_m2_clearance(w, pnt, direction, length, overshoot=0.0, print_up=None):
+    return cut_clearance(M2, w, pnt, direction, length, overshoot, print_up=print_up)
 
 
-def m2_head_bore_cutter(pnt, direction, clr_len, overshoot=0.0):
-    return head_bore_cutter(M2, pnt, direction, clr_len, overshoot)
+def m2_head_bore_cutter(pnt, direction, clr_len, overshoot=0.0, print_up=None):
+    return head_bore_cutter(M2, pnt, direction, clr_len, overshoot, print_up=print_up)
 
 
-def cut_m2_head_bore(w, pnt, direction, clr_len, overshoot=0.0):
-    return cut_head_bore(M2, w, pnt, direction, clr_len, overshoot)
+def cut_m2_head_bore(w, pnt, direction, clr_len, overshoot=0.0, print_up=None):
+    return cut_head_bore(M2, w, pnt, direction, clr_len, overshoot, print_up=print_up)
 
 
-def cut_m2_boss(w, pt, direction, depth=None):
-    return cut_boss_anchor(M2, w, pt, direction, depth)
+def cut_m2_boss(w, pt, direction, depth=None, print_up=None):
+    return cut_boss_anchor(M2, w, pt, direction, depth, print_up=print_up)
 
 
 def m2_anchor_bite(depth):
@@ -642,3 +705,90 @@ def cut_m4_boss(w, pt, axis, deg, clr_len=(M4.screw_l - M4.insert_l) + 2.0):
 
 def m4_boss_insert(pt, axis, deg):
     return boss_insert(M4, pt, _dir_from(axis, deg))
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# SCREW JOINTS — one screw clamping a stack of parts, cut and drawn from ONE place.
+# ════════════════════════════════════════════════════════════════════════════
+@dataclass(frozen=True)
+class ScrewJoint:
+    """A headed screw clamping parts together along one axis into a heat-set insert.
+
+    Define it ONCE and hand it to every part it crosses, so the head recess, the
+    clearance, the insert pocket and the screw cannot drift apart between parts. Each
+    part cuts `cutter(its own print_up)` -- the whole hole along the axis, of which only
+    its own section meets its material, shaped for that part's print -- and the
+    assembly draws `dummies(...)`.
+
+    Distances run from `entry` (the face the head goes in at) along `direction`:
+      recess     the head's pocket depth (0: the head sits on the face)
+      insert_at  the insert pocket's mouth (the face of the part that holds it)
+      end_at     where the hole stops: past the pocket and past the screw's tip
+      length     the screw's shank from under its head (a stock length)
+    It refuses a screw that would bottom before seating or bite under min_bite.
+    """
+    spec: FastenerSpec
+    entry: tuple
+    direction: tuple
+    length: float
+    insert_at: float
+    end_at: float
+    head_d: float
+    head_h: float
+    recess: float = 0.0
+    head_clr: float = 0.4          # radial air round the head in its recess
+    socket_af: float = 2.5
+
+    def __post_init__(self):
+        tip = self.recess + self.length
+        if self.insert_at + self.spec.insert_depth > self.end_at + 1e-9:
+            raise ValueError("ScrewJoint(%s): the insert pocket runs past the hole's end"
+                             % self.spec.name)
+        if tip > self.end_at + 1e-9:
+            raise ValueError("ScrewJoint(%s): a %.1f screw bottoms %.2f past the hole's end"
+                             % (self.spec.name, self.length, tip - self.end_at))
+        if tip - self.insert_at < self.spec.min_bite - 1e-9:
+            raise ValueError("ScrewJoint(%s): the screw engages %.2f of its insert, under "
+                             "min_bite %.2f" % (self.spec.name, tip - self.insert_at,
+                                                self.spec.min_bite))
+
+    def at(self, d):
+        """The point `d` along the axis from the entry."""
+        return _fwd(self.entry, self.direction, d)
+
+    @property
+    def bite(self):
+        return self.recess + self.length - self.insert_at
+
+    def cutter(self, print_up=None, overshoot=1.0) -> cq.Workplane:
+        """The whole hole, shaped for a part printing along `print_up`."""
+        d, sp = self.direction, self.spec
+        start = _back(self.entry, d, overshoot)
+        cut = _bore(sp.shaft_clr_d, self.end_at + overshoot, start, d, print_up)
+        if self.recess > 0:
+            big = self.head_d + 2 * self.head_clr
+            cut = cut.fuse(_bore(big, self.recess + overshoot, start, d, print_up))
+            cut = _with_step(cut, big, sp.shaft_clr_d, self.at(self.recess), d, print_up)
+        mouth = self.at(self.insert_at)
+        cut = cut.fuse(_bore(sp.insert_pilot_d, sp.insert_depth, mouth, d, print_up))
+        # the pocket's floor steps down to the clearance beyond (a ceiling drilled INTO the
+        # build) and its mouth steps up from the clearance before it (a ceiling drilled
+        # AGAINST the build): _step cones whichever faces down
+        cut = _with_step(cut, sp.insert_pilot_d, sp.shaft_clr_d,
+                         self.at(self.insert_at + sp.insert_depth), d, print_up)
+        cut = _with_step(cut, sp.insert_pilot_d, sp.shaft_clr_d, mouth,
+                         tuple(-c for c in d), print_up)
+        return cq.Workplane(obj=cut)
+
+    def insert_dummy(self) -> cq.Workplane:
+        return seated_insert(self.spec, self.at(self.insert_at), self.direction)
+
+    def screw_dummy(self) -> cq.Workplane:
+        s = headed_screw(self.spec, self.length, self.head_d, self.head_h,
+                         socket_af=self.socket_af)
+        top = self.at(self.recess - self.head_h)
+        return _rot_z_onto(s, tuple(-c for c in self.direction)).translate(tuple(top))
+
+    def dummies(self, screw_name, insert_name):
+        """[(name, workplane)] for the assembly: the screw seated, the insert in its pocket."""
+        return [(screw_name, self.screw_dummy()), (insert_name, self.insert_dummy())]
