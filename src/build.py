@@ -523,7 +523,7 @@ def _string_path(i, sy):
         out = out.union(_rod(pa, pb, rad)).union(_bead(pb, rad))
     out = out.union(_rod(pts[-1], brk, rad))
     # dead end: break edge -> down to the wrap rod -> N turns around it -> out to the clamp
-    ny, wy = NB.wrap_y(i)
+    ny, wy = NB.wrap_y_drawn(i)                          # the coil AS WOUND (nut_block.WRAPS)
     rx, rz = D.NUT_BLOCK_X + NB.ROD_X, D.STRING_Z + NB.ROD_Z
     hr = NB.wrap_radius(i)                                 # helix radius: nut_block owns it
     # THE WRAP IS ON THE ROD'S UNDERSIDE (-Z), so the path has no reversal left in it:
@@ -576,7 +576,7 @@ def _wrap_coil(i, rad, hr):
     """The capstan itself: NB turns of string around the shared rod, marching -Y. Same
     sweep recipe cadkit/threads.py uses for a real thread. The march is what makes the
     turn count a geometry question -- each turn eats NUT_PITCH, see nut_block._turns."""
-    ny, wy = NB.wrap_y(i)
+    ny, wy = NB.wrap_y_drawn(i)                          # the coil AS WOUND (nut_block.WRAPS)
     p = NB.WRAP_F * D.STRING_GAUGE[i]
     h = abs(wy - ny)
     # RIGHT-HAND. Rotated +90 about X the helix axis lies along -Y (the march), and a
