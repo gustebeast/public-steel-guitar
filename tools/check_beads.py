@@ -432,7 +432,6 @@ _ex("musical",
     NUT_BLOCK_X="-MOUNTING_SPAN",
     STRING_Z="string plane height (set by the bearing stack)",
     DL_OPEN="string stretch at pitch (physics)",
-    LEG_HEIGHT="floor -> body bottom playing height (user ergonomic reference)",
     )
 
 
