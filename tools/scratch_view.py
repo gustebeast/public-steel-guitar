@@ -75,13 +75,6 @@ def _leg_station():
     return CH.LEG_STATIONS_X[1], CH.LEG_Y[0], CH.Z_BOT
 
 
-def _pose_leg_stack(name, wp):
-    """leg_stack is authored +Z up from its own base; on the instrument it hangs
-    off the chassis bottom, flipped."""
-    lx, ly, zt = _leg_station()
-    return wp.rotate((0, 0, 0), (1, 0, 0), 180).translate((lx, ly, zt))
-
-
 def _tensioner_string():
     """The string the belt-tensioner work sits on: the LAST one -- the short belt run,
     where clamp-vs-pulley clearance is decided. Shared by the pose and the crop so the
@@ -146,7 +139,7 @@ def _pose_belt_tensioner(name, wp):
     return cq.Workplane("XY").add(wp.val().moved(loc))
 
 
-POSES = {"leg_stack": _pose_leg_stack, "belt_tensioner": _pose_belt_tensioner}
+POSES = {"belt_tensioner": _pose_belt_tensioner}
 
 
 def _crop_leg_station():

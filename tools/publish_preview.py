@@ -37,6 +37,44 @@ def _git(*args: str, env=None, check=True) -> str:
     return r.stdout.strip()
 
 
+GITHUB_FILE_LIMIT = 100 * 2**20          # GitHub's hard per-file limit is 100 MiB
+
+
+def _oversize(files):
+    """[(path, bytes)] for every file GitHub would refuse."""
+    return [(f, f.stat().st_size) for f in files if f.stat().st_size > GITHUB_FILE_LIMIT]
+
+
+def _heaviest_families(glb, top=6):
+    """Rank a binary glTF's parts by the geometry bytes they own, indices stripped.
+
+    Sized from each ACCESSOR (count x component size x components). Not from its
+    bufferView: the exporter packs every part into a few shared views, so a
+    view's length is the whole buffer for all of them -- attributing that per part
+    reports tens of gigabytes for a 100 MB file."""
+    import collections, json, re, struct
+    data = glb.read_bytes()
+    jlen, _ = struct.unpack_from("<I4s", data, 12)
+    g = json.loads(data[20:20 + jlen])
+    acc, meshes, nodes = g["accessors"], g.get("meshes", []), g.get("nodes", [])
+    cs = {5120: 1, 5121: 1, 5122: 2, 5123: 2, 5125: 4, 5126: 4}
+    nc = {"SCALAR": 1, "VEC2": 2, "VEC3": 3, "VEC4": 4, "MAT4": 16}
+    fam, cnt = collections.Counter(), collections.Counter()
+    for n in nodes:
+        if "mesh" not in n:
+            continue
+        refs = set()
+        for pr in meshes[n["mesh"]]["primitives"]:
+            refs |= set(pr.get("attributes", {}).values())
+            if "indices" in pr:
+                refs.add(pr["indices"])
+        f = re.sub(r"(_\d+)+$", "", n.get("name", "?"))
+        fam[f] += sum(acc[a]["count"] * cs[acc[a]["componentType"]] * nc[acc[a]["type"]]
+                      for a in refs)
+        cnt[f] += 1
+    return [(f, b, cnt[f]) for f, b in fam.most_common(top)]
+
+
 def push_gh_pages(build_n: int | None = None, remote: str = "origin",
                   branch: str = "gh-pages") -> bool:
     """Force-push the current docs/ contents to `remote`/`branch` as one orphan
@@ -53,6 +91,25 @@ def push_gh_pages(build_n: int | None = None, remote: str = "origin",
     files = sorted(p for p in DOCS.iterdir() if p.is_file())
     if not files:
         print("web preview: docs/ is empty -> nothing to publish")
+        return False
+
+    # GitHub refuses any file over 100 MiB outright. Check BEFORE pushing: a doomed
+    # push used to fail deep inside `git push`, and the caller's non-fatal wrapper
+    # reported it as "publish skipped" -- so build #620's viewer silently stopped
+    # updating while the build itself exited 0. Say exactly what is too big and what
+    # is making it big, then skip the upload that cannot succeed.
+    offenders = _oversize(files)
+    if offenders:
+        bar = "!" * 72
+        print(bar)
+        print("web preview: NOT PUBLISHED -- a file exceeds GitHub's 100 MiB limit:")
+        for f, size in offenders:
+            print(f"    {f.name}: {size / 2**20:.1f} MiB  (limit {GITHUB_FILE_LIMIT / 2**20:.0f} MiB)")
+            if f.suffix == ".glb":
+                for fam, b, k in _heaviest_families(f):
+                    print(f"      {b / 2**20:7.2f} MiB  {fam} (x{k})")
+        print("The gh-pages viewer is still showing the LAST published build.")
+        print(bar)
         return False
 
     # A private index file so the real index / staged changes are untouched.

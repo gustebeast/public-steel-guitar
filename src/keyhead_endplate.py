@@ -56,6 +56,9 @@ def _stow_bore(d, x_hole, x_face, z_top, z_bot):
 # dropping straight DOWN (+Z→−Z): it sockets a dovetail tongue on each rail end (X+Y
 # lock + grip vs the +X string tension) and is held by those alone (no screw). Nut
 # block fused in (~15 % infill).
+# Build direction (user): the keyhead prints on its -X (outer) face, building -X -> +X.
+# Hole cutters that take it (cadkit.fasteners) shape any sideways hole by themselves.
+PRINT_UP = (1.0, 0.0, 0.0)
 T_EP = CH.KH_EP_THK                        # FULL thickness (X), derived in nut_block (the leg
                                            # shell's -X edge is pinned to this so the -X wall = T)
 XHI  = CH.KH_X                             # +X (inboard) face (-611); the rail end stops
@@ -147,8 +150,8 @@ def _build():
     # LEG-STUB grooves (Y-INSTALL round — user: the stubs print on their
     # side and SLIDE IN ALONG Y): cut this end's corner negatives from the
     # SAME shared source the chassis uses (legs.corner_groove_negatives).
-    # For the keyhead that hosts: the 44-long END-WALL groove (x -631.2,
-    # the wall centreline — its blind inboard end is the stub's flush hard
+    # For the keyhead that hosts: the 44-long END-WALL rebate (against
+    # the wall's inner face — its blind inboard end is the stub's flush hard
     # stop; the two crossing stow bores just poke its roof, shortening
     # those string tails ~7), the crossing grooves' reach through the
     # endplate's own side-wall band / tab, and nothing of the fin passage
@@ -156,15 +159,15 @@ def _build():
     # below the dovetail sockets (-23.15..-6).
     # relief=False: the 45° overhang wedge relieves the CHASSIS tongue
     # only — cut here it eats the end-wall groove roof (user-caught).
-    # + the per-leg M4 LOCK SCREW ways along x through the end face
-    # (Ø4.6 outboard cheek / Ø3.6 pilot through tongue + inboard cheek).
+    # + the per-leg M4 LOCK PIN along x in from the end face: cadkit's insert pocket
+    # + clearance, shaped from PRINT_UP (the set screw pins the tongue).
     from .legs import (corner_groove_negatives as _cgn,
                        endwall_screw_negatives as _esn)
     for _ly, _s in ((CH.LEG_Y[0], 1.0), (CH.LEG_Y[1], -1.0)):
         for _n in _cgn(CH.LEG_STATIONS_X[1], _ly, _s, -1.0, CH.Z_BOT,
                        relief=False):
             w = w.cut(_n)
-        for _n in _esn(CH.LEG_STATIONS_X[1], _ly, -1.0, CH.Z_BOT):
+        for _n in _esn(CH.LEG_STATIONS_X[1], _ly, -1.0, CH.Z_BOT, PRINT_UP):
             w = w.cut(_n)
     # STRING-END STOWAGE (one per string): a vertical bore set INBOARD of the -X face
     # (the stow bores, 1.6 of wall -X of them) running from near the body top straight DOWN
