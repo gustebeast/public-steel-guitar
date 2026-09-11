@@ -409,8 +409,10 @@ def _adv_cap(i: int) -> float:
 
 
 def turns(i: int) -> float:
-    """Turns for string i: the most WHOLE wraps its lane will take, never under _K_MIN,
-    landing the tail on the exit tangent by construction.
+    """THE LANE'S CAPACITY for string i: the most WHOLE wraps it will take, never under _K_MIN,
+    landing the tail on the exit tangent by construction. It SIZES THE PRINTED PARTS (the SKU A
+    clamp lobe, the SKU B bay, the rod span), so an insert accepts anything from the recommended
+    WRAPS up to this. What a player is told to wind -- and what the assembly draws -- is wraps().
 
     THE WHOLE COUNT IS NOT NEGOTIABLE, because the tail has to leave pointing at its
     channel. Sweeping forward the tangent at phi is (-sin phi, cos phi), so only one
@@ -431,15 +433,37 @@ assert not _K_SHORT, (
     % ([i + 1 for i in _K_SHORT], CLAMP_WIDTHS))
 
 
+# ── WHAT A PLAYER WINDS: 3 WRAPS ON EVERY STRING (user) ────────────────────────
+# The capacity above fills each lane, which drew ~8 wraps on the thinnest strings. That was
+# never the recommendation. The capstan divides the clamp's load by e^(2*pi*MU) = 2.57 per
+# wrap: ~9.3 N at 3 (every string the same, well under the 60 N _WORST_RES allows), ~3.6 at 4,
+# ~0.5 at 6 -- so past the first extra wrap the clamp barely notices, while each wrap costs
+# ~27 mm of string and more winding at every restring. And strings 6, 7, 9 and 10 cannot fit a
+# fourth, so 3 is the one count every slot takes. Still the entry sweep plus a WHOLE number of
+# turns, so the tail leaves on its exit tangent; ~2.93 here, which is also each string's _K_MIN.
+WRAPS = 3
+
+
+def wraps(i: int) -> float:
+    """Turns string i is wound with, as recommended and as drawn: the entry sweep plus the whole
+    number of turns nearest WRAPS. Never under the clamp guarantee, never over the lane."""
+    return _sweep0(i) + max(_k_min(i), round(WRAPS - _sweep0(i)))
+
+
+_WRAPS_BAD = [i + 1 for i in range(D.N_STRINGS) if wraps(i) > turns(i) + 1e-9]
+assert not _WRAPS_BAD, (
+    f"strings {_WRAPS_BAD} cannot fit the recommended {WRAPS} wraps in their lane")
+
+
 def clamp_widths(i: int) -> float:
     """Contact at the clamp, in string widths -- what CLAMP_WIDTHS asked for."""
-    return (turns(i) - 1.0) * WRAP_F + 1.0
+    return (wraps(i) - 1.0) * WRAP_F + 1.0
 
 
 def exit_angle(i: int) -> float:
     """Where string i's tail leaves the rod -- EXIT_DEG, by construction, since turns()
     is built as the entry sweep plus a whole number of revolutions."""
-    return touch_angle(i) + turns(i) * 2 * math.pi
+    return touch_angle(i) + wraps(i) * 2 * math.pi
 
 
 def exit_point(i: int):
@@ -504,7 +528,7 @@ def _adv(i: int) -> float:
 
 def residual(i: int) -> float:
     """Tension still left at the clamp after the wrap — what the clamp actually holds."""
-    return STRING_T * math.exp(-MU * turns(i) * 2 * math.pi)
+    return STRING_T * math.exp(-MU * wraps(i) * 2 * math.pi)       # as WOUND: fewest wraps = worst
 
 
 # ── THE SLIDING INSERT (user) ─────────────────────────────────────────────
@@ -641,6 +665,10 @@ BASS_OFF  = 0.4                                 # the clamp lobe's +Y edge above
                                                 # coil, high enough to abut the neighbour
 
 
+# SKU B's -Y STEP: how far its dowel lobe's -Y edge stands inward (+Y) of its clamp lobe's. The
+# pocket's shoulder there is what stops an insert walking +X; SKU C copies it (user).
+BASS_STEP_LO = INS_LOBE_W / 2 - BASS_OFF        # 1.75
+
 # ── SKU C: STRING 10 ON ITS OWN, AS WIDE AS IT LIKES (user) ─────────────────────
 # The longstanding string-10 clip was SKU B's clamp lobe. It hangs BASS_W from BASS_OFF above
 # its string, which covers strings 8 and 9 with 1.1 to spare but not the outermost: that coil
@@ -649,8 +677,9 @@ BASS_OFF  = 0.4                                 # the clamp lobe's +Y edge above
 # any string). At a .080 it would have been 1.24.
 #
 # String 10 has nothing -Y of it, so its insert can simply be wider. SKU C keeps SKU B's +Y
-# edges -- it still abuts string 9 -- and runs BOTH lobes out to ONE flat -Y edge, so the plan
-# has no -Y step to taper and nothing to print over. That edge covers the coil for every gauge
+# edges -- it still abuts string 9 -- and runs its CLAMP lobe out to SKU_C_LO, with the dowel lobe
+# stepping back in by SKU B's own -Y step (user: that shoulder keeps the insert from walking +X,
+# and the taper up to it prints like every other insert's). That edge covers the coil for every gauge
 # up to D.STRING_GAUGE_MAX with LANE_CLR of air (it is a printed wall, like a finger), on the
 # bead grid from the string's own Y. SAMPLED, not just the two ends: the whole-turn count
 # (_k_min_g) can step between them, and a step is where the coil jumps.
@@ -743,9 +772,12 @@ def insert_lobes(i: int):
     if i < N_FINGERED:
         return ((D.nut_y(i), INS_LOBE_W), (D.nut_y(i) + CLAMP_C, CLAMP_W))
     if i == SKU_C:
-        # SKU C keeps SKU B's +Y edges (it abuts string 9) and runs both lobes to SKU_C_LO.
+        # SKU C keeps SKU B's +Y edges (it abuts string 9). Its clamp lobe runs to SKU_C_LO; its DOWEL
+        # lobe stops BASS_STEP_LO short of that, so the -Y edge steps inward exactly like every other
+        # insert's -- the pocket shoulder that makes is what keeps it from walking +X (user).
         dhi, chi = D.nut_y(i) + INS_LOBE_W / 2, D.nut_y(i) + BASS_OFF
-        return (((dhi + SKU_C_LO) / 2, dhi - SKU_C_LO), ((chi + SKU_C_LO) / 2, chi - SKU_C_LO))
+        dlo = SKU_C_LO + BASS_STEP_LO
+        return (((dhi + dlo) / 2, dhi - dlo), ((chi + SKU_C_LO) / 2, chi - SKU_C_LO))
     # SKU B's dowel lobe is OFFSET -Y, not centred. Centred, a 6.4 lobe reaches 3.2 past
     # the string and left string 7 a 0.79 wall (user). It only has to CONTAIN the dowel,
     # so it is hung from just clear of the dowel's own end and runs -Y from there: the
@@ -795,6 +827,25 @@ def _plan(i: int):
     assert x_s > INS_X0, f"string {i + 1}'s taper starts -X of the insert itself"
     return [(INS_X0, ylc), (x_s, ylc), (x_e, yld), (INS_X1, yld),
             (INS_X1, yhd), (x_e, yhd), (x_s, yhc), (INS_X0, yhc)]
+
+
+# SKU C'S -Y TAPER RUNS OVER STRING 10'S COIL. The step (BASS_STEP_LO) tapers in from x_s to x_e,
+# and the coil's +X extreme (at rod-axis height) reaches into that run -- so the tapered pocket edge
+# has to clear the coil there, for every gauge SKU C takes. The edge only moves +Y going +X, so the
+# tightest point is the furthest +X the coil gets. Guarded because the margin is thin at a .080.
+def _sku_c_taper_gap(g: float) -> float:
+    (x_s, y_s), (x_e, y_e) = _plan(SKU_C)[1], _plan(SKU_C)[2]
+    x1 = min(ROD_X + ROD_D / 2.0 + g, x_e)
+    if x1 <= x_s:
+        return float("inf")                     # the coil stops short of the taper
+    edge = y_s + (y_e - y_s) * (x1 - x_s) / (x_e - x_s) - _clr(SKU_C)
+    return outer_coil_lo(g) - edge
+
+
+_SKU_C_TAPER_GAP = min(_sku_c_taper_gap(g) for g in _SKU_C_GAUGES)
+assert _SKU_C_TAPER_GAP >= 0.0, (
+    f"string 10's coil reaches {-_SKU_C_TAPER_GAP:.2f} past SKU C's tapered pocket edge for some gauge "
+    f"up to {D.GAUGE_MAX_IN:.3f} in -- the -Y step has been drawn over the winding")
 
 
 def _plan_wire(i: int):
@@ -1057,42 +1108,46 @@ def wrap_y(i: int) -> tuple[float, float]:
     return y0, y0 - _adv(i)
 
 
+def wrap_y_drawn(i: int) -> tuple[float, float]:
+    """(start, end) Y of string i's coil AS WOUND (wraps), for the assembly. wrap_y is the lane's
+    capacity and sizes the printed parts; this is what the strings actually take up."""
+    y0 = D.nut_y(i)
+    return y0, y0 - wraps(i) * WRAP_F * D.STRING_GAUGE[i]
+
+
 def rod_span() -> tuple[float, float]:
     """(y0, y1) the rod has to cover: every bay plus a bearing length in the end walls."""
     lo = min(_lane(i)[1] for i in range(D.N_STRINGS))
     return lo - 2 * D.BEAD, D.nut_y(0) + 2 * D.BEAD
 
 
-# THE ROD IS A PURCHASED LENGTH (user: the bridge axle's Ø8 x 100), so it no longer ends where
-# the bays do. The +Y end keeps its place against the blind wall; the surplus runs -Y past the
-# last bay, outboard of the string field, and the block grows that way to carry it (Y_LO). The
-# instrument's -Y rail stands much further out than the +Y one, so that is where the room is.
-ROD_L = D.BRIDGE_AXLE_L
-_ROD_NEED_Y0, ROD_Y1 = rod_span()
-ROD_Y0 = ROD_Y1 - ROD_L
-assert ROD_Y0 <= _ROD_NEED_Y0 + 1e-9, (
-    f"the {ROD_L:g} mm rod reaches only {ROD_Y0:.2f}, short of the {_ROD_NEED_Y0:.2f} its bays need")
-ROD_END_W = D.MIN_WALL_2P                       # the +Y bore is BLIND; that wall is the stop
+ROD_END_W = D.MIN_WALL_2P                       # the rod's +Y stop: the blind wall it butts
 assert abs(outer_coil_lo(D.STRING_GAUGE[SKU_C])
            - (wrap_y(SKU_C)[1] - D.STRING_GAUGE[SKU_C] / 2)) < 1e-9, (
     "outer_coil_lo has drifted from wrap_y -- SKU C would be sized off a coil that is not the one drawn")
-# THE BLOCK IS NOW AS WIDE AS THE WRAP FIELD, not as wide as the clamp field. The .070
-# marches 6.53 mm OUTWARD past the last string -- that free air is exactly what buys it
-# 3.5 turns -- so the -Y end of the rod lands 0.12 outside the old half-width. Take the
-# wider of the two requirements and put the surplus on the bead grid, so the block grows
-# by whole beads rather than by whatever the gauge table happens to ask for.
-# The block reaches the OUTERMOST INSERT plus a wall. It used to be sized from the
-# clamp inserts' O6 pockets, which no longer exist.
-Y_WALL    = 8.0                                 # outer wall past the last insert
-_HW_CLAMP = D.nut_y(0) + INS_LOBE_W / 2 + Y_WALL
-_HW_NEED = max(_HW_CLAMP, ROD_Y1 + ROD_END_W)
-HW = D.nut_y(0) + math.ceil((_HW_NEED - D.nut_y(0)) / D.BEAD - 1e-9) * D.BEAD   # the +Y face
-# THE -Y FACE: the clamp field's mirror of HW, or ROD_END_W past the rod's -Y end so the rod
-# sits recessed in its open entry bore rather than flush with the face -- whichever is further.
-# With the 100 mm rod it is the rod, by a long way. Same bead grid as HW.
-_YLO_NEED = max(_HW_CLAMP, ROD_END_W - ROD_Y0)
-Y_LO = -(D.nut_y(0) + math.ceil((_YLO_NEED - D.nut_y(0)) / D.BEAD - 1e-9) * D.BEAD)
-assert ROD_Y0 - ROD_END_W >= Y_LO - 1e-9, "the rod's -Y end has run out of block to sit in"
+
+# ── THE TOP PRISM IN Y: SET BY THE INSERTS, NOT BY THE ROD (user) ─────────────────
+# It used to grow -Y until it covered the whole 100 mm rod, which stretched it to -70.85 for no
+# structural reason. Now both faces come from the inserts:
+#   +Y FACE  string 1's pocket plus Y_WALL of solid for strength, on the bead grid.
+#   -Y FACE  the SAME length of material copied past string 10's pocket, so the block is
+#            symmetric about the insert field.
+Y_WALL  = 8.0                                   # solid past the outermost insert, for strength
+_INS_HI = max(y + w / 2.0 for (y, w) in insert_lobes(0)) + _clr(0)          # string 1's pocket, +Y
+_INS_LO = min(y - w / 2.0 for (y, w) in insert_lobes(SKU_C)) - _clr(SKU_C)  # string 10's pocket, -Y
+HW   = D.nut_y(0) + math.ceil((_INS_HI + Y_WALL - D.nut_y(0)) / D.BEAD - 1e-9) * D.BEAD   # the +Y face
+Y_LO = _INS_LO - (HW - _INS_HI)                                                             # the -Y face
+
+# THE ROD butts a ROD_END_W wall at the +Y face -- that wall IS its +Y stop -- and being a purchased
+# 100 mm (the bridge axle's Ø8 x 100), it ends wherever that puts it: out past the -Y face, lying in
+# the insertion run rod_bore cuts through the endplate below. The block no longer grows to hide it.
+ROD_L  = D.BRIDGE_AXLE_L
+ROD_Y1 = HW - ROD_END_W
+ROD_Y0 = ROD_Y1 - ROD_L
+_ROD_NEED_Y0, _ROD_NEED_Y1 = rod_span()
+assert ROD_Y1 >= _ROD_NEED_Y1 - 1e-9 and ROD_Y0 <= _ROD_NEED_Y0 + 1e-9, (
+    f"the {ROD_L:g} mm rod spans {ROD_Y0:.2f}..{ROD_Y1:.2f}, short of the "
+    f"{_ROD_NEED_Y0:.2f}..{_ROD_NEED_Y1:.2f} its bays need")
 
 # Checked at import, because both are functions of the GAUGE TABLE: a different string
 # set has to re-earn them rather than quietly go out of spec.
@@ -1366,8 +1421,13 @@ def rod_bore() -> cq.Workplane:
     block stops and the keyhead endplate's base prism begins -- and that prism, fused in
     afterwards, fills the bottom of the bore straight back in (905 mm3 of rod buried in the
     endplate, the refill trap). So keyhead_endplate re-cuts this after its unions."""
-    return teardrop_hole(ROD_BORE, (ROD_Y1 - ROD_Y0) + 20.0,
-                         axis_point=(ROD_X, ROD_Y0 - 20.0, ROD_Z),
+    # THE INSERTION RUN IS THE ROD'S WHOLE LENGTH (user). The rod goes in from -Y, so before it
+    # is pushed home it lies entirely -Y of its seat -- and the Ø8 rod dips below the deck plane,
+    # where the keyhead's base stands. A 20 mm lead-out left that base blocking the other 80
+    # (the rod could not be slid into position). keyhead_endplate asserts this run clears its
+    # -Y face.
+    return teardrop_hole(ROD_BORE, (ROD_Y1 - ROD_Y0) + ROD_L,
+                         axis_point=(ROD_X, ROD_Y0 - ROD_L, ROD_Z),
                          axis_dir=(0.0, 1.0, 0.0), print_up=PRINT_UP)
 
 
