@@ -87,6 +87,12 @@ _ex("clearance",
 
 # Real objects. These are measurements, not choices.
 _ex("hardware",
+    bar_latch__SCREW_L="a stock M4x30 button head's length (hardware)",
+    bar_latch__SPR_REST_L="the coil's installed length: its free length less a light preload (hardware)",
+    leg_stack__M4_PILOT_D="thread-forming pilot for an M4 screw, the one the body "
+                          "stub's pins already use",
+)
+_ex("hardware",
     MOTOR_SQ="NEMA17 body 42.3 sq (SERVO42D)",
     MOTOR_PCB_LEN="SERVO42D driver PCB stack",
     NEMA17_BOLT_SQ="NEMA17 bolt circle 31.0",
@@ -256,6 +262,19 @@ _ex("hardware",
 
 # Gaps, not material. Always sub-bead; the grid does not apply.
 _ex("clearance",
+    # the redesigned leg -- every one a GAP or a hole, not material
+    leg_stack__FIT="tenon-in-mortise slide fit on every face of the octagon",
+    leg_stack__ADAPT_BOLT_D="M4 clearance hole through the adapter's end wall",
+    leg_latch__CLR="latch slider sliding clearance in its pocket, notch and recess",
+    leg_latch__SLIDE_CLR="latch slider body's clearance to the bore, sized for two "
+                         "oversize prints",
+    leg_latch__REST_OUT="= CLR * sqrt2: how far the spring pushes the slider out "
+                        "before its flanks meet the bore -- a clearance, not material",
+    leg_latch__SHRINK_ADAPTER="= SLIDE_CLR + REST_OUT: clearances only",
+    leg_latch__CH_FLOOR="= the mortise's roof + 0.5 standoff so the hook never rubs "
+                        "the tenon beside it: grid-derived plus a CLEARANCE",
+)
+_ex("clearance",
     FIT_CLR="slip fit",
     NUT_PIN_CLR="dowel drop-in fit",
     BOOL_OVERSHOOT="boolean cutter overshoot, not a feature",
@@ -351,6 +370,10 @@ _ex("clearance",
 # the lever and buried its tenons in solid rib (3021 mm^3). Snapped and reverted
 # 2026-08-06; chassis now asserts MOUNT_X lands on a rib.
 _ex("layout",
+    leg_latch__BUTTON_SIDE="a direction SIGN (-1: the latch button faces -Y), "
+                           "not a length",
+)
+_ex("layout",
     MOTOR_X0="first motor offset -- sized for a >=100 mm free belt span",
     MOTOR_X_STEP="motor pitch = 42.3 body + tension slot; drives the rib comb",
     MOTOR_PULLEY_STANDOFF="pulley clamp position on the motor shaft (purchased-part pose)",
@@ -392,7 +415,8 @@ _ex("layout",
     TENON_L="the fine-stage law: travel 142 + overlap 50 + 5 dead",
     SH_CLR="shaft-sleeve octagon SLIDE fit per side (the fine stage strokes)",
     SH_H="slider roof pinned at the section joints' -14 roof plane (shared profile)",
-    STUB_RIDGE_EP="end-wall tongue at the endplate end wall's centreline (tip - 5)",
+    STUB_TNG_FIT="coupon fit on the end-wall rebate's outboard face",
+    STUB_TNG_REBATE_IN="clearance: the rebate reaches into the endplate<->shell gap",
     TRRS_DX="TRRS blind-mate axis in the octagon flare band (clearances quoted in situ)",
     TRRS_DY="TRRS axes ride the profile's deep waist (= groove inscribed-circle centre)",
     LATCH_FOOT="FEET index (which foot carries the latch; None = no latch) -- not a length",
