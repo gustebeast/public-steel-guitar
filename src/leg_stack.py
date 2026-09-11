@@ -269,11 +269,11 @@ assert LADDER_SKIN >= D.MIN_WALL_2P
 #     use that space; the leg slides out that far to reach it)
 #   * one rectangular END-WALL TONGUE into a rebate against the endplate wall's
 #     inner face; its blind end is the flush hard stop
-#   * an M4 SHEAR PIN dropping down the rail web into the INBOARD ridge (Y
-#     retention; the chassis already has its way), with a SECOND hole SERVICE_SLIDE
-#     inboard that locks the leg in its slid-out service position
-#   * an M4 set-screw LOCK PIN along X, threaded in a heat-set insert in the
-#     endplate's end wall and crossing the tongue through a clearance hole
+#   * ONE SCREW (user): an M4 set-screw LOCK PIN along X, threaded in a heat-set
+#     insert in the endplate's end wall and crossing the tongue through a clearance
+#     hole. It locks the leg in the body and the endplate to the chassis. With a
+#     service slide set, a SECOND tongue hole SERVICE_SLIDE inboard takes the same
+#     screw with the leg slid out to its service position.
 # The ridges are undercut, so this joint SLIDES IN ALONG Y from outboard -- the
 # adapter cannot go straight up. It is the semi-permanent half: fitted once.
 assert abs(LG.SQ_W - LEG_W) < 1e-9, "the body's mortises were cut for a %.1f leg" % LG.SQ_W
@@ -281,8 +281,6 @@ SYG = 1.0 if LEG_Y > sum(CH.LEG_Y) / 2 else -1.0            # this corner's outb
 EGX = -1.0 if sum(CH.LEG_STATIONS_X) / 2 > LEG_X else 1.0   # this corner's outboard
                                                             # X sign, as the chassis
                                                             # computes it
-M4_PILOT_D = 3.6                  # thread-forming M4 pilot (the chassis-side ways
-                                  # are the clearance holes)
 
 
 # ── the section, as solids on the leg's axis ────────────────────────────────
@@ -444,7 +442,6 @@ def body_adapter(sx: float = LEG_X, ly: float = LEG_Y):
     from . import leg_latch as LL
     egx = -1.0 if sum(CH.LEG_STATIONS_X) / 2 > sx else 1.0   # the corner's outboard x
     syg = 1.0 if ly > sum(CH.LEG_Y) / 2 else -1.0            # ...and y signs
-    y_rail = CH.Y_HI if syg > 0 else CH.Y_LO                 # the rail its screw drops down
     b = box_at(LEG_W, LEG_W, ADAPT_L, x=LEG_X, y=LEG_Y, z=(Z_BUTT + Z_TOP) / 2.0)
     # BLIND mortise: open at the butt face, closed at the mortise roof
     b = b.cut(mortise_cutter(Z_BUTT - 1.0, Z_MORTISE_ROOF))
@@ -455,7 +452,6 @@ def body_adapter(sx: float = LEG_X, ly: float = LEG_Y):
     b = b.translate((sx - LEG_X, ly - LEG_Y, 0.0))
     # BODY TENONS, on the top face (see BODY JOINERY). Both ridges and the tongue
     # run the full LEG_W along Y, the slide axis.
-    ridge_roof = Z_TOP
     mid_cut = LG.service_slide(egx, syg)
     for i, dx in enumerate(LG._cross_x(egx)):
         cut = mid_cut if i == 0 else 0.0        # the middle ridge gives up its inboard end
@@ -463,25 +459,17 @@ def body_adapter(sx: float = LEG_X, ly: float = LEG_Y):
             continue
         y0 = ly - LEG_W / 2.0 + (cut if syg > 0 else 0.0)
         ridge = LG._stub_ridge(LEG_W - cut).translate((sx + dx, y0, Z_TOP))
-        ridge_roof = max(ridge_roof, ridge.val().BoundingBox().zmax)
         b = b.union(ridge)
     b = b.union(box_at(LG.STUB_TNG_W, LEG_W, LG.STUB_TNG_H,
                        x=sx + egx * LG.STUB_RIDGE_EP, y=ly,
                        z=Z_TOP + LG.STUB_TNG_H / 2.0))
-    # M4 SHEAR PIN pilot: down into the INBOARD ridge, on the rail's centreline
-    # where the chassis drops its way. Sideways to the print: via cadkit.
-    x_pin = sx + LG._cross_x(egx)[1]
-    for y_pin in (y_rail,) + ((y_rail - syg * mid_cut,) if mid_cut else ()):
-        # the second: where the rail's screw lands with the leg slid out SERVICE_SLIDE
-        # (legs.SERVICE_SLIDE), so the screw locks it in that service position
-        assert abs(y_pin - ly) + M4_PILOT_D / 2 + D.MIN_WALL_2P <= LEG_W / 2, (
-            "SERVICE_SLIDE puts the service screw hole off the end of the ridge")
-        b = b.cut(teardrop_hole(M4_PILOT_D, 12.0, (x_pin, y_pin, ridge_roof - 12.0),
-                                (0.0, 0.0, 1.0), ADAPTER_UP))
-    # M4 LOCK PIN: the set screw from the endplate's insert crosses the tongue here,
-    # through a clearance hole -- the same legs helper the endplate's half comes from,
-    # shaped by cadkit from this part's print direction
-    b = b.cut(LG.tongue_pin_cutter(sx, ly, egx, Z_TOP, ADAPTER_UP))
+    # M4 LOCK PIN, the adapter's ONLY screw (user): the set screw from the endplate's
+    # insert crosses the tongue along X, locking the leg in the body and the endplate to
+    # the chassis. Its SECOND hole, SERVICE_SLIDE inboard along the tongue, is where that
+    # screw lands with the leg slid out to its service position (legs.SERVICE_SLIDE).
+    # The same legs helper the endplate's half comes from, shaped by cadkit.
+    for dy in (0.0,) + ((-syg * mid_cut,) if mid_cut else ()):
+        b = b.cut(LG.tongue_pin_cutter(sx, ly + dy, egx, Z_TOP, ADAPTER_UP))
     return b
 
 

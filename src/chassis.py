@@ -485,27 +485,18 @@ def _build_full() -> cq.Workplane:
     # side-face openings are filled flush by the ridge ends), and whatever
     # chassis crosses the corner (kept shell, seat rib, the +X comb rib)
     # gets tunnelled for extra engagement. The end-wall groove's blind end
-    # (in the endplate) is the flush hard stop. ONE vertical M4 per stub
-    # drops down the rail web from under the deck into the INBOARD ridge
-    # = the Y-retention SHEAR PIN: Ø8.4 head well to Z_BOT+30 (3 mm hex
-    # key reaches through it), Ø4.6 shaft way on down to the groove, Ø3.6
-    # pilot in the ridge. Screw: M4×35 (head -45.15, tip -80.15).
-    from .legs import corner_groove_negatives as _cgn, _cross_x as _cx
+    # (in the endplate) is the flush hard stop. There is NO screw down the rail web
+    # any more (user): the leg's one screw is the endplate's lock pin across the
+    # end-wall tongue (legs.endwall_screw_negatives), which also locks the endplate
+    # to the chassis.
+    from .legs import corner_groove_negatives as _cgn
     _xc_mid = sum(LEG_STATIONS_X) / 2
     for _sx in LEG_STATIONS_X:
         _egx = -1.0 if _xc_mid > _sx else 1.0       # outboard x sign
-        _xm4 = _sx + _cx(_egx)[1]                   # inboard crossing ridge
-        for _yr, _s in ((Y_HI, 1), (Y_LO, -1)):
+        for _s in (1, -1):
             _lc = LEG_Y[0] if _s > 0 else LEG_Y[1]  # flush leg centreline
             for _n in _cgn(_sx, _lc, float(_s), _egx, Z_BOT):
                 body = body.cut(_n)
-            body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-                2.3, 24.5, cq.Vector(_xm4, _yr, Z_BOT + 6.0),
-                cq.Vector(0, 0, 1))))
-            body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-                4.2, (TP_GZ0 - TP_TG_DEPTH - 0.1) - (Z_BOT + 30.0),
-                cq.Vector(_xm4, _yr, Z_BOT + 30.0),
-                cq.Vector(0, 0, 1))))
     # (the old y-33 / z-70.6 Ø7 harness window is GONE — the wired
     # corner's pigtail now rides the OVER-RIB raceway lane at y 50.5,
     # cut with the wide corner ribs above)
