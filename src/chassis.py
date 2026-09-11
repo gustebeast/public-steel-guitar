@@ -180,8 +180,15 @@ def _rib_positions():
     return sorted(base + mids)   # _RIB_X is trimmed against the leg stubs below
 
 _RIB_X = _rib_positions()
+# TARGETS MOVED (user's drop-in motor pockets, 2026-09-11): a housing is now 62.3 wide on a
+# 43.9 pitch, so it reaches 31.15 past its own motor and the segment that OWNS that motor
+# carries the whole overhang. A segment's real footprint is therefore its end motors +-31.15,
+# not the split planes -- the old targets left segment 0 at 265.5, over the bed. These put one
+# motor in segment 0 and five/four in the others. BED_X asserts the lengths; wiring asserts
+# that neither plane lands in the RAIL NOTCH at motor 9, where the trunk dips outboard -- a
+# split there puts its tenon back through the dip (5 wires were buried in it).
 SPLIT_X  = [D.rib_comb_x(_t - D.MOTOR_X_STEP / 4) + D.MOTOR_X_STEP / 4
-            for _t in (-216.5, -446.5)]  # 2 cuts → 3 segments < 255 mm, each at the MIDDLE of the rib gap nearest its target, in a
+            for _t in (-205.0, -409.5)]  # 2 cuts → 3 segments < BED_X, each at the MIDDLE of the rib gap nearest its target, in a
                                        # 13 mm gap BETWEEN two ribs. The cut straddles a 43-wide motor
                                        # plate, but that plate is fused WHOLE into the segment that owns
                                        # its motor (see _segments): it overhangs the cut plane with its
@@ -710,8 +717,23 @@ def _segments():
                 seg = seg.union(MB.plates[mi])
             else:                                     # a neighbour's plate may overhang in: relieve it
                 seg = seg.cut(MB.plates[mi])
+            # the -Y-most motors' back stop is a ramp off the RAIL, which is ours to build
+            if b < mx < a and MB.back_stop_kind(mi) == "rail":
+                seg = seg.union(MB.back_stop_rail(mi, Y_LO + T / 2))
+        # ...and only NOW the motors' retaining screws. Cut before the fuse above, each hole
+        # would be refilled by the neighbouring housing that lands in the same band -- the
+        # refill trap the endplates already document.
+        for _sc in MB.screw_cutters:
+            seg = seg.cut(_sc)
         segs.append(_largest(seg))
     return segs
 
 
 segments = _segments()
+
+BED_X = 255.0                          # the printer's X, the reason the chassis is in pieces
+for _si, _seg in enumerate(segments):
+    _sl = _seg.val().BoundingBox().xlen
+    assert _sl <= BED_X + 1e-6, (
+        "chassis segment %d is %.1f long, over the %.0f bed -- move SPLIT_X (remember each "
+        "segment carries its end motors' housings, 31.15 past the motor)" % (_si, _sl, BED_X))

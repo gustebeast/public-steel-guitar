@@ -109,6 +109,8 @@ WIRE_D = 2.0          # default (shielded-pair size)
 # mount on the rail (each on a pcb_cradle); every motor's drop pigtail reaches from its
 # -Y-facing PCB out to its tee. Past m9 the rail is notched (chassis motor-9 cable cut).
 from .chassis import Y_LO as _Y_LO, T as _RAIL_T
+from .chassis import SPLIT_X as CH_SPLIT_X
+from . import motor_bank as MB                          # back_y: where each motor's pigtail leaves
 from .motor_bank import FLOOR_TOP as _RIB_TOP           # -65.15 (rib tops = above = rib-free)
 RAIL_INNER_Y = _Y_LO + _RAIL_T / 2                       # -128.75: -Y rail inner face
 RAIL_Y = RAIL_INNER_Y + 4.5                              # trunk corridor centre, hugging the rail
@@ -124,6 +126,17 @@ LANE_DAC   = -44.0       # DAC -> AFE
 LANE_CTRL  = -42.0       # relay control / CAN bus B
 # NOTE: LANE_* are now Z heights along the RAIL_Y corridor (not lane y's).
 TEE_Z = _RIB_TOP + 4 * D.BEAD                            # 3.2 of printed cradle on the rib tops
+# the motor pockets stop short of this corridor (motor_bank.HARNESS_Y1) -- keep the two in step,
+# or a pocket lands on a tee board or in a trunk lane (it did, once)
+# the TRUNK wires set the corridor top -- the motor pigtails are fat (3.4) but ride down at
+# -52 with the tee headers, not up in the lanes
+_TRUNK_OD = max(od for nm, od in WIRE_OD.items() if nm != 'motor_pigtail')
+_CORR_Y1 = max(TEE_Y + EL.TEE_BOARD_Y / 2, RAIL_Y + _TRUNK_OD / 2)
+_CORR_Z1 = max(LANE_AUDIO, LANE_CAN, LANE_PWR, LANE_USB, LANE_DAC, LANE_CTRL) + _TRUNK_OD / 2
+assert _CORR_Y1 <= MB.HARNESS_Y1 and _CORR_Z1 <= MB.HARNESS_Z1, (
+    "the harness corridor now reaches y %.2f / z %.2f, past motor_bank's HARNESS_Y1 %.2f / "
+    "HARNESS_Z1 %.2f -- the motor pockets stop at those" % (_CORR_Y1, _CORR_Z1,
+                                                            MB.HARNESS_Y1, MB.HARNESS_Z1))
 HDR_Z = -54.0                                            # lifted tee header top (wire entry z)
 
 
@@ -154,6 +167,13 @@ CUTOUT_Y = RAIL_INNER_Y - 1.25           # trunk dip: just past m9's back into t
                                          # shallow enough that even the Ø2.6 USB stays inside the cut
 
 
+# a chassis split inside the notch would fill the dip back in with its joint
+assert not any(M9_X0 - 4.0 < _s < M9_X1 + 4.0 for _s in CH_SPLIT_X), (
+    "a chassis split plane (%s) lands in motor 9's rail notch %.1f..%.1f, where the trunk dips "
+    "outboard -- its tenon will fill the dip" % ([round(_s, 2) for _s in CH_SPLIT_X],
+                                                 M9_X0, M9_X1))
+
+
 def _rail_pts(x0, x1, z):
     """Points riding the -Y rail corridor (RAIL_Y) from x0 to x1 at height z, dipping
     OUTBOARD to CUTOUT_Y across motor 9's X-span (its body reaches RAIL_Y; the rail is
@@ -168,7 +188,7 @@ def _rail_pts(x0, x1, z):
 
 # ── tee stations (all on the -Y rail corridor) ────────────────────────────
 def _motor_back(i):
-    return D.motor_pos(i)[1] - 84.0          # -Y-most face of motor i (PCB back)
+    return MB.back_y(i)                      # -Y-most face of motor i (PCB back)
 
 
 def tee_stations():
