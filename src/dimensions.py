@@ -121,7 +121,9 @@ PEDAL_LID_FOOT_W = 30 * BEAD   # 24.0 dovetail foot (both asserts hold: bar skin
 # achieved height against this datum, which is what keeps the chain honest if any
 # of the three terms moves.
 PEDAL_AXLE_H     = 0.8 * 60   # 48.0 — axle centre above the floor (user)
-PEDAL_BAR_H      = 27.9     # = PEDAL_AXLE_H - legs.FOOT_H(12) - foot_pedal.HOUS_X1(8.1);
+PEDAL_BAR_H      = 27.9     # the bar; foot_pedal.HOUS_X1 = PEDAL_AXLE_H - FOOT_H(12) - this (8.1).
+                            # (was solved the other way, from HOUS_X1; the housing is fused into
+                            # the bar, so the 688ZZ race wall comes out of bar material instead)
                             # spelled out rather than imported (legs/foot_pedal both
                             # read this module — the import only goes one way).
                             # Must still HOST the lid, which is the constraint that
@@ -608,6 +610,10 @@ assert _NUT_BRG_GAP >= 1.0 - 1e-9, (
 #   FAR row  — the FLOOR faces the seat, tangent to the bore, inside the seat's own teardrop
 #              apex void, so nothing is notched.
 # Either way the barrel passes the 688's OD with 0.3 to spare (8.0 + 2.0 + 0.3 = 10.3 < 10.4).
+# ...EXCEPT WHERE A LEG STANDS UNDER THE CHANNEL (user, 2026-09-11). The +Y bridge-end leg sits
+# right under strings 1-3, so a hand cannot reach up there; those strings get no channel and
+# thread in through the changer room's open +X face instead (bridge_endplate.access_blocked
+# decides it from the leg stations, so it follows the legs).
 STRING_ACCESS_D = 6 * BEAD                      # 4.8 house width (user)
 STRING_ACCESS_H = 6 * BEAD                      # 4.8 house wall height, roof on top (user)
 _ACCESS_PASS_R  = STRING_NUT_D / 2 + 0.3        # 2.3 — the Ø4 swaged end's passage, for the standoff

@@ -83,6 +83,23 @@ def access_cutter(i: int, z0: float, z1: float) -> cq.Workplane:
                       axis_point=(D.string_access_x(i), D.string_y(i), z0),
                       axis_dir=(0.0, 0.0, 1.0), print_up=PRINT_UP, wall=D.STRING_ACCESS_H)
 
+
+def access_blocked(i: int) -> bool:
+    """True where a LEG stands under string i's channel, so no hand can feed that string up
+    from below (user, 2026-09-11: strings 1-3 sit over the +Y bridge-end leg). Those strings
+    get no channel at all -- not in the rail plate, not in the chassis floor -- and thread in
+    through the changer room's open +X face instead.
+
+    Plan-view overlap of the channel's house footprint (X from apex to floor, Y the house
+    width) with every leg's square, read from chassis' own leg stations, so the answer moves
+    with the legs."""
+    ax, y = D.string_access_x(i), D.string_y(i)
+    x0, x1 = ax - D.STRING_ACCESS_H, ax + D.STRING_ACCESS_D / 2
+    y0, y1 = y - D.STRING_ACCESS_D / 2, y + D.STRING_ACCESS_D / 2
+    hw = CH.LEG_W / 2
+    return any(x0 < sx + hw and x1 > sx - hw and y0 < ly + hw and y1 > ly - hw
+               for sx in CH.LEG_STATIONS_X for ly in CH.LEG_Y)
+
 X0   = CH.X_BRIDGE                 # cap -X face / field<->cap boundary: the field stays
                                    #   OPEN -X of here (carriage sweep / strings / rods)
 # 25 mm block CENTERED on the bearing axle (the highest-load string-turn point), so the
@@ -633,6 +650,8 @@ def _build() -> cq.Workplane:
     # AFTER the seat re-cut and every union above, so nothing fuses back into them. Straight
     # up the Z axis, which the -X print direction makes a sideways hole: hence the house cut.
     for i in range(D.N_STRINGS):
+        if access_blocked(i):          # a leg is under it: that string threads in from +X
+            continue
         body = body.cut(access_cutter(i, _SR_BOT - 1.0, _SR_TOP + 1.0))
     # (no +X deck-lock shelf / capture groove / dropped section / -Y roof: the solid
     #  base over the rail ends now IS the cross-tie + the deck panels' +X stop; the
@@ -819,20 +838,20 @@ def _build() -> cq.Workplane:
     # SAME shared source the chassis uses (legs.corner_groove_negatives),
     # so the end-wall groove continues seamlessly across the kept-shell /
     # endplate boundary at the rail bands. The bridge hosts the 44-long
-    # END-WALL groove at x 3.6 (wall centreline; blind inboard end = the
+    # END-WALL rebate against the wall's inner face ( blind inboard end = the
     # flush hard stop) — its band (bed..bed+7.34) sits far below the jack
     # recess floor (-55) and the guide windows.
     # relief=False: the 45° overhang wedge relieves the CHASSIS tongue
     # only — cut here it eats the end-wall groove roof (user-caught).
-    # + the per-leg M4 LOCK SCREW ways along x through the end face
-    # (Ø4.6 outboard cheek / Ø3.6 pilot through tongue + inboard cheek).
+    # + the per-leg M4 LOCK PIN along x in from the end face: cadkit's insert pocket
+    # + clearance, shaped from PRINT_UP (the set screw pins the tongue).
     from .legs import (corner_groove_negatives as _cgn,
                        endwall_screw_negatives as _esn)
     for _ly, _s in ((CH.LEG_Y[0], 1.0), (CH.LEG_Y[1], -1.0)):
         for _n in _cgn(CH.LEG_STATIONS_X[0], _ly, _s, 1.0, CH.Z_BOT,
                        relief=False):
             body = body.cut(_n)
-        for _n in _esn(CH.LEG_STATIONS_X[0], _ly, 1.0, CH.Z_BOT):
+        for _n in _esn(CH.LEG_STATIONS_X[0], _ly, 1.0, CH.Z_BOT, PRINT_UP):
             body = body.cut(_n)
     # PANEL I/O (the instrument's right face): the base's +X end wall is CH.T (10)
     # thick -- too deep for the jacks (their bodies span x -16..6) -- so RECESS its
