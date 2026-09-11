@@ -966,10 +966,14 @@ def corner_groove_negatives(station: float, ly: float, syg: float,
     if not relief:
         return negs
     zr = z_bot + (STUB_TNG_H + STUB_TNG_FIT) + 0.3
-    # from the rebate's INBOARD edge (a rebate has no inboard cheek, so no flat run
-    # of chassis roof is left over the tongue) out to 1 past its outboard wall
-    xg = station + egx * r_in
-    RCH = (r_out - r_in) + 1.0
+    # From the kept SHELL'S FACE, not the rebate's inboard edge: in the rail band the
+    # chassis's rail end runs on across that face, and starting at the rebate's edge
+    # left a 0.2 skin of it standing between the two -- a hairline fin at every corner
+    # (user-caught). Out to D.MIN_WALL_2P inside the end face, past the endplate's rail
+    # socket, so no finger of the rail end is left standing beside that socket either.
+    x_in = STUB_WALL_IN - SHELL_GAP - 0.01
+    xg = station + egx * x_in
+    RCH = (SQ_W / 2 - D.MIN_WALL_2P) - x_in
     prof = [(xg, zr), (xg + egx * RCH, zr + RCH),
             (xg + egx * RCH, z_bot - 1.0), (xg, z_bot - 1.0)]
     yw0 = ly + syg * 10.5
