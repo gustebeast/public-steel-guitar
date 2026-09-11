@@ -393,7 +393,10 @@ def adjust_tenon(top: float = Z_ADJ_TEN_TOP):
         # a plain round bore at 45 to the tenon's diagonal build.
         t = t.cut(_from_plus_x(ADJ_HOLE_D, z, LEG_X + LADDER_BOTTOM_X, TENON_UP,
                                limit_deg=TEN_HOLE_LIMIT_DEG))
-    return t
+    # the PEDAL BAR's latch hooks this end: its retention pocket and lead-in chamfer,
+    # placed from where this tenon seats in the bar (src.bar_latch)
+    from . import bar_latch as BL
+    return t.cut(BL.tenon_cut(top - ADJ_TEN_L + ENGAGE))
 
 
 def fixed_tenon():
@@ -506,14 +509,17 @@ SLIDER_UP = (1.0, 0.0, 0.0)        # the latch slider builds -X -> +X (user): it
                                    # style LAYER-SUPPORT test, not just face angles: a
                                    # face-angle probe passed an earlier diagonal build
                                    # whose pad wing hung from its tip in mid-air.
+BAR_FRAME_UP = (0.0, 0.0, -1.0)    # the pedal bar's yoke latch prints TOP FACE DOWN:
+                                   # its pad and spring lugs grow up off the ring
+                                   # (src.bar_latch)
 PRINT_UP = {"adjust_sleeve": SLEEVE_UP, "fixed_sleeve": SLEEVE_UP,
             "body_adapter": ADAPTER_UP,
             "adjust_tenon": TENON_UP, "fixed_tenon": TENON_UP,
-            "latch_slider": SLIDER_UP}
+            "latch_slider": SLIDER_UP, "bar_latch_frame": BAR_FRAME_UP}
 PRINT_ROT = {"adjust_sleeve": ((1, 0, 0), -90), "fixed_sleeve": ((1, 0, 0), -90),
              "body_adapter": ((1, 0, 0), 90),
              "adjust_tenon": ((-1, 1, 0), 90), "fixed_tenon": ((-1, 1, 0), 90),
-             "latch_slider": ((0, 1, 0), -90)}
+             "latch_slider": ((0, 1, 0), -90), "bar_latch_frame": ((1, 0, 0), 180)}
 
 
 def _rotated(v, axis, deg):
@@ -540,6 +546,12 @@ def latch_slider():
     return LL.slider()
 
 
+def bar_latch_frame():
+    """The pedal bar's yoke latch -- built in bar_latch, living in the bar's tower."""
+    from . import bar_latch as BL
+    return BL.frame(Z_BAR_MOUTH)
+
+
 PARTS = {
     "adjust_sleeve": adjust_sleeve,
     "adjust_tenon": adjust_tenon,
@@ -547,6 +559,7 @@ PARTS = {
     "fixed_tenon": fixed_tenon,
     "body_adapter": body_adapter,
     "latch_slider": latch_slider,
+    "bar_latch_frame": bar_latch_frame,
 }
 
 
@@ -602,4 +615,8 @@ def assembly():
            # the body latch, drawn AT REST (hook out, button proud)
            ("latch_slider", LL.slider()),
            ("latch_spring", LL.spring())]
+    # the pedal bar latch, AT REST (hook in, pad flush)
+    from . import bar_latch as BL
+    out.append(("bar_latch_frame", BL.frame(Z_BAR_MOUTH)))
+    out += [("bar_latch_spring_%d" % i, s) for i, s in enumerate(BL.springs(Z_BAR_MOUTH))]
     return out + pedal_bar_context()
