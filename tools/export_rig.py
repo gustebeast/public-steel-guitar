@@ -70,18 +70,16 @@ _COPEDENT = {
     "P3": {"key": "3", "moves": {2: -1, 6: -1}},           # chart 6: E->D# E->D#
     "P4": {"key": "4", "moves": {3: +2, 4: +2}},           # chart 7: C->D* A->B*  (both split)
     "P5": {"key": "5", "moves": {7: +1, 9: -1, 10: -3}},   # chart 8: C->C# F->E  C->A
-    # KNEE LEVERS — keyed q..y (the QWERTY home row above the pedals' number
+    # KNEE LEVERS — keyed q..t (the QWERTY home row above the pedals' number
     # row, so the two UI rows sit the same way round as the keyboard) strictly LEFT TO RIGHT from the player's seat
     # (user's rule), which is ascending X, the same direction the pedals run.
-    # ILKL therefore takes the leftmost key: it sits one slot -X of LKL. The user
-    # confirmed strict left-to-right over their earlier "a is LKL" example, which
-    # predated their own note that a sixth (inner) lever exists.
-    "ILKL": {"key": "q", "moves": {1: +2}},            # D->E  (whole step)
-    "LKL": {"key": "w", "moves": {4: +1}},             # A->A#
-    "VKL": {"key": "e", "moves": {1: +1}},             # D->D#
-    "LKR": {"key": "r", "moves": {4: -1, 8: -1}},      # A->G#  A->G#
-    "RKL": {"key": "t", "moves": {3: -1}},             # C->B
-    "RKR": {"key": "y", "moves": {3: +1, 7: +1}},      # C->C#  C->C#
+    # ILKL (the inner lever, string 1 D->E) was removed 2026-09-11 (user), so LKL
+    # is now the leftmost lever and takes q; the rest follow strictly left to right.
+    "LKL": {"key": "q", "moves": {4: +1}},             # A->A#
+    "VKL": {"key": "w", "moves": {1: +1}},             # D->D#
+    "LKR": {"key": "e", "moves": {4: -1, 8: -1}},      # A->G#  A->G#
+    "RKL": {"key": "r", "moves": {3: -1}},             # C->B
+    "RKR": {"key": "t", "moves": {3: +1, 7: +1}},      # C->C#  C->C#
 }
 OPEN_TUNING = ("D4", "E4", "C4", "A3", "G3", "E3", "C3", "A2", "F2", "C2")
 

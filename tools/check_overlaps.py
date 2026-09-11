@@ -220,7 +220,7 @@ KNEE_FAMILY = ({"knee_housing", "knee_lever", "kv_housing", "kv_lever",
 # The six knee-lever STATIONS (build.LEVER_STATIONS). LKL keeps the bare names; the
 # other five prefix them. Same parts, same designed contacts — the family test has to
 # see through the prefix or every station re-reports LKL's allowlisted interferences.
-_STATION = r"(?:pedal\d+|ilkl|lkr|vkl|rkl|rkr)"
+_STATION = r"(?:pedal\d+|lkr|vkl|rkl|rkr)"
 
 
 def _knee(n) -> bool:
