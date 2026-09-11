@@ -469,7 +469,7 @@ def body_adapter(sx: float = LEG_X, ly: float = LEG_Y):
     # screw lands with the leg slid out to its service position (legs.SERVICE_SLIDE).
     # The same legs helper the endplate's half comes from, shaped by cadkit.
     for dy in (0.0,) + ((-syg * mid_cut,) if mid_cut else ()):
-        b = b.cut(LG.tongue_pin_cutter(sx, ly + dy, egx, Z_TOP, ADAPTER_UP))
+        b = b.cut(LG.tongue_pin_cutter(sx, ly + dy, egx, Z_TOP, ADAPTER_UP, syg))
     return b
 
 
