@@ -189,7 +189,9 @@ def tee_stations():
     out.append((-48.0, TEE_Y, -1))            # 10 AFE power (rail; -X of the +X leg stub at -13.4)
     # bus B (knee + leg-socket): NOT on the crowded motor rail -- inboard of it, near the knee
     # station, clear of the bay tray/buck and the motor tees.
-    out.append((-500.0, -100.0, -1))          # 11 knee (LKL): inboard, +X of the housing
+    # 11 knee (LKL): inboard, +X of the housing. Its X overlaps the motor tees' Y band, so it sits
+    # MIDWAY between motor 1's and motor 2's tees and follows them when the bank moves
+    out.append(((D.motor_pos(1)[0] + D.motor_pos(2)[0]) / 2, -100.0, -1))
     out.append((-538.0, -94.0, +1))           # 12 leg-socket landing: inboard, +X of the bay tray
                                               # (nudged +Y to clear the grown accurate bus-A tee_0 at -524)
     return out
@@ -348,22 +350,29 @@ def build_wires():
         (-5.0, EL.TS_Y, EL.JACK_Z + 4.5)],
         WIRE_OD["wire_out"])))     # jack moved -X with the centred tip
 
-    # Keyhead routing (24.2" bay): wires reach the bay via the clear corridor
-    # between motor 9's rib (-529) and the tray (-547), then fly OVER the boards
-    # (tops ~ -42) to drop into their target. Wire-vs-wire crossings are fine
+    # Keyhead routing (STANDING TRAY, user 2026-09-11): the boards stand against the keyhead
+    # endplate and string 1's motor sits 1.6 mm off the Pi, so nothing inside that motor's
+    # Y/Z band can be reached from +X. Every bay wire therefore uses ONE column, BAY_X, just
+    # inside the motor's -X face: -Y of the motor it rises straight out of the rail corridor,
+    # and across the motor's Y band it runs at BAYFLY, over the motor top. From the column
+    # it turns -X onto its board. Board pins stay authored in the tray's FLAT frame and are
+    # posed with EL.stand_pt, so they follow the tray. Wire-vs-wire crossings are fine
     # (insulated); only solids (motors/boards/chassis) are avoided.
-    RISE_X = -552.0          # bay corridor, -X of motor 0 (spans -545..-503) so the fly-up clears it
-    BAYFLY = -34.0           # over the bay boards
+    BAY_X = D.motor_pos(0)[0] - D.MOTOR_SQ / 2 + 1.0    # -585.0
+    BAYFLY = -12.0                                      # over motor 0, under the deck
+    assert BAYFLY - max(WIRE_OD.values()) / 2 > D.MOTOR_BELT_Z + D.MOTOR_SQ / 2 + 1.0, (
+        "the bay fly lane has come down onto string 1's motor")
+    SP = EL.stand_pt
     out_z = shield_top - 1.0
 
     def _long(pad, lane_z, sh_x, sh_y, d=WIRE_D):
         """AFE pad -> up over the board -> out to the -Y rail corridor -> ride to the bay
         (dodging m9) -> up into the shield. All above the rib tops (no rib crossing)."""
         px, py, _ = pad
+        e = SP(sh_x, sh_y, out_z)                       # on the Teensy's +X face, -Y of the motor
         return _wire([pad, (px, py, -52.0), (px, RAIL_Y, -52.0)]
-                     + _rail_pts(px, RISE_X, lane_z)
-                     + [(RISE_X, RAIL_Y, BAYFLY), (RISE_X, sh_y, BAYFLY),
-                        (sh_x, sh_y, BAYFLY), (sh_x, sh_y, out_z)], d)
+                     + _rail_pts(px, BAY_X, lane_z)
+                     + [(BAY_X, RAIL_Y, e[2]), (BAY_X, e[1], e[2]), e], d)
 
     out.append(("wire_audio", _long(afe_buf_out, LANE_AUDIO, -600.0, -62.0, WIRE_OD["wire_audio"])))
     out.append(("wire_dac", _long(afe_relay_no, LANE_DAC, -600.0, -80.0, WIRE_OD["wire_dac"])))
@@ -379,8 +388,11 @@ def build_wires():
     # one crimped segment per hop east. Termination: teensy_ifc + tee 0's closed jumper.
     # Drawn as the CAN-H (yellow) + CAN-L (green) pair, offset +-CAN_OFF (user).
     xw, yw = hdrA[west[0]]
-    _canA_head = [(-565.0, 42.0, -50.5), (-565.0, 42.0, BAYFLY), (RISE_X, 42.0, BAYFLY),
-                  (RISE_X, RAIL_Y, BAYFLY)] + _rail_pts(RISE_X, xw, LANE_CAN) + [(xw, yw, HDR_Z)]
+    # the interface board stands +Y of the Pi, 9 mm off the motor: climb in that gap first
+    _ia = SP(-565.0, 42.0, -50.5)
+    _canA_head = ([_ia, (BAY_X - 5.0, _ia[1], _ia[2]), (BAY_X - 5.0, _ia[1], BAYFLY),
+                   (BAY_X, _ia[1], BAYFLY), (BAY_X, RAIL_Y, BAYFLY)]
+                  + _rail_pts(BAY_X, xw, LANE_CAN) + [(xw, yw, HDR_Z)])
     for _sfx, _co in (("h", -CAN_OFF), ("l", CAN_OFF)):
         _od = WIRE_OD[f"wire_can{_sfx}"]
         out.append((f"wire_can{_sfx}_0", _wire(
@@ -412,10 +424,10 @@ def build_wires():
     _PWR_X = D.BRIDGE_AXLE_X - 1.5                              # -8.0
     heads = [(_PWR_X, EL.DC_Y, EL.JACK_Z), (_PWR_X, EL.DC_Y, -52.0), (_PWR_X, TEE_Y, -52.0),
              (x10, TEE_Y, -52.0), (x10, TEE_Y, HDR_Z)]
+    _buck = SP(-567.0, -106.0, -50.0)
     tail = ([(hdrA[west[0]][0], hdrA[west[0]][1], HDR_Z)]
-            + _rail_pts(hdrA[west[0]][0], RISE_X, LANE_PWR)
-            + [(RISE_X, RAIL_Y, BAYFLY), (RISE_X, -106.0, BAYFLY),
-               (-567.0, -106.0, BAYFLY), (-567.0, -106.0, -50.0)])   # over the tray, buck
+            + _rail_pts(hdrA[west[0]][0], BAY_X, LANE_PWR)
+            + [(BAY_X, _buck[1], LANE_PWR), (BAY_X, _buck[1], _buck[2]), _buck])   # in to the buck
     afe_drop = [(x10, TEE_Y + 4.5, HDR_Z), (x10, -104.0, -54.0),
                 (-8.0, -104.0, -54.0), afe_pwr]
     for _nm, _do in (("wire_pwr_hot", -PWR_OFF), ("wire_pwr_gnd", PWR_OFF)):
@@ -431,8 +443,10 @@ def build_wires():
 
     # ── bus B (inputs): ifc -> LKL tee -> leg-socket landing tee ────────
     x11, y11 = hdrA[11]
-    _canB_head = [(-557.0, 42.0, -50.5), (-557.0, 42.0, BAYFLY), (RISE_X, 42.0, BAYFLY),
-                  (RISE_X, RAIL_Y, BAYFLY)] + _rail_pts(RISE_X, x11, LANE_CTRL) + [(x11, y11, HDR_Z)]
+    _ib = SP(-557.0, 42.0, -50.5)
+    _canB_head = ([_ib, (BAY_X - 5.0, _ib[1], _ib[2]), (BAY_X - 5.0, _ib[1], BAYFLY),
+                   (BAY_X, _ib[1], BAYFLY), (BAY_X, RAIL_Y, BAYFLY)]
+                  + _rail_pts(BAY_X, x11, LANE_CTRL) + [(x11, y11, HDR_Z)])
     for _sfx, _co in (("h", -CAN_OFF), ("l", CAN_OFF)):
         _od = WIRE_OD[f"wire_canb{_sfx}"]
         out.append((f"wire_canb{_sfx}_0", _wire(
@@ -447,42 +461,45 @@ def build_wires():
     # (tee 0/11/12 + kl_pcb all share this station); the -Y/-Z drop onto the kl_pcb XH is the chassis follow-up.
 
     # -- USB (blue): USB-C panel -> -Y rail corridor -> ride to the bay -> right-angle to Pi
+    _usb = SP(-575.0, 20.0, -44.0)
     out.append(("wire_usb", _wire(
         [(-2.5, EL.USB_Y, EL.JACK_Z), (-12.0, EL.USB_Y, -45.0), (-12.0, RAIL_Y, -45.0)]
-        + _rail_pts(-12.0, RISE_X, LANE_USB)
-        + [(RISE_X, RAIL_Y, BAYFLY), (-560.0, RAIL_Y, BAYFLY),
-           (-560.0, 20.0, BAYFLY), (-575.0, 20.0, BAYFLY), (-575.0, 20.0, -44.0)],
-        WIRE_OD["wire_usb"])))                          # west of motor 9, then +Y to Pi
+        + _rail_pts(-12.0, BAY_X, LANE_USB)
+        + [(BAY_X, RAIL_Y, BAYFLY), (BAY_X, _usb[1], BAYFLY), (_usb[0], _usb[1], BAYFLY), _usb],
+        WIRE_OD["wire_usb"])))                          # over motor 0, then down into the Pi
 
     # -- Teensy <-> Pi link (purple): over the bay
+    _lt, _lp = SP(-600.0, -60.0, out_z), SP(-560.0, 5.0, -57.0)
     out.append(("wire_link", _wire([
-        (-600.0, -60.0, out_z), (-600.0, -60.0, BAYFLY),
-        (-560.0, 5.0, BAYFLY), (-560.0, 5.0, -57.0)], WIRE_OD["wire_link"])))
+        _lt, (BAY_X, _lt[1], _lt[2]), (BAY_X, _lp[1], _lt[2]), (_lp[0] + 5.0, _lp[1], _lt[2]),
+        (_lp[0] + 5.0, _lp[1], _lp[2]), _lp], WIRE_OD["wire_link"])))
 
     # -- Teensy <-> CAN transceiver: the CAN-H (yellow) / CAN-L (green) jumper pair
-    _canjmp = [(-603.0, -57.0, out_z), (-603.0, -52.0, BAYFLY),
-               (-561.0, 49.0, BAYFLY), (-561.0, 49.0, -50.5)]
+    _jt, _jx = SP(-603.0, -57.0, out_z), SP(-561.0, 49.0, -50.5)
+    _canjmp = [_jt, (BAY_X, _jt[1], BAYFLY), (BAY_X, _jx[1], BAYFLY), (BAY_X - 5.0, _jx[1], BAYFLY),
+               (BAY_X - 5.0, _jx[1], _jx[2]), _jx]
     for _sfx, _co in (("h", -CAN_OFF), ("l", CAN_OFF)):
         out.append((f"wire_canjmp{_sfx}", _wire(
             [(px + _co, py + _co, pz) for px, py, pz in _canjmp],
             WIRE_OD[f"wire_canjmp{_sfx}"])))
 
     # -- PCM1864 carrier TDM -> Pi (teal)
+    _ta, _tp = SP(-566.0, -72.0, -57.0), SP(-580.0, -5.0, -57.0)
     out.append(("wire_tdm", _wire([
-        (-566.0, -72.0, -57.0), (-566.0, -72.0, BAYFLY),
-        (-580.0, -5.0, BAYFLY), (-580.0, -5.0, -57.0)], WIRE_OD["wire_tdm"])))
+        _ta, (BAY_X, _ta[1], _ta[2]), (BAY_X, _ta[1], BAYFLY), (BAY_X, _tp[1], BAYFLY),
+        (_tp[0] + 5.0, _tp[1], BAYFLY), (_tp[0] + 5.0, _tp[1], _tp[2]), _tp], WIRE_OD["wire_tdm"])))
 
     # -- UI: OLED + joystick (-Y deck band) -> Teensy. Drop under the deck, run
-    #    to the keyhead, fly over the bay into the shield.
+    #    to the keyhead, down the bay column onto the Teensy's face.
     UDZ = -2.0
     out.append(("wire_oled", _wire([
         (EL.UI_X, EL.OLED_Y, EL.DECK_TOP + 1.0), (EL.UI_X, EL.OLED_Y, UDZ),
-        (RISE_X, EL.OLED_Y, UDZ), (RISE_X, -110.0, BAYFLY),
-        (-600.0, -110.0, BAYFLY), (-600.0, -110.0, out_z)], WIRE_OD["wire_oled"])))
+        (BAY_X, EL.OLED_Y, UDZ), (BAY_X, -110.0, SP(-600.0, -110.0, out_z)[2]),
+        SP(-600.0, -110.0, out_z)], WIRE_OD["wire_oled"])))
     out.append(("wire_joy", _wire([
         (EL.JOY_X, EL.JOY_Y, EL.DECK_TOP + 1.0), (EL.JOY_X, EL.JOY_Y, UDZ),
-        (RISE_X + 4, EL.JOY_Y, UDZ), (RISE_X + 4, -100.0, BAYFLY),
-        (-595.0, -100.0, BAYFLY), (-595.0, -100.0, out_z)], WIRE_OD["wire_joy"])))
+        (BAY_X + 4, EL.JOY_Y, UDZ), (BAY_X + 4, -100.0, SP(-595.0, -100.0, out_z)[2]),
+        SP(-595.0, -100.0, out_z)], WIRE_OD["wire_joy"])))
 
     return out
 

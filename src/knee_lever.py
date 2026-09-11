@@ -486,7 +486,7 @@ MORT_Y0   = -3 * D.BEAD           # -2.4 mortise -Y mouth (opens outboard of the
 # crosses the stem wall (half-width _JW/4). The whole lever drops by the difference.
 _SEAT_ROOF_Z = (BRG_SEAT_D / 2 + BRG_WALL) * math.sqrt(2.0) - _JW / 4
 HOUS_TOP_Z = max(BODY_Z, BRG_OD / 2 + BRG_WALL, _SEAT_ROOF_Z)
-MOUNT_X, MOUNT_Y, MOUNT_Z = -501.0, -148.75, MB.BED_Z - HOUS_TOP_Z
+MOUNT_X, MOUNT_Y, MOUNT_Z = D.rib_comb_x(-501.0), -148.75, MB.BED_Z - HOUS_TOP_Z   # X snapped to the rib comb
 # (MOUNT_Z read the bed as a spelled -75.15, which went stale when SCREW_TOP_Z /
 #  SCREW_PULLEY_Z / XBAR snapped to the grid — the live bed is MB.BED_Z = -74.95.)
 MOUNT_POSE = (MOUNT_X, MOUNT_Y, MOUNT_Z)

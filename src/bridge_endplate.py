@@ -54,6 +54,7 @@ import cadquery as cq
 
 from . import dimensions as D
 from . import chassis as CH
+from . import legs as LG                 # chassis already imports legs: no cycle
 from . import top_plate as TP
 from . import optical_pickup as OP
 from .endplate_base import endplate_base
@@ -85,20 +86,36 @@ def access_cutter(i: int, z0: float, z1: float) -> cq.Workplane:
 
 
 def access_blocked(i: int) -> bool:
-    """True where a LEG stands under string i's channel, so no hand can feed that string up
-    from below (user, 2026-09-11: strings 1-3 sit over the +Y bridge-end leg). Those strings
-    get no channel at all -- not in the rail plate, not in the chassis floor -- and thread in
-    through the changer room's open +X face instead.
+    """True where a LEG stands under string i's channel even at its SERVICE position, so no
+    hand can feed that string up from below. Those strings get no channel at all -- not in
+    the rail plate, not in the chassis floor -- and thread in through the changer room's open
+    +X face instead. Restringing slides the leg out first (legs.SERVICE_SLIDE, which is sized
+    to clear these channels -- user, 2026-09-11), so the test uses the slid leg.
 
     Plan-view overlap of the channel's house footprint (X from apex to floor, Y the house
-    width) with every leg's square, read from chassis' own leg stations, so the answer moves
-    with the legs."""
+    width) with every leg's square, read from chassis' own leg stations and the legs' own
+    service slide, so the answer moves with both.
+
+    KNOWN AND ACCEPTED (user, 2026-09-11): strings 1 and 3's channels break into the +Y
+    bridge leg's -X CROSSING GROOVE by ~0.6 mm3 each -- that groove is not cut back by the
+    service slide (only the middle one is), and these two channels land on its outboard
+    flank. Threading happens with the leg slid out, so the ridge is not there; what is left
+    is a thin edge where a string end could catch. Cutting that ridge back too would about
+    double the pull-off capacity the slide already spends, and the channels' X is tangent to
+    the bearing seat bore, so neither fix is free. NOTE THE OVERLAP GATE CANNOT SEE THIS:
+    both are cutters, and two cavities merging is not a solid-solid overlap."""
     ax, y = D.string_access_x(i), D.string_y(i)
     x0, x1 = ax - D.STRING_ACCESS_H, ax + D.STRING_ACCESS_D / 2
     y0, y1 = y - D.STRING_ACCESS_D / 2, y + D.STRING_ACCESS_D / 2
     hw = CH.LEG_W / 2
-    return any(x0 < sx + hw and x1 > sx - hw and y0 < ly + hw and y1 > ly - hw
-               for sx in CH.LEG_STATIONS_X for ly in CH.LEG_Y)
+    mx, my = sum(CH.LEG_STATIONS_X) / 2, sum(CH.LEG_Y) / 2
+    for sx in CH.LEG_STATIONS_X:
+        for ly in CH.LEG_Y:
+            egx, syg = (1.0 if sx > mx else -1.0), (1.0 if ly > my else -1.0)
+            ly = ly + syg * LG.service_slide(egx, syg)            # slid outboard for service
+            if x0 < sx + hw and x1 > sx - hw and y0 < ly + hw and y1 > ly - hw:
+                return True
+    return False
 
 X0   = CH.X_BRIDGE                 # cap -X face / field<->cap boundary: the field stays
                                    #   OPEN -X of here (carriage sweep / strings / rods)
