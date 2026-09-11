@@ -153,7 +153,7 @@ PARTS = {
     "pedal_lever":     (lambda: heal(__import__("src.foot_pedal", fromlist=["e"]).pedal_lever()), "pctg/pedal_lever.step", "PCTG — FOOT PEDAL lever ×3 (initial design): hub on the axle, leg carrying the return lobe at 13.2 (sized so the 20° throw gives the SAME 4.51 spring stroke as the knee levers — which is what lets the half stop transfer for free), a 90 mm arm running out to the player and the pedal board across its end (30.8 mm of travel, ~1.6→3 N at the board)"),
     "pedal_detent_nub": (lambda: heal(_PB("nub_part")), "tpu/pedal_detent_nub.step", "TPU — detent nub ×1 (Ø4×4): presses into the bar top as the LID lock"),
     # (pedal_bar_foot merged into the shared leg_foot SKU — one look ×4)
-    "electronics_tray": (lambda: heal(__import__("src.electronics", fromlist=["e"]).electronics_tray()), "pctg/electronics_tray.step", "PCTG — compute-bay tray (drops into rail channels from above; tool-free SNAP mounts for Teensy+shield, Pi 5, 2x CS42448, buck, CAN transceiver — snap fingers need PCTG's ductility)"),
+    "electronics_tray": (lambda: heal(__import__("src.electronics", fromlist=["e"]).electronics_tray(standing=False)), "pctg/electronics_tray.step", "PCTG — compute-bay tray, exported FLAT (its print pose); in the instrument it STANDS against the keyhead endplate's inboard face (mount pending the keyhead round). Board support posts for Teensy+shield, Pi 5, ADC stack, buck, CAN interface"),
 }
 # Deck panels: each is a (base, colour) PAIR — same origin, print as ONE object
 # with two filaments (the ha-keypad keycaps/keycaps_text pattern). The base is
@@ -388,6 +388,22 @@ def _build_counter_model(n: int):
 # side. Everything riding the carriage (string nut, brass nut, string anchor)
 # follows; the guide rod, screw and stops are fixed.
 DEMO_POSE_DZ = {i: -D.CARRIAGE_TRAVEL for i in (0, 1, 8, 9)}
+
+# BELT CLAMP TRAVEL (user, 2026-09-11). Each belt's tension clamp rides the belt, and the
+# belt moves PULLEY_TEETH x BELT_PITCH per screw turn over the carriage's whole travel, so
+# the clamp has to fit on the straight run between the two pulleys' flanges at both ends of
+# that travel. The motor bank is packed toward the keyhead for exactly this; if the shortest
+# run stops covering it, move the bank or shorten the travel -- do not just nudge this.
+_CLAMP_XS = [v for _n, _s in BTn.clamp_components(with_lifters=True)
+             for v in (_s.val().BoundingBox().xmin, _s.val().BoundingBox().xmax)]
+_CLAMP_L = max(_CLAMP_XS) - min(_CLAMP_XS)
+_BELT_TRAVEL = D.CARRIAGE_TRAVEL / D.SCREW_PITCH * D.PULLEY_TEETH * D.BELT_PITCH
+_CLAMP_RUN_NEED = _BELT_TRAVEL + _CLAMP_L + D.PULLEY_FLANGE_OD
+_SHORTEST_RUN = min(math.hypot(D.motor_pos(i)[0] - D.screw_x(i), D.screw_pulley_z(i) - D.motor_pos(i)[2])
+                    for i in range(D.N_STRINGS))
+assert _SHORTEST_RUN >= _CLAMP_RUN_NEED - 1e-6, (
+    f"the shortest belt run ({_SHORTEST_RUN:.1f}) cannot hold the clamp through its travel: "
+    f"{_BELT_TRAVEL:.1f} of belt travel + {_CLAMP_L:.1f} of clamp + two flanges = {_CLAMP_RUN_NEED:.1f}")
 
 
 def _string_components(i):
@@ -890,9 +906,9 @@ def _vkl_station() -> float:
     return best[1]
 
 
-_LKL_X = -501.0                              # hard -X bound: the left leg block (ILKL's old
+_LKL_X = D.rib_comb_x(-501.0)                # hard -X bound: the left leg block (ILKL's old
                                              # station; LKL always shared it — see _KNEE_GAP_L)
-_RKL_X = -225.0                              # right knee
+_RKL_X = D.rib_comb_x(-225.0)                # right knee (snapped to the rib comb)
 
 LEVER_STATIONS = (
     # LEFT KNEE: the knee sits in the gap between LKL and LKR, and VKL sits in that
@@ -1001,6 +1017,27 @@ def screw_rows_components():
     return out
 
 
+BODY_WORK_PARTS = SCREW_ROW_PARTS + (
+    "bridge_endplate", "bridge_bearings", "motor", "chassis_",
+    "electronics_tray", "pi5", "teensy_", "adc_stack", "buck", "tee_", "wire_",
+    "analog_frontend", "dc_jack", "ts_jack", "usbc_jack", "joystick", "oled",
+    "body_adapter", "lock_pin_", "adjust_", "fixed_", "bar_latch_", "leg_latch_")
+
+
+def body_work_components():
+    """The motor bank, the standing electronics and their harness, the chassis, the legs and
+    the +X screw rows as ONE live set -- for work that runs the length of the body (the bank
+    packed against the electronics, the rib comb, the legs' service slide over the string
+    access channels). The deck stays cached: nothing here changes it."""
+    out = screw_rows_components()
+    out += [(n, w) for i in range(D.N_STRINGS) for n, w in _string_components(i)
+            if n.startswith("motor")]
+    out += [(n, w) for n, w in _electronics_components() if not n.startswith("top_plate")]
+    out += [(f"chassis_{i}", seg) for i, seg in enumerate(chassis_segments)]
+    out += _leg_components()
+    return out
+
+
 def lever_components():
     """Every lever as ONE named set: the six knee-lever stations and the foot pedals.
 
@@ -1021,10 +1058,17 @@ def _tensioner_coupon_components():
 
 
 def collect_components():
+    _KE = __import__("src.keyhead_endplate", fromlist=["e"])
+    # the standing electronics and the whole motor bank are packed against this face
+    # (dimensions.KEYHEAD_INBOARD_X). Checked here, where the gate builds the keyhead anyway
+    # -- importing it at module level costs ~4 s on every build.
+    assert abs(_KE.HS_X1 - D.KEYHEAD_INBOARD_X) < 1e-6, (
+        f"the keyhead's inboard face moved to {_KE.HS_X1:.2f}; dimensions.KEYHEAD_INBOARD_X is "
+        f"{D.KEYHEAD_INBOARD_X:.2f} -- update it and the motor bank follows")
     comps = [
         ("bridge_endplate", bridge_endplate),
         ("bridge_bearings", C.bridge_bearings()),
-        ("keyhead_endplate", __import__("src.keyhead_endplate", fromlist=["e"]).keyhead_endplate),
+        ("keyhead_endplate", _KE.keyhead_endplate),
     ]
     comps += [(f"chassis_{i}", seg) for i, seg in enumerate(chassis_segments)]
     comps += _pickup_mount_components()

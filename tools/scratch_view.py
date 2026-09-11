@@ -198,9 +198,25 @@ def _crop_screw_rows():
             (x0 + x1) / 2, 0.0, (z0 + z1) / 2)
 
 
+def _crop_body():
+    """The whole BODY, keyhead to bridge, from a little under the legs' body stubs up to the
+    UNDERSIDE of the deck panels (user) -- the panels are cut away, so the view looks straight
+    down into the chassis.
+
+    For work that spans the instrument's length -- the motor bank packed against the standing
+    electronics at the keyhead, the screw rows and string access channels at the bridge -- and
+    how the legs meet the chassis at both ends (the service slide). The leg columns below the
+    stubs, the pedal bar and the feet stay out: they are most of the solids and none of this."""
+    from src import dimensions as D, chassis as CH, legs as LG, top_plate as TP
+    x0, x1 = D.NUT_BLOCK_X - 30.0, D.BRIDGE_BASE_X1 + 25.0
+    y0, y1 = CH.Y_LO - 20.0, CH.Y_HI + 20.0
+    z0, z1 = CH.Z_BOT - LG.STUB_H - 20.0, TP.BZ
+    return (x1 - x0, y1 - y0, z1 - z0, (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2)
+
+
 CROPS = {"leg_station": _crop_leg_station, "belt_run": _belt_run_box,
          "keyhead": _crop_keyhead, "bridge": _crop_bridge,
-         "screw_rows": _crop_screw_rows}
+         "screw_rows": _crop_screw_rows, "body": _crop_body}
 # ─────────────────────────────────────────────────────────────────────────────
 
 

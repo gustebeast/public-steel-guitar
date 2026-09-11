@@ -44,24 +44,18 @@ AFE_Z = -74 * D.BEAD                   # -59.2 board bottom (on the bridge-rib b
 AFE_PED_TOP = AFE_Z - 3 * D.BEAD       # -61.6 boss top (2.4 of printed post to the board)
 
 # NOTE: this block sits ABOVE the chassis import ON PURPOSE. chassis builds at
-# import time and reaches BACK here for TAB_X0/TAB_X1/CH_W/CH_D/TRAY_Z0 to cut its
-# matching channels. With the constants below the import, that reach-back hit a
+# import time and reaches BACK here for the AFE_* constants to cut its matching
+# boss (it once also read the tray tab/channel constants, now gone). With the constants below the import, that reach-back hit a
 # half-initialised module and `import src.electronics` failed outright with a
 # circular-import ImportError -- only working at all because everything else
 # happened to import chassis first. These are plain literals, so hoisting them is
 # free and makes the module importable on its own.
-# ---- bay geometry (chassis.py cuts the matching channels from these) ----
+# ---- bay geometry (the tray's FLAT frame; see STANDING TRAY below) ----
 TRAY_X0, TRAY_X1 = -607.0, -547.0
 TRAY_Y0, TRAY_Y1 = -127.5, 53.5        # 1.25 off each rail inner face
 TRAY_Z0, TRAY_Z1 = -64.0, -61.0        # plate band (3 thick) - 1.15 ABOVE the
                                        # x -575 rib top so the bay rib passes
                                        # under the tray
-TAB_X0, TAB_X1 = -572.0, -552.0        # one tab per side, in the only solid
-                                       # web window between the leg dovetail
-                                       # slot (ends -582) and the rail web
-                                       # diamonds (start -560)
-TAB_T = 3 * D.BEAD                     # 2.4 tab, into a 2.7-deep channel (0.3 floor gap)
-CH_W, CH_D = 20.6, TAB_T + 0.3         # channel cut: tab + 0.3 clearance each way
 
 
 from . import chassis as CH          # only early constants (X_*, Z_*) used here
@@ -87,6 +81,46 @@ XCVR_FP   = (-570.0, -552.0, 39.0, 52.0)      # teensy_ifc (CAN transceivers):
                                        # -X-corner spot
 
 BOARD_Z = TRAY_Z1 + POST_H             # every bottom board sits at -67
+
+# ── STANDING TRAY (user, 2026-09-11) ─────────────────────────────────────────
+# Everything above is the tray's FLAT layout -- plate, posts, boards -- and it is still
+# the frame the tray PRINTS in. In the instrument the whole thing stands on its end with
+# the plate's underside against the keyhead endplate's inboard face, so it takes only
+# its stack depth in X instead of its 60 mm length, and the motor bank packs up to it
+# (dimensions.MOTOR_X0). ONE rigid transform poses every part, so nothing inside the tray
+# moves relative to anything else: rotate +90 deg about Y through the flat tray's -X
+# bottom edge (up -> +X, the old +X end -> down), plate underside onto the keyhead face,
+# bottom edge STAND_Z0.
+# NO MOUNT YET (user): bronner is reworking the keyhead endplate, so retention is left
+# for that round. The old drop-in side tabs and their rail channels are gone -- they
+# do not line up with a standing tray.
+STAND_Z0 = -62.0                       # bottom edge: 1.1 above the wired leg's TRRS pigtail
+                                       # (top -63.1) where it runs east under this corner
+STAND_DX = D.KEYHEAD_INBOARD_X - TRAY_X0
+STAND_DZ = (STAND_Z0 + (TRAY_X1 - TRAY_X0)) - TRAY_Z0
+
+
+def stand(wp: cq.Workplane) -> cq.Workplane:
+    """Pose a part authored in the flat tray frame into the standing position."""
+    return (wp.translate((-TRAY_X0, 0.0, -TRAY_Z0))
+              .rotate((0, 0, 0), (0, 1, 0), 90.0)
+              .translate((TRAY_X0 + STAND_DX, 0.0, TRAY_Z0 + STAND_DZ)))
+
+
+def stand_pt(x: float, y: float, z: float):
+    """The same transform for a single point (wiring endpoints on the boards)."""
+    dx, dz = x - TRAY_X0, z - TRAY_Z0
+    return (TRAY_X0 + STAND_DX + dz, y, TRAY_Z0 + STAND_DZ - dx)
+
+
+# the dimensions datum the motor bank is packed against has to hold the real boards:
+# tallest part above the plate's underside in the flat frame = depth in X once standing
+_PI_TOP = BOARD_Z + BD_T + 14.0                # Pi 5 USB/ethernet block top (see pi5)
+_TEENSY_TOP = BOARD_Z + 1.0 + 11.0 + BD_T      # Teensy audio-shield top (see teensy_stack)
+_STACK = max(_PI_TOP, _TEENSY_TOP, BOARD_Z + BD_T + 9.0) - TRAY_Z0   # (+ buck caps)
+assert _STACK <= D.ELEC_STACK_D + 1e-6, (
+    f"the electronics stack is {_STACK:.2f} deep standing, over dimensions.ELEC_STACK_D "
+    f"{D.ELEC_STACK_D} -- the motor bank is packed against that number")
 
 # ---- panel jacks (through the endplate recess wall, kept 4 mm thick) ----
 # The real connectors are deep (TS ~22 mm, DC ~15.5 mm). Behind the endplate
@@ -176,30 +210,20 @@ def _support_posts(fp, bz):
     return out
 
 
-def electronics_tray() -> cq.Workplane:
-    """The printed tray: plate + drop-in side tabs + board support posts.
-    Prints flat (plate on the bed, posts/fingers up, no overhangs beyond
-    the 45-degree nubs)."""
+def electronics_tray(standing: bool = True) -> cq.Workplane:
+    """The printed tray: plate + board support posts. Prints flat (plate on the bed,
+    posts up); stands against the keyhead endplate in the instrument (see STANDING TRAY).
+    Pass standing=False for the print pose."""
     body = box_at(TRAY_X1 - TRAY_X0, TRAY_Y1 - TRAY_Y0, TRAY_Z1 - TRAY_Z0,
                   x=(TRAY_X0 + TRAY_X1) / 2, y=(TRAY_Y0 + TRAY_Y1) / 2,
                   z=(TRAY_Z0 + TRAY_Z1) / 2)
-    for ye, s in ((TRAY_Y0, -1), (TRAY_Y1, 1)):      # side tabs into channels
-        body = body.union(box_at(TAB_X1 - TAB_X0, TAB_T + 1.25, 6.0,
-                                 x=(TAB_X0 + TAB_X1) / 2,
-                                 y=ye + s * (TAB_T + 1.25) / 2 - s * 0.001,
-                                 z=TRAY_Z0 + 3.0))
     # each board rests on four plain posts -- no retention yet (see _support_posts)
     for fp, bz in ((PI_FP, BOARD_Z), (TEENSY_FP, BOARD_Z + 1.0), (ADC_FP, BOARD_Z),
                    (BUCK_FP, BOARD_Z), (XCVR_FP, BOARD_Z)):
         body = body.union(_support_posts(fp, bz))
-    # NORTH-SHELF LANE CHANNEL (Y-INSTALL round; supersedes the old
-    # west-north chimney bite - the jack chimney/fin is gone): the wired
-    # leg's Ø3.8 factory pigtail rides the chassis' over-rib raceway east
-    # at y 50.5 / z -65.0, passing under the tray's north rim shelf
-    # (y 46.5..53.5, bottom -64.0) - channel its underside 1.7 deep so
-    # the cable (top -63.1) clears by 0.7; the shelf keeps 1.4 above.
-    body = body.cut(box_at(25.2, 9.9, 1.7, x=-595.6, y=48.45, z=-63.25))
-    return body
+    # (the NORTH-SHELF lane channel for the TRRS pigtail is gone: standing, the tray's
+    #  bottom edge rides above that pigtail instead of lying over it)
+    return stand(body) if standing else body
 
 
 def _board(fp, bz, t=BD_T):
@@ -219,7 +243,7 @@ def pi5() -> cq.Workplane:
     b = b.union(box_at(50.0, 18.0, 14.0, x=cx, y=PI_FP[3] - 9.0,
                        z=BOARD_Z + BD_T + 7.0))
     b = b.union(box_at(15.0, 15.0, 2.5, x=cx, y=cy, z=BOARD_Z + BD_T + 1.25))
-    return b
+    return stand(b)
 
 
 def teensy_stack() -> cq.Workplane:
@@ -233,7 +257,7 @@ def teensy_stack() -> cq.Workplane:
     for hx in (TEENSY_FP[0] + 2.6, TEENSY_FP[1] - 2.6):
         b = b.union(box_at(2.4, TEENSY_FP[3] - TEENSY_FP[2] - 6, 11.0,
                            x=hx, y=cy, z=bz + BD_T + 5.5))
-    return b
+    return stand(b)
 
 
 def adc_stack() -> cq.Workplane:
@@ -245,7 +269,7 @@ def adc_stack() -> cq.Workplane:
                            y=cy, z=BOARD_Z + BD_T + 0.65))
     b = b.union(box_at(ADC_FP[1] - ADC_FP[0] - 8, 4.0, 7.0, x=cx, y=ADC_FP[2] + 3.0,
                        z=BOARD_Z + BD_T + 3.5))
-    return b
+    return stand(b)
 
 
 def buck() -> cq.Workplane:
@@ -255,7 +279,7 @@ def buck() -> cq.Workplane:
     for px in (BUCK_FP[0] + 8, BUCK_FP[1] - 8):
         b = b.union(cyl(7.0, 9.0, z=BOARD_Z + BD_T).translate((px, cy, 0)))
     b = b.union(box_at(12.0, 12.0, 7.0, x=cx, y=cy, z=BOARD_Z + BD_T + 3.5))
-    return b
+    return stand(b)
 
 
 def teensy_ifc() -> cq.Workplane:
@@ -277,7 +301,7 @@ def teensy_ifc() -> cq.Workplane:
         b = b.union(box_at(7.0, 4.0, 6.5, x=hx, y=hy,
                            z=BOARD_Z + BD_T + 3.25))    # XH headers (inboard
                                                         # of the tray snap nubs)
-    return b
+    return stand(b)
 
 
 # floor plane (bed top) — tee PCBs and the trunk-and-drop harness live here.
