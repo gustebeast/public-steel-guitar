@@ -637,7 +637,7 @@ def leg_parts():
     """
     from . import leg_latch as LL
     from . import bar_latch as BL
-    out = [("body_adapter", body_adapter()),
+    out = [("body_adapter_0", body_adapter()),      # corner 0; build adds 1..3
            ("fixed_sleeve", fixed_sleeve()),
            ("fixed_tenon", fixed_tenon()),
            ("adjust_sleeve", adjust_sleeve()),
