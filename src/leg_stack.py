@@ -658,6 +658,7 @@ def leg_parts():
            ("bar_latch_frame", BL.frame(Z_BAR_MOUTH)),
            ("bar_latch_collar", BL.collar(Z_BAR_MOUTH, _bar_trrs_top()))]
     out += [("bar_latch_spring_%d" % i, s) for i, s in enumerate(BL.springs(Z_BAR_MOUTH))]
+    out += BL.screw_dummies(Z_BAR_MOUTH)        # the collar's one screw, and its insert
     out += LG.lock_pin_dummies(LEG_X, LEG_Y, EGX, SYG, Z_TOP, 0)   # the leg's one screw
     return out
 
