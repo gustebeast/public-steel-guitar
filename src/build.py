@@ -713,9 +713,17 @@ def _leg_components():
                         .rotate((0, 0, 0), (0, 0, 1), rot)
                         .translate((sx, ly, CH.Z_BOT)))
 
-            out.append((f"leg_body_stub_{k}",
-                        R(LG.leg_body_stub_trrs() if wired
-                          else (stub_jk if eps > 0 else stub_p), ZM)))
+            # the SERVICE position (legs.SERVICE_SLIDE): the middle ridge cut back and a
+            # second screw hole. rot 180 maps world y to local -y, so the corner's
+            # inboard side (world -syg) is local +syg.
+            syg = 1.0 if ly > sum(CH.LEG_Y) / 2 else -1.0
+            cut = LG.service_slide(egx, syg)
+            if cut:
+                stub = LG._body_stub(wired, 1.0 if wired else eps, latch=wired,
+                                     mid_cut=cut, inboard=syg)
+            else:
+                stub = LG.leg_body_stub_trrs() if wired else (stub_jk if eps > 0 else stub_p)
+            out.append((f"leg_body_stub_{k}", R(stub, ZM)))
             out.append((f"leg_head_{k}", R(head_latch if wired else head, ZM)))
             # LEG-JOINT LATCH: slider + cover ride the HEAD (the leg is the piece
             # you pull off, so the button is on it). Drawn LATCHED. The bar-joint
