@@ -523,8 +523,17 @@ SLIDER_UP = (1.0, 0.0, 0.0)        # the latch slider builds -X -> +X (user): it
                                    # whose pad wing hung from its tip in mid-air.
 BAR_FRAME_UP = (0.0, 0.0, 1.0)     # the pedal bar's yoke: ring on the bed, pad and
                                    # spring lugs growing up off it (src.bar_latch)
-BAR_COLLAR_UP = (0.0, 0.0, -1.0)   # its collar prints MOUTH FACE DOWN: every latch
-                                   # cavity opens at its underside, the top of the print
+BAR_COLLAR_UP = (0.0, -1.0, 0.0)   # its collar builds +Y -> -Y: the bed is the +Y
+                                   # face, the same AXIS the bar prints in (the bar
+                                   # runs -Y -> +Y, this the other way up). Two things
+                                   # wanted that: the pad's recess, whose back wall is
+                                   # the press stop, is a 20 x 20 face looking -Y, so
+                                   # this way up it is a FLOOR (printed mouth-down it
+                                   # was fine, printed with the bar it would have been
+                                   # a ceiling) -- and, the reason it moved, the collar
+                                   # now shares the BAR'S AXIS, which is what lets the
+                                   # two lock together with a cadkit slide joint
+                                   # instead of screws (src.bar_latch, the rails).
 PRINT_UP = {"adjust_sleeve": SLEEVE_UP, "fixed_sleeve": SLEEVE_UP,
             "body_adapter": ADAPTER_UP,
             "adjust_tenon": TENON_UP, "fixed_tenon": TENON_UP,
@@ -534,7 +543,7 @@ PRINT_ROT = {"adjust_sleeve": ((1, 0, 0), -90), "fixed_sleeve": ((1, 0, 0), -90)
              "body_adapter": ((1, 0, 0), 90),
              "adjust_tenon": ((-1, 1, 0), 90), "fixed_tenon": ((-1, 1, 0), 90),
              "latch_slider": ((0, 1, 0), -90), "bar_latch_frame": ((1, 0, 0), 0),
-             "bar_latch_collar": ((1, 0, 0), 180)}
+             "bar_latch_collar": ((1, 0, 0), -90)}
 
 
 def _rotated(v, axis, deg):
