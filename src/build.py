@@ -474,6 +474,11 @@ def _string_components(i):
     # viewing it, never saw one. Same placement as there, from the same module.
     out.append((f"nut_slide_insert_{i}",
                 NB.slide_insert(i).translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z))))
+    # ...and the M4 x 18 that pushes it up, threading its heat-set in the endplate slab
+    out.append((f"nut_height_screw_{i}",
+                NB.height_screw(i).translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z))))
+    out.append((f"nut_height_insert_{i}",
+                NB.height_insert(i).translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z))))
     return out
 
 
@@ -1274,6 +1279,8 @@ _COLORS = {
     "belt":            (0.13, 0.13, 0.13),   # GT2 black
     "string":          (0.85, 0.85, 0.85),
     "break_dowel":     (0.75, 0.75, 0.78),
+    "nut_height_screw": (0.72, 0.74, 0.78),   # M4 x 18 button, pushes the insert up
+    "nut_height_insert": (0.72, 0.60, 0.30),  # M4 heat-set in the keyhead slab
     "nut_slide_insert": (0.86, 0.72, 0.30),   # the sliding insert -- brass-ish, so it
                                               # reads apart from the steel it presses on
    # steel dowel (gauged break pin)
