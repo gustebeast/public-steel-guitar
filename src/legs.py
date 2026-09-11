@@ -868,6 +868,29 @@ def _groove(length: float) -> cq.Workplane:
             .rotate((0, 0, 0), (0, 0, 1), 90))
 
 
+# SERVICE POSITION (user). To reach what sits over a +Y leg's middle groove -- the
+# keyhead's nut-block adjust screws, the bridge's string access channels -- take out
+# the leg screw (and back off the endplate's lock pin), slide the leg SERVICE_SLIDE
+# outboard along Y, and drive the leg screw into the SECOND hole, which locks it
+# there. Work, slide it back, screws back in. That one number sets both:
+#   * the second screw hole, SERVICE_SLIDE inboard of the first in the inboard ridge
+#   * the MIDDLE ridge (_cross_x(...)[0]) and its groove in the body, cut back
+#     SERVICE_SLIDE from their inboard end, so that space is free for the endplates.
+# Only SERVICE_CORNERS get it, keyed (egx, syg) by outboard x and y sign: the strings
+# span Y +-42.8, so only the +Y legs sit under them. The leg's own material is untouched.
+# The cost is pull-off capacity against a kick toward/away from the player: the two
+# ridges share that along their length, so each mm is ~1/(2 SQ_W) of it (22.4 -> 25%).
+SERVICE_SLIDE = 0.0                # set by whoever needs the room; 0 = no service position
+SERVICE_CORNERS = ((-1.0, 1.0), (1.0, 1.0))
+
+
+def service_slide(egx: float, syg: float) -> float:
+    """This corner's service slide: 0 unless it is one of SERVICE_CORNERS."""
+    assert 0.0 <= SERVICE_SLIDE <= SQ_W, (
+        "SERVICE_SLIDE %.1f is outside 0..%.1f" % (SERVICE_SLIDE, SQ_W))
+    return SERVICE_SLIDE if (float(egx), float(syg)) in SERVICE_CORNERS else 0.0
+
+
 def corner_groove_negatives(station: float, ly: float, syg: float,
                             egx: float,
                             z_bot: float,
@@ -900,8 +923,13 @@ def corner_groove_negatives(station: float, ly: float, syg: float,
     # overshoot, 1 outboard
     Lc = SQ_W + 1.5
     y0c = (ly - SQ_W / 2 - 0.5) if syg > 0 else (ly - SQ_W / 2 - 1.0)
-    for dx in _cross_x(egx):
-        negs.append(_groove(Lc).translate((station + dx, y0c, z_bot)))
+    mid = service_slide(egx, syg)
+    for i, dx in enumerate(_cross_x(egx)):
+        c = mid if i == 0 else 0.0             # the MIDDLE ridge's inboard end (above)
+        if c >= SQ_W - 1e-9:
+            continue
+        negs.append(_groove(Lc - c).translate((station + dx, y0c + (c if syg > 0 else 0.0),
+                                               z_bot)))
     # 45° OVERHANG RELIEF (user): in the RAIL-BAND y (where the end-wall
     # groove crosses the rail-end dovetail tongue at the keyhead / the
     # kept-shell exit at the bridge), the corner left standing above the
@@ -960,7 +988,8 @@ def tongue_pin_cutter(station: float, ly: float, egx: float, z_bot: float,
                              overshoot=1.0, print_up=print_up)
 
 
-def _body_stub(wired: bool, eps: float, latch: bool = False) -> cq.Workplane:
+def _body_stub(wired: bool, eps: float, latch: bool = False, mid_cut: float = 0.0,
+               inboard: float = 1.0) -> cq.Workplane:
     """BODY STUB ×4 (PETG-GF, prints LYING ON ITS LOCAL +Y FACE — the
     Y-install round's point: layer lines run in x-z, so BOTH leg-bending
     directions load within layers, and the house-socket gable points up
@@ -994,7 +1023,13 @@ def _body_stub(wired: bool, eps: float, latch: bool = False) -> cq.Workplane:
         b = b.cut(LT.female_cutter(engage_z=0.0))
     ca, cb = _cross_x(eps)
     for rx in (ca, cb):
-        b = b.union(_stub_ridge(SQ_W).translate((rx, -SQ_W / 2, STUB_H)))
+        # the MIDDLE ridge (ca) loses mid_cut at its inboard end, local y sign `inboard`
+        # (SERVICE_SLIDE; a nonzero slide makes that corner's stub its own SKU)
+        cut = mid_cut if rx == ca else 0.0
+        if cut >= SQ_W - 1e-9:
+            continue
+        y0 = -SQ_W / 2 + (cut if inboard < 0 else 0.0)
+        b = b.union(_stub_ridge(SQ_W - cut).translate((rx, y0, STUB_H)))
     # end-wall TONGUE (simple rectangle, user) + the lock pin's clearance hole
     # crossing at mid-height on the y centreline (world y = leg centre). This SKU
     # prints lying on its local +Y face, so its build direction is local -Y.
@@ -1008,8 +1043,12 @@ def _body_stub(wired: bool, eps: float, latch: bool = False) -> cq.Workplane:
     # the pin drops down is at local -17 on the +Y rail and +17 on the -Y rail.
     # Cutting both keeps ONE SKU per eps serving both rails -- the same reason the
     # SKU already carries both x stations and only lets the inboard one take a screw.
+    # ...and the SERVICE holes, mid_cut further inboard, where the rail's screw lands
+    # with the leg slid out (SERVICE_SLIDE)
+    tys = (-17.0, 17.0) + tuple(ty + inboard * mid_cut for ty in (-17.0, 17.0)
+                                if mid_cut and abs(ty + inboard * mid_cut) <= SQ_W / 2 - 3.4)
     for tx in (ca, cb):
-        for ty in (-17.0, 17.0):
+        for ty in tys:
             b = b.cut(cyl(3.6, 12.0, z=STUB_H + 7.24 - 12.0)
                       .translate((tx, ty, 0)))
     if wired:
