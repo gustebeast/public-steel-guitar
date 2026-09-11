@@ -76,6 +76,7 @@ import math
 
 import cadquery as cq
 
+from cadkit.holes import teardrop_hole
 from cadkit.joinery import PrintSpec, joint
 from . import dimensions as D
 from .helpers import box_at, cyl, cyl_y
@@ -87,6 +88,7 @@ from .chassis import LEG_STATIONS_X, LEG_Y
 from .leg_stack import (ENGAGE as LS_ENGAGE, mortise_cutter as LS_mortise,
                         TEN_W as LS_TEN_W, FIT as LS_FIT,
                         LEG_X as LS_LEG_X, LEG_Y as LS_LEG_Y)
+from . import bar_latch as BL
 from . import legs as LG
 from . import latch as LT
 from .legs import _house
@@ -324,12 +326,9 @@ assert (LID_ZC + LID_FOOT_HW - TROUGH_Z1) >= LOCK_D + 2 * 0.8 - 1e-6, (
 #              45 degrees -- so its apex reaches 17.4 and its flats sit 12.3 off
 #              the axis.
 #   TRRS       a 9.6 jack body needs ~9.6 + walls of clear material.
-#   LATCH      MEASURED off the built mechanism, not guessed: src.latch spans
-#              24.8 in Y from its tunnel back wall to its outer face (slider
-#              20.8 + the spring reacting 2.4 behind it + a 3.2 cover). That is
-#              the whole stack, and mirrored onto a mortise it must ALL fit
-#              outboard of the tenon, with the hook tip reaching HOOK_ENGAGE
-#              (2.4) inside. Required room off the tenon's surface: 22.4.
+#   LATCH      src.bar_latch's YOKE: a ring round the tenon in a slot under the
+#              mouth, its pad flush in the -Y face and its springs beside the arms.
+#              It is sized off the tower's faces (asserted below).
 #
 # A tower at the leg's own 44.8 gives 5.0 of wall at the face centres -- nowhere
 # near it, and this is exactly why the latch's handedness mattered: on a tenon
@@ -338,8 +337,8 @@ assert (LID_ZC + LID_FOOT_HW - TROUGH_Z1) >= LOCK_D + 2 * 0.8 - 1e-6, (
 # THE 45 DEGREES IS WHAT PAYS FOR IT. The tenon is rotated, so its FLATS face the
 # tower's CORNERS and its apexes face the face centres. The corners are the deep
 # direction (half-diagonal, not half-width) AND the direction where the tenon
-# presents a flat -- the ideal surface for a hook pocket. So both the latch and
-# the TRRS jack go in corners, and the tower only has to be big enough for the
+# presents a flat -- the ideal surface for a hook pocket. The TRRS jack goes in
+# a corner (the latch's yoke rings the whole tenon, under the mouth), and the tower only has to be big enough for the
 # corner to be deep enough.
 TOWER_FLOOR = 4 * D.BEAD           # 3.2 the mortise's blind floor. BLIND, not
                                    # through: this joint is NOT height-adjustable
@@ -369,27 +368,20 @@ TEN_FLAT = (LS_TEN_W + 2 * LS_FIT) / 2.0       # 12.30 axis -> tenon flat
 TRRS_BORE_D = 14 * D.BEAD          # 11.2 -- the CA-354S body way, the Ø11 the old
                                    # axial route already used, rounded onto the grid
 TRRS_CORNER_D = TEN_FLAT + 2 * D.MIN_WALL_2P + TRRS_BORE_D / 2.0
-TRRS_ROOF = 4 * D.BEAD             # 3.2 solid roof over the jack way. The way is
-                                   # blind from BELOW: the bar's underside is the
-                                   # assembly access (as it already is for the foot
-                                   # mortise), and this roof is what the jack's
-                                   # shoulder presses up against.
-TRRS_WAY_TOP = TOWER_TOP - TRRS_ROOF
+# The way stops a 2-bead web UNDER the latch's slot: the slot's ring spans this
+# corner, so the jack sits below it. That web is the roof the jack's shoulder
+# presses up against.
+TRRS_WAY_TOP = BL.planes(TOWER_TOP)["z_cb"] - D.MIN_WALL_2P
 TRRS_CORNER = (-1, -1)             # the -X-Y corner of the tower
-LATCH_CORNER = (+1, +1)            # reserved: the diagonal the mirrored latch
-                                   # takes. Opposite the TRRS so neither has to
-                                   # dodge the other.
+BAR_UP = (0.0, 1.0, 0.0)           # the bar prints lying on its -Y face
 
-# THE THREE THINGS THE TOWER MUST HOLD, each asserted against the number that
-# actually constrains it. These are what stop the tower being quietly shrunk back
-# to the leg's own width, which does not work and does not look like it fails.
-LATCH_STACK = LT.FACE_Y - LT.BACK_Y            # 24.80 tunnel back -> outer face,
-                                               # read off latch.py, not guessed
-LATCH_ROOM = TOWER_CORNER - (TEN_FLAT - LT.HOOK_ENGAGE)
-assert LATCH_ROOM >= LATCH_STACK, (
-    "no room for the mirrored latch: the corner gives %.2f off the tenon and the "
-    "mechanism is %.2f deep. Widen TOWER_W or make the latch shallower."
-    % (LATCH_ROOM, LATCH_STACK))
+# THE THINGS THE TOWER MUST HOLD, each asserted against the number that actually
+# constrains it, so the tower cannot be quietly shrunk back to the leg's own width.
+# The LATCH (src.bar_latch) sized its slot, pad recess and spring pockets off the
+# tower's faces, so the faces must be where it assumed.
+assert abs(TOWER_W / 2 - BL.FACE_R) < 1e-9, (
+    "bar_latch sized the yoke for faces %.1f off the axis; the tower's are %.1f"
+    % (BL.FACE_R, TOWER_W / 2))
 assert TOWER_CORNER - TRRS_CORNER_D >= TRRS_BORE_D / 2 + D.MIN_WALL_2P, (
     "the TRRS bore breaks out of the tower's corner")
 assert TOWER_W / 2 - TRRS_CORNER_D / math.sqrt(2) >= TRRS_BORE_D / 2 + D.MIN_WALL_2P, (
@@ -423,6 +415,9 @@ def _mortise_tower(lx: float, wired: bool) -> cq.Workplane:
     # the mortise: ENGAGE deep from the mouth, overshooting the top so the cut
     # opens cleanly, floored TOWER_FLOOR above the bar
     b = b.cut(LS_mortise(TOWER_TOP - LS_ENGAGE, TOWER_TOP + 2.0))
+    # the pedal bar's LATCH (src.bar_latch): the yoke's slot under the mouth, the
+    # pad's recess in the -Y face and the spring pockets, on this same axis
+    b = b.cut(BL.tower_cut(TOWER_TOP))
     if wired:
         # TRRS jack, moved OUT OF THE AXIS. It used to thread up the middle of
         # the spigot -- which is now the mortise, so it goes in a corner.
@@ -435,8 +430,9 @@ def _mortise_tower(lx: float, wired: bool) -> cq.Workplane:
         # boundary is a patch cable -- which means the jack wants a closed roof
         # to press up against, not an exit.
         cx, cy = _corner(TRRS_CORNER_D, *TRRS_CORNER)
-        b = b.cut(cyl(TRRS_BORE_D, TRRS_WAY_TOP - (BAR_H - 1.0), z=BAR_H - 1.0)
-                  .translate((lx + cx, YC + cy, 0)))
+        # upright in the tower, so SIDEWAYS to the bar's print: via cadkit, a teardrop
+        b = b.cut(teardrop_hole(TRRS_BORE_D, TRRS_WAY_TOP - (BAR_H - 1.0),
+                                (lx + cx, YC + cy, BAR_H - 1.0), (0.0, 0.0, 1.0), BAR_UP))
     return b
 
 
