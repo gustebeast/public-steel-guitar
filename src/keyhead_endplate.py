@@ -109,13 +109,12 @@ def _height_prism():
 
 def _height_negatives():
     """Everything the prism needs cut, fused and subtracted once, in the nut block's local frame:
-    the main pockets again (they run through it), the extensions' house pockets, the +X openings over
-    the band the full-profile bodies travel, and every screw's cavity, heat-set pocket and bore."""
-    x_to = (HS_X1 - D.NUT_BLOCK_X) + 1.0
+    the main pockets again (they run through it), the extension pockets under their roofs (which run
+    the prism's whole height), and every screw's heat-set pocket and bore."""
     z_top = (HS_Z1 - D.STRING_Z) + 1.0
-    out = NB.all_pockets().union(NB.lower_pockets())
+    out = NB.all_pockets().union(NB.lower_pockets(z_top))
     for i in range(D.N_STRINGS):
-        for k in [NB.pocket_x_slot(i, x_to, z_top)] + NB.height_screw_negatives(i):
+        for k in NB.height_screw_negatives(i):
             out = out.union(k)
     return out.translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z))
 
