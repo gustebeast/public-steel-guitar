@@ -87,6 +87,16 @@ _ex("clearance",
 
 # Real objects. These are measurements, not choices.
 _ex("hardware",
+    legs__SHELL_GAP="clearance: the endplate <-> kept-shell gap (= chassis.EP_LEG_CLR)",
+    legs__LOCK_SCREW_L="a stock M4x12 button head's length (hardware)",
+    legs__LOCK_HEAD_D="the M4 button head's diameter (hardware)",
+    legs__LOCK_HEAD_H="the M4 button head's height (hardware)",
+    legs__LOCK_Z="the leg screw's axis height, from the M4 button head's 7.6 (hardware) + air + a 2-bead floor",
+    legs__LOCK_PIN_DY="lock pin offset chosen so SERVICE_SLIDE can reach the bridge's 25.6 (user)",
+    bar_latch__SCREW_L="a stock M4x30 button head's length (hardware)",
+    bar_latch__SPR_REST_L="the coil's installed length: its free length less a light preload (hardware)",
+)
+_ex("hardware",
     MOTOR_SQ="NEMA17 body 42.3 sq (SERVO42D)",
     MOTOR_PCB_LEN="SERVO42D driver PCB stack",
     NEMA17_BOLT_SQ="NEMA17 bolt circle 31.0",
@@ -256,6 +266,19 @@ _ex("hardware",
 
 # Gaps, not material. Always sub-bead; the grid does not apply.
 _ex("clearance",
+    # the redesigned leg -- every one a GAP or a hole, not material
+    leg_stack__FIT="tenon-in-mortise slide fit on every face of the octagon",
+    leg_stack__ADAPT_BOLT_D="M4 clearance hole through the adapter's end wall",
+    leg_latch__CLR="latch slider sliding clearance in its pocket, notch and recess",
+    leg_latch__SLIDE_CLR="latch slider body's clearance to the bore, sized for two "
+                         "oversize prints",
+    leg_latch__REST_OUT="= CLR * sqrt2: how far the spring pushes the slider out "
+                        "before its flanks meet the bore -- a clearance, not material",
+    leg_latch__SHRINK_ADAPTER="= SLIDE_CLR + REST_OUT: clearances only",
+    leg_latch__CH_FLOOR="= the mortise's roof + 0.5 standoff so the hook never rubs "
+                        "the tenon beside it: grid-derived plus a CLEARANCE",
+)
+_ex("clearance",
     FIT_CLR="slip fit",
     NUT_PIN_CLR="dowel drop-in fit",
     BOOL_OVERSHOOT="boolean cutter overshoot, not a feature",
@@ -350,6 +373,10 @@ _ex("clearance",
 # the lever and buried its tenons in solid rib (3021 mm^3). Snapped and reverted
 # 2026-08-06; chassis now asserts MOUNT_X lands on a rib.
 _ex("layout",
+    leg_latch__BUTTON_SIDE="a direction SIGN (-1: the latch button faces -Y), "
+                           "not a length",
+)
+_ex("layout",
     KEYHEAD_INBOARD_X="keyhead endplate inboard face X -- a POSITION (asserted in build.py)",
     ELEC_STACK_D="purchased-board envelope: tray + posts + Pi 5 height (asserted in electronics)",
     STAND_Z0="standing electronics bottom-edge POSITION (over the TRRS pigtail)",
@@ -397,7 +424,8 @@ _ex("layout",
     TENON_L="the fine-stage law: travel 142 + overlap 50 + 5 dead",
     SH_CLR="shaft-sleeve octagon SLIDE fit per side (the fine stage strokes)",
     SH_H="slider roof pinned at the section joints' -14 roof plane (shared profile)",
-    STUB_RIDGE_EP="end-wall tongue at the endplate end wall's centreline (tip - 5)",
+    STUB_TNG_FIT="coupon fit on the end-wall rebate's outboard face",
+    STUB_TNG_REBATE_IN="clearance: the rebate reaches into the endplate<->shell gap",
     TRRS_DX="TRRS blind-mate axis in the octagon flare band (clearances quoted in situ)",
     TRRS_DY="TRRS axes ride the profile's deep waist (= groove inscribed-circle centre)",
     LATCH_FOOT="FEET index (which foot carries the latch; None = no latch) -- not a length",
@@ -413,7 +441,6 @@ _ex("musical",
     NUT_BLOCK_X="-MOUNTING_SPAN",
     STRING_Z="string plane height (set by the bearing stack)",
     DL_OPEN="string stretch at pitch (physics)",
-    LEG_HEIGHT="floor -> body bottom playing height (user ergonomic reference)",
     )
 
 

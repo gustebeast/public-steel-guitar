@@ -7,7 +7,7 @@ motor-on-bank, …); the engine runs the parallel boolean scan and reports the
 UNINTENDED interpenetrations.
 
   py -3.12 -m tools.check_overlaps            # fast scan (skips belts -- see below)
-  py -3.12 -m tools.check_overlaps --full     # check EVERY part (belts too) -- pre-commit
+  py -3.12 -m tools.check_overlaps --full     # check EVERY part (belts too) -- the lead's build runs this
   py -3.12 -m tools.check_overlaps --all      # also list intended contacts
   py -3.12 -m tools.check_overlaps --only chassis,keyhead_endplate   # just these bases
   py -3.12 -m tools.check_overlaps --exclude string,wire            # skip more bases
@@ -16,7 +16,9 @@ UNINTENDED interpenetrations.
 
 The belts are slow to boolean (swept compounds dominate the runtime) and rarely
 move, so the DEFAULT scan skips them for a quick inner-loop check; pass --full for
-the complete gate (e.g. before committing). Every run prints what it skipped.
+the complete gate. Contributors do NOT run it before submitting: the lead's
+`agent_sync build` runs it on the merged tree (cadkit/AGENTS.md); agents gate their
+portion with `scratch_view --gate`. Every run prints what it skipped.
 
 Exit code is the number of unintended overlapping pairs (0 = clean).
 
@@ -251,25 +253,17 @@ def _knee(n) -> bool:
 # NOT designed contacts and they do not belong in intended() on their merits; the only
 # reason they sit here is that the fix is a routing decision the user is taking later.
 #
-# THE LEG'S TRRS CABLE (user, deferred 2026-08-13). Three pairs, one cause each:
-#   chassis <-> cable      the cable's -X end cap, ~(-624, 50.5, -65.7), buried in the
-#                          keyhead-end segment. CAUSED ON THIS BRANCH: chassis.EP_TIP_NX
-#                          feeds _leg_geom, so growing the keyhead 5.0 along X moved the
-#                          -X leg station with it and took the cable along. Fix is either
-#                          a reroute or pinning the leg station to its own datum.
-#   electronics_tray, pi5  PRE-EXISTING, older than this branch.
-# Each one is a cable DUMMY clipping a solid, i.e. exactly the "real routing bug" the wire
-# rule below is written to catch — which is why they must not be left here quietly.
 # DEFERRED, NOT INTENDED -- real interpenetrations parked so the rest of the model
 # can be gated. Each needs a named cause and an owner, and each prints LOUDLY on
 # every run; this is the opposite of an allow list, which goes silent forever.
 #
 # A pair leaves this set the moment it stops overlapping -- leaving a resolved entry
 # listed would mean a regression that reintroduces it gets a polite "deferred" line
-# instead of failing the gate. chassis <-> chassis_trrs_cable left on 2026-09-09:
-# the keyhead/bridge endplate rework moved the -X leg station off the cable.
-# chassis_trrs_cable <-> electronics_tray and <-> pi5 left on 2026-09-11: the
-# electronics now STAND against the keyhead endplate, bottom edge above the cable.
+# instead of failing the gate. The leg's TRRS cable pairs (deferred 2026-08-13) are
+# gone: chassis <-> chassis_trrs_cable left 2026-09-09 (the endplate rework moved the
+# -X leg station off it); the electronics_tray and pi5 pairs left 2026-09-11, when
+# brenner's one-leg merge (build #629) retired the old leg family and its cable. The
+# new leg's TRRS jack/cable must come in gate-clean.
 #
 # THE PICKUP HEIGHT PLATE INTO THE DECK (deferred 2026-09-10, owner UNASSIGNED --
 # see fastener-migration-todo.md section 2). The +Y jacks' X-arms poke 0.72 into the

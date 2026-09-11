@@ -917,12 +917,15 @@ def slide_insert(i: int) -> cq.Workplane:
     # still below the string plane -- nothing of the insert can foul the bar either.
     body = _plan_wire(i).extrude(INS_H).translate((0, 0, fz - INS_H))
     # THE HEIGHT-ADJUST EXTENSION (user): a tall foot down to the screw that pushes the insert up.
-    # Gabled plan (lower_plan_wire), so its pocket closes at +X without an overhang -- CLIPPED to
-    # the insert's own plan: where the clamp lobe steps to the dowel lobe the bare gable would stick
-    # out of the main pocket once the screw lifts the insert above the lower pocket.
-    ext = (lower_plan_wire(i).extrude(INS_EXT_H + 0.01)
-           .intersect(_plan_wire(i).extrude(INS_EXT_H + 0.01)))
-    body = body.union(ext.translate((0, 0, fz - INS_H - INS_EXT_H)))
+    # A CLAMP-WIDE RECTANGLE whose +X face is flush with INS_X1 -- the same plane as the dowel lobe's,
+    # so the whole insert prints lying on that face -- topped by a band in the insert's own plan,
+    # the part that rises into the main pocket (HS_RECT_H says why).
+    z_foot = fz - INS_H - INS_EXT_H
+    xm, xw = (INS_X0 + INS_X1) / 2.0, INS_X1 - INS_X0
+    body = body.union(box_at(xw, cw, HS_RECT_H + 0.01, x=xm, y=cy, z=z_foot + (HS_RECT_H + 0.01) / 2.0))
+    band = INS_EXT_H - HS_RECT_H + 0.01
+    top = _plan_wire(i).extrude(band).intersect(box_at(xw, cw, band, x=xm, y=cy, z=band / 2.0))
+    body = body.union(top.translate((0, 0, z_foot + HS_RECT_H)))
     # THE NECK STARTS CLEAR OF THE COIL, not at the lobe's step. The wrap reaches
     # ROD_X + ROD_D/2 + g on its +X side, and a neck beginning further -X than that drives
     # straight through the winding -- 10 mm^3 of it on the .070. So it is set from the
@@ -1391,30 +1394,55 @@ def all_stow_channels(z_end: float) -> cq.Workplane:
 #
 # THE STACK, from the chassis up (local frame -- Z relative to STRING_Z):
 #   motor_bank.FLOOR_TOP  top of the wide corner rib the keyhead sits over (chassis)
-#   HS_PRISM_BOT          0.4 above that rib
-#   head cavity           room for the button head to hang at full retract
-#   HS_SLAB_BOT           the heat-set's mouth, facing down (fitted before the endplate goes on)
-#   HS_FLOOR              the slab top = pocket floor = where a DROPPED insert's foot rests
+#   HS_PRISM_BOT          0.4 above that rib -- and the heat-sets' mouths, flush in it (user: the lower,
+#                         the easier to reach). The heads hang below, down into the rib, which
+#                         chassis.py opens for them.
+#   HS_FLOOR              where a DROPPED insert's foot rests: the tip, screw fully undone
+#
+# THE SCREW'S TWO ENDS (user) set the rest:
+#   * TIGHTENED ALL THE WAY -- head seated on the bottom face, it can go no further -- the insert's flat
+#     stands HS_ROD_OVERLAP up INTO the rod. So even a string of no gauge at all clamps against the rod
+#     before the head bottoms out: you always tighten against the string, never against the endplate.
+#   * FULLY UNDONE -- the insert dropped for threading, flat at _FZ_LOW -- the head still clears
+#     chassis.Z_BOT, where the leg's body adapter begins.
 from cadkit.fasteners import M4, M4_BUTTON_HEAD_D, M4_BUTTON_HEAD_H
 from . import motor_bank as _MB                  # motor_bank imports only dimensions/helpers/components
-HS_SCREW_L    = 18.0                             # M4 x 18 button: the keyhead hold-down's SKU
-HS_HEAD_CLR   = 0.4                              # radial air round the head in its cavity
-HS_HEAD_CAV_D = M4_BUTTON_HEAD_D + 2 * HS_HEAD_CLR
-HS_SLAB_T     = M4.insert_depth + 4 * D.BEAD     # the heat-set plus a 3.2 floor over it
-HS_PRISM_BOT  = _MB.FLOOR_TOP + 0.4 - D.STRING_Z
-HS_SLAB_BOT   = HS_PRISM_BOT + 0.4 + (HS_SCREW_L - HS_SLAB_T) + M4_BUTTON_HEAD_H
-HS_FLOOR      = HS_SLAB_BOT + HS_SLAB_T
+HS_SCREW_L     = 18.0                            # M4 x 18 button: the keyhead hold-down's SKU
+HS_HEAD_CLR    = 0.4                             # radial air round a head in its chassis cavity
+HS_HEAD_CAV_D  = M4_BUTTON_HEAD_D + 2 * HS_HEAD_CLR
+HS_ROD_OVERLAP = 2 * D.BEAD
+HS_PRISM_BOT   = _MB.FLOOR_TOP + 0.4 - D.STRING_Z
+HS_SLAB_BOT    = HS_PRISM_BOT
 # THE EXTENSION puts a DROPPED insert's foot on the floor: the lowest flat any string may set, less
 # the threading drop, less the body -- the same datum POCKET_Z0 is cut from.
-_FZ_LOW   = ROD_Z - ROD_D / 2.0 - G_ENVELOPE - INS_DROP
-INS_EXT_H = (_FZ_LOW - INS_H) - HS_FLOOR
+_FZ_LOW      = ROD_Z - ROD_D / 2.0 - G_ENVELOPE - INS_DROP
+_FZ_TIGHT    = ROD_Z - ROD_D / 2.0 + HS_ROD_OVERLAP
+HS_REACH_MAX = _FZ_TIGHT - _FZ_LOW                 # the tip's whole travel, undone to tightened
+HS_FLOOR     = HS_SLAB_BOT + HS_SCREW_L - HS_REACH_MAX
+INS_EXT_H    = (_FZ_LOW - INS_H) - HS_FLOOR
 assert INS_EXT_H > 0.0, "the height-adjust floor is above the insert body"
-# How far the screw tip has to rise: the whole drop plus the full gauge envelope (a string of zero
-# gauge would sit highest). Gauge-free, like the rest of the printed part.
-HS_REACH_MAX = INS_DROP + G_ENVELOPE
-assert HS_REACH_MAX <= HS_SCREW_L - HS_SLAB_T - HS_HEAD_CLR, (
-    f"a {HS_SCREW_L:g} mm screw cannot reach {HS_REACH_MAX:.2f} above the floor without its head "
-    f"meeting the slab")
+assert HS_FLOOR - (HS_SLAB_BOT + M4.insert_depth) >= 4 * D.BEAD - 1e-9, (
+    f"only {HS_FLOOR - HS_SLAB_BOT - M4.insert_depth:.2f} of floor over the heat-set -- a "
+    f"{HS_SCREW_L:g} mm screw is too short for {HS_REACH_MAX:.2f} of travel")
+HS_HEAD_LOW = HS_SLAB_BOT - HS_REACH_MAX - M4_BUTTON_HEAD_H     # a head's bottom, fully undone
+assert HS_HEAD_LOW >= _MB.BED_Z - D.STRING_Z - 1e-9, (
+    f"fully undone, a height-screw head drops to z {HS_HEAD_LOW + D.STRING_Z:.2f}, below the bed "
+    f"({_MB.BED_Z:.2f}) where the leg's body adapter is")
+
+# THE INSERT PRINTS ON ITS +X FACE (user): lying on that flat face and growing -X, the reliable way to
+# make a 60 mm part, rather than standing it up as a tower. That face cannot follow a roof, so the
+# POCKET carries the roof instead -- a HOUSE whose 45 deg sides pass the insert's +X corners (a small
+# locating contact each) and whose flat top stands HS_ROOF_T clear of the insert's face. That top is
+# a BRIDGE in the keyhead's -X -> +X print; the gap is there so it may sag.
+HS_ROOF_T = 2 * D.BEAD
+# THE CLAMP-WIDE RECTANGLE MAY NOT RISE INTO THE MAIN POCKET. Up there, +X of the plan's taper, this
+# pocket and its neighbour's span only their dowel lobes, and a clamp-wide body would cut the fingers
+# between SKU A pockets to 0.59. So the rectangle is only as tall as keeps it HS_RECT_CLR under the
+# main pocket at the insert's highest; the rest of the extension keeps the plan, which that pocket holds.
+HS_RECT_CLR = 0.4
+HS_RECT_H = (POCKET_Z0 - HS_RECT_CLR) - HS_FLOOR - HS_REACH_MAX
+assert 0.0 < HS_RECT_H < INS_EXT_H, "no room for the extension's clamp-wide rectangle under the main pocket"
+HS_POCKET_X1 = INS_X1 + HS_ROOF_T + max(_clr(i) for i in range(D.N_STRINGS))   # the roofs' +X reach
 
 
 def insert_foot_z(i: int) -> float:
@@ -1427,17 +1455,16 @@ def screw_reach(i: int) -> float:
     return insert_foot_z(i) - HS_FLOOR
 
 
-# TWO ROWS. Ø6 heat-set pockets on the 6.5 string pitch would leave 0.5 of wall, and Ø7.6 heads would
-# collide, so the strings alternate between two X rows. Row A is the more +X of two limits:
-#   * its head cavity a two-bead wall clear of the stow bores' teardrop tip (their X never changes --
-#     they lean in Y only);
-#   * its KEY PATH clear of this part's own lower -X wall (endplate_base's CH.T rail, which hangs
-#     down past the corner rib): the 2.5 mm key comes up from under the chassis through an M4-
-#     clearance hole (chassis.py), so that hole's -X edge may not run into the wall's +X face.
-# Row B is 4.8 +X of row A, which clears neighbouring heads and leaves the heat-set pockets > 1.6 apart.
-_HS_KEY_X_MIN = X_BACK + D.WALL_THICKNESS + M4.shaft_clr_d / 2.0
-_HS_ROW_A = max(STOW_X + STOW_APEX + D.MIN_WALL_2P + HS_HEAD_CAV_D / 2.0, _HS_KEY_X_MIN)
-HS_ROWS = (_HS_ROW_A, _HS_ROW_A + 6 * D.BEAD)
+# TWO ROWS. The heads hang side by side in the chassis rib, each in its own HS_HEAD_CAV_D cavity, and on
+# the string pitch those would run together -- so the strings alternate between two X rows, set far
+# enough apart (in whole beads) that neighbouring cavities keep a two-bead web. Row A holds its cavity
+# clear of this part's own lower -X wall (endplate_base's CH.T rail, which hangs down past the rib right
+# beside them), and so of the leg tongue's groove in that wall.
+_HS_PITCH = min(abs(insert_lobes(i)[1][0] - insert_lobes(i + 1)[1][0]) for i in range(D.N_STRINGS - 1))
+HS_ROW_DX = math.ceil(math.sqrt(max(0.0, (HS_HEAD_CAV_D + D.MIN_WALL_2P) ** 2 - _HS_PITCH ** 2))
+                      / D.BEAD - 1e-9) * D.BEAD
+_HS_ROW_A = X_BACK + D.WALL_THICKNESS + HS_HEAD_CAV_D / 2.0
+HS_ROWS = (_HS_ROW_A, _HS_ROW_A + HS_ROW_DX)
 
 
 def height_screw_xy(i: int):
@@ -1446,24 +1473,37 @@ def height_screw_xy(i: int):
     return HS_ROWS[(SKU_C - i) % 2], cy
 
 
-def lower_plan_wire(i: int):
-    """The EXTENSION's plan: the clamp lobe's Y span from INS_X0, with a 45 deg gable closing at +X
-    on the insert's own +X face. The keyhead prints -X -> +X, so a square +X end would be a ceiling
-    over the pocket; a gable is a roof. The extension prints the same way (on its -X face)."""
-    (_dy, _dw), (cy, cw) = insert_lobes(i)
-    lo, hi = cy - cw / 2.0, cy + cw / 2.0
-    xg = INS_X1 - cw / 2.0
-    assert xg > INS_X0, f"string {i + 1}'s gable would run past the insert's -X face"
-    return (cq.Workplane("XY")
-            .polyline([(INS_X0, lo), (xg, lo), (INS_X1, cy), (xg, hi), (INS_X0, hi)]).close())
+def _lower_groups():
+    """The extensions' pockets, as (y_lo, y_hi, clr) of the inserts' clamp-wide rectangles (NOT grown by
+    the fit). Neighbours that would leave less than a two-bead finger share ONE pocket -- the abutting
+    bass SKUs (strings 8-10), whose roof is then one long bridge (user)."""
+    groups = []
+    for i in range(D.N_STRINGS):                  # string 1 is +Y, so each next string is -Y of the last
+        (_dy, _dw), (cy, cw) = insert_lobes(i)
+        lo, hi, c = cy - cw / 2.0, cy + cw / 2.0, _clr(i)
+        if groups and (groups[-1][0] - groups[-1][2]) - (hi + c) < D.MIN_WALL_2P:
+            glo, ghi, gc = groups[-1]
+            groups[-1] = (min(glo, lo), max(ghi, hi), max(gc, c))
+        else:
+            groups.append((lo, hi, c))
+    return groups
 
 
-def insert_pocket_lower(i: int) -> cq.Workplane:
-    """The extension's slot: its gabled plan grown by the fit, from the floor up into the main pocket."""
-    z0, z1 = HS_FLOOR, POCKET_Z0 + 0.5
-    gable = lower_plan_wire(i).offset2D(_clr(i), kind="arc").extrude(z1 - z0)
-    plan = _plan_wire(i).offset2D(_clr(i), kind="arc").extrude(z1 - z0)   # the extension is clipped too
-    return gable.intersect(plan).translate((0, 0, z0))
+for _lo, _hi, _c in _lower_groups():
+    assert _hi - _lo > 2 * HS_ROOF_T, f"a {_hi - _lo:.2f} pocket has no room for its roof's flat top"
+
+
+def lower_pockets() -> cq.Workplane:
+    """Every extension's slot, from the floor up to the main pockets: per group, the rectangle under a
+    45 deg roof that meets it at its +X corners and flattens HS_ROOF_T past its face, all grown by the fit."""
+    out = None
+    for lo, hi, c in _lower_groups():
+        t = HS_ROOF_T
+        pts = [(INS_X0, lo), (INS_X1, lo), (INS_X1 + t, lo + t), (INS_X1 + t, hi - t), (INS_X1, hi), (INS_X0, hi)]
+        k = (cq.Workplane("XY").polyline(pts).close().offset2D(c, kind="arc")
+             .extrude(POCKET_Z0 - HS_FLOOR).translate((0, 0, HS_FLOOR)))
+        out = k if out is None else out.union(k)
+    return out
 
 
 def pocket_x_slot(i: int, x_to: float, z_top: float) -> cq.Workplane:
@@ -1478,15 +1518,14 @@ def pocket_x_slot(i: int, x_to: float, z_top: float) -> cq.Workplane:
 
 
 def height_screw_negatives(i: int):
-    """Head cavity, heat-set pocket and shank/tip bore for string i, all TEARDROPS along Z (sideways to
-    the -X -> +X build), apex +X."""
+    """Heat-set pocket (mouth in the bottom face) and shank/tip bore for string i, TEARDROPS along Z
+    (sideways to the -X -> +X build), apex +X. The head hangs below the part, in the chassis."""
     x, y = height_screw_xy(i)
 
     def bore(d, z0, z1):
         return teardrop_hole(d, z1 - z0, axis_point=(x, y, z0), axis_dir=(0.0, 0.0, 1.0),
                              print_up=PRINT_UP)
-    return [bore(HS_HEAD_CAV_D, HS_PRISM_BOT - 1.0, HS_SLAB_BOT),
-            bore(M4.insert_pilot_d, HS_SLAB_BOT - 0.01, HS_SLAB_BOT + M4.insert_depth),
+    return [bore(M4.insert_pilot_d, HS_SLAB_BOT - 1.0, HS_SLAB_BOT + M4.insert_depth),
             bore(M4.shaft_clr_d, HS_SLAB_BOT + M4.insert_depth - 0.01, HS_FLOOR + HS_REACH_MAX + 1.0)]
 
 
@@ -1500,7 +1539,7 @@ def height_screw(i: int) -> cq.Workplane:
 
 
 def height_insert(i: int) -> cq.Workplane:
-    """Dummy M4 heat-set in the slab under string i, mouth down (local frame)."""
+    """Dummy M4 heat-set under string i, mouth flush in the prism's bottom face (local frame)."""
     from cadkit.fasteners import seated_insert
     x, y = height_screw_xy(i)
     return seated_insert(M4, (x, y, HS_SLAB_BOT), (0.0, 0.0, 1.0))
@@ -1510,17 +1549,17 @@ def height_insert(i: int) -> cq.Workplane:
 for _i in range(D.N_STRINGS - 1):
     (_xa, _ya), (_xb, _yb) = height_screw_xy(_i), height_screw_xy(_i + 1)
     _d = math.hypot(_xa - _xb, _ya - _yb)
-    assert _d >= M4_BUTTON_HEAD_D + HS_HEAD_CLR - 1e-9, (
-        f"strings {_i + 1} and {_i + 2}: height-screw heads {_d:.2f} apart -- they would collide")
+    assert _d - HS_HEAD_CAV_D >= D.MIN_WALL_2P - 1e-9, (
+        f"strings {_i + 1} and {_i + 2}: head cavities leave {_d - HS_HEAD_CAV_D:.2f} of web")
     assert _d - M4.insert_pilot_d >= D.MIN_WALL_2P - 1e-9, (
         f"strings {_i + 1} and {_i + 2}: heat-set pockets leave {_d - M4.insert_pilot_d:.2f} of wall")
-assert (_HS_ROW_A - HS_HEAD_CAV_D / 2.0) - (STOW_X + STOW_APEX) >= D.MIN_WALL_2P - 1e-9, (
-    "row A's head cavity has walked into the stow bores")
+assert (_HS_ROW_A - M4.insert_pilot_d / 2.0) - (STOW_X + STOW_APEX) >= D.MIN_WALL_2P - 1e-9, (
+    "row A's heat-set pocket has walked into the stow bores")
 for _i in range(D.N_STRINGS):
     _x, _y = height_screw_xy(_i)
     (_dy, _dw), (_cy, _cw) = insert_lobes(_i)
-    assert _x + M4.shaft_clr_d / 2.0 <= INS_X1 - _cw / 2.0 + 1e-9, (
-        f"string {_i + 1}'s screw tip bore reaches past its extension's gable")
+    assert INS_X0 <= _x - M4.shaft_clr_d / 2.0 and _x + M4.shaft_clr_d / 2.0 <= INS_X1 + 1e-9, (
+        f"string {_i + 1}'s screw tip bore reaches past its extension's +X face")
     assert 0.0 <= screw_reach(_i) <= HS_REACH_MAX + 1e-9, f"string {_i + 1}'s screw reach is out of range"
 
 
