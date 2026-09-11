@@ -130,7 +130,7 @@ def _build():
         for _n in _cgn(CH.LEG_STATIONS_X[1], _ly, _s, -1.0, CH.Z_BOT,
                        relief=False):
             w = w.cut(_n)
-        for _n in _esn(CH.LEG_STATIONS_X[1], _ly, -1.0, CH.Z_BOT, PRINT_UP):
+        for _n in _esn(CH.LEG_STATIONS_X[1], _ly, -1.0, CH.Z_BOT, PRINT_UP, _s):
             w = w.cut(_n)
     # STRING-END STOWAGE (one per string): a vertical bore set INBOARD of the -X face
     # (ZHOLE_X, ~3.5 mm of wall left -X of it) running from near the body top straight DOWN
