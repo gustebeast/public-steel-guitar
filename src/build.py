@@ -113,30 +113,33 @@ PARTS = {
     #  code, kept through the square-leg swap and then never removed.
     # redesign — generators remain in legs.py until the refinement pass
     # deletes them)
-    "leg_sleeve":      (lambda: heal(LG.leg_sleeve()),  "petg-gf/leg_sleeve.step",  "PETG-GF — leg slider sleeve ×4 (44×40×200, +Y face thinned for the cover: truncated flush spigot up top — the cover tongue completes the joint — full-length dropped octagon GROOVE, two W5 cover-rail slots, EMBEDDED gib bay + ONE M4 grub flush in the +X face; prints LYING on the thinned +Y face)"),
-    "leg_sleeve_cover": (lambda: heal(LG.leg_sleeve_cover()), "petg-gf/leg_sleeve_cover.step", "PETG-GF — sleeve COVER ×4: 44-wide × 4 plate sliding down two W5 octagon rails to close the sleeve's open C-channel into a box tube (anti-bow at long extension) + hide the slack coil; segment-mortise TONGUE up top + blind rail ends = captive, zero fasteners. Prints lying on the outer face"),
-    "leg_pinch_gib":   (lambda: heal(LG.leg_pinch_gib()), "tpu/leg_pinch_gib.step", "TPU — pinch GIB PAD ×4: grippy pad in the sleeve's +X wall pocket; ONE central M4 grub presses it onto the shaft octagon's waist wall (TPU = preload spring + µ~0.7 friction; ~500-650 N hold vs ~350 N worst leg load). Prints flat"),
-    "leg_shaft":       (lambda: heal(LG.leg_shaft()),   "petg-gf/leg_shaft.step",   "PETG-GF — -Y shaft ×2: W28 dropped-octagon tenon (197, rides under the sleeve cover) + SOLID 35.6-sq block (91, equal-height rule; 4.2 inset on ALL FOUR sides — symmetric reveal, +Y face = the stem plane so the bed is one plane) with the shared TPU foot's dovetail mortise. 288 long: print LYING on the stem face, laid diagonal in plan"),
-    "leg_shaft_trrs":  (lambda: heal(LG.leg_shaft_trrs()), "petg-gf/leg_shaft_trrs.step", "PETG-GF — +Y WIRED shaft ×1 (245, lying print): W28 octagon tenon + 44-sq block with the bar-joint octagon socket + the 10-03404 jack seated mouth-down on the (-5,+13) TRRS axis (loads from the open tenon top; boss = withdrawal stop, pressed jack_seat_ring = insertion stop)"),
     "leg_foot":        (lambda: heal(LG.leg_foot()),    "tpu/leg_foot.step",    "TPU — SHARED dovetail foot ×4 (user: one look): 44-sq pad + tenon into the underside mortise of the -Y leg blocks AND the pedal bar; the wired bar one covers the plug-threading access"),
     # (round leg_socket_trrs export retired — see leg_socket_sq_trrs)
-    "leg_plug_retainer": (lambda: heal(LG.leg_plug_retainer()), "pctg/leg_plug_retainer.step", "PCTG — press sleeve ×2: under the molded TRRS plug handles (the leg extension cable's at the head + the bar cradle CA-354S's in the tower) — insertion backstop; the seat lip takes withdrawal"),
     # ── SQUARE-LEG redesign, STAGE 1 (generators + eval prints; the round
     # legs still populate the assembly until the stack swap lands) ──
-    "leg_seg_body":    (lambda: heal(LG.leg_seg_body()), "petg-gf/leg_seg_body.step", "PETG-GF — square 44 segment BODY ×6 (redesign, plain legs): prints LYING on a face (layer lines along the leg — kick loads bulk GF); stacks on the cadkit octagon section joint, ONE M4 per joint for extraction only — no threads, no glue"),
-    "leg_seg_body_ch": (lambda: heal(LG.leg_seg_body_ch()), "petg-gf/leg_seg_body_ch.step", "PETG-GF — square segment BODY, CHANNELED ×2 (redesign, the wired -X/+Y leg only): + lidded face cable channel + core dive holes"),
     # ("leg_coupler_m" export retired — ROUND 3: threadless, gasketless square legs)
     # ("leg_coupler_f" export retired — ROUND 3: threadless, gasketless square legs)
     # ("leg_lid" export retired — the wired cable runs up the column CENTER
     # through the flush-octagon joints' Ø7 bores; no face channel to cover)
     # ("leg_washer_sq" export retired — ROUND 3: threadless, gasketless square legs)
-    "leg_body_stub":   (lambda: heal(LG.leg_body_stub()), "petg-gf/leg_body_stub.step", "PETG-GF — BODY STUB ×2 (bridge/+Y + keyhead/-Y; prints LYING ON ITS +Y FACE - Y-INSTALL round: layer lines in x-z so both leg-bending directions load within layers; the ridges print as vertical fins, the house gable points up): the 44-sq semi-permanent corner piece SLIDES IN ALONG Y - two FULL-LENGTH Y-running octagon crossing ridges (roof up) at the THIRDS of the 34 side-panel overlap (station +0.667/-10.667, hosted continuously by the WIDE CORNER RIB) + the 44-long simple 5×8 TONGUE at -17 into the endplate's groove (even 5/2.5+2.5 material split of the 10 wall; blind groove end = the flush stop); ONE M4×35 down the rail web into the inboard ridge = the Y-retention shear pin + ONE M4×10 along x through the endplate's end face cross-pinning the tongue (double shear); below, the leg↔bar socket verbatim (passive octagon mortise now the quick-release ledge is gone). Hangs 48 below the body = the disassembled z cost"),
-    "leg_body_stub_jk": (lambda: heal(LG.leg_body_stub_jk()), "petg-gf/leg_body_stub_jk.step", "PETG-GF — body stub ×1 (the +X/-Y jack corner): the mirror SKU - end-wall tongue on local +x (this corner faces its endplate the other way); otherwise identical"),
-    "leg_body_stub_trrs": (lambda: heal(LG.leg_body_stub_trrs()), "petg-gf/leg_body_stub_trrs.step", "PETG-GF — body stub ×1 (the -X/+Y WIRED corner; end-wall tongue local +x): NOTHING above the top face (user killed the jack fin) - the mouth-seat boss, barrel way and Ø9.7 jack way open through the FLAT top; the naked 10-03404 DROPS IN through the wide rib's Ø10.5 well AFTER the slide, seats on the boss, and an M2 set screw from the stub's inboard-y face (reachable under the assembled body) clamps its barrel; the pigtail rides the over-rib raceway (y 50.5) east to the bus-B tee"),
-    "leg_head":        (lambda: heal(LG.leg_head()), "pctg/leg_head.step", "PCTG — LEG HEAD ×4 (all-octagon; prints LYING on the +Y bed face): 44-sq, flush octagon spigot into the stub socket, octagon section socket below, captive TRRS plug seat on the (+5,+13) axis (one SKU for all legs). NO Z RETENTION — the seatbelt quick-release (bolt + button) is gone; the spigot is a plain sliding fit"),
     "latch_slider":    (lambda: heal(LT.slider()), "pctg/latch_slider.step", "PCTG — LATCH SLIDER ×6 (4 leg—body + 2 bar—leg; ONE SKU): the whole quick-release. Push-to-connect (45° hook lead cams it in against the coil, springs out at depth); press the pad and pull to release, one-handed. Steel coil seats in its blind bore. Prints flat on its back face — the hook lead and the pad both face up, nothing to support"),
     "latch_cover":     (lambda: heal(LT.cover()), "pctg/latch_cover.step", "PCTG — LATCH COVER ×6 (ONE SKU): closes the slider load window; its aperture lip is the slider outward stop AND its Z lock. Slides DOWN a 45° dovetail onto a hard stop and can only leave upward, which the mating half blocks once assembled — captive, zero fasteners. Prints flat"),
     # ("leg_washer" export retired — ROUND 3: threadless, gasketless square legs)
+    # -- ONE LEG (user): the redesigned leg (src.leg_stack) at the -X/+Y corner, with its
+    # body latch and the pedal bar's latch. The other three corners carry only a body
+    # adapter. (The old square-leg family is retired from the assembly and from here;
+    # its generators remain in legs.py, which still owns the body joinery.)
+    "body_adapter":    (lambda: heal(LS.body_adapter()), "petg-gf/body_adapter.step", "PETG-GF — body adapter, -X/+Y corner (the leg): slides into the body's mortises along Y (two octagon ridges + the end-wall tongue in its rebate), one M4 shear pin down the rail + the endplate's lock pin; blind mortise below for the fixed tenon, with the body latch's pocket. Prints -Y -> +Y"),
+    "body_adapter_px_py": (lambda: heal(LS.body_adapter(CH.LEG_STATIONS_X[0], CH.LEG_Y[0])), "petg-gf/body_adapter_px_py.step", "PETG-GF — body adapter, +X/+Y corner: the same adapter with its body joinery built for that corner (tongue toward +X)"),
+    "body_adapter_px_my": (lambda: heal(LS.body_adapter(CH.LEG_STATIONS_X[0], CH.LEG_Y[1])), "petg-gf/body_adapter_px_my.step", "PETG-GF — body adapter, +X/-Y corner (tongue toward +X, screw down the -Y rail)"),
+    "body_adapter_mx_my": (lambda: heal(LS.body_adapter(CH.LEG_STATIONS_X[1], CH.LEG_Y[1])), "petg-gf/body_adapter_mx_my.step", "PETG-GF — body adapter, -X/-Y corner (tongue toward -X, screw down the -Y rail)"),
+    "fixed_sleeve":    (lambda: heal(LS.fixed_sleeve()), "petg-gf/fixed_sleeve.step", "PETG-GF — fixed sleeve: butts the adapter, pinned to the fixed tenon by one +X screw; the body latch's pad sits flush in its -Y face. Prints -Y -> +Y"),
+    "adjust_sleeve":   (lambda: heal(LS.adjust_sleeve()), "petg-gf/adjust_sleeve.step", "PETG-GF — adjust sleeve: butts the fixed sleeve; one +X screw pins the fixed tenon, one sets the height through the adjust tenon's ladder. Prints -Y -> +Y"),
+    "fixed_tenon":     (lambda: heal(LS.fixed_tenon()), "petg-gf/fixed_tenon.step", "PETG-GF — fixed floating tenon: adapter <-> fixed sleeve <-> adjust sleeve, houses the body latch slider and spring. Prints diagonally (+X+Y -> -X-Y)"),
+    "adjust_tenon":    (lambda: heal(LS.adjust_tenon()), "petg-gf/adjust_tenon.step", "PETG-GF — adjust floating tenon: the height ladder (blind +X holes) and, at its bar end, the pedal bar latch's pocket and lead-in. Prints diagonally (+X+Y -> -X-Y)"),
+    "leg_latch_slider": (lambda: heal(__import__("src.leg_latch", fromlist=["e"]).slider()), "pctg/leg_latch_slider.step", "PCTG — body latch slider: push-to-connect hook into the adapter, flush 20x20 pad on the fixed sleeve, one steel coil. Prints -X -> +X"),
+    "bar_latch_frame": (lambda: heal(LS.bar_latch_frame()), "pctg/bar_latch_frame.step", "PCTG — pedal bar yoke latch: a ring round the adjust tenon, hook in its pocket, 20x20 pad flush in the collar, lugs for two coils. Prints ring down"),
+    "bar_latch_collar": (lambda: heal(LS.bar_latch_collar()), "petg-gf/bar_latch_collar.step", "PETG-GF — pedal bar latch collar: the top 22.4 of the bar's tower, holding the yoke and its springs; three M4x30 button heads into the tower. Prints mouth down"),
     # pedal bar (the per-foot latches are gone — the towers are passive
     # is validated). The bar itself is a DEMO prism (longer than the bed —
     # it gets segmented for printing once the pedals land on it).
@@ -150,8 +153,6 @@ PARTS = {
     "pedal_lever":     (lambda: heal(__import__("src.foot_pedal", fromlist=["e"]).pedal_lever()), "pctg/pedal_lever.step", "PCTG — FOOT PEDAL lever ×3 (initial design): hub on the axle, leg carrying the return lobe at 13.2 (sized so the 20° throw gives the SAME 4.51 spring stroke as the knee levers — which is what lets the half stop transfer for free), a 90 mm arm running out to the player and the pedal board across its end (30.8 mm of travel, ~1.6→3 N at the board)"),
     "pedal_detent_nub": (lambda: heal(_PB("nub_part")), "tpu/pedal_detent_nub.step", "TPU — detent nub ×1 (Ø4×4): presses into the bar top as the LID lock"),
     # (pedal_bar_foot merged into the shared leg_foot SKU — one look ×4)
-    "leg_shaft_short": (lambda: heal(LG.leg_shaft_short()), "petg-gf/leg_shaft_short.step", "PETG-GF — SHORT +Y shaft ×1 (the wired one prints from leg_shaft_trrs): W28 dropped-octagon tenon ending in the 35.6-sq terminal block (4.2 inset on all four sides, symmetric; +Y face = the stem plane) whose octagon socket + point-side ledge take the bar tower's shaved tenon"),
-    "jack_seat_ring":  (lambda: heal(LG.jack_seat_ring()), "pctg/jack_seat_ring.step", "PCTG — press ring ×1: down the wired short shaft's way onto the leg extension cable's molded jack barrel (insertion backstop; the integral boss takes withdrawal)"),
     "electronics_tray": (lambda: heal(__import__("src.electronics", fromlist=["e"]).electronics_tray()), "pctg/electronics_tray.step", "PCTG — compute-bay tray (drops into rail channels from above; tool-free SNAP mounts for Teensy+shield, Pi 5, 2x CS42448, buck, CAN transceiver — snap fingers need PCTG's ductility)"),
 }
 # Deck panels: each is a (base, colour) PAIR — same origin, print as ONE object
@@ -650,219 +651,30 @@ def _pickup_mount_components():
     return out
 
 
-LEG_HEIGHT = 655.0   # floor → body bottom (user reference). Fine-stage
-                     # bands (E = engagement 50..192, travel 142): with
-                     # EQUAL 103-tall wide bottoms (user: -Y block 91 =
-                     # bar 19 + tower 24 + block 48) every tenon roots at
-                     # floor+103, so BOTH sides share ONE band formula.
-                     # FLUSH round: the head seat moved up to Z_BOT-48
-                     # (the stub mouth) → H = 590+142k−E (k=1: 540..682).
-                     # Drawn 655 = k=1, E=77, all four legs — same count
-LEG_SEGMENTS = 2     # index stride / band count; the drawn chain places
-                     # LEG_SEGMENTS−1 bodies per leg (k=1 at 655)
-
-# The pedal bar and the pedals on it are both drawn in the bar's own frame
-# (z0 = plate bottom = the shaft waist's lower shoulder) and lifted into the
-# guitar by the same amount. Named once so the bar, the pedals and the viewer's
-# animation rig (tools/export_rig.py, which needs the axle centre in guitar
-# coordinates) can't drift apart.
-PEDAL_LIFT_DZ = (CH.Z_BOT - LEG_HEIGHT) + LG.FOOT_H
+# The pedal bar and the pedals on it are both drawn in the bar's own frame (z0 = plate
+# bottom) and lifted into the guitar by the same amount. Named once so the bar, the
+# pedals and the viewer's animation rig (tools/export_rig.py, which needs the axle
+# centre in guitar coordinates) can't drift apart. The bar hangs off the redesigned
+# leg's adjust tenon (user: one leg), so the lift is where that leg puts the bar's
+# tower mouth -- the same pose leg_stack.pedal_bar_context uses.
+from . import leg_stack as LS                      # noqa: E402
+from . import pedal_bar as _PBM                    # noqa: E402
+PEDAL_LIFT_DZ = LS.Z_BAR_MOUTH - _PBM.TOWER_TOP
 
 
 def _leg_components():
-    """FLUSH SQUARE-LEG stack (leg centres = CH.LEG_Y, 17 inboard of the
-    rails so every outer face is flush with the body walls): BODY STUB
-    (semi-permanent: octagon crossing ridges into the side walls + the
-    end-wall tongue into the endplate, one M4 down the web + one M4
-    along x through the end face; mouth at -48) -> leg head (the
-    inserting half, bolt
-    channel opening INBOARD; its female mouth at -90) -> segment chain
-    (142 pitch) -> sleeve -> shaft -> TPU foot. The stub/head joint
-    frames are authored FLIPPED 180 in legs.py, so the whole stack still
-    places with the one per-side rotation."""
+    """ONE LEG (user): the redesigned leg (src.leg_stack) at its -X/+Y corner, with its
+    body latch and the pedal bar's latch, every part authored where it goes. The other
+    three corners carry only a BODY ADAPTER, slid into the body's mortises, so the
+    body joinery is still in the assembly at every corner."""
     from . import chassis as CH
-    from . import wiring as WR
-    from .pedal_bar import STUB_Z0 as PB_STUB_Z0
-    from .helpers import box_at
-    out = []
-    seg_body, seg_body_ch = LG.leg_seg_body(), LG.leg_seg_body_ch()
-    head, head_latch = LG.leg_head(), LG.leg_head(latch=True)
-    stub_p, stub_jk = LG.leg_body_stub(), LG.leg_body_stub_jk()
-    sleeve, cover = LG.leg_sleeve(), LG.leg_sleeve_cover()
-    shaft, foot = LG.leg_shaft(), LG.leg_foot()
-    ground = CH.Z_BOT - LEG_HEIGHT
-    ZM = -LG.STUB_H                        # stub mouth / head seat (rel Z_BOT)
-    k = 0
-    for sx in CH.LEG_STATIONS_X:           # stations computed from the shared endplate model
-        # EVERY leg is placed rot 180 (user): the octagon's groove side -- which is
-        # also the print-bed face -- then points world -Y on BOTH rails, so all four
-        # legs read the same way round. The -Y pair used to sit at rot 0, which put
-        # their bed face and their apex on the opposite sides from the +Y pair.
-        for ly, rot in ((CH.LEG_Y[0], 180), (CH.LEG_Y[1], 180)):   # flush centres
-            wired = (sx, ly) == (CH.LEG_STATIONS_X[1], CH.LEG_Y[0])
-            # The stub SKU is chosen by eps, the LOCAL tongue side, and rot 180 maps
-            # local x to world -x -- so eps = -egx, where egx is the outboard x sign
-            # the chassis cuts its grooves with. (At rot 0 it was eps = +egx, which
-            # is why the two -Y corners swap SKU with this change.) Getting this
-            # wrong points the end-wall tongue away from its endplate.
-            egx = -1.0 if sum(CH.LEG_STATIONS_X) / 2 > sx else 1.0
-            eps = -egx
-
-            def R(wp, dz=0.0, dx=0.0, dy=0.0):
-                return (wp.translate((dx, dy, dz))
-                        .rotate((0, 0, 0), (0, 0, 1), rot)
-                        .translate((sx, ly, CH.Z_BOT)))
-
-            # the SERVICE position (legs.SERVICE_SLIDE): the middle ridge cut back and a
-            # second screw hole. rot 180 maps world y to local -y, so the corner's
-            # inboard side (world -syg) is local +syg.
-            syg = 1.0 if ly > sum(CH.LEG_Y) / 2 else -1.0
-            cut = LG.service_slide(egx, syg)
-            if cut:
-                stub = LG._body_stub(wired, 1.0 if wired else eps, latch=wired,
-                                     mid_cut=cut, inboard=syg)
-            else:
-                stub = LG.leg_body_stub_trrs() if wired else (stub_jk if eps > 0 else stub_p)
-            out.append((f"leg_body_stub_{k}", R(stub, ZM)))
-            out.append((f"leg_head_{k}", R(head_latch if wired else head, ZM)))
-            # LEG-JOINT LATCH: slider + cover ride the HEAD (the leg is the piece
-            # you pull off, so the button is on it). Drawn LATCHED. The bar-joint
-            # pair, indices 4-5, travel with the bar — pedal_bar._latch_parts.
-            if wired:                       # ONE joint pair while the latch is iterated
-                out.append((f"latch_slider_{k}", R(LT.slider(), ZM)))
-                out.append((f"latch_cover_{k}", R(LT.cover(), ZM)))
-                out.append((f"latch_spring_{k}", R(LT.spring(), ZM)))
-            # threadless chain: butt faces, integral plugs. Head bottom
-            # face at ZM - 42 = -90; each body IS the 142 pitch.
-            top = ZM - LG.HEAD_BODY_L
-            # equal bottoms: identical silhouettes -> identical bands
-            # both sides (H = 618 + 142k - E after the 228 sleeve)
-            # (leg_lid retired: the wired cable runs up the column CENTER)
-            nseg = LEG_SEGMENTS - 1
-            for j in range(nseg):
-                idx = LEG_SEGMENTS * k + j
-                out.append((f"leg_seg_body_{idx}",
-                            R(seg_body_ch if wired else seg_body,
-                              top - LG.SEG_BODY_L)))
-                top -= LG.SEG_BODY_L
-            out.append((f"leg_sleeve_{k}", R(sleeve, top)))
-            # cover rides the sleeve frame (rails at blind-end down-stop)
-            out.append((f"leg_sleeve_cover_{k}", R(cover, top)))
-            # gib pad drawn released (0.3 standoff) in the pocket near the mouth
-            out.append((f"leg_pinch_gib_{k}",
-                        R(LG.leg_pinch_gib(), top - 195.0)))
-            # +Y legs end SHORT (the bar carries their last piece as stub
-            # towers); only the -Y legs run to the floor with feet.
-            # Key on the RAIL, not on rot: rot used to double as "which rail",
-            # and now that every leg is placed 180 it no longer discriminates.
-            # Left as rot == 180 this branch swallowed all four legs -- the -Y
-            # pair lost their feet and got the short bar-tower shaft, i.e. they
-            # stopped reaching the floor.
-            if ly == CH.LEG_Y[0]:
-                sh = LG.leg_shaft_trrs() if wired else LG.leg_shaft_short()
-                # short-shaft seat plane on the bar tower — also the datum the
-                # wired branch below hangs the second TRRS blind-mate off
-                zst = ground + LG.FOOT_H + PB_STUB_Z0
-                out.append((f"leg_shaft_{k}",
-                            sh.rotate((0, 0, 0), (0, 0, 1), rot)
-                            .translate((sx, ly, zst))))
-                # (the bar tower carried the same bolt/button SKUs at
-                # indices 4-5; gone with the quick-release)
-            else:
-                out.append((f"leg_shaft_{k}",
-                            shaft.rotate((0, 0, 0), (0, 0, 1), rot)
-                            .translate((sx, ly, ground + LG.FOOT_H))))
-                out.append((f"leg_foot_{k}",
-                            foot.rotate((0, 0, 0), (0, 0, 1), rot)
-                            .translate((sx, ly, ground))))
-            if wired:
-                # leg<->body TRRS blind-mate on the (+5, +13) axis (local
-                # -> global (sx-5, ly-13) on this 180-rotated stack — the
-                # fat flare band of the flush octagon): 10-03404 in the
-                # stub's way (mouth -9.3, same z as ever: ZM + 38.7),
-                # captive plug in the head (tip +3.7), press retainer.
-                out.append(("chassis_trrs_jack",
-                            R(LG.chassis_trrs_jack(), 0.0, 5.0, LG.TRRS_DY)))
-                out.append(("leg_column_plug_0",
-                            R(LG.leg_column_plug(), 0.0, 5.0, LG.TRRS_DY)))
-                # (no seat ring at the BODY joint any more — Y-INSTALL: a
-                # ring can't ride through the fin's side-wall passage, so
-                # an M2 set screw through the fin wall clamps the jack)
-                out.append(("leg_plug_retainer_0",
-                            R(LG.leg_plug_retainer(), -41.6, 5.0, LG.TRRS_DY)))
-                # leg<->bar blind-mate: jack #2 (mouth DOWN) + seat ring
-                # in the short shaft's block; plug + retainer ride the
-                # bar tower (axis at station +5, world y ly-13)
-                yj = ly - LG.TRRS_DY
-                zj = zst + 38.7 - LG.CHJ_MOUTH_Z    # jack mouth at +38.7
-                out.append(("shaft_trrs_jack",
-                            LG.chassis_trrs_jack()
-                            .rotate((0, 0, 0), (0, 0, 1), rot)
-                            .translate((sx + 5.0, yj, zj))))
-                out.append(("leg_column_plug_1",
-                            LG.leg_column_plug()
-                            .rotate((0, 0, 0), (0, 0, 1), rot)
-                            .translate((sx + 5.0, yj, zst + 48.0))))
-                out.append(("jack_seat_ring_1",
-                            LG.jack_seat_ring()
-                            .rotate((0, 0, 0), (0, 0, 1), rot)
-                            .translate((sx + 5.0, yj, zst + 78.2))))
-                out.append(("leg_plug_retainer_1",
-                            LG.leg_plug_retainer()
-                            .rotate((0, 0, 0), (0, 0, 1), rot)
-                            .translate((sx + 5.0, yj, zst + 48.0 - 41.6))))
-                # ONE OFF-THE-SHELF TRRS M->F EXTENSION cable is the
-                # whole column (user: zero connections on the leg): its
-                # molded PLUG sits captive in the head (blind-mates the
-                # chassis jack), its molded FEMALE barrel seats in the
-                # shaft block (receives the bar tower's plug) — no
-                # solder, no crimps, no junction anywhere in the leg.
-                # Path: head plug -> Ø7 joint bores + cores (y ly-13) ->
-                # sleeve groove -> heat-set slack COIL (O8 mandrel/85C;
-                # at the groove's inscribed centre, y yj) -> up the
-                # shaft's Ø9.7 way to its jack barrel. Drawn as two
-                # nets purely so the coil renders between them.
-                out.append(("leg_column_cable", WR._wire([
-                    (sx - 5.0, yj, CH.Z_BOT - 39.2),
-                    (sx - 5.0, yj, CH.Z_BOT - 58.0),
-                    (sx, ly - 13.0, CH.Z_BOT - 66.0),
-                    (sx, ly - 13.0, CH.Z_BOT - 245.0),
-                    (sx, yj, CH.Z_BOT - 262.0),
-                    (sx, yj, CH.Z_BOT - 270.0)], 3.8)))
-                out.append(("shaft_trrs_cable", WR._wire([
-                    (sx + 5.0, yj, zst + 80.0),
-                    (sx + 5.0, yj, CH.Z_BOT - 352.0),
-                    (sx, yj, CH.Z_BOT - 348.0),
-                    (sx, yj, CH.Z_BOT - 340.0)], 3.8)))
-                # slack coil in the sleeve's groove free span: at SEC_H 36
-                # the groove's largest inscribed circle centres at y -3.5
-                # (= TRRS_DY), r ~12.7 — plenty for the O16 coil
-                coil = cq.Workplane("XY").add(cq.Solid.makeCylinder(
-                    8.0, 70.0, cq.Vector(sx, yj, CH.Z_BOT - 340.0),
-                    cq.Vector(0, 0, 1))).cut(
-                    cq.Workplane("XY").add(cq.Solid.makeCylinder(
-                        4.5, 72.0, cq.Vector(sx, yj, CH.Z_BOT - 341.0),
-                        cq.Vector(0, 0, 1))))
-                out.append(("leg_cable_coil", coil))
-                # body jack's factory cable (Y-INSTALL, finless): the
-                # jack drops into the stub's way through the wide rib's
-                # well AFTER the slide; its pigtail exits the jack top
-                # (-44.95), jogs NORTH to y 50.5 (past the jack barrel,
-                # north of the electronics tray) and drops into the
-                # OVER-RIB raceway lane (floor -67.3, cut across the
-                # wide rib + station rib), riding it east ABOVE the
-                # full-length ridge roofs (-67.91), then diagonally down
-                # to the bus-B tee. Unplug at the tee to extract.
-                out.append(("chassis_trrs_cable", WR._wire([
-                    (sx - 5.0, yj, CH.Z_BOT + 30.4),
-                    (sx - 5.0, yj, -42.9),
-                    (sx - 5.0, 50.5, -42.9),
-                    (sx - 5.0, 50.5, -65.0),
-                    (-586.5, 50.5, -65.0),
-                    (-581.5, 35.5, WR.HDR_Z)], 3.8)))
-                #   ^ the descent elbow sits 2.5 east of the station
-                #     rib's face (-589) so the fat diagonal rod clears
-                #     its corner south of the raceway band
+    out = list(LS.leg_parts())
+    k = 1
+    for sx in CH.LEG_STATIONS_X:
+        for ly in CH.LEG_Y:
+            if (sx, ly) == (LS.LEG_X, LS.LEG_Y):
+                continue
+            out.append(("body_adapter_%d" % k, LS.body_adapter(sx, ly)))
             k += 1
     return out
 
@@ -1289,6 +1101,11 @@ _COLORS = {
     "adjust_sleeve":   (0.42, 0.48, 0.52),
     "fixed_tenon":     (0.55, 0.52, 0.44),   # PETG-GF floating tenons
     "adjust_tenon":    (0.62, 0.56, 0.42),
+    "leg_latch_slider": (0.85, 0.35, 0.20),  # body latch accent
+    "leg_latch_spring": (0.62, 0.64, 0.67),  # stainless coil (purchased)
+    "bar_latch_frame": (0.85, 0.35, 0.20),   # pedal bar latch accent
+    "bar_latch_collar": (0.36, 0.42, 0.46),  # PETG-GF, the bar tower's family
+    "bar_latch_spring": (0.62, 0.64, 0.67),
     "leg_seg_body":    (0.42, 0.48, 0.52),   # square GF bodies
     "leg_coupler_m":   (0.36, 0.42, 0.46),
     "leg_coupler_f":   (0.36, 0.42, 0.46),
