@@ -34,7 +34,8 @@ ASSEMBLY (the latch then cannot come out):
   2. Slide the collar on from the tower's +Y face until the rails hit the stop.
      The springs are 0.4 longer free than installed; a chamfer at the far end of
      each channel cams the coil end in as the ring settles.
-  3. One M4x30 button head down through the collar into the tower.
+  3. One M4x30 button head down through the collar into its insert in the
+     tower (cadkit.fasteners.ScrewJoint -- see `screw_joint`).
 
 THE PARTS
   * FRAME: a flat ring riding the tower's top face. Its +Y bar IS the hook: its inner
@@ -63,12 +64,13 @@ import math
 
 import cadquery as cq
 
-from cadkit.fasteners import M4, anchor_cutter, head_bore_cutter
+from cadkit.fasteners import M4, ScrewJoint
 from cadkit.joinery import PrintSpec, joint, joint_box_min
 from cadkit.supports import printable_bore
 from . import dimensions as D
 from . import latch as LT
 from . import leg_latch as LL
+from . import legs as LG
 from . import leg_stack as LS
 from .helpers import box_at
 
@@ -140,6 +142,10 @@ SCREW = dataclasses.replace(M4, name="M4 button", head_recess_d=11 * B,
                             head_recess_h=3 * B)   # m4_button_screw: head 7.6 x 2.2
 SCREW_L = 30.0                     # M4x30: through the collar, then SCREW_BITE into the tower
 SCREW_BITE = SCREW_L - (COLLAR_H - SCREW.head_recess_h)
+SCREW_END = SCREW_BITE + COLLAR_H + 1.6   # where the hole stops, 1.6 past the tip
+# the head is the leg's head: ONE M4 button SKU on the instrument (user's fastener
+# rule), so the numbers come from there rather than being typed again
+SCREW_HEAD_D, SCREW_HEAD_H = LG.LOCK_HEAD_D, LG.LOCK_HEAD_H
 TRRS_BORE_D = 14 * B               # 11.2 the CA-354S body way, in the BAR
 TRRS_COLLAR_D = 13 * B             # 10.4 -- the COLLAR'S share of that way is one bead
                                    # tighter on the same 9.6 body (0.4 a side, still a
@@ -147,7 +153,8 @@ TRRS_COLLAR_D = 13 * B             # 10.4 -- the COLLAR'S share of that way is o
                                    # this part peaks its bores toward -Y, and 11.2's
                                    # peak walks the jack so far in off the -Y face that
                                    # the ring's own corner web falls to 1.35.
-assert SCREW_BITE >= M4.anchor_min_wall, "the collar screws bite %.1f" % SCREW_BITE
+assert SCREW_BITE >= M4.anchor_min_wall, (
+    "the screw bites %.1f, under the insert's own depth + min bite" % SCREW_BITE)
 
 
 def _corner_xy(sx: float, bore_d: float, peak_d: float = None):
@@ -249,10 +256,18 @@ _WEB = D.MIN_WALL_2P
 K_MXMY = (abs(TRRS_XY[0]) + abs(TRRS_XY[1])                                 # -X-Y (jack)
           - (TRRS_COLLAR_D / 2 + _WEB) * _S2) - CLR * _S2   # the ring meets the
                                                             # COLLAR's bore, not the bar's
+# the screw's hole is NOT its shank where the ring passes it: the insert pocket's
+# mouth sits on the split, and cadkit flares a 45-degree step cone up out of it --
+# into the collar's lowest 0.8, exactly the band the ring runs in. So the clip is
+# measured off the POCKET (the hole's widest feature here), not the shank; sized off
+# the shank it left 1.05 (measured, verify_bar_walls.py).
 K_PXMY = (abs(SCREW_XY[0]) + abs(SCREW_XY[1])                               # +X-Y (screw)
-          - (SCREW.shaft_clr_d / 2 + _WEB) * _S2) - CLR * _S2
+          - (max(SCREW.shaft_clr_d, SCREW.insert_pilot_d) / 2 + _WEB) * _S2) - CLR * _S2
 _OPEN_DIAG = (LS.TEN_W + 2 * LS.FIT) / 2 * _S2 + S_MAX + CLR   # the opening's -Y diagonals
-assert (K_MXMY - _OPEN_DIAG) / _S2 >= D.MIN_WALL_2P, "the ring's -X-Y corner is too thin"
+for _k, _nm in ((K_MXMY, "-X-Y"), (K_PXMY, "+X-Y")):
+    assert (_k - _OPEN_DIAG) / _S2 >= D.MIN_WALL_2P, (
+        "the ring's %s corner is %.2f wide between the mortise's opening and the clip"
+        % (_nm, (_k - _OPEN_DIAG) / _S2))
 
 
 def planes(z_mouth: float) -> dict:
@@ -440,6 +455,24 @@ def screws(z_mouth: float):
             for x, y in SCREW_CORNERS]
 
 
+def screw_joint(z_mouth: float) -> ScrewJoint:
+    """THE screw, defined once for both parts (cadkit.fasteners.ScrewJoint): head
+    recessed in the collar's mouth face, clearance down through the collar, and the
+    INSERT in the tower with its pocket mouth on the split -- the face the insert is
+    pressed into. Each part cuts `cutter(its own print_up)`, so the one hole comes
+    out teardropped for -Y in the collar and for +Y in the tower, and the assembly
+    draws the screw and the insert from the same numbers."""
+    (pt, ax), = screws(z_mouth)
+    return ScrewJoint(SCREW, pt, ax, SCREW_L, insert_at=COLLAR_H, end_at=SCREW_END,
+                      head_d=SCREW_HEAD_D, head_h=SCREW_HEAD_H,
+                      recess=SCREW.head_recess_h)
+
+
+def screw_dummies(z_mouth: float):
+    """The screw seated and its insert in the tower, for the assembly."""
+    return screw_joint(z_mouth).dummies("bar_latch_screw", "bar_latch_insert")
+
+
 # -- the collar ----------------------------------------------------------------------
 def collar(z_mouth: float, trrs_top: float) -> cq.Workplane:
     """The top COLLAR_H of the bar's tower, printed on its own mouth face. Every latch
@@ -469,11 +502,9 @@ def collar(z_mouth: float, trrs_top: float) -> cq.Workplane:
                    -RECESS_BACK, z0 - 1.0, z0 + PAD_H + CLR))
     assert z_mouth - (z0 + PAD_H + CLR) >= D.MIN_WALL_2P, "the pad's recess breaks the mouth"
     # the spring channels: an arch over each coil, open all the way down through the
-    # collar's underside (a closed bottom would be a ceiling in this print, and would
-    # stop the collar going on over the coils); each one's -Y end is its lug's rest
-    # stop. The ends' lower edges are chamfered: lowering the collar at assembly, they
-    # cam the free coil's end and the lug together.
-    zb = p["z_pocket_top"]
+    # collar's underside -- a closed bottom would be a ceiling in this print, and the
+    # coils are dropped in from that side at assembly. The FAR end's lower edge is
+    # chamfered: it cams the over-long free coil in as the ring settles.
     for sx in (-1.0, 1.0):
         x = sx * SPR_X
         c = c.cut(_box(x - CHAN_R, x + CHAN_R, LUG_Y0, CHAN_END, z0 - 1.0, p["z_s"]))
@@ -495,10 +526,8 @@ def collar(z_mouth: float, trrs_top: float) -> cq.Workplane:
         c = c.cut(_xy_prism([(x - CHAN_R, LUG_Y0 + 0.01), (x + CHAN_R, LUG_Y0 + 0.01),
                              (x, LUG_Y0 - CHAN_R)],
                             z0 - 1.0, p["z_s"] + CHAN_R + 0.01))
-    # the screws: button head recess at the mouth, clearance on down, via cadkit
-    for (pt, axis) in screws(z_mouth):
-        c = c.cut(head_bore_cutter(SCREW, pt, axis, COLLAR_H + 1.0, overshoot=1.0,
-                                   print_up=COLLAR_UP))
+    # the screw: one hole, defined once for collar and tower alike
+    c = c.cut(screw_joint(z_mouth).cutter(COLLAR_UP))
     # the RAILS: what actually holds the collar on (the screw only stops it
     # sliding back off). They stand on the underside, outboard of everything.
     c = c.union(rails(z_mouth))
@@ -512,15 +541,10 @@ def collar(z_mouth: float, trrs_top: float) -> cq.Workplane:
 # -- what the tower gives up ---------------------------------------------------------
 def tower_cut(z_mouth: float) -> cq.Workplane:
     """Cut in the bar's tower: the two RAIL SLOTS the collar slides into, and the
-    one screw's anchor (self-tap now, insert later) -- upright, so sideways to the
-    bar's print, which is why cadkit shapes it."""
-    z0 = planes(z_mouth)["z0"]
-    out = rail_slots(z_mouth)
-    for (x, y, _), axis in screws(z_mouth):
-        a = anchor_cutter(M4, (x, y, z0), axis, SCREW_BITE + D.MIN_WALL_2P,
-                          overshoot=1.0, print_up=BAR_UP)
-        out = out.union(a)
-    return out
+    screw's end of its joint -- the insert's pocket, mouthed on the split, and the
+    clearance past it. Upright, so sideways to the bar's print: cadkit shapes the
+    bore and steps the pocket for that."""
+    return rail_slots(z_mouth).union(screw_joint(z_mouth).cutter(BAR_UP))
 
 
 # -- what the tenon gives up ---------------------------------------------------------
