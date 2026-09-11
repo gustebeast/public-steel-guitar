@@ -84,10 +84,10 @@ LEG_SHELL_X0, LEG_SHELL_X1 = CH.LEG_SHELL_NX     # -625.6 .. -610.6 (rail-takeov
 # ── THE HEIGHT-ADJUST PRISM (user) ────────────────────────────────────────────────
 # New solid under the insert pockets for their extensions and height screws (nut_block's HEIGHT
 # ADJUST block). Y: the pockets plus a two-bead wall each side. X: from this part's -X face to the
-# pockets' +X plus a two-bead wall -- which runs 0.2 past XHI, so it is added AFTER the thickness
-# trim. Z: 0.4 over the chassis's wide corner rib (nut_block.HS_PRISM_BOT) up to 0.8 under the top
-# plate. It stops ~2.4 short of the electronics tray at +X.
-HS_X1 = D.NUT_BLOCK_X + NB.INS_X1 + max(NB._clr(i) for i in range(D.N_STRINGS)) + D.MIN_WALL_2P
+# extension pockets' roofs plus a two-bead wall -- which runs past XHI, so it is added AFTER the
+# thickness trim. Z: 0.4 over the chassis's wide corner rib (nut_block.HS_PRISM_BOT) up to 0.8 under the top
+# plate.
+HS_X1 = D.NUT_BLOCK_X + NB.HS_POCKET_X1 + D.MIN_WALL_2P
 HS_Y0, HS_Y1 = NB._INS_LO - D.MIN_WALL_2P, NB._INS_HI + D.MIN_WALL_2P
 HS_Z0 = D.STRING_Z + NB.HS_PRISM_BOT
 HS_Z1 = CH.TP_GZ0 - D.MIN_WALL
@@ -100,13 +100,13 @@ def _height_prism():
 
 def _height_negatives():
     """Everything the prism needs cut, fused and subtracted once, in the nut block's local frame:
-    the main pockets again (they run through it), the extensions' gabled slots, the +X openings over
+    the main pockets again (they run through it), the extensions' house pockets, the +X openings over
     the band the full-profile bodies travel, and every screw's cavity, heat-set pocket and bore."""
     x_to = (HS_X1 - D.NUT_BLOCK_X) + 1.0
     z_top = (HS_Z1 - D.STRING_Z) + 1.0
-    out = NB.all_pockets()
+    out = NB.all_pockets().union(NB.lower_pockets())
     for i in range(D.N_STRINGS):
-        for k in [NB.insert_pocket_lower(i), NB.pocket_x_slot(i, x_to, z_top)] + NB.height_screw_negatives(i):
+        for k in [NB.pocket_x_slot(i, x_to, z_top)] + NB.height_screw_negatives(i):
             out = out.union(k)
     return out.translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z))
 

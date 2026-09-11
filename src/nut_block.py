@@ -917,12 +917,15 @@ def slide_insert(i: int) -> cq.Workplane:
     # still below the string plane -- nothing of the insert can foul the bar either.
     body = _plan_wire(i).extrude(INS_H).translate((0, 0, fz - INS_H))
     # THE HEIGHT-ADJUST EXTENSION (user): a tall foot down to the screw that pushes the insert up.
-    # Gabled plan (lower_plan_wire), so its pocket closes at +X without an overhang -- CLIPPED to
-    # the insert's own plan: where the clamp lobe steps to the dowel lobe the bare gable would stick
-    # out of the main pocket once the screw lifts the insert above the lower pocket.
-    ext = (lower_plan_wire(i).extrude(INS_EXT_H + 0.01)
-           .intersect(_plan_wire(i).extrude(INS_EXT_H + 0.01)))
-    body = body.union(ext.translate((0, 0, fz - INS_H - INS_EXT_H)))
+    # A CLAMP-WIDE RECTANGLE whose +X face is flush with INS_X1 -- the same plane as the dowel lobe's,
+    # so the whole insert prints lying on that face -- topped by a band in the insert's own plan,
+    # the part that rises into the main pocket (HS_RECT_H says why).
+    z_foot = fz - INS_H - INS_EXT_H
+    xm, xw = (INS_X0 + INS_X1) / 2.0, INS_X1 - INS_X0
+    body = body.union(box_at(xw, cw, HS_RECT_H + 0.01, x=xm, y=cy, z=z_foot + (HS_RECT_H + 0.01) / 2.0))
+    band = INS_EXT_H - HS_RECT_H + 0.01
+    top = _plan_wire(i).extrude(band).intersect(box_at(xw, cw, band, x=xm, y=cy, z=band / 2.0))
+    body = body.union(top.translate((0, 0, z_foot + HS_RECT_H)))
     # THE NECK STARTS CLEAR OF THE COIL, not at the lobe's step. The wrap reaches
     # ROD_X + ROD_D/2 + g on its +X side, and a neck beginning further -X than that drives
     # straight through the winding -- 10 mm^3 of it on the .070. So it is set from the
@@ -1417,6 +1420,22 @@ assert HS_REACH_MAX <= HS_SCREW_L - HS_SLAB_T - HS_HEAD_CLR, (
     f"meeting the slab")
 
 
+# THE INSERT PRINTS ON ITS +X FACE (user): lying on that flat face and growing -X, the reliable way to
+# make a 60 mm part, rather than standing it up as a tower. That face cannot follow a roof, so the
+# POCKET carries the roof instead -- a HOUSE whose 45 deg sides pass the insert's +X corners (a small
+# locating contact each) and whose flat top stands HS_ROOF_T clear of the insert's face. That top is
+# a BRIDGE in the keyhead's -X -> +X print; the gap is there so it may sag.
+HS_ROOF_T = 2 * D.BEAD
+# THE CLAMP-WIDE RECTANGLE MAY NOT RISE INTO THE MAIN POCKET. Up there, +X of the plan's taper, this
+# pocket and its neighbour's span only their dowel lobes, and a clamp-wide body would cut the fingers
+# between SKU A pockets to 0.59. So the rectangle is only as tall as keeps it HS_RECT_CLR under the
+# main pocket at the insert's highest; the rest of the extension keeps the plan, which that pocket holds.
+HS_RECT_CLR = 0.4
+HS_RECT_H = (POCKET_Z0 - HS_RECT_CLR) - HS_FLOOR - HS_REACH_MAX
+assert 0.0 < HS_RECT_H < INS_EXT_H, "no room for the extension's clamp-wide rectangle under the main pocket"
+HS_POCKET_X1 = INS_X1 + HS_ROOF_T + max(_clr(i) for i in range(D.N_STRINGS))   # the roofs' +X reach
+
+
 def insert_foot_z(i: int) -> float:
     """Local Z of string i's insert FOOT, clamped on its demo string (as drawn)."""
     return insert_flat_z(i) - INS_H - INS_EXT_H
@@ -1446,24 +1465,37 @@ def height_screw_xy(i: int):
     return HS_ROWS[(SKU_C - i) % 2], cy
 
 
-def lower_plan_wire(i: int):
-    """The EXTENSION's plan: the clamp lobe's Y span from INS_X0, with a 45 deg gable closing at +X
-    on the insert's own +X face. The keyhead prints -X -> +X, so a square +X end would be a ceiling
-    over the pocket; a gable is a roof. The extension prints the same way (on its -X face)."""
-    (_dy, _dw), (cy, cw) = insert_lobes(i)
-    lo, hi = cy - cw / 2.0, cy + cw / 2.0
-    xg = INS_X1 - cw / 2.0
-    assert xg > INS_X0, f"string {i + 1}'s gable would run past the insert's -X face"
-    return (cq.Workplane("XY")
-            .polyline([(INS_X0, lo), (xg, lo), (INS_X1, cy), (xg, hi), (INS_X0, hi)]).close())
+def _lower_groups():
+    """The extensions' pockets, as (y_lo, y_hi, clr) of the inserts' clamp-wide rectangles (NOT grown by
+    the fit). Neighbours that would leave less than a two-bead finger share ONE pocket -- the abutting
+    bass SKUs (strings 8-10), whose roof is then one long bridge (user)."""
+    groups = []
+    for i in range(D.N_STRINGS):                  # string 1 is +Y, so each next string is -Y of the last
+        (_dy, _dw), (cy, cw) = insert_lobes(i)
+        lo, hi, c = cy - cw / 2.0, cy + cw / 2.0, _clr(i)
+        if groups and (groups[-1][0] - groups[-1][2]) - (hi + c) < D.MIN_WALL_2P:
+            glo, ghi, gc = groups[-1]
+            groups[-1] = (min(glo, lo), max(ghi, hi), max(gc, c))
+        else:
+            groups.append((lo, hi, c))
+    return groups
 
 
-def insert_pocket_lower(i: int) -> cq.Workplane:
-    """The extension's slot: its gabled plan grown by the fit, from the floor up into the main pocket."""
-    z0, z1 = HS_FLOOR, POCKET_Z0 + 0.5
-    gable = lower_plan_wire(i).offset2D(_clr(i), kind="arc").extrude(z1 - z0)
-    plan = _plan_wire(i).offset2D(_clr(i), kind="arc").extrude(z1 - z0)   # the extension is clipped too
-    return gable.intersect(plan).translate((0, 0, z0))
+for _lo, _hi, _c in _lower_groups():
+    assert _hi - _lo > 2 * HS_ROOF_T, f"a {_hi - _lo:.2f} pocket has no room for its roof's flat top"
+
+
+def lower_pockets() -> cq.Workplane:
+    """Every extension's slot, from the floor up to the main pockets: per group, the rectangle under a
+    45 deg roof that meets it at its +X corners and flattens HS_ROOF_T past its face, all grown by the fit."""
+    out = None
+    for lo, hi, c in _lower_groups():
+        t = HS_ROOF_T
+        pts = [(INS_X0, lo), (INS_X1, lo), (INS_X1 + t, lo + t), (INS_X1 + t, hi - t), (INS_X1, hi), (INS_X0, hi)]
+        k = (cq.Workplane("XY").polyline(pts).close().offset2D(c, kind="arc")
+             .extrude(POCKET_Z0 - HS_FLOOR).translate((0, 0, HS_FLOOR)))
+        out = k if out is None else out.union(k)
+    return out
 
 
 def pocket_x_slot(i: int, x_to: float, z_top: float) -> cq.Workplane:
@@ -1519,8 +1551,8 @@ assert (_HS_ROW_A - HS_HEAD_CAV_D / 2.0) - (STOW_X + STOW_APEX) >= D.MIN_WALL_2P
 for _i in range(D.N_STRINGS):
     _x, _y = height_screw_xy(_i)
     (_dy, _dw), (_cy, _cw) = insert_lobes(_i)
-    assert _x + M4.shaft_clr_d / 2.0 <= INS_X1 - _cw / 2.0 + 1e-9, (
-        f"string {_i + 1}'s screw tip bore reaches past its extension's gable")
+    assert _x + M4.shaft_clr_d / 2.0 <= INS_X1 + 1e-9, (
+        f"string {_i + 1}'s screw tip bore reaches past its extension's +X face")
     assert 0.0 <= screw_reach(_i) <= HS_REACH_MAX + 1e-9, f"string {_i + 1}'s screw reach is out of range"
 
 
