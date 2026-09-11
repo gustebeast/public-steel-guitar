@@ -880,17 +880,17 @@ def _groove(length: float) -> cq.Workplane:
 # span Y +-42.8, so only the +Y legs sit under them. The leg's own material is untouched.
 # The cost is pull-off capacity against a kick toward/away from the player: the two
 # ridges share that along their length, so each mm is ~1/(2 SQ_W) of it (22.4 -> 25%).
-# WHAT NEEDS THE ROOM: the keyhead's nut-block HEIGHT SCREWS (bronner, user: slide the leg rather
-# than move the screws). Each is reached straight up from below along an M4-clearance path
-# (chassis.py cuts it through the corner rib), and every one of them stands over this leg's X span,
-# so the leg slides until its -Y face clears the +Y-most path -- string 1's -- in whole beads.
-# The face is chassis.LEG_Y[0] - LEG_W/2 spelled out from dimensions (legs cannot import chassis);
-# keyhead_endplate asserts the two agree.
+# WHAT NEEDS THE ROOM: the keyhead's nut-block HEIGHT SCREWS (bronner, user: slide the leg rather than
+# move the screws). Their button heads hang down into the chassis rib, each in a head cavity, right
+# where this leg's MIDDLE ridge rises -- so, seated, that ridge's cut-back end has to stop a two-bead
+# web short of the +Y-most cavity (string 1's); and slid out, the same room lets the key up to them.
+# In whole beads. The face is chassis.LEG_Y[0] - LEG_W/2 spelled out from dimensions (legs cannot import
+# chassis); keyhead_endplate asserts the two agree.
 from . import nut_block as _NB                # nut_block imports dimensions + motor_bank only: no cycle
 LEG_NY_FACE = D.BRIDGE_AXLE_Y + 4 * D.BEAD + D.WALL_THICKNESS - SQ_W     # a +Y leg's -Y face
-KEYHEAD_KEY_Y = (max(_NB.height_screw_xy(i)[1] for i in range(D.N_STRINGS))
-                 + _M4.shaft_clr_d / 2.0)       # the +Y edge of the +Y-most key path
-SERVICE_SLIDE = math.ceil(max(0.0, KEYHEAD_KEY_Y - LEG_NY_FACE) / D.BEAD - 1e-9) * D.BEAD
+KEYHEAD_CLEAR_Y = (max(_NB.height_screw_xy(i)[1] for i in range(D.N_STRINGS))
+                   + _NB.HS_HEAD_CAV_D / 2.0 + D.MIN_WALL_2P)   # +Y edge of the room the heads need
+SERVICE_SLIDE = math.ceil(max(0.0, KEYHEAD_CLEAR_Y - LEG_NY_FACE) / D.BEAD - 1e-9) * D.BEAD
 SERVICE_CORNERS = ((-1.0, 1.0), (1.0, 1.0))
 
 
