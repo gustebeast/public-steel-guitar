@@ -94,6 +94,12 @@ HS_X1 = D.NUT_BLOCK_X + NB.HS_POCKET_X1 + D.MIN_WALL_2P
 HS_Y0, HS_Y1 = NB._INS_LO - D.MIN_WALL_2P, NB._INS_HI + D.MIN_WALL_2P
 HS_Z0 = D.STRING_Z + NB.HS_PRISM_BOT
 HS_Z1 = CH.TP_GZ0 - D.MIN_WALL
+# THE +Y LEG SLIDES CLEAR OF THE HEIGHT SCREWS' KEY PATHS (legs.SERVICE_SLIDE, sized from them). It
+# spells the leg's -Y face out from dimensions; hold it to the chassis's own number.
+from . import legs as _LG
+assert abs(_LG.LEG_NY_FACE - (CH.LEG_Y[0] - CH.LEG_W / 2.0)) < 1e-6, (
+    f"legs.LEG_NY_FACE {_LG.LEG_NY_FACE:.3f} no longer matches the chassis's +Y leg face "
+    f"{CH.LEG_Y[0] - CH.LEG_W / 2.0:.3f} -- SERVICE_SLIDE would be sized from the wrong place")
 
 
 def _height_prism():
