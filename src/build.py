@@ -1193,6 +1193,15 @@ def screw_rows_components():
     return out
 
 
+def lever_components():
+    """Every lever as ONE named set: the six knee-lever stations and the foot pedals.
+
+    Like screw_rows_components, the build does not need it; it exists so the per-agent
+    scratch view can make the whole lever family LIVE. All of them share knee_lever's
+    bearing, axle, hub and seat helpers, so a change there is one unit of work."""
+    return _lever_stations_components() + _foot_pedal_components()
+
+
 def _tensioner_coupon_components():
     """The unified belt clamp shown ASSEMBLED, parked off the +X end for a clear look (the real
     clamps ride each string's belt). ONE SKU per half (`clamp_half`; half-B is it turned 180° about

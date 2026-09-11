@@ -58,7 +58,7 @@ _insert_boss_cut, _insert_dummy = cut_m4_boss, m4_boss_insert
 # ── bought parts (assembly dummies). REUSE existing line items where possible so they buy in
 # bulk: MR85ZZ bearings + the M4×10 cup-tip set screws + M4 heat-set inserts are ALL already in
 # the BOM (nut-block / screw-support). New: the Ø6 magnet, the MT6701 board, the springs.
-AXLE_D  = 5.0                       # Ø5 axle journals — PCTG now (user: no steel pin).
+AXLE_D  = D.BRG688_ID               # Ø8 axle journals (the 688ZZ bore, user 2026-09-10) — PCTG (user: no steel pin).
                                     # Zero torque lives on the axle (the springs act on
                                     # the LOBE; the magnet only co-rotates for the
                                     # sensor) and the radial bearing reactions (~4-5x
@@ -67,8 +67,11 @@ AXLE_D  = 5.0                       # Ø5 axle journals — PCTG now (user: no s
                                     # races take all the wear. (HISTORICAL: this described
                                     # the integral-stub + glued-insert pair, retired at
                                     # round 2 — the axle is ONE part now, see kl_axle.)
-BRG_OD, BRG_ID, BRG_W = 13.0, 5.0, 4.0  # 695ZZ — ONE bearing for the levers, the
-                                    # foot pedals AND the changer (user). Was MR85ZZ
+BRG_OD, BRG_ID, BRG_W = D.BRG688_OD, D.BRG688_ID, D.BRG688_W   # 688ZZ (Ø8×16×5) — the ONE
+                                    # bearing everywhere (user, 2026-09-10): the screws, the bridge,
+                                    # these levers and the foot pedals, which share these constants.
+                                    # 688ZZ C0r 474-710 N, so the ~130 N worst case is 3.6-5.5x.
+                                    # (history) 695ZZ (Ø5×13×4) before that. Was MR85ZZ
                                     # (Ø8×2.5), which sat at exactly 1.0x its 130 N
                                     # static rating here; 695ZZ is 346 N -> 2.7x.
                                     # SAME Ø5 bore, so friction is unchanged (deep-
@@ -77,6 +80,11 @@ BRG_OD, BRG_ID, BRG_W = 13.0, 5.0, 4.0  # 695ZZ — ONE bearing for the levers, 
                                     # HOUSING, not on the swinging lever. The cost is
                                     # bulk: the housing grows to clear the race.
 BRG_WALL = 1.6                      # 2-bead seat wall around the outer race
+BRG_SEAT_D = BRG_OD + 0.1           # the seat bore (race + press clearance) — walls measure from THIS
+BRG_WALL_X = 4 * D.BEAD             # 3.2 +X of the seat (user): with the lever room open through the
+                                    # +X face the cheek holds that side of the race from below only
+                                    # (the seat's print peak opens its top), so it gets double the tier.
+                                    # 1.6 measured off the RACE had left 1.55 off the seat.
 MAG_D, MAG_T = 6.0, 2.5             # DIAMETRICALLY-magnetised NdFeB disc on the axle end
                                     # = DigiKey/Radial Magnets 8995 (N35, NiCuNi, 80 °C),
                                     # an EXISTING supplier, in stock, $0.33–0.40. SOURCING
@@ -188,7 +196,8 @@ WP_Y0, WP_Y1   = HUB_Y1, HUB_Y1 + 4.0   # +Y bearing wall (10 .. 14)
 HUB_YC  = (HUB_Y0 + HUB_Y1) / 2     # hub / cam / feel centre Y (0)
 
 # ── lever ────────────────────────────────────────────────────────────────────
-HUB_D   = 13 * D.BEAD               # 10.4: ONE lever constant: the hub OD *and* the arm depth (ARM_TX). Keeps
+HUB_D   = 17 * D.BEAD               # 13.6 (was 10.4 on the Ø5 axle): the Ø8.2 bore keeps a 2.7 wall, the
+                                    # 2.6 it had. ONE lever constant: the hub OD *and* the arm depth (ARM_TX). Keeps
                                     # the feel on the clear cam above the round hub, and the arm as deep
                                     # as the hub is wide for a solid root.
 ARM_LEN = 100.0                     # hub centre -> arm tip (knee reach, -Z)
@@ -217,12 +226,14 @@ HUB_TOP = HUB_D / 2                          # top of the round hub -- feel clea
 AXLE_Z  = 0.0                                # lever AXLE centre Z. The whole feel block is anchored to
                                              #   this (via feel_place()), so RAISING the axle later slides
                                              #   the cartridges up automatically -- no other edits needed.
-LOBE_RC = 9.0                                # lobe axis radius (pivot -> lobe) = axle->lobe Z. The whole
+LOBE_RC = 9.5                                # lobe axis radius (pivot -> lobe) = axle->lobe Z. The whole
                                              #   feel block tracks -LOBE_RC (feel_place), so this sets how
                                              #   close the contact -- and the swept recess above it -- ride
                                              #   toward the axle. The recess just carves the hub as it
                                              #   rises, so the real limit is the solid WEB it leaves to the
-                                             #   Ø5 axle bore: 9.0 leaves ~2.6mm (measured; each -1mm of
+                                             #   Ø8.2 axle bore: 9.5 leaves 1.7mm (measured; 9.0 left 1.2 once
+                                             #   the 688ZZ bore arrived, so the user took 9.5 for the 1.6
+                                             #   tier; 9.0 had left ~2.6 on the Ø5.2 bore; each -1mm of
                                              #   LOBE_RC costs 1mm of web, 0.8mm being the thin-wall floor).
                                              #   Ratio ARM_LEN/LOBE_RC = 100/9 = 11.1:1, follower travel =
                                              #   9*sin30 = 4.5mm. 9 (not 8) so the Ø1.4 feel coil keeps
@@ -433,7 +444,12 @@ BODY_Z    = HUB_TOP + 3 * D.BEAD    # body underside in local Z: the hub top (5.
 # stays +Z. Both halves print -Z->+Z (facing 'up') -> the octagon family -> self-supporting
 # on BOTH sides. One joint SIZE, two LENGTHS: short TENONS on the housing (its own Y span)
 # and a long RIB MORTISE (the whole knee-depth range).
-_JW       = 8 * D.BEAD            # 6.4 octagon flat-to-flat width (joint_coupon.WIDTH
+MORT_CLR  = 0.3                     # mortise clearance (slide fit)
+# THE JOINT'S BOUNDING BOX IS THE RIB (user, 2026-09-10): the rib (D.XBAR wide) keeps a
+# two-bead wall either side of the MORTISE, and the mortise is the tenon + MORT_CLR, so the
+# tenon's flat-to-flat is what is left. It used to be a flat 8 beads (6.4), which put the
+# 1.6 on the octagon's own shoulder and left the rib 1.7 beside the mortise.
+_JW       = D.XBAR - 2 * D.MIN_WALL_2P - 2 * MORT_CLR   # 6.6 octagon flat-to-flat width (joint_coupon.WIDTH
 #                                    matches it). Sized on the MECHANICS (knee-strike
 #                                    pull-out): ~3x the shear area and 2x the retention shoulder of the
 #                                    old 3mm, while the rib keeps ~77% of its section as a sound arch
@@ -445,7 +461,6 @@ _JUP      = PrintSpec(nozzle=0.8, material="PETG-GF", facing="up")
 def _lever_joint(length):
     """The mount joint at a given SLIDE length (Y). MORT_CLR shrinks the tenon for fit."""
     return joint(_JW, length, tenon=_JUP, mortise=_JUP, clearance=MORT_CLR)
-MORT_CLR  = 0.3                     # mortise clearance (slide fit)
 TEN_H     = _lever_joint(8.0).height    # how far a tenon rises above its mating face (5.82;
                                         # the length arg is a probe — height ignores it)
 MORT_Y0   = -3 * D.BEAD           # -2.4 mortise -Y mouth (opens outboard of the -Y rail for slide-in)
@@ -462,7 +477,16 @@ MORT_Y0   = -3 * D.BEAD           # -2.4 mortise -Y mouth (opens outboard of the
 # MOUNT_Z tracks the housing TOP, not BODY_Z: with the bigger race the top is set by
 # the bearing seat, and the TOP is what must stay flush on the chassis underside.
 # The axle simply sits lower in the guitar by the difference.
-MOUNT_X, MOUNT_Y, MOUNT_Z = -501.0, -148.75, MB.BED_Z - max(BODY_Z, BRG_OD / 2 + BRG_WALL)
+# SEAT ROOF (user, 2026-09-10). The springs load the axle into the +X side of each bearing, and
+# with the +X face open that side is held from below only unless something ties the two
+# sides together OVER the seat. So the top carries a BRG_WALL (1.6) band parallel to the
+# seat's 45° print peak, and where that band's outer edge meets the top face it has to land
+# INSIDE the mount tenon's stem (beside the stem is the rib's lip, not free space). The
+# band's outer edge is the line x + z = (seat radius + wall)·√2, so the top sits where it
+# crosses the stem wall (half-width _JW/4). The whole lever drops by the difference.
+_SEAT_ROOF_Z = (BRG_SEAT_D / 2 + BRG_WALL) * math.sqrt(2.0) - _JW / 4
+HOUS_TOP_Z = max(BODY_Z, BRG_OD / 2 + BRG_WALL, _SEAT_ROOF_Z)
+MOUNT_X, MOUNT_Y, MOUNT_Z = -501.0, -148.75, MB.BED_Z - HOUS_TOP_Z
 # (MOUNT_Z read the bed as a spelled -75.15, which went stale when SCREW_TOP_Z /
 #  SCREW_PULLEY_Z / XBAR snapped to the grid — the live bed is MB.BED_Z = -74.95.)
 MOUNT_POSE = (MOUNT_X, MOUNT_Y, MOUNT_Z)
@@ -847,13 +871,13 @@ def feel_unplace(s):                                # inverse of feel_place: pla
 #   -Z  the cartridge bottom (piston underside) + slide clearance + one wall
 # Globals (MOUNT_POSE + these): x -578.26..-496.00, y -162.65..-134.85,
 # z -97.35..-75.15 (top now flush with the chassis underside Z_BOT).
-HOUS_X1 = max(ARM_TX / 2, BRG_OD / 2 + BRG_WALL)         # +8.1 (was +5.0: the Ø13
+HOUS_X1 = max(ARM_TX / 2, BRG_SEAT_D / 2 + BRG_WALL_X)   # +11.25 (was +5.0, then 8.1: the Ø13
 #           race needs 6.5 of radius plus its wall, where the arm wanted 5.0)
 HOUS_X0 = -(HS_HOUS_BACK + HS_SETBACK)                   # -77.26
 HOUS_HW = max(abs(HS_YC) + HS_CART_WY / 2 + HS_CLR + HS_HOUS_WALL,
               LEVER_HW + HS_CLR + BRG_W + 1.0)           # 15.4 — the 4.0-wide seats
 #           now set the cheeks, not the cartridges: 10.4 + 4.0 + 1.0 outboard skin
-HOUS_Z1 = max(BODY_Z, BRG_OD / 2 + BRG_WALL)             # +8.1 (flush: BODY_Z
+HOUS_Z1 = HOUS_TOP_Z                                     # +12.0, the seat roof (was 9.6; flush: BODY_Z
 #           = HUB_TOP + 2.4 — the designed 2.4 stands between lever and body)
 HOUS_Z0 = (HS_Z - HS_PISTON_WZ / 2) + _FEEL_DZ - HS_CLR - HS_HOUS_WALL  # -14.8
 #           ^ = HS_FLOOR_Z (defined below, after the piston) placed
@@ -870,8 +894,16 @@ BRG_Y0 = LEVER_HW + HS_CLR          # bearing INNER faces at ±10.4 = the lever-
 # the comb re-solves). Generated here rather than in the mount block because it is
 # HOUS_X0/X1 that bound them, and those aren't known until this point.
 _TEN_PITCH = RIB_PITCH / 2.0        # = the chassis half-pitch rib comb
+# ...and a station must ROOT ON SOLID. The bearing seats are teardrops whose print peak
+# can break out through the top face over the axle (it always did a little; the Ø16
+# 688ZZ opens it 1.78 either side of x = 0), and a tenon whose root sits in that
+# opening floats free. So a station within that half-width + the tenon's own half-width
+# of the axle is skipped (user: dropping the x = 0 stubs is fine).
+_SEAT_RS = BRG_SEAT_D / 2                               # the seat bore's radius
+_SEAT_OPEN_HW = max(0.0, _SEAT_RS * math.sqrt(2.0) - HOUS_Z1)   # peak's width at the top face
 TEN_X = tuple(-k * _TEN_PITCH for k in range(20)
-              if HOUS_X0 + _JHW <= -k * _TEN_PITCH <= HOUS_X1 - _JHW)
+              if HOUS_X0 + _JHW <= -k * _TEN_PITCH <= HOUS_X1 - _JHW
+              and (_SEAT_OPEN_HW <= 0.0 or abs(-k * _TEN_PITCH) >= _SEAT_OPEN_HW + _JHW))
 # Each tenon runs the housing's FULL Y depth: it is a rail, and every millimetre of it
 # is engagement the player can buy by sliding the lever inboard. The +X-most station
 # (x=0) sits directly over the lever, where the lever-room slot opens the top face —
@@ -899,7 +931,9 @@ RIB_T = RIB_PROUD = D.MIN_WALL_2P   # cadkit contact-rib section: TWO nozzles (q
                                    # CHIP_H tracks the magnet, so raising RIB_PROUD shifts the whole
                                    # axle->magnet->sensor stack +0.75 outboard together (AIR_GAP kept).
 AXLE_SHOULDER_Y = HOUS_HW + RIB_PROUD           # 14.75: flange face, ON the rib
-AXLE_FLANGE_D   = 12 * D.BEAD       # 9.6 flange Ø (what seats on the rib). NOT the thread
+AXLE_FLANGE_D   = 16 * D.BEAD       # 12.8 flange Ø (what seats on the rib; was 9.6 over the Ø5 journal —
+                                    # the rib's mean Ø is this - 1.5 and its inner edge has to stay outside
+                                    # the Ø9 axle way). NOT the thread
                                     # major any more — the hex cap forced those apart
 MAG_FLANGE_T    = 0.8                           # pocket floor under the magnet
 MAG_Y0  = AXLE_SHOULDER_Y + MAG_FLANGE_T        # 15.55: magnet seat
@@ -1547,7 +1581,7 @@ def cut_axle_stack(w):
     _seat_out = HOUS_HW + 1.0
     for sgn in (1.0, -1.0):
         y0 = sgn * BRG_Y0 if sgn > 0 else -_seat_out
-        w = w.cut(printable_bore(BRG_OD + 0.1, _seat_out - BRG_Y0, (0.0, y0, 0.0),
+        w = w.cut(printable_bore(BRG_SEAT_D, _seat_out - BRG_Y0, (0.0, y0, 0.0),
                                  (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)))
     w = w.union(contact_rib(AXLE_FLANGE_D - 1.5, RIB_PROUD, RIB_T,
                             (0.0, HOUS_HW, 0.0), (0.0, 1.0, 0.0),
@@ -1651,8 +1685,16 @@ def _housing() -> cq.Workplane:
     # hub-top → hub-side → slant → bottom → rest-side
     _zc = (-_e + (_e + ARM_TX / 2 * (1 / math.cos(_THR) - 1) + 0.4)) / math.tan(_THR)
     _zt = HOUS_Z1 + TEN_H + 1.0                       # ABOVE the tenons, so the sweep
-    _p = [(_e, _zt), (-_e, _zt), (-_e, _zc),          #   trims the x=0 station too
-          (_slant(_zb), _zb), (_e, _zb)]
+    # +X EDGE OUT THROUGH THE +X FACE (user, 2026-09-10). The rest-side boundary used to be
+    # +_e, which left the whole +X half-space open only while the prism's +X face sat
+    # INSIDE it. The bearing rounds pushed HOUS_X1 out past it (8.1 for the 695ZZ race, 9.6
+    # for the 688ZZ), which quietly put a panel back between the cheeks, and the storage
+    # fold hit it from -3 deg. Carrying this edge out past HOUS_X1 opens the +X end between
+    # the cheeks again — there it is just the two walls. Lever Y-span only, so the cheeks
+    # and the bearing seats in them are untouched; open top and bottom, so no ceiling.
+    _xo = HOUS_X1 + 1.0
+    _p = [(_xo, _zt), (-_e, _zt), (-_e, _zc),         #   trims the x=0 station too
+          (_slant(_zb), _zb), (_xo, _zb)]
     _face = cq.Face.makeFromWires(cq.Wire.makePolygon(
         [cq.Vector(x, -_hw, z) for x, z in _p] + [cq.Vector(_p[0][0], -_hw, _p[0][1])]))
     w = w.cut(cq.Workplane("XY").add(
