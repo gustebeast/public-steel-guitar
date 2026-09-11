@@ -56,6 +56,9 @@ def _stow_bore(d, x_hole, x_face, z_top, z_bot):
 # dropping straight DOWN (+Z→−Z): it sockets a dovetail tongue on each rail end (X+Y
 # lock + grip vs the +X string tension) and is held by those alone (no screw). Nut
 # block fused in (~15 % infill).
+# Build direction (user): the keyhead prints on its -X (outer) face, building -X -> +X.
+# Hole cutters that take it (cadkit.fasteners) shape any sideways hole by themselves.
+PRINT_UP = (1.0, 0.0, 0.0)
 T_EP = CH.KH_EP_THK                        # FULL thickness (X), derived in nut_block (the leg
                                            # shell's -X edge is pinned to this so the -X wall = T)
 XHI  = CH.KH_X                             # +X (inboard) face (-611); the rail end stops
@@ -84,13 +87,19 @@ LEG_SHELL_X0, LEG_SHELL_X1 = CH.LEG_SHELL_NX     # -625.6 .. -610.6 (rail-takeov
 # ── THE HEIGHT-ADJUST PRISM (user) ────────────────────────────────────────────────
 # New solid under the insert pockets for their extensions and height screws (nut_block's HEIGHT
 # ADJUST block). Y: the pockets plus a two-bead wall each side. X: from this part's -X face to the
-# pockets' +X plus a two-bead wall -- which runs 0.2 past XHI, so it is added AFTER the thickness
-# trim. Z: 0.4 over the chassis's wide corner rib (nut_block.HS_PRISM_BOT) up to 0.8 under the top
-# plate. It stops ~2.4 short of the electronics tray at +X.
-HS_X1 = D.NUT_BLOCK_X + NB.INS_X1 + max(NB._clr(i) for i in range(D.N_STRINGS)) + D.MIN_WALL_2P
+# extension pockets' roofs plus a two-bead wall -- which runs past XHI, so it is added AFTER the
+# thickness trim. Z: 0.4 over the chassis's wide corner rib (nut_block.HS_PRISM_BOT) up to 0.8 under the top
+# plate.
+HS_X1 = D.NUT_BLOCK_X + NB.HS_POCKET_X1 + D.MIN_WALL_2P
 HS_Y0, HS_Y1 = NB._INS_LO - D.MIN_WALL_2P, NB._INS_HI + D.MIN_WALL_2P
 HS_Z0 = D.STRING_Z + NB.HS_PRISM_BOT
 HS_Z1 = CH.TP_GZ0 - D.MIN_WALL
+# THE +Y LEG SLIDES CLEAR OF THE HEIGHT SCREWS' KEY PATHS (legs.SERVICE_SLIDE, sized from them). It
+# spells the leg's -Y face out from dimensions; hold it to the chassis's own number.
+from . import legs as _LG
+assert abs(_LG.LEG_NY_FACE - (CH.LEG_Y[0] - CH.LEG_W / 2.0)) < 1e-6, (
+    f"legs.LEG_NY_FACE {_LG.LEG_NY_FACE:.3f} no longer matches the chassis's +Y leg face "
+    f"{CH.LEG_Y[0] - CH.LEG_W / 2.0:.3f} -- SERVICE_SLIDE would be sized from the wrong place")
 
 
 def _height_prism():
@@ -100,13 +109,13 @@ def _height_prism():
 
 def _height_negatives():
     """Everything the prism needs cut, fused and subtracted once, in the nut block's local frame:
-    the main pockets again (they run through it), the extensions' gabled slots, the +X openings over
+    the main pockets again (they run through it), the extensions' house pockets, the +X openings over
     the band the full-profile bodies travel, and every screw's cavity, heat-set pocket and bore."""
     x_to = (HS_X1 - D.NUT_BLOCK_X) + 1.0
     z_top = (HS_Z1 - D.STRING_Z) + 1.0
-    out = NB.all_pockets()
+    out = NB.all_pockets().union(NB.lower_pockets())
     for i in range(D.N_STRINGS):
-        for k in [NB.insert_pocket_lower(i), NB.pocket_x_slot(i, x_to, z_top)] + NB.height_screw_negatives(i):
+        for k in [NB.pocket_x_slot(i, x_to, z_top)] + NB.height_screw_negatives(i):
             out = out.union(k)
     return out.translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z))
 
@@ -147,8 +156,8 @@ def _build():
     # LEG-STUB grooves (Y-INSTALL round — user: the stubs print on their
     # side and SLIDE IN ALONG Y): cut this end's corner negatives from the
     # SAME shared source the chassis uses (legs.corner_groove_negatives).
-    # For the keyhead that hosts: the 44-long END-WALL groove (x -631.2,
-    # the wall centreline — its blind inboard end is the stub's flush hard
+    # For the keyhead that hosts: the 44-long END-WALL rebate (against
+    # the wall's inner face — its blind inboard end is the stub's flush hard
     # stop; the two crossing stow bores just poke its roof, shortening
     # those string tails ~7), the crossing grooves' reach through the
     # endplate's own side-wall band / tab, and nothing of the fin passage
@@ -156,15 +165,15 @@ def _build():
     # below the dovetail sockets (-23.15..-6).
     # relief=False: the 45° overhang wedge relieves the CHASSIS tongue
     # only — cut here it eats the end-wall groove roof (user-caught).
-    # + the per-leg M4 LOCK SCREW ways along x through the end face
-    # (Ø4.6 outboard cheek / Ø3.6 pilot through tongue + inboard cheek).
+    # + the leg's ONE screw (legs.lock_pin_joint): an M4 button head recessed in the end
+    # face and clearance on through, shaped from PRINT_UP; its insert is in the chassis.
     from .legs import (corner_groove_negatives as _cgn,
                        endwall_screw_negatives as _esn)
     for _ly, _s in ((CH.LEG_Y[0], 1.0), (CH.LEG_Y[1], -1.0)):
         for _n in _cgn(CH.LEG_STATIONS_X[1], _ly, _s, -1.0, CH.Z_BOT,
                        relief=False):
             w = w.cut(_n)
-        for _n in _esn(CH.LEG_STATIONS_X[1], _ly, -1.0, CH.Z_BOT):
+        for _n in _esn(CH.LEG_STATIONS_X[1], _ly, -1.0, CH.Z_BOT, PRINT_UP, _s):
             w = w.cut(_n)
     # STRING-END STOWAGE (one per string): a vertical bore set INBOARD of the -X face
     # (the stow bores, 1.6 of wall -X of them) running from near the body top straight DOWN

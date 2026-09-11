@@ -686,7 +686,7 @@ MOTOR_X_STEP    = MOTOR_SQ + MOTOR_GAP              # 43.9 along-X step between 
 # stand against the keyhead endplate, and the bank is packed toward them -- so the SHORTEST
 # belt (string 10, next to the bridge) gets all the run there is. That run has to cover the
 # belt clamp's whole travel; build.py asserts it.
-KEYHEAD_INBOARD_X = -609.4       # keyhead endplate's inboard bearing face (its nut-block slab);
+KEYHEAD_INBOARD_X = -607.8       # keyhead endplate inboard bearing face (its height-screw prism, keyhead_endplate.HS_X1);
                                  # asserted against keyhead_endplate in build.py
 ELEC_STACK_D    = 21.8           # standing electronics tray: plate + posts + tallest board (Pi 5);
                                  # asserted against the real boards in electronics.py
