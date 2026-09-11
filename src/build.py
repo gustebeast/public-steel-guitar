@@ -139,7 +139,7 @@ PARTS = {
     "adjust_tenon":    (lambda: heal(LS.adjust_tenon()), "petg-gf/adjust_tenon.step", "PETG-GF — adjust floating tenon: the height ladder (blind +X holes) and, at its bar end, the pedal bar latch's pocket and lead-in. Prints diagonally (+X+Y -> -X-Y)"),
     "leg_latch_slider": (lambda: heal(__import__("src.leg_latch", fromlist=["e"]).slider()), "pctg/leg_latch_slider.step", "PCTG — body latch slider: push-to-connect hook into the adapter, flush 20x20 pad on the fixed sleeve, one steel coil. Prints -X -> +X"),
     "bar_latch_frame": (lambda: heal(LS.bar_latch_frame()), "pctg/bar_latch_frame.step", "PCTG — pedal bar yoke latch: a ring round the adjust tenon, hook in its pocket, 20x20 pad flush in the collar, lugs for two coils. Prints ring down"),
-    "bar_latch_collar": (lambda: heal(LS.bar_latch_collar()), "petg-gf/bar_latch_collar.step", "PETG-GF — pedal bar latch collar: the top 22.4 of the bar's tower, holding the yoke and its springs; two T rails slide it onto the tower from +Y, one M4x30 button head locks it. Prints on its +Y face"),
+    "bar_latch_collar": (lambda: heal(LS.bar_latch_collar()), "petg-gf/bar_latch_collar.step", "PETG-GF — pedal bar latch collar: the top 22.4 of the bar's tower, holding the yoke and its springs; two T rails slide it onto the tower from +Y, one M4x30 button head into a heat-set insert in the tower locks it. Prints on its +Y face"),
     # pedal bar (the per-foot latches are gone — the towers are passive
     # is validated). The bar itself is a DEMO prism (longer than the bed —
     # it gets segmented for printing once the pedals land on it).
@@ -1062,6 +1062,8 @@ _COLORS = {
     "bar_latch_frame": (0.85, 0.35, 0.20),   # pedal bar latch accent
     "bar_latch_collar": (0.36, 0.42, 0.46),  # PETG-GF, the bar tower's family
     "bar_latch_spring": (0.62, 0.64, 0.67),
+    "bar_latch_screw": (0.55, 0.55, 0.58),   # M4 button -- same SKU, same colour
+    "bar_latch_insert": (0.80, 0.60, 0.35),  # as the leg's screw and insert
     "leg_seg_body":    (0.42, 0.48, 0.52),   # square GF bodies
     "leg_coupler_m":   (0.36, 0.42, 0.46),
     "leg_coupler_f":   (0.36, 0.42, 0.46),
