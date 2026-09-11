@@ -220,6 +220,8 @@ for _csi in sorted(_fused_segs):
 # later fuse refills it. The chassis prints Z-up (Z_BOT is the bed), so a vertical hole needs
 # no roof of its own; it takes the endplate's house outline so the passage lines up.
 for _i in range(D.N_STRINGS):
+    if BE.access_blocked(_i):          # a leg is under it -- no floor hole (see access_blocked)
+        continue
     _ax = D.string_access_x(_i)
     for _csi in range(len(_seg_edges) - 1):
         if _seg_edges[_csi + 1] < _ax < _seg_edges[_csi]:
