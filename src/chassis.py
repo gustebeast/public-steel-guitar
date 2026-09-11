@@ -463,14 +463,15 @@ def _build_full() -> cq.Workplane:
     #   ^ the TRRS axis rides the octagon's deep waist (legs.TRRS_DY) — the
     #     well tracks the stub's relocated jack way
     body = body.cut(_raceway(50.5, -67.0, -604.75, 31.5))
-    # KEY ACCESS FOR THE KEYHEAD'S INSERT HEIGHT SCREWS (bronner prototype, user's height adjust).
-    # The -X wide corner rib sits right under them, so a 2.5 mm key could not reach one from
-    # below. One M4-clearance hole per screw, straight up the rib, placed from nut_block's own
-    # height_screw_xy so the hole cannot drift off its screw. Flagged for the chassis owner.
+    # HEAD CAVITIES FOR THE KEYHEAD'S INSERT HEIGHT SCREWS (bronner prototype, user's height adjust).
+    # Their heat-sets sit flush in the keyhead's bottom face, just over this -X wide corner rib, so the
+    # button heads hang down INTO the rib, and the 2.5 mm key comes up to them from below. One head
+    # cavity per screw, straight through, placed from nut_block's own height_screw_xy so it cannot drift
+    # off its screw. Flagged for the chassis owner.
     for _hi in range(D.N_STRINGS):
         _hx, _hy = _NB.height_screw_xy(_hi)
         body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-            _NB.M4.shaft_clr_d / 2.0, (MB.FLOOR_TOP - Z_BOT) + 2.0,
+            _NB.HS_HEAD_CAV_D / 2.0, (MB.FLOOR_TOP - Z_BOT) + 2.0,
             cq.Vector(D.NUT_BLOCK_X + _hx, _hy, Z_BOT - 1.0), cq.Vector(0, 0, 1))))
     # +X tee-10 clearance notch out of the bridge rib's west face (the
     # tee pokes 2.4 into it; box clears the PCB + header margin)
