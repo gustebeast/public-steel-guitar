@@ -243,19 +243,6 @@ for _i, _seg in enumerate(chassis_segments):     # chassis split into dovetailed
                               "PETG-GF — chassis segment (cadkit slide-down T joint per rail; NO glue "
                               "and NO seam fastener — the deck, endplates and finally the 4 leg screws "
                               "close the seam's Z axis. + tee cradles)")
-# Print coupon for the cadkit octagon slide joint (the joint the knee levers key
-# into the body with). test_*.step at the project root; also rendered off to the
-# side in the assembly (see _joint_coupon_components) so it rebuilds every time.
-PARTS["test_octagon_tenon"] = (
-    lambda: heal(__import__("src.joint_coupon", fromlist=["e"]).tenon_coupon()),
-    "test_octagon_tenon.step",
-    "TEST COUPON — octagon (stop-sign) joint TENON on a base plate; prints -Z→+Z. "
-    "Slide into test_octagon_mortise along X to check the fit")
-PARTS["test_octagon_mortise"] = (
-    lambda: heal(__import__("src.joint_coupon", fromlist=["e"]).mortise_coupon()),
-    "test_octagon_mortise.step",
-    "TEST COUPON — octagon joint MORTISE block (through-slot); prints -Z→+Z; the "
-    "thin slot ceiling is the one-bead bridge the octagon roof is sized for")
 # Section-joint coupon (the LEG stack's octagon at the real 28 mm width — legs.SEC_W)
 PARTS["test_section_tenon"] = (
     lambda: heal(__import__("src.joint_coupon", fromlist=["e"]).section_tenon_coupon()),
@@ -1162,17 +1149,6 @@ def _lever_stations_components():
     return out
 
 
-def _joint_coupon_components():
-    """The octagon-joint print coupons, parked off the +X end of the guitar (clear
-    of every real part) so they rebuild with the model and can't drift from the
-    cadkit geometry. Shown side by side in Y, unmated."""
-    from . import joint_coupon as JC
-    dy = JC.WIDTH + 20.0
-    ten = JC.tenon_coupon().translate((150.0, -dy, 40.0))
-    mor = JC.mortise_coupon().translate((150.0, dy, 40.0))
-    return [("test_octagon_tenon_coupon", ten), ("test_octagon_mortise_coupon", mor)]
-
-
 SCREW_ROW_PARTS = ("leadscrew", "nut_", "string_", "guide_rod",
                    "screw_pulley", "screw_bearing")
 
@@ -1226,8 +1202,7 @@ def collect_components():
     comps += _pedal_bar_components()
     comps += _foot_pedal_components()
     comps += _electronics_components()
-    comps += _lever_stations_components()      # all six, LKL/VKL included
-    comps += _joint_coupon_components()
+    comps += _lever_stations_components()      # all five, LKL/VKL included
     comps += _wrap_rod_component()
     comps += _tensioner_coupon_components()
     for i in range(D.N_STRINGS):
@@ -1426,8 +1401,6 @@ _COLORS = {
     "wire_oled":       (0.68, 0.36, 0.08),   # brown-amber - OLED -> Teensy
     "wire_joy":        (0.54, 0.28, 0.08),   # darkest amber - joystick -> Teensy
     "wire_usb":        (0.55, 0.25, 0.75),   # violet      - shielded USB-2 -> Pi
-    "test_octagon_tenon_coupon":   (0.20, 0.75, 0.85),   # cyan  - joint coupon (test piece)
-    "test_octagon_mortise_coupon": (0.95, 0.55, 0.15),   # orange - joint coupon (test piece)
 }
 _DEFAULT_COLOR = (0.80, 0.80, 0.80)
 _TPU_BLACK = (0.03, 0.03, 0.03)                  # ALL TPU parts render black (user rule)

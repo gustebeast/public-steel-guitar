@@ -449,8 +449,8 @@ MORT_CLR  = 0.3                     # mortise clearance (slide fit)
 # two-bead wall either side of the MORTISE, and the mortise is the tenon + MORT_CLR, so the
 # tenon's flat-to-flat is what is left. It used to be a flat 8 beads (6.4), which put the
 # 1.6 on the octagon's own shoulder and left the rib 1.7 beside the mortise.
-_JW       = D.XBAR - 2 * D.MIN_WALL_2P - 2 * MORT_CLR   # 6.6 octagon flat-to-flat width (joint_coupon.WIDTH
-#                                    matches it). Sized on the MECHANICS (knee-strike
+_JW       = D.XBAR - 2 * D.MIN_WALL_2P - 2 * MORT_CLR   # 6.6 octagon flat-to-flat width.
+#                                    Sized on the MECHANICS (knee-strike
 #                                    pull-out): ~3x the shear area and 2x the retention shoulder of the
 #                                    old 3mm, while the rib keeps ~77% of its section as a sound arch
 #                                    (2mm side columns + 4.2mm top beam). The mortise roof now rises
