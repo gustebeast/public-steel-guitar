@@ -64,7 +64,7 @@ import math
 import cadquery as cq
 
 from cadkit.fasteners import M4, anchor_cutter, head_bore_cutter
-from cadkit.joinery import PrintSpec, joint
+from cadkit.joinery import PrintSpec, joint, joint_box_min
 from cadkit.supports import printable_bore
 from . import dimensions as D
 from . import latch as LT
@@ -138,16 +138,43 @@ assert SPR_X - CHAN_R - _flank >= D.MIN_WALL_2P, (
 # -- the screws and the TRRS jack (the corners) ------------------------------------
 SCREW = dataclasses.replace(M4, name="M4 button", head_recess_d=11 * B,
                             head_recess_h=3 * B)   # m4_button_screw: head 7.6 x 2.2
-SCREW_D = 35 * B                   # 28.0 axis -> each screw, along a diagonal
-SCREW_CORNERS = ((1, -1),)         # ONE (user). The rails took the two +Y corners
-                                   # and the TRRS jack has the fourth; this one locks
-                                   # the single direction the rails leave open.
 SCREW_L = 30.0                     # M4x30: through the collar, then SCREW_BITE into the tower
 SCREW_BITE = SCREW_L - (COLLAR_H - SCREW.head_recess_h)
-TRRS_D = 32 * B                    # 25.6 axis -> the TRRS jack way, -X-Y diagonal
-TRRS_BORE_D = 14 * B               # 11.2 the CA-354S body way
-TRRS_CORNER = (-1, -1)
+TRRS_BORE_D = 14 * B               # 11.2 the CA-354S body way, in the BAR
+TRRS_COLLAR_D = 13 * B             # 10.4 -- the COLLAR'S share of that way is one bead
+                                   # tighter on the same 9.6 body (0.4 a side, still a
+                                   # drop fit). The corner cannot afford the wider one:
+                                   # this part peaks its bores toward -Y, and 11.2's
+                                   # peak walks the jack so far in off the -Y face that
+                                   # the ring's own corner web falls to 1.35.
 assert SCREW_BITE >= M4.anchor_min_wall, "the collar screws bite %.1f" % SCREW_BITE
+
+
+def _corner_xy(sx: float, bore_d: float, peak_d: float = None):
+    """A -Y corner bore as deep into the corner as the WALLS allow.
+
+    Both of these are upright bores in a part that builds toward -Y, so cadkit
+    peaks them TOWARD -Y -- and a 45-degree teardrop's apex stands r*sqrt(2) off
+    the axis, half again the bore's own radius. Sitting them on the diagonal by a
+    single centre distance hid that: the peaks stood 0.42 PROUD OF THE -Y FACE
+    (user caught it). So each axis gets its own rule -- the circle off the +-X
+    face, the PEAK off the -Y face -- which walks the bore up the -Y face rather
+    than in along the diagonal, and so costs the ring almost nothing (the pocket's
+    corner clips below are measured off these same points).
+    """
+    r = bore_d / 2.0
+    tip = (r if peak_d is None else peak_d / 2.0) * _S2
+    return (sx * (FACE_R - D.MIN_WALL_2P - r), -(FACE_R - D.MIN_WALL_2P - tip))
+
+
+# the head recess is the widest thing on the screw's axis, so it sets both rules
+SCREW_XY = _corner_xy(1.0, SCREW.head_recess_d)
+# the jack: the +-X rule takes the BAR's wider way (the tower holds that one), the
+# -Y rule the COLLAR's narrower one (the collar holds the peak)
+TRRS_XY = _corner_xy(-1.0, TRRS_BORE_D, TRRS_COLLAR_D)
+SCREW_CORNERS = (SCREW_XY,)        # ONE (user). The rails took the two +Y corners
+                                   # and the TRRS jack has the fourth; this one locks
+                                   # the single direction the rails leave open.
 # -- the rails: what holds the collar on, with the screw ---------------------------
 # A cadkit SLIDE JOINT. Both hosts print along Y -- the tower with the bar, the collar
 # the other way up -- which is the plan-profile case: the joint lies in the X-Z plane
@@ -155,15 +182,22 @@ assert SCREW_BITE >= M4.anchor_min_wall, "the collar screws bite %.1f" % SCREW_B
 # open at the tower's +Y face and closed at RAIL_Y0; the tower's build reaches that
 # closed end FIRST, so the stop face is a floor, and the collar therefore seats
 # travelling -Y.
-RAIL_X = 27 * B                    # 21.6 each rail's line, off the axis in X. The
-                                   # strip between the ring's pocket and the outer
-                                   # face is all the room there is (asserted below --
-                                   # it is why the ring gave up two beads of arm)
-RAIL_W = 5 * B                     # 4.0 across X: the room, not the profile -- the
-RAIL_D = 4 * B                     # 3.2 into the tower. cadkit sizes the T inside
-RAIL_Y0 = -10 * B                  # -8.0 the slots' closed end: the SEAT STOP. Not the
-                                   # -Y face, because the two -Y corners are spoken
-                                   # for (the screw, the TRRS way) -- asserted below
+RAIL_W = 6 * B                     # 4.8 across X: the room, not the profile -- the
+RAIL_D = 5 * B                     # 4.0 into the tower. cadkit sizes the T inside.
+                                   # BOTH are the QUALITY box (joint_box_min below,
+                                   # asserted): give the site less and the library
+                                   # does not fail, it QUIETLY DEGRADES the profile
+                                   # toward its one-bead floor -- 4.0 x 3.2 built a
+                                   # 1.2 shoulder and a 1.45 head bar (user caught
+                                   # it). Room in, segments out: check the segments.
+RAIL_Y0 = -7 * B                   # -5.6 the slots' closed end: the SEAT STOP. Not the
+                                   # -Y face, because the two -Y corners are spoken for
+                                   # (the screw, the TRRS way) -- and not merely clear
+                                   # of their BORES either: in the TOWER those bores
+                                   # are peaked toward +Y, straight at this end of the
+                                   # slots, so the wall that decides RAIL_Y0 is the one
+                                   # to a teardrop's 45-degree FLANK (measured, not
+                                   # derived -- see the verify script's wall probes)
 _PS_COLLAR = PrintSpec(nozzle=D.NOZZLE_D, material="PETG-GF", facing="up")
 _PS_TOWER = PrintSpec(nozzle=D.NOZZLE_D, material="PETG-GF", facing="down")
 RAIL_STROKE = FACE_R - RAIL_Y0     # 33.6 how far the collar slides to seat
@@ -171,16 +205,32 @@ RAIL = joint(width=RAIL_W, length=RAIL_STROKE, depth=RAIL_D,
              tenon=_PS_COLLAR, mortise=_PS_TOWER, install="+z")
 _RAIL_NECK = RAIL.dims["neck"] / 2.0
 _RAIL_HEAD = RAIL.dims["head"] / 2.0 + RAIL.clearance
-assert RAIL_X - _RAIL_NECK - (ARM_OUT + CLR) >= D.MIN_WALL_2P, (
-    "only %.2f of collar between the ring's pocket and a rail"
-    % (RAIL_X - _RAIL_NECK - (ARM_OUT + CLR)))
-assert FACE_R - (RAIL_X + _RAIL_HEAD) >= D.MIN_WALL_2P, (
-    "only %.2f of tower outside a slot" % (FACE_R - (RAIL_X + _RAIL_HEAD)))
+# WHERE the rails sit is not a free number: the site is ASYMMETRIC (user). Inboard
+# the tower is solid -- the head may grow that way as far as it likes (its nearest
+# obstacle, the mortise, is 2.0 off) -- and the only thing that stops the joint
+# going further inboard is the COLLAR's own wall between the ring's pocket and the
+# NECK. Outboard, the +-X face stops the HEAD. So the rail's line is bounded by a
+# different feature on each side, and it sits in the middle of what they leave.
+_RAIL_IN = (ARM_OUT + CLR) + D.MIN_WALL_2P + _RAIL_NECK      # 20.84
+_RAIL_OUT = FACE_R - D.MIN_WALL_2P - _RAIL_HEAD              # 21.45
+assert _RAIL_IN <= _RAIL_OUT, (
+    "no room for a rail: the ring's pocket and the outer face leave %.2f"
+    % (_RAIL_OUT - _RAIL_IN))
+RAIL_X = (_RAIL_IN + _RAIL_OUT) / 2.0    # 21.14 each rail's line, off the axis in X
 assert RAIL.height <= COLLAR_H - D.MIN_WALL_2P
-assert -SCREW_D / _S2 - (SCREW.head_recess_d / 2 + D.MIN_WALL_2P) <= RAIL_Y0, (
+_QW, _QD = joint_box_min(_PS_COLLAR, _PS_TOWER, install="+z", quality=True)
+assert RAIL_W >= _QW - 1e-9 and RAIL_D >= _QD - 1e-9, (
+    "the rail site is under cadkit's quality box (%.2f x %.2f): the profile degrades "
+    "silently" % (_QW, _QD))
+_RAIL_SEG = min(RAIL.dims["neck"], (RAIL.dims["head"] - RAIL.dims["neck"]) / 2.0,
+                RAIL.dims["depth_used"] - RAIL.dims["lip"], RAIL.dims["lip"])
+assert _RAIL_SEG >= D.MIN_WALL_2P - 1e-9, (
+    "the rail's thinnest printed segment is %.2f" % _RAIL_SEG)
+assert SCREW_XY[1] + SCREW.head_recess_d / 2 + D.MIN_WALL_2P <= RAIL_Y0, (
     "the rails run into the screw's corner")
-assert -TRRS_D / _S2 - (TRRS_BORE_D / 2 + D.MIN_WALL_2P) <= RAIL_Y0, (
-    "the rails run into the TRRS way's corner")
+assert TRRS_XY[1] + TRRS_BORE_D / 2 + D.MIN_WALL_2P <= RAIL_Y0, (
+    "the rails run into the TRRS way's corner (%.2f)"
+    % (TRRS_XY[1] + TRRS_BORE_D / 2 + D.MIN_WALL_2P))
 
 # -- the tenon's lead-in -----------------------------------------------------------
 LEAD_DEG = 20.0                    # from the push axis: shallow, because the ring's
@@ -192,8 +242,15 @@ LIP_MIN = 4 * B                    # tenon left between its lead-in and the pock
 # The ring's corners are cut on the diagonals to clear what lives there; the collar's
 # pocket for it is the ring swept through its stroke. Each cut is the line |x|+|y| = K.
 _WEB = D.MIN_WALL_2P
-K_MXMY = (TRRS_D - TRRS_BORE_D / 2 - _WEB) * _S2 - CLR * _S2                # -X-Y (jack)
-K_PXMY = (SCREW_D - SCREW.shaft_clr_d / 2 - _WEB) * _S2 - CLR * _S2         # +X-Y (screw)
+# Each corner clip keeps the ring _WEB clear of its bore. The clip line is at 45
+# degrees, and so is the flank of the bore's teardrop peak -- and that flank is
+# TANGENT to the bore's own circle, wherever the bore sits. So the peak costs the
+# clip nothing: the circle's radius is still the whole story here.
+K_MXMY = (abs(TRRS_XY[0]) + abs(TRRS_XY[1])                                 # -X-Y (jack)
+          - (TRRS_COLLAR_D / 2 + _WEB) * _S2) - CLR * _S2   # the ring meets the
+                                                            # COLLAR's bore, not the bar's
+K_PXMY = (abs(SCREW_XY[0]) + abs(SCREW_XY[1])                               # +X-Y (screw)
+          - (SCREW.shaft_clr_d / 2 + _WEB) * _S2) - CLR * _S2
 _OPEN_DIAG = (LS.TEN_W + 2 * LS.FIT) / 2 * _S2 + S_MAX + CLR   # the opening's -Y diagonals
 assert (K_MXMY - _OPEN_DIAG) / _S2 >= D.MIN_WALL_2P, "the ring's -X-Y corner is too thin"
 
@@ -378,9 +435,9 @@ def rail_slots(z_mouth: float) -> cq.Workplane:
 
 
 def screws(z_mouth: float):
-    """The three collar screws: (point on the mouth face, axis down)."""
+    """The collar's screw: (point on the mouth face, axis down)."""
     return [((LS.LEG_X + x, LS.LEG_Y + y, z_mouth), (0.0, 0.0, -1.0))
-            for x, y in (_corner(SCREW_D, *c) for c in SCREW_CORNERS)]
+            for x, y in SCREW_CORNERS]
 
 
 # -- the collar ----------------------------------------------------------------------
@@ -446,8 +503,8 @@ def collar(z_mouth: float, trrs_top: float) -> cq.Workplane:
     # sliding back off). They stand on the underside, outboard of everything.
     c = c.union(rails(z_mouth))
     # the TRRS jack way's upper end
-    tx, ty = _corner(TRRS_D, *TRRS_CORNER)
-    c = c.cut(printable_bore(TRRS_BORE_D, trrs_top - (z0 - 1.0),
+    tx, ty = TRRS_XY
+    c = c.cut(printable_bore(TRRS_COLLAR_D, trrs_top - (z0 - 1.0),
                              (LS.LEG_X + tx, LS.LEG_Y + ty, z0 - 1.0), (0, 0, 1), COLLAR_UP))
     return c
 
