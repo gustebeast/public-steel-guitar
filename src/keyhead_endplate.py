@@ -165,15 +165,15 @@ def _build():
     # below the dovetail sockets (-23.15..-6).
     # relief=False: the 45° overhang wedge relieves the CHASSIS tongue
     # only — cut here it eats the end-wall groove roof (user-caught).
-    # + the per-leg M4 LOCK PIN along x in from the end face: cadkit's insert pocket
-    # + clearance, shaped from PRINT_UP (the set screw pins the tongue).
+    # + the leg's ONE screw (legs.lock_pin_joint): an M4 button head recessed in the end
+    # face and clearance on through, shaped from PRINT_UP; its insert is in the chassis.
     from .legs import (corner_groove_negatives as _cgn,
                        endwall_screw_negatives as _esn)
     for _ly, _s in ((CH.LEG_Y[0], 1.0), (CH.LEG_Y[1], -1.0)):
         for _n in _cgn(CH.LEG_STATIONS_X[1], _ly, _s, -1.0, CH.Z_BOT,
                        relief=False):
             w = w.cut(_n)
-        for _n in _esn(CH.LEG_STATIONS_X[1], _ly, -1.0, CH.Z_BOT, PRINT_UP):
+        for _n in _esn(CH.LEG_STATIONS_X[1], _ly, -1.0, CH.Z_BOT, PRINT_UP, _s):
             w = w.cut(_n)
     # STRING-END STOWAGE (one per string): a vertical bore set INBOARD of the -X face
     # (the stow bores, 1.6 of wall -X of them) running from near the body top straight DOWN
