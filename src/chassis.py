@@ -180,7 +180,8 @@ def _rib_positions():
     return sorted(base + mids)   # _RIB_X is trimmed against the leg stubs below
 
 _RIB_X = _rib_positions()
-SPLIT_X  = [-216.5, -446.5]            # 2 cuts → 3 segments < 255 mm (224.7 / 230.0 / 192.5), each in a
+SPLIT_X  = [D.rib_comb_x(_t - D.MOTOR_X_STEP / 4) + D.MOTOR_X_STEP / 4
+            for _t in (-216.5, -446.5)]  # 2 cuts → 3 segments < 255 mm, each at the MIDDLE of the rib gap nearest its target, in a
                                        # 13 mm gap BETWEEN two ribs. The cut straddles a 43-wide motor
                                        # plate, but that plate is fused WHOLE into the segment that owns
                                        # its motor (see _segments): it overhangs the cut plane with its
@@ -352,17 +353,8 @@ def _build_full() -> cq.Workplane:
     # FLUSH-LEG round: the legs moved inboard to the wall plane and attach
     # via BODY STUBS whose octagon wall tenons mortise the rail band; see
     # the cuts after the end-takeover section below, and legs._body_stub)
-    # electronics-tray drop-in channels: one vertical channel per rail inner
-    # face (open at the top - the tray lowers in from above and its tabs
-    # bottom on the channel floors), placed in the only solid-web window
-    # between the leg dovetail slot and the rail diamonds
-    from .electronics import TAB_X0, TAB_X1, CH_W, CH_D, TRAY_Z0
-    _cxm = (TAB_X0 + TAB_X1) / 2
-    for _yr, _s in ((Y_HI, 1), (Y_LO, -1)):
-        _yf = _yr - _s * T / 2                         # inner face
-        body = body.cut(box_at(CH_W, CH_D + 1.0, Z_TOP + 1.0 - TRAY_Z0,
-                               x=_cxm, y=_yf + _s * (CH_D - 1.0) / 2,
-                               z=(TRAY_Z0 + Z_TOP + 1.0) / 2))
+    # (the electronics-tray drop-in channels are gone: the tray stands against the
+    #  keyhead endplate now, and its retention waits on bronner's endplate round)
     # AFE boss: widen the bridge cross-rib's -Y end into a solid pad that
     # carries the analog front-end board, sitting BELOW the pickup and INBOARD
     # of the leg barrel - so it fouls neither. Bonds to the bridge rib (no

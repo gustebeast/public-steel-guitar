@@ -28,10 +28,10 @@ from .helpers import box_at, nema17_face_cutter_y
 from .components import MOTOR_PULLEY_STANDOFF
 
 PLATE_T      = 8 * D.NOZZLE_D    # 6.4 (was 6.0 = 7.5 beads)
-TENSION_SLOT = 3.0                          # ±1.5: belt slip-on slack + tension + the
-                                            # 1-tooth (1 mm motor travel) cut quantum.
-                                            # Small enough that neighbours never collide
-                                            # at the 46 mm pitch (see MOTOR_X_STEP).
+TENSION_SLOT = 0.0                          # ROUND bolt holes (user, 2026-09-11): the belt
+                                            # clamp takes up slack now, so the motors no
+                                            # longer slide -- and at the 1.6 mm motor gap a
+                                            # slot would let neighbours touch.
 _BOLT_EDGE   = 7 * D.BEAD                   # 5.6 material around the NEMA17 bolt square
                                             # (was 6.0 = 7.5 beads; snapped DOWN — the
                                             # gaps to the chassis split planes and the

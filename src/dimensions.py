@@ -423,6 +423,7 @@ STRING_NUT_L    = 3.0       # was modelled 6 -> oversize; the real 3 lets the ca
 # ─────────────────────────────────────────────────────────────────────────
 # GT2 pulleys (14T) + belt. Flanges keep the (twisting) belt from walking off.
 # ─────────────────────────────────────────────────────────────────────────
+PULLEY_TEETH    = 14        # GT2 teeth on BOTH the motor and the screw pulley
 PULLEY_OD       = 8.4       # over teeth
 PULLEY_W        = 8.0       # axial: ~6 mm toothed gap + 2 flanges (fits the 5 mm belt)
 PULLEY_FLANGE_OD = PULLEY_OD + 2.6
@@ -675,13 +676,23 @@ NEMA17_PILOT_D  = 22.0
 # the shortest belt (the −Y string, closest) has a ≥100 mm free span — long enough
 # to develop the 90° belt twist gently (≲1°/mm)
 # and lie flat at each pulley (a 6 mm toothed belt wants ≳15× width to twist).
-MOTOR_X0        = 110.0     # first motor's −X offset from the bridge
-MOTOR_X_STEP    = 46.0      # along-X step between motors. Body is 42.3 sq; with
-                            # the ±1.5 (3 mm) tension slot the worst-case gap to a
-                            # neighbour at the opposite slot extreme is 0.7 mm, so
-                            # every motor keeps a full 3 mm (>1 belt tooth) of
-                            # independent tension travel. (44 left only 1.7 mm and
-                            # the slots overlapped - motors could collide.)
+# MOTOR PITCH (user, 2026-09-11): the belt-tension CLAMP now takes up belt slack, so the
+# motors no longer slide in X and need no slot travel between them -- just a two-bead gap.
+# The chassis rib comb is this pitch halved, so the ribs close up with it (user: more
+# stations to choose lever positions from).
+MOTOR_GAP       = MIN_WALL_2P                       # 1.6 between neighbouring motor bodies
+MOTOR_X_STEP    = MOTOR_SQ + MOTOR_GAP              # 43.9 along-X step between motors
+# BANK ANCHOR (user, 2026-09-11): the -X end of the bank is pinned to the electronics, which
+# stand against the keyhead endplate, and the bank is packed toward them -- so the SHORTEST
+# belt (string 10, next to the bridge) gets all the run there is. That run has to cover the
+# belt clamp's whole travel; build.py asserts it.
+KEYHEAD_INBOARD_X = -609.4       # keyhead endplate's inboard bearing face (its nut-block slab);
+                                 # asserted against keyhead_endplate in build.py
+ELEC_STACK_D    = 21.8           # standing electronics tray: plate + posts + tallest board (Pi 5);
+                                 # asserted against the real boards in electronics.py
+MOTOR_ELEC_CLR  = MIN_WALL_2P    # 1.6 air between the electronics and string 1's motor
+MOTOR_X0        = (-(KEYHEAD_INBOARD_X + ELEC_STACK_D + MOTOR_ELEC_CLR + MOTOR_SQ / 2)
+                   - (N_STRINGS - 1) * MOTOR_X_STEP)   # ~169.75: the nearest motor's -X offset
 # Belt-plane cascade: a Ø8.4 pulley + belt wrap is wider than the 9.5 mm string
 # pitch, so adjacent screw pulleys' belts would collide. Raise the ODD pulleys
 # into a second Z plane so neighbours always differ by BELT_PLANE_DZ. Only the
@@ -709,6 +720,15 @@ def motor_pos(i: int):
     """Return (x, y, z) of string i's motor pulley (on the string's Y line). The −Y
     string (last index) is closest to the bridge, stepping out toward +Y (see above)."""
     return (-(MOTOR_X0 + (N_STRINGS - 1 - i) * MOTOR_X_STEP), string_y(i), MOTOR_BELT_Z)
+
+
+def rib_comb_x(x_target: float) -> float:
+    """The chassis rib-comb X nearest x_target. The comb is a rib at every motor plus one
+    midway between each pair -- motor_pos(0).x + k * MOTOR_X_STEP / 2, the same comb
+    chassis._rib_positions builds -- so a lever station or a split plane snapped here
+    follows the motors instead of being a hand-typed number the comb can walk away from."""
+    x0, p = motor_pos(0)[0], MOTOR_X_STEP / 2
+    return x0 + round((x_target - x0) / p) * p
 
 
 # FAR-ROW BELTS vs NEAR-ROW PULLEYS (see BELT_PLANE_DZ). Each far-row belt passes the near
