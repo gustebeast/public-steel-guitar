@@ -489,30 +489,20 @@ def _build_full() -> cq.Workplane:
     # side-face openings are filled flush by the ridge ends), and whatever
     # chassis crosses the corner (kept shell, seat rib, the +X comb rib)
     # gets tunnelled for extra engagement. The end-wall groove's blind end
-    # (in the endplate) is the flush hard stop. ONE vertical M4 per stub
-    # drops down the rail web from under the deck into the INBOARD ridge
-    # = the Y-retention SHEAR PIN: Ø8.4 head well to Z_BOT+30 (the 2.5 mm
-    # key reaches through it), Ø4.6 shaft way on down to the groove, Ø3.6
-    # pilot in the ridge. Screw: M4×35 BUTTON head (ISO 7380, Ø7.6 in the Ø8.4
-    # well; head -45.15, tip -80.15) -- the belt tensioner's SKU. It was a
-    # 3 mm-key socket cap; the button head is what puts it on the instrument's
-    # one 2.5 mm key (user), and a shear pin never needed the cap's torque.
-    from .legs import corner_groove_negatives as _cgn, _cross_x as _cx
+    # (in the endplate) is the flush hard stop. There is NO screw down the rail web
+    # any more (user): the leg's one screw is the endplate's lock pin across the
+    # end-wall tongue, which also locks the endplate to the chassis. It ENDS here: its
+    # heat-set insert sits in the kept shell (legs.lock_pin_joint), the hole stopping
+    # short of the middle ridge's groove. The chassis prints Z-up, so cadkit teardrops it.
+    from .legs import corner_groove_negatives as _cgn, lock_pin_joint as _lpj
     _xc_mid = sum(LEG_STATIONS_X) / 2
     for _sx in LEG_STATIONS_X:
         _egx = -1.0 if _xc_mid > _sx else 1.0       # outboard x sign
-        _xm4 = _sx + _cx(_egx)[1]                   # inboard crossing ridge
-        for _yr, _s in ((Y_HI, 1), (Y_LO, -1)):
+        for _s in (1, -1):
             _lc = LEG_Y[0] if _s > 0 else LEG_Y[1]  # flush leg centreline
             for _n in _cgn(_sx, _lc, float(_s), _egx, Z_BOT):
                 body = body.cut(_n)
-            body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-                2.3, 24.5, cq.Vector(_xm4, _yr, Z_BOT + 6.0),
-                cq.Vector(0, 0, 1))))
-            body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-                4.2, (TP_GZ0 - TP_TG_DEPTH - 0.1) - (Z_BOT + 30.0),
-                cq.Vector(_xm4, _yr, Z_BOT + 30.0),
-                cq.Vector(0, 0, 1))))
+            body = body.cut(_lpj(_sx, _lc, _egx, float(_s), Z_BOT).cutter((0.0, 0.0, 1.0)))
     # (the old y-33 / z-70.6 Ø7 harness window is GONE — the wired
     # corner's pigtail now rides the OVER-RIB raceway lane at y 50.5,
     # cut with the wide corner ribs above)
@@ -556,6 +546,9 @@ EP_TIP_PX = D.BRIDGE_BASE_X1              # bridge +X outer tip (8.5) -- the ACT
 # contact, so it is blind to that pair forever. Import the real value instead.
 from .legs import SQ_W as LEG_W
 from .legs import STUB_TNG_REBATE_IN as _TNG_REBATE_IN
+from .legs import SHELL_GAP as _SHELL_GAP
+assert abs(_SHELL_GAP - EP_LEG_CLR) < 1e-9, (
+    "legs.SHELL_GAP must equal EP_LEG_CLR: the leg screw's insert opens on the shell face")
 assert _TNG_REBATE_IN < EP_LEG_CLR, (
     "the leg tongue's rebate reaches past the endplate<->shell gap and would notch the "
     "kept shell")

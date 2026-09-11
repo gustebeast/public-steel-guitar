@@ -87,10 +87,14 @@ _ex("clearance",
 
 # Real objects. These are measurements, not choices.
 _ex("hardware",
+    legs__SHELL_GAP="clearance: the endplate <-> kept-shell gap (= chassis.EP_LEG_CLR)",
+    legs__LOCK_SCREW_L="a stock M4x12 button head's length (hardware)",
+    legs__LOCK_HEAD_D="the M4 button head's diameter (hardware)",
+    legs__LOCK_HEAD_H="the M4 button head's height (hardware)",
+    legs__LOCK_Z="the leg screw's axis height, from the M4 button head's 7.6 (hardware) + air + a 2-bead floor",
+    legs__LOCK_PIN_DY="lock pin offset chosen so SERVICE_SLIDE can reach the bridge's 25.6 (user)",
     bar_latch__SCREW_L="a stock M4x30 button head's length (hardware)",
     bar_latch__SPR_REST_L="the coil's installed length: its free length less a light preload (hardware)",
-    leg_stack__M4_PILOT_D="thread-forming pilot for an M4 screw, the one the body "
-                          "stub's pins already use",
 )
 _ex("hardware",
     MOTOR_SQ="NEMA17 body 42.3 sq (SERVO42D)",
