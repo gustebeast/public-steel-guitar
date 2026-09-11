@@ -1,12 +1,8 @@
-"""Print coupon for the cadkit octagon ("stop-sign") slide joint — the joint the
-knee levers use to key into the body.
+"""Print coupons for the LEG stack's slide joints (cadkit octagon family).
 
-Two small blocks, both printed -Z→+Z (the real lever/body orientation): one
-grows the octagon TENON standing up, the other carries the MORTISE slot. Print
-both, slide them together along X, and check the fit + that the mortise roof
-bridged cleanly. It goes through the SAME `slide_joint` front door the levers
-use — both halves face 'up' → the octagon family — so the coupon can't drift
-from the real geometry.
+The 28 mm section-joint pair checks the leg stack's slide fit and its one-bead roof
+bridge at the real size; the sleeve-cover pair checks the W5 cover rails. (The small
+knee-lever octagon coupon that used to live here was removed, user 2026-09-11.)
 """
 
 import cadquery as cq
@@ -14,9 +10,6 @@ import cadquery as cq
 from cadkit.joinery import PrintSpec, joint
 
 NOZZLE_D = 0.8            # pedal-steel nozzle; the coupon's bead grid
-WIDTH  = 8 * NOZZLE_D     # 6.4 flat-to-flat room (well above the ~1.93 mm floor);
-                          # keep = knee_lever._JW (the real joint width)
-LENGTH = 18 * NOZZLE_D    # 14.4 slide / engagement depth along X (the real load path)
 CLR    = 0.1              # mortise↔tenon fit clearance (tenon is shrunk by this)
 PLATE  = 4.0              # coupon base-plate / floor thickness
 CEIL   = 3 * NOZZLE_D     # 2.4 mortise ceiling over the roof = the printed bridge
@@ -24,34 +17,9 @@ MARGIN = 8 * NOZZLE_D     # 6.4 material each side of the joint in Y
 
 # both halves print -Z→+Z (facing 'up') → slide_joint picks the octagon family
 _UP = PrintSpec(nozzle=NOZZLE_D, material="PETG-GF", facing="up")
-_J = joint(WIDTH, LENGTH, tenon=_UP, mortise=_UP, clearance=CLR)
-_H = _J.height                       # mortise depth above the mating plane
 
 
-def tenon_coupon():
-    """Base plate with the octagon tenon standing up (+z). Prints -Z→+Z: plate,
-    then stem, then the 45° flare, narrowing to the roof."""
-    plate = (cq.Workplane("XY")
-             .box(LENGTH, WIDTH + 2 * MARGIN, PLATE, centered=(True, True, False))
-             .translate((0, 0, -PLATE)))                       # z -PLATE..0
-    ten = _J.tenon(root=1.0).translate((-LENGTH / 2.0, 0, 0))
-    return plate.union(ten)
-
-
-def mortise_coupon():
-    """Block with the octagon mortise as a through-slot along X. Prints -Z→+Z; the
-    thin ceiling over the slot is the one-nozzle bridge the shape is designed for."""
-    block = (cq.Workplane("XY")
-             .box(LENGTH, WIDTH + 2 * MARGIN, _H + PLATE + CEIL, centered=(True, True, False))
-             .translate((0, 0, -PLATE)))                        # z -PLATE.._H+CEIL (ceiling = bridge)
-    cut = (joint(WIDTH, LENGTH + 2, tenon=_UP, mortise=_UP, clearance=CLR)
-           .mortise(drop=PLATE)
-           .translate((-(LENGTH + 2) / 2.0, 0, 0)))             # slot open both X ends
-    return block.cut(cut)
-
-
-# ── SECTION-JOINT coupon (the LEG stack's octagon, width 28 — legs.SEC_W). The
-# 6 mm knee coupon above does NOT validate the 28 mm section fit, so print this
+# ── SECTION-JOINT coupon (the LEG stack's octagon, width 28 — legs.SEC_W): print this
 # pair to check the leg stack's slide fit + one-bead roof bridge at the real size.
 SEC_WIDTH, SEC_LEN, SEC_HEIGHT = 28.0, 28.0, 36.0   # keep = legs.SEC_W/_TEN_L/_H
 _SJ = joint(SEC_WIDTH, SEC_LEN, tenon=_UP, mortise=_UP, clearance=CLR,

@@ -220,7 +220,7 @@ KNEE_FAMILY = ({"knee_housing", "knee_lever", "kv_housing", "kv_lever",
 # The six knee-lever STATIONS (build.LEVER_STATIONS). LKL keeps the bare names; the
 # other five prefix them. Same parts, same designed contacts — the family test has to
 # see through the prefix or every station re-reports LKL's allowlisted interferences.
-_STATION = r"(?:pedal\d+|ilkl|lkr|vkl|rkl|rkr)"
+_STATION = r"(?:pedal\d+|lkr|vkl|rkl|rkr)"
 
 
 def _knee(n) -> bool:
@@ -251,27 +251,26 @@ def _knee(n) -> bool:
 # NOT designed contacts and they do not belong in intended() on their merits; the only
 # reason they sit here is that the fix is a routing decision the user is taking later.
 #
-# THE LEG'S TRRS CABLE (user, deferred 2026-08-13). Three pairs, one cause each:
-#   chassis <-> cable      the cable's -X end cap, ~(-624, 50.5, -65.7), buried in the
-#                          keyhead-end segment. CAUSED ON THIS BRANCH: chassis.EP_TIP_NX
-#                          feeds _leg_geom, so growing the keyhead 5.0 along X moved the
-#                          -X leg station with it and took the cable along. Fix is either
-#                          a reroute or pinning the leg station to its own datum.
-#   electronics_tray, pi5  PRE-EXISTING, older than this branch.
-# Each one is a cable DUMMY clipping a solid, i.e. exactly the "real routing bug" the wire
-# rule below is written to catch — which is why they must not be left here quietly.
 # DEFERRED, NOT INTENDED -- real interpenetrations parked so the rest of the model
 # can be gated. Each needs a named cause and an owner, and each prints LOUDLY on
 # every run; this is the opposite of an allow list, which goes silent forever.
 #
 # A pair leaves this set the moment it stops overlapping -- leaving a resolved entry
 # listed would mean a regression that reintroduces it gets a polite "deferred" line
-# instead of failing the gate. chassis <-> chassis_trrs_cable left on 2026-09-09:
-# the keyhead/bridge endplate rework moved the -X leg station off the cable.
-# The other two are UNCHANGED and still real (28.0 and 1.0 mm^3), both the cable
-# dummy clipping a solid, i.e. exactly the routing bug WIRE_OK is written to catch.
-DEFERRED = {frozenset({"chassis_trrs_cable", "electronics_tray"}),
-            frozenset({"chassis_trrs_cable", "pi5"})}
+# instead of failing the gate. The leg's TRRS cable pairs (deferred 2026-08-13) are
+# gone: chassis <-> chassis_trrs_cable left 2026-09-09 (the endplate rework moved the
+# -X leg station off it); the electronics_tray and pi5 pairs left 2026-09-11, when
+# brenner's one-leg merge (build #629) retired the old leg family and its cable. The
+# new leg's TRRS jack/cable must come in gate-clean.
+#
+# THE PICKUP HEIGHT PLATE INTO THE DECK (deferred 2026-09-10, owner UNASSIGNED --
+# see fastener-migration-todo.md section 2). The +Y jacks' X-arms poke 0.72 into the
+# pickup panel's end walls: 37.2 mm^3 at the demo pose (22 mm Alumitone, lowest
+# plate), and ~308 mm^3 across the jack bosses and the retention boss at a 15 mm
+# pickup. The gate never reported it: TP_FAMILY accepted ANY deck contact with
+# pickup_zplate, so a real collision read as a designed one. Note the gate still
+# only checks the demo pose; the 308 mm^3 case needs a sweep across the depth window.
+DEFERRED = {frozenset({"pickup_zplate", "top_plate"})}
 _DEFERRED_SEEN = set()
 
 
@@ -317,7 +316,11 @@ def intended(na, nb) -> bool:
     tp = {base(na), base(nb)}
     TP_FAMILY = {"top_plate", "top_plate_color"}
     if tp & TP_FAMILY and tp <= (TP_FAMILY | {"chassis", "oled", "joystick",
-                                              "pickup", "pickup_zplate", "pickup_jack_screw",
+                                              # pickup_zplate is NOT here: the height plate
+                                              # genuinely interpenetrates the deck (37.2 mm^3
+                                              # at the demo pose) and this line was silencing
+                                              # it. It lives in DEFERRED now, where it is loud.
+                                              "pickup", "pickup_jack_screw",
                                               "pickup_jack_insert",
                                               "bridge_endplate", "keyhead_endplate"}):
         return True
