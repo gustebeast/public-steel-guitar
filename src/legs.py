@@ -869,25 +869,29 @@ def _groove(length: float) -> cq.Workplane:
 
 
 # SERVICE POSITION (user). To reach what sits over a +Y leg's middle groove -- the
-# keyhead's nut-block adjust screws, the bridge's string access channels -- take out
-# the leg screw (and back off the endplate's lock pin), slide the leg SERVICE_SLIDE
-# outboard along Y, and drive the leg screw into the SECOND hole, which locks it
-# there. Work, slide it back, screws back in. That one number sets both:
-#   * the second screw hole, SERVICE_SLIDE inboard of the first in the inboard ridge
+# keyhead's nut-block adjust screws, the bridge's string access channels -- back out
+# the leg's one screw (the endplate's lock pin across the tongue), slide the leg
+# SERVICE_SLIDE outboard along Y, and drive the screw into the tongue's SECOND hole,
+# which locks it there. Work, slide it back, screw back in. That one number sets both:
+#   * the second lock-pin hole, SERVICE_SLIDE inboard of the first along the tongue
 #   * the MIDDLE ridge (_cross_x(...)[0]) and its groove in the body, cut back
 #     SERVICE_SLIDE from their inboard end, so that space is free for the endplates.
 # Only SERVICE_CORNERS get it, keyed (egx, syg) by outboard x and y sign: the strings
 # span Y +-42.8, so only the +Y legs sit under them. The leg's own material is untouched.
 # The cost is pull-off capacity against a kick toward/away from the player: the two
-# ridges share that along their length, so each mm is ~1/(2 SQ_W) of it (22.4 -> 25%).
+# ridges share that along their length, so each mm is ~1/(2 SQ_W) of it (18.6 -> 21%).
 SERVICE_SLIDE = 0.0                # set by whoever needs the room; 0 = no service position
 SERVICE_CORNERS = ((-1.0, 1.0), (1.0, 1.0))
+# ...and the most it can be: the second hole has to stay on the tongue, which runs the
+# leg's SQ_W along Y with the first hole at its middle
+SERVICE_SLIDE_MAX = SQ_W / 2 - (_M4.shaft_clr_d / 2 + D.MIN_WALL_2P)
 
 
 def service_slide(egx: float, syg: float) -> float:
     """This corner's service slide: 0 unless it is one of SERVICE_CORNERS."""
-    assert 0.0 <= SERVICE_SLIDE <= SQ_W, (
-        "SERVICE_SLIDE %.1f is outside 0..%.1f" % (SERVICE_SLIDE, SQ_W))
+    assert 0.0 <= SERVICE_SLIDE <= SERVICE_SLIDE_MAX + 1e-9, (
+        "SERVICE_SLIDE %.1f is outside 0..%.1f: the second lock-pin hole would fall off "
+        "the tongue" % (SERVICE_SLIDE, SERVICE_SLIDE_MAX))
     return SERVICE_SLIDE if (float(egx), float(syg)) in SERVICE_CORNERS else 0.0
 
 

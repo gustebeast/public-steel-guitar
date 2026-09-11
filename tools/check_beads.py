@@ -73,8 +73,6 @@ def _ex(cat: str, **kv) -> None:
 _ex("hardware",
     bar_latch__SCREW_L="a stock M4x30 button head's length (hardware)",
     bar_latch__SPR_REST_L="the coil's installed length: its free length less a light preload (hardware)",
-    leg_stack__M4_PILOT_D="thread-forming pilot for an M4 screw, the one the body "
-                          "stub's pins already use",
 )
 _ex("hardware",
     MOTOR_SQ="NEMA17 body 42.3 sq (SERVO42D)",
