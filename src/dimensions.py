@@ -658,6 +658,9 @@ BELT_T          = 1.4
 # Motor — MKS SERVO42D on a 48 mm NEMA17 — lies flat, shaft +Y
 # ─────────────────────────────────────────────────────────────────────────
 MOTOR_SQ        = 42.3
+MOTOR_BODY_L    = 70.0      # faceplate -> back of the driver box (the SERVO42D's 42.3 motor
+                            # plus its driver stack). The pocket and the CAN pigtail's exit
+                            # both hang off it; asserted against components.motor in build.py
 MOTOR_BODY_LEN  = 48.0      # body + PCB run ≈ 70 mm along Y (toward −Y)
 MOTOR_PCB_LEN   = 22.0
 MOTOR_SHAFT_D   = 5.0
