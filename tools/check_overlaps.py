@@ -7,7 +7,7 @@ motor-on-bank, …); the engine runs the parallel boolean scan and reports the
 UNINTENDED interpenetrations.
 
   py -3.12 -m tools.check_overlaps            # fast scan (skips belts -- see below)
-  py -3.12 -m tools.check_overlaps --full     # check EVERY part (belts too) -- pre-commit
+  py -3.12 -m tools.check_overlaps --full     # check EVERY part (belts too) -- the lead's build runs this
   py -3.12 -m tools.check_overlaps --all      # also list intended contacts
   py -3.12 -m tools.check_overlaps --only chassis,keyhead_endplate   # just these bases
   py -3.12 -m tools.check_overlaps --exclude string,wire            # skip more bases
@@ -16,7 +16,9 @@ UNINTENDED interpenetrations.
 
 The belts are slow to boolean (swept compounds dominate the runtime) and rarely
 move, so the DEFAULT scan skips them for a quick inner-loop check; pass --full for
-the complete gate (e.g. before committing). Every run prints what it skipped.
+the complete gate. Contributors do NOT run it before submitting: the lead's
+`agent_sync build` runs it on the merged tree (cadkit/AGENTS.md); agents gate their
+portion with `scratch_view --gate`. Every run prints what it skipped.
 
 Exit code is the number of unintended overlapping pairs (0 = clean).
 

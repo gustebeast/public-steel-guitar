@@ -266,8 +266,8 @@ VIEW = ScratchView(
     # INNER-LOOP gates (`--gate`): the project's real gate functions, handed the
     # cached context instead of a fresh 5.5-min rebuild. Scoping a gate by NAME
     # never helped -- the build is ~95% of its cost, not the checking -- so this
-    # scopes what gets BUILT, exactly as the view does. Still not the submit gate:
-    # nothing authoritative reads the cache, and `--gate` says so every run.
+    # scopes what gets BUILT, exactly as the view does. This is the contributor's gate;
+    # the FULL gate runs in the lead's build on merge, and `--gate` says so every run.
     gates=(("overlaps", lambda comps:
             importlib.import_module("tools.check_overlaps").gate(comps)),
            ("sweep", lambda comps:
