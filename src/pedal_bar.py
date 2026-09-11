@@ -365,13 +365,16 @@ def _corner(d: float, sx: float, sy: float):
 # The tenon's FLAT, measured off leg_stack's own numbers rather than typed in:
 # rotated 45 degrees, the octagon's flats face the corners at half its across-flats.
 TEN_FLAT = (LS_TEN_W + 2 * LS_FIT) / 2.0       # 12.30 axis -> tenon flat
-TRRS_BORE_D = BL.TRRS_BORE_D       # 11.2 the CA-354S body way. The latch's COLLAR shares
-TRRS_CORNER_D = BL.TRRS_D          # this corner layout (its screws take the other three
-                                   # corners), so bar_latch owns it
+TRRS_BORE_D = BL.TRRS_BORE_D       # 11.2 the CA-354S body way. The latch's COLLAR
+TRRS_XY = BL.TRRS_XY               # shares this corner (and carries the way's top), so
+                                   # bar_latch owns the POINT -- no longer a distance
+                                   # along the diagonal. It cannot be: the collar peaks
+                                   # its bores toward -Y and the bar peaks this one
+                                   # toward +Y, so the two faces bind the point by
+                                   # DIFFERENT rules on the two axes.
 # The way runs up through the tower's top face into the COLLAR, which closes it: the
 # collar is the roof the jack's shoulder presses up against.
 TRRS_WAY_TOP = BAR_H - 1.0 + 40 * D.BEAD
-TRRS_CORNER = (-1, -1)             # the -X-Y corner of the tower
 BAR_UP = (0.0, 1.0, 0.0)           # the bar prints lying on its -Y face
 
 # THE THINGS THE TOWER MUST HOLD, each asserted against the number that actually
@@ -381,13 +384,13 @@ BAR_UP = (0.0, 1.0, 0.0)           # the bar prints lying on its -Y face
 assert abs(TOWER_W / 2 - BL.FACE_R) < 1e-9, (
     "bar_latch sized the yoke for faces %.1f off the axis; the tower's are %.1f"
     % (BL.FACE_R, TOWER_W / 2))
-assert TRRS_CORNER == BL.TRRS_CORNER and BAR_UP == BL.BAR_UP, (
-    "bar_latch laid out its collar for a different TRRS corner or print direction")
+assert BAR_UP == BL.BAR_UP, (
+    "bar_latch laid out its collar for a different print direction")
 assert TRRS_WAY_TOP > TOWER_TOP - BL.COLLAR_H + D.MIN_WALL_2P, (
     "the TRRS way no longer reaches the collar that closes it")
-assert TOWER_CORNER - TRRS_CORNER_D >= TRRS_BORE_D / 2 + D.MIN_WALL_2P, (
-    "the TRRS bore breaks out of the tower's corner")
-assert TOWER_W / 2 - TRRS_CORNER_D / math.sqrt(2) >= TRRS_BORE_D / 2 + D.MIN_WALL_2P, (
+assert TOWER_CORNER - (abs(TRRS_XY[0]) + abs(TRRS_XY[1])) / math.sqrt(2) >= (
+    TRRS_BORE_D / 2 + D.MIN_WALL_2P), "the TRRS bore breaks out of the tower's corner"
+assert TOWER_W / 2 - max(abs(q) for q in TRRS_XY) >= TRRS_BORE_D / 2 + D.MIN_WALL_2P, (
     "the TRRS bore breaks out of the tower's flat face")
 # and the mortise itself must not eat the bar underneath it
 assert TOWER_TOP - LS_ENGAGE >= BAR_H + D.MIN_WALL_2P, (
@@ -440,7 +443,7 @@ def _mortise_tower(lx: float, wired: bool) -> cq.Workplane:
         # moving. The leg's own TRRS bore is up on the adjust sleeve, so this
         # boundary is a patch cable -- which means the jack wants a closed roof
         # to press up against, not an exit.
-        cx, cy = _corner(TRRS_CORNER_D, *TRRS_CORNER)
+        cx, cy = TRRS_XY
         # upright in the tower, so SIDEWAYS to the bar's print: via cadkit, a teardrop
         b = b.cut(teardrop_hole(TRRS_BORE_D, (z_split + 1.0) - (BAR_H - 1.0),
                                 (lx + cx, YC + cy, BAR_H - 1.0), (0.0, 0.0, 1.0), BAR_UP))
@@ -508,7 +511,7 @@ def _bar_full() -> cq.Workplane:
     # the spigot; that axis is now the mortise, so the jack moved into a corner
     # (_mortise_tower) and its cable drops from the corner bore into the trough.
     # Cut AFTER the union because it pierces both the tower and the bar beneath.
-    cx, cy = _corner(TRRS_CORNER_D, *TRRS_CORNER)
+    cx, cy = TRRS_XY
     wlx, wly = FEET[1][0] + cx, YC + cy
     # down-way: corner bore -> the trough band, opening out the bar's underside
     # for assembly access the way the old foot-mortise route did
