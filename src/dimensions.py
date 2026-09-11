@@ -611,10 +611,11 @@ assert _NUT_BRG_GAP >= 1.0 - 1e-9, (
 #   FAR row  — the FLOOR faces the seat, tangent to the bore, inside the seat's own teardrop
 #              apex void, so nothing is notched.
 # Either way the barrel passes the 688's OD with 0.3 to spare (8.0 + 2.0 + 0.3 = 10.3 < 10.4).
-# ...EXCEPT WHERE A LEG STANDS UNDER THE CHANNEL (user, 2026-09-11). The +Y bridge-end leg sits
-# right under strings 1-3, so a hand cannot reach up there; those strings get no channel and
-# thread in through the changer room's open +X face instead (bridge_endplate.access_blocked
-# decides it from the leg stations, so it follows the legs).
+# ...EXCEPT WHERE A LEG STANDS UNDER THE CHANNEL EVEN SLID OUT (user, 2026-09-11). The +Y
+# bridge-end leg sits right under strings 1-3, so restringing slides it out first
+# (legs.SERVICE_SLIDE is sized to clear string 1's channel); any string still covered gets no
+# channel and threads in through the changer room's open +X face instead
+# (bridge_endplate.access_blocked decides it from the leg stations and the slide).
 STRING_ACCESS_D = 6 * BEAD                      # 4.8 house width (user)
 STRING_ACCESS_H = 6 * BEAD                      # 4.8 house wall height, roof on top (user)
 _ACCESS_PASS_R  = STRING_NUT_D / 2 + 0.3        # 2.3 — the Ø4 swaged end's passage, for the standoff
