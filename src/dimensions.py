@@ -121,7 +121,9 @@ PEDAL_LID_FOOT_W = 30 * BEAD   # 24.0 dovetail foot (both asserts hold: bar skin
 # achieved height against this datum, which is what keeps the chain honest if any
 # of the three terms moves.
 PEDAL_AXLE_H     = 0.8 * 60   # 48.0 — axle centre above the floor (user)
-PEDAL_BAR_H      = 27.9     # = PEDAL_AXLE_H - legs.FOOT_H(12) - foot_pedal.HOUS_X1(8.1);
+PEDAL_BAR_H      = 27.9     # the bar; foot_pedal.HOUS_X1 = PEDAL_AXLE_H - FOOT_H(12) - this (8.1).
+                            # (was solved the other way, from HOUS_X1; the housing is fused into
+                            # the bar, so the 688ZZ race wall comes out of bar material instead)
                             # spelled out rather than imported (legs/foot_pedal both
                             # read this module — the import only goes one way).
                             # Must still HOST the lid, which is the constraint that
