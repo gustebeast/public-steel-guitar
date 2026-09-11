@@ -893,18 +893,22 @@ LEG_NY_FACE = D.BRIDGE_AXLE_Y + 4 * D.BEAD + D.WALL_THICKNESS - SQ_W     # a +Y 
 KEYHEAD_CLEAR_Y = (max(_NB.height_screw_xy(i)[1] for i in range(D.N_STRINGS))
                    + _NB.HS_HEAD_CAV_D / 2.0 + D.MIN_WALL_2P)   # +Y edge of the room the heads need
 # ...and the BRIDGE's string access channels (user, 2026-09-11). The +Y bridge-end leg stands under
-# strings 1-3's channels; slid out, it clears the +Y-most one (string 1's) by a two-bead margin, so
-# a hand can feed every string up from below. bridge_endplate.access_blocked tests the SLID leg.
+# strings 1-3's channels; slid out, it clears the +Y-most one (string 1's), so a hand can feed every
+# string up from below (bridge_endplate.access_blocked tests the SLID leg). The margin is to the
+# middle ridge's GROOVE in the body, cut back by the slide -- which overshoots CROSS_GROOVE_IN
+# inboard of the leg face -- so string 1's hole keeps a two-bead wall to that groove's end.
+CROSS_GROOVE_IN = 0.5          # crossing grooves' inboard overshoot past the leg face (corner_groove_negatives)
 BRIDGE_CLEAR_Y = (max(D.string_y(i) for i in range(D.N_STRINGS))
-                  + D.STRING_ACCESS_D / 2.0 + D.MIN_WALL_2P)    # +Y edge of the room the channels need
-SERVICE_SLIDE = math.ceil(max(0.0, max(KEYHEAD_CLEAR_Y, BRIDGE_CLEAR_Y) - LEG_NY_FACE)
-                          / D.BEAD - 1e-9) * D.BEAD
+                  + D.STRING_ACCESS_D / 2.0 + D.MIN_WALL_2P + CROSS_GROOVE_IN)
+# NOT rounded to whole beads: it is a travel (where the second screw hole lands), and the bridge's
+# need (26.1) rounds to 26.4, past SERVICE_SLIDE_MAX -- the hole would fall off the tongue.
+SERVICE_SLIDE = round(max(0.0, KEYHEAD_CLEAR_Y - LEG_NY_FACE, BRIDGE_CLEAR_Y - LEG_NY_FACE), 6)
 SERVICE_CORNERS = ((-1.0, 1.0), (1.0, 1.0))
 # The LOCK PIN sits LOCK_PIN_DY OUTBOARD of the leg's centreline (user), which is what
 # leaves the tongue room for a long service slide: the second hole goes SERVICE_SLIDE
-# inboard of it and must stay on the tongue. Its insert pocket in the endplate then
-# comes within ~0.5 of the rail band (ly+10.5), where the endplate's rail socket is.
-LOCK_PIN_DY = 7.0
+# inboard of it and must stay on the tongue. 7.5 (user, 2026-09-11; was 7.0) is what lets
+# the slide reach the bridge's 26.1 (string 1's access hole keeps 1.6 to the groove end).
+LOCK_PIN_DY = 7.5
 # ...and the screw itself (lock_pin_joint): a stock M4 button head recessed in the end
 # face, into a heat-set insert on the kept shell's face across the endplate<->shell gap
 SHELL_GAP = 0.4                    # that gap: chassis.EP_LEG_CLR, asserted equal there
@@ -962,7 +966,7 @@ def corner_groove_negatives(station: float, ly: float, syg: float,
     # crossing grooves (thirds of the side-panel overlap): 0.5 inboard
     # overshoot, 1 outboard
     Lc = SQ_W + 1.5
-    y0c = (ly - SQ_W / 2 - 0.5) if syg > 0 else (ly - SQ_W / 2 - 1.0)
+    y0c = (ly - SQ_W / 2 - CROSS_GROOVE_IN) if syg > 0 else (ly - SQ_W / 2 - 1.0)
     mid = service_slide(egx, syg)
     for i, dx in enumerate(_cross_x(egx)):
         c = mid if i == 0 else 0.0             # the MIDDLE ridge's inboard end (above)
