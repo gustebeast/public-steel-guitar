@@ -1180,6 +1180,8 @@ _COLORS = {
     "leg_trrs_jack":   (0.20, 0.20, 0.22),   # ...the jack it seats in, in the sleeve
     "leg_trrs_spring": (0.62, 0.64, 0.67),   # ...the coil that holds them together
     "leg_trrs_spacer": (0.30, 0.52, 0.40),   # ...the printed tube it stands on
+    "leg_trrs_patch":  (0.12, 0.12, 0.14),   # ...the lead up to the chassis socket
+    "leg_trrs_leg_lead": (0.12, 0.12, 0.14), # ...and the column's own, down the leg
     "leg_trrs_cap":    (0.34, 0.56, 0.44),   # ...and the cap holding the plug down
     "bar_latch_frame": (0.85, 0.35, 0.20),   # pedal bar latch accent
     "bar_latch_collar": (0.36, 0.42, 0.46),  # PETG-GF, the bar tower's family
