@@ -194,14 +194,26 @@ PKG = {
     "0805OPT":  (2.00, 1.25, 0.85),   # optoelectronic 0805
     "SOT-23":   (2.90, 2.40, 1.30),
     "SOT-23-5": (2.90, 2.80, 1.45),
+    "SOT-23-6": (2.90, 2.80, 1.45),   # same envelope as the -5; the buck (see U13)
+    "IND-4040": (4.10, 4.10, 2.10),   # 4x4 shielded power inductor, buck output
+    "1206C":    (3.40, 1.85, 1.60),   # 50 V X7R -- the 24 V input bulk wants the voltage
+                                      # rating AND the derating headroom; an 0805 50 V part
+                                      # loses most of its capacitance at 24 V bias
     "SOT-563":  (1.60, 1.60, 0.60),
     # U8's digital rail is ~300 mA, so 5V->3V3 burns 0.51 W. That is past a SOT-23-5
-    # (>100 degC rise), which is why U8 is NOT the same part as U9. A BUCK was the obvious
-    # answer and is the wrong one here: this board reads tens of nanoamps on 20 TIAs, and
-    # putting a ~1 MHz switcher next to them trades a thermal problem for a noise problem
-    # on the axis the design is most sensitive to. A tab package sheds the heat instead --
-    # SOT-223 is ~50 degC/W with a copper pour, i.e. ~25 degC rise, and the board stays
-    # switcher-free. 1.7 V of headroom against AMS1117's 1.3 V max dropout.
+    # (>100 degC rise), which is why U8 is NOT the same part as U9. A BUCK is still the
+    # wrong answer for THIS rail: it sits among 20 TIAs reading tens of nanoamps, and a
+    # ~1 MHz switcher there trades a thermal problem for a noise problem on the axis the
+    # design is most sensitive to. A tab package sheds the heat instead -- SOT-223 is
+    # ~50 degC/W with a copper pour, i.e. ~25 degC rise. 1.7 V of headroom against
+    # AMS1117's 1.3 V max dropout.
+    #
+    # ⚠ THE BOARD IS NO LONGER SWITCHER-FREE, and that claim used to be here. The rail
+    # arriving at J2 is 24 V, not 5 V (user, 2026-09-14), so ONE switcher is unavoidable:
+    # 24->3V3 by linear regulation would burn 0.3 A x 20.7 V = 6.2 W, which no package on
+    # this board can shed. U13 makes 5 V and the two LDOs still make both 3V3 rails from
+    # it, so the switching node is a single point at the board's extreme -Y tail rather
+    # than a rail running the length of the sense array. See the U13 block.
     "SOT-223":  (6.50, 3.50, 1.80),   # tab package, JEDEC TO-261AA
     "SOIC-14":  (6.00, 8.65, 1.75),   # LONG AXIS ALONG Y: 8.65 body, 6.00 across leads.
                                       # Chosen over TSSOP-14 purely for X: 6.00 across
@@ -218,7 +230,16 @@ PKG = {
     # J2 is a SIX-way on the -Y EDGE, mouth facing -Y alongside the USB-C, so every cable
     # leaves the board at one end (user: a -X exit is unmanageable). Six ways because the
     # magnetic pickup's buffered audio tap arrives here too and MUST bring its own return:
-    # 2x 5V, 2x PWR_GND, AUDIO, AUDIO_GND.
+    # 24V, PWR_GND, AUDIO, AUDIO_GND, and two cavities left EMPTY.
+    #
+    # THE EMPTY PAIR IS WHAT THE 24 V CHANGE BOUGHT. 5 V arriving here needed TWO contacts
+    # per rail for current; at 24 V the same power is ~85 mA and one contact each is ample,
+    # so the doubling went away. The six-way stays because the audio tap still needs its
+    # own return and the part choice below is justified on housings already bought.
+    # FOLLOW-UP, not done here: the user chose SCREW TERMINALS for the magnetic pickup
+    # (it is the most likely thing anyone ever rewires). When that lands, the audio pair
+    # leaves J2 and J2 collapses to the instrument's standard 4-way with two cavities
+    # empty -- the same shell and crimp order as every tee.
     #
     # Note there is no S2B -- JST's SMT side-entry XH line starts at 4 way -- and the 6 way
     # costs nothing on the harness side, because XHP-6 housings are ALREADY bought to mate
@@ -617,6 +638,24 @@ def _parts():
                       ("R37", "audio input series / anti-alias", "0402"),
                       ("R38", "audio input bias to mid-rail", "0402")], x0, x1)
 
+    # ---- 3c. LOCAL 24 -> 5 V, AND IT GOES AT THE FAR END ON PURPOSE ----
+    # The trunk delivers 24 V (see J2). One switching stage is therefore unavoidable --
+    # 24->3V3 linearly is 6.2 W -- so the whole question is WHERE, and the answer is: as
+    # far from the photodiode array as this board has room for, which is right here at the
+    # -Y tail beside the connector the 24 V arrives on. The input path is then ~10 mm long
+    # instead of crossing the board, and the only thing between the switcher and the sense
+    # zone is the MAGNETIC channel, which is line level -- four to five orders of magnitude
+    # louder than the nanoamps the TIAs read, and therefore the right neighbour for it.
+    # The two 3V3 LDOs still follow, so nothing downstream of 5 V sees the switching node.
+    y = _block(P, y, [("U13", "buck -- 24V -> 5V, the board's only switcher", "SOT-23-6"),
+                      ("L1", "buck output inductor", "IND-4040"),
+                      ("C160", "24 V input bulk -- 50 V part, see 1206C", "1206C"),
+                      ("C161", "24 V input HF bypass", "0402"),
+                      ("C162", "5 V output bulk", "0805C"),
+                      ("C163", "bootstrap", "0402"),
+                      ("R40", "feedback divider -- top", "0402"),
+                      ("R41", "feedback divider -- bottom", "0402")], x0, x1)
+
     # ---- 4. the -Y EDGE: every cable leaves the board here ----
     # Both mouths face -Y and their outer faces are FLUSH, so the two plugs present as one
     # cable exit rather than two at different depths. J1 sets PCB_YM; J2 is referenced to
@@ -625,14 +664,19 @@ def _parts():
     add("J1", "USB-C receptacle -- 10ch audio + MIDI + DFU", "USB-C",
         COMPUTE_X0 + EDGE_KEEP + PKG["USB-C"][0] / 2, y)
     edge_y = y - PKG["USB-C"][1] / 2                      # the board's -Y face
-    # J2 -- POWER *AND* the magnetic pickup's audio tap. 5V from the instrument rail, NOT
-    # USB VBUS: MCU ~200-300 mA + PHY ~50 + 21 op-amp channels ~40 is already past a USB
-    # port before an emitter is lit, and LED current is now the FIRST SNR lever we have.
+    # J2 -- POWER *AND* the magnetic pickup's audio tap. 24 V FROM THE TRUNK, and NOT USB
+    # VBUS: MCU ~200-300 mA + PHY ~50 + 21 op-amp channels ~40 is already past a USB port
+    # before an emitter is lit, and LED current is now the FIRST SNR lever we have.
+    # 24 V rather than a delivered 5 V (user, 2026-09-14) because the alternative is a
+    # 5 V rail run ~600 mm from the keyhead, sharing a return with the Pi -- and this
+    # board's LED driver switches at 96 kHz SYNCHRONOUSLY WITH SAMPLING, so that return
+    # current is the one noise source ambient subtraction cannot cancel. Local conversion
+    # keeps it on this board. It costs the board its switcher-free property; see U13.
     # AUDIO_GND is a dedicated pin, not shared with PWR_GND and emphatically not with USB
     # ground: the LED row driver switches at 96 kHz SYNCHRONOUSLY WITH SAMPLING and that
     # current flows in the power return, so sharing it would inject the one noise source
     # ambient subtraction cannot cancel straight into the audio reference.
-    add("J2", "power 5V + magnetic audio tap -- 2x5V, 2x PWR_GND, AUDIO, AUDIO_GND",
+    add("J2", "power 24V + magnetic audio tap -- 24V, PWR_GND, AUDIO, AUDIO_GND, 2 empty",
         "XH-SM-6Y",
         COMPUTE_X0 + EDGE_KEEP + PKG["USB-C"][0] + ROW_GAP + PKG["XH-SM-6Y"][0] / 2,
         edge_y + PKG["XH-SM-6Y"][1] / 2)
@@ -682,6 +726,20 @@ _MPN_RULES = (
                                                     "PHY's reference freq -- confirm vs USB3343")),
     ("Q1",   ("AO3400A",         "C20917",   0.0849, "N-ch logic-level FET, SOT-23, LED row gate, @5+")),
     ("J1",   ("TYPE-C-31-M-12",  "C165948",  0.1709, "USB-C 16P, @5+; the modelled envelope IS this part")),
+    ("U13",  (MPN_UNKNOWN,       "",         0.35,  "24V->5V synchronous buck, SOT-23-6, >=0.5 A. "
+                                                    "OPEN: pick a real part at schematic "
+                                                    "capture. WANTED: synchronous (no catch "
+                                                    "diode), >=30 V absolute max so the 24 V "
+                                                    "rail has margin, and a switching "
+                                                    "frequency chosen AWAY from 96 kHz and "
+                                                    "its low harmonics -- this board samples "
+                                                    "at 96 kHz and a switcher near a "
+                                                    "sub-multiple of it aliases straight "
+                                                    "into the audio band")),
+    ("L1",   (MPN_UNKNOWN,       "",         0.10,  "buck output inductor, 4x4 shielded. OPEN: "
+                                                    "value follows U13. SHIELDED is not "
+                                                    "optional here -- an unshielded inductor "
+                                                    "radiates into 20 TIAs")),
     ("FB1",  (MPN_UNKNOWN,       "",         0.05,  "0603 ferrite bead, 600R@100MHz. OPEN: the "
                                                     "GZ2012D601TF/C1017 recorded here was a bad "
                                                     "number -- C1017 404s. Pick a real one")),
@@ -729,6 +787,18 @@ _MPN_EXACT = {r: ("0402 thick-film R", "BASIC", 0.002, "pulls / divider / gate")
 # under the 0402 line -- the same namespace collision as R3 vs R30. Spelled out.
 _MPN_EXACT.update({r: ("0805 X7R MLCC", "BASIC", 0.01, "audio ADC bypass / DC block")
                    for r in ("C150", "C152", "C153")})
+# The buck's furniture: same namespace hazards as the groups above. R40/R41 would fall to
+# the 0603 LED-ballast rule and C161/C163 to the 0402 line by accident rather than by
+# decision, and C162 is 0805 while C160 is the only 1206 on the board.
+_MPN_EXACT.update({r: ("0402 thick-film R", "BASIC", 0.002, "buck feedback divider")
+                   for r in ("R40", "R41")})
+_MPN_EXACT.update({r: ("0402 X7R MLCC", "BASIC", 0.004, "buck HF bypass / bootstrap")
+                   for r in ("C161", "C163")})
+_MPN_EXACT["C162"] = ("0805 X7R MLCC", "BASIC", 0.01, "buck 5 V output bulk")
+_MPN_EXACT["C160"] = ("1206 X7R MLCC 50 V", "BASIC", 0.03,
+                      "1206 50 V input bulk -- an 0805 50 V part loses most of its "
+                      "capacitance at 24 V DC bias, so the case size is the derating, "
+                      "not the voltage rating")
 
 
 def mpn(p):

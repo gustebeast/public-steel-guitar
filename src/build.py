@@ -735,10 +735,10 @@ def _electronics_components():
     from . import top_plate as TP
     out = [("electronics_tray", EL.electronics_tray()),
            ("pi5", EL.pi5()),
-           ("adc_stack", EL.adc_stack()), ("buck", EL.buck()),
+           ("power_pcb", EL.power_pcb()),
            ("motor_ctrl", EL.motor_ctrl()),
            ("ts_jack", EL.ts_jack()), ("dc_jack", EL.dc_jack()),
-           ("usbc_jack", EL.usbc_jack()),
+           ("usb_panel", EL.usb_panel()),
            ("oled", EL.oled()), ("joystick", EL.joystick())]
     out += [(f"top_plate_{i}", seg) for i, seg in enumerate(TP.segments)]
     out += [(f"top_plate_color_{i}", seg) for i, seg in enumerate(TP.segments_color)]
@@ -1018,8 +1018,8 @@ def screw_rows_components():
 
 BODY_WORK_PARTS = SCREW_ROW_PARTS + (
     "bridge_endplate", "bridge_bearings", "motor", "chassis_",
-    "electronics_tray", "pi5", "motor_ctrl", "adc_stack", "buck", "tee_", "wire_",
-    "dc_jack", "ts_jack", "usbc_jack", "joystick", "oled",
+    "electronics_tray", "pi5", "motor_ctrl", "power_pcb", "tee_", "wire_",
+    "dc_jack", "ts_jack", "usb_panel", "joystick", "oled",
     "body_adapter", "lock_pin_", "adjust_", "fixed_", "bar_latch_", "leg_latch_")
 
 
@@ -1235,8 +1235,8 @@ _COLORS = {
     # electronics bay (dummies) + panel jacks
     "electronics_tray": (0.30, 0.36, 0.32),  # printed tray
     "pi5":             (0.05, 0.35, 0.15),   # PCB green
-    "adc_stack":       (0.15, 0.25, 0.50),
-    "buck":            (0.35, 0.30, 0.50),
+    "power_pcb":       (0.35, 0.30, 0.50),   # 24->5 V power board (buck + crowbar)
+    "usb_panel":       (0.45, 0.30, 0.45),   # front-panel USB break-out (VBUS broken)
     "motor_ctrl":      (0.55, 0.25, 0.25),   # motor controller PCB (CH32V307 +
                                              # 2x CAN transceiver + XH headers)
     "tee_pcb":         (0.10, 0.42, 0.18),   # trunk-and-drop bus tee PCBs
