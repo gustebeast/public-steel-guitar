@@ -55,8 +55,9 @@ NEIGH_CLR  = D.MIN_WALL          # 0.8 air to the diagonal neighbour's body, at 
 WIRE_LANE_W = 6.0                # a back stop leaves this much clear on the motor's centreline
                                  # for its CAN pigtail to climb
 FIN_H      = 16 * D.BEAD         # 12.8: the -X fin's height (short, and wall-braced)
-BUMP_T     = 4 * D.BEAD          # 3.2 back bumper: nothing pushes the motor -Y, so it is a
-BUMP_H     = 16 * D.BEAD         # 12.8 tall stop, not a wall -- the CAN pigtail leaves over it
+BACK_T     = 4 * D.BEAD          # 3.2 back wall: nothing pushes the motor -Y, so it is a stop,
+BUMP_H     = 16 * D.BEAD         # 12.8 tall -- above it the DRIVE's connector and cable want the
+                                 # bay open, and the motor goes in with them attached
 STAGGER    = abs(D.string_y(0) - D.string_y(1))    # 9.5, one string pitch: the band's depth
 # THE POCKET'S -Y LIMIT. The bank is staggered, so the -Y-most motors' backs run right down to
 # the -Y rail -- and that strip is the HARNESS CORRIDOR: the tee boards on their cradles and the
@@ -65,7 +66,12 @@ STAGGER    = abs(D.string_y(0) - D.string_y(1))    # 9.5, one string pitch: the 
 # here, and where that leaves no room they are simply dropped: what stops those motors going -Y
 # is the rail itself, 2.0 behind string 10's back (user: merge the back wall into the chassis
 # wall on the high strings). wiring.py asserts this against where the tees and lanes really are.
-HARNESS_Y1 = -108.75              # +Y edge of the corridor: the tee boards' own +Y edge
+# It was -108.75, the TEE BOARDS' +Y edge -- but the bus-A tees sit on their motors now, and no
+# rail-mounted board lies within the bank's X span (wiring asserts it), so what remains along
+# here is the trunk WIRES: RAIL_Y -124.25 plus the fattest trunk conductor's radius, -122.95.
+# Pulling the keep-out back to -122.4 hands 14 mm of Y to the bays, which is what lets the
+# -Y-most ones have a back wall like everyone else instead of being a special case (user).
+HARNESS_Y1 = -122.4               # +Y edge of the corridor: the trunk lanes' own edge
 HARNESS_Z1 = -40.0                # ...and its top: just over the highest trunk lane
 
 # Per-motor faceplate wall CENTRE Y. The motor faceplate (component) is at
@@ -144,122 +150,92 @@ def _wall(i) -> cq.Workplane:
                   x=(_x0 + _x1) / 2, y=fy, z=(Z_HI + BED_Z) / 2)
     wall = wall.edges("|Y and <Z").chamfer(14.0)   # big 45° buttress → bed (gusset)
     wall = wall.edges("|Y and >Z").chamfer(3.0)     # trim the top corners
-    slot_w = D.NEMA17_PILOT_D + 2 * BOSS_CLR
-    wall = wall.cut(box_at(slot_w, PLATE_T + 2.0, Z_HI - mz + 1.0,
-                           x=mx, y=fy, z=(mz + Z_HI + 1.0) / 2))
-    wall = wall.cut(cq.Workplane(obj=cq.Solid.makeCylinder(
-        slot_w / 2, PLATE_T + 2.0, cq.Vector(mx, fy - PLATE_T / 2 - 1.0, mz),
-        cq.Vector(0, 1, 0))))
-    return wall
+    return wall                      # its SLOT is cut in pocket(), after the bay prism unions
+                                     # into this band -- cut here, the prism refills it
+
+
+def side_room(i, sgn):
+    """How much X this motor's bay claims on one side: the WHOLE gap less the neighbour's fit,
+    which is 1.6 of wall either way.
+
+    Not half each. Halves would meet and fuse into 1.6 only where both bays exist -- and the
+    bank is STAGGERED, so over the last 9.5 of every bay the neighbour has ended and a half wall
+    stands alone at 0.8 (the user's rule, broken in the stagger bands). Claiming the whole gap
+    makes both bays describe the SAME 1.6 wall, which is the honest description of it: one wall
+    between two motors, not two half walls. The chassis cuts every motor's lift path out of the
+    fused result, so a bay reaching across the gap never fills its neighbour's fit."""
+    other = D.MOTOR_ELEC_CLR if (sgn < 0 and i == 0) else D.MOTOR_GAP
+    if sgn > 0 and i == D.N_STRINGS - 1:
+        return MOTOR_CLR + D.MIN_WALL_2P          # open air past the last motor
+    return other - MOTOR_CLR
 
 
 def pocket(i) -> cq.Workplane:
-    """ONE motor's housing: faceplate wall + the two stagger-band side posts + the back
-    bumper. The motor drops in from +Z and its screw (cut by the chassis) stops it lifting.
+    """ONE motor's housing, PRISM-FIRST (user, 2026-09-14): fill the bay with a solid and cut
+    the motor's own topology out of it, rather than adding a wall here and a post there. The
+    accreted version left a sliver wherever a cut met a small prism edge-on; here every face is
+    either the motor's surface plus its fit, or a cut with a reason.
+
+    THE PRISM  the bay this motor owns: half the gap to each neighbour (the halves meet and
+               fuse, so ONE 1.6 wall separates two motors), rib tops up to the tee seat plane.
+    THE CUTS   the motor + MOTOR_CLR swept +Z, which is both the pocket and the way IN; the
+               DRIVE's room at the back (its connector and cable leave that face and the motor
+               goes in with them attached, so the back wall stops at BUMP_H and keeps a lane on
+               the centreline); the -Y rail's harness corridor; and the boss's drop-in slot,
+               which _wall cuts.
 
     Exposed PER MOTOR so the chassis can fuse each housing WHOLE into the print segment that
-    owns its motor -- a housing straddling a segment boundary is never sliced; it just
-    overhangs the cut plane and the neighbour is relieved. That frees the segment splits to
-    fall between ribs instead of dodging the 43-wide walls."""
+    owns its motor -- a housing straddling a segment boundary is never sliced; it just overhangs
+    the cut plane and the neighbour is relieved."""
     bx0, bx1, by0, by1, bz0, bz1 = body_box(i)
-    body = _wall(i)
-    # +X post: in the band the +X neighbour does not reach (it starts STAGGER further -Y).
-    # Tall enough to host the screw, and fused to the wall, which braces it.
-    px0 = bx1 + MOTOR_CLR
-    _pl = (STAGGER - NEIGH_CLR) + PLATE_T          # ...and on into the wall, which braces it
-    _pr = Z_HI - bz1                               # post top = the tee seat plane it helps carry
-    body = body.union(box_at(POST_T, _pl, (bz1 + _pr) - bz0,
-                             x=px0 + POST_T / 2,
+    body = _wall(i)                                     # the faceplate wall (runs on to the bed)
+
+    x0, x1 = bx0 - side_room(i, -1), bx1 + side_room(i, 1)
+    y0, y1 = by0 - BACK_T, by1 + PLATE_T
+    body = body.union(box_at(x1 - x0, y1 - y0, Z_HI - bz0,
+                             x=(x0 + x1) / 2, y=(y0 + y1) / 2, z=(bz0 + Z_HI) / 2))
+
+
+    # THE DRIVE: the back wall stands BUMP_H and no further, so the driver's connector and its
+    # cable have the whole upper back open
+    _yb0, _yb1 = y0 - 1.0, by0 - MOTOR_CLR
+    body = body.cut(box_at((x1 - x0) + 2.0, _yb1 - _yb0, (Z_HI + 1.0) - (bz0 + BUMP_H),
+                           x=(x0 + x1) / 2, y=(_yb0 + _yb1) / 2,
+                           z=((bz0 + BUMP_H) + (Z_HI + 1.0)) / 2))
+    # ...and a lane through what is left of it, for the pigtail to climb
+    body = body.cut(box_at(WIRE_LANE_W, _yb1 - _yb0, BUMP_H + 2.0,
+                           x=(bx0 + bx1) / 2, y=(_yb0 + _yb1) / 2, z=bz0 + BUMP_H / 2))
+
+    # (the -Y rail's HARNESS CORRIDOR is cut from the fused chassis, not from here: whether a
+    #  bay may reach the rail depends on where the trunk runs, and across the +X-most motor the
+    #  trunk dips OUTBOARD into the rail's notch, so that bay CAN. chassis.py owns both.)
+
+    # THE +X POST: the tee seat's hold boss needs more X than a 1.6 wall has, and the stagger
+    # leaves room for it at the front (the +X neighbour starts one string pitch further -Y)
+    _pl = (STAGGER - NEIGH_CLR) + PLATE_T
+    body = body.union(box_at(POST_T, _pl, Z_HI - bz0,
+                             x=bx1 + MOTOR_CLR + POST_T / 2,
                              y=by1 + PLATE_T - _pl / 2,
-                             z=(bz0 + bz1 + _pr) / 2))
-    # -X post: the mirror band, at the BACK (the -X neighbour ends STAGGER short of it),
-    # running -Y into the bumper so the housing prints as one piece -- but never past
-    # HARNESS_Y1. On the -Y-most strings that clips it to nothing and it is dropped: the boss
-    # in its slot already fixes X, and the belt pulls the motor onto the +X post, not this one.
-    # ...and where the corridor took that post away (strings 9-10), a one-bead FIN on the -X
-    # side of the FRONT band instead, opposite the +X post. The boss in the wall's slot already
-    # holds the motor's front to +-0.4 either way, but with no -X post its BACK can yaw about
-    # that boss until it touches the neighbour (1.6 over 70, ~1.3 deg). The front band is the
-    # only -X room left: the neighbour's body is there, and MOTOR_GAP is sized so a full 1.6
-    # wall fits between two fits. It fuses to the faceplate wall along its front edge too, so it
-    # is braced rather than free-standing.
-    if _post_y(i) is None:
-        _fl = STAGGER - NEIGH_CLR
-        body = body.union(box_at(D.MIN_WALL_2P, _fl, FIN_H,
-                                 x=bx0 - MOTOR_CLR - D.MIN_WALL_2P / 2,
-                                 y=by1 - _fl / 2,
-                                 z=bz0 + FIN_H / 2))
-    _band = _post_y(i)
-    if _band is not None:
-        body = body.union(box_at(POST_T, _band[1] - _band[0], bz1 - bz0,
-                                 x=bx0 - MOTOR_CLR - POST_T / 2,
-                                 y=(_band[0] + _band[1]) / 2,
-                                 z=(bz0 + bz1) / 2))
-    # back bumper: low, so the pigtail leaves over it. On the -Y-most strings its back face
-    # lands inside the chassis rail and simply fuses with it -- no new thickness anywhere.
-    # Its width is the MOTOR's, not the pocket's: the bank is staggered, so a bumper as wide
-    # as the housing reaches into the -X neighbour's BODY (it lies 9.5 further -Y, right across
-    # this Y band) -- 344 mm3 of it, which also blocked that motor's way in. 43.1 keeps 1.2 off
-    # both neighbours; the -X post reaches back to meet it, and the rib under both fuses them.
-    if back_stop_kind(i) == "bumper":
-        body = body.union(box_at(D.MOTOR_SQ + 2 * MOTOR_CLR, BUMP_T, BUMP_H,
-                                 x=(bx0 + bx1) / 2, y=by0 - MOTOR_CLR - BUMP_T / 2,
-                                 z=bz0 + BUMP_H / 2))
-    elif back_stop_kind(i) == "tab":
-        # no room for a bumper beside the corridor, but this motor still has its -X post:
-        # a 45 deg wedge grows out of the post's side ABOVE the corridor and laps the
-        # motor's back. Self-supporting (the hypotenuse is its underside) and it leaves the
-        # pigtail its run underneath.
-        _x0 = bx0 - MOTOR_CLR
-        _prof = [(_x0, HARNESS_Z1), (_x0 + (bz1 - HARNESS_Z1), bz1), (_x0, bz1)]
-        _y = by0 - MOTOR_CLR - BUMP_T
-        body = body.union(cq.Workplane("XZ").workplane(offset=-(_y + BUMP_T))
-                          .polyline(_prof).close().extrude(BUMP_T))
+                             z=(bz0 + Z_HI) / 2))
+
+    # ...and ONLY NOW the cuts, every one of them after every union: the boss's drop-in slot in
+    # the faceplate wall, and the motor's own volume swept +Z (its fit, and its way in). Cut
+    # before the prism unions into those bands and the prism simply fills them back in.
+    _slot_w = D.NEMA17_PILOT_D + 2 * BOSS_CLR
+    _fy = _face_y(i)
+    body = body.cut(box_at(_slot_w, PLATE_T + 2.0, Z_HI - bz1 + (bz1 - (mz := D.motor_pos(i)[2])) + 1.0,
+                           x=(bx0 + bx1) / 2, y=_fy, z=(mz + Z_HI + 1.0) / 2))
+    body = body.cut(cq.Workplane(obj=cq.Solid.makeCylinder(
+        _slot_w / 2, PLATE_T + 2.0, cq.Vector((bx0 + bx1) / 2, _fy - PLATE_T / 2 - 1.0, mz),
+        cq.Vector(0, 1, 0))))
+    body = body.cut(lift_prism(i))
+    # The corridor cut can strand a scrap of side wall above it on the -Y-most bays (their backs
+    # reach the rail, so there is nothing left to join it to). Keep the housing proper: the
+    # chassis would drop the scraps anyway, and a part that IS its own answer is easier to read.
+    _solids = body.val().Solids()
+    if len(_solids) > 1:
+        body = cq.Workplane(obj=max(_solids, key=lambda s: s.Volume()))
     return body
-
-
-def back_stop_kind(i):
-    """Which -Y stop motor i can have. The bank is staggered, so how much room a motor has
-    behind it depends on its string: string 1's back is 87 clear of the -Y rail, string 10's
-    is 2.0. And the strip along that rail is the HARNESS CORRIDOR, which nothing may enter.
-      bumper  the full-width block at the back face (strings 1-7)
-      tab     a wedge off this motor's own -X post, over the corridor (string 8)
-      rail    a ramp off the RAIL itself, which is right there (strings 9-10) -- the user's
-              "merge that back wall into the chassis wall"; chassis builds it, since the rail
-              is its own. It is a 45 deg face, so pushing the motor -Y lifts it against its
-              retaining screw rather than moving it."""
-    _, _, by0, _, _, bz1 = body_box(i)
-    if by0 - MOTOR_CLR - BUMP_T >= HARNESS_Y1:
-        return "bumper"
-    return "tab" if _post_y(i) is not None else "rail"
-
-
-def back_stop_rail(i, rail_inner_y):
-    """The 'rail' back stop, for the motors whose backs nearly touch the -Y rail: a 45 deg
-    ramp off the rail's inner face, rising from over the harness corridor to the motor's top.
-    Built by the chassis (it owns the rail) and only where back_stop_kind says so."""
-    bx0, bx1, by0, _, _, bz1 = body_box(i)
-    # 45 deg is the STEEPEST the underside may be shallower than, so the reach is capped by the
-    # rise available over the corridor. String 10 needs 1.6 and gets it; string 9 needs 11.1 and
-    # the rise affords 10.95, so its stop lands 0.15 shy -- that much -Y play, not an overhang.
-    reach = min(by0 - MOTOR_CLR - rail_inner_y, bz1 - HARNESS_Z1)
-    y1 = rail_inner_y + reach
-    prof = [(rail_inner_y, HARNESS_Z1), (y1, bz1), (rail_inner_y, bz1)]
-    ramp = (cq.Workplane("YZ").workplane(offset=bx0 - MOTOR_CLR)
-            .polyline(prof).close().extrude(bx1 - bx0 + 2 * MOTOR_CLR))
-    # ...with a lane for the motor's own CAN pigtail, which leaves the back face on the
-    # centreline and has to climb PAST this stop to reach its tee
-    lane = D.motor_pos(i)[0]
-    return ramp.cut(box_at(WIRE_LANE_W, (y1 - rail_inner_y) + 2.0, (bz1 - HARNESS_Z1) + 2.0,
-                           x=lane, y=(rail_inner_y + y1) / 2, z=(HARNESS_Z1 + bz1) / 2))
-
-
-def _post_y(i):
-    """(y0, y1) of motor i's -X post, or None where the corridor leaves no room for one."""
-    _, _, by0, _, _, _ = body_box(i)
-    y1 = by0 + (STAGGER - NEIGH_CLR)
-    y0 = max(by0 - MOTOR_CLR - BUMP_T, HARNESS_Y1)
-    return (y0, y1) if y1 - y0 >= 4 * D.BEAD else None
 
 
 plates = [pocket(i) for i in range(D.N_STRINGS)]
