@@ -80,28 +80,33 @@ fitted on every instrument.
 | **Motor controller PCB** | B | Custom, `elec/motor_ctrl.py` — CH32V307WCU6 + 2× SN65HVD230 + LMR16006 buck + 3× XH + USB-C. 40 × 35, 4-layer | **~$5 of parts** [m]; fab + assembly not yet quoted | — |
 | ~~Teensy 4.1~~ | — | **DELETED** ($31.50), with ~~**Teensy 4 Audio Shield Rev D**~~ ($9.80) and the teensy_ifc carrier. The Teensy's value was the Audio Library, USB high-speed and the codec, all irrelevant once no audio touches this board — the Pi does audio, and this board only reads angles off bus B and commands the motors on bus A. What could not be deleted is the pair of CAN transceivers (no general-purpose MCU integrates one), so a board was always going to exist; the only question was whether an MCU sat on it too | — | — |
 | **CAN transceiver** | B | SN65HVD230DR | **$0.6185 @10** [v] — **32,557 in stock** | [LCSC C12084](https://www.lcsc.com/product-detail/C12084.html) — was priced from DigiKey at $2.45/stock 0, which made it look unavailable; LCSC has it 4× cheaper and deep. Also the sensor boards' transceiver (3.3 V — single rail) |
-| **Buck 24→5 V 1 A** | B | Pololu D24V10F5 | **$12.95** [v] | [Pololu](https://www.pololu.com/product/2831) |
+| **Power PCB** | B | Custom, `elec/power.py` — LMR33630 24→5 V 3 A synchronous buck + the crowbar (F2 + SMBJ5.0A) + 2× XH. 22 × 36, 4-layer | **~$3 of parts** [m]; fab + assembly not yet quoted | — |
+| **USB panel PCB** | B | Custom, `elec/usb_panel.py` — USB-C + USB-A, **VBUS broken between them**. 20 × 32, 2-layer | **~$0.60 of parts** [m] | — |
+| **USB cable, panel PCB → Pi** | B | USB-A ↔ USB-C, **1 m**, USB 2.0 | ~$5 [m] | commodity |
+| ~~Buck 24→5 V 1 A~~ | — | **DELETED** ($12.95, Pololu D24V10F5): it existed only to power the Teensy | — | — |
 | **Signal relay** | B | Omron G5V-1-DC5 SPDT (true-bypass) | **$2.74** [v] | [DigiKey](https://www.digikey.com/en/products/detail/omron-electronics-inc-emc-div/G5V-1-DC5/87831) |
 | **Buffer op-amp** | B | OPA2134PA DIP + passives | **~$11** [v] | [DigiKey](https://www.digikey.com/en/products/detail/texas-instruments/OPA2134PA/254686) |
 | **1/4" TS panel jack** | B | Neutrik NMJ4HCD2 (Ø11.4 hole) | **$2.53** [v] | [DigiKey](https://www.digikey.com/en/products/detail/neutrik-americas-inc/NMJ4HCD2/29371256) |
 | **DC barrel panel jack** | B | Same Sky PJ-005A (Ø8 hole, 2.0 pin) | **$3.07** [v] | [DigiKey](https://www.digikey.com/en/products/detail/same-sky-formerly-cui-devices/PJ-005A/165838) |
-| **USB-C panel coupler** | B | Adafruit 4261 F↔F (USB 2.0, Ø30 hole) | **$7.50** [v] | [DigiKey](https://www.digikey.com/en/products/detail/adafruit-industries-llc/4261/10287031) |
+| ~~USB-C panel coupler~~ | — | **DELETED** ($7.50, Adafruit 4261 F↔F). ⚠ It would have caused the fault the USB panel PCB exists to prevent: a F↔F coupler passes VBUS, and with the Pi fed from its GPIO header that puts a laptop's VBUS straight onto the power board's output. On the Pi 4B the USB-C VBUS pin and the GPIO 5 V pins are the **same node**, with no polyfuse between them | — | — |
 | **Rotary/4-way joystick** | B | Alps RKJXT1F42001 (sole UI control) | **$9.22** [v] | [DigiKey](https://www.digikey.com/en/products/detail/alps-alpine/RKJXT1F42001/19529127) |
 | **OLED display** | B | 2.42" 128×64 SSD1309 SPI (UI screen) | ~$17 [m] | [Waveshare](https://www.waveshare.com/2.42inch-oled-module.htm) |
-| **USB 2.0 hub** | B | Adafruit CH334F (share 1 panel port) | **$4.50** [v] | [Adafruit](https://www.adafruit.com/product/5999) |
+| ~~USB 2.0 hub~~ | — | **DELETED** ($4.50, Adafruit CH334F): its only job was sharing one panel port between the Teensy and the Pi, and the Teensy is gone. The panel port now belongs to the Pi alone | — | — |
 | **USB cable, optical board → Pi** | B | **USB-A ↔ USB-C, 1 m, USB 2.0, STRAIGHT plug, overmold ≤ 20 mm** (mating face → cable exit) | ~$5–8 [m] | commodity |
 | **Raspberry Pi 4, 2 GB** | B | Dexed + USB gadget (MIDI/audio/DFU) + USB host for the optical board | **$55.00** [v] | [PiShop](https://www.pishop.us/product/raspberry-pi-4-model-b-2gb/) |
-| **Buck 24→5 V ≥3 A** | B | Pololu **D24V50F5** (5 V, 5 A, in up to 24 V). Pi 4 draws ~3 A, but see note | **$29.95** [v] ⚠ | [Pololu 2851](https://www.pololu.com/product/2851) |
+| ~~Buck 24→5 V ≥3 A~~ | — | **DELETED** ($29.95, Pololu D24V50F5) — see the Power PCB row above and the note below | — | — |
 | ~~10-ch audio ADC~~ | — | **DELETED.** Three PCM1864 + a carrier PCB existed to digitise ten string signals for the Pi. The optical pickup board now does its own 20-channel conversion (STM32H743ZIT6, 20× 16-bit) and sends audio over USB, so this whole path is redundant — ~$29 of ICs plus an entire board's fab, assembly and feeder cost removed | — | — |
 
-⚠ **The buck, and the "smaller unit" idea behind it, did not survive checking.**
-The row assumed the Pi-4 downgrade would also buy a cheaper regulator. It does
-not: Pololu's 5 V step-down line at ≥3 A and 24 V in **starts at the 5 A
-D24V50F5 at $29.95** (the next one up, the 9 A D24V90F5, is $36.82). There is no
-3 A part in between — so the ~$25 estimate was $5 low and the "smaller unit"
-saving is **zero**. The Pi-4 change still saves real money on the Pi itself;
-it just does not save anything here. If $30 matters, a non-Pololu 5 V/3 A module
-is the lever, at the cost of leaving a vendor the rest of the file already uses.
+⚠ **Both Pololu bucks are gone, and the reason is assembly, not price.** The row
+above used to argue about which module to buy; the answer turned out to be
+neither. They are through-hole modules on 0.1 in headers and neither is an LCSC
+line, so **the assembler cannot place them** — they become hand-soldered wiring
+in the tray, which is the exact thing the connector strategy exists to delete.
+And neither has anywhere to put a fuse or a clamp, which matters more than usual
+here: the Pi is fed from its **GPIO header** (its USB-C port is the front panel's
+gadget port), and that path skips every input protection the Pi has. A designed-in
+buck puts the crowbar on the same board as the converter it protects. **$42.90 of
+modules → ~$3 of parts**, and one less hand-assembly step.
 
 ⚠ **OLED [m]:** both the Waveshare product page and RobotShop return **HTTP 403**
 to automated fetches, so the ~$17 is unconfirmed. A German reseller lists the
@@ -1510,7 +1515,7 @@ several are unverified — re-verify the whole file before ordering.**
 | Filament (printed) | ~$81 | estimate; **spool prices verified**, masses are model estimates |
 | Mechanical hardware (motors, screws, bearings, belt, fasteners, dowels) | ~$620 | belt/collar/bearings **verified**; motor + all McMaster **[m]** |
 | Wire | ~$35 | estimate, excludes 10 control drops |
-| Electronics + UI (motor controller board, Pi 4, bucks, hub, jacks, joystick, OLED) | ~$150 | **all verified except the OLED [m]** |
+| Electronics + UI (motor controller, power + USB panel boards, Pi 4, jacks, joystick, OLED) | ~$95 | **all verified except the OLED [m]** |
 | Optical pickup board (148 parts, 4-layer, ÷10 basis) | **~$45** | parts cost **computed from the model**; all 18 lines have real MPNs |
 | Control sensors, 10 controls (MT6701 + magnet + board) | ~$50 | IC + magnet **verified**; boards not yet quoted |
 | Tee / carrier PCBs | ~$25 | estimate |

@@ -13,9 +13,14 @@ lives on the boards (motor_ctrl + each bus's LAST tee, jumper closed).
         6-pin XH pigtail (motor_pigtail_N, grey). The 24 V pair rides the
         same tees (2 contacts per rail on the 6-pos trunk headers): head
         = DC inlet -> the AFE tee (10) -> tee 0; tail = tee 9 -> buck.
-  bus B (inputs): motor_ctrl -> tee 11 (LKL knee station) -> tee 12
-        (leg-socket landing, under the tray west of the bay rib; takes
-        the chassis TRRS jack's factory cable -> the pedal bar).
+  bus B (inputs): motor_ctrl -> the lever/pedal boards, WITH NO TEES AT ALL
+        (user, 2026-09-14). Tees 11 and 12 are deleted: 11 existed to tap
+        the trunk at the knee station, which the lever board's own 8-way
+        pass-through (in 1-4, out 5-8) now does on the board, and 12
+        existed to land the chassis TRRS jack's factory cable, which the
+        TRRS ADAPTER BOARD now does with the jack soldered on. Both were
+        junctions that only existed because the thing either side of them
+        could not terminate itself; both ends can now.
 
 One component per physical CABLE. Discrete wires (the 24 V pair) are drawn
 individually; jacketed/bundled runs at the bundle OD. Colors (build.py):
@@ -35,11 +40,9 @@ HUE = gauge bucket, SHADE = the specific wire within the bucket:
   The gauge/shade rule still governs the NON-CAN nets:
   BLUE = power pair       (superseded for the CAN power rails above)
   AMBER = 28 AWG logic    (light -> dark) wire_link (motor controller <-> Pi),
-                          wire_tdm, wire_oled, wire_joy
+                          wire_oled, wire_joy
   VIOLET = shielded USB-2 wire_usb: USB-C panel -> Pi 5
-  GREY = factory jackets  motor_pigtail_N, wire_knee_drop (stub to the
-                          LKL station; lands on the kl_pcb XH when the
-                          knee harness PCB rev lands)
+  GREY = factory jackets  motor_pigtail_N
 
 Analog architecture: NONE OF IT IS HERE. The AFE board is deleted and no audio
 crosses this harness -- the optical pickup board carries the magnetic pickup's
@@ -81,11 +84,16 @@ WIRE_OD = {
     # CAN signal pairs, split into CAN-H / CAN-L discrete conductors
     "wire_canh": 1.3, "wire_canl": 1.3,       # bus A (motors)
     "wire_canbh": 1.3, "wire_canbl": 1.3,     # bus B (inputs)
+
     "wire_pwr_hot": 1.8, "wire_pwr_gnd": 1.8,
-    "wire_link": 1.4, "wire_tdm": 1.4,
+    "wire_link": 1.4,
     "wire_oled": 1.4, "wire_joy": 1.4,
-    "motor_pigtail": 3.4, "wire_knee_drop": 2.4,
+    "motor_pigtail": 3.4,
 }
+# Where bus B lands at the knee station: as close to the LKL lever board's XH as the
+# chassis CAD lets the trunk reach today, clear of the packed -X corner. The last few
+# millimetres onto the board are a chassis follow-up.
+_KNEE_B = (-508.0, -110.0, -60.0)
 CAN_OFF = 0.7         # CAN-H / CAN-L conductor separation (both x and y, same
                       # scheme as PWR_OFF): the split pair stays inside the old
                       # single-jacket envelope (0.7 + 0.65 = 1.35 < the 2.4/2 it
@@ -171,8 +179,9 @@ def _motor_back(i):
 
 def tee_stations():
     """[(x, y, drop_sign)] tee-PCB anchors, all on the -Y rail (TEE_Y) so the CAN trunk
-    stays on the rail and never crosses a rib. 0..9 bus A (one per motor); 10 AFE power;
-    11 knee (LKL); 12 leg-socket. The two +X-most motors (8,9) reach the rail, so a tee
+    stays on the rail and never crosses a rib. 0..9 bus A (one per motor); 10 is the
+    24 V drop the optical pickup board takes. THERE ARE NO BUS-B TEES -- 11 (knee) and
+    12 (leg-socket) are deleted; see the module docstring. The two +X-most motors (8,9) reach the rail, so a tee
     dead-behind them would sit inside the motor -- their tees shift into the clear corridor
     (m8 -X toward m7, m9 +X past the motor bank) and reach back with a longer pigtail."""
     out = []
@@ -184,14 +193,8 @@ def tee_stations():
         if i == 9:
             mx = _M9X + 30.0
         out.append((mx, TEE_Y, +1))
-    out.append((-48.0, TEE_Y, -1))            # 10 AFE power (rail; -X of the +X leg stub at -13.4)
-    # bus B (knee + leg-socket): NOT on the crowded motor rail -- inboard of it, near the knee
-    # station, clear of the bay tray/buck and the motor tees.
-    # 11 knee (LKL): inboard, +X of the housing. Its X overlaps the motor tees' Y band, so it sits
-    # MIDWAY between motor 1's and motor 2's tees and follows them when the bank moves
-    out.append(((D.motor_pos(1)[0] + D.motor_pos(2)[0]) / 2, -100.0, -1))
-    out.append((-538.0, -94.0, +1))           # 12 leg-socket landing: inboard, +X of the bay tray
-                                              # (nudged +Y to clear the grown accurate bus-A tee_0 at -524)
+    out.append((-48.0, TEE_Y, -1))            # 10: the optical pickup board's 24 V drop
+                                              # (rail; -X of the +X leg stub at -13.4)
     return out
 
 
@@ -207,7 +210,6 @@ _TEE_LIFT = TEE_Z - EL.FLOOR_Z          # lift the tee dummy onto its cradle, ab
 TEE_SCREW_L   = 10.0        # M4x10 button: head on the board top, tip inside the anchor
 TEE_CLR       = 0.3         # board fit gap in the cradle; also sets where the hold screw sits
 TEE_WALL_OVER = 1.2         # cradle walls stand this far above the board top
-_BUS_B_M2_XY  = (6.5, -4.0) # the bus-B placeholders' M2 hole (see tee_hold)
 from cadkit.fasteners import M4 as _M4
 from cadkit.pcb import PCB_T as _PCB_T
 assert TEE_SCREW_L - _PCB_T <= _M4.anchor_min_wall + 1e-9, (
@@ -217,15 +219,10 @@ assert TEE_SCREW_L - _PCB_T <= _M4.anchor_min_wall + 1e-9, (
 
 def tee_hold(i, x, y, d):
     """(board_w, board_l, centre_x, centre_y, open_edge, hold_edge, hold_at) for tee i.
-    hold_edge None = this tee still takes the old M2 through the board (_BUS_B_M2_XY)."""
-    if i >= 11:
-        # bus-B PLACEHOLDERS (18 x 14) keep their M2 for now. There is no clear spot for an
-        # M4 beside them: tee 11 sits on rib -501 hard against bus-A tee 1's board, tee 12
-        # against the knee housing, and every edge the head could lap is crowded by their
-        # own connectors (the gate put the screws into tee_pcb_1, knee_housing and the rib).
-        # They are slated to disappear anyway -- the TODO in _tee_pcb_placeholder folds the
-        # bus-B tap into the lever PCBs -- so these are the LAST two M2s in the tee family.
-        return 18.0, 14.0, x, y, "-y", None, None
+
+    Every tee is now the SAME board on the SAME M4-beside-the-edge hold. The bus-B
+    placeholders that kept an M2 through a board hole are deleted with tees 11/12, so
+    THE LAST M2 IN THE TEE FAMILY IS GONE -- one screw diameter, one driver."""
     # bus-A (22 x 24): hold on the +X edge, toward the -Y rail end (hold_at -8).
     #   +Y (the obvious spot) lands under the -Y ends of motors 6-8: 115 mm3 of screw into
     #      motor_7 and motor_8 -- the board grows +Y into the corridor the motors reach into.
@@ -244,7 +241,7 @@ def tee_components():
     from cadkit.pcb import pcb_hold_xy
     out = []
     for i, (x, y, d) in enumerate(tee_stations()):
-        out.append((f"tee_pcb_{i}", EL.tee_pcb(x, y, d, accurate=i < 11).translate((0, 0, _TEE_LIFT))))
+        out.append((f"tee_pcb_{i}", EL.tee_pcb(x, y, d).translate((0, 0, _TEE_LIFT))))
         w, l, cx, cy, _open, hold_edge, hold_at = tee_hold(i, x, y, d)
         if hold_edge is None:
             continue
@@ -269,14 +266,9 @@ def tee_cradles():
     out = []
     for i, (x, y, d) in enumerate(tee_stations()):
         w, l, cx, cy, open_edge, hold_edge, hold_at = tee_hold(i, x, y, d)
-        if hold_edge is None:
-            cr = pcb_cradle(w, l, screw_xy=_BUS_B_M2_XY, open_edge=open_edge, standoff=so,
-                            wall_over=TEE_WALL_OVER, clr=TEE_CLR)
-        else:
-            cr = pcb_cradle(w, l, open_edge=open_edge, hold_edge=hold_edge, hold_at=hold_at,
-                            standoff=so, wall_over=TEE_WALL_OVER, clr=TEE_CLR)
-        if i < 11:                                               # bus-A: THT-tail relief window in the base
-            cr = cr.cut(box_at(rw, rl, 4.0, x=0.0, y=EL.TEE_CONN_CY, z=-1.5))
+        cr = pcb_cradle(w, l, open_edge=open_edge, hold_edge=hold_edge, hold_at=hold_at,
+                        standoff=so, wall_over=TEE_WALL_OVER, clr=TEE_CLR)
+        cr = cr.cut(box_at(rw, rl, 4.0, x=0.0, y=EL.TEE_CONN_CY, z=-1.5))   # THT-tail relief
         out.append((f"tee_cradle_{i}", cr.translate((cx, cy, _RIB_TOP))))
     return out
 
@@ -410,24 +402,24 @@ def build_wires():
             [_buck, (_buck[0], _j3[1], _buck[2]), (_j3[0], _j3[1], _buck[2]), _j3]),
             WIRE_OD[_nm])))
 
-    # ── bus B (inputs): motor_ctrl J2 -> LKL tee -> leg-socket landing tee ────────
-    x11, y11 = hdrA[11]
+    # ── bus B (inputs): motor_ctrl J2 -> the lever boards, NO TEES ────────
+    # It used to hop motor_ctrl -> tee 11 -> tee 12. Both are deleted (user), because
+    # both ends can now terminate themselves: the lever board passes the trunk THROUGH
+    # its own 8-way (in 1-4, out 5-8) so it needs no tap beside it, and the TRRS adapter
+    # board carries the leg jack on the board so it needs no landing. What is left is one
+    # run from the controller to the first board on the chain.
     _ib = SP(*EL.mctrl_pt("J2"))
     _canB_head = ([_ib, (BAY_X - 5.0, _ib[1], _ib[2]), (BAY_X - 5.0, _ib[1], BAYFLY),
                    (BAY_X, _ib[1], BAYFLY), (BAY_X, RAIL_Y, BAYFLY)]
-                  + _rail_pts(BAY_X, x11, LANE_CTRL) + [(x11, y11, HDR_Z)])
+                  + _rail_pts(BAY_X, _KNEE_B[0], LANE_CTRL)
+                  + [(_KNEE_B[0], RAIL_Y, LANE_CTRL), _KNEE_B])
     for _sfx, _co in (("h", -CAN_OFF), ("l", CAN_OFF)):
         _od = WIRE_OD[f"wire_canb{_sfx}"]
         out.append((f"wire_canb{_sfx}_0", _wire(
             [(px + _co, py + _co, pz) for px, py, pz in _canB_head], _od)))
-        out.append((f"wire_canb{_sfx}_1",
-                    _seg(hdrA[11], hdrA[12], LANE_CTRL, _od, off=_co)))
-    # LKL drop stub: from tee 11 down toward the kl_pcb XH at the knee station (ends clear of
-    # housing/rib/rail; the last pass-through to the board is a chassis follow-up).
-    out.append(("wire_knee_drop", _wire([
-        (tees[11][0], tees[11][1] - 4.5, HDR_Z),   # exit tee 11 toward -Y
-        (-508.0, -110.0, -60.0)], WIRE_OD["wire_knee_drop"])))  # short stub, clear of the packed -X corner
-    # (tee 0/11/12 + kl_pcb all share this station); the -Y/-Z drop onto the kl_pcb XH is the chassis follow-up.
+    # (wire_knee_drop is gone with tee 11: the stub existed to get from that tee to the
+    #  lever board, and bus B now arrives at the board directly. The last few mm onto the
+    #  kl_pcb XH is still the chassis follow-up it always was.)
 
     # -- USB (blue): USB-C panel -> -Y rail corridor -> ride to the bay -> right-angle to Pi
     _usb = SP(-575.0, 20.0, -44.0)
@@ -451,11 +443,8 @@ def build_wires():
     # (the Teensy <-> transceiver CAN jumper pair is GONE: the transceivers now sit
     #  on the same board as the MCU, so that harness is copper instead of wire.)
 
-    # -- PCM1864 carrier TDM -> Pi (teal)
-    _ta, _tp = SP(-566.0, -72.0, -57.0), SP(-580.0, -5.0, -57.0)
-    out.append(("wire_tdm", _wire([
-        _ta, (BAY_X, _ta[1], _ta[2]), (BAY_X, _ta[1], BAYFLY), (BAY_X, _tp[1], BAYFLY),
-        (_tp[0] + 5.0, _tp[1], BAYFLY), (_tp[0] + 5.0, _tp[1], _tp[2]), _tp], WIRE_OD["wire_tdm"])))
+    # (wire_tdm is GONE with adc_stack: the ten-channel ADC carrier it fed is
+    #  deleted, the optical pickup board having absorbed that conversion.)
 
     # -- UI: OLED + joystick (-Y deck band) -> the PI's GPIO header (user: the OLED
     #    and the joystick live on the Pi). Drop under the deck, run to the keyhead,
@@ -481,10 +470,11 @@ WIRE_OK = {
     "wire_canbh":     {"motor_ctrl", "tee_pcb"},
     "wire_canbl":     {"motor_ctrl", "tee_pcb"},
     "motor_pigtail":  {"tee_pcb", "motor"},
-    "wire_knee_drop": {"tee_pcb"},
     # leg↔body TRRS: the chassis jack's factory cable (tenon channel ->
     # bus-B socket tee) and the column CA-354S inside the leg stack
-    "chassis_trrs_cable": {"tee_pcb", "leg_body_stub", "chassis_trrs_jack",
+    # (it used to land on tee 12; that tee is deleted and the TRRS ADAPTER BOARD
+    #  carries the jack instead -- the adapter has no station in the CAD yet)
+    "chassis_trrs_cable": {"leg_body_stub", "chassis_trrs_jack",
                            "jack_seat_ring"},
     "leg_column_cable": {"leg_body_stub", "leg_segment", "leg_sleeve",
                          "leg_shaft", "leg_column_plug",
@@ -499,11 +489,10 @@ WIRE_OK = {
     "shaft_trrs_cable": {"leg_shaft", "leg_sleeve", "leg_seg_body",
                          "shaft_trrs_jack", "leg_cable_coil",
                          "leg_junction_pcb", "leg_head"},
-    "wire_pwr_hot":   {"dc_jack", "buck", "tee_pcb", "motor_ctrl"},
-    "wire_pwr_gnd":   {"dc_jack", "buck", "tee_pcb", "motor_ctrl"},
-    "wire_usb":       {"usbc_jack", "pi5"},
+    "wire_pwr_hot":   {"dc_jack", "power_pcb", "tee_pcb", "motor_ctrl"},
+    "wire_pwr_gnd":   {"dc_jack", "power_pcb", "tee_pcb", "motor_ctrl"},
+    "wire_usb":       {"usb_panel", "pi5"},
     "wire_link":      {"motor_ctrl", "pi5"},
-    "wire_tdm":       {"adc_stack", "pi5"},
     "wire_oled":      {"oled", "pi5"},
     "wire_joy":       {"joystick", "pi5"},
 }

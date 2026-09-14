@@ -74,8 +74,6 @@ PI_FP     = (-603.0, -547.0, -50.0, 35.0)     # Pi 5: 56 x 85 (long side on Y);
 # 3 south to clear it; 0.5 of gap is all that is left between them, which is the
 # honest state of a 60 x 181 tray holding four boards.
 MCTRL_FP  = (-607.0, -572.0, -127.5, -87.5)   # motor controller, 35 x 40 (ROTATED)
-ADC_FP    = (-585.0, -547.0, -87.0, -52.0)    # multichannel TDM ADC, stacked
-BUCK_FP   = (-570.0, -547.0, -127.5, -91.5)   # buck module, turned: 23 x 36
 
 BOARD_Z = TRAY_Z1 + POST_H             # every bottom board sits at -67
 
@@ -201,8 +199,7 @@ def electronics_tray(standing: bool = True) -> cq.Workplane:
                   x=(TRAY_X0 + TRAY_X1) / 2, y=(TRAY_Y0 + TRAY_Y1) / 2,
                   z=(TRAY_Z0 + TRAY_Z1) / 2)
     # each board rests on four plain posts -- no retention yet (see _support_posts)
-    for fp, bz in ((PI_FP, BOARD_Z), (MCTRL_FP, BOARD_Z), (ADC_FP, BOARD_Z),
-                   (BUCK_FP, BOARD_Z)):
+    for fp, bz in ((PI_FP, BOARD_Z), (MCTRL_FP, BOARD_Z), (PWR_FP, BOARD_Z)):
         body = body.union(_support_posts(fp, bz))
     # (the NORTH-SHELF lane channel for the TRRS pigtail is gone: standing, the tray's
     #  bottom edge rides above that pigtail instead of lying over it)
@@ -229,26 +226,141 @@ def pi5() -> cq.Workplane:
     return stand(b)
 
 
-def adc_stack() -> cq.Workplane:
-    """Multichannel TDM ADC carrier stack (the pro 10-ch analog front end) + header."""
-    cx, cy = _ctr(ADC_FP)
-    b = _board(ADC_FP, BOARD_Z)
-    for px in range(3):
-        b = b.union(box_at(9.0, 9.0, 1.3, x=ADC_FP[0] + 8 + px * 13,
-                           y=cy, z=BOARD_Z + BD_T + 0.65))
-    b = b.union(box_at(ADC_FP[1] - ADC_FP[0] - 8, 4.0, 7.0, x=cx, y=ADC_FP[2] + 3.0,
-                       z=BOARD_Z + BD_T + 3.5))
+# (adc_stack is DELETED, 2026-09-14. It modelled a three-PCM1864 carrier that
+# digitised ten string signals for the Pi -- a path BOM.md struck out when the
+# optical pickup board took on its own 20-channel conversion and sent audio over
+# USB. The board had been struck in the BOM and left standing in the CAD, which
+# is the wrong way round: the model is what other agents measure against.)
+
+
+# ── POWER BOARD ──────────────────────────────────────────────────────────────
+# IT REPLACES THE PURCHASED BUCK MODULE, and drops into the slot that module
+# already held -- 22 x 36 inside the module's 23 x 36 -- so the tray does not move.
+# BOM.md carried a Pololu D24V50F5 at $29.95 for the Pi plus a D24V10F5 at $12.95
+# that existed only to power the Teensy, which is gone. Both are through-hole
+# modules on 0.1 in headers and neither is an LCSC line, so neither can be placed
+# by the assembler: they are hand-soldered wiring in the tray, which is the thing
+# the whole connector strategy exists to delete.
+#
+# ⚠ THE CROWBAR IS THE POINT OF IT, not the buck. The Pi has to be fed from its
+# GPIO header (its USB-C port is the front panel's gadget port), and on the Pi 4B
+# the USB-C VBUS pin and the GPIO 5 V pins are THE SAME NODE with no polyfuse
+# between them -- so feeding the header skips every input protection the Pi has.
+# F2 in series with the 5 V output and D2 across it rebuild it: if the converter
+# ever fails SHORT, 24 V lands on that rail and takes the Pi, the OLED and the
+# joystick with it. D2 conducts, F2 opens, damage stops at a $0.30 part.
+# See elec/power.py.
+PWR_BOARD_X, PWR_BOARD_Y = 22.0, 36.0
+PWR_FP = (-569.5, -547.5, -127.5, -91.5)     # inside the module's old 23 x 36 slot
+PWR_J = {"J1": (0.0, -15.0, 180.0),          # 24 V in from the trunk tail
+         "J2": (0.0, 15.0, 0.0)}             # 5 V out to the Pi's GPIO 2/4 + 6/9
+# Board-local, GENERATED from the laid-out board: XY is the KiCad courtyard about
+# each pad centroid, height is package-family typical (the one hand-entered column,
+# and the one to distrust). The connectors are modelled properly by cadkit.
+PWR_BOM = (
+    ("C1", "10uF/50V",      4.69, 2.39, 1.60,  -7.00, -4.50),
+    ("C2", "10uF/50V",      4.69, 2.39, 1.60,  -1.50, -4.50),
+    ("C3", "100nF",         1.91, 1.01, 0.55,   3.00, -4.50),
+    ("C4", "1uF",           1.91, 1.01, 0.55,  -9.00,  3.60),
+    ("C5", "100nF",         1.91, 1.01, 0.55,  -9.00,  4.80),
+    ("C6", "22uF/16V",      3.49, 2.05, 1.45,  -3.00,  6.00),
+    ("C7", "22uF/16V",      3.49, 2.05, 1.45,  -3.00,  8.50),
+    ("D1", "SMAJ30A",       7.09, 3.59, 2.20,   1.00, -8.50),
+    ("D2", "SMBJ5.0A",      7.39, 4.59, 2.30,   4.00,  7.00),
+    ("F1", "1A",            4.65, 2.35, 1.10,  -7.00, -8.50),
+    ("F2", "4A",            4.65, 2.35, 1.10,  -7.50,  7.00),
+    ("L1", "6.8uH",         6.69, 6.29, 2.80,   5.50,  0.00),
+    ("R1", "100k",          1.95, 1.03, 0.50,  -9.00, -2.00),
+    ("R2", "preset",        1.95, 1.03, 0.50,  -9.00, -0.50),
+    ("R3", "preset",        1.95, 1.03, 0.50,  -9.00,  1.00),
+    ("R4", "preset",        1.95, 1.03, 0.50,  -9.00,  2.40),
+    ("U1", "LMR33630ADDAR", 7.49, 5.49, 1.75,  -3.00,  0.00),
+)
+USBP_BOM = (
+    ("D1", "ESD",  2.59, 1.49, 0.75,   6.50, -2.50),
+    ("D2", "ESD",  2.59, 1.49, 0.75,   6.50, -4.50),
+    ("R1", "5k1",  1.95, 1.03, 0.50,  -6.50, -2.50),
+    ("R2", "5k1",  1.95, 1.03, 0.50,  -6.50, -4.50),
+)
+
+
+def power_pcb() -> cq.Workplane:
+    """The power board, posed in the standing tray (see PWR_FP). It DROPS INTO THE
+    SLOT the purchased buck module held, so the tray does not move."""
+    cx, cy = _ctr(PWR_FP)
+    b = box_at(PWR_BOARD_X, PWR_BOARD_Y, BD_T, x=cx, y=cy, z=BOARD_Z + BD_T / 2)
+    top = BOARD_Z + BD_T
+    for ref, (jx, jy, rot) in PWR_J.items():
+        p = jst_xh_header(4, mated=True, flip=True)
+        if rot:
+            p = p.rotate((0, 0, 0), (0, 0, 1), rot)
+        b = b.union(p.translate((cx + jx, cy + jy, top)))
+    for _n, _v, _w, _l, _h, _x, _y in PWR_BOM:
+        b = b.union(box_at(_w, _l, _h, x=cx + _x, y=cy + _y, z=top + _h / 2))
     return stand(b)
 
 
-def buck() -> cq.Workplane:
-    """24V -> 5V buck module dummy (caps + inductor)."""
-    cx, cy = _ctr(BUCK_FP)
-    b = _board(BUCK_FP, BOARD_Z)
-    for px in (BUCK_FP[0] + 8, BUCK_FP[1] - 8):
-        b = b.union(cyl(7.0, 9.0, z=BOARD_Z + BD_T).translate((px, cy, 0)))
-    b = b.union(box_at(12.0, 12.0, 7.0, x=cx, y=cy, z=BOARD_Z + BD_T + 3.5))
-    return stand(b)
+# ── FRONT-PANEL USB BREAK-OUT ────────────────────────────────────────────────
+# It REPLACES the panel-mount USB-C coupler this file used to model (an Adafruit
+# 4261 F-F at $7.50). That part passed VBUS straight through -- which, with the Pi
+# fed from its GPIO header, means a laptop's VBUS landing directly on top of the
+# power board's output on a node with no ORing, no fuse and no clamp. The coupler
+# would have caused the exact fault the replacement exists to prevent.
+#
+# The break is STRUCTURAL: the receptacle's VBUS pads go nowhere on the board, so
+# no cable can put them back. See elec/usb_panel.py for the circuit.
+#
+# ⚠ THE OUTLINE IS AN OUTPUT, like the TRRS adapter: there is no seat for this yet,
+# and the mechanical side should be built to these numbers. It lies FLAT in the
+# endplate's open -Y corner with the USB-C mouth through the panel wall (+X) and
+# the USB-A facing back into the bay, so the ~800 mm lead to the Pi leaves along
+# the run wire_usb already models and nothing has to turn inside the corner.
+USBP_BOARD_X, USBP_BOARD_Y = 20.0, 32.0      # board-local: mouth along -Y
+USBP_MOUTH_DY = -15.90                       # USB-C barrel face, board-local
+USBP_C_XY = (0.0, -8.34)                     # panel USB-C pad anchor
+USBP_A_XY = (0.0, 3.22)                      # USB-A pad anchor, turned 180
+USBP_A_L, USBP_A_W, USBP_A_H = 15.59, 16.57, 6.60     # USB-A courtyard + shell height
+USBP_A_OFF = -1.17 - 3.22                    # its courtyard centre from the anchor
+USBP_C_L, USBP_C_W, USBP_C_H = 10.73, 9.51, 3.26      # USB-C courtyard + height
+USBP_C_OFF = -11.15 + 8.34                   # ditto
+
+
+def usb_panel_pcb() -> cq.Workplane:
+    """The panel USB board in its OWN frame: board centred on the origin in XY,
+    underside at z=0, parts rising +Z, the USB-C mouth facing -Y."""
+    b = box_at(USBP_BOARD_X, USBP_BOARD_Y, _PCB_T, x=0.0, y=0.0, z=_PCB_T / 2)
+    for (jx, jy), (l, w, h, off) in (
+            (USBP_C_XY, (USBP_C_L, USBP_C_W, USBP_C_H, USBP_C_OFF)),
+            (USBP_A_XY, (USBP_A_L, USBP_A_W, USBP_A_H, USBP_A_OFF))):
+        b = b.union(box_at(l, w, h, x=jx, y=jy + off, z=_PCB_T + h / 2))
+    for _n, _v, _w, _l, _h, _x, _y in USBP_BOM:
+        b = b.union(box_at(_w, _l, _h, x=_x, y=_y, z=_PCB_T + _h / 2))
+    return b
+
+
+def usb_panel() -> cq.Workplane:
+    """The panel USB board posed at the bridge endplate: flat, USB-C mouth out
+    through the panel wall at +X, USB-A back into the bay at -X.
+
+    The board is authored with its mouth on -Y, so posing it is one +90 deg turn
+    about Z (board -Y -> world +X) and a translation that lands the barrel face on
+    the wall's inner face. Z is set from the MOUTH, not the board: the receptacle's
+    opening has to line up with the hole in the endplate, and the board hangs
+    wherever that puts it.
+
+    THE MOUTH LANDS ON THE PANEL'S OUTER FACE (JACK_TIP), not its inner face, so
+    the receptacle NOSES THROUGH the 4 mm wall and a plug mates against the
+    outside. Sitting it on the inner face instead would ask a USB-C plug to reach
+    4 mm through a hole before it touched anything, which no plug's moulding
+    allows. ⚠ THE ENDPLATE THEREFORE NEEDS A SLOT FOR THE SHELL, about 9.5 x 3.6,
+    not just a clearance hole for the plug -- that is a mechanical
+    follow-up.
+    """
+    b = (usb_panel_pcb()
+         .rotate((0, 0, 0), (0, 0, 1), 90.0)
+         .translate((JACK_TIP + USBP_MOUTH_DY, USB_Y,
+                     JACK_Z - _PCB_T - USBP_C_H / 2)))
+    return b.translate((JACK_FACE_DX, 0, 0))     # ride the panel's +X face, as the jacks do
 
 
 # ── MOTOR CONTROLLER PCB ─────────────────────────────────────────────────────
@@ -572,19 +684,4 @@ def dc_jack() -> cq.Workplane:
     b = b.union(cyl_x(10.8, 2.0, 14.05, DC_Y, JACK_Z))    # front face, outside
     b = b.cut(cyl_x(5.5, 22.0, -3.0, DC_Y, JACK_Z))       # female barrel bore
     b = b.union(cyl_x(2.0, 17.0, -3.0, DC_Y, JACK_Z))     # centre pin
-    return b.translate((JACK_FACE_DX, 0, 0))               # ride the (thicker) +X face
-
-
-def usbc_jack() -> cq.Workplane:
-    """Panel-mount USB-C module: body, flange, and the female receptacle - an
-    8.34 x 2.56 mm racetrack opening with the centre tongue."""
-    b = box_at(8.0, 22.0, 11.0, x=6.0, y=USB_Y, z=JACK_Z)
-    b = b.union(box_at(4.1, 13.0, 6.6, x=12.0, y=USB_Y, z=JACK_Z))
-    b = b.union(box_at(1.6, 21.0, 13.0, x=14.85, y=USB_Y, z=JACK_Z))
-    # racetrack cavity (8.34 wide x 2.56 tall) + centre PCB tongue
-    cav = box_at(7.0, 5.78, 2.56, x=12.5, y=USB_Y, z=JACK_Z)
-    for dy in (-2.89, 2.89):
-        cav = cav.union(cyl_x(2.56, 7.0, 9.0, USB_Y + dy, JACK_Z))
-    b = b.cut(cav)
-    b = b.union(box_at(5.5, 6.7, 0.7, x=11.75, y=USB_Y, z=JACK_Z))
     return b.translate((JACK_FACE_DX, 0, 0))               # ride the (thicker) +X face
