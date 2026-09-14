@@ -133,9 +133,11 @@ assert RECESS_BACK - BORE_R >= D.MIN_WALL_2P, (
 # return, and the leg's slider already runs one coil against an off-centre pad. The
 # centre is not on offer anyway -- the tenon's apex and the hook are there, and at
 # x=0 the mortise leaves under 8 mm of length where the coil needs 10.4.
-SPR_X = 17 * B                     # 13.6 the coil's axis, off the leg axis in X. +X --
+SPR_X = 18 * B                     # 14.4 the coil's axis, off the leg axis in X. +X --
                                    # the pad's own side (PAD_X), so the thumb's line
-                                   # and the spring's are as close as the site allows
+                                   # and the spring's are as close as the site allows.
+                                   # A bead further out than the coil needs, and it is
+                                   # CUP_BACK that put it there: see the wall assert
 SPR_REST_L = LL.SPR_REST_L         # 10.4 installed -- THE LEG'S, so the pad's preload
                                    # is the leg's to the newton
 SPR_PRESS_L = SPR_REST_L - S_MAX
@@ -150,10 +152,18 @@ PRESS_N = (LT.SPR_FREE - (SPR_REST_L - STROKE)) * LT.SPR_RATE         # 14.1
 CUP_D = LT.SPR_BORE_D              # 5.4 the cup's bore = the leg's spring bore
 CUP_SEAT = 2 * B                   # 1.6 how far the coil's end sits into the cup
 CUP_W = 9 * B                      # 7.2 across X: the bore plus a wall each side
+CUP_BACK = 2 * B                   # 1.6 behind the bore's floor (user -- it was one
+                                   # bead). Nothing about the coil wanted this; the
+                                   # wall is what stands between the spring's seat
+                                   # and the ring's own opening, and a seat with a
+                                   # one-bead floor is a seat that splits. It is paid
+                                   # for OUTBOARD: the extra 0.8 of cup runs the
+                                   # channel's peaked end at the mortise, so the whole
+                                   # coil moved a bead +X to hold the same 1.78 wall
 CUP_Y0 = 14 * B                    # 11.2 the cup's FLOOR -- the coil's -Y end at rest.
-                                   # A bead further +Y than the coil itself needs:
-                                   # what sets it is the PEAK on the channel's -Y end
-                                   # (see `collar`), whose flank runs PARALLEL to the
+                                   # Further +Y than the coil itself needs: what sets
+                                   # it is the PEAK on the channel's -Y end (see
+                                   # `collar`), whose flank runs PARALLEL to the
                                    # mortise's 45-degree flank -- the assert below
 CUP_FACE = CUP_Y0 + CUP_SEAT       # 11.2 the cup's mouth
 PIN_W = 2 * B                      # 1.6 the blade up the cup's middle, inside the bore
@@ -166,6 +176,9 @@ CHAN_CH = 3 * B                    # 2.4 install chamfer at the sleeve's floor e
                                    # springs only needed 0.4 -- so that the free coil
                                    # can go in at an angle and cam straight
 assert CHAN_CH > LT.SPR_FREE - SPR_REST_L, "the free coil cannot cam into its sleeve"
+assert CUP_BACK >= D.MIN_WALL_2P and (CUP_W - CUP_D) / 2.0 >= D.MIN_WALL - 1e-9, (
+    "the cup's walls: %.2f behind the coil, %.2f each side"
+    % (CUP_BACK, (CUP_W - CUP_D) / 2.0))
 assert CUP_FACE + S_MAX < CHAN_END, "the cup's rim hits the sleeve's floor"
 # (the coil going solid is the other way this could end badly, and SPR_PRESS_L
 # above is that check: 6.16 pressed against 4.8 solid)
@@ -175,7 +188,7 @@ assert FACE_R - (CHAN_END + CHAN_CH) >= D.MIN_WALL_2P, "the spring channel break
 # the two run PARALLEL: the gap is the same all the way along, and it is NOT the
 # distance along X that a naive check reads. Both are lines x + y = k.
 _MORT_K = (LS.TEN_W + 2 * LS.FIT) / math.sqrt(2.0)            # 17.39, the mortise's
-_PEAK_K = (SPR_X - (CUP_W / 2 + CLR)) + (CUP_Y0 - B - CLR)    # the peak's -X flank
+_PEAK_K = (SPR_X - (CUP_W / 2 + CLR)) + (CUP_Y0 - CUP_BACK - CLR)   # peak's -X flank
 assert (_PEAK_K - _MORT_K) / _S2 >= D.MIN_WALL_2P, (
     "the spring channel's peak runs within %.2f of the mortise"
     % ((_PEAK_K - _MORT_K) / _S2))
@@ -435,7 +448,7 @@ def frame(z_mouth: float) -> cq.Workplane:
     # blade and not a round post: a post would start in mid-air in this part's
     # print, where the blade's underside rises at 45 degrees off the cup's floor.
     zs = p["z_s"]
-    f = f.union(_box(SPR_X - CUP_W / 2, SPR_X + CUP_W / 2, CUP_Y0 - B, CUP_FACE,
+    f = f.union(_box(SPR_X - CUP_W / 2, SPR_X + CUP_W / 2, CUP_Y0 - CUP_BACK, CUP_FACE,
                      zr - 0.01, zs + CUP_D / 2.0 * _S2 + B))
     f = f.cut(teardrop_hole(CUP_D, CUP_SEAT + 0.01,
                             (LS.LEG_X + SPR_X, LS.LEG_Y + CUP_FACE + 0.01, zs),
@@ -549,7 +562,7 @@ def collar(z_mouth: float, trrs_top: float) -> cq.Workplane:
     # the coil and the ring are dropped in from that side at assembly.
     zs = p["z_s"]
     x = SPR_X
-    y_cup0 = CUP_Y0 - B - CLR                       # the void's -Y end
+    y_cup0 = CUP_Y0 - CUP_BACK - CLR                # the void's -Y end
     y_cup1 = CUP_FACE + S_MAX + CLR                 # the cup's mouth at FULL PRESS
     cup_hw = CUP_W / 2.0 + CLR
     c = c.cut(_box(x - cup_hw, x + cup_hw, y_cup0, y_cup1, z0 - 1.0,
