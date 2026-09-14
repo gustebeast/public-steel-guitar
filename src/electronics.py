@@ -347,6 +347,13 @@ TEE_CONN_MOUTH_DY = -3.25                            # mouth face, from the pad 
                                                      # 6.1 deep (cadkit XH_SIDE_D) and the row
                                                      # sits 2.85 from its back.
 TEE_RELIEF   = (33.0, 3.0)                           # tail window (w x l), centred (0, CONN_CY)
+# The terminator, as TWO parts rather than the one lumped box this used to carry.
+# (name, X, Y, height, x, y) board-local, mirroring elec/can_tee.py's placements
+# and KiCad's courtyards -- so the envelope is the assembly clearance, slightly
+# larger than the bare component, which is the right error for a clearance model.
+TEE_TERM = (("R1", 3.05, 1.55, 0.95, -6.0, 6.2),     # 120R, 0603
+            ("JP1", 3.39, 2.59, 0.05, -1.0, 6.4))    # solder jumper -- bare pads,
+                                                     # so it is flat by nature
 
 
 def tee_board_cy(y: float) -> float:
@@ -374,8 +381,8 @@ def tee_pcb(x: float, y: float, drop: int = 1, accurate: bool = True) -> cq.Work
         # the part lands at the mouth, not at the pad row
         b = b.union(jst_xh_side_header(n, smt=False, mated=True)
                     .translate((x + dx, cy + TEE_CONN_CY + TEE_CONN_MOUTH_DY, top)))
-    # 120R + its solder jumper, side by side in the clear band -Y of the row
-    b = b.union(box_at(9.0, 2.6, 1.8, x=x - 3.5, y=cy + 6.3, z=top + 0.9))
+    for _n, _w, _l, _h, _dx, _dy in TEE_TERM:
+        b = b.union(box_at(_w, _l, _h, x=x + _dx, y=cy + _dy, z=top + _h / 2))
     return b
 
 
