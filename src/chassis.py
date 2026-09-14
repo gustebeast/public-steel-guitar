@@ -717,9 +717,26 @@ def _segments():
                 seg = seg.union(MB.plates[mi])
             else:                                     # a neighbour's plate may overhang in: relieve it
                 seg = seg.cut(MB.plates[mi])
-            # the -Y-most motors' back stop is a ramp off the RAIL, which is ours to build
-            if b < mx < a and MB.back_stop_kind(mi) == "rail":
-                seg = seg.union(MB.back_stop_rail(mi, Y_LO + T / 2))
+        # EVERY motor's lift path, out of EVERYTHING fused above: a bay claims the whole gap on
+        # each side (one 1.6 wall between two motors, not two 0.8 halves), so it reaches across
+        # into its neighbour's fit and only this cut takes it back out. It is also what keeps
+        # every motor's way IN clear, whatever gets built over the bank.
+        for _mi in range(D.N_STRINGS):
+            seg = seg.cut(MB.lift_prism(_mi))
+        # THE HARNESS CORRIDOR is the wiring's, the whole length of the bank: the trunk rides it
+        # at MB.HARNESS_Y1 and DIPS OUTBOARD into the rail notch behind the +X-most motor, so
+        # there is nowhere down here a bay may reach the rail. What survives is the part of each
+        # bay's back wall ABOVE the corridor, and it gets a 45 deg underside so it is a wedge off
+        # what is left rather than a shelf hanging over the wiring.
+        _cy0 = Y_LO - 20.0
+        seg = seg.cut(box_at((a - b) + 40.0, MB.HARNESS_Y1 - _cy0, MB.HARNESS_Z1 - (Z_BOT - 10.0),
+                             x=(a + b) / 2, y=(_cy0 + MB.HARNESS_Y1) / 2,
+                             z=((Z_BOT - 10.0) + MB.HARNESS_Z1) / 2))
+        _rise = (MB.Z_HI - MB.HARNESS_Z1) + 1.0
+        _prof = [(MB.HARNESS_Y1, MB.HARNESS_Z1), (MB.HARNESS_Y1, MB.HARNESS_Z1 + _rise),
+                 (MB.HARNESS_Y1 - _rise, MB.HARNESS_Z1 + _rise)]
+        seg = seg.cut(cq.Workplane("YZ").workplane(offset=b - 20.0)
+                      .polyline(_prof).close().extrude((a - b) + 40.0))
         segs.append(_largest(seg))
     return segs
 

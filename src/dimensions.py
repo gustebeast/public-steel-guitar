@@ -699,7 +699,9 @@ KEYHEAD_INBOARD_X = -607.8       # keyhead endplate inboard bearing face (its he
                                  # asserted against keyhead_endplate in build.py
 ELEC_STACK_D    = 21.8           # standing electronics tray: plate + posts + tallest board (Pi 5);
                                  # asserted against the real boards in electronics.py
-MOTOR_ELEC_CLR  = MIN_WALL_2P    # 1.6 air between the electronics and string 1's motor
+# Sized like MOTOR_GAP so string 1's -X bay wall is a full 1.6 like every other motor's, rather
+# than the 1.2 that 1.6 of clearance left it (user: no special cases in the bank).
+MOTOR_ELEC_CLR  = MIN_WALL_2P + 2 * MOTOR_CLR   # 2.4 between the electronics and string 1's motor
 MOTOR_X0        = (-(KEYHEAD_INBOARD_X + ELEC_STACK_D + MOTOR_ELEC_CLR + MOTOR_SQ / 2)
                    - (N_STRINGS - 1) * MOTOR_X_STEP)   # ~169.75: the nearest motor's -X offset
 # Belt-plane cascade: a Ø8.4 pulley + belt wrap is wider than the 9.5 mm string
