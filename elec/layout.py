@@ -180,10 +180,18 @@ def _rules(board, notes):
     # -- leaving it in place reports the router's own legal narrowing (it drops
     # to 0.187 to escape a 0.4 mm-pitch QFN) as 50 violations.
     bds.m_TrackMinWidth = pcbnew.FromMM(0.127)
+    bds.m_ViasMinSize = pcbnew.FromMM(0.6)
+    bds.m_MinThroughDrill = pcbnew.FromMM(0.3)
     bds.m_CopperEdgeClearance = pcbnew.FromMM(0.3)
     for nc in board.GetAllNetClasses().values():
         nc.SetClearance(pcbnew.FromMM(0.127))
         nc.SetTrackWidth(pcbnew.FromMM(0.25))
+        # KiCad's default 0.8/0.4 via cannot escape a 0.4 mm-pitch QFN -- it does
+        # not fit between the pads, so the router simply leaves those pins
+        # unrouted. 0.6/0.3 is JLCPCB's STANDARD (not advanced) capability and
+        # costs nothing extra.
+        nc.SetViaDiameter(pcbnew.FromMM(0.6))
+        nc.SetViaDrill(pcbnew.FromMM(0.3))
 
 
 _LAYERS = {"F.Cu": pcbnew.F_Cu, "B.Cu": pcbnew.B_Cu,
