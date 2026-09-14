@@ -6,14 +6,14 @@ TRUNK-AND-DROP over TEE PCBs (electronics.tee_pcb, flat on the floor):
 crimped XH jumper SEGMENTS run tee-to-tee (each drawn as its own component,
 suffix _N — a segment IS a separate physical cable), and each device hangs
 by ONE drop, so unplugging a device never breaks a bus. 120 Ω termination
-lives on the boards (teensy_ifc + each bus's LAST tee, jumper closed).
+lives on the boards (motor_ctrl + each bus's LAST tee, jumper closed).
 
-  bus A (motors): teensy_ifc -> tee 9..0 (one per motor; LAST = tee 0,
+  bus A (motors): motor_ctrl -> tee 9..0 (one per motor; LAST = tee 0,
         easternmost — its jumper is closed). Drop = the SERVO42D's own
         6-pin XH pigtail (motor_pigtail_N, grey). The 24 V pair rides the
         same tees (2 contacts per rail on the 6-pos trunk headers): head
         = DC inlet -> the AFE tee (10) -> tee 0; tail = tee 9 -> buck.
-  bus B (inputs): teensy_ifc -> tee 11 (LKL knee station) -> tee 12
+  bus B (inputs): motor_ctrl -> tee 11 (LKL knee station) -> tee 12
         (leg-socket landing, under the tray west of the bay rib; takes
         the chassis TRRS jack's factory cable -> the pedal bar).
 
@@ -27,27 +27,24 @@ HUE = gauge bucket, SHADE = the specific wire within the bucket:
       RED    = wire_pwr_hot  (CAN 24 V)
       YELLOW = wire_can*h    (CAN-H, both buses + the transceiver jumper)
       GREEN  = wire_can*l    (CAN-L)
-  Each CAN bus is drawn as its CAN-H/CAN-L pair (split ±CAN_OFF); bus A
-  (wire_canh/l, motors), bus B (wire_canbh/l, inputs), jumper (wire_canjmph/l).
+  Each CAN bus is drawn as its CAN-H/CAN-L pair (split ±CAN_OFF): bus A
+  (wire_canh/l, motors) and bus B (wire_canbh/l, inputs), both leaving the motor
+  controller's own connectors. There is no transceiver jumper any more -- the
+  transceivers sit on the MCU's board, so that harness became copper.
 
   The gauge/shade rule still governs the NON-CAN nets:
   BLUE = power pair       (superseded for the CAN power rails above)
-  GREEN = 28 AWG SHIELDED (light -> dark)
-                          wire_audio:  AFE buffer -> Teensy ADC
-                          wire_dac:    Teensy DAC -> AFE relay NO
-                          wire_out:    AFE relay common -> TS jack
-  AMBER = 28 AWG logic    (light -> dark) wire_relayctrl, wire_link,
-                          wire_canjmp (Teensy stack <-> teensy_ifc XH
-                          jumper), wire_tdm, wire_oled, wire_joy
+  AMBER = 28 AWG logic    (light -> dark) wire_link (motor controller <-> Pi),
+                          wire_tdm, wire_oled, wire_joy
   VIOLET = shielded USB-2 wire_usb: USB-C panel -> Pi 5
   GREY = factory jackets  motor_pigtail_N, wire_knee_drop (stub to the
                           LKL station; lands on the kl_pcb XH when the
                           knee harness PCB rev lands)
 
-Analog architecture: the pickup is buffered AT the bridge (AFE), so the long
-run to the keyhead ADC is low-impedance and noise-tolerant. A true-bypass
-relay on the AFE sends the raw buffered signal straight to the jack by default
-and swaps to the DAC (Q-processed) output when the Teensy energizes it.
+Analog architecture: NONE OF IT IS HERE. The AFE board is deleted and no audio
+crosses this harness -- the optical pickup board carries the magnetic pickup's
+buffer, its bypass relay and the jack output, and reaches the Pi over USB. What
+runs through the bay is DC bus, CAN, and logic.
 
 Routing: a 6-lane floor trunk at z -69.7 (under the motors) passes every
 cross-rib through SHALLOW gable raceways (chassis._raceway) whose floor stays
@@ -59,7 +56,7 @@ their declared source/destination bodies to show the connection
 (whitelisted); everywhere else the gate enforces clearance.
 
 The SERVO42D driver is ON the motor, so there are NO stepper phase leads --
-the harness is DC bus, CAN, buffered audio and logic only. Insulation is not
+the harness is DC bus, CAN and logic only. Insulation is not
 an EMI defence: noise immunity comes from SHIELDING (audio), TWISTING
 (power, CAN) and buffering at the source (the AFE at the bridge).
 """
@@ -76,12 +73,14 @@ from . import electronics as EL
 # conductors (user override: the CAN bus is shown as its four colour-coded
 # wires -- black gnd, red 24 V, yellow CAN-H, green CAN-L). Nothing exceeds 2.6.
 WIRE_OD = {
-    "wire_pickup": 2.0, "wire_out": 2.0, "wire_audio": 2.0, "wire_dac": 2.0,
-    "wire_relayctrl": 1.4, "wire_usb": 2.6,
+    "wire_usb": 2.6,
+    "wire_pickup": 2.0,   # DORMANT, kept: the magnetic pickup's screw-terminal
+                          # run returns when the optical pickup board is designed
+                          # (see the AFE note in build_wires). The other four AFE
+                          # cables are gone for good.
     # CAN signal pairs, split into CAN-H / CAN-L discrete conductors
     "wire_canh": 1.3, "wire_canl": 1.3,       # bus A (motors)
     "wire_canbh": 1.3, "wire_canbl": 1.3,     # bus B (inputs)
-    "wire_canjmph": 1.2, "wire_canjmpl": 1.2, # Teensy <-> transceiver jumper
     "wire_pwr_hot": 1.8, "wire_pwr_gnd": 1.8,
     "wire_link": 1.4, "wire_tdm": 1.4,
     "wire_oled": 1.4, "wire_joy": 1.4,
@@ -317,7 +316,6 @@ def _seg(a, b, lane_z, d=WIRE_D, off=0.0):
 def build_wires():
     """Returns [(name, workplane)] for every net."""
     out = []
-    shield_top = EL.BOARD_Z + 1.0 + 11.0 + EL.BD_T      # Teensy shield top
     # THE AFE'S WIRES ARE GONE WITH THE AFE (2026-09-14). wire_pickup, wire_out,
     # wire_audio, wire_dac and wire_relayctrl all began or ended on that board;
     # the bypass relay and the magnetic buffer now live on the optical pickup
@@ -338,16 +336,8 @@ def build_wires():
     assert BAYFLY - max(WIRE_OD.values()) / 2 > D.MOTOR_BELT_Z + D.MOTOR_SQ / 2 + 1.0, (
         "the bay fly lane has come down onto string 1's motor")
     SP = EL.stand_pt
-    out_z = shield_top - 1.0
-
-    def _long(pad, lane_z, sh_x, sh_y, d=WIRE_D):
-        """AFE pad -> up over the board -> out to the -Y rail corridor -> ride to the bay
-        (dodging m9) -> up into the shield. All above the rib tops (no rib crossing)."""
-        px, py, _ = pad
-        e = SP(sh_x, sh_y, out_z)                       # on the Teensy's +X face, -Y of the motor
-        return _wire([pad, (px, py, -52.0), (px, RAIL_Y, -52.0)]
-                     + _rail_pts(px, BAY_X, lane_z)
-                     + [(BAY_X, RAIL_Y, e[2]), (BAY_X, e[1], e[2]), e], d)
+    # (the AFE's long shielded runs and their _long() helper are gone with the
+    #  board; the Teensy stack they climbed onto is gone with the motor controller)
 
     # ── the two CAN buses: TRUNK-AND-DROP over the rail tee PCBs ────────
     tees = tee_stations()
@@ -355,12 +345,14 @@ def build_wires():
             for i in range(len(tees))}
     west = sorted(range(10), key=lambda i: hdrA[i][0])       # bus A west→east
 
-    # bus A CAN head: teensy_ifc -> bay corridor -> -Y rail -> westernmost motor tee; then
-    # one crimped segment per hop east. Termination: teensy_ifc + tee 0's closed jumper.
+    # bus A CAN head: motor_ctrl J1 -> bay corridor -> -Y rail -> westernmost motor tee;
+    # then one crimped segment per hop east. Termination: the controller's JP1 + tee 0's
+    # closed jumper -- one at each END of the trunk and nowhere else (ISO 11898).
     # Drawn as the CAN-H (yellow) + CAN-L (green) pair, offset +-CAN_OFF (user).
     xw, yw = hdrA[west[0]]
-    # the interface board stands +Y of the Pi, 9 mm off the motor: climb in that gap first
-    _ia = SP(-565.0, 42.0, -50.5)
+    # the controller sits in the tray's -X -Y corner with its bus connectors on the
+    # WEST edge, so both heads climb the tray's west side before crossing the bay
+    _ia = SP(*EL.mctrl_pt("J1"))
     _canA_head = ([_ia, (BAY_X - 5.0, _ia[1], _ia[2]), (BAY_X - 5.0, _ia[1], BAYFLY),
                    (BAY_X, _ia[1], BAYFLY), (BAY_X, RAIL_Y, BAYFLY)]
                   + _rail_pts(BAY_X, xw, LANE_CAN) + [(xw, yw, HDR_Z)])
@@ -395,7 +387,7 @@ def build_wires():
     _PWR_X = D.BRIDGE_AXLE_X - 1.5                              # -8.0
     heads = [(_PWR_X, EL.DC_Y, EL.JACK_Z), (_PWR_X, EL.DC_Y, -52.0), (_PWR_X, TEE_Y, -52.0),
              (x10, TEE_Y, -52.0), (x10, TEE_Y, HDR_Z)]
-    _buck = SP(-567.0, -106.0, -50.0)
+    _buck = SP(-558.5, -109.5, -50.0)          # BUCK_FP turned with the tray relayout
     tail = ([(hdrA[west[0]][0], hdrA[west[0]][1], HDR_Z)]
             + _rail_pts(hdrA[west[0]][0], BAY_X, LANE_PWR)
             + [(BAY_X, _buck[1], LANE_PWR), (BAY_X, _buck[1], _buck[2]), _buck])   # in to the buck
@@ -411,10 +403,16 @@ def build_wires():
             out.append((f"{_nm}_{k + 2}",
                         _seg(hdrA[west[k + 1]], hdrA[west[k]], LANE_PWR, WIRE_OD[_nm], off=_do)))
         out.append((f"{_nm}_11", _wire(_off(tail), WIRE_OD[_nm])))
+        # and the controller's own 24 V inlet (J3), tapped at the buck's input: the
+        # board's LMR16006 makes its own 3V3, so this is the only rail it takes.
+        _j3 = SP(*EL.mctrl_pt("J3"))
+        out.append((f"{_nm}_12", _wire(_off(
+            [_buck, (_buck[0], _j3[1], _buck[2]), (_j3[0], _j3[1], _buck[2]), _j3]),
+            WIRE_OD[_nm])))
 
-    # ── bus B (inputs): ifc -> LKL tee -> leg-socket landing tee ────────
+    # ── bus B (inputs): motor_ctrl J2 -> LKL tee -> leg-socket landing tee ────────
     x11, y11 = hdrA[11]
-    _ib = SP(-557.0, 42.0, -50.5)
+    _ib = SP(*EL.mctrl_pt("J2"))
     _canB_head = ([_ib, (BAY_X - 5.0, _ib[1], _ib[2]), (BAY_X - 5.0, _ib[1], BAYFLY),
                    (BAY_X, _ib[1], BAYFLY), (BAY_X, RAIL_Y, BAYFLY)]
                   + _rail_pts(BAY_X, x11, LANE_CTRL) + [(x11, y11, HDR_Z)])
@@ -439,20 +437,19 @@ def build_wires():
         + [(BAY_X, RAIL_Y, BAYFLY), (BAY_X, _usb[1], BAYFLY), (_usb[0], _usb[1], BAYFLY), _usb],
         WIRE_OD["wire_usb"])))                          # over motor 0, then down into the Pi
 
-    # -- Teensy <-> Pi link (purple): over the bay
-    _lt, _lp = SP(-600.0, -60.0, out_z), SP(-560.0, 5.0, -57.0)
+    # -- motor controller <-> Pi (purple): the USB-C lead the Pi writes travel
+    #    offsets over. It leaves the board's mouth sideways, not off a header.
+    _lt, _lp = SP(*EL.mctrl_pt("J4")), SP(-585.0, 20.0, -58.0)
+    # It crosses motor 0's Y band, so it takes the BAYFLY lane over the motor top
+    # like every other bay wire -- running it across at the board's own height put
+    # 62 mm3 of cable inside string 1's motor.
     out.append(("wire_link", _wire([
-        _lt, (BAY_X, _lt[1], _lt[2]), (BAY_X, _lp[1], _lt[2]), (_lp[0] + 5.0, _lp[1], _lt[2]),
-        (_lp[0] + 5.0, _lp[1], _lp[2]), _lp], WIRE_OD["wire_link"])))
+        _lt, (BAY_X, _lt[1], _lt[2]), (BAY_X, _lt[1], BAYFLY), (BAY_X, _lp[1], BAYFLY),
+        (_lp[0] + 5.0, _lp[1], BAYFLY), (_lp[0] + 5.0, _lp[1], _lp[2]), _lp],
+        WIRE_OD["wire_link"])))
 
-    # -- Teensy <-> CAN transceiver: the CAN-H (yellow) / CAN-L (green) jumper pair
-    _jt, _jx = SP(-603.0, -57.0, out_z), SP(-561.0, 49.0, -50.5)
-    _canjmp = [_jt, (BAY_X, _jt[1], BAYFLY), (BAY_X, _jx[1], BAYFLY), (BAY_X - 5.0, _jx[1], BAYFLY),
-               (BAY_X - 5.0, _jx[1], _jx[2]), _jx]
-    for _sfx, _co in (("h", -CAN_OFF), ("l", CAN_OFF)):
-        out.append((f"wire_canjmp{_sfx}", _wire(
-            [(px + _co, py + _co, pz) for px, py, pz in _canjmp],
-            WIRE_OD[f"wire_canjmp{_sfx}"])))
+    # (the Teensy <-> transceiver CAN jumper pair is GONE: the transceivers now sit
+    #  on the same board as the MCU, so that harness is copper instead of wire.)
 
     # -- PCM1864 carrier TDM -> Pi (teal)
     _ta, _tp = SP(-566.0, -72.0, -57.0), SP(-580.0, -5.0, -57.0)
@@ -460,17 +457,18 @@ def build_wires():
         _ta, (BAY_X, _ta[1], _ta[2]), (BAY_X, _ta[1], BAYFLY), (BAY_X, _tp[1], BAYFLY),
         (_tp[0] + 5.0, _tp[1], BAYFLY), (_tp[0] + 5.0, _tp[1], _tp[2]), _tp], WIRE_OD["wire_tdm"])))
 
-    # -- UI: OLED + joystick (-Y deck band) -> Teensy. Drop under the deck, run
-    #    to the keyhead, down the bay column onto the Teensy's face.
+    # -- UI: OLED + joystick (-Y deck band) -> the PI's GPIO header (user: the OLED
+    #    and the joystick live on the Pi). Drop under the deck, run to the keyhead,
+    #    down the bay column onto the Pi.
     UDZ = -2.0
     out.append(("wire_oled", _wire([
         (EL.UI_X, EL.OLED_Y, EL.DECK_TOP + 1.0), (EL.UI_X, EL.OLED_Y, UDZ),
-        (BAY_X, EL.OLED_Y, UDZ), (BAY_X, -110.0, SP(-600.0, -110.0, out_z)[2]),
-        SP(-600.0, -110.0, out_z)], WIRE_OD["wire_oled"])))
+        (BAY_X, EL.OLED_Y, UDZ), (BAY_X, -40.0, SP(-600.0, -40.0, -57.0)[2]),
+        SP(-600.0, -40.0, -57.0)], WIRE_OD["wire_oled"])))
     out.append(("wire_joy", _wire([
         (EL.JOY_X, EL.JOY_Y, EL.DECK_TOP + 1.0), (EL.JOY_X, EL.JOY_Y, UDZ),
-        (BAY_X + 4, EL.JOY_Y, UDZ), (BAY_X + 4, -100.0, SP(-595.0, -100.0, out_z)[2]),
-        SP(-595.0, -100.0, out_z)], WIRE_OD["wire_joy"])))
+        (BAY_X + 4, EL.JOY_Y, UDZ), (BAY_X + 4, -30.0, SP(-595.0, -30.0, -57.0)[2]),
+        SP(-595.0, -30.0, -57.0)], WIRE_OD["wire_joy"])))
 
     return out
 
@@ -478,10 +476,10 @@ def build_wires():
 # what each net is ALLOWED to touch (its source/destination bodies);
 # everything else a wire grazes is a routing bug the gate reports
 WIRE_OK = {
-    "wire_canh":      {"teensy_ifc", "tee_pcb"},
-    "wire_canl":      {"teensy_ifc", "tee_pcb"},
-    "wire_canbh":     {"teensy_ifc", "tee_pcb"},
-    "wire_canbl":     {"teensy_ifc", "tee_pcb"},
+    "wire_canh":      {"motor_ctrl", "tee_pcb"},
+    "wire_canl":      {"motor_ctrl", "tee_pcb"},
+    "wire_canbh":     {"motor_ctrl", "tee_pcb"},
+    "wire_canbl":     {"motor_ctrl", "tee_pcb"},
     "motor_pigtail":  {"tee_pcb", "motor"},
     "wire_knee_drop": {"tee_pcb"},
     # leg↔body TRRS: the chassis jack's factory cable (tenon channel ->
@@ -501,13 +499,11 @@ WIRE_OK = {
     "shaft_trrs_cable": {"leg_shaft", "leg_sleeve", "leg_seg_body",
                          "shaft_trrs_jack", "leg_cable_coil",
                          "leg_junction_pcb", "leg_head"},
-    "wire_pwr_hot":   {"dc_jack", "buck", "tee_pcb"},
-    "wire_pwr_gnd":   {"dc_jack", "buck", "tee_pcb"},
+    "wire_pwr_hot":   {"dc_jack", "buck", "tee_pcb", "motor_ctrl"},
+    "wire_pwr_gnd":   {"dc_jack", "buck", "tee_pcb", "motor_ctrl"},
     "wire_usb":       {"usbc_jack", "pi5"},
-    "wire_link":      {"teensy_stack", "pi5"},
-    "wire_canjmph":   {"teensy_stack", "teensy_ifc"},
-    "wire_canjmpl":   {"teensy_stack", "teensy_ifc"},
+    "wire_link":      {"motor_ctrl", "pi5"},
     "wire_tdm":       {"adc_stack", "pi5"},
-    "wire_oled":      {"oled", "teensy_stack"},
-    "wire_joy":       {"joystick", "teensy_stack"},
+    "wire_oled":      {"oled", "pi5"},
+    "wire_joy":       {"joystick", "pi5"},
 }
