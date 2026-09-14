@@ -139,6 +139,16 @@ PARTS = {
     "adjust_tenon":    (lambda: heal(LS.adjust_tenon()), "petg-gf/adjust_tenon.step", "PETG-GF — adjust floating tenon: the height ladder (blind +X holes) and, at its bar end, the pedal bar latch's pocket and lead-in. Prints diagonally (+X+Y -> -X-Y)"),
     "leg_latch_slider": (lambda: heal(__import__("src.leg_latch", fromlist=["e"]).slider()), "pctg/leg_latch_slider.step", "PCTG — body latch slider: push-to-connect hook into the adapter, flush 20x20 pad on the fixed sleeve, one steel coil. Prints -X -> +X"),
     "bar_latch_frame": (lambda: heal(LS.bar_latch_frame()), "pctg/bar_latch_frame.step", "PCTG — pedal bar yoke latch: a ring round the adjust tenon, hook in its pocket, 20x20 pad flush in the collar, a cup seating its one coil. Prints ring down"),
+    "leg_trrs_spacer": (lambda: heal(__import__("src.leg_trrs", fromlist=["e"]).spacer()),
+                        "pctg/leg_trrs_spacer.step",
+                        "PCTG — the leg blind-mate's spacer: the tube the jack stands on, which "
+                        "is what sets how far it stands proud of the leg's face. Its middle "
+                        "is the cable's way down the leg"),
+    "leg_trrs_cap": (lambda: heal(__import__("src.leg_trrs", fromlist=["e"]).cap()),
+                    "pctg/leg_trrs_cap.step",
+                    "PCTG — the leg blind-mate's spring cap: drops into the body "
+                    "adapter's bore on top of the coil, and the chassis's own underside "
+                    "is what keeps it there. No fastener"),
     "bar_latch_collar": (lambda: heal(LS.bar_latch_collar()), "petg-gf/bar_latch_collar.step", "PETG-GF — pedal bar latch collar: the top 22.4 of the bar's tower, holding the yoke and its springs; two T rails slide it onto the tower from +Y, one M4x30 button head into a heat-set insert in the tower locks it. Prints on its +Y face"),
     # pedal bar (the per-foot latches are gone — the towers are passive
     # is validated). The bar itself is a DEMO prism (longer than the bed —
@@ -1166,6 +1176,11 @@ _COLORS = {
     "leg_latch_spring": (0.62, 0.64, 0.67),  # stainless coil (purchased)
     "lock_pin_screw":  (0.55, 0.55, 0.58),   # M4x12 button head (purchased)
     "lock_pin_insert": (0.80, 0.60, 0.35),   # brass heat-set insert
+    "leg_trrs_plug":   (0.15, 0.15, 0.17),   # the blind-mate: the floating plug...
+    "leg_trrs_jack":   (0.20, 0.20, 0.22),   # ...the jack it seats in, in the sleeve
+    "leg_trrs_spring": (0.62, 0.64, 0.67),   # ...the coil that holds them together
+    "leg_trrs_spacer": (0.30, 0.52, 0.40),   # ...the printed tube it stands on
+    "leg_trrs_cap":    (0.34, 0.56, 0.44),   # ...and the cap holding the plug down
     "bar_latch_frame": (0.85, 0.35, 0.20),   # pedal bar latch accent
     "bar_latch_collar": (0.36, 0.42, 0.46),  # PETG-GF, the bar tower's family
     "bar_latch_spring": (0.62, 0.64, 0.67),
