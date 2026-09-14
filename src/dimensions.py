@@ -658,6 +658,16 @@ BELT_T          = 1.4
 # Motor — MKS SERVO42D on a 48 mm NEMA17 — lies flat, shaft +Y
 # ─────────────────────────────────────────────────────────────────────────
 MOTOR_SQ        = 42.3
+# CAN TEE BOARD (bronner's layout, 2026-09-14). Here rather than in electronics because the
+# motor bay is CUT for it -- its seat comes out of the same prism as the motor pocket -- and
+# motor_bank cannot import electronics (electronics -> chassis -> motor_bank).
+TEE_BOARD_X     = 40.0      # one row of side-entry XH: 8-way trunk + 4-way drop
+TEE_BOARD_Y     = 16.0      # shallow: it sits ON its motor and laps it
+TEE_BOARD_T     = 1.6       # 2-layer FR4
+TEE_TAIL_CY     = 2.0       # THT tail line, board-local +Y (6.0 in from the +Y edge)
+TEE_TAIL_DROP   = 1.8       # how far those tails hang below the board's underside
+TEE_FIT         = 0.3       # board fit in its seat
+TEE_WALL_OVER   = 1.2       # seat walls stand this far over the board's top face
 MOTOR_BODY_L    = 70.0      # faceplate -> back of the driver box (the SERVO42D's 42.3 motor
                             # plus its driver stack). The pocket and the CAN pigtail's exit
                             # both hang off it; asserted against components.motor in build.py

@@ -85,8 +85,38 @@ FLOOR_TOP = _zc - D.MOTOR_SQ / 2            # motors rest here (= wall bottom / 
 BED_Z = FLOOR_TOP - D.XBAR                  # print bed = chassis rib/rail bottom; the
                                             # FLOOR_TOP->bed gap = rib height = XBAR, so the
                                             # cross-ribs are a square XBAR x XBAR section
-Z_HI = _zc + D.MOTOR_SQ / 2 + BOARD_AIR            # wall top = the TEE SEAT PLANE: the board rests
-                                                   # here and laps the motor by BOARD_AIR of air
+Z_HI = _zc + D.MOTOR_SQ / 2 + BOARD_AIR            # the TEE SEAT PLANE: the board rests here and
+                                                   # laps the motor by BOARD_AIR of air
+SEAT_TOP = Z_HI + D.TEE_BOARD_T + D.TEE_WALL_OVER  # ...and the bay runs this far over it, so the
+                                                   # seat's walls are just the bay, cut for the board
+
+
+def tee_board_box(i):
+    """The tee board's own box on motor i: (x0, x1, y0, y1, z_underside).
+
+    ITS +X EDGE SITS ON THE MOTOR'S FIT LINE. The board is 40 across a 42.3 motor, so centred it
+    would leave the seat's +X wall inside the motor's lift path, where the cut that frees the
+    motor slices it to a sliver (the user found that on both sides). Pushed out to the fit line,
+    everything beyond it is outside the motor and survives whole."""
+    _, bx1, _, by1, _, _ = body_box(i)
+    x1 = bx1 + MOTOR_CLR
+    y1 = by1 + PLATE_T                              # +Y edge flush with the faceplate wall's face
+    return x1 - D.TEE_BOARD_X, x1, y1 - D.TEE_BOARD_Y, y1, Z_HI
+
+
+def tee_pocket(i):
+    """The tee board's space: its profile plus a fit, open upward so it drops in, together with
+    the relief the THT tails need under its +Y band. ONE cutter, because the board is 40 across
+    a 42.3 motor and so reaches 1.5 into the NEIGHBOUR's bay -- the chassis subtracts every bay's
+    from the fused result, exactly as it does every motor's lift path."""
+    sx0, sx1, sy0, sy1, sz = tee_board_box(i)
+    pocket = box_at(D.TEE_BOARD_X + 2 * D.TEE_FIT, D.TEE_BOARD_Y + 2 * D.TEE_FIT,
+                    (SEAT_TOP - sz) + 2.0,
+                    x=(sx0 + sx1) / 2, y=(sy0 + sy1) / 2,
+                    z=sz + ((SEAT_TOP - sz) + 2.0) / 2)
+    return pocket.union(box_at(D.TEE_BOARD_X - 2.0, 5.0, D.TEE_TAIL_DROP + 2.0,
+                               x=(sx0 + sx1) / 2, y=(sy0 + sy1) / 2 + D.TEE_TAIL_CY,
+                               z=sz - (D.TEE_TAIL_DROP + 2.0) / 2 + 0.01))
 
 
 def tee_seat(i):
@@ -192,8 +222,8 @@ def pocket(i) -> cq.Workplane:
 
     x0, x1 = bx0 - side_room(i, -1), bx1 + side_room(i, 1)
     y0, y1 = by0 - BACK_T, by1 + PLATE_T
-    body = body.union(box_at(x1 - x0, y1 - y0, Z_HI - bz0,
-                             x=(x0 + x1) / 2, y=(y0 + y1) / 2, z=(bz0 + Z_HI) / 2))
+    body = body.union(box_at(x1 - x0, y1 - y0, SEAT_TOP - bz0,
+                             x=(x0 + x1) / 2, y=(y0 + y1) / 2, z=(bz0 + SEAT_TOP) / 2))
 
 
     # THE DRIVE: the back wall stands BUMP_H and no further, so the driver's connector and its
@@ -213,10 +243,17 @@ def pocket(i) -> cq.Workplane:
     # THE +X POST: the tee seat's hold boss needs more X than a 1.6 wall has, and the stagger
     # leaves room for it at the front (the +X neighbour starts one string pitch further -Y)
     _pl = (STAGGER - NEIGH_CLR) + PLATE_T
-    body = body.union(box_at(POST_T, _pl, Z_HI - bz0,
+    body = body.union(box_at(POST_T, _pl, SEAT_TOP - bz0,
                              x=bx1 + MOTOR_CLR + POST_T / 2,
                              y=by1 + PLATE_T - _pl / 2,
-                             z=(bz0 + Z_HI) / 2))
+                             z=(bz0 + SEAT_TOP) / 2))
+
+    # THE SEAT is this same prism, cut for the board (user, 2026-09-14): the bay runs up past it
+    # and the board's own profile comes out, so what stands around the pocket IS the cradle. No
+    # separate part to place, and nothing left for the motor's lift cut to slice into a sliver.
+    # Most of the board hangs over the motor, where the lift cut has already opened the bay; what
+    # this takes is the strip over the faceplate wall, plus a relief under the THT tail line.
+    body = body.cut(tee_pocket(i))
 
     # ...and ONLY NOW the cuts, every one of them after every union: the boss's drop-in slot in
     # the faceplate wall, and the motor's own volume swept +Z (its fit, and its way in). Cut

@@ -332,8 +332,8 @@ TEE_CONN_N   = 4                                     # CAN = 4 conductors (gnd/2
 # own 4-way motor drop, pin rows COLLINEAR along X in a band at the +Y edge, so the tails land
 # on the wall and the rest of the board laps the motor. Pulling the 4-way swaps a motor without
 # disturbing the trunk -- which is what the tee is for.
-TEE_BOARD_X  = 40.0                                  # one row of 8-way + 4-way (36.98 of courtyard)
-TEE_BOARD_Y  = 16.0                                  # shallow: it sits ON the motor, not on the rail
+TEE_BOARD_X  = D.TEE_BOARD_X                         # one row of 8-way + 4-way
+TEE_BOARD_Y  = D.TEE_BOARD_Y                         # shallow: it sits ON the motor, not on the rail
 TEE_YSHIFT   = 5.0                                   # board centre shift +Y so the -Y edge stays at y-7
 TEE_TRUNK_N  = 8                                     # trunk in (1-4) / out (5-8) on ONE housing
 # SIDE ENTRY (bronner, 2026-09-14): S8B-XH-A / S4B-XH-A, mouth facing -Y so the plugs run out
