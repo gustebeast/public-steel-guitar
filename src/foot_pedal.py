@@ -59,13 +59,16 @@ was designed in — no re-pass, no reorientation, nothing owed. The housing seat
 FLUSH ON that face and stands ON the bar top, so the bar's own features — trough,
 lid groove, splices, all below BAR_H — never contend with it.
 
-AND IT FITS THE BAR'S Y EXACTLY (user: move the axles -Y into the 35.6 budget).
-The printed housing spans BAR_Y0..BAR_Y1 dead on, flush plastic on BOTH faces —
-an earlier round let it outreach the bar by 5.05 and stand proud of the +Y face,
-which is what this replaces. The axle moved 5.05 -Y with it. That was paid for at
-the time by giving up the sensor board's -Y retention — but the board has since
-been trimmed of its dead strip (PCB_WZ 19 -> 16) and now ends at -9.00, inside
-this housing's -10.15, so the retention came back for free. See HOUS_Z0/CRADLE_Z0.
+ITS DEPTH IS ITS OWN (user, 2026-09-14). It used to be the BAR's Y width, back
+when those were the same 35.6 number, and it read as "the housing spans the bar
+dead on, flush on both faces". Then the bar went to 51.2 to match its tower and
+the housings quietly followed, 15.6 deeper for no reason any of them asked for.
+The budget is a MECHANISM dimension, so it stays where it was tuned: the axle
+10.15 in from the player-side face, and the sensor board (trimmed to PCB_WZ 16,
+ending at -9.00) just inside the housing's -10.15, which is what gave the board
+its -Y retention back. FLUSH AT THE BED, GAP AT +Y: the -Y face is what the
+housing is anchored to (MOUNT_DY off HOUS_Z0), and the 15.6 of bar behind it is
+the bar's own business -- the trough runs through part of it anyway.
 
 WHERE THE HOUSINGS LAND. Five pedals on the 62.4 pitch span 277.6 (10.93 in) and
 the cluster crosses a splice, so pedal_bar_a takes 2 housings and pedal_bar_b takes
@@ -253,7 +256,12 @@ HOUS_Z1 = (pplace(KL._hs_pocket(KL.HS_YC, -20.0, KL.HS_BACK_X)).val()
 # floor gone the shim would push the board straight out the open bottom. The side
 # grooves still hold Y and X over 17.15 of the board's 19, so it cannot fall out
 # sideways, but the pedal needs a positive -Z stop before this is buildable.
-Y_BUDGET = PB.BAR_Y1 - PB.BAR_Y0            # 35.6 — the bar's own width
+Y_BUDGET = 35.6                             # the HOUSING's depth, not the bar's
+                                            # width any more (see the header): the
+                                            # depth this mechanism was tuned at, and
+                                            # the number HOUS_Z0 -- and with it the
+                                            # axle's height off the bed and the
+                                            # board's fit -- comes out of
 CRADLE_Z0 = KL.PCB_Z0 - KL.CR_FLOOR_T       # the z_bot the cradle is BUILT
                                             # against (then clipped to HOUS_Z0).
                                             # Everything that asks knee_lever where
