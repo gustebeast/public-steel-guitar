@@ -188,6 +188,11 @@ def _add_zone(board, net, layer, inset, w, h):
     zone.SetLayer(_LAYERS[layer])
     zone.SetNet(net)
     zone.SetIsFilled(True)
+    # SOLID pad connection, not thermal relief. Thermals exist to stop a pour
+    # stealing heat from a hand-soldering iron; these boards are reflowed by the
+    # fab, and on a board this small KiCad reports the two-spoke minimum as
+    # "starved" anyway. Solid is also the better electrical answer for a return.
+    zone.SetPadConnection(pcbnew.ZONE_CONNECTION_FULL)
     hw, hh = w / 2.0 - inset, h / 2.0 - inset
     outline = zone.Outline()
     outline.NewOutline()
