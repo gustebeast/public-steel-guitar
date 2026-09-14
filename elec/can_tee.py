@@ -26,12 +26,17 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "out")
+# SKiDL names its log, ERC report and generated part library after the script
+# and drops them in the CWD -- the log at IMPORT time, so this has to happen
+# before the import, not in __main__. Every derived file belongs in elec/out.
+os.makedirs(OUT_DIR, exist_ok=True)
+os.chdir(OUT_DIR)
+
 from skidl import ERC, Net, Part, Pin, generate_netlist, subcircuit  # noqa: E402
 
 from src import electronics as EL  # noqa: E402
 from cadkit.pcb import xh_length  # noqa: E402
-
-OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "out")
 
 # ── the harness contract ─────────────────────────────────────────────────────
 # Four conductors, and the colours are the USER'S (see the cable-colour rule):
@@ -151,7 +156,6 @@ BOARD_NOTES = {
 
 
 if __name__ == "__main__":
-    os.makedirs(OUT_DIR, exist_ok=True)
     can_tee(tag="tee")
     ERC()
     generate_netlist(file_=os.path.join(OUT_DIR, "can_tee.net"))
