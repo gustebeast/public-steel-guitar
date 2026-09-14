@@ -47,14 +47,14 @@ BOARD_AIR  = D.MIN_WALL          # 0.8: the tee board's underside over the motor
 SEAT_HALF_W = 21.9               # the faceplate wall's -X reach: the tee's -X locating wall needs
                                  # board/2 + wall + fit outside the board, and the neighbour's body
                                  # is at 22.75 (wiring asserts the board still fits this)
-MOTOR_CLR  = 0.4                 # slip fit round a PURCHASED body (42.3 nominal, +-0.2)
+MOTOR_CLR  = D.MOTOR_CLR         # slip fit round a PURCHASED body (the gap is sized from it)
 BOSS_CLR   = 0.4                 # round the O22 pilot boss in its drop-in slot
 POST_T     = 12 * D.BEAD         # 9.6 side post (X). Capped by the NEIGHBOUR's boss slot,
                                  # which the post has to keep a wall off -- asserted below
 NEIGH_CLR  = D.MIN_WALL          # 0.8 air to the diagonal neighbour's body, at the band end
 WIRE_LANE_W = 6.0                # a back stop leaves this much clear on the motor's centreline
                                  # for its CAN pigtail to climb
-FIN_H      = 16 * D.BEAD         # 12.8: the one-bead -X fin's height (short, and wall-braced)
+FIN_H      = 16 * D.BEAD         # 12.8: the -X fin's height (short, and wall-braced)
 BUMP_T     = 4 * D.BEAD          # 3.2 back bumper: nothing pushes the motor -Y, so it is a
 BUMP_H     = 16 * D.BEAD         # 12.8 tall stop, not a wall -- the CAN pigtail leaves over it
 STAGGER    = abs(D.string_y(0) - D.string_y(1))    # 9.5, one string pitch: the band's depth
@@ -93,11 +93,25 @@ def tee_seat(i):
     return mx, _face_y(i) + PLATE_T / 2, Z_HI
 
 
+def gap_keepout(i):
+    """Everything -X of this motor's pocket face: the MOTOR GAP, which belongs to the pocket's
+    own wall. Anything built over a motor gets cut by this as well as by lift_prism, or it
+    leaves a sliver in the gap."""
+    bx0, _, by0, by1, bz0, bz1 = body_box(i)
+    return box_at(200.0, (by1 - by0) + 400.0, (bz1 + 300.0) - (bz0 - 100.0),
+                  x=(bx0 - MOTOR_CLR) - 100.0, y=(by0 + by1) / 2,
+                  z=((bz0 - 100.0) + (bz1 + 300.0)) / 2)
+
+
 def lift_prism(i):
     """Motor i's way out: its footprint swept +Z. Cut it from anything built over a motor."""
-    bx0, bx1, by0, by1, _, bz1 = body_box(i)
-    return box_at(bx1 - bx0 + 2 * MOTOR_CLR, by1 - by0 + 2 * MOTOR_CLR, 400.0,
-                  x=(bx0 + bx1) / 2, y=(by0 + by1) / 2, z=bz1 + 200.0)
+    bx0, bx1, by0, by1, bz0, bz1 = body_box(i)
+    # It spans the pocket's FULL height, not just upward from the motor top: anything seated
+    # over a motor also has a base hanging below that line, and a base that reaches into the
+    # motor's own fit gap comes back as a sliver (0.4 of one, user-measured).
+    z0, z1 = bz0 - 100.0, bz1 + 300.0
+    return box_at(bx1 - bx0 + 2 * MOTOR_CLR, by1 - by0 + 2 * MOTOR_CLR, z1 - z0,
+                  x=(bx0 + bx1) / 2, y=(by0 + by1) / 2, z=(z0 + z1) / 2)
 
 
 def body_box(i):
@@ -166,13 +180,13 @@ def pocket(i) -> cq.Workplane:
     # side of the FRONT band instead, opposite the +X post. The boss in the wall's slot already
     # holds the motor's front to +-0.4 either way, but with no -X post its BACK can yaw about
     # that boss until it touches the neighbour (1.6 over 70, ~1.3 deg). The front band is the
-    # only -X room left: the neighbour's body is there, so 0.8 is what fits between two 0.4
-    # fits -- but it fuses to the faceplate wall along its front edge, so it is braced, not a
-    # free-standing fin.
+    # only -X room left: the neighbour's body is there, and MOTOR_GAP is sized so a full 1.6
+    # wall fits between two fits. It fuses to the faceplate wall along its front edge too, so it
+    # is braced rather than free-standing.
     if _post_y(i) is None:
         _fl = STAGGER - NEIGH_CLR
-        body = body.union(box_at(D.MIN_WALL, _fl, FIN_H,
-                                 x=bx0 - MOTOR_CLR - D.MIN_WALL / 2,
+        body = body.union(box_at(D.MIN_WALL_2P, _fl, FIN_H,
+                                 x=bx0 - MOTOR_CLR - D.MIN_WALL_2P / 2,
                                  y=by1 - _fl / 2,
                                  z=bz0 + FIN_H / 2))
     _band = _post_y(i)

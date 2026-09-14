@@ -303,8 +303,12 @@ def tee_hold(i, x, y, d):
         # over the motor at mid-edge. It goes to the +Y END of that edge instead, where the
         # board is over the faceplate wall and the motor has already stopped -- the boss then
         # stands on wall, and its anchor bores down into it.
+        # OPEN ON -X as well as -Y: the board is nearly as wide as its motor, so a -X locating
+        # wall would stand inside the motor's lift path and come back from that cut as a 0.35
+        # sliver (user spotted it). The +Y wall and the hold screw locate the board; the -Y wall
+        # is removed by the lift-path cut itself, which is what open_edge cannot express.
         cx, cy = tee_center(i, x, y)
-        return (EL.TEE_BOARD_X, EL.TEE_BOARD_Y, cx, cy, "-y", "+x",
+        return (EL.TEE_BOARD_X, EL.TEE_BOARD_Y, cx, cy, "-x", "+x",
                 EL.TEE_BOARD_Y / 2 - 3.0)
     # bus-A (22 x 24): hold on the +X edge, toward the -Y rail end (hold_at -8).
     #   +Y (the obvious spot) lands under the -Y ends of motors 6-8: 115 mm3 of screw into
@@ -366,9 +370,14 @@ def tee_cradles():
         cr = cr.translate((cx, cy, base_z))
         if on_motor(i):
             # NOTHING FIXED MAY OVERHANG A MOTOR or it can never come out: the half of this
-            # cradle that laps the motor is cut away, leaving the strip on the wall, its +Y and
-            # -X walls and the hold boss. What laps the motor is the removable BOARD.
+            # cradle that laps the motor is cut away, leaving the strip on the wall, its +Y wall
+            # and the hold boss. What laps the motor is the removable BOARD.
             cr = cr.cut(MB.lift_prism(i))
+            # ...and nothing of it may reach into the MOTOR GAP either. The board is nearly as
+            # wide as its motor, so the cradle's BASE runs 0.35 past the pocket's -X face and
+            # came back from the lift cut as a sliver (user measured it). The gap belongs to the
+            # pocket's own -X wall, not to this seat.
+            cr = cr.cut(MB.gap_keepout(i))
         out.append((f"tee_cradle_{i}", cr))
     return out
 
