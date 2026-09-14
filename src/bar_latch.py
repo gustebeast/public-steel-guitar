@@ -179,8 +179,6 @@ CUP_Y0 = 14 * B                    # 11.2 the cup's FLOOR -- the coil's -Y end a
                                    # `collar`), whose flank runs PARALLEL to the
                                    # mortise's 45-degree flank -- the assert below
 CUP_FACE = CUP_Y0 + CUP_SEAT       # 11.2 the cup's mouth
-PIN_W = 2 * B                      # 1.6 the blade up the cup's middle, inside the bore
-PIN_L = 3 * B                      # 2.4 how far it reaches into the coil
 CHAN_R = LT.SPR_BORE_D / 2.0
 CHAN_END = CUP_Y0 + SPR_REST_L     # 20.0 the sleeve's blind floor: the fixed seat
 CHAN_CH = 3 * B                    # 2.4 install chamfer at the sleeve's floor end. It
@@ -457,26 +455,23 @@ def frame(z_mouth: float) -> cq.Workplane:
     # the pad plate, standing up from the ring's -Y face, flush with the collar
     f = f.union(_box(PAD_X - PAD_W / 2, PAD_X + PAD_W / 2, -FACE_Y, Y_PLATE_IN,
                      z0, z0 + PAD_H))
-    # the spring's CUP, standing on the ring: a blind bore the coil's end sits in
-    # (the leg slider's seat), with a BLADE up its middle inside the coil's bore. A
-    # blade and not a round post: a post would start in mid-air in this part's
-    # print, where the blade's underside rises at 45 degrees off the cup's floor.
+    # the spring's CUP, standing on the ring: a blind bore the coil's end sits in,
+    # which is the leg slider's seat and nothing more. It used to carry a locating
+    # blade up its middle as well (user: none of the other spring pockets have
+    # one) -- that was from when this end was a flat-faced lug and something had to
+    # hold the coil on; a bore round the coil's OD does that job on its own, the
+    # way every other seat in the instrument does it.
     zs = p["z_s"]
     f = f.union(_box(SPR_X - CUP_W / 2, SPR_X + CUP_W / 2, CUP_Y0 - CUP_BACK, CUP_FACE,
                      zr - 0.01, zs + CUP_D / 2.0 * _S2 + B))
     f = f.cut(teardrop_hole(CUP_D, CUP_SEAT + 0.01,
                             (LS.LEG_X + SPR_X, LS.LEG_Y + CUP_FACE + 0.01, zs),
                             (0.0, -1.0, 0.0), FRAME_UP))
-    ri = LT.SPR_ID / 2.0 - CLR                     # inside the coil's bore
-    f = f.union(_yz_prism([(CUP_Y0 - 0.01, zs - ri), (CUP_Y0 + PIN_L, zs - ri + PIN_L),
-                           (CUP_Y0 + PIN_L, zs + ri), (CUP_Y0 - 0.01, zs + ri)],
-                          SPR_X - PIN_W / 2, SPR_X + PIN_W / 2))
     return f
 
 
 def springs(z_mouth: float):
-    """The coil at rest, from the cup's floor to the sleeve's: drawn as a TUBE,
-    because the cup's blade sits inside its bore."""
+    """The coil at rest, from the cup's floor to the sleeve's, drawn as a TUBE."""
     p = planes(z_mouth)
     base = cq.Vector(LS.LEG_X + SPR_X, LS.LEG_Y + CUP_Y0, p["z_s"])
     tube = cq.Solid.makeCylinder(LT.SPR_OD / 2.0, SPR_REST_L, base, cq.Vector(0, 1, 0)).cut(
