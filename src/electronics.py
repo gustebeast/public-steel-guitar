@@ -60,7 +60,7 @@ TRAY_Z0, TRAY_Z1 = -64.0, -61.0        # plate band (3 thick) - 1.15 ABOVE the
 
 from . import chassis as CH          # only early constants (X_*, Z_*) used here
 from .helpers import box_at, cyl, cyl_x
-from cadkit.pcb import jst_xh_header, xh_length
+from cadkit.pcb import jst_xh_header, xh_length, jst_xh_side_header, xh_side_length
 
 # ---- board footprints (x0, x1, y0, y1); board bottom z = TRAY_Z1 + post ----
 POST_H = 4 * D.BEAD                    # 3.2 printed standoff posts under each board
@@ -336,8 +336,13 @@ TEE_BOARD_X  = 40.0                                  # one row of 8-way + 4-way 
 TEE_BOARD_Y  = 16.0                                  # shallow: it sits ON the motor, not on the rail
 TEE_YSHIFT   = 5.0                                   # board centre shift +Y so the -Y edge stays at y-7
 TEE_TRUNK_N  = 8                                     # trunk in (1-4) / out (5-8) on ONE housing
-TEE_CONN_CY  = 4.0                                   # connector row centre: 4.0 off the +Y edge
-TEE_RELIEF   = (38.0, 5.0)                           # base tail-relief window (w × l), board-local, at (0, CONN_CY)
+# SIDE ENTRY (bronner, 2026-09-14): S8B-XH-A / S4B-XH-A, mouth facing -Y so the plugs run out
+# OVER the motor instead of up. It stands 7.0 off the board where the top-entry pair stood 9.8
+# mated -- and that 2.8 is what lets string 10's tee sit on its motor at all: the magnetic
+# pickup's neck-most position dips to z -18.2 right over it. So the bank has no exception left.
+TEE_CONN_CY  = 2.0                                   # PAD ROW: 6.0 in from the +Y edge, over the wall
+TEE_MOUTH_DY = 3.25                                  # pad row -> mouth face (body 6.1, pads 2.85 off its back)
+TEE_RELIEF   = (38.0, 3.0)                           # base tail-relief window (w × l), board-local, at (0, CONN_CY)
 
 
 def tee_board_cy(y: float) -> float:
@@ -374,11 +379,11 @@ def tee_pcb(x: float, y: float, drop: int = 1, accurate: bool = True) -> cq.Work
     b = box_at(TEE_BOARD_X, TEE_BOARD_Y, 1.6, x=x, y=cy, z=FLOOR_Z + 0.8)
     # ONE row along X: the 8-way trunk, then the 4-way drop beside it. Pin rows collinear, so
     # the tail band is ~1.5 deep instead of 7.5 and clears the faceplate wall's strip.
-    l8, l4 = xh_length(TEE_TRUNK_N), xh_length(TEE_CONN_N)
+    l8, l4 = xh_side_length(TEE_TRUNK_N, smt=False), xh_side_length(TEE_CONN_N, smt=False)
     run = l8 + l4
     for n, dx in ((TEE_TRUNK_N, -run / 2 + l8 / 2), (TEE_CONN_N, run / 2 - l4 / 2)):
-        b = b.union(jst_xh_header(n, mated=True)
-                    .translate((x + dx, cy + TEE_CONN_CY, top)))
+        b = b.union(jst_xh_side_header(n, smt=False, mated=True)
+                    .translate((x + dx, cy + TEE_CONN_CY - TEE_MOUTH_DY, top)))
     b = b.union(box_at(3.5, 2.0, 1.8, x=x - run / 2 - 1.5, y=cy - 4.0, z=top + 0.9))  # 120R + jumper
     return b
 
