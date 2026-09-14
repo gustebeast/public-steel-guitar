@@ -166,7 +166,28 @@ def _edge_rect(board, w, h):
         board.Add(seg)
 
 
-_LAYERS = {"F.Cu": pcbnew.F_Cu, "B.Cu": pcbnew.B_Cu}
+def _rules(board, notes):
+    """Stack-up and clearances. A board left on KiCad's defaults fails DRC on
+    fine-pitch parts for a reason that has nothing to do with the design: the
+    default 0.2 mm clearance is wider than the gap between a 0.4 mm-pitch QFN's
+    own pads, so every adjacent pin pair is reported. 0.127 mm (5 mil) is
+    JLCPCB's standard capability and is what these boards are made to."""
+    bds = board.GetDesignSettings()
+    bds.SetCopperLayerCount(int(notes.get("layers", 2)))
+    bds.m_MinClearance = pcbnew.FromMM(0.127)
+    # 0.127 (5 mil) is JLCPCB's standard capability on 2 and 4 layer, and it is
+    # what these boards are ordered to. KiCad's 0.200 default is not a fab limit
+    # -- leaving it in place reports the router's own legal narrowing (it drops
+    # to 0.187 to escape a 0.4 mm-pitch QFN) as 50 violations.
+    bds.m_TrackMinWidth = pcbnew.FromMM(0.127)
+    bds.m_CopperEdgeClearance = pcbnew.FromMM(0.3)
+    for nc in board.GetAllNetClasses().values():
+        nc.SetClearance(pcbnew.FromMM(0.127))
+        nc.SetTrackWidth(pcbnew.FromMM(0.25))
+
+
+_LAYERS = {"F.Cu": pcbnew.F_Cu, "B.Cu": pcbnew.B_Cu,
+           "In1.Cu": pcbnew.In1_Cu, "In2.Cu": pcbnew.In2_Cu}
 
 
 def _add_track(board, net, layer, width, pts):
@@ -216,6 +237,7 @@ def build(stem):
         raise SystemExit("no placement given for: %s" % ", ".join(sorted(missing)))
 
     board = pcbnew.CreateEmptyBoard()
+    _rules(board, notes)
     for ref, (fp_spec, value) in sorted(comps.items()):
         fp = _load_footprint(fp_spec)
         board.Add(fp)
@@ -230,6 +252,14 @@ def build(stem):
         # a pad or a neighbour's silk. Reference designators stay -- they are
         # what you read when probing the thing.
         fp.Value().SetVisible(False)
+        if notes.get("refs_on_fab"):
+            # DENSE BOARD: 29 designators will not fit on the silkscreen of a
+            # 28 x 25 without landing on pads or each other, and JLCPCB places
+            # from the CPL file, not from silk. Put them on F.Fab, which is the
+            # assembly drawing, and leave the silkscreen clean. Boards with room
+            # (the tee, the adapter) keep theirs on silk where a person can read
+            # them while probing.
+            fp.Reference().SetLayer(pcbnew.F_Fab)
         ref_pos = notes.get("ref_pos", {}).get(ref)
         if ref_pos:
             _place_ref(fp, _to_board(*ref_pos))
