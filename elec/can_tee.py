@@ -26,6 +26,13 @@ SMT (a top-entry plug would insert from inside its housing, and THT posts would
 sweep the magnet cap) and LCSC stocks no side-entry SMT 8-way XH, so bus B is PH.
 The two buses never share a cable, so nothing has to mate across the difference.
 
+SIDE ENTRY, not top (branner, 2026-09-14). A mated top-entry plug stands 9.8 mm,
+and string 10's tee then fouled the magnetic pickup by 1.38 mm -- that one motor
+would have kept its 45 deg screw while the other nine got board retention. Side
+entry stands 7.0 and clears, so the bank has no exception. S8B-XH-A is LCSC
+C157914, $0.0705 with 66,430 in stock -- cheaper than the top-entry part it
+replaces. It is still THROUGH-HOLE, so the tails and their constraint survive.
+
 THE BOARD IS ALSO A MOTOR RETENTION PIECE (branner). It seats with its underside
 0.8 mm over the motor's top face and its +Y edge flush with the faceplate wall,
 so 6.4 mm of board lands on the wall and 9.6 mm laps the motor -- that lap IS the
@@ -33,7 +40,10 @@ retention, and the hold screw does both jobs at once. THE CONSTRAINT THAT FALLS
 OUT: the through-hole tails hang 3.4 mm below the board, so THE WHOLE TAIL BAND
 MUST STAY WITHIN 6.4 mm OF THE +Y EDGE, over the wall. Anything further -Y hangs
 over the motor, where a live tail is the first thing the motor touches on the way
-out. Both pin rows are therefore collinear on ONE line near that edge.
+out. Both pin rows are therefore collinear on ONE line near that edge. The pad row
+sits ASYMMETRICALLY in the side-entry courtyard -- 2.85 to the back, 9.74 to the
+mouth -- so y +2.0 keeps the tails 6.0 from the +Y edge while the body still fits
+the 16, mouth facing -Y and the plug running out over the motor into free air.
 
 Nine of the ten motors take one. String 10's would foul the magnetic pickup in
 its neck-most position, so that one stays on the rail with its 45 deg screw --
@@ -87,13 +97,13 @@ def can_tee():
         n.drive = Pin.drives.POWER
 
     j1 = Part(name="B8B-XH-A", ref_prefix="J", tag="J1", dest="NETLIST", tool="skidl",
-              value="B8B-XH-A", description="CAN trunk: in on 1-4, out on 5-8",
-              footprint="Connector_JST:JST_XH_B8B-XH-A_1x08_P2.50mm_Vertical",
+              value="S8B-XH-A", description="CAN trunk: in 1-4, out 5-8 (LCSC C157914)",
+              footprint="Connector_JST:JST_XH_S8B-XH-A_1x08_P2.50mm_Horizontal",
               pins=[Pin(num=i + 1, name=n, func=Pin.types.PASSIVE) for i, n in enumerate(
                   tuple(x + "_IN" for x in XH_PINOUT) + tuple(x + "_OUT" for x in XH_PINOUT))])
     j2 = Part(name="B4B-XH-A", ref_prefix="J", tag="J2", dest="NETLIST", tool="skidl",
-              value="B4B-XH-A", description="drop to this node's motor",
-              footprint="Connector_JST:JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical",
+              value="S4B-XH-A", description="drop to this node's motor",
+              footprint="Connector_JST:JST_XH_S4B-XH-A_1x04_P2.50mm_Horizontal",
               pins=[Pin(num=i + 1, name=n, func=Pin.types.PASSIVE)
                     for i, n in enumerate(XH_PINOUT)])
     gnd += j1[1], j1[5], j2[1]
@@ -126,7 +136,7 @@ def can_tee():
 BOARD_W, BOARD_L = 40.0, 16.0
 # Pin rows COLLINEAR at this Y, which is what keeps the through-hole tails in a
 # narrow band 4.0 mm from the +Y edge -- over the faceplate wall, not the motor.
-ROW_Y = 4.0
+ROW_Y = 2.0
 
 BOARD_NOTES = {
     "outline_mm": (BOARD_W, BOARD_L),
@@ -135,11 +145,13 @@ BOARD_NOTES = {
     "placements": {
         "J1": (-7.0, ROW_Y, 0.0),      # trunk, 8-way
         "J2": (11.7, ROW_Y, 0.0),      # motor drop, 4-way
-        "R1": (-6.0, -4.5, 0.0),
-        "JP1": (-2.0, -4.5, 0.0),
+        # both connector courtyards now cover y -7.74..+4.85 of a 16 mm board,
+        # so the terminator pair lives in the strip above them
+        "R1": (-6.0, 6.2, 0.0),
+        "JP1": (-1.0, 6.4, 0.0),
     },
-    "ref_pos": {"J1": (-7.0, -1.2), "J2": (11.7, -1.2),
-                "R1": (-6.0, -6.8), "JP1": (-2.0, -6.8)},
+    "ref_pos": {"J1": (-14.0, 6.4), "J2": (15.5, 6.4),
+                "R1": (-9.5, 6.2), "JP1": (2.5, 6.4)},
     # AUTOROUTED. Four nets across twelve pads on one line cannot run without
     # crossings, so the hand-laid tracks the three-connector version used do not
     # survive the reshape. GND is the B.Cu pour; route.py refills it after the
