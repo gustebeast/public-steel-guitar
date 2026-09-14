@@ -32,19 +32,14 @@ import cadquery as cq
 
 from . import dimensions as D
 # Everything chassis reaches BACK for lives above the chassis import -- see the note
-# below. AFE board footprint (the analog front end on the bridge rib):
-# DERIVED from the bridge axle, not hardcoded. The endplate's inboard wall follows
+# below. (The AFE board's footprint used to live here; it is deleted.)
+# The jack row below is DERIVED from the bridge axle, not hardcoded. The endplate's inboard wall follows
 # BRIDGE_AXLE_X (= BRIDGE_X - OD/2, because the string rides the OD and has to leave
 # at x = 0), so when the bearing grew Ø8 -> Ø13 the axle stepped 2.5 -X and the wall
 # came with it — straight through this board's +X edge, which sat at a constant.
-AFE_X1 = D.BRIDGE_AXLE_X + 2.0         # tuck 2.0 clear of the axle line
-AFE_X0 = AFE_X1 - 20.0                 # 20 long
-AFE_Y0, AFE_Y1 = -108.0, -78.0         # inboard of the pickup groove + leg barrel
-AFE_Z = -74 * D.BEAD                   # -59.2 board bottom (on the bridge-rib boss)
-AFE_PED_TOP = AFE_Z - 3 * D.BEAD       # -61.6 boss top (2.4 of printed post to the board)
-
 # NOTE: this block sits ABOVE the chassis import ON PURPOSE. chassis builds at
-# import time and reaches BACK here for the AFE_* constants to cut its matching
+# import time and used to reach BACK here for the AFE_* constants to cut its
+# matching boss; the AFE is gone but the ordering still matters for the rest.
 # boss (it once also read the tray tab/channel constants, now gone). With the constants below the import, that reach-back hit a
 # half-initialised module and `import src.electronics` failed outright with a
 # circular-import ImportError -- only working at all because everything else
@@ -126,7 +121,7 @@ assert _STACK <= D.ELEC_STACK_D + 1e-6, (
 # The real connectors are deep (TS ~22 mm, DC ~15.5 mm). Behind the endplate
 # the corner is open in X for ~100 mm (out to motor 0 at x -89) EXCEPT the low
 # bridge cross-rib (tops at z -65). So the jacks ride HIGH (z -41), clear above
-# the rib and above the bottom-mounted AFE board - their bodies then reach
+# the rib (and above where the AFE board used to sit) - their bodies then reach
 # freely into the open bay.
 # The +X face is now the centred 25 mm bridge's tip (BRIDGE_AXLE_X + 25/2 = 8.5), NOT
 # X_BRIDGE+WALL -- the block is centred on the axle, not pinned to the rail end. Keep a
@@ -180,20 +175,6 @@ def joystick() -> cq.Workplane:
 # a local low-noise LDO fed from the nearby 24 V inlet. Clustering all the
 # noise-sensitive analog here (away from the motor drivers) is the whole point;
 # only buffered/line-level/logic runs make the long trip to the keyhead bay.
-
-
-def analog_frontend() -> cq.Workplane:
-    """Bridge-end analog board dummy: relay (chunkiest), buffer/LDO/driver
-    bumps. Mounted on the chassis -Y-corner pedestal."""
-    bz = AFE_Z
-    b = box_at(AFE_X1 - AFE_X0, AFE_Y1 - AFE_Y0, BD_T,
-               x=(AFE_X0 + AFE_X1) / 2, y=(AFE_Y0 + AFE_Y1) / 2, z=bz + BD_T / 2)
-    # relay (chunkiest, toward the east edge near the jacks)
-    b = b.union(box_at(10.0, 7.5, 6.0, x=AFE_X1 - 7, y=AFE_Y1 - 8, z=bz + BD_T + 3.0))
-    for px, py in ((AFE_X0 + 6, AFE_Y0 + 6), (AFE_X0 + 6, AFE_Y1 - 6),
-                   (AFE_X1 - 6, AFE_Y0 + 6)):
-        b = b.union(box_at(4.0, 4.0, 2.5, x=px, y=py, z=bz + BD_T + 1.25))
-    return b
 
 
 def _support_posts(fp, bz):

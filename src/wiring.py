@@ -33,7 +33,6 @@ HUE = gauge bucket, SHADE = the specific wire within the bucket:
   The gauge/shade rule still governs the NON-CAN nets:
   BLUE = power pair       (superseded for the CAN power rails above)
   GREEN = 28 AWG SHIELDED (light -> dark)
-                          wire_pickup: pickup -> AFE (raw, short)
                           wire_audio:  AFE buffer -> Teensy ADC
                           wire_dac:    Teensy DAC -> AFE relay NO
                           wire_out:    AFE relay common -> TS jack
@@ -319,37 +318,13 @@ def build_wires():
     """Returns [(name, workplane)] for every net."""
     out = []
     shield_top = EL.BOARD_Z + 1.0 + 11.0 + EL.BD_T      # Teensy shield top
-    # AFE connection pads dip INTO the board top (z -57) to show the join;
-    # routing then rises to z -52 (clear of the components). Spread across the
-    # board, x -22..-2, y -108..-78.
-    PZ = EL.AFE_Z + 0.8
-    afe_buf_in   = (EL.AFE_X0 + 3, -80.0, PZ)    # pickup in    (west, +Y)
-    afe_buf_out  = (EL.AFE_X0 + 3, -92.0, PZ)    # buffer out   (west, mid)
-    afe_relay_no = (EL.AFE_X0 + 3, -100.0, PZ)   # DAC in       (west, -Y)
-    afe_coil     = (EL.AFE_X0 + 3, -106.0, PZ)   # relay driver (west, -Y)
-    afe_relay_c  = (EL.AFE_X1 - 3, -82.0, PZ)    # relay common (east, +Y -> TS)
-    afe_pwr      = (EL.AFE_X1 - 3, -104.0, PZ)   # 24 V LDO     (east, -Y -> 24V)
-    # the AFE's 24 V is the SAME net as the motor bus (a splice at the inlet),
-    # so it is a branch of wire_power, not its own color
-
-    # -- pickup -> AFE buffer (white, short; passes its own pickup mount). Drops
-    # below the -Y height-jack tab (z -9.78..-12.6) while still INBOARD (y>-49)
-    # before spreading toward -Y, so it clears the jack + its pad.
-    out.append(("wire_pickup", _wire([
-        (-50.0, -45.0, -5.0), (-47.0, -49.0, -14.0),
-        (-40.0, -76.0, -40.0), (-24.0, -80.0, -50.0), afe_buf_in],
-        WIRE_OD["wire_pickup"])))
-
-    # -- AFE relay common -> TS jack (l.gray, short, over the boss top; ends
-    #    off-axis in the jack's body wall, clear of the new socket bore).
-    #    Sag waypoints stay INBOARD of the end-wall inner face (x <= -3, in
-    #    the foot hollow): the panel-jack recess floor rose to -51 (EP-TENON
-    #    round), so the old x-0 dip would cross solid wall below it.
-    out.append(("wire_out", _wire([
-        afe_relay_c, (-3.0, -78.0, -52.0), (-4.5, -72.0, -54.0),
-        (-5.0, EL.TS_Y, EL.JACK_Z + 4.5)],
-        WIRE_OD["wire_out"])))     # jack moved -X with the centred tip
-
+    # THE AFE'S WIRES ARE GONE WITH THE AFE (2026-09-14). wire_pickup, wire_out,
+    # wire_audio, wire_dac and wire_relayctrl all began or ended on that board;
+    # the bypass relay and the magnetic buffer now live on the optical pickup
+    # board, which is 10 mm from the jack and the audio connector they feed.
+    # wire_pickup RETURNS when that board is designed -- the magnetic pickup
+    # still has to reach it -- but as ~230 mm of shielded coax to the optical
+    # board's own terminal, not 110 mm to a board at the wrong end of the run.
     # Keyhead routing (STANDING TRAY, user 2026-09-11): the boards stand against the keyhead
     # endplate and string 1's motor sits 1.6 mm off the Pi, so nothing inside that motor's
     # Y/Z band can be reached from +X. Every bay wire therefore uses ONE column, BAY_X, just
@@ -373,10 +348,6 @@ def build_wires():
         return _wire([pad, (px, py, -52.0), (px, RAIL_Y, -52.0)]
                      + _rail_pts(px, BAY_X, lane_z)
                      + [(BAY_X, RAIL_Y, e[2]), (BAY_X, e[1], e[2]), e], d)
-
-    out.append(("wire_audio", _long(afe_buf_out, LANE_AUDIO, -600.0, -62.0, WIRE_OD["wire_audio"])))
-    out.append(("wire_dac", _long(afe_relay_no, LANE_DAC, -600.0, -80.0, WIRE_OD["wire_dac"])))
-    out.append(("wire_relayctrl", _long(afe_coil, LANE_CTRL, -600.0, -98.0, WIRE_OD["wire_relayctrl"])))
 
     # ── the two CAN buses: TRUNK-AND-DROP over the rail tee PCBs ────────
     tees = tee_stations()
@@ -428,8 +399,9 @@ def build_wires():
     tail = ([(hdrA[west[0]][0], hdrA[west[0]][1], HDR_Z)]
             + _rail_pts(hdrA[west[0]][0], BAY_X, LANE_PWR)
             + [(BAY_X, _buck[1], LANE_PWR), (BAY_X, _buck[1], _buck[2]), _buck])   # in to the buck
-    afe_drop = [(x10, TEE_Y + 4.5, HDR_Z), (x10, -104.0, -54.0),
-                (-8.0, -104.0, -54.0), afe_pwr]
+    # (tee 10's drop fed the AFE's 24 V LDO. The tee survives -- the optical
+    #  pickup board takes 24 V off it instead -- but its drop has no modelled
+    #  endpoint until that board exists.)
     for _nm, _do in (("wire_pwr_hot", -PWR_OFF), ("wire_pwr_gnd", PWR_OFF)):
         def _off(pts):
             return [(px + _do, py + _do, pz) for px, py, pz in pts]
@@ -439,7 +411,6 @@ def build_wires():
             out.append((f"{_nm}_{k + 2}",
                         _seg(hdrA[west[k + 1]], hdrA[west[k]], LANE_PWR, WIRE_OD[_nm], off=_do)))
         out.append((f"{_nm}_11", _wire(_off(tail), WIRE_OD[_nm])))
-        out.append((f"{_nm}_12", _wire(_off(afe_drop), WIRE_OD[_nm])))
 
     # ── bus B (inputs): ifc -> LKL tee -> leg-socket landing tee ────────
     x11, y11 = hdrA[11]
@@ -507,12 +478,6 @@ def build_wires():
 # what each net is ALLOWED to touch (its source/destination bodies);
 # everything else a wire grazes is a routing bug the gate reports
 WIRE_OK = {
-    "wire_pickup":    {"pickup", "analog_frontend", "top_plate",
-                       "pickup_zplate"},
-    "wire_out":       {"analog_frontend", "ts_jack"},
-    "wire_audio":     {"analog_frontend", "teensy_stack"},
-    "wire_dac":       {"analog_frontend", "teensy_stack"},
-    "wire_relayctrl": {"analog_frontend", "teensy_stack"},
     "wire_canh":      {"teensy_ifc", "tee_pcb"},
     "wire_canl":      {"teensy_ifc", "tee_pcb"},
     "wire_canbh":     {"teensy_ifc", "tee_pcb"},
@@ -536,8 +501,8 @@ WIRE_OK = {
     "shaft_trrs_cable": {"leg_shaft", "leg_sleeve", "leg_seg_body",
                          "shaft_trrs_jack", "leg_cable_coil",
                          "leg_junction_pcb", "leg_head"},
-    "wire_pwr_hot":   {"dc_jack", "buck", "tee_pcb", "analog_frontend"},
-    "wire_pwr_gnd":   {"dc_jack", "buck", "tee_pcb", "analog_frontend"},
+    "wire_pwr_hot":   {"dc_jack", "buck", "tee_pcb"},
+    "wire_pwr_gnd":   {"dc_jack", "buck", "tee_pcb"},
     "wire_usb":       {"usbc_jack", "pi5"},
     "wire_link":      {"teensy_stack", "pi5"},
     "wire_canjmph":   {"teensy_stack", "teensy_ifc"},
