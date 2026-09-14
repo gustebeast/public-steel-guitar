@@ -684,7 +684,12 @@ NEMA17_PILOT_D  = 22.0
 # motors no longer slide in X and need no slot travel between them -- just a two-bead gap.
 # The chassis rib comb is this pitch halved, so the ribs close up with it (user: more
 # stations to choose lever positions from).
-MOTOR_GAP       = MIN_WALL_2P                       # 1.6 between neighbouring motor bodies
+MOTOR_CLR       = 0.4       # slip fit round a PURCHASED motor body (42.3 nominal, +-0.2)
+# The gap has to hold a WALL, not just air (user, 2026-09-14): at a bare 1.6 the only thing that
+# fits between two motors is a one-bead fin, and the tee seat's -X locating wall got sliced to
+# 0.35 by the motor's own lift path. 1.6 of wall with a fit either side is 2.4, which costs the
+# bank 7.2 of length -- string 10's belt run still clears the clamp's travel by 5.5 (asserted).
+MOTOR_GAP       = MIN_WALL_2P + 2 * MOTOR_CLR       # 2.4 between neighbouring motor bodies
 MOTOR_X_STEP    = MOTOR_SQ + MOTOR_GAP              # 43.9 along-X step between motors
 # BANK ANCHOR (user, 2026-09-11): the -X end of the bank is pinned to the electronics, which
 # stand against the keyhead endplate, and the bank is packed toward them -- so the SHORTEST
