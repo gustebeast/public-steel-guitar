@@ -186,6 +186,49 @@ def spacer(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):
         WINDOW_D / 2.0, SPACER_L + 2.0, cq.Vector(x, y, bot - 1.0), cq.Vector(0, 0, 1))))
 
 
+def _run(pts, d=CABLE_D):
+    """A cable through `pts`: cylinders with balls at the corners."""
+    out = None
+    for a, b in zip(pts, pts[1:]):
+        v = cq.Vector(*b) - cq.Vector(*a)
+        seg = cq.Solid.makeCylinder(d / 2.0, v.Length, cq.Vector(*a), v.normalized())
+        out = seg if out is None else out.fuse(seg)
+    for q in pts[1:-1]:
+        out = out.fuse(cq.Solid.makeSphere(d / 2.0, cq.Vector(*q)))
+    return cq.Workplane("XY").add(out)
+
+
+def cables(sx: float = LS.LEG_X, ly: float = LS.LEG_Y, k: int = 0):
+    """THE RUN, drawn -- because a window in a face with nothing coming out of it
+    reads as a mystery hole (user saw exactly that).
+
+    The patch lead leaves the plug's back, turns out through the window in the
+    adapter's +Y face, and climbs the OUTSIDE of that face to the socket in the
+    chassis rail: ~64 of rise and 12 across, the whole of the leg's signal that is
+    ever visible. Everything else is inside a part. Below the joint, the leg column's
+    own lead drops away from the jack through the middle of its spacer."""
+    x, y = _ax(sx, ly)
+    z0 = LS.Z_BUTT
+    wz = z0 + PLUG_SET + PLUG_L + SPR_REST_L / 2.0      # the window's height
+    face = ly + LS.LEG_W / 2.0
+    from . import wiring as WR                          # late: wiring reads chassis
+    sock_x, mouth_z = WR.TRRS_X, WR.trrs_mouth_z()
+    plug_end = WR.TRRS_RAIL_OUT + 16.7                  # where the socket's plug ends
+    patch = _run([(x, y, z0 + PLUG_SET + FLOAT + PLUG_L),       # the plug's back
+                  (x, y, wz),                                   # up its own bore
+                  (x, face + 2.0, wz),                          # out through the window
+                  (x, face + 2.6, wz + 24.0),                   # ...and up the face
+                  (sock_x, face + 3.4, mouth_z - 16.0),         # across toward the socket
+                  (sock_x, plug_end + 3.0, mouth_z - 5.0),      # round the plug's tail
+                  (sock_x, plug_end + CABLE_D / 2.0, mouth_z)])  # up to it. It STOPS
+                                    # there: the socket's plug is the same lead's far
+                                    # end, already drawn at the station, and running
+                                    # the two into each other only trips the gate
+    leg = _run([(x, y, z0 + JACK_PROUD - JACK_L),
+                (x, y, z0 + JACK_PROUD - JACK_L - SPACER_L - 16.0)])
+    return [("leg_trrs_patch_%d" % k, patch), ("leg_trrs_leg_lead_%d" % k, leg)]
+
+
 def dummies(sx: float = LS.LEG_X, ly: float = LS.LEG_Y, k: int = 0, mated: bool = True):
     """The bought parts where they sit. `mated` is the latched state: the plug pushed
     back FLOAT off its step, its coil that much shorter."""
@@ -207,4 +250,4 @@ def dummies(sx: float = LS.LEG_X, ly: float = LS.LEG_Y, k: int = 0, mated: bool 
         JACK_D / 2.0, JACK_L, cq.Vector(x, y, mouth - JACK_L), cq.Vector(0, 0, 1)))
     return [("leg_trrs_plug_%d" % k, plug), ("leg_trrs_jack_%d" % k, jack),
             ("leg_trrs_spring_%d" % k, coil), ("leg_trrs_spacer_%d" % k, spacer(sx, ly)),
-            ("leg_trrs_cap_%d" % k, cap(sx, ly))]
+            ("leg_trrs_cap_%d" % k, cap(sx, ly))] + cables(sx, ly, k)
