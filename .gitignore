@@ -14,3 +14,4 @@ docs/rig.json
 fast_build_map.json
 .scratch_cache/
 scratch.step
+elec/out/
