@@ -39,12 +39,19 @@ _BOLT_EDGE   = 7 * D.BEAD                   # 5.6 material around the NEMA17 bol
 WALL_W = D.NEMA17_BOLT_SQ + 2 * _BOLT_EDGE  # 42.2: 0.9 to the chassis split planes,
                                             # 1.75 to the neighbouring motor body
 
+BOARD_AIR  = D.MIN_WALL          # 0.8: the tee board's underside over the motor's top face --
+                                 # the lap that retains it, and the motor's lift before it bites
+SEAT_HALF_W = 21.9               # the faceplate wall's -X reach: the tee's -X locating wall needs
+                                 # board/2 + wall + fit outside the board, and the neighbour's body
+                                 # is at 22.75 (wiring asserts the board still fits this)
 MOTOR_CLR  = 0.4                 # slip fit round a PURCHASED body (42.3 nominal, +-0.2)
 BOSS_CLR   = 0.4                 # round the O22 pilot boss in its drop-in slot
 POST_T     = 12 * D.BEAD         # 9.6 side post (X). Capped by the NEIGHBOUR's boss slot,
                                  # which the post has to keep a wall off -- asserted below
-POST_RISE  = 10 * D.BEAD         # 8.0: how far the screw post stands over the motor top
 NEIGH_CLR  = D.MIN_WALL          # 0.8 air to the diagonal neighbour's body, at the band end
+WIRE_LANE_W = 6.0                # a back stop leaves this much clear on the motor's centreline
+                                 # for its CAN pigtail to climb
+FIN_H      = 16 * D.BEAD         # 12.8: the one-bead -X fin's height (short, and wall-braced)
 BUMP_T     = 4 * D.BEAD          # 3.2 back bumper: nothing pushes the motor -Y, so it is a
 BUMP_H     = 16 * D.BEAD         # 12.8 tall stop, not a wall -- the CAN pigtail leaves over it
 STAGGER    = abs(D.string_y(0) - D.string_y(1))    # 9.5, one string pitch: the band's depth
@@ -58,24 +65,30 @@ STAGGER    = abs(D.string_y(0) - D.string_y(1))    # 9.5, one string pitch: the 
 HARNESS_Y1 = -108.75              # +Y edge of the corridor: the tee boards' own +Y edge
 HARNESS_Z1 = -40.0                # ...and its top: just over the highest trunk lane
 
-# THE RETAINING SCREW (user, 2026-09-11): one M4 button at 45 deg in the X-Z plane. Its head
-# lands on the +X post's chamfered top -- reachable straight down at 45 deg on every string,
-# which neither a +Y-facing head (string 1 is jammed against the +Y rail) nor a -Y one
-# (strings 9-10 sit on the rail) manages -- and its shank crosses the motor's top +X corner,
-# so the motor cannot rise. SELF-TAPPING, not an insert: a 45 deg insert pocket spans 8.5 in
-# X and the post cannot be that thick, while the 4.2 self-tap leaves 1.8 of wall either side.
-# It carries almost nothing: the belt pulls the motor into this same post, and gravity holds
-# it down; the screw only has to stop it lifting out.
+# THE RETAINING SCREW (user, 2026-09-11), now on ONE motor only. Nine of the ten are held by
+# their own CAN tee: the board rests on the faceplate wall, laps the motor, and the single M4
+# that holds the board down stops the motor lifting (user, 2026-09-14 -- wiring.on_motor).
+# STRING 10 keeps a screw, because its tee stays on the rail (its board would foul the magnetic
+# pickup's neck-most position). One M4 button at 45 deg in the X-Z plane: head on the +X post's
+# chamfered top, reachable straight down at 45 deg; shank crossing the motor's top +X corner.
+# It is the LAST motor, so nothing caps its post's thickness and it takes a proper cadkit
+# ScrewJoint with a fitted insert (user) -- the thin-wall self-tap the others would have needed
+# is gone with them.
 # The axis is AIMED at the motor's top face, SCREW_CROSS inboard of the +X corner, and the
 # screw stops short of it: the shank passes about a millimetre over the top face, so the motor
 # is free at rest and jams into the shank the moment it rises. (Aimed AT the corner instead,
 # a screw long enough to bite would have driven its tip into the motor body -- everything
 # past that corner IS the motor.)
+SCREWED      = (D.N_STRINGS - 1,)           # the motors NOT held by a tee board (string 10)
 SCREW_CROSS  = 2.5                          # where the axis meets the top face, off the corner
 SCREW_RECESS = 3 * D.BEAD                   # 2.4 head recess in the chamfer
-SCREW_L      = 6.0                          # M4x6 button
-SCREW_FACE   = 12 * D.BEAD                  # 9.6: the chamfer face, out along the diagonal --
-                                            # what buys the self-tap its bite in the post
+SCREW_L      = 10.0                         # M4x10 button
+SCREW_FACE   = 21 * D.BEAD                  # 16.8: the chamfer face, out along the diagonal --
+                                            # far enough that the insert pocket AND the screw's
+                                            # bite both sit in the post before the motor's corner
+POST_T_END   = 16 * D.BEAD                  # 12.8: the screwed motor's post, thick enough to
+                                            # wrap a 45 deg insert pocket (8.49 across in X)
+POST_RISE_END = 16 * D.BEAD                 # 12.8: ...and tall enough to carry its chamfer
 
 # Per-motor faceplate wall CENTRE Y. The motor faceplate (component) is at
 # string_y(i) − STANDOFF; the wall's −Y face must sit there so the faceplate
@@ -88,7 +101,25 @@ FLOOR_TOP = _zc - D.MOTOR_SQ / 2            # motors rest here (= wall bottom / 
 BED_Z = FLOOR_TOP - D.XBAR                  # print bed = chassis rib/rail bottom; the
                                             # FLOOR_TOP->bed gap = rib height = XBAR, so the
                                             # cross-ribs are a square XBAR x XBAR section
-Z_HI = _zc + D.NEMA17_BOLT_SQ / 2 + _BOLT_EDGE     # wall top, just above the top bolts
+Z_HI = _zc + D.MOTOR_SQ / 2 + BOARD_AIR            # wall top = the TEE SEAT PLANE: the board rests
+                                                   # here and laps the motor by BOARD_AIR of air
+
+
+def tee_seat(i):
+    """Where motor i's CAN tee sits: (x centre, the +Y face its board's +Y edge lines up with,
+    seat plane z). The board rests on the faceplate wall's top and laps the motor -- so the ONE
+    screw that holds the board down also stops the motor lifting out (user, 2026-09-14). wiring
+    builds the cradle there and cuts it with lift_prism, since nothing FIXED may overhang a
+    motor or it can never come out."""
+    mx, my, _ = D.motor_pos(i)
+    return mx, _face_y(i) + PLATE_T / 2, Z_HI
+
+
+def lift_prism(i):
+    """Motor i's way out: its footprint swept +Z. Cut it from anything built over a motor."""
+    bx0, bx1, by0, by1, _, bz1 = body_box(i)
+    return box_at(bx1 - bx0 + 2 * MOTOR_CLR, by1 - by0 + 2 * MOTOR_CLR, 400.0,
+                  x=(bx0 + bx1) / 2, y=(by0 + by1) / 2, z=bz1 + 200.0)
 
 
 def body_box(i):
@@ -119,26 +150,29 @@ def screw_axis(i):
     return entry, (-n[0], 0.0, -n[2])
 
 
+def screw_joint(i):
+    """The retaining screw as ONE cadkit ScrewJoint -- head recess, clearance and the heat-set
+    insert's pocket, all from a single definition (user: use the insert system, not a bare
+    self-tap). Only the SCREWED motors have one."""
+    from cadkit.fasteners import ScrewJoint
+    entry, d = screw_axis(i)
+    reach = SCREW_FACE - SCREW_CROSS * math.sqrt(2.0)      # plastic before the motor's corner
+    return ScrewJoint(_M4, entry, d, SCREW_L,
+                      insert_at=SCREW_RECESS + D.MIN_WALL,
+                      end_at=reach, head_d=M4_BUTTON_HEAD_D, head_h=M4_BUTTON_HEAD_H,
+                      recess=SCREW_RECESS)
+
+
 def screw_cutter(i) -> cq.Workplane:
-    """The screw's hole. CUT AFTER THE CHASSIS UNIONS THE POCKET (chassis does it): the
-    neighbour's faceplate wall fuses into this post's band, and a hole cut here first would
-    be silently refilled by it -- the same trap the endplates' cut order documents."""
-    entry, d = screw_axis(i)
-    cut = selftap_cutter(_M4, entry, d, SCREW_RECESS + SCREW_L + 1.0,
-                         overshoot=1.0, print_up=(0.0, 0.0, 1.0))
-    head = cq.Solid.makeCylinder((M4_BUTTON_HEAD_D + 0.8) / 2, SCREW_RECESS + 1.0,
-                                 cq.Vector(entry[0] - d[0], entry[1], entry[2] - d[2]),
-                                 cq.Vector(*d))
-    return cut.union(cq.Workplane(obj=head))
+    """The screw's hole. CUT AFTER THE CHASSIS UNIONS THE POCKET (chassis does it): a hole cut
+    here would be silently refilled by whatever fuses into this band -- the same trap the
+    endplates' cut order documents."""
+    return screw_joint(i).cutter((0.0, 0.0, 1.0))
 
 
-def screw_dummy(i) -> cq.Workplane:
-    """The screw itself, seated -- head bottom on the chamfer's recess floor."""
-    from cadkit.fasteners import m4_button_screw
-    entry, d = screw_axis(i)
-    off = SCREW_RECESS - M4_BUTTON_HEAD_H              # the head sits just under the face
-    s = m4_button_screw(SCREW_L).rotate((0, 0, 0), (0, 1, 0), 45.0)   # shank -Z -> along d
-    return s.translate((entry[0] + d[0] * off, entry[1], entry[2] + d[2] * off))
+def screw_dummies(i):
+    """[(name, solid)] -- the screw and its insert, from the same joint the hole is cut from."""
+    return screw_joint(i).dummies(f"motor_screw_{i}", f"motor_insert_{i}")
 
 
 def _wall(i) -> cq.Workplane:
@@ -151,7 +185,7 @@ def _wall(i) -> cq.Workplane:
     # has to stand off the motor by MOTOR_CLR, and a post the wall does not touch is a post
     # nothing braces. Its own Y band is clear of every neighbour, so the reach is free.
     _x1 = mx + D.MOTOR_SQ / 2 + MOTOR_CLR + POST_T
-    _x0 = mx - WALL_W / 2
+    _x0 = mx - SEAT_HALF_W
     wall = box_at(_x1 - _x0, PLATE_T, Z_HI - BED_Z,
                   x=(_x0 + _x1) / 2, y=fy, z=(Z_HI + BED_Z) / 2)
     wall = wall.edges("|Y and <Z").chamfer(14.0)   # big 45° buttress → bed (gusset)
@@ -179,19 +213,35 @@ def pocket(i) -> cq.Workplane:
     # Tall enough to host the screw, and fused to the wall, which braces it.
     px0 = bx1 + MOTOR_CLR
     _pl = (STAGGER - NEIGH_CLR) + PLATE_T          # ...and on into the wall, which braces it
-    body = body.union(box_at(POST_T, _pl, (bz1 + POST_RISE) - bz0,
-                             x=px0 + POST_T / 2,
+    _pt = POST_T_END if i in SCREWED else POST_T
+    _pr = POST_RISE_END if i in SCREWED else Z_HI - bz1     # unscrewed: level with the tee seat
+    body = body.union(box_at(_pt, _pl, (bz1 + _pr) - bz0,
+                             x=px0 + _pt / 2,
                              y=by1 + PLATE_T - _pl / 2,
-                             z=(bz0 + bz1 + POST_RISE) / 2))
-    # its top-outboard corner cut back to a 45 deg face, square to the screw
-    entry, d = screw_axis(i)
-    body = body.cut(cq.Workplane("XY").box(200.0, 200.0, 200.0)
-                    .rotate((0, 0, 0), (0, 1, 0), -45.0)
-                    .translate((entry[0] - d[0] * 100.0, entry[1], entry[2] - d[2] * 100.0)))
+                             z=(bz0 + bz1 + _pr) / 2))
+    if i in SCREWED:
+        # its top-outboard corner cut back to a 45 deg face, square to the screw
+        entry, d = screw_axis(i)
+        body = body.cut(cq.Workplane("XY").box(200.0, 200.0, 200.0)
+                        .rotate((0, 0, 0), (0, 1, 0), -45.0)
+                        .translate((entry[0] - d[0] * 100.0, entry[1], entry[2] - d[2] * 100.0)))
     # -X post: the mirror band, at the BACK (the -X neighbour ends STAGGER short of it),
     # running -Y into the bumper so the housing prints as one piece -- but never past
     # HARNESS_Y1. On the -Y-most strings that clips it to nothing and it is dropped: the boss
     # in its slot already fixes X, and the belt pulls the motor onto the +X post, not this one.
+    # ...and where the corridor took that post away (strings 9-10), a one-bead FIN on the -X
+    # side of the FRONT band instead, opposite the +X post. The boss in the wall's slot already
+    # holds the motor's front to +-0.4 either way, but with no -X post its BACK can yaw about
+    # that boss until it touches the neighbour (1.6 over 70, ~1.3 deg). The front band is the
+    # only -X room left: the neighbour's body is there, so 0.8 is what fits between two 0.4
+    # fits -- but it fuses to the faceplate wall along its front edge, so it is braced, not a
+    # free-standing fin.
+    if _post_y(i) is None:
+        _fl = STAGGER - NEIGH_CLR
+        body = body.union(box_at(D.MIN_WALL, _fl, FIN_H,
+                                 x=bx0 - MOTOR_CLR - D.MIN_WALL / 2,
+                                 y=by1 - _fl / 2,
+                                 z=bz0 + FIN_H / 2))
     _band = _post_y(i)
     if _band is not None:
         body = body.union(box_at(POST_T, _band[1] - _band[0], bz1 - bz0,
@@ -248,8 +298,13 @@ def back_stop_rail(i, rail_inner_y):
     reach = min(by0 - MOTOR_CLR - rail_inner_y, bz1 - HARNESS_Z1)
     y1 = rail_inner_y + reach
     prof = [(rail_inner_y, HARNESS_Z1), (y1, bz1), (rail_inner_y, bz1)]
-    return (cq.Workplane("YZ").workplane(offset=bx0 - MOTOR_CLR)
+    ramp = (cq.Workplane("YZ").workplane(offset=bx0 - MOTOR_CLR)
             .polyline(prof).close().extrude(bx1 - bx0 + 2 * MOTOR_CLR))
+    # ...with a lane for the motor's own CAN pigtail, which leaves the back face on the
+    # centreline and has to climb PAST this stop to reach its tee
+    lane = D.motor_pos(i)[0]
+    return ramp.cut(box_at(WIRE_LANE_W, (y1 - rail_inner_y) + 2.0, (bz1 - HARNESS_Z1) + 2.0,
+                           x=lane, y=(rail_inner_y + y1) / 2, z=(HARNESS_Z1 + bz1) / 2))
 
 
 def _post_y(i):
@@ -261,25 +316,26 @@ def _post_y(i):
 
 
 plates = [pocket(i) for i in range(D.N_STRINGS)]
-screw_cutters = [screw_cutter(i) for i in range(D.N_STRINGS)]
+screw_cutters = [screw_cutter(i) for i in SCREWED]
 
-# the post stops short of the NEIGHBOUR's boss slot (both sides are the same by symmetry)
+# the post stops short of the NEIGHBOUR's boss slot (both sides are the same by symmetry).
+# The SCREWED motor's fatter post is exempt: it is the last in the bank, with no neighbour.
 _slot_edge = D.MOTOR_X_STEP - (D.NEMA17_PILOT_D + 2 * BOSS_CLR) / 2
 assert (D.MOTOR_SQ / 2 + MOTOR_CLR + POST_T) <= _slot_edge - D.MIN_WALL + 1e-9, (
     "the side post reaches within %.2f of the neighbour's boss slot"
     % (_slot_edge - (D.MOTOR_SQ / 2 + MOTOR_CLR + POST_T)))
-# ...the screw finds enough plastic to bite (the post's material runs from the chamfer in
-# to where the axis leaves its inboard face, over the motor's corner)
-_bite = SCREW_FACE - SCREW_CROSS * math.sqrt(2.0) - SCREW_RECESS
-assert _bite >= _M4.min_bite - 1e-9, (
-    "the retaining screw bites only %.2f of self-tap, under min_bite %.2f"
-    % (_bite, _M4.min_bite))
-# ...its tip stops SHORT of the motor's top face (past it is the motor itself)
-assert SCREW_RECESS + SCREW_L + 0.5 <= SCREW_FACE + 1e-9, (
-    "an M4x%.0f drives %.2f into the motor" % (SCREW_L, SCREW_RECESS + SCREW_L - SCREW_FACE))
+assert all(i == D.N_STRINGS - 1 for i in SCREWED), (
+    "a SCREWED motor that is not the last one has a neighbour its fat post would reach into")
+# ...the ScrewJoint itself checks the bite and that the screw cannot bottom; what it cannot
+# know is that everything past the motor's corner IS the motor, so the tip must stop short
+for _i in SCREWED:
+    screw_joint(_i)                                        # raises if it bottoms or under-bites
+assert SCREW_RECESS + SCREW_L + 0.5 <= SCREW_FACE - SCREW_CROSS * math.sqrt(2.0) + 1e-9, (
+    "an M4x%.0f drives past the motor's top corner" % SCREW_L)
 # ...and the post stands high enough to carry the chamfer the head lands on
-assert POST_RISE >= MOTOR_CLR + SCREW_FACE / math.sqrt(2.0) + D.MIN_WALL - 1e-9, (
-    "the screw's entry is above the post top")
+assert POST_RISE_END >= MOTOR_CLR + SCREW_FACE / math.sqrt(2.0) - 1e-9, (
+    "the screw's entry (%.2f over the motor top) is above the post top (%.2f)"
+    % (MOTOR_CLR + SCREW_FACE / math.sqrt(2.0), POST_RISE_END))
 
 
 def _build() -> cq.Workplane:

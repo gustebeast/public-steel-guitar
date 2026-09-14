@@ -134,9 +134,9 @@ GLOBAL_OK = {
     # the electronics tray's snap nubs/fingers bite their boards by design
     frozenset({"electronics_tray", "pi5"}),
     frozenset({"electronics_tray", "teensy_ifc"}),
-    # a motor's CAN tee mounts right at that motor's -Y PCB (the drop pigtail is short);
-    # the tee-board corner grazing the motor body there is that mount contact
-    frozenset({"tee_pcb", "motor"}),
+    # (tee_pcb <-> motor is GONE, 2026-09-14: it was written for a corner graze and had grown
+    # into 1621 mm3 of board buried in motor 9. The tees now sit ON the motors, lapping them
+    # with 0.8 of air, so a touch there is a bug again and the gate must say so.)
     # legs (FLUSH round): the BODY STUB's octagon wall tenons mortise the
     # rail band (0.1 fit) and its top face butts the body bottom; the
     # leg head enters its socket; the stack below is designed contact
