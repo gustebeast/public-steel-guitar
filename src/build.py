@@ -737,7 +737,6 @@ def _electronics_components():
            ("pi5", EL.pi5()), ("teensy_stack", EL.teensy_stack()),
            ("adc_stack", EL.adc_stack()), ("buck", EL.buck()),
            ("teensy_ifc", EL.teensy_ifc()),
-           ("analog_frontend", EL.analog_frontend()),
            ("ts_jack", EL.ts_jack()), ("dc_jack", EL.dc_jack()),
            ("usbc_jack", EL.usbc_jack()),
            ("oled", EL.oled()), ("joystick", EL.joystick())]
@@ -1020,7 +1019,7 @@ def screw_rows_components():
 BODY_WORK_PARTS = SCREW_ROW_PARTS + (
     "bridge_endplate", "bridge_bearings", "motor", "chassis_",
     "electronics_tray", "pi5", "teensy_", "adc_stack", "buck", "tee_", "wire_",
-    "analog_frontend", "dc_jack", "ts_jack", "usbc_jack", "joystick", "oled",
+    "dc_jack", "ts_jack", "usbc_jack", "joystick", "oled",
     "body_adapter", "lock_pin_", "adjust_", "fixed_", "bar_latch_", "leg_latch_")
 
 
@@ -1243,7 +1242,6 @@ _COLORS = {
     "tee_cradle":      (0.32, 0.55, 0.42),   # PCTG drop-in PCB cradle (pcb_cradle, side hold-down)
     "tee_screw":       (0.72, 0.74, 0.78),   # M4x10 button, BESIDE the tee board
     "tee_insert":      (0.72, 0.60, 0.30),   # M4 heat-set brass, in the cradle boss
-    "analog_frontend": (0.20, 0.45, 0.40),   # bridge-end buffer + relay board
     "optical_pcb":     (0.12, 0.30, 0.55),   # per-string optical strip (blue solder mask,
                                              # so it reads apart from the green audio PCBs)
     "optical_cables":  (0.15, 0.15, 0.17),   # USB-C + XHP-6 plugs and their leads
@@ -1274,11 +1272,9 @@ _COLORS = {
     "motor_pigtail":   (0.45, 0.45, 0.48),   # grey        - SERVO42D's own 6-pin
                                              #   XH pigtail (factory jacket)
     "wire_knee_drop":  (0.45, 0.45, 0.48),   # grey        - LKL drop stub
-    "wire_pickup":     (0.55, 0.85, 0.55),   # lightest green - shielded: pickup -> AFE
-    "wire_audio":      (0.30, 0.72, 0.40),   # light green - shielded: AFE -> ADC
-    "wire_dac":        (0.10, 0.52, 0.28),   # dark green  - shielded: DAC -> AFE
-    "wire_out":        (0.04, 0.34, 0.18),   # darkest green - shielded: relay -> jack
-    "wire_relayctrl":  (0.98, 0.88, 0.35),   # lightest amber - relay control
+    "wire_pickup":     (0.55, 0.85, 0.55),   # lightest green - shielded. DORMANT: the
+                                             #   wire returns when the optical board is
+                                             #   designed and the pickup plugs into it
     "wire_link":       (0.95, 0.72, 0.22),   # light amber - Teensy <-> Pi
     "wire_tdm":        (0.80, 0.46, 0.10),   # deep amber  - CS stack -> Pi
     "wire_oled":       (0.68, 0.36, 0.08),   # brown-amber - OLED -> Teensy
