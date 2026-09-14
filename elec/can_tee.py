@@ -33,6 +33,8 @@ OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "out")
 os.makedirs(OUT_DIR, exist_ok=True)
 os.chdir(OUT_DIR)
 
+import json  # noqa: E402
+
 from skidl import ERC, Net, Part, Pin, generate_netlist, subcircuit  # noqa: E402
 
 from src import electronics as EL  # noqa: E402
@@ -138,11 +140,49 @@ BOARD_NOTES = {
         "J1": (-EL.TEE_CONN_DX, EL.TEE_CONN_CY, 90.0),
         "J2": (0.0, EL.TEE_CONN_CY, 90.0),
         "J3": (+EL.TEE_CONN_DX, EL.TEE_CONN_CY, 90.0),
-        # the terminator pair lives where the 3D model already reserves it:
-        # -X of the connectors, up in the +Y corner clear of the tail relief
-        "R1": (-8.0, 9.0, 0.0),
-        "JP1": (-8.0, 6.0, 0.0),
+        # The terminator pair goes in the strip +Y of the connector courtyards.
+        # A B4B-XH-A's courtyard is 13.49 x 6.84, so turned 90 deg it reaches
+        # y +5.75 from the connector centre-line -- everything below that is
+        # spoken for, and the first attempt (stacked at x -8, y 9 and 6) put
+        # JP1 both inside J1's courtyard and on top of J1's CAN_L pad.
+        "R1": (-8.0, 8.5, 0.0),
+        "JP1": (-4.0, 8.5, 0.0),
     },
+    # Designators go in the two clear strips the connector courtyards leave --
+    # below them for the three headers, above for the terminator pair. On a
+    # board this full there is nowhere else they can still be read once the
+    # plugs are in.
+    "ref_pos": {
+        "J1": (-EL.TEE_CONN_DX, -9.6),
+        "J2": (0.0, -9.6),
+        "J3": (+EL.TEE_CONN_DX, -9.6),
+        "R1": (-8.0, 10.8),
+        "JP1": (-4.0, 10.8),
+    },
+    # ── copper ───────────────────────────────────────────────────────────
+    # The three headers land their like pins on one straight line each
+    # (pin row along Y at x = -DX, 0, +DX), so every trunk net is a single
+    # horizontal track and nothing has to change layer. GND is the B.Cu pour
+    # instead of a track -- the pads are THT, so they reach it through the
+    # board, and a solid return under a differential pair is worth more here
+    # than the 3 mm of copper a track would have saved.
+    "tracks": [
+        # net, layer, width, [(x, y), ...]
+        ("+24V", "F.Cu", 1.0, [(-EL.TEE_CONN_DX, -2.25), (EL.TEE_CONN_DX, -2.25)]),
+        ("CAN_H", "F.Cu", 0.3, [(-EL.TEE_CONN_DX, 0.25), (EL.TEE_CONN_DX, 0.25)]),
+        ("CAN_L", "F.Cu", 0.3, [(-EL.TEE_CONN_DX, 2.75), (EL.TEE_CONN_DX, 2.75)]),
+        # up to the terminator. CAN_H steps OUT to x -8.825 before climbing so
+        # it passes J1's pad column (all four pads sit at x -DX) with 1.8 of
+        # air; CAN_L climbs in the clear lane between J1 and J2.
+        ("CAN_H", "F.Cu", 0.3, [(-EL.TEE_CONN_DX, 0.25), (-8.825, 0.25), (-8.825, 8.5)]),
+        ("CAN_L", "F.Cu", 0.3, [(-3.35, 2.75), (-3.35, 8.5)]),
+        ("TERM_MID", "F.Cu", 0.3, [(-7.175, 8.5), (-4.65, 8.5)]),
+    ],
+    # 24V shares the XH trunk at up to 3 A (the connector's limit, which is why
+    # XT30 injects along the run), so its track is 1.0 mm -- ~3 A at a 10 degC
+    # rise on 1 oz outer copper. The CAN pair and the terminator link carry
+    # milliamps and stay at 0.3.
+    "zones": [("GND", "B.Cu", 0.3)],       # net, layer, inset from the outline
     # ONE M4 button head BESIDE the +X edge holds the board down (the head laps
     # the edge; nothing passes through the board), so there is no mounting hole
     # to place — only a keep-out where the head reaches over.
@@ -159,6 +199,12 @@ if __name__ == "__main__":
     can_tee(tag="tee")
     ERC()
     generate_netlist(file_=os.path.join(OUT_DIR, "can_tee.net"))
+    # THE HAND-OFF TO LAYOUT. elec/layout.py runs under KiCad's own bundled
+    # Python (it needs pcbnew), which has no cadquery and so cannot import
+    # src/ -- this JSON is the whole interface between the two, and it is
+    # written from the mechanical model every run.
+    with open(os.path.join(OUT_DIR, "can_tee.board.json"), "w") as f:
+        json.dump(BOARD_NOTES, f, indent=2)
     print("board %.1f x %.1f mm, %d-way XH (%.2f long), %d placements"
           % (*BOARD_NOTES["outline_mm"], EL.TEE_CONN_N,
              BOARD_NOTES["conn_len_mm"], len(BOARD_NOTES["placements"])))
