@@ -131,7 +131,7 @@ TEE_Z = _RIB_TOP + 4 * D.BEAD                            # 3.2 of printed cradle
 # the TRUNK wires set the corridor top -- the motor pigtails are fat (3.4) but ride down at
 # -52 with the tee headers, not up in the lanes
 _TRUNK_OD = max(od for nm, od in WIRE_OD.items() if nm != 'motor_pigtail')
-_CORR_Y1 = max(TEE_Y + EL.TEE_BOARD_Y / 2, RAIL_Y + _TRUNK_OD / 2)
+_CORR_Y1 = RAIL_Y + _TRUNK_OD / 2
 _CORR_Z1 = max(LANE_AUDIO, LANE_CAN, LANE_PWR, LANE_USB, LANE_DAC, LANE_CTRL) + _TRUNK_OD / 2
 assert _CORR_Y1 <= MB.HARNESS_Y1 and _CORR_Z1 <= MB.HARNESS_Z1, (
     "the harness corridor now reaches y %.2f / z %.2f, past motor_bank's HARNESS_Y1 %.2f / "
@@ -236,7 +236,12 @@ def tee_center(i, x, y):
     """(cx, cy) of tee i's board."""
     if on_motor(i):
         sx, sy, _ = MB.tee_seat(i)
-        return sx, sy - EL.TEE_BOARD_Y / 2          # its +Y edge on the wall's +Y face
+        # OFFSET +X until the cradle's +X wall stands clear of the motor's lift path. The board
+        # is 40 on a 42.3 motor, so centred, that wall falls inside the motor's footprint and
+        # the lift cut slices it to 0.35 (the user measured it twice, on both sides -- the -X
+        # wall is simply gone, open_edge, but this one has to stay: the hold screw notches it).
+        dx = (D.MOTOR_SQ / 2 + MB.MOTOR_CLR) - (EL.TEE_BOARD_X / 2 + TEE_CLR)
+        return sx + dx, sy - EL.TEE_BOARD_Y / 2     # its +Y edge on the wall's +Y face
     return x, EL.tee_board_cy(y)
 
 
@@ -540,7 +545,7 @@ def build_wires():
                     (_ex, _ly, mz), (_ex, _ly, dz), (dx, _ly, dz), (dx, dy, dz)],
                     WIRE_OD["motor_pigtail"])))
                 continue
-            stand = (MB.BUMP_T + MB.MOTOR_CLR + 2.0) if MB.back_stop_kind(i) == "bumper" else 2.0
+            stand = MB.BACK_T + MB.MOTOR_CLR + 2.0     # clear of the bay's back wall
             out.append((f"motor_pigtail_{i}", _wire([
                 (mx, back, mz), (mx, back - stand, mz), (mx, back - stand, dz),
                 (dx, back - stand, dz), (dx, dy, dz)],
@@ -685,3 +690,20 @@ WIRE_OK = {
     "wire_oled":      {"oled", "teensy_stack"},
     "wire_joy":       {"joystick", "teensy_stack"},
 }
+
+
+# THE BAYS' BACK WALLS reach to MB.HARNESS_Y1 now, so a tee still ON THE RAIL must not fall
+# inside a bay's footprint -- a housing would be built straight on top of it. Tested against the
+# real bay box (both axes: tee 11 sits inside the bank in X but well +Y of any back wall).
+for _i, (_tx, _ty, _td) in enumerate(tee_stations()):
+    if on_motor(_i):
+        continue
+    _bw, _bl, _bcx, _bcy, _o, _he, _ha = tee_hold(_i, _tx, _ty, _td)
+    for _m in range(D.N_STRINGS):
+        _mx0, _mx1, _my0, _my1, _mz0, _mz1 = MB.body_box(_m)
+        _bay = (_mx0 - MB.side_room(_m, -1), _mx1 + MB.side_room(_m, 1),
+                _my0 - MB.BACK_T, _my1 + MB.PLATE_T)
+        assert not (_bcx - _bw / 2 < _bay[1] and _bcx + _bw / 2 > _bay[0]
+                    and _bcy - _bl / 2 < _bay[3] and _bcy + _bl / 2 > _bay[2]), (
+            "tee %d lands inside string %d's bay (x %.1f..%.1f, y %.1f..%.1f)"
+            % (_i, _m + 1, _bay[0], _bay[1], _bay[2], _bay[3]))
