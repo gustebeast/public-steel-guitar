@@ -133,7 +133,7 @@ GLOBAL_OK = {
     frozenset({"leg_body_stub", "bridge_endplate"}),
     # the electronics tray's snap nubs/fingers bite their boards by design
     frozenset({"electronics_tray", "pi5"}),
-    frozenset({"electronics_tray", "teensy_ifc"}),
+    frozenset({"electronics_tray", "motor_ctrl"}),
     # a motor's CAN tee mounts right at that motor's -Y PCB (the drop pigtail is short);
     # the tee-board corner grazing the motor body there is that mount contact
     frozenset({"tee_pcb", "motor"}),

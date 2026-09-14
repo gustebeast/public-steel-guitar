@@ -734,9 +734,9 @@ def _electronics_components():
     from . import wiring as WR
     from . import top_plate as TP
     out = [("electronics_tray", EL.electronics_tray()),
-           ("pi5", EL.pi5()), ("teensy_stack", EL.teensy_stack()),
+           ("pi5", EL.pi5()),
            ("adc_stack", EL.adc_stack()), ("buck", EL.buck()),
-           ("teensy_ifc", EL.teensy_ifc()),
+           ("motor_ctrl", EL.motor_ctrl()),
            ("ts_jack", EL.ts_jack()), ("dc_jack", EL.dc_jack()),
            ("usbc_jack", EL.usbc_jack()),
            ("oled", EL.oled()), ("joystick", EL.joystick())]
@@ -1018,7 +1018,7 @@ def screw_rows_components():
 
 BODY_WORK_PARTS = SCREW_ROW_PARTS + (
     "bridge_endplate", "bridge_bearings", "motor", "chassis_",
-    "electronics_tray", "pi5", "teensy_", "adc_stack", "buck", "tee_", "wire_",
+    "electronics_tray", "pi5", "motor_ctrl", "adc_stack", "buck", "tee_", "wire_",
     "dc_jack", "ts_jack", "usbc_jack", "joystick", "oled",
     "body_adapter", "lock_pin_", "adjust_", "fixed_", "bar_latch_", "leg_latch_")
 
@@ -1233,11 +1233,10 @@ _COLORS = {
     # electronics bay (dummies) + panel jacks
     "electronics_tray": (0.30, 0.36, 0.32),  # printed tray
     "pi5":             (0.05, 0.35, 0.15),   # PCB green
-    "teensy_stack":    (0.10, 0.45, 0.30),
     "adc_stack":       (0.15, 0.25, 0.50),
     "buck":            (0.35, 0.30, 0.50),
-    "teensy_ifc":      (0.55, 0.25, 0.25),   # Teensy interface PCB (2x CAN
-                                             # transceiver + XH headers)
+    "motor_ctrl":      (0.55, 0.25, 0.25),   # motor controller PCB (CH32V307 +
+                                             # 2x CAN transceiver + XH headers)
     "tee_pcb":         (0.10, 0.42, 0.18),   # trunk-and-drop bus tee PCBs
     "tee_cradle":      (0.32, 0.55, 0.42),   # PCTG drop-in PCB cradle (pcb_cradle, side hold-down)
     "tee_screw":       (0.72, 0.74, 0.78),   # M4x10 button, BESIDE the tee board

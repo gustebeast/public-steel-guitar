@@ -140,42 +140,62 @@ def trrs_adapter():
 
 # ── the board ────────────────────────────────────────────────────────────────
 # Sized off the two courtyards, not off a housing (see the module docstring).
-# The jack's courtyard is 15.18 x 10.08 and the XH's 13.49 x 6.84; stacking them
-# along Y with the jack's mouth facing -X gives 20 x 24 with ~2 mm of air in
-# every direction. NO MOUNTING HOLE: the project's rule is that plastic captures
-# the board on every axis but one and a single M4 button head beside it closes
-# the last -- nothing passes through the board.
+#
+# ⚠ THE MOUTH FACES ALONG THE LONG AXIS (branner, 2026-09-14), which is a
+# MECHANICAL requirement and the one thing on this board that is an input rather
+# than an output. The pocket over the leg is 22-26 across X, between the keyhead
+# endplate's inner wall and the electronics tray. With the mouth on a SHORT edge
+# the board had to lie 26 across that gap (29.8 with its cradle) and did not fit;
+# turned 90 deg it lies 10.09 of jack inside a 20 mm width and reaches its 26
+# INBOARD, along the plug's own line, where there is room.
+#
+# THE MOUTH IS NOW 0.1 OFF THE -Y EDGE -- it was 2.61 in, and every millimetre
+# of that inset is another millimetre the plug has to reach through the chassis
+# rail. Flush is what the footprint allows and not a millimetre less: KiCad's
+# courtyard for this jack runs x -9.39..+5.79 about the pad centroid, and that
+# -9.39 face IS the barrel opening, so the courtyard edge and the mouth are the
+# same line. Putting it on the board edge spends the courtyard's own 0.25 of
+# clearance and nothing else.
+#
+# The jack's courtyard is 15.18 x 10.09 and the XH's 13.49 x 6.84. Turned, they
+# stack along Y as 15.18 + 3.93 of air + 6.84 = 25.95, which is why the long axis
+# is 26 exactly and not a round number chosen for looks. NO MOUNTING HOLE: the
+# project's rule is that plastic captures the board on every axis but one and a
+# single M4 button head beside it closes the last -- nothing passes through.
 BOARD_W, BOARD_L = 20.0, 26.0
+JACK_ROT = 90.0                  # mouth from -X to -Y
+JACK_MOUTH_DY = -9.39            # mouth face from the pad centroid, once turned
+JACK_X = -1.085                  # centres the turned courtyard (-3.96..+6.13) on X
+JACK_EDGE = 0.1                  # the courtyard's only air against the outline; it is
+                                 # there so a flush placement does not read as OFF BOARD
+                                 # on a rounding error, not because the mouth wants inset
+JACK_Y = -BOARD_L / 2.0 - JACK_MOUTH_DY + JACK_EDGE    # -3.51: mouth 0.1 off the -Y edge
+XH_Y = 9.0                       # turned 180, its courtyard tops out at 12.95
 
 BOARD_NOTES = {
     "outline_mm": (BOARD_W, BOARD_L),
     "layers": 2,
     "thickness_mm": 1.6,
     "placements": {
-        "J1": (2.0, 3.5, 0.0),         # jack, mouth -X
-        "J2": (0.0, -7.5, 180.0),      # trunk XH, cable up; see the track note
+        "J1": (JACK_X, JACK_Y, JACK_ROT),   # jack, mouth -Y and flush with the edge
+        "J2": (0.0, XH_Y, 180.0),           # trunk XH, cable up; see the pin-order note
     },
-    "ref_pos": {"J1": (0.0, 9.5), "J2": (8.0, -11.3)},
-    # Four nets, four runs, no crossings and no vias -- which is the whole reason
-    # the signal map got swapped. GND is the exception: the sleeve contact sits
-    # on the jack's own -Y side, so it takes the long way round the +X edge and
-    # under the header. It is an explicit track, NOT left to the pour, because
-    # the jack's contacts are surface pads and a B.Cu pour cannot reach them.
-    # J2 IS TURNED 180 deg. With +24 V on the tip the jack's contacts read
-    # (left to right) CAN_L, CAN_H, +V and then GND off on its own, while the
-    # XH's fixed crimp order is GND, +V, CAN_H, CAN_L. Turning the header end
-    # for end puts its pins in the order the jack's contacts arrive in, so all
-    # four nets still run without a single crossing or via -- the crimp order
-    # is untouched, pin 1 is simply at the other end of the part.
-    # The verticals dodge the jack's two NPTH mounting holes at x -3.25 and
-    # +3.75, which sit outside its courtyard and are invisible until DRC.
-    "tracks": [
-        ("+V", "F.Cu", 0.4, [(5.35, 6.17), (5.35, 1.0), (1.25, 1.0), (1.25, -7.5)]),
-        ("CAN_H", "F.Cu", 0.3, [(1.35, 6.17), (1.35, 3.0), (-1.25, 3.0), (-1.25, -7.5)]),
-        ("CAN_L", "F.Cu", 0.3, [(-1.65, 6.17), (-1.65, 4.5), (-5.0, 4.5), (-5.0, -7.0),
-                                (-3.75, -7.0), (-3.75, -7.5)]),
-        ("GND", "F.Cu", 0.4, [(6.45, -0.33), (6.45, -6.0), (3.75, -6.0), (3.75, -7.5)]),
-    ],
+    "ref_pos": {"J1": (7.0, -4.0), "J2": (0.0, 4.5)},
+    # J2 IS STILL TURNED 180 deg, and the reason survived the jack's rotation
+    # unchanged. Turned, the jack's three signal contacts stand in ONE COLUMN on
+    # the -X side, reading (from the mouth inwards) CAN_L, CAN_H, +V, with GND
+    # off on its own at +X. The XH's crimp order is fixed at GND, +V, CAN_H,
+    # CAN_L, so end-for-end puts its pins in the order that column arrives in:
+    # the deepest contact (+V) reaches furthest +X and the nearest (CAN_L) goes
+    # straight up the -X side, and the four runs nest instead of crossing. The
+    # crimp order is untouched -- pin 1 is simply at the other end of the part.
+    #
+    # THE HAND-LAID TRACKS ARE GONE with the rotation; they were written against
+    # the old geometry to the tenth of a millimetre and re-deriving eight
+    # segments by hand to save a router two seconds is not a trade worth making
+    # on a four-net board. Freerouting lays it and DRC is what accepts it.
+    # (Watch the jack's two NPTH mounting holes, which sit OUTSIDE its courtyard
+    # and are invisible until DRC runs -- the router does see them.)
     "zones": [("GND", "B.Cu", 0.3)],
     "hold_edge": "+x",
     "no_mounting_holes": True,
