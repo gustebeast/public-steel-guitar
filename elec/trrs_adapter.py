@@ -20,15 +20,37 @@ extension cable), so there is nothing to read. The numbers below are therefore
 the board sizing ITSELF, derived from the two connector courtyards, and the
 mechanical side should be built to them rather than the other way round.
 
-SIGNAL MAP is the project's existing one, and the assignment of GND to the SLEEVE
-is not arbitrary: the sleeve is the first contact made and the last broken, so
-the two ends share a reference before anything else touches.
-    tip = CAN_L,  ring1 = CAN_H,  ring2 = +V,  sleeve = GND
-CAN_H and CAN_L are swapped against the old note, and the swap is free: both
-ends of this link are THIS board, so the pair only has to agree with itself,
-and the leg column is a straight-through extension cable. Taking tip = CAN_L
-makes the jack's contact order match the XH's pin order, so all four nets run
-straight down the board and nothing has to change layer.
+SIGNAL MAP -- and the pin order is a SAFETY decision, not a convenience.
+
+    tip = +24 V,  ring1 = CAN_H,  ring2 = CAN_L,  sleeve = GND
+
++24 V GOES ON THE TIP. Inserting a TRRS plug drags its bands across the socket's
+contacts, so a rail on the wrong contact lands briefly on the CAN pair -- and at
+24 V that is past the SN65HVD230's -4..+16 V absolute maximum on its bus pins,
+i.e. past destruction of every lever board up the leg. The escape is an asymmetry
+in how the connector mates: each socket contact sits at a fixed depth, and each
+plug band only ever travels as deep as its own resting position. The plug's tip
+band passes every contact; ring1 passes only sleeve and ring2; the sleeve band
+passes none. So THE SOCKET'S TIP CONTACT IS TOUCHED BY EXACTLY ONE THING in the
+whole insertion -- the plug's tip band. Put the rail there, with the POWERED SIDE
+CARRYING THE SOCKET (the chassis adapter), and 24 V never meets a conductor it
+does not belong to.
+
+What is left is harmless: on the way in the plug's tip band -- the leg's 24 V
+conductor, with no source behind it until the tip lands -- sweeps the socket's
+GND and CAN contacts, tying a floating unpowered net to them for a moment. It
+only becomes live at full insertion, by which point nothing is still sweeping.
+
+GND stays on the SLEEVE, which is right for its own reason: the sleeve makes
+first and breaks last, so both ends share a reference before anything else
+touches. (An earlier revision put CAN_L on the tip purely so the jack's contact
+order matched the XH's pin order and the copper ran straight. That was worth four
+tidy tracks; this is worth the transceivers.)
+
+⚠ HARNESS CONSEQUENCE, NOT YET IN THE BOM: both adapter boards carry a JACK, so
+the leg cable needs a PLUG AT BOTH ENDS -- a plain 4-pole male-male aux lead, not
+the "TRRS M->F extension" BOM.md still lists, whose female barrel also has a
+printed seat drawn around it.
 """
 from __future__ import annotations
 
@@ -98,9 +120,9 @@ def trrs_adapter():
         n.drive = Pin.drives.POWER
 
     j1 = jack()
-    can_l += j1["T"]
+    v_in += j1["T"]
     can_h += j1["R1"]
-    v_in += j1["R2"]
+    can_l += j1["R2"]
     gnd += j1["S"]
 
     j2 = Part(name="B4B-XH-A", ref_prefix="J", tag="J2", dest="NETLIST", tool="skidl",
@@ -131,7 +153,7 @@ BOARD_NOTES = {
     "thickness_mm": 1.6,
     "placements": {
         "J1": (2.0, 3.5, 0.0),         # jack, mouth -X
-        "J2": (0.0, -7.5, 0.0),        # trunk XH, cable up
+        "J2": (0.0, -7.5, 180.0),      # trunk XH, cable up; see the track note
     },
     "ref_pos": {"J1": (0.0, 9.5), "J2": (8.0, -11.3)},
     # Four nets, four runs, no crossings and no vias -- which is the whole reason
@@ -139,15 +161,20 @@ BOARD_NOTES = {
     # on the jack's own -Y side, so it takes the long way round the +X edge and
     # under the header. It is an explicit track, NOT left to the pour, because
     # the jack's contacts are surface pads and a B.Cu pour cannot reach them.
+    # J2 IS TURNED 180 deg. With +24 V on the tip the jack's contacts read
+    # (left to right) CAN_L, CAN_H, +V and then GND off on its own, while the
+    # XH's fixed crimp order is GND, +V, CAN_H, CAN_L. Turning the header end
+    # for end puts its pins in the order the jack's contacts arrive in, so all
+    # four nets still run without a single crossing or via -- the crimp order
+    # is untouched, pin 1 is simply at the other end of the part.
+    # The verticals dodge the jack's two NPTH mounting holes at x -3.25 and
+    # +3.75, which sit outside its courtyard and are invisible until DRC.
     "tracks": [
-        ("+V", "F.Cu", 0.4, [(-1.65, 5.17), (-1.65, -6.5), (-1.25, -6.5), (-1.25, -7.5)]),
-        ("CAN_H", "F.Cu", 0.3, [(1.35, 5.17), (1.35, -7.0), (1.25, -7.5)]),
-        # straight down at the tip pad's own X: threading it further -X ran it
-        # into the jack's NPTH mounting hole, which the courtyard does not show
-        ("CAN_L", "F.Cu", 0.3, [(5.35, 5.17), (5.35, -6.0), (3.75, -6.0),
-                                (3.75, -7.5)]),
-        ("GND", "F.Cu", 0.4, [(6.45, -1.33), (8.6, -1.33), (8.6, -10.0),
-                              (-3.75, -10.0), (-3.75, -7.5)]),
+        ("+V", "F.Cu", 0.4, [(5.35, 6.17), (5.35, 1.0), (1.25, 1.0), (1.25, -7.5)]),
+        ("CAN_H", "F.Cu", 0.3, [(1.35, 6.17), (1.35, 3.0), (-1.25, 3.0), (-1.25, -7.5)]),
+        ("CAN_L", "F.Cu", 0.3, [(-1.65, 6.17), (-1.65, 4.5), (-5.0, 4.5), (-5.0, -7.0),
+                                (-3.75, -7.0), (-3.75, -7.5)]),
+        ("GND", "F.Cu", 0.4, [(6.45, -0.33), (6.45, -6.0), (3.75, -6.0), (3.75, -7.5)]),
     ],
     "zones": [("GND", "B.Cu", 0.3)],
     "hold_edge": "+x",

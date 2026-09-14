@@ -306,12 +306,19 @@ BOARD_NOTES = {
         "R1": (12.8, 11.2, 0.0),
         "R2": (9.5, 7.3, 0.0),
         # digital, the middle band
+        # OSC_IN/OSC_OUT are pins 2 and 3, adjacent on a 0.4 mm pitch and on the
+        # MCU's -X side. Y1 sits DIRECTLY BELOW THEM (see its placement) so both
+        # traces drop straight down with no via and no detour. Rotating the MCU
+        # instead was tried and was worse -- it moved the pair away from the
+        # crystal and the router abandoned two nets instead of one.
         "U3": (1.0, 3.0, 0.0),
         "C8": (8.0, 4.6, 0.0),
         "C9": (5.5, 4.6, 0.0),
-        "Y1": (1.0, -2.3, 0.0),
-        "C5": (5.5, -2.0, 0.0),
-        "C6": (5.5, -4.0, 0.0),
+        "Y1": (-0.9, -1.6, 0.0),         # as close under the MCU as the
+                                        # courtyards allow: its load caps and
+                                        # the OSC pair want the short path
+        "C5": (3.0, -1.5, 0.0),
+        "C6": (3.0, -3.5, 0.0),
         "C7": (8.0, -2.0, 0.0),
         "C10": (11.0, -2.5, 0.0),
         # sensor furniture, tucked round the chip
