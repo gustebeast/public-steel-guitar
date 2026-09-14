@@ -235,19 +235,16 @@ def on_motor(i):
 def tee_center(i, x, y):
     """(cx, cy) of tee i's board."""
     if on_motor(i):
-        sx, sy, _ = MB.tee_seat(i)
-        # OFFSET +X until the cradle's +X wall stands clear of the motor's lift path. The board
-        # is 40 on a 42.3 motor, so centred, that wall falls inside the motor's footprint and
-        # the lift cut slices it to 0.35 (the user measured it twice, on both sides -- the -X
-        # wall is simply gone, open_edge, but this one has to stay: the hold screw notches it).
-        dx = (D.MOTOR_SQ / 2 + MB.MOTOR_CLR) - (EL.TEE_BOARD_X / 2 + TEE_CLR)
-        return sx + dx, sy - EL.TEE_BOARD_Y / 2     # its +Y edge on the wall's +Y face
+        # the bay itself is cut for the board (motor_bank.tee_board_box): the seat is the same
+        # prism as the pocket, so the board's placement comes from there rather than from here
+        bx0, bx1, by0, by1, _ = MB.tee_board_box(i)
+        return (bx0 + bx1) / 2, (by0 + by1) / 2
     return x, EL.tee_board_cy(y)
 
 
 def tee_z(i):
     """Board-underside Z for tee i."""
-    return MB.tee_seat(i)[2] if on_motor(i) else TEE_Z
+    return MB.tee_board_box(i)[4] if on_motor(i) else TEE_Z
 
 
 def tee_hdr_z(i):
@@ -359,6 +356,9 @@ def tee_cradles():
     rw, rl = EL.TEE_RELIEF
     out = []
     for i, (x, y, d) in enumerate(tee_stations()):
+        if on_motor(i):
+            continue          # ITS SEAT IS THE BAY: motor_bank cuts the board's profile out of
+                              # the same prism it cuts the motor from, so there is no part here
         bw, bl, cx, cy, open_edge, hold_edge, hold_at = tee_hold(i, x, y, d)
         # ON A MOTOR the cradle stands on the pocket's faceplate wall, so its base is only
         # MOTOR_SEAT_SO under the board; on the rail it stands on the rib tops as before.
