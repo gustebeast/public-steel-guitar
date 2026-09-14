@@ -328,7 +328,18 @@ TEE_CONN_N   = 4                                     # CAN = 4 conductors (gnd/2
 TEE_BOARD_X  = 22.0                                  # seats 3 top-entry XH side by side + hardware
 TEE_BOARD_Y  = 24.0                                  # grows +Y off the rail into the open corridor
 TEE_YSHIFT   = 5.0                                   # board centre shift +Y so the -Y edge stays at y-7
-TEE_CONN_DX  = 6.5                                   # trunk-in / drop / trunk-out X spacing
+TEE_CONN_DX  = 7.0                                   # trunk-in / drop / trunk-out X spacing.
+                                                     # WAS 6.5, which put the three B4B-XH-A
+                                                     # footprints 0.34 INSIDE each other's
+                                                     # courtyard (KiCad DRC, once the real
+                                                     # footprint replaced the body envelope).
+                                                     # The bodies did clear -- 0.75 of air --
+                                                     # but 0.75 is also less than a fingertip,
+                                                     # and these are the plugs you pull to get
+                                                     # a motor out. 7.0 clears the courtyard
+                                                     # (6.84) and still leaves 0.58 to the
+                                                     # board edge; the tail-relief window and
+                                                     # the 32 mm tee pitch are both untouched.
 TEE_CONN_CY  = -1.0                                  # connector row centre (board-local Y)
 TEE_RELIEF   = (16.0, 11.0)                          # base tail-relief window (w × l), board-local, at (0, CONN_CY)
 
@@ -369,7 +380,9 @@ def tee_pcb(x: float, y: float, drop: int = 1, accurate: bool = True) -> cq.Work
         b = b.union(jst_xh_header(TEE_CONN_N, mated=True)
                     .rotate((0, 0, 0), (0, 0, 1), 90)
                     .translate((x + dx, cy + TEE_CONN_CY, top)))
-    b = b.union(box_at(3.5, 2.0, 1.8, x=x - 8.0, y=cy + 9.0, z=top + 0.9))   # 120R + jumper
+    # 120R + its solder jumper, side by side in the clear strip +Y of the connector
+    # courtyards (elec/can_tee.py places them; this is the envelope of the pair)
+    b = b.union(box_at(9.0, 2.6, 1.8, x=x - 6.0, y=cy + 8.5, z=top + 0.9))
     return b
 
 
