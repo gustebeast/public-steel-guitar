@@ -43,10 +43,14 @@ def route(stem, passes=PASSES):
 
     if not os.path.isfile(JAVA):
         raise SystemExit("no Java 25 runtime at %s" % JAVA)
+    # -Djava.awt.headless=true: freerouting has no --no-gui flag and pops an
+    # "Autorouter Confirmation" dialog on every run, which steals focus from
+    # whoever is at the machine -- and this gets run many times per board.
+    # Headless AWT suppresses it and the router works unchanged.
     # -mt 1: freerouting warns that its multi-threaded optimiser is broken and
-    # generates clearance violations. Single-threaded, on a board this size,
-    # costs a fraction of a second.
-    cmd = [JAVA, "-jar", JAR, "-de", dsn, "-do", ses,
+    # generates clearance violations. Single-threaded costs a fraction of a
+    # second on boards this size.
+    cmd = [JAVA, "-Djava.awt.headless=true", "-jar", JAR, "-de", dsn, "-do", ses,
            "-mp", str(passes), "-mt", "1"]
     r = subprocess.run(cmd, capture_output=True, text=True, timeout=900)
     tail = (r.stdout or "").strip().splitlines()[-6:]
@@ -59,6 +63,21 @@ def route(stem, passes=PASSES):
     shutil.copyfile(pcb, stem + ".unrouted.kicad_pcb")
     if not pcbnew.ImportSpecctraSES(board, ses):
         raise SystemExit("Specctra SES import failed")
+    # CLAMP ANY TRACK THE ROUTER NECKED BELOW THE FAB FLOOR. Freerouting works in
+    # its own units and rounds, so it lands a couple of segments at 0.125 against
+    # JLCPCB's 0.127 minimum -- 2 microns under, but under. Widening a track can
+    # only reduce clearance, never create an open, and the DRC pass afterwards is
+    # what confirms the widening did not cost anything.
+    floor = board.GetDesignSettings().m_TrackMinWidth
+    necked = 0
+    for t in board.GetTracks():
+        if t.GetClass() == "PCB_TRACK" and t.GetWidth() < floor:
+            t.SetWidth(floor)
+            necked += 1
+    if necked:
+        print("  widened %d track(s) back up to the %.3f mm floor"
+              % (necked, pcbnew.ToMM(floor)))
+
     # REFILL THE POURS. layout.py fills them at creation, before any routing
     # exists, so every via the router adds lands in copper that has no clearance
     # cut-out around it -- 164 violations on the first try, all of them a zone
