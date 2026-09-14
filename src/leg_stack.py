@@ -374,8 +374,10 @@ def fixed_sleeve():
     Carries the latch NOTCH -- the way the button reaches the outside, and the
     part that stands over the slider in place of a cover."""
     from . import leg_latch as LL          # late: leg_latch reads this module
+    from . import leg_trrs as LTR         # late: leg_trrs reads this module
     b = _sleeve(Z_JOINT, Z_BUTT)
     b = b.cut(LL.sleeve_notch())
+    b = b.cut(LTR.sleeve_negatives(LEG_X, LEG_Y, SLEEVE_UP))   # the jack's seat
     # clearance through the +X wall only; the -X wall is untouched
     return b.cut(_from_plus_x(_CLR_D, Z_FIX_SCREW, LEG_X, SLEEVE_UP))
 
@@ -470,6 +472,12 @@ def body_adapter(sx: float = LEG_X, ly: float = LEG_Y):
     # The same legs helper the endplate's half comes from, shaped by cadkit.
     for dy in (0.0,) + ((-syg * mid_cut,) if mid_cut else ()):
         b = b.cut(LG.tongue_pin_cutter(sx, ly + dy, egx, Z_TOP, ADAPTER_UP, syg))
+    # THE LEG'S SIGNAL: the spring-floated plug's bore, its coil's, and the cable's
+    # way out the +Y face (src.leg_trrs). ONLY on the corner that has a leg under
+    # it -- the other three adapters carry no wiring.
+    if (sx, ly) == (LEG_X, LEG_Y):
+        from . import leg_trrs as LTR       # late: leg_trrs reads this module
+        b = b.cut(LTR.adapter_negatives(sx, ly, ADAPTER_UP))
     return b
 
 
@@ -660,6 +668,8 @@ def leg_parts():
     out += [("bar_latch_spring_%d" % i, s) for i, s in enumerate(BL.springs(Z_BAR_MOUTH))]
     out += BL.screw_dummies(Z_BAR_MOUTH)        # the collar's one screw, and its insert
     out += LG.lock_pin_dummies(LEG_X, LEG_Y, EGX, SYG, Z_TOP, 0)   # the leg's one screw
+    from . import leg_trrs as LTR
+    out += LTR.dummies(LEG_X, LEG_Y, 0)        # the blind-mate, at its MATED length
     return out
 
 
