@@ -241,6 +241,19 @@ for _ctx, _cutters in _WR_FUSE.tee_hold_negatives():
             for _cut in _cutters:
                 chassis_segments[_csi] = chassis_segments[_csi].cut(_cut)
             break
+# THE TRRS ADAPTER'S STATION over the -X/+Y leg (wiring.trrs_*): the same three-step
+# dance the tees do, and for the same reason -- fuse the cradle into the segment that
+# owns its X, THEN cut the things that live inside it, because the fuse fills them in.
+# The PORT is the extra one here: a bore through the +Y rail that the leg's plug
+# reaches in along, so it has to be cut after the cradle's base merges into that rail.
+_trrs_x = _WR_FUSE.TRRS_X
+for _csi in range(len(_seg_edges) - 1):
+    if _seg_edges[_csi + 1] < _trrs_x < _seg_edges[_csi]:
+        chassis_segments[_csi] = chassis_segments[_csi].union(_WR_FUSE.trrs_cradle())
+        chassis_segments[_csi] = chassis_segments[_csi].cut(_WR_FUSE.trrs_port())
+        for _cut in _WR_FUSE.trrs_hold_negatives():
+            chassis_segments[_csi] = chassis_segments[_csi].cut(_cut)
+        break
 for _i, _seg in enumerate(chassis_segments):     # chassis split into dovetailed segments
     PARTS[f"chassis_{_i}"] = (partial(heal, _seg), f"petg-gf/chassis_{_i}.step",
                               "PETG-GF — chassis segment (cadkit slide-down T joint per rail; NO glue "
@@ -756,6 +769,7 @@ def _electronics_components():
         out.append((f"top_plate_color_{len(TP.segments_color) + i}",
                     fc.translate((0, dy, 0))))
     out += WR.tee_components()
+    out += WR.trrs_components()          # the leg's adapter board, its lock and its plug
     out += WR.build_wires()
     return out
 
@@ -1243,6 +1257,10 @@ _COLORS = {
                                              # transceiver + XH headers)
     "tee_pcb":         (0.10, 0.42, 0.18),   # trunk-and-drop bus tee PCBs
     "tee_cradle":      (0.32, 0.55, 0.42),   # PCTG drop-in PCB cradle (pcb_cradle, side hold-down)
+    "trrs_adapter_pcb":    (0.18, 0.42, 0.24),   # the leg's TRRS<->XH adapter (bronner's board)
+    "trrs_adapter_plug":   (0.15, 0.15, 0.17),   # the lead from the leg, plugged in
+    "trrs_adapter_screw":  (0.55, 0.55, 0.58),   # M4 button, 2.5 hex -- the one lock
+    "trrs_adapter_insert": (0.80, 0.60, 0.35),   # its brass heat-set insert
     "tee_screw":       (0.72, 0.74, 0.78),   # M4x10 button, BESIDE the tee board
     "tee_insert":      (0.72, 0.60, 0.30),   # M4 heat-set brass, in the cradle boss
     "analog_frontend": (0.20, 0.45, 0.40),   # bridge-end buffer + relay board
