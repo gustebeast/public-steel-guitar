@@ -259,7 +259,10 @@ def _diamond_xz(cx, cz, h, yr):
 # notch the -Y rail's inner face for those cables over that span and DROP the diamond
 # lightening there (keep the rail SOLID around the notch, per the user). +X-most motor.
 _M9X_CH = D.motor_pos(D.N_STRINGS - 1)[0]                 # -110
-M9_CUT_X0, M9_CUT_X1 = _M9X_CH - 25.0, _M9X_CH + 35.0     # cutout X-span (-135..-75; covers the m9 tee run)
+# +X end covers the run out to string 10's PARKED tee: its board is 40 wide now and has to sit
+# fully past the motor, so the drop pigtail dips outboard further east than it used to
+# (wiring asserts its tee still lands inside this notch).
+M9_CUT_X0, M9_CUT_X1 = _M9X_CH - 25.0, _M9X_CH + 50.0
 M9_CUT_YBACK = Y_LO + T / 2 - 4.0                         # notch back: inner face -> 4mm into the rail
 M9_CUT_Z0, M9_CUT_Z1 = -64.0, -40.0                      # trunk Z-band (above the rib tops, over the top lane)
 
