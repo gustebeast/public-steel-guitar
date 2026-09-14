@@ -373,6 +373,71 @@ def tee_pcb(x: float, y: float, drop: int = 1, accurate: bool = True) -> cq.Work
     return b
 
 
+# ── TRRS <-> JST-XH ADAPTER PCB ──────────────────────────────────────────────
+# Two of them, and they are the SAME board used in opposite directions: a passive
+# four-wire pass-through, so "TRRS in, JST out" and "JST in, TRRS out" are the
+# same copper. One at the chassis (trunk -> leg), one at the bar cradle.
+#
+# IT REPLACES THE FACTORY-CABLED TRRS PARTS. BOM.md crosses both joints with a
+# Tensility 10-03404 jack-on-a-cable at $8.19 and a CA-354S plug-on-a-cable at
+# $3.53, each with an XH crimped onto its cut end. Putting the jack ON A BOARD
+# costs ~$0.10 of connector, deletes both crimps, and deletes the leg-socket tee.
+#
+# ⚠ THE OUTLINE IS AN OUTPUT HERE, NOT AN INPUT -- the opposite of every other
+# board in this file. There is no housing yet (the leg-carrier CAD was never
+# built; the column became an off-the-shelf extension cable), so these numbers
+# are the board sizing ITSELF, derived from the two connectors' courtyards in
+# elec/trrs_adapter.py. THE MECHANICAL SIDE SHOULD BE BUILT TO THEM.
+#
+# SIGNAL MAP, and the pin order is a SAFETY decision: tip = +24 V, ring1 = CAN_H,
+# ring2 = CAN_L, sleeve = GND. A plug drags its bands across every socket contact
+# on the way in, and 24 V on the wrong one lands on the CAN pair -- past the
+# SN65HVD230's -4..+16 V bus-pin maximum. The escape is that each socket contact
+# sits at a fixed depth and each plug band travels only as deep as its own
+# resting position, so the socket's TIP contact is touched by exactly one thing
+# in the whole insertion: the plug's tip band. The rail goes there, with the
+# POWERED side carrying the SOCKET.
+TRRS_BOARD_X, TRRS_BOARD_Y = 20.0, 26.0     # board-local, origin at its centre
+TRRS_JACK_XY = (2.0, 3.5)                   # PJ-320D-4A (LCSC C95562), mouth -X
+TRRS_XH_XY   = (0.0, -7.5)                  # B4B-XH-A, turned 180 (see elec/)
+TRRS_JACK_L  = 15.18                        # jack land, long axis (X)
+TRRS_JACK_W  = 10.08                        # ...and across it
+TRRS_JACK_H  = 5.0                          # body height above the board. ⚠ the
+                                            # one figure not off a footprint --
+                                            # PJ-320 bodies run ~5, confirm at
+                                            # purchase before a lid depends on it.
+TRRS_MOUTH_X = TRRS_JACK_XY[0] - 9.39       # -7.39: the barrel's opening face
+TRRS_PLUG_RUN = 30.0                        # what a MATED plug needs -X of the
+                                            # mouth: ~14 of barrel inside plus the
+                                            # moulded handle and its strain relief.
+                                            # Deliberately generous -- the number
+                                            # exists to reserve room, and over-
+                                            # reserving is the safe error.
+TRRS_PLUG_D  = 10.0                         # handle diameter to keep clear
+
+
+def trrs_adapter_pcb(mating: bool = False) -> cq.Workplane:
+    """The TRRS<->XH adapter, in its OWN frame: board centred on the origin in
+    XY with its underside at z=0, parts rising +Z, the jack's mouth facing -X.
+    Pose it where a housing wants it -- there is no station for it yet.
+
+    `mating=True` adds the envelope a plugged-in lead needs (TRRS_PLUG_RUN of
+    Ø TRRS_PLUG_D out of the mouth, and the XH's mated height), which is the
+    volume a housing has to leave alone rather than the board's own bulk."""
+    b = box_at(TRRS_BOARD_X, TRRS_BOARD_Y, _PCB_T, x=0.0, y=0.0, z=_PCB_T / 2)
+    jx, jy = TRRS_JACK_XY
+    b = b.union(box_at(TRRS_JACK_L, TRRS_JACK_W, TRRS_JACK_H,
+                       x=jx - 0.8, y=jy + 1.08, z=_PCB_T + TRRS_JACK_H / 2))
+    b = b.union(jst_xh_header(4, mated=mating)
+                .rotate((0, 0, 0), (0, 0, 1), 180)
+                .translate((TRRS_XH_XY[0], TRRS_XH_XY[1], _PCB_T)))
+    if mating:
+        b = b.union(cyl_x(TRRS_PLUG_D, TRRS_PLUG_RUN,
+                          TRRS_MOUTH_X - TRRS_PLUG_RUN, jy + 1.08,
+                          _PCB_T + TRRS_JACK_H / 2))
+    return b
+
+
 def ts_jack() -> cq.Workplane:
     """1/4-inch TS panel jack — Neutrik NMJ4HCD2 dims: Ø11.4 panel bushing,
     Ø~15 body ~22 mm deep BEHIND the panel, nut outside. Female socket bore
