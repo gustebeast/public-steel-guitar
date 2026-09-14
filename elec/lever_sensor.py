@@ -61,13 +61,19 @@ I, O, PWR, PIN = Pin.types.INPUT, Pin.types.OUTPUT, Pin.types.PWRIN, Pin.types.P
 MCU_FP = "Package_DFN_QFN:QFN-28-1EP_4x4mm_P0.4mm_EP2.4x2.4mm"
 SENSOR_FP = "Package_DFN_QFN:QFN-16-1EP_3x3mm_P0.5mm_EP1.45x1.45mm"
 
-# 28 x 25, not the 22 first drawn: J1's COURTYARD is 21.29 x 10.29, far bigger
+# 28 x 22. THE HEIGHT IS CAPPED BY THE FOOT PEDAL, not by the knee levers:
+# its housing is clipped to the pedal bar's own width, so the board may not
+# reach below z -10.95 from the axle, and the horizontal lever's ceiling is
+# +11.60 -- 22.55 between them. 25 was drawn before that was checked and does
+# not fit. foot_pedal.py asserts it; board_flip does NOT, because it polices
+# the cradle's window and the pedal's budget is tighter than the window.
+# (Earlier note, still true of the connector: J1's COURTYARD is 21.29 x 10.29, far bigger
 # than the 19.9 body -- a side-entry connector reserves the plug's run-in too.
 # At 22 the board was 60% covered and the parts could not be placed. The
 # horizontal lever's window is 26.10, so 25 still clears the shell by 0.30 at
 # the bottom and 0.80 at the top with the chip pinned to the axle.
-BOARD_W, BOARD_L = 28.0, 25.0
-CHIP_XY = (11.0, 1.7)        # the axle axis, in board-local mm (see board_json)
+BOARD_W, BOARD_L = 28.0, 22.0
+CHIP_XY = (11.0, -0.3)        # the axle axis, in board-local mm (see board_json)
 
 # Anything TALLER than 1.5 mm must keep its whole footprint outside the magnet
 # cap's swept circle, because the board installs by dropping straight down past
@@ -198,8 +204,11 @@ def lever_sensor():
     # transceiver's bus pins are absolute-max -4..+16 V.
     for tag, net in (("D2", can_h), ("D3", can_l)):
         d = Part(name="TVS", ref_prefix="D", tag=tag, dest="NETLIST", tool="skidl",
-                 value="SMF24CA", description="bidirectional TVS, bus pin to GND",
-                 footprint="Diode_SMD:D_SOD-123",
+                 value="PESD1CAN-like", description="bidirectional TVS, bus pin to GND",
+                 # SOD-523, not SOD-123: these are signal-line ESD clamps, not power
+                 # TVS, and the big package cost 18 mm2 the board no longer has once
+                 # the foot pedal's Y budget capped its height at 22.55.
+                 footprint="Diode_SMD:D_SOD-523",
                  pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
         net += d[1]; gnd += d[2]
 
@@ -289,51 +298,39 @@ BOARD_NOTES = {
     # and z -14.2..+7.8, so the axle axis (housing 0,0) lands at CHIP_XY.
     "chip_on_axle_xy": CHIP_XY,
     "placements": {
-        # THE ONLY FIXED ONE: sensing centre on the axle axis.
-        "U4": (11.0, 1.7, 0.0),
-        # The connector owns the -X third. ROTATED 90: its courtyard is 21.29
-        # along the pin row and 10.29 deep, and the pin row has to run along the
-        # board's height so the plug leaves through the -X web tunnel.
-        "J1": (-10.55, 0.0, 90.0),
-        # power, hard +Y -- the switching node as far from the sensor as the
-        # board allows, and the whole loop (U1, L1, D1, C1, C2) kept together
-        "U1": (-1.3, 10.5, 0.0),
-        "L1": (3.5, 10.6, 0.0),
-        "D1": (9.0, 11.2, 0.0),
-        "C1": (-1.3, 7.3, 0.0),
-        "C2": (3.5, 7.3, 0.0),
-        "C3": (7.0, 7.3, 0.0),
-        "R1": (12.8, 11.2, 0.0),
-        "R2": (9.5, 7.3, 0.0),
-        # digital, the middle band
-        # OSC_IN/OSC_OUT are pins 2 and 3, adjacent on a 0.4 mm pitch and on the
-        # MCU's -X side. Y1 sits DIRECTLY BELOW THEM (see its placement) so both
-        # traces drop straight down with no via and no detour. Rotating the MCU
-        # instead was tried and was worse -- it moved the pair away from the
-        # crystal and the router abandoned two nets instead of one.
-        "U3": (1.0, 3.0, 0.0),
-        "C8": (8.0, 4.6, 0.0),
-        "C9": (5.5, 4.6, 0.0),
-        "Y1": (-0.9, -1.6, 0.0),         # as close under the MCU as the
-                                        # courtyards allow: its load caps and
-                                        # the OSC pair want the short path
-        "C5": (3.0, -1.5, 0.0),
-        "C6": (3.0, -3.5, 0.0),
-        "C7": (8.0, -2.0, 0.0),
-        "C10": (11.0, -2.5, 0.0),
-        # sensor furniture, tucked round the chip
-        "C11": (7.0, 1.5, 0.0),
-        "R5": (11.0, 4.6, 0.0),
-        "R6": (8.0, -4.0, 0.0),
-        "R7": (12.0, 7.3, 0.0),
-        # transceiver and the bus furniture, -Y and clear of the cap circle
-        "U2": (0.5, -7.0, 0.0),
-        "C4": (6.5, -5.5, 0.0),
-        "R3": (6.5, -7.0, 0.0),
-        "R4": (10.0, -6.0, 0.0),
-        "JP1": (10.0, -8.5, 0.0),
-        "D2": (-1.0, -11.1, 0.0),
-        "D3": (4.5, -11.1, 0.0),
+        "U4": (11.0, -0.3, 0.0),         # the axle axis -- the one fixed part
+        "J1": (-10.55, 0.0, 90.0),      # 21.29 of courtyard in a 22 board: centred
+        # power, hard +Y
+        "U1": (-1.1, 9.2, 0.0),
+        "L1": (3.0, 9.1, 0.0),
+        "D1": (7.6, 9.7, 0.0),
+        "R1": (11.1, 9.7, 0.0),
+        # its passives, the next band down
+        "C1": (-0.9, 6.0, 0.0),
+        "C2": (3.4, 6.0, 0.0),
+        "C3": (6.5, 6.0, 0.0),
+        "R2": (8.6, 6.0, 0.0),
+        "R7": (10.9, 6.0, 0.0),
+        # digital, the middle
+        "U3": (1.0, 1.85, 0.0),
+        "C9": (5.5, 3.5, 0.0),
+        "C8": (7.5, 3.5, 0.0),
+        "R5": (11.0, 3.2, 0.0),
+        "C11": (7.0, -0.3, 0.0),
+        "C10": (9.5, -3.6, 0.0),
+        "Y1": (-0.9, -2.7, 0.0),        # directly under the MCU's OSC pins
+        "C5": (3.0, -2.2, 0.0),
+        "C6": (3.0, -4.0, 0.0),
+        "C7": (6.0, -2.2, 0.0),
+        "R6": (6.0, -4.2, 0.0),
+        # transceiver and bus furniture, -Y
+        "U2": (0.5, -7.3, 0.0),
+        "C4": (6.0, -6.0, 0.0),
+        "R3": (6.0, -7.5, 0.0),
+        "R4": (9.5, -5.6, 0.0),
+        "JP1": (9.5, -7.9, 0.0),
+        "D2": (5.8, -10.1, 0.0),
+        "D3": (8.6, -10.1, 0.0),
     },
     "cap_keepout": {"xy": list(CHIP_XY), "r": CAP_SWEEP_R, "tall": list(TALL_PARTS)},
     # THE GROUND PLANE IS WHY THIS BOARD IS FOUR LAYERS. BOM.md says so outright:
@@ -347,7 +344,13 @@ BOARD_NOTES = {
                                 # instrument's underside closes over the sixth
     "no_mounting_holes": True,
     "single_sided": True,       # every part on the magnet-facing face
-    "groove_keepout_x": 1.85,   # each X edge is taken by the cradle groove
+    # MECHANICAL keepouts, mirrored from knee_lever.py so this side catches them
+    # too. The cradle's grooves take 1.85 off each X edge (the sensor is the one
+    # part allowed in, its position being fixed on the axle), and the connector's
+    # mated plug forbids a strip -- board-local, converted from the chip frame.
+    "groove_keepout_x": 1.85,
+    "groove_exempt": ["U4", "J1"],
+    "conn_keepout": {"box": [-14.0, -3.25, -11.0, 11.0], "exempt": ["J1", "U4"]},
 }
 
 
