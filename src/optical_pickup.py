@@ -638,6 +638,39 @@ def _parts():
                       ("R37", "audio input series / anti-alias", "0402"),
                       ("R38", "audio input bias to mid-rail", "0402")], x0, x1)
 
+    # ---- 3b-i. WHEN THE JACK OUTPUT STAGE LANDS HERE, IT NEEDS THREE PARTS ----
+    # This board is slated to absorb the AFE -- the magnetic buffer, the true-bypass
+    # relay and the 1/4 in TS jack output. NOT BUILT YET, and this note exists so the
+    # protection is designed in rather than retrofitted.
+    #
+    # THE FAULT: a combo TRS/XLR desk input with PHANTOM POWER on, reached with a TS
+    # cable. Many combo jacks bridge the XLR's phantom onto the TRS contacts, and a TS
+    # plug shorts ring to sleeve on the way in -- so one 48 V leg is grounded (the desk
+    # shrugs) and THE TIP STILL CARRIES +48 V through 6.81k. That is a ~7 mA source
+    # sitting on our output. 7 mA is nothing; 48 V is not. It lands on an op-amp output
+    # pin running off 5 V, whose ESD diode then pushes that current INTO the 5 V rail --
+    # and with the instrument switched off there is no load to hold the rail down, so it
+    # floats up until something else clamps it. That is the mechanism that takes out more
+    # than the output stage. The insertion transient is worse than the DC: the desk's
+    # phantom decoupling caps are charged to 48 V and the plug's sleeve shorts them on
+    # the way in.
+    #
+    # THE FIX IS THREE SMD PARTS AND NO ASSEMBLY COST -- they are placed by the
+    # assembler on a board already being assembled, so "no soldering" is untouched:
+    #   * a SERIES DC BLOCK at the jack end, 100 V rated, DOWNSTREAM OF THE RELAY so one
+    #     part covers the bypass path and the processed path both. Size it generously
+    #     (~2.2 uF) for two reasons: it puts the corner near 7 Hz into a 10k line input,
+    #     and it keeps the signal swing ACROSS the cap small, which is what makes an X7R
+    #     part's voltage coefficient a non-issue. It will sit charged to 48 V during the
+    #     fault, so 100 V is the rating, not a margin.
+    #   * a SERIES RESISTOR (100-470R) between the driver and that cap, to bound the
+    #     fault current and the cap's inrush.
+    #   * a CLAMP on the inside of the cap -- the cap blocks DC but passes the insertion
+    #     edge straight through.
+    # This is ~$0.05 of parts. It is cheap now and impossible later, which is the only
+    # reason it is written down for a stage that does not exist: the user's own read is
+    # that the mistake is rare, and that is right -- it is not worth more than this.
+
     # ---- 3c. LOCAL 24 -> 5 V, AND IT GOES AT THE FAR END ON PURPOSE ----
     # The trunk delivers 24 V (see J2). One switching stage is therefore unavoidable --
     # 24->3V3 linearly is 6.2 W -- so the whole question is WHERE, and the answer is: as
