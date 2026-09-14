@@ -356,8 +356,16 @@ DEFAULT_SKIP = {"belt", "belt_clamp"}
 # real routing bugs. So it buys sensitivity at no noise cost.
 MIN_VOL = 0.05
 
+# INCREMENTAL PAIR CACHE (cadkit.overlap_check): a pair's common volume depends only on
+# the two shapes, so it is keyed by their BRep fingerprints and reused while both are
+# byte-identical. A build that changed three parts re-booleans only those parts' pairs.
+# NOT an exclusion list -- nothing is assumed safe; a changed part always recomputes.
+# Gitignored: it is derived, per-worktree, and cheap to rebuild.
+CACHE = str(pathlib.Path(__file__).resolve().parent.parent / ".overlap-cache.json")
 
-def gate(comps, *, full=False, only=(), exclude=(), jobs=None, show_all=False) -> int:
+
+def gate(comps, *, full=False, only=(), exclude=(), jobs=None, show_all=False,
+         cache=None) -> int:
     """Scan ALREADY-BUILT components and return the unintended-overlap count.
 
     ``comps`` is ``[(name, cq.Shape), ...]`` — i.e. what ``collect_components()``
@@ -379,7 +387,8 @@ def gate(comps, *, full=False, only=(), exclude=(), jobs=None, show_all=False) -
         if skip:
             comps = [(n, s) for n, s in comps if base(n) not in skip]
             print(f"skipping base names (pass --full to include): {sorted(skip)}")
-    return run(comps, intended, jobs=jobs, show_all=show_all, min_vol=MIN_VOL)
+    return run(comps, intended, jobs=jobs, show_all=show_all, min_vol=MIN_VOL,
+               cache=CACHE if cache is None else cache)
 
 
 def main():
