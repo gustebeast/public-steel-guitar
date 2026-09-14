@@ -15,3 +15,5 @@ fast_build_map.json
 .scratch_cache/
 scratch.step
 elec/out/
+.overlap-cache.json
+skidl_REPL.*
