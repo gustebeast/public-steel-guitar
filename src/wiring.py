@@ -110,6 +110,7 @@ WIRE_D = 2.0          # default (shielded-pair size)
 # -Y-facing PCB out to its tee. Past m9 the rail is notched (chassis motor-9 cable cut).
 from .chassis import Y_LO as _Y_LO, T as _RAIL_T
 from .chassis import SPLIT_X as CH_SPLIT_X
+from .chassis import M9_CUT_X1 as CH_M9_CUT_X1
 from . import motor_bank as MB                          # back_y: where each motor's pigtail leaves
 from .motor_bank import FLOOR_TOP as _RIB_TOP           # -65.15 (rib tops = above = rib-free)
 RAIL_INNER_Y = _Y_LO + _RAIL_T / 2                       # -128.75: -Y rail inner face
@@ -167,6 +168,14 @@ CUTOUT_Y = RAIL_INNER_Y - 1.25           # trunk dip: just past m9's back into t
                                          # shallow enough that even the Ø2.6 USB stays inside the cut
 
 
+# string 10's tee is the one still on the rail, and its drop dips OUTBOARD into the rail notch
+# to reach it -- so the notch has to reach the tee (it did not, and buried 73 mm3 of cable)
+_T9X = D.motor_pos(D.N_STRINGS - 1)[0] + D.MOTOR_SQ / 2 + EL.TEE_BOARD_X / 2 + 2.0
+assert _T9X <= CH_M9_CUT_X1 - 2.0, (
+    "string 10's tee parks at %.1f, past the rail notch's %.1f -- its drop would run into rail"
+    % (_T9X, CH_M9_CUT_X1))
+
+
 # a chassis split inside the notch would fill the dip back in with its joint
 assert not any(M9_X0 - 4.0 < _s < M9_X1 + 4.0 for _s in CH_SPLIT_X), (
     "a chassis split plane (%s) lands in motor 9's rail notch %.1f..%.1f, where the trunk dips "
@@ -204,7 +213,10 @@ def tee_stations():
         # motor bank in the clear corridor; every other motor's tee rides the rail at its own X (m8's
         # tee corner just grazes m8's PCB, a whitelisted mount contact).
         if i == 9:
-            mx = _M9X + 30.0
+            # string 10's tee is the one still on the rail, and the reshaped board is 40 wide --
+            # park it fully PAST its motor rather than beside it (at +30 the old 22-wide board
+            # already grazed, and the 40 buried 534 mm3 of itself in the motor)
+            mx = _M9X + D.MOTOR_SQ / 2 + EL.TEE_BOARD_X / 2 + 2.0
         out.append((mx, TEE_Y, +1))
     out.append((-48.0, TEE_Y, -1))            # 10 AFE power (rail; -X of the +X leg stub at -13.4)
     # bus B (knee + leg-socket): NOT on the crowded motor rail -- inboard of it, near the knee
@@ -217,7 +229,56 @@ def tee_stations():
     return out
 
 
-_TEE_LIFT = TEE_Z - EL.FLOOR_Z          # lift the tee dummy onto its cradle, above the rib tops
+_TEE_LIFT = TEE_Z - EL.FLOOR_Z          # lift a RAIL tee dummy onto its cradle, above the rib tops
+
+# ── TEES ON THE MOTORS (user, 2026-09-14) ───────────────────────────────────
+# Bus-A tees 0..8 no longer ride the rail: each sits on its own motor's pocket, resting on the
+# faceplate wall's top and LAPPING the motor, so the one M4 that holds the board down also stops
+# the motor lifting out -- board and motor share a screw. The drop pigtail becomes a hand's
+# breadth instead of a reach to the rail, and the trunk flies tee to tee over the bank.
+# STRING 10 (tee 9) STAYS ON THE RAIL: its board's connectors would foul the magnetic pickup in
+# the neck-most of its four install positions (62 mm3), and a tone position is worth more than a
+# uniform bank. Same board either way; that motor keeps its own retaining screw.
+N_MOTOR_TEES = 9
+TOP_Z = -14.85                          # the trunk's fly lane over the bank: over the mated plugs
+                                        # below, under the deck panels' underside above
+
+
+def on_motor(i):
+    return i < N_MOTOR_TEES
+
+
+def tee_center(i, x, y):
+    """(cx, cy) of tee i's board."""
+    if on_motor(i):
+        sx, sy, _ = MB.tee_seat(i)
+        return sx, sy - EL.TEE_BOARD_Y / 2          # its +Y edge on the wall's +Y face
+    return x, EL.tee_board_cy(y)
+
+
+def tee_z(i):
+    """Board-underside Z for tee i."""
+    return MB.tee_seat(i)[2] if on_motor(i) else TEE_Z
+
+
+def tee_hdr_z(i):
+    """Where a wire lands on tee i: the top of its mated plugs."""
+    from cadkit.pcb import XH_MATED_H
+    return (tee_z(i) + _PCB_T + XH_MATED_H) if on_motor(i) else HDR_Z
+
+
+def tee_point(i, x, y, which="trunk"):
+    """The 3D point a wire lands on: tee i's trunk (8-way) or drop (4-way) connector."""
+    from cadkit.pcb import xh_length
+    cx, cy = tee_center(i, x, y)
+    if not on_motor(i):
+        return cx, cy + EL.TEE_CONN_CY, tee_hdr_z(i)
+    run = xh_length(EL.TEE_TRUNK_N) + xh_length(EL.TEE_CONN_N)
+    if which == "trunk":
+        dx = -run / 2 + xh_length(EL.TEE_TRUNK_N) / 2
+    else:
+        dx = run / 2 - xh_length(EL.TEE_CONN_N) / 2
+    return cx + dx, cy + EL.TEE_CONN_CY, tee_hdr_z(i)
 
 
 # ── TEE RETENTION: ONE M4 BESIDE THE BOARD (user: one driver, one insert SKU) ──────
@@ -226,6 +287,8 @@ _TEE_LIFT = TEE_Z - EL.FLOOR_Z          # lift the tee dummy onto its cradle, ab
 # the board edge to close +Z, so the board needs no hole at all. tee_hold() is the ONE
 # table of per-tee choices, and it feeds the cradle, the dummy screw AND the post-fuse
 # re-bore -- so the part that is bored and the screw the overlap gate checks cannot disagree.
+MOTOR_SEAT_SO = 0.8         # a motor-seat cradle's pads under the board (the rail's is 3.2):
+                            # every mm here is a mm the board sits further off the motor it laps
 TEE_SCREW_L   = 10.0        # M4x10 button: head on the board top, tip inside the anchor
 TEE_CLR       = 0.3         # board fit gap in the cradle; also sets where the hold screw sits
 TEE_WALL_OVER = 1.2         # cradle walls stand this far above the board top
@@ -248,6 +311,17 @@ def tee_hold(i, x, y, d):
         # They are slated to disappear anyway -- the TODO in _tee_pcb_placeholder folds the
         # bus-B tap into the lever PCBs -- so these are the LAST two M2s in the tee family.
         return 18.0, 14.0, x, y, "-y", None, None
+    if on_motor(i):
+        # ON A MOTOR: the board's -Y half laps the motor, so that edge can have no wall (a wall
+        # there would overhang the motor and trap it). It holds on +X, where the boss stands on
+        # the faceplate wall beyond the motor's own side; the +Y and -X walls locate it.
+        # The board is nearly as wide as the motor, so a screw "beside the +X edge" is still
+        # over the motor at mid-edge. It goes to the +Y END of that edge instead, where the
+        # board is over the faceplate wall and the motor has already stopped -- the boss then
+        # stands on wall, and its anchor bores down into it.
+        cx, cy = tee_center(i, x, y)
+        return (EL.TEE_BOARD_X, EL.TEE_BOARD_Y, cx, cy, "-y", "+x",
+                EL.TEE_BOARD_Y / 2 - 3.0)
     # bus-A (22 x 24): hold on the +X edge, toward the -Y rail end (hold_at -8).
     #   +Y (the obvious spot) lands under the -Y ends of motors 6-8: 115 mm3 of screw into
     #      motor_7 and motor_8 -- the board grows +Y into the corridor the motors reach into.
@@ -258,6 +332,7 @@ def tee_hold(i, x, y, d):
     return EL.TEE_BOARD_X, EL.TEE_BOARD_Y, x, EL.tee_board_cy(y), None, "+x", -8.0
 
 
+
 def tee_components():
     """The tee-PCB dummies for the assembly, lifted onto their -Y-rail cradles (above the
     rib tops so no tee sits in a rib), each M4-held tee with its screw and insert placed
@@ -266,14 +341,16 @@ def tee_components():
     from cadkit.pcb import pcb_hold_xy
     out = []
     for i, (x, y, d) in enumerate(tee_stations()):
-        out.append((f"tee_pcb_{i}", EL.tee_pcb(x, y, d, accurate=i < 11).translate((0, 0, _TEE_LIFT))))
-        w, l, cx, cy, _open, hold_edge, hold_at = tee_hold(i, x, y, d)
+        bw, bl, cx, cy, _open, hold_edge, hold_at = tee_hold(i, x, y, d)
+        z0 = tee_z(i)
+        out.append((f"tee_pcb_{i}", EL.tee_pcb(cx, cy - EL.TEE_YSHIFT, d, accurate=i < 11)
+                    .translate((0, 0, z0 - EL.FLOOR_Z))))
         if hold_edge is None:
             continue
-        hx, hy = pcb_hold_xy(w, l, hold_edge, hold_at=hold_at, clr=TEE_CLR)
-        out.append((f"tee_insert_{i}", seated_insert(_M4, (cx + hx, cy + hy, TEE_Z), (0, 0, -1))))
+        hx, hy = pcb_hold_xy(bw, bl, hold_edge, hold_at=hold_at, clr=TEE_CLR)
+        out.append((f"tee_insert_{i}", seated_insert(_M4, (cx + hx, cy + hy, z0), (0, 0, -1))))
         out.append((f"tee_screw_{i}", m4_button_screw(TEE_SCREW_L).translate(
-            (cx + hx, cy + hy, TEE_Z + _PCB_T + M4_BUTTON_HEAD_H))))       # head seated on the board top
+            (cx + hx, cy + hy, z0 + _PCB_T + M4_BUTTON_HEAD_H))))          # head seated on the board top
     return out
 
 
@@ -287,19 +364,28 @@ def tee_cradles():
     from cadkit.pcb import pcb_cradle
     from .helpers import box_at
     rw, rl = EL.TEE_RELIEF
-    so = TEE_Z - _RIB_TOP                                        # pads meet the lifted tee board bottom (TEE_Z)
     out = []
     for i, (x, y, d) in enumerate(tee_stations()):
-        w, l, cx, cy, open_edge, hold_edge, hold_at = tee_hold(i, x, y, d)
+        bw, bl, cx, cy, open_edge, hold_edge, hold_at = tee_hold(i, x, y, d)
+        # ON A MOTOR the cradle stands on the pocket's faceplate wall, so its base is only
+        # MOTOR_SEAT_SO under the board; on the rail it stands on the rib tops as before.
+        so = MOTOR_SEAT_SO if on_motor(i) else TEE_Z - _RIB_TOP
+        base_z = tee_z(i) - so
         if hold_edge is None:
-            cr = pcb_cradle(w, l, screw_xy=_BUS_B_M2_XY, open_edge=open_edge, standoff=so,
+            cr = pcb_cradle(bw, bl, screw_xy=_BUS_B_M2_XY, open_edge=open_edge, standoff=so,
                             wall_over=TEE_WALL_OVER, clr=TEE_CLR)
         else:
-            cr = pcb_cradle(w, l, open_edge=open_edge, hold_edge=hold_edge, hold_at=hold_at,
+            cr = pcb_cradle(bw, bl, open_edge=open_edge, hold_edge=hold_edge, hold_at=hold_at,
                             standoff=so, wall_over=TEE_WALL_OVER, clr=TEE_CLR)
         if i < 11:                                               # bus-A: THT-tail relief window in the base
-            cr = cr.cut(box_at(rw, rl, 4.0, x=0.0, y=EL.TEE_CONN_CY, z=-1.5))
-        out.append((f"tee_cradle_{i}", cr.translate((cx, cy, _RIB_TOP))))
+            cr = cr.cut(box_at(rw, rl, 12.0, x=0.0, y=EL.TEE_CONN_CY, z=-5.5))
+        cr = cr.translate((cx, cy, base_z))
+        if on_motor(i):
+            # NOTHING FIXED MAY OVERHANG A MOTOR or it can never come out: the half of this
+            # cradle that laps the motor is cut away, leaving the strip on the wall, its +Y and
+            # -X walls and the hold boss. What laps the motor is the removable BOARD.
+            cr = cr.cut(MB.lift_prism(i))
+        out.append((f"tee_cradle_{i}", cr))
     return out
 
 
@@ -314,24 +400,37 @@ def tee_hold_negatives():
     notch_h = _PCB_T + TEE_WALL_OVER + 1.0
     out = []
     for i, (x, y, d) in enumerate(tee_stations()):
-        w, l, cx, cy, _open, hold_edge, hold_at = tee_hold(i, x, y, d)
+        bw, bl, cx, cy, _open, hold_edge, hold_at = tee_hold(i, x, y, d)
         if hold_edge is None:
             continue
-        hx, hy = pcb_hold_xy(w, l, hold_edge, hold_at=hold_at, clr=TEE_CLR)
-        px, py = cx + hx, cy + hy
-        anchor = anchor_cutter(_M4, (px, py, TEE_Z), (0, 0, -1), _M4.anchor_min_wall)
+        hx, hy = pcb_hold_xy(bw, bl, hold_edge, hold_at=hold_at, clr=TEE_CLR)
+        px, py, pz = cx + hx, cy + hy, tee_z(i)
+        anchor = anchor_cutter(_M4, (px, py, pz), (0, 0, -1), _M4.anchor_min_wall)
         notch = cq.Workplane("XY").add(cq.Solid.makeCylinder(
-            (M4_BUTTON_HEAD_D + 2 * TEE_CLR) / 2, notch_h, cq.Vector(px, py, TEE_Z)))
+            (M4_BUTTON_HEAD_D + 2 * TEE_CLR) / 2, notch_h, cq.Vector(px, py, pz)))
         out.append((x, [anchor, notch]))
     return out
 
 
+def _on_bank(p):
+    return p[2] > TOP_Z - 20.0          # a tee on a motor sits far above the rail lanes
+
+
 def _seg(a, b, lane_z, d=WIRE_D, off=0.0):
-    """One crimped trunk SEGMENT between two rail tee headers a=(x,y), b=(x,y): rise to the
-    rail corridor at lane_z (above the ribs) and ride it in X (dodging m9). off shifts x AND
-    y (the 24 V pair)."""
-    (xa, ya), (xb, yb) = a, b
-    pts = [(xa, ya, HDR_Z)] + _rail_pts(xa, xb, lane_z) + [(xb, yb, HDR_Z)]
+    """One crimped trunk SEGMENT between two tee headers, each a 3D point (tee_point).
+
+    Two tees ON THE BANK fly to each other at TOP_Z, over the motors. A segment with a RAIL
+    tee at one end rises there and flies across at the same lane. Rail to rail is the old
+    route: the rail corridor at lane_z, dodging m9. off shifts x AND y (the 24 V pair)."""
+    if _on_bank(a) and _on_bank(b):
+        pts = [a, (a[0], a[1], TOP_Z), (b[0], a[1], TOP_Z), (b[0], b[1], TOP_Z), b]
+    elif _on_bank(a) or _on_bank(b):
+        t, r = (a, b) if _on_bank(a) else (b, a)          # t on the bank, r on the rail
+        pts = [t, (t[0], t[1], TOP_Z), (r[0], t[1], TOP_Z), (r[0], r[1], TOP_Z), r]
+        if not _on_bank(a):
+            pts.reverse()
+    else:
+        pts = [a] + _rail_pts(a[0], b[0], lane_z) + [b]
     return _wire([(px + off, py + off, pz) for px, py, pz in pts], d)
 
 
@@ -400,19 +499,20 @@ def build_wires():
 
     # ── the two CAN buses: TRUNK-AND-DROP over the rail tee PCBs ────────
     tees = tee_stations()
-    hdrA = {i: (tees[i][0], tees[i][1] - tees[i][2] * 2.0)   # trunk-header (x, y) per tee
+    hdrA = {i: tee_point(i, tees[i][0], tees[i][1])          # trunk connector (3D) per tee
             for i in range(len(tees))}
+    dropA = {i: tee_point(i, tees[i][0], tees[i][1], "drop") for i in range(10)}
     west = sorted(range(10), key=lambda i: hdrA[i][0])       # bus A west→east
 
     # bus A CAN head: teensy_ifc -> bay corridor -> -Y rail -> westernmost motor tee; then
     # one crimped segment per hop east. Termination: teensy_ifc + tee 0's closed jumper.
     # Drawn as the CAN-H (yellow) + CAN-L (green) pair, offset +-CAN_OFF (user).
-    xw, yw = hdrA[west[0]]
-    # the interface board stands +Y of the Pi, 9 mm off the motor: climb in that gap first
+    _w0 = hdrA[west[0]]                                      # string 1's tee, on its motor
+    # the interface board stands +Y of the Pi, 9 mm off the motor: climb in that gap, then fly
+    # straight over the bank to the first tee -- no rail ride at all now the tees are up there
     _ia = SP(-565.0, 42.0, -50.5)
-    _canA_head = ([_ia, (BAY_X - 5.0, _ia[1], _ia[2]), (BAY_X - 5.0, _ia[1], BAYFLY),
-                   (BAY_X, _ia[1], BAYFLY), (BAY_X, RAIL_Y, BAYFLY)]
-                  + _rail_pts(BAY_X, xw, LANE_CAN) + [(xw, yw, HDR_Z)])
+    _canA_head = [_ia, (BAY_X - 5.0, _ia[1], _ia[2]), (BAY_X - 5.0, _ia[1], TOP_Z),
+                  (_w0[0], _ia[1], TOP_Z), (_w0[0], _w0[1], TOP_Z), _w0]
     for _sfx, _co in (("h", -CAN_OFF), ("l", CAN_OFF)):
         _od = WIRE_OD[f"wire_can{_sfx}"]
         out.append((f"wire_can{_sfx}_0", _wire(
@@ -421,13 +521,22 @@ def build_wires():
             out.append((f"wire_can{_sfx}_{k + 1}",
                         _seg(hdrA[west[k]], hdrA[west[k + 1]], LANE_CAN, _od, off=_co)))
 
-    # bus A drops: each motor's factory 6-pin XH pigtail (grey), from its -Y-facing PCB out
-    # to its rail tee. cy = outboard of THIS motor's back so the pigtail never re-enters it;
-    # m9 runs through the motor-9 cutout to its tee past the bank.
+    # bus A drops: each motor's factory 4-pin XH pigtail (grey), from its -Y-facing PCB to its
+    # OWN tee. For the nine tees on motors that is a short climb up behind the motor and over
+    # its top; string 10's tee is still on the rail, so that one keeps the old reach along the
+    # corridor. The climb stands off the back bumper where there is one.
     for i in range(10):
-        tx = tees[i][0]
         mx, sy, mz = D.motor_pos(i)
         back = _motor_back(i)
+        if on_motor(i):
+            stand = (MB.BUMP_T + MB.MOTOR_CLR + 2.0) if MB.back_stop_kind(i) == "bumper" else 2.0
+            dx, dy, dz = dropA[i]
+            out.append((f"motor_pigtail_{i}", _wire([
+                (mx, back, mz), (mx, back - stand, mz), (mx, back - stand, TOP_Z),
+                (dx, back - stand, TOP_Z), (dx, dy, TOP_Z), (dx, dy, dz)],
+                WIRE_OD["motor_pigtail"])))
+            continue
+        tx = tees[i][0]
         cy = min(TEE_Y, back - 3.0)
         out.append((f"motor_pigtail_{i}", _wire([
             (mx, back, mz), (mx, back, -52.0), (mx, cy, -52.0),
@@ -436,7 +545,7 @@ def build_wires():
 
     # 24 V pair (2 × 22 AWG per rail): DC inlet -> AFE tee (10) -> tee 0 ... tee 9 -> buck;
     # the AFE's LDO feed is tee 10's DROP. hot/gnd offset ±PWR_OFF.
-    x10, y10 = hdrA[10]
+    x10, y10 = hdrA[10][0], hdrA[10][1]
     # the power heads drop just inboard of the bridge endplate's wall, and that wall
     # follows BRIDGE_AXLE_X -- so this lane does too. It was a constant -5.5, and when
     # the bearing grew O8 -> O13 the axle (and the wall) stepped 2.5 -X and clipped the
@@ -445,9 +554,9 @@ def build_wires():
     heads = [(_PWR_X, EL.DC_Y, EL.JACK_Z), (_PWR_X, EL.DC_Y, -52.0), (_PWR_X, TEE_Y, -52.0),
              (x10, TEE_Y, -52.0), (x10, TEE_Y, HDR_Z)]
     _buck = SP(-567.0, -106.0, -50.0)
-    tail = ([(hdrA[west[0]][0], hdrA[west[0]][1], HDR_Z)]
-            + _rail_pts(hdrA[west[0]][0], BAY_X, LANE_PWR)
-            + [(BAY_X, _buck[1], LANE_PWR), (BAY_X, _buck[1], _buck[2]), _buck])   # in to the buck
+    # ...and out of the last tee (string 1's, on its motor) down the bay column to the buck
+    tail = [_w0, (_w0[0], _w0[1], TOP_Z), (BAY_X, _w0[1], TOP_Z), (BAY_X, _buck[1], TOP_Z),
+            (BAY_X, _buck[1], _buck[2]), _buck]
     afe_drop = [(x10, TEE_Y + 4.5, HDR_Z), (x10, -104.0, -54.0),
                 (-8.0, -104.0, -54.0), afe_pwr]
     for _nm, _do in (("wire_pwr_hot", -PWR_OFF), ("wire_pwr_gnd", PWR_OFF)):
@@ -462,7 +571,7 @@ def build_wires():
         out.append((f"{_nm}_12", _wire(_off(afe_drop), WIRE_OD[_nm])))
 
     # ── bus B (inputs): ifc -> LKL tee -> leg-socket landing tee ────────
-    x11, y11 = hdrA[11]
+    x11, y11 = hdrA[11][0], hdrA[11][1]
     _ib = SP(-557.0, 42.0, -50.5)
     _canB_head = ([_ib, (BAY_X - 5.0, _ib[1], _ib[2]), (BAY_X - 5.0, _ib[1], BAYFLY),
                    (BAY_X, _ib[1], BAYFLY), (BAY_X, RAIL_Y, BAYFLY)]

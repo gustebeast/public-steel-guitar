@@ -461,7 +461,8 @@ def _string_components(i):
         assert abs(-_mb.ymin - MOTOR_PULLEY_STANDOFF - D.MOTOR_BODY_L) < 1e-6, (
             f"the motor body is {-_mb.ymin - MOTOR_PULLEY_STANDOFF:.2f} deep, not "
             f"dimensions.MOTOR_BODY_L {D.MOTOR_BODY_L} -- the pockets are built from that")
-    out.append((f"motor_screw_{i}", MB.screw_dummy(i)))
+    if i in MB.SCREWED:                 # the others are held by their own tee board
+        out += MB.screw_dummies(i)
     out.append((f"belt_{i}", C.belt((mx, my, mz), (D.screw_x(i), sy, spz))))   # all belts modelled smooth
     # belt-tension clamp (unified clamp_half ×2 + screw + external nut), oriented to the belt's flat
     # zone. Lifter bars only on the last string (build-time saver — same geometry, hidden elsewhere).
@@ -1132,7 +1133,8 @@ _COLORS = {
     "string_nut":      (0.82, 0.60, 0.20),   # brass string-end fitting (demo)
     "guide_rod":       (0.35, 0.35, 0.38),
     "motor":           (0.22, 0.25, 0.27),   # charcoal
-    "motor_screw":     (0.62, 0.64, 0.66),   # steel — the one screw that retains each motor
+    "motor_screw":     (0.62, 0.64, 0.66),   # steel — string 10's retaining screw (the rest are
+    "motor_insert":    (0.72, 0.60, 0.38),   # brass  —  held by their own tee board instead)
     "belt":            (0.13, 0.13, 0.13),   # GT2 black
     "string":          (0.85, 0.85, 0.85),
     "break_dowel":     (0.75, 0.75, 0.78),
