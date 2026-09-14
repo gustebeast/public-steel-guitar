@@ -60,7 +60,7 @@ TRAY_Z0, TRAY_Z1 = -64.0, -61.0        # plate band (3 thick) - 1.15 ABOVE the
 
 from . import chassis as CH          # only early constants (X_*, Z_*) used here
 from .helpers import box_at, cyl, cyl_x
-from cadkit.pcb import jst_xh_header
+from cadkit.pcb import PCB_T as _PCB_T, jst_xh_header
 
 # ---- board footprints (x0, x1, y0, y1); board bottom z = TRAY_Z1 + post ----
 POST_H = 4 * D.BEAD                    # 3.2 printed standoff posts under each board
