@@ -34,17 +34,20 @@ ASSEMBLY (the latch then cannot come out):
   2. Slide the collar on from the tower's +Y face until the rails hit the stop.
      The springs are 0.4 longer free than installed; a chamfer at the far end of
      each channel cams the coil end in as the ring settles.
-  3. One M4x30 button head down through the collar into the tower.
+  3. One M4x30 button head down through the collar into its insert in the
+     tower (cadkit.fasteners.ScrewJoint -- see `screw_joint`).
 
 THE PARTS
   * FRAME: a flat ring riding the tower's top face. Its +Y bar IS the hook: its inner
     edge stands HOOK_ENGAGE inside the tenon's +Y apex, in a pocket cut across the
     tenon. The 20 x 20 pad plate stands up from its -Y side, flush in the collar's -Y
     face and centred leg_latch.PAD_X toward +X, like the leg latch (user priority 1).
-  * TWO SPRINGS (leg_latch's coil) in channels in the collar over the ring's +Y
-    side, pushed by lugs on the ring toward -Y. REST is the ring on the -Y flanks of
-    its own pocket (the pocket is the ring's outline swept through the stroke, so
-    those flanks ARE the ring at rest); the pad on its recess floor is the hard stop.
+  * ONE SPRING (leg_latch's coil, at leg_latch's own installed length, so the pad
+    takes the same 4.0 N to start moving) in a channel in the collar over the ring's
+    +Y side, seated at BOTH ENDS: a blind CUP on the ring at one end, the sleeve's
+    blind floor at the other. REST is the ring on the -Y flanks of its own pocket
+    (the pocket is the ring's outline swept through the stroke, so those flanks ARE
+    the ring at rest); the pad on its recess floor is the hard stop.
   * The TENON gets a POCKET (the ledge the bar hangs on) and an END CHAMFER (the
     lead-in that cams the hook out as the tenon goes in: push to connect, no button).
 
@@ -63,12 +66,14 @@ import math
 
 import cadquery as cq
 
-from cadkit.fasteners import M4, anchor_cutter, head_bore_cutter
+from cadkit.fasteners import M4, ScrewJoint
+from cadkit.holes import teardrop_hole
 from cadkit.joinery import PrintSpec, joint, joint_box_min
 from cadkit.supports import printable_bore
 from . import dimensions as D
 from . import latch as LT
 from . import leg_latch as LL
+from . import legs as LG
 from . import leg_stack as LS
 from .helpers import box_at
 
@@ -77,7 +82,14 @@ _S2 = math.sqrt(2.0)
 CLR = LL.CLR                       # sliding clearance, as the leg latch
 TEN_R = LL.TEN_R                   # 16.171 axis -> the tenon's apex
 BORE_R = LL.BORE_R                 # 16.595 axis -> the mortise's apex
-FACE_R = 32 * B                    # 25.6 axis -> the tower's faces (pedal_bar asserts it)
+# THE TOWER IS NO LONGER SQUARE (user), so the faces are two numbers. What each one
+# answers to is different, and that is the whole reason they parted company:
+#   X -- the RAILS. Their slot has to clear the ring's pocket inboard and keep a wall
+#        to the face outboard, and the ring's ARM was being shaved to pay for it.
+#   Y -- the BAR's own thickness, because the tower and the bar are flush now: the
+#        pad's recess and the spring's channel live between these two faces.
+FACE_X = 34 * B                    # 27.2 axis -> the +-X faces (pedal_bar asserts it)
+FACE_Y = 32 * B                    # 25.6 axis -> the +-Y faces (ditto)
 FRAME_UP = LS.PRINT_UP["bar_latch_frame"]    # ring down, pad and lugs growing up
 COLLAR_UP = LS.PRINT_UP["bar_latch_collar"]  # mouth face down
 COLLAR_H = 28 * B                  # 22.4 the collar's height, mouth down to the split
@@ -95,51 +107,112 @@ TIP_HALF = LS.CHAM / 2.0 + HOOK_ENGAGE + 2 * CLR   # the hook's reach across X, 
                                    # room for the tenon to sit off-centre in its fit
 # -- the ring --------------------------------------------------------------------
 FRAME_H = 6 * B                    # 4.8
-ARM_OUT = BORE_R + 2 * B           # 18.20 the ring's +-X outer faces. 2 beads of arm
-                                   # (it only passes the pad's push to the hook -- the
-                                   # hanging load goes hook -> +Y bar -> pocket roof).
-                                   # It was 4: the RAILS took the other two, and they
-                                   # need them more -- see RAIL_X.
+ARM_OUT = BORE_R + 4 * B           # 19.80 the ring's +-X outer faces, 4 beads of arm.
+                                   # It spent two of those on the rails for a while;
+                                   # the wider tower bought them back, and the ring
+                                   # wanted them: its arm is what carries the pad's
+                                   # push round to the hook, and its outer face is
+                                   # what the spring's CUP stands on.
 Y_HOOK_OUT = TEN_R + CLR           # the +Y bar's outer face
 # -- the pad ---------------------------------------------------------------------
 PAD_W = LL.PAD_W                   # 20.0 across X
 PAD_H = LL.PAD_FLAT                # 20.0 up from the tower's top face
 PAD_T = 3 * B                      # 2.4 the plate, as the leg latch
 PAD_X = LL.PAD_X                   # 3.6 toward +X, as the leg latch (user)
-Y_PLATE_IN = -(FACE_R - PAD_T)     # the plate's back at rest = the ring's -Y face
-RECESS_BACK = FACE_R - PAD_T - S_MAX
+Y_PLATE_IN = -(FACE_Y - PAD_T)     # the plate's back at rest = the ring's -Y face
+RECESS_BACK = FACE_Y - PAD_T - S_MAX
 assert RECESS_BACK - BORE_R >= D.MIN_WALL_2P, (
     "only %.2f of collar behind the pad's recess" % (RECESS_BACK - BORE_R))
-# -- the springs -----------------------------------------------------------------
-SPR_X = 16 * B                     # 12.8 each coil's axis, off the leg axis in X
-LUG_Y0 = 12 * B                    # 9.6 each lug's -Y face at rest = its channel's end
-LUG_L = 2 * B                      # 1.6 lug length along Y
-LUG_W = 4 * B                      # 3.2 lug width across X
-PIN_W = 2 * B                      # 1.6 the lug's locating blade, inside the coil's bore
-PIN_L = 3 * B                      # 2.4 how far the blade reaches into the coil
-SPR_REST_L = LT.SPR_FREE - 0.4     # 11.6 installed
+# -- the spring: ONE, at the leg's own installed length (user) ---------------------
+# TWO coils made this latch feel like a different mechanism from the leg's, in both
+# directions at once: half the preload (2.0 N against 4.0 -- a loose pad) and nearly
+# double at the bottom of the press (22.1 N against 12.0). Doubling a spring doubles
+# the force, so matching a FEEL on the same SKU means matching the COUNT and the
+# installed length. One coil, installed at leg_latch's own number.
+#
+# WHAT IS LEFT of the difference is 14.1 N at full press against the leg's 12.0, and
+# it is not tunable from here: this stroke is 4.0 where the leg's is 3.2, because the
+# hook has to clear the MORTISE's bore (3.87 minimum), not just the tenon. Spending
+# HOOK_ENGAGE down to 2.4 would buy the last 2 N for a third of the retention -- the
+# user's trade to make, not a default.
+#
+# ONE coil is OFF-CENTRE, and that is survivable: 4.0 N on a 13.6 arm leans the ring
+# on its pocket's +-X walls with about 1.4 N, so ~0.8 N of friction against a 4.0 N
+# return, and the leg's slider already runs one coil against an off-centre pad. The
+# centre is not on offer anyway -- the tenon's apex and the hook are there, and at
+# x=0 the mortise leaves under 8 mm of length where the coil needs 10.4.
+SPR_X = 19 * B                     # 15.2 the coil's axis, off the leg axis in X. +X --
+                                   # the pad's own side (PAD_X), so the thumb's line
+                                   # and the spring's are as close as the site allows
+SPR_REST_L = LL.SPR_REST_L         # 10.4 installed -- THE LEG'S, so the pad's preload
+                                   # is the leg's to the newton
 SPR_PRESS_L = SPR_REST_L - S_MAX
-assert SPR_PRESS_L >= LT.SPR_SOLID, "a spring goes solid before the pad stops"
-PRELOAD_N = 2 * (LT.SPR_FREE - SPR_REST_L) * LT.SPR_RATE
-PRESS_N = 2 * (LT.SPR_FREE - (SPR_REST_L - STROKE)) * LT.SPR_RATE
+assert SPR_PRESS_L >= LT.SPR_SOLID, "the spring goes solid before the pad stops"
+PRELOAD_N = (LT.SPR_FREE - SPR_REST_L) * LT.SPR_RATE                  # 4.0, the leg's
+PRESS_N = (LT.SPR_FREE - (SPR_REST_L - STROKE)) * LT.SPR_RATE         # 14.1
+# THE TWO SEATS (user: the coil had no pocket to sit in, the way the leg's has).
+#   * moving end: a CUP on the ring -- a blind bore the coil's end drops into, the
+#     leg slider's seat exactly, with the locating blade still up its middle.
+#   * fixed end: the channel is a SLEEVE at the coil's bore diameter for the whole
+#     length, ending in a flat blind floor -- captured along its length, not butted.
+CUP_D = LT.SPR_BORE_D              # 5.4 the cup's bore = the leg's spring bore
+CUP_SEAT = 2 * B                   # 1.6 how far the coil's end sits into the cup
+CUP_W = CUP_D + 2 * D.MIN_WALL_2P  # 8.6 across X: the bore plus a REAL wall each
+                                   # side. It was 7.2, which made those walls 0.9 --
+                                   # one bead -- and the site could not do better: the
+                                   # widest cup that fitted between the mortise's flank
+                                   # and the ring's pocket was 7.64. Widening the tower
+                                   # is what bought this (user), by letting the ring's
+                                   # arm go back to 4 beads and taking its pocket with
+                                   # it.
+CUP_BACK = 2 * B                   # 1.6 behind the bore's floor (user -- it was one
+                                   # bead). Nothing about the coil wanted this; the
+                                   # wall is what stands between the spring's seat
+                                   # and the ring's own opening, and a seat with a
+                                   # one-bead floor is a seat that splits. It is paid
+                                   # for OUTBOARD: the extra 0.8 of cup runs the
+                                   # channel's peaked end at the mortise, so the whole
+                                   # coil moved a bead +X to hold the same 1.78 wall
+CUP_Y0 = 14 * B                    # 11.2 the cup's FLOOR -- the coil's -Y end at rest.
+                                   # Further +Y than the coil itself needs: what sets
+                                   # it is the PEAK on the channel's -Y end (see
+                                   # `collar`), whose flank runs PARALLEL to the
+                                   # mortise's 45-degree flank -- the assert below
+CUP_FACE = CUP_Y0 + CUP_SEAT       # 11.2 the cup's mouth
 CHAN_R = LT.SPR_BORE_D / 2.0
-CHAN_END = LUG_Y0 + LUG_L + SPR_REST_L
-CHAN_CH = 1 * B                    # 0.8 install chamfers at the channel ends (> the 0.4
-                                   # the free coil is too long)
-assert CHAN_CH > LT.SPR_FREE - SPR_REST_L
-assert FACE_R - (CHAN_END + CHAN_CH) >= D.MIN_WALL_2P, "a spring channel breaks the +Y face"
-_flank = (LS.TEN_W + 2 * LS.FIT) / math.sqrt(2.0) - LUG_Y0   # mortise |x| at the channel
-assert SPR_X - CHAN_R - _flank >= D.MIN_WALL_2P, (
-    "a spring channel leaves %.2f to the mortise" % (SPR_X - CHAN_R - _flank))
-# ... and that one number covers the channel's PEAKED end too (see `collar`),
-# which reaches CHAN_R further -Y on 45-degree flanks: the mortise's flank at that
-# corner is 45 degrees the other way, so peak and mortise run PARALLEL, the same
-# 2.31 apart the whole way down.
+CHAN_END = CUP_Y0 + SPR_REST_L     # 20.0 the sleeve's blind floor: the fixed seat
+CHAN_CH = 3 * B                    # 2.4 install chamfer at the sleeve's floor end. It
+                                   # has to be longer than the coil is over-long --
+                                   # 1.6 now, the leg's preload, where two weak
+                                   # springs only needed 0.4 -- so that the free coil
+                                   # can go in at an angle and cam straight
+assert CHAN_CH > LT.SPR_FREE - SPR_REST_L, "the free coil cannot cam into its sleeve"
+assert CUP_BACK >= D.MIN_WALL_2P and (CUP_W - CUP_D) / 2.0 >= D.MIN_WALL_2P - 1e-9, (
+    "the cup's walls: %.2f behind the coil, %.2f each side"
+    % (CUP_BACK, (CUP_W - CUP_D) / 2.0))
+assert SPR_X + CUP_W / 2.0 <= ARM_OUT, "the cup overhangs the ring's arm"
+assert CUP_FACE + S_MAX < CHAN_END, "the cup's rim hits the sleeve's floor"
+# (the coil going solid is the other way this could end badly, and SPR_PRESS_L
+# above is that check: 6.16 pressed against 4.8 solid)
+assert FACE_Y - (CHAN_END + CHAN_CH) >= D.MIN_WALL_2P, "the spring channel breaks the +Y face"
+# THE WALL THAT DECIDES THIS CORNER. The channel's -Y end is peaked at 45 degrees
+# (see `collar`) and the mortise's flank under it is 45 degrees the other way up, so
+# the two run PARALLEL: the gap is the same all the way along, and it is NOT the
+# distance along X that a naive check reads. Both are lines x + y = k.
+_MORT_K = (LS.TEN_W + 2 * LS.FIT) / math.sqrt(2.0)            # 17.39, the mortise's
+_PEAK_K = (SPR_X - (CUP_W / 2 + CLR)) + (CUP_Y0 - CUP_BACK - CLR)   # peak's -X flank
+assert (_PEAK_K - _MORT_K) / _S2 >= D.MIN_WALL_2P, (
+    "the spring channel's peak runs within %.2f of the mortise"
+    % ((_PEAK_K - _MORT_K) / _S2))
 # -- the screws and the TRRS jack (the corners) ------------------------------------
 SCREW = dataclasses.replace(M4, name="M4 button", head_recess_d=11 * B,
                             head_recess_h=3 * B)   # m4_button_screw: head 7.6 x 2.2
 SCREW_L = 30.0                     # M4x30: through the collar, then SCREW_BITE into the tower
 SCREW_BITE = SCREW_L - (COLLAR_H - SCREW.head_recess_h)
+SCREW_END = SCREW_BITE + COLLAR_H + 1.6   # where the hole stops, 1.6 past the tip
+# the head is the leg's head: ONE M4 button SKU on the instrument (user's fastener
+# rule), so the numbers come from there rather than being typed again
+SCREW_HEAD_D, SCREW_HEAD_H = LG.LOCK_HEAD_D, LG.LOCK_HEAD_H
 TRRS_BORE_D = 14 * B               # 11.2 the CA-354S body way, in the BAR
 TRRS_COLLAR_D = 13 * B             # 10.4 -- the COLLAR'S share of that way is one bead
                                    # tighter on the same 9.6 body (0.4 a side, still a
@@ -147,7 +220,8 @@ TRRS_COLLAR_D = 13 * B             # 10.4 -- the COLLAR'S share of that way is o
                                    # this part peaks its bores toward -Y, and 11.2's
                                    # peak walks the jack so far in off the -Y face that
                                    # the ring's own corner web falls to 1.35.
-assert SCREW_BITE >= M4.anchor_min_wall, "the collar screws bite %.1f" % SCREW_BITE
+assert SCREW_BITE >= M4.anchor_min_wall, (
+    "the screw bites %.1f, under the insert's own depth + min bite" % SCREW_BITE)
 
 
 def _corner_xy(sx: float, bore_d: float, peak_d: float = None):
@@ -164,7 +238,7 @@ def _corner_xy(sx: float, bore_d: float, peak_d: float = None):
     """
     r = bore_d / 2.0
     tip = (r if peak_d is None else peak_d / 2.0) * _S2
-    return (sx * (FACE_R - D.MIN_WALL_2P - r), -(FACE_R - D.MIN_WALL_2P - tip))
+    return (sx * (FACE_X - D.MIN_WALL_2P - r), -(FACE_Y - D.MIN_WALL_2P - tip))
 
 
 # the head recess is the widest thing on the screw's axis, so it sets both rules
@@ -200,7 +274,7 @@ RAIL_Y0 = -7 * B                   # -5.6 the slots' closed end: the SEAT STOP. 
                                    # derived -- see the verify script's wall probes)
 _PS_COLLAR = PrintSpec(nozzle=D.NOZZLE_D, material="PETG-GF", facing="up")
 _PS_TOWER = PrintSpec(nozzle=D.NOZZLE_D, material="PETG-GF", facing="down")
-RAIL_STROKE = FACE_R - RAIL_Y0     # 33.6 how far the collar slides to seat
+RAIL_STROKE = FACE_Y - RAIL_Y0     # 31.2 how far the collar slides to seat
 RAIL = joint(width=RAIL_W, length=RAIL_STROKE, depth=RAIL_D,
              tenon=_PS_COLLAR, mortise=_PS_TOWER, install="+z")
 _RAIL_NECK = RAIL.dims["neck"] / 2.0
@@ -212,7 +286,7 @@ _RAIL_HEAD = RAIL.dims["head"] / 2.0 + RAIL.clearance
 # NECK. Outboard, the +-X face stops the HEAD. So the rail's line is bounded by a
 # different feature on each side, and it sits in the middle of what they leave.
 _RAIL_IN = (ARM_OUT + CLR) + D.MIN_WALL_2P + _RAIL_NECK      # 20.84
-_RAIL_OUT = FACE_R - D.MIN_WALL_2P - _RAIL_HEAD              # 21.45
+_RAIL_OUT = FACE_X - D.MIN_WALL_2P - _RAIL_HEAD              # 23.05
 assert _RAIL_IN <= _RAIL_OUT, (
     "no room for a rail: the ring's pocket and the outer face leave %.2f"
     % (_RAIL_OUT - _RAIL_IN))
@@ -249,10 +323,18 @@ _WEB = D.MIN_WALL_2P
 K_MXMY = (abs(TRRS_XY[0]) + abs(TRRS_XY[1])                                 # -X-Y (jack)
           - (TRRS_COLLAR_D / 2 + _WEB) * _S2) - CLR * _S2   # the ring meets the
                                                             # COLLAR's bore, not the bar's
+# the screw's hole is NOT its shank where the ring passes it: the insert pocket's
+# mouth sits on the split, and cadkit flares a 45-degree step cone up out of it --
+# into the collar's lowest 0.8, exactly the band the ring runs in. So the clip is
+# measured off the POCKET (the hole's widest feature here), not the shank; sized off
+# the shank it left 1.05 (measured, verify_bar_walls.py).
 K_PXMY = (abs(SCREW_XY[0]) + abs(SCREW_XY[1])                               # +X-Y (screw)
-          - (SCREW.shaft_clr_d / 2 + _WEB) * _S2) - CLR * _S2
+          - (max(SCREW.shaft_clr_d, SCREW.insert_pilot_d) / 2 + _WEB) * _S2) - CLR * _S2
 _OPEN_DIAG = (LS.TEN_W + 2 * LS.FIT) / 2 * _S2 + S_MAX + CLR   # the opening's -Y diagonals
-assert (K_MXMY - _OPEN_DIAG) / _S2 >= D.MIN_WALL_2P, "the ring's -X-Y corner is too thin"
+for _k, _nm in ((K_MXMY, "-X-Y"), (K_PXMY, "+X-Y")):
+    assert (_k - _OPEN_DIAG) / _S2 >= D.MIN_WALL_2P, (
+        "the ring's %s corner is %.2f wide between the mortise's opening and the clip"
+        % (_nm, (_k - _OPEN_DIAG) / _S2))
 
 
 def planes(z_mouth: float) -> dict:
@@ -371,35 +453,31 @@ def frame(z_mouth: float) -> cq.Workplane:
     f = f.cut(_yz_prism([(R_TIP - 0.01, zr + 0.01), (R_TIP + HOOK_CH, zr + 0.01),
                          (R_TIP - 0.01, zr - HOOK_CH)], -TIP_HALF, TIP_HALF))
     # the pad plate, standing up from the ring's -Y face, flush with the collar
-    f = f.union(_box(PAD_X - PAD_W / 2, PAD_X + PAD_W / 2, -FACE_R, Y_PLATE_IN,
+    f = f.union(_box(PAD_X - PAD_W / 2, PAD_X + PAD_W / 2, -FACE_Y, Y_PLATE_IN,
                      z0, z0 + PAD_H))
-    # the spring lugs, standing on the ring, each with a BLADE the coil is slipped over
-    # at assembly. Its underside rises at 45 degrees off the lug, so it grows out of
-    # the lug in the print rather than hanging from its tip.
-    ri = LT.SPR_ID / 2.0 - CLR                     # inside the coil's bore
-    for sx in (-1.0, 1.0):
-        x = sx * SPR_X
-        f = f.union(_box(x - LUG_W / 2, x + LUG_W / 2,
-                         LUG_Y0, LUG_Y0 + LUG_L, zr - 0.01, p["z_s"] + LT.SPR_OD / 2 - B))
-        y0, zs = LUG_Y0 + LUG_L - 0.01, p["z_s"]
-        f = f.union(_yz_prism([(y0, zs - ri), (y0 + PIN_L, zs - ri + PIN_L),
-                               (y0 + PIN_L, zs + ri), (y0, zs + ri)],
-                              x - PIN_W / 2, x + PIN_W / 2))
+    # the spring's CUP, standing on the ring: a blind bore the coil's end sits in,
+    # which is the leg slider's seat and nothing more. It used to carry a locating
+    # blade up its middle as well (user: none of the other spring pockets have
+    # one) -- that was from when this end was a flat-faced lug and something had to
+    # hold the coil on; a bore round the coil's OD does that job on its own, the
+    # way every other seat in the instrument does it.
+    zs = p["z_s"]
+    f = f.union(_box(SPR_X - CUP_W / 2, SPR_X + CUP_W / 2, CUP_Y0 - CUP_BACK, CUP_FACE,
+                     zr - 0.01, zs + CUP_D / 2.0 * _S2 + B))
+    f = f.cut(teardrop_hole(CUP_D, CUP_SEAT + 0.01,
+                            (LS.LEG_X + SPR_X, LS.LEG_Y + CUP_FACE + 0.01, zs),
+                            (0.0, -1.0, 0.0), FRAME_UP))
     return f
 
 
 def springs(z_mouth: float):
-    """The two coils at rest, from each lug's +Y face to its channel's end: drawn as
-    TUBES, because the lug's pin sits inside the coil's bore."""
+    """The coil at rest, from the cup's floor to the sleeve's, drawn as a TUBE."""
     p = planes(z_mouth)
-    out = []
-    for sx in (-1.0, 1.0):
-        base = cq.Vector(LS.LEG_X + sx * SPR_X, LS.LEG_Y + LUG_Y0 + LUG_L, p["z_s"])
-        tube = cq.Solid.makeCylinder(LT.SPR_OD / 2.0, SPR_REST_L, base, cq.Vector(0, 1, 0)).cut(
-            cq.Solid.makeCylinder(LT.SPR_ID / 2.0, SPR_REST_L + 2.0, base - cq.Vector(0, 1, 0),
-                                  cq.Vector(0, 1, 0)))
-        out.append(cq.Workplane("XY").add(tube))
-    return out
+    base = cq.Vector(LS.LEG_X + SPR_X, LS.LEG_Y + CUP_Y0, p["z_s"])
+    tube = cq.Solid.makeCylinder(LT.SPR_OD / 2.0, SPR_REST_L, base, cq.Vector(0, 1, 0)).cut(
+        cq.Solid.makeCylinder(LT.SPR_ID / 2.0, SPR_REST_L + 2.0, base - cq.Vector(0, 1, 0),
+                              cq.Vector(0, 1, 0)))
+    return [cq.Workplane("XY").add(tube)]
 
 
 def _rail_pose(w: cq.Workplane, sx: float, z0: float, y0: float) -> cq.Workplane:
@@ -417,7 +495,7 @@ def rails(z_mouth: float) -> cq.Workplane:
     z0 = planes(z_mouth)["z0"]
     out = None
     for sx in (-1.0, 1.0):
-        t = _rail_pose(RAIL.tenon(root=1.0), sx, z0, FACE_R)
+        t = _rail_pose(RAIL.tenon(root=1.0), sx, z0, FACE_Y)
         out = t if out is None else out.union(t)
     return out
 
@@ -429,7 +507,7 @@ def rail_slots(z_mouth: float) -> cq.Workplane:
     out = None
     for sx in (-1.0, 1.0):
         m = _rail_pose(RAIL.mortise(drop=2.0, length=RAIL_STROKE + 2.0 + CLR),
-                       sx, z0, FACE_R + 2.0)
+                       sx, z0, FACE_Y + 2.0)
         out = m if out is None else out.union(m)
     return out
 
@@ -440,6 +518,24 @@ def screws(z_mouth: float):
             for x, y in SCREW_CORNERS]
 
 
+def screw_joint(z_mouth: float) -> ScrewJoint:
+    """THE screw, defined once for both parts (cadkit.fasteners.ScrewJoint): head
+    recessed in the collar's mouth face, clearance down through the collar, and the
+    INSERT in the tower with its pocket mouth on the split -- the face the insert is
+    pressed into. Each part cuts `cutter(its own print_up)`, so the one hole comes
+    out teardropped for -Y in the collar and for +Y in the tower, and the assembly
+    draws the screw and the insert from the same numbers."""
+    (pt, ax), = screws(z_mouth)
+    return ScrewJoint(SCREW, pt, ax, SCREW_L, insert_at=COLLAR_H, end_at=SCREW_END,
+                      head_d=SCREW_HEAD_D, head_h=SCREW_HEAD_H,
+                      recess=SCREW.head_recess_h)
+
+
+def screw_dummies(z_mouth: float):
+    """The screw seated and its insert in the tower, for the assembly."""
+    return screw_joint(z_mouth).dummies("bar_latch_screw", "bar_latch_insert")
+
+
 # -- the collar ----------------------------------------------------------------------
 def collar(z_mouth: float, trrs_top: float) -> cq.Workplane:
     """The top COLLAR_H of the bar's tower, printed on its own mouth face. Every latch
@@ -447,7 +543,7 @@ def collar(z_mouth: float, trrs_top: float) -> cq.Workplane:
     (world z): the way continues up into the collar, which closes it."""
     p = planes(z_mouth)
     z0 = p["z0"]
-    c = box_at(2 * FACE_R, 2 * FACE_R, COLLAR_H, x=LS.LEG_X, y=LS.LEG_Y,
+    c = box_at(2 * FACE_X, 2 * FACE_Y, COLLAR_H, x=LS.LEG_X, y=LS.LEG_Y,
                z=z0 + COLLAR_H / 2.0)
     c = c.cut(LS.mortise_cutter(z0 - 1.0, z_mouth + 1.0))
     # the mortise's -Y apex is a 1.6 flat looking +Y: a ceiling in THIS part's print
@@ -465,40 +561,43 @@ def collar(z_mouth: float, trrs_top: float) -> cq.Workplane:
     swept = _hull(ring + [(x, y + S_MAX) for x, y in ring])
     c = c.cut(_xy_prism(_grow(swept, CLR), z0 - 1.0, p["z_pocket_top"]))
     # the pad's recess, to the plate's full travel: its floor is the hard stop
-    c = c.cut(_box(PAD_X - PAD_W / 2 - CLR, PAD_X + PAD_W / 2 + CLR, -(FACE_R + 1.0),
+    c = c.cut(_box(PAD_X - PAD_W / 2 - CLR, PAD_X + PAD_W / 2 + CLR, -(FACE_Y + 1.0),
                    -RECESS_BACK, z0 - 1.0, z0 + PAD_H + CLR))
     assert z_mouth - (z0 + PAD_H + CLR) >= D.MIN_WALL_2P, "the pad's recess breaks the mouth"
-    # the spring channels: an arch over each coil, open all the way down through the
-    # collar's underside (a closed bottom would be a ceiling in this print, and would
-    # stop the collar going on over the coils); each one's -Y end is its lug's rest
-    # stop. The ends' lower edges are chamfered: lowering the collar at assembly, they
-    # cam the free coil's end and the lug together.
-    zb = p["z_pocket_top"]
-    for sx in (-1.0, 1.0):
-        x = sx * SPR_X
-        c = c.cut(_box(x - CHAN_R, x + CHAN_R, LUG_Y0, CHAN_END, z0 - 1.0, p["z_s"]))
-        c = c.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-            CHAN_R, CHAN_END - LUG_Y0,
-            cq.Vector(LS.LEG_X + x, LS.LEG_Y + LUG_Y0, p["z_s"]), cq.Vector(0, 1, 0))))
-        c = c.cut(_yz_prism([(CHAN_END - 0.01, z0 - 0.01), (CHAN_END + CHAN_CH, z0 - 0.01),
-                             (CHAN_END - 0.01, z0 + CHAN_CH)], x - CHAN_R, x + CHAN_R))
-        # its -Y end. BELOW the pocket's roof there is no end at all -- channel and
-        # pocket are one void. ABOVE it a flat end would be a wall looking +Y, a
-        # ceiling in this print, so it is PEAKED IN PLAN: two 45-degree flanks
-        # meeting CHAN_R further -Y. That way round, the end's material appears
-        # first at the channel's own side walls and closes inward a layer at a
-        # time. (A 45 ramp in Z fails here: its foot lands on the pocket's roof
-        # plane, where there is nothing yet to grow from -- the check caught it.)
-        # Nothing stops against this end: the ring's rest stop is the POCKET's own
-        # -Y flanks (the pocket IS the ring's outline swept through the stroke, so
-        # its -Y face is the ring at rest).
-        c = c.cut(_xy_prism([(x - CHAN_R, LUG_Y0 + 0.01), (x + CHAN_R, LUG_Y0 + 0.01),
-                             (x, LUG_Y0 - CHAN_R)],
-                            z0 - 1.0, p["z_s"] + CHAN_R + 0.01))
-    # the screws: button head recess at the mouth, clearance on down, via cadkit
-    for (pt, axis) in screws(z_mouth):
-        c = c.cut(head_bore_cutter(SCREW, pt, axis, COLLAR_H + 1.0, overshoot=1.0,
-                                   print_up=COLLAR_UP))
+    # THE SPRING'S CHANNEL -- one of them now, and three things in a line: a box the
+    # CUP travels in, the SLEEVE the coil runs in at its own bore diameter, and the
+    # sleeve's flat blind floor, which is the coil's fixed seat. All of it opens at
+    # the collar's underside: a closed bottom would be a ceiling in this print, and
+    # the coil and the ring are dropped in from that side at assembly.
+    zs = p["z_s"]
+    x = SPR_X
+    y_cup0 = CUP_Y0 - CUP_BACK - CLR                # the void's -Y end
+    y_cup1 = CUP_FACE + S_MAX + CLR                 # the cup's mouth at FULL PRESS
+    cup_hw = CUP_W / 2.0 + CLR
+    c = c.cut(_box(x - cup_hw, x + cup_hw, y_cup0, y_cup1, z0 - 1.0,
+                   zs + CUP_D / 2.0 * _S2 + B + CLR))
+    c = c.cut(_box(x - CHAN_R, x + CHAN_R, y_cup1 - 0.01, CHAN_END, z0 - 1.0, zs))
+    c = c.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        CHAN_R, CHAN_END - (y_cup1 - 0.01),
+        cq.Vector(LS.LEG_X + x, LS.LEG_Y + y_cup1 - 0.01, zs), cq.Vector(0, 1, 0))))
+    # the floor end's lower edge, chamfered: it cams the over-long free coil up into
+    # the sleeve as the ring settles
+    c = c.cut(_yz_prism([(CHAN_END - 0.01, z0 - 0.01), (CHAN_END + CHAN_CH, z0 - 0.01),
+                         (CHAN_END - 0.01, z0 + CHAN_CH)], x - CHAN_R, x + CHAN_R))
+    # its -Y end. BELOW the pocket's roof there is no end at all -- channel and
+    # pocket are one void. ABOVE it a flat end would be a wall looking +Y, a ceiling
+    # in this print, so it is PEAKED IN PLAN: two 45-degree flanks meeting a half
+    # width further -Y. That way round the end's material appears first at the
+    # channel's own side walls and closes inward a layer at a time. (A 45 ramp in Z
+    # fails here: its foot lands on the pocket's roof plane, where there is nothing
+    # yet to grow from -- the layer check caught that one.) Nothing stops against
+    # this end: the ring's rest stop is the POCKET's own -Y flanks, which ARE the
+    # ring's outline at rest.
+    c = c.cut(_xy_prism([(x - cup_hw, y_cup0 + 0.01), (x + cup_hw, y_cup0 + 0.01),
+                         (x, y_cup0 - cup_hw)],
+                        z0 - 1.0, zs + CUP_D / 2.0 * _S2 + B + CLR))
+    # the screw: one hole, defined once for collar and tower alike
+    c = c.cut(screw_joint(z_mouth).cutter(COLLAR_UP))
     # the RAILS: what actually holds the collar on (the screw only stops it
     # sliding back off). They stand on the underside, outboard of everything.
     c = c.union(rails(z_mouth))
@@ -512,15 +611,10 @@ def collar(z_mouth: float, trrs_top: float) -> cq.Workplane:
 # -- what the tower gives up ---------------------------------------------------------
 def tower_cut(z_mouth: float) -> cq.Workplane:
     """Cut in the bar's tower: the two RAIL SLOTS the collar slides into, and the
-    one screw's anchor (self-tap now, insert later) -- upright, so sideways to the
-    bar's print, which is why cadkit shapes it."""
-    z0 = planes(z_mouth)["z0"]
-    out = rail_slots(z_mouth)
-    for (x, y, _), axis in screws(z_mouth):
-        a = anchor_cutter(M4, (x, y, z0), axis, SCREW_BITE + D.MIN_WALL_2P,
-                          overshoot=1.0, print_up=BAR_UP)
-        out = out.union(a)
-    return out
+    screw's end of its joint -- the insert's pocket, mouthed on the split, and the
+    clearance past it. Upright, so sideways to the bar's print: cadkit shapes the
+    bore and steps the pocket for that."""
+    return rail_slots(z_mouth).union(screw_joint(z_mouth).cutter(BAR_UP))
 
 
 # -- what the tenon gives up ---------------------------------------------------------

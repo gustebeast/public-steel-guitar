@@ -17,14 +17,18 @@ the leg block — is GONE from both. The spigot still fixes X, Y and rotation
 and takes the load; nothing holds the bar down onto the legs, so they part as
 easily as they went together. Deliberate: a blank slate to redesign against.
 
-FLUSH 35.6 COLUMN (user, symmetry round: match the leg shafts): the bar
-prism is BLK_W wide (Y = YC ± 17.8) and 19 tall, and its END faces sit
-at station ± 17.8 — flush with the slimmed towers and the 35.6 leg
-blocks above, so each +Y stack reads as ONE clean 35.6-sq column from
-block top to bar bottom, all at the legs' 4.2 inset. Only the shared
-TPU feet stay 44 (proud ground boots, like under the -Y blocks). The
-feet are the shared legs.leg_foot dovetail inserts (mortise opens at
-the bar's -Y face).
+AS THICK AS ITS TOWER (user, 2026-09-14). The bar prism used to be BLK_W
+wide (Y = YC ± 17.8) to match the leg shafts, which read as one clean
+35.6 column — but the mortise tower that carries the redesigned leg is
+51.2, so it stood 7.4 proud on BOTH Y faces. On the -Y side that face is
+the PRINT BED, which left the bar's whole body 7.4 in the air, hanging
+off the tower. So the bar now takes the tower's own Y thickness
+(TOWER_WY) and the two are FLUSH: one plane from end to end, and a real
+bed under all of it. The +X end still carries the narrower spigot tower,
+so that end face keeps its own margin (END_MARGIN). Only the shared TPU
+feet stay 44 (proud ground boots, like under the -Y blocks). The feet
+are the shared legs.leg_foot dovetail inserts (mortise opens at the
+bar's -Y face).
 
 PRINTS -Y -> +Y (user). The bar used to build bottom-up with its lid on
 the +Z face; it now lies on its -Y face so that the fused foot-pedal
@@ -114,18 +118,32 @@ BAR_H = D.PEDAL_BAR_H                      # 27.0 — sized by the LID (see belo
                                            # dimensions.PEDAL_BAR_H). Shared with
                                            # legs.py, which needs the same number to
                                            # keep all four wide sections equal.
-BAR_Y0 = YC - LG.BLK_W / 2                 # BLK_W (35.6) wide — matches
-BAR_Y1 = YC + LG.BLK_W / 2                 # the slimmed towers/blocks: the
-                                           # +Y stacks are FLUSH columns at
-                                           # the legs' 4.2 inset (user)
 # TOWER_W lives up here because the bar's END FACES are derived from it -- see
 # _mortise_tower for what sets the number.
-TOWER_W = 64 * D.BEAD                      # 51.2 across flats. Chosen so the corner
-                                           # room clears the latch stack: half-diagonal
-                                           # 36.2 minus the tenon's 12.3 flat = 23.9
-                                           # against the 22.4 needed, 1.5 spare. 49.6
-                                           # also fits, at 0.37 -- not margin on a
-                                           # mechanism that is not designed yet.
+# THE TOWER IS NOT SQUARE any more (user): X and Y answer to different things.
+TOWER_WX = 68 * D.BEAD                     # 54.4 across X. It was 51.2 with Y, and
+                                           # the latch's RAILS are what widened it:
+                                           # their slot has to keep a wall to this
+                                           # face outboard and to the ring's pocket
+                                           # inboard, and at 51.2 the only way to fit
+                                           # both was to shave two beads off the
+                                           # ring's arm -- which is also the ledge the
+                                           # spring's cup stands on. 54.4 gives the
+                                           # arm back and the cup real walls.
+TOWER_WY = 64 * D.BEAD                     # 51.2 across Y, unchanged, and now the
+                                           # BAR's thickness too (see BAR_Y0/BAR_Y1).
+                                           # Chosen so the corner room clears the latch
+                                           # stack: half-diagonal 36.2 minus the tenon's
+                                           # 12.3 flat = 23.9 against the 22.4 needed,
+                                           # 1.5 spare. 49.6 also fits, at 0.37 -- not
+                                           # margin on a mechanism not yet designed.
+# THE BAR IS AS THICK AS ITS TOWER (user, 2026-09-14), and flush with it on BOTH
+# faces. It was BLK_W (35.6) against a 51.2 tower, which left the tower standing 7.4
+# proud on each side -- and on the -Y side that is the PRINT BED: the bar's whole
+# body was 7.4 in the air, held up by nothing but the tower it hangs off. Flush
+# fixes the look the user was after and the print at the same time.
+BAR_Y0 = YC - TOWER_WY / 2                 # the player-side face = the bed
+BAR_Y1 = YC + TOWER_WY / 2
 
 # END MARGIN IS PER END, because the two towers are no longer the same size. The
 # rule has not changed -- "the bar's end face is flush with the tower's" -- but the
@@ -135,7 +153,7 @@ TOWER_W = 64 * D.BEAD                      # 51.2 across flats. Chosen so the co
 # it (the bore ran -639.7..-628.5 against a piece starting at -638.4). Nothing
 # failed; the part just came out with a hole in its end face.
 END_MARGIN = LG.BLK_W / 2                  # +X end: the spigot tower's face
-END_MARGIN_X0 = TOWER_W / 2                # -X end: the mortise tower is wider
+END_MARGIN_X0 = TOWER_WX / 2               # -X end: the mortise tower is wider
 BAR_X0 = LEG_STATIONS_X[1] - END_MARGIN_X0
 BAR_X1 = LEG_STATIONS_X[0] + END_MARGIN
 
@@ -262,10 +280,14 @@ for _x, _n in ((XS1, "XS1"), (XS2, "XS2")):
     assert _clears_pedals(_x), (
         f"{_n} at {_x:.2f} lands within {_SPLICE_KEEP:.2f} of a pedal centre "
         f"{PEDAL_X} — a splice may not cut a pedal in half")
-XL = (FEET[0][0] + FEET[1][0]) / 2   # lid butt-splice: mid-span,
-                   # ~107 from each bar splice so each lid piece BRIDGES
-                   # one bar joint — the lid IS the splice's Z lock (the
-                   # install axis the joint leaves free), not just a roof
+# LID BUTT-SPLICE. What it has to do is BRIDGE a bar joint with each piece -- the
+# lid is the bar splice's Z lock (the install axis the joint leaves free), not just
+# a roof -- so anywhere between the two bar splices will do, and the assert below is
+# that rule. Which point between them is free, so it goes at the LID's own mid-span
+# and the two pieces come out equal. It used to sit at the legs' mid-span, which is
+# not the same place: the lid is longer at the -X end than the legs are, and when
+# the mortise tower widened, that end went over the bed's diagonal (337.3 against
+# 336.6) while the +X piece sat 10 short.
 # LID SPAN — END TO END (user round: install runs -X -> +X). The lid used to
 # sit BETWEEN the fused towers and slide in from +X. Both ends changed:
 #
@@ -283,6 +305,10 @@ TROUGH_X1 = FEET[0][0] - LG.BLK_W / 2 - 0.6   # right up to the towers
 # End-to-end, the two lid pieces are ~318 each — they no longer fit the bed
 # STRAIGHT and never did (they printed diagonally at ~278 already). A part laid on
 # the diagonal has BED*sqrt(2) to work with, less its own width.
+XL = (LID_XA + LID_XB) / 2.0
+assert XS1 < XL < XS2, (
+    f"the lid's splice at {XL:.1f} does not fall between the bar's ({XS1:.1f}, "
+    f"{XS2:.1f}) — a lid piece would stop short of the joint it has to lock")
 _LID_L = (XL - LID_XA, LID_XB - XL)
 assert max(_LID_L) <= BED * 2 ** 0.5 - D.PEDAL_LID_FOOT_W, (
     f"lid pieces {tuple(round(v, 1) for v in _LID_L)} — one exceeds the "
@@ -351,8 +377,8 @@ TOWER_TOP = BAR_H + LS_ENGAGE + TOWER_FLOOR    # 71.1 the MOUTH plane, in bar
                                    # poses the bar from -- the tenon's far end
                                    # lands on the floor, so the mouth sits
                                    # ENGAGE above it.
-TOWER_CORNER = TOWER_W / 2.0 * math.sqrt(2.0)  # 36.2 axis -> corner
-assert BAR_X0 <= FEET[1][0] - TOWER_W / 2 + 1e-9, (
+TOWER_CORNER = math.hypot(TOWER_WX / 2.0, TOWER_WY / 2.0)   # 37.4 axis -> corner
+assert BAR_X0 <= FEET[1][0] - TOWER_WX / 2 + 1e-9, (
     "the bar's -X end face cuts into the mortise tower")
 
 
@@ -381,17 +407,17 @@ BAR_UP = (0.0, 1.0, 0.0)           # the bar prints lying on its -Y face
 # constrains it, so the tower cannot be quietly shrunk back to the leg's own width.
 # The LATCH (src.bar_latch) sized its slot, pad recess and spring pockets off the
 # tower's faces, so the faces must be where it assumed.
-assert abs(TOWER_W / 2 - BL.FACE_R) < 1e-9, (
-    "bar_latch sized the yoke for faces %.1f off the axis; the tower's are %.1f"
-    % (BL.FACE_R, TOWER_W / 2))
+assert abs(TOWER_WX / 2 - BL.FACE_X) < 1e-9 and abs(TOWER_WY / 2 - BL.FACE_Y) < 1e-9, (
+    "bar_latch sized the yoke for faces %.1f/%.1f off the axis; the tower's are %.1f/%.1f"
+    % (BL.FACE_X, BL.FACE_Y, TOWER_WX / 2, TOWER_WY / 2))
 assert BAR_UP == BL.BAR_UP, (
     "bar_latch laid out its collar for a different print direction")
 assert TRRS_WAY_TOP > TOWER_TOP - BL.COLLAR_H + D.MIN_WALL_2P, (
     "the TRRS way no longer reaches the collar that closes it")
 assert TOWER_CORNER - (abs(TRRS_XY[0]) + abs(TRRS_XY[1])) / math.sqrt(2) >= (
     TRRS_BORE_D / 2 + D.MIN_WALL_2P), "the TRRS bore breaks out of the tower's corner"
-assert TOWER_W / 2 - max(abs(q) for q in TRRS_XY) >= TRRS_BORE_D / 2 + D.MIN_WALL_2P, (
-    "the TRRS bore breaks out of the tower's flat face")
+assert min(TOWER_WX / 2 - abs(TRRS_XY[0]), TOWER_WY / 2 - abs(TRRS_XY[1])) >= (
+    TRRS_BORE_D / 2 + D.MIN_WALL_2P), "the TRRS bore breaks out of the tower's flat face"
 # and the mortise itself must not eat the bar underneath it
 assert TOWER_TOP - LS_ENGAGE >= BAR_H + D.MIN_WALL_2P, (
     "the blind mortise floor is inside the bar prism")
@@ -405,7 +431,7 @@ assert TRRS_WAY_TOP - (BAR_H - 1.0) >= 30.0, (
 
 
 def _mortise_tower(lx: float, wired: bool) -> cq.Workplane:
-    """The FEMALE tower: a TOWER_W prism carrying a blind octagon mortise that
+    """The FEMALE tower: a TOWER_WX x TOWER_WY prism carrying a blind octagon mortise that
     the leg's adjust tenon drops into, built in place on the redesigned leg's
     axis (the tenon's mortise cutter comes from leg_stack already positioned).
 
@@ -418,7 +444,7 @@ def _mortise_tower(lx: float, wired: bool) -> cq.Workplane:
         "the mortise tower must stand on the redesigned leg's axis")
     # the tower stops at the SPLIT: the top BL.COLLAR_H is the latch's collar, its own part
     z_split = TOWER_TOP - BL.COLLAR_H
-    b = box_at(TOWER_W, TOWER_W, z_split - BAR_H, x=lx, y=YC, z=(BAR_H + z_split) / 2)
+    b = box_at(TOWER_WX, TOWER_WY, z_split - BAR_H, x=lx, y=YC, z=(BAR_H + z_split) / 2)
     # the mortise: ENGAGE deep from the mouth, overshooting the top so the cut
     # opens cleanly, floored TOWER_FLOOR above the bar
     b = b.cut(LS_mortise(TOWER_TOP - LS_ENGAGE, TOWER_TOP + 2.0))
