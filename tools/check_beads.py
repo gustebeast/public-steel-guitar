@@ -78,6 +78,7 @@ _ex("hardware",
     legs__LOCK_Z="the leg screw's axis height, from the M4 button head's 7.6 (hardware) + air + a 2-bead floor",
     legs__LOCK_PIN_DY="lock pin offset chosen so SERVICE_SLIDE can reach the bridge's 25.6 (user)",
     bar_latch__SCREW_L="a stock M4x30 button head's length (hardware)",
+    foot_pedal__Y_BUDGET="the pedal housing's TUNED depth: it puts the axle 10.15 in from the bed and the sensor board just inside the -Y face. Was the bar's width, back when the bar was this wide",
     bar_latch__SPR_REST_L="the coil's installed length: its free length less a light preload (hardware)",
 )
 _ex("hardware",
