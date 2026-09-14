@@ -55,10 +55,14 @@ B = D.BEAD
 # ── the bought parts (BOM.md: the M->F extension cable, and its plug end) ─────
 JACK_D = 9.7            # the moulded inline jack's barrel (BOM: 9.1..9.7, pick high)
 JACK_L = 40.0           # ...and its length (BOM: <= 40)
-PLUG_D = 10.0           # the moulded plug's handle
-PLUG_L = 20.0           # its length. NOT off a drawing -- typical for a 4-pole moulded
-                        # plug. Confirm at purchase: the CAP is sized off it, and the
-                        # cap is the only thing that would have to change
+# The plug is a REAL PART, off its drawing (user asked for one rather than a
+# "confirm at purchase"): Tensility 10-02155, a 3.5 mm 4C plug-to-plug assembly,
+# 1830 mm, 28 AWG, $3.73 at DigiKey. The drawing gives the overmould as 6.1 x 14,
+# the barrel 3.5 x 14 and the cable 3.8 -- all four numbers below. The first pass
+# had this plug at 10 x 20, which is a different (CA-354S-class) overmould, and the
+# bore it wanted cost the corner most of its room.
+PLUG_D = 6.1            # the moulded overmould (10-02155 drawing)
+PLUG_L = 14.0           # ...and its length
 BARREL_L = 14.0         # the plug's barrel: what actually crosses the joint
 BARREL_D = 3.5
 CABLE_D = 3.8           # the shielded lead on either end
@@ -86,8 +90,10 @@ assert SPR_MATE_L >= LT.SPR_SOLID + 1.0, (
 AX_X = -18 * B          # -14.4 off the leg's axis: the -X/+Y corner
 AX_Y = 16 * B           # +12.8, and NOT the 14.4 that would put it on the diagonal:
                         # see the docstring -- the teardrop's apex has to keep a wall
-BORE_D = 10.6           # the adapter's: the plug's handle AND the jack's nose run in it
-STEP_D = 8.0            # what the handle stops on -- the barrel passes, the handle cannot
+BORE_D = JACK_D + 0.9   # 10.6: the adapter's bore. It is the JACK'S NOSE that sizes
+                        # this, not the plug -- the nose comes up it to reach the plug
+STEP_D = PLUG_D - 1.6   # 4.5: what the plug stops on. The barrel passes, the overmould
+                        # cannot, and it is a full 2 beads of ledge
 JACK_BORE_D = JACK_D - 0.1      # the sleeve's: a LIGHT PRESS on the jack's moulded
                                 # jacket, which is what holds it at height with the
                                 # spacer under it
