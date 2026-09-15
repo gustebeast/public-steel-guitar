@@ -55,7 +55,8 @@ TRAY_Z0, TRAY_Z1 = -64.0, -61.0        # plate band (3 thick) - 1.15 ABOVE the
 
 from . import chassis as CH          # only early constants (X_*, Z_*) used here
 from .helpers import box_at, cyl, cyl_x
-from cadkit.pcb import PCB_T as _PCB_T, jst_xh_header, jst_xh_side_header
+from cadkit.pcb import (PCB_T as _PCB_T, jst_xh_header, jst_xh_side_header,
+                        xh_length, xh_side_length)
 
 # ---- board footprints (x0, x1, y0, y1); board bottom z = TRAY_Z1 + post ----
 POST_H = 4 * D.BEAD                    # 3.2 printed standoff posts under each board
@@ -612,81 +613,35 @@ FLOOR_Z = CH.Z_BOT
 
 
 # ── CAN bus TEE PCB ──────────────────────────────────────────────────────────
-# The SERVO42D has a SINGLE 6-pin XH (power+CAN), so it cannot be daisy-chained
-# without a splice, and splicing is soldering. THAT is why the tee exists: it is
-# what lets a motor be replaced with no solder. Everything else follows.
-#
-# TWO connectors, not three (2026-09-14, user). The trunk passes THROUGH one
-# 8-way -- in on pins 1-4, out on 5-8, the same pattern and pin order the lever
-# board uses -- and the motor hangs off its own 4-way. Keeping the DROP separate
-# is what serves the purpose: pull one 4-way, swap the motor, plug it back, trunk
-# undisturbed. Three separate 4-ways came to 40.47 mm of courtyard in a row;
-# 8-way + 4-way is 36.98, and that 3.5 mm is what lets the board fit a motor top
-# with locating walls on BOTH X edges instead of only +X.
-#
-# THE BOARD IS ALSO THE MOTOR'S RETENTION (branner): it seats 0.8 above the
-# motor's top face with its +Y edge flush to the faceplate wall, so 6.4 of board
-# lands on the wall and 9.6 laps the motor -- the lap IS the retention, and one
-# screw does both jobs. Hence the hard constraint below: the THT tails hang 3.4
-# under the board, so the whole tail band must stay within 6.4 of the +Y edge,
-# over the wall. Anything further -Y hangs over the motor, where a live tail is
-# the first thing the motor touches on the way out.
-#
-# SIDE ENTRY (branner, 2026-09-14), not the top entry this board had first. A mated
-# top-entry plug stands 9.8 and string 10's tee fouled the magnetic pickup by 1.38,
-# which would have left that one motor on a 45 deg screw while the other nine got
-# board retention. Side entry stands 7.0 and clears, so the bank has no exception.
-# Still through-hole -- the tails and their constraint survive -- and the part is
-# CHEAPER: S8B-XH-A is LCSC C157914, $0.0705 with 66,430 in stock.
-#
-# ⚠ THE BOARD MODEL IS MINE (bronner); the STATION and the SEAT are branner's.
-# TEE_YSHIFT and tee_board_cy below still carry the old rail derivation and are
-# theirs to re-derive now the board sits on a motor.
-TEE_CONN_N   = 4                                     # the motor DROP: gnd/24V/H/L
-TEE_TRUNK_N  = 8                                     # trunk in (1-4) + out (5-8)
-TEE_BOARD_X  = 40.0                                  # 36.98 of connector row + a full 1.0
-                                                     # component-to-edge each end; also <= the
-                                                     # 40.5 that allows both locating walls
-TEE_BOARD_Y  = 16.0                                  # 6.4 on the wall + 9.6 lapping the motor
-TEE_YSHIFT   = 5.0                                   # (branner's to re-derive -- see above)
-TEE_TRUNK_X  = -7.0                                  # board-local pad-row centres
-TEE_DROP_X   = 11.7
-TEE_CONN_CY  = 2.0                                   # THE TAIL LINE. Both pin rows are
-                                                     # COLLINEAR here, 6.0 from the +Y edge
-                                                     # (limit 6.4), which is what keeps every
-                                                     # tail over the faceplate wall. Moved from
-                                                     # 4.0 with the switch to SIDE ENTRY: the
-                                                     # pad row sits asymmetrically in that part
-                                                     # (2.85 to the back, 9.74 to the mouth), so
-                                                     # the body only fits the 16 with the row
-                                                     # this far +Y.
-TEE_CONN_MOUTH_DY = -3.25                            # mouth face, from the pad row: the body is
-                                                     # 6.1 deep (cadkit XH_SIDE_D) and the row
-                                                     # sits 2.85 from its back.
-# ── THE EAR (branner, 2026-09-15) ────────────────────────────────────────────
-# A SCREW BESIDE THE BOARD ONLY RESISTS PULL-OUT BY FRICTION, and the tee is
-# pulled in exactly that direction whenever a cable comes off -- the connector
-# mouths face -Y, so unplugging tugs -Y and only the head's grip opposes it. A
-# screw THROUGH the board is positive in X and Y both.
-# It does not fit inside 40 x 16: an M4 clearance hole wants 4.4 of component-free
-# board and the connector courtyards reach within 3.145 of the +Y edge, 1.255
-# short with nothing to give. So the OUTLINE grew and the LAYOUT did not -- every
-# courtyard is where it was and TEE_CONN_CY is still 2.0.
-# ⚠ THE EAR IS A TAB, NOT FULL DEPTH (branner): the motor bank staggers 9.5 in Y
-# and that stagger is what lets ten ears interlock past each other. A full-depth
-# ear clashed board-into-board at 48.5 mm3 per pair.
-TEE_EAR_W, TEE_EAR_H = 9.5, 8.7              # off the +X end, at the +Y corner
-TEE_HOLE_D = 4.5                             # M4 clearance, centred in the ear
-TEE_HOLE_DX = TEE_BOARD_X / 2 + TEE_EAR_W / 2        # +24.75, board-local
-TEE_HOLE_DY = TEE_BOARD_Y / 2 - TEE_EAR_H / 2        # +3.65
-TEE_RELIEF   = (33.0, 3.0)                           # tail window (w x l), centred (0, CONN_CY)
-# The terminator, as TWO parts rather than the one lumped box this used to carry.
-# (name, X, Y, height, x, y) board-local, mirroring elec/can_tee.py's placements
-# and KiCad's courtyards -- so the envelope is the assembly clearance, slightly
-# larger than the bare component, which is the right error for a clearance model.
-TEE_TERM = (("R1", 3.05, 1.55, 0.95, -6.0, 6.2),     # 120R, 0603
-            ("JP1", 3.39, 2.59, 0.05, -1.0, 6.4))    # solder jumper -- bare pads,
-                                                     # so it is flat by nature
+# The SERVO42D has a SINGLE 6-pin XH (power+CAN); a single-port device can't be
+# daisy-chained without soldering, so each node needs a 3-way junction -- this tee:
+# TRUNK-IN + DROP + TRUNK-OUT + a switchable 120R terminator. Connectors are the
+# real cadkit JST-XH: TOP-ENTRY (B4B-XH-A), cables rising +Z into the corridor
+# harness, so the board packs compactly (the 15 mm SIDE-entry parts used on the
+# knee lever would need a ~45 mm board -- infeasible at the 32 mm tee pitch). All
+# three are 4-pin: a single-motor DROP needs only the 4 CAN conductors (gnd/24V/
+# H/L), so the SERVO42D's 6-pin pigtail lands its 4 relevant wires here. Single-
+# sided placement (all bodies on top); the THT posts drop 3.4 through the board
+# and are cleared by a relief WINDOW in the cradle base (see wiring.tee_cradles).
+TEE_CONN_N   = 4                                     # CAN = 4 conductors (gnd/24V/H/L)
+# RESHAPED for the motor seats (bronner, 2026-09-14). It was 22 x 24 with three 4-way XH
+# rotated 90 deg, which put a 16 x 11 band of 3.4-deep THT tails across the board's MIDDLE --
+# unusable on a motor, where the only support is the faceplate wall's 6.4 strip and everything
+# else overhangs the motor it has to lap. Now: ONE 8-way trunk (in on 1-4, out on 5-8) plus its
+# own 4-way motor drop, pin rows COLLINEAR along X in a band at the +Y edge, so the tails land
+# on the wall and the rest of the board laps the motor. Pulling the 4-way swaps a motor without
+# disturbing the trunk -- which is what the tee is for.
+TEE_BOARD_X  = D.TEE_BOARD_X                         # one row of 8-way + 4-way
+TEE_BOARD_Y  = D.TEE_BOARD_Y                         # shallow: it sits ON the motor, not on the rail
+TEE_YSHIFT   = 5.0                                   # board centre shift +Y so the -Y edge stays at y-7
+TEE_TRUNK_N  = 8                                     # trunk in (1-4) / out (5-8) on ONE housing
+# SIDE ENTRY (bronner, 2026-09-14): S8B-XH-A / S4B-XH-A, mouth facing -Y so the plugs run out
+# OVER the motor instead of up. It stands 7.0 off the board where the top-entry pair stood 9.8
+# mated -- and that 2.8 is what lets string 10's tee sit on its motor at all: the magnetic
+# pickup's neck-most position dips to z -18.2 right over it. So the bank has no exception left.
+TEE_CONN_CY  = 2.0                                   # PAD ROW: 6.0 in from the +Y edge, over the wall
+TEE_MOUTH_DY = 3.25                                  # pad row -> mouth face (body 6.1, pads 2.85 off its back)
+TEE_RELIEF   = (38.0, 3.0)                           # base tail-relief window (w × l), board-local, at (0, CONN_CY)
 
 
 def tee_board_cy(y: float) -> float:
@@ -696,31 +651,35 @@ def tee_board_cy(y: float) -> float:
 
 
 def tee_pcb(x: float, y: float, drop: int = 1, accurate: bool = True) -> cq.Workplane:
-    """CAN bus TEE PCB dummy. ONE 8-way SIDE-entry XH for the trunk (S8B-XH-A, in
-    on 1-4 and out on 5-8) plus ONE 4-way for the motor drop (S4B-XH-A), pin rows
-    COLLINEAR at TEE_CONN_CY so every through-hole tail lands over the faceplate
-    wall rather than over the motor. Plus the 120R-behind-a-jumper terminator,
-    populated on all nine and closed only on the one that ends the bus.
-
-    `drop` is kept for callers and no longer changes the geometry -- both mouths
-    face -Y, out over the motor into free air, whichever side the motor is on.
-    `accurate` is likewise vestigial: the two bus-B placeholder tees it used to
-    select are gone, the levers having absorbed their own trunk tap."""
-    top = FLOOR_Z + 1.6                              # board top face; connectors rise +Z
+    """CAN bus TEE PCB dummy, flat on the chassis floor. THREE 4-pin TOP-ENTRY XH
+    (B4B-XH-A; cadkit jst_xh_header, drawn MATED) -- trunk-in / drop / trunk-out,
+    L-to-R, cables up -- plus the 120 Ω-behind-jumper terminator (closed only on
+    each bus's LAST tee). Serves the 10 bus-A motor tees on the open -Y rail. `drop`
+    = ±1 marks the device side (cables are top-entry, so it doesn't change the board
+    geometry). Mount: ONE M4 THROUGH the bare ear off its +X end (wiring.tee_hold). `accurate=False` -> the compact bus-B
+    placeholder (see _tee_pcb_placeholder)."""
+    if not accurate:
+        return _tee_pcb_placeholder(x, y, drop)
+    top = FLOOR_Z + 1.6                              # board top face; connectors rise +Z from here
     cy = tee_board_cy(y)
-    b = box_at(TEE_BOARD_X, TEE_BOARD_Y, 1.6, x=x, y=cy, z=FLOOR_Z + 0.8)
-    # the ear, and then the hole through it
-    b = b.union(box_at(TEE_EAR_W, TEE_EAR_H, 1.6,
-                       x=x + TEE_HOLE_DX, y=cy + TEE_HOLE_DY, z=FLOOR_Z + 0.8))
-    b = b.cut(cyl(TEE_HOLE_D, 4.0, z=FLOOR_Z - 1.0)
-              .translate((x + TEE_HOLE_DX, cy + TEE_HOLE_DY, 0)))
-    for dx, n in ((TEE_TRUNK_X, TEE_TRUNK_N), (TEE_DROP_X, TEE_CONN_N)):
-        # side entry: cadkit's frame puts the MOUTH at y=0 with the body +Y, so
-        # the part lands at the mouth, not at the pad row
+    # `x` is the OUTLINE centre. Bronner's 40 mm layout region is the -X part of it; off its
+    # +X end is a bare EAR, D.TEE_EAR_X by D.TEE_EAR_Y at the +Y corner, with the retaining M4's
+    # clearance hole through it. An L, not a rectangle -- see D.TEE_EAR_Y.
+    xl = x - D.TEE_EAR_X / 2                         # the layout region's own centre
+    ey = cy + (TEE_BOARD_Y - D.TEE_EAR_Y) / 2        # the ear's own centre Y
+    b = box_at(TEE_BOARD_X, TEE_BOARD_Y, 1.6, x=xl, y=cy, z=FLOOR_Z + 0.8)
+    b = b.union(box_at(D.TEE_EAR_X, D.TEE_EAR_Y, 1.6,
+                       x=x + TEE_BOARD_X / 2, y=ey, z=FLOOR_Z + 0.8))
+    b = b.cut(cq.Workplane(obj=cq.Solid.makeCylinder(
+        2.25, 3.6, cq.Vector(x + TEE_BOARD_X / 2, ey, FLOOR_Z - 1.0))))   # M4 clearance
+    # ONE row along X: the 8-way trunk, then the 4-way drop beside it. Pin rows collinear, so
+    # the tail band is ~1.5 deep instead of 7.5 and clears the faceplate wall's strip.
+    l8, l4 = xh_side_length(TEE_TRUNK_N, smt=False), xh_side_length(TEE_CONN_N, smt=False)
+    run = l8 + l4
+    for n, dx in ((TEE_TRUNK_N, -run / 2 + l8 / 2), (TEE_CONN_N, run / 2 - l4 / 2)):
         b = b.union(jst_xh_side_header(n, smt=False, mated=True)
-                    .translate((x + dx, cy + TEE_CONN_CY + TEE_CONN_MOUTH_DY, top)))
-    for _n, _w, _l, _h, _dx, _dy in TEE_TERM:
-        b = b.union(box_at(_w, _l, _h, x=x + _dx, y=cy + _dy, z=top + _h / 2))
+                    .translate((xl + dx, cy + TEE_CONN_CY - TEE_MOUTH_DY, top)))
+    b = b.union(box_at(3.5, 2.0, 1.8, x=xl - run / 2 - 1.5, y=cy - 4.0, z=top + 0.9))  # 120R + jumper
     return b
 
 

@@ -37,6 +37,8 @@ from . import dimensions as D
 from .helpers import heal, cyl, cyl_y
 from . import components as C
 from . import chassis as CH
+from . import motor_bank as MB
+from .components import MOTOR_PULLEY_STANDOFF
 from .bridge_endplate import bridge_endplate
 from . import bridge_endplate as BE
 from . import belt_tensioner as BTn
@@ -197,7 +199,7 @@ from . import wiring as _WR_FUSE
 _seg_edges = [CH._SHELL_PX + CH.KH_DT_DEPTH + 2.0] + sorted(CH.SPLIT_X, reverse=True) + [CH.X_NUT]
 chassis_segments = list(chassis_segments)
 _fused_segs = set()
-for (_cnm, _cr), (_ctx, _cty, _ctd) in zip(_WR_FUSE.tee_cradles(), _WR_FUSE.tee_stations()):
+for _cnm, _cr, (_ctx, _cty, _ctd) in _WR_FUSE.tee_cradles():
     for _csi in range(len(_seg_edges) - 1):
         if _seg_edges[_csi + 1] < _ctx < _seg_edges[_csi]:
             chassis_segments[_csi] = chassis_segments[_csi].union(_cr)
@@ -452,6 +454,13 @@ def _string_components(i):
     # motor (shaft +Y, body −Y toward player) + its pulley + twisted belt
     out.append((f"motor_{i}", C.motor().translate((mx, my, mz))))
     out.append((f"motor_pulley_{i}", C.motor_pulley().translate((mx, my, mz))))
+    # The body length the pockets are built from is checked here, where the motor is built
+    # anyway. (No retaining screw: each motor is held by its own CAN tee -- wiring.on_motor.)
+    if i == 0:
+        _mb = C.motor().val().BoundingBox()
+        assert abs(-_mb.ymin - MOTOR_PULLEY_STANDOFF - D.MOTOR_BODY_L) < 1e-6, (
+            f"the motor body is {-_mb.ymin - MOTOR_PULLEY_STANDOFF:.2f} deep, not "
+            f"dimensions.MOTOR_BODY_L {D.MOTOR_BODY_L} -- the pockets are built from that")
     out.append((f"belt_{i}", C.belt((mx, my, mz), (D.screw_x(i), sy, spz))))   # all belts modelled smooth
     # belt-tension clamp (unified clamp_half ×2 + screw + external nut), oriented to the belt's flat
     # zone. Lifter bars only on the last string (build-time saver — same geometry, hidden elsewhere).
@@ -1016,22 +1025,29 @@ def screw_rows_components():
 
 BODY_WORK_PARTS = SCREW_ROW_PARTS + (
     "bridge_endplate", "bridge_bearings", "motor", "chassis_",
+    # BOTH SIDES OF THE MERGE ARE RIGHT HERE: main added the deck/pickup/optical
+    # parts while this branch deleted teensy_/adc_stack/buck/analog_frontend and the
+    # three free-standing panel jacks (they are PCB parts on the output+panel board
+    # now). Keep main's additions, keep the deletions.
     "electronics_tray", "pi5", "motor_ctrl", "tee_", "wire_",
     "output_panel", "joystick", "oled",
-    "body_adapter", "lock_pin_", "adjust_", "fixed_", "bar_latch_", "leg_latch_")
+    "body_adapter", "lock_pin_", "adjust_", "fixed_", "bar_latch_", "leg_latch_",
+    "top_plate", "pickup", "optical")   # the deck piece too: its skirt sets the bay's headroom
 
 
 def body_work_components():
     """The motor bank, the standing electronics and their harness, the chassis, the legs and
     the +X screw rows as ONE live set -- for work that runs the length of the body (the bank
     packed against the electronics, the rib comb, the legs' service slide over the string
-    access channels). The deck stays cached: nothing here changes it."""
+    access channels). The DECK PIECE is live too: its -Y skirt is the floor over the motor
+    bank, so a change there lands on the tees."""
     out = screw_rows_components()
     out += [(n, w) for i in range(D.N_STRINGS) for n, w in _string_components(i)
             if n.startswith("motor")]
-    out += [(n, w) for n, w in _electronics_components() if not n.startswith("top_plate")]
+    out += _electronics_components()          # includes the deck pieces
     out += [(f"chassis_{i}", seg) for i, seg in enumerate(chassis_segments)]
     out += _leg_components()
+    out += _pickup_mount_components()
     return out
 
 
@@ -1352,11 +1368,12 @@ def _export_assembly(publish=True, gate=True, gate_full=True):
 # elsewhere. The build fails ABOVE it, so a NEW overlap still stops it, and it must
 # always equal the count you can NAME -- a baseline kept above the real number is
 # just a licence for the next fault to arrive unnoticed.
-#   chassis <-> wire_pwr_hot_10   ~0.6 mm^3   a wire clipping a solid; assigned out
-# Was 2. The bridge_endplate <-> wire_out clip went away with the endplate rework,
-# and the three deferred chassis_trrs_cable pairs are gone from DEFERRED entirely
-# (see check_overlaps). Drive this to 0 when the last wire is rerouted.
-OVERLAP_BASELINE = 1
+# NOTHING IS ACCEPTED ANY MORE. Build #657 (branner's prism-first bank rebuild, which
+# rerouted the -Y harness corridor) came back with ZERO unintended pairs, so the last
+# named defect -- chassis <-> wire_pwr_hot_10, ~0.6 mm^3, a wire clipping a solid,
+# carried since August -- is gone. Was 2, then 1, now 0: every unintended pair from
+# here is a regression and stops the build, which is what the rule above is for.
+OVERLAP_BASELINE = 0
 
 
 def _report_overlaps(comps, full=False) -> int:
