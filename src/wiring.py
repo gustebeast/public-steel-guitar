@@ -422,10 +422,20 @@ def build_wires():
     #  kl_pcb XH is still the chassis follow-up it always was.)
 
     # -- USB (blue): USB-C panel -> -Y rail corridor -> ride to the bay -> right-angle to Pi
+    # It leaves the OUTPUT PANEL BOARD's own USB-A now, not a panel coupler: the
+    # panel USB-C is a part ON that board and its VBUS stops there, so what crosses
+    # the instrument is the board-to-Pi lead. Starting it at the old panel-jack
+    # position ran it straight through the relocated DC inlet.
+    # The lane drops -X of the OUTPUT PANEL BOARD's own -X edge rather than at x -12,
+    # which is where it used to go. -12 sat inside the relocated DC inlet (x -13.3..4.7)
+    # AND inside the board's footprint; clearing the board is what also clears the jack.
+    _USB_LANE_X = -60.0
     _usb = SP(-575.0, 20.0, -44.0)
+    _ua = EL.op_pt("J2")
     out.append(("wire_usb", _wire(
-        [(-2.5, EL.USB_Y, EL.JACK_Z), (-12.0, EL.USB_Y, -45.0), (-12.0, RAIL_Y, -45.0)]
-        + _rail_pts(-12.0, BAY_X, LANE_USB)
+        [_ua, (_ua[0], _ua[1] + 6.0, _ua[2]), (_USB_LANE_X, _ua[1] + 6.0, -45.0),
+         (_USB_LANE_X, RAIL_Y, -45.0)]
+        + _rail_pts(_USB_LANE_X, BAY_X, LANE_USB)
         + [(BAY_X, RAIL_Y, BAYFLY), (BAY_X, _usb[1], BAYFLY), (_usb[0], _usb[1], BAYFLY), _usb],
         WIRE_OD["wire_usb"])))                          # over motor 0, then down into the Pi
 
@@ -491,7 +501,7 @@ WIRE_OK = {
                          "leg_junction_pcb", "leg_head"},
     "wire_pwr_hot":   {"dc_jack", "power_pcb", "tee_pcb", "motor_ctrl"},
     "wire_pwr_gnd":   {"dc_jack", "power_pcb", "tee_pcb", "motor_ctrl"},
-    "wire_usb":       {"usb_panel", "pi5"},
+    "wire_usb":       {"output_panel", "pi5"},
     "wire_link":      {"motor_ctrl", "pi5"},
     "wire_oled":      {"oled", "pi5"},
     "wire_joy":       {"joystick", "pi5"},
