@@ -106,8 +106,12 @@ def usb_panel():
         gnd += r[2]
 
     # -- J2: the instrument side, a stock A-to-C cable to the Pi ---------------
+    # ⚠ THE VALUE IS THE ORDERING NAME. It said U231-091N-4BLRA00-S long after the
+    # footprint moved to the GCT part -- the BOM fab.py generates reads THIS string,
+    # so it would have ordered a nine-contact USB 3.0 shell for a four-pad footprint.
+    # Caught by running fab.py, which is exactly what that step is for.
     j2 = Part(name="USB_A", ref_prefix="J", tag="J2", dest="NETLIST", tool="skidl",
-              value="U231-091N-4BLRA00-S",
+              value="USB1046-GF-0180",
               description="to the Pi's USB-C, via a stock A-to-C lead",
               footprint=USBA_FP,
               pins=[Pin(num=1, name="VBUS", func=P), Pin(num=2, name="D-", func=P),
