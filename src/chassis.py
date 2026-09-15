@@ -734,7 +734,11 @@ def _segments():
         seg = seg.cut(box_at((a - b) + 40.0, MB.HARNESS_Y1 - _cy0, MB.HARNESS_Z1 - (Z_BOT - 10.0),
                              x=(a + b) / 2, y=(_cy0 + MB.HARNESS_Y1) / 2,
                              z=((Z_BOT - 10.0) + MB.HARNESS_Z1) / 2))
-        _rise = (MB.Z_HI - MB.HARNESS_Z1) + 1.0
+        # RISE PAST THE PRISM'S TOP, not past the seat plane. The wedge is a triangle, so its
+        # own top edge is FLAT: anything the bay puts above that edge survives with a flat
+        # underside. Sized to Z_HI it topped out at -27.25 and left 1.8 of each side wall
+        # hanging there -- two 7.6 mm2 ceilings on string 10's bay, which the user spotted.
+        _rise = (MB.SEAT_TOP - MB.HARNESS_Z1) + 1.0
         _prof = [(MB.HARNESS_Y1, MB.HARNESS_Z1), (MB.HARNESS_Y1, MB.HARNESS_Z1 + _rise),
                  (MB.HARNESS_Y1 - _rise, MB.HARNESS_Z1 + _rise)]
         seg = seg.cut(cq.Workplane("YZ").workplane(offset=b - 20.0)
