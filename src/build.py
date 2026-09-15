@@ -1372,11 +1372,12 @@ def _export_assembly(publish=True, gate=True, gate_full=True):
 # elsewhere. The build fails ABOVE it, so a NEW overlap still stops it, and it must
 # always equal the count you can NAME -- a baseline kept above the real number is
 # just a licence for the next fault to arrive unnoticed.
-#   chassis <-> wire_pwr_hot_10   ~0.6 mm^3   a wire clipping a solid; assigned out
-# Was 2. The bridge_endplate <-> wire_out clip went away with the endplate rework,
-# and the three deferred chassis_trrs_cable pairs are gone from DEFERRED entirely
-# (see check_overlaps). Drive this to 0 when the last wire is rerouted.
-OVERLAP_BASELINE = 1
+# NOTHING IS ACCEPTED ANY MORE. Build #657 (branner's prism-first bank rebuild, which
+# rerouted the -Y harness corridor) came back with ZERO unintended pairs, so the last
+# named defect -- chassis <-> wire_pwr_hot_10, ~0.6 mm^3, a wire clipping a solid,
+# carried since August -- is gone. Was 2, then 1, now 0: every unintended pair from
+# here is a regression and stops the build, which is what the rule above is for.
+OVERLAP_BASELINE = 0
 
 
 def _report_overlaps(comps, full=False) -> int:
