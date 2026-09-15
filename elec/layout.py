@@ -361,6 +361,33 @@ def build(stem):
             # (the tee, the adapter) keep theirs on silk where a person can read
             # them while probing.
             fp.Reference().SetLayer(pcbnew.F_Fab)
+        # ⚠ SILKSCREEN THAT LANDS ON A PAD IS NOT PRINTED -- the solder mask clips it --
+        # so a footprint outline inside a deliberately tight cluster is ink the fab
+        # cannot lay down and DRC has to complain about. The optical board's sensor
+        # triplets are exactly that: an emitter between two detectors at a 1.6 pitch,
+        # ten times over, producing 140 silk warnings on top of the 20 declared
+        # courtyard overlaps. All 160 come from the same intended geometry.
+        #
+        # THE REASON TO STRIP IT IS NOT TIDINESS, IT IS LEGIBILITY. A DRC report with
+        # 160 known-noise warnings is a report nobody reads, and that is how the seven
+        # REAL violations from the routing pass hide in it. Nothing is lost: these parts
+        # are machine-placed from the CPL, their designators are already on F.Fab, and
+        # an outline printed under a component nobody can see once it is fitted was
+        # never doing any work.
+        # ⚠ MOVED TO F.Fab, NOT DELETED, and that is not a stylistic choice. Calling
+        # fp.Remove() on a graphical item hands ownership back across the SWIG boundary
+        # and pcbnew has no destructor for PCB_SHAPE: it leaks the shape AND leaves the
+        # IO plugin in a state where the very next FootprintLoad raises
+        # AttributeError on a SwigPyObject. Relocating the layer touches no ownership.
+        # It is also the better answer -- the outline is not noise, it is just on the
+        # wrong layer. F.Fab is the assembly drawing, which is exactly where a part
+        # outline nobody can see once the part is fitted belongs.
+        if any(ref.startswith(pre) for pre in notes.get("strip_silk", ())):
+            for g in fp.GraphicalItems():
+                if g.GetLayer() == pcbnew.F_SilkS:
+                    g.SetLayer(pcbnew.F_Fab)
+                elif g.GetLayer() == pcbnew.B_SilkS:
+                    g.SetLayer(pcbnew.B_Fab)
         ref_pos = notes.get("ref_pos", {}).get(ref)
         if ref_pos:
             _place_ref(fp, _to_board(*ref_pos))
