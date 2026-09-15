@@ -767,7 +767,13 @@ def motor_pos(i: int):
 # repeating it with no gap between ribs gives one mortise + one wall.
 LEVER_MORT_W = XBAR - 2 * MIN_WALL_2P        # 7.2 across the octagon mortise (the tenon's own
                                              # MORT_CLR cancels: mortise = tenon + 2*clr)
-LEVER_PITCH  = LEVER_MORT_W + MIN_WALL_2P    # 8.8 = XBAR - MIN_WALL_2P
+# A TWO-BEAD WALL EACH SIDE, NOT ONE SHARED BETWEEN NEIGHBOURS (user, 2026-09-15). At one
+# shared 1.6 the pitch was 8.8 and a SEGMENT SEAM had nowhere to land: the seam needs solid
+# material, so the stations it crossed were dropped and mortises went missing exactly where
+# two chassis sections meet. At 3.2 the seam plane runs down the middle of a wall with 1.6
+# left on each side. The pitch is then XBAR on the nose -- each mortise gets back the full
+# rib section the joint was sized against, and consecutive ribs simply touch.
+LEVER_PITCH  = LEVER_MORT_W + 2 * MIN_WALL_2P    # 10.4 = XBAR
 
 
 def lever_wall_x(x_target: float) -> float:
