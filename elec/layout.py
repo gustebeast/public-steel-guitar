@@ -130,6 +130,30 @@ def _place_ref(fp, target):
     ref.SetKeepUpright(True)
 
 
+def _anchor_on_courtyard(fp, target):
+    """Move `fp` so the CENTRE OF ITS COURTYARD sits on `target`.
+
+    ⚠ THE OPTICAL BOARD PLACES BY COURTYARD, NOT BY PAD CENTROID, and it is the only
+    one that does. Its placements come from src/optical_pickup.py, where a part's
+    coordinate is the centre of the box that has to clear its neighbours, the cover and
+    the strings -- a mechanical model reasons about envelopes, not about where the
+    solder lands average out. For a two-pad passive the two agree; for a USB-C, a JST
+    side-entry header, a SOT-223 or a SOT-23-5 they do not, because the pads sit
+    asymmetrically in the body.
+
+    Handing those coordinates to the pad-centroid anchor put four parts into their
+    neighbours and hung J1's land off the board's -Y edge -- a shift of a couple of
+    millimetres that is invisible in the model and fatal on the board. Rather than
+    correcting the CAD (whose convention is right for what the CAD is for) or carrying
+    a per-footprint offset table (which would be a second copy of the footprint library
+    to keep true), the board says which convention it means and this runs here, where
+    pcbnew can measure the footprint directly."""
+    bb = fp.GetCourtyard(pcbnew.F_CrtYd).BBox()
+    c = bb.GetCenter()
+    pos = fp.GetPosition()
+    fp.SetPosition(pcbnew.VECTOR2I(pos.x + (target.x - c.x), pos.y + (target.y - c.y)))
+
+
 def _anchor_on_pads(fp, target):
     """Move `fp` so the CENTROID OF ITS PADS sits on `target`.
 
@@ -314,7 +338,16 @@ def build(stem):
         x, y, rot = placements[ref]
         fp.SetPosition(_to_board(x, y))
         fp.SetOrientationDegrees(rot)
-        _anchor_on_pads(fp, _to_board(x, y))
+        # WHICH POINT OF THE FOOTPRINT THE PLACEMENT NAMES. Everywhere but the optical
+        # board it is the pad centroid, which is what elec/ reasons in; the optical
+        # board's placements come from the CAD and name the courtyard centre instead.
+        # See both anchor functions -- the difference is a couple of millimetres on
+        # asymmetric parts and nothing at all on a two-pad passive, which is exactly
+        # what makes it worth stating rather than inferring.
+        if notes.get("anchor") == "courtyard":
+            _anchor_on_courtyard(fp, _to_board(x, y))
+        else:
+            _anchor_on_pads(fp, _to_board(x, y))
         # The VALUE text is the part number, which is already on the assembly
         # drawing and the BOM; printed on a 22 mm board it only lands on top of
         # a pad or a neighbour's silk. Reference designators stay -- they are
