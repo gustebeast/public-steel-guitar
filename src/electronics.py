@@ -142,11 +142,11 @@ JACK_Z = -51 * D.BEAD                  # -40.8 jack row centre height
 # and the overlap gate found the wires passing through the PCB. At -118 it is 10 mm
 # clear of the board, 10.75 from the -Y rail's inner face, and 50 mm from the audio
 # jack, which is the separation that matters.
-TS_Y, DC_Y = -68.0, -118.0
-USB_Y = -99.27                         # OUTPUT: where output_panel puts the USB-C
-                                       # hole (see usb_panel_y). Kept as a name
-                                       # because the wiring and the endplate both
-                                       # read it; do not hand-edit it.
+TS_Y = -68.0                           # THE ONE PANEL INPUT. Every other panel hole
+                                       # is now an OUTPUT of the output+panel board
+                                       # (DC_Y, USB_Y, defined after it) -- put all
+                                       # three jacks on one PCB and the board, not
+                                       # this file, decides where the holes go.
 
 # ---- UI: OLED + joystick on the top deck (mounted to the top plate) ----
 # Centred along X. NOTE: the strings cover the deck within +-42.75 with only
@@ -332,20 +332,27 @@ def power_pcb() -> cq.Workplane:
 #      and a USB-C's axis sit at different heights above the board they share, so
 #      the two holes differ in Z by that much (see OP_TS_AXIS_H). Their Y spacing
 #      is now 31.27, set by this board rather than by the old 18 mm pitch.
-#   2. THE DC BARREL JACK SHOULD LEAVE THIS BOARD'S SPAN. It is the 24 V inlet for
-#      ten stepper drivers and it currently sits between the TS jack and the USB-C.
-#      Bringing the motor supply onto the board that carries the output buffer is
-#      asking for exactly the noise the rest of the design works to avoid.
-OP_BOARD_X, OP_BOARD_Y = 52.0, 48.0
+#   2. THE DC BARREL JACK IS ON THIS BOARD TOO (user, 2026-09-15), and my earlier
+#      objection to it was weaker than I made it sound. Two facts settled it: the
+#      PJ-005A it replaces is a SOLDER-LUG jack, so it carried the same hand-soldering
+#      violation the TS jack did, and BOM.md sizes the 24 V bus UNDER 5 A because the
+#      fleet slew is staggered -- which is routine to carry across a board corner. The
+#      noise argument survives only as a LAYOUT OBLIGATION, and it is met by keeping
+#      PWR_GND a separate net that never joins AGND on this board (see J5/J6).
+OP_BOARD_X, OP_BOARD_Y = 52.0, 66.0
 # Connector anchors, board-local, straight out of elec/output_panel.py.
-OP_J = {"J1": (18.34, -18.03, 90.0),      # panel USB-C, mouth +X
-        "J2": (-17.61, 10.72, 180.0),     # USB-A to the Pi
-        "J3": (-14.76, -19.95, 180.0)}    # 8-way link to the optical board
+OP_J = {"J1": (18.34, 5.00, 90.0),        # panel USB-C, mouth +X
+        "J2": (-17.61, 18.00, 180.0),     # USB-A to the Pi
+        "J3": (-14.76, -28.00, 180.0),    # 8-way link to the optical board
+        "J5": (20.92, -21.16, 0.0),       # 24 V inlet, barrel, bushing out +X
+        "J6": (6.00, -26.00, 0.0)}        # 24 V trunk out, 2 contacts per rail
 # (courtyard L, W, height, courtyard-centre offset from the anchor)
 OP_BOX = {"J1": (9.51, 10.73, 3.26, (2.81, 0.00)),
           "J2": (15.59, 16.57, 6.60, (0.00, -4.39)),
-          "J3": (21.29, 10.29, 7.00, (0.00, -1.70))}
-OP_TS_XY = (12.01, 13.24)                 # the 1/4 in jack's pad anchor
+          "J3": (21.29, 10.29, 7.00, (0.00, -1.70)),
+          "J5": (11.59, 16.09, 11.00, (-0.82, -3.20)),
+          "J6": (13.49, 6.84, 7.00, (0.00, -0.52))}
+OP_TS_XY = (12.01, 22.24)                 # the 1/4 in jack's pad anchor
 OP_TS_L, OP_TS_W = 27.62, 20.32           # its courtyard
 OP_TS_OFF = (0.09, 0.00)                  # courtyard centre from the anchor
 OP_TS_BODY_D = 15.0                       # Ø behind the panel (as ts_jack had it)
@@ -355,27 +362,27 @@ OP_TS_AXIS_H = 9.5                        # ⚠ THE ONE FIGURE NOT OFF A FOOTPRI
                                           # else checks it. Confirm against
                                           # Neutrik's drawing before cutting metal.
 OP_BOM = (
-    ("C1", "1nF",          1.91, 1.01, 0.55,  -0.50, -10.20),
-    ("C2", "10uF",         3.49, 2.05, 1.45,  -9.00, -10.20),
-    ("C3", "100nF",        1.91, 1.01, 0.55,  -5.50, -10.20),
-    ("C4", "100nF",        1.91, 1.01, 0.55,  -3.00, -10.20),
-    ("C5", "100nF",        1.91, 1.01, 0.55,   4.50, -10.20),
-    ("C6", "2.2uF/100V",   4.69, 3.29, 1.80,   2.50,   1.20),
-    ("D1", "ESD",          2.59, 1.49, 0.75,  12.00, -17.00),
-    ("D2", "ESD",          2.59, 1.49, 0.75,  12.00, -15.00),
-    ("D3", "flyback",      2.59, 1.49, 0.75,   9.50,   1.20),
-    ("D4", "bidir clamp",  2.59, 1.49, 0.75,   6.50,   1.20),
-    ("K1", "FRT5 5V",     13.15, 14.81, 5.10, -18.00,  -1.50),
-    ("Q1", "AO3400A",      3.95, 3.49, 1.30,  11.31,  -4.00),
-    ("R1", "5k1",          1.95, 1.03, 0.50,  12.00, -21.00),
-    ("R2", "5k1",          1.95, 1.03, 0.50,  12.00, -19.00),
-    ("R3", "470R",         1.95, 1.03, 0.50,   2.00, -10.20),
-    ("R4", "100R",         1.95, 1.03, 0.50,  -6.50,   1.20),
-    ("R5", "1M",           1.95, 1.03, 0.50,  -9.00,   1.20),
-    ("R6", "100k",         1.95, 1.03, 0.50,  -1.50,   1.20),
-    ("R7", "220R",         1.95, 1.03, 0.50,  -4.00,   1.20),
-    ("U1", "PCM5102A",     7.79, 7.09, 1.20,  -4.00,  -4.50),
-    ("U2", "RRO op-amp",   4.19, 3.49, 1.45,   6.23,  -4.00),
+    ("C1", "1nF",          1.91, 1.01, 0.55,  -0.50,   4.00),
+    ("C2", "10uF",         3.49, 2.05, 1.45,  -9.00,   4.00),
+    ("C3", "100nF",        1.91, 1.01, 0.55,  -5.50,   4.00),
+    ("C4", "100nF",        1.91, 1.01, 0.55,  -3.00,   4.00),
+    ("C5", "100nF",        1.91, 1.01, 0.55,   4.50,   4.00),
+    ("C6", "2.2uF/100V",   4.69, 3.29, 1.80,   2.50, -13.00),
+    ("D1", "ESD",          2.59, 1.49, 0.75,  11.00,   4.00),
+    ("D2", "ESD",          2.59, 1.49, 0.75,  11.00,   2.00),
+    ("D3", "flyback",      2.59, 1.49, 0.75,   9.50, -13.00),
+    ("D4", "bidir clamp",  2.59, 1.49, 0.75,   6.50, -13.00),
+    ("K1", "FRT5 5V",     13.15, 14.81, 5.10, -18.00,  -4.00),
+    ("Q1", "AO3400A",      3.95, 3.49, 1.30,  11.31,  -6.00),
+    ("R1", "5k1",          1.95, 1.03, 0.50,  11.00,   8.00),
+    ("R2", "5k1",          1.95, 1.03, 0.50,  11.00,   6.00),
+    ("R3", "470R",         1.95, 1.03, 0.50,   2.00,   4.00),
+    ("R4", "100R",         1.95, 1.03, 0.50,  -6.50, -13.00),
+    ("R5", "1M",           1.95, 1.03, 0.50,  -9.00, -13.00),
+    ("R6", "100k",         1.95, 1.03, 0.50,  -1.50, -13.00),
+    ("R7", "220R",         1.95, 1.03, 0.50,  -4.00, -13.00),
+    ("U1", "PCM5102A",     7.79, 7.09, 1.20,  -4.00,  -6.00),
+    ("U2", "RRO op-amp",   4.19, 3.49, 1.45,   6.23,  -6.00),
 )
 
 
@@ -396,6 +403,11 @@ def output_panel_pcb() -> cq.Workplane:
     for _n, _v, _w, _l, _h, _x, _y in OP_BOM:
         b = b.union(box_at(_w, _l, _h, x=_x, y=_y, z=_PCB_T + _h / 2))
     return b
+
+
+# The panel holes bridge_endplate cuts. DERIVED, not typed: they follow the board.
+DC_Y = TS_Y - OP_TS_XY[1] + OP_J["J5"][1]
+USB_Y = TS_Y - OP_TS_XY[1] + OP_J["J1"][1]
 
 
 def output_panel() -> cq.Workplane:
@@ -741,12 +753,6 @@ def trrs_adapter_pcb(mating: bool = False) -> cq.Workplane:
 #  hand-soldered lugs, which the project forbids.)
 
 
-def dc_jack() -> cq.Workplane:
-    """DC barrel power inlet — Same Sky PJ-005A dims: Ø10.8 face, Ø5.7 thread,
-    ~15.5 mm overall. Female Ø5.5 barrel bore with the Ø2.0 centre pin."""
-    b = cyl_x(10.8, 10.0, -4.0, DC_Y, JACK_Z)             # body behind the cap
-    b = b.union(cyl_x(5.7, 8.05, 6.0, DC_Y, JACK_Z))      # thread through cap
-    b = b.union(cyl_x(10.8, 2.0, 14.05, DC_Y, JACK_Z))    # front face, outside
-    b = b.cut(cyl_x(5.5, 22.0, -3.0, DC_Y, JACK_Z))       # female barrel bore
-    b = b.union(cyl_x(2.0, 17.0, -3.0, DC_Y, JACK_Z))     # centre pin
-    return b.translate((JACK_FACE_DX, 0, 0))               # ride the (thicker) +X face
+# (dc_jack is DELETED: the 24 V inlet is a PCB part on the output+panel board now
+#  -- see OP_J["J5"]. As a free-standing panel jack it was a PJ-005A, whose SOLDER
+#  LUGS carried the same hand-soldering violation the TS jack did.)
