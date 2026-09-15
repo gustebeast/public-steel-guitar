@@ -157,20 +157,39 @@ def trrs_adapter():
 # same line. Putting it on the board edge spends the courtyard's own 0.25 of
 # clearance and nothing else.
 #
-# The jack's courtyard is 15.18 x 10.09 and the XH's 13.49 x 6.84. Turned, they
-# stack along Y as 15.18 + 3.93 of air + 6.84 = 25.95, which is why the long axis
-# is 26 exactly and not a round number chosen for looks. NO MOUNTING HOLE: the
-# project's rule is that plastic captures the board on every axis but one and a
-# single M4 button head beside it closes the last -- nothing passes through.
-BOARD_W, BOARD_L = 20.0, 26.0
+# The jack's courtyard is 15.18 x 10.09 and the XH's 13.49 x 6.84.
+#
+# ⚠ IT NOW CARRIES AN M4 THROUGH-HOLE, AND THAT IS A CORRECTION (user, 2026-09-15).
+# The board went out at 26 long with NO hole, on the rule that plastic captures it
+# on every axis but one and an M4 button head BESIDE the edge closes the last. The
+# user's objection is right and it is the same one that produced the tee's ear:
+# beside-the-edge retention is FRICTION. Nothing stops this board backing out along
+# -Y except a tight screw, and -Y is exactly the direction a hand pulls when it
+# unplugs the lead. A screw THROUGH the board takes that load in shear instead.
+#
+# WHERE IT GOES IS FORCED, and it is worth writing down so nobody re-derives it:
+#   * NOT beside the jack. The free strips either side of the turned jack are
+#     4.955 wide and a 4.5 clearance hole wants ~5.3, so a side hole means widening
+#     the board past 20 -- and 20 across X is the whole reason the jack was turned.
+#   * NOT at the +Y end past the XH: that puts the screw 15 from the jack's flange
+#     and costs 34 of length.
+#   * BETWEEN THE TWO CONNECTORS, which is both the shortest board and the best
+#     place for the screw -- mid-span, where a lever arm about either connector is
+#     smallest. The band cost 5 mm of length (26 -> 31) and the binding number is
+#     not the HOLE, it is the BUTTON HEAD: an M4 button is ~7.0 across, so the band
+#     has to clear 7.0 + 0.3 either side of the connectors' courtyards, not 4.5.
+BOARD_W, BOARD_L = 20.0, 31.0
+HOLE_D = 4.5                     # M4 clearance
+HOLE_XY = (0.0, 3.6)             # head spans y 0.1..7.1 -- see the band note above
 JACK_ROT = 90.0                  # mouth from -X to -Y
 JACK_MOUTH_DY = -9.39            # mouth face from the pad centroid, once turned
 JACK_X = -1.085                  # centres the turned courtyard (-3.96..+6.13) on X
 JACK_EDGE = 0.1                  # the courtyard's only air against the outline; it is
                                  # there so a flush placement does not read as OFF BOARD
                                  # on a rounding error, not because the mouth wants inset
-JACK_Y = -BOARD_L / 2.0 - JACK_MOUTH_DY + JACK_EDGE    # -3.51: mouth 0.1 off the -Y edge
-XH_Y = 9.0                       # turned 180, its courtyard tops out at 12.95
+JACK_Y = -BOARD_L / 2.0 - JACK_MOUTH_DY + JACK_EDGE    # -6.01: mouth 0.1 off the -Y edge
+XH_Y = 10.30                     # turned 180: courtyard 7.40..14.24, so it clears
+                                 # the button head by 0.3 and the +Y edge by 1.26
 
 BOARD_NOTES = {
     "outline_mm": (BOARD_W, BOARD_L),
@@ -196,9 +215,9 @@ BOARD_NOTES = {
     # on a four-net board. Freerouting lays it and DRC is what accepts it.
     # (Watch the jack's two NPTH mounting holes, which sit OUTSIDE its courtyard
     # and are invisible until DRC runs -- the router does see them.)
+    "cutouts": [{"xy": HOLE_XY, "d": HOLE_D}],
     "zones": [("GND", "B.Cu", 0.3)],
     "hold_edge": "+x",
-    "no_mounting_holes": True,
     "single_sided": True,
     "conn_len_mm": xh_length(4),
     "qty_per_instrument": 2,
