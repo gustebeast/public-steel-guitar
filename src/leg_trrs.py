@@ -60,7 +60,13 @@ PLUG_D = 6.1            # the moulded overmould (10-02155 drawing)
 PLUG_L = 14.0           # ...and its length
 BARREL_L = 14.0         # the plug's barrel: what actually crosses the joint
 BARREL_D = 3.5
-CABLE_D = 3.8           # the shielded lead on either end
+CABLE_D = 3.8           # the BODY side's lead (10-02155). Nothing threads over it
+# THE LEG SIDE'S LEAD IS A SOURCING CONSTRAINT, not a free choice, and this is the
+# number to buy to: the coil is dropped down the tenon OVER the already-threaded lead
+# (see seat()), so it has to fall freely over it. The latches' coil is O5.0 on 0.6
+# wire = 3.8 ID, and the body side's own 3.8 lead would be a zero-clearance fit that
+# binds. The leg's M->F extension needs a cable no fatter than this.
+LEAD_D_MAX = LT.SPR_ID - 0.6            # 3.2
 
 # ── the float ────────────────────────────────────────────────────────────────
 FLOAT = 3.0             # how far the jack is pushed back when the leg latches -- and
@@ -77,13 +83,26 @@ assert SPR_MATE_L >= LT.SPR_SOLID + 1.0, (
 
 # ── the spine: off the axis by just enough to clear the latch's pocket ───────
 AX_X = -2 * B           # -1.6
-AX_Y = 6 * B            # +4.8 -- the latch's pocket takes the tenon's -Y middle
+AX_Y = 7 * B            # +5.6 -- the latch's pocket takes the tenon's -Y middle
 THROAT_D = PLUG_D + 0.5         # 6.6: the plug's overmould passes, the jack does not.
                                 # This lip IS the jack's up-stop with the leg off
 PLUG_BORE_D = PLUG_D - 0.1      # 6.0: a press on the overmould
 JACK_BORE_D = JACK_D + 0.2      # 9.9: the jack runs free in the tenon
-SPR_BORE_D = LT.SPR_BORE_D      # 5.4, the latches' own coil pocket
-CABLE_BORE_D = CABLE_D + 1.0    # 4.8 on down the leg
+SPR_BORE_D = LT.SPR_BORE_D      # 5.4, the latches' own coil pocket -- but in the SEAT,
+                                # not in the tenon: see THREADING below
+PASS_D = PLUG_D + 0.5           # 6.6: every bore below the throat is at least this,
+                                # because the lead's FAR PLUG has to travel the whole
+                                # length of the tenon and out the bottom. A O4.8 cable
+                                # bore looks right and cannot be assembled (user).
+SEAT_T = 4 * B                  # 3.2: the printed washer that gives the coil its floor.
+                                # 4 beads, not 3: it is a POCKET over a FLOOR and both
+                                # want MIN_WALL_2P. At 2.4 the floor came out 1.2 and
+                                # tools/check_thin found it.
+                                # The floor CANNOT be a step in the tenon -- a step
+                                # narrow enough to seat a O5.0 coil is narrow enough to
+                                # stop the O6.1 head that has to pass it
+SEAT_CLR = 0.3                  # ...so it is a separate part, dropped in over the lead
+SEAT_BORE_D = LEAD_D_MAX + 0.6  # 3.8 through it: the lead passes, the coil seats
 CHAN_W = CABLE_D + 1.0          # 4.8 wide and deep: the groove in the adapter's top
 CHAN_D = CABLE_D + 1.0          # face the lead is folded into
 
@@ -98,13 +117,22 @@ THROAT_L = TIP - (PLUG_SHOULDER + FLOAT)        # 3.0: how far below the tip the
                                                 # -- it is not a free number
 JACK_REST = PLUG_SHOULDER + FLOAT               # -97.55, the jack's mouth at rest
 JACK_BACK = PLUG_SHOULDER - JACK_L              # -140.55 seated, FLOAT higher at rest
-SPR_SEAT = (JACK_BACK + FLOAT) - SPR_REST_L     # -147.55: the coil's own floor
+SPR_SEAT = (JACK_BACK + FLOAT) - SPR_REST_L     # -147.55: the coil's own floor, which
+                                                # is the printed SEAT's top face
+SEAT_LEDGE = SPR_SEAT - SEAT_T                  # ...and the ledge that washer rests on
 PLUG_GRIP = PLUG_TOP - TIP                      # 8.0 of press bore in the roof
 
 assert THROAT_L >= D.MIN_WALL_2P, (
     "the throat is %.2f -- too thin a lip to stop the jack" % THROAT_L)
 assert PLUG_GRIP >= 4 * D.MIN_WALL_2P, (
     "only %.1f of press holds the plug in the adapter's roof" % PLUG_GRIP)
+assert LEAD_D_MAX + 0.4 <= LT.SPR_ID, (
+    "a %.1f lead will not drop through a %.1f coil ID -- the leg's lead has to be "
+    "bought thinner, or this joint needs its own spring"
+    % (LEAD_D_MAX, LT.SPR_ID))
+assert PASS_D >= PLUG_D + 0.4, (
+    "the lead's far plug (%.1f) cannot travel a %.1f bore, so it can never be "
+    "threaded down the tenon at all" % (PLUG_D, PASS_D))
 
 # the plug's way in is a hole in the adapter's TOP FACE, and the middle ridge's root
 # is there. legs cuts that ridge back for us; check it actually clears, apex included
@@ -152,15 +180,38 @@ def adapter_negatives(sx: float = LS.LEG_X, ly: float = LS.LEG_Y, up=None):
 
 def tenon_negatives(sx: float = LS.LEG_X, ly: float = LS.LEG_Y, up=None,
                     bot: float = None):
-    """Cut in the FIXED TENON: the throat at its tip, the jack's travel below it, the
-    coil's pocket under that, and the cable's way on down the leg."""
+    """Cut in the FIXED TENON: the throat at its tip, the jack's travel and the coil
+    below it, the ledge the coil's SEAT rests on, and a pass-through the rest of the
+    way that is wide enough for the lead's far plug."""
     x, y = _ax(sx, ly)
     up = up or LS.PRINT_UP["fixed_tenon"]
     bot = LS.Z_FIX_TEN_BOT - 1.0 if bot is None else bot
     out = _bore(THROAT_D, JACK_REST, TIP + 1.0, x, y, up)                  # the lip
-    out = out.union(_bore(JACK_BORE_D, JACK_BACK, JACK_REST + 0.01, x, y, up))
-    out = out.union(_bore(SPR_BORE_D, SPR_SEAT, JACK_BACK + 0.01, x, y, up))
-    return out.union(_bore(CABLE_BORE_D, bot, SPR_SEAT + 0.01, x, y, up))
+    out = out.union(_bore(JACK_BORE_D, SEAT_LEDGE, JACK_REST + 0.01, x, y, up))
+    return out.union(_bore(PASS_D, bot, SEAT_LEDGE + 0.01, x, y, up))
+
+
+def seat(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):
+    """THE COIL'S FLOOR, and the reason it is a separate part rather than a step.
+
+    THREADING is what sizes this end of the leg. The jack is moulded onto its lead and
+    the lead's far end is a O6.1 plug, so the lead cannot be pulled in from below and
+    cannot be fed through the coil: it has to go in from the tenon's TIP, head first,
+    and come out the bottom -- which means every bore it passes is at least PASS_D.
+    A step narrow enough to seat a O5.0 coil would stop that head dead (user found the
+    first pass had no way in at all). So the coil's floor arrives AFTERWARDS: this
+    washer drops down the same bore over the already-threaded lead and lands on the
+    tenon's ledge. Then the coil, then the jack. Nothing ever has to pass anything."""
+    x, y = _ax(sx, ly)
+    d = cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        (JACK_BORE_D - SEAT_CLR) / 2.0, SEAT_T,
+        cq.Vector(x, y, SEAT_LEDGE), cq.Vector(0, 0, 1)))
+    d = d.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(   # the coil's own pocket
+        SPR_BORE_D / 2.0, D.MIN_WALL_2P,
+        cq.Vector(x, y, SPR_SEAT - D.MIN_WALL_2P), cq.Vector(0, 0, 1))))
+    return d.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        SEAT_BORE_D / 2.0, SEAT_T + 2.0,
+        cq.Vector(x, y, SEAT_LEDGE - 1.0), cq.Vector(0, 0, 1))))
 
 
 def _run(pts, d=CABLE_D):
@@ -223,4 +274,5 @@ def dummies(sx: float = LS.LEG_X, ly: float = LS.LEG_Y, k: int = 0, mated: bool 
         cq.Solid.makeCylinder(LT.SPR_ID / 2.0, coil_l + 2.0,
                               cq.Vector(x, y, SPR_SEAT - 1.0), cq.Vector(0, 0, 1))))
     return [("leg_trrs_plug_%d" % k, plug), ("leg_trrs_jack_%d" % k, jack),
-            ("leg_trrs_spring_%d" % k, coil)] + cables(sx, ly, k)
+            ("leg_trrs_spring_%d" % k, coil),
+            ("leg_trrs_seat_%d" % k, seat(sx, ly))] + cables(sx, ly, k)

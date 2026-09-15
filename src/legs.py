@@ -934,7 +934,7 @@ SERVICE_SLIDE_MAX = SQ_W / 2 - (_M4.shaft_clr_d / 2 + D.MIN_WALL_2P) + LOCK_PIN_
 # BACK instead -- it is already the one that gives up its inboard end to the service
 # slide, and this is the same kind of loss, not a new kind. Both the adapter's ridge and
 # the chassis/endplate GROOVE come from mid_ridge_cut(), so they cannot drift apart.
-SIGNAL_RIDGE_IN = 14 * D.BEAD       # 11.2: where that ridge now starts, inboard of the
+SIGNAL_RIDGE_IN = 15 * D.BEAD       # 12.0: where that ridge now starts, inboard of the
                                     # leg's centre. leg_trrs asserts it clears the hole
                                     # (apex included) by MIN_WALL_2P
 SIGNAL_CORNER = (-1.0, 1.0)         # the -X/+Y leg: the one with a cable in it
