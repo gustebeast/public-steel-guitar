@@ -86,6 +86,10 @@ WIRE_OD = {
     "wire_canbh": 1.3, "wire_canbl": 1.3,     # bus B (inputs)
 
     "wire_pwr_hot": 1.8, "wire_pwr_gnd": 1.8,
+    # 5 V to the Pi's GPIO header. 20 AWG PAIR, not signal wire: the Pi's
+    # undervoltage trip is 4.63 V against a 5.00 nominal, so the whole budget is
+    # 0.37 V and the cable may not eat it. Over this run 20 AWG spends 0.03.
+    "wire_5v": 1.8,
     "wire_link": 1.4,
     "wire_oled": 1.4, "wire_joy": 1.4,
     "motor_pigtail": 3.4,
@@ -383,10 +387,14 @@ def build_wires():
     _j6 = EL.op_pt("J6")
     heads = [_j6, (_PWR_X, _j6[1], _j6[2]), (_PWR_X, TEE_Y, -52.0),
              (x10, TEE_Y, -52.0), (x10, TEE_Y, HDR_Z)]
-    _buck = SP(-558.5, -109.5, -50.0)          # BUCK_FP turned with the tray relayout
+    # THE TRUNK ENDS AT THE MERGED BOARD. It used to run to the power board and then
+    # on to the motor controller, which meant a branch with no board behind it -- the
+    # one splice in an instrument where every other branch is a tee or a pass-through.
+    # The power board is merged in, so the chain simply terminates.
+    _mc24 = EL.mctrl_pt("J3")
     tail = ([(hdrA[west[0]][0], hdrA[west[0]][1], HDR_Z)]
             + _rail_pts(hdrA[west[0]][0], BAY_X, LANE_PWR)
-            + [(BAY_X, _buck[1], LANE_PWR), (BAY_X, _buck[1], _buck[2]), _buck])   # in to the buck
+            + [(BAY_X, _mc24[1], LANE_PWR), (BAY_X, _mc24[1], _mc24[2]), _mc24])
     # (tee 10's drop fed the AFE's 24 V LDO. The tee survives -- the optical
     #  pickup board takes 24 V off it instead -- but its drop has no modelled
     #  endpoint until that board exists.)
@@ -399,12 +407,7 @@ def build_wires():
             out.append((f"{_nm}_{k + 2}",
                         _seg(hdrA[west[k + 1]], hdrA[west[k]], LANE_PWR, WIRE_OD[_nm], off=_do)))
         out.append((f"{_nm}_11", _wire(_off(tail), WIRE_OD[_nm])))
-        # and the controller's own 24 V inlet (J3), tapped at the buck's input: the
-        # board's LMR16006 makes its own 3V3, so this is the only rail it takes.
-        _j3 = SP(*EL.mctrl_pt("J3"))
-        out.append((f"{_nm}_12", _wire(_off(
-            [_buck, (_buck[0], _j3[1], _buck[2]), (_j3[0], _j3[1], _buck[2]), _j3]),
-            WIRE_OD[_nm])))
+
 
     # ── bus B (inputs): motor_ctrl J2 -> the lever boards, NO TEES ────────
     # It used to hop motor_ctrl -> tee 11 -> tee 12. Both are deleted (user), because
@@ -442,6 +445,18 @@ def build_wires():
         + _rail_pts(_USB_LANE_X, BAY_X, LANE_USB)
         + [(BAY_X, RAIL_Y, BAYFLY), (BAY_X, _usb[1], BAYFLY), (_usb[0], _usb[1], BAYFLY), _usb],
         WIRE_OD["wire_usb"])))                          # over motor 0, then down into the Pi
+
+    # -- 5 V to the Pi's GPIO header, from the merged board's J5. It was never
+    #    modelled while the power board existed -- that board fed the Pi and nothing
+    #    drew the cable -- so the harness has been a connector short all along.
+    # It rides ABOVE the board tops between the two connectors and only drops at the
+    # Pi. Run level with the header it started from, it grazed the tray plate.
+    _j5 = SP(*EL.mctrl_pt("J5"))
+    _gpio = SP(-596.0, -38.0, -57.0)
+    _over = SP(-596.0, -50.0, -46.4)
+    out.append(("wire_5v", _wire([
+        _j5, (_j5[0], _over[1], _j5[2]), (_over[0], _over[1], _over[2]),
+        (_gpio[0], _gpio[1], _over[2]), _gpio], WIRE_OD["wire_5v"])))
 
     # -- motor controller <-> Pi (purple): the USB-C lead the Pi writes travel
     #    offsets over. It leaves the board's mouth sideways, not off a header.
@@ -503,8 +518,9 @@ WIRE_OK = {
     "shaft_trrs_cable": {"leg_shaft", "leg_sleeve", "leg_seg_body",
                          "shaft_trrs_jack", "leg_cable_coil",
                          "leg_junction_pcb", "leg_head"},
-    "wire_pwr_hot":   {"output_panel", "power_pcb", "tee_pcb", "motor_ctrl"},
-    "wire_pwr_gnd":   {"output_panel", "power_pcb", "tee_pcb", "motor_ctrl"},
+    "wire_pwr_hot":   {"output_panel", "tee_pcb", "motor_ctrl"},
+    "wire_pwr_gnd":   {"output_panel", "tee_pcb", "motor_ctrl"},
+    "wire_5v":        {"motor_ctrl", "pi5"},
     "wire_usb":       {"output_panel", "pi5"},
     "wire_link":      {"motor_ctrl", "pi5"},
     "wire_oled":      {"oled", "pi5"},

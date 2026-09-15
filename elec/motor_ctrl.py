@@ -260,12 +260,130 @@ def motor_ctrl():
     for tag, pin in (("R8", "A5"), ("R9", "B5")):
         r = _r(tag, "5k1", "USB-C CC pull-down (upstream-facing port)")
         usb[pin] += r[1]; gnd += r[2]
+    # ── 24 V -> 5 V FOR THE Pi, AND THE CROWBAR THAT MATTERS MORE ────────────
+    # THE POWER BOARD IS GONE AND THIS IS IT (user, 2026-09-15). It was its own
+    # PCB in the tray; merging it here deletes a board, a connector and a cable --
+    # but the real reason is that it deletes a JUNCTION. The 24 V trunk had to
+    # feed both boards at the keyhead and the power board had only a 4-way INLET,
+    # so that branch was a SPLICE, the only one in the instrument without a board
+    # behind it. One board at the end of the chain needs no branch at all.
+    #
+    # THE MOTOR CURRENT NEVER COMES THROUGH HERE. The chain runs output panel ->
+    # tees -> keyhead and every motor taps at its own tee, so what reaches this
+    # board is its own draw plus the Pi's 5 V worth -- about 0.7 A at 24 V.
+    #
+    # ⚠ THE CROWBAR IS THE POINT, NOT THE BUCK. The Pi is fed through its GPIO
+    # header, and on a Pi 4B the USB-C VBUS pin and the GPIO 5 V pins are the SAME
+    # NODE with no polyfuse between them -- so that path skips every input
+    # protection the Pi has. If U5 ever fails SHORT, 24 V lands on the 5 V rail and
+    # takes the Pi, the OLED and the joystick with it. D9 conducts, F2 opens, and
+    # the damage stops at a $0.30 part.
+    v5, v5_raw = Net("+5V"), Net("+5V_RAW")
+    # F1 fuses ONLY the buck's feed. The bus connectors keep their unfused 24 V --
+    # fusing the trunk here would put this board in series with every motor.
+    v24_buck = Net("+24V_BUCK")
+    f1 = Part(name="Fuse", ref_prefix="F", tag="F1", dest="NETLIST", tool="skidl",
+              value="1A", description="24 V fuse for the buck -- a shorted U5 must "
+              "not feed the fault back out into the trunk",
+              footprint="Fuse:Fuse_1206_3216Metric",
+              pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
+    v24 += f1[1]
+    v24_buck += f1[2]
+    sw5, boot5, vcc5, fb5, en5 = (Net("SW5"), Net("BOOT5"), Net("VCC5"),
+                                  Net("FB5"), Net("EN5"))
+    for n in (v5, v5_raw):
+        n.drive = Pin.drives.POWER
+    # LMR33630: 3.8-36 V in, 3 A, SYNCHRONOUS (no catch diode), HSOIC-8 with a
+    # thermal pad. 36 V of absolute maximum against a 24 V rail shared with ten
+    # stepper drivers is the headroom that matters; the 24 V-max parts in this
+    # class have none at all.
+    u5 = Part(name="LMR33630ADDAR", ref_prefix="U", tag="U5", dest="NETLIST",
+              tool="skidl", value="LMR33630ADDAR",
+              description="36 V 3 A synchronous buck, 24 V -> 5 V for the Pi",
+              footprint="Package_SO:SOIC-8-1EP_3.9x4.9mm_P1.27mm_EP2.29x3mm",
+              pins=[Pin(num=1, name="VIN", func=PWR), Pin(num=2, name="EN", func=P),
+                    Pin(num=3, name="NC", func=P), Pin(num=4, name="FB", func=P),
+                    Pin(num=5, name="GND", func=PWR), Pin(num=6, name="SW", func=P),
+                    Pin(num=7, name="BOOT", func=P), Pin(num=8, name="VCC", func=P),
+                    Pin(num=9, name="EP", func=PWR)])
+    v24_buck += u5[1]
+    en5 += u5[2]
+    fb5 += u5[4]
+    # The exposed pad is the ground connection AND the only heat path off the die.
+    gnd += u5[5], u5[9]
+    sw5 += u5[6]
+    boot5 += u5[7]
+    vcc5 += u5[8]
+    l2 = Part(name="L", ref_prefix="L", tag="L2", dest="NETLIST", tool="skidl",
+              value="6.8uH", description="5 V buck output inductor, shielded 6x6",
+              footprint="Inductor_SMD:L_Bourns-SRN6028",
+              pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
+    sw5 += l2[1]
+    v5_raw += l2[2]
+    # 1206 for the DC-BIAS derating, not merely the voltage rating: an 0805 50 V
+    # part loses most of its capacitance at 24 V bias.
+    for tag, val in (("C16", "10uF/50V"), ("C17", "10uF/50V")):
+        c = _c(tag, val, "5 V buck input bulk", "Capacitor_SMD:C_1206_3216Metric")
+        v24_buck += c[1]; gnd += c[2]
+    c18 = _c("C18", "100nF", "5 V buck input HF bypass -- nearest VIN/GND")
+    v24_buck += c18[1]; gnd += c18[2]
+    c19 = _c("C19", "1uF", "5 V buck VCC bypass")
+    vcc5 += c19[1]; gnd += c19[2]
+    c20 = _c("C20", "100nF", "5 V buck bootstrap -- BOOT to SW")
+    boot5 += c20[1]; sw5 += c20[2]
+    for tag in ("C21", "C22"):
+        c = _c(tag, "22uF/16V", "5 V output bulk", "Capacitor_SMD:C_0805_2012Metric")
+        v5_raw += c[1]; gnd += c[2]
+    # Feedback from the RAW node, BEFORE the fuse: regulating after F2 would put
+    # the fuse's resistance inside the loop and let a warm fuse move the rail.
+    r10 = _r("R10", "100k", "5 V feedback divider, top")
+    r11 = _r("R11", "preset", "5 V feedback divider, bottom -- set with the part")
+    v5_raw += r10[1]; fb5 += r10[2], r11[1]; gnd += r11[2]
+    # EN divider: hold the converter off until the 24 V rail is up, so it does not
+    # try to start into a sagging supply and chatter.
+    r12 = _r("R12", "preset", "5 V EN/UVLO divider, top -- turn-on around 18 V")
+    r13 = _r("R13", "preset", "5 V EN/UVLO divider, bottom")
+    v24 += r12[1]; en5 += r12[2], r13[1]; gnd += r13[2]
+
+    f2 = Part(name="Fuse", ref_prefix="F", tag="F2", dest="NETLIST", tool="skidl",
+              value="4A", description="5 V output fuse -- the element D9 blows when "
+              "U5 fails short", footprint="Fuse:Fuse_1206_3216Metric",
+              pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
+    v5_raw += f2[1]; v5 += f2[2]
+    # 5 V out on TWO contacts and GND on two: XH is rated 3 A per contact and the
+    # design draw IS 3 A, so a single contact would sit exactly on its rating.
+    j5 = Part(name="B4B-XH-A", ref_prefix="J", tag="J5", dest="NETLIST", tool="skidl",
+              value="B4B-XH-A", description="5 V to the Pi's GPIO pins 2/4 + 6/9",
+              footprint=XH_FP,
+              pins=[Pin(num=i + 1, name=n, func=P)
+                    for i, n in enumerate(("GND", "+5V", "+5V", "GND"))])
+    gnd += j5[1], j5[4]
+    v5 += j5[2], j5[3]
+
     for tag, net in (("D6", dp), ("D7", dm)):
         d = Part(name="TVS", ref_prefix="D", tag=tag, dest="NETLIST", tool="skidl",
                  value="ESD", description="USB data-line ESD clamp",
                  footprint="Diode_SMD:D_SOD-523",
                  pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
         net += d[1]; gnd += d[2]
+
+    # ⚠ THESE TWO ARE CREATED LAST ON PURPOSE. SKiDL numbers a ref_prefix group by
+    # CREATION order and ignores the tag, so building them beside the buck -- where
+    # they belong logically -- handed them D6/D7 and pushed the USB clamps to D8/D9.
+    # The placement dict and the CAD table both key on the ref, so the names have to
+    # follow the parts, not the narrative.
+    d8 = Part(name="D_TVS", ref_prefix="D", tag="D8", dest="NETLIST", tool="skidl",
+              value="SMAJ30A", description="24 V rail clamp -- the trunk is shared "
+              "with ten stepper drivers", footprint="Diode_SMD:D_SMA",
+              pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
+    v24 += d8[1]; gnd += d8[2]
+
+    d9 = Part(name="D_TVS", ref_prefix="D", tag="D9", dest="NETLIST", tool="skidl",
+              value="SMBJ5.0A", description="THE CROWBAR: clamps the 5 V rail and "
+              "draws enough through F2 to open it", footprint="Diode_SMD:D_SMB",
+              pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
+    v5 += d9[1]; gnd += d9[2]
+
 
 
 # ── the board ────────────────────────────────────────────────────────────────
@@ -274,7 +392,7 @@ def motor_ctrl():
 # two transceivers and three headers. The tray has the room -- deleting the Teensy
 # and its audio shield freed far more than this needs -- but the tray must be
 # rebuilt around this outline rather than the other way round.
-BOARD_W, BOARD_L = 40.0, 35.0
+BOARD_W, BOARD_L = 46.0, 58.0
 
 BOARD_NOTES = {
     "outline_mm": (BOARD_W, BOARD_L),
@@ -284,55 +402,73 @@ BOARD_NOTES = {
     # U2/U3 the transceivers, U4 the MCU. Named as they come out.
     # Three 13.49 mm XH courtyards are 40.47 in a row and the board is 40, so the
     # power connector turns 90 onto the +X edge instead of joining the other two.
+    # THE BOARD GREW +Y, FROM 35 TO 58, AND THE ORIGINAL LAYOUT DID NOT MOVE.
+    # Every pre-merge part keeps its position against the -Y edge (a flat -11.50 in
+    # board-local Y, which is where the centre went), so the routing that was already
+    # proven is disturbed as little as possible; the 5 V section lives entirely in
+    # the strip the growth added.
     "placements": {
-        "J1": (-10.0, 14.0, 0.0),        # bus A out -- the ten motor tees
-        "J2": (4.0, 14.0, 0.0),          # bus B out -- the eight lever boards
-        "J3": (15.5, 3.0, 90.0),         # 24 V in, +X edge
-        "J4": (0.0, -9.0, 0.0),          # USB-C to the Pi, -Y edge
-        "U4": (-4.0, 2.0, 0.0),          # MCU
-        "U2": (6.3, 6.5, 0.0),           # bus A transceiver
-        "U3": (6.3, 0.0, 0.0),           # bus B transceiver
-        # buck, hard -X: its switching node as far from the USB pair and both
-        # CAN pairs as a 40 mm board allows
-        "U1": (-16.0, 8.0, 0.0),
-        "L1": (-16.0, 3.5, 0.0),
-        "D1": (-16.0, 0.0, 0.0),
-        "C1": (-16.5, -3.5, 0.0),
-        "C2": (-16.0, -6.5, 0.0),
-        "C3": (-12.5, -3.5, 0.0),
-        "R1": (-12.5, -6.0, 0.0),
-        "R2": (-12.5, -7.5, 0.0),
-        # MCU furniture
-        "C6": (-11.0, 2.0, 0.0),
-        "R7": (-11.0, 0.5, 0.0),
-        "C7": (-11.0, 5.0, 0.0),
-        "C8": (-11.0, 6.5, 0.0),
-        "C9": (-8.6, 8.5, 0.0),
-        "C10": (-6.6, 8.5, 0.0),
-        "C11": (-4.6, 8.5, 0.0),
-        "C12": (-2.6, 8.5, 0.0),
-        "C13": (-0.6, 8.5, 0.0),
-        "C14": (1.4, 8.5, 0.0),
-        "Y1": (-4.0, -5.0, 0.0),
-        "C4": (-8.0, -5.0, 0.0),
-        "C5": (0.0, -5.0, 0.0),
-        "C15": (-8.0, -7.5, 0.0),
-        # bus furniture, +X
-        "R3": (11.2, 6.5, 0.0),
-        "R4": (11.2, 0.0, 0.0),
-        "R5": (16.5, 15.0, 0.0),
-        "JP1": (16.5, -6.0, 0.0),
-        "R6": (16.5, -9.5, 0.0),
-        "JP2": (16.5, -13.0, 0.0),
-        "D2": (12.3, 12.5, 0.0),
-        "D3": (15.3, 12.5, 0.0),
-        "D4": (10.0, -5.5, 0.0),
-        "D5": (13.0, -5.5, 0.0),
-        # USB furniture
-        "R8": (-7.0, -12.5, 0.0),
-        "R9": (-10.0, -12.5, 0.0),
-        "D6": (7.0, -12.5, 0.0),
-        "D7": (10.0, -12.5, 0.0),
+        "J1": (-10.00, 2.50, 0.0),
+        "J2": (4.00, 2.50, 0.0),
+        "J3": (15.50, -8.50, 90.0),
+        "J4": (0.00, -20.50, 0.0),
+        "U4": (-4.00, -9.50, 0.0),
+        "U2": (6.30, -5.00, 0.0),
+        "U3": (6.30, -11.50, 0.0),
+        "U1": (-16.00, -3.50, 0.0),
+        "L1": (-16.00, -8.00, 0.0),
+        "D1": (-16.00, -11.50, 0.0),
+        "C1": (-16.50, -15.00, 0.0),
+        "C2": (-16.00, -18.00, 0.0),
+        "C3": (-12.50, -15.00, 0.0),
+        "R1": (-12.50, -17.50, 0.0),
+        "R2": (-12.50, -19.00, 0.0),
+        "C6": (-11.00, -9.50, 0.0),
+        "R7": (-11.00, -11.00, 0.0),
+        "C7": (-11.00, -6.50, 0.0),
+        "C8": (-11.00, -5.00, 0.0),
+        "C9": (-8.60, -3.00, 0.0),
+        "C10": (-6.60, -3.00, 0.0),
+        "C11": (-4.60, -3.00, 0.0),
+        "C12": (-2.60, -3.00, 0.0),
+        "C13": (-0.60, -3.00, 0.0),
+        "C14": (1.40, -3.00, 0.0),
+        "Y1": (-4.00, -16.50, 0.0),
+        "C4": (-8.00, -16.50, 0.0),
+        "C5": (0.00, -16.50, 0.0),
+        "C15": (-8.00, -19.00, 0.0),
+        "R3": (11.20, -5.00, 0.0),
+        "R4": (11.20, -11.50, 0.0),
+        "R5": (16.50, 3.50, 0.0),
+        "JP1": (16.50, -17.50, 0.0),
+        "R6": (16.50, -21.00, 0.0),
+        "JP2": (16.50, -24.50, 0.0),
+        "D2": (12.30, 1.00, 0.0),
+        "D3": (15.30, 1.00, 0.0),
+        "D4": (10.00, -17.00, 0.0),
+        "D5": (13.00, -17.00, 0.0),
+        "R8": (-7.00, -24.00, 0.0),
+        "R9": (-10.00, -24.00, 0.0),
+        "D6": (7.00, -24.00, 0.0),
+        "D7": (10.00, -24.00, 0.0),
+        "C19": (-17.00, 9.00, 0.0),
+        "C20": (-13.00, 9.00, 0.0),
+        "R10": (-9.00, 9.00, 0.0),
+        "R11": (-5.00, 9.00, 0.0),
+        "R12": (-1.00, 9.00, 0.0),
+        "R13": (3.00, 9.00, 0.0),
+        "F1": (-18.00, 13.00, 0.0),
+        "C16": (-12.00, 13.00, 0.0),
+        "C17": (-6.00, 13.00, 0.0),
+        "C18": (-1.50, 13.00, 0.0),
+        "D8": (5.00, 13.00, 0.0),
+        "F2": (13.00, 13.00, 0.0),
+        "U5": (-16.00, 18.50, 0.0),
+        "L2": (-7.00, 18.50, 0.0),
+        "D9": (2.00, 18.50, 0.0),
+        "C21": (9.00, 18.50, 0.0),
+        "C22": (13.50, 18.50, 0.0),
+        "J5": (0.00, 26.00, 0.0),
     },
     "refs_on_fab": True,
     # THE GROUND PLANE is why this is four layers, same as the lever board: the

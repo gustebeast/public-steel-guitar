@@ -40,8 +40,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 OUT_DIR = os.path.join(HERE, "out")
 FAB_DIR = os.path.join(OUT_DIR, "fab")
 
-BOARDS = ("can_tee", "trrs_adapter", "lever_sensor", "motor_ctrl",
-          "power", "output_panel")
+# FIVE boards, not six: the power board is merged into motor_ctrl (2026-09-15).
+BOARDS = ("can_tee", "trrs_adapter", "lever_sensor", "motor_ctrl", "output_panel")
 
 # Layer sets by copper count. JLCPCB takes the KiCad extensions directly.
 L2 = "F.Cu,B.Cu,F.Paste,B.Paste,F.Silkscreen,B.Silkscreen,F.Mask,B.Mask,Edge.Cuts"
