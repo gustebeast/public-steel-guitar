@@ -430,12 +430,11 @@ HS_HOUS_BACK = HS_BACK_X + HS_BSTOP_ENGAGE   # housing boss depth = engagement (
 # cross-ribs. (The old double-christmas-tree floating tenon + its yoke plate are gone: they
 # existed because the housing used to print +Z→-Z and could not carry a protruding tenon.
 # It prints -Z→+Z now, so the tenon is just part of the part.) ──
-RIB_PITCH = D.MOTOR_X_STEP          # 46, THE motor pitch (derived — a MOTOR_X_STEP change
-                                    # moves the tenon stations WITH the comb). The rib comb is HALF this (23 mm: a
-                                    # crossbar per motor plus one between each pair), and the
-                                    # tenon stations are generated on that finer pitch — see
-                                    # TEN_X down in the prism block, where the housing X extents
-                                    # that bound them are finally known.
+RIB_PITCH = D.MOTOR_X_STEP          # THE motor pitch. The bottom is a SLAB now, not a comb of
+                                    # cross-ribs, and the mortise grid is D.LEVER_PITCH (8.8) --
+                                    # see _TEN_PITCH down in the prism block, where the housing X
+                                    # extents that bound the stations are finally known. This is
+                                    # kept only for readers who reason in motor pitches.
 BODY_Z    = HUB_TOP + 3 * D.BEAD    # body underside in local Z: the hub top (5.2) + a 2.4mm AIR
                                     #   gap (no material between the lever and the body). Raising the axle
                                     #   is equivalent to lowering BODY_Z here; MOUNT_Z tracks it (= -82.55)
@@ -893,7 +892,10 @@ BRG_Y0 = LEVER_HW + HS_CLR          # bearing INNER faces at ±10.4 = the lever-
 # out of the geometry rather than being written down (widen or shift the housing and
 # the comb re-solves). Generated here rather than in the mount block because it is
 # HOUS_X0/X1 that bound them, and those aren't known until this point.
-_TEN_PITCH = RIB_PITCH / 2.0        # = the chassis half-pitch rib comb
+_TEN_PITCH = D.LEVER_PITCH          # = the chassis bottom grid (8.8). Was RIB_PITCH/2 (22.35),
+                                    # the old rib comb; the stations follow the comb by design, so
+                                    # densifying the comb densifies these -- more tenons in the same
+                                    # housing, which is a stronger joint as well as a finer one.
 # ...and a station must ROOT ON SOLID. The bearing seats are teardrops whose print peak
 # can break out through the top face over the axle (it always did a little; the Ø16
 # 688ZZ opens it 1.78 either side of x = 0), and a tenon whose root sits in that

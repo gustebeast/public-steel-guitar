@@ -77,7 +77,13 @@ _STROKE     = LOBE_RC_V * math.sin(math.radians(THROW_V))
 _FEEL_DZ_V  = LOBE_RC_V + KL.LOBE_RC        # +22.2: how far the whole feel block rises
 
 # ── the lever ────────────────────────────────────────────────────────────────
-TEN_PITCH   = KL.RIB_PITCH / 2.0    # the chassis rib comb, along local Y once posed
+# The two stations sit as far apart as the -Y wall was widened to allow, rounded DOWN to a
+# whole number of bottom-grid pitches so both land in slots. On the old 22.35 comb that span was
+# exactly one pitch; on the 8.8 grid it is two (17.6). Taking one pitch instead would put the
+# inboard stem within 0.05 of the housing centre, straight over the arm slot -- the roof-height
+# assert below catches that, which is how this was found.
+TEN_SPAN    = KL.RIB_PITCH / 2.0    # the span the -Y wall was built to host (22.35)
+TEN_PITCH   = KL.D.LEVER_PITCH * int(TEN_SPAN // KL.D.LEVER_PITCH)      # 17.6
 ARM_LEN_V   = 80.0                  # axle -> paddle end (user; was 50). 80 gives 27.4 of
                                     # paddle lift at 20° instead of 17.1 — a bigger knee
                                     # rise, and a LIGHTER one: the feel spring makes a
@@ -174,8 +180,13 @@ TEN_X0, TEN_X1 = HOUS_X0 + 2.0, HOUS_X1     # the slide span available
 # the phase is set by where we pose the lever in the guitar's X, since after the
 # mount's 90° rotation the rib comb runs along local Y. So the housing does not
 # chase the ribs; the pose does.
-TEN_Y = (HOUS_HW_P - KL._JHW - TEN_MARGIN - TEN_PITCH,      # -12.60
-         HOUS_HW_P - KL._JHW - TEN_MARGIN)                  # +10.40
+# CENTRED on the housing, not pushed against the sensor wall. With the spacing free, hard
+# against that wall was the way to get them furthest apart; with the spacing locked to the grid
+# the phase is the only freedom left, and centring is what maximises the distance from the
+# nearest stem to the ARM SLOT -- which is what sets how high the slot wall may go (the assert
+# in _housing). Anchored at the wall, the inboard stem came 3.5 from the centre and the roof
+# had to drop under the arm's reach.
+TEN_Y = (-TEN_PITCH / 2.0, TEN_PITCH / 2.0)                 # -8.80, +8.80
 
 
 def _top_tenon(ty):
