@@ -221,6 +221,13 @@ PKG = {
                                       # scarce direction in a 14 mm band.
     "QFN-24":   (4.00, 4.00, 0.90),
     "TSSOP-16": (6.40, 5.00, 1.20),   # 4.40 body + leads; PCM1808 audio ADC
+    "TSSOP-20": (6.40, 6.60, 1.20),   # PCM5102A audio DAC -- the return path (see 3d)
+    # A SIGNAL relay, not a power one: it switches line-level audio, so the contact
+    # rating is irrelevant and what matters is that it is a real mechanical contact
+    # (true bypass) rather than an analog switch with an on-resistance and a supply.
+    "RELAY-SIG": (7.50, 5.20, 5.10),  # 2-coil latching signal relay, SMD
+    "1210C":    (3.40, 2.70, 1.80),   # 100 V -- the output DC block, see 3d
+    "SOD-523":  (1.60, 1.20, 0.60),   # small-signal diode / clamp
     # LQFP144, not 100: the LQFP100 STM32H743VIT6 exposes only 16 ADC channels and this
     # board needs 20. The 144 (STM32H743ZIT6) has exactly 20, and at ~$7.63 on LCSC it is
     # CHEAPER than the 100-pin part. 22x22 over leads fits the 30 mm tail with 2.8 spare.
@@ -671,6 +678,49 @@ def _parts():
     # reason it is written down for a stage that does not exist: the user's own read is
     # that the mistake is rare, and that is right -- it is not worth more than this.
 
+    # ---- 3d. THE JACK OUTPUT STAGE -- DESIGNED, NOT PLACED. IT DOES NOT FIT. ----
+    # ⚠ READ THIS BEFORE ADDING IT. The stage below is settled in every respect except
+    # WHERE IT GOES, and placing it here overruns the instrument: the board's -Y end has
+    # to leave room for the USB plug's overmold, and adding these parts pushed the
+    # conduit 7.25 mm past the endplate's exterior wall. The assert at CONDUIT_Y0 is
+    # what catches it. The parts are NOT in PARTS for that reason -- a board that
+    # imports and is 7 mm too long is worse than one that refuses to build.
+    #
+    # HOW PROCESSED AUDIO GETS OUT (user, 2026-09-14): BACK OVER THE SAME USB LINK.
+    # This board already sends 20 optical channels and the magnetic pickup up to the
+    # Pi; UAC2 is bidirectional, so the Pi's processed output returns on that same
+    # connection and there is no second audio path across the instrument. The MCU
+    # hands it to the DAC over I2S and the DAC makes it analog again.
+    #
+    # THE RELAY IS THE "DIRECT MODE" THE USER ASKED FOR, de-energised in that state ON
+    # PURPOSE: with no power, no Pi and no firmware, the magnetic pickup reaches the
+    # jack through a mechanical contact, so the instrument still works as a guitar when
+    # everything clever about it is off. LATCHING, so no coil current hums at the audio
+    # it is switching. A buffer after it keeps the jack's source impedance low either
+    # way. R42/C170/D9 are the phantom-power protection from 3b-i.
+    #
+    #   U14  I2S audio DAC, TSSOP-20          C170 output DC BLOCK, 1210 100 V
+    #   K1   latching signal relay            D9   output clamp, SOD-523
+    #   U15  output buffer, SOT-23-5          C171 DAC analog bypass, 0805
+    #   Q2   relay coil driver, SOT-23        C172/C173 DAC bypass / filter, 0402
+    #   D8   coil flyback, SOD-523            R42  output series, 0402
+    #   R43  DAC filter, 0402                 R44/R45 buffer gain, 0402
+    # Sourcing for all of them is already in _MPN_RULES below, so adding the block is
+    # one _block call once the length question is answered.
+    #
+    # THE THREE WAYS OUT, none of which is mine to pick alone:
+    #   1. SHORTER PLUG OVERMOLD. BOM.md specifies <=20 mm; this needs <=12.75. Real
+    #      cables exist at 13-14, but it tightens a sourcing spec to buy board length.
+    #   2. MOVE THE BOARD +Y. Its +Y end is pinned by the string fan, so this is a
+    #      pickup-geometry change, not a board change.
+    #   3. A SEPARATE OUTPUT BOARD at the endplate. It is ~14 parts and the panel USB
+    #      board is already there -- they could be one board. Costs a seventh PCB;
+    #      saves this one from carrying an analog output stage at the end of a 180 mm
+    #      strip that also has to fit a cable plug.
+    # My own read is 3: the output stage has nothing to do with the optics, it wants to
+    # be beside the jack rather than 170 mm from it, and it would make the panel board
+    # earn its place. But it adds a board, and that is the user's call.
+
     # ---- 3c. LOCAL 24 -> 5 V, AND IT GOES AT THE FAR END ON PURPOSE ----
     # The trunk delivers 24 V (see J2). One switching stage is therefore unavoidable --
     # 24->3V3 linearly is 6.2 W -- so the whole question is WHERE, and the answer is: as
@@ -759,6 +809,30 @@ _MPN_RULES = (
                                                     "PHY's reference freq -- confirm vs USB3343")),
     ("Q1",   ("AO3400A",         "C20917",   0.0849, "N-ch logic-level FET, SOT-23, LED row gate, @5+")),
     ("J1",   ("TYPE-C-31-M-12",  "C165948",  0.1709, "USB-C 16P, @5+; the modelled envelope IS this part")),
+    ("U14",  (MPN_UNKNOWN,       "",         1.20,  "I2S stereo audio DAC, TSSOP-20. OPEN: "
+                                                    "PCM5102A-class is the obvious pick (no "
+                                                    "MCLK needed, integrated charge-pump "
+                                                    "output, 2 Vrms). CONFIRM the part and "
+                                                    "its LCSC stock before layout")),
+    ("U15",  (MPN_UNKNOWN,       "",         0.20,  "output buffer op-amp, SOT-23-5. OPEN. "
+                                                    "WANTED: rail-to-rail output, >=10 mA "
+                                                    "drive into a long cable, and low noise "
+                                                    "-- it is the last thing before the jack")),
+    ("K1",   (MPN_UNKNOWN,       "",         1.50,  "LATCHING signal relay, 2-coil, SMD. OPEN. "
+                                                    "LATCHING is the requirement, not a "
+                                                    "preference: a held coil draws current "
+                                                    "and hums at the audio it is switching. "
+                                                    "De-energised state MUST be the direct "
+                                                    "path -- see section 3d")),
+    ("Q2",   (MPN_UNKNOWN,       "",         0.05,  "relay coil driver, SOT-23. OPEN: any "
+                                                    "logic-level N-ch; AO3400A (C20917, "
+                                                    "already on this board as Q1) would do "
+                                                    "and would not add a line")),
+    ("D8",   (MPN_UNKNOWN,       "",         0.03,  "relay coil flyback, SOD-523. OPEN")),
+    ("D9",   (MPN_UNKNOWN,       "",         0.05,  "output clamp, SOD-523. OPEN: bidirectional, "
+                                                    "and it sits INSIDE C170 -- it catches the "
+                                                    "insertion edge a DC block passes, not the "
+                                                    "48 V itself")),
     ("U13",  (MPN_UNKNOWN,       "",         0.35,  "24V->5V synchronous buck, SOT-23-6, >=0.5 A. "
                                                     "OPEN: pick a real part at schematic "
                                                     "capture. WANTED: synchronous (no catch "
@@ -828,6 +902,20 @@ _MPN_EXACT.update({r: ("0402 thick-film R", "BASIC", 0.002, "buck feedback divid
 _MPN_EXACT.update({r: ("0402 X7R MLCC", "BASIC", 0.004, "buck HF bypass / bootstrap")
                    for r in ("C161", "C163")})
 _MPN_EXACT["C162"] = ("0805 X7R MLCC", "BASIC", 0.01, "buck 5 V output bulk")
+# The output stage (3d). Same namespace hazards again -- R42-R45 would fall to the
+# 0603 ballast rule and C171-C173 to the 0402 line by accident rather than decision.
+_MPN_EXACT.update({r: ("0402 thick-film R", "BASIC", 0.002, "output stage -- series / gain / filter")
+                   for r in ("R42", "R43", "R44", "R45")})
+_MPN_EXACT.update({r: ("0402 X7R MLCC", "BASIC", 0.004, "DAC bypass / output filter")
+                   for r in ("C172", "C173")})
+_MPN_EXACT["C171"] = ("0805 X7R MLCC", "BASIC", 0.01, "DAC analog supply bypass")
+# ⚠ THE ONE CAPACITOR ON THIS BOARD THAT IS A SAFETY PART, not a bypass. 100 V is the
+# RATING, not margin: during a phantom-power fault it sits charged to 48 V
+# continuously. Oversized on purpose (~2.2 uF) so the signal swing ACROSS it stays
+# small, which is what makes an X7R part's voltage coefficient a non-issue instead of
+# a distortion argument. See section 3b-i.
+_MPN_EXACT["C170"] = ("1210 X7R MLCC 100 V", "BASIC", 0.05,
+                      "1210 100 V output DC block -- phantom-power protection")
 _MPN_EXACT["C160"] = ("1206 X7R MLCC 50 V", "BASIC", 0.03,
                       "1206 50 V input bulk -- an 0805 50 V part loses most of its "
                       "capacitance at 24 V DC bias, so the case size is the derating, "
