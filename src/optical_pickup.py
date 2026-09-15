@@ -1083,8 +1083,11 @@ def pi_target():
     return ((bb.xmin + bb.xmax) / 2, (bb.ymin + bb.ymax) / 2, (bb.zmin + bb.zmax) / 2)
 
 
-PI_RUN_Z = D.MOTOR_BELT_Z + D.MOTOR_SQ / 2 + 2.6          # the USB run's last legs: one cable OD
-                                                          # over string 1's motor, under the bay wiring
+from . import motor_bank as _MB                            # no cycle: motor_bank imports neither
+PI_RUN_Z = _MB.SEAT_TOP + 4.5                             # the USB run's last legs: one cable OD
+                                                          # over the BANK -- not just over the motor:
+                                                          # each bay stands up past its tee, and the
+                                                          # bus-A trunk rides the mouths just above
 
 
 def pi_column_x():
@@ -1167,8 +1170,8 @@ def opt_cables() -> cq.Workplane:
     # turns into the Pi only at the Pi's Y.
     px, py, pz = pi_target()
     xc = pi_column_x()
-    assert PI_RUN_Z - USB_OD / 2 > D.MOTOR_BELT_Z + D.MOTOR_SQ / 2, \
-        "the USB run's +Y leg has come down onto string 1's motor"
+    assert PI_RUN_Z - USB_OD / 2 > _MB.SEAT_TOP, (
+        "the USB run's +Y leg has come down onto the motor bank")
     y_run = CONDUIT_Y1 - CONDUIT_D / 2
     add(box_at(abs(xc - (CONDUIT_XC - 2.2)), USB_OD, USB_OD,
                x=(xc + CONDUIT_XC - 2.2) / 2, y=y_run, z=RUN_Z))

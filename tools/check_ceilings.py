@@ -49,6 +49,24 @@ PARTS = {
     "leg_body_stub_trrs": (LG.leg_body_stub_trrs, "y", LG.SQ_W / 2, +1),
 }
 
+
+def _chassis_seg(i):
+    """The chassis prints Z-UP, bed at chassis.Z_BOT (the rib/rail bottoms). Built lazily:
+    importing src.build costs minutes, and the leg parts above must not pay it."""
+    def build():
+        from src import build as B
+        return B.chassis_segments[i]
+    return build
+
+
+def _register_chassis():
+    from src import chassis as CH
+    for i in range(len(CH.SPLIT_X) + 1):
+        PARTS[f"chassis_{i}"] = (_chassis_seg(i), "z", CH.Z_BOT, -1)
+
+
+_register_chassis()
+
 AX = {"x": 0, "y": 1, "z": 2}
 
 

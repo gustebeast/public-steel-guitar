@@ -89,6 +89,12 @@ CLAMP    = BAND_W / 2                  # 10.0 +/- fine X-adjust (BAND_W/2 -> con
 DEAD_SLOTS = set(range(N_POS - 1, PIECE_SLOTS))
 
 # shown installed state: piece in the 3 bridge-most slots, fillers behind it
+# The -X run that can reach the MOTOR BANK at the neck-most slot position: everything -X of the
+# bank's +X-most housing face, measured with the piece shifted all the way. Only this much of the
+# skirt has to be shallow; the rest keeps its depth.
+from . import motor_bank as _MB                    # motor_bank imports no deck module: no cycle
+_BANK_X1 = (D.motor_pos(D.N_STRINGS - 1)[0] + D.MOTOR_SQ / 2
+            + _MB.MOTOR_CLR + _MB.POST_T)
 PIECE_SHOWN = 0                        # piece occupies slots [0 .. PIECE_SLOTS)
 PIECE_X0 = SLOT_X[PIECE_SHOWN]
 PIECE_X1 = PIECE_X0 - (PIECE_SLOTS * BAND_W + (PIECE_SLOTS - 1) * GAP)   # spans its slots
@@ -175,8 +181,18 @@ HEAD_POCKET_D  = JACK_HEAD_D + 0.4                 # Ø8 head counterbore, opens
 JACK_SCREW_L   = 20.0                              # NEW BOM part: M4×20 button-head leadscrew. 20 mm shank
                                                    # spans the full height-adjust travel (15..22 mm pickup
                                                    # depths + string-gap set) with the nut engaged throughout.
-FLOOR_BOT = ZPL_BOT - 6 * D.BEAD                   # 4.8 below the plate: -Y skirt / end-wall bottom
-                                                   # (structure / endplate-lip datum)
+# SKIRT DEPTH (user, 2026-09-14). It used to hang 4.8 below the Z-plate, which made it the
+# deepest thing in the pickup region and cost the bay underneath 4.8 mm of headroom -- and this
+# piece SLIDES, so at its neck-most position that edge swings out over the motor bank, right
+# over string 10's CAN tee. The skirt is the piece's only beam (a 6.4 plate with a 53 opening
+# through it), so it is STEPPED rather than shortened everywhere:
+#   DEEP  (SKIRT_DEEP_BOT) down to the jack screws' tips -- Z the pickup region already spends,
+#         so the beam keeps its depth over the span that matters
+#   SHALLOW (FLOOR_BOT, the Z-plate's underside) for the -X run that can reach over the bank
+# The endplate lip datums off the skirt's outer FACE in Y, which neither change touches.
+FLOOR_BOT      = ZPL_BOT                           # -Y skirt / end-wall bottom, shallow section
+SKIRT_DEEP_BOT = JACK_HEAD_Z - JACK_SCREW_L        # the jack screws' tips: the deepest thing the
+                                                   # pickup region reserves anyway (-16.10)
 # TOP-ACCESS at the PLATE's clear zones (pickup-agnostic): TWO +Y plate corners + ONE
 # deep -Y. Equalise the two +Y = X LEVEL; the -Y jack = across-string tilt. The -Y jack is
 # nudged slightly off-CENTRE (JACK_MX_OFF) to free the CENTRE for the retention setscrew --
@@ -424,13 +440,22 @@ def _pickup_piece():
     # PICKUP CAVITY only (pickup pokes through + slides/rises); rest of the deck stays solid
     body = body.cut(box_at(CAVITY_X, CAVITY_Y, (TZ - BZ) + 2,
                            x=PICKUP_X_NOM, y=PK_ROOM_CTR_Y, z=(BZ + TZ) / 2))
-    # -Y skirt + end walls below the deck (structure / endplate-lip datum)
-    body = body.union(box_at(OPEN_LEN + 2 * WALL, SKIRT_T, BZ - FLOOR_BOT,
+    # -Y skirt + end walls below the deck (structure / endplate-lip datum), built DEEP and then
+    # stepped up over the -X run that can swing out above the motor bank (see SKIRT_DEEP_BOT)
+    body = body.union(box_at(OPEN_LEN + 2 * WALL, SKIRT_T, BZ - SKIRT_DEEP_BOT,
                              x=OPEN_CTR, y=-(HY_CLAMP + SKIRT_T / 2),
-                             z=(BZ + FLOOR_BOT) / 2))
+                             z=(BZ + SKIRT_DEEP_BOT) / 2))
     for xe in (PIECE_X0 - WALL / 2, PIECE_X1 + WALL / 2):
-        body = body.union(box_at(WALL, OPEN_YW, BZ - FLOOR_BOT,
-                                 x=xe, y=OPEN_YC, z=(BZ + FLOOR_BOT) / 2))
+        body = body.union(box_at(WALL, OPEN_YW, BZ - SKIRT_DEEP_BOT,
+                                 x=xe, y=OPEN_YC, z=(BZ + SKIRT_DEEP_BOT) / 2))
+    # ...and the step: shallow where this piece can ever lie over the bank
+    _shift = (N_POS - 1) * PITCH                       # its neck-most travel
+    _step_x1 = _BANK_X1 + _shift                       # in the piece's own (drawn) frame
+    _x0 = OPEN_X1 - WALL - 1.0
+    if _step_x1 > _x0:
+        body = body.cut(box_at(_step_x1 - _x0, OPEN_YW + 2 * SKIRT_T, FLOOR_BOT - SKIRT_DEEP_BOT,
+                               x=(_x0 + _step_x1) / 2, y=OPEN_YC,
+                               z=(SKIRT_DEEP_BOT + FLOOR_BOT) / 2))
     # LEADSCREW BORES through the solid deck: head pocket (Ø7.5, opens at the bed TZ, down
     # to the shoulder) + shaft bore (Ø4.6, on down into the open bay where the plate nut is)
     for jx, jy in JACK_POS:
