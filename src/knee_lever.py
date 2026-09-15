@@ -130,18 +130,24 @@ AIR_GAP = 1.5                       # magnet face -> the IC's OWN TOP SURFACE. T
                                     # 0.5 / 1.0 / 2.0 min/typ/max; recommended magnet Ø6 x
                                     # 2.5 — EXACTLY ours, so this is the nominal
                                     # configuration the part was characterised in.
-PCB_WZ = 22.0                       # ONE board for every lever. 16.0 until the real circuit
+PCB_WZ = 21.4                       # ONE board for every lever. 16.0 until the real circuit
                                     # was laid out (elec/lever_sensor.py): 29 parts and an
                                     # 8-way trunk connector do not fit 16, and the 8-way is
                                     # what lets the bus-B tee disappear into this board.
                                     # THE CAP IS THE FOOT PEDAL, not the knee levers: its
                                     # housing is clipped to the pedal BAR's own width, so the
-                                    # board may not reach below -10.95 from the axle, and the
-                                    # horizontal lever's ceiling is +11.60 -- 22.55 between
-                                    # them. 25 was drawn before that was checked and does not
-                                    # fit; foot_pedal.py is what catches it, because board_flip
-                                    # polices a cradle WINDOW and the pedal's budget is tighter
-                                    # than the window. (History: WAS 19.0, and that was 3.0
+                                    # board may not reach below foot_pedal.HOUS_Z0. That
+                                    # number MOVED to -10.15, and 22.0 no longer fitted -- the
+                                    # top is pinned at CHIP_DROP (+11.30) by the sensor sitting
+                                    # on the axle, so the whole 0.6 comes off the BOTTOM and
+                                    # the cap is 21.45. 21.4 is what is left, and it is now
+                                    # limited by THE CONNECTOR rather than by the parts: J1's
+                                    # courtyard is 21.29, so 0.055 of board edge at each end is
+                                    # all there is. The board cannot get shorter without a
+                                    # different connector. (25 was drawn before any of this was
+                                    # checked; foot_pedal.py is what catches it, because
+                                    # board_flip polices a cradle WINDOW and the pedal's budget
+                                    # is tighter than the window.) (History: WAS 19.0, and that was 3.0
 PCB_T = _PCB_T                      # taller than anything on it: the board ran to z -12 while
                                     # the lowest feature — the CONNECTOR, which is the tallest
                                     # thing in Z at 15.0 — bottomed at -8.0, leaving a 4.0 x 28
@@ -1164,34 +1170,34 @@ PCB_Z0 = PCB_Z1 - PCB_WZ                        # -12.0
 # This used to be six parts and no passives at all, which made the board look
 # 43%% covered when the real circuit is 29 parts.
 SENSOR_BOM = (
-    ("C1",   "4.7uF/50V",       4.69,  2.39, 1.50,  -11.90,   6.30),
-    ("C2",   "10uF/16V",        3.49,  2.05, 1.45,   -7.60,   6.30),
-    ("C3",   "100nF",           1.91,  1.01, 0.55,   -4.50,   6.30),
-    ("C4",   "100nF",           1.91,  1.01, 0.55,   -5.00,  -5.70),
-    ("C5",   "12pF",            1.91,  1.01, 0.55,   -8.00,  -1.90),
-    ("C6",   "12pF",            1.91,  1.01, 0.55,   -8.00,  -3.70),
-    ("C7",   "100nF",           1.91,  1.01, 0.55,   -5.00,  -1.90),
-    ("C8",   "100nF",           1.91,  1.01, 0.55,   -3.50,   3.80),
-    ("C9",   "100nF",           1.91,  1.01, 0.55,   -5.50,   3.80),
-    ("C10",  "4.7uF",           3.49,  2.05, 1.45,   -1.50,  -3.30),
-    ("C11",  "100nF",           1.91,  1.01, 0.55,   -4.00,   0.00),
-    ("D1",   "B5819W",          4.79,  2.39, 1.35,   -3.40,  10.00),
-    ("D2",   "PESD1CAN-like",   2.59,  1.49, 0.75,   -5.20,  -9.80),
-    ("D3",   "PESD1CAN-like",   2.59,  1.49, 0.75,   -2.40,  -9.80),
-    ("JP1",  "TERM",            3.39,  2.59, 0.05,   -1.50,  -7.60),
-    ("L1",   "47uH",            3.69,  3.69, 1.50,   -8.00,   9.40),
-    ("R1",   "100k",            1.95,  1.03, 0.55,    0.10,  10.00),
-    ("R2",   "30k1",            1.95,  1.03, 0.55,   -2.40,   6.30),
-    ("R3",   "10k",             1.95,  1.03, 0.55,   -5.00,  -7.20),
-    ("R4",   "120R",            3.05,  1.55, 0.95,   -1.50,  -5.30),
-    ("R5",   "0R",              1.95,  1.03, 0.55,    0.00,   3.50),
-    ("R6",   "4k7",             1.95,  1.03, 0.55,   -5.00,  -3.90),
-    ("R7",   "4k7",             1.95,  1.03, 0.55,   -0.10,   6.30),
-    ("U1",   "LMR16006XDDCR",   4.19,  3.49, 1.10,  -12.10,   9.50),
-    ("U2",   "SN65HVD230DR",    7.49,  5.49, 1.75,  -10.50,  -7.00),
-    ("U3",   "CH32V203G6U6",    5.29,  5.29, 0.90,  -10.00,   2.15),
-    ("U4",   "MT6701QT-STD",    4.35,  4.35, 0.80,    0.00,   0.00),
-    ("Y1",   "8MHz",            4.29,  3.59, 0.90,  -11.90,  -2.40),
+    ("C1",   "4.7uF/50V",          4.69,  2.39, 1.60,  -11.90,   6.20),
+    ("C2",   "10uF/16V",           3.49,  2.05, 1.45,   -7.60,   6.30),
+    ("C3",   "100nF",              1.91,  1.01, 0.55,   -4.50,   6.30),
+    ("C4",   "100nF",              1.91,  1.01, 0.55,   -5.00,  -5.70),
+    ("C5",   "12pF",               1.91,  1.01, 0.55,   -7.40,  -1.90),
+    ("C6",   "12pF",               1.91,  1.01, 0.55,   -7.40,  -3.70),
+    ("C7",   "100nF",              1.91,  1.01, 0.55,   -5.00,  -1.90),
+    ("C8",   "100nF",              1.91,  1.01, 0.55,   -3.50,   3.80),
+    ("C9",   "100nF",              1.91,  1.01, 0.55,   -5.50,   3.80),
+    ("C10",  "4.7uF",              3.49,  2.05, 1.45,   -1.50,  -3.30),
+    ("C11",  "100nF",              1.91,  1.01, 0.55,   -4.00,   0.00),
+    ("D1",   "B5819W",             4.79,  2.39, 1.10,   -3.40,   9.85),
+    ("D2",   "PESD1CAN-like",      2.59,  1.49, 0.75,   -5.20,  -9.20),
+    ("D3",   "PESD1CAN-like",      2.59,  1.49, 0.75,   -2.40,  -9.20),
+    ("JP1",  "TERM",               3.39,  2.59, 0.05,   -1.50,  -7.10),
+    ("L1",   "47uH",               3.69,  3.69, 1.50,   -8.00,   9.30),
+    ("R1",   "100k",               1.95,  1.03, 0.50,    0.10,   9.85),
+    ("R2",   "30k1",               1.95,  1.03, 0.50,   -2.40,   6.30),
+    ("R3",   "10k",                1.95,  1.03, 0.50,   -5.00,  -7.20),
+    ("R4",   "120R",               1.95,  1.03, 0.50,   -1.50,  -5.15),
+    ("R5",   "0R",                 1.95,  1.03, 0.50,    0.00,   3.50),
+    ("R6",   "4k7",                1.95,  1.03, 0.50,   -5.00,  -3.90),
+    ("R7",   "4k7",                1.95,  1.03, 0.50,   -0.10,   6.30),
+    ("U1",   "LMR16006XDDCR",      4.19,  3.49, 1.10,  -12.10,   9.35),
+    ("U2",   "SN65HVD230DR",       7.49,  5.49, 1.75,  -10.50,  -7.00),
+    ("U3",   "CH32V203G6U6",       5.29,  5.29, 0.90,  -10.00,   2.15),
+    ("U4",   "MT6701QT-STD",       4.35,  4.35, 0.80,    0.00,   0.00),
+    ("Y1",   "8MHz",               4.29,  3.59, 0.90,  -11.90,  -2.40),
 )
 CR_EDGE_KEEP = 1.85                 # the groove takes this much of each X edge — mechanical
 # The magnet cap's SWEEP, which is what forces the empty annulus around the chip
