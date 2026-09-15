@@ -658,6 +658,35 @@ BELT_T          = 1.4
 # Motor — MKS SERVO42D on a 48 mm NEMA17 — lies flat, shaft +Y
 # ─────────────────────────────────────────────────────────────────────────
 MOTOR_SQ        = 42.3
+# CAN TEE BOARD (bronner's layout, 2026-09-14). Here rather than in electronics because the
+# motor bay is CUT for it -- its seat comes out of the same prism as the motor pocket -- and
+# motor_bank cannot import electronics (electronics -> chassis -> motor_bank).
+TEE_BOARD_X     = 40.0      # one row of side-entry XH: 8-way trunk + 4-way drop
+TEE_BOARD_Y     = 16.0      # shallow: it sits ON its motor and laps it
+TEE_BOARD_T     = 1.6       # 2-layer FR4
+TEE_EAR_X       = 9.5       # BARE MOUNTING EAR off the +X end: no copper, no parts, just an M4
+                            # through-hole. The board's -Y edge can have no wall (it laps the
+                            # motor), so only screw friction resisted a -Y tug on a connector --
+                            # and every unplug is one, since the mouths face -Y. A screw THROUGH
+                            # the board is positive (user, 2026-09-15). It goes +X rather than
+                            # into the +Y strip because that strip is PLATE_T 6.4 and a closed M4
+                            # hole wants 4.4 of clear board, of which the connector courtyards
+                            # leave 3.145 (bronner measured) -- while +X of the board stands the
+                            # POST, solid for a full seated insert on all ten motors. Nothing in
+                            # bronner's 40 mm layout moves; the outline just gets longer.
+TEE_EAR_Y       = 8.7       # ...and the ear is only this DEEP, at the +Y end: the outline is an
+                            # L. The bank is staggered one string pitch in Y, so the +X neighbour
+                            # board sits 9.5 further -Y -- the ear slots into the band that
+                            # neighbour has vacated, and ten boards interlock instead of clashing.
+                            # (motor_bank asserts it against the real stagger.)
+TEE_OUTLINE_X   = TEE_BOARD_X + TEE_EAR_X   # 49.5 fabbed outline = layout region + ear
+TEE_TAIL_CY     = 2.0       # THT tail line, board-local +Y (6.0 in from the +Y edge)
+TEE_TAIL_DROP   = 1.8       # how far those tails hang below the board's underside
+TEE_FIT         = 0.3       # board fit in its seat
+TEE_WALL_OVER   = 1.2       # seat walls stand this far over the board's top face
+MOTOR_BODY_L    = 70.0      # faceplate -> back of the driver box (the SERVO42D's 42.3 motor
+                            # plus its driver stack). The pocket and the CAN pigtail's exit
+                            # both hang off it; asserted against components.motor in build.py
 MOTOR_BODY_LEN  = 48.0      # body + PCB run ≈ 70 mm along Y (toward −Y)
 MOTOR_PCB_LEN   = 22.0
 MOTOR_SHAFT_D   = 5.0
@@ -681,7 +710,12 @@ NEMA17_PILOT_D  = 22.0
 # motors no longer slide in X and need no slot travel between them -- just a two-bead gap.
 # The chassis rib comb is this pitch halved, so the ribs close up with it (user: more
 # stations to choose lever positions from).
-MOTOR_GAP       = MIN_WALL_2P                       # 1.6 between neighbouring motor bodies
+MOTOR_CLR       = 0.4       # slip fit round a PURCHASED motor body (42.3 nominal, +-0.2)
+# The gap has to hold a WALL, not just air (user, 2026-09-14): at a bare 1.6 the only thing that
+# fits between two motors is a one-bead fin, and the tee seat's -X locating wall got sliced to
+# 0.35 by the motor's own lift path. 1.6 of wall with a fit either side is 2.4, which costs the
+# bank 7.2 of length -- string 10's belt run still clears the clamp's travel by 5.5 (asserted).
+MOTOR_GAP       = MIN_WALL_2P + 2 * MOTOR_CLR       # 2.4 between neighbouring motor bodies
 MOTOR_X_STEP    = MOTOR_SQ + MOTOR_GAP              # 43.9 along-X step between motors
 # BANK ANCHOR (user, 2026-09-11): the -X end of the bank is pinned to the electronics, which
 # stand against the keyhead endplate, and the bank is packed toward them -- so the SHORTEST
@@ -691,7 +725,9 @@ KEYHEAD_INBOARD_X = -607.8       # keyhead endplate inboard bearing face (its he
                                  # asserted against keyhead_endplate in build.py
 ELEC_STACK_D    = 21.8           # standing electronics tray: plate + posts + tallest board (Pi 5);
                                  # asserted against the real boards in electronics.py
-MOTOR_ELEC_CLR  = MIN_WALL_2P    # 1.6 air between the electronics and string 1's motor
+# Sized like MOTOR_GAP so string 1's -X bay wall is a full 1.6 like every other motor's, rather
+# than the 1.2 that 1.6 of clearance left it (user: no special cases in the bank).
+MOTOR_ELEC_CLR  = MIN_WALL_2P + 2 * MOTOR_CLR   # 2.4 between the electronics and string 1's motor
 MOTOR_X0        = (-(KEYHEAD_INBOARD_X + ELEC_STACK_D + MOTOR_ELEC_CLR + MOTOR_SQ / 2)
                    - (N_STRINGS - 1) * MOTOR_X_STEP)   # ~169.75: the nearest motor's -X offset
 # Belt-plane cascade: a Ø8.4 pulley + belt wrap is wider than the 9.5 mm string

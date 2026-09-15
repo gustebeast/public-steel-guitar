@@ -37,6 +37,8 @@ from . import dimensions as D
 from .helpers import heal, cyl, cyl_y
 from . import components as C
 from . import chassis as CH
+from . import motor_bank as MB
+from .components import MOTOR_PULLEY_STANDOFF
 from .bridge_endplate import bridge_endplate
 from . import bridge_endplate as BE
 from . import belt_tensioner as BTn
@@ -197,7 +199,7 @@ from . import wiring as _WR_FUSE
 _seg_edges = [CH._SHELL_PX + CH.KH_DT_DEPTH + 2.0] + sorted(CH.SPLIT_X, reverse=True) + [CH.X_NUT]
 chassis_segments = list(chassis_segments)
 _fused_segs = set()
-for (_cnm, _cr), (_ctx, _cty, _ctd) in zip(_WR_FUSE.tee_cradles(), _WR_FUSE.tee_stations()):
+for _cnm, _cr, (_ctx, _cty, _ctd) in _WR_FUSE.tee_cradles():
     for _csi in range(len(_seg_edges) - 1):
         if _seg_edges[_csi + 1] < _ctx < _seg_edges[_csi]:
             chassis_segments[_csi] = chassis_segments[_csi].union(_cr)
@@ -452,6 +454,13 @@ def _string_components(i):
     # motor (shaft +Y, body −Y toward player) + its pulley + twisted belt
     out.append((f"motor_{i}", C.motor().translate((mx, my, mz))))
     out.append((f"motor_pulley_{i}", C.motor_pulley().translate((mx, my, mz))))
+    # The body length the pockets are built from is checked here, where the motor is built
+    # anyway. (No retaining screw: each motor is held by its own CAN tee -- wiring.on_motor.)
+    if i == 0:
+        _mb = C.motor().val().BoundingBox()
+        assert abs(-_mb.ymin - MOTOR_PULLEY_STANDOFF - D.MOTOR_BODY_L) < 1e-6, (
+            f"the motor body is {-_mb.ymin - MOTOR_PULLEY_STANDOFF:.2f} deep, not "
+            f"dimensions.MOTOR_BODY_L {D.MOTOR_BODY_L} -- the pockets are built from that")
     out.append((f"belt_{i}", C.belt((mx, my, mz), (D.screw_x(i), sy, spz))))   # all belts modelled smooth
     # belt-tension clamp (unified clamp_half ×2 + screw + external nut), oriented to the belt's flat
     # zone. Lifter bars only on the last string (build-time saver — same geometry, hidden elsewhere).
@@ -1021,20 +1030,23 @@ BODY_WORK_PARTS = SCREW_ROW_PARTS + (
     "bridge_endplate", "bridge_bearings", "motor", "chassis_",
     "electronics_tray", "pi5", "teensy_", "adc_stack", "buck", "tee_", "wire_",
     "analog_frontend", "dc_jack", "ts_jack", "usbc_jack", "joystick", "oled",
-    "body_adapter", "lock_pin_", "adjust_", "fixed_", "bar_latch_", "leg_latch_")
+    "body_adapter", "lock_pin_", "adjust_", "fixed_", "bar_latch_", "leg_latch_",
+    "top_plate", "pickup", "optical")   # the deck piece too: its skirt sets the bay's headroom
 
 
 def body_work_components():
     """The motor bank, the standing electronics and their harness, the chassis, the legs and
     the +X screw rows as ONE live set -- for work that runs the length of the body (the bank
     packed against the electronics, the rib comb, the legs' service slide over the string
-    access channels). The deck stays cached: nothing here changes it."""
+    access channels). The DECK PIECE is live too: its -Y skirt is the floor over the motor
+    bank, so a change there lands on the tees."""
     out = screw_rows_components()
     out += [(n, w) for i in range(D.N_STRINGS) for n, w in _string_components(i)
             if n.startswith("motor")]
-    out += [(n, w) for n, w in _electronics_components() if not n.startswith("top_plate")]
+    out += _electronics_components()          # includes the deck pieces
     out += [(f"chassis_{i}", seg) for i, seg in enumerate(chassis_segments)]
     out += _leg_components()
+    out += _pickup_mount_components()
     return out
 
 

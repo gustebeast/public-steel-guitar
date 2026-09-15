@@ -60,7 +60,8 @@ TRAY_Z0, TRAY_Z1 = -64.0, -61.0        # plate band (3 thick) - 1.15 ABOVE the
 
 from . import chassis as CH          # only early constants (X_*, Z_*) used here
 from .helpers import box_at, cyl, cyl_x
-from cadkit.pcb import PCB_T as _PCB_T, jst_xh_header
+from cadkit.pcb import (PCB_T as _PCB_T, jst_xh_header, jst_xh_side_header,
+                        xh_length, xh_side_length)
 
 # ---- board footprints (x0, x1, y0, y1); board bottom z = TRAY_Z1 + post ----
 POST_H = 4 * D.BEAD                    # 3.2 printed standoff posts under each board
@@ -325,12 +326,24 @@ FLOOR_Z = CH.Z_BOT
 # sided placement (all bodies on top); the THT posts drop 3.4 through the board
 # and are cleared by a relief WINDOW in the cradle base (see wiring.tee_cradles).
 TEE_CONN_N   = 4                                     # CAN = 4 conductors (gnd/24V/H/L)
-TEE_BOARD_X  = 22.0                                  # seats 3 top-entry XH side by side + hardware
-TEE_BOARD_Y  = 24.0                                  # grows +Y off the rail into the open corridor
+# RESHAPED for the motor seats (bronner, 2026-09-14). It was 22 x 24 with three 4-way XH
+# rotated 90 deg, which put a 16 x 11 band of 3.4-deep THT tails across the board's MIDDLE --
+# unusable on a motor, where the only support is the faceplate wall's 6.4 strip and everything
+# else overhangs the motor it has to lap. Now: ONE 8-way trunk (in on 1-4, out on 5-8) plus its
+# own 4-way motor drop, pin rows COLLINEAR along X in a band at the +Y edge, so the tails land
+# on the wall and the rest of the board laps the motor. Pulling the 4-way swaps a motor without
+# disturbing the trunk -- which is what the tee is for.
+TEE_BOARD_X  = D.TEE_BOARD_X                         # one row of 8-way + 4-way
+TEE_BOARD_Y  = D.TEE_BOARD_Y                         # shallow: it sits ON the motor, not on the rail
 TEE_YSHIFT   = 5.0                                   # board centre shift +Y so the -Y edge stays at y-7
-TEE_CONN_DX  = 6.5                                   # trunk-in / drop / trunk-out X spacing
-TEE_CONN_CY  = -1.0                                  # connector row centre (board-local Y)
-TEE_RELIEF   = (16.0, 11.0)                          # base tail-relief window (w × l), board-local, at (0, CONN_CY)
+TEE_TRUNK_N  = 8                                     # trunk in (1-4) / out (5-8) on ONE housing
+# SIDE ENTRY (bronner, 2026-09-14): S8B-XH-A / S4B-XH-A, mouth facing -Y so the plugs run out
+# OVER the motor instead of up. It stands 7.0 off the board where the top-entry pair stood 9.8
+# mated -- and that 2.8 is what lets string 10's tee sit on its motor at all: the magnetic
+# pickup's neck-most position dips to z -18.2 right over it. So the bank has no exception left.
+TEE_CONN_CY  = 2.0                                   # PAD ROW: 6.0 in from the +Y edge, over the wall
+TEE_MOUTH_DY = 3.25                                  # pad row -> mouth face (body 6.1, pads 2.85 off its back)
+TEE_RELIEF   = (38.0, 3.0)                           # base tail-relief window (w × l), board-local, at (0, CONN_CY)
 
 
 def tee_board_cy(y: float) -> float:
@@ -358,18 +371,30 @@ def tee_pcb(x: float, y: float, drop: int = 1, accurate: bool = True) -> cq.Work
     L-to-R, cables up -- plus the 120 Ω-behind-jumper terminator (closed only on
     each bus's LAST tee). Serves the 10 bus-A motor tees on the open -Y rail. `drop`
     = ±1 marks the device side (cables are top-entry, so it doesn't change the board
-    geometry). Mount: drop-in cradle + one M4 BESIDE the board (wiring.tee_hold) -- no hole. `accurate=False` -> the compact bus-B
+    geometry). Mount: ONE M4 THROUGH the bare ear off its +X end (wiring.tee_hold). `accurate=False` -> the compact bus-B
     placeholder (see _tee_pcb_placeholder)."""
     if not accurate:
         return _tee_pcb_placeholder(x, y, drop)
     top = FLOOR_Z + 1.6                              # board top face; connectors rise +Z from here
     cy = tee_board_cy(y)
-    b = box_at(TEE_BOARD_X, TEE_BOARD_Y, 1.6, x=x, y=cy, z=FLOOR_Z + 0.8)
-    for dx in (-TEE_CONN_DX, 0.0, TEE_CONN_DX):      # trunk-in / drop / trunk-out (rows along Y)
-        b = b.union(jst_xh_header(TEE_CONN_N, mated=True)
-                    .rotate((0, 0, 0), (0, 0, 1), 90)
-                    .translate((x + dx, cy + TEE_CONN_CY, top)))
-    b = b.union(box_at(3.5, 2.0, 1.8, x=x - 8.0, y=cy + 9.0, z=top + 0.9))   # 120R + jumper
+    # `x` is the OUTLINE centre. Bronner's 40 mm layout region is the -X part of it; off its
+    # +X end is a bare EAR, D.TEE_EAR_X by D.TEE_EAR_Y at the +Y corner, with the retaining M4's
+    # clearance hole through it. An L, not a rectangle -- see D.TEE_EAR_Y.
+    xl = x - D.TEE_EAR_X / 2                         # the layout region's own centre
+    ey = cy + (TEE_BOARD_Y - D.TEE_EAR_Y) / 2        # the ear's own centre Y
+    b = box_at(TEE_BOARD_X, TEE_BOARD_Y, 1.6, x=xl, y=cy, z=FLOOR_Z + 0.8)
+    b = b.union(box_at(D.TEE_EAR_X, D.TEE_EAR_Y, 1.6,
+                       x=x + TEE_BOARD_X / 2, y=ey, z=FLOOR_Z + 0.8))
+    b = b.cut(cq.Workplane(obj=cq.Solid.makeCylinder(
+        2.25, 3.6, cq.Vector(x + TEE_BOARD_X / 2, ey, FLOOR_Z - 1.0))))   # M4 clearance
+    # ONE row along X: the 8-way trunk, then the 4-way drop beside it. Pin rows collinear, so
+    # the tail band is ~1.5 deep instead of 7.5 and clears the faceplate wall's strip.
+    l8, l4 = xh_side_length(TEE_TRUNK_N, smt=False), xh_side_length(TEE_CONN_N, smt=False)
+    run = l8 + l4
+    for n, dx in ((TEE_TRUNK_N, -run / 2 + l8 / 2), (TEE_CONN_N, run / 2 - l4 / 2)):
+        b = b.union(jst_xh_side_header(n, smt=False, mated=True)
+                    .translate((xl + dx, cy + TEE_CONN_CY - TEE_MOUTH_DY, top)))
+    b = b.union(box_at(3.5, 2.0, 1.8, x=xl - run / 2 - 1.5, y=cy - 4.0, z=top + 0.9))  # 120R + jumper
     return b
 
 
