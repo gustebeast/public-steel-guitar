@@ -1171,7 +1171,8 @@ _COLORS = {
     "leg_trrs_jack":   (0.20, 0.20, 0.22),   # adapter's roof...and the FLOATING jack
     "leg_trrs_spring": (0.62, 0.64, 0.67),   # ...the coil that holds them together
     "leg_trrs_throat": (0.34, 0.56, 0.44),   # ...and the ring that keeps the jack in
-    "leg_trrs_lock":   (0.55, 0.55, 0.58),   # ...which one M4 grub locks in the tenon
+    "leg_trrs_lock_screw":  (0.55, 0.55, 0.58),  # ...which an M4x16 button (2.5 hex) locks
+    "leg_trrs_lock_insert": (0.80, 0.60, 0.35),  # ...into a brass heat-set insert
     "leg_trrs_patch":  (0.12, 0.12, 0.14),   # ...the lead up to the chassis socket
     "leg_trrs_leg_lead": (0.12, 0.12, 0.14), # ...and the column's own, down the leg
     "bar_latch_frame": (0.85, 0.35, 0.20),   # pedal bar latch accent
