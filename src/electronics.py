@@ -370,21 +370,30 @@ def tee_pcb(x: float, y: float, drop: int = 1, accurate: bool = True) -> cq.Work
     L-to-R, cables up -- plus the 120 Ω-behind-jumper terminator (closed only on
     each bus's LAST tee). Serves the 10 bus-A motor tees on the open -Y rail. `drop`
     = ±1 marks the device side (cables are top-entry, so it doesn't change the board
-    geometry). Mount: drop-in cradle + one M4 BESIDE the board (wiring.tee_hold) -- no hole. `accurate=False` -> the compact bus-B
+    geometry). Mount: ONE M4 THROUGH the bare ear off its +X end (wiring.tee_hold). `accurate=False` -> the compact bus-B
     placeholder (see _tee_pcb_placeholder)."""
     if not accurate:
         return _tee_pcb_placeholder(x, y, drop)
     top = FLOOR_Z + 1.6                              # board top face; connectors rise +Z from here
     cy = tee_board_cy(y)
-    b = box_at(TEE_BOARD_X, TEE_BOARD_Y, 1.6, x=x, y=cy, z=FLOOR_Z + 0.8)
+    # `x` is the OUTLINE centre. Bronner's 40 mm layout region is the -X part of it; off its
+    # +X end is a bare EAR, D.TEE_EAR_X by D.TEE_EAR_Y at the +Y corner, with the retaining M4's
+    # clearance hole through it. An L, not a rectangle -- see D.TEE_EAR_Y.
+    xl = x - D.TEE_EAR_X / 2                         # the layout region's own centre
+    ey = cy + (TEE_BOARD_Y - D.TEE_EAR_Y) / 2        # the ear's own centre Y
+    b = box_at(TEE_BOARD_X, TEE_BOARD_Y, 1.6, x=xl, y=cy, z=FLOOR_Z + 0.8)
+    b = b.union(box_at(D.TEE_EAR_X, D.TEE_EAR_Y, 1.6,
+                       x=x + TEE_BOARD_X / 2, y=ey, z=FLOOR_Z + 0.8))
+    b = b.cut(cq.Workplane(obj=cq.Solid.makeCylinder(
+        2.25, 3.6, cq.Vector(x + TEE_BOARD_X / 2, ey, FLOOR_Z - 1.0))))   # M4 clearance
     # ONE row along X: the 8-way trunk, then the 4-way drop beside it. Pin rows collinear, so
     # the tail band is ~1.5 deep instead of 7.5 and clears the faceplate wall's strip.
     l8, l4 = xh_side_length(TEE_TRUNK_N, smt=False), xh_side_length(TEE_CONN_N, smt=False)
     run = l8 + l4
     for n, dx in ((TEE_TRUNK_N, -run / 2 + l8 / 2), (TEE_CONN_N, run / 2 - l4 / 2)):
         b = b.union(jst_xh_side_header(n, smt=False, mated=True)
-                    .translate((x + dx, cy + TEE_CONN_CY - TEE_MOUTH_DY, top)))
-    b = b.union(box_at(3.5, 2.0, 1.8, x=x - run / 2 - 1.5, y=cy - 4.0, z=top + 0.9))  # 120R + jumper
+                    .translate((xl + dx, cy + TEE_CONN_CY - TEE_MOUTH_DY, top)))
+    b = b.union(box_at(3.5, 2.0, 1.8, x=xl - run / 2 - 1.5, y=cy - 4.0, z=top + 0.9))  # 120R + jumper
     return b
 
 

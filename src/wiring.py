@@ -267,7 +267,7 @@ def tee_point(i, x, y, which="trunk"):
     return cx + dx, cy + EL.TEE_CONN_CY - EL.TEE_MOUTH_DY - 2.0, tee_hdr_z(i)
 
 
-# ── TEE RETENTION: ONE M4 BESIDE THE BOARD (user: one driver, one insert SKU) ──────
+# ── TEE RETENTION: ONE M4 THROUGH THE BOARD'S EAR (user: one driver, one insert SKU) ──
 # It was one M2 down through a board hole. cadkit's pcb_cradle now takes the screw BESIDE
 # the board (hold_edge): the walls capture every direction but +Z, and the button head laps
 # the board edge to close +Z, so the board needs no hole at all. tee_hold() is the ONE
@@ -279,6 +279,8 @@ TEE_SCREW_L   = 10.0        # M4x10 button: head on the board top, tip inside th
 TEE_CLR       = 0.3         # board fit gap in the cradle; also sets where the hold screw sits
 TEE_WALL_OVER = 1.2         # cradle walls stand this far above the board top
 _BUS_B_M2_XY  = (6.5, -4.0) # the bus-B placeholders' M2 hole (see tee_hold)
+_EAR_XY       = (D.TEE_BOARD_X / 2,         # the accurate board's M4 THROUGH-hole, board-local
+                 (D.TEE_BOARD_Y - D.TEE_EAR_Y) / 2)   # (centred in the bare ear off its +X end)
 from cadkit.fasteners import M4 as _M4
 from cadkit.pcb import PCB_T as _PCB_T
 assert TEE_SCREW_L - _PCB_T <= _M4.anchor_min_wall + 1e-9, (
@@ -299,19 +301,12 @@ def tee_hold(i, x, y, d):
         return 18.0, 14.0, x, y, "-y", None, None
     if on_motor(i):
         # ON A MOTOR: the board's -Y half laps the motor, so that edge can have no wall (a wall
-        # there would overhang the motor and trap it). It holds on +X, where the boss stands on
-        # the faceplate wall beyond the motor's own side; the +Y and -X walls locate it.
-        # The board is nearly as wide as the motor, so a screw "beside the +X edge" is still
-        # over the motor at mid-edge. It goes to the +Y END of that edge instead, where the
-        # board is over the faceplate wall and the motor has already stopped -- the boss then
-        # stands on wall, and its anchor bores down into it.
-        # OPEN ON -X as well as -Y: the board is nearly as wide as its motor, so a -X locating
-        # wall would stand inside the motor's lift path and come back from that cut as a 0.35
-        # sliver (user spotted it). The +Y wall and the hold screw locate the board; the -Y wall
-        # is removed by the lift-path cut itself, which is what open_edge cannot express.
+        # there would overhang the motor and trap it) -- and a screw BESIDE the board only laps
+        # its edge, which friction alone then has to hold against a -Y tug (user, 2026-09-15:
+        # every unplug is one, since the mouths face -Y). So the screw goes THROUGH the board,
+        # down the bare ear off its +X end into the post: positive in X and Y, not frictional.
         cx, cy = tee_center(i, x, y)
-        return (EL.TEE_BOARD_X, EL.TEE_BOARD_Y, cx, cy, "-x", "+x",
-                EL.TEE_BOARD_Y / 2 - 3.0)
+        return (D.TEE_OUTLINE_X, EL.TEE_BOARD_Y, cx, cy, "-x", "through", None)
     # bus-A (22 x 24): hold on the +X edge, toward the -Y rail end (hold_at -8).
     #   +Y (the obvious spot) lands under the -Y ends of motors 6-8: 115 mm3 of screw into
     #      motor_7 and motor_8 -- the board grows +Y into the corridor the motors reach into.
@@ -319,7 +314,7 @@ def tee_hold(i, x, y, d):
     #   +X clears the mated connectors and the 120R at every hold_at tried (-9..0); -8 keeps
     #      the head 12 back from the motor ends and inside the board's own Y span, so it
     #      stays off the rail. All four walls close -- the connectors are top-entry now.
-    return EL.TEE_BOARD_X, EL.TEE_BOARD_Y, x, EL.tee_board_cy(y), None, "+x", -8.0
+    return D.TEE_OUTLINE_X, EL.TEE_BOARD_Y, x, EL.tee_board_cy(y), None, "through", None
 
 
 
@@ -337,7 +332,8 @@ def tee_components():
                     .translate((0, 0, z0 - EL.FLOOR_Z))))
         if hold_edge is None:
             continue
-        hx, hy = pcb_hold_xy(bw, bl, hold_edge, hold_at=hold_at, clr=TEE_CLR)
+        hx, hy = _EAR_XY if hold_edge == "through" else pcb_hold_xy(
+            bw, bl, hold_edge, hold_at=hold_at, clr=TEE_CLR)
         out.append((f"tee_insert_{i}", seated_insert(_M4, (cx + hx, cy + hy, z0), (0, 0, -1))))
         out.append((f"tee_screw_{i}", m4_button_screw(TEE_SCREW_L).translate(
             (cx + hx, cy + hy, z0 + _PCB_T + M4_BUTTON_HEAD_H))))          # head seated on the board top
@@ -364,7 +360,10 @@ def tee_cradles():
         # MOTOR_SEAT_SO under the board; on the rail it stands on the rib tops as before.
         so = MOTOR_SEAT_SO if on_motor(i) else TEE_Z - _RIB_TOP
         base_z = tee_z(i) - so
-        if hold_edge is None:
+        if hold_edge == "through":
+            cr = pcb_cradle(bw, bl, screw_xy=_EAR_XY, spec=_M4, open_edge=open_edge, standoff=so,
+                            wall_over=TEE_WALL_OVER, clr=TEE_CLR)
+        elif hold_edge is None:
             cr = pcb_cradle(bw, bl, screw_xy=_BUS_B_M2_XY, open_edge=open_edge, standoff=so,
                             wall_over=TEE_WALL_OVER, clr=TEE_CLR)
         else:
@@ -401,7 +400,8 @@ def tee_hold_negatives():
         bw, bl, cx, cy, _open, hold_edge, hold_at = tee_hold(i, x, y, d)
         if hold_edge is None:
             continue
-        hx, hy = pcb_hold_xy(bw, bl, hold_edge, hold_at=hold_at, clr=TEE_CLR)
+        hx, hy = _EAR_XY if hold_edge == "through" else pcb_hold_xy(
+            bw, bl, hold_edge, hold_at=hold_at, clr=TEE_CLR)
         px, py, pz = cx + hx, cy + hy, tee_z(i)
         anchor = anchor_cutter(_M4, (px, py, pz), (0, 0, -1), _M4.anchor_min_wall)
         notch = cq.Workplane("XY").add(cq.Solid.makeCylinder(
