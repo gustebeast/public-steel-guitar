@@ -152,6 +152,38 @@ def _anchor_on_pads(fp, target):
     fp.SetPosition(pcbnew.VECTOR2I(pos.x + (target.x - cx), pos.y + (target.y - cy)))
 
 
+def _edge_poly(board, pts):
+    """An arbitrary closed outline on Edge.Cuts, in board-local mm.
+
+    THE BOARD IS NOT ALWAYS A RECTANGLE. The motor tee grew an EAR off its +X end
+    to carry a mounting hole -- a positive M4 through the board instead of a screw
+    beside it, because a screw beside the board only resists pull-out by friction
+    and the tee's connectors face the direction it would be pulled. The layout
+    region stays 40 x 16 and every part stays where it was; the outline is what
+    changed."""
+    for a, b in zip(pts, pts[1:] + pts[:1]):
+        seg = pcbnew.PCB_SHAPE(board)
+        seg.SetShape(pcbnew.SHAPE_T_SEGMENT)
+        seg.SetStart(_to_board(*a))
+        seg.SetEnd(_to_board(*b))
+        seg.SetLayer(pcbnew.Edge_Cuts)
+        seg.SetWidth(pcbnew.FromMM(0.1))
+        board.Add(seg)
+
+
+def _cutout(board, cx, cy, d):
+    """A round hole as an Edge.Cuts circle -- which is how a board CUTOUT is drawn,
+    as against a plated pad. The tee's M4 clearance hole is mechanical: nothing
+    connects to it, so giving it a pad would invent a net that does not exist."""
+    c = pcbnew.PCB_SHAPE(board)
+    c.SetShape(pcbnew.SHAPE_T_CIRCLE)
+    c.SetCenter(_to_board(cx, cy))
+    c.SetEnd(_to_board(cx + d / 2.0, cy))
+    c.SetLayer(pcbnew.Edge_Cuts)
+    c.SetWidth(pcbnew.FromMM(0.1))
+    board.Add(c)
+
+
 def _edge_rect(board, w, h):
     """The outline on Edge.Cuts, centred on the board origin."""
     hw, hh = w / 2.0, h / 2.0
@@ -282,7 +314,14 @@ def build(stem):
                 raise SystemExit("%s has no pad %s" % (ref, pad_no))
             pad.SetNet(net)
 
-    _edge_rect(board, *notes["outline_mm"])
+    # outline_poly wins when present; outline_mm stays the LAYOUT REGION either way
+    # (place_check and the zone filler both measure parts against it).
+    if notes.get("outline_poly"):
+        _edge_poly(board, [tuple(pt) for pt in notes["outline_poly"]])
+    else:
+        _edge_rect(board, *notes["outline_mm"])
+    for h in notes.get("cutouts", ()):
+        _cutout(board, h["xy"][0], h["xy"][1], h["d"])
 
     nets_by_name = {n.GetNetname(): n for n in board.GetNetInfo().NetsByName().values()}
     for net_name, layer, width, pts in notes.get("tracks", []):
