@@ -257,166 +257,127 @@ def tee_components():
     return out
 
 
-# ── TRRS ADAPTER STATION -- the -X/+Y leg's cable into the instrument ─────────
+# ── TRRS ADAPTER STATION -- the -X/+Y leg's cable into the instrument ─────
 # THE LEG UNPLUGS BEFORE IT SLIDES OUT, so this station is chosen by where a HAND
-# can reach a plug, not by where a board fits tidily. The adapter (EL.trrs_adapter_pcb,
-# bronner's) sits INSIDE the shell just inboard of the +Y rail and directly over the
-# leg, and its jack's mouth looks +Y through a bore in that rail. The plug therefore
-# comes out of the instrument's back face a couple of centimetres above the leg's own
-# +Y face -- which is FLUSH with that rail -- so the lead from the body adapter is a
-# short hop straight up the corner.
+# can reach a plug, not by where a board fits tidily. The plug is on the
+# instrument's -Z UNDERSIDE (user, with the spot circled): it looks straight DOWN
+# through a bore in the chassis floor, a hand's reach inboard of the leg, and the
+# lead from the body adapter never comes round to a face you can see. An earlier
+# pass had it mouthing +Y through the back rail, which is exactly the face the
+# player looks at.
 #
-# WHY NOT STRAIGHT UP INTO THE BODY (user): the leg slides along Y to come off, so a
-# cable rising +Z out of the adapter's top face is a cable the leg shears on its way
-# out. It leaves the adapter's SIDE instead and the run is outside the shell -- not
-# the hidden-cable trick, but a short one, tucked behind the leg.
+# THE BOARD IS A REQUEST TO BRONNER, and this is the second one -- it REPLACES the
+# earlier "put the jack on the long edge". What the station needs now is a
+# BOARD-PERPENDICULAR (vertical-entry) 3.5 mm 4-pole jack: barrel along the board's
+# normal, mouth through the board. Everything else about the board is unchanged and
+# every size below still comes from electronics.py. The reason is room, and it is
+# not close: a board-PARALLEL jack can only look -Z if the board stands on edge, and
+# a board on edge is 26 tall in a cavity whose only solid floor is under the
+# electronics tray, with 9.5 between that floor and the tray's underside.
+# _trrs_board_as_asked is what gets deleted when the respin lands.
 #
-# WHAT SETS THE POCKET, and every number here was measured off the BUILT chassis
-# rather than reasoned about:
-#   * ACROSS X it is 22..26, between the keyhead endplate's inner wall (-629.8) and
-#     the electronics tray and the Pi (-607/-603). That is why the board has to lie
-#     with its long axis pointing inboard, which is the one request this station
-#     makes of bronner's layout (see TRRS_ACROSS).
-#   * BELOW, over a leg, there is barely any chassis floor: it is the leg's own
-#     joinery -- grooves, the mortise pocket, open sky -- and the floor's upper skin
-#     only survives inboard of x -616. Hence the pedestal and its 45-degree flare.
-#   * ABOVE the tray's top (-55.8) is where a cradle's base plate can hang without
-#     landing in the tray's corner.
-TRRS_RAIL_IN = CH_Y_HI - _RAIL_T / 2.0      # 55.55: the +Y rail's inner face
-TRRS_RAIL_OUT = CH_Y_HI + _RAIL_T / 2.0     # 65.95: ...and its outer, the body's side
-TRRS_X = -772 * D.BEAD      # -617.6: station centre in X -- over the leg, and as far
-                            # outboard in the pocket as the endplate's inner wall
-                            # (-629.8) allows, to keep clear of the tray's corner
-TRRS_BASE_Z = -47.7         # the cradle's MOUNTING SURFACE: a bracket off the rail,
-                            # with its base plate hanging 6.0 BELOW this and clear of
-                            # the tray's top (-55.8). The M4's own anchor is what set
-                            # the height: 8.5 of anchor means 6.0 of base under the
-                            # standoff, and at any lower station that base lands in the
-                            # tray's corner.
+# WHAT SETS THE POCKET, all of it measured on the BUILT chassis rather than reasoned
+# about:
+#   * THE FLOOR is a 10.3 slab, -81.8 (the instrument's underside, and this
+#     segment's print bed) to -71.5. Over the leg and just outboard of here the slab
+#     is a RIB LATTICE with open cells; it goes fully solid from x -608 inboard. The
+#     port and the screw's anchor both want solid slab, so the station sits at
+#     x -604, in that band and as far out toward the leg as the band reaches.
+#   * ABOVE is the electronics tray, whose plate starts at z -62. The cradle's top
+#     is -66.6, so it passes under it -- which is only possible because the screw's
+#     anchor goes down into the SLAB instead of into a 6.0 base plate of its own.
+#   * The plug hangs ~17 below the underside. That is the price of a plug you can
+#     reach without taking the instrument apart.
+TRRS_FLOOR_TOP = -71.5      # the chassis floor's upper face at this station
+TRRS_FLOOR_BOT = -81.8      # ...and the instrument's underside: this segment's bed
+TRRS_X = -755 * D.BEAD      # -604.0: in the solid band, and as far outboard (toward
+TRRS_Y = 0.0                # the leg) as that band reaches
 TRRS_CLR = TEE_CLR          # the tees' own board fit, wall stand-off and screw: one
 TRRS_WALL_OVER = TEE_WALL_OVER      # cradle idiom on this instrument, not two
 TRRS_SCREW_L = TEE_SCREW_L          # M4x10 button, 2.5 hex -- the one lock (user)
-# THE BOARD'S LAYOUT IS A REQUEST TO BRONNER, not what electronics.py draws today.
-# As drawn, the jack mouths along the board's SHORT (20) axis, which puts 26 of board
-# across X -- 29.8 with a cradle, into a 26.4 pocket. On its long axis instead, the
-# board lies 20 across X and reaches 26 inboard along the plug's own line, which fits
-# with room to spare. Nothing else about the board changes. Sizes still come from
-# electronics; only the mouth's AXIS is the open item, and the assert below is what
-# will notice when it lands.
-TRRS_ACROSS = EL.TRRS_BOARD_X               # 20: across the plug's axis (world X)
-TRRS_ALONG = EL.TRRS_BOARD_Y                # 26: along it (world Y), inboard from the rail
-TRRS_MOUTH_IN = EL.TRRS_BOARD_X / 2.0 + EL.TRRS_MOUTH_X     # 2.61: the mouth, inside
-                                                            # the board's own edge
+TRRS_ACROSS = EL.TRRS_BOARD_X               # 20, across X
+TRRS_ALONG = EL.TRRS_BOARD_Y                # 26, along Y
 TRRS_PORT_D = EL.TRRS_PLUG_D + 0.8          # 10.8: the plug's handle passes THROUGH the
-                                            # rail to reach the mouth -- a socket has to
-                                            # be met by the plug's shoulder, and the
-                                            # rail is 10.4 of that reach
+                                            # floor slab to reach the mouth -- a socket
+                                            # has to be met by the plug's shoulder, and
+                                            # the slab is 10.3 of that reach
+_TRRS_STANDOFF = 2.5
+_TRRS_BASE_T = 1.6          # NOT pcb_cradle's default 6.0. That default exists so the
+                            # M4's anchor fits above the mounting surface; here the
+                            # mounting surface IS the floor slab and the anchor bores
+                            # 8.5 down into 10.3 of it, so the plate is just a plate.
+                            # Paying the 6.0 would put the cradle's top through the
+                            # electronics tray.
 
 
 def trrs_station():
-    """(centre x, board's +Y edge, base z) -- the board's outline in the world."""
-    return TRRS_X, TRRS_RAIL_IN - TRRS_CLR, TRRS_BASE_Z
-
-
-_TRRS_STANDOFF = 2.5
-_TRRS_BASE_T = max(1.6, _M4.anchor_min_wall - _TRRS_STANDOFF)   # 6.0, pcb_cradle's own
-                                                               # rule: the anchor has to
-                                                               # fit under the standoff
-
-
-TRRS_FLOOR_Z = -67.25       # the cavity's floor at this station (measured on the
-                            # built chassis: the floor sandwich's upper skin)
-TRRS_PED_X1 = -607.3        # the pedestal's inboard face. The electronics tray's own
-                            # plate edge is at x -607 through z -64..-61, so the
-                            # support stops 0.3 short of it (measured, not guessed)
-TRRS_PED_X0 = -616.0        # ...and its OUTBOARD face: the last x where the chassis
-                            # floor's upper skin survives. Outboard of this is the
-                            # leg's own joinery and open sky, so the pedestal stands
-                            # inboard of it and flares out at 45 to reach the board
+    """(centre x, centre y, mounting surface z) -- the board's outline in the world."""
+    return TRRS_X, TRRS_Y, TRRS_FLOOR_TOP
 
 
 def trrs_board_z():
     """The board's underside. pcb_cradle measures its standoff from the MOUNTING
     SURFACE (its base plate hangs BELOW that), so this is not base + plate + standoff
     -- getting that wrong floats the board 6.0 clear of the pads that hold it."""
-    return TRRS_BASE_Z + _TRRS_STANDOFF
+    return TRRS_FLOOR_TOP + _TRRS_STANDOFF
 
 
 def trrs_mouth_z():
-    """The jack's axis: the plug's line out through the rail."""
-    return trrs_board_z() + _PCB_T + EL.TRRS_JACK_H / 2.0
+    """The jack's mouth: through the board, looking -Z."""
+    return trrs_board_z()
 
 
 def trrs_cradle():
-    """The drop-in cradle, a bracket off the +Y rail's inner face. Walls on three
-    edges; the RAIL is the fourth, so the only way the board can leave is the way it
-    went in (+Z), and the one M4 beside its -Y edge closes that."""
+    """The drop-in cradle, standing on the floor slab. Walls on ALL FOUR edges -- no
+    rail to borrow here -- so the only way the board can leave is the way it went in
+    (+Z), and the one M4 beside its -Y edge closes that."""
     from cadkit.fasteners import M4_BUTTON_HEAD_D
     from cadkit.pcb import pcb_cradle
-    cx, cy_edge, z0 = trrs_station()
-    cr = pcb_cradle(TRRS_ACROSS, TRRS_ALONG, open_edge="+y", hold_edge="-y",
+    cx, cy, z0 = trrs_station()
+    cr = pcb_cradle(TRRS_ACROSS, TRRS_ALONG, open_edge=None, hold_edge="-y",
                     standoff=_TRRS_STANDOFF, wall_over=TRRS_WALL_OVER, clr=TRRS_CLR,
-                    hold_spec=_M4, head_d=M4_BUTTON_HEAD_D)
-    cr = cr.translate((cx, cy_edge - TRRS_ALONG / 2.0, z0))
-    return cr.union(_trrs_pedestal(cr.val().BoundingBox()))
+                    base_t=_TRRS_BASE_T, hold_spec=_M4, head_d=M4_BUTTON_HEAD_D)
+    cr = cr.translate((cx, cy, z0))
+    return cr.union(_trrs_footing(cr.val().BoundingBox()))
 
 
-def _trrs_pedestal(bb):
-    """WHAT HOLDS THE CRADLE UP, and it is not the floor under the board.
-
-    pcb_cradle hands back a base plate to fuse onto a mounting surface. There is
-    none here: the station hangs in the cavity over the LEG, and the chassis floor
-    over a leg is mostly the leg's own joinery -- grooves, the mortise pocket, open
-    sky. The floor's upper skin only survives inboard of x -616 (measured on the
-    built chassis). A plate in mid-air is a ceiling in a part that builds -Z -> +Z.
-
-    So the pedestal stands on THAT band, walls vertical, and FLARES OUT at 45
-    degrees as it rises to meet the plate's outboard half; inboard it chamfers the
-    same way off the tray's keep-out. 45 is the whole rule: a layer may grow by its
-    own height off the one below, so a flare prints as an eave and not an island.
-    It is also what sets TRRS_BASE_Z -- the flare needs as much height as reach.
-
-    The footprint comes from the cradle's OWN bounding box rather than from the
-    board's size: the M4's boss stands proud of the base plate on the -Y side, and
-    sizing this by hand left that boss hanging (41 mm2 of it)."""
+def _trrs_footing(bb):
+    """WHAT THE CRADLE STANDS ON. The floor slab here is not a plate but a RIB
+    LATTICE with open cells, and a base plate laid across it is a bridge, not a
+    foundation (measured: 79 mm2 of the plate had nothing under it). So the cells
+    under the cradle's own footprint are FILLED, slab bottom to slab top -- and the
+    slab's bottom is this segment's print bed, which makes the fill the first layer
+    rather than an island. The footprint comes from the cradle's OWN bounding box:
+    the M4's boss stands proud of the base plate on the -Y side, and sizing this by
+    hand is how that boss ends up hanging."""
     from .helpers import box_at
-    import cadquery as cq
-    base_u, y0, y1 = bb.zmin, bb.ymin, TRRS_RAIL_IN
-    foot = box_at(TRRS_PED_X1 - TRRS_PED_X0, y1 - y0, base_u - TRRS_FLOOR_Z,
-                  x=(TRRS_PED_X0 + TRRS_PED_X1) / 2, y=(y0 + y1) / 2,
-                  z=(TRRS_FLOOR_Z + base_u) / 2)
-    ped = foot
-    for x_edge, x_far in ((TRRS_PED_X0, bb.xmin), (TRRS_PED_X1, bb.xmax)):
-        reach = x_far - x_edge
-        if abs(reach) < 1e-9:
-            continue
-        drop = abs(reach)                       # 45 degrees: as deep as it is wide
-        ped = ped.union(cq.Workplane("XZ")
-                        .polyline([(x_edge, base_u), (x_edge + reach, base_u),
-                                   (x_edge, base_u - drop)])
-                        .close().extrude(y1 - y0).translate((0.0, y1, 0.0)))
-    return ped
+    return box_at(bb.xlen, bb.ylen, TRRS_FLOOR_TOP - TRRS_FLOOR_BOT,
+                  x=bb.center.x, y=bb.center.y,
+                  z=(TRRS_FLOOR_BOT + TRRS_FLOOR_TOP) / 2.0)
 
 
 def trrs_port():
-    """The bore through the +Y rail the plug reaches in along, teardropped for the
-    chassis's own +Z print."""
-    from cadkit.holes import teardrop_hole
-    cx, cy_edge, _ = trrs_station()
-    y0 = cy_edge - TRRS_MOUTH_IN - 0.5          # the mouth is INSIDE the board's edge
-    return teardrop_hole(TRRS_PORT_D, (TRRS_RAIL_OUT + 1.0) - y0,
-                         (cx, y0, trrs_mouth_z()), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0))
+    """The bore the plug reaches up along, straight down through the floor slab and
+    out the instrument's underside. It runs along the chassis's own build direction,
+    so it needs no teardrop: a +Z bore prints round."""
+    import cadquery as cq
+    cx, cy, _ = trrs_station()
+    z0 = TRRS_FLOOR_BOT - 1.0
+    return cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        TRRS_PORT_D / 2.0, (trrs_mouth_z() + 0.5) - z0,
+        cq.Vector(cx, cy, z0), cq.Vector(0, 0, 1)))
 
 
 def trrs_hold_negatives():
     """The cradle's own anchor and head notch, in the world -- build.py re-cuts them
-    after the fuse, the same refill trap the tees have."""
+    after the fuse, the same refill trap the tees have. The anchor lands in the floor
+    slab, which is why the base plate can be 1.6."""
     import cadquery as cq
     from cadkit.fasteners import M4_BUTTON_HEAD_D, anchor_cutter
     from cadkit.pcb import pcb_hold_xy
-    cx, cy_edge, z0 = trrs_station()
+    cx, cy, _ = trrs_station()
     hx, hy = pcb_hold_xy(TRRS_ACROSS, TRRS_ALONG, "-y", clr=TRRS_CLR, spec=_M4)
-    wx, wy = cx + hx, (cy_edge - TRRS_ALONG / 2.0) + hy
+    wx, wy = cx + hx, cy + hy
     bz = trrs_board_z()
     out = [anchor_cutter(_M4, (wx, wy, bz), (0, 0, -1), _M4.anchor_min_wall,
                          overshoot=1.0, print_up=(0.0, 0.0, 1.0))]
@@ -432,14 +393,14 @@ def trrs_components():
     import cadquery as cq
     from cadkit.fasteners import M4_BUTTON_HEAD_H, m4_button_screw, seated_insert
     from cadkit.pcb import pcb_hold_xy
-    cx, cy_edge, _ = trrs_station()
+    cx, cy, _ = trrs_station()
     bz, mz = trrs_board_z(), trrs_mouth_z()
-    board = _trrs_board_as_asked().translate((cx, cy_edge, bz))
+    board = _trrs_board_as_asked().translate((cx, cy, bz))
     hx, hy = pcb_hold_xy(TRRS_ACROSS, TRRS_ALONG, "-y", clr=TRRS_CLR, spec=_M4)
-    wx, wy = cx + hx, (cy_edge - TRRS_ALONG / 2.0) + hy
+    wx, wy = cx + hx, cy + hy
     plug = cq.Workplane("XY").add(cq.Solid.makeCylinder(
         EL.TRRS_PLUG_D / 2.0, EL.TRRS_PLUG_RUN,
-        cq.Vector(cx, cy_edge - TRRS_MOUTH_IN, mz), cq.Vector(0, 1, 0)))
+        cq.Vector(cx, cy, mz - EL.TRRS_PLUG_RUN), cq.Vector(0, 0, 1)))
     return [("trrs_adapter_pcb", board),
             ("trrs_adapter_plug", plug),
             ("trrs_adapter_insert", seated_insert(_M4, (wx, wy, bz), (0, 0, -1))),
@@ -448,19 +409,17 @@ def trrs_components():
 
 
 def _trrs_board_as_asked():
-    """Bronner's adapter WITH THE JACK ON ITS LONG EDGE (the request above), in the
-    world's axes: origin at the board's +Y edge on its underside, the mouth looking
-    +Y. Every size is electronics'; only the jack's axis differs, and this function
-    is what gets deleted when the respin lands."""
+    """Bronner's adapter WITH A BOARD-PERPENDICULAR JACK (the request above), in the
+    world's axes: origin at the board's centre on its underside, the mouth looking
+    -Z through the board. Every size is electronics'; only the jack's axis differs,
+    and this function is what gets deleted when the respin lands."""
     from .helpers import box_at
     from cadkit.pcb import jst_xh_header
-    b = box_at(TRRS_ACROSS, TRRS_ALONG, _PCB_T, x=0.0, y=-TRRS_ALONG / 2.0, z=_PCB_T / 2)
-    b = b.union(box_at(EL.TRRS_JACK_W, EL.TRRS_JACK_L, EL.TRRS_JACK_H, x=0.0,
-                       y=-(TRRS_MOUTH_IN + EL.TRRS_JACK_L / 2.0 - 1.0),
-                       z=_PCB_T + EL.TRRS_JACK_H / 2))
+    b = box_at(TRRS_ACROSS, TRRS_ALONG, _PCB_T, x=0.0, y=0.0, z=_PCB_T / 2)
+    b = b.union(box_at(EL.TRRS_JACK_W, EL.TRRS_JACK_W, EL.TRRS_JACK_L, x=0.0, y=0.0,
+                       z=_PCB_T + EL.TRRS_JACK_L / 2))
     b = b.union(jst_xh_header(4, mated=False)
-                .rotate((0, 0, 0), (0, 0, 1), 90)
-                .translate((0.0, -(TRRS_ALONG - 7.5), _PCB_T)))
+                .translate((0.0, TRRS_ALONG / 2 - 7.5, _PCB_T)))
     return b
 
 
