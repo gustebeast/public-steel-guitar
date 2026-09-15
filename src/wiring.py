@@ -372,17 +372,12 @@ def tee_cradles():
         if i < 11:                                               # bus-A: THT-tail relief window in the base
             cr = cr.cut(box_at(rw, rl, 12.0, x=0.0, y=EL.TEE_CONN_CY, z=-5.5))
         cr = cr.translate((cx, cy, base_z))
-        if on_motor(i):
-            # NOTHING FIXED MAY OVERHANG A MOTOR or it can never come out: the half of this
-            # cradle that laps the motor is cut away, leaving the strip on the wall, its +Y wall
-            # and the hold boss. What laps the motor is the removable BOARD.
-            cr = cr.cut(MB.lift_prism(i))
-            # ...and nothing of it may reach into the MOTOR GAP either. The board is nearly as
-            # wide as its motor, so the cradle's BASE runs 0.35 past the pocket's -X face and
-            # came back from the lift cut as a sliver (user measured it). The gap belongs to the
-            # pocket's own -X wall, not to this seat.
-            cr = cr.cut(MB.gap_keepout(i))
-        out.append((f"tee_cradle_{i}", cr))
+        # EACH CRADLE CARRIES ITS OWN STATION. It used to be zipped against tee_stations() by
+        # position in build.py, which silently broke the moment this loop started SKIPPING the
+        # ten bank tees: every surviving cradle got paired with another tee's x and fused into
+        # the segment that x falls in -- all three into the keyhead segment, 350 mm from where
+        # their geometry sits, floating free of it and burying rib -70.8's lever mortise.
+        out.append((f"tee_cradle_{i}", cr, (x, y, d)))
     return out
 
 

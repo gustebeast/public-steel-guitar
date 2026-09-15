@@ -739,6 +739,16 @@ def _segments():
                  (MB.HARNESS_Y1 - _rise, MB.HARNESS_Z1 + _rise)]
         seg = seg.cut(cq.Workplane("YZ").workplane(offset=b - 20.0)
                       .polyline(_prof).close().extrude((a - b) + 40.0))
+        # THE LEVER MORTISES, RE-CUT AFTER THE BAYS (user, 2026-09-15). _build_full cuts a
+        # christmas-tree into every rib, but the housings fuse in above it -- and each faceplate
+        # wall runs all the way down to the BED, so it crosses the ribs and fills those mortises
+        # straight back in. The documented refill trap: a feature cut before a union does not
+        # survive the union. Same remedy as the tee anchors in build.py -- re-cut afterwards,
+        # for the ribs this segment actually holds.
+        from . import knee_lever as _KL2
+        for _rx in _RIB_X:
+            if b - 30.0 < _rx < a + 30.0:
+                seg = seg.cut(_KL2.rib_mortise(_rx))
         segs.append(_largest(seg))
     return segs
 
