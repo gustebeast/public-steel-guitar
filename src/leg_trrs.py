@@ -162,6 +162,15 @@ LOCK_GROOVE = 0.4               # how deep the screw's tip sits in the keeper's 
 # M4's anchor_min_wall, so this is a THREAD-FORMED grub and not an insert -- the same
 # call legs.py makes for its pinch grubs. The -Y flank has 16.0 and would take a
 # pocket, but then the grub has to be 20 long to cross it.
+THROAT_LEAD_D = 9.0             # the keeper's MOUTH, opened 45 from its O6.6 bore.
+                                # THE KEEPER IS THE LEG'S HIGHEST FEATURE, so its bore
+                                # is the first thing the plug's barrel meets on the way
+                                # in -- and a bare O6.6 against a O3.5 barrel is only
+                                # 1.55 of radial capture. The plug is a cantilever off
+                                # PLUG_GRIP of bore, and a slack-printed press lets it
+                                # cock: 0.15 of slop is 3.6 degrees is 1.60 at the
+                                # barrel's tip. That JAMS THE LEG (user). Opened to 9.0
+                                # the capture is 2.75, which swallows it.
 THROAT_PRESS = 0.1              # the keeper's interference in the jack's bore. It only
                                 # ever carries the coil's 5 N preload, and only while the
                                 # leg is OFF: with the leg on, the adapter's mortise roof
@@ -296,6 +305,13 @@ def throat(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):
     r = r.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
         THROAT_D / 2.0, THROAT_L + 2.0,
         cq.Vector(x, y, JACK_REST - 1.0), cq.Vector(0, 0, 1))))
+    # the LEAD-IN: a 45 funnel at the top, catching a barrel that arrives off axis
+    lead = (cq.Workplane("XY")
+            .add(cq.Solid.makeCone(THROAT_D / 2.0, THROAT_LEAD_D / 2.0,
+                                   (THROAT_LEAD_D - THROAT_D) / 2.0,
+                                   cq.Vector(x, y, TIP - (THROAT_LEAD_D - THROAT_D) / 2.0),
+                                   cq.Vector(0, 0, 1))))
+    r = r.cut(lead)
     # the set screw's GROOVE: right round, so the keeper can go in at any clocking
     groove = cq.Workplane("XY").add(cq.Solid.makeCylinder(
         (THROAT_BORE_D + THROAT_PRESS) / 2.0 + 1.0, LOCK_GROOVE * 2,
