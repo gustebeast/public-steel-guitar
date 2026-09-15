@@ -290,9 +290,12 @@ def cap(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):
         (CAP_BORE_D - 0.3) / 2.0, CAP_L, cq.Vector(x, y, PLUG_TOP), cq.Vector(0, 0, 1)))
     c = c.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
         CAP_ID / 2.0, CAP_L + 2.0, cq.Vector(x, y, PLUG_TOP - 1.0), cq.Vector(0, 0, 1))))
+    # the slot opens -Y, which is the way the CHANNEL runs: the lead lies straight from
+    # the cap's bore into the channel with no turn, and the cap slides on along the same
+    # line. It pointed +X first, across the channel, which is no way round for a cable
     return c.cut(cq.Workplane("XY")
-                 .box(CAP_BORE_D, CAP_SLOT, CAP_L + 2.0, centered=(False, True, False))
-                 .translate((x, y, PLUG_TOP - 1.0)))
+                 .box(CAP_SLOT, CAP_BORE_D, CAP_L + 2.0, centered=(True, False, False))
+                 .translate((x, y - CAP_BORE_D, PLUG_TOP - 1.0)))
 
 
 def throat(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):
