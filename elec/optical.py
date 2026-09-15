@@ -97,17 +97,19 @@ _R_0402 = "Resistor_SMD:R_0402_1005Metric"
 _C_0402 = "Capacitor_SMD:C_0402_1005Metric"
 
 
-def _fp(ref, pkg):
-    """Footprint for a CAD part. The 0402 class splits by ref prefix."""
-    if pkg == "0402":
-        return _R_0402 if ref[0] == "R" or ref.startswith("Rf") else _C_0402
-    if pkg == "0805OPT":
-        # the emitters are LEDs and the detectors are photodiodes: same 0805 land,
-        # different silkscreen polarity marker, and it is worth having the right one
-        # because these are the parts an assembler is most likely to fit backwards
-        return "LED_SMD:LED_0805_2012Metric" if ref[0] == "D" else \
-               "Diode_SMD:D_0805_2012Metric"
-    return FP[pkg]
+# (There is no _fp() helper. An earlier draft had one that mapped a CAD package name
+#  to a footprint, but every Part below names its own footprint at the point of
+#  creation -- which is where a reader looks for it -- so the helper was never called.
+#  A dead function is bad enough; a dead function that a COMMENT points at as the
+#  explanation is worse, because it sends the next reader somewhere that does not
+#  decide anything. The two CLASS packages are resolved like this:
+#    0402    -> R_0402 for Rf*/R*, C_0402 for Cf*/Cd*/C*      (by ref prefix)
+#    0805OPT -> LED_0805 for the ten emitters D1-D10,
+#               D_0805 for the twenty detectors PD<n>A/B      (same land, and the
+#               silkscreen polarity marker differs -- these are the parts an
+#               assembler is most likely to fit backwards)
+#  Verified against the generated netlist: 10 LED_0805, 20 D_0805, 20 Rf and 11 R on
+#  R_0402, 10 ballasts on R_0603, 30 Cf/Cd on C_0402.)
 
 
 # ── STM32H743ZIT6, LQFP144 ───────────────────────────────────────────────────
@@ -761,7 +763,8 @@ def _assert_matches_cad(net_path):
                        "no placement, so it would land on the origin" % extra)
     # 0402 and 0805OPT are CLASSES, not parts -- the CAD's name does not say whether
     # an 0402 is a resistor or a capacitor, nor whether an 0805 optical part is an
-    # emitter or a detector, so those two are settled by ref prefix in _fp() instead.
+    # emitter or a detector, so those two are settled by ref prefix where the parts
+    # are created (see the note above the pin map) and skipped here.
     # FB1 is the one genuine exception: a ferrite bead sharing the 1608 land with an
     # 0603 resistor. Exempted BY NAME rather than by loosening the rule, because the
     # rule was right to flag it -- it is the CAD's package class that is imprecise.
