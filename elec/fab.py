@@ -64,8 +64,6 @@ LCSC = {
     "CH32V307WCU6": "C5142795",     # motor controller MCU
     "MT6701QT-STD": "C2913974",     # the angle sensor
     "AO3400A": "C20917",            # logic-level N-ch FET; the optical board's Q1 too
-    "S8B-PH-SM4-TB": "C265121",     # 8-way side-entry PH -- lever trunk and the
-                                    # optical <-> output-panel link
 }
 # ⚠ EVERY VALUE STRING MUST BE ACCOUNTED FOR -- IN LCSC, GENERIC, OR HERE.
 # branner's catch, and it is the right shape for the bug that happened: usb_panel's
@@ -92,7 +90,19 @@ OPEN_VALUES = frozenset({
                            # confirms the two still agree
     "FRT5-class 5V",       # true-bypass relay -- a class, not a part, on purpose
     "PCM5102A-class",      # DAC -- ditto
-    "single RRO op-amp",   # output buffer -- ditto
+    "single RRO op-amp",   # output buffer AND pickup buffer -- ditto
+    # ── the 2026-09-15 panel respin ──────────────────────────────────────────
+    "PCM1808PWR",          # 24-bit 99 dB ADC. ⚠ I had written an LCSC code into
+                           # its description from memory and took it back out:
+                           # this file's own rule is that a WRONG part number is
+                           # worse than a missing one, and a number I cannot point
+                           # at a source for is a guess wearing a number's clothes
+    "CH334-class HS hub",  # ⚠ MUST BE HIGH SPEED -- a full-speed hub puts BOTH
+                           # devices behind a Transaction Translator and undoes
+                           # the whole reason the panel carries a hub. Confirm the
+                           # exact CH334 variant against that before ordering
+    "3V3 LDO 300mA",       # a class, not a part
+    "MX126-5.0-02P",       # 2-way screw terminal, the pickup input
 })
 
 # Generic passives are JLCPCB BASIC parts chosen at order time from the package and

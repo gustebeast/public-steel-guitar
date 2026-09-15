@@ -171,10 +171,22 @@ def _edge_poly(board, pts):
         board.Add(seg)
 
 
-def _cutout(board, cx, cy, d):
+def _cutout(board, cx, cy, d, keepout=0.6):
     """A round hole as an Edge.Cuts circle -- which is how a board CUTOUT is drawn,
-    as against a plated pad. The tee's M4 clearance hole is mechanical: nothing
-    connects to it, so giving it a pad would invent a net that does not exist."""
+    as against a plated pad. These M4 clearance holes are mechanical: nothing
+    connects to one, so giving it a pad would invent a net that does not exist.
+
+    ⚠ AND IT GETS A KEEPOUT, WHICH THE TEE'S HOLE DID NOT NEED AND THE TRRS
+    ADAPTER'S DOES. KiCad's Specctra exporter does not turn an Edge.Cuts circle
+    into a DSN boundary, so FREEROUTING CANNOT SEE THE HOLE -- it happily lays
+    track across it. The tee's ear hole sits in a bare tab where nothing wanted to
+    route, so the gap never showed; the adapter's sits mid-board between the two
+    connectors, where every net has to pass, and the first route put a +V track
+    0.166 from the edge of it. A keepout zone DOES export, so the router is told
+    about the hole in the only language it reads.
+
+    `keepout` is the ring added to the hole's RADIUS: 0.6 covers the 0.3 board-edge
+    clearance plus half a 0.25 track and a little rounding."""
     c = pcbnew.PCB_SHAPE(board)
     c.SetShape(pcbnew.SHAPE_T_CIRCLE)
     c.SetCenter(_to_board(cx, cy))
@@ -182,6 +194,22 @@ def _cutout(board, cx, cy, d):
     c.SetLayer(pcbnew.Edge_Cuts)
     c.SetWidth(pcbnew.FromMM(0.1))
     board.Add(c)
+
+    import math
+    r = d / 2.0 + keepout
+    poly = pcbnew.SHAPE_LINE_CHAIN()
+    for i in range(24):
+        a = 2.0 * math.pi * i / 24.0
+        poly.Append(_to_board(cx + r * math.cos(a), cy + r * math.sin(a)))
+    poly.SetClosed(True)
+    z = pcbnew.ZONE(board)
+    z.SetIsRuleArea(True)
+    z.SetDoNotAllowTracks(True)
+    z.SetDoNotAllowVias(True)
+    z.SetDoNotAllowZoneFills(True)
+    z.SetLayerSet(pcbnew.LSET.AllCuMask())
+    z.AddPolygon(poly)
+    board.Add(z)
 
 
 def _edge_rect(board, w, h):
