@@ -2,15 +2,15 @@
 
     py -3.12 elec/optical.py            # -> elec/out/optical.{net,board.json}
 
-THE LAST BOARD OF THE FIVE, and the only one whose GEOMETRY IS AN INPUT rather
-than an output. The other four size themselves from their parts; this one is
+THE SIXTH AND LAST BOARD, and the only one whose GEOMETRY IS AN INPUT rather than
+an output. The other five size themselves from their parts; this one is
 shaped by the instrument -- a 14 mm band of deck between the magnetic pickup's
 cavity and the endplate -- and `src/optical_pickup.py` has carried that geometry,
 part by part, since long before there was a netlist.
 
 ⚠ SO THE PLACEMENTS ARE IMPORTED FROM THE CAD, NOT RETYPED HERE. Every other
 board in elec/ is the source and the CAD follows it; this one is the reverse, and
-copying 149 positions into a second file would have created exactly the drift the
+copying 153 positions into a second file would have created exactly the drift the
 rest of the pipeline is built to prevent. `src.optical_pickup.PARTS` is the single
 source, and _placements() below translates it into board-local coordinates. If a
 part moves in the CAD it moves here, and if a ref exists in one and not the other
