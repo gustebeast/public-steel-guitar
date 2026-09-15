@@ -664,6 +664,22 @@ MOTOR_SQ        = 42.3
 TEE_BOARD_X     = 40.0      # one row of side-entry XH: 8-way trunk + 4-way drop
 TEE_BOARD_Y     = 16.0      # shallow: it sits ON its motor and laps it
 TEE_BOARD_T     = 1.6       # 2-layer FR4
+TEE_EAR_X       = 9.5       # BARE MOUNTING EAR off the +X end: no copper, no parts, just an M4
+                            # through-hole. The board's -Y edge can have no wall (it laps the
+                            # motor), so only screw friction resisted a -Y tug on a connector --
+                            # and every unplug is one, since the mouths face -Y. A screw THROUGH
+                            # the board is positive (user, 2026-09-15). It goes +X rather than
+                            # into the +Y strip because that strip is PLATE_T 6.4 and a closed M4
+                            # hole wants 4.4 of clear board, of which the connector courtyards
+                            # leave 3.145 (bronner measured) -- while +X of the board stands the
+                            # POST, solid for a full seated insert on all ten motors. Nothing in
+                            # bronner's 40 mm layout moves; the outline just gets longer.
+TEE_EAR_Y       = 8.7       # ...and the ear is only this DEEP, at the +Y end: the outline is an
+                            # L. The bank is staggered one string pitch in Y, so the +X neighbour
+                            # board sits 9.5 further -Y -- the ear slots into the band that
+                            # neighbour has vacated, and ten boards interlock instead of clashing.
+                            # (motor_bank asserts it against the real stagger.)
+TEE_OUTLINE_X   = TEE_BOARD_X + TEE_EAR_X   # 49.5 fabbed outline = layout region + ear
 TEE_TAIL_CY     = 2.0       # THT tail line, board-local +Y (6.0 in from the +Y edge)
 TEE_TAIL_DROP   = 1.8       # how far those tails hang below the board's underside
 TEE_FIT         = 0.3       # board fit in its seat
