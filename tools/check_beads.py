@@ -94,6 +94,22 @@ _ex("hardware",
     legs__LOCK_Z="the leg screw's axis height, from the M4 button head's 7.6 (hardware) + air + a 2-bead floor",
     legs__LOCK_PIN_DY="lock pin offset chosen so SERVICE_SLIDE can reach the bridge's 25.6 (user)",
     bar_latch__SCREW_L="a stock M4x30 button head's length (hardware)",
+    # src.leg_trrs: BOUGHT PARTS and the fits on them. None of these is a printed
+    # length -- they are the Tensility 10-02155's drawing, the inline jack's moulded
+    # barrel, and the clearance/press each gets. Snapping them to the bead grid would
+    # be snapping someone else's part.
+    leg_trrs__JACK_D="the moulded inline jack's barrel, off the BOM part",
+    leg_trrs__PLUG_D="the 10-02155's overmould, off its drawing",
+    leg_trrs__PLUG_L="...and its length",
+    leg_trrs__BARREL_D="...its 3.5 mm barrel: the connector standard itself",
+    leg_trrs__BARREL_L="...and how much of it crosses the joint",
+    leg_trrs__CABLE_D="...and the lead's own diameter",
+    leg_trrs__JACK_BORE_D="a running clearance on a bought part, not a wall",
+    leg_trrs__PLUG_BORE_D="an INTERFERENCE on a bought part: the press that holds it",
+    leg_trrs__THROAT_D="the clearance that lets the overmould through and stops the jack",
+    leg_trrs__FLOAT="how short the LATCH may stop -- a travel budget, not a length",
+    leg_trrs___MOUTH_PEAK="where the plug's teardrop apex reaches -- a keep-out the ridge is cut back to, not material",
+    leg_trrs__SPR_REST_L="a coil length off the spring's own rate and free length",
     wiring__TRRS_FLOOR_TOP="the chassis floor slab's upper face at that station, MEASURED off the built chassis",
     wiring__TRRS_FLOOR_BOT="the instrument's underside there, MEASURED off the built chassis",
     foot_pedal__Y_BUDGET="the pedal housing's TUNED depth: it puts the axle 10.15 in from the bed and the sensor board just inside the -Y face. Was the bar's width, back when the bar was this wide",

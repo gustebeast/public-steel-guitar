@@ -374,10 +374,8 @@ def fixed_sleeve():
     Carries the latch NOTCH -- the way the button reaches the outside, and the
     part that stands over the slider in place of a cover."""
     from . import leg_latch as LL          # late: leg_latch reads this module
-    from . import leg_trrs as LTR         # late: leg_trrs reads this module
     b = _sleeve(Z_JOINT, Z_BUTT)
     b = b.cut(LL.sleeve_notch())
-    b = b.cut(LTR.sleeve_negatives(LEG_X, LEG_Y, SLEEVE_UP))   # the jack's seat
     # clearance through the +X wall only; the -X wall is untouched
     return b.cut(_from_plus_x(_CLR_D, Z_FIX_SCREW, LEG_X, SLEEVE_UP))
 
@@ -418,7 +416,10 @@ def fixed_tenon():
     for z in (Z_FIX_SCREW, Z_ADJ_SCREW):
         t = t.cut(_from_plus_x(ADJ_HOLE_D, z, LEG_X + TEN_APEX - JOIN_SEAT,
                                TENON_UP, limit_deg=TEN_HOLE_LIMIT_DEG))
-    return t
+    # THE LEG'S SIGNAL, down the joint's own axis (src.leg_trrs): the throat at this
+    # tenon's tip, the floating jack's travel, its coil, and the cable on down the leg
+    from . import leg_trrs as LTR       # late: leg_trrs reads this module
+    return t.cut(LTR.tenon_negatives(LEG_X, LEG_Y, TENON_UP, bot=Z_FIX_TEN_BOT - 1.0))
 
 
 def body_adapter(sx: float = LEG_X, ly: float = LEG_Y):
@@ -454,7 +455,7 @@ def body_adapter(sx: float = LEG_X, ly: float = LEG_Y):
     b = b.translate((sx - LEG_X, ly - LEG_Y, 0.0))
     # BODY TENONS, on the top face (see BODY JOINERY). Both ridges and the tongue
     # run the full LEG_W along Y, the slide axis.
-    mid_cut = LG.service_slide(egx, syg)
+    mid_cut = LG.mid_ridge_cut(egx, syg)
     for i, dx in enumerate(LG._cross_x(egx)):
         cut = mid_cut if i == 0 else 0.0        # the middle ridge gives up its inboard end
         if cut >= LEG_W - 1e-9:
@@ -472,9 +473,9 @@ def body_adapter(sx: float = LEG_X, ly: float = LEG_Y):
     # The same legs helper the endplate's half comes from, shaped by cadkit.
     for dy in (0.0,) + ((-syg * mid_cut,) if mid_cut else ()):
         b = b.cut(LG.tongue_pin_cutter(sx, ly + dy, egx, Z_TOP, ADAPTER_UP, syg))
-    # THE LEG'S SIGNAL: the spring-floated plug's bore, its coil's, and the cable's
-    # way out the +Y face (src.leg_trrs). ONLY on the corner that has a leg under
-    # it -- the other three adapters carry no wiring.
+    # THE LEG'S SIGNAL: the fixed plug's press bore down the joint's axis, the mouth
+    # it drops in through, and the lead's channel out the -Y face (src.leg_trrs).
+    # ONLY on the corner that has a leg under it -- the other three carry no wiring.
     if (sx, ly) == (LEG_X, LEG_Y):
         from . import leg_trrs as LTR       # late: leg_trrs reads this module
         b = b.cut(LTR.adapter_negatives(sx, ly, ADAPTER_UP))
