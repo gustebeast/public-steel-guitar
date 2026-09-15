@@ -273,7 +273,36 @@ def _knee(n) -> bool:
 # pickup_zplate, so a real collision read as a designed one. Note the gate still
 # only checks the demo pose; the 308 mm^3 case needs a sweep across the depth window.
 DEFERRED = {frozenset({"pickup_zplate", "top_plate"})}
+
+# DEFERRED CLASSES, by pattern. Some deferrals are not one pair but one fault repeated
+# per station -- five knee levers, five pedals -- and listing 55 frozensets would hide
+# the shape of the thing. Each rule is (pattern_a, pattern_b, reason) and matches in
+# either order. Same contract as DEFERRED above: LOUD on every run, named owner, and it
+# leaves the moment the geometry stops overlapping.
+#
+# THE PCB COMPONENTS ARRIVED (2026-09-15). Both classes appeared when the boards stopped
+# being plain boxes and started carrying their real parts -- the boards doing their job
+# for the first time, not new faults. The user's call, today: these must not block merges.
+DEFERRED_RULES = (
+    (re.compile(r"^pedal\d+_[A-Z]+\d+$"), re.compile(r"^pedal_bar_[abc]$"),
+     "pedal board parts vs the pedal bar (30 pairs, ~195 mm3). USER DEFERRED: the bar is "
+     "to be redesigned around the boards later"),
+    (re.compile(r"^(?:[a-z0-9]+_)*k[lv]_[A-Z]+\d+$"), re.compile(r"housing$"),
+     "lever board parts vs their knee/lever housing (25 pairs, ~207 mm3). USER DEFERRED; "
+     "OWNER branner -- the cradle was sized to a plain box, and bronner's board is at its "
+     "floor (21.4 against J1's 21.29 courtyard), so the room has to come from the housing"),
+)
 _DEFERRED_SEEN = set()
+
+
+def _deferred_rule(na, nb):
+    """The reason this pair is parked, or None. Matches in either order."""
+    for pa, pb, why in DEFERRED_RULES:
+        # search, not match: the housing pattern anchors on the END of the name
+        # (lkr_knee_housing, vkl_kv_housing), and match() would only ever try the start.
+        if (pa.search(na) and pb.search(nb)) or (pa.search(nb) and pb.search(na)):
+            return why
+    return None
 
 
 def intended(na, nb) -> bool:
@@ -285,6 +314,14 @@ def intended(na, nb) -> bool:
             _DEFERRED_SEEN.add(_pair)
             print("  !! DEFERRED overlap (NOT a designed contact, must be fixed before "
                   "the instrument is finalised): %s <-> %s" % (na, nb))
+        return True
+    _why = _deferred_rule(na, nb)
+    if _why is not None:
+        _key = frozenset({na, nb})
+        if _key not in _DEFERRED_SEEN:                  # every pair named, never a silent class
+            _DEFERRED_SEEN.add(_key)
+            print("  !! DEFERRED overlap (NOT a designed contact, must be fixed before "
+                  "the instrument is finalised): %s <-> %s -- %s" % (na, nb, _why))
         return True
     if _knee(na) and _knee(nb):
         return True
