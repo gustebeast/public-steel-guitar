@@ -1,0 +1,22 @@
+** Drc report for lever_sensor.kicad_pcb **
+** Created on 2026-09-15T16:30:33 **
+** Report includes: Errors, Warnings **
+
+** Found 1 DRC violations **
+[silk_overlap]: Silkscreen clearance
+    Rule: board setup constraints silk; warning
+    @(97.9000 mm, 105.1300 mm): Polygon of U2 on F.Silkscreen
+    @(97.0400 mm, 104.7100 mm): Segment of Y1 on F.Silkscreen
+
+** Found 0 unconnected pads **
+
+** Found 0 Footprint errors **
+
+** Ignored checks **
+    - Footprint has no courtyard defined
+    - Track endpoint not centered on via
+    - Tuning profile track geometries
+    - Footprint doesn't match symbol's footprint filters
+    - Footprint component type doesn't match footprint pads
+
+** End of Report **
