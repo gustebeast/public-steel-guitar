@@ -97,11 +97,33 @@ def tee_board_box(i):
     ITS +X EDGE SITS ON THE MOTOR'S FIT LINE. The board is 40 across a 42.3 motor, so centred it
     would leave the seat's +X wall inside the motor's lift path, where the cut that frees the
     motor slices it to a sliver (the user found that on both sides). Pushed out to the fit line,
-    everything beyond it is outside the motor and survives whole."""
+    everything beyond it is outside the motor and survives whole. What hangs PAST it is the
+    bare EAR the retaining M4 goes through, which lands on the +X post."""
     _, bx1, _, by1, _, _ = body_box(i)
-    x1 = bx1 + MOTOR_CLR
+    x1 = bx1 + MOTOR_CLR + D.TEE_EAR_X              # the layout region's +X edge is the fit line
     y1 = by1 + PLATE_T                              # +Y edge flush with the faceplate wall's face
-    return x1 - D.TEE_BOARD_X, x1, y1 - D.TEE_BOARD_Y, y1, Z_HI
+    return x1 - D.TEE_OUTLINE_X, x1, y1 - D.TEE_BOARD_Y, y1, Z_HI
+
+
+assert D.TEE_EAR_Y <= STAGGER - NEIGH_CLR + 1e-9, (
+    "the tee board's ear (%.1f deep) reaches past the band the +X neighbour's board vacates "
+    "(%.1f): the ten boards would clash" % (D.TEE_EAR_Y, STAGGER - NEIGH_CLR))
+
+
+def tee_ear_box(i):
+    """The bare TAB off the +X end of motor i's board: (x0, x1, y0, y1). Only the +Y
+    D.TEE_EAR_Y of the board's depth, because the +X neighbour's board is one stagger further
+    -Y and a full-depth ear would sit on top of it."""
+    _, sx1, _, sy1, _ = tee_board_box(i)
+    return sx1 - D.TEE_EAR_X, sx1, sy1 - D.TEE_EAR_Y, sy1
+
+
+def tee_hole(i):
+    """The M4 that goes THROUGH motor i's tee board: (x, y, z of the board's underside).
+    Centred in the bare ear, so the head laps only bare board and the anchor bores into the
+    POST -- solid for a full insert depth on every motor, ear to ear."""
+    ex0, ex1, ey0, ey1 = tee_ear_box(i)
+    return (ex0 + ex1) / 2, (ey0 + ey1) / 2, tee_board_box(i)[4]
 
 
 def tee_pocket(i):
@@ -110,12 +132,17 @@ def tee_pocket(i):
     a 42.3 motor and so reaches 1.5 into the NEIGHBOUR's bay -- the chassis subtracts every bay's
     from the fused result, exactly as it does every motor's lift path."""
     sx0, sx1, sy0, sy1, sz = tee_board_box(i)
-    pocket = box_at(D.TEE_BOARD_X + 2 * D.TEE_FIT, D.TEE_BOARD_Y + 2 * D.TEE_FIT,
-                    (SEAT_TOP - sz) + 2.0,
-                    x=(sx0 + sx1) / 2, y=(sy0 + sy1) / 2,
-                    z=sz + ((SEAT_TOP - sz) + 2.0) / 2)
+    _h = (SEAT_TOP - sz) + 2.0
+    pocket = box_at(D.TEE_BOARD_X + 2 * D.TEE_FIT, D.TEE_BOARD_Y + 2 * D.TEE_FIT, _h,
+                    x=(sx0 + sx1) / 2 - D.TEE_EAR_X / 2, y=(sy0 + sy1) / 2, z=sz + _h / 2)
+    ex0, ex1, ey0, ey1 = tee_ear_box(i)             # ...plus the ear's own tab (an L, not a box)
+    pocket = pocket.union(box_at(D.TEE_EAR_X + 2 * D.TEE_FIT, D.TEE_EAR_Y + 2 * D.TEE_FIT, _h,
+                                 x=(ex0 + ex1) / 2, y=(ey0 + ey1) / 2, z=sz + _h / 2))
+    # the tail relief runs under the LAYOUT REGION only -- the ear has no tails, and leaving it
+    # solid is what the hole's boss is bored from
     return pocket.union(box_at(D.TEE_BOARD_X - 2.0, 5.0, D.TEE_TAIL_DROP + 2.0,
-                               x=(sx0 + sx1) / 2, y=(sy0 + sy1) / 2 + D.TEE_TAIL_CY,
+                               x=(sx0 + sx1) / 2 - D.TEE_EAR_X / 2,
+                               y=(sy0 + sy1) / 2 + D.TEE_TAIL_CY,
                                z=sz - (D.TEE_TAIL_DROP + 2.0) / 2 + 0.01))
 
 
