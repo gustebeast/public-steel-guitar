@@ -133,10 +133,14 @@ GLOBAL_OK = {
     frozenset({"leg_body_stub", "bridge_endplate"}),
     # the electronics tray's snap nubs/fingers bite their boards by design
     frozenset({"electronics_tray", "pi5"}),
-    frozenset({"electronics_tray", "motor_ctrl"}),
-    # a motor's CAN tee mounts right at that motor's -Y PCB (the drop pigtail is short);
-    # the tee-board corner grazing the motor body there is that mount contact
-    frozenset({"tee_pcb", "motor"}),
+    frozenset({"electronics_tray", "motor_ctrl"}),   # teensy_ifc is deleted; the
+                                                    # merged controller took its place
+    # (tee_pcb <-> motor is GONE, 2026-09-14: it was written for a corner graze and had grown
+    # into 1621 mm3 of board buried in motor 9. The tees now sit ON the motors, lapping them
+    # with 0.8 of air, so a touch there is a bug again and the gate must say so.)
+    # ⚠ MAIN'S REMOVAL WINS OVER MY KEEP. I still had the allowance on this branch; it
+    # predates the tees moving onto the motors, so re-adding it would silently re-blind
+    # the gate to the exact overlap that decision was meant to expose.
     # legs (FLUSH round): the BODY STUB's octagon wall tenons mortise the
     # rail band (0.1 fit) and its top face butts the body bottom; the
     # leg head enters its socket; the stack below is designed contact
