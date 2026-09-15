@@ -134,7 +134,19 @@ JACK_TIP = D.BRIDGE_AXLE_X + D.ENDPLATE_W / 2        # bridge +X face = centred 
 JACK_WALL_X = JACK_TIP - 4.0                          # inner face of the 4 mm panel (4.5)
 JACK_FACE_DX = JACK_TIP - 14.0                        # authored face sits at x~14; ride the +X tip
 JACK_Z = -51 * D.BEAD                  # -40.8 jack row centre height
-TS_Y, DC_Y, USB_Y = -68.0, -86.0, -104.0
+# THE PANEL ROW IS NO LONGER EVENLY PITCHED, and it is not meant to be. TS and USB
+# are now BOARD parts on output_panel and their spacing (31.27) is set by that board;
+# only the DC inlet is still a free-standing panel jack, and it MOVED OUT of the
+# board's span. It had been at -86, between the other two -- which put the 24 V pair
+# for ten stepper drivers straight through the board that carries the output buffer,
+# and the overlap gate found the wires passing through the PCB. At -118 it is 10 mm
+# clear of the board, 10.75 from the -Y rail's inner face, and 50 mm from the audio
+# jack, which is the separation that matters.
+TS_Y, DC_Y = -68.0, -118.0
+USB_Y = -99.27                         # OUTPUT: where output_panel puts the USB-C
+                                       # hole (see usb_panel_y). Kept as a name
+                                       # because the wiring and the endplate both
+                                       # read it; do not hand-edit it.
 
 # ---- UI: OLED + joystick on the top deck (mounted to the top plate) ----
 # Centred along X. NOTE: the strings cover the deck within +-42.75 with only
@@ -300,67 +312,126 @@ def power_pcb() -> cq.Workplane:
     return stand(b)
 
 
-# ── FRONT-PANEL USB BREAK-OUT ────────────────────────────────────────────────
-# It REPLACES the panel-mount USB-C coupler this file used to model (an Adafruit
-# 4261 F-F at $7.50). That part passed VBUS straight through -- which, with the Pi
-# fed from its GPIO header, means a laptop's VBUS landing directly on top of the
-# power board's output on a node with no ORing, no fuse and no clamp. The coupler
-# would have caused the exact fault the replacement exists to prevent.
+# ── OUTPUT + PANEL BOARD ─────────────────────────────────────────────────────
+# EVERY FRONT-PANEL CONNECTION ON ONE PCB (user, 2026-09-15). It merges the USB
+# break-out that stops a laptop back-feeding the Pi with the analog OUTPUT STAGE
+# that would not fit on the optical pickup board -- and the merge pays for itself
+# twice, because putting the output stage at the panel is what lets the TS JACK
+# BE A BOARD PART.
 #
-# The break is STRUCTURAL: the receptacle's VBUS pads go nowhere on the board, so
-# no cable can put them back. See elec/usb_panel.py for the circuit.
+# ⚠ THE TS JACK ON THE BOARD FIXES A RULE VIOLATION rather than adding a part.
+# BOM.md already specifies a Neutrik NMJ4HCD2 and that jack is PCB-MOUNT with a
+# panel bushing -- KiCad ships its footprint. Panel-mounted as this file had it,
+# its lugs would have been HAND-SOLDERED, which the project forbids outside a
+# factory-assembled board. Same part, same price, and the last hand-soldered
+# joint in the instrument goes away. Its nut clamps the endplate, so the PANEL
+# takes the cable-yank load and the PCB does not.
 #
-# ⚠ THE OUTLINE IS AN OUTPUT, like the TRRS adapter: there is no seat for this yet,
-# and the mechanical side should be built to these numbers. It lies FLAT in the
-# endplate's open -Y corner with the USB-C mouth through the panel wall (+X) and
-# the USB-A facing back into the bay, so the ~800 mm lead to the Pi leaves along
-# the run wire_usb already models and nothing has to turn inside the corner.
-USBP_BOARD_X, USBP_BOARD_Y = 20.0, 32.0      # board-local: mouth along -Y
-USBP_MOUTH_DY = -15.90                       # USB-C barrel face, board-local
-USBP_C_XY = (0.0, -8.34)                     # panel USB-C pad anchor
-USBP_A_XY = (0.0, 3.22)                      # USB-A pad anchor, turned 180
-USBP_A_L, USBP_A_W, USBP_A_H = 15.59, 16.57, 6.60     # USB-A courtyard + shell height
-USBP_A_OFF = -1.17 - 3.22                    # its courtyard centre from the anchor
-USBP_C_L, USBP_C_W, USBP_C_H = 10.73, 9.51, 3.26      # USB-C courtyard + height
-USBP_C_OFF = -11.15 + 8.34                   # ditto
+# ⚠ TWO THINGS THE ENDPLATE HAS TO ABSORB (branner):
+#   1. THE PANEL HOLES ARE NO LONGER ONE ROW AT ONE HEIGHT. A 1/4 in jack's axis
+#      and a USB-C's axis sit at different heights above the board they share, so
+#      the two holes differ in Z by that much (see OP_TS_AXIS_H). Their Y spacing
+#      is now 31.27, set by this board rather than by the old 18 mm pitch.
+#   2. THE DC BARREL JACK SHOULD LEAVE THIS BOARD'S SPAN. It is the 24 V inlet for
+#      ten stepper drivers and it currently sits between the TS jack and the USB-C.
+#      Bringing the motor supply onto the board that carries the output buffer is
+#      asking for exactly the noise the rest of the design works to avoid.
+OP_BOARD_X, OP_BOARD_Y = 52.0, 48.0
+# Connector anchors, board-local, straight out of elec/output_panel.py.
+OP_J = {"J1": (18.34, -18.03, 90.0),      # panel USB-C, mouth +X
+        "J2": (-17.61, 10.72, 180.0),     # USB-A to the Pi
+        "J3": (-14.76, -19.95, 180.0)}    # 8-way link to the optical board
+# (courtyard L, W, height, courtyard-centre offset from the anchor)
+OP_BOX = {"J1": (9.51, 10.73, 3.26, (2.81, 0.00)),
+          "J2": (15.59, 16.57, 6.60, (0.00, -4.39)),
+          "J3": (21.29, 10.29, 7.00, (0.00, -1.70))}
+OP_TS_XY = (12.01, 13.24)                 # the 1/4 in jack's pad anchor
+OP_TS_L, OP_TS_W = 27.62, 20.32           # its courtyard
+OP_TS_OFF = (0.09, 0.00)                  # courtyard centre from the anchor
+OP_TS_BODY_D = 15.0                       # Ø behind the panel (as ts_jack had it)
+OP_TS_AXIS_H = 9.5                        # ⚠ THE ONE FIGURE NOT OFF A FOOTPRINT:
+                                          # how high the bore sits above the board.
+                                          # It sets the panel hole's Z and nothing
+                                          # else checks it. Confirm against
+                                          # Neutrik's drawing before cutting metal.
+OP_BOM = (
+    ("C1", "1nF",          1.91, 1.01, 0.55,  -0.50, -10.20),
+    ("C2", "10uF",         3.49, 2.05, 1.45,  -9.00, -10.20),
+    ("C3", "100nF",        1.91, 1.01, 0.55,  -5.50, -10.20),
+    ("C4", "100nF",        1.91, 1.01, 0.55,  -3.00, -10.20),
+    ("C5", "100nF",        1.91, 1.01, 0.55,   4.50, -10.20),
+    ("C6", "2.2uF/100V",   4.69, 3.29, 1.80,   2.50,   1.20),
+    ("D1", "ESD",          2.59, 1.49, 0.75,  12.00, -17.00),
+    ("D2", "ESD",          2.59, 1.49, 0.75,  12.00, -15.00),
+    ("D3", "flyback",      2.59, 1.49, 0.75,   9.50,   1.20),
+    ("D4", "bidir clamp",  2.59, 1.49, 0.75,   6.50,   1.20),
+    ("K1", "FRT5 5V",     13.15, 14.81, 5.10, -18.00,  -1.50),
+    ("Q1", "AO3400A",      3.95, 3.49, 1.30,  11.31,  -4.00),
+    ("R1", "5k1",          1.95, 1.03, 0.50,  12.00, -21.00),
+    ("R2", "5k1",          1.95, 1.03, 0.50,  12.00, -19.00),
+    ("R3", "470R",         1.95, 1.03, 0.50,   2.00, -10.20),
+    ("R4", "100R",         1.95, 1.03, 0.50,  -6.50,   1.20),
+    ("R5", "1M",           1.95, 1.03, 0.50,  -9.00,   1.20),
+    ("R6", "100k",         1.95, 1.03, 0.50,  -1.50,   1.20),
+    ("R7", "220R",         1.95, 1.03, 0.50,  -4.00,   1.20),
+    ("U1", "PCM5102A",     7.79, 7.09, 1.20,  -4.00,  -4.50),
+    ("U2", "RRO op-amp",   4.19, 3.49, 1.45,   6.23,  -4.00),
+)
 
 
-def usb_panel_pcb() -> cq.Workplane:
-    """The panel USB board in its OWN frame: board centred on the origin in XY,
-    underside at z=0, parts rising +Z, the USB-C mouth facing -Y."""
-    b = box_at(USBP_BOARD_X, USBP_BOARD_Y, _PCB_T, x=0.0, y=0.0, z=_PCB_T / 2)
-    for (jx, jy), (l, w, h, off) in (
-            (USBP_C_XY, (USBP_C_L, USBP_C_W, USBP_C_H, USBP_C_OFF)),
-            (USBP_A_XY, (USBP_A_L, USBP_A_W, USBP_A_H, USBP_A_OFF))):
-        b = b.union(box_at(l, w, h, x=jx, y=jy + off, z=_PCB_T + h / 2))
-    for _n, _v, _w, _l, _h, _x, _y in USBP_BOM:
+def output_panel_pcb() -> cq.Workplane:
+    """The output + panel board in its OWN frame: board centred on the origin in
+    XY, underside at z=0, parts rising +Z, the panel connectors facing +X."""
+    b = box_at(OP_BOARD_X, OP_BOARD_Y, _PCB_T, x=0.0, y=0.0, z=_PCB_T / 2)
+    for ref, (jx, jy, _rot) in OP_J.items():
+        l, w, h, (ox, oy) = OP_BOX[ref]
+        b = b.union(box_at(l, w, h, x=jx + ox, y=jy + oy, z=_PCB_T + h / 2))
+    # the 1/4 in jack: a real cylinder, because its BORE is what the endplate hole
+    # has to line up with and a box would hide that
+    jx, jy = OP_TS_XY
+    zc = _PCB_T + OP_TS_AXIS_H
+    b = b.union(box_at(OP_TS_L, OP_TS_W, OP_TS_AXIS_H, x=jx + OP_TS_OFF[0],
+                       y=jy + OP_TS_OFF[1], z=_PCB_T + OP_TS_AXIS_H / 2))
+    b = b.union(cyl_x(OP_TS_BODY_D, OP_TS_L, jx + OP_TS_OFF[0] - OP_TS_L / 2, jy, zc))
+    for _n, _v, _w, _l, _h, _x, _y in OP_BOM:
         b = b.union(box_at(_w, _l, _h, x=_x, y=_y, z=_PCB_T + _h / 2))
     return b
 
 
-def usb_panel() -> cq.Workplane:
-    """The panel USB board posed at the bridge endplate: flat, USB-C mouth out
-    through the panel wall at +X, USB-A back into the bay at -X.
+def output_panel() -> cq.Workplane:
+    """The output + panel board posed at the bridge endplate: flat, panel
+    connectors out through the wall at +X.
 
-    The board is authored with its mouth on -Y, so posing it is one +90 deg turn
-    about Z (board -Y -> world +X) and a translation that lands the barrel face on
-    the wall's inner face. Z is set from the MOUTH, not the board: the receptacle's
-    opening has to line up with the hole in the endplate, and the board hangs
-    wherever that puts it.
+    Z is set from the TS JACK'S BORE, not from the board: the jack is the part
+    whose hole a player has to hit with a plug, so it owns the panel row's height
+    and the board hangs wherever that puts it. Y is set so the jack lands on the
+    existing TS_Y; the USB-C then falls 31.27 further -Y, which is where the panel
+    hole has to move to."""
+    # X: the jack's courtyard reaches 25.91 of a 26 half-board, so the BOARD EDGE is
+    # the panel face to within 0.09 and is the honest thing to register against.
+    b = output_panel_pcb().translate(
+        (JACK_TIP - OP_BOARD_X / 2, TS_Y - OP_TS_XY[1],
+         JACK_Z - _PCB_T - OP_TS_AXIS_H))
+    return b.translate((JACK_FACE_DX, 0, 0))     # ride the panel's +X face
 
-    THE MOUTH LANDS ON THE PANEL'S OUTER FACE (JACK_TIP), not its inner face, so
-    the receptacle NOSES THROUGH the 4 mm wall and a plug mates against the
-    outside. Sitting it on the inner face instead would ask a USB-C plug to reach
-    4 mm through a hole before it touched anything, which no plug's moulding
-    allows. ⚠ THE ENDPLATE THEREFORE NEEDS A SLOT FOR THE SHELL, about 9.5 x 3.6,
-    not just a clearance hole for the plug -- that is a mechanical
-    follow-up.
-    """
-    b = (usb_panel_pcb()
-         .rotate((0, 0, 0), (0, 0, 1), 90.0)
-         .translate((JACK_TIP + USBP_MOUTH_DY, USB_Y,
-                     JACK_Z - _PCB_T - USBP_C_H / 2)))
-    return b.translate((JACK_FACE_DX, 0, 0))     # ride the panel's +X face, as the jacks do
+
+def op_pt(ref: str):
+    """World (x, y, z) where a lead leaves the output+panel board's connector `ref`
+    -- so wiring.py asks the board rather than carrying a copy of its layout, the
+    same contract mctrl_pt provides for the motor controller.
+
+    J2 (USB-A to the Pi) and J3 (the link to the optical board) both exit along the
+    board's +Y; J1 is the panel USB-C and has no internal lead at all."""
+    cx = JACK_TIP - OP_BOARD_X / 2 + JACK_FACE_DX
+    cy = TS_Y - OP_TS_XY[1]
+    jx, jy, _rot = OP_J[ref]
+    l, w, h, (ox, oy) = OP_BOX[ref]
+    return (cx + jx, cy + jy + oy + w / 2, JACK_Z - OP_TS_AXIS_H + h / 2)
+
+
+def usb_panel_y() -> float:
+    """Where the panel's USB-C hole now sits, for whoever cuts the endplate."""
+    return TS_Y - OP_TS_XY[1] + OP_J["J1"][1]
 
 
 # ── MOTOR CONTROLLER PCB ─────────────────────────────────────────────────────
@@ -665,15 +736,9 @@ def trrs_adapter_pcb(mating: bool = False) -> cq.Workplane:
     return b
 
 
-def ts_jack() -> cq.Workplane:
-    """1/4-inch TS panel jack — Neutrik NMJ4HCD2 dims: Ø11.4 panel bushing,
-    Ø~15 body ~22 mm deep BEHIND the panel, nut outside. Female socket bore
-    Ø6.5 for the 6.35 mm plug."""
-    b = cyl_x(15.0, 22.0, -16.0, TS_Y, JACK_Z)            # deep body, behind cap
-    b = b.union(cyl_x(11.4, 8.05, 6.0, TS_Y, JACK_Z))     # bushing through cap
-    b = b.union(cyl_x(13.0, 2.0, 14.05, TS_Y, JACK_Z))    # nut, outside
-    b = b.cut(cyl_x(6.5, 33.0, -15.0, TS_Y, JACK_Z))      # female plug socket
-    return b.translate((JACK_FACE_DX, 0, 0))               # ride the (thicker) +X face
+# (ts_jack is DELETED: the 1/4 in jack is a PCB part on the output+panel board
+#  now -- see OP_TS_XY. Modelling it as a free-floating panel jack implied
+#  hand-soldered lugs, which the project forbids.)
 
 
 def dc_jack() -> cq.Workplane:

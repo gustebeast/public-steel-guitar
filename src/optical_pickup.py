@@ -678,48 +678,29 @@ def _parts():
     # reason it is written down for a stage that does not exist: the user's own read is
     # that the mistake is rare, and that is right -- it is not worth more than this.
 
-    # ---- 3d. THE JACK OUTPUT STAGE -- DESIGNED, NOT PLACED. IT DOES NOT FIT. ----
-    # ⚠ READ THIS BEFORE ADDING IT. The stage below is settled in every respect except
-    # WHERE IT GOES, and placing it here overruns the instrument: the board's -Y end has
-    # to leave room for the USB plug's overmold, and adding these parts pushed the
-    # conduit 7.25 mm past the endplate's exterior wall. The assert at CONDUIT_Y0 is
-    # what catches it. The parts are NOT in PARTS for that reason -- a board that
-    # imports and is 7 mm too long is worse than one that refuses to build.
+    # ---- 3d. THE JACK OUTPUT STAGE LIVES ON elec/output_panel.py NOW ----
+    # It was designed here and did not fit: adding it pushed the cable conduit 7.25 mm
+    # past the endplate's exterior wall. The user's call was to merge it with the panel
+    # USB board instead, and that turned out to be the better answer for a reason that
+    # had nothing to do with length -- the TS jack is a PCB-mount Neutrik, so putting
+    # the output stage beside the panel lets the jack be a BOARD part and deletes the
+    # last hand-soldered joint in the instrument.
     #
-    # HOW PROCESSED AUDIO GETS OUT (user, 2026-09-14): BACK OVER THE SAME USB LINK.
-    # This board already sends 20 optical channels and the magnetic pickup up to the
-    # Pi; UAC2 is bidirectional, so the Pi's processed output returns on that same
-    # connection and there is no second audio path across the instrument. The MCU
-    # hands it to the DAC over I2S and the DAC makes it analog again.
+    # ⚠ WHAT THIS BOARD STILL OWES IT: an 8-way link on the -Y edge carrying
+    #     AGND, AUDIO, GND, +5V, BCK, LRCK, DIN, RELAY
+    # (that pin order is a crosstalk decision -- the power pair sits between the analog
+    # pair and the I2S clocks). The Pi's processed audio arrives here over USB and
+    # leaves as I2S; the magnetic pickup's buffered tap rides along for the direct path.
     #
-    # THE RELAY IS THE "DIRECT MODE" THE USER ASKED FOR, de-energised in that state ON
-    # PURPOSE: with no power, no Pi and no firmware, the magnetic pickup reaches the
-    # jack through a mechanical contact, so the instrument still works as a guitar when
-    # everything clever about it is off. LATCHING, so no coil current hums at the audio
-    # it is switching. A buffer after it keeps the jack's source impedance low either
-    # way. R42/C170/D9 are the phantom-power protection from 3b-i.
-    #
-    #   U14  I2S audio DAC, TSSOP-20          C170 output DC BLOCK, 1210 100 V
-    #   K1   latching signal relay            D9   output clamp, SOD-523
-    #   U15  output buffer, SOT-23-5          C171 DAC analog bypass, 0805
-    #   Q2   relay coil driver, SOT-23        C172/C173 DAC bypass / filter, 0402
-    #   D8   coil flyback, SOD-523            R42  output series, 0402
-    #   R43  DAC filter, 0402                 R44/R45 buffer gain, 0402
-    # Sourcing for all of them is already in _MPN_RULES below, so adding the block is
-    # one _block call once the length question is answered.
-    #
-    # THE THREE WAYS OUT, none of which is mine to pick alone:
-    #   1. SHORTER PLUG OVERMOLD. BOM.md specifies <=20 mm; this needs <=12.75. Real
-    #      cables exist at 13-14, but it tightens a sourcing spec to buy board length.
-    #   2. MOVE THE BOARD +Y. Its +Y end is pinned by the string fan, so this is a
-    #      pickup-geometry change, not a board change.
-    #   3. A SEPARATE OUTPUT BOARD at the endplate. It is ~14 parts and the panel USB
-    #      board is already there -- they could be one board. Costs a seventh PCB;
-    #      saves this one from carrying an analog output stage at the end of a 180 mm
-    #      strip that also has to fit a cable plug.
-    # My own read is 3: the output stage has nothing to do with the optics, it wants to
-    # be beside the jack rather than 170 mm from it, and it would make the panel board
-    # earn its place. But it adds a board, and that is the user's call.
+    # ⚠ AND IT DOES NOT FIT THE -Y EDGE AS THAT EDGE STANDS. Every cable leaves at -Y
+    # (user: a -X exit is unmanageable), and the band is COMPUTE_X0..TAIL_X1 = 37.42
+    # wide. J1's USB-C takes 8.94 and J2 takes 20.0, leaving about 8. An 8-way
+    # side-entry PH is 21.28. The options are a WIDER combined connector replacing J2
+    # (a 10-way PH is 25.5, which fits beside the USB-C with ~3 to spare, but then one
+    # shell carries the 24 V inlet AND the audio pair -- see J2's own note on why
+    # AUDIO_GND is not shared), or moving the magnetic pickup's landing to the output
+    # panel board, which is physically nearer the pickup anyway. NOT DECIDED. It is the
+    # first thing to settle when this board is laid out.
 
     # ---- 3c. LOCAL 24 -> 5 V, AND IT GOES AT THE FAR END ON PURPOSE ----
     # The trunk delivers 24 V (see J2). One switching stage is therefore unavoidable --
