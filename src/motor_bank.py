@@ -261,8 +261,14 @@ def pocket(i) -> cq.Workplane:
 
     x0, x1 = bx0 - side_room(i, -1), bx1 + side_room(i, 1)
     y0, y1 = by0 - BACK_T, by1 + PLATE_T
-    body = body.union(box_at(x1 - x0, y1 - y0, SEAT_TOP - bz0,
-                             x=(x0 + x1) / 2, y=(y0 + y1) / 2, z=(bz0 + SEAT_TOP) / 2))
+    # DOWN TO THE BED, not to the motor's floor line (user, 2026-09-15). Starting at FLOOR_TOP
+    # left every bay wall hanging over the gaps between the cross-ribs -- ~100 flat ceilings of
+    # 33-34 mm2 each, one per rib gap, all at the same z. The prism-first answer to that is a
+    # bigger prism, not a support strut under each one: the bay simply reaches the bed, the rib
+    # comb is subsumed where it passes under a bay, and the motor rests on solid instead of on
+    # the 43% of its base the comb happened to cover.
+    body = body.union(box_at(x1 - x0, y1 - y0, SEAT_TOP - BED_Z,
+                             x=(x0 + x1) / 2, y=(y0 + y1) / 2, z=(BED_Z + SEAT_TOP) / 2))
 
 
     # THE DRIVE: the back wall stands BUMP_H and no further, so the driver's connector and its
@@ -284,10 +290,10 @@ def pocket(i) -> cq.Workplane:
     # THE +X POST: the tee seat's hold boss needs more X than a 1.6 wall has, and the stagger
     # leaves room for it at the front (the +X neighbour starts one string pitch further -Y)
     _pl = (STAGGER - NEIGH_CLR) + PLATE_T
-    body = body.union(box_at(POST_T, _pl, SEAT_TOP - bz0,
-                             x=bx1 + MOTOR_CLR + POST_T / 2,
+    body = body.union(box_at(POST_T, _pl, SEAT_TOP - BED_Z,     # to the bed, like the prism: it
+                             x=bx1 + MOTOR_CLR + POST_T / 2,    # stands OUTSIDE that footprint
                              y=by1 + PLATE_T - _pl / 2,
-                             z=(bz0 + SEAT_TOP) / 2))
+                             z=(BED_Z + SEAT_TOP) / 2))
 
     # THE SEAT is this same prism, cut for the board (user, 2026-09-14): the bay runs up past it
     # and the board's own profile comes out, so what stands around the pocket IS the cradle. No

@@ -9,38 +9,43 @@ shorter than the rule, which is the only way to measure a wall that no constant 
     py -3.12 -m tools.check_walls            # every string
     py -3.12 -m tools.check_walls 5 9        # just those strings
 
-Slow (~1 min per string): it classifies ~10k points against the real chassis, so each bay is
-cropped out first -- against the whole 340 cm3 solid it is orders of magnitude worse. Not part
-of the inner-loop gate for that reason; run it after reshaping a housing.
+Each probe line is INTERSECTED with the solid, so the material intervals come back exactly;
+each bay is cropped out first, which keeps those booleans cheap. The whole bank runs in
+seconds once src.build has imported (that import, not this check, is the wait).
 """
 import sys
 import time
 
 import cadquery as cq
+from OCP.BRepAlgoAPI import BRepAlgoAPI_Common
 
 from src import build as B
 from src import dimensions as D
 from src import motor_bank as MB
 from src.helpers import box_at
 
-STEP = 0.1                      # sampling pitch along a line; 0.1 resolves a one-bead wall
 THIN = D.MIN_WALL_2P - 1e-6
 
 
 def _runs(sols, p0, d, span):
-    """Contiguous material runs along a line: [(t_start, length)]."""
-    out, start, n = [], None, int(span / STEP)
-    for k in range(n + 1):
-        t = k * STEP
-        p = cq.Vector(p0[0] + d[0] * t, p0[1] + d[1] * t, p0[2] + d[2] * t)
-        here = any(s.isInside(p, 1e-7) for s in sols)
-        if here and start is None:
-            start = t
-        elif not here and start is not None:
-            out.append((start, t - start))
-            start = None
-    if start is not None:
-        out.append((start, span - start))
+    """Contiguous material runs along a line: [(t_start, length)].
+
+    ONE BOOLEAN PER LINE. This walked the line in 0.1 mm steps asking isInside at each --
+    ~10k point classifications per string, a minute each, ten minutes for the bank, which is
+    too slow to run after a change (user). Intersecting the LINE ITSELF with the solid returns
+    the material intervals directly: exact rather than quantised to the step, and ~100x faster.
+    """
+    p1 = (p0[0] + d[0] * span, p0[1] + d[1] * span, p0[2] + d[2] * span)
+    line = cq.Edge.makeLine(cq.Vector(*p0), cq.Vector(*p1)).wrapped
+    out = []
+    for s in sols:
+        common = BRepAlgoAPI_Common(line, s.wrapped)
+        if not common.IsDone():
+            continue
+        for e in cq.Shape.cast(common.Shape()).Edges():
+            c, ln = e.Center(), e.Length()
+            t = ((c.x - p0[0]) * d[0] + (c.y - p0[1]) * d[1] + (c.z - p0[2]) * d[2])
+            out.append((t - ln / 2.0, ln))          # start, length -- as the point walk gave
     return out
 
 
@@ -68,15 +73,23 @@ def bank_samples(targets=None):
               (by0 + by1) / 2, by1 - 3.0, by1 + 1.0, by1 + MB.PLATE_T - 0.4]
         xs = [bx0 - MB.side_room(i, -1) + 0.8, bx0 - 0.8, bx0 + 6.0, (bx0 + bx1) / 2,
               bx1 - 6.0, bx1 + 0.8, bx1 + MB.side_room(i, 1) - 0.8]
+        def thin(runs, span):
+            """Runs shorter than the rule, EXCLUDING any that touch an end of the probe line.
+            Those are cut by the crop box, not by the design: the material carries on past the
+            sample region and its true thickness is unknown from this line. Counting them read
+            as 42 phantom 1.0 mm walls at the crop's own +Y face."""
+            return [(t, ln) for t, ln in runs
+                    if ln < THIN and t > 1e-6 and t + ln < span - 1e-6]
+
         for z in zs:
             for y in ys:
-                for t, ln in _runs(sols, (x0, y, z), (1, 0, 0), x1 - x0):
-                    if ln < THIN:
-                        bad.append((i + 1, "X", x0 + t + ln / 2, y, z, ln))
+                _sp = x1 - x0
+                for t, ln in thin(_runs(sols, (x0, y, z), (1, 0, 0), _sp), _sp):
+                    bad.append((i + 1, "X", x0 + t + ln / 2, y, z, ln))
             for x in xs:
-                for t, ln in _runs(sols, (x, y0, z), (0, 1, 0), y1 - y0):
-                    if ln < THIN:
-                        bad.append((i + 1, "Y", x, y0 + t + ln / 2, z, ln))
+                _sp = y1 - y0
+                for t, ln in thin(_runs(sols, (x, y0, z), (0, 1, 0), _sp), _sp):
+                    bad.append((i + 1, "Y", x, y0 + t + ln / 2, z, ln))
         print(f"  ...string {i + 1} done ({time.time() - t0:.0f}s, {len(bad)} thin so far)",
               flush=True)
     return bad
