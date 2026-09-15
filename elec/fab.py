@@ -40,8 +40,10 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 OUT_DIR = os.path.join(HERE, "out")
 FAB_DIR = os.path.join(OUT_DIR, "fab")
 
-# FIVE boards, not six: the power board is merged into motor_ctrl (2026-09-15).
-BOARDS = ("can_tee", "trrs_adapter", "lever_sensor", "motor_ctrl", "output_panel")
+# SIX boards: the power board merged into motor_ctrl, and the optical pickup landed
+# (both 2026-09-15). This is now the whole instrument.
+BOARDS = ("can_tee", "trrs_adapter", "lever_sensor", "motor_ctrl", "output_panel",
+          "optical")
 
 # Layer sets by copper count. JLCPCB takes the KiCad extensions directly.
 L2 = "F.Cu,B.Cu,F.Paste,B.Paste,F.Silkscreen,B.Silkscreen,F.Mask,B.Mask,Edge.Cuts"
@@ -140,6 +142,20 @@ def fab(board):
     pcb = stem + ".kicad_pcb"
     if not os.path.isfile(pcb):
         raise SystemExit("no routed board at %s -- run layout.py and route.py first" % pcb)
+    # ⚠ A PLACED BOARD IS NOT A FINISHED BOARD, and gerbers do not say so. The board
+    # file exists as soon as layout.py runs; export it before route.py has been through
+    # and you get a clean-looking package with no tracks in it -- which is precisely the
+    # "pipeline that looks finished and is not" this file was written against. DRC is
+    # what knows the difference, so ask it rather than trusting that the step was run.
+    r = subprocess.run([KICAD_CLI, "pcb", "drc", "--exit-code-violations", pcb],
+                       capture_output=True, text=True)
+    unrouted = re.search(r"Found (\d+) unconnected", r.stdout or "")
+    if unrouted and int(unrouted.group(1)):
+        raise SystemExit(
+            "%s: %s unconnected items -- this board is PLACED but not ROUTED, and a fab "
+            "package built from it would look complete and arrive as bare copper. Run "
+            "elec/route.py on it first." % (board, unrouted.group(1)))
+
     d = os.path.join(FAB_DIR, board)
     os.makedirs(d, exist_ok=True)
 
