@@ -72,7 +72,7 @@ SENSOR_FP = "Package_DFN_QFN:QFN-16-1EP_3x3mm_P0.5mm_EP1.45x1.45mm"
 # At 22 the board was 60% covered and the parts could not be placed. The
 # horizontal lever's window is 26.10, so 25 still clears the shell by 0.30 at
 # the bottom and 0.80 at the top with the chip pinned to the axle.
-BOARD_W, BOARD_L = 28.0, 22.0
+BOARD_W, BOARD_L = 28.0, 21.4
 CHIP_XY = (11.0, -0.3)        # the axle axis, in board-local mm (see board_json)
 
 # Anything TALLER than 1.5 mm must keep its whole footprint outside the magnet
@@ -187,8 +187,14 @@ def lever_sensor():
 
     # BUS-B FAR-END TERMINATION, behind a solder jumper exactly as the motor tee
     # does it: populated on all eight, closed on the ONE board that ends the bus.
+    # 0402, NOT the 0603 this was. When the board came down to 21.4 (the foot pedal
+    # housing's floor, see knee_lever.PCB_WZ) R4 ended up in a 1.48 mm gap between JP1
+    # and C10 needing 1.55, and every column on this board is full -- there is nowhere
+    # else for it. 0402 fits with 0.45 to spare and is not a compromise: a single 120R
+    # across the pair sees ~17 mA, i.e. 0.034 W against 0402's 0.063 W rating. It also
+    # makes this board ALL-0402 for resistors, dropping a feeder.
     rt = _r("R", "R4", "120R", "CAN termination, closed only on the last board",
-            "Resistor_SMD:R_0603_1608Metric")
+            "Resistor_SMD:R_0402_1005Metric")
     jp1 = Part(name="SolderJumper_2_Open", ref_prefix="JP", tag="JP1", dest="NETLIST",
                tool="skidl", value="TERM", description="close on the bus's LAST board only",
                footprint="Jumper:SolderJumper-2_P1.3mm_Open_RoundedPad1.0x1.5mm",
@@ -298,39 +304,35 @@ BOARD_NOTES = {
     # and z -14.2..+7.8, so the axle axis (housing 0,0) lands at CHIP_XY.
     "chip_on_axle_xy": CHIP_XY,
     "placements": {
-        "U4": (11.0, -0.3, 0.0),         # the axle axis -- the one fixed part
-        "J1": (-10.55, 0.0, 90.0),      # 21.29 of courtyard in a 22 board: centred
-        # power, hard +Y
-        "U1": (-1.1, 9.2, 0.0),
-        "L1": (3.0, 9.1, 0.0),
-        "D1": (7.6, 9.7, 0.0),
-        "R1": (11.1, 9.7, 0.0),
-        # its passives, the next band down
-        "C1": (-0.9, 6.0, 0.0),
-        "C2": (3.4, 6.0, 0.0),
-        "C3": (6.5, 6.0, 0.0),
-        "R2": (8.6, 6.0, 0.0),
-        "R7": (10.9, 6.0, 0.0),
-        # digital, the middle
-        "U3": (1.0, 1.85, 90.0),
-        "C9": (5.5, 3.5, 0.0),
-        "C8": (7.5, 3.5, 0.0),
-        "R5": (11.0, 3.2, 0.0),
-        "C11": (7.0, -0.3, 0.0),
-        "C10": (9.5, -3.6, 0.0),
-        "Y1": (-0.9, -2.7, 0.0),        # directly under the MCU's OSC pins
-        "C5": (3.0, -2.2, 0.0),
-        "C6": (3.0, -4.0, 0.0),
-        "C7": (6.0, -2.2, 0.0),
-        "R6": (6.0, -4.2, 0.0),
-        # transceiver and bus furniture, -Y
-        "U2": (0.5, -7.3, 0.0),
-        "C4": (6.0, -6.0, 0.0),
-        "R3": (6.0, -7.5, 0.0),
-        "R4": (9.5, -5.6, 0.0),
-        "JP1": (9.5, -7.9, 0.0),
-        "D2": (5.8, -10.1, 0.0),
-        "D3": (8.6, -10.1, 0.0),
+        "U4": (11.00, -0.60, 0.0),
+        "J1": (-10.55, 0.00, 90.0),
+        "U1": (-1.10, 8.75, 0.0),
+        "L1": (3.00, 8.70, 0.0),
+        "D1": (7.60, 9.25, 0.0),
+        "R1": (11.10, 9.25, 0.0),
+        "C1": (-0.90, 5.60, 0.0),
+        "C2": (3.40, 5.70, 0.0),
+        "C3": (6.50, 5.70, 0.0),
+        "R2": (8.60, 5.70, 0.0),
+        "R7": (10.90, 5.70, 0.0),
+        "U3": (1.00, 1.55, 90.0),
+        "C9": (5.50, 3.20, 0.0),
+        "C8": (7.50, 3.20, 0.0),
+        "R5": (11.00, 2.90, 0.0),
+        "C11": (7.00, -0.60, 0.0),
+        "C10": (9.50, -3.90, 0.0),
+        "Y1": (-0.90, -3.00, 0.0),
+        "C5": (3.60, -2.50, 0.0),
+        "C6": (3.60, -4.30, 0.0),
+        "C7": (6.00, -2.50, 0.0),
+        "R6": (6.00, -4.50, 0.0),
+        "U2": (0.50, -7.60, 0.0),
+        "C4": (6.00, -6.30, 0.0),
+        "R3": (6.00, -7.80, 0.0),
+        "R4": (9.50, -5.75, 0.0),
+        "JP1": (9.50, -7.70, 0.0),
+        "D2": (5.80, -9.80, 0.0),
+        "D3": (8.60, -9.80, 0.0),
     },
     "cap_keepout": {"xy": list(CHIP_XY), "r": CAP_SWEEP_R, "tall": list(TALL_PARTS)},
     # THE GROUND PLANE IS WHY THIS BOARD IS FOUR LAYERS. BOM.md says so outright:
