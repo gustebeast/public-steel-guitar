@@ -743,12 +743,9 @@ def _electronics_components():
     from . import wiring as WR
     from . import top_plate as TP
     out = [("electronics_tray", EL.electronics_tray()),
-           ("pi5", EL.pi5()), ("teensy_stack", EL.teensy_stack()),
-           ("adc_stack", EL.adc_stack()), ("buck", EL.buck()),
-           ("teensy_ifc", EL.teensy_ifc()),
-           ("analog_frontend", EL.analog_frontend()),
-           ("ts_jack", EL.ts_jack()), ("dc_jack", EL.dc_jack()),
-           ("usbc_jack", EL.usbc_jack()),
+           ("pi5", EL.pi5()),
+           ("motor_ctrl", EL.motor_ctrl()),
+           ("output_panel", EL.output_panel()),
            ("oled", EL.oled()), ("joystick", EL.joystick())]
     out += [(f"top_plate_{i}", seg) for i, seg in enumerate(TP.segments)]
     out += [(f"top_plate_color_{i}", seg) for i, seg in enumerate(TP.segments_color)]
@@ -1028,8 +1025,12 @@ def screw_rows_components():
 
 BODY_WORK_PARTS = SCREW_ROW_PARTS + (
     "bridge_endplate", "bridge_bearings", "motor", "chassis_",
-    "electronics_tray", "pi5", "teensy_", "adc_stack", "buck", "tee_", "wire_",
-    "analog_frontend", "dc_jack", "ts_jack", "usbc_jack", "joystick", "oled",
+    # BOTH SIDES OF THE MERGE ARE RIGHT HERE: main added the deck/pickup/optical
+    # parts while this branch deleted teensy_/adc_stack/buck/analog_frontend and the
+    # three free-standing panel jacks (they are PCB parts on the output+panel board
+    # now). Keep main's additions, keep the deletions.
+    "electronics_tray", "pi5", "motor_ctrl", "tee_", "wire_",
+    "output_panel", "joystick", "oled",
     "body_adapter", "lock_pin_", "adjust_", "fixed_", "bar_latch_", "leg_latch_",
     "top_plate", "pickup", "optical")   # the deck piece too: its skirt sets the bay's headroom
 
@@ -1248,16 +1249,14 @@ _COLORS = {
     # electronics bay (dummies) + panel jacks
     "electronics_tray": (0.30, 0.36, 0.32),  # printed tray
     "pi5":             (0.05, 0.35, 0.15),   # PCB green
-    "teensy_stack":    (0.10, 0.45, 0.30),
-    "adc_stack":       (0.15, 0.25, 0.50),
-    "buck":            (0.35, 0.30, 0.50),
-    "teensy_ifc":      (0.55, 0.25, 0.25),   # Teensy interface PCB (2x CAN
-                                             # transceiver + XH headers)
+    "output_panel":    (0.45, 0.30, 0.45),   # output + panel board (VBUS broken,
+                                             # DAC + true-bypass relay + the TS jack)
+    "motor_ctrl":      (0.55, 0.25, 0.25),   # motor controller PCB (CH32V307 +
+                                             # 2x CAN transceiver + XH headers)
     "tee_pcb":         (0.10, 0.42, 0.18),   # trunk-and-drop bus tee PCBs
     "tee_cradle":      (0.32, 0.55, 0.42),   # PCTG drop-in PCB cradle (pcb_cradle, side hold-down)
     "tee_screw":       (0.72, 0.74, 0.78),   # M4x10 button, BESIDE the tee board
     "tee_insert":      (0.72, 0.60, 0.30),   # M4 heat-set brass, in the cradle boss
-    "analog_frontend": (0.20, 0.45, 0.40),   # bridge-end buffer + relay board
     "optical_pcb":     (0.12, 0.30, 0.55),   # per-string optical strip (blue solder mask,
                                              # so it reads apart from the green audio PCBs)
     "optical_cables":  (0.15, 0.15, 0.17),   # USB-C + XHP-6 plugs and their leads
@@ -1270,7 +1269,6 @@ _COLORS = {
     "top_plate_color": (0.30, 0.33, 0.38),   # colour-PCTG deck layer (skin contact)
     "oled":            (0.05, 0.05, 0.08),   # screen (perfect-black OLED)
     "joystick":        (0.15, 0.15, 0.17),   # UI control
-    "ts_jack":         (0.62, 0.64, 0.67),
     "dc_jack":         (0.62, 0.64, 0.67),
     "usbc_jack":       (0.62, 0.64, 0.67),
     # wire harness: HUE = gauge bucket, SHADE = the specific wire in the bucket
@@ -1288,11 +1286,9 @@ _COLORS = {
     "motor_pigtail":   (0.45, 0.45, 0.48),   # grey        - SERVO42D's own 6-pin
                                              #   XH pigtail (factory jacket)
     "wire_knee_drop":  (0.45, 0.45, 0.48),   # grey        - LKL drop stub
-    "wire_pickup":     (0.55, 0.85, 0.55),   # lightest green - shielded: pickup -> AFE
-    "wire_audio":      (0.30, 0.72, 0.40),   # light green - shielded: AFE -> ADC
-    "wire_dac":        (0.10, 0.52, 0.28),   # dark green  - shielded: DAC -> AFE
-    "wire_out":        (0.04, 0.34, 0.18),   # darkest green - shielded: relay -> jack
-    "wire_relayctrl":  (0.98, 0.88, 0.35),   # lightest amber - relay control
+    "wire_pickup":     (0.55, 0.85, 0.55),   # lightest green - shielded. DORMANT: the
+                                             #   wire returns when the optical board is
+                                             #   designed and the pickup plugs into it
     "wire_link":       (0.95, 0.72, 0.22),   # light amber - Teensy <-> Pi
     "wire_tdm":        (0.80, 0.46, 0.10),   # deep amber  - CS stack -> Pi
     "wire_oled":       (0.68, 0.36, 0.08),   # brown-amber - OLED -> Teensy

@@ -362,23 +362,10 @@ def _build_full() -> cq.Workplane:
     # the cuts after the end-takeover section below, and legs._body_stub)
     # (the electronics-tray drop-in channels are gone: the tray stands against the
     #  keyhead endplate now, and its retention waits on bronner's endplate round)
-    # AFE boss: widen the bridge cross-rib's -Y end into a solid pad that
-    # carries the analog front-end board, sitting BELOW the pickup and INBOARD
-    # of the leg barrel - so it fouls neither. Bonds to the bridge rib (no
-    # cantilever), prints as a vertical block off the bed. Two posts hold the board.
-    from .electronics import (AFE_X0, AFE_X1, AFE_Y0, AFE_Y1, AFE_Z,
-                              AFE_PED_TOP)
-    body = body.union(box_at(AFE_X1 + 2 - (AFE_X0 - 2), AFE_Y1 + 2 - (AFE_Y0 - 2),
-                             AFE_PED_TOP - Z_BOT,
-                             x=(AFE_X0 - 2 + AFE_X1 + 2) / 2,
-                             y=(AFE_Y0 - 2 + AFE_Y1 + 2) / 2,
-                             z=(Z_BOT + AFE_PED_TOP) / 2))
-    # two posts carry the board (tops flush -> it RESTS on them). NO retention yet (user,
-    # 2026-09-10): the M2 anchor in the -X/-Y post and its fat boss are gone, and the AFE is
-    # revisited later under the one-M4-beside-the-board rule (cadkit pcb_cradle hold_edge).
-    for _px, _py in ((AFE_X0 + 4, AFE_Y0 + 4), (AFE_X1 - 4, AFE_Y1 - 4)):
-        body = body.union(cyl(6.0, AFE_Z - AFE_PED_TOP, z=AFE_PED_TOP)
-                          .translate((_px, _py, 0)))
+    # (The AFE BOSS that stood here is gone with the AFE itself, 2026-09-14:
+    #  the bypass relay and the magnetic buffer moved onto the optical pickup
+    #  board, which sits 10 mm from the audio connector they feed rather than
+    #  110 mm from the pickup they were supposed to be buffering.)
     # NO wire raceways through the ribs. The ribs are for STRUCTURE and holding LEVERS
     # only: every rib carries the knee/pedal-lever octagon mortise along its whole Y, and
     # a lever slides to ANY knee depth in ANY bay -- so a cable sitting in a rib would
