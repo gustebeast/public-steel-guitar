@@ -731,6 +731,10 @@ BOARD_NOTES = {
     # _anchor_on_courtyard there for what it cost to discover.
     "anchor": "courtyard",
     "refs_on_fab": True,
+    # The ten sensor triplets sit at a 1.6 pitch by optical design, so their silkscreen
+    # outlines collide with each other and with their neighbours' pads -- 140 warnings
+    # for ink the solder mask would clip anyway. See _place_ref's note in layout.py.
+    "strip_silk": ("D", "PD"),
     "single_sided": True,      # every part on F.Cu: the optics FIRE UP through it
     "qty_per_instrument": 1,
     "placements": _placements(CX, CY),
