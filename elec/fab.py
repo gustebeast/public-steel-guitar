@@ -41,7 +41,7 @@ OUT_DIR = os.path.join(HERE, "out")
 FAB_DIR = os.path.join(OUT_DIR, "fab")
 
 BOARDS = ("can_tee", "trrs_adapter", "lever_sensor", "motor_ctrl",
-          "power", "usb_panel")
+          "power", "output_panel")
 
 # Layer sets by copper count. JLCPCB takes the KiCad extensions directly.
 L2 = "F.Cu,B.Cu,F.Paste,B.Paste,F.Silkscreen,B.Silkscreen,F.Mask,B.Mask,Edge.Cuts"
@@ -63,6 +63,9 @@ LCSC = {
     "CH32V203G6U6": "C5142280",     # lever board MCU
     "CH32V307WCU6": "C5142795",     # motor controller MCU
     "MT6701QT-STD": "C2913974",     # the angle sensor
+    "AO3400A": "C20917",            # logic-level N-ch FET; the optical board's Q1 too
+    "S8B-PH-SM4-TB": "C265121",     # 8-way side-entry PH -- lever trunk and the
+                                    # optical <-> output-panel link
 }
 # Generic passives are JLCPCB BASIC parts chosen at order time from the package and
 # value, which is normal practice and not an omission -- an 0402 100nF is not a
