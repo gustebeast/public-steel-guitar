@@ -76,31 +76,35 @@ fitted on every instrument.
 
 | Part | B/P | PN / source | ~Price | URL |
 |------|-----|-------------|--------|-----|
-| **Teensy 4.1** | B | PJRC via SparkFun | **$31.50** [v] | [SparkFun](https://www.sparkfun.com/teensy-4-1.html) |
-| **Teensy 4 Audio Shield Rev D** | B | SGTL5000, SparkFun | **$9.80** [v] | [SparkFun](https://www.sparkfun.com/teensy-4-audio-shield-rev-d.html) |
+| **Motor controller PCB** | B | Custom, `elec/motor_ctrl.py` — CH32V307WCU6 + 2× SN65HVD230 + LMR16006 buck + 3× XH + USB-C. 40 × 35, 4-layer | **~$5 of parts** [m]; fab + assembly not yet quoted | — |
+| ~~Teensy 4.1~~ | — | **DELETED** ($31.50), with ~~**Teensy 4 Audio Shield Rev D**~~ ($9.80) and the teensy_ifc carrier. The Teensy's value was the Audio Library, USB high-speed and the codec, all irrelevant once no audio touches this board — the Pi does audio, and this board only reads angles off bus B and commands the motors on bus A. What could not be deleted is the pair of CAN transceivers (no general-purpose MCU integrates one), so a board was always going to exist; the only question was whether an MCU sat on it too | — | — |
 | **CAN transceiver** | B | SN65HVD230DR | **$0.6185 @10** [v] — **32,557 in stock** | [LCSC C12084](https://www.lcsc.com/product-detail/C12084.html) — was priced from DigiKey at $2.45/stock 0, which made it look unavailable; LCSC has it 4× cheaper and deep. Also the sensor boards' transceiver (3.3 V — single rail) |
-| **Buck 24→5 V 1 A** | B | Pololu D24V10F5 (powers Teensy) | **$12.95** [v] | [Pololu](https://www.pololu.com/product/2831) |
-| **Signal relay** | B | Omron G5V-1-DC5 SPDT (true-bypass) | **$2.74** [v] | [DigiKey](https://www.digikey.com/en/products/detail/omron-electronics-inc-emc-div/G5V-1-DC5/87831) |
-| **Buffer op-amp** | B | OPA2134PA DIP + passives | **~$11** [v] | [DigiKey](https://www.digikey.com/en/products/detail/texas-instruments/OPA2134PA/254686) |
-| **1/4" TS panel jack** | B | Neutrik NMJ4HCD2 (Ø11.4 hole) | **$2.53** [v] | [DigiKey](https://www.digikey.com/en/products/detail/neutrik-americas-inc/NMJ4HCD2/29371256) |
-| **DC barrel panel jack** | B | Same Sky PJ-005A (Ø8 hole, 2.0 pin) | **$3.07** [v] | [DigiKey](https://www.digikey.com/en/products/detail/same-sky-formerly-cui-devices/PJ-005A/165838) |
-| **USB-C panel coupler** | B | Adafruit 4261 F↔F (USB 2.0, Ø30 hole) | **$7.50** [v] | [DigiKey](https://www.digikey.com/en/products/detail/adafruit-industries-llc/4261/10287031) |
+| ~~Power PCB~~ | — | **MERGED into the motor controller** (2026-09-15). Its buck, crowbar and 5 V outlet are now U5/F1/F2/D8/D9/J5 on that board. The merge deletes a PCB, a connector and a cable — and a JUNCTION: the 24 V trunk had to feed both keyhead boards and this one had only a 4-way inlet, so that branch was the only splice in an instrument where every other branch is a board | — | — |
+| **Output + panel PCB** | B | Custom, `elec/output_panel.py` — the whole front panel AND the whole magnetic audio path on one board: panel USB-C (**VBUS broken**) + USB-A pass-through to the Pi's gadget port + USB-C hub upstream + USB-A downstream to the optical board + the 1/4" TS jack + 24 V inlet and trunk out + screw-terminal pickup input + CH32V307 (USB **high speed**, internal PHY) + PCM1808 ADC + PCM5102-class DAC + HS hub + true-bypass relay + two buffers + phantom guard + a local 24→5 V buck. **74 × 66**, 4-layer, 58 parts | **~$5 of parts** [m] + the jack below | — |
+| **USB cable, panel PCB → Pi** | B | USB-A ↔ USB-C, **1 m**, USB 2.0 | ~$5 [m] | commodity |
+| ~~Buck 24→5 V 1 A~~ | — | **DELETED** ($12.95, Pololu D24V10F5): it existed only to power the Teensy | — | — |
+| ~~Signal relay~~ / ~~Buffer op-amp~~ | — | **DELETED as separate lines** ($2.74 Omron G5V-1-DC5 + ~$11 OPA2134PA DIP). Both were AFE parts meant to be hand-wired; the true-bypass relay and the output buffer are now SMD parts on the output + panel PCB, placed by the assembler. A DIP op-amp on a board that has no through-hole assembly step was never going to work | — | — |
+| **1/4" TS jack** | B | Neutrik NMJ4HCD2 (Ø11.4 bushing) — **PCB-MOUNT, on the output + panel PCB**. Same part as before: it was always a PCB jack, and mounting it as a free-standing panel jack would have meant hand-soldered lugs | **$2.53** [v] | [DigiKey](https://www.digikey.com/en/products/detail/neutrik-americas-inc/NMJ4HCD2/29371256) |
+| **DC barrel jack** | B | Same Sky **PJ-102AH** (2.0 pin) — **PCB-MOUNT, on the output + panel PCB**. Replaces the PJ-005A, which was a SOLDER-LUG panel jack and carried the same hand-soldering violation the TS jack did. Same family, same vendor | **~$3** [m] | [DigiKey](https://www.digikey.com/en/products/detail/same-sky-formerly-cui-devices/PJ-005A/165838) |
+| ~~USB-C panel coupler~~ | — | **DELETED** ($7.50, Adafruit 4261 F↔F). ⚠ It would have caused the fault the USB panel PCB exists to prevent: a F↔F coupler passes VBUS, and with the Pi fed from its GPIO header that puts a laptop's VBUS straight onto the power board's output. On the Pi 4B the USB-C VBUS pin and the GPIO 5 V pins are the **same node**, with no polyfuse between them | — | — |
 | **Rotary/4-way joystick** | B | Alps RKJXT1F42001 (sole UI control) | **$9.22** [v] | [DigiKey](https://www.digikey.com/en/products/detail/alps-alpine/RKJXT1F42001/19529127) |
 | **OLED display** | B | 2.42" 128×64 SSD1309 SPI (UI screen) | ~$17 [m] | [Waveshare](https://www.waveshare.com/2.42inch-oled-module.htm) |
-| **USB 2.0 hub** | B | Adafruit CH334F (share 1 port: Teensy+Pi) | **$4.50** [v] | [Adafruit](https://www.adafruit.com/product/5999) |
+| ~~USB 2.0 hub (module)~~ | — | **DELETED as a MODULE** ($4.50, Adafruit CH334F) — but the function came back as a **chip on the output + panel PCB** (2026-09-15), for a different reason than it was first bought. It no longer shares a panel port; it puts the optical board's 480 Mbps link on a ~100 mm cable to the panel instead of an ~800 mm one to the keyhead, and it must be a **high-speed** hub or both devices behind it pay a Transaction Translator's ~1 ms | — | — |
 | **USB cable, optical board → Pi** | B | **USB-A ↔ USB-C, 1 m, USB 2.0, STRAIGHT plug, overmold ≤ 20 mm** (mating face → cable exit) | ~$5–8 [m] | commodity |
 | **Raspberry Pi 4, 2 GB** | B | Dexed + USB gadget (MIDI/audio/DFU) + USB host for the optical board | **$55.00** [v] | [PiShop](https://www.pishop.us/product/raspberry-pi-4-model-b-2gb/) |
-| **Buck 24→5 V ≥3 A** | B | Pololu **D24V50F5** (5 V, 5 A, in up to 24 V). Pi 4 draws ~3 A, but see note | **$29.95** [v] ⚠ | [Pololu 2851](https://www.pololu.com/product/2851) |
+| ~~Buck 24→5 V ≥3 A~~ | — | **DELETED** ($29.95, Pololu D24V50F5) — see the Power PCB row above and the note below | — | — |
 | ~~10-ch audio ADC~~ | — | **DELETED.** Three PCM1864 + a carrier PCB existed to digitise ten string signals for the Pi. The optical pickup board now does its own 20-channel conversion (STM32H743ZIT6, 20× 16-bit) and sends audio over USB, so this whole path is redundant — ~$29 of ICs plus an entire board's fab, assembly and feeder cost removed | — | — |
 
-⚠ **The buck, and the "smaller unit" idea behind it, did not survive checking.**
-The row assumed the Pi-4 downgrade would also buy a cheaper regulator. It does
-not: Pololu's 5 V step-down line at ≥3 A and 24 V in **starts at the 5 A
-D24V50F5 at $29.95** (the next one up, the 9 A D24V90F5, is $36.82). There is no
-3 A part in between — so the ~$25 estimate was $5 low and the "smaller unit"
-saving is **zero**. The Pi-4 change still saves real money on the Pi itself;
-it just does not save anything here. If $30 matters, a non-Pololu 5 V/3 A module
-is the lever, at the cost of leaving a vendor the rest of the file already uses.
+⚠ **Both Pololu bucks are gone, and the reason is assembly, not price.** The row
+above used to argue about which module to buy; the answer turned out to be
+neither. They are through-hole modules on 0.1 in headers and neither is an LCSC
+line, so **the assembler cannot place them** — they become hand-soldered wiring
+in the tray, which is the exact thing the connector strategy exists to delete.
+And neither has anywhere to put a fuse or a clamp, which matters more than usual
+here: the Pi is fed from its **GPIO header** (its USB-C port is the front panel's
+gadget port), and that path skips every input protection the Pi has. A designed-in
+buck puts the crowbar on the same board as the converter it protects. **$42.90 of
+modules → ~$3 of parts**, and one less hand-assembly step.
 
 ⚠ **OLED [m]:** both the Waveshare product page and RobotShop return **HTTP 403**
 to automated fetches, so the ~$17 is unconfirmed. A German reseller lists the
@@ -114,20 +118,36 @@ gadget simultaneously** — host for the optical board, gadget to the computer �
 the Zero's single OTG port can only be one at a time. The panel **USB-C** still
 only needs USB 2.0 (480 Mbps).
 
-The **analog front-end** (buffer + true-bypass relay + driver + local LDO) is a
-small board at the bridge end. The relay defaults (de-energized) to passing the
-**raw** pickup straight to the TS jack; the Teensy energizes it (UI toggle) to
-switch in the **Q-processed** path. The ADC is always fed, and the Teensy
-presents itself to a computer as a **USB audio interface** — so the processed
-signal records digitally over USB with no analog round-trip. In **pro**, a USB 2.0
-hub shares one panel port between the Teensy and the Pi (both as USB devices).
+**The analog front-end is not a separate board and the Teensy is not in it** —
+both statements above were written before the 2026-09-15 respin and both were
+wrong twice over (the paragraph was also duplicated). The whole magnetic path now
+lives on the **output + panel PCB**:
 
-The **analog front-end** (buffer + true-bypass relay + driver + local LDO) is a
-small board at the bridge end, on a boss off the bridge cross-rib. The relay
-defaults (de-energized) to passing the **raw** pickup straight to the TS jack;
-the Teensy energizes it (UI toggle) to switch in the **Q-processed** DAC output.
-Buffering at the pickup keeps the long run to the keyhead ADC quiet; the ADC is
-always fed (pitch detection runs in either mode).
+* The pickup lands there on **screw terminals** — the one field connection that is
+  neither soldered nor crimped, because swapping a pickup is a normal thing to do
+  to a guitar.
+* One buffer feeds **both** the relay's direct contact and the ADC, so the coil
+  sees a single load whichever mode is selected. A magnetic pickup's tone *is* its
+  loading, so two inputs hung straight on the coil would change the instrument's
+  sound.
+* The relay still defaults **de-energized to DIRECT**: with no power, no Pi and no
+  firmware the pickup reaches the jack through a mechanical contact. It is
+  **not** latching — I claimed elsewhere that a held coil "hums at the audio it is
+  switching", which is wrong: the coil is DC and a static field does not hum. The
+  real cost of holding it is ~30 mA.
+* A **CH32V307** on that board presents the instrument to a computer as a USB
+  audio interface at **high speed**, via the part's internal PHY. A 24-bit / 99 dB
+  **PCM1808** does the capture and a PCM5102-class DAC does the return — the
+  converter, not the word length, is what sets the floor (16-bit's *theoretical*
+  ceiling is 98.1 dB).
+* A **USB hub** on the same board carries the optical pickup board upstream on one
+  cable, which is what shortens that 480 Mbps link from ~800 mm to ~100 mm. Both
+  devices behind it are high speed, so neither pays for a Transaction Translator.
+* The Pi does the **stereo→mono sum in software** for the TS jack, so the computer
+  can get full stereo over the gadget port while the jack gets a fold-down.
+
+**No analog signal crosses the instrument any more**, which is what deleted the
+8-way link between the optical board and the panel.
 
 The motor still does all tuning (the nut block clamps; no manual tuners). The nut
 block is **reprintable per string set** — `STRING_GAUGE` in `dimensions.py` swaps
@@ -356,7 +376,7 @@ Rule: **solder only happens on factory-assembled PCBs; every field connection
 is a connector** (no bare wire ever meets a bare module pin; never
 inline-splice — user priorities: damage-free un/re-mating beats install
 speed, and **no personal soldering work**: the only bench work is XH
-crimping). Two classic-CAN buses at 500 kbps: **bus A motors** (Teensy CAN1 →
+crimping). Two classic-CAN buses at 500 kbps: **bus A motors** (the motor controller's CAN1, REMAPPED to PB8/PB9 →
 10× SERVO42D over their native XH pigtails — power AND CAN; ~1–1.5 A input
 at 24 V sits inside XH's 3 A rating, so no separate motor power connector —
 120 Ω fixed at both ends) and **bus B inputs**, a **TRUNK-AND-DROP** bus:
@@ -398,10 +418,10 @@ $0.59–0.78 per pre-crimped lead — 20×; needs a ~$25–45 tool, below).
 | **XH crimp contacts** | JST **SXH-001T-P0.6** | 300 | **$0.0235–0.047** [v] | [DigiKey](https://www.digikey.com/en/products/result?keywords=SXH-001T-P0.6) | 22–30 AWG; qty includes learning-curve scrap |
 | **XH housings** | JST **XHP-2 / XHP-4 / XHP-6** | ~30 | **$0.10** [v] | [DigiKey](https://www.digikey.com/en/products/result?keywords=XHP-4) | contacts click in by hand, extractable; XHP-6 mates the SERVO42D pigtail |
 | **XH header**, SMT side-entry | JST **S4B-XH-SM4-TB** | 8 | **$0.6577 / $0.2889 @800** [v] | [LCSC C161861](https://lcsc.com/product-detail/Wire-To-Board-Connector_JST-S4B-XH-SM4-TB-LF-SN_C161861.html) | **Sensor boards only**, and it earns the second part number: it is the piece that lets the board be SINGLE-SIDED. SMT (no post tails through a face that has to seat), side entry (a top-entry plug would have to be inserted from inside the housing). B = 15.0, 7.0 tall, 6.1 body depth, 4.5 mouth. Mates the same XHP-4 plugs and crimps as everything else, so the harness is unaffected. ~40k in LCSC stock; in JLC's library as C161861 — check it is orderable for assembly at quote time |
-| **XH headers**, THT top-entry | JST **B2B/B4B/B6B-XH-A(LF)(SN)** | ~30 | **$0.17** [v] | [DigiKey](https://www.digikey.com/en/products/result?keywords=B4B-XH-A) | on every custom PCB (sensor boards, Teensy carrier, leg breakout); B4B verified, other sizes same class. Modelled from JST's own drawing (`cadkit.pcb.jst_xh_header`): B4B is **12.4 × 5.75**, **7.0 mm** tall bare and **9.8 mm mated** — the mated figure is the one clearances must use — with □0.64 posts reaching 3.4 mm below the seating plane, i.e. **1.8 mm proud** of a 1.6 mm board's far face. The pin row is **2.0 mm from one long edge, 3.75 from the other**, so the part is not symmetric about its pins and which way it faces is a real layout decision |
+| **XH headers**, THT top-entry | JST **B2B/B4B/B6B-XH-A(LF)(SN)** | ~30 | **$0.17** [v] | [DigiKey](https://www.digikey.com/en/products/result?keywords=B4B-XH-A) | on every custom PCB (sensor boards, motor controller, leg adapters); B4B verified, other sizes same class. Modelled from JST's own drawing (`cadkit.pcb.jst_xh_header`): B4B is **12.4 × 5.75**, **7.0 mm** tall bare and **9.8 mm mated** — the mated figure is the one clearances must use — with □0.64 posts reaching 3.4 mm below the seating plane, i.e. **1.8 mm proud** of a 1.6 mm board's far face. The pin row is **2.0 mm from one long edge, 3.75 from the other**, so the part is not symmetric about its pins and which way it faces is a real layout decision |
 | **Power connector** (PSU trunk only) | XT30 pair — DFRobot **FIT0586** | 4 pr | **$1.90** [v] | [DigiKey](https://www.digikey.com/en/products/detail/dfrobot/FIT0586/9559255) | 15 A/30 A pk, gold; pigtails bench-soldered ONCE, field = plug/unplug only |
-| **CAN terminator R** | Yageo **CFR-25JB-52-120R** (120 Ω ¼ W) | 10 | **$0.10 / $0.036 @10** [v] | [DigiKey](https://www.digikey.com/en/products/result?keywords=CFR-25JB-52-120R) | Teensy carrier + last motor; bus-B termination lives ON the tees (SMT 120R there) |
-| **Tee PCB** | custom 49.5 × 16 L (40 × 16 layout + a bare 9.5 × 8.7 mounting ear, M4 through-hole): 3× B4B-XH-A + 120 Ω + shunt jumper | 12 | ~$2 assembled (est.) | JLCPCB | panelized with the sensor boards; close the jumper on the LAST tee = bus-B termination |
+| **CAN terminator R** | Yageo **CFR-25JB-52-120R** (120 Ω ¼ W) | 10 | **$0.10 / $0.036 @10** [v] | [DigiKey](https://www.digikey.com/en/products/result?keywords=CFR-25JB-52-120R) | motor controller + last motor; bus-B termination lives ON the tees (SMT 120R there) |
+| **Tee PCB** | custom 49.5 × 16 L (40 × 16 layout + a bare 9.5 × 8.7 mounting ear, M4 through-hole): ONE 8-way side-entry XH (trunk in 1-4, out 5-8) + ONE 4-way drop + 120 Ω + shunt jumper | **11** | ~$2 assembled (est.) | JLCPCB | panelized with the sensor boards; close the jumper on the LAST tee = bus-B termination. Qty 12 → 11: tees 11/12 are deleted (the lever board passes the trunk through its own 8-way, and the TRRS adapter carries the leg jack on the board) |
 | **Leg carrier PCB** | custom: LCSC SMT jack + B4B-XH-A header | 2 | ~$2 assembled (est.) | JLCPCB | rides the same panel; sits in the shaft pocket — auto-mate jack's terminals land on XH, fully factory-soldered |
 | ~~**FD-capable transceiver**~~ | ~~Microchip **MCP2562FD-E/SN**~~ | — | **DROPPED** | — | Superseded by **SN65HVD230DR** (`C12084`, $0.6185 @10, 32,557 stock) on the sensor boards — see Control sensors. Two corrections this row carried: LCSC is **$1.85 @10**, not the “~$0.50” claimed here, and it needs **4.5–5.5 V**, so it dragged a second regulator onto the most area-constrained board in the project. FD is moot now that the sensor MCU is classic-only — bus B could have been FD (the motors are on bus A), but the payload does not want it |
 
@@ -1509,7 +1529,7 @@ several are unverified — re-verify the whole file before ordering.**
 | Filament (printed) | ~$81 | estimate; **spool prices verified**, masses are model estimates |
 | Mechanical hardware (motors, screws, bearings, belt, fasteners, dowels) | ~$620 | belt/collar/bearings **verified**; motor + all McMaster **[m]** |
 | Wire | ~$35 | estimate, excludes 10 control drops |
-| Electronics + UI (Teensy, audio shield, Pi 4, bucks, hub, jacks, joystick, OLED) | ~$190 | **all verified except the OLED [m]** |
+| Electronics + UI (motor controller, power + USB panel boards, Pi 4, jacks, joystick, OLED) | ~$95 | **all verified except the OLED [m]** |
 | Optical pickup board (148 parts, 4-layer, ÷10 basis) | **~$45** | parts cost **computed from the model**; all 18 lines have real MPNs |
 | Control sensors, 10 controls (MT6701 + magnet + board) | ~$50 | IC + magnet **verified**; boards not yet quoted |
 | Tee / carrier PCBs | ~$25 | estimate |
