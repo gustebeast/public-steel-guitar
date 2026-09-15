@@ -31,16 +31,27 @@ adapter builds -Y -> +Y, the sleeve the other way) and cadkit peaks a sideways b
 toward the build -- a O10.6 teardrop's apex stands 7.5 off the axis, half again its
 radius, so the axis is pulled off-diagonal until that apex keeps its wall.
 
-THE CABLE never crosses the joint. The plug's lead runs up its OWN bore -- beside
-the coil, which has 2.8 of annulus to spare -- and leaves through a window in the
-adapter's +Y FACE at the cap's height (the leg slides along Y to come off, so
-anything leaving the adapter's TOP face would be sheared -- user). It does not get a
-channel of its own: there is no room for one that keeps a wall to that face, and an
-earlier attempt at one broke out through it as a slot the whole length of the part.
-The jack's lead runs on down the leg from under its spacer.
+THE CABLE never crosses the joint. The plug's lead runs up its OWN bore -- through
+the middle of the coil, whose 3.8 ID is the cable's diameter exactly -- and on
+through the cap, which is bored for it. It then leaves by a CHANNEL cut in the
+adapter's TOP FACE (user's sketch): the lead comes up +Z straight, which is the
+only way a rigid moulded head gets into a bore at all, and is then FOLDED OVER
+into the channel and run out the -Y face, so nothing stands proud of the face that
+butts the chassis and nothing has to turn a corner while being installed. -Y is
+INBOARD -- under the instrument, out of sight from the front (user); an earlier
+window through the +Y face put the run on the side you look at.
+
+THE CHANNEL'S PATH is not straight, and the tongue is why: the bore sits under it
+(the corner is the only room there is, see above), so the channel steps +X clear of
+the tongue's 4.0 rib before it turns down the part. That step is at 45 degrees, not
+square -- this part builds along Y, so a square step's far wall would be a flat
+ceiling and a 45 one is not. The jack's lead runs on down the leg from under its
+spacer.
 """
 
 from __future__ import annotations
+
+import math
 
 import cadquery as cq
 
@@ -49,6 +60,7 @@ from cadkit.supports import printable_bore
 from . import dimensions as D
 from . import latch as LT
 from . import leg_stack as LS
+from . import legs as LG
 
 B = D.BEAD
 
@@ -97,7 +109,18 @@ STEP_D = PLUG_D - 1.6   # 4.5: what the plug stops on. The barrel passes, the ov
 JACK_BORE_D = JACK_D - 0.1      # the sleeve's: a LIGHT PRESS on the jack's moulded
                                 # jacket, which is what holds it at height with the
                                 # spacer under it
-WINDOW_D = CABLE_D + 1.0        # the cable's way out through the +Y face
+WINDOW_D = CABLE_D + 1.0        # 4.8: the cable's way, wherever it is bored
+CHAN_W = WINDOW_D               # ...and the channel's width and depth: a groove
+CHAN_D = WINDOW_D               # the lead is laid into, not threaded through
+CHAN_X = -9 * B                 # -7.2, the lane the channel turns down: midway
+                                # between the tongue (ends at -12.0) and the first
+                                # chassis ridge (starts at -2.5), 2.4 clear of each
+CAP_BORE_D = CABLE_D + B        # 4.6: the cable's way up through the cap
+CAP_SEAT_D = LT.SPR_BORE_D      # 5.4 x 2.0 of counterbore in the cap's underside --
+CAP_SEAT_L = 3 * B              # the coil's back seat, so it cannot walk in a bore
+TONGUE_H = LG.STUB_TNG_H        # how far the chassis tongue stands above the top face
+                                # twice its diameter. The ledge is 0.4 -- most of
+                                # the coil's 0.6 wire, which is what it seats on
 
 SPACER_L = 10 * B       # 8.0 of printed tube under the jack: enough bore to press
                         # into, and it puts the jack's back well clear of the mortise
@@ -107,6 +130,14 @@ _CAP_L = LS.ADAPT_L - (PLUG_SET + PLUG_L + SPR_REST_L)       # the cap fills wha
 assert _CAP_L >= 4 * B, (
     "the plug and its set fill %.1f of a %.1f adapter, leaving %.1f of cap"
     % (PLUG_SET + PLUG_L, LS.ADAPT_L, _CAP_L))
+
+
+_TNG_IN = -LG.STUB_RIDGE_EP + LG.STUB_TNG_W / 2.0       # the tongue's inboard-X edge
+_RIDGE_1 = min(x for x in LG._cross_x(-1.0) if x > _TNG_IN)      # the nearest ridge
+assert (_TNG_IN + CHAN_W / 2.0 <= CHAN_X <= _RIDGE_1 - LG.STUB_TEN_W / 2.0
+        - CHAN_W / 2.0), (
+    "the channel's lane %.2f is not clear between the tongue (%.2f) and the ridge "
+    "at %.2f -- it would undermine a chassis tenon" % (CHAN_X, _TNG_IN, _RIDGE_1))
 
 
 def _ax(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):
@@ -126,24 +157,53 @@ def _cone(x, y, z, big, small, down=True):
         cq.Vector(x, y, z0), cq.Vector(0, 0, 1)))
 
 
+def chan_pts(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):
+    """The channel's centreline on the adapter's top face: out of the bore, a 45
+    step +X clear of the tongue, then straight down the part and out the -Y face."""
+    x, y = _ax(sx, ly)
+    cx = sx + CHAN_X
+    return [(x, y), (cx, y - (cx - x)), (cx, ly - LS.LEG_W / 2.0 - 1.0)]
+
+
+def channel(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):
+    """That path as a groove in the top face: CHAN_W wide, CHAN_D deep, rounded at
+    the knee so the lead has a bend radius there rather than a corner."""
+    z1 = LS.Z_TOP
+    pts = chan_pts(sx, ly)
+    out = None
+    for a, b in zip(pts, pts[1:]):
+        dx, dy = b[0] - a[0], b[1] - a[1]
+        ln = math.hypot(dx, dy)
+        seg = (cq.Workplane("XY").box(ln, CHAN_W, CHAN_D + 1.0,
+                                      centered=(False, True, False))
+               .translate((0, 0, z1 - CHAN_D))
+               .rotate((0, 0, 0), (0, 0, 1), math.degrees(math.atan2(dy, dx)))
+               .translate((a[0], a[1], 0)))
+        out = seg if out is None else out.union(seg)
+    for q in pts[1:-1]:                     # the knee, radiused
+        out = out.union(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+            CHAN_W / 2.0, CHAN_D + 1.0, cq.Vector(q[0], q[1], z1 - CHAN_D),
+            cq.Vector(0, 0, 1))))
+    return out
+
+
 def adapter_negatives(sx: float = LS.LEG_X, ly: float = LS.LEG_Y, up=None):
     """Cut in the BODY ADAPTER: the plug's bore from the top down to the STEP it sits
-    on, the barrel's way on through that step, and the cable's window out the +Y face
-    at the cap's height."""
+    on, the barrel's way on through that step, and the cable's channel across the
+    top face and out the -Y one."""
     x, y = _ax(sx, ly)
     up = up or LS.PRINT_UP["body_adapter"]
     z0, z1 = LS.Z_BUTT, LS.Z_TOP
     step = z0 + PLUG_SET                        # the handle's seat
     out = teardrop_hole(STEP_D, (step + 0.01) - (z0 - 1.0), (x, y, z0 - 1.0), (0, 0, 1), up)
-    out = out.union(teardrop_hole(BORE_D, (z1 + 1.0) - step, (x, y, step), (0, 0, 1), up))
+    # the bore runs PAST the top face, right through the tongue standing on it: the
+    # plug is dropped down this bore from above, and a O6.1 head does not fit the
+    # crescents a 4.0 rib would leave either side. The tongue loses 10.6 of its 45,
+    # in the middle of a rib the chassis groove still carries end to end
+    out = out.union(teardrop_hole(BORE_D, (z1 + TONGUE_H + 1.0) - step,
+                                  (x, y, step), (0, 0, 1), up))
     out = out.union(_cone(x, y, step, BORE_D, STEP_D))      # the handle's seat, coned
-    # the window, at the COIL's height -- below the cap, which stays solid, and
-    # above the plug, so the lead leaves where it actually is. Along this part's
-    # build direction, so it prints round
-    wz = step + PLUG_L + SPR_REST_L / 2.0
-    out = out.union(printable_bore(WINDOW_D, (ly + LS.LEG_W / 2 + 1.0) - y,
-                                   (x, y, wz), (0, 1, 0), up))
-    return out
+    return out.union(channel(sx, ly))
 
 
 def sleeve_negatives(sx: float = LS.LEG_X, ly: float = LS.LEG_Y, up=None):
@@ -165,12 +225,19 @@ def sleeve_negatives(sx: float = LS.LEG_X, ly: float = LS.LEG_Y, up=None):
 def cap(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):
     """The printed plug that closes the adapter's bore at the TOP and gives the COIL
     its back seat. No fastener: the adapter butts the chassis, so the cap cannot rise
-    once the leg is on."""
+    once the leg is on. It is BORED for the cable, which comes up the middle of the
+    coil and on through, and it carries the channel's groove across its own top face
+    so the lead can be folded over into it."""
     x, y = _ax(sx, ly)
     z1 = LS.Z_TOP
     z0 = z1 - _CAP_L
-    return cq.Workplane("XY").add(cq.Solid.makeCylinder(
+    c = cq.Workplane("XY").add(cq.Solid.makeCylinder(
         (BORE_D - 0.3) / 2.0, _CAP_L, cq.Vector(x, y, z0), cq.Vector(0, 0, 1)))
+    c = c.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        CAP_BORE_D / 2.0, _CAP_L + 2.0, cq.Vector(x, y, z0 - 1.0), cq.Vector(0, 0, 1))))
+    c = c.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(   # the coil's back seat
+        CAP_SEAT_D / 2.0, CAP_SEAT_L, cq.Vector(x, y, z0 - 0.01), cq.Vector(0, 0, 1))))
+    return c.cut(channel(sx, ly))
 
 
 def spacer(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):
@@ -202,28 +269,31 @@ def cables(sx: float = LS.LEG_X, ly: float = LS.LEG_Y, k: int = 0):
     """THE RUN, drawn -- because a window in a face with nothing coming out of it
     reads as a mystery hole (user saw exactly that).
 
-    The patch lead leaves the plug's back, turns out through the window in the
-    adapter's +Y face, and climbs the OUTSIDE of that face to the socket in the
-    chassis rail: ~64 of rise and 12 across, the whole of the leg's signal that is
-    ever visible. Everything else is inside a part. Below the joint, the leg column's
-    own lead drops away from the jack through the middle of its spacer."""
+    The patch lead leaves the plug's back, climbs the middle of the coil and the
+    cap's bore, folds over into the CHANNEL in the adapter's top face and runs out
+    the -Y one -- inboard, under the instrument, where nothing shows from the front.
+    Below the joint, the leg column's own lead drops away from the jack through the
+    middle of its spacer."""
     x, y = _ax(sx, ly)
     z0 = LS.Z_BUTT
-    wz = z0 + PLUG_SET + PLUG_L + SPR_REST_L / 2.0      # the window's height
-    face = ly + LS.LEG_W / 2.0
+    from . import electronics as EL
+    EL_PLUG_RUN = EL.TRRS_PLUG_RUN
+    fold = LS.Z_TOP - CHAN_D / 2.0                      # the channel's centreline
+    a, b, c = chan_pts(sx, ly)
     from . import wiring as WR                          # late: wiring reads chassis
-    sock_x, mouth_z = WR.TRRS_X, WR.trrs_mouth_z()
-    plug_end = WR.TRRS_RAIL_OUT + 16.7                  # where the socket's plug ends
+    sock_x, sock_y = WR.TRRS_X, WR.TRRS_Y
+    under = LS.Z_TOP - CHAN_W / 2.0                     # along the instrument's underside
     patch = _run([(x, y, z0 + PLUG_SET + FLOAT + PLUG_L),       # the plug's back
-                  (x, y, wz),                                   # up its own bore
-                  (x, face + 2.0, wz),                          # out through the window
-                  (x, face + 2.6, wz + 24.0),                   # ...and up the face
-                  (sock_x, face + 3.4, mouth_z - 16.0),         # across toward the socket
-                  (sock_x, plug_end + 3.0, mouth_z - 5.0),      # round the plug's tail
-                  (sock_x, plug_end + CABLE_D / 2.0, mouth_z)])  # up to it. It STOPS
-                                    # there: the socket's plug is the same lead's far
-                                    # end, already drawn at the station, and running
-                                    # the two into each other only trips the gate
+                  (x, y, fold),                                 # up the coil and the cap
+                  (b[0], b[1], fold),                           # folded into the channel
+                  (c[0], c[1] + 1.0, fold),                     # ...and out the -Y face
+                  (c[0], c[1] - 4.0, under),                    # clear of the face
+                  (sock_x, sock_y - 10.0, under),               # inboard under the body
+                  (sock_x, sock_y, under),
+                  (sock_x, sock_y, WR.trrs_mouth_z() - EL_PLUG_RUN)])   # and up into the
+                                    # jack. It STOPS at the plug's tail: the plug itself
+                                    # is drawn at the station, and running the two into
+                                    # each other only trips the gate
     leg = _run([(x, y, z0 + JACK_PROUD - JACK_L),
                 (x, y, z0 + JACK_PROUD - JACK_L - SPACER_L - 16.0)])
     return [("leg_trrs_patch_%d" % k, patch), ("leg_trrs_leg_lead_%d" % k, leg)]
