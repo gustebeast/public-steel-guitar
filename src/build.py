@@ -737,7 +737,6 @@ def _electronics_components():
            ("pi5", EL.pi5()),
            ("power_pcb", EL.power_pcb()),
            ("motor_ctrl", EL.motor_ctrl()),
-           ("dc_jack", EL.dc_jack()),
            ("output_panel", EL.output_panel()),
            ("oled", EL.oled()), ("joystick", EL.joystick())]
     out += [(f"top_plate_{i}", seg) for i, seg in enumerate(TP.segments)]
@@ -1019,7 +1018,7 @@ def screw_rows_components():
 BODY_WORK_PARTS = SCREW_ROW_PARTS + (
     "bridge_endplate", "bridge_bearings", "motor", "chassis_",
     "electronics_tray", "pi5", "motor_ctrl", "power_pcb", "tee_", "wire_",
-    "dc_jack", "output_panel", "joystick", "oled",
+    "output_panel", "joystick", "oled",
     "body_adapter", "lock_pin_", "adjust_", "fixed_", "bar_latch_", "leg_latch_")
 
 
