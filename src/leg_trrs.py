@@ -85,7 +85,13 @@ assert SPR_MATE_L >= LT.SPR_SOLID + 1.0, (
 AX_X = -2 * B           # -1.6
 AX_Y = 7 * B            # +5.6 -- the latch's pocket takes the tenon's -Y middle
 THROAT_D = PLUG_D + 0.5         # 6.6: the plug's overmould passes, the jack does not.
-                                # This lip IS the jack's up-stop with the leg off
+                                # This lip is the jack's up-stop with the leg off -- and
+                                # it is a separate PRESSED PART, not a step in the bore,
+                                # for the same reason the coil's seat is: the jack is
+                                # O9.7 and goes in from the tip, so a 6.6 step above it
+                                # is a lid on a box with the box already shut. The first
+                                # pass cut it as a bore and the cavity had O6.6 at BOTH
+                                # ends, which the user spotted in the tab
 PLUG_BORE_D = PLUG_D - 0.1      # 6.0: a press on the overmould
 JACK_BORE_D = JACK_D + 0.2      # 9.9: the jack runs free in the tenon
 SPR_BORE_D = LT.SPR_BORE_D      # 5.4, the latches' own coil pocket -- but in the SEAT,
@@ -102,6 +108,10 @@ SEAT_T = 4 * B                  # 3.2: the printed washer that gives the coil it
                                 # narrow enough to seat a O5.0 coil is narrow enough to
                                 # stop the O6.1 head that has to pass it
 SEAT_CLR = 0.3                  # ...so it is a separate part, dropped in over the lead
+THROAT_PRESS = 0.1              # the keeper's interference in the jack's bore. It only
+                                # ever carries the coil's 5 N preload, and only while the
+                                # leg is OFF: with the leg on, the adapter's mortise roof
+                                # sits directly over it
 SEAT_BORE_D = LEAD_D_MAX + 0.6  # 3.8 through it: the lead passes, the coil seats
 CHAN_W = CABLE_D + 1.0          # 4.8 wide and deep: the groove in the adapter's top
 CHAN_D = CABLE_D + 1.0          # face the lead is folded into
@@ -180,15 +190,36 @@ def adapter_negatives(sx: float = LS.LEG_X, ly: float = LS.LEG_Y, up=None):
 
 def tenon_negatives(sx: float = LS.LEG_X, ly: float = LS.LEG_Y, up=None,
                     bot: float = None):
-    """Cut in the FIXED TENON: the throat at its tip, the jack's travel and the coil
-    below it, the ledge the coil's SEAT rests on, and a pass-through the rest of the
-    way that is wide enough for the lead's far plug."""
+    """Cut in the FIXED TENON: one straight O9.9 bore from the tip down past the jack
+    and the coil to the ledge their SEAT rests on, then a pass-through the rest of the
+    way that is wide enough for the lead's far plug. Nothing narrows on the way in --
+    everything that has to get past goes in from the tip, in order."""
     x, y = _ax(sx, ly)
     up = up or LS.PRINT_UP["fixed_tenon"]
     bot = LS.Z_FIX_TEN_BOT - 1.0 if bot is None else bot
-    out = _bore(THROAT_D, JACK_REST, TIP + 1.0, x, y, up)                  # the lip
-    out = out.union(_bore(JACK_BORE_D, SEAT_LEDGE, JACK_REST + 0.01, x, y, up))
+    out = _bore(JACK_BORE_D, SEAT_LEDGE, TIP + 1.0, x, y, up)   # ONE bore, tip to ledge
     return out.union(_bore(PASS_D, bot, SEAT_LEDGE + 0.01, x, y, up))
+
+
+def throat(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):
+    """THE JACK'S UP-STOP, pressed into the tenon's tip LAST.
+
+    It cannot be a step in the bore. The jack is O9.7 and can only go in from the tip,
+    so anything narrower than 9.7 above it is a lid fitted before the box is filled --
+    which is exactly what the first pass drew, a O9.8 cavity with O6.6 at both ends and
+    no way to put a jack in it (user). So the lip arrives after the jack: a ring
+    pressed into the bore, bored THROAT_D so the plug's overmould still passes.
+
+    It is barely loaded. With the leg OFF it holds the coil's 5 N preload on a press
+    over THROAT_L; with the leg ON the jack is pushed DOWN off it and the adapter's
+    mortise roof sits right over its top face."""
+    x, y = _ax(sx, ly)
+    r = cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        (JACK_BORE_D + THROAT_PRESS) / 2.0, THROAT_L,
+        cq.Vector(x, y, JACK_REST), cq.Vector(0, 0, 1)))
+    return r.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        THROAT_D / 2.0, THROAT_L + 2.0,
+        cq.Vector(x, y, JACK_REST - 1.0), cq.Vector(0, 0, 1))))
 
 
 def seat(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):
@@ -275,4 +306,5 @@ def dummies(sx: float = LS.LEG_X, ly: float = LS.LEG_Y, k: int = 0, mated: bool 
                               cq.Vector(x, y, SPR_SEAT - 1.0), cq.Vector(0, 0, 1))))
     return [("leg_trrs_plug_%d" % k, plug), ("leg_trrs_jack_%d" % k, jack),
             ("leg_trrs_spring_%d" % k, coil),
-            ("leg_trrs_seat_%d" % k, seat(sx, ly))] + cables(sx, ly, k)
+            ("leg_trrs_seat_%d" % k, seat(sx, ly)),
+            ("leg_trrs_throat_%d" % k, throat(sx, ly))] + cables(sx, ly, k)
