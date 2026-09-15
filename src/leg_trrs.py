@@ -59,6 +59,7 @@ import math
 
 import cadquery as cq
 
+from cadkit.fasteners import M4_BUTTON_HEAD_D
 from cadkit.holes import teardrop_hole
 from . import dimensions as D
 from . import latch as LT
@@ -133,7 +134,12 @@ THROAT_BORE_D = 10.5                    # the keeper sits in a COUNTERBORE at th
                                         # tenon 1.66, and the keeper is left 1.60 under
                                         # its groove. Both are the 1.6 floor, barely
 LOCK_Z = None                   # set below, once THROAT_L is known
-LOCK_TILT = 30.0                # degrees below the flank normal -- see _lock_axis
+CAP_BORE_D = 11 * B             # 8.8: the bore above the plug: the plug DROPS IN through it
+                                # and the cap then fills it. Wide enough that the cap has
+                                # MIN_WALL_2P round its own O4.4 lead bore
+CAP_ID = CABLE_D + 0.6          # 4.4 through it, for the lead
+CAP_SLOT = 5 * B                # 4.0, opening to one side, so the cap lays over a lead
+                                # that is already attached to the plug
 LOCK_RECESS = 2.6               # the button head's pocket depth (head 2.2 + 0.4)
 LOCK_SCREW_L = 16.0             # M4 x 16 BUTTON, 2.5 hex: the instrument's one driver
 LOCK_GROOVE = 0.4               # how deep the screw's tip sits in the keeper's OD.
@@ -154,13 +160,20 @@ CHAN_D = CABLE_D + 1.0          # face the lead is folded into
 
 # ── the z chain, all of it hung off the tenon's tip ───────────────────────────
 TIP = LS.Z_MORTISE_ROOF         # -94.55: the tenon's tip, and the mortise's roof
-PLUG_TOP = LS.Z_TOP - CHAN_D - 2 * B    # the plug sits 1.6 BELOW the channel's floor,
-                                # and the 1.6 is the KEEPER's: THROAT_L falls out of
-                                # this chain, and at the channel's floor it came to 3.0
-                                # -- too short to carry the set screw's groove with
-                                # MIN_WALL_2P either side of it (1.10, check_thin). The
-                                # lead just rises those 1.6 inside the mouth bore it
-                                # drops in through, and folds into the channel there
+PLUG_GRIP = 3 * B               # 2.4 of press bore left after the keeper takes its 8.6.
+                                # At 4 beads the straight screw's window closes to a
+                                # single point (cover and flange both exactly 1.60);
+                                # one more bead to the keeper buys 0.4 either side
+PLUG_TOP = TIP + PLUG_GRIP      # THE KEEPER GETS THE HEIGHT (user: make the throat
+                                # taller so the screw can be straight). THROAT_L and
+                                # PLUG_GRIP share a fixed 11.0 -- both come off this one
+                                # number -- so every mm the keeper gains, the plug's
+                                # press gives up. A STRAIGHT O7.6 button needs the
+                                # keeper at 7.8 (see LOCK_Z), which leaves the press
+                                # 3.2, and 3.2 cannot hold MATE_N. So the plug stops
+                                # relying on its press at all: cap() gives it a POSITIVE
+                                # up-stop and the press only has to keep it from
+                                # dropping out while the leg is off
 PLUG_SHOULDER = PLUG_TOP - PLUG_L               # -100.55, and the jack's mouth when
                                                 # the leg is home
 THROAT_L = TIP - (PLUG_SHOULDER + FLOAT)        # 3.0: how far below the tip the jack's
@@ -170,25 +183,41 @@ JACK_REST = PLUG_SHOULDER + FLOAT               # -97.55, the jack's mouth at re
 JACK_BACK = PLUG_SHOULDER - JACK_L              # -140.55 seated, FLOAT higher at rest
 SPR_SEAT = (JACK_BACK + FLOAT) - SPR_REST_L     # -147.55: the coil's floor, and the
                                                 # tenon's own O9.9 -> PASS_D step
-PLUG_GRIP = PLUG_TOP - TIP                      # 8.0 of press bore in the roof
 
 assert THROAT_L >= D.MIN_WALL_2P, (
     "the throat is %.2f -- too thin a lip to stop the jack" % THROAT_L)
-assert PLUG_GRIP >= 4 * D.MIN_WALL_2P, (
-    "only %.1f of press holds the plug in the adapter's roof" % PLUG_GRIP)
-assert THROAT_L - 2 * LOCK_GROOVE >= 2 * D.MIN_WALL_2P, (
-    "the keeper is %.2f tall and its groove %.2f, leaving %.2f of flange either side "
-    "for the set screw to bear on"
-    % (THROAT_L, 2 * LOCK_GROOVE, (THROAT_L - 2 * LOCK_GROOVE) / 2))
-assert PASS_D >= PLUG_D + 0.4, (
-    "the lead's far plug (%.1f) cannot travel a %.1f bore, so it can never be "
-    "threaded down the tenon at all" % (PLUG_D, PASS_D))
+assert PLUG_GRIP >= 3 * D.BEAD, (
+    "only %.1f of press guides the plug in the adapter's roof. It no longer "
+    "CARRIES the mate force -- cap() does -- but it is still what keeps a "
+    "14-long overmould concentric and stops it dropping out with the leg off"
+    % PLUG_GRIP)
 
-LOCK_Z = JACK_REST + THROAT_L / 2.0     # the set screw's line, on the keeper's middle
+CAP_L = LS.Z_TOP - PLUG_TOP             # the cap runs the plug's back clear up to the
+                                        # TOP FACE, so the CHASSIS is what stops it -- the
+                                        # same trick the adapter's own parts use. It cannot
+                                        # be stopped by a ledge instead: whatever the plug
+                                        # drops in through, the cap has to follow
+# THE SCREW IS STRAIGHT (user), and this is the window that makes it so. A O7.6 button
+# recessed square to the flank needs MIN_WALL_2P of tenon over its top edge, and the
+# keeper needs MIN_WALL_2P of flange under the groove. Between them they fix LOCK_Z to
+# a window that only exists once THROAT_L >= 7.8 -- which is what the plug's press paid
+# for. Tilting it was the alternative and the user did not want it.
+_HEAD_R = M4_BUTTON_HEAD_D / 2.0 + 0.4          # the head in its recess, radius
+_LOCK_HI = TIP - _HEAD_R - D.MIN_WALL_2P
+_LOCK_LO = JACK_REST + LOCK_GROOVE + D.MIN_WALL_2P
+assert _LOCK_LO <= _LOCK_HI + 1e-9, (
+    "no room for a STRAIGHT lock screw: the head wants z <= %.2f and the keeper's "
+    "flange wants z >= %.2f. THROAT_L is %.2f and needs %.2f -- give it more by "
+    "lowering PLUG_TOP (it costs PLUG_GRIP one for one)"
+    % (_LOCK_HI, _LOCK_LO, THROAT_L, THROAT_L + (_LOCK_LO - _LOCK_HI)))
+LOCK_Z = (_LOCK_LO + _LOCK_HI) / 2.0    # the set screw's line, centred in that window
+assert CAP_L >= 2 * D.MIN_WALL_2P, (
+    "the cap is %.1f -- too short to be worth printing" % CAP_L)
+
 
 # the plug's way in is a hole in the adapter's TOP FACE, and the middle ridge's root
 # is there. legs cuts that ridge back for us; check it actually clears, apex included
-_MOUTH_PEAK = AX_Y + (THROAT_D / 2.0) * 2 ** 0.5        # the teardrop's apex, toward +Y
+_MOUTH_PEAK = AX_Y + (CAP_BORE_D / 2.0) * 2 ** 0.5      # the teardrop's apex, toward +Y
 assert LG.SIGNAL_RIDGE_IN >= _MOUTH_PEAK + D.MIN_WALL_2P, (
     "the middle ridge starts at %+.2f but the plug's mouth reaches %+.2f -- boring "
     "through a ridge leaves slivers; legs.SIGNAL_RIDGE_IN has to clear it"
@@ -226,7 +255,7 @@ def adapter_negatives(sx: float = LS.LEG_X, ly: float = LS.LEG_Y, up=None):
     x, y = _ax(sx, ly)
     up = up or LS.PRINT_UP["body_adapter"]
     out = _bore(PLUG_BORE_D, TIP - 0.01, PLUG_TOP, x, y, up)               # the press
-    out = out.union(_bore(THROAT_D, PLUG_TOP, LS.Z_TOP + 0.01, x, y, up))  # the mouth
+    out = out.union(_bore(CAP_BORE_D, PLUG_TOP, LS.Z_TOP + 0.01, x, y, up))
     return out.union(channel(sx, ly))
 
 
@@ -242,6 +271,28 @@ def tenon_negatives(sx: float = LS.LEG_X, ly: float = LS.LEG_Y, up=None,
     out = _bore(JACK_BORE_D, SPR_SEAT, TIP + 1.0, x, y, up)     # ONE bore, tip to step
     out = out.union(_bore(THROAT_BORE_D, JACK_REST, TIP + 1.0, x, y, up))  # the keeper's
     return out.union(_bore(PASS_D, bot, SPR_SEAT + 0.01, x, y, up))
+
+
+def cap(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):
+    """THE PLUG'S UP-STOP, and the reason the plug can give its press away.
+
+    The jack pushes the plug UP at MATE_N, and PLUG_GRIP is only 2.4 now -- the keeper
+    took the rest so the lock screw could be straight (user). A press that short must
+    not be the thing carrying 12.5 N, so it no longer is: this cap fills the bore from
+    the plug's back up to the CHANNEL'S FLOOR, and the channel is narrower than the cap,
+    so the ledge either side of it is a hard stop. The load runs plug -> cap -> adapter
+    -> chassis, all of it in compression on printed shoulders.
+
+    It is SLOTTED to one side because the lead is already on the plug when the cap goes
+    in: you lay it over the lead sideways rather than threading it."""
+    x, y = _ax(sx, ly)
+    c = cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        (CAP_BORE_D - 0.3) / 2.0, CAP_L, cq.Vector(x, y, PLUG_TOP), cq.Vector(0, 0, 1)))
+    c = c.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        CAP_ID / 2.0, CAP_L + 2.0, cq.Vector(x, y, PLUG_TOP - 1.0), cq.Vector(0, 0, 1))))
+    return c.cut(cq.Workplane("XY")
+                 .box(CAP_BORE_D, CAP_SLOT, CAP_L + 2.0, centered=(False, True, False))
+                 .translate((x, y, PLUG_TOP - 1.0)))
 
 
 def throat(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):
@@ -288,17 +339,13 @@ def _flank_x(y, z):
 def _lock_axis(sx=LS.LEG_X, ly=LS.LEG_Y):
     """(entry point, unit direction, run) for the keeper's lock screw.
 
-    It is TILTED, and that is the whole trick. A O7.6 button head -- the only M4 head
-    on this instrument, because its 2.5 hex is the one driver (fasteners.AGENTS) --
-    needs 4.2 of radius about its axis, and the tenon has only THROAT_L of height above
-    the jack's rest. Square to the flank the head stood 1.9 PROUD of the tip and would
-    have fouled the mortise roof; so would the insert's O6.0 pocket. Tilted, the head
-    and the insert walk DOWN the flank into solid tenon while the tip still reaches the
-    keeper's groove, and the tilt also means the screw seats the keeper DOWN rather
-    than merely blocking it."""
+    STRAIGHT IN from the -Y flank (user). A O7.6 button head -- the only M4 head on this
+    instrument, because its 2.5 hex is the one driver (fasteners.AGENTS) -- needs 4.2 of
+    radius about its axis, so the tenon has to be tall enough over the jack's rest to
+    bury it: see LOCK_Z, which asserts the window exists. It only does because the
+    keeper took 8.6 of the chain's 11.0 and left the plug 2.4."""
     x, y = _ax(sx, ly)
-    t = math.radians(LOCK_TILT)
-    d = (0.0, math.cos(t), math.sin(t))                  # inward from -Y, and upward
+    d = (0.0, 1.0, 0.0)                                  # straight in from the -Y flank
     tip = (x, y - (THROAT_BORE_D + THROAT_PRESS) / 2.0 + LOCK_GROOVE, LOCK_Z)
     prism = LS.tenon(LOCK_Z - 40.0, LOCK_Z + 5.0).val()
     run = 0.0
@@ -426,6 +473,8 @@ def dummies(sx: float = LS.LEG_X, ly: float = LS.LEG_Y, k: int = 0, mated: bool 
         SPR_OD / 2.0, coil_l, cq.Vector(x, y, SPR_SEAT), cq.Vector(0, 0, 1)).cut(
         cq.Solid.makeCylinder(SPR_ID / 2.0, coil_l + 2.0,
                               cq.Vector(x, y, SPR_SEAT - 1.0), cq.Vector(0, 0, 1))))
-    return [("leg_trrs_plug_%d" % k, plug), ("leg_trrs_jack_%d" % k, jack),
+    return ([("leg_trrs_plug_%d" % k, plug), ("leg_trrs_jack_%d" % k, jack),
             ("leg_trrs_spring_%d" % k, coil),
-            ("leg_trrs_throat_%d" % k, throat(sx, ly))] + lock_dummies(sx, ly, k)         + cables(sx, ly, k)
+            ("leg_trrs_throat_%d" % k, throat(sx, ly)),
+            ("leg_trrs_cap_%d" % k, cap(sx, ly))]
+            + lock_dummies(sx, ly, k) + cables(sx, ly, k))

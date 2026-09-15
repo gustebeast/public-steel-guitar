@@ -137,6 +137,7 @@ PARTS = {
     "adjust_sleeve":   (lambda: heal(LS.adjust_sleeve()), "petg-gf/adjust_sleeve.step", "PETG-GF — adjust sleeve: butts the fixed sleeve; one +X screw pins the fixed tenon, one sets the height through the adjust tenon's ladder. Prints -Y -> +Y"),
     "fixed_tenon":     (lambda: heal(LS.fixed_tenon()), "petg-gf/fixed_tenon.step", "PETG-GF — fixed floating tenon: adapter <-> fixed sleeve <-> adjust sleeve, houses the body latch slider and spring. Prints diagonally (+X+Y -> -X-Y)"),
     "adjust_tenon":    (lambda: heal(LS.adjust_tenon()), "petg-gf/adjust_tenon.step", "PETG-GF — adjust floating tenon: the height ladder (blind +X holes) and, at its bar end, the pedal bar latch's pocket and lead-in. Prints diagonally (+X+Y -> -X-Y)"),
+    "leg_trrs_cap":    (lambda: heal(__import__("src.leg_trrs", fromlist=["e"]).cap()), "pctg/leg_trrs_cap.step", "PCTG - the body plug UP-STOP: a tube bored 4.4 and SLOTTED to one side so it lays over a lead already on the plug. The keeper took 8.6 of the chain so the lock screw could be STRAIGHT, leaving the plug 2.4 of press - too little to carry 12.5 N. Load runs plug -> cap -> the channel floor ledge -> chassis. Prints flat"),
     "leg_trrs_throat": (lambda: heal(__import__("src.leg_trrs", fromlist=["e"]).throat()), "pctg/leg_trrs_throat.step", "PCTG — the TRRS jack's up-stop at the fixed tenon's tip: a Ø10.0 x 3.0 ring pressed in LAST, bored Ø6.6 so the body plug's overmould still passes. It cannot be a step in the bore — the Ø9.7 jack goes in from the tip, so a lip above it would be a lid fitted before the box is filled. Carries the coil's 5 N only while the leg is off; with the leg on the mortise roof sits over it. Prints flat"),
     "leg_latch_slider": (lambda: heal(__import__("src.leg_latch", fromlist=["e"]).slider()), "pctg/leg_latch_slider.step", "PCTG — body latch slider: push-to-connect hook into the adapter, flush 20x20 pad on the fixed sleeve, one steel coil. Prints -X -> +X"),
     "bar_latch_frame": (lambda: heal(LS.bar_latch_frame()), "pctg/bar_latch_frame.step", "PCTG — pedal bar yoke latch: a ring round the adjust tenon, hook in its pocket, 20x20 pad flush in the collar, a cup seating its one coil. Prints ring down"),
@@ -1171,6 +1172,7 @@ _COLORS = {
     "leg_trrs_jack":   (0.20, 0.20, 0.22),   # adapter's roof...and the FLOATING jack
     "leg_trrs_spring": (0.62, 0.64, 0.67),   # ...the coil that holds them together
     "leg_trrs_throat": (0.34, 0.56, 0.44),   # ...and the ring that keeps the jack in
+    "leg_trrs_cap":    (0.30, 0.52, 0.40),   # ...the plug own up-stop above it
     "leg_trrs_lock_screw":  (0.55, 0.55, 0.58),  # ...which an M4x16 button (2.5 hex) locks
     "leg_trrs_lock_insert": (0.80, 0.60, 0.35),  # ...into a brass heat-set insert
     "leg_trrs_patch":  (0.12, 0.12, 0.14),   # ...the lead up to the chassis socket
