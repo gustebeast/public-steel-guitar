@@ -138,8 +138,37 @@ BOARD_W, BOARD_L = 40.0, 16.0
 # narrow band 4.0 mm from the +Y edge -- over the faceplate wall, not the motor.
 ROW_Y = 2.0
 
+# ── THE EAR (branner, 2026-09-15) ────────────────────────────────────────────
+# A SCREW BESIDE THE BOARD ONLY RESISTS PULL-OUT BY FRICTION, and this board is
+# pulled in exactly that direction every time a cable comes off: the connector
+# mouths face -Y, so unplugging tugs -Y and only the head's grip on the board top
+# opposes it. A screw THROUGH the board is positive in X and Y both.
+#
+# It would not fit inside 40 x 16. An M4 clearance hole wants 4.4 of
+# component-free board and the connector courtyards reach to within 3.145 of the
+# +Y edge -- 1.255 short, with nothing to give. So the OUTLINE grew instead of
+# the layout: the 40 x 16 region is untouched, every courtyard stays where it was
+# and TEE_CONN_CY is still 2.0. What is added is a bare EAR off the +X end.
+#
+# ⚠ THE EAR IS A TAB, NOT FULL DEPTH, and that is load-bearing (branner): the
+# motor bank staggers 9.5 in Y, and that stagger is what lets ten ears interlock
+# past each other. A full-depth ear clashed board-into-board at 48.5 mm3 per pair.
+EAR_W, EAR_H = 9.5, 8.7                  # the tab, off the +X end at the +Y corner
+BOARD_OUTLINE_W = BOARD_W + EAR_W        # 49.5 overall; the LAYOUT region is still 40
+HOLE_D = 4.5                             # M4 clearance, centred in the ear
+
+_HW, _HL = BOARD_W / 2.0, BOARD_L / 2.0
+_EAR_X1 = _HW + EAR_W                    # +29.5
+_EAR_Y0 = _HL - EAR_H                    # -0.7
+
 BOARD_NOTES = {
+    # THE LAYOUT REGION, not the outline: every part lives in the original 40 x 16
+    # and place_check measures against this. The board EDGE is outline_poly below.
     "outline_mm": (BOARD_W, BOARD_L),
+    "outline_poly": [(-_HW, -_HL), (_HW, -_HL), (_HW, _EAR_Y0), (_EAR_X1, _EAR_Y0),
+                     (_EAR_X1, _HL), (-_HW, _HL)],
+    # Centred in the ear: 4.75 from the +X edge, 4.35 from the +Y edge.
+    "cutouts": [{"xy": (_EAR_X1 - EAR_W / 2.0, _HL - EAR_H / 2.0), "d": HOLE_D}],
     "layers": 2,
     "thickness_mm": 1.6,
     "placements": {
@@ -163,8 +192,9 @@ BOARD_NOTES = {
     # to be a signal layer is not a plane. GND is routed as a track like every
     # other net; at 40 mm with a metre of cable either side, a plane on this
     # board buys nothing the track does not.
-    "hold_edge": "+x",
-    "no_mounting_holes": True,
+    # NO LONGER a screw beside the board: the ear carries a real through-hole, so
+    # hold_edge is gone and the cradle's job is locating, not gripping.
+    "mounting_hole_xy": (_EAR_X1 - EAR_W / 2.0, _HL - EAR_H / 2.0),
     "single_sided": True,
     "tail_band_from_plus_y": BOARD_L / 2.0 - ROW_Y,   # 4.0, against a 6.4 limit
     "qty_per_instrument": 9,
