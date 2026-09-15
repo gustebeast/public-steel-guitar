@@ -214,7 +214,7 @@ for _cnm, _cr, (_ctx, _cty, _ctd) in _WR_FUSE.tee_cradles():
 from . import knee_lever as _KL_FUSE
 for _csi in sorted(_fused_segs):
     _seg = chassis_segments[_csi]
-    for _rx in CH._RIB_X:
+    for _rx in CH._MORT_X:
         if _seg_edges[_csi + 1] < _rx < _seg_edges[_csi]:
             _seg = _seg.cut(_KL_FUSE.rib_mortise(_rx))
     chassis_segments[_csi] = _seg
@@ -910,26 +910,45 @@ def _vkl_station() -> float:
     """
     from . import knee_lever_vert as KV
     mid = _LKL_X + _KNEE_GAP_L / 2.0
-    best = min((abs(rib - KV.TEN_Y[1] - mid), rib - KV.TEN_Y[1])
-               for rib in (_RIB0 + _RIB * k for k in range(30)))
-    return best[1]
+    # its tenons sit at KV.TEN_Y in the guitar's X once posed, so the mount is offset from the
+    # station by TEN_Y[1]; walk the REAL station list, so a dropped one is never chosen.
+    return _lever_station(mid, KV.TEN_Y) - KV.TEN_Y[1]
 
 
-_LKL_X = D.rib_comb_x(-501.0)                # hard -X bound: the left leg block (ILKL's old
-                                             # station; LKL always shared it — see _KNEE_GAP_L)
-_RKL_X = D.rib_comb_x(-225.0)                # right knee (snapped to the rib comb)
+def _lever_station(x_target, offsets, mirrored=False):
+    """The closest mortise station to x_target at which EVERY one of this lever's tenons
+    lands in a slot that exists.
+
+    Not just the nearest grid X. The bottom grid (D.LEVER_PITCH) drops stations where the leg
+    stubs and the segment seams need solid material, so a station can be on-pitch and still have
+    no slot -- and a tenon over solid slab is 1-2.5 cm3 of interference, which is exactly what
+    the gate reported when the knee gaps were still multiples of the old 22.35 rib pitch."""
+    from . import chassis as CH_G
+    have = set(round(s, 3) for s in CH_G._MORT_X)
+    ok = [s for s in CH_G._MORT_X
+          if all(round(s + (-t if mirrored else t), 3) in have for t in offsets)]
+    assert ok, "no station on the bottom grid fits a lever with tenons at %s" % (offsets,)
+    return min(ok, key=lambda s: abs(s - x_target))
+
+
+from . import knee_lever as _KL_ST
+_LKL_X = _lever_station(-501.0, _KL_ST.TEN_X)   # hard -X bound: the left leg block (ILKL's old
+                                                # station; LKL shared it — see _KNEE_GAP_L)
+_RKL_X = _lever_station(-225.0, _KL_ST.TEN_X)   # right knee
 
 LEVER_STATIONS = (
     # LEFT KNEE: the knee sits in the gap between LKL and LKR, and VKL sits in that
     # same gap so the vertical arm is directly above it (user). VKL's station is
     # rib-DERIVED (MOUNT_X = rib - 10.4) so its own two tenons land on ribs.
     ("lkl",  "kl", _LKL_X,               _LEVER_Y, False),
-    ("vkl",  "kv", _vkl_station(),       None,     False),   # mid-gap, rib-derived
+    ("vkl",  "kv", _vkl_station(),       None,     False),   # mid-gap, grid-derived
     #                                                          None -> _vkl_mount_y()
-    ("lkr",  "kl", _LKL_X + _KNEE_GAP_L, _LEVER_Y, True),    # -386
+    # the GAPS are the ergonomic numbers; the station is the nearest one the grid can
+    # actually host, which is within half a pitch (4.4) of it
+    ("lkr",  "kl", _lever_station(_LKL_X + _KNEE_GAP_L, _KL_ST.TEN_X, True), _LEVER_Y, True),
     # RIGHT KNEE: same gap, no vertical lever in this copedent
     ("rkl",  "kl", _RKL_X,               _LEVER_Y, False),
-    ("rkr",  "kl", _RKL_X + _KNEE_GAP_R, _LEVER_Y, True),    # -133
+    ("rkr",  "kl", _lever_station(_RKL_X + _KNEE_GAP_R, _KL_ST.TEN_X, True), _LEVER_Y, True),
 )
 
 
