@@ -55,6 +55,8 @@ The printed seat washer the O5.0 coil needed is gone.
 
 from __future__ import annotations
 
+import math
+
 import cadquery as cq
 
 from cadkit.holes import teardrop_hole
@@ -131,7 +133,10 @@ THROAT_BORE_D = 10.5                    # the keeper sits in a COUNTERBORE at th
                                         # tenon 1.66, and the keeper is left 1.60 under
                                         # its groove. Both are the 1.6 floor, barely
 LOCK_Z = None                   # set below, once THROAT_L is known
-LOCK_GROOVE = 0.4               # how deep the set screw's tip sits in the keeper's OD.
+LOCK_TILT = 30.0                # degrees below the flank normal -- see _lock_axis
+LOCK_RECESS = 2.6               # the button head's pocket depth (head 2.2 + 0.4)
+LOCK_SCREW_L = 16.0             # M4 x 16 BUTTON, 2.5 hex: the instrument's one driver
+LOCK_GROOVE = 0.4               # how deep the screw's tip sits in the keeper's OD.
                                 # 0.4, not 0.8: the groove comes straight off the
                                 # keeper's wall and 0.8 took it under the floor
 # LOCK_BITE is MEASURED off the octagon at run time rather than written down: the
@@ -280,39 +285,86 @@ def _flank_x(y, z):
     raise AssertionError("no +X flank found at y %.2f z %.2f" % (y, z))
 
 
-def lock_negatives(sx: float = LS.LEG_X, ly: float = LS.LEG_Y, up=None):
-    """The set screw's hole in the FIXED TENON: in from the +X flank, thread-formed,
-    landing in the keeper's groove. Without it the keeper is held by THROAT_PRESS
-    alone -- 3.7 mm3 of contact against the coil's 5 N, which the user rightly would
-    not take (the adapter's mortise roof caps it, but only with the leg ON)."""
-    from cadkit.fasteners import M4
+def _lock_axis(sx=LS.LEG_X, ly=LS.LEG_Y):
+    """(entry point, unit direction, run) for the keeper's lock screw.
+
+    It is TILTED, and that is the whole trick. A O7.6 button head -- the only M4 head
+    on this instrument, because its 2.5 hex is the one driver (fasteners.AGENTS) --
+    needs 4.2 of radius about its axis, and the tenon has only THROAT_L of height above
+    the jack's rest. Square to the flank the head stood 1.9 PROUD of the tip and would
+    have fouled the mortise roof; so would the insert's O6.0 pocket. Tilted, the head
+    and the insert walk DOWN the flank into solid tenon while the tip still reaches the
+    keeper's groove, and the tilt also means the screw seats the keeper DOWN rather
+    than merely blocking it."""
     x, y = _ax(sx, ly)
-    face_x = _flank_x(y, LOCK_Z)
-    bite = face_x - (x + (THROAT_BORE_D + THROAT_PRESS) / 2.0)
-    assert bite >= M4.min_bite, (
-        "only %.2f of +X flank between the keeper and the outside -- not enough to "
-        "thread-form an M4 (min bite %.2f)" % (bite, M4.min_bite))
+    t = math.radians(LOCK_TILT)
+    d = (0.0, math.cos(t), math.sin(t))                  # inward from -Y, and upward
+    tip = (x, y - (THROAT_BORE_D + THROAT_PRESS) / 2.0 + LOCK_GROOVE, LOCK_Z)
+    prism = LS.tenon(LOCK_Z - 40.0, LOCK_Z + 5.0).val()
+    run = 0.0
+    while run < 40.0:
+        p = cq.Vector(tip[0] - d[0] * run, tip[1] - d[1] * run, tip[2] - d[2] * run)
+        if not prism.isInside(p, 1e-4):
+            break
+        run += 0.05
+    entry = (tip[0] - d[0] * run, tip[1] - d[1] * run, tip[2] - d[2] * run)
+    return entry, d, run
+
+
+def lock_negatives(sx: float = LS.LEG_X, ly: float = LS.LEG_Y, up=None):
+    """The lock screw's hole in the FIXED TENON: a recessed O7.6 button head, its
+    heat-set insert, and clearance on through to the keeper's groove. Without it the
+    keeper is held by THROAT_PRESS alone -- 1.7 mm3 of contact against the coil's 5 N,
+    which the user rightly would not take (the mortise roof caps it, but only with the
+    leg ON)."""
+    from cadkit.fasteners import M4, M4_BUTTON_HEAD_D, M4_BUTTON_HEAD_H, anchor_cutter
+    entry, d, run = _lock_axis(sx, ly)
     up = up or LS.PRINT_UP["fixed_tenon"]
-    # PLAIN ROUND, not teardropped: this bore lies 45 degrees off the tenon's diagonal
-    # build, which is inside leg_stack.TEN_HOLE_LIMIT_DEG, exactly as the ladder holes
-    # in the adjust tenon are. Teardropping it anyway threw an apex at the -Y flank and
-    # took that wall to 1.10 (tools/check_thin).
-    end_x = x + (THROAT_BORE_D + THROAT_PRESS) / 2.0 - LOCK_GROOVE
-    out = teardrop_hole(M4.selftap_d, (face_x + 4.0) - end_x,
-                        (face_x + 4.0, y, LOCK_Z), (-1.0, 0.0, 0.0), up,
-                        limit_deg=LS.TEN_HOLE_LIMIT_DEG)
-    # OPEN AT THE TIP, not a buried hole. The mate chain leaves THROAT_L of tenon above
-    # the jack's rest, and an M4 cross-hole with MIN_WALL_2P over it wants about 6 --
-    # buried, it left 0.20 of web (tools/check_thin). So the slot runs out through the
-    # tip face, which is the one face that does not need to hold anything: the adapter's
-    # mortise roof lands flat on it and caps the slot the moment the leg is on.
-    slot = (cq.Workplane("XY")
-            .box(( face_x + 4.0) - end_x, M4.selftap_d + 0.8,   # WIDER than the bore:
-                 # flush with it the two are tangent and leave a zero-thickness feather
-                 (LS.Z_MORTISE_ROOF + 1.0) - LOCK_Z,
-                 centered=(False, True, False))
-            .translate((end_x, y, LOCK_Z)))
-    return out.union(slot)
+    assert run >= LOCK_RECESS + M4.insert_l + M4.min_bite, (
+        "only %.2f of tenon along the lock's axis -- not enough for a recessed head, "
+        "its insert and a bite" % run)
+    # the head's recess, opened outward so it breaks the sloping flank cleanly
+    head = teardrop_hole(M4_BUTTON_HEAD_D + 2 * 0.4, LOCK_RECESS + 4.0,
+                         (entry[0] - d[0] * 4.0, entry[1] - d[1] * 4.0,
+                          entry[2] - d[2] * 4.0), d, up,
+                         limit_deg=LS.TEN_HOLE_LIMIT_DEG)
+    # ...then the insert's pocket and the clearance on to the groove
+    mouth = (entry[0] + d[0] * LOCK_RECESS, entry[1] + d[1] * LOCK_RECESS,
+             entry[2] + d[2] * LOCK_RECESS)
+    body = anchor_cutter(M4, mouth, d, run - LOCK_RECESS + LOCK_GROOVE + 0.4,
+                         print_up=up)
+    return head.union(body)
+
+
+def lock_dummies(sx: float = LS.LEG_X, ly: float = LS.LEG_Y, k: int = 0):
+    """The screw and its insert, where they actually sit -- so the tab shows hardware
+    and not just a hole (user)."""
+    from cadkit.fasteners import (M4, M4_BUTTON_HEAD_H, m4_button_screw,
+                                  seated_insert)
+    entry, d, run = _lock_axis(sx, ly)
+    mouth = (entry[0] + d[0] * LOCK_RECESS, entry[1] + d[1] * LOCK_RECESS,
+             entry[2] + d[2] * LOCK_RECESS)
+    ins = seated_insert(M4, mouth, d)
+    sc = m4_button_screw(LOCK_SCREW_L)
+    # m4_button_screw draws head-top at z 0 down -Z; put its head top at the recess floor
+    top = (entry[0] + d[0] * (LOCK_RECESS - M4_BUTTON_HEAD_H),
+           entry[1] + d[1] * (LOCK_RECESS - M4_BUTTON_HEAD_H),
+           entry[2] + d[2] * (LOCK_RECESS - M4_BUTTON_HEAD_H))
+    sc = _aim(sc, d).translate(top)
+    return [("leg_trrs_lock_screw_%d" % k, sc),
+            ("leg_trrs_lock_insert_%d" % k, ins)]
+
+
+def _aim(w, d):
+    """Turn a dummy drawn along -Z onto `-d` (screws drive INWARD along d)."""
+    import cadquery as _cq
+    v = _cq.Vector(*d)
+    z = _cq.Vector(0, 0, -1)
+    ax = z.cross(v)
+    if ax.Length < 1e-9:
+        return w if v.z < 0 else w.rotate((0, 0, 0), (1, 0, 0), 180)
+    ang = math.degrees(math.acos(max(-1.0, min(1.0, z.dot(v)))))
+    return w.rotate((0, 0, 0), ax.toTuple(), ang)
 
 
 def _run(pts, d=CABLE_D):
@@ -376,4 +428,4 @@ def dummies(sx: float = LS.LEG_X, ly: float = LS.LEG_Y, k: int = 0, mated: bool 
                               cq.Vector(x, y, SPR_SEAT - 1.0), cq.Vector(0, 0, 1))))
     return [("leg_trrs_plug_%d" % k, plug), ("leg_trrs_jack_%d" % k, jack),
             ("leg_trrs_spring_%d" % k, coil),
-            ("leg_trrs_throat_%d" % k, throat(sx, ly))] + cables(sx, ly, k)
+            ("leg_trrs_throat_%d" % k, throat(sx, ly))] + lock_dummies(sx, ly, k)         + cables(sx, ly, k)
