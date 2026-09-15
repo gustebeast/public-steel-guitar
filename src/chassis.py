@@ -180,8 +180,15 @@ def _rib_positions():
     return sorted(base + mids)   # _RIB_X is trimmed against the leg stubs below
 
 _RIB_X = _rib_positions()
+# TARGETS MOVED (user's drop-in motor pockets, 2026-09-11): a housing is now 62.3 wide on a
+# 43.9 pitch, so it reaches 31.15 past its own motor and the segment that OWNS that motor
+# carries the whole overhang. A segment's real footprint is therefore its end motors +-31.15,
+# not the split planes -- the old targets left segment 0 at 265.5, over the bed. These put one
+# motor in segment 0 and five/four in the others. BED_X asserts the lengths; wiring asserts
+# that neither plane lands in the RAIL NOTCH at motor 9, where the trunk dips outboard -- a
+# split there puts its tenon back through the dip (5 wires were buried in it).
 SPLIT_X  = [D.rib_comb_x(_t - D.MOTOR_X_STEP / 4) + D.MOTOR_X_STEP / 4
-            for _t in (-216.5, -446.5)]  # 2 cuts → 3 segments < 255 mm, each at the MIDDLE of the rib gap nearest its target, in a
+            for _t in (-205.0, -409.5)]  # 2 cuts → 3 segments < BED_X, each at the MIDDLE of the rib gap nearest its target, in a
                                        # 13 mm gap BETWEEN two ribs. The cut straddles a 43-wide motor
                                        # plate, but that plate is fused WHOLE into the segment that owns
                                        # its motor (see _segments): it overhangs the cut plane with its
@@ -252,7 +259,7 @@ def _diamond_xz(cx, cz, h, yr):
 # notch the -Y rail's inner face for those cables over that span and DROP the diamond
 # lightening there (keep the rail SOLID around the notch, per the user). +X-most motor.
 _M9X_CH = D.motor_pos(D.N_STRINGS - 1)[0]                 # -110
-M9_CUT_X0, M9_CUT_X1 = _M9X_CH - 25.0, _M9X_CH + 35.0     # cutout X-span (-135..-75; covers the m9 tee run)
+M9_CUT_X0, M9_CUT_X1 = _M9X_CH - 25.0, _M9X_CH + 35.0     # cutout X-span (covers the m9 trunk dip)
 M9_CUT_YBACK = Y_LO + T / 2 - 4.0                         # notch back: inner face -> 4mm into the rail
 M9_CUT_Z0, M9_CUT_Z1 = -64.0, -40.0                      # trunk Z-band (above the rib tops, over the top lane)
 
@@ -697,8 +704,51 @@ def _segments():
                 seg = seg.union(MB.plates[mi])
             else:                                     # a neighbour's plate may overhang in: relieve it
                 seg = seg.cut(MB.plates[mi])
+        # EVERY motor's lift path, out of EVERYTHING fused above: a bay claims the whole gap on
+        # each side (one 1.6 wall between two motors, not two 0.8 halves), so it reaches across
+        # into its neighbour's fit and only this cut takes it back out. It is also what keeps
+        # every motor's way IN clear, whatever gets built over the bank.
+        for _mi in range(D.N_STRINGS):
+            seg = seg.cut(MB.lift_prism(_mi))
+            seg = seg.cut(MB.tee_pocket(_mi))     # ...and its tee board's, which reaches into
+                                                  # the neighbouring bay (40 board, 42.3 motor)
+        # THE HARNESS CORRIDOR is the wiring's, the whole length of the bank: the trunk rides it
+        # at MB.HARNESS_Y1 and DIPS OUTBOARD into the rail notch behind the +X-most motor, so
+        # there is nowhere down here a bay may reach the rail. What survives is the part of each
+        # bay's back wall ABOVE the corridor, and it gets a 45 deg underside so it is a wedge off
+        # what is left rather than a shelf hanging over the wiring.
+        _cy0 = Y_LO - 20.0
+        seg = seg.cut(box_at((a - b) + 40.0, MB.HARNESS_Y1 - _cy0, MB.HARNESS_Z1 - (Z_BOT - 10.0),
+                             x=(a + b) / 2, y=(_cy0 + MB.HARNESS_Y1) / 2,
+                             z=((Z_BOT - 10.0) + MB.HARNESS_Z1) / 2))
+        # RISE PAST THE PRISM'S TOP, not past the seat plane. The wedge is a triangle, so its
+        # own top edge is FLAT: anything the bay puts above that edge survives with a flat
+        # underside. Sized to Z_HI it topped out at -27.25 and left 1.8 of each side wall
+        # hanging there -- two 7.6 mm2 ceilings on string 10's bay, which the user spotted.
+        _rise = (MB.SEAT_TOP - MB.HARNESS_Z1) + 1.0
+        _prof = [(MB.HARNESS_Y1, MB.HARNESS_Z1), (MB.HARNESS_Y1, MB.HARNESS_Z1 + _rise),
+                 (MB.HARNESS_Y1 - _rise, MB.HARNESS_Z1 + _rise)]
+        seg = seg.cut(cq.Workplane("YZ").workplane(offset=b - 20.0)
+                      .polyline(_prof).close().extrude((a - b) + 40.0))
+        # THE LEVER MORTISES, RE-CUT AFTER THE BAYS (user, 2026-09-15). _build_full cuts a
+        # christmas-tree into every rib, but the housings fuse in above it -- and each faceplate
+        # wall runs all the way down to the BED, so it crosses the ribs and fills those mortises
+        # straight back in. The documented refill trap: a feature cut before a union does not
+        # survive the union. Same remedy as the tee anchors in build.py -- re-cut afterwards,
+        # for the ribs this segment actually holds.
+        from . import knee_lever as _KL2
+        for _rx in _RIB_X:
+            if b - 30.0 < _rx < a + 30.0:
+                seg = seg.cut(_KL2.rib_mortise(_rx))
         segs.append(_largest(seg))
     return segs
 
 
 segments = _segments()
+
+BED_X = 255.0                          # the printer's X, the reason the chassis is in pieces
+for _si, _seg in enumerate(segments):
+    _sl = _seg.val().BoundingBox().xlen
+    assert _sl <= BED_X + 1e-6, (
+        "chassis segment %d is %.1f long, over the %.0f bed -- move SPLIT_X (remember each "
+        "segment carries its end motors' housings, 31.15 past the motor)" % (_si, _sl, BED_X))
