@@ -43,6 +43,7 @@ from .bridge_endplate import bridge_endplate
 from . import bridge_endplate as BE
 from . import belt_tensioner as BTn
 from .chassis import segments as chassis_segments
+from .chassis import segments_light as chassis_light
 from . import nut_block as NB
 from . import tension_fork as TF
 from . import pickup_mount as PM
@@ -243,6 +244,15 @@ for _ctx, _cutters in _WR_FUSE.tee_hold_negatives():
             for _cut in _cutters:
                 chassis_segments[_csi] = chassis_segments[_csi].cut(_cut)
             break
+chassis_light = list(chassis_light)
+for _i, _lt in enumerate(chassis_light):        # the transparent under-rail band
+    PARTS[f"chassis_{_i}_light"] = (
+        partial(heal, _lt), f"petg/chassis_{_i}_light.step",
+        "PETG (TRANSPARENT) — light band, 8 mm along the +Y rail's UNDERSIDE (print AS ONE "
+        f"OBJECT with chassis_{_i}, the deck panels' base/colour pattern). The bottom is sealed "
+        "now, which is what keeps the motor noise in; this is the one deliberate leak, aimed "
+        "DOWN off the bed face so it lights the pedals and the player's feet. Same resin family "
+        "as the PETG-GF body, so the two weld and purge cleanly")
 for _i, _seg in enumerate(chassis_segments):     # chassis split into dovetailed segments
     PARTS[f"chassis_{_i}"] = (partial(heal, _seg), f"petg-gf/chassis_{_i}.step",
                               "PETG-GF — chassis segment (cadkit slide-down T joint per rail; NO glue "
@@ -1064,6 +1074,7 @@ def body_work_components():
             if n.startswith("motor")]
     out += _electronics_components()          # includes the deck pieces
     out += [(f"chassis_{i}", seg) for i, seg in enumerate(chassis_segments)]
+    out += [(f"chassis_light_{i}", lt) for i, lt in enumerate(chassis_light)]
     out += _leg_components()
     out += _pickup_mount_components()
     return out
@@ -1285,6 +1296,7 @@ _COLORS = {
                                              # detectors, so a light one would bounce IR
     "top_plate":       (0.88, 0.91, 0.94),   # transparent-PCTG deck base + fret lines
     "top_plate_color": (0.30, 0.33, 0.38),   # colour-PCTG deck layer (skin contact)
+    "chassis_light":   (0.92, 0.90, 0.72),   # transparent under-rail band (lit)
     "oled":            (0.05, 0.05, 0.08),   # screen (perfect-black OLED)
     "joystick":        (0.15, 0.15, 0.17),   # UI control
     "ts_jack":         (0.62, 0.64, 0.67),

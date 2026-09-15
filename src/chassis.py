@@ -689,6 +689,20 @@ def _br_tongue(yc, socket=False):
     return lower.union(upper)
 
 
+LIGHT_BAND_H = 8.0      # transparent band along the +Y rail's UNDERSIDE (user, 2026-09-15):
+                        # the sealed bottom holds the motor noise in, but a deliberate LEAK
+                        # here spills light down past the +Y flank to light the player's feet.
+                        # On the -Z side, not the +Y face: it is the bed face of that rail, so
+                        # the light goes DOWN toward the pedals rather than out across the room.
+
+
+def _light_band():
+    """The band's own volume, over the whole body. Intersected with a segment it gives
+    that segment's transparent piece; cut from it, the groove the piece fills."""
+    return box_at((X_BRIDGE - X_NUT) + 40.0, T, LIGHT_BAND_H,
+                  x=_XC, y=Y_HI, z=Z_BOT + LIGHT_BAND_H / 2)
+
+
 def _seg_box(a, b):
     h = (Z_TOP + 18.0) - (Z_BOT - 6.0)
     return box_at(abs(a - b) + 0.02, (Y_HI - Y_LO) + 40.0, h,
@@ -826,7 +840,27 @@ def _segments():
     return segs
 
 
-segments = _segments()
+def _split_light(segs):
+    """(opaque, transparent) for each segment. Same origin, printed as ONE object in two
+    filaments -- the deck panels' base/colour pattern (build.py registers them as a pair).
+
+    Each band is clipped to its OWN segment's X span. _seg_box deliberately overshoots its
+    neighbour by 0.02 so the halves of a seam joint meet; inherited by the band that reads as
+    two transparent parts interpenetrating (1.1 mm3 a seam, which the gate duly reported)."""
+    edges = [_SHELL_PX + KH_DT_DEPTH + 2.0] + sorted(SPLIT_X, reverse=True) + [X_NUT]
+    out = []
+    for i, s in enumerate(segs):
+        a, b = edges[i], edges[i + 1]
+        band = _light_band().intersect(
+            box_at(a - b, T + 2.0, LIGHT_BAND_H + 2.0,
+                   x=(a + b) / 2, y=Y_HI, z=Z_BOT + LIGHT_BAND_H / 2))
+        out.append((s.cut(_light_band()), s.intersect(band)))
+    return out
+
+
+_seg_pairs = _split_light(_segments())
+segments       = [s for s, _ in _seg_pairs]
+segments_light = [c for _, c in _seg_pairs]
 
 BED_X = 255.0                          # the printer's X, the reason the chassis is in pieces
 for _si, _seg in enumerate(segments):
