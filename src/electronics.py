@@ -631,6 +631,22 @@ TEE_CONN_CY  = 2.0                                   # THE TAIL LINE. Both pin r
 TEE_CONN_MOUTH_DY = -3.25                            # mouth face, from the pad row: the body is
                                                      # 6.1 deep (cadkit XH_SIDE_D) and the row
                                                      # sits 2.85 from its back.
+# ── THE EAR (branner, 2026-09-15) ────────────────────────────────────────────
+# A SCREW BESIDE THE BOARD ONLY RESISTS PULL-OUT BY FRICTION, and the tee is
+# pulled in exactly that direction whenever a cable comes off -- the connector
+# mouths face -Y, so unplugging tugs -Y and only the head's grip opposes it. A
+# screw THROUGH the board is positive in X and Y both.
+# It does not fit inside 40 x 16: an M4 clearance hole wants 4.4 of component-free
+# board and the connector courtyards reach within 3.145 of the +Y edge, 1.255
+# short with nothing to give. So the OUTLINE grew and the LAYOUT did not -- every
+# courtyard is where it was and TEE_CONN_CY is still 2.0.
+# ⚠ THE EAR IS A TAB, NOT FULL DEPTH (branner): the motor bank staggers 9.5 in Y
+# and that stagger is what lets ten ears interlock past each other. A full-depth
+# ear clashed board-into-board at 48.5 mm3 per pair.
+TEE_EAR_W, TEE_EAR_H = 9.5, 8.7              # off the +X end, at the +Y corner
+TEE_HOLE_D = 4.5                             # M4 clearance, centred in the ear
+TEE_HOLE_DX = TEE_BOARD_X / 2 + TEE_EAR_W / 2        # +24.75, board-local
+TEE_HOLE_DY = TEE_BOARD_Y / 2 - TEE_EAR_H / 2        # +3.65
 TEE_RELIEF   = (33.0, 3.0)                           # tail window (w x l), centred (0, CONN_CY)
 # The terminator, as TWO parts rather than the one lumped box this used to carry.
 # (name, X, Y, height, x, y) board-local, mirroring elec/can_tee.py's placements
@@ -661,6 +677,11 @@ def tee_pcb(x: float, y: float, drop: int = 1, accurate: bool = True) -> cq.Work
     top = FLOOR_Z + 1.6                              # board top face; connectors rise +Z
     cy = tee_board_cy(y)
     b = box_at(TEE_BOARD_X, TEE_BOARD_Y, 1.6, x=x, y=cy, z=FLOOR_Z + 0.8)
+    # the ear, and then the hole through it
+    b = b.union(box_at(TEE_EAR_W, TEE_EAR_H, 1.6,
+                       x=x + TEE_HOLE_DX, y=cy + TEE_HOLE_DY, z=FLOOR_Z + 0.8))
+    b = b.cut(cyl(TEE_HOLE_D, 4.0, z=FLOOR_Z - 1.0)
+              .translate((x + TEE_HOLE_DX, cy + TEE_HOLE_DY, 0)))
     for dx, n in ((TEE_TRUNK_X, TEE_TRUNK_N), (TEE_DROP_X, TEE_CONN_N)):
         # side entry: cadkit's frame puts the MOUTH at y=0 with the body +Y, so
         # the part lands at the mouth, not at the pad row

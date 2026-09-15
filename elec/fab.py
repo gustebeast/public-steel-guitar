@@ -67,6 +67,34 @@ LCSC = {
     "S8B-PH-SM4-TB": "C265121",     # 8-way side-entry PH -- lever trunk and the
                                     # optical <-> output-panel link
 }
+# ⚠ EVERY VALUE STRING MUST BE ACCOUNTED FOR -- IN LCSC, GENERIC, OR HERE.
+# branner's catch, and it is the right shape for the bug that happened: usb_panel's
+# J2 kept its OLD part number in `value` after its footprint moved to a different
+# connector, and the BOM reads `value`. NOTHING ELSE IN THE PIPELINE DOES -- not
+# the netlist, not the layout, not DRC -- so a stale part number is invisible
+# right up until a box of nine-contact USB 3.0 shells arrives for a four-pad
+# footprint. Only running fab.py caught it, and only because I happened to read
+# the output.
+#
+# Reporting unknowns was not enough: a changed value simply joined the OPEN pile
+# and looked like every other undecided part. So unknowns are now DECLARED. A
+# value that is neither sourced nor generic nor listed below FAILS THE BUILD,
+# which means changing a part number forces you to come here and say so.
+OPEN_VALUES = frozenset({
+    "B4B-XH-A",            # the project's standard 4-way XH, still unsourced
+    "S4B-XH-A",            # its side-entry sibling, the motor tee's drop
+    "LMR33630ADDAR",       # power board buck -- confirm LCSC stock at order time
+    "NMJ4HCD2",            # 1/4 in jack; BOM.md prices it, no LCSC line yet
+    "PJ-102AH",            # 24 V barrel inlet, ditto
+    "USB1046-GF-0180",     # GCT USB-A. ⚠ THE ONE THAT WENT WRONG -- if this
+                           # string ever changes, that is the footprint moving
+                           # under it, and the build should stop until someone
+                           # confirms the two still agree
+    "FRT5-class 5V",       # true-bypass relay -- a class, not a part, on purpose
+    "PCM5102A-class",      # DAC -- ditto
+    "single RRO op-amp",   # output buffer -- ditto
+})
+
 # Generic passives are JLCPCB BASIC parts chosen at order time from the package and
 # value, which is normal practice and not an omission -- an 0402 100nF is not a
 # sourcing decision. They are reported separately from the real OPENs.
@@ -144,8 +172,16 @@ def fab(board):
         for (val, fp), refs in sorted(groups.items()):
             code = LCSC.get(val, "")
             if not code:
-                (open_generic if GENERIC.search(fp.split(":", 1)[1]) or
-                 GENERIC.search(fp) else open_real).add(val)
+                generic = bool(GENERIC.search(fp.split(":", 1)[1]) or GENERIC.search(fp))
+                if not generic and val not in OPEN_VALUES:
+                    raise SystemExit(
+                        "%s: value %r (%s) is neither sourced, generic, nor "
+                        "declared OPEN. Nothing but the BOM reads the value "
+                        "field, so an unrecognised one is how a wrong part "
+                        "gets ordered. Add it to fab.LCSC if you know the "
+                        "part number, or to fab.OPEN_VALUES if you do not."
+                        % (board, val, fp.split(":", 1)[1]))
+                (open_generic if generic else open_real).add(val)
             w.writerow([val, ",".join(sorted(refs)), fp.split(":", 1)[1], code])
 
     z = os.path.join(FAB_DIR, "%s.zip" % board)
