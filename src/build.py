@@ -735,7 +735,6 @@ def _electronics_components():
     from . import top_plate as TP
     out = [("electronics_tray", EL.electronics_tray()),
            ("pi5", EL.pi5()),
-           ("power_pcb", EL.power_pcb()),
            ("motor_ctrl", EL.motor_ctrl()),
            ("output_panel", EL.output_panel()),
            ("oled", EL.oled()), ("joystick", EL.joystick())]
@@ -1017,7 +1016,7 @@ def screw_rows_components():
 
 BODY_WORK_PARTS = SCREW_ROW_PARTS + (
     "bridge_endplate", "bridge_bearings", "motor", "chassis_",
-    "electronics_tray", "pi5", "motor_ctrl", "power_pcb", "tee_", "wire_",
+    "electronics_tray", "pi5", "motor_ctrl", "tee_", "wire_",
     "output_panel", "joystick", "oled",
     "body_adapter", "lock_pin_", "adjust_", "fixed_", "bar_latch_", "leg_latch_")
 
@@ -1234,7 +1233,6 @@ _COLORS = {
     # electronics bay (dummies) + panel jacks
     "electronics_tray": (0.30, 0.36, 0.32),  # printed tray
     "pi5":             (0.05, 0.35, 0.15),   # PCB green
-    "power_pcb":       (0.35, 0.30, 0.50),   # 24->5 V power board (buck + crowbar)
     "output_panel":    (0.45, 0.30, 0.45),   # output + panel board (VBUS broken,
                                              # DAC + true-bypass relay + the TS jack)
     "motor_ctrl":      (0.55, 0.25, 0.25),   # motor controller PCB (CH32V307 +

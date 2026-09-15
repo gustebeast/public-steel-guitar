@@ -73,7 +73,7 @@ PI_FP     = (-603.0, -547.0, -50.0, 35.0)     # Pi 5: 56 x 85 (long side on Y);
 # corner and the buck turns with it into the strip east of it. The ADC shifted
 # 3 south to clear it; 0.5 of gap is all that is left between them, which is the
 # honest state of a 60 x 181 tray holding four boards.
-MCTRL_FP  = (-607.0, -572.0, -127.5, -87.5)   # motor controller, 35 x 40 (ROTATED)
+MCTRL_FP  = (-600.0, -554.0, -127.5, -69.5)   # motor controller + power, 46 x 58
 
 BOARD_Z = TRAY_Z1 + POST_H             # every bottom board sits at -67
 
@@ -211,7 +211,7 @@ def electronics_tray(standing: bool = True) -> cq.Workplane:
                   x=(TRAY_X0 + TRAY_X1) / 2, y=(TRAY_Y0 + TRAY_Y1) / 2,
                   z=(TRAY_Z0 + TRAY_Z1) / 2)
     # each board rests on four plain posts -- no retention yet (see _support_posts)
-    for fp, bz in ((PI_FP, BOARD_Z), (MCTRL_FP, BOARD_Z), (PWR_FP, BOARD_Z)):
+    for fp, bz in ((PI_FP, BOARD_Z), (MCTRL_FP, BOARD_Z)):
         body = body.union(_support_posts(fp, bz))
     # (the NORTH-SHELF lane channel for the TRRS pigtail is gone: standing, the tray's
     #  bottom edge rides above that pigtail instead of lying over it)
@@ -245,71 +245,11 @@ def pi5() -> cq.Workplane:
 # is the wrong way round: the model is what other agents measure against.)
 
 
-# ── POWER BOARD ──────────────────────────────────────────────────────────────
-# IT REPLACES THE PURCHASED BUCK MODULE, and drops into the slot that module
-# already held -- 22 x 36 inside the module's 23 x 36 -- so the tray does not move.
-# BOM.md carried a Pololu D24V50F5 at $29.95 for the Pi plus a D24V10F5 at $12.95
-# that existed only to power the Teensy, which is gone. Both are through-hole
-# modules on 0.1 in headers and neither is an LCSC line, so neither can be placed
-# by the assembler: they are hand-soldered wiring in the tray, which is the thing
-# the whole connector strategy exists to delete.
-#
-# ⚠ THE CROWBAR IS THE POINT OF IT, not the buck. The Pi has to be fed from its
-# GPIO header (its USB-C port is the front panel's gadget port), and on the Pi 4B
-# the USB-C VBUS pin and the GPIO 5 V pins are THE SAME NODE with no polyfuse
-# between them -- so feeding the header skips every input protection the Pi has.
-# F2 in series with the 5 V output and D2 across it rebuild it: if the converter
-# ever fails SHORT, 24 V lands on that rail and takes the Pi, the OLED and the
-# joystick with it. D2 conducts, F2 opens, damage stops at a $0.30 part.
-# See elec/power.py.
-PWR_BOARD_X, PWR_BOARD_Y = 22.0, 36.0
-PWR_FP = (-569.5, -547.5, -127.5, -91.5)     # inside the module's old 23 x 36 slot
-PWR_J = {"J1": (0.0, -15.0, 180.0),          # 24 V in from the trunk tail
-         "J2": (0.0, 15.0, 0.0)}             # 5 V out to the Pi's GPIO 2/4 + 6/9
-# Board-local, GENERATED from the laid-out board: XY is the KiCad courtyard about
-# each pad centroid, height is package-family typical (the one hand-entered column,
-# and the one to distrust). The connectors are modelled properly by cadkit.
-PWR_BOM = (
-    ("C1", "10uF/50V",      4.69, 2.39, 1.60,  -7.00, -4.50),
-    ("C2", "10uF/50V",      4.69, 2.39, 1.60,  -1.50, -4.50),
-    ("C3", "100nF",         1.91, 1.01, 0.55,   3.00, -4.50),
-    ("C4", "1uF",           1.91, 1.01, 0.55,  -9.00,  3.60),
-    ("C5", "100nF",         1.91, 1.01, 0.55,  -9.00,  4.80),
-    ("C6", "22uF/16V",      3.49, 2.05, 1.45,  -3.00,  6.00),
-    ("C7", "22uF/16V",      3.49, 2.05, 1.45,  -3.00,  8.50),
-    ("D1", "SMAJ30A",       7.09, 3.59, 2.20,   1.00, -8.50),
-    ("D2", "SMBJ5.0A",      7.39, 4.59, 2.30,   4.00,  7.00),
-    ("F1", "1A",            4.65, 2.35, 1.10,  -7.00, -8.50),
-    ("F2", "4A",            4.65, 2.35, 1.10,  -7.50,  7.00),
-    ("L1", "6.8uH",         6.69, 6.29, 2.80,   5.50,  0.00),
-    ("R1", "100k",          1.95, 1.03, 0.50,  -9.00, -2.00),
-    ("R2", "preset",        1.95, 1.03, 0.50,  -9.00, -0.50),
-    ("R3", "preset",        1.95, 1.03, 0.50,  -9.00,  1.00),
-    ("R4", "preset",        1.95, 1.03, 0.50,  -9.00,  2.40),
-    ("U1", "LMR33630ADDAR", 7.49, 5.49, 1.75,  -3.00,  0.00),
-)
-USBP_BOM = (
-    ("D1", "ESD",  2.59, 1.49, 0.75,   6.50, -2.50),
-    ("D2", "ESD",  2.59, 1.49, 0.75,   6.50, -4.50),
-    ("R1", "5k1",  1.95, 1.03, 0.50,  -6.50, -2.50),
-    ("R2", "5k1",  1.95, 1.03, 0.50,  -6.50, -4.50),
-)
-
-
-def power_pcb() -> cq.Workplane:
-    """The power board, posed in the standing tray (see PWR_FP). It DROPS INTO THE
-    SLOT the purchased buck module held, so the tray does not move."""
-    cx, cy = _ctr(PWR_FP)
-    b = box_at(PWR_BOARD_X, PWR_BOARD_Y, BD_T, x=cx, y=cy, z=BOARD_Z + BD_T / 2)
-    top = BOARD_Z + BD_T
-    for ref, (jx, jy, rot) in PWR_J.items():
-        p = jst_xh_header(4, mated=True, flip=True)
-        if rot:
-            p = p.rotate((0, 0, 0), (0, 0, 1), rot)
-        b = b.union(p.translate((cx + jx, cy + jy, top)))
-    for _n, _v, _w, _l, _h, _x, _y in PWR_BOM:
-        b = b.union(box_at(_w, _l, _h, x=cx + _x, y=cy + _y, z=top + _h / 2))
-    return stand(b)
+# (THE POWER BOARD IS DELETED, 2026-09-15, merged into the motor controller. It was
+#  its own PCB here; folding it in removed a board, a connector and a cable -- and,
+#  more usefully, a JUNCTION. The 24 V trunk had to feed both boards at the keyhead
+#  and the power board had only a 4-way INLET, so that branch was the one splice in
+#  an instrument where every other branch is a board. See elec/motor_ctrl.py U5/F1/F2.)
 
 
 # ── OUTPUT + PANEL BOARD ─────────────────────────────────────────────────────
@@ -461,14 +401,17 @@ def usb_panel_y() -> float:
 # board here: 40 x 35 is what elec/motor_ctrl.py's own contents came to, and the
 # TRAY was re-laid-out around it (see MCTRL_FP). It stands 90 deg to the tray's
 # X so 40 of board fits across 60 of tray beside the buck.
-MCTRL_BOARD_X, MCTRL_BOARD_Y = 40.0, 35.0
-MCTRL_ROT = 90.0                 # board +X -> tray +Y (see MCTRL_FP)
+MCTRL_BOARD_X, MCTRL_BOARD_Y = 46.0, 58.0
+MCTRL_ROT = 0.0                  # UNROTATED now: at 46 x 58 the board fits
+                                 # the tray straight, and the ADC slot it grows
+                                 # into is free (that board is deleted).
 # Pad-row centres, board-local, straight out of elec/motor_ctrl.py's placements.
-MCTRL_J = {"J1": (-10.0, 14.0, 0.0),     # bus A out -- the ten motor tees
-           "J2": (4.0, 14.0, 0.0),       # bus B out -- the eight lever boards
-           "J3": (15.5, 3.0, 90.0),      # 24 V in, +X edge
-           "J4": (0.0, -9.0, 0.0)}       # USB-C to the Pi, -Y edge
-MCTRL_USB = (10.73, 9.51, 3.26, 0.0, -11.81)   # HRO TYPE-C-31-M-12: courtyard + height
+MCTRL_J = {"J1": (-10.0, 2.5, 0.0),      # bus A out -- the ten motor tees
+           "J2": (4.0, 2.5, 0.0),        # bus B out -- the eight lever boards
+           "J3": (15.5, -8.5, 90.0),     # 24 V in, +X edge
+           "J4": (0.0, -20.5, 0.0),      # USB-C to the Pi, -Y edge
+           "J5": (0.0, 26.0, 0.0)}       # 5 V to the Pi's GPIO (was the power board)
+MCTRL_USB = (10.73, 9.51, 3.26, 0.0, -23.31)   # HRO TYPE-C-31-M-12: courtyard + height
 # Every populated part except the four connectors, which are modelled properly
 # (cadkit XH / the USB block above). (name, value, X, Y, height, x, y), board-local
 # and GENERATED from the laid-out board -- XY is the KiCad COURTYARD about the pad
@@ -477,45 +420,62 @@ MCTRL_USB = (10.73, 9.51, 3.26, 0.0, -11.81)   # HRO TYPE-C-31-M-12: courtyard +
 # column: it is package-family typical (the same figures knee_lever.SENSOR_BOM
 # carries), not a footprint output, and it is the number to distrust.
 MCTRL_BOM = (
-    ("C1",  "4.7uF/50V",      4.69,  2.39, 1.60,  -16.50,  -3.50),
-    ("C2",  "10uF/16V",       3.49,  2.05, 1.45,  -16.00,  -6.50),
-    ("C3",  "100nF",          1.91,  1.01, 0.55,  -12.50,  -3.50),
-    ("C4",  "12pF",           1.91,  1.01, 0.55,   -8.00,  -5.00),
-    ("C5",  "12pF",           1.91,  1.01, 0.55,    0.00,  -5.00),
-    ("C6",  "100nF",          1.91,  1.01, 0.55,  -11.00,   2.00),
-    ("C7",  "100nF",          1.91,  1.01, 0.55,  -11.00,   5.00),
-    ("C8",  "100nF",          1.91,  1.01, 0.55,  -11.00,   6.50),
-    ("C9",  "100nF",          1.91,  1.01, 0.55,   -8.60,   8.50),
-    ("C10", "100nF",          1.91,  1.01, 0.55,   -6.60,   8.50),
-    ("C11", "100nF",          1.91,  1.01, 0.55,   -4.60,   8.50),
-    ("C12", "100nF",          1.91,  1.01, 0.55,   -2.60,   8.50),
-    ("C13", "100nF",          1.91,  1.01, 0.55,   -0.60,   8.50),
-    ("C14", "100nF",          1.91,  1.01, 0.55,    1.40,   8.50),
-    ("C15", "10uF",           3.49,  2.05, 1.45,   -8.00,  -7.50),
-    ("D1",  "B5819W",         4.79,  2.39, 1.10,  -16.00,   0.00),
-    ("D2",  "SMF24CA",        2.59,  1.49, 0.75,   12.30,  12.50),
-    ("D3",  "SMF24CA",        2.59,  1.49, 0.75,   15.30,  12.50),
-    ("D4",  "SMF24CA",        2.59,  1.49, 0.75,   10.00,  -5.50),
-    ("D5",  "SMF24CA",        2.59,  1.49, 0.75,   13.00,  -5.50),
-    ("D6",  "ESD",            2.59,  1.49, 0.75,    7.00, -12.50),
-    ("D7",  "ESD",            2.59,  1.49, 0.75,   10.00, -12.50),
-    ("JP1", "TERM",           3.39,  2.59, 0.05,   16.50,  -6.00),
-    ("JP2", "TERM",           3.39,  2.59, 0.05,   16.50, -13.00),
-    ("L1",  "47uH",           3.69,  3.69, 1.50,  -16.00,   3.50),
-    ("R1",  "100k",           1.95,  1.03, 0.50,  -12.50,  -6.00),
-    ("R2",  "30k1",           1.95,  1.03, 0.50,  -12.50,  -7.50),
-    ("R3",  "10k",            1.95,  1.03, 0.50,   11.20,   6.50),
-    ("R4",  "10k",            1.95,  1.03, 0.50,   11.20,   0.00),
-    ("R5",  "120R",           3.05,  1.55, 0.55,   16.50,  15.00),
-    ("R6",  "120R",           3.05,  1.55, 0.55,   16.50,  -9.50),
-    ("R7",  "10k",            1.95,  1.03, 0.50,  -11.00,   0.50),
-    ("R8",  "5k1",            1.95,  1.03, 0.50,   -7.00, -12.50),
-    ("R9",  "5k1",            1.95,  1.03, 0.50,  -10.00, -12.50),
-    ("U1",  "LMR16006XDDCR",  4.19,  3.49, 1.10,  -16.00,   8.00),
-    ("U2",  "SN65HVD230DR",   7.49,  5.49, 1.75,    6.30,   6.50),
-    ("U3",  "SN65HVD230DR",   7.49,  5.49, 1.75,    6.30,   0.00),
-    ("U4",  "CH32V307WCU6",   9.29,  9.29, 0.90,   -4.00,   2.00),
-    ("Y1",  "8MHz",           4.29,  3.59, 0.90,   -4.00,  -5.00),
+    ("C1",   "4.7uF/50V",         4.69,  2.39, 1.60,  -16.50, -15.00),
+    ("C2",   "10uF/16V",          3.49,  2.05, 1.45,  -16.00, -18.00),
+    ("C3",   "100nF",             1.91,  1.01, 0.55,  -12.50, -15.00),
+    ("C4",   "12pF",              1.91,  1.01, 0.55,   -8.00, -16.50),
+    ("C5",   "12pF",              1.91,  1.01, 0.55,    0.00, -16.50),
+    ("C6",   "100nF",             1.91,  1.01, 0.55,  -11.00,  -9.50),
+    ("C7",   "100nF",             1.91,  1.01, 0.55,  -11.00,  -6.50),
+    ("C8",   "100nF",             1.91,  1.01, 0.55,  -11.00,  -5.00),
+    ("C9",   "100nF",             1.91,  1.01, 0.55,   -8.60,  -3.00),
+    ("C10",  "100nF",             1.91,  1.01, 0.55,   -6.60,  -3.00),
+    ("C11",  "100nF",             1.91,  1.01, 0.55,   -4.60,  -3.00),
+    ("C12",  "100nF",             1.91,  1.01, 0.55,   -2.60,  -3.00),
+    ("C13",  "100nF",             1.91,  1.01, 0.55,   -0.60,  -3.00),
+    ("C14",  "100nF",             1.91,  1.01, 0.55,    1.40,  -3.00),
+    ("C15",  "10uF",              3.49,  2.05, 1.45,   -8.00, -19.00),
+    ("C16",  "10uF/50V",          4.69,  2.39, 1.60,  -12.00,  13.00),
+    ("C17",  "10uF/50V",          4.69,  2.39, 1.60,   -6.00,  13.00),
+    ("C18",  "100nF",             1.91,  1.01, 0.55,   -1.50,  13.00),
+    ("C19",  "1uF",               1.91,  1.01, 0.55,  -17.00,   9.00),
+    ("C20",  "100nF",             1.91,  1.01, 0.55,  -13.00,   9.00),
+    ("C21",  "22uF/16V",          3.49,  2.05, 1.45,    9.00,  18.50),
+    ("C22",  "22uF/16V",          3.49,  2.05, 1.45,   13.50,  18.50),
+    ("D1",   "B5819W",            4.79,  2.39, 1.10,  -16.00, -11.50),
+    ("D2",   "SMF24CA",           2.59,  1.49, 0.75,   12.30,   1.00),
+    ("D3",   "SMF24CA",           2.59,  1.49, 0.75,   15.30,   1.00),
+    ("D4",   "SMF24CA",           2.59,  1.49, 0.75,   10.00, -17.00),
+    ("D5",   "SMF24CA",           2.59,  1.49, 0.75,   13.00, -17.00),
+    ("D6",   "ESD",               2.59,  1.49, 0.75,    7.00, -24.00),
+    ("D7",   "ESD",               2.59,  1.49, 0.75,   10.00, -24.00),
+    ("D8",   "SMAJ30A",           7.09,  3.59, 2.20,    5.00,  13.00),
+    ("D9",   "SMBJ5.0A",          7.39,  4.59, 2.30,    2.00,  18.50),
+    ("F1",   "1A",                4.65,  2.35, 1.10,  -18.00,  13.00),
+    ("F2",   "4A",                4.65,  2.35, 1.10,   13.00,  13.00),
+    ("JP1",  "TERM",              3.39,  2.59, 0.05,   16.50, -17.50),
+    ("JP2",  "TERM",              3.39,  2.59, 0.05,   16.50, -24.50),
+    ("L1",   "47uH",              3.69,  3.69, 1.50,  -16.00,  -8.00),
+    ("L2",   "6.8uH",             6.69,  6.29, 2.80,   -7.00,  18.50),
+    ("R1",   "100k",              1.95,  1.03, 0.50,  -12.50, -17.50),
+    ("R2",   "30k1",              1.95,  1.03, 0.50,  -12.50, -19.00),
+    ("R3",   "10k",               1.95,  1.03, 0.50,   11.20,  -5.00),
+    ("R4",   "10k",               1.95,  1.03, 0.50,   11.20, -11.50),
+    ("R5",   "120R",              3.05,  1.55, 0.55,   16.50,   3.50),
+    ("R6",   "120R",              3.05,  1.55, 0.55,   16.50, -21.00),
+    ("R7",   "10k",               1.95,  1.03, 0.50,  -11.00, -11.00),
+    ("R8",   "5k1",               1.95,  1.03, 0.50,   -7.00, -24.00),
+    ("R9",   "5k1",               1.95,  1.03, 0.50,  -10.00, -24.00),
+    ("R10",  "100k",              1.95,  1.03, 0.50,   -9.00,   9.00),
+    ("R11",  "preset",            1.95,  1.03, 0.50,   -5.00,   9.00),
+    ("R12",  "preset",            1.95,  1.03, 0.50,   -1.00,   9.00),
+    ("R13",  "preset",            1.95,  1.03, 0.50,    3.00,   9.00),
+    ("U1",   "LMR16006XDDCR",     4.19,  3.49, 1.10,  -16.00,  -3.50),
+    ("U2",   "SN65HVD230DR",      7.49,  5.49, 1.75,    6.30,  -5.00),
+    ("U3",   "SN65HVD230DR",      7.49,  5.49, 1.75,    6.30, -11.50),
+    ("U4",   "CH32V307WCU6",      9.29,  9.29, 0.90,   -4.00,  -9.50),
+    ("U5",   "LMR33630ADDAR",     7.49,  5.49, 1.75,  -16.00,  18.50),
+    ("Y1",   "8MHz",              4.29,  3.59, 0.90,   -4.00, -16.50),
 )
 
 
@@ -554,11 +514,22 @@ def mctrl_pt(ref: str):
     The board-local -> tray mapping IS the MCTRL_ROT turn: board +X -> tray +Y,
     board +Y -> tray -X."""
     cx, cy = _ctr(MCTRL_FP)
+
+    def to_tray(bx, by):
+        """board-local -> tray, HONOURING MCTRL_ROT. This used to hardcode the 90 deg
+        turn; the board is unrotated at 46 x 58, and a hardcoded mapping would have put
+        every connector on the wrong edge with nothing to catch it."""
+        if abs(MCTRL_ROT - 90.0) < 1e-6:
+            return (cx - by, cy + bx)
+        return (cx + bx, cy + by)
+
     if ref == "J4":
-        w, l, _h, ox, oy = MCTRL_USB
-        return (cx - (oy - l / 2.0), cy + ox, BOARD_Z + BD_T + MCTRL_USB[2] / 2.0)
+        _w, l, h, ox, oy = MCTRL_USB
+        x, y = to_tray(ox, oy - l / 2.0)
+        return (x, y, BOARD_Z + BD_T + h / 2.0)
     bx, by, _rot = MCTRL_J[ref]
-    return (cx - by, cy + bx, BOARD_Z + BD_T + 9.8)
+    x, y = to_tray(bx, by)
+    return (x, y, BOARD_Z + BD_T + 9.8)
 
 
 def motor_ctrl() -> cq.Workplane:
