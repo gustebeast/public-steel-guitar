@@ -381,10 +381,12 @@ def build_wires():
     # the bearing grew O8 -> O13 the axle (and the wall) stepped 2.5 -X and clipped the
     # ground wire.
     _PWR_X = D.BRIDGE_AXLE_X - 1.5                              # -8.0
-    # The trunk now leaves the OUTPUT+PANEL BOARD's own J6, not a free-standing panel
-    # jack: the 24 V inlet is a PCB part on that board and the pair crosses it on an
-    # isolated island before it ever becomes a cable.
-    _j6 = EL.op_pt("J6")
+    # The trunk now leaves the OUTPUT+PANEL BOARD's own trunk connector, not a
+    # free-standing panel jack: the 24 V inlet is a PCB part on that board and the
+    # pair crosses it on an isolated island before it ever becomes a cable.
+    # (It is J7 since the 2026-09-15 respin -- the board gained a screw-terminal
+    #  pickup input, so the connectors renumbered along the signal path.)
+    _j6 = EL.op_pt("J7")
     heads = [_j6, (_PWR_X, _j6[1], _j6[2]), (_PWR_X, TEE_Y, -52.0),
              (x10, TEE_Y, -52.0), (x10, TEE_Y, HDR_Z)]
     # THE TRUNK ENDS AT THE MERGED BOARD. It used to run to the power board and then

@@ -81,7 +81,7 @@ fitted on every instrument.
 | ~~Teensy 4.1~~ | — | **DELETED** ($31.50), with ~~**Teensy 4 Audio Shield Rev D**~~ ($9.80) and the teensy_ifc carrier. The Teensy's value was the Audio Library, USB high-speed and the codec, all irrelevant once no audio touches this board — the Pi does audio, and this board only reads angles off bus B and commands the motors on bus A. What could not be deleted is the pair of CAN transceivers (no general-purpose MCU integrates one), so a board was always going to exist; the only question was whether an MCU sat on it too | — | — |
 | **CAN transceiver** | B | SN65HVD230DR | **$0.6185 @10** [v] — **32,557 in stock** | [LCSC C12084](https://www.lcsc.com/product-detail/C12084.html) — was priced from DigiKey at $2.45/stock 0, which made it look unavailable; LCSC has it 4× cheaper and deep. Also the sensor boards' transceiver (3.3 V — single rail) |
 | ~~Power PCB~~ | — | **MERGED into the motor controller** (2026-09-15). Its buck, crowbar and 5 V outlet are now U5/F1/F2/D8/D9/J5 on that board. The merge deletes a PCB, a connector and a cable — and a JUNCTION: the 24 V trunk had to feed both keyhead boards and this one had only a 4-way inlet, so that branch was the only splice in an instrument where every other branch is a board | — | — |
-| **Output + panel PCB** | B | Custom, `elec/output_panel.py` — the whole front panel on one board: USB-C (**VBUS broken**) + USB-A to the Pi + the 1/4" TS jack + I2S DAC + true-bypass relay + output buffer + phantom guard. 52 × 48, 4-layer | **~$5 of parts** [m] + the jack below | — |
+| **Output + panel PCB** | B | Custom, `elec/output_panel.py` — the whole front panel AND the whole magnetic audio path on one board: panel USB-C (**VBUS broken**) + USB-A pass-through to the Pi's gadget port + USB-C hub upstream + USB-A downstream to the optical board + the 1/4" TS jack + 24 V inlet and trunk out + screw-terminal pickup input + CH32V307 (USB **high speed**, internal PHY) + PCM1808 ADC + PCM5102-class DAC + HS hub + true-bypass relay + two buffers + phantom guard + a local 24→5 V buck. **74 × 66**, 4-layer, 58 parts | **~$5 of parts** [m] + the jack below | — |
 | **USB cable, panel PCB → Pi** | B | USB-A ↔ USB-C, **1 m**, USB 2.0 | ~$5 [m] | commodity |
 | ~~Buck 24→5 V 1 A~~ | — | **DELETED** ($12.95, Pololu D24V10F5): it existed only to power the Teensy | — | — |
 | ~~Signal relay~~ / ~~Buffer op-amp~~ | — | **DELETED as separate lines** ($2.74 Omron G5V-1-DC5 + ~$11 OPA2134PA DIP). Both were AFE parts meant to be hand-wired; the true-bypass relay and the output buffer are now SMD parts on the output + panel PCB, placed by the assembler. A DIP op-amp on a board that has no through-hole assembly step was never going to work | — | — |
@@ -90,7 +90,7 @@ fitted on every instrument.
 | ~~USB-C panel coupler~~ | — | **DELETED** ($7.50, Adafruit 4261 F↔F). ⚠ It would have caused the fault the USB panel PCB exists to prevent: a F↔F coupler passes VBUS, and with the Pi fed from its GPIO header that puts a laptop's VBUS straight onto the power board's output. On the Pi 4B the USB-C VBUS pin and the GPIO 5 V pins are the **same node**, with no polyfuse between them | — | — |
 | **Rotary/4-way joystick** | B | Alps RKJXT1F42001 (sole UI control) | **$9.22** [v] | [DigiKey](https://www.digikey.com/en/products/detail/alps-alpine/RKJXT1F42001/19529127) |
 | **OLED display** | B | 2.42" 128×64 SSD1309 SPI (UI screen) | ~$17 [m] | [Waveshare](https://www.waveshare.com/2.42inch-oled-module.htm) |
-| ~~USB 2.0 hub~~ | — | **DELETED** ($4.50, Adafruit CH334F): its only job was sharing one panel port between the Teensy and the Pi, and the Teensy is gone. The panel port now belongs to the Pi alone | — | — |
+| ~~USB 2.0 hub (module)~~ | — | **DELETED as a MODULE** ($4.50, Adafruit CH334F) — but the function came back as a **chip on the output + panel PCB** (2026-09-15), for a different reason than it was first bought. It no longer shares a panel port; it puts the optical board's 480 Mbps link on a ~100 mm cable to the panel instead of an ~800 mm one to the keyhead, and it must be a **high-speed** hub or both devices behind it pay a Transaction Translator's ~1 ms | — | — |
 | **USB cable, optical board → Pi** | B | **USB-A ↔ USB-C, 1 m, USB 2.0, STRAIGHT plug, overmold ≤ 20 mm** (mating face → cable exit) | ~$5–8 [m] | commodity |
 | **Raspberry Pi 4, 2 GB** | B | Dexed + USB gadget (MIDI/audio/DFU) + USB host for the optical board | **$55.00** [v] | [PiShop](https://www.pishop.us/product/raspberry-pi-4-model-b-2gb/) |
 | ~~Buck 24→5 V ≥3 A~~ | — | **DELETED** ($29.95, Pololu D24V50F5) — see the Power PCB row above and the note below | — | — |
@@ -119,20 +119,36 @@ gadget simultaneously** — host for the optical board, gadget to the computer �
 the Zero's single OTG port can only be one at a time. The panel **USB-C** still
 only needs USB 2.0 (480 Mbps).
 
-The **analog front-end** (buffer + true-bypass relay + driver + local LDO) is a
-small board at the bridge end. The relay defaults (de-energized) to passing the
-**raw** pickup straight to the TS jack; the Teensy energizes it (UI toggle) to
-switch in the **Q-processed** path. The ADC is always fed, and the Teensy
-presents itself to a computer as a **USB audio interface** — so the processed
-signal records digitally over USB with no analog round-trip. In **pro**, a USB 2.0
-hub shares one panel port between the Teensy and the Pi (both as USB devices).
+**The analog front-end is not a separate board and the Teensy is not in it** —
+both statements above were written before the 2026-09-15 respin and both were
+wrong twice over (the paragraph was also duplicated). The whole magnetic path now
+lives on the **output + panel PCB**:
 
-The **analog front-end** (buffer + true-bypass relay + driver + local LDO) is a
-small board at the bridge end, on a boss off the bridge cross-rib. The relay
-defaults (de-energized) to passing the **raw** pickup straight to the TS jack;
-the Teensy energizes it (UI toggle) to switch in the **Q-processed** DAC output.
-Buffering at the pickup keeps the long run to the keyhead ADC quiet; the ADC is
-always fed (pitch detection runs in either mode).
+* The pickup lands there on **screw terminals** — the one field connection that is
+  neither soldered nor crimped, because swapping a pickup is a normal thing to do
+  to a guitar.
+* One buffer feeds **both** the relay's direct contact and the ADC, so the coil
+  sees a single load whichever mode is selected. A magnetic pickup's tone *is* its
+  loading, so two inputs hung straight on the coil would change the instrument's
+  sound.
+* The relay still defaults **de-energized to DIRECT**: with no power, no Pi and no
+  firmware the pickup reaches the jack through a mechanical contact. It is
+  **not** latching — I claimed elsewhere that a held coil "hums at the audio it is
+  switching", which is wrong: the coil is DC and a static field does not hum. The
+  real cost of holding it is ~30 mA.
+* A **CH32V307** on that board presents the instrument to a computer as a USB
+  audio interface at **high speed**, via the part's internal PHY. A 24-bit / 99 dB
+  **PCM1808** does the capture and a PCM5102-class DAC does the return — the
+  converter, not the word length, is what sets the floor (16-bit's *theoretical*
+  ceiling is 98.1 dB).
+* A **USB hub** on the same board carries the optical pickup board upstream on one
+  cable, which is what shortens that 480 Mbps link from ~800 mm to ~100 mm. Both
+  devices behind it are high speed, so neither pays for a Transaction Translator.
+* The Pi does the **stereo→mono sum in software** for the TS jack, so the computer
+  can get full stereo over the gadget port while the jack gets a fold-down.
+
+**No analog signal crosses the instrument any more**, which is what deleted the
+8-way link between the optical board and the panel.
 
 The motor still does all tuning (the nut block clamps; no manual tuners). The nut
 block is **reprintable per string set** — `STRING_GAUGE` in `dimensions.py` swaps
