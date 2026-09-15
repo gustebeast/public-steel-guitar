@@ -134,12 +134,23 @@ THROAT_BORE_D = 10.5                    # the keeper sits in a COUNTERBORE at th
                                         # tenon 1.66, and the keeper is left 1.60 under
                                         # its groove. Both are the 1.6 floor, barely
 LOCK_Z = None                   # set below, once THROAT_L is known
-CAP_BORE_D = 11 * B             # 8.8: the bore above the plug: the plug DROPS IN through it
-                                # and the cap then fills it. Wide enough that the cap has
-                                # MIN_WALL_2P round its own O4.4 lead bore
-CAP_ID = CABLE_D + 0.6          # 4.4 through it, for the lead
-CAP_SLOT = 5 * B                # 4.0, opening to one side, so the cap lays over a lead
-                                # that is already attached to the plug
+LEAD_BORE_D = 6 * B             # 4.8 -- and the plug does NOT come down through it.
+                                # THE LEAD IS A PIGTAIL NOW (user): the far end is bare
+                                # wire crimped to a JST-XH at the station, not a second
+                                # moulded plug. That buys three things at once.
+                                #  1. the plug goes in from BELOW, up from the mortise,
+                                #     and this bore is a POSITIVE up-stop -- a step the
+                                #     O6.1 overmould cannot pass. The printed cap that
+                                #     used to do that job is gone.
+                                #  2. the four leads thread up it easily, so nothing
+                                #     wide has to reach the top face: the mouth drops
+                                #     from O8.8 to O4.8 and the middle ridge gets 2.4 of
+                                #     its length back (legs.SIGNAL_RIDGE_IN).
+                                #  3. the 90 degree turn into the channel happens in
+                                #     BARE 28 AWG leads, not in a O3.8 jacketed cable.
+                                #     The bend was the whole problem -- 6.5 of radius on
+                                #     a 3.8 cable is 1.7x OD, well under the 3x a static
+                                #     install wants. Stripped, it is a non-question.
 LOCK_RECESS = 2.6               # the button head's pocket depth (head 2.2 + 0.4)
 LOCK_SCREW_L = 16.0             # M4 x 16 BUTTON, 2.5 hex: the instrument's one driver
 LOCK_GROOVE = 0.4               # how deep the screw's tip sits in the keeper's OD.
@@ -192,11 +203,6 @@ assert PLUG_GRIP >= 3 * D.BEAD, (
     "14-long overmould concentric and stops it dropping out with the leg off"
     % PLUG_GRIP)
 
-CAP_L = LS.Z_TOP - PLUG_TOP             # the cap runs the plug's back clear up to the
-                                        # TOP FACE, so the CHASSIS is what stops it -- the
-                                        # same trick the adapter's own parts use. It cannot
-                                        # be stopped by a ledge instead: whatever the plug
-                                        # drops in through, the cap has to follow
 # THE SCREW IS STRAIGHT (user), and this is the window that makes it so. A O7.6 button
 # recessed square to the flank needs MIN_WALL_2P of tenon over its top edge, and the
 # keeper needs MIN_WALL_2P of flange under the groove. Between them they fix LOCK_Z to
@@ -211,13 +217,11 @@ assert _LOCK_LO <= _LOCK_HI + 1e-9, (
     "lowering PLUG_TOP (it costs PLUG_GRIP one for one)"
     % (_LOCK_HI, _LOCK_LO, THROAT_L, THROAT_L + (_LOCK_LO - _LOCK_HI)))
 LOCK_Z = (_LOCK_LO + _LOCK_HI) / 2.0    # the set screw's line, centred in that window
-assert CAP_L >= 2 * D.MIN_WALL_2P, (
-    "the cap is %.1f -- too short to be worth printing" % CAP_L)
 
 
 # the plug's way in is a hole in the adapter's TOP FACE, and the middle ridge's root
 # is there. legs cuts that ridge back for us; check it actually clears, apex included
-_MOUTH_PEAK = AX_Y + (CAP_BORE_D / 2.0) * 2 ** 0.5      # the teardrop's apex, toward +Y
+_MOUTH_PEAK = AX_Y + (LEAD_BORE_D / 2.0) * 2 ** 0.5     # the teardrop's apex, toward +Y
 assert LG.SIGNAL_RIDGE_IN >= _MOUTH_PEAK + D.MIN_WALL_2P, (
     "the middle ridge starts at %+.2f but the plug's mouth reaches %+.2f -- boring "
     "through a ridge leaves slivers; legs.SIGNAL_RIDGE_IN has to clear it"
@@ -255,7 +259,7 @@ def adapter_negatives(sx: float = LS.LEG_X, ly: float = LS.LEG_Y, up=None):
     x, y = _ax(sx, ly)
     up = up or LS.PRINT_UP["body_adapter"]
     out = _bore(PLUG_BORE_D, TIP - 0.01, PLUG_TOP, x, y, up)               # the press
-    out = out.union(_bore(CAP_BORE_D, PLUG_TOP, LS.Z_TOP + 0.01, x, y, up))
+    out = out.union(_bore(LEAD_BORE_D, PLUG_TOP, LS.Z_TOP + 0.01, x, y, up))
     return out.union(channel(sx, ly))
 
 
@@ -271,31 +275,6 @@ def tenon_negatives(sx: float = LS.LEG_X, ly: float = LS.LEG_Y, up=None,
     out = _bore(JACK_BORE_D, SPR_SEAT, TIP + 1.0, x, y, up)     # ONE bore, tip to step
     out = out.union(_bore(THROAT_BORE_D, JACK_REST, TIP + 1.0, x, y, up))  # the keeper's
     return out.union(_bore(PASS_D, bot, SPR_SEAT + 0.01, x, y, up))
-
-
-def cap(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):
-    """THE PLUG'S UP-STOP, and the reason the plug can give its press away.
-
-    The jack pushes the plug UP at MATE_N, and PLUG_GRIP is only 2.4 now -- the keeper
-    took the rest so the lock screw could be straight (user). A press that short must
-    not be the thing carrying 12.5 N, so it no longer is: this cap fills the bore from
-    the plug's back up to the CHANNEL'S FLOOR, and the channel is narrower than the cap,
-    so the ledge either side of it is a hard stop. The load runs plug -> cap -> adapter
-    -> chassis, all of it in compression on printed shoulders.
-
-    It is SLOTTED to one side because the lead is already on the plug when the cap goes
-    in: you lay it over the lead sideways rather than threading it."""
-    x, y = _ax(sx, ly)
-    c = cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        (CAP_BORE_D - 0.3) / 2.0, CAP_L, cq.Vector(x, y, PLUG_TOP), cq.Vector(0, 0, 1)))
-    c = c.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        CAP_ID / 2.0, CAP_L + 2.0, cq.Vector(x, y, PLUG_TOP - 1.0), cq.Vector(0, 0, 1))))
-    # the slot opens -Y, which is the way the CHANNEL runs: the lead lies straight from
-    # the cap's bore into the channel with no turn, and the cap slides on along the same
-    # line. It pointed +X first, across the channel, which is no way round for a cable
-    return c.cut(cq.Workplane("XY")
-                 .box(CAP_SLOT, CAP_BORE_D, CAP_L + 2.0, centered=(True, False, False))
-                 .translate((x, y - CAP_BORE_D, PLUG_TOP - 1.0)))
 
 
 def throat(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):
@@ -479,5 +458,5 @@ def dummies(sx: float = LS.LEG_X, ly: float = LS.LEG_Y, k: int = 0, mated: bool 
     return ([("leg_trrs_plug_%d" % k, plug), ("leg_trrs_jack_%d" % k, jack),
             ("leg_trrs_spring_%d" % k, coil),
             ("leg_trrs_throat_%d" % k, throat(sx, ly)),
-            ("leg_trrs_cap_%d" % k, cap(sx, ly))]
+            ]
             + lock_dummies(sx, ly, k) + cables(sx, ly, k))
