@@ -63,6 +63,9 @@ USBC_FP = "Connector_USB:USB_C_Receptacle_HRO_TYPE-C-31-M-12"
 USBA_FP = "Connector_USB:USB_A_Receptacle_GCT_USB1046"
 PH_FP = "Connector_JST:JST_PH_S8B-PH-SM4-TB_1x08-1MP_P2.00mm_Horizontal"
 TS_FP = "Connector_Audio:Jack_6.35mm_Neutrik_NMJ4HCD2_Horizontal"
+# PJ-102AH: the PCB-MOUNT sibling of the PJ-005A the BOM already specifies -- same
+# Same Sky/CUI family, same 2.0 mm pin, but board pins instead of solder lugs.
+DC_FP = "Connector_BarrelJack:BarrelJack_CUI_PJ-102AH_Horizontal"
 # DPDT signal relay, 5 V coil. Only ONE pole switches audio (the tip); an
 # unbalanced output has nothing for the second pole to do, and a DPDT in this
 # package is what is stocked.
@@ -272,6 +275,45 @@ def output_panel():
     # sense whether a plug is in.
     agnd += j4["TN"], j4["SN"]
 
+    # -- J5/J6: the 24 V inlet, PASSING THROUGH AND TOUCHING NOTHING ---------
+    # ⚠ THE POWER GROUND IS A SEPARATE NET ON THIS BOARD AND IS NEVER JOINED TO
+    # AGND HERE. That is the whole reason the 24 V inlet is allowed on the board
+    # that carries the output buffer. The trunk feeds ten stepper drivers, and its
+    # return current is chopped at the drivers' switching rate; sharing a plane with
+    # the audio reference would put that current under the one signal a listener
+    # hears. Instead the pair lands, crosses a corner on its own copper, and leaves
+    # -- inlet to trunk connector, nothing else attached. The two grounds meet at
+    # the instrument's star point elsewhere, not here.
+    #
+    # ⚠ AND IT MUST BE LAID OUT THAT WAY TO MEAN ANYTHING: V24/PWR_GND keep their own
+    # island in the -Y corner, the two traces run tightly coupled so the loop encloses
+    # no area, and NEITHER GROUND POUR may be flooded across them. A netlist cannot
+    # express that; it is a layout obligation and this is where it is written down.
+    v24, pgnd = Net("+24V"), Net("PWR_GND")
+    for n in (v24, pgnd):
+        n.drive = Pin.drives.POWER
+    j5 = Part(name="PJ-102AH", ref_prefix="J", tag="J5", dest="NETLIST", tool="skidl",
+              value="PJ-102AH", description="24 V inlet, PCB mount, panel bushing",
+              footprint=DC_FP,
+              pins=[Pin(num=1, name="TIP", func=P), Pin(num=2, name="SLEEVE", func=P),
+                    Pin(num=3, name="SWITCH", func=P)])
+    v24 += j5[1]
+    pgnd += j5[2], j5[3]          # the switch contact is tied to the sleeve, not left open
+    # Trunk out on the instrument's standard 4-way, TWO CONTACTS PER RAIL. XH is rated
+    # 3 A per contact and BOM.md sizes the 24 V bus at under 5 A, so one contact would
+    # sit over its rating and two sit comfortably under. Same doubling the power board
+    # uses for the Pi's 5 V, and it avoids introducing XT30 to a second place.
+    # ⚠ BOM.md says both "<5 A" for the bus AND that 24 V "sits inside XH's 3 A rating".
+    # Those two do not obviously agree. Doubling is right either way; the number itself
+    # wants checking before anyone crimps a trunk.
+    j6 = Part(name="B4B-XH-A", ref_prefix="J", tag="J6", dest="NETLIST", tool="skidl",
+              value="B4B-XH-A", description="24 V trunk out (2 contacts per rail)",
+              footprint="Connector_JST:JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical",
+              pins=[Pin(num=i + 1, name=n, func=P)
+                    for i, n in enumerate(("PWR_GND", "+24V", "+24V", "PWR_GND"))])
+    pgnd += j6[1], j6[4]
+    v24 += j6[2], j6[3]
+
 
 # -- the board ---------------------------------------------------------------
 # ⚠ THE OUTLINE IS AN OUTPUT and the MECHANICAL SIDE SHOULD BE BUILT TO IT, like
@@ -289,7 +331,7 @@ def output_panel():
 #      the USB-C. Bringing the motor supply onto the same board as the output buffer
 #      is asking for exactly the noise the rest of this design works to avoid. Move
 #      it to the far end of the panel row.
-BOARD_W, BOARD_L = 52.0, 48.0
+BOARD_W, BOARD_L = 52.0, 66.0
 
 BOARD_NOTES = {
     "outline_mm": (BOARD_W, BOARD_L),
@@ -304,31 +346,33 @@ BOARD_NOTES = {
     # already runs TS at the +Y end and USB at the -Y end, and a board whose connectors
     # come out in the other order would have to be posed upside down to match it.
     "placements": {
-        "J4": (12.01, 13.24, 0.0),
-        "J1": (18.34, -18.03, 90.0),
-        "J2": (-17.61, 10.72, 180.0),
-        "J3": (-14.76, -19.95, 180.0),
-        "K1": (-18.00, -1.50, 0.0),
-        "U1": (-4.00, -4.50, 0.0),
-        "U2": (6.00, -4.00, 0.0),
-        "Q1": (11.00, -4.00, 0.0),
-        "C2": (-9.00, -10.20, 0.0),
-        "C3": (-5.50, -10.20, 0.0),
-        "C4": (-3.00, -10.20, 0.0),
-        "C1": (-0.50, -10.20, 0.0),
-        "R3": (2.00, -10.20, 0.0),
-        "C5": (4.50, -10.20, 0.0),
-        "R5": (-9.00, 1.20, 0.0),
-        "R4": (-6.50, 1.20, 0.0),
-        "R7": (-4.00, 1.20, 0.0),
-        "R6": (-1.50, 1.20, 0.0),
-        "C6": (2.50, 1.20, 0.0),
-        "D4": (6.50, 1.20, 0.0),
-        "D3": (9.50, 1.20, 0.0),
-        "R1": (12.00, -21.00, 0.0),
-        "R2": (12.00, -19.00, 0.0),
-        "D1": (12.00, -17.00, 0.0),
-        "D2": (12.00, -15.00, 0.0),
+        "J4": (12.01, 22.24, 0.0),
+        "J1": (18.34, 5.00, 90.0),
+        "J5": (20.92, -21.16, 0.0),
+        "J2": (-17.61, 18.00, 180.0),
+        "J3": (-14.76, -28.00, 180.0),
+        "J6": (6.00, -26.00, 0.0),
+        "K1": (-18.00, -4.00, 0.0),
+        "U1": (-4.00, -6.00, 0.0),
+        "U2": (6.00, -6.00, 0.0),
+        "Q1": (11.00, -6.00, 0.0),
+        "C2": (-9.00, 4.00, 0.0),
+        "C3": (-5.50, 4.00, 0.0),
+        "C4": (-3.00, 4.00, 0.0),
+        "C1": (-0.50, 4.00, 0.0),
+        "R3": (2.00, 4.00, 0.0),
+        "C5": (4.50, 4.00, 0.0),
+        "R5": (-9.00, -13.00, 0.0),
+        "R4": (-6.50, -13.00, 0.0),
+        "R7": (-4.00, -13.00, 0.0),
+        "R6": (-1.50, -13.00, 0.0),
+        "C6": (2.50, -13.00, 0.0),
+        "D4": (6.50, -13.00, 0.0),
+        "D3": (9.50, -13.00, 0.0),
+        "R1": (11.00, 8.00, 0.0),
+        "R2": (11.00, 6.00, 0.0),
+        "D1": (11.00, 4.00, 0.0),
+        "D2": (11.00, 2.00, 0.0),
     },
     "refs_on_fab": True,
     "zones": [("GND", "In1.Cu", 0.3), ("AGND", "B.Cu", 0.3)],

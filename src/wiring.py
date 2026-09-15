@@ -377,7 +377,11 @@ def build_wires():
     # the bearing grew O8 -> O13 the axle (and the wall) stepped 2.5 -X and clipped the
     # ground wire.
     _PWR_X = D.BRIDGE_AXLE_X - 1.5                              # -8.0
-    heads = [(_PWR_X, EL.DC_Y, EL.JACK_Z), (_PWR_X, EL.DC_Y, -52.0), (_PWR_X, TEE_Y, -52.0),
+    # The trunk now leaves the OUTPUT+PANEL BOARD's own J6, not a free-standing panel
+    # jack: the 24 V inlet is a PCB part on that board and the pair crosses it on an
+    # isolated island before it ever becomes a cable.
+    _j6 = EL.op_pt("J6")
+    heads = [_j6, (_PWR_X, _j6[1], _j6[2]), (_PWR_X, TEE_Y, -52.0),
              (x10, TEE_Y, -52.0), (x10, TEE_Y, HDR_Z)]
     _buck = SP(-558.5, -109.5, -50.0)          # BUCK_FP turned with the tray relayout
     tail = ([(hdrA[west[0]][0], hdrA[west[0]][1], HDR_Z)]
@@ -499,8 +503,8 @@ WIRE_OK = {
     "shaft_trrs_cable": {"leg_shaft", "leg_sleeve", "leg_seg_body",
                          "shaft_trrs_jack", "leg_cable_coil",
                          "leg_junction_pcb", "leg_head"},
-    "wire_pwr_hot":   {"dc_jack", "power_pcb", "tee_pcb", "motor_ctrl"},
-    "wire_pwr_gnd":   {"dc_jack", "power_pcb", "tee_pcb", "motor_ctrl"},
+    "wire_pwr_hot":   {"output_panel", "power_pcb", "tee_pcb", "motor_ctrl"},
+    "wire_pwr_gnd":   {"output_panel", "power_pcb", "tee_pcb", "motor_ctrl"},
     "wire_usb":       {"output_panel", "pi5"},
     "wire_link":      {"motor_ctrl", "pi5"},
     "wire_oled":      {"oled", "pi5"},
