@@ -759,12 +759,32 @@ def motor_pos(i: int):
     return (-(MOTOR_X0 + (N_STRINGS - 1 - i) * MOTOR_X_STEP), string_y(i), MOTOR_BELT_Z)
 
 
+# THE INSTRUMENT'S BOTTOM GRID (user, 2026-09-15). The bottom is one solid XBAR-tall prism
+# with as many lever mortises cut in it as will fit, 1.6 apart -- so a lever (and, on the same
+# grid, a foot) can mount almost anywhere, and the caps over the slots seal the body from below
+# against escaping light and motor noise. The pitch is not a new number: the octagon joint is
+# already sized so its mortise plus a two-bead wall either side IS the rib (knee_lever._JW), so
+# repeating it with no gap between ribs gives one mortise + one wall.
+LEVER_MORT_W = XBAR - 2 * MIN_WALL_2P        # 7.2 across the octagon mortise (the tenon's own
+                                             # MORT_CLR cancels: mortise = tenon + 2*clr)
+LEVER_PITCH  = LEVER_MORT_W + MIN_WALL_2P    # 8.8 = XBAR - MIN_WALL_2P
+
+
+def lever_wall_x(x_target: float) -> float:
+    """The nearest WALL centre in the bottom grid -- the middle of the 1.6 between two
+    mortises. A split plane or anything else that must not land in a slot snaps here."""
+    x0 = motor_pos(0)[0] + LEVER_PITCH / 2
+    return x0 + round((x_target - x0) / LEVER_PITCH) * LEVER_PITCH
+
+
 def rib_comb_x(x_target: float) -> float:
-    """The chassis rib-comb X nearest x_target. The comb is a rib at every motor plus one
-    midway between each pair -- motor_pos(0).x + k * MOTOR_X_STEP / 2, the same comb
-    chassis._rib_positions builds -- so a lever station or a split plane snapped here
-    follows the motors instead of being a hand-typed number the comb can walk away from."""
-    x0, p = motor_pos(0)[0], MOTOR_X_STEP / 2
+    """The nearest MORTISE STATION in the bottom grid: motor_pos(0).x + k * LEVER_PITCH,
+    the same comb chassis._mort_positions builds -- so a lever station snapped here lands on a
+    slot instead of being a hand-typed number the comb can walk away from.
+
+    (It was the half-motor-pitch rib comb, 22.35. The bottom is a slab now and the stations are
+    8.8 apart, which is what gives a lever ~3x the places it can mount.)"""
+    x0, p = motor_pos(0)[0], LEVER_PITCH
     return x0 + round((x_target - x0) / p) * p
 
 
