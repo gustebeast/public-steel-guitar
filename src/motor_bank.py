@@ -173,12 +173,18 @@ def gap_keepout(i):
 
 
 def lift_prism(i):
-    """Motor i's way out: its footprint swept +Z. Cut it from anything built over a motor."""
+    """Motor i's way out: its footprint swept +Z from ITS OWN UNDERSIDE. Cut it from
+    anything built over a motor.
+
+    STOPS AT THE MOTOR'S BOTTOM (user, 2026-09-15). It used to reach 100 below, from when this
+    was cut only from the tee CRADLE -- a separate part with a base hanging below the seat plane,
+    which had to come out of the motor's fit gap. The cradle is gone (the bay IS the seat) and
+    the CHASSIS now cuts this from the fused segments, so those 100 mm were hollowing every
+    motor's footprint down through the ribs the motor rests on: FLOOR_TOP is the rib tops.
+    A motor slides in from +Z, so its swept volume starts at its own underside and nothing
+    below that line is in its way."""
     bx0, bx1, by0, by1, bz0, bz1 = body_box(i)
-    # It spans the pocket's FULL height, not just upward from the motor top: anything seated
-    # over a motor also has a base hanging below that line, and a base that reaches into the
-    # motor's own fit gap comes back as a sliver (0.4 of one, user-measured).
-    z0, z1 = bz0 - 100.0, bz1 + 300.0
+    z0, z1 = bz0, bz1 + 300.0
     return box_at(bx1 - bx0 + 2 * MOTOR_CLR, by1 - by0 + 2 * MOTOR_CLR, z1 - z0,
                   x=(bx0 + bx1) / 2, y=(by0 + by1) / 2, z=(z0 + z1) / 2)
 

@@ -82,15 +82,54 @@ def bank_samples(targets=None):
     return bad
 
 
+def motor_seating(targets=None):
+    """[(string, support_pct, lift_obstruction)] -- does each motor REST on something, and is
+    its way out still clear?
+
+    NOT measured with lift_prism. The chassis is cut BY that prism, so intersecting the two can
+    only ever return zero -- a check that cannot fail is not a check, and it is how a cut that
+    reached 100 mm below every motor and hollowed out the ribs they rest on got through (user
+    caught it by eye, 2026-09-15). So: the support patch is probed UNDER the motor's own
+    underside, and the lift path ABOVE its own top face. Both come from body_box, which knows
+    nothing about any cut.
+    """
+    chs = cq.Workplane()
+    for name, shape in B.body_work_components():
+        if name.startswith("chassis"):
+            chs = chs.add(shape)
+
+    def vol(w):
+        return w.val().Volume() if w.solids().size() else 0.0
+
+    out = []
+    for i in (targets if targets is not None else range(D.N_STRINGS)):
+        bx0, bx1, by0, by1, bz0, bz1 = MB.body_box(i)
+        w, l = bx1 - bx0, by1 - by0
+        patch = box_at(w, l, 0.8, x=(bx0 + bx1) / 2, y=(by0 + by1) / 2, z=bz0 - 0.4)
+        up = box_at(w + 2 * MB.MOTOR_CLR, l + 2 * MB.MOTOR_CLR, 300.0,
+                    x=(bx0 + bx1) / 2, y=(by0 + by1) / 2, z=bz1 + 150.0)
+        out.append((i + 1, vol(chs.intersect(patch)) / (0.8 * w * l) * 100.0,
+                    vol(chs.intersect(up))))
+    return out
+
+
 def main():
     targets = [int(a) - 1 for a in sys.argv[1:]] or None
+    seats = motor_seating(targets)
+    print("motor seating (support under the motor / obstruction above it)")
+    for st, sup, lift in seats:
+        flag = "" if sup > 0.1 and lift < 0.01 else "   <-- FAULT"
+        print(f"  string {st:2d}  resting on {sup:5.1f}% of its base   "
+              f"lift path {lift:7.1f} mm3{flag}")
+    faults = sum(1 for _, sup, lift in seats if sup <= 0.1 or lift >= 0.01)
+
     bad = bank_samples(targets)
     print(f"\ncheck_walls: {len(bad)} samples under {D.MIN_WALL_2P} in the motor bank")
     for b in sorted(bad, key=lambda r: (r[0], r[5])):
         print("  string %2d  %s-run at (%8.2f, %8.2f, %8.2f)  %.2f mm" % b)
     if not bad:
         print("clean: every line through every bay holds the two-bead rule.")
-    return 1 if bad else 0
+    return 1 if (bad or faults) else 0
 
 
 if __name__ == "__main__":
