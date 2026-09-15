@@ -135,8 +135,14 @@ def tee_pocket(i):
     _h = (SEAT_TOP - sz) + 2.0
     pocket = box_at(D.TEE_BOARD_X + 2 * D.TEE_FIT, D.TEE_BOARD_Y + 2 * D.TEE_FIT, _h,
                     x=(sx0 + sx1) / 2 - D.TEE_EAR_X / 2, y=(sy0 + sy1) / 2, z=sz + _h / 2)
-    ex0, ex1, ey0, ey1 = tee_ear_box(i)             # ...plus the ear's own tab (an L, not a box)
-    pocket = pocket.union(box_at(D.TEE_EAR_X + 2 * D.TEE_FIT, D.TEE_EAR_Y + 2 * D.TEE_FIT, _h,
+    # ...plus the ear's tab (an L, not a box). The CUT runs deeper than the tab: down to where
+    # the -X neighbour's own board sits, one STAGGER away. The ear laps that neighbour's bay, so
+    # two independent pockets bite the same post from opposite sides, and stopping each at its own
+    # board's edge left the strip between them standing as a 0.2 rib (found on nine strings).
+    # Reaching the neighbour's seat line means the two cuts meet, with their fits overlapping.
+    ex0, ex1, _, ey1 = tee_ear_box(i)
+    ey0 = ey1 - max(D.TEE_EAR_Y, STAGGER)
+    pocket = pocket.union(box_at(D.TEE_EAR_X + 2 * D.TEE_FIT, (ey1 - ey0) + 2 * D.TEE_FIT, _h,
                                  x=(ex0 + ex1) / 2, y=(ey0 + ey1) / 2, z=sz + _h / 2))
     # the tail relief runs under the LAYOUT REGION only -- the ear has no tails, and leaving it
     # solid is what the hole's boss is bored from
@@ -256,9 +262,11 @@ def pocket(i) -> cq.Workplane:
     # THE DRIVE: the back wall stands BUMP_H and no further, so the driver's connector and its
     # cable have the whole upper back open
     _yb0, _yb1 = y0 - 1.0, by0 - MOTOR_CLR
-    body = body.cut(box_at((x1 - x0) + 2.0, _yb1 - _yb0, (Z_HI + 1.0) - (bz0 + BUMP_H),
+    _top = SEAT_TOP + 1.0                               # the PRISM's top, not the seat plane: cut
+    body = body.cut(box_at((x1 - x0) + 2.0, _yb1 - _yb0,  # short, the back wall bridged the bay
+                           _top - (bz0 + BUMP_H),
                            x=(x0 + x1) / 2, y=(_yb0 + _yb1) / 2,
-                           z=((bz0 + BUMP_H) + (Z_HI + 1.0)) / 2))
+                           z=((bz0 + BUMP_H) + _top) / 2))
     # ...and a lane through what is left of it, for the pigtail to climb
     body = body.cut(box_at(WIRE_LANE_W, _yb1 - _yb0, BUMP_H + 2.0,
                            x=(bx0 + bx1) / 2, y=(_yb0 + _yb1) / 2, z=bz0 + BUMP_H / 2))
