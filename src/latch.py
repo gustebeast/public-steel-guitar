@@ -67,6 +67,7 @@ import cadquery as cq
 
 from . import dimensions as D
 from .helpers import box_at, cyl_y
+from cadkit.holes import teardrop_hole
 from cadkit.printing import snap as _snap
 
 # ── the bead grid ────────────────────────────────────────────────────────────
@@ -223,32 +224,35 @@ LOAD_Z = -15 * B                  # -12.0 tunnel/cover bottom (load window botto
                                   # plug lives.
 
 # ── spring (NEW BOM SKU) ─────────────────────────────────────────────────────
-SPR_OD = 5.0
-SPR_WIRE = 0.6
-# ONE COIL FOR BOTH LATCHES (user), and it is a BOUGHT part CUT TO LENGTH.
-# uxcell B0GCZVQFWN is 304 SS, O5.0 OD x 0.6 wire, 10 to a pack -- but 15.0 FREE, and
-# 15.0 does not fit the lower latch at all: the bar collar's sleeve has to swallow the
-# coil at free length plus a back wall, and from the cup's floor it has 12.8. That is
-# 2.2 short of the coil ITSELF, so no installed length or chamfer could rescue it, and
-# the collar cannot grow -- its +-Y face IS the bar tower's (pedal_bar asserts it) and
-# its cup floor is pinned by a 45-degree flank. Growing the tower 6.4 to suit a spring
-# is the tail wagging the instrument.
-# So the coil is CUT to 12.0 free, which is a snip with side cutters and which the
-# geometry below was drawn around anyway. Cutting RAISES the rate (k scales 1/n, the
-# same arithmetic the BOM already spells out for the knee coil), and that is what makes
-# the numbers land back where they started rather than merely close.
-SPR_FREE = 12.0                   # AS CUT, from a 15.0 bought length
-SPR_N = 8.0                       # active coils left after the cut. The bought coil is
-                                  # longer than the one this was first drawn around, so
-                                  # even shortened it keeps more turns -- solid goes 4.8
-                                  # -> 6.0, against a pressed length of 7.20. CUT TO
-                                  # LEAVE AT MOST 10 TOTAL TURNS: at 12 the coil binds
-                                  # under the thumb before the button bottoms
-SPR_SOLID = (SPR_N + 2) * SPR_WIRE                     # 6.0
-SPR_RATE = 2.38                   # N/mm: ~1.9 as bought (bracketed off McMaster's
-                                  # published 1.96 for a O5.63 x 0.63 x 12.5), times
-                                  # 10/8 for the coils the cut removes. MEASURE ON
-                                  # ARRIVAL -- every force derives from it
+# ONE COIL FOR BOTH LATCHES (user), USED AS BOUGHT -- no cutting (user: cutting
+# introduces room for error). McMaster 2006N221, 302 SS, packs of 5.
+#
+# WHY NOT uxcell, which supplies the rest of the springs. The bar collar's sleeve has
+# to swallow the coil at FREE length plus a MIN_WALL_2P back wall, and from the cup's
+# floor it has 12.8 -- so free < 12.8, full stop. uxcell stocks this wire and OD at 5,
+# 10, 15 and 20 mm free and nothing between: 15 needs the bar 6.4 wider (TOWER_WY also
+# drives BAR_Y0/BAR_Y1, so that is the whole bar's cross-section, not just the tower),
+# and 10 is SHORTER than the 10.4 installed length, i.e. not in contact at all.
+# 2006N221 at 12.5 fits with 0.3 to spare and lands the preload on the number the
+# geometry was drawn around, which is the rare case of a catalogue part fitting a
+# design rather than the other way round.
+SPR_OD = 5.63                     # drawing, not a round number -- a bought part
+SPR_WIRE = 0.63
+SPR_FREE = 12.5
+SPR_N = 7.0                       # active coils, taken from the PUBLISHED compressed
+                                  # length at max load (5.8): solid = (N+2)*wire must
+                                  # come in under it, and 7 gives 5.67. This is a
+                                  # bound, not a count off the drawing -- McMaster
+                                  # publishes rate and compressed length but not turns
+SPR_SOLID = (SPR_N + 2) * SPR_WIRE                     # 5.67
+SPR_RATE = 1.96                   # N/mm, PUBLISHED (0.44 lbf/mm). The first catalogue
+                                  # number in this joint that is not an estimate
+SLIDER_UP = (1.0, 0.0, 0.0)       # the slider's build direction. leg_stack.PRINT_UP
+                                  # is the authority and leg_latch asserts the two
+                                  # agree; it is repeated here because the spring
+                                  # bore is horizontal in that direction and so has
+                                  # to be teardropped, and latch.py cannot import
+                                  # leg_stack without a cycle
 SPR_BORE_D = SPR_OD + 0.4         # 5.4 pocket in the slider
 SPR_ID = SPR_OD - 2 * SPR_WIRE    # 3.8 coil bore
 POST_D = SPR_ID - 0.8             # 3.0 guide post (0.4 radial clearance in the coil)
@@ -491,8 +495,13 @@ def slider(cx: float = LX_C) -> cq.Workplane:
     # PAD: through the cover aperture, flush with the outer face at rest
     b = b.union(_yz(PAD_W, FACE_Y, COVER_IN, PAD_Z0, PAD_Z1, cx))
     # spring blind bore, into the back face
-    b = b.cut(cyl_y(SPR_BORE_D, SPR_SEAT + 0.2, y0=back - 0.2,
-                    x=cx, z=(PAD_Z0 + PAD_Z1) / 2))
+    # TEARDROP, not a plain cylinder. The slider prints with +X up, so this bore is
+    # HORIZONTAL in the print and its upper arc is an overhang -- it was already ~21 mm2
+    # past 45 degrees before the coil grew, and the bought O5.63 took it to ~24 (user's
+    # rule: nothing past 45). A teardrop peaks instead of arching, and costs nothing.
+    b = b.cut(teardrop_hole(SPR_BORE_D, SPR_SEAT + 0.2,
+                            (cx, back - 0.2, (PAD_Z0 + PAD_Z1) / 2.0),
+                            (0, 1, 0), SLIDER_UP))
     return b
 
 
