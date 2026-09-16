@@ -17,12 +17,16 @@ placement in <board>.board.json is the thing under version control.
 """
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import subprocess
 import sys
 
 import pcbnew
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import layout                                        # noqa: E402  (needs the path above)
 
 JAVA = os.path.expandvars(
     r"%LOCALAPPDATA%\Programs\temurin\jdk-25.0.4.1+1-jre\bin\java.exe")
@@ -31,15 +35,67 @@ JAVA = os.path.expandvars(
 JAR = os.path.expandvars(
     r"%LOCALAPPDATA%\Temp\claude\C--Users-gus-Sync-Documents-Archive-3D-public-steel-guitar"
     r"\d7576032-b257-4aee-8a45-89e587fe4007\scratchpad\freerouting.jar")
-PASSES = 20
+# ⚠ PASSES ARE OPTIMISER PASSES, AND THEY ARE NOT WHERE THE ROUTING HAPPENS.
+# Freerouting finds connectivity in the first pass or two; every pass after that
+# re-optimises the whole board, single-threaded, and on the optical board (153 parts)
+# each one costs roughly half a minute. 20 passes is ~10 minutes PER ATTEMPT.
+#
+# MEASURED, on the optical board: 10 passes -> 17 unconnected, 20 -> 15, 30 -> 15 and
+# occasionally worse. The curve is flat after about 10, so the extra time buys track
+# length and not connectivity. Keep this low while ITERATING on a design and raise it
+# for the final run, where shorter tracks are worth the wall clock.
+#
+# ⚠ THOSE MEASUREMENTS PREDATE THE REPRODUCIBILITY FIX and are worth less than they
+# look. They were taken when the same board routed to 14, 17 and 30 on identical input,
+# so a 10-versus-20 comparison was one sample each from a distribution wider than the
+# difference being measured. The shape of the claim is probably right -- connectivity is
+# found early, later passes shorten track -- but the numbers are not evidence. Re-measure
+# before leaning on them.
+PASSES = 10
 
 
-def route(stem, passes=PASSES):
+def route(stem, passes=None, timeout=900):
     pcb, dsn, ses = stem + ".kicad_pcb", stem + ".dsn", stem + ".ses"
+    # ⚠ A BOARD MAY ASK FOR MORE PASSES, and recording that beats remembering it.
+    # "Raise it for the final run" is an instruction to a person, and a person who is
+    # not there when someone regenerates this in three years. A board that needs 30 says
+    # so in its own notes and gets 30 every time it is built.
+    if passes is None:
+        passes = json.load(open(stem + ".board.json", encoding="utf-8")).get(
+            "router_passes", PASSES)
+    notes = None
+    if os.path.isfile(stem + ".board.json"):
+        notes = json.load(open(stem + ".board.json", encoding="utf-8"))
     board = pcbnew.LoadBoard(pcb)
     if not pcbnew.ExportSpecctraDSN(board, dsn):
         raise SystemExit("Specctra DSN export failed")
     print("exported %s (%.0f kB)" % (os.path.basename(dsn), os.path.getsize(dsn) / 1e3))
+
+    # ⚠ DECLARE THE PLANE LAYERS AS PLANES, or the router treats them as free copper.
+    # KiCad's Specctra exporter marks EVERY copper layer "(type signal)", so a 4-layer
+    # board hands freerouting four routing layers -- including the one the design calls
+    # an unbroken ground plane and relies on for the USB pair's impedance reference.
+    # It duly routes through it: the optical board's In1.Cu pour came back at 1043 mm2
+    # of an original 5729, shredded into islands by tracks laid across it, and the
+    # "continuous reference plane" in the header was simply not true of any routed board
+    # here. Specctra's own word for this is (type power); freerouting honours it and
+    # leaves the layer alone.
+    #
+    # It also makes the routing PROBLEM smaller and better posed, which is the happy
+    # part: two signal layers with a solid reference between them, instead of four
+    # layers of contention and a reference that is not there.
+    planes = notes.get("plane_layers", ()) if notes else ()
+    if planes:
+        txt = open(dsn, encoding="utf-8").read()
+        for layer in planes:
+            marker = "(layer %s\n      (type signal)" % layer
+            if marker not in txt:
+                raise SystemExit("plane layer %s not found in the DSN as expected"
+                                 % layer)
+            txt = txt.replace(marker, "(layer %s\n      (type power)" % layer)
+        open(dsn, "w", encoding="utf-8").write(txt)
+        print("  declared %s as plane layer(s) -- the router will not route on them"
+              % ", ".join(planes))
 
     if not os.path.isfile(JAVA):
         raise SystemExit("no Java 25 runtime at %s" % JAVA)
@@ -52,7 +108,19 @@ def route(stem, passes=PASSES):
     # second on boards this size.
     cmd = [JAVA, "-Djava.awt.headless=true", "-jar", JAR, "-de", dsn, "-do", ses,
            "-mp", str(passes), "-mt", "1"]
-    r = subprocess.run(cmd, capture_output=True, text=True, timeout=900)
+    # ⚠ A TIMEOUT HERE MUST NOT LOOK LIKE A ROUTING RESULT. subprocess.run raises
+    # TimeoutExpired, which a caller redirecting stderr will never see -- and the board
+    # is then left exactly as it was, PLACED AND UNROUTED. Downstream that reads as
+    # "the router could not connect anything", which sent me chasing a phantom
+    # regression twice. Catch it and say what actually happened.
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        raise SystemExit(
+            "freerouting exceeded %d s on %s at %d passes and was killed. The board is "
+            "UNROUTED -- it has not silently produced a bad result, it has produced "
+            "none. Lower the pass count (the curve is flat past ~10) or raise `timeout`."
+            % (timeout, os.path.basename(stem), passes))
     tail = (r.stdout or "").strip().splitlines()[-6:]
     print("\n".join("  " + t for t in tail))
     if not os.path.isfile(ses):
@@ -83,8 +151,26 @@ def route(stem, passes=PASSES):
     # cut-out around it -- 164 violations on the first try, all of them a zone
     # against a via that was not there when it was filled.
     if board.Zones():
+        # ⚠ AND BUILD CONNECTIVITY FIRST, exactly as layout.py does. The filler uses
+        # the connectivity graph to decide which islands are attached to their net, and
+        # a board loaded from a file and modified by script has no graph until asked.
+        # Skipping it here is subtler than skipping it there, because the board ARRIVES
+        # correctly poured: layout.py filled it properly, and this refill then silently
+        # discards the lot. The optical board's F.Cu ground pour vanished at exactly
+        # this line and took 74 pads with it -- the routed board came back WORSE than
+        # before the pour existed, which is a confusing way to learn it.
+        board.BuildConnectivity()
         pcbnew.ZONE_FILLER(board).Fill(board.Zones())
     board.Save(pcb)
+    # ⚠ CANONICALISE THE ROUTED BOARD TOO, for the same reason layout.py does it --
+    # and the reason is now MEASURED rather than argued. Two independent runs of the
+    # whole pipeline lay 2,299 copper items that are byte-identical: freerouting is
+    # deterministic given deterministic input, which is what makes "run the script" a
+    # promise rather than a hope. All that separated the two files was 12,268 lines of
+    # random UUID. Left alone it would put noise in every diff of a routed board and
+    # make "did this change anything?" unanswerable at exactly the point where the
+    # answer matters most.
+    layout._canonical_uuids(pcb)
     n = len(list(board.GetTracks()))
     print("%s: %d track segments + vias imported" % (os.path.basename(pcb), n))
     return pcb

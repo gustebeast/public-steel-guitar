@@ -29,6 +29,7 @@ missing one -- the missing one stops the order, the wrong one ships.
 from __future__ import annotations
 
 import csv
+import json
 import os
 import re
 import subprocess
@@ -36,6 +37,7 @@ import sys
 import zipfile
 
 KICAD_CLI = r"C:\Program Files\KiCad\10.0\bin\kicad-cli.exe"
+KICAD_PY = r"C:\Program Files\KiCad\10.0\bin\python.exe"
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT_DIR = os.path.join(HERE, "out")
 FAB_DIR = os.path.join(OUT_DIR, "fab")
@@ -133,7 +135,6 @@ def _parts(stem):
 
 
 def _layers(stem):
-    import json
     return L4 if json.load(open(stem + ".board.json", encoding="utf-8"))["layers"] == 4 else L2
 
 
@@ -151,10 +152,36 @@ def fab(board):
                        capture_output=True, text=True)
     unrouted = re.search(r"Found (\d+) unconnected", r.stdout or "")
     if unrouted and int(unrouted.group(1)):
+        n = int(unrouted.group(1))
+        tracks = sum(1 for ln in open(pcb, encoding="utf-8") if ln.lstrip().startswith("(segment"))
+        # ⚠ SAY WHICH OF THE TWO FAILURES THIS IS. They need opposite responses and
+        # the message used to assert the first one flatly: a board that was never routed
+        # arrives as bare copper and wants route.py; a board that WAS routed and has
+        # three nets left wants a look at those three nets, and being told to "run
+        # route.py first" sends you to re-run a step that already ran. Track count is
+        # what distinguishes them, and it costs one pass over a file already on disk.
         raise SystemExit(
-            "%s: %s unconnected items -- this board is PLACED but not ROUTED, and a fab "
-            "package built from it would look complete and arrive as bare copper. Run "
-            "elec/route.py on it first." % (board, unrouted.group(1)))
+            "%s: %d unconnected item(s) -- %s. A fab package built from it would look "
+            "complete and arrive incomplete."
+            % (board, n,
+               "this board has NO routing at all; run elec/route.py on it first"
+               if tracks == 0 else
+               "the board IS routed (%d segments) but the router could not finish "
+               "these nets. Re-running route.py will not help -- it is deterministic "
+               "now and will make the same choices. Look at the nets themselves"
+               % tracks))
+
+    # ⚠ AND DRC IS NOT THE WHOLE TEST EITHER. It answers "is this manufacturable",
+    # not "is this correct": a router can hand back a DRC-perfect board on which the
+    # USB pair is split across two layers and took two unrelated paths. elec/verify.py
+    # is where the checks a PERSON would otherwise make by eye are written down, and
+    # running it HERE is what stops it being a script nobody remembers to run. Boards
+    # that declare no budgets pass it trivially, so this costs them nothing.
+    v = subprocess.run([KICAD_PY, os.path.join(HERE, "verify.py"), stem],
+                       capture_output=True, text=True)
+    if v.returncode:
+        raise SystemExit("%s: FAILED its declared high-speed budgets --\n%s"
+                         % (board, (v.stdout or "") + (v.stderr or "")[-400:]))
 
     d = os.path.join(FAB_DIR, board)
     os.makedirs(d, exist_ok=True)
@@ -210,18 +237,32 @@ def fab(board):
                 (open_generic if generic else open_real).add(val)
             w.writerow([val, ",".join(sorted(refs)), fp.split(":", 1)[1], code])
 
+    # ⚠ WHAT THE GERBERS CANNOT SAY. Mask colour, board thickness, surface finish and
+    # copper weight are chosen in the ORDER FORM, not in any generated file, so a board
+    # whose design depends on one of them has no way to carry that to the person paying
+    # -- and "I remember it should be black" is not a design record. A board declaring
+    # order_options gets them written into its own zip, next to the gerbers, where
+    # whoever opens it to place the order will see them.
+    opts = json.load(open(stem + ".board.json", encoding="utf-8")).get("order_options")
+    if opts:
+        with open(os.path.join(d, "ORDER.txt"), "w", encoding="utf-8") as f:
+            f.write("%s -- order form settings that are NOT in the gerbers\n\n" % board)
+            for k in sorted(opts):
+                f.write("  %-12s %s\n" % (k + ":", opts[k]))
     z = os.path.join(FAB_DIR, "%s.zip" % board)
     with zipfile.ZipFile(z, "w", zipfile.ZIP_DEFLATED) as zf:
         for fn in sorted(os.listdir(d)):
             zf.write(os.path.join(d, fn), fn)
-    return n, len(groups), sorted(open_real), sorted(open_generic), z
+    return n, len(groups), sorted(open_real), sorted(open_generic), z, opts or {}
 
 
 def main(names):
     os.makedirs(FAB_DIR, exist_ok=True)
-    blocked = {}
+    blocked, order = {}, {}
     for b in names:
-        n, g, open_real, open_generic, z = fab(b)
+        n, g, open_real, open_generic, z, opts = fab(b)
+        if opts:
+            order[b] = opts
         print("%-13s %3d placements, %2d BOM lines, %d generic + %d OPEN  -> %s"
               % (b, n, g, len(open_generic), len(open_real), os.path.basename(z)))
         if open_real:
@@ -231,6 +272,11 @@ def main(names):
         for b, vals in blocked.items():
             for v in vals:
                 print("   %-13s %s" % (b, v))
+    if order:
+        print("\nORDER FORM SETTINGS (not in the gerbers -- see each zip's ORDER.txt):")
+        for b, opts in order.items():
+            for k in sorted(opts):
+                print("   %-13s %-11s %s" % (b, k, opts[k].split(" -- ")[0]))
     # ASCII on purpose: this prints to a Windows console whose default
     # codepage is cp1252, and a warning that raises UnicodeEncodeError is
     # worse than no warning at all.

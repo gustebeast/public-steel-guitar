@@ -611,13 +611,24 @@ JACK_ACCESS_XY = TP.JACK_POS[0]                 # THE JACK'S OWN POSITION, read 
 JACK_ACCESS_D  = M4.shaft_clr_d                 # 4.4
 
 
+
+
 def _parts():
     """EVERY component on the strip, with its package and placed centre. ONE source of
     truth for the 3D model, the area budget, the clearance assertions and BOM.md."""
     P = []
 
-    def add(ref, desc, pkg, x, y):
-        P.append({"ref": ref, "desc": desc, "pkg": pkg, "x": x, "y": y})
+    def add(ref, desc, pkg, x, y, rot=0.0):
+        # ROT IS A ROUTING FACT, not a drawing preference: it says which way a part's
+        # pins face, and for anything on a high-speed net that is the placement. Only
+        # SQUARE or symmetric-envelope packages may use it as written -- the envelope
+        # tables here are (w, h) and are NOT swapped for 90/270, so a rotated oblong
+        # would be modelled at the wrong size. Assert rather than silently mis-model.
+        assert rot in (0.0, 90.0, 180.0, 270.0), (
+            "%s: rot %g -- only right angles, so `part_wh` can swap the envelope's axes "
+            "instead of rotating a rectangle into something the tables cannot describe."
+            % (ref, rot))
+        P.append({"ref": ref, "desc": desc, "pkg": pkg, "x": x, "y": y, "rot": rot})
 
     # ---- 1. sensing row, ON THE STRING FAN, + per-string ballast in the Y gaps ----
     for i in range(D.N_STRINGS):
@@ -678,13 +689,19 @@ def _parts():
     y = _block(P, y, [("C%d" % (100 + k), "MCU decoupling", "0402") for k in range(12)]
                      + [("R30", "BOOT0 pull-down", "0402"),
                         ("R31", "NRST pull-up", "0402")], x0, x1)
-    # PHY between the MCU and the connector -- it owns both ends: 12 ULPI signals up to
-    # the MCU, D+/D- down to the port.
+    # ⚠ THE PHY IS NO LONGER HERE. It used to sit in this row, between the MCU and the
+    # connector, on the reasoning that it owns both ends -- 12 ULPI signals up to the
+    # MCU, D+/D- down to the port. That balanced the two runs, and it was the wrong
+    # trade: ULPI is 60 MHz and forgives a long run (12 mm of mismatch is 0.36% of a
+    # bit), while D+/D- is 480 Mbps and forgives nothing. Splitting the difference
+    # served the tolerant link at the expense of the critical one.
+    # The PHY now lives in the USB cluster at the -Y edge; see section 4b.
     y = _block(P, y, [("Y1", "25 MHz crystal -- MCU HSE", "3225"),
-                      ("U7", "USB 2.0 high-speed ULPI PHY", "QFN-24"),
                       ("Y2", "24 MHz crystal -- PHY reference", "3225")]
-                     + [("C%d" % (120 + k), "PHY decoupling", "0402") for k in range(3)]
-                     + [("C%d" % (123 + k), "crystal load cap", "0402") for k in range(4)],
+                     + [("C%d" % (123 + k), "crystal load cap", "0402") for k in range(2)]
+                     + [("C125", "crystal load cap", "0402"),
+                        ("C126", "crystal load cap", "0402")]
+                     + [("C%d" % (120 + k), "PHY decoupling", "0402") for k in range(3)],
                x0, x1)
     # U11 is the mid-rail reference the 20 TIAs sit on: single-supply transimpedance needs
     # a bias for the non-inverting inputs, and all 20 quad channels are spoken for.
@@ -692,7 +709,6 @@ def _parts():
                       ("U9", "LDO -- 3V3 analog (low noise)", "SOT-23-5"),
                       ("U11", "single op-amp -- TIA mid-rail reference buffer", "SOT-23-5"),
                       ("Q1", "N-ch MOSFET -- LED row driver", "SOT-23"),
-                      ("U10", "USB data-line ESD array", "SOT-563"),
                       ("FB1", "ferrite bead -- analog rail isolation", "0603"),
                       ("C130", "bulk cap -- VBUS", "0805C"),
                       ("C131", "bulk cap -- 3V3 digital", "0805C"),
@@ -758,14 +774,30 @@ def _parts():
     # zone is the MAGNETIC channel, which is line level -- four to five orders of magnitude
     # louder than the nanoamps the TIAs read, and therefore the right neighbour for it.
     # The two 3V3 LDOs still follow, so nothing downstream of 5 V sees the switching node.
-    y = _block(P, y, [("U13", "buck -- 24V -> 5V, the board's only switcher", "SOT-23-6"),
-                      ("L1", "buck output inductor", "IND-4040"),
-                      ("C160", "24 V input bulk -- 50 V part, see 1206C", "1206C"),
-                      ("C161", "24 V input HF bypass", "0402"),
-                      ("C162", "5 V output bulk", "0805C"),
-                      ("C163", "bootstrap", "0402"),
-                      ("R40", "feedback divider -- top", "0402"),
-                      ("R41", "feedback divider -- bottom", "0402")], x0, x1)
+    # ⚠ PLACED EXPLICITLY, NOT PACKED, and pushed to the -X side. The packer spread it
+    # across the full width, which put the switching node in the middle of the board and
+    # -- once the USB cluster moved to the -Y edge -- directly between the PHY and its
+    # connector. Both problems answer to the same move: the buck belongs beside the 24 V
+    # inlet it is fed from, and that inlet is now the -X connector. Power on one side,
+    # USB on the other, which is also the right answer for noise.
+    # ⚠ THE ROW IS RESERVED HERE AND FILLED LATER, once the board's -Y face is known.
+    # Every Y on this board is derived from the part list marching down, so a typed
+    # coordinate is stale the moment anything above it changes size -- which is exactly
+    # what happened the first time this was written: taking the buck out of the packer
+    # shortened the board by its row height, and the hand-typed cluster below ended up
+    # off the -Y edge.
+    _buck = (("U13", "buck -- 24V -> 5V, the board's only switcher", "SOT-23-6", -35.0),
+             ("L1", "buck output inductor", "IND-4040", -28.0),
+             ("C160", "24 V input bulk -- 50 V part, see 1206C", "1206C", -21.5),
+             ("C161", "24 V input HF bypass", "0402", -17.0),
+             ("C162", "5 V output bulk", "0805C", -13.5),
+             ("C163", "bootstrap", "0402", -9.5),
+             ("R40", "feedback divider -- top", "0402", -6.5),
+             ("R41", "feedback divider -- bottom", "0402", -4.0))
+    _buck_h = max(CRTYD[_p][1] for _, _, _p, _ in _buck)
+    y -= CRTYD_GAP
+    _buck_y = y - _buck_h / 2.0
+    y -= _buck_h
 
     # ---- 4. the -Y EDGE: every cable leaves the board here ----
     # Both mouths face -Y and their outer faces are FLUSH, so the two plugs present as one
@@ -777,11 +809,44 @@ def _parts():
     # the packer above had already filled. C160, the 24 V bulk cap, ended up sitting ON
     # J2's pads 3 and 4: DRC called it a short between +24V and an unused cavity, which
     # is exactly what it was.
-    _conn_depth = max(CRTYD["USB-C"][1], CRTYD["XH-SM-4Y"][1])
+    # ⚠ THE BAND IS DEEP ENOUGH FOR TWO ROWS NOW, and the extra 1.06 mm buys the only
+    # thing on this board that could not be bought any other way: a USB-C whose data
+    # pads escape INBOARD, the way a USB-C's data pads have to.
+    #
+    # A USB-C receptacle's 16 pads sit 8.25 mm behind its mouth, on 0.5 mm pitch, with a
+    # 1 mm through-plated shell tab either side of them. There is no route out of that
+    # row except straight inboard, between the tabs -- which means the part the pair
+    # goes to has to BE inboard. It was beside instead, and the 22 mm of copper that
+    # implies had to cross a shell tab that pierces all four layers. That was not a
+    # routing problem with a routing answer; it was the placement saying one thing and
+    # the connector's own geometry saying another.
+    _uc_w, _uc_d = CRTYD["USB-C"]
+    # TURNED 90 deg -- see the ESD array's placement -- so its envelope turns with it
+    _esd_d, _esd_w = CRTYD["SOT-563"]
+    _phy_w, _phy_d = CRTYD["QFN-24"]
+    # ⚠ THE CHAIN IS SPACED FOR ITS GROUND PAD, not for its courtyards. CRTYD_GAP is
+    # 0.15 and legal, and at 0.15 the ESD array's centre pin -- its ground, where the
+    # diodes dump what they clamp -- is boxed in: the pair's two rails leave either side
+    # of it and there is nowhere within reach to put a via down to the plane. The
+    # stitcher said so by name rather than quietly leaving the pad on the pour, and a
+    # protection device whose ground is a pour connection the router may orphan is not
+    # protecting anything. A millimetre of lane either side is what it costs.
+    _chain_gap = 1.0
+    _conn_depth = max(CRTYD["XH-SM-4Y"][1],
+                      # socket, then the ESD array in line with its pad row, then the
+                      # PHY behind that: the chain in signal order, in a straight line
+                      _uc_d + _chain_gap + _esd_d + _chain_gap + _phy_d)
     edge_y = y - _conn_depth                                # the board's -Y face
+    # J2 TAKES THE -X END AND J1 THE +X. The 24 V inlet gains the -X end, next to the
+    # buck it feeds; the USB-C gains the +X end, and the whole high-speed chain lays out
+    # behind it IN SIGNAL ORDER. The cable run is a wash -- both plugs turn +X to the
+    # conduit, so one gets shorter by roughly what the other gains.
+    add("J2", "power in -- 24V, PWR_GND, 2 cavities empty", "XH-SM-4Y",
+        COMPUTE_X0 + EDGE_KEEP + CRTYD["XH-SM-4Y"][0] / 2,
+        edge_y + CRTYD["XH-SM-4Y"][1] / 2)
+    _j1_x = TAIL_X1 - EDGE_KEEP - _uc_w / 2
     add("J1", "USB-C receptacle -- 10ch audio + MIDI + DFU", "USB-C",
-        COMPUTE_X0 + EDGE_KEEP + CRTYD["USB-C"][0] / 2,
-        edge_y + CRTYD["USB-C"][1] / 2)
+        _j1_x, edge_y + _uc_d / 2)
     # J2 -- POWER *AND* the magnetic pickup's audio tap. 24 V FROM THE TRUNK, and NOT USB
     # VBUS: MCU ~200-300 mA + PHY ~50 + 21 op-amp channels ~40 is already past a USB port
     # before an emitter is lit, and LED current is now the FIRST SNR lever we have.
@@ -791,13 +856,58 @@ def _parts():
     # current is the one noise source ambient subtraction cannot cancel. Local conversion
     # keeps it on this board. It costs the board its switcher-free property; see U13.
     # AUDIO_GND is a dedicated pin, not shared with PWR_GND and emphatically not with USB
-    # ground: the LED row driver switches at 96 kHz SYNCHRONOUSLY WITH SAMPLING and that
-    # current flows in the power return, so sharing it would inject the one noise source
-    # ambient subtraction cannot cancel straight into the audio reference.
-    add("J2", "power in -- 24V, PWR_GND, 2 cavities empty", "XH-SM-4Y",
-        COMPUTE_X0 + EDGE_KEEP + CRTYD["USB-C"][0] + CRTYD_GAP
-        + CRTYD["XH-SM-4Y"][0] / 2,
-        edge_y + CRTYD["XH-SM-4Y"][1] / 2)
+    # ground, for the same reason.
+
+    # ---- 4b. THE USB CHAIN, IN THE ORDER THE SIGNAL TRAVELS ----
+    # ⚠ PLACED BY WHICH WAY THE PINS FACE, which is the lesson this board taught twice.
+    # The first re-plan put the chain together -- PHY, ESD array and socket in one group
+    # instead of scattered across three packed rows -- and that was right and not enough.
+    # Together is not the same as IN ORDER: the PHY's D+/D- pins are on its +X face, and
+    # the group was laid out with the socket to its -X, so the pair's first move was
+    # backwards around the package that had just driven it. The crystal sat in front of
+    # those same pins, 1.7 mm away, for good measure.
+    #
+    # A high-speed pair is a direction before it is a distance. So the chain now runs +X
+    # in signal order -- PHY, ESD array, socket -- with the ESD array stepped inboard to
+    # meet the socket's pad row where it escapes, and nothing at all in front of the PHY.
+    # ⚠ AN ESCAPE LANE, NOT A COURTYARD GAP. CRTYD_GAP is 0.15 -- legal, and useless
+    # here: the pair has to come off the PHY's pad face, open out to the via pitch and
+    # turn, and none of that happens in 0.15 mm. Packed at the courtyard gap the PHY's
+    # D+/D- pins had 0.15 mm of board in front of them and the router reported no escape
+    # at all, which read as a routing failure and was a placement one. Two millimetres
+    # is what the fan-out actually occupies.
+    # ⚠ AND IT SITS BEHIND THE ESD ARRAY, WHICH SITS BEHIND THE SOCKET. The chain is a
+    # straight line inboard, in the order the signal travels, because inboard is the only
+    # direction a USB-C's data pads can leave: they are 8.25 mm behind its mouth on 0.5 mm
+    # pitch with a through-plated shell tab either side, so the route out is between the
+    # tabs or it is nothing.
+    #
+    # This costs 2.92 mm of band depth over packing the PHY beside the socket, and for one
+    # afternoon the board could not afford it -- the conduit limit was derived from the
+    # chassis rail's datum instead of the instrument's exterior, which made the budget look
+    # 12.84 mm tighter than it is (see _WALL_Y). Against the real budget it is 2.92 of
+    # 14.75 mm spare, and it buys a pair with no corner in it at all.
+    # TURNED so D+/D- face the ESD array. Unturned they face +X, which on a chain that
+    # runs in Y means the pair's first move is sideways out of the package and then back
+    # across it -- and the 12 ULPI signals, which leave the two faces at right angles to
+    # those, turn with it and still point at the MCU. The rotation costs nothing and is
+    # the difference between a straight pair and no pair.
+    add("U7", "USB 2.0 high-speed ULPI PHY", "QFN-24",
+        _j1_x, edge_y + _uc_d + _chain_gap + _esd_d + _chain_gap + _phy_d / 2,
+        rot=270.0)
+    # ⚠ OFFSET BY HALF ITS OWN PAD SPAN, so the two faces land where the two hops need
+    # them. A SOT-563's pads face +-X and this hop runs in Y, which reads like the wrong
+    # package until you notice the part is a PASS-THROUGH: D+ appears on pins 1 and 6,
+    # D- on 3 and 4, and the run is meant to enter one face and leave the other. Centred
+    # on the socket, BOTH faces sat beside its pad row and the outgoing pair had to
+    # double back around the part it had just left. Shifted -X by half the pad span, the
+    # +X face sits directly over the socket's pad row -- a 3 mm drop straight down it --
+    # and the -X face looks back down the board at the PHY.
+    add("U10", "USB data-line ESD array -- inboard of the socket's pad row", "SOT-563",
+        _j1_x, edge_y + _uc_d + _chain_gap + _esd_d / 2, rot=270.0)
+    for _ref, _desc, _pkg, _bx in _buck:
+        add(_ref, _desc, _pkg, _bx, _buck_y)
+
     return P
 
 
@@ -1018,8 +1128,20 @@ def part(ref):
     raise KeyError(ref)
 
 
+def part_wh(p, table=None):
+    """A part's (w, h) envelope AS PLACED. Rotation swaps the axes, and every consumer
+    of these tables has to go through here or a rotated part is modelled at the wrong
+    size -- which is the kind of error that looks fine in the render and fails at the
+    fab."""
+    t = PKG if table is None else table
+    dx, dy = t[p["pkg"]][0], t[p["pkg"]][1]
+    if float(p.get("rot", 0.0)) % 180.0 == 90.0:
+        dx, dy = dy, dx
+    return dx, dy
+
+
 def part_span(p):
-    dx, dy, _ = PKG[p["pkg"]]
+    dx, dy = part_wh(p)
     return (p["x"] - dx / 2, p["x"] + dx / 2, p["y"] - dy / 2, p["y"] + dy / 2)
 
 
@@ -1101,7 +1223,8 @@ def _outline(grow=0.0, t=None, zc=None):
 def _part_solid(p):
     """Package standing UP from the board's top face (single-sided, components at the
     strings)."""
-    dx, dy, dz = PKG[p["pkg"]]
+    dx, dy = part_wh(p)
+    dz = PKG[p["pkg"]][2]
     return box_at(dx, dy, dz, x=p["x"], y=p["y"], z=PCB_TOP + dz / 2)
 
 
@@ -1257,9 +1380,10 @@ _USBC_W, _USBC_H = 12.35, 6.50                                # USB-IF MAX overm
 #     a risk entirely: a lead that crosses a neighbour now turns at whichever back face is
 #     further -Y, ITS OWN OR THE NEIGHBOUR'S. A short plug just runs a little further in
 #     free air before turning. No length can make it clip.
-#   LONG plug -- only eats conduit depth, and the endplate has a hard limit: the conduit may
-#     not pass y -132.15 or the -Y exterior wall drops under MIN_WALL_2P. So the BOM
-#     specifies a maximum overmold and the assertion below holds the model to it.
+#   LONG plug -- only eats conduit depth, and there is a hard limit past which the -Y
+#     exterior wall drops under MIN_WALL_2P. So the BOM specifies a maximum overmold and
+#     the assertion below holds the model to it. See _WALL_Y for where that limit is and
+#     why it is a surveyed number rather than a derived one.
 #
 # ⚠ THAT MAXIMUM TIGHTENED FROM 20 TO 17.5 (2026-09-15), and this is the constant that
 # absorbed it -- which is what it was built for. Spacing the layout by COURTYARD rather
@@ -1269,7 +1393,24 @@ _USBC_W, _USBC_H = 12.35, 6.50                                # USB-IF MAX overm
 # rule for what to buy did. Surveyed USB-C overmolds run ~10-25 mm, so <= 17.5 narrows
 # the choice without leaving it -- it rules out the long boots, not the market.
 PLUG_L = {"J1": 17.5, "J2": 14.0}                             # USB-C boot; XHP-6 + relief
-_WALL_Y = CH.Y_LO + D.MIN_WALL_2P                             # -132.15, conduit's -Y limit
+# ⚠ THE -Y BUDGET IS A MEASUREMENT, NOT A DERIVATION (user, 2026-09-16). There are
+# 37.25 mm between this board's -Y edge and the instrument's -Y exterior in the model on
+# main, and that whole span is available -- to the board, the conduit, the mated plug and
+# the cable's bend alike. Nothing may leave it; everything inside it is ours to spend.
+#
+# It used to be derived instead, as CH.Y_LO + MIN_WALL_2P, and the derivation was wrong by
+# 12.84 mm: CH.Y_LO is the chassis rail's DATUM, and it was being read as the outside of
+# the instrument when there is structure beyond it. That is a bad kind of wrong -- it does
+# not fail, it just quietly charges the layout for room it already had. It cost the USB
+# chain 0.85 mm, which was enough to stop the PHY sitting behind the socket where it
+# belongs, and the pair took a corner to avoid a wall that was not there.
+#
+# ANCHORED TO THE BOARD EDGE AS SURVEYED, not to PCB_YM, which is the whole point: PCB_YM
+# moves when the layout grows, so measuring the budget from it would make the budget move
+# with the thing it is supposed to constrain and the assertion could never fail.
+YM_AT_SURVEY = -109.54                                        # PCB_YM on main when measured
+Y_BUDGET     = 37.25                                          # board -Y edge -> instrument
+_WALL_Y = YM_AT_SURVEY - Y_BUDGET + D.MIN_WALL_2P             # -145.19, conduit's -Y limit
 CONDUIT_W = max(_XH6_D, _USBC_H) + 2 * CONDUIT_CLR            #  9.50, along X (thin axis)
 # Y answers TWO separate requirements and must satisfy the larger. Sizing it on the span
 # alone was a latent bug: it happened to be big enough only because the straight USB-C plug
