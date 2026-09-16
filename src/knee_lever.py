@@ -499,13 +499,11 @@ MID_Y     = -37.0                   # guitar Y-midpoint (= chassis (Y_LO + Y_HI)
 # had to pull their knee back to reach it, when the whole point of a vertical lever is
 # to lift without moving (user). The slot now runs to the inside edge of the
 # instrument, which is as far as it can go and enough for any of them.
-MORT_Y_END = D.LIGHT_WIN_Y0         # +Y end of the knee-depth slide, guitar Y. It used to run
-                                    # to the +Y rail's inner face (BRIDGE_AXLE_Y + 3.2); it now
-                                    # stops where the DOWNWARD LIGHT WINDOW starts (user), so the
-                                    # window is a clean slot instead of a comb of slot-ends -- the
-                                    # mortises crossed it and left the transparent part hanging
-                                    # off the 1.5 mortise cap. Costs that much of the deepest
-                                    # knee-depth setting.
+MORT_Y_END = D.LIGHT_WIN_Y0
+#   ^ +Y end of the knee-depth slide, guitar Y: every mortise runs the full width of the
+#     instrument and stops AT the transparent window's face (user, 2026-09-16). It ran to the
+#     +Y rail's inner face before the window existed. No wall between the two -- the window is
+#     solid (transparent) material in the finished print, so it IS the end of the slot.
                                     # = the chassis +Y rail INNER face, spelled via the same
                                     # D constants chassis.Y_HI uses (import direction forbids
                                     # chassis; the old 54.75 had gone stale twice over)
