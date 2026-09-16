@@ -176,6 +176,213 @@ def _anchor_on_pads(fp, target):
     fp.SetPosition(pcbnew.VECTOR2I(pos.x + (target.x - cx), pos.y + (target.y - cy)))
 
 
+def _outline_pts(notes):
+    """The board edge as board-local mm points, whichever way the board declared it."""
+    if notes.get("outline_poly"):
+        return [tuple(pt) for pt in notes["outline_poly"]]
+    w, h = notes["outline_mm"]
+    return [(-w / 2.0, -h / 2.0), (w / 2.0, -h / 2.0), (w / 2.0, h / 2.0), (-w / 2.0, h / 2.0)]
+
+
+def _inside(outline, x, y, margin):
+    """Is board-coordinate (x, y) inside `outline` by at least `margin` (all internal
+    units)? Ray cast for the inside test, then point-to-segment for the margin -- a
+    point can be well inside a polygon and still be 0.05 mm from one of its edges,
+    which is what a via on a board edge looks like to the fab."""
+    import math as _m
+    pts = [(_to_board(px, py)) for px, py in outline]
+    n = len(pts)
+    inside = False
+    for i in range(n):
+        ax, ay = pts[i].x, pts[i].y
+        bx, by = pts[(i + 1) % n].x, pts[(i + 1) % n].y
+        if (ay > y) != (by > y) and x < (bx - ax) * (y - ay) / float(by - ay) + ax:
+            inside = not inside
+    if not inside:
+        return False
+    for i in range(n):
+        ax, ay = pts[i].x, pts[i].y
+        bx, by = pts[(i + 1) % n].x, pts[(i + 1) % n].y
+        dx, dy = bx - ax, by - ay
+        L2 = dx * dx + dy * dy
+        t = 0.0 if L2 == 0 else max(0.0, min(1.0, ((x - ax) * dx + (y - ay) * dy) / L2))
+        if _m.hypot(x - (ax + t * dx), y - (ay + t * dy)) < margin:
+            return False
+    return True
+
+
+def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
+                       clr=0.2, max_reach=3.0, allow=()):
+    """Give every pad on a plane net its own via down to the plane layers.
+
+    ⚠ WITHOUT THIS, A GROUND PAD'S CONNECTION DEPENDS ON THE POUR'S ISLAND TOPOLOGY,
+    which the router decides after the fact. The F.Cu ground pour connects every
+    ground pad when the board is placed -- and then routing lays 2400 track segments
+    across it, chopping it into islands, and every island that does not happen to
+    reach a via is unconnected copper and gets removed. 86 ground endpoints went that
+    way on the optical board. The pour is still worth having (it is what stops the
+    router having to find 75 separate paths), but it cannot be the ONLY thing holding
+    a pad to the plane.
+
+    A via per pad makes each connection independent of everything that happens later:
+    the pad reaches In1.Cu directly, and the pour becomes a bonus rather than the
+    mechanism.
+
+    PLACEMENT IS SEARCHED, NOT ASSUMED. The via goes beside the pad, in the first of
+    eight directions at increasing radius that clears every other pad on the board by
+    `clr`. Same-net pads do not block it -- a ground via touching ground copper is the
+    point -- and a direction that fails simply is not used. Pads with nowhere to put a
+    via are REPORTED rather than skipped silently, because that is a real placement
+    problem and the board should not quietly ship with one pad floating.
+    """
+    import math
+    pads = [(pad, fp) for fp in board.GetFootprints() for pad in fp.Pads()]
+    # ⚠ PADS ARE RECTANGLES AND MODELLING THEM AS CIRCLES DOES NOT WORK HERE. The
+    # first version took each pad's radius as half its LARGEST dimension, which for an
+    # LQFP144 pin -- 1.48 long by 0.30 wide -- inflates its width by five times. Every
+    # point near the pad row then reads as occupied, and the search failed on all nine
+    # of the MCU's VSS pins with "no room" when there was plenty. Bounding boxes are
+    # what pcbnew already computes, they follow the pad's rotation, and point-to-box is
+    # not meaningfully more code than point-to-circle.
+    others = [(p.GetBoundingBox(), p.GetNetname()) for p, _ in pads]
+
+    def _clear_of(x, y, netname, margin):
+        """True if (x, y) keeps `margin` from every pad NOT on `netname`."""
+        for bb, onet in others:
+            if onet == netname:
+                continue
+            dx = max(bb.GetLeft() - x, 0, x - bb.GetRight())
+            dy = max(bb.GetTop() - y, 0, y - bb.GetBottom())
+            if math.hypot(dx, dy) < margin:
+                return False
+        return True
+    made, failed, done_vias = 0, [], []
+    for pad, fp in pads:
+        if pad.GetNetname() not in nets_wanted:
+            continue
+        net = pad.GetNet()
+        pc = pad.GetPosition()
+        half = max(pad.GetSize().x, pad.GetSize().y) / 2.0
+        need = pcbnew.FromMM(via_d / 2.0 + clr)
+        # ⚠ A BIG PAD TAKES THE VIA INSIDE ITSELF, and that is the right answer rather
+        # than a concession. An exposed thermal pad -- a QFN's belly, a SOT-223's tab --
+        # is enclosed by its own part's pins, so there is no "beside" to search; the
+        # first version of this raised on U7.25 for exactly that reason. Vias straight
+        # through a thermal pad are how those parts are meant to be grounded anyway, and
+        # inside the pad there is nothing to collide with by definition.
+        # The threshold keeps ordinary SMD lands out of it: an 0805's 1.0 mm land is too
+        # narrow to swallow a 0.6 via and still hold solder, and via-in-pad there wicks
+        # paste down the hole.
+        if min(pad.GetSize().x, pad.GetSize().y) >= pcbnew.FromMM(via_d + 0.6):
+            v = pcbnew.PCB_VIA(board)
+            v.SetPosition(pc)
+            v.SetWidth(pcbnew.FromMM(via_d))
+            v.SetDrill(pcbnew.FromMM(via_drill))
+            v.SetNet(net)
+            v.SetViaType(pcbnew.VIATYPE_THROUGH)
+            board.Add(v)
+            done_vias.append((pc.x, pc.y))
+            made += 1
+            continue
+        # ⚠ FINE-PITCH PINS NEED A FANOUT, NOT A NUDGE. A via cannot fit beside an
+        # LQFP144 pin on a 0.5 mm pitch -- its neighbours are 0.5 mm away and a 0.6 mm
+        # via with clearance needs about 1.0. The escape is to go OUTWARD, past the pad
+        # row entirely, which is how every fine-pitch package is fanned out; the first
+        # version searched only 0.5 mm and gave up on all 9 of the MCU's VSS pins.
+        # So: search out to several millimetres, and try the direction pointing AWAY
+        # from the part first, because that is where the open board is. Inward from a
+        # QFP pin is the package's own belly and there is never room there.
+        # THE COURTYARD CENTRE, not fp.GetPosition() -- a footprint's origin is
+        # wherever its author put it, which for most packages is PIN 1, i.e. a corner.
+        # Pointing "outward" away from a corner sends half the pins sideways along their
+        # own pad row instead of off the package, and the search then fails on exactly
+        # the fine-pitch pins it was added for.
+        fc = fp.GetCourtyard(pcbnew.F_CrtYd).BBox().GetCenter()
+        out_a = math.atan2(pc.y - fc.y, pc.x - fc.x) if (pc.x, pc.y) != (fc.x, fc.y) else 0.0
+        dirs = sorted((math.pi * k / 4.0 for k in range(8)),
+                      key=lambda a: abs(((a - out_a + math.pi) % (2 * math.pi)) - math.pi))
+        placed = False
+        for step in range(28):
+            r = half + need + pcbnew.FromMM(0.15 * step)
+            # A stitch is a SHORT hop to the plane. Past a couple of millimetres it has
+            # stopped being that and become a wire with an impedance and a loop area,
+            # and the honest thing is to fail and say the pad has no room rather than
+            # quietly run one across the board.
+            if r - half > pcbnew.FromMM(max_reach):
+                break
+            for a in dirs:
+                x = int(pc.x + r * math.cos(a))
+                y = int(pc.y + r * math.sin(a))
+                # ⚠ CHECK THE WHOLE SEGMENT, NOT JUST THE VIA. The first version tested
+                # only the via's centre and let the short track from the pad run wherever
+                # it liked -- straight across U10's USB_DM pad, in one case, which DRC
+                # correctly called a short between GND and a USB data line. The track is
+                # copper too; sample along it and hold it to the same clearance.
+                # ⚠ SAMPLE BY LENGTH, NOT BY A FIXED COUNT. Five samples over a
+                # 5 mm track is one every 1.25 mm, and a 0.5 mm pad fits between two
+                # of them -- which is exactly how a GND stitch ended up laid straight
+                # across U10's USB_DM pad while every sample said it was clear.
+                seg = math.hypot(x - pc.x, y - pc.y)
+                nsamp = max(4, int(pcbnew.ToMM(seg) / 0.15) + 1)
+                pts = [(pc.x + (x - pc.x) * t / nsamp, pc.y + (y - pc.y) * t / nsamp)
+                       for t in range(nsamp + 1)]
+                # ⚠ TWO DIFFERENT MARGINS, because two different things are being
+                # placed. The VIA is 0.6 across and needs via/2 + clearance; the TRACK
+                # reaching it is 0.25 and needs only track/2 + clearance, about half as
+                # much. Holding the track to the via's margin is what made the search
+                # fail on every fine-pitch VSS pin: the first sample sits at the pad's
+                # own centre, 0.35 mm from the neighbouring pin's land, which clears a
+                # 0.25 track easily and never clears a 0.6 via. The pad's own footprint
+                # is skipped for the same reason -- a track leaving a pad starts inside
+                # it by definition.
+                if not _inside(outline, x, y, pcbnew.FromMM(via_d / 2.0 + 0.3)):
+                    continue          # a via hanging off the board edge is not a via
+                via_lim = pcbnew.FromMM(via_d / 2.0 + clr)
+                trk_lim = pcbnew.FromMM(0.25 / 2.0 + 0.127)
+                ok = (_clear_of(x, y, pad.GetNetname(), via_lim)
+                      and all(_clear_of(px, py, pad.GetNetname(), trk_lim)
+                              for px, py in pts[1:]))
+                # ...and against the vias already placed, or two neighbouring pads
+                # choose the same gap and drill the same hole twice.
+                if ok:
+                    lim = pcbnew.FromMM(via_d + clr)
+                    if any(math.hypot(x - vx, y - vy) < lim for vx, vy in done_vias):
+                        ok = False
+                if not ok:
+                    continue
+                v = pcbnew.PCB_VIA(board)
+                v.SetPosition(pcbnew.VECTOR2I(x, y))
+                v.SetWidth(pcbnew.FromMM(via_d))
+                v.SetDrill(pcbnew.FromMM(via_drill))
+                v.SetNet(net)
+                v.SetViaType(pcbnew.VIATYPE_THROUGH)
+                board.Add(v)
+                t = pcbnew.PCB_TRACK(board)
+                t.SetStart(pc)
+                t.SetEnd(pcbnew.VECTOR2I(x, y))
+                t.SetWidth(pcbnew.FromMM(0.25))
+                t.SetLayer(pad.GetLayer())
+                t.SetNet(net)
+                board.Add(t)
+                done_vias.append((x, y))
+                made += 1
+                placed = True
+                break
+            if placed:
+                break
+        if not placed:
+            failed.append("%s.%s" % (fp.GetReference(), pad.GetNumber()))
+    failed = [f for f in failed if f not in allow]
+    if failed:
+        raise SystemExit(
+            "no room for a stitching via beside %d pad(s): %s\n"
+            "Those pads can only reach the plane through the pour, which routing can "
+            "orphan. Move the part, widen its neighbourhood, or -- if the pad really "
+            "can live on the pour alone -- name it in stitch_exceptions with a reason."
+            % (len(failed), ", ".join(failed[:12])))
+    return made
+
+
 def _edge_poly(board, pts):
     """An arbitrary closed outline on Edge.Cuts, in board-local mm.
 
@@ -433,6 +640,13 @@ def build(stem):
             if pad is None:
                 raise SystemExit("%s has no pad %s" % (ref, pad_no))
             pad.SetNet(net)
+
+    stitch = set(notes.get("stitch_nets", ()))
+    if stitch:
+        n = _stitch_plane_pads(board, stitch, _outline_pts(notes),
+                               allow=set(notes.get("stitch_exceptions", ())))
+        print("  stitched %d pad(s) on %s straight to the plane"
+              % (n, "/".join(sorted(stitch))))
 
     # outline_poly wins when present; outline_mm stays the LAYOUT REGION either way
     # (place_check and the zone filler both measure parts against it).
