@@ -315,7 +315,15 @@ BOARD_NOTES = {
         "C3": (6.50, 5.70, 0.0),
         "R2": (8.60, 5.70, 0.0),
         "R7": (10.90, 5.70, 0.0),
-        "U3": (1.00, 1.55, 90.0),
+        # ⚠ 0, NOT 90, AND IT IS A ROUTING DECISION. At 90 the CAN pair sat on the MCU's
+        # NORTH edge while the transceiver it talks to is south of it, and J1 walls off
+        # the whole west side -- so both signals had to travel around the package to get
+        # anywhere. CAN_TX made it and CAN_RX did not, through three rounds of trying to
+        # fix it as a routing problem.
+        # Measured across all four orientations by total pin-to-net distance: 58.7 mm at
+        # 0 against 66.6 at 90. A square QFN's envelope does not change when it turns, so
+        # this costs nothing but the decision to look.
+        "U3": (1.00, 1.55, 0.0),
         "C9": (5.50, 3.20, 0.0),
         "C8": (7.50, 3.20, 0.0),
         "R5": (11.00, 2.90, 0.0),
@@ -352,6 +360,13 @@ BOARD_NOTES = {
     # three 4-layer boards, because it was made where the symptom appeared instead of
     # where the property belonged. A board that pours a plane declares it.
     "plane_layers": ("In1.Cu",),
+    # ⚠ 0.15 mm TRACK, because the tightest part on this board is a 0.4 mm pitch QFN-28
+    # and the default 0.25 does not leave its escape fan room to turn. Four nets -- NRST,
+    # OSC_OUT, CAN_RX and a +3V3 pin -- were stranded at that package and neither the
+    # router nor the generator could get them out.
+    # 0.15 on 1 oz copper carries ~0.5 A at a 10 C rise, against this board's largest
+    # load of roughly 100 mA; the constraint here is geometry, not current.
+    "track_mm": 0.15,
     # ⚠ AND A PLANE NEEDS STITCHING TO IT. Declaring In1 a plane is only half the
     # job: it stops the router carrying ground THROUGH the plane, and then nothing
     # connects the ground pads TO it. Declared alone it stranded six GND pads on this

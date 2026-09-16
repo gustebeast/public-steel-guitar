@@ -647,6 +647,13 @@ BOARD_NOTES = {
     # three 4-layer boards, because it was made where the symptom appeared instead of
     # where the property belonged. A board that pours a plane declares it.
     "plane_layers": ("In1.Cu",),
+    # ⚠ 0.15 mm TRACK: the finest part on this board is a 0.4 mm pitch LQFP and 0.25
+    # with 0.127 clearance needs 0.377 per lane, which fits that pitch only just -- and
+    # "only just" runs out as soon as the escape fan has to turn. The same change took
+    # lever_sensor, whose tightest part is the same pitch, from 4 unconnected to 1.
+    # Geometry, not current: the signals here are logic and audio, and the power rails
+    # are short and wide where they matter.
+    "track_mm": 0.15,
     # ⚠ AND A PLANE NEEDS STITCHING TO IT. Declaring In1 a plane is only half the
     # job: it stops the router carrying ground THROUGH the plane, and then nothing
     # connects the ground pads TO it. Declared alone it stranded six GND pads on this
