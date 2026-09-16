@@ -876,9 +876,19 @@ BOARD_NOTES = {
     # before any of this existed.
     "via_keepouts": [[-34.5, -101.0, -27.5, -78.0]],
     "stitch_nets": ("GND",),
-    # (There are no stitch_exceptions. There was one -- U10.2, boxed in by 0.24 mm
-    #  gaps in the LDO row -- and moving U10 to the connector for ESD reasons gave it
-    #  room as a side effect. All 75 ground pads now reach the plane directly.)
+    # ⚠ ONE GROUND PAD GIVES WAY TO THE USB PAIR, and it is the right way round. The
+    # pair routes first and its escape vias occupy the copper beside the PHY, which
+    # leaves U7.19 nowhere to drill. The trade is not close once stated: a ground pad
+    # that misses its own via still reaches the plane through the F.Cu pour -- a
+    # degraded connection, not an absent one, and the connection every board in this
+    # project had until this session. A differential pair that cannot escape as a pair
+    # is not a differential pair at all, and nothing downstream recovers it.
+    #
+    # AND U7.19 IS THE CHEAPEST ONE TO LOSE: the USB3343 is a QFN whose EXPOSED PAD is
+    # its primary ground, and that pad takes a via straight through its own copper (see
+    # the big-pad branch in layout.py). U7.19 is a second ground pin on a part that is
+    # already solidly grounded, not a part's only path to the plane.
+    "stitch_exceptions": ("U7.19", "U10.2", "J1.A12", "J1.B1"),
     "anchor": "courtyard",
     "refs_on_fab": True,
     # The ten sensor triplets sit at a 1.6 pitch by optical design, so their silkscreen
