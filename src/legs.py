@@ -964,7 +964,8 @@ def corner_groove_negatives(station: float, ly: float, syg: float,
     (No fin passage any more — nothing rides above the stub top.)
     relief=True appends the 45° overhang wedge — for the CHASSIS ONLY
     (it relieves the wall-plate tongue's print overhang; the endplates
-    pass relief=False or the wedge eats their end-wall groove roof)."""
+    pass relief=False or the wedge eats their end-wall groove roof).
+"""
     negs = []
     # end-wall REBATE (see STUB_TNG_W): from just inboard of the tongue, in the
     # endplate<->shell gap, out to the tongue's outboard face + fit; depth

@@ -502,12 +502,20 @@ def _build_full() -> cq.Workplane:
         _egx = -1.0 if _xc_mid > _sx else 1.0       # outboard x sign
         for _s in (1, -1):
             _lc = LEG_Y[0] if _s > 0 else LEG_Y[1]  # flush leg centreline
+            # THESE DO NOT REACH THE FLOOR ANY MORE (user, 2026-09-16). They are still cut
+            # here because the leg's ridges cross the RAIL BAND and the kept +X shell, where
+            # there is no grid to ride and this is the only joinery there is -- dropping them
+            # outright drives 0.65-3.2 cm3 of every adapter into the body. What they can no
+            # longer touch is the FLOOR: each segment lays that down fresh after this and cuts
+            # only the grid out of it, so the leg cannot shape the grid even by accident. The
+            # ridges that run in the floor take grid stations instead (leg_stack.body_adapter).
             for _n in _cgn(_sx, _lc, float(_s), _egx, Z_BOT):
                 body = body.cut(_n)
             body = body.cut(_lpj(_sx, _lc, _egx, float(_s), Z_BOT).cutter((0.0, 0.0, 1.0)))
-    # (the old y-33 / z-70.6 Ø7 harness window is GONE — the wired
-    # corner's pigtail now rides the OVER-RIB raceway lane at y 50.5,
-    # cut with the wide corner ribs above)
+    # (the old y-33 / z-70.6 Ø7 harness window is GONE — the wired corner's pigtail now rides
+    # the raceway lane at y 50.5, cut with the floor's own negatives. The wide corner ribs that
+    # comment used to refer to are gone with the whole rib comb -- the bottom is one solid prism
+    # now, so there is MORE material under the feet than there was, not less.)
     return body
 
 
