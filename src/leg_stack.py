@@ -452,13 +452,32 @@ def body_adapter(sx: float = LEG_X, ly: float = LEG_Y):
     b = b.translate((sx - LEG_X, ly - LEG_Y, 0.0))
     # BODY TENONS, on the top face (see BODY JOINERY). Both ridges and the tongue
     # run the full LEG_W along Y, the slide axis.
+    # THE RIDGES FIT THE CHASSIS, not the other way round (user, 2026-09-16). The chassis cuts
+    # its lever-mortise grid by its own rule and nothing here reshapes it, so each ridge takes
+    # the grid's station where the grid reaches this corner (_cross_x(egx, sx)) and stops where
+    # the mortises stop -- they end at the light window's face, and a ridge that ran the full
+    # 44.8 past it drove 515 mm3 straight into the floor.
     mid_cut = LG.service_slide(egx, syg)
-    for i, dx in enumerate(LG._cross_x(egx)):
+    for i, dx in enumerate(LG._cross_x(egx, sx)):
         cut = mid_cut if i == 0 else 0.0        # the middle ridge gives up its inboard end
         if cut >= LEG_W - 1e-9:
             continue
         y0 = ly - LEG_W / 2.0 + (cut if syg > 0 else 0.0)
-        ridge = LG._stub_ridge(LEG_W - cut).translate((sx + dx, y0, Z_TOP))
+        y1 = y0 + (LEG_W - cut)
+        on_grid = abs(D.rib_comb_x(sx + dx) - (sx + dx)) < 1e-6
+        if on_grid:
+            y1 = min(y1, D.LIGHT_WIN_Y0)        # the mortises stop at the window
+            # ...AND THE SLIDE HAS TO FIT TOO. This corner installs by sliding OUTBOARD along Y,
+            # so a ridge in the grid must be able to travel that way inside its mortise. On a +Y
+            # corner it cannot: the mortises end at the window and the leg exits past it, so the
+            # ridge would drag 512 mm3 through the floor on the way in. Until the grid is allowed
+            # its exceptions again (user deferred them), that corner does without this ridge and
+            # holds on the other one plus the end-wall tongue.
+            if syg > 0:
+                continue
+        if y1 - y0 < 1.0:
+            continue
+        ridge = LG._stub_ridge(y1 - y0).translate((sx + dx, y0, Z_TOP))
         b = b.union(ridge)
     b = b.union(box_at(LG.STUB_TNG_W, LEG_W, LG.STUB_TNG_H,
                        x=sx + egx * LG.STUB_RIDGE_EP, y=ly,
