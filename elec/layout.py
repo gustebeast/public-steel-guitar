@@ -207,12 +207,22 @@ def _diff_pairs(board, specs, inner=None, clr=0.14):
     pads = [(pad, fp) for fp in board.GetFootprints() for pad in fp.Pads()]
     boxes = [(q.GetBoundingBox(), q.GetNetname()) for q, _ in pads]
     boxes += [(t.GetBoundingBox(), t.GetNetname()) for t in board.GetTracks()]
+    # ⚠ AN INNER-LAYER RUN HAS A DIFFERENT OBSTACLE SET, and using the surface one was
+    # why the re-planned board still reported the hop blocked. An SMD pad lives on F.Cu
+    # and is no obstacle at all to a trace on In2.Cu; what pierces every layer is
+    # THROUGH-HOLE copper -- vias, and the occasional THT pad. Checking a 7 mm inner run
+    # against 566 surface pads finds a collision every time, and the message reads as
+    # "the board is too dense" when the board is nothing of the kind.
+    thru = [(t.GetBoundingBox(), t.GetNetname()) for t in board.GetTracks()
+            if t.GetClass() == "PCB_VIA"]
+    thru += [(q.GetBoundingBox(), q.GetNetname()) for q, _ in pads
+             if q.GetAttribute() in (pcbnew.PAD_ATTRIB_PTH, pcbnew.PAD_ATTRIB_NPTH)]
     by_ref = {}
     for pad, fp in pads:
         by_ref.setdefault(fp.GetReference(), []).append(pad)
 
-    def clear(x, y, nets, margin):
-        for bb, onet in boxes:
+    def clear(x, y, nets, margin, obstacles=None):
+        for bb, onet in (boxes if obstacles is None else obstacles):
             if onet in nets:
                 continue
             dx = max(bb.GetLeft() - x, 0, x - bb.GetRight())
@@ -221,13 +231,13 @@ def _diff_pairs(board, specs, inner=None, clr=0.14):
                 return False
         return True
 
-    def seg_clear(p0, p1, nets, margin):
+    def seg_clear(p0, p1, nets, margin, obstacles=None):
         L = math.hypot(p1[0] - p0[0], p1[1] - p0[1])
         if L == 0:
             return True
         n = max(4, int(pcbnew.ToMM(L) / 0.15) + 1)
         return all(clear(p0[0] + (p1[0] - p0[0]) * t / n,
-                         p0[1] + (p1[1] - p0[1]) * t / n, nets, margin)
+                         p0[1] + (p1[1] - p0[1]) * t / n, nets, margin, obstacles)
                    for t in range(n + 1))
 
     done = []
@@ -248,9 +258,33 @@ def _diff_pairs(board, specs, inner=None, clr=0.14):
             if not cand[na] or not cand[nb]:
                 stops = None
                 break
-            a = min(cand[na], key=lambda q: q.GetPosition().x + q.GetPosition().y)
-            b = min(cand[nb], key=lambda q: (q.GetPosition() - a.GetPosition()).EuclideanNorm())
+            # ⚠ PICK THE PADS CHAIN-AWARE, NOT PART-BY-PART. A protection array exposes
+            # each net on BOTH of its sides (the USBLC6 carries D+ on pins 1 and 6, D- on
+            # 3 and 4), so "the nearest pad of each net" is a local answer that says
+            # nothing about where the run came from -- and choosing independently at each
+            # stop put D+ on the left at the PHY and on the right at the ESD array, so the
+            # two parallel runs crossed in the middle. DRC called it a short, correctly,
+            # and swapping the far end afterwards only moved the crossing into the stubs.
+            #
+            # Choosing the combination that minimises the TOTAL of the two rail lengths
+            # picks the uncrossed one for free: crossing is always longer than not.
             fpo = next(f for f in board.GetFootprints() if f.GetReference() == ref)
+            if not stops:
+                a = min(cand[na], key=lambda q: q.GetPosition().x + q.GetPosition().y)
+                b = min(cand[nb],
+                        key=lambda q: (q.GetPosition() - a.GetPosition()).EuclideanNorm())
+            else:
+                pa0, pb0 = stops[-1][0].GetPosition(), stops[-1][1].GetPosition()
+                best = None
+                for qa in cand[na]:
+                    for qb in cand[nb]:
+                        if qa.GetPosition() == qb.GetPosition():
+                            continue
+                        cost = ((qa.GetPosition() - pa0).EuclideanNorm()
+                                + (qb.GetPosition() - pb0).EuclideanNorm())
+                        if best is None or cost < best[0]:
+                            best = (cost, qa, qb)
+                _, a, b = best
             stops.append((a, b, fpo))
         if stops is None or len(stops) < 2:
             done.append((na, "could not find both nets on every part of the chain"))
@@ -346,8 +380,26 @@ def _diff_pairs(board, specs, inner=None, clr=0.14):
                     for step in range(30):
                         r = pcbnew.FromMM(1.0 + 0.2 * step)
                         cx2, cy2 = mx + ux * r, my + uy * r
-                        va = (cx2 + off * nx2, cy2 + off * ny2)
-                        vb = (cx2 - off * nx2, cy2 - off * ny2)
+                        # ⚠ THE VIA PITCH IS WIDER THAN THE TRACK PITCH, SYMMETRICALLY.
+                        # 0.2 mm traces on a 0.2 mm gap sit 0.4 apart centre-to-centre,
+                        # which 0.6 mm vias cannot use -- placed at the track pitch they
+                        # overlap outright. Staggering them along the run was the first
+                        # fix and it only moved the problem: the partner's track then ran
+                        # within 0.02 mm of the via it had stepped past, because a pair's
+                        # own members are excluded from each other's clearance checks.
+                        # Fanning them apart symmetrically keeps the geometry a PAIR --
+                        # both rails identical, mirror-imaged, constant spacing -- which
+                        # is the property that matters. The inner run inherits the wider
+                        # pitch and is therefore more weakly coupled than the surface
+                        # stubs; it is still CONSTANT, and a constant impedance you have
+                        # not calculated beats a varying one you have.
+                        # ⚠ THE ACTUAL DIFFERENTIAL IMPEDANCE IS NOT CALCULATED ANYWHERE
+                        # in this project -- it needs the stack-up's dielectric heights,
+                        # which JLCPCB fixes and nothing here reads. These numbers give a
+                        # defined geometry, not a verified 90 ohms.
+                        voff = max(off, pcbnew.FromMM((0.6 + clr) / 2.0))
+                        va = (cx2 + voff * nx2, cy2 + voff * ny2)
+                        vb = (cx2 - voff * nx2, cy2 - voff * ny2)
                         # keep each rail with its own pad rather than crossing over
                         if (math.hypot(va[0] - pa.GetPosition().x, va[1] - pa.GetPosition().y) >
                                 math.hypot(vb[0] - pa.GetPosition().x, vb[1] - pa.GetPosition().y)):
@@ -433,7 +485,7 @@ def _diff_pairs(board, specs, inner=None, clr=0.14):
                         way = [p_a, (p_b[0], p_a[1]), p_b]
                     else:
                         way = [p_a, (p_a[0], p_b[1]), p_b]
-                    if not all(seg_clear(q0, q1, pair_nets, margin)
+                    if not all(seg_clear(q0, q1, pair_nets, margin, thru)
                                for q0, q1 in zip(way, way[1:])):
                         ok_all = False
                         break
