@@ -652,6 +652,29 @@ def cables(sx: float = LS.LEG_X, ly: float = LS.LEG_Y, k: int = 0):
     return [("leg_trrs_patch_%d" % k, patch), ("leg_trrs_leg_lead_%d" % k, leg)]
 
 
+def spring_coil(x, y, mated: bool = True):
+    """THE FLOAT COIL, drawn as a coil. It used to be an annular TUBE -- the coil's
+    swept envelope, which is the right thing to hand the overlap gate and the wrong
+    thing to put in front of a person: it reads as a solid ring, and it hides the one
+    number the whole z-chain was just hung off, which is the turn count (user asked).
+
+    Same construction as latch.spring_coil and the same documented simplification:
+    uniform pitch, so the closed-and-ground end coils are drawn pitched rather than
+    touching. Nothing downstream cares -- OD sets the bore fit, overall length sets the
+    gap, and solid height is turns x wire either way.
+
+    Drawn at SPR_TURNS_MAX, the WORST-case count the chain is designed against, not at
+    a guess at the real one. When the spring arrives and the turns are counted, this
+    picture corrects itself along with the geometry."""
+    L = SPR_MATE_L if mated else SPR_REST_L
+    r_mid = (SPR_OD - SPR_WIRE) / 2.0
+    path_h = L - SPR_WIRE
+    wire = cq.Wire.makeHelix(pitch=path_h / SPR_TURNS_MAX, height=path_h, radius=r_mid)
+    coil = (cq.Workplane("XZ").center(r_mid, 0).circle(SPR_WIRE / 2.0)
+            .sweep(cq.Workplane("XY").add(wire), isFrenet=True))
+    return coil.translate((x, y, SPR_SEAT + SPR_WIRE / 2.0))
+
+
 def dummies(sx: float = LS.LEG_X, ly: float = LS.LEG_Y, k: int = 0, mated: bool = True):
     """The bought parts where they sit. `mated` is the latched state: the jack pushed
     back FLOAT off its throat, its coil that much shorter."""
@@ -665,11 +688,7 @@ def dummies(sx: float = LS.LEG_X, ly: float = LS.LEG_Y, k: int = 0, mated: bool 
     mouth = PLUG_SHOULDER + back                 # the jack's mouth: it is what moves
     jack = cq.Workplane("XY").add(cq.Solid.makeCylinder(
         JACK_D / 2.0, JACK_L, cq.Vector(x, y, mouth - JACK_L), cq.Vector(0, 0, 1)))
-    coil_l = SPR_REST_L if not mated else SPR_MATE_L
-    coil = cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        SPR_OD / 2.0, coil_l, cq.Vector(x, y, SPR_SEAT), cq.Vector(0, 0, 1)).cut(
-        cq.Solid.makeCylinder(SPR_ID / 2.0, coil_l + 2.0,
-                              cq.Vector(x, y, SPR_SEAT - 1.0), cq.Vector(0, 0, 1))))
+    coil = spring_coil(x, y, mated)
     return ([("leg_trrs_plug_%d" % k, plug), ("leg_trrs_jack_%d" % k, jack),
             ("leg_trrs_spring_%d" % k, coil),
             ("leg_trrs_throat_%d" % k, throat(sx, ly)),
