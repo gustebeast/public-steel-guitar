@@ -116,24 +116,111 @@ THROAT_D = PLUG_D + 0.5         # 6.6: the plug's overmould passes, the jack doe
                                 # is a lid on a box with the box already shut. The first
                                 # pass cut it as a bore and the cavity had O6.6 at BOTH
                                 # ends, which the user spotted in the tab
-PLUG_BORE_D = PLUG_D - 0.1      # 6.0: a press on the overmould
+# ── THE PLUG IS HELD BY A TPU SLEEVE ON A BAYONET (user), not by a press ─────
+# The press it replaces was the joint's one un-numbered assumption. What loads it is
+# not the plug's weight (2 g) but the TRRS pair's own EXTRACTION FORCE, applied every
+# time the leg comes off: the jack follows the plug for FLOAT on its coil, hits the
+# keeper, and the remaining BARREL_L has to be dragged out -- reacted straight into
+# whatever holds the plug. A O6.1 overmould in a O6.0 printed bore gives 6-48 N
+# depending on the overmould's modulus, against a 3.5 mm plug's 5-20 N of detent; and
+# PLUG_D is the HIGH end of the drawing's range, so a plug that measures 5.95 has no
+# press at all. The user found this by asking what stops the plug falling -Z, and the
+# honest answer was "friction we never sized".
+#
+# So: a TPU cup grips the overmould, and the cup is locked into the adapter by a
+# quarter-turn bayonet. The grip is still friction, but it is friction we CONTROL --
+# an elastomer at SLV_SQUEEZE does not care whether the plug came in at 5.9 or 6.2,
+# where a rigid press goes to zero. The bayonet is positive: the sleeve cannot come
+# -Z without rotating, and it cannot rotate once the instrument is assembled, because
+# the leads it carries are folded into CHAN_W of rectangular channel that the chassis
+# closes over. Rotation is free exactly when you need it -- with the adapter off the
+# instrument and the far end of the lead still bare (user).
+#
+# It also ends the plug's COCK. A preloaded elastomer has no slop, where the press
+# had 0.15 and 1.79 degrees with it.
+SLV_SQUEEZE = 0.4               # the sleeve's interference on the overmould. 0.4 and
+                                # not 0.1: TPU is the compliant half, so this can
+                                # swallow the bought part's whole tolerance band
+SLV_ID = PLUG_D - SLV_SQUEEZE   # 5.7
+SLV_OD = 12 * B                 # 9.6, leaving the cup a 1.95 wall at the grip
+SLV_CLR = 0.4                   # ...and a running clearance, because it has to TURN
+CB_D = SLV_OD + SLV_CLR         # 10.0: the counterbore it turns in
+CB_ROOF = 2 * B                 # 1.6 of adapter left over the counterbore, which the
+                                # sleeve's flange bears up against and the leads pass
+                                # through on their way into the channel
+LUG_PROUD = 1.8                 # how far the bayonet lugs stand off the barrel, and
+                                # it is the LUG'S OWN THICKNESS that sets it, not the
+                                # ledge's. These lugs are TPU, and the recorded print
+                                # finding is that sub-1.6 TPU rails TEAR
+                                # (cadkit/JOINERY_README) -- at 1.2 the keeper's came
+                                # out 0.86 (tools/check_thin). Pushed out to where the
+                                # TENON stops it: the keeper's slot sweeps to 104
+                                # degrees, where the octagon runs out at r 8.45, so a
+                                # slot at 6.8 keeps MIN_WALL_2P and not a thou more
+LUG_D = CB_D + 2 * LUG_PROUD    # 12.4 over the lugs
+LUG_SLOT_H = 2 * B              # 1.6: the slot the lug turns in...
+LUG_H = LUG_SLOT_H + 0.2        # ...and the lug is 0.2 TALLER. That 0.2 is the joint's
+                                # preload: a rigid bayonet needs a spring behind it or
+                                # it rattles, and in TPU the lug IS the spring
+LUG_LEDGE = 2 * B               # 1.6 of adapter under the slot -- the ledge the lug
+                                # actually sits on, and the only thing in the -Z load
+                                # path once the quarter turn is made
+LUG_DEG = 30.0                  # each lug's arc; two of them, opposed
+LUG_TURN = 70.0                 # ...and how far it turns. The run is cut LUG_CLR_DEG
+LUG_CLR_DEG = 4.0               # wider at each end, and the far end is the hard stop.
+                                # NEITHER NUMBER IS FREE, and both were set by measuring
+                                # the hosts rather than by choosing a round fraction:
+                                #  * the SLOT sweeps LUG_DEG + LUG_TURN + 8 = 108, and
+                                #    in the TENON it has to miss the thin arc: the wall
+                                #    round the keeper's counterbore falls to 1.65 over
+                                #    110-170 degrees, so a slot reaching past ~115 puts
+                                #    the octagon under the floor. 60+90 would sweep 158
+                                #    and go straight through it.
+                                #  * the TURN has to carry the lugs past each bore's
+                                #    TEARDROP APEX, which is a void in the very ledge
+                                #    they land on -- the apex reaches r 6.9 where the
+                                #    lugs only reach 6.2. At 45 degrees of turn the
+                                #    keeper's second lug landed on the apex and kept
+                                #    just 15 of its 30 degrees of ledge
+SLV_A = (55.0, 235.0)           # where each joint's slots START. Different numbers
+KEEP_A = (0.0, 180.0)           # because the two apexes point different ways: the
+                                # adapter prints +Y and the tenon -X-Y, and each part's
+                                # bores peak toward its own print_up
 JACK_BORE_D = JACK_D + 0.2      # 9.9: the jack runs free in the tenon
 PASS_D = PLUG_D + 0.5           # 6.6: every bore below the throat is at least this,
                                 # because the lead's FAR PLUG has to travel the whole
                                 # length of the tenon and out the bottom. A O4.8 cable
                                 # bore looks right and cannot be assembled (user).
-THROAT_BORE_D = 10.5                    # the keeper sits in a COUNTERBORE at the
-                                        # tip, not in the jack's own bore. Its groove
-                                        # for the set screw costs LOCK_GROOVE of wall,
-                                        # and at O9.9 that left 0.70 (tools/check_thin);
-                                        # widening the seat buys it back without
-                                        # touching the O6.6 the plug has to pass.
-                                        # It is a SQUEEZE, both ways: the octagon takes
-                                        # O14.00 here (measured), so 10.7 leaves the
-                                        # tenon 1.66, and the keeper is left 1.60 under
-                                        # its groove. Both are the 1.6 floor, barely
-LOCK_Z = None                   # set below, once THROAT_L is known
-LEAD_BORE_D = 6 * B             # 4.8 -- and the plug does NOT come down through it.
+THROAT_BORE_D = 10.3                    # the keeper sits in a COUNTERBORE at the
+                                        # tip, not in the jack's own bore, so its wall
+                                        # is not taken out of the O6.6 the plug has to
+                                        # pass. The octagon takes O14.00 here
+                                        # (measured), so this leaves the tenon 1.85 --
+                                        # and the last tenth came off it so the LUG
+                                        # could have 1.60: the lug is the span between
+                                        # this circle and LUG_D, and both ends of that
+                                        # span are pinned by walls
+KEEP_CLR = 0.2                          # ...and the keeper TURNS in it with this much
+                                        # clearance, because THE KEEPER IS TPU ON THE
+                                        # SAME BAYONET (user). What it replaces was a
+                                        # press plus a O2 TPU pin, and the pin could not
+                                        # answer the obvious question: there was no way
+                                        # to get it back OUT. A TPU pin normally stands
+                                        # proud so you have something to pull, and this
+                                        # one cannot -- its flank is the one that slides
+                                        # into the mortise with 0.15 of clearance.
+                                        # A bayonet has the extraction built in: turn it
+                                        # an eighth and lift. And what stops it turning
+                                        # on its own is what made the pin unnecessary to
+                                        # begin with -- with the leg ON, the mortise roof
+                                        # lies flat on the keeper's top face, so the
+                                        # axial half of the release cannot happen at all
+KEEP_DRIVE_W = 2 * B                    # two radial notches across the keeper's mouth,
+KEEP_DRIVE_DP = 2 * B                   # deep enough to take a flat blade. That is the
+                                        # whole tool: the bore is O6.6 and open to the
+                                        # tip, so an ordinary screwdriver spans it
+LEAD_BORE_D = 6 * B             # 4.8 -- the SLEEVE'S flange bore, and the plug does
+                                # not come down through it.
                                 # THE LEAD IS A PIGTAIL NOW (user): the far end is bare
                                 # wire crimped to a JST-XH at the station, not a second
                                 # moulded plug. That buys three things at once.
@@ -150,48 +237,6 @@ LEAD_BORE_D = 6 * B             # 4.8 -- and the plug does NOT come down through
                                 #     The bend was the whole problem -- 6.5 of radius on
                                 #     a 3.8 cable is 1.7x OD, well under the 3x a static
                                 #     install wants. Stripped, it is a non-question.
-PIN_D = 2.0                     # THE KEEPER'S LOCK IS A PRINTED TPU PIN (user: "can
-                                # we make the pin a printed part? TPU has a lot of
-                                # friction"), and the numbers say yes with room to
-                                # spare. The keeper only ever carries the coil's
-                                # PRELOAD_N -- 5 N, and only with the leg OFF, because
-                                # the seated MATE_N pushes the jack DOWN off it and into
-                                # the plug. It is BLIND, so it is single shear: 5 N
-                                # on O2 is 1.6 MPa against ~12 for 95A TPU, 7.5x. It is
-                                # not a structural pin, it is a detent.
-                                # O2 AND NOT O3, which is what the vertical budget
-                                # actually allows. The pin has to live in a groove tall
-                                # enough to swallow it -- a O3 pin in the 0.8 groove the
-                                # M4's tip used bit the keeper 4.9 mm3 above and below
-                                # it -- and groove + flange + the keeper's own top wall
-                                # have to fit inside THROAT_L while the tenon still
-                                # keeps MIN_WALL_2P over the bore's teardrop apex. At O2
-                                # that comes to 5.61 against 6.20; at O3 it is 6.92 and
-                                # the whole gain to the plug's wrap would go straight
-                                # back to the keeper.
-PIN_FIT = 0.2                   # ...and it is printed OVERSIZE into its bore, which is
-                                # the real reason to reach for TPU here. A rigid O3
-                                # printed rod in a O3 printed hole is a coin flip --
-                                # either it will not start or it rattles. An elastomer
-                                # squeezes in and stays, and the tolerance question goes
-                                # away. It also cannot back out into the mortise: with
-                                # the leg on, the mortise roof is 0.15 off this flank
-PIN_ENV = PIN_D + 0.4           # 2.4: the groove's height, the pin's own O2.2 plus
-                                # 0.2 so a squashed elastomer still drops in
-# AND IT IS SOLID -- no pick dimple. The pin CANNOT be a through-pin (a chord across
-# the spine would cross the O6.6 the plug has to pass), and blind means there is no far
-# side to push it out from, so the first draft bored a O0.8 dimple to pull it by. On a
-# O2.2 pin that leaves a 0.70 wall -- tools/check_thin caught it -- under the 0.80
-# floor, and a O0.6 hole is not printable in TPU anyway. An elastomer does not need the
-# feature: drive a scribe into the end and pull. If it tears, print another; it is two
-# hundredths of a gram
-LOCK_GROOVE = 0.4               # how deep the pin's tip sits in the keeper's OD.
-                                # 0.4, not 0.8: the groove comes straight off the
-                                # keeper's wall and 0.8 took it under the floor
-# THE PIN'S RUN is MEASURED off the octagon at run time rather than written down: the
-# flank slopes, so the depth depends on the spine, and a spine move would otherwise
-# leave the pin's outer end buried or hanging. Nothing is threaded, so unlike the grub
-# it has no minimum bite to satisfy -- only the wall over it, which LOCK_Z owns.
 THROAT_LEAD_D = 9.0             # the keeper's MOUTH, opened 45 from its O6.6 bore.
                                 # THE KEEPER IS THE LEG'S HIGHEST FEATURE, so its bore
                                 # is the first thing the plug's barrel meets on the way
@@ -201,10 +246,6 @@ THROAT_LEAD_D = 9.0             # the keeper's MOUTH, opened 45 from its O6.6 bo
                                 # cock: 0.15 of slop is 3.6 degrees is 1.60 at the
                                 # barrel's tip. That JAMS THE LEG (user). Opened to 9.0
                                 # the capture is 2.75, which swallows it.
-THROAT_PRESS = 0.1              # the keeper's interference in the jack's bore. It only
-                                # ever carries the coil's 5 N preload, and only while the
-                                # leg is OFF: with the leg on, the adapter's mortise roof
-                                # sits directly over it
 CHAN_W = CABLE_D + 1.0          # 4.8 wide and deep: the groove in the adapter's top
 CHAN_D = CABLE_D + 1.0          # face the lead is folded into
 
@@ -238,6 +279,23 @@ PLUG_SHOULDER = PLUG_TOP - PLUG_L               # -100.55, and the jack's mouth 
 THROAT_L = TIP - (PLUG_SHOULDER + FLOAT)        # 3.0: how far below the tip the jack's
                                                 # mouth rests. It falls out of the chain
                                                 # -- it is not a free number
+SLV_BOT = TIP                                   # the cup's mouth, flush with the
+                                                # mortise roof: below this the
+                                                # overmould has to pass the keeper's
+                                                # THROAT_D, which leaves 0.25 of wall.
+                                                # There is no sleeve down there
+SLV_TOP = (LS.Z_TOP - CHAN_D) - CB_ROOF         # ...and its flange's top face
+SLV_H = SLV_TOP - SLV_BOT                       # 6.4: PLUG_GRIP of cup plus CB_ROOF of
+                                                # flange
+LUG_BOT = SLV_BOT + LUG_LEDGE                   # where the lugs sit once turned home
+assert SLV_TOP > PLUG_TOP, (
+    "the sleeve's flange has nowhere to be: the plug's top is %.2f and the counterbore's"
+    " roof starts at %.2f" % (PLUG_TOP, SLV_TOP))
+assert LUG_BOT + LUG_H <= PLUG_TOP, (
+    "the bayonet lugs (%.2f..%.2f) reach above the plug's top %.2f, so they would be "
+    "trying to squeeze the flange rather than the grip"
+    % (LUG_BOT, LUG_BOT + LUG_H, PLUG_TOP))
+
 JACK_REST = PLUG_SHOULDER + FLOAT               # -97.55, the jack's mouth at rest
 JACK_BACK = PLUG_SHOULDER - JACK_L              # -140.55 seated, FLOAT higher at rest
 SPR_SEAT = (JACK_BACK + FLOAT) - SPR_REST_L     # -147.55: the coil's floor, and the
@@ -245,29 +303,21 @@ SPR_SEAT = (JACK_BACK + FLOAT) - SPR_REST_L     # -147.55: the coil's floor, and
 
 assert THROAT_L >= D.MIN_WALL_2P, (
     "the throat is %.2f -- too thin a lip to stop the jack" % THROAT_L)
+# THE KEEPER'S BAYONET, measured down from the tenon's tip. The keeper drops in from
+# the tip and turns, so the ledge that holds it is ABOVE its lugs -- the jack pushes it
+# +Z, and LUG_LEDGE of octagon over the slot is what takes that.
+KEEP_SLOT_HI = TIP - LUG_LEDGE
+KEEP_SLOT_LO = KEEP_SLOT_HI - LUG_SLOT_H
+assert KEEP_SLOT_LO - JACK_REST >= D.MIN_WALL_2P, (
+    "the keeper's bayonet reaches down to %.2f and the jack's mouth is at %.2f -- less "
+    "than MIN_WALL_2P of keeper below the lugs to actually stop it with"
+    % (KEEP_SLOT_LO, JACK_REST))
+
 assert PLUG_GRIP >= 3 * D.BEAD, (
     "only %.1f of press guides the plug in the adapter's roof. It no longer "
     "CARRIES the mate force -- cap() does -- but it is still what keeps a "
     "14-long overmould concentric and stops it dropping out with the leg off"
     % PLUG_GRIP)
-
-# THE PIN IS STRAIGHT, and cheaply so. The tenon needs MIN_WALL_2P over the bore and
-# the keeper MIN_WALL_2P of flange under the groove; between them they fix LOCK_Z. The
-# radius that matters is the TEARDROP'S, not the pin's -- the bore is horizontal, so it
-# is printed with an apex at r*sqrt(2) (see the hole-envelope rule). Even so a pin's
-# 2.12 against a recessed button's 4.2 is what lets the keeper come down from 8.6 to
-# 6.2 and hand the difference to the plug.
-_HEAD_R = PIN_D / 2.0 * math.sqrt(2.0)          # the teardrop's apex, radius
-_LOCK_HI = min(TIP - _HEAD_R - D.MIN_WALL_2P,   # tenon over the bore...
-               TIP - PIN_ENV / 2.0 - D.MIN_WALL_2P)   # ...and keeper over the groove
-_LOCK_LO = JACK_REST + PIN_ENV / 2.0 + D.MIN_WALL_2P  # keeper's flange under it
-assert _LOCK_LO <= _LOCK_HI + 1e-9, (
-    "no room for the lock pin: its bore wants z <= %.2f and the keeper's "
-    "flange wants z >= %.2f. THROAT_L is %.2f and needs %.2f -- give it more by "
-    "lowering PLUG_TOP (it costs PLUG_GRIP, i.e. the plug's wrap, one for one)"
-    % (_LOCK_HI, _LOCK_LO, THROAT_L, THROAT_L + (_LOCK_LO - _LOCK_HI)))
-LOCK_Z = (_LOCK_LO + _LOCK_HI) / 2.0    # the set screw's line, centred in that window
-
 
 # the plug's way in is a hole in the adapter's TOP FACE, and the middle ridge's root
 # is there. legs cuts that ridge back for us; check it actually clears, apex included
@@ -303,14 +353,96 @@ def channel(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):
             .translate((a[0], b[1], LS.Z_TOP - CHAN_D)))
 
 
+def _sector(r_in, r_out, z0, z1, a0, sweep, x, y):
+    """An annular WEDGE about the spine: r_in..r_out, z0..z1, sweeping `sweep` degrees
+    from `a0`. Every bayonet feature in this module is one of these."""
+    w = cq.Solid.makeCylinder(r_out, z1 - z0, cq.Vector(0, 0, z0), cq.Vector(0, 0, 1),
+                              angleDegrees=sweep)
+    if r_in > 0.0:
+        w = w.cut(cq.Solid.makeCylinder(r_in, z1 - z0 + 2.0, cq.Vector(0, 0, z0 - 1.0),
+                                        cq.Vector(0, 0, 1)))
+    return cq.Workplane("XY").add(w.rotate((0, 0, 0), (0, 0, 1), a0)).translate((x, y, 0))
+
+
+def _bayonet_slots(r_in, r_out, z_lo, z_hi, open_up, x, y, angles):
+    """The L-slots a set of lugs turns in: an ENTRY run open to one end, and the
+    circumferential RUN it turns along. `open_up` says which end the lugs come in
+    from -- True for the adapter's sleeve (pushed UP from the mortise), False for the
+    tenon's keeper (dropped DOWN onto the tip)."""
+    out = None
+    for a0 in angles:
+        # the entry is open to the part's end; the run is buried LUG_LEDGE inside it
+        e0, e1 = ((z_lo - LUG_LEDGE - 1.0, z_hi) if open_up
+                  else (z_lo, z_hi + LUG_LEDGE + 1.0))
+        cut = _sector(r_in, r_out, e0, e1,
+                      a0 - LUG_CLR_DEG, LUG_DEG + 2 * LUG_CLR_DEG, x, y)
+        cut = cut.union(_sector(r_in, r_out, z_lo, z_hi, a0 - LUG_CLR_DEG,
+                                LUG_DEG + LUG_TURN + 2 * LUG_CLR_DEG, x, y))
+        out = cut if out is None else out.union(cut)
+    return out
+
+
+def _lugs(r_in, r_out, z_lo, z_hi, x, y, angles):
+    """The lugs themselves, drawn WHERE THEY END UP -- a turn along the run from the
+    entry, hard against the stop."""
+    out = None
+    for a0 in angles:
+        w = _sector(r_in, r_out, z_lo, z_hi, a0 + LUG_TURN, LUG_DEG, x, y)
+        out = w if out is None else out.union(w)
+    return out
+
+
 def adapter_negatives(sx: float = LS.LEG_X, ly: float = LS.LEG_Y, up=None):
-    """Cut in the BODY ADAPTER: the plug's press bore through the roof, the mouth
-    above it the plug drops in through, and the channel the lead is folded into."""
+    """Cut in the BODY ADAPTER: the counterbore the TPU sleeve turns into, its bayonet
+    slots, the lead bore through the counterbore's roof, and the channel above.
+
+    There is no press here any more. What used to hold the plug was a O6.1 overmould in
+    a O6.0 bore, and the user asked the question that has no good answer: with the leg
+    off, what stops it falling -Z? Friction, sized at somewhere between 6 and 48 N
+    depending on a modulus nobody published -- against a plug detent of 5-20 N that
+    pulls on it every single time the leg comes off."""
     x, y = _ax(sx, ly)
     up = up or LS.PRINT_UP["body_adapter"]
-    out = _bore(PLUG_BORE_D, TIP - 0.01, PLUG_TOP, x, y, up)               # the press
-    out = out.union(_bore(LEAD_BORE_D, PLUG_TOP, LS.Z_TOP + 0.01, x, y, up))
+    out = _bore(CB_D, SLV_BOT - 0.01, SLV_TOP, x, y, up)          # the sleeve's barrel
+    out = out.union(_bayonet_slots(CB_D / 2.0 - 0.01, LUG_D / 2.0,
+                                   LUG_BOT, LUG_BOT + LUG_SLOT_H, True, x, y, SLV_A))
+    out = out.union(_bore(LEAD_BORE_D, SLV_TOP, LS.Z_TOP + 0.01, x, y, up))
     return out.union(channel(sx, ly))
+
+
+def sleeve(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):
+    """THE MALE PLUG'S RETAINER: a TPU cup that grips the overmould and locks into the
+    adapter on a bayonet (user's design).
+
+    Two things it fixes at once. RETENTION is no longer a rigid press whose interference
+    disappears if the bought plug measures at the low end of its drawing -- an elastomer
+    at SLV_SQUEEZE does not care, and the bayonet means the last word is a mechanical
+    ledge rather than friction at all. And the plug can no longer COCK: the press had
+    0.15 of slop in it, which is 1.79 degrees at the barrel's tip, and a preloaded
+    elastomer has none.
+
+    It only wraps PLUG_GRIP of the plug, not all 14 -- below the mortise roof the
+    overmould has to pass the keeper's THROAT_D, which leaves 0.25 of wall.
+
+    You turn it by turning the PLUG: the cup grips the overmould far harder than the
+    lugs need, so there is no driver feature and nothing to reach into the mortise with.
+    What stops it turning back is the lead itself -- folded into CHAN_W of rectangular
+    channel that the chassis closes over, it cannot rotate, and the only free length is
+    the few mm of round bore above the flange."""
+    x, y = _ax(sx, ly)
+    body = cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        SLV_OD / 2.0, SLV_H, cq.Vector(x, y, SLV_BOT), cq.Vector(0, 0, 1)))
+    body = body.union(_lugs(SLV_OD / 2.0 - 0.01, LUG_D / 2.0 - SLV_CLR / 2.0,
+                            LUG_BOT - (LUG_H - LUG_SLOT_H) / 2.0,
+                            LUG_BOT + LUG_SLOT_H + (LUG_H - LUG_SLOT_H) / 2.0,
+                            x, y, SLV_A))
+    # the grip bore, then the flange the plug's top bottoms on
+    body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        SLV_ID / 2.0, PLUG_GRIP + 1.0, cq.Vector(x, y, SLV_BOT - 1.0),
+        cq.Vector(0, 0, 1))))
+    return body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        LEAD_BORE_D / 2.0, SLV_H + 2.0, cq.Vector(x, y, SLV_BOT - 1.0),
+        cq.Vector(0, 0, 1))))
 
 
 def tenon_negatives(sx: float = LS.LEG_X, ly: float = LS.LEG_Y, up=None,
@@ -324,125 +456,59 @@ def tenon_negatives(sx: float = LS.LEG_X, ly: float = LS.LEG_Y, up=None,
     bot = LS.Z_FIX_TEN_BOT - 1.0 if bot is None else bot
     out = _bore(JACK_BORE_D, SPR_SEAT, TIP + 1.0, x, y, up)     # ONE bore, tip to step
     out = out.union(_bore(THROAT_BORE_D, JACK_REST, TIP + 1.0, x, y, up))  # the keeper's
+    out = out.union(_bayonet_slots(THROAT_BORE_D / 2.0 - 0.01, LUG_D / 2.0,
+                                   KEEP_SLOT_LO, KEEP_SLOT_HI, False, x, y, KEEP_A))
     return out.union(_bore(PASS_D, bot, SPR_SEAT + 0.01, x, y, up))
 
 
 def throat(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):
-    """THE JACK'S UP-STOP, pressed into the tenon's tip LAST.
+    """THE JACK'S UP-STOP at the tenon's tip: a TPU ring on a bayonet (user).
 
     It cannot be a step in the bore. The jack is O9.7 and can only go in from the tip,
     so anything narrower than 9.7 above it is a lid fitted before the box is filled --
     which is exactly what the first pass drew, a O9.8 cavity with O6.6 at both ends and
-    no way to put a jack in it (user). So the lip arrives after the jack: a ring
-    pressed into the bore, bored THROAT_D so the plug's overmould still passes.
+    no way to put a jack in it (user). So the lip arrives after the jack, as its own
+    part, bored THROAT_D so the plug's overmould still passes.
 
-    It is barely loaded. With the leg OFF it holds the coil's 5 N preload on a press
-    over THROAT_L; with the leg ON the jack is pushed DOWN off it and the adapter's
-    mortise roof sits right over its top face."""
+    WHY IT TURNS IN rather than presses. It was a PCTG ring on a press, locked by a O2
+    TPU pin through the tenon's flank -- and the pin had no way out. A TPU pin usually
+    stands proud so there is something to pull on; this one could not, because the flank
+    it sits in is the one that enters the mortise with 0.15 of clearance (user). A
+    bayonet carries its own extraction: put a blade in the drive notches, turn an eighth,
+    lift. Nothing is proud of anything.
+
+    Nor can it turn itself loose. A bayonet releases by turning AND THEN lifting, and
+    with the leg on, the adapter's mortise roof lies flat on this face -- the lift is
+    blocked before the turn matters. With the leg off there is nothing pulling on it:
+    the coil's 5 N is the whole load, and the lugs carry that against LUG_LEDGE of
+    octagon.
+
+    It is TPU for the same reason the sleeve is: an elastomer lug LUG_H tall in a
+    LUG_SLOT_H slot is its own spring, so the joint is preloaded and cannot rattle,
+    where a rigid bayonet this size would need a wave washer behind it."""
     x, y = _ax(sx, ly)
     r = cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        (THROAT_BORE_D + THROAT_PRESS) / 2.0, THROAT_L,
+        (THROAT_BORE_D - KEEP_CLR) / 2.0, THROAT_L,
         cq.Vector(x, y, JACK_REST), cq.Vector(0, 0, 1)))
+    r = r.union(_lugs(THROAT_BORE_D / 2.0 - 0.01, LUG_D / 2.0 - KEEP_CLR / 2.0,
+                      KEEP_SLOT_LO - (LUG_H - LUG_SLOT_H) / 2.0,
+                      KEEP_SLOT_HI + (LUG_H - LUG_SLOT_H) / 2.0, x, y, KEEP_A))
     r = r.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
         THROAT_D / 2.0, THROAT_L + 2.0,
         cq.Vector(x, y, JACK_REST - 1.0), cq.Vector(0, 0, 1))))
     # the LEAD-IN: a 45 funnel at the top, catching a barrel that arrives off axis
-    lead = (cq.Workplane("XY")
-            .add(cq.Solid.makeCone(THROAT_D / 2.0, THROAT_LEAD_D / 2.0,
-                                   (THROAT_LEAD_D - THROAT_D) / 2.0,
-                                   cq.Vector(x, y, TIP - (THROAT_LEAD_D - THROAT_D) / 2.0),
-                                   cq.Vector(0, 0, 1))))
-    r = r.cut(lead)
-    # the set screw's GROOVE: right round, so the keeper can go in at any clocking
-    groove = cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        (THROAT_BORE_D + THROAT_PRESS) / 2.0 + 1.0, PIN_ENV,
-        cq.Vector(x, y, LOCK_Z - PIN_ENV / 2.0), cq.Vector(0, 0, 1)))
-    groove = groove.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        (THROAT_BORE_D + THROAT_PRESS) / 2.0 - LOCK_GROOVE, PIN_ENV + 2,
-        cq.Vector(x, y, LOCK_Z - PIN_ENV / 2.0 - 1), cq.Vector(0, 0, 1))))
-    return r.cut(groove)
-
-
-def _flank_x(y, z):
-    """Where the tenon's +X flank actually is at (y, z) -- measured on the octagon
-    itself, because it slopes and the spine is off-axis."""
-    prism = LS.tenon(z - 1.0, z + 1.0).val()
-    t = 0.0
-    while t < 30.0:
-        if not prism.isInside(cq.Vector(LS.LEG_X + t, y, z), 1e-4):
-            return LS.LEG_X + t
-        t += 0.05
-    raise AssertionError("no +X flank found at y %.2f z %.2f" % (y, z))
-
-
-def _lock_axis(sx=LS.LEG_X, ly=LS.LEG_Y):
-    """(entry point, unit direction, run) for the keeper's lock pin.
-
-    STRAIGHT IN from the -X flank, blind, ending LOCK_GROOVE into the keeper's OD.
-
-    -X, not the -Y the screw used, because the pin is PUSHED IN BY HAND and the two
-    flanks are not the same distance from the spine: -Y is 21.0 out and -X is 9.8, so
-    the pin is 4.9 long rather than 16.5. That matters for an elastomer -- 16 mm of TPU
-    driven through an interference bore is a rod you cannot push and would not get back
-    out. It stays clear of the latch, whose pocket owns y < -3 while this spine sits at
-    +5.6."""
-    x, y = _ax(sx, ly)
-    d = (1.0, 0.0, 0.0)                                  # straight in from the -X flank
-    tip = (x - (THROAT_BORE_D + THROAT_PRESS) / 2.0 + LOCK_GROOVE, y, LOCK_Z)
-    prism = LS.tenon(LOCK_Z - 40.0, LOCK_Z + 5.0).val()
-    run = 0.0
-    while run < 40.0:
-        p = cq.Vector(tip[0] - d[0] * run, tip[1] - d[1] * run, tip[2] - d[2] * run)
-        if not prism.isInside(p, 1e-4):
-            break
-        run += 0.05
-    entry = (tip[0] - d[0] * run, tip[1] - d[1] * run, tip[2] - d[2] * run)
-    return entry, d, run
-
-
-def lock_negatives(sx: float = LS.LEG_X, ly: float = LS.LEG_Y, up=None):
-    """The pin's bore in the FIXED TENON: one O3 hole from the -Y flank through to the
-    keeper's groove. Without it the keeper is held by THROAT_PRESS alone -- 1.7 mm3 of
-    contact against the coil's 5 N, which the user rightly would not take (the mortise
-    roof caps it, but only with the leg ON)."""
-    entry, d, run = _lock_axis(sx, ly)
-    up = up or LS.PRINT_UP["fixed_tenon"]
-    # start outside the flank so the teardrop breaks the slope cleanly
-    start = (entry[0] - d[0] * 2.0, entry[1] - d[1] * 2.0, entry[2] - d[2] * 2.0)
-    return teardrop_hole(PIN_D, run + 2.0 + LOCK_GROOVE, start, d, up,
-                         limit_deg=LS.TEN_HOLE_LIMIT_DEG)
-
-
-def pin(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):
-    """THE KEEPER'S LOCK PIN, printed (user). A solid O(PIN_D + PIN_FIT) TPU stub the
-    length of its bore plus the groove.
-
-    Flush, never proud: this flank is the one that enters the mortise with 0.15 of
-    clearance, so a head here would jam the leg on the way in -- the same failure the
-    whole wrap argument is about."""
-    entry, d, run = _lock_axis(sx, ly)
-    l = run + LOCK_GROOVE
-    body = cq.Solid.makeCylinder((PIN_D + PIN_FIT) / 2.0, l, cq.Vector(*entry),
-                                 cq.Vector(*d))
-    # the inner end is SADDLED to the groove's root, which is a cylinder about the
-    # spine and not a plane. A flat end on a O2.2 pin overhangs it by 0.13 at the
-    # corners -- 1.4 mm3 of the keeper, which is a clash and not a fit
-    x, y = _ax(sx, ly)
-    root = (THROAT_BORE_D + THROAT_PRESS) / 2.0 - LOCK_GROOVE
-    body = body.cut(cq.Solid.makeCylinder(
-        root, THROAT_L + 4.0, cq.Vector(x, y, JACK_REST - 2.0), cq.Vector(0, 0, 1)))
-    # ...and the OUTER end is trimmed to the octagon itself. That flank SLOPES, so a
-    # flat end cut square to the axis leaves half the pin standing proud of it -- 0.3
-    # mm3 into the mortise, against 0.15 of clearance. The leg would jam on its own
-    # lock pin, which is the failure this whole joint is being reworked to avoid
-    return cq.Workplane("XY").add(body).intersect(LS.tenon(JACK_REST, TIP))
-
-
-def lock_dummies(sx: float = LS.LEG_X, ly: float = LS.LEG_Y, k: int = 0):
-    """The pin where it actually sits -- so the tab shows the lock and not just a hole
-    (user)."""
-    return [("leg_trrs_pin_%d" % k, pin(sx, ly))]
-
+    r = r.cut(cq.Workplane("XY").add(cq.Solid.makeCone(
+        THROAT_D / 2.0, THROAT_LEAD_D / 2.0, (THROAT_LEAD_D - THROAT_D) / 2.0,
+        cq.Vector(x, y, TIP - (THROAT_LEAD_D - THROAT_D) / 2.0), cq.Vector(0, 0, 1))))
+    # ...and the DRIVE: two notches across the mouth, square to the lugs so the blade
+    # is turning on the thickest part of the ring
+    for a in (KEEP_A[0] + LUG_TURN + LUG_DEG / 2.0 + 90.0,):
+        cut = (cq.Workplane("XY")
+               .box(THROAT_BORE_D + 2.0, KEEP_DRIVE_W, KEEP_DRIVE_DP, centered=True)
+               .translate((0, 0, TIP - KEEP_DRIVE_DP / 2.0))
+               .rotate((0, 0, 0), (0, 0, 1), a).translate((x, y, 0)))
+        r = r.cut(cut)
+    return r
 
 
 def _run(pts, d=CABLE_D):
@@ -514,5 +580,6 @@ def dummies(sx: float = LS.LEG_X, ly: float = LS.LEG_Y, k: int = 0, mated: bool 
     return ([("leg_trrs_plug_%d" % k, plug), ("leg_trrs_jack_%d" % k, jack),
             ("leg_trrs_spring_%d" % k, coil),
             ("leg_trrs_throat_%d" % k, throat(sx, ly)),
+            ("leg_trrs_sleeve_%d" % k, sleeve(sx, ly)),
             ]
-            + lock_dummies(sx, ly, k) + cables(sx, ly, k))
+            + cables(sx, ly, k))

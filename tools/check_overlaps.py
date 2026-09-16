@@ -192,12 +192,13 @@ GLOBAL_OK = {
     frozenset({"leg_trrs_plug", "leg_trrs_jack"}),
     # the keeper is PRESSED into the tenon's tip (THROAT_PRESS 0.1 on Ø10.5)...
     frozenset({"fixed_tenon", "leg_trrs_throat"}),
-    # ...and its TPU lock pin is pressed into the tenon's -X flank (PIN_FIT 0.2 on
-    # Ø2.0). An elastomer squeezing into an undersize printed bore is the fit, not a
-    # clash — see leg_trrs.PIN_FIT
-    frozenset({"fixed_tenon", "leg_trrs_pin"}),
-    # the male plug is pressed into the adapter's roof over PLUG_GRIP
-    frozenset({"body_adapter", "leg_trrs_plug"}),
+    # ...both of which are TPU on a bayonet, and a bayonet in an elastomer is
+    # PRELOADED on purpose: the lug is LUG_H tall in a LUG_SLOT_H slot, so ~1 mm3 of it
+    # is squashed at rest and the joint cannot rattle. See leg_trrs.LUG_H
+    frozenset({"body_adapter", "leg_trrs_sleeve"}),
+    # and the sleeve GRIPS the male overmould at SLV_SQUEEZE -- that interference is
+    # the entire retention scheme, not a clash
+    frozenset({"leg_trrs_sleeve", "leg_trrs_plug"}),
 }
 
 # The pedal bar is a self-contained subassembly (bar pieces + the sliding
