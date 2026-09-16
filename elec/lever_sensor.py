@@ -341,6 +341,17 @@ BOARD_NOTES = {
     # plane between them is worth more than the couple of dollars it costs."
     # Without this pour the stackup buys nothing.
     "zones": [("GND", "In1.Cu", 0.3), ("GND", "B.Cu", 0.3)],
+    # ⚠ IN1 IS A PLANE, AND THE ROUTER HAS TO BE TOLD. A zone is just copper as far
+    # as freerouting is concerned: pour GND on In1 and say nothing, and it will route
+    # signals straight through the plane, which is exactly what it did here. The damage
+    # is not cosmetic -- a signal in the reference plane splits the return path of every
+    # trace that crosses it, and the nets carved through this one included the ones that
+    # care most.
+    #
+    # This was found and fixed on the optical board and the fix never reached the other
+    # three 4-layer boards, because it was made where the symptom appeared instead of
+    # where the property belonged. A board that pours a plane declares it.
+    "plane_layers": ("In1.Cu",),
     "refs_on_fab": True,
     "hold_edge": None,          # NO screw: the grooves hold five faces and the
                                 # instrument's underside closes over the sixth
