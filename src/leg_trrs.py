@@ -172,7 +172,7 @@ LUG_LEDGE = 2 * B               # 1.6 of adapter under the slot -- the ledge the
                                 # actually sits on, and the only thing in the -Z load
                                 # path once the quarter turn is made
 LUG_DEG = 30.0                  # each lug's arc; two of them, opposed
-LUG_TURN = 70.0                 # ...and how far it turns. The run is cut LUG_CLR_DEG
+LUG_TURN = 46.0                 # ...and how far it turns. The run is cut LUG_CLR_DEG
 LUG_CLR_DEG = 4.0               # wider at each end, and the far end is the hard stop.
                                 # NEITHER NUMBER IS FREE, and both were set by measuring
                                 # the hosts rather than by choosing a round fraction:
@@ -184,12 +184,21 @@ LUG_CLR_DEG = 4.0               # wider at each end, and the far end is the hard
                                 #    and go straight through it.
                                 #  * the TURN has to carry the lugs past each bore's
                                 #    TEARDROP APEX, which is a void in the very ledge
-                                #    they land on -- the apex reaches r 6.9 where the
-                                #    lugs only reach 6.2. At 45 degrees of turn the
-                                #    keeper's second lug landed on the apex and kept
-                                #    just 15 of its 30 degrees of ledge
-SLV_A = (55.0, 235.0)           # where each joint's slots START. Different numbers
-KEEP_A = (0.0, 180.0)           # because the two apexes point different ways: the
+                                #    they land on. At 45 degrees of turn the keeper's
+                                #    second lug landed on the apex and kept just 15 of
+                                #    its 30 degrees of ledge.
+                                #  * and every slot END WALL has to be PRINTABLE. An end
+                                #    wall is a plane through the bore's axis, so its
+                                #    normal lies in the plane that contains the build
+                                #    direction, and it overhangs by |sin(U - theta)| --
+                                #    U the build azimuth, theta the wall's. That is
+                                #    within 45 degrees only when the wall sits near the
+                                #    build axis or square across it. Six walls, two
+                                #    parts, two different build directions: solved by
+                                #    SEARCH over (turn, clocking), and 46 is the largest
+                                #    turn for which a clocking exists on BOTH parts
+SLV_A = (52.0, 232.0)           # where each joint's slots START. Different numbers
+KEEP_A = (6.0, 186.0)           # because the two apexes point different ways: the
                                 # adapter prints +Y and the tenon -X-Y, and each part's
                                 # bores peak toward its own print_up
 JACK_BORE_D = JACK_D + 0.2      # 9.9: the jack runs free in the tenon
