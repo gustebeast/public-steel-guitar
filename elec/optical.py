@@ -746,7 +746,20 @@ BOARD_NOTES = {
     # is an unbroken ground plane under twenty summing nodes reading tens of
     # nanoamps AND under a 60 MHz ULPI bus; there is no version of this board that
     # works with a two-layer stack and a hatched pour.
-    "zones": [("GND", "In1.Cu", 0.3), ("GND", "B.Cu", 0.3)],
+    # ⚠ GND IS POURED ON F.Cu TOO, AND THAT IS A ROUTING DECISION AS MUCH AS AN
+    # ELECTRICAL ONE. Every ground pad on this board is an SMD pad on F.Cu; the
+    # planes are on In1/B, which an F.Cu pad cannot reach without a via. Left to the
+    # autorouter that meant 75 pads each needing a stub and a via, and it half-did
+    # them -- 13 of the 15 connections it could not make were dangling GND stubs with
+    # no via on the end.
+    #
+    # A pour on F.Cu removes the problem rather than solving it: the zone fill
+    # connects every ground pad directly, on its own layer, with no router
+    # involvement and no per-pad via to place. The stitching between F/In1/B is what
+    # vias are for, and those go in open copper where there is room for them.
+    # It is also just the normal way to build a mixed-signal board -- ground on every
+    # layer it can be on -- so this is the pipeline catching up with practice.
+    "zones": [("GND", "F.Cu", 0.3), ("GND", "In1.Cu", 0.3), ("GND", "B.Cu", 0.3)],
     # ⚠ THE PLACEMENTS NAME THE COURTYARD CENTRE, not the pad centroid. This is the
     # only board in elec/ where that is true, and it is true because these coordinates
     # come from a MECHANICAL model, which reasons about the box a part occupies rather
