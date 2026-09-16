@@ -653,6 +653,18 @@ BOARD_NOTES = {
     # board -- the pour reaches them, but a pour is what routing can orphan, which is
     # the whole reason the plane is there. Every GND pad gets its own via down.
     "stitch_nets": ("GND",),
+    # ⚠ NO local_nets HERE EITHER, AND NOW THERE IS A PATTERN. Measured on three
+    # boards: it takes lever_sensor from 4 unconnected to 7, this board from 2 to 5, and
+    # the optical board from 26 to 12. Pre-laying copper is not a general improvement --
+    # it is a trade, and what it trades is the router's freedom for determinism.
+    #
+    # That trade pays when the router is losing anyway. Optical is 153 parts with twenty
+    # identical feedback clusters in a 13.6 mm strip; the pattern is real and the search
+    # is drowning. This board is 58 parts with room, and the router was two connections
+    # short -- taking its freedom away to save it work it did not need saving from costs
+    # three more.
+    #
+    # Keep the numbers rather than the rule: re-measure if either board gains a row.
     # THE FLOORPLAN IS THREE BANDS, which is the whole noise argument made
     # geometric: the 24 V island and its switcher in the -Y corner, the digital
     # block across the middle, and the ANALOG CHAIN along +Y as far from the
