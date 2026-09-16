@@ -833,14 +833,9 @@ BOARD_NOTES = {
     # the first thing to look at -- and the fix is to give the strip more room so the
     # cells CAN be wired on one layer, not to tune the router.
     "stitch_nets": ("GND",),
-    # ⚠ ONE PAD OF 75 CANNOT TAKE A VIA, AND IT IS NAMED RATHER THAN SKIPPED. U10 is
-    # the USB ESD array: its neighbours FB1 and Q1 leave 0.24 mm either side, and its
-    # -Y face is 1 mm off the board edge, so there is nowhere within reach to drill.
-    # It keeps the connection every board in this project had until now -- the pour
-    # plus whatever the router lays -- which is adequate for an ESD array's ground
-    # reference and would not be for a converter's. If the compute block ever gets
-    # more room, delete this line rather than letting it become permanent.
-    "stitch_exceptions": ("U10.2",),
+    # (There are no stitch_exceptions. There was one -- U10.2, boxed in by 0.24 mm
+    #  gaps in the LDO row -- and moving U10 to the connector for ESD reasons gave it
+    #  room as a side effect. All 75 ground pads now reach the plane directly.)
     "anchor": "courtyard",
     "refs_on_fab": True,
     # The ten sensor triplets sit at a 1.6 pitch by optical design, so their silkscreen
