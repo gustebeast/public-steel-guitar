@@ -777,22 +777,12 @@ LEVER_PITCH  = LEVER_MORT_W + 2 * MIN_WALL_2P    # 10.4 = XBAR
 
 
 
-def lever_wall_x(x_target: float) -> float:
-    """The nearest WALL centre in the bottom grid -- the middle of the 1.6 between two
-    mortises. A split plane or anything else that must not land in a slot snaps here."""
-    x0 = motor_pos(0)[0] + LEVER_PITCH / 2
-    return x0 + round((x_target - x0) / LEVER_PITCH) * LEVER_PITCH
-
-
 def rib_comb_x(x_target: float) -> float:
-    """The nearest MORTISE STATION in the bottom grid: motor_pos(0).x + k * LEVER_PITCH,
-    the same comb chassis._mort_positions builds -- so a lever station snapped here lands on a
-    slot instead of being a hand-typed number the comb can walk away from.
-
-    (It was the half-motor-pitch rib comb, 22.35. The bottom is a slab now and the stations are
-    8.8 apart, which is what gives a lever ~3x the places it can mount.)"""
-    x0, p = motor_pos(0)[0], LEVER_PITCH
-    return x0 + round((x_target - x0) / p) * p
+    """The nearest MORTISE STATION in the bottom grid (LEVER_GRID_X) -- so a lever station
+    snapped here lands on a slot instead of being a hand-typed number the grid can walk away
+    from. Was the half-motor-pitch rib comb (22.35); the bottom is one prism now and the
+    stations are XBAR apart across all of it."""
+    return min(LEVER_GRID_X, key=lambda s: abs(s - x_target))
 
 
 # FAR-ROW BELTS vs NEAR-ROW PULLEYS (see BELT_PLANE_DZ). Each far-row belt passes the near
@@ -987,6 +977,43 @@ BRIDGE_BASE_HALF = (SCREW_ROW_DX
                     + max(_BRG_TEARDROP, NUT_HOLE_DX + _ROD_TEARDROP)
                     + MIN_WALL_2P)                             # 25.06
 BRIDGE_BASE_X0 = BRIDGE_X - BRIDGE_BASE_HALF        # -23.1  (-X face)
+
+
+# THE BOTTOM'S OWN SPAN: the two faces where the endplates take over (chassis.KH_RAIL_X and
+# chassis.TP_EP_GX -- spelled here because the grid is defined here and chassis cannot be
+# imported from dimensions; chassis asserts the two agree).
+BOTTOM_X0 = -764 * BEAD + 0.4                        # keyhead takeover face
+BOTTOM_X1 = BRIDGE_BASE_X0 - 0.4                     # bridge takeover face
+
+
+def _lever_grid():
+    """Every mortise station: as many as fit across the WHOLE bottom, CENTRED, with at least
+    a two-bead wall left at each end (user, 2026-09-16).
+
+    It used to be anchored on motor 1 and run two motor pitches past the last one, then get
+    trimmed wherever a leg stub stood -- which left a full-width GAP in the bottom at each leg
+    and made the grid's phase an accident of the motor pitch. Now the bottom is drawn whole and
+    the grid is laid into it: the leftover after a whole number of pitches is split evenly
+    between the two ends, so both ends carry the same margin and neither is ever under 1.6."""
+    span = BOTTOM_X1 - BOTTOM_X0
+    n = int((span - 2 * MIN_WALL_2P - LEVER_MORT_W) // LEVER_PITCH) + 1
+    used = (n - 1) * LEVER_PITCH + LEVER_MORT_W
+    x0 = BOTTOM_X0 + (span - used) / 2.0 + LEVER_MORT_W / 2.0
+    return [x0 + k * LEVER_PITCH for k in range(n)]
+
+
+LEVER_GRID_X = _lever_grid()
+LEVER_END_MARGIN = (LEVER_GRID_X[0] - LEVER_MORT_W / 2) - BOTTOM_X0
+assert LEVER_END_MARGIN >= MIN_WALL_2P - 1e-9, (
+    "the bottom grid leaves only %.2f at its ends, under the two-bead floor" % LEVER_END_MARGIN)
+
+
+def lever_wall_x(x_target: float) -> float:
+    """The nearest WALL centre in the bottom grid -- the middle of the 3.2 between two
+    mortises. A split plane or anything else that must not land in a slot snaps here."""
+    x0 = LEVER_GRID_X[0] + LEVER_PITCH / 2
+    return x0 + round((x_target - x0) / LEVER_PITCH) * LEVER_PITCH
+
 BRIDGE_BASE_X1 = BRIDGE_X + BRIDGE_BASE_HALF        # +23.1  (+X face)
 
 

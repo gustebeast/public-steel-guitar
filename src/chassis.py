@@ -170,22 +170,15 @@ KH_DT_SEAT     = 0.1                    # lower-dovetail seating clearance: the 
 # (XBAR-wide, same christmas-tree mortise + wire raceway), so "one tenon fits any bay"
 # holds -- a lever just spans two of the finer bays. NOTHING is excluded (the knee-lever
 # bay keeps its ribs too; the lever housing is relieved for them in knee_lever.py).
-def _mort_positions():
-    """Every lever-mortise station: a uniform D.LEVER_PITCH grid over the bottom slab,
-    anchored on motor 1 so the grid follows the motors rather than floating.
-
-    It was a rib per motor plus one between each pair (22.35). The bottom is a SOLID PRISM now
-    and the stations are 8.8 apart -- as many mortises as fit with the joint's own 1.6 wall
-    between them (user, 2026-09-15) -- which is what gives a lever three times the places it
-    can mount. _MORT_X is trimmed against the leg stubs and the segment seams below."""
-    mx = sorted(D.motor_pos(i)[0] for i in range(D.N_STRINGS))
-    lo = mx[0] - 2 * D.MOTOR_X_STEP                       # two motor pitches past each end,
-    hi = mx[-1] + 2 * D.MOTOR_X_STEP                      # as the rib comb reached
-    k0 = int(math.ceil((lo - mx[0]) / D.LEVER_PITCH))
-    k1 = int(math.floor((hi - mx[0]) / D.LEVER_PITCH))
-    return [mx[0] + k * D.LEVER_PITCH for k in range(k0, k1 + 1)]
-
-_MORT_X = _mort_positions()
+# The grid is dimensions' (D.LEVER_GRID_X): as many mortises as fit across the WHOLE bottom,
+# centred, with an equal margin at each end. Nothing here trims it -- the bottom is drawn whole
+# and the grid laid into it, so there is no gap at a leg any more (user, 2026-09-16).
+assert abs(KH_RAIL_X - D.BOTTOM_X0) < 1e-9 and abs(TP_EP_GX - D.BOTTOM_X1) < 1e-9, (
+    "dimensions and chassis disagree about where the endplates take over: "
+    "BOTTOM %.3f..%.3f vs KH_RAIL_X/TP_EP_GX %.3f..%.3f -- the grid is laid out against the "
+    "first pair and the bottom is drawn to the second"
+    % (D.BOTTOM_X0, D.BOTTOM_X1, KH_RAIL_X, TP_EP_GX))
+_MORT_X = list(D.LEVER_GRID_X)
 # TARGETS MOVED (user's drop-in motor pockets, 2026-09-11): a housing is now 62.3 wide on a
 # 43.9 pitch, so it reaches 31.15 past its own motor and the segment that OWNS that motor
 # carries the whole overhang. A segment's real footprint is therefore its end motors +-31.15,
@@ -324,19 +317,13 @@ def _build_full() -> cq.Workplane:
     # a continuous CAP over every slot -- the body sealed from underneath against escaping light
     # and motor noise. It is also self-supporting by construction: a bay wall no longer bridges
     # a rib gap, because there are no rib gaps.
-    _slab_x0 = min(_MORT_X) - D.LEVER_PITCH / 2
-    _slab_x1 = max(_MORT_X) + D.LEVER_PITCH / 2
-    body = body.union(box_at(_slab_x1 - _slab_x0, Y_HI - Y_LO, MB.FLOOR_TOP - Z_BOT,
-                             x=(_slab_x0 + _slab_x1) / 2, y=(Y_HI + Y_LO) / 2,
+    # DRAWN WHOLE, end to end (user): one prism from one endplate takeover face to the other.
+    # It used to stop at the outermost station and then have a full-width slice cut out of it
+    # at each leg stub -- which is the gap the user found in the bottom by the feet. The body
+    # adapters fit the GRID now instead of needing the bottom to get out of their way.
+    body = body.union(box_at(D.BOTTOM_X1 - D.BOTTOM_X0, Y_HI - Y_LO, MB.FLOOR_TOP - Z_BOT,
+                             x=(D.BOTTOM_X0 + D.BOTTOM_X1) / 2, y=(Y_HI + Y_LO) / 2,
                              z=(MB.FLOOR_TOP + Z_BOT) / 2))
-    # ...except over the LEG STUBS, which slide in along Y and need the whole depth clear. The
-    # comb used to leave this open by dropping the ribs that touched a stub; the slab has to be
-    # told, and from the same rule so the two cannot disagree.
-    for _st in LEG_STATIONS_X:
-        body = body.cut(box_at(2 * _STUB_KEEP, (Y_HI - Y_LO) + 4.0,
-                               (MB.FLOOR_TOP - Z_BOT) + 2.0,
-                               x=_st, y=(Y_HI + Y_LO) / 2,
-                               z=(MB.FLOOR_TOP + Z_BOT) / 2))
     # knee/pedal lever mounts: cut a christmas-tree mortise into EVERY rib (so a lever can mount in
     # any bay -- its two tenons drop into the two ribs flanking the chosen bay). Even rib pitch -> the
     # one tenon fits all. (Retention is a set screw that presses the rib ledge -- no per-bay pilot.)
@@ -605,10 +592,7 @@ LEG_STATIONS_X = (_STN_PX, _STN_NX)         # (-13.4, -614.2)
 # corner cross-tie there -- and it merges into the stub as a clipped nub while its lever
 # mortise would gouge the stub. Drop those (deferred to here: the stations resolve after
 # _rib_positions). A rib within (SQ_W + rib_w)/2 of a station touches its stub.
-from .legs import SQ_W as _STUB_W
-_STUB_KEEP = (_STUB_W + D.LEVER_MORT_W) / 2.0    # no slot (and no slab) within this of a station
-_MORT_X = [x for x in _MORT_X
-           if all(abs(x - _st) >= _STUB_KEEP for _st in LEG_STATIONS_X)]
+# (the grid runs unbroken past the leg stubs now -- see _mort_positions and the bottom prism)
 # FLUSH-LEG round (user): the 44-sq legs sit FLUSH with the outer wall
 # planes instead of outset on the rail centrelines — centres 17 inboard
 # of the rails. Everything leg-shaped (stubs, columns, pedal bar rail)
@@ -717,11 +701,25 @@ assert abs((Y_HI - LIGHT_BAND_DY) - D.LIGHT_WIN_YC) < 1e-9, (
     % (D.LIGHT_WIN_YC, Y_HI - LIGHT_BAND_DY))
 
 
+LIGHT_TIE_EVERY = 5        # ...INTERRUPTED by a tie every Nth grid wall. The bottom prism is
+                           # the only thing holding the +Y rail on -- nothing above it reaches
+                           # that far +Y -- so a window cut clean through the bottom for the
+                           # whole length leaves the rail as a separate 172 cm3 solid. Each tie
+                           # is one of the grid's own 3.2 walls carried across the window.
+
+
 def _light_band():
-    """The window's own volume, over the whole body. Intersected with a segment it gives
-    that segment's transparent piece; cut from it, the aperture the piece fills."""
-    return box_at((X_BRIDGE - X_NUT) + 40.0, LIGHT_BAND_W, D.XBAR,
-                  x=_XC, y=Y_HI - LIGHT_BAND_DY, z=(Z_BOT + MB.FLOOR_TOP) / 2)
+    """The window's own volume: a run down the bottom, broken by ties. Intersected with a
+    segment it gives that segment's transparent piece; cut from it, the aperture it fills."""
+    band = box_at(D.BOTTOM_X1 - D.BOTTOM_X0, LIGHT_BAND_W, D.XBAR,
+                  x=(D.BOTTOM_X0 + D.BOTTOM_X1) / 2, y=Y_HI - LIGHT_BAND_DY,
+                  z=(Z_BOT + MB.FLOOR_TOP) / 2)
+    for _i in range(0, len(_MORT_X) - 1, LIGHT_TIE_EVERY):
+        _wx = (_MORT_X[_i] + _MORT_X[_i + 1]) / 2.0       # the wall between two stations
+        band = band.cut(box_at(D.LEVER_PITCH - D.LEVER_MORT_W, LIGHT_BAND_W + 2.0, D.XBAR + 2.0,
+                               x=_wx, y=Y_HI - LIGHT_BAND_DY,
+                               z=(Z_BOT + MB.FLOOR_TOP) / 2))
+    return band
 
 
 def _seg_box(a, b):
