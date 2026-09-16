@@ -804,6 +804,21 @@ BOARD_NOTES = {
     # on was being destroyed by the step that routed them. route.py now declares this
     # to freerouting as a plane and it leaves it alone.
     "plane_layers": ("In1.Cu",),
+    # ⚠ AND EVERY GROUND PAD GETS ITS OWN VIA TO THAT PLANE. The F.Cu pour connects
+    # them all when the board is placed -- and then 2,400 track segments chop it into
+    # islands, every island that reaches no via becomes unconnected copper, and island
+    # removal deletes it. 86 ground endpoints went that way. A via per pad makes the
+    # connection independent of whatever the router does afterwards; the pour stays,
+    # but as a bonus rather than the mechanism.
+    "stitch_nets": ("GND",),
+    # ⚠ ONE PAD OF 75 CANNOT TAKE A VIA, AND IT IS NAMED RATHER THAN SKIPPED. U10 is
+    # the USB ESD array: its neighbours FB1 and Q1 leave 0.24 mm either side, and its
+    # -Y face is 1 mm off the board edge, so there is nowhere within reach to drill.
+    # It keeps the connection every board in this project had until now -- the pour
+    # plus whatever the router lays -- which is adequate for an ESD array's ground
+    # reference and would not be for a converter's. If the compute block ever gets
+    # more room, delete this line rather than letting it become permanent.
+    "stitch_exceptions": ("U10.2",),
     "anchor": "courtyard",
     "refs_on_fab": True,
     # The ten sensor triplets sit at a 1.6 pitch by optical design, so their silkscreen
