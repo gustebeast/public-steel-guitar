@@ -419,8 +419,8 @@ def fixed_tenon():
     # THE LEG'S SIGNAL, down the joint's own axis (src.leg_trrs): the throat at this
     # tenon's tip, the floating jack's travel, its coil, and the cable on down the leg
     from . import leg_trrs as LTR       # late: leg_trrs reads this module
-    t = t.cut(LTR.tenon_negatives(LEG_X, LEG_Y, TENON_UP, bot=Z_FIX_TEN_BOT - 1.0))
-    return t.cut(LTR.lock_negatives(LEG_X, LEG_Y, TENON_UP))   # the keeper's set screw
+    return t.cut(LTR.tenon_negatives(LEG_X, LEG_Y, TENON_UP,
+                                     bot=Z_FIX_TEN_BOT - 1.0))
 
 
 def body_adapter(sx: float = LEG_X, ly: float = LEG_Y):
