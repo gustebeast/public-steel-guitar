@@ -54,19 +54,35 @@ def _drc(stem):
 
 
 def _run(script, stem):
-    r = subprocess.run([PY, os.path.join(HERE, script), stem],
-                       capture_output=True, text=True)
-    if r.returncode:
-        raise SystemExit("%s failed on %s:\n%s" % (script, stem, r.stdout + r.stderr))
-    return r.stdout
+    """Run a pipeline step, streaming its output as it arrives.
+
+    ⚠ STREAM IT. Capturing the output and printing it at the end made a twenty-minute
+    run look exactly like a hung one -- two routing passes on a 153-part board, and not a
+    character until both had finished. For a tool whose whole purpose is to be left
+    running unattended, "is it working or is it stuck?" is the one question it has to be
+    able to answer, and a progress line costs nothing.
+    """
+    out = []
+    proc = subprocess.Popen([PY, os.path.join(HERE, script), stem],
+                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                            text=True, bufsize=1)
+    for line in proc.stdout:
+        if "image handler" in line:
+            continue          # KiCad's Python greets every start-up with a dozen
+        out.append(line)
+        sys.stdout.write("    " + line)
+        sys.stdout.flush()
+    if proc.wait():
+        raise SystemExit("%s failed on %s" % (script, stem))
+    return "".join(out)
 
 
 def finish(stem, rounds=2):
     retry = stem + ".retry.json"
     if os.path.isfile(retry):
         os.remove(retry)          # always start from the board as designed
-    print(_run("layout.py", stem).rstrip())
-    print(_run("route.py", stem).rstrip())
+    _run("layout.py", stem)
+    _run("route.py", stem)
     best_n, nets, best_v = _drc(stem)
     print("  pass 1: %d unconnected, %d violation(s)" % (best_n, best_v))
     shutil.copy(stem + ".kicad_pcb", stem + ".best.kicad_pcb")
@@ -75,8 +91,8 @@ def finish(stem, rounds=2):
         if not best_n:
             break
         json.dump(nets, open(retry, "w", encoding="utf-8"))
-        print(_run("layout.py", stem).rstrip())
-        print(_run("route.py", stem).rstrip())
+        _run("layout.py", stem)
+        _run("route.py", stem)
         n, nets_now, v = _drc(stem)
         print("  pass %d: %d unconnected, %d violation(s)" % (k, n, v))
         # ⚠ STRICTLY BETTER OR IT DOES NOT COUNT. A violation is worse than an
