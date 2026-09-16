@@ -41,7 +41,7 @@ JAR = os.path.expandvars(
 # occasionally worse. The curve is flat after about 10, so the extra time buys track
 # length and not connectivity. Keep this low while ITERATING on a design and raise it
 # for the final run, where shorter tracks are worth the wall clock.
-PASSES = 20
+PASSES = 10
 
 
 def route(stem, passes=PASSES, timeout=900):
