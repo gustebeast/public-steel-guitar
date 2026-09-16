@@ -249,13 +249,23 @@ for _ctx, _cutters in _WR_FUSE.tee_hold_negatives():
 # The PORT is the extra one here: a bore through the +Y rail that the leg's plug
 # reaches in along, so it has to be cut after the cradle's base merges into that rail.
 _trrs_x = _WR_FUSE.TRRS_X
-for _csi in range(len(_seg_edges) - 1):
-    if _seg_edges[_csi + 1] < _trrs_x < _seg_edges[_csi]:
-        chassis_segments[_csi] = chassis_segments[_csi].union(_WR_FUSE.trrs_cradle())
-        chassis_segments[_csi] = chassis_segments[_csi].cut(_WR_FUSE.trrs_port())
-        for _cut in _WR_FUSE.trrs_hold_negatives():
-            chassis_segments[_csi] = chassis_segments[_csi].cut(_cut)
-        break
+# THE CHASSIS-SIDE TRRS BOARD IS PARKED (user, 2026-09-16): dropped off the
+# instrument's underside, with the leg's lead left hanging in free air. The user has a
+# wiring plan for it to be implemented later, and until then a board mounted here is a
+# guess that collides with real parts -- it was behind 6 of the model's 14 unintended
+# overlaps (keyhead_endplate, electronics_tray, pi5 and three nut_height screws).
+#
+# NOTHING IS DELETED. wiring.trrs_cradle / trrs_port / trrs_hold_negatives /
+# trrs_components are all still there and still correct for the station as laid out;
+# only these call sites are commented out, so putting the board back is uncommenting
+# them.
+# for _csi in range(len(_seg_edges) - 1):
+#     if _seg_edges[_csi + 1] < _trrs_x < _seg_edges[_csi]:
+#         chassis_segments[_csi] = chassis_segments[_csi].union(_WR_FUSE.trrs_cradle())
+#         chassis_segments[_csi] = chassis_segments[_csi].cut(_WR_FUSE.trrs_port())
+#         for _cut in _WR_FUSE.trrs_hold_negatives():
+#             chassis_segments[_csi] = chassis_segments[_csi].cut(_cut)
+#         break
 for _i, _seg in enumerate(chassis_segments):     # chassis split into dovetailed segments
     PARTS[f"chassis_{_i}"] = (partial(heal, _seg), f"petg-gf/chassis_{_i}.step",
                               "PETG-GF — chassis segment (cadkit slide-down T joint per rail; NO glue "
@@ -771,7 +781,7 @@ def _electronics_components():
         out.append((f"top_plate_color_{len(TP.segments_color) + i}",
                     fc.translate((0, dy, 0))))
     out += WR.tee_components()
-    out += WR.trrs_components()          # the leg's adapter board, its lock and its plug
+    # out += WR.trrs_components()      # PARKED with the station above
     out += WR.build_wires()
     return out
 
