@@ -876,6 +876,15 @@ BOARD_NOTES = {
     # ground pads displaced from it fall back to the pour, which is what they had
     # before any of this existed.
     "via_keepouts": [[-34.5, -101.0, -27.5, -78.0]],
+    # ⚠ THE FEEDBACK CLUSTERS, LAID HERE RATHER THAN SEARCHED FOR. Twenty identical
+    # networks -- op-amp output, feedback R, feedback C, and the photodiode on the input
+    # -- packed into the Y gaps of a 13.6 mm strip that already holds 107 parts. Nearly
+    # every unconnected pad this board reports is one of them failing to reach the pin
+    # beside it, and they are the most generator-shaped thing on the board: the same
+    # three-pad star, twenty times, at a spacing the string fan fixes.
+    # Only the LOCAL cluster is laid; the long run to the MCU's ADC pin stays the
+    # router's, which is the half it is good at. See _local_nets.
+    "local_nets": (r"TIA_IN_\d+[AB]", r"TIA_OUT_\d+[AB]"),
     "stitch_nets": ("GND",),
     # ⚠ ONE GROUND PAD GIVES WAY TO THE USB PAIR, and it is the right way round. The
     # pair routes first and its escape vias occupy the copper beside the PHY, which
