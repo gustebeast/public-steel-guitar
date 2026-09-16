@@ -611,6 +611,8 @@ JACK_ACCESS_XY = TP.JACK_POS[0]                 # THE JACK'S OWN POSITION, read 
 JACK_ACCESS_D  = M4.shaft_clr_d                 # 4.4
 
 
+
+
 def _parts():
     """EVERY component on the strip, with its package and placed centre. ONE source of
     truth for the 3D model, the area budget, the clearance assertions and BOM.md."""
@@ -678,13 +680,15 @@ def _parts():
     y = _block(P, y, [("C%d" % (100 + k), "MCU decoupling", "0402") for k in range(12)]
                      + [("R30", "BOOT0 pull-down", "0402"),
                         ("R31", "NRST pull-up", "0402")], x0, x1)
-    # PHY between the MCU and the connector -- it owns both ends: 12 ULPI signals up to
-    # the MCU, D+/D- down to the port.
-    y = _block(P, y, [("Y1", "25 MHz crystal -- MCU HSE", "3225"),
-                      ("U7", "USB 2.0 high-speed ULPI PHY", "QFN-24"),
-                      ("Y2", "24 MHz crystal -- PHY reference", "3225")]
-                     + [("C%d" % (120 + k), "PHY decoupling", "0402") for k in range(3)]
-                     + [("C%d" % (123 + k), "crystal load cap", "0402") for k in range(4)],
+    # ⚠ THE PHY IS NO LONGER HERE. It used to sit in this row, between the MCU and the
+    # connector, on the reasoning that it owns both ends -- 12 ULPI signals up to the
+    # MCU, D+/D- down to the port. That balanced the two runs, and it was the wrong
+    # trade: ULPI is 60 MHz and forgives a long run (12 mm of mismatch is 0.36% of a
+    # bit), while D+/D- is 480 Mbps and forgives nothing. Splitting the difference
+    # served the tolerant link at the expense of the critical one.
+    # The PHY now lives in the USB cluster at the -Y edge; see section 4b.
+    y = _block(P, y, [("Y1", "25 MHz crystal -- MCU HSE", "3225")]
+                     + [("C%d" % (123 + k), "crystal load cap", "0402") for k in range(2)],
                x0, x1)
     # U11 is the mid-rail reference the 20 TIAs sit on: single-supply transimpedance needs
     # a bias for the non-inverting inputs, and all 20 quad channels are spoken for.
@@ -757,14 +761,30 @@ def _parts():
     # zone is the MAGNETIC channel, which is line level -- four to five orders of magnitude
     # louder than the nanoamps the TIAs read, and therefore the right neighbour for it.
     # The two 3V3 LDOs still follow, so nothing downstream of 5 V sees the switching node.
-    y = _block(P, y, [("U13", "buck -- 24V -> 5V, the board's only switcher", "SOT-23-6"),
-                      ("L1", "buck output inductor", "IND-4040"),
-                      ("C160", "24 V input bulk -- 50 V part, see 1206C", "1206C"),
-                      ("C161", "24 V input HF bypass", "0402"),
-                      ("C162", "5 V output bulk", "0805C"),
-                      ("C163", "bootstrap", "0402"),
-                      ("R40", "feedback divider -- top", "0402"),
-                      ("R41", "feedback divider -- bottom", "0402")], x0, x1)
+    # ⚠ PLACED EXPLICITLY, NOT PACKED, and pushed to the -X side. The packer spread it
+    # across the full width, which put the switching node in the middle of the board and
+    # -- once the USB cluster moved to the -Y edge -- directly between the PHY and its
+    # connector. Both problems answer to the same move: the buck belongs beside the 24 V
+    # inlet it is fed from, and that inlet is now the -X connector. Power on one side,
+    # USB on the other, which is also the right answer for noise.
+    # ⚠ THE ROW IS RESERVED HERE AND FILLED LATER, once the board's -Y face is known.
+    # Every Y on this board is derived from the part list marching down, so a typed
+    # coordinate is stale the moment anything above it changes size -- which is exactly
+    # what happened the first time this was written: taking the buck out of the packer
+    # shortened the board by its row height, and the hand-typed cluster below ended up
+    # off the -Y edge.
+    _buck = (("U13", "buck -- 24V -> 5V, the board's only switcher", "SOT-23-6", -35.0),
+             ("L1", "buck output inductor", "IND-4040", -28.0),
+             ("C160", "24 V input bulk -- 50 V part, see 1206C", "1206C", -21.5),
+             ("C161", "24 V input HF bypass", "0402", -17.0),
+             ("C162", "5 V output bulk", "0805C", -13.5),
+             ("C163", "bootstrap", "0402", -9.5),
+             ("R40", "feedback divider -- top", "0402", -6.5),
+             ("R41", "feedback divider -- bottom", "0402", -4.0))
+    _buck_h = max(CRTYD[_p][1] for _, _, _p, _ in _buck)
+    y -= CRTYD_GAP
+    _buck_y = y - _buck_h / 2.0
+    y -= _buck_h
 
     # ---- 4. the -Y EDGE: every cable leaves the board here ----
     # Both mouths face -Y and their outer faces are FLUSH, so the two plugs present as one
@@ -778,8 +798,19 @@ def _parts():
     # is exactly what it was.
     _conn_depth = max(CRTYD["USB-C"][1], CRTYD["XH-SM-4Y"][1])
     edge_y = y - _conn_depth                                # the board's -Y face
+    # ⚠ J2 TAKES THE -X END AND J1 THE +X, WHICH IS THE OPPOSITE OF HOW THIS STARTED.
+    # It looks arbitrary and is not: everything +X of the connectors -- 33 mm by 12 mm
+    # of it -- is empty board, and putting the USB-C beside that empty space is what
+    # lets the PHY and the ESD array sit next to their own connector instead of two
+    # component rows away. The 24 V inlet gains the -X end, next to the buck it feeds.
+    # The cable run is a wash: both plugs turn +X to the conduit, so one gets shorter by
+    # roughly what the other gains.
+    add("J2", "power in -- 24V, PWR_GND, 2 cavities empty", "XH-SM-4Y",
+        COMPUTE_X0 + EDGE_KEEP + CRTYD["XH-SM-4Y"][0] / 2,
+        edge_y + CRTYD["XH-SM-4Y"][1] / 2)
     add("J1", "USB-C receptacle -- 10ch audio + MIDI + DFU", "USB-C",
-        COMPUTE_X0 + EDGE_KEEP + CRTYD["USB-C"][0] / 2,
+        COMPUTE_X0 + EDGE_KEEP + CRTYD["XH-SM-4Y"][0] + CRTYD_GAP
+        + CRTYD["USB-C"][0] / 2,
         edge_y + CRTYD["USB-C"][1] / 2)
     # J2 -- POWER *AND* the magnetic pickup's audio tap. 24 V FROM THE TRUNK, and NOT USB
     # VBUS: MCU ~200-300 mA + PHY ~50 + 21 op-amp channels ~40 is already past a USB port
@@ -793,26 +824,38 @@ def _parts():
     # ground: the LED row driver switches at 96 kHz SYNCHRONOUSLY WITH SAMPLING and that
     # current flows in the power return, so sharing it would inject the one noise source
     # ambient subtraction cannot cancel straight into the audio reference.
-    # ⚠ U10 IS PLACED AGAINST J1 BY HAND, AND IT IS THE ONE PART HERE THAT HAS TO BE.
-    # It is the USB data-line ESD array, and an ESD clamp works by being AT the port:
-    # every millimetre between the connector and the clamp is series inductance in the
-    # path the transient takes, so a clamp far from the connector protects the trace
-    # and not much else. Packed into the LDO row by the block packer it sat 26 mm from
-    # J1 -- and the cost showed up somewhere else entirely, in elec/verify.py, which
-    # measured the USB pair at DP 57.1 mm against DM 45.3 and failed the board. The
-    # router was not wandering; it was going PHY -> ESD -> connector, and the ESD array
-    # was the detour.
+    # ---- 4b. THE USB CLUSTER -- the whole high-speed chain, beside its connector ----
+    # ⚠ THIS IS THE RE-PLAN THAT MADE THE PAIR ROUTABLE. The chain is PHY -> ESD array
+    # -> socket, and it used to be spread over 25 mm with two rows of components across
+    # it: the PHY packed into a row near the MCU, the ESD array packed into the LDO row,
+    # the connector at the edge. Nothing was wrong with any one placement; the chain had
+    # simply never been treated as a thing that wanted to be together.
     #
-    # THE SLOT IS THE GAP BETWEEN U13 AND L1, directly above J1: 4.94 wide by about 7.3
-    # of otherwise dead board, which the packer never offered because it fills rows
-    # left to right. 6.9 mm from the connector now, against 26.
-    add("U10", "USB data-line ESD array -- AT the connector, see the note", "SOT-563",
-        -31.0, -98.0)
+    # WHAT IT COST TO LEAVE IT ALONE, measured rather than argued: freerouting laid D+
+    # at 39.6 mm against D- at 32.0 -- two traces on visibly different paths, so not a
+    # coupled pair and not a 90 ohm interconnect. Attempts to route it properly failed
+    # on the top layer (two component rows in the way) AND on the inner layer (75 ground
+    # stitches pierce it), and that was not a router problem to solve.
+    #
+    # Placed as a group, the hops are ~9 mm and ~7 mm, in open board, with the buck and
+    # its switching node at the other end of the edge.
+    # The cluster shares the connectors' own band -- edge_y up to the deeper
+    # connector's land -- and simply sits +X of them, in board that was empty.
+    _usb_y = edge_y + _conn_depth / 2.0
+    _flank = _conn_depth / 2.0 - CRTYD["0402"][1] / 2.0 - EDGE_KEEP
+    for _ref, _desc, _pkg, _ux, _uy in (
+            ("U10", "USB data-line ESD array -- AT the connector", "SOT-563", -6.5, _usb_y),
+            ("U7", "USB 2.0 high-speed ULPI PHY", "QFN-24", 0.5, _usb_y),
+            ("Y2", "24 MHz crystal -- PHY reference", "3225", 7.0, _usb_y),
+            ("C125", "crystal load cap", "0402", 7.0, _usb_y + _flank),
+            ("C126", "crystal load cap", "0402", 7.0, _usb_y - _flank),
+            ("C120", "PHY decoupling", "0402", 11.0, _usb_y),
+            ("C121", "PHY decoupling", "0402", 13.5, _usb_y),
+            ("C122", "PHY decoupling", "0402", 16.0, _usb_y)):
+        add(_ref, _desc, _pkg, _ux, _uy)
+    for _ref, _desc, _pkg, _bx in _buck:
+        add(_ref, _desc, _pkg, _bx, _buck_y)
 
-    add("J2", "power in -- 24V, PWR_GND, 2 cavities empty", "XH-SM-4Y",
-        COMPUTE_X0 + EDGE_KEEP + CRTYD["USB-C"][0] + CRTYD_GAP
-        + CRTYD["XH-SM-4Y"][0] / 2,
-        edge_y + CRTYD["XH-SM-4Y"][1] / 2)
     return P
 
 
