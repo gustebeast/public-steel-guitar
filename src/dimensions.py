@@ -776,6 +776,7 @@ LEVER_MORT_W = XBAR - 2 * MIN_WALL_2P        # 7.2 across the octagon mortise (t
 LEVER_PITCH  = LEVER_MORT_W + 2 * MIN_WALL_2P    # 10.4 = XBAR
 
 
+
 def lever_wall_x(x_target: float) -> float:
     """The nearest WALL centre in the bottom grid -- the middle of the 1.6 between two
     mortises. A split plane or anything else that must not land in a slot snaps here."""
@@ -854,6 +855,15 @@ BRIDGE_AXLE_X     = BRIDGE_X - BRIDGE_BEARING_OD / 2     # bearing/axle centre X
 # WIDTH DATUM (not the axle's span any more -- see BRIDGE_AXLE_L). chassis.Y_HI,
 # knee_lever.MORT_Y_END and screw_rail.ACROSS are measured from this.
 BRIDGE_AXLE_Y     = STRING_FIELD_W / 2 + 12 * BEAD  # 52.35
+# THE DOWNWARD LIGHT WINDOW (user, 2026-09-16). A slot straight through the bottom prism, one
+# XBAR inboard of the +Y rail's centre-line, so the rail stands outboard of it and none of it
+# shows from the front -- it only ever aims DOWN, at the pedals. Here rather than in chassis
+# because knee_lever has to know where it starts (the lever mortises stop there) and cannot
+# import chassis; chassis asserts the two spellings of the rail agree.
+LIGHT_WIN_W  = 8.0                                   # across Y
+LIGHT_WIN_DY = XBAR                                  # inboard of the +Y rail's centre-line
+LIGHT_WIN_YC = (BRIDGE_AXLE_Y + 4 * BEAD + WALL_THICKNESS / 2) - LIGHT_WIN_DY
+LIGHT_WIN_Y0 = LIGHT_WIN_YC - LIGHT_WIN_W / 2        # the -Y edge: where the mortises stop
 BRIDGE_ARM_W      = 6 * BEAD  # 4.8 bridge-endplate bearing-arm / edge-web thickness (Y); the
                             # screw rail widens by this so the rib overlaps it cleanly
 # THE AXLE'S TWO ENDS. It is a plain ground shaft with no shoulder — it has to be, since
