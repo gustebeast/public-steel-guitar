@@ -44,11 +44,25 @@ JAR = os.path.expandvars(
 # occasionally worse. The curve is flat after about 10, so the extra time buys track
 # length and not connectivity. Keep this low while ITERATING on a design and raise it
 # for the final run, where shorter tracks are worth the wall clock.
+#
+# ⚠ THOSE MEASUREMENTS PREDATE THE REPRODUCIBILITY FIX and are worth less than they
+# look. They were taken when the same board routed to 14, 17 and 30 on identical input,
+# so a 10-versus-20 comparison was one sample each from a distribution wider than the
+# difference being measured. The shape of the claim is probably right -- connectivity is
+# found early, later passes shorten track -- but the numbers are not evidence. Re-measure
+# before leaning on them.
 PASSES = 10
 
 
-def route(stem, passes=PASSES, timeout=900):
+def route(stem, passes=None, timeout=900):
     pcb, dsn, ses = stem + ".kicad_pcb", stem + ".dsn", stem + ".ses"
+    # ⚠ A BOARD MAY ASK FOR MORE PASSES, and recording that beats remembering it.
+    # "Raise it for the final run" is an instruction to a person, and a person who is
+    # not there when someone regenerates this in three years. A board that needs 30 says
+    # so in its own notes and gets 30 every time it is built.
+    if passes is None:
+        passes = json.load(open(stem + ".board.json", encoding="utf-8")).get(
+            "router_passes", PASSES)
     notes = None
     if os.path.isfile(stem + ".board.json"):
         notes = json.load(open(stem + ".board.json", encoding="utf-8"))
