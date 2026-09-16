@@ -212,6 +212,14 @@ def route(stem, passes=None, timeout=900):
             if layout._check_stitches_landed(board, notes):
                 print("    (the rest have nowhere to go: move the part or except the "
                       "pad -- another routing run will not help)")
+    # ⚠ THE ROUTER LEAVES SAME-PART GAPS, and they are cheap to close once it has
+    # finished. Done here rather than before routing because before routing the same
+    # idea is a constraint that costs more than it buys -- see link_same_part_gaps.
+    n_link = layout.link_same_part_gaps(board)
+    if n_link:
+        print("  joined %d same-net pad pair(s) the router left in separate islands"
+              % n_link)
+
     # ⚠ COUNT BEFORE REMOVING. board.Remove() leaves the track container in a state
     # where GetTracks() raises -- the same SWIG ownership hazard that made fp.Remove()
     # corrupt the footprint IO plugin earlier in this file's history. The rule that
