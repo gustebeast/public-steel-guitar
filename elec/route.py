@@ -196,6 +196,33 @@ def route(stem, passes=None, timeout=900):
         # before the pour existed, which is a confusing way to learn it.
         board.BuildConnectivity()
         pcbnew.ZONE_FILLER(board).Fill(board.Zones())
+        # ⚠ AND CHECK THE STITCHES AGAIN HERE, NOT ONLY IN layout.py. At layout time the
+        # plane is poured around 60 parts and every stitch via lands in copper. THIS
+        # refill pours it around those parts plus 700 routed tracks, and the plane that
+        # results is a different shape -- so a via that was in the plane before routing
+        # can be in a hole after it. Every board passes the check in layout.py and
+        # output_panel failed it here, which is exactly why it has to run twice.
+        if layout._check_stitches_landed(board, notes):
+            n_moved = layout.rescue_stray_stitches(board, notes)
+            if n_moved:
+                # moving copper changes the pour that was just computed, so pour again
+                board.BuildConnectivity()
+                pcbnew.ZONE_FILLER(board).Fill(board.Zones())
+                print("    moved %d of them into the plane and re-poured" % n_moved)
+            if layout._check_stitches_landed(board, notes):
+                print("    (the rest have nowhere to go: move the part or except the "
+                      "pad -- another routing run will not help)")
+    # ⚠ COUNT BEFORE REMOVING. board.Remove() leaves the track container in a state
+    # where GetTracks() raises -- the same SWIG ownership hazard that made fp.Remove()
+    # corrupt the footprint IO plugin earlier in this file's history. The rule that
+    # comes out of both: take every measurement you need from a board BEFORE deleting
+    # anything from it, and delete last.
+    n = len(list(board.GetTracks()))
+    n_junk = layout.drop_degenerate(board)
+    if n_junk:
+        # the Specctra round trip rounds, and rounding leaves sub-micron fragments
+        print("  dropped %d degenerate track fragment(s) from the import" % n_junk)
+        n -= n_junk
     board.Save(pcb)
     # ⚠ CANONICALISE THE ROUTED BOARD TOO, for the same reason layout.py does it --
     # and the reason is now MEASURED rather than argued. Two independent runs of the
@@ -206,7 +233,6 @@ def route(stem, passes=None, timeout=900):
     # make "did this change anything?" unanswerable at exactly the point where the
     # answer matters most.
     layout._canonical_uuids(pcb)
-    n = len(list(board.GetTracks()))
     print("%s: %d track segments + vias imported" % (os.path.basename(pcb), n))
     return pcb
 
