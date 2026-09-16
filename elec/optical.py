@@ -810,6 +810,28 @@ BOARD_NOTES = {
     # removal deletes it. 86 ground endpoints went that way. A via per pad makes the
     # connection independent of whatever the router does afterwards; the pour stays,
     # but as a bonus rather than the mechanism.
+    # ⚠ THE TWENTY SENSING CELLS ARE ROUTED BY THE AUTOROUTER, AND I TRIED TO TAKE
+    # THAT AWAY FROM IT AND COULD NOT. Each cell is the same four connections twenty
+    # times -- photodiode into the summing node, the op-amp's inverting input, and the
+    # feedback R and C across it -- and that node carries TENS OF NANOAMPS, so its loop
+    # area is worth pinning down rather than re-rolling every time the board is
+    # regenerated. I built a pre-router for it (straight and L-shaped paths between the
+    # cell's own pads, collision-checked) and it placed SEVEN segments out of about
+    # sixty before running out of clear paths.
+    #
+    # THE REASON IS THE INTERESTING PART: the parts in this strip sit a fraction of a
+    # millimetre apart, so almost every path between two pads of one cell is blocked ON
+    # F.Cu -- and the autorouter gets through because it drops to In2.Cu and B.Cu and
+    # comes back. Matching that would mean placing vias and routing on inner layers,
+    # which is writing a router, not configuring one. A pre-router that does an eighth
+    # of the job while a comment claims the summing node is deterministic would be
+    # worse than none, so there is none.
+    #
+    # ⚠ WHAT THAT LEAVES: the most sensitive geometry on this board is chosen by
+    # freerouting and differs between runs. That is a real limitation and it is not
+    # visible in any DRC report. If the analog performance ever disappoints, this is
+    # the first thing to look at -- and the fix is to give the strip more room so the
+    # cells CAN be wired on one layer, not to tune the router.
     "stitch_nets": ("GND",),
     # ⚠ ONE PAD OF 75 CANNOT TAKE A VIA, AND IT IS NAMED RATHER THAN SKIPPED. U10 is
     # the USB ESD array: its neighbours FB1 and Q1 leave 0.24 mm either side, and its
