@@ -795,13 +795,28 @@ STUB_WALL_D = D.WALL_THICKNESS # endplate end-wall depth (= CH.T -- DERIVED now;
 # (-eps*10.667) takes the M4 pin.
 
 
-def _cross_x(eps: float) -> tuple:
-    """The two crossing-ridge |local-x| stations for an end-wall side."""
+def _cross_x(eps: float, station: float | None = None) -> tuple:
+    """The two crossing-ridge |local-x| stations for an end-wall side.
+
+    THE GRID WINS WHERE THE GRID EXISTS (user, 2026-09-16). The nominal stations are the THIRDS
+    of the leg<->side-panel overlap, but a ridge that crosses the chassis floor has to land in a
+    lever mortise -- the chassis cuts those by its own rule and nothing here may reshape them.
+    Given the leg's world `station`, each third snaps to the nearest mortise station when one is
+    within half a pitch; where there is none (the +X corners sit past the floor's +X end, so the
+    grid does not reach them) the third stands."""
     inner = SQ_W / 2 - STUB_WALL_D              # end-wall inner face (12)
     span = SQ_W - STUB_WALL_D                   # side-panel overlap (34)
-    return (eps * (inner - span / 3.0), eps * (inner - 2.0 * span / 3.0))
-STUB_TEN_W = 8.0               # CROSSING-ridge octagon width (flat-to-
-                               # flat), profile height 7.24
+    raw = (eps * (inner - span / 3.0), eps * (inner - 2.0 * span / 3.0))
+    if station is None:
+        return raw
+    out = []
+    for r in raw:
+        g = D.rib_comb_x(station + r) - station
+        out.append(g if abs(g - r) <= D.LEVER_PITCH / 2.0 else r)
+    return tuple(out)
+STUB_TEN_W = D.LEVER_MORT_W - 0.6   # 6.6 flat-to-flat: THE SAME JOINT the levers use, because
+                               # these ridges ride the same mortises (user). It was 8.0, sized on
+                               # its own; a 7.2 grid mortise cannot take that.
 # END-WALL TONGUE, in a REBATE (user, 2026-09-10). It used to sit on the 10-thick end
 # wall's centreline in a groove with a 2.5 cheek either side -- but the endplates print
 # from their OUTER face inward (keyhead -X -> +X, bridge +X -> -X), so the INBOARD
@@ -968,7 +983,7 @@ def corner_groove_negatives(station: float, ly: float, syg: float,
     Lc = SQ_W + 1.5
     y0c = (ly - SQ_W / 2 - CROSS_GROOVE_IN) if syg > 0 else (ly - SQ_W / 2 - 1.0)
     mid = service_slide(egx, syg)
-    for i, dx in enumerate(_cross_x(egx)):
+    for i, dx in enumerate(_cross_x(egx, station)):
         c = mid if i == 0 else 0.0             # the MIDDLE ridge's inboard end (above)
         if c >= SQ_W - 1e-9:
             continue
@@ -1012,7 +1027,7 @@ def lock_pin_joint(station: float, ly: float, egx: float, syg: float, z_bot: flo
     service hole, SERVICE_SLIDE inboard)."""
     zc = z_bot + LOCK_Z
     entry = (station + egx * SQ_W / 2, ly + syg * LOCK_PIN_DY + dy, zc)
-    groove_edge = egx * _cross_x(egx)[0] + STUB_TEN_W / 2 + 0.1   # its outboard flank
+    groove_edge = egx * _cross_x(egx, station)[0] + STUB_TEN_W / 2 + 0.1   # its outboard flank
     return _ScrewJoint(_M4, entry, (-egx, 0.0, 0.0), LOCK_SCREW_L,
                        insert_at=STUB_WALL_D + SHELL_GAP,
                        end_at=SQ_W / 2 - (groove_edge + D.MIN_WALL_2P),
