@@ -113,9 +113,15 @@ def route(stem, passes=None, timeout=900):
     # "Autorouter Confirmation" dialog on every run, which steals focus from
     # whoever is at the machine -- and this gets run many times per board.
     # Headless AWT suppresses it and the router works unchanged.
-    # -mt 1: freerouting warns that its multi-threaded optimiser is broken and
-    # generates clearance violations. Single-threaded costs a fraction of a
-    # second on boards this size.
+    # ⚠ -mt 1 BY DEFAULT: freerouting warns that its multi-threaded optimiser is broken
+    # and generates clearance violations, and a board that cannot be manufactured is not
+    # worth any amount of wall clock. The note that used to sit here also claimed single
+    # threading "costs a fraction of a second on boards this size" -- true when the boards
+    # were 20 parts, and badly false now: the optical board takes ten minutes, which is
+    # the main brake on iterating it.
+    # So `threads` is exposed per board to be MEASURED rather than assumed. Raising it is
+    # only defensible if the result is both violation-free and reproducible, and both are
+    # checkable.
     # ⚠ THE OPTIMISER'S STRATEGY IS A BOARD-LEVEL CHOICE, not a global constant. It
     # changes which nets freerouting revisits and in what order, and on a board that is
     # one or two connections short that is exactly the lever that matters -- far more
@@ -124,7 +130,7 @@ def route(stem, passes=None, timeout=900):
     # meant comparing two samples from a distribution wider than the difference.
     strat = json.load(open(stem + ".board.json", encoding="utf-8")).get("router")
     cmd = [JAVA, "-Djava.awt.headless=true", "-jar", JAR, "-de", dsn, "-do", ses,
-           "-mp", str(passes), "-mt", "1"]
+           "-mp", str(passes), "-mt", str((strat or {}).get("threads", 1))]
     # ⚠ THE VALUES ARE CASE-SENSITIVE AND A WRONG ONE IS IGNORED IN SILENCE, which is
     # the worst way for an option to fail: a sweep of four strategies came back with four
     # identical boards -- 668 segments each -- and read as "strategy does not matter on
@@ -215,7 +221,8 @@ def route(stem, passes=None, timeout=900):
     # ⚠ THE ROUTER LEAVES SAME-PART GAPS, and they are cheap to close once it has
     # finished. Done here rather than before routing because before routing the same
     # idea is a constraint that costs more than it buys -- see link_same_part_gaps.
-    n_link = layout.link_same_part_gaps(board)
+    n_link = layout.link_close_gaps(board, layout._outline_pts(notes),
+                                   same_part_only=False)
     if n_link:
         print("  joined %d same-net pad pair(s) the router left in separate islands"
               % n_link)
