@@ -1494,7 +1494,14 @@ def _rules(board, notes):
     bds.m_CopperEdgeClearance = pcbnew.FromMM(0.3)
     for nc in board.GetAllNetClasses().values():
         nc.SetClearance(pcbnew.FromMM(0.127))
-        nc.SetTrackWidth(pcbnew.FromMM(0.25))
+        # ⚠ TRACK WIDTH IS A BOARD-LEVEL CHOICE, because escape room is set by the
+        # finest-pitch part on the board and not by a house default. 0.25 with 0.127
+        # clearance needs 0.377 mm per lane, which fits a 0.5 mm pitch part comfortably
+        # and a 0.4 mm QFN only just -- and "only just" is not enough once the fan has to
+        # turn. A board whose tightest package is 0.4 says so and gets narrower default
+        # track; boards without one keep 0.25, which is cheaper to manufacture and more
+        # forgiving of etch variation.
+        nc.SetTrackWidth(pcbnew.FromMM(notes.get("track_mm", 0.25)))
         # KiCad's default 0.8/0.4 via cannot escape a 0.4 mm-pitch QFN -- it does
         # not fit between the pads, so the router simply leaves those pins
         # unrouted. 0.6/0.3 is JLCPCB's STANDARD (not advanced) capability and
@@ -1696,6 +1703,30 @@ def build(stem):
     # it, and a via is the only way there. A local net has a whole board and an inner
     # layer to find a path through, and it SKIPS what it cannot lay rather than failing.
     # The routine with no alternative goes first.
+    # ⚠ NETS THE ROUTER ALREADY FAILED ON, handed back for a second attempt. finish.py
+    # writes this file after a routing pass that left something unconnected, and the
+    # difference from `local_nets` is the whole point: those are guessed in advance and
+    # frozen whether the router needed help or not, while these are MEASURED -- the
+    # router has been given its chance and demonstrably could not take it.
+    #
+    # That inverts the trade. Pre-laid copper costs the router freedom it can never
+    # recover, so freezing nets it would have solved makes a board worse -- measured at
+    # 2 -> 5 on output_panel and 4 -> 7 on lever_sensor. Freezing only the nets it just
+    # failed costs it freedom on exactly the paths it was not using anyway.
+    #
+    # No span limit here: a failed net is laid however far it reaches, because the
+    # alternative on offer is not laying it at all.
+    retry = stem + ".retry.json"
+    if os.path.isfile(retry):
+        want = json.load(open(retry, encoding="utf-8"))
+        if want:
+            n_laid, n_left = _local_nets(board, [re.escape(n) for n in want],
+                                         _outline_pts(notes), local_mm=1e9,
+                                         inner=notes.get("diff_pair_inner"))
+            print("  retry: laid %d segment(s) for %d net(s) the router could not finish"
+                  "%s" % (n_laid, len(want),
+                          ", %d edge(s) still not placeable" % n_left if n_left else ""))
+
     if notes.get("local_nets"):
         # NOT `skipped` -- that name already holds the single-pad net count this
         # function reports at the end, and shadowing it made the summary line claim
