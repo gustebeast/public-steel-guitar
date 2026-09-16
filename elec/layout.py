@@ -828,7 +828,46 @@ def _via_r(v):
         return v.GetWidth() / 2.0
 
 
-def link_same_part_gaps(board, max_mm=5.0, width=0.25, clr=0.2):
+class _Terminal:
+    """A track end, dressed up enough to stand in for a pad in link_close_gaps.
+
+    The repair joins two things left in different islands, and a track END is as valid a
+    thing to join as a pad -- the router routed most of the way and stopped. Giving it
+    the three methods the repair actually calls is cheaper than branching the logic.
+    """
+
+    def __init__(self, pos, track):
+        self._pos = pcbnew.VECTOR2I(pos.x, pos.y)
+        self._t = track
+
+    def GetPosition(self):
+        return self._pos
+
+    def GetNetname(self):
+        return self._t.GetNetname()
+
+    def GetNet(self):
+        return self._t.GetNet()
+
+    def GetLayer(self):
+        return self._t.GetLayer()
+
+    def GetParentFootprint(self):
+        return None
+
+    def real(self):
+        """The board item the connectivity graph actually knows about."""
+        return self._t
+
+    def GetSize(self):
+        # a track end has no land; its "pad" is the trace width, which is what the
+        # via-escape search needs in order to stand a via clear of it
+        w = self._t.GetWidth()
+        return pcbnew.VECTOR2I(w, w)
+
+
+def link_close_gaps(board, outline, max_mm=5.0, width=0.25, clr=0.2,
+                    same_part_only=True, inner=None):
     """Join same-net pads of ONE part that the routed board left in separate islands.
 
     ⚠ A REPAIR, NOT A CONSTRAINT, and the difference is the whole lesson of the day. The
@@ -860,8 +899,21 @@ def link_same_part_gaps(board, max_mm=5.0, width=0.25, clr=0.2):
               (t.GetPosition().x, t.GetPosition().y), _via_r(t), t.GetNetname())
              for t in board.GetTracks() if t.GetClass() == "PCB_VIA"]
     margin = pcbnew.FromMM(width / 2.0 + clr)
+    drills = [(t.GetPosition().x, t.GetPosition().y) for t in board.GetTracks()
+              if t.GetClass() == "PCB_VIA"]
 
     def clear(x, y, net):
+        # ⚠ THE BOARD EDGE, AGAIN. This is the THIRD copper-laying routine in this file
+        # to be written without it and caught by DRC afterwards -- the stitcher, then
+        # _local_nets, now this. The edge is not in any obstacle list because it is not
+        # copper, so every new routine starts out unable to see it and runs traces off
+        # the side of the board until something says so.
+        # The real fix is that these three should share one obstacle model instead of
+        # each building its own; that is a refactor, and this is the note that says why
+        # it is worth doing rather than a fourth patch.
+        if not _inside(outline, int(x), int(y),
+                       margin - pcbnew.FromMM(clr) + pcbnew.FromMM(0.3)):
+            return False
         for bb, onet in pads:
             if onet == net:
                 continue
@@ -879,37 +931,123 @@ def link_same_part_gaps(board, max_mm=5.0, width=0.25, clr=0.2):
                 return False
         return True
 
+    # ⚠ WIDENED FROM ONE PART TO ANY TWO PADS WITHIN REACH, because the optical board's
+    # remaining failures are the same shape one step out: a feedback capacitor and its
+    # feedback resistor, 2 mm apart, on the same net, left in two islands. Same argument
+    # as the same-part case and it survives the widening for the same reason -- this runs
+    # AFTER routing, so the only pairs considered are ones already left unconnected.
+    # There is no route being denied; the routing is over.
+    # ⚠ A TERMINAL IS NOT ALWAYS A PAD. Most of what the router leaves unfinished is a
+    # TRACK END a millimetre or two short of where it was going -- it routed most of the
+    # way and stopped. Considering only pads misses all of those, which on the optical
+    # board is most of them: of thirteen failures, one was pad-to-pad and the rest had a
+    # track end at one side or both.
+    groups = {}
+    if same_part_only:
+        for fp in board.GetFootprints():
+            for q in fp.Pads():
+                if q.GetNetname():
+                    groups.setdefault((fp.GetReference(), q.GetNetname()), []).append(q)
+    else:
+        for fp in board.GetFootprints():
+            for q in fp.Pads():
+                if q.GetNetname():
+                    groups.setdefault(q.GetNetname(), []).append(q)
+        for t in board.GetTracks():
+            if t.GetClass() == "PCB_VIA" or not t.GetNetname():
+                continue
+            for end in (t.GetStart(), t.GetEnd()):
+                groups.setdefault(t.GetNetname(), []).append(_Terminal(end, t))
+
     made = 0
-    for fp in board.GetFootprints():
-        by_net = {}
-        for q in fp.Pads():
-            if q.GetNetname():
-                by_net.setdefault(q.GetNetname(), []).append(q)
-        for net, group in by_net.items():
+    if True:
+        by_net = {k: v for k, v in groups.items()}
+        for net_key, group in by_net.items():
+            net = net_key[1] if isinstance(net_key, tuple) else net_key
             for i, a in enumerate(group):
                 for b in group[i + 1:]:
                     d = (a.GetPosition() - b.GetPosition()).EuclideanNorm()
                     if d > pcbnew.FromMM(max_mm) or d == 0:
                         continue
-                    if any(it.GetPosition() == b.GetPosition()
-                           for it in cc.GetConnectedItems(a)):
-                        continue          # already joined, by copper or by the plane
+                    # the connectivity graph knows board items, not our stand-ins
+                    ra = a.real() if hasattr(a, "real") else a
+                    rb = b.real() if hasattr(b, "real") else b
+                    if ra is rb:
+                        continue          # the two ends of one track
+                    joined = False
+                    for it in cc.GetConnectedItems(ra):
+                        if it == rb or it.GetPosition() == b.GetPosition():
+                            joined = True
+                            break
+                    if joined:
+                        continue          # already one island, by copper or by the plane
                     p0 = (a.GetPosition().x, a.GetPosition().y)
                     p1 = (b.GetPosition().x, b.GetPosition().y)
-                    n = max(4, int(pcbnew.ToMM(d) / 0.15) + 1)
-                    if not all(clear(p0[0] + (p1[0] - p0[0]) * k / n,
-                                     p0[1] + (p1[1] - p0[1]) * k / n, net)
-                               for k in range(n + 1)):
+                    # ⚠ NOT JUST A STRAIGHT LINE. The pads that need joining are often
+                    # diagonally across an intervening pad -- a feedback cap's far pin to
+                    # its resistor's far pin passes 0.077 mm from the cap's OWN other pad,
+                    # which is a different net. A straight segment is the common case and
+                    # not the interesting one; the interesting one turns a corner.
+                    way = None
+                    for sh in _centrelines(p0, p1, detour_mm=2.0, step_mm=0.25):
+                        ok = True
+                        for q0, q1 in zip(sh, sh[1:]):
+                            L = math.hypot(q1[0] - q0[0], q1[1] - q0[1])
+                            n = max(4, int(pcbnew.ToMM(L) / 0.15) + 1)
+                            if not all(clear(q0[0] + (q1[0] - q0[0]) * k / n,
+                                             q0[1] + (q1[1] - q0[1]) * k / n, net)
+                                       for k in range(n + 1)):
+                                ok = False
+                                break
+                        if ok:
+                            way = sh
+                            break
+                    if way is None and inner is not None:
+                        # ⚠ GO UNDER, when the component layer is full -- and in the
+                        # sensing strip it always is: 107 parts in 13.6 mm, which is
+                        # exactly where the router gave up too. The inner layer is empty
+                        # by comparison, and an SMD pad is no obstacle at all to a trace
+                        # a layer below it.
+                        def _seg_ok(q0, q1, netname, thru_only=False):
+                            L = math.hypot(q1[0] - q0[0], q1[1] - q0[1])
+                            n2 = max(4, int(pcbnew.ToMM(L) / 0.15) + 1)
+                            return all(clear(q0[0] + (q1[0] - q0[0]) * k / n2,
+                                             q0[1] + (q1[1] - q0[1]) * k / n2, netname)
+                                       for k in range(n2 + 1))
+                        def _emit(q0, q1, pad, netname, layer, _net=net):
+                            if q0 == q1:
+                                return
+                            tk = pcbnew.PCB_TRACK(board)
+                            tk.SetStart(pcbnew.VECTOR2I(int(q0[0]), int(q0[1])))
+                            tk.SetEnd(pcbnew.VECTOR2I(int(q1[0]), int(q1[1])))
+                            tk.SetWidth(pcbnew.FromMM(width))
+                            tk.SetLayer(layer)
+                            tk.SetNet(pad.GetNet())
+                            board.Add(tk)
+                            segs.append((q0, q1, pcbnew.FromMM(width) / 2.0, _net))
+                        hop = _hop_via_inner(board, a, b, net, inner,
+                                             lambda x, y, nn, **kw: clear(x, y, nn),
+                                             _seg_ok, _emit,
+                                             0.6, 0.3, clr, width, math, outline, drills)
+                        if hop:
+                            made += hop
+                            board.BuildConnectivity()
+                            cc = board.GetConnectivity()
                         continue
-                    t = pcbnew.PCB_TRACK(board)
-                    t.SetStart(a.GetPosition())
-                    t.SetEnd(b.GetPosition())
-                    t.SetWidth(pcbnew.FromMM(width))
-                    t.SetLayer(a.GetLayer())
-                    t.SetNet(a.GetNet())
-                    board.Add(t)
-                    segs.append((p0, p1, pcbnew.FromMM(width) / 2.0, net))
-                    made += 1
+                    if way is None:
+                        continue
+                    for q0, q1 in zip(way, way[1:]):
+                        if q0 == q1:
+                            continue
+                        t = pcbnew.PCB_TRACK(board)
+                        t.SetStart(pcbnew.VECTOR2I(int(q0[0]), int(q0[1])))
+                        t.SetEnd(pcbnew.VECTOR2I(int(q1[0]), int(q1[1])))
+                        t.SetWidth(pcbnew.FromMM(width))
+                        t.SetLayer(a.GetLayer())
+                        t.SetNet(a.GetNet())
+                        board.Add(t)
+                        segs.append((q0, q1, pcbnew.FromMM(width) / 2.0, net))
+                        made += 1
                     board.BuildConnectivity()
                     cc = board.GetConnectivity()
     return made
