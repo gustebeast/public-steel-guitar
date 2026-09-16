@@ -647,6 +647,12 @@ BOARD_NOTES = {
     # three 4-layer boards, because it was made where the symptom appeared instead of
     # where the property belonged. A board that pours a plane declares it.
     "plane_layers": ("In1.Cu",),
+    # ⚠ AND A PLANE NEEDS STITCHING TO IT. Declaring In1 a plane is only half the
+    # job: it stops the router carrying ground THROUGH the plane, and then nothing
+    # connects the ground pads TO it. Declared alone it stranded six GND pads on this
+    # board -- the pour reaches them, but a pour is what routing can orphan, which is
+    # the whole reason the plane is there. Every GND pad gets its own via down.
+    "stitch_nets": ("GND",),
     # THE FLOORPLAN IS THREE BANDS, which is the whole noise argument made
     # geometric: the 24 V island and its switcher in the -Y corner, the digital
     # block across the middle, and the ANALOG CHAIN along +Y as far from the

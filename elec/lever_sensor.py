@@ -352,6 +352,12 @@ BOARD_NOTES = {
     # three 4-layer boards, because it was made where the symptom appeared instead of
     # where the property belonged. A board that pours a plane declares it.
     "plane_layers": ("In1.Cu",),
+    # ⚠ AND A PLANE NEEDS STITCHING TO IT. Declaring In1 a plane is only half the
+    # job: it stops the router carrying ground THROUGH the plane, and then nothing
+    # connects the ground pads TO it. Declared alone it stranded six GND pads on this
+    # board -- the pour reaches them, but a pour is what routing can orphan, which is
+    # the whole reason the plane is there. Every GND pad gets its own via down.
+    "stitch_nets": ("GND",),
     "refs_on_fab": True,
     "hold_edge": None,          # NO screw: the grooves hold five faces and the
                                 # instrument's underside closes over the sixth
