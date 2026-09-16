@@ -116,8 +116,33 @@ def route(stem, passes=None, timeout=900):
     # -mt 1: freerouting warns that its multi-threaded optimiser is broken and
     # generates clearance violations. Single-threaded costs a fraction of a
     # second on boards this size.
+    # ⚠ THE OPTIMISER'S STRATEGY IS A BOARD-LEVEL CHOICE, not a global constant. It
+    # changes which nets freerouting revisits and in what order, and on a board that is
+    # one or two connections short that is exactly the lever that matters -- far more
+    # than the pass count, which buys track length and not connectivity. It is only
+    # worth exposing now: before the pipeline was reproducible, comparing two strategies
+    # meant comparing two samples from a distribution wider than the difference.
+    strat = json.load(open(stem + ".board.json", encoding="utf-8")).get("router")
     cmd = [JAVA, "-Djava.awt.headless=true", "-jar", JAR, "-de", dsn, "-do", ses,
            "-mp", str(passes), "-mt", "1"]
+    # ⚠ THE VALUES ARE CASE-SENSITIVE AND A WRONG ONE IS IGNORED IN SILENCE, which is
+    # the worst way for an option to fail: a sweep of four strategies came back with four
+    # identical boards -- 668 segments each -- and read as "strategy does not matter on
+    # this board" when in fact none of them had been applied. Spelled as freerouting
+    # spells them, checked here rather than trusted, and the command is printed so the
+    # next person can see what actually ran.
+    US = {"greedy": "Greedy", "global": "Global", "hybrid": "Hybrid"}
+    IS = {"sequential": "Sequential", "random": "random", "prioritized": "prioritized"}
+    for flag, key, table in (("-us", "updating", US), ("-is", "selection", IS)):
+        want = (strat or {}).get(key)
+        if not want:
+            continue
+        if want.lower() not in table:
+            raise SystemExit("%s: router %s=%r is not one of %s"
+                             % (os.path.basename(stem), key, want, sorted(table)))
+        cmd += [flag, table[want.lower()]]
+    if (strat or {}):
+        print("  router strategy: %s" % " ".join(cmd[cmd.index("-mt") + 2:]))
     # ⚠ A TIMEOUT HERE MUST NOT LOOK LIKE A ROUTING RESULT. subprocess.run raises
     # TimeoutExpired, which a caller redirecting stderr will never see -- and the board
     # is then left exactly as it was, PLACED AND UNROUTED. Downstream that reads as
