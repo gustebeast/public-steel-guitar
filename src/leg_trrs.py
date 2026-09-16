@@ -59,7 +59,6 @@ import math
 
 import cadquery as cq
 
-from cadkit.fasteners import M4_BUTTON_HEAD_D
 from cadkit.holes import teardrop_hole
 from . import dimensions as D
 from . import latch as LT
@@ -151,17 +150,48 @@ LEAD_BORE_D = 6 * B             # 4.8 -- and the plug does NOT come down through
                                 #     The bend was the whole problem -- 6.5 of radius on
                                 #     a 3.8 cable is 1.7x OD, well under the 3x a static
                                 #     install wants. Stripped, it is a non-question.
-LOCK_RECESS = 2.6               # the button head's pocket depth (head 2.2 + 0.4)
-LOCK_SCREW_L = 16.0             # M4 x 16 BUTTON, 2.5 hex: the instrument's one driver
-LOCK_GROOVE = 0.4               # how deep the screw's tip sits in the keeper's OD.
+PIN_D = 2.0                     # THE KEEPER'S LOCK IS A PRINTED TPU PIN (user: "can
+                                # we make the pin a printed part? TPU has a lot of
+                                # friction"), and the numbers say yes with room to
+                                # spare. The keeper only ever carries the coil's
+                                # PRELOAD_N -- 5 N, and only with the leg OFF, because
+                                # the seated MATE_N pushes the jack DOWN off it and into
+                                # the plug. It is BLIND, so it is single shear: 5 N
+                                # on O2 is 1.6 MPa against ~12 for 95A TPU, 7.5x. It is
+                                # not a structural pin, it is a detent.
+                                # O2 AND NOT O3, which is what the vertical budget
+                                # actually allows. The pin has to live in a groove tall
+                                # enough to swallow it -- a O3 pin in the 0.8 groove the
+                                # M4's tip used bit the keeper 4.9 mm3 above and below
+                                # it -- and groove + flange + the keeper's own top wall
+                                # have to fit inside THROAT_L while the tenon still
+                                # keeps MIN_WALL_2P over the bore's teardrop apex. At O2
+                                # that comes to 5.61 against 6.20; at O3 it is 6.92 and
+                                # the whole gain to the plug's wrap would go straight
+                                # back to the keeper.
+PIN_FIT = 0.2                   # ...and it is printed OVERSIZE into its bore, which is
+                                # the real reason to reach for TPU here. A rigid O3
+                                # printed rod in a O3 printed hole is a coin flip --
+                                # either it will not start or it rattles. An elastomer
+                                # squeezes in and stays, and the tolerance question goes
+                                # away. It also cannot back out into the mortise: with
+                                # the leg on, the mortise roof is 0.15 off this flank
+PIN_ENV = PIN_D + 0.4           # 2.4: the groove's height, the pin's own O2.2 plus
+                                # 0.2 so a squashed elastomer still drops in
+# AND IT IS SOLID -- no pick dimple. The pin CANNOT be a through-pin (a chord across
+# the spine would cross the O6.6 the plug has to pass), and blind means there is no far
+# side to push it out from, so the first draft bored a O0.8 dimple to pull it by. On a
+# O2.2 pin that leaves a 0.70 wall -- tools/check_thin caught it -- under the 0.80
+# floor, and a O0.6 hole is not printable in TPU anyway. An elastomer does not need the
+# feature: drive a scribe into the end and pull. If it tears, print another; it is two
+# hundredths of a gram
+LOCK_GROOVE = 0.4               # how deep the pin's tip sits in the keeper's OD.
                                 # 0.4, not 0.8: the groove comes straight off the
                                 # keeper's wall and 0.8 took it under the floor
-# LOCK_BITE is MEASURED off the octagon at run time rather than written down: the
-# flank slopes, so the wall depends on the spine, and a spine move would otherwise
-# leave the hole's mouth buried or hanging. Whatever it comes to is 0.5-1.5 short of
-# M4's anchor_min_wall, so this is a THREAD-FORMED grub and not an insert -- the same
-# call legs.py makes for its pinch grubs. The -Y flank has 16.0 and would take a
-# pocket, but then the grub has to be 20 long to cross it.
+# THE PIN'S RUN is MEASURED off the octagon at run time rather than written down: the
+# flank slopes, so the depth depends on the spine, and a spine move would otherwise
+# leave the pin's outer end buried or hanging. Nothing is threaded, so unlike the grub
+# it has no minimum bite to satisfy -- only the wall over it, which LOCK_Z owns.
 THROAT_LEAD_D = 9.0             # the keeper's MOUTH, opened 45 from its O6.6 bore.
                                 # THE KEEPER IS THE LEG'S HIGHEST FEATURE, so its bore
                                 # is the first thing the plug's barrel meets on the way
@@ -180,10 +210,19 @@ CHAN_D = CABLE_D + 1.0          # face the lead is folded into
 
 # ── the z chain, all of it hung off the tenon's tip ───────────────────────────
 TIP = LS.Z_MORTISE_ROOF         # -94.55: the tenon's tip, and the mortise's roof
-PLUG_GRIP = 3 * B               # 2.4 of press bore left after the keeper takes its 8.6.
-                                # At 4 beads the straight screw's window closes to a
-                                # single point (cover and flange both exactly 1.60);
-                                # one more bead to the keeper buys 0.4 either side
+PLUG_GRIP = 6 * B               # 4.8 -- and it is the PLUG'S WRAP, the one number
+                                # that keeps the male end pointing straight with the leg
+                                # off (user: "if the male end is pointing off axis it
+                                # won't meet the female and the leg will jam").
+                                # Shortening the tenon and the mortise does NOT buy this
+                                # -- TIP cancels out of wrap = PLUG_L - FLOAT - THROAT_L,
+                                # checked at roof shifts of 0, -5 and -10 (wrap 2.40 in
+                                # all three). The only lever is what the keeper spends,
+                                # and a O7.6 button head was spending 8.6 of the 11.0 on
+                                # a screw that sits on the REMOVABLE LEG and does nothing
+                                # for the plug at all (user). A O3 PIN needs 2.12 of
+                                # radius, not 4.2, so the keeper drops to 6.2 and the
+                                # wrap doubles
 PLUG_TOP = TIP + PLUG_GRIP      # THE KEEPER GETS THE HEIGHT (user: make the throat
                                 # taller so the screw can be straight). THROAT_L and
                                 # PLUG_GRIP share a fixed 11.0 -- both come off this one
@@ -212,18 +251,20 @@ assert PLUG_GRIP >= 3 * D.BEAD, (
     "14-long overmould concentric and stops it dropping out with the leg off"
     % PLUG_GRIP)
 
-# THE SCREW IS STRAIGHT (user), and this is the window that makes it so. A O7.6 button
-# recessed square to the flank needs MIN_WALL_2P of tenon over its top edge, and the
-# keeper needs MIN_WALL_2P of flange under the groove. Between them they fix LOCK_Z to
-# a window that only exists once THROAT_L >= 7.8 -- which is what the plug's press paid
-# for. Tilting it was the alternative and the user did not want it.
-_HEAD_R = M4_BUTTON_HEAD_D / 2.0 + 0.4          # the head in its recess, radius
-_LOCK_HI = TIP - _HEAD_R - D.MIN_WALL_2P
-_LOCK_LO = JACK_REST + LOCK_GROOVE + D.MIN_WALL_2P
+# THE PIN IS STRAIGHT, and cheaply so. The tenon needs MIN_WALL_2P over the bore and
+# the keeper MIN_WALL_2P of flange under the groove; between them they fix LOCK_Z. The
+# radius that matters is the TEARDROP'S, not the pin's -- the bore is horizontal, so it
+# is printed with an apex at r*sqrt(2) (see the hole-envelope rule). Even so a pin's
+# 2.12 against a recessed button's 4.2 is what lets the keeper come down from 8.6 to
+# 6.2 and hand the difference to the plug.
+_HEAD_R = PIN_D / 2.0 * math.sqrt(2.0)          # the teardrop's apex, radius
+_LOCK_HI = min(TIP - _HEAD_R - D.MIN_WALL_2P,   # tenon over the bore...
+               TIP - PIN_ENV / 2.0 - D.MIN_WALL_2P)   # ...and keeper over the groove
+_LOCK_LO = JACK_REST + PIN_ENV / 2.0 + D.MIN_WALL_2P  # keeper's flange under it
 assert _LOCK_LO <= _LOCK_HI + 1e-9, (
-    "no room for a STRAIGHT lock screw: the head wants z <= %.2f and the keeper's "
+    "no room for the lock pin: its bore wants z <= %.2f and the keeper's "
     "flange wants z >= %.2f. THROAT_L is %.2f and needs %.2f -- give it more by "
-    "lowering PLUG_TOP (it costs PLUG_GRIP one for one)"
+    "lowering PLUG_TOP (it costs PLUG_GRIP, i.e. the plug's wrap, one for one)"
     % (_LOCK_HI, _LOCK_LO, THROAT_L, THROAT_L + (_LOCK_LO - _LOCK_HI)))
 LOCK_Z = (_LOCK_LO + _LOCK_HI) / 2.0    # the set screw's line, centred in that window
 
@@ -314,11 +355,11 @@ def throat(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):
     r = r.cut(lead)
     # the set screw's GROOVE: right round, so the keeper can go in at any clocking
     groove = cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        (THROAT_BORE_D + THROAT_PRESS) / 2.0 + 1.0, LOCK_GROOVE * 2,
-        cq.Vector(x, y, LOCK_Z - LOCK_GROOVE), cq.Vector(0, 0, 1)))
+        (THROAT_BORE_D + THROAT_PRESS) / 2.0 + 1.0, PIN_ENV,
+        cq.Vector(x, y, LOCK_Z - PIN_ENV / 2.0), cq.Vector(0, 0, 1)))
     groove = groove.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        (THROAT_BORE_D + THROAT_PRESS) / 2.0 - LOCK_GROOVE, LOCK_GROOVE * 2 + 2,
-        cq.Vector(x, y, LOCK_Z - LOCK_GROOVE - 1), cq.Vector(0, 0, 1))))
+        (THROAT_BORE_D + THROAT_PRESS) / 2.0 - LOCK_GROOVE, PIN_ENV + 2,
+        cq.Vector(x, y, LOCK_Z - PIN_ENV / 2.0 - 1), cq.Vector(0, 0, 1))))
     return r.cut(groove)
 
 
@@ -335,16 +376,19 @@ def _flank_x(y, z):
 
 
 def _lock_axis(sx=LS.LEG_X, ly=LS.LEG_Y):
-    """(entry point, unit direction, run) for the keeper's lock screw.
+    """(entry point, unit direction, run) for the keeper's lock pin.
 
-    STRAIGHT IN from the -Y flank (user). A O7.6 button head -- the only M4 head on this
-    instrument, because its 2.5 hex is the one driver (fasteners.AGENTS) -- needs 4.2 of
-    radius about its axis, so the tenon has to be tall enough over the jack's rest to
-    bury it: see LOCK_Z, which asserts the window exists. It only does because the
-    keeper took 8.6 of the chain's 11.0 and left the plug 2.4."""
+    STRAIGHT IN from the -X flank, blind, ending LOCK_GROOVE into the keeper's OD.
+
+    -X, not the -Y the screw used, because the pin is PUSHED IN BY HAND and the two
+    flanks are not the same distance from the spine: -Y is 21.0 out and -X is 9.8, so
+    the pin is 4.9 long rather than 16.5. That matters for an elastomer -- 16 mm of TPU
+    driven through an interference bore is a rod you cannot push and would not get back
+    out. It stays clear of the latch, whose pocket owns y < -3 while this spine sits at
+    +5.6."""
     x, y = _ax(sx, ly)
-    d = (0.0, 1.0, 0.0)                                  # straight in from the -Y flank
-    tip = (x, y - (THROAT_BORE_D + THROAT_PRESS) / 2.0 + LOCK_GROOVE, LOCK_Z)
+    d = (1.0, 0.0, 0.0)                                  # straight in from the -X flank
+    tip = (x - (THROAT_BORE_D + THROAT_PRESS) / 2.0 + LOCK_GROOVE, y, LOCK_Z)
     prism = LS.tenon(LOCK_Z - 40.0, LOCK_Z + 5.0).val()
     run = 0.0
     while run < 40.0:
@@ -357,59 +401,48 @@ def _lock_axis(sx=LS.LEG_X, ly=LS.LEG_Y):
 
 
 def lock_negatives(sx: float = LS.LEG_X, ly: float = LS.LEG_Y, up=None):
-    """The lock screw's hole in the FIXED TENON: a recessed O7.6 button head, its
-    heat-set insert, and clearance on through to the keeper's groove. Without it the
-    keeper is held by THROAT_PRESS alone -- 1.7 mm3 of contact against the coil's 5 N,
-    which the user rightly would not take (the mortise roof caps it, but only with the
-    leg ON)."""
-    from cadkit.fasteners import M4, M4_BUTTON_HEAD_D, M4_BUTTON_HEAD_H, anchor_cutter
+    """The pin's bore in the FIXED TENON: one O3 hole from the -Y flank through to the
+    keeper's groove. Without it the keeper is held by THROAT_PRESS alone -- 1.7 mm3 of
+    contact against the coil's 5 N, which the user rightly would not take (the mortise
+    roof caps it, but only with the leg ON)."""
     entry, d, run = _lock_axis(sx, ly)
     up = up or LS.PRINT_UP["fixed_tenon"]
-    assert run >= LOCK_RECESS + M4.insert_l + M4.min_bite, (
-        "only %.2f of tenon along the lock's axis -- not enough for a recessed head, "
-        "its insert and a bite" % run)
-    # the head's recess, opened outward so it breaks the sloping flank cleanly
-    head = teardrop_hole(M4_BUTTON_HEAD_D + 2 * 0.4, LOCK_RECESS + 4.0,
-                         (entry[0] - d[0] * 4.0, entry[1] - d[1] * 4.0,
-                          entry[2] - d[2] * 4.0), d, up,
+    # start outside the flank so the teardrop breaks the slope cleanly
+    start = (entry[0] - d[0] * 2.0, entry[1] - d[1] * 2.0, entry[2] - d[2] * 2.0)
+    return teardrop_hole(PIN_D, run + 2.0 + LOCK_GROOVE, start, d, up,
                          limit_deg=LS.TEN_HOLE_LIMIT_DEG)
-    # ...then the insert's pocket and the clearance on to the groove
-    mouth = (entry[0] + d[0] * LOCK_RECESS, entry[1] + d[1] * LOCK_RECESS,
-             entry[2] + d[2] * LOCK_RECESS)
-    body = anchor_cutter(M4, mouth, d, run - LOCK_RECESS + LOCK_GROOVE + 0.4,
-                         print_up=up)
-    return head.union(body)
+
+
+def pin(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):
+    """THE KEEPER'S LOCK PIN, printed (user). A solid O(PIN_D + PIN_FIT) TPU stub the
+    length of its bore plus the groove.
+
+    Flush, never proud: this flank is the one that enters the mortise with 0.15 of
+    clearance, so a head here would jam the leg on the way in -- the same failure the
+    whole wrap argument is about."""
+    entry, d, run = _lock_axis(sx, ly)
+    l = run + LOCK_GROOVE
+    body = cq.Solid.makeCylinder((PIN_D + PIN_FIT) / 2.0, l, cq.Vector(*entry),
+                                 cq.Vector(*d))
+    # the inner end is SADDLED to the groove's root, which is a cylinder about the
+    # spine and not a plane. A flat end on a O2.2 pin overhangs it by 0.13 at the
+    # corners -- 1.4 mm3 of the keeper, which is a clash and not a fit
+    x, y = _ax(sx, ly)
+    root = (THROAT_BORE_D + THROAT_PRESS) / 2.0 - LOCK_GROOVE
+    body = body.cut(cq.Solid.makeCylinder(
+        root, THROAT_L + 4.0, cq.Vector(x, y, JACK_REST - 2.0), cq.Vector(0, 0, 1)))
+    # ...and the OUTER end is trimmed to the octagon itself. That flank SLOPES, so a
+    # flat end cut square to the axis leaves half the pin standing proud of it -- 0.3
+    # mm3 into the mortise, against 0.15 of clearance. The leg would jam on its own
+    # lock pin, which is the failure this whole joint is being reworked to avoid
+    return cq.Workplane("XY").add(body).intersect(LS.tenon(JACK_REST, TIP))
 
 
 def lock_dummies(sx: float = LS.LEG_X, ly: float = LS.LEG_Y, k: int = 0):
-    """The screw and its insert, where they actually sit -- so the tab shows hardware
-    and not just a hole (user)."""
-    from cadkit.fasteners import (M4, M4_BUTTON_HEAD_H, m4_button_screw,
-                                  seated_insert)
-    entry, d, run = _lock_axis(sx, ly)
-    mouth = (entry[0] + d[0] * LOCK_RECESS, entry[1] + d[1] * LOCK_RECESS,
-             entry[2] + d[2] * LOCK_RECESS)
-    ins = seated_insert(M4, mouth, d)
-    sc = m4_button_screw(LOCK_SCREW_L)
-    # m4_button_screw draws head-top at z 0 down -Z; put its head top at the recess floor
-    top = (entry[0] + d[0] * (LOCK_RECESS - M4_BUTTON_HEAD_H),
-           entry[1] + d[1] * (LOCK_RECESS - M4_BUTTON_HEAD_H),
-           entry[2] + d[2] * (LOCK_RECESS - M4_BUTTON_HEAD_H))
-    sc = _aim(sc, d).translate(top)
-    return [("leg_trrs_lock_screw_%d" % k, sc),
-            ("leg_trrs_lock_insert_%d" % k, ins)]
+    """The pin where it actually sits -- so the tab shows the lock and not just a hole
+    (user)."""
+    return [("leg_trrs_pin_%d" % k, pin(sx, ly))]
 
-
-def _aim(w, d):
-    """Turn a dummy drawn along -Z onto `-d` (screws drive INWARD along d)."""
-    import cadquery as _cq
-    v = _cq.Vector(*d)
-    z = _cq.Vector(0, 0, -1)
-    ax = z.cross(v)
-    if ax.Length < 1e-9:
-        return w if v.z < 0 else w.rotate((0, 0, 0), (1, 0, 0), 180)
-    ang = math.degrees(math.acos(max(-1.0, min(1.0, z.dot(v)))))
-    return w.rotate((0, 0, 0), ax.toTuple(), ang)
 
 
 def _run(pts, d=CABLE_D):
@@ -438,17 +471,24 @@ def cables(sx: float = LS.LEG_X, ly: float = LS.LEG_Y, k: int = 0):
     fold = LS.Z_TOP - CHAN_D / 2.0
     from . import electronics as EL                      # late: sizes only
     from . import wiring as WR                           # late: wiring reads chassis
+    tail = WR.trrs_mouth_z() - EL.TRRS_PLUG_RUN          # the station plug's free end
     patch = _run([(x, y, PLUG_TOP),                             # the plug's back
                   (x, y, fold),                                 # folded into the channel
                   (b[0], b[1] + 1.0, fold),                     # out the -Y face
                   (b[0], b[1] - 4.0, fold),                     # clear of it
-                  (WR.TRRS_X, WR.TRRS_Y - 10.0, fold),          # inboard, under the body
-                  (WR.TRRS_X, WR.TRRS_Y, fold),
-                  (WR.TRRS_X, WR.TRRS_Y,
-                   WR.trrs_mouth_z() - EL.TRRS_PLUG_RUN)])      # and up into the jack.
-                                    # It STOPS at the plug's tail: that plug is drawn
-                                    # at the station, and running the two into each
-                                    # other only trips the gate
+                  (b[0], WR.TRRS_Y - 10.0, fold),               # -Y FIRST, then across:
+                  (WR.TRRS_X, WR.TRRS_Y - 10.0, fold),          # the diagonal ran
+                                    # through the station plug's O10 barrel, which hangs
+                                    # 13 below this plane. 10 of Y offset clears it
+                  (WR.TRRS_X, WR.TRRS_Y - 10.0, tail - CABLE_D / 2.0 - 0.3),
+                  (WR.TRRS_X, WR.TRRS_Y, tail - CABLE_D / 2.0 - 0.3),
+                  (WR.TRRS_X, WR.TRRS_Y, tail)])                # and UP into the jack.
+                                    # It stops AT the plug's tail and comes at it FROM
+                                    # BELOW. The first pass ran straight down the
+                                    # station's axis from the channel, which is 16.75 of
+                                    # cable drawn inside the plug's own body -- the
+                                    # station's mouth faces -Z (user), so its plug hangs
+                                    # BELOW the adapter's top face, not above it
     leg = _run([(x, y, JACK_BACK), (x, y, JACK_BACK - 40.0)])
     return [("leg_trrs_patch_%d" % k, patch), ("leg_trrs_leg_lead_%d" % k, leg)]
 
