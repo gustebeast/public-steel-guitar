@@ -306,6 +306,21 @@ def _add_zone(board, net, layer, inset, w, h):
     # fab, and on a board this small KiCad reports the two-spoke minimum as
     # "starved" anyway. Solid is also the better electrical answer for a return.
     zone.SetPadConnection(pcbnew.ZONE_CONNECTION_FULL)
+    # ⚠ ISLAND HANDLING MUST BE SET EXPLICITLY, and not setting it was a live bug.
+    # A bare pcbnew.ZONE() comes up with a min-island-area of 1e13 nm2 -- 10,000 mm2,
+    # larger than any board here -- which is uninitialised memory, not a default. With
+    # the AREA mode that number would purge every island on the board.
+    #
+    # It went unnoticed because the pours that existed were each ONE island: a plane on
+    # an inner layer with nothing on it to break it up. The moment GND was poured on
+    # F.Cu, where 153 parts fragment it into hundreds of islands, the zone filled to
+    # exactly ZERO square millimetres -- and a zone that fills to nothing looks, in the
+    # board file, exactly like a zone that filled fine.
+    #
+    # ALWAYS is the right mode and the one KiCad's own UI defaults to: an island of
+    # copper not connected to its net is an antenna, so drop it. The islands that
+    # matter are the ones touching a pad, and those are connected by definition.
+    zone.SetIslandRemovalMode(pcbnew.ISLAND_REMOVAL_MODE_ALWAYS)
     hw, hh = w / 2.0 - inset, h / 2.0 - inset
     outline = zone.Outline()
     outline.NewOutline()
@@ -393,7 +408,24 @@ def build(stem):
             _place_ref(fp, _to_board(*ref_pos))
 
     by_ref = {fp.GetReference(): fp for fp in board.GetFootprints()}
+    # ⚠ SINGLE-PAD NETS ARE NOT GIVEN TO THE BOARD AT ALL. The netlist names every
+    # deliberately-unconnected pin -- U6_NC_57, K1_UNUSED_7, DAC_OUT_R_NC -- because a
+    # NAMED no-connect is a decision on the record and a silently floating pin is not.
+    # That is right for the SCHEMATIC and wrong for the BOARD: a net with one pad on it
+    # cannot be routed, has nothing to connect to, and its only effect downstream is to
+    # occupy the autorouter's search space and the DRC report. On the optical board that
+    # is 88 pads of 566 -- 16% of everything the router is asked to think about, all of
+    # it work that cannot be done and does not need doing.
+    #
+    # Counted by PADS rather than matched by NAME on purpose: a naming convention is a
+    # habit someone can break, whereas "one pad" is the actual property that makes a net
+    # unroutable. It also catches the genuine mistake -- a net that was MEANT to connect
+    # to something and does not -- and those show up in ERC, which is where they belong.
+    skipped = 0
     for name, nodes in nets.items():
+        if len(nodes) < 2:
+            skipped += 1
+            continue
         net = pcbnew.NETINFO_ITEM(board, name)
         board.Add(net)
         for ref, pad_no in nodes:
@@ -417,12 +449,23 @@ def build(stem):
     for net_name, layer, inset in notes.get("zones", []):
         _add_zone(board, nets_by_name[net_name], layer, inset, *notes["outline_mm"])
     if notes.get("zones"):
+        # ⚠ BUILD THE CONNECTIVITY GRAPH FIRST. A board assembled by script has none --
+        # it is built by the editor as you work, and nothing here was ever "worked on".
+        # The zone filler uses it to decide which islands are attached to their net, so
+        # without it EVERY island reads as unconnected and island removal discards the
+        # lot. On an inner-layer plane that is invisible (one island, kept by luck); on
+        # a pour fragmented by 153 parts it fills to exactly ZERO square millimetres,
+        # and a zone that filled to nothing looks in the file just like one that
+        # filled fine.
+        board.BuildConnectivity()
         pcbnew.ZONE_FILLER(board).Fill(board.Zones())
 
     out = stem + ".kicad_pcb"
     board.Save(out)
-    print("%s: %d parts, %d nets, %.1f x %.1f mm"
-          % (os.path.basename(out), len(comps), len(nets), *notes["outline_mm"]))
+    print("%s: %d parts, %d nets%s, %.1f x %.1f mm"
+          % (os.path.basename(out), len(comps), len(nets) - skipped,
+             (" (+%d single-pad, not placed)" % skipped) if skipped else "",
+             *notes["outline_mm"]))
     return out
 
 
