@@ -805,13 +805,13 @@ BOARD_NOTES = {
     # on was being destroyed by the step that routed them. route.py now declares this
     # to freerouting as a plane and it leaves it alone.
     "plane_layers": ("In1.Cu",),
-    # ⚠ 0.15 mm TRACK: the finest part on this board is a 0.4 mm pitch LQFP and 0.25
-    # with 0.127 clearance needs 0.377 per lane, which fits that pitch only just -- and
-    # "only just" runs out as soon as the escape fan has to turn. The same change took
-    # lever_sensor, whose tightest part is the same pitch, from 4 unconnected to 1.
-    # Geometry, not current: the signals here are logic and audio, and the power rails
-    # are short and wide where they matter.
-    "track_mm": 0.15,
+    # ⚠ NO track_mm HERE: 0.15 was TESTED AND IS WORSE. It helps lever_sensor, whose
+    # 0.4 mm pitch QFN needs the lane, and it hurt this board -- 12 unconnected and no
+    # violations at the 0.25 default, against 15 and a real clearance violation at 0.15.
+    # The finest part here is 0.5 mm pitch, which 0.25 clears comfortably, so there was
+    # no escape problem to solve; all the narrowing did was change the geometry the pair
+    # router and the stitcher had already been fitted around.
+    # Narrower track is not "more room" for free -- it is a different board.
     # ⚠ AND EVERY GROUND PAD GETS ITS OWN VIA TO THAT PLANE. The F.Cu pour connects
     # them all when the board is placed -- and then 2,400 track segments chop it into
     # islands, every island that reaches no via becomes unconnected copper, and island
