@@ -53,6 +53,37 @@ the constraint is stock, not selection. See the optical-pickup section.
 | **M4 pickup-jack screw** | M4 × 0.7, 20 mm, 18-8 SS button head (hex drive) | 3 | [McMaster 92095A-series](https://www.mcmaster.com/92095A192/) | ~$12 / pack [m] | pickup height LEADSCREW jacks: the button head is captured in a deck counterbore (free to rotate, axially fixed), the shank threads the plate's heat-set nut so turning it from +Z walks the pickup up/down; 20 mm spans the height-adjust range across the 15–22 mm pickup depths + string gap. **Confirm the ×20 length suffix (…A196-class) at purchase.** NEW part — replaces the stale "3 cup-tip height screws" (those pre-date the leadscrew jack) |
 | **M4 heat-set insert** | M4 × 0.7 brass heat-set, 4.7 mm | 44 | [McMaster 94459A150](https://www.mcmaster.com/94459A150/) | $10.82 / pack 50 [m] | 10 nut clamps + 4 leg-sleeve pinch collars + 3 pickup-carrier jack nuts + 1 pickup -Y retention grub; deeply buried (no pull-out) + **11 CAN-tee side hold-downs** (one per bus-A cradle boss). + **4 leg lock pins** (one per corner, in the chassis's kept shell — `legs.lock_pin_joint`) + **1 pedal-bar latch collar** (in the bar's tower, `bar_latch`). ⚠ **Recount before ordering** — the 10 nut clamps and 4 leg-sleeve pinch collars above are stale (the keyhead uses sliding inserts; legs.py thread-forms the pinch grubs), while the 10 belt-tensioner insert-nuts, the 2 optical-strip grips and the knee/pedal spring-tension inserts are not listed. + **10 keyhead height-screw nuts** (prototype; mouth down, flush in the keyhead prism's bottom face). | ~~+ 1 leg TRRS keeper lock~~ — **withdrawn 2026-09-15**: there is no fastener at that joint at all now. It went M4×16-button-plus-insert → Ø2 TPU pin → **TPU bayonet**, each step for a reason the last one could not answer: burying a Ø7.6 head needed the keeper 8.6 tall, and the keeper's height comes straight out of the male plug's wrap; and the pin, though it freed that height, could not be got back OUT, since nothing at that flank may stand proud of a face that enters a mortise (user). A bayonet turns out with a screwdriver and adds no SKU.
 | **Latch return spring** | Compression, **Ø5.0 OD × 0.6 mm wire × 12 mm free**, ~6 active coils, 302/304 SS (rate ~2.5 N/mm; **verify OD/free length at purchase**, rate is derived not measured) | 6 (+ spares) | [uxcell B0GCZVQFWN](https://www.amazon.com/dp/B0GCZVQFWN) — 10 pcs, 304 SS, Ø5.0 OD × 0.6 wire × **15 mm free** | **$6.99 / 10** [a] | NEW SKU. One per leg quick-release: 4 leg↔body + 2 bar↔leg. Installed 10.0 mm (2.0 preload → **5.0 N** holding the button out), 7.2 mm at full press (**12.1 N**), solid 4.8 — 2.4 mm of margin, never binds. STEEL, not TPU: this is the one force in the mechanism that is sustained for years, and a printed elastomer takes a compression set there and lets the button sink in. NOT the knee-lever coil — that one is Ø6×1.4×42, **17.3 N/mm**, i.e. 86 N at this stroke (and cutting it down *raises* the rate, since k scales 1/n) |
+
+> **LEVER / PEDAL FEEL SPRING — uxcell CANNOT supply this one, 2026-09-16.** The user
+> asked whether the same supplier could cover it. It cannot, and the reason is in the
+> spec rather than in the supplier:
+>
+> `knee_lever.HS_SPR` is **Ø6.0 OD × 1.4 mm wire**, which is a **spring index of 3.29**
+> (mean Ø4.6 ÷ 1.4). Commodity coilers wind C ≥ 4 — below that the wire galls on the
+> mandrel and springback goes non-linear — so *no* catalogue stocks it. That is why the
+> search comes up empty rather than merely expensive.
+>
+> What uxcell actually stocks in this envelope is pen-grade: their Ø6, Ø8 and Ø10 × 40 mm
+> families all top out at **1.0 mm wire**. The heaviest with a published load is
+> [B08VF32B2G](https://www.amazon.com/dp/B08VF32B2G) (Ø8 × 1.0 × 40 free, 31.4 N at 26 mm
+> = **2.24 N/mm**) — against the **17.3 N/mm** the feel needs. Five to eight times too
+> soft; there is no way to make that up with installed length.
+>
+> **Two ways out, and both belong to whoever owns `knee_lever.py`:**
+> 1. **Grow the OD.** At Ø7.4 × 1.4 the index is 4.3 and 17.3 N/mm wants 8.9 active
+>    coils, solid 15.2 — comfortably inside the 42 free length. At Ø8.0 × 1.4 it is
+>    6.7 coils, solid 12.1. Either is an ordinary windable spring. The blocker is the
+>    note at `HS_SPR_OD`: *"arm width-limited — can't grow to drop stress"*. The
+>    question is whether the arm can find **1.4–2.0 mm**.
+> 2. **Buy it as a specialty part** at Ø6 × 1.4 from a coiler who will wind C 3.3 —
+>    which is exactly the quote-only route the leadscrew sourcing rule rejects, and the
+>    kind of order that ran $40+ before.
+>
+> McMaster's metric table does carry springs in this force class (their Ø12 × 2.0 × 18 is
+> 38.7 N/mm at $22.28/5), so a stock answer probably exists there once the OD is settled
+> — but it is not worth filtering for until the arm question is answered, because the OD
+> is the input.
+
 | **TRRS float spring** | Compression, **ID ≥ 6.5 (O8.0 OD × 0.7 wire × 12 free)**, rate ~2.5 N/mm, solid ≤ 4.9, 302/304 SS | 1 (+ spares) | [uxcell B0C33C21K9](https://www.amazon.com/dp/B0C33C21K9) — 5 pcs, 304 SS, Ø8.0 OD × 0.7 wire × **20 mm free**, so **ID 6.6** exactly as required | **$6.29 / 5** [a] | SECOND spring SKU, and it is not a preference: the leg's blind-mate coil has to end up ON the lead, and a lead has two ends — the moulded jack (Ø9.7) and the moulded far plug (Ø6.1). The latch coil's **3.8 ID passes neither**, so no assembly order puts it there and the joint was unbuildable with it (user found this). The ONE number that changes is the ID; free length and rate are the latch coil's, so the feel is the same **5.0 N at rest / 12.5 N seated**. It pays for itself: at Ø8.0 the coil seats on the tenon's own bore step and the printed seat washer it needed at Ø5.0 is gone |
 
 > **SPRING SOURCING, 2026-09-16 (user: Lee Spring has bitten us on price before).**
@@ -96,6 +127,9 @@ the constraint is stock, not selection. See the optical-pickup section.
 > converts the open question from "unknown" to "bracketed": 1.5–2.0 for the latch,
 > 0.6–0.9 for the float, and the re-derive on arrival is a confirmation rather than a
 > discovery.
+>
+> **DECIDED (user): buy the uxcell pair, $13.28.** The McMaster rows below stay as a
+> reference for the rate, not as an order.
 >
 > On price McMaster is not close — 6 latch springs is two packs, so the full basket is
 > **$51.30 against $13.28**. The one that might be worth buying there anyway is the
