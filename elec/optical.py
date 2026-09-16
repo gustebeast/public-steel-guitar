@@ -832,6 +832,49 @@ BOARD_NOTES = {
     # visible in any DRC report. If the analog performance ever disappoints, this is
     # the first thing to look at -- and the fix is to give the strip more room so the
     # cells CAN be wired on one layer, not to tune the router.
+    # ⚠ THIS DECLARATION CURRENTLY FAILS, ON PURPOSE, AND THAT IS THE POINT.
+    # layout.py reports "inner run U7->U10 blocked" on every build and verify.py fails
+    # the pair's skew afterwards. Both are telling the truth about the same thing: THE
+    # COMPUTE BLOCK'S PLACEMENT DOES NOT LEAVE ROOM FOR A PROPER USB PAIR. The PHY sits
+    # above two rows of parts, so there is no top-layer path to the connector, and the
+    # inner layer -- the normal escape -- is perforated by the 75 ground stitches that
+    # every ground pad needs. Reserving a corridor was tried and the run still cannot
+    # get across.
+    #
+    # THE FIX IS PLACEMENT, NOT ROUTING: the USB chain (PHY -> ESD -> connector) has to
+    # be placed as a deliberate group before the row packer fills in around it, the way
+    # U10 now is. That is a re-plan of the -Y block against the conduit budget, which is
+    # a design decision rather than a patch, and it is left as one.
+    #
+    # The declaration STAYS so the failure stays visible. Deleting it would make the
+    # build quiet and the board no better -- freerouting would go on laying DP and DM
+    # as two unrelated traces, which is what it did before anyone looked.
+    #
+    # ⚠ THE USB PAIR SHOULD BE ROUTED AS A PAIR, because freerouting cannot. It routes
+    # DP and DM as two independent nets that happen to share endpoints -- 39.6 mm of DP
+    # against 32.0 of DM over a 22 mm path, two traces on visibly different routes. The
+    # timing skew that implies is survivable (46 ps against a 2,080 ps bit); what is not
+    # is that two traces on different paths are not COUPLED, so the differential
+    # impedance the stack-up was designed around stops describing the interconnect.
+    # That is a geometric defect, not a numeric one, and no budget value fixes it.
+    # The chain is the order the signal physically travels: PHY -> ESD array -> socket.
+    "diff_pairs": [{"nets": ["USB_DP", "USB_DM"], "chain": ["U7", "U10", "J1"],
+                    "gap": 0.2, "width": 0.2}],
+    # In2.Cu is the pair's escape layer: it sits directly under the In1.Cu ground
+    # plane, so the run is referenced to solid copper for its whole length, and it
+    # carries no pads at all -- which is what makes a clear path possible under two
+    # rows of components.
+    "diff_pair_inner": "In2.Cu",
+    # ⚠ A RESERVED CORRIDOR FOR THAT INNER RUN, because the two features above compete
+    # for the same copper. Stitching 75 ground pads puts 75 THROUGH vias in, and a
+    # through via pierces In2.Cu as surely as F.Cu -- so the inner layer the pair needs
+    # becomes a sieve and the 15 mm run from the PHY to the ESD array cannot get across
+    # it, with or without dog-legs. Whichever routine runs first wins and the other
+    # fails; reserving a lane is what lets both succeed.
+    # x -34..-28 is the column between U13 and L1, which the pair already travels; the
+    # ground pads displaced from it fall back to the pour, which is what they had
+    # before any of this existed.
+    "via_keepouts": [[-34.5, -101.0, -27.5, -78.0]],
     "stitch_nets": ("GND",),
     # (There are no stitch_exceptions. There was one -- U10.2, boxed in by 0.24 mm
     #  gaps in the LDO row -- and moving U10 to the connector for ESD reasons gave it

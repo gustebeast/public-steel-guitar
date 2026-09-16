@@ -176,6 +176,325 @@ def _anchor_on_pads(fp, target):
     fp.SetPosition(pcbnew.VECTOR2I(pos.x + (target.x - cx), pos.y + (target.y - cy)))
 
 
+def _diff_pairs(board, specs, inner=None, clr=0.14):
+    """Route declared differential pairs AS PAIRS, before the autorouter sees them.
+
+    ⚠ FREEROUTING HAS NO CONCEPT OF A DIFFERENTIAL PAIR. It routes DP and DM as two
+    independent nets that happen to share endpoints, and on the optical board that
+    produced 39.6 mm of DP against 32.0 mm of DM over a 22 mm path -- two traces
+    taking visibly different routes. The timing skew that implies is survivable (46 ps
+    against a 2,080 ps bit); what is NOT survivable is that two traces on different
+    paths are not COUPLED, so the 90 ohm differential impedance the stack-up was
+    designed around stops describing the interconnect at all. No budget number fixes
+    that, because the defect is geometric rather than numeric: the pair has to be
+    routed as a pair or it is not a pair.
+
+    So it is routed here, deterministically, and excluded from the router's DSN.
+
+    HOW: the two nets' pads are walked along a declared `chain` of parts -- for USB,
+    PHY -> ESD array -> connector, which is the order the signal physically travels.
+    For each hop the CENTRELINE between the two nets' pads is laid out (straight if it
+    is clear, else an L), and the two tracks are emitted parallel to it, offset by half
+    the pitch either side. Short stubs then fan each pad in to its own track. The
+    result is two conductors that stay a fixed distance apart for the whole run, which
+    is what a controlled differential impedance actually requires.
+
+    If a hop cannot be laid clear, NOTHING is emitted for that pair and it is reported.
+    A half-routed pair is worse than an unrouted one: the router would finish it, and
+    the finished half would look deliberate.
+    """
+    import math
+    pads = [(pad, fp) for fp in board.GetFootprints() for pad in fp.Pads()]
+    boxes = [(q.GetBoundingBox(), q.GetNetname()) for q, _ in pads]
+    boxes += [(t.GetBoundingBox(), t.GetNetname()) for t in board.GetTracks()]
+    by_ref = {}
+    for pad, fp in pads:
+        by_ref.setdefault(fp.GetReference(), []).append(pad)
+
+    def clear(x, y, nets, margin):
+        for bb, onet in boxes:
+            if onet in nets:
+                continue
+            dx = max(bb.GetLeft() - x, 0, x - bb.GetRight())
+            dy = max(bb.GetTop() - y, 0, y - bb.GetBottom())
+            if math.hypot(dx, dy) < margin:
+                return False
+        return True
+
+    def seg_clear(p0, p1, nets, margin):
+        L = math.hypot(p1[0] - p0[0], p1[1] - p0[1])
+        if L == 0:
+            return True
+        n = max(4, int(pcbnew.ToMM(L) / 0.15) + 1)
+        return all(clear(p0[0] + (p1[0] - p0[0]) * t / n,
+                         p0[1] + (p1[1] - p0[1]) * t / n, nets, margin)
+                   for t in range(n + 1))
+
+    done = []
+    for spec in specs:
+        na, nb = spec["nets"]
+        chain = spec["chain"]
+        gap = spec.get("gap", 0.2)
+        width = spec.get("width", 0.2)
+        off = pcbnew.FromMM((gap + width) / 2.0)
+        margin = pcbnew.FromMM(width / 2.0 + clr)
+        nets = {na, nb}
+
+        # the closest pad of each net on each part in the chain
+        stops = []
+        for ref in chain:
+            cand = {n: [q for q in by_ref.get(ref, []) if q.GetNetname() == n]
+                    for n in (na, nb)}
+            if not cand[na] or not cand[nb]:
+                stops = None
+                break
+            a = min(cand[na], key=lambda q: q.GetPosition().x + q.GetPosition().y)
+            b = min(cand[nb], key=lambda q: (q.GetPosition() - a.GetPosition()).EuclideanNorm())
+            fpo = next(f for f in board.GetFootprints() if f.GetReference() == ref)
+            stops.append((a, b, fpo))
+        if stops is None or len(stops) < 2:
+            done.append((na, "could not find both nets on every part of the chain"))
+            continue
+
+        plan, vias = [], {}
+        ok = True
+        for (a0, b0, fp0), (a1, b1, fp1) in zip(stops, stops[1:]):
+            chain_fp = (fp0, fp1)
+            p0 = ((a0.GetPosition().x + b0.GetPosition().x) // 2,
+                  (a0.GetPosition().y + b0.GetPosition().y) // 2)
+            p1 = ((a1.GetPosition().x + b1.GetPosition().x) // 2,
+                  (a1.GetPosition().y + b1.GetPosition().y) // 2)
+            shapes = [[p0, p1],
+                      [p0, (p1[0], p0[1]), p1],
+                      [p0, (p0[0], p1[1]), p1]]
+            chosen, use_inner = None, False
+            for sh in shapes:
+                segs = list(zip(sh, sh[1:]))
+                if all(seg_clear(x, y, nets, margin + off) for x, y in segs):
+                    chosen = sh
+                    break
+            if chosen is None and inner is not None:
+                # ⚠ DROP THE WHOLE PAIR TO AN INNER LAYER RATHER THAN GIVE UP. On this
+                # board the PHY sits above two rows of parts, so there is no top-layer
+                # path to the connector -- and weaving between the rows would be
+                # precisely the wandering that made the router's attempt unusable.
+                # Taking BOTH nets down together keeps them coupled the whole way, runs
+                # them under the components on copper that has no pads on it at all, and
+                # costs exactly the two vias per net the budget already allows. It is
+                # also what a person would do here; an inner layer under a solid ground
+                # plane is a better home for a 480 Mbps pair than the component side.
+                chosen, use_inner = [p0, p1], True
+            if chosen is None:
+                ok = False
+                break
+            plan.append((chosen, a0, b0, a1, b1, use_inner, chain_fp))
+        if not ok:
+            done.append((na, "no clear centreline for one of the hops"))
+            continue
+
+        laid, failed_hop, why = 0, False, "?"
+        pending, emitted = [], set()
+        for sh, a0, b0, a1, b1, use_inner, chain_fp in plan:
+            if not use_inner:
+                rails = {na: [], nb: []}
+                for q0, q1 in zip(sh, sh[1:]):
+                    dx, dy = q1[0] - q0[0], q1[1] - q0[1]
+                    L = math.hypot(dx, dy)
+                    if L == 0:
+                        continue
+                    ux, uy = -dy / L, dx / L
+                    for net, sgn in ((na, +1), (nb, -1)):
+                        rails[net].append(
+                            ((q0[0] + sgn * off * ux, q0[1] + sgn * off * uy),
+                             (q1[0] + sgn * off * ux, q1[1] + sgn * off * uy)))
+                for net in (na, nb):
+                    pad0 = a0 if net == na else b0
+                    pad1 = a1 if net == na else b1
+                    pts = [(pad0.GetPosition().x, pad0.GetPosition().y)]
+                    for q0, q1 in rails[net]:
+                        pts += [q0, q1]
+                    pts.append((pad1.GetPosition().x, pad1.GetPosition().y))
+                    for q0, q1 in zip(pts, pts[1:]):
+                        if q0 != q1:
+                            pending.append((net, pad0, q0, q1, pad0.GetLayer()))
+                continue
+
+            # ── inner-layer hop: pad -> paired escape -> coupled inner run -> pad
+            # ⚠ THE ESCAPE VIAS ARE PLACED AS A PAIR, NOT ONE PAD AT A TIME. Searching
+            # each pad independently let DP's via land on one side of its package and
+            # DM's on the other, so the "coupled" run between them crossed itself --
+            # DRC reported the two rails shorting on In2.Cu, which is a fair description
+            # of two traces of a pair swapping sides. Searching for a PAIR of positions
+            # -- a point out from the two pads' midpoint, with the two vias offset either
+            # side of it -- keeps the rails parallel by construction, which is the whole
+            # property being bought here.
+            #
+            # ⚠ AND THE INNER RUN IS COLLISION-CHECKED, because an inner layer is not
+            # empty: every THROUGH via pierces it, including the 75 ground stitches
+            # placed moments earlier. The first version assumed In2.Cu was clear and
+            # drove a 21 mm trace straight through a ground via.
+            def escape(pa, pb, fpo):
+                """A paired via position just outside `fpo` for pads pa/pb."""
+                c = fpo.GetCourtyard(pcbnew.F_CrtYd).BBox()
+                mx = (pa.GetPosition().x + pb.GetPosition().x) / 2.0
+                my = (pa.GetPosition().y + pb.GetPosition().y) / 2.0
+                base = math.atan2(my - c.GetCenter().y, mx - c.GetCenter().x)
+                for dth in (0, 0.4, -0.4, 0.8, -0.8, 1.2, -1.2):
+                    ang = base + dth
+                    ux, uy = math.cos(ang), math.sin(ang)
+                    nx2, ny2 = -uy, ux
+                    for step in range(30):
+                        r = pcbnew.FromMM(1.0 + 0.2 * step)
+                        cx2, cy2 = mx + ux * r, my + uy * r
+                        va = (cx2 + off * nx2, cy2 + off * ny2)
+                        vb = (cx2 - off * nx2, cy2 - off * ny2)
+                        # keep each rail with its own pad rather than crossing over
+                        if (math.hypot(va[0] - pa.GetPosition().x, va[1] - pa.GetPosition().y) >
+                                math.hypot(vb[0] - pa.GetPosition().x, vb[1] - pa.GetPosition().y)):
+                            va, vb = vb, va
+                        ok2 = True
+                        for pd, v in ((pa, va), (pb, vb)):
+                            own = {pd.GetNetname()}
+                            if not clear(v[0], v[1], own, pcbnew.FromMM(0.3 + clr)):
+                                ok2 = False
+                            elif not seg_clear((pd.GetPosition().x, pd.GetPosition().y),
+                                               v, own, margin):
+                                ok2 = False
+                            if not ok2:
+                                break
+                        if ok2:
+                            return va, vb
+                # ⚠ FALL BACK TO SEARCHING EACH PAD SEPARATELY. A paired escape is the
+                # better shape -- the two rails leave parallel -- but it needs one spot
+                # where BOTH vias fit, and beside a fine-pitch package with ground
+                # stitching nearby there often is not one. Per-pad is safe now in a way
+                # it was not before: the coupled-run check below rejects the case that
+                # made it dangerous, where the two vias land on opposite sides and the
+                # rails cross. Worse geometry is acceptable; a crossed pair is not, and
+                # that outcome is now caught rather than emitted.
+                out2 = {}
+                for pd in (pa, pb):
+                    own = {pd.GetNetname()}
+                    pcx2, pcy2 = pd.GetPosition().x, pd.GetPosition().y
+                    hp = max(pd.GetSize().x, pd.GetSize().y) / 2.0
+                    oa = math.atan2(pcy2 - c.GetCenter().y, pcx2 - c.GetCenter().x)
+                    order2 = sorted((math.pi * k / 4.0 for k in range(8)),
+                                    key=lambda ang: abs(((ang - oa + math.pi)
+                                                         % (2 * math.pi)) - math.pi))
+                    hit = None
+                    for st in range(30):
+                        rr = hp + pcbnew.FromMM(0.5 + 0.15 * st)
+                        for ang in order2:
+                            vx2, vy2 = pcx2 + rr * math.cos(ang), pcy2 + rr * math.sin(ang)
+                            if not clear(vx2, vy2, own, pcbnew.FromMM(0.3 + clr)):
+                                continue
+                            if not seg_clear((pcx2, pcy2), (vx2, vy2), own, margin):
+                                continue
+                            if any(math.hypot(vx2 - q[0], vy2 - q[1]) < pcbnew.FromMM(0.9)
+                                   for q in out2.values()):
+                                continue
+                            hit = (vx2, vy2)
+                            break
+                        if hit:
+                            break
+                    if hit is None:
+                        return None
+                    out2[pd.GetNetname()] = hit
+                return out2[pa.GetNetname()], out2[pb.GetNetname()]
+
+            if id(a0) not in vias:
+                e = escape(a0, b0, chain_fp[0])
+                if e is None:
+                    failed_hop, why = True, "no escape at %s" % chain_fp[0].GetReference()
+                    break
+                vias[id(a0)], vias[id(b0)] = e
+            if id(a1) not in vias:
+                e = escape(a1, b1, chain_fp[1])
+                if e is None:
+                    failed_hop, why = True, "no escape at %s" % chain_fp[1].GetReference()
+                    break
+                vias[id(a1)], vias[id(b1)] = e
+
+            # ⚠ THE INNER RUN HAS TO DOG-LEG TOO. An inner layer looks empty and is
+            # not: 75 ground stitches pass straight through it, so a 15 mm straight run
+            # across the LDO row hits one almost every time. Both rails take the SAME
+            # shape -- straight, or one of the two elbows -- because a pair that turns
+            # differently is no longer a pair; that is the property the whole routine
+            # exists to preserve, and it would be silly to lose it at the last step.
+            pair_nets = {a0.GetNetname(), b0.GetNetname()}
+            run_shape = None
+            for kind in ("straight", "hfirst", "vfirst"):
+                ok_all = True
+                for pdA, pdB in ((a0, a1), (b0, b1)):
+                    p_a, p_b = vias[id(pdA)], vias[id(pdB)]
+                    if kind == "straight":
+                        way = [p_a, p_b]
+                    elif kind == "hfirst":
+                        way = [p_a, (p_b[0], p_a[1]), p_b]
+                    else:
+                        way = [p_a, (p_a[0], p_b[1]), p_b]
+                    if not all(seg_clear(q0, q1, pair_nets, margin)
+                               for q0, q1 in zip(way, way[1:])):
+                        ok_all = False
+                        break
+                if ok_all:
+                    run_shape = kind
+                    break
+            runs_ok = run_shape is not None
+            if not runs_ok:
+                failed_hop, why = True, ("inner run %s->%s blocked (through-vias pierce "
+                                         "every layer)" % (chain_fp[0].GetReference(),
+                                                           chain_fp[1].GetReference()))
+                break
+
+            for pd in (a0, b0, a1, b1):
+                if id(pd) in emitted:
+                    continue
+                emitted.add(id(pd))
+                vx, vy = vias[id(pd)]
+                pending.append((pd.GetNetname(), pd,
+                                (pd.GetPosition().x, pd.GetPosition().y), (vx, vy),
+                                pd.GetLayer()))
+                pending.append(("VIA", pd, (vx, vy), None, None))
+            for pdA, pdB in ((a0, a1), (b0, b1)):
+                p_a, p_b = vias[id(pdA)], vias[id(pdB)]
+                if run_shape == "straight":
+                    way = [p_a, p_b]
+                elif run_shape == "hfirst":
+                    way = [p_a, (p_b[0], p_a[1]), p_b]
+                else:
+                    way = [p_a, (p_a[0], p_b[1]), p_b]
+                for q0, q1 in zip(way, way[1:]):
+                    if q0 != q1:
+                        pending.append((pdA.GetNetname(), pdA, q0, q1, _LAYERS[inner]))
+
+        if failed_hop:
+            done.append((na, why))
+            continue
+        for item in pending:
+            net, pd, q0, q1, layer = item
+            if net == "VIA":
+                v = pcbnew.PCB_VIA(board)
+                v.SetPosition(pcbnew.VECTOR2I(int(q0[0]), int(q0[1])))
+                v.SetWidth(pcbnew.FromMM(0.6))
+                v.SetDrill(pcbnew.FromMM(0.3))
+                v.SetNet(pd.GetNet())
+                v.SetViaType(pcbnew.VIATYPE_THROUGH)
+                board.Add(v)
+                continue
+            t = pcbnew.PCB_TRACK(board)
+            t.SetStart(pcbnew.VECTOR2I(int(q0[0]), int(q0[1])))
+            t.SetEnd(pcbnew.VECTOR2I(int(q1[0]), int(q1[1])))
+            t.SetWidth(pcbnew.FromMM(width))
+            t.SetLayer(layer)
+            t.SetNet(pd.GetNet())
+            board.Add(t)
+            laid += 1
+        done.append((na, "laid %d segment(s) as a coupled pair over %d hop(s)"
+                     % (laid, len(plan))))
+    return done
+
+
 def _outline_pts(notes):
     """The board edge as board-local mm points, whichever way the board declared it."""
     if notes.get("outline_poly"):
@@ -212,7 +531,7 @@ def _inside(outline, x, y, margin):
 
 
 def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
-                       clr=0.2, max_reach=3.0, allow=()):
+                       clr=0.2, max_reach=3.0, allow=(), keepouts=()):
     """Give every pad on a plane net its own via down to the plane layers.
 
     ⚠ WITHOUT THIS, A GROUND PAD'S CONNECTION DEPENDS ON THE POUR'S ISLAND TOPOLOGY,
@@ -245,9 +564,16 @@ def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
     # what pcbnew already computes, they follow the pad's rotation, and point-to-box is
     # not meaningfully more code than point-to-circle.
     others = [(p.GetBoundingBox(), p.GetNetname()) for p, _ in pads]
+    # ⚠ AND THE COPPER THAT IS ALREADY THERE. This used to look at pads only, which was
+    # true when stitching was the first thing to lay anything. It is not any more: the
+    # differential pairs are routed before this, and their tracks and transition vias
+    # are obstacles like any other. Ignoring them put stitch vias on top of diff-pair
+    # vias and stitch tracks across diff-pair traces -- five shorts and a pair of
+    # co-located drills, none of which either routine could see on its own.
+    others += [(t.GetBoundingBox(), t.GetNetname()) for t in board.GetTracks()]
 
     def _clear_of(x, y, netname, margin):
-        """True if (x, y) keeps `margin` from every pad NOT on `netname`."""
+        """True if (x, y) keeps `margin` from every pad or track NOT on `netname`."""
         for bb, onet in others:
             if onet == netname:
                 continue
@@ -337,6 +663,17 @@ def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
                 # it by definition.
                 if not _inside(outline, x, y, pcbnew.FromMM(via_d / 2.0 + 0.3)):
                     continue          # a via hanging off the board edge is not a via
+                # ⚠ STAY OUT OF THE RESERVED CHANNELS. A through via pierces every
+                # layer, so 75 ground stitches turn the inner layers into a sieve --
+                # and an inner layer is exactly where a differential pair needs a clear
+                # run under the component rows. Without a reserved corridor the two
+                # features simply cannot both succeed: whichever goes first wins, and
+                # the other reports failure. The board names the corridor, this avoids
+                # it, and the pair gets somewhere to go.
+                if any(kx0 <= pcbnew.ToMM(x - _to_board(0, 0).x) <= kx1
+                       and ky0 <= -pcbnew.ToMM(y - _to_board(0, 0).y) <= ky1
+                       for kx0, ky0, kx1, ky1 in keepouts):
+                    continue
                 via_lim = pcbnew.FromMM(via_d / 2.0 + clr)
                 trk_lim = pcbnew.FromMM(0.25 / 2.0 + 0.127)
                 ok = (_clear_of(x, y, pad.GetNetname(), via_lim)
@@ -641,10 +978,26 @@ def build(stem):
                 raise SystemExit("%s has no pad %s" % (ref, pad_no))
             pad.SetNet(net)
 
+    # ⚠ ORDER MATTERS, AND IT IS PAIRS FIRST. Both routines lay copper and each
+    # treats the other's as an obstacle, so whichever runs first gets the free board.
+    # I had it the other way round on the argument that ground is 75 pads against the
+    # pair's four -- and with 75 stitching vias already down, the pair could not find
+    # room for a PAIRED escape anywhere and gave up entirely.
+    #
+    # The trade is not close once stated. A ground pad that misses its via still
+    # reaches the plane through the pour and whatever the router lays; it is a
+    # degraded connection, not an absent one. A differential pair that cannot escape
+    # as a pair is not a differential pair at all, and nothing downstream recovers it.
+    # So the pair goes first and the handful of ground pads it displaces are declared.
+    for name, msg in _diff_pairs(board, notes.get("diff_pairs", ()),
+                                 inner=notes.get("diff_pair_inner")):
+        print("  diff pair %s: %s" % (name, msg))
+
     stitch = set(notes.get("stitch_nets", ()))
     if stitch:
         n = _stitch_plane_pads(board, stitch, _outline_pts(notes),
-                               allow=set(notes.get("stitch_exceptions", ())))
+                               allow=set(notes.get("stitch_exceptions", ())),
+                               keepouts=notes.get("via_keepouts", ()))
         print("  stitched %d pad(s) on %s straight to the plane"
               % (n, "/".join(sorted(stitch))))
 
