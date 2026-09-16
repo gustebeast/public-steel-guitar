@@ -792,6 +792,141 @@ def _canonical_uuids(path):
     open(path, "w", encoding="utf-8").write("".join(out))
 
 
+def _local_nets(board, patterns, local_mm=6.0, width=0.2, clr=0.14):
+    """Lay the SHORT, LOCAL part of repetitive nets before the autorouter sees them.
+
+    ⚠ THE TIA NETS ARE TWO PROBLEMS WEARING ONE NAME, and that is why they were the
+    hardest thing left on this board. TIA_OUT_1A has four pads: the op-amp's output, the
+    feedback resistor, the feedback capacitor -- a cluster a few millimetres across --
+    and one more, 106 mm away, at the MCU's ADC pin. The long run is easy and the router
+    is good at it. The cluster is three pads in the tightest part of a 13.6 mm strip
+    holding 107 components, and the router is bad at it: nearly every unconnected pad
+    left on this board is a feedback R or C failing to reach the op-amp pin beside it.
+
+    Handing the router a net that is both does not let it spend its effort where the
+    difficulty is. So the CLUSTER is laid here, deterministically -- twenty identical
+    little networks, which is exactly the shape of thing a generator does better than a
+    search -- and what reaches the router is the two-point run it is good at.
+
+    Clusters are found by single linkage at `local_mm` rather than declared, because
+    declaring them would mean twenty entries that go stale the moment a part moves. A
+    net whose pads are all within a few millimetres of each other IS a local network;
+    that is what the phrase means, and the geometry already knows it.
+
+    An edge that cannot be laid clear is SKIPPED, not forced: the router still has it in
+    the DSN and can try. This routine only ever removes work from the router, never adds
+    a constraint it has to honour.
+    """
+    import math
+    margin = pcbnew.FromMM(width / 2.0 + clr)
+    CELL = pcbnew.FromMM(2.0)
+
+    pads = [(q, fp) for fp in board.GetFootprints() for q in fp.Pads()]
+    boxes = [(q.GetBoundingBox(), q.GetNetname()) for q, _ in pads]
+    # ⚠ TRACKS AS SEGMENTS, not bounding boxes -- see _stitch_plane_pads. A diagonal
+    # trace's box is mostly empty corner, and treating that as copper is how a board
+    # that has room reports that it has none.
+    segs = [((t.GetStart().x, t.GetStart().y), (t.GetEnd().x, t.GetEnd().y),
+             t.GetWidth() / 2.0, t.GetNetname()) for t in board.GetTracks()
+            if t.GetClass() != "PCB_VIA"]
+    segs += [((t.GetPosition().x, t.GetPosition().y),
+              (t.GetPosition().x, t.GetPosition().y), t.GetWidth() / 2.0,
+              t.GetNetname()) for t in board.GetTracks() if t.GetClass() == "PCB_VIA"]
+    grid = {}
+    for bb, onet in boxes:
+        for cx in range(bb.GetLeft() // CELL, bb.GetRight() // CELL + 1):
+            for cy in range(bb.GetTop() // CELL, bb.GetBottom() // CELL + 1):
+                grid.setdefault((cx, cy), []).append((bb, onet))
+
+    def clear(x, y, netname):
+        x, y = int(x), int(y)
+        for cx in range((x - margin) // CELL, (x + margin) // CELL + 1):
+            for cy in range((y - margin) // CELL, (y + margin) // CELL + 1):
+                for bb, onet in grid.get((cx, cy), ()):
+                    if onet == netname:
+                        continue
+                    dx = max(bb.GetLeft() - x, 0, x - bb.GetRight())
+                    dy = max(bb.GetTop() - y, 0, y - bb.GetBottom())
+                    if math.hypot(dx, dy) < margin:
+                        return False
+        for (ax, ay), (bx, by), hw, onet in segs:
+            if onet == netname:
+                continue
+            vx, vy = bx - ax, by - ay
+            L2 = vx * vx + vy * vy
+            t = 0.0 if L2 == 0 else max(0.0, min(1.0, ((x - ax) * vx + (y - ay) * vy) / L2))
+            if math.hypot(x - (ax + t * vx), y - (ay + t * vy)) - hw < margin:
+                return False
+        return True
+
+    def seg_clear(p0, p1, netname):
+        L = math.hypot(p1[0] - p0[0], p1[1] - p0[1])
+        n = max(4, int(pcbnew.ToMM(L) / 0.15) + 1)
+        return all(clear(p0[0] + (p1[0] - p0[0]) * t / n,
+                         p0[1] + (p1[1] - p0[1]) * t / n, netname)
+                   for t in range(n + 1))
+
+    by_net = {}
+    for q, fp in pads:
+        n = q.GetNetname()
+        if n and any(re.fullmatch(pat, n) for pat in patterns):
+            by_net.setdefault(n, []).append(q)
+
+    laid, skipped, reach = 0, 0, pcbnew.FromMM(local_mm)
+    for netname in sorted(by_net):
+        group = by_net[netname]
+        # single-linkage clustering: a pad joins a cluster it is within reach of
+        clusters = []
+        for q in group:
+            here = (q.GetPosition().x, q.GetPosition().y)
+            hit = [c for c in clusters
+                   if any(math.hypot(here[0] - r.GetPosition().x,
+                                     here[1] - r.GetPosition().y) <= reach for r in c)]
+            if not hit:
+                clusters.append([q])
+                continue
+            hit[0].append(q)
+            for other in hit[1:]:                 # this pad merged two clusters
+                hit[0].extend(other)
+                clusters.remove(other)
+        for cl in clusters:
+            if len(cl) < 2:
+                continue
+            # a minimum spanning tree over the cluster: every pad connected, no loops,
+            # shortest total copper
+            inside, outside = [cl[0]], list(cl[1:])
+            while outside:
+                best = min(((a, b) for a in inside for b in outside),
+                           key=lambda ab: (ab[0].GetPosition() - ab[1].GetPosition())
+                           .EuclideanNorm())
+                a, b = best
+                p0 = (a.GetPosition().x, a.GetPosition().y)
+                p1 = (b.GetPosition().x, b.GetPosition().y)
+                way = None
+                for sh in _centrelines(p0, p1, detour_mm=3.0, step_mm=0.25):
+                    if all(seg_clear(q0, q1, netname) for q0, q1 in zip(sh, sh[1:])):
+                        way = sh
+                        break
+                if way is not None:
+                    for q0, q1 in zip(way, way[1:]):
+                        if q0 == q1:
+                            continue
+                        t = pcbnew.PCB_TRACK(board)
+                        t.SetStart(pcbnew.VECTOR2I(int(q0[0]), int(q0[1])))
+                        t.SetEnd(pcbnew.VECTOR2I(int(q1[0]), int(q1[1])))
+                        t.SetWidth(pcbnew.FromMM(width))
+                        t.SetLayer(a.GetLayer())
+                        t.SetNet(a.GetNet())
+                        board.Add(t)
+                        segs.append((q0, q1, pcbnew.FromMM(width) / 2.0, netname))
+                        laid += 1
+                else:
+                    skipped += 1
+                inside.append(b)
+                outside.remove(b)
+    return laid, skipped
+
+
 def _outline_pts(notes):
     """The board edge as board-local mm points, whichever way the board declared it."""
     if notes.get("outline_poly"):
@@ -1376,6 +1511,18 @@ def build(stem):
                                  outline=_outline_pts(notes),
                                  inner=notes.get("diff_pair_inner")):
         print("  diff pair %s: %s" % (name, msg))
+
+    # ⚠ AFTER THE PAIRS, BEFORE THE STITCHING. The pair has the least freedom and
+    # goes first; these clusters are next because they are small and local and the
+    # ground stitching, which can put a via almost anywhere, is the one that should be
+    # asked to work around what is already there.
+    if notes.get("local_nets"):
+        # NOT `skipped` -- that name already holds the single-pad net count this
+        # function reports at the end, and shadowing it made the summary line claim
+        # 40 nets had appeared out of nowhere.
+        n_laid, n_left = _local_nets(board, notes["local_nets"])
+        print("  local nets: laid %d segment(s)%s"
+              % (n_laid, ", %d left to the router" % n_left if n_left else ""))
 
     stitch = set(notes.get("stitch_nets", ()))
     if stitch:
