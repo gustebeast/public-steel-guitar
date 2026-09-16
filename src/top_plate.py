@@ -382,14 +382,31 @@ def _fret_solids(x0, x1):
     return out
 
 
+SIDE_SKIN_T = D.MIN_WALL_2P     # colour carried DOWN the +-Y faces (user, 2026-09-16): the
+                                # panel is transparent below the colour band, and at the edges
+                                # that read as an exposed transparent underbelly along both
+                                # flanks. Two beads of colour wrap it.
+
+
+def _side_skin(xa, xb):
+    """The +-Y outer faces of a panel, SIDE_SKIN_T deep -- the colour part's wrap."""
+    h = (TZ - BZ) + 2.0
+    return box_at(xa - xb + 2.0, SIDE_SKIN_T, h,
+                  x=(xa + xb) / 2, y=BY1 - SIDE_SKIN_T / 2, z=(TZ + BZ) / 2).union(
+           box_at(xa - xb + 2.0, SIDE_SKIN_T, h,
+                  x=(xa + xb) / 2, y=BY0 + SIDE_SKIN_T / 2, z=(TZ + BZ) / 2))
+
+
 def _split(panel, xa, xb, lines=True):
     """Split a finished panel at the colour line (z = TZ-FRET_T) → (base, colour).
     BASE (transparent PCTG) keeps everything below, plus the embossed fret solids
     trimmed to the panel (openings/windows interrupt the lines automatically);
-    COLOUR (colour PCTG) is the top band minus those solids. Exact complements with a
-    flush top at TZ — the deck datum doesn't move. Print the pair as one object."""
+    COLOUR (colour PCTG) is the top band PLUS the +-Y side skin, minus those solids. Exact
+    complements with a flush top at TZ — the deck datum doesn't move. Print the pair as one
+    object."""
     slab = box_at(xa - xb + 2.0, BY1 - BY0 + 2.0, FRET_T,
                   x=(xa + xb) / 2, y=(BY0 + BY1) / 2, z=TZ - FRET_T / 2)
+    slab = slab.union(_side_skin(xa, xb))
     frets = _fret_solids(xa, xb) if lines else None
     base, colour = panel.cut(slab), panel.intersect(slab)
     if frets is not None:

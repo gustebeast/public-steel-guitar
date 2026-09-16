@@ -227,7 +227,14 @@ _SEG_JD   = 8.0                        # room into the +X segment (the T uses 5.
 _SEG_JZ1  = TP_GZ0 - TP_TG_DEPTH       # tenon top = the deck-groove FLOOR (−6), so the
                                        # seam joint never reaches into the deck groove
 _SEG_ROOT = 3 * D.BEAD                 # 2.4 volumetric fusion depth back into the −X segment
-_SEG_J    = joint(width=_SEG_JW, length=_SEG_JZ1 - Z_BOT, depth=_SEG_JD,
+# IT STARTS AT THE BOTTOM'S TOP FACE, NOT AT THE BED (user, 2026-09-15). The tenon is the only
+# MATERIAL half of this joint, and run from Z_BOT it stood in the same 10.4 band as the lever
+# mortises -- so the two stations flanking every seam had to be dropped and mortises went
+# missing exactly where two sections meet. Started at FLOOR_TOP it is clear of that band
+# altogether and the grid runs through the seam unbroken. The cavity stays a THROUGH slot: it
+# is a void, so where it meets a lever mortise the two simply merge.
+_SEG_JZ0  = MB.FLOOR_TOP               # tenon base = the bottom prism's top face
+_SEG_J    = joint(width=_SEG_JW, length=_SEG_JZ1 - _SEG_JZ0, depth=_SEG_JD,
                   tenon=_UP, mortise=_UP, install="+z")   # signed: the +X segment is
                   # lowered on, so RELATIVE to it the tenon travels +Z to seat
 _SEG_JX1  = _SEG_J.dims["depth_used"]  # the tenon's +X reach past the seam plane
@@ -239,12 +246,9 @@ assert (T - _SEG_JW) / 2 - _SEG_J.clearance >= D.MIN_WALL_2P, (
     f"side, under the {D.MIN_WALL_2P} two-bead tier — narrow _SEG_JW or thicken the rail")
 # guard: the seam JOINT (X-footprint s−ROOT .. s+reach, at the RAILS) must not overlap
 # a rib -- the rib runs to the rails there, so an overlap would slice it.
-# (the joint's X footprint is ~8 wide and the walls are 1.6, so it ALWAYS covers a station or
-#  two. Those stations are dropped from _MORT_X below rather than the seam being moved: a seam
-#  wants solid material, and one lost mounting place out of 70-odd is not worth moving it for.)
-def _seam_blocked(x):
-    return any((x + D.LEVER_MORT_W / 2) > (_s - _SEG_ROOT)
-               and (x - D.LEVER_MORT_W / 2) < (_s + _SEG_JX1) for _s in SPLIT_X)
+# The seam and the grid no longer argue in X: the split PLANE runs down the middle of a 3.2
+# wall, and the joint's material half starts above the mortise band in Z (_SEG_JZ0). So no
+# station is dropped for a seam -- asserted against the real solids in _build_full.
 # Z — the install axis — carries NO seam hardware (user). It does not need any. The
 # body is not three loose pieces bolted together; it is one assembly whose pieces are
 # closed over by everything that follows: the deck panels ride a +Z-retaining dovetail
@@ -347,6 +351,15 @@ def _build_full() -> cq.Workplane:
         "knee_lever.MOUNT_X %.2f is not a rib X -- the comb is at %s. The lever "
         "mount must sit ON a rib; move MOUNT_X to one." % (
             _KL.MOUNT_X, [round(r, 2) for r in _MORT_X if abs(r - _KL.MOUNT_X) < 40]))
+    # THE SEAM TENON MUST CLEAR THE GRID. It is the only material half of the seam joint, and
+    # it used to stand from the bed straight through the mortise band -- which is why the two
+    # stations flanking each seam had to be dropped. Keyed to the real solids so that a later
+    # change to either datum fails here instead of quietly eating a tenon root.
+    _tz = _seg_tenon(SPLIT_X[0], Y_LO).val().BoundingBox().zmin
+    _mz = _KL.rib_mortise(_MORT_X[0]).val().BoundingBox().zmax
+    assert _tz >= _mz - 1e-6, (
+        "the seam tenon starts at z %.2f, inside the lever mortises' band (they reach %.2f) -- "
+        "it would be notched by every station it crosses" % (_tz, _mz))
     _mc = _mort_cutters()
     if _mc is not None:
         body = body.cut(_mc)
@@ -595,8 +608,7 @@ LEG_STATIONS_X = (_STN_PX, _STN_NX)         # (-13.4, -614.2)
 from .legs import SQ_W as _STUB_W
 _STUB_KEEP = (_STUB_W + D.LEVER_MORT_W) / 2.0    # no slot (and no slab) within this of a station
 _MORT_X = [x for x in _MORT_X
-           if all(abs(x - _st) >= _STUB_KEEP for _st in LEG_STATIONS_X)
-           and not _seam_blocked(x)]
+           if all(abs(x - _st) >= _STUB_KEEP for _st in LEG_STATIONS_X)]
 # FLUSH-LEG round (user): the 44-sq legs sit FLUSH with the outer wall
 # planes instead of outset on the rail centrelines — centres 17 inboard
 # of the rails. Everything leg-shaped (stubs, columns, pedal bar rail)
@@ -630,9 +642,10 @@ def _leg_shell(sx, x0, x1):
 
 def _seg_tenon(s, yr):
     """The −X segment's half of the seam joint at split X=s, rail Y=yr: a plan-plane
-    T prism standing from the bed up to the deck-groove floor. (The bridge/keyhead END
+    T prism standing from the BOTTOM PRISM'S TOP FACE up to the deck-groove floor (see
+    _SEG_JZ0 -- below that is the lever-mortise grid, and this may not stand in it). (The bridge/keyhead END
     joints are a different site — they use the low _br_tongue/_kh_tongue dovetails.)"""
-    return _SEG_J.tenon(root=_SEG_ROOT).translate((s, yr, Z_BOT))
+    return _SEG_J.tenon(root=_SEG_ROOT).translate((s, yr, _SEG_JZ0))
 
 
 def _seg_mortise(s, yr):
@@ -689,18 +702,26 @@ def _br_tongue(yc, socket=False):
     return lower.union(upper)
 
 
-LIGHT_BAND_H = 8.0      # transparent band along the +Y rail's UNDERSIDE (user, 2026-09-15):
-                        # the sealed bottom holds the motor noise in, but a deliberate LEAK
-                        # here spills light down past the +Y flank to light the player's feet.
-                        # On the -Z side, not the +Y face: it is the bed face of that rail, so
-                        # the light goes DOWN toward the pedals rather than out across the room.
+# A DOWNWARD LIGHT WINDOW (user, 2026-09-15/16). The sealed bottom is what holds the motor
+# noise in; this is the one deliberate leak, and it aims DOWN at the pedals. It is a window
+# THROUGH THE BOTTOM PRISM -- full XBAR of it, so light passes straight out the bed face -- set
+# one XBAR inboard of the +Y rail's centre, which leaves 1.2 of opaque body between it and the
+# rail's inner face. That inset is the point: the rail stands outboard of it, so nothing of the
+# window is visible from the front. (It was first built as an 8 mm band ON the rail's underside,
+# which read as a lit stripe along the flank -- wrong on both counts.)
+LIGHT_BAND_W  = D.LIGHT_WIN_W
+LIGHT_BAND_DY = D.LIGHT_WIN_DY
+assert abs((Y_HI - LIGHT_BAND_DY) - D.LIGHT_WIN_YC) < 1e-9, (
+    "dimensions spells the +Y rail one way (LIGHT_WIN_YC %.3f) and chassis another "
+    "(Y_HI - DY = %.3f) -- knee_lever reads the first to stop its mortises at the window"
+    % (D.LIGHT_WIN_YC, Y_HI - LIGHT_BAND_DY))
 
 
 def _light_band():
-    """The band's own volume, over the whole body. Intersected with a segment it gives
-    that segment's transparent piece; cut from it, the groove the piece fills."""
-    return box_at((X_BRIDGE - X_NUT) + 40.0, T, LIGHT_BAND_H,
-                  x=_XC, y=Y_HI, z=Z_BOT + LIGHT_BAND_H / 2)
+    """The window's own volume, over the whole body. Intersected with a segment it gives
+    that segment's transparent piece; cut from it, the aperture the piece fills."""
+    return box_at((X_BRIDGE - X_NUT) + 40.0, LIGHT_BAND_W, D.XBAR,
+                  x=_XC, y=Y_HI - LIGHT_BAND_DY, z=(Z_BOT + MB.FLOOR_TOP) / 2)
 
 
 def _seg_box(a, b):
@@ -852,8 +873,9 @@ def _split_light(segs):
     for i, s in enumerate(segs):
         a, b = edges[i], edges[i + 1]
         band = _light_band().intersect(
-            box_at(a - b, T + 2.0, LIGHT_BAND_H + 2.0,
-                   x=(a + b) / 2, y=Y_HI, z=Z_BOT + LIGHT_BAND_H / 2))
+            box_at(a - b, LIGHT_BAND_W + 2.0, D.XBAR + 2.0,
+                   x=(a + b) / 2, y=Y_HI - LIGHT_BAND_DY,
+                   z=(Z_BOT + MB.FLOOR_TOP) / 2))
         out.append((s.cut(_light_band()), s.intersect(band)))
     return out
 

@@ -248,11 +248,13 @@ chassis_light = list(chassis_light)
 for _i, _lt in enumerate(chassis_light):        # the transparent under-rail band
     PARTS[f"chassis_{_i}_light"] = (
         partial(heal, _lt), f"petg/chassis_{_i}_light.step",
-        "PETG (TRANSPARENT) — light band, 8 mm along the +Y rail's UNDERSIDE (print AS ONE "
-        f"OBJECT with chassis_{_i}, the deck panels' base/colour pattern). The bottom is sealed "
-        "now, which is what keeps the motor noise in; this is the one deliberate leak, aimed "
-        "DOWN off the bed face so it lights the pedals and the player's feet. Same resin family "
-        "as the PETG-GF body, so the two weld and purge cleanly")
+        "PETG (WHITE, translucent) — DOWNWARD LIGHT WINDOW: 8 mm across Y by the bottom "
+        f"prism's full XBAR, one XBAR inboard of the +Y rail (print AS ONE OBJECT with chassis_{_i}, "
+        "the deck panels' base/colour pattern). The bottom is sealed now, which is what keeps the "
+        "motor noise in; this is the one deliberate leak, and the rail stands outboard of it so "
+        "nothing shows from the front -- it only aims DOWN, at the pedals. White to match the deck "
+        "panels, and it diffuses rather than glares. Same resin family as the PETG-GF body, so the "
+        "two weld and purge cleanly")
 for _i, _seg in enumerate(chassis_segments):     # chassis split into dovetailed segments
     PARTS[f"chassis_{_i}"] = (partial(heal, _seg), f"petg-gf/chassis_{_i}.step",
                               "PETG-GF — chassis segment (cadkit slide-down T joint per rail; NO glue "
@@ -1296,7 +1298,7 @@ _COLORS = {
                                              # detectors, so a light one would bounce IR
     "top_plate":       (0.88, 0.91, 0.94),   # transparent-PCTG deck base + fret lines
     "top_plate_color": (0.30, 0.33, 0.38),   # colour-PCTG deck layer (skin contact)
-    "chassis_light":   (0.92, 0.90, 0.72),   # transparent under-rail band (lit)
+    "chassis_light":   (0.88, 0.91, 0.94),   # light window -- the deck panels' white
     "oled":            (0.05, 0.05, 0.08),   # screen (perfect-black OLED)
     "joystick":        (0.15, 0.15, 0.17),   # UI control
     "ts_jack":         (0.62, 0.64, 0.67),
