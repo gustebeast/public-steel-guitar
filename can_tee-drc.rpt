@@ -1,10 +1,54 @@
 ** Drc report for can_tee.kicad_pcb **
-** Created on 2026-09-15T17:30:49 **
+** Created on 2026-09-15T17:54:09 **
 ** Report includes: Errors, Warnings **
 
 ** Found 0 DRC violations **
 
-** Found 0 unconnected pads **
+** Found 11 unconnected pads **
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(93.1750 mm, 93.8000 mm): Pad 1 [CAN_H] of R1 on F.Cu
+    @(89.2500 mm, 98.0000 mm): PTH pad 3 [CAN_H] of J1
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(99.2500 mm, 98.0000 mm): PTH pad 7 [CAN_H] of J1
+    @(93.1750 mm, 93.8000 mm): Pad 1 [CAN_H] of R1 on F.Cu
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(99.2500 mm, 98.0000 mm): PTH pad 7 [CAN_H] of J1
+    @(112.9500 mm, 98.0000 mm): PTH pad 3 [CAN_H] of J2
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(94.8250 mm, 93.8000 mm): Pad 2 [TERM_MID] of R1 on F.Cu
+    @(98.3500 mm, 93.6000 mm): Pad 1 [TERM_MID] of JP1 on F.Cu
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(84.2500 mm, 98.0000 mm): PTH pad 1 [GND] of J1
+    @(94.2500 mm, 98.0000 mm): PTH pad 5 [GND] of J1
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(94.2500 mm, 98.0000 mm): PTH pad 5 [GND] of J1
+    @(107.9500 mm, 98.0000 mm): PTH pad 1 [GND] of J2
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(86.7500 mm, 98.0000 mm): PTH pad 2 [+24V] of J1
+    @(96.7500 mm, 98.0000 mm): PTH pad 6 [+24V] of J1
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(96.7500 mm, 98.0000 mm): PTH pad 6 [+24V] of J1
+    @(110.4500 mm, 98.0000 mm): PTH pad 2 [+24V] of J2
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(99.6500 mm, 93.6000 mm): Pad 2 [CAN_L] of JP1 on F.Cu
+    @(91.7500 mm, 98.0000 mm): PTH pad 4 [CAN_L] of J1
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(101.7500 mm, 98.0000 mm): PTH pad 8 [CAN_L] of J1
+    @(99.6500 mm, 93.6000 mm): Pad 2 [CAN_L] of JP1 on F.Cu
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(101.7500 mm, 98.0000 mm): PTH pad 8 [CAN_L] of J1
+    @(115.4500 mm, 98.0000 mm): PTH pad 4 [CAN_L] of J2
 
 ** Found 0 Footprint errors **
 

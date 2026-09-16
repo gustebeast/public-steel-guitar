@@ -17,6 +17,7 @@ placement in <board>.board.json is the thing under version control.
 """
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import subprocess
@@ -36,10 +37,41 @@ PASSES = 20
 
 def route(stem, passes=PASSES):
     pcb, dsn, ses = stem + ".kicad_pcb", stem + ".dsn", stem + ".ses"
+    notes = None
+    if os.path.isfile(stem + ".board.json"):
+        notes = json.load(open(stem + ".board.json", encoding="utf-8"))
     board = pcbnew.LoadBoard(pcb)
     if not pcbnew.ExportSpecctraDSN(board, dsn):
         raise SystemExit("Specctra DSN export failed")
     print("exported %s (%.0f kB)" % (os.path.basename(dsn), os.path.getsize(dsn) / 1e3))
+
+    # ⚠ DECLARE THE PLANE LAYERS AS PLANES, or the router treats them as free copper.
+    # KiCad's Specctra exporter marks EVERY copper layer "(type signal)", so a 4-layer
+    # board hands freerouting four routing layers -- including the one the design calls
+    # an unbroken ground plane and relies on for the USB pair's impedance reference.
+    # It duly routes through it: the optical board's In1.Cu pour came back at 1043 mm2
+    # of an original 5729, shredded into islands by tracks laid across it, and the
+    # "continuous reference plane" in the header was simply not true of any routed board
+    # here. Specctra's own word for this is (type power); freerouting honours it and
+    # leaves the layer alone.
+    #
+    # It also makes the routing PROBLEM smaller and better posed, which is the happy
+    # part: two signal layers with a solid reference between them, instead of four
+    # layers of contention and a reference that is not there.
+    planes = notes.get("plane_layers", ()) if notes else ()
+    if planes:
+        txt = open(dsn, encoding="utf-8").read()
+        for layer in planes:
+            marker = "(layer %s
+      (type signal)" % layer
+            if marker not in txt:
+                raise SystemExit("plane layer %s not found in the DSN as expected"
+                                 % layer)
+            txt = txt.replace(marker, "(layer %s
+      (type power)" % layer)
+        open(dsn, "w", encoding="utf-8").write(txt)
+        print("  declared %s as plane layer(s) -- the router will not route on them"
+              % ", ".join(planes))
 
     if not os.path.isfile(JAVA):
         raise SystemExit("no Java 25 runtime at %s" % JAVA)
@@ -83,6 +115,15 @@ def route(stem, passes=PASSES):
     # cut-out around it -- 164 violations on the first try, all of them a zone
     # against a via that was not there when it was filled.
     if board.Zones():
+        # ⚠ AND BUILD CONNECTIVITY FIRST, exactly as layout.py does. The filler uses
+        # the connectivity graph to decide which islands are attached to their net, and
+        # a board loaded from a file and modified by script has no graph until asked.
+        # Skipping it here is subtler than skipping it there, because the board ARRIVES
+        # correctly poured: layout.py filled it properly, and this refill then silently
+        # discards the lot. The optical board's F.Cu ground pour vanished at exactly
+        # this line and took 74 pads with it -- the routed board came back WORSE than
+        # before the pour existed, which is a confusing way to learn it.
+        board.BuildConnectivity()
         pcbnew.ZONE_FILLER(board).Fill(board.Zones())
     board.Save(pcb)
     n = len(list(board.GetTracks()))

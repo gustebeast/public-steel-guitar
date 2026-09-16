@@ -765,6 +765,45 @@ BOARD_NOTES = {
     # come from a MECHANICAL model, which reasons about the box a part occupies rather
     # than about where its solder lands average out. layout.py honours it; see
     # _anchor_on_courtyard there for what it cost to discover.
+    # ⚠ THE HIGH-SPEED BUDGETS, AND THEY ARE DELIBERATELY LOOSE. elec/verify.py
+    # enforces these; the numbers come from the geometry rather than from habit.
+    #
+    # ULPI is 60 MHz source-synchronous over a 34.5 mm run -- about 207 ps of flight
+    # at ~6 ps/mm in FR4. A 10 mm length mismatch is 60 ps against a 16,670 ps bit
+    # period: 0.36%, against a setup window measured in nanoseconds. Matching this bus
+    # to a tenth of a millimetre would LOOK rigorous and would be cargo cult, so the
+    # budget is 12 mm and the reason is recorded. What actually matters here is the
+    # continuous GND plane under it (In1.Cu) and keeping the clock out of the analog
+    # band -- both placement decisions, already made.
+    #
+    # USB HS is the one with a real constraint, and it is still not length: at 480 Mbps
+    # the bit period is 2,080 ps and the run is 25 mm, so intra-pair skew has room. The
+    # binding requirements are that DP and DM stay a PAIR -- same layers, so the
+    # differential impedance the stack-up was designed for still describes something --
+    # and that neither collects vias, since each one is a discontinuity.
+    "match": [
+        {"name": "ULPI", "max_skew_mm": 12.0, "same_layer": False, "max_vias": None,
+         "nets": ["ULPI_D0", "ULPI_D1", "ULPI_D2", "ULPI_D3", "ULPI_D4", "ULPI_D5",
+                  "ULPI_D6", "ULPI_D7", "ULPI_CK", "ULPI_STP", "ULPI_DIR", "ULPI_NXT"],
+         "why": "60 MHz over 34.5 mm = 207 ps of flight; 12 mm of mismatch is 72 ps "
+                "against a 16,670 ps bit period. Loose ON PURPOSE -- tightening it "
+                "would fail builds for an effect four orders of magnitude below what "
+                "matters on this bus."},
+        {"name": "USB_HS", "max_skew_mm": 2.5, "same_layer": True, "max_vias": 2,
+         "nets": ["USB_DP", "USB_DM"],
+         "why": "480 Mbps, 2,080 ps per bit over a 25 mm run. Skew has room; what has "
+                "to hold is that the two stay a PAIR on the same layers (differential "
+                "impedance is a property of the two conductors' geometry relative to "
+                "each other, which a layer split destroys) and that neither collects "
+                "vias, each being an impedance discontinuity."},
+    ],
+    # ⚠ In1.Cu IS A PLANE, NOT A ROUTING LAYER, and saying so is what makes it true.
+    # KiCad's Specctra export calls every copper layer "signal", so the router happily
+    # laid tracks across the ground plane and fragmented it -- 5729 mm2 of pour came
+    # back as 1043. The impedance reference the USB pair and the ULPI bus both depend
+    # on was being destroyed by the step that routed them. route.py now declares this
+    # to freerouting as a plane and it leaves it alone.
+    "plane_layers": ("In1.Cu",),
     "anchor": "courtyard",
     "refs_on_fab": True,
     # The ten sensor triplets sit at a 1.6 pitch by optical design, so their silkscreen

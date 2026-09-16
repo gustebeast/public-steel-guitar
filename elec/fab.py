@@ -36,6 +36,7 @@ import sys
 import zipfile
 
 KICAD_CLI = r"C:\Program Files\KiCad\10.0\bin\kicad-cli.exe"
+KICAD_PY = r"C:\Program Files\KiCad\10.0\bin\python.exe"
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT_DIR = os.path.join(HERE, "out")
 FAB_DIR = os.path.join(OUT_DIR, "fab")
@@ -155,6 +156,18 @@ def fab(board):
             "%s: %s unconnected items -- this board is PLACED but not ROUTED, and a fab "
             "package built from it would look complete and arrive as bare copper. Run "
             "elec/route.py on it first." % (board, unrouted.group(1)))
+
+    # ⚠ AND DRC IS NOT THE WHOLE TEST EITHER. It answers "is this manufacturable",
+    # not "is this correct": a router can hand back a DRC-perfect board on which the
+    # USB pair is split across two layers and took two unrelated paths. elec/verify.py
+    # is where the checks a PERSON would otherwise make by eye are written down, and
+    # running it HERE is what stops it being a script nobody remembers to run. Boards
+    # that declare no budgets pass it trivially, so this costs them nothing.
+    v = subprocess.run([KICAD_PY, os.path.join(HERE, "verify.py"), stem],
+                       capture_output=True, text=True)
+    if v.returncode:
+        raise SystemExit("%s: FAILED its declared high-speed budgets --\n%s"
+                         % (board, (v.stdout or "") + (v.stderr or "")[-400:]))
 
     d = os.path.join(FAB_DIR, board)
     os.makedirs(d, exist_ok=True)
