@@ -726,7 +726,8 @@ def _placements(cx, cy):
     """{ref: (x, y, rot)} board-local, straight from the CAD's PARTS table."""
     out = {}
     for p in OP.PARTS:
-        out[p["ref"]] = (round(p["x"] - cx, 4), round(p["y"] - cy, 4), 0.0)
+        out[p["ref"]] = (round(p["x"] - cx, 4), round(p["y"] - cy, 4),
+                         float(p.get("rot", 0.0)))
     return out
 
 
