@@ -317,13 +317,8 @@ def _build_full() -> cq.Workplane:
     # a continuous CAP over every slot -- the body sealed from underneath against escaping light
     # and motor noise. It is also self-supporting by construction: a bay wall no longer bridges
     # a rib gap, because there are no rib gaps.
-    # DRAWN WHOLE, end to end (user): one prism from one endplate takeover face to the other.
-    # It used to stop at the outermost station and then have a full-width slice cut out of it
-    # at each leg stub -- which is the gap the user found in the bottom by the feet. The body
-    # adapters fit the GRID now instead of needing the bottom to get out of their way.
-    body = body.union(box_at(D.BOTTOM_X1 - D.BOTTOM_X0, Y_HI - Y_LO, MB.FLOOR_TOP - Z_BOT,
-                             x=(D.BOTTOM_X0 + D.BOTTOM_X1) / 2, y=(Y_HI + Y_LO) / 2,
-                             z=(MB.FLOOR_TOP + Z_BOT) / 2))
+    # (THE BOTTOM is not drawn here any more -- each SEGMENT draws its own, identically, at
+    #  the top of the segment pipeline. See _bottom() and _segments.)
     # knee/pedal lever mounts: cut a christmas-tree mortise into EVERY rib (so a lever can mount in
     # any bay -- its two tenons drop into the two ribs flanking the chosen bay). Even rib pitch -> the
     # one tenon fits all. (Retention is a set screw that presses the rib ledge -- no per-bay pilot.)
@@ -480,19 +475,8 @@ def _build_full() -> cq.Workplane:
         cq.Vector(0, 0, 1))))
     #   ^ the TRRS axis rides the octagon's deep waist (legs.TRRS_DY) — the
     #     well tracks the stub's relocated jack way
-    body = body.cut(_raceway(50.5, -67.0, -604.75, 31.5))
-    # HEAD CAVITIES FOR THE KEYHEAD'S INSERT HEIGHT SCREWS (bronner prototype, user's height adjust).
-    # Their heat-sets sit flush in the keyhead's bottom face, just over this -X wide corner rib, so the
-    # button heads hang down INTO the rib, and the 2.5 mm key comes up to them from below. One head
-    # cavity per screw, straight through, placed from nut_block's own height_screw_xy so it cannot drift
-    # off its screw. Flagged for the chassis owner.
-    for _hi in range(D.N_STRINGS):
-        _hx, _hy = _NB.height_screw_xy(_hi)
-        body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-            _NB.HS_HEAD_CAV_D / 2.0, (MB.FLOOR_TOP - Z_BOT) + 2.0,
-            cq.Vector(D.NUT_BLOCK_X + _hx, _hy, Z_BOT - 1.0), cq.Vector(0, 0, 1))))
-    # +X tee-10 clearance notch out of the bridge rib's west face (the
-    # tee pokes 2.4 into it; box clears the PCB + header margin)
+    for _n in _floor_negatives():
+        body = body.cut(_n)
     body = body.cut(box_at(4.0, 17.0, (MB.FLOOR_TOP - Z_BOT) + 2.0,
                            x=-34.5, y=-108.0,
                            z=(MB.FLOOR_TOP + Z_BOT) / 2))
@@ -724,9 +708,51 @@ assert abs((Y_HI - LIGHT_BAND_DY) - D.LIGHT_WIN_YC) < 1e-9, (
 def _light_band():
     """The window's own volume: a run down the bottom, broken by ties. Intersected with a
     segment it gives that segment's transparent piece; cut from it, the aperture it fills."""
-    return box_at(D.BOTTOM_X1 - D.BOTTOM_X0, LIGHT_BAND_W, D.BOTTOM_T,
-                  x=(D.BOTTOM_X0 + D.BOTTOM_X1) / 2, y=Y_HI - LIGHT_BAND_DY,
+    # BETWEEN THE LEGS. It ran the bottom's whole span, and the -X +Y leg stub stands in that
+    # band -- 284 mm3 of transparent material inside the adapter. The legs were there first and
+    # the window is the new thing, so the window gives way.
+    x0 = min(LEG_STATIONS_X) + LEG_W / 2 + D.MIN_WALL_2P
+    x1 = max(LEG_STATIONS_X) - LEG_W / 2 - D.MIN_WALL_2P
+    x0, x1 = max(x0, D.BOTTOM_X0), min(x1, D.BOTTOM_X1)
+    return box_at(x1 - x0, LIGHT_BAND_W, D.BOTTOM_T,
+                  x=(x0 + x1) / 2, y=Y_HI - LIGHT_BAND_DY,
                   z=(Z_BOT + MB.FLOOR_TOP) / 2)
+
+
+def _floor_negatives():
+    """The chassis' OWN features that pass through the floor band, as a list of cutters.
+
+    Factored out because each segment lays its floor down fresh (see _bottom): anything cut into
+    that band earlier would otherwise be filled straight back in. These are the chassis' own --
+    the +Y wire raceway and the keyhead height screws' head cavities. NOT the leg's grooves:
+    those are the coupling the user asked to remove, and the leg fits the grid instead."""
+    out = [_raceway(50.5, -67.0, -604.75, 31.5)]
+    # HEAD CAVITIES FOR THE KEYHEAD'S INSERT HEIGHT SCREWS (bronner prototype, user's height
+    # adjust). Their heat-sets sit flush in the keyhead's bottom face just over the floor, so the
+    # button heads hang down INTO it and the 2.5 mm key comes up to them from below. Placed from
+    # nut_block's own height_screw_xy so they cannot drift off their screws.
+    for _hi in range(D.N_STRINGS):
+        _hx, _hy = _NB.height_screw_xy(_hi)
+        out.append(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+            _NB.HS_HEAD_CAV_D / 2.0, (MB.FLOOR_TOP - Z_BOT) + 2.0,
+            cq.Vector(D.NUT_BLOCK_X + _hx, _hy, Z_BOT - 1.0), cq.Vector(0, 0, 1))))
+    return out
+
+
+def _bottom(a, b):
+    """ONE segment's floor: a plain solid block, rail to rail, bed to FLOOR_TOP, over whatever
+    of the bottom's span this segment holds. Every segment gets the same thing by the same code
+    (user, 2026-09-16), and the lever mortises are cut out of it afterwards.
+
+    Drawn per segment and EARLY in the pipeline on purpose. Drawn once in _build_full it picked
+    up whatever anything else had already carved out of that band -- the leg corner grooves took
+    7-8.6 cm3 a corner out of it, 86% of that inside the grid's own band. A segment that lays its
+    floor down fresh, then cuts only the grid out of it, cannot inherit that."""
+    x0, x1 = max(D.BOTTOM_X0, min(a, b)), min(D.BOTTOM_X1, max(a, b))
+    if x1 - x0 < 0.1:
+        return None
+    return box_at(x1 - x0, Y_HI - Y_LO, MB.FLOOR_TOP - Z_BOT,
+                  x=(x0 + x1) / 2, y=(Y_HI + Y_LO) / 2, z=(MB.FLOOR_TOP + Z_BOT) / 2)
 
 
 def _seg_box(a, b):
@@ -780,6 +806,11 @@ def _segments():
     for i in range(len(edges) - 1):
         a, b = edges[i], edges[i + 1]                 # a (+X) > b (−X)
         seg = full.intersect(_seg_box(a, b))
+        _flr = _bottom(a, b)                          # this segment's floor, laid fresh...
+        if _flr is not None:
+            seg = seg.union(_flr)
+            for _fn in _floor_negatives():            # ...and the chassis' own way through it
+                seg = seg.cut(_fn)
         if _is_split(b):                              # −X boundary split → +X side → mortise
             for yr in (Y_HI, Y_LO):
                 seg = seg.cut(_seg_mortise(b, yr))
