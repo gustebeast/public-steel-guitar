@@ -714,26 +714,19 @@ assert abs((Y_HI - LIGHT_BAND_DY) - D.LIGHT_WIN_YC) < 1e-9, (
     % (D.LIGHT_WIN_YC, Y_HI - LIGHT_BAND_DY))
 
 
-LIGHT_TIE_EVERY = 5        # ...INTERRUPTED by a tie every Nth grid wall. The bottom prism is
-                           # the only thing holding the +Y rail on -- nothing above it reaches
-                           # that far +Y -- so a window cut clean through the bottom for the
-                           # whole length leaves the rail as a separate 172 cm3 solid. Each tie
-                           # is one of the grid's own 3.2 walls carried across the window.
+# (NO TIES. The window used to be interrupted every few stations, because cut clean through
+#  for the whole length it leaves the +Y rail as a separate solid in the OPAQUE half -- nothing
+#  above the bottom reaches that far +Y. That only mattered while I read the opaque half as the
+#  part: it is one fused print in two filaments (user), so the transparent material is what
+#  holds the rail, and the window runs unbroken end to end.)
 
 
 def _light_band():
     """The window's own volume: a run down the bottom, broken by ties. Intersected with a
     segment it gives that segment's transparent piece; cut from it, the aperture it fills."""
-    band = box_at(D.BOTTOM_X1 - D.BOTTOM_X0, LIGHT_BAND_W, D.BOTTOM_T,
+    return box_at(D.BOTTOM_X1 - D.BOTTOM_X0, LIGHT_BAND_W, D.BOTTOM_T,
                   x=(D.BOTTOM_X0 + D.BOTTOM_X1) / 2, y=Y_HI - LIGHT_BAND_DY,
                   z=(Z_BOT + MB.FLOOR_TOP) / 2)
-    for _i in range(0, len(_MORT_X) - 1, LIGHT_TIE_EVERY):
-        _wx = (_MORT_X[_i] + _MORT_X[_i + 1]) / 2.0       # the wall between two stations
-        band = band.cut(box_at(D.LEVER_PITCH - D.LEVER_MORT_W, LIGHT_BAND_W + 2.0,
-                               D.BOTTOM_T + 2.0,
-                               x=_wx, y=Y_HI - LIGHT_BAND_DY,
-                               z=(Z_BOT + MB.FLOOR_TOP) / 2))
-    return band
 
 
 def _seg_box(a, b):
@@ -895,6 +888,15 @@ def _split_light(segs):
 _seg_pairs = _split_light(_segments())
 segments       = [s for s, _ in _seg_pairs]
 segments_light = [c for _, c in _seg_pairs]
+# CONNECTIVITY IS TESTED ON THE PRINTED OBJECT, not on the opaque half. The two filaments fuse
+# into one solid part, so the opaque half may legitimately come out in pieces wherever the
+# window runs between them -- what must never come apart is the union. (Reading the opaque half
+# as the part is what had me tying the window every few stations to keep the +Y rail attached.)
+for _i, (_op, _lt) in enumerate(_seg_pairs):
+    _n = _op.union(_lt).solids().size()
+    assert _n == 1, (
+        "chassis segment %d prints as %d separate solids -- something has come loose "
+        "(the opaque half alone may be in pieces; the fused part may not)" % (_i, _n))
 
 BED_X = 255.0                          # the printer's X, the reason the chassis is in pieces
 for _si, _seg in enumerate(segments):
