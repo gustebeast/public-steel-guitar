@@ -889,7 +889,12 @@ BOARD_NOTES = {
     # its primary ground, and that pad takes a via straight through its own copper (see
     # the big-pad branch in layout.py). U7.19 is a second ground pin on a part that is
     # already solidly grounded, not a part's only path to the plane.
-    "stitch_exceptions": ("U7.19", "U10.2", "J1.A12", "J1.B1"),
+    # ⚠ AN EXCEPTION LIST IS A SNAPSHOT OF A LAYOUT, and it goes stale silently. These
+    # four were the ground pads the stitcher could not reach around the OLD USB cluster,
+    # and after the chain was re-planned they were pads it could have reached and was
+    # being told not to -- which showed up as U7.19 and U10.2 sitting unconnected on a
+    # routed board. Empty is the right default; re-add only what the stitcher reports.
+    "stitch_exceptions": (),
     "anchor": "courtyard",
     "refs_on_fab": True,
     # The ten sensor triplets sit at a 1.6 pitch by optical design, so their silkscreen
