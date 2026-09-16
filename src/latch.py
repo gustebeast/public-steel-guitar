@@ -225,28 +225,30 @@ LOAD_Z = -15 * B                  # -12.0 tunnel/cover bottom (load window botto
 
 # ── spring (NEW BOM SKU) ─────────────────────────────────────────────────────
 # ONE COIL FOR BOTH LATCHES (user), USED AS BOUGHT -- no cutting (user: cutting
-# introduces room for error). McMaster 2006N221, 302 SS, packs of 5.
+# introduces room for error). uxcell B0GCZVQFWN: 304 SS, O5.0 OD x 0.6 wire x 15.0
+# FREE, 10 to a pack, $6.99.
 #
-# WHY NOT uxcell, which supplies the rest of the springs. The bar collar's sleeve has
-# to swallow the coil at FREE length plus a MIN_WALL_2P back wall, and from the cup's
-# floor it has 12.8 -- so free < 12.8, full stop. uxcell stocks this wire and OD at 5,
-# 10, 15 and 20 mm free and nothing between: 15 needs the bar 6.4 wider (TOWER_WY also
-# drives BAR_Y0/BAR_Y1, so that is the whole bar's cross-section, not just the tower),
-# and 10 is SHORTER than the 10.4 installed length, i.e. not in contact at all.
-# 2006N221 at 12.5 fits with 0.3 to spare and lands the preload on the number the
-# geometry was drawn around, which is the rare case of a catalogue part fitting a
-# design rather than the other way round.
-SPR_OD = 5.63                     # drawing, not a round number -- a bought part
-SPR_WIRE = 0.63
-SPR_FREE = 12.5
-SPR_N = 7.0                       # active coils, taken from the PUBLISHED compressed
-                                  # length at max load (5.8): solid = (N+2)*wire must
-                                  # come in under it, and 7 gives 5.67. This is a
-                                  # bound, not a count off the drawing -- McMaster
-                                  # publishes rate and compressed length but not turns
-SPR_SOLID = (SPR_N + 2) * SPR_WIRE                     # 5.67
-SPR_RATE = 1.96                   # N/mm, PUBLISHED (0.44 lbf/mm). The first catalogue
-                                  # number in this joint that is not an estimate
+# 15.0 DID NOT FIT THE LOWER LATCH until the collar was reworked. The bar collar's
+# sleeve has to swallow the coil at FREE length plus a MIN_WALL_2P back wall, and from
+# the cup's floor it had 12.8 -- 2.2 short of the coil itself. What bought the room was
+# the user's observation that the collar carries TWO T rails and a screw: drop the rail
+# on the screw's side, let the ring's arm run out into the space on that side, and the
+# spring's axis can move outboard -- which pays, one for one, for pulling the cup's
+# floor back -Y. The sleeve is 16.0 now. See bar_latch.ARM_SPR and RAIL_SIDES.
+SPR_OD = 5.0
+SPR_WIRE = 0.6
+SPR_FREE = 15.0
+SPR_N = 10.0                      # active coils -- the WORST plausible count on 15.0 of
+                                  # free length at 0.6 wire, which is a 1.25 pitch.
+                                  # Anything denser is nearly closed at rest, which
+                                  # catalogue springs are not. The COUNT matters more
+                                  # than the rate here: solid height is what makes a
+                                  # latch bind, and the rate only sets the feel
+SPR_SOLID = (SPR_N + 2) * SPR_WIRE                     # 7.2, up from 4.8
+SPR_RATE = 1.9                    # N/mm, ESTIMATED and bracketed 1.6-2.4: McMaster
+                                  # publishes 1.96 for a O5.63 x 0.63 x 12.5 and this
+                                  # one is longer at a smaller OD. MEASURE ON ARRIVAL --
+                                  # every force below derives from it
 SLIDER_UP = (1.0, 0.0, 0.0)       # the slider's build direction. leg_stack.PRINT_UP
                                   # is the authority and leg_latch asserts the two
                                   # agree; it is repeated here because the spring
@@ -257,7 +259,14 @@ SPR_BORE_D = SPR_OD + 0.4         # 5.4 pocket in the slider
 SPR_ID = SPR_OD - 2 * SPR_WIRE    # 3.8 coil bore
 POST_D = SPR_ID - 0.8             # 3.0 guide post (0.4 radial clearance in the coil)
 POST_L = 6 * B                    # 4.8 post length off the tunnel's back wall
-SPR_SEAT = 8 * B                  # 6.4 blind-bore depth in the slider
+SPR_SEAT = 10 * B                 # 8.0 blind-bore depth in the slider, up from
+                                  # 6.4. Installed length is SPR_GAP + SPR_SEAT
+                                  # and it has to clear SPR_SOLID + 0.5 at full
+                                  # stroke: at 6.4 the bought coil went solid
+                                  # under the thumb (7.20 against a 7.70 floor).
+                                  # At 8.0 the pressed length is 8.80 and the
+                                  # slider still keeps 0.72 over MIN_WALL_2P
+                                  # behind its seat
 SPR_GAP = 5 * B                   # 4.0 slider back face -> tunnel back at REST.
                                   # MUST EXCEED STROKE or the slider bottoms on the
                                   # tunnel wall before the hook has cleared.
