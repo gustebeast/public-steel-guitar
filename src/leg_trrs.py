@@ -91,13 +91,39 @@ FLOAT = 3.0             # how far the jack is pushed back when the leg latches -
 SPR_WIRE = 0.7          # THIS JOINT'S OWN COIL (see the docstring). The one number
 SPR_OD = 8.0            # that had to change is the ID: it is slid onto the lead over
 SPR_ID = SPR_OD - 2 * SPR_WIRE          # 6.6 -- clears the far plug's O6.1 overmould
-SPR_FREE = LT.SPR_FREE                  # 12.0, and the rate below, are the LATCH
-SPR_RATE = 2.5                          # coil's: the feel at rest and at seat is the
-SPR_SOLID = 7 * SPR_WIRE                # same 5.0 N / 12.5 N it always was
-SPR_REST_L = 10.0       # the coil at rest: 2.0 of preload on a 12.0 free length
+# THE COIL IS A BOUGHT PART AND THESE ARE ITS NUMBERS, not the latch coil's.
+# uxcell B0GCZKKCFP-family: 304 SS, O8.0 OD x 0.7 wire x 20.0 FREE (BOM). The first
+# pass borrowed latch.SPR_FREE (12.0) and a 2.5 N/mm rate, which described a coil
+# nobody sells in this ID -- the whole reason this joint has its own SKU is that the
+# ID has to clear the lead's O6.1 moulded plug, and at O8.0/0.7 that means 6.6.
+SPR_FREE = 20.0
+SPR_TURNS_MAX = 14      # WHAT WE DO NOT KNOW is the coil count, and it is the coil
+                        # count -- not the rate -- that can make this joint
+                        # unbuildable, because solid height is what the mate has to
+                        # clear. 20.0 of free length on 0.7 wire is 10 turns at a
+                        # 2.0 pitch and 14 at 1.4; past that the coil would be almost
+                        # closed at rest, which no catalogue spring is. So 14 is the
+                        # worst case, and the chain is hung off the WORST case rather
+                        # than off a guess at the real one
+SPR_SOLID = SPR_TURNS_MAX * SPR_WIRE                            # 9.8
+SPR_RATE = 0.75         # N/mm, ESTIMATED and bracketed 0.6-0.9 -- see the BOM. It is
+                        # NOT the latch coil's 2.5: McMaster publishes 1.91 N/mm for a
+                        # O8.8 x 0.8 x 14.5 and 0.76 for a O8.63 x 0.63 x 16, and ours
+                        # is longer than either at the same OD, so more coils and
+                        # softer. MEASURE ON ARRIVAL; nothing else here needs editing
+                        # when you do, because the two forces below derive from it
+
+# THE INSTALLED LENGTH IS NOT A CHOICE -- solid height sets it. The coil has to still
+# be clear of solid when the leg is latched and the jack has given up FLOAT, so the
+# floor is solid + 1.0 + FLOAT. At the old 10.0 the bought coil would have gone SOLID
+# before the leg seated, at any coil count from 10 turns up.
+SPR_REST_L = SPR_SOLID + 1.0 + FLOAT                            # 13.8
 SPR_MATE_L = SPR_REST_L - FLOAT
-PRELOAD_N = (SPR_FREE - SPR_REST_L) * SPR_RATE                  # 5.0 N standing still
-MATE_N = (SPR_FREE - SPR_MATE_L) * SPR_RATE                     # 12.5 N seated
+PRELOAD_N = (SPR_FREE - SPR_REST_L) * SPR_RATE                  # ~4.7 N standing still
+MATE_N = (SPR_FREE - SPR_MATE_L) * SPR_RATE                     # ~6.9 N seated
+assert PRELOAD_N >= 3.0, (
+    "only %.1f N holds the jack against its keeper with the leg off -- the coil's rate "
+    "or its free length is not carrying the preload any more" % PRELOAD_N)
 assert SPR_ID >= PLUG_D + 0.4, (
     "a %.1f ID coil will not slide over the lead's %.1f far plug -- this joint is "
     "unbuildable, which is the whole reason it has its own SKU" % (SPR_ID, PLUG_D))

@@ -131,6 +131,28 @@ the constraint is stock, not selection. See the optical-pickup section.
 > **DECIDED (user): buy the uxcell pair, $13.28.** The McMaster rows below stay as a
 > reference for the rate, not as an order.
 >
+> **AND THE MODEL NOW MATCHES THE BOUGHT COILS, not the ones it was drawn around.**
+> Free length is a KNOWN fact about the parts, and it is not 12 mm; the chain has
+> been re-hung on it. What each side did with that:
+>
+> * **LATCH — no change needed, and that was checked rather than assumed.** Installed
+>   length is `SPR_SEAT + SPR_GAP` = 10.40 and full press is 7.20, so the binding
+>   constraint is the coil's SOLID height. The bought 15 mm-free coil is fine at any
+>   count up to **11 turns** (solid 6.6) and only binds at 12 (solid 7.2), which on
+>   0.6 wire would be a 1.25 mm pitch — nearly closed at rest, which catalogue
+>   springs are not. Preload rises from 4.0 N to ~8.7 N at the bracketed rate, and a
+>   latch button that is harder to rattle open is the right direction.
+> * **TRRS FLOAT — the chain moved, because at 10.0 installed the bought coil would
+>   have gone SOLID before the leg seated**, at any count from 10 turns up. Installed
+>   is now derived rather than chosen: `SPR_SOLID + 1.0 + FLOAT` = **13.8**, off a
+>   worst-case 14 turns (solid 9.8). `SPR_SEAT` drops 3.8 mm down the tenon, which
+>   has 192 mm below it. Forces land at **4.65 N at rest / 6.90 N seated** instead of
+>   5.0 / 12.5 — the rest figure is what matters (it holds the jack on its keeper
+>   with the leg off) and it is essentially unchanged.
+>
+> `SPR_RATE` is the ONE estimated number left (0.75, bracketed 0.6–0.9). Measure it on
+> arrival and edit that constant alone — both forces and the whole z-chain derive.
+>
 > On price McMaster is not close — 6 latch springs is two packs, so the full basket is
 > **$51.30 against $13.28**. The one that might be worth buying there anyway is the
 > FLOAT: 2006N232 has ID 7.20 against our required 6.5, which is 1.1 of clearance over
