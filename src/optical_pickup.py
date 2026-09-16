@@ -692,7 +692,6 @@ def _parts():
                       ("U9", "LDO -- 3V3 analog (low noise)", "SOT-23-5"),
                       ("U11", "single op-amp -- TIA mid-rail reference buffer", "SOT-23-5"),
                       ("Q1", "N-ch MOSFET -- LED row driver", "SOT-23"),
-                      ("U10", "USB data-line ESD array", "SOT-563"),
                       ("FB1", "ferrite bead -- analog rail isolation", "0603"),
                       ("C130", "bulk cap -- VBUS", "0805C"),
                       ("C131", "bulk cap -- 3V3 digital", "0805C"),
@@ -794,6 +793,22 @@ def _parts():
     # ground: the LED row driver switches at 96 kHz SYNCHRONOUSLY WITH SAMPLING and that
     # current flows in the power return, so sharing it would inject the one noise source
     # ambient subtraction cannot cancel straight into the audio reference.
+    # ⚠ U10 IS PLACED AGAINST J1 BY HAND, AND IT IS THE ONE PART HERE THAT HAS TO BE.
+    # It is the USB data-line ESD array, and an ESD clamp works by being AT the port:
+    # every millimetre between the connector and the clamp is series inductance in the
+    # path the transient takes, so a clamp far from the connector protects the trace
+    # and not much else. Packed into the LDO row by the block packer it sat 26 mm from
+    # J1 -- and the cost showed up somewhere else entirely, in elec/verify.py, which
+    # measured the USB pair at DP 57.1 mm against DM 45.3 and failed the board. The
+    # router was not wandering; it was going PHY -> ESD -> connector, and the ESD array
+    # was the detour.
+    #
+    # THE SLOT IS THE GAP BETWEEN U13 AND L1, directly above J1: 4.94 wide by about 7.3
+    # of otherwise dead board, which the packer never offered because it fills rows
+    # left to right. 6.9 mm from the connector now, against 26.
+    add("U10", "USB data-line ESD array -- AT the connector, see the note", "SOT-563",
+        -31.0, -98.0)
+
     add("J2", "power in -- 24V, PWR_GND, 2 cavities empty", "XH-SM-4Y",
         COMPUTE_X0 + EDGE_KEEP + CRTYD["USB-C"][0] + CRTYD_GAP
         + CRTYD["XH-SM-4Y"][0] / 2,
