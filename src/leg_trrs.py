@@ -158,10 +158,16 @@ LUG_PROUD = 1.8                 # how far the bayonet lugs stand off the barrel,
                                 # degrees, where the octagon runs out at r 8.45, so a
                                 # slot at 6.8 keeps MIN_WALL_2P and not a thou more
 LUG_D = CB_D + 2 * LUG_PROUD    # 12.4 over the lugs
-LUG_SLOT_H = 2 * B              # 1.6: the slot the lug turns in...
+LUG_SLOT_H = 3 * B              # 2.4: the slot the lug turns in...
 LUG_H = LUG_SLOT_H + 0.2        # ...and the lug is 0.2 TALLER. That 0.2 is the joint's
                                 # preload: a rigid bayonet needs a spring behind it or
-                                # it rattles, and in TPU the lug IS the spring
+                                # it rattles, and in TPU the lug IS the spring.
+                                # THREE BEADS AND NOT TWO because the lug's free face is
+                                # chamfered 45 for printability, and a 45 chamfer eats
+                                # LUG_PROUD of height: at 1.6 the lug tapered to a 0.15
+                                # knife at its outer edge, which is under a bead and
+                                # which tools/check_thin cannot see (it rejects knife
+                                # edges by design). At 2.4 the tip is 0.95
 LUG_LEDGE = 2 * B               # 1.6 of adapter under the slot -- the ledge the lug
                                 # actually sits on, and the only thing in the -Z load
                                 # path once the quarter turn is made
@@ -364,7 +370,30 @@ def _sector(r_in, r_out, z0, z1, a0, sweep, x, y):
     return cq.Workplane("XY").add(w.rotate((0, 0, 0), (0, 0, 1), a0)).translate((x, y, 0))
 
 
-def _bayonet_slots(r_in, r_out, z_lo, z_hi, open_up, x, y, angles):
+def _td_sector(r_in, r_out, z0, z1, a0, sweep, x, y, up):
+    """An annular wedge whose OUTER boundary is a teardrop, not a circle.
+
+    A plain annular slot is a groove round a bore that is HORIZONTAL in the print, and
+    wherever the groove passes within 45 degrees of the build direction its outer wall
+    becomes a roof over open air. Cutting it to a teardrop of the same radius replaces
+    exactly that arc -- the cap spans +-45 of `up` and nowhere else -- with two 45
+    degree faces, so the slot is self-supporting at every clocking (user: no overhangs
+    past 45). It also swallows the SLIVER the plain slot used to leave where its end
+    ran up against the counterbore's own teardrop apex, which the user spotted at 214
+    degrees on the tenon: the two apexes are now the same apex."""
+    wedge = cq.Solid.makeCylinder(r_out * 2.0, z1 - z0, cq.Vector(0, 0, z0),
+                                  cq.Vector(0, 0, 1), angleDegrees=sweep)
+    wedge = cq.Workplane("XY").add(
+        wedge.rotate((0, 0, 0), (0, 0, 1), a0)).translate((x, y, 0))
+    td = teardrop_hole(2.0 * r_out, z1 - z0, (x, y, z0), (0, 0, 1), up)
+    out = td.intersect(wedge)
+    if r_in > 0.0:
+        out = out.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+            r_in, z1 - z0 + 2.0, cq.Vector(x, y, z0 - 1.0), cq.Vector(0, 0, 1))))
+    return out
+
+
+def _bayonet_slots(r_in, r_out, z_lo, z_hi, open_up, x, y, angles, up):
     """The L-slots a set of lugs turns in: an ENTRY run open to one end, and the
     circumferential RUN it turns along. `open_up` says which end the lugs come in
     from -- True for the adapter's sleeve (pushed UP from the mortise), False for the
@@ -374,22 +403,41 @@ def _bayonet_slots(r_in, r_out, z_lo, z_hi, open_up, x, y, angles):
         # the entry is open to the part's end; the run is buried LUG_LEDGE inside it
         e0, e1 = ((z_lo - LUG_LEDGE - 1.0, z_hi) if open_up
                   else (z_lo, z_hi + LUG_LEDGE + 1.0))
-        cut = _sector(r_in, r_out, e0, e1,
-                      a0 - LUG_CLR_DEG, LUG_DEG + 2 * LUG_CLR_DEG, x, y)
-        cut = cut.union(_sector(r_in, r_out, z_lo, z_hi, a0 - LUG_CLR_DEG,
-                                LUG_DEG + LUG_TURN + 2 * LUG_CLR_DEG, x, y))
+        cut = _td_sector(r_in, r_out, e0, e1,
+                         a0 - LUG_CLR_DEG, LUG_DEG + 2 * LUG_CLR_DEG, x, y, up)
+        cut = cut.union(_td_sector(r_in, r_out, z_lo, z_hi, a0 - LUG_CLR_DEG,
+                                   LUG_DEG + LUG_TURN + 2 * LUG_CLR_DEG, x, y, up))
         out = cut if out is None else out.union(cut)
     return out
 
 
-def _lugs(r_in, r_out, z_lo, z_hi, x, y, angles):
+def _lugs(r_in, r_out, z_lo, z_hi, x, y, angles, bear_up):
     """The lugs themselves, drawn WHERE THEY END UP -- a turn along the run from the
-    entry, hard against the stop."""
+    entry, hard against the stop.
+
+    ONE FACE OF A LUG IS THE BEARING FACE and the other is dead weight, so the dead one
+    is chamfered at 45 and the part is printed with the bearing face pointing AWAY from
+    the bed. A lug is LUG_PROUD of unsupported eave otherwise, which in TPU droops.
+    `bear_up` says which face carries: True for the keeper (the coil pushes it +Z into
+    a ledge above), False for the sleeve (the plug's extraction pulls it -Z onto a
+    ledge below)."""
     out = None
+    h = r_out - r_in
+    if bear_up:                      # keep the TOP square, chamfer underneath
+        cone = cq.Solid.makeCone(r_in, r_in + h, h, cq.Vector(x, y, z_lo),
+                                 cq.Vector(0, 0, 1))
+        band = cq.Solid.makeCylinder(r_out + 1.0, h, cq.Vector(x, y, z_lo),
+                                     cq.Vector(0, 0, 1))
+    else:                            # keep the BOTTOM square, chamfer on top
+        cone = cq.Solid.makeCone(r_in + h, r_in, h, cq.Vector(x, y, z_hi - h),
+                                 cq.Vector(0, 0, 1))
+        band = cq.Solid.makeCylinder(r_out + 1.0, h, cq.Vector(x, y, z_hi - h),
+                                     cq.Vector(0, 0, 1))
+    chamfer = cq.Workplane("XY").add(band.cut(cone))
     for a0 in angles:
         w = _sector(r_in, r_out, z_lo, z_hi, a0 + LUG_TURN, LUG_DEG, x, y)
         out = w if out is None else out.union(w)
-    return out
+    return out.cut(chamfer)
 
 
 def adapter_negatives(sx: float = LS.LEG_X, ly: float = LS.LEG_Y, up=None):
@@ -405,7 +453,7 @@ def adapter_negatives(sx: float = LS.LEG_X, ly: float = LS.LEG_Y, up=None):
     up = up or LS.PRINT_UP["body_adapter"]
     out = _bore(CB_D, SLV_BOT - 0.01, SLV_TOP, x, y, up)          # the sleeve's barrel
     out = out.union(_bayonet_slots(CB_D / 2.0 - 0.01, LUG_D / 2.0,
-                                   LUG_BOT, LUG_BOT + LUG_SLOT_H, True, x, y, SLV_A))
+                                   LUG_BOT, LUG_BOT + LUG_SLOT_H, True, x, y, SLV_A, up))
     out = out.union(_bore(LEAD_BORE_D, SLV_TOP, LS.Z_TOP + 0.01, x, y, up))
     return out.union(channel(sx, ly))
 
@@ -435,14 +483,17 @@ def sleeve(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):
     body = body.union(_lugs(SLV_OD / 2.0 - 0.01, LUG_D / 2.0 - SLV_CLR / 2.0,
                             LUG_BOT - (LUG_H - LUG_SLOT_H) / 2.0,
                             LUG_BOT + LUG_SLOT_H + (LUG_H - LUG_SLOT_H) / 2.0,
-                            x, y, SLV_A))
+                            x, y, SLV_A, False))
     # the grip bore, then the flange the plug's top bottoms on
     body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
         SLV_ID / 2.0, PLUG_GRIP + 1.0, cq.Vector(x, y, SLV_BOT - 1.0),
         cq.Vector(0, 0, 1))))
-    return body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+    body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
         LEAD_BORE_D / 2.0, SLV_H + 2.0, cq.Vector(x, y, SLV_BOT - 1.0),
         cq.Vector(0, 0, 1))))
+    assert len(body.val().Solids()) == 1, (
+        "the sleeve came out as %d solids -- see throat()" % len(body.val().Solids()))
+    return body
 
 
 def tenon_negatives(sx: float = LS.LEG_X, ly: float = LS.LEG_Y, up=None,
@@ -457,7 +508,7 @@ def tenon_negatives(sx: float = LS.LEG_X, ly: float = LS.LEG_Y, up=None,
     out = _bore(JACK_BORE_D, SPR_SEAT, TIP + 1.0, x, y, up)     # ONE bore, tip to step
     out = out.union(_bore(THROAT_BORE_D, JACK_REST, TIP + 1.0, x, y, up))  # the keeper's
     out = out.union(_bayonet_slots(THROAT_BORE_D / 2.0 - 0.01, LUG_D / 2.0,
-                                   KEEP_SLOT_LO, KEEP_SLOT_HI, False, x, y, KEEP_A))
+                                   KEEP_SLOT_LO, KEEP_SLOT_HI, False, x, y, KEEP_A, up))
     return out.union(_bore(PASS_D, bot, SPR_SEAT + 0.01, x, y, up))
 
 
@@ -490,9 +541,11 @@ def throat(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):
     r = cq.Workplane("XY").add(cq.Solid.makeCylinder(
         (THROAT_BORE_D - KEEP_CLR) / 2.0, THROAT_L,
         cq.Vector(x, y, JACK_REST), cq.Vector(0, 0, 1)))
-    r = r.union(_lugs(THROAT_BORE_D / 2.0 - 0.01, LUG_D / 2.0 - KEEP_CLR / 2.0,
+    r = r.union(_lugs((THROAT_BORE_D - KEEP_CLR) / 2.0 - 0.01,
+                      LUG_D / 2.0 - KEEP_CLR / 2.0,
                       KEEP_SLOT_LO - (LUG_H - LUG_SLOT_H) / 2.0,
-                      KEEP_SLOT_HI + (LUG_H - LUG_SLOT_H) / 2.0, x, y, KEEP_A))
+                      KEEP_SLOT_HI + (LUG_H - LUG_SLOT_H) / 2.0, x, y, KEEP_A,
+                      True))
     r = r.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
         THROAT_D / 2.0, THROAT_L + 2.0,
         cq.Vector(x, y, JACK_REST - 1.0), cq.Vector(0, 0, 1))))
@@ -508,6 +561,11 @@ def throat(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):
                .translate((0, 0, TIP - KEEP_DRIVE_DP / 2.0))
                .rotate((0, 0, 0), (0, 0, 1), a).translate((x, y, 0)))
         r = r.cut(cut)
+    assert len(r.val().Solids()) == 1, (
+        "the keeper came out as %d solids -- its lugs are drawn off a radius the ring "
+        "does not reach, so they float. KEEP_CLR shrinks the ring away from the bore "
+        "the lugs are sized against, and the lugs have to start from the RING"
+        % len(r.val().Solids()))
     return r
 
 
