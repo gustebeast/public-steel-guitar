@@ -646,11 +646,27 @@ def _parts():
         add("U%d" % (q + 1), "quad op-amp -- 4x transimpedance amp", "SOIC-14", COL_OPA, cy)
         # feedback R/C + local decoupling go in the Y GAP next to their quad, at the same
         # X -- the band has no room for a column of its own
-        items = ([("Rf%d%d" % (q + 1, k + 1), "TIA feedback resistor (per-string value)")
-                  for k in range(4)]
-                 + [("Cf%d%d" % (q + 1, k + 1), "TIA feedback cap (anti-alias pole)")
-                    for k in range(4)]
-                 + [("Cd%d%d" % (q + 1, k + 1), "op-amp decoupling") for k in range(2)])
+        # ⚠ EACH Rf BESIDE ITS OWN Cf, WHICH THE ROW-MAJOR FILL DID NOT DO. They are in
+        # PARALLEL between the same two nodes -- the op-amp's inverting input and its
+        # output -- so the board has to join both of their pads twice over. Filled in
+        # order (all four Rf, then all four Cf) they landed DIAGONALLY apart with a third
+        # part between them, and the connection that should be a millimetre of straight
+        # trace became 2.28 mm passing 0.077 mm from a neighbouring pad on another net.
+        # Most of the optical board's remaining unrouted nets were that exact pair.
+        #
+        # Side by side, their facing pads are 1.0 mm apart with nothing in between. The
+        # grid has 0.05 mm between columns and 0.12 mm between rows -- there are no
+        # routing channels in it at all -- so the only connections that can work are the
+        # ones that do not need a channel. This makes the two that matter most into that
+        # kind.
+        items = []
+        for k in range(4):
+            items.append(("Rf%d%d" % (q + 1, k + 1),
+                          "TIA feedback resistor (per-string value)"))
+            items.append(("Cf%d%d" % (q + 1, k + 1),
+                          "TIA feedback cap (anti-alias pole)"))
+            items.append(("Cd%d%d" % (q + 1, k + 1), "op-amp decoupling")
+                         if k < 2 else (None, None))
         # U1 ALSO uses the gap below, and pulled in -- see JACK_ACCESS_XY. The jack's
         # access hole occupies the gap above it, which is where this cluster used to sit.
         s = -1 if q in (0, D.N_STRINGS // 2 - 1) else 1
@@ -658,6 +674,8 @@ def _parts():
         slots = [(COL_OPA + (c - 1) * FB_PITCH, cy + s * r) for r in rows
                  for c in range(3)]
         for (ref, desc), (px, py) in zip(items, slots):
+            if ref is None:
+                continue          # the two spare slots in the 3 x 4 grid
             add(ref, desc, "0402", px, py)
 
     # ---- 3. digital block, in the wide tail past the pickup cavity ----

@@ -44,7 +44,7 @@ FAB_DIR = os.path.join(OUT_DIR, "fab")
 
 # SIX boards: the power board merged into motor_ctrl, and the optical pickup landed
 # (both 2026-09-15). This is now the whole instrument.
-BOARDS = ("can_tee", "trrs_adapter", "lever_sensor", "motor_ctrl", "output_panel",
+BOARDS = ("can_tee", "lever_sensor", "motor_ctrl", "output_panel",
           "optical")
 
 # Layer sets by copper count. JLCPCB takes the KiCad extensions directly.
