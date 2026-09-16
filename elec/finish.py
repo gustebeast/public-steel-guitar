@@ -77,7 +77,21 @@ def _run(script, stem):
     return "".join(out)
 
 
-def finish(stem, rounds=2):
+def finish(stem, rounds=1):
+    """Route `stem`; with rounds>1, retry the nets the router could not finish.
+
+    ⚠ THE RETRY IS OFF BY DEFAULT BECAUSE IT HAS NEVER YET PAID. Measured on three
+    boards: lever_sensor 4 -> 4, output_panel 2 -> 2, optical 12 -> 27 with violations.
+    It doubles the wall clock of every run -- twenty minutes instead of ten on the
+    optical board -- and so far its only achievement is not making things worse, which
+    the keep-the-better-board rule guarantees anyway.
+    
+    The idea still looks right: freeze the nets the router demonstrably failed rather
+    than the ones guessed in advance. What the numbers say is that a net the router could
+    not finish is usually one the generator cannot finish either -- they are blocked by
+    the same geometry, and the generator has strictly fewer moves. Worth keeping and
+    worth having off.
+    """
     retry = stem + ".retry.json"
     if os.path.isfile(retry):
         os.remove(retry)          # always start from the board as designed
