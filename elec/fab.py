@@ -29,6 +29,7 @@ missing one -- the missing one stops the order, the wrong one ships.
 from __future__ import annotations
 
 import csv
+import json
 import os
 import re
 import subprocess
@@ -134,7 +135,6 @@ def _parts(stem):
 
 
 def _layers(stem):
-    import json
     return L4 if json.load(open(stem + ".board.json", encoding="utf-8"))["layers"] == 4 else L2
 
 
@@ -152,10 +152,24 @@ def fab(board):
                        capture_output=True, text=True)
     unrouted = re.search(r"Found (\d+) unconnected", r.stdout or "")
     if unrouted and int(unrouted.group(1)):
+        n = int(unrouted.group(1))
+        tracks = sum(1 for ln in open(pcb, encoding="utf-8") if ln.lstrip().startswith("(segment"))
+        # ⚠ SAY WHICH OF THE TWO FAILURES THIS IS. They need opposite responses and
+        # the message used to assert the first one flatly: a board that was never routed
+        # arrives as bare copper and wants route.py; a board that WAS routed and has
+        # three nets left wants a look at those three nets, and being told to "run
+        # route.py first" sends you to re-run a step that already ran. Track count is
+        # what distinguishes them, and it costs one pass over a file already on disk.
         raise SystemExit(
-            "%s: %s unconnected items -- this board is PLACED but not ROUTED, and a fab "
-            "package built from it would look complete and arrive as bare copper. Run "
-            "elec/route.py on it first." % (board, unrouted.group(1)))
+            "%s: %d unconnected item(s) -- %s. A fab package built from it would look "
+            "complete and arrive incomplete."
+            % (board, n,
+               "this board has NO routing at all; run elec/route.py on it first"
+               if tracks == 0 else
+               "the board IS routed (%d segments) but the router could not finish "
+               "these nets. Re-running route.py will not help -- it is deterministic "
+               "now and will make the same choices. Look at the nets themselves"
+               % tracks))
 
     # ⚠ AND DRC IS NOT THE WHOLE TEST EITHER. It answers "is this manufacturable",
     # not "is this correct": a router can hand back a DRC-perfect board on which the
