@@ -643,20 +643,15 @@ def cables(sx: float = LS.LEG_X, ly: float = LS.LEG_Y, k: int = 0):
     patch = _run([(x, y, PLUG_TOP),                             # the plug's back
                   (x, y, fold),                                 # folded into the channel
                   (b[0], b[1] + 1.0, fold),                     # out the -Y face
-                  (b[0], b[1] - 4.0, fold),                     # clear of it
-                  (b[0], WR.TRRS_Y - 10.0, fold),               # -Y FIRST, then across:
-                  (WR.TRRS_X, WR.TRRS_Y - 10.0, fold),          # the diagonal ran
-                                    # through the station plug's O10 barrel, which hangs
-                                    # 13 below this plane. 10 of Y offset clears it
-                  (WR.TRRS_X, WR.TRRS_Y - 10.0, tail - CABLE_D / 2.0 - 0.3),
-                  (WR.TRRS_X, WR.TRRS_Y, tail - CABLE_D / 2.0 - 0.3),
-                  (WR.TRRS_X, WR.TRRS_Y, tail)])                # and UP into the jack.
-                                    # It stops AT the plug's tail and comes at it FROM
-                                    # BELOW. The first pass ran straight down the
-                                    # station's axis from the channel, which is 16.75 of
-                                    # cable drawn inside the plug's own body -- the
-                                    # station's mouth faces -Z (user), so its plug hangs
-                                    # BELOW the adapter's top face, not above it
+                  (b[0], b[1] - 12.0, fold),                    # ...and it STOPS there.
+                  (b[0], b[1] - 18.0, fold - 6.0)])             # THE CHASSIS END IS
+                                    # PARKED (user 2026-09-16): the adapter board that
+                                    # used to be under the instrument is dropped, and
+                                    # this lead hangs in free air until the user's
+                                    # wiring plan lands. Drawn as a short stub rather
+                                    # than run to a station that is no longer there --
+                                    # a cable drawn into empty space would read as a
+                                    # routing decision, and this is the absence of one
     leg = _run([(x, y, JACK_BACK), (x, y, JACK_BACK - 40.0)])
     return [("leg_trrs_patch_%d" % k, patch), ("leg_trrs_leg_lead_%d" % k, leg)]
 
