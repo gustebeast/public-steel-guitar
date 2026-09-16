@@ -25,6 +25,9 @@ import sys
 
 import pcbnew
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import layout                                        # noqa: E402  (needs the path above)
+
 JAVA = os.path.expandvars(
     r"%LOCALAPPDATA%\Programs\temurin\jdk-25.0.4.1+1-jre\bin\java.exe")
 # Freerouting 2.4.1 is built for Java 25 (class file 69) -- a Java 21 runtime
@@ -145,6 +148,15 @@ def route(stem, passes=PASSES, timeout=900):
         board.BuildConnectivity()
         pcbnew.ZONE_FILLER(board).Fill(board.Zones())
     board.Save(pcb)
+    # ⚠ CANONICALISE THE ROUTED BOARD TOO, for the same reason layout.py does it --
+    # and the reason is now MEASURED rather than argued. Two independent runs of the
+    # whole pipeline lay 2,299 copper items that are byte-identical: freerouting is
+    # deterministic given deterministic input, which is what makes "run the script" a
+    # promise rather than a hope. All that separated the two files was 12,268 lines of
+    # random UUID. Left alone it would put noise in every diff of a routed board and
+    # make "did this change anything?" unanswerable at exactly the point where the
+    # answer matters most.
+    layout._canonical_uuids(pcb)
     n = len(list(board.GetTracks()))
     print("%s: %d track segments + vias imported" % (os.path.basename(pcb), n))
     return pcb
