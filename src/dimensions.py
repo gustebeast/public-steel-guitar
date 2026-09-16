@@ -773,7 +773,12 @@ LEVER_MORT_W = XBAR - 2 * MIN_WALL_2P        # 7.2 across the octagon mortise (t
 # two chassis sections meet. At 3.2 the seam plane runs down the middle of a wall with 1.6
 # left on each side. The pitch is then XBAR on the nose -- each mortise gets back the full
 # rib section the joint was sized against, and consecutive ribs simply touch.
-LEVER_PITCH  = LEVER_MORT_W + 2 * MIN_WALL_2P    # 10.4 = XBAR
+LEVER_PITCH  = LEVER_MORT_W + 2 * MIN_WALL_2P    # 10.4
+# THE BOTTOM PRISM'S THICKNESS is NOT the same number (user, 2026-09-16). The octagon mortise
+# reaches 8.9 up from the bed, so a floor of XBAR left only 1.5 of cap over each slot -- under
+# the two-bead rule, and the joint itself is already bottomed out at 1.6, so the cap is where
+# the tenth of a millimetre has to come from. chassis asserts the cap against the real solids.
+BOTTOM_T     = XBAR + 0.1                        # 10.5
 
 
 

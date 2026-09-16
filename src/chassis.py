@@ -342,6 +342,11 @@ def _build_full() -> cq.Workplane:
     # it used to stand from the bed straight through the mortise band -- which is why the two
     # stations flanking each seam had to be dropped. Keyed to the real solids so that a later
     # change to either datum fails here instead of quietly eating a tenon root.
+    _cap = MB.FLOOR_TOP - _KL.rib_mortise(_MORT_X[0]).val().BoundingBox().zmax
+    assert _cap >= D.MIN_WALL_2P - 1e-9, (
+        "only %.2f of cap over the lever mortises -- the bottom prism (D.BOTTOM_T %.1f) has to "
+        "carry two beads over the joint, and the joint is already at its own floor"
+        % (_cap, D.BOTTOM_T))
     _tz = _seg_tenon(SPLIT_X[0], Y_LO).val().BoundingBox().zmin
     _mz = _KL.rib_mortise(_MORT_X[0]).val().BoundingBox().zmax
     assert _tz >= _mz - 1e-6, (
@@ -639,9 +644,17 @@ def _seg_mortise(s, yr):
     the deck groove would have to pass the tenon through. Z is unretained here BY
     DESIGN — cadkit's install axis; the assembly around it closes Z (see the SEGMENT
     JOINT block: deck, endplates, and finally the four leg screws)."""
-    return (_SEG_J.mortise(drop=_SEG_ROOT + 1.0,
-                           length=(TP_GZ0 + 2.0) - (Z_BOT - 1.0))
-            .translate((s, yr, Z_BOT - 1.0)))
+    # TWO PARTS. Above the bottom prism it is the full cavity, drop and all. THROUGH the
+    # bottom prism it narrows to the tenon's own footprint (drop=0): that band is the lever
+    # mortise grid, and every mm the cavity takes there comes out of a 3.2 wall between two
+    # slots (user saw it eating them). It cannot stop at the bottom's top face altogether --
+    # the joint installs in Z, so as the +X segment is lowered its own bottom prism has to
+    # pass the standing tenon, and this channel is that path.
+    upper = _SEG_J.mortise(drop=_SEG_ROOT + 1.0,
+                           length=(TP_GZ0 + 2.0) - _SEG_JZ0).translate((s, yr, _SEG_JZ0))
+    lower = _SEG_J.mortise(drop=0.0,
+                           length=_SEG_JZ0 - (Z_BOT - 1.0)).translate((s, yr, Z_BOT - 1.0))
+    return upper.union(lower)
 
 
 def _end_dt(x_face, into, yc, z0, z1, socket=False, top_clr=TP_TG_DEPTH):
@@ -711,12 +724,13 @@ LIGHT_TIE_EVERY = 5        # ...INTERRUPTED by a tie every Nth grid wall. The bo
 def _light_band():
     """The window's own volume: a run down the bottom, broken by ties. Intersected with a
     segment it gives that segment's transparent piece; cut from it, the aperture it fills."""
-    band = box_at(D.BOTTOM_X1 - D.BOTTOM_X0, LIGHT_BAND_W, D.XBAR,
+    band = box_at(D.BOTTOM_X1 - D.BOTTOM_X0, LIGHT_BAND_W, D.BOTTOM_T,
                   x=(D.BOTTOM_X0 + D.BOTTOM_X1) / 2, y=Y_HI - LIGHT_BAND_DY,
                   z=(Z_BOT + MB.FLOOR_TOP) / 2)
     for _i in range(0, len(_MORT_X) - 1, LIGHT_TIE_EVERY):
         _wx = (_MORT_X[_i] + _MORT_X[_i + 1]) / 2.0       # the wall between two stations
-        band = band.cut(box_at(D.LEVER_PITCH - D.LEVER_MORT_W, LIGHT_BAND_W + 2.0, D.XBAR + 2.0,
+        band = band.cut(box_at(D.LEVER_PITCH - D.LEVER_MORT_W, LIGHT_BAND_W + 2.0,
+                               D.BOTTOM_T + 2.0,
                                x=_wx, y=Y_HI - LIGHT_BAND_DY,
                                z=(Z_BOT + MB.FLOOR_TOP) / 2))
     return band
@@ -871,7 +885,7 @@ def _split_light(segs):
     for i, s in enumerate(segs):
         a, b = edges[i], edges[i + 1]
         band = _light_band().intersect(
-            box_at(a - b, LIGHT_BAND_W + 2.0, D.XBAR + 2.0,
+            box_at(a - b, LIGHT_BAND_W + 2.0, D.BOTTOM_T + 2.0,
                    x=(a + b) / 2, y=Y_HI - LIGHT_BAND_DY,
                    z=(Z_BOT + MB.FLOOR_TOP) / 2))
         out.append((s.cut(_light_band()), s.intersect(band)))
