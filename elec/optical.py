@@ -895,6 +895,24 @@ BOARD_NOTES = {
     # being told not to -- which showed up as U7.19 and U10.2 sitting unconnected on a
     # routed board. Empty is the right default; re-add only what the stitcher reports.
     "stitch_exceptions": (),
+    # ⚠ ORDER OPTIONS ARE PART OF THE DESIGN, and nothing in a gerber records them.
+    # Mask colour is usually cosmetic and on this board it is not: twenty photodiodes
+    # look up through a 0.30 mm gap that runs 5.40 mm to the cover's aperture, and that
+    # gap is a cavity whose walls are the board's own top surface. A green or white mask
+    # makes it a light pipe -- ambient that gets past the aperture bounces along it and
+    # arrives at a detector from the side, which is the one direction the cover's comb
+    # cannot shield and the one error ambient subtraction cannot cancel, because it does
+    # not track the emitter. Black mask makes the same cavity a light trap. JLCPCB
+    # charges nothing for it.
+    #
+    # The silkscreen is already gone from around the optics (see strip_silk) -- that was
+    # done to silence DRC and happens to be the same answer: white ink beside a detector
+    # is a reflector.
+    "order_options": {
+        "soldermask": "black -- the sensor cavity is a light trap, not a light pipe; "
+                      "see the note in optical.py. Functional, not cosmetic.",
+        "silkscreen": "white (default). None is printed near the optics anyway.",
+    },
     "anchor": "courtyard",
     "refs_on_fab": True,
     # The ten sensor triplets sit at a 1.6 pitch by optical design, so their silkscreen
