@@ -64,6 +64,18 @@ def check(stem):
               % os.path.basename(stem))
         return 0
 
+    # ⚠ SKEW IS MEANINGLESS ON AN UNROUTED BOARD, and reporting it anyway is actively
+    # misleading. The first real run printed "ULPI skew 56.08 mm" -- alarming, and
+    # nonsense: four of the twelve nets were 1 mm stubs the router had not finished, so
+    # the number was measuring incompleteness, not mismatch. Say which it is.
+    rn = board.GetConnectivity().GetUnconnectedCount() if hasattr(
+        board.GetConnectivity(), "GetUnconnectedCount") else 0
+    if rn:
+        print("⚠ %s has %d unconnected item(s): the board is NOT fully routed, so the "
+              "lengths below measure how far the router got, not how well matched the "
+              "groups are. Finish routing before reading them as skew.\n"
+              % (os.path.basename(stem), rn))
+
     bad = 0
     for g in groups:
         nets = g["nets"]
