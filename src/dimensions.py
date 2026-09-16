@@ -787,7 +787,7 @@ def rib_comb_x(x_target: float) -> float:
     snapped here lands on a slot instead of being a hand-typed number the grid can walk away
     from. Was the half-motor-pitch rib comb (22.35); the bottom is one prism now and the
     stations are XBAR apart across all of it."""
-    return min(LEVER_GRID_X, key=lambda s: abs(s - x_target))
+    return min(lever_grid_x(), key=lambda s: abs(s - x_target))
 
 
 # FAR-ROW BELTS vs NEAR-ROW PULLEYS (see BELT_PLANE_DZ). Each far-row belt passes the near
@@ -989,11 +989,21 @@ BRIDGE_BASE_HALF = (SCREW_ROW_DX
 BRIDGE_BASE_X0 = BRIDGE_X - BRIDGE_BASE_HALF        # -23.1  (-X face)
 
 
-# THE BOTTOM'S OWN SPAN: the two faces where the endplates take over (chassis.KH_RAIL_X and
-# chassis.TP_EP_GX -- spelled here because the grid is defined here and chassis cannot be
-# imported from dimensions; chassis asserts the two agree).
-BOTTOM_X0 = -764 * BEAD + 0.4                        # keyhead takeover face
-BOTTOM_X1 = BRIDGE_BASE_X0 - 0.4                     # bridge takeover face
+# THE BOTTOM'S OWN SPAN: the chassis floor runs END TO END of the chassis -- the two KEPT-SHELL
+# faces at the leg sockets (chassis._SHELL_NX / _SHELL_PX), NOT the endplate takeover faces
+# further in. Beyond the shell faces is the endplates' own floor, which is their business.
+# Getting this wrong by the takeover faces is what lost two or three stations at each end.
+# Spelled here because the grid is defined here; chassis asserts the two agree. The keyhead
+# endplate's thickness comes from nut_block, which imports THIS module -- hence the deferred
+# import, and hence the grid being built on first use rather than at import.
+_EP_CLR = 0.4                                        # chassis.EP_LEG_CLR
+
+
+def bottom_span():
+    """(x0, x1) of the chassis floor: shell face to shell face."""
+    from . import nut_block as _NB                    # deferred: nut_block imports this module
+    return ((-764 * BEAD - _NB.KEYHEAD_W) + WALL_THICKNESS + _EP_CLR,
+            BRIDGE_BASE_X1 - WALL_THICKNESS - _EP_CLR)
 
 
 def _lever_grid():
@@ -1005,23 +1015,32 @@ def _lever_grid():
     and made the grid's phase an accident of the motor pitch. Now the bottom is drawn whole and
     the grid is laid into it: the leftover after a whole number of pitches is split evenly
     between the two ends, so both ends carry the same margin and neither is ever under 1.6."""
-    span = BOTTOM_X1 - BOTTOM_X0
+    b0, b1 = bottom_span()
+    span = b1 - b0
     n = int((span - 2 * MIN_WALL_2P - LEVER_MORT_W) // LEVER_PITCH) + 1
     used = (n - 1) * LEVER_PITCH + LEVER_MORT_W
-    x0 = BOTTOM_X0 + (span - used) / 2.0 + LEVER_MORT_W / 2.0
-    return [x0 + k * LEVER_PITCH for k in range(n)]
+    x0 = b0 + (span - used) / 2.0 + LEVER_MORT_W / 2.0
+    stations = [x0 + k * LEVER_PITCH for k in range(n)]
+    margin = (stations[0] - LEVER_MORT_W / 2) - b0
+    assert margin >= MIN_WALL_2P - 1e-9, (
+        "the bottom grid leaves only %.2f at its ends, under the two-bead floor" % margin)
+    return stations
 
 
-LEVER_GRID_X = _lever_grid()
-LEVER_END_MARGIN = (LEVER_GRID_X[0] - LEVER_MORT_W / 2) - BOTTOM_X0
-assert LEVER_END_MARGIN >= MIN_WALL_2P - 1e-9, (
-    "the bottom grid leaves only %.2f at its ends, under the two-bead floor" % LEVER_END_MARGIN)
+_GRID = []
+
+
+def lever_grid_x():
+    """The mortise stations, built on first use (see bottom_span)."""
+    if not _GRID:
+        _GRID.extend(_lever_grid())
+    return _GRID
 
 
 def lever_wall_x(x_target: float) -> float:
     """The nearest WALL centre in the bottom grid -- the middle of the 3.2 between two
     mortises. A split plane or anything else that must not land in a slot snaps here."""
-    x0 = LEVER_GRID_X[0] + LEVER_PITCH / 2
+    x0 = lever_grid_x()[0] + LEVER_PITCH / 2
     return x0 + round((x_target - x0) / LEVER_PITCH) * LEVER_PITCH
 
 BRIDGE_BASE_X1 = BRIDGE_X + BRIDGE_BASE_HALF        # +23.1  (+X face)
