@@ -186,6 +186,18 @@ GLOBAL_OK = {
     frozenset({"shaft_trrs_jack", "leg_column_plug"}),
     frozenset({"shaft_trrs_jack", "jack_seat_ring"}),
     frozenset({"jack_seat_ring", "leg_shaft"}),
+    # ── THE REDESIGNED LEG's blind-mate (src/leg_trrs.py), all four DESIGNED fits ──
+    # the male barrel inside the female jack IS the mate: two bought parts modelled
+    # as separate solids, engaged over BARREL_L when the leg is latched
+    frozenset({"leg_trrs_plug", "leg_trrs_jack"}),
+    # the keeper is PRESSED into the tenon's tip (THROAT_PRESS 0.1 on Ø10.5)...
+    frozenset({"fixed_tenon", "leg_trrs_throat"}),
+    # ...and its TPU lock pin is pressed into the tenon's -X flank (PIN_FIT 0.2 on
+    # Ø2.0). An elastomer squeezing into an undersize printed bore is the fit, not a
+    # clash — see leg_trrs.PIN_FIT
+    frozenset({"fixed_tenon", "leg_trrs_pin"}),
+    # the male plug is pressed into the adapter's roof over PLUG_GRIP
+    frozenset({"body_adapter", "leg_trrs_plug"}),
 }
 
 # The pedal bar is a self-contained subassembly (bar pieces + the sliding
