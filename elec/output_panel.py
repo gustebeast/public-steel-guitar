@@ -729,11 +729,28 @@ BOARD_NOTES = {
         "Y1": (-6.00, -15.00, 0.0),
         "C15": (-11.00, -15.00, 0.0),
         "C16": (-1.00, -15.00, 0.0),
-        "U4": (-17.00, -8.00, 0.0),
+        # ⚠ 2.5 mm EAST, TO OPEN ITS WEST CHANNEL. At -17.00 the hub's courtyard came
+        # within 0.75 mm of J4's, and ALL SIX of its west-edge pins -- the upstream
+        # differential pair, 3V3, GND and both oscillator pins -- had to escape through
+        # that gap or travel around the package. HUB_XI was the one that lost, and it
+        # survived a crystal relocation and two routing attempts before the cause was
+        # looked at rather than the symptom.
+        # U1 sits at 89.36, so there were 3.69 mm of slack here doing nothing. The
+        # channel goes to 3.25 mm and the hub keeps 1.2 mm to the MCU.
+        "U4": (-14.50, -8.00, 0.0),
         "C12": (-17.00, -4.00, 0.0),
-        "Y2": (-17.00, -17.50, 0.0),
-        "C17": (-21.50, -17.50, 0.0),
-        "C18": (-12.50, -17.50, 0.0),
+        # ⚠ THE CRYSTAL MOVES UP UNDER ITS HUB, and this is a signal-integrity fix that
+        # happened to surface as a routing failure. At -17.50 it sat 9.6 mm from U4's XI
+        # pin, with its two load caps another 4.5 mm out either side -- a 12 MHz
+        # oscillator node stretched across 18 mm of board. That is bad practice on its
+        # own terms (stray capacitance on the loop, and an antenna at the one node that
+        # cannot tolerate one), and the only reason it was noticed is that HUB_XI would
+        # not route.
+        # The board directly below U4 was empty, so the crystal takes it: XI/XO are on
+        # U4's west edge at its bottom corner, and the loop drops from 18 mm to ~4.
+        "Y2": (-16.00, -13.00, 0.0),
+        "C17": (-17.50, -16.50, 0.0),
+        "C18": (-14.50, -16.50, 0.0),
         "U6": (6.00, -8.00, 0.0),
         "C9": (11.00, -8.00, 0.0),
         "C10": (14.50, -8.00, 0.0),
