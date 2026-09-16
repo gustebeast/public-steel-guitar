@@ -1,10 +1,35 @@
 ** Drc report for output_panel.kicad_pcb **
-** Created on 2026-09-15T16:30:37 **
+** Created on 2026-09-16T13:09:46 **
 ** Report includes: Errors, Warnings **
 
-** Found 0 DRC violations **
+** Found 7 DRC violations **
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(127.6019 mm, 97.3475 mm): Via [N$1] on F.Cu - B.Cu
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(80.7162 mm, 122.7362 mm): Via [SW] on F.Cu - B.Cu
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(83.2063 mm, 115.7563 mm): Via [HUB_XO] on F.Cu - B.Cu
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(83.4591 mm, 111.8327 mm): Via [HUB_DN1_DM] on F.Cu - B.Cu
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(91.9722 mm, 113.2968 mm): Via [OSC_OUT] on F.Cu - B.Cu
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(93.7334 mm, 80.1197 mm): Via [RELAY_COIL] on F.Cu - B.Cu
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(95.3750 mm, 84.7844 mm): Via [N$5] on F.Cu - B.Cu
 
-** Found 0 unconnected pads **
+** Found 1 unconnected pads **
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(91.2000 mm, 104.0625 mm): Track [+3V3] on F.Cu, length 0.4000 mm
+    @(90.0625 mm, 109.6000 mm): Track [+3V3] on F.Cu, length 0.6649 mm
 
 ** Found 0 Footprint errors **
 

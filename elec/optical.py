@@ -2,15 +2,15 @@
 
     py -3.12 elec/optical.py            # -> elec/out/optical.{net,board.json}
 
-THE LAST BOARD OF THE FIVE, and the only one whose GEOMETRY IS AN INPUT rather
-than an output. The other four size themselves from their parts; this one is
+THE SIXTH AND LAST BOARD, and the only one whose GEOMETRY IS AN INPUT rather than
+an output. The other five size themselves from their parts; this one is
 shaped by the instrument -- a 14 mm band of deck between the magnetic pickup's
 cavity and the endplate -- and `src/optical_pickup.py` has carried that geometry,
 part by part, since long before there was a netlist.
 
 ⚠ SO THE PLACEMENTS ARE IMPORTED FROM THE CAD, NOT RETYPED HERE. Every other
 board in elec/ is the source and the CAD follows it; this one is the reverse, and
-copying 149 positions into a second file would have created exactly the drift the
+copying 153 positions into a second file would have created exactly the drift the
 rest of the pipeline is built to prevent. `src.optical_pickup.PARTS` is the single
 source, and _placements() below translates it into board-local coordinates. If a
 part moves in the CAD it moves here, and if a ref exists in one and not the other
@@ -45,8 +45,31 @@ which are CH32V307s with the PHY built in.
 the output panel gained a high-speed hub it runs ~100 mm to that board's J4
 instead, and the hub carries both devices upstream on one cable. Both are HS, so
 neither sits behind a Transaction Translator.
+
+⚠ ROUTING IS NOT FINISHED, AND HERE IS EXACTLY WHERE IT STOPPED. Freerouting gets
+this board to 2 real violations and 15 unconnected items and then converges -- 20
+passes and 30 passes give the same answer, and 30 is sometimes WORSE, so more
+effort is not the missing ingredient. The remainder, diagnosed rather than
+summarised, because "15 unconnected" is not something anyone can act on:
+
+  * 13 of the 15 are DANGLING GND STUBS. The router laid a short track from a
+    ground pad toward the plane and never placed the via at the end of it. GND
+    lives on In1.Cu and B.Cu; a pad on F.Cu cannot reach it without one. These are
+    a mechanical cleanup -- drop a via at each free end, or delete the stub and let
+    the pad's own via serve it -- not a routing problem.
+  * 2 are REAL: TIA_OUT_7A and TIA_IN_1B. Those are transimpedance amp nets in the
+    dense sensing strip, and they want a human.
+  * The 2 violations are dangling vias, same family as the first bullet.
+
+AND THE COUNT IS NOT THE REASON TO FINISH IT BY HAND. Twenty summing nodes reading
+tens of nanoamps and a 60 MHz ULPI bus are not things to hand to an autorouter and
+stop looking at. Nothing here has checked that the ULPI pair is length-matched,
+that the TIA inputs are guarded, or that the switcher's loop is tight -- and DRC
+does not know to ask. Treat the routed .kicad_pcb as a CANDIDATE. The placement,
+which is the part this file is actually responsible for, is clean: the only DRC
+violations on the placed board are the 20 declared sensor-triplet courtyards.
 """
-from __future__ import annotations
+
 
 import os
 import sys
@@ -97,17 +120,19 @@ _R_0402 = "Resistor_SMD:R_0402_1005Metric"
 _C_0402 = "Capacitor_SMD:C_0402_1005Metric"
 
 
-def _fp(ref, pkg):
-    """Footprint for a CAD part. The 0402 class splits by ref prefix."""
-    if pkg == "0402":
-        return _R_0402 if ref[0] == "R" or ref.startswith("Rf") else _C_0402
-    if pkg == "0805OPT":
-        # the emitters are LEDs and the detectors are photodiodes: same 0805 land,
-        # different silkscreen polarity marker, and it is worth having the right one
-        # because these are the parts an assembler is most likely to fit backwards
-        return "LED_SMD:LED_0805_2012Metric" if ref[0] == "D" else \
-               "Diode_SMD:D_0805_2012Metric"
-    return FP[pkg]
+# (There is no _fp() helper. An earlier draft had one that mapped a CAD package name
+#  to a footprint, but every Part below names its own footprint at the point of
+#  creation -- which is where a reader looks for it -- so the helper was never called.
+#  A dead function is bad enough; a dead function that a COMMENT points at as the
+#  explanation is worse, because it sends the next reader somewhere that does not
+#  decide anything. The two CLASS packages are resolved like this:
+#    0402    -> R_0402 for Rf*/R*, C_0402 for Cf*/Cd*/C*      (by ref prefix)
+#    0805OPT -> LED_0805 for the ten emitters D1-D10,
+#               D_0805 for the twenty detectors PD<n>A/B      (same land, and the
+#               silkscreen polarity marker differs -- these are the parts an
+#               assembler is most likely to fit backwards)
+#  Verified against the generated netlist: 10 LED_0805, 20 D_0805, 20 Rf and 11 R on
+#  R_0402, 10 ballasts on R_0603, 30 Cf/Cd on C_0402.)
 
 
 # ── STM32H743ZIT6, LQFP144 ───────────────────────────────────────────────────
@@ -701,7 +726,8 @@ def _placements(cx, cy):
     """{ref: (x, y, rot)} board-local, straight from the CAD's PARTS table."""
     out = {}
     for p in OP.PARTS:
-        out[p["ref"]] = (round(p["x"] - cx, 4), round(p["y"] - cy, 4), 0.0)
+        out[p["ref"]] = (round(p["x"] - cx, 4), round(p["y"] - cy, 4),
+                         float(p.get("rot", 0.0)))
     return out
 
 
@@ -721,14 +747,187 @@ BOARD_NOTES = {
     # is an unbroken ground plane under twenty summing nodes reading tens of
     # nanoamps AND under a 60 MHz ULPI bus; there is no version of this board that
     # works with a two-layer stack and a hatched pour.
-    "zones": [("GND", "In1.Cu", 0.3), ("GND", "B.Cu", 0.3)],
+    # ⚠ GND IS POURED ON F.Cu TOO, AND THAT IS A ROUTING DECISION AS MUCH AS AN
+    # ELECTRICAL ONE. Every ground pad on this board is an SMD pad on F.Cu; the
+    # planes are on In1/B, which an F.Cu pad cannot reach without a via. Left to the
+    # autorouter that meant 75 pads each needing a stub and a via, and it half-did
+    # them -- 13 of the 15 connections it could not make were dangling GND stubs with
+    # no via on the end.
+    #
+    # A pour on F.Cu removes the problem rather than solving it: the zone fill
+    # connects every ground pad directly, on its own layer, with no router
+    # involvement and no per-pad via to place. The stitching between F/In1/B is what
+    # vias are for, and those go in open copper where there is room for them.
+    # It is also just the normal way to build a mixed-signal board -- ground on every
+    # layer it can be on -- so this is the pipeline catching up with practice.
+    "zones": [("GND", "F.Cu", 0.3), ("GND", "In1.Cu", 0.3), ("GND", "B.Cu", 0.3)],
     # ⚠ THE PLACEMENTS NAME THE COURTYARD CENTRE, not the pad centroid. This is the
     # only board in elec/ where that is true, and it is true because these coordinates
     # come from a MECHANICAL model, which reasons about the box a part occupies rather
     # than about where its solder lands average out. layout.py honours it; see
     # _anchor_on_courtyard there for what it cost to discover.
+    # ⚠ THE HIGH-SPEED BUDGETS, AND THEY ARE DELIBERATELY LOOSE. elec/verify.py
+    # enforces these; the numbers come from the geometry rather than from habit.
+    #
+    # ULPI is 60 MHz source-synchronous over a 34.5 mm run -- about 207 ps of flight
+    # at ~6 ps/mm in FR4. A 10 mm length mismatch is 60 ps against a 16,670 ps bit
+    # period: 0.36%, against a setup window measured in nanoseconds. Matching this bus
+    # to a tenth of a millimetre would LOOK rigorous and would be cargo cult, so the
+    # budget is 12 mm and the reason is recorded. What actually matters here is the
+    # continuous GND plane under it (In1.Cu) and keeping the clock out of the analog
+    # band -- both placement decisions, already made.
+    #
+    # USB HS is the one with a real constraint, and it is still not length: at 480 Mbps
+    # the bit period is 2,080 ps and the run is 25 mm, so intra-pair skew has room. The
+    # binding requirements are that DP and DM stay a PAIR -- same layers, so the
+    # differential impedance the stack-up was designed for still describes something --
+    # and that neither collects vias, since each one is a discontinuity.
+    "match": [
+        {"name": "ULPI", "max_skew_mm": 12.0, "same_layer": False, "max_vias": None,
+         "nets": ["ULPI_D0", "ULPI_D1", "ULPI_D2", "ULPI_D3", "ULPI_D4", "ULPI_D5",
+                  "ULPI_D6", "ULPI_D7", "ULPI_CK", "ULPI_STP", "ULPI_DIR", "ULPI_NXT"],
+         "why": "60 MHz over 34.5 mm = 207 ps of flight; 12 mm of mismatch is 72 ps "
+                "against a 16,670 ps bit period. Loose ON PURPOSE -- tightening it "
+                "would fail builds for an effect four orders of magnitude below what "
+                "matters on this bus."},
+        {"name": "USB_HS", "max_skew_mm": 2.5, "same_layer": True, "max_vias": 2,
+         "nets": ["USB_DP", "USB_DM"],
+         "why": "480 Mbps, 2,080 ps per bit over a 25 mm run. Skew has room; what has "
+                "to hold is that the two stay a PAIR on the same layers (differential "
+                "impedance is a property of the two conductors' geometry relative to "
+                "each other, which a layer split destroys) and that neither collects "
+                "vias, each being an impedance discontinuity."},
+    ],
+    # ⚠ In1.Cu IS A PLANE, NOT A ROUTING LAYER, and saying so is what makes it true.
+    # KiCad's Specctra export calls every copper layer "signal", so the router happily
+    # laid tracks across the ground plane and fragmented it -- 5729 mm2 of pour came
+    # back as 1043. The impedance reference the USB pair and the ULPI bus both depend
+    # on was being destroyed by the step that routed them. route.py now declares this
+    # to freerouting as a plane and it leaves it alone.
+    "plane_layers": ("In1.Cu",),
+    # ⚠ AND EVERY GROUND PAD GETS ITS OWN VIA TO THAT PLANE. The F.Cu pour connects
+    # them all when the board is placed -- and then 2,400 track segments chop it into
+    # islands, every island that reaches no via becomes unconnected copper, and island
+    # removal deletes it. 86 ground endpoints went that way. A via per pad makes the
+    # connection independent of whatever the router does afterwards; the pour stays,
+    # but as a bonus rather than the mechanism.
+    # ⚠ THE TWENTY SENSING CELLS ARE ROUTED BY THE AUTOROUTER, AND I TRIED TO TAKE
+    # THAT AWAY FROM IT AND COULD NOT. Each cell is the same four connections twenty
+    # times -- photodiode into the summing node, the op-amp's inverting input, and the
+    # feedback R and C across it -- and that node carries TENS OF NANOAMPS, so its loop
+    # area is worth pinning down rather than re-rolling every time the board is
+    # regenerated. I built a pre-router for it (straight and L-shaped paths between the
+    # cell's own pads, collision-checked) and it placed SEVEN segments out of about
+    # sixty before running out of clear paths.
+    #
+    # THE REASON IS THE INTERESTING PART: the parts in this strip sit a fraction of a
+    # millimetre apart, so almost every path between two pads of one cell is blocked ON
+    # F.Cu -- and the autorouter gets through because it drops to In2.Cu and B.Cu and
+    # comes back. Matching that would mean placing vias and routing on inner layers,
+    # which is writing a router, not configuring one. A pre-router that does an eighth
+    # of the job while a comment claims the summing node is deterministic would be
+    # worse than none, so there is none.
+    #
+    # ⚠ WHAT THAT LEAVES: the most sensitive geometry on this board is chosen by
+    # freerouting and differs between runs. That is a real limitation and it is not
+    # visible in any DRC report. If the analog performance ever disappoints, this is
+    # the first thing to look at -- and the fix is to give the strip more room so the
+    # cells CAN be wired on one layer, not to tune the router.
+    # ⚠ THIS DECLARATION CURRENTLY FAILS, ON PURPOSE, AND THAT IS THE POINT.
+    # layout.py reports "inner run U7->U10 blocked" on every build and verify.py fails
+    # the pair's skew afterwards. Both are telling the truth about the same thing: THE
+    # COMPUTE BLOCK'S PLACEMENT DOES NOT LEAVE ROOM FOR A PROPER USB PAIR. The PHY sits
+    # above two rows of parts, so there is no top-layer path to the connector, and the
+    # inner layer -- the normal escape -- is perforated by the 75 ground stitches that
+    # every ground pad needs. Reserving a corridor was tried and the run still cannot
+    # get across.
+    #
+    # THE FIX IS PLACEMENT, NOT ROUTING: the USB chain (PHY -> ESD -> connector) has to
+    # be placed as a deliberate group before the row packer fills in around it, the way
+    # U10 now is. That is a re-plan of the -Y block against the conduit budget, which is
+    # a design decision rather than a patch, and it is left as one.
+    #
+    # The declaration STAYS so the failure stays visible. Deleting it would make the
+    # build quiet and the board no better -- freerouting would go on laying DP and DM
+    # as two unrelated traces, which is what it did before anyone looked.
+    #
+    # ⚠ THE USB PAIR SHOULD BE ROUTED AS A PAIR, because freerouting cannot. It routes
+    # DP and DM as two independent nets that happen to share endpoints -- 39.6 mm of DP
+    # against 32.0 of DM over a 22 mm path, two traces on visibly different routes. The
+    # timing skew that implies is survivable (46 ps against a 2,080 ps bit); what is not
+    # is that two traces on different paths are not COUPLED, so the differential
+    # impedance the stack-up was designed around stops describing the interconnect.
+    # That is a geometric defect, not a numeric one, and no budget value fixes it.
+    # The chain is the order the signal physically travels: PHY -> ESD array -> socket.
+    "diff_pairs": [{"nets": ["USB_DP", "USB_DM"], "chain": ["U7", "U10", "J1"],
+                    "gap": 0.2, "width": 0.2}],
+    # In2.Cu is the pair's escape layer: it sits directly under the In1.Cu ground
+    # plane, so the run is referenced to solid copper for its whole length, and it
+    # carries no pads at all -- which is what makes a clear path possible under two
+    # rows of components.
+    "diff_pair_inner": "In2.Cu",
+    # ⚠ A RESERVED CORRIDOR FOR THAT INNER RUN, because the two features above compete
+    # for the same copper. Stitching 75 ground pads puts 75 THROUGH vias in, and a
+    # through via pierces In2.Cu as surely as F.Cu -- so the inner layer the pair needs
+    # becomes a sieve and the 15 mm run from the PHY to the ESD array cannot get across
+    # it, with or without dog-legs. Whichever routine runs first wins and the other
+    # fails; reserving a lane is what lets both succeed.
+    # x -34..-28 is the column between U13 and L1, which the pair already travels; the
+    # ground pads displaced from it fall back to the pour, which is what they had
+    # before any of this existed.
+    "via_keepouts": [[-34.5, -101.0, -27.5, -78.0]],
+    # ⚠ THE FEEDBACK CLUSTERS, LAID HERE RATHER THAN SEARCHED FOR. Twenty identical
+    # networks -- op-amp output, feedback R, feedback C, and the photodiode on the input
+    # -- packed into the Y gaps of a 13.6 mm strip that already holds 107 parts. Nearly
+    # every unconnected pad this board reports is one of them failing to reach the pin
+    # beside it, and they are the most generator-shaped thing on the board: the same
+    # three-pad star, twenty times, at a spacing the string fan fixes.
+    # Only the LOCAL cluster is laid; the long run to the MCU's ADC pin stays the
+    # router's, which is the half it is good at. See _local_nets.
+    "local_nets": (r"TIA_IN_\d+[AB]", r"TIA_OUT_\d+[AB]"),
+    "stitch_nets": ("GND",),
+    # ⚠ ONE GROUND PAD GIVES WAY TO THE USB PAIR, and it is the right way round. The
+    # pair routes first and its escape vias occupy the copper beside the PHY, which
+    # leaves U7.19 nowhere to drill. The trade is not close once stated: a ground pad
+    # that misses its own via still reaches the plane through the F.Cu pour -- a
+    # degraded connection, not an absent one, and the connection every board in this
+    # project had until this session. A differential pair that cannot escape as a pair
+    # is not a differential pair at all, and nothing downstream recovers it.
+    #
+    # AND U7.19 IS THE CHEAPEST ONE TO LOSE: the USB3343 is a QFN whose EXPOSED PAD is
+    # its primary ground, and that pad takes a via straight through its own copper (see
+    # the big-pad branch in layout.py). U7.19 is a second ground pin on a part that is
+    # already solidly grounded, not a part's only path to the plane.
+    # ⚠ AN EXCEPTION LIST IS A SNAPSHOT OF A LAYOUT, and it goes stale silently. These
+    # four were the ground pads the stitcher could not reach around the OLD USB cluster,
+    # and after the chain was re-planned they were pads it could have reached and was
+    # being told not to -- which showed up as U7.19 and U10.2 sitting unconnected on a
+    # routed board. Empty is the right default; re-add only what the stitcher reports.
+    "stitch_exceptions": (),
+    # ⚠ ORDER OPTIONS ARE PART OF THE DESIGN, and nothing in a gerber records them.
+    # Mask colour is usually cosmetic and on this board it is not: twenty photodiodes
+    # look up through a 0.30 mm gap that runs 5.40 mm to the cover's aperture, and that
+    # gap is a cavity whose walls are the board's own top surface. A green or white mask
+    # makes it a light pipe -- ambient that gets past the aperture bounces along it and
+    # arrives at a detector from the side, which is the one direction the cover's comb
+    # cannot shield and the one error ambient subtraction cannot cancel, because it does
+    # not track the emitter. Black mask makes the same cavity a light trap. JLCPCB
+    # charges nothing for it.
+    #
+    # The silkscreen is already gone from around the optics (see strip_silk) -- that was
+    # done to silence DRC and happens to be the same answer: white ink beside a detector
+    # is a reflector.
+    "order_options": {
+        "soldermask": "black -- the sensor cavity is a light trap, not a light pipe; "
+                      "see the note in optical.py. Functional, not cosmetic.",
+        "silkscreen": "white (default). None is printed near the optics anyway.",
+    },
     "anchor": "courtyard",
     "refs_on_fab": True,
+    # The ten sensor triplets sit at a 1.6 pitch by optical design, so their silkscreen
+    # outlines collide with each other and with their neighbours' pads -- 140 warnings
+    # for ink the solder mask would clip anyway. See _place_ref's note in layout.py.
+    "strip_silk": ("D", "PD"),
     "single_sided": True,      # every part on F.Cu: the optics FIRE UP through it
     "qty_per_instrument": 1,
     "placements": _placements(CX, CY),
@@ -761,7 +960,8 @@ def _assert_matches_cad(net_path):
                        "no placement, so it would land on the origin" % extra)
     # 0402 and 0805OPT are CLASSES, not parts -- the CAD's name does not say whether
     # an 0402 is a resistor or a capacitor, nor whether an 0805 optical part is an
-    # emitter or a detector, so those two are settled by ref prefix in _fp() instead.
+    # emitter or a detector, so those two are settled by ref prefix where the parts
+    # are created (see the note above the pin map) and skipped here.
     # FB1 is the one genuine exception: a ferrite bead sharing the 1608 land with an
     # 0603 resistor. Exempted BY NAME rather than by loosening the rule, because the
     # rule was right to flag it -- it is the CAD's package class that is imprecise.
