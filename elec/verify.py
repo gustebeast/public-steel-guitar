@@ -68,8 +68,11 @@ def check(stem):
     # misleading. The first real run printed "ULPI skew 56.08 mm" -- alarming, and
     # nonsense: four of the twelve nets were 1 mm stubs the router had not finished, so
     # the number was measuring incompleteness, not mismatch. Say which it is.
-    rn = board.GetConnectivity().GetUnconnectedCount() if hasattr(
-        board.GetConnectivity(), "GetUnconnectedCount") else 0
+    board.BuildConnectivity()
+    try:
+        rn = board.GetConnectivity().GetUnconnectedCount(False)
+    except TypeError:          # the signature gained aVisibleOnly somewhere in KiCad 9/10
+        rn = board.GetConnectivity().GetUnconnectedCount()
     if rn:
         print("⚠ %s has %d unconnected item(s): the board is NOT fully routed, so the "
               "lengths below measure how far the router got, not how well matched the "
