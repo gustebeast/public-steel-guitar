@@ -225,10 +225,30 @@ LOAD_Z = -15 * B                  # -12.0 tunnel/cover bottom (load window botto
 # ── spring (NEW BOM SKU) ─────────────────────────────────────────────────────
 SPR_OD = 5.0
 SPR_WIRE = 0.6
-SPR_FREE = 12.0
-SPR_N = 6.0                       # active coils
-SPR_SOLID = (SPR_N + 2) * SPR_WIRE                     # 4.8
-SPR_RATE = 2.51                   # N/mm (G=79300, see the BOM line)
+# ONE COIL FOR BOTH LATCHES (user), and it is a BOUGHT part CUT TO LENGTH.
+# uxcell B0GCZVQFWN is 304 SS, O5.0 OD x 0.6 wire, 10 to a pack -- but 15.0 FREE, and
+# 15.0 does not fit the lower latch at all: the bar collar's sleeve has to swallow the
+# coil at free length plus a back wall, and from the cup's floor it has 12.8. That is
+# 2.2 short of the coil ITSELF, so no installed length or chamfer could rescue it, and
+# the collar cannot grow -- its +-Y face IS the bar tower's (pedal_bar asserts it) and
+# its cup floor is pinned by a 45-degree flank. Growing the tower 6.4 to suit a spring
+# is the tail wagging the instrument.
+# So the coil is CUT to 12.0 free, which is a snip with side cutters and which the
+# geometry below was drawn around anyway. Cutting RAISES the rate (k scales 1/n, the
+# same arithmetic the BOM already spells out for the knee coil), and that is what makes
+# the numbers land back where they started rather than merely close.
+SPR_FREE = 12.0                   # AS CUT, from a 15.0 bought length
+SPR_N = 8.0                       # active coils left after the cut. The bought coil is
+                                  # longer than the one this was first drawn around, so
+                                  # even shortened it keeps more turns -- solid goes 4.8
+                                  # -> 6.0, against a pressed length of 7.20. CUT TO
+                                  # LEAVE AT MOST 10 TOTAL TURNS: at 12 the coil binds
+                                  # under the thumb before the button bottoms
+SPR_SOLID = (SPR_N + 2) * SPR_WIRE                     # 6.0
+SPR_RATE = 2.38                   # N/mm: ~1.9 as bought (bracketed off McMaster's
+                                  # published 1.96 for a O5.63 x 0.63 x 12.5), times
+                                  # 10/8 for the coils the cut removes. MEASURE ON
+                                  # ARRIVAL -- every force derives from it
 SPR_BORE_D = SPR_OD + 0.4         # 5.4 pocket in the slider
 SPR_ID = SPR_OD - 2 * SPR_WIRE    # 3.8 coil bore
 POST_D = SPR_ID - 0.8             # 3.0 guide post (0.4 radial clearance in the coil)
