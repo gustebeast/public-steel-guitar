@@ -176,7 +176,93 @@ def _anchor_on_pads(fp, target):
     fp.SetPosition(pcbnew.VECTOR2I(pos.x + (target.x - cx), pos.y + (target.y - cy)))
 
 
-def _diff_pairs(board, specs, inner=None, clr=0.14):
+# counters for why a differential-pair hop could not be laid -- the failure message
+# quotes them, because "no clear path" on its own sends you looking in the wrong place:
+# 'escape' is a placement problem, 'run' an obstacle problem, 'edge' a board-outline one.
+_DBG = {}
+
+
+def _offset_poly(pts, ds, math):
+    """`pts` offset by the signed per-vertex distances `ds`, corners mitred.
+
+    This is the whole trick. Offsetting a polyline preserves parallelism through the
+    bends, so two rails taken as +d and -d of one line keep their gap and cannot cross,
+    however the line turns -- the pair property becomes a consequence of the
+    construction instead of something checked for afterwards.
+
+    ⚠ THE OFFSET VARIES PER VERTEX, which is not decoration. At a package the two rails
+    have to start ON their own pads, and those are as far apart as the part's pitch
+    makes them -- 1.9 mm across a SOT-563, 0.5 mm across a USB-C. Run out at the pair's
+    own pitch instead and the rails leave the pads diagonally, straight into the lane
+    of the pad BETWEEN them; on this board that missed the ESD array's ground pin by
+    0.012 mm and failed every hop. Starting at the pad separation and tapering to the
+    pair pitch over the escape is what a person draws, and it is the same polyline
+    trick with one number per vertex rather than one for the line.
+    """
+    if not isinstance(ds, (list, tuple)):
+        ds = [ds] * len(pts)
+    segs = []
+    for i, (p, q) in enumerate(zip(pts, pts[1:])):
+        ux, uy = q[0] - p[0], q[1] - p[1]
+        L = math.hypot(ux, uy)
+        if L == 0:
+            continue
+        ux, uy = ux / L, uy / L
+        nx, ny = -uy, ux
+        segs.append(((p[0] + ds[i] * nx, p[1] + ds[i] * ny),
+                     (q[0] + ds[i + 1] * nx, q[1] + ds[i + 1] * ny)))
+    if not segs:
+        return list(pts)
+    out = [segs[0][0]]
+    for s1, s2 in zip(segs, segs[1:]):
+        (x1, y1), (x2, y2) = s1
+        (x3, y3), (x4, y4) = s2
+        den = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4)
+        if abs(den) < 1e-9:
+            out.append(s1[1])
+            continue
+        e = x1 * y2 - y1 * x2
+        f = x3 * y4 - y3 * x4
+        out.append(((e * (x3 - x4) - (x1 - x2) * f) / den,
+                    (e * (y3 - y4) - (y1 - y2) * f) / den))
+    out.append(segs[-1][1])
+    return out
+
+
+def _centrelines(p0, p1, detour_mm=6.0, step_mm=0.5):
+    """Candidate centrelines from p0 to p1, simplest first.
+
+    Straight, then the two right-angle elbows, then Z routes with the crossbar swept
+    across and BEYOND the two endpoints.
+
+    ⚠ THE OVERSHOOT IS THE POINT OF THE Z FAMILY. One corner can only ever route inside
+    the rectangle the two endpoints span, and the obstacle that stopped this pair -- a
+    USB-C's own shell tab, 1 mm of through-plated copper sitting between the socket and
+    the part that feeds it -- is inside that rectangle on every layer. Getting past it
+    means going AROUND, which means a crossbar placed outside the span, which no
+    one-corner shape can express.
+    """
+    out = [[p0, p1]]
+    if p0[0] != p1[0] and p0[1] != p1[1]:
+        out.append([p0, (p1[0], p0[1]), p1])
+        out.append([p0, (p0[0], p1[1]), p1])
+    step = pcbnew.FromMM(step_mm)
+    reach = pcbnew.FromMM(detour_mm)
+    for axis in (0, 1):
+        lo, hi = sorted((p0[axis], p1[axis]))
+        cs = [lo + k * step for k in range(int((hi - lo) // step) + 1)]
+        # inside the span first, then working outwards on both sides
+        for k in range(1, int(reach // step) + 1):
+            cs += [lo - k * step, hi + k * step]
+        for c in cs:
+            if axis == 0:
+                out.append([p0, (c, p0[1]), (c, p1[1]), p1])
+            else:
+                out.append([p0, (p0[0], c), (p1[0], c), p1])
+    return out
+
+
+def _diff_pairs(board, specs, outline=None, inner=None, clr=0.14):
     """Route declared differential pairs AS PAIRS, before the autorouter sees them.
 
     ⚠ FREEROUTING HAS NO CONCEPT OF A DIFFERENTIAL PAIR. It routes DP and DM as two
@@ -191,13 +277,26 @@ def _diff_pairs(board, specs, inner=None, clr=0.14):
 
     So it is routed here, deterministically, and excluded from the router's DSN.
 
-    HOW: the two nets' pads are walked along a declared `chain` of parts -- for USB,
-    PHY -> ESD array -> connector, which is the order the signal physically travels.
-    For each hop the CENTRELINE between the two nets' pads is laid out (straight if it
-    is clear, else an L), and the two tracks are emitted parallel to it, offset by half
-    the pitch either side. Short stubs then fan each pad in to its own track. The
-    result is two conductors that stay a fixed distance apart for the whole run, which
-    is what a controlled differential impedance actually requires.
+    ⚠ EVERYTHING IS BUILT BY OFFSETTING ONE CENTRELINE, and that is the design of this
+    routine rather than an implementation detail. It was arrived at the long way round:
+    the first version searched a via position for each pad and then joined via to via,
+    and every bug it had was one bug in different clothes. Two independently placed
+    endpoints share no notion of which rail is on which side, so the rails crossed at a
+    package; then crossed in the middle of a run; then -- the one that finally made the
+    right shape obvious -- both turned their corner at the same coordinate and ran
+    along on top of each other for three millimetres, because an elbow drawn through
+    two endpoints is the SAME elbow for both of them.
+
+    A centreline cannot do any of that, and which rail carries D+ reduces to a single
+    choice of sign for the whole run, made once by trying both and keeping the shorter
+    stubs.
+
+    THE PATH PER HOP: pad-pair midpoint -> escape point -> optional elbow -> escape
+    point -> pad-pair midpoint. The escape points stand the vias off far enough to
+    clear their neighbours; the run between them drops to `inner` when the component
+    layer is blocked, which it nearly always is, because both ends of a hop terminate
+    inside a fine-pitch pad field. Short stubs on the component layer join each pad to
+    its own rail end.
 
     If a hop cannot be laid clear, NOTHING is emitted for that pair and it is reported.
     A half-routed pair is worse than an unrouted one: the router would finish it, and
@@ -205,40 +304,200 @@ def _diff_pairs(board, specs, inner=None, clr=0.14):
     """
     import math
     pads = [(pad, fp) for fp in board.GetFootprints() for pad in fp.Pads()]
-    boxes = [(q.GetBoundingBox(), q.GetNetname()) for q, _ in pads]
-    boxes += [(t.GetBoundingBox(), t.GetNetname()) for t in board.GetTracks()]
+    boxes = [(q.GetBoundingBox(), q.GetNetname(),
+              "%s.%s" % (f.GetReference(), q.GetNumber())) for q, f in pads]
+    boxes += [(t.GetBoundingBox(), t.GetNetname(), "track") for t in board.GetTracks()]
     # ⚠ AN INNER-LAYER RUN HAS A DIFFERENT OBSTACLE SET, and using the surface one was
     # why the re-planned board still reported the hop blocked. An SMD pad lives on F.Cu
     # and is no obstacle at all to a trace on In2.Cu; what pierces every layer is
     # THROUGH-HOLE copper -- vias, and the occasional THT pad. Checking a 7 mm inner run
     # against 566 surface pads finds a collision every time, and the message reads as
     # "the board is too dense" when the board is nothing of the kind.
-    thru = [(t.GetBoundingBox(), t.GetNetname()) for t in board.GetTracks()
+    thru = [(t.GetBoundingBox(), t.GetNetname(), "via") for t in board.GetTracks()
             if t.GetClass() == "PCB_VIA"]
-    thru += [(q.GetBoundingBox(), q.GetNetname()) for q, _ in pads
+    thru += [(q.GetBoundingBox(), q.GetNetname(),
+              "%s.%s" % (f.GetReference(), q.GetNumber())) for q, f in pads
              if q.GetAttribute() in (pcbnew.PAD_ATTRIB_PTH, pcbnew.PAD_ATTRIB_NPTH)]
     by_ref = {}
     for pad, fp in pads:
         by_ref.setdefault(fp.GetReference(), []).append(pad)
 
-    def clear(x, y, nets, margin, obstacles=None):
-        for bb, onet in (boxes if obstacles is None else obstacles):
-            if onet in nets:
-                continue
-            dx = max(bb.GetLeft() - x, 0, x - bb.GetRight())
-            dy = max(bb.GetTop() - y, 0, y - bb.GetBottom())
-            if math.hypot(dx, dy) < margin:
-                return False
+    # ⚠ THE OBSTACLES ARE BUCKETED INTO A GRID, and that is not premature optimisation.
+    # A clearance test that walks all 600 pads costs nothing once and everything when
+    # the search has to try thousands of candidate paths -- and it does have to, because
+    # getting a pair around a connector's shell tabs means considering routes with two
+    # corners, not just the three one-corner shapes a cheap test can afford. The honest
+    # version of "the board is too dense to route this" is usually "the search gave up
+    # early", and a fast test is what lets it not.
+    CELL = pcbnew.FromMM(2.0)
+
+    def _grid(items):
+        g = {}
+        for bb, onet, _lbl in items:
+            for cx in range(bb.GetLeft() // CELL, bb.GetRight() // CELL + 1):
+                for cy in range(bb.GetTop() // CELL, bb.GetBottom() // CELL + 1):
+                    g.setdefault((cx, cy), []).append((bb, onet, _lbl))
+        return g
+
+    def clear(x, y, nets, margin, grid):
+        x, y = int(x), int(y)
+        seen = set()
+        for cx in range((x - margin) // CELL, (x + margin) // CELL + 1):
+            for cy in range((y - margin) // CELL, (y + margin) // CELL + 1):
+                for item in grid.get((cx, cy), ()):
+                    if id(item) in seen:
+                        continue
+                    seen.add(id(item))
+                    bb, onet, lbl = item
+                    if onet in nets:
+                        continue
+                    dx = max(bb.GetLeft() - x, 0, x - bb.GetRight())
+                    dy = max(bb.GetTop() - y, 0, y - bb.GetBottom())
+                    if math.hypot(dx, dy) < margin:
+                        return False
         return True
 
-    def seg_clear(p0, p1, nets, margin, obstacles=None):
+    def seg_clear(p0, p1, nets, margin, grid):
         L = math.hypot(p1[0] - p0[0], p1[1] - p0[1])
         if L == 0:
             return True
         n = max(4, int(pcbnew.ToMM(L) / 0.15) + 1)
         return all(clear(p0[0] + (p1[0] - p0[0]) * t / n,
-                         p0[1] + (p1[1] - p0[1]) * t / n, nets, margin, obstacles)
+                         p0[1] + (p1[1] - p0[1]) * t / n, nets, margin, grid)
                    for t in range(n + 1))
+
+    def on_board(x, y, reach_mm):
+        """Is copper of half-width `reach_mm` at (x, y) actually ON the board?
+
+        ⚠ THE ESCAPE SEARCH USED TO ASSUME ANY DIRECTION AWAY FROM THE PACKAGE WAS
+        BOARD, and at an EDGE CONNECTOR that is false in the one direction it most
+        wants to go: the socket sits against the edge because the plug has to reach the
+        outside world, so there is half a millimetre of board past its pad row and
+        nothing else. The reach has to include the copper's own half-width -- a via
+        CENTRE 0.5 mm from the edge has copper 0.2 mm from it, which the fab cares
+        about and a bare point-in-polygon test waves through.
+        """
+        if outline is None:
+            return True
+        return _inside(outline, int(x), int(y), pcbnew.FromMM(reach_mm + 0.5))
+
+    def rails_for(centre, ds, vi, a0, b0, a1, b1, na, nb, margin, width,
+                  surf_layer, run_layer, via_margin, grid):
+        """Offset `centre` into two rails and return the copper to emit, or None.
+
+        `centre` runs pad-midpoint -> neck -> escape -> ... -> escape -> neck ->
+        pad-midpoint, and `ds` carries one half-pitch per vertex, so the ESCAPE IS PART
+        OF THE LINE rather than a stub bolted on afterwards. That is what rotates the
+        pair correctly: coming off a connector the two rails are separated ALONG the pad
+        row, and heading away down the board they have to be separated ACROSS the run.
+        Offsetting a polyline does that turn for free at the corner.
+
+        ⚠ THE NECK IS WHY `ds` VARIES. The pair runs at a via pitch wide enough for
+        0.6 mm vias -- 0.74 mm centre to centre -- and a USB-C's pads are on 0.5 mm
+        pitch. Arriving at that row still fanned out leaves each rail 0.23 mm from the
+        NEIGHBOURING pad, and that was the last thing standing between this board and a
+        routed pair. The line therefore necks back to the part's own pad separation
+        before it reaches the part and opens out again once clear: a taper, which is
+        what a person draws and what a polyline offset expresses in one number per
+        vertex.
+
+        ⚠ THE SIGN IS CHOSEN ONCE FOR THE WHOLE RUN. Both options are built and the
+        one with the shorter ends wins -- the same thing as "D+ leaves on the side its
+        pad is already on". Because both rails are offsets of one line, that single
+        decision holds for every segment and every corner of the hop.
+        """
+        opts = []
+        for sa in (+1, -1):
+            r = {na: _offset_poly(centre, [sa * d for d in ds], math),
+                 nb: _offset_poly(centre, [-sa * d for d in ds], math)}
+            pd = {na: (a0, a1), nb: (b0, b1)}
+            cost = sum(math.hypot(pd[n][i].GetPosition().x - r[n][j][0],
+                                  pd[n][i].GetPosition().y - r[n][j][1])
+                       for n in (na, nb) for i, j in ((0, 0), (1, -1)))
+            opts.append((cost, r, pd))
+        # ⚠ REJECT A CENTRELINE THAT DOUBLES BACK ON ITSELF. Mitring a corner means
+        # intersecting the two offset lines, and when the two segments are nearly
+        # anti-parallel that intersection runs away to infinity -- the rails fly apart
+        # in opposite directions and what lands on the board is not a pair but two long
+        # traces to nowhere. It reached DRC looking like a pair whose halves were 10 mm
+        # apart. A corner is only a corner if it turns.
+        limit = 3.0 * max(ds)
+        opts = [o for o in opts
+                if all(math.hypot(v[0] - c[0], v[1] - c[1]) < limit
+                       for rr in (o[1][na], o[1][nb])
+                       for v, c in zip(rr, centre))]
+        if not opts:
+            return None
+        opts.sort(key=lambda o: o[0])
+        nets = {na, nb}
+        for _, r, pd in opts:
+            out, ok = [], True
+            for n in (na, nb):
+                p_start, p_end = pd[n]
+                own = {n}
+                # the rail ENDS on its own pad; the neck brings it within microns and
+                # this closes the gap exactly.
+                rail = list(r[n])
+                rail[0] = (p_start.GetPosition().x, p_start.GetPosition().y)
+                rail[-1] = (p_end.GetPosition().x, p_end.GetPosition().y)
+                if vi is None:
+                    for q0, q1 in zip(rail, rail[1:]):
+                        if q0 != q1 and not seg_clear(q0, q1, nets, margin, grid):
+                            ok = False
+                            break
+                    if not ok:
+                        break
+                    for q0, q1 in zip(rail, rail[1:]):
+                        if q0 != q1:
+                            out.append(("TRK", p_start, q0, q1, surf_layer))
+                    continue
+                i0, i1 = vi
+                # ⚠ THE SURFACE ENDS ARE CHECKED AGAINST THE PARTNER'S PADS, not
+                # against "the pair". Excluding both nets is right for the coupled RUN --
+                # the rails sit a fixed gap apart on purpose and would otherwise reject
+                # each other -- and wrong at a fan-out: D+'s escape ran straight over
+                # D-'s pad at the connector, and DRC called it the short it was.
+                surf = (list(zip(rail[:i0], rail[1:i0 + 1]))
+                        + list(zip(rail[i1:-1], rail[i1 + 1:])))
+                run = list(zip(rail[i0:i1], rail[i0 + 1:i1 + 1]))
+                for q0, q1 in surf:
+                    if q0 != q1 and not seg_clear(q0, q1, own, margin, g_all):
+                        ok = False
+                        _DBG['escape'] = _DBG.get('escape', 0) + 1
+                        break
+                if not ok:
+                    break
+                for v in (rail[i0], rail[i1]):
+                    if not clear(v[0], v[1], own, via_margin, g_all):
+                        ok = False
+                        _DBG['via'] = _DBG.get('via', 0) + 1
+                    elif not on_board(v[0], v[1], 0.3):
+                        ok = False
+                        _DBG['edge'] = _DBG.get('edge', 0) + 1
+                    if not ok:
+                        break
+                if not ok:
+                    break
+                for q0, q1 in run:
+                    if q0 != q1 and not seg_clear(q0, q1, nets, margin, grid):
+                        ok = False
+                        _DBG['run'] = _DBG.get('run', 0) + 1
+                        break
+                if not ok:
+                    break
+                for q0, q1 in surf:
+                    if q0 != q1:
+                        out.append(("TRK", p_start, q0, q1, surf_layer))
+                for q0, q1 in run:
+                    if q0 != q1:
+                        out.append(("TRK", p_start, q0, q1, run_layer))
+                out.append(("VIA", p_start, rail[i0], None, None))
+                out.append(("VIA", p_end, rail[i1], None, None))
+            if ok:
+                return out
+        return None
+
+    g_all, g_thru = _grid(boxes), _grid(thru)
 
     done = []
     for spec in specs:
@@ -247,290 +506,142 @@ def _diff_pairs(board, specs, inner=None, clr=0.14):
         gap = spec.get("gap", 0.2)
         width = spec.get("width", 0.2)
         off = pcbnew.FromMM((gap + width) / 2.0)
+        # ⚠ THE VIA PITCH IS WIDER THAN THE TRACK PITCH. 0.2 mm traces on a 0.2 mm gap
+        # sit 0.4 apart centre to centre, which 0.6 mm vias cannot use -- at the track
+        # pitch they overlap outright. The inner run is therefore laid at the WIDER
+        # pitch throughout, which keeps the geometry a pair (both rails identical,
+        # mirror imaged, constant gap) at the cost of weaker coupling than the surface
+        # stubs. A constant impedance you have not calculated beats a varying one you
+        # have -- and it is not calculated: the actual differential impedance needs the
+        # stack-up's dielectric heights, which JLCPCB fixes and nothing here reads.
+        voff = max(off, pcbnew.FromMM((0.6 + clr) / 2.0))
         margin = pcbnew.FromMM(width / 2.0 + clr)
-        nets = {na, nb}
+        via_margin = pcbnew.FromMM(0.3 + clr)
 
-        # the closest pad of each net on each part in the chain
-        stops = []
+        # ── the pads to visit: an IN pair and an OUT pair for every part ──
+        # ⚠ A PART IN THE MIDDLE OF THE CHAIN NEEDS DIFFERENT PADS ON ITS TWO SIDES, and
+        # getting that wrong is what kept the last hop unroutable through three rewrites
+        # of the escape search. The ESD array is a SERIES part: the PHY feeds one face
+        # and the connector is fed from the other, and the USBLC6 exposes each net on
+        # both (D+ on pins 1 and 6, D- on 3 and 4) precisely so that it can be dropped
+        # into the run that way. Using one pad pair for both hops means the outgoing hop
+        # has to escape backwards across the package it just arrived at -- which is not
+        # a hard routing problem, it is an impossible one, and it reported as "no clear
+        # path" rather than as the placement mistake it was.
+        #
+        # So each part gets an IN pair, chosen nearest where the run came from, and an
+        # OUT pair, chosen nearest where it is going, and they are only the same pads
+        # when the part has nothing else to offer.
+        fps = []
         for ref in chain:
+            fpo = next((f for f in board.GetFootprints()
+                        if f.GetReference() == ref), None)
             cand = {n: [q for q in by_ref.get(ref, []) if q.GetNetname() == n]
                     for n in (na, nb)}
-            if not cand[na] or not cand[nb]:
-                stops = None
+            if fpo is None or not cand[na] or not cand[nb]:
+                fps = None
                 break
-            # ⚠ PICK THE PADS CHAIN-AWARE, NOT PART-BY-PART. A protection array exposes
-            # each net on BOTH of its sides (the USBLC6 carries D+ on pins 1 and 6, D- on
-            # 3 and 4), so "the nearest pad of each net" is a local answer that says
-            # nothing about where the run came from -- and choosing independently at each
-            # stop put D+ on the left at the PHY and on the right at the ESD array, so the
-            # two parallel runs crossed in the middle. DRC called it a short, correctly,
-            # and swapping the far end afterwards only moved the crossing into the stubs.
-            #
-            # Choosing the combination that minimises the TOTAL of the two rail lengths
-            # picks the uncrossed one for free: crossing is always longer than not.
-            fpo = next(f for f in board.GetFootprints() if f.GetReference() == ref)
-            if not stops:
-                a = min(cand[na], key=lambda q: q.GetPosition().x + q.GetPosition().y)
-                b = min(cand[nb],
-                        key=lambda q: (q.GetPosition() - a.GetPosition()).EuclideanNorm())
-            else:
-                pa0, pb0 = stops[-1][0].GetPosition(), stops[-1][1].GetPosition()
-                best = None
-                for qa in cand[na]:
-                    for qb in cand[nb]:
-                        if qa.GetPosition() == qb.GetPosition():
-                            continue
-                        cost = ((qa.GetPosition() - pa0).EuclideanNorm()
-                                + (qb.GetPosition() - pb0).EuclideanNorm())
-                        if best is None or cost < best[0]:
-                            best = (cost, qa, qb)
-                _, a, b = best
-            stops.append((a, b, fpo))
-        if stops is None or len(stops) < 2:
+            fps.append((fpo, cand))
+        if fps is None:
             done.append((na, "could not find both nets on every part of the chain"))
             continue
 
-        plan, vias = [], {}
-        ok = True
-        for (a0, b0, fp0), (a1, b1, fp1) in zip(stops, stops[1:]):
-            chain_fp = (fp0, fp1)
-            p0 = ((a0.GetPosition().x + b0.GetPosition().x) // 2,
-                  (a0.GetPosition().y + b0.GetPosition().y) // 2)
-            p1 = ((a1.GetPosition().x + b1.GetPosition().x) // 2,
-                  (a1.GetPosition().y + b1.GetPosition().y) // 2)
-            shapes = [[p0, p1],
-                      [p0, (p1[0], p0[1]), p1],
-                      [p0, (p0[0], p1[1]), p1]]
-            chosen, use_inner = None, False
-            for sh in shapes:
-                segs = list(zip(sh, sh[1:]))
-                if all(seg_clear(x, y, nets, margin + off) for x, y in segs):
-                    chosen = sh
-                    break
-            if chosen is None and inner is not None:
-                # ⚠ DROP THE WHOLE PAIR TO AN INNER LAYER RATHER THAN GIVE UP. On this
-                # board the PHY sits above two rows of parts, so there is no top-layer
-                # path to the connector -- and weaving between the rows would be
-                # precisely the wandering that made the router's attempt unusable.
-                # Taking BOTH nets down together keeps them coupled the whole way, runs
-                # them under the components on copper that has no pads on it at all, and
-                # costs exactly the two vias per net the budget already allows. It is
-                # also what a person would do here; an inner layer under a solid ground
-                # plane is a better home for a 480 Mbps pair than the component side.
-                chosen, use_inner = [p0, p1], True
-            if chosen is None:
-                ok = False
-                break
-            plan.append((chosen, a0, b0, a1, b1, use_inner, chain_fp))
-        if not ok:
-            done.append((na, "no clear centreline for one of the hops"))
-            continue
-
-        laid, failed_hop, why = 0, False, "?"
-        pending, emitted = [], set()
-        for sh, a0, b0, a1, b1, use_inner, chain_fp in plan:
-            if not use_inner:
-                rails = {na: [], nb: []}
-                for q0, q1 in zip(sh, sh[1:]):
-                    dx, dy = q1[0] - q0[0], q1[1] - q0[1]
-                    L = math.hypot(dx, dy)
-                    if L == 0:
+        def best_pair(cand, targets, avoid=()):
+            """The (D+, D-) pad pair closest to `targets`, preferring pads not in
+            `avoid` -- minimising the TOTAL of the two distances, which picks the
+            uncrossed combination for free: crossing is always longer than not."""
+            best = None
+            for qa in cand[na]:
+                for qb in cand[nb]:
+                    if qa.GetPosition() == qb.GetPosition():
                         continue
-                    ux, uy = -dy / L, dx / L
-                    for net, sgn in ((na, +1), (nb, -1)):
-                        rails[net].append(
-                            ((q0[0] + sgn * off * ux, q0[1] + sgn * off * uy),
-                             (q1[0] + sgn * off * ux, q1[1] + sgn * off * uy)))
-                for net in (na, nb):
-                    pad0 = a0 if net == na else b0
-                    pad1 = a1 if net == na else b1
-                    pts = [(pad0.GetPosition().x, pad0.GetPosition().y)]
-                    for q0, q1 in rails[net]:
-                        pts += [q0, q1]
-                    pts.append((pad1.GetPosition().x, pad1.GetPosition().y))
-                    for q0, q1 in zip(pts, pts[1:]):
-                        if q0 != q1:
-                            pending.append((net, pad0, q0, q1, pad0.GetLayer()))
+                    cost = sum((q.GetPosition() - t).EuclideanNorm()
+                               for q, t in zip((qa, qb), targets))
+                    cost += sum(pcbnew.FromMM(25.0) for q in (qa, qb) if q in avoid)
+                    if best is None or cost < best[0]:
+                        best = (cost, qa, qb)
+            return best[1], best[2]
+
+        stops = []
+        for k, (fpo, cand) in enumerate(fps):
+            if k == 0:
+                nxt = fps[1][0].GetCourtyard(pcbnew.F_CrtYd).BBox().GetCenter()
+                a, b_ = best_pair(cand, (nxt, nxt))
+                stops.append({"fp": fpo, "in": (a, b_), "out": (a, b_)})
                 continue
+            pa0, pb0 = (q.GetPosition() for q in stops[-1]["out"])
+            a, b_ = best_pair(cand, (pa0, pb0))
+            if k == len(fps) - 1:
+                stops.append({"fp": fpo, "in": (a, b_), "out": (a, b_)})
+                continue
+            nxt = fps[k + 1][0].GetCourtyard(pcbnew.F_CrtYd).BBox().GetCenter()
+            oa, ob = best_pair(cand, (nxt, nxt), avoid=(a, b_))
+            stops.append({"fp": fpo, "in": (a, b_), "out": (oa, ob)})
 
-            # ── inner-layer hop: pad -> paired escape -> coupled inner run -> pad
-            # ⚠ THE ESCAPE VIAS ARE PLACED AS A PAIR, NOT ONE PAD AT A TIME. Searching
-            # each pad independently let DP's via land on one side of its package and
-            # DM's on the other, so the "coupled" run between them crossed itself --
-            # DRC reported the two rails shorting on In2.Cu, which is a fair description
-            # of two traces of a pair swapping sides. Searching for a PAIR of positions
-            # -- a point out from the two pads' midpoint, with the two vias offset either
-            # side of it -- keeps the rails parallel by construction, which is the whole
-            # property being bought here.
-            #
-            # ⚠ AND THE INNER RUN IS COLLISION-CHECKED, because an inner layer is not
-            # empty: every THROUGH via pierces it, including the 75 ground stitches
-            # placed moments earlier. The first version assumed In2.Cu was clear and
-            # drove a 21 mm trace straight through a ground via.
-            def escape(pa, pb, fpo):
-                """A paired via position just outside `fpo` for pads pa/pb."""
-                c = fpo.GetCourtyard(pcbnew.F_CrtYd).BBox()
-                mx = (pa.GetPosition().x + pb.GetPosition().x) / 2.0
-                my = (pa.GetPosition().y + pb.GetPosition().y) / 2.0
-                base = math.atan2(my - c.GetCenter().y, mx - c.GetCenter().x)
-                for dth in (0, 0.4, -0.4, 0.8, -0.8, 1.2, -1.2):
-                    ang = base + dth
-                    ux, uy = math.cos(ang), math.sin(ang)
-                    nx2, ny2 = -uy, ux
-                    for step in range(30):
-                        r = pcbnew.FromMM(1.0 + 0.2 * step)
-                        cx2, cy2 = mx + ux * r, my + uy * r
-                        # ⚠ THE VIA PITCH IS WIDER THAN THE TRACK PITCH, SYMMETRICALLY.
-                        # 0.2 mm traces on a 0.2 mm gap sit 0.4 apart centre-to-centre,
-                        # which 0.6 mm vias cannot use -- placed at the track pitch they
-                        # overlap outright. Staggering them along the run was the first
-                        # fix and it only moved the problem: the partner's track then ran
-                        # within 0.02 mm of the via it had stepped past, because a pair's
-                        # own members are excluded from each other's clearance checks.
-                        # Fanning them apart symmetrically keeps the geometry a PAIR --
-                        # both rails identical, mirror-imaged, constant spacing -- which
-                        # is the property that matters. The inner run inherits the wider
-                        # pitch and is therefore more weakly coupled than the surface
-                        # stubs; it is still CONSTANT, and a constant impedance you have
-                        # not calculated beats a varying one you have.
-                        # ⚠ THE ACTUAL DIFFERENTIAL IMPEDANCE IS NOT CALCULATED ANYWHERE
-                        # in this project -- it needs the stack-up's dielectric heights,
-                        # which JLCPCB fixes and nothing here reads. These numbers give a
-                        # defined geometry, not a verified 90 ohms.
-                        voff = max(off, pcbnew.FromMM((0.6 + clr) / 2.0))
-                        va = (cx2 + voff * nx2, cy2 + voff * ny2)
-                        vb = (cx2 - voff * nx2, cy2 - voff * ny2)
-                        # keep each rail with its own pad rather than crossing over
-                        if (math.hypot(va[0] - pa.GetPosition().x, va[1] - pa.GetPosition().y) >
-                                math.hypot(vb[0] - pa.GetPosition().x, vb[1] - pa.GetPosition().y)):
-                            va, vb = vb, va
-                        ok2 = True
-                        for pd, v in ((pa, va), (pb, vb)):
-                            own = {pd.GetNetname()}
-                            if not clear(v[0], v[1], own, pcbnew.FromMM(0.3 + clr)):
-                                ok2 = False
-                            elif not seg_clear((pd.GetPosition().x, pd.GetPosition().y),
-                                               v, own, margin):
-                                ok2 = False
-                            if not ok2:
+        pending, laid, why = [], 0, None
+        for s0, s1 in zip(stops, stops[1:]):
+            (a0, b0), fp0 = s0["out"], s0["fp"]
+            (a1, b1), fp1 = s1["in"], s1["fp"]
+            m0 = ((a0.GetPosition().x + b0.GetPosition().x) / 2.0,
+                  (a0.GetPosition().y + b0.GetPosition().y) / 2.0)
+            m1 = ((a1.GetPosition().x + b1.GetPosition().x) / 2.0,
+                  (a1.GetPosition().y + b1.GetPosition().y) / 2.0)
+
+            hs0 = math.hypot(a0.GetPosition().x - b0.GetPosition().x,
+                             a0.GetPosition().y - b0.GetPosition().y) / 2.0
+            hs1 = math.hypot(a1.GetPosition().x - b1.GetPosition().x,
+                             a1.GetPosition().y - b1.GetPosition().y) / 2.0
+            hop = None
+            # 1. the surface try: no vias at all, if the component layer is open
+            for sh in _centrelines(m0, m1):
+                ds = [max(off, hs0)] + [off] * (len(sh) - 2) + [max(off, hs1)]
+                hop = rails_for(sh, ds, None, a0, b0, a1, b1, na, nb, margin, width,
+                                a0.GetLayer(), None, via_margin, g_all)
+                if hop:
+                    break
+
+            # 2. otherwise take the WHOLE PAIR down to an inner layer together.
+            # ⚠ BOTH NETS GO DOWN AT ONCE. On this board the PHY sits behind two rows of
+            # parts, so there is no component-layer path to the connector, and weaving
+            # between the rows is precisely the wandering that made the router's own
+            # attempt unusable. Taking the pair down keeps it coupled the whole way,
+            # runs it on copper that has no pads on it at all, and costs exactly the two
+            # vias per net the budget already allows.
+            if hop is None and inner is not None:
+                for e0 in _escape_plan(fp0, m0, a0, b0, hs0, voff, margin, via_margin,
+                                       na, nb, clear, seg_clear, on_board, g_all, math):
+                    for e1 in _escape_plan(fp1, m1, a1, b1, hs1, voff, margin,
+                                           via_margin, na, nb, clear, seg_clear,
+                                           on_board, g_all, math):
+                        for sh in _centrelines(e0["e"], e1["e"]):
+                            centre = [m0, e0["n"]] + sh + [e1["n"], m1]
+                            ds = ([hs0 or voff] * 2 + [voff] * len(sh)
+                                  + [hs1 or voff] * 2)
+                            hop = rails_for(centre, ds, (2, len(centre) - 3),
+                                            a0, b0, a1, b1, na, nb, margin, width,
+                                            a0.GetLayer(), _LAYERS[inner],
+                                            via_margin, g_thru)
+                            if hop:
                                 break
-                        if ok2:
-                            return va, vb
-                # ⚠ FALL BACK TO SEARCHING EACH PAD SEPARATELY. A paired escape is the
-                # better shape -- the two rails leave parallel -- but it needs one spot
-                # where BOTH vias fit, and beside a fine-pitch package with ground
-                # stitching nearby there often is not one. Per-pad is safe now in a way
-                # it was not before: the coupled-run check below rejects the case that
-                # made it dangerous, where the two vias land on opposite sides and the
-                # rails cross. Worse geometry is acceptable; a crossed pair is not, and
-                # that outcome is now caught rather than emitted.
-                out2 = {}
-                for pd in (pa, pb):
-                    own = {pd.GetNetname()}
-                    pcx2, pcy2 = pd.GetPosition().x, pd.GetPosition().y
-                    hp = max(pd.GetSize().x, pd.GetSize().y) / 2.0
-                    oa = math.atan2(pcy2 - c.GetCenter().y, pcx2 - c.GetCenter().x)
-                    order2 = sorted((math.pi * k / 4.0 for k in range(8)),
-                                    key=lambda ang: abs(((ang - oa + math.pi)
-                                                         % (2 * math.pi)) - math.pi))
-                    hit = None
-                    for st in range(30):
-                        rr = hp + pcbnew.FromMM(0.5 + 0.15 * st)
-                        for ang in order2:
-                            vx2, vy2 = pcx2 + rr * math.cos(ang), pcy2 + rr * math.sin(ang)
-                            if not clear(vx2, vy2, own, pcbnew.FromMM(0.3 + clr)):
-                                continue
-                            if not seg_clear((pcx2, pcy2), (vx2, vy2), own, margin):
-                                continue
-                            if any(math.hypot(vx2 - q[0], vy2 - q[1]) < pcbnew.FromMM(0.9)
-                                   for q in out2.values()):
-                                continue
-                            hit = (vx2, vy2)
+                        if hop:
                             break
-                        if hit:
-                            break
-                    if hit is None:
-                        return None
-                    out2[pd.GetNetname()] = hit
-                return out2[pa.GetNetname()], out2[pb.GetNetname()]
-
-            if id(a0) not in vias:
-                e = escape(a0, b0, chain_fp[0])
-                if e is None:
-                    failed_hop, why = True, "no escape at %s" % chain_fp[0].GetReference()
-                    break
-                vias[id(a0)], vias[id(b0)] = e
-            if id(a1) not in vias:
-                e = escape(a1, b1, chain_fp[1])
-                if e is None:
-                    failed_hop, why = True, "no escape at %s" % chain_fp[1].GetReference()
-                    break
-                vias[id(a1)], vias[id(b1)] = e
-
-            # ⚠ THE INNER RUN HAS TO DOG-LEG TOO. An inner layer looks empty and is
-            # not: 75 ground stitches pass straight through it, so a 15 mm straight run
-            # across the LDO row hits one almost every time. Both rails take the SAME
-            # shape -- straight, or one of the two elbows -- because a pair that turns
-            # differently is no longer a pair; that is the property the whole routine
-            # exists to preserve, and it would be silly to lose it at the last step.
-            pair_nets = {a0.GetNetname(), b0.GetNetname()}
-            run_shape = None
-            for kind in ("straight", "hfirst", "vfirst"):
-                ok_all = True
-                for pdA, pdB in ((a0, a1), (b0, b1)):
-                    p_a, p_b = vias[id(pdA)], vias[id(pdB)]
-                    if kind == "straight":
-                        way = [p_a, p_b]
-                    elif kind == "hfirst":
-                        way = [p_a, (p_b[0], p_a[1]), p_b]
-                    else:
-                        way = [p_a, (p_a[0], p_b[1]), p_b]
-                    if not all(seg_clear(q0, q1, pair_nets, margin, thru)
-                               for q0, q1 in zip(way, way[1:])):
-                        ok_all = False
+                    if hop:
                         break
-                if ok_all:
-                    run_shape = kind
-                    break
-            runs_ok = run_shape is not None
-            if not runs_ok:
-                failed_hop, why = True, ("inner run %s->%s blocked (through-vias pierce "
-                                         "every layer)" % (chain_fp[0].GetReference(),
-                                                           chain_fp[1].GetReference()))
+            if hop is None:
+                why = "no clear path %s->%s %s" % (fp0.GetReference(), fp1.GetReference(), sorted((k, v) for k, v in _DBG.items() if v))
                 break
-
-            for pd in (a0, b0, a1, b1):
-                if id(pd) in emitted:
-                    continue
-                emitted.add(id(pd))
-                vx, vy = vias[id(pd)]
-                pending.append((pd.GetNetname(), pd,
-                                (pd.GetPosition().x, pd.GetPosition().y), (vx, vy),
-                                pd.GetLayer()))
-                pending.append(("VIA", pd, (vx, vy), None, None))
-            for pdA, pdB in ((a0, a1), (b0, b1)):
-                p_a, p_b = vias[id(pdA)], vias[id(pdB)]
-                if run_shape == "straight":
-                    way = [p_a, p_b]
-                elif run_shape == "hfirst":
-                    way = [p_a, (p_b[0], p_a[1]), p_b]
-                else:
-                    way = [p_a, (p_a[0], p_b[1]), p_b]
-                for q0, q1 in zip(way, way[1:]):
-                    if q0 != q1:
-                        pending.append((pdA.GetNetname(), pdA, q0, q1, _LAYERS[inner]))
-
-        if failed_hop:
+            pending += hop
+        if why:
             done.append((na, why))
             continue
-        for item in pending:
-            net, pd, q0, q1, layer = item
-            if net == "VIA":
+
+        for kind, pad, q0, q1, layer in pending:
+            if kind == "VIA":
                 v = pcbnew.PCB_VIA(board)
                 v.SetPosition(pcbnew.VECTOR2I(int(q0[0]), int(q0[1])))
                 v.SetWidth(pcbnew.FromMM(0.6))
                 v.SetDrill(pcbnew.FromMM(0.3))
-                v.SetNet(pd.GetNet())
+                v.SetNet(pad.GetNet())
                 v.SetViaType(pcbnew.VIATYPE_THROUGH)
                 board.Add(v)
                 continue
@@ -539,12 +650,74 @@ def _diff_pairs(board, specs, inner=None, clr=0.14):
             t.SetEnd(pcbnew.VECTOR2I(int(q1[0]), int(q1[1])))
             t.SetWidth(pcbnew.FromMM(width))
             t.SetLayer(layer)
-            t.SetNet(pd.GetNet())
+            t.SetNet(pad.GetNet())
             board.Add(t)
             laid += 1
         done.append((na, "laid %d segment(s) as a coupled pair over %d hop(s)"
-                     % (laid, len(plan))))
+                     % (laid, len(stops) - 1)))
     return done
+
+
+def _escape_plan(fpo, m, pa, pb, hs, voff, margin, via_margin, na, nb,
+                 clear, seg_clear, on_board, grid, math, limit=16):
+    """Workable ways for a pair to leave one package, best first.
+
+    Each entry is a NECK point -- a short run straight out of the pads at the part's own
+    pitch -- and an ESCAPE point where the pair has opened out to the via pitch and can
+    drop to an inner layer.
+
+    ⚠ THIS EXISTS TO PRUNE, and the pruning is what makes the search honest. The path
+    search downstream has to consider two-corner routes to get around a connector's
+    shell tabs, and the product of (directions x distances x shapes) is tens of
+    thousands of candidates. Checking the escape here -- once per direction and
+    distance, before any shape is considered -- removes the combinations that could
+    never work whatever the run does, and the ones that survive are few. Everything is
+    re-checked exactly downstream; this is a filter, not an authority.
+
+    ⚠ AND THE DIRECTIONS FAN OUT, rather than being just "away from the part". The
+    PHY's D+/D- pins face its own 24 MHz crystal, 2 mm away: straight out is into the
+    crystal, and the pair has to leave at an angle. Outward is tried first and inward
+    last -- inward, under the body, is the only direction open at a connector that sits
+    on the board edge, which is where a USB-C always sits.
+    """
+    c = fpo.GetCourtyard(pcbnew.F_CrtYd).BBox().GetCenter()
+    base = math.atan2(m[1] - c.y, m[0] - c.x)
+    neck = pcbnew.FromMM(0.6)
+    nets = {na, nb}
+    pads = ((pa.GetPosition().x, pa.GetPosition().y),
+            (pb.GetPosition().x, pb.GetPosition().y))
+    out = []
+    for turn in (0.0, math.pi):
+        for dth in (0.0, 0.4, -0.4, 0.8, -0.8, 1.2, -1.2):
+            ang = base + turn + dth
+            ux, uy = math.cos(ang), math.sin(ang)
+            nx, ny = -uy, ux
+            n = (m[0] + ux * neck, m[1] + uy * neck)
+            # either pairing of pad to side will do -- which rail is D+ is decided
+            # downstream, and pinning it here rejected every escape at the ESD array,
+            # where the arbitrary choice happened to send each rail diagonally across
+            # the package to the other one's pad.
+            if not any(all(seg_clear(pad, (n[0] + sgn * hs * nx, n[1] + sgn * hs * ny),
+                                     nets, margin, grid)
+                           for pad, sgn in zip(pads, sides))
+                       for sides in ((+1, -1), (-1, +1))):
+                continue
+            for k in range(11):
+                r = pcbnew.FromMM(1.0 + 0.25 * k)
+                e = (m[0] + ux * r, m[1] + uy * r)
+                vs = [(e[0] + sgn * voff * nx, e[1] + sgn * voff * ny)
+                      for sgn in (+1, -1)]
+                if not all(clear(v[0], v[1], nets, via_margin, grid)
+                           and on_board(v[0], v[1], 0.3) for v in vs):
+                    continue
+                if not all(seg_clear((n[0] + sgn * hs * nx, n[1] + sgn * hs * ny), v,
+                                     nets, margin, grid)
+                           for v, sgn in zip(vs, (+1, -1))):
+                    continue
+                out.append({"n": n, "e": e})
+                if len(out) >= limit:
+                    return out
+    return out
 
 
 def _outline_pts(notes):
@@ -1042,6 +1215,7 @@ def build(stem):
     # as a pair is not a differential pair at all, and nothing downstream recovers it.
     # So the pair goes first and the handful of ground pads it displaces are declared.
     for name, msg in _diff_pairs(board, notes.get("diff_pairs", ()),
+                                 outline=_outline_pts(notes),
                                  inner=notes.get("diff_pair_inner")):
         print("  diff pair %s: %s" % (name, msg))
 
