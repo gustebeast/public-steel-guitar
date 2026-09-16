@@ -32,6 +32,15 @@ JAVA = os.path.expandvars(
 JAR = os.path.expandvars(
     r"%LOCALAPPDATA%\Temp\claude\C--Users-gus-Sync-Documents-Archive-3D-public-steel-guitar"
     r"\d7576032-b257-4aee-8a45-89e587fe4007\scratchpad\freerouting.jar")
+# ⚠ PASSES ARE OPTIMISER PASSES, AND THEY ARE NOT WHERE THE ROUTING HAPPENS.
+# Freerouting finds connectivity in the first pass or two; every pass after that
+# re-optimises the whole board, single-threaded, and on the optical board (153 parts)
+# each one costs roughly half a minute. 20 passes is ~10 minutes PER ATTEMPT.
+#
+# MEASURED, on the optical board: 10 passes -> 17 unconnected, 20 -> 15, 30 -> 15 and
+# occasionally worse. The curve is flat after about 10, so the extra time buys track
+# length and not connectivity. Keep this low while ITERATING on a design and raise it
+# for the final run, where shorter tracks are worth the wall clock.
 PASSES = 20
 
 
@@ -62,13 +71,11 @@ def route(stem, passes=PASSES):
     if planes:
         txt = open(dsn, encoding="utf-8").read()
         for layer in planes:
-            marker = "(layer %s
-      (type signal)" % layer
+            marker = "(layer %s\n      (type signal)" % layer
             if marker not in txt:
                 raise SystemExit("plane layer %s not found in the DSN as expected"
                                  % layer)
-            txt = txt.replace(marker, "(layer %s
-      (type power)" % layer)
+            txt = txt.replace(marker, "(layer %s\n      (type power)" % layer)
         open(dsn, "w", encoding="utf-8").write(txt)
         print("  declared %s as plane layer(s) -- the router will not route on them"
               % ", ".join(planes))
