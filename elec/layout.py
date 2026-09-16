@@ -833,7 +833,7 @@ def _canonical_uuids(path):
 
 
 def _hop_via_inner(board, pa, pb, netname, inner, clear, seg_clear, emit,
-                   via_d, via_drill, clr, width, math):
+                   via_d, via_drill, clr, width, math, outline, drills):
     """pad -> via -> a run on `inner` -> via -> pad, or 0 if there is no room.
 
     The two vias are searched separately and close to their own pads, because unlike a
@@ -851,10 +851,22 @@ def _hop_via_inner(board, pa, pb, netname, inner, clear, seg_clear, emit,
             for dth in (0, 0.5, -0.5, 1.0, -1.0, 1.6, -1.6, 2.2, -2.2, math.pi):
                 x = int(pc.x + r * math.cos(base + dth))
                 y = int(pc.y + r * math.sin(base + dth))
-                if not clear(x, y, netname):
+                # ⚠ A VIA IS NOT A TRACK, and checking it as one is what made this
+                # routine lay DRC-violating copper the first time it was let loose on a
+                # small board: 0.6 mm of pad needs via/2 + clearance, not width/2, and a
+                # drilled hole needs room from every OTHER hole and from the board edge,
+                # neither of which a track cares about. Three separate rules, and the
+                # track margin satisfies none of them.
+                if not clear(x, y, netname, margin=pcbnew.FromMM(via_d / 2.0 + clr)):
+                    continue
+                if not _inside(outline, x, y, pcbnew.FromMM(via_d / 2.0 + 0.3)):
+                    continue
+                lim = pcbnew.FromMM(via_d + clr)
+                if any(math.hypot(x - hx, y - hy) < lim for hx, hy in drills):
                     continue
                 if not seg_clear((pc.x, pc.y), (x, y), netname):
                     continue
+                drills.append((x, y))
                 return (x, y)
         return None
 
@@ -889,8 +901,8 @@ def _hop_via_inner(board, pa, pb, netname, inner, clear, seg_clear, emit,
     return n
 
 
-def _local_nets(board, patterns, inner=None, local_mm=6.0, width=0.2, clr=0.14,
-                via_d=0.6, via_drill=0.3):
+def _local_nets(board, patterns, outline, inner=None, local_mm=6.0, width=0.2,
+                clr=0.14, via_d=0.6, via_drill=0.3):
     """Lay the SHORT, LOCAL part of repetitive nets before the autorouter sees them.
 
     ⚠ THE TIA NETS ARE TWO PROBLEMS WEARING ONE NAME, and that is why they were the
@@ -916,7 +928,7 @@ def _local_nets(board, patterns, inner=None, local_mm=6.0, width=0.2, clr=0.14,
     a constraint it has to honour.
     """
     import math
-    margin = pcbnew.FromMM(width / 2.0 + clr)
+    trk_margin = pcbnew.FromMM(width / 2.0 + clr)
     CELL = pcbnew.FromMM(2.0)
 
     pads = [(q, fp) for fp in board.GetFootprints() for q in fp.Pads()]
@@ -941,8 +953,17 @@ def _local_nets(board, patterns, inner=None, local_mm=6.0, width=0.2, clr=0.14,
             for cy in range(bb.GetTop() // CELL, bb.GetBottom() // CELL + 1):
                 grid.setdefault((cx, cy), []).append((bb, onet, is_thru))
 
-    def clear(x, y, netname, thru_only=False):
+    def clear(x, y, netname, thru_only=False, margin=None):
         x, y = int(x), int(y)
+        margin = trk_margin if margin is None else margin
+        # ⚠ THE BOARD EDGE IS AN OBSTACLE TOO, and it is not in the obstacle list because
+        # it is not copper. Checking only against pads and tracks let this routine run
+        # traces off the side of a 28 x 21 board -- six edge-clearance violations on a
+        # board that had none -- because nothing it could see was in the way. The edge
+        # rule is measured from the copper's own half width, not from the centreline, so
+        # the clearance term comes out and the fab's edge keep-out goes in.
+        if not _inside(outline, x, y, margin - pcbnew.FromMM(clr) + pcbnew.FromMM(0.3)):
+            return False
         for cx in range((x - margin) // CELL, (x + margin) // CELL + 1):
             for cy in range((y - margin) // CELL, (y + margin) // CELL + 1):
                 for bb, onet, is_thru in grid.get((cx, cy), ()):
@@ -987,6 +1008,12 @@ def _local_nets(board, patterns, inner=None, local_mm=6.0, width=0.2, clr=0.14,
         t.SetNet(pad.GetNet())
         board.Add(t)
         segs.append((q0, q1, pcbnew.FromMM(width) / 2.0, netname))
+
+    # every hole already on the board, so a new via keeps clear of all of them
+    drills = [(t.GetPosition().x, t.GetPosition().y) for t in board.GetTracks()
+              if t.GetClass() == "PCB_VIA"]
+    drills += [(q.GetPosition().x, q.GetPosition().y) for q, _ in pads
+               if q.GetAttribute() in (pcbnew.PAD_ATTRIB_PTH, pcbnew.PAD_ATTRIB_NPTH)]
 
     laid, skipped, reach = 0, 0, pcbnew.FromMM(local_mm)
     for netname in sorted(by_net):
@@ -1035,7 +1062,8 @@ def _local_nets(board, patterns, inner=None, local_mm=6.0, width=0.2, clr=0.14,
                     # The surface is where the pads are and therefore where the traffic
                     # is; the free inner layer is empty by construction.
                     hop = _hop_via_inner(board, a, b, netname, inner, clear, seg_clear,
-                                         emit, via_d, via_drill, clr, width, math)
+                                         emit, via_d, via_drill, clr, width, math,
+                                         outline, drills)
                     if hop:
                         laid += hop
                     else:
@@ -1647,19 +1675,6 @@ def build(stem):
                                  inner=notes.get("diff_pair_inner")):
         print("  diff pair %s: %s" % (name, msg))
 
-    # ⚠ AFTER THE PAIRS, BEFORE THE STITCHING. The pair has the least freedom and
-    # goes first; these clusters are next because they are small and local and the
-    # ground stitching, which can put a via almost anywhere, is the one that should be
-    # asked to work around what is already there.
-    if notes.get("local_nets"):
-        # NOT `skipped` -- that name already holds the single-pad net count this
-        # function reports at the end, and shadowing it made the summary line claim
-        # 40 nets had appeared out of nowhere.
-        n_laid, n_left = _local_nets(board, notes["local_nets"],
-                                     inner=notes.get("diff_pair_inner"))
-        print("  local nets: laid %d segment(s)%s"
-              % (n_laid, ", %d left to the router" % n_left if n_left else ""))
-
     stitch = set(notes.get("stitch_nets", ()))
     if stitch:
         n = _stitch_plane_pads(board, stitch, _outline_pts(notes),
@@ -1667,6 +1682,28 @@ def build(stem):
                                keepouts=notes.get("via_keepouts", ()))
         print("  stitched %d pad(s) on %s straight to the plane"
               % (n, "/".join(sorted(stitch))))
+
+
+    # ⚠ AFTER THE STITCHING, WHICH REVERSES WHAT THIS COMMENT USED TO SAY. The first
+    # ordering ran local nets before the stitcher on the argument that a via can go
+    # almost anywhere and a track cannot. That was true when this routine laid 39
+    # segments; at 85 on a 28 x 21 board it is not -- the local nets filled the space
+    # around a QFN and the stitcher then had nowhere to put ONE ground via, which it
+    # correctly refused to fake.
+    #
+    # The asymmetry that decides it is the same one that moved ground vias out of the
+    # escape fan: a ground pad has exactly one destination, the plane directly beneath
+    # it, and a via is the only way there. A local net has a whole board and an inner
+    # layer to find a path through, and it SKIPS what it cannot lay rather than failing.
+    # The routine with no alternative goes first.
+    if notes.get("local_nets"):
+        # NOT `skipped` -- that name already holds the single-pad net count this
+        # function reports at the end, and shadowing it made the summary line claim
+        # 40 nets had appeared out of nowhere.
+        n_laid, n_left = _local_nets(board, notes["local_nets"], _outline_pts(notes),
+                                     inner=notes.get("diff_pair_inner"))
+        print("  local nets: laid %d segment(s)%s"
+              % (n_laid, ", %d left to the router" % n_left if n_left else ""))
 
     # outline_poly wins when present; outline_mm stays the LAYOUT REGION either way
     # (place_check and the zone filler both measure parts against it).

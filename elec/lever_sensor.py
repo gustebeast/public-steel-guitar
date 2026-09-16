@@ -358,6 +358,16 @@ BOARD_NOTES = {
     # board -- the pour reaches them, but a pour is what routing can orphan, which is
     # the whole reason the plane is there. Every GND pad gets its own via down.
     "stitch_nets": ("GND",),
+    # ⚠ NO local_nets ON THIS BOARD, AND THE MEASUREMENT SAYS SO. Pre-laying every
+    # short net here took it from 4 unconnected to 7. The generator is not better than
+    # the router in general -- it wins on the optical board because twenty identical
+    # feedback clusters in a strip holding 107 parts is a pattern, and a pattern is a
+    # thing a generator does better than a search. This board is 28 x 21 with 29 parts
+    # and the router has slack; deterministic copper laid first only takes that slack
+    # away, and the search it constrains could have done better.
+    #
+    # Worth keeping the number rather than the conclusion: if this board grows a
+    # component row, re-measure rather than assuming either way.
     "refs_on_fab": True,
     "hold_edge": None,          # NO screw: the grooves hold five faces and the
                                 # instrument's underside closes over the sixth
