@@ -809,10 +809,25 @@ def _cross_x(eps: float, station: float | None = None) -> tuple:
     raw = (eps * (inner - span / 3.0), eps * (inner - 2.0 * span / 3.0))
     if station is None:
         return raw
-    out = []
+    # THE NEAREST STATION THAT IS NOT OUTBOARD OF THE THIRD. The lock pin's hole runs inboard
+    # from the end face and stops a two-bead wall short of the first groove it meets, so a groove
+    # that lands OUTBOARD of its third eats the insert's room -- 2.71 of it, which left 14.16 of
+    # hole where the insert needs 18.9 and ScrewJoint refused to build. Inboard is free, so each
+    # ridge takes the closest station on that side rather than the closest station outright.
+    # (Rejecting the outboard one and keeping the third instead is not an option: the third is
+    # not a station, so the ridge would have no mortise and be dropped -- which cost all four
+    # corners BOTH ridges before this was a search rather than a test.)
+    grid = D.lever_grid_x()
+    out, taken = [], set()
     for r in raw:
-        g = D.rib_comb_x(station + r) - station
-        out.append(g if abs(g - r) <= D.LEVER_PITCH / 2.0 else r)
+        cand = [g for g in (s - station for s in grid)
+                if eps * g <= eps * r + 1e-9 and round(g, 6) not in taken]
+        if not cand:
+            out.append(r)
+            continue
+        g = min(cand, key=lambda q: abs(q - r))
+        taken.add(round(g, 6))
+        out.append(g)
     return tuple(out)
 STUB_TEN_W = D.LEVER_MORT_W - 0.6   # 6.6 flat-to-flat: THE SAME JOINT the levers use, because
                                # these ridges ride the same mortises (user). It was 8.0, sized on

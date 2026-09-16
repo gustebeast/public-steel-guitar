@@ -465,6 +465,11 @@ def body_adapter(sx: float = LEG_X, ly: float = LEG_Y):
         y0 = ly - LEG_W / 2.0 + (cut if syg > 0 else 0.0)
         y1 = y0 + (LEG_W - cut)
         on_grid = abs(D.rib_comb_x(sx + dx) - (sx + dx)) < 1e-6
+        # a ridge that could NOT take a station but still lands in the floor has nowhere to go:
+        # the chassis cuts only its grid there and will not make room (user). Drop it.
+        b0, b1 = D.bottom_span()
+        if not on_grid and b0 - LG.STUB_TEN_W < sx + dx < b1 + LG.STUB_TEN_W:
+            continue
         if on_grid:
             y1 = min(y1, D.LIGHT_WIN_Y0)        # the mortises stop at the window
             # ...AND THE SLIDE HAS TO FIT TOO. This corner installs by sliding OUTBOARD along Y,

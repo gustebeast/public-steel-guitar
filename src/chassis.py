@@ -170,15 +170,13 @@ KH_DT_SEAT     = 0.1                    # lower-dovetail seating clearance: the 
 # (XBAR-wide, same christmas-tree mortise + wire raceway), so "one tenon fits any bay"
 # holds -- a lever just spans two of the finer bays. NOTHING is excluded (the knee-lever
 # bay keeps its ribs too; the lever housing is relieved for them in knee_lever.py).
-# The grid is dimensions' (D.LEVER_GRID_X): as many mortises as fit across the WHOLE bottom,
-# centred, with an equal margin at each end. Nothing here trims it -- the bottom is drawn whole
-# and the grid laid into it, so there is no gap at a leg any more (user, 2026-09-16).
-assert abs(KH_RAIL_X - D.BOTTOM_X0) < 1e-9 and abs(TP_EP_GX - D.BOTTOM_X1) < 1e-9, (
-    "dimensions and chassis disagree about where the endplates take over: "
-    "BOTTOM %.3f..%.3f vs KH_RAIL_X/TP_EP_GX %.3f..%.3f -- the grid is laid out against the "
-    "first pair and the bottom is drawn to the second"
-    % (D.BOTTOM_X0, D.BOTTOM_X1, KH_RAIL_X, TP_EP_GX))
-_MORT_X = list(D.LEVER_GRID_X)
+# The grid is dimensions' (D.lever_grid_x()): as many mortises as fit across the WHOLE chassis
+# floor, centred, with an equal margin at each end. Nothing here trims it. The floor runs SHELL
+# FACE to SHELL FACE -- the chassis' own ends -- not to the endplate takeover faces; laying the
+# grid against the takeover faces instead cost two or three stations at each end, which is the
+# gap the user kept finding (2026-09-16). The agreement is asserted below, where _SHELL_NX and
+# _SHELL_PX are finally in scope.
+_MORT_X = list(D.lever_grid_x())
 # TARGETS MOVED (user's drop-in motor pockets, 2026-09-11): a housing is now 62.3 wide on a
 # 43.9 pitch, so it reaches 31.15 past its own motor and the segment that OWNS that motor
 # carries the whole overhang. A segment's real footprint is therefore its end motors +-31.15,
@@ -580,6 +578,11 @@ def _leg_geom(tip, sign):
 _PKT_NX, _SHELL_NX, _STN_NX = _leg_geom(EP_TIP_NX, +1)    # -X end → body is +X of the tip
 _PKT_PX, _SHELL_PX, _STN_PX = _leg_geom(EP_TIP_PX, -1)    # +X end → body is -X of the tip
 # the kept shell spans from its pinned outer edge to the rail-takeover join line:
+assert (abs(_SHELL_NX - D.bottom_span()[0]) < 1e-9
+        and abs(_SHELL_PX - D.bottom_span()[1]) < 1e-9), (
+    "dimensions lays the floor grid against %.3f..%.3f but the chassis' own shell faces are "
+    "%.3f..%.3f -- the floor is drawn to the second pair, so the grid would not reach its ends"
+    % (D.bottom_span()[0], D.bottom_span()[1], _SHELL_NX, _SHELL_PX))
 LEG_SHELL_NX = (_SHELL_NX, KH_RAIL_X)       # -X leg: -625.6 .. -610.6 (reaches the rail end)
 LEG_SHELL_PX = (TP_EP_GX, _SHELL_PX)        # +X leg: -17.5 .. 5.6
 # leg stations: (+X leg, -X leg) — outer faces ON the endplate tips (flush X):
@@ -721,7 +724,7 @@ def _light_band():
     # the window is the new thing, so the window gives way.
     x0 = min(LEG_STATIONS_X) + LEG_W / 2 + D.MIN_WALL_2P
     x1 = max(LEG_STATIONS_X) - LEG_W / 2 - D.MIN_WALL_2P
-    x0, x1 = max(x0, D.BOTTOM_X0), min(x1, D.BOTTOM_X1)
+    x0, x1 = max(x0, _SHELL_NX), min(x1, _SHELL_PX)
     return box_at(x1 - x0, LIGHT_BAND_W, D.BOTTOM_T,
                   x=(x0 + x1) / 2, y=Y_HI - LIGHT_BAND_DY,
                   z=(Z_BOT + MB.FLOOR_TOP) / 2)
@@ -734,7 +737,17 @@ def _floor_negatives():
     that band earlier would otherwise be filled straight back in. These are the chassis' own --
     the +Y wire raceway and the keyhead height screws' head cavities. NOT the leg's grooves:
     those are the coupling the user asked to remove, and the leg fits the grid instead."""
+    from .legs import lock_pin_joint as _lpj_f
     out = [_raceway(50.5, -67.0, -604.75, 31.5)]
+    # THE LEG LOCK PINS. A fastener has to pass through whatever it passes through, and this one
+    # crosses the floor band -- cut in the main builder it was filled straight back in by the
+    # fresh slab, burying 45-65 mm3 of every insert and screw in solid body.
+    _xc = sum(LEG_STATIONS_X) / 2
+    for _sx in LEG_STATIONS_X:
+        _egx = -1.0 if _xc > _sx else 1.0
+        for _s in (1, -1):
+            _lc = LEG_Y[0] if _s > 0 else LEG_Y[1]
+            out.append(_lpj_f(_sx, _lc, _egx, float(_s), Z_BOT).cutter((0.0, 0.0, 1.0)))
     # HEAD CAVITIES FOR THE KEYHEAD'S INSERT HEIGHT SCREWS (bronner prototype, user's height
     # adjust). Their heat-sets sit flush in the keyhead's bottom face just over the floor, so the
     # button heads hang down INTO it and the 2.5 mm key comes up to them from below. Placed from
@@ -756,7 +769,7 @@ def _bottom(a, b):
     up whatever anything else had already carved out of that band -- the leg corner grooves took
     7-8.6 cm3 a corner out of it, 86% of that inside the grid's own band. A segment that lays its
     floor down fresh, then cuts only the grid out of it, cannot inherit that."""
-    x0, x1 = max(D.BOTTOM_X0, min(a, b)), min(D.BOTTOM_X1, max(a, b))
+    x0, x1 = max(_SHELL_NX, min(a, b)), min(_SHELL_PX, max(a, b))
     if x1 - x0 < 0.1:
         return None
     return box_at(x1 - x0, Y_HI - Y_LO, MB.FLOOR_TOP - Z_BOT,
