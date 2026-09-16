@@ -139,6 +139,8 @@ PARTS = {
     "adjust_sleeve":   (lambda: heal(LS.adjust_sleeve()), "petg-gf/adjust_sleeve.step", "PETG-GF — adjust sleeve: butts the fixed sleeve; one +X screw pins the fixed tenon, one sets the height through the adjust tenon's ladder. Prints -Y -> +Y"),
     "fixed_tenon":     (lambda: heal(LS.fixed_tenon()), "petg-gf/fixed_tenon.step", "PETG-GF — fixed floating tenon: adapter <-> fixed sleeve <-> adjust sleeve, houses the body latch slider and spring. Prints diagonally (+X+Y -> -X-Y)"),
     "adjust_tenon":    (lambda: heal(LS.adjust_tenon()), "petg-gf/adjust_tenon.step", "PETG-GF — adjust floating tenon: the height ladder (blind +X holes) and, at its bar end, the pedal bar latch's pocket and lead-in. Prints diagonally (+X+Y -> -X-Y)"),
+    "leg_trrs_throat": (lambda: heal(__import__("src.leg_trrs", fromlist=["e"]).throat()), "tpu/leg_trrs_throat.step", "TPU — the TRRS jack's up-stop ×4, at the fixed tenon's tip: a Ø10.3 × 6.2 ring bored Ø6.6 so the body plug's overmould still passes, with a 45° funnel at the mouth (radial capture 1.55 → 2.75). It cannot be a step in the bore — the Ø9.7 jack goes in from the tip, so a lip above it would be a lid fitted before the box is filled. It DROPS IN AND TURNS 70° on a bayonet (user): two lugs under 1.6 of octagon, and TPU so the lugs are their own preload. Turn it back out with a flat blade in the two mouth notches — the press-and-pin it replaces had no way out at all, because nothing here may stand proud of a flank that enters a mortise. Carries the coil's 5 N only while the leg is off; with the leg on the mortise roof lies on its top face and the bayonet cannot even lift. PRINT IT TIP UP (mouth away from the bed): the lug's TOP is the bearing face, so it must not be the overhanging one — the underside is chamfered 45° for exactly that reason. So printed, it has no overhang past 45° at all"),
+    "leg_trrs_sleeve": (lambda: heal(__import__("src.leg_trrs", fromlist=["e"]).sleeve()), "tpu/leg_trrs_sleeve.step", "TPU — the body plug's retainer ×4: a Ø9.6 × 6.4 cup that grips the male overmould at 0.4 of squeeze and locks into the adapter's roof on the same 70° bayonet. It replaces a Ø6.1-in-Ø6.0 press whose holding force was 6–48 N depending on a modulus nobody publishes — and zero if the bought plug measures at the low end — against the 5–20 N the TRRS pair pulls every time the leg comes off (user: what stops it falling −Z?). Being an elastomer it also takes the 0.15 of slop out, so the plug can no longer cock. Turn it by turning the PLUG; what keeps it from turning back is the lead, folded into a 4.8 channel the chassis closes over. PRINT IT FLANGE DOWN (the narrow end on the bed) — the mirror of the throat, because here it is the lug's UNDERSIDE that bears, so the chamfer goes on top. So printed, it has no overhang past 45°"),
     "leg_latch_slider": (lambda: heal(__import__("src.leg_latch", fromlist=["e"]).slider()), "pctg/leg_latch_slider.step", "PCTG — body latch slider: push-to-connect hook into the adapter, flush 20x20 pad on the fixed sleeve, one steel coil. Prints -X -> +X"),
     "bar_latch_frame": (lambda: heal(LS.bar_latch_frame()), "pctg/bar_latch_frame.step", "PCTG — pedal bar yoke latch: a ring round the adjust tenon, hook in its pocket, 20x20 pad flush in the collar, a cup seating its one coil. Prints ring down"),
     "bar_latch_collar": (lambda: heal(LS.bar_latch_collar()), "petg-gf/bar_latch_collar.step", "PETG-GF — pedal bar latch collar: the top 22.4 of the bar's tower, holding the yoke and its springs; two T rails slide it onto the tower from +Y, one M4x30 button head into a heat-set insert in the tower locks it. Prints on its +Y face"),
@@ -243,6 +245,29 @@ for _ctx, _cutters in _WR_FUSE.tee_hold_negatives():
             for _cut in _cutters:
                 chassis_segments[_csi] = chassis_segments[_csi].cut(_cut)
             break
+# THE TRRS ADAPTER'S STATION over the -X/+Y leg (wiring.trrs_*): the same three-step
+# dance the tees do, and for the same reason -- fuse the cradle into the segment that
+# owns its X, THEN cut the things that live inside it, because the fuse fills them in.
+# The PORT is the extra one here: a bore through the +Y rail that the leg's plug
+# reaches in along, so it has to be cut after the cradle's base merges into that rail.
+_trrs_x = _WR_FUSE.TRRS_X
+# THE CHASSIS-SIDE TRRS BOARD IS PARKED (user, 2026-09-16): dropped off the
+# instrument's underside, with the leg's lead left hanging in free air. The user has a
+# wiring plan for it to be implemented later, and until then a board mounted here is a
+# guess that collides with real parts -- it was behind 6 of the model's 14 unintended
+# overlaps (keyhead_endplate, electronics_tray, pi5 and three nut_height screws).
+#
+# NOTHING IS DELETED. wiring.trrs_cradle / trrs_port / trrs_hold_negatives /
+# trrs_components are all still there and still correct for the station as laid out;
+# only these call sites are commented out, so putting the board back is uncommenting
+# them.
+# for _csi in range(len(_seg_edges) - 1):
+#     if _seg_edges[_csi + 1] < _trrs_x < _seg_edges[_csi]:
+#         chassis_segments[_csi] = chassis_segments[_csi].union(_WR_FUSE.trrs_cradle())
+#         chassis_segments[_csi] = chassis_segments[_csi].cut(_WR_FUSE.trrs_port())
+#         for _cut in _WR_FUSE.trrs_hold_negatives():
+#             chassis_segments[_csi] = chassis_segments[_csi].cut(_cut)
+#         break
 for _i, _seg in enumerate(chassis_segments):     # chassis split into dovetailed segments
     PARTS[f"chassis_{_i}"] = (partial(heal, _seg), f"petg-gf/chassis_{_i}.step",
                               "PETG-GF — chassis segment (cadkit slide-down T joint per rail; NO glue "
@@ -762,6 +787,7 @@ def _electronics_components():
         out.append((f"top_plate_color_{len(TP.segments_color) + i}",
                     fc.translate((0, dy, 0))))
     out += WR.tee_components()
+    # out += WR.trrs_components()      # PARKED with the station above
     out += WR.build_wires()
     return out
 
@@ -1165,6 +1191,13 @@ _COLORS = {
     "leg_latch_spring": (0.62, 0.64, 0.67),  # stainless coil (purchased)
     "lock_pin_screw":  (0.55, 0.55, 0.58),   # M4x12 button head (purchased)
     "lock_pin_insert": (0.80, 0.60, 0.35),   # brass heat-set insert
+    "leg_trrs_plug":   (0.15, 0.15, 0.17),   # the blind-mate: the FIXED plug, in the
+    "leg_trrs_jack":   (0.20, 0.20, 0.22),   # adapter's roof...and the FLOATING jack
+    "leg_trrs_spring": (0.62, 0.64, 0.67),   # ...the coil that holds them together
+    "leg_trrs_throat": (0.34, 0.56, 0.44),   # ...and the ring that keeps the jack in
+    "leg_trrs_sleeve": (0.03, 0.03, 0.03),   # ...and the TPU cup that holds the plug (black)
+    "leg_trrs_patch":  (0.12, 0.12, 0.14),   # ...the lead up to the chassis socket
+    "leg_trrs_leg_lead": (0.12, 0.12, 0.14), # ...and the column's own, down the leg
     "bar_latch_frame": (0.85, 0.35, 0.20),   # pedal bar latch accent
     "bar_latch_collar": (0.36, 0.42, 0.46),  # PETG-GF, the bar tower's family
     "bar_latch_spring": (0.62, 0.64, 0.67),
@@ -1255,6 +1288,10 @@ _COLORS = {
                                              # 2x CAN transceiver + XH headers)
     "tee_pcb":         (0.10, 0.42, 0.18),   # trunk-and-drop bus tee PCBs
     "tee_cradle":      (0.32, 0.55, 0.42),   # PCTG drop-in PCB cradle (pcb_cradle, side hold-down)
+    "trrs_adapter_pcb":    (0.18, 0.42, 0.24),   # the leg's TRRS<->XH adapter (bronner's board)
+    "trrs_adapter_plug":   (0.15, 0.15, 0.17),   # the lead from the leg, plugged in
+    "trrs_adapter_screw":  (0.55, 0.55, 0.58),   # M4 button, 2.5 hex -- the one lock
+    "trrs_adapter_insert": (0.80, 0.60, 0.35),   # its brass heat-set insert
     "tee_screw":       (0.72, 0.74, 0.78),   # M4x10 button, BESIDE the tee board
     "tee_insert":      (0.72, 0.60, 0.30),   # M4 heat-set brass, in the cradle boss
     "optical_pcb":     (0.12, 0.30, 0.55),   # per-string optical strip (blue solder mask,
