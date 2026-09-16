@@ -509,6 +509,42 @@ def spring_force(pressed: bool = False) -> float:
     return (SPR_FREE - spring_length(pressed)) * SPR_RATE
 
 
+def coil(length: float, base, direction) -> cq.Workplane:
+    """THE COIL, swept as a real helix, along any axis.
+
+    This used to live inside spring() and nothing else could reach it, so the two
+    OTHER latch springs in the assembly -- leg_latch's and bar_latch's -- were drawn as
+    a plain cylinder and a tube instead. A tube is the coil's swept ENVELOPE, which is
+    what the overlap gate wants; a cylinder is not even that, it is the envelope with
+    the bore filled in. Neither is what a person should be shown, and the user spotted
+    exactly that in the viewer: one spring a helix, the next a solid slug.
+
+    Exact where it matters: OD, wire diameter, turn count, and OVERALL length -- the
+    helix PATH is built one wire-diameter short, because the swept tube adds a wire
+    radius past the path at each end.
+
+    Simplified where it does not: uniform pitch, so the closed-and-ground END coils are
+    drawn pitched rather than touching. No interface cares -- OD sets the bore fit,
+    overall length sets the gap, and solid height is turns x wire either way."""
+    r_mid = (SPR_OD - SPR_WIRE) / 2.0
+    path_h = length - SPR_WIRE
+    wire = cq.Wire.makeHelix(pitch=path_h / SPR_TURNS, height=path_h, radius=r_mid)
+    c = (cq.Workplane("XZ").center(r_mid, 0).circle(SPR_WIRE / 2.0)
+         .sweep(cq.Workplane("XY").add(wire), isFrenet=True))
+    c = c.rotate((0, 0, 0), (1, 0, 0), -90)          # helix +Z -> +Y
+    d = cq.Vector(*direction).normalized()
+    y = cq.Vector(0, 1, 0)
+    ax = y.cross(d)
+    if ax.Length > 1e-9:
+        import math
+        ang = math.degrees(math.acos(max(-1.0, min(1.0, y.dot(d)))))
+        c = c.rotate((0, 0, 0), ax.toTuple(), ang)
+    elif d.y < 0:
+        c = c.rotate((0, 0, 0), (1, 0, 0), 180)
+    b = cq.Vector(*base) + d * (SPR_WIRE / 2.0)
+    return c.translate(b.toTuple())
+
+
 def spring(cx: float = LX_C, pressed: bool = False) -> cq.Workplane:
     """The steel compression coil, as a real swept helix -- axis along Y (the
     slider's travel), seated in the slider's blind bore and bearing on the
