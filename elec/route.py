@@ -24,6 +24,16 @@ import subprocess
 import sys
 
 import pcbnew
+import wx
+# ⚠ NO MODAL DIALOGS IN A BUILD STEP. KiCad's Python is a wxWidgets application, and a
+# failed internal assertion pops a GUI alert -- "Do you want to stop the program?" -- and
+# WAITS. On a developer's machine that is a surprise; in any automated run it is a hang
+# with no output and no exit code, and the whole point of this directory is that someone
+# can run it unattended years from now. One real assertion (a KiCad 10 API change in
+# PCB_VIA::GetWidth) surfaced this, and the assertion was worth fixing on its own -- but
+# a pipeline that CAN block on a dialog is a defect independent of which dialog it is.
+wx.DisableAsserts()
+
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import layout                                        # noqa: E402  (needs the path above)

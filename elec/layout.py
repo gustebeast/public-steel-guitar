@@ -27,6 +27,16 @@ import re
 import sys
 
 import pcbnew
+import wx
+# ⚠ NO MODAL DIALOGS IN A BUILD STEP. KiCad's Python is a wxWidgets application, and a
+# failed internal assertion pops a GUI alert -- "Do you want to stop the program?" -- and
+# WAITS. On a developer's machine that is a surprise; in any automated run it is a hang
+# with no output and no exit code, and the whole point of this directory is that someone
+# can run it unattended years from now. One real assertion (a KiCad 10 API change in
+# PCB_VIA::GetWidth) surfaced this, and the assertion was worth fixing on its own -- but
+# a pipeline that CAN block on a dialog is a defect independent of which dialog it is.
+wx.DisableAsserts()
+
 
 FP_DIRS = [
     os.environ.get("KICAD10_FOOTPRINT_DIR")
@@ -721,6 +731,17 @@ def _escape_plan(fpo, m, pa, pb, hs, voff, margin, via_margin, na, nb,
     return out
 
 
+def _via_r(v):
+    """A via's radius. KiCad 10's PCB_VIA::GetWidth() wants a layer -- a via may be a
+    different diameter on different layers -- and calling the no-argument form trips an
+    assertion and returns something arbitrary. Ours are plain through vias of one
+    diameter, but asking properly costs nothing and the warning was real."""
+    try:
+        return v.GetWidth(v.GetLayer()) / 2.0
+    except TypeError:
+        return v.GetWidth() / 2.0
+
+
 def _canonical_uuids(path):
     """Rewrite a saved board so the same design always produces the same file.
 
@@ -792,7 +813,65 @@ def _canonical_uuids(path):
     open(path, "w", encoding="utf-8").write("".join(out))
 
 
-def _local_nets(board, patterns, local_mm=6.0, width=0.2, clr=0.14):
+def _hop_via_inner(board, pa, pb, netname, inner, clear, seg_clear, emit,
+                   via_d, via_drill, clr, width, math):
+    """pad -> via -> a run on `inner` -> via -> pad, or 0 if there is no room.
+
+    The two vias are searched separately and close to their own pads, because unlike a
+    differential pair there is nothing to keep parallel here -- one net, one conductor,
+    and the only requirement is that it arrives.
+    """
+    def spot(pad, toward):
+        """A via position just off `pad`, preferring the direction of travel."""
+        pc = pad.GetPosition()
+        half = max(pad.GetSize().x, pad.GetSize().y) / 2.0
+        need = pcbnew.FromMM(via_d / 2.0 + clr)
+        base = math.atan2(toward[1] - pc.y, toward[0] - pc.x)
+        for step in range(20):
+            r = half + need + pcbnew.FromMM(0.1 * step)
+            for dth in (0, 0.5, -0.5, 1.0, -1.0, 1.6, -1.6, 2.2, -2.2, math.pi):
+                x = int(pc.x + r * math.cos(base + dth))
+                y = int(pc.y + r * math.sin(base + dth))
+                if not clear(x, y, netname):
+                    continue
+                if not seg_clear((pc.x, pc.y), (x, y), netname):
+                    continue
+                return (x, y)
+        return None
+
+    va = spot(pa, (pb.GetPosition().x, pb.GetPosition().y))
+    vb = spot(pb, (pa.GetPosition().x, pa.GetPosition().y))
+    if va is None or vb is None:
+        return 0
+    # the run itself only has to clear THROUGH-HOLE copper: an SMD pad lives on the
+    # component layer and is no obstacle at all to a trace an layer down
+    way = None
+    for sh in _centrelines(va, vb, detour_mm=2.0, step_mm=0.25):
+        if all(seg_clear(q0, q1, netname, thru_only=True) for q0, q1 in zip(sh, sh[1:])):
+            way = sh
+            break
+    if way is None:
+        return 0
+    n = 0
+    emit((pa.GetPosition().x, pa.GetPosition().y), va, pa, netname, pa.GetLayer())
+    emit(vb, (pb.GetPosition().x, pb.GetPosition().y), pb, netname, pb.GetLayer())
+    n += 2
+    for q0, q1 in zip(way, way[1:]):
+        emit(q0, q1, pa, netname, _LAYERS[inner])
+        n += 1
+    for pt, pad in ((va, pa), (vb, pb)):
+        v = pcbnew.PCB_VIA(board)
+        v.SetPosition(pcbnew.VECTOR2I(int(pt[0]), int(pt[1])))
+        v.SetWidth(pcbnew.FromMM(via_d))
+        v.SetDrill(pcbnew.FromMM(via_drill))
+        v.SetNet(pad.GetNet())
+        v.SetViaType(pcbnew.VIATYPE_THROUGH)
+        board.Add(v)
+    return n
+
+
+def _local_nets(board, patterns, inner=None, local_mm=6.0, width=0.2, clr=0.14,
+                via_d=0.6, via_drill=0.3):
     """Lay the SHORT, LOCAL part of repetitive nets before the autorouter sees them.
 
     ⚠ THE TIA NETS ARE TWO PROBLEMS WEARING ONE NAME, and that is why they were the
@@ -822,7 +901,12 @@ def _local_nets(board, patterns, local_mm=6.0, width=0.2, clr=0.14):
     CELL = pcbnew.FromMM(2.0)
 
     pads = [(q, fp) for fp in board.GetFootprints() for q in fp.Pads()]
-    boxes = [(q.GetBoundingBox(), q.GetNetname()) for q, _ in pads]
+    # the third field says whether this obstacle pierces EVERY layer: a through pad does
+    # and an SMD pad does not, which is the whole difference between a surface run and an
+    # inner one
+    boxes = [(q.GetBoundingBox(), q.GetNetname(),
+              q.GetAttribute() in (pcbnew.PAD_ATTRIB_PTH, pcbnew.PAD_ATTRIB_NPTH))
+             for q, _ in pads]
     # ⚠ TRACKS AS SEGMENTS, not bounding boxes -- see _stitch_plane_pads. A diagonal
     # trace's box is mostly empty corner, and treating that as copper is how a board
     # that has room reports that it has none.
@@ -830,20 +914,20 @@ def _local_nets(board, patterns, local_mm=6.0, width=0.2, clr=0.14):
              t.GetWidth() / 2.0, t.GetNetname()) for t in board.GetTracks()
             if t.GetClass() != "PCB_VIA"]
     segs += [((t.GetPosition().x, t.GetPosition().y),
-              (t.GetPosition().x, t.GetPosition().y), t.GetWidth() / 2.0,
+              (t.GetPosition().x, t.GetPosition().y), _via_r(t),
               t.GetNetname()) for t in board.GetTracks() if t.GetClass() == "PCB_VIA"]
     grid = {}
-    for bb, onet in boxes:
+    for bb, onet, is_thru in boxes:
         for cx in range(bb.GetLeft() // CELL, bb.GetRight() // CELL + 1):
             for cy in range(bb.GetTop() // CELL, bb.GetBottom() // CELL + 1):
-                grid.setdefault((cx, cy), []).append((bb, onet))
+                grid.setdefault((cx, cy), []).append((bb, onet, is_thru))
 
-    def clear(x, y, netname):
+    def clear(x, y, netname, thru_only=False):
         x, y = int(x), int(y)
         for cx in range((x - margin) // CELL, (x + margin) // CELL + 1):
             for cy in range((y - margin) // CELL, (y + margin) // CELL + 1):
-                for bb, onet in grid.get((cx, cy), ()):
-                    if onet == netname:
+                for bb, onet, is_thru in grid.get((cx, cy), ()):
+                    if onet == netname or (thru_only and not is_thru):
                         continue
                     dx = max(bb.GetLeft() - x, 0, x - bb.GetRight())
                     dy = max(bb.GetTop() - y, 0, y - bb.GetBottom())
@@ -859,11 +943,11 @@ def _local_nets(board, patterns, local_mm=6.0, width=0.2, clr=0.14):
                 return False
         return True
 
-    def seg_clear(p0, p1, netname):
+    def seg_clear(p0, p1, netname, thru_only=False):
         L = math.hypot(p1[0] - p0[0], p1[1] - p0[1])
         n = max(4, int(pcbnew.ToMM(L) / 0.15) + 1)
         return all(clear(p0[0] + (p1[0] - p0[0]) * t / n,
-                         p0[1] + (p1[1] - p0[1]) * t / n, netname)
+                         p0[1] + (p1[1] - p0[1]) * t / n, netname, thru_only)
                    for t in range(n + 1))
 
     by_net = {}
@@ -871,6 +955,19 @@ def _local_nets(board, patterns, local_mm=6.0, width=0.2, clr=0.14):
         n = q.GetNetname()
         if n and any(re.fullmatch(pat, n) for pat in patterns):
             by_net.setdefault(n, []).append(q)
+
+    def emit(q0, q1, pad, netname, layer):
+        """One track segment, registered as an obstacle for everything laid after it."""
+        if q0 == q1:
+            return
+        t = pcbnew.PCB_TRACK(board)
+        t.SetStart(pcbnew.VECTOR2I(int(q0[0]), int(q0[1])))
+        t.SetEnd(pcbnew.VECTOR2I(int(q1[0]), int(q1[1])))
+        t.SetWidth(pcbnew.FromMM(width))
+        t.SetLayer(layer)
+        t.SetNet(pad.GetNet())
+        board.Add(t)
+        segs.append((q0, q1, pcbnew.FromMM(width) / 2.0, netname))
 
     laid, skipped, reach = 0, 0, pcbnew.FromMM(local_mm)
     for netname in sorted(by_net):
@@ -909,17 +1006,21 @@ def _local_nets(board, patterns, local_mm=6.0, width=0.2, clr=0.14):
                         break
                 if way is not None:
                     for q0, q1 in zip(way, way[1:]):
-                        if q0 == q1:
-                            continue
-                        t = pcbnew.PCB_TRACK(board)
-                        t.SetStart(pcbnew.VECTOR2I(int(q0[0]), int(q0[1])))
-                        t.SetEnd(pcbnew.VECTOR2I(int(q1[0]), int(q1[1])))
-                        t.SetWidth(pcbnew.FromMM(width))
-                        t.SetLayer(a.GetLayer())
-                        t.SetNet(a.GetNet())
-                        board.Add(t)
-                        segs.append((q0, q1, pcbnew.FromMM(width) / 2.0, netname))
+                        emit(q0, q1, a, netname, a.GetLayer())
                         laid += 1
+                elif inner is not None:
+                    # ⚠ GO UNDER, when the component layer is full. Half of these edges
+                    # were being skipped on a board where they had somewhere to go: a
+                    # feedback resistor 2 mm from its op-amp pin with another part's land
+                    # between them has no surface path and a trivial one a layer down.
+                    # The surface is where the pads are and therefore where the traffic
+                    # is; the free inner layer is empty by construction.
+                    hop = _hop_via_inner(board, a, b, netname, inner, clear, seg_clear,
+                                         emit, via_d, via_drill, clr, width, math)
+                    if hop:
+                        laid += hop
+                    else:
+                        skipped += 1
                 else:
                     skipped += 1
                 inside.append(b)
@@ -1016,7 +1117,7 @@ def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
              t.GetWidth() / 2.0, t.GetNetname()) for t in board.GetTracks()
             if t.GetClass() != "PCB_VIA"]
     segs += [((t.GetPosition().x, t.GetPosition().y),
-              (t.GetPosition().x, t.GetPosition().y), t.GetWidth() / 2.0,
+              (t.GetPosition().x, t.GetPosition().y), _via_r(t),
               t.GetNetname()) for t in board.GetTracks() if t.GetClass() == "PCB_VIA"]
 
     def _clear_of(x, y, netname, margin):
@@ -1520,7 +1621,8 @@ def build(stem):
         # NOT `skipped` -- that name already holds the single-pad net count this
         # function reports at the end, and shadowing it made the summary line claim
         # 40 nets had appeared out of nowhere.
-        n_laid, n_left = _local_nets(board, notes["local_nets"])
+        n_laid, n_left = _local_nets(board, notes["local_nets"],
+                                     inner=notes.get("diff_pair_inner"))
         print("  local nets: laid %d segment(s)%s"
               % (n_laid, ", %d left to the router" % n_left if n_left else ""))
 
