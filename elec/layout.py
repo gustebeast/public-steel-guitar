@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 
 import pcbnew
@@ -720,6 +721,77 @@ def _escape_plan(fpo, m, pa, pb, hs, voff, margin, via_margin, na, nb,
     return out
 
 
+def _canonical_uuids(path):
+    """Rewrite a saved board so the same design always produces the same file.
+
+    ⚠ THIS IS THE DIFFERENCE BETWEEN A PIPELINE AND A SLOT MACHINE, and it was
+    invisible until one unchanged board was routed three times and came back with 14, 17
+    and 30 unconnected. The copper this file lays IS deterministic -- two runs produce
+    byte-identical geometry, and proving that is what made the real cause findable. What
+    was not deterministic is the ORDER it lands in: KiCad gives every item a random UUID
+    and sorts the saved file by it, so each run handed the autorouter the same 153 parts
+    introduced in a different sequence. A router's result depends on the order it is
+    given things, so the board moved run to run while the design stood still.
+
+    A design that cannot be rebuilt the same way twice cannot be diffed, cannot be
+    reviewed, and cannot honestly be handed to anyone. "Download the tools and run the
+    script" stops meaning anything if the script answers differently each time.
+
+    THE FIX is two steps, and the second is the one that matters. Each UUID is derived
+    from the CONTENT of the block it belongs to, so the same footprint at the same place
+    always hashes to the same id. Then the blocks that carry ids -- footprints, tracks,
+    vias, zones -- are SORTED BY THOSE IDS HERE, in the text, rather than trusting KiCad
+    to re-sort on the next save. It does not: a reload and re-save preserves the order it
+    read, so canonical ids alone left the file exactly as random as before.
+
+    Everything else in the file keeps its position: net declarations are indexed by
+    number and the header is the header. UUIDs are identity, not data, and nothing
+    downstream reads them -- only their order was ever escaping.
+    """
+    import hashlib
+    import uuid as _uuid
+    txt = open(path, encoding="utf-8").read()
+    ns = _uuid.UUID("6f9619ff-8b86-d011-b42d-00c04fc964ff")
+    # scan parens rather than pattern-match: a footprint block contains everything a
+    # board block does, and no regex survives that
+    spans, depth, start = [], 0, None
+    for i, ch in enumerate(txt):
+        if ch == "(":
+            if depth == 1 and start is None:
+                start = i
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+            if depth == 1 and start is not None:
+                spans.append((start, i + 1))
+                start = None
+    pat = re.compile(r'\(uuid "[0-9a-fA-F-]+"\)')
+    blocks = []
+    for a, b in spans:
+        block = txt[a:b]
+        key = hashlib.sha1(pat.sub('(uuid "")', block).encode("utf-8")).hexdigest()
+        n = [0]
+
+        def sub(_m, key=key, n=n):
+            n[0] += 1
+            return '(uuid "%s")' % _uuid.uuid5(ns, "%s:%d" % (key, n[0]))
+        blocks.append(pat.sub(sub, block))
+
+    # sort only what carries an id; a (net 3 "GND") block is positional and stays put
+    MOVABLE = ("(footprint", "(segment", "(via", "(zone", "(arc")
+    idx = [i for i, bl in enumerate(blocks) if bl.startswith(MOVABLE)]
+    for slot, bl in zip(idx, sorted(blocks[i] for i in idx)):
+        blocks[slot] = bl
+
+    out, last = [], 0
+    for (a, b), bl in zip(spans, blocks):
+        out.append(txt[last:a])
+        out.append(bl)
+        last = b
+    out.append(txt[last:])
+    open(path, "w", encoding="utf-8").write("".join(out))
+
+
 def _outline_pts(notes):
     """The board edge as board-local mm points, whichever way the board declared it."""
     if notes.get("outline_poly"):
@@ -1341,6 +1413,7 @@ def build(stem):
 
     out = stem + ".kicad_pcb"
     board.Save(out)
+    _canonical_uuids(out)
     print("%s: %d parts, %d nets%s, %.1f x %.1f mm"
           % (os.path.basename(out), len(comps), len(nets) - skipped,
              (" (+%d single-pad, not placed)" % skipped) if skipped else "",
