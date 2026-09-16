@@ -81,6 +81,28 @@ the constraint is stock, not selection. See the optical-pickup section.
 > `latch.SPR_FREE` are single-source constants and the z-chain falls out of them; the
 > asserts already guard solid height. Do not order a second time to chase 12 mm free —
 > the geometry is the cheap thing to move here, and the spring is not.
+> **MCMASTER CROSS-CHECK, same day.** Their catalogue does read in a signed-in Chrome
+> session (it refuses an automated browser, not a browser) and it publishes the column
+> uxcell does not. Nearest catalogue parts to our two envelopes, 302 SS, rate published:
+>
+> | | part | geometry | rate | price |
+> |---|---|---|---|---|
+> | latch | 2006N221 | 12.5 × Ø5.63 × ID 4.37 × 0.63 wire | **1.96 N/mm** | $17.66 / 5 |
+> | float | 2006N232 | 14.5 × Ø8.80 × **ID 7.20** × 0.80 wire | **1.91 N/mm** | $15.98 / 5 |
+>
+> **The useful part of that is not the parts, it is the number.** Two springs of this
+> geometry both land at ~1.9 N/mm, so the model's **2.5 N/mm was optimistic** — and the
+> uxcell parts, being LONGER at the same OD and wire, will sit at or below 1.9. That
+> converts the open question from "unknown" to "bracketed": 1.5–2.0 for the latch,
+> 0.6–0.9 for the float, and the re-derive on arrival is a confirmation rather than a
+> discovery.
+>
+> On price McMaster is not close — 6 latch springs is two packs, so the full basket is
+> **$51.30 against $13.28**. The one that might be worth buying there anyway is the
+> FLOAT: 2006N232 has ID 7.20 against our required 6.5, which is 1.1 of clearance over
+> the lead's moulded plug instead of 0.5, and its rate is known before it ships. That
+> middle basket is $22.97.
+>
 > Alternative if the rate comes back unusable: a **300-piece 304 SS assortment**
 > ([Dianrui, $6.99](https://www.amazon.com/s?k=Dianrui+300PCS+Compression+Springs+Assortment+Kit))
 > covers 23 sizes and would let the rate be chosen by test rather than by catalogue.
