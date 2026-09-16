@@ -155,7 +155,15 @@ PRESS_N = (LT.SPR_FREE - (SPR_REST_L - STROKE)) * LT.SPR_RATE         # 14.1
 #     leg slider's seat exactly, with the locating blade still up its middle.
 #   * fixed end: the channel is a SLEEVE at the coil's bore diameter for the whole
 #     length, ending in a flat blind floor -- captured along its length, not butted.
-CUP_D = LT.SPR_BORE_D              # 5.4 the cup's bore = the leg's spring bore
+CUP_SEAT_CLR = 0.2                 # the cup is a SEAT, not a bore the coil slides in:
+                                   # the coil's end sits CUP_SEAT into it and stays
+                                   # there, so it does not need the slider's running
+                                   # clearance. That distinction is worth 0.2 of
+                                   # diameter, and 0.2 is exactly what the site had
+                                   # left when the coil went from O5.0 to the bought
+                                   # O5.63: at the slider's own clearance the cup
+                                   # overhung the ring's arm by 0.015
+CUP_D = LT.SPR_OD + CUP_SEAT_CLR   # 5.83 the cup's bore
 CUP_SEAT = 2 * B                   # 1.6 how far the coil's end sits into the cup
 CUP_W = CUP_D + 2 * D.MIN_WALL_2P  # 8.6 across X: the bore plus a REAL wall each
                                    # side. It was 7.2, which made those walls 0.9 --

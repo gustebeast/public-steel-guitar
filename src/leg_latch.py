@@ -240,6 +240,9 @@ DIVOT = 2 * B                      # 1.6 in the tenon's pocket floor
 SLIDER_SEAT = LT.SPR_SEAT - DIVOT  # 4.8 in the slider
 SPR_REST_L = SLIDER_BACK + SLIDER_SEAT - (TUNNEL_BACK - DIVOT)   # 10.4 installed
 SPR_PRESS_L = SPR_REST_L - STROKE                                 # 7.2 pressed
+assert tuple(LT.SLIDER_UP) == tuple(LS.PRINT_UP["latch_slider"]), (
+    "latch.py teardrops the spring bore for %s; leg_stack prints the slider %s"
+    % (LT.SLIDER_UP, LS.PRINT_UP["latch_slider"]))
 assert SPR_REST_L < LT.SPR_FREE, "the spring is not preloaded at rest"
 assert SPR_PRESS_L >= LT.SPR_SOLID, "the spring goes solid before full stroke"
 PRELOAD_N = (LT.SPR_FREE - SPR_REST_L) * LT.SPR_RATE             # ~4.0
