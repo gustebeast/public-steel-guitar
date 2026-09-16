@@ -45,8 +45,31 @@ which are CH32V307s with the PHY built in.
 the output panel gained a high-speed hub it runs ~100 mm to that board's J4
 instead, and the hub carries both devices upstream on one cable. Both are HS, so
 neither sits behind a Transaction Translator.
+
+⚠ ROUTING IS NOT FINISHED, AND HERE IS EXACTLY WHERE IT STOPPED. Freerouting gets
+this board to 2 real violations and 15 unconnected items and then converges -- 20
+passes and 30 passes give the same answer, and 30 is sometimes WORSE, so more
+effort is not the missing ingredient. The remainder, diagnosed rather than
+summarised, because "15 unconnected" is not something anyone can act on:
+
+  * 13 of the 15 are DANGLING GND STUBS. The router laid a short track from a
+    ground pad toward the plane and never placed the via at the end of it. GND
+    lives on In1.Cu and B.Cu; a pad on F.Cu cannot reach it without one. These are
+    a mechanical cleanup -- drop a via at each free end, or delete the stub and let
+    the pad's own via serve it -- not a routing problem.
+  * 2 are REAL: TIA_OUT_7A and TIA_IN_1B. Those are transimpedance amp nets in the
+    dense sensing strip, and they want a human.
+  * The 2 violations are dangling vias, same family as the first bullet.
+
+AND THE COUNT IS NOT THE REASON TO FINISH IT BY HAND. Twenty summing nodes reading
+tens of nanoamps and a 60 MHz ULPI bus are not things to hand to an autorouter and
+stop looking at. Nothing here has checked that the ULPI pair is length-matched,
+that the TIA inputs are guarded, or that the switcher's loop is tight -- and DRC
+does not know to ask. Treat the routed .kicad_pcb as a CANDIDATE. The placement,
+which is the part this file is actually responsible for, is clean: the only DRC
+violations on the placed board are the 20 declared sensor-triplet courtyards.
 """
-from __future__ import annotations
+
 
 import os
 import sys
