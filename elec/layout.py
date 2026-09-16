@@ -828,6 +828,93 @@ def _via_r(v):
         return v.GetWidth() / 2.0
 
 
+def link_same_part_gaps(board, max_mm=5.0, width=0.25, clr=0.2):
+    """Join same-net pads of ONE part that the routed board left in separate islands.
+
+    ⚠ A REPAIR, NOT A CONSTRAINT, and the difference is the whole lesson of the day. The
+    same idea applied BEFORE routing -- "join every part's same-net pads" -- laid 75
+    segments and took output_panel from 1 unconnected to 8, because most of those pads
+    were already going to be connected and the copper only cost the router freedom.
+    Capping it by distance laid 50 and was no better in kind.
+
+    Applied AFTER routing it costs nothing by construction: connectivity has already been
+    computed, so the only pads considered are ones actually left in different islands.
+    There is no counterfactual route being denied, because the routing is done.
+
+    It exists because the router leaves this case surprisingly often. J7 pins 2 and 3 are
+    both +24V, 2.5 mm apart on one connector, and freerouting wired each to a different
+    half of the net and never joined them -- the SES has no via and no trace between them.
+    And a USBLC6's pins 3 and 4 are one node inside the device, so no copper is needed
+    there in reality and KiCad has no way to know that; two millimetres of trace makes the
+    netlist's claim true on the board.
+    """
+    import math
+    board.BuildConnectivity()
+    cc = board.GetConnectivity()
+    pads = [(q.GetBoundingBox(), q.GetNetname())
+            for fp in board.GetFootprints() for q in fp.Pads()]
+    segs = [((t.GetStart().x, t.GetStart().y), (t.GetEnd().x, t.GetEnd().y),
+             t.GetWidth() / 2.0, t.GetNetname()) for t in board.GetTracks()
+            if t.GetClass() != "PCB_VIA"]
+    segs += [((t.GetPosition().x, t.GetPosition().y),
+              (t.GetPosition().x, t.GetPosition().y), _via_r(t), t.GetNetname())
+             for t in board.GetTracks() if t.GetClass() == "PCB_VIA"]
+    margin = pcbnew.FromMM(width / 2.0 + clr)
+
+    def clear(x, y, net):
+        for bb, onet in pads:
+            if onet == net:
+                continue
+            dx = max(bb.GetLeft() - x, 0, x - bb.GetRight())
+            dy = max(bb.GetTop() - y, 0, y - bb.GetBottom())
+            if math.hypot(dx, dy) < margin:
+                return False
+        for (ax, ay), (bx, by), hw, onet in segs:
+            if onet == net:
+                continue
+            vx, vy = bx - ax, by - ay
+            L2 = vx * vx + vy * vy
+            t = 0.0 if L2 == 0 else max(0.0, min(1.0, ((x - ax) * vx + (y - ay) * vy) / L2))
+            if math.hypot(x - (ax + t * vx), y - (ay + t * vy)) - hw < margin:
+                return False
+        return True
+
+    made = 0
+    for fp in board.GetFootprints():
+        by_net = {}
+        for q in fp.Pads():
+            if q.GetNetname():
+                by_net.setdefault(q.GetNetname(), []).append(q)
+        for net, group in by_net.items():
+            for i, a in enumerate(group):
+                for b in group[i + 1:]:
+                    d = (a.GetPosition() - b.GetPosition()).EuclideanNorm()
+                    if d > pcbnew.FromMM(max_mm) or d == 0:
+                        continue
+                    if any(it.GetPosition() == b.GetPosition()
+                           for it in cc.GetConnectedItems(a)):
+                        continue          # already joined, by copper or by the plane
+                    p0 = (a.GetPosition().x, a.GetPosition().y)
+                    p1 = (b.GetPosition().x, b.GetPosition().y)
+                    n = max(4, int(pcbnew.ToMM(d) / 0.15) + 1)
+                    if not all(clear(p0[0] + (p1[0] - p0[0]) * k / n,
+                                     p0[1] + (p1[1] - p0[1]) * k / n, net)
+                               for k in range(n + 1)):
+                        continue
+                    t = pcbnew.PCB_TRACK(board)
+                    t.SetStart(a.GetPosition())
+                    t.SetEnd(b.GetPosition())
+                    t.SetWidth(pcbnew.FromMM(width))
+                    t.SetLayer(a.GetLayer())
+                    t.SetNet(a.GetNet())
+                    board.Add(t)
+                    segs.append((p0, p1, pcbnew.FromMM(width) / 2.0, net))
+                    made += 1
+                    board.BuildConnectivity()
+                    cc = board.GetConnectivity()
+    return made
+
+
 def rescue_stray_stitches(board, notes, via_d=0.6, clr=0.2):
     """Move stitch vias that ended up in a hole in the plane, and say how many.
 
@@ -1084,7 +1171,8 @@ def _hop_via_inner(board, pa, pb, netname, inner, clear, seg_clear, emit,
 
 
 def _local_nets(board, patterns, outline, inner=None, local_mm=6.0, width=0.2,
-                clr=0.14, via_d=0.6, via_drill=0.3):
+                clr=0.14, via_d=0.6, via_drill=0.3, same_part_only=False,
+                skip_nets=()):
     """Lay the SHORT, LOCAL part of repetitive nets before the autorouter sees them.
 
     ⚠ THE TIA NETS ARE TWO PROBLEMS WEARING ONE NAME, and that is why they were the
@@ -1175,7 +1263,7 @@ def _local_nets(board, patterns, outline, inner=None, local_mm=6.0, width=0.2,
     by_net = {}
     for q, fp in pads:
         n = q.GetNetname()
-        if n and any(re.fullmatch(pat, n) for pat in patterns):
+        if n and n not in skip_nets and any(re.fullmatch(pat, n) for pat in patterns):
             by_net.setdefault(n, []).append(q)
 
     def emit(q0, q1, pad, netname, layer):
@@ -1200,20 +1288,48 @@ def _local_nets(board, patterns, outline, inner=None, local_mm=6.0, width=0.2,
     laid, skipped, reach = 0, 0, pcbnew.FromMM(local_mm)
     for netname in sorted(by_net):
         group = by_net[netname]
-        # single-linkage clustering: a pad joins a cluster it is within reach of
-        clusters = []
-        for q in group:
-            here = (q.GetPosition().x, q.GetPosition().y)
-            hit = [c for c in clusters
-                   if any(math.hypot(here[0] - r.GetPosition().x,
-                                     here[1] - r.GetPosition().y) <= reach for r in c)]
-            if not hit:
-                clusters.append([q])
-                continue
-            hit[0].append(q)
-            for other in hit[1:]:                 # this pad merged two clusters
-                hit[0].extend(other)
-                clusters.remove(other)
+        if same_part_only:
+            # ⚠ ONE CLUSTER PER PART, and this is the safest pre-laid copper there is.
+            # Two pads of the SAME net on the SAME part are usually centimetres of net
+            # apart in the router's eyes and millimetres apart in fact: J7 pins 2 and 3
+            # are both +24V on a 2.5 mm connector pitch, and freerouting wired each of
+            # them to a different half of the net and never joined them to each other --
+            # leaving a board one connection short with a 2.5 mm gap in the middle of it.
+            #
+            # It costs the router almost nothing in freedom, which is what makes it
+            # different from the general case: the copper is the shortest that could
+            # possibly exist between those two points, so there is no alternative path it
+            # could be denying anything.
+            by_fp = {}
+            for q in group:
+                by_fp.setdefault(q.GetParentFootprint().GetReference(), []).append(q)
+            # ⚠ ONLY ADJACENT PADS, and the cap is not a detail -- it is the difference
+            # between 75 segments and 8. Unrestricted, "join a part's same-net pads"
+            # carpets an MCU in copper joining ground pins on opposite corners, which is
+            # exactly the freedom-for-determinism trade this was supposed to avoid, and
+            # it took output_panel from 1 unconnected to 8. What the router actually fails
+            # at is the SHORT case: two pins of one connector 2.5 mm apart. Past a few
+            # millimetres the router is better at this than a straight line is.
+            clusters = [[a for a in c
+                         if any(a is bq or (a.GetPosition() - bq.GetPosition())
+                                .EuclideanNorm() <= reach for bq in c if bq is not a)]
+                        for c in by_fp.values()]
+            clusters = [c for c in clusters if len(c) > 1]
+        else:
+            # single-linkage clustering: a pad joins a cluster it is within reach of
+            clusters = []
+            for q in group:
+                here = (q.GetPosition().x, q.GetPosition().y)
+                hit = [c for c in clusters
+                       if any(math.hypot(here[0] - r.GetPosition().x,
+                                         here[1] - r.GetPosition().y) <= reach for r in c)]
+                if not hit:
+                    clusters.append([q])
+                    continue
+                hit[0].append(q)
+                for other in hit[1:]:                 # this pad merged two clusters
+                    hit[0].extend(other)
+                    clusters.remove(other)
         for cl in clusters:
             if len(cl) < 2:
                 continue
