@@ -750,6 +750,73 @@ def _pad_pitch(fp):
     return best
 
 
+def drop_degenerate(board, floor_mm=0.005):
+    """Remove tracks too short to be anything, and report how many.
+
+    ⚠ A TRACK HAS WIDTH, which is what makes this safe. These fragments are half a
+    MICRON long on 0.2 mm wide copper -- a 400:1 ratio -- so whatever a zero-length track
+    touches, the copper already at that spot touches far more of. It can never be the
+    only link between two things. Either it is redundant with its neighbours, or there
+    are no neighbours and it is an orphan.
+
+    And the orphans are not harmless: an isolated fragment is a separate island of its
+    net, so DRC counts it as an unconnected item and a board reads as unfinished because
+    of copper 0.0005 mm long. One of output_panel's two remaining failures was exactly
+    that, and chasing it as a routing problem would have found nothing to fix.
+
+    They come from both directions -- rounding in the Specctra round trip, and this
+    file's own generators emitting a segment whose ends differ in the last nanometre --
+    so the clean-up belongs where both can be caught rather than at either source.
+    """
+    floor = pcbnew.FromMM(floor_mm)
+    doomed = [t for t in board.GetTracks()
+              if t.GetClass() != "PCB_VIA" and t.GetLength() < floor]
+    for t in doomed:
+        board.Remove(t)
+    return len(doomed)
+
+
+def _check_stitches_landed(board, notes):
+    """Did every stitch via actually land IN the plane it was aiming at?
+
+    ⚠ THE STITCHER PLACES VIAS BEFORE THE ZONES ARE FILLED, so it cannot know where
+    the plane will actually be. It checks that a via clears other copper -- which is a
+    different question entirely from whether there is any plane copper AT that spot. A
+    zone flows around obstacles and drops islands it cannot connect, so a position that
+    is beautifully clear of everything can be a hole in the plane, and a via dropped into
+    one reaches nothing.
+
+    It fails silently and it fails late: the board looks stitched, the pad has a track and
+    a via, and the only symptom is one unconnected item on a routed board -- attributed by
+    DRC to a DIFFERENT pad, because it names the two ends of a missing ratline and either
+    end will do. On output_panel it cost an hour of looking at the wrong pin.
+
+    This cannot be prevented at placement time without filling the zones first, so it is
+    caught after the fact and reported loudly. A board that fails here needs the part
+    moved or the pad excepted -- not another routing run.
+    """
+    planes = {}
+    for z in board.Zones():
+        if z.GetNetname() in set(notes.get("stitch_nets", ())):
+            planes.setdefault(z.GetNetname(), []).append(z)
+    if not planes:
+        return
+    stray = []
+    for t in board.GetTracks():
+        if t.GetClass() != "PCB_VIA":
+            continue
+        zs = planes.get(t.GetNetname())
+        if not zs:
+            continue
+        if not any(z.GetFilledPolysList(z.GetLayer()).Collide(t.GetPosition()) for z in zs):
+            stray.append((t.GetNetname(), pcbnew.ToMM(t.GetPosition().x),
+                          pcbnew.ToMM(t.GetPosition().y)))
+    if stray:
+        print("  ⚠ %d stitch via(s) landed where the plane is not: %s"
+              % (len(stray), ", ".join("%s at %.2f,%.2f" % s for s in stray[:6])))
+    return stray
+
+
 def _via_r(v):
     """A via's radius. KiCad 10's PCB_VIA::GetWidth() wants a layer -- a via may be a
     different diameter on different layers -- and calling the no-argument form trips an
@@ -759,6 +826,121 @@ def _via_r(v):
         return v.GetWidth(v.GetLayer()) / 2.0
     except TypeError:
         return v.GetWidth() / 2.0
+
+
+def rescue_stray_stitches(board, notes, via_d=0.6, clr=0.2):
+    """Move stitch vias that ended up in a hole in the plane, and say how many.
+
+    ⚠ THE PLANE CHANGES SHAPE WHEN THE BOARD IS ROUTED. At layout time it is poured
+    around the parts and every stitch via sits in copper; after routing it is poured
+    around the parts AND seven hundred tracks, and it flows differently -- so a via that
+    was in the plane can be in a void, connected to nothing, with no warning anywhere.
+    The pad still has its track and its via and looks stitched.
+
+    This cannot be prevented at placement time without knowing the routed board, so the
+    honest structure is to fix it afterwards: find the vias that missed, and walk each one
+    out from its pad until it is somewhere the plane actually IS. The track follows it.
+
+    It runs after the post-route refill, and the caller refills again afterwards, because
+    moving copper changes the pour that was just computed.
+    """
+    import math
+    planes = {}
+    for z in board.Zones():
+        if z.GetNetname() in set(notes.get("stitch_nets", ())):
+            planes.setdefault(z.GetNetname(), []).append(z)
+    if not planes:
+        return 0
+
+    def in_plane(net, x, y):
+        pt = pcbnew.VECTOR2I(int(x), int(y))
+        return any(z.GetFilledPolysList(z.GetLayer()).Collide(pt)
+                   for z in planes.get(net, ()))
+
+    pads = [(q.GetBoundingBox(), q.GetNetname())
+            for fp in board.GetFootprints() for q in fp.Pads()]
+    segs, vias = [], []
+    for t in board.GetTracks():
+        if t.GetClass() == "PCB_VIA":
+            vias.append(t)
+        else:
+            segs.append(((t.GetStart().x, t.GetStart().y),
+                         (t.GetEnd().x, t.GetEnd().y), t.GetWidth() / 2.0,
+                         t.GetNetname()))
+
+    def clear(x, y, net, margin):
+        for bb, onet in pads:
+            if onet == net:
+                continue
+            dx = max(bb.GetLeft() - x, 0, x - bb.GetRight())
+            dy = max(bb.GetTop() - y, 0, y - bb.GetBottom())
+            if math.hypot(dx, dy) < margin:
+                return False
+        for (ax, ay), (bx, by), hw, onet in segs:
+            if onet == net:
+                continue
+            vx, vy = bx - ax, by - ay
+            L2 = vx * vx + vy * vy
+            t = 0.0 if L2 == 0 else max(0.0, min(1.0, ((x - ax) * vx + (y - ay) * vy) / L2))
+            if math.hypot(x - (ax + t * vx), y - (ay + t * vy)) - hw < margin:
+                return False
+        for v in vias:
+            if v.GetNetname() == net:
+                continue
+            if math.hypot(x - v.GetPosition().x, y - v.GetPosition().y) < margin + _via_r(v):
+                return False
+        return True
+
+    v_margin = pcbnew.FromMM(via_d / 2.0 + clr)
+    t_margin = pcbnew.FromMM(0.25 / 2.0 + clr)
+    moved = 0
+    for v in list(vias):
+        net = v.GetNetname()
+        if net not in planes or in_plane(net, v.GetPosition().x, v.GetPosition().y):
+            continue
+        # the track that feeds this via, and the pad end it comes from
+        here = (v.GetPosition().x, v.GetPosition().y)
+        feed = None
+        for t in board.GetTracks():
+            if t.GetClass() == "PCB_VIA" or t.GetNetname() != net:
+                continue
+            for a, b in ((t.GetStart(), t.GetEnd()), (t.GetEnd(), t.GetStart())):
+                if abs(a.x - here[0]) < 1000 and abs(a.y - here[1]) < 1000:
+                    feed = (t, b)
+                    break
+            if feed:
+                break
+        if feed is None:
+            continue
+        track, anchor = feed
+        best = None
+        for step in range(1, 40):
+            r = pcbnew.FromMM(0.4 + 0.1 * step)
+            for k in range(24):
+                ang = 2 * math.pi * k / 24.0
+                x = int(anchor.x + r * math.cos(ang))
+                y = int(anchor.y + r * math.sin(ang))
+                if not in_plane(net, x, y):
+                    continue
+                if not clear(x, y, net, v_margin):
+                    continue
+                n = max(4, int(pcbnew.ToMM(r) / 0.15) + 1)
+                if not all(clear(anchor.x + (x - anchor.x) * i / n,
+                                 anchor.y + (y - anchor.y) * i / n, net, t_margin)
+                           for i in range(1, n + 1)):
+                    continue
+                best = (x, y)
+                break
+            if best:
+                break
+        if best is None:
+            continue
+        v.SetPosition(pcbnew.VECTOR2I(*best))
+        track.SetStart(anchor)
+        track.SetEnd(pcbnew.VECTOR2I(*best))
+        moved += 1
+    return moved
+
 
 
 def _canonical_uuids(path):
@@ -1761,6 +1943,11 @@ def build(stem):
         # filled fine.
         board.BuildConnectivity()
         pcbnew.ZONE_FILLER(board).Fill(board.Zones())
+        _check_stitches_landed(board, notes)
+
+    n_junk = drop_degenerate(board)
+    if n_junk:
+        print("  dropped %d degenerate track fragment(s)" % n_junk)
 
     out = stem + ".kicad_pcb"
     board.Save(out)
