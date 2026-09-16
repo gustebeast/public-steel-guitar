@@ -88,28 +88,31 @@ FLOAT = 3.0             # how far the jack is pushed back when the leg latches -
                         # so how much SLOP THE LATCH IS ALLOWED: the pair bottoms this
                         # far before the leg is home, so anything from a perfect latch
                         # to this much short of one still seats the connector
-SPR_WIRE = 0.8          # THIS JOINT'S OWN COIL (see the docstring), and the number
-SPR_OD = 8.8            # that makes it its own SKU is the ID: it is slid onto the lead
-SPR_ID = SPR_OD - 2 * SPR_WIRE          # 7.2 -- clears the far plug's O6.1 overmould
-                                        # by 1.1, where the uxcell alternative cleared
-                                        # it by 0.5. McMaster 2006N232, 302 SS
+SPR_WIRE = 0.7          # THIS JOINT'S OWN COIL (see the docstring), and the number
+SPR_OD = 8.0            # that makes it its own SKU is the ID: it is slid onto the lead
+SPR_ID = SPR_OD - 2 * SPR_WIRE          # 6.6 -- clears the far plug's O6.1 overmould by
+                                        # 0.5, which is the assert's floor plus a tenth.
+                                        # uxcell B0C33C21K9, 304 SS, $6.29 for 5
 # THE COIL IS A BOUGHT PART AND THESE ARE ITS NUMBERS, not the latch coil's.
 # uxcell B0GCZKKCFP-family: 304 SS, O8.0 OD x 0.7 wire x 20.0 FREE (BOM). The first
 # pass borrowed latch.SPR_FREE (12.0) and a 2.5 N/mm rate, which described a coil
 # nobody sells in this ID -- the whole reason this joint has its own SKU is that the
 # ID has to clear the lead's O6.1 moulded plug, and at O8.0/0.7 that means 6.6.
-SPR_FREE = 14.5
-SPR_TURNS_MAX = 7       # WHAT WE DO NOT KNOW is the coil count, and it is the coil
+SPR_FREE = 20.0
+SPR_TURNS_MAX = 14      # WHAT WE DO NOT KNOW is the coil count, and it is the coil
                         # count -- not the rate -- that can make this joint
                         # unbuildable, because solid height is what the mate has to
-                        # clear. McMaster does not publish turns, but it publishes the
-                        # COMPRESSED LENGTH AT MAX LOAD (6.1), and solid cannot exceed
-                        # it: 7 turns of 0.8 is 5.6, which does. A bound off a
-                        # published number, where the uxcell part left it a guess
+                        # clear. uxcell publishes neither turns nor rate, so this is a
+                        # BOUND rather than a count: 20.0 of free length on 0.7 wire is
+                        # 10 turns at a 2.0 pitch and 14 at 1.4, and past that the coil
+                        # would be nearly closed at rest. The chain hangs off the worst
+                        # case, not off a guess at the real one
 SPR_SOLID = SPR_TURNS_MAX * SPR_WIRE                            # 9.8
-SPR_RATE = 1.91         # N/mm, PUBLISHED (0.43 lbf/mm). It was an estimate bracketed
-                        # 0.6-0.9 while this was a uxcell part; buying the catalogue
-                        # spring instead retires the measure-on-arrival step entirely
+SPR_RATE = 0.75         # N/mm, ESTIMATED and bracketed 0.6-0.9: McMaster publishes
+                        # 1.91 for a O8.8 x 0.8 x 14.5 and 0.76 for a O8.63 x 0.63 x 16,
+                        # and this one is longer than either at a smaller OD, so more
+                        # coils and softer. MEASURE ON ARRIVAL -- PRELOAD_TARGET below
+                        # turns it straight into the installed length
 
 # THE INSTALLED LENGTH TARGETS THE PRELOAD, now that the rate is a published number
 # rather than a bracket. 5.0 N is what this joint was designed around: it is what holds
@@ -117,11 +120,13 @@ SPR_RATE = 1.91         # N/mm, PUBLISHED (0.43 lbf/mm). It was an estimate brac
 # The old hardcoded 10.0 is gone either way -- against a real catalogue coil it would
 # have sat wherever the arithmetic left it.
 PRELOAD_TARGET = 5.0
-SPR_REST_L = SPR_FREE - PRELOAD_TARGET / SPR_RATE               # 11.88
-assert SPR_REST_L >= SPR_SOLID + 1.0 + FLOAT, (
-    "the coil installs at %.2f but needs %.2f to still be clear of solid when the leg "
-    "is latched -- it would go SOLID before the joint seats"
-    % (SPR_REST_L, SPR_SOLID + 1.0 + FLOAT))
+_SOLID_FLOOR = SPR_SOLID + 1.0 + FLOAT          # the coil must STILL be clear of solid
+                                                # once the leg latches and the jack has
+                                                # given up FLOAT. This is a floor, not a
+                                                # preference, and on a soft coil it wins
+SPR_REST_L = max(SPR_FREE - PRELOAD_TARGET / SPR_RATE, _SOLID_FLOOR)    # 13.8
+                                                # -- the floor, here: at 0.75 N/mm the
+                                                # target would want 13.33 and go solid
 SPR_MATE_L = SPR_REST_L - FLOAT
 PRELOAD_N = (SPR_FREE - SPR_REST_L) * SPR_RATE                  # ~4.7 N standing still
 MATE_N = (SPR_FREE - SPR_MATE_L) * SPR_RATE                     # ~6.9 N seated

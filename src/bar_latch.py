@@ -107,7 +107,13 @@ TIP_HALF = LS.CHAM / 2.0 + HOOK_ENGAGE + 2 * CLR   # the hook's reach across X, 
                                    # room for the tenon to sit off-centre in its fit
 # -- the ring --------------------------------------------------------------------
 FRAME_H = 6 * B                    # 4.8
-ARM_OUT = BORE_R + 4 * B           # 19.80 the ring's +-X outer faces, 4 beads of arm.
+# THE RING'S ARM IS ASYMMETRIC, because its two sides are bounded by different
+# things now (user). The -X side still carries a T rail, so it keeps the arm it had.
+# The +X side carries the SPRING and no rail, so it may run out to the collar's own
+# face less a wall -- and that is what buys the sleeve enough length to take a coil at
+# its bought FREE length instead of a cut one.
+ARM_SPR = BORE_R + 8 * B           # 23.00 the +X arm: the spring's side
+ARM_OUT = BORE_R + 4 * B           # 19.80 the -X arm, still railed. 4 beads of arm.
                                    # It spent two of those on the rails for a while;
                                    # the wider tower bought them back, and the ring
                                    # wanted them: its arm is what carries the pad's
@@ -141,7 +147,12 @@ assert RECESS_BACK - BORE_R >= D.MIN_WALL_2P, (
 # return, and the leg's slider already runs one coil against an off-centre pad. The
 # centre is not on offer anyway -- the tenon's apex and the hook are there, and at
 # x=0 the mortise leaves under 8 mm of length where the coil needs 10.4.
-SPR_X = 19 * B                     # 15.2 the coil's axis, off the leg axis in X. +X --
+SPR_X = 23 * B                     # 18.4 the coil's axis, off the leg axis in X, out
+                                   # from 15.2 into the space the dropped +X rail left.
+                                   # IT MOVES WITH CUP_Y0, one for one: the channel's
+                                   # PEAK is (SPR_X - ...) + (CUP_Y0 - ...), so pushing
+                                   # the axis outboard is what pays for pulling the cup
+                                   # back. +X --
                                    # the pad's own side (PAD_X), so the thumb's line
                                    # and the spring's are as close as the site allows
 SPR_REST_L = LL.SPR_REST_L         # 10.4 installed -- THE LEG'S, so the pad's preload
@@ -155,15 +166,7 @@ PRESS_N = (LT.SPR_FREE - (SPR_REST_L - STROKE)) * LT.SPR_RATE         # 14.1
 #     leg slider's seat exactly, with the locating blade still up its middle.
 #   * fixed end: the channel is a SLEEVE at the coil's bore diameter for the whole
 #     length, ending in a flat blind floor -- captured along its length, not butted.
-CUP_SEAT_CLR = 0.2                 # the cup is a SEAT, not a bore the coil slides in:
-                                   # the coil's end sits CUP_SEAT into it and stays
-                                   # there, so it does not need the slider's running
-                                   # clearance. That distinction is worth 0.2 of
-                                   # diameter, and 0.2 is exactly what the site had
-                                   # left when the coil went from O5.0 to the bought
-                                   # O5.63: at the slider's own clearance the cup
-                                   # overhung the ring's arm by 0.015
-CUP_D = LT.SPR_OD + CUP_SEAT_CLR   # 5.83 the cup's bore
+CUP_D = LT.SPR_BORE_D              # 5.4 the cup's bore = the leg's spring bore
 CUP_SEAT = 2 * B                   # 1.6 how far the coil's end sits into the cup
 CUP_W = CUP_D + 2 * D.MIN_WALL_2P  # 8.6 across X: the bore plus a REAL wall each
                                    # side. It was 7.2, which made those walls 0.9 --
@@ -181,7 +184,12 @@ CUP_BACK = 2 * B                   # 1.6 behind the bore's floor (user -- it was
                                    # for OUTBOARD: the extra 0.8 of cup runs the
                                    # channel's peaked end at the mortise, so the whole
                                    # coil moved a bead +X to hold the same 1.78 wall
-CUP_Y0 = 14 * B                    # 11.2 the cup's FLOOR -- the coil's -Y end at rest.
+CUP_Y0 = 10 * B                    # 8.0 the cup's FLOOR -- the coil's -Y end at rest,
+                                   # pulled back 3.2 from 11.2. THIS IS THE WHOLE POINT
+                                   # OF THE REWORK: the sleeve must swallow the coil at
+                                   # FREE length plus a wall, and from the old floor it
+                                   # had 12.8 against a 15.0 bought coil. From here it
+                                   # has 16.0.
                                    # Further +Y than the coil itself needs: what sets
                                    # it is the PEAK on the channel's -Y end (see
                                    # `collar`), whose flank runs PARALLEL to the
@@ -189,16 +197,18 @@ CUP_Y0 = 14 * B                    # 11.2 the cup's FLOOR -- the coil's -Y end a
 CUP_FACE = CUP_Y0 + CUP_SEAT       # 11.2 the cup's mouth
 CHAN_R = LT.SPR_BORE_D / 2.0
 CHAN_END = CUP_Y0 + SPR_REST_L     # 20.0 the sleeve's blind floor: the fixed seat
-CHAN_CH = 3 * B                    # 2.4 install chamfer at the sleeve's floor end. It
-                                   # has to be longer than the coil is over-long --
-                                   # 1.6 now, the leg's preload, where two weak
-                                   # springs only needed 0.4 -- so that the free coil
-                                   # can go in at an angle and cam straight
+CHAN_CH = 4 * B                    # 3.2 install chamfer at the sleeve's floor end. It
+                                   # has to be longer than the coil is OVER-LONG at
+                                   # free length -- 3.0 now that the coil is a bought
+                                   # 15.0-free part, where it was 1.6 -- so that the
+                                   # free coil can go in at an angle and cam straight
 assert CHAN_CH > LT.SPR_FREE - SPR_REST_L, "the free coil cannot cam into its sleeve"
 assert CUP_BACK >= D.MIN_WALL_2P and (CUP_W - CUP_D) / 2.0 >= D.MIN_WALL_2P - 1e-9, (
     "the cup's walls: %.2f behind the coil, %.2f each side"
     % (CUP_BACK, (CUP_W - CUP_D) / 2.0))
-assert SPR_X + CUP_W / 2.0 <= ARM_OUT, "the cup overhangs the ring's arm"
+assert SPR_X + CUP_W / 2.0 <= ARM_SPR, "the cup overhangs the ring's arm"
+assert ARM_SPR + D.MIN_WALL_2P <= FACE_X, (
+    "the +X arm reaches %.2f and the collar's face is at %.2f" % (ARM_SPR, FACE_X))
 assert CUP_FACE + S_MAX < CHAN_END, "the cup's rim hits the sleeve's floor"
 # (the coil going solid is the other way this could end badly, and SPR_PRESS_L
 # above is that check: 6.16 pressed against 4.8 solid)
@@ -430,7 +440,7 @@ def _octagon(w: float):
 
 
 def _ring_outline():
-    poly = [(-ARM_OUT, Y_PLATE_IN), (ARM_OUT, Y_PLATE_IN), (ARM_OUT, Y_HOOK_OUT),
+    poly = [(-ARM_OUT, Y_PLATE_IN), (ARM_SPR, Y_PLATE_IN), (ARM_SPR, Y_HOOK_OUT),
             (-ARM_OUT, Y_HOOK_OUT)]
     for a, b, c in ((-1, -1, K_MXMY), (1, -1, K_PXMY)):   # the +Y corners are square
                                                           # now: no screws up there
@@ -498,11 +508,19 @@ def _rail_pose(w: cq.Workplane, sx: float, z0: float, y0: float) -> cq.Workplane
             .translate((LS.LEG_X + sx * RAIL_X, LS.LEG_Y + y0, z0)))
 
 
+RAIL_SIDES = (-1.0,)               # ONE rail, and it sits OPPOSITE the screw (user),
+                                   # which is in the +X-Y corner. Two rails plus a screw
+                                   # was belt and braces; one rail plus a screw at the
+                                   # far corner still fixes every degree of freedom, and
+                                   # dropping the +X one is what frees that side for the
+                                   # spring. See ARM_SPR.
+
+
 def rails(z_mouth: float) -> cq.Workplane:
-    """The collar's two rails, fused into its underside."""
+    """The collar's rail, fused into its underside."""
     z0 = planes(z_mouth)["z0"]
     out = None
-    for sx in (-1.0, 1.0):
+    for sx in RAIL_SIDES:
         t = _rail_pose(RAIL.tenon(root=1.0), sx, z0, FACE_Y)
         out = t if out is None else out.union(t)
     return out
@@ -513,7 +531,7 @@ def rail_slots(z_mouth: float) -> cq.Workplane:
     closed CLR past the rails' ends -- that far end is the seat stop."""
     z0 = planes(z_mouth)["z0"]
     out = None
-    for sx in (-1.0, 1.0):
+    for sx in RAIL_SIDES:
         m = _rail_pose(RAIL.mortise(drop=2.0, length=RAIL_STROKE + 2.0 + CLR),
                        sx, z0, FACE_Y + 2.0)
         out = m if out is None else out.union(m)
