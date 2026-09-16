@@ -824,10 +824,18 @@ def _parts():
     # TURNED 90 deg -- see the ESD array's placement -- so its envelope turns with it
     _esd_d, _esd_w = CRTYD["SOT-563"]
     _phy_w, _phy_d = CRTYD["QFN-24"]
+    # ⚠ THE CHAIN IS SPACED FOR ITS GROUND PAD, not for its courtyards. CRTYD_GAP is
+    # 0.15 and legal, and at 0.15 the ESD array's centre pin -- its ground, where the
+    # diodes dump what they clamp -- is boxed in: the pair's two rails leave either side
+    # of it and there is nowhere within reach to put a via down to the plane. The
+    # stitcher said so by name rather than quietly leaving the pad on the pour, and a
+    # protection device whose ground is a pour connection the router may orphan is not
+    # protecting anything. A millimetre of lane either side is what it costs.
+    _chain_gap = 1.0
     _conn_depth = max(CRTYD["XH-SM-4Y"][1],
                       # socket, then the ESD array in line with its pad row, then the
                       # PHY behind that: the chain in signal order, in a straight line
-                      _uc_d + CRTYD_GAP + _esd_d + CRTYD_GAP + _phy_d)
+                      _uc_d + _chain_gap + _esd_d + _chain_gap + _phy_d)
     edge_y = y - _conn_depth                                # the board's -Y face
     # J2 TAKES THE -X END AND J1 THE +X. The 24 V inlet gains the -X end, next to the
     # buck it feeds; the USB-C gains the +X end, and the whole high-speed chain lays out
@@ -885,7 +893,8 @@ def _parts():
     # those, turn with it and still point at the MCU. The rotation costs nothing and is
     # the difference between a straight pair and no pair.
     add("U7", "USB 2.0 high-speed ULPI PHY", "QFN-24",
-        _j1_x, edge_y + _uc_d + CRTYD_GAP + _esd_d + CRTYD_GAP + _phy_d / 2, rot=270.0)
+        _j1_x, edge_y + _uc_d + _chain_gap + _esd_d + _chain_gap + _phy_d / 2,
+        rot=270.0)
     # ⚠ OFFSET BY HALF ITS OWN PAD SPAN, so the two faces land where the two hops need
     # them. A SOT-563's pads face +-X and this hop runs in Y, which reads like the wrong
     # package until you notice the part is a PASS-THROUGH: D+ appears on pins 1 and 6,
@@ -895,7 +904,7 @@ def _parts():
     # +X face sits directly over the socket's pad row -- a 3 mm drop straight down it --
     # and the -X face looks back down the board at the PHY.
     add("U10", "USB data-line ESD array -- inboard of the socket's pad row", "SOT-563",
-        _j1_x, edge_y + _uc_d + CRTYD_GAP + _esd_d / 2, rot=270.0)
+        _j1_x, edge_y + _uc_d + _chain_gap + _esd_d / 2, rot=270.0)
     for _ref, _desc, _pkg, _bx in _buck:
         add(_ref, _desc, _pkg, _bx, _buck_y)
 
