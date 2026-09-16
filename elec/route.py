@@ -44,7 +44,7 @@ JAR = os.path.expandvars(
 PASSES = 20
 
 
-def route(stem, passes=PASSES):
+def route(stem, passes=PASSES, timeout=900):
     pcb, dsn, ses = stem + ".kicad_pcb", stem + ".dsn", stem + ".ses"
     notes = None
     if os.path.isfile(stem + ".board.json"):
@@ -91,7 +91,19 @@ def route(stem, passes=PASSES):
     # second on boards this size.
     cmd = [JAVA, "-Djava.awt.headless=true", "-jar", JAR, "-de", dsn, "-do", ses,
            "-mp", str(passes), "-mt", "1"]
-    r = subprocess.run(cmd, capture_output=True, text=True, timeout=900)
+    # ⚠ A TIMEOUT HERE MUST NOT LOOK LIKE A ROUTING RESULT. subprocess.run raises
+    # TimeoutExpired, which a caller redirecting stderr will never see -- and the board
+    # is then left exactly as it was, PLACED AND UNROUTED. Downstream that reads as
+    # "the router could not connect anything", which sent me chasing a phantom
+    # regression twice. Catch it and say what actually happened.
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        raise SystemExit(
+            "freerouting exceeded %d s on %s at %d passes and was killed. The board is "
+            "UNROUTED -- it has not silently produced a bad result, it has produced "
+            "none. Lower the pass count (the curve is flat past ~10) or raise `timeout`."
+            % (timeout, os.path.basename(stem), passes))
     tail = (r.stdout or "").strip().splitlines()[-6:]
     print("\n".join("  " + t for t in tail))
     if not os.path.isfile(ses):
