@@ -731,6 +731,25 @@ def _escape_plan(fpo, m, pa, pb, hs, voff, margin, via_margin, na, nb,
     return out
 
 
+def _pad_pitch(fp):
+    """The smallest centre-to-centre distance between two pads of `fp`, or None.
+
+    Measured rather than tabulated: at these part counts it costs nothing, and a measured
+    pitch cannot disagree with the footprint the way a table can.
+    """
+    import math as _m
+    pts = [(q.GetPosition().x, q.GetPosition().y) for q in fp.Pads()]
+    if len(pts) < 2:
+        return None
+    best = None
+    for i, (x0, y0) in enumerate(pts):
+        for x1, y1 in pts[i + 1:]:
+            d = _m.hypot(x1 - x0, y1 - y0)
+            if d > 0 and (best is None or d < best):
+                best = d
+    return best
+
+
 def _via_r(v):
     """A via's radius. KiCad 10's PCB_VIA::GetWidth() wants a layer -- a via may be a
     different diameter on different layers -- and calling the no-argument form trips an
@@ -1146,6 +1165,21 @@ def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
         pc = pad.GetPosition()
         half = max(pad.GetSize().x, pad.GetSize().y) / 2.0
         need = pcbnew.FromMM(via_d / 2.0 + clr)
+        # ⚠ STAY OUT OF A FINE-PITCH PART'S ESCAPE FAN. This routine puts a ground via
+        # as close to its pad as it will fit, which is right in open board and wrong at
+        # the edge of a 0.4 mm QFN: the via lands in the first rank of the fan-out and
+        # the SIGNAL pins either side of it -- 0.4 mm away -- have nowhere left to leave.
+        # On lever_sensor one via at pin 16 was enough to strand pins 15 and 17, and it
+        # read as "the router cannot escape a fine-pitch package" rather than as this
+        # routine having taken their lane.
+        #
+        # Ground has somewhere else to go and signals do not: the plane is directly
+        # underneath, so a millimetre more track to reach it costs a ground connection
+        # nothing, while that millimetre is the whole difference for a signal. Threshold
+        # is 0.65 mm because 0.8 mm pitch and coarser has room for both.
+        pitch = _pad_pitch(fp)
+        if pitch is not None and pitch < pcbnew.FromMM(0.65):
+            need += pcbnew.FromMM(1.1)
         # ⚠ A BIG PAD TAKES THE VIA INSIDE ITSELF, and that is the right answer rather
         # than a concession. An exposed thermal pad -- a QFN's belly, a SOT-223's tab --
         # is enclosed by its own part's pins, so there is no "beside" to search; the
