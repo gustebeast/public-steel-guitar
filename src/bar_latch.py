@@ -471,13 +471,13 @@ def frame(z_mouth: float) -> cq.Workplane:
 
 
 def springs(z_mouth: float):
-    """The coil at rest, from the cup's floor to the sleeve's, drawn as a TUBE."""
+    """The coil at rest, from the cup's floor to the sleeve's, as a real HELIX.
+
+    It was a TUBE -- the coil's swept envelope. Correct for the overlap gate and wrong
+    in the viewer, which is where the user caught its sibling."""
     p = planes(z_mouth)
-    base = cq.Vector(LS.LEG_X + SPR_X, LS.LEG_Y + CUP_Y0, p["z_s"])
-    tube = cq.Solid.makeCylinder(LT.SPR_OD / 2.0, SPR_REST_L, base, cq.Vector(0, 1, 0)).cut(
-        cq.Solid.makeCylinder(LT.SPR_ID / 2.0, SPR_REST_L + 2.0, base - cq.Vector(0, 1, 0),
-                              cq.Vector(0, 1, 0)))
-    return [cq.Workplane("XY").add(tube)]
+    return [LT.coil(SPR_REST_L,
+                    (LS.LEG_X + SPR_X, LS.LEG_Y + CUP_Y0, p["z_s"]), (0, 1, 0))]
 
 
 def _rail_pose(w: cq.Workplane, sx: float, z0: float, y0: float) -> cq.Workplane:

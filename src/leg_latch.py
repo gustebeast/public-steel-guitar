@@ -511,8 +511,13 @@ def slider() -> cq.Workplane:
 def spring() -> cq.Workplane:
     """The steel coil at REST, drawn at its true INSTALLED length: floor of the
     divot to floor of the seat. HARDWARE, so its numbers are the part's and not on
-    the bead grid."""
-    return _radial_cyl(LT.SPR_OD, TUNNEL_BACK - DIVOT, SPR_REST_L, SPR_Z)
+    the bead grid.
+
+    A real HELIX (latch.coil), not the solid cylinder this used to be -- the user found
+    that in the viewer next to the TRRS coil and the difference is not subtle."""
+    return LT.coil(SPR_REST_L,
+                   (LS.LEG_X, LS.LEG_Y + BUTTON_SIDE * (TUNNEL_BACK - DIVOT), SPR_Z),
+                   (0, BUTTON_SIDE, 0))
 
 
 # -- what each host part gives up -------------------------------------------
