@@ -856,9 +856,14 @@ BRIDGE_AXLE_Y     = STRING_FIELD_W / 2 + 12 * BEAD  # 52.35
 # because knee_lever has to know where it starts (the lever mortises stop there) and cannot
 # import chassis; chassis asserts the two spellings of the rail agree.
 LIGHT_WIN_W  = 8.0                                   # across Y
+# ONE XBAR INBOARD OF THE +Y RAIL'S CENTRE-LINE (user). The 1.2 left between the window and
+# the rail's inner face is NOT a wall and is not held to the wall rule: the window is a separate
+# MODEL only so the slicer can colour it, and it prints as one fused solid with the chassis.
+RAIL_HI_INNER_Y = BRIDGE_AXLE_Y + 4 * BEAD           # +Y rail inner face (chassis.Y_HI - T/2)
 LIGHT_WIN_DY = XBAR                                  # inboard of the +Y rail's centre-line
-LIGHT_WIN_YC = (BRIDGE_AXLE_Y + 4 * BEAD + WALL_THICKNESS / 2) - LIGHT_WIN_DY
-LIGHT_WIN_Y0 = LIGHT_WIN_YC - LIGHT_WIN_W / 2        # the -Y edge: where the mortises stop
+LIGHT_WIN_YC = (RAIL_HI_INNER_Y + WALL_THICKNESS / 2) - LIGHT_WIN_DY
+LIGHT_WIN_Y0 = LIGHT_WIN_YC - LIGHT_WIN_W / 2        # -Y edge: where the mortises stop
+LIGHT_WIN_Y1 = LIGHT_WIN_YC + LIGHT_WIN_W / 2
 BRIDGE_ARM_W      = 6 * BEAD  # 4.8 bridge-endplate bearing-arm / edge-web thickness (Y); the
                             # screw rail widens by this so the rib overlaps it cleanly
 # THE AXLE'S TWO ENDS. It is a plain ground shaft with no shoulder — it has to be, since
