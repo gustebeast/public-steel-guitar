@@ -540,10 +540,19 @@ def optical():
     # at 48 kHz and a switcher near a sub-multiple of that aliases straight into the
     # audio band, where subtraction cannot remove it because it is synchronous.
     sw, v5_pre, fb = Net("SW"), Net("V5_PRE"), Net("FB")
-    u13 = Part(name="BUCK_24_5", ref_prefix="U", ref="U13", dest="NETLIST",
-               tool="skidl", value="24V->5V sync buck",
-               description="24V -> 5V synchronous buck, SOT-23-6, >=0.5 A. OPEN -- "
-               "pick one whose fSW is far from 48 kHz and its sub-multiples",
+    # ⚠ TI TPS560430XF (SLVSE22B). Chosen against the requirement recorded on the CAD's
+    # MPN line: SYNCHRONOUS (it is), >=30 V absolute max (38 V), and a switching
+    # frequency away from the sample rate and its low harmonics (1.1 MHz). The F suffix
+    # is FORCED PWM and that is not a detail: the PFM variants skip pulses at light
+    # load, which puts the switching energy at variable, low frequencies -- some of them
+    # audio -- where a fixed 1.1 MHz stays put and filterable. 1.1 MHz rather than the
+    # 2.1 MHz part because it is TI's own 5 V reference design and doubles the
+    # minimum-on-time margin at 24 V in (189 ns against the 60 ns floor).
+    # Pinout, datasheet section 6: 1 CB, 2 GND, 3 FB, 4 EN, 5 VIN, 6 SW.
+    u13 = Part(name="TPS560430XF", ref_prefix="U", ref="U13", dest="NETLIST",
+               tool="skidl", value="TPS560430XFDBVR",
+               description="24V -> 5V synchronous buck, 1.1 MHz FPWM, 600 mA "
+               "(LCSC C523980)",
                footprint="Package_TO_SOT_SMD:SOT-23-6",
                pins=[Pin(num=n, func=P) for n in range(1, 7)])
     v24 = Net("+24V")
@@ -552,12 +561,16 @@ def optical():
     boot += u13[1]
     pgnd += u13[2]
     fb += u13[3]
-    Net("BUCK_EN_NC").connect(u13[4])
+    # EN WAS LEFT FLOATING, and the datasheet says in as many words "Do not float".
+    # Tied to VIN, which it explicitly allows; its precision threshold is 1.23 V, so
+    # 24 V is solidly on.
+    v24 += u13[4]
     v24 += u13[5]
     sw += u13[6]
     l1 = Part(name="L", ref_prefix="L", ref="L1", dest="NETLIST", tool="skidl",
-              value="buck L", description="buck output inductor -- SHIELDED is not "
-              "optional: an unshielded one radiates into 20 TIAs",
+              value="18uH", description="buck output inductor, 18 uH SHIELDED, "
+              "Isat >= 1 A -- value from TPS560430 eq. 9 (15.8 uH min at 30 V in, "
+              "KIND 0.4, 1.1 MHz); PART STILL OPEN",
               footprint="Inductor_SMD:L_Bourns-SRN4018",
               pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
     sw += l1[1]
@@ -683,8 +696,11 @@ def optical():
              "the MCU is in reset, not floating at whatever the gate charges to")
     led_gate += r38[1]
     gnd += r38[2]
-    r40 = _r("R40", "preset", "buck feedback divider, top")
-    r41 = _r("R41", "preset", "buck feedback divider, bottom")
+    # VREF = 1.00 V (TPS560430 datasheet, electrical characteristics), so 5 V wants a
+    # 4:1 divider. 40.2 k / 10.0 k gives 5.02 V -- 0.4% high, inside the reference's own
+    # 1.5% -- from standard E96 values.
+    r40 = _r("R40", "40k2 1%", "buck feedback divider, top -- 5.02 V with R41")
+    r41 = _r("R41", "10k 1%", "buck feedback divider, bottom")
     v5_pre += r40[1]
     fb += r40[2], r41[1]
     pgnd += r41[2]
@@ -746,7 +762,10 @@ def optical():
               "Capacitor_SMD:C_0805_2012Metric")
     v5_pre += c162[1]
     pgnd += c162[2]
-    c163 = _c("C163", "10nF", "buck bootstrap")
+    # 100 nF, not 10: the TPS560430 datasheet specifies "a high quality 100-nF capacitor"
+    # from CB to SW. Too small a bootstrap cap droops over the on-time and under-drives
+    # the high-side FET.
+    c163 = _c("C163", "100nF", "buck bootstrap, CB to SW -- 100 nF per datasheet")
     boot += c163[1]
     sw += c163[2]
 
