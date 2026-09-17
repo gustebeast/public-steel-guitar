@@ -409,37 +409,50 @@ def optical():
     u7 = Part(name="USB3343", ref_prefix="U", ref="U7", dest="NETLIST", tool="skidl",
               value="USB3343-CP",
               description="USB 2.0 HIGH-SPEED ULPI PHY, QFN-24 (LCSC C633347) "
-              "-- ⚠ OUT OF STOCK 2026-08-04, confirm before ordering",
+              "-- 98 in stock at JLCPCB 2026-09-17 (was 0 on 2026-08-04)",
               footprint="Package_DFN_QFN:HVQFN-24-1EP_4x4mm_P0.5mm_EP2.5x2.5mm",
               pins=[Pin(num=n, func=P) for n in range(1, 26)])
-    # Microchip USB3343 QFN-24: 1 DATA3, 2 DATA4, 3 DATA5, 4 DATA6, 5 DATA7,
-    # 6 VDD33, 7 REFCLK, 8 VDD18, 9 CLKOUT, 10 XI, 11 XO, 12 VBAT, 13 ID,
-    # 14 VBUS, 15 DM, 16 DP, 17 RBIAS, 18 VDDIO, 19 GND, 20 STP, 21 NXT,
-    # 22 DIR, 23 DATA0, 24 DATA1, 25(EP) GND ... DATA2 shares with RESETB on
-    # this package variant.
-    # ⚠ THIS PINOUT IS THE ONE NUMBER SET ON THIS BOARD I COULD NOT READ OUT OF A
-    # LIBRARY -- KiCad ships no USB3343 symbol. It is written here so it is VISIBLE
-    # and must be checked against Microchip's datasheet at schematic review; see the
-    # assertion in fab.py that stops an unconfirmed part reaching an order.
+    # ⚠ THE PINOUT BELOW IS READ OUT OF THE DATASHEET, AND THE ONE IT REPLACES WAS NOT.
+    # SMSC/Microchip USB334x datasheet rev 1.2, Table 2.2 "USB3343 Pin Descriptions":
+    #    1 DIR      2 CLKOUT   3 NXT      4 DATA0    5 DATA1    6 DATA2
+    #    7 DATA3    8 DATA4    9 VDDIO   10 DATA5   11 DATA6   12 DATA7
+    #   13 DP      14 DM      15 VDD33   16 VBAT    17 VBUS    18 ID
+    #   19 RBIAS   20 XO      21 REFCLK/XI          22 RESETB  23 VDD18   24 STP
+    #   FLAG (exposed pad) GND
+    # The previous map had most of these wrong -- DP and DM on 16/15, the crystal on
+    # 10/11, RBIAS on 17, DIR on 22 -- and this file said so itself: "must be checked
+    # against Microchip's datasheet at schematic review". It never was, and every
+    # placement decision around the PHY (which face the pair leaves by, where R37 goes,
+    # where the crystal sits) was then fitted to pins that do not exist. DRC was clean
+    # throughout: DRC checks copper against the netlist, and the netlist was wrong.
+    #
+    # WHAT THE DATASHEET ALSO REQUIRES, which the old map had no place for:
+    #   * VDD33 (15) and VDD18 (23) are REGULATOR OUTPUTS, each needing 1.0 uF (<1 ohm
+    #     ESR) as close as possible. Neither may be fed from a rail.
+    #   * ID (18) goes to VDD33 for a device.
+    #   * VBUS (17) needs a series resistor to the connector, sized by mode (Table 5.6):
+    #     20 k +-5% for DEVICE ONLY. Its over-voltage clamp sinks through that resistor.
+    #   * RESETB (22) high = run; tied to the same 3V3 that powers VBAT.
+    #   * VDDIO (9) sets the ULPI logic level, so it is the MCU's 3V3.
     usb_dp, usb_dm = Net("USB_DP"), Net("USB_DM")
-    v1v8, refclk, rbias = Net("PHY_1V8"), Net("PHY_REFCLK"), Net("PHY_RBIAS")
-    for pin, sig in ((1, "ULPI_D3"), (2, "ULPI_D4"), (3, "ULPI_D5"), (4, "ULPI_D6"),
-                     (5, "ULPI_D7"), (20, "ULPI_STP"), (21, "ULPI_NXT"),
-                     (22, "ULPI_DIR"), (23, "ULPI_D0"), (24, "ULPI_D1")):
+    v1v8, rbias = Net("PHY_1V8"), Net("PHY_RBIAS")
+    phy_vdd33, phy_vbus = Net("PHY_VDD33"), Net("PHY_VBUS")
+    for pin, sig in ((1, "ULPI_DIR"), (2, "ULPI_CK"), (3, "ULPI_NXT"),
+                     (4, "ULPI_D0"), (5, "ULPI_D1"), (6, "ULPI_D2"), (7, "ULPI_D3"),
+                     (8, "ULPI_D4"), (10, "ULPI_D5"), (11, "ULPI_D6"), (12, "ULPI_D7"),
+                     (24, "ULPI_STP")):
         ulpi[sig] += u7[pin]
-    ulpi["ULPI_D2"] += u7[13]
-    ulpi["ULPI_CK"] += u7[9]
-    v3d += u7[6], u7[12], u7[18]
-    v1v8 += u7[8]
-    refclk += u7[7]
+    usb_dp += u7[13]
+    usb_dm += u7[14]
+    phy_vdd33 += u7[15], u7[18]           # regulator output, and ID tied to it
+    v3d += u7[16], u7[9], u7[22]          # VBAT, VDDIO, RESETB
+    phy_vbus += u7[17]
+    rbias += u7[19]
     phy_xi, phy_xo = Net("PHY_XI"), Net("PHY_XO")
-    phy_xi += u7[10]
-    phy_xo += u7[11]
-    Net("PHY_VBUS_NC").connect(u7[14])
-    usb_dm += u7[15]
-    usb_dp += u7[16]
-    rbias += u7[17]
-    gnd += u7[19], u7[25]
+    phy_xo += u7[20]
+    phy_xi += u7[21]
+    v1v8 += u7[23]
+    gnd += u7[25]
 
     # ── U8/U9: the two 3V3 rails, and they are two on purpose ────────────────
     # U8 feeds the MCU and the PHY -- ~300 mA, which at 5 V in is 0.51 W and past
@@ -483,14 +496,20 @@ def optical():
     usb_dp += u10[1], u10[6]
     gnd += u10[2]
     usb_dm += u10[3], u10[4]
-    vbus = Net("VBUS_NC")
+    vbus = Net("VBUS")
     vbus += u10[5]
 
     # ── U11: the mid-rail buffer the twenty TIAs share ───────────────────────
     u11 = Part(name="TLV9061", ref_prefix="U", ref="U11", dest="NETLIST", tool="skidl",
-               value="TLV9061IDCKR",
+               value="TLV9061IDBVR",
+               # ⚠ DBV (SOT-23-5), NOT DCK (SC70). It was ordered as the DCK part on a
+               # SOT-23-5 footprint wired with the SOT-23 pinout, and TI's datasheet
+               # (SBOS839, Table 5-1) gives the two packages DIFFERENT pinouts: SC70
+               # is 1 IN+, 3 IN-, 4 OUT, where SOT-23 is 1 OUT, 3 IN+, 4 IN-. The old
+               # note called the mismatch "envelope is oversized, safe" -- true of the
+               # envelope, not of the pins.
                description="single op-amp, TIA mid-rail reference buffer "
-               "(LCSC C398357) -- ⚠ SC-70-5, not the SOT-23-5 the CAD models",
+               "(LCSC C398358, SOT-23-5 / DBV)",
                footprint="Package_TO_SOT_SMD:SOT-23-5",
                pins=[Pin(num=1, name="OUT", func=P), Pin(num=2, name="V-", func=P),
                      Pin(num=3, name="IN+", func=P), Pin(num=4, name="IN-", func=P),
@@ -560,13 +579,13 @@ def optical():
     osc_in += y1[1]
     osc_out += y1[3]
     gnd += y1[2], y1[4]
-    # ⚠ Y2's FREQUENCY FOLLOWS THE PHY, not the MCU. The CAD calls it 24 MHz and the
-    # MPN table calls the same part 25 MHz -- one of those is wrong, and which one
-    # depends on the USB3343's reference options. Confirm against the datasheet in
-    # the same pass that confirms U7's pinout.
+    # ⚠ Y2 IS 26 MHz. Its frequency follows the PHY, and the CAD (24) and the MPN
+    # table (25) disagreed with each other and with the part. The USB334x datasheet's
+    # ordering table settles it: USB3343-CP-TR, REFCLK 26 MHz, "oscillator or crystal".
+    # Neither 24 nor 25 would have produced a working USB link.
     y2 = Part(name="Crystal", ref_prefix="Y", ref="Y2", dest="NETLIST", tool="skidl",
-              value="PHY ref", description="ULPI PHY reference crystal -- ⚠ 24 or "
-              "25 MHz, confirm against the USB3343 datasheet",
+              value="26MHz", description="ULPI PHY reference crystal, 26 MHz -- "
+              "USB3343 datasheet ordering table",
               footprint="Crystal:Crystal_SMD_3225-4Pin_3.2x2.5mm",
               pins=[Pin(num=n, func=P) for n in range(1, 5)])
     phy_xi += y2[1]
@@ -589,7 +608,8 @@ def optical():
     # ⚠ VBUS IS NOT USED AND NOT DEAD-ENDED. This board is SELF-POWERED off the 24 V
     # trunk, so it takes no current from the host -- but it is a DEVICE, and a device
     # that cannot see VBUS cannot tell whether the host is there. The pin goes to the
-    # ESD array's VBUS reference and nowhere else: sensed, not consumed.
+    # ESD array's VBUS reference and, through R39, the PHY's VBUS comparator:
+    # sensed, not consumed.
     vbus += j1["A4"], j1["B4"], j1["A9"], j1["B9"]
     usb_dp += j1["A6"], j1["B6"]
     usb_dm += j1["A7"], j1["B7"]
@@ -642,6 +662,11 @@ def optical():
              "transmitter's drive current, so 1% is the spec, not a preference")
     rbias += r37[1]
     gnd += r37[2]
+    # R39: the VBUS series resistor the USB3343 requires. 20 k is the DEVICE-ONLY value
+    # (datasheet Table 5.6); the PHY's over-voltage clamp sinks current through it.
+    r39 = _r("R39", "20k", "PHY VBUS series -- device-only value, USB334x Table 5.6")
+    vbus += r39[1]
+    phy_vbus += r39[2]
     r38 = _r("R38", "100k", "LED gate pull-down -- the emitters must be OFF while "
              "the MCU is in reset, not floating at whatever the gate charges to")
     led_gate += r38[1]
@@ -666,10 +691,14 @@ def optical():
                "Capacitor_SMD:C_0805_2012Metric")
         net += c[1]
         gnd += c[2]
-    # C120-C122: PHY decoupling. C122 is the 1V8 the PHY regulates for itself, which
-    # needs a cap even though nothing else on the board uses that rail.
-    for tag, net in (("C120", v3d), ("C121", v3d), ("C122", v1v8)):
-        c = _c(tag, "100nF", "PHY decoupling")
+    # C120-C122: the PHY. C120 and C122 are its two REGULATORS' output caps, and the
+    # datasheet specifies them -- 1.0 uF, <1 ohm ESR -- because a regulator's stability
+    # depends on its output capacitance. They were 100 nF bypass caps, the wrong part for
+    # that job. C121 bypasses the 3V3 the PHY is fed from (VBAT and VDDIO).
+    for tag, net, val, why in (("C120", phy_vdd33, "1uF", "PHY VDD33 regulator output"),
+                               ("C121", v3d, "100nF", "PHY VBAT/VDDIO bypass"),
+                               ("C122", v1v8, "1uF", "PHY VDD18 regulator output")):
+        c = _c(tag, val, why)
         net += c[1]
         gnd += c[2]
     # C123-C126: two load caps per crystal.
