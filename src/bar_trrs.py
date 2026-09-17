@@ -237,9 +237,15 @@ def dummies(k: int = 0, mated: bool = True):
     plug = plug.union(cq.Workplane("XY").add(cq.Solid.makeCylinder(
         LT.BARREL_D / 2.0, LT.BARREL_L, cq.Vector(x, y, sh - LT.BARREL_L),
         cq.Vector(0, 0, 1))))
+    # AT THE LENGTH IT IS AT. Seated, the plug has given up its float and the coil has
+    # taken all of it, so the coil is FLOAT shorter -- not the same coil moved up.
     coil_l = LT.SPR_REST_L - rise
-    coil = LT.spring_coil(x, y, mated=False)
+    coil = LT.spring_coil(x, y, length=coil_l)
     coil = coil.translate((0, 0, (SPR_BOT + rise) - LT.SPR_SEAT))
+    assert coil.val().BoundingBox().zmax <= SEAT_Z + 1e-6, (
+        "the coil is drawn %.2f past SEAT_Z, which is where the bore steps down to "
+        "O%.1f -- an O%.1f coil cannot be there"
+        % (coil.val().BoundingBox().zmax - SEAT_Z, PASS_D, LT.SPR_OD))
     return [("bar_trrs_plug_%d" % k, plug),
             ("bar_trrs_sleeve_%d" % k, sleeve().translate((0, 0, rise))),
             ("bar_trrs_spring_%d" % k, coil)]
@@ -299,6 +305,36 @@ TH_DETENT = 0.4                 # ...AND THEN A POSITIVE DETENT, which the top j
                                 # the lug squashes past it going in and has to squash
                                 # back to come out. TPU is the only reason this is a
                                 # feature and not a crack
+TH_APEX_PAD = 6.0               # HOW FAR THE ENTRY SLOT REACHES PAST THE BUILD
+                                # AZIMUTH, and it is a printability number, not a fit.
+                                #
+                                # A teardrop's one-nozzle apex flat is self-supporting
+                                # because its two ends sit on the 45 flanks that
+                                # converge to it: unsupported across 0.8, anchored both
+                                # sides. That is a BRIDGE, and it stops being one the
+                                # moment something takes a flank away.
+                                #
+                                # The entry slot did exactly that. It swept a0 - CLR to
+                                # a0 + LUG_DEG + CLR (48..86 here) at the LUG radius,
+                                # which reaches out past the POCKET's apex at r 7.78 --
+                                # so above the run, where the slot's own teardrop no
+                                # longer covers it, the pocket's apex was left as a
+                                # 3.50 x 0.80 flat with material on ONE side. 2.80 mm2
+                                # of hard overhang over open air (user spotted it in
+                                # the tab; measuring its AREA, which is what I did
+                                # first, cannot tell a bridge from a cantilever --
+                                # scratchpad/probe_apex.py asks the slicer's question
+                                # instead). Note the clocking cannot fix this: the run
+                                # pins a0 to [49, 55] and the apex is at 90, so an
+                                # entry of the lug's own width can never contain it.
+                                #
+                                # So the entry sweeps past 90 by this much and the two
+                                # apexes become the same apex. It costs ledge between
+                                # the entry and where the lug comes to rest, which is
+                                # ledge nothing bears on.
+_ENTRY_TOP = 90.0 + TH_APEX_PAD
+TH_ENTRY_SWEEP = _ENTRY_TOP - (LT.SLV_A[0] - LT.LUG_CLR_DEG)
+
 TH_DETENT_DEG = 8.0             # ...AND IT IS MEASURED FROM THE LUG'S TRAILING EDGE,
                                 # so it has to clear the pin's own half-angle or the
                                 # detent lands under the lug's RESTING position and the
@@ -317,6 +353,13 @@ TH_DETENT_R = B                 # the bump is a round PIN, not an annular step, 
 assert TH_DEEP + D.MIN_WALL_2P <= JB_DEEP, (
     "the throat's pocket (%.1f) leaves only %.1f of seat bore under it" %
     (TH_DEEP, JB_DEEP - TH_DEEP))
+assert TH_ENTRY_SWEEP >= LT.LUG_DEG + 2 * LT.LUG_CLR_DEG, (
+    "the entry sweeps %.0f and the lug needs %.0f to pass"
+    % (TH_ENTRY_SWEEP, LT.LUG_DEG + 2 * LT.LUG_CLR_DEG))
+assert _ENTRY_TOP <= TH_A[0] + LT.LUG_TURN - 2.0, (
+    "the entry reaches %.0f and the lug comes to rest at %.0f: widening it this far "
+    "has eaten the ledge the lug bears on"
+    % (_ENTRY_TOP, TH_A[0] + LT.LUG_TURN))
 _PIN_R = TH_LUG_D / 2.0 + TH_DETENT_R - TH_DETENT
 _PIN_DEG = math.degrees(math.asin(TH_DETENT_R / _PIN_R))
 assert TH_DETENT_DEG > _PIN_DEG, (
@@ -361,7 +404,7 @@ def bar_negatives(floor_z, chamber_top_z, x=None, y=None, up=BAR_UP):
     for a0 in TH_A:
         out = out.union(LT._td_sector(
             TH_POCK_D / 2.0 - 0.01, TH_LUG_D / 2.0, lo, floor_z + 0.01,
-            a0 - LT.LUG_CLR_DEG, LT.LUG_DEG + 2 * LT.LUG_CLR_DEG, x, y, up))
+            a0 - LT.LUG_CLR_DEG, TH_ENTRY_SWEEP, x, y, up))
     # the detent, subtracted BACK OUT of the run: a pin standing TH_DETENT proud of the
     # slot's outer wall, TH_DETENT_DEG before the stop, that the lug squashes past
     r_pin = _PIN_R

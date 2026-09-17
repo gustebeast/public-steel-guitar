@@ -680,7 +680,7 @@ def cables(sx: float = LS.LEG_X, ly: float = LS.LEG_Y, k: int = 0):
     return [("leg_trrs_patch_%d" % k, patch), ("leg_trrs_leg_lead_%d" % k, leg)]
 
 
-def spring_coil(x, y, mated: bool = True):
+def spring_coil(x, y, mated: bool = True, length: float | None = None):
     """THE FLOAT COIL, drawn as a coil. It used to be an annular TUBE -- the coil's
     swept envelope, which is the right thing to hand the overlap gate and the wrong
     thing to put in front of a person: it reads as a solid ring, and it hides the one
@@ -694,7 +694,13 @@ def spring_coil(x, y, mated: bool = True):
     Drawn at SPR_TURNS_MAX, the WORST-case count the chain is designed against, not at
     a guess at the real one. When the spring arrives and the turns are counted, this
     picture corrects itself along with the geometry."""
-    L = SPR_MATE_L if mated else SPR_REST_L
+    # `length` overrides the pair of lengths THIS joint happens to have. The bottom
+    # joint compresses by its own FLOAT, not by this joint's mate travel, and without
+    # a way to say so its caller could only shift a rest-length coil upwards -- which
+    # drew it straight through the seat it is supposed to be reacting against.
+    L = length if length is not None else (SPR_MATE_L if mated else SPR_REST_L)
+    assert L >= SPR_SOLID, (
+        "a %.2f coil is shorter than its own solid height %.2f" % (L, SPR_SOLID))
     r_mid = (SPR_OD - SPR_WIRE) / 2.0
     path_h = L - SPR_WIRE
     wire = cq.Wire.makeHelix(pitch=path_h / SPR_TURNS_MAX, height=path_h, radius=r_mid)
