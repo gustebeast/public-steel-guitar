@@ -299,13 +299,47 @@ def _c(ref, value, desc, fp=_C_0402):
 
 @subcircuit
 def optical():
-    gnd, pgnd = Net("GND"), Net("PWR_GND")
+    # ⚠ THERE IS ONE GROUND, AND THERE USED TO BE TWO THAT NEVER MET.
+    # PWR_GND was declared here beside GND, with no comment and no rationale, and
+    # collected the buck's return (U13, C160-C162, R41), the 24 V inlet's return (J2.1)
+    # and the emitter row's switch (Q1.2). GND collected everything else -- every IC,
+    # every decoupling cap, the USB shield, the crystals.
+    #
+    # NOTHING JOINED THEM. Not a component, not a net tie, not a stitch, not a zone.
+    # Checked pin by pin on 2026-09-17: no part in the netlist had a pin on both, so the
+    # buck's return path to its own loads was OPEN and the board could not have worked.
+    #
+    # ⚠ AND NOTHING COULD HAVE FOUND IT. Each net is internally fully connected, so the
+    # ratsnest is empty and DRC reports nothing; the router routes both happily; ERC
+    # sees two power nets, each properly driven. It is invisible to every check this
+    # pipeline runs, which is why there is now a check for exactly it (see
+    # _assert_grounds_meet below).
+    #
+    # THE FIX IS ONE NET, NOT A TIE, and that is a real decision rather than the lazy
+    # one. A single-point "star" return is the right technique when there is no ground
+    # plane -- when every return shares routed copper and you are choosing who shares
+    # with whom. This board has a SOLID GND PLANE on In1.Cu and GND pours on F.Cu and
+    # B.Cu. With a plane, splitting the return is actively worse: the split forces
+    # return current to detour around the gap to reach the tie point, which ENLARGES
+    # the very loops the split was meant to contain.
+    #
+    # What actually keeps the switcher quiet here is placement, and that is already
+    # done: U13, C160 and C162 sit in one row so the high-di/dt loop is short, and the
+    # buck is at the -Y tail as far from the photodiodes as the board allows. Q1's
+    # emitter return -- 211 mA pulsed at 96 kHz, the board's worst aggressor -- is
+    # better off on the plane directly beneath its own V5_PRE feed than on a trace
+    # running back to a tie point.
+    #
+    # If a split is ever wanted again it needs BOTH halves: the separation AND an
+    # explicit single-point join, with the reason written here.
+    gnd = Net("GND")
+    pgnd = gnd
     v5, v3d, v3a = Net("+5V"), Net("+3V3D"), Net("+3V3A")
     # V5_PRE is the BUCK side of the ferrite bead. Declared up here with the other
     # rails because the emitter row is wired long before the buck section builds it,
     # and a rail that half the board hangs on is not a local of the buck block.
     v5_pre = Net("V5_PRE")
-    for n in (gnd, pgnd, v5, v3d, v3a):
+    for n in (gnd, v5, v3d, v3a):
         n.drive = Pin.drives.POWER
     # MID is the TIAs' reference: the photodiodes run in PHOTOCONDUCTIVE-free
     # (zero-bias) mode into a virtual earth held here, and every TIA's + input sits
@@ -1313,6 +1347,63 @@ BOARD_NOTES = {
 }
 
 
+def _assert_grounds_meet(path):
+    """Every return net must actually reach the others. Nothing else checks this.
+
+    ⚠ TWO GROUND NETS THAT NEVER MEET IS INVISIBLE TO THIS WHOLE PIPELINE. Each net is
+    internally connected, so the ratsnest is empty and DRC is silent; the router routes
+    both without complaint; ERC sees two power nets, each properly driven; the fab
+    builds exactly what it was sent. The board simply does not work, and the first
+    evidence is a bench.
+
+    It happened here on 2026-09-17: PWR_GND carried the buck, the 24 V inlet and the
+    emitter switch, GND carried every load, and no component in the netlist had a pin on
+    both. The buck's return path to its own loads was open.
+
+    So: collect every net whose name reads like a return, and require that they form ONE
+    group once components are allowed to bridge them. A deliberate split with a net tie
+    or a 0R passes, because the tie is a component with a pin on each. A split with
+    nothing between them does not.
+    """
+    import re as _re
+    txt = open(path, encoding="utf-8").read()
+    of_net, by_part = {}, {}
+    for blk in _re.finditer(r'\(net\s+\(code \d+\)\s+\(name "([^"]+)"\).*?'
+                            r'(?=\(net\s+\(code|\Z)', txt, _re.S):
+        name = blk.group(1)
+        for ref, _pin in _re.findall(r'\(ref "([^"]+)"\)\s*\(pin "([^"]+)"\)',
+                                     blk.group(0)):
+            of_net.setdefault(name, set()).add(ref)
+            by_part.setdefault(ref, set()).add(name)
+    # what counts as a return: GND, PWR_GND, AGND, DGND, VSS, and anything _GND
+    grounds = sorted(n for n in of_net
+                     if _re.fullmatch(r"(GND|VSS|[A-Z0-9]+_GND|[AD]GND)", n))
+    if len(grounds) < 2:
+        return len(grounds)
+    par = {g: g for g in grounds}
+
+    def find(a):
+        while par[a] != a:
+            par[a] = par[par[a]]
+            a = par[a]
+        return a
+
+    for nets in by_part.values():
+        touched = [n for n in nets if n in par]
+        for other in touched[1:]:
+            par[find(other)] = find(touched[0])
+    groups = {}
+    for g in grounds:
+        groups.setdefault(find(g), []).append(g)
+    assert len(groups) == 1, (
+        "the return nets do not all meet: %s. Each group is internally connected, so "
+        "DRC, the router and the ratsnest will all be silent and the board will not "
+        "work. Join them with a net tie or a 0R -- a component with a pin on each -- or "
+        "make them one net."
+        % " | ".join("+".join(sorted(v)) for v in groups.values()))
+    return len(grounds)
+
+
 def _assert_matches_cad(net_path):
     """The netlist and the CAD must describe the SAME board, part for part.
 
@@ -1357,6 +1448,7 @@ if __name__ == "__main__":
     ERC()
     generate_netlist(file_=os.path.join(OUT_DIR, "optical.net"))
     _assert_matches_cad(os.path.join(OUT_DIR, "optical.net"))
+    _assert_grounds_meet(os.path.join(OUT_DIR, "optical.net"))
     # ⚠ AND THE CAD'S SOURCING TABLE AGAINST THE NETLIST, every time, because the two
     # files name every part twice and drift apart silently. See elec/mpn_check.py for
     # what the first run found.
