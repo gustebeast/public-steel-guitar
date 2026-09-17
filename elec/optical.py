@@ -786,8 +786,14 @@ def optical():
     #                                            subtotal  207 / 272 / 452 mA
     #
     #   +5V / V5_PRE  (U13, TPS560430, 600 mA)
-    #     ten emitters at 21.1 mA, PULSED ~50% for the ambient-subtraction frame
-    #                                          105 mA average, 211 mA while on
+    #     ten emitters at 21.1 mA, pulsed -- 105 mA average, 211 mA while on
+    #       ⚠ THE 50% DUTY IS AN INFERENCE ABOUT FIRMWARE THAT DOES NOT EXIST YET, not
+    #       a measurement: the emitters run at 96 kHz against a 48 kHz sample rate with
+    #       an LEDs-off ambient sample between, so equal on and off periods give 50%.
+    #       Firmware could choose a shorter pulse. IT DOES NOT CHANGE THE CONCLUSION --
+    #       at 100% duty the emitters are 211 mA continuous and the typical total
+    #       becomes 430 mA, still 72% of the buck -- so the budget holds whatever the
+    #       firmware picks. Only the "324 mA typical" headline moves.
     #     U8 input ~= its output                             207 / 272 / 452
     #     U9 input ~= its output                              12 /  16 /  16
     #                              average          324 mA   54 % of the buck
