@@ -1476,9 +1476,25 @@ Two consequences worth acting on:
 
 ### Optical pickup board at that basis — $44.69 per instrument
 
-Board is **37.4 × 171.6 mm = 64.2 cm²**, 4-layer, 148 parts, ~560 solder joints.
-(Earlier revisions said 47.5 cm², which predates the +X wraps and the M4 bands,
-then 184.4 mm long, which predates J2 becoming a 4-way.)
+Board is **62.3 × 187.1 mm** bounding, **66.4 cm² of actual outline**, 4-layer,
+**155 parts**, ~560 solder joints. (Earlier revisions said 47.5 cm², which predates
+the +X wraps and the M4 bands; then 184.4 mm long, which predates J2 becoming a
+4-way; then 37.4 × 171.6, which predates the LQFP176.)
+
+⚠ **The two numbers are far apart and the fab bills the LARGER one.** The board is
+not a rectangle: a 13.6 mm-wide sensing strip runs the full 187 mm, and only the
+two ends open out to 62.3 mm — for the MCU pocket at one end and the connectors at
+the other. So the outline is 66.4 cm² (essentially unchanged by the MCU swap, which
+is the useful news) while the **billed bounding rectangle is 116.6 cm²**, and the
+$6.42 fab line below is computed on the outline. At $0.10/cm² the honest figure is
+**$11.66**, about **+$5.24 per board** — 12 % on the $44.69.
+
+That is the strongest argument on this page for panelising, and it is worth
+measuring rather than assuming: 50 cm² of each board's billed rectangle is empty
+air, and a naïve 2-up head-to-tail nest does *not* recover it (the free region
+beside the strip is 43.7 mm wide and 103 mm long, and the other board's pocket is
+62.3 × 69.6). An offset or interleaved nest may; that is a layout exercise with a
+$5-per-board answer attached.
 
 | | | |
 |---|---|---:|
