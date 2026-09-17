@@ -464,25 +464,9 @@ def body_adapter(sx: float = LEG_X, ly: float = LEG_Y):
     # runs (one per foot) for the three at each end -- and a tenon is clamped to the run it sits
     # in and kept only if that run opens the way this corner slides in.
     for st, y0, y1 in CH.foot_tenon_runs(sx, ly, syg):
-        # ...AND IT KEEPS OFF THE KEYHEAD'S HEIGHT-SCREW HEADS. Their button heads hang down
-        # into the chassis floor in their own cavities, right where the -X/+Y foot's tenons
-        # want to run, so a tenon is cut back a two-bead web clear of any cavity it would meet.
-        # Derived from nut_block's own screw positions, not from a hand-set slide length.
-        from . import nut_block as _NBA
-        _r = _NBA.HS_HEAD_CAV_D / 2.0 + D.MIN_WALL_2P
-        for _i in range(D.N_STRINGS):
-            _hx, _hy = _NBA.height_screw_xy(_i)
-            _hx += D.NUT_BLOCK_X
-            if abs(_hx - st) > _NBA.HS_HEAD_CAV_D / 2.0 + LG.STUB_TEN_W / 2.0:
-                continue                       # not in this tenon's X band
-            if not (_hy - _r < y1 and _hy + _r > y0):
-                continue                       # not in its Y run
-            if _hy < (y0 + y1) / 2.0:
-                y0 = max(y0, _hy + _r)
-            else:
-                y1 = min(y1, _hy - _r)
-        if y1 - y0 < 1.0:
-            continue
+        # (keeping off the height-screw heads and the string access channels is the MORTISE's
+        #  business, not the tenon's: chassis.mort_segments shortens the run and this follows it.
+        #  It was duplicated here, which is two places to get the same rule wrong.)
         b = b.union(LG._stub_ridge(y1 - y0).translate((st, y0, Z_TOP)))
     # M4 LOCK PIN, the adapter's ONLY screw (user): it threads into an insert in the ENDPLATE
     # and carries on through the chassis floor into this foot's TENONS, which it pins -- that is

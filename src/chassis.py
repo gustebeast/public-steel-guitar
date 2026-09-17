@@ -284,12 +284,14 @@ def mort_segments(station):
     if abs(D.mortise_y_end(station) - D.LIGHT_WIN_Y0) < 1e-9:
         return [(near, D.LIGHT_WIN_Y0)]
     lo, hi = LEG_Y[1] + LEG_W / 2.0, LEG_Y[0] - LEG_W / 2.0
-    # ...and both runs KEEP OFF THE STRING ACCESS CHANNELS where a station crosses that field
-    # (D.access_field_y). There are ten channels on the string pitch, so the 1.5 gaps between
-    # them fit no mortise -- what is left is the clear band OUTBOARD of the field, and the +Y run
-    # starts a two-bead wall past the +Y-most channel (user). It still opens out past the rail,
-    # so the +Y foot can slide in on it.
-    field = D.access_field_y(station)
+    # ...and both runs KEEP OFF WHATEVER ELSE DROPS THROUGH THE FLOOR in this station's X band
+    # (D.floor_block_y): the bridge end's string access channels, the keyhead end's height-screw
+    # head cavities. Both families sit on the string pitch, so the gaps between neighbours fit no
+    # mortise -- what is left is the clear band outboard of them, and the +Y run starts a two-bead
+    # wall past the +Y-most one (user). It still opens out past the rail, so the +Y foot can
+    # slide in on it. Each station meets only what is near it in X, which is what makes the three
+    # at each end come out at different lengths.
+    field = D.floor_block_y(station)
     if field is not None:
         lo, hi = min(lo, field[0]), max(hi, field[1])
     return [(near, lo),                                  # over the -Y foot, open -Y
