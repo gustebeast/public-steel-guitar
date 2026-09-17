@@ -264,16 +264,14 @@ assert LADDER_SKIN >= D.MIN_WALL_2P
 # legs._cross_x, the STUB_TNG_* numbers) and line up BY CONSTRUCTION, not by
 # copied numbers. (The first version bolted the adapter up with four M4s through
 # the closed end -- joinery the body has no holes for.) Per corner:
-#   * two Y-running octagon RIDGES at the thirds of the side-panel overlap; the
-#     middle one's INBOARD end is cut back by legs.SERVICE_SLIDE (user: the endplates
-#     use that space; the leg slides out that far to reach it)
-#   * one rectangular END-WALL TONGUE into a rebate against the endplate wall's
-#     inner face; its blind end is the flush hard stop
-#   * ONE SCREW (user): an M4 set-screw LOCK PIN along X, threaded in a heat-set
-#     insert in the endplate's end wall and crossing the tongue through a clearance
-#     hole. It locks the leg in the body and the endplate to the chassis. With a
-#     service slide set, a SECOND tongue hole SERVICE_SLIDE inboard takes the same
-#     screw with the leg slid out to its service position.
+#   * a Y-running octagon RIDGE in EVERY lever mortise over this foot, each one clamped
+#     to the run chassis.foot_tenon_runs gives that station (the tongue and the cut-back
+#     middle ridge are both gone: the bottom grid is the joinery now)
+#   * ONE SCREW (user): an M4 LOCK PIN along X, threaded in a heat-set insert in the
+#     endplate's end wall and crossing those tenons through clearance holes. It locks the
+#     leg in the body and the endplate to the chassis. At the +Y corners a SECOND hole,
+#     legs.SERVICE_SLIDE inboard, takes the same screw with the foot slid out to its
+#     service position -- legs.foot_pin_joints hands over both.
 # The ridges are undercut, so this joint SLIDES IN ALONG Y from outboard -- the
 # adapter cannot go straight up. It is the semi-permanent half: fitted once.
 assert abs(LG.SQ_W - LEG_W) < 1e-9, "the body's mortises were cut for a %.1f leg" % LG.SQ_W
@@ -472,19 +470,23 @@ def body_adapter(sx: float = LEG_X, ly: float = LEG_Y):
     # and carries on through the chassis floor into this foot's TENONS, which it pins -- that is
     # what stops the foot sliding back out along Y. Same legs helper the endplate's and the
     # chassis' halves come from, shaped by cadkit for this part's print.
-    b = b.cut(LG.tongue_pin_cutter(sx, ly, egx, Z_TOP, ADAPTER_UP, syg))
-    # ...and the strip of tenon ABOVE that hole comes off, the whole way along the pin. The
-    # tenon is 8.6 tall and the hole is centred at LOCK_Z, so 0.6 would be left over it -- a
-    # sliver on the very feature doing the pinning. Taken away, the pin sits in a NOTCH and
-    # bears on the tenon's Y walls. Spans face to tip, because on most corners the pin crosses
-    # more than one tenon.
+    # TWO HOLES ON THAT ONE AXIS (user, 2026-09-17): where the foot sits, and where it sits
+    # SLID OUT to its service position -- legs.foot_pin_joints, which is also what asserts the
+    # service one lands in a tenon that is still in the body out there. Same screw, same insert:
+    # the player pulls the foot out until the second hole lines up and drives the screw back in.
     from cadkit.fasteners import M4 as _M4L
-    _pin_y = ly + syg * LG.LOCK_PIN_DY
-    _x_face = sx + egx * LEG_W / 2.0
-    _x_tip = _x_face - egx * (LG.LOCK_RECESS + LG.LOCK_SCREW_L)
-    b = b.cut(box_at(abs(_x_face - _x_tip), _M4L.shaft_clr_d, 8.0,
-                     x=(_x_face + _x_tip) / 2.0, y=_pin_y,
-                     z=Z_TOP + LG.LOCK_Z + 4.0))
+    for _j in LG.foot_pin_joints(sx, ly, egx, syg, Z_TOP):
+        b = b.cut(_j.cutter(ADAPTER_UP))
+        # ...and the strip of tenon ABOVE each hole comes off, the whole way along the pin. The
+        # tenon is 8.6 tall and the hole is centred at LOCK_Z, so 0.6 would be left over it -- a
+        # sliver on the very feature doing the pinning. Taken away, the pin sits in a NOTCH and
+        # bears on the tenon's Y walls. Spans face to tip, because the pin crosses every tenon
+        # over the foot on its way to the last one.
+        _x_face = sx + egx * LEG_W / 2.0
+        _x_tip = _x_face - egx * (LG.LOCK_RECESS + LG.LOCK_SCREW_L)
+        b = b.cut(box_at(abs(_x_face - _x_tip), _M4L.shaft_clr_d, 8.0,
+                         x=(_x_face + _x_tip) / 2.0, y=_j.entry[1],
+                         z=Z_TOP + LG.LOCK_Z + 4.0))
     return b
 
 
