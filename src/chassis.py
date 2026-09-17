@@ -243,7 +243,11 @@ _SEG_J    = joint(width=_SEG_JW, length=_SEG_JZ1 - _SEG_JZ0, depth=_SEG_JD,
 # face rather than a channel through it. The 0.4 is clearance, not a seat -- the segments' Z is
 # set by the rail crowns and the endplates, and the tenon must not bottom out before the rail
 # faces meet (if it ever does sag, this floor is a hard stop, which is a bonus, not the design).
-_SEG_MZ0  = MB.FLOOR_TOP - 0.4
+_SEG_RELIEF_CLR = 0.4                   # the gap under the tenon: the cavity's floor sits this
+                                        # far below the bottom prism's top face AND its 45 deg
+                                        # ramp this far below the tenon's, so the tenon lands on
+                                        # neither -- one number, both faces
+_SEG_MZ0  = MB.FLOOR_TOP - _SEG_RELIEF_CLR
 _SEG_JX1  = _SEG_J.dims["depth_used"]  # the tenon's +X reach past the seam plane
 # the rail wall left beside the cavity is a printed wall like any other, and the only
 # thing keeping it at tier is the hand-picked width above. Say so, so a later change to
@@ -694,30 +698,44 @@ def _leg_shell(sx, x0, x1):
     return out
 
 
+def _seg_relief(s, yr, dz=0.0):
+    """The 45 deg wedge under the seam joint, at split X=s and rail Y=yr -- ONE definition, cut
+    from BOTH halves so they cannot drift apart (user, 2026-09-17: the tenon had the 45 and the
+    mortise did not).
+
+    The TENON needs it: it stands on the bottom prism's top face, so everything it projects past
+    the seam plane hangs over the NEIGHBOUR's floor, and flat that underside was a 5.63-deep
+    bridge over air. The MORTISE takes the same wedge lowered by _SEG_RELIEF_CLR -- which gives
+    the cavity's ramp a clearance gap under the tenon's instead of a coincident face to bottom
+    out on, and hands the +X segment back the material its cavity was taking below a tenon that
+    is no longer there. Same `reach`, same angle, same line of code: change one and both move."""
+    reach = _SEG_JX1
+    return (cq.Workplane("XZ")
+            .polyline([(s, _SEG_JZ0), (s + reach, _SEG_JZ0), (s + reach, _SEG_JZ0 + reach)])
+            .close().extrude(T + 4.0)
+            .translate((0.0, yr + (T + 4.0) / 2.0, dz)))
+
+
+def _relieved(solid, s, yr, dz, what):
+    """`solid` minus the seam relief, with proof it bit. A wedge that misses is a SILENT no-op:
+    the overhang (or the surplus cavity) would still be there and nothing downstream would
+    notice, so make the cut prove it took the corner it was aimed at."""
+    out = solid.cut(_seg_relief(s, yr, dz))
+    assert out.val().Volume() < solid.val().Volume() - 1.0, (
+        "the 45 deg relief took %.2f mm3 off the seam %s at x %.2f -- it is missing the corner"
+        % (solid.val().Volume() - out.val().Volume(), what, s))
+    return out
+
+
 def _seg_tenon(s, yr):
     """The −X segment's half of the seam joint at split X=s, rail Y=yr: a plan-plane
     T prism standing from the BOTTOM PRISM'S TOP FACE up to the deck-groove floor (see
     _SEG_JZ0 -- below that is the lever-mortise grid, and this may not stand in it). (The bridge/keyhead END
     joints are a different site — they use the low _br_tongue/_kh_tongue dovetails.)"""
-    t = _SEG_J.tenon(root=_SEG_ROOT).translate((s, yr, _SEG_JZ0))
-    # 45 DEG UNDERSIDE (user, 2026-09-17). This tenon no longer starts at the print bed -- it
-    # stands on the bottom prism's top face -- and everything it projects +X of the seam plane
-    # hangs over the NEIGHBOUR's floor, which is a different part. Flat, that underside was a
-    # 5.63-deep bridge over air. Ramped at 45 deg from the seam plane it is self-supporting all
-    # the way back to the material that carries it: at any x the lowest fibre sits one layer
-    # above and one layer -X of the last, and at x = s that chain lands on this segment's own
-    # floor. It costs the head its bottom 5.63 of engagement out of 65.35.
-    reach = _SEG_JX1
-    wedge = (cq.Workplane("XZ")
-             .polyline([(s, _SEG_JZ0), (s + reach, _SEG_JZ0), (s + reach, _SEG_JZ0 + reach)])
-             .close().extrude(T + 4.0).translate((0.0, yr + (T + 4.0) / 2.0, 0.0)))
-    out = t.cut(wedge)
-    # a wedge that misses is a silent no-op: the overhang would still be there and nothing
-    # downstream would notice, so make the cut prove it took the corner it was aimed at
-    assert out.val().Volume() < t.val().Volume() - 1.0, (
-        "the 45 deg relief took %.2f mm3 off the seam tenon at x %.2f -- it is missing the "
-        "overhanging corner" % (t.val().Volume() - out.val().Volume(), s))
-    return out
+    # the 45 deg underside is _seg_relief -- self-supporting back to this segment's own floor,
+    # at a cost to the head of its bottom 5.63 of engagement out of 65.35
+    return _relieved(_SEG_J.tenon(root=_SEG_ROOT).translate((s, yr, _SEG_JZ0)),
+                     s, yr, 0.0, "tenon")
 
 
 def _seg_mortise(s, yr):
@@ -731,8 +749,9 @@ def _seg_mortise(s, yr):
     out of a 3.2 wall between two slots, and the user caught it collided with them. Reversing
     which segment goes down last deleted the need for it outright (see the SEGMENT JOINT block):
     nothing sweeps the floor any more, so the cavity stops at the floor."""
-    return _SEG_J.mortise(drop=_SEG_ROOT + 1.0,
-                          length=(TP_GZ0 + 2.0) - _SEG_MZ0).translate((s, yr, _SEG_MZ0))
+    cav = _SEG_J.mortise(drop=_SEG_ROOT + 1.0,
+                         length=(TP_GZ0 + 2.0) - _SEG_MZ0).translate((s, yr, _SEG_MZ0))
+    return _relieved(cav, s, yr, -_SEG_RELIEF_CLR, "cavity")
 
 
 def _end_dt(x_face, into, yc, z0, z1, socket=False, top_clr=TP_TG_DEPTH):
