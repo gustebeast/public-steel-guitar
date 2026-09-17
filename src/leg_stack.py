@@ -398,7 +398,14 @@ def adjust_tenon(top: float = Z_ADJ_TEN_TOP):
     # the PEDAL BAR's latch hooks this end: its retention pocket and lead-in chamfer,
     # placed from where this tenon seats in the bar (src.bar_latch)
     from . import bar_latch as BL
-    return t.cut(BL.tenon_cut(top - ADJ_TEN_L + ENGAGE))
+    t = t.cut(BL.tenon_cut(top - ADJ_TEN_L + ENGAGE))
+    # THE BOTTOM BLIND-MATE (src.bar_trrs): the male plug floats in this tenon on the
+    # same coil SKU as the top joint, and the bar keeps a short PCB jack. Cut last, and
+    # only on the tenon as drawn -- a shortened one is a height setting, not a station
+    if abs(top - Z_ADJ_TEN_TOP) < 1e-9:
+        from . import bar_trrs as BT
+        t = t.cut(BT.tenon_negatives(TENON_UP))
+    return t
 
 
 def fixed_tenon():
@@ -661,6 +668,8 @@ def leg_parts():
            # the pedal bar latch, AT REST (hook in, pad flush)
            ("bar_latch_frame", BL.frame(Z_BAR_MOUTH)),
            ("bar_latch_collar", BL.collar(Z_BAR_MOUTH))]
+    from . import bar_trrs as BT
+    out += BT.dummies()
     out += [("bar_latch_spring_%d" % i, s) for i, s in enumerate(BL.springs(Z_BAR_MOUTH))]
     out += BL.screw_dummies(Z_BAR_MOUTH)        # the collar's one screw, and its insert
     out += LG.lock_pin_dummies(LEG_X, LEG_Y, EGX, SYG, Z_TOP, 0)   # the leg's one screw

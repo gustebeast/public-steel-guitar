@@ -455,7 +455,7 @@ def _bayonet_slots(r_in, r_out, z_lo, z_hi, open_up, x, y, angles, up):
     return out
 
 
-def _lugs(r_in, r_out, z_lo, z_hi, x, y, angles, bear_up):
+def _lugs(r_in, r_out, z_lo, z_hi, x, y, angles, bear_up, chamfer=None):
     """The lugs themselves, drawn WHERE THEY END UP -- a turn along the run from the
     entry, hard against the stop.
 
@@ -466,14 +466,25 @@ def _lugs(r_in, r_out, z_lo, z_hi, x, y, angles, bear_up):
     a ledge above), False for the sleeve (the plug's extraction pulls it -Z onto a
     ledge below)."""
     out = None
-    h = r_out - r_in
+    # HOW MUCH of the free face is chamfered. The default takes the whole radial height,
+    # which is what a lug wants when only ONE of its faces is ever loaded: the free side
+    # tapers to nothing and there is no eave left at all. A lug that has to stop travel
+    # in BOTH directions cannot afford that -- a full taper leaves its far face a knife
+    # INSIDE the bore, so it catches nothing (src.bar_trrs, whose float is limited at
+    # both ends). Passing a smaller chamfer keeps a flat there at the cost of that much
+    # unsupported eave.
+    h = (r_out - r_in) if chamfer is None else chamfer
+    # The chamfer is measured from the lug's OUTER edge inward, which is the only form
+    # that stays right when it is smaller than the full radial height: taking it from
+    # r_in instead still tapers the far face all the way to r_in, so a partial chamfer
+    # bought nothing and bar_trrs measured 0.000 mm3 of stop where it wanted one.
     if bear_up:                      # keep the TOP square, chamfer underneath
-        cone = cq.Solid.makeCone(r_in, r_in + h, h, cq.Vector(x, y, z_lo),
+        cone = cq.Solid.makeCone(r_out - h, r_out, h, cq.Vector(x, y, z_lo),
                                  cq.Vector(0, 0, 1))
         band = cq.Solid.makeCylinder(r_out + 1.0, h, cq.Vector(x, y, z_lo),
                                      cq.Vector(0, 0, 1))
     else:                            # keep the BOTTOM square, chamfer on top
-        cone = cq.Solid.makeCone(r_in + h, r_in, h, cq.Vector(x, y, z_hi - h),
+        cone = cq.Solid.makeCone(r_out, r_out - h, h, cq.Vector(x, y, z_hi - h),
                                  cq.Vector(0, 0, 1))
         band = cq.Solid.makeCylinder(r_out + 1.0, h, cq.Vector(x, y, z_hi - h),
                                      cq.Vector(0, 0, 1))

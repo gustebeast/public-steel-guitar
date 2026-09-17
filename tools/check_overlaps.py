@@ -199,6 +199,9 @@ GLOBAL_OK = {
     # and the sleeve GRIPS the male overmould at SLV_SQUEEZE -- that interference is
     # the entire retention scheme, not a clash
     frozenset({"leg_trrs_sleeve", "leg_trrs_plug"}),
+    # and the BOTTOM joint's collar grips the same bought overmould the same way, with
+    # the same SLV_SQUEEZE -- see src.bar_trrs
+    frozenset({"bar_trrs_sleeve", "bar_trrs_plug"}),
 }
 
 # The pedal bar is a self-contained subassembly (bar pieces + the sliding
