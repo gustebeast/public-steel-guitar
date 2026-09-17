@@ -942,14 +942,16 @@ LOCK_PIN_DY = 7.5
 # ...and the screw itself (lock_pin_joint): a stock M4 button head recessed in the end
 # face, into a heat-set insert on the kept shell's face across the endplate<->shell gap
 SHELL_GAP = 0.4                    # that gap: chassis.EP_LEG_CLR, asserted equal there
-LOCK_SCREW_L = 18.0                # M4x18 button head: it has to reach PAST the chassis floor
-                                   # and into the foot's outermost tenon (see lock_pin_joint).
-                                   # Was M4x12, when it stopped in an insert in the chassis.
-                                   # 18 is NOT a new SKU -- BOM's "M4 hold-down screw" row is
-                                   # already M4x18 button/2.5 hex (the keyhead's +Z lock and the
-                                   # ten insert height screws), so these four just raise its
-                                   # count. Anything in 14.76..20.36 lands inside the tenon, and
-                                   # of the lengths the instrument already buys only 18 does.
+LOCK_SCREW_L = 35.0                # M4x35 button head, and NOT a new SKU -- BOM already buys
+                                   # M4x35 button/2.5 hex for the belt tensioners, so these four
+                                   # just raise that row's count. It has to reach past the chassis
+                                   # floor into a tenon, and 35 is the only stocked length that
+                                   # does at EVERY corner: the +X/+Y foot lost its two outboard
+                                   # tenons to the string access channels, so its nearest one is
+                                   # 36.4 in from the end face. At the other three the screw runs
+                                   # clean THROUGH the two outboard tenons and finishes in the
+                                   # third, which is more engagement than the old 18 had, at the
+                                   # cost of a notch through the two 3.2 walls between them.
 LOCK_INSERT_AT = 4.0               # the insert's mouth, measured in from the end face: inside
                                    # the ENDPLATE's own wall (user, 2026-09-17), clear of the
                                    # head's recess and finishing 1.4 short of the wall's inner
@@ -1022,13 +1024,16 @@ def corner_groove_negatives(station: float, ly: float, syg: float,
     return negs
 
 
-def outer_tenon_offset(station: float, egx: float) -> float:
-    """How far outboard of the leg's centreline its OUTERMOST tenon sits -- the first one
-    the lock pin meets coming in from the end face."""
-    off = [egx * (s - station) for s in D.lever_grid_x()
-           if abs(s - station) <= SQ_W / 2 - STUB_TEN_W / 2 + 1e-9]
-    assert off, "no mortise station over the foot at x %.2f" % station
-    return max(off)
+def pinned_tenon_offsets(station: float, ly: float, egx: float, syg: float) -> list:
+    """This corner's tenon offsets from the leg's centreline, outboard first.
+
+    Asks chassis.foot_tenon_runs, which is the one authority on which runs a foot can actually
+    use -- so a tenon the foot had to give up (the string access channels take two from the
+    +X/+Y corner) is not one the pin will aim at. Imported at call time because chassis imports
+    THIS module while it loads."""
+    from . import chassis as _CHP
+    return sorted((egx * (st - station) for st, _, _ in _CHP.foot_tenon_runs(station, ly, syg)),
+                  reverse=True)
 
 
 def lock_pin_joint(station: float, ly: float, egx: float, syg: float, z_bot: float,
@@ -1053,15 +1058,19 @@ def lock_pin_joint(station: float, ly: float, egx: float, syg: float, z_bot: flo
     j = _ScrewJoint(_M4, entry, (-egx, 0.0, 0.0), LOCK_SCREW_L,
                     insert_at=LOCK_INSERT_AT, end_at=end_at,
                     head_d=LOCK_HEAD_D, head_h=LOCK_HEAD_H, recess=LOCK_RECESS)
-    # IT MUST LAND IN THE OUTERMOST TENON. The screw's job is no longer to pull on an insert in
-    # the chassis; it is a PIN through the foot's outermost tenon, so the tip has to finish
-    # inside that tenon -- past its near flank and short of its far one.
-    near = SQ_W / 2 - (outer_tenon_offset(station, egx) + D.LEVER_MORT_W / 2)
+    # IT MUST FINISH INSIDE ONE OF THIS CORNER'S TENONS. The screw is a PIN now, not a pull on
+    # an insert in the chassis, so the tip has to stop in tenon material -- in ANY of them, since
+    # on most corners it runs through the outboard ones on the way. A tip parked in a mortise
+    # void or in a 3.2 chassis wall would pin nothing.
     tip = LOCK_RECESS + LOCK_SCREW_L
-    assert near + D.MIN_WALL_2P <= tip <= near + D.LEVER_MORT_W - 1e-9, (
-        "the lock pin's tip lands %.2f in from the end face; the foot's outermost tenon runs "
-        "%.2f..%.2f there -- pick a screw length that finishes inside it"
-        % (tip, near, near + D.LEVER_MORT_W))
+    landed = [o for o in pinned_tenon_offsets(station, ly, egx, syg)
+              if (SQ_W / 2 - (o + D.LEVER_MORT_W / 2)) + D.MIN_WALL <= tip
+              <= SQ_W / 2 - (o - D.LEVER_MORT_W / 2)]
+    assert landed, (
+        "the lock pin's tip lands %.2f in from the end face at corner (%.1f, %.1f), which is "
+        "not inside any of its tenons (offsets %s) -- pick a stocked length that finishes in one"
+        % (tip, station, ly, [round(o, 2) for o in
+                              pinned_tenon_offsets(station, ly, egx, syg)]))
     return j
 
 

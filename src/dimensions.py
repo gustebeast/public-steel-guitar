@@ -871,6 +871,12 @@ LIGHT_WIN_Y1 = LIGHT_WIN_YC + LIGHT_WIN_W / 2
 # the +Y rail, the way the leg's own grooves used to be. There is no window above a leg anyway
 # (it runs BETWEEN them), so nothing is lost by carrying these through.
 LEVER_FULL_END_N = 3
+# ...AND THE TWO +X-MOST STOP SHORT OF THE STRING ACCESS CHANNELS (user, 2026-09-17). Those
+# channels drop through the floor at the bridge end, one per string, and the +Y-most of them
+# (string 1's) sits right where a foot's tenon would run. A mortise there stops a two-bead wall
+# short of that channel's -Y edge instead of carrying on out past the rail.
+LEVER_ACCESS_END_N = 2
+ACCESS_CLEAR_Y = string_y(0) - STRING_ACCESS_D / 2 - MIN_WALL_2P
 MORT_FULL_Y1 = RAIL_HI_INNER_Y + WALL_THICKNESS + 1.0     # out past the +Y rail's outer face
 
 
