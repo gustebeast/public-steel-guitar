@@ -578,8 +578,13 @@ def output_panel():
     r10 = _r("R10", "100k", "output bleed -- stops the DC block thumping on unplug")
     outp += r10[1]
     agnd += r10[2]
-    r11 = _r("R11", "preset", "buck feedback divider, top -- set at the bench")
-    r12 = _r("R12", "preset", "buck feedback divider, bottom")
+    # VFB is 0.765 V (LMR16006 datasheet SNVSA24, "voltage reference (FB pin)"), so for
+    # 5 V the bottom leg is 100k x 0.765 / (5 - 0.765) = 18.06k; 18k2 gives 4.97 V. The
+    # lever board runs the same part at 3.3 V with 100k / 30k1, which is the same
+    # arithmetic -- worth saying out loud, because "set at the bench" is not a value and
+    # a divider with no value is a converter with no output voltage.
+    r11 = _r("R11", "100k", "buck feedback divider, top")
+    r12 = _r("R12", "18k2 1%", "buck feedback divider, bottom -- 4.97 V with R11")
     v5_pre += r11[1]
     fb += r11[2], r12[1]
     pgnd += r12[2]
