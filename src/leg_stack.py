@@ -670,6 +670,10 @@ def leg_parts():
            ("bar_latch_collar", BL.collar(Z_BAR_MOUTH))]
     from . import bar_trrs as BT
     out += BT.dummies()
+    # ...and the BAR's half of the same joint. It is authored against a caller-supplied
+    # mortise floor precisely so it can be drawn in either frame; in world, that floor
+    # is the adjust tenon's own bottom face, which is BT.TIP.
+    out += BT.bar_dummies(BT.TIP)
     out += [("bar_latch_spring_%d" % i, s) for i, s in enumerate(BL.springs(Z_BAR_MOUTH))]
     out += BL.screw_dummies(Z_BAR_MOUTH)        # the collar's one screw, and its insert
     out += LG.lock_pin_dummies(LEG_X, LEG_Y, EGX, SYG, Z_TOP, 0)   # the leg's one screw

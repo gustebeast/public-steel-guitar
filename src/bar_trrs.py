@@ -52,6 +52,8 @@ at the top of the instrument. See BOM.md.
 
 from __future__ import annotations
 
+import math
+
 import cadquery as cq
 
 from . import dimensions as D
@@ -241,3 +243,174 @@ def dummies(k: int = 0, mated: bool = True):
     return [("bar_trrs_plug_%d" % k, plug),
             ("bar_trrs_sleeve_%d" % k, sleeve().translate((0, 0, rise))),
             ("bar_trrs_spring_%d" % k, coil)]
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# THE BAR HALF. Everything above is the LEG's, authored in world Z; a pedal bar
+# piece is authored in the BAR's own frame, so every number below is a DEPTH
+# BELOW THE MORTISE FLOOR and the caller says where that floor is. The two
+# frames never meet in this file, which is the point.
+# ════════════════════════════════════════════════════════════════════════════
+
+BAR_UP = (0.0, 1.0, 0.0)        # pedal_bar_a lies on its -Y face and builds +Y, so a
+                                # bore down THIS joint's spine is a HORIZONTAL bore in
+                                # the print. Every cut below is teardropped against it
+
+JB_DEEP = LT.JACK_L - NOSE_H    # 8.8 -- all of the jack that is not nose. The whole bar
+                                # half is this number: 8.8 against the 25.1 the bar has,
+                                # where the envelope wanted 60 (see the module docstring)
+JB_D = LT.JACK_D + 0.3          # 8.1 -- a running fit on the O7.8 body, not a press. The
+                                # jack is HELD by the throat's grip; this bore only keeps
+                                # it straight and gives its back a seat
+CABLE_WAY_D = LT.CABLE_D + 0.8  # 4.6 for the O3.8 lead -- and the STEP from JB_D down to
+                                # it is the jack's DOWN-stop, the one stop this joint
+                                # gets for free. It carries the mate force (MATE_N, ~7 N)
+                                # on a r2.3..r4.05 annulus: 0.2 MPa, which is nothing
+
+# ── the throat: the same TPU grip + bayonet the top joint uses, one size up ──
+TH_DEEP = 8 * B                 # 6.4 of the 8.8 is the throat's pocket, leaving 2.4 of
+                                # hard bore under it for the jack's seat
+TH_ID = LT.JACK_D - LT.SLV_SQUEEZE          # 7.4: 0.4 of squeeze on the O7.8 body, the
+                                # same interference the top joint's sleeve takes on the
+                                # plug. Over TH_DEEP that is 157 mm2 of grip
+TH_OD = TH_ID + 2 * D.MIN_WALL_2P           # 10.6
+TH_POCK_D = TH_OD + LT.SLV_CLR              # 11.0
+TH_LUG_D = TH_OD + 2 * LT.LUG_PROUD         # 14.2
+TH_A = LT.SLV_A                 # (52, 232) -- AND THE NUMBER IS NOT BORROWED, it is
+                                # re-derived. A bayonet slot's end wall is a plane
+                                # through the bore's axis, so against a build azimuth U
+                                # it overhangs by |sin(U - theta)| and the 45 rule is
+                                # |U - theta| <= 45. Here U is +Y, 90 degrees, and the
+                                # RUN is the wide feature: LUG_DEG + LUG_TURN + 2 CLR =
+                                # 84 degrees of it, from a0 - 4 to a0 + 80. Both ends
+                                # inside 45..135 forces a0 into [49, 55] and nothing
+                                # else -- a 6 degree window, which 52 sits in the middle
+                                # of. That the top joint's sleeve landed on the same
+                                # number is arithmetic, not inheritance: its adapter
+                                # builds +Y too
+TH_RUN_H = LT.LUG_SLOT_H        # 2.4 against a 2.6 lug: the TPU squashes 0.2 and stands
+                                # preloaded in its own slot, exactly as at the top joint
+TH_DETENT = 0.4                 # ...AND THEN A POSITIVE DETENT, which the top joint did
+                                # not need. There the anti-rotation lock is the user's
+                                # pre-twisted leads; here the lead leaves the throat and
+                                # turns into the trough, which resists a back-turn but
+                                # does not forbid one. So the run's OUTER wall carries a
+                                # bump TH_DETENT proud, TH_DETENT_DEG before the stop:
+                                # the lug squashes past it going in and has to squash
+                                # back to come out. TPU is the only reason this is a
+                                # feature and not a crack
+TH_DETENT_DEG = 8.0             # ...AND IT IS MEASURED FROM THE LUG'S TRAILING EDGE,
+                                # so it has to clear the pin's own half-angle or the
+                                # detent lands under the lug's RESTING position and the
+                                # throat can never seat (1.50 mm3 of it, which is how
+                                # this number was found). The assert below is the real
+                                # constraint; 8.0 keeps 1.9 degrees of daylight
+TH_DETENT_R = B                 # the bump is a round PIN, not an annular step, and the
+                                # radius is not cosmetic. As a sector it shared its
+                                # inner face with the pocket bore, and the two cuts that
+                                # took 0.1 s of geometry took over four minutes of
+                                # coincident-surface boolean -- the whole reason
+                                # pedal_bar_a stopped building. Standing it off the bore
+                                # entirely costs nothing and gives the lug a radius to
+                                # ride rather than a corner to catch on
+
+assert TH_DEEP + D.MIN_WALL_2P <= JB_DEEP, (
+    "the throat's pocket (%.1f) leaves only %.1f of seat bore under it" %
+    (TH_DEEP, JB_DEEP - TH_DEEP))
+_PIN_R = TH_LUG_D / 2.0 + TH_DETENT_R - TH_DETENT
+_PIN_DEG = math.degrees(math.asin(TH_DETENT_R / _PIN_R))
+assert TH_DETENT_DEG > _PIN_DEG, (
+    "a %.1f pin at r %.1f spans %.1f degrees and the detent is only %.1f before the "
+    "stop: it would sit under the seated lug" %
+    (TH_DETENT_R, _PIN_R, 2 * _PIN_DEG, TH_DETENT_DEG))
+assert 45.0 <= TH_A[0] - LT.LUG_CLR_DEG and \
+    TH_A[0] + LT.LUG_DEG + LT.LUG_TURN + LT.LUG_CLR_DEG <= 135.0, (
+    "the run spans %.0f..%.0f and the 45 rule wants 45..135 for a +Y build" %
+    (TH_A[0] - LT.LUG_CLR_DEG,
+     TH_A[0] + LT.LUG_DEG + LT.LUG_TURN + LT.LUG_CLR_DEG))
+
+
+def _th_run(floor_z):
+    """The bayonet run's z band, from the caller's mortise floor."""
+    lo = floor_z - TH_DEEP
+    return lo, lo + TH_RUN_H
+
+
+def bar_negatives(floor_z, chamber_top_z, x=None, y=None, up=BAR_UP):
+    """Cut in the BAR's mortise tower, in the BAR's frame.
+
+    `floor_z` is the mortise floor -- the plane the leg's tenon lands on, and the plane
+    the jack's nose stands up off. `chamber_top_z` is the wiring chamber's ceiling: the
+    cable way stops there rather than this module guessing where the bar's trough is.
+
+    Nothing here narrows on the way DOWN except at the very bottom, where it is meant
+    to: jack and throat both go in from the mortise, which is open until the leg does."""
+    if x is None:
+        x, y = _ax()
+    lo, hi = _th_run(floor_z)
+    out = LT._bore(JB_D, floor_z - JB_DEEP, floor_z + 0.01, x, y, up)
+    out = out.union(LT._bore(TH_POCK_D, floor_z - TH_DEEP, floor_z + 0.01, x, y, up))
+    out = out.union(LT._bayonet_slots(TH_POCK_D / 2.0 - 0.01, TH_LUG_D / 2.0,
+                                      lo, hi, False, x, y, TH_A, up))
+    # AND THE ENTRY SLOTS REACH THE MORTISE FLOOR. leg_trrs._bayonet_slots opens its
+    # entry one LUG_LEDGE past the run, which is exactly right where the run sits that
+    # far from the part's open end. It does not here: the run is at the BOTTOM of a
+    # TH_DEEP pocket, so the stock entry stopped 1.4 short of the floor and the lugs
+    # could not get in. The leg half needed the same line for the same reason -- see
+    # tenon_negatives, where the shortfall was 11.8 rather than 1.4.
+    for a0 in TH_A:
+        out = out.union(LT._td_sector(
+            TH_POCK_D / 2.0 - 0.01, TH_LUG_D / 2.0, lo, floor_z + 0.01,
+            a0 - LT.LUG_CLR_DEG, LT.LUG_DEG + 2 * LT.LUG_CLR_DEG, x, y, up))
+    # the detent, subtracted BACK OUT of the run: a pin standing TH_DETENT proud of the
+    # slot's outer wall, TH_DETENT_DEG before the stop, that the lug squashes past
+    r_pin = _PIN_R
+    for a0 in TH_A:
+        a = math.radians(a0 + LT.LUG_TURN - TH_DETENT_DEG)
+        out = out.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+            TH_DETENT_R, hi - lo + 1.0,
+            cq.Vector(x + r_pin * math.cos(a), y + r_pin * math.sin(a), lo - 0.5),
+            cq.Vector(0, 0, 1))))
+    # ...and the lead's way out of the jack's back, down into the wiring chamber
+    out = out.union(LT._bore(CABLE_WAY_D, chamber_top_z - 0.01,
+                             floor_z - JB_DEEP + 0.01, x, y, up))
+    return out
+
+
+def throat(floor_z=TIP, x=None, y=None):
+    """THE JACK'S KEEPER: TPU, gripping the jack's body, turned into the tower's bayonet.
+
+    It is the top joint's argument run downwards. The jack is a flangeless O7.8 moulding
+    -- there is no shoulder on it to catch -- so the only positive up-stop available is
+    to grip it and capture the GRIP. The plug's detent lets go at 5..20 N on every leg
+    removal; the grip answers with 157 mm2 of 0.4-squeeze TPU and the lugs put that into
+    a ledge, so nothing about the retention is an unsized press fit.
+
+    IT IS BENCH-ASSEMBLED. Slide it down the jack's nose onto the body, thread the lead
+    down the bar's cable way into the trough, THEN drop the pair into the mortise and
+    turn. The jack is the handle: the grip that holds it is what lets it turn the
+    throat, so the 40-deep mortise needs no tool reaching down it."""
+    if x is None:
+        x, y = _ax()
+    lo, _ = _th_run(floor_z)
+    body = cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        TH_OD / 2.0, TH_DEEP, cq.Vector(x, y, floor_z - TH_DEEP), cq.Vector(0, 0, 1)))
+    body = body.union(LT._lugs(TH_OD / 2.0 - 0.01, TH_LUG_D / 2.0 - LT.SLV_CLR / 2.0,
+                               lo, lo + LT.LUG_H, x, y, TH_A, True))
+    body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        TH_ID / 2.0, TH_DEEP + 2.0, cq.Vector(x, y, floor_z - TH_DEEP - 1.0),
+        cq.Vector(0, 0, 1))))
+    assert len(body.val().Solids()) == 1, (
+        "the throat came out as %d solids" % len(body.val().Solids()))
+    return body
+
+
+def bar_dummies(floor_z, x=None, y=None, k: int = 0):
+    """The bought jack where it sits in the bar, and the throat holding it."""
+    if x is None:
+        x, y = _ax()
+    jack = cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        LT.JACK_D / 2.0, LT.JACK_L, cq.Vector(x, y, floor_z - JB_DEEP),
+        cq.Vector(0, 0, 1)))
+    return [("bar_trrs_jack_%d" % k, jack),
+            ("bar_trrs_throat_%d" % k, throat(floor_z, x, y))]
