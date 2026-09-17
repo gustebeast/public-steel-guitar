@@ -206,6 +206,7 @@ PKG = {
     # its name because the footprint library entry the layout uses is the SOT-23-6 one;
     # what was wrong was the envelope, not the choice.
     "SOT-563":  (2.90, 2.80, 1.45),
+    "TP":       (1.50, 1.50, 0.00),   # bare 1.5 mm copper pad, nothing on it
     # U8's digital rail is ~300 mA, so 5V->3V3 burns 0.51 W. That is past a SOT-23-5
     # (>100 degC rise), which is why U8 is NOT the same part as U9. A BUCK is still the
     # wrong answer for THIS rail: it sits among 20 TIAs reading tens of nanoamps, and a
@@ -297,6 +298,7 @@ CRTYD = {
     "SOT-23-5": (4.19, 3.49),
     "SOT-23-6": (4.19, 3.49),
     "SOT-563":  (4.19, 3.49),   # the real part is SOT-23-6 -- see the U10 note
+    "TP":       (2.50, 2.50),   # KiCad's own courtyard for the D1.5 test pad
     "SOT-223":  (8.89, 7.29),   # the biggest gap of the lot: a tab package's land is
                                 # nothing like its body
     "SOIC-14":  (7.49, 9.25),
@@ -715,7 +717,17 @@ def _parts():
 
     y = _block(P, y, [("C%d" % (100 + k), "MCU decoupling", "0402") for k in range(12)]
                      + [("R30", "BOOT0 pull-down", "0402"),
-                        ("R31", "NRST pull-up", "0402")], x0, x1)
+                        ("R31", "NRST pull-up", "0402")]
+                     # ⚠ THE SWD PADS, WITHOUT WHICH THIS BOARD CANNOT BE PROGRAMMED
+                     # AT ALL -- see the long note in elec/optical.py. They sit in the
+                     # MCU's own decoupling block because that is where SWDIO, SWCLK and
+                     # NRST already are, so the pads cost three short stubs instead of
+                     # three runs across the tail.
+                     + [("TP1", "SWD pad -- SWDIO", "TP"),
+                        ("TP2", "SWD pad -- SWCLK", "TP"),
+                        ("TP3", "SWD pad -- NRST (connect under reset)", "TP"),
+                        ("TP4", "SWD pad -- GND", "TP"),
+                        ("TP5", "SWD pad -- +3V3D target sense", "TP")], x0, x1)
     # ⚠ THE PHY IS NO LONGER HERE. It used to sit in this row, between the MCU and the
     # connector, on the reasoning that it owns both ends -- 12 ULPI signals up to the
     # MCU, D+/D- down to the port. That balanced the two runs, and it was the wrong
@@ -1138,6 +1150,12 @@ _MPN_RULES = (
     ("Y2",   ("K3A260002010",    "C2835957", 0.0959, "26 MHz 3225, CL 20 pF, ESR <= 30 ohm "
                                                     "-- the USB334x's own limits, T4.13")),
     ("Q1",   ("AO3400A",         "C20917",   0.0849, "N-ch logic-level FET, SOT-23, LED row gate, @5+")),
+    # Bare copper. It is a PLACED part as far as the CAD is concerned -- it occupies
+    # board area and has to clear its neighbours -- and not a part at all as far as the
+    # fab is concerned, which is why it costs nothing and carries no LCSC line.
+    ("TP",   ("bare copper pad", "NONE",     0.0,    "SWD test pad -- no component, no "
+                                                    "paste, excluded from the BOM and "
+                                                    "the CPL by the footprint")),
     ("J1",   ("TYPE-C-31-M-12",  "C165948",  0.1709, "USB-C 16P, @5+; the modelled envelope IS this part")),
     ("U13",  ("TPS560430XFDBVR", "C523980",  0.35,  "24V->5V synchronous buck, SOT-23-6, 600 mA, "
                                                     "1.1 MHz FORCED PWM. Meets the recorded want: "

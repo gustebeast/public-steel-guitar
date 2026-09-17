@@ -598,7 +598,21 @@ ADC inputs plus a 12-signal ULPI bus will not fit a 64-pin part.
 | 1 | R30 | BOOT0 pull-down | 0402 | 1.00 × 0.50 × 0.55 |
 | 1 | R31 | NRST pull-up | 0402 | 1.00 × 0.50 × 0.55 |
 | 1 | R36 | LED driver gate resistor | 0402 | 1.00 × 0.50 × 0.55 |
-| — | — | SWD programming pads (no component; first flash before USB DFU works) | pads | — |
+| 5 | TP1–TP5 | **SWD pads** — SWDIO, SWCLK, **NRST**, GND, +3V3D target sense. Bare copper: no part, no paste, excluded from the BOM and the CPL | 1.5 mm pad | 1.50 × 1.50 |
+
+> ⚠ **These were a BOM row and nothing else until 2026-09-17.** `SWDIO` and `SWCLK`
+> reached the MCU and stopped — single-node nets, which layout drops as unplaceable
+> and DRC cannot complain about. **And there was no second way in.** A blank H743
+> cannot enumerate over this board's USB (the ULPI PHY needs firmware to start, and
+> the ROM bootloader's DFU is on OTG_FS `PA11`/`PA12`, which this board does not
+> wire); AN2606's other bootloader interfaces are not brought out either. An
+> assembled board would have been a **brick** — nothing about it repairable in
+> firmware, because no firmware could be put on it.
+>
+> `NRST` is on the list for a reason that looks optional and is not: `PA13`/`PA14`
+> are ordinary GPIO after reset, so firmware that reconfigures them takes SWD away,
+> and **connect-under-reset is the only way back**. `BOOT0` is deliberately *not*
+> brought out — it only helps if a ROM bootloader interface exists, and none does.
 
 ### Was magnetic ruled out too early? — feasibility check, 2026-08-02
 

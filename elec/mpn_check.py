@@ -100,6 +100,11 @@ def main():
         cad_code = rec[1] or None
         if cad_code == "BASIC":
             continue                            # a generic passive class, priced not sourced
+        if cad_code == "NONE":
+            # Bare copper -- a test pad or a net tie. The CAD places it because it takes
+            # board area; the fab never sees it because there is no part to source. Both
+            # halves agreeing that there is nothing to order IS agreement.
+            continue
         if net_code is None and cad_code is None:
             continue                            # both say open
         if net_code != cad_code:
