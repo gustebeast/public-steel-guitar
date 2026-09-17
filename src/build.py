@@ -1187,6 +1187,7 @@ _COLORS = {
     "bar_trrs_sleeve": (0.03, 0.03, 0.03),   # the bottom joint's TPU carrier (black)
     "bar_trrs_throat": (0.05, 0.05, 0.06),   # ...and the TPU keeper for its jack
     "bar_trrs_jack":   (0.12, 0.12, 0.14),   # ...the bought jack it holds
+    "bar_trrs_lead":   (0.45, 0.45, 0.48),   # ...and the lead out of its back, as far as the bar's wiring channel
     "bar_trrs_plug":   (0.15, 0.15, 0.17),   # ...the male plug it floats
     "bar_trrs_spring": (0.62, 0.64, 0.67),   # ...and the coil above it
     "leg_trrs_sleeve": (0.03, 0.03, 0.03),   # ...and the TPU cup that holds the plug (black)
