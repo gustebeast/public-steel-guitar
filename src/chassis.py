@@ -225,9 +225,25 @@ _SEG_ROOT = 3 * D.BEAD                 # 2.4 volumetric fusion depth back into t
 # altogether and the grid runs through the seam unbroken. The cavity stays a THROUGH slot: it
 # is a void, so where it meets a lever mortise the two simply merge.
 _SEG_JZ0  = MB.FLOOR_TOP               # tenon base = the bottom prism's top face
+# WHICH SEGMENT GOES DOWN LAST IS A DESIGN DECISION, and this is it (user, 2026-09-17: the
+# joinery mortise must stop cutting -Z into the lever mortises). Lower the +X segment onto a
+# standing tenon and its whole bottom prism has to sweep DOWN PAST that tenon -- the prism comes
+# from high above, so the tenon's entire height is inside its swept column and the cavity has to
+# run clean through the floor. That through-channel is what was eating the 3.2 walls between
+# lever mortises at every seam. Lower the TENON'S OWN segment last instead and the tenon simply
+# descends into the cavity from above: nothing sweeps the floor, so the cavity can stop at the
+# floor's top face. ASSEMBLY ORDER, then: the +X-MOST segment is placed first and each neighbour
+# comes down on it working -X (every segment carries its tenon at its +X end and its mortise at
+# its -X end, so the chain is consistent). The endplates socket the rail ends and the deck rides
+# both crowns, both of which come after, so nothing else cared which way this went.
 _SEG_J    = joint(width=_SEG_JW, length=_SEG_JZ1 - _SEG_JZ0, depth=_SEG_JD,
-                  tenon=_UP, mortise=_UP, install="+z")   # signed: the +X segment is
-                  # lowered on, so RELATIVE to it the tenon travels +Z to seat
+                  tenon=_UP, mortise=_UP, install="-z")   # signed: the TENON's segment is
+                  # lowered on, so RELATIVE to the mortise's host the tenon travels -Z to seat
+# ...and the cavity's own floor: 0.4 below the bottom prism's top face, which is a SKIM off that
+# face rather than a channel through it. The 0.4 is clearance, not a seat -- the segments' Z is
+# set by the rail crowns and the endplates, and the tenon must not bottom out before the rail
+# faces meet (if it ever does sag, this floor is a hard stop, which is a bonus, not the design).
+_SEG_MZ0  = MB.FLOOR_TOP - 0.4
 _SEG_JX1  = _SEG_J.dims["depth_used"]  # the tenon's +X reach past the seam plane
 # the rail wall left beside the cavity is a printed wall like any other, and the only
 # thing keeping it at tier is the hand-picked width above. Say so, so a later change to
@@ -683,27 +699,40 @@ def _seg_tenon(s, yr):
     T prism standing from the BOTTOM PRISM'S TOP FACE up to the deck-groove floor (see
     _SEG_JZ0 -- below that is the lever-mortise grid, and this may not stand in it). (The bridge/keyhead END
     joints are a different site — they use the low _br_tongue/_kh_tongue dovetails.)"""
-    return _SEG_J.tenon(root=_SEG_ROOT).translate((s, yr, _SEG_JZ0))
+    t = _SEG_J.tenon(root=_SEG_ROOT).translate((s, yr, _SEG_JZ0))
+    # 45 DEG UNDERSIDE (user, 2026-09-17). This tenon no longer starts at the print bed -- it
+    # stands on the bottom prism's top face -- and everything it projects +X of the seam plane
+    # hangs over the NEIGHBOUR's floor, which is a different part. Flat, that underside was a
+    # 5.63-deep bridge over air. Ramped at 45 deg from the seam plane it is self-supporting all
+    # the way back to the material that carries it: at any x the lowest fibre sits one layer
+    # above and one layer -X of the last, and at x = s that chain lands on this segment's own
+    # floor. It costs the head its bottom 5.63 of engagement out of 65.35.
+    reach = _SEG_JX1
+    wedge = (cq.Workplane("XZ")
+             .polyline([(s, _SEG_JZ0), (s + reach, _SEG_JZ0), (s + reach, _SEG_JZ0 + reach)])
+             .close().extrude(T + 4.0).translate((0.0, yr + (T + 4.0) / 2.0, 0.0)))
+    out = t.cut(wedge)
+    # a wedge that misses is a silent no-op: the overhang would still be there and nothing
+    # downstream would notice, so make the cut prove it took the corner it was aimed at
+    assert out.val().Volume() < t.val().Volume() - 1.0, (
+        "the 45 deg relief took %.2f mm3 off the seam tenon at x %.2f -- it is missing the "
+        "overhanging corner" % (t.val().Volume() - out.val().Volume(), s))
+    return out
 
 
 def _seg_mortise(s, yr):
-    """The +X segment's cavity — a THROUGH slot: open at the segment's BOTTOM face
-    (the tenon enters there as the segment is lowered on) and open at the top through
-    the rail crown, so the cavity has no ceiling to bridge and no 'blind pocket' that
-    the deck groove would have to pass the tenon through. Z is unretained here BY
-    DESIGN — cadkit's install axis; the assembly around it closes Z (see the SEGMENT
-    JOINT block: deck, endplates, and finally the four leg screws)."""
-    # TWO PARTS. Above the bottom prism it is the full cavity, drop and all. THROUGH the
-    # bottom prism it narrows to the tenon's own footprint (drop=0): that band is the lever
-    # mortise grid, and every mm the cavity takes there comes out of a 3.2 wall between two
-    # slots (user saw it eating them). It cannot stop at the bottom's top face altogether --
-    # the joint installs in Z, so as the +X segment is lowered its own bottom prism has to
-    # pass the standing tenon, and this channel is that path.
-    upper = _SEG_J.mortise(drop=_SEG_ROOT + 1.0,
-                           length=(TP_GZ0 + 2.0) - _SEG_JZ0).translate((s, yr, _SEG_JZ0))
-    lower = _SEG_J.mortise(drop=0.0,
-                           length=_SEG_JZ0 - (Z_BOT - 1.0)).translate((s, yr, Z_BOT - 1.0))
-    return upper.union(lower)
+    """The +X segment's cavity: open at the TOP through the rail crown, where the tenon comes
+    in, and closed 0.4 into the bottom prism's top face (_SEG_MZ0). No ceiling to bridge; its
+    only horizontal face is a floor.
+
+    IT USED TO RUN CLEAN THROUGH THE BOTTOM PRISM as a second, narrower cavity (drop=0, the
+    tenon's bare footprint) -- the path the +X segment's own floor needed to pass the standing
+    tenon while being lowered on. That band IS the lever-mortise grid, so every mm of it came
+    out of a 3.2 wall between two slots, and the user caught it collided with them. Reversing
+    which segment goes down last deleted the need for it outright (see the SEGMENT JOINT block):
+    nothing sweeps the floor any more, so the cavity stops at the floor."""
+    return _SEG_J.mortise(drop=_SEG_ROOT + 1.0,
+                          length=(TP_GZ0 + 2.0) - _SEG_MZ0).translate((s, yr, _SEG_MZ0))
 
 
 def _end_dt(x_face, into, yc, z0, z1, socket=False, top_clr=TP_TG_DEPTH):
