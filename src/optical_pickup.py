@@ -849,10 +849,18 @@ def _parts():
     # protection device whose ground is a pour connection the router may orphan is not
     # protecting anything. A millimetre of lane either side is what it costs.
     _chain_gap = 1.0
+    # ⚠ THE PHY END OF THE CHAIN IS WIDER, BECAUSE THE PAIR IS NOT THE ONLY THING ON
+    # THAT FACE. PHY_RBIAS is pad 17, and pad 17 sits on the +Y face BETWEEN USB_DP and
+    # +3V3D at 0.5 mm pitch -- the same face the pair leaves by. At a 1.0 mm gap the
+    # pair fills that lane and RBIAS has nowhere to go: it was the one net that failed
+    # to route with its resistor 43 mm away, 6 mm away, and 4 mm away, because the
+    # distance was never the problem. 2.2 mm lets it come off the pad alongside the
+    # pair, outboard of it, and turn +X to R37 before the ESD array.
+    _phy_gap = 2.2
     _conn_depth = max(CRTYD["XH-SM-4Y"][1],
                       # socket, then the ESD array in line with its pad row, then the
                       # PHY behind that: the chain in signal order, in a straight line
-                      _uc_d + _chain_gap + _esd_d + _chain_gap + _phy_d)
+                      _uc_d + _chain_gap + _esd_d + _phy_gap + _phy_d)
     edge_y = y - _conn_depth                                # the board's -Y face
     # J2 TAKES THE -X END AND J1 THE +X. The 24 V inlet gains the -X end, next to the
     # buck it feeds; the USB-C gains the +X end, and the whole high-speed chain lays out
@@ -910,7 +918,7 @@ def _parts():
     # those, turn with it and still point at the MCU. The rotation costs nothing and is
     # the difference between a straight pair and no pair.
     add("U7", "USB 2.0 high-speed ULPI PHY", "QFN-24",
-        _j1_x, edge_y + _uc_d + _chain_gap + _esd_d + _chain_gap + _phy_d / 2,
+        _j1_x, edge_y + _uc_d + _chain_gap + _esd_d + _phy_gap + _phy_d / 2,
         rot=270.0)
     # ⚠ OFFSET BY HALF ITS OWN PAD SPAN, so the two faces land where the two hops need
     # them. A SOT-563's pads face +-X and this hop runs in Y, which reads like the wrong
@@ -954,11 +962,23 @@ def _parts():
     _phy_y = edge_y + _uc_d + _chain_gap + _esd_d + _chain_gap + _phy_d / 2
     _sup_dy = CRTYD["0402"][1] + CRTYD_GAP
     for _k, (_ref, _desc) in enumerate((
-            ("R37", "ULPI PHY bias resistor -- 1% precision part, AT the PHY"),
             ("C120", "PHY decoupling -- 3V3"),
             ("C121", "PHY decoupling -- 3V3"),
             ("C122", "PHY decoupling -- the 1V8 it regulates for itself"))):
-        add(_ref, _desc, "0402", _sup_x1, _phy_y + (_k - 1.5) * _sup_dy)
+        add(_ref, _desc, "0402", _sup_x1, _phy_y + (_k - 1.0) * _sup_dy)
+    # ⚠ R37 IS NOT IN THAT COLUMN, BECAUSE ITS PAD IS NOT ON THAT FACE. The -X face
+    # carries XI, XO, ULPI_CK and 1V8; RBIAS is pad 17, on the +Y face. A part placed on
+    # the wrong side of a QFN is not "a bit further away" -- the net has to travel around
+    # the package through the escape fans of two other faces, and this one never routed
+    # at all. It goes in the gap between the PHY and the ESD array instead, pushed +X so
+    # it is outboard of the pair that leaves by the same face.
+    # Its -X edge lands on pad 17's own X (+0.75 from the package centre, a 0.5 mm pitch
+    # three pads out), so the resistor is directly outboard of the pad it serves and the
+    # pair -- which leaves from +-0.25 -- keeps its lane with clearance to spare.
+    _rbias_dx = 0.75
+    add("R37", "ULPI PHY bias resistor -- beside pad 17, outboard of the pair", "0402",
+        _j1_x + _rbias_dx + CRTYD["0402"][0] / 2,
+        _phy_y - _phy_d / 2 - _phy_gap / 2)
     add("Y2", "24 MHz crystal -- PHY reference, beside its own XI/XO", "3225",
         _sup_x2, _phy_y)
     _y2_dy = CRTYD["3225"][1] / 2 + CRTYD_GAP + CRTYD["0402"][1] / 2
