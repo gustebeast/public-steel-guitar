@@ -471,14 +471,20 @@ def body_adapter(sx: float = LEG_X, ly: float = LEG_Y):
         if not on_grid and b0 - LG.STUB_TEN_W < sx + dx < b1 + LG.STUB_TEN_W:
             continue
         if on_grid:
-            y1 = min(y1, D.LIGHT_WIN_Y0)        # the mortises stop at the window
-            # ...AND THE SLIDE HAS TO FIT TOO. This corner installs by sliding OUTBOARD along Y,
-            # so a ridge in the grid must be able to travel that way inside its mortise. On a +Y
-            # corner it cannot: the mortises end at the window and the leg exits past it, so the
-            # ridge would drag 512 mm3 through the floor on the way in. Until the grid is allowed
-            # its exceptions again (user deferred them), that corner does without this ridge and
-            # holds on the other one plus the end-wall tongue.
-            if syg > 0:
+            # THE MORTISE RUN THIS FOOT SITS IN. chassis.mort_segments is the one authority on
+            # where a station's mortise actually is: one run for most stations, and for the three
+            # at each end two SHORT runs, one over each foot with the floor between them solid.
+            # The ridge is clamped to the run it overlaps...
+            seg = next((q for q in CH.mort_segments(sx + dx) if q[0] < y1 and q[1] > y0), None)
+            if seg is None:
+                continue
+            y0, y1 = max(y0, seg[0]), min(y1, seg[1])
+            # ...and kept only if that run is OPEN the way this corner installs. The foot slides
+            # outboard along Y, so the run has to carry on past the adapter's own outboard face;
+            # against a run that stops short the ridge would drag through the floor going in.
+            if syg > 0 and seg[1] < ly + LEG_W / 2.0 - 1e-9:
+                continue
+            if syg < 0 and seg[0] > ly - LEG_W / 2.0 + 1e-9:
                 continue
         if y1 - y0 < 1.0:
             continue
