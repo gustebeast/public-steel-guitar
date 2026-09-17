@@ -450,6 +450,48 @@ def _td_sector(r_in, r_out, z0, z1, a0, sweep, x, y, up):
     return out
 
 
+def _entry_sweep(up, a0, r_out, turn=None, margin=2.0):
+    """How far a bayonet ENTRY has to sweep so it carries the teardrop apex with it.
+
+    A teardrop apex is a one-nozzle flat bridging between the two 45 flanks that
+    converge to it. An entry slot cut at the LUG radius reaches out past the apex of
+    every narrower bore it crosses, so if the entry STOPS SHORT of the build azimuth
+    it takes one flank and leaves the flat cantilevered over open air. Sweeping past
+    the azimuth instead makes the entry's own apex the only apex there -- _td_sector's
+    "the two apexes are now the same apex" -- and that one has flanks inside the
+    sector.
+
+    The pad is the flat's own half-angle plus `margin`, not a guess: the flat sits at
+    r_out*sqrt(2) - nozzle/2 and is one nozzle wide, so it subtends
+    asin((nozzle/2)/r_flat) either side of the azimuth.
+
+    Returns the sweep from `a0 - LUG_CLR_DEG`. Asserts it has not eaten the ledge the
+    lug comes to rest on, which is the one thing spending angle here can cost.
+    """
+    turn = LUG_TURN if turn is None else turn
+    start = a0 - LUG_CLR_DEG
+    # THE APEX AHEAD OF *THIS* ENTRY. A teardrop about an axis has an apex every 180
+    # degrees, so fold the build azimuth into [0, 180) FIRST and then walk it up past
+    # this entry's start. Walking the raw azimuth instead keeps whichever of the two
+    # it happened to be written as: for the tenon's up (-X-Y, 225) the lug at a0=186
+    # got 225, correctly, and the lug at a0=6 got 225 as well -- 180 too far round,
+    # against a lug that comes to rest at 52.
+    az = (math.degrees(math.atan2(up[1], up[0])) % 180.0)
+    while az < start:
+        az += 180.0
+    r_flat = r_out * math.sqrt(2.0) - D.NOZZLE_D / 2.0
+    half = math.degrees(math.asin((D.NOZZLE_D / 2.0) / r_flat))
+    top = az + half + margin
+    sweep = top - start
+    assert sweep >= LUG_DEG + 2 * LUG_CLR_DEG, (
+        "the entry sweeps %.1f and the lug needs %.1f to pass"
+        % (sweep, LUG_DEG + 2 * LUG_CLR_DEG))
+    assert top <= a0 + turn - margin, (
+        "carrying the apex needs the entry out to %.1f, and the lug comes to rest at "
+        "%.1f: it would eat the ledge the lug bears on" % (top, a0 + turn))
+    return sweep
+
+
 def _bayonet_slots(r_in, r_out, z_lo, z_hi, open_up, x, y, angles, up):
     """The L-slots a set of lugs turns in: an ENTRY run open to one end, and the
     circumferential RUN it turns along. `open_up` says which end the lugs come in
@@ -460,8 +502,15 @@ def _bayonet_slots(r_in, r_out, z_lo, z_hi, open_up, x, y, angles, up):
         # the entry is open to the part's end; the run is buried LUG_LEDGE inside it
         e0, e1 = ((z_lo - LUG_LEDGE - 1.0, z_hi) if open_up
                   else (z_lo, z_hi + LUG_LEDGE + 1.0))
-        cut = _td_sector(r_in, r_out, e0, e1,
-                         a0 - LUG_CLR_DEG, LUG_DEG + 2 * LUG_CLR_DEG, x, y, up)
+        # THE ENTRY CARRIES THE APEX. At the lug's own width it stops short of the
+        # build azimuth, and since it is cut at the LUG radius it reaches out past the
+        # teardrop apex of every narrower bore it crosses -- taking one of the two 45
+        # flanks that apex flat bridges between, and leaving it cantilevered over open
+        # air. Found three times before it was fixed here: the bar's keeper pocket,
+        # then the adjust tenon's bore, then the fixed tenon's (user, all three in the
+        # tab). _entry_sweep pads past the azimuth by the flat's own half-angle.
+        cut = _td_sector(r_in, r_out, e0, e1, a0 - LUG_CLR_DEG,
+                         _entry_sweep(up, a0, r_out), x, y, up)
         cut = cut.union(_td_sector(r_in, r_out, z_lo, z_hi, a0 - LUG_CLR_DEG,
                                    LUG_DEG + LUG_TURN + 2 * LUG_CLR_DEG, x, y, up))
         out = cut if out is None else out.union(cut)

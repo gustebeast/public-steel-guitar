@@ -229,7 +229,7 @@ def tenon_negatives(up=None):
         out = out.union(LT._td_sector(
             BORE_D / 2.0 - 0.01, LT.LUG_D / 2.0, TIP - 1.0, LUG_BOT + 0.01,
             a0 - LT.LUG_CLR_DEG,
-            _entry_sweep(up, a0, LT.LUG_D / 2.0), x, y, up))
+            LT._entry_sweep(up, a0, LT.LUG_D / 2.0), x, y, up))
     return out
 
 
@@ -367,48 +367,6 @@ assert 45.0 <= TH_A[0] - LT.LUG_CLR_DEG and \
      TH_A[0] + LT.LUG_DEG + LT.LUG_TURN + LT.LUG_CLR_DEG))
 
 
-def _entry_sweep(up, a0, r_out, turn=None, margin=2.0):
-    """How far a bayonet ENTRY has to sweep so it carries the teardrop apex with it.
-
-    A teardrop apex is a one-nozzle flat bridging between the two 45 flanks that
-    converge to it. An entry slot cut at the LUG radius reaches out past the apex of
-    every narrower bore it crosses, so if the entry STOPS SHORT of the build azimuth
-    it takes one flank and leaves the flat cantilevered over open air. Sweeping past
-    the azimuth instead makes the entry's own apex the only apex there -- _td_sector's
-    "the two apexes are now the same apex" -- and that one has flanks inside the
-    sector.
-
-    The pad is the flat's own half-angle plus `margin`, not a guess: the flat sits at
-    r_out*sqrt(2) - nozzle/2 and is one nozzle wide, so it subtends
-    asin((nozzle/2)/r_flat) either side of the azimuth.
-
-    Returns the sweep from `a0 - LUG_CLR_DEG`. Asserts it has not eaten the ledge the
-    lug comes to rest on, which is the one thing spending angle here can cost.
-    """
-    turn = LT.LUG_TURN if turn is None else turn
-    start = a0 - LT.LUG_CLR_DEG
-    # THE APEX AHEAD OF *THIS* ENTRY. A teardrop about an axis has an apex every 180
-    # degrees, so fold the build azimuth into [0, 180) FIRST and then walk it up past
-    # this entry's start. Walking the raw azimuth instead keeps whichever of the two
-    # it happened to be written as: for the tenon's up (-X-Y, 225) the lug at a0=186
-    # got 225, correctly, and the lug at a0=6 got 225 as well -- 180 too far round,
-    # against a lug that comes to rest at 52.
-    az = (math.degrees(math.atan2(up[1], up[0])) % 180.0)
-    while az < start:
-        az += 180.0
-    r_flat = r_out * math.sqrt(2.0) - D.NOZZLE_D / 2.0
-    half = math.degrees(math.asin((D.NOZZLE_D / 2.0) / r_flat))
-    top = az + half + margin
-    sweep = top - start
-    assert sweep >= LT.LUG_DEG + 2 * LT.LUG_CLR_DEG, (
-        "the entry sweeps %.1f and the lug needs %.1f to pass"
-        % (sweep, LT.LUG_DEG + 2 * LT.LUG_CLR_DEG))
-    assert top <= a0 + turn - margin, (
-        "carrying the apex needs the entry out to %.1f, and the lug comes to rest at "
-        "%.1f: it would eat the ledge the lug bears on" % (top, a0 + turn))
-    return sweep
-
-
 def _th_run(floor_z):
     """The bayonet run's z band, from the caller's mortise floor."""
     lo = floor_z - TH_DEEP
@@ -441,7 +399,7 @@ def bar_negatives(floor_z, chamber_top_z, x=None, y=None, up=BAR_UP):
         out = out.union(LT._td_sector(
             TH_POCK_D / 2.0 - 0.01, TH_LUG_D / 2.0, lo, floor_z + 0.01,
             a0 - LT.LUG_CLR_DEG,
-            _entry_sweep(up, a0, TH_LUG_D / 2.0), x, y, up))
+            LT._entry_sweep(up, a0, TH_LUG_D / 2.0), x, y, up))
     # the detent, subtracted BACK OUT of the run: a pin standing TH_DETENT proud of the
     # slot's outer wall, TH_DETENT_DEG before the stop, that the lug squashes past
     r_pin = _PIN_R
