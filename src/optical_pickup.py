@@ -1092,18 +1092,16 @@ _MPN_RULES = (
                                                     "and it sits INSIDE C170 -- it catches the "
                                                     "insertion edge a DC block passes, not the "
                                                     "48 V itself")),
-    ("U13",  (MPN_UNKNOWN,       "",         0.35,  "24V->5V synchronous buck, SOT-23-6, >=0.5 A. "
-                                                    "OPEN: pick a real part at schematic "
-                                                    "capture. WANTED: synchronous (no catch "
-                                                    "diode), >=30 V absolute max so the 24 V "
-                                                    "rail has margin, and a switching "
-                                                    "frequency chosen AWAY from 96 kHz and "
-                                                    "its low harmonics -- this board samples "
-                                                    "at 96 kHz and a switcher near a "
-                                                    "sub-multiple of it aliases straight "
-                                                    "into the audio band")),
-    ("L1",   (MPN_UNKNOWN,       "",         0.10,  "buck output inductor, 4x4 shielded. OPEN: "
-                                                    "value follows U13. SHIELDED is not "
+    ("U13",  ("TPS560430XFDBVR", "C523980",  0.35,  "24V->5V synchronous buck, SOT-23-6, 600 mA, "
+                                                    "1.1 MHz FORCED PWM. Meets the recorded want: "
+                                                    "synchronous, 38 V abs max (>=30), fSW far from "
+                                                    "the sample rate. 3,494 in stock 2026-09-17. "
+                                                    "NOTE the 24 V trunk also feeds the steppers; "
+                                                    "38 V is the margin against their regen")),
+    ("L1",   (MPN_UNKNOWN,       "",         0.10,  "buck output inductor, 18 uH, 4x4 shielded, Isat "
+                                                    ">= 1 A. OPEN: the part (stocked candidates exist, "
+                                                    "e.g. Sunlord SWPA4012S180MT, but Isat and height "
+                                                    "are unverified). SHIELDED is not "
                                                     "optional here -- an unshielded inductor "
                                                     "radiates into 20 TIAs")),
     ("FB1",  (MPN_UNKNOWN,       "",         0.05,  "0603 ferrite bead, 600R@100MHz. OPEN: the "
