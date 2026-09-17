@@ -51,6 +51,8 @@ import json  # noqa: E402
 
 from skidl import ERC, Net, Part, Pin, generate_netlist, subcircuit  # noqa: E402
 
+import netcheck                                     # noqa: E402
+
 P = Pin.types.PASSIVE
 I, O, PWR = Pin.types.INPUT, Pin.types.OUTPUT, Pin.types.PWRIN
 
@@ -509,6 +511,7 @@ if __name__ == "__main__":
     motor_ctrl(tag="ctrl")
     ERC()
     generate_netlist(file_=os.path.join(OUT_DIR, "motor_ctrl.net"))
+    netcheck.grounds_meet(os.path.join(OUT_DIR, "motor_ctrl.net"))
     with open(os.path.join(OUT_DIR, "motor_ctrl.board.json"), "w") as f:
         json.dump(BOARD_NOTES, f, indent=2)
     print("board %.1f x %.1f mm, %d placements"

@@ -67,6 +67,8 @@ import json  # noqa: E402
 
 from skidl import ERC, Net, Part, Pin, generate_netlist, subcircuit  # noqa: E402
 
+import netcheck                                     # noqa: E402
+
 # ── the harness contract ─────────────────────────────────────────────────────
 # Four conductors, colours the user's: black GND / red 24V / yellow CAN_H /
 # green CAN_L. The pin ORDER is the board's half of that contract and is the SAME
@@ -205,6 +207,7 @@ if __name__ == "__main__":
     can_tee(tag="tee")
     ERC()
     generate_netlist(file_=os.path.join(OUT_DIR, "can_tee.net"))
+    netcheck.grounds_meet(os.path.join(OUT_DIR, "can_tee.net"))
     with open(os.path.join(OUT_DIR, "can_tee.board.json"), "w") as f:
         json.dump(BOARD_NOTES, f, indent=2)
     print("board %.1f x %.1f mm, tails %.1f mm from the +Y edge (limit 6.4)"
