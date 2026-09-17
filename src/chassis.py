@@ -283,14 +283,17 @@ def mort_segments(station):
     near = _KLY.MOUNT_Y + _KLY.MORT_Y0                   # -Y mouth, outboard of the -Y rail
     if abs(D.mortise_y_end(station) - D.LIGHT_WIN_Y0) < 1e-9:
         return [(near, D.LIGHT_WIN_Y0)]
-    # ...and the +Y run of the +X-most few stops short of the STRING ACCESS CHANNELS, which drop
-    # through the floor right there (user). That leaves those stations no way out +Y, so the +Y
-    # foot simply does without a tenon on them -- which the adapter works out for itself.
-    g = sorted(D.lever_grid_x())
-    i = min(range(len(g)), key=lambda k: abs(g[k] - station))
-    far = (D.ACCESS_CLEAR_Y if i >= len(g) - D.LEVER_ACCESS_END_N else D.MORT_FULL_Y1)
-    return [(near, LEG_Y[1] + LEG_W / 2.0),              # over the -Y foot, open -Y
-            (LEG_Y[0] - LEG_W / 2.0, far)]               # over the +Y foot
+    lo, hi = LEG_Y[1] + LEG_W / 2.0, LEG_Y[0] - LEG_W / 2.0
+    # ...and both runs KEEP OFF THE STRING ACCESS CHANNELS where a station crosses that field
+    # (D.access_field_y). There are ten channels on the string pitch, so the 1.5 gaps between
+    # them fit no mortise -- what is left is the clear band OUTBOARD of the field, and the +Y run
+    # starts a two-bead wall past the +Y-most channel (user). It still opens out past the rail,
+    # so the +Y foot can slide in on it.
+    field = D.access_field_y(station)
+    if field is not None:
+        lo, hi = min(lo, field[0]), max(hi, field[1])
+    return [(near, lo),                                  # over the -Y foot, open -Y
+            (hi, D.MORT_FULL_Y1)]                        # over the +Y foot, open +Y
 
 
 def foot_tenon_runs(sx, ly, syg):
