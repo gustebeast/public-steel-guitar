@@ -586,16 +586,10 @@ def bar_latch_frame():
     return BL.frame(Z_BAR_MOUTH)
 
 
-def _bar_trrs_top():
-    """The bar's TRRS jack way top in world z (the bar is posed from its mouth)."""
-    from . import pedal_bar as PB
-    return Z_BAR_MOUTH - (PB.TOWER_TOP - PB.TRRS_WAY_TOP)
-
-
 def bar_latch_collar():
     """The pedal bar latch's COLLAR -- printed on its own, screwed onto the bar's tower."""
     from . import bar_latch as BL
-    return BL.collar(Z_BAR_MOUTH, _bar_trrs_top())
+    return BL.collar(Z_BAR_MOUTH)
 
 
 PARTS = {
@@ -666,7 +660,7 @@ def leg_parts():
            ("leg_latch_spring", LL.spring()),
            # the pedal bar latch, AT REST (hook in, pad flush)
            ("bar_latch_frame", BL.frame(Z_BAR_MOUTH)),
-           ("bar_latch_collar", BL.collar(Z_BAR_MOUTH, _bar_trrs_top()))]
+           ("bar_latch_collar", BL.collar(Z_BAR_MOUTH))]
     out += [("bar_latch_spring_%d" % i, s) for i, s in enumerate(BL.springs(Z_BAR_MOUTH))]
     out += BL.screw_dummies(Z_BAR_MOUTH)        # the collar's one screw, and its insert
     out += LG.lock_pin_dummies(LEG_X, LEG_Y, EGX, SYG, Z_TOP, 0)   # the leg's one screw
