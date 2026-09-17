@@ -750,6 +750,163 @@ def _pad_pitch(fp):
     return best
 
 
+def add_missing_vias(board, eps_mm=0.05, via_d=0.6, via_drill=0.3, clr=0.14):
+    """Where one net's copper changes layer and nothing carries it across, drop the via.
+
+    ⚠ THE ROUTER DOES NOT LOSE THE ROUTE, IT LOSES THE VIA. TIA_OUT_2B came back from
+    the Specctra round trip as a B.Cu track and an F.Cu track ending at exactly the same
+    point -- 0.002 mm apart -- with no via between them. Both halves of the layer change
+    are there; the thing that makes it a layer change is not.
+
+    That failure reads as a routing failure and is not one. Every attempt to fix it as
+    one -- more passes, a different strategy, more room around the parts -- re-routes a
+    net that was ALREADY ROUTED and then loses the via again. And the tempting repair,
+    bridging the "gap" with copper, cannot work at all: the two ends are on different
+    layers, so no segment can join them however short it is.
+
+    So look for the signature instead: two tracks of one net, on DIFFERENT layers,
+    whose endpoints coincide. That is a layer change with its via missing, and the
+    repair is exact rather than approximate -- the via goes where the route already
+    says it goes, and nothing else moves.
+
+    It still has to be LEGAL, and checking that is not optional: a via is bigger than
+    the track that leads to it (0.6 against 0.25), so a spot with room for the track can
+    be short of room for the via. One that will not fit is left alone and reported,
+    because a via placed into a clearance violation turns a board that is unfinished
+    into a board that cannot be made.
+    """
+    import math
+    eps = pcbnew.FromMM(eps_mm)
+    margin = pcbnew.FromMM(via_d / 2.0 + clr)
+
+    pads, segs, vias = [], [], []
+    for fp in board.GetFootprints():
+        for q in fp.Pads():
+            pads.append((q.GetBoundingBox(), q.GetNetname()))
+    for t in board.GetTracks():
+        if t.GetClass() == "PCB_VIA":
+            vias.append((t.GetPosition().x, t.GetPosition().y, _via_r(t), t.GetNetname()))
+        else:
+            segs.append(((t.GetStart().x, t.GetStart().y),
+                         (t.GetEnd().x, t.GetEnd().y),
+                         t.GetWidth() / 2.0, t.GetNetname()))
+
+    def clear(x, y, net):
+        for bb, onet in pads:
+            if onet == net:
+                continue
+            dx = max(bb.GetLeft() - x, 0, x - bb.GetRight())
+            dy = max(bb.GetTop() - y, 0, y - bb.GetBottom())
+            if math.hypot(dx, dy) < margin:
+                return False
+        for (ax, ay), (bx, by), hw, onet in segs:
+            if onet == net:
+                continue
+            vx, vy = bx - ax, by - ay
+            L2 = vx * vx + vy * vy
+            u = 0.0 if L2 == 0 else max(0.0, min(1.0, ((x - ax) * vx + (y - ay) * vy) / L2))
+            if math.hypot(x - (ax + u * vx), y - (ay + u * vy)) - hw < margin:
+                return False
+        for vx2, vy2, vr, onet in vias:
+            if onet == net:
+                continue
+            if math.hypot(x - vx2, y - vy2) < margin + vr:
+                return False
+        return True
+
+    ends = {}
+    for t in board.GetTracks():
+        if t.GetClass() == "PCB_VIA" or not t.GetNetname():
+            continue
+        for p in (t.GetStart(), t.GetEnd()):
+            ends.setdefault(t.GetNetname(), []).append((p.x, p.y, t.GetLayer(), t))
+
+    added, refused = 0, []
+    for net, items in ends.items():
+        for i in range(len(items)):
+            xi, yi, li, ti = items[i]
+            for j in range(i + 1, len(items)):
+                xj, yj, lj, tj = items[j]
+                if li == lj or math.hypot(xi - xj, yi - yj) > eps:
+                    continue
+                # already carried across? then there is nothing missing
+                if any(onet == net and math.hypot(xi - vx2, yi - vy2) <= vr
+                       for vx2, vy2, vr, onet in vias):
+                    continue
+                if not clear(xi, yi, net):
+                    refused.append((net, pcbnew.ToMM(xi), pcbnew.ToMM(yi)))
+                    continue
+                v = pcbnew.PCB_VIA(board)
+                v.SetPosition(pcbnew.VECTOR2I(int(xi), int(yi)))
+                v.SetWidth(pcbnew.FromMM(via_d))
+                v.SetDrill(pcbnew.FromMM(via_drill))
+                v.SetNet(ti.GetNet())
+                v.SetViaType(pcbnew.VIATYPE_THROUGH)
+                board.Add(v)
+                vias.append((xi, yi, pcbnew.FromMM(via_d / 2.0), net))
+                added += 1
+    for net, x, y in refused:
+        print("    ⚠ %s changes layer at %.2f,%.2f and a 0.6 via does not fit there"
+              % (net, x, y))
+    return added
+
+
+def snap_hairline_gaps(board, eps_mm=0.02):
+    """Close same-net track gaps too small to bridge, by MOVING an end rather than
+    adding copper -- and say how many.
+
+    ⚠ THIS EXISTS BECAUSE THE REPAIR AND THE CLEAN-UP WERE UNDOING EACH OTHER.
+    link_close_gaps sees two ends of one net 2 MICRONS apart and lays a segment between
+    them; drop_degenerate then sees a 2-micron segment, correctly calls it degenerate,
+    and removes it. The net goes back to being two islands, DRC reports it as
+    unconnected, and nothing in either log says a repair was reverted. TIA_OUT_2B spent
+    three routing runs in that loop.
+
+    Neither routine is wrong. A 2-micron track IS junk -- on 0.25 mm copper that is a
+    100:1 ratio, and drop_degenerate's reasoning about it holds. The mistake is trying
+    to express "these two ends are the same point" as a piece of copper AT ALL. Say it
+    by moving the end instead: exact, adds nothing, and there is no fragment left for
+    the clean-up to find.
+
+    The displacement is bounded by eps, which is two hundredths of a millimetre --
+    two orders below the clearance rule, so a snap cannot walk a track into a violation.
+    """
+    import math
+    eps = pcbnew.FromMM(eps_mm)
+    ends = {}
+    for t in board.GetTracks():
+        if t.GetClass() == "PCB_VIA":
+            continue
+        key = (t.GetNetname(), t.GetLayer())
+        ends.setdefault(key, []).append(t)
+
+    snapped = 0
+    for (net, layer), tracks in ends.items():
+        if not net or len(tracks) < 2:
+            continue
+        # bucket the endpoints so this stays linear in the common case
+        pts = []
+        for t in tracks:
+            pts.append((t.GetStart(), t, True))
+            pts.append((t.GetEnd(), t, False))
+        for i in range(len(pts)):
+            pi, ti, si = pts[i]
+            for j in range(i + 1, len(pts)):
+                pj, tj, sj = pts[j]
+                if ti is tj:
+                    continue
+                d = math.hypot(pi.x - pj.x, pi.y - pj.y)
+                if d == 0 or d > eps:
+                    continue
+                if sj:
+                    tj.SetStart(pcbnew.VECTOR2I(pi.x, pi.y))
+                else:
+                    tj.SetEnd(pcbnew.VECTOR2I(pi.x, pi.y))
+                pts[j] = (pcbnew.VECTOR2I(pi.x, pi.y), tj, sj)
+                snapped += 1
+    return snapped
+
+
 def drop_degenerate(board, floor_mm=0.005):
     """Remove tracks too short to be anything, and report how many.
 

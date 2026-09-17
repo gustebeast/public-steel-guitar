@@ -805,6 +805,14 @@ BOARD_NOTES = {
     # on was being destroyed by the step that routed them. route.py now declares this
     # to freerouting as a plane and it leaves it alone.
     "plane_layers": ("In1.Cu",),
+    # ⚠ 25 PASSES, NOT THE DEFAULT 10, AND IT IS CONNECTIVITY THIS BUYS -- NOT NEATNESS.
+    # Measured on this board: 1 pass 105 unconnected, 3 -> 50, 10 -> 13, 25 -> 6. The
+    # comment in route.py used to say the curve was flat past ten, which is true of the
+    # boards that finish and false of this one. A board at its routing limit comes out
+    # of the early passes in a mess, and the later passes are where the optimiser rips
+    # that mess up and re-lays it; stopping at ten freezes it half-done.
+    # It costs 1069 s against about 700 -- 60% more wall clock for 54% fewer failures.
+    "router_passes": 25,
     # ⚠ NO track_mm HERE: 0.15 was TESTED AND IS WORSE. It helps lever_sensor, whose
     # 0.4 mm pitch QFN needs the lane, and it hurt this board -- 12 unconnected and no
     # violations at the 0.25 default, against 15 and a real clearance violation at 0.15.
