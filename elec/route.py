@@ -45,26 +45,34 @@ JAVA = os.path.expandvars(
 JAR = os.path.expandvars(
     r"%LOCALAPPDATA%\Temp\claude\C--Users-gus-Sync-Documents-Archive-3D-public-steel-guitar"
     r"\d7576032-b257-4aee-8a45-89e587fe4007\scratchpad\freerouting.jar")
-# ⚠ PASSES ARE OPTIMISER PASSES, AND THEY ARE NOT WHERE THE ROUTING HAPPENS.
-# Freerouting finds connectivity in the first pass or two; every pass after that
-# re-optimises the whole board, single-threaded, and on the optical board (153 parts)
-# each one costs roughly half a minute. 20 passes is ~10 minutes PER ATTEMPT.
+# ⚠ PASSES BUY CONNECTIVITY ON A HARD BOARD, AND THIS COMMENT USED TO SAY THEY DO NOT.
+# The old claim was that freerouting finds connectivity in the first pass or two and
+# every pass after that only shortens track, so "the curve is flat after about 10". It
+# was measured on the small boards, where it is true because they finish. On the optical
+# board it is false, and not marginally:
 #
-# MEASURED, on the optical board: 10 passes -> 17 unconnected, 20 -> 15, 30 -> 15 and
-# occasionally worse. The curve is flat after about 10, so the extra time buys track
-# length and not connectivity. Keep this low while ITERATING on a design and raise it
-# for the final run, where shorter tracks are worth the wall clock.
+#     1 pass  -> 105 unconnected
+#     3       ->  50
+#    10       ->  13
+#    25       ->   6          (1069 s, against ~700 for ten)
 #
-# ⚠ THOSE MEASUREMENTS PREDATE THE REPRODUCIBILITY FIX and are worth less than they
-# look. They were taken when the same board routed to 14, 17 and 30 on identical input,
-# so a 10-versus-20 comparison was one sample each from a distribution wider than the
-# difference being measured. The shape of the claim is probably right -- connectivity is
-# found early, later passes shorten track -- but the numbers are not evidence. Re-measure
-# before leaning on them.
+# Half the failures of a ten-pass run are still there because the optimiser has not got
+# to them yet. That is what a board near its routing limit looks like: the early passes
+# leave a mess that later passes rip up and re-lay, and stopping early freezes the mess.
+# 60% more wall clock for 54% fewer failures is not a marginal trade.
+#
+# SO THE RULE IS PER-BOARD, not global. Boards that finish easily gain nothing past ten
+# and should not pay for the passes; boards that do not finish should ask for more via
+# `router_passes` (optical does). Keep this default low for iteration.
+#
+# ⚠ AND RAISE `timeout` WITH THE PASS COUNT. 25 passes on the optical board needs about
+# 1070 s and the default was 900, so the first attempt at this measurement was KILLED --
+# and the DRC that followed reported 266 unconnected, which is the UNROUTED board. A
+# timeout that fires looks exactly like a routing result unless you read the log.
 PASSES = 10
 
 
-def route(stem, passes=None, timeout=900):
+def route(stem, passes=None, timeout=3600):
     pcb, dsn, ses = stem + ".kicad_pcb", stem + ".dsn", stem + ".ses"
     # ⚠ A BOARD MAY ASK FOR MORE PASSES, and recording that beats remembering it.
     # "Raise it for the final run" is an instruction to a person, and a person who is
@@ -160,7 +168,9 @@ def route(stem, passes=None, timeout=900):
         raise SystemExit(
             "freerouting exceeded %d s on %s at %d passes and was killed. The board is "
             "UNROUTED -- it has not silently produced a bad result, it has produced "
-            "none. Lower the pass count (the curve is flat past ~10) or raise `timeout`."
+            "none. Lower the pass count or raise `timeout` -- and note that passes DO
+"
+            "buy connectivity on this board, so lowering them has its own cost."
             % (timeout, os.path.basename(stem), passes))
     tail = (r.stdout or "").strip().splitlines()[-6:]
     print("\n".join("  " + t for t in tail))
@@ -221,6 +231,14 @@ def route(stem, passes=None, timeout=900):
     # ⚠ THE ROUTER LEAVES SAME-PART GAPS, and they are cheap to close once it has
     # finished. Done here rather than before routing because before routing the same
     # idea is a constraint that costs more than it buys -- see link_same_part_gaps.
+    # ⚠ SNAP THE HAIRLINES FIRST. A gap of a couple of microns cannot be repaired by
+    # laying copper across it -- the segment that results is itself degenerate and the
+    # clean-up below removes it again, which is a loop the logs do not show. Move the
+    # endpoint instead; see snap_hairline_gaps.
+    n_snap = layout.snap_hairline_gaps(board)
+    if n_snap:
+        print("  snapped %d hairline gap(s) shut (no copper added)" % n_snap)
+        board.BuildConnectivity()
     n_link = layout.link_close_gaps(board, layout._outline_pts(notes),
                                    same_part_only=False)
     if n_link:
