@@ -876,15 +876,32 @@ LEVER_FULL_END_N = 3
 # edge -- so a mortise crossing that field has to clear the whole of it, not merely stop short
 # of the +Y-most. The gaps between neighbours are 1.5, which no mortise fits, so what is left is
 # the clear band OUTBOARD of the field at each end.
-def access_field_y(station_x: float) -> tuple:
-    """(y_lo, y_hi) of the access-channel field a mortise at `station_x` would cross, already
-    grown by a two-bead wall -- or None if none of the channels comes near it in X."""
+def floor_block_y(station_x: float) -> tuple:
+    """(y_lo, y_hi) of everything a mortise at `station_x` must keep off, grown by a two-bead
+    wall -- or None if its X band is clear.
+
+    TWO FAMILIES, both dropping through the floor at an end of the instrument and both on the
+    string pitch, so a mortise that meets one meets several: the BRIDGE end's string access
+    channels, and the KEYHEAD end's insert height-screw head cavities. Each station crosses only
+    the ones near it in X, which is why the three at each end come out different lengths -- the
+    height screws sit in two X columns, so the -X-most station clears the +Y-most screw, the
+    middle one clears only the second column's, and the +X-most of the three meets neither."""
+    lo, hi = [], []
     half = STRING_ACCESS_D / 2 + MIN_WALL_2P
     ys = [string_y(i) for i in range(N_STRINGS)
           if abs(string_access_x(i) - station_x) < half + LEVER_MORT_W / 2]
-    if not ys:
-        return None
-    return (min(ys) - half, max(ys) + half)
+    if ys:
+        lo.append(min(ys) - half)
+        hi.append(max(ys) + half)
+    from . import nut_block as _NB                     # deferred: nut_block imports this module
+    hs_half = _NB.HS_HEAD_CAV_D / 2 + MIN_WALL_2P
+    hys = [_NB.height_screw_xy(i)[1] for i in range(N_STRINGS)
+           if abs(NUT_BLOCK_X + _NB.height_screw_xy(i)[0] - station_x)
+           < hs_half + LEVER_MORT_W / 2]
+    if hys:
+        lo.append(min(hys) - hs_half)
+        hi.append(max(hys) + hs_half)
+    return (min(lo), max(hi)) if lo else None
 MORT_FULL_Y1 = RAIL_HI_INNER_Y + WALL_THICKNESS + 1.0     # out past the +Y rail's outer face
 
 
