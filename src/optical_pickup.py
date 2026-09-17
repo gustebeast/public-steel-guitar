@@ -623,6 +623,9 @@ def _parts():
         """The y a part was ACTUALLY placed at -- so nothing re-derives a sibling's."""
         return next(q["y"] for q in P if q["ref"] == ref)
 
+    def _part_x(ref):
+        return next(q["x"] for q in P if q["ref"] == ref)
+
     def add(ref, desc, pkg, x, y, rot=0.0):
         # ROT IS A ROUTING FACT, not a drawing preference: it says which way a part's
         # pins face, and for anything on a high-speed net that is the placement. Only
@@ -853,14 +856,15 @@ def _parts():
     # protection device whose ground is a pour connection the router may orphan is not
     # protecting anything. A millimetre of lane either side is what it costs.
     _chain_gap = 1.0
-    # ⚠ THE PHY END OF THE CHAIN IS WIDER, BECAUSE THE PAIR IS NOT THE ONLY THING ON
-    # THAT FACE. PHY_RBIAS is pad 17, and pad 17 sits on the +Y face BETWEEN USB_DP and
-    # +3V3D at 0.5 mm pitch -- the same face the pair leaves by. At a 1.0 mm gap the
-    # pair fills that lane and RBIAS has nowhere to go: it was the one net that failed
-    # to route with its resistor 43 mm away, 6 mm away, and 4 mm away, because the
-    # distance was never the problem. 2.2 mm lets it come off the pad alongside the
-    # pair, outboard of it, and turn +X to R37 before the ESD array.
-    _phy_gap = 2.2
+    # ⚠ THE PHY END OF THE CHAIN HOLDS A ROW OF PARTS, AND THE PINS SAY WHICH. The
+    # USB3343's socket-facing side carries DP and DM (13, 14) and then VDD33, VBAT, VBUS
+    # and ID (15-18) -- per the datasheet, not the invented map this gap was first sized
+    # for. Those four each want a part within reach: VDD33's 1 uF regulator cap, the 3V3
+    # bypass, and VBUS's 20 k series resistor. They sit in ONE ROW here, outboard (+X) of
+    # the pair, behind the same 2 mm fan lane every face of this QFN gets.
+    #   2.0 fan lane + 1.03 row + ~0.6 to the ESD array  ->  3.6
+    _PHY_FAN = 2.0
+    _phy_gap = _PHY_FAN + CRTYD["0402"][1] + 0.57
     _conn_depth = max(CRTYD["XH-SM-4Y"][1],
                       # socket, then the ESD array in line with its pad row, then the
                       # PHY behind that: the chain in signal order, in a straight line
@@ -873,7 +877,21 @@ def _parts():
     add("J2", "power in -- 24V, PWR_GND, 2 cavities empty", "XH-SM-4Y",
         COMPUTE_X0 + EDGE_KEEP + CRTYD["XH-SM-4Y"][0] / 2,
         edge_y + CRTYD["XH-SM-4Y"][1] / 2)
-    _j1_x = TAIL_X1 - EDGE_KEEP - _uc_w / 2
+    # ⚠ THE CHAIN SITS INBOARD OF THE +X EDGE, AND THE PHY'S PINOUT IS WHY. With DP/DM
+    # facing the socket, the USB3343's cyclic pin order puts pins 19-24 -- RBIAS, the
+    # crystal's XO/XI, RESETB, VDD18 -- on the face toward +X. Hard against the edge that
+    # face had 1.8 mm of board, and a 26 MHz crystal, its two load caps, the bias
+    # resistor and the 1V8 regulator cap do not fit in 1.8 mm. There is no rotation that
+    # fixes it: a QFN cannot be mirrored, so pointing the pair at the socket FIXES which
+    # way pins 19-24 face. What moves is the chain. The pocket below is sized from its
+    # contents, and the -Y edge has 32 mm between J2 and J1 to give it from.
+    #   fan lane + R37/C122 column + crystal + load-cap column, less what the socket's
+    #   half-width already gives  ->  _CHAIN_DX
+    _PAIR_DX = 1.0              # PHY pair centre (DP -1.25, DM -0.75) onto the ESD array
+    _pocket = (_PHY_FAN + CRTYD["0402"][1] + CRTYD_GAP + CRTYD["3225"][1]
+               + CRTYD_GAP + CRTYD["0402"][1])
+    _CHAIN_DX = _pocket - (_uc_w / 2 - _PAIR_DX - _phy_w / 2) + 0.05
+    _j1_x = TAIL_X1 - EDGE_KEEP - _uc_w / 2 - _CHAIN_DX
     add("J1", "USB-C receptacle -- 10ch audio + MIDI + DFU", "USB-C",
         _j1_x, edge_y + _uc_d / 2)
     # J2 -- POWER *AND* the magnetic pickup's audio tap. 24 V FROM THE TRUNK, and NOT USB
@@ -921,8 +939,10 @@ def _parts():
     # across it -- and the 12 ULPI signals, which leave the two faces at right angles to
     # those, turn with it and still point at the MCU. The rotation costs nothing and is
     # the difference between a straight pair and no pair.
+    # +_PAIR_DX: the pair leaves the PHY from DP -1.25 / DM -0.75, so the package sits
+    # 1.0 +X of the ESD array to put the pair's centre over the array's.
     add("U7", "USB 2.0 high-speed ULPI PHY", "QFN-24",
-        _j1_x, edge_y + _uc_d + _chain_gap + _esd_d + _phy_gap + _phy_d / 2,
+        _j1_x + _PAIR_DX, edge_y + _uc_d + _chain_gap + _esd_d + _phy_gap + _phy_d / 2,
         rot=270.0)
     # ⚠ OFFSET BY HALF ITS OWN PAD SPAN, so the two faces land where the two hops need
     # them. A SOT-563's pads face +-X and this hop runs in Y, which reads like the wrong
@@ -932,8 +952,13 @@ def _parts():
     # double back around the part it had just left. Shifted -X by half the pad span, the
     # +X face sits directly over the socket's pad row -- a 3 mm drop straight down it --
     # and the -X face looks back down the board at the PHY.
+    # ⚠ TURNED 180 FROM WHERE IT WAS, BECAUSE THE REAL PHY PUTS DP ON THE OTHER SIDE.
+    # With the datasheet pinout DP (13) is -X of DM (14). At 270 the array presented DP
+    # on its +X side, so the pair had to cross itself between two parts 3.6 mm apart;
+    # at 90 the array's PHY-facing pads are DP -X / DM +X, matching. It is a pass-through
+    # (DP on 1 and 6, DM on 3 and 4), so the socket-facing side keeps a valid pair too.
     add("U10", "USB data-line ESD array -- inboard of the socket's pad row", "SOT-563",
-        _j1_x, edge_y + _uc_d + _chain_gap + _esd_d / 2, rot=270.0)
+        _j1_x, edge_y + _uc_d + _chain_gap + _esd_d / 2, rot=90.0)
     # ---- 4b-i. THE PHY'S SUPPORT PARTS, WHICH DID NOT FOLLOW IT DOWN HERE ----
     # ⚠ THIS IS A STALE-PLACEMENT BUG, NOT A ROUTING ONE, and it is the same shape as the
     # two this file already records: a derivation that stayed legal after the thing it
@@ -953,56 +978,43 @@ def _parts():
     #     was one of the four nets the router could not finish at all.
     # Their proximity is the specification. Two columns immediately -X of U7, in the
     # pocket between the buck and the socket, which was empty.
-    # ⚠ AN ESCAPE LANE, NOT A COURTYARD GAP -- THE SAME 2 mm THE D+/D- FACE GETS, and
-    # the same mistake made twice in one file. Packed at CRTYD_GAP the cluster was legal
-    # and the PHY could not get out: PHY_XI, PHY_XO and PHY_RBIAS all failed to route
-    # with their parts 4 mm away, having routed fine with them 15 to 43 mm away. A
-    # QFN-24 is 24 pins on 0.5 mm pitch and its pads need somewhere to fan out to before
-    # they can turn; 0.15 mm of board is not somewhere. Moving a part CLOSER can make its
-    # net unroutable, which is not intuitive until you have watched it happen.
-    _PHY_FAN = 2.0
-    _sup_x1 = _j1_x - _phy_w / 2 - _PHY_FAN - CRTYD["0402"][0] / 2
-    _sup_x2 = _sup_x1 - CRTYD["0402"][0] / 2 - CRTYD_GAP - CRTYD["3225"][0] / 2
-    # ⚠ ONE EXPRESSION, NOT TWO COPIES OF ONE. This used to repeat U7's y by hand, and
-    # when the PHY-end gap widened (_chain_gap -> _phy_gap) only U7's copy was changed:
-    # the whole support cluster stayed 1.2 mm behind, which put R37's pad ON U10's and
-    # DRC reported a SHORT between PHY_RBIAS and USB_DP. The board still built, still
-    # routed, and still came back with a plausible unconnected count.
-    _phy_y = _part_y("U7")
-    _sup_dy = CRTYD["0402"][1] + CRTYD_GAP
+    # ⚠ REBUILT FOR THE DATASHEET PINOUT. The cluster that stood here was fitted to an
+    # invented map (crystal on the -X face, RBIAS beside the pair). The real USB3343 puts:
+    #   socket face (-Y):  DP -1.25  DM -0.75  VDD33 -0.25  VBAT +0.25  VBUS +0.75  ID +1.25
+    #   +X face:           RBIAS -1.25  XO -0.75  XI -0.25  RESETB +0.25  VDD18 +0.75  STP +1.25
+    # (offsets along the face from the package centre, CAD frame). Everything below is
+    # placed off those numbers, and every face keeps the 2 mm fan lane.
+    # ⚠ ONE EXPRESSION, NOT TWO COPIES OF ONE: read U7 back, never re-derive it -- a copy
+    # that drifted by 1.2 mm once put R37's pad on U10's and shorted PHY_RBIAS to USB_DP.
+    _ux, _phy_y = _part_x("U7"), _part_y("U7")
+    _r_w, _r_h = CRTYD["0402"]              # an 0402 unrotated; rotated it is (_r_h, _r_w)
+
+    # SOCKET-FACE ROW, in the PHY-to-ESD gap, all +X of the pair (which leaves at -1.25 /
+    # -0.75 and needs its lane). Ordered by the pad each part serves.
+    _row_y = _phy_y - _phy_d / 2 - _PHY_FAN - _r_h / 2
+    _row_x0 = _ux + 0.30
     for _k, (_ref, _desc) in enumerate((
-            ("C120", "PHY VDD33 regulator output cap, 1 uF"),
-            ("C121", "PHY VBAT/VDDIO bypass"),
-            ("C122", "PHY VDD18 regulator output cap, 1 uF"))):
-        add(_ref, _desc, "0402", _sup_x1, _phy_y + (_k - 1.0) * _sup_dy)
-    # ⚠ R37 IS NOT IN THAT COLUMN, BECAUSE ITS PAD IS NOT ON THAT FACE. The -X face
-    # carries XI, XO, ULPI_CK and 1V8; RBIAS is pad 17, on the +Y face. A part placed on
-    # the wrong side of a QFN is not "a bit further away" -- the net has to travel around
-    # the package through the escape fans of two other faces, and this one never routed
-    # at all. It goes in the gap between the PHY and the ESD array instead, pushed +X so
-    # it is outboard of the pair that leaves by the same face.
-    # Its -X edge lands on pad 17's own X (+0.75 from the package centre, a 0.5 mm pitch
-    # three pads out), so the resistor is directly outboard of the pad it serves and the
-    # pair -- which leaves from +-0.25 -- keeps its lane with clearance to spare.
-    _rbias_dx = 0.75
-    add("R37", "ULPI PHY bias resistor -- beside pad 17, outboard of the pair", "0402",
-        _j1_x + _rbias_dx + CRTYD["0402"][0] / 2,
-        _phy_y - _phy_d / 2 - _phy_gap / 2)
-    # ⚠ PROVISIONAL, LIKE THE REST OF THIS CLUSTER. R39 is new (the VBUS series
-    # resistor the datasheet requires), and the whole support cluster here was fitted to
-    # a PHY pinout that turned out to be invented -- see U7 in elec/optical.py. With the
-    # real pins the crystal (20/21) and RBIAS (19) are on the +X face, toward the board
-    # edge, while this cluster sits -X. It stays only so the board builds; re-placing it
-    # waits on the MCU decision, because U6 is out of stock and its replacement may not
-    # share the package.
-    add("R39", "PHY VBUS series 20k -- PROVISIONAL placement", "0402",
-        _j1_x + _rbias_dx + CRTYD["0402"][0] + CRTYD_GAP + CRTYD["0402"][1] / 2,
-        _phy_y - _phy_d / 2 - _phy_gap / 2, rot=90.0)
-    add("Y2", "26 MHz crystal -- PHY reference (USB3343 needs 26)", "3225",
-        _sup_x2, _phy_y)
-    _y2_dy = CRTYD["3225"][1] / 2 + CRTYD_GAP + CRTYD["0402"][1] / 2
-    add("C125", "crystal load cap -- Y2 XI", "0402", _sup_x2, _phy_y - _y2_dy)
-    add("C126", "crystal load cap -- Y2 XO", "0402", _sup_x2, _phy_y + _y2_dy)
+            ("C120", "PHY VDD33 regulator output cap, 1 uF -- pads 15 and 18"),
+            ("R39", "PHY VBUS series 20 k, device-only -- pad 17"),
+            ("C121", "PHY VBAT/VDDIO bypass -- pad 16 and 9"))):
+        add(_ref, _desc, "0402", _row_x0 + _r_w / 2 + _k * (_r_w + CRTYD_GAP), _row_y)
+
+    # +X POCKET, three columns out from the +X face.
+    # col 1: R37 by RBIAS (socket end), C122 by VDD18 (MCU end). Turned 90 so the column
+    # is one 0402 wide, and spaced to leave the XI/XO pair a clear channel between them.
+    _c1 = _ux + _phy_w / 2 + _PHY_FAN + _r_h / 2
+    add("R37", "PHY RBIAS 8k06 1% -- by pad 19", "0402", _c1, _phy_y - 2.30, rot=90.0)
+    add("C122", "PHY VDD18 regulator output cap, 1 uF -- by pad 23", "0402",
+        _c1, _phy_y + 1.60, rot=90.0)
+    # col 2: the crystal, centred on XI/XO (-0.25 / -0.75), turned 90 so the column is
+    # the 3225's short side (its XI/XO pads are diagonal, so no turn "faces" them).
+    _c2 = _c1 + _r_h / 2 + CRTYD_GAP + CRTYD["3225"][1] / 2
+    add("Y2", "26 MHz crystal -- PHY reference, facing XI/XO", "3225",
+        _c2, _phy_y - 0.50, rot=90.0)
+    # col 3: its load caps, one beside each crystal pad.
+    _c3 = _c2 + CRTYD["3225"][1] / 2 + CRTYD_GAP + _r_h / 2
+    add("C125", "crystal load cap -- Y2 XI", "0402", _c3, _phy_y - 1.50, rot=90.0)
+    add("C126", "crystal load cap -- Y2 XO", "0402", _c3, _phy_y + 0.60, rot=90.0)
 
     for _ref, _desc, _pkg, _bx in _buck:
         add(_ref, _desc, _pkg, _bx, _buck_y)
