@@ -263,6 +263,17 @@ def route(stem, passes=None, timeout=3600):
         # the Specctra round trip rounds, and rounding leaves sub-micron fragments
         print("  dropped %d degenerate track fragment(s) from the import" % n_junk)
         n -= n_junk
+
+    # ⚠ POUR AGAIN, BECAUSE THE REPAIRS ABOVE ADDED COPPER AFTER THE LAST POUR. The
+    # zones were last filled before the repair block; snap/add_missing_vias/link then
+    # put down vias and tracks, and a zone does not know to clear around copper that
+    # arrived after it was computed. The result is a via sitting in un-cleared pour --
+    # which DRC reports as a clearance AND a hole-clearance violation against the zone,
+    # and which looks like a badly placed via rather than a stale pour.
+    # Measured: five violations on the optical board, four of them this, from two vias.
+    if board.Zones():
+        board.BuildConnectivity()
+        pcbnew.ZONE_FILLER(board).Fill(board.Zones())
     board.Save(pcb)
     # ⚠ CANONICALISE THE ROUTED BOARD TOO, for the same reason layout.py does it --
     # and the reason is now MEASURED rather than argued. Two independent runs of the

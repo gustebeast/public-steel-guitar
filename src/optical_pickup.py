@@ -543,7 +543,15 @@ COVER_HY  = _OUTER_Y + SLOT_DY / 2 + D.MIN_WALL_2P
 # grid now has ROUTING CHANNELS BETWEEN ITS ROWS -- two lanes' worth -- and before it had
 # none at all. Thirteen of the router's failures were TIA nets trying to cross this field.
 FB_PITCH = 2.0                                # 0402 grid in the Y gaps, column pitch
-FB_ROW_PITCH = 2.0                            # row pitch: one clear routing channel
+# ⚠ 2.4, SIZED FOR A VIA AND NOT FOR A TRACK. At 2.0 the channel between two rows is
+# 0.97 mm, which takes two 0.25 tracks and NOT a via: a 0.6 via with 0.14 clearance
+# needs 0.88 mm of clear board, so at 0.97 it fits only if it is centred to within
+# 0.04 mm. That matters because the connection that keeps failing in this field is a
+# feedback resistor to its own op-amp OUTPUT, 9.5 mm away past the SOIC -- a trip the
+# top layer cannot make at all, so it needs two vias, in these channels.
+# 2.4 gives 1.37 mm: a via with room to be placed rather than threaded. The ceiling
+# is 2.58 (the next quad's courtyard), so this still leaves margin.
+FB_ROW_PITCH = 2.4
 FB_ROWS = tuple(5.6 + k * FB_ROW_PITCH for k in range(4))
 # No per-quad pull any more. U1 needed one because it was the squeezed half of the shared
 # U1/U2 gap; nothing is squeezed now. (U1 still hangs BELOW its quad rather than above --
