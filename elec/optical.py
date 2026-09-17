@@ -829,13 +829,21 @@ def optical():
         net += c[1]
         gnd += c[2]
     # C130-C133: the bulk caps and the reference bypass.
-    for tag, net, desc in (("C130", vbus, "VBUS bulk"),
+    # ⚠ C130 IS 100 nF, NOT 10 uF, BECAUSE VBUS IS A SENSE LINE HERE AND NOT A SUPPLY.
+    # This board is self-powered from the 24 V trunk; the only thing downstream of VBUS
+    # is the PHY's comparator, reached through R39's 20 k. Ten microfarads against 20 k
+    # is a 0.2 SECOND time constant on the signal that tells the device whether a host
+    # is present -- and 10 uF of bulk on a self-powered device is also inrush the host
+    # pays for at plug-in, for a rail this board never draws from. 100 nF filters the
+    # comparator input (2 ms) without either.
+    for tag, net, desc in (("C130", vbus, "VBUS sense filter -- see note"),
                            ("C131", v3d, "3V3 digital bulk"),
                            ("C132", v3a, "3V3 analog bulk"),
                            ("C133", mid, "MID reference bypass -- the twenty summing "
                             "nodes share this, so it is what keeps them from talking "
                             "to each other through their own reference")):
-        c = _c(tag, "10uF", desc, "Capacitor_SMD:C_0805_2012Metric")
+        c = _c(tag, "100nF" if tag == "C130" else "10uF", desc,
+               "Capacitor_SMD:C_0805_2012Metric")
         net += c[1]
         gnd += c[2]
     # C140-C143: decoupling at the power inputs, ANALOG side of the bead.
