@@ -108,7 +108,38 @@ the constraint is stock, not selection. See the optical-pickup section.
 > — but it is not worth filtering for until the arm question is answered, because the OD
 > is the input.
 
+| **TRRS cable, 4C jack-to-plug** | [Tensility 10-02135](https://www.digikey.com/en/products/detail/tensility-international-corp/10-02135/7606584) — 3.5 mm **4-conductor TRRS**, phone JACK to phone PLUG, 914 mm (3.0 ft), 28 AWG shielded, $5.31, 420 in stock | **2** | DigiKey [d] | **THE ONE CABLE SKU FOR THE WHOLE LEG.** Its own drawing gives the parts, which is why it is here rather than an envelope: plug **3.5 × L20.7**, jack **3.5 × 7.8 × L25.8**, cable Ø3.8. **One is left WHOLE** as the leg's lead — female up (floating in the fixed tenon at the top joint), male down (floating in the adjust tenon at the bottom) — which is exactly the handedness the user's rule wants, since the part with the latch is always female. **One is CUT IN HALF** (user), and a jack-to-plug cut in half is the two pigtails this instrument needs and nothing else: the MALE half fixed in the body adapter at the top, the FEMALE half fixed in the pedal bar at the bottom, both stripped and crimped to JST-XH. A plug-to-plug cut in half would have given two males and left the bar without a female |
 | **TRRS float spring** | Compression, **Ø8.0 OD × 0.7 wire × 20.0 free**, **ID 6.6**, 304 SS (rate ~0.75 N/mm, bracketed 0.6–0.9; **measure on arrival**) | 1 (+ 4 spare) | [uxcell B0C33C21K9](https://www.amazon.com/dp/B0C33C21K9) — 5 to a pack, used **AS BOUGHT** | **$6.29 / 5** [a] | SECOND SKU, and not a preference: the coil has to end up ON the lead, and a lead has two ends — the moulded jack (Ø9.7) and the moulded far plug (Ø6.1). The latch coil's 3.8 ID passes neither, so no assembly order puts it there and the joint was unbuildable with it (user found this). **ID 6.6 clears the far plug by 0.5.** Installed 13.80 → **4.7 N at rest / 6.9 N seated**. The installed length is the SOLID FLOOR here, not the preload target: at 0.75 N/mm a 5.0 N target would want 13.33 and the coil would go solid before the leg seats |
+
+
+> **THE INLINE JACK IS Ø7.8 × 25.8, NOT Ø9.7 × 40 — and that one number deleted a
+> subsystem (2026-09-17).** `leg_trrs.JACK_D`/`JACK_L` were an ENVELOPE ("BOM: 9.1..9.7,
+> pick high", "≤ 40"), never a part, and the bottom joint was being designed around them.
+> On the envelope the pedal bar could not hold an inline jack at all: the chain wanted 60
+> below the mortise floor against 25.1 available, so the answer was either a **PCB-mount
+> jack on a small board** or **raising the bar's tower 36.5**, which would have lifted the
+> foot attach point and cost the low end of the height adjustment 6.5 ladder holes.
+>
+> Neither is needed. The jack's nose already lives 17.0 up inside the tenon's bore
+> (`bar_trrs.NOSE_H`), so only **25.8 − 17.0 = 8.8** sits below the floor:
+>
+> | | envelope (Ø9.7 × 40) | real part (Ø7.8 × 25.8) |
+> |---|---|---|
+> | below the mortise floor | 60.0 | **8.8** |
+> | against 25.1 usable | 36.5 of raise, or a PCB | **fits, 14.7 spare** |
+> | jack back, bar z | — | 22.30, with the trough at 3.95–20.45 right beside it |
+>
+> So: **no board, no solder, no raise, no height-adjustment penalty, and no new SKU** —
+> the bar's female is the cut half of the same cable the leg already uses. The user's own
+> question ("can we just use the other half of that cut cable?") is what forced the check;
+> the only correction is that it has to be a JACK-TO-PLUG cable rather than the
+> plug-to-plug one originally specced for the top, or the cut gives two males.
+>
+> ⚠ **`leg_trrs.JACK_D` 9.7 / `JACK_L` 40 are now known to be over-generous** at the TOP
+> joint too. They are not wrong — the chain works and is verified — but the fixed tenon is
+> carrying ~14 of length and ~2 of diameter it does not need. Worth reclaiming when that
+> joint is next opened, and NOT worth reopening it for on its own. Note the bore there
+> cannot simply follow the jack down: `JACK_BORE_D` is set by the Ø8.0 COIL, not the jack.
 
 > **SPRING SOURCING, 2026-09-16 — OUTCOME: both leg springs are uxcell parts used AS
 > BOUGHT, $13.28 the pair.** Getting there took three rejected answers and one
