@@ -72,6 +72,8 @@ import json  # noqa: E402
 
 from skidl import ERC, Net, Part, Pin, generate_netlist, subcircuit  # noqa: E402
 
+import netcheck                                     # noqa: E402
+
 P = Pin.types.PASSIVE
 
 USBC_FP = "Connector_USB:USB_C_Receptacle_HRO_TYPE-C-31-M-12"
@@ -819,6 +821,27 @@ if __name__ == "__main__":
     output_panel(tag="panel")
     ERC()
     generate_netlist(file_=os.path.join(OUT_DIR, "output_panel.net"))
+    # ⚠ THIS BOARD'S SPLIT IS DELIBERATE AND ITS CLOSURE IS NOT ON THIS BOARD, so it
+    # is declared rather than fixed -- see the J6/J7 note above for why the 24 V return
+    # is kept off the audio reference.
+    #
+    # ⚠ AND THE STAR POINT IT NAMES DOES NOT EXIST YET. Checked across every board's
+    # netlist on 2026-09-17: this is the ONLY board in the instrument with a PWR_GND,
+    # and the two boards the trunk feeds (motor_ctrl J3, optical J2) tie the trunk
+    # return straight to their own signal ground. So "the two meet at the instrument's
+    # star point, elsewhere" currently resolves to "the two meet at whichever board the
+    # cable reaches first", which is not a star point and not a decision anybody made.
+    # Left as a declared split, loudly, until that is settled -- it is a system-level
+    # call about where the instrument's single ground reference lives, not something to
+    # fix quietly inside one board.
+    netcheck.grounds_meet(
+        os.path.join(OUT_DIR, "output_panel.net"),
+        declared_split={
+            "shape": "GND | PWR_GND",
+            "why": "the 24 V return is chopped by ten stepper drivers and is kept off "
+                   "the audio reference; intended to meet GND at the instrument star "
+                   "point, WHICH DOES NOT EXIST YET -- see the note at this call",
+        })
     with open(os.path.join(OUT_DIR, "output_panel.board.json"), "w") as f:
         json.dump(BOARD_NOTES, f, indent=2)
     print("board %.1f x %.1f mm, %d placements, x%d per instrument"
