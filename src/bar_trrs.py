@@ -405,6 +405,44 @@ def throat(floor_z=TIP, x=None, y=None):
     return body
 
 
+def bar_cable(floor_z, x=None, y=None, k: int = 0):
+    """THE START OF THE LEAD'S JOURNEY: out of the jack's back and into the trough.
+
+    Only the start. Where it goes once it is IN the channel is the bar's wiring problem
+    and not this joint's, so the run stops a little past the trough's mouth rather than
+    pretending to know the rest -- exactly as leg_trrs.cables stops short of the chassis
+    end that is still parked.
+
+    What it is here to show is the TURN, which is the one thing about this route that
+    was a decision: the lead leaves the jack travelling -Z, and the trough is 20.4 +X
+    and 3.2 +Y of the spine. It could not turn that corner inside a tunnel of any
+    sensible diameter, so it turns in the open chamber instead -- CHAM_Z1 - CHAM_Z0 of
+    room, 3.3x the cable's own O3.8, plus the whole depth of the chamber in Y to bow
+    into. Drawn as cylinders with balls at the corners (leg_trrs._run), so the corners
+    are SHARPER than the real cable's: read the chamber for the radius, not the
+    polyline.
+
+    `floor_z` is the mortise floor in whatever frame the caller is drawing, which is
+    the same contract the rest of the bar half keeps. Everything else is read off
+    pedal_bar and shifted by the difference, so the two cannot drift apart."""
+    from . import pedal_bar as PB                    # late: PB imports this module
+    if x is None:
+        x, y = _ax()
+    dz = floor_z - (PB.TOWER_TOP - LS.ENGAGE)        # bar frame -> the caller's
+    z_cham = PB.CHAM_Z1 + dz
+    z_run = (PB.CHAM_Z0 + PB.CHAM_Z1) / 2.0 - 1.2 + dz       # the lead lies low in it
+    y_mid = (PB.LID_Y0 - PB.TROUGH_D + PB.LID_Y0) / 2.0      # the trough's own centre
+    lead = LT._run([
+        (x, y, floor_z - JB_DEEP),                   # the jack's back
+        (x, y, z_cham - 1.5),                        # straight down the cable way...
+        (x, y + 3.6, z_cham - 6.0),                  # ...and into the chamber, turning
+        (x + 7.0, y_mid - 1.8, z_run),               # the corner, mid-chamber
+        (x + 17.0, y_mid, z_run),                    # settled on the trough's centre
+        (PB.TROUGH_X0 + 16.0, y_mid, z_run),         # ...and away down the channel
+    ])
+    return [("bar_trrs_lead_%d" % k, lead)]
+
+
 def bar_dummies(floor_z, x=None, y=None, k: int = 0):
     """The bought jack where it sits in the bar, and the throat holding it."""
     if x is None:
@@ -412,5 +450,6 @@ def bar_dummies(floor_z, x=None, y=None, k: int = 0):
     jack = cq.Workplane("XY").add(cq.Solid.makeCylinder(
         LT.JACK_D / 2.0, LT.JACK_L, cq.Vector(x, y, floor_z - JB_DEEP),
         cq.Vector(0, 0, 1)))
-    return [("bar_trrs_jack_%d" % k, jack),
-            ("bar_trrs_throat_%d" % k, throat(floor_z, x, y))]
+    return ([("bar_trrs_jack_%d" % k, jack),
+             ("bar_trrs_throat_%d" % k, throat(floor_z, x, y))]
+            + bar_cable(floor_z, x, y, k))
