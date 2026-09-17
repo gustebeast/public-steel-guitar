@@ -68,6 +68,26 @@ LCSC = {
     "CH32V307WCU6": "C5142795",     # motor controller MCU
     "MT6701QT-STD": "C2913974",     # the angle sensor
     "AO3400A": "C20917",            # logic-level N-ch FET; the optical board's Q1 too
+    # ── sourced 2026-09-17 from JLCPCB's own parts API, not from memory ──────────
+    # Each line names the listing's exact model and the stock it showed, because a code
+    # with no source is the thing this file exists to refuse. Picked by EXACT model and
+    # genuine manufacturer; where a listing was the bare MPN at 0 stock and its (LF)(SN)
+    # tin-plated form was stocked, the stocked form is the same part as ordered from JST.
+    "B4B-XH-A": "C144395",          # JST B4B-XH-A(LF)(SN), stock 60,424
+    "S4B-XH-A": "C157925",          # JST S4B-XH-A(LF)(SN), stock 88,547
+    "LMR33630ADDAR": "C841384",     # TI, ESOP-8 (= HSOIC-8 PowerPAD), stock 6,730
+    "PJ-102AH": "C3096093",         # CUI PJ-102AH, stock 1,593
+    "PCM1808PWR": "C55513",         # TI PCM1808PWR TSSOP-14, stock 463 -- enough for
+                                    # the panel's x1 per instrument, but thin; re-check
+    "MX126-5.0-02P": "C5188434",    # MAX MX126-5.0-02P-GN01-Cu-S-A, stock 48,416
+    # The two CLASS lines whose pinout the netlist actually writes out, so a part can be
+    # checked against it pin for pin rather than chosen by name:
+    "TLV9061IDBVR": "C398358",      # TI, SOT-23-5: 1 OUT 2 V- 3 IN+ 4 IN- 5 V+ -- exact
+                                    # match to U7/U8. Stock 301,906. Same family as the
+                                    # optical board's TIAs. RRIO, 5.5 V max on a 5 V rail.
+    "AP2112K-3.3TRG1": "C51118",    # Diodes Inc, SOT-23-5: 1 IN 2 GND 3 EN 4 NC 5 OUT --
+                                    # exact match to U6. 600 mA against a 300 mA class.
+                                    # Stock 55,831.
 }
 # ⚠ EVERY VALUE STRING MUST BE ACCOUNTED FOR -- IN LCSC, GENERIC, OR HERE.
 # branner's catch, and it is the right shape for the bug that happened: usb_panel's
@@ -83,30 +103,27 @@ LCSC = {
 # value that is neither sourced nor generic nor listed below FAILS THE BUILD,
 # which means changing a part number forces you to come here and say so.
 OPEN_VALUES = frozenset({
-    "B4B-XH-A",            # the project's standard 4-way XH, still unsourced
-    "S4B-XH-A",            # its side-entry sibling, the motor tee's drop
-    "LMR33630ADDAR",       # power board buck -- confirm LCSC stock at order time
-    "NMJ4HCD2",            # 1/4 in jack; BOM.md prices it, no LCSC line yet
-    "PJ-102AH",            # 24 V barrel inlet, ditto
-    "USB1046-GF-0180",     # GCT USB-A. ⚠ THE ONE THAT WENT WRONG -- if this
+    "NMJ4HCD2",            # 1/4 in jack. JLCPCB lists it (C18185363) at ZERO
+                           # stock, 2026-09-17 -- a listing is not a source
+    "USB1046-GF-0180",     # GCT USB-A. Not listed at JLCPCB (2026-09-17); the
+                           # nearest is -0190-L-B-A at 5 in stock. ⚠ THE ONE THAT WENT WRONG -- if this
                            # string ever changes, that is the footprint moving
                            # under it, and the build should stop until someone
                            # confirms the two still agree
-    "FRT5-class 5V",       # true-bypass relay -- a class, not a part, on purpose
-    "PCM5102A-class",      # DAC -- ditto
-    "single RRO op-amp",   # output buffer AND pickup buffer -- ditto
+    # ⚠ THESE THREE ARE NOT SOURCING GAPS, THEY ARE PLACEHOLDER PINOUTS -- and the
+    # routed board is therefore electrically wrong at all three, whatever DRC says.
+    # U3 is modelled as 10 invented pins on a TSSOP-20 footprint; a real PCM5102A has
+    # 20, and its pin 1 is CPVDD, not LRCK. U4 (hub) and K1 (relay) are numbered 1..N
+    # with no datasheet behind them. DRC is clean because it checks the board against
+    # the NETLIST, and the netlist is what is wrong. Choosing an LCSC code here would
+    # order a real part for a board wired to an imaginary one.
+    "FRT5-class 5V",       # true-bypass relay -- pinout is a placeholder
+    "PCM5102A-class",      # DAC -- pinout is a placeholder (10 of 20 pins, invented)
     # ── the 2026-09-15 panel respin ──────────────────────────────────────────
-    "PCM1808PWR",          # 24-bit 99 dB ADC. ⚠ I had written an LCSC code into
-                           # its description from memory and took it back out:
-                           # this file's own rule is that a WRONG part number is
-                           # worse than a missing one, and a number I cannot point
-                           # at a source for is a guess wearing a number's clothes
     "CH334-class HS hub",  # ⚠ MUST BE HIGH SPEED -- a full-speed hub puts BOTH
                            # devices behind a Transaction Translator and undoes
                            # the whole reason the panel carries a hub. Confirm the
                            # exact CH334 variant against that before ordering
-    "3V3 LDO 300mA",       # a class, not a part
-    "MX126-5.0-02P",       # 2-way screw terminal, the pickup input
 })
 
 # Generic passives are JLCPCB BASIC parts chosen at order time from the package and
