@@ -665,7 +665,7 @@ JACK_ACCESS_D  = M4.shaft_clr_d                 # 4.4
 # left to right, up the RIGHT, then along the TOP right to left. So the along-edge
 # coordinate is exact arithmetic from the pitch, and only the pad RING is a property of
 # the footprint that this file cannot read.
-_LQFP_RING = 12.68       # pad-centre radius of LQFP-176_24x24mm_P0.5mm, from the
+_LQFP_RING = 12.675      # pad-centre radius of LQFP-176_24x24mm_P0.5mm, read off the
                          # footprint's own pads. The only measured number here.
 # ⚠ THE PIN NUMBERS ARE DUPLICATED FROM elec/optical.py's PIN MAP, and the copy is
 # CHECKED rather than trusted -- elec/optical.py asserts these two against its own
@@ -676,17 +676,37 @@ VCAP1_PIN, VCAP2_PIN = 81, 125
 
 
 def _lqfp_pin_offset(pin, n_pins=176, pitch=0.5, ring=_LQFP_RING):
-    """(dx, dy) of an LQFP pin from the package centre, in CAD axes."""
+    """(dx, dy) of an LQFP pin from the package centre, IN THE FOOTPRINT'S OWN AXES.
+
+    ⚠ FOOTPRINT AXES, NOT CAD AXES, and the difference is a sign that has already been
+    got wrong once. KiCad's y runs the opposite way to this file's, so a caller placing
+    a part at a pin uses  +dx  and  -dy.  Returning the footprint's own frame is the
+    version that can be checked against the .kicad_mod, which is the whole point.
+
+    ⚠ THE FIRST VERSION OF THIS HAD EDGES 1 AND 3 INVERTED IN Y and nobody would have
+    noticed: it was validated on VCAP1 and VCAP2 only, and those two happen not to
+    expose the bug -- VCAP1's placement uses the X alone, and VCAP2 is on edge 2, which
+    was right. Checking all 176 pads against the footprint is what found it. The two
+    asserts below pin the convention so a future edit cannot quietly re-break it.
+    """
     per = n_pins // 4
     edge, k = divmod(pin - 1, per)
     along = (k - (per - 1) / 2.0) * pitch
-    if edge == 0:                       # left edge, pin 1 at its TOP, numbering down
+    if edge == 0:                       # left edge, pin 1 at its -Y end, numbering +Y
         return -ring, along
-    if edge == 1:                       # bottom edge, left to right
-        return along, -ring
-    if edge == 2:                       # right edge, bottom to top
+    if edge == 1:                       # bottom edge (+Y in KiCad), left to right
+        return along, ring
+    if edge == 2:                       # right edge, +Y to -Y
         return ring, -along
-    return -along, ring                 # top edge, right to left
+    return -along, -ring                # top edge (-Y in KiCad), right to left
+
+
+# Read straight off LQFP-176_24x24mm_P0.5mm.kicad_mod. Every one of the 176 pads was
+# compared against this function once; these two are kept as the standing guard.
+assert _lqfp_pin_offset(81) == (7.25, 12.675), _lqfp_pin_offset(81)
+assert _lqfp_pin_offset(125) == (12.675, -7.25), _lqfp_pin_offset(125)
+assert _lqfp_pin_offset(1) == (-12.675, -10.75), _lqfp_pin_offset(1)
+assert _lqfp_pin_offset(176) == (-10.75, -12.675), _lqfp_pin_offset(176)
 
 
 def _parts():
@@ -809,7 +829,7 @@ def _parts():
     # head allows, not at the pin's Y: about 3 mm further -Y, which still lands it ~4 mm
     # from VCAP2 against the 22.6 mm a row under the MCU could manage.
     _c113_x = _part_x("U6") + CRTYD[_MCU_PKG][0] / 2 + CRTYD_GAP + CRTYD["0805C"][0] / 2
-    _c113_y = _part_y("U6") - _lqfp_pin_offset(VCAP2_PIN)[1]
+    _c113_y = _part_y("U6") - _lqfp_pin_offset(VCAP2_PIN)[1]   # CAD y = -footprint y
     # mount_points() is defined below this function, so the tail screw is rebuilt from
     # the same two constants it uses rather than imported -- if either moves, this moves.
     _head_clear = TP.JACK_HEAD_D / 2 + PKG_CLR + CRTYD["0805C"][1] / 2
