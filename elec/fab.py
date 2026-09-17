@@ -68,6 +68,22 @@ LCSC = {
     "CH32V307WCU6": "C5142795",     # motor controller MCU
     "MT6701QT-STD": "C2913974",     # the angle sensor
     "AO3400A": "C20917",            # logic-level N-ch FET; the optical board's Q1 too
+    # ── the optical board, every line checked against the manufacturer's datasheet on
+    # 2026-09-17 (pinout verified pin by pin, not just the package) ──────────────────
+    "STM32H743IIT6": "C89597",      # LQFP176; pins re-derived from ST's CubeMX symbol
+    "USB3343-CP": "C633347",        # ULPI PHY; pinout was INVENTED before this check
+    "USBLC6-2SC6": "C7519",         # ESD array, SOT23-6L: 1 IO1 2 GND 3 IO2 4 IO2 5 VBUS 6 IO1
+    "TLV9064IDR": "C388176",        # quad TIA, SOIC-14 (TI SBOS839 Table 5-5)
+    "TLV9061IDBVR": "C398358",      # mid-rail buffer -- DBV, NOT the DCK part once ordered
+    "AMS1117-3.3": "C6186",         # 3V3 digital LDO: 1 GND 2 VOUT/tab 3 VIN
+    "SPX3819M5-L-3-3/TR": "C9055",  # 3V3 analog LDO: 1 IN 2 GND 3 EN 4 BYP 5 OUT
+    "TPS560430XFDBVR": "C523980",   # 24->5 V sync buck, 1.1 MHz FPWM
+    "IR17-21C/TR8": "C131250",      # 940 nm emitter, 65 mA max, VF 1.2 typ
+    "VEMD4110X01": "C3211080",      # PIN photodiode -- ⚠ 95 in stock, 200 needed for ten
+    "S4B-XH-SM4-TB": "C161861",     # the (LF)(SN) form, 20,992; the bare listing is 0
+    # Crystals are specified by PART, not by frequency -- see the note beside Y1.
+    "TX322525M4LBDD2T": "C5308007",  # 25 MHz, CL 20 pF, ESR 30 ohm (MCU HSE)
+    "K3A260002010": "C2835957",      # 26 MHz, CL 20 pF, ESR 30 ohm (the PHY's limits)
     # ── sourced 2026-09-17 from JLCPCB's own parts API, not from memory ──────────
     # Each line names the listing's exact model and the stock it showed, because a code
     # with no source is the thing this file exists to refuse. Picked by EXACT model and
@@ -135,6 +151,10 @@ OPEN_VALUES = frozenset({
 # sourcing decision. They are reported separately from the real OPENs.
 GENERIC = re.compile(r"^(R_|C_|Fuse_|Jumper:|Diode_SMD:D_SOD|Diode_SMD:D_SM[AB]|"
                      r"Inductor_SMD|Crystal:)")
+# ⚠ ONLY PASSIVES ARE VALUE-CHOSEN. An 0402 is picked from its value; an LED in an 0805
+# land is picked from its part number, and "IR17-21C/TR8" is a perfectly good value that
+# simply does not start with a digit. The placeholder rule below applies to this subset.
+PASSIVE = re.compile(r"^(R_|C_|L_|Inductor_SMD)")
 
 
 def _run(args):
@@ -247,6 +267,23 @@ def fab(board):
             code = LCSC.get(val, "")
             if not code:
                 generic = bool(GENERIC.search(fp.split(":", 1)[1]) or GENERIC.search(fp))
+                # ⚠ A GENERIC PASSIVE STILL NEEDS A VALUE, and "generic" was letting
+                # placeholders through. JLCPCB picks an 0402 100nF from the value field;
+                # it cannot pick an 0402 "Rf". The optical board carried FIFTY-THREE
+                # parts whose value was a note to self -- "Rf", "Cf C0G", "ballast",
+                # "mid-rail top", "load C0G", "preset" -- and every one was counted as a
+                # sourced generic and would have reached a quote as a blank line.
+                # A real value starts with a digit. That is the whole rule, and it
+                # accepts every value this project actually uses (100nF, 8k06 1%,
+                # 22uF/16V, 600R@100MHz, 18uH) while rejecting every placeholder.
+                if generic and PASSIVE.search(fp.split(":", 1)[1]) \
+                        and not re.match(r"\d", val.strip()):
+                    raise SystemExit(
+                        "%s: %s (%s) has value %r, which is a placeholder rather than a "
+                        "value -- the fab cannot choose a part from it. Give it a real "
+                        "value, or if it is genuinely undecided put it in "
+                        "fab.OPEN_VALUES so it is COUNTED as undecided."
+                        % (board, ",".join(sorted(refs)), fp.split(":", 1)[1], val))
                 if not generic and val not in OPEN_VALUES:
                     raise SystemExit(
                         "%s: value %r (%s) is neither sourced, generic, nor "

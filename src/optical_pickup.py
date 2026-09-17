@@ -768,6 +768,16 @@ def _parts():
                       ("C113", "H7 core regulator cap, VCAP2 -- REQUIRED", "0805C")],
                      x0, x1)
 
+    # ⚠ C127 GOES IN THE CRYSTAL ROW, NOT THE POWER ROW, AND THE BOARD LENGTH IS WHY.
+    # It belongs beside U9 (it is the SPX3819's noise bypass, the reason that part was
+    # chosen), but the power row was exactly full: adding a nineteenth part spilled the
+    # packer into a new row, grew the board 2.2 mm at the -Y end and broke the conduit's
+    # exterior-wall assert by 0.62. The crystal row above has free width, so the cap sits
+    # in it at U9's OWN X -- read back, not re-derived -- which puts it one row away
+    # instead of one row longer.
+    add("C127", "analog LDO noise bypass -- 1 uF on the SPX3819's BYP pin", "0402",
+        _part_x("U9"), _y1_y)
+
     # ---- 3b/3b-i/3d ARE GONE: THE MAGNETIC PATH LEFT THIS BOARD (user, 2026-09-15) ----
     # This file used to carry the magnetic pickup's own ADC (U12, a PCM1808, with C150-153
     # and R37/R38), a note reserving the phantom-power protection for a jack stage that was
