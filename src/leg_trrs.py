@@ -68,17 +68,23 @@ from . import legs as LG
 B = D.BEAD
 
 # ── the bought parts (BOM.md: the M->F extension cable, and its plug end) ─────
-JACK_D = 9.7            # the moulded inline jack's barrel (BOM: 9.1..9.7, pick high)
-JACK_L = 40.0           # ...and its length (BOM: <= 40)
+# THE JACK IS OFF ITS DRAWING NOW, not off an envelope. It was 9.7 x 40 -- "BOM:
+# 9.1..9.7, pick high" and "<= 40" -- which is a keep-out, not a part, and designing the
+# BOTTOM joint against it very nearly bought a PCB-mount jack and a 36.5 raise of the
+# pedal bar's tower (BOM.md). The cable is Tensility 10-02135 and its drawing names the
+# component: 50-00041, jack, 3.5 x 7.8 x L25.8.
+JACK_D = 7.8            # the moulded inline jack's body (10-02135 drawing)
+JACK_L = 25.8           # ...and its length. 14.2 SHORTER than the envelope, which the
+                        # chain below simply gives back to the tenon
 # The plug is a REAL PART, off its drawing (user asked for one rather than a
-# "confirm at purchase"): Tensility 10-02155, a 3.5 mm 4C plug-to-plug assembly,
+# "confirm at purchase"): Tensility 10-02135, a 3.5 mm 4C JACK-TO-PLUG assembly,
 # 1830 mm, 28 AWG, $3.73 at DigiKey. The drawing gives the overmould as 6.1 x 14,
 # the barrel 3.5 x 14 and the cable 3.8 -- all four numbers below.
-PLUG_D = 6.1            # the moulded overmould (10-02155 drawing)
+PLUG_D = 6.1            # the moulded overmould (10-02135 drawing, same 50-00397 plug)
 PLUG_L = 14.0           # ...and its length
 BARREL_L = 14.0         # the plug's barrel: what actually crosses the joint
 BARREL_D = 3.5
-CABLE_D = 3.8           # the lead, either side (10-02155's is 3.8). The leg's coil is
+CABLE_D = 3.8           # the lead, either side (10-02135's is 3.8). The leg's coil is
                         # slid on over the far PLUG, not the cable, so the cable's own
                         # diameter is no longer a sourcing constraint -- the O6.6 coil
                         # ID clears the O6.1 overmould and everything thinner with it
@@ -236,7 +242,14 @@ SLV_A = (52.0, 232.0)           # where each joint's slots START. Different numb
 KEEP_A = (6.0, 186.0)           # because the two apexes point different ways: the
                                 # adapter prints +Y and the tenon -X-Y, and each part's
                                 # bores peak toward its own print_up
-JACK_BORE_D = JACK_D + 0.2      # 9.9: the jack runs free in the tenon
+JACK_BORE_D = max(JACK_D + 0.2, SPR_OD + 0.4)    # 8.4: the jack runs free in the tenon
+                                # -- and THE COIL, not the jack, is what sets this now.
+                                # At the envelope's 9.7 the jack was the widest thing in
+                                # the bore; the real 7.8 is NARROWER than the O8.0 coil
+                                # that has to travel the same hole, so following the jack
+                                # down to 8.0 would have pinched the spring. Taking the
+                                # max is the whole fix, and it says which part is in
+                                # charge
 PASS_D = PLUG_D + 0.5           # 6.6: every bore below the throat is at least this,
                                 # because the lead's FAR PLUG has to travel the whole
                                 # length of the tenon and out the bottom. A O4.8 cable
