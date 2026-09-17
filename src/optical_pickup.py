@@ -799,19 +799,29 @@ def _parts():
     # that C164 needs, which is what stopped the board growing 2.2 mm.
     # Clustered so they stay side by side; which of the two lands nearer its own VCAP pin
     # is a routing question, not a placement one.
-    # ⚠ C112 IS HAND-PLACED TOO, FOR THE SAME REASON AS C113. Spread across this row it
-    # landed 12.4 mm from VCAP1 -- better than the 25 mm it started at and still not what
-    # a core-regulator capacitor is for. VCAP1 is pin 81, on the package's -Y edge,
-    # +7.25 mm along it from the centre; the cap goes directly beneath that pin, just
-    # outside U6's courtyard. C141-C143 then spread across what is left of the row, so
-    # neither lands on the other and the board does not grow a millimetre.
-    _c112_x = _part_x("U6") + _lqfp_pin_offset(VCAP1_PIN)[0]
-    _c112_y = y - 0.5                            # the same band C141-C143 use
-    add("C112", "H7 core regulator cap, VCAP1 -- REQUIRED; hand-placed under its own "
-        "pin on the -Y edge", "0805C", _c112_x, _c112_y)
+    # ⚠ C112 GOES BACK IN THE PACKED BLOCK, AND THE REASON IS GEOMETRY, NOT OVERSIGHT.
+    # It wants to sit directly under VCAP1 on U6's -Y edge, and it was hand-placed there
+    # -- which produced THREE courtyard violations (against U6 itself and the SWD pads
+    # TP1/TP2) that the placement asserts could not see, because they measure BODY
+    # clearance and this is a COURTYARD overlap. DRC found them, hidden among the twenty
+    # declared sensor-triplet overlaps as a count of 23 rather than 20. That is exactly
+    # the failure mode this file worries about elsewhere.
+    #
+    # The band between U6's courtyard and the MCU decoupling row below it is 1.30 mm.
+    # An 0805 courtyard is 2.05 and needs 2.35 with its gaps, so it was never going to
+    # fit; and the board cannot be made longer to open the band, because CONDUIT_Y0 is
+    # 0.11 mm inside the endplate's exterior-wall limit. An 0402 would fit and is ruled
+    # out by this file's own note -- 2.2 uF in an 0402 is marginal.
+    #
+    # So C112 packs with the rest of the MCU's decoupling, about 12 mm from VCAP1. That
+    # is half of the 25 mm it started at and not what a core-regulator capacitor
+    # deserves. THE LEVER, if it ever matters: the five SWD pads sit in that row purely
+    # because there was space, and moving them would free the x C112 wants. That costs a
+    # row somewhere else, which costs board length, which is the 0.11 mm above.
+    # C113 is unaffected -- VCAP2 is on the +X edge, where there is a 7.6 mm strip.
     _spread(P, y - 0.5,
             [("C%d" % (141 + k), "power-input decoupling", "0402") for k in range(3)],
-            x0, _c112_x - CRTYD["0805C"][0] / 2 - CRTYD_GAP - CRTYD["0402"][0])
+            x0, x1)
     # ⚠ C113 IS PLACED BY HAND BECAUSE ITS PIN IS ON A DIFFERENT EDGE. VCAP1 and VCAP2
     # are not neighbours on the LQFP176: pin 81 is on the package's -Y edge and pin 125
     # is on its +X edge, 12.7 mm across and 7.3 mm up from the centre. One row under the
@@ -822,6 +832,23 @@ def _parts():
     # without it, which is the worst way for a fault to present.
     # So it goes in the 7.60 mm strip between U6's +X courtyard and the tail mount, at
     # the pin's own Y -- DERIVED from the LQFP pin numbering, see _lqfp_pin_offset.
+    # ⚠ C112 SHARES THE SAME STRIP, at the -Y end of it, nearest its own pin. It does
+    # NOT go under the MCU where VCAP1 actually is: that band is 1.30 mm between U6's
+    # courtyard and the decoupling row below, an 0805 needs 2.35, and the board cannot
+    # grow to open it -- CONDUIT_Y0 is 0.11 mm inside the endplate's wall limit. Placed
+    # there by hand it produced three courtyard violations (U6, TP1, TP2) that the
+    # placement asserts could not see, because they measure BODY clearance and this is a
+    # COURTYARD overlap; DRC reported 23 where 20 are declared, which is exactly how a
+    # real fault hides among expected ones. Packing it into either neighbouring block
+    # spills that block into a new row and breaks the same conduit assert.
+    # So it goes in the strip, about 8 mm from VCAP1 instead of 25 -- worse than C113's
+    # 4 mm and much better than the alternative. An 0402 would fit under the MCU and is
+    # ruled out by this file's own note: 2.2 uF in an 0402 is marginal.
+    _c112_x = _part_x("U6") + CRTYD[_MCU_PKG][0] / 2 + CRTYD_GAP + CRTYD["0805C"][0] / 2
+    _c112_y = (_part_y("U6") - CRTYD[_MCU_PKG][1] / 2) + CRTYD["0805C"][1] / 2
+    add("C112", "H7 core regulator cap, VCAP1 -- REQUIRED; in the +X strip at the -Y "
+        "end, nearest its own pin", "0805C", _c112_x, _c112_y)
+
     # ⚠ AND THE TAIL MOUNT OWNS THE PIN'S OWN Y. The M4's button head is 7.6 across, so
     # a part has to stay _head_r + PKG_CLR + its own half-height clear of the screw axis
     # -- the placement assert caught C113 at -1.92 and said the head would crush it,
