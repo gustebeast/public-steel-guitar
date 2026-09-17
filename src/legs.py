@@ -942,10 +942,14 @@ LOCK_PIN_DY = 7.5
 # ...and the screw itself (lock_pin_joint): a stock M4 button head recessed in the end
 # face, into a heat-set insert on the kept shell's face across the endplate<->shell gap
 SHELL_GAP = 0.4                    # that gap: chassis.EP_LEG_CLR, asserted equal there
-LOCK_SCREW_L = 18.0                # M4x18 button head: it now has to reach PAST the chassis
-                                   # floor and into the foot's outermost tenon (see
-                                   # lock_pin_joint). Was M4x12, when it stopped in an insert
-                                   # in the chassis.
+LOCK_SCREW_L = 18.0                # M4x18 button head: it has to reach PAST the chassis floor
+                                   # and into the foot's outermost tenon (see lock_pin_joint).
+                                   # Was M4x12, when it stopped in an insert in the chassis.
+                                   # 18 is NOT a new SKU -- BOM's "M4 hold-down screw" row is
+                                   # already M4x18 button/2.5 hex (the keyhead's +Z lock and the
+                                   # ten insert height screws), so these four just raise its
+                                   # count. Anything in 14.76..20.36 lands inside the tenon, and
+                                   # of the lengths the instrument already buys only 18 does.
 LOCK_INSERT_AT = 4.0               # the insert's mouth, measured in from the end face: inside
                                    # the ENDPLATE's own wall (user, 2026-09-17), clear of the
                                    # head's recess and finishing 1.4 short of the wall's inner
