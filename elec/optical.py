@@ -202,6 +202,23 @@ ULPI = {"ULPI_D0": "PA3", "ULPI_D1": "PB0", "ULPI_D2": "PB1", "ULPI_D3": "PB10",
 # then the skew is a whole conversion INTERVAL rather than a conversion, and the
 # argument above stops holding.
 #
+# ⚠ WHICH STRING GETS WHICH PAIR IS FREE, AND IT IS ALREADY SPENT WELL -- CHECKED, so
+# that nobody spends an afternoon rediscovering it. The skew argument above constrains
+# what may form a PAIR and the order of the burst; it says nothing about which string
+# uses which pair, so the mapping is available as a routing lever. Measured on the
+# routed board, the A channels arrive at the MCU's -X edge in pad order 13,14,15,18,
+# 19,20,21,22,27 against quads at y 38,38,57,57,76,76,94,94,113 -- monotonic, so the A
+# side has ZERO crossings and permuting it can only make things worse.
+#
+# ⚠ WHAT IS LEFT IS SILICON, NOT PLACEMENT. Of the 20 ADC pins this board uses, 12 are
+# on the LQFP144's strip-facing edge and EIGHT ARE NOT -- they are round the corner on
+# the edge that faces away, so those eight nets must travel past the package to reach
+# it. That is the H743's ADC pin distribution meeting a board whose analog all arrives
+# from one direction, and there is no assignment that fixes it: the pins are where they
+# are. Rotating the MCU does not help either (elec/orient.py scores it at its best
+# orientation already), and the eight are why a handful of TIA_OUT nets are the last
+# ones to finish routing.
+#
 # Order below is (A_pin, B_pin) per string, chosen so each pair spans two different
 # ADCs where possible and sits adjacent in the scan otherwise.
 ADC_PAIRS = (
