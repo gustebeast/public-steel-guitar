@@ -192,11 +192,15 @@ def _motor_back(i):
 
 
 def tee_stations():
-    """[(x, y, drop_sign)] tee-PCB anchors, all on the -Y rail (TEE_Y) so the CAN trunk
-    stays on the rail and never crosses a rib. 0..9 bus A (one per motor); 10 AFE power;
-    11 knee (LKL); 12 leg-socket. The two +X-most motors (8,9) reach the rail, so a tee
-    dead-behind them would sit inside the motor -- their tees shift into the clear corridor
-    (m8 -X toward m7, m9 +X past the motor bank) and reach back with a longer pigtail."""
+    """[(x, y, drop_sign)] tee-PCB anchors: 0..9 bus A, one ON each motor;
+    IDX_KNEE knee (LKL); IDX_LEG leg-socket.
+
+    THE AFE POWER TEE IS GONE (user, 2026-09-17). It sat on the rail at PWR_SPLICE_X purely as
+    a 24 V junction -- DC inlet in, trunk out to the bank, its drop feeding the AFE's LDO -- and
+    it carried no CAN at all. The inlet is on bronner's output+panel board now, with its own
+    trunk-out, so a board here buys nothing. The 24 V run still passes through that point as a
+    crimped SPLICE (see PWR_SPLICE_X); bronner is respinning the PCB set and will settle where
+    those two wires really start."""
     out = []
     for i in range(10):
         mx = D.motor_pos(i)[0]
@@ -204,7 +208,7 @@ def tee_stations():
         # motor bank in the clear corridor; every other motor's tee rides the rail at its own X (m8's
         # tee corner just grazes m8's PCB, a whitelisted mount contact).
         out.append((mx, TEE_Y, +1))
-    out.append((-48.0, TEE_Y, -1))            # 10 AFE power (rail; -X of the +X leg stub at -13.4)
+    # (no AFE power tee here any more -- see the docstring; PWR_SPLICE_X keeps the junction)
     # bus B (knee + leg-socket): NOT on the crowded motor rail -- inboard of it, near the knee
     # station, clear of the bay tray/buck and the motor tees.
     # 11 knee (LKL): inboard, +X of the housing. Its X overlaps the motor tees' Y band, so it sits
@@ -214,6 +218,11 @@ def tee_stations():
                                               # (nudged +Y to clear the grown accurate bus-A tee_0 at -524)
     return out
 
+
+IDX_KNEE = D.N_STRINGS                  # bus-B tee indices, named rather than counted: they
+IDX_LEG  = D.N_STRINGS + 1              # were 11/12 while the AFE power tee held index 10
+PWR_SPLICE_X = -48.0                    # where the 24 V trunk joins the inlet run: a crimped
+                                        # splice on the rail, and the old AFE tee's own x
 
 _TEE_LIFT = TEE_Z - EL.FLOOR_Z          # lift a RAIL tee dummy onto its cradle, above the rib tops
 
@@ -291,7 +300,7 @@ assert TEE_SCREW_L - _PCB_T <= _M4.anchor_min_wall + 1e-9, (
 def tee_hold(i, x, y, d):
     """(board_w, board_l, centre_x, centre_y, open_edge, hold_edge, hold_at) for tee i.
     hold_edge None = this tee still takes the old M2 through the board (_BUS_B_M2_XY)."""
-    if i >= 11:
+    if i >= IDX_KNEE:
         # bus-B PLACEHOLDERS (18 x 14) keep their M2 for now. There is no clear spot for an
         # M4 beside them: tee 11 sits on rib -501 hard against bus-A tee 1's board, tee 12
         # against the knee housing, and every edge the head could lap is crowded by their
@@ -328,7 +337,7 @@ def tee_components():
     for i, (x, y, d) in enumerate(tee_stations()):
         bw, bl, cx, cy, _open, hold_edge, hold_at = tee_hold(i, x, y, d)
         z0 = tee_z(i)
-        out.append((f"tee_pcb_{i}", EL.tee_pcb(cx, cy - EL.TEE_YSHIFT, d, accurate=i < 11)
+        out.append((f"tee_pcb_{i}", EL.tee_pcb(cx, cy - EL.TEE_YSHIFT, d, accurate=i < IDX_KNEE)
                     .translate((0, 0, z0 - EL.FLOOR_Z))))
         if hold_edge is None:
             continue
@@ -369,7 +378,7 @@ def tee_cradles():
         else:
             cr = pcb_cradle(bw, bl, open_edge=open_edge, hold_edge=hold_edge, hold_at=hold_at,
                             standoff=so, wall_over=TEE_WALL_OVER, clr=TEE_CLR)
-        if i < 11:                                               # bus-A: THT-tail relief window in the base
+        if i < IDX_KNEE:                                         # bus-A: THT-tail relief window in the base
             cr = cr.cut(box_at(rw, rl, 12.0, x=0.0, y=EL.TEE_CONN_CY, z=-5.5))
         cr = cr.translate((cx, cy, base_z))
         # EACH CRADLE CARRIES ITS OWN STATION. It used to be zipped against tee_stations() by
@@ -555,7 +564,8 @@ def build_wires():
 
     # 24 V pair (2 × 22 AWG per rail): DC inlet -> AFE tee (10) -> tee 0 ... tee 9 -> buck;
     # the AFE's LDO feed is tee 10's DROP. hot/gnd offset ±PWR_OFF.
-    x10, y10 = hdrA[10][0], hdrA[10][1]
+    _splice = (PWR_SPLICE_X, TEE_Y, HDR_Z)   # a crimp, not a board (see tee_stations)
+    x10, y10 = _splice[0], _splice[1]
     # the power heads drop just inboard of the bridge endplate's wall, and that wall
     # follows BRIDGE_AXLE_X -- so this lane does too. It was a constant -5.5, and when
     # the bearing grew O8 -> O13 the axle (and the wall) stepped 2.5 -X and clipped the
@@ -573,7 +583,7 @@ def build_wires():
         def _off(pts):
             return [(px + _do, py + _do, pz) for px, py, pz in pts]
         out.append((f"{_nm}_0", _wire(_off(heads), WIRE_OD[_nm])))
-        out.append((f"{_nm}_1", _seg(hdrA[10], hdrA[west[-1]], LANE_PWR, WIRE_OD[_nm], off=_do)))
+        out.append((f"{_nm}_1", _seg(_splice, hdrA[west[-1]], LANE_PWR, WIRE_OD[_nm], off=_do)))
         for k in range(9):
             out.append((f"{_nm}_{k + 2}",
                         _seg(hdrA[west[k + 1]], hdrA[west[k]], LANE_PWR, WIRE_OD[_nm], off=_do)))
@@ -581,7 +591,7 @@ def build_wires():
         out.append((f"{_nm}_12", _wire(_off(afe_drop), WIRE_OD[_nm])))
 
     # ── bus B (inputs): ifc -> LKL tee -> leg-socket landing tee ────────
-    x11, y11 = hdrA[11][0], hdrA[11][1]
+    x11, y11 = hdrA[IDX_KNEE][0], hdrA[IDX_KNEE][1]
     _ib = SP(-557.0, 42.0, -50.5)
     _canB_head = ([_ib, (BAY_X - 5.0, _ib[1], _ib[2]), (BAY_X - 5.0, _ib[1], BAYFLY),
                    (BAY_X, _ib[1], BAYFLY), (BAY_X, RAIL_Y, BAYFLY)]
@@ -591,7 +601,7 @@ def build_wires():
         out.append((f"wire_canb{_sfx}_0", _wire(
             [(px + _co, py + _co, pz) for px, py, pz in _canB_head], _od)))
         out.append((f"wire_canb{_sfx}_1",
-                    _seg(hdrA[11], hdrA[12], LANE_CTRL, _od, off=_co)))
+                    _seg(hdrA[IDX_KNEE], hdrA[IDX_LEG], LANE_CTRL, _od, off=_co)))
     # LKL drop stub: from tee 11 down toward the kl_pcb XH at the knee station (ends clear of
     # housing/rib/rail; the last pass-through to the board is a chassis follow-up).
     out.append(("wire_knee_drop", _wire([
