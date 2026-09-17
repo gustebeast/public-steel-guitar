@@ -287,6 +287,125 @@ def _pad_neck(m, pad, toward, width, clr):
     return (m[0] + sgn * reach, m[1])
 
 
+def _flip_merge(fp, na, nb, inner, width, clr, margin, via_margin,
+                clear, seg_clear, on_board, g_all, g_thru, math,
+                pitch_mm=1.25, neck_mm=0.45, fan_mm=1.90, link_mm=3.00):
+    """Join a USB-C receptacle's DUPLICATED D+ and D- pads, which is not optional.
+
+    A USB-C socket carries D+ on two pads and D- on two pads, and joining them is the
+    entire mechanism by which the cable works either way up. Join them and the port
+    enumerates in both orientations; leave them and it enumerates in one -- a defect no
+    bench test finds unless somebody thinks to flip the plug over.
+
+    The pair generator terminates on ONE pad of each net, because a differential pair
+    has two rails and not four. The other two were simply left, and came back from every
+    routing run as "USB_DP unconnected" -- read for several runs as the router being
+    short of room, when no amount of routing could ever have fixed it.
+
+    THE ROUTER CANNOT FIX IT, AND THAT IS WHY IT IS DONE HERE. On the HRO
+    TYPE-C-31-M-12 the four pads run, at 0.5 mm pitch:
+
+            B7(D-)   A6(D+)   A7(D-)   B6(D+)
+
+    The two nets INTERLEAVE, so each has to cross the other; a crossing needs a layer
+    change; a layer change needs a via; and a 0.6 mm via beside a 0.2 mm track at
+    0.127 mm clearance needs 0.537 mm of pitch. There is 0.500. Every arrangement that
+    keeps the vias on the pad axis fails by those 37 micrometres -- which is why this
+    FANS FIRST: straight out of the pad row, apart to 1.25 mm, and only then across.
+
+    THE ROOM EXISTS, ON THE SIDE NOBODY LOOKS AT. The escape side of the pad row is the
+    board's busiest corner -- it is where the pair leaves for the PHY. The other side is
+    under the socket's own plastic: 5.0 x 3.3 mm of empty board, bounded by the two NPTH
+    locating holes and the shell tabs, and going nowhere. Both sides are tried and the
+    one that clears is kept, but it is that one.
+
+    NECK BEFORE FANNING, for the reason recorded against _pad_neck: a diagonal leaving a
+    0.5 mm pad row clips its neighbours. Each trace runs straight out past the row and
+    its clearance, and only then turns.
+
+    Nothing is emitted unless every segment and both vias clear. A partial merge is never
+    laid -- half a flip fix is a board that works one way up with copper claiming
+    otherwise, which is worse than the honest failure.
+    """
+    rows = {}
+    for q in fp.Pads():
+        if q.GetNetname() in (na, nb):
+            rows.setdefault(q.GetNetname(), []).append(q)
+    if not all(len(rows.get(n, ())) == 2 for n in (na, nb)):
+        return [], None                    # nothing duplicated: an ordinary part
+
+    quads = rows[na] + rows[nb]
+    xs = [q.GetPosition().x for q in quads]
+    ys = [q.GetPosition().y for q in quads]
+    if max(ys) - min(ys) > max(xs) - min(xs):
+        return [], ("%s: the duplicated %s / %s pads are not in one row along X, which "
+                    "is the only arrangement this handles"
+                    % (fp.GetReference(), na, nb))
+    row_y = sum(ys) / 4.0
+    half = max(abs(q.GetBoundingBox().GetTop() - q.GetBoundingBox().GetBottom())
+               for q in quads) / 2.0
+    nets = {na, nb}
+    order = sorted(quads, key=lambda q: q.GetPosition().x)
+    centre = sum(q.GetPosition().x for q in order) / 4.0
+    step = pcbnew.FromMM(pitch_mm)
+    fx = {id(q): int(centre + (k - 1.5) * step) for k, q in enumerate(order)}
+
+    def span(n):
+        a, b = rows[n]
+        return abs(fx[id(a)] - fx[id(b)])
+
+    for sign in (+1, -1):                  # +1 first: under the connector body
+        neck = row_y + sign * (half + pcbnew.FromMM(neck_mm))
+        fan = row_y + sign * (half + pcbnew.FromMM(fan_mm))
+        link = row_y + sign * (half + pcbnew.FromMM(link_mm))
+        # which net dives is decided by which inner link is shorter, and if that one
+        # will not clear the other is tried -- nothing in the geometry says it must be D+
+        for dive in sorted((na, nb), key=span):
+            flat = nb if dive == na else na
+            pend, ok = [], True
+            for q in quads:
+                px, py = q.GetPosition().x, q.GetPosition().y
+                for p0, p1 in (((px, py), (px, neck)),
+                               ((px, neck), (fx[id(q)], fan))):
+                    if not seg_clear(p0, p1, nets, margin, g_all):
+                        ok = False
+                        break
+                    pend.append(("TRK", q, p0, p1, q.GetLayer()))
+                if not ok:
+                    break
+            if not ok:
+                continue
+
+            va, vb = rows[dive]
+            pa, pb = (fx[id(va)], fan), (fx[id(vb)], fan)
+            for v in (pa, pb):
+                if not (clear(v[0], v[1], nets, via_margin, g_all)
+                        and on_board(v[0], v[1], 0.3 + clr)):
+                    ok = False
+            if not ok or not seg_clear(pa, pb, nets, margin, g_thru):
+                continue
+            pend.append(("VIA", va, pa, pa, None))
+            pend.append(("VIA", vb, pb, pb, None))
+            pend.append(("TRK", va, pa, pb, _LAYERS[inner]))
+
+            # the flat net drops to the link depth, crosses, and comes back up -- going
+            # AROUND the two vias rather than between them, which is the whole reason
+            # the link depth is deeper than the fan depth
+            fa, fb = rows[flat]
+            qa, qb = (fx[id(fa)], fan), (fx[id(fb)], fan)
+            la, lb = (qa[0], link), (qb[0], link)
+            for p0, p1 in ((qa, la), (la, lb), (lb, qb)):
+                if not seg_clear(p0, p1, nets, margin, g_all):
+                    ok = False
+                    break
+                pend.append(("TRK", fa, p0, p1, fa.GetLayer()))
+            if ok:
+                return pend, None
+    return [], ("%s: no clear way to join the duplicated %s / %s pads on either side of "
+                "the pad row -- the port would work in ONE cable orientation only"
+                % (fp.GetReference(), na, nb))
+
+
 def _diff_pairs(board, specs, outline=None, inner=None, clr=0.14):
     """Route declared differential pairs AS PAIRS, before the autorouter sees them.
 
@@ -705,6 +824,21 @@ def _diff_pairs(board, specs, outline=None, inner=None, clr=0.14):
                                     st["fp"].GetReference())))
                     continue
                 pending.append(("TRK", qi, p0, p1, qi.GetLayer()))
+
+        # AND THE DUPLICATED PADS AT THE ENDS OF THE CHAIN. A pass-through part is one
+        # node with two pads because the die joins them; a USB-C socket is one node with
+        # two pads because the connector is reversible, and there it is the BOARD that
+        # has to do the joining. Same shape, opposite obligation -- and the loop above
+        # cannot see it, because at the first and last stop `in` and `out` are the same
+        # pad, so its `qi is qo` guard skips them.
+        if inner is not None:
+            for st in (stops[0], stops[-1]):
+                extra, why_fm = _flip_merge(
+                    st["fp"], na, nb, inner, width, clr, margin, via_margin,
+                    clear, seg_clear, on_board, g_all, g_thru, math)
+                if why_fm:
+                    done.append((na, why_fm))
+                pending += extra
 
         for kind, pad, q0, q1, layer in pending:
             if kind == "VIA":
