@@ -168,8 +168,7 @@ def route(stem, passes=None, timeout=3600):
         raise SystemExit(
             "freerouting exceeded %d s on %s at %d passes and was killed. The board is "
             "UNROUTED -- it has not silently produced a bad result, it has produced "
-            "none. Lower the pass count or raise `timeout` -- and note that passes DO
-"
+            "none. Lower the pass count or raise `timeout` -- and note that passes DO "
             "buy connectivity on this board, so lowering them has its own cost."
             % (timeout, os.path.basename(stem), passes))
     tail = (r.stdout or "").strip().splitlines()[-6:]
