@@ -567,12 +567,34 @@ FB_ROWS = tuple(5.6 + k * FB_ROW_PITCH for k in range(4))
 FB_ROWS_U1 = FB_ROWS
 
 
+def _members(it):
+    """One item, or the members of a CLUSTER that must be placed adjacent."""
+    return it if isinstance(it[0], tuple) else (it,)
+
+
+def _item_w(it):
+    """⚠ A CLUSTER IS ONE ITEM AS FAR AS THE PACKER IS CONCERNED. Its members are laid
+    out touching, at CRTYD_GAP, and the row's leftover space is shared between CLUSTERS
+    -- never inside one. That is the whole mechanism: a decoupling capacitor cannot be
+    separated from the part it decouples by a packer that has no idea they are related."""
+    ms = _members(it)
+    return sum(CRTYD[m[2]][0] for m in ms) + CRTYD_GAP * (len(ms) - 1)
+
+
+def _item_h(it):
+    return max(CRTYD[m[2]][1] for m in _members(it))
+
+
 def _spread(out, y, items, x0, x1):
-    widths = [CRTYD[p][0] for _, _, p in items]
+    widths = [_item_w(it) for it in items]
     gap = ((x1 - x0) - sum(widths)) / max(len(items) - 1, 1)
     cx = x0
-    for (ref, desc, pkg), w in zip(items, widths):
-        out.append({"ref": ref, "desc": desc, "pkg": pkg, "x": cx + w / 2, "y": y})
+    for it, w in zip(items, widths):
+        mx = cx
+        for ref, desc, pkg in _members(it):
+            mw = CRTYD[pkg][0]
+            out.append({"ref": ref, "desc": desc, "pkg": pkg, "x": mx + mw / 2, "y": y})
+            mx += mw + CRTYD_GAP
         cx += w + gap
 
 
@@ -586,12 +608,12 @@ def _block(out, y, items, x0, x1):
     def flush(row, y):
         if not row:
             return y
-        h = max(CRTYD[p][1] for _, _, p in row)
+        h = max(_item_h(it) for it in row)
         _spread(out, y - h / 2, row, x0, x1)
         return y - h - CRTYD_GAP
 
     for it in items:
-        w = CRTYD[it[2]][0]
+        w = _item_w(it)
         need = used + w + (CRTYD_GAP if row else 0.0)
         if row and need > span:
             y = flush(row, y)
@@ -711,8 +733,60 @@ def _parts():
     # POWER + AUDIO INPUT is no longer here -- J2 moved to the -Y EDGE, beside the USB-C,
     # so both cables leave the board at the same end (see the placement after this block).
     # Its decoupling stays in the digital block, near where the rail is consumed.
-    _spread(P, y - 0.5, [("C%d" % (140 + k), "power-input decoupling", "0402")
-                         for k in range(4)], x0, x1)
+    # C140 now travels with U9 (see the cluster below); C141-C143 stay here as the
+    # +5V rail's distributed bypass.
+    # ⚠ AND C112/C113 MOVE HERE FROM THE POWER ROW, WHICH IS WHERE THEY SHOULD ALWAYS
+    # HAVE BEEN. They are the H7's CORE REGULATOR capacitors on VCAP1/VCAP2 -- MCU pins,
+    # decoupling an internal regulator -- and they were sitting 25 mm away in the power
+    # block because that is where the "0805 bulk cap" parts happened to be listed. This
+    # row is directly under U6, about 2.5 mm off its courtyard, so the move is roughly a
+    # tenfold improvement and it is free: it also gives the power row back the 7.1 mm
+    # that C164 needs, which is what stopped the board growing 2.2 mm.
+    # Clustered so they stay side by side; which of the two lands nearer its own VCAP pin
+    # is a routing question, not a placement one.
+    # ⚠ C112 IS HAND-PLACED TOO, FOR THE SAME REASON AS C113. Spread across this row it
+    # landed 12.4 mm from VCAP1 -- better than the 25 mm it started at and still not what
+    # a core-regulator capacitor is for. VCAP1 is pin 81, on the package's -Y edge,
+    # +7.25 mm along it from the centre; the cap goes directly beneath that pin, just
+    # outside U6's courtyard. C141-C143 then spread across what is left of the row, so
+    # neither lands on the other and the board does not grow a millimetre.
+    _vcap1_dx = 7.25                             # VCAP1 (pin 81) from U6's centre, +X
+    _c112_x = _part_x("U6") + _vcap1_dx
+    _c112_y = y - 0.5                            # the same band C141-C143 use
+    add("C112", "H7 core regulator cap, VCAP1 -- REQUIRED; hand-placed under its own "
+        "pin on the -Y edge", "0805C", _c112_x, _c112_y)
+    _spread(P, y - 0.5,
+            [("C%d" % (141 + k), "power-input decoupling", "0402") for k in range(3)],
+            x0, _c112_x - CRTYD["0805C"][0] / 2 - CRTYD_GAP - CRTYD["0402"][0])
+    # ⚠ C113 IS PLACED BY HAND BECAUSE ITS PIN IS ON A DIFFERENT EDGE. VCAP1 and VCAP2
+    # are not neighbours on the LQFP176: pin 81 is on the package's -Y edge and pin 125
+    # is on its +X edge, 12.7 mm across and 7.3 mm up from the centre. One row under the
+    # MCU can serve the first and never the second -- clustered there, C113 measured
+    # 22.6 mm from the pin it exists for, which is no better than the 25 mm it started
+    # at. The H7's core regulator is not a rail to be decoupled loosely; ST specifies
+    # 2.2 uF at each VCAP pin and the part boots intermittently rather than cleanly
+    # without it, which is the worst way for a fault to present.
+    # So it goes in the 7.60 mm strip between U6's +X courtyard and the tail mount, at
+    # the pin's own Y -- read from the placed board rather than guessed, the same way
+    # _part_y is used elsewhere in this file.
+    # ⚠ AND THE TAIL MOUNT OWNS THE PIN'S OWN Y. The M4's button head is 7.6 across, so
+    # a part has to stay _head_r + PKG_CLR + its own half-height clear of the screw axis
+    # -- the placement assert caught C113 at -1.92 and said the head would crush it,
+    # which is exactly the check doing its job. So the cap sits at the closest Y the
+    # head allows, not at the pin's Y: about 3 mm further -Y, which still lands it ~4 mm
+    # from VCAP2 against the 22.6 mm a row under the MCU could manage.
+    _vcap2_dx, _vcap2_dy = 12.68, 7.25          # VCAP2 (pin 125) from U6's centre
+    _c113_x = _part_x("U6") + CRTYD[_MCU_PKG][0] / 2 + CRTYD_GAP + CRTYD["0805C"][0] / 2
+    _c113_y = _part_y("U6") + _vcap2_dy
+    # mount_points() is defined below this function, so the tail screw is rebuilt from
+    # the same two constants it uses rather than imported -- if either moves, this moves.
+    _head_clear = TP.JACK_HEAD_D / 2 + PKG_CLR + CRTYD["0805C"][1] / 2
+    _tail_my = Y_TAIL - MOUNT_KEEP
+    if abs(MOUNT_X_TAIL - _c113_x) < CRTYD["0805C"][0] / 2 + TP.JACK_HEAD_D / 2             and abs(_c113_y - _tail_my) < _head_clear:
+        _c113_y = _tail_my - _head_clear         # step -Y, away from the head
+    add("C113", "H7 core regulator cap, VCAP2 -- REQUIRED; hand-placed beside its own "
+        "pin on the +X edge, stepped clear of the tail mount's head", "0805C",
+        _c113_x, _c113_y)
     y -= 1.0 + CRTYD_GAP
 
     y = _block(P, y, [("C%d" % (100 + k), "MCU decoupling", "0402") for k in range(12)]
@@ -758,14 +832,22 @@ def _parts():
     y = _y1_y - _y1_h / 2 - CRTYD_GAP
     # U11 is the mid-rail reference the 20 TIAs sit on: single-supply transimpedance needs
     # a bias for the non-inverting inputs, and all 20 quad channels are spoken for.
-    y = _block(P, y, [("U8", "LDO -- 3V3 digital, TAB package (0.51 W)", "SOT-223"),
-                      ("U9", "LDO -- 3V3 analog (low noise)", "SOT-23-5"),
+    # ⚠ THE TWO LDOs TRAVEL WITH THEIR CAPACITORS -- see _item_w. Before this, U8 sat
+    # 26.2 mm from its nearest output capacitor and U9 sat 23.1 mm from its, because the
+    # packer spread this row evenly and had no idea which capacitor belonged to which
+    # regulator. For an LDO the output capacitor is a COMPENSATION ELEMENT, not a filter:
+    # both parts were characterised with it at the pin, and 26 mm of track is inductance
+    # inside the feedback loop of a device whose stability depends on it.
+    y = _block(P, y, [(("C164", "U8 input bulk -- V5_PRE has no other local cap", "0805C"),
+                       ("U8", "LDO -- 3V3 digital, TAB package (0.51 W)", "SOT-223"),
+                       ("C131", "bulk cap -- 3V3 digital, U8's OUTPUT cap", "0805C")),
+                      (("C140", "U9 input bypass -- +5V, the quiet side of FB1", "0402"),
+                       ("U9", "LDO -- 3V3 analog (low noise)", "SOT-23-5"),
+                       ("C132", "bulk cap -- 3V3 analog, U9's OUTPUT cap", "0805C")),
                       ("U11", "single op-amp -- TIA mid-rail reference buffer", "SOT-23-5"),
                       ("Q1", "N-ch MOSFET -- LED row driver", "SOT-23"),
                       ("FB1", "ferrite bead -- analog rail isolation", "0603"),
                       ("C130", "bulk cap -- VBUS", "0805C"),
-                      ("C131", "bulk cap -- 3V3 digital", "0805C"),
-                      ("C132", "bulk cap -- 3V3 analog", "0805C"),
                       ("C133", "reference bypass", "0805C"),
                       ("R32", "USB-C CC1 pull-down 5k1", "0402"),
                       ("R33", "USB-C CC2 pull-down 5k1", "0402"),
@@ -789,9 +871,7 @@ def _parts():
                       #     2.2 uF and an 0402 at that value is marginal.
                       # R37 IS NOT HERE ANY MORE -- it moved to the PHY cluster at the
                       # -Y edge, where a part that sets a precision current belongs.
-                      ("R38", "LED gate pull-down -- emitters OFF in reset", "0402"),
-                      ("C112", "H7 core regulator cap, VCAP1 -- REQUIRED", "0805C"),
-                      ("C113", "H7 core regulator cap, VCAP2 -- REQUIRED", "0805C")],
+                      ("R38", "LED gate pull-down -- emitters OFF in reset", "0402")],
                      x0, x1)
 
     # ⚠ C127 GOES IN THE CRYSTAL ROW, NOT THE POWER ROW, AND THE BOARD LENGTH IS WHY.
@@ -850,42 +930,54 @@ def _parts():
     # what happened the first time this was written: taking the buck out of the packer
     # shortened the board by its row height, and the hand-typed cluster below ended up
     # off the -Y edge.
-    # ⚠ NOTHING IN THIS FILE KEEPS A DECOUPLING CAPACITOR NEAR THE PART IT DECOUPLES,
-    # AND THE ROW PACKER SPREADS THEM. Measured on the placed board, 2026-09-17:
+    # ⚠ THIS ROW'S X OFFSETS ARE HAND-CHOSEN, AND THE FIRST SET WAS CHOSEN BADLY.
+    # Measured on the placed board 2026-09-17, before the reorder below:
+    #     U13 -> C160, the 24 V input bulk      13.5 mm
+    #     U13 -> C161, the 24 V input HF cap    18.0 mm
+    #     U13 -> C162, the 5 V output bulk      21.5 mm
+    # The input loop of a 1.1 MHz switcher -- C160/C161 to VIN, through the package, out
+    # of GND and back -- is the highest di/dt loop on the board, and at those distances
+    # it encloses area that radiates into twenty transimpedance amplifiers reading
+    # nanoamps. That is the one thing this board's entire layout is arranged to avoid.
     #
-    #     U8  (AMS1117, 207-272 mA) -> C162, its nearest INPUT cap      20.7 mm
-    #     U8                        -> C131, its nearest OUTPUT cap     26.2 mm
-    #     U9  (SPX3819)             -> C140 in                          13.7 mm
-    #     U9                        -> C132 out                         23.1 mm
-    #     U13 (buck, 1.1 MHz)       -> C160, the INPUT bulk             13.5 mm
-    #     U13                       -> C162, the OUTPUT bulk            21.5 mm
+    # ⚠ AND IT MAKES A LIE OF AN ARGUMENT MADE ELSEWHERE. The commit that merged PWR_GND
+    # into GND said the switcher stays quiet because "U13, C160 and C162 sit in one row
+    # so the high-di/dt loop is short". They did sit in one row -- a 31 mm row with the
+    # parts spaced along it. That sentence was written from reading the source instead of
+    # measuring the board. The merge is still right; it just was not doing this work.
     #
-    # ⚠ THESE ARE NOT COSMETIC DISTANCES. The AMS1117 and the SPX3819 both require an
-    # output capacitor CLOSE to the device to be stable at all -- it is a compensation
-    # element, not a filter, and 26 mm of track is inductance in the feedback path of a
-    # regulator that was characterised with a capacitor at its pin. And U13's input loop
-    # (C160 -> U13 -> return) is the highest di/dt loop on the board; at 13.5 mm it
-    # encloses area that radiates into twenty transimpedance amplifiers reading
-    # nanoamps, which is the one thing this board's whole layout is arranged to avoid.
+    # ORDER NOW FOLLOWS THE CURRENT, not the schematic. Parts are contiguous at
+    # CRTYD_GAP, and the sequence is chosen from U13's own pinout (SOT-23-6: 1 CB,
+    # 2 GND, 3 FB on one edge; 4 EN, 5 VIN, 6 SW on the other, so SW and CB are both on
+    # the package's LEFT and FB on its RIGHT):
+    #     C160 C161 | U13 | C163 | L1 | C162 | R40 R41
+    #       bulk+HF first and adjacent -- the input loop, which matters most
+    #       C163 the bootstrap, next to the CB/SW corner it serves
+    #       L1 next, keeping the SW node (the dV/dt radiator) short
+    #       C162 immediately past L1, at the output node
+    #       R40/R41 last, with R40's top AT the output node it senses
+    # giving U13->C161 3.2 mm, U13->C160 6.7, U13->L1 6.9, L1->C162 5.0.
     #
-    # ⚠ AND IT CONTRADICTS A CLAIM MADE ELSEWHERE IN THIS PROJECT. The commit that
-    # merged PWR_GND into GND argued that the switcher stays quiet because "U13, C160
-    # and C162 sit in one row so the high-di/dt loop is short". They do sit in one row.
-    # The row is 31 mm long and the packer spread them along it, so the loop is NOT
-    # short, and that sentence was written from the source rather than from a
-    # measurement. The ground merge is still right -- a plane beats a split either way
-    # -- but it is not doing the work that argument gave it.
-    #
-    # THE FIX IS A PLACEMENT CHANGE, NOT A NETLIST ONE, and it will move parts and
-    # re-open the routing, so it is recorded here rather than done in passing.
-    _buck = (("U13", "buck -- 24V -> 5V, the board's only switcher", "SOT-23-6", -35.0),
-             ("L1", "buck output inductor", "IND-4040", -28.0),
-             ("C160", "24 V input bulk -- 50 V part, see 1206C", "1206C", -21.5),
-             ("C161", "24 V input HF bypass", "0402", -17.0),
-             ("C162", "5 V output bulk", "0805C", -13.5),
-             ("C163", "bootstrap", "0402", -9.5),
-             ("R40", "feedback divider -- top", "0402", -6.5),
-             ("R41", "feedback divider -- bottom", "0402", -4.0))
+    # ⚠ WHAT THIS ORDER COSTS, stated rather than hidden: FB now runs ~13 mm from the
+    # divider back to pin 3. FB is high impedance and a long run is a noise antenna, so
+    # it MUST be routed away from SW and the inductor -- on the far side of the row or on
+    # an inner layer. The alternative orders all pay for a short FB with a long SW node,
+    # and SW is the radiator; this is the better half of a trade a single row cannot
+    # avoid.
+    _buck_order = (("C160", "24 V input bulk -- 50 V part, see 1206C", "1206C"),
+                   ("C161", "24 V input HF bypass -- CLOSEST to U13 on purpose", "0402"),
+                   ("U13", "buck -- 24V -> 5V, the board's only switcher", "SOT-23-6"),
+                   ("C163", "bootstrap -- CB to SW, both on U13's left", "0402"),
+                   ("L1", "buck output inductor", "IND-4040"),
+                   ("C162", "5 V output bulk", "0805C"),
+                   ("R40", "feedback divider -- top, at the output node", "0402"),
+                   ("R41", "feedback divider -- bottom", "0402"))
+    _BUCK_X0 = -37.10                    # the row's -X edge, unchanged from before
+    _buck, _bx = [], _BUCK_X0
+    for _r, _d, _p in _buck_order:
+        _w = CRTYD[_p][0]
+        _buck.append((_r, _d, _p, _bx + _w / 2.0))
+        _bx += _w + CRTYD_GAP
     _buck_h = max(CRTYD[_p][1] for _, _, _p, _ in _buck)
     y -= CRTYD_GAP
     _buck_y = y - _buck_h / 2.0
@@ -1292,6 +1384,8 @@ _MPN_EXACT.update({r: ("0402 thick-film R", "BASIC", 0.002, "buck feedback divid
 _MPN_EXACT.update({r: ("0402 X7R MLCC", "BASIC", 0.004, "buck HF bypass / bootstrap")
                    for r in ("C161", "C163")})
 _MPN_EXACT["C162"] = ("0805 X7R MLCC", "BASIC", 0.01, "buck 5 V output bulk")
+_MPN_EXACT["C164"] = ("0805 X7R MLCC", "BASIC", 0.01,
+                       "U8 input bulk -- V5_PRE's only local capacitor")
 # The output stage (3d). Same namespace hazards again -- R42-R45 would fall to the
 # 0603 ballast rule and C171-C173 to the 0402 line by accident rather than decision.
 _MPN_EXACT.update({r: ("0402 thick-film R", "BASIC", 0.002, "output stage -- series / gain / filter")
