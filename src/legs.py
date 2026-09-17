@@ -942,13 +942,28 @@ LOCK_PIN_DY = 7.5
 # ...and the screw itself (lock_pin_joint): a stock M4 button head recessed in the end
 # face, into a heat-set insert on the kept shell's face across the endplate<->shell gap
 SHELL_GAP = 0.4                    # that gap: chassis.EP_LEG_CLR, asserted equal there
-LOCK_SCREW_L = 12.0                # M4x12 button head
+LOCK_SCREW_L = 18.0                # M4x18 button head: it now has to reach PAST the chassis
+                                   # floor and into the foot's outermost tenon (see
+                                   # lock_pin_joint). Was M4x12, when it stopped in an insert
+                                   # in the chassis.
+LOCK_INSERT_AT = 4.0               # the insert's mouth, measured in from the end face: inside
+                                   # the ENDPLATE's own wall (user, 2026-09-17), clear of the
+                                   # head's recess and finishing 1.4 short of the wall's inner
+                                   # face. It used to sit in the CHASSIS, which is what forced
+                                   # the chassis to keep a mortise-free zone for it.
 LOCK_HEAD_D, LOCK_HEAD_H = 7.6, 2.2   # cadkit.fasteners.m4_button_screw's head
 LOCK_RECESS = 3 * D.BEAD           # 2.4: the head sits just under the end face
 # the screw's axis above the mating plane: its head recess (head + 0.4 of air) keeps a
 # 2-bead floor over the endplate's underside, which also keeps it off the adapter's top
 LOCK_Z = LOCK_HEAD_D / 2 + 0.4 + D.MIN_WALL_2P
-assert STUB_TNG_H - (LOCK_Z + _M4.shaft_clr_d / 2) >= D.MIN_WALL_2P - 1e-9, (
+# THE PIN BREAKS OUT OF THE TENON'S TOP, DELIBERATELY. The tenon is the grid joint, 8.6 tall,
+# and a Ø4.4 hole centred at LOCK_Z leaves 0.6 above it -- a sliver that would tear off the one
+# feature doing the pinning. leg_stack takes that strip away instead, so the pin sits in a NOTCH
+# in the tenon and bears on its Y walls. What must hold is the material BELOW the hole.
+assert LOCK_Z - _M4.shaft_clr_d / 2 >= D.MIN_WALL_2P - 1e-9, (
+    "the lock pin leaves %.2f of tenon under its hole, under the two-bead floor"
+    % (LOCK_Z - _M4.shaft_clr_d / 2))
+assert STUB_TNG_H - (LOCK_Z + _M4.shaft_clr_d / 2) >= -99.0, (
     "the tongue leaves only %.2f over the leg screw's hole"
     % (STUB_TNG_H - (LOCK_Z + _M4.shaft_clr_d / 2)))
 assert LOCK_PIN_DY + _M4.shaft_clr_d / 2 + D.MIN_WALL_2P <= SQ_W / 2, (
@@ -982,18 +997,11 @@ def corner_groove_negatives(station: float, ly: float, syg: float,
     pass relief=False or the wedge eats their end-wall groove roof).
 """
     negs = []
-    # end-wall REBATE (see STUB_TNG_W): from just inboard of the tongue, in the
-    # endplate<->shell gap, out to the tongue's outboard face + fit; depth
-    # STUB_TNG_H + fit, opened 1 below the mating plane; blind end exactly at the
-    # stub's inboard face. The M4 lock pin crossing it: endwall_screw_negatives
-    # (endplates) / tongue_pin_cutter (the tongue).
-    L = SQ_W + 1.0
-    y0 = ly - SQ_W / 2 if syg > 0 else ly - SQ_W / 2 - 1.0
+    # (THE END-WALL REBATE IS GONE with the straight tongue it hosted -- user, 2026-09-17: the
+    #  endplate gets that material back and holds the lock pin's INSERT in it instead. Its 45 deg
+    #  overhang relief went with it: there is no rebate roof left to relieve.)
     r_in = STUB_WALL_IN - STUB_TNG_REBATE_IN
     r_out = STUB_WALL_IN + STUB_TNG_W + STUB_TNG_FIT
-    negs.append(box_at(r_out - r_in, L, STUB_TNG_H + STUB_TNG_FIT + 1.0,
-                       x=station + egx * (r_in + r_out) / 2, y=y0 + L / 2,
-                       z=z_bot + (STUB_TNG_H + STUB_TNG_FIT - 1.0) / 2))
     # crossing grooves (thirds of the side-panel overlap): 0.5 inboard
     # overshoot, 1 outboard
     Lc = SQ_W + 1.5
@@ -1005,49 +1013,52 @@ def corner_groove_negatives(station: float, ly: float, syg: float,
             continue
         negs.append(_groove(Lc - c).translate((station + dx, y0c + (c if syg > 0 else 0.0),
                                                z_bot)))
-    # 45° OVERHANG RELIEF (user): in the RAIL-BAND y (where the end-wall
-    # groove crosses the rail-end dovetail tongue at the keyhead / the
-    # kept-shell exit at the bridge), the corner left standing above the
-    # groove's OUTBOARD exit is trimmed by a 45° plane that JUST CLEARS
-    # the joint's roof — height from the groove depth (STUB_TNG_H + fit),
-    # so the plane tracks any joint-size change — rising outboard: one
-    # continuous 45° underside from the joint's top-inboard flank out
-    # through the tongue / wall face. Reach: the rebate + 1, inside the
-    # endplate's outer skin (groove face gap 0.86 + skin 0.9 both ends).
-    if not relief:
-        return negs
-    zr = z_bot + (STUB_TNG_H + STUB_TNG_FIT) + 0.3
-    # from the rebate's INBOARD edge (a rebate has no inboard cheek, so no flat run
-    # of chassis roof is left over the tongue) out to 1 past its outboard wall
-    xg = station + egx * r_in
-    RCH = (r_out - r_in) + 1.0
-    prof = [(xg, zr), (xg + egx * RCH, zr + RCH),
-            (xg + egx * RCH, z_bot - 1.0), (xg, z_bot - 1.0)]
-    yw0 = ly + syg * 10.5
-    yw1 = ly + syg * 23.0
-    ylo, yhi = min(yw0, yw1), max(yw0, yw1)
-    negs.append(cq.Workplane("XZ").workplane(offset=-yhi)
-                .polyline(prof).close().extrude(yhi - ylo))
+    # (the 45 deg OVERHANG RELIEF went with the end-wall rebate it relieved -- there is no
+    #  rebate roof left over a tongue, because there is no tongue.)
     return negs
+
+
+def outer_tenon_offset(station: float, egx: float) -> float:
+    """How far outboard of the leg's centreline its OUTERMOST tenon sits -- the first one
+    the lock pin meets coming in from the end face."""
+    off = [egx * (s - station) for s in D.lever_grid_x()
+           if abs(s - station) <= SQ_W / 2 - STUB_TEN_W / 2 + 1e-9]
+    assert off, "no mortise station over the foot at x %.2f" % station
+    return max(off)
 
 
 def lock_pin_joint(station: float, ly: float, egx: float, syg: float, z_bot: float,
                    dy: float = 0.0) -> _ScrewJoint:
     """THE LEG'S ONE SCREW (user), defined once for every part it crosses: an M4 button
-    head recessed in the ENDPLATE's end face, clearance on through the endplate wall and
-    the adapter's TONGUE, and a heat-set insert in the CHASSIS's kept shell, the hole
-    stopping D.MIN_WALL_2P short of the middle ridge's octagon groove so that joint is
-    left alone. Tightening pinches the tongue between endplate and chassis: it locks the
-    leg in the body and the endplate to the chassis. On the axis LOCK_PIN_DY outboard of
-    the leg's centreline, LOCK_Z up; `dy` moves it along Y (the tongue's
-    service hole, SERVICE_SLIDE inboard)."""
+    head recessed in the ENDPLATE's end face, a heat-set insert in that same endplate wall,
+    and clearance on through the shell gap, the chassis floor and into the foot's OUTERMOST
+    TENON -- which it pins. That is the whole retention now: it locks the leg in the body (the
+    tenon cannot slide in Y past the pin) and the endplate to the chassis.
+
+    THE INSERT MOVED OUT OF THE CHASSIS (user, 2026-09-17). Holding it there meant the chassis
+    had to keep a mortise-free zone for the pocket, and once the grid ran end to end the pocket
+    broke into a mortise anyway (97 mm3 of it). With the insert in the endplate -- in the
+    material the straight tongue used to occupy -- the chassis only ever sees a Ø4.4 clearance
+    hole, which is what the user asked for: a smaller hole disrupts the joinery less.
+
+    On the axis LOCK_PIN_DY outboard of the leg's centreline, LOCK_Z up; `dy` moves it along Y
+    (unused now the tongue's service hole is gone)."""
     zc = z_bot + LOCK_Z
     entry = (station + egx * SQ_W / 2, ly + syg * LOCK_PIN_DY + dy, zc)
-    groove_edge = egx * _cross_x(egx, station)[0] + STUB_TEN_W / 2 + 0.1   # its outboard flank
-    return _ScrewJoint(_M4, entry, (-egx, 0.0, 0.0), LOCK_SCREW_L,
-                       insert_at=STUB_WALL_D + SHELL_GAP,
-                       end_at=SQ_W / 2 - (groove_edge + D.MIN_WALL_2P),
-                       head_d=LOCK_HEAD_D, head_h=LOCK_HEAD_H, recess=LOCK_RECESS)
+    end_at = LOCK_RECESS + LOCK_SCREW_L + 0.4
+    j = _ScrewJoint(_M4, entry, (-egx, 0.0, 0.0), LOCK_SCREW_L,
+                    insert_at=LOCK_INSERT_AT, end_at=end_at,
+                    head_d=LOCK_HEAD_D, head_h=LOCK_HEAD_H, recess=LOCK_RECESS)
+    # IT MUST LAND IN THE OUTERMOST TENON. The screw's job is no longer to pull on an insert in
+    # the chassis; it is a PIN through the foot's outermost tenon, so the tip has to finish
+    # inside that tenon -- past its near flank and short of its far one.
+    near = SQ_W / 2 - (outer_tenon_offset(station, egx) + D.LEVER_MORT_W / 2)
+    tip = LOCK_RECESS + LOCK_SCREW_L
+    assert near + D.MIN_WALL_2P <= tip <= near + D.LEVER_MORT_W - 1e-9, (
+        "the lock pin's tip lands %.2f in from the end face; the foot's outermost tenon runs "
+        "%.2f..%.2f there -- pick a screw length that finishes inside it"
+        % (tip, near, near + D.LEVER_MORT_W))
+    return j
 
 
 def endwall_screw_negatives(station: float, ly: float, egx: float,
@@ -1114,8 +1125,8 @@ def _body_stub(wired: bool, eps: float, latch: bool = False, mid_cut: float = 0.
     # end-wall TONGUE (simple rectangle, user) + the lock pin's clearance hole
     # crossing at mid-height on the y centreline (world y = leg centre). This SKU
     # prints lying on its local +Y face, so its build direction is local -Y.
-    b = b.union(box_at(STUB_TNG_W, SQ_W, STUB_TNG_H,
-                       x=eps * STUB_RIDGE_EP, z=STUB_H + STUB_TNG_H / 2))
+    # (no END-WALL TONGUE any more -- user, 2026-09-17: the crossing tenons in the bottom grid
+    #  are the joinery, and the lock pin through the outermost one is the retention.)
     b = b.cut(tongue_pin_cutter(0.0, 0.0, eps, STUB_H, (0.0, -1.0, 0.0), 0.0))  # retired SKU
     # M4 SHEAR-PIN pilots down through the crossing ridges at the wall
     # band (local y -17 = the rail-web access-bore line; only the
