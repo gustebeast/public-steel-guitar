@@ -812,14 +812,19 @@ def _top_tenon(tx):
             .translate((tx, TEN_Y0, HOUS_Z1)))                # station X, -Y start, mate at the top face
 
 
-def rib_mortise(rib_x):
+def rib_mortise(rib_x, y0=None, y1=None):
     """ONE octagon MORTISE (GLOBAL) for the rib at rib_x: the same cadkit octagon as the tenon
     but LONG in Y (MORT_Y0..MORT_Y1 = the knee-depth slide range), rotated to slide +Y. Opens at
     the rib bottom (-Z, the mating plane = Z_BOT) and its roof bridges inside the rib. chassis.py
     cuts this into every rib so a lever can mount in ANY bay."""
-    m = (_lever_joint(MORT_Y1 - MORT_Y0).mortise(drop=2.0)
+    # WORLD y range: the caller's, or this station's own by the grid's rule. chassis.py is the
+    # one that knows about legs and the light window, so for the end stations it passes the two
+    # SHORT segments (one over each foot) rather than one run across the instrument.
+    _y0 = (MORT_Y0 if y0 is None else y0 - MOUNT_Y)
+    _y1 = ((D.mortise_y_end(rib_x) if y1 is None else y1) - MOUNT_Y)
+    m = (_lever_joint(_y1 - _y0).mortise(drop=2.0)
          .rotate((0, 0, 0), (0, 0, 1), 90)                     # slide axis X -> Y
-         .translate((0.0, MORT_Y0, HOUS_Z1)))                 # centred x=0, -Y mouth, mate at rib bottom
+         .translate((0.0, _y0, HOUS_Z1)))                     # centred x=0, -Y mouth, mate at rib bottom
     #        ^ HOUS_Z1, not BODY_Z. The TENON mates at the housing top (_top_tenon),
     #          and with a bigger bearing the top is set by the seat, not by BODY_Z.
     #          Keyed to BODY_Z the mortise sat 0.7 low and every tenon on all six

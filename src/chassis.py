@@ -272,6 +272,21 @@ def _rail(y):
     return box_at(X_BRIDGE - X_NUT, T, Z_TOP - Z_BOT, x=_XC, y=y, z=_ZC)
 
 
+def mort_segments(station):
+    """The WORLD (y0, y1) runs of the mortise at `station`.
+
+    Most stations are one run, from outboard of the -Y rail to the light window's face. The
+    three at each end are the ones the FEET ride, and they get TWO SHORT runs instead -- one
+    over each foot, open outboard so the foot can slide in, with the floor BETWEEN the feet left
+    solid (user, 2026-09-17). Nothing rides there, and it is most of the floor's length."""
+    from . import knee_lever as _KLY
+    near = _KLY.MOUNT_Y + _KLY.MORT_Y0                   # -Y mouth, outboard of the -Y rail
+    if abs(D.mortise_y_end(station) - D.LIGHT_WIN_Y0) < 1e-9:
+        return [(near, D.LIGHT_WIN_Y0)]
+    return [(near, LEG_Y[1] + LEG_W / 2.0),              # over the -Y foot, open -Y
+            (LEG_Y[0] - LEG_W / 2.0, D.MORT_FULL_Y1)]    # over the +Y foot, open +Y
+
+
 def _mort_cutters(x0=None, x1=None):
     """Every lever mortise in [x0, x1] as ONE compound. The grid has ~70 stations and a
     separate boolean per station, repeated for each segment, dominates the build -- OCC cuts a
@@ -282,7 +297,8 @@ def _mort_cutters(x0=None, x1=None):
     if not xs:
         return None
     return cq.Workplane(obj=cq.Compound.makeCompound(
-        [s for x in xs for s in _KLM.rib_mortise(x).val().Solids()]))
+        [s for x in xs for y0, y1 in mort_segments(x)
+         for s in _KLM.rib_mortise(x, y0, y1).val().Solids()]))
 
 
 RACE_HW   = 2.4     # wire-raceway half-width — passes the fattest cable (Ø2.6 USB)
@@ -719,11 +735,12 @@ assert abs((Y_HI - LIGHT_BAND_DY) - D.LIGHT_WIN_YC) < 1e-9, (
 def _light_band():
     """The window's own volume: a run down the bottom, broken by ties. Intersected with a
     segment it gives that segment's transparent piece; cut from it, the aperture it fills."""
-    # BETWEEN THE LEGS. It ran the bottom's whole span, and the -X +Y leg stub stands in that
-    # band -- 284 mm3 of transparent material inside the adapter. The legs were there first and
-    # the window is the new thing, so the window gives way.
-    x0 = min(LEG_STATIONS_X) + LEG_W / 2 + D.MIN_WALL_2P
-    x1 = max(LEG_STATIONS_X) - LEG_W / 2 - D.MIN_WALL_2P
+    # BETWEEN THE LEGS, FLUSH WITH WHERE EACH FOOT STARTS (user, 2026-09-17). It ran the
+    # bottom's whole span, and the -X +Y leg stub stood in that band -- 284 mm3 of transparent
+    # material inside the adapter. The legs were there first, so the window gives way, and it
+    # gives way exactly as far as the foot reaches and no further.
+    x0 = min(LEG_STATIONS_X) + LEG_W / 2
+    x1 = max(LEG_STATIONS_X) - LEG_W / 2
     x0, x1 = max(x0, _SHELL_NX), min(x1, _SHELL_PX)
     return box_at(x1 - x0, LIGHT_BAND_W, D.BOTTOM_T,
                   x=(x0 + x1) / 2, y=Y_HI - LIGHT_BAND_DY,
