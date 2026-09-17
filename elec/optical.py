@@ -162,6 +162,8 @@ PIN = {  # port name -> LQFP176 pin
     "PB0": 56, "PB1": 57, "PB3": 161, "PB4": 162, "PB5": 163,
     "PB10": 79, "PB11": 80, "PB12": 92, "PB13": 93,
     "PC0": 32, "PC1": 33, "PC2_C": 34, "PC3_C": 35, "PC4": 54, "PC5": 55,
+    # ULPI_DIR and ULPI_NXT, moved off the analog-switch pads -- see the note above ULPI
+    "PI11": 13, "PH4": 45,
     "PF3": 19, "PF4": 20, "PF5": 21, "PF6": 24, "PF7": 25, "PF8": 26,
     "PF9": 27, "PF10": 28, "PF11": 59, "PF12": 60, "PF13": 63, "PF14": 64,
     "PH0": 29, "PH1": 30,
@@ -188,8 +190,9 @@ PIN = {  # port name -> LQFP176 pin
 #     disconnects the ULPI signal, and the failure looks like a dead PHY.
 #   * These two pins are therefore NOT available as ADC inputs, which is why the
 #     photodiode budget below excludes them.
-# ⚠ ULPI_DIR AND ULPI_NXT SIT ON ANALOG-ONLY PINS, AND THAT IS CORRECT -- BUT IT
-# COSTS A FIRMWARE LINE THAT NOTHING ELSE IN THIS PROJECT WOULD TELL YOU ABOUT.
+# ⚠ ULPI_DIR AND ULPI_NXT USED TO SIT ON PC2_C / PC3_C AND HAVE BEEN MOVED OFF THEM.
+# What follows is why they were there, why it worked, and why "it works" was not good
+# enough.
 #
 # On the STM32H743, PC2 and PC3 have TWO pads on the die: the ordinary digital pad and
 # a "_C" pad wired straight to ADC3 for a low-impedance analog path. On the LQFP176
@@ -205,22 +208,37 @@ PIN = {  # port name -> LQFP176 pin
 # PC2SO/PC3SO default to 0), so the board works out of the box and a bring-up would
 # never surface this.
 #
-# ⚠ THE TRAP IS SHAPED EXACTLY LIKE THIS BOARD. Those switches exist so that ADC3 can
-# reach the _C pads directly, and OPENING them is what an ADC-heavy design does to get
-# the best analog performance -- which is precisely what this board is. Anyone tuning
-# the twenty-channel front end, reading "direct channels optimise ADC performance" and
-# setting PC2SO/PC3SO would disconnect ULPI_DIR and ULPI_NXT from the PHY and USB would
-# stop enumerating, with nothing in the schematic, the netlist or DRC to point at.
-# So: SYSCFG_PMCR PC2SO and PC3SO MUST STAY 0, and ADC3_INP0 / ADC3_INP1 (the direct
-# channels on those two pads) ARE NOT AVAILABLE to this design. They are not in
-# ADC_PAIRS below and must not be added.
+# ⚠ THE TRAP WAS SHAPED EXACTLY LIKE THIS BOARD, WHICH IS WHY IT IS NOT WORTH KEEPING.
+# Those switches exist so ADC3 can reach the _C pads directly, and OPENING them is what
+# an ADC-heavy design does for analog performance -- which is precisely what this board
+# is. Anyone tuning the twenty-channel front end, reading "direct channels optimise ADC
+# performance" and setting PC2SO/PC3SO, would disconnect ULPI_DIR and ULPI_NXT from the
+# PHY. USB would stop enumerating and nothing in the schematic, the netlist or DRC would
+# point at it. A constraint whose only enforcement is a comment, on the exact axis the
+# board invites you to optimise, is a trap and not a design.
+#
+# ⚠ AND IT WAS FREE TO REMOVE, WHICH SETTLED IT. OTG_HS_ULPI_DIR is also on PI11 and
+# OTG_HS_ULPI_NXT is also on PH4 (DS12110 pin table); on the LQFP176 those are pins 13
+# and 45, and both were unused. The two arguments for staying both collapsed on
+# measurement:
+#   "it keeps the bus together"  -- the bus is ALREADY on all four package edges
+#                                   (pins 32 47 51 56 57 79 80 92 93 163), and PH4
+#                                   lands on the edge where six of the ten already are
+#   "it costs routing"           -- measured to the PHY: PC2_C 37.2 mm and PC3_C
+#                                   36.8 mm become PI11 45.9 mm and PH4 30.7 mm. Net
+#                                   +2.6 mm across the pair, inside a bus that already
+#                                   spans 22.4 to 49.7 mm. At ~6.6 ps/mm that is 53 ps
+#                                   on a 16.7 ns ULPI clock.
+#
+# So the firmware constraint is gone rather than documented, and ADC3_INP0 / ADC3_INP1
+# are available again if a twenty-first channel is ever wanted.
 #
 # The other ten assignments were checked the same way, against DS12110's pin table:
 # all ten name their OTG_HS_ULPI_* function on the port this map uses.
 ULPI = {"ULPI_D0": "PA3", "ULPI_D1": "PB0", "ULPI_D2": "PB1", "ULPI_D3": "PB10",
         "ULPI_D4": "PB11", "ULPI_D5": "PB12", "ULPI_D6": "PB13", "ULPI_D7": "PB5",
-        "ULPI_CK": "PA5", "ULPI_STP": "PC0", "ULPI_DIR": "PC2_C",
-        "ULPI_NXT": "PC3_C"}
+        "ULPI_CK": "PA5", "ULPI_STP": "PC0", "ULPI_DIR": "PI11",
+        "ULPI_NXT": "PH4"}
 
 # ── THE ADC MAP, and the pair skew it cannot avoid ───────────────────────────
 # ⚠ THE COUNTING BELOW WAS DONE FOR THE LQFP144 AND THE PART IS NOW AN LQFP176. The
@@ -957,33 +975,26 @@ def optical():
     # ── J2: 24 V in, on the instrument's standard 4-way ──────────────────────
     j2 = Part(name="S4B-XH-SM4-TB", ref_prefix="J", ref="J2", dest="NETLIST",
               tool="skidl", value="S4B-XH-SM4-TB",
-              # ⚠ NOTHING IN THE INSTRUMENT DRIVES THIS CONNECTOR YET, and that is a
-              # system-level gap rather than a board bug. Every 24 V connector in every
-              # netlist was listed on 2026-09-17: the ONLY source is the output panel's
-              # J7, and J7 already feeds the motor controller's J3. Two sinks, one
-              # source, no documented junction -- and the project's rule is that every
-              # field connection is a connector, so a splice is not the answer either.
-              # The panel needs a second 24 V outlet, or this board needs to hang off
-              # something that already carries the trunk. That is a decision about the
-              # instrument's harness, not about this board, so it is recorded and not
-              # invented here.
+              # ⚠ ALL FOUR WAYS ARE POPULATED, MIRRORING THE SOURCE. This used to be
+              # "24V, PWR_GND, 2 cavities empty" against an output panel whose J7 is
+              # 1=GND 2=+24V 3=+24V 4=GND -- so a straight four-conductor cable landed a
+              # live 24 V wire and a return on two pins connected to nothing. It worked,
+              # the source's doubling was wasted, and the harness carried two conductors
+              # whose purpose nobody could explain, which is how a later "tidy-up"
+              # deletes the wrong one.
+              # Doubling costs nothing (the contacts exist either way), halves the
+              # contact resistance, and makes the cable symmetric end to end. Every 24 V
+              # connector in the instrument is now 1=GND 2=+24V 3=+24V 4=GND.
               #
-              # ⚠ AND THE PIN ORDER DOES NOT MATCH THE ONE SOURCE THAT EXISTS. Every
-              # other 24 V connector in the instrument is 1=GND, 2=+24V. Panel J7 is
-              # 1=GND 2=+24V 3=+24V 4=GND -- a doubled, mirrored pair. A straight
-              # four-conductor cable from J7 to this connector lands a live 24 V wire
-              # and a return on pins 3 and 4, which are not connected here: it works,
-              # the doubling is wasted, and the harness carries two conductors whose
-              # purpose nobody can explain. Whichever way the feed is resolved, the two
-              # ends have to agree first.
-              description="24 V in -- 24V, PWR_GND, 2 cavities empty",
+              # The feed itself comes from the output panel's SECOND 24 V outlet, added
+              # 2026-09-17 -- until then the only source was J7, which already fed the
+              # motor controller, so this connector had nothing driving it at all.
+              description="24 V in -- GND, 24V, 24V, GND (doubled, mirrors panel J9)",
               footprint="Connector_JST:JST_XH_S4B-XH-SM4-TB_1x04-1MP_P2.50mm_Horizontal",
               pins=[Pin(num=i + 1, name=n, func=P)
                     for i, n in enumerate(("PWR_GND", "+24V", "NC3", "NC4"))])
-    pgnd += j2[1]
-    v24 += j2[2]
-    Net("J2_NC_3").connect(j2[3])
-    Net("J2_NC_4").connect(j2[4])
+    pgnd += j2[1], j2[4]
+    v24 += j2[2], j2[3]
 
     # ── the passives the CAD places, wired to what they belong to ────────────
     # R30-R38 and R40-R41 keep the CAD's exact names: that table is spelled out
