@@ -174,11 +174,10 @@ def route(stem, passes=None, timeout=3600):
     # instead of negotiable, which this project has measured going the wrong way before
     # -- so it is exposed as `fix_prelaid` in the board notes to be MEASURED rather than
     # assumed. The pairs are not a trade: copper that must not move, must not move.
-    pair_nets = set()
+    frozen = set()
     for spec in (notes or {}).get("diff_pairs", ()):
-        pair_nets.update(spec.get("nets", ()))
-    if (notes or {}).get("fix_prelaid"):
-        pair_nets = None                      # everything the generator laid
+        frozen.update(spec.get("nets", ()))
+    pair_nets = None if (notes or {}).get("fix_prelaid") else frozen
 
     def _fix(m):
         if pair_nets is None or m.group(1) in pair_nets:
@@ -187,7 +186,7 @@ def route(stem, passes=None, timeout=3600):
         return m.group(0)
     _fix.n = 0
     txt = re.sub(r"\(net ([^)]+)\)\(type route\)", _fix, txt)
-    if pair_nets and not _fix.n:
+    if frozen and not _fix.n:
         raise SystemExit(
             "no pre-laid wiring found for the declared differential pair(s) %s -- the "
             "pair is supposed to be generated before the router sees it, so either it "
@@ -269,6 +268,53 @@ def route(stem, passes=None, timeout=3600):
     shutil.copyfile(pcb, stem + ".unrouted.kicad_pcb")
     if not pcbnew.ImportSpecctraSES(board, ses):
         raise SystemExit("Specctra SES import failed")
+
+    # PUT THE FROZEN COPPER BACK, BECAUSE THE SESSION FILE DOES NOT CARRY IT. This is
+    # the half of `(type fix)` that a reasonable reading of Specctra misses, and it cost
+    # a routing run to find: a SESSION file reports what the ROUTER did, and a fixed
+    # wire is by definition not something the router did. freerouting therefore omits it
+    # -- measured, 797 wires in the session and not one of them on either pair net --
+    # and ImportSpecctraSES replaces the board's routing wholesale, so the frozen pair
+    # was not preserved but DELETED. The board came back with the pair 11.62 mm shorter
+    # and five of its eight unconnected items on USB_DP/USB_DM, which reads exactly like
+    # a router that ran out of room and is nothing of the kind.
+    #
+    # The router still SAW the copper -- it routed around it as an obstacle, which is
+    # what freezing is for -- so re-laying it here is geometrically consistent with
+    # everything else in the session, not a patch over a conflict.
+    #
+    # ⚠ THIS IS ALSO THE MECHANISM FOR INCREMENTAL ROUTING, and the reason to get it
+    # right rather than revert. "Freeze what already routed, re-run only the failures"
+    # needs exactly these two halves: fix the wires in the DSN so the router leaves them
+    # alone, and re-lay them here so they survive the import.
+    if frozen:
+        src = pcbnew.LoadBoard(stem + ".unrouted.kicad_pcb")
+        back = 0
+        for t in src.GetTracks():
+            if t.GetNetname() not in frozen:
+                continue
+            net = board.FindNet(t.GetNetname())
+            if net is None:
+                raise SystemExit("frozen net %s is not on the board after import"
+                                 % t.GetNetname())
+            if t.GetClass() == "PCB_VIA":
+                v = pcbnew.PCB_VIA(board)
+                v.SetPosition(t.GetPosition())
+                v.SetWidth(t.GetWidth())
+                v.SetDrill(t.GetDrill())
+                v.SetViaType(t.GetViaType())
+                v.SetNet(net)
+                board.Add(v)
+            else:
+                k = pcbnew.PCB_TRACK(board)
+                k.SetStart(t.GetStart())
+                k.SetEnd(t.GetEnd())
+                k.SetWidth(t.GetWidth())
+                k.SetLayer(t.GetLayer())
+                k.SetNet(net)
+                board.Add(k)
+            back += 1
+        print("  re-laid %d frozen wire(s) the session file does not carry" % back)
     # CLAMP ANY TRACK THE ROUTER NECKED BELOW THE FAB FLOOR. Freerouting works in
     # its own units and rounds, so it lands a couple of segments at 0.125 against
     # JLCPCB's 0.127 minimum -- 2 microns under, but under. Widening a track can
