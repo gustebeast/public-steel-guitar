@@ -398,7 +398,14 @@ def adjust_tenon(top: float = Z_ADJ_TEN_TOP):
     # the PEDAL BAR's latch hooks this end: its retention pocket and lead-in chamfer,
     # placed from where this tenon seats in the bar (src.bar_latch)
     from . import bar_latch as BL
-    return t.cut(BL.tenon_cut(top - ADJ_TEN_L + ENGAGE))
+    t = t.cut(BL.tenon_cut(top - ADJ_TEN_L + ENGAGE))
+    # THE BOTTOM BLIND-MATE (src.bar_trrs): the male plug floats in this tenon on the
+    # same coil SKU as the top joint, and the bar keeps a short PCB jack. Cut last, and
+    # only on the tenon as drawn -- a shortened one is a height setting, not a station
+    if abs(top - Z_ADJ_TEN_TOP) < 1e-9:
+        from . import bar_trrs as BT
+        t = t.cut(BT.tenon_negatives(TENON_UP))
+    return t
 
 
 def fixed_tenon():
@@ -586,16 +593,10 @@ def bar_latch_frame():
     return BL.frame(Z_BAR_MOUTH)
 
 
-def _bar_trrs_top():
-    """The bar's TRRS jack way top in world z (the bar is posed from its mouth)."""
-    from . import pedal_bar as PB
-    return Z_BAR_MOUTH - (PB.TOWER_TOP - PB.TRRS_WAY_TOP)
-
-
 def bar_latch_collar():
     """The pedal bar latch's COLLAR -- printed on its own, screwed onto the bar's tower."""
     from . import bar_latch as BL
-    return BL.collar(Z_BAR_MOUTH, _bar_trrs_top())
+    return BL.collar(Z_BAR_MOUTH)
 
 
 PARTS = {
@@ -666,7 +667,13 @@ def leg_parts():
            ("leg_latch_spring", LL.spring()),
            # the pedal bar latch, AT REST (hook in, pad flush)
            ("bar_latch_frame", BL.frame(Z_BAR_MOUTH)),
-           ("bar_latch_collar", BL.collar(Z_BAR_MOUTH, _bar_trrs_top()))]
+           ("bar_latch_collar", BL.collar(Z_BAR_MOUTH))]
+    from . import bar_trrs as BT
+    out += BT.dummies()
+    # ...and the BAR's half of the same joint. It is authored against a caller-supplied
+    # mortise floor precisely so it can be drawn in either frame; in world, that floor
+    # is the adjust tenon's own bottom face, which is BT.TIP.
+    out += BT.bar_dummies(BT.TIP)
     out += [("bar_latch_spring_%d" % i, s) for i, s in enumerate(BL.springs(Z_BAR_MOUTH))]
     out += BL.screw_dummies(Z_BAR_MOUTH)        # the collar's one screw, and its insert
     out += LG.lock_pin_dummies(LEG_X, LEG_Y, EGX, SYG, Z_TOP, 0)   # the leg's one screw

@@ -203,6 +203,20 @@ GLOBAL_OK = {
     # and the sleeve GRIPS the male overmould at SLV_SQUEEZE -- that interference is
     # the entire retention scheme, not a clash
     frozenset({"leg_trrs_sleeve", "leg_trrs_plug"}),
+    # and the BOTTOM joint's collar grips the same bought overmould the same way, with
+    # the same SLV_SQUEEZE -- see src.bar_trrs
+    frozenset({"bar_trrs_sleeve", "bar_trrs_plug"}),
+    # ── AND THE BAR HALF OF THAT SAME JOINT (src/bar_trrs.py, the bar-frame end) ──
+    # the same mate as the top joint's, the other way up: this time the BOUGHT female
+    # is the one fixed in the structure and the male is the half that floats
+    frozenset({"bar_trrs_plug", "bar_trrs_jack"}),
+    # the throat GRIPS the bought jack at SLV_SQUEEZE on its O7.8 body. The jack is a
+    # flangeless moulding, so this 30.6 mm3 of interference IS the up-stop -- there is
+    # no shoulder on the part to catch instead
+    frozenset({"bar_trrs_throat", "bar_trrs_jack"}),
+    # ...and the throat's own lugs are preloaded in the bar's bayonet, LUG_H tall in a
+    # TH_RUN_H slot, exactly as the two sleeves are in theirs
+    frozenset({"bar_trrs_throat", "pedal_bar_a"}),
 }
 
 # The pedal bar is a self-contained subassembly (bar pieces + the sliding

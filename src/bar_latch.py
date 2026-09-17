@@ -222,7 +222,7 @@ _PEAK_K = (SPR_X - (CUP_W / 2 + CLR)) + (CUP_Y0 - CUP_BACK - CLR)   # peak's -X 
 assert (_PEAK_K - _MORT_K) / _S2 >= D.MIN_WALL_2P, (
     "the spring channel's peak runs within %.2f of the mortise"
     % ((_PEAK_K - _MORT_K) / _S2))
-# -- the screws and the TRRS jack (the corners) ------------------------------------
+# -- the screw (a corner) ----------------------------------------------------------
 SCREW = dataclasses.replace(M4, name="M4 button", head_recess_d=11 * B,
                             head_recess_h=3 * B)   # m4_button_screw: head 7.6 x 2.2
 SCREW_L = 30.0                     # M4x30: through the collar, then SCREW_BITE into the tower
@@ -231,13 +231,6 @@ SCREW_END = SCREW_BITE + COLLAR_H + 1.6   # where the hole stops, 1.6 past the t
 # the head is the leg's head: ONE M4 button SKU on the instrument (user's fastener
 # rule), so the numbers come from there rather than being typed again
 SCREW_HEAD_D, SCREW_HEAD_H = LG.LOCK_HEAD_D, LG.LOCK_HEAD_H
-TRRS_BORE_D = 14 * B               # 11.2 the CA-354S body way, in the BAR
-TRRS_COLLAR_D = 13 * B             # 10.4 -- the COLLAR'S share of that way is one bead
-                                   # tighter on the same 9.6 body (0.4 a side, still a
-                                   # drop fit). The corner cannot afford the wider one:
-                                   # this part peaks its bores toward -Y, and 11.2's
-                                   # peak walks the jack so far in off the -Y face that
-                                   # the ring's own corner web falls to 1.35.
 assert SCREW_BITE >= M4.anchor_min_wall, (
     "the screw bites %.1f, under the insert's own depth + min bite" % SCREW_BITE)
 
@@ -261,12 +254,11 @@ def _corner_xy(sx: float, bore_d: float, peak_d: float = None):
 
 # the head recess is the widest thing on the screw's axis, so it sets both rules
 SCREW_XY = _corner_xy(1.0, SCREW.head_recess_d)
-# the jack: the +-X rule takes the BAR's wider way (the tower holds that one), the
-# -Y rule the COLLAR's narrower one (the collar holds the peak)
-TRRS_XY = _corner_xy(-1.0, TRRS_BORE_D, TRRS_COLLAR_D)
-SCREW_CORNERS = (SCREW_XY,)        # ONE (user). The rails took the two +Y corners
-                                   # and the TRRS jack has the fourth; this one locks
-                                   # the single direction the rails leave open.
+SCREW_CORNERS = (SCREW_XY,)        # ONE (user). The rail takes a +Y corner and this
+                                   # locks the single direction it leaves open. The
+                                   # fourth corner used to hold a CA-354S TRRS way;
+                                   # the bottom joint goes on the JOINT'S OWN SPINE, like the top one, so the corner is
+                                   # plain material now.
 # -- the rails: what holds the collar on, with the screw ---------------------------
 # A cadkit SLIDE JOINT. Both hosts print along Y -- the tower with the bar, the collar
 # the other way up -- which is the plan-profile case: the joint lies in the X-Z plane
@@ -320,9 +312,6 @@ assert _RAIL_SEG >= D.MIN_WALL_2P - 1e-9, (
     "the rail's thinnest printed segment is %.2f" % _RAIL_SEG)
 assert SCREW_XY[1] + SCREW.head_recess_d / 2 + D.MIN_WALL_2P <= RAIL_Y0, (
     "the rails run into the screw's corner")
-assert TRRS_XY[1] + TRRS_BORE_D / 2 + D.MIN_WALL_2P <= RAIL_Y0, (
-    "the rails run into the TRRS way's corner (%.2f)"
-    % (TRRS_XY[1] + TRRS_BORE_D / 2 + D.MIN_WALL_2P))
 
 # -- the tenon's lead-in -----------------------------------------------------------
 LEAD_DEG = 20.0                    # from the push axis: shallow, because the ring's
@@ -338,9 +327,6 @@ _WEB = D.MIN_WALL_2P
 # degrees, and so is the flank of the bore's teardrop peak -- and that flank is
 # TANGENT to the bore's own circle, wherever the bore sits. So the peak costs the
 # clip nothing: the circle's radius is still the whole story here.
-K_MXMY = (abs(TRRS_XY[0]) + abs(TRRS_XY[1])                                 # -X-Y (jack)
-          - (TRRS_COLLAR_D / 2 + _WEB) * _S2) - CLR * _S2   # the ring meets the
-                                                            # COLLAR's bore, not the bar's
 # the screw's hole is NOT its shank where the ring passes it: the insert pocket's
 # mouth sits on the split, and cadkit flares a 45-degree step cone up out of it --
 # into the collar's lowest 0.8, exactly the band the ring runs in. So the clip is
@@ -349,7 +335,7 @@ K_MXMY = (abs(TRRS_XY[0]) + abs(TRRS_XY[1])                                 # -X
 K_PXMY = (abs(SCREW_XY[0]) + abs(SCREW_XY[1])                               # +X-Y (screw)
           - (max(SCREW.shaft_clr_d, SCREW.insert_pilot_d) / 2 + _WEB) * _S2) - CLR * _S2
 _OPEN_DIAG = (LS.TEN_W + 2 * LS.FIT) / 2 * _S2 + S_MAX + CLR   # the opening's -Y diagonals
-for _k, _nm in ((K_MXMY, "-X-Y"), (K_PXMY, "+X-Y")):
+for _k, _nm in ((K_PXMY, "+X-Y"),):
     assert (_k - _OPEN_DIAG) / _S2 >= D.MIN_WALL_2P, (
         "the ring's %s corner is %.2f wide between the mortise's opening and the clip"
         % (_nm, (_k - _OPEN_DIAG) / _S2))
@@ -442,8 +428,9 @@ def _octagon(w: float):
 def _ring_outline():
     poly = [(-ARM_OUT, Y_PLATE_IN), (ARM_SPR, Y_PLATE_IN), (ARM_SPR, Y_HOOK_OUT),
             (-ARM_OUT, Y_HOOK_OUT)]
-    for a, b, c in ((-1, -1, K_MXMY), (1, -1, K_PXMY)):   # the +Y corners are square
-                                                          # now: no screws up there
+    for a, b, c in ((1, -1, K_PXMY),):    # the +Y corners are square (no screws up
+                                         # there), and so is -X-Y now that the TRRS way
+                                         # has left it
         poly = _clip(poly, a, b, c)
     return poly
 
@@ -563,10 +550,9 @@ def screw_dummies(z_mouth: float):
 
 
 # -- the collar ----------------------------------------------------------------------
-def collar(z_mouth: float, trrs_top: float) -> cq.Workplane:
+def collar(z_mouth: float) -> cq.Workplane:
     """The top COLLAR_H of the bar's tower, printed on its own mouth face. Every latch
-    cavity opens at its underside. `trrs_top` is where the bar's TRRS jack way ends
-    (world z): the way continues up into the collar, which closes it."""
+    cavity opens at its underside."""
     p = planes(z_mouth)
     z0 = p["z0"]
     c = box_at(2 * FACE_X, 2 * FACE_Y, COLLAR_H, x=LS.LEG_X, y=LS.LEG_Y,
@@ -627,10 +613,6 @@ def collar(z_mouth: float, trrs_top: float) -> cq.Workplane:
     # the RAILS: what actually holds the collar on (the screw only stops it
     # sliding back off). They stand on the underside, outboard of everything.
     c = c.union(rails(z_mouth))
-    # the TRRS jack way's upper end
-    tx, ty = TRRS_XY
-    c = c.cut(printable_bore(TRRS_COLLAR_D, trrs_top - (z0 - 1.0),
-                             (LS.LEG_X + tx, LS.LEG_Y + ty, z0 - 1.0), (0, 0, 1), COLLAR_UP))
     return c
 
 
