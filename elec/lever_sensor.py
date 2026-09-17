@@ -42,6 +42,8 @@ import json  # noqa: E402
 
 from skidl import ERC, Net, Part, Pin, generate_netlist, subcircuit  # noqa: E402
 
+import netcheck                                     # noqa: E402
+
 P = Pin.types.PASSIVE
 I, O, PWR, PIN = Pin.types.INPUT, Pin.types.OUTPUT, Pin.types.PWRIN, Pin.types.PWRIN
 
@@ -402,6 +404,7 @@ if __name__ == "__main__":
     lever_sensor(tag="lever")
     ERC()
     generate_netlist(file_=os.path.join(OUT_DIR, "lever_sensor.net"))
+    netcheck.grounds_meet(os.path.join(OUT_DIR, "lever_sensor.net"))
     with open(os.path.join(OUT_DIR, "lever_sensor.board.json"), "w") as f:
         json.dump(BOARD_NOTES, f, indent=2)
     print("board %.1f x %.1f mm, %d placements, chip on the axle at (%.1f, %.1f)"

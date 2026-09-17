@@ -86,6 +86,8 @@ import json  # noqa: E402
 
 from skidl import ERC, Net, Part, Pin, generate_netlist, subcircuit  # noqa: E402
 
+import netcheck                                     # noqa: E402
+
 P = Pin.types.PASSIVE
 
 # ── the CAD's package names -> real KiCad footprints ─────────────────────────
@@ -1347,63 +1349,6 @@ BOARD_NOTES = {
 }
 
 
-def _assert_grounds_meet(path):
-    """Every return net must actually reach the others. Nothing else checks this.
-
-    ⚠ TWO GROUND NETS THAT NEVER MEET IS INVISIBLE TO THIS WHOLE PIPELINE. Each net is
-    internally connected, so the ratsnest is empty and DRC is silent; the router routes
-    both without complaint; ERC sees two power nets, each properly driven; the fab
-    builds exactly what it was sent. The board simply does not work, and the first
-    evidence is a bench.
-
-    It happened here on 2026-09-17: PWR_GND carried the buck, the 24 V inlet and the
-    emitter switch, GND carried every load, and no component in the netlist had a pin on
-    both. The buck's return path to its own loads was open.
-
-    So: collect every net whose name reads like a return, and require that they form ONE
-    group once components are allowed to bridge them. A deliberate split with a net tie
-    or a 0R passes, because the tie is a component with a pin on each. A split with
-    nothing between them does not.
-    """
-    import re as _re
-    txt = open(path, encoding="utf-8").read()
-    of_net, by_part = {}, {}
-    for blk in _re.finditer(r'\(net\s+\(code \d+\)\s+\(name "([^"]+)"\).*?'
-                            r'(?=\(net\s+\(code|\Z)', txt, _re.S):
-        name = blk.group(1)
-        for ref, _pin in _re.findall(r'\(ref "([^"]+)"\)\s*\(pin "([^"]+)"\)',
-                                     blk.group(0)):
-            of_net.setdefault(name, set()).add(ref)
-            by_part.setdefault(ref, set()).add(name)
-    # what counts as a return: GND, PWR_GND, AGND, DGND, VSS, and anything _GND
-    grounds = sorted(n for n in of_net
-                     if _re.fullmatch(r"(GND|VSS|[A-Z0-9]+_GND|[AD]GND)", n))
-    if len(grounds) < 2:
-        return len(grounds)
-    par = {g: g for g in grounds}
-
-    def find(a):
-        while par[a] != a:
-            par[a] = par[par[a]]
-            a = par[a]
-        return a
-
-    for nets in by_part.values():
-        touched = [n for n in nets if n in par]
-        for other in touched[1:]:
-            par[find(other)] = find(touched[0])
-    groups = {}
-    for g in grounds:
-        groups.setdefault(find(g), []).append(g)
-    assert len(groups) == 1, (
-        "the return nets do not all meet: %s. Each group is internally connected, so "
-        "DRC, the router and the ratsnest will all be silent and the board will not "
-        "work. Join them with a net tie or a 0R -- a component with a pin on each -- or "
-        "make them one net."
-        % " | ".join("+".join(sorted(v)) for v in groups.values()))
-    return len(grounds)
-
-
 def _assert_matches_cad(net_path):
     """The netlist and the CAD must describe the SAME board, part for part.
 
@@ -1448,7 +1393,7 @@ if __name__ == "__main__":
     ERC()
     generate_netlist(file_=os.path.join(OUT_DIR, "optical.net"))
     _assert_matches_cad(os.path.join(OUT_DIR, "optical.net"))
-    _assert_grounds_meet(os.path.join(OUT_DIR, "optical.net"))
+    netcheck.grounds_meet(os.path.join(OUT_DIR, "optical.net"))
     # ⚠ AND THE CAD'S SOURCING TABLE AGAINST THE NETLIST, every time, because the two
     # files name every part twice and drift apart silently. See elec/mpn_check.py for
     # what the first run found.
