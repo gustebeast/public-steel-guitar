@@ -941,7 +941,15 @@ def _parts():
     #     was one of the four nets the router could not finish at all.
     # Their proximity is the specification. Two columns immediately -X of U7, in the
     # pocket between the buck and the socket, which was empty.
-    _sup_x1 = _j1_x - _phy_w / 2 - CRTYD_GAP - CRTYD["0402"][0] / 2
+    # ⚠ AN ESCAPE LANE, NOT A COURTYARD GAP -- THE SAME 2 mm THE D+/D- FACE GETS, and
+    # the same mistake made twice in one file. Packed at CRTYD_GAP the cluster was legal
+    # and the PHY could not get out: PHY_XI, PHY_XO and PHY_RBIAS all failed to route
+    # with their parts 4 mm away, having routed fine with them 15 to 43 mm away. A
+    # QFN-24 is 24 pins on 0.5 mm pitch and its pads need somewhere to fan out to before
+    # they can turn; 0.15 mm of board is not somewhere. Moving a part CLOSER can make its
+    # net unroutable, which is not intuitive until you have watched it happen.
+    _PHY_FAN = 2.0
+    _sup_x1 = _j1_x - _phy_w / 2 - _PHY_FAN - CRTYD["0402"][0] / 2
     _sup_x2 = _sup_x1 - CRTYD["0402"][0] / 2 - CRTYD_GAP - CRTYD["3225"][0] / 2
     _phy_y = edge_y + _uc_d + _chain_gap + _esd_d + _chain_gap + _phy_d / 2
     _sup_dy = CRTYD["0402"][1] + CRTYD_GAP
