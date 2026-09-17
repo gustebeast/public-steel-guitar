@@ -217,7 +217,11 @@ for _csi in sorted(_fused_segs):
     _seg = chassis_segments[_csi]
     for _rx in CH._MORT_X:
         if _seg_edges[_csi + 1] < _rx < _seg_edges[_csi]:
-            _seg = _seg.cut(_KL_FUSE.rib_mortise(_rx))
+            # THROUGH chassis.mort_segments, not the whole run: the three stations at each end
+            # are two short runs over the feet with the floor between them solid, and re-cutting
+            # them full length here carved that floor straight back out again.
+            for _my0, _my1 in CH.mort_segments(_rx):
+                _seg = _seg.cut(_KL_FUSE.rib_mortise(_rx, _my0, _my1))
     chassis_segments[_csi] = _seg
 # STRING ACCESS through the chassis floor, under each string's endplate channel (see
 # dimensions.string_access_x). LAST in the segment pipeline, like the mortise re-cut, so no

@@ -864,6 +864,23 @@ LIGHT_WIN_DY = XBAR                                  # inboard of the +Y rail's 
 LIGHT_WIN_YC = (RAIL_HI_INNER_Y + WALL_THICKNESS / 2) - LIGHT_WIN_DY
 LIGHT_WIN_Y0 = LIGHT_WIN_YC - LIGHT_WIN_W / 2        # -Y edge: where the mortises stop
 LIGHT_WIN_Y1 = LIGHT_WIN_YC + LIGHT_WIN_W / 2
+
+# THE END STATIONS RUN THE INSTRUMENT'S FULL LENGTH (user, 2026-09-17). Every other mortise
+# stops at the light window's face, but the three outermost at each end are the ones the FEET
+# ride, and a +Y foot slides in from +Y -- so its channel has to be open that way, out through
+# the +Y rail, the way the leg's own grooves used to be. There is no window above a leg anyway
+# (it runs BETWEEN them), so nothing is lost by carrying these through.
+LEVER_FULL_END_N = 3
+MORT_FULL_Y1 = RAIL_HI_INNER_Y + WALL_THICKNESS + 1.0     # out past the +Y rail's outer face
+
+
+def mortise_y_end(station: float) -> float:
+    """The +Y end of the mortise at `station`: the window's face, or the full length for the
+    LEVER_FULL_END_N outermost stations at each end."""
+    g = lever_grid_x()
+    i = min(range(len(g)), key=lambda k: abs(g[k] - station))
+    return (MORT_FULL_Y1 if i < LEVER_FULL_END_N or i >= len(g) - LEVER_FULL_END_N
+            else LIGHT_WIN_Y0)
 BRIDGE_ARM_W      = 6 * BEAD  # 4.8 bridge-endplate bearing-arm / edge-web thickness (Y); the
                             # screw rail widens by this so the rib overlaps it cleanly
 # THE AXLE'S TWO ENDS. It is a plain ground shaft with no shoulder — it has to be, since
