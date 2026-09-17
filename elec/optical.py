@@ -1479,6 +1479,14 @@ if __name__ == "__main__":
     generate_netlist(file_=os.path.join(OUT_DIR, "optical.net"))
     _assert_matches_cad(os.path.join(OUT_DIR, "optical.net"))
     netcheck.grounds_meet(os.path.join(OUT_DIR, "optical.net"))
+    # ⚠ THE CAD PLACES C112/C113 AT THE VCAP PINS AND KEEPS ITS OWN COPY OF THE PIN
+    # NUMBERS. Check the copy: if this map moves and that one does not, the H7's core
+    # regulator capacitors end up beside the wrong pins and nothing downstream -- not the
+    # placement asserts, not DRC, not the router -- would see it.
+    from src import optical_pickup as _cad
+    assert (PIN["VCAP1"], PIN["VCAP2"]) == (_cad.VCAP1_PIN, _cad.VCAP2_PIN), (
+        "VCAP pin numbers disagree: netlist says %s, the CAD places against %s"
+        % ((PIN["VCAP1"], PIN["VCAP2"]), (_cad.VCAP1_PIN, _cad.VCAP2_PIN)))
     # ⚠ AND THE CAD'S SOURCING TABLE AGAINST THE NETLIST, every time, because the two
     # files name every part twice and drift apart silently. See elec/mpn_check.py for
     # what the first run found.
