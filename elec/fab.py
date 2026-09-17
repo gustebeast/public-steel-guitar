@@ -77,8 +77,6 @@ LCSC = {
     "S4B-XH-A": "C157925",          # JST S4B-XH-A(LF)(SN), stock 88,547
     "LMR33630ADDAR": "C841384",     # TI, ESOP-8 (= HSOIC-8 PowerPAD), stock 6,730
     "PJ-102AH": "C3096093",         # CUI PJ-102AH, stock 1,593
-    "PCM1808PWR": "C55513",         # TI PCM1808PWR TSSOP-14, stock 463 -- enough for
-                                    # the panel's x1 per instrument, but thin; re-check
     "MX126-5.0-02P": "C5188434",    # MAX MX126-5.0-02P-GN01-Cu-S-A, stock 48,416
     # The two CLASS lines whose pinout the netlist actually writes out, so a part can be
     # checked against it pin for pin rather than chosen by name:
@@ -120,6 +118,12 @@ OPEN_VALUES = frozenset({
     "FRT5-class 5V",       # true-bypass relay -- pinout is a placeholder
     "PCM5102A-class",      # DAC -- pinout is a placeholder (10 of 20 pins, invented)
     # ── the 2026-09-15 panel respin ──────────────────────────────────────────
+    "PCM1808PWR",          # ⚠ THE PART IS REAL AND STOCKED (C55513, 463, 2026-09-17)
+                           # AND IT STAYS OPEN, because the board around it is not:
+                           # the netlist gives a 14-pin TSSOP 16 pins in an invented
+                           # order and ties SCKI to BCK. Sourcing it would let the
+                           # panel order the moment the other opens close. See the
+                           # AUDIT note at the top of output_panel.py.
     "CH334-class HS hub",  # ⚠ MUST BE HIGH SPEED -- a full-speed hub puts BOTH
                            # devices behind a Transaction Translator and undoes
                            # the whole reason the panel carries a hub. Confirm the
