@@ -37,10 +37,17 @@ joint made with the adapter's plug.
 WHAT THE BAR MUST PRESENT, and it is the only thing this module asks of it:
   * the socket face at JACK_MOUTH (world z), square to the axis and on the spine;
   * a nose that fits NOSE_WAY_D and is no taller than NOSE_H above the mortise floor;
-  * a face flat out to at least PLUG_D, so the plug's shoulder -- not the sleeve's rim --
+  * a face flat out to at least PLUG_D, so the plug's shoulder -- not the collar's rim --
     is what sets the insertion depth.
-Until the jack is sourced those are requirements, not measurements. The bar half waits on
-its datasheet; this half does not depend on which jack it is.
+
+AND IT IS AN INLINE JACK, NOT A BOARD (user, once the part was measured rather than
+envelope'd). The BOM's O9.7 x 40 was never a part: Tensility's own drawing for 10-02135
+gives the jack as 3.5 x 7.8 x L25.8. Since NOSE_H of it is up inside this tenon, only 8.8
+sits below the mortise floor, against 25.1 of bar -- so the PCB-mount jack and the 36.5
+of tower raise that the envelope forced are both off the table, and with them a board, a
+solder operation and 6.5 ladder holes of low-end height adjustment. The bar's female is
+the CUT HALF of the same jack-to-plug cable whose other half is this joint's male pigtail
+at the top of the instrument. See BOM.md.
 """
 
 from __future__ import annotations
