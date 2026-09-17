@@ -879,10 +879,26 @@ that is the one number to watch if the 5 V rail sags over the cable and the XH
 connector, and it is an argument for keeping J2's doubled pins.
 
 U8 and U9 are now **different parts**, which costs one line: U9 stays the
-low-noise `SPX3819` (40 µVrms) on the analog rail, where its ~40 mA load makes
-SOT-23-5 fine. The split is the point — the noisy cheap regulator feeds the MCU,
+low-noise `SPX3819` (40 µVrms) on the analog rail, where its **11.7 mA** load makes
+SOT-23-5 fine (that figure was guessed at "~40 mA" until the budget below was
+itemised; five TLV9064 quads are 538 µA *per amplifier*). The split is the point — the noisy cheap regulator feeds the MCU,
 the quiet one feeds the front end. Cost: **+0.7 mm of board**, and parts actually
 fall $0.20 because the AMS1117 is cheaper than a second SPX3819.
+
+> **⚠ The 5 V rail was never added up** — itemised 2026-09-17 in
+> `elec/optical.py`, every figure from the part's own datasheet. Typical load
+> **324 mA against a 600 mA buck (54 %)**; 499 mA (83 %) with maximum-spec parts at
+> 25 °C and the emitters on. ST's 85 °C characterisation maximum would put it at
+> 679 mA, *over* the buck — but that is 400 mA of MCU with every peripheral on a
+> 176-pin part enabled, which this firmware does not do. The real conclusion is
+> that **enabling peripherals is a power decision on this board**, and that raising
+> emitter drive to the IR17‑21C's 65 mA rating is dead: 650 mA of emitters alone
+> exceeds the buck.
+>
+> ⚠ This paragraph's dropout warning is also stale: it predates the board taking
+> **24 V** and generating 5 V locally. The 5 V rail no longer crosses a cable or a
+> connector, so cable sag cannot eat U8's dropout margin. J2's doubled pins are
+> still right, for the 24 V.
 
 **Nothing is now outstanding on this board's schematic.**
 
