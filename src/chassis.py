@@ -283,8 +283,41 @@ def mort_segments(station):
     near = _KLY.MOUNT_Y + _KLY.MORT_Y0                   # -Y mouth, outboard of the -Y rail
     if abs(D.mortise_y_end(station) - D.LIGHT_WIN_Y0) < 1e-9:
         return [(near, D.LIGHT_WIN_Y0)]
+    # ...and the +Y run of the +X-most few stops short of the STRING ACCESS CHANNELS, which drop
+    # through the floor right there (user). That leaves those stations no way out +Y, so the +Y
+    # foot simply does without a tenon on them -- which the adapter works out for itself.
+    g = sorted(D.lever_grid_x())
+    i = min(range(len(g)), key=lambda k: abs(g[k] - station))
+    far = (D.ACCESS_CLEAR_Y if i >= len(g) - D.LEVER_ACCESS_END_N else D.MORT_FULL_Y1)
     return [(near, LEG_Y[1] + LEG_W / 2.0),              # over the -Y foot, open -Y
-            (LEG_Y[0] - LEG_W / 2.0, D.MORT_FULL_Y1)]    # over the +Y foot, open +Y
+            (LEG_Y[0] - LEG_W / 2.0, far)]               # over the +Y foot
+
+
+def foot_tenon_runs(sx, ly, syg):
+    """[(station, y0, y1)] the tenon runs a foot at (sx, ly) can actually use.
+
+    ONE place decides this, because two parts need the same answer: the body adapter builds a
+    tenon per run, and the leg's lock pin has to know which is the OUTERMOST one it can pin. A
+    run counts when a mortise is there at all, and when it is open the way that corner slides
+    in -- a foot goes outboard along Y, so a run that stops short of its outboard face is no
+    use to it however long it is."""
+    out = []
+    for st in D.lever_grid_x():
+        if abs(st - sx) > LEG_W / 2.0 - LEG_TEN_W / 2.0 + 1e-9:
+            continue
+        y0, y1 = ly - LEG_W / 2.0, ly + LEG_W / 2.0
+        seg = next((q for q in mort_segments(st) if q[0] < y1 and q[1] > y0), None)
+        if seg is None:
+            continue
+        y0, y1 = max(y0, seg[0]), min(y1, seg[1])
+        if syg > 0 and seg[1] < ly + LEG_W / 2.0 - 1e-9:
+            continue
+        if syg < 0 and seg[0] > ly - LEG_W / 2.0 + 1e-9:
+            continue
+        if y1 - y0 < 1.0:
+            continue
+        out.append((st, y0, y1))
+    return out
 
 
 def _mort_cutters(x0=None, x1=None):
@@ -569,6 +602,7 @@ EP_TIP_PX = D.BRIDGE_BASE_X1              # bridge +X outer tip (8.5) -- the ACT
 # gate cannot catch it -- leg_body_stub<->chassis is an allowlisted designed
 # contact, so it is blind to that pair forever. Import the real value instead.
 from .legs import SQ_W as LEG_W
+from .legs import STUB_TEN_W as LEG_TEN_W
 from .legs import SHELL_GAP as _SHELL_GAP
 assert abs(_SHELL_GAP - EP_LEG_CLR) < 1e-9, (
     "legs.SHELL_GAP must equal EP_LEG_CLR: the endplate's foot pocket sits a clearance "

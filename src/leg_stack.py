@@ -463,19 +463,7 @@ def body_adapter(sx: float = LEG_X, ly: float = LEG_Y):
     # authority on where each station's mortise actually runs -- one run for most, two short
     # runs (one per foot) for the three at each end -- and a tenon is clamped to the run it sits
     # in and kept only if that run opens the way this corner slides in.
-    for st in D.lever_grid_x():
-        dx = st - sx
-        if abs(dx) > LEG_W / 2.0 - LG.STUB_TEN_W / 2.0 + 1e-9:
-            continue
-        y0, y1 = ly - LEG_W / 2.0, ly + LEG_W / 2.0
-        seg = next((q for q in CH.mort_segments(st) if q[0] < y1 and q[1] > y0), None)
-        if seg is None:
-            continue
-        y0, y1 = max(y0, seg[0]), min(y1, seg[1])
-        if syg > 0 and seg[1] < ly + LEG_W / 2.0 - 1e-9:
-            continue
-        if syg < 0 and seg[0] > ly - LEG_W / 2.0 + 1e-9:
-            continue
+    for st, y0, y1 in CH.foot_tenon_runs(sx, ly, syg):
         # ...AND IT KEEPS OFF THE KEYHEAD'S HEIGHT-SCREW HEADS. Their button heads hang down
         # into the chassis floor in their own cavities, right where the -X/+Y foot's tenons
         # want to run, so a tenon is cut back a two-bead web clear of any cavity it would meet.
@@ -497,18 +485,21 @@ def body_adapter(sx: float = LEG_X, ly: float = LEG_Y):
             continue
         b = b.union(LG._stub_ridge(y1 - y0).translate((st, y0, Z_TOP)))
     # M4 LOCK PIN, the adapter's ONLY screw (user): it threads into an insert in the ENDPLATE
-    # and carries on through the chassis floor into this foot's OUTERMOST TENON, which it pins --
-    # that is what stops the foot sliding back out along Y. Same legs helper the endplate's and
-    # the chassis' halves come from, shaped by cadkit for this part's print.
+    # and carries on through the chassis floor into this foot's TENONS, which it pins -- that is
+    # what stops the foot sliding back out along Y. Same legs helper the endplate's and the
+    # chassis' halves come from, shaped by cadkit for this part's print.
     b = b.cut(LG.tongue_pin_cutter(sx, ly, egx, Z_TOP, ADAPTER_UP, syg))
-    # ...and the strip of tenon ABOVE that hole comes off. The tenon is 8.6 tall and the hole is
-    # centred at LOCK_Z, so 0.6 would be left over it -- a sliver on the one feature doing the
-    # pinning. Taken away, the pin sits in a NOTCH and bears on the tenon's Y walls instead.
-    _pin_y = ly + syg * LG.LOCK_PIN_DY
-    _pin_x = sx + egx * LG.outer_tenon_offset(sx, egx)
+    # ...and the strip of tenon ABOVE that hole comes off, the whole way along the pin. The
+    # tenon is 8.6 tall and the hole is centred at LOCK_Z, so 0.6 would be left over it -- a
+    # sliver on the very feature doing the pinning. Taken away, the pin sits in a NOTCH and
+    # bears on the tenon's Y walls. Spans face to tip, because on most corners the pin crosses
+    # more than one tenon.
     from cadkit.fasteners import M4 as _M4L
-    b = b.cut(box_at(LG.STUB_TEN_W + 1.0, _M4L.shaft_clr_d, 8.0,
-                     x=_pin_x, y=_pin_y,
+    _pin_y = ly + syg * LG.LOCK_PIN_DY
+    _x_face = sx + egx * LEG_W / 2.0
+    _x_tip = _x_face - egx * (LG.LOCK_RECESS + LG.LOCK_SCREW_L)
+    b = b.cut(box_at(abs(_x_face - _x_tip), _M4L.shaft_clr_d, 8.0,
+                     x=(_x_face + _x_tip) / 2.0, y=_pin_y,
                      z=Z_TOP + LG.LOCK_Z + 4.0))
     return b
 
