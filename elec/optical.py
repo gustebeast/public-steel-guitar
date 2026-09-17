@@ -185,16 +185,51 @@ PIN = {  # port name -> LQFP176 pin
 #     disconnects the ULPI signal, and the failure looks like a dead PHY.
 #   * These two pins are therefore NOT available as ADC inputs, which is why the
 #     photodiode budget below excludes them.
+# ⚠ ULPI_DIR AND ULPI_NXT SIT ON ANALOG-ONLY PINS, AND THAT IS CORRECT -- BUT IT
+# COSTS A FIRMWARE LINE THAT NOTHING ELSE IN THIS PROJECT WOULD TELL YOU ABOUT.
+#
+# On the STM32H743, PC2 and PC3 have TWO pads on the die: the ordinary digital pad and
+# a "_C" pad wired straight to ADC3 for a low-impedance analog path. On the LQFP176
+# ONLY THE _C PAD IS BONDED OUT -- ST's LQFP176 pinout (DS12110 Fig. 9) brings out
+# PC2_C at pin 34 and PC3_C at pin 35, and PC2/PC3 appear on no LQFP176 pin at all.
+# The pin table gives PC2_C and PC3_C an I/O structure of "ANA" with an EMPTY alternate
+# function column, which reads like a hard fault: OTG_HS_ULPI_DIR is an alternate
+# function of PC2, and PC2 is not on this package.
+#
+# Footnote 6 of that table is what rescues it: "There is a direct path between Pxy_C and
+# Pxy pins/balls, through an analog switch. Pxy alternate functions are available on
+# Pxy_C WHEN THE ANALOG SWITCH IS CLOSED." The switch is closed at reset (SYSCFG_PMCR
+# PC2SO/PC3SO default to 0), so the board works out of the box and a bring-up would
+# never surface this.
+#
+# ⚠ THE TRAP IS SHAPED EXACTLY LIKE THIS BOARD. Those switches exist so that ADC3 can
+# reach the _C pads directly, and OPENING them is what an ADC-heavy design does to get
+# the best analog performance -- which is precisely what this board is. Anyone tuning
+# the twenty-channel front end, reading "direct channels optimise ADC performance" and
+# setting PC2SO/PC3SO would disconnect ULPI_DIR and ULPI_NXT from the PHY and USB would
+# stop enumerating, with nothing in the schematic, the netlist or DRC to point at.
+# So: SYSCFG_PMCR PC2SO and PC3SO MUST STAY 0, and ADC3_INP0 / ADC3_INP1 (the direct
+# channels on those two pads) ARE NOT AVAILABLE to this design. They are not in
+# ADC_PAIRS below and must not be added.
+#
+# The other ten assignments were checked the same way, against DS12110's pin table:
+# all ten name their OTG_HS_ULPI_* function on the port this map uses.
 ULPI = {"ULPI_D0": "PA3", "ULPI_D1": "PB0", "ULPI_D2": "PB1", "ULPI_D3": "PB10",
         "ULPI_D4": "PB11", "ULPI_D5": "PB12", "ULPI_D6": "PB13", "ULPI_D7": "PB5",
         "ULPI_CK": "PA5", "ULPI_STP": "PC0", "ULPI_DIR": "PC2_C",
         "ULPI_NXT": "PC3_C"}
 
 # ── THE ADC MAP, and the pair skew it cannot avoid ───────────────────────────
-# 28 of the LQFP144's pins are ADC-capable; ULPI takes seven of them; 21 are left
-# and the board needs 20. IT CLOSES WITH ONE SPARE (PF14), which is worth stating
-# plainly because it is the tightest constraint on the whole board and it is the
-# reason the part is an LQFP144 rather than the cheaper LQFP100 (16 channels).
+# ⚠ THE COUNTING BELOW WAS DONE FOR THE LQFP144 AND THE PART IS NOW AN LQFP176. The
+# arithmetic that follows -- 28 ADC-capable pins, ULPI taking seven, 21 left for 20
+# channels, one spare -- described the 144 and is kept because it is why the board is
+# not an LQFP100 (16 channels) and why the channel-to-ADC split is what it is. On the
+# 176 the constraint is looser, not tighter, so nothing here becomes unsafe; but the
+# "one spare" is no longer the true headroom and the pin-crowding argument at the end
+# of this note ("twelve on the strip-facing edge and eight round the corner") was
+# measured on the 144's pinout and has NOT been re-measured on the 176.
+# The pair mapping itself is package-independent: ADC channel numbers follow the PORT
+# pin (PF3 is ADC3_INP5 on any package), so ADC_PAIRS did not have to move.
 #
 # ⚠ A STRING'S TWO DETECTORS SHOULD BE SAMPLED AT THE SAME INSTANT, AND THEY CANNOT
 # ALL BE. SUM and DIFF are formed from a pair, so any time skew between A and B
