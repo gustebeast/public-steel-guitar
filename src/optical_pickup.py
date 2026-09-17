@@ -850,6 +850,34 @@ def _parts():
     # what happened the first time this was written: taking the buck out of the packer
     # shortened the board by its row height, and the hand-typed cluster below ended up
     # off the -Y edge.
+    # ⚠ NOTHING IN THIS FILE KEEPS A DECOUPLING CAPACITOR NEAR THE PART IT DECOUPLES,
+    # AND THE ROW PACKER SPREADS THEM. Measured on the placed board, 2026-09-17:
+    #
+    #     U8  (AMS1117, 207-272 mA) -> C162, its nearest INPUT cap      20.7 mm
+    #     U8                        -> C131, its nearest OUTPUT cap     26.2 mm
+    #     U9  (SPX3819)             -> C140 in                          13.7 mm
+    #     U9                        -> C132 out                         23.1 mm
+    #     U13 (buck, 1.1 MHz)       -> C160, the INPUT bulk             13.5 mm
+    #     U13                       -> C162, the OUTPUT bulk            21.5 mm
+    #
+    # ⚠ THESE ARE NOT COSMETIC DISTANCES. The AMS1117 and the SPX3819 both require an
+    # output capacitor CLOSE to the device to be stable at all -- it is a compensation
+    # element, not a filter, and 26 mm of track is inductance in the feedback path of a
+    # regulator that was characterised with a capacitor at its pin. And U13's input loop
+    # (C160 -> U13 -> return) is the highest di/dt loop on the board; at 13.5 mm it
+    # encloses area that radiates into twenty transimpedance amplifiers reading
+    # nanoamps, which is the one thing this board's whole layout is arranged to avoid.
+    #
+    # ⚠ AND IT CONTRADICTS A CLAIM MADE ELSEWHERE IN THIS PROJECT. The commit that
+    # merged PWR_GND into GND argued that the switcher stays quiet because "U13, C160
+    # and C162 sit in one row so the high-di/dt loop is short". They do sit in one row.
+    # The row is 31 mm long and the packer spread them along it, so the loop is NOT
+    # short, and that sentence was written from the source rather than from a
+    # measurement. The ground merge is still right -- a plane beats a split either way
+    # -- but it is not doing the work that argument gave it.
+    #
+    # THE FIX IS A PLACEMENT CHANGE, NOT A NETLIST ONE, and it will move parts and
+    # re-open the routing, so it is recorded here rather than done in passing.
     _buck = (("U13", "buck -- 24V -> 5V, the board's only switcher", "SOT-23-6", -35.0),
              ("L1", "buck output inductor", "IND-4040", -28.0),
              ("C160", "24 V input bulk -- 50 V part, see 1206C", "1206C", -21.5),
