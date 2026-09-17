@@ -221,6 +221,7 @@ PKG = {
                                       # scarce direction in a 14 mm band.
     "QFN-24":   (4.00, 4.00, 0.90),
     "LQFP144":  (22.00, 22.00, 1.60), # JEDEC MS-026: 20x20 body, 22x22 over leads
+    "LQFP176":  (26.00, 26.00, 1.60), # JEDEC MS-026: 24x24 body, 26x26 over leads
     "3225":     (3.20, 2.50, 0.90),
     "USB-C":    (8.94, 7.35, 3.16),   # TYPE-C-31-M-12 (LCSC C165948)
     # J2 is a FOUR-way on the -Y EDGE, mouth facing -Y alongside the USB-C, so every cable
@@ -295,6 +296,7 @@ CRTYD = {
     "SOIC-14":  (7.49, 9.25),
     "QFN-24":   (5.35, 5.35),
     "LQFP144":  (23.39, 23.39),
+    "LQFP176":  (27.36, 27.36),   # KiCad LQFP-176_24x24mm_P0.5mm F.CrtYd
     "3225":     (4.29, 3.59),
     "IND-4040": (5.15, 4.59),
     "USB-C":    (10.73, 9.51),
@@ -677,16 +679,18 @@ def _parts():
     # LQFP144 hard -X and moving that screw hard +X lets the two share the band, and every
     # row below inherits the saving. The board's -Y end is a cantilever, so length taken off
     # here is worth more than the same length taken off anywhere else.
+    # LQFP176, not LQFP144: the ZIT6 went out of stock (see U6 in elec/optical.py).
+    _MCU_PKG = "LQFP176"
     y = Y_TAIL - CRTYD_GAP
-    y -= CRTYD["LQFP144"][1] / 2
+    y -= CRTYD[_MCU_PKG][1] / 2
     # X is anchored to the TAIL SCREW, not to the board edge. The screw is the only hard
     # obstacle on this row, so the MCU sits as far +X as it may -- which is what turns the
     # straightened -X edge into ESCAPE ANNULUS (6.6 mm) instead of just sliding the package
     # along with it. Anchoring to x0 would have kept the old 1.20 mm and wasted the change.
     _mcu_x1 = MOUNT_X_TAIL - MOUNT_CLR - ROW_GAP
-    add("U6", "MCU -- STM32H743ZIT6, 20x 16-bit ADC ch, USB OTG_HS via ULPI", "LQFP144",
-        _mcu_x1 - CRTYD["LQFP144"][0] / 2, y)
-    y -= CRTYD["LQFP144"][1] / 2 + CRTYD_GAP
+    add("U6", "MCU -- STM32H743IIT6, 20x 16-bit ADC ch, USB OTG_HS via ULPI", _MCU_PKG,
+        _mcu_x1 - CRTYD[_MCU_PKG][0] / 2, y)
+    y -= CRTYD[_MCU_PKG][1] / 2 + CRTYD_GAP
 
     # POWER + AUDIO INPUT is no longer here -- J2 moved to the -Y EDGE, beside the USB-C,
     # so both cables leave the board at the same end (see the placement after this block).
@@ -1039,8 +1043,9 @@ MPN_UNKNOWN = "OPEN"        # deliberately unresolved -- see BOM.md, blocks orde
 # ref-prefix -> (mpn, lcsc, unit_usd, note). Longest prefix wins, so "PD" beats "P".
 _MPN_RULES = (
     # --- resolved, verified in LCSC stock 2026-08-01 ---
-    ("U6",   ("STM32H743ZIT6",   "C114408",  9.93,  "LQFP144; 20 ADC ch. @10 price. "
-                                                    "STOCK 7 -- short for a run of 10")),
+    ("U6",   ("STM32H743IIT6",   "C89597",   10.005, "LQFP176; same die as the ZIT6 (20 ADC ch, "
+                                                    "OTG_HS, 2 MB). @10 price. 548 in stock "
+                                                    "2026-09-17; the LQFP144 ZIT6 showed 0.")),
     ("U7",   ("USB3343-CP",      "C633347",  2.6398, "ULPI HS PHY, QFN-24. @10 price. "
                                                 "*** OUT OF STOCK at LCSC 2026-08-04 ***")),
     ("U10",  ("USBLC6-2SC6",     "C7519",    0.1829, "USB ESD array, @5+. NOTE SOT-23-6, not the "

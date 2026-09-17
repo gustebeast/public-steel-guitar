@@ -103,6 +103,7 @@ FP = {
     "0805OPT":  "LED_SMD:LED_0805_2012Metric",
     "SOIC-14":  "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm",
     "LQFP144":  "Package_QFP:LQFP-144_20x20mm_P0.5mm",
+    "LQFP176":  "Package_QFP:LQFP-176_24x24mm_P0.5mm",
     "QFN-24":   "Package_DFN_QFN:HVQFN-24-1EP_4x4mm_P0.5mm_EP2.5x2.5mm",
     "SOT-223":  "Package_TO_SOT_SMD:SOT-223-3_TabPin2",
     "SOT-23":   "Package_TO_SOT_SMD:SOT-23",
@@ -135,35 +136,46 @@ _C_0402 = "Capacitor_SMD:C_0402_1005Metric"
 #  R_0402, 10 ballasts on R_0603, 30 Cf/Cd on C_0402.)
 
 
-# ── STM32H743ZIT6, LQFP144 ───────────────────────────────────────────────────
+# ── STM32H743IIT6, LQFP176 ───────────────────────────────────────────────────
+# ⚠ THE PART CHANGED FOR STOCK, NOT FOR DESIGN (user, 2026-09-17). The LQFP144
+# STM32H743ZIT6 showed ZERO at JLCPCB; the LQFP176 STM32H743IIT6 had 548 (C89597,
+# $10.01 @10 against $9.93). It is the same die -- same ADCs, same OTG_HS, same 2 MB
+# flash -- so every PORT assignment below (the ADC pairs, ULPI) carries over unchanged,
+# and only the pin NUMBERS move. The alternative was the H750ZBT6 in the same LQFP144,
+# which would have kept the footprint but cost 1.9 MB of flash and an external QSPI part.
+#
 # ⚠ PIN NUMBERS READ OUT OF KiCad's OWN ST SYMBOL LIBRARY (MCU_ST_STM32H7.kicad_sym,
-# symbol STM32H743ZITx), not recalled. That library is generated from ST's CubeMX
-# database, so it is a source that can be pointed at rather than a memory. The VSS
-# numbers are the eight pins the symbol leaves unnamed plus the one it names -- the
-# symbol collapses stacked grounds, and a footprint needs all 144 pads netted.
-MCU_VDD = (17, 30, 39, 52, 62, 72, 84, 108, 121, 131, 144)
-MCU_VSS = (16, 38, 51, 61, 83, 94, 107, 120, 130)
-PIN = {  # port name -> LQFP144 pin
-    "PA0": 34, "PA1": 35, "PA2": 36, "PA3": 37, "PA4": 40, "PA5": 41,
-    "PA6": 42, "PA7": 43, "PA13": 105, "PA14": 109,
-    "PB0": 46, "PB1": 47, "PB3": 133, "PB4": 134, "PB5": 135,
-    "PB10": 69, "PB11": 70, "PB12": 73, "PB13": 74,
-    "PC0": 26, "PC1": 27, "PC2_C": 28, "PC3_C": 29, "PC4": 44, "PC5": 45,
-    "PF3": 13, "PF4": 14, "PF5": 15, "PF6": 18, "PF7": 19, "PF8": 20,
-    "PF9": 21, "PF10": 22, "PF11": 49, "PF12": 50, "PF13": 53, "PF14": 54,
-    "PH0": 23, "PH1": 24,
-    "NRST": 25, "BOOT0": 138, "PDR_ON": 143,
-    "VBAT": 6, "VDDA": 33, "VSSA": 31, "VREF+": 32, "VDD33_USB": 95,
-    "VCAP1": 71, "VCAP2": 106,
+# symbol STM32H743IITx), not recalled. That library is generated from ST's CubeMX
+# database. The method was checked before it was trusted: re-deriving the old LQFP144
+# map from symbol STM32H743ZITx the same way reproduced all 49 entries exactly, and
+# every port this board uses exists on the LQFP176.
+MCU_VDD = (15, 23, 36, 49, 62, 72, 82, 91, 103, 127, 136, 149, 159, 172)
+MCU_VSS = (14, 22, 48, 61, 71, 90, 102, 113, 126, 135, 148, 158)
+PIN = {  # port name -> LQFP176 pin
+    "PA0": 40, "PA1": 41, "PA2": 42, "PA3": 47, "PA4": 50, "PA5": 51,
+    "PA6": 52, "PA7": 53, "PA13": 124, "PA14": 137,
+    "PB0": 56, "PB1": 57, "PB3": 161, "PB4": 162, "PB5": 163,
+    "PB10": 79, "PB11": 80, "PB12": 92, "PB13": 93,
+    "PC0": 32, "PC1": 33, "PC2_C": 34, "PC3_C": 35, "PC4": 54, "PC5": 55,
+    "PF3": 19, "PF4": 20, "PF5": 21, "PF6": 24, "PF7": 25, "PF8": 26,
+    "PF9": 27, "PF10": 28, "PF11": 59, "PF12": 60, "PF13": 63, "PF14": 64,
+    "PH0": 29, "PH1": 30,
+    "NRST": 31, "BOOT0": 166, "PDR_ON": 171,
+    "VBAT": 6, "VDDA": 39, "VSSA": 37, "VREF+": 38, "VDD33_USB": 114,
+    "VCAP1": 81, "VCAP2": 125,
 }
 
 # ── ULPI, and it takes seven pins the ADC wanted ─────────────────────────────
 # The OTG_HS ULPI mapping is essentially fixed on this part -- most of these signals
-# have exactly one pin, and the alternates that exist (PI11 for DIR, PH4 for NXT)
-# are not bonded out on LQFP144. So this is not a choice, it is the only mapping.
+# have exactly one pin. The alternates for DIR and NXT (PI11, PH4) were not bonded
+# out on the LQFP144 this map was written for; on the LQFP176 they ARE (pins 13 and
+# 45), so moving DIR/NXT off the analog-switch pads below is now possible. It is NOT
+# done here: the swap to LQFP176 was for stock, and changing two ULPI pins in the same
+# step would mix a stock fix with a design change. Worth doing deliberately.
 #
 # ⚠ ULPI_DIR AND ULPI_NXT LAND ON PC2_C / PC3_C, WHICH ARE NOT ORDINARY PINS.
-# On H7 in LQFP144 the package pin reaches the digital IO through an ANALOG SWITCH
+# On H7 (LQFP144 and LQFP176 alike) the package pin reaches the digital IO through an
+# ANALOG SWITCH
 # controlled by SYSCFG_PMCR (PC2SO/PC3SO). The switch is CLOSED by default -- 0 =
 # closed -- and the digital alternate functions are available through it, so ULPI
 # works. Two consequences for whoever writes the firmware and reads this netlist:
@@ -347,11 +359,11 @@ def optical():
             gnd += c[2]
 
     # ── U6: the MCU ──────────────────────────────────────────────────────────
-    mcu_pins = sorted(set(range(1, 145)))
-    u6 = Part(name="STM32H743ZIT6", ref_prefix="U", ref="U6", dest="NETLIST",
-              tool="skidl", value="STM32H743ZIT6",
-              description="MCU, LQFP144, 20x ADC + OTG_HS ULPI (LCSC C114408)",
-              footprint="Package_QFP:LQFP-144_20x20mm_P0.5mm",
+    mcu_pins = sorted(set(range(1, 177)))
+    u6 = Part(name="STM32H743IIT6", ref_prefix="U", ref="U6", dest="NETLIST",
+              tool="skidl", value="STM32H743IIT6",
+              description="MCU, LQFP176, 20x ADC + OTG_HS ULPI (LCSC C89597)",
+              footprint="Package_QFP:LQFP-176_24x24mm_P0.5mm",
               pins=[Pin(num=n, func=P) for n in mcu_pins])
     for n in MCU_VDD:
         v3d += u6[n]
@@ -388,7 +400,7 @@ def optical():
     vcap1, vcap2 = Net("VCAP1"), Net("VCAP2")
     vcap1 += u6[PIN["VCAP1"]]
     vcap2 += u6[PIN["VCAP2"]]
-    # Every remaining pin is unconnected ON PURPOSE. The LQFP144 brings out far more
+    # Every remaining pin is unconnected ON PURPOSE. The LQFP176 brings out far more
     # IO than this board uses; naming each one keeps ERC honest instead of silent.
     used = set(MCU_VDD) | set(MCU_VSS) | {
         PIN[k] for k in ("VSSA", "VDDA", "VREF+", "VBAT", "VDD33_USB", "PDR_ON",
