@@ -457,49 +457,59 @@ def body_adapter(sx: float = LEG_X, ly: float = LEG_Y):
     # the grid's station where the grid reaches this corner (_cross_x(egx, sx)) and stops where
     # the mortises stop -- they end at the light window's face, and a ridge that ran the full
     # 44.8 past it drove 515 mm3 straight into the floor.
-    mid_cut = LG.service_slide(egx, syg)
-    for i, dx in enumerate(LG._cross_x(egx, sx)):
-        cut = mid_cut if i == 0 else 0.0        # the middle ridge gives up its inboard end
-        if cut >= LEG_W - 1e-9:
+    # A TENON IN EVERY MORTISE OVER THIS FOOT (user, 2026-09-17). Not two stations picked out
+    # of the grid: every station whose tenon fits inside the foot's own footprint gets one, so
+    # nothing above the foot is left as an unused slot. chassis.mort_segments is the one
+    # authority on where each station's mortise actually runs -- one run for most, two short
+    # runs (one per foot) for the three at each end -- and a tenon is clamped to the run it sits
+    # in and kept only if that run opens the way this corner slides in.
+    for st in D.lever_grid_x():
+        dx = st - sx
+        if abs(dx) > LEG_W / 2.0 - LG.STUB_TEN_W / 2.0 + 1e-9:
             continue
-        y0 = ly - LEG_W / 2.0 + (cut if syg > 0 else 0.0)
-        y1 = y0 + (LEG_W - cut)
-        on_grid = abs(D.rib_comb_x(sx + dx) - (sx + dx)) < 1e-6
-        # a ridge that could NOT take a station but still lands in the floor has nowhere to go:
-        # the chassis cuts only its grid there and will not make room (user). Drop it.
-        b0, b1 = D.bottom_span()
-        if not on_grid and b0 - LG.STUB_TEN_W < sx + dx < b1 + LG.STUB_TEN_W:
+        y0, y1 = ly - LEG_W / 2.0, ly + LEG_W / 2.0
+        seg = next((q for q in CH.mort_segments(st) if q[0] < y1 and q[1] > y0), None)
+        if seg is None:
             continue
-        if on_grid:
-            # THE MORTISE RUN THIS FOOT SITS IN. chassis.mort_segments is the one authority on
-            # where a station's mortise actually is: one run for most stations, and for the three
-            # at each end two SHORT runs, one over each foot with the floor between them solid.
-            # The ridge is clamped to the run it overlaps...
-            seg = next((q for q in CH.mort_segments(sx + dx) if q[0] < y1 and q[1] > y0), None)
-            if seg is None:
-                continue
-            y0, y1 = max(y0, seg[0]), min(y1, seg[1])
-            # ...and kept only if that run is OPEN the way this corner installs. The foot slides
-            # outboard along Y, so the run has to carry on past the adapter's own outboard face;
-            # against a run that stops short the ridge would drag through the floor going in.
-            if syg > 0 and seg[1] < ly + LEG_W / 2.0 - 1e-9:
-                continue
-            if syg < 0 and seg[0] > ly - LEG_W / 2.0 + 1e-9:
-                continue
+        y0, y1 = max(y0, seg[0]), min(y1, seg[1])
+        if syg > 0 and seg[1] < ly + LEG_W / 2.0 - 1e-9:
+            continue
+        if syg < 0 and seg[0] > ly - LEG_W / 2.0 + 1e-9:
+            continue
+        # ...AND IT KEEPS OFF THE KEYHEAD'S HEIGHT-SCREW HEADS. Their button heads hang down
+        # into the chassis floor in their own cavities, right where the -X/+Y foot's tenons
+        # want to run, so a tenon is cut back a two-bead web clear of any cavity it would meet.
+        # Derived from nut_block's own screw positions, not from a hand-set slide length.
+        from . import nut_block as _NBA
+        _r = _NBA.HS_HEAD_CAV_D / 2.0 + D.MIN_WALL_2P
+        for _i in range(D.N_STRINGS):
+            _hx, _hy = _NBA.height_screw_xy(_i)
+            _hx += D.NUT_BLOCK_X
+            if abs(_hx - st) > _NBA.HS_HEAD_CAV_D / 2.0 + LG.STUB_TEN_W / 2.0:
+                continue                       # not in this tenon's X band
+            if not (_hy - _r < y1 and _hy + _r > y0):
+                continue                       # not in its Y run
+            if _hy < (y0 + y1) / 2.0:
+                y0 = max(y0, _hy + _r)
+            else:
+                y1 = min(y1, _hy - _r)
         if y1 - y0 < 1.0:
             continue
-        ridge = LG._stub_ridge(y1 - y0).translate((sx + dx, y0, Z_TOP))
-        b = b.union(ridge)
-    b = b.union(box_at(LG.STUB_TNG_W, LEG_W, LG.STUB_TNG_H,
-                       x=sx + egx * LG.STUB_RIDGE_EP, y=ly,
-                       z=Z_TOP + LG.STUB_TNG_H / 2.0))
-    # M4 LOCK PIN, the adapter's ONLY screw (user): the set screw from the endplate's
-    # insert crosses the tongue along X, locking the leg in the body and the endplate to
-    # the chassis. Its SECOND hole, SERVICE_SLIDE inboard along the tongue, is where that
-    # screw lands with the leg slid out to its service position (legs.SERVICE_SLIDE).
-    # The same legs helper the endplate's half comes from, shaped by cadkit.
-    for dy in (0.0,) + ((-syg * mid_cut,) if mid_cut else ()):
-        b = b.cut(LG.tongue_pin_cutter(sx, ly + dy, egx, Z_TOP, ADAPTER_UP, syg))
+        b = b.union(LG._stub_ridge(y1 - y0).translate((st, y0, Z_TOP)))
+    # M4 LOCK PIN, the adapter's ONLY screw (user): it threads into an insert in the ENDPLATE
+    # and carries on through the chassis floor into this foot's OUTERMOST TENON, which it pins --
+    # that is what stops the foot sliding back out along Y. Same legs helper the endplate's and
+    # the chassis' halves come from, shaped by cadkit for this part's print.
+    b = b.cut(LG.tongue_pin_cutter(sx, ly, egx, Z_TOP, ADAPTER_UP, syg))
+    # ...and the strip of tenon ABOVE that hole comes off. The tenon is 8.6 tall and the hole is
+    # centred at LOCK_Z, so 0.6 would be left over it -- a sliver on the one feature doing the
+    # pinning. Taken away, the pin sits in a NOTCH and bears on the tenon's Y walls instead.
+    _pin_y = ly + syg * LG.LOCK_PIN_DY
+    _pin_x = sx + egx * LG.outer_tenon_offset(sx, egx)
+    from cadkit.fasteners import M4 as _M4L
+    b = b.cut(box_at(LG.STUB_TEN_W + 1.0, _M4L.shaft_clr_d, 8.0,
+                     x=_pin_x, y=_pin_y,
+                     z=Z_TOP + LG.LOCK_Z + 4.0))
     return b
 
 
