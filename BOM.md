@@ -559,7 +559,7 @@ ADC inputs plus a 12-signal ULPI bus will not fit a 64-pin part.
 |-----|-----|-------------|---------|---------------|
 | 1 | U6 | MCU — **STM32H743IIT6**, 20× 16-bit ADC ch, USB OTG_HS via ULPI | LQFP176 | 26.00 × 26.00 × 1.60 |
 | 1 | J1 | USB-C receptacle — 10 ch audio + MIDI + DFU | USB-C | 8.94 × 7.35 × 3.16 |
-| 1 | J2 | **24 V in** from the instrument trunk — side entry, −X edge, 2 cavities empty | XH-SM-4 | 6.10 × 15.00 × 7.00 |
+| 1 | J2 | **24 V in** from the instrument trunk — side entry, −X edge, 2 cavities empty ⚠ **no source yet, see below** | XH-SM-4 | 6.10 × 15.00 × 7.00 |
 | 5 | U1–U5 | quad op-amp — 4× transimpedance amp | SOIC-14 | 6.00 × 8.65 × 1.75 |
 | 1 | U7 | USB 2.0 high-speed ULPI PHY | QFN-24 | 4.00 × 4.00 × 0.90 |
 | 1 | U8 | LDO — 3V3 digital, **AMS1117-3.3, tab = VOUT not GND** (0.51 W) | **SOT-223** | 6.50 × 3.50 × 1.80 |
