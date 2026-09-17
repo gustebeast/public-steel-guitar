@@ -396,7 +396,7 @@ def output_panel():
 
     # ── U6: 5 -> 3.3 V for the MCU, the hub and the converters' digital side ─
     u6 = Part(name="LDO_3V3", ref_prefix="U", tag="U6", dest="NETLIST", tool="skidl",
-              value="3V3 LDO 300mA", description="5 V -> 3V3, AFTER the bead",
+              value="AP2112K-3.3TRG1", description="5 V -> 3V3, AFTER the bead",
               footprint="Package_TO_SOT_SMD:SOT-23-5",
               pins=[Pin(num=i, func=P) for i in range(1, 6)])
     v5 += u6[1], u6[3]        # IN and EN; EN tied on
@@ -407,7 +407,7 @@ def output_panel():
     # ── U7/U8: the two analog buffers ────────────────────────────────────────
     sel, buf = Net("AUDIO_SEL"), Net("BUF_OUT")
     u7 = Part(name="OPAMP", ref_prefix="U", tag="U7", dest="NETLIST", tool="skidl",
-              value="single RRO op-amp", description="output buffer -- drives the TS jack",
+              value="TLV9061IDBVR", description="output buffer -- drives the TS jack",
               footprint="Package_TO_SOT_SMD:SOT-23-5",
               pins=[Pin(num=1, name="OUT", func=P), Pin(num=2, name="V-", func=P),
                     Pin(num=3, name="IN+", func=P), Pin(num=4, name="IN-", func=P),
@@ -422,7 +422,7 @@ def output_panel():
     # have changed the instrument's sound. One buffer, two taps off its output, so
     # the coil sees a single high impedance whichever mode is selected.
     u8 = Part(name="OPAMP", ref_prefix="U", tag="U8", dest="NETLIST", tool="skidl",
-              value="single RRO op-amp", description="pickup buffer -- feeds BOTH the "
+              value="TLV9061IDBVR", description="pickup buffer -- feeds BOTH the "
               "relay's direct contact and the ADC, so the coil sees one load",
               footprint="Package_TO_SOT_SMD:SOT-23-5",
               pins=[Pin(num=1, name="OUT", func=P), Pin(num=2, name="V-", func=P),
