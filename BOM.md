@@ -22,7 +22,7 @@ one part is not stocked at all in the library we committed to:
 | Row | Was | Now | Impact |
 |---|---|---|---|
 | Optical photodiode (VEMD4110X02) | ~$0.35 ea | **not on LCSC**; use **X01**, same filter, **$0.58 @100+** | +$4.6/board; ⚠ 72 in stock vs 200 needed |
-| Optical MCU STM32H743ZIT6 | $7.63 | **$11.07 / $9.93 @10**, 7 in stock | +$2.30/board, and a stock block |
+| Optical MCU STM32H743IIT6 (was ZIT6) | $7.63 | **$10.01 @10**, 548 in stock (C89597, 2026-09-17) | +$2.38/board; stock block CLEARED by the LQFP176 swap |
 | TRRS jack Tensility 10-03404 | $5.15 | **$8.19 / $6.96 @10** | +$3 |
 | Bridge bearing 693ZZ | ~$1 ea | **superseded 2026-08-07** | part RETIRED — the whole instrument moved to one 695ZZ (Ø5×13×4); see the ball-bearing row |
 | PCTG filament | $25/kg | **$29.95/kg** | +$3 |
@@ -93,7 +93,7 @@ fitted on every instrument.
 | **USB cable, optical board → output panel** | B | **USB-A ↔ USB-C, ~150 mm, USB 2.0 HIGH SPEED, STRAIGHT plug, overmold ≤ 17.5 mm** (mating face → cable exit) | ~$5–8 [m] | commodity. **Two changes, 2026-09-15.** *Destination*: it lands on the output panel's hub downstream port, not the Pi — which is the whole point of putting a hub there, and takes this 480 Mbps link from ~800 mm to ~100 mm, so the length drops from 1 m. *Overmold*: **20 → 17.5 mm**. Spacing the optical board's layout by land rather than by body moved its −Y face 2.58 mm further out, and that came straight off the conduit's depth budget (`PLUG_L` in `src/optical_pickup.py`, asserted against the endplate's exterior wall). Surveyed overmolds run 10–25 mm, so this rules out the long boots, not the market — but it is now a **purchasing constraint to check, not a preference** |
 | **Raspberry Pi 4, 2 GB** | B | Dexed + USB gadget (MIDI/audio/DFU) + USB host for the optical board | **$55.00** [v] | [PiShop](https://www.pishop.us/product/raspberry-pi-4-model-b-2gb/) |
 | ~~Buck 24→5 V ≥3 A~~ | — | **DELETED** ($29.95, Pololu D24V50F5) — see the Power PCB row above and the note below | — | — |
-| ~~10-ch audio ADC~~ | — | **DELETED.** Three PCM1864 + a carrier PCB existed to digitise ten string signals for the Pi. The optical pickup board now does its own 20-channel conversion (STM32H743ZIT6, 20× 16-bit) and sends audio over USB, so this whole path is redundant — ~$29 of ICs plus an entire board's fab, assembly and feeder cost removed | — | — |
+| ~~10-ch audio ADC~~ | — | **DELETED.** Three PCM1864 + a carrier PCB existed to digitise ten string signals for the Pi. The optical pickup board now does its own 20-channel conversion (STM32H743IIT6, 20× 16-bit) and sends audio over USB, so this whole path is redundant — ~$29 of ICs plus an entire board's fab, assembly and feeder cost removed | — | — |
 
 ⚠ **Both Pololu bucks are gone, and the reason is assembly, not price.** The row
 above used to argue about which module to buy; the answer turned out to be
@@ -486,7 +486,7 @@ at time of writing:
 
 | Candidate | HS PHY | Fits a 20 mm board | Verdict |
 |---|---|---|---|
-| STM32H7 (LQFP100) | external ULPI | yes | **chosen** — M7, 3× 16-bit ADC |
+| STM32H7 (LQFP176, was LQFP144) | external ULPI | yes | **chosen** — M7, 3× 16-bit ADC |
 | STM32F723/733 | internal | no — ≥144 pins, 22×22 over leads | too wide |
 | AT32F435/437 | none (full-speed only) | yes | no HS |
 | GD32F470 | external ULPI | yes | M4 240 MHz, 12-bit ADC |
@@ -498,7 +498,7 @@ ADC inputs plus a 12-signal ULPI bus will not fit a 64-pin part.
 
 | Qty | Ref | Part / role | Package | Envelope (mm) |
 |-----|-----|-------------|---------|---------------|
-| 1 | U6 | MCU — **STM32H743ZIT6**, 20× 16-bit ADC ch, USB OTG_HS via ULPI | LQFP144 | 22.00 × 22.00 × 1.60 |
+| 1 | U6 | MCU — **STM32H743IIT6**, 20× 16-bit ADC ch, USB OTG_HS via ULPI | LQFP176 | 26.00 × 26.00 × 1.60 |
 | 1 | J1 | USB-C receptacle — 10 ch audio + MIDI + DFU | USB-C | 8.94 × 7.35 × 3.16 |
 | 1 | J2 | power in, 5 V from the instrument rail — side entry, −X edge | XH-SM-2 | 6.10 × 10.00 × 7.00 |
 | 5 | U1–U5 | quad op-amp — 4× transimpedance amp | SOIC-14 | 6.00 × 8.65 × 1.75 |
@@ -630,7 +630,7 @@ JLCPCB BOM line. And all three that did have numbers failed:
 
 | Line | Was | Now |
 |---|---|---|
-| U6, MCU | `STM32H743ZIT6`, **7 in stock** (need 10) | unchanged — ⚠ still short |
+| U6, MCU | `STM32H743ZIT6` 0 in stock (2026-09-17) → **`STM32H743IIT6`**, 548 | resolved by package swap |
 | PD ×20 | `VEMD4110X02`, **not in catalogue** | **`VEMD4110X01`** — same filter, in catalogue ✓ ⚠ 72 in stock (need 200) |
 | D ×10 | `VSMB1940X01`, **not in catalogue**, ±60° | **`IR17-21C/TR8`** — in catalogue ✓ but ~120° |
 
@@ -692,7 +692,7 @@ Basic classes (no feeder charge):
 | Line | MPN | LCSC | Qty | Ext. | Note |
 |---|---|---|--:|--:|---|
 | PD1A–PD10B | `VEMD4110X01` | C3211080 | 20 | **$11.60** | filtered ✓ · ⚠ 72 in stock, 200 needed |
-| U6 | `STM32H743ZIT6` | C114408 | 1 | $9.93 | ⚠ 7 in stock |
+| U6 | `STM32H743IIT6` | C89597 | 1 | $10.01 | 548 in stock (2026-09-17) |
 | U7 | `USB3343-CP` | C633347 | 1 | $1.78 | ULPI PHY, QFN-24 ✓ |
 | U1–U5 | `TLV9064IDR` | C388176 | 5 | $1.08 | **the TIA part** — see below ✓ |
 | U9 | `SPX3819M5-L-3-3/TR` | C9055 | 1 | $0.30 | 3V3 **analog**, 40 µVrms ✓ |
@@ -1297,6 +1297,17 @@ neighbouring strings — one of the things the prototype needs to measure.
 (one per photodiode). The 144-pin **`STM32H743ZIT6`** has exactly 20, and 22 × 22
 over its leads fits the 30 mm tail with 4.0 mm clear. That reasoning stands.
 
+> **2026-09-17 — swapped to the LQFP176 `STM32H743IIT6` (C89597).** The ZIT6 went to
+> **0** at JLCPCB; the IIT6 had **548** at **$10.01 @10**. Same die (20 ADC channels,
+> OTG_HS, 2 MB flash), so the ADC and ULPI port assignments carry over and only pin
+> numbers change — re-derived from KiCad's CubeMX-generated ST symbol and verified on
+> the generated netlist. The tail is now 62 mm wide, not 30, so the 26 × 26 package
+> fits with room: its −X escape side went from 6.6 mm to 26.9 mm. The board grows
+> 5.4 mm at −Y and stays inside the −Y budget (cables clear the instrument edge by
+> 5.38 mm). Rejected alternative: the `STM32H750ZBT6` in the same LQFP144 (416 in
+> stock) — footprint-identical but 128 KB of flash, needing an external QSPI part and
+> a two-stage boot.
+
 ⚠ **The ~$7.63 does not.** Verified on LCSC 2026-08-01 (**C114408**): **$11.07
 @1, $9.93 @10 — and 7 units in stock.** Ten boards need ten parts. So it is
 $2.30 dearer than budgeted *and* not presently orderable at the project's
@@ -1583,6 +1594,6 @@ Two rows verified but flagged for **availability**, not price:
   so any 95A spool substitutes.
 
 Plus the two optical-board parts that cannot supply a run of ten — the
-**STM32H743ZIT6** (7 in stock, need 10) and the **VEMD4110X01** (72, need 200).
+**STM32H743ZIT6** (7 in stock, need 10 — since swapped to the IIT6, 548) and the **VEMD4110X01** (72, need 200; 95 on 2026-09-17).
 Both are correctly specified now; only stock is short. Documented in full in the
 optical pickup section.
