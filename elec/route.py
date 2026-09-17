@@ -146,7 +146,59 @@ def route(stem, passes=None, timeout=3600):
     if not n_bump:
         raise SystemExit("no plain (clearance N) rule in the DSN -- cannot add the "
                          "router margin, and routing without it produces violations")
+    # ⚠ THE COPPER THE GENERATOR LAID IS HANDED TO THE ROUTER AS A SUGGESTION, AND FOR
+    # THE DIFFERENTIAL PAIR THAT IS A BUG. kicad-cli exports every existing track as
+    # `(type route)`, which in Specctra means the router owns it and may rip it up -- so
+    # all 223 pre-laid segments are advisory. For the GND stitches and the local nets
+    # that is fine and arguably the point; they were measured as a help, not a promise.
+    #
+    # FOR A COUPLED PAIR IT DEFEATS THE ENTIRE ROUTINE THAT LAID IT. _diff_pairs exists
+    # because freerouting has no concept of a differential pair and routes D+ and D- as
+    # two independent nets; it builds both rails by offsetting ONE centreline so they
+    # cannot diverge. Measured on 2026-09-17, the generator handed over
+    #     DP 11.62 mm / 8 segments / 0 vias      DM 11.80 mm / 8 segments / 0 vias
+    # -- matched to 0.18 mm, same shape -- and freerouting gave back
+    #     DP 12.78 mm / 7 segments / 1 via       DM 15.44 mm / 12 segments / 0 vias
+    # which is 2.66 mm of mismatch, different segment counts, and a via on one rail
+    # only. That is not a pair. It is the exact defect the docstring of _diff_pairs
+    # opens by describing, reintroduced one step downstream, and nothing downstream
+    # could see it: DRC checks copper against the netlist and both nets were connected.
+    #
+    # `(type fix)` is freerouting's "do not touch" -- its FixedState has UNFIXED,
+    # SHOVE_FIXED, USER_FIXED and SYSTEM_FIXED, and only the last two survive a rip-up
+    # pass unchanged. SHOVE_FIXED would let the pair be shoved, which changes the
+    # geometry and so is no better for coupling.
+    #
+    # ONLY THE DECLARED PAIRS ARE FROZEN BY DEFAULT. Freezing everything is a different
+    # question with a real trade behind it -- pre-laid copper becomes a hard obstacle
+    # instead of negotiable, which this project has measured going the wrong way before
+    # -- so it is exposed as `fix_prelaid` in the board notes to be MEASURED rather than
+    # assumed. The pairs are not a trade: copper that must not move, must not move.
+    pair_nets = set()
+    for spec in (notes or {}).get("diff_pairs", ()):
+        pair_nets.update(spec.get("nets", ()))
+    if (notes or {}).get("fix_prelaid"):
+        pair_nets = None                      # everything the generator laid
+
+    def _fix(m):
+        if pair_nets is None or m.group(1) in pair_nets:
+            _fix.n += 1
+            return "(net %s)(type fix)" % m.group(1)
+        return m.group(0)
+    _fix.n = 0
+    txt = re.sub(r"\(net ([^)]+)\)\(type route\)", _fix, txt)
+    if pair_nets and not _fix.n:
+        raise SystemExit(
+            "no pre-laid wiring found for the declared differential pair(s) %s -- the "
+            "pair is supposed to be generated before the router sees it, so either it "
+            "was not laid or the DSN's wire syntax has changed. Routing on would hand "
+            "the pair to freerouting, which does not know it is one."
+            % ", ".join(sorted(pair_nets)))
+
     open(dsn, "w", encoding="utf-8").write(txt)
+    if _fix.n:
+        print("  froze %d pre-laid wire(s) as (type fix)%s" % (
+            _fix.n, "" if pair_nets is None else " -- the declared pair(s)"))
     print("  router clearance %s um (fab rule %s um + %g um of rounding margin)"
           % ("/".join("%g" % (v + DSN_CLEAR_MARGIN_UM) for v in sorted(bumped)),
              "/".join("%g" % v for v in sorted(bumped)), DSN_CLEAR_MARGIN_UM))
