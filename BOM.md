@@ -666,7 +666,7 @@ JLCPCB BOM line. And all three that did have numbers failed:
 | Line | Was | Now |
 |---|---|---|
 | U6, MCU | `STM32H743ZIT6` 0 in stock (2026-09-17) → **`STM32H743IIT6`**, 548 | resolved by package swap |
-| PD ×20 | `VEMD4110X02`, **not in catalogue** | **`VEMD4110X01`** — same filter, in catalogue ✓ ⚠ 72 in stock (need 200) |
+| PD ×20 | `VEMD4110X02`, **not in catalogue** | **`VEMD4110X01`** — same filter, in catalogue ✓ ⚠ 95 in stock 2026-09-17 (need 200); **swept, and it is the only filtered 0805 PIN at LCSC** |
 | D ×10 | `VSMB1940X01`, **not in catalogue**, ±60° | **`IR17-21C/TR8`** — in catalogue ✓ but ~120° |
 
 **Two items closed that had been open for a while:** the **ULPI PHY** is
@@ -726,7 +726,7 @@ Basic classes (no feeder charge):
 
 | Line | MPN | LCSC | Qty | Ext. | Note |
 |---|---|---|--:|--:|---|
-| PD1A–PD10B | `VEMD4110X01` | C3211080 | 20 | **$11.60** | filtered ✓ · ⚠ 72 in stock, 200 needed |
+| PD1A–PD10B | `VEMD4110X01` | C3211080 | 20 | **$11.60** | filtered ✓ · ⚠ 95 in stock 2026-09-17, 200 needed · **no substitute exists** |
 | U6 | `STM32H743IIT6` | C89597 | 1 | $10.01 | 548 in stock (2026-09-17) |
 | U7 | `USB3343-CP` | C633347 | 1 | $1.78 | ULPI PHY, QFN-24 ✓ |
 | U1–U5 | `TLV9064IDR` | C388176 | 5 | $1.08 | **the TIA part** — see below ✓ |
@@ -1628,7 +1628,16 @@ Two rows verified but flagged for **availability**, not price:
 * **Tinmorry TPU 95A** — $22.99 correct, but **sold out**. Only ~40 g is needed,
   so any 95A spool substitutes.
 
-Plus the two optical-board parts that cannot supply a run of ten — the
-**STM32H743ZIT6** (7 in stock, need 10 — since swapped to the IIT6, 548) and the **VEMD4110X01** (72, need 200; 95 on 2026-09-17).
-Both are correctly specified now; only stock is short. Documented in full in the
-optical pickup section.
+Plus **one** optical-board part that cannot supply a run of ten. The
+**STM32H743ZIT6** (7 in stock) is closed — the board moved to the **IIT6**, 548 in
+stock. What remains is the **VEMD4110X01** photodiode: 95 in stock on 2026-09-17
+against 200 for a run of ten.
+
+⚠ **And it has no substitute.** LCSC's catalogue was swept on 2026-09-17 for a
+daylight-filtered PIN photodiode in an 0805 land and this is the only one. The
+parts that look like alternatives all fail on the filter — `TEMD7000X01` (0805,
+3,904 in stock) is 350–1120 nm, `VEMD1060X01` (0805, 1,914) is 350–1070, and
+`VEMD8081` (5,501) is 4.8 × 2.5 mm, *visible-enhanced*, and 33 pF. The filter is
+not a nicety: at Rf = 4M7 the TIA saturates at 617 nA, and open room light on an
+unfiltered diode is already that order. So the choice is **build 2 or 5 now and
+re-check stock**, or pre-order — the reel MOQ is 3,000.
