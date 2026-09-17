@@ -394,7 +394,17 @@ twisting + the bridge-side AFE buffer, not conductor size):
 > #32–#24, is adequate for what bus B actually draws. Bus B feeds eight sensor
 > boards rather than steppers, so it is probably fine — but "probably" is what
 > this note exists to retire.
-| CAN | 26 AWG twisted pair, 120 Ω terminated | ~2.2 |
+>
+> ⚠ **The CAN cable carries the 24 V as well, and only its signal pair is
+> specified.** Bus A and bus B are the user's four-conductor scheme — black GND,
+> red +24 V, yellow H, green L — so the cable row above ("26 AWG twisted pair")
+> describes two of the four conductors. The other two feed **ten SERVO42D
+> drivers** on bus A, i.e. very nearly the whole <5 A. At 26 AWG that would be
+> 132 mΩ/m, which is not a candidate; the power pair needs its own gauge and it
+> has never had one. This is the same bottleneck as the single-contact J1/J2
+> above, seen from the cable end rather than the connector end — and both have to
+> be answered by the same decision about how bus A carries its current.
+| CAN | 26 AWG twisted pair, 120 Ω terminated — ⚠ **this is the H/L pair only; the same cable's 24 V and GND conductors have no gauge** | ~2.2 |
 | pickup / audio / DAC / out | 28 AWG **shielded** pair (mA signals — the shield is the spec) | ~2.0 |
 | USB panel → Pi | slim shielded USB-2 | ~2.6 |
 | logic (relay, link, TDM, OLED, joystick) | 28 AWG | ~1.4 |
