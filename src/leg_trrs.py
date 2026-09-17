@@ -68,17 +68,23 @@ from . import legs as LG
 B = D.BEAD
 
 # ── the bought parts (BOM.md: the M->F extension cable, and its plug end) ─────
-JACK_D = 9.7            # the moulded inline jack's barrel (BOM: 9.1..9.7, pick high)
-JACK_L = 40.0           # ...and its length (BOM: <= 40)
+# THE JACK IS OFF ITS DRAWING NOW, not off an envelope. It was 9.7 x 40 -- "BOM:
+# 9.1..9.7, pick high" and "<= 40" -- which is a keep-out, not a part, and designing the
+# BOTTOM joint against it very nearly bought a PCB-mount jack and a 36.5 raise of the
+# pedal bar's tower (BOM.md). The cable is Tensility 10-02135 and its drawing names the
+# component: 50-00041, jack, 3.5 x 7.8 x L25.8.
+JACK_D = 7.8            # the moulded inline jack's body (10-02135 drawing)
+JACK_L = 25.8           # ...and its length. 14.2 SHORTER than the envelope, which the
+                        # chain below simply gives back to the tenon
 # The plug is a REAL PART, off its drawing (user asked for one rather than a
-# "confirm at purchase"): Tensility 10-02155, a 3.5 mm 4C plug-to-plug assembly,
+# "confirm at purchase"): Tensility 10-02135, a 3.5 mm 4C JACK-TO-PLUG assembly,
 # 1830 mm, 28 AWG, $3.73 at DigiKey. The drawing gives the overmould as 6.1 x 14,
 # the barrel 3.5 x 14 and the cable 3.8 -- all four numbers below.
-PLUG_D = 6.1            # the moulded overmould (10-02155 drawing)
+PLUG_D = 6.1            # the moulded overmould (10-02135 drawing, same 50-00397 plug)
 PLUG_L = 14.0           # ...and its length
 BARREL_L = 14.0         # the plug's barrel: what actually crosses the joint
 BARREL_D = 3.5
-CABLE_D = 3.8           # the lead, either side (10-02155's is 3.8). The leg's coil is
+CABLE_D = 3.8           # the lead, either side (10-02135's is 3.8). The leg's coil is
                         # slid on over the far PLUG, not the cable, so the cable's own
                         # diameter is no longer a sourcing constraint -- the O6.6 coil
                         # ID clears the O6.1 overmould and everything thinner with it
@@ -236,7 +242,14 @@ SLV_A = (52.0, 232.0)           # where each joint's slots START. Different numb
 KEEP_A = (6.0, 186.0)           # because the two apexes point different ways: the
                                 # adapter prints +Y and the tenon -X-Y, and each part's
                                 # bores peak toward its own print_up
-JACK_BORE_D = JACK_D + 0.2      # 9.9: the jack runs free in the tenon
+JACK_BORE_D = max(JACK_D + 0.2, SPR_OD + 0.4)    # 8.4: the jack runs free in the tenon
+                                # -- and THE COIL, not the jack, is what sets this now.
+                                # At the envelope's 9.7 the jack was the widest thing in
+                                # the bore; the real 7.8 is NARROWER than the O8.0 coil
+                                # that has to travel the same hole, so following the jack
+                                # down to 8.0 would have pinched the spring. Taking the
+                                # max is the whole fix, and it says which part is in
+                                # charge
 PASS_D = PLUG_D + 0.5           # 6.6: every bore below the throat is at least this,
                                 # because the lead's FAR PLUG has to travel the whole
                                 # length of the tenon and out the bottom. A O4.8 cable
@@ -437,6 +450,48 @@ def _td_sector(r_in, r_out, z0, z1, a0, sweep, x, y, up):
     return out
 
 
+def _entry_sweep(up, a0, r_out, turn=None, margin=2.0):
+    """How far a bayonet ENTRY has to sweep so it carries the teardrop apex with it.
+
+    A teardrop apex is a one-nozzle flat bridging between the two 45 flanks that
+    converge to it. An entry slot cut at the LUG radius reaches out past the apex of
+    every narrower bore it crosses, so if the entry STOPS SHORT of the build azimuth
+    it takes one flank and leaves the flat cantilevered over open air. Sweeping past
+    the azimuth instead makes the entry's own apex the only apex there -- _td_sector's
+    "the two apexes are now the same apex" -- and that one has flanks inside the
+    sector.
+
+    The pad is the flat's own half-angle plus `margin`, not a guess: the flat sits at
+    r_out*sqrt(2) - nozzle/2 and is one nozzle wide, so it subtends
+    asin((nozzle/2)/r_flat) either side of the azimuth.
+
+    Returns the sweep from `a0 - LUG_CLR_DEG`. Asserts it has not eaten the ledge the
+    lug comes to rest on, which is the one thing spending angle here can cost.
+    """
+    turn = LUG_TURN if turn is None else turn
+    start = a0 - LUG_CLR_DEG
+    # THE APEX AHEAD OF *THIS* ENTRY. A teardrop about an axis has an apex every 180
+    # degrees, so fold the build azimuth into [0, 180) FIRST and then walk it up past
+    # this entry's start. Walking the raw azimuth instead keeps whichever of the two
+    # it happened to be written as: for the tenon's up (-X-Y, 225) the lug at a0=186
+    # got 225, correctly, and the lug at a0=6 got 225 as well -- 180 too far round,
+    # against a lug that comes to rest at 52.
+    az = (math.degrees(math.atan2(up[1], up[0])) % 180.0)
+    while az < start:
+        az += 180.0
+    r_flat = r_out * math.sqrt(2.0) - D.NOZZLE_D / 2.0
+    half = math.degrees(math.asin((D.NOZZLE_D / 2.0) / r_flat))
+    top = az + half + margin
+    sweep = top - start
+    assert sweep >= LUG_DEG + 2 * LUG_CLR_DEG, (
+        "the entry sweeps %.1f and the lug needs %.1f to pass"
+        % (sweep, LUG_DEG + 2 * LUG_CLR_DEG))
+    assert top <= a0 + turn - margin, (
+        "carrying the apex needs the entry out to %.1f, and the lug comes to rest at "
+        "%.1f: it would eat the ledge the lug bears on" % (top, a0 + turn))
+    return sweep
+
+
 def _bayonet_slots(r_in, r_out, z_lo, z_hi, open_up, x, y, angles, up):
     """The L-slots a set of lugs turns in: an ENTRY run open to one end, and the
     circumferential RUN it turns along. `open_up` says which end the lugs come in
@@ -447,15 +502,22 @@ def _bayonet_slots(r_in, r_out, z_lo, z_hi, open_up, x, y, angles, up):
         # the entry is open to the part's end; the run is buried LUG_LEDGE inside it
         e0, e1 = ((z_lo - LUG_LEDGE - 1.0, z_hi) if open_up
                   else (z_lo, z_hi + LUG_LEDGE + 1.0))
-        cut = _td_sector(r_in, r_out, e0, e1,
-                         a0 - LUG_CLR_DEG, LUG_DEG + 2 * LUG_CLR_DEG, x, y, up)
+        # THE ENTRY CARRIES THE APEX. At the lug's own width it stops short of the
+        # build azimuth, and since it is cut at the LUG radius it reaches out past the
+        # teardrop apex of every narrower bore it crosses -- taking one of the two 45
+        # flanks that apex flat bridges between, and leaving it cantilevered over open
+        # air. Found three times before it was fixed here: the bar's keeper pocket,
+        # then the adjust tenon's bore, then the fixed tenon's (user, all three in the
+        # tab). _entry_sweep pads past the azimuth by the flat's own half-angle.
+        cut = _td_sector(r_in, r_out, e0, e1, a0 - LUG_CLR_DEG,
+                         _entry_sweep(up, a0, r_out), x, y, up)
         cut = cut.union(_td_sector(r_in, r_out, z_lo, z_hi, a0 - LUG_CLR_DEG,
                                    LUG_DEG + LUG_TURN + 2 * LUG_CLR_DEG, x, y, up))
         out = cut if out is None else out.union(cut)
     return out
 
 
-def _lugs(r_in, r_out, z_lo, z_hi, x, y, angles, bear_up):
+def _lugs(r_in, r_out, z_lo, z_hi, x, y, angles, bear_up, chamfer=None):
     """The lugs themselves, drawn WHERE THEY END UP -- a turn along the run from the
     entry, hard against the stop.
 
@@ -466,14 +528,25 @@ def _lugs(r_in, r_out, z_lo, z_hi, x, y, angles, bear_up):
     a ledge above), False for the sleeve (the plug's extraction pulls it -Z onto a
     ledge below)."""
     out = None
-    h = r_out - r_in
+    # HOW MUCH of the free face is chamfered. The default takes the whole radial height,
+    # which is what a lug wants when only ONE of its faces is ever loaded: the free side
+    # tapers to nothing and there is no eave left at all. A lug that has to stop travel
+    # in BOTH directions cannot afford that -- a full taper leaves its far face a knife
+    # INSIDE the bore, so it catches nothing (src.bar_trrs, whose float is limited at
+    # both ends). Passing a smaller chamfer keeps a flat there at the cost of that much
+    # unsupported eave.
+    h = (r_out - r_in) if chamfer is None else chamfer
+    # The chamfer is measured from the lug's OUTER edge inward, which is the only form
+    # that stays right when it is smaller than the full radial height: taking it from
+    # r_in instead still tapers the far face all the way to r_in, so a partial chamfer
+    # bought nothing and bar_trrs measured 0.000 mm3 of stop where it wanted one.
     if bear_up:                      # keep the TOP square, chamfer underneath
-        cone = cq.Solid.makeCone(r_in, r_in + h, h, cq.Vector(x, y, z_lo),
+        cone = cq.Solid.makeCone(r_out - h, r_out, h, cq.Vector(x, y, z_lo),
                                  cq.Vector(0, 0, 1))
         band = cq.Solid.makeCylinder(r_out + 1.0, h, cq.Vector(x, y, z_lo),
                                      cq.Vector(0, 0, 1))
     else:                            # keep the BOTTOM square, chamfer on top
-        cone = cq.Solid.makeCone(r_in + h, r_in, h, cq.Vector(x, y, z_hi - h),
+        cone = cq.Solid.makeCone(r_out, r_out - h, h, cq.Vector(x, y, z_hi - h),
                                  cq.Vector(0, 0, 1))
         band = cq.Solid.makeCylinder(r_out + 1.0, h, cq.Vector(x, y, z_hi - h),
                                      cq.Vector(0, 0, 1))
@@ -656,7 +729,7 @@ def cables(sx: float = LS.LEG_X, ly: float = LS.LEG_Y, k: int = 0):
     return [("leg_trrs_patch_%d" % k, patch), ("leg_trrs_leg_lead_%d" % k, leg)]
 
 
-def spring_coil(x, y, mated: bool = True):
+def spring_coil(x, y, mated: bool = True, length: float | None = None):
     """THE FLOAT COIL, drawn as a coil. It used to be an annular TUBE -- the coil's
     swept envelope, which is the right thing to hand the overlap gate and the wrong
     thing to put in front of a person: it reads as a solid ring, and it hides the one
@@ -670,7 +743,13 @@ def spring_coil(x, y, mated: bool = True):
     Drawn at SPR_TURNS_MAX, the WORST-case count the chain is designed against, not at
     a guess at the real one. When the spring arrives and the turns are counted, this
     picture corrects itself along with the geometry."""
-    L = SPR_MATE_L if mated else SPR_REST_L
+    # `length` overrides the pair of lengths THIS joint happens to have. The bottom
+    # joint compresses by its own FLOAT, not by this joint's mate travel, and without
+    # a way to say so its caller could only shift a rest-length coil upwards -- which
+    # drew it straight through the seat it is supposed to be reacting against.
+    L = length if length is not None else (SPR_MATE_L if mated else SPR_REST_L)
+    assert L >= SPR_SOLID, (
+        "a %.2f coil is shorter than its own solid height %.2f" % (L, SPR_SOLID))
     r_mid = (SPR_OD - SPR_WIRE) / 2.0
     path_h = L - SPR_WIRE
     wire = cq.Wire.makeHelix(pitch=path_h / SPR_TURNS_MAX, height=path_h, radius=r_mid)
