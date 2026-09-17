@@ -133,6 +133,19 @@ NOSE_WAY_D = BORE_D             # 9.9 -- the nose rides the very bore the collar
                                 # coil and the plug all travel, so the bar gets no new
                                 # diameter to respect. It also gives the mate a second
                                 # lead-in on top of the octagon's own fit
+SPR_CH_D = LT.SPR_OD + 0.6      # 8.6 -- THE COIL GETS ITS OWN CHANNEL. BORE_D is 9.9
+                                # because the TPU COLLAR travels it, which leaves an
+                                # O8.0 coil 0.95 of radial slop: enough to lean over
+                                # and buckle sideways instead of compressing (user saw
+                                # it). But the collar only ever reaches SPR_BOT+FLOAT,
+                                # and above that the bore carries nothing but the coil
+                                # and the O6.1 lead. So it steps down there: 0.3 on the
+                                # coil, which centres it without gripping it
+SPR_CH_BOT = SPR_BOT + FLOAT + 0.4
+                                # ...and the 0.4 is the collar's clearance to the step
+                                # at FULL compression. The step is a diameter change,
+                                # not a stop -- the coil still reacts against SEAT_Z --
+                                # so the collar must never reach it
 PASS_D = LT.PASS_D              # 6.6 above the seat: the lead's far plug has to be able
                                 # to travel this bore, the same rule that made the number
                                 # at the top joint
@@ -149,6 +162,15 @@ PASS_TOP = LS.Z_ADJ_TEN_TOP - (LS.LADDER_OFF + LS.ADJ_N * LS.ADJ_PITCH) - D.MIN_
                                 # either the ladder moved off centre or a path outside
                                 # the tenon. Not a decision this joint gets to make
 
+assert SPR_CH_BOT > SH_REST + SLV_H + FLOAT, (
+    "the coil's channel starts at %.2f and the collar's flange reaches %.2f at mate"
+    % (SPR_CH_BOT, SH_REST + SLV_H + FLOAT))
+assert SPR_CH_D > LT.SPR_OD and SPR_CH_D < BORE_D, (
+    "the coil channel O%.1f has to pass the O%.1f coil and be tighter than the O%.1f "
+    "bore it steps out of" % (SPR_CH_D, LT.SPR_OD, BORE_D))
+assert TIP + NOSE_H < SPR_CH_BOT, (
+    "the jack's nose reaches %.2f and the bore narrows at %.2f"
+    % (TIP + NOSE_H, SPR_CH_BOT))
 assert SPR_TOP - TIP < 64.0, (
     "the chain reaches %.1f above the tenon's bottom and the lowest ladder hole is at "
     "64.0" % (SPR_TOP - TIP))
@@ -185,7 +207,8 @@ def tenon_negatives(up=None):
     plug, the coil, the collar -- goes in from the bottom face, in that order."""
     x, y = _ax()
     up = up or LS.PRINT_UP["adjust_tenon"]
-    out = LT._bore(BORE_D, TIP - 1.0, SEAT_Z, x, y, up)
+    out = LT._bore(BORE_D, TIP - 1.0, SPR_CH_BOT, x, y, up)
+    out = out.union(LT._bore(SPR_CH_D, SPR_CH_BOT - 0.01, SEAT_Z, x, y, up))
     out = out.union(LT._bore(PASS_D, SEAT_Z - 0.01, PASS_TOP, x, y, up))
     out = out.union(LT._bayonet_slots(BORE_D / 2.0 - 0.01, LT.LUG_D / 2.0,
                                       LUG_BOT, LUG_BOT + RUN_H, True, x, y, LUG_A, up))
@@ -195,10 +218,18 @@ def tenon_negatives(up=None):
     # LUG_BOT - TIP = 14.4 up, because the plug's barrel has to fit under it, so that
     # entry stopped 11.8 above the tenon's face and the lugs could not get in at all
     # (scratchpad/verify_bar_trrs.py caught it).
+    # ...AND THEY SWEEP PAST THE BUILD AZIMUTH, for the same reason the bar half's do.
+    # At the lug's own width this entry ran 182..220 while the O9.9 bore's apex sits at
+    # 225 -- the tenon builds -X-Y -- so it took the apex flat's low flank and left
+    # 11.52 mm2 of it cantilevered from the tenon's face up to the run. I fixed the
+    # bar and never looked at the other part the same joint cuts; the user found this
+    # one in the tab. scratchpad/probe_apex.py now walks BOTH parts, each with its own
+    # build direction, which is what it should have done first.
     for a0 in LUG_A:
         out = out.union(LT._td_sector(
             BORE_D / 2.0 - 0.01, LT.LUG_D / 2.0, TIP - 1.0, LUG_BOT + 0.01,
-            a0 - LT.LUG_CLR_DEG, LT.LUG_DEG + 2 * LT.LUG_CLR_DEG, x, y, up))
+            a0 - LT.LUG_CLR_DEG,
+            _entry_sweep(up, a0, LT.LUG_D / 2.0), x, y, up))
     return out
 
 
@@ -305,36 +336,6 @@ TH_DETENT = 0.4                 # ...AND THEN A POSITIVE DETENT, which the top j
                                 # the lug squashes past it going in and has to squash
                                 # back to come out. TPU is the only reason this is a
                                 # feature and not a crack
-TH_APEX_PAD = 6.0               # HOW FAR THE ENTRY SLOT REACHES PAST THE BUILD
-                                # AZIMUTH, and it is a printability number, not a fit.
-                                #
-                                # A teardrop's one-nozzle apex flat is self-supporting
-                                # because its two ends sit on the 45 flanks that
-                                # converge to it: unsupported across 0.8, anchored both
-                                # sides. That is a BRIDGE, and it stops being one the
-                                # moment something takes a flank away.
-                                #
-                                # The entry slot did exactly that. It swept a0 - CLR to
-                                # a0 + LUG_DEG + CLR (48..86 here) at the LUG radius,
-                                # which reaches out past the POCKET's apex at r 7.78 --
-                                # so above the run, where the slot's own teardrop no
-                                # longer covers it, the pocket's apex was left as a
-                                # 3.50 x 0.80 flat with material on ONE side. 2.80 mm2
-                                # of hard overhang over open air (user spotted it in
-                                # the tab; measuring its AREA, which is what I did
-                                # first, cannot tell a bridge from a cantilever --
-                                # scratchpad/probe_apex.py asks the slicer's question
-                                # instead). Note the clocking cannot fix this: the run
-                                # pins a0 to [49, 55] and the apex is at 90, so an
-                                # entry of the lug's own width can never contain it.
-                                #
-                                # So the entry sweeps past 90 by this much and the two
-                                # apexes become the same apex. It costs ledge between
-                                # the entry and where the lug comes to rest, which is
-                                # ledge nothing bears on.
-_ENTRY_TOP = 90.0 + TH_APEX_PAD
-TH_ENTRY_SWEEP = _ENTRY_TOP - (LT.SLV_A[0] - LT.LUG_CLR_DEG)
-
 TH_DETENT_DEG = 8.0             # ...AND IT IS MEASURED FROM THE LUG'S TRAILING EDGE,
                                 # so it has to clear the pin's own half-angle or the
                                 # detent lands under the lug's RESTING position and the
@@ -353,13 +354,6 @@ TH_DETENT_R = B                 # the bump is a round PIN, not an annular step, 
 assert TH_DEEP + D.MIN_WALL_2P <= JB_DEEP, (
     "the throat's pocket (%.1f) leaves only %.1f of seat bore under it" %
     (TH_DEEP, JB_DEEP - TH_DEEP))
-assert TH_ENTRY_SWEEP >= LT.LUG_DEG + 2 * LT.LUG_CLR_DEG, (
-    "the entry sweeps %.0f and the lug needs %.0f to pass"
-    % (TH_ENTRY_SWEEP, LT.LUG_DEG + 2 * LT.LUG_CLR_DEG))
-assert _ENTRY_TOP <= TH_A[0] + LT.LUG_TURN - 2.0, (
-    "the entry reaches %.0f and the lug comes to rest at %.0f: widening it this far "
-    "has eaten the ledge the lug bears on"
-    % (_ENTRY_TOP, TH_A[0] + LT.LUG_TURN))
 _PIN_R = TH_LUG_D / 2.0 + TH_DETENT_R - TH_DETENT
 _PIN_DEG = math.degrees(math.asin(TH_DETENT_R / _PIN_R))
 assert TH_DETENT_DEG > _PIN_DEG, (
@@ -371,6 +365,48 @@ assert 45.0 <= TH_A[0] - LT.LUG_CLR_DEG and \
     "the run spans %.0f..%.0f and the 45 rule wants 45..135 for a +Y build" %
     (TH_A[0] - LT.LUG_CLR_DEG,
      TH_A[0] + LT.LUG_DEG + LT.LUG_TURN + LT.LUG_CLR_DEG))
+
+
+def _entry_sweep(up, a0, r_out, turn=None, margin=2.0):
+    """How far a bayonet ENTRY has to sweep so it carries the teardrop apex with it.
+
+    A teardrop apex is a one-nozzle flat bridging between the two 45 flanks that
+    converge to it. An entry slot cut at the LUG radius reaches out past the apex of
+    every narrower bore it crosses, so if the entry STOPS SHORT of the build azimuth
+    it takes one flank and leaves the flat cantilevered over open air. Sweeping past
+    the azimuth instead makes the entry's own apex the only apex there -- _td_sector's
+    "the two apexes are now the same apex" -- and that one has flanks inside the
+    sector.
+
+    The pad is the flat's own half-angle plus `margin`, not a guess: the flat sits at
+    r_out*sqrt(2) - nozzle/2 and is one nozzle wide, so it subtends
+    asin((nozzle/2)/r_flat) either side of the azimuth.
+
+    Returns the sweep from `a0 - LUG_CLR_DEG`. Asserts it has not eaten the ledge the
+    lug comes to rest on, which is the one thing spending angle here can cost.
+    """
+    turn = LT.LUG_TURN if turn is None else turn
+    start = a0 - LT.LUG_CLR_DEG
+    # THE APEX AHEAD OF *THIS* ENTRY. A teardrop about an axis has an apex every 180
+    # degrees, so fold the build azimuth into [0, 180) FIRST and then walk it up past
+    # this entry's start. Walking the raw azimuth instead keeps whichever of the two
+    # it happened to be written as: for the tenon's up (-X-Y, 225) the lug at a0=186
+    # got 225, correctly, and the lug at a0=6 got 225 as well -- 180 too far round,
+    # against a lug that comes to rest at 52.
+    az = (math.degrees(math.atan2(up[1], up[0])) % 180.0)
+    while az < start:
+        az += 180.0
+    r_flat = r_out * math.sqrt(2.0) - D.NOZZLE_D / 2.0
+    half = math.degrees(math.asin((D.NOZZLE_D / 2.0) / r_flat))
+    top = az + half + margin
+    sweep = top - start
+    assert sweep >= LT.LUG_DEG + 2 * LT.LUG_CLR_DEG, (
+        "the entry sweeps %.1f and the lug needs %.1f to pass"
+        % (sweep, LT.LUG_DEG + 2 * LT.LUG_CLR_DEG))
+    assert top <= a0 + turn - margin, (
+        "carrying the apex needs the entry out to %.1f, and the lug comes to rest at "
+        "%.1f: it would eat the ledge the lug bears on" % (top, a0 + turn))
+    return sweep
 
 
 def _th_run(floor_z):
@@ -404,7 +440,8 @@ def bar_negatives(floor_z, chamber_top_z, x=None, y=None, up=BAR_UP):
     for a0 in TH_A:
         out = out.union(LT._td_sector(
             TH_POCK_D / 2.0 - 0.01, TH_LUG_D / 2.0, lo, floor_z + 0.01,
-            a0 - LT.LUG_CLR_DEG, TH_ENTRY_SWEEP, x, y, up))
+            a0 - LT.LUG_CLR_DEG,
+            _entry_sweep(up, a0, TH_LUG_D / 2.0), x, y, up))
     # the detent, subtracted BACK OUT of the run: a pin standing TH_DETENT proud of the
     # slot's outer wall, TH_DETENT_DEG before the stop, that the lug squashes past
     r_pin = _PIN_R
