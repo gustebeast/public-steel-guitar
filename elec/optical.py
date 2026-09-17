@@ -264,6 +264,10 @@ def _c(ref, value, desc, fp=_C_0402):
 def optical():
     gnd, pgnd = Net("GND"), Net("PWR_GND")
     v5, v3d, v3a = Net("+5V"), Net("+3V3D"), Net("+3V3A")
+    # V5_PRE is the BUCK side of the ferrite bead. Declared up here with the other
+    # rails because the emitter row is wired long before the buck section builds it,
+    # and a rail that half the board hangs on is not a local of the buck block.
+    v5_pre = Net("V5_PRE")
     for n in (gnd, pgnd, v5, v3d, v3a):
         n.drive = Pin.drives.POWER
     # MID is the TIAs' reference: the photodiodes run in PHOTOCONDUCTIVE-free
@@ -283,14 +287,22 @@ def optical():
         # the reflective target, and with narrow-beam emitters unavailable in 0805
         # (lever 1 is gone -- see src/optical_pickup.py) drive current is the first
         # lever left. Values are set at bring-up, per string, not here.
-        r = _r("R%d" % i, "ballast", "LED ballast, string %d -- PER-STRING VALUE" % i,
+        # 180R = 20 mA, WHICH IS THE DATASHEET'S OWN OPERATING POINT and deliberately
+        # conservative. (5.0 - 1.2 VF) / 0.020 = 190; 180R gives 21 mA. The IR17-21C is
+        # rated 65 mA continuous, so there is 3x of headroom -- and taking it is a SYSTEM
+        # decision, not a resistor swap: ten emitters at 65 mA is 650 mA of peak rail
+        # against a 600 mA buck, and the board's recorded 24 V draw (~85 mA, i.e. ~2 W)
+        # assumes something near this value. Raising drive is the first SNR lever this
+        # board has left, and spending it means re-checking U13, C162's droop over a
+        # pulse, and the trunk's wire gauge together.
+        r = _r("R%d" % i, "180R", "LED ballast, string %d -- 21 mA, tune per string" % i,
                "Resistor_SMD:R_0603_1608Metric")
         d = Part(name="LED_IR", ref_prefix="D", ref="D%d" % i, dest="NETLIST",
                  tool="skidl", value="IR17-21C/TR8",
                  description="IR emitter 940 nm, string %d (LCSC C131250)" % i,
                  footprint="LED_SMD:LED_0805_2012Metric",
                  pins=[Pin(num=1, name="K", func=P), Pin(num=2, name="A", func=P)])
-        v5 += r[1]
+        v5_pre += r[1]        # BUCK side of the bead -- see FB1
         r[2] += d[2]
         led_row += d[1]
         for tag, store in (("A", pd_a), ("B", pd_b)):
@@ -342,20 +354,52 @@ def optical():
         summing += pd[2], q[inn_p]
         mid += q[inp_p]
         out += q[out_p]
-        rf = _r("Rf%s" % n, "Rf", "TIA feedback, string %d%s -- PER-STRING VALUE" % (i, side))
+        # ⚠ 4M7 IS A FIRST-ARTICLE VALUE WITH ARITHMETIC BEHIND IT, not a guess, and it
+        # is expected to move per string. The optical budget, from the two datasheets:
+        #   emitter   0.8 mW/sr at 20 mA (IR17-21C), gap 3.0 mm (OPT_GAP)
+        #             -> ~8.9 mW/cm2 at the string
+        #   string    a .014 plain intercepts ~0.036 x 0.1 cm and scatters it; at ~30%
+        #             into a hemisphere that is ~0.003 mW/sr back
+        #   detector  2.4 uA per mW/cm2 (VEMD4110X01), ~3.4 mm away
+        #             -> of order 65 nA for the THINNEST string
+        # which is the "tens of nanoamps" this board was designed around, arrived at
+        # independently. 4M7 turns 65 nA into 0.31 V and a wound string's ~300 nA into
+        # 1.4 V, so the quiet end has signal and the loud end does not clip the 2.9 V
+        # the ADC can see above MID. It is a compromise across a 14 dB spread, which is
+        # exactly why the value is per string and why the footprints stay 0402.
+        rf = _r("Rf%s" % n, "4M7", "TIA feedback, string %d%s -- tune per string" % (i, side))
         # ⚠ Cf IS C0G, NOT X7R, and that is not a general-purpose preference. It sets
         # the anti-alias pole with Rf; an X7R part's capacitance moves with bias and
         # temperature, so the pole would drift and the twenty channels would stop
         # matching each other -- which is exactly what DIFF cannot tolerate.
-        cf = _c("Cf%s" % n, "Cf C0G", "TIA feedback cap, string %d%s -- C0G" % (i, side))
+        # 2.2 pF against 4M7 puts the pole at 15.4 kHz -- below the 24 kHz Nyquist of a
+        # 48 kHz frame, which is what an anti-alias pole is for. It is also the smallest
+        # value worth specifying: stray capacitance across an 0402 is a few tenths of a
+        # pF, so anything under ~2 pF is set by the layout rather than by the part.
+        cf = _c("Cf%s" % n, "2.2pF", "TIA feedback cap, string %d%s -- C0G, 15.4 kHz pole"
+                % (i, side))
         summing += rf[1], cf[1]
         out += rf[2], cf[2]
+    # ⚠ THE QUADS RUN ON +3V3A, NOT +5V, AND THAT IS AN ABSOLUTE-MAXIMUM FIX.
+    # Every TIA output goes straight to an ADC pin, and ST's Table 21 (DS12110,
+    # "Voltage characteristics") gives "input voltage on any other pins" an absolute
+    # maximum of 4.0 V. On a 5 V rail a rail-to-rail output saturates at ~4.95 V, so
+    # any channel driven into saturation -- an emitter reflecting off a bright surface,
+    # a string removed, sunlight through the cover -- put ~1 V over the ADC's rating on
+    # a pin that is not 5 V tolerant. That is device damage, not a bad reading.
+    #
+    # IT ALSO COSTS NOTHING TO FIX, which is what makes the old choice a plain mistake:
+    # the ADC measures against VREF+ = +3V3A, so everything above 3.3 V was unreadable
+    # anyway. The 5 V rail bought 1.7 V of swing that no conversion could see, at the
+    # price of exceeding the ADC's limit. On +3V3A the TIA shares the ADC's own
+    # reference -- ratiometric, so reference drift cancels instead of adding.
+    # TLV9064: 1.8 V to 5.5 V supply, rail-to-rail in and out, so 3.3 V is in spec.
     for q in range(1, 6):
-        v5 += quads[q][4]
+        v3a += quads[q][4]
         gnd += quads[q][11]
         for k in (1, 2):
             c = _c("Cd%d%d" % (q, k), "100nF", "quad %d supply bypass" % q)
-            v5 += c[1]
+            v3a += c[1]
             gnd += c[2]
 
     # ── U6: the MCU ──────────────────────────────────────────────────────────
@@ -485,7 +529,7 @@ def optical():
                     Pin(num=3, name="VI", func=P)])
     gnd += u8[1]
     v3d += u8[2]
-    v5 += u8[3]
+    v5_pre += u8[3]           # BUCK side: this LDO feeds the MCU and PHY
     u9 = Part(name="SPX3819", ref_prefix="U", ref="U9", dest="NETLIST", tool="skidl",
               value="SPX3819M5-L-3-3/TR",
               description="3V3 ANALOG LDO, 40 uVrms (LCSC C9055)",
@@ -494,7 +538,16 @@ def optical():
     # SPX3819 SOT-23-5: 1 IN, 2 GND, 3 EN, 4 BYP, 5 OUT
     v5 += u9[1], u9[3]
     gnd += u9[2]
-    Net("LDO_BYP_NC").connect(u9[4])
+    # ⚠ PIN 4 IS THE NOISE BYPASS AND IT WAS LEFT FLOATING -- which threw away the only
+    # reason this part is here. The SPX3819 datasheet gives 300 uVrms without a bypass
+    # capacitor and 40 uVrms with 1 uF on this pin (10 Hz - 100 kHz). The BOM line for
+    # U9 says "chosen for noise (40 uVrms)"; as wired it was a 300 uVrms part feeding
+    # the reference and supply of twenty transimpedance amplifiers.
+    ldo_byp = Net("LDO_BYP")
+    ldo_byp += u9[4]
+    c127 = _c("C127", "1uF", "SPX3819 reference bypass -- 40 uVrms instead of 300")
+    ldo_byp += c127[1]
+    gnd += c127[2]
     v3a += u9[5]
 
     # ── U10: USB ESD, at the connector ───────────────────────────────────────
@@ -530,7 +583,7 @@ def optical():
     mid += u11[1], u11[4]       # unity-gain follower
     gnd += u11[2]
     mid_raw += u11[3]
-    v5 += u11[5]
+    v3a += u11[5]              # same rail as the quads it references -- see above
 
     # ── U13 / L1: the board's ONLY switcher, at the far end on purpose ───────
     # 24 V arrives at J2, so one switching stage is unavoidable (24->3V3 linearly is
@@ -539,7 +592,7 @@ def optical():
     # ⚠ AND ITS SWITCHING FREQUENCY IS A REAL SPEC, not a detail: this board samples
     # at 48 kHz and a switcher near a sub-multiple of that aliases straight into the
     # audio band, where subtraction cannot remove it because it is synchronous.
-    sw, v5_pre, fb = Net("SW"), Net("V5_PRE"), Net("FB")
+    sw, fb = Net("SW"), Net("FB")
     # ⚠ TI TPS560430XF (SLVSE22B). Chosen against the requirement recorded on the CAD's
     # MPN line: SYNCHRONOUS (it is), >=30 V absolute max (38 V), and a switching
     # frequency away from the sample rate and its low harmonics (1.1 MHz). The F suffix
@@ -577,7 +630,18 @@ def optical():
     v5_pre += l1[2]
     fb1 = Part(name="FerriteBead", ref_prefix="FB", ref="FB1", dest="NETLIST",
                tool="skidl", value="600R@100MHz",
-               description="5 V rail split: buck side to analog side",
+               # ⚠ WHAT IS ON WHICH SIDE WAS THE WHOLE POINT AND IT WAS WRONG. The bead
+               # splits a noisy 5 V from a quiet one, and the TEN EMITTERS -- pulsed at
+               # 96 kHz, synchronously with sampling, the one noise source ambient
+               # subtraction cannot remove -- were hanging on the QUIET side, together
+               # with the digital LDO that feeds the MCU and the PHY. The bead was
+               # keeping the buck's ripple out of a node that the board's own worst
+               # aggressor was already sitting on.
+               # Buck side now: the emitter row, and the digital LDO. Quiet side: the
+               # analog LDO alone, which is the only thing the analog front end is fed
+               # from now that the quads run on +3V3A.
+               description="5 V rail split: buck + emitters + digital LDO on one side, "
+               "the analog LDO on the other",
                footprint="Inductor_SMD:L_0603_1608Metric",
                pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
     v5_pre += fb1[1]
@@ -597,8 +661,14 @@ def optical():
     led_row += q1[3]
 
     # ── crystals ─────────────────────────────────────────────────────────────
+    # ⚠ THE VALUE IS THE PART NUMBER, BECAUSE "25MHz" DOES NOT SPECIFY A CRYSTAL.
+    # Load capacitance and ESR are what decide whether an oscillator starts and whether
+    # it runs on frequency, and they vary across parts that share a frequency and a
+    # package: the 3225 26 MHz parts at JLCPCB run from CL 7.5 pF to 20 pF and ESR 30 to
+    # 80 ohm. A BOM line reading "25MHz" lets the fab pick any of them.
     y1 = Part(name="Crystal", ref_prefix="Y", ref="Y1", dest="NETLIST", tool="skidl",
-              value="25MHz", description="MCU HSE (LCSC C13740)",
+              value="TX322525M4LBDD2T",
+              description="MCU HSE 25 MHz, CL 20 pF, ESR <= 30 ohm (LCSC C5308007)",
               footprint="Crystal:Crystal_SMD_3225-4Pin_3.2x2.5mm",
               pins=[Pin(num=n, func=P) for n in range(1, 5)])
     osc_in += y1[1]
@@ -608,9 +678,14 @@ def optical():
     # table (25) disagreed with each other and with the part. The USB334x datasheet's
     # ordering table settles it: USB3343-CP-TR, REFCLK 26 MHz, "oscillator or crystal".
     # Neither 24 nor 25 would have produced a working USB link.
+    # ⚠ CL 20 pF AND ESR <= 30 OHM ARE THE PHY'S REQUIREMENTS, not preferences:
+    # USB334x Table 4.13 gives CL 20 pF typ and R1 30 ohm MAX. The obvious 26 MHz 3225
+    # part (C15192) is CL 10 pF / ESR 50 ohm and fails both -- a mismatched load pulls
+    # the frequency off the +-500 ppm budget, and 50 ohm against a 30 ohm limit is an
+    # oscillator that may not start. K3A260002010 meets both.
     y2 = Part(name="Crystal", ref_prefix="Y", ref="Y2", dest="NETLIST", tool="skidl",
-              value="26MHz", description="ULPI PHY reference crystal, 26 MHz -- "
-              "USB3343 datasheet ordering table",
+              value="K3A260002010",
+              description="PHY reference 26 MHz, CL 20 pF, ESR <= 30 ohm (LCSC C2835957)",
               footprint="Crystal:Crystal_SMD_3225-4Pin_3.2x2.5mm",
               pins=[Pin(num=n, func=P) for n in range(1, 5)])
     phy_xi += y2[1]
@@ -671,9 +746,17 @@ def optical():
     r33 = _r("R33", "5k1", "USB-C CC2 pull-down")
     j1["B5"] += r33[1]
     gnd += r33[2]
-    r34 = _r("R34", "mid-rail top", "MID divider, top -- sets the TIA virtual earth")
-    r35 = _r("R35", "mid-rail bot", "MID divider, bottom")
-    v5 += r34[1]
+    # ⚠ MID SITS NEAR THE BOTTOM OF THE RANGE, NOT IN THE MIDDLE, because the signal
+    # only goes ONE WAY. The photodiode's anode is on the virtual earth and its cathode
+    # on MID, so photocurrent drives the TIA output UP from MID and never below it. A
+    # mid-supply reference would throw away half the ADC's range on a swing that cannot
+    # happen. 0.33 V leaves ~2.9 V of usable swing and keeps the op-amp's input common
+    # mode inside spec (the TLV9064 includes both rails).
+    # 9k09/1k from +3V3A: 0.330 V, 363 uA. Low impedance on purpose -- the divider's
+    # thermal noise lands on the reference every channel shares, and U11 buffers it.
+    r34 = _r("R34", "9k09 1%", "MID divider, top -- sets the TIA virtual earth to 0.33 V")
+    r35 = _r("R35", "1k 1%", "MID divider, bottom")
+    v3a += r34[1]
     mid_raw += r34[2], r35[1]
     gnd += r35[2]
     r36 = _r("R36", "100R", "LED driver gate series")
@@ -729,10 +812,20 @@ def optical():
         c = _c(tag, val, why)
         net += c[1]
         gnd += c[2]
-    # C123-C126: two load caps per crystal.
-    for tag, net in (("C123", osc_in), ("C124", osc_out),
-                     ("C125", phy_xi), ("C126", phy_xo)):
-        c = _c(tag, "load C0G", "crystal load")
+    # C123-C126: two load caps per crystal, and the VALUE FOLLOWS THE CRYSTAL'S CL.
+    # C = 2 x (CL - Cstray). Both crystals are specified CL = 20 pF (see the MPN table
+    # in src/optical_pickup.py, which now also fixes ESR -- the USB334x wants <= 30 ohm
+    # and the part first picked was 50). Cstray is the pin capacitance plus the board's:
+    #   PHY   XI/XO pins 3 pF typ each (USB334x Table 4.13) + ~2 pF of track -> 5 pF
+    #   MCU   OSC_IN/OSC_OUT ~5 pF + ~2 pF                                    -> 7 pF
+    # giving 30 pF for the PHY and 26 pF for the MCU; 27 pF is the E-series neighbour.
+    # ⚠ THESE ARE THE STARTING VALUES, NOT THE FINAL ONES. Stray capacitance is a
+    # property of the finished board, so the frequency is measured on the first article
+    # and the caps trimmed -- that is normal for a crystal and it is not an admission
+    # that the arithmetic is wrong.
+    for tag, net, val in (("C123", osc_in, "27pF"), ("C124", osc_out, "27pF"),
+                          ("C125", phy_xi, "30pF"), ("C126", phy_xo, "30pF")):
+        c = _c(tag, val, "crystal load -- C0G")
         net += c[1]
         gnd += c[2]
     # C130-C133: the bulk caps and the reference bypass.
