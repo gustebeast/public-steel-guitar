@@ -297,18 +297,48 @@ ULPI = {"ULPI_D0": "PA3", "ULPI_D1": "PB0", "ULPI_D2": "PB1", "ULPI_D3": "PB10",
 #
 # Order below is (A_pin, B_pin) per string, chosen so each pair spans two different
 # ADCs where possible and sits adjacent in the scan otherwise.
+# ⚠ REORDERED 2026-09-17, AND THE METRIC IS THE WHOLE STORY. Measured on the placed
+# board, the twenty strip-to-MCU nets arrived at their pins with ELEVEN inversions from
+# monotonic -- A side 0, B side 11. The A side's perfection is what the note above
+# records and it is real; the B side had never been looked at, and 11 inversions across
+# 7 pins on one package edge is most of the disorder there is room for.
+#
+# ⚠ THE FIRST ATTEMPT AT THIS MADE IT WORSE AND THE PROXY SAID IT WAS BETTER. Scoring
+# candidate maps by CROSSINGS BETWEEN STRAIGHT RATSNEST LINES said the best permutation
+# cut 80 crossings to 44 -- and it got there by destroying the A side, 0 inversions to
+# 14, to buy ONE inversion on the B side. Those long diagonal lines cross each other
+# because the board is long, not because the escape is hard; what actually costs a via
+# is the ORDER nets arrive in at a pin row. Scored on inversions instead, the same
+# search returns the opposite answer. The proxy was not slightly wrong, it was inverted.
+#
+# ⚠ AND PERMUTATION ALONE CANNOT FIX IT, which is why this was stuck. Which string gets
+# which PAIR is free, but a pair carries both its pins, so re-ordering the B side drags
+# the A side with it -- best case 8 inversions with A degraded to 2. The lever that
+# works is swapping A and B WITHIN a pair: it moves one pin between the two lists
+# without changing which pair a string owns, so both sides can be ordered at once.
+# Result: ELEVEN INVERSIONS TO ZERO, both sides monotonic, three strings swapped.
+#
+# ⚠ WHAT THE SWAP COSTS, AND IT IS NOT NOTHING. PD<n>A is the +Y detector and PD<n>B the
+# -Y one, so DIFF = A - B carries a physical sign: which way the string is displaced.
+# For the three strings marked below, that sign is INVERTED relative to the other seven.
+# SUM is unaffected (it is symmetric), and DIFF's job here is detecting that SUM has
+# collapsed, which is magnitude -- but any firmware that reads DIFF's sign needs a
+# per-string sign table, and these three are the entries that are -1. That table is a
+# firmware obligation created by this layout decision, recorded here because nothing in
+# the netlist, the CAD or DRC can express it.
 ADC_PAIRS = (
-    ("PF3",  "PA0"),    # 1   ADC3[0] / ADC1[0]
-    ("PF4",  "PA1"),    # 2   ADC3[1] / ADC1[1]
-    ("PF5",  "PF11"),   # 3   ADC3[2] / ADC1[2]
-    ("PF6",  "PF12"),   # 4   ADC3[3] / ADC1[3]
-    ("PF7",  "PA2"),    # 5   ADC3[4] / ADC1[4]
-    ("PF8",  "PA4"),    # 6   ADC3[5] / ADC1[5]
-    ("PF9",  "PA6"),    # 7   ADC3[6] / ADC2[4]  -- skew 2
-    ("PF10", "PA7"),    # 8   ADC3[7] / ADC2[5]  -- skew 2
-    ("PC4",  "PC5"),    # 9   ADC2[0] / ADC2[1]  -- same ADC, skew 1
-    ("PC1",  "PF13"),   # 10  ADC2[2] / ADC2[3]  -- same ADC, skew 1
+    ("PA1",  "PF4"),    # 1   ADC1[1] / ADC3[1]   ⚠ A/B SWAPPED -- DIFF sign inverted
+    ("PC1",  "PF13"),   # 2   ADC2[2] / ADC2[3]  -- same ADC, skew 1
+    ("PF10", "PA7"),    # 3   ADC3[7] / ADC2[5]  -- skew 2
+    ("PC4",  "PC5"),    # 4   ADC2[0] / ADC2[1]  -- same ADC, skew 1
+    ("PF11", "PF5"),    # 5   ADC1[2] / ADC3[2]   ⚠ A/B SWAPPED -- DIFF sign inverted
+    ("PF9",  "PA6"),    # 6   ADC3[6] / ADC2[4]  -- skew 2
+    ("PF8",  "PA4"),    # 7   ADC3[5] / ADC1[5]
+    ("PF12", "PF6"),    # 8   ADC1[3] / ADC3[3]   ⚠ A/B SWAPPED -- DIFF sign inverted
+    ("PF7",  "PA2"),    # 9   ADC3[4] / ADC1[4]
+    ("PF3",  "PA0"),    # 10  ADC3[0] / ADC1[0]
 )
+DIFF_SIGN_INVERTED = (1, 5, 8)   # the strings whose A/B pins are swapped; see above
 ADC_SPARE = "PF14"      # the one channel left over; brought out to nothing
 
 
