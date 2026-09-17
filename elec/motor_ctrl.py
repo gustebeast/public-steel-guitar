@@ -337,12 +337,19 @@ def motor_ctrl():
     # Feedback from the RAW node, BEFORE the fuse: regulating after F2 would put
     # the fuse's resistance inside the loop and let a warm fuse move the rail.
     r10 = _r("R10", "100k", "5 V feedback divider, top")
-    r11 = _r("R11", "preset", "5 V feedback divider, bottom -- set with the part")
+    # 24k9: VREF is 1.0 V (LMR33630 datasheet SNVSAN3), so RFBB = RFBT / (VOUT/VREF - 1)
+    # = 100k / 4 = 25k, and TI's own 5 V example in that datasheet uses 100k / 24.9k.
+    r11 = _r("R11", "24k9 1%", "5 V feedback divider, bottom -- 5.02 V with R10")
     v5_raw += r10[1]; fb5 += r10[2], r11[1]; gnd += r11[2]
     # EN divider: hold the converter off until the 24 V rail is up, so it does not
     # try to start into a sagging supply and chatter.
-    r12 = _r("R12", "preset", "5 V EN/UVLO divider, top -- turn-on around 18 V")
-    r13 = _r("R13", "preset", "5 V EN/UVLO divider, bottom")
+    # The EN pin has a PRECISION threshold -- 1.231 V typ, 1.2 to 1.26 over temperature
+    # (LMR33630 datasheet, VEN-H) -- which is what makes an external divider a real UVLO
+    # rather than a pull-up. For turn-on at 18 V the divider must be 18/1.231 = 14.6:1,
+    # so 137k over 10k (147k total) trips at 18.1 V typical and 17.6 to 18.5 V across the
+    # threshold's own spread. Enable leakage is 0.2 nA, so a 147k divider is not loaded.
+    r12 = _r("R12", "137k 1%", "5 V EN/UVLO divider, top -- turn-on at 18.1 V")
+    r13 = _r("R13", "10k 1%", "5 V EN/UVLO divider, bottom")
     v24 += r12[1]; en5 += r12[2], r13[1]; gnd += r13[2]
 
     f2 = Part(name="Fuse", ref_prefix="F", tag="F2", dest="NETLIST", tool="skidl",
