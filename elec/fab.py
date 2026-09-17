@@ -82,6 +82,10 @@ LCSC = {
     "VEMD4110X01": "C3211080",      # PIN photodiode -- ⚠ 95 in stock, 200 needed for ten
     "S4B-XH-SM4-TB": "C161861",     # the (LF)(SN) form, 20,992; the bare listing is 0
     # Crystals are specified by PART, not by frequency -- see the note beside Y1.
+    # Inductors are specified by PART too -- see the note beside L1. Isat 1.35 A
+    # worst case against the TPS560430's 1.4 A maximum current limit, which is the
+    # number TI tells you to size against.
+    "SWPA4020S150MT": "C36407",      # 15 uH, 4x4x2.0 shielded, DCR 0.299 ohm max
     "TX322525M4LBDD2T": "C5308007",  # 25 MHz, CL 20 pF, ESR 30 ohm (MCU HSE)
     "K3A260002010": "C2835957",      # 26 MHz, CL 20 pF, ESR 30 ohm (the PHY's limits)
     # ── sourced 2026-09-17 from JLCPCB's own parts API, not from memory ──────────

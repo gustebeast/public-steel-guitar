@@ -350,6 +350,35 @@ def optical():
         # ZERO BIAS: the photodiode's anode sits on the virtual earth and its cathode
         # on MID, so there is no reverse bias and therefore no dark current to speak
         # of. Dark current is the noise floor this board actually lives against.
+        #
+        # ⚠ ZERO BIAS ALSO MEANS THE DATASHEET'S HEADLINE NUMBERS ARE THE WRONG ONES.
+        # Vishay characterises the VEMD4110X01 at VR = 5 V, and both figures that
+        # matter here move at VR = 0:
+        #   responsivity   Ira 2.4 uA/(mW/cm2) at VR = 5 V, but Ik 2.2 at zero bias --
+        #                  and Ik, the SHORT-CIRCUIT current, is precisely what a
+        #                  virtual-earth TIA measures. 2.2 is the number to design to.
+        #   capacitance    CD 2.5 pF at VR = 5 V but 7 pF at VR = 0 (1 MHz). Nearly 3x,
+        #                  and CD is what sets the TIA's noise gain and its stability
+        #                  margin, so anyone re-deriving Cf from the front page of the
+        #                  datasheet will get it wrong by a factor of three.
+        # With Cin = 7 (diode) + 6 (TLV9064: CID 2 pF + CIC 4 pF both appear at the
+        # inverting input) + ~2 (board) = 15 pF against Rf = 4M7 and the TLV9064's
+        # 10 MHz GBW, the minimum feedback capacitance for stability is
+        # sqrt(Cin / (2*pi*Rf*GBW)) = 0.23 pF. Cf is 2.2 pF -- ten times that,
+        # deliberately overdamped, because the pole it sets is wanted anyway as the
+        # anti-alias filter. The 3x capacitance error would still have been safe here;
+        # it is recorded because the next person to move Rf will need it.
+        #
+        # AND THE NOISE BUDGET FALLS OUT OF THE SAME THREE NUMBERS, which is worth
+        # having written down because it says how much room this design has:
+        #   Rf thermal   sqrt(4kTR) = 279 nV/rtHz   -- dominant, as it should be
+        #   in * Rf      23 fA/rtHz x 4M7 = 108     -- not negligible
+        #   en * NG      10 nV/rtHz x (Cin+Cf)/Cf = 10 x 7.8 = 78
+        # summing to 309 nV/rtHz, and over the 15.4 kHz pole's 24 kHz noise bandwidth,
+        # 48 uVrms at the output. Against the thinnest string's 0.28 V that is ~75 dB
+        # of SNR before any averaging -- so the front end is not the limit, and the
+        # first lever if more is ever wanted is emitter drive (see the ballast note),
+        # not a quieter op-amp.
         mid += pd[1]
         summing += pd[2], q[inn_p]
         mid += q[inp_p]
@@ -360,10 +389,11 @@ def optical():
         #             -> ~8.9 mW/cm2 at the string
         #   string    a .014 plain intercepts ~0.036 x 0.1 cm and scatters it; at ~30%
         #             into a hemisphere that is ~0.003 mW/sr back
-        #   detector  2.4 uA per mW/cm2 (VEMD4110X01), ~3.4 mm away
-        #             -> of order 65 nA for the THINNEST string
+        #   detector  2.2 uA per mW/cm2 (VEMD4110X01 Ik, the ZERO-BIAS figure -- see
+        #             the note at the summing node), ~3.4 mm away
+        #             -> of order 60 nA for the THINNEST string
         # which is the "tens of nanoamps" this board was designed around, arrived at
-        # independently. 4M7 turns 65 nA into 0.31 V and a wound string's ~300 nA into
+        # independently. 4M7 turns 60 nA into 0.28 V and a wound string's ~300 nA into
         # 1.4 V, so the quiet end has signal and the loud end does not clip the 2.9 V
         # the ADC can see above MID. It is a compromise across a 14 dB spread, which is
         # exactly why the value is per string and why the footprints stay 0402.
@@ -620,11 +650,41 @@ def optical():
     v24 += u13[4]
     v24 += u13[5]
     sw += u13[6]
+    # ⚠ THE VALUE IS THE PART NUMBER, for the same reason the crystals' are: "15uH"
+    # does not specify an inductor. Saturation current, RMS current, DCR and whether the
+    # thing is shielded at all vary by 3x across 4x4 parts that share an inductance, and
+    # every one of those four decides whether this supply works.
+    #
+    # WHY 15 uH AND NOT THE 18 uH THAT USED TO BE HERE. The old note read "15.8 uH min
+    # (eq. 9, KIND 0.4)" and then rounded UP to the next E-series value, which is
+    # backwards: KIND is a CHOICE inside TI's own 20-60% band, not a constant. 15 uH is
+    # KIND = 0.42 -- squarely inside it -- and buys the thing that was actually binding.
+    #
+    # WHAT WAS BINDING IS SATURATION, AND THE BAR IS THE IC'S CURRENT LIMIT, NOT THE
+    # LOAD. SLVSE22B section 9.2.2.4 says it outright: "the inductor current rating
+    # should be a bit higher than current limit". IHS_LIMIT is 0.8 / 1.1 / 1.4 A
+    # (min/typ/max), so the part has to survive 1.4 A, not the 0.72 A peak this board
+    # draws at full load. Across Sunlord's 4x4 range at 22 uH the best Isat available is
+    # 1.05 A (SWPA4020S220MT) -- under the typical limit, never mind the maximum. Drop
+    # to 15 uH in the same package and Isat is 1.35 A worst case, DCR falls from 0.455
+    # to 0.299 ohm max, and Irms rises from 0.62 to 0.77 A. Lower inductance is the
+    # cheaper axis here, and TI says as much two paragraphs later.
+    #
+    # Ripple at 24 V in: 5 x 19 / (24 x 15u x 1.1M) = 0.24 A pk-pk, peak 0.72 A at the
+    # 600 mA the part can deliver -- and this board's measured draw is nearer 0.35 A.
+    # At the -20% tolerance corner (12 uH) ripple is 0.30 A and peak 0.75 A. 1.35 A of
+    # Isat covers all of it with the IC's limit still the first thing to act.
+    #
+    # SHIELDED is not optional: an unshielded inductor switching at 1.1 MHz sits on the
+    # same board as twenty transimpedance amplifiers looking for nanoamps.
+    # 8,816 in stock 2026-09-17. Footprint is Sunlord's own recommended land (1.1 x 3.7
+    # pads on a 3.0 mm pitch); the SRN4018 land that used to be here was a Bourns part
+    # that LCSC does not stock in any usable value.
     l1 = Part(name="L", ref_prefix="L", ref="L1", dest="NETLIST", tool="skidl",
-              value="18uH", description="buck output inductor, 18 uH SHIELDED, "
-              "Isat >= 1 A -- value from TPS560430 eq. 9 (15.8 uH min at 30 V in, "
-              "KIND 0.4, 1.1 MHz); PART STILL OPEN",
-              footprint="Inductor_SMD:L_Bourns-SRN4018",
+              value="SWPA4020S150MT",
+              description="buck output inductor, 15 uH shielded, Isat 1.35 A, "
+              "DCR 0.299 ohm max, 4.0 x 4.0 x 2.0 (LCSC C36407)",
+              footprint="Inductor_SMD:L_Sunlord_SWPA4020S",
               pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
     sw += l1[1]
     v5_pre += l1[2]

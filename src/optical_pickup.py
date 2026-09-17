@@ -1119,12 +1119,16 @@ _MPN_RULES = (
                                                     "the sample rate. 3,494 in stock 2026-09-17. "
                                                     "NOTE the 24 V trunk also feeds the steppers; "
                                                     "38 V is the margin against their regen")),
-    ("L1",   (MPN_UNKNOWN,       "",         0.10,  "buck output inductor, 18 uH, 4x4 shielded, Isat "
-                                                    ">= 1 A. OPEN: the part (stocked candidates exist, "
-                                                    "e.g. Sunlord SWPA4012S180MT, but Isat and height "
-                                                    "are unverified). SHIELDED is not "
-                                                    "optional here -- an unshielded inductor "
-                                                    "radiates into 20 TIAs")),
+    ("L1",   ("SWPA4020S150MT",  "C36407",   0.10,  "buck output inductor, 15 uH shielded, 4.0 x 4.0 "
+                                                    "x 2.0. Isat 1.35 A worst case -- sized against "
+                                                    "the TPS560430's 1.4 A MAXIMUM current limit, "
+                                                    "which is what SLVSE22B 9.2.2.4 says to size "
+                                                    "against, not the 0.72 A the board draws. 15 uH "
+                                                    "rather than 18: KIND 0.42 is inside TI's 20-60% "
+                                                    "band and no 4x4 part at 22 uH gets past 1.05 A. "
+                                                    "SHIELDED is not optional -- an unshielded "
+                                                    "inductor radiates into 20 TIAs. "
+                                                    "8,816 in stock 2026-09-17")),
     ("FB1",  (MPN_UNKNOWN,       "",         0.05,  "0603 ferrite bead, 600R@100MHz. OPEN: the "
                                                     "GZ2012D601TF/C1017 recorded here was a bad "
                                                     "number -- C1017 404s. Pick a real one")),
