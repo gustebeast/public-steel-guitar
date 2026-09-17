@@ -95,6 +95,7 @@ from .leg_stack import (ENGAGE as LS_ENGAGE, mortise_cutter as LS_mortise,
 from . import bar_latch as BL
 from . import legs as LG
 from . import latch as LT
+from . import bar_trrs as BT
 from .legs import _house
 
 YC = LEG_Y[0]                          # FLUSH round: the bar rides the +Y
@@ -302,6 +303,33 @@ LID_XA = BAR_X0                               # -X: flush, open (wiring access)
 LID_XB = BAR_X1 - LID_END_STOP                # +X: hard stop, 1.6 of bar left
 TROUGH_X0 = FEET[1][0] + LG.BLK_W / 2 + 0.6   # wiring trough: runs
 TROUGH_X1 = FEET[0][0] - LG.BLK_W / 2 - 0.6   # right up to the towers
+
+
+# THE WIRING CHAMBER: the trough, carried -X UNDER THE MORTISE to meet the spine
+# joint's jack. The lead leaves the jack's back travelling -Z and has to turn +X into
+# the trough, and a tunnel is the wrong shape for that turn -- a O3.8 shielded cable
+# wants radius, not a corner. So the trough's own section simply continues to the
+# tower, deeper in Y (the jack sits 3.2 -Y of the trough's face, so the trough as
+# drawn misses it entirely) and shallower in Z (the foot mortise is underneath).
+#
+# It costs nothing in the print. Every face of it is either an UP-facing floor or a
+# wall standing normal to a layer: the bar builds +Y, so a Z-normal face is vertical
+# and only a -Y-facing one would be a ceiling -- and the chamber, like the trough it
+# extends, has none. It opens straight through the +Y face into the lid groove, which
+# is also how the lead is reached: LID_XA is BAR_X0, so the lid covers this.
+CHAM_X0 = BT._ax()[0] - 8.0                # -624.46: 8 of run -X of the spine, which
+                                           # is where the lead's bend wants to live
+CHAM_Y0 = BT._ax()[1] - BT.JB_D / 2 - 0.8  # 41.90 -- deep enough in -Y to swallow the
+                                           # cable way's whole mouth, and no deeper
+CHAM_Z0 = 8.0                              # the floor. NOT the trough's 3.95: the foot
+                                           # mortise is 6.0 tall at this very station
+                                           # and the two would break into each other
+                                           # (asserted in _bar_body against the real
+                                           # cutter, not against this comment)
+CHAM_Z1 = TROUGH_Z1                        # ...and the same ceiling as the trough, so
+                                           # the groove floor above it is untouched and
+                                           # the lid-lock nub's 5.4 of bearing survives
+assert CHAM_Y0 > BAR_Y0 + D.MIN_WALL_2P, "the chamber has eaten the bar's -Y face"
 # End-to-end, the two lid pieces are ~318 each — they no longer fit the bed
 # STRAIGHT and never did (they printed diagonally at ~278 already). A part laid on
 # the diagonal has BED*sqrt(2) to work with, less its own width.
@@ -441,8 +469,10 @@ def _mortise_tower(lx: float, wired: bool) -> cq.Workplane:
     # only the anchors for the collar's screws
     b = b.cut(BL.tower_cut(TOWER_TOP))
     if wired:
-        pass    # the corner TRRS way used to be cut here; it is retired and the
-                # bottom joint goes on the spine (see the note at the top)
+        pass    # the corner TRRS way used to be cut here; it is retired. The spine
+                # joint's bore, keeper pocket and cable way are cut in _bar_body
+                # instead -- they run from the mortise floor down PAST this tower's
+                # own bottom face, so the tower is the wrong solid to cut them from
     return b
 
 
@@ -502,10 +532,22 @@ def _bar_full() -> cq.Workplane:
     # and this is the line that says so.
     body = body.union(_mortise_tower(FEET[1][0], True))
     body = body.cut(_foot_mortise_cutter(FEET[0][0]))
-    body = body.cut(_foot_mortise_cutter(FEET[1][0]))
-    # THE WIRED TOWER'S CORNER WAYS are gone with the corner jack. The spine joint
-    # will bring its own way down from the mortise floor; until it lands, the bar
-    # carries no signal bore at this station.
+    _fc = _foot_mortise_cutter(FEET[1][0])
+    body = body.cut(_fc)
+    assert _fc.val().BoundingBox().zmax + D.MIN_WALL_2P <= CHAM_Z0, (
+        "the wiring chamber floor (%.2f) sits on the foot mortise (%.2f)"
+        % (CHAM_Z0, _fc.val().BoundingBox().zmax))
+    # THE SPINE JOINT'S BAR HALF, and it is cut from the BODY rather than from
+    # _mortise_tower because it straddles the two: the jack's back is at z 22.30 and
+    # the tower does not start until BAR_H (27.90). Cutting it off the tower alone
+    # left the lower 5.6 of the bore filled in by the bar underneath it.
+    body = body.cut(BT.bar_negatives(TOWER_TOP - LS_ENGAGE, CHAM_Z1))
+    # ...and the chamber the lead turns in, which is the trough carried under the tower
+    body = body.cut(box_at(TROUGH_X0 + 0.01 - CHAM_X0, BAR_Y1 + 1.0 - CHAM_Y0,
+                           CHAM_Z1 - CHAM_Z0,
+                           x=(CHAM_X0 + TROUGH_X0 + 0.01) / 2,
+                           y=(CHAM_Y0 + BAR_Y1 + 1.0) / 2,
+                           z=(CHAM_Z0 + CHAM_Z1) / 2))
     # wiring TROUGH — now opens +Y (the top of the print), directly behind the
     # groove floor and exactly as tall in Z as the dovetail's foot, so the two
     # cavities merge into one channel and the 1.6 rails survive as ledges. No
