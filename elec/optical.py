@@ -262,9 +262,15 @@ ULPI = {"ULPI_D0": "PA3", "ULPI_D1": "PB0", "ULPI_D2": "PB1", "ULPI_D3": "PB10",
 # side has ZERO crossings and permuting it can only make things worse.
 #
 # ⚠ WHAT IS LEFT IS SILICON, NOT PLACEMENT. Of the 20 ADC pins this board uses, 12 are
-# on the LQFP144's strip-facing edge and EIGHT ARE NOT -- they are round the corner on
-# the edge that faces away, so those eight nets must travel past the package to reach
-# it. That is the H743's ADC pin distribution meeting a board whose analog all arrives
+# on the strip-facing edge and EIGHT ARE NOT -- they are round the corner on the edge
+# that faces away, so those eight nets must travel past the package to reach it.
+# ⚠ RE-MEASURED ON THE LQFP176, 2026-09-17, because this paragraph was written for the
+# LQFP144 and a package change is exactly the kind of thing that silently invalidates a
+# measurement. It does not: the split is still 12 / 8. Twelve TIA_OUT pads sit on U6's
+# -X edge, which faces the strip; eight sit on its +Y edge, which faces away --
+#     +Y: TIA_OUT_3B 4B 6B 7B 8B 9A 9B 10B
+# and those eight are still the nets that finish last. Of the three unconnected left on
+# the current route, TIA_OUT_8B is one of them. That is the H743's ADC pin distribution meeting a board whose analog all arrives
 # from one direction, and there is no assignment that fixes it: the pins are where they
 # are. Rotating the MCU does not help either (elec/orient.py scores it at its best
 # orientation already), and the eight are why a handful of TIA_OUT nets are the last
@@ -913,6 +919,25 @@ def optical():
     # ── J2: 24 V in, on the instrument's standard 4-way ──────────────────────
     j2 = Part(name="S4B-XH-SM4-TB", ref_prefix="J", ref="J2", dest="NETLIST",
               tool="skidl", value="S4B-XH-SM4-TB",
+              # ⚠ NOTHING IN THE INSTRUMENT DRIVES THIS CONNECTOR YET, and that is a
+              # system-level gap rather than a board bug. Every 24 V connector in every
+              # netlist was listed on 2026-09-17: the ONLY source is the output panel's
+              # J7, and J7 already feeds the motor controller's J3. Two sinks, one
+              # source, no documented junction -- and the project's rule is that every
+              # field connection is a connector, so a splice is not the answer either.
+              # The panel needs a second 24 V outlet, or this board needs to hang off
+              # something that already carries the trunk. That is a decision about the
+              # instrument's harness, not about this board, so it is recorded and not
+              # invented here.
+              #
+              # ⚠ AND THE PIN ORDER DOES NOT MATCH THE ONE SOURCE THAT EXISTS. Every
+              # other 24 V connector in the instrument is 1=GND, 2=+24V. Panel J7 is
+              # 1=GND 2=+24V 3=+24V 4=GND -- a doubled, mirrored pair. A straight
+              # four-conductor cable from J7 to this connector lands a live 24 V wire
+              # and a return on pins 3 and 4, which are not connected here: it works,
+              # the doubling is wasted, and the harness carries two conductors whose
+              # purpose nobody can explain. Whichever way the feed is resolved, the two
+              # ends have to agree first.
               description="24 V in -- 24V, PWR_GND, 2 cavities empty",
               footprint="Connector_JST:JST_XH_S4B-XH-SM4-TB_1x04-1MP_P2.50mm_Horizontal",
               pins=[Pin(num=i + 1, name=n, func=P)
