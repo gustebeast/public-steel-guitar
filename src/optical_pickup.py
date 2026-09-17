@@ -971,9 +971,9 @@ def _parts():
     _phy_y = _part_y("U7")
     _sup_dy = CRTYD["0402"][1] + CRTYD_GAP
     for _k, (_ref, _desc) in enumerate((
-            ("C120", "PHY decoupling -- 3V3"),
-            ("C121", "PHY decoupling -- 3V3"),
-            ("C122", "PHY decoupling -- the 1V8 it regulates for itself"))):
+            ("C120", "PHY VDD33 regulator output cap, 1 uF"),
+            ("C121", "PHY VBAT/VDDIO bypass"),
+            ("C122", "PHY VDD18 regulator output cap, 1 uF"))):
         add(_ref, _desc, "0402", _sup_x1, _phy_y + (_k - 1.0) * _sup_dy)
     # ⚠ R37 IS NOT IN THAT COLUMN, BECAUSE ITS PAD IS NOT ON THAT FACE. The -X face
     # carries XI, XO, ULPI_CK and 1V8; RBIAS is pad 17, on the +Y face. A part placed on
@@ -988,7 +988,17 @@ def _parts():
     add("R37", "ULPI PHY bias resistor -- beside pad 17, outboard of the pair", "0402",
         _j1_x + _rbias_dx + CRTYD["0402"][0] / 2,
         _phy_y - _phy_d / 2 - _phy_gap / 2)
-    add("Y2", "24 MHz crystal -- PHY reference, beside its own XI/XO", "3225",
+    # ⚠ PROVISIONAL, LIKE THE REST OF THIS CLUSTER. R39 is new (the VBUS series
+    # resistor the datasheet requires), and the whole support cluster here was fitted to
+    # a PHY pinout that turned out to be invented -- see U7 in elec/optical.py. With the
+    # real pins the crystal (20/21) and RBIAS (19) are on the +X face, toward the board
+    # edge, while this cluster sits -X. It stays only so the board builds; re-placing it
+    # waits on the MCU decision, because U6 is out of stock and its replacement may not
+    # share the package.
+    add("R39", "PHY VBUS series 20k -- PROVISIONAL placement", "0402",
+        _j1_x + _rbias_dx + CRTYD["0402"][0] + CRTYD_GAP + CRTYD["0402"][1] / 2,
+        _phy_y - _phy_d / 2 - _phy_gap / 2, rot=90.0)
+    add("Y2", "26 MHz crystal -- PHY reference (USB3343 needs 26)", "3225",
         _sup_x2, _phy_y)
     _y2_dy = CRTYD["3225"][1] / 2 + CRTYD_GAP + CRTYD["0402"][1] / 2
     add("C125", "crystal load cap -- Y2 XI", "0402", _sup_x2, _phy_y - _y2_dy)
@@ -1023,10 +1033,10 @@ _MPN_RULES = (
                                                 "*** OUT OF STOCK at LCSC 2026-08-04 ***")),
     ("U10",  ("USBLC6-2SC6",     "C7519",    0.1829, "USB ESD array, @5+. NOTE SOT-23-6, not the "
                                                     "modelled SOT-563 -- envelope grows")),
-    ("U11",  ("TLV9061IDCKR",    "C398357",  0.2505, "single of the same family as U1-U5, so the "
-                                                    "mid-rail buffer matches the TIAs. @5+. "
-                                                    "NOTE package is SC-70-5, not the modelled "
-                                                    "SOT-23-5 -- envelope is oversized, safe. "
+    ("U11",  ("TLV9061IDBVR",    "C398358",  0.2505, "single of the same family as U1-U5, so the "
+                                                    "mid-rail buffer matches the TIAs. SOT-23-5 "
+                                                    "(DBV) -- NOT the SC70 DCK part, whose pinout "
+                                                    "differs (TI SBOS839 Table 5-1). "
                                                     "C693480 was WRONG: that is a P6KE39CA TVS")),
     # (U12, the PCM1808, is GONE with the magnetic channel -- it is on the output panel
     #  now, where the pickup lands. Same part, same reasoning, different board.)
@@ -1124,7 +1134,7 @@ _MPN_RULES = (
 # file guards against elsewhere -- it evaluates fine and is simply wrong -- so the
 # ambiguous group is spelled out instead of pattern-matched.
 _MPN_EXACT = {r: ("0402 thick-film R", "BASIC", 0.002, "pulls / divider / gate")
-              for r in ("R30", "R31", "R32", "R33", "R34", "R35", "R36", "R37", "R38")}
+              for r in ("R30", "R31", "R32", "R33", "R34", "R35", "R36", "R37", "R38", "R39")}
 # C112/C113 are the H7's 0805 VCAP pair, but "C112".startswith("C1") would file them
 # under the 0402 line -- the same namespace collision the groups below guard against.
 _MPN_EXACT.update({r: ("0805 X7R MLCC", "BASIC", 0.01, "H7 core regulator cap (VCAP)")
