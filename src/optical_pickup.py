@@ -521,31 +521,32 @@ COVER_X0  = COL_OPA + PKG["SOIC-14"][0] / 2 + 0.5             # lid's -X edge, -
 # referencing SENSE_HL left only 0.1 of material outboard of the last slot -- a knife edge
 # (user-caught). Two full beads past the aperture instead.
 COVER_HY  = _OUTER_Y + SLOT_DY / 2 + D.MIN_WALL_2P
-# ⚠ ROW PITCH 1.2 -> 1.15. An 0402's COURTYARD is 1.03 tall against a 0.50 body, so
-# 1.2 was comfortable in bodies and left only 0.17 in lands -- and U1's cluster, which
-# is squeezed between its quad and U2's cluster because the jack access hole took the
-# gap above it, had nowhere to spend that. Tightening the grid by 0.05 a row reclaims
-# the 0.15 the two ends were short by, and 1.15 still clears an 0402 land by 0.12.
-FB_PITCH, FB_ROWS = 2.0, (5.6, 6.75, 7.9, 9.05)               # 0402 grid in the Y gaps
-FB_ROW_PITCH = FB_ROWS[1] - FB_ROWS[0]                        # 1.2, the row spacing
-# U1's cluster sits in the gap BELOW its quad, because the jack's access hole took the
-# gap above (see JACK_ACCESS_XY). It has to be pulled IN from the shared FB_ROWS to fit
-# between the quad and U2's cluster, and the window is narrow enough to be worth deriving
-# rather than guessing:
+# ⚠ THE ROW PITCH WAS NEVER THE CONSTRAINT -- THE GAPS WERE SHARED. Each quad's
+# feedback cluster sits in a Y gap beside it, and `s` used to alternate, so U1's cluster
+# pointed -Y and U2's pointed +Y: BOTH INTO THE SAME GAP, back to back, two four-row
+# grids in the 18.73 mm between two quads. That is why the pitch could not be widened --
+# every extra 0.1 a row closed 0.6 between Cd12 and Cd22, which is the collision the
+# placement assert reported and which my arithmetic (they are 37 mm apart!) could not
+# explain: I was reading the two clusters as belonging to different gaps.
 #
-#   pulled too far  -> the nearest row fouls the SOIC-14 itself (at one full row in, by
-#                      0.18; at two, by 0.50 -- the placement assert caught both)
-#   pulled too little -> the farthest row fouls U2's cluster below (0.38 at no pull)
+# EVERY CLUSTER NOW HANGS BELOW ITS OWN QUAD, so each gap holds exactly one. The budget
+# stops being "half a gap" and becomes a whole one, and it is not close:
 #
-# ⚠ THE WINDOW IS IN LANDS NOW, NOT BODIES, and that moved both ends of it:
-#   nearest row  >= SOIC_crtyd_Y/2 + 0402_crtyd_Y/2 from the quad centre -> pull <= 0.46
-#   farthest row >= one 0402 courtyard clear of U2's top row             -> pull >= 0.29
-# (the lower bound relaxed because the grid itself tightened to a 1.15 row pitch; the
-#  upper bound tightened because a SOIC-14's courtyard is 0.60 taller than its body.)
-# At the old 0.57 the three feedback resistors' lands sat 0.11 into U1's -- which DRC
-# reported and the body-based arithmetic could not have.
-FB_PULL_U1 = 0.42                             # the middle of 0.29..0.46
-FB_ROWS_U1 = tuple(r - FB_PULL_U1 for r in FB_ROWS)
+#   nearest row  >= SOIC_crtyd_Y/2 + 0402_crtyd_Y/2 + clearance  ->  5.39
+#   farthest row <= 2*PITCH - the same                           -> 13.34
+#
+# 5.6 .. 11.6 at a 2.0 pitch sits inside that with 1.7 mm to spare. The point is not the
+# spare: it is that a 2.0 pitch leaves 0.97 mm of clear board between one row's courtyard
+# and the next, where 1.15 left 0.12. A 0.25 track plus its clearance is 0.377, so the
+# grid now has ROUTING CHANNELS BETWEEN ITS ROWS -- two lanes' worth -- and before it had
+# none at all. Thirteen of the router's failures were TIA nets trying to cross this field.
+FB_PITCH = 2.0                                # 0402 grid in the Y gaps, column pitch
+FB_ROW_PITCH = 2.0                            # row pitch: one clear routing channel
+FB_ROWS = tuple(5.6 + k * FB_ROW_PITCH for k in range(4))
+# No per-quad pull any more. U1 needed one because it was the squeezed half of the shared
+# U1/U2 gap; nothing is squeezed now. (U1 still hangs BELOW its quad rather than above --
+# the jack's access hole takes the gap above it -- but so does every other cluster.)
+FB_ROWS_U1 = FB_ROWS
 
 
 def _spread(out, y, items, x0, x1):
@@ -653,8 +654,9 @@ def _parts():
                  + [("Cd%d%d" % (q + 1, k + 1), "op-amp decoupling") for k in range(2)])
         # U1 ALSO uses the gap below, and pulled in -- see JACK_ACCESS_XY. The jack's
         # access hole occupies the gap above it, which is where this cluster used to sit.
-        s = -1 if q in (0, D.N_STRINGS // 2 - 1) else 1
-        rows = FB_ROWS_U1 if q == 0 else FB_ROWS
+        # ALL CLUSTERS HANG -Y OF THEIR OWN QUAD. `s` used to alternate, which put two
+        # clusters in one gap and none in the next; see FB_ROWS for what that cost.
+        s, rows = -1, FB_ROWS
         slots = [(COL_OPA + (c - 1) * FB_PITCH, cy + s * r) for r in rows
                  for c in range(3)]
         for (ref, desc), (px, py) in zip(items, slots):
