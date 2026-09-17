@@ -805,6 +805,19 @@ BOARD_NOTES = {
     # on was being destroyed by the step that routed them. route.py now declares this
     # to freerouting as a plane and it leaves it alone.
     "plane_layers": ("In1.Cu",),
+    # ⚠ In2.Cu IS A SIGNAL LAYER AND STAYS ONE -- TESTED, AND THE TEXTBOOK ANSWER LOSES.
+    # The standard 4-layer mixed-signal stackup is signal / GND / POWER / signal, and by
+    # that pattern this board is wasteful: +5V, +3V3D and MID are routed as tracks the
+    # length of a 180 mm board, competing with twenty TIA outputs for the same copper,
+    # while In2 carries a handful of nets. Pouring +5V on In2 (stitched per pad, as GND
+    # is) should hand the strip its room back.
+    # MEASURED: 16 unconnected and 22 violations, against 12 and 20 with In2 left alone.
+    # It went the other way. The reason is that this board's difficulty is not supply
+    # distribution -- it is twenty analog signals leaving a 13.6 mm strip for one MCU at
+    # the far end -- and that traffic needs LAYERS, not a cleaner power rail. Taking a
+    # third of the routing space to solve a problem the board did not have cost more
+    # than the power tracks were ever costing.
+    # The stackup is chosen by what the board is, not by what the pattern says.
     # ⚠ 25 PASSES, NOT THE DEFAULT 10, AND IT IS CONNECTIVITY THIS BUYS -- NOT NEATNESS.
     # Measured on this board: 1 pass 105 unconnected, 3 -> 50, 10 -> 13, 25 -> 6. The
     # comment in route.py used to say the curve was flat past ten, which is true of the
