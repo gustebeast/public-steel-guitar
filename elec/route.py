@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -69,6 +70,7 @@ JAR = os.path.expandvars(
 # 1070 s and the default was 900, so the first attempt at this measurement was KILLED --
 # and the DRC that followed reported 266 unconnected, which is the UNROUTED board. A
 # timeout that fires looks exactly like a routing result unless you read the log.
+DSN_CLEAR_MARGIN_UM = 10      # see the clearance block in route()
 PASSES = 10
 
 
@@ -114,6 +116,40 @@ def route(stem, passes=None, timeout=3600):
         open(dsn, "w", encoding="utf-8").write(txt)
         print("  declared %s as plane layer(s) -- the router will not route on them"
               % ", ".join(planes))
+
+    # ⚠ THE ROUTER IS GIVEN MORE CLEARANCE THAN THE FAB RULE, ON PURPOSE. freerouting
+    # routes right up to the clearance it is handed, and its geometry and KiCad's do not
+    # round the same way -- so a board it considers finished comes back with tracks
+    # 0.1212-0.1247 mm apart against a 0.127 mm rule. Four such violations on the optical
+    # board, all of them 4-6 um short, all of them freerouting's own copper touching
+    # freerouting's own copper. There is nothing to fix on the board; the router simply
+    # aims at the line instead of inside it.
+    #
+    # THE FIX BELONGS IN THE DSN, NOT IN THE DESIGN RULE. Raising the netclass to 0.137
+    # would raise it for the fab as well, and 0.127 mm is what the cheap JLCPCB process
+    # is quoted at -- we want the real rule checked by the real DRC. So the exported DSN
+    # gets the margin and the board keeps its rule: the router aims 10 um inside the
+    # line, DRC still measures against the line.
+    #
+    # The smd_smd clearance is deliberately NOT bumped. That one is pad-to-pad, decided
+    # by placement before the router ever runs, and widening it only makes the router
+    # refuse geometry that is already legal and already built.
+    txt = open(dsn, encoding="utf-8").read()
+    bumped = set()
+
+    def _bump(m):
+        v = float(m.group(1))
+        bumped.add(v)
+        return "(clearance %g)" % (v + DSN_CLEAR_MARGIN_UM)
+
+    txt, n_bump = re.subn(r"\(clearance ([\d.]+)\)", _bump, txt)
+    if not n_bump:
+        raise SystemExit("no plain (clearance N) rule in the DSN -- cannot add the "
+                         "router margin, and routing without it produces violations")
+    open(dsn, "w", encoding="utf-8").write(txt)
+    print("  router clearance %s um (fab rule %s um + %g um of rounding margin)"
+          % ("/".join("%g" % (v + DSN_CLEAR_MARGIN_UM) for v in sorted(bumped)),
+             "/".join("%g" % v for v in sorted(bumped)), DSN_CLEAR_MARGIN_UM))
 
     if not os.path.isfile(JAVA):
         raise SystemExit("no Java 25 runtime at %s" % JAVA)
