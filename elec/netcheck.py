@@ -79,3 +79,46 @@ def grounds_meet(path, declared_split=None):
             "pin on each), or make them one net."
             % (path, " | ".join("+".join(sorted(v)) for v in groups.values())))
     return len(grounds)
+
+
+def classify_violations(drc_json, declared):
+    """Split DRC violations into the ones a board DECLARES and the rest.
+
+    ⚠ A COUNT IS NOT A CHECK, AND THIS EXISTS BECAUSE I PROVED THAT ON MYSELF. The
+    optical board declares twenty courtyard overlaps -- an emitter between its own two
+    photodiodes, ten times -- and for weeks the pipeline reported "20 violations" and
+    everyone, including me, read that as "the expected ones". Then a hand placement put
+    a capacitor across the MCU's courtyard and two test pads, the report said 23, and
+    the only reason it was caught was that somebody happened to list them.
+
+    THE DECLARATION IS BY SHAPE, NOT BY NUMBER. `declared` is a predicate taking the
+    sorted pair of footprint references; a violation it accepts is expected however many
+    there are, and a violation it rejects is a fault even if the total is unchanged. A
+    twenty-first triplet overlap is fine; a first C112/U6 overlap is not, and counting
+    cannot tell them apart.
+    """
+    import re as _re
+    ok, bad = [], []
+    for v in drc_json.get("violations", []):
+        refs = tuple(sorted(_re.sub(r"^Footprint ", "", i.get("description", ""))
+                            for i in v.get("items", [])))
+        (ok if declared(v.get("type"), refs) else bad).append((v.get("type"), refs))
+    return ok, bad
+
+
+def optical_declared(vtype, refs):
+    """The optical board's sensing cell: an IR emitter between its own two detectors.
+
+    Declared because it cannot be loosened -- PD_DY is an optical parameter before it is
+    a placement one, and widening it would let the cover shade the detectors it exists to
+    protect. Measured: courtyards overlap 0.390 mm, BODIES clear by 0.350 and copper by
+    0.200, against a 0.127 rule. Only this shape, and only between a D and its OWN PDs.
+    """
+    import re as _re
+    if vtype != "courtyards_overlap" or len(refs) != 2:
+        return False
+    m = [_re.fullmatch(r"(D|PD)(\d+)([AB]?)", r) for r in refs]
+    if not all(m):
+        return False
+    kinds = {x.group(1) for x in m}
+    return kinds == {"D", "PD"} and m[0].group(2) == m[1].group(2)

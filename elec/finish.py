@@ -31,6 +31,8 @@ import os
 import re
 import shutil
 import subprocess
+
+import netcheck
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -50,7 +52,19 @@ def _drc(stem):
             m = re.search(r"\[([^\]]+)\]", item["description"])
             if m:
                 nets.add(m.group(1))
-    return len(d.get("unconnected_items", [])), sorted(nets), len(d["violations"])
+    # ⚠ WHAT IS RETURNED IS THE UNEXPECTED COUNT, NOT THE TOTAL. The optical board
+    # declares twenty courtyard overlaps and reporting the total taught everyone to read
+    # "20" as "fine" -- at which point 23 also reads as fine for exactly as long as it
+    # takes somebody to stop listing them. See netcheck.classify_violations.
+    declared = netcheck.optical_declared if "optical" in os.path.basename(stem) \
+        else (lambda t, r: False)
+    ok, bad = netcheck.classify_violations(d, declared)
+    if ok:
+        print("  %d declared violation(s) (%s), %d unexpected"
+              % (len(ok), "sensor triplets" if ok else "-", len(bad)))
+    for t, refs in bad:
+        print("     UNEXPECTED %s: %s" % (t, " + ".join(refs)))
+    return len(d.get("unconnected_items", [])), sorted(nets), len(bad)
 
 
 def _run(script, stem):
