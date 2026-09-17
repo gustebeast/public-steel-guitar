@@ -116,6 +116,7 @@ FP = {
     # Sunlord's own recommended land (1.1 x 3.7 pads on a 3.0 mm pitch), not the
     # Bourns SRN4018 one that used to be here -- LCSC stocks no usable SRN4018 value.
     "IND-4040": "Inductor_SMD:L_Sunlord_SWPA4020S",
+    "TP": "TestPoint:TestPoint_Pad_D1.5mm",
     "USB-C":    "Connector_USB:USB_C_Receptacle_HRO_TYPE-C-31-M-12",
     "XH-SM-4Y": "Connector_JST:JST_XH_S4B-XH-SM4-TB_1x04-1MP_P2.50mm_Horizontal",
 }
@@ -549,9 +550,46 @@ def optical():
     osc_out += u6[PIN["PH1"]]
     nrst += u6[PIN["NRST"]]
     boot0 += u6[PIN["BOOT0"]]
+    # ⚠ THE BOARD HAD NO WAY TO RECEIVE ITS FIRST FIRMWARE. SWDIO and SWCLK were
+    # connected to the MCU and to NOTHING ELSE -- single-node nets, so layout dropped
+    # them as unplaceable and the DRC had nothing to complain about. BOM.md carried a
+    # row reading "SWD programming pads (no component)", which is how the intent
+    # survived while the implementation never existed.
+    #
+    # AND THERE WAS NO SECOND WAY IN. A blank STM32H743 cannot enumerate over this
+    # board's USB, because the ULPI PHY needs firmware to bring it up and the ROM
+    # bootloader's DFU lives on OTG_FS (PA11/PA12), which this board does not wire --
+    # it uses OTG_HS through the PHY. AN2606's other bootloader interfaces (USART1/2/3,
+    # I2C1/2/3, SPI1/2/4, FDCAN1) are not brought out either. With no SWD and no
+    # bootloader pin, an assembled board is a brick: nothing about it is repairable in
+    # firmware because no firmware can be put on it.
+    #
+    # Five pads fix it, and the set is chosen rather than default:
+    #   SWDIO, SWCLK   the interface
+    #   NRST           so a target can be attached UNDER RESET. This is the one that
+    #                  looks optional and is not: PA13/PA14 are ordinary GPIO after
+    #                  reset and firmware that reconfigures them takes SWD away, and
+    #                  connect-under-reset is the only way back in.
+    #   GND            the return the probe references
+    #   +3V3D          target-voltage sense, so the programmer knows the board is
+    #                  powered rather than driving a dead rail
+    # BOOT0 is deliberately NOT brought out: it only helps if a ROM bootloader
+    # interface exists, and none does. NRST is the recovery path here.
+    #
+    # Pads, not a connector: this is a factory operation, not a field one, so the
+    # project's every-field-connection-is-a-connector rule does not apply. They carry
+    # no paste and are excluded from the BOM and the pick-and-place by the footprint.
     swdio, swclk = Net("SWDIO"), Net("SWCLK")
     swdio += u6[PIN["PA13"]]
     swclk += u6[PIN["PA14"]]
+    for tag, (ref, net) in enumerate((("TP1", swdio), ("TP2", swclk),
+                                      ("TP3", nrst), ("TP4", gnd), ("TP5", v3d))):
+        tp = Part(name="TestPoint", ref_prefix="TP", ref=ref, dest="NETLIST",
+                  tool="skidl", value="SWD",
+                  description="SWD pad -- %s; bare copper, no component"
+                              % net.name,
+                  footprint=FP["TP"], pins=[Pin(num=1, func=P)])
+        net += tp[1]
     led_gate = Net("LED_GATE")
     led_gate += u6[PIN["PB3"]]       # the emitter row's on/off, one GPIO for all ten
     # VCAP: the H7's internal core regulator needs its own capacitors, and leaving
