@@ -619,6 +619,10 @@ def _parts():
     truth for the 3D model, the area budget, the clearance assertions and BOM.md."""
     P = []
 
+    def _part_y(ref):
+        """The y a part was ACTUALLY placed at -- so nothing re-derives a sibling's."""
+        return next(q["y"] for q in P if q["ref"] == ref)
+
     def add(ref, desc, pkg, x, y, rot=0.0):
         # ROT IS A ROUTING FACT, not a drawing preference: it says which way a part's
         # pins face, and for anything on a high-speed net that is the placement. Only
@@ -959,7 +963,12 @@ def _parts():
     _PHY_FAN = 2.0
     _sup_x1 = _j1_x - _phy_w / 2 - _PHY_FAN - CRTYD["0402"][0] / 2
     _sup_x2 = _sup_x1 - CRTYD["0402"][0] / 2 - CRTYD_GAP - CRTYD["3225"][0] / 2
-    _phy_y = edge_y + _uc_d + _chain_gap + _esd_d + _chain_gap + _phy_d / 2
+    # ⚠ ONE EXPRESSION, NOT TWO COPIES OF ONE. This used to repeat U7's y by hand, and
+    # when the PHY-end gap widened (_chain_gap -> _phy_gap) only U7's copy was changed:
+    # the whole support cluster stayed 1.2 mm behind, which put R37's pad ON U10's and
+    # DRC reported a SHORT between PHY_RBIAS and USB_DP. The board still built, still
+    # routed, and still came back with a plausible unconnected count.
+    _phy_y = _part_y("U7")
     _sup_dy = CRTYD["0402"][1] + CRTYD_GAP
     for _k, (_ref, _desc) in enumerate((
             ("C120", "PHY decoupling -- 3V3"),
