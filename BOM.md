@@ -462,6 +462,41 @@ adapting at the motors.
 > is the direct price of separating the pulsed emitters from the analog supply.
 > Unconnected went 5 → 10 on an otherwise identical board. Zero DRC violations
 > either way, beyond the 20 declared sensing-cell courtyard overlaps.
+>
+> ### ⚠ Second pass, same day — the parts that were still OPEN, and four more faults
+>
+> The first pass checked what was *written*. This one closed what was *missing*,
+> and found that the two files naming each part had drifted apart.
+>
+> | What was wrong | Why it matters |
+> |---|---|
+> | **D8 and D9 were BOM'd as an output-panel relay flyback and an output clamp, both OPEN** | On this board D8 and D9 are two of the **ten IR emitters**. The CAD's sourcing table matches by longest ref prefix, and the panel's `D8`/`D9` entries beat this board's bare `D` rule. The exact-ref table exists *because* designators collide within a board; this was the same failure across boards, and nothing could see it — each file was internally consistent |
+> | **Y1 and Y2 both still mapped to a 25 MHz part** | A 25 MHz crystal on the pin that has to clock the PHY at 26. The first pass fixed the netlist and left the CAD table saying "confirm vs USB3343". One `Y` rule cannot cover two different crystals |
+> | L1 was **18 µH** with the part OPEN | The note computed 15.8 µH from TI's eq. 9 and rounded *up*, which is backwards — `KIND` is a choice in TI's own 20–60 % band. And the binding spec is not the load: SLVSE22B 9.2.2.4 sizes the inductor against the **IC's current limit** (0.8/1.1/**1.4** A), and no 4 × 4 part at 22 µH gets past 1.05 A. At 15 µH the same package gives Isat 1.35 A, DCR 0.299 Ω instead of 0.455, Irms 0.77 instead of 0.62. **SWPA4020S150MT**, C36407, 8,816 in stock |
+> | FB1 was OPEN, and the obvious part is a trap | **"600" in a Murata or Sunlord bead part number means 60 Ω** — two digits and a decade multiplier. `BLM18PG600SN1D`, the top hit with 136,668 in stock, is a *tenth* of the specified filtering in the right package, on the right footprint, and no DRC or netlist check could ever catch it. `GZ1608D601TF` (C1002) is the 600 Ω part |
+> | U10's **body** was the SOT-563's 1.6 × 1.6 | The part ordered is USBLC6-2SC6 in **SOT-23-6**. The courtyard had been corrected and the body left behind — and body is what the CAD's pairwise clearance assert measures, so a neighbour could sit closer than the real package allows |
+> | J2 was OPEN pending "confirm B = 15.0" | Confirmed against JST's own drawing: S4B-XH-SM4-TB is A = 7.5, **B = 15.0**. C161861 (the `(LF)(SN)` form, 20,992 — the bare listing is zero, the same trap J1 hit on the lever board) |
+> | **BOM.md was missing thirteen parts** | The whole local supply (U13, L1, C160–C163, R40/R41), the PHY's R37/R39, the LED gate pull-down R38, and the H7's two core-regulator caps — everything added when the board took the 24 V trunk on 2026-09-14. J2 still read "5 V, XH-SM-2" |
+>
+> **The drift is now checked mechanically.** `elec/mpn_check.py` compares the CAD's
+> sourcing table against the netlist and runs on every netlist generation. It is
+> what found D8/D9 and the crystals.
+>
+> **And the photodiode has no substitute.** LCSC's catalogue was swept for a
+> daylight-filtered PIN photodiode in an 0805 land: `VEMD4110X01` is the only one.
+> `TEMD7000X01` (3,904 in stock) is 350–1120 nm, `VEMD1060X01` (1,914) is
+> 350–1070, `VEMD8081` (5,501) is 4.8 × 2.5 mm, visible-*enhanced* and 33 pF. The
+> filter is load-bearing: at Rf = 4M7 the TIA saturates at 617 nA and open room
+> light on an unfiltered diode is already that order. 95 in stock is four boards,
+> against 200 for the ten-instrument basis — a purchasing problem with no design
+> answer.
+>
+> **One number the audit corrected rather than found:** the photodiodes run at
+> **zero bias**, and Vishay characterises the part at V\_R = 5 V, so both figures
+> quoted in the design were the wrong line of the table — responsivity is
+> **Ik 2.2 µA/(mW/cm²)**, not Ira 2.4, and diode capacitance is **7 pF**, not 2.5.
+> The 3× capacitance error was still safe (Cf is ten times the stability minimum),
+> but it is the number anyone re-deriving Rf needs.
 
 
 One custom board lying **under the strings, firing up**, on a carrier that is part
