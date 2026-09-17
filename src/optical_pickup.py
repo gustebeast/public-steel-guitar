@@ -891,7 +891,11 @@ def _parts():
     # contents, and the -Y edge has 32 mm between J2 and J1 to give it from.
     #   fan lane + R37/C122 column + crystal + load-cap column, less what the socket's
     #   half-width already gives  ->  _CHAIN_DX
-    _PAIR_DX = 1.0              # PHY pair centre (DP -1.25, DM -0.75) onto the ESD array
+    # PHY DM (-0.75 from its centre) straight over the ESD array's DM (+0.95 from ITS
+    # centre): 1.7. Only D+ then fans, and it fans -X -- away from pads 15-17, whose
+    # escapes the old 1.0 put D- straight across. VDD33, VBAT and VBUS all came back
+    # unconnected at 1.0.
+    _PAIR_DX = 1.7
     _pocket = (_PHY_FAN + CRTYD["0402"][1] + CRTYD_GAP + CRTYD["3225"][1]
                + CRTYD_GAP + CRTYD["0402"][1])
     _CHAIN_DX = _pocket - (_uc_w / 2 - _PAIR_DX - _phy_w / 2) + 0.05
@@ -943,8 +947,7 @@ def _parts():
     # across it -- and the 12 ULPI signals, which leave the two faces at right angles to
     # those, turn with it and still point at the MCU. The rotation costs nothing and is
     # the difference between a straight pair and no pair.
-    # +_PAIR_DX: the pair leaves the PHY from DP -1.25 / DM -0.75, so the package sits
-    # 1.0 +X of the ESD array to put the pair's centre over the array's.
+    # +_PAIR_DX: see its definition -- D- runs straight, only D+ fans.
     add("U7", "USB 2.0 high-speed ULPI PHY", "QFN-24",
         _j1_x + _PAIR_DX, edge_y + _uc_d + _chain_gap + _esd_d + _phy_gap + _phy_d / 2,
         rot=270.0)

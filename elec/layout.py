@@ -273,6 +273,20 @@ def _centrelines(p0, p1, detour_mm=6.0, step_mm=0.5):
     return out
 
 
+def _pad_neck(m, pad, toward, width, clr):
+    """The point a pair's centreline must reach, straight out of `pad`'s row, before it
+    may start to turn or taper: along the pad's LONG axis, toward `toward`, far enough
+    to clear the pad row's end plus a track's half-width and the clearance."""
+    bb = pad.GetBoundingBox()
+    w, h = bb.GetWidth(), bb.GetHeight()
+    reach = max(w, h) / 2.0 + pcbnew.FromMM(width / 2.0 + clr)
+    if h >= w:                                  # pads long in Y: leave along Y
+        sgn = 1 if toward[1] >= m[1] else -1
+        return (m[0], m[1] + sgn * reach)
+    sgn = 1 if toward[0] >= m[0] else -1
+    return (m[0] + sgn * reach, m[1])
+
+
 def _diff_pairs(board, specs, outline=None, inner=None, clr=0.14):
     """Route declared differential pairs AS PAIRS, before the autorouter sees them.
 
@@ -452,8 +466,15 @@ def _diff_pairs(board, specs, outline=None, inner=None, clr=0.14):
                 rail[0] = (p_start.GetPosition().x, p_start.GetPosition().y)
                 rail[-1] = (p_end.GetPosition().x, p_end.GetPosition().y)
                 if vi is None:
+                    # ⚠ OWN NET ONLY, THE SAME RULE AS THE VIA PATH BELOW -- and this branch
+                    # was the one that still excluded BOTH. With the pair's partner net
+                    # excluded, D+ could not see D-'s PADS: on the optical board's socket
+                    # hop it ran diagonally onto A6 straight past B7 (a D- pad), and DRC
+                    # reported it. The partner's RAIL is not in the grid yet (nothing is
+                    # laid until the whole pair clears), so excluding only the own net
+                    # costs the coupled run nothing and makes the partner's pads real.
                     for q0, q1 in zip(rail, rail[1:]):
-                        if q0 != q1 and not seg_clear(q0, q1, nets, margin, grid):
+                        if q0 != q1 and not seg_clear(q0, q1, own, margin, grid):
                             ok = False
                             break
                     if not ok:
@@ -604,9 +625,19 @@ def _diff_pairs(board, specs, outline=None, inner=None, clr=0.14):
                              a1.GetPosition().y - b1.GetPosition().y) / 2.0
             hop = None
             # 1. the surface try: no vias at all, if the component layer is open
-            for sh in _centrelines(m0, m1):
-                ds = [max(off, hs0)] + [off] * (len(sh) - 2) + [max(off, hs1)]
-                hop = rails_for(sh, ds, None, a0, b0, a1, b1, na, nb, margin, width,
+            # ⚠ NECK OUT OF EACH PAD ROW BEFORE TAPERING. The rails used to taper from one
+            # part's pad pitch to the other's along the WHOLE hop, so on a short hop onto
+            # a fine-pitch connector they came in diagonally -- and a diagonal entering a
+            # 0.5 mm pad row crosses its neighbours. Each end now runs straight out along
+            # its pads' long axis, at its own pad separation, until it is past the pad row
+            # and its clearance; the taper happens only between those two neck points.
+            n0 = _pad_neck(m0, a0, m1, width, clr)
+            n1 = _pad_neck(m1, a1, m0, width, clr)
+            for sh in _centrelines(n0, n1):
+                centre = [m0] + sh + [m1]
+                ds = ([max(off, hs0)] * 2 + [off] * (len(sh) - 2)
+                      + [max(off, hs1)] * 2)
+                hop = rails_for(centre, ds, None, a0, b0, a1, b1, na, nb, margin, width,
                                 a0.GetLayer(), None, via_margin, g_all)
                 if hop:
                     break
