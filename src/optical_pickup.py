@@ -654,6 +654,41 @@ JACK_ACCESS_D  = M4.shaft_clr_d                 # 4.4
 
 
 
+# ⚠ WHERE A GIVEN LQFP PIN IS, DERIVED RATHER THAN MEASURED ONCE AND PASTED. The two
+# VCAP capacitors have to sit at their own pins, and the first version of that hard-coded
+# the offsets (+7.25 and 12.68/-7.25) with a comment claiming they were read back from the
+# placed board. They were not: they were numbers copied out of one measurement, and
+# nothing would have caught them going stale when the package, the rotation or the pin
+# assignment changed -- which is the exact failure this file keeps finding elsewhere.
+#
+# KiCad numbers an LQFP from the top of the LEFT edge, down that edge, along the BOTTOM
+# left to right, up the RIGHT, then along the TOP right to left. So the along-edge
+# coordinate is exact arithmetic from the pitch, and only the pad RING is a property of
+# the footprint that this file cannot read.
+_LQFP_RING = 12.68       # pad-centre radius of LQFP-176_24x24mm_P0.5mm, from the
+                         # footprint's own pads. The only measured number here.
+# ⚠ THE PIN NUMBERS ARE DUPLICATED FROM elec/optical.py's PIN MAP, and the copy is
+# CHECKED rather than trusted -- elec/optical.py asserts these two against its own
+# map every time it generates a netlist. A silent divergence would put the H7's
+# core-regulator capacitors beside the wrong pins, which is not something the
+# placement asserts, DRC or the router could ever notice.
+VCAP1_PIN, VCAP2_PIN = 81, 125
+
+
+def _lqfp_pin_offset(pin, n_pins=176, pitch=0.5, ring=_LQFP_RING):
+    """(dx, dy) of an LQFP pin from the package centre, in CAD axes."""
+    per = n_pins // 4
+    edge, k = divmod(pin - 1, per)
+    along = (k - (per - 1) / 2.0) * pitch
+    if edge == 0:                       # left edge, pin 1 at its TOP, numbering down
+        return -ring, along
+    if edge == 1:                       # bottom edge, left to right
+        return along, -ring
+    if edge == 2:                       # right edge, bottom to top
+        return ring, -along
+    return -along, ring                 # top edge, right to left
+
+
 def _parts():
     """EVERY component on the strip, with its package and placed centre. ONE source of
     truth for the 3D model, the area budget, the clearance assertions and BOM.md."""
@@ -750,8 +785,7 @@ def _parts():
     # +7.25 mm along it from the centre; the cap goes directly beneath that pin, just
     # outside U6's courtyard. C141-C143 then spread across what is left of the row, so
     # neither lands on the other and the board does not grow a millimetre.
-    _vcap1_dx = 7.25                             # VCAP1 (pin 81) from U6's centre, +X
-    _c112_x = _part_x("U6") + _vcap1_dx
+    _c112_x = _part_x("U6") + _lqfp_pin_offset(VCAP1_PIN)[0]
     _c112_y = y - 0.5                            # the same band C141-C143 use
     add("C112", "H7 core regulator cap, VCAP1 -- REQUIRED; hand-placed under its own "
         "pin on the -Y edge", "0805C", _c112_x, _c112_y)
@@ -767,17 +801,15 @@ def _parts():
     # 2.2 uF at each VCAP pin and the part boots intermittently rather than cleanly
     # without it, which is the worst way for a fault to present.
     # So it goes in the 7.60 mm strip between U6's +X courtyard and the tail mount, at
-    # the pin's own Y -- read from the placed board rather than guessed, the same way
-    # _part_y is used elsewhere in this file.
+    # the pin's own Y -- DERIVED from the LQFP pin numbering, see _lqfp_pin_offset.
     # ⚠ AND THE TAIL MOUNT OWNS THE PIN'S OWN Y. The M4's button head is 7.6 across, so
     # a part has to stay _head_r + PKG_CLR + its own half-height clear of the screw axis
     # -- the placement assert caught C113 at -1.92 and said the head would crush it,
     # which is exactly the check doing its job. So the cap sits at the closest Y the
     # head allows, not at the pin's Y: about 3 mm further -Y, which still lands it ~4 mm
     # from VCAP2 against the 22.6 mm a row under the MCU could manage.
-    _vcap2_dx, _vcap2_dy = 12.68, 7.25          # VCAP2 (pin 125) from U6's centre
     _c113_x = _part_x("U6") + CRTYD[_MCU_PKG][0] / 2 + CRTYD_GAP + CRTYD["0805C"][0] / 2
-    _c113_y = _part_y("U6") + _vcap2_dy
+    _c113_y = _part_y("U6") - _lqfp_pin_offset(VCAP2_PIN)[1]
     # mount_points() is defined below this function, so the tail screw is rebuilt from
     # the same two constants it uses rather than imported -- if either moves, this moves.
     _head_clear = TP.JACK_HEAD_D / 2 + PKG_CLR + CRTYD["0805C"][1] / 2
@@ -958,12 +990,28 @@ def _parts():
     #       R40/R41 last, with R40's top AT the output node it senses
     # giving U13->C161 3.2 mm, U13->C160 6.7, U13->L1 6.9, L1->C162 5.0.
     #
-    # ⚠ WHAT THIS ORDER COSTS, stated rather than hidden: FB now runs ~13 mm from the
-    # divider back to pin 3. FB is high impedance and a long run is a noise antenna, so
-    # it MUST be routed away from SW and the inductor -- on the far side of the row or on
-    # an inner layer. The alternative orders all pay for a short FB with a long SW node,
-    # and SW is the radiator; this is the better half of a trade a single row cannot
-    # avoid.
+    # ⚠ WHAT THIS ORDER COSTS, stated rather than hidden and MEASURED rather than
+    # estimated: FB runs 15.4 mm from R40 back to U13 pin 3 (17.5 from R41), past the
+    # inductor. An earlier draft of this note said "~13 mm" from arithmetic; the placed
+    # board says 15.4.
+    #
+    # FB is the divider's midpoint, so its source impedance is R40||R41 = 8 kohm -- high
+    # enough that 15 mm beside a switching node is a real antenna and not a pedantic
+    # one. THE MITIGATION IS THE STACK-UP, and this board has it: F.Cu / In1.Cu solid
+    # GND / In2.Cu signal / B.Cu, so FB routed on In2.Cu has the whole ground plane
+    # between it and SW on F.Cu. That is a routing obligation, not a placement one,
+    # which is why it is written here where the placement that created it lives.
+    #
+    # The alternative orders all buy a short FB with a long SW node -- putting R40/R41
+    # beside U13 pushes L1 about 4 mm further out, and SW measured 5.9 mm from pin 6 to
+    # L1 today. SW is the radiator and it cannot be shielded by a layer change, because
+    # it has to reach the inductor on the surface. So this is the better half of a trade
+    # a single row cannot avoid.
+    #
+    # NOT ADDED, deliberately: a feedforward capacitor across R40 would lower FB's
+    # impedance at high frequency and help transient response, and TI suggests one for
+    # this part. It is a part added for a problem nobody has measured on this board yet;
+    # the layer change costs nothing and should be tried first.
     _buck_order = (("C160", "24 V input bulk -- 50 V part, see 1206C", "1206C"),
                    ("C161", "24 V input HF bypass -- CLOSEST to U13 on purpose", "0402"),
                    ("U13", "buck -- 24V -> 5V, the board's only switcher", "SOT-23-6"),

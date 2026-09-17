@@ -359,7 +359,7 @@ twisting + the bridge-side AFE buffer, not conductor size):
 
 | Net | Cable | OD |
 |---|---|---|
-| 24 V bus | 20 AWG silicone pair, twisted/flat (fleet slew staggered <5 A; ~0.3 V drop over the run) ⚠ **see the contact-rating note below** | ~2.4 |
+| 24 V bus | **2 × 22 AWG per rail** silicone, twisted/flat (fleet slew staggered <5 A; ~0.3 V drop over the run) ⚠ **was 20 AWG — see the note below** | ~2.4 |
 
 > ⚠ **The wire is sized for <5 A; the connector contacts are not, in one place.**
 > XH is rated **3 A per contact**, which is why the panel's 24 V outlet (J7) puts
@@ -376,6 +376,24 @@ twisting + the bridge-side AFE buffer, not conductor size):
 > was free (its ways were idle); doing it at J1/J2 is not, because those ways
 > carry CAN. **Open:** a wider shell, a separate power bus, or a measured slew
 > budget showing the staggered peak really is under 3 A.
+>
+> ⚠ **And 20 AWG would not have fitted the connector at all.** JST's XH datasheet
+> gives *Applicable wire: AWG #30 to #22* and rates the contact at **3 A at AWG
+> #22**. Every 24 V connector in the instrument is XH (the lever board's is the
+> smaller **PH**, AWG #32–#24 at 2 A). 20 AWG is outside both ranges — it does not
+> crimp. The wire gauge was chosen for the drop budget and the connector for the
+> crimp order, and nobody had put the two datasheets side by side.
+>
+> **The doubling resolves both at once**, which is why the row above now reads
+> 2 × 22 AWG per rail. Two 22 AWG conductors in parallel are 26.4 mΩ/m against a
+> single 20 AWG's 33.3 — *more* copper than the spec it replaces — and each
+> contact then carries half the current, inside the 3 A rating. One change fixes
+> the gauge, the rating and the drop together.
+>
+> ⚠ **Not yet checked:** whether the lever board's PH connector, at 2 A and AWG
+> #32–#24, is adequate for what bus B actually draws. Bus B feeds eight sensor
+> boards rather than steppers, so it is probably fine — but "probably" is what
+> this note exists to retire.
 | CAN | 26 AWG twisted pair, 120 Ω terminated | ~2.2 |
 | pickup / audio / DAC / out | 28 AWG **shielded** pair (mA signals — the shield is the spec) | ~2.0 |
 | USB panel → Pi | slim shielded USB-2 | ~2.6 |
