@@ -199,7 +199,13 @@ PKG = {
     "1206C":    (3.40, 1.85, 1.60),   # 50 V X7R -- the 24 V input bulk wants the voltage
                                       # rating AND the derating headroom; an 0805 50 V part
                                       # loses most of its capacitance at 24 V bias
-    "SOT-563":  (1.60, 1.60, 0.60),
+    # ⚠ NOT A SOT-563 BODY. The part ordered is USBLC6-2SC6 in SOT-23-6, and the
+    # courtyard below was already corrected to match while the BODY was left at the
+    # SOT-563's 1.6 x 1.6. Body is what the pairwise clearance assert measures, so the
+    # small one let a neighbour sit closer than the real package allows. The key keeps
+    # its name because the footprint library entry the layout uses is the SOT-23-6 one;
+    # what was wrong was the envelope, not the choice.
+    "SOT-563":  (2.90, 2.80, 1.45),
     # U8's digital rail is ~300 mA, so 5V->3V3 burns 0.51 W. That is past a SOT-23-5
     # (>100 degC rise), which is why U8 is NOT the same part as U9. A BUCK is still the
     # wrong answer for THIS rail: it sits among 20 TIAs reading tens of nanoamps, and a
@@ -1061,34 +1067,17 @@ PARTS = _parts()
 # (no per-order feeder charge); everything else is Extended, at ~$1.50/unique part/order.
 MPN_UNKNOWN = "OPEN"        # deliberately unresolved -- see BOM.md, blocks ordering
 
-# ref-prefix -> (mpn, lcsc, unit_usd, note). Longest prefix wins, so "PD" beats "P".
-_MPN_RULES = (
-    # --- resolved, verified in LCSC stock 2026-08-01 ---
-    ("U6",   ("STM32H743IIT6",   "C89597",   10.005, "LQFP176; same die as the ZIT6 (20 ADC ch, "
-                                                    "OTG_HS, 2 MB). @10 price. 548 in stock "
-                                                    "2026-09-17; the LQFP144 ZIT6 showed 0.")),
-    ("U7",   ("USB3343-CP",      "C633347",  2.6398, "ULPI HS PHY, QFN-24. @10 price. "
-                                                "*** OUT OF STOCK at LCSC 2026-08-04 ***")),
-    ("U10",  ("USBLC6-2SC6",     "C7519",    0.1829, "USB ESD array, @5+. NOTE SOT-23-6, not the "
-                                                    "modelled SOT-563 -- envelope grows")),
-    ("U11",  ("TLV9061IDBVR",    "C398358",  0.2505, "single of the same family as U1-U5, so the "
-                                                    "mid-rail buffer matches the TIAs. SOT-23-5 "
-                                                    "(DBV) -- NOT the SC70 DCK part, whose pinout "
-                                                    "differs (TI SBOS839 Table 5-1). "
-                                                    "C693480 was WRONG: that is a P6KE39CA TVS")),
-    # (U12, the PCM1808, is GONE with the magnetic channel -- it is on the output panel
-    #  now, where the pickup lands. Same part, same reasoning, different board.)
-    ("U8",   ("AMS1117-3.3",     "C6186",    0.2028, "3V3 DIGITAL, SOT-223 tab, @5+. 0.51 W will "
-                                                    "not fit a SOT-23-5. Noisy, but it feeds "
-                                                    "the MCU, not the front end")),
-    ("U9",   ("SPX3819M5-L-3-3/TR", "C9055", 0.1903, "3V3 ANALOG, 40 uVrms, SOT-23-5, @10+. Low load "
-                                                    "(~40 mA) so the small package is fine")),
-    ("U",    ("TLV9064IDR",      "C388176",  0.3297, "quad op-amp, SOIC-14, 10 MHz GBW, @30+ "
-                                                    "500 fA Ib -- the TIA part. 10k in stock")),
-    ("Y",    ("X322525MSB4SI",   "C13740",   0.0959, "25 MHz 3225 crystal, @5+. Y2 needs the "
-                                                    "PHY's reference freq -- confirm vs USB3343")),
-    ("Q1",   ("AO3400A",         "C20917",   0.0849, "N-ch logic-level FET, SOT-23, LED row gate, @5+")),
-    ("J1",   ("TYPE-C-31-M-12",  "C165948",  0.1709, "USB-C 16P, @5+; the modelled envelope IS this part")),
+# ⚠ THESE BELONG TO THE OUTPUT PANEL AND MUST NOT BE IN _MPN_RULES. They were, and two
+# of them collided: _MPN_RULES matches by LONGEST PREFIX, so the panel's "D8" (relay coil
+# flyback) and "D9" (output clamp) beat this board's bare "D" rule and captured D8 and D9
+# -- which on THIS board are two of the ten IR EMITTERS. Both would have been quoted as
+# unresolved SOD-523 diodes, and nothing could have caught it: the CAD was consistent
+# with itself, the netlist was consistent with itself, and DRC does not read either.
+# The exact-ref table exists BECAUSE designators are not a clean namespace within a
+# board; this was the same failure ACROSS boards. Kept here as documentation of the
+# panel's open lines, and deliberately not reachable from mpn().
+# elec/mpn_check.py now compares this table against the netlist and is what found it.
+_OUTPUT_PANEL_OPEN = (
     ("U14",  (MPN_UNKNOWN,       "",         1.20,  "I2S stereo audio DAC, TSSOP-20. OPEN: "
                                                     "PCM5102A-class is the obvious pick (no "
                                                     "MCLK needed, integrated charge-pump "
@@ -1113,6 +1102,43 @@ _MPN_RULES = (
                                                     "and it sits INSIDE C170 -- it catches the "
                                                     "insertion edge a DC block passes, not the "
                                                     "48 V itself")),
+)
+
+# ref-prefix -> (mpn, lcsc, unit_usd, note). Longest prefix wins, so "PD" beats "P".
+_MPN_RULES = (
+    # --- resolved, verified in LCSC stock 2026-08-01 ---
+    ("U6",   ("STM32H743IIT6",   "C89597",   10.005, "LQFP176; same die as the ZIT6 (20 ADC ch, "
+                                                    "OTG_HS, 2 MB). @10 price. 548 in stock "
+                                                    "2026-09-17; the LQFP144 ZIT6 showed 0.")),
+    ("U7",   ("USB3343-CP",      "C633347",  2.6398, "ULPI HS PHY, QFN-24. @10 price. "
+                                                "*** OUT OF STOCK at LCSC 2026-08-04 ***")),
+    ("U10",  ("USBLC6-2SC6",     "C7519",    0.1829, "USB ESD array, @5+. NOTE SOT-23-6, not the "
+                                                    "modelled SOT-563 -- envelope grows")),
+    ("U11",  ("TLV9061IDBVR",    "C398358",  0.2505, "single of the same family as U1-U5, so the "
+                                                    "mid-rail buffer matches the TIAs. SOT-23-5 "
+                                                    "(DBV) -- NOT the SC70 DCK part, whose pinout "
+                                                    "differs (TI SBOS839 Table 5-1). "
+                                                    "C693480 was WRONG: that is a P6KE39CA TVS")),
+    # (U12, the PCM1808, is GONE with the magnetic channel -- it is on the output panel
+    #  now, where the pickup lands. Same part, same reasoning, different board.)
+    ("U8",   ("AMS1117-3.3",     "C6186",    0.2028, "3V3 DIGITAL, SOT-223 tab, @5+. 0.51 W will "
+                                                    "not fit a SOT-23-5. Noisy, but it feeds "
+                                                    "the MCU, not the front end")),
+    ("U9",   ("SPX3819M5-L-3-3/TR", "C9055", 0.1903, "3V3 ANALOG, 40 uVrms, SOT-23-5, @10+. Low load "
+                                                    "(~40 mA) so the small package is fine")),
+    ("U",    ("TLV9064IDR",      "C388176",  0.3297, "quad op-amp, SOIC-14, 10 MHz GBW, @30+ "
+                                                    "500 fA Ib -- the TIA part. 10k in stock")),
+    # ⚠ ONE "Y" RULE CANNOT COVER BOTH CRYSTALS, and the old one quietly did: it put
+    # a 25 MHz part on Y2, whose job is to clock the PHY at 26. The datasheet audit fixed
+    # the netlist and left this table saying "confirm vs USB3343". Per-ref now, and the
+    # frequency is the least of it -- CL and ESR are what decide whether an oscillator
+    # starts and runs on frequency, and the USB334x fixes both (CL 20 pF, ESR <= 30 ohm).
+    ("Y1",   ("TX322525M4LBDD2T", "C5308007", 0.0959, "25 MHz 3225, CL 20 pF, ESR <= 30 ohm "
+                                                    "-- MCU HSE")),
+    ("Y2",   ("K3A260002010",    "C2835957", 0.0959, "26 MHz 3225, CL 20 pF, ESR <= 30 ohm "
+                                                    "-- the USB334x's own limits, T4.13")),
+    ("Q1",   ("AO3400A",         "C20917",   0.0849, "N-ch logic-level FET, SOT-23, LED row gate, @5+")),
+    ("J1",   ("TYPE-C-31-M-12",  "C165948",  0.1709, "USB-C 16P, @5+; the modelled envelope IS this part")),
     ("U13",  ("TPS560430XFDBVR", "C523980",  0.35,  "24V->5V synchronous buck, SOT-23-6, 600 mA, "
                                                     "1.1 MHz FORCED PWM. Meets the recorded want: "
                                                     "synchronous, 38 V abs max (>=30), fSW far from "
@@ -1129,9 +1155,19 @@ _MPN_RULES = (
                                                     "SHIELDED is not optional -- an unshielded "
                                                     "inductor radiates into 20 TIAs. "
                                                     "8,816 in stock 2026-09-17")),
-    ("FB1",  (MPN_UNKNOWN,       "",         0.05,  "0603 ferrite bead, 600R@100MHz. OPEN: the "
-                                                    "GZ2012D601TF/C1017 recorded here was a bad "
-                                                    "number -- C1017 404s. Pick a real one")),
+    # ⚠ "600" IN A FERRITE BEAD PART NUMBER USUALLY MEANS 60 OHM. Murata and Sunlord
+    # both code impedance as two digits and a decade multiplier, so BLM18PG600SN1D --
+    # 136,668 in stock, the obvious hit for "600 ohm bead 0603" -- is SIXTY ohms, and
+    # 601 is the six hundred this board asked for. It is the kind of error nothing
+    # downstream can catch: the right package, the right footprint, a tenth of the
+    # filtering, and no DRC or netlist check that could ever see it.
+    # GZ1608D601TF: 600R@100MHz, 200 mA, DCR 450 mohm, 937,432 in stock 2026-09-17.
+    # The rail behind it draws about 11 mA (five TLV9064 at 2 mA, U11, and the 327 uA
+    # mid-rail divider), so 200 mA is thirteen times over and the bead drops 7 mV
+    # against an LDO with volts of headroom.
+    ("FB1",  ("GZ1608D601TF",    "C1002",    0.05,  "0603 ferrite bead, 600R@100MHz, 200 mA, "
+                                                    "DCR 450 mohm -- splits the buck's 5 V from "
+                                                    "the analog LDO's")),
     # --- generic passives: JLCPCB BASIC classes, exact value set at schematic capture ---
     ("Rf",   ("0402 thick-film R", "BASIC",  0.002, "TIA feedback, per-string value")),
     ("Cf",   ("0402 C0G MLCC",   "BASIC",    0.004, "TIA feedback cap -- C0G, not X7R: the "
@@ -1152,18 +1188,37 @@ _MPN_RULES = (
     # RESOLVED, and the no-consignment dilemma was a false alarm: the LCSC-stocked X01
     # CARRIES THE SAME DAYLIGHT FILTER (740-1040 nm, matched to 830-950 nm emitters),
     # same 0.42 mm2 area, same 0805 2.0x1.25x0.7. It is a drop-in for the absent X02.
-    ("PD",   ("VEMD4110X01",     "C3211080", 0.58,  "filtered Si PIN, 0.42 mm2, +-55 deg. "
-                                                    "@100+ price; 10 boards = 200 pcs. "
-                                                    "STOCK 72 -- must recover or be pre-ordered")),
-    ("J2",   (MPN_UNKNOWN,       "",         0.45,  "4 way SMT side-entry XH on the -Y edge: "
-                                                    "24V, PWR_GND, 2 cavities empty. OPEN -- "
-                                                    "the S6B-XH-SM4-TB (C191914) recorded here "
-                                                    "was the SIX way, and the magnetic audio "
-                                                    "tap that needed those two extra ways moved "
-                                                    "to the output panel. Its S4B sibling is the "
-                                                    "part; CONFIRM the LCSC line and B = 15.0 "
-                                                    "before ordering rather than assuming the "
-                                                    "6 way's number carries over")),
+    # ⚠ THE ONE PART WITH NO SECOND SOURCE, and it was worth proving rather than
+    # assuming. LCSC's whole catalogue was swept for a DAYLIGHT-FILTERED PIN photodiode
+    # in an 0805 land on 2026-09-17 and there is exactly one: this. The near misses all
+    # fail on the filter, which is the thing that cannot be given up --
+    #   TEMD7000X01   0805, 3,904 in stock, but 350-1120 nm: unfiltered
+    #   VEMD1060X01   0805, 1,914 in stock, 350-1070 nm: unfiltered
+    #   VEMD8081      5,501 in stock, but 4.8 x 2.5, visible-ENHANCED, and CD 33 pF
+    # -- and the filter is load-bearing at Rf = 4M7, where 617 nA of photocurrent
+    # saturates the TIA and open room light on an unfiltered diode is already of that
+    # order. A package change would also land on the sensing cell, the most constrained
+    # geometry on the board.
+    # So stock is a PURCHASING problem, not a design one: 95 pieces is four boards, and
+    # the project's basis is ten (see "PCB cost basis" in BOM.md, 10 x 20 = 200). Build
+    # 2 or 5 and re-check, or pre-order; the reel MOQ is 3,000, which is not the answer.
+    ("PD",   ("VEMD4110X01",     "C3211080", 0.58,  "filtered Si PIN, 0.42 mm2, +-55 deg, "
+                                                    "740-1040 nm. ZERO BIAS here, so the "
+                                                    "numbers that apply are Ik 2.2 uA/(mW/cm2) "
+                                                    "and CD 7 pF, not the front page's 2.4 and "
+                                                    "2.5 at VR = 5 V. @100+ price; 10 boards = "
+                                                    "200 pcs. STOCK 95 on 2026-09-17 -- the ONLY "
+                                                    "filtered 0805 PIN at LCSC, so this is a "
+                                                    "timing problem with no substitute")),
+    # CLOSED 2026-09-17 against JST's own drawing (XH series, SMT type shrouded
+    # header): S4B-XH-SM4-TB is A = 7.5, B = 15.0 -- the number this line used to ask
+    # somebody to confirm. The six-way S6B recorded here before was 20.0, and the two
+    # extra ways it existed for moved to the output panel with the magnetic audio tap.
+    # LCSC stocks the (LF)(SN) form, C161861, 20,992 pieces; the bare S4B-XH-SM4-TB
+    # listing (C20561980) is zero, which is the same trap the lever board's J1 hit.
+    ("J2",   ("S4B-XH-SM4-TB",   "C161861",  0.45,  "4 way SMT side-entry XH on the -Y edge: "
+                                                    "24V, PWR_GND, 2 cavities empty. "
+                                                    "B = 15.0 per JST")),
 )
 
 

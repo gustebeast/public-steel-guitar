@@ -86,6 +86,8 @@ LCSC = {
     # worst case against the TPS560430's 1.4 A maximum current limit, which is the
     # number TI tells you to size against.
     "SWPA4020S150MT": "C36407",      # 15 uH, 4x4x2.0 shielded, DCR 0.299 ohm max
+    # ⚠ "600" IS 60 OHM in Murata/Sunlord bead numbering. 601 is the 600 ohm part.
+    "GZ1608D601TF": "C1002",         # 0603 bead, 600R@100MHz, 200 mA, DCR 450 mohm
     "TX322525M4LBDD2T": "C5308007",  # 25 MHz, CL 20 pF, ESR 30 ohm (MCU HSE)
     "K3A260002010": "C2835957",      # 26 MHz, CL 20 pF, ESR 30 ohm (the PHY's limits)
     # ── sourced 2026-09-17 from JLCPCB's own parts API, not from memory ──────────

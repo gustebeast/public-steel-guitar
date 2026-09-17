@@ -111,7 +111,9 @@ FP = {
     "SOT-23-6": "Package_TO_SOT_SMD:SOT-23-6",
     "SOT-563":  "Package_TO_SOT_SMD:SOT-23-6",        # ⚠ see the note above
     "3225":     "Crystal:Crystal_SMD_3225-4Pin_3.2x2.5mm",
-    "IND-4040": "Inductor_SMD:L_Bourns-SRN4018",
+    # Sunlord's own recommended land (1.1 x 3.7 pads on a 3.0 mm pitch), not the
+    # Bourns SRN4018 one that used to be here -- LCSC stocks no usable SRN4018 value.
+    "IND-4040": "Inductor_SMD:L_Sunlord_SWPA4020S",
     "USB-C":    "Connector_USB:USB_C_Receptacle_HRO_TYPE-C-31-M-12",
     "XH-SM-4Y": "Connector_JST:JST_XH_S4B-XH-SM4-TB_1x04-1MP_P2.50mm_Horizontal",
 }
@@ -688,8 +690,13 @@ def optical():
               pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
     sw += l1[1]
     v5_pre += l1[2]
+    # ⚠ THE VALUE IS THE PART NUMBER for the third time on this board, and here the
+    # reason is a naming trap rather than a spec spread: "600" in a Murata or Sunlord
+    # bead part number means 60 ohm, not 600 (two digits and a decade multiplier), so
+    # "600R@100MHz" on a BOM line invites exactly the wrong part -- same package, same
+    # footprint, a tenth of the filtering, and nothing downstream that could notice.
     fb1 = Part(name="FerriteBead", ref_prefix="FB", ref="FB1", dest="NETLIST",
-               tool="skidl", value="600R@100MHz",
+               tool="skidl", value="GZ1608D601TF",
                # ⚠ WHAT IS ON WHICH SIDE WAS THE WHOLE POINT AND IT WAS WRONG. The bead
                # splits a noisy 5 V from a quiet one, and the TEN EMITTERS -- pulsed at
                # 96 kHz, synchronously with sampling, the one noise source ambient
@@ -1254,6 +1261,12 @@ if __name__ == "__main__":
     ERC()
     generate_netlist(file_=os.path.join(OUT_DIR, "optical.net"))
     _assert_matches_cad(os.path.join(OUT_DIR, "optical.net"))
+    # ⚠ AND THE CAD'S SOURCING TABLE AGAINST THE NETLIST, every time, because the two
+    # files name every part twice and drift apart silently. See elec/mpn_check.py for
+    # what the first run found.
+    import mpn_check
+    if mpn_check.main():
+        raise SystemExit("the CAD sourcing table and the netlist disagree -- see above")
     with open(os.path.join(OUT_DIR, "optical.board.json"), "w") as f:
         json.dump(BOARD_NOTES, f, indent=2)
     print("board %.2f x %.2f mm, %d placements, x%d per instrument"
