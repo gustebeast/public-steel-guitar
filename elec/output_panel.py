@@ -303,6 +303,34 @@ def output_panel():
     swclk += u1[52]
     boot0 += u1[63]
 
+    # ══ ⚠ AUDIT, 2026-09-17: THE ANALOG HALF OF THIS BOARD IS NOT BUILDABLE AS WIRED ══
+    # Checked against TI's own datasheets (PCM5102A SLAS859C, PCM1808 SLES177B), not
+    # memory. The board routes 0/0 in DRC and is electrically wrong, because DRC checks
+    # copper against the netlist and these faults ARE the netlist.
+    #
+    # 1. U3 (PCM5102A) PINOUT IS INVENTED. Ten made-up pins on a 20-pin TSSOP. The real
+    #    order is 1 CPVDD 2 CAPP 3 CPGND 4 CAPM 5 VNEG 6 OUTL 7 OUTR 8 AVDD 9 AGND
+    #    10 DEMP 11 FLT 12 SCK 13 BCK 14 DIN 15 LRCK 16 FMT 17 XSMT 18 LDOO 19 DGND
+    #    20 DVDD. It also needs a CAPP-CAPM flying cap, VNEG and LDOO decoupling, and
+    #    DEMP/FLT/FMT/SCK strapped -- none of which exist here.
+    # 2. U3 IS WIRED TO 5 V. AVDD and XSMT go to v5. AVDD/CPVDD/DVDD are ABSOLUTE
+    #    MAXIMUM 3.9 V. As drawn, the first power-up damages the DAC.
+    # 3. U2 (PCM1808) PINOUT IS INVENTED. 16 pins on a 14-pin TSSOP. Real order:
+    #    1 VREF 2 AGND 3 VCC(5 V) 4 VDD(3.3 V) 5 DGND 6 SCKI 7 LRCK 8 BCK 9 DOUT
+    #    10 MD0 11 MD1 12 FMT 13 VINL 14 VINR.
+    # 4. SCKI IS TIED TO BCK. SCKI must be 256/384/512 fS; BCK is 64 fS. The ADC needs a
+    #    real MCLK from the MCU (I2S2_MCK), which is not wired.
+    # 5. THE BUFFERS CLIP HALF THE WAVEFORM. PCM5102A's OUTL is GROUND-CENTRED (its
+    #    charge pump makes the negative rail), and the pickup is AC about 0 V. Both feed
+    #    TLV9061s on 5 V with V- at AGND, which cannot go below ground. Each path needs
+    #    a mid-rail bias and coupling caps -- a tone-affecting choice, and a design
+    #    decision rather than a correction.
+    # 6. U4 (hub) and K1 (relay) are numbered 1..N with no datasheet behind them.
+    #
+    # fab.py keeps every one of these parts OPEN so the panel cannot be ordered while
+    # this stands. Delete this note only when each item is fixed and re-checked.
+    # ══════════════════════════════════════════════════════════════════════════════
+
     # ── U2: the magnetic channel's ADC ───────────────────────────────────────
     # PCM1808: 1 VINL 2 VINR 3 AGND 4 VCC 5 MD1 6 MD0 7 SCKI 8 BCK 9 LRCK 10 DOUT
     #          11 DGND 12 VDD 13 FMT 14-16 unused on this part's TSSOP.
