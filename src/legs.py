@@ -942,16 +942,16 @@ LOCK_PIN_DY = 7.5
 # ...and the screw itself (lock_pin_joint): a stock M4 button head recessed in the end
 # face, into a heat-set insert on the kept shell's face across the endplate<->shell gap
 SHELL_GAP = 0.4                    # that gap: chassis.EP_LEG_CLR, asserted equal there
-LOCK_SCREW_L = 35.0                # M4x35 button head, and NOT a new SKU -- BOM already buys
-                                   # M4x35 button/2.5 hex for the belt tensioners, so these four
-                                   # just raise that row's count. It has to reach past the chassis
-                                   # floor into a tenon, and 35 is the only stocked length that
-                                   # does at EVERY corner: the +X/+Y foot lost its two outboard
-                                   # tenons to the string access channels, so its nearest one is
-                                   # 36.4 in from the end face. At the other three the screw runs
-                                   # clean THROUGH the two outboard tenons and finishes in the
-                                   # third, which is more engagement than the old 18 had, at the
-                                   # cost of a notch through the two 3.2 walls between them.
+LOCK_SCREW_L = 18.0                # M4x18 button head, and NOT a new SKU -- BOM's "M4 hold-down
+                                   # screw" row is already M4x18 button/2.5 hex (the keyhead's +Z
+                                   # lock and the ten insert height screws), so these four just
+                                   # raise its count. It reaches past the chassis floor into the
+                                   # foot's OUTERMOST tenon and stops there: 4.84 in, crossing no
+                                   # inter-mortise wall on the way. (It was briefly 35, to reach
+                                   # a tenon 36.4 in, while the string-access clamp was taking
+                                   # the +X/+Y foot's two outboard tenons away. Clearing the whole
+                                   # channel field instead of stopping short of its +Y end gave
+                                   # those tenons back, and with them the short screw.)
 LOCK_INSERT_AT = 4.0               # the insert's mouth, measured in from the end face: inside
                                    # the ENDPLATE's own wall (user, 2026-09-17), clear of the
                                    # head's recess and finishing 1.4 short of the wall's inner
