@@ -586,6 +586,7 @@ ADC inputs plus a 12-signal ULPI bus will not fit a 64-pin part.
 | 1 | L1 | buck inductor — **SWPA4020S150MT**, 15 µH shielded, **Isat 1.35 A** | 4040 | 4.00 × 4.00 × 2.00 |
 | 1 | C160 | 24 V input bulk — 10 µF/50 V, **1206 for the DC-bias derating** | 1206 | 3.20 × 1.60 × 1.45 |
 | 1 | C162 | buck 5 V output bulk — 22 µF/16 V | 0805 | 2.00 × 1.25 × 1.45 |
+| 1 | C164 | **U8 input bulk** — 10 µF/16 V; V5_PRE had no local capacitor at all | 0805 | 2.00 × 1.25 × 1.45 |
 | 2 | C161, C163 | 24 V HF bypass; buck bootstrap CB→SW, 100 nF | 0402 | 1.00 × 0.50 × 0.55 |
 | 2 | R40–R41 | buck feedback divider — 40k2/10k 1%, 5.02 V | 0402 | 1.00 × 0.50 × 0.55 |
 | 2 | C112–C113 | H7 core regulator caps (VCAP1/2), 2.2 µF — **required, not optional** | 0805 | 2.00 × 1.25 × 1.45 |

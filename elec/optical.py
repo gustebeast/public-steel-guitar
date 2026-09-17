@@ -1136,6 +1136,17 @@ def optical():
               "Capacitor_SMD:C_0805_2012Metric")
     v5_pre += c162[1]
     pgnd += c162[2]
+    # ⚠ C164: U8'S OWN INPUT CAPACITOR, AND V5_PRE HAD NONE ANYWHERE NEAR IT. This rail
+    # runs from the buck at the -Y tail all the way to the digital block, feeding the
+    # AMS1117 (207-272 mA) and the ten emitters' ballasts on the way, and its ONLY
+    # capacitor was C162 at the buck -- measured 20.7 mm from U8. A linear regulator
+    # with no local input capacitance sees that 20.7 mm as series inductance in front of
+    # it, and the emitters pulsing at 96 kHz share the same rail. 10 uF beside U8 costs
+    # one 0805 and one BOM line already in the build.
+    c164 = _c("C164", "10uF/16V", "U8 input bulk -- the only local cap on V5_PRE",
+              "Capacitor_SMD:C_0805_2012Metric")
+    v5_pre += c164[1]
+    gnd += c164[2]
     # 100 nF, not 10: the TPS560430 datasheet specifies "a high quality 100-nF capacitor"
     # from CB to SW. Too small a bootstrap cap droops over the on-time and under-drives
     # the high-side FET.
