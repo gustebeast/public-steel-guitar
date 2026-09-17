@@ -238,6 +238,14 @@ def route(stem, passes=None, timeout=3600):
     if n_snap:
         print("  snapped %d hairline gap(s) shut (no copper added)" % n_snap)
         board.BuildConnectivity()
+    # ⚠ AND THE LAYER CHANGES THE ROUND TRIP DROPPED. Two tracks of one net ending at
+    # the same point on DIFFERENT layers is a via that went missing, not a gap -- no
+    # amount of re-routing recovers it and no copper can bridge it. See add_missing_vias.
+    n_via = layout.add_missing_vias(board)
+    if n_via:
+        print("  dropped in %d via(s) where a net changed layer with nothing to carry it"
+              % n_via)
+        board.BuildConnectivity()
     n_link = layout.link_close_gaps(board, layout._outline_pts(notes),
                                    same_part_only=False)
     if n_link:
