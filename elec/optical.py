@@ -305,7 +305,13 @@ def optical():
                  footprint="LED_SMD:LED_0805_2012Metric",
                  pins=[Pin(num=1, name="K", func=P), Pin(num=2, name="A", func=P)])
         v5_pre += r[1]        # BUCK side of the bead -- see FB1
-        r[2] += d[2]
+        # ⚠ NAMED, BECAUSE SKiDL'S AUTO-NAMES ARE POSITION-DEPENDENT. A two-pin local
+        # link left unnamed becomes "N$8", and the number is assigned by order of
+        # creation -- so adding a part anywhere earlier in this file RENUMBERS every one
+        # of them. This project's whole method is comparing one run's DRC and router
+        # report against the last one's; a net identifier that shifts underneath that
+        # comparison is worse than useless. And "N$8" does not say which string it is.
+        Net("LED_A%d" % i).connect(r[2], d[2])
         led_row += d[1]
         for tag, store in (("A", pd_a), ("B", pd_b)):
             # ⚠ PD<string><side>, NOT PD<side><string>. The CAD names them PD1A/PD1B
@@ -807,11 +813,14 @@ def optical():
     r31 = _r("R31", "10k", "NRST pull-up")
     nrst += r31[1]
     v3d += r31[2]
+    # BOTH CC pins get their OWN 5k1 -- not one resistor on a joined pair. The pair is
+    # what tells the host which way round the cable went in, and joining them makes the
+    # port undetectable in one orientation.
     r32 = _r("R32", "5k1", "USB-C CC1 pull-down (upstream-facing port)")
-    j1["A5"] += r32[1]
+    Net("USB_CC1").connect(j1["A5"], r32[1])
     gnd += r32[2]
     r33 = _r("R33", "5k1", "USB-C CC2 pull-down")
-    j1["B5"] += r33[1]
+    Net("USB_CC2").connect(j1["B5"], r33[1])
     gnd += r33[2]
     # ⚠ MID SITS NEAR THE BOTTOM OF THE RANGE, NOT IN THE MIDDLE, because the signal
     # only goes ONE WAY. The photodiode's anode is on the virtual earth and its cathode
@@ -828,7 +837,7 @@ def optical():
     gnd += r35[2]
     r36 = _r("R36", "100R", "LED driver gate series")
     led_gate += r36[1]
-    r36[2] += q1[1]
+    Net("LED_GATE_Q").connect(r36[2], q1[1])
     # R37/R38 and C112/C113 are the four parts this netlist ADDED to the CAD -- see the
     # note beside them in src/optical_pickup.py. They are here because turning a part
     # table into nets is what exposed them: a part no net needs looks exactly like a
