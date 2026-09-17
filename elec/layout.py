@@ -677,6 +677,35 @@ def _diff_pairs(board, specs, outline=None, inner=None, clr=0.14):
             done.append((na, why))
             continue
 
+        # ⚠ A PASS-THROUGH PART IS ONE NODE INSIDE AND TWO PADS OUTSIDE, and the board
+        # file only knows about the pads. The USBLC6 puts D+ on pins 1 AND 6 and D- on 3
+        # AND 4, joined on the die -- which is the whole reason the chain can enter one
+        # face and leave the other. KiCad's connectivity does not model that: it sees two
+        # pads of one net with no copper between them and calls the net unfinished, and
+        # the router then tries to "fix" it, laying stubs that end up as orphan islands.
+        # That is exactly how USB_DP and USB_DM came back unconnected on a board whose
+        # pair was laid correctly end to end.
+        #
+        # So the generator links them itself: it CHOSE the in and out pads, so it is the
+        # thing that knows they are the same node. The link is short, straight and runs
+        # under the part's own body between its own pads, and it is checked like any
+        # other segment -- if it does not clear, it is not laid and the net is reported
+        # rather than silently shorted to a neighbour.
+        for st in stops:
+            for n, qi, qo in ((na, st["in"][0], st["out"][0]),
+                              (nb, st["in"][1], st["out"][1])):
+                if qi is qo or qi.GetPosition() == qo.GetPosition():
+                    continue
+                p0 = (qi.GetPosition().x, qi.GetPosition().y)
+                p1 = (qo.GetPosition().x, qo.GetPosition().y)
+                if not seg_clear(p0, p1, {n}, margin, g_all):
+                    done.append((n, "pads %s/%s of %s are one node inside the part and "
+                                 "no clear link between them exists"
+                                 % (qi.GetNumber(), qo.GetNumber(),
+                                    st["fp"].GetReference())))
+                    continue
+                pending.append(("TRK", qi, p0, p1, qi.GetLayer()))
+
         for kind, pad, q0, q1, layer in pending:
             if kind == "VIA":
                 v = pcbnew.PCB_VIA(board)
