@@ -665,6 +665,58 @@ def optical():
     # ⚠ AND ITS SWITCHING FREQUENCY IS A REAL SPEC, not a detail: this board samples
     # at 48 kHz and a switcher near a sub-multiple of that aliases straight into the
     # audio band, where subtraction cannot remove it because it is synchronous.
+    # ── THE POWER BUDGET, ITEMISED -- because nothing added it up until 2026-09-17 ──
+    # The board had a 600 mA buck and three scattered assertions about its load (~85 mA
+    # at 24 V here, "nearer 0.35 A" there, "the MCU draws 200-300 mA" in BOM.md), none
+    # of them derived and none of them agreeing. A 600 mA part deserves a sum.
+    #
+    # Every figure below is from the part's own datasheet, at the operating point this
+    # board actually uses.
+    #
+    #   +3V3A  (U9, SPX3819, off the QUIET side of FB1)
+    #     5x TLV9064 quad          538 uA/amp typ, 750 max  ->  10.8 / 15.0 mA
+    #     U11 TLV9061 single                                ->   0.54 / 0.75
+    #     R34/R35 mid-rail divider 3.3 V / 10.09 k          ->   0.33 / 0.33
+    #                                                   subtotal  11.7 / 16.1 mA
+    #
+    #   +3V3D  (U8, AMS1117, off the BUCK side)
+    #     STM32H743 400 MHz VOS1, all peripherals enabled (DS12110 T30)
+    #                              165 typ / 220 max @25 C / 400 max @85 C
+    #     USB3343 sync mode, HS active (DS00002646 T4-2), VBAT + VDDIO
+    #                               41 typ /  51 max
+    #     R31 / R37 RBIAS / R38                             ->   0.8
+    #                                            subtotal  207 / 272 / 452 mA
+    #
+    #   +5V / V5_PRE  (U13, TPS560430, 600 mA)
+    #     ten emitters at 21.1 mA, PULSED ~50% for the ambient-subtraction frame
+    #                                          105 mA average, 211 mA while on
+    #     U8 input ~= its output                             207 / 272 / 452
+    #     U9 input ~= its output                              12 /  16 /  16
+    #                              average          324 mA   54 % of the buck
+    #                              emitters on      430 mA   72 %
+    #                              + max parts @25  499 mA   83 %
+    #                              + max parts @85  679 mA   ⚠ OVER 600
+    #
+    # ⚠ THE LAST ROW IS THE ONE TO ARGUE WITH, AND IT IS NOT A REASON TO CHANGE THE
+    # PART. 400 mA is ST's characterisation MAXIMUM at TJ = 85 C with every peripheral
+    # enabled -- not a typical part, and not this firmware, which runs an ADC, a timer
+    # and a USB controller and leaves the LTDC, JPEG codec, Ethernet, FMC, SDMMC and the
+    # rest of a 176-pin part's peripheral set switched off. The honest statement is that
+    # the buck has comfortable margin at the real operating point and no margin against
+    # a worst-case datasheet corner this board will not visit. What it DOES mean is that
+    # enabling peripherals is a power decision on this board and not a free one.
+    #
+    # ⚠ AND IT KILLS THE SNR LEVER RECORDED AT THE BALLASTS. Raising emitter drive to
+    # the IR17-21C's 65 mA rating is 650 mA of emitters ALONE against a 600 mA buck,
+    # before the MCU. That lever needs a bigger buck, not a smaller resistor -- which is
+    # exactly what the ballast note said to check, now checked.
+    #
+    # C162's droop over one emitter pulse, which the ballast note also asked for:
+    # 211 mA x 5.2 us / 22 uF = 50 mV on a rail feeding two LDOs with volts of headroom.
+    # Not a constraint.
+    #
+    # 24 V input: 324 mA x 5 V / 0.85 = 1.9 W -> 79 mA, which is where the "~85 mA,
+    # ~2 W" recorded elsewhere came from. That one was right.
     sw, fb = Net("SW"), Net("FB")
     # ⚠ TI TPS560430XF (SLVSE22B). Chosen against the requirement recorded on the CAD's
     # MPN line: SYNCHRONOUS (it is), >=30 V absolute max (38 V), and a switching
