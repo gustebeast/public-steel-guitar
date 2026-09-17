@@ -698,13 +698,27 @@ def _parts():
     # bit), while D+/D- is 480 Mbps and forgives nothing. Splitting the difference
     # served the tolerant link at the expense of the critical one.
     # The PHY now lives in the USB cluster at the -Y edge; see section 4b.
-    y = _block(P, y, [("Y1", "25 MHz crystal -- MCU HSE", "3225"),
-                      ("Y2", "24 MHz crystal -- PHY reference", "3225")]
-                     + [("C%d" % (123 + k), "crystal load cap", "0402") for k in range(2)]
-                     + [("C125", "crystal load cap", "0402"),
-                        ("C126", "crystal load cap", "0402")]
-                     + [("C%d" % (120 + k), "PHY decoupling", "0402") for k in range(3)],
-               x0, x1)
+    # ⚠ ONLY THE MCU'S CRYSTAL IS LEFT IN THIS ROW. Y2, its two load caps, the PHY's
+    # three decoupling caps and R37 all belong to U7, and U7 is 19 to 45 mm away at the
+    # -Y edge -- see the PHY SUPPORT CLUSTER in section 4b for why that is a defect and
+    # not merely a long trace.
+    # ⚠ AND IT IS PLACED, NOT PACKED. _spread distributes a row across the FULL board
+    # width, which is right for decoupling and wrong for a crystal: with the PHY's parts
+    # gone this row held three, and the packer put Y1 at one edge with its two load caps
+    # 29 and 57 mm away. That is the same bug as the PHY's, arrived at from the other
+    # direction -- the row did not go stale, it just never had a reason to keep these
+    # three together, and "legal" was all the packer was ever asked for.
+    # A crystal and its load caps are ONE part in three pieces. They go side by side, at
+    # the +X end of the row because the MCU they clock is anchored +X.
+    _y1_h = CRTYD["3225"][1]
+    _y1_y = y - _y1_h / 2
+    _y1_x = x1 - CRTYD["3225"][0] / 2
+    add("Y1", "25 MHz crystal -- MCU HSE", "3225", _y1_x, _y1_y)
+    _c_dx = CRTYD["3225"][0] / 2 + CRTYD_GAP + CRTYD["0402"][0] / 2
+    add("C123", "crystal load cap -- Y1 OSC_IN", "0402", _y1_x - _c_dx, _y1_y)
+    add("C124", "crystal load cap -- Y1 OSC_OUT", "0402",
+        _y1_x - _c_dx - CRTYD["0402"][0] - CRTYD_GAP, _y1_y)
+    y = _y1_y - _y1_h / 2 - CRTYD_GAP
     # U11 is the mid-rail reference the 20 TIAs sit on: single-supply transimpedance needs
     # a bias for the non-inverting inputs, and all 20 quad channels are spoken for.
     y = _block(P, y, [("U8", "LDO -- 3V3 digital, TAB package (0.51 W)", "SOT-223"),
@@ -736,7 +750,8 @@ def _parts():
                       #     intermittently rather than cleanly, which is the worst way
                       #     for a missing part to announce itself. 0805 because they are
                       #     2.2 uF and an 0402 at that value is marginal.
-                      ("R37", "ULPI PHY bias resistor -- 1% precision part", "0402"),
+                      # R37 IS NOT HERE ANY MORE -- it moved to the PHY cluster at the
+                      # -Y edge, where a part that sets a precision current belongs.
                       ("R38", "LED gate pull-down -- emitters OFF in reset", "0402"),
                       ("C112", "H7 core regulator cap, VCAP1 -- REQUIRED", "0805C"),
                       ("C113", "H7 core regulator cap, VCAP2 -- REQUIRED", "0805C")],
@@ -907,6 +922,41 @@ def _parts():
     # and the -X face looks back down the board at the PHY.
     add("U10", "USB data-line ESD array -- inboard of the socket's pad row", "SOT-563",
         _j1_x, edge_y + _uc_d + _chain_gap + _esd_d / 2, rot=270.0)
+    # ---- 4b-i. THE PHY'S SUPPORT PARTS, WHICH DID NOT FOLLOW IT DOWN HERE ----
+    # ⚠ THIS IS A STALE-PLACEMENT BUG, NOT A ROUTING ONE, and it is the same shape as the
+    # two this file already records: a derivation that stayed legal after the thing it
+    # derived from moved. When the PHY left the compute rows for the -Y edge (section 4b)
+    # it left behind everything that serves it -- its 24 MHz crystal, that crystal's two
+    # load caps, its three decoupling caps and its bias resistor. All seven stayed packed
+    # in rows 19 to 45 mm up the board, and every one of them was still "placed": legal
+    # courtyards, clean overlap gate, a render that looks right.
+    #
+    # WHAT THAT ACTUALLY MEANS, part by part:
+    #   * Y2 sat 43 mm from the XI/XO pins it drives. A crystal's load is the PCB as much
+    #     as the caps; 43 mm of track is an antenna on both a high-impedance oscillator
+    #     node and a 24 MHz reference the whole USB link is timed from.
+    #   * C120-C122 are DECOUPLING, and decoupling 19 mm from its die is decoration. The
+    #     loop inductance it exists to cancel is dominated by the trip out and back.
+    #   * R37 sets the PHY's transmitter drive CURRENT to 1%. It was 15.6 mm away, and it
+    #     was one of the four nets the router could not finish at all.
+    # Their proximity is the specification. Two columns immediately -X of U7, in the
+    # pocket between the buck and the socket, which was empty.
+    _sup_x1 = _j1_x - _phy_w / 2 - CRTYD_GAP - CRTYD["0402"][0] / 2
+    _sup_x2 = _sup_x1 - CRTYD["0402"][0] / 2 - CRTYD_GAP - CRTYD["3225"][0] / 2
+    _phy_y = edge_y + _uc_d + _chain_gap + _esd_d + _chain_gap + _phy_d / 2
+    _sup_dy = CRTYD["0402"][1] + CRTYD_GAP
+    for _k, (_ref, _desc) in enumerate((
+            ("R37", "ULPI PHY bias resistor -- 1% precision part, AT the PHY"),
+            ("C120", "PHY decoupling -- 3V3"),
+            ("C121", "PHY decoupling -- 3V3"),
+            ("C122", "PHY decoupling -- the 1V8 it regulates for itself"))):
+        add(_ref, _desc, "0402", _sup_x1, _phy_y + (_k - 1.5) * _sup_dy)
+    add("Y2", "24 MHz crystal -- PHY reference, beside its own XI/XO", "3225",
+        _sup_x2, _phy_y)
+    _y2_dy = CRTYD["3225"][1] / 2 + CRTYD_GAP + CRTYD["0402"][1] / 2
+    add("C125", "crystal load cap -- Y2 XI", "0402", _sup_x2, _phy_y - _y2_dy)
+    add("C126", "crystal load cap -- Y2 XO", "0402", _sup_x2, _phy_y + _y2_dy)
+
     for _ref, _desc, _pkg, _bx in _buck:
         add(_ref, _desc, _pkg, _bx, _buck_y)
 
