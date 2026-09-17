@@ -161,6 +161,8 @@ GENERIC = re.compile(r"^(R_|C_|Fuse_|Jumper:|Diode_SMD:D_SOD|Diode_SMD:D_SM[AB]|
 # land is picked from its part number, and "IR17-21C/TR8" is a perfectly good value that
 # simply does not start with a digit. The placeholder rule below applies to this subset.
 PASSIVE = re.compile(r"^(R_|C_|L_|Inductor_SMD)")
+# Footprint LIBRARIES that hold no orderable part -- see the BOM loop.
+COPPER_ONLY = re.compile(r"^(TestPoint|NetTie|Fiducial)$")
 
 
 def _run(args):
@@ -270,6 +272,14 @@ def fab(board):
         w = csv.writer(g)
         w.writerow(["Comment", "Designator", "Footprint", "LCSC Part #"])
         for (val, fp), refs in sorted(groups.items()):
+            # ⚠ BARE COPPER IS NOT A BOM LINE. Test points, net ties and fiducials are
+            # footprints with no part behind them: nothing is placed, nothing is
+            # soldered, and asking JLCPCB to source one would be asking for a part that
+            # does not exist. The footprints carry exclude_from_bom themselves, but the
+            # BOM here is built from the NETLIST rather than the board, so that
+            # attribute never reaches it.
+            if COPPER_ONLY.search(fp.split(":", 1)[0]):
+                continue
             code = LCSC.get(val, "")
             if not code:
                 generic = bool(GENERIC.search(fp.split(":", 1)[1]) or GENERIC.search(fp))
