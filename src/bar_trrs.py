@@ -71,10 +71,6 @@ SH_REST = TIP + LT.BARREL_L     # the plug's shoulder with the leg OFF. Putting 
 SH_MATE = SH_REST + FLOAT       # ...and seated, the plug having given up its float
 JACK_MOUTH = SH_MATE            # THE BAR'S REQUIREMENT: its socket face, here
 NOSE_H = JACK_MOUTH - TIP       # 17.0 of jack nose above the mortise floor
-NOSE_WAY_D = LT.JACK_BORE_D     # 9.9 -- the nose rides the very bore the collar, the
-                                # coil and the plug all travel, so the bar gets no new
-                                # diameter to respect. It also gives the mate a second
-                                # lead-in on top of the octagon's own fit
 
 # ── the sleeve: a TPU collar that carries the plug, not a cup that caps it ───
 SLV_GRIP = LT.PLUG_GRIP         # 4.8 of squeeze on the overmould, as at the top
@@ -124,9 +120,17 @@ SPR_TOP = SPR_BOT + LT.SPR_REST_L
 SEAT_Z = SPR_TOP                # ...and reacts against the bore's own step, exactly as
                                 # at the top joint: a step that stops a O8.0 coil still
                                 # passes the O6.1 plug, so no printed washer is needed
-BORE_D = LT.JACK_BORE_D         # 9.9: the coil's bore. Wider than the collar needs, and
-                                # that is deliberate -- it is the one bore the coil, the
-                                # collar and the plug all travel, so there is only one
+BORE_D = SLV_OD + 0.3           # 9.9: ONE bore, and THE COLLAR is what sets it. It
+                                # inherited leg_trrs.JACK_BORE_D until that followed the
+                                # jack's real drawing down to 8.4 and left the O9.6 collar
+                                # unable to enter (verify_bar_trrs caught it). Nothing
+                                # about this bore was ever the jack's business: what
+                                # travels it is the collar, the O6.1 plug, the O8.0 coil
+                                # and -- only for its last NOSE_H -- the jack's O7.8 nose
+NOSE_WAY_D = BORE_D             # 9.9 -- the nose rides the very bore the collar, the
+                                # coil and the plug all travel, so the bar gets no new
+                                # diameter to respect. It also gives the mate a second
+                                # lead-in on top of the octagon's own fit
 PASS_D = LT.PASS_D              # 6.6 above the seat: the lead's far plug has to be able
                                 # to travel this bore, the same rule that made the number
                                 # at the top joint
