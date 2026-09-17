@@ -38,6 +38,44 @@ import fab                                      # noqa: E402  (the value -> LCSC
 from src import optical_pickup as cad           # noqa: E402
 
 
+# The BOM's "Package" column is prose, so it is compared through a small table of what
+# each spelling MEANS as a footprint-name fragment. Anything not listed is skipped rather
+# than guessed -- a check that cries wolf gets switched off.
+BOM_PKG = {
+    "LQFP176": "LQFP-176", "USB-C": "USB_C_Receptacle", "XH-SM-4": "JST_XH_S4B-XH-SM4",
+    "SOIC-14": "SOIC-14", "QFN-24": "HVQFN-24", "SOT-223": "SOT-223",
+    "SOT-23-5": "SOT-23-5", "SOT-23-6": "SOT-23-6", "SOT-23": "SOT-23",
+    "SOT-563": "SOT-563", "3225": "Crystal_SMD_3225", "4040": "L_Sunlord_SWPA4020S",
+    "0402": "_0402_", "0603": "_0603_", "0805": "_0805_", "1206": "_1206_",
+    "0805 (opto)": "_0805_",
+}
+
+
+def bom_packages(path):
+    """ref -> the package BOM.md's optical table claims, keyed on each row's FIRST ref."""
+    lines = open(path, encoding="utf-8").read().split(chr(10))
+    i = next(k for k, l in enumerate(lines) if l.startswith("| Qty | Ref | Part / role"))
+    out = {}
+    for l in lines[i + 2:]:
+        if not l.startswith("|"):
+            break
+        c = [x.strip() for x in l.split("|")]
+        if len(c) < 6:
+            continue
+        first = re.split(r"[,/ ]", c[2].replace(chr(0x2013), "-"))[0].split("-")[0]
+        if first:
+            out[first] = c[4]
+    return out
+
+
+def netlist_footprints(stem):
+    """ref -> footprint name, without the library prefix."""
+    txt = open(stem + ".net", encoding="utf-8").read()
+    return {m.group(1): m.group(2).split(":", 1)[-1] for m in re.finditer(
+        r'\(ref "([^"]+)"\)\s*\(value "[^"]*"\)\s*'
+        r'\(description "[^"]*"\)\s*\(footprint "([^"]*)"\)', txt)}
+
+
 def netlist_codes(stem):
     """ref -> (value, LCSC code or None) as the FAB will read it."""
     txt = open(stem + ".net", encoding="utf-8").read()
@@ -66,9 +104,28 @@ def main():
             continue                            # both say open
         if net_code != cad_code:
             bad.append((ref, rec[0], cad_code, val, net_code))
-    if not bad:
-        print("optical: CAD sourcing table agrees with the netlist (%d parts)" % len(net))
+    # ⚠ AND BOM.md'S PACKAGE COLUMN, which is the THIRD place every part is described
+    # and the only one a human reads. Two rows were wrong on 2026-09-17: U8 said
+    # SOT-23-5 when the AMS1117 is a SOT-223 tab package nearly twice the size, and U10
+    # said SOT-563 when the part ordered is SOT-23-6. Nothing else could see either --
+    # the CAD and the netlist agreed with each other, and only the prose disagreed.
+    fps = netlist_footprints(stem)
+    pkg_bad = []
+    for ref, want in bom_packages(os.path.join(ROOT, "BOM.md")).items():
+        key = BOM_PKG.get(want)
+        if ref in fps and key and key not in fps[ref]:
+            pkg_bad.append((ref, want, fps[ref]))
+
+    if not bad and not pkg_bad:
+        print("optical: CAD table, netlist and BOM.md all agree (%d parts)" % len(net))
         return 0
+    if pkg_bad:
+        print("optical: %d BOM.md row(s) whose package is not the footprint" % len(pkg_bad))
+        for ref, want, got in pkg_bad:
+            print("  %-5s BOM says %-14s footprint is %s" % (ref, want, got))
+        print()
+    if not bad:
+        return 1
     print("optical: %d part(s) where the CAD and the netlist name DIFFERENT parts\n" % len(bad))
     print("  %-5s %-22s %-10s %-22s %s" % ("ref", "CAD says", "code", "netlist says", "code"))
     for ref, cm, cc, nv, nc in bad:
