@@ -440,6 +440,30 @@ adapting at the motors.
 
 ## Optical pickup PCB (per-string sensing + on-board audio→MIDI)
 
+> ### ⚠ 2026-09-17 — every part audited against its manufacturer's datasheet
+>
+> Prompted by the user: verify the parts before routing the board again. All 155
+> checked, pinout by pinout. **Seven faults, none of which DRC can see** — DRC
+> checks copper against the netlist, and these were in the netlist.
+>
+> | What was wrong | Why it matters |
+> |---|---|
+> | USB3343 PHY pinout was invented — D+/D− on 16/15 (really 13/14), crystal on 10/11 (really 21/20), RBIAS on 17 (really 19) | The board could not have worked. The file had said "check against Microchip's datasheet"; nobody had |
+> | Y2 was 24 MHz | The USB3343 takes **26 MHz**. Neither 24 nor the MPN table's 25 would enumerate |
+> | Crystals specified by frequency only | The PHY needs **CL 20 pF, ESR ≤ 30 Ω** (T4.13). The obvious 26 MHz 3225 part is CL 10 pF / 50 Ω and fails both — a mismatched load pulls frequency off the ±500 ppm budget, and 50 Ω against a 30 Ω limit may not start |
+> | TIA op-amps ran on **+5 V** and drive ADC pins | ST rates those pins at **4.0 V absolute maximum** (DS12110 T21). A saturated channel put ~4.95 V on them. Moved to +3V3A — which costs nothing, since the ADC measures against VREF+ = 3V3A and could never read above it |
+> | U9's BYP pin floating | Its datasheet: **300 µVrms** without the cap, **40 µVrms** with. 40 µV is why the part was chosen. New C127 |
+> | Ferrite bead had the **ten pulsed emitters on its quiet side** | The bead was keeping the buck's ripple out of a node the board's own worst aggressor already sat on. Emitters + digital LDO now on the buck side |
+> | U11 ordered as the SC70 part on a SOT-23 footprint | TI gives the two packages **different pinouts** — as ordered, the mid-rail buffer drove its own input |
+> | 50 passives had placeholder values (`Rf`, `Cf C0G`, `ballast`) | They were counted as sourced generics and would have reached a quote as blank lines. `fab.py` now refuses them |
+>
+> **What the audit cost in routing:** the sensing strip now carries two power
+> rails (+3V3A to the quads, V5_PRE to the ballasts) where it carried one, which
+> is the direct price of separating the pulsed emitters from the analog supply.
+> Unconnected went 5 → 10 on an otherwise identical board. Zero DRC violations
+> either way, beyond the 20 declared sensing-cell courtyard overlaps.
+
+
 One custom board lying **under the strings, firing up**, on a carrier that is part
 of the bridge endplate and **rides on top of the deck**, that reads all ten
 strings optically.
@@ -504,21 +528,22 @@ ADC inputs plus a 12-signal ULPI bus will not fit a 64-pin part.
 | 5 | U1–U5 | quad op-amp — 4× transimpedance amp | SOIC-14 | 6.00 × 8.65 × 1.75 |
 | 1 | U7 | USB 2.0 high-speed ULPI PHY | QFN-24 | 4.00 × 4.00 × 0.90 |
 | 1 | U8 | LDO — 3V3 digital | SOT-23-5 | 2.90 × 2.80 × 1.45 |
-| 1 | U9 | LDO — 3V3 analog (low noise) | SOT-23-5 | 2.90 × 2.80 × 1.45 |
+| 1 | U9 | LDO — 3V3 analog (low noise, **needs C127 on BYP**) | SOT-23-5 | 2.90 × 2.80 × 1.45 |
+| 1 | C127 | analog LDO noise bypass — 1 µF, **the reason U9 is this part** | 0402 | 1.00 × 0.50 × 0.55 |
 | 1 | U11 | single op-amp — TIA mid-rail reference buffer | SOT-23-5 | 2.90 × 2.80 × 1.45 |
-| 1 | Y1 | 25 MHz crystal — MCU HSE | 3225 | 3.20 × 2.50 × 0.90 |
-| 1 | Y2 | 24 MHz crystal — PHY reference | 3225 | 3.20 × 2.50 × 0.90 |
+| 1 | Y1 | 25 MHz crystal — MCU HSE, **CL 20 pF, ESR ≤ 30 Ω** | 3225 | 3.20 × 2.50 × 0.90 |
+| 1 | Y2 | **26 MHz** crystal — PHY reference, **CL 20 pF, ESR ≤ 30 Ω** | 3225 | 3.20 × 2.50 × 0.90 |
 | 1 | Q1 | N-ch MOSFET — LED row driver | SOT-23 | 2.90 × 2.40 × 1.30 |
 | 1 | U10 | USB data-line ESD array | SOT-563 | 1.60 × 1.60 × 0.60 |
 | 10 | D1–D10 | IR emitter, 940 nm — **narrow beam, see below** | 0805 (opto) | 2.00 × 1.25 × 0.85 |
 | 20 | PD1A–PD10B | PIN photodiode — **Vishay VEMD4110X01**, daylight filter (740–1040 nm) | 0805 (opto) | 2.00 × 1.25 × 0.85 |
-| 5 | R1–R5 | LED current-set — **per-string value**, plain strings | 0603 | 1.60 × 0.80 × 0.95 |
-| 5 | R6–R10 | LED current-set — **per-string value**, wound strings | 0603 | 1.60 × 0.80 × 0.95 |
+| 5 | R1–R5 | LED current-set — **180R** (21 mA) nominal, plain strings | 0603 | 1.60 × 0.80 × 0.95 |
+| 5 | R6–R10 | LED current-set — **180R** (21 mA) nominal, wound strings | 0603 | 1.60 × 0.80 × 0.95 |
 | 1 | FB1 | ferrite bead — analog rail isolation | 0603 | 1.60 × 0.80 × 0.95 |
 | 4 | C130–C133 | bulk caps — VBUS / 3V3D / 3V3A / reference | 0805 | 2.00 × 1.25 × 1.45 |
-| 20 | Rf11–Rf54 | TIA feedback resistor — **per-string value** | 0402 | 1.00 × 0.50 × 0.55 |
+| 20 | Rf11–Rf54 | TIA feedback resistor — **4M7** nominal, tuned per string | 0402 | 1.00 × 0.50 × 0.55 |
 | 4 | C140–C143 | power-input decoupling | 0402 | 1.00 × 0.50 × 0.55 |
-| 20 | Cf11–Cf54 | TIA feedback cap (sets the anti-alias pole) | 0402 | 1.00 × 0.50 × 0.55 |
+| 20 | Cf11–Cf54 | TIA feedback cap — **2.2 pF** C0G, 15.4 kHz pole | 0402 | 1.00 × 0.50 × 0.55 |
 | 12 | C100–C111 | MCU decoupling | 0402 | 1.00 × 0.50 × 0.55 |
 | 10 | Cd11–Cd52 | op-amp decoupling | 0402 | 1.00 × 0.50 × 0.55 |
 | 4 | C123–C126 | crystal load caps | 0402 | 1.00 × 0.50 × 0.55 |
