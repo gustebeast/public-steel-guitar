@@ -1090,6 +1090,16 @@ BOARD_NOTES = {
     # three-pad star, twenty times, at a spacing the string fan fixes.
     # Only the LOCAL cluster is laid; the long run to the MCU's ADC pin stays the
     # router's, which is the half it is good at. See _local_nets.
+    # ⚠ THE POWER RAILS ARE *NOT* IN THIS LIST, AND THAT WAS TESTED. Since the emitters
+    # and the quads were separated onto V5_PRE and +3V3A, the sensing strip carries two
+    # rails where it carried one, and both route -- they just take the room the TIA
+    # outputs wanted. Pre-laying their local hops (each quad to its own two decoupling
+    # caps) looked like free space: the router would keep the copper it needs and lose
+    # work it does not.
+    # MEASURED: 9 unconnected but THREE clearance violations, against 10 and none. It
+    # laid one extra segment and cost a manufacturable board. A violation is worse than
+    # an unfinished net -- one board cannot be made, the other is not done -- which is
+    # the rule finish.py already sorts by.
     "local_nets": (r"TIA_IN_\d+[AB]", r"TIA_OUT_\d+[AB]"),
     "stitch_nets": ("GND",),
     # ⚠ ONE GROUND PAD GIVES WAY TO THE USB PAIR, and it is the right way round. The
