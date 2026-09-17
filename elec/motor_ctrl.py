@@ -105,13 +105,28 @@ def motor_ctrl():
     j1 = _xh("J1", "bus A out -- the ten motor tees")
     j2 = _xh("J2", "bus B out -- the eight lever/pedal boards")
     j3 = _xh("J3", "24 V in from the rail (2 contacts populated)")
-    gnd += j1[1], j2[1], j3[1]
-    v24 += j1[2], j2[2], j3[2]
+    gnd += j1[1], j2[1], j3[1], j3[4]
+    v24 += j1[2], j2[2], j3[2], j3[3]
     a_h += j1[3]; a_l += j1[4]
     b_h += j2[3]; b_l += j2[4]
-    # J3's CAN cavities stay EMPTY: a 4-way shell for one crimp order across the
-    # instrument, but wiring the pair to a power-only connector would hang an
-    # unterminated stub off whichever bus the lead came from.
+    # ⚠ J3 NOW DOUBLES ITS CONTACTS, AND IT IS A RATING FIX RATHER THAN TIDINESS. This
+    # is the sink end of the instrument's whole 24 V trunk. BOM.md sizes that bus at
+    # under 5 A and XH is rated 3 A per contact, which is exactly why the SOURCE (the
+    # output panel's J7) puts two contacts on each rail -- and this end was taking all
+    # of it through one. A doubled source into a single-contact sink is not doubled.
+    # The cavities were previously left empty on the reasoning that wiring the CAN pair
+    # to a power-only connector would hang an unterminated stub; that reasoning was
+    # right about CAN and does not apply to power, which is what they carry now. Pin
+    # order is the instrument's standard: 1=GND 2=+24V 3=+24V 4=GND.
+    #
+    # ⚠ AND THE BOTTLENECK MOVES RATHER THAN DISAPPEARS -- FLAGGED, NOT FIXED. J1 and
+    # J2 are the bus outputs, and on a four-wire CAN-plus-power bus (GND, +24V, H, L --
+    # the user's colour scheme) the 24 V rides ONE conductor and one contact. Bus A
+    # feeds ten SERVO42D drivers, so very nearly the whole <5 A passes through a single
+    # 3 A contact at J1. Doubling here is free because J3's spare ways were idle; doing
+    # the same at J1/J2 is not, because those ways carry CAN. Resolving it means a
+    # wider shell, a separate power bus, or a measured slew budget showing the staggered
+    # peak is genuinely under 3 A -- a motor-controller decision, recorded in BOM.md.
 
     # ── 24 V -> 3V3, LMR16006XDDCR (LCSC C87080), same part as the lever board ─
     # TI SNVSA24 section 6: 1 CB, 2 GND, 3 FB, 4 SHDN, 5 VIN, 6 SW. SHDN floats =

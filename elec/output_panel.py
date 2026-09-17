@@ -225,8 +225,24 @@ def output_panel():
     # ⚠ PWR_GND IS A SEPARATE NET AND IS NEVER JOINED TO THE SIGNAL GROUND HERE. The
     # trunk feeds ten stepper drivers and its return current is chopped at their
     # switching rate; sharing a plane with the audio reference would put that
-    # current under the one signal a listener hears. The two meet at the
-    # instrument's star point, elsewhere.
+    # current under the one signal a listener hears.
+    #
+    # ⚠ THIS USED TO SAY "the two meet at the instrument's star point, elsewhere", AND
+    # THERE IS NO SUCH POINT. Checked across every board's netlist on 2026-09-17: this
+    # is the only board in the instrument with a PWR_GND, and both boards the trunk
+    # feeds -- motor_ctrl J3 and optical J2 -- bond the trunk return straight to their
+    # own signal ground. So the topology is not a star. It is a TREE: power returns run
+    # back to this board's PWR_GND and stop here, signal grounds run back to this
+    # board's GND and stop here, and the two domains bond ONCE PER LEAF, at whichever
+    # downstream board the cable ends on.
+    #
+    # ⚠ THAT IS COHERENT AND LOOP-FREE, AND IT ONLY STAYS THAT WAY IF THIS BOARD NEVER
+    # TIES THEM. Trace it: panel GND -> USB -> optical GND -> 24 V cable -> panel
+    # PWR_GND, and it dead-ends, because there is no path back to panel GND. Add a tie
+    # here and that becomes a loop with the stepper return current flowing through a
+    # USB cable's ground. So the absence of a tie on this board is not an omission to be
+    # tidied up later -- it is the thing that makes the arrangement work, and it is
+    # enforced by netcheck's declared_split, which prints on every build.
     # ⚠ AND IT MUST BE LAID OUT THAT WAY TO MEAN ANYTHING: V24/PWR_GND keep their
     # own island in the -Y corner, the pair runs tightly coupled so the loop
     # encloses no area, and NEITHER GROUND POUR may flood across them. A netlist
@@ -252,6 +268,7 @@ def output_panel():
     pgnd += j7[1], j7[4]
     v24 += j7[2], j7[3]
 
+
     # ── J8: the magnetic pickup, on SCREW TERMINALS (user) ───────────────────
     # It is the most likely thing anyone ever rewires -- swapping a pickup is a
     # normal thing to do to a guitar -- so it is the one field connection that is
@@ -264,6 +281,38 @@ def output_panel():
               pins=[Pin(num=1, name="HOT", func=P), Pin(num=2, name="RET", func=P)])
     pk_hot += j8[1]
     agnd += j8[2]             # the coil's return IS the analog reference
+
+    # ⚠ CREATED AFTER J8 ON PURPOSE -- DO NOT MOVE THIS BLOCK UP. SKiDL assigns
+    # reference designators by CREATION ORDER and ignores `tag` for that. Written above
+    # the pickup terminals, this part became J8 and renumbered the pickup to J9 -- and
+    # the placement dictionary is keyed by REF, so the two silently SWAPPED POSITIONS:
+    # the 24 V outlet landed on the +Y edge where the pickup belongs, and the pickup
+    # landed on the 24 V island. The build printed 59 placements and said nothing.
+    # ⚠ J9: THE SECOND 24 V OUTLET, AND THE OPTICAL BOARD HAD NO SOURCE WITHOUT IT.
+    # Every 24 V connector in every netlist was listed on 2026-09-17. The instrument had
+    # exactly ONE source -- J7 above -- and TWO sinks: the motor controller's J3 and the
+    # optical board's J2. One of them was going to be fed by a splice, and the project's
+    # standing rule is that every field connection is a connector.
+    #
+    # It goes here rather than on the optical board's USB feed because that board's 24 V
+    # was a deliberate choice and stays one: it keeps the optical board independent of
+    # this board's buck sizing, and -- the argument that actually decides it -- moving
+    # the switcher here would not remove switching noise from a board carrying twenty
+    # nanoamp transimpedance amplifiers, it would only make it SOMEBODY ELSE'S switcher
+    # arriving over a cable, at a frequency that board does not control. A local
+    # switcher at a chosen 1.1 MHz behind a bead and an LDO beats a remote one.
+    #
+    # Doubled like J7, though the load does not need it (the optical board draws 79 mA
+    # typical, 120 mA worst case, against 3 A per XH contact). The reason is the cable:
+    # one crimp order, one four-way housing, one pin order across the instrument, and no
+    # conductor that lands on a pin connected to nothing.
+    j9 = Part(name="B4B-XH-A", ref_prefix="J", tag="J9", dest="NETLIST", tool="skidl",
+              value="B4B-XH-A", description="24 V out to the optical pickup board",
+              footprint=XH_FP,
+              pins=[Pin(num=i + 1, name=n, func=P)
+                    for i, n in enumerate(("PWR_GND", "+24V", "+24V", "PWR_GND"))])
+    pgnd += j9[1], j9[4]
+    v24 += j9[2], j9[3]
 
     # ── U1: the MCU. USB HS to the hub, full-duplex I2S, one GPIO for the relay ──
     # Pin numbers off WCH's QFN-68 column (CH32V303/305/307/317 V3.9, table 3-1):
@@ -794,6 +843,7 @@ BOARD_NOTES = {
         "R7": (14.00, -12.00, 0.0),
         # -Y CORNER: THE 24 V ISLAND AND ITS SWITCHER, on their own copper
         "J7": (0.00, -28.00, 0.0),
+        "J9": (14.00, -28.00, 0.0),   # the optical board's feed, on the same island
         "D6": (-12.00, -28.00, 0.0),
         "C2": (-20.00, -28.00, 0.0),
         "C3": (-25.00, -28.00, 0.0),
@@ -838,9 +888,10 @@ if __name__ == "__main__":
         os.path.join(OUT_DIR, "output_panel.net"),
         declared_split={
             "shape": "GND | PWR_GND",
-            "why": "the 24 V return is chopped by ten stepper drivers and is kept off "
-                   "the audio reference; intended to meet GND at the instrument star "
-                   "point, WHICH DOES NOT EXIST YET -- see the note at this call",
+            "why": "the 24 V return is chopped by ten stepper drivers and is kept "
+                   "off the audio reference. NOT a star point -- the two domains bond "
+                   "ONCE PER LEAF at the downstream boards, and a tie on THIS board "
+                   "would close a loop through a USB ground. See the J6/J7 note",
         })
     with open(os.path.join(OUT_DIR, "output_panel.board.json"), "w") as f:
         json.dump(BOARD_NOTES, f, indent=2)

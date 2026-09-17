@@ -359,7 +359,23 @@ twisting + the bridge-side AFE buffer, not conductor size):
 
 | Net | Cable | OD |
 |---|---|---|
-| 24 V bus | 20 AWG silicone pair, twisted/flat (fleet slew staggered <5 A; ~0.3 V drop over the run) | ~2.4 |
+| 24 V bus | 20 AWG silicone pair, twisted/flat (fleet slew staggered <5 A; ~0.3 V drop over the run) ⚠ **see the contact-rating note below** | ~2.4 |
+
+> ⚠ **The wire is sized for <5 A; the connector contacts are not, in one place.**
+> XH is rated **3 A per contact**, which is why the panel's 24 V outlet (J7) puts
+> two contacts on each rail. Audited 2026-09-17: the motor controller's inlet J3
+> was taking all of it through **one** contact — a doubled source into a
+> single-contact sink is not doubled — and that is now fixed, along with the
+> optical board's J2, so every 24 V connector in the instrument is
+> `1=GND 2=+24V 3=+24V 4=GND`.
+>
+> **The bottleneck moves rather than disappears.** The motor controller's bus
+> outputs J1/J2 carry 24 V on a *single* conductor, because bus A/B is the
+> four-wire CAN-plus-power scheme (GND, +24 V, H, L). Bus A feeds ten SERVO42D
+> drivers, so nearly the whole <5 A passes through one 3 A contact. Doubling J3
+> was free (its ways were idle); doing it at J1/J2 is not, because those ways
+> carry CAN. **Open:** a wider shell, a separate power bus, or a measured slew
+> budget showing the staggered peak really is under 3 A.
 | CAN | 26 AWG twisted pair, 120 Ω terminated | ~2.2 |
 | pickup / audio / DAC / out | 28 AWG **shielded** pair (mA signals — the shield is the spec) | ~2.0 |
 | USB panel → Pi | slim shielded USB-2 | ~2.6 |
