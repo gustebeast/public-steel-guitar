@@ -74,7 +74,38 @@ DSN_CLEAR_MARGIN_UM = 10      # see the clearance block in route()
 PASSES = 10
 
 
-def route(stem, passes=None, timeout=3600):
+def failing_nets(stem):
+    """The nets the last DRC left unconnected, for an incremental re-route."""
+    d = json.load(open(stem + ".finish.drc.json", encoding="utf-8"))
+    out = set()
+    for v in d.get("unconnected_items", []):
+        for item in v["items"]:
+            m = re.search(r"\[([^\]]+)\]", item.get("description", ""))
+            if m:
+                out.add(m.group(1))
+    return sorted(out)
+
+
+def route(stem, passes=None, timeout=3600, incremental=False):
+    """Route the board at `stem`.
+
+    ⚠ `incremental` ROUTES FROM THE BOARD AS IT STANDS, NOT FROM A FRESH PLACEMENT, and
+    it is the answer to "must every experiment cost a full run". The normal path throws
+    the routing away (finish.py re-runs layout.py first) and hands freerouting all 96
+    nets; incremental hands it the routed board with every net FROZEN except the handful
+    DRC says are still unconnected. The router then has one small problem instead of a
+    whole board, and the copper it already got right cannot be disturbed.
+
+    It only became possible once the frozen-copper restore existed. Freezing a wire in
+    the DSN is half the operation -- the session file does not carry fixed wires, so
+    without the re-lay below an incremental run would delete everything it froze, which
+    is exactly the bug that cost a routing run to find.
+
+    ⚠ IT IS NOT A SUBSTITUTE FOR A FULL RUN. The frozen copper is an obstacle the router
+    cannot move, so a net that fails because its neighbour took the only channel will go
+    on failing. Use it to attack the last few nets on a board that is otherwise good;
+    use a full run after anything that changes the netlist or the placement.
+    """
     pcb, dsn, ses = stem + ".kicad_pcb", stem + ".dsn", stem + ".ses"
     # ⚠ A BOARD MAY ASK FOR MORE PASSES, and recording that beats remembering it.
     # "Raise it for the final run" is an instruction to a person, and a person who is
@@ -178,6 +209,14 @@ def route(stem, passes=None, timeout=3600):
     for spec in (notes or {}).get("diff_pairs", ()):
         frozen.update(spec.get("nets", ()))
     pair_nets = None if (notes or {}).get("fix_prelaid") else frozen
+    if incremental:
+        # Everything that HAS copper is frozen except the nets still unfinished.
+        free = set(failing_nets(stem))
+        have = {t.GetNetname() for t in board.GetTracks() if t.GetNetname()}
+        frozen = have - free
+        pair_nets = frozen
+        print("  incremental: %d net(s) left free (%s), %d frozen"
+              % (len(free), ", ".join(sorted(free)) or "-", len(frozen)))
 
     def _fix(m):
         if pair_nets is None or m.group(1) in pair_nets:
@@ -423,4 +462,4 @@ def route(stem, passes=None, timeout=3600):
 
 
 if __name__ == "__main__":
-    route(os.path.abspath(sys.argv[1]))
+    route(os.path.abspath(sys.argv[1]), incremental="--incremental" in sys.argv[2:])
