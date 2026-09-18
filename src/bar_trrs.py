@@ -147,9 +147,16 @@ SPR_CH_BOT = SPR_BOT + FLOAT + 0.4
                                 # at FULL compression. The step is a diameter change,
                                 # not a stop -- the coil still reacts against SEAT_Z --
                                 # so the collar must never reach it
-PASS_D = LT.PASS_D              # 6.6 above the seat: the lead's far plug has to be able
-                                # to travel this bore, the same rule that made the number
-                                # at the top joint
+PASS_D = LT.PLUG_D + 1.5        # 7.6, and NOT the top joint's 6.6. Same rule -- the
+                                # lead's far plug must be able to travel it -- but down
+                                # here the bore also has to TURN, out of the spine and
+                                # into the channel that misses the ladder, and a bore
+                                # that passes a rigid body straight does not pass it
+                                # round a corner. One diameter from the coil's seat to
+                                # the tenon's top face means the jog has no junction
+                                # into anything narrower, which is where a kink would
+                                # otherwise land. It is also no step at all in practice:
+                                # below the seat the bore is already 8.6 and then 9.9
 PASS_TOP = LS.Z_ADJ_TEN_TOP - (LS.LADDER_OFF + LS.ADJ_N * LS.ADJ_PITCH) - D.MIN_WALL_2P
                                 # ...AND IT STOPS SHORT OF THE LADDER, 1.6 under the
                                 # lowest hole. Running it the tenon's whole length is
@@ -177,22 +184,45 @@ PASS_TOP = LS.Z_ADJ_TEN_TOP - (LS.LADDER_OFF + LS.ADJ_N * LS.ADJ_PITCH) - D.MIN_
 #
 # Measured against all 31 holes: O6.6 at (AX_X, +7.0) keeps a 1.80 wall, where the
 # spine's own O6.6 at +3.2 keeps 0.00.
-CH_Y = 9 * B                    # 7.2, and it is not further out because the
+CH_X = 0.0                      # ON THE LEG'S X CENTRE, not the spine's -1.6. The
+                                # binding surface turned out to be the octagon's 45
+                                # CHAMFER, not the +Y flat: at (-1.6, 9.6) the channel
+                                # came within 0.08 of the 135 chamfer plane. Centring
+                                # it in X spends that error on neither corner
+CH_Y = 10 * B                   # 8.0. Bracketed from both sides -- the ladder needs
+                                # CH_Y - CH_D/2 >= 3.6 and the chamfer needs
+                                # CH_Y*cos(45) + CH_D/2 <= 12.0 - 1.6, so 7.6..9.05, and
+                                # this sits in it. Far enough out that the channel clears
+                                # the
+                                # ladder's |y| <= 2.0 by 3.6, and far enough that the
+                                # JOG to it is gentle -- see PASS_D, which is what
+                                # actually sets both numbers. It was 7.2, the tightest
+                                # that cleared the ladder at all, until the jog turned
+                                # out to be the binding constraint rather than the
+                                # channel.
                                 # wall costs 0.5 per 1.0 of diameter and this keeps the
                                 # SAME O6.6: the rule that set PASS_D -- the lead's far
                                 # O6.1 plug must be able to travel the tenon's whole
                                 # length -- does not stop applying halfway up
 CH_D = PASS_D
-CH_BOT = PASS_TOP - 8.0         # the jog happens BELOW the lowest ladder hole, in the
-                                # stretch the spine bore already owns
+CH_BOT = SEAT_Z                 # THE JOG USES THE WHOLE STRETCH between the coil's seat
+                                # and the ladder, 28.2 of it, and not the 8.0 I first
+                                # gave it. Length is what makes the kink shallow, and
+                                # the kink is what the plug has to survive:
+                                #
+                                #   a rigid rod through a kink needs D >= d + L sin(t/2)
+                                #
+                                # The plug's overmould is O6.1 x 14 RIGID, so at the
+                                # original 26.6 degree jog it wanted a O9.32 bore. The
+                                # sweep that passed it checked a O6.1 CIRCLE at each
+                                # station -- the cross-section, not the body, and a
+                                # circle turns any corner. Over 28.2 the kink falls to
+                                # 12.8 degrees and the requirement to O7.66 (asserted
+                                # below, against the real numbers rather than a comment)
 CH_TOP = LS.Z_ADJ_TEN_TOP       # ...and it runs out the tenon's top face, into the
                                 # sleeve cavity, which is where the slack will live
                                 # (sub-problem B, docs/leg-trrs-routing.md)
 
-assert CH_BOT < PASS_TOP, "the jog has to finish before the pass bore ends"
-assert CH_Y - CH_D / 2.0 > LS.ADJ_HOLE_D / 2.0 + D.MIN_WALL_2P, (
-    "the channel reaches y %+.2f and the ladder owns |y| <= %.1f"
-    % (CH_Y - CH_D / 2.0, LS.ADJ_HOLE_D / 2.0))
 
 assert SPR_CH_BOT > SH_REST + SLV_H + FLOAT, (
     "the coil's channel starts at %.2f and the collar's flange reaches %.2f at mate"
@@ -227,6 +257,26 @@ AX_Y = 4 * B                    # ...and sits at +3.2 in Y where the top sits at
                                 # leg, which is a cable's job
 
 
+_JOG_DXY = math.hypot(CH_X - AX_X, CH_Y - AX_Y)
+_JOG_LEN = math.hypot(_JOG_DXY, PASS_TOP - CH_BOT)
+_JOG_LAP = 8.0                  # the jog OVERSHOOTS into the channel instead of butting
+                                # against it. Two bores meeting at an angle leave a thin
+                                # crescent where the slanted one's elliptical end does
+                                # not match the straight one's wall -- 0.61 of it here,
+                                # which check_thin caught. Overlapping them deletes the
+                                # lip rather than thinning it
+_JOG_DEG = math.degrees(math.atan2(_JOG_DXY, PASS_TOP - CH_BOT))
+_JOG_NEED = LT.PLUG_D + LT.PLUG_L * math.sin(math.radians(_JOG_DEG / 2.0))
+assert CH_BOT < PASS_TOP, "the jog has to finish before the pass bore ends"
+assert _JOG_NEED <= CH_D, (
+    "the jog kinks %.1f deg, and a rigid O%.1f x %.1f plug needs O%.2f to turn that "
+    "corner -- the channel is O%.1f. LENGTHEN THE JOG, do not widen the bore"
+    % (_JOG_DEG, LT.PLUG_D, LT.PLUG_L, _JOG_NEED, CH_D))
+assert CH_Y - CH_D / 2.0 > LS.ADJ_HOLE_D / 2.0 + D.MIN_WALL_2P, (
+    "the channel reaches y %+.2f and the ladder owns |y| <= %.1f"
+    % (CH_Y - CH_D / 2.0, LS.ADJ_HOLE_D / 2.0))
+
+
 def _ax():
     return LS.LEG_X + AX_X, LS.LEG_Y + AX_Y
 
@@ -243,12 +293,16 @@ def tenon_negatives(up=None):
     out = out.union(LT._bore(SPR_CH_D, SPR_CH_BOT - 0.01, SEAT_Z, x, y, up))
     out = out.union(LT._bore(PASS_D, SEAT_Z - 0.01, PASS_TOP, x, y, up))
     # ...and on past the ladder, out in +Y where the ladder is not
-    out = out.union(LT._bore(CH_D, CH_BOT, CH_TOP + 1.0, x, LS.LEG_Y + CH_Y, up))
-    # the jog between the two, a slant rather than a corner: the O6.1 plug has to
-    # travel it on the way in, and a cable does not like being asked to turn square
+    cx, cy = LS.LEG_X + CH_X, LS.LEG_Y + CH_Y
+    out = out.union(LT._bore(CH_D, PASS_TOP - _JOG_LAP, CH_TOP + 1.0,
+                             cx, cy, up))
+    # the jog between the two. It moves in X as well as Y now -- the channel is on the
+    # leg's centre line and the spine is 1.6 off it -- and it takes the WHOLE stretch
+    # between the coil's seat and the ladder, because length is what makes the kink
+    # shallow enough for the rigid plug to turn it (see _JOG_NEED).
     out = out.union(teardrop_hole(
-        CH_D, ((CH_Y - AX_Y) ** 2 + (PASS_TOP - CH_BOT) ** 2) ** 0.5,
-        (x, y, CH_BOT), (0.0, CH_Y - AX_Y, PASS_TOP - CH_BOT), up))
+        CH_D, _JOG_LEN + _JOG_LAP, (x, y, CH_BOT),
+        (cx - x, cy - y, PASS_TOP - CH_BOT), up))
     out = out.union(LT._bayonet_slots(BORE_D / 2.0 - 0.01, LT.LUG_D / 2.0,
                                       LUG_BOT, LUG_BOT + RUN_H, True, x, y, LUG_A, up))
     # AND THE ENTRY SLOTS RUN THE WHOLE WAY DOWN TO THE FACE. leg_trrs._bayonet_slots
