@@ -1716,6 +1716,19 @@ BOARD_NOTES = {
     # laid one extra segment and cost a manufacturable board. A violation is worse than
     # an unfinished net -- one board cannot be made, the other is not done -- which is
     # the rule finish.py already sorts by.
+    # ⚠ +3V3A DOES NOT BELONG HERE, MEASURED: adding it took the board from ONE
+    # unconnected net to THREE. After the strings 2/10 swap the only open net was +3V3A
+    # -- a 5.93 mm gap between U2's supply pin and its own decoupling cap, well inside
+    # _local_nets' 6 mm single-linkage reach, and ten identical op-amp-to-its-own-cap
+    # hops are a pattern rather than a search, which is exactly what this routine is for.
+    # It laid 122 segments and cost two nets.
+    #
+    # The reason is the one this file keeps re-learning: PRE-LAID COPPER IS FREEDOM THE
+    # ROUTER CANNOT GET BACK. Going wider made output_panel 2 -> 5 and lever_sensor
+    # 4 -> 7; here the twenty analog nets the swap had just freed were competing for the
+    # same strip, and 122 fixed segments through it closed the corridor they were using.
+    # The rail is better off routed than helped. Third time this lever has been tried and
+    # lost -- treat "add one more net to the pre-lay" as measured-negative, not untested.
     "local_nets": (r"TIA_IN_\d+[AB]", r"TIA_OUT_\d+[AB]"),
     "stitch_nets": ("GND",),
     # ⚠ ONE GROUND PAD GIVES WAY TO THE USB PAIR, and it is the right way round. The
