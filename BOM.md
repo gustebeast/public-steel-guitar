@@ -112,6 +112,18 @@ the constraint is stock, not selection. See the optical-pickup section.
 | **TRRS float spring** | Compression, **Ø8.0 OD × 0.7 wire × 20.0 free**, **ID 6.6**, 304 SS (rate ~0.75 N/mm, bracketed 0.6–0.9; **measure on arrival**) | 1 (+ 4 spare) | [uxcell B0C33C21K9](https://www.amazon.com/dp/B0C33C21K9) — 5 to a pack, used **AS BOUGHT** | **$6.29 / 5** [a] | SECOND SKU, and not a preference: the coil has to end up ON the lead, and a lead has two ends — the moulded jack (Ø9.7) and the moulded far plug (Ø6.1). The latch coil's 3.8 ID passes neither, so no assembly order puts it there and the joint was unbuildable with it (user found this). **ID 6.6 clears the far plug by 0.5.** Installed 13.80 → **4.7 N at rest / 6.9 N seated**. The installed length is the SOLID FLOOR here, not the preload target: at 0.75 N/mm a 5.0 N target would want 13.33 and the coil would go solid before the leg seats |
 
 
+> ⚠ **OPEN: the PLUG's modelled length disagrees with this row (2026-09-18).**
+> `tools/check_cable_spec.py` reads the four bought dimensions back out of the 10-02135
+> row and compares them to the code cut to fit them. Three agree. The fourth does not:
+> the row says **plug 3.5 × L20.7**, and `leg_trrs` draws the plug as a Ø3.5 × 14 barrel
+> plus a Ø6.1 × 14 overmould — **28.0 overall**. If 20.7 is the overall moulded length
+> then `PLUG_L` should be ~6.7, not 14.0. **Re-read the drawing before trusting either.**
+> Nothing built is unsafe on it: the modelled plug is the LONGER, so every rigid-body
+> clearance derived from it (notably the adjust tenon's jog, which needs Ø7.34 as
+> modelled against Ø6.69 at the shorter figure, in a Ø7.6 channel) is the conservative
+> case. But the plug DUMMY is 7.3 too long, which is a thing the overlap gate is being
+> shown.
+
 > **THE INLINE JACK IS Ø7.8 × 25.8, NOT Ø9.7 × 40 — and that one number deleted a
 > subsystem (2026-09-17).** `leg_trrs.JACK_D`/`JACK_L` were an ENVELOPE ("BOM: 9.1..9.7,
 > pick high", "≤ 40"), never a part, and the bottom joint was being designed around them.
