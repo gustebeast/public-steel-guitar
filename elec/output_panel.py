@@ -352,6 +352,27 @@ def output_panel():
     swdio, swclk, boot0 = Net("SWDIO"), Net("SWCLK"), Net("BOOT0")
     swdio += u1[48]
     swclk += u1[52]
+
+    # ⚠ SWDIO AND SWCLK REACHED THE MCU AND STOPPED. Single-node nets: layout drops them
+    # as unplaceable, so no copper is ever laid and DRC then compares a clean board
+    # against a netlist that never asked for anything. Found 2026-09-17 by running the
+    # orphan-pin check across the whole fleet after the optical board had the same fault.
+    #
+    # THIS BOARD IS NOT AS BAD AS THE LEVER BOARD, which had no way in at all. Here the
+    # CH32V307's USB reaches a connector, so WCH's ROM bootloader is reachable in
+    # principle -- but BOOT0 goes only to a pull-down and the MCU pin, so entering it
+    # means tack-soldering onto a resistor pad, and SWD debugging would be unavailable
+    # for the life of the board. Five pads cost nothing and remove both problems.
+    for _ref, _net, _what in (("TP1", swdio, "SWDIO"), ("TP2", swclk, "SWCLK"),
+                              ("TP3", nrst, "NRST"), ("TP4", gnd, "GND"),
+                              ("TP5", v3v3, "target sense")):
+        _tp = Part(name="TestPoint", ref_prefix="TP", ref=_ref, dest="NETLIST",
+                   tool="skidl", value="SWD",
+                   description="SWD pad -- %s; bare copper, no component" % _what,
+                   footprint="TestPoint:TestPoint_Pad_D1.5mm",
+                   pins=[Pin(num=1, func=P)])
+        _net += _tp[1]
+
     boot0 += u1[63]
 
     # ══ ⚠ AUDIT, 2026-09-17: THE ANALOG HALF OF THIS BOARD IS NOT BUILDABLE AS WIRED ══
@@ -531,7 +552,7 @@ def output_panel():
     pk_buf += k1[3]
     proc += k1[4]
     for i in (5, 6, 7, 8, 9):
-        Net("K1_UNUSED_%d" % i).connect(k1[i])
+        Net("K1_NC_%d" % i).connect(k1[i])
     q1 = Part(name="Q_NMOS", ref_prefix="Q", tag="Q1", dest="NETLIST", tool="skidl",
               value="AO3400A", description="relay coil driver (LCSC C20917)",
               footprint="Package_TO_SOT_SMD:SOT-23",
@@ -843,6 +864,12 @@ BOARD_NOTES = {
         "R7": (14.00, -12.00, 0.0),
         # -Y CORNER: THE 24 V ISLAND AND ITS SWITCHER, on their own copper
         "J7": (0.00, -28.00, 0.0),
+        # SWD pads -- the tightest free cluster next to U1; see the note in output_panel()
+        "TP1": (-6.10, -2.10, 0.0),
+        "TP2": (-0.10, -8.10, 0.0),
+        "TP3": (-3.10, -2.10, 0.0),
+        "TP4": (-0.10, -5.10, 0.0),
+        "TP5": (-9.10, -2.10, 0.0),
         "J9": (14.00, -28.00, 0.0),   # the optical board's feed, on the same island
         "D6": (-12.00, -28.00, 0.0),
         "C2": (-20.00, -28.00, 0.0),
@@ -893,6 +920,7 @@ if __name__ == "__main__":
                    "ONCE PER LEAF at the downstream boards, and a tie on THIS board "
                    "would close a loop through a USB ground. See the J6/J7 note",
         })
+    netcheck.no_orphan_pins(os.path.join(OUT_DIR, "output_panel.net"))
     with open(os.path.join(OUT_DIR, "output_panel.board.json"), "w") as f:
         json.dump(BOARD_NOTES, f, indent=2)
     print("board %.1f x %.1f mm, %d placements, x%d per instrument"

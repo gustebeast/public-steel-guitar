@@ -243,6 +243,27 @@ def motor_ctrl():
     for tag, net in (("C4", osc1), ("C5", osc2)):
         c = _c(tag, "12pF", "crystal load"); net += c[1]; gnd += c[2]
     c_n = _c("C6", "100nF", "NRST filter"); nrst += c_n[1]; gnd += c_n[2]
+
+    # ⚠ SWDIO AND SWCLK REACHED THE MCU AND STOPPED. Single-node nets: layout drops them
+    # as unplaceable, so no copper is ever laid and DRC then compares a clean board
+    # against a netlist that never asked for anything. Found 2026-09-17 by running the
+    # orphan-pin check across the whole fleet after the optical board had the same fault.
+    #
+    # THIS BOARD IS NOT AS BAD AS THE LEVER BOARD, which had no way in at all. Here the
+    # CH32V307's USB reaches a connector, so WCH's ROM bootloader is reachable in
+    # principle -- but BOOT0 goes only to a pull-down and the MCU pin, so entering it
+    # means tack-soldering onto a resistor pad, and SWD debugging would be unavailable
+    # for the life of the board. Five pads cost nothing and remove both problems.
+    for _ref, _net, _what in (("TP1", swdio, "SWDIO"), ("TP2", swclk, "SWCLK"),
+                              ("TP3", nrst, "NRST"), ("TP4", gnd, "GND"),
+                              ("TP5", v33, "target sense")):
+        _tp = Part(name="TestPoint", ref_prefix="TP", ref=_ref, dest="NETLIST",
+                   tool="skidl", value="SWD",
+                   description="SWD pad -- %s; bare copper, no component" % _what,
+                   footprint="TestPoint:TestPoint_Pad_D1.5mm",
+                   pins=[Pin(num=1, func=P)])
+        _net += _tp[1]
+
     r_b = _r("R7", "10k", "BOOT0 pull-down"); boot0 += r_b[1]; gnd += r_b[2]
     # Eight supply pins want their own decoupling; one bulk holds the rail up.
     for tag in ("C7", "C8", "C9", "C10", "C11", "C12", "C13", "C14"):
@@ -435,6 +456,12 @@ BOARD_NOTES = {
         "J1": (-10.00, 2.50, 0.0),
         "J2": (4.00, 2.50, 0.0),
         "J3": (15.50, -8.50, 90.0),
+        # SWD pads -- nearest free 2.5 mm sites to U4; see the note in motor_ctrl()
+        "TP1": (-10.10, -12.85, 0.0),
+        "TP2": (2.40, -15.60, 0.0),
+        "TP3": (-10.85, -3.10, 0.0),
+        "TP4": (5.40, -15.60, 0.0),
+        "TP5": (-6.85, -21.35, 0.0),
         "J4": (0.00, -20.50, 0.0),
         "U4": (-4.00, -9.50, 0.0),
         "U2": (6.30, -5.00, 0.0),
@@ -527,6 +554,7 @@ if __name__ == "__main__":
     ERC()
     generate_netlist(file_=os.path.join(OUT_DIR, "motor_ctrl.net"))
     netcheck.grounds_meet(os.path.join(OUT_DIR, "motor_ctrl.net"))
+    netcheck.no_orphan_pins(os.path.join(OUT_DIR, "motor_ctrl.net"))
     with open(os.path.join(OUT_DIR, "motor_ctrl.board.json"), "w") as f:
         json.dump(BOARD_NOTES, f, indent=2)
     print("board %.1f x %.1f mm, %d placements"

@@ -122,3 +122,44 @@ def optical_declared(vtype, refs):
         return False
     kinds = {x.group(1) for x in m}
     return kinds == {"D", "PD"} and m[0].group(2) == m[1].group(2)
+
+
+def no_orphan_pins(path):
+    """A net with exactly ONE pin is a pin wired to nothing. Say so, unless it is
+    explicitly named as a no-connect.
+
+    ⚠ THIS CHECK HAS NOW FOUND THE SAME BOARD-KILLING FAULT ON TWO BOARDS, and the
+    second time only because somebody thought to run it on the rest of the fleet.
+
+    The optical board's SWDIO and SWCLK reached the MCU and stopped. So did the lever
+    board's -- and that one had no USB, no USART and no BOOT0 either, so with only
+    +24V/CAN_H/CAN_L/GND reaching a connector there was no way to get firmware onto it
+    at all. Eight to ten of them, marked finished, with fab packages built.
+
+    Layout DROPS a single-pad net as unplaceable, so it never reaches the board; DRC
+    then has nothing to compare and reports a clean board. The intent survives in a
+    comment or a BOM row while the implementation quietly does not exist. Only counting
+    the pins finds it.
+
+    The exemption is by NAME and deliberately narrow: a net whose name says NC, or
+    SPARE, or matches <REF>_NC_<pin>, is a documented no-connect. Everything else with
+    one pin is a fault.
+    """
+    txt = open(path, encoding="utf-8").read()
+    bad = []
+    for blk in re.finditer(r'\(net\s+\(code \d+\)\s+\(name "([^"]+)"\).*?'
+                           r'(?=\(net\s+\(code|\Z)', txt, re.S):
+        nodes = re.findall(r'\(ref "([^"]+)"\)\s*\(pin "([^"]+)"\)', blk.group(0))
+        name = blk.group(1)
+        if len(nodes) == 1 and not re.search(r"(^|_)NC(_|$)|NC_|SPARE|NOT_CONNECTED",
+                                             name, re.I):
+            bad.append("%s (%s.%s)" % (name, nodes[0][0], nodes[0][1]))
+    if bad:
+        raise AssertionError(
+            "%s: %d net(s) reach exactly one pin, i.e. a pin wired to nothing -- %s. "
+            "Layout drops these as unplaceable and DRC then sees a clean board, so "
+            "nothing downstream can find them. If a pin is meant to be unconnected, "
+            "name the net so it says so."
+            % (path, len(bad), ", ".join(bad)))
+    return True
+
