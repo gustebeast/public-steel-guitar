@@ -47,8 +47,8 @@ from cadkit.fasteners import (M4_SHAFT_CLR_D, M4_INSERT_D,
                        M4_INSERT_L, M4_SCREW_L, M2, M4, cut_insert_bore,
                        cut_selftap,
                        cut_m4_pocket, seated_m4_insert, cut_m4_boss, m4_boss_insert)
-from cadkit.pcb import (PCB_T as _PCB_T, jst_xh_side_header, xh_side_length,
-                        XH_SIDE_H, XH_SIDE_D)
+from cadkit.pcb import (PCB_T as _PCB_T, jst_ph_side_header, ph_side_length,
+                        PH_SIDE_H, PH_SIDE_D, PH_ROW_OFF)
 from cadkit.joinery import PrintSpec, joint   # cadkit's one joinery entrypoint
 from cadkit.supports import printable_bore, contact_rib
 # the M4 insert pocket/boss helpers now live in cadkit/fasteners.py (shared); keep the old local names:
@@ -130,7 +130,24 @@ AIR_GAP = 1.5                       # magnet face -> the IC's OWN TOP SURFACE. T
                                     # 0.5 / 1.0 / 2.0 min/typ/max; recommended magnet Ø6 x
                                     # 2.5 — EXACTLY ours, so this is the nominal
                                     # configuration the part was characterised in.
-PCB_WZ = 16.0                       # ONE board for every lever. WAS 19.0, and that was 3.0
+PCB_WZ = 21.4                       # ONE board for every lever. 16.0 until the real circuit
+                                    # was laid out (elec/lever_sensor.py): 29 parts and an
+                                    # 8-way trunk connector do not fit 16, and the 8-way is
+                                    # what lets the bus-B tee disappear into this board.
+                                    # THE CAP IS THE FOOT PEDAL, not the knee levers: its
+                                    # housing is clipped to the pedal BAR's own width, so the
+                                    # board may not reach below foot_pedal.HOUS_Z0. That
+                                    # number MOVED to -10.15, and 22.0 no longer fitted -- the
+                                    # top is pinned at CHIP_DROP (+11.30) by the sensor sitting
+                                    # on the axle, so the whole 0.6 comes off the BOTTOM and
+                                    # the cap is 21.45. 21.4 is what is left, and it is now
+                                    # limited by THE CONNECTOR rather than by the parts: J1's
+                                    # courtyard is 21.29, so 0.055 of board edge at each end is
+                                    # all there is. The board cannot get shorter without a
+                                    # different connector. (25 was drawn before any of this was
+                                    # checked; foot_pedal.py is what catches it, because
+                                    # board_flip polices a cradle WINDOW and the pedal's budget
+                                    # is tighter than the window.) (History: WAS 19.0, and that was 3.0
 PCB_T = _PCB_T                      # taller than anything on it: the board ran to z -12 while
                                     # the lowest feature — the CONNECTOR, which is the tallest
                                     # thing in Z at 15.0 — bottomed at -8.0, leaving a 4.0 x 28
@@ -430,12 +447,11 @@ HS_HOUS_BACK = HS_BACK_X + HS_BSTOP_ENGAGE   # housing boss depth = engagement (
 # cross-ribs. (The old double-christmas-tree floating tenon + its yoke plate are gone: they
 # existed because the housing used to print +Z→-Z and could not carry a protruding tenon.
 # It prints -Z→+Z now, so the tenon is just part of the part.) ──
-RIB_PITCH = D.MOTOR_X_STEP          # 46, THE motor pitch (derived — a MOTOR_X_STEP change
-                                    # moves the tenon stations WITH the comb). The rib comb is HALF this (23 mm: a
-                                    # crossbar per motor plus one between each pair), and the
-                                    # tenon stations are generated on that finer pitch — see
-                                    # TEN_X down in the prism block, where the housing X extents
-                                    # that bound them are finally known.
+RIB_PITCH = D.MOTOR_X_STEP          # THE motor pitch. The bottom is a SLAB now, not a comb of
+                                    # cross-ribs, and the mortise grid is D.LEVER_PITCH (8.8) --
+                                    # see _TEN_PITCH down in the prism block, where the housing X
+                                    # extents that bound the stations are finally known. This is
+                                    # kept only for readers who reason in motor pitches.
 BODY_Z    = HUB_TOP + 3 * D.BEAD    # body underside in local Z: the hub top (5.2) + a 2.4mm AIR
                                     #   gap (no material between the lever and the body). Raising the axle
                                     #   is equivalent to lowering BODY_Z here; MOUNT_Z tracks it (= -82.55)
@@ -486,7 +502,12 @@ MORT_Y0   = -3 * D.BEAD           # -2.4 mortise -Y mouth (opens outboard of the
 # crosses the stem wall (half-width _JW/4). The whole lever drops by the difference.
 _SEAT_ROOF_Z = (BRG_SEAT_D / 2 + BRG_WALL) * math.sqrt(2.0) - _JW / 4
 HOUS_TOP_Z = max(BODY_Z, BRG_OD / 2 + BRG_WALL, _SEAT_ROOF_Z)
-MOUNT_X, MOUNT_Y, MOUNT_Z = D.rib_comb_x(-501.0), -148.75, MB.BED_Z - HOUS_TOP_Z   # X snapped to the rib comb
+# X is SNAPPED AGAIN once the tenons are known (see _TEN_PHASE, below the housing block): the
+# TENONS are what must land on the grid, not the housing's origin, and the tenon set carries a
+# phase now. This first value is the nominal; nothing between here and there reads it but
+# MOUNT_POSE, which is rebuilt with it.
+MOUNT_X = D.rib_comb_x(-501.0)
+MOUNT_Y, MOUNT_Z = -148.75, MB.BED_Z - HOUS_TOP_Z
 # (MOUNT_Z read the bed as a spelled -75.15, which went stale when SCREW_TOP_Z /
 #  SCREW_PULLEY_Z / XBAR snapped to the grid — the live bed is MB.BED_Z = -74.95.)
 MOUNT_POSE = (MOUNT_X, MOUNT_Y, MOUNT_Z)
@@ -500,7 +521,11 @@ MID_Y     = -37.0                   # guitar Y-midpoint (= chassis (Y_LO + Y_HI)
 # had to pull their knee back to reach it, when the whole point of a vertical lever is
 # to lift without moving (user). The slot now runs to the inside edge of the
 # instrument, which is as far as it can go and enough for any of them.
-MORT_Y_END = D.BRIDGE_AXLE_Y + 4 * D.BEAD   # 55.55: +Y end of the knee-depth slide, guitar Y
+MORT_Y_END = D.LIGHT_WIN_Y0
+#   ^ +Y end of the knee-depth slide, guitar Y: every mortise runs the full width of the
+#     instrument and stops AT the transparent window's face (user, 2026-09-16). It ran to the
+#     +Y rail's inner face before the window existed. No wall between the two -- the window is
+#     solid (transparent) material in the finished print, so it IS the end of the slot.
                                     # = the chassis +Y rail INNER face, spelled via the same
                                     # D constants chassis.Y_HI uses (import direction forbids
                                     # chassis; the old 54.75 had gone stale twice over)
@@ -612,7 +637,7 @@ def sensor_connector():
     can get a plug onto is not a fit, and for side entry the plug's reach is the
     whole question). Height +Z -> -Y so it stands off the magnet-facing face, mating
     axis +Y -> +X so the plug arrives from -X, length -> Z."""
-    return (jst_xh_side_header(CONN_N, mated=True)
+    return (jst_ph_side_header(CONN_N, mated=True)
             .rotate((0, 0, 0), (1, 0, 0), 90)
             .rotate((0, 0, 0), (0, 1, 0), 90)
             .translate((CONN_MOUTH_X, PCB_Y, PCB_Z0 + CONN_RISE)))
@@ -768,14 +793,14 @@ def _cradle(w, z_bot=None, z_top=None, x_max=None, flip=None):
     # so this cut never reaches them. What it gives up is the seat face on that side
     # above _cz0; the board's -X edge is then seated by the plinth below and by the
     # +X groove, which is enough for a rigid board.
-    _cy0 = PCB_Y - XH_SIDE_H - CONN_POCKET          # 13.05: relief floor
-    _cz0 = conn_zc - xh_side_length(CONN_N) / 2 - CONN_POCKET       # -8.3
+    _cy0 = PCB_Y - PH_SIDE_H - CONN_POCKET          # relief floor
+    _cz0 = conn_zc - ph_side_length(CONN_N) / 2 - CONN_POCKET
     # -X end: far enough for the plug to come fully OFF, not merely to sit there.
     # It needs its own length of straight travel before it clears the header, and
     # for that whole stroke its inboard face is still inside the cheek's outer
     # 0.85 — probed, and it was a real foul until this reached out here.
     _cx0 = conn_mx - _sx * (2 * CONN_PLUG_RUN + 3.0)   # the plug's unplug stroke
-    _cx1 = conn_mx + _sx * (XH_SIDE_D + CONN_POCKET)
+    _cx1 = conn_mx + _sx * (PH_SIDE_D + CONN_POCKET)
     # +Z end: clear THROUGH the mount tenons, not just up to the cradle top. The
     # x=-23 tenon is a Y-rail that runs out to HOUS_HW, so it stands in this
     # relief's path; stopping the cut at z_top left a 2.9 mm² flat ceiling notched
@@ -809,14 +834,19 @@ def _top_tenon(tx):
             .translate((tx, TEN_Y0, HOUS_Z1)))                # station X, -Y start, mate at the top face
 
 
-def rib_mortise(rib_x):
+def rib_mortise(rib_x, y0=None, y1=None):
     """ONE octagon MORTISE (GLOBAL) for the rib at rib_x: the same cadkit octagon as the tenon
     but LONG in Y (MORT_Y0..MORT_Y1 = the knee-depth slide range), rotated to slide +Y. Opens at
     the rib bottom (-Z, the mating plane = Z_BOT) and its roof bridges inside the rib. chassis.py
     cuts this into every rib so a lever can mount in ANY bay."""
-    m = (_lever_joint(MORT_Y1 - MORT_Y0).mortise(drop=2.0)
+    # WORLD y range: the caller's, or this station's own by the grid's rule. chassis.py is the
+    # one that knows about legs and the light window, so for the end stations it passes the two
+    # SHORT segments (one over each foot) rather than one run across the instrument.
+    _y0 = (MORT_Y0 if y0 is None else y0 - MOUNT_Y)
+    _y1 = ((D.mortise_y_end(rib_x) if y1 is None else y1) - MOUNT_Y)
+    m = (_lever_joint(_y1 - _y0).mortise(drop=2.0)
          .rotate((0, 0, 0), (0, 0, 1), 90)                     # slide axis X -> Y
-         .translate((0.0, MORT_Y0, HOUS_Z1)))                 # centred x=0, -Y mouth, mate at rib bottom
+         .translate((0.0, _y0, HOUS_Z1)))                     # centred x=0, -Y mouth, mate at rib bottom
     #        ^ HOUS_Z1, not BODY_Z. The TENON mates at the housing top (_top_tenon),
     #          and with a bigger bearing the top is set by the seat, not by BODY_Z.
     #          Keyed to BODY_Z the mortise sat 0.7 low and every tenon on all six
@@ -893,7 +923,10 @@ BRG_Y0 = LEVER_HW + HS_CLR          # bearing INNER faces at ±10.4 = the lever-
 # out of the geometry rather than being written down (widen or shift the housing and
 # the comb re-solves). Generated here rather than in the mount block because it is
 # HOUS_X0/X1 that bound them, and those aren't known until this point.
-_TEN_PITCH = RIB_PITCH / 2.0        # = the chassis half-pitch rib comb
+_TEN_PITCH = D.LEVER_PITCH          # = the chassis bottom grid (8.8). Was RIB_PITCH/2 (22.35),
+                                    # the old rib comb; the stations follow the comb by design, so
+                                    # densifying the comb densifies these -- more tenons in the same
+                                    # housing, which is a stronger joint as well as a finer one.
 # ...and a station must ROOT ON SOLID. The bearing seats are teardrops whose print peak
 # can break out through the top face over the axle (it always did a little; the Ø16
 # 688ZZ opens it 1.78 either side of x = 0), and a tenon whose root sits in that
@@ -901,9 +934,31 @@ _TEN_PITCH = RIB_PITCH / 2.0        # = the chassis half-pitch rib comb
 # of the axle is skipped (user: dropping the x = 0 stubs is fine).
 _SEAT_RS = BRG_SEAT_D / 2                               # the seat bore's radius
 _SEAT_OPEN_HW = max(0.0, _SEAT_RS * math.sqrt(2.0) - HOUS_Z1)   # peak's width at the top face
-TEN_X = tuple(-k * _TEN_PITCH for k in range(20)
-              if HOUS_X0 + _JHW <= -k * _TEN_PITCH <= HOUS_X1 - _JHW
-              and (_SEAT_OPEN_HW <= 0.0 or abs(-k * _TEN_PITCH) >= _SEAT_OPEN_HW + _JHW))
+# THE -X-MOST TENON'S STEM IS FLUSH WITH THE HOUSING'S -X EDGE (user, 2026-09-18), and that
+# is what the set is anchored on now -- not the axle. WHY: the player picks which mortise the
+# lever hangs in, and the housing used to reach 5.31 further -X than its last tenon, so the
+# slot next to the body adapter could not be used: the tenon would fit, the housing behind it
+# would not. Flush, nothing sticks out past the joint, and LKL reaches one slot further -X.
+# The FLARE still overhangs that edge by (width - stem)/2, which is free: it is 45 deg, so it
+# prints self-supporting off the stem, and it lives up inside the chassis mortise anyway.
+# The stations stay a plain walk on the grid PITCH from there, so they still land in mortises;
+# what moved is the phase, and MOUNT_X takes it back out so the render still sits on stations.
+_J_STEM   = _JW / 2.0               # cadkit's octagon parity (stem = width/2 -- _octagon_profile)
+TEN_X_END = HOUS_X0 + _J_STEM / 2.0     # the -X-most station: stem face ON the housing edge
+TEN_X = tuple(TEN_X_END + k * _TEN_PITCH for k in range(40)
+              if TEN_X_END + k * _TEN_PITCH <= HOUS_X1 - _JHW
+              and (_SEAT_OPEN_HW <= 0.0
+                   or abs(TEN_X_END + k * _TEN_PITCH) >= _SEAT_OPEN_HW + _JHW))
+# THE POSE RE-SNAPS TO THE TENONS, not to the housing: the set has a phase now, so posing the
+# axle on a station (as before) would leave every tenon half a stem off its mortise. Snap where
+# the FIRST TENON lands and hand the phase back. MOUNT_POSE is rebuilt below so the two cannot
+# disagree -- nothing between the nominal MOUNT_X and here reads either of them.
+_TEN_PHASE = TEN_X[0]
+MOUNT_X = D.rib_comb_x(-501.0 + _TEN_PHASE) - _TEN_PHASE
+MOUNT_POSE = (MOUNT_X, MOUNT_Y, MOUNT_Z)
+assert abs((min(TEN_X) - _J_STEM / 2.0) - HOUS_X0) < 1e-9, (
+    "the -X-most tenon's stem sits %.2f from the housing edge, not flush"
+    % (min(TEN_X) - _J_STEM / 2.0 - HOUS_X0))
 # Each tenon runs the housing's FULL Y depth: it is a rail, and every millimetre of it
 # is engagement the player can buy by sliding the lever inboard. The +X-most station
 # (x=0) sits directly over the lever, where the lever-room slot opens the top face —
@@ -1111,11 +1166,16 @@ CEIL_CLR = 0.4                      # board top edge -> the instrument's undersi
 CR_FLOOR_T = 4 * D.NOZZLE_D         # 3.2 (was 2.8 = 3.5 beads)                    # cradle floor under the board
 CONN_EDGE  = 1.0                    # connector body -> board's bottom edge (JLCPCB's
                                     # component-to-edge rule; the TOP end stays flush)
-CONN_RISE  = 8.5                    # connector row above the board's bottom edge. Was 11.5;
+CONN_RISE  = 11.0                   # connector row above the board's bottom edge -- the
+                                    # PAD-ROW centre, taken from the layout. (Was 8.5;
                                     # it moves with PCB_WZ so the connector keeps spanning
                                     # z -8..+7 — flush at the top, CONN_EDGE clear at the
                                     # bottom — while the dead strip under it is cut away.
-CHIP_DROP  = 7.0                    # chip below the board's TOP edge
+CHIP_DROP  = 11.3                   # chip below the board's TOP edge. Derived from the
+                                    # LAID-OUT board: 22.0 tall with the sensing centre
+                                    # 0.3 BELOW the board's own centre, which spends the
+                                    # 22.55 window as 11.30 up / 10.70 down -- 0.30 under the
+                                    # lever's ceiling and 0.25 over the pedal's floor.
 
 # THE BOARD IS ONE DESIGN, FIXED (user: "the boards should be fully identical").
 # It is not derived from the housing any more: the chip has to sit on the axle axis,
@@ -1138,13 +1198,44 @@ PCB_Z0 = PCB_Z1 - PCB_WZ                        # -12.0
 # against 76% at the BOM's 500 kbps.
 #
 #              LCSC        Lx    Wz    Hy      x       z
+# EVERY POPULATED PART, generated from the laid-out board (elec/lever_sensor.py
+# + elec/out/lever_sensor.board.json) rather than typed: ref, value, X, Z, HEIGHT
+# off the board face, and the centre in the CHIP's frame (the chip is the axle
+# axis, so that is the frame the housing cares about). Sizes are KiCad courtyards
+# -- the envelope the part actually needs, not its bare body. The CONNECTOR is
+# not here; it is modelled properly by cadkit (see sensor_connector).
+#
+# This used to be six parts and no passives at all, which made the board look
+# 43%% covered when the real circuit is 29 parts.
 SENSOR_BOM = (
-    ("chip",        "C2913974", CHIP_W, CHIP_W, CHIP_H,   0.0,   0.0),
-    ("mcu",         "C5142280", 4.00, 4.00, 0.90, -13.5,  -4.0),
-    ("transceiver", "C12084",   6.00, 4.90, 1.75, -13.5,   3.0),
-    ("buck",        "C87080",   2.90, 1.60, 1.10,  -8.5,   4.5),
-    ("inductor",    None,       3.00, 3.00, 1.50,  -8.5,   0.5),
-    ("crystal",     None,       3.20, 2.50, 0.90,  -8.5,  -4.0),
+    ("C1",   "4.7uF/50V",          4.69,  2.39, 1.60,  -11.90,   6.20),
+    ("C2",   "10uF/16V",           3.49,  2.05, 1.45,   -7.60,   6.30),
+    ("C3",   "100nF",              1.91,  1.01, 0.55,   -4.50,   6.30),
+    ("C4",   "100nF",              1.91,  1.01, 0.55,   -5.00,  -5.70),
+    ("C5",   "12pF",               1.91,  1.01, 0.55,   -7.40,  -1.90),
+    ("C6",   "12pF",               1.91,  1.01, 0.55,   -7.40,  -3.70),
+    ("C7",   "100nF",              1.91,  1.01, 0.55,   -5.00,  -1.90),
+    ("C8",   "100nF",              1.91,  1.01, 0.55,   -3.50,   3.80),
+    ("C9",   "100nF",              1.91,  1.01, 0.55,   -5.50,   3.80),
+    ("C10",  "4.7uF",              3.49,  2.05, 1.45,   -1.50,  -3.30),
+    ("C11",  "100nF",              1.91,  1.01, 0.55,   -4.00,   0.00),
+    ("D1",   "B5819W",             4.79,  2.39, 1.10,   -3.40,   9.85),
+    ("D2",   "PESD1CAN-like",      2.59,  1.49, 0.75,   -5.20,  -9.20),
+    ("D3",   "PESD1CAN-like",      2.59,  1.49, 0.75,   -2.40,  -9.20),
+    ("JP1",  "TERM",               3.39,  2.59, 0.05,   -1.50,  -7.10),
+    ("L1",   "47uH",               3.69,  3.69, 1.50,   -8.00,   9.30),
+    ("R1",   "100k",               1.95,  1.03, 0.50,    0.10,   9.85),
+    ("R2",   "30k1",               1.95,  1.03, 0.50,   -2.40,   6.30),
+    ("R3",   "10k",                1.95,  1.03, 0.50,   -5.00,  -7.20),
+    ("R4",   "120R",               1.95,  1.03, 0.50,   -1.50,  -5.15),
+    ("R5",   "0R",                 1.95,  1.03, 0.50,    0.00,   3.50),
+    ("R6",   "4k7",                1.95,  1.03, 0.50,   -5.00,  -3.90),
+    ("R7",   "4k7",                1.95,  1.03, 0.50,   -0.10,   6.30),
+    ("U1",   "LMR16006XDDCR",      4.19,  3.49, 1.10,  -12.10,   9.35),
+    ("U2",   "SN65HVD230DR",       7.49,  5.49, 1.75,  -10.50,  -7.00),
+    ("U3",   "CH32V203G6U6",       5.29,  5.29, 0.90,  -10.00,   2.15),
+    ("U4",   "MT6701QT-STD",       4.35,  4.35, 0.80,    0.00,   0.00),
+    ("Y1",   "8MHz",               4.29,  3.59, 0.90,  -11.90,  -2.40),
 )
 CR_EDGE_KEEP = 1.85                 # the groove takes this much of each X edge — mechanical
 # The magnet cap's SWEEP, which is what forces the empty annulus around the chip
@@ -1264,7 +1355,7 @@ CR_Z1    = HOUS_Z1                              # web tops FLUSH with the housin
 # board is installed last precisely so it doesn't. Its Ø0.64 post TAILS matter
 # more than the body here — they protrude 3.4 back out of the board's SEATING
 # face, so they have to miss both the driver bore and the plinth.
-CONN_N     = 4
+CONN_N     = 8
 # THE CONNECTOR IS ON THE MAGNET SIDE (user), so that the QFN and it share ONE face
 # and the board is a single-sided SMT job — that is the entire point, and it is worth
 # the geometry below because double-sided assembly is a per-order setup fee.
@@ -1279,7 +1370,11 @@ CONN_N     = 4
 # face must keep its WHOLE footprint outside the cap's 5.4 circumradius + clearance.
 # The body is XH_SIDE_D deep, so the mouth goes at -11.9 and the body runs +X to -5.8
 # — 0.4 clear of the cap for the entire stroke, not just at rest.
-CONN_MOUTH_X = PCB_X0 + CR_EDGE_KEEP    # -23.15: mouth face; body extends +X from here.
+CONN_MOUTH_X = PCB_X0 + 3.05            # -21.95: mouth face; body extends +X from here.
+                                    # Taken from the layout rather than from CR_EDGE_KEEP:
+                                    # the PH part's courtyard is 10.29 deep against the XH's
+                                    # 6.84, so it sits further in than the groove band alone
+                                    # would put it.
                                     # WAS -11.9, jammed as close to the cap as the 5.4 sweep
                                     # allowed, because the board only reached -14 and the
                                     # connector had to fit between the cap and that edge.
@@ -1314,21 +1409,25 @@ CR_PLINTH_Z1 = -SOCK_R              # -7.0: front plinth top = the driver bore's
 #  build back up later). The lever room is all planar cuts in _housing.)
 
 # ── SENSOR_BOM validation (here, not at the table: it needs the connector) ──
+# The MT6701's reference on the laid-out board. It was the literal "chip" while
+# SENSOR_BOM was hand-written; now the table is generated from the PCB and carries
+# real designators, so the two exemptions below key off this instead.
+_SENSOR_REF = "U4"
 def _conn_keepout():
     """(x0, x1, z0, z1) the CONNECTOR forbids to other parts: the header body AND the
     mated plug's run. It is the biggest single obstruction on the board — 204 mm2 —
     and placing the MCU and transceiver inside it is a mistake this catches."""
     mx = CONN_MOUTH_X
-    return (mx - CONN_PLUG_RUN, mx + XH_SIDE_D,
-            CONN_ZC - xh_side_length(CONN_N) / 2, CONN_ZC + xh_side_length(CONN_N) / 2)
+    return (mx - CONN_PLUG_RUN, mx + PH_SIDE_D,
+            CONN_ZC - ph_side_length(CONN_N) / 2, CONN_ZC + ph_side_length(CONN_N) / 2)
 
 for _n, _lcsc, _lx, _wz, _hy, _cx, _cz in SENSOR_BOM:
     _x0, _x1 = _cx - _lx / 2, _cx + _lx / 2
     _z0, _z1 = _cz - _wz / 2, _cz + _wz / 2
     assert PCB_Z0 <= _z0 and _z1 <= PCB_Z1, f"{_n} hangs off the board in Z"
-    if _n != "chip":
-        # the chip is the one part allowed into the groove band: it is 0.80 tall and
-        # its position is FIXED on the axle axis, so the outline is drawn around it
+    if _n != _SENSOR_REF:
+        # the sensor is the one part allowed into the groove band: it is 0.80 tall
+        # and its position is FIXED on the axle axis, so the outline is drawn round it
         assert PCB_X0 + CR_EDGE_KEEP <= _x0 and _x1 <= PCB_X1 - CR_EDGE_KEEP, (
             f"{_n} at x {_x0:.2f}..{_x1:.2f} intrudes on the {CR_EDGE_KEEP} groove band")
     if _hy > CAP_CLR_H:
@@ -1340,7 +1439,7 @@ for _n, _lcsc, _lx, _wz, _hy, _cx, _cz in SENSOR_BOM:
         assert math.hypot(_dx, _dz) > CAP_SWEEP_R, (
             f"{_n} is {_hy} tall and comes within {math.hypot(_dx, _dz):.2f} of the axle "
             f"— inside the cap's {CAP_SWEEP_R} sweep, so the board could not be installed")
-    if _n != "chip":
+    if _n != _SENSOR_REF:
         _kx0, _kx1, _kz0, _kz1 = _conn_keepout()
         assert not (_x0 < _kx1 and _x1 > _kx0 and _z0 < _kz1 and _z1 > _kz0), (
             f"{_n} at x {_x0:.2f}..{_x1:.2f} z {_z0:.2f}..{_z1:.2f} sits under the "
