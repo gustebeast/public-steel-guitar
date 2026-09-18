@@ -1,0 +1,211 @@
+** Drc report for optical.kicad_pcb **
+** Created on 2026-09-16T13:09:48 **
+** Report includes: Errors, Warnings **
+
+** Found 27 DRC violations **
+[courtyards_overlap]: Courtyards overlap
+    Rule: board setup constraints courtyard; error
+    @(79.7125 mm, 96.4135 mm): Footprint PD8A
+    @(79.7125 mm, 98.0135 mm): Footprint D8
+[courtyards_overlap]: Courtyards overlap
+    Rule: board setup constraints courtyard; error
+    @(79.7125 mm, 90.2501 mm): Footprint PD7B
+    @(79.7125 mm, 88.6501 mm): Footprint D7
+[courtyards_overlap]: Courtyards overlap
+    Rule: board setup constraints courtyard; error
+    @(79.7125 mm, 51.1965 mm): Footprint D3
+    @(79.7125 mm, 49.5965 mm): Footprint PD3A
+[courtyards_overlap]: Courtyards overlap
+    Rule: board setup constraints courtyard; error
+    @(79.7125 mm, 51.1965 mm): Footprint D3
+    @(79.7125 mm, 52.7965 mm): Footprint PD3B
+[courtyards_overlap]: Courtyards overlap
+    Rule: board setup constraints courtyard; error
+    @(79.7125 mm, 108.9770 mm): Footprint PD9B
+    @(79.7125 mm, 107.3770 mm): Footprint D9
+[courtyards_overlap]: Courtyards overlap
+    Rule: board setup constraints courtyard; error
+    @(79.7125 mm, 77.6867 mm): Footprint PD6A
+    @(79.7125 mm, 79.2867 mm): Footprint D6
+[courtyards_overlap]: Courtyards overlap
+    Rule: board setup constraints courtyard; error
+    @(79.7125 mm, 58.9599 mm): Footprint PD4A
+    @(79.7125 mm, 60.5599 mm): Footprint D4
+[courtyards_overlap]: Courtyards overlap
+    Rule: board setup constraints courtyard; error
+    @(79.7125 mm, 98.0135 mm): Footprint D8
+    @(79.7125 mm, 99.6135 mm): Footprint PD8B
+[courtyards_overlap]: Courtyards overlap
+    Rule: board setup constraints courtyard; error
+    @(79.7125 mm, 40.2330 mm): Footprint PD2A
+    @(79.7125 mm, 41.8330 mm): Footprint D2
+[courtyards_overlap]: Courtyards overlap
+    Rule: board setup constraints courtyard; error
+    @(79.7125 mm, 79.2867 mm): Footprint D6
+    @(79.7125 mm, 80.8867 mm): Footprint PD6B
+[courtyards_overlap]: Courtyards overlap
+    Rule: board setup constraints courtyard; error
+    @(79.7125 mm, 71.5233 mm): Footprint PD5B
+    @(79.7125 mm, 69.9233 mm): Footprint D5
+[courtyards_overlap]: Courtyards overlap
+    Rule: board setup constraints courtyard; error
+    @(79.7125 mm, 30.8696 mm): Footprint PD1A
+    @(79.7125 mm, 32.4696 mm): Footprint D1
+[courtyards_overlap]: Courtyards overlap
+    Rule: board setup constraints courtyard; error
+    @(79.7125 mm, 107.3770 mm): Footprint D9
+    @(79.7125 mm, 105.7770 mm): Footprint PD9A
+[courtyards_overlap]: Courtyards overlap
+    Rule: board setup constraints courtyard; error
+    @(79.7125 mm, 60.5599 mm): Footprint D4
+    @(79.7125 mm, 62.1599 mm): Footprint PD4B
+[courtyards_overlap]: Courtyards overlap
+    Rule: board setup constraints courtyard; error
+    @(79.7125 mm, 69.9233 mm): Footprint D5
+    @(79.7125 mm, 68.3233 mm): Footprint PD5A
+[courtyards_overlap]: Courtyards overlap
+    Rule: board setup constraints courtyard; error
+    @(79.7125 mm, 43.4330 mm): Footprint PD2B
+    @(79.7125 mm, 41.8330 mm): Footprint D2
+[courtyards_overlap]: Courtyards overlap
+    Rule: board setup constraints courtyard; error
+    @(79.7125 mm, 87.0501 mm): Footprint PD7A
+    @(79.7125 mm, 88.6501 mm): Footprint D7
+[courtyards_overlap]: Courtyards overlap
+    Rule: board setup constraints courtyard; error
+    @(79.7125 mm, 118.3404 mm): Footprint PD10B
+    @(79.7125 mm, 116.7404 mm): Footprint D10
+[courtyards_overlap]: Courtyards overlap
+    Rule: board setup constraints courtyard; error
+    @(79.7125 mm, 34.0696 mm): Footprint PD1B
+    @(79.7125 mm, 32.4696 mm): Footprint D1
+[courtyards_overlap]: Courtyards overlap
+    Rule: board setup constraints courtyard; error
+    @(79.7125 mm, 116.7404 mm): Footprint D10
+    @(79.7125 mm, 115.1404 mm): Footprint PD10A
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(101.2445 mm, 137.7203 mm): Via [TIA_OUT_4A] on F.Cu - B.Cu
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(108.4249 mm, 149.8473 mm): Via [TIA_OUT_4B] on F.Cu - B.Cu
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(120.6111 mm, 149.5355 mm): Via [ULPI_D5] on F.Cu - B.Cu
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(69.8368 mm, 44.3498 mm): Via [TIA_IN_2A] on F.Cu - B.Cu
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(71.9071 mm, 41.5028 mm): Via [TIA_OUT_1A] on F.Cu - B.Cu
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(96.4853 mm, 142.5231 mm): Via [TIA_OUT_10A] on F.Cu - B.Cu
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(98.8392 mm, 134.8723 mm): Via [TIA_OUT_1A] on F.Cu - B.Cu
+
+** Found 23 unconnected pads **
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(108.4233 mm, 148.6625 mm): Track [TIA_OUT_4B] on F.Cu, length 1.1832 mm
+    @(76.9183 mm, 52.0682 mm): Track [TIA_OUT_4B] on B.Cu, length 1.9171 mm
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(71.5417 mm, 117.6587 mm): Pad 2 [TIA_OUT_9A] of Rf51 on F.Cu
+    @(73.5117 mm, 118.8087 mm): Pad 2 [TIA_OUT_9A] of Cf51 on F.Cu
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(73.5117 mm, 118.8087 mm): Pad 2 [TIA_OUT_9A] of Cf51 on F.Cu
+    @(75.9671 mm, 118.9990 mm): Track [TIA_OUT_9A] on In2.Cu, length 0.4380 mm
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(71.5417 mm, 42.3313 mm): Track [TIA_OUT_1A] on F.Cu, length 0.5168 mm
+    @(74.0807 mm, 44.0503 mm): Track [TIA_OUT_1A] on F.Cu, length 0.8047 mm
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(99.2169 mm, 135.2500 mm): Track [TIA_OUT_1A] on F.Cu, length 0.5341 mm
+    @(77.3224 mm, 42.5649 mm): Track [TIA_OUT_1A] on F.Cu, length 2.1007 mm
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(72.5517 mm, 119.9587 mm): Track [TIA_IN_10B] on F.Cu, length 0.8115 mm
+    @(79.0886 mm, 119.1473 mm): Track [TIA_IN_10B] on B.Cu, length 8.0101 mm
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(74.2717 mm, 39.6913 mm): Track [TIA_IN_2A] on F.Cu, length 2.6400 mm
+    @(70.5517 mm, 44.6313 mm): Track [TIA_IN_2A] on F.Cu, length 0.4334 mm
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(73.5274 mm, 41.5691 mm): Track [TIA_OUT_1B] on In2.Cu, length 1.2489 mm
+    @(70.5567 mm, 40.9613 mm): Pad 7 [TIA_OUT_1B] of U1 on F.Cu
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(74.7204 mm, 60.4392 mm): Track [TIA_OUT_4A] on B.Cu, length 9.2924 mm
+    @(100.0108 mm, 137.7500 mm): Track [TIA_OUT_4A] on F.Cu, length 0.0420 mm
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(73.5117 mm, 49.1282 mm): Pad 2 [TIA_OUT_3A] of Cf21 on F.Cu
+    @(71.5417 mm, 51.6137 mm): Track [TIA_OUT_3A] on F.Cu, length 1.3355 mm
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(73.5417 mm, 87.7318 mm): Track [TIA_OUT_7B] on F.Cu, length 0.5306 mm
+    @(75.5117 mm, 86.5818 mm): Pad 2 [TIA_OUT_7B] of Cf42 on F.Cu
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(75.5067 mm, 77.1450 mm): Track [TIA_IN_6A] on F.Cu, length 0.5000 mm
+    @(73.7563 mm, 69.7720 mm): Track [TIA_IN_6A] on B.Cu, length 4.7826 mm
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(72.5517 mm, 67.8550 mm): Pad 1 [TIA_IN_5A] of Cf31 on F.Cu
+    @(69.2717 mm, 69.0050 mm): Track [TIA_IN_5A] on F.Cu, length 1.2500 mm
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(122.6658 mm, 173.7200 mm): Pad 11 [PHY_XO] of U7 on F.Cu
+    @(103.2175 mm, 154.7350 mm): Track [PHY_XO] on In2.Cu, length 5.2663 mm
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(74.2742 mm, 45.3938 mm): Track [TIA_OUT_2B] on F.Cu, length 1.0783 mm
+    @(71.5417 mm, 43.4813 mm): Pad 2 [TIA_OUT_2B] of Rf14 on F.Cu
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(72.5517 mm, 86.5818 mm): Pad 1 [TIA_IN_7A] of Cf41 on F.Cu
+    @(69.2717 mm, 87.7318 mm): Track [TIA_IN_7A] on F.Cu, length 1.2500 mm
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(77.0040 mm, 85.2811 mm): Track [TIA_IN_8A] on In2.Cu, length 1.5873 mm
+    @(74.5217 mm, 87.7318 mm): Pad 1 [TIA_IN_8A] of Rf43 on F.Cu
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(75.5417 mm, 87.7318 mm): Track [TIA_OUT_8A] on F.Cu, length 0.2974 mm
+    @(71.5117 mm, 85.4318 mm): Pad 2 [TIA_OUT_8A] of Cf43 on F.Cu
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(71.5417 mm, 86.5818 mm): Pad 2 [TIA_OUT_8B] of Rf44 on F.Cu
+    @(73.6882 mm, 85.2553 mm): Track [TIA_OUT_8B] on F.Cu, length 0.2496 mm
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(78.7750 mm, 68.3233 mm): Track [MID] on F.Cu, length 1.0789 mm
+    @(79.5292 mm, 61.4057 mm): Track [MID] on F.Cu, length 1.0666 mm
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(121.3358 mm, 148.8108 mm): Track [ULPI_D5] on F.Cu, length 1.0249 mm
+    @(124.8533 mm, 171.0325 mm): Pad 3 [ULPI_D5] of U7 on F.Cu
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(123.6533 mm, 177.6025 mm): Track [USB_DM] on F.Cu, length 0.0004 mm
+    @(123.6533 mm, 179.8775 mm): Pad 4 [USB_DM] of U10 on F.Cu
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(122.4725 mm, 159.5600 mm): Pad 1 [PHY_RBIAS] of R37 on F.Cu
+    @(125.3533 mm, 174.9075 mm): Pad 17 [PHY_RBIAS] of U7 on F.Cu
+
+** Found 0 Footprint errors **
+
+** Ignored checks **
+    - Footprint has no courtyard defined
+    - Track endpoint not centered on via
+    - Tuning profile track geometries
+    - Footprint doesn't match symbol's footprint filters
+    - Footprint component type doesn't match footprint pads
+
+** End of Report **

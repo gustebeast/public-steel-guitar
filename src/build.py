@@ -37,10 +37,13 @@ from . import dimensions as D
 from .helpers import heal, cyl, cyl_y
 from . import components as C
 from . import chassis as CH
+from . import motor_bank as MB
+from .components import MOTOR_PULLEY_STANDOFF
 from .bridge_endplate import bridge_endplate
 from . import bridge_endplate as BE
 from . import belt_tensioner as BTn
 from .chassis import segments as chassis_segments
+from .chassis import segments_light as chassis_light
 from . import nut_block as NB
 from . import tension_fork as TF
 from . import pickup_mount as PM
@@ -201,7 +204,7 @@ from . import wiring as _WR_FUSE
 _seg_edges = [CH._SHELL_PX + CH.KH_DT_DEPTH + 2.0] + sorted(CH.SPLIT_X, reverse=True) + [CH.X_NUT]
 chassis_segments = list(chassis_segments)
 _fused_segs = set()
-for (_cnm, _cr), (_ctx, _cty, _ctd) in zip(_WR_FUSE.tee_cradles(), _WR_FUSE.tee_stations()):
+for _cnm, _cr, (_ctx, _cty, _ctd) in _WR_FUSE.tee_cradles():
     for _csi in range(len(_seg_edges) - 1):
         if _seg_edges[_csi + 1] < _ctx < _seg_edges[_csi]:
             chassis_segments[_csi] = chassis_segments[_csi].union(_cr)
@@ -216,9 +219,13 @@ for (_cnm, _cr), (_ctx, _cty, _ctd) in zip(_WR_FUSE.tee_cradles(), _WR_FUSE.tee_
 from . import knee_lever as _KL_FUSE
 for _csi in sorted(_fused_segs):
     _seg = chassis_segments[_csi]
-    for _rx in CH._RIB_X:
+    for _rx in CH._MORT_X:
         if _seg_edges[_csi + 1] < _rx < _seg_edges[_csi]:
-            _seg = _seg.cut(_KL_FUSE.rib_mortise(_rx))
+            # THROUGH chassis.mort_segments, not the whole run: the three stations at each end
+            # are two short runs over the feet with the floor between them solid, and re-cutting
+            # them full length here carved that floor straight back out again.
+            for _my0, _my1 in CH.mort_segments(_rx):
+                _seg = _seg.cut(_KL_FUSE.rib_mortise(_rx, _my0, _my1))
     chassis_segments[_csi] = _seg
 # STRING ACCESS through the chassis floor, under each string's endplate channel (see
 # dimensions.string_access_x). LAST in the segment pipeline, like the mortise re-cut, so no
@@ -245,6 +252,17 @@ for _ctx, _cutters in _WR_FUSE.tee_hold_negatives():
             for _cut in _cutters:
                 chassis_segments[_csi] = chassis_segments[_csi].cut(_cut)
             break
+chassis_light = list(chassis_light)
+for _i, _lt in enumerate(chassis_light):        # the transparent under-rail band
+    PARTS[f"chassis_{_i}_light"] = (
+        partial(heal, _lt), f"petg/chassis_{_i}_light.step",
+        "PETG (WHITE, translucent) — DOWNWARD LIGHT WINDOW: 8 mm across Y by the bottom "
+        f"prism's full XBAR, one XBAR inboard of the +Y rail (print AS ONE OBJECT with chassis_{_i}, "
+        "the deck panels' base/colour pattern). The bottom is sealed now, which is what keeps the "
+        "motor noise in; this is the one deliberate leak, and the rail stands outboard of it so "
+        "nothing shows from the front -- it only aims DOWN, at the pedals. White to match the deck "
+        "panels, and it diffuses rather than glares. Same resin family as the PETG-GF body, so the "
+        "two weld and purge cleanly")
 # THE TRRS ADAPTER'S STATION over the -X/+Y leg (wiring.trrs_*): the same three-step
 # dance the tees do, and for the same reason -- fuse the cradle into the segment that
 # owns its X, THEN cut the things that live inside it, because the fuse fills them in.
@@ -487,6 +505,13 @@ def _string_components(i):
     # motor (shaft +Y, body −Y toward player) + its pulley + twisted belt
     out.append((f"motor_{i}", C.motor().translate((mx, my, mz))))
     out.append((f"motor_pulley_{i}", C.motor_pulley().translate((mx, my, mz))))
+    # The body length the pockets are built from is checked here, where the motor is built
+    # anyway. (No retaining screw: each motor is held by its own CAN tee -- wiring.on_motor.)
+    if i == 0:
+        _mb = C.motor().val().BoundingBox()
+        assert abs(-_mb.ymin - MOTOR_PULLEY_STANDOFF - D.MOTOR_BODY_L) < 1e-6, (
+            f"the motor body is {-_mb.ymin - MOTOR_PULLEY_STANDOFF:.2f} deep, not "
+            f"dimensions.MOTOR_BODY_L {D.MOTOR_BODY_L} -- the pockets are built from that")
     out.append((f"belt_{i}", C.belt((mx, my, mz), (D.screw_x(i), sy, spz))))   # all belts modelled smooth
     # belt-tension clamp (unified clamp_half ×2 + screw + external nut), oriented to the belt's flat
     # zone. Lifter bars only on the last string (build-time saver — same geometry, hidden elsewhere).
@@ -769,12 +794,9 @@ def _electronics_components():
     from . import wiring as WR
     from . import top_plate as TP
     out = [("electronics_tray", EL.electronics_tray()),
-           ("pi5", EL.pi5()), ("teensy_stack", EL.teensy_stack()),
-           ("adc_stack", EL.adc_stack()), ("buck", EL.buck()),
-           ("teensy_ifc", EL.teensy_ifc()),
-           ("analog_frontend", EL.analog_frontend()),
-           ("ts_jack", EL.ts_jack()), ("dc_jack", EL.dc_jack()),
-           ("usbc_jack", EL.usbc_jack()),
+           ("pi5", EL.pi5()),
+           ("motor_ctrl", EL.motor_ctrl()),
+           ("output_panel", EL.output_panel()),
            ("oled", EL.oled()), ("joystick", EL.joystick())]
     out += [(f"top_plate_{i}", seg) for i, seg in enumerate(TP.segments)]
     out += [(f"top_plate_color_{i}", seg) for i, seg in enumerate(TP.segments_color)]
@@ -937,26 +959,69 @@ def _vkl_station() -> float:
     """
     from . import knee_lever_vert as KV
     mid = _LKL_X + _KNEE_GAP_L / 2.0
-    best = min((abs(rib - KV.TEN_Y[1] - mid), rib - KV.TEN_Y[1])
-               for rib in (_RIB0 + _RIB * k for k in range(30)))
-    return best[1]
+    # its tenons sit at KV.TEN_Y in the guitar's X once posed; _lever_station returns the MOUNT
+    # that puts them all on real stations, so there is nothing left to subtract here (there used
+    # to be, when it returned a station and this had to undo the offset by hand).
+    #
+    # ...THEN ONE MORTISE -X (user, 2026-09-18, reading the render). THE GRID CANNOT CENTRE THIS
+    # LEVER: the two legal mounts either side of the knee gap's midpoint sit 5.20 off it each
+    # way, so which one it takes is a preference, not an optimum, and the user wants the -X one.
+    # Stepped by a whole PITCH, so the three tenons stay in slots that exist -- re-checked below
+    # rather than assumed, because a lever over solid floor is 1-2.5 cm3 of interference and the
+    # gate is the only other thing that would notice.
+    m = _lever_station(mid, KV.TEN_Y) - D.LEVER_PITCH
+    from . import chassis as CH_V
+    _have = set(round(x, 3) for x in CH_V._MORT_X)
+    _off = [round(m + t, 3) for t in KV.TEN_Y if round(m + t, 3) not in _have]
+    assert not _off, ("the -X step puts VKL's tenons at %s, which are not mortise stations -- "
+                      "the station one pitch -X of %.2f is dropped" % (_off, m + D.LEVER_PITCH))
+    return m
 
 
-_LKL_X = D.rib_comb_x(-501.0)                # hard -X bound: the left leg block (ILKL's old
-                                             # station; LKL always shared it — see _KNEE_GAP_L)
-_RKL_X = D.rib_comb_x(-225.0)                # right knee (snapped to the rib comb)
+def _lever_station(x_target, offsets, mirrored=False):
+    """The lever's MOUNT X, closest to x_target, at which EVERY one of its tenons lands in a
+    slot that exists.
+
+    IT RETURNS A MOUNT, NOT A STATION (user, 2026-09-18), and the difference is real now: a
+    lever's tenon set is anchored on its own housing edge, so it carries a phase and the mount
+    sits off-station by exactly that. Candidate mounts are therefore station - offset[0], not
+    the stations themselves.
+
+    And not just the nearest grid X either. The bottom grid (D.LEVER_PITCH) drops stations where
+    the leg feet and the segment seams need solid material, so a station can be on-pitch and
+    still have no slot -- and a tenon over solid slab is 1-2.5 cm3 of interference, which is
+    exactly what the gate reported when the knee gaps were still multiples of the old 22.35 rib
+    pitch."""
+    from . import chassis as CH_G
+    have = set(round(s, 3) for s in CH_G._MORT_X)
+    def _at(m, t):
+        return round(m + (-t if mirrored else t), 3)
+    first = (-offsets[0] if mirrored else offsets[0])
+    ok = [s - first for s in CH_G._MORT_X
+          if all(_at(s - first, t) in have for t in offsets)]
+    assert ok, ("no mount on the bottom grid fits a lever with tenons at %s -- the set's own "
+                "spacing has to be a multiple of the grid pitch" % (offsets,))
+    return min(ok, key=lambda m: abs(m - x_target))
+
+
+from . import knee_lever as _KL_ST
+_LKL_X = _lever_station(-501.0, _KL_ST.TEN_X)   # hard -X bound: the left leg block (ILKL's old
+                                                # station; LKL shared it — see _KNEE_GAP_L)
+_RKL_X = _lever_station(-225.0, _KL_ST.TEN_X)   # right knee
 
 LEVER_STATIONS = (
     # LEFT KNEE: the knee sits in the gap between LKL and LKR, and VKL sits in that
     # same gap so the vertical arm is directly above it (user). VKL's station is
     # rib-DERIVED (MOUNT_X = rib - 10.4) so its own two tenons land on ribs.
     ("lkl",  "kl", _LKL_X,               _LEVER_Y, False),
-    ("vkl",  "kv", _vkl_station(),       None,     False),   # mid-gap, rib-derived
+    ("vkl",  "kv", _vkl_station(),       None,     False),   # mid-gap, grid-derived
     #                                                          None -> _vkl_mount_y()
-    ("lkr",  "kl", _LKL_X + _KNEE_GAP_L, _LEVER_Y, True),    # -386
+    # the GAPS are the ergonomic numbers; the station is the nearest one the grid can
+    # actually host, which is within half a pitch (4.4) of it
+    ("lkr",  "kl", _lever_station(_LKL_X + _KNEE_GAP_L, _KL_ST.TEN_X, True), _LEVER_Y, True),
     # RIGHT KNEE: same gap, no vertical lever in this copedent
     ("rkl",  "kl", _RKL_X,               _LEVER_Y, False),
-    ("rkr",  "kl", _RKL_X + _KNEE_GAP_R, _LEVER_Y, True),    # -133
+    ("rkr",  "kl", _lever_station(_RKL_X + _KNEE_GAP_R, _KL_ST.TEN_X, True), _LEVER_Y, True),
 )
 
 
@@ -1055,22 +1120,30 @@ def screw_rows_components():
 
 BODY_WORK_PARTS = SCREW_ROW_PARTS + (
     "bridge_endplate", "bridge_bearings", "motor", "chassis_",
-    "electronics_tray", "pi5", "teensy_", "adc_stack", "buck", "tee_", "wire_",
-    "analog_frontend", "dc_jack", "ts_jack", "usbc_jack", "joystick", "oled",
-    "body_adapter", "lock_pin_", "adjust_", "fixed_", "bar_latch_", "leg_latch_")
+    # BOTH SIDES OF THE MERGE ARE RIGHT HERE: main added the deck/pickup/optical
+    # parts while this branch deleted teensy_/adc_stack/buck/analog_frontend and the
+    # three free-standing panel jacks (they are PCB parts on the output+panel board
+    # now). Keep main's additions, keep the deletions.
+    "electronics_tray", "pi5", "motor_ctrl", "tee_", "wire_",
+    "output_panel", "joystick", "oled",
+    "body_adapter", "lock_pin_", "adjust_", "fixed_", "bar_latch_", "leg_latch_",
+    "top_plate", "pickup", "optical")   # the deck piece too: its skirt sets the bay's headroom
 
 
 def body_work_components():
     """The motor bank, the standing electronics and their harness, the chassis, the legs and
     the +X screw rows as ONE live set -- for work that runs the length of the body (the bank
     packed against the electronics, the rib comb, the legs' service slide over the string
-    access channels). The deck stays cached: nothing here changes it."""
+    access channels). The DECK PIECE is live too: its -Y skirt is the floor over the motor
+    bank, so a change there lands on the tees."""
     out = screw_rows_components()
     out += [(n, w) for i in range(D.N_STRINGS) for n, w in _string_components(i)
             if n.startswith("motor")]
-    out += [(n, w) for n, w in _electronics_components() if not n.startswith("top_plate")]
+    out += _electronics_components()          # includes the deck pieces
     out += [(f"chassis_{i}", seg) for i, seg in enumerate(chassis_segments)]
+    out += [(f"chassis_light_{i}", lt) for i, lt in enumerate(chassis_light)]
     out += _leg_components()
+    out += _pickup_mount_components()
     return out
 
 
@@ -1285,11 +1358,10 @@ _COLORS = {
     # electronics bay (dummies) + panel jacks
     "electronics_tray": (0.30, 0.36, 0.32),  # printed tray
     "pi5":             (0.05, 0.35, 0.15),   # PCB green
-    "teensy_stack":    (0.10, 0.45, 0.30),
-    "adc_stack":       (0.15, 0.25, 0.50),
-    "buck":            (0.35, 0.30, 0.50),
-    "teensy_ifc":      (0.55, 0.25, 0.25),   # Teensy interface PCB (2x CAN
-                                             # transceiver + XH headers)
+    "output_panel":    (0.45, 0.30, 0.45),   # output + panel board (VBUS broken,
+                                             # DAC + true-bypass relay + the TS jack)
+    "motor_ctrl":      (0.55, 0.25, 0.25),   # motor controller PCB (CH32V307 +
+                                             # 2x CAN transceiver + XH headers)
     "tee_pcb":         (0.10, 0.42, 0.18),   # trunk-and-drop bus tee PCBs
     "tee_cradle":      (0.32, 0.55, 0.42),   # PCTG drop-in PCB cradle (pcb_cradle, side hold-down)
     "trrs_adapter_pcb":    (0.18, 0.42, 0.24),   # the leg's TRRS<->XH adapter (bronner's board)
@@ -1298,7 +1370,6 @@ _COLORS = {
     "trrs_adapter_insert": (0.80, 0.60, 0.35),   # its brass heat-set insert
     "tee_screw":       (0.72, 0.74, 0.78),   # M4x10 button, BESIDE the tee board
     "tee_insert":      (0.72, 0.60, 0.30),   # M4 heat-set brass, in the cradle boss
-    "analog_frontend": (0.20, 0.45, 0.40),   # bridge-end buffer + relay board
     "optical_pcb":     (0.12, 0.30, 0.55),   # per-string optical strip (blue solder mask,
                                              # so it reads apart from the green audio PCBs)
     "optical_cables":  (0.15, 0.15, 0.17),   # USB-C + XHP-6 plugs and their leads
@@ -1309,9 +1380,9 @@ _COLORS = {
                                              # detectors, so a light one would bounce IR
     "top_plate":       (0.88, 0.91, 0.94),   # transparent-PCTG deck base + fret lines
     "top_plate_color": (0.30, 0.33, 0.38),   # colour-PCTG deck layer (skin contact)
+    "chassis_light":   (0.88, 0.91, 0.94),   # light window -- the deck panels' white
     "oled":            (0.05, 0.05, 0.08),   # screen (perfect-black OLED)
     "joystick":        (0.15, 0.15, 0.17),   # UI control
-    "ts_jack":         (0.62, 0.64, 0.67),
     "dc_jack":         (0.62, 0.64, 0.67),
     "usbc_jack":       (0.62, 0.64, 0.67),
     # wire harness: HUE = gauge bucket, SHADE = the specific wire in the bucket
@@ -1329,11 +1400,9 @@ _COLORS = {
     "motor_pigtail":   (0.45, 0.45, 0.48),   # grey        - SERVO42D's own 6-pin
                                              #   XH pigtail (factory jacket)
     "wire_knee_drop":  (0.45, 0.45, 0.48),   # grey        - LKL drop stub
-    "wire_pickup":     (0.55, 0.85, 0.55),   # lightest green - shielded: pickup -> AFE
-    "wire_audio":      (0.30, 0.72, 0.40),   # light green - shielded: AFE -> ADC
-    "wire_dac":        (0.10, 0.52, 0.28),   # dark green  - shielded: DAC -> AFE
-    "wire_out":        (0.04, 0.34, 0.18),   # darkest green - shielded: relay -> jack
-    "wire_relayctrl":  (0.98, 0.88, 0.35),   # lightest amber - relay control
+    "wire_pickup":     (0.55, 0.85, 0.55),   # lightest green - shielded. DORMANT: the
+                                             #   wire returns when the optical board is
+                                             #   designed and the pickup plugs into it
     "wire_link":       (0.95, 0.72, 0.22),   # light amber - Teensy <-> Pi
     "wire_tdm":        (0.80, 0.46, 0.10),   # deep amber  - CS stack -> Pi
     "wire_oled":       (0.68, 0.36, 0.08),   # brown-amber - OLED -> Teensy
@@ -1413,11 +1482,12 @@ def _export_assembly(publish=True, gate=True, gate_full=True):
 # elsewhere. The build fails ABOVE it, so a NEW overlap still stops it, and it must
 # always equal the count you can NAME -- a baseline kept above the real number is
 # just a licence for the next fault to arrive unnoticed.
-#   chassis <-> wire_pwr_hot_10   ~0.6 mm^3   a wire clipping a solid; assigned out
-# Was 2. The bridge_endplate <-> wire_out clip went away with the endplate rework,
-# and the three deferred chassis_trrs_cable pairs are gone from DEFERRED entirely
-# (see check_overlaps). Drive this to 0 when the last wire is rerouted.
-OVERLAP_BASELINE = 1
+# NOTHING IS ACCEPTED ANY MORE. Build #657 (branner's prism-first bank rebuild, which
+# rerouted the -Y harness corridor) came back with ZERO unintended pairs, so the last
+# named defect -- chassis <-> wire_pwr_hot_10, ~0.6 mm^3, a wire clipping a solid,
+# carried since August -- is gone. Was 2, then 1, now 0: every unintended pair from
+# here is a regression and stops the build, which is what the rule above is for.
+OVERLAP_BASELINE = 0
 
 
 def _report_overlaps(comps, full=False) -> int:
