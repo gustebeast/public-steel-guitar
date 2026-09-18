@@ -274,6 +274,18 @@ for _i, _seg in enumerate(chassis_segments):     # chassis split into dovetailed
                               "and NO seam fastener — the deck, endplates and finally the 4 leg screws "
                               "close the seam's Z axis. + tee cradles)")
 # Section-joint coupon (the LEG stack's octagon at the real 28 mm width — legs.SEC_W)
+# COIL MANDREL -- a SHOP TOOL, not an instrument part, so it is registered for EXPORT
+# but never joins the assembly. Two pieces: wind the leg's TRRS lead on the inner, cap
+# it with the sleeve, heat-set. src/coil_mandrel.py has the process and its limits.
+PARTS["coil_mandrel"] = (
+    lambda: heal(__import__("src.coil_mandrel", fromlist=["e"]).mandrel()),
+    "tools/coil_mandrel.step",
+    "TOOL — inner mandrel for heat-setting the leg's TRRS lead into a 7-turn coil. Barrel Ø16.0, base flange with a side-entry cleat (the lead is a MIDDLE section between two moulded ends, so nothing threads), scribe line at the turn count, top cleat, Ø10 shank. The top is OPEN: the set coil comes off by UNSCREWING. Print SOLID — it sees ~80 C water")
+PARTS["coil_mandrel_sleeve"] = (
+    lambda: heal(__import__("src.coil_mandrel", fromlist=["e"]).sleeve()),
+    "tools/coil_mandrel_sleeve.step",
+    "TOOL — the mandrel's outer sleeve, bore Ø23.8. It caps the coil's diameter while it sets, so the mean lands on arithmetic (barrel + cable) rather than on spring-back nobody can quote, and it holds every turn put through heating and cooling. Foot notch clears the starting tail. Print SOLID")
+
 PARTS["test_section_tenon"] = (
     lambda: heal(__import__("src.joint_coupon", fromlist=["e"]).section_tenon_coupon()),
     "test_section_tenon.step",
