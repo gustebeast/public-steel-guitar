@@ -180,16 +180,22 @@ PIN = {  # port name -> LQFP176 pin
 # done here: the swap to LQFP176 was for stock, and changing two ULPI pins in the same
 # step would mix a stock fix with a design change. Worth doing deliberately.
 #
-# ⚠ ULPI_DIR AND ULPI_NXT LAND ON PC2_C / PC3_C, WHICH ARE NOT ORDINARY PINS.
-# On H7 (LQFP144 and LQFP176 alike) the package pin reaches the digital IO through an
-# ANALOG SWITCH
-# controlled by SYSCFG_PMCR (PC2SO/PC3SO). The switch is CLOSED by default -- 0 =
-# closed -- and the digital alternate functions are available through it, so ULPI
-# works. Two consequences for whoever writes the firmware and reads this netlist:
-#   * The switch must be LEFT closed. Opening it to use the direct analog path
-#     disconnects the ULPI signal, and the failure looks like a dead PHY.
-#   * These two pins are therefore NOT available as ADC inputs, which is why the
-#     photodiode budget below excludes them.
+# ⚠ PC2_C AND PC3_C NOW CARRY TWO OF THE TWENTY ANALOG CHANNELS, AND THE FIRMWARE RULE
+# HAS REVERSED. This block used to say ULPI lands here and the SYSCFG analog switch must
+# be LEFT CLOSED; that has been wrong since ULPI moved to PI11/PH4, and the instruction
+# is now the opposite. PC2SO/PC3SO in SYSCFG_PMCR must be SET, opening the switch, so
+# that ADC3 reaches the _C pads by the direct low-impedance path these pins exist for.
+# Left at their reset value the conversion still works, through the switch and whatever
+# series resistance it has -- which is exactly the kind of fault that measures as a
+# slightly slow settling channel and is never traced back to a register.
+#
+# ⚠ THE TRAP THAT USED TO BE HERE IS GONE, NOT MOVED. It was that an ADC-heavy design
+# would open these switches for analog performance and silently kill USB. With ULPI
+# elsewhere, opening them is simply correct, and the pins are doing the one job they were
+# bonded out for: on the LQFP176 the ordinary PC2/PC3 pads are not bonded at all, so the
+# _C pad IS the pin. PA0_C and PA1_C, the ADC1/ADC2 equivalents, are not bonded on this
+# package either -- dashes in the LQFP176 column of DS12110's pin table, balls T1/T2 on
+# the BGA only -- which is why the near-edge slack is these two pins and no more.
 # ⚠ ULPI_DIR AND ULPI_NXT USED TO SIT ON PC2_C / PC3_C AND HAVE BEEN MOVED OFF THEM.
 # What follows is why they were there, why it worked, and why "it works" was not good
 # enough.
@@ -258,8 +264,21 @@ ULPI = {"ULPI_D0": "PA3", "ULPI_D1": "PB0", "ULPI_D2": "PB1", "ULPI_D3": "PB10",
 # H743 has three ADCs, and the pins do not distribute 10/10:
 #     ADC1 can reach 11 of the free pins, ADC2 9, ADC3 9
 # -- and PF3..PF10, eight pins, are ADC3-ONLY, so ADC3 must carry at least eight
-# channels. Sequences of 8/6/6 are the best split available, which leaves two pairs
-# sharing ADC2 and two pairs two conversions apart.
+# channels. Sequences of 8/6/6 were the best split available on those pins alone.
+#
+# ⚠ THE SPLIT IS NOW 10/6/4, TRADED DELIBERATELY FOR ROUTING. Strings 5 and 8 moved
+# their A channel from PF11/PF12 (ADC1, and on the package edge FACING AWAY from the
+# sensing strip) onto PC2_C/PC3_C, the direct ADC3 inputs on the edge that faces it --
+# see the corridor note further down for why that is the whole problem. ADC3 therefore
+# runs ten conversions, ADC1 four.
+#
+# THE TIMING GOT BETTER, NOT WORSE, WHICH IS WHY IT WAS AFFORDABLE. The burst is bounded
+# by the LONGEST sequence: 10 x 0.7 us = 7.0 us of a 20.8 us frame, against 5.6 us
+# before -- still a burst, still finishing in the first third of the frame, which is the
+# condition the argument above actually rests on. And both moved pairs are now SAME-ADC
+# with their partner adjacent in the sequence, so their skew is ONE conversion, 0.7 us,
+# where the worst cross-ADC pair sits at two. The -46 dB bound below is a worst case that
+# these two pairs no longer occupy.
 #
 # THE RESIDUAL IS SMALL AND BOUNDED, which is the point of writing it down rather
 # than discovering it. Run the sequence as a BURST at the top of each 48 kHz frame
@@ -379,17 +398,20 @@ ULPI = {"ULPI_D0": "PA3", "ULPI_D1": "PB0", "ULPI_D2": "PB1", "ULPI_D3": "PB10",
 #
 # The obligation is therefore: demultiplex by pin, not by ADC unit. DIFF_SIGN_INVERTED
 # below names the three strings that would be wrong if that rule is broken; it is a
-# tripwire, not a correction to apply. (SUM is symmetric and cannot be affected either
+# tripwire, not a correction to apply. Since the PC2_C/PC3_C move the three fail in two
+# different ways: string 1 has A on ADC1 where the other seven have A on ADC3 or ADC2,
+# and strings 5 and 8 have BOTH channels on ADC3, so the unit does not distinguish them
+# at all. Either way the unit is not the answer and the pin is. (SUM is symmetric and cannot be affected either
 # way.) Recorded here because nothing in the netlist, the CAD or DRC can express it.
 ADC_PAIRS = (
     ("PA1",  "PF4"),    # 1   ADC1[1] / ADC3[1]   ⚠ A/B SWAPPED -- A is on ADC1 here
     ("PC1",  "PF13"),   # 2   ADC2[2] / ADC2[3]  -- same ADC, skew 1
     ("PF10", "PA7"),    # 3   ADC3[7] / ADC2[5]  -- skew 2
     ("PC4",  "PC5"),    # 4   ADC2[0] / ADC2[1]  -- same ADC, skew 1
-    ("PF11", "PF5"),    # 5   ADC1[2] / ADC3[2]   ⚠ A/B SWAPPED -- A is on ADC1 here
+    ("PC3_C", "PF5"),   # 5   ADC3[1] / ADC3[2]  -- same ADC, adjacent; DIRECT pin
     ("PF9",  "PA6"),    # 6   ADC3[6] / ADC2[4]  -- skew 2
     ("PF8",  "PA4"),    # 7   ADC3[5] / ADC1[5]
-    ("PF12", "PF6"),    # 8   ADC1[3] / ADC3[3]   ⚠ A/B SWAPPED -- A is on ADC1 here
+    ("PC2_C", "PF6"),   # 8   ADC3[0] / ADC3[3]  -- same ADC, adjacent; DIRECT pin
     ("PF7",  "PA2"),    # 9   ADC3[4] / ADC1[4]
     ("PF3",  "PA0"),    # 10  ADC3[0] / ADC1[0]
 )
@@ -411,11 +433,12 @@ ADC_UNITS = {
     "PA6": (1, 2), "PA7": (1, 2), "PC1": (1, 2, 3), "PC4": (1, 2), "PC5": (1, 2),
     "PF3": (3,), "PF4": (3,), "PF5": (3,), "PF6": (3,), "PF7": (3,),
     "PF8": (3,), "PF9": (3,), "PF10": (3,), "PF11": (1,), "PF12": (1,), "PF13": (2,),
+    "PC2_C": (3,), "PC3_C": (3,),   # ADC3_INP0 / ADC3_INP1, DS12110 p67
 }
 # the unit each pin is USED as, read off the ADCn[k] comments in ADC_PAIRS above
 ADC_USED_AS = {
     "PA1": 1, "PF4": 3, "PC1": 2, "PF13": 2, "PF10": 3, "PA7": 2, "PC4": 2, "PC5": 2,
-    "PF11": 1, "PF5": 3, "PF9": 3, "PA6": 2, "PF8": 3, "PA4": 1, "PF12": 1, "PF6": 3,
+    "PC3_C": 3, "PF5": 3, "PF9": 3, "PA6": 2, "PF8": 3, "PA4": 1, "PC2_C": 3, "PF6": 3,
     "PF7": 3, "PA2": 1, "PF3": 3, "PA0": 1,
 }
 assert set(ADC_USED_AS) == {p for pair in ADC_PAIRS for p in pair}, (
