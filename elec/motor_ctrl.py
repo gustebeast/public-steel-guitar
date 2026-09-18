@@ -102,20 +102,14 @@ def motor_ctrl():
     # the 8-way in/out pattern belongs to the tees and lever boards in the middle.
     a_h, a_l = Net("CANA_H"), Net("CANA_L")
     b_h, b_l = Net("CANB_H"), Net("CANB_L")
-    # ⚠ J1 IS THE CONTACT THE DOUBLING DID NOT REACH. The trunk's whole current path is
-    # panel J7 (two contacts per rail) -> 2 x 22 AWG -> J3 below (two contacts, doubled
-    # for exactly this reason) -> across this board -> J1 -> the ten motor tees. Both ENDS
-    # of the trunk were doubled so that no contact carries the full <5 A; this connector
-    # hands that same current to the motors through ONE 3 A contact, and takes the return
-    # through one.
-    #
-    # It is structural, not an oversight: power and CAN share one four-conductor cable
-    # (GND, +24V, H, L), so a 4-way has no spare cavity to double into -- which is
-    # precisely why J3's cavities were free and these are not. The options are a 6-way
-    # here, splitting power off CAN for bus A, or holding the slew stagger so bus A never
-    # exceeds 3 A; the last is free but turns a wiring rating into a firmware constraint
-    # that nothing in the firmware knows about. BOM.md carries the arithmetic and the
-    # measurement it still waits on -- nobody has measured one moving SERVO42D.
+    # ⚠ J1 CARRIES BUS A'S WHOLE CURRENT ON ONE 3 A CONTACT, and BOM.md has the analysis
+    # -- see "The bottleneck moves rather than disappears" in the 24 V bus section. In
+    # short: J3 below was doubled because its ways were idle, and doing the same here is
+    # not free because ways 3 and 4 carry CAN. The BOM's own conclusion is that the answer
+    # is probably a firmware slew cap rather than a connector change, since Tr8x2 is
+    # self-locking and the bus carries essentially nothing at rest.
+    # This pointer exists because the netlist is where someone meets this connector, and
+    # the analysis lives three files away.
     j1 = _xh("J1", "bus A out -- the ten motor tees")
     j2 = _xh("J2", "bus B out -- the eight lever/pedal boards")
     j3 = _xh("J3", "24 V in from the rail (2 contacts populated)")
