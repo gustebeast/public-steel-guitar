@@ -520,6 +520,18 @@ def optical():
         # ⚠ 4M7 IS A FIRST-ARTICLE VALUE WITH ARITHMETIC BEHIND IT, not a guess, and it
         # is expected to move per string. The optical budget, from the two datasheets:
         #   emitter   0.8 mW/sr at 20 mA (IR17-21C), gap 3.0 mm (OPT_GAP)
+        #             ⚠ 0.8 IS THE TYPICAL AND THE DATASHEET'S MINIMUM IS 0.2 -- a
+        #             FOURFOLD spread, guaranteed, on the part that sets the whole
+        #             optical budget. Everlight's own table (IR17-21C/TR8,
+        #             Electro-Optical Characteristics): Ie min 0.2, typ 0.8, no max.
+        #             Everything below is computed on the typical, so a worst-case
+        #             emitter delivers a QUARTER of it: the thinnest string's ~60 nA
+        #             becomes ~15 nA and 0.28 V at the output becomes 0.07 V.
+        #             THAT IS STILL WORKABLE -- against the 48 uVrms noise floor
+        #             computed further down it is ~63 dB instead of ~75 -- but it is
+        #             the number the per-string Rf tuning has to absorb, and it is why
+        #             that tuning is not optional. Ten emitters from one reel will not
+        #             span the full 4x; ten boards built a year apart might.
         #             -> ~8.9 mW/cm2 at the string
         #   string    a .014 plain intercepts ~0.036 x 0.1 cm and scatters it; at ~30%
         #             into a hemisphere that is ~0.003 mW/sr back
