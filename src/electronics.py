@@ -162,7 +162,7 @@ DECK_TOP  = D.DECK_TOP_Z                      # 6.4 — THE deck datum (was a st
                                               # under the strings, bar still can't bottom
 OLED_Y    = -100.0                            # wide -Y deck band (clear of strings)
 OLED_W, OLED_L, OLED_T = 38.0, 72.0, 1.6      # 2.42" module PCB (Y x X)
-JOY_X     = UI_X + 70 * D.BEAD                # 56: just +X of the screen
+JOY_X     = UI_X + 70 * D.BEAD                # -252.17: just +X of the screen
 JOY_Y     = -102 * D.BEAD                     # -81.6
 
 
