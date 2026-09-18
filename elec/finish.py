@@ -43,7 +43,15 @@ PY = sys.executable
 def _drc(stem):
     """(unconnected count, the net names involved) for the board at `stem`."""
     out = stem + ".finish.drc.json"
-    subprocess.run([KICAD_CLI, "pcb", "drc", "--severity-error", "--format", "json",
+    # ⚠ NO --severity-error: THIS PIPELINE HAD NEVER SEEN A DRC WARNING. Asking only for
+    # errors is asking KiCad to hide a whole class of finding, and it hid five on the
+    # optical board -- four dangling vias and a 9 um track fragment. The vias turned out
+    # to be the router's abandoned stubs on the very nets still unconnected, which is
+    # useful corroboration, and the fragment is copper that drop_degenerate's 5 um floor
+    # is just too low to catch.
+    # Warnings do NOT fail a board. They are printed, because a warning nobody prints is
+    # the same as a warning nobody gets.
+    subprocess.run([KICAD_CLI, "pcb", "drc", "--format", "json",
                     "-o", out, stem + ".kicad_pcb"], capture_output=True, text=True)
     d = json.load(open(out, encoding="utf-8"))
     nets = set()
@@ -58,7 +66,16 @@ def _drc(stem):
     # takes somebody to stop listing them. See netcheck.classify_violations.
     declared = netcheck.optical_declared if "optical" in os.path.basename(stem) \
         else (lambda t, r: False)
+    # errors decide the board; warnings are reported and nothing more
+    warn = [v for v in d.get("violations", []) if v.get("severity") == "warning"]
+    d = dict(d, violations=[v for v in d.get("violations", [])
+                            if v.get("severity") != "warning"])
     ok, bad = netcheck.classify_violations(d, declared)
+    if warn:
+        import collections as _c
+        kinds = _c.Counter(v["type"] for v in warn)
+        print("  %d DRC warning(s): %s"
+              % (len(warn), ", ".join("%s x%d" % kv for kv in sorted(kinds.items()))))
     if ok:
         print("  %d declared violation(s) (%s), %d unexpected"
               % (len(ok), "sensor triplets" if ok else "-", len(bad)))
