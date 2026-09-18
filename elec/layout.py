@@ -1931,6 +1931,24 @@ def _edge_name(a, b, netname, math):
     return "%s: %s -> %s (%.2f mm)" % (netname, _p(a), _p(b), d)
 
 
+def _local_inner(notes):
+    """The layer local and retried nets may dive to, or None.
+
+    ⚠ THIS USED TO READ diff_pair_inner, WHICH SILENTLY DISABLED THE FALLBACK ON ANY
+    BOARD WITHOUT A DIFFERENTIAL PAIR. "Surface blocked, go a layer down" has nothing to
+    do with differential pairs; it needs an inner layer with no pads on it and nothing
+    else. Keying it on a diff-pair setting meant lever_sensor -- four layers, In1.Cu a
+    ground plane, In2.Cu empty, and a recorded history of nets "stranded at that package"
+    that "neither the router nor the generator could get out" -- never called it once.
+    Instrumented per end, the hop was not failing: it was never reached, because the
+    caller passed None and _local_nets skips the edge without comment when inner is None.
+
+    A board can now say `local_inner` outright, and diff_pair_inner stays as the fallback
+    so the boards that already work keep working.
+    """
+    return notes.get("local_inner") or notes.get("diff_pair_inner")
+
+
 def _outline_pts(notes):
     """The board edge as board-local mm points, whichever way the board declared it."""
     if notes.get("outline_poly"):
@@ -2564,7 +2582,7 @@ def build(stem):
         # function reports at the end, and shadowing it made the summary line claim
         # 40 nets had appeared out of nowhere.
         n_laid, n_left, n_why = _local_nets(board, notes["local_nets"], _outline_pts(notes),
-                                     inner=notes.get("diff_pair_inner"))
+                                     inner=_local_inner(notes))
         print("  local nets: laid %d segment(s)%s"
               % (n_laid, ", %d left to the router" % n_left if n_left else ""))
         for _e in n_why:
@@ -2602,7 +2620,7 @@ def build(stem):
         if want:
             n_laid, n_left, n_why = _local_nets(
                 board, [re.escape(n) for n in want], _outline_pts(notes),
-                local_mm=1e9, inner=notes.get("diff_pair_inner"))
+                local_mm=1e9, inner=_local_inner(notes))
             print("  retry: laid %d segment(s) for %d net(s) the router could not finish"
                   "%s" % (n_laid, len(want),
                           ", %d edge(s) still not placeable" % n_left if n_left else ""))
