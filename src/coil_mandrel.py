@@ -165,7 +165,6 @@ RIB_H = 2 * B                   # 1.6 of helical rib between turns. Its lower fl
 SCRIBE_W, SCRIBE_DEEP = 0.6, 0.4        # the line you wind TO
 CLEAT_W = LT.CABLE_D - 0.4      # 3.4: a light pinch on the O3.8 jacket, pressed in
                                 # SIDEWAYS -- it cannot be threaded
-CLEAT_DEEP = 8.0
 TAIL_RUN = 12.0                 # PLAIN BARREL EITHER SIDE OF THE WINDING ZONE, so each
                                 # tail leaves the helix, TURNS AXIAL, and is held that
                                 # way while it sets (user). It matters because that is
@@ -178,8 +177,11 @@ TAIL_RUN = 12.0                 # PLAIN BARREL EITHER SIDE OF THE WINDING ZONE, 
                                 # instead of being bent to it afterwards. 7 WHOLE turns
                                 # also leaves both tails at the same azimuth, which is
                                 # what those two radii want
-BARREL_L = 2 * TAIL_RUN + FREE_SPAN + CLEAT_DEEP
-SLEEVE_L = BARREL_L - CLEAT_DEEP        # covers both tail runs AND every turn: the
+CLEAT_R = BARREL_D / 2.0 + LT.CABLE_D / 2.0     # 9.5, the cable's OWN radius: the slit
+                                        # has to sit where the tail already is, or it
+                                        # pulls the tail sideways to reach it
+BARREL_L = 2 * TAIL_RUN + FREE_SPAN
+SLEEVE_L = BARREL_L                     # covers both tail runs AND every turn: the
                                         # axial tails are only 'set' if something holds
                                         # them against the barrel while they cool
                                         # 92.0, and it is the SLEEVE that sizes it: the
@@ -189,7 +191,7 @@ SLEEVE_L = BARREL_L - CLEAT_DEEP        # covers both tail runs AND every turn: 
                                         # exactly that on the first build)
 
 assert CLEAT_W < LT.CABLE_D, "the cleat has to pinch, not clear"
-assert SLEEVE_L < BARREL_L - CLEAT_DEEP + 1.0, "the sleeve buries the top cleat"
+assert SLEEVE_L <= BARREL_L, "the sleeve stands proud of the barrel"
 
 
 def mandrel() -> cq.Workplane:
@@ -216,16 +218,21 @@ def mandrel() -> cq.Workplane:
             .polyline([(-0.4, -2 * RIB_H), (RIB_H, 0.0), (-0.4, RIB_H)]).close())
     rib = prof.sweep(cq.Workplane("XY").add(helix), isFrenet=True)
     out = out.union(rib.translate((0, 0, z_base + TAIL_RUN + 2 * RIB_H)))
-    # the base cleat: a notch DOWN FROM THE FLANGE'S TOP FACE. The tail arrives running
-    # axially down the barrel, turns out through this, and is pinched. Cut from above
-    # it has no roof to bridge; sitting below the face, the sleeve still seats flat.
+    # THE BASE CLEAT IS A FULL-THICKNESS SLIT, not a notch in the top face, so the tail
+    # CARRIES ON DOWN through the flange instead of being turned out +X (user). That
+    # turn was the one bend the tool had no business setting: the leg wants this tail
+    # axial, and a 90 at the bottom of the axial run undoes what TAIL_RUN is for.
+    # Open to the rim, because the cable is pressed in sideways -- both ends of the
+    # lead are moulded, so nothing threads. Its inner wall stands off the barrel, so
+    # it does not undercut it either.
     out = out.cut(cq.Workplane("XY").box(
-        FLANGE_D, CLEAT_W, LT.CABLE_D + 0.4, centered=(False, True, False))
-        .translate((BARREL_D / 2.0 - 1.0, 0, z_base - LT.CABLE_D - 0.4)))
-    # the top cleat: an axial notch the finishing tail tucks into and lifts out of
-    out = out.cut(cq.Workplane("XY").box(
-        BARREL_D + 2.0, CLEAT_W, CLEAT_DEEP + 1.0, centered=(True, True, False))
-        .translate((0, 0, z_base + BARREL_L - CLEAT_DEEP)))
+        FLANGE_D, CLEAT_W, FLANGE_T + 2.0, centered=(False, True, False))
+        .translate((CLEAT_R - CLEAT_W / 2.0, 0, -1.0)))
+    # NO TOP CLEAT. It was a notch across the barrel's top face, which bent the
+    # finishing tail sideways for exactly the same reason -- and the top has to stay
+    # clear anyway, because the set coil comes off by UNSCREWING. The SLEEVE is what
+    # holds both tails against the barrel while they set; the last turn only has to be
+    # held by hand for the moment it takes to slide the sleeve on.
     assert len(out.val().Solids()) == 1, (
         "the mandrel came out as %d solids" % len(out.val().Solids()))
     return out
