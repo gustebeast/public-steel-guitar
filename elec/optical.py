@@ -291,6 +291,34 @@ ULPI = {"ULPI_D0": "PA3", "ULPI_D1": "PB0", "ULPI_D2": "PB1", "ULPI_D3": "PB10",
 # then the skew is a whole conversion INTERVAL rather than a conversion, and the
 # argument above stops holding.
 #
+# ⚠ AND THREE SEPARATE PROXIES FOR "HOW HARD IS THIS TO ROUTE" HAVE NOW BEEN WRONG ON
+# THIS BOARD. Before trusting a fourth, read this. The permutation lever was re-opened
+# 2026-09-18 with two metrics that both said a particular reassignment was better:
+#
+#     straight-line crossings   said 80 -> 44        actually destroyed the A side
+#     weighted far-edge cost    said 519 -> 279      board went 1 -> 4 unconnected
+#     per-edge inversions       said 40 -> 33        same run, same result
+#
+# The far-edge measure is the one that looked most principled: twenty nets, fifteen pins
+# on the edge that faces the strip, so at least five must travel around the package, and
+# it is obviously worse to spend a far pin on the string whose quad is already furthest
+# away. String 2 sits 106 mm out and held a far pin; the reassignment gave it a
+# near-only pair and handed the worst pair to string 10 at 30 mm. Both metrics improved,
+# the argument still reads correctly, and the router lost three nets.
+#
+# The honest conclusion is not "use a better proxy" but that ON THIS BOARD the only
+# measurement that has ever predicted routability is a routing run. Proxies are for
+# generating candidates, never for accepting them.
+#
+# ⚠ THE ZERO-INVERSION CLAIM BELOW COULD NOT BE REPRODUCED, and it should be read with
+# that in mind. Counting inversions per package edge -- nets on different edges cannot
+# cross each other at the pin row, so mixing pads 1..44 with 45..88 in one ordering is
+# meaningless and the first attempt at this did exactly that -- the CURRENT map scores 40,
+# not 0. Either the measure differs from the one used below or the claim has gone stale;
+# what is certain is that the PC2_C/PC3_C move took it from 31 to 40 and was still worth
+# making, because the board went from 2 unconnected to 1. If inversions do not predict
+# routability, the argument below deserves the same scepticism as the two above it.
+
 # ⚠ WHICH STRING GETS WHICH PAIR IS FREE, AND IT IS ALREADY SPENT WELL -- CHECKED, so
 # that nobody spends an afternoon rediscovering it. The skew argument above constrains
 # what may form a PAIR and the order of the burst; it says nothing about which string
