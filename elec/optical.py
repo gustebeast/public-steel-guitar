@@ -283,6 +283,30 @@ ULPI = {"ULPI_D0": "PA3", "ULPI_D1": "PB0", "ULPI_D2": "PB1", "ULPI_D3": "PB10",
 # ⚠ WHAT IS LEFT IS SILICON, NOT PLACEMENT. Of the 20 ADC pins this board uses, 12 are
 # on the strip-facing edge and EIGHT ARE NOT -- they are round the corner on the edge
 # that faces away, so those eight nets must travel past the package to reach it.
+# ⚠ AND THE LAST THREE NETS FAIL AT THE ESCAPE, NOT ON THE HAUL. Measured 2026-09-17
+# after the ADC remap, with two experiments that both came back negative:
+#   60 passes, continuing from the 25-pass board -> byte-identical result, same three
+#     nets, same fragment lengths to four decimals. Router effort does nothing.
+#   incremental (93 nets frozen, only the 3 free) -> also nothing, and no faster.
+# Neither effort nor interference from movable neighbours, then. Copper per net says
+# what it is:
+#     TIA_OUT_8B  pin 24   26.8 mm   UNROUTED
+#     TIA_OUT_2A  pin 33   13.1 mm   UNROUTED
+#     TIA_OUT_5A  pin 59   18.4 mm   UNROUTED
+#     TIA_OUT_2B  pin 63  159.7 mm   ok
+#     TIA_OUT_4B  pin 55  152.0 mm   ok
+# The three failures carry the LEAST copper of all twenty -- 13 to 27 mm against 44 to
+# 160. They did not get most of the way and stall; the router barely got off the pad.
+# That is escape congestion at a 0.5 mm pitch package carrying 20 ADC nets and a
+# 12-signal ULPI bus, and it is why neither lever above touched it.
+#
+# ⚠ THE NEXT LEVER, recorded rather than taken because it trades against something just
+# won: PC2_C and PC3_C (pins 34 and 35) are now UNUSED -- freed when ULPI_DIR and
+# ULPI_NXT moved to PI11/PH4 -- and 34 is adjacent to the failing pin 33. They are
+# ADC3_INP0 and ADC3_INP1, so they are real channels. Moving a failing net onto one
+# costs part of the zero-inversion ordering above, so it wants the same inversion
+# scoring that produced that ordering, not a guess.
+#
 # ⚠ RE-MEASURED ON THE LQFP176, 2026-09-17, because this paragraph was written for the
 # LQFP144 and a package change is exactly the kind of thing that silently invalidates a
 # measurement. It does not: the split is still 12 / 8. Twelve TIA_OUT pads sit on U6's
