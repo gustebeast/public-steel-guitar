@@ -208,6 +208,7 @@ if __name__ == "__main__":
     ERC()
     generate_netlist(file_=os.path.join(OUT_DIR, "can_tee.net"))
     netcheck.grounds_meet(os.path.join(OUT_DIR, "can_tee.net"))
+    netcheck.no_orphan_pins(os.path.join(OUT_DIR, "can_tee.net"))
     with open(os.path.join(OUT_DIR, "can_tee.board.json"), "w") as f:
         json.dump(BOARD_NOTES, f, indent=2)
     print("board %.1f x %.1f mm, tails %.1f mm from the +Y edge (limit 6.4)"
