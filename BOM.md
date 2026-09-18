@@ -625,7 +625,21 @@ ADC inputs plus a 12-signal ULPI bus will not fit a 64-pin part.
 | 1 | Y2 | **26 MHz** crystal — PHY reference, **CL 20 pF, ESR ≤ 30 Ω** | 3225 | 3.20 × 2.50 × 0.90 |
 | 1 | Q1 | N-ch MOSFET — LED row driver | SOT-23 | 2.90 × 2.40 × 1.30 |
 | 1 | U10 | USB data-line ESD array — USBLC6-2SC6 | **SOT-23-6** | 2.90 × 2.80 × 1.45 |
-| 10 | D1–D10 | IR emitter, 940 nm — **narrow beam, see below** | 0805 (opto) | 2.00 × 1.25 × 0.85 |
+| 10 | D1–D10 | IR emitter, 940 nm — `IR17-21C/TR8`, **120° view angle** (not narrow), Ie **0.2 min / 0.8 typ** mW/sr | 0805 (opto) | 2.00 × 1.25 × 0.85 |
+
+> ⚠ **Two corrections to this row, both from Everlight's own datasheet, 2026-09-17.**
+> It said "narrow beam"; the part is **120°**, which the MPN table has said all
+> along ("120 deg CONFIRMED") — the two lines have contradicted each other.
+> And its radiant intensity is **0.2 mW/sr minimum against 0.8 typical**, a
+> guaranteed fourfold spread on the part the whole optical budget rests on. The
+> budget in `elec/optical.py` is computed on the typical, so a worst-case emitter
+> gives a quarter of the signal — still ~63 dB SNR rather than ~75, but it is what
+> the per-string Rf tuning has to absorb.
+>
+> ⚠ **Soldering:** `Tsol` 260 °C, ≤5 s. JLCPCB's Economic PCBA reflow is fixed at
+> **255 ± 5 °C, not adjustable** — so this part, like the VEMD4110X01 photodiode,
+> sits at the top of its rating with no margin. Two of the twenty most
+> irreplaceable parts on the board are in that position.
 | 20 | PD1A–PD10B | PIN photodiode — **Vishay VEMD4110X01**, daylight filter (740–1040 nm) | 0805 (opto) | 2.00 × 1.25 × 0.85 |
 | 5 | R1–R5 | LED current-set — **180R** (21 mA) nominal, plain strings | 0603 | 1.60 × 0.80 × 0.95 |
 | 5 | R6–R10 | LED current-set — **180R** (21 mA) nominal, wound strings | 0603 | 1.60 × 0.80 × 0.95 |
