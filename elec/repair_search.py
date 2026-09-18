@@ -134,7 +134,32 @@ def _d_pt_seg(px, py, x1, y1, x2, y2):
     return math.hypot(px - (x1 + t * dx), py - (y1 + t * dy))
 
 
+def _seg_hit(ax, ay, bx, by, cx, cy, dx_, dy_):
+    """True when the two segments properly cross."""
+    def side(ox, oy, px, py, qx, qy):
+        return (px - ox) * (qy - oy) - (py - oy) * (qx - ox)
+    d1 = side(ax, ay, bx, by, cx, cy)
+    d2 = side(ax, ay, bx, by, dx_, dy_)
+    d3 = side(cx, cy, dx_, dy_, ax, ay)
+    d4 = side(cx, cy, dx_, dy_, bx, by)
+    return ((d1 > 0) != (d2 > 0)) and ((d3 > 0) != (d4 > 0))
+
+
 def _d_seg_seg(ax, ay, bx, by, cx, cy, dx_, dy_):
+    """⚠ THE MINIMUM OF THE FOUR ENDPOINT DISTANCES IS ONLY THE SEGMENT-TO-SEGMENT
+    DISTANCE WHEN THE SEGMENTS DO NOT CROSS. Two segments that properly intersect are
+    at distance ZERO, but every endpoint can still be far from the other segment -- so
+    the endpoint minimum comes back POSITIVE and a crossing reads as clearance.
+
+    Measured on this board: the MID repair line and a +3V3A diagonal intersect at
+    x 72.128, and the endpoint minimum reported +0.758 mm of room. The search passed the
+    path, the repair was laid, and DRC returned it as a tracks_crossing -- a short
+    between two nets. An earlier tracks_crossing in this session was blamed on stale
+    coordinates; this is at least as likely to have been the real cause both times.
+
+    A clearance test that cannot see an intersection is not a clearance test."""
+    if _seg_hit(ax, ay, bx, by, cx, cy, dx_, dy_):
+        return 0.0
     return min(_d_pt_seg(ax, ay, cx, cy, dx_, dy_), _d_pt_seg(bx, by, cx, cy, dx_, dy_),
                _d_pt_seg(cx, cy, ax, ay, bx, by), _d_pt_seg(dx_, dy_, ax, ay, bx, by))
 
@@ -192,10 +217,44 @@ class Board:
 
 
 def search(stem, net, pad_xy, top=5):
+    """Return (board, direct_paths, via_paths).
+
+    ⚠ TWO SHAPES OF REPAIR, AND AN EARLIER VERSION ONLY KNEW ONE. A break is often a
+    gap on the SAME layer the pad is on -- MID's was 2.54 mm straight up F.Cu -- and
+    needs no via at all. That version modelled only via-plus-spur and reported "0 legal
+    paths" for a net whose repair is one straight track, which reads as impossible when
+    it is actually trivial.
+
+    ⚠ AND IT TARGETED B.Cu ONLY. MID carries 132 segments on F.Cu, 52 on In2.Cu and 3
+    on B.Cu, so hunting B.Cu alone aimed at the 3 and ignored the 52. In2.Cu is the one
+    layer with no ground pour on this board, i.e. the emptiest place to land. Target
+    every layer the net actually occupies, and let the distance decide.
+    """
     b = Board(stem, net)
-    targets = [s for s in b.segs if s["net"] == net and s["layer"] == "B.Cu"]
-    if not targets:
-        raise SystemExit("no B.Cu copper on %s to reach" % net)
+    own = [s for s in b.segs if s["net"] == net]
+    if not own:
+        raise SystemExit("no copper on %s to reach" % net)
+
+    def points_on(layer):
+        out = []
+        for s in own:
+            if s["layer"] != layer:
+                continue
+            for k in (0.0, 0.25, 0.5, 0.75, 1.0):
+                out.append((s["x1"] + (s["x2"] - s["x1"]) * k,
+                            s["y1"] + (s["y2"] - s["y1"]) * k))
+        return out
+
+    # shape 1: a straight track on the pad's own layer, no via
+    direct = []
+    for (tx, ty) in points_on("F.Cu"):
+        if b.track_ok(pad_xy, (tx, ty), "F.Cu"):
+            direct.append((round(math.hypot(tx - pad_xy[0], ty - pad_xy[1]), 3),
+                           round(tx, 3), round(ty, 3)))
+    direct.sort()
+
+    # shape 2: via to another layer, then a spur to the net's copper there
+    layers = [L for L in ("In2.Cu", "B.Cu") if any(s["layer"] == L for s in own)]
     found = []
     n = int(REACH / GRID)
     for i in range(-n, n + 1):
@@ -205,20 +264,19 @@ def search(stem, net, pad_xy, top=5):
                 continue
             if not b.track_ok(pad_xy, (vx, vy), "F.Cu"):
                 continue
-            for s in targets:
-                for k in (0.0, 0.25, 0.5, 0.75, 1.0):
-                    tx = s["x1"] + (s["x2"] - s["x1"]) * k
-                    ty = s["y1"] + (s["y2"] - s["y1"]) * k
-                    if b.track_ok((vx, vy), (tx, ty), "B.Cu"):
-                        found.append((round(math.hypot(vx - pad_xy[0], vy - pad_xy[1])
-                                            + math.hypot(tx - vx, ty - vy), 3),
-                                      vx, vy, round(tx, 3), round(ty, 3)))
+            for L in layers:
+                hit = None
+                for (tx, ty) in points_on(L):
+                    if b.track_ok((vx, vy), (tx, ty), L):
+                        hit = (tx, ty)
                         break
-                else:
-                    continue
-                break
+                if hit:
+                    found.append((round(math.hypot(vx - pad_xy[0], vy - pad_xy[1])
+                                        + math.hypot(hit[0] - vx, hit[1] - vy), 3),
+                                  vx, vy, round(hit[0], 3), round(hit[1], 3), L))
+                    break
     found.sort()
-    return b, found
+    return b, direct, found
 
 
 def main(argv):
@@ -234,22 +292,30 @@ def main(argv):
     if xy is None:
         raise SystemExit("pad %s of %s is not reported unconnected -- nothing to repair"
                          % (pad, ref))
-    b, found = search(stem, net, xy)
+    b, direct, found = search(stem, net, xy)
     print("obstacles: %d segments, %d vias, %d pads, %d edge lines"
           % (len(b.segs), len(b.vias), len(b.pads), len(b.edges)))
     print("target pad %s.%s at (%.4f, %.4f)" % (ref, pad, xy[0], xy[1]))
-    print("legal paths: %d" % len(found))
-    for t, vx, vy, tx, ty in found[:5]:
-        print("   via(%.2f, %.2f) -> B.Cu (%.2f, %.2f)   total %.2f mm" % (vx, vy, tx, ty, t))
-    if found:
-        t, vx, vy, tx, ty = found[0]
+    print("same-layer paths (no via): %d      via paths: %d" % (len(direct), len(found)))
+    for t, tx, ty in direct[:3]:
+        print("   F.Cu straight to (%.2f, %.2f)   %.2f mm" % (tx, ty, t))
+    for t, vx, vy, tx, ty, L in found[:3]:
+        print("   via(%.2f, %.2f) -> %s (%.2f, %.2f)   total %.2f mm" % (vx, vy, L, tx, ty, t))
+    if direct:
+        t, tx, ty = direct[0]
+        print()
+        print("    # one track, no via -- the break is on the pad's own layer")
+        print('    "repair_tracks": [("%s", "F.Cu", %.2f, [(%.3f, %.3f), (%.3f, %.3f)])],'
+              % (net, TRACK_W, xy[0] - 100, 100 - xy[1], tx - 100, 100 - ty))
+    elif found:
+        t, vx, vy, tx, ty, L = found[0]
         print()
         print('    "repair_vias": [("%s", %.3f, %.3f)],' % (net, vx - 100, 100 - vy))
         print('    "repair_tracks": [("%s", "F.Cu", %.2f, [(%.3f, %.3f), (%.3f, %.3f)]),'
               % (net, TRACK_W, xy[0] - 100, 100 - xy[1], vx - 100, 100 - vy))
-        print('                      ("%s", "B.Cu", %.2f, [(%.3f, %.3f), (%.3f, %.3f)])],'
-              % (net, TRACK_W, vx - 100, 100 - vy, tx - 100, 100 - ty))
-    return 0 if found else 1
+        print('                      ("%s", "%s", %.2f, [(%.3f, %.3f), (%.3f, %.3f)])],'
+              % (net, L, TRACK_W, vx - 100, 100 - vy, tx - 100, 100 - ty))
+    return 0 if (direct or found) else 1
 
 
 if __name__ == "__main__":
