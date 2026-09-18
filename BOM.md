@@ -379,8 +379,10 @@ twisting + the bridge-side AFE buffer, not conductor size):
 >
 > So the panel's 24 V trunk is carrying a <5 A budget on copper rated 0.88 A, a shortfall
 > of roughly 5.7×, and any part of it the router put on an inner layer is far worse.
-> The optical board's own 24 V inlet is fine by contrast — ~324 mA against 0.88 A — so
-> this is about the TRUNK nets, not every net.
+> The optical board's own 24 V inlet is fine by contrast — **79 mA** against 0.88 A — so
+> this is about the TRUNK nets, not every net. (This said ~324 mA until 2026-09-18, which
+> is that board's **5 V rail** current; through an 85 % buck it is 79 mA at 24 V. The
+> conclusion was right and the number was four times too big.)
 >
 > ⚠ Nothing in the pipeline can see this. DRC checks copper against the netlist and has
 > no concept of current; the netlist has no concept of width. It needs a per-net width in
@@ -455,6 +457,7 @@ twisting + the bridge-side AFE buffer, not conductor size):
 > above, seen from the cable end rather than the connector end — and both have to
 > be answered by the same decision about how bus A carries its current.
 | CAN | 26 AWG twisted pair, 120 Ω terminated — ⚠ **this is the H/L pair only; the same cable's 24 V and GND conductors have no gauge** | ~2.2 |
+| 24 V → optical board | **4 × 26 AWG**, ~150 mm, XH crimps both ends — panel **J9** to optical **J2**, both `1=GND 2=+24V 3=+24V 4=GND`. ⚠ **Was missing entirely:** the connector exists at both ends and this row did not, found 2026-09-18. 26 AWG is ample here — the board draws **79 mA at 24 V** typical (324 mA on its 5 V rail through an 85 % buck), ~122 mA at the worst case in `elec/optical.py`'s budget, against XH's applicable #30–#22. It runs beside the ~150 mm USB cable between the same two boards | ~2.2 |
 | pickup / audio / DAC / out | 28 AWG **shielded** pair (mA signals — the shield is the spec) | ~2.0 |
 | USB panel → Pi | slim shielded USB-2 | ~2.6 |
 | logic (relay, link, TDM, OLED, joystick) | 28 AWG | ~1.4 |
