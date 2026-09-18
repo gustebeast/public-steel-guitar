@@ -447,12 +447,11 @@ HS_HOUS_BACK = HS_BACK_X + HS_BSTOP_ENGAGE   # housing boss depth = engagement (
 # cross-ribs. (The old double-christmas-tree floating tenon + its yoke plate are gone: they
 # existed because the housing used to print +Z→-Z and could not carry a protruding tenon.
 # It prints -Z→+Z now, so the tenon is just part of the part.) ──
-RIB_PITCH = D.MOTOR_X_STEP          # 46, THE motor pitch (derived — a MOTOR_X_STEP change
-                                    # moves the tenon stations WITH the comb). The rib comb is HALF this (23 mm: a
-                                    # crossbar per motor plus one between each pair), and the
-                                    # tenon stations are generated on that finer pitch — see
-                                    # TEN_X down in the prism block, where the housing X extents
-                                    # that bound them are finally known.
+RIB_PITCH = D.MOTOR_X_STEP          # THE motor pitch. The bottom is a SLAB now, not a comb of
+                                    # cross-ribs, and the mortise grid is D.LEVER_PITCH (8.8) --
+                                    # see _TEN_PITCH down in the prism block, where the housing X
+                                    # extents that bound the stations are finally known. This is
+                                    # kept only for readers who reason in motor pitches.
 BODY_Z    = HUB_TOP + 3 * D.BEAD    # body underside in local Z: the hub top (5.2) + a 2.4mm AIR
                                     #   gap (no material between the lever and the body). Raising the axle
                                     #   is equivalent to lowering BODY_Z here; MOUNT_Z tracks it (= -82.55)
@@ -517,7 +516,11 @@ MID_Y     = -37.0                   # guitar Y-midpoint (= chassis (Y_LO + Y_HI)
 # had to pull their knee back to reach it, when the whole point of a vertical lever is
 # to lift without moving (user). The slot now runs to the inside edge of the
 # instrument, which is as far as it can go and enough for any of them.
-MORT_Y_END = D.BRIDGE_AXLE_Y + 4 * D.BEAD   # 55.55: +Y end of the knee-depth slide, guitar Y
+MORT_Y_END = D.LIGHT_WIN_Y0
+#   ^ +Y end of the knee-depth slide, guitar Y: every mortise runs the full width of the
+#     instrument and stops AT the transparent window's face (user, 2026-09-16). It ran to the
+#     +Y rail's inner face before the window existed. No wall between the two -- the window is
+#     solid (transparent) material in the finished print, so it IS the end of the slot.
                                     # = the chassis +Y rail INNER face, spelled via the same
                                     # D constants chassis.Y_HI uses (import direction forbids
                                     # chassis; the old 54.75 had gone stale twice over)
@@ -826,14 +829,19 @@ def _top_tenon(tx):
             .translate((tx, TEN_Y0, HOUS_Z1)))                # station X, -Y start, mate at the top face
 
 
-def rib_mortise(rib_x):
+def rib_mortise(rib_x, y0=None, y1=None):
     """ONE octagon MORTISE (GLOBAL) for the rib at rib_x: the same cadkit octagon as the tenon
     but LONG in Y (MORT_Y0..MORT_Y1 = the knee-depth slide range), rotated to slide +Y. Opens at
     the rib bottom (-Z, the mating plane = Z_BOT) and its roof bridges inside the rib. chassis.py
     cuts this into every rib so a lever can mount in ANY bay."""
-    m = (_lever_joint(MORT_Y1 - MORT_Y0).mortise(drop=2.0)
+    # WORLD y range: the caller's, or this station's own by the grid's rule. chassis.py is the
+    # one that knows about legs and the light window, so for the end stations it passes the two
+    # SHORT segments (one over each foot) rather than one run across the instrument.
+    _y0 = (MORT_Y0 if y0 is None else y0 - MOUNT_Y)
+    _y1 = ((D.mortise_y_end(rib_x) if y1 is None else y1) - MOUNT_Y)
+    m = (_lever_joint(_y1 - _y0).mortise(drop=2.0)
          .rotate((0, 0, 0), (0, 0, 1), 90)                     # slide axis X -> Y
-         .translate((0.0, MORT_Y0, HOUS_Z1)))                 # centred x=0, -Y mouth, mate at rib bottom
+         .translate((0.0, _y0, HOUS_Z1)))                     # centred x=0, -Y mouth, mate at rib bottom
     #        ^ HOUS_Z1, not BODY_Z. The TENON mates at the housing top (_top_tenon),
     #          and with a bigger bearing the top is set by the seat, not by BODY_Z.
     #          Keyed to BODY_Z the mortise sat 0.7 low and every tenon on all six
@@ -910,7 +918,10 @@ BRG_Y0 = LEVER_HW + HS_CLR          # bearing INNER faces at ±10.4 = the lever-
 # out of the geometry rather than being written down (widen or shift the housing and
 # the comb re-solves). Generated here rather than in the mount block because it is
 # HOUS_X0/X1 that bound them, and those aren't known until this point.
-_TEN_PITCH = RIB_PITCH / 2.0        # = the chassis half-pitch rib comb
+_TEN_PITCH = D.LEVER_PITCH          # = the chassis bottom grid (8.8). Was RIB_PITCH/2 (22.35),
+                                    # the old rib comb; the stations follow the comb by design, so
+                                    # densifying the comb densifies these -- more tenons in the same
+                                    # housing, which is a stronger joint as well as a finer one.
 # ...and a station must ROOT ON SOLID. The bearing seats are teardrops whose print peak
 # can break out through the top face over the axle (it always did a little; the Ø16
 # 688ZZ opens it 1.78 either side of x = 0), and a tenon whose root sits in that
