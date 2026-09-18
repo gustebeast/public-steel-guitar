@@ -71,7 +71,6 @@ JAR = os.path.expandvars(
 # and the DRC that followed reported 266 unconnected, which is the UNROUTED board. A
 # timeout that fires looks exactly like a routing result unless you read the log.
 DSN_CLEAR_MARGIN_UM = 10      # see the clearance block in route()
-NL = chr(10)
 PASSES = 10
 
 
@@ -234,60 +233,42 @@ def route(stem, passes=None, timeout=3600, incremental=False):
             "the pair to freerouting, which does not know it is one."
             % ", ".join(sorted(pair_nets)))
 
-    # ⚠ LAYER COSTS, BECAUSE ONE LAYER WAS HALF EMPTY WHILE ANOTHER OVERFLOWED. Measured
-    # in the MCU approach corridor on the optical board: F.Cu 10.6% copper, In2.Cu 12.8%,
-    # B.Cu 4.6% -- the bottom layer carrying less than half what the top does, in the one
-    # region where the board ran out of room. freerouting will not use a layer it has no
-    # reason to prefer, and by default it has none.
-    # `layer_costs` in the board notes maps a layer to its trace cost: below 1.0 makes the
-    # router prefer it. Emitted as an autoroute_settings block.
+    # ⚠ LAYER COSTS ARE A DEAD LEVER IN FREEROUTING 2.4.1, AND THE CODE THAT EMITTED
+    # THEM IS GONE. The measurement that motivated it stands: in the MCU approach corridor
+    # on the optical board, F.Cu carried 10.6% copper, In2.Cu 12.8% and B.Cu 4.6% -- the
+    # bottom layer less than half the top, in the one region where the board ran out of
+    # room. Pushing traffic down there would have cost a router setting instead of a
+    # placement change. It cannot be done this way.
     #
-    # THE BLOCK GOES INSIDE (structure ...), AND THAT IS NOT A STYLE POINT. The first
-    # version of this emitted it as a sibling of `structure`, one line above `(placement`,
-    # and freerouting produced a BYTE-IDENTICAL board -- the same three nets unconnected,
-    # the same 2426 segments, the same md5. A DSN reader skips a scope it does not know at
-    # the level it is reading, silently and with no warning, so a mis-placed block looks
-    # exactly like a lever that does not work. The scope is read by
-    # app/freerouting/io/specctra/parser/Structure, confirmed by grepping the jar for the
-    # class that references AutorouteSettings; the keywords below are its spelling,
-    # singular `_cost`, checked the same way.
+    # Four experiments, and the first three all failed SILENTLY and DIFFERENTLY:
+    #   1. autoroute_settings emitted as a sibling of (structure) -> the reader skips an
+    #      unknown scope at the level it is reading, and the routed board came back
+    #      BYTE-IDENTICAL. Read as "the lever does nothing" until the md5s matched.
+    #   2. nested correctly -> 294 track segments instead of 2426 and 190 nets
+    #      unconnected. AutorouteSettings.readScope applies its (autoroute)/(postroute)
+    #      flags unconditionally when the scope closes, so omitting them means OFF. The
+    #      block does not patch the defaults, it REPLACES them.
+    #   3. the cost keywords are PLURAL, ..._trace_costs. Grepping the jar for the
+    #      singular matched, because the plural contains it, so the check that was meant
+    #      to confirm the spelling confirmed nothing.
+    #   4. even a complete, correctly nested block in the DSN stops the router dead: a
+    #      one-pass run writes a 254-byte session against 114378 bytes for the same DSN
+    #      with the scope removed. The scope belongs in a .rules file passed with -dr, and
+    #      there it routes normally.
     #
-    # ⚠ SO AN EXPERIMENT THAT CHANGES NOTHING AT ALL IS A BUG REPORT, NOT A RESULT. Two
-    # earlier experiments on this board (60 passes, incremental) also returned identical
-    # output, and there the identity was the honest answer. Here it meant the input never
-    # arrived. Compare the md5 of the routed board before concluding a lever is dead.
-    #
-    # ⚠ (autoroute on) AND (postroute on) ARE NOT OPTIONAL PADDING -- LEAVING THEM OUT
-    # TURNS THE ROUTER OFF. AutorouteSettings.readScope keeps two local flags and calls
-    # setRunRouter/setRunOptimizer with them once the scope closes, whether or not the
-    # clauses appeared; absent means false. Emitting the layer rules alone therefore reads
-    # as "route nothing, optimise nothing", and the board came back with 294 segments
-    # instead of 2426 and 190 nets unconnected. The block is not a patch over the
-    # defaults, it REPLACES the two run flags.
-    #
-    # ⚠ THE COST KEYWORDS ARE PLURAL, AND A SUBSTRING GREP CANNOT TELL YOU THAT. Checking
-    # the jar for "preferred_direction_trace_cost" matched -- because the real keyword,
-    # PREFERRED_DIRECTION_TRACE_COSTS, contains it. The singular form was skipped as an
-    # unknown key word. Match keywords whole, or read what the writer emits: the writer in
-    # that same class writes "(preferred_direction_trace_costs ".
-    costs = (notes or {}).get("layer_costs")
-    if costs:
-        rules = "".join(
-            NL + "    (layer_rule %s (active on)"
-            " (preferred_direction_trace_costs %s)"
-            " (against_preferred_direction_trace_costs %s))"
-            % (ln, c, round(float(c) * 1.6, 3)) for ln, c in sorted(costs.items()))
-        blk = ("  (autoroute_settings" + NL
-               + "    (autoroute on)" + NL          # see above -- absent means OFF
-               + "    (postroute on)" + rules + NL + "  )" + NL)
-        # the last line of the structure scope, i.e. the ")" that closes it
-        anchor = "  )" + NL + "  (placement"
-        if anchor not in txt:
-            raise SystemExit("cannot find the end of the (structure scope in the DSN -- "
-                             "autoroute_settings would be read by nothing")
-        txt = txt.replace(anchor, blk + anchor, 1)   # BEFORE the closing ")"
-        assert txt.index("(autoroute_settings") < txt.index("  (placement")
-        print("  layer costs: %s" % ", ".join("%s=%s" % kv for kv in sorted(costs.items())))
+    # ⚠ AND THROUGH -dr, WHERE IT IS READ PROPERLY, THE TRACE COST STILL DOES NOTHING.
+    # Two runs whose rules files differed ONLY in B.Cu's cost, 1.0 against 0.7, produced
+    # sessions of identical size and identical per-layer wire length to the tenth of a
+    # millimetre. What moved the earlier comparison was preferred_direction, which was
+    # changed in the same file -- an experiment with two variables in it. Direction is a
+    # real lever and cost is not:
+    #     defaults (no rules file)      B.Cu  161.2 mm,  6.2% of wire, 238 vias
+    #     F h, In1 v, In2 h, B v        B.Cu  134.6 mm,  4.9%,         255 vias
+    #     F h,        In2 v, B h        B.Cu   49.6 mm,  2.0%,         228 vias
+    # Every direction set tried is WORSE than freerouting's own defaults, on B.Cu share
+    # and on total wire and vias alike, so there is nothing here to adopt. If someone
+    # wants to try again, the channel is a .rules file via -dr, and the control to beat is
+    # the default. The corridor still needs a placement answer.
 
     open(dsn, "w", encoding="utf-8").write(txt)
     if _fix.n:
