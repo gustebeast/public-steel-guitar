@@ -86,7 +86,7 @@ def failing_nets(stem):
     return sorted(out)
 
 
-def route(stem, passes=None, timeout=3600, incremental=False):
+def route(stem, passes=None, timeout=3600, incremental=False, dsn_only=False):
     """Route the board at `stem`.
 
     ⚠ `incremental` ROUTES FROM THE BOARD AS IT STANDS, NOT FROM A FRESH PLACEMENT, and
@@ -278,6 +278,14 @@ def route(stem, passes=None, timeout=3600, incremental=False):
           % ("/".join("%g" % (v + DSN_CLEAR_MARGIN_UM) for v in sorted(bumped)),
              "/".join("%g" % v for v in sorted(bumped)), DSN_CLEAR_MARGIN_UM))
 
+    # ⚠ --dsn-only STOPS HERE, and it exists for the pin search rather than for people.
+    # elec/pinsearch.py scores a string-to-pair assignment by routing the twenty analog
+    # nets ALONE, which means it wants this function's DSN -- the real placement, the real
+    # clearances, the real pre-laid copper -- and then its own filtered copy of it. Making
+    # it re-implement the export would be a second copy of the rules to keep true.
+    if dsn_only:
+        print("  --dsn-only: stopping after the export")
+        return dsn
     if not os.path.isfile(JAVA):
         raise SystemExit("no Java 25 runtime at %s" % JAVA)
     # -Djava.awt.headless=true: freerouting has no --no-gui flag and pops an
@@ -504,7 +512,8 @@ if __name__ == "__main__":
         if _a.startswith("--passes="):
             _p = int(_a.split("=", 1)[1])
     route(os.path.abspath(sys.argv[1]), passes=_p,
-          incremental="--incremental" in sys.argv[2:])
+          incremental="--incremental" in sys.argv[2:],
+          dsn_only="--dsn-only" in sys.argv[2:])
     # ⚠ LEAVE WITHOUT TEARING DOWN THE INTERPRETER. pcbnew's SWIG bindings hand back
     # objects they have no destructor for -- every run says so, a dozen times, about
     # PCB_TRACK and ZONE_FILLER -- and with enough of them the shutdown itself aborts.
