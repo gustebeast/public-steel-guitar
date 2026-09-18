@@ -372,9 +372,18 @@ twisting + the bridge-side AFE buffer, not conductor size):
 > ⚠ **AND NEITHER IS THE PCB COPPER — the third link in the same chain, audited
 > 2026-09-18.** The wire was raised to 2 × 22 AWG for <5 A and the XH contacts were
 > doubled for <5 A. The board traces between them were never sized at all. Every net on
-> every board in this fleet is drawn at the one board-wide netclass width, **0.25 mm**,
-> because no per-net width mechanism exists in the generator — `track_mm` is a single
-> number per board and nothing overrides it for a power net.
+> every board in this fleet was drawn at the one board-wide netclass width, **0.25 mm**,
+> because no per-net width mechanism existed in the generator — `track_mm` was a single
+> number per board with nothing overriding it for a power net.
+>
+> ⚠ **THAT LAST SENTENCE IS NO LONGER TRUE and this note is kept for the audit trail.**
+> `net_widths` was added to `elec/layout.py` the same day (a dict of net-name pattern →
+> width, which builds a netclass per width and assigns it), and `output_panel` and
+> `motor_ctrl` both use it to put their 24 V rails on **0.5 mm** — 1.45 A, not 0.88.
+> The shortfall below is therefore the state that prompted the fix, not the state today.
+> What is still true is the conclusion the fix could not reach: 0.5 mm is as far as a
+> blanket netclass goes, because these nets land on 0402 pads 0.6 mm wide, so the J6→J7
+> pass-through still wants deliberate 2.8 mm trunk copper that no netclass can express.
 >
 > By IPC-2221 at a 10 °C rise, 0.25 mm carries:
 >
