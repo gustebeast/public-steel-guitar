@@ -287,28 +287,21 @@ def motor_ctrl():
     v33 += c_bulk[1]; gnd += c_bulk[2]
 
     # ── USB-C to the Pi ──────────────────────────────────────────────────────
-    # ⚠ USB_DP DOES NOT ROUTE ON THIS BOARD, AND IT IS THE LINK TO THE PI. One of the two
-    # unconnected nets DRC reports, U4.47 to J4.A6. The cause is the optical board's
-    # problem exactly, measured side by side on both boards: identical receptacle,
-    # identical footprint, all four data pads on a 0.500 mm pitch with copper on each.
-    # A6 and B6 are BOTH D+ and sit on opposite sides of the D- pads, so joining them
-    # crosses D-, and escaping between pads wants 0.6 of via plus 0.137 of clearance
-    # beside a 0.2 track: 0.537 mm into 0.500 mm. Unroutable by construction, not hard.
+    # ⚠ USB_DP ROUTES HERE, AND AN EARLIER NOTE IN THIS PLACE SAID IT COULD NOT. Worth
+    # keeping the correction, because the arithmetic was right and the conclusion drawn
+    # from it was not. Escaping BETWEEN two adjacent USB-C pads does need 0.6 of via plus
+    # 0.137 of clearance beside a 0.2 track -- 0.537 mm into a 0.500 mm pitch -- and that
+    # remains impossible. But joining A6 to B6 does not have to pass between the pads: the
+    # router took it AROUND THE ENDS. The pads span y 119.10..120.55 and the link runs
+    # across at y = 120.85, clearing them by 0.305 mm, which is 0.18 mm edge to edge
+    # against a 0.127 fab rule. Tight, legal, and DRC agrees at zero violations.
     #
-    # ⚠ AND THE FIX THAT SOLVED IT THERE DOES NOT TRANSFER YET. Declaring the pair --
-    # diff_pairs with chain U4 -> J4, diff_pair_inner In2.Cu, exactly the optical recipe
-    # -- fails in _escape_plan: "no clear path U4->J4 [('escape', 15520)]", every
-    # candidate rejected before any path shape is tried, and layout.py aborts, so the
-    # board does not build at all. Reverted for that reason, not because the idea is
-    # wrong.
-    #
-    # The likely difference is which package the pair has to leave. On optical the
-    # declared run is PHY -> connector and the PHY is an HVQFN-24, 4x4 mm on 0.5 mm
-    # pitch; the H743 speaks ULPI, so its own pins are never in the pair. The CH32V307
-    # has native USB, so here the pair must escape U4 itself -- QFN-68, 8x8 mm, 0.4 mm
-    # pitch. That is an explanation, not a measurement: the counter says both ends were
-    # tried and does not say which one failed. Instrument _escape_plan per end before
-    # spending anything on it.
+    # ⚠ IT IS A SEARCH RESULT, NOT A CONSTRUCTION, WHICH IS THE PART TO WATCH. Nothing was
+    # done to USB_DP: it appeared when +24V went from 0.25 to 0.5 mm and perturbed the
+    # router's search, and a solution found that way can be lost the same way. The optical
+    # board does not rely on luck here -- it declares the pair and _flip_merge builds the
+    # A6/B6 link deliberately -- and if this link goes missing after some unrelated
+    # change, that is the fix, not another routing run.
     # HRO TYPE-C-31-M-12 (LCSC C165948), the same receptacle the optical board
     # uses. Both halves of D+/D- are tied so the cable works either way up.
     # VBUS IS DELIBERATELY UNCONNECTED: the board runs off the 24 V rail, and
