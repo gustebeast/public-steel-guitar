@@ -133,10 +133,14 @@ GLOBAL_OK = {
     frozenset({"leg_body_stub", "bridge_endplate"}),
     # the electronics tray's snap nubs/fingers bite their boards by design
     frozenset({"electronics_tray", "pi5"}),
-    frozenset({"electronics_tray", "teensy_ifc"}),
-    # a motor's CAN tee mounts right at that motor's -Y PCB (the drop pigtail is short);
-    # the tee-board corner grazing the motor body there is that mount contact
-    frozenset({"tee_pcb", "motor"}),
+    frozenset({"electronics_tray", "motor_ctrl"}),   # teensy_ifc is deleted; the
+                                                    # merged controller took its place
+    # (tee_pcb <-> motor is GONE, 2026-09-14: it was written for a corner graze and had grown
+    # into 1621 mm3 of board buried in motor 9. The tees now sit ON the motors, lapping them
+    # with 0.8 of air, so a touch there is a bug again and the gate must say so.)
+    # ⚠ MAIN'S REMOVAL WINS OVER MY KEEP. I still had the allowance on this branch; it
+    # predates the tees moving onto the motors, so re-adding it would silently re-blind
+    # the gate to the exact overlap that decision was meant to expose.
     # legs (FLUSH round): the BODY STUB's octagon wall tenons mortise the
     # rail band (0.1 fit) and its top face butts the body bottom; the
     # leg head enters its socket; the stack below is designed contact
@@ -299,8 +303,52 @@ def _knee(n) -> bool:
 # pickup. The gate never reported it: TP_FAMILY accepted ANY deck contact with
 # pickup_zplate, so a real collision read as a designed one. Note the gate still
 # only checks the demo pose; the 308 mm^3 case needs a sweep across the depth window.
-DEFERRED = {frozenset({"pickup_zplate", "top_plate"})}
+# CROSS-AGENT COLLISIONS FROM THE 2026-09-17 MERGE. Neither branch was red alone; both
+# pairs appeared only when the two landed together, which is exactly what the lead's
+# build exists to find. Parked so branner's chassis/leg/deck round is not held behind two
+# other agents (user: these must not block merges), each with its owner named.
+DEFERRED = {frozenset({"pickup_zplate", "top_plate"}),
+            # ~750 mm3 per segment, x3. bronner's optical cable run (a 1.6 bundle at
+            # y -129, z -9, the board's whole length) crosses the -Y rail branner CLOSED
+            # in the same round. OWNER bronner, with branner: the route needs a way
+            # through, or the rail needs a port. Nobody has guessed at it.
+            frozenset({"chassis", "optical_cables"}),
+            # brenner's leg blind-mate against branner's decoupled body adapter at the
+            # -X/+Y corner: the patch lead 379 mm3, the plug 140 mm3. OWNER brenner --
+            # body_adapter lives in leg_stack, their registered scope, so both halves of
+            # this one are theirs.
+            frozenset({"body_adapter", "leg_trrs_patch"}),
+            frozenset({"body_adapter", "leg_trrs_plug"})}
+
+# DEFERRED CLASSES, by pattern. Some deferrals are not one pair but one fault repeated
+# per station -- five knee levers, five pedals -- and listing 55 frozensets would hide
+# the shape of the thing. Each rule is (pattern_a, pattern_b, reason) and matches in
+# either order. Same contract as DEFERRED above: LOUD on every run, named owner, and it
+# leaves the moment the geometry stops overlapping.
+#
+# THE PCB COMPONENTS ARRIVED (2026-09-15). Both classes appeared when the boards stopped
+# being plain boxes and started carrying their real parts -- the boards doing their job
+# for the first time, not new faults. The user's call, today: these must not block merges.
+DEFERRED_RULES = (
+    (re.compile(r"^pedal\d+_[A-Z]+\d+$"), re.compile(r"^pedal_bar_[abc]$"),
+     "pedal board parts vs the pedal bar (30 pairs, ~195 mm3). USER DEFERRED: the bar is "
+     "to be redesigned around the boards later"),
+    (re.compile(r"^(?:[a-z0-9]+_)*k[lv]_[A-Z]+\d+$"), re.compile(r"housing$"),
+     "lever board parts vs their knee/lever housing (25 pairs, ~207 mm3). USER DEFERRED; "
+     "OWNER branner -- the cradle was sized to a plain box, and bronner's board is at its "
+     "floor (21.4 against J1's 21.29 courtyard), so the room has to come from the housing"),
+)
 _DEFERRED_SEEN = set()
+
+
+def _deferred_rule(na, nb):
+    """The reason this pair is parked, or None. Matches in either order."""
+    for pa, pb, why in DEFERRED_RULES:
+        # search, not match: the housing pattern anchors on the END of the name
+        # (lkr_knee_housing, vkl_kv_housing), and match() would only ever try the start.
+        if (pa.search(na) and pb.search(nb)) or (pa.search(nb) and pb.search(na)):
+            return why
+    return None
 
 
 def intended(na, nb) -> bool:
@@ -312,6 +360,14 @@ def intended(na, nb) -> bool:
             _DEFERRED_SEEN.add(_pair)
             print("  !! DEFERRED overlap (NOT a designed contact, must be fixed before "
                   "the instrument is finalised): %s <-> %s" % (na, nb))
+        return True
+    _why = _deferred_rule(na, nb)
+    if _why is not None:
+        _key = frozenset({na, nb})
+        if _key not in _DEFERRED_SEEN:                  # every pair named, never a silent class
+            _DEFERRED_SEEN.add(_key)
+            print("  !! DEFERRED overlap (NOT a designed contact, must be fixed before "
+                  "the instrument is finalised): %s <-> %s -- %s" % (na, nb, _why))
         return True
     if _knee(na) and _knee(nb):
         return True
@@ -383,8 +439,16 @@ DEFAULT_SKIP = {"belt", "belt_clamp"}
 # real routing bugs. So it buys sensitivity at no noise cost.
 MIN_VOL = 0.05
 
+# INCREMENTAL PAIR CACHE (cadkit.overlap_check): a pair's common volume depends only on
+# the two shapes, so it is keyed by their BRep fingerprints and reused while both are
+# byte-identical. A build that changed three parts re-booleans only those parts' pairs.
+# NOT an exclusion list -- nothing is assumed safe; a changed part always recomputes.
+# Gitignored: it is derived, per-worktree, and cheap to rebuild.
+CACHE = str(pathlib.Path(__file__).resolve().parent.parent / ".overlap-cache.json")
 
-def gate(comps, *, full=False, only=(), exclude=(), jobs=None, show_all=False) -> int:
+
+def gate(comps, *, full=False, only=(), exclude=(), jobs=None, show_all=False,
+         cache=None) -> int:
     """Scan ALREADY-BUILT components and return the unintended-overlap count.
 
     ``comps`` is ``[(name, cq.Shape), ...]`` — i.e. what ``collect_components()``
@@ -406,7 +470,8 @@ def gate(comps, *, full=False, only=(), exclude=(), jobs=None, show_all=False) -
         if skip:
             comps = [(n, s) for n, s in comps if base(n) not in skip]
             print(f"skipping base names (pass --full to include): {sorted(skip)}")
-    return run(comps, intended, jobs=jobs, show_all=show_all, min_vol=MIN_VOL)
+    return run(comps, intended, jobs=jobs, show_all=show_all, min_vol=MIN_VOL,
+               cache=CACHE if cache is None else cache)
 
 
 def main():

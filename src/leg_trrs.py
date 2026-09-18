@@ -721,7 +721,7 @@ def cables(sx: float = LS.LEG_X, ly: float = LS.LEG_Y, k: int = 0):
     fold = LS.Z_TOP - CHAN_D / 2.0
     from . import electronics as EL                      # late: sizes only
     from . import wiring as WR                           # late: wiring reads chassis
-    tail = WR.trrs_mouth_z() - EL.TRRS_PLUG_RUN          # the station plug's free end
+    tail = WR.trrs_mouth_z() - WR.TRRS_PLUG_RUN          # the station plug's free end
     patch = _run([(x, y, PLUG_TOP),                             # the plug's back
                   (x, y, fold),                                 # folded into the channel
                   (b[0], b[1] + 1.0, fold),                     # out the -Y face

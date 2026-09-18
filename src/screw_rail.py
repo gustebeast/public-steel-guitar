@@ -42,6 +42,12 @@ X_PX    = D.BRIDGE_BASE_X1                 # +X face (= endplate +X edge)
 # they wrap the toothed band, whose top is 1.5 mm below the pulley's own top
 # (measured off the built belts), so a rail seated on the tops clears them.
 SEAT_CLR = 0.3                              # slop under the stack (it seats UP on the ledge)
+# INSTALL ROOM UNDER EVERY SEAT (user, 2026-09-17): the seat bore carries on ONE BEARING HEIGHT
+# past its mouth, so a 688 can be brought in from the side at that level and then dropped up into
+# the seat. Without it the bore is a blind pocket whose only approach is the Ø11.8 pulley channel
+# below -- and a Ø16 bearing does not pass through Ø11.8. This is half of what replaced the drive
+# relief, which bought the same access by rebating 3.24 off the WHOLE inner face of the end wall.
+BRG_DROP = D.BRG688_W                       # 5.0
 BOT      = D.SUPPORT_BRG_BOT - SEAT_CLR     # -38.9, rail underside = seat mouth
 TOP      = D.SUPPORT_BRG_Z + D.BRG_LEDGE_T  # -29.6
 HEIGHT   = TOP - BOT                        # 9.3
@@ -59,6 +65,10 @@ HEIGHT   = TOP - BOT                        # 9.3
 # It is the mirror of the constraint on screw_collar's Ø5.6 pilot boss, which lands on
 # the inner rings only for the same reason from the other side.
 SEAT_LEDGE_D = 18 * D.BEAD                 # 14.4 — lands on 688ZZ's OUTER ring
+PULLEY_CH_D  = D.PULLEY_FLANGE_OD + 2 * 0.4   # 11.8 — the pulley's SWEPT circle + clearance
+assert PULLEY_CH_D < D.SUPPORT_BRG_OD + 0.2, (
+    "the pulley channel is wider than the bearing seat above it, so the bearing would fall "
+    "straight through instead of landing on its ledge")
 # 12.0 was wrong: it sat in the SHIELD zone (~10.2..13.8), so the ledge would have
 # pressed on a shield rather than the outer ring it has to back. The outer ring starts
 # at ~13.8, so the bore has to clear that before it bears on anything real.
@@ -121,8 +131,8 @@ def seat_cutter() -> cq.Workplane:
     for i in range(D.N_STRINGS):
         y = D.string_y(i)
         # bearing seat: counterbore from the bottom (−Z) up to the thrust ledge
-        seat = _bore(D.SUPPORT_BRG_OD + 0.2, D.SUPPORT_BRG_W + SEAT_CLR,
-                     (D.screw_x(i), y, BOT - 0.01))
+        seat = _bore(D.SUPPORT_BRG_OD + 0.2, D.SUPPORT_BRG_W + SEAT_CLR + BRG_DROP,
+                     (D.screw_x(i), y, BOT - 0.01 - BRG_DROP))
         # the 1.6 LIP window (Ø < the bearing OD — that step IS the face the outer ring
         # pushes against, and the whole string load with it)
         lip = _bore(SEAT_LEDGE_D, LEDGE_TOP - (BOT - 1), (D.screw_x(i), y, BOT - 1))
@@ -130,6 +140,28 @@ def seat_cutter() -> cq.Workplane:
         boss = _bore(NUT_PASS_D, (TOP + 1) - (LEDGE_TOP - 0.01), (D.screw_x(i), y, LEDGE_TOP - 0.01))
         cut = seat.union(lip).union(boss)
         tool = cut if tool is None else tool.union(cut)
+    return tool
+
+
+def pulley_channel(z0: float, z1: float) -> cq.Workplane:
+    """The ten PULLEY INSTALL bores, z0..z1, as a standalone cutter.
+
+    The screw goes in FROM BELOW (user) with its pulley already threaded on -- the pulley IS the
+    retaining collar -- so the whole ASCENT has to be clear, and because the screw is long the
+    ascent starts under the instrument. What sweeps is a CIRCLE (Ø11 about the screw line), not
+    the pulley's outline, so this is a round bore per screw rather than one prism across the bay.
+
+    Lives here because this module owns the screw rows and the teardrop that shapes every bore in
+    them; the CALLER owns the Z extents, which come off the chassis floor it has to break out of.
+
+    EVERY screw gets one, including the near row's five, whose bores cut nothing but air today:
+    the only material down here is the +X end wall and it is well +X of them. The rule is "each
+    pulley owns its ascent", not "the ones that currently foul the wall" -- move a row in X and
+    nothing here needs editing."""
+    tool = None
+    for i in range(D.N_STRINGS):
+        b = _bore(PULLEY_CH_D, z1 - z0, (D.screw_x(i), D.string_y(i), z0))
+        tool = b if tool is None else tool.union(b)
     return tool
 
 

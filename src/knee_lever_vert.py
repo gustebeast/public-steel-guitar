@@ -77,7 +77,13 @@ _STROKE     = LOBE_RC_V * math.sin(math.radians(THROW_V))
 _FEEL_DZ_V  = LOBE_RC_V + KL.LOBE_RC        # +22.2: how far the whole feel block rises
 
 # ── the lever ────────────────────────────────────────────────────────────────
-TEN_PITCH   = KL.RIB_PITCH / 2.0    # the chassis rib comb, along local Y once posed
+# The two stations sit as far apart as the -Y wall was widened to allow, rounded DOWN to a
+# whole number of bottom-grid pitches so both land in slots. On the old 22.35 comb that span was
+# exactly one pitch; on the 8.8 grid it is two (17.6). Taking one pitch instead would put the
+# inboard stem within 0.05 of the housing centre, straight over the arm slot -- the roof-height
+# assert below catches that, which is how this was found.
+TEN_SPAN    = KL.RIB_PITCH / 2.0    # the span the -Y wall was built to host (22.35)
+TEN_PITCH   = KL.D.LEVER_PITCH * int(TEN_SPAN // KL.D.LEVER_PITCH)      # 17.6
 ARM_LEN_V   = 80.0                  # axle -> paddle end (user; was 50). 80 gives 27.4 of
                                     # paddle lift at 20° instead of 17.1 — a bigger knee
                                     # rise, and a LIGHTER one: the feel spring makes a
@@ -174,8 +180,20 @@ TEN_X0, TEN_X1 = HOUS_X0 + 2.0, HOUS_X1     # the slide span available
 # the phase is set by where we pose the lever in the guitar's X, since after the
 # mount's 90° rotation the rib comb runs along local Y. So the housing does not
 # chase the ribs; the pose does.
-TEN_Y = (HOUS_HW_P - KL._JHW - TEN_MARGIN - TEN_PITCH,      # -12.60
-         HOUS_HW_P - KL._JHW - TEN_MARGIN)                  # +10.40
+# CENTRED on the housing, not pushed against the sensor wall. With the spacing free, hard
+# against that wall was the way to get them furthest apart; with the spacing locked to the grid
+# the phase is the only freedom left, and centring is what maximises the distance from the
+# nearest stem to the ARM SLOT -- which is what sets how high the slot wall may go (the assert
+# in _housing). Anchored at the wall, the inboard stem came 3.5 from the centre and the roof
+# had to drop under the arm's reach.
+# THREE, with the MIDDLE ONE ON THE LEVER'S CENTRELINE (user, 2026-09-18). The outer pair is
+# where it was -- TEN_PITCH apart, so the housing's own width (HOUS_HW_N) does not move -- and
+# the middle station is the grid station between them, free room that was being left empty.
+# It is INTERRUPTED over the arm slot's X span, by construction and not by special-casing: the
+# slot is cut after the tenons, so the same sweep that clears the arm trims this one, exactly
+# as LKL's over-the-lever station is trimmed by its lever room. What survives is the -X run,
+# about 60 of it, which is where this lever's engagement lives anyway.
+TEN_Y = (-TEN_PITCH / 2.0, 0.0, TEN_PITCH / 2.0)
 
 
 def _top_tenon(ty):
@@ -243,7 +261,11 @@ def _housing() -> cq.Workplane:
     # real reach in this span, from the swept envelope, has to stay under it.
     _reach = (_env.intersect(box_at(_x1 - _x0, 2 * _hw + 2.0, 400.0, x=(_x0 + _x1) / 2, y=0.0, z=0.0))
               .val().BoundingBox().zmax)
-    _stem = min(abs(ty) - KL._JW / 4 for ty in TEN_Y)          # nearest stem edge to the slot centre
+    # ...measured against the tenons that have to stay ROOTED ACROSS THIS SPAN, which is the
+    # outer pair. The centre one stands ON the slot's own centreline and is cut away here by
+    # design (see TEN_Y), so asking the roof to stay under a root that does not exist in this
+    # span would drop the wall for nothing.
+    _stem = min(abs(ty) - KL._JW / 4 for ty in TEN_Y if abs(ty) > 1e-9)
     _zw = HOUS_Z1 - KL.TEN_ROOT - max(0.0, _hw - _stem)
     assert _zw >= _reach - 1e-6, (
         f"the slot wall ({_zw:.2f}) is under the arm's reach ({_reach:.2f}) in its own span")

@@ -49,6 +49,30 @@ PARTS = {
     "leg_body_stub_trrs": (LG.leg_body_stub_trrs, "y", LG.SQ_W / 2, +1),
 }
 
+
+def _chassis_seg(i):
+    """The chassis prints Z-UP, bed at chassis.Z_BOT (the rib/rail bottoms). Built lazily:
+    importing src.build costs minutes, and the leg parts above must not pay it.
+
+    The OPAQUE part AND its transparent light band, unioned: they are one printed object in two
+    filaments, so the band's groove is not a ceiling -- the second filament fills it as the print
+    goes. Checking the opaque half alone reported that groove's roof as a 2159 mm2 bridge."""
+    def build():
+        from src import build as B
+        seg = B.chassis_segments[i]
+        light = B.chassis_light[i]
+        return seg.union(light) if light.solids().size() else seg
+    return build
+
+
+def _register_chassis():
+    from src import chassis as CH
+    for i in range(len(CH.SPLIT_X) + 1):
+        PARTS[f"chassis_{i}"] = (_chassis_seg(i), "z", CH.Z_BOT, -1)
+
+
+_register_chassis()
+
 AX = {"x": 0, "y": 1, "z": 2}
 
 
