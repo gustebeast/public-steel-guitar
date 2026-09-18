@@ -342,6 +342,15 @@ def lever_sensor():
 
 
 BOARD_NOTES = {
+    # ⚠ NO qty_per_instrument, AND THIS IS THE ONE BOARD THERE IS MORE THAN ONE OF. Every
+    # other board declares it -- optical 1, output_panel 1, motor_ctrl 1, can_tee 10 (one
+    # per motor) -- and this one, the only multi-unit board, declares nothing. It is left
+    # absent rather than guessed: the BOM buys 11 angle sensor ICs, but nothing in this
+    # repo states how those 11 divide into knee levers, pedals and spares, and a board
+    # count invented to fill the field would be indistinguishable from a measured one.
+    # That is exactly how can_tee came to ship a 9 (see the note there). FILL THIS IN
+    # from the lever/pedal station list before the panel is ordered; until then the
+    # absence is the honest record.
     "outline_mm": (BOARD_W, BOARD_L),
     "layers": 4,
     "thickness_mm": 1.6,
