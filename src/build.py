@@ -292,6 +292,14 @@ for _i, _seg in enumerate(chassis_segments):     # chassis split into dovetailed
                               "and NO seam fastener — the deck, endplates and finally the 4 leg screws "
                               "close the seam's Z axis. + tee cradles)")
 # Section-joint coupon (the LEG stack's octagon at the real 28 mm width — legs.SEC_W)
+# COIL MANDREL -- UNREGISTERED, and deliberately. src/coil_mandrel.py sizes a coil
+# at r 9.5 against the 22.8 minimum bend radius Tensility publish for 10-02135, so
+# it asserts on import and CANNOT be built until that is resolved (accept the
+# overbend, move the slack store out of the leg, or source a different lead -- see
+# the block at the top of the module and docs/leg-trrs-routing.md).
+# Left out of PARTS rather than left in to fail, so the lead's build is not red on
+# a decision that is not the build's to make. Re-register both entries when it is.
+
 PARTS["test_section_tenon"] = (
     lambda: heal(__import__("src.joint_coupon", fromlist=["e"]).section_tenon_coupon()),
     "test_section_tenon.step",
