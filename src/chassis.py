@@ -422,16 +422,22 @@ def _build_full() -> cq.Workplane:
     # any bay -- its two tenons drop into the two ribs flanking the chosen bay). Even rib pitch -> the
     # one tenon fits all. (Retention is a set screw that presses the rib ledge -- no per-bay pilot.)
     from . import knee_lever as _KL
-    # knee_lever.MOUNT_X is a hardcoded -501.0 that MUST land on a rib -- the lever's
-    # tenons drop into the comb, and the comb is generated from the motor pitch.
-    # knee_lever cannot derive it (chassis imports knee_lever, not the other way), so
-    # the relationship is only ever true by hand. Assert it here, where both are in
-    # scope: change the motor pitch and this fires immediately instead of silently
-    # burying the tenons in solid rib (3021 mm^3, found the hard way).
-    assert any(abs(_rx - _KL.MOUNT_X) < 1e-6 for _rx in _MORT_X), (
-        "knee_lever.MOUNT_X %.2f is not a rib X -- the comb is at %s. The lever "
-        "mount must sit ON a rib; move MOUNT_X to one." % (
-            _KL.MOUNT_X, [round(r, 2) for r in _MORT_X if abs(r - _KL.MOUNT_X) < 40]))
+    # IT IS THE TENONS THAT MUST LAND ON STATIONS, not the lever's origin (user, 2026-09-18).
+    # That used to be the same statement -- the tenon set started at the axle, so posing the
+    # axle on a station put every tenon on one. It no longer is: the set is anchored on the
+    # housing's -X edge now, so it carries a phase and MOUNT_X is deliberately off-station by
+    # exactly that much. Assert what actually matters, and assert it for EVERY tenon rather
+    # than for one datum that used to stand in for them. knee_lever cannot check this itself
+    # (chassis imports it, not the other way), so it lives here, where both are in scope:
+    # change the grid pitch and this fires instead of silently burying tenons in solid floor
+    # (3021 mm^3, found the hard way).
+    _off = [round(_KL.MOUNT_X + _t, 3) for _t in _KL.TEN_X
+            if not any(abs(_rx - (_KL.MOUNT_X + _t)) < 1e-6 for _rx in _MORT_X)]
+    assert not _off, (
+        "knee_lever tenons at %s are not on mortise stations (MOUNT_X %.2f, phase %.2f). The "
+        "grid is at %s -- the pose has to hand the tenon phase back." % (
+            _off, _KL.MOUNT_X, _KL.TEN_X[0],
+            [round(r, 2) for r in _MORT_X if abs(r - _KL.MOUNT_X) < 40]))
     # THE SEAM TENON MUST CLEAR THE GRID. It is the only material half of the seam joint, and
     # it used to stand from the bed straight through the mortise band -- which is why the two
     # stations flanking each seam had to be dropped. Keyed to the real solids so that a later
