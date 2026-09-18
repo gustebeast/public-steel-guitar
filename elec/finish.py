@@ -128,18 +128,23 @@ def finish(stem, rounds=1):
     the long retried run has just cut across. The 3 unconnected and 7 violations are that
     damage, not the retried net.
 
-    ⚠ SO THE FIX LOOKS LIKE AN ORDERING FIX -- AND IT IS NOT SAFE YET. Running local nets
-    BEFORE the retry, by the same "fewer alternatives first" argument that put the
-    stitcher ahead of local nets in layout.py, does remove the interference exactly:
-    local nets keep all 90 segments with nothing skipped. But route.py then exits
-    non-zero on the second pass, twice out of twice, where the current order completes
-    cleanly, and the failure is at interpreter shutdown AFTER the board has been written
-    correctly -- no traceback, the segments imported, the file on disk. Something about
-    the extra pre-laid copper upsets pcbnew's teardown.
+    ⚠ THE ORDERING IS FIXED AND THE RETRY STILL DOES NOT PAY. Local nets now run BEFORE
+    the retry in layout.py, by the same "fewer alternatives first" argument that put the
+    stitcher ahead of local nets, and the interference is gone: 90 segments kept, nothing
+    skipped, and pass 2's seven violations with it. What is left is pass 2 at 4
+    unconnected against pass 1's 1. The retry's failure is now CLEAN rather than
+    destructive, which is a better answer than the old one and still not a reason to turn
+    it on.
 
-    Reverted until that is understood, because the only path the reorder helps is the one
-    it breaks. To reproduce: move the local_nets block in layout.py above the retry block
-    and run finish(stem, rounds=2) on optical.
+    (That experiment could not report at all until route.py stopped aborting in pcbnew's
+    interpreter teardown -- see the note at the bottom of route.py. Two runs died there
+    and looked like the reorder breaking the router, when the board had been written
+    correctly both times.)
+
+    The remaining question is the one the numbers keep pointing at: the retried net is
+    long and the strip is where every failure lives, so pre-laying it uses the scarce
+    space to solve the easy half of the problem. A retry that only ever laid the CLUSTER
+    end of a failed net, and left the long run to the router, has not been tried.
     """
     retry = stem + ".retry.json"
     if os.path.isfile(retry):
