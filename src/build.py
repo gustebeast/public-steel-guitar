@@ -954,7 +954,20 @@ def _vkl_station() -> float:
     # its tenons sit at KV.TEN_Y in the guitar's X once posed; _lever_station returns the MOUNT
     # that puts them all on real stations, so there is nothing left to subtract here (there used
     # to be, when it returned a station and this had to undo the offset by hand).
-    return _lever_station(mid, KV.TEN_Y)
+    #
+    # ...THEN ONE MORTISE -X (user, 2026-09-18, reading the render). THE GRID CANNOT CENTRE THIS
+    # LEVER: the two legal mounts either side of the knee gap's midpoint sit 5.20 off it each
+    # way, so which one it takes is a preference, not an optimum, and the user wants the -X one.
+    # Stepped by a whole PITCH, so the three tenons stay in slots that exist -- re-checked below
+    # rather than assumed, because a lever over solid floor is 1-2.5 cm3 of interference and the
+    # gate is the only other thing that would notice.
+    m = _lever_station(mid, KV.TEN_Y) - D.LEVER_PITCH
+    from . import chassis as CH_V
+    _have = set(round(x, 3) for x in CH_V._MORT_X)
+    _off = [round(m + t, 3) for t in KV.TEN_Y if round(m + t, 3) not in _have]
+    assert not _off, ("the -X step puts VKL's tenons at %s, which are not mortise stations -- "
+                      "the station one pitch -X of %.2f is dropped" % (_off, m + D.LEVER_PITCH))
+    return m
 
 
 def _lever_station(x_target, offsets, mirrored=False):
