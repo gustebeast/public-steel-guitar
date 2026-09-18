@@ -395,6 +395,45 @@ ADC_PAIRS = (
 )
 DIFF_SIGN_INVERTED = (1, 5, 8)   # strings with A on ADC1 instead of ADC3 -- see above;
 #                                  a tripwire for firmware, NOT a sign table to apply
+
+
+# ⚠ WHICH ADC UNIT A PIN CAN ACTUALLY REACH, CHECKED RATHER THAN ASSUMED. The pairing
+# argument above is entirely about which ADC reads which detector -- and every word of it
+# is worthless if a pin does not offer that ADC at all. Nothing downstream can catch it:
+# the netlist just connects a net to a package pin, DRC compares copper to the netlist,
+# and a pin wired to an ADC it does not have is a dead analog channel that looks perfect
+# all the way to the bench.
+#
+# Verified 2026-09-17, all twenty pins against Table 9 of DS12110 (STM32H742/743/753),
+# zero mismatches. The units each pin offers:
+ADC_UNITS = {
+    "PA0": (1, 2), "PA1": (1, 2), "PA2": (1, 2), "PA4": (1, 2),
+    "PA6": (1, 2), "PA7": (1, 2), "PC1": (1, 2, 3), "PC4": (1, 2), "PC5": (1, 2),
+    "PF3": (3,), "PF4": (3,), "PF5": (3,), "PF6": (3,), "PF7": (3,),
+    "PF8": (3,), "PF9": (3,), "PF10": (3,), "PF11": (1,), "PF12": (1,), "PF13": (2,),
+}
+# the unit each pin is USED as, read off the ADCn[k] comments in ADC_PAIRS above
+ADC_USED_AS = {
+    "PA1": 1, "PF4": 3, "PC1": 2, "PF13": 2, "PF10": 3, "PA7": 2, "PC4": 2, "PC5": 2,
+    "PF11": 1, "PF5": 3, "PF9": 3, "PA6": 2, "PF8": 3, "PA4": 1, "PF12": 1, "PF6": 3,
+    "PF7": 3, "PA2": 1, "PF3": 3, "PA0": 1,
+}
+assert set(ADC_USED_AS) == {p for pair in ADC_PAIRS for p in pair}, (
+    "ADC_USED_AS has drifted from ADC_PAIRS")
+for _p, _u in sorted(ADC_USED_AS.items()):
+    assert _u in ADC_UNITS[_p], (
+        "%s is used as an ADC%d input and the H743 does not offer one there (it has %s)"
+        % (_p, _u, ", ".join("ADC%d" % n for n in ADC_UNITS[_p])))
+
+# ⚠ AND THE TRAP THAT NEARLY MADE THIS CHECK LIE. The datasheet writes a channel shared
+# between units as ADC12_INP14 or ADC123_INP11, one token, not as ADC1_INP14 plus
+# ADC2_INP14. A search for "ADC1_INP" therefore finds NONE of the shared channels, and
+# the first run of this check reported eleven of the twenty pins as having no ADC at all.
+# Every one of those was the search being wrong. A second trap sits on top: extracting the
+# table from the PDF as flat text scrambles the columns badly enough that a channel from
+# one row lands beside another row's pin, so the answers that do come back cannot be
+# trusted either. The numbers above were read with per-word coordinates, row by row,
+# and the three the column logic could not resolve were read off the page by hand.
 ADC_SPARE = "PF14"      # the one channel left over; brought out to nothing
 
 
