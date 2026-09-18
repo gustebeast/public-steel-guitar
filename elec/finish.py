@@ -111,17 +111,35 @@ def _run(script, stem):
 def finish(stem, rounds=1):
     """Route `stem`; with rounds>1, retry the nets the router could not finish.
 
-    ⚠ THE RETRY IS OFF BY DEFAULT BECAUSE IT HAS NEVER YET PAID. Measured on three
-    boards: lever_sensor 4 -> 4, output_panel 2 -> 2, optical 12 -> 27 with violations.
-    It doubles the wall clock of every run -- twenty minutes instead of ten on the
-    optical board -- and so far its only achievement is not making things worse, which
-    the keep-the-better-board rule guarantees anyway.
-    
-    The idea still looks right: freeze the nets the router demonstrably failed rather
-    than the ones guessed in advance. What the numbers say is that a net the router could
-    not finish is usually one the generator cannot finish either -- they are blocked by
-    the same geometry, and the generator has strictly fewer moves. Worth keeping and
-    worth having off.
+    ⚠ THE RETRY IS OFF BY DEFAULT BECAUSE IT HAS NEVER YET PAID. Re-measured on the
+    optical board 2026-09-17, now that layout's inner-layer fallback works: pass 1 gives
+    1 unconnected and 0 violations, pass 2 gives 3 and 7. It doubles the wall clock of
+    every run and its only achievement is not making things worse, which the
+    keep-the-better-board rule guarantees anyway. (The old figures here, 12 -> 27, were
+    from before the board had a working pre-lay; the conclusion survived the re-measure
+    but the numbers did not.)
+
+    ⚠ AND THE REASON RECORDED HERE WAS WRONG, WHICH MATTERS MORE THAN THE NUMBERS. It
+    said a net the router could not finish is usually one the generator cannot finish
+    either, blocked by the same geometry. Printing the names of the edges the pre-lay
+    skips shows otherwise: the retry LAYS its net without difficulty, 8 segments. What it
+    costs is everything laid after it -- local nets drop from 90 segments with nothing
+    skipped to 76 with EIGHTEEN skipped, every one a short cluster hop in the strip that
+    the long retried run has just cut across. The 3 unconnected and 7 violations are that
+    damage, not the retried net.
+
+    ⚠ SO THE FIX LOOKS LIKE AN ORDERING FIX -- AND IT IS NOT SAFE YET. Running local nets
+    BEFORE the retry, by the same "fewer alternatives first" argument that put the
+    stitcher ahead of local nets in layout.py, does remove the interference exactly:
+    local nets keep all 90 segments with nothing skipped. But route.py then exits
+    non-zero on the second pass, twice out of twice, where the current order completes
+    cleanly, and the failure is at interpreter shutdown AFTER the board has been written
+    correctly -- no traceback, the segments imported, the file on disk. Something about
+    the extra pre-laid copper upsets pcbnew's teardown.
+
+    Reverted until that is understood, because the only path the reorder helps is the one
+    it breaks. To reproduce: move the local_nets block in layout.py above the retry block
+    and run finish(stem, rounds=2) on optical.
     """
     retry = stem + ".retry.json"
     if os.path.isfile(retry):
