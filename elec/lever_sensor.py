@@ -265,6 +265,32 @@ def lever_sensor():
         net += c[1]; gnd += c[2]
     c_nrst = _c("C7", "100nF", "NRST filter")
     nrst += c_nrst[1]; gnd += c_nrst[2]
+
+    # ⚠ WITHOUT THESE FOUR PADS THIS BOARD CANNOT BE PROGRAMMED AT ALL, and there are
+    # eight to ten of them in the instrument. Audited 2026-09-17, after the same fault
+    # was found on the optical board: SWDIO and SWCLK reached the MCU and stopped --
+    # single-node nets, which layout drops as unplaceable and DRC cannot complain about.
+    #
+    # AND UNLIKE THE OTHER BOARDS THERE IS NO SECOND WAY IN. Listed from the netlist,
+    # the only externally reachable nets were +24V, CAN_H, CAN_L and GND. The CH32V203
+    # has no CAN bootloader -- WCH's ISP is USB or USART -- and this board brings out
+    # neither, nor a BOOT0 pin. motor_ctrl and output_panel at least have USB on a
+    # connector, so their ROM bootloader is reachable in principle; this one had nothing.
+    # An assembled lever board would have been a brick, ten times over.
+    #
+    # Four pads, not five: the board is FULL. A scan of its courtyards found six free
+    # 2.0 mm sites and no contiguous strip at all, so there is no room for the +3V3
+    # target-sense pad the optical board carries. SWDIO, SWCLK and GND are clustered
+    # within 2.5 mm for a probe; NRST is the outlier, which is the right one to strand
+    # because it is only needed for connect-under-reset recovery.
+    for _ref, _net, _what in (("TP1", swdio, "SWDIO"), ("TP2", swclk, "SWCLK"),
+                              ("TP3", gnd, "GND"), ("TP4", nrst, "NRST")):
+        _tp = Part(name="TestPoint", ref_prefix="TP", ref=_ref, dest="NETLIST",
+                   tool="skidl", value="SWD",
+                   description="SWD pad -- %s; bare copper, no component" % _what,
+                   footprint="TestPoint:TestPoint_Pad_D1.0mm",
+                   pins=[Pin(num=1, func=P)])
+        _net += _tp[1]
     for tag in ("C8", "C9"):
         c = _c(tag, "100nF", "MCU decoupling")
         v33 += c[1]; gnd += c[2]
@@ -307,6 +333,12 @@ BOARD_NOTES = {
     "chip_on_axle_xy": CHIP_XY,
     "placements": {
         "U4": (11.00, -0.60, 0.0),
+        # SWD pads -- the only four 2.0 mm sites this board has left; see the note in
+        # lever_sensor() for why they are not in a neat row.
+        "TP1": (4.75, 1.45, 0.0),      # SWDIO
+        "TP2": (4.75, -0.95, 0.0),     # SWCLK
+        "TP3": (7.15, 1.05, 0.0),      # GND  -- the three above are within 2.5 mm
+        "TP4": (-2.65, 2.25, 0.0),     # NRST -- stranded, recovery only
         "J1": (-10.55, 0.00, 90.0),
         "U1": (-1.10, 8.75, 0.0),
         "L1": (3.00, 8.70, 0.0),
@@ -405,6 +437,7 @@ if __name__ == "__main__":
     ERC()
     generate_netlist(file_=os.path.join(OUT_DIR, "lever_sensor.net"))
     netcheck.grounds_meet(os.path.join(OUT_DIR, "lever_sensor.net"))
+    netcheck.no_orphan_pins(os.path.join(OUT_DIR, "lever_sensor.net"))
     with open(os.path.join(OUT_DIR, "lever_sensor.board.json"), "w") as f:
         json.dump(BOARD_NOTES, f, indent=2)
     print("board %.1f x %.1f mm, %d placements, chip on the axle at (%.1f, %.1f)"
