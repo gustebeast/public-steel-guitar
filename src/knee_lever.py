@@ -502,7 +502,12 @@ MORT_Y0   = -3 * D.BEAD           # -2.4 mortise -Y mouth (opens outboard of the
 # crosses the stem wall (half-width _JW/4). The whole lever drops by the difference.
 _SEAT_ROOF_Z = (BRG_SEAT_D / 2 + BRG_WALL) * math.sqrt(2.0) - _JW / 4
 HOUS_TOP_Z = max(BODY_Z, BRG_OD / 2 + BRG_WALL, _SEAT_ROOF_Z)
-MOUNT_X, MOUNT_Y, MOUNT_Z = D.rib_comb_x(-501.0), -148.75, MB.BED_Z - HOUS_TOP_Z   # X snapped to the rib comb
+# X is SNAPPED AGAIN once the tenons are known (see _TEN_PHASE, below the housing block): the
+# TENONS are what must land on the grid, not the housing's origin, and the tenon set carries a
+# phase now. This first value is the nominal; nothing between here and there reads it but
+# MOUNT_POSE, which is rebuilt with it.
+MOUNT_X = D.rib_comb_x(-501.0)
+MOUNT_Y, MOUNT_Z = -148.75, MB.BED_Z - HOUS_TOP_Z
 # (MOUNT_Z read the bed as a spelled -75.15, which went stale when SCREW_TOP_Z /
 #  SCREW_PULLEY_Z / XBAR snapped to the grid — the live bed is MB.BED_Z = -74.95.)
 MOUNT_POSE = (MOUNT_X, MOUNT_Y, MOUNT_Z)
@@ -929,9 +934,31 @@ _TEN_PITCH = D.LEVER_PITCH          # = the chassis bottom grid (8.8). Was RIB_P
 # of the axle is skipped (user: dropping the x = 0 stubs is fine).
 _SEAT_RS = BRG_SEAT_D / 2                               # the seat bore's radius
 _SEAT_OPEN_HW = max(0.0, _SEAT_RS * math.sqrt(2.0) - HOUS_Z1)   # peak's width at the top face
-TEN_X = tuple(-k * _TEN_PITCH for k in range(20)
-              if HOUS_X0 + _JHW <= -k * _TEN_PITCH <= HOUS_X1 - _JHW
-              and (_SEAT_OPEN_HW <= 0.0 or abs(-k * _TEN_PITCH) >= _SEAT_OPEN_HW + _JHW))
+# THE -X-MOST TENON'S STEM IS FLUSH WITH THE HOUSING'S -X EDGE (user, 2026-09-18), and that
+# is what the set is anchored on now -- not the axle. WHY: the player picks which mortise the
+# lever hangs in, and the housing used to reach 5.31 further -X than its last tenon, so the
+# slot next to the body adapter could not be used: the tenon would fit, the housing behind it
+# would not. Flush, nothing sticks out past the joint, and LKL reaches one slot further -X.
+# The FLARE still overhangs that edge by (width - stem)/2, which is free: it is 45 deg, so it
+# prints self-supporting off the stem, and it lives up inside the chassis mortise anyway.
+# The stations stay a plain walk on the grid PITCH from there, so they still land in mortises;
+# what moved is the phase, and MOUNT_X takes it back out so the render still sits on stations.
+_J_STEM   = _JW / 2.0               # cadkit's octagon parity (stem = width/2 -- _octagon_profile)
+TEN_X_END = HOUS_X0 + _J_STEM / 2.0     # the -X-most station: stem face ON the housing edge
+TEN_X = tuple(TEN_X_END + k * _TEN_PITCH for k in range(40)
+              if TEN_X_END + k * _TEN_PITCH <= HOUS_X1 - _JHW
+              and (_SEAT_OPEN_HW <= 0.0
+                   or abs(TEN_X_END + k * _TEN_PITCH) >= _SEAT_OPEN_HW + _JHW))
+# THE POSE RE-SNAPS TO THE TENONS, not to the housing: the set has a phase now, so posing the
+# axle on a station (as before) would leave every tenon half a stem off its mortise. Snap where
+# the FIRST TENON lands and hand the phase back. MOUNT_POSE is rebuilt below so the two cannot
+# disagree -- nothing between the nominal MOUNT_X and here reads either of them.
+_TEN_PHASE = TEN_X[0]
+MOUNT_X = D.rib_comb_x(-501.0 + _TEN_PHASE) - _TEN_PHASE
+MOUNT_POSE = (MOUNT_X, MOUNT_Y, MOUNT_Z)
+assert abs((min(TEN_X) - _J_STEM / 2.0) - HOUS_X0) < 1e-9, (
+    "the -X-most tenon's stem sits %.2f from the housing edge, not flush"
+    % (min(TEN_X) - _J_STEM / 2.0 - HOUS_X0))
 # Each tenon runs the housing's FULL Y depth: it is a rail, and every millimetre of it
 # is engagement the player can buy by sliding the lever inboard. The +X-most station
 # (x=0) sits directly over the lever, where the lever-room slot opens the top face —
