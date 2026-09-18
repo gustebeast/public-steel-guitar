@@ -433,6 +433,33 @@ twisting + the bridge-side AFE buffer, not conductor size):
 > contact then carries half the current, inside the 3 A rating. One change fixes
 > the gauge, the rating and the drop together.
 >
+> ⚠ **The doubling stopped one connector short — J1, the outgoing side, audited
+> 2026-09-18.** The trunk's current path is: panel J7 (two contacts per rail) → cable
+> (2 × 22 AWG) → motor controller J3 (two contacts, fixed above) → across the board →
+> **motor controller J1** → the ten motor tees. J1 is "bus A out", a 4-way wired
+> `1=GND 2=+24V 3=CANA_H 4=CANA_L`, so the whole of bus A leaves through **one 3 A
+> contact** and returns through one.
+>
+> Both ENDS of the trunk were doubled precisely so no contact carries the full <5 A.
+> The point where that current is handed to the motors was not, and it carries the same
+> current as the two contacts feeding it. The reason is structural rather than an
+> oversight: the 4-way is full, because power and CAN share one cable (black GND, red
+> 24 V, yellow H, green L), so there is no spare cavity to double into — which is exactly
+> why J3's cavities *were* free to use and J1's are not.
+>
+> Options, all of them design decisions:
+>
+> * a 6-way for J1 — `GND, +24V, +24V, GND, H, L` — keeping one cable, changing the tee
+>   and the motor pigtail order;
+> * split power off CAN for bus A, so the drivers take 24 V on their own connector;
+> * hold the stagger limit low enough that bus A never exceeds 3 A, which makes the
+>   contact rating the thing that sets how many motors may slew at once.
+>
+> The last one is free and may already be true — but it converts a wiring rating into a
+> firmware constraint, and nothing in the firmware knows about it today. **This still
+> needs the measurement the note above asks for:** at "over 1 A per moving motor, three
+> at once already exceeds the contact", and against a single contact that limit is two.
+
 > ✅ **The lever board's PH connector is fine, and here is the arithmetic that
 > retires the question.** Bus B feeds eight sensor boards, not steppers. Each is a
 > CH32V203 (~30 mA), an MT6701 (~18 mA), a recessive SN65HVD230 (~10 mA) and an LDO
