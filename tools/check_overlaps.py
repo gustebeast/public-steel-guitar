@@ -133,10 +133,14 @@ GLOBAL_OK = {
     frozenset({"leg_body_stub", "bridge_endplate"}),
     # the electronics tray's snap nubs/fingers bite their boards by design
     frozenset({"electronics_tray", "pi5"}),
-    frozenset({"electronics_tray", "teensy_ifc"}),
+    frozenset({"electronics_tray", "motor_ctrl"}),   # teensy_ifc is deleted; the
+                                                    # merged controller took its place
     # (tee_pcb <-> motor is GONE, 2026-09-14: it was written for a corner graze and had grown
     # into 1621 mm3 of board buried in motor 9. The tees now sit ON the motors, lapping them
     # with 0.8 of air, so a touch there is a bug again and the gate must say so.)
+    # ⚠ MAIN'S REMOVAL WINS OVER MY KEEP. I still had the allowance on this branch; it
+    # predates the tees moving onto the motors, so re-adding it would silently re-blind
+    # the gate to the exact overlap that decision was meant to expose.
     # legs (FLUSH round): the BODY STUB's octagon wall tenons mortise the
     # rail band (0.1 fit) and its top face butts the body bottom; the
     # leg head enters its socket; the stack below is designed contact
@@ -186,6 +190,33 @@ GLOBAL_OK = {
     frozenset({"shaft_trrs_jack", "leg_column_plug"}),
     frozenset({"shaft_trrs_jack", "jack_seat_ring"}),
     frozenset({"jack_seat_ring", "leg_shaft"}),
+    # ── THE REDESIGNED LEG's blind-mate (src/leg_trrs.py), all four DESIGNED fits ──
+    # the male barrel inside the female jack IS the mate: two bought parts modelled
+    # as separate solids, engaged over BARREL_L when the leg is latched
+    frozenset({"leg_trrs_plug", "leg_trrs_jack"}),
+    # the keeper is PRESSED into the tenon's tip (THROAT_PRESS 0.1 on Ø10.5)...
+    frozenset({"fixed_tenon", "leg_trrs_throat"}),
+    # ...both of which are TPU on a bayonet, and a bayonet in an elastomer is
+    # PRELOADED on purpose: the lug is LUG_H tall in a LUG_SLOT_H slot, so ~1 mm3 of it
+    # is squashed at rest and the joint cannot rattle. See leg_trrs.LUG_H
+    frozenset({"body_adapter", "leg_trrs_sleeve"}),
+    # and the sleeve GRIPS the male overmould at SLV_SQUEEZE -- that interference is
+    # the entire retention scheme, not a clash
+    frozenset({"leg_trrs_sleeve", "leg_trrs_plug"}),
+    # and the BOTTOM joint's collar grips the same bought overmould the same way, with
+    # the same SLV_SQUEEZE -- see src.bar_trrs
+    frozenset({"bar_trrs_sleeve", "bar_trrs_plug"}),
+    # ── AND THE BAR HALF OF THAT SAME JOINT (src/bar_trrs.py, the bar-frame end) ──
+    # the same mate as the top joint's, the other way up: this time the BOUGHT female
+    # is the one fixed in the structure and the male is the half that floats
+    frozenset({"bar_trrs_plug", "bar_trrs_jack"}),
+    # the throat GRIPS the bought jack at SLV_SQUEEZE on its O7.8 body. The jack is a
+    # flangeless moulding, so this 30.6 mm3 of interference IS the up-stop -- there is
+    # no shoulder on the part to catch instead
+    frozenset({"bar_trrs_throat", "bar_trrs_jack"}),
+    # ...and the throat's own lugs are preloaded in the bar's bayonet, LUG_H tall in a
+    # TH_RUN_H slot, exactly as the two sleeves are in theirs
+    frozenset({"bar_trrs_throat", "pedal_bar_a"}),
 }
 
 # The pedal bar is a self-contained subassembly (bar pieces + the sliding
@@ -273,7 +304,36 @@ def _knee(n) -> bool:
 # pickup_zplate, so a real collision read as a designed one. Note the gate still
 # only checks the demo pose; the 308 mm^3 case needs a sweep across the depth window.
 DEFERRED = {frozenset({"pickup_zplate", "top_plate"})}
+
+# DEFERRED CLASSES, by pattern. Some deferrals are not one pair but one fault repeated
+# per station -- five knee levers, five pedals -- and listing 55 frozensets would hide
+# the shape of the thing. Each rule is (pattern_a, pattern_b, reason) and matches in
+# either order. Same contract as DEFERRED above: LOUD on every run, named owner, and it
+# leaves the moment the geometry stops overlapping.
+#
+# THE PCB COMPONENTS ARRIVED (2026-09-15). Both classes appeared when the boards stopped
+# being plain boxes and started carrying their real parts -- the boards doing their job
+# for the first time, not new faults. The user's call, today: these must not block merges.
+DEFERRED_RULES = (
+    (re.compile(r"^pedal\d+_[A-Z]+\d+$"), re.compile(r"^pedal_bar_[abc]$"),
+     "pedal board parts vs the pedal bar (30 pairs, ~195 mm3). USER DEFERRED: the bar is "
+     "to be redesigned around the boards later"),
+    (re.compile(r"^(?:[a-z0-9]+_)*k[lv]_[A-Z]+\d+$"), re.compile(r"housing$"),
+     "lever board parts vs their knee/lever housing (25 pairs, ~207 mm3). USER DEFERRED; "
+     "OWNER branner -- the cradle was sized to a plain box, and bronner's board is at its "
+     "floor (21.4 against J1's 21.29 courtyard), so the room has to come from the housing"),
+)
 _DEFERRED_SEEN = set()
+
+
+def _deferred_rule(na, nb):
+    """The reason this pair is parked, or None. Matches in either order."""
+    for pa, pb, why in DEFERRED_RULES:
+        # search, not match: the housing pattern anchors on the END of the name
+        # (lkr_knee_housing, vkl_kv_housing), and match() would only ever try the start.
+        if (pa.search(na) and pb.search(nb)) or (pa.search(nb) and pb.search(na)):
+            return why
+    return None
 
 
 def intended(na, nb) -> bool:
@@ -285,6 +345,14 @@ def intended(na, nb) -> bool:
             _DEFERRED_SEEN.add(_pair)
             print("  !! DEFERRED overlap (NOT a designed contact, must be fixed before "
                   "the instrument is finalised): %s <-> %s" % (na, nb))
+        return True
+    _why = _deferred_rule(na, nb)
+    if _why is not None:
+        _key = frozenset({na, nb})
+        if _key not in _DEFERRED_SEEN:                  # every pair named, never a silent class
+            _DEFERRED_SEEN.add(_key)
+            print("  !! DEFERRED overlap (NOT a designed contact, must be fixed before "
+                  "the instrument is finalised): %s <-> %s -- %s" % (na, nb, _why))
         return True
     if _knee(na) and _knee(nb):
         return True
@@ -356,8 +424,16 @@ DEFAULT_SKIP = {"belt", "belt_clamp"}
 # real routing bugs. So it buys sensitivity at no noise cost.
 MIN_VOL = 0.05
 
+# INCREMENTAL PAIR CACHE (cadkit.overlap_check): a pair's common volume depends only on
+# the two shapes, so it is keyed by their BRep fingerprints and reused while both are
+# byte-identical. A build that changed three parts re-booleans only those parts' pairs.
+# NOT an exclusion list -- nothing is assumed safe; a changed part always recomputes.
+# Gitignored: it is derived, per-worktree, and cheap to rebuild.
+CACHE = str(pathlib.Path(__file__).resolve().parent.parent / ".overlap-cache.json")
 
-def gate(comps, *, full=False, only=(), exclude=(), jobs=None, show_all=False) -> int:
+
+def gate(comps, *, full=False, only=(), exclude=(), jobs=None, show_all=False,
+         cache=None) -> int:
     """Scan ALREADY-BUILT components and return the unintended-overlap count.
 
     ``comps`` is ``[(name, cq.Shape), ...]`` — i.e. what ``collect_components()``
@@ -379,7 +455,8 @@ def gate(comps, *, full=False, only=(), exclude=(), jobs=None, show_all=False) -
         if skip:
             comps = [(n, s) for n, s in comps if base(n) not in skip]
             print(f"skipping base names (pass --full to include): {sorted(skip)}")
-    return run(comps, intended, jobs=jobs, show_all=show_all, min_vol=MIN_VOL)
+    return run(comps, intended, jobs=jobs, show_all=show_all, min_vol=MIN_VOL,
+               cache=CACHE if cache is None else cache)
 
 
 def main():

@@ -51,10 +51,309 @@ the constraint is stock, not selection. See the optical-pickup section.
 | **Nut wrap rod (capstan)** | **Ø8 × 100 mm g6/h6 precision shaft — the SAME part as the bridge axle** (`D.BRIDGE_AXLE_D` × `D.BRIDGE_AXLE_L`) | 1 | [McMaster 8 mm shafts](https://www.mcmaster.com/products/linear-shafts/) | order with the bridge axle [m] | **One shaft SKU at both ends (user, 2026-09-10)** — it went Ø5 → Ø8 when the bridge moved to 688ZZ bearings. **THE PART THAT MAKES THE CLAMP WORK.** Each string winds its turns around it before reaching its sliding-insert clamp, and the capstan (Euler-Eytelwein, T = T₀·e^−µθ, µ=0.15 steel-on-steel) divides the 147 N tension down to what a light clamp can hold. Ø8 bends the .070 at 18.2% outer-fibre strain (d/(D+d)), gentler than Ø5's 26.2%. **Turns are per string and a GEOMETRY result** (`nut_block.turns`): a shared rod makes the coil climb ACROSS the strings, each turn spending NUT_PITCH (6.5 mm). The 100 mm runs past the last bay into the block's −Y extension (`nut_block.Y_LO`). Slides in from −Y through every comb web at once, so it must be a precision shaft, not a dowel; the +Y bore is blind and that wall is its +Y stop |
 | **M4 cup-tip set screw** | M4 × 0.7 cup-tip, 10 mm, alloy | 11 | [McMaster 91390A114](https://www.mcmaster.com/91390A114/) | $7.28 / pack 100 [m] | clamps each plain string end onto its anvil (10) + 1 pickup -Y retention grub (threads its heat-set insert, cup tip pushes the pickup +Y against the plate's +Y wall — locks the pickup to the plate only, so the plate still travels) |
 | **M4 pickup-jack screw** | M4 × 0.7, 20 mm, 18-8 SS button head (hex drive) | 3 | [McMaster 92095A-series](https://www.mcmaster.com/92095A192/) | ~$12 / pack [m] | pickup height LEADSCREW jacks: the button head is captured in a deck counterbore (free to rotate, axially fixed), the shank threads the plate's heat-set nut so turning it from +Z walks the pickup up/down; 20 mm spans the height-adjust range across the 15–22 mm pickup depths + string gap. **Confirm the ×20 length suffix (…A196-class) at purchase.** NEW part — replaces the stale "3 cup-tip height screws" (those pre-date the leadscrew jack) |
-| **M4 heat-set insert** | M4 × 0.7 brass heat-set, 4.7 mm | 38 | [McMaster 94459A150](https://www.mcmaster.com/94459A150/) | $10.82 / pack 50 [m] | 10 nut clamps + 4 leg-sleeve pinch collars + 3 pickup-carrier jack nuts + 1 pickup -Y retention grub; deeply buried (no pull-out) + **11 CAN-tee side hold-downs** (one per bus-A cradle boss). ⚠ **Recount before ordering** — the 10 nut clamps and 4 leg-sleeve pinch collars above are stale (the keyhead uses sliding inserts; legs.py thread-forms the pinch grubs), while the 10 belt-tensioner insert-nuts, the 2 optical-strip grips and the knee/pedal spring-tension inserts are not listed. + **10 keyhead height-screw nuts** (prototype; mouth down, flush in the keyhead prism's bottom face). |
-| **Latch return spring** | Compression, **Ø5.0 OD × 0.6 mm wire × 12 mm free**, ~6 active coils, 302/304 SS (rate ~2.5 N/mm; **verify OD/free length at purchase**, rate is derived not measured) | 6 (+ spares) | [McMaster 9657K-series](https://www.mcmaster.com/9657K277/) | ~$10 / pack [m] | NEW SKU. One per leg quick-release: 4 leg↔body + 2 bar↔leg. Installed 10.0 mm (2.0 preload → **5.0 N** holding the button out), 7.2 mm at full press (**12.1 N**), solid 4.8 — 2.4 mm of margin, never binds. STEEL, not TPU: this is the one force in the mechanism that is sustained for years, and a printed elastomer takes a compression set there and lets the button sink in. NOT the knee-lever coil — that one is Ø6×1.4×42, **17.3 N/mm**, i.e. 86 N at this stroke (and cutting it down *raises* the rate, since k scales 1/n) |
-| **M4 mount screw** | M4 × 0.7, 12 mm, 18-8 SS **button head** (ISO 7380, **2.5 mm hex** — the instrument's one key) | 2 | [McMaster 92095A192](https://www.mcmaster.com/92095A192/) | $14.77 / pack [m] | 2 optical-strip board grips, into the bridge endplate plinth's inserts. *This row used to list 4 leg-sleeve pinch bolts into inserts, but legs.py draws those as thread-formed GRUBS — they come back here when they become button heads.* **M4 × 0.7** (coarse) to match the inserts — NOT the M4 × 0.5 fine-thread 90751A120. (The old "pickup X/Y clamp screw" is retired — the pickup Y-lock is now the -Y cup-tip retention grub above) |
-| **M4 × 10 button screw** | M4 × 0.7, 10 mm, 18-8 SS button head (ISO 7380, 2.5 mm hex) | 10 | [McMaster 92095A-series](https://www.mcmaster.com/92095A192/) | ~$12 / pack [m] | CAN tee hold-downs, one per bus-A tee (`wiring.tee_hold`, on each board's +X edge). **IT ALSO RETAINS THE MOTOR (user, 2026-09-14):** the ten bank tees sit ON their motors, each board lapping its motor by 9.6 with 0.8 of air, so this one screw holds the board down AND stops the motor lifting out of its pocket. There is no separate motor fastener anywhere in the bank -- the 40 M3 socket heads went when the motors stopped bolting to the faceplate, and the 45 deg retaining screw that briefly replaced them went when the tees moved up. THROUGH the board (user, 2026-09-15), down a bare 9.5 x 8.7 EAR off its +X end into the post: beside the board, only friction held it against a -Y tug, and every unplug is one -- the connector mouths face -Y. A screw through the board is positive in X and Y. 10 mm puts the tip 0.10 above the insert anchor's floor (asserted in wiring.py). Replaces one M2 per bus-A tee; the 2 bus-B PLACEHOLDER tees keep their M2 for now (no clear spot for an M4 in that bay, and they are slated to fold into the lever PCBs). One per MOTOR tee, ten of them. The eleventh went with the AFE power tee (user, 2026-09-17): that board was a 24 V junction on the rail carrying no CAN, and the inlet is on the output+panel board now. The leg lock screws are NOT this SKU either -- they are M4 × 18 (the **M4 hold-down screw** row, which already stocked that length). **Confirm the ×10 length suffix at purchase.** |
+| **M4 heat-set insert** | M4 × 0.7 brass heat-set, 4.7 mm | 44 | [McMaster 94459A150](https://www.mcmaster.com/94459A150/) | $10.82 / pack 50 [m] | 10 nut clamps + 4 leg-sleeve pinch collars + 3 pickup-carrier jack nuts + 1 pickup -Y retention grub; deeply buried (no pull-out) + **11 CAN-tee side hold-downs** (one per bus-A cradle boss). + **4 leg lock pins** (one per corner, in the chassis's kept shell — `legs.lock_pin_joint`) + **1 pedal-bar latch collar** (in the bar's tower, `bar_latch`). ⚠ **Recount before ordering** — the 10 nut clamps and 4 leg-sleeve pinch collars above are stale (the keyhead uses sliding inserts; legs.py thread-forms the pinch grubs), while the 10 belt-tensioner insert-nuts, the 2 optical-strip grips and the knee/pedal spring-tension inserts are not listed. + **10 keyhead height-screw nuts** (prototype; mouth down, flush in the keyhead prism's bottom face). | ~~+ 1 leg TRRS keeper lock~~ — **withdrawn 2026-09-15**: there is no fastener at that joint at all now. It went M4×16-button-plus-insert → Ø2 TPU pin → **TPU bayonet**, each step for a reason the last one could not answer: burying a Ø7.6 head needed the keeper 8.6 tall, and the keeper's height comes straight out of the male plug's wrap; and the pin, though it freed that height, could not be got back OUT, since nothing at that flank may stand proud of a face that enters a mortise (user). A bayonet turns out with a screwdriver and adds no SKU.
+| **Latch return spring** | Compression, **Ø5.0 OD × 0.6 wire × 15.0 free**, ID 3.8, 304 SS (rate ~1.9 N/mm, bracketed 1.6–2.4 off McMaster's published 1.96 for a Ø5.63 × 0.63 × 12.5; **measure on arrival**) | 6 (+ 4 spare) | [uxcell B0GCZVQFWN](https://www.amazon.com/dp/B0GCZVQFWN) — 10 to a pack, used **AS BOUGHT** | **$6.99 / 10** [a] | ONE SKU for BOTH latches (user). 4 leg↔body + 2 bar↔leg. Upper **5.7 N hold / 11.8 N press**, lower **5.7 / 13.3** — the design was drawn around 4.0 / 12.05, so the hold is firmer and the press is unchanged. Installed 12.00 (`SPR_SEAT` 6.4 → 8.0), pressed 8.80 upper / 7.75 lower against a worst-case solid of 7.2 |
+
+> **WHY THE LATCH COIL IS CUT, 2026-09-16 (user: one spring for BOTH latches, from
+> uxcell, and geometry may move so long as 1.6 mm and 45° hold).** It is cut because
+> geometry moving does not help here, which took working through to find:
+>
+> * uxcell stocks this wire and OD at 5, 10, 15 and 20 mm free. **Not 12.**
+> * **15 mm does not fit the LOWER latch at all.** The bar collar's sleeve has to swallow
+>   the coil at FREE length plus a `MIN_WALL_2P` back wall, and from the cup's floor it
+>   has 25.6 − 11.2 − 1.6 = **12.8**. That is 2.2 short of the coil itself, so no
+>   installed length and no chamfer could rescue it — the constraint is `free < 12.8`,
+>   full stop.
+> * **The collar cannot grow.** Its ±Y face IS the bar tower's half-width (`pedal_bar`
+>   asserts the two are equal), so widening it widens the tower by 6.4 mm; and its cup
+>   floor is pinned by a peak whose flank runs parallel to the mortise's 45° flank.
+> * **10 mm free is too weak.** It has to preload at under 10 mm installed while still
+>   clearing solid at full stroke, which leaves a window a few tenths wide and about
+>   2–3 N of hold against the 4 N the latch was designed around.
+>
+> So: buy the 15 mm part and snip it to 12. Cutting **raises** the rate (k scales 1/n —
+> the same arithmetic this BOM already spells out for the knee coil), which is what puts
+> the forces back where they started rather than merely near them: **3.8 N hold /
+> 11.4 N press against the design's 4.0 / 12.05**, with no geometry change anywhere in
+> either latch. ⚠ **Cut to leave at most 10 total turns** — at 12 the coil binds under
+> the thumb before the button bottoms.
+
+> **LEVER / PEDAL FEEL SPRING — uxcell CANNOT supply this one, 2026-09-16.** The user
+> asked whether the same supplier could cover it. It cannot, and the reason is in the
+> spec rather than in the supplier:
+>
+> `knee_lever.HS_SPR` is **Ø6.0 OD × 1.4 mm wire**, which is a **spring index of 3.29**
+> (mean Ø4.6 ÷ 1.4). Commodity coilers wind C ≥ 4 — below that the wire galls on the
+> mandrel and springback goes non-linear — so *no* catalogue stocks it. That is why the
+> search comes up empty rather than merely expensive.
+>
+> What uxcell actually stocks in this envelope is pen-grade: their Ø6, Ø8 and Ø10 × 40 mm
+> families all top out at **1.0 mm wire**. The heaviest with a published load is
+> [B08VF32B2G](https://www.amazon.com/dp/B08VF32B2G) (Ø8 × 1.0 × 40 free, 31.4 N at 26 mm
+> = **2.24 N/mm**) — against the **17.3 N/mm** the feel needs. Five to eight times too
+> soft; there is no way to make that up with installed length.
+>
+> **Two ways out, and both belong to whoever owns `knee_lever.py`:**
+> 1. **Grow the OD.** At Ø7.4 × 1.4 the index is 4.3 and 17.3 N/mm wants 8.9 active
+>    coils, solid 15.2 — comfortably inside the 42 free length. At Ø8.0 × 1.4 it is
+>    6.7 coils, solid 12.1. Either is an ordinary windable spring. The blocker is the
+>    note at `HS_SPR_OD`: *"arm width-limited — can't grow to drop stress"*. The
+>    question is whether the arm can find **1.4–2.0 mm**.
+> 2. **Buy it as a specialty part** at Ø6 × 1.4 from a coiler who will wind C 3.3 —
+>    which is exactly the quote-only route the leadscrew sourcing rule rejects, and the
+>    kind of order that ran $40+ before.
+>
+> McMaster's metric table does carry springs in this force class (their Ø12 × 2.0 × 18 is
+> 38.7 N/mm at $22.28/5), so a stock answer probably exists there once the OD is settled
+> — but it is not worth filtering for until the arm question is answered, because the OD
+> is the input.
+
+| **TRRS cable, 4C jack-to-plug** | [Tensility 10-02135](https://www.digikey.com/en/products/detail/tensility-international-corp/10-02135/7606584) — 3.5 mm **4-conductor TRRS**, phone JACK to phone PLUG, 914 mm (3.0 ft), 28 AWG shielded, $5.31, 420 in stock | **2** | DigiKey [d] | **THE ONE CABLE SKU FOR THE WHOLE LEG.** Its own drawing gives the parts, which is why it is here rather than an envelope: plug **3.5 × L20.7**, jack **3.5 × 7.8 × L25.8**, cable Ø3.8. **One is left WHOLE** as the leg's lead — female up (floating in the fixed tenon at the top joint), male down (floating in the adjust tenon at the bottom) — which is exactly the handedness the user's rule wants, since the part with the latch is always female. **One is CUT IN HALF** (user), and a jack-to-plug cut in half is the two pigtails this instrument needs and nothing else: the MALE half fixed in the body adapter at the top, the FEMALE half fixed in the pedal bar at the bottom, both stripped and crimped to JST-XH. A plug-to-plug cut in half would have given two males and left the bar without a female |
+| **TRRS float spring** | Compression, **Ø8.0 OD × 0.7 wire × 20.0 free**, **ID 6.6**, 304 SS (rate ~0.75 N/mm, bracketed 0.6–0.9; **measure on arrival**) | 1 (+ 4 spare) | [uxcell B0C33C21K9](https://www.amazon.com/dp/B0C33C21K9) — 5 to a pack, used **AS BOUGHT** | **$6.29 / 5** [a] | SECOND SKU, and not a preference: the coil has to end up ON the lead, and a lead has two ends — the moulded jack (Ø9.7) and the moulded far plug (Ø6.1). The latch coil's 3.8 ID passes neither, so no assembly order puts it there and the joint was unbuildable with it (user found this). **ID 6.6 clears the far plug by 0.5.** Installed 13.80 → **4.7 N at rest / 6.9 N seated**. The installed length is the SOLID FLOOR here, not the preload target: at 0.75 N/mm a 5.0 N target would want 13.33 and the coil would go solid before the leg seats |
+
+
+> **THE INLINE JACK IS Ø7.8 × 25.8, NOT Ø9.7 × 40 — and that one number deleted a
+> subsystem (2026-09-17).** `leg_trrs.JACK_D`/`JACK_L` were an ENVELOPE ("BOM: 9.1..9.7,
+> pick high", "≤ 40"), never a part, and the bottom joint was being designed around them.
+> On the envelope the pedal bar could not hold an inline jack at all: the chain wanted 60
+> below the mortise floor against 25.1 available, so the answer was either a **PCB-mount
+> jack on a small board** or **raising the bar's tower 36.5**, which would have lifted the
+> foot attach point and cost the low end of the height adjustment 6.5 ladder holes.
+>
+> Neither is needed. The jack's nose already lives 17.0 up inside the tenon's bore
+> (`bar_trrs.NOSE_H`), so only **25.8 − 17.0 = 8.8** sits below the floor:
+>
+> | | envelope (Ø9.7 × 40) | real part (Ø7.8 × 25.8) |
+> |---|---|---|
+> | below the mortise floor | 60.0 | **8.8** |
+> | against 25.1 usable | 36.5 of raise, or a PCB | **fits, 14.7 spare** |
+> | jack back, bar z | — | 22.30, with the trough at 3.95–20.45 right beside it |
+>
+> So: **no board, no solder, no raise, no height-adjustment penalty, and no new SKU** —
+> the bar's female is the cut half of the same cable the leg already uses. The user's own
+> question ("can we just use the other half of that cut cable?") is what forced the check;
+> the only correction is that it has to be a JACK-TO-PLUG cable rather than the
+> plug-to-plug one originally specced for the top, or the cut gives two males.
+>
+> ⚠ **`leg_trrs.JACK_D` 9.7 / `JACK_L` 40 are now known to be over-generous** at the TOP
+> joint too. They are not wrong — the chain works and is verified — but the fixed tenon is
+> carrying ~14 of length and ~2 of diameter it does not need. Worth reclaiming when that
+> joint is next opened, and NOT worth reopening it for on its own. Note the bore there
+> cannot simply follow the jack down: `JACK_BORE_D` is set by the Ø8.0 COIL, not the jack.
+
+> **SPRING SOURCING, 2026-09-16 — OUTCOME: both leg springs are uxcell parts used AS
+> BOUGHT, $13.28 the pair.** Getting there took three rejected answers and one
+> observation from the user that unlocked it.
+>
+> The constraint that drove everything is the bar collar's sleeve: it must swallow the
+> coil at **FREE** length plus a `MIN_WALL_2P` back wall, and from the cup's floor it
+> had **12.8**. uxcell stocks this wire and OD at 5 / 10 / 15 / 20 free and nothing
+> between, so a 15 mm coil was 2.2 too long and a 10 mm one was shorter than the
+> installed length — not even in contact. The three dead ends:
+> * **cut a 15 to 12** — reproduced the design almost exactly, rejected by the user: a
+>   hand operation with no feedback.
+> * **widen the bar** — `TOWER_WY` also drives `BAR_Y0/BAR_Y1`, so +6.4 is +12.5% of the
+>   whole bar's cross-section (≈144 cm³, same on print time) and moves the player-side
+>   face 3.2 mm.
+> * **McMaster 2006N221** — fits, published rate, forces on the nose, **$51.30 the pair**
+>   against $13.28. Worked and committed, then backed out on cost.
+>
+> **What unlocked it (user):** the collar carries TWO T rails *and* a screw. Drop the rail
+> on the screw's side, and the ring's arm on that side is free to run out to the collar's
+> own face — which lets the spring's axis move outboard, which pays one-for-one for
+> pulling the cup's floor back −Y. The sleeve went **12.8 → 16.0** and the bought coil
+> fits with 1.0 to spare.
+>
+> | | before | after |
+> |---|---|---|
+> | rails | 2, at ±22.75 | **1, at −22.75** — opposite the screw at +21.20 |
+> | ring arm | ±19.80, symmetric | −X 19.80 (railed) / **+X 23.00** (spring, free) |
+> | spring axis | +15.20 | **+18.40** |
+> | cup floor | 11.20 | **8.00** |
+> | sleeve | 12.80 | **16.00** |
+>
+> The spring stays on **+X**, with the pad — the user's first instruction was to move it
+> to −X, but a rail on the spring's side is what pins this whichever side it is, and −X
+> is where the surviving rail has to be to sit opposite the screw. The spring was put on
+> the pad's side deliberately so the thumb's line and the coil's coincide.
+>
+> ⚠ **Both rates are still estimates** — uxcell publishes neither rate nor turn count, so
+> both springs carry a measure-on-arrival step. `latch.SPR_RATE` and `leg_trrs.SPR_RATE`
+> are single-source constants and every force and length derives from them.
+
+> **LEVER / PEDAL FEEL SPRING — uxcell CANNOT supply this one, 2026-09-16.** The user
+> asked whether the same supplier could cover it. It cannot, and the reason is in the
+> spec rather than in the supplier:
+>
+> `knee_lever.HS_SPR` is **Ø6.0 OD × 1.4 mm wire**, which is a **spring index of 3.29**
+> (mean Ø4.6 ÷ 1.4). Commodity coilers wind C ≥ 4 — below that the wire galls on the
+> mandrel and springback goes non-linear — so *no* catalogue stocks it. That is why the
+> search comes up empty rather than merely expensive.
+>
+> What uxcell actually stocks in this envelope is pen-grade: their Ø6, Ø8 and Ø10 × 40 mm
+> families all top out at **1.0 mm wire**. The heaviest with a published load is
+> [B08VF32B2G](https://www.amazon.com/dp/B08VF32B2G) (Ø8 × 1.0 × 40 free, 31.4 N at 26 mm
+> = **2.24 N/mm**) — against the **17.3 N/mm** the feel needs. Five to eight times too
+> soft; there is no way to make that up with installed length.
+>
+> **Two ways out, and both belong to whoever owns `knee_lever.py`:**
+> 1. **Grow the OD.** At Ø7.4 × 1.4 the index is 4.3 and 17.3 N/mm wants 8.9 active
+>    coils, solid 15.2 — comfortably inside the 42 free length. At Ø8.0 × 1.4 it is
+>    6.7 coils, solid 12.1. Either is an ordinary windable spring. The blocker is the
+>    note at `HS_SPR_OD`: *"arm width-limited — can't grow to drop stress"*. The
+>    question is whether the arm can find **1.4–2.0 mm**.
+> 2. **Buy it as a specialty part** at Ø6 × 1.4 from a coiler who will wind C 3.3 —
+>    which is exactly the quote-only route the leadscrew sourcing rule rejects, and the
+>    kind of order that ran $40+ before.
+>
+> McMaster's metric table does carry springs in this force class (their Ø12 × 2.0 × 18 is
+> 38.7 N/mm at $22.28/5), so a stock answer probably exists there once the OD is settled
+> — but it is not worth filtering for until the arm question is answered, because the OD
+> is the input.
+
+| **TRRS float spring** | Compression, **Ø8.0 OD × 0.7 wire × 20.0 free**, **ID 6.6**, 304 SS (rate ~0.75 N/mm, bracketed 0.6–0.9; **measure on arrival**) | 1 (+ 4 spare) | [uxcell B0C33C21K9](https://www.amazon.com/dp/B0C33C21K9) — 5 to a pack, used **AS BOUGHT** | **$6.29 / 5** [a] | SECOND SKU, and not a preference: the coil has to end up ON the lead, and a lead has two ends — the moulded jack (Ø9.7) and the moulded far plug (Ø6.1). The latch coil's 3.8 ID passes neither, so no assembly order puts it there and the joint was unbuildable with it (user found this). **ID 6.6 clears the far plug by 0.5.** Installed 13.80 → **4.7 N at rest / 6.9 N seated**. The installed length is the SOLID FLOOR here, not the preload target: at 0.75 N/mm a 5.0 N target would want 13.33 and the coil would go solid before the leg seats |
+
+> **SPRING SOURCING, 2026-09-16 — OUTCOME: both leg springs are McMaster catalogue
+> parts, used as bought, $51.30 the pair.** The user's constraints, in the order they
+> arrived, were: affordable; from uxcell if possible; no cutting; use the parts as they
+> come; geometry may move so long as the 1.6 mm and 45° rules hold. Those turn out to be
+> incompatible with uxcell for the LATCH, and the reason is the bar collar's 12.8 mm of
+> sleeve — see that row. uxcell would have been $13.28 and the difference is **$38**;
+> the user's call was that a McMaster order is likely anyway.
+>
+> **What the switch bought, beyond fitting:** both rates are now PUBLISHED rather than
+> estimated. Every earlier version of this joint carried a measure-the-spring-on-arrival
+> step, because uxcell publishes neither rate nor turn count. That step is gone.
+>
+> **What it cost in geometry** (all verified against both rules):
+> * the slider's spring bore opened 5.40 → 6.03 for the fatter coil, and was
+>   **teardropped** while it was being touched — the slider prints +X up, so that bore is
+>   horizontal and its upper arc was already ~21 mm² past 45°. It is now **zero**, i.e.
+>   better than before the spring changed.
+> * the bar latch's CUP got its own `CUP_SEAT_CLR` of 0.2 instead of inheriting the
+>   slider's 0.4 running clearance. The cup is a SEAT the coil's end rests in, not a bore
+>   it slides down, and that distinction is worth 0.2 of diameter — which is exactly what
+>   the site had left. At the slider's clearance the cup overhung the ring's arm by 0.015,
+>   and the axis could not move inboard to fix it (`SPR_X` also sets the channel peak,
+>   whose flank must keep `MIN_WALL_2P` off the mortise's 45°; one bead in put it at 1.05).
+>   Widening the ring's arm instead broke the T-rail's room. The seat clearance was the
+>   only lever that did not cascade.
+> * `check_thin` clean on `latch_slider`, `bar_latch_collar`, `fixed_tenon`,
+>   `leg_trrs_throat`; overhang delta on `bar_latch_collar` +0.02 mm² (noise).
+
+> **LEVER / PEDAL FEEL SPRING — uxcell CANNOT supply this one, 2026-09-16.** The user
+> asked whether the same supplier could cover it. It cannot, and the reason is in the
+> spec rather than in the supplier:
+>
+> `knee_lever.HS_SPR` is **Ø6.0 OD × 1.4 mm wire**, which is a **spring index of 3.29**
+> (mean Ø4.6 ÷ 1.4). Commodity coilers wind C ≥ 4 — below that the wire galls on the
+> mandrel and springback goes non-linear — so *no* catalogue stocks it. That is why the
+> search comes up empty rather than merely expensive.
+>
+> What uxcell actually stocks in this envelope is pen-grade: their Ø6, Ø8 and Ø10 × 40 mm
+> families all top out at **1.0 mm wire**. The heaviest with a published load is
+> [B08VF32B2G](https://www.amazon.com/dp/B08VF32B2G) (Ø8 × 1.0 × 40 free, 31.4 N at 26 mm
+> = **2.24 N/mm**) — against the **17.3 N/mm** the feel needs. Five to eight times too
+> soft; there is no way to make that up with installed length.
+>
+> **Two ways out, and both belong to whoever owns `knee_lever.py`:**
+> 1. **Grow the OD.** At Ø7.4 × 1.4 the index is 4.3 and 17.3 N/mm wants 8.9 active
+>    coils, solid 15.2 — comfortably inside the 42 free length. At Ø8.0 × 1.4 it is
+>    6.7 coils, solid 12.1. Either is an ordinary windable spring. The blocker is the
+>    note at `HS_SPR_OD`: *"arm width-limited — can't grow to drop stress"*. The
+>    question is whether the arm can find **1.4–2.0 mm**.
+> 2. **Buy it as a specialty part** at Ø6 × 1.4 from a coiler who will wind C 3.3 —
+>    which is exactly the quote-only route the leadscrew sourcing rule rejects, and the
+>    kind of order that ran $40+ before.
+>
+> McMaster's metric table does carry springs in this force class (their Ø12 × 2.0 × 18 is
+> 38.7 N/mm at $22.28/5), so a stock answer probably exists there once the OD is settled
+> — but it is not worth filtering for until the arm question is answered, because the OD
+> is the input.
+
+| **TRRS float spring** | Compression, **Ø8.8 OD × 0.8 wire × 14.5 free**, **ID 7.2**, 302 SS, **rate 1.91 N/mm PUBLISHED**, compressed 6.1 at max load | 1 (+ 4 spare) | [McMaster 2006N232](https://www.mcmaster.com/2006N232/) — pack of 5, used **AS BOUGHT** | **$15.98** [m] | SECOND SKU, and it is not a preference: the coil has to end up ON the lead, and a lead has two ends — the moulded jack (Ø9.7) and the moulded far plug (Ø6.1). The latch coil's 4.37 ID passes neither, so no assembly order puts it there and the joint was unbuildable with it (user found this). **ID 7.2 clears the far plug by 1.1.** Installed 11.88 → **5.0 N at rest / 10.7 N seated**; the rest figure is the one that matters (it holds the jack against its keeper with the leg off) and `leg_trrs.PRELOAD_TARGET` sets it directly |
+
+> **SPRING SOURCING, 2026-09-16 (user: Lee Spring has bitten us on price before).**
+> Both springs are now catalogue parts at **$13.28 the pair** rather than a Lee Spring
+> order that would have run ~$40 for the same two envelopes. McMaster stayed unreadable
+> — it 302s every deep link to its home page for a session it does not recognise, and
+> that is a block worth respecting rather than defeating — but Amazon's catalogue reads
+> fine in a real browser session, and uxcell stocks this whole family in 5s and 10s.
+>
+> **WHAT IS NOT YET SETTLED, and it is the rate, not the part.** Neither listing
+> publishes a spring rate, and neither is the 12 mm free length the model assumes. Both
+> are LONGER, which for a given OD and wire means more coils and a SOFTER spring:
+>
+> | | model assumes | bought part | derived rate (G 69 GPa, coils est.) |
+> |---|---|---|---|
+> | latch | Ø5.0 × 0.6 × 12 free, 2.5 N/mm | Ø5.0 × 0.6 × **15** free | **1.6–2.4 N/mm** — same family |
+> | TRRS float | Ø8.0 × 0.7 × 12 free, 2.5 N/mm | Ø8.0 × 0.7 × **20** free | **0.5–0.9 N/mm** — 3–5× softer |
+>
+> The latch lands close enough that its installed length barely moves. The TRRS float
+> does not: at ~0.7 N/mm, 5 N of preload wants ~7 mm of squeeze rather than 2, so the
+> coil would install at ~13 mm and `SPR_SEAT` drops ~3 mm down the tenon (there is room
+> — the tenon is 252 long). Seated force falls from 12.5 N to ~7.5 N, which is still
+> far more than a TRRS contact needs.
+>
+> **So: COUNT THE COILS ON ARRIVAL and re-derive.** `leg_trrs.SPR_RATE`/`SPR_FREE` and
+> `latch.SPR_FREE` are single-source constants and the z-chain falls out of them; the
+> asserts already guard solid height. Do not order a second time to chase 12 mm free —
+> the geometry is the cheap thing to move here, and the spring is not.
+> **MCMASTER CROSS-CHECK, same day.** Their catalogue does read in a signed-in Chrome
+> session (it refuses an automated browser, not a browser) and it publishes the column
+> uxcell does not. Nearest catalogue parts to our two envelopes, 302 SS, rate published:
+>
+> | | part | geometry | rate | price |
+> |---|---|---|---|---|
+> | latch | 2006N221 | 12.5 × Ø5.63 × ID 4.37 × 0.63 wire | **1.96 N/mm** | $17.66 / 5 |
+> | float | 2006N232 | 14.5 × Ø8.80 × **ID 7.20** × 0.80 wire | **1.91 N/mm** | $15.98 / 5 |
+>
+> **The useful part of that is not the parts, it is the number.** Two springs of this
+> geometry both land at ~1.9 N/mm, so the model's **2.5 N/mm was optimistic** — and the
+> uxcell parts, being LONGER at the same OD and wire, will sit at or below 1.9. That
+> converts the open question from "unknown" to "bracketed": 1.5–2.0 for the latch,
+> 0.6–0.9 for the float, and the re-derive on arrival is a confirmation rather than a
+> discovery.
+>
+> **DECIDED (user): buy the uxcell pair, $13.28.** The McMaster rows below stay as a
+> reference for the rate, not as an order.
+>
+> **AND THE MODEL NOW MATCHES THE BOUGHT COILS, not the ones it was drawn around.**
+> Free length is a KNOWN fact about the parts, and it is not 12 mm; the chain has
+> been re-hung on it. What each side did with that:
+>
+> * **LATCH — no change needed, and that was checked rather than assumed.** Installed
+>   length is `SPR_SEAT + SPR_GAP` = 10.40 and full press is 7.20, so the binding
+>   constraint is the coil's SOLID height. The bought 15 mm-free coil is fine at any
+>   count up to **11 turns** (solid 6.6) and only binds at 12 (solid 7.2), which on
+>   0.6 wire would be a 1.25 mm pitch — nearly closed at rest, which catalogue
+>   springs are not. Preload rises from 4.0 N to ~8.7 N at the bracketed rate, and a
+>   latch button that is harder to rattle open is the right direction.
+> * **TRRS FLOAT — the chain moved, because at 10.0 installed the bought coil would
+>   have gone SOLID before the leg seated**, at any count from 10 turns up. Installed
+>   is now derived rather than chosen: `SPR_SOLID + 1.0 + FLOAT` = **13.8**, off a
+>   worst-case 14 turns (solid 9.8). `SPR_SEAT` drops 3.8 mm down the tenon, which
+>   has 192 mm below it. Forces land at **4.65 N at rest / 6.90 N seated** instead of
+>   5.0 / 12.5 — the rest figure is what matters (it holds the jack on its keeper
+>   with the leg off) and it is essentially unchanged.
+>
+> `SPR_RATE` is the ONE estimated number left (0.75, bracketed 0.6–0.9). Measure it on
+> arrival and edit that constant alone — both forces and the whole z-chain derive.
+>
+> On price McMaster is not close — 6 latch springs is two packs, so the full basket is
+> **$51.30 against $13.28**. The one that might be worth buying there anyway is the
+> FLOAT: 2006N232 has ID 7.20 against our required 6.5, which is 1.1 of clearance over
+> the lead's moulded plug instead of 0.5, and its rate is known before it ships. That
+> middle basket is $22.97.
+>
+> Alternative if the rate comes back unusable: a **300-piece 304 SS assortment**
+> ([Dianrui, $6.99](https://www.amazon.com/s?k=Dianrui+300PCS+Compression+Springs+Assortment+Kit))
+> covers 23 sizes and would let the rate be chosen by test rather than by catalogue.
+
+| **M4 mount screw** | M4 × 0.7, 12 mm, 18-8 SS **button head** (ISO 7380, **2.5 mm hex** — the instrument's one key) | 6 | [McMaster 92095A192](https://www.mcmaster.com/92095A192/) | $14.77 / pack [m] | 2 optical-strip board grips, into the bridge endplate plinth's inserts. + **4 leg LOCK PINS** (one per corner: in through the endplate's end face, through the body adapter's tongue, into an insert in the chassis — the one screw that holds a leg on AND the endplate down; `legs.lock_pin_joint`, `LOCK_SCREW_L` = 12). *This row used to list 4 leg-sleeve pinch bolts into inserts, but legs.py draws those as thread-formed GRUBS — they come back here when they become button heads.* **M4 × 0.7** (coarse) to match the inserts — NOT the M4 × 0.5 fine-thread 90751A120. (The old "pickup X/Y clamp screw" is retired — the pickup Y-lock is now the -Y cup-tip retention grub above) |
+| **M4 × 10 button screw** | M4 × 0.7, 10 mm, 18-8 SS button head (ISO 7380, 2.5 mm hex) | 11 | [McMaster 92095A-series](https://www.mcmaster.com/92095A192/) | ~$12 / pack [m] | CAN tee hold-downs, one per bus-A tee (`wiring.tee_hold`, on each board's +X edge). BESIDE the board, not through it: the head laps the board edge by 1.3 and clamps it onto its cradle boss (cadkit `pcb_cradle(hold_edge=...)`), so the tee needs no mounting hole. 10 mm puts the tip 0.10 above the insert anchor's floor (asserted in wiring.py). Replaces one M2 per bus-A tee; the 2 bus-B PLACEHOLDER tees keep their M2 for now (no clear spot for an M4 in that bay, and they are slated to fold into the lever PCBs). The leg end-wall lock screws are the same SKU but are counted with the leg-stack rework. **Confirm the ×10 length suffix at purchase.** |
+| ~~**TRRS pigtail** (adapter → chassis jack)~~ | **SUPERSEDED 2026-09-17 — folded into the jack-to-plug row above.** It specified **10-02155**, a PLUG-TO-PLUG cable cut in half. That is the right idea and the wrong cable: cut in half it yields TWO MALE pigtails, and the pedal-bar end of the instrument needs a FEMALE one. **10-02135** is the same cable with a jack on one end, so one cut gives the male pigtail for the body adapter AND the female pigtail for the bar — and it is the same SKU the leg's own lead already is. Same 50-00397 plug the design is dimensioned to (overmould Ø6.1 × 14, barrel Ø3.5 × 14, cable Ø3.8), so nothing upstream moves | — | — | — |
+| **M4 collar screw** | M4 × 0.7, 30 mm, 18-8 SS button head (hex drive) | 1 | [McMaster 92095A-series](https://www.mcmaster.com/92095A192/) | ~$12 / pack [m] | the ONE screw locking the pedal-bar latch collar to the bar's tower. The collar is held by a cadkit slide joint — two T rails in slots in the tower's top — which locks every direction but the one it slid in along; this screw locks that one. 30 mm because it passes the collar's full 22.4 height (head recessed 2.4 in the mouth face) before biting 10 into its insert in the tower. **Confirm the ×30 length suffix at purchase.** |
 | **M4 hold-down screw** | M4 × 0.7, 18 mm, 18-8 SS **button head** (ISO 7380, 2.5 mm hex) — a plain machine screw, NOT a Torx plastic thread-former | 11 | [McMaster 92095A-series](https://www.mcmaster.com/92095A192/) | ~$12 / pack [m] | **THE 4 LEG LOCK PINS LEFT THIS ROW** (2026-09-17): restoring the feet's SERVICE POSITION made them **M4 × 40** (their own row below) -- the second hole can only go in a tenon whose mortise runs the foot's full length, and at both ends that is the third station in, 39.96 from the end face. 18 reached 20.4.<br>Also the single +Z screw locking the merged keyhead nut-block endplate down — up from the floor bottom, forming its own thread in a Ø3.6 pilot in the PETG-GF boss, exactly as the leg lock screws do (the rest of the body is held by joinery). **Confirm ×18 is stocked at purchase** (16 and 20 are the common neighbours; the pilot depth decides which) **+ 10 keyhead insert HEIGHT screws** (prototype): one under each string's sliding insert, threading a heat-set in the endplate slab and pushing the insert's foot up; its head hangs in a cavity in the chassis corner rib, reached with the 2.5 mm key from below (strings 1-2: slide the +Y keyhead leg out to its service position, legs.SERVICE_SLIDE). |
 | **M4 × 35 button screw** | M4 × 0.7, 35 mm, 18-8 SS button head (ISO 7380, 2.5 mm hex) | 10 | [McMaster 92095A-series](https://www.mcmaster.com/92095A192/) | ~$12 / pack [m] | 10 belt-tensioner draw screws (one per string, `belt_tensioner.SCREW_L`). **The 4 chassis Y-retention shear pins are GONE** (they ran down the rail web into the stub's inboard ridge; there is no screw down the rail web any more, and the leg's retention is the one lock pin per corner). **Confirm the ×35 length suffix at purchase.** |
 | **M4 × 40 button screw** | M4 × 0.7, 40 mm, 18-8 SS button head (ISO 7380, 2.5 mm hex) | 4 | [McMaster 92095A-series](https://www.mcmaster.com/92095A192/) | ~$12 / pack [m] | **THE 4 LEG LOCK PINS** (`legs.lock_pin_joint`, one per corner): each threads a heat-set insert in its own ENDPLATE -- in the wall the deleted straight tongue used to hollow out -- and carries on through a Ø4.4 clearance hole in the chassis floor into the foot's tenons in the bottom grid, which it pins. That is the whole leg retention: the foot cannot slide back out along Y past it, and the same screw holds the endplate to the chassis. **Why 40 and not the ×18 this row replaces:** the +Y feet have a SERVICE POSITION (`legs.SERVICE_SLIDE`, 25.6 outboard) where the same screw goes into a SECOND hole in the foot, and out there the only material left under the axis is a tenon whose mortise runs the foot's full 44.8 -- at both ends the THIRD station in, 39.96 from the end face. No shorter stocked length reaches it (35 lands 0.74 in, which pins nothing). Seated it now crosses all three tenons over the foot instead of one and stops 0.86 short of breaking out of the last. Asserted per corner in legs.py against the real grid. **Confirm the ×40 length suffix at purchase.** |
@@ -76,31 +375,35 @@ fitted on every instrument.
 
 | Part | B/P | PN / source | ~Price | URL |
 |------|-----|-------------|--------|-----|
-| **Teensy 4.1** | B | PJRC via SparkFun | **$31.50** [v] | [SparkFun](https://www.sparkfun.com/teensy-4-1.html) |
-| **Teensy 4 Audio Shield Rev D** | B | SGTL5000, SparkFun | **$9.80** [v] | [SparkFun](https://www.sparkfun.com/teensy-4-audio-shield-rev-d.html) |
+| **Motor controller PCB** | B | Custom, `elec/motor_ctrl.py` — CH32V307WCU6 + 2× SN65HVD230 + LMR16006 buck + 3× XH + USB-C. 40 × 35, 4-layer | **~$5 of parts** [m]; fab + assembly not yet quoted | — |
+| ~~Teensy 4.1~~ | — | **DELETED** ($31.50), with ~~**Teensy 4 Audio Shield Rev D**~~ ($9.80) and the teensy_ifc carrier. The Teensy's value was the Audio Library, USB high-speed and the codec, all irrelevant once no audio touches this board — the Pi does audio, and this board only reads angles off bus B and commands the motors on bus A. What could not be deleted is the pair of CAN transceivers (no general-purpose MCU integrates one), so a board was always going to exist; the only question was whether an MCU sat on it too | — | — |
 | **CAN transceiver** | B | SN65HVD230DR | **$0.6185 @10** [v] — **32,557 in stock** | [LCSC C12084](https://www.lcsc.com/product-detail/C12084.html) — was priced from DigiKey at $2.45/stock 0, which made it look unavailable; LCSC has it 4× cheaper and deep. Also the sensor boards' transceiver (3.3 V — single rail) |
-| **Buck 24→5 V 1 A** | B | Pololu D24V10F5 (powers Teensy) | **$12.95** [v] | [Pololu](https://www.pololu.com/product/2831) |
-| **Signal relay** | B | Omron G5V-1-DC5 SPDT (true-bypass) | **$2.74** [v] | [DigiKey](https://www.digikey.com/en/products/detail/omron-electronics-inc-emc-div/G5V-1-DC5/87831) |
-| **Buffer op-amp** | B | OPA2134PA DIP + passives | **~$11** [v] | [DigiKey](https://www.digikey.com/en/products/detail/texas-instruments/OPA2134PA/254686) |
-| **1/4" TS panel jack** | B | Neutrik NMJ4HCD2 (Ø11.4 hole) | **$2.53** [v] | [DigiKey](https://www.digikey.com/en/products/detail/neutrik-americas-inc/NMJ4HCD2/29371256) |
-| **DC barrel panel jack** | B | Same Sky PJ-005A (Ø8 hole, 2.0 pin) | **$3.07** [v] | [DigiKey](https://www.digikey.com/en/products/detail/same-sky-formerly-cui-devices/PJ-005A/165838) |
-| **USB-C panel coupler** | B | Adafruit 4261 F↔F (USB 2.0, Ø30 hole) | **$7.50** [v] | [DigiKey](https://www.digikey.com/en/products/detail/adafruit-industries-llc/4261/10287031) |
+| ~~Power PCB~~ | — | **MERGED into the motor controller** (2026-09-15). Its buck, crowbar and 5 V outlet are now U5/F1/F2/D8/D9/J5 on that board. The merge deletes a PCB, a connector and a cable — and a JUNCTION: the 24 V trunk had to feed both keyhead boards and this one had only a 4-way inlet, so that branch was the only splice in an instrument where every other branch is a board | — | — |
+| **Output + panel PCB** | B | Custom, `elec/output_panel.py` — the whole front panel AND the whole magnetic audio path on one board: panel USB-C (**VBUS broken**) + USB-A pass-through to the Pi's gadget port + USB-C hub upstream + USB-A downstream to the optical board + the 1/4" TS jack + 24 V inlet and trunk out + screw-terminal pickup input + CH32V307 (USB **high speed**, internal PHY) + PCM1808 ADC + PCM5102-class DAC + HS hub + true-bypass relay + two buffers + phantom guard + a local 24→5 V buck. **74 × 66**, 4-layer, 58 parts | **~$5 of parts** [m] + the jack below | — |
+| **USB cable, panel PCB → Pi** | B | USB-A ↔ USB-C, **1 m**, USB 2.0 | ~$5 [m] | commodity |
+| ~~Buck 24→5 V 1 A~~ | — | **DELETED** ($12.95, Pololu D24V10F5): it existed only to power the Teensy | — | — |
+| ~~Signal relay~~ / ~~Buffer op-amp~~ | — | **DELETED as separate lines** ($2.74 Omron G5V-1-DC5 + ~$11 OPA2134PA DIP). Both were AFE parts meant to be hand-wired; the true-bypass relay and the output buffer are now SMD parts on the output + panel PCB, placed by the assembler. A DIP op-amp on a board that has no through-hole assembly step was never going to work | — | — |
+| **1/4" TS jack** | B | Neutrik NMJ4HCD2 (Ø11.4 bushing) — **PCB-MOUNT, on the output + panel PCB**. Same part as before: it was always a PCB jack, and mounting it as a free-standing panel jack would have meant hand-soldered lugs | **$2.53** [v] | [DigiKey](https://www.digikey.com/en/products/detail/neutrik-americas-inc/NMJ4HCD2/29371256) |
+| **DC barrel jack** | B | Same Sky **PJ-102AH** (2.0 pin) — **PCB-MOUNT, on the output + panel PCB**. Replaces the PJ-005A, which was a SOLDER-LUG panel jack and carried the same hand-soldering violation the TS jack did. Same family, same vendor | **~$3** [m] | [DigiKey](https://www.digikey.com/en/products/detail/same-sky-formerly-cui-devices/PJ-005A/165838) |
+| ~~USB-C panel coupler~~ | — | **DELETED** ($7.50, Adafruit 4261 F↔F). ⚠ It would have caused the fault the USB panel PCB exists to prevent: a F↔F coupler passes VBUS, and with the Pi fed from its GPIO header that puts a laptop's VBUS straight onto the power board's output. On the Pi 4B the USB-C VBUS pin and the GPIO 5 V pins are the **same node**, with no polyfuse between them | — | — |
 | **Rotary/4-way joystick** | B | Alps RKJXT1F42001 (sole UI control) | **$9.22** [v] | [DigiKey](https://www.digikey.com/en/products/detail/alps-alpine/RKJXT1F42001/19529127) |
 | **OLED display** | B | 2.42" 128×64 SSD1309 SPI (UI screen) | ~$17 [m] | [Waveshare](https://www.waveshare.com/2.42inch-oled-module.htm) |
-| **USB 2.0 hub** | B | Adafruit CH334F (share 1 port: Teensy+Pi) | **$4.50** [v] | [Adafruit](https://www.adafruit.com/product/5999) |
-| **USB cable, optical board → Pi** | B | **USB-A ↔ USB-C, 1 m, USB 2.0, STRAIGHT plug, overmold ≤ 20 mm** (mating face → cable exit) | ~$5–8 [m] | commodity |
+| ~~USB 2.0 hub (module)~~ | — | **DELETED as a MODULE** ($4.50, Adafruit CH334F) — but the function came back as a **chip on the output + panel PCB** (2026-09-15), for a different reason than it was first bought. It no longer shares a panel port; it puts the optical board's 480 Mbps link on a ~100 mm cable to the panel instead of an ~800 mm one to the keyhead, and it must be a **high-speed** hub or both devices behind it pay a Transaction Translator's ~1 ms | — | — |
+| **USB cable, optical board → output panel** | B | **USB-A ↔ USB-C, ~150 mm, USB 2.0 HIGH SPEED, STRAIGHT plug, overmold ≤ 17.5 mm** (mating face → cable exit) | ~$5–8 [m] | commodity. **Two changes, 2026-09-15.** *Destination*: it lands on the output panel's hub downstream port, not the Pi — which is the whole point of putting a hub there, and takes this 480 Mbps link from ~800 mm to ~100 mm, so the length drops from 1 m. *Overmold*: **20 → 17.5 mm**. Spacing the optical board's layout by land rather than by body moved its −Y face 2.58 mm further out, and that came straight off the conduit's depth budget (`PLUG_L` in `src/optical_pickup.py`, asserted against the endplate's exterior wall). Surveyed overmolds run 10–25 mm, so this rules out the long boots, not the market — but it is now a **purchasing constraint to check, not a preference** |
 | **Raspberry Pi 4, 2 GB** | B | Dexed + USB gadget (MIDI/audio/DFU) + USB host for the optical board | **$55.00** [v] | [PiShop](https://www.pishop.us/product/raspberry-pi-4-model-b-2gb/) |
-| **Buck 24→5 V ≥3 A** | B | Pololu **D24V50F5** (5 V, 5 A, in up to 24 V). Pi 4 draws ~3 A, but see note | **$29.95** [v] ⚠ | [Pololu 2851](https://www.pololu.com/product/2851) |
+| ~~Buck 24→5 V ≥3 A~~ | — | **DELETED** ($29.95, Pololu D24V50F5) — see the Power PCB row above and the note below | — | — |
 | ~~10-ch audio ADC~~ | — | **DELETED.** Three PCM1864 + a carrier PCB existed to digitise ten string signals for the Pi. The optical pickup board now does its own 20-channel conversion (STM32H743ZIT6, 20× 16-bit) and sends audio over USB, so this whole path is redundant — ~$29 of ICs plus an entire board's fab, assembly and feeder cost removed | — | — |
 
-⚠ **The buck, and the "smaller unit" idea behind it, did not survive checking.**
-The row assumed the Pi-4 downgrade would also buy a cheaper regulator. It does
-not: Pololu's 5 V step-down line at ≥3 A and 24 V in **starts at the 5 A
-D24V50F5 at $29.95** (the next one up, the 9 A D24V90F5, is $36.82). There is no
-3 A part in between — so the ~$25 estimate was $5 low and the "smaller unit"
-saving is **zero**. The Pi-4 change still saves real money on the Pi itself;
-it just does not save anything here. If $30 matters, a non-Pololu 5 V/3 A module
-is the lever, at the cost of leaving a vendor the rest of the file already uses.
+⚠ **Both Pololu bucks are gone, and the reason is assembly, not price.** The row
+above used to argue about which module to buy; the answer turned out to be
+neither. They are through-hole modules on 0.1 in headers and neither is an LCSC
+line, so **the assembler cannot place them** — they become hand-soldered wiring
+in the tray, which is the exact thing the connector strategy exists to delete.
+And neither has anywhere to put a fuse or a clamp, which matters more than usual
+here: the Pi is fed from its **GPIO header** (its USB-C port is the front panel's
+gadget port), and that path skips every input protection the Pi has. A designed-in
+buck puts the crowbar on the same board as the converter it protects. **$42.90 of
+modules → ~$3 of parts**, and one less hand-assembly step.
 
 ⚠ **OLED [m]:** both the Waveshare product page and RobotShop return **HTTP 403**
 to automated fetches, so the ~$17 is unconfirmed. A German reseller lists the
@@ -114,20 +417,36 @@ gadget simultaneously** — host for the optical board, gadget to the computer �
 the Zero's single OTG port can only be one at a time. The panel **USB-C** still
 only needs USB 2.0 (480 Mbps).
 
-The **analog front-end** (buffer + true-bypass relay + driver + local LDO) is a
-small board at the bridge end. The relay defaults (de-energized) to passing the
-**raw** pickup straight to the TS jack; the Teensy energizes it (UI toggle) to
-switch in the **Q-processed** path. The ADC is always fed, and the Teensy
-presents itself to a computer as a **USB audio interface** — so the processed
-signal records digitally over USB with no analog round-trip. In **pro**, a USB 2.0
-hub shares one panel port between the Teensy and the Pi (both as USB devices).
+**The analog front-end is not a separate board and the Teensy is not in it** —
+both statements above were written before the 2026-09-15 respin and both were
+wrong twice over (the paragraph was also duplicated). The whole magnetic path now
+lives on the **output + panel PCB**:
 
-The **analog front-end** (buffer + true-bypass relay + driver + local LDO) is a
-small board at the bridge end, on a boss off the bridge cross-rib. The relay
-defaults (de-energized) to passing the **raw** pickup straight to the TS jack;
-the Teensy energizes it (UI toggle) to switch in the **Q-processed** DAC output.
-Buffering at the pickup keeps the long run to the keyhead ADC quiet; the ADC is
-always fed (pitch detection runs in either mode).
+* The pickup lands there on **screw terminals** — the one field connection that is
+  neither soldered nor crimped, because swapping a pickup is a normal thing to do
+  to a guitar.
+* One buffer feeds **both** the relay's direct contact and the ADC, so the coil
+  sees a single load whichever mode is selected. A magnetic pickup's tone *is* its
+  loading, so two inputs hung straight on the coil would change the instrument's
+  sound.
+* The relay still defaults **de-energized to DIRECT**: with no power, no Pi and no
+  firmware the pickup reaches the jack through a mechanical contact. It is
+  **not** latching — I claimed elsewhere that a held coil "hums at the audio it is
+  switching", which is wrong: the coil is DC and a static field does not hum. The
+  real cost of holding it is ~30 mA.
+* A **CH32V307** on that board presents the instrument to a computer as a USB
+  audio interface at **high speed**, via the part's internal PHY. A 24-bit / 99 dB
+  **PCM1808** does the capture and a PCM5102-class DAC does the return — the
+  converter, not the word length, is what sets the floor (16-bit's *theoretical*
+  ceiling is 98.1 dB).
+* A **USB hub** on the same board carries the optical pickup board upstream on one
+  cable, which is what shortens that 480 Mbps link from ~800 mm to ~100 mm. Both
+  devices behind it are high speed, so neither pays for a Transaction Translator.
+* The Pi does the **stereo→mono sum in software** for the TS jack, so the computer
+  can get full stereo over the gadget port while the jack gets a fold-down.
+
+**No analog signal crosses the instrument any more**, which is what deleted the
+8-way link between the optical board and the panel.
 
 The motor still does all tuning (the nut block clamps; no manual tuners). The nut
 block is **reprintable per string set** — `STRING_GAUGE` in `dimensions.py` swaps
@@ -137,7 +456,8 @@ Printed parts (no purchase): carriage, bridge_endplate, keyhead_endplate
 (merged with the nut block), chassis (×3 segments), belt_clamp, screw_pulley, motor_pulley,
 tension_fork (graded belt-tension lock set),
 the adjustable legs: leg_socket ×4, leg_segment ×8, leg_shaft ×4 (PETG-GF),
-leg_sleeve ×4 (PCTG — the pinch collar must flex) plus leg_foot ×4 and leg_washer ×12 in **TPU**
+leg_sleeve ×4 (PCTG — the pinch collar must flex) plus leg_foot ×4, leg_washer ×12 and the
+TRRS blind-mate's leg_trrs_throat ×4 / leg_trrs_sleeve ×4 in **TPU**
 (anti-unscrew preload washers + floor-friendly feet), electronics_tray, and
 the **removable top deck**: a **pickup-carrier piece** (a tray whose floor runs
 under the pickup; 3 M4 height screws set the string gap, 2 M4 clamp screws pin
@@ -305,7 +625,7 @@ ends), and same-resin pairs weld/purge cleanest.
 |----------|------|------|-----------|
 | PETG-GF | ~2.3 kg | ~$69 | chassis ×3, bridge + keyhead endplates, 10 carriages, leg tubes/shafts/sockets, knee housing, pickup Z-plate |
 | PCTG | ~0.65 kg | ~$16 | full deck (transparent bases + colour layers), tray, pulleys, belt clamps, knee arm, small compliant parts |
-| TPU | ~40 g | ~$1 | 4 feet + 12 anti-unscrew washers |
+| TPU | ~45 g | ~$1 | 4 feet + 12 anti-unscrew washers + **the leg TRRS blind-mate's two retainers ×4 each** — `leg_trrs_throat` (the female jack's up-stop) and `leg_trrs_sleeve` (the male plug's cup), both on 70° bayonets. ~0.3 g each, so ~2.5 g all told; between them they replaced an M4×16 button, a brass heat-set insert, a Ø2 lock pin and two press fits |
 | **Total** | ~3.0 kg | **~$88** | |
 
 Chosen spools:
@@ -356,7 +676,7 @@ Rule: **solder only happens on factory-assembled PCBs; every field connection
 is a connector** (no bare wire ever meets a bare module pin; never
 inline-splice — user priorities: damage-free un/re-mating beats install
 speed, and **no personal soldering work**: the only bench work is XH
-crimping). Two classic-CAN buses at 500 kbps: **bus A motors** (Teensy CAN1 →
+crimping). Two classic-CAN buses at 500 kbps: **bus A motors** (the motor controller's CAN1, REMAPPED to PB8/PB9 →
 10× SERVO42D over their native XH pigtails — power AND CAN; ~1–1.5 A input
 at 24 V sits inside XH's 3 A rating, so no separate motor power connector —
 120 Ω fixed at both ends) and **bus B inputs**, a **TRUNK-AND-DROP** bus:
@@ -398,10 +718,10 @@ $0.59–0.78 per pre-crimped lead — 20×; needs a ~$25–45 tool, below).
 | **XH crimp contacts** | JST **SXH-001T-P0.6** | 300 | **$0.0235–0.047** [v] | [DigiKey](https://www.digikey.com/en/products/result?keywords=SXH-001T-P0.6) | 22–30 AWG; qty includes learning-curve scrap |
 | **XH housings** | JST **XHP-2 / XHP-4 / XHP-6** | ~30 | **$0.10** [v] | [DigiKey](https://www.digikey.com/en/products/result?keywords=XHP-4) | contacts click in by hand, extractable; XHP-6 mates the SERVO42D pigtail |
 | **XH header**, SMT side-entry | JST **S4B-XH-SM4-TB** | 8 | **$0.6577 / $0.2889 @800** [v] | [LCSC C161861](https://lcsc.com/product-detail/Wire-To-Board-Connector_JST-S4B-XH-SM4-TB-LF-SN_C161861.html) | **Sensor boards only**, and it earns the second part number: it is the piece that lets the board be SINGLE-SIDED. SMT (no post tails through a face that has to seat), side entry (a top-entry plug would have to be inserted from inside the housing). B = 15.0, 7.0 tall, 6.1 body depth, 4.5 mouth. Mates the same XHP-4 plugs and crimps as everything else, so the harness is unaffected. ~40k in LCSC stock; in JLC's library as C161861 — check it is orderable for assembly at quote time |
-| **XH headers**, THT top-entry | JST **B2B/B4B/B6B-XH-A(LF)(SN)** | ~30 | **$0.17** [v] | [DigiKey](https://www.digikey.com/en/products/result?keywords=B4B-XH-A) | on every custom PCB (sensor boards, Teensy carrier, leg breakout); B4B verified, other sizes same class. Modelled from JST's own drawing (`cadkit.pcb.jst_xh_header`): B4B is **12.4 × 5.75**, **7.0 mm** tall bare and **9.8 mm mated** — the mated figure is the one clearances must use — with □0.64 posts reaching 3.4 mm below the seating plane, i.e. **1.8 mm proud** of a 1.6 mm board's far face. The pin row is **2.0 mm from one long edge, 3.75 from the other**, so the part is not symmetric about its pins and which way it faces is a real layout decision |
+| **XH headers**, THT top-entry | JST **B2B/B4B/B6B-XH-A(LF)(SN)** | ~30 | **$0.17** [v] | [DigiKey](https://www.digikey.com/en/products/result?keywords=B4B-XH-A) | on every custom PCB (sensor boards, motor controller, leg adapters); B4B verified, other sizes same class. Modelled from JST's own drawing (`cadkit.pcb.jst_xh_header`): B4B is **12.4 × 5.75**, **7.0 mm** tall bare and **9.8 mm mated** — the mated figure is the one clearances must use — with □0.64 posts reaching 3.4 mm below the seating plane, i.e. **1.8 mm proud** of a 1.6 mm board's far face. The pin row is **2.0 mm from one long edge, 3.75 from the other**, so the part is not symmetric about its pins and which way it faces is a real layout decision |
 | **Power connector** (PSU trunk only) | XT30 pair — DFRobot **FIT0586** | 4 pr | **$1.90** [v] | [DigiKey](https://www.digikey.com/en/products/detail/dfrobot/FIT0586/9559255) | 15 A/30 A pk, gold; pigtails bench-soldered ONCE, field = plug/unplug only |
-| **CAN terminator R** | Yageo **CFR-25JB-52-120R** (120 Ω ¼ W) | 10 | **$0.10 / $0.036 @10** [v] | [DigiKey](https://www.digikey.com/en/products/result?keywords=CFR-25JB-52-120R) | Teensy carrier + last motor; bus-B termination lives ON the tees (SMT 120R there) |
-| **Tee PCB** | custom 49.5 × 16 L (40 × 16 layout + a bare 9.5 × 8.7 mounting ear, M4 through-hole): 3× B4B-XH-A + 120 Ω + shunt jumper | 11 | ~$2 assembled (est.) | JLCPCB | panelized with the sensor boards; close the jumper on the LAST tee = bus-B termination |
+| **CAN terminator R** | Yageo **CFR-25JB-52-120R** (120 Ω ¼ W) | 10 | **$0.10 / $0.036 @10** [v] | [DigiKey](https://www.digikey.com/en/products/result?keywords=CFR-25JB-52-120R) | motor controller + last motor; bus-B termination lives ON the tees (SMT 120R there) |
+| **Tee PCB** | custom 49.5 × 16 L (40 × 16 layout + a bare 9.5 × 8.7 mounting ear, M4 through-hole): ONE 8-way side-entry XH (trunk in 1-4, out 5-8) + ONE 4-way drop + 120 Ω + shunt jumper | **11** | ~$2 assembled (est.) | JLCPCB | panelized with the sensor boards; close the jumper on the LAST tee = bus-B termination. Qty 12 → 11: tees 11/12 are deleted (the lever board passes the trunk through its own 8-way, and the TRRS adapter carries the leg jack on the board) |
 | **Leg carrier PCB** | custom: LCSC SMT jack + B4B-XH-A header | 2 | ~$2 assembled (est.) | JLCPCB | rides the same panel; sits in the shaft pocket — auto-mate jack's terminals land on XH, fully factory-soldered |
 | ~~**FD-capable transceiver**~~ | ~~Microchip **MCP2562FD-E/SN**~~ | — | **DROPPED** | — | Superseded by **SN65HVD230DR** (`C12084`, $0.6185 @10, 32,557 stock) on the sensor boards — see Control sensors. Two corrections this row carried: LCSC is **$1.85 @10**, not the “~$0.50” claimed here, and it needs **4.5–5.5 V**, so it dragged a second regulator onto the most area-constrained board in the project. FD is moot now that the sensor MCU is classic-only — bus B could have been FD (the motors are on bus A), but the payload does not want it |
 
@@ -1509,7 +1829,7 @@ several are unverified — re-verify the whole file before ordering.**
 | Filament (printed) | ~$81 | estimate; **spool prices verified**, masses are model estimates |
 | Mechanical hardware (motors, screws, bearings, belt, fasteners, dowels) | ~$620 | belt/collar/bearings **verified**; motor + all McMaster **[m]** |
 | Wire | ~$35 | estimate, excludes 10 control drops |
-| Electronics + UI (Teensy, audio shield, Pi 4, bucks, hub, jacks, joystick, OLED) | ~$190 | **all verified except the OLED [m]** |
+| Electronics + UI (motor controller, power + USB panel boards, Pi 4, jacks, joystick, OLED) | ~$95 | **all verified except the OLED [m]** |
 | Optical pickup board (148 parts, 4-layer, ÷10 basis) | **~$45** | parts cost **computed from the model**; all 18 lines have real MPNs |
 | Control sensors, 10 controls (MT6701 + magnet + board) | ~$50 | IC + magnet **verified**; boards not yet quoted |
 | Tee / carrier PCBs | ~$25 | estimate |
