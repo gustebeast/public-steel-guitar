@@ -341,16 +341,27 @@ def lever_sensor():
         v33 += r[1]; net += r[2]
 
 
+def _sensor_qty():
+    """One board per sensed player control: 6 knee levers + 5 pedals."""
+    from src import dimensions as D
+    return D.N_SENSED
+
+
+_SENSOR_QTY = _sensor_qty()
+
 BOARD_NOTES = {
-    # ⚠ NO qty_per_instrument, AND THIS IS THE ONE BOARD THERE IS MORE THAN ONE OF. Every
-    # other board declares it -- optical 1, output_panel 1, motor_ctrl 1, can_tee 10 (one
-    # per motor) -- and this one, the only multi-unit board, declares nothing. It is left
-    # absent rather than guessed: the BOM buys 11 angle sensor ICs, but nothing in this
-    # repo states how those 11 divide into knee levers, pedals and spares, and a board
-    # count invented to fill the field would be indistinguishable from a measured one.
-    # That is exactly how can_tee came to ship a 9 (see the note there). FILL THIS IN
-    # from the lever/pedal station list before the panel is ordered; until then the
-    # absence is the honest record.
+    # ⚠ THE ONLY BOARD THERE IS MORE THAN ONE OF, AND IT USED TO DECLARE NO COUNT AT ALL.
+    # Every other board states it -- optical 1, output_panel 1, motor_ctrl 1, can_tee one
+    # per motor -- and this one, the multi-unit board, stated nothing. The count existed
+    # only as the BOM's angle-sensor quantity, 11, with no record of what the 11 WERE, so
+    # it could not be checked and could not be traced if it moved.
+    #
+    # It is 6 knee levers and 5 pedals (user, 2026-09-18): one sensed axis each, one
+    # MT6701 each, one of these boards each. That is D.N_SENSED, and it reproduces the
+    # BOM's 11 independently -- the first time those two numbers have had a common source
+    # rather than agreeing by coincidence. Derived, not typed, because a typed board count
+    # is how can_tee came to ship a 9 against a ten-motor instrument (see the note there).
+    "qty_per_instrument": _SENSOR_QTY,
     "outline_mm": (BOARD_W, BOARD_L),
     "layers": 4,
     "thickness_mm": 1.6,
