@@ -141,6 +141,29 @@ _P_LONG = (GAP_MAX - _STRAIGHT_IN_GAP) / TURNS
 assert _STRAIGHT_IN_GAP >= 0.0, (
     "the coil wants %.1f of cable and the gap frees %.1f" % (COIL_LEN, COIL_CABLE))
 MEAN_LONG = math.sqrt(max((COIL_LEN / TURNS) ** 2 - _P_LONG ** 2, 0.0)) / math.pi
+# ⚠⚠ THIS TOOL IS BLOCKED ON A VENDOR NUMBER, AND THE ASSERT BELOW SAYS SO. ⚠⚠
+#
+# Tensility publish a MINIMUM BEND RADIUS of 22.8 for 10-02135 -- 6x the jacket,
+# because the shield is spiral + FOIL and foil cracks long before PVC complains.
+# (leg_trrs.CABLE_BEND_R, checked against their page by tools/check_part_specs.py.)
+#
+# A coil at that radius needs a mean diameter of 45.6. The cavity it has to live in --
+# the adjust sleeve above the tenon -- measures O24.7, which caps the mean at 20.9.
+# There is no turn count that reconciles those: the coil is impossible in the leg at
+# the published radius, not merely tight. Everything below sizes a coil at mean 19.0,
+# which is r 9.5 against a required 22.8.
+#
+# I found this AFTER building the tool, by reading the vendor's page (user asked).
+# Every earlier bend-radius figure in this module and in docs/leg-trrs-routing.md was
+# measured against a 3xOD rule of thumb I brought with me, not against the number the
+# manufacturer publishes -- so "2.1xOD, tight but acceptable" was the wrong yardstick
+# throughout. The options are the user's: accept exceeding the published radius on a
+# static install, move the slack store out of the leg where nothing caps the diameter
+# (docs/leg-trrs-routing.md option 2), or source a lead with a smaller bend radius.
+assert MEAN_LONG / 2.0 >= LT.CABLE_BEND_R, (
+    "the coil bends to r %.1f at full leg extension and %s publishes %.1f as its "
+    "minimum -- see the block above; this is a DESIGN DECISION, not a number to relax"
+    % (MEAN_LONG / 2.0, "10-02135", LT.CABLE_BEND_R))
 assert MEAN_LONG >= 15.0, (
     "stretched over the %.1f gap the coil narrows to mean O%.1f, under the 15 floor"
     % (GAP_MAX, MEAN_LONG))

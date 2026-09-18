@@ -84,6 +84,15 @@ PLUG_D = 6.1            # the moulded overmould (10-02135 drawing, same 50-00397
 PLUG_L = 14.0           # ...and its length
 BARREL_L = 14.0         # the plug's barrel: what actually crosses the joint
 BARREL_D = 3.5
+CABLE_LEN = 915.0       # THE BOUGHT LEAD, off Tensility's own page for 10-02135
+                        # (read 2026-09-18, and checked by tools/check_part_specs.py).
+                        # 915, not the 914 the BOM had from the distributor's rounding
+CABLE_BEND_R = 22.8     # ...AND ITS PUBLISHED MINIMUM BEND RADIUS, which is 6x the
+                        # jacket. It is that large because the shield is SPIRAL + FOIL
+                        # and foil cracks long before PVC complains. Nothing in this
+                        # module bends the lead near it -- the tightest here is the
+                        # adapter's fold, in stripped 28 AWG, not in the jacket -- but
+                        # anything that COILS this cable has to answer to it
 CABLE_D = 3.8           # the lead, either side (10-02135's is 3.8). The leg's coil is
                         # slid on over the far PLUG, not the cable, so the cable's own
                         # diameter is no longer a sourcing constraint -- the O6.6 coil

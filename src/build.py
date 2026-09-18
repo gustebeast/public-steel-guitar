@@ -274,17 +274,13 @@ for _i, _seg in enumerate(chassis_segments):     # chassis split into dovetailed
                               "and NO seam fastener — the deck, endplates and finally the 4 leg screws "
                               "close the seam's Z axis. + tee cradles)")
 # Section-joint coupon (the LEG stack's octagon at the real 28 mm width — legs.SEC_W)
-# COIL MANDREL -- a SHOP TOOL, not an instrument part, so it is registered for EXPORT
-# but never joins the assembly. Two pieces: wind the leg's TRRS lead on the inner, cap
-# it with the sleeve, heat-set. src/coil_mandrel.py has the process and its limits.
-PARTS["coil_mandrel"] = (
-    lambda: heal(__import__("src.coil_mandrel", fromlist=["e"]).mandrel()),
-    "tools/coil_mandrel.step",
-    "TOOL — inner mandrel for heat-setting the leg's TRRS lead into a 7-turn coil. Barrel Ø16.0, base flange with a side-entry cleat (the lead is a MIDDLE section between two moulded ends, so nothing threads), scribe line at the turn count, top cleat, Ø10 shank. The top is OPEN: the set coil comes off by UNSCREWING. PA6-GF, printed SOLID: its HDT is far above the 80 C oven set, so the tool stops being the limit and the cable becomes it")
-PARTS["coil_mandrel_sleeve"] = (
-    lambda: heal(__import__("src.coil_mandrel", fromlist=["e"]).sleeve()),
-    "tools/coil_mandrel_sleeve.step",
-    "TOOL — the mandrel's outer sleeve, bore Ø23.8. It caps the coil's diameter while it sets, so the mean lands on arithmetic (barrel + cable) rather than on spring-back nobody can quote, and it holds every turn put through heating and cooling. Foot notch clears the starting tail. PA6-GF, printed SOLID")
+# COIL MANDREL -- UNREGISTERED, and deliberately. src/coil_mandrel.py sizes a coil
+# at r 9.5 against the 22.8 minimum bend radius Tensility publish for 10-02135, so
+# it asserts on import and CANNOT be built until that is resolved (accept the
+# overbend, move the slack store out of the leg, or source a different lead -- see
+# the block at the top of the module and docs/leg-trrs-routing.md).
+# Left out of PARTS rather than left in to fail, so the lead's build is not red on
+# a decision that is not the build's to make. Re-register both entries when it is.
 
 PARTS["test_section_tenon"] = (
     lambda: heal(__import__("src.joint_coupon", fromlist=["e"]).section_tenon_coupon()),
