@@ -1780,6 +1780,21 @@ def opt_cover() -> cq.Workplane:
 # walls are 7.85. Y is generous anyway because it also has to span where the cable turns
 # down, which is past the back of a mated plug.
 CONDUIT_CLR = 1.5
+# ⚠ THE BOARD'S CONNECTOR IS A 4-WAY, NOT A 6-WAY, AND THIS SIZES THE CONDUIT. Audited
+# 2026-09-18 against the netlist: elec/optical.py's J2 is an S4B-XH-SM4-TB -- "S4B" is
+# four circuits -- carrying 1=GND 2=+24V 3=+24V 4=GND and nothing else. This constant is
+# a SIX-way housing, and by its own formula a 4-way is 12.4 rather than 17.40.
+#
+# It is not cosmetic, because _COND_PASS below takes max(_XH6_W, _USBC_W): the conduit is
+# sized to pass a plug 5 mm wider than the one that exists, through an endplate wall this
+# file already asserts is out of room. opt_cables() draws the same 6-way plug and a
+# six-conductor bundle for a four-conductor cable.
+#
+# The likely history is the same one that left a 24 V tee on the CAN rail for this board
+# (see src/wiring.py): it was going to sit on the four-wire CAN-plus-power bus, which is a
+# 6-pin XH at the motors, and it ended up with USB to the panel and power-only on a 4-way.
+# Flagged rather than changed -- CONDUIT_W, _COND_PASS and the endplate wall all move
+# together, and the assertion below is what would catch a bad edit.
 _XH6_W, _XH6_D = 12.4 + 2.5 * 2, 5.75                         # 17.40 x 5.75
 _USBC_W, _USBC_H = 12.35, 6.50                                # USB-IF MAX overmold
 # Plug body length along the mating axis. ASSUMPTIONS, and the ones to check against real
