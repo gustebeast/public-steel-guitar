@@ -287,6 +287,28 @@ def motor_ctrl():
     v33 += c_bulk[1]; gnd += c_bulk[2]
 
     # ── USB-C to the Pi ──────────────────────────────────────────────────────
+    # ⚠ USB_DP DOES NOT ROUTE ON THIS BOARD, AND IT IS THE LINK TO THE PI. One of the two
+    # unconnected nets DRC reports, U4.47 to J4.A6. The cause is the optical board's
+    # problem exactly, measured side by side on both boards: identical receptacle,
+    # identical footprint, all four data pads on a 0.500 mm pitch with copper on each.
+    # A6 and B6 are BOTH D+ and sit on opposite sides of the D- pads, so joining them
+    # crosses D-, and escaping between pads wants 0.6 of via plus 0.137 of clearance
+    # beside a 0.2 track: 0.537 mm into 0.500 mm. Unroutable by construction, not hard.
+    #
+    # ⚠ AND THE FIX THAT SOLVED IT THERE DOES NOT TRANSFER YET. Declaring the pair --
+    # diff_pairs with chain U4 -> J4, diff_pair_inner In2.Cu, exactly the optical recipe
+    # -- fails in _escape_plan: "no clear path U4->J4 [('escape', 15520)]", every
+    # candidate rejected before any path shape is tried, and layout.py aborts, so the
+    # board does not build at all. Reverted for that reason, not because the idea is
+    # wrong.
+    #
+    # The likely difference is which package the pair has to leave. On optical the
+    # declared run is PHY -> connector and the PHY is an HVQFN-24, 4x4 mm on 0.5 mm
+    # pitch; the H743 speaks ULPI, so its own pins are never in the pair. The CH32V307
+    # has native USB, so here the pair must escape U4 itself -- QFN-68, 8x8 mm, 0.4 mm
+    # pitch. That is an explanation, not a measurement: the counter says both ends were
+    # tried and does not say which one failed. Instrument _escape_plan per end before
+    # spending anything on it.
     # HRO TYPE-C-31-M-12 (LCSC C165948), the same receptacle the optical board
     # uses. Both halves of D+/D- are tied so the cable works either way up.
     # VBUS IS DELIBERATELY UNCONNECTED: the board runs off the 24 V rail, and
