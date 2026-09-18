@@ -432,16 +432,16 @@ ULPI = {"ULPI_D0": "PA3", "ULPI_D1": "PB0", "ULPI_D2": "PB1", "ULPI_D3": "PB10",
 # at all. Either way the unit is not the answer and the pin is. (SUM is symmetric and cannot be affected either
 # way.) Recorded here because nothing in the netlist, the CAD or DRC can express it.
 ADC_PAIRS = (
-    ("PA1",  "PF4"),    # 1   ADC1[1] / ADC3[1]   ⚠ A/B SWAPPED -- A is on ADC1 here
-    ("PC1",  "PF13"),   # 2   ADC2[2] / ADC2[3]  -- same ADC, skew 1
-    ("PF10", "PA7"),    # 3   ADC3[7] / ADC2[5]  -- skew 2
-    ("PC4",  "PC5"),    # 4   ADC2[0] / ADC2[1]  -- same ADC, skew 1
-    ("PC3_C", "PF5"),   # 5   ADC3[1] / ADC3[2]  -- same ADC, adjacent; DIRECT pin
-    ("PF9",  "PA6"),    # 6   ADC3[6] / ADC2[4]  -- skew 2
-    ("PF8",  "PA4"),    # 7   ADC3[5] / ADC1[5]
-    ("PC2_C", "PF6"),   # 8   ADC3[0] / ADC3[3]  -- same ADC, adjacent; DIRECT pin
-    ("PF7",  "PA2"),    # 9   ADC3[4] / ADC1[4]
-    ("PF3",  "PA0"),    # 10  ADC3[0] / ADC1[0]
+    ("PA1", "PF4"),          # 1   ADC1[1] / ADC3[1]
+    ("PF3", "PA0"),          # 2   ADC3[0] / ADC1[0]  <- was string 10's pair
+    ("PF10", "PA7"),         # 3   ADC3[7] / ADC2[5]
+    ("PC4", "PC5"),          # 4   ADC2[0] / ADC2[1]
+    ("PC3_C", "PF5"),        # 5   ADC3[1] / ADC3[2]
+    ("PF9", "PA6"),          # 6   ADC3[6] / ADC2[4]
+    ("PF8", "PA4"),          # 7   ADC3[5] / ADC1[5]
+    ("PC2_C", "PF6"),        # 8   ADC3[0] / ADC3[3]
+    ("PF7", "PA2"),          # 9   ADC3[4] / ADC1[4]
+    ("PC1", "PF13"),         # 10  ADC2[2] / ADC2[3]  <- was string 2's pair
 )
 DIFF_SIGN_INVERTED = (1, 5, 8)   # strings with A on ADC1 instead of ADC3 -- see above;
 #                                  a tripwire for firmware, NOT a sign table to apply
@@ -499,6 +499,26 @@ for _p, _u in sorted(ADC_USED_AS.items()):
 # That is the density the corridor measurement found. It is a consequence of the pinout
 # and the board being long, not of the pair ordering -- which is why re-permuting pairs
 # could never fix it, and why the router settings could not either.
+#
+# ⚠ STRINGS 2 AND 10 HAVE SWAPPED PAIRS, AND IT CLOSED THE LAST ANALOG NET. Pair 2 is
+# (PC1 near, PF13 FAR) and pair 10 is (PF3 near, PA0 near) -- both near. String 2's
+# detectors sit 99 mm from the MCU, the farthest on the board; string 10's sit 23 mm away.
+# Handing the far-edge pin to the string that barely travels, and the all-near pair to the
+# string that travels farthest, is the trade the evidence asked for:
+#
+#     every net reaching a NEAR pin routes, at any distance up to 107 mm
+#     five of the six nets reaching a FAR pin route
+#     the one that failed was the FARTHEST of the far-pin group, at 99 mm
+#
+# TIA_OUT_1A runs 107 mm -- longer than the net that failed -- and routes, which is what
+# rules out distance as the cause. The far-side crossing is a resource with about five
+# slots, and the net arriving from farthest away was the one squeezed out of it.
+#
+# ⚠ WHAT IT COST: +3V3A. The board is still at 1 unconnected, but the open net is now the
+# analog supply rail, 6.5 mm between a track at 71.16,46.43 and U2's pin 4 -- the freed
+# analog nets took the corridor the rail had been using. That is a better problem than the
+# one it replaced: a local gap beside an op-amp rather than a 123 mm run that has to get
+# round the package, and it is in the part of the board the generator already pre-lays.
 #
 # ⚠ AND THE NEAR/FAR SPLIT IS NOT THE BINDING CONSTRAINT -- MEASURED BY MAKING IT ZERO.
 # Everything above treats "at least five nets must travel around the package" as a floor
