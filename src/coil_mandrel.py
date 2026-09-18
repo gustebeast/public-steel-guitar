@@ -33,22 +33,29 @@ HOW IT IS USED
      the scribe line, and press the far side into the top cleat.
   3. Slide the SLEEVE down over the coil until it seats on the flange (its notch passes
      the starting tail).
-  4. HEAT-SET: ~80 C water, 15-20 min, then cool to room temperature BEFORE opening
+  4. HEAT-SET: 80 C for 30+ min, then cool to room temperature BEFORE opening
      anything. The set happens on cooling, not on heating.
   5. Slide the sleeve off, then unscrew the coil off the barrel's open top.
 
 ⚠ HEAT IS NOT OPTIONAL, and "let it sit" is not a substitute. Winding a jacket cold and
 leaving it gives creep, not a set: it holds some curl for a while and relaxes, worst in
-plain PVC. The commercial process for a curly cord is a heated mandrel; 80 C water for
-20 minutes is the kitchen version of it. If the first attempt relaxes, repeat hotter
-and longer rather than winding tighter.
+plain PVC. The commercial process for a curly cord is a heated mandrel.
 
-⚠ AND THE TOOL'S OWN MATERIAL IS THE OPEN QUESTION. PETG-GF's Tg is ~80 C, the bottom
-of the useful range for setting a PVC/TPE jacket. Print both parts SOLID, keep the
-water at 80 rather than boiling, and treat them as consumable -- or print in something
-with a higher HDT if the jacket turns out to need more. Nothing about the geometry
-changes if you substitute a metal tube of BARREL_D for the inner; the sleeve's job of
-capping the diameter is unaffected.
+PRINT IT IN PA6-GF AND USE AN OVEN (user has both). That changes which end of this is
+the constraint. PA6-GF's HDT is far above anything the jacket wants, so THE TOOL IS NO
+LONGER THE LIMIT -- the CABLE is. Most TRRS jackets are rated 80 C continuous, which is
+where to start; a curly cord is commercially set hotter, so if 80 relaxes there is room
+to climb, and the tool will not care. Two practical notes about dry heat: an oven moves
+heat into a wound coil more slowly than water, so give it 30+ minutes AT temperature
+rather than 15; and keep the lead's two moulded connectors out of the hot zone, since
+they are the parts with no reason to be heated and the most to lose.
+
+⚠ Heating PVC gives off plasticiser. Ventilate, and do not use a food oven.
+
+(The project dropped PA6-GF for PETG-GF on cost for INSTRUMENT parts. A one-off shop
+tool is the case where that trade does not apply -- see the Tools section of BOM.md.)
+Nothing about the geometry depends on any of this: a metal tube of BARREL_D substitutes
+for the inner, and the sleeve's job of capping the diameter is unaffected.
 """
 
 from __future__ import annotations
