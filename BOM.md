@@ -112,17 +112,34 @@ the constraint is stock, not selection. See the optical-pickup section.
 | **TRRS float spring** | Compression, **Ø8.0 OD × 0.7 wire × 20.0 free**, **ID 6.6**, 304 SS (rate ~0.75 N/mm, bracketed 0.6–0.9; **measure on arrival**) | 1 (+ 4 spare) | [uxcell B0C33C21K9](https://www.amazon.com/dp/B0C33C21K9) — 5 to a pack, used **AS BOUGHT** | **$6.29 / 5** [a] | SECOND SKU, and not a preference: the coil has to end up ON the lead, and a lead has two ends — the moulded jack (Ø9.7) and the moulded far plug (Ø6.1). The latch coil's 3.8 ID passes neither, so no assembly order puts it there and the joint was unbuildable with it (user found this). **ID 6.6 clears the far plug by 0.5.** Installed 13.80 → **4.7 N at rest / 6.9 N seated**. The installed length is the SOLID FLOOR here, not the preload target: at 0.75 N/mm a 5.0 N target would want 13.33 and the coil would go solid before the leg seats |
 
 
-> ⚠ **OPEN: the PLUG's modelled length disagrees with this row (2026-09-18).**
-> `tools/check_cable_spec.py` reads the four bought dimensions back out of the 10-02135
-> row and compares them to the code cut to fit them. Three agree. The fourth does not:
-> the row says **plug 3.5 × L20.7**, and `leg_trrs` draws the plug as a Ø3.5 × 14 barrel
-> plus a Ø6.1 × 14 overmould — **28.0 overall**. If 20.7 is the overall moulded length
-> then `PLUG_L` should be ~6.7, not 14.0. **Re-read the drawing before trusting either.**
-> Nothing built is unsafe on it: the modelled plug is the LONGER, so every rigid-body
-> clearance derived from it (notably the adjust tenon's jog, which needs Ø7.34 as
-> modelled against Ø6.69 at the shorter figure, in a Ø7.6 channel) is the conservative
-> case. But the plug DUMMY is 7.3 too long, which is a thing the overlap gate is being
-> shown.
+> ⚠⚠ **READ THE VENDOR'S PAGE, 2026-09-18 — and it BLOCKS the coil (user asked).**
+> Tensility publish, for 10-02135: wire outer **Ø3.8** ✓, cable length **915** (not the
+> 914 above, distributor rounding), price **$5.01** (not $5.31), PVC jacket, **spiral +
+> foil** shield, and a **MINIMUM BEND RADIUS OF 22.8 mm** — 6× the jacket, which is what
+> a foil shield costs. Connectors are **50-00397** plug (Ø3.5 × L20.7) and **50-00041**
+> jack (Ø7.8 × L25.8); the jack figures confirm what was already modelled.
+>
+> **22.8 kills the coil-in-the-leg.** A coil at that radius needs a mean diameter of
+> 45.6, and the adjust sleeve's cavity measures Ø24.7 — a 20.9 cap. No turn count
+> reconciles those. Two other places also fail it: the coil as designed (r 9.5 relaxed,
+> 7.9 stretched) and the bar's wiring chamber turn (r 6.2). Only the adjust tenon's jog
+> passes, because it is nearly straight. `src/coil_mandrel.py` now asserts against
+> `leg_trrs.CABLE_BEND_R` and is UNREGISTERED from the build until this is decided:
+> accept exceeding the published radius on a static install, move the slack store out
+> of the leg (docs/leg-trrs-routing.md option 2 — the bar's chamber, where nothing caps
+> the diameter), or source a lead with a smaller bend radius.
+>
+> Every bend-radius figure I quoted before this was measured against a 3×OD rule of
+> thumb, not against the manufacturer's number. "2.1×OD, tight but acceptable" was the
+> wrong yardstick throughout.
+>
+> ⚠ **STILL OPEN: the plug's modelled BARREL_L.** The vendor gives the 50-00397
+> connector as **L20.7**; the model has `BARREL_L` 14.0 plus a Ø6.1 × 14 overmould that
+> is not a published figure at all. Their "connector length" is the CONNECTOR, not the
+> finished moulded end, so the two are not the same measurement — but 14 is not 20.7
+> either, and how much barrel protrudes decides the mate depth. `tools/check_part_specs.py`
+> reports it every run. The bought parts are now checked against the vendor's own page
+> by that tool, for all three SKUs.
 
 > **THE INLINE JACK IS Ø7.8 × 25.8, NOT Ø9.7 × 40 — and that one number deleted a
 > subsystem (2026-09-17).** `leg_trrs.JACK_D`/`JACK_L` were an ENVELOPE ("BOM: 9.1..9.7,
