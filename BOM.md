@@ -377,6 +377,22 @@ twisting + the bridge-side AFE buffer, not conductor size):
 > carry CAN. **Open:** a wider shell, a separate power bus, or a measured slew
 > budget showing the staggered peak really is under 3 A.
 >
+> ⚠ **And the third option is almost certainly the right one, because the screw is
+> self-locking.** `Tr8×2`'s 5.2° lead angle holds tune with the motor de-energised
+> — that is why the drivetrain chose it, and it is recorded as "zero-power tune
+> hold". So at rest the bus carries essentially **nothing**: the current is set
+> entirely by how many motors are *moving at once*, not by how many exist. A pedal
+> or lever change moves two or three strings, which at a NEMA17's few hundred mA of
+> supply current is comfortably inside one XH contact's 3 A.
+>
+> That turns a connector problem into a **firmware limit**, and a cheap one: cap
+> the number of simultaneously-slewing motors. The number to pick needs the
+> SERVO42D's actual 24 V supply current, which is **not recorded anywhere in this
+> file** — the only figure is the fleet's "<5 A", which is a budget rather than a
+> measurement. **Measure one motor before trusting any of this**; if a single
+> moving motor turns out to draw over 1 A, three at once already exceeds the
+> contact and the stagger limit has to be two.
+>
 > ⚠ **And 20 AWG would not have fitted the connector at all.** JST's XH datasheet
 > gives *Applicable wire: AWG #30 to #22* and rates the contact at **3 A at AWG
 > #22**. Every 24 V connector in the instrument is XH (the lever board's is the
