@@ -227,10 +227,27 @@ def lever_sensor():
     #   19 PA11 = CAN1_RX    20 PA12 = CAN1_TX
     #   21 PA13 = SWDIO      22 PA14 = SWCLK
     #   27 PB6  = I2C1_SCL   28 PB7  = I2C1_SDA
-    # ⚠ PIN 1 IS NOT IDENTIFIED. The datasheet's G6 table skips it in extraction,
-    # and BOOT0 does not appear in that column at all (it is pin 4 on the QSOP28
-    # G8 part, where NRST is elsewhere). Nothing here connects to pin 1, and the
-    # boot strap must be resolved against the package drawing before fabrication.
+    # ⚠ PIN 1 IS BOOT0/PB8, AND NOTHING ON THIS BOARD CONNECTS TO IT. This note used to
+    # say pin 1 was unidentified and had to be resolved against the package drawing
+    # before fabrication. A second source now answers it: KiCad's own MCU_WCH_RiscV
+    # library gives CH32V203GxUx pin 1 as BOOT0/PB8, and its pin list agrees with this
+    # board's other twelve declarations exactly. That is a library rather than WCH's
+    # drawing, so it is corroboration and not proof -- but the question is no longer open,
+    # it is answerable, and the answer has a consequence.
+    #
+    # ⚠ A FLOATING BOOT STRAP IS NOT A NEUTRAL STATE. BOOT0 selects where the part starts;
+    # left unconnected it is whatever the die's internal pull does, which is a thing to
+    # confirm rather than assume -- and if there is no internal pull-down, an assembled
+    # board's boot mode is set by leakage. motor_ctrl ties its BOOT0 to a pull-down and a
+    # test pad for exactly this reason. Resolve it before fabrication: either confirm the
+    # internal pull from WCH's manual, or spend one 0402 on a pull-down.
+    #
+    # ⚠ AND THE SAME PIN LIST CLOSES OFF THE CAN REMAP. This package brings out PB8 (on
+    # pin 1) but NO PB9 at all, so CAN1's PB8/PB9 remap -- the one motor_ctrl uses to get
+    # CAN off PA11/PA12 -- does not exist here, and remap 3 is PD0/PD1, which the crystal
+    # occupies. CAN_RX and CAN_TX are therefore stuck on PA11/PA12, immediately beside
+    # SWDIO on PA13, which is the crowded corner described below. That corner cannot be
+    # fixed by moving signals; only by moving parts.
     sda, scl = Net("SDA"), Net("SCL")
     swdio, swclk, nrst = Net("SWDIO"), Net("SWCLK"), Net("NRST")
     osc1, osc2 = Net("OSC_IN"), Net("OSC_OUT")
