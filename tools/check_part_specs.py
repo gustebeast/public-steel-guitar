@@ -38,31 +38,37 @@ class Part(object):
         self.fields, self.note = fields, note
 
 
+# THE SOURCE IS THE ASSEMBLY DRAWING, NOT THE COMPONENT PAGE. This distinction is not
+# pedantry -- it is the specific mistake that put a wrong jack through two joints. A
+# vendor's page for 50-00041 describes the BARE BRASS CONNECTOR (O7.8 x 25.8). What is
+# actually on the end of 10-02135 is that connector inside a PVC OVERMOULD, and the
+# assembly drawing gives the finished part as O11 x 45. We never touch the connector.
+# We only ever touch the moulding. Check against the thing you can hold.
 PARTS = [
-    Part("10-02135", "https://www.tensility.com/products/10-02135", "2026-09-18",
+    Part("10-02135", "https://tensility.s3.us-west-2.amazonaws.com/imports/"
+                     "product_spec_sheets/10-02135.pdf", "2026-09-18",
          {
-             # the vendor's own label -> (what it publishes, where the code keeps it)
-             "wire outer diameter": (3.8, "src.leg_trrs.CABLE_D"),
-             "cable length":        (915.0, "src.leg_trrs.CABLE_LEN"),
-             "bend radius":         (22.8, "src.leg_trrs.CABLE_BEND_R"),
+             "cable OD":               (3.8, "src.leg_trrs.CABLE_D"),
+             "cable length":           (915.0, "src.leg_trrs.CABLE_LEN"),
+             "bend radius":            (22.8, "src.leg_trrs.CABLE_BEND_R"),
+             # the PLUG end, as moulded
+             "plug overmould OD":      (6.1, "src.leg_trrs.PLUG_D"),
+             "plug bare barrel":       (14.0, "src.leg_trrs.BARREL_L"),
+             "plug overall":           (23.3, lambda: __import__(
+                 "src.leg_trrs", fromlist=["e"]).BARREL_L
+                 + __import__("src.leg_trrs", fromlist=["e"]).PLUG_L),
+             # ...and the JACK end, likewise
+             "jack overmould OD":      (11.0, "src.leg_trrs.JACK_D"),
+             "jack overall":           (45.0, "src.leg_trrs.JACK_L"),
          },
-         "the leg's whole TRRS lead. PVC jacket, spiral + foil shield -- the foil is "
-         "why the bend radius is as large as it is"),
-    Part("50-00041", "https://www.tensility.com/products/50-00041", "2026-09-18",
-         {
-             "connector outer diameter": (7.8, "src.leg_trrs.JACK_D"),
-             "connector length":         (25.8, "src.leg_trrs.JACK_L"),
-         },
-         "the cable's JACK end (its connector 2)"),
-    Part("50-00397", "https://www.tensility.com/products/50-00397", "2026-09-18",
-         {
-             "connector outer diameter": (3.5, "src.leg_trrs.BARREL_D"),
-             "connector length":         (20.7, "src.leg_trrs.BARREL_L"),
-         },
-         "the cable's PLUG end (its connector 1). NOTE the vendor's 'connector length' "
-         "is the CONNECTOR, not the finished moulded end -- the moulding these are "
-         "assembled into is not a published dimension"),
+         "the FINISHED cable, off its own assembly drawing. Every figure here is the "
+         "moulded part, which is the only part the instrument ever sees"),
 ]
+
+# The bare connectors, kept for reference ONLY. They are what is INSIDE the mouldings
+# above; nothing in the model should be cut to them.
+#   50-00397  plug, O3.5 x L20.7  (14 of it is the exposed barrel)
+#   50-00041  jack, O7.8 x L25.8
 
 
 def _resolve(ref):
@@ -100,9 +106,10 @@ def main():
                 continue
             ok = abs(float(got) - pub) < TOL
             bad += 0 if ok else 1
-            print("  %-26s vendor %8.2f   code %8.2f   %-26s %s"
-                  % (label, pub, got, ref.rpartition(".")[0].replace("src.", "") + "."
-                     + ref.rpartition(".")[2], "ok" if ok else "<<< DISAGREE"))
+            where = ("(derived)" if callable(ref)
+                     else ref.replace("src.", ""))
+            print("  %-26s vendor %8.2f   code %8.2f   %-28s %s"
+                  % (label, pub, got, where, "ok" if ok else "<<< DISAGREE"))
         print()
     print("%d disagreement(s)" % bad)
     return bad
