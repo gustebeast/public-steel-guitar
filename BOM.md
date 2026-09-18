@@ -549,6 +549,42 @@ directions harmless at zero SKU cost, but **J7 cannot take it** — it passes th
 fleet's whole <5 A and needs two contacts against 3 A each; (c) move the true power
 feeds to XT30, which the BOM currently restricts to PSU trunk joints.
 
+### Instrument power budget — and there is no PSU on this BOM
+
+⚠ **NOTHING HERE SPECIFIES A SUPPLY.** There is an XT30 row "PSU trunk only" and no
+supply, no wattage, no part. Every per-board budget in this file sizes a *buck*; none of
+them add up to what feeds the instrument. Itemised 2026-09-18, at the 24 V inlet:
+
+| load | worst case | playing |
+|---|---|---|
+| 10 × SERVO42D, bus A (the <5 A budget cap) | 120.0 W | 30.0 W |
+| Raspberry Pi + USB, via buck | 16.7 W | 5.6 W |
+| **LED strip, 580 mm @ 100/m, via buck** | **25.3 W** | **8.9 W** |
+| optical board | 2.9 W | 1.9 W |
+| 11 sensor boards | 2.5 W | 2.5 W |
+| output panel | 1.0 W | 0.9 W |
+| motor controller | 0.9 W | 0.9 W |
+| **total** | **169 W / 7.1 A** | **51 W / 2.1 A** |
+
+**Suggested: 24 V 150 W (6.25 A)** with the strip power-capped in firmware; 24 V 240 W
+covers every load at maximum simultaneously, which nothing makes happen.
+
+**The 120 W motor line is a cap, not a draw.** The self-locking screw means there is no
+holding current, so motors pull only while a pedal moves, and moves stagger. See the
+bus-A contact-current note above, which is the same figure viewed as a connector problem.
+
+**The LED strip is the only load that is on continuously**, so it matters more for heat
+and for the supply's continuous rating than its 20 % share of the peak suggests. Strip
+figures are HD108 RGBW 5050 at 5 V, 80 mA per pixel with all four dice lit (user's
+`led-lighting-summary.md`, Sept 2026; 580 mm, user). 57 pixels at full white is 4.6 A on
+the 5 V rail — **cap it in the effects daemon's output stage** (sum the frame and scale)
+rather than buying a 5 A buck for a state no musical content produces.
+
+⚠ **AND THE LED NOTE ASSUMES A Pi 5; THIS BOM SPECIFIES A Pi 4, 2 GB.** The Pi 4 and its
+buck replaced a Pi 5 and a 6 A buck to save ~$130 (see the Pi row). SPI at 10–20 MHz is
+fine on a Pi 4 so the LED plan survives intact, but the two documents disagree about
+which board is in the instrument. Resolve before ordering either.
+
 **PCB buying plan**: tee PCBs + sensor PCBs ship as ONE panel (V-score /
 mouse-bite, snap apart — never hand-cut FR4), ONE assembly job, **full paid
 assembly including the THT headers** (accept the standard-tier fee if
