@@ -164,22 +164,37 @@ KH_DT_CLR      = 0.3                    # socket clearance (Y fit) -- now what c
 # flat end is legal precisely because the mortise host prints it FIRST, on solid material.
 # WIDTH is what the rail allows: the joint centres 5.0 from the instrument's outer face, and the
 # cavity (width/2 + clearance) has to leave the two-bead wall there.
-EP_J_W    = 7 * D.BEAD                  # 5.6 -> cavity half 3.1, outer wall 1.9
+# WIDTH is bounded by the OUTER WALL MEASURED ACROSS THE DIAGONAL, not in a layer (user caught
+# it at 1.32 on the render, 2026-09-18). The cavity's widest corner and the instrument's outer
+# face make a WEDGE: in any one printed layer that wall is 5.0 - (W/2 + clearance), but the wedge
+# itself narrows by 1/sqrt(2) across the 45 deg flank, and that throat is the section the wall
+# actually fails at. At W 5.6 it was 1.90 in a layer and 1.34 across -- under the tier. 4.8 puts
+# the throat at 1.63. The flare (the retention) goes 1.40 -> 1.20 per side, still over the 1.00
+# of undercut the hand-rolled dovetail had.
 EP_J_ROOT = 3 * D.BEAD                  # 2.4 of volumetric fusion back into the chassis
 _EP_AX    = PrintSpec(nozzle=0.8, material="PETG-GF", facing="axial")   # chassis: builds +Z,
                                                                        # along the install axis
 _EP_DN    = PrintSpec(nozzle=0.8, material="PETG-GF", facing="down")    # endplates: deep end
                                                                        # first, mouth last
+EP_J_W    = 6 * D.BEAD                  # 4.8
+# NO `depth`: TAKE ONLY WHAT THE JOINT NEEDS (user, 2026-09-18). Handing it the 8.0 the endplate
+# has spent all of it -- the mushroom rides surplus depth on its WAIST VERTICALS, so the waist
+# came out 4.88 instead of the 1.60 tier. That buys NOTHING in pull-out: this joint is pulled
+# along its depth axis (the string tension), and that load is carried by the neck's tension and
+# the flare/lip shear, both of which are per unit of ENGAGEMENT LENGTH (the Z run), not of waist
+# height. A taller waist only adds side-bearing across the width and a deeper socket to cut. So
+# the profile takes its width-driven minimum (4.72 deep) and the endplate keeps the other 3.3.
 _EP_J     = joint(width=EP_J_W, length=10.0, tenon=_EP_AX, mortise=_EP_DN,
-                  install="+x", depth=KH_DT_DEPTH, fit="loose")   # +x: the tenon travels +install
-                                                                 # to seat, and the endplate comes
-                                                                 # DOWN onto it
+                  install="+x", fit="loose")   # +x: the tenon travels +install to seat, and the
+                                               # endplate comes DOWN onto it
 assert abs(_EP_J.clearance - KH_DT_CLR) < 1e-9, (
     "cadkit's clearance for this site is %.2f but KH_DT_CLR says %.2f -- one of them is stale"
     % (_EP_J.clearance, KH_DT_CLR))
-assert 5.0 - (EP_J_W / 2.0 + _EP_J.clearance) >= D.MIN_WALL_2P - 1e-9, (
-    "the socket leaves %.2f of rail wall outboard, under the two-bead tier"
-    % (5.0 - (EP_J_W / 2.0 + _EP_J.clearance)))
+_EP_THROAT = (5.0 - (EP_J_W / 2.0 + _EP_J.clearance)) / math.sqrt(2.0)
+assert _EP_THROAT >= D.MIN_WALL_2P - 1e-9, (
+    "the socket's outer wall necks to %.2f across the flank's diagonal (%.2f in a layer), under "
+    "the two-bead tier -- narrow EP_J_W"
+    % (_EP_THROAT, 5.0 - (EP_J_W / 2.0 + _EP_J.clearance)))
 KH_DT_SEAT     = 0.1                    # lower-dovetail seating clearance: the mortise face stays
                                        # ON the foot line (KH_DT_Z0 = -23.15) and the TENON is
                                        # shortened by this (top -23.25) so the tenon seats on the
