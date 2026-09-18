@@ -20,6 +20,23 @@ catalogue name that STARTS with the MPN once punctuation is normalised, and repo
 anything else.
 
 Verified clean across all 32 codes on 2026-09-17, with the six suffix cases listed.
+
+⚠ RE-RUN 2026-09-18: all 31 codes still point at the part they claim, and the stock
+report is the part worth reading. Three sit under the 200 threshold, and only one of them
+is a constraint, because what matters is stock DIVIDED BY THE PER-INSTRUMENT COUNT:
+
+    VEMD4110X01    20 per instrument (2 detectors x 10 strings)   95 ->  4.8 instruments
+    USB3343-CP      1 per instrument                              98 -> 98
+    K3A260002010    1 per instrument                             108 -> 108
+
+So the photodiode is the only sourcing risk and it is HALF the ten-instrument basis, not
+a warning about the other two. The PHY reads as low next to a flat threshold and covers
+ninety-eight builds; a threshold that does not know the BOM quantity cannot tell those
+apart, which is why the number to act on is the rightmost column.
+
+The PHY is still worth watching for a different reason: this same file recorded it OUT OF
+STOCK on 2026-08-04, so 98 is a recovery rather than a floor, and it has no second source
+in the catalogue.
 """
 import io
 import json
