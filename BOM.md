@@ -112,6 +112,35 @@ the constraint is stock, not selection. See the optical-pickup section.
 | **TRRS float spring** | Compression, **Ø8.0 OD × 0.7 wire × 20.0 free**, **ID 6.6**, 304 SS (rate ~0.75 N/mm, bracketed 0.6–0.9; **measure on arrival**) | 1 (+ 4 spare) | [uxcell B0C33C21K9](https://www.amazon.com/dp/B0C33C21K9) — 5 to a pack, used **AS BOUGHT** | **$6.29 / 5** [a] | SECOND SKU, and not a preference: the coil has to end up ON the lead, and a lead has two ends — the moulded jack (Ø9.7) and the moulded far plug (Ø6.1). The latch coil's 3.8 ID passes neither, so no assembly order puts it there and the joint was unbuildable with it (user found this). **ID 6.6 clears the far plug by 0.5.** Installed 13.80 → **4.7 N at rest / 6.9 N seated**. The installed length is the SOLID FLOOR here, not the preload target: at 0.75 N/mm a 5.0 N target would want 13.33 and the coil would go solid before the leg seats |
 
 
+> ⚠⚠ **READ THE VENDOR'S PAGE, 2026-09-18 — and it BLOCKS the coil (user asked).**
+> Tensility publish, for 10-02135: wire outer **Ø3.8** ✓, cable length **915** (not the
+> 914 above, distributor rounding), price **$5.01** (not $5.31), PVC jacket, **spiral +
+> foil** shield, and a **MINIMUM BEND RADIUS OF 22.8 mm** — 6× the jacket, which is what
+> a foil shield costs. Connectors are **50-00397** plug (Ø3.5 × L20.7) and **50-00041**
+> jack (Ø7.8 × L25.8); the jack figures confirm what was already modelled.
+>
+> **22.8 kills the coil-in-the-leg.** A coil at that radius needs a mean diameter of
+> 45.6, and the adjust sleeve's cavity measures Ø24.7 — a 20.9 cap. No turn count
+> reconciles those. Two other places also fail it: the coil as designed (r 9.5 relaxed,
+> 7.9 stretched) and the bar's wiring chamber turn (r 6.2). Only the adjust tenon's jog
+> passes, because it is nearly straight. `src/coil_mandrel.py` now asserts against
+> `leg_trrs.CABLE_BEND_R` and is UNREGISTERED from the build until this is decided:
+> accept exceeding the published radius on a static install, move the slack store out
+> of the leg (docs/leg-trrs-routing.md option 2 — the bar's chamber, where nothing caps
+> the diameter), or source a lead with a smaller bend radius.
+>
+> Every bend-radius figure I quoted before this was measured against a 3×OD rule of
+> thumb, not against the manufacturer's number. "2.1×OD, tight but acceptable" was the
+> wrong yardstick throughout.
+>
+> ⚠ **STILL OPEN: the plug's modelled BARREL_L.** The vendor gives the 50-00397
+> connector as **L20.7**; the model has `BARREL_L` 14.0 plus a Ø6.1 × 14 overmould that
+> is not a published figure at all. Their "connector length" is the CONNECTOR, not the
+> finished moulded end, so the two are not the same measurement — but 14 is not 20.7
+> either, and how much barrel protrudes decides the mate depth. `tools/check_part_specs.py`
+> reports it every run. The bought parts are now checked against the vendor's own page
+> by that tool, for all three SKUs.
+
 > **THE INLINE JACK IS Ø7.8 × 25.8, NOT Ø9.7 × 40 — and that one number deleted a
 > subsystem (2026-09-17).** `leg_trrs.JACK_D`/`JACK_L` were an ENVELOPE ("BOM: 9.1..9.7,
 > pick high", "≤ 40"), never a part, and the bottom joint was being designed around them.
@@ -1803,6 +1832,9 @@ the small boards being roughly *double* their modelled size to make splitting
 worthwhile.
 
 ## Tools (shop infrastructure — NOT per-instrument cost)
+
+| **TRRS coil mandrel** (printed, 2 pc) | `tools/coil_mandrel.step` + `tools/coil_mandrel_sleeve.step` — wind the leg's TRRS lead 7 turns between the barrel's pitch ribs, slide the Ø23.0-bore sleeve over it, heat-set | 1 set | PRINT IT | filament only | **Why a tool and not an instruction.** The leg's slack store is a coil in the gap between the two tenon ends, and the TURN COUNT decides how low the leg can go: the coil gets fatter as it compresses, and below ~6.59 turns it swells past the sleeve's Ø24.7 bore before the leg reaches its low stop. At 6.5 turns it binds at a 71.3 mm gap against a 90.8 minimum; at 7 it binds at 26.6, about eleven ladder steps of headroom. Half a turn is the difference, so the count is fixed by a scribe line rather than by counting. **Why TWO pieces (user).** A bare mandrel sets only the coil's inside diameter and leaves the outside to spring-back — a number nobody can quote for an unspecified jacket, against a bore that allows only 20.9 of mean. Capturing the cable in an annulus its own width pins the mean between two surfaces: wound on 15.2, capped at 23.0, mean 19.0 by arithmetic. The outer also holds every turn put through the heat and the cool. **⚠ And it is SET STRETCHED, not turns-touching.** The service span is 90.8–253.2; a coil set at turns-touching (26.6) would live held at 3.4× to 9.5× its own free length, and a coil held like that loses its curl — which is a functional failure here, since 342 mm of uncoiled slack does not fit a Ø24.7 bore. Set at a **80 mm free span** (7 turns at 11.43 pitch, which is why the barrel carries a helical rib) it lives at 1.1×–3.2×, never compressed below free where it would buckle and jam. **⚠ Heat is not optional** — winding cold and leaving it gives creep, not a set. **Print in PA6-GF and set it in an oven at 80 °C for 30+ min** (user has both), then cool fully BEFORE opening — the set happens on cooling. PA6-GF's HDT is far above anything the jacket wants, so the tool stops being the limit and the CABLE becomes it: most TRRS jackets are rated 80 °C continuous, and if 80 relaxes there is room to climb. Dry heat is slower into a wound coil than water, hence 30+ min rather than 15, and keep the two moulded connectors out of the hot zone. **⚠ Heating PVC gives off plasticiser — ventilate, not a food oven.** (PA6-GF was dropped for PETG-GF on cost for *instrument* parts; a one-off tool is exactly where that trade does not apply.) **Only needed if a pre-coiled TRRS lead with a real datasheet cannot be bought** (see docs/leg-trrs-routing.md) |
+
 
 One-time purchases that outlive this project; documented here so nothing is
 a surprise at build time, but **excluded from the cost summary and from
