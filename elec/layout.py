@@ -1797,10 +1797,22 @@ def _local_nets(board, patterns, outline, inner=None, local_mm=6.0, width=0.2,
     # The straight line from the op-amp output to its feedback resistor's far pad passes
     # the SAME RESISTOR'S OTHER PAD, 0.52 mm off the centreline. A 0.2 mm track needs
     # 0.1 + 0.14 clearance and the pad reaches 0.27 from its centre: 0.51 mm required
-    # against 0.52 available, a margin of TEN MICRONS. That is why the deterministic pass
-    # will not place it and why the router, stepping finer, squeaks through every time.
-    # The board is not failing on these today -- it is passing on a hundredth of a
-    # millimetre, five times, which is a placement problem wearing a routing costume.
+    # against 0.52 available. Ten microns, so this pass will not place it.
+    #
+    # ⚠ THAT IS A LIMIT OF THIS ROUTINE, NOT A RISK ON THE BOARD, and the first version of
+    # this note got it backwards -- it said the board was "passing on a hundredth of a
+    # millimetre, five times". It is not. Measured on the routed board, the router's own
+    # copper clears those pads by 0.600, 0.278 and 0.575 mm on F.Cu against a 0.127 fab
+    # rule, and on the other two it simply drops to In2.Cu, where an SMD pad does not
+    # exist and there is nothing to clear at all. Ten microns is the margin of the path
+    # THIS CODE tries, in its own model; it says nothing about the copper that ends up
+    # there.
+    #
+    # What is worth fixing is narrower: the inner-layer fallback below exists for exactly
+    # this case -- surface blocked, a layer down trivial -- and on these five it cannot
+    # place its via either, so five nets the generator should own go to the router. That
+    # costs the router effort in the densest part of the board, which is where its two
+    # remaining failures are. A capability gap, not a fragility.
     skipped_edges = []
     for netname in sorted(by_net):
         group = by_net[netname]
