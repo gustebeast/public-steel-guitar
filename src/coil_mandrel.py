@@ -163,17 +163,25 @@ RIB_H = 2 * B                   # 1.6 of helical rib between turns. Its lower fl
                                 # MEAN_SET stays barrel + cable; the rib only spaces
                                 # the turns, which at PITCH they will not do themselves
 SCRIBE_W, SCRIBE_DEEP = 0.6, 0.4        # the line you wind TO
-SHANK_D, SHANK_L = 10.0, 20.0           # chuck it, or hold it in a vice
-CONE_H = (FLANGE_D - SHANK_D) / 2.0
-                                # ...and the shank flares to the flange at 45 rather
-                                # than stepping. A O28.6 flange on a O10 shank is 564
-                                # mm2 of flat ceiling -- by far the biggest overhang in
-                                # the tool, and the reason this cone exists
 CLEAT_W = LT.CABLE_D - 0.4      # 3.4: a light pinch on the O3.8 jacket, pressed in
                                 # SIDEWAYS -- it cannot be threaded
 CLEAT_DEEP = 8.0
-SLEEVE_L = FREE_SPAN + 2.0              # 82.0: covers every turn and no more
-BARREL_L = FREE_SPAN + CLEAT_DEEP + 4.0
+TAIL_RUN = 12.0                 # PLAIN BARREL EITHER SIDE OF THE WINDING ZONE, so each
+                                # tail leaves the helix, TURNS AXIAL, and is held that
+                                # way while it sets (user). It matters because that is
+                                # exactly what the leg asks of them: the coil sits on
+                                # the leg axis with its cable path at r 9.5, and both
+                                # tails run AXIALLY out of it -- down into the adjust
+                                # tenon's channel at r 8.0, up into the fixed tenon's
+                                # bore at r 5.8. Set the transition here and the coil
+                                # drops in with its ends already pointing the right way
+                                # instead of being bent to it afterwards. 7 WHOLE turns
+                                # also leaves both tails at the same azimuth, which is
+                                # what those two radii want
+BARREL_L = 2 * TAIL_RUN + FREE_SPAN + CLEAT_DEEP
+SLEEVE_L = BARREL_L - CLEAT_DEEP        # covers both tail runs AND every turn: the
+                                        # axial tails are only 'set' if something holds
+                                        # them against the barrel while they cool
                                         # 92.0, and it is the SLEEVE that sizes it: the
                                         # top cleat has to start above where the sleeve
                                         # ends, or the sleeve seats on the tail instead
@@ -185,28 +193,21 @@ assert SLEEVE_L < BARREL_L - CLEAT_DEEP + 1.0, "the sleeve buries the top cleat"
 
 
 def mandrel() -> cq.Workplane:
-    """THE INNER. Shank, base flange with a cleat, barrel, scribe line at the turn
-    count, top cleat. The top is OPEN on purpose -- the finished coil comes off by
-    UNSCREWING, which a second flange would prevent."""
-    z = 0.0
+    """THE INNER, printed FLANGE-DOWN. Flange, then barrel: TAIL_RUN of plain barrel,
+    the ribbed winding zone, TAIL_RUN of plain barrel, top cleat.
+
+    NO SHANK (user). A O10 x 20 stub under the flange made the first layer O10 with
+    everything above it wider -- a 127 tall tower on a 78 mm2 footprint -- and the 45
+    cone above it existed only to carry the flange over that stub. Standing on the
+    flange the base is O%.1f, the cone is unnecessary, and winding seven turns by hand
+    never needed a chuck.""" % FLANGE_D
     out = cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        SHANK_D / 2.0, SHANK_L, cq.Vector(0, 0, z), cq.Vector(0, 0, 1)))
-    z += SHANK_L
-    # the 45 flare: a flange this much wider than its shank is a flat ceiling otherwise
-    out = out.union(cq.Workplane("XY").add(cq.Solid.makeCone(
-        SHANK_D / 2.0, FLANGE_D / 2.0, CONE_H, cq.Vector(0, 0, z), cq.Vector(0, 0, 1))))
-    z += CONE_H
-    out = out.union(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        FLANGE_D / 2.0, FLANGE_T, cq.Vector(0, 0, z), cq.Vector(0, 0, 1))))
-    z_base = z + FLANGE_T
+        FLANGE_D / 2.0, FLANGE_T, cq.Vector(0, 0, 0), cq.Vector(0, 0, 1)))
+    z_base = FLANGE_T
     out = out.union(cq.Workplane("XY").add(cq.Solid.makeCylinder(
         BARREL_D / 2.0, BARREL_L, cq.Vector(0, 0, z_base), cq.Vector(0, 0, 1))))
-    # THE PITCH RIB: a helical thread the cable winds between, so PITCH is set by the
-    # tool and not by eye. Swept with a 45 lower flank -- the one face that would
-    # otherwise be an overhang on a part printed standing.
-    # the helix covers the WINDING ZONE and no more. Running it a turn longer put 1.0
-    # of rib past the barrel's top face, where it was a floating fragment rather than
-    # a rib -- the part came out as 2 solids and the assert below caught it.
+    # THE PITCH RIB, over the winding zone only -- the tail runs stay plain so each
+    # tail can lie straight against the barrel while the sleeve holds it there.
     helix = cq.Wire.makeHelix(pitch=PITCH, height=FREE_SPAN, radius=BARREL_D / 2.0)
     # the profile's base is SUNK 0.4 into the barrel. Sitting it exactly on the surface
     # makes the rib tangent to the cylinder it fuses to, and a tangent boolean is the
@@ -214,21 +215,13 @@ def mandrel() -> cq.Workplane:
     prof = (cq.Workplane("XZ").center(BARREL_D / 2.0, 0)
             .polyline([(-0.4, -2 * RIB_H), (RIB_H, 0.0), (-0.4, RIB_H)]).close())
     rib = prof.sweep(cq.Workplane("XY").add(helix), isFrenet=True)
-    out = out.union(rib.translate((0, 0, z_base + RIB_H)))
-    # the base cleat: a notch DOWN FROM THE FLANGE'S TOP FACE, not a slot through it.
-    # The cable drops in rather than threading (both ends of the lead are moulded), it
-    # sits below the face so the sleeve still seats flat, and cut from above it has no
-    # roof to bridge -- the through-slot did.
+    out = out.union(rib.translate((0, 0, z_base + TAIL_RUN + 2 * RIB_H)))
+    # the base cleat: a notch DOWN FROM THE FLANGE'S TOP FACE. The tail arrives running
+    # axially down the barrel, turns out through this, and is pinched. Cut from above
+    # it has no roof to bridge; sitting below the face, the sleeve still seats flat.
     out = out.cut(cq.Workplane("XY").box(
         FLANGE_D, CLEAT_W, LT.CABLE_D + 0.4, centered=(False, True, False))
-        .translate((BARREL_D / 2.0 - CLEAT_DEEP, 0, z_base - LT.CABLE_D - 0.4)))
-    # the scribe line: wind to here and you have TURNS turns, touching
-    ring = cq.Solid.makeCylinder(BARREL_D / 2.0 + 1.0, SCRIBE_W,
-                                 cq.Vector(0, 0, z_base + SOLID_SPAN), cq.Vector(0, 0, 1))
-    core = cq.Solid.makeCylinder(BARREL_D / 2.0 - SCRIBE_DEEP, SCRIBE_W + 2.0,
-                                 cq.Vector(0, 0, z_base + SOLID_SPAN - 1.0),
-                                 cq.Vector(0, 0, 1))
-    out = out.cut(cq.Workplane("XY").add(ring.cut(core)))
+        .translate((BARREL_D / 2.0 - 1.0, 0, z_base - LT.CABLE_D - 0.4)))
     # the top cleat: an axial notch the finishing tail tucks into and lifts out of
     out = out.cut(cq.Workplane("XY").box(
         BARREL_D + 2.0, CLEAT_W, CLEAT_DEEP + 1.0, centered=(True, True, False))
@@ -243,7 +236,7 @@ def sleeve() -> cq.Workplane:
     at its foot so it can seat on the flange without crushing the starting tail.
 
     Drawn where it sits when the assembly is closed, so the pair reads as a pair."""
-    z0 = SHANK_L + CONE_H + FLANGE_T
+    z0 = FLANGE_T
     out = cq.Workplane("XY").add(cq.Solid.makeCylinder(
         SLEEVE_OD / 2.0, SLEEVE_L, cq.Vector(0, 0, z0), cq.Vector(0, 0, 1)))
     out = out.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
