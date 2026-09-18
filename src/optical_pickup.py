@@ -137,7 +137,7 @@ from cadkit.pcb import PCB_T as _PCB_T
 # ── where it sits ────────────────────────────────────────────────────────────
 # The speaking length ends at the BEARING TANGENT (directly over the axle), NOT at
 # BRIDGE_X (which is the ball-end anchor, past the bearing).
-TERMINATION_X = D.BRIDGE_AXLE_X                  # -4.0
+TERMINATION_X = D.BRIDGE_AXLE_X                  # -8.0
 # 15.5 -> 20.0 (branner 2026-09-09), forced by the TWO SCREW ROWS at the bridge end.
 # The endplate had to widen to host the near row's guide-rod socket, which moved its -X
 # face -16.50 -> -23.10; the DECK is flush with that face (top_plate.PX0), so the deck --
@@ -153,7 +153,7 @@ TERMINATION_X = D.BRIDGE_AXLE_X                  # -4.0
 # the termination (the axle line) 1.5 mm -X. Taking the same 1.5 off SENSE_D keeps the sensing
 # row at X -28.0, so the whole board and every part on it stay where they were verified.
 SENSE_D       = 20.0                             # sensing station, out from the termination
-SENSE_X       = TERMINATION_X - SENSE_D          # -19.5
+SENSE_X       = TERMINATION_X - SENSE_D          # -28.0
 # Floor, from the string's bending-stiffness length sqrt(EI/T): ~1.2 mm for the plain
 # .015 core at ~120 N, ~1.7 mm for the wound .070 at ~150 N. The boundary layer where
 # the string stops following the ideal mode shape -- and the effective termination point
@@ -166,8 +166,8 @@ STIFF_FLOOR   = 13 * D.NOZZLE_D                  # 10.4 (was 10.0 = 12.5 beads)
 # end at the endplate. Both edges are READ from top_plate so they cannot drift: if the
 # pickup's travel or plate size changes, this band changes with it and the assertions
 # below fail rather than the parts quietly overlapping.
-DECK_TOP   = TP.TZ                                            # 6.00, deck surface
-BAND_X0    = TP.PX0                                           # -16.60, deck's +X end
+DECK_TOP   = TP.TZ                                            # 6.40, deck surface
+BAND_X0    = TP.PX0                                           # -25.06, deck's +X end
 BAND_X1    = TP.PICKUP_X_NOM + TP.CAVITY_X / 2                # -39.08, cavity's +X edge
 BAND_CLR   = 0.2                                              # keep off both band edges
 
@@ -354,8 +354,8 @@ PART_STRING_CLR = 1.5
 # window (see BOM.md). What it definitely buys is the -X wall and the debris seal.
 COVER_GAP = 0.3                                  # sensor face -> cover underside
 COVER_T   = D.MIN_WALL_2P                        # two-bead floor for added material
-COVER_Z0  = SENSE_FACE_Z + COVER_GAP             # 12.411
-COVER_Z1  = COVER_Z0 + COVER_T                   # 14.011
+COVER_Z0  = SENSE_FACE_Z + COVER_GAP             # 12.284
+COVER_Z1  = COVER_Z0 + COVER_T                   # 13.884
 SLOT_DX   = 3.0                                  # aperture over the triplet, in X
 SLOT_DY   = 5.0                                  # ...and in Y (triplet spans +-2.225)
 # The lid covers the OPTICS ONLY -- the sensor row's X band and the sensing field's Y
@@ -430,7 +430,7 @@ Y_TAIL   = -(D.BRIDGE_ARM_OUT + WRAP_CLR)
 #   THE DECK STAYS CLEAR. The tail no longer lies across the deck panel.
 # +X edge stops MIN_WALL_2P short of the endplate's outer face so the board is not flush
 # with the instrument's exterior.
-TAIL_X1 = D.BRIDGE_BASE_X1 - D.MIN_WALL_2P                    # 7.00
+TAIL_X1 = D.BRIDGE_BASE_X1 - D.MIN_WALL_2P                    # 23.46
 # -X edge runs out to the STRIP's own -X edge. Sized off the LQFP144 instead (-18.40) the
 # two sections overlapped by just 1.60 in X, so the whole board hung on a 1.6 mm waist:
 # brittle, and hopeless for routing -- 20 analog channels + 10 LED drives + power all have
@@ -445,7 +445,7 @@ PCB_X1T = PCB_X1S                                             # -30.42
 # is what lines its apertures up with the sensor triplets.
 # HEAD_Y0 clears the bearing arms (outer face +-54.25) before turning +X -- inboard of that
 # the comb brace occupies the same X band and the same Z.
-HEAD_Y0 = -Y_TAIL                                             # 55.00, mirrored
+HEAD_Y0 = -Y_TAIL                                             # 51.55, mirrored
 # -X edge of the endplate's wrap plinths. The board overhangs it, so this -- not the board
 # outline -- is what limits how far -X the M4 grips can go.
 PLINTH_X0 = BAND_X0                                           # -16.60
@@ -457,9 +457,9 @@ PLINTH_X0 = BAND_X0                                           # -16.60
 # +Y end sits FLUSH with the endplate's existing +Y extent (user): the head no longer sets
 # how far the endplate reaches. Affordable because the M4 grip moved inboard -- it needs
 # MIN_WALL_2P + pilot/2 = 4.60 to this edge and has 5.15.
-PCB_YP     = CH.Y_HI + CH.T / 2                               # 64.75, the rail outer face
-HEAD_LEN   = PCB_YP - HEAD_Y0                                 # 9.75, mirrored at -Y
-WRAP_Y     = Y_TAIL - HEAD_LEN                                # -65.80, compute starts here
+PCB_YP     = CH.Y_HI + CH.T / 2                               # 65.95, the rail outer face
+HEAD_LEN   = PCB_YP - HEAD_Y0                                 # 14.40, mirrored at -Y
+WRAP_Y     = Y_TAIL - HEAD_LEN                                # -65.95, compute starts here
 # COMPUTE SECTION WIDTH is set by the -Y EDGE, not by the MCU any more. Every cable now
 # leaves at -Y (user: a -X exit cannot be routed cleanly), so that edge has to carry the
 # USB-C AND the 6-way XH side by side, and THAT is the binding dimension -- the LQFP144
@@ -490,7 +490,7 @@ assert TAIL_X1 - COMPUTE_X0 >= COMPUTE_W_MIN - 1e-9, \
 # mount_points() is defined. One source, so the screw and the part that dodges it cannot
 # drift apart. MIN_WALL_2P of plinth on the outboard side of each.
 MOUNT_KEEP   = D.MIN_WALL_2P + M4.insert_pilot_d / 2          # 4.60
-MOUNT_X_HEAD = PLINTH_X0 + MOUNT_KEEP                         # -12.00, hard -X
+MOUNT_X_HEAD = PLINTH_X0 + MOUNT_KEEP                         # -20.46, hard -X
 MOUNT_X_TAIL = TAIL_X1 - MOUNT_KEEP                           # +2.40, hard +X
 MOUNT_CLR    = M4.shaft_clr_d / 2 + 1.0                       # keep-out radius, 3.20
 # PCB_YP is an OUTPUT, set after the parts exist: the +Y-most quad's feedback grid sits
@@ -1735,7 +1735,7 @@ def jack_access(grow: float = 0.0) -> cq.Workplane:
 # To get a true gable the op-amp column would have to move ~1.5 -X so the roof could reach
 # -23.50. That trades the TIA's distance from its photodiode -- the noise-critical summing
 # node -- for lid cosmetics, which is the wrong way round unless something else wants it.
-APER_X1 = BAND_X0 - D.MIN_WALL_2P                # -18.20: leaves a FULL two-bead strip of
+APER_X1 = BAND_X0 - D.MIN_WALL_2P                # -26.66: leaves a FULL two-bead strip of
                                                  # roof at +X, where the old 3.0-wide slot
                                                  # left only 1.40. Still clears the packages
                                                  # (they end at -18.50) by 0.30.
@@ -1885,9 +1885,9 @@ CONDUIT_W = max(_XH6_D, _USBC_H) + 2 * CONDUIT_CLR            #  9.50, along X (
 # was longer than the XH is wide, so shortening a plug would have quietly made the shaft too
 # narrow to PASS one.
 _COND_PASS = max(_XH6_W, _USBC_W) + 2 * CONDUIT_CLR           # 20.40: get a plug THROUGH
-_COND_SPAN = max(PLUG_L.values()) + 2 * CONDUIT_CLR           # 17.00: reach past a MATED plug
+_COND_SPAN = max(PLUG_L.values()) + 2 * CONDUIT_CLR           # 20.50: reach past a MATED plug
 CONDUIT_D = max(_COND_PASS, _COND_SPAN)                       # 20.40, along Y
-CONDUIT_Y1 = PCB_YM - 2.0                                     # -108.85, clear of the board
+CONDUIT_Y1 = PCB_YM - 2.0                                     # -124.58, clear of the board
 CONDUIT_Y0 = CONDUIT_Y1 - CONDUIT_D
 assert CONDUIT_Y0 >= _WALL_Y - 1e-9, (
     f"conduit reaches y {CONDUIT_Y0:.2f}, past the {D.MIN_WALL_2P} exterior wall limit "
@@ -1903,7 +1903,7 @@ CONDUIT_XC = (BAND_X0 + D.BRIDGE_BASE_X1) / 2                 # centred in the e
 # would run out through XLO before it got there. Running the void out through the -X face
 # instead means material never resumes at all, every layer is a simple notch rooted on the
 # one below, and the cable arrives directly in the chassis interior where it needs to be.
-CONDUIT_X1 = D.BRIDGE_BASE_X1 - D.MIN_WALL_2P                 # 7.00, +X wall kept
+CONDUIT_X1 = D.BRIDGE_BASE_X1 - D.MIN_WALL_2P                 # 23.46, +X wall kept
 RUN_Z      = DECK_TOP - 16.0                                  # harness plane in the box
 CONDUIT_Z0 = RUN_Z - 4.75                                     # floor, half a bundle below
 
