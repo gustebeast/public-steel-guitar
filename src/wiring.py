@@ -225,7 +225,7 @@ def tee_stations():
 _TEE_LIFT = TEE_Z - EL.FLOOR_Z          # lift a RAIL tee dummy onto its cradle, above the rib tops
 
 # ── TEES ON THE MOTORS (user, 2026-09-14) ───────────────────────────────────
-# Bus-A tees 0..8 no longer ride the rail: each sits on its own motor's pocket, resting on the
+# Bus-A tees 0..9 no longer ride the rail: each sits on its own motor's pocket, resting on the
 # faceplate wall's top and LAPPING the motor, so the one M4 that holds the board down also stops
 # the motor lifting out -- board and motor share a screw. The drop pigtail becomes a hand's
 # breadth instead of a reach to the rail, and the trunk flies tee to tee over the bank.
