@@ -42,7 +42,7 @@ from . import chassis as CH
 from . import electronics as EL
 from . import pickup_mount as PM
 from .helpers import box_at, cyl, cyl_y, heal
-from cadkit.fasteners import M4, cut_insert_bore
+from cadkit.fasteners import M4, cut_counterbore, cut_insert_bore
 
 YL = CH.Y_LO + CH.T / 2                 # -Y rail inner face (-128.75)
 YH = CH.Y_HI - CH.T / 2                 # +Y rail inner face (+54.75)
@@ -236,6 +236,14 @@ PLATE_Y   = (PK_YP - PK_MAX_YM) + 2 * RET_WALL_T   # green Y (LONGEST pickup + w
 NUB_W     = 14 * D.NOZZLE_D                        # 11.2 (was 11.0) nub/arm width (>= boss Ø8)
 CAVITY_X  = PLATE_X + 1.5                          # pickup cavity in the deck (green + clearance)
 CAVITY_Y  = PLATE_Y + 1.5
+# LIGHT FLANGE (user, 2026-09-17): the plate's BOTTOM reaches this far PAST the deck opening on
+# every side, so it laps the deck's underside instead of stopping 0.75 short of the opening --
+# the gap round its edge was a clear line of sight from the lit body out through the cavity.
+# 2.0 is what the room allows: probed through the plate's whole travel band, the ring outside
+# the cavity is clear of everything at +2.0 and hits the chassis at +3.0. It costs no lift
+# either -- the flange tops out 2.5 below the deck's underside at the jacks' highest (the boss
+# top reaches the head shoulder first, 8.53 up), so it never has to enter the opening.
+LIGHT_FLANGE = 2.0
 # (Y hold-down CLAMP removed; retention above locks the pickup to the plate instead.)
 
 MARKER_FRETS = {3, 5, 7, 9, 12, 15, 17, 19, 21, 24}
@@ -388,6 +396,33 @@ SIDE_SKIN_T = D.MIN_WALL_2P     # colour carried DOWN the +-Y faces (user, 2026-
                                 # flanks. Two beads of colour wrap it.
 
 
+# PRINT ORIENTATION (user's convention: the record, declared once per part, and the hole
+# cutters read it so every hole is shaped for the way its part actually prints).
+PIECE_UP = (0.0, 0.0, -1.0)     # the DECK pieces print deck-DOWN: the top face (TZ) is on the
+                                # bed and the part builds -Z, which is what lets each leadscrew
+                                # head be captured in solid deck with no boss and no web
+ZPL_UP   = (0.0, 0.0, 1.0)      # the height plate the other way up: flat bottom on the bed,
+                                # every boss standing up
+
+
+def _pickup_cavity(grow=0.0):
+    """The deck's pickup opening, optionally grown `grow` all round -- ONE definition, used by
+    the cut that makes it and by the colour skin that lines it, so the two cannot drift."""
+    return box_at(CAVITY_X + 2 * grow, CAVITY_Y + 2 * grow, (TZ - BZ) + 2,
+                  x=PICKUP_X_NOM, y=PK_ROOM_CTR_Y, z=(BZ + TZ) / 2)
+
+
+def _cavity_skin():
+    """A two-bead COLOUR lining round the pickup opening, its full depth (user, 2026-09-17).
+
+    The opening's walls were transparent base material top to bottom, so the light this deck
+    pipes along its length leaked straight out into the pickup cavity -- the one place it is
+    not wanted, since that cavity is what the pickup and its shadow live in. Turning the
+    border colour costs nothing structural (it is the same printed object, the same wall) and
+    stops the bleed at the source rather than masking it later."""
+    return _pickup_cavity(SIDE_SKIN_T).cut(_pickup_cavity())
+
+
 def _side_skin(xa, xb):
     """The +-Y outer faces of a panel, SIDE_SKIN_T deep -- the colour part's wrap."""
     h = (TZ - BZ) + 2.0
@@ -407,6 +442,8 @@ def _split(panel, xa, xb, lines=True):
     slab = box_at(xa - xb + 2.0, BY1 - BY0 + 2.0, FRET_T,
                   x=(xa + xb) / 2, y=(BY0 + BY1) / 2, z=TZ - FRET_T / 2)
     slab = slab.union(_side_skin(xa, xb))
+    slab = slab.union(_cavity_skin())      # ...and the pickup opening's own wall (no-op on the
+                                           # panels that have no opening: it lands on nothing)
     frets = _fret_solids(xa, xb) if lines else None
     base, colour = panel.cut(slab), panel.intersect(slab)
     if frets is not None:
@@ -455,8 +492,7 @@ def _pickup_piece():
     (Ø7.5 pocket down to the shoulder + Ø4.6 shaft bore) -- no boss/web, so no overhang."""
     body = _deck_body(PIECE_X0, PIECE_X1)
     # PICKUP CAVITY only (pickup pokes through + slides/rises); rest of the deck stays solid
-    body = body.cut(box_at(CAVITY_X, CAVITY_Y, (TZ - BZ) + 2,
-                           x=PICKUP_X_NOM, y=PK_ROOM_CTR_Y, z=(BZ + TZ) / 2))
+    body = body.cut(_pickup_cavity())
     # -Y skirt + end walls below the deck (structure / endplate-lip datum), built DEEP and then
     # stepped up over the -X run that can swing out above the motor bank (see SKIRT_DEEP_BOT)
     body = body.union(box_at(OPEN_LEN + 2 * WALL, SKIRT_T, BZ - SKIRT_DEEP_BOT,
@@ -475,11 +511,17 @@ def _pickup_piece():
                                z=(SKIRT_DEEP_BOT + FLOOR_BOT) / 2))
     # LEADSCREW BORES through the solid deck: head pocket (Ø7.5, opens at the bed TZ, down
     # to the shoulder) + shaft bore (Ø4.6, on down into the open bay where the plate nut is)
+    # LEADSCREW BORES, through cadkit's counterbore so the PRINT DIRECTION is checked (user,
+    # 2026-09-17): this piece builds -Z from the deck face, so the step from the head pocket
+    # down to the shaft bore is drilled INTO the build -- a flat annular ceiling bridging over
+    # the pocket. cadkit turns it into a 45 deg cone under the seat plane; the head still seats
+    # on its rim (0.2 lower, where the cone passes its own Ø). Hand-rolled cylinders could not
+    # know any of that, which is why they had the overhang.
     for jx, jy in JACK_POS:
-        body = body.cut(cyl(HEAD_POCKET_D, TZ - JACK_HEAD_Z + 1, z=JACK_HEAD_Z)
-                        .translate((jx, jy, 0.0)))
-        body = body.cut(cyl(M4.shaft_clr_d + 0.4, JACK_HEAD_Z - BZ + 1.1, z=BZ - 1)
-                        .translate((jx, jy, 0.0)))
+        body = cut_counterbore(body, HEAD_POCKET_D, TZ - JACK_HEAD_Z,
+                               M4.shaft_clr_d + 0.4, TZ - (BZ - 1.0),
+                               (jx, jy, TZ), (0.0, 0.0, -1.0),
+                               print_up=PIECE_UP, overshoot=1.0)
     return heal(body)
 
 
@@ -490,7 +532,10 @@ def _pickup_zplate():
     from the boss top; the screw tail passes through a Ø4.4 hole in the flat plate). RETENTION
     (user): a +Y WALL the pickup butts + a -Y horizontal grub that pushes it +Y against the
     wall, locking the pickup to the PLATE only (so the plate still travels)."""
-    plate = box_at(PLATE_X, PLATE_Y, ZPL_T,
+    # the prism is the DECK OPENING plus LIGHT_FLANGE all round, not the pickup's own footprint:
+    # the pickup only needs PLATE_X x PLATE_Y to rest and slide on, but the plate is also the
+    # lid over a lit body, and light does not care where the pickup ends (user)
+    plate = box_at(CAVITY_X + 2 * LIGHT_FLANGE, CAVITY_Y + 2 * LIGHT_FLANGE, ZPL_T,
                    x=PICKUP_X_NOM, y=PK_ROOM_CTR_Y, z=(ZPL_BOT + ZPL_TOP) / 2)
     for jx, jy in JACK_POS:
         dx, dy = jx - PICKUP_X_NOM, jy - PK_ROOM_CTR_Y
