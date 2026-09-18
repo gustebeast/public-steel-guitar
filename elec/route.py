@@ -462,4 +462,9 @@ def route(stem, passes=None, timeout=3600, incremental=False):
 
 
 if __name__ == "__main__":
-    route(os.path.abspath(sys.argv[1]), incremental="--incremental" in sys.argv[2:])
+    _p = None
+    for _a in sys.argv[2:]:
+        if _a.startswith("--passes="):
+            _p = int(_a.split("=", 1)[1])
+    route(os.path.abspath(sys.argv[1]), passes=_p,
+          incremental="--incremental" in sys.argv[2:])
