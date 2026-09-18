@@ -505,3 +505,20 @@ if __name__ == "__main__":
             _p = int(_a.split("=", 1)[1])
     route(os.path.abspath(sys.argv[1]), passes=_p,
           incremental="--incremental" in sys.argv[2:])
+    # ⚠ LEAVE WITHOUT TEARING DOWN THE INTERPRETER. pcbnew's SWIG bindings hand back
+    # objects they have no destructor for -- every run says so, a dozen times, about
+    # PCB_TRACK and ZONE_FILLER -- and with enough of them the shutdown itself aborts.
+    # It cost a whole experiment to find: route.py returned non-zero on a board it had
+    # just written correctly, no traceback, the segments imported and the file on disk,
+    # and finish.py quite reasonably treated that as a failed step and threw the pass
+    # away. The board was never in question; only the exit was.
+    #
+    # ⚠ THIS DOES NOT HIDE REAL FAILURES, which is the only reason it is acceptable. An
+    # exception from route() propagates and never reaches this line, so anything that
+    # actually goes wrong still exits non-zero with its traceback. Only a CLEAN return
+    # gets here, and all this says is that a clean return should be a clean exit.
+    # The flush is not optional: os._exit skips it, and finish.py reads this stdout
+    # through a pipe, so the last lines would vanish.
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os._exit(0)
