@@ -256,14 +256,30 @@ def route(stem, passes=None, timeout=3600, incremental=False):
     # earlier experiments on this board (60 passes, incremental) also returned identical
     # output, and there the identity was the honest answer. Here it meant the input never
     # arrived. Compare the md5 of the routed board before concluding a lever is dead.
+    #
+    # ⚠ (autoroute on) AND (postroute on) ARE NOT OPTIONAL PADDING -- LEAVING THEM OUT
+    # TURNS THE ROUTER OFF. AutorouteSettings.readScope keeps two local flags and calls
+    # setRunRouter/setRunOptimizer with them once the scope closes, whether or not the
+    # clauses appeared; absent means false. Emitting the layer rules alone therefore reads
+    # as "route nothing, optimise nothing", and the board came back with 294 segments
+    # instead of 2426 and 190 nets unconnected. The block is not a patch over the
+    # defaults, it REPLACES the two run flags.
+    #
+    # ⚠ THE COST KEYWORDS ARE PLURAL, AND A SUBSTRING GREP CANNOT TELL YOU THAT. Checking
+    # the jar for "preferred_direction_trace_cost" matched -- because the real keyword,
+    # PREFERRED_DIRECTION_TRACE_COSTS, contains it. The singular form was skipped as an
+    # unknown key word. Match keywords whole, or read what the writer emits: the writer in
+    # that same class writes "(preferred_direction_trace_costs ".
     costs = (notes or {}).get("layer_costs")
     if costs:
         rules = "".join(
             NL + "    (layer_rule %s (active on)"
-            " (preferred_direction_trace_cost %s)"
-            " (against_preferred_direction_trace_cost %s))"
+            " (preferred_direction_trace_costs %s)"
+            " (against_preferred_direction_trace_costs %s))"
             % (ln, c, round(float(c) * 1.6, 3)) for ln, c in sorted(costs.items()))
-        blk = "  (autoroute_settings%s%s  )%s" % (rules, NL, NL)
+        blk = ("  (autoroute_settings" + NL
+               + "    (autoroute on)" + NL          # see above -- absent means OFF
+               + "    (postroute on)" + rules + NL + "  )" + NL)
         # the last line of the structure scope, i.e. the ")" that closes it
         anchor = "  )" + NL + "  (placement"
         if anchor not in txt:
