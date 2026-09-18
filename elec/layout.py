@@ -2426,6 +2426,32 @@ def _add_track(board, net, layer, width, pts):
         board.Add(t)
 
 
+def _add_via(board, net, x, y, drill=0.3, diameter=0.6):
+    """One explicit through via, in board-local mm.
+
+    ⚠ WHY THIS EXISTS. `tracks` could already lay explicit copper, but only ON ONE
+    LAYER, so a connection that has to CHANGE layers was not expressible at all. The
+    optical board's last unconnected net is exactly that shape: +3V3A already passes
+    3.86 mm from U2's supply pad on B.Cu, and the F.Cu lane at the pad's own y is
+    shadowed by MID at 0.56 mm centre to centre. The fix is a via and a short hop, and
+    before this there was no way to say so -- which is why four successive attempts all
+    reached for router SETTINGS (pre-lay, retry rounds, dropping the B.Cu pour,
+    narrowing the net) and all four made the board worse.
+
+    A via here is pre-laid copper, and this file is emphatic that pre-laid copper is an
+    obstacle the router can never renegotiate. That objection is real and it is why this
+    takes explicit coordinates instead of a net name: one via placed deliberately is a
+    different proposition from a rule that lays 122 segments.
+    """
+    v = pcbnew.PCB_VIA(board)
+    v.SetPosition(_to_board(x, y))
+    v.SetWidth(pcbnew.FromMM(diameter))
+    v.SetDrill(pcbnew.FromMM(drill))
+    v.SetNet(net)
+    v.SetViaType(pcbnew.VIATYPE_THROUGH)
+    board.Add(v)
+
+
 def _add_zone(board, net, layer, inset, w, h):
     """A copper pour over the whole board less `inset`. Not decoration: it is
     how the THT pads reach GND at all, since no GND track is drawn."""
@@ -2665,6 +2691,15 @@ def build(stem):
     nets_by_name = {n.GetNetname(): n for n in board.GetNetInfo().NetsByName().values()}
     for net_name, layer, width, pts in notes.get("tracks", []):
         _add_track(board, nets_by_name[net_name], layer, width, pts)
+    for _v in notes.get("vias", []):
+        _net, _vx, _vy = _v[0], _v[1], _v[2]
+        _drill = _v[3] if len(_v) > 3 else 0.3
+        _dia = _v[4] if len(_v) > 4 else 0.6
+        assert _net in nets_by_name, (
+            "vias names net %r, which this board does not have" % _net)
+        _add_via(board, nets_by_name[_net], _vx, _vy, _drill, _dia)
+    if notes.get("vias"):
+        print("      placed %d explicit via(s)" % len(notes["vias"]))
     for net_name, layer, inset in notes.get("zones", []):
         _add_zone(board, nets_by_name[net_name], layer, inset, *notes["outline_mm"])
     if notes.get("zones"):
