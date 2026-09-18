@@ -357,6 +357,21 @@ BOARD_NOTES = {
         # Measured across all four orientations by total pin-to-net distance: 58.7 mm at
         # 0 against 66.6 at 90. A square QFN's envelope does not change when it turns, so
         # this costs nothing but the decision to look.
+        #
+        # ⚠ AND THE REAL CONSTRAINT IS NOT "CAN_RX IS HARD", IT IS THREE SIGNALS AND TWO
+        # WAYS OUT. Pre-lay CAN_RX and it connects -- and CAN_TX becomes the unconnected
+        # net instead, a clean swap. Pre-lay BOTH and the second is reported not placeable
+        # by the generator too. They leave adjacent pins, 19 and 20, on the same QFN edge.
+        # Probing the escape ring outward from each: CAN_TX's own via sits 0.7 to 1.4 mm
+        # off pin 19, squarely in CAN_RX's path, and SWDIO runs through that corridor at
+        # every radius from 0.7 to 2.2 mm.
+        #
+        # SWDIO is there because of TP1. Before the SWD pads existed this net was
+        # single-node, so layout dropped it and it laid no copper at all -- the board was
+        # unprogrammable, which is why the pads went in. Giving SWDIO a destination gave
+        # it a route, and that route goes through the one corner CAN_RX needed. Both are
+        # required, so this is a placement question and not a routing one: move what the
+        # transceiver or TP1 asks of that edge, or accept one CAN direction unrouted.
         "U3": (1.00, 1.55, 0.0),
         "C9": (5.50, 3.20, 0.0),
         "C8": (7.50, 3.20, 0.0),
@@ -394,6 +409,12 @@ BOARD_NOTES = {
     # three 4-layer boards, because it was made where the symptom appeared instead of
     # where the property belonged. A board that pours a plane declares it.
     "plane_layers": ("In1.Cu",),
+    # ⚠ THE LAYER LOCAL/RETRIED NETS MAY DIVE TO. In1.Cu is the ground plane and B.Cu
+    # carries a second GND pour, so In2.Cu is the one inner layer with no pads on it.
+    # Without this the generator has no way off the component layer at all, which is
+    # exactly why the nets stranded at the QFN stayed stranded: its only escape was
+    # gated on a differential-pair setting this board has no reason to declare.
+    "local_inner": "In2.Cu",
     # ⚠ 0.15 mm TRACK, because the tightest part on this board is a 0.4 mm pitch QFN-28
     # and the default 0.25 does not leave its escape fan room to turn. Four nets -- NRST,
     # OSC_OUT, CAN_RX and a +3V3 pin -- were stranded at that package and neither the
