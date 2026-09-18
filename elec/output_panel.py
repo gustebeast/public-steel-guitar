@@ -777,6 +777,33 @@ BOARD_NOTES = {
     # the fleet's whole <5 A and wants about 2.8 mm at a 10 C rise, or 1.8 mm if a 20 C
     # rise is accepted. That is deliberate trunk copper, not a netclass number.
     "net_widths": {"+24V": 0.5, "PWR_GND": 0.5},
+    # ⚠ THE TRUNK NEEDS DELIBERATE COPPER AND ONE LAYER CANNOT CARRY IT -- THE RAILS ARE
+    # INTERLEAVED ON THE CONNECTOR. J6 -> J7 passes the fleet's whole <5 A and wants about
+    # 2.8 mm at a 10 C rise; 0.5 mm of netclass is 1.6 A. Tried it: 2.0 mm lanes on B.Cu,
+    # which is empty across this whole region (zero tracks in x 95..135, y 112..132), with
+    # +24V at y = 121 and PWR_GND at y = 124, tapping down to the through-hole pads.
+    #
+    # It took the board from 2 unconnected to 4, and the reason is in the pinout. Both
+    # outlets are wired PWR_GND, +24V, +24V, PWR_GND -- the rails doubled for contact
+    # rating, which puts the +24V pads BETWEEN the PWR_GND pads. Two lanes on one layer
+    # cannot both reach their own pads: whichever lane is farther from the row has to
+    # cross the nearer one to tap down, and on a single layer that is a short. Mirroring
+    # the lanes just moves the crossing to the other rail. The trunk that did get laid
+    # joined J7 to J6 and stranded J9 and J6's remaining contacts instead.
+    #
+    # Three ways out, none of them a routing change, all of them a decision:
+    #   * split the rails across layers -- +24V on B.Cu, PWR_GND on In2.Cu. They never
+    #     meet and the through-hole pads join them. But 0.5 oz inner copper at 2 mm is
+    #     about 1.1 A, so the RETURN would be the weak link instead of the feed.
+    #   * pour PWR_GND on In2.Cu over the connector row. Area beats width for a return,
+    #     and it is the normal answer -- but the router uses In2.Cu on this board, so the
+    #     pour has to be bounded rather than board-wide.
+    #   * group the rails in the pinout: PWR_GND, PWR_GND, +24V, +24V instead of
+    #     interleaved. Then two lanes separate cleanly on one layer. It changes the mating
+    #     cable for the whole fleet, and motor_ctrl's J3 shares the convention.
+    #
+    # Left undone deliberately: the board is better at 2 unconnected with 0.5 mm rails
+    # than at 4 with a trunk that strands two connectors.
     # ⚠ IN1 IS A PLANE, AND THE ROUTER HAS TO BE TOLD. A zone is just copper as far
     # as freerouting is concerned: pour GND on In1 and say nothing, and it will route
     # signals straight through the plane, which is exactly what it did here. The damage
