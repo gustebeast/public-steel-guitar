@@ -592,7 +592,7 @@ BOARD_NOTES = {
     # The audit that found it also cleared the other two: optical's inlet is ~324 mA
     # against 0.88 A, and lever_sensor's 0.15 mm pass-through is 0.60 A on the sensor bus.
     #
-    # 0.5 mm takes it to 1.6 A. That is the ceiling for a blanket width here for the same
+    # 0.5 mm takes it to 1.45 A. That is the ceiling for a blanket width here for the same
     # reason as on the panel -- this net lands on 0402 parts with 0.6 mm pads and
     # freerouting does not neck into a land -- so it is an improvement, not the answer.
     # The J3 -> J1/J2 path still wants deliberate copper; see the trunk note on

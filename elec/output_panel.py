@@ -799,16 +799,25 @@ BOARD_NOTES = {
     # board default of 0.25 mm they carry 0.88 A of 1 oz outer copper (IPC-2221, 10 C
     # rise) while the bus budget is under 5 A -- the cable and the connector contacts were
     # both sized for that figure and audited, and the traces between them never were.
-    # 0.5 mm takes them to 1.6 A, which is as far as a blanket width can go here: these
+    # 0.5 mm takes them to 1.45 A, which is as far as a blanket width can go here: these
     # nets land on 0402 decoupling parts whose pads are 0.6 mm, and freerouting does not
     # neck down into a land.
+    #
+    # ⚠ THE 0.5 mm FIGURE READ 1.6 A UNTIL IT WAS RECOMPUTED, AND 1.6 WAS NEVER COMPUTED.
+    # The 0.88 and the 2.8 both come straight out of IPC-2221; the middle number looks
+    # like 0.88 rounded up by eye. It scales as area^0.725, not linearly, so doubling the
+    # width buys 1.65x and not 2x: 0.88 * 2**0.725 = 1.45. Recorded because it is the
+    # only one of the three that was a guess wearing the same units as the other two.
+    # Reproduce any of them with, external copper and a 10 C rise:
+    #     I = 0.048 * dT**0.44 * (w_mm/0.0254 * 1.378*oz)**0.725     # w in mil, t in mil
+    # -> 0.25 mm 0.88 A, 0.5 mm 1.45 A, 2.0 mm 3.95 A, 2.8 mm 5.05 A.
     # ⚠ SO THIS IS AN IMPROVEMENT AND NOT THE FIX. The J6 -> J7 pass-through still carries
     # the fleet's whole <5 A and wants about 2.8 mm at a 10 C rise, or 1.8 mm if a 20 C
     # rise is accepted. That is deliberate trunk copper, not a netclass number.
     "net_widths": {"+24V": 0.5, "PWR_GND": 0.5},
     # ⚠ THE TRUNK NEEDS DELIBERATE COPPER AND ONE LAYER CANNOT CARRY IT -- THE RAILS ARE
     # INTERLEAVED ON THE CONNECTOR. J6 -> J7 passes the fleet's whole <5 A and wants about
-    # 2.8 mm at a 10 C rise; 0.5 mm of netclass is 1.6 A. Tried it: 2.0 mm lanes on B.Cu,
+    # 2.8 mm at a 10 C rise; 0.5 mm of netclass is 1.45 A. Tried it: 2.0 mm lanes on B.Cu,
     # which is empty across this whole region (zero tracks in x 95..135, y 112..132), with
     # +24V at y = 121 and PWR_GND at y = 124, tapping down to the through-hole pads.
     #
