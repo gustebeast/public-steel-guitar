@@ -331,13 +331,43 @@ def output_panel():
     # broke the run. The gaps are 6.50 mm on PWR_GND and 11.50 mm on +24V, both straight
     # along y = 128 and both past link_close_gaps' 5 mm reach, so nothing downstream
     # repairs it either. The answer is placement -- J9 does not belong between them.
-    j9 = Part(name="B4B-XH-A", ref_prefix="J", tag="J9", dest="NETLIST", tool="skidl",
-              value="B4B-XH-A", description="24 V out to the optical pickup board",
-              footprint=XH_FP,
+    # ⚠ TWO WAYS, NOT FOUR (user, 2026-09-18), AND IT IS A ROUTING FIX AS MUCH AS A
+    # CABLE ONE. The optical board draws 79 mA typical and 120 mA worst case against 3 A
+    # per XH contact, so the doubling this connector used to carry bought nothing
+    # electrically -- it existed so every 24 V cable in the instrument shared one housing
+    # and one crimp order. What it COST was five millimetres of the pad row at y -28, and
+    # that row is why this board has two unconnected nets: +24V and PWR_GND both sever
+    # there, and swapping J7 and J9 around inside the row did not help because the row is
+    # full either way. Shrinking a connector is the one move that empties part of it.
+    # 5.00 mm is ten lanes for a 0.25 mm track.
+    #
+    # ⚠ AND THAT ROUTING ARGUMENT IS WRONG -- MEASURED, STILL 2 UNCONNECTED. Emptying
+    # five millimetres of the row changed nothing, just as re-ordering J7 and J9 inside it
+    # changed nothing. Together those two results kill the "the row is too crowded"
+    # explanation outright: the break is not a shortage of lane width at y -28, because
+    # the board had both more room and a better order and still severed both rails.
+    # Whatever blocks this bus is more specific than crowding, and three attempts have now
+    # been aimed at the wrong mechanism. The next step on this board is to MEASURE what
+    # sits across the break, the way the optical net was finally measured, rather than to
+    # propose a fourth cure for a diagnosis nothing supports.
+    #
+    # THE CHANGE IS KEPT ANYWAY, for the two reasons that do survive: the doubling was
+    # never needed at 120 mA, and a 2-way cannot be plugged into a 4-way CAN drop. It is
+    # kept on its safety and honesty merits, NOT on the routing claim it was tested for.
+    #
+    # It also removes the mis-mate hazard on this link outright: a 2-way XH cannot enter
+    # a 4-way header, so this cable can no longer be plugged into a CAN drop and put
+    # 24 V on CAN_H. See the two-pinouts note in BOM.md -- this is the cheap version of
+    # the 5-way keying proposal, available here because the current never needed four.
+    #
+    # The cable and the optical board's J2 must change with it: both ends become 2-way.
+    j9 = Part(name="B2B-XH-A", ref_prefix="J", tag="J9", dest="NETLIST", tool="skidl",
+              value="B2B-XH-A", description="24 V out to the optical pickup board",
+              footprint="Connector_JST:JST_XH_B2B-XH-A_1x02_P2.50mm_Vertical",
               pins=[Pin(num=i + 1, name=n, func=P)
-                    for i, n in enumerate(("PWR_GND", "+24V", "+24V", "PWR_GND"))])
-    pgnd += j9[1], j9[4]
-    v24 += j9[2], j9[3]
+                    for i, n in enumerate(("PWR_GND", "+24V"))])
+    pgnd += j9[1]
+    v24 += j9[2]
 
     # ── U1: the MCU. USB HS to the hub, full-duplex I2S, one GPIO for the relay ──
     # Pin numbers off WCH's QFN-68 column (CH32V303/305/307/317 V3.9, table 3-1):

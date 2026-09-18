@@ -324,7 +324,10 @@ OP_BOX = {"J1": (9.51, 10.73, 3.26, (2.81, 0.00)),
           "J4": (16.57, 15.59, 6.60, (-4.39, 0.00)),
           "J6": (11.59, 16.09, 11.00, (-0.82, -3.20)),
           "J7": (13.49, 6.84, 7.00, (0.00, -0.53)),
-          "J9": (13.49, 6.84, 7.00, (0.00, -0.53)),   # same B4B-XH-A as J7
+          # J9 is a B2B-XH-A now, 2-way -- see elec/output_panel.py. Five millimetres
+          # shorter than J7, which is the point: it was emptying the pad row, not
+          # saving a part.
+          "J9": (8.49, 6.84, 7.00, (0.00, -0.53)),
           "J8": (11.59, 8.90, 10.50, (-0.25, 0.10))}
 OP_TS_XY = (23.11, 21.50)                 # the 1/4 in jack's pad anchor
 OP_TS_L, OP_TS_W = 27.62, 20.32           # its courtyard
