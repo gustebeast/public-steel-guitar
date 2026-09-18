@@ -508,6 +508,35 @@ def output_panel():
     # 6 SW. Same part the lever board and the motor controller use, so the respin
     # adds a circuit but no SKU.
     sw, v5_pre, boot, fb = Net("SW"), Net("V5_PRE"), Net("BOOT"), Net("FB")
+    # ── THE POWER BUDGET, ITEMISED -- because nothing added it up here either ────
+    # The optical board got this treatment on 2026-09-17 and it found a buck at 54 % with
+    # a worst-case row over its rating. This board has a 0.6 A buck, a relay coil and a
+    # USB hub, and had no derivation at all. Every figure below is from the part's own
+    # datasheet at this board's operating point, EXCEPT the two marked (est).
+    #
+    #   on 3V3 (all of it reaches the buck 1:1 through the LDO)
+    #     CH32V307 @144 MHz, ext clock, all peripherals   22.4 mA   (WCH DS V2.9 p63)
+    #     PCM1808   ICC 8.6 typ / 11 max  @48 kHz
+    #               IDD 5.9 typ /  8 max  @48 kHz         14.5 / 19 (TI DS p6)
+    #     PCM5102A  DVDD 8 / 9 + AVDD/CPVDD 11..22         19 / 31  (TI DS p9-10)
+    #     op-amps, phantom guard, pulls                    ~5
+    #   on 5V directly
+    #     relay coil, FRT5-class 5 V, energised            ~40 (est)
+    #     USB 2.0 HS hub                                   ~50 (est)
+    #                                             total   ~151 / 167 mA
+    #                                                      25 / 28 % of the buck
+    #
+    # ⚠ THE TWO ESTIMATES ARE THE WHOLE UNCERTAINTY AND THEY ARE BOUNDED. Even at double
+    # both -- 80 mA of coil and 100 mA of hub -- the total is 257 mA, 43 % of the buck.
+    # There is no plausible version of this board that runs out of buck, which is the
+    # question worth answering; the exact figure is not.
+    #
+    # ⚠ THE RELAY IS THE ONE WORTH RE-READING. It is DE-ENERGISED = DIRECT, so the coil
+    # draws nothing in the bypass path and its ~40 mA appears only when the processed path
+    # is selected. That is the right way round for a true-bypass design -- a dead board
+    # passes signal -- and it also means the worst-case supply current and the worst-case
+    # audio path are the same state, not opposite ones.
+
     u5 = Part(name="LMR16006XDDCR", ref_prefix="U", tag="U5", dest="NETLIST", tool="skidl",
               value="LMR16006XDDCR", description="60 V 0.6 A buck, 24 V -> 5 V "
               "(LCSC C87080)", footprint="Package_TO_SOT_SMD:SOT-23-6",
