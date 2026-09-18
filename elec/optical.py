@@ -500,6 +500,28 @@ for _p, _u in sorted(ADC_USED_AS.items()):
 # and the board being long, not of the pair ordering -- which is why re-permuting pairs
 # could never fix it, and why the router settings could not either.
 #
+# ⚠ AND THE NEAR/FAR SPLIT IS NOT THE BINDING CONSTRAINT -- MEASURED BY MAKING IT ZERO.
+# Everything above treats "at least five nets must travel around the package" as a floor
+# set by the pinout. It is not a floor, because it assumes the package's ORIENTATION is
+# fixed, and it is not: the ADC pins occupy two ADJACENT edges and the strip lies along
+# two ADJACENT sides, so a rotation exists that puts both ADC edges against the strip.
+# Measured on the placed board, classifying each pad by POSITION rather than by pin
+# number (a metric keyed on (pin-1)//44 cannot see a rotation at all, which is how this
+# went unnoticed):
+#     U6 at   0 deg   -X 14 near  +Y  6 far
+#     U6 at  90 deg   +Y 14 far   +X  6 far    -- zero near, the worst case
+#     U6 at 270 deg   -Y 14 near  -X  6 near   -- ALL TWENTY face the strip
+#
+# ⚠ AND AT 270 THE BOARD ROUTES WORSE: 6 unconnected against 1. Reverted. Rotating the
+# MCU moves every OTHER pin with it -- the ULPI bus, the USB pair, the crystals, the
+# decoupling and the power entry are all placed around this package at 0 deg -- so
+# perfecting the analog escape breaks the four things that were already working. The
+# twenty analog nets are not the scarce resource they look like.
+#
+# The lesson is worth more than the experiment: the corridor-density diagnosis and the
+# near/far split are descriptions of where the copper IS, not of what is stopping the
+# router. Driving either to its optimum made the board worse, twice.
+
 # ⚠ THE ONLY SLACK IS TWO PINS, AND THEY ARE ADC3-ONLY. PC0 is taken by ULPI_STP, PF14 is
 # the spare on the far edge, so the free near-edge ADC pins are PC2_C (34) and PC3_C (35)
 # -- ADC3_INP0 and ADC3_INP1, no other unit. Moving a far-edge net onto one takes the
