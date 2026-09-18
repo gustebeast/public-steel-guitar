@@ -91,7 +91,7 @@ assert TURNS > TURNS_MIN, (
     "O%.1f bore before the leg reaches its low stop" % (TURNS, TURNS_MIN, CAVITY_D))
 
 # ── the tool ────────────────────────────────────────────────────────────────
-BARREL_D = 20 * B               # 16.0. With the cable captured against SLEEVE_ID the
+BARREL_D = 19 * B               # 15.2. With the cable captured against SLEEVE_ID the
                                 # coil's mean is BARREL_D + CABLE_D and nothing about
                                 # spring-back enters it
 MEAN_SET = BARREL_D + LT.CABLE_D                        # 19.8, as heat-set
@@ -102,7 +102,30 @@ SLEEVE_WALL = 3 * B                                     # 2.4
 SLEEVE_OD = SLEEVE_ID + 2 * SLEEVE_WALL                 # 28.6
 
 SOLID_SPAN = TURNS * LT.CABLE_D                         # 26.6, turns touching
-COIL_LEN = TURNS * math.hypot(math.pi * MEAN_SET, LT.CABLE_D)   # cable the coil holds
+FREE_SPAN = 80.0                # ...AND THE COIL IS NOT SET THERE. Turns-touching is
+                                # the obvious thing to wind and it is wrong here: the
+                                # service span is 90.8..253.2, so a coil set at 26.6
+                                # would live held at 3.4x to 9.5x its own free length.
+                                # A phone handset cord lives at 3-6x and those lose
+                                # their curl; ours would too, and a relaxed coil is not
+                                # a cosmetic problem -- 342 mm of uncoiled slack does
+                                # not fit a O24.7 bore, so losing the curl is losing
+                                # the function.
+                                #
+                                # Set just UNDER the shortest gap instead. 80 against a
+                                # 90.8 minimum leaves the coil always in slight tension
+                                # (1.1x) and never compressed below free, where it would
+                                # buckle and jam in the bore, and takes the worst case
+                                # down to 3.2x -- ordinary curly-cord duty
+PITCH = FREE_SPAN / TURNS       # 11.43 between turns, which is why the barrel carries
+                                # a rib: at this spacing the turns do not locate
+                                # themselves the way touching turns do
+COIL_LEN = TURNS * math.hypot(math.pi * MEAN_SET, PITCH)        # cable the coil holds
+
+assert FREE_SPAN < GAP_MIN, (
+    "set free at %.1f in a gap that closes to %.1f, the coil would be COMPRESSED at "
+    "the leg's low stop and buckle" % (FREE_SPAN, GAP_MIN))
+assert PITCH > LT.CABLE_D, "the turns overlap at the set pitch"
 
 assert MEAN_SET <= _MEAN_MAX, (
     "set at mean O%.1f, the coil will not enter the O%.1f bore" % (MEAN_SET, CAVITY_D))
@@ -115,21 +138,43 @@ assert SOLID_SPAN < GAP_MIN, (
 # stretched: the gap holds the coil PLUS whatever cable stays straight in it
 _STRAIGHT_IN_GAP = COIL_CABLE - COIL_LEN
 _P_LONG = (GAP_MAX - _STRAIGHT_IN_GAP) / TURNS
+assert _STRAIGHT_IN_GAP >= 0.0, (
+    "the coil wants %.1f of cable and the gap frees %.1f" % (COIL_LEN, COIL_CABLE))
 MEAN_LONG = math.sqrt(max((COIL_LEN / TURNS) ** 2 - _P_LONG ** 2, 0.0)) / math.pi
 assert MEAN_LONG >= 15.0, (
     "stretched over the %.1f gap the coil narrows to mean O%.1f, under the 15 floor"
     % (GAP_MAX, MEAN_LONG))
 
 FLANGE_D = SLEEVE_OD            # the sleeve seats on it, so they match
-FLANGE_T = 4 * B                # 3.2
+FLANGE_T = 8 * B                # 6.4, thick enough that the starting tail sits BELOW
+                                # its top face in a top-entry notch. That is what lets
+                                # the sleeve seat flat on the flange without a notch of
+                                # its own, and it is why the flange is not thinner
+RIB_H = 2 * B                   # 1.6 of helical rib between turns. Its lower flank
+                                # rises 1.6 over 2*RIB_H of axial run -- 26.6 degrees
+                                # off vertical, not the 45 a symmetric rib would give.
+                                # The extra is for the LEAD: a helical flank's true
+                                # slope swings by about the lead angle (13.5 here) as
+                                # it goes round, so a nominal 45 would droop past the
+                                # limit on one side of every turn. 26.6 + 13.5 still
+                                # clears it. The upper flank stays steep -- nothing
+                                # prints on top of it. Shorter than the cable's
+                                # radius, so the cable still rests on the barrel and
+                                # MEAN_SET stays barrel + cable; the rib only spaces
+                                # the turns, which at PITCH they will not do themselves
+SCRIBE_W, SCRIBE_DEEP = 0.6, 0.4        # the line you wind TO
+SHANK_D, SHANK_L = 10.0, 20.0           # chuck it, or hold it in a vice
+CONE_H = (FLANGE_D - SHANK_D) / 2.0
+                                # ...and the shank flares to the flange at 45 rather
+                                # than stepping. A O28.6 flange on a O10 shank is 564
+                                # mm2 of flat ceiling -- by far the biggest overhang in
+                                # the tool, and the reason this cone exists
 CLEAT_W = LT.CABLE_D - 0.4      # 3.4: a light pinch on the O3.8 jacket, pressed in
                                 # SIDEWAYS -- it cannot be threaded
 CLEAT_DEEP = 8.0
-SCRIBE_W, SCRIBE_DEEP = 0.6, 0.4        # the line you wind TO
-SHANK_D, SHANK_L = 10.0, 20.0           # chuck it, or hold it in a vice
-SLEEVE_L = SOLID_SPAN + 2.0             # 28.6: covers every turn and no more
-BARREL_L = SOLID_SPAN + CLEAT_DEEP + 4.0
-                                        # 38.6, and it is the SLEEVE that sizes it: the
+SLEEVE_L = FREE_SPAN + 2.0              # 82.0: covers every turn and no more
+BARREL_L = FREE_SPAN + CLEAT_DEEP + 4.0
+                                        # 92.0, and it is the SLEEVE that sizes it: the
                                         # top cleat has to start above where the sleeve
                                         # ends, or the sleeve seats on the tail instead
                                         # of the flange (the assert below, which caught
@@ -147,15 +192,36 @@ def mandrel() -> cq.Workplane:
     out = cq.Workplane("XY").add(cq.Solid.makeCylinder(
         SHANK_D / 2.0, SHANK_L, cq.Vector(0, 0, z), cq.Vector(0, 0, 1)))
     z += SHANK_L
+    # the 45 flare: a flange this much wider than its shank is a flat ceiling otherwise
+    out = out.union(cq.Workplane("XY").add(cq.Solid.makeCone(
+        SHANK_D / 2.0, FLANGE_D / 2.0, CONE_H, cq.Vector(0, 0, z), cq.Vector(0, 0, 1))))
+    z += CONE_H
     out = out.union(cq.Workplane("XY").add(cq.Solid.makeCylinder(
         FLANGE_D / 2.0, FLANGE_T, cq.Vector(0, 0, z), cq.Vector(0, 0, 1))))
     z_base = z + FLANGE_T
     out = out.union(cq.Workplane("XY").add(cq.Solid.makeCylinder(
         BARREL_D / 2.0, BARREL_L, cq.Vector(0, 0, z_base), cq.Vector(0, 0, 1))))
-    # the base cleat: a radial slot through the flange, so the tail leaves sideways
+    # THE PITCH RIB: a helical thread the cable winds between, so PITCH is set by the
+    # tool and not by eye. Swept with a 45 lower flank -- the one face that would
+    # otherwise be an overhang on a part printed standing.
+    # the helix covers the WINDING ZONE and no more. Running it a turn longer put 1.0
+    # of rib past the barrel's top face, where it was a floating fragment rather than
+    # a rib -- the part came out as 2 solids and the assert below caught it.
+    helix = cq.Wire.makeHelix(pitch=PITCH, height=FREE_SPAN, radius=BARREL_D / 2.0)
+    # the profile's base is SUNK 0.4 into the barrel. Sitting it exactly on the surface
+    # makes the rib tangent to the cylinder it fuses to, and a tangent boolean is the
+    # one OCC reliably fails -- it returned a null shape on the first build.
+    prof = (cq.Workplane("XZ").center(BARREL_D / 2.0, 0)
+            .polyline([(-0.4, -2 * RIB_H), (RIB_H, 0.0), (-0.4, RIB_H)]).close())
+    rib = prof.sweep(cq.Workplane("XY").add(helix), isFrenet=True)
+    out = out.union(rib.translate((0, 0, z_base + RIB_H)))
+    # the base cleat: a notch DOWN FROM THE FLANGE'S TOP FACE, not a slot through it.
+    # The cable drops in rather than threading (both ends of the lead are moulded), it
+    # sits below the face so the sleeve still seats flat, and cut from above it has no
+    # roof to bridge -- the through-slot did.
     out = out.cut(cq.Workplane("XY").box(
-        FLANGE_D, CLEAT_W, FLANGE_T + 2.0, centered=(False, True, False))
-        .translate((BARREL_D / 2.0 - CLEAT_DEEP, 0, z - 1.0)))
+        FLANGE_D, CLEAT_W, LT.CABLE_D + 0.4, centered=(False, True, False))
+        .translate((BARREL_D / 2.0 - CLEAT_DEEP, 0, z_base - LT.CABLE_D - 0.4)))
     # the scribe line: wind to here and you have TURNS turns, touching
     ring = cq.Solid.makeCylinder(BARREL_D / 2.0 + 1.0, SCRIBE_W,
                                  cq.Vector(0, 0, z_base + SOLID_SPAN), cq.Vector(0, 0, 1))
@@ -177,15 +243,14 @@ def sleeve() -> cq.Workplane:
     at its foot so it can seat on the flange without crushing the starting tail.
 
     Drawn where it sits when the assembly is closed, so the pair reads as a pair."""
-    z0 = SHANK_L + FLANGE_T
+    z0 = SHANK_L + CONE_H + FLANGE_T
     out = cq.Workplane("XY").add(cq.Solid.makeCylinder(
         SLEEVE_OD / 2.0, SLEEVE_L, cq.Vector(0, 0, z0), cq.Vector(0, 0, 1)))
     out = out.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
         SLEEVE_ID / 2.0, SLEEVE_L + 2.0, cq.Vector(0, 0, z0 - 1.0), cq.Vector(0, 0, 1))))
-    # the foot notch, over the starting tail
-    out = out.cut(cq.Workplane("XY").box(
-        SLEEVE_OD + 2.0, CLEAT_W + 0.4, LT.CABLE_D + 0.4, centered=(True, True, False))
-        .translate((0, 0, z0 - 0.2)))
+    # NO foot notch. The starting tail lives in the flange's top-entry cleat, BELOW the
+    # face the sleeve seats on, so there is nothing for the sleeve to clear -- and the
+    # notch that used to do it was the sleeve's only overhang.
     assert len(out.val().Solids()) == 1, (
         "the sleeve came out as %d solids" % len(out.val().Solids()))
     return out
