@@ -363,14 +363,24 @@ ULPI = {"ULPI_D0": "PA3", "ULPI_D1": "PB0", "ULPI_D2": "PB1", "ULPI_D3": "PB10",
 # without changing which pair a string owns, so both sides can be ordered at once.
 # Result: ELEVEN INVERSIONS TO ZERO, both sides monotonic, three strings swapped.
 #
-# ⚠ WHAT THE SWAP COSTS, AND IT IS NOT NOTHING. PD<n>A is the +Y detector and PD<n>B the
-# -Y one, so DIFF = A - B carries a physical sign: which way the string is displaced.
-# For the three strings marked below, that sign is INVERTED relative to the other seven.
-# SUM is unaffected (it is symmetric), and DIFF's job here is detecting that SUM has
-# collapsed, which is magnitude -- but any firmware that reads DIFF's sign needs a
-# per-string sign table, and these three are the entries that are -1. That table is a
-# firmware obligation created by this layout decision, recorded here because nothing in
-# the netlist, the CAD or DRC can express it.
+# ⚠ WHAT THE SWAP COSTS -- AND THE FIRST VERSION OF THIS NOTE OVERSTATED IT. It claimed
+# DIFF = A - B comes out sign-inverted on the three swapped strings. It does not. The
+# hookup loop below is `tia_out[(i, "A")] += u6[PIN[pa]]`: detector A goes to the
+# FIRST-LISTED pin of its pair, for all ten strings, before and after the reorder. Any
+# firmware generated from this table therefore reads A as A, and the sign is uniform.
+#
+# What the swap actually breaks is an INCIDENTAL INVARIANT nobody declared. In the
+# original order, detector A landed on ADC3 for strings 1-8 and ADC2 for 9-10 -- never on
+# ADC1. The three swapped strings now put A on ADC1 (PA1, PF11, PF12) and B on ADC3. So
+# firmware that tells the two detectors apart by WHICH ADC UNIT SAMPLED THEM -- a
+# tempting shortcut when three ADCs run in parallel and the results are demultiplexed
+# afterwards -- gets exactly these three backwards. Firmware that goes by the pin table
+# is unaffected.
+#
+# The obligation is therefore: demultiplex by pin, not by ADC unit. DIFF_SIGN_INVERTED
+# below names the three strings that would be wrong if that rule is broken; it is a
+# tripwire, not a correction to apply. (SUM is symmetric and cannot be affected either
+# way.) Recorded here because nothing in the netlist, the CAD or DRC can express it.
 ADC_PAIRS = (
     ("PA1",  "PF4"),    # 1   ADC1[1] / ADC3[1]   ⚠ A/B SWAPPED -- DIFF sign inverted
     ("PC1",  "PF13"),   # 2   ADC2[2] / ADC2[3]  -- same ADC, skew 1
@@ -383,7 +393,8 @@ ADC_PAIRS = (
     ("PF7",  "PA2"),    # 9   ADC3[4] / ADC1[4]
     ("PF3",  "PA0"),    # 10  ADC3[0] / ADC1[0]
 )
-DIFF_SIGN_INVERTED = (1, 5, 8)   # the strings whose A/B pins are swapped; see above
+DIFF_SIGN_INVERTED = (1, 5, 8)   # strings with A on ADC1 instead of ADC3 -- see above;
+#                                  a tripwire for firmware, NOT a sign table to apply
 ADC_SPARE = "PF14"      # the one channel left over; brought out to nothing
 
 
