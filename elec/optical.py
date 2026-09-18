@@ -436,17 +436,13 @@ ADC_PAIRS = (
     ("PF3", "PA0"),          # 2   ADC3[0] / ADC1[0]  <- was string 10's pair
     ("PF10", "PA7"),         # 3   ADC3[7] / ADC2[5]
     ("PC4", "PC5"),          # 4   ADC2[0] / ADC2[1]
-    ("PC3_C", "PF5"),        # 5   ADC3[1] / ADC3[2]
+    ("PC3_C", "PF5"),        # 5   ADC3[9] / ADC3[2]
     ("PF9", "PA6"),          # 6   ADC3[6] / ADC2[4]
     ("PF8", "PA4"),          # 7   ADC3[5] / ADC1[5]
-    ("PC2_C", "PF6"),        # 8   ADC3[0] / ADC3[3]
+    ("PC2_C", "PF6"),        # 8   ADC3[8] / ADC3[3]
     ("PF7", "PA2"),          # 9   ADC3[4] / ADC1[4]
     ("PC1", "PF13"),         # 10  ADC2[2] / ADC2[3]  <- was string 2's pair
 )
-DIFF_SIGN_INVERTED = (1, 5, 8)   # strings with A on ADC1 instead of ADC3 -- see above;
-#                                  a tripwire for firmware, NOT a sign table to apply
-
-
 # ⚠ WHICH ADC UNIT A PIN CAN ACTUALLY REACH, CHECKED RATHER THAN ASSUMED. The pairing
 # argument above is entirely about which ADC reads which detector -- and every word of it
 # is worthless if a pin does not offer that ADC at all. Nothing downstream can catch it:
@@ -475,6 +471,43 @@ for _p, _u in sorted(ADC_USED_AS.items()):
     assert _u in ADC_UNITS[_p], (
         "%s is used as an ADC%d input and the H743 does not offer one there (it has %s)"
         % (_p, _u, ", ".join("ADC%d" % n for n in ADC_UNITS[_p])))
+
+# ⚠ AND THE BRACKET IS A SCAN SLOT, NOT AN INP NUMBER. ADCn[k] above means "the k-th
+# conversion in ADCn's sequence", a number this file assigns; it is NOT the datasheet's
+# ADCn_INPk. The two disagree -- line 259 records PF3 as ADC3_INP5 while it sits in scan
+# slot 0 -- and mixing them once already produced a contradiction: PC2_C and PC3_C were
+# labelled ADC3[0] and ADC3[1], their real INP numbers, which collided with PF3's and
+# PF4's slots when strings 5 and 8 moved onto them. They now carry slots 8 and 9, the two
+# ADC3 had free. Only the UNIT digit is load-bearing (ADC_USED_AS is read off it); the
+# slot is documentation, so it gets an assertion rather than trust.
+ADC_SLOTS = {   # (unit, scan slot) per pin, read off the ADCn[k] comments above
+    "PA0": (1, 0), "PA1": (1, 1), "PA2": (1, 4), "PA4": (1, 5),
+    "PC4": (2, 0), "PC5": (2, 1), "PC1": (2, 2), "PF13": (2, 3),
+    "PA6": (2, 4), "PA7": (2, 5),
+    "PF3": (3, 0), "PF4": (3, 1), "PF5": (3, 2), "PF6": (3, 3), "PF7": (3, 4),
+    "PF8": (3, 5), "PF9": (3, 6), "PF10": (3, 7), "PC2_C": (3, 8), "PC3_C": (3, 9),
+}
+assert set(ADC_SLOTS) == set(ADC_USED_AS), "ADC_SLOTS has drifted from ADC_PAIRS"
+assert all(u == ADC_USED_AS[p] for p, (u, _k) in ADC_SLOTS.items()), (
+    "a pin's ADC_SLOTS unit disagrees with ADC_USED_AS")
+assert len(set(ADC_SLOTS.values())) == len(ADC_SLOTS), (
+    "two pins claim the same ADCn[k] scan slot -- see the note above; this exact "
+    "collision happened once")
+
+# ⚠ DERIVED, BECAUSE THE HAND-WRITTEN VERSION OF THIS LIST WAS WRONG TWICE. It read
+# (1, 5, 8) and named only one of the two ways the unit fails to identify a detector; it
+# missed string 4, which has been same-ADC since before the list existed, and it did not
+# follow the strings 2/10 swap, which moved the same-ADC pair from 2 to 10. A tripwire
+# nothing downstream can check must not also be a fact nothing downstream can check.
+DIFF_SIGN_INVERTED = tuple(
+    i for i, (pa, pb) in enumerate(ADC_PAIRS, start=1)
+    if ADC_USED_AS[pa] != 3 or ADC_USED_AS[pa] == ADC_USED_AS[pb])
+#   strings whose detectors the ADC UNIT cannot tell apart -- either A is not on ADC3
+#   where the majority put it, or both channels share one unit. A tripwire for firmware
+#   that demultiplexes by unit, NOT a sign table to apply. Demultiplex by PIN.
+assert DIFF_SIGN_INVERTED == (1, 4, 5, 8, 10), (
+    "the demux-ambiguous set moved: %r -- re-read the note above before accepting it"
+    % (DIFF_SIGN_INVERTED,))
 
 # ⚠ AND THE TRAP THAT NEARLY MADE THIS CHECK LIE. The datasheet writes a channel shared
 # between units as ADC12_INP14 or ADC123_INP11, one token, not as ADC1_INP14 plus
@@ -546,8 +579,8 @@ for _p, _u in sorted(ADC_USED_AS.items()):
 # the spare on the far edge, so the free near-edge ADC pins are PC2_C (34) and PC3_C (35)
 # -- ADC3_INP0 and ADC3_INP1, no other unit. Moving a far-edge net onto one takes the
 # near/far split from 12/8 to 13/7, and makes that net's pair same-ADC unless its partner
-# is already off ADC3. Strings 2 and 4 are same-ADC today, so that is a cost the design
-# has already accepted twice; the real cost is that ADC3 would carry ten channels against
+# is already off ADC3. Strings 4 and 10 are same-ADC today (it was 2 and 4 until the
+# strings 2/10 swap moved the pair), so that is a cost the design has accepted twice; the real cost is that ADC3 would carry ten channels against
 # ADC1's four, which is a scan-rate imbalance and wants checking against the latency
 # budget before it is spent.
 
