@@ -79,8 +79,18 @@ def _pads(board_txt):
     """⚠ THE CLASS EVERY EARLIER VERSION OF THIS SEARCH MISSED. A pad is copper and it
     is also solder mask -- running a track past one at a legal copper distance can still
     bridge the mask, which is what produced two solder_mask_bridge violations against
-    the target part's own pad. Treated here as a circle of half its larger dimension,
-    which is conservative for rectangles and correct for round pads."""
+    the target part's own pad.
+
+    ⚠ AND A PAD IS A CAPSULE, NOT A CIRCLE. The first version took a circle of half the
+    pad's LARGER dimension, which for a SOIC pad (~1.5 x 0.6) is a 0.75 mm radius in
+    every direction. Adjacent pads are 1.27 mm apart, so those circles overlapped each
+    other and sealed the package off: the search reported ZERO reachable sites around
+    U2's pad 3 even at zero margin, for a pad the router had reached to within 2.54 mm.
+    An obstacle model that is too FAT fails as silently as one that is too thin -- it
+    just reports "impossible" instead of "clear".
+
+    Each pad is now its centreline segment along the long axis plus a half-width of the
+    short one, rotated by the footprint's angle and its own."""
     out = []
     for f in re.findall(r"\(footprint\b(.*?)\n\t\)", board_txt, re.S):
         at = re.search(r"\(at ([-\d.]+) ([-\d.]+)(?: ([-\d.]+))?\)", f)
@@ -100,12 +110,21 @@ def _pads(board_txt):
             if not (at and size):
                 continue
             px, py = float(at.group(1)), float(at.group(2))
+            prot = re.search(r"\(at [-\d.]+ [-\d.]+ ([-\d.]+)\)", body)
             gx = fx + px * math.cos(rot) - py * math.sin(rot)
             gy = fy + px * math.sin(rot) + py * math.cos(rot)
+            sw, sh = float(size.group(1)), float(size.group(2))
+            ang = rot + math.radians(float(prot.group(1)) if prot else 0.0)
+            if sw >= sh:                       # long axis along the pad's local x
+                half_len, half_w = (sw - sh) / 2.0, sh / 2.0
+                ux, uy = math.cos(ang), math.sin(ang)
+            else:                              # ...or along its local y
+                half_len, half_w = (sh - sw) / 2.0, sw / 2.0
+                ux, uy = -math.sin(ang), math.cos(ang)
             nt = re.search(r'\(net "([^"]*)"\)', body)
-            out.append(dict(x=gx, y=gy,
-                            r=max(float(size.group(1)), float(size.group(2))) / 2.0,
-                            net=nt.group(1) if nt else ""))
+            out.append(dict(x1=gx - ux * half_len, y1=gy - uy * half_len,
+                            x2=gx + ux * half_len, y2=gy + uy * half_len,
+                            r=half_w, net=nt.group(1) if nt else ""))
     return out
 
 
@@ -184,10 +203,10 @@ class Board:
                 continue
             if math.hypot(x - v["x"], y - v["y"]) < r + v["r"] + MARGIN:
                 return False
-        for p in self.pads:                       # pads: the missed class
+        for p in self.pads:                       # pads: capsules, not circles
             if p["net"] == self.net:
                 continue
-            if math.hypot(x - p["x"], y - p["y"]) < r + p["r"] + MARGIN:
+            if _d_pt_seg(x, y, p["x1"], p["y1"], p["x2"], p["y2"]) < r + p["r"] + MARGIN:
                 return False
         for e in self.edges:                      # and the outline
             if _d_pt_seg(x, y, *e) < r + MARGIN:
@@ -208,7 +227,7 @@ class Board:
         for pd in self.pads:
             if pd["net"] == self.net:
                 continue
-            if _d_pt_seg(pd["x"], pd["y"], *p, *q) < half + pd["r"] + MARGIN:
+            if _d_seg_seg(*p, *q, pd["x1"], pd["y1"], pd["x2"], pd["y2"]) < half + pd["r"] + MARGIN:
                 return False
         for e in self.edges:
             if _d_seg_seg(*p, *q, *e) < half + MARGIN:
