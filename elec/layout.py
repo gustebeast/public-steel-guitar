@@ -1616,9 +1616,15 @@ def _hop_via_inner(board, pa, pb, netname, inner, clear, seg_clear, emit,
         half = max(pad.GetSize().x, pad.GetSize().y) / 2.0
         need = pcbnew.FromMM(via_d / 2.0 + clr)
         base = math.atan2(toward[1] - pc.y, toward[0] - pc.x)
-        for step in range(20):
+        # ⚠ THE SEARCH RANGE IS THE LIMIT, NOT THE ROOM. Probed on the optical board at
+        # the five edges this routine gives up on: a 0.6 mm via has 5.48 mm of clearance
+        # available beside U1.7 and 2.82 mm beside Rf12.2 -- but at ring radii of 3.31 and
+        # 2.16 mm, and the old escalation stopped at 2.0 mm with ten fixed angles. It was
+        # not that there was nowhere to put a via; it was that nobody looked that far.
+        for step in range(40):
             r = half + need + pcbnew.FromMM(0.1 * step)
-            for dth in (0, 0.5, -0.5, 1.0, -1.0, 1.6, -1.6, 2.2, -2.2, math.pi):
+            for dth in (0, 0.4, -0.4, 0.8, -0.8, 1.2, -1.2, 1.6, -1.6, 2.0, -2.0,
+                        2.4, -2.4, 2.8, -2.8, math.pi):
                 x = int(pc.x + r * math.cos(base + dth))
                 y = int(pc.y + r * math.sin(base + dth))
                 # ⚠ A VIA IS NOT A TRACK, and checking it as one is what made this
@@ -1648,7 +1654,8 @@ def _hop_via_inner(board, pa, pb, netname, inner, clear, seg_clear, emit,
     # component layer and is no obstacle at all to a trace an layer down
     way = None
     for sh in _centrelines(va, vb, detour_mm=2.0, step_mm=0.25):
-        if all(seg_clear(q0, q1, netname, thru_only=True) for q0, q1 in zip(sh, sh[1:])):
+        if all(seg_clear(q0, q1, netname, thru_only=True, layer=inner)
+               for q0, q1 in zip(sh, sh[1:])):
             way = sh
             break
     if way is None:
@@ -1712,19 +1719,29 @@ def _local_nets(board, patterns, outline, inner=None, local_mm=6.0, width=0.2,
     # ⚠ TRACKS AS SEGMENTS, not bounding boxes -- see _stitch_plane_pads. A diagonal
     # trace's box is mostly empty corner, and treating that as copper is how a board
     # that has room reports that it has none.
+    # ⚠ AN OBSTACLE HAS A LAYER, AND IGNORING THAT MADE THE INNER-LAYER FALLBACK
+    # POINTLESS. The fifth field is the layer a track lives on, or None for a via, which
+    # pierces every layer and obstructs them all. Without it every F.Cu trace counted
+    # against a run on In2.Cu -- so "the surface is full, go under" was evaluated against
+    # the copper on the surface, and the answer was always that under is full too. On the
+    # optical board that silently disabled the fallback for all five op-amp blocks:
+    # instrumented, both vias placed and the run between them was blocked, every time.
     segs = [((t.GetStart().x, t.GetStart().y), (t.GetEnd().x, t.GetEnd().y),
-             t.GetWidth() / 2.0, t.GetNetname()) for t in board.GetTracks()
+             t.GetWidth() / 2.0, t.GetNetname(), t.GetLayer()) for t in board.GetTracks()
             if t.GetClass() != "PCB_VIA"]
     segs += [((t.GetPosition().x, t.GetPosition().y),
               (t.GetPosition().x, t.GetPosition().y), _via_r(t),
-              t.GetNetname()) for t in board.GetTracks() if t.GetClass() == "PCB_VIA"]
+              t.GetNetname(), None) for t in board.GetTracks() if t.GetClass() == "PCB_VIA"]
     grid = {}
     for bb, onet, is_thru in boxes:
         for cx in range(bb.GetLeft() // CELL, bb.GetRight() // CELL + 1):
             for cy in range(bb.GetTop() // CELL, bb.GetBottom() // CELL + 1):
                 grid.setdefault((cx, cy), []).append((bb, onet, is_thru))
 
-    def clear(x, y, netname, thru_only=False, margin=None):
+    def clear(x, y, netname, thru_only=False, margin=None, layer=None):
+        """`layer` None means "this obstructs on every layer" -- the right question for a
+        VIA, which drills through the board. Pass a layer for a TRACK, and copper on the
+        other layers stops counting against it."""
         x, y = int(x), int(y)
         margin = trk_margin if margin is None else margin
         # ⚠ THE BOARD EDGE IS AN OBSTACLE TOO, and it is not in the obstacle list because
@@ -1744,9 +1761,11 @@ def _local_nets(board, patterns, outline, inner=None, local_mm=6.0, width=0.2,
                     dy = max(bb.GetTop() - y, 0, y - bb.GetBottom())
                     if math.hypot(dx, dy) < margin:
                         return False
-        for (ax, ay), (bx, by), hw, onet in segs:
+        for (ax, ay), (bx, by), hw, onet, olay in segs:
             if onet == netname:
                 continue
+            if layer is not None and olay is not None and olay != layer:
+                continue                      # different layer: not in the way
             vx, vy = bx - ax, by - ay
             L2 = vx * vx + vy * vy
             t = 0.0 if L2 == 0 else max(0.0, min(1.0, ((x - ax) * vx + (y - ay) * vy) / L2))
@@ -1754,11 +1773,11 @@ def _local_nets(board, patterns, outline, inner=None, local_mm=6.0, width=0.2,
                 return False
         return True
 
-    def seg_clear(p0, p1, netname, thru_only=False):
+    def seg_clear(p0, p1, netname, thru_only=False, layer=None):
         L = math.hypot(p1[0] - p0[0], p1[1] - p0[1])
         n = max(4, int(pcbnew.ToMM(L) / 0.15) + 1)
         return all(clear(p0[0] + (p1[0] - p0[0]) * t / n,
-                         p0[1] + (p1[1] - p0[1]) * t / n, netname, thru_only)
+                         p0[1] + (p1[1] - p0[1]) * t / n, netname, thru_only, layer=layer)
                    for t in range(n + 1))
 
     by_net = {}
@@ -1778,7 +1797,7 @@ def _local_nets(board, patterns, outline, inner=None, local_mm=6.0, width=0.2,
         t.SetLayer(layer)
         t.SetNet(pad.GetNet())
         board.Add(t)
-        segs.append((q0, q1, pcbnew.FromMM(width) / 2.0, netname))
+        segs.append((q0, q1, pcbnew.FromMM(width) / 2.0, netname, layer))
 
     # every hole already on the board, so a new via keeps clear of all of them
     drills = [(t.GetPosition().x, t.GetPosition().y) for t in board.GetTracks()
