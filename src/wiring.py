@@ -380,9 +380,19 @@ TRRS_Y = 0.0                # the leg) as that band reaches
 TRRS_CLR = TEE_CLR          # the tees' own board fit, wall stand-off and screw: one
 TRRS_WALL_OVER = TEE_WALL_OVER      # cradle idiom on this instrument, not two
 TRRS_SCREW_L = TEE_SCREW_L          # M4x10 button, 2.5 hex -- the one lock (user)
-TRRS_ACROSS = EL.TRRS_BOARD_X               # 20, across X
-TRRS_ALONG = EL.TRRS_BOARD_Y                # 26, along Y
-TRRS_PORT_D = EL.TRRS_PLUG_D + 0.8          # 10.8: the plug's handle passes THROUGH the
+# THE ADAPTER BOARD IS GONE (user, 2026-09-16): the leg column became an off-the-shelf
+# TRRS extension lead, so electronics no longer carries TRRS_BOARD_* / TRRS_PLUG_* /
+# TRRS_JACK_*. This station is PARKED, not deleted, and it still reasons in the board's
+# dimensions -- so they live here now as plain numbers rather than as imports of a thing
+# that does not exist. Values are the board as it last stood (20.0 x 31.0, a mated plug
+# needing 30.0 of run at O10.0, the jack 15.18 across x 10.09 tall).
+TRRS_ACROSS = 20.0                          # across X
+TRRS_ALONG = 31.0                           # along Y
+TRRS_PLUG_D = 10.0                          # the plug handle's diameter
+TRRS_PLUG_RUN = 30.0                        # what a MATED plug needs clear of the mouth
+TRRS_JACK_W = 15.18                         # the jack body, across
+TRRS_JACK_L = 10.09                         # ...and tall
+TRRS_PORT_D = TRRS_PLUG_D + 0.8             # 10.8: the plug's handle passes THROUGH the
                                             # floor slab to reach the mouth -- a socket
                                             # has to be met by the plug's shoulder, and
                                             # the slab is 10.3 of that reach
@@ -484,8 +494,8 @@ def trrs_components():
     hx, hy = pcb_hold_xy(TRRS_ACROSS, TRRS_ALONG, "-y", clr=TRRS_CLR, spec=_M4)
     wx, wy = cx + hx, cy + hy
     plug = cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        EL.TRRS_PLUG_D / 2.0, EL.TRRS_PLUG_RUN,
-        cq.Vector(cx, cy, mz - EL.TRRS_PLUG_RUN), cq.Vector(0, 0, 1)))
+        TRRS_PLUG_D / 2.0, TRRS_PLUG_RUN,
+        cq.Vector(cx, cy, mz - TRRS_PLUG_RUN), cq.Vector(0, 0, 1)))
     return [("trrs_adapter_pcb", board),
             ("trrs_adapter_plug", plug),
             ("trrs_adapter_insert", seated_insert(_M4, (wx, wy, bz), (0, 0, -1))),
@@ -501,8 +511,8 @@ def _trrs_board_as_asked():
     from .helpers import box_at
     from cadkit.pcb import jst_xh_header
     b = box_at(TRRS_ACROSS, TRRS_ALONG, _PCB_T, x=0.0, y=0.0, z=_PCB_T / 2)
-    b = b.union(box_at(EL.TRRS_JACK_W, EL.TRRS_JACK_W, EL.TRRS_JACK_L, x=0.0, y=0.0,
-                       z=_PCB_T + EL.TRRS_JACK_L / 2))
+    b = b.union(box_at(TRRS_JACK_W, TRRS_JACK_W, TRRS_JACK_L, x=0.0, y=0.0,
+                       z=_PCB_T + TRRS_JACK_L / 2))
     b = b.union(jst_xh_header(4, mated=False)
                 .translate((0.0, TRRS_ALONG / 2 - 7.5, _PCB_T)))
     return b
