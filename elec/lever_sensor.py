@@ -39,6 +39,7 @@ os.makedirs(OUT_DIR, exist_ok=True)
 os.chdir(OUT_DIR)
 
 import json  # noqa: E402
+import re  # noqa: E402
 
 from skidl import ERC, Net, Part, Pin, generate_netlist, subcircuit  # noqa: E402
 
@@ -85,14 +86,22 @@ CAP_SWEEP_R = 5.66
 TALL_PARTS = ("J1", "U2", "L1")
 
 
+# ⚠ THE REF IS PINNED FROM THE TAG, AND IT HAS TO BE. Every call already passes a tag
+# that spells the intended ref ("R5", "C11"), and until 2026-09-18 that was a COINCIDENCE:
+# skidl numbered these parts in CREATION order and the order happened to agree. Adding one
+# resistor in the MCU block broke it -- R5 vanished, the two I2C pull-ups became R7 and R9,
+# and BOARD_NOTES["placements"] is keyed by ref, so three placed parts silently referred to
+# refs that no longer existed while a new R9 had no placement and would have landed on the
+# origin. The board still generated, ERC still passed, and the netlist was still valid.
+# Passing ref= makes the tag authoritative, so where a part is CREATED stops mattering.
 def _r(ref, tag, value, desc, pkg="Resistor_SMD:R_0402_1005Metric"):
-    return Part(name="R", ref_prefix=ref, tag=tag, dest="NETLIST", tool="skidl",
+    return Part(name="R", ref_prefix=ref, ref=tag, tag=tag, dest="NETLIST", tool="skidl",
                 value=value, description=desc, footprint=pkg,
                 pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
 
 
 def _c(tag, value, desc, pkg="Capacitor_SMD:C_0402_1005Metric"):
-    return Part(name="C", ref_prefix="C", tag=tag, dest="NETLIST", tool="skidl",
+    return Part(name="C", ref_prefix="C", ref=tag, tag=tag, dest="NETLIST", tool="skidl",
                 value=value, description=desc, footprint=pkg,
                 pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
 
@@ -261,7 +270,8 @@ def lever_sensor():
                     Pin(num=17, name="VDD", func=PWR), Pin(num=19, name="PA11", func=I),
                     Pin(num=20, name="PA12", func=O), Pin(num=21, name="PA13", func=P),
                     Pin(num=22, name="PA14", func=P), Pin(num=27, name="PB6", func=P),
-                    Pin(num=28, name="PB7", func=P)])
+                    Pin(num=28, name="PB7", func=P),
+                    Pin(num=1, name="PB8", func=I)])   # BOOT0 -- see the note above
     gnd += u2["VSS"], u2["VSS_PAD"]
     v33 += u2["VDD"], u2["VDDA"]
     nrst += u2["NRST"]
@@ -269,6 +279,25 @@ def lever_sensor():
     can_rx += u2["PA11"]; can_tx += u2["PA12"]
     swdio += u2["PA13"]; swclk += u2["PA14"]
     scl += u2["PB6"]; sda += u2["PB7"]
+    # ⚠ BOOT0 RESOLVED: IT GETS THE 0402. The note above left two ways out -- confirm the
+    # die's internal pull from WCH's manual, or spend a resistor -- and the resistor is
+    # right even if the manual turns out to say there is a pull-down. An explicit strap is
+    # immune to a datasheet revision and to a part substitution, motor_ctrl already does
+    # exactly this on the same vendor's silicon (its R7, "BOOT0 pull-down"), and the cost
+    # is one 0402 of a value this board already stocks -- no new SKU and no new feeder,
+    # across all eleven boards. Confirming the internal pull would have cost more reading
+    # than the part costs and still left the board leaning on an undocumented default.
+    #
+    # NO TEST PAD BESIDE IT, unlike motor_ctrl. A BOOT0 pad exists to force the ROM
+    # bootloader, and that only helps if the bootloader can be REACHED -- this board has
+    # no USB and brings out no USART, so the entry path does not exist. That absence is
+    # the whole reason the SWD pads were added; SWD is the recovery route here.
+    boot0 = Net("BOOT0")
+    boot0 += u2["PB8"]
+    # This is created in the MCU block, which runs BEFORE the MODE strap and the I2C
+    # pull-ups. That used to decide its ref; see the note on _r for why it no longer does.
+    r_boot = _r("R", "R8", "10k", "BOOT0 pull-down -- boot from flash")
+    boot0 += r_boot[1]; gnd += r_boot[2]
 
     y1 = Part(name="Crystal", ref_prefix="Y", tag="Y1", dest="NETLIST", tool="skidl",
               value="8MHz", description="HSE -- CAN bit timing wants a crystal, not the RC",
@@ -386,6 +415,11 @@ BOARD_NOTES = {
         "C3": (6.50, 5.70, 0.0),
         "R2": (8.60, 5.70, 0.0),
         "R7": (10.90, 5.70, 0.0),
+        # BOOT0 pull-down, west of the MCU where pin 1 is. Sited by re-running the
+        # courtyard scan that found the SWD pads' homes, not by eye -- the last part
+        # placed here by guess landed on C9's courtyard, for 3 unconnected and 3
+        # violations.
+        "R8": (-2.25, 0.80, 0.0),
         # ⚠ 0, NOT 90, AND IT IS A ROUTING DECISION. At 90 the CAN pair sat on the MCU's
         # NORTH edge while the transceiver it talks to is south of it, and J1 walls off
         # the whole west side -- so both signals had to travel around the package to get
@@ -496,6 +530,22 @@ if __name__ == "__main__":
     generate_netlist(file_=os.path.join(OUT_DIR, "lever_sensor.net"))
     netcheck.grounds_meet(os.path.join(OUT_DIR, "lever_sensor.net"))
     netcheck.no_orphan_pins(os.path.join(OUT_DIR, "lever_sensor.net"))
+    # ⚠ EVERY PART PLACED, EVERY PLACEMENT REAL. placements is keyed by REF, and a ref
+    # is assigned by skidl rather than written here, so the two can disagree without
+    # anything downstream objecting: a part with no entry lands on the ORIGIN, and an
+    # entry naming a ref that no longer exists is simply ignored. Both happened on
+    # 2026-09-18 from adding one resistor -- see the note on _r. ERC passed, the netlist
+    # was valid, and three parts were in the wrong place.
+    _refs = set(re.findall(r'\(comp\s*\(ref "([^"]+)"\)',
+                           open(os.path.join(OUT_DIR, "lever_sensor.net"),
+                                encoding="utf-8").read()))
+    _placed = set(BOARD_NOTES["placements"])
+    assert not (_refs - _placed), (
+        "no placement for %s -- it would be laid on the board origin"
+        % sorted(_refs - _placed))
+    assert not (_placed - _refs), (
+        "placements name %s, which no part has -- a ref moved under it"
+        % sorted(_placed - _refs))
     with open(os.path.join(OUT_DIR, "lever_sensor.board.json"), "w") as f:
         json.dump(BOARD_NOTES, f, indent=2)
     print("board %.1f x %.1f mm, %d placements, chip on the axle at (%.1f, %.1f)"
