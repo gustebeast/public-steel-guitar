@@ -828,8 +828,19 @@ BOARD_NOTES = {
     #     and it is the normal answer -- but the router uses In2.Cu on this board, so the
     #     pour has to be bounded rather than board-wide.
     #   * group the rails in the pinout: PWR_GND, PWR_GND, +24V, +24V instead of
-    #     interleaved. Then two lanes separate cleanly on one layer. It changes the mating
-    #     cable for the whole fleet, and motor_ctrl's J3 shares the convention.
+    #     interleaved. Then two lanes separate cleanly on one layer.
+    #     ⚠ TRIED 2026-09-18 ACROSS THE WHOLE FLEET AND IT IS WORSE ON EVERY BOARD. All
+    #     five doubled-rail connectors were regrouped at once -- this board's J7 and J9,
+    #     optical's J2, motor_ctrl's J3 and its J5 5 V feed -- because a half-applied
+    #     convention builds one cable wrong. Measured:
+    #         output_panel  2 -> 3 unconnected
+    #         optical       1 -> 2
+    #         motor_ctrl    0 -> 1   (it lost a finished board)
+    #     Reverted. The interleaved order is not an accident to be tidied: GND on the
+    #     outside puts a return either side of the pair, which is what the pour and the
+    #     escape both want, and grouping forces each rail to reach one side only. The
+    #     argument in this note is still correct about the CROSSING and wrong about what
+    #     it costs to remove it.
     #
     # Left undone deliberately: the board is better at 2 unconnected with 0.5 mm rails
     # than at 4 with a trunk that strands two connectors.
