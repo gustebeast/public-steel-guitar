@@ -382,14 +382,14 @@ ULPI = {"ULPI_D0": "PA3", "ULPI_D1": "PB0", "ULPI_D2": "PB1", "ULPI_D3": "PB10",
 # tripwire, not a correction to apply. (SUM is symmetric and cannot be affected either
 # way.) Recorded here because nothing in the netlist, the CAD or DRC can express it.
 ADC_PAIRS = (
-    ("PA1",  "PF4"),    # 1   ADC1[1] / ADC3[1]   ⚠ A/B SWAPPED -- DIFF sign inverted
+    ("PA1",  "PF4"),    # 1   ADC1[1] / ADC3[1]   ⚠ A/B SWAPPED -- A is on ADC1 here
     ("PC1",  "PF13"),   # 2   ADC2[2] / ADC2[3]  -- same ADC, skew 1
     ("PF10", "PA7"),    # 3   ADC3[7] / ADC2[5]  -- skew 2
     ("PC4",  "PC5"),    # 4   ADC2[0] / ADC2[1]  -- same ADC, skew 1
-    ("PF11", "PF5"),    # 5   ADC1[2] / ADC3[2]   ⚠ A/B SWAPPED -- DIFF sign inverted
+    ("PF11", "PF5"),    # 5   ADC1[2] / ADC3[2]   ⚠ A/B SWAPPED -- A is on ADC1 here
     ("PF9",  "PA6"),    # 6   ADC3[6] / ADC2[4]  -- skew 2
     ("PF8",  "PA4"),    # 7   ADC3[5] / ADC1[5]
-    ("PF12", "PF6"),    # 8   ADC1[3] / ADC3[3]   ⚠ A/B SWAPPED -- DIFF sign inverted
+    ("PF12", "PF6"),    # 8   ADC1[3] / ADC3[3]   ⚠ A/B SWAPPED -- A is on ADC1 here
     ("PF7",  "PA2"),    # 9   ADC3[4] / ADC1[4]
     ("PF3",  "PA0"),    # 10  ADC3[0] / ADC1[0]
 )
@@ -434,6 +434,30 @@ for _p, _u in sorted(ADC_USED_AS.items()):
 # one row lands beside another row's pin, so the answers that do come back cannot be
 # trusted either. The numbers above were read with per-word coordinates, row by row,
 # and the three the column logic could not resolve were read off the page by hand.
+# ⚠ WHY THE MCU APPROACH CORRIDOR IS CROWDED, AND IT IS NOT A MAPPING MISTAKE. Measured
+# on the placed board 2026-09-17: the H743 in LQFP176 has ADC-capable pins on only TWO of
+# its four edges -- fifteen on the -X edge (PF3-PF10, PC0-PC3_C, PA0-PA2) and nine on the
+# +Y edge (PA4-PA7, PC4, PC5, PF11-PF14). The other two edges have NONE.
+#
+# The sensing strip sits at -X and -Y of the package, spanning y 30 to 113 against the
+# MCU at y 137. So the -X edge faces the strip and the +Y edge is the FAR side, and every
+# net landing there has to travel around the package to reach it. Twenty nets, fifteen
+# near pins: at least five must go the long way round whatever the assignment is. The
+# current map sends eight, and two of the three nets that fail to route are among them.
+#
+# That is the density the corridor measurement found. It is a consequence of the pinout
+# and the board being long, not of the pair ordering -- which is why re-permuting pairs
+# could never fix it, and why the router settings could not either.
+#
+# ⚠ THE ONLY SLACK IS TWO PINS, AND THEY ARE ADC3-ONLY. PC0 is taken by ULPI_STP, PF14 is
+# the spare on the far edge, so the free near-edge ADC pins are PC2_C (34) and PC3_C (35)
+# -- ADC3_INP0 and ADC3_INP1, no other unit. Moving a far-edge net onto one takes the
+# near/far split from 12/8 to 13/7, and makes that net's pair same-ADC unless its partner
+# is already off ADC3. Strings 2 and 4 are same-ADC today, so that is a cost the design
+# has already accepted twice; the real cost is that ADC3 would carry ten channels against
+# ADC1's four, which is a scan-rate imbalance and wants checking against the latency
+# budget before it is spent.
+
 ADC_SPARE = "PF14"      # the one channel left over; brought out to nothing
 
 
