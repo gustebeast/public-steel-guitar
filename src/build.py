@@ -280,11 +280,11 @@ for _i, _seg in enumerate(chassis_segments):     # chassis split into dovetailed
 PARTS["coil_mandrel"] = (
     lambda: heal(__import__("src.coil_mandrel", fromlist=["e"]).mandrel()),
     "tools/coil_mandrel.step",
-    "TOOL — inner mandrel for heat-setting the leg's TRRS lead into a 7-turn coil. Barrel Ø16.0, base flange with a side-entry cleat (the lead is a MIDDLE section between two moulded ends, so nothing threads), scribe line at the turn count, top cleat, Ø10 shank. The top is OPEN: the set coil comes off by UNSCREWING. Print SOLID — it sees ~80 C water")
+    "TOOL — inner mandrel for heat-setting the leg's TRRS lead into a 7-turn coil. Barrel Ø16.0, base flange with a side-entry cleat (the lead is a MIDDLE section between two moulded ends, so nothing threads), scribe line at the turn count, top cleat, Ø10 shank. The top is OPEN: the set coil comes off by UNSCREWING. PA6-GF, printed SOLID: its HDT is far above the 80 C oven set, so the tool stops being the limit and the cable becomes it")
 PARTS["coil_mandrel_sleeve"] = (
     lambda: heal(__import__("src.coil_mandrel", fromlist=["e"]).sleeve()),
     "tools/coil_mandrel_sleeve.step",
-    "TOOL — the mandrel's outer sleeve, bore Ø23.8. It caps the coil's diameter while it sets, so the mean lands on arithmetic (barrel + cable) rather than on spring-back nobody can quote, and it holds every turn put through heating and cooling. Foot notch clears the starting tail. Print SOLID")
+    "TOOL — the mandrel's outer sleeve, bore Ø23.8. It caps the coil's diameter while it sets, so the mean lands on arithmetic (barrel + cable) rather than on spring-back nobody can quote, and it holds every turn put through heating and cooling. Foot notch clears the starting tail. PA6-GF, printed SOLID")
 
 PARTS["test_section_tenon"] = (
     lambda: heal(__import__("src.joint_coupon", fromlist=["e"]).section_tenon_coupon()),
