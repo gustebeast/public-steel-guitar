@@ -56,6 +56,7 @@ import math
 
 import cadquery as cq
 
+from cadkit.holes import teardrop_hole
 from . import dimensions as D
 from . import leg_stack as LS
 from . import leg_trrs as LT
@@ -162,6 +163,37 @@ PASS_TOP = LS.Z_ADJ_TEN_TOP - (LS.LADDER_OFF + LS.ADJ_N * LS.ADJ_PITCH) - D.MIN_
                                 # either the ladder moved off centre or a path outside
                                 # the tenon. Not a decision this joint gets to make
 
+# ── PAST THE LADDER: the lead's way up the rest of the tenon ────────────────
+# PASS_D stops at PASS_TOP, 62.4 above the tenon's bottom and 190 SHORT of its top,
+# because the ladder's 31 blind holes sit on the tenon's centre line and this spine is
+# only AX_Y off it. Above there the lead needs a channel that misses them.
+#
+# WHERE THE ROOM IS, and it is not where "move it to a corner" would put it. The
+# section is a 32.2 square with 45 chamfers, so the DIAGONALS ARE THE SHORT DIRECTION
+# (material to r 12.0 at 45 deg against r 16.1 across the flats) -- a corner has LESS
+# room, not more. The room is on the +Y FLAT: the ladder is a O4.0 bore along X at
+# y = centre, so it owns |y| <= 2.0 and nothing else, and the latch pocket owns the -Y
+# middle. Straight out in +Y is the one direction that is free of both.
+#
+# Measured against all 31 holes: O6.6 at (AX_X, +7.0) keeps a 1.80 wall, where the
+# spine's own O6.6 at +3.2 keeps 0.00.
+CH_Y = 9 * B                    # 7.2, and it is not further out because the
+                                # wall costs 0.5 per 1.0 of diameter and this keeps the
+                                # SAME O6.6: the rule that set PASS_D -- the lead's far
+                                # O6.1 plug must be able to travel the tenon's whole
+                                # length -- does not stop applying halfway up
+CH_D = PASS_D
+CH_BOT = PASS_TOP - 8.0         # the jog happens BELOW the lowest ladder hole, in the
+                                # stretch the spine bore already owns
+CH_TOP = LS.Z_ADJ_TEN_TOP       # ...and it runs out the tenon's top face, into the
+                                # sleeve cavity, which is where the slack will live
+                                # (sub-problem B, docs/leg-trrs-routing.md)
+
+assert CH_BOT < PASS_TOP, "the jog has to finish before the pass bore ends"
+assert CH_Y - CH_D / 2.0 > LS.ADJ_HOLE_D / 2.0 + D.MIN_WALL_2P, (
+    "the channel reaches y %+.2f and the ladder owns |y| <= %.1f"
+    % (CH_Y - CH_D / 2.0, LS.ADJ_HOLE_D / 2.0))
+
 assert SPR_CH_BOT > SH_REST + SLV_H + FLOAT, (
     "the coil's channel starts at %.2f and the collar's flange reaches %.2f at mate"
     % (SPR_CH_BOT, SH_REST + SLV_H + FLOAT))
@@ -210,6 +242,13 @@ def tenon_negatives(up=None):
     out = LT._bore(BORE_D, TIP - 1.0, SPR_CH_BOT, x, y, up)
     out = out.union(LT._bore(SPR_CH_D, SPR_CH_BOT - 0.01, SEAT_Z, x, y, up))
     out = out.union(LT._bore(PASS_D, SEAT_Z - 0.01, PASS_TOP, x, y, up))
+    # ...and on past the ladder, out in +Y where the ladder is not
+    out = out.union(LT._bore(CH_D, CH_BOT, CH_TOP + 1.0, x, LS.LEG_Y + CH_Y, up))
+    # the jog between the two, a slant rather than a corner: the O6.1 plug has to
+    # travel it on the way in, and a cable does not like being asked to turn square
+    out = out.union(teardrop_hole(
+        CH_D, ((CH_Y - AX_Y) ** 2 + (PASS_TOP - CH_BOT) ** 2) ** 0.5,
+        (x, y, CH_BOT), (0.0, CH_Y - AX_Y, PASS_TOP - CH_BOT), up))
     out = out.union(LT._bayonet_slots(BORE_D / 2.0 - 0.01, LT.LUG_D / 2.0,
                                       LUG_BOT, LUG_BOT + RUN_H, True, x, y, LUG_A, up))
     # AND THE ENTRY SLOTS RUN THE WHOLE WAY DOWN TO THE FACE. leg_trrs._bayonet_slots
