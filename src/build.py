@@ -43,6 +43,7 @@ from .bridge_endplate import bridge_endplate
 from . import bridge_endplate as BE
 from . import belt_tensioner as BTn
 from .chassis import segments as chassis_segments
+from .chassis import segments_light as chassis_light
 from . import nut_block as NB
 from . import tension_fork as TF
 from . import pickup_mount as PM
@@ -218,9 +219,13 @@ for _cnm, _cr, (_ctx, _cty, _ctd) in _WR_FUSE.tee_cradles():
 from . import knee_lever as _KL_FUSE
 for _csi in sorted(_fused_segs):
     _seg = chassis_segments[_csi]
-    for _rx in CH._RIB_X:
+    for _rx in CH._MORT_X:
         if _seg_edges[_csi + 1] < _rx < _seg_edges[_csi]:
-            _seg = _seg.cut(_KL_FUSE.rib_mortise(_rx))
+            # THROUGH chassis.mort_segments, not the whole run: the three stations at each end
+            # are two short runs over the feet with the floor between them solid, and re-cutting
+            # them full length here carved that floor straight back out again.
+            for _my0, _my1 in CH.mort_segments(_rx):
+                _seg = _seg.cut(_KL_FUSE.rib_mortise(_rx, _my0, _my1))
     chassis_segments[_csi] = _seg
 # STRING ACCESS through the chassis floor, under each string's endplate channel (see
 # dimensions.string_access_x). LAST in the segment pipeline, like the mortise re-cut, so no
@@ -247,6 +252,17 @@ for _ctx, _cutters in _WR_FUSE.tee_hold_negatives():
             for _cut in _cutters:
                 chassis_segments[_csi] = chassis_segments[_csi].cut(_cut)
             break
+chassis_light = list(chassis_light)
+for _i, _lt in enumerate(chassis_light):        # the transparent under-rail band
+    PARTS[f"chassis_{_i}_light"] = (
+        partial(heal, _lt), f"petg/chassis_{_i}_light.step",
+        "PETG (WHITE, translucent) — DOWNWARD LIGHT WINDOW: 8 mm across Y by the bottom "
+        f"prism's full XBAR, one XBAR inboard of the +Y rail (print AS ONE OBJECT with chassis_{_i}, "
+        "the deck panels' base/colour pattern). The bottom is sealed now, which is what keeps the "
+        "motor noise in; this is the one deliberate leak, and the rail stands outboard of it so "
+        "nothing shows from the front -- it only aims DOWN, at the pedals. White to match the deck "
+        "panels, and it diffuses rather than glares. Same resin family as the PETG-GF body, so the "
+        "two weld and purge cleanly")
 # THE TRRS ADAPTER'S STATION over the -X/+Y leg (wiring.trrs_*): the same three-step
 # dance the tees do, and for the same reason -- fuse the cradle into the segment that
 # owns its X, THEN cut the things that live inside it, because the fuse fills them in.
@@ -935,26 +951,45 @@ def _vkl_station() -> float:
     """
     from . import knee_lever_vert as KV
     mid = _LKL_X + _KNEE_GAP_L / 2.0
-    best = min((abs(rib - KV.TEN_Y[1] - mid), rib - KV.TEN_Y[1])
-               for rib in (_RIB0 + _RIB * k for k in range(30)))
-    return best[1]
+    # its tenons sit at KV.TEN_Y in the guitar's X once posed, so the mount is offset from the
+    # station by TEN_Y[1]; walk the REAL station list, so a dropped one is never chosen.
+    return _lever_station(mid, KV.TEN_Y) - KV.TEN_Y[1]
 
 
-_LKL_X = D.rib_comb_x(-501.0)                # hard -X bound: the left leg block (ILKL's old
-                                             # station; LKL always shared it — see _KNEE_GAP_L)
-_RKL_X = D.rib_comb_x(-225.0)                # right knee (snapped to the rib comb)
+def _lever_station(x_target, offsets, mirrored=False):
+    """The closest mortise station to x_target at which EVERY one of this lever's tenons
+    lands in a slot that exists.
+
+    Not just the nearest grid X. The bottom grid (D.LEVER_PITCH) drops stations where the leg
+    stubs and the segment seams need solid material, so a station can be on-pitch and still have
+    no slot -- and a tenon over solid slab is 1-2.5 cm3 of interference, which is exactly what
+    the gate reported when the knee gaps were still multiples of the old 22.35 rib pitch."""
+    from . import chassis as CH_G
+    have = set(round(s, 3) for s in CH_G._MORT_X)
+    ok = [s for s in CH_G._MORT_X
+          if all(round(s + (-t if mirrored else t), 3) in have for t in offsets)]
+    assert ok, "no station on the bottom grid fits a lever with tenons at %s" % (offsets,)
+    return min(ok, key=lambda s: abs(s - x_target))
+
+
+from . import knee_lever as _KL_ST
+_LKL_X = _lever_station(-501.0, _KL_ST.TEN_X)   # hard -X bound: the left leg block (ILKL's old
+                                                # station; LKL shared it — see _KNEE_GAP_L)
+_RKL_X = _lever_station(-225.0, _KL_ST.TEN_X)   # right knee
 
 LEVER_STATIONS = (
     # LEFT KNEE: the knee sits in the gap between LKL and LKR, and VKL sits in that
     # same gap so the vertical arm is directly above it (user). VKL's station is
     # rib-DERIVED (MOUNT_X = rib - 10.4) so its own two tenons land on ribs.
     ("lkl",  "kl", _LKL_X,               _LEVER_Y, False),
-    ("vkl",  "kv", _vkl_station(),       None,     False),   # mid-gap, rib-derived
+    ("vkl",  "kv", _vkl_station(),       None,     False),   # mid-gap, grid-derived
     #                                                          None -> _vkl_mount_y()
-    ("lkr",  "kl", _LKL_X + _KNEE_GAP_L, _LEVER_Y, True),    # -386
+    # the GAPS are the ergonomic numbers; the station is the nearest one the grid can
+    # actually host, which is within half a pitch (4.4) of it
+    ("lkr",  "kl", _lever_station(_LKL_X + _KNEE_GAP_L, _KL_ST.TEN_X, True), _LEVER_Y, True),
     # RIGHT KNEE: same gap, no vertical lever in this copedent
     ("rkl",  "kl", _RKL_X,               _LEVER_Y, False),
-    ("rkr",  "kl", _RKL_X + _KNEE_GAP_R, _LEVER_Y, True),    # -133
+    ("rkr",  "kl", _lever_station(_RKL_X + _KNEE_GAP_R, _KL_ST.TEN_X, True), _LEVER_Y, True),
 )
 
 
@@ -1074,6 +1109,7 @@ def body_work_components():
             if n.startswith("motor")]
     out += _electronics_components()          # includes the deck pieces
     out += [(f"chassis_{i}", seg) for i, seg in enumerate(chassis_segments)]
+    out += [(f"chassis_light_{i}", lt) for i, lt in enumerate(chassis_light)]
     out += _leg_components()
     out += _pickup_mount_components()
     return out
@@ -1312,6 +1348,7 @@ _COLORS = {
                                              # detectors, so a light one would bounce IR
     "top_plate":       (0.88, 0.91, 0.94),   # transparent-PCTG deck base + fret lines
     "top_plate_color": (0.30, 0.33, 0.38),   # colour-PCTG deck layer (skin contact)
+    "chassis_light":   (0.88, 0.91, 0.94),   # light window -- the deck panels' white
     "oled":            (0.05, 0.05, 0.08),   # screen (perfect-black OLED)
     "joystick":        (0.15, 0.15, 0.17),   # UI control
     "dc_jack":         (0.62, 0.64, 0.67),

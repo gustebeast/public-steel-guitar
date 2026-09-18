@@ -35,7 +35,9 @@ in any other and something either will not fit or will not stay:
      the pulley threaded onto its screw OFF the instrument — the pulley IS the
      retaining collar (components.screw_pulley), so it cannot be fitted afterwards —
      and that subassembly raised up through both bearings. The whole ascent has to be
-     clear, which is why DRIVE_Z0 is the bed and not the seated pulley's underside.
+     clear, which is why PULLEY_CH_Z0 is the bed and not the seated pulley's underside --
+     and why every bearing seat keeps a bearing's height of channel under it
+     (screw_rail.BRG_DROP), which is what makes "both bearings seated first" possible.
      THE H-NUT CANNOT BE ON THE SCREW FOR THAT. It is 8.5 across flats and the support
      bearing's bore is Ø5, so it will not follow the screw through. Raise the screw
      until its top clears the rail into the changer room, spin the nut on THERE, then
@@ -58,7 +60,8 @@ from . import legs as LG                 # chassis already imports legs: no cycl
 from . import top_plate as TP
 from . import optical_pickup as OP
 from .endplate_base import endplate_base
-from .screw_rail import screw_rail as _screw_rail, seat_cutter as _seat_cutter
+from .screw_rail import (screw_rail as _screw_rail, seat_cutter as _seat_cutter,
+                         pulley_channel as _pulley_channel)
 from .screw_rail import BOT as _SR_BOT, TOP as _SR_TOP
 from .screw_rail import PRINT_UP as _SR_PRINT_UP
 from .helpers import box_at, cyl, cyl_y
@@ -361,48 +364,35 @@ assert _GUIDE_WEB >= D.MIN_WALL - 1e-9, (
 # second blind hole 12 mm up would have given that back.
 STRING_SLOT_W = 4 * D.BEAD                      # 3.2, clears the heaviest C6 string
 
-# ── DRIVE RELIEF: the one extra prism under the changer room ───────────────
-# The room's own floor now follows the nut down (ROOM_Z0), so the separate nut-sweep
-# prism this used to need is gone with the carriage. What is still needed is relief
-# for the things that TURN. The pulleys and the retaining collar sweep CIRCLES, not
-# outlines — Ø11 and Ø8.8 about the screw line — which reaches x -2.5, and the
-# endplate's foot block starts at x -4.2, so the pulleys were buried ~1.7 mm in it.
-# That never showed up in the overlap gate because it compares parts where they SIT,
-# and where they sit they only graze; the pair even sat in the allow list as an
-# intended contact. Only a swept check finds it (tools/check_sweep.py).
+# ── PULLEY INSTALL CHANNELS: one bore per screw, not a rebate on the whole wall ──
+# WHY ANYTHING IS CUT DOWN HERE. The screws go in FROM BELOW (user). The pulley is also the
+# retaining collar, so it is threaded on BEFORE the screw is fitted and that subassembly slides up
+# through both bearings into place -- so the pulley does not merely have to fit where it ends up,
+# its whole ASCENT has to be clear, and because the screw is long the ascent starts under the
+# instrument. What sweeps is a CIRCLE, Ø11 about each screw line, not the pulley's outline: the FAR
+# row's circles reach x 17.5, which is 2.84 inside the +X end wall's inner face at 14.66. The
+# overlap gate cannot see that -- it compares parts where they SIT, and where they sit they only
+# graze; the pair even sat in the allow list as an intended contact. Only check_sweep finds it.
 #
-# AND IT RUNS TO THE FLOOR, because the screw goes in FROM BELOW (user). The pulley is
-# the retaining collar, so it is threaded onto the screw BEFORE the screw is fitted, and
-# that subassembly then slides up through both bearings into place. So the pulley does
-# not merely have to fit where it ends up — its whole ASCENT has to be clear, and the
-# ascent starts under the instrument. Stopping the relief 0.4 below the seated pulley
-# (the old DRIVE_Z0 = -53.4) meant the last 20.75 mm of that stroke ran into the end
-# wall, and the only way in would have been to enter at an angle and straighten up once
-# clear -- which the bearings cannot allow, since the screw is already captured in them
-# by the time the pulley reaches the obstruction.
-#
-# WHAT IT COSTS is small and already precedented: probed, the ONLY material in the
-# extended band is a 2.1 mm strip of the +X END WALL's inner face at x -4.2..-2.1,
-# 4332 mm^3, 2.2% of the part. That wall is CH.T (10) thick, so it keeps 8.3 -- and the
-# relief above already thins it to exactly the same 8.3 over its own 21.6 mm band. This
-# just continues an existing cut down to the bed instead of ending it in mid-air.
-DRIVE_SWEPT_R = D.PULLEY_FLANGE_OD / 2                    # 5.5 — the pulley is the
-                                                          # widest turning thing left
-DRIVE_X1 = D.SCREW_ROW_DX + DRIVE_SWEPT_R + 0.4      # far row's pulley, +X-most
-# THE DRIVE RELIEF GETS ITS OWN Y HALF-WIDTH. It used to borrow WIN_HW, which is an ARM
-# number (BRIDGE_ARM_Y - ARM_W/2) describing the window up at the bearing arms — a
-# different feature at a different height. Two things then broke it at once: the arms
-# moved in (BRIDGE_ARM_OUT 54.75 -> 50.80), taking WIN_HW to 46.0, and the far screw row
-# put string 10's pulley where that mattered. Its SWEPT disc reaches |y| 48.25, so 2.25
-# of it was left buried in endplate material and the sweep gate caught it.
-# Sized here from the outermost pulley's swept circle, which is what this cut is for.
-DRIVE_HW = (max(abs(D.string_y(i)) for i in range(D.N_STRINGS))
-            + DRIVE_SWEPT_R + 0.4)                   # outermost swept pulley + clearance
-DRIVE_Z1 = D.PULLEY_TOP_MAX + 0.4                         # -32.6
-DRIVE_Z0 = CH.Z_BOT                                       # -74.95: OPEN TO THE FLOOR
-assert DRIVE_Z0 <= CH.Z_BOT + 1e-9, (
-    f"the drive relief stops at {DRIVE_Z0:.2f}, above the part's floor ({CH.Z_BOT:.2f}) — "
+# IT USED TO BE ONE PRISM ACROSS THE WHOLE BAY (user, 2026-09-17: don't). That rebated a
+# continuous 3.24 off the inner face of the end wall over y +-48.65, the full height from the bed
+# to the rail -- 13.4 cm3 -- and took the wall's Y continuity with it for five strings' worth of
+# nothing, because the NEAR row needs no relief at all (measured: zero interference either way).
+# Now each pulley owns a teardrop the size of its own swept circle, and the bearing seats above
+# carry their own install room (screw_rail.BRG_DROP) instead of borrowing the bay's.
+# AND IT WAS UNDERMINING THE +Y LEG'S LOCK-PIN INSERT. Probed as a 1.6 sleeve round the insert's
+# barrel: 90% material with the prism (19.8 mm3 of its grip missing, on the -X side it is pulled
+# toward), 100% with the channels. Measured, not reasoned -- and not something either gate looks at,
+# because an insert sitting in a pocket that has lost one wall still reads as zero interference.
+PULLEY_CH_Z1 = D.PULLEY_TOP_MAX + 0.4              # -38.2, just over the seated pulley
+PULLEY_CH_Z0 = CH.Z_BOT - 1.0                      # OPEN TO THE FLOOR, and 1.0 PAST it: a cut
+                                                   # landing coplanar with the part's own bottom
+                                                   # face leaves a membrane there
+assert PULLEY_CH_Z0 <= CH.Z_BOT + 1e-9, (
+    f"the pulley channel stops at {PULLEY_CH_Z0:.2f}, above the part's floor ({CH.Z_BOT:.2f}) -- "
     f"the screw+pulley subassembly installs UPWARD and would have to enter at an angle")
+assert PULLEY_CH_Z1 >= D.PULLEY_TOP_MAX - 1e-9, (
+    "the channel stops under the seated pulley's top: the last of the ascent would be in material")
 
 # Room half-width: out to the arm inner faces, so the edge carriages / string
 # balls are reachable through the room's +X opening (everything installs from +X).
@@ -636,12 +626,9 @@ def _build() -> cq.Workplane:
     # up to the bearing arms at the edges — the whole bridge end becomes one solid
     # piece (screw support + bearing support + box closure) with continuous material.
     # The bottom + edge bridges run the FULL X-depth (screw line → +X tip).
-    # DRIVE RELIEF (see DRIVE_X1) — cut FIRST, so the rail unioned in next survives.
-    # ...and it BREAKS OUT of the floor: DRIVE_Z0 is the bed plane itself, so the cut
-    # runs 1.0 past it rather than landing coplanar with the part's own bottom face.
-    body = body.cut(box_at(DRIVE_X1 - (XLO - 1.0), 2 * DRIVE_HW, DRIVE_Z1 - (DRIVE_Z0 - 1.0),
-                           x=((XLO - 1.0) + DRIVE_X1) / 2, y=0,
-                           z=((DRIVE_Z0 - 1.0) + DRIVE_Z1) / 2))
+    # (the bay-wide DRIVE RELIEF that used to be cut here is gone -- see PULLEY_CH_*. Its
+    #  replacement cannot be cut here anyway: the channels have to see the finished solid,
+    #  so they go in with the bearing-seat re-cut below.)
     body = body.union(_screw_rail)
     # BOTTOM BRIDGE — only if the rail leaves anything to bridge. It used to carry the
     # floor from the rail's +X face out to the tip, because the rail stopped at the
@@ -663,6 +650,9 @@ def _build() -> cq.Workplane:
     # inside the +X sliver of every Ø8.2 seat, so the unions above refill 0.2 mm of
     # each bore. Cutting again here is the only place that sees the finished solid.
     body = body.cut(_seat_cutter())
+    # ...and the PULLEY INSTALL CHANNELS with them, same reason and same place: they have to see
+    # the finished solid, because every union above would refill them.
+    body = body.cut(_pulley_channel(PULLEY_CH_Z0, PULLEY_CH_Z1))
     # STRING ACCESS CHANNELS through the rail plate (see dimensions.string_access_x). Cut
     # AFTER the seat re-cut and every union above, so nothing fuses back into them. Straight
     # up the Z axis, which the -X print direction makes a sideways hole: hence the house cut.
