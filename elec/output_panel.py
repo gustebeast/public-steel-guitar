@@ -275,6 +275,36 @@ def output_panel():
     pgnd += j7[1], j7[4]
     v24 += j7[2], j7[3]
 
+    # ⚠ J10 -- THE SECOND 24 V TRUNK OUTLET, WHICH FEEDS THE CHAIN'S FAR END (user,
+    # 2026-09-18, "option A"). J7 feeds the tee chain at the EAST end; this one runs the
+    # length of the instrument to motor_ctrl's J3, and motor_ctrl injects onto the WEST
+    # end through its J1. Current then enters the bus from both ends and meets in the
+    # middle, so the worst-loaded segment carries roughly half the fleet instead of all
+    # of it -- the single +24V contact between tees is the 3 A ceiling this relieves.
+    #
+    # FOUR WAYS, DOUBLED, AND THAT IS DECIDED BY THE LEDS. This feed carries motor_ctrl
+    # plus the Pi (0.70 A) plus the LED strip (1.05 A at full white) before a motor
+    # moves, because the strip is driven from the Pi and so lives at that end. A single
+    # conductor pair sits at 89 % of one contact with five motors moving and goes over
+    # with ten; doubled it is 2.98 A and 5.24 A against 6 A. See BOM.md's power budget.
+    #
+    # ⚠ AND IT IS THE FOURTH 4-WAY XH THAT IS PIN-INCOMPATIBLE WITH A CAN DROP. Ways 3
+    # and 4 are +24V and PWR_GND here; on a CAN drop they are CAN_H and CAN_L, and ways
+    # 1-2 agree in both, so a mis-mated node powers up normally and fails on the signal
+    # pins -- with 24 V on a transceiver rated -4 to +16. The user's decision is to mark
+    # this family rather than key it: DYE THE HOUSINGS, board and cable, at both ends.
+    # That makes a wrong plug visible instead of impossible, which is a weaker guarantee
+    # than a 5-way shell and costs nothing; the trade is recorded in BOM.md.
+    j10 = Part(name="B4B-XH-A", ref_prefix="J", ref="J10", dest="NETLIST", tool="skidl",
+               value="B4B-XH-A",
+               description="24 V trunk out #2 -- to motor_ctrl J3, west-end feed "
+                           "(2 contacts per rail; DYED housing)",
+               footprint=XH_FP,
+               pins=[Pin(num=i + 1, name=n, func=P)
+                     for i, n in enumerate(("PWR_GND", "+24V", "+24V", "PWR_GND"))])
+    pgnd += j10[1], j10[4]
+    v24 += j10[2], j10[3]
+
 
     # ── J8: the magnetic pickup, on SCREW TERMINALS (user) ───────────────────
     # It is the most likely thing anyone ever rewires -- swapping a pickup is a
@@ -341,19 +371,21 @@ def output_panel():
     # full either way. Shrinking a connector is the one move that empties part of it.
     # 5.00 mm is ten lanes for a 0.25 mm track.
     #
-    # ⚠ AND THAT ROUTING ARGUMENT IS WRONG -- MEASURED, STILL 2 UNCONNECTED. Emptying
-    # five millimetres of the row changed nothing, just as re-ordering J7 and J9 inside it
-    # changed nothing. Together those two results kill the "the row is too crowded"
-    # explanation outright: the break is not a shortage of lane width at y -28, because
-    # the board had both more room and a better order and still severed both rails.
-    # Whatever blocks this bus is more specific than crowding, and three attempts have now
-    # been aimed at the wrong mechanism. The next step on this board is to MEASURE what
-    # sits across the break, the way the optical net was finally measured, rather than to
-    # propose a fourth cure for a diagnosis nothing supports.
+    # ⚠ IT WORKED, AND THE COUNT HID IT. The board still reports 2 unconnected, and on
+    # that number alone this was first written up as a failure. The COMPOSITION changed:
+    # the open nets were +24V and PWR_GND, and they are now PWR_GND and BOOT0. The 24 V
+    # BUS IS CLOSED -- the net this whole row exists to carry, and the one a severed
+    # panel could not have powered the instrument through. What is left is PWR_GND, still
+    # severed, plus BOOT0, a pull-down strap that was previously routed and got displaced.
     #
-    # THE CHANGE IS KEPT ANYWAY, for the two reasons that do survive: the doubling was
-    # never needed at 120 mA, and a 2-way cannot be plugged into a 4-way CAN drop. It is
-    # kept on its safety and honesty merits, NOT on the routing claim it was tested for.
+    # Vacating the 110..113 end of the row left 11.00 mm of clear board between J7's last
+    # pad and J9's first, and that is what the bus needed. Re-ordering J7 and J9 inside
+    # the row had not helped because re-ordering does not create width; shrinking does.
+    #
+    # THE LESSON IS ABOUT THE MEASUREMENT, NOT THE CONNECTOR. "2 unconnected" was equally
+    # true before and after and describes two different boards. Every comparison in this
+    # file that turns on a count should name the NETS -- a swap of one net for another is
+    # invisible to the number and can be the whole result.
     #
     # It also removes the mis-mate hazard on this link outright: a 2-way XH cannot enter
     # a 4-way header, so this cable can no longer be plugged into a CAN drop and put

@@ -470,6 +470,34 @@ def route(stem, passes=None, timeout=3600, incremental=False, dsn_only=False):
         print("  joined %d same-net pad pair(s) the router left in separate islands"
               % n_link)
 
+    # ⚠ DELIBERATE COPPER GOES IN HERE, NOT IN layout.py, AND THE DIFFERENCE IS THE
+    # WHOLE POINT. The optical board's last net, +3V3A at U2 pad 4, is closed by one via
+    # and two short tracks -- that geometry was searched and it works. Laid BEFORE
+    # routing it also cost FIVE analog nets, 1 unconnected to 5, because 76 other nets
+    # then had to plan around it. Laid here it closes the same gap and disturbs nothing,
+    # for exactly the reason the same-part gap repair above is done here: before routing
+    # the same idea is a constraint that costs more than it buys.
+    #
+    # A re-search confirmed the placement was not the problem. Scored by how many analog
+    # nets sit within 1.2 mm of the path, the best of all 2638 legal sites touches SIX --
+    # and so does the one already chosen. There is no quiet corner in that corridor, so
+    # no amount of re-siting helps and the timing is the only lever left.
+    #
+    # These are repairs, not hints: they are applied after the router has finished and
+    # are never visible to it.
+    _nets = {n.GetNetname(): n for n in board.GetNetInfo().NetsByName().values()}
+    for _rv in notes.get("repair_vias", []):
+        assert _rv[0] in _nets, "repair_vias names unknown net %r" % (_rv[0],)
+        layout._add_via(board, _nets[_rv[0]], _rv[1], _rv[2],
+                        _rv[3] if len(_rv) > 3 else 0.3, _rv[4] if len(_rv) > 4 else 0.6)
+    for _rt in notes.get("repair_tracks", []):
+        assert _rt[0] in _nets, "repair_tracks names unknown net %r" % (_rt[0],)
+        layout._add_track(board, _nets[_rt[0]], _rt[1], _rt[2], _rt[3])
+    if notes.get("repair_vias") or notes.get("repair_tracks"):
+        print("  laid %d deliberate via(s) and %d track(s) AFTER routing"
+              % (len(notes.get("repair_vias", [])), len(notes.get("repair_tracks", []))))
+        board.BuildConnectivity()
+
     # ⚠ COUNT BEFORE REMOVING. board.Remove() leaves the track container in a state
     # where GetTracks() raises -- the same SWIG ownership hazard that made fp.Remove()
     # corrupt the footprint IO plugin earlier in this file's history. The rule that
