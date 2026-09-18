@@ -406,10 +406,17 @@ twisting + the bridge-side AFE buffer, not conductor size):
 > contact then carries half the current, inside the 3 A rating. One change fixes
 > the gauge, the rating and the drop together.
 >
-> ⚠ **Not yet checked:** whether the lever board's PH connector, at 2 A and AWG
-> #32–#24, is adequate for what bus B actually draws. Bus B feeds eight sensor
-> boards rather than steppers, so it is probably fine — but "probably" is what
-> this note exists to retire.
+> ✅ **The lever board's PH connector is fine, and here is the arithmetic that
+> retires the question.** Bus B feeds eight sensor boards, not steppers. Each is a
+> CH32V203 (~30 mA), an MT6701 (~18 mA), a recessive SN65HVD230 (~10 mA) and an LDO
+> — about **59 mA at 3V3**, so eight boards are 0.47 A at 3V3 and roughly **76 mA at
+> 24 V** through the bus. That is **3.8 % of PH's 2 A contact rating**, and the
+> 26 AWG the CAN cable already specifies sits mid-range in PH's AWG 30–24 window.
+>
+> **The two families map cleanly onto the two buses**, which is why this works: bus
+> A (ten steppers, the high-current one) is XH end to end, and only bus B crosses
+> XH→PH — at a twenty-fifth of the rating. The gauge argument above therefore
+> applies to the 24 V *trunk* and to bus A, not to bus B.
 >
 > ⚠ **The CAN cable carries the 24 V as well, and only its signal pair is
 > specified.** Bus A and bus B are the user's four-conductor scheme — black GND,
