@@ -548,6 +548,25 @@ def build_wires():
     # (main's afe_drop is dropped with the AFE board itself. Tee 10 survives -- the
     #  optical pickup board takes 24 V off it -- but its drop has no modelled endpoint
     #  until that board exists.)
+    #
+    # ⚠ THAT BOARD NOW EXISTS, AND IT IS NOT FED FROM HERE. elec/optical.py is a finished
+    # design with exactly two connectors: J1, a USB-C to the panel, and J2, a 4-pin XH
+    # carrying 24 V. It has NO CAN -- the board speaks USB to the Pi -- so a CAN-rail tee
+    # is the wrong shape of source for it: a tee exists to split the four-wire
+    # CAN-plus-power cable for a device ON the bus, and this device is not on it.
+    #
+    # Its 24 V comes from the output panel instead: elec/output_panel.py's J9 is
+    # documented as "24 V out to the optical pickup board", and the two boards are about
+    # 150 mm apart -- which is the whole reason the USB hub moved onto the panel, taking
+    # that 480 Mbps link from ~800 mm to ~100 mm (BOM.md, the hub row). A panel outlet is
+    # a short cable; a rail drop would be a long one to a board with no bus to join.
+    #
+    # ⚠ SO TEE 10 LOOKS STALE, AND IT IS THE ONLY TEE LEFT ON THE RAIL (see tee_outline
+    # above), which makes this more than one part: the rail-mounted tee, its cradle, its
+    # M4 side hold-down and the drop's two wires all exist to feed a board that is fed
+    # from somewhere else. Flagged rather than deleted -- removing it changes the rail
+    # geometry and the rib spacing around it, which is not this file's call alone.
+    # What would settle it: confirm that nothing else on the rail needs a 24 V drop.
     for _nm, _do in (("wire_pwr_hot", -PWR_OFF), ("wire_pwr_gnd", PWR_OFF)):
         def _off(pts):
             return [(px + _do, py + _do, pz) for px, py, pz in pts]
