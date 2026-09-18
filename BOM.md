@@ -1492,8 +1492,30 @@ hand, set `PLUG_L["J1"]` to the measured value; nothing else has to move.
 **Power (J2): 24 V from the instrument trunk, not USB VBUS.** (This said *5 V* until
 2026-09-18; the rail moved to 24 V with a local buck on 2026-09-14 and this line did
 not follow. `elec/optical.py` wires J2's four ways as `1=GND 2=+24V 3=+24V 4=GND`.)
-MCU ~200–300 mA, PHY ~50, 21 op-amp channels ~40 — already past a USB port's 500 mA
-before a single emitter is lit, which is the argument against VBUS and still holds.
+⚠ **And the current argument that used to sit here was wrong in both directions.** It
+read *MCU ~200–300 mA, PHY ~50, 21 op-amp channels ~40 — already past a USB port's
+500 mA before a single emitter is lit.* The itemised budget in `elec/optical.py` was
+written in the first place because assertions like that one had never been added up, and
+it names this line as one of them. Derived from the datasheets:
+
+| | claim | derived |
+|---|---|---|
+| MCU (DS12110 T30) | ~200–300 mA | **165** typ / 220 max @25 / 400 max @85 |
+| PHY (DS00002646 T4-2) | ~50 mA | **41** typ / 51 max |
+| 21 op-amp channels | ~40 mA | **11.7** typ / 16.1 max |
+
+The op-amp figure is 2.5× the derived maximum — 21 channels is five TLV9064 quads plus a
+TLV9061, and the TLV906x draws 538 µA per amplifier, so 21 × 538 µA = 11.3 mA. And the
+conclusion does not survive either: **219 mA at 5 V before any emitter**, 324 mA at the
+50 % duty the design assumes, 430 mA with the emitters on continuously. A USB port's
+500 mA would in fact carry it.
+
+**The real reasons stand and are elsewhere in this design.** Margin: the worst case in the
+budget is 499 mA with maximum parts at 25 °C, which is the limit and not a headroom. And
+noise, which is the actual argument — taking 5 V would mean a ~600 mm run sharing a
+return with the Pi, on a board whose LED driver switches at 96 kHz *synchronously with
+sampling*, where a shared return puts that switching straight onto the reference the TIAs
+measure against.
 ⚠ **LED current is NOT the best SNR lever** — this said "second-best" and
 `src/optical_pickup.py` said "first", and the re-derived noise budget says neither.
 The dominant term is the op-amp's voltage noise across a plateau that ends at
