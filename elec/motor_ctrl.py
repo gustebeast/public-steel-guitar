@@ -562,6 +562,21 @@ BOARD_NOTES = {
     # THE GROUND PLANE is why this is four layers, same as the lever board: the
     # buck switches on a board carrying a 12 MHz USB pair and two CAN pairs.
     "zones": [("GND", "In1.Cu", 0.3), ("GND", "B.Cu", 0.3)],
+    # ⚠ +24V IS A PASS-THROUGH ON THIS BOARD, NOT A LOCAL SUPPLY. v24 reaches J1 and J2 as
+    # well as the inlet J3, so the drivers' current crosses this PCB on its way to the
+    # motors -- BOM.md's "very nearly the whole <5 A". At the board default of 0.25 mm
+    # that is 0.88 A of 1 oz outer copper by IPC-2221 at a 10 C rise, about 5.7x short,
+    # and it went unnoticed because until now no board could state a per-net width at all.
+    # The audit that found it also cleared the other two: optical's inlet is ~324 mA
+    # against 0.88 A, and lever_sensor's 0.15 mm pass-through is 0.60 A on the sensor bus.
+    #
+    # 0.5 mm takes it to 1.6 A. That is the ceiling for a blanket width here for the same
+    # reason as on the panel -- this net lands on 0402 parts with 0.6 mm pads and
+    # freerouting does not neck into a land -- so it is an improvement, not the answer.
+    # The J3 -> J1/J2 path still wants deliberate copper; see the trunk note on
+    # output_panel for why that is a pinout decision rather than a routing one.
+    # GND needs nothing: it has plane copper on In1.Cu and a pour on B.Cu.
+    "net_widths": {"+24V": 0.5},
     # ⚠ IN1 IS A PLANE, AND THE ROUTER HAS TO BE TOLD. A zone is just copper as far
     # as freerouting is concerned: pour GND on In1 and say nothing, and it will route
     # signals straight through the plane, which is exactly what it did here. The damage
