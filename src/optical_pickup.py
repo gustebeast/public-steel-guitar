@@ -2011,6 +2011,32 @@ def opt_cables() -> cq.Workplane:
     xc = pi_column_x()
     assert PI_RUN_Z - USB_OD / 2 > _MB.SEAT_TOP, (
         "the USB run's +Y leg has come down onto the motor bank")
+    # ⚠ THIS RUN IS BURIED IN THE CHASSIS'S -Y RAIL, AND THE FIX IS A DOGLEG RATHER THAN
+    # A NUMBER. Measured 2026-09-18, which is the parked chassis <-> optical_cables
+    # collision (~750 mm3 x3, OWNER bronner):
+    #     -Y rail        y -139.15 .. -128.75,  z -81.75 .. +9.60   (chassis.Y_LO, T)
+    #     this run       y -134.83,             z  -9.60
+    # The run is not grazing the rail, it is through the middle of its 10.4 mm section.
+    # The rail's existing cable notch cannot take it: that one is cut for the motor-9
+    # trunk at z -64..-40 (chassis.M9_CUT_Z0/Z1), a different band entirely.
+    #
+    # ⚠ AND MOVING y_run ALONE CANNOT WORK, WHICH IS WHY A CONSTANT IS THE WRONG SHAPE.
+    # Tried -127.0 (inboard of the rail) and -122.0 (past the conduit's mouth). Both clear
+    # the RAIL -- its y-span ends at -128.75 -- and neither clears the ENDPLATE, because
+    # bridge_endplate spans y -139.1 .. 66.0, the whole width of the instrument. Its X span
+    # is -38.9 .. 25.1 and this run STARTS at x -2.2, inside it. The conduit exists exactly
+    # to carry the cable through that material, so while the run is inside the endplate's
+    # X band it has to stay in the conduit, and it can only step inboard once x < -38.9.
+    #
+    # So the fix is: hold the conduit's centre out to x -38.9, THEN step to y > -128.75 for
+    # the long leg to the Pi column. Two segments and a jog, not one constant. Not built
+    # here because the jog wants the endplate's real outer face rather than its bounding
+    # box, and that is bridge_endplate's to give.
+    #
+    # ⚠ THE GATE CANNOT ADJUDICATE THIS ON ITS OWN. Re-running it after each attempt
+    # reported "2794 of 2794 pairs reused, 0 to compute" -- the context solids are cached,
+    # so the numbers it printed for these pairs did not move with the edit. The figures
+    # above are analytic, off the two modules' own constants.
     y_run = CONDUIT_Y1 - CONDUIT_D / 2
     add(box_at(abs(xc - (CONDUIT_XC - 2.2)), USB_OD, USB_OD,
                x=(xc + CONDUIT_XC - 2.2) / 2, y=y_run, z=RUN_Z))
