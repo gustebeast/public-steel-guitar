@@ -306,6 +306,24 @@ def output_panel():
     # typical, 120 mA worst case, against 3 A per XH contact). The reason is the cable:
     # one crimp order, one four-way housing, one pin order across the instrument, and no
     # conductor that lands on a pin connected to nothing.
+    # ⚠ THIS CONNECTOR CUTS THE 24 V BUS IN HALF WHERE IT STANDS, AND DRC CALLS IT TWO
+    # UNCONNECTED ITEMS. Measured on the routed board: every +24V and PWR_GND pad lives in
+    # one row at y = 128, and the copper has a hole in it between x = 101 and x = 113 --
+    # J9 is at 110 to 118, sitting squarely between J7 at 96-104 and the inlet J6 at 130.
+    # The two islands that leaves are J6 + J9 on one side and U5 + J7 + D6 + the bulk caps
+    # on the other.
+    #
+    # Read as a topology rather than a count, that is: THE INLET FEEDS ONLY THE OPTICAL
+    # PICKUP. This board's own buck never powers up, the 24 V trunk to every pedal and
+    # lever board is dead, and the TVS clamp is protecting nothing. A board that cannot
+    # turn on, reported as "2 unconnected" -- the same shape of number that hid the
+    # GND/PWR_GND split on the optical board.
+    #
+    # It is also self-inflicted and recent: J9 was added as a second outlet, and dropping
+    # a four-pin connector into the corridor between the trunk-out and the inlet is what
+    # broke the run. The gaps are 6.50 mm on PWR_GND and 11.50 mm on +24V, both straight
+    # along y = 128 and both past link_close_gaps' 5 mm reach, so nothing downstream
+    # repairs it either. The answer is placement -- J9 does not belong between them.
     j9 = Part(name="B4B-XH-A", ref_prefix="J", tag="J9", dest="NETLIST", tool="skidl",
               value="B4B-XH-A", description="24 V out to the optical pickup board",
               footprint=XH_FP,
