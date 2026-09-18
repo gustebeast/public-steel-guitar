@@ -999,6 +999,32 @@ assert LOCK_PIN_DY + _M4.shaft_clr_d / 2 + D.MIN_WALL_2P <= SQ_W / 2, (
 SERVICE_SLIDE_MAX = SQ_W / 2 - (_M4.shaft_clr_d / 2 + D.MIN_WALL_2P) + LOCK_PIN_DY
 
 
+# THE SIGNAL CORNER'S MIDDLE RIDGE. src.leg_trrs brings the leg's TRRS up the octagon
+# joint's OWN axis (user: "go with the centre"), and the plug drops in through a O6.6
+# hole in the body adapter's top face at that spine. The MIDDLE ridge's root is exactly
+# there. Boring through a ridge would leave 1.6 slivers either side, so the ridge is CUT
+# BACK instead -- it is already the one that gives up its inboard end to the service
+# slide, and this is the same kind of loss, not a new kind. Both the adapter's ridge and
+# the chassis/endplate GROOVE come from mid_ridge_cut(), so they cannot drift apart.
+SIGNAL_RIDGE_IN = 14 * D.BEAD       # 11.2: where that ridge now starts, inboard of the
+                                    # leg's centre. leg_trrs asserts it clears the hole
+                                    # (apex included) by MIN_WALL_2P
+SIGNAL_CORNER = (-1.0, 1.0)         # the -X/+Y leg: the one with a cable in it
+
+
+def mid_ridge_cut(egx: float, syg: float) -> float:
+    """How much of the MIDDLE crossing ridge's inboard end this corner gives up: the
+    service slide everywhere, and on the signal corner whatever the leg's connector
+    needs on top of it."""
+    c = service_slide(egx, syg)
+    if (float(egx), float(syg)) == SIGNAL_CORNER:
+        c = max(c, SQ_W / 2.0 + SIGNAL_RIDGE_IN)
+    assert c < SQ_W - D.MIN_WALL_2P, (
+        "the middle ridge is cut back %.1f of its %.1f -- nothing left to engage"
+        % (c, SQ_W))
+    return c
+
+
 def service_slide(egx: float, syg: float) -> float:
     """This corner's service slide: 0 unless it is one of SERVICE_CORNERS."""
     assert 0.0 <= SERVICE_SLIDE <= SERVICE_SLIDE_MAX + 1e-9, (
@@ -1033,7 +1059,7 @@ def corner_groove_negatives(station: float, ly: float, syg: float,
     # overshoot, 1 outboard
     Lc = SQ_W + 1.5
     y0c = (ly - SQ_W / 2 - CROSS_GROOVE_IN) if syg > 0 else (ly - SQ_W / 2 - 1.0)
-    mid = service_slide(egx, syg)
+    mid = mid_ridge_cut(egx, syg)        # main: service_slide + the signal corner's own give
     for i, dx in enumerate(_cross_x(egx, station)):
         c = mid if i == 0 else 0.0             # the MIDDLE ridge's inboard end (above)
         if c >= SQ_W - 1e-9:

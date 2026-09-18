@@ -396,7 +396,14 @@ def adjust_tenon(top: float = Z_ADJ_TEN_TOP):
     # the PEDAL BAR's latch hooks this end: its retention pocket and lead-in chamfer,
     # placed from where this tenon seats in the bar (src.bar_latch)
     from . import bar_latch as BL
-    return t.cut(BL.tenon_cut(top - ADJ_TEN_L + ENGAGE))
+    t = t.cut(BL.tenon_cut(top - ADJ_TEN_L + ENGAGE))
+    # THE BOTTOM BLIND-MATE (src.bar_trrs): the male plug floats in this tenon on the
+    # same coil SKU as the top joint, and the bar keeps a short PCB jack. Cut last, and
+    # only on the tenon as drawn -- a shortened one is a height setting, not a station
+    if abs(top - Z_ADJ_TEN_TOP) < 1e-9:
+        from . import bar_trrs as BT
+        t = t.cut(BT.tenon_negatives(TENON_UP))
+    return t
 
 
 def fixed_tenon():
@@ -414,7 +421,11 @@ def fixed_tenon():
     for z in (Z_FIX_SCREW, Z_ADJ_SCREW):
         t = t.cut(_from_plus_x(ADJ_HOLE_D, z, LEG_X + TEN_APEX - JOIN_SEAT,
                                TENON_UP, limit_deg=TEN_HOLE_LIMIT_DEG))
-    return t
+    # THE LEG'S SIGNAL, down the joint's own axis (src.leg_trrs): the throat at this
+    # tenon's tip, the floating jack's travel, its coil, and the cable on down the leg
+    from . import leg_trrs as LTR       # late: leg_trrs reads this module
+    return t.cut(LTR.tenon_negatives(LEG_X, LEG_Y, TENON_UP,
+                                     bot=Z_FIX_TEN_BOT - 1.0))
 
 
 def body_adapter(sx: float = LEG_X, ly: float = LEG_Y):
@@ -540,8 +551,17 @@ SLIDER_UP = (1.0, 0.0, 0.0)        # the latch slider builds -X -> +X (user): it
                                    # whose pad wing hung from its tip in mid-air.
 BAR_FRAME_UP = (0.0, 0.0, 1.0)     # the pedal bar's yoke: ring on the bed, pad and
                                    # spring lugs growing up off it (src.bar_latch)
-BAR_COLLAR_UP = (0.0, 0.0, -1.0)   # its collar prints MOUTH FACE DOWN: every latch
-                                   # cavity opens at its underside, the top of the print
+BAR_COLLAR_UP = (0.0, -1.0, 0.0)   # its collar builds +Y -> -Y: the bed is the +Y
+                                   # face, the same AXIS the bar prints in (the bar
+                                   # runs -Y -> +Y, this the other way up). Two things
+                                   # wanted that: the pad's recess, whose back wall is
+                                   # the press stop, is a 20 x 20 face looking -Y, so
+                                   # this way up it is a FLOOR (printed mouth-down it
+                                   # was fine, printed with the bar it would have been
+                                   # a ceiling) -- and, the reason it moved, the collar
+                                   # now shares the BAR'S AXIS, which is what lets the
+                                   # two lock together with a cadkit slide joint
+                                   # instead of screws (src.bar_latch, the rails).
 PRINT_UP = {"adjust_sleeve": SLEEVE_UP, "fixed_sleeve": SLEEVE_UP,
             "body_adapter": ADAPTER_UP,
             "adjust_tenon": TENON_UP, "fixed_tenon": TENON_UP,
@@ -551,7 +571,7 @@ PRINT_ROT = {"adjust_sleeve": ((1, 0, 0), -90), "fixed_sleeve": ((1, 0, 0), -90)
              "body_adapter": ((1, 0, 0), 90),
              "adjust_tenon": ((-1, 1, 0), 90), "fixed_tenon": ((-1, 1, 0), 90),
              "latch_slider": ((0, 1, 0), -90), "bar_latch_frame": ((1, 0, 0), 0),
-             "bar_latch_collar": ((1, 0, 0), 180)}
+             "bar_latch_collar": ((1, 0, 0), -90)}
 
 
 def _rotated(v, axis, deg):
@@ -584,16 +604,10 @@ def bar_latch_frame():
     return BL.frame(Z_BAR_MOUTH)
 
 
-def _bar_trrs_top():
-    """The bar's TRRS jack way top in world z (the bar is posed from its mouth)."""
-    from . import pedal_bar as PB
-    return Z_BAR_MOUTH - (PB.TOWER_TOP - PB.TRRS_WAY_TOP)
-
-
 def bar_latch_collar():
     """The pedal bar latch's COLLAR -- printed on its own, screwed onto the bar's tower."""
     from . import bar_latch as BL
-    return BL.collar(Z_BAR_MOUTH, _bar_trrs_top())
+    return BL.collar(Z_BAR_MOUTH)
 
 
 PARTS = {
@@ -664,9 +678,18 @@ def leg_parts():
            ("leg_latch_spring", LL.spring()),
            # the pedal bar latch, AT REST (hook in, pad flush)
            ("bar_latch_frame", BL.frame(Z_BAR_MOUTH)),
-           ("bar_latch_collar", BL.collar(Z_BAR_MOUTH, _bar_trrs_top()))]
+           ("bar_latch_collar", BL.collar(Z_BAR_MOUTH))]
+    from . import bar_trrs as BT
+    out += BT.dummies()
+    # ...and the BAR's half of the same joint. It is authored against a caller-supplied
+    # mortise floor precisely so it can be drawn in either frame; in world, that floor
+    # is the adjust tenon's own bottom face, which is BT.TIP.
+    out += BT.bar_dummies(BT.TIP)
     out += [("bar_latch_spring_%d" % i, s) for i, s in enumerate(BL.springs(Z_BAR_MOUTH))]
+    out += BL.screw_dummies(Z_BAR_MOUTH)        # the collar's one screw, and its insert
     out += LG.lock_pin_dummies(LEG_X, LEG_Y, EGX, SYG, Z_TOP, 0)   # the leg's one screw
+    from . import leg_trrs as LTR
+    out += LTR.dummies(LEG_X, LEG_Y, 0)        # the blind-mate, at its MATED length
     return out
 
 
