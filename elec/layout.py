@@ -1145,6 +1145,18 @@ def _check_stitches_landed(board, notes):
     This cannot be prevented at placement time without filling the zones first, so it is
     caught after the fact and reported loudly. A board that fails here needs the part
     moved or the pad excepted -- not another routing run.
+
+    ⚠ WHAT A STRAY STITCH ACTUALLY LOOKS LIKE, SINCE IT IS EASY TO GET WRONG. The two on
+    the optical board (GND at 116.36,162.95 and 76.32,100.81) are not loose vias sitting
+    in empty copper: each is the far end of a short GND stub -- pad, track, via, no plane
+    -- and the boards read clean because those pads reach GND another way. A first probe
+    said they touched nothing at all and suggested simply deleting them, which would have
+    been wrong twice over: the probe compared each track's GetPosition(), which is its
+    START, so a track whose END lands exactly on the via reads as absent, and deleting the
+    via would have left the stub and could have cut the pad's only return.
+
+    So they stay, and the message stands: this is a placement problem. Report it, do not
+    tidy it away.
     """
     planes = {}
     for z in board.Zones():
