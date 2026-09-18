@@ -322,6 +322,13 @@ def output_panel():
     #            is what lets the ADC and the DAC share BCK/LRCK and stay sample-
     #            aligned with each other without a resampler in between.
     #   25 PB0 relay, 48 PA13 SWDIO, 52 PA14 SWCLK, 63 BOOT0
+    #
+    # ⚠ ALL TEN CHECKED AGAINST THE QFN68 COLUMN, 2026-09-17, ZERO MISMATCHES, read
+    # with per-word coordinates so the number taken is the one standing in that
+    # column. Nothing downstream can catch a wrong pin number -- SKiDL wires to the
+    # NUMBER, layout places the pad it names, DRC agrees the copper matches -- so it
+    # is checked here or it is not checked at all. Same pass covered motor_ctrl's
+    # twenty-four, which share this package and this table.
     i2s_ck, i2s_ws = Net("I2S_CK"), Net("I2S_WS")
     i2s_sdo, i2s_sdi = Net("I2S_SDO"), Net("I2S_SDI")
     relay = Net("RELAY")
