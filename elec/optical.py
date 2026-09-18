@@ -1434,7 +1434,6 @@ BOARD_NOTES = {
     # copper against F.Cu's 10.6% while the corridor was the thing that ran out of room.
     # A cost below 1.0 tells freerouting to prefer a layer; the bottom layer is the one
     # with headroom, so it gets 0.7. In1.Cu is absent because it is the ground plane.
-    "layer_costs": {"F.Cu": 1.0, "In2.Cu": 1.0, "B.Cu": 0.7},
     "router_passes": 25,
     # ⚠ NO track_mm HERE: 0.15 was TESTED AND IS WORSE. It helps lever_sensor, whose
     # 0.4 mm pitch QFN needs the lane, and it hurt this board -- 12 unconnected and no
