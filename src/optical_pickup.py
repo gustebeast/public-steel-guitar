@@ -249,7 +249,9 @@ PKG = {
     # ORIENTED FOR A -Y MOUNT: 15.0 runs along X (the edge), 6.10 is the body's reach into
     # the board in Y. ⚠ 15.0 is JST's published B for the 4 way -- CONFIRM on the part's
     # drawing before layout, exactly as the 6 way's 20.0 was.
-    "XH-SM-4Y": (15.00, 6.10, 7.00),  # JST S4B-XH-SM4-TB, SMT side entry, -Y
+    "XH-SM-4Y": (15.00, 6.10, 7.00),  # JST S2B-XH-SM4-TB, SMT side entry, -Y
+                                      # (2-way since 2026-09-18, user -- 5 mm shorter
+                                      #  than the 4-way it replaced; see elec/optical.py)
     # (1210C, RELAY-SIG, SOD-523, TSSOP-16 and TSSOP-20 are DELETED: they were the
     #  DC block, the true-bypass relay, the clamps, the magnetic ADC and the DAC, all
     #  of which moved to the output panel with the magnetic path. The CRTYD assertion
@@ -1148,7 +1150,7 @@ def _parts():
     # person reads while crimping, and it was telling them to make a 2-wire cable for a
     # 4-crimp connector. BOM.md's cable row was already right (4 x 26 AWG); only this
     # was wrong.
-    add("J2", "power in -- 24V and PWR_GND, both doubled: 1=GND 2=+24V 3=+24V 4=GND",
+    add("J2", "power in -- 2-way: 1=PWR_GND 2=+24V",
         "XH-SM-4Y",
         COMPUTE_X0 + EDGE_KEEP + CRTYD["XH-SM-4Y"][0] / 2,
         edge_y + CRTYD["XH-SM-4Y"][1] / 2)

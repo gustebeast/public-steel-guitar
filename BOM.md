@@ -558,6 +558,52 @@ directions harmless at zero SKU cost, but **J7 cannot take it** — it passes th
 fleet's whole <5 A and needs two contacts against 3 A each; (c) move the true power
 feeds to XT30, which the BOM currently restricts to PSU trunk joints.
 
+### Dual-feed 24 V trunk (option A, locked 2026-09-18 by user)
+
+The tee chain is fed from **both ends** so the worst-loaded segment carries about half
+the fleet instead of all of it. The single +24V contact between tees is a 3 A / 72 W
+ceiling, and this is what relieves it without touching the tee board — which matters,
+because a bigger trunk connector does not fit: the tee pitch is **44.7 mm**, set by the
+motors, and an 8-way VH trunk row comes to 47.3 mm. It collides with its neighbour in
+any orientation, and turning the plugs to face along X is worse (the board is 16 mm deep
+and the tail band already sits 6.0 mm from the +Y edge against a 6.4 mm wall).
+
+| leg | cable | note |
+|---|---|---|
+| panel **J7** → east end of the chain | 4-way XH, 2× +24V + 2× GND | **+ 111 mm of coiled slack** |
+| panel **J10** → `motor_ctrl` **J3** | 4-way XH, 2× +24V + 2× GND, ~582 mm | new connector, new cable |
+| `motor_ctrl` **J1** → west end of the chain | existing bus-A cable | board copper J3→J1 must widen |
+
+**⚠ THE COIL IS 111 mm, ON THE J7 (EAST) CABLE, AND IT IS DELIBERATE RESISTANCE.** The two
+feeds are wildly asymmetric: J7 reaches the chain in 180 mm while J10 travels 582 mm to
+get there, so without correction the east feed carries 5.6 of the 10 motors and the west
+4.4 — 56 % on the worst feed instead of 50 %. Two things fix it, and both are already
+paid for:
+
+* J10 is a **4-way carrying only power**, so both +24V ways parallel and its 582 mm
+  behaves like 291 mm. The trunk cannot do this: two of its four ways are CAN.
+* **111 mm of coiled slack on J7** brings the split to exactly 5.00 / 5.00.
+
+The cost of that deliberate resistance is **0.0059 Ω, or 0.018 V of 24 at 3 A — 0.07 %**.
+Without the doubling the coil would have to be 403 mm; with it, 111 mm.
+
+**Wind the +24V and its GND return TOGETHER as a pair.** A coil carrying DC is
+electrically nothing, but motor current is switched, and ~111 mm wound tightly is enough
+series inductance to ring against the drivers' input capacitance. Wound bifilar the
+outbound and return fields cancel. This is free if the pair is simply not separated.
+
+**⚠ TODO — MODEL THE COIL IN THE CAD (user).** `src/wiring.py` routes trunk segments as
+swept paths; 111 mm of slack needs a real home with a bend radius, a retention point and
+clearance from the motors, or it becomes loose wire in a machine full of moving belts.
+It is currently in no model.
+
+**⚠ AND THE WHOLE THING RESTS ON AN UNMEASURED NUMBER.** 0.8 A per moving motor is
+DERIVED — 147 N of string tension through a Tr8×2 leadscrew at 37.2 % efficiency, plus an
+estimated ~4 W of copper loss — not measured. This BOM records SERVO42D's real 24 V
+supply current as written down nowhere. At 0.4 A none of this is needed; at 1.2 A it is
+not enough. **One clamp-meter reading during a pedal change decides whether to build any
+of it**, and costs less than any of the options it would settle.
+
 ### Instrument power budget — and there is no PSU on this BOM
 
 ⚠ **NOTHING HERE SPECIFIES A SUPPLY.** There is an XT30 row "PSU trunk only" and no

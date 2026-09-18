@@ -1301,28 +1301,46 @@ def optical():
     usb_dm += j1["A7"], j1["B7"]
 
     # ── J2: 24 V in, on the instrument's standard 4-way ──────────────────────
+    # ⚠ TWO WAYS, NOT FOUR (user, 2026-09-18). The doubling recorded below was real
+    # reasoning and it is now superseded: this board draws 79 mA typical and 120 mA worst
+    # case against 3 A per XH contact, so two of the four conductors were carrying a
+    # current that never needed them. Dropping to a 2-way does three things -- it matches
+    # the panel's J9, which went 2-way in the same change and CLOSED that board's severed
+    # 24 V bus by vacating 5 mm of its pad row; it takes two crimps out of every harness;
+    # and it removes the mis-mate hazard on this link outright, because a 2-way XH cannot
+    # be plugged into a 4-way CAN drop and put 24 V on CAN_H. See the two-pinouts note in
+    # BOM.md -- this is the cheap version of the 5-way keying proposal, available here
+    # only because the current never needed four contacts.
+    #
+    # The superseded argument, kept because it explains the pin order: the panel's outlet
+    # was 1=GND 2=+24V 3=+24V 4=GND, and this connector used to be 2-way against it, so a
+    # straight four-conductor cable landed a live 24 V wire and a return on two pins
+    # connected to nothing. That asymmetry is what doubling fixed. Making BOTH ends 2-way
+    # fixes it the other way and costs less.
+    # ⚠ THE HOUSING STAYS 4-WAY BECAUSE JST DOES NOT MAKE A 2-WAY ONE. S2B-XH-SM4-TB
+    # is not a part -- the SMT SIDE-ENTRY XH line STARTS AT 4-WAY, which this repo had
+    # already established (see BOM.md, "J2 - refitted and done") and which I re-derived
+    # the hard way by trying to order one. The board needs side entry (a top-entry plug
+    # would insert from inside the housing) and SMT (no post tails through a face that
+    # has to seat), and that combination has no 2-way member.
+    #
+    # So the link goes two-wire by POPULATION, not by housing: ways 3 and 4 are wired to
+    # nothing. That still buys the whole point -- two crimps instead of four, and the
+    # mis-mate hazard gone in BOTH directions on this cable, because a CAN drop plugged
+    # in here lands CAN_H/CAN_L on dead cavities, and this cable plugged into a CAN
+    # socket puts nothing on them either. The panel end IS a true 2-way (B2B-XH-A exists
+    # in the through-hole line), so the cable is 2-way at one end and 4-way at the other,
+    # which is free when the harness is crimped to length anyway.
     j2 = Part(name="S4B-XH-SM4-TB", ref_prefix="J", ref="J2", dest="NETLIST",
               tool="skidl", value="S4B-XH-SM4-TB",
-              # ⚠ ALL FOUR WAYS ARE POPULATED, MIRRORING THE SOURCE. This used to be
-              # "24V, PWR_GND, 2 cavities empty" against an output panel whose J7 is
-              # 1=GND 2=+24V 3=+24V 4=GND -- so a straight four-conductor cable landed a
-              # live 24 V wire and a return on two pins connected to nothing. It worked,
-              # the source's doubling was wasted, and the harness carried two conductors
-              # whose purpose nobody could explain, which is how a later "tidy-up"
-              # deletes the wrong one.
-              # Doubling costs nothing (the contacts exist either way), halves the
-              # contact resistance, and makes the cable symmetric end to end. Every 24 V
-              # connector in the instrument is now 1=GND 2=+24V 3=+24V 4=GND.
-              #
-              # The feed itself comes from the output panel's SECOND 24 V outlet, added
-              # 2026-09-17 -- until then the only source was J7, which already fed the
-              # motor controller, so this connector had nothing driving it at all.
-              description="24 V in -- GND, 24V, 24V, GND (doubled, mirrors panel J9)",
+              description="24 V in -- 1=PWR_GND 2=+24V, ways 3/4 unpopulated",
               footprint="Connector_JST:JST_XH_S4B-XH-SM4-TB_1x04-1MP_P2.50mm_Horizontal",
               pins=[Pin(num=i + 1, name=n, func=P)
                     for i, n in enumerate(("PWR_GND", "+24V", "NC3", "NC4"))])
-    pgnd += j2[1], j2[4]
-    v24 += j2[2], j2[3]
+    pgnd += j2[1]
+    v24 += j2[2]
+    Net("J2_NC_3").connect(j2[3])   # documented no-connects; netcheck
+    Net("J2_NC_4").connect(j2[4])   # exempts <REF>_NC_<pin> by name
 
     # ── the passives the CAD places, wired to what they belong to ────────────
     # R30-R38 and R40-R41 keep the CAD's exact names: that table is spelled out
@@ -1564,6 +1582,54 @@ BOARD_NOTES = {
     # So B.Cu being "half empty" is not spare capacity. Third structural lever tried on
     # this net and the third to lose, after the +3V3A pre-lay and the full permutation.
     "zones": [("GND", "F.Cu", 0.3), ("GND", "In1.Cu", 0.3), ("GND", "B.Cu", 0.3)],
+    # ⚠ ONE VIA AND TWO SHORT TRACKS, WHICH IS WHAT THIS NET ACTUALLY NEEDED. Four
+    # attempts to close +3V3A at U2 pad 4 reached for router SETTINGS -- pre-laying the
+    # net class (1 -> 3), enabling retry rounds (1 -> 3 with 7 violations), dropping the
+    # B.Cu pour (1 -> 4), narrowing the net (1 -> 2). All four lost, because the tool
+    # could say "change the rules" but not "put a via here": `tracks` lays copper on ONE
+    # layer, and this connection has to CHANGE layers. _add_via in elec/layout.py closed
+    # that gap.
+    #
+    # SITED BY SEARCH, NOT BY EYE. A 14 x 14 mm grid at 0.1 mm, testing the via pad and
+    # both segments against every foreign track and via with 0.15 mm on top of the
+    # netclass rule: 2638 legal sites, and this is the shortest at 4.22 mm total. The
+    # first run of that search returned ZERO and was wrong twice over -- it demanded
+    # 0.20 mm of extra margin, and it read the narrowed-rail board rather than this one,
+    # because the source had been reverted without re-routing. A search is only as good
+    # as the board it reads.
+    #
+    # The geometry it threads: the rail already passes 3.86 mm from the pad on B.Cu, but
+    # TIA_OUT_2A shadows that rail along its whole 12.8 mm, so the via cannot land on the
+    # rail itself -- it lands clear and a 2.36 mm B.Cu spur reaches across.
+    # ⚠ AND IT GOES IN AS A REPAIR, NOT A PRE-LAY -- THAT IS THE WHOLE FIX. Laid
+    # before routing, this exact geometry closed +3V3A and cost FIVE analog nets
+    # (1 unconnected -> 5), because the other 76 nets had to plan around it. Laid after
+    # the router finishes it closes the same gap and disturbs nothing. route.py applies
+    # repair_vias/repair_tracks in its repair block, beside the same-part gap join that
+    # is there for the identical reason.
+    #
+    # Re-siting was tried first and is a dead end: scored by analog nets within 1.2 mm
+    # of the path, the best of all 2638 legal sites touches SIX, and so does this one.
+    # The corridor has no quiet corner, so timing was the only lever left.
+    # ⚠ THE REPAIR IS OFF, AND THE REASON IS MY SEARCH, NOT THE MECHANISM. Laying one
+    # via and two tracks AFTER routing does close +3V3A at U2 pad 4 and leaves the other
+    # 76 nets untouched -- that part worked, and route.py keeps repair_vias/repair_tracks
+    # for it. What failed is the geometry I fed it.
+    #
+    # The site search in this session checked clearance against TRACKS and VIAS only. It
+    # never considered PADS or the board OUTLINE. The first path was 4.2 mm and came near
+    # neither, so the gap stayed invisible; the second was 14.6 mm and immediately picked
+    # up two solder_mask_bridge violations against U2's own pad 6, three
+    # copper_edge_clearance, a copper_sliver and a clearance -- seven where the board had
+    # one. A violation is worse than an unconnected pad (finish.py ranks them that way):
+    # one is a board that cannot be made, the other a board that is not finished.
+    #
+    # TO RE-ENABLE: extend the search to pads and the outline, re-run it against the board
+    # THIS netlist produces, and re-measure. The coordinates are not reusable -- they were
+    # already invalidated once by the J2 two-way change, because a repair is geometry
+    # pinned to one routing, not a property of the schematic.
+    # "repair_vias": [("+3V3A", ...)],
+    # "repair_tracks": [...],
     # ⚠ NARROWING +3V3A IS WORSE TOO: 0.25 -> 0.15 mm took it from 1 unconnected to 2.
     # This was the one lever that was not about giving the router more ROOM. Three
     # attempts had tried that (pre-lay, retry rounds, dropping the B.Cu pour) and all
