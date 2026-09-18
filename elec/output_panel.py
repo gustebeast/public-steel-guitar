@@ -895,7 +895,17 @@ BOARD_NOTES = {
         "TP3": (-3.10, -2.10, 0.0),
         "TP4": (-0.10, -5.10, 0.0),
         "TP5": (-9.10, -2.10, 0.0),
-        "J9": (14.00, -28.00, 0.0),   # the optical board's feed, on the same island
+        # ⚠ 16.00, NOT 14.00, AND THE TWO MILLIMETRES ARE THE 24 V BUS. At 14.00 this
+        # connector's courtyard ran 107.25..120.75 against J7's 93.25..106.75 -- a gap of
+        # 0.50 mm, where a 0.25 mm track needs 0.65 to pass with clearance on both sides.
+        # The detour was shut too: C5 sits just above the gap and the board edge is a
+        # millimetre below. So nothing could get from the trunk-out to the inlet, and the
+        # rail arrived in two pieces. See the note at the part itself.
+        # There is 18.66 mm between J7 and J6 for a 13.5 mm connector. Centred in it, both
+        # gaps come out near 2.5 mm, which carries +24V and PWR_GND side by side with
+        # room to spare -- the comment this line used to carry, "on the same island", was
+        # the intent and not the measurement.
+        "J9": (16.00, -28.00, 0.0),   # the optical board's feed
         "D6": (-12.00, -28.00, 0.0),
         "C2": (-20.00, -28.00, 0.0),
         "C3": (-25.00, -28.00, 0.0),
