@@ -71,6 +71,7 @@ JAR = os.path.expandvars(
 # and the DRC that followed reported 266 unconnected, which is the UNROUTED board. A
 # timeout that fires looks exactly like a routing result unless you read the log.
 DSN_CLEAR_MARGIN_UM = 10      # see the clearance block in route()
+NL = chr(10)
 PASSES = 10
 
 
@@ -239,21 +240,37 @@ def route(stem, passes=None, timeout=3600, incremental=False):
     # region where the board ran out of room. freerouting will not use a layer it has no
     # reason to prefer, and by default it has none.
     # `layer_costs` in the board notes maps a layer to its trace cost: below 1.0 makes the
-    # router prefer it. Emitted as an autoroute_settings block, which is where freerouting
-    # reads per-layer rules from.
+    # router prefer it. Emitted as an autoroute_settings block.
+    #
+    # THE BLOCK GOES INSIDE (structure ...), AND THAT IS NOT A STYLE POINT. The first
+    # version of this emitted it as a sibling of `structure`, one line above `(placement`,
+    # and freerouting produced a BYTE-IDENTICAL board -- the same three nets unconnected,
+    # the same 2426 segments, the same md5. A DSN reader skips a scope it does not know at
+    # the level it is reading, silently and with no warning, so a mis-placed block looks
+    # exactly like a lever that does not work. The scope is read by
+    # app/freerouting/io/specctra/parser/Structure, confirmed by grepping the jar for the
+    # class that references AutorouteSettings; the keywords below are its spelling,
+    # singular `_cost`, checked the same way.
+    #
+    # ⚠ SO AN EXPERIMENT THAT CHANGES NOTHING AT ALL IS A BUG REPORT, NOT A RESULT. Two
+    # earlier experiments on this board (60 passes, incremental) also returned identical
+    # output, and there the identity was the honest answer. Here it meant the input never
+    # arrived. Compare the md5 of the routed board before concluding a lever is dead.
     costs = (notes or {}).get("layer_costs")
     if costs:
         rules = "".join(
-            chr(10) + "    (layer_rule %s (active on)"
+            NL + "    (layer_rule %s (active on)"
             " (preferred_direction_trace_cost %s)"
             " (against_preferred_direction_trace_cost %s))"
             % (ln, c, round(float(c) * 1.6, 3)) for ln, c in sorted(costs.items()))
-        blk = "  (autoroute_settings%s%s  )%s" % (rules, chr(10), chr(10))
-        anchor = "  (placement"
+        blk = "  (autoroute_settings%s%s  )%s" % (rules, NL, NL)
+        # the last line of the structure scope, i.e. the ")" that closes it
+        anchor = "  )" + NL + "  (placement"
         if anchor not in txt:
-            raise SystemExit("no (placement section in the DSN -- cannot place "
-                             "autoroute_settings")
-        txt = txt.replace(anchor, blk + anchor, 1)
+            raise SystemExit("cannot find the end of the (structure scope in the DSN -- "
+                             "autoroute_settings would be read by nothing")
+        txt = txt.replace(anchor, blk + anchor, 1)   # BEFORE the closing ")"
+        assert txt.index("(autoroute_settings") < txt.index("  (placement")
         print("  layer costs: %s" % ", ".join("%s=%s" % kv for kv in sorted(costs.items())))
 
     open(dsn, "w", encoding="utf-8").write(txt)
