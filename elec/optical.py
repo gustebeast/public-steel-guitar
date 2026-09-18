@@ -678,11 +678,46 @@ def optical():
         #   Rf thermal   sqrt(4kTR) = 279 nV/rtHz   -- dominant, as it should be
         #   in * Rf      23 fA/rtHz x 4M7 = 108     -- not negligible
         #   en * NG      10 nV/rtHz x (Cin+Cf)/Cf = 10 x 7.8 = 78
-        # summing to 309 nV/rtHz, and over the 15.4 kHz pole's 24 kHz noise bandwidth,
-        # 48 uVrms at the output. Against the thinnest string's 0.28 V that is ~75 dB
-        # of SNR before any averaging -- so the front end is not the limit, and the
-        # first lever if more is ever wanted is emitter drive (see the ballast note),
-        # not a quieter op-amp.
+        # summing to 309 nV/rtHz -- but THE THREE TERMS DO NOT SHARE A BANDWIDTH, and
+        # treating them as if they did understates this floor by about 2.5x.
+        #
+        # ⚠ Rf*Cf ROLLS OFF THE FIRST TWO TERMS AND NOT THE THIRD. Rf's thermal noise and
+        # in*Rf both travel the feedback path, so the same 15.4 kHz pole that shapes the
+        # signal shapes them: 24 kHz of equivalent noise bandwidth is right for those two.
+        # The op-amp's OWN voltage noise does not travel that path. It appears at the
+        # output multiplied by the noise gain 1 + Zf/Zin, which RISES from unity at a zero
+        # of 1/(2*pi*Rf*(Cin+Cf)) = 1.97 kHz to the (Cin+Cf)/Cf = 7.8 plateau, and then
+        # stays there until the loop runs out of gain at GBW/NG = 10 MHz / 7.8 = 1.28 MHz.
+        # Rf*Cf does not end that plateau; it CREATES it.
+        #
+        #   Rf thermal   279 nV/rtHz over 24 kHz            ->   43.4 uVrms
+        #   in * Rf      108 nV/rtHz over 24 kHz            ->   16.8
+        #   en * NG       78 nV/rtHz over 1.28 MHz          ->  110.8   <- dominant
+        #                                          total        120 uVrms
+        #
+        # Against the thinnest string's 0.28 V that is ~67 dB rather than the ~75 dB this
+        # note used to claim, and ~55 dB on a worst-case emitter rather than ~63.
+        #
+        # ⚠ AND IT IS AN ALIASING PROBLEM, NOT ONLY A NOISE ONE, WHICH IS THE PART THAT
+        # MATTERS. This pole is described elsewhere as the anti-alias filter, and for the
+        # signal it is. For the dominant noise term it is not: 78 nV/rtHz of flat noise
+        # from 2 kHz to 1.28 MHz meets a 48 kHz sampler with nothing in between -- the TIA
+        # output net carries the op-amp, Rf and Cf and then goes straight to an ADC pin --
+        # so essentially all of it folds into 0-24 kHz. Averaging does not recover it,
+        # because it is white and already in band once sampled.
+        #
+        # The lever is therefore NOT emitter drive, which is what this note used to say.
+        # The plateau ends at GBW/NG, so it scales with the op-amp's bandwidth: a 1 MHz
+        # part in place of the TLV9064's 10 MHz would cut that term by sqrt(10) to ~35
+        # uVrms and put the total back near 58. A real RC between each TIA and its ADC pin
+        # would do it properly, at 40 parts across twenty channels. A FASTER op-amp would
+        # make this worse, which is the opposite of the usual instinct.
+        #
+        # ⚠ 67 dB IS STILL WORKABLE and none of this is a reason to stop -- DIFF's job is
+        # detecting that SUM has collapsed, and 55 dB on the worst-case emitter still does
+        # that. It is recorded because the number was wrong, the conclusion drawn from it
+        # pointed at the wrong lever, and the next person to tune this front end needs the
+        # bandwidth argument more than they need the spot figures.
         mid += pd[1]
         summing += pd[2], q[inn_p]
         mid += q[inp_p]
