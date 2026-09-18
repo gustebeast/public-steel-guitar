@@ -686,8 +686,10 @@ ADC inputs plus a 12-signal ULPI bus will not fit a 64-pin part.
 > And its radiant intensity is **0.2 mW/sr minimum against 0.8 typical**, a
 > guaranteed fourfold spread on the part the whole optical budget rests on. The
 > budget in `elec/optical.py` is computed on the typical, so a worst-case emitter
-> gives a quarter of the signal — still ~63 dB SNR rather than ~75, but it is what
-> the per-string Rf tuning has to absorb.
+> gives a quarter of the signal — still **~55 dB** SNR rather than ~67, but it is what
+> the per-string Rf tuning has to absorb. (These read 63 and 75 until 2026-09-18, when
+> the noise budget in `elec/optical.py` was re-derived: the op-amp's own voltage noise
+> is not rolled off by the Rf·Cf pole, so the floor is ~120 µVrms rather than 48.)
 >
 > ⚠ **Soldering:** `Tsol` 260 °C, ≤5 s. JLCPCB's Economic PCBA reflow is fixed at
 > **255 ± 5 °C, not adjustable** — so this part, like the VEMD4110X01 photodiode,
@@ -1487,10 +1489,16 @@ Swept across the plausible range, with the conduit as built:
 So **anything from 10 to 22 mm works** and only the extreme fails. Once a real cable is in
 hand, set `PLUG_L["J1"]` to the measured value; nothing else has to move.
 
-**Power (J2): 5 V from the instrument rail, not USB VBUS.** MCU ~200–300 mA, PHY
-~50, 21 op-amp channels ~40 — already past a USB port's 500 mA before a single
-emitter is lit. Since LED current is the second-best SNR lever, capping it at
-what a host port will give up would throw away the thing the design most needs.
+**Power (J2): 24 V from the instrument trunk, not USB VBUS.** (This said *5 V* until
+2026-09-18; the rail moved to 24 V with a local buck on 2026-09-14 and this line did
+not follow. `elec/optical.py` wires J2's four ways as `1=GND 2=+24V 3=+24V 4=GND`.)
+MCU ~200–300 mA, PHY ~50, 21 op-amp channels ~40 — already past a USB port's 500 mA
+before a single emitter is lit, which is the argument against VBUS and still holds.
+⚠ **LED current is NOT the best SNR lever** — this said "second-best" and
+`src/optical_pickup.py` said "first", and the re-derived noise budget says neither.
+The dominant term is the op-amp's voltage noise across a plateau that ends at
+GBW/noise-gain, so it scales with the amplifier's BANDWIDTH: a slower part cuts it and
+a faster one makes it worse. Emitter drive is a real lever and it is not the first one.
 J2 is side-entry on the **−X edge**: the −Y edge is taken by the USB receptacle
 and the floor-ledge lane, and −X of the board is open air (the optical relief
 removes the tie bar's wall there), so that mouth is reachable. It plugs in after

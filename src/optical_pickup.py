@@ -1153,9 +1153,20 @@ def _parts():
     _j1_x = TAIL_X1 - EDGE_KEEP - _uc_w / 2 - _CHAIN_DX
     add("J1", "USB-C receptacle -- 10ch audio + MIDI + DFU", "USB-C",
         _j1_x, edge_y + _uc_d / 2)
-    # J2 -- POWER *AND* the magnetic pickup's audio tap. 24 V FROM THE TRUNK, and NOT USB
-    # VBUS: MCU ~200-300 mA + PHY ~50 + 21 op-amp channels ~40 is already past a USB port
-    # before an emitter is lit, and LED current is now the FIRST SNR lever we have.
+    # J2 -- POWER ONLY. 24 V FROM THE TRUNK, and NOT USB VBUS: MCU ~200-300 mA + PHY ~50
+    # + 21 op-amp channels ~40 is already past a USB port before an emitter is lit.
+    #
+    # ⚠ IT NO LONGER CARRIES THE MAGNETIC PICKUP'S AUDIO TAP, and that is why the plug
+    # above is still modelled as a 6-way. The tap moved to the output panel's own screw
+    # terminals (J8 there), leaving elec/optical.py's J2 as an S4B-XH-SM4-TB whose four
+    # ways are 1=GND 2=+24V 3=+24V 4=GND and nothing else. Four power ways plus two audio
+    # is exactly the six this file still sizes the conduit against.
+    #
+    # ⚠ AND LED CURRENT IS NOT THE FIRST SNR LEVER. This said it was; BOM.md said it was
+    # the second; the noise budget re-derived in elec/optical.py on 2026-09-18 says
+    # neither. The dominant term is the op-amp's own voltage noise over a plateau that
+    # ends at GBW/noise-gain, so the first lever is the amplifier's BANDWIDTH -- slower is
+    # quieter here -- and emitter drive comes after it.
     # 24 V rather than a delivered 5 V (user, 2026-09-14) because the alternative is a
     # 5 V rail run ~600 mm from the keyhead, sharing a return with the Pi -- and this
     # board's LED driver switches at 96 kHz SYNCHRONOUSLY WITH SAMPLING, so that return
