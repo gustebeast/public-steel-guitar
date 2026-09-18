@@ -210,6 +210,21 @@ def motor_ctrl():
     #   35 PB12 = CAN2_RX  , 36 PB13 = CAN2_TX    <- bus B
     #   46 PA11 = OTG_FS_DM, 47 PA12 = OTG_FS_DP  <- the Pi link
     #   48 PA13 = SWDIO    , 52 PA14 = SWCLK
+    #
+    # ⚠ ALL TWENTY-FOUR CHECKED AGAINST THE QFN68 COLUMN, 2026-09-17, ZERO MISMATCHES --
+    # numbers AND names, including every power pin, read with per-word coordinates so the
+    # value taken is the one standing in the QFN68 column rather than whichever number
+    # happens to be on the line. A wrong pin number here is invisible to everything
+    # downstream: SKiDL connects a net to a pin NUMBER, layout places the pad it names,
+    # and DRC agrees the copper matches the netlist. The board would simply not run.
+    #
+    # ⚠ AND THE DIRECTION OF THE CAN1 REMAP IS THE PART WORTH RE-READING. PB8 is RX and
+    # PB9 is TX; an automated pass over the alternate-function table said PB8 = CAN1_TX_2,
+    # which would have meant the bus-A transceiver wired backwards and a dead bus. It was
+    # the extraction, not the datasheet: that table splits CAN1_RX_2 across two lines as
+    # "CAN1_RX_" and "2", and the rows are close enough together that the tail of one
+    # lands beside its neighbour. Read by eye off page 53, PB8 is RX. The remap exists at
+    # all because CAN1's home pins are PA11/PA12, which USB is using.
     dm, dp = Net("USB_DM"), Net("USB_DP")
     nrst, boot0 = Net("NRST"), Net("BOOT0")
     osc1, osc2 = Net("OSC_IN"), Net("OSC_OUT")
