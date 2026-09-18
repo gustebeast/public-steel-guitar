@@ -168,7 +168,7 @@ STIFF_FLOOR   = 13 * D.NOZZLE_D                  # 10.4 (was 10.0 = 12.5 beads)
 # below fail rather than the parts quietly overlapping.
 DECK_TOP   = TP.TZ                                            # 6.00, deck surface
 BAND_X0    = TP.PX0                                           # -16.60, deck's +X end
-BAND_X1    = TP.PICKUP_X_NOM + TP.CAVITY_X / 2                # -30.62, cavity's +X edge
+BAND_X1    = TP.PICKUP_X_NOM + TP.CAVITY_X / 2                # -39.08, cavity's +X edge
 BAND_CLR   = 0.2                                              # keep off both band edges
 
 OPT_GAP = 3.0                                    # sensor face -> string UNDERSIDE
@@ -400,8 +400,17 @@ SENSE_HL = _OUTER_Y + PD_DY                      # last sensor Y
 # The strip is capped by the 14 mm band. The digital block cannot live in 14 mm (the MCU
 # alone is 16 over its leads), so the board widens in the -Y room PAST the pickup
 # cavity's -Y edge, where the deck is solid again and nothing is overhead.
-PCB_X0  = BAND_X0 - BAND_CLR                                  # -16.80, strip +X edge
-PCB_X1S = BAND_X1 + BAND_CLR                                  # -30.42, strip -X edge
+PCB_X0  = BAND_X0 - BAND_CLR                                  # -25.26, strip +X edge
+PCB_X1S = BAND_X1 + BAND_CLR                                  # -38.88, strip -X edge
+# ⚠ THESE FOUR X DATUMS ARE DERIVED FROM top_plate AND THEIR COMMENTS WENT STALE BY
+# 8.46 mm. BAND_X1, PCB_X0, PCB_X1S and COMPUTE_X0 all track TP.PICKUP_X_NOM and
+# TP.CAVITY_X, so when the pickup cavity moved they followed correctly -- the CODE was
+# never wrong -- and the hand-typed values beside them did not. Every one was off by the
+# same 8.46, which is the signature of a derived chain whose annotations were written
+# once. They are corrected 2026-09-18; they are ALSO the numbers a reader reasons from
+# when placing a part, so treat the comment as a snapshot and print the attribute if a
+# decision depends on it. (One did: the MCU's escape annulus below was recorded as
+# 6.6 mm from the -30.42 edge and is 26.18 from the real one.)
 # Both wraps turn +X at the SAME distance past the bearing arms. Y_TAIL used to be derived
 # from the magnetic pickup's CAVITY, which was correct while the tail widened -X over the
 # deck and had to clear it -- but the tail widens +X over the ENDPLATE now, so the cavity
@@ -472,7 +481,7 @@ COMPUTE_W_MIN = (2 * EDGE_KEEP + CRTYD["USB-C"][0] + CRTYD_GAP + CRTYD["XH-SM-4Y
 #     package side). Two of the MCU's four sides were effectively blocked. Straightening the
 #     edge takes that side to 6.6 mm and makes three of four comfortable.
 # The -Y edge connectors get the extra width for free as well.
-COMPUTE_X0 = PCB_X1S                                          # -30.42, flush with the strip
+COMPUTE_X0 = PCB_X1S                                          # -38.88, flush with the strip
 assert TAIL_X1 - COMPUTE_X0 >= COMPUTE_W_MIN - 1e-9, \
     "compute section too narrow for the -Y edge connectors"
 
@@ -780,6 +789,10 @@ def _parts():
     # obstacle on this row, so the MCU sits as far +X as it may -- which is what turns the
     # straightened -X edge into ESCAPE ANNULUS (6.6 mm) instead of just sliding the package
     # along with it. Anchoring to x0 would have kept the old 1.20 mm and wasted the change.
+    # (The 6.6 was measured to a -30.42 -X edge that has since moved to -38.88 -- see the
+    # datum note above. The annulus is now 26.18 mm, so the argument holds harder, not
+    # less. The binding number on the other side is unchanged: ROW_GAP, 1.00 mm to the
+    # tail screw's clearance, which is what "as far +X as it may" actually means.)
     _mcu_x1 = MOUNT_X_TAIL - MOUNT_CLR - ROW_GAP
     add("U6", "MCU -- STM32H743IIT6, 20x 16-bit ADC ch, USB OTG_HS via ULPI", _MCU_PKG,
         _mcu_x1 - CRTYD[_MCU_PKG][0] / 2, y)
