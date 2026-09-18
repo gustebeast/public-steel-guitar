@@ -303,7 +303,22 @@ def _knee(n) -> bool:
 # pickup. The gate never reported it: TP_FAMILY accepted ANY deck contact with
 # pickup_zplate, so a real collision read as a designed one. Note the gate still
 # only checks the demo pose; the 308 mm^3 case needs a sweep across the depth window.
-DEFERRED = {frozenset({"pickup_zplate", "top_plate"})}
+# CROSS-AGENT COLLISIONS FROM THE 2026-09-17 MERGE. Neither branch was red alone; both
+# pairs appeared only when the two landed together, which is exactly what the lead's
+# build exists to find. Parked so branner's chassis/leg/deck round is not held behind two
+# other agents (user: these must not block merges), each with its owner named.
+DEFERRED = {frozenset({"pickup_zplate", "top_plate"}),
+            # ~750 mm3 per segment, x3. bronner's optical cable run (a 1.6 bundle at
+            # y -129, z -9, the board's whole length) crosses the -Y rail branner CLOSED
+            # in the same round. OWNER bronner, with branner: the route needs a way
+            # through, or the rail needs a port. Nobody has guessed at it.
+            frozenset({"chassis", "optical_cables"}),
+            # brenner's leg blind-mate against branner's decoupled body adapter at the
+            # -X/+Y corner: the patch lead 379 mm3, the plug 140 mm3. OWNER brenner --
+            # body_adapter lives in leg_stack, their registered scope, so both halves of
+            # this one are theirs.
+            frozenset({"body_adapter", "leg_trrs_patch"}),
+            frozenset({"body_adapter", "leg_trrs_plug"})}
 
 # DEFERRED CLASSES, by pattern. Some deferrals are not one pair but one fault repeated
 # per station -- five knee levers, five pedals -- and listing 55 frozensets would hide
