@@ -522,6 +522,33 @@ contacts rotate freely, so threading twists no wires). The SERVO42D is classic-C
 motors runs classic; sensor boards still get FD-capable transceivers to keep
 the FD option on bus B. XT30 only at the PSU trunk joints.
 
+⚠ **OPEN: TWO INCOMPATIBLE PINOUTS SHARE ONE 4-WAY XH HOUSING** (found 2026-09-18,
+user asked where the "standard" power cable is used and the premise did not survive
+the question). Every 4-way XH in the instrument is one of two patterns:
+
+| pattern | pins 1 2 3 4 | where |
+|---|---|---|
+| **A, CAN drop** | `GND +24V CAN_H CAN_L` | can_tee J2, motor_ctrl J1/J2 (and the 8-ways are two of these back to back: can_tee J1, lever_sensor J1) |
+| **B, power only** | `GND +24V +24V GND` | optical J2, output_panel J7/J9, motor_ctrl J3 (J5 is the same at 5 V) |
+
+**A 4-way XH plug mates with any 4-way XH header** — the family has no
+per-application keying — so a CAN drop cable physically fits a power inlet and a
+power cable fits a motor's CAN drop. **Pins 1 and 2 agree in both patterns**, which
+makes it worse rather than better: a mis-mated node powers up normally and fails on
+the signal pins. A power cable in a CAN socket puts **+24 V onto CAN_H**, against an
+SN65HVD230 bus pin rated −4 to +16 V, and the bus is shared, so one wrong plug can
+take several transceivers with it.
+
+This is not hypothetical maintenance-only risk: the project's standing rule is that
+every field connection is a connector, so these are all meant to be unplugged.
+
+Not yet fixed — the options trade against each other and against the connector
+strategy: (a) give pattern B a different position count, costing one housing SKU;
+(b) drop the doubling so B becomes `GND +24V NC NC`, which makes BOTH mis-mate
+directions harmless at zero SKU cost, but **J7 cannot take it** — it passes the
+fleet's whole <5 A and needs two contacts against 3 A each; (c) move the true power
+feeds to XT30, which the BOM currently restricts to PSU trunk joints.
+
 **PCB buying plan**: tee PCBs + sensor PCBs ship as ONE panel (V-score /
 mouse-bite, snap apart — never hand-cut FR4), ONE assembly job, **full paid
 assembly including the THT headers** (accept the standard-tier fee if
