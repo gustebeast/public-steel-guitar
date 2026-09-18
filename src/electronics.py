@@ -306,6 +306,16 @@ OP_J = {"J1": (29.44, 4.00, 90.0),        # panel USB-C, mouth +X
         "J4": (-24.32, -8.00, 270.0),     # USB-A, hub downstream -> optical board
         "J6": (32.02, -20.50, 0.0),       # 24 V inlet, barrel, bushing out +X
         "J7": (0.00, -28.00, 0.0),        # 24 V trunk out, 2 contacts per rail
+        # ⚠ J9 WAS ON THE BOARD AND NOT IN THIS TABLE. It is the second 24 V outlet, the
+        # optical pickup's feed, added to elec/output_panel.py without ever being added
+        # here -- so the CAD has been modelling a board with one power outlet where the
+        # netlist has two, and nothing compares the two files. A missing connector is
+        # invisible in exactly the way that matters: the solid looks right, and the
+        # clearance it does not take is the clearance nobody checks.
+        # x is 16.00 rather than 14.00 because at 14.00 its courtyard sat 0.50 mm from
+        # J7's and cut the 24 V bus in half -- see the note at the part in
+        # elec/output_panel.py.
+        "J9": (16.00, -28.00, 0.0),       # 24 V out to the optical pickup board
         "J8": (-13.50, 28.00, 0.0)}       # magnetic pickup in, SCREW TERMINALS
 # (courtyard L, W, height, courtyard-centre offset from the anchor)
 OP_BOX = {"J1": (9.51, 10.73, 3.26, (2.81, 0.00)),
@@ -314,6 +324,7 @@ OP_BOX = {"J1": (9.51, 10.73, 3.26, (2.81, 0.00)),
           "J4": (16.57, 15.59, 6.60, (-4.39, 0.00)),
           "J6": (11.59, 16.09, 11.00, (-0.82, -3.20)),
           "J7": (13.49, 6.84, 7.00, (0.00, -0.53)),
+          "J9": (13.49, 6.84, 7.00, (0.00, -0.53)),   # same B4B-XH-A as J7
           "J8": (11.59, 8.90, 10.50, (-0.25, 0.10))}
 OP_TS_XY = (23.11, 21.50)                 # the 1/4 in jack's pad anchor
 OP_TS_L, OP_TS_W = 27.62, 20.32           # its courtyard
@@ -705,5 +716,7 @@ def tee_pcb(x: float, y: float, drop: int = 1, accurate: bool = True) -> cq.Work
 
 
 # (dc_jack is DELETED: the 24 V inlet is a PCB part on the output+panel board now
-#  -- see OP_J["J5"]. As a free-standing panel jack it was a PJ-005A, whose SOLDER
+#  -- see OP_J["J6"]; this said J5 until 2026-09-18, and OP_J has no J5 key at
+#  all, because the 1/4 in jack is modelled as a cylinder rather than a box.
+#  As a free-standing panel jack it was a PJ-005A, whose SOLDER
 #  LUGS carried the same hand-soldering violation the TS jack did.)
