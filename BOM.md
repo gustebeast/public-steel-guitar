@@ -361,6 +361,33 @@ twisting + the bridge-side AFE buffer, not conductor size):
 |---|---|---|
 | 24 V bus | **2 × 22 AWG per rail** silicone, twisted/flat (fleet slew staggered <5 A; ~0.3 V drop over the run) ⚠ **was 20 AWG — see the note below** | ~2.4 |
 
+> ⚠ **AND NEITHER IS THE PCB COPPER — the third link in the same chain, audited
+> 2026-09-18.** The wire was raised to 2 × 22 AWG for <5 A and the XH contacts were
+> doubled for <5 A. The board traces between them were never sized at all. Every net on
+> every board in this fleet is drawn at the one board-wide netclass width, **0.25 mm**,
+> because no per-net width mechanism exists in the generator — `track_mm` is a single
+> number per board and nothing overrides it for a power net.
+>
+> By IPC-2221 at a 10 °C rise, 0.25 mm carries:
+>
+> | trace | capacity |
+> |---|---|
+> | 0.25 mm, outer, 1 oz | **0.88 A** (1.19 A if 20 °C rise is accepted) |
+> | 0.25 mm, inner, 0.5 oz | **0.26 A** |
+> | needed for 5 A, outer 1 oz | **2.77 mm** |
+> | needed for 5 A, inner 0.5 oz | 14.4 mm — an inner layer cannot do this job |
+>
+> So the panel's 24 V trunk is carrying a <5 A budget on copper rated 0.88 A, a shortfall
+> of roughly 5.7×, and any part of it the router put on an inner layer is far worse.
+> The optical board's own 24 V inlet is fine by contrast — ~324 mA against 0.88 A — so
+> this is about the TRUNK nets, not every net.
+>
+> ⚠ Nothing in the pipeline can see this. DRC checks copper against the netlist and has
+> no concept of current; the netlist has no concept of width. It needs a per-net width in
+> the generator, and until that exists the trunk cannot be widened even deliberately.
+> (Stack-up assumed JLCPCB standard 4-layer: 1 oz outer, 0.5 oz inner. The boards do not
+> declare copper weight anywhere, which is its own gap.)
+
 > ⚠ **The wire is sized for <5 A; the connector contacts are not, in one place.**
 > XH is rated **3 A per contact**, which is why the panel's 24 V outlet (J7) puts
 > two contacts on each rail. Audited 2026-09-17: the motor controller's inlet J3
