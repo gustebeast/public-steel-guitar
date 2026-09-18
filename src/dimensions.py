@@ -97,6 +97,13 @@ BELT_PLANE_DZ   = 11 * BEAD  # 8.8 — the two screw-pulley planes' Z separation
 # ─────────────────────────────────────────────────────────────────────────
 N_STRINGS       = 10
 STRING_PITCH    = 9.5       # mm, changer pitch (across, Y)
+# PLAYER CONTROLS (user, 2026-09-18). Every one of these carries an MT6701 on its own
+# lever_sensor board, so this pair is what the sensor panel is ordered against -- see
+# BOARD_NOTES in elec/lever_sensor.py. It lived only in the BOM's angle-sensor quantity
+# until now, which meant the board file had no way to state how many of itself exist.
+N_LEVERS        = 6         # knee levers
+N_PEDALS        = 5
+N_SENSED        = N_LEVERS + N_PEDALS   # 11 sensor boards, 11 MT6701s
 NUT_PITCH       = 6.5       # mm, spacing at the nut/keyhead end
 STRING_FIELD_W  = (N_STRINGS - 1) * STRING_PITCH   # 85.5 mm
 MOUNTING_SPAN   = 615.0     # between a string's two mounting ends (~24.2" scale)

@@ -167,7 +167,7 @@ rest + UI mount) — see `py -3.12 -m src.build --list`.
 
 ## Control sensors (knee levers + pedals)
 
-Every player input — **5 knee levers + 5 pedals** — is a **contactless magnetic
+Every player input — **6 knee levers + 5 pedals** — is a **contactless magnetic
 angle sensor** rather than a switch or a pot: a diametrically-magnetised magnet
 rides the control's axle and an MT6701 reads its angle across an air gap. There
 is no wiper to wear out and no mechanical calibration. The boards are our own
@@ -179,10 +179,18 @@ populate them.
 | **Angle sensor IC** | 11 | **$1.68 ea** [v] | [LCSC C2913974](https://www.lcsc.com/product-detail/Position-Sensor_Magn-Tek-MT6701QT-STD_C2913974.html) | ⚠ **Corrected 2026-08-04: $1.6815 at the 10+ break** (4,207 in stock). The $1.1139 recorded on 08-01 came from a search snippet, which reports LCSC's *volume-floor* price (the 1,000+ break is $1.1161) — not the price at the 11 pieces we buy. See the snippet-bias note in the optical section. Note the QFN part is **C2913974**; the more commonly cited **C2856764 is the MT6701*C*T-STD**, the SOP-8, which is the variant this row explicitly rejects — do not let the wrong LCSC code onto the BOM line. MagnTek **MT6701QT-STD**, 14-bit on-axis magnetic encoder. Take the **QFN-16**, *not* the SOP-8 variant: the air gap is measured to the IC's own top surface, so the package height comes straight out of the gap budget, and the SOP-8 is ~1.5 mm tall — twice the QFN — on the axis where we have the least room. Datasheet §9.2: D = E = 2.900–3.100, **A (total height) = 0.700–0.800** (the model carries the 0.800 max). §1.2: *"Sensing Center at Geometry Center"* — so the package body centres on the axle axis with no per-package offset. Assembled by JLCPCB onto our sensor PCB alongside the tee boards — no hand soldering |
 | **Diametric magnet** | 11 | **$0.40 / $0.332 @10** [v] | [DigiKey](https://www.digikey.com/en/products/detail/radial-magnets-inc/8995/5126077) | Radial Magnets **8995** — NdFeB **N35, Ø6 × 2.5 mm, DIAMETRICALLY magnetised**, NiCuNi, 80 °C, 3873 G surface; ~9k in stock. ⚠ **Diametric, NOT axial** — axial discs are far more common and simply do not work here (DigiKey lists the direction in the specs, so it is checkable at order time). It is also the datasheet's own **recommended magnet** (§5: "Ø6mm x 2.5mm"), so this pair is the configuration the IC was characterised in. Drops into the axle's end pocket; `kl_magnet_cap` screws over it — no adhesive |
 
-*(qty 11 = **10 controls** + 1 spare. The controls are not modelled yet — only
-two knee levers exist in `src/` — but the count is fixed by the instrument: 5
-foot pedals + 5 knee levers, each with its own sensor board. An earlier revision
-of this section said 4 knee levers + 3 pedals and was sized for 7.)*
+*(qty 11 = **11 controls**, no spare — corrected 2026-09-18 (user): the
+instrument has **6 knee levers + 5 foot pedals**, each with its own sensor
+board. The quantity does not move, but its MEANING does: this line read "10
+controls + 1 spare", and the same 11 is now fully committed. ⚠ **Decide
+whether to add a spare before ordering** — an assembled board is ~$4 and a
+failed one strands a control.*
+
+*The count is now `D.N_LEVERS + D.N_PEDALS` in `src/dimensions.py`, and
+`elec/lever_sensor.py` derives `qty_per_instrument` from it, so the board file
+and this row share a source instead of agreeing by coincidence. It has been
+wrong twice before: an earlier revision said 4 knee levers + 3 pedals and was
+sized for 7, and the CAN section sized bus B for 8.)*
 
 **Board spec (ours, for layout).** Outline **28 × 19 × 1.6 mm**, strongly
 *asymmetric* about the sensor: the chip sits on the axle axis just **3.0 mm from
@@ -456,10 +464,13 @@ twisting + the bridge-side AFE buffer, not conductor size):
 > the gauge, the rating and the drop together.
 >
 > ✅ **The lever board's PH connector is fine, and here is the arithmetic that
-> retires the question.** Bus B feeds eight sensor boards, not steppers. Each is a
-> CH32V203 (~30 mA), an MT6701 (~18 mA), a recessive SN65HVD230 (~10 mA) and an LDO
-> — about **59 mA at 3V3**, so eight boards are 0.47 A at 3V3 and roughly **76 mA at
-> 24 V** through the bus. That is **3.8 % of PH's 2 A contact rating**, and the
+> retires the question.** Bus B feeds **eleven** sensor boards, not steppers (this
+> read "eight" until 2026-09-18 — 6 knee levers + 5 pedals, see the sensor-IC row).
+> Each is a CH32V203 (~30 mA), an MT6701 (~18 mA), a recessive SN65HVD230 (~10 mA)
+> and an LDO — about **59 mA at 3V3**, so eleven boards are 0.65 A at 3V3 and
+> roughly **105 mA at 24 V** through the bus. That is **5.2 % of PH's 2 A contact
+> rating** — the conclusion survives the correction with room to spare, which is why
+> the number was worth fixing rather than re-arguing. The
 > 26 AWG the CAN cable already specifies sits mid-range in PH's AWG 30–24 window.
 >
 > **The two families map cleanly onto the two buses**, which is why this works: bus
@@ -483,7 +494,7 @@ twisting + the bridge-side AFE buffer, not conductor size):
 | logic (relay, link, TDM, OLED, joystick) | 28 AWG | ~1.4 |
 
 A 45 m hookup spool (~$20) covers power/CAN/control; ~1.5 m shielded pair
-(~$16) for the pickup/audio runs. **~$35.** Excludes the **10 control sensor drops** (5 pedals + 5 knee levers,
+(~$16) for the pickup/audio runs. **~$35.** Excludes the **11 control sensor drops** (5 pedals + 6 knee levers,
 not yet modelled) and the optical pickup's USB + 5 V feed. All cross-rib raceways pass ≤ Ø2.6 and sit above the
 knee-lever mortise plane — route no fatter cable through the floor trunk.
 
