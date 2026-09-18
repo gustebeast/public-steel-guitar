@@ -233,6 +233,29 @@ def route(stem, passes=None, timeout=3600, incremental=False):
             "the pair to freerouting, which does not know it is one."
             % ", ".join(sorted(pair_nets)))
 
+    # ⚠ LAYER COSTS, BECAUSE ONE LAYER WAS HALF EMPTY WHILE ANOTHER OVERFLOWED. Measured
+    # in the MCU approach corridor on the optical board: F.Cu 10.6% copper, In2.Cu 12.8%,
+    # B.Cu 4.6% -- the bottom layer carrying less than half what the top does, in the one
+    # region where the board ran out of room. freerouting will not use a layer it has no
+    # reason to prefer, and by default it has none.
+    # `layer_costs` in the board notes maps a layer to its trace cost: below 1.0 makes the
+    # router prefer it. Emitted as an autoroute_settings block, which is where freerouting
+    # reads per-layer rules from.
+    costs = (notes or {}).get("layer_costs")
+    if costs:
+        rules = "".join(
+            chr(10) + "    (layer_rule %s (active on)"
+            " (preferred_direction_trace_cost %s)"
+            " (against_preferred_direction_trace_cost %s))"
+            % (ln, c, round(float(c) * 1.6, 3)) for ln, c in sorted(costs.items()))
+        blk = "  (autoroute_settings%s%s  )%s" % (rules, chr(10), chr(10))
+        anchor = "  (placement"
+        if anchor not in txt:
+            raise SystemExit("no (placement section in the DSN -- cannot place "
+                             "autoroute_settings")
+        txt = txt.replace(anchor, blk + anchor, 1)
+        print("  layer costs: %s" % ", ".join("%s=%s" % kv for kv in sorted(costs.items())))
+
     open(dsn, "w", encoding="utf-8").write(txt)
     if _fix.n:
         print("  froze %d pre-laid wire(s) as (type fix)%s" % (
