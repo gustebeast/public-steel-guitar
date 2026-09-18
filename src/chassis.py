@@ -190,6 +190,16 @@ _EP_J     = joint(width=EP_J_W, length=10.0, tenon=_EP_AX, mortise=_EP_DN,
 assert abs(_EP_J.clearance - KH_DT_CLR) < 1e-9, (
     "cadkit's clearance for this site is %.2f but KH_DT_CLR says %.2f -- one of them is stale"
     % (_EP_J.clearance, KH_DT_CLR))
+# ...and the endplate's printed NECK. cadkit grows the tenon's stem standoff by
+# clearance*(sqrt2-1) for one reason: so the DILATED cavity's neck wall lands on the two-bead
+# tier instead of being shortened by the mitre at the reflex stem->flare corner. The endplate
+# receives the whole of that only because _end_dt puts the mating plane on the ENDPLATE's own
+# face; measured on the built part along the user's own line it reads 1.73. Anything that eats
+# into it -- a bigger assembly gap, a placement back on the nominal face -- takes it straight
+# off the tier, which is what a measured 1.32 was.
+_EP_NECK = D.MIN_WALL_2P + _EP_J.clearance * (math.sqrt(2.0) - 1.0)
+assert _EP_NECK >= D.MIN_WALL_2P - 1e-9, (
+    "the cavity neck is %.2f, under the two-bead tier" % _EP_NECK)
 _EP_THROAT = (5.0 - (EP_J_W / 2.0 + _EP_J.clearance)) / math.sqrt(2.0)
 assert _EP_THROAT >= D.MIN_WALL_2P - 1e-9, (
     "the socket's outer wall necks to %.2f across the flank's diagonal (%.2f in a layer), under "
@@ -808,13 +818,22 @@ def _end_dt(x_face, into, yc, z0, z1, socket=False, top_clr=TP_TG_DEPTH):
     `top_clr` raises the SOCKET's far end past the tenon's so the tenon seats on its real stop
     (the L-foot on the shell) and not on the cavity's end -- unchanged in meaning, and still the
     only asymmetry between the two halves."""
+    # THE MATING PLANE IS WHERE THE ENDPLATE ACTUALLY STARTS, not the nominal face (user
+    # measured the cost, 2026-09-18). The endplate nests over the kept shell with EP_LEG_CLR of
+    # assembly air, so its material begins that far outboard of x_face -- and cadkit sizes the
+    # cavity's NECK (1.724 = two beads + clearance*(sqrt2-1)) precisely so the DILATED neck wall
+    # lands on the two-bead tier. Placing the joint on the nominal face spent 0.4 of that neck in
+    # the gap and left the endplate printing 1.32 of it: the library's tier, thrown away in the
+    # placement. The TENON's root grows by the same 0.4, so it still fuses into the chassis --
+    # the gap is part of the root now, which is what it always was physically.
+    gap = EP_LEG_CLR
     L = (z1 - z0) + (top_clr if socket else 0.0)
     half = (_EP_J.mortise(drop=EP_J_ROOT + 1.0, length=L) if socket
-            else _EP_J.tenon(root=EP_J_ROOT, length=L))
+            else _EP_J.tenon(root=EP_J_ROOT + gap, length=L))
     half = half.rotate((0, 0, 0), (0, 1, 0), -90.0)      # +x -> +z, +z -> -x
     if into > 0:
         half = half.rotate((0, 0, 0), (0, 0, 1), 180.0)  # ...and -x -> +x at the bridge end
-    return half.translate((x_face, yc, z0))
+    return half.translate((x_face + into * gap, yc, z0))
 
 
 def _kh_tongue(yc, socket=False):
