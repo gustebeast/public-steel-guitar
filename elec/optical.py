@@ -300,7 +300,28 @@ ULPI = {"ULPI_D0": "PA3", "ULPI_D1": "PB0", "ULPI_D2": "PB1", "ULPI_D3": "PB10",
 # That is escape congestion at a 0.5 mm pitch package carrying 20 ADC nets and a
 # 12-signal ULPI bus, and it is why neither lever above touched it.
 #
-# ⚠ THE NEXT LEVER, recorded rather than taken because it trades against something just
+# ⚠ AND IT IS NOT THE PIN'S OWN NEIGHBOURHOOD EITHER -- that hypothesis was built,
+# measured and disproved. Counting how many of a pin's four nearest neighbours also need
+# a lateral escape gives the three failures 2.00 and the seventeen that routed 2.76: the
+# ones that failed are LESS locally crowded, not more.
+#
+# WHAT IT ACTUALLY IS, measured: the approach corridor. Copper coverage in the 20 x 24 mm
+# region where every ADC net and the ULPI bus converge on the MCU, against the board's
+# own average --
+#     F.Cu    10.6%  vs  3.3%   (3.2x)
+#     In2.Cu  12.8%  vs  5.4%   (2.4x)
+#     B.Cu     4.6%  vs  1.9%   (2.4x)
+# Twenty analog nets and twelve ULPI signals all have to reach one 26 mm package, so the
+# density piles up where they meet it. That is why more passes changed nothing: the
+# corridor is full, and no amount of search finds room that is not there.
+#
+# ⚠ B.Cu IS THE LEAST USED LAYER IN THAT CORRIDOR -- 4.6% against F.Cu's 10.6%, less than
+# half -- which is the cheapest lever left and has not been tried. If freerouting is
+# steering away from the bottom layer (layer costs, preferred directions, or simply
+# because the fan-out starts on F.Cu), pushing traffic down there costs nothing but a
+# router setting. Try that before moving the MCU or the pin map.
+#
+# ⚠ THE OTHER LEVER, recorded rather than taken because it trades against something just
 # won: PC2_C and PC3_C (pins 34 and 35) are now UNUSED -- freed when ULPI_DIR and
 # ULPI_NXT moved to PI11/PH4 -- and 34 is adjacent to the failing pin 33. They are
 # ADC3_INP0 and ADC3_INP1, so they are real channels. Moving a failing net onto one
