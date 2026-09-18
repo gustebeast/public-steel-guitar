@@ -29,6 +29,21 @@ sys.path.insert(0, HERE)
 
 from src import electronics as cad              # noqa: E402
 
+# ⚠ TWO BOARDS IS THE WHOLE LIST, AND THAT IS NOT A COVERAGE GAP. Checked 2026-09-18,
+# because "the priority board is not in here" looks exactly like one:
+#   * optical and lever_sensor need no comparison. Their CAD is GENERATED from the board
+#     -- src/optical_pickup.PARTS is the single source elec/optical.py imports (and
+#     asserts both ways, refs and footprints, plus the VCAP pins and the sourcing table);
+#     src/knee_lever.py reads elec/out/lever_sensor.board.json. One source cannot drift
+#     from itself. Adding them here would compare a file to itself and always pass.
+#   * can_tee DOES keep two copies -- six numbers in elec/can_tee.py and six in
+#     src/dimensions.py -- but it cannot be checked HERE, because the CAD has no
+#     connector anchor table for it (electronics.tee_pcb places the headers by
+#     construction). Its check therefore lives in elec/can_tee.py itself, as an import-
+#     time assert against src.dimensions. Do not re-add it here; it is not missing.
+# That leaves output_panel and motor_ctrl: the only two boards whose CAD states the
+# geometry INDEPENDENTLY, which is the only situation this file is for.
+#
 # (board module, the CAD's anchor dict, the CAD's outline pair, tolerance in mm)
 BOARDS = (("output_panel", "OP_J", ("OP_BOARD_X", "OP_BOARD_Y"), 0.01),
           ("motor_ctrl", "MCTRL_J", ("MCTRL_BOARD_X", "MCTRL_BOARD_Y"), 0.01))

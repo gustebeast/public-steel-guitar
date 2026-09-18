@@ -198,9 +198,47 @@ BOARD_NOTES = {
     # hold_edge is gone and the cradle's job is locating, not gripping.
     "mounting_hole_xy": (_EAR_X1 - EAR_W / 2.0, _HL - EAR_H / 2.0),
     "single_sided": True,
-    "tail_band_from_plus_y": BOARD_L / 2.0 - ROW_Y,   # 4.0, against a 6.4 limit
+    "tail_band_from_plus_y": BOARD_L / 2.0 - ROW_Y,   # 6.0, against a 6.4 limit
     "qty_per_instrument": 9,
 }
+
+
+# ── TWO CHECKS THIS FILE WAS MISSING ─────────────────────────────────────────
+# ⚠ THE TAIL BAND WAS PRINTED, NOT CHECKED, AND THE COMMENT BESIDE IT SAID 4.0.
+# The value is 6.0. The through-hole tails have to land on the faceplate wall's
+# 6.4 mm strip -- everything -Y of that overhangs the motor and there is nothing
+# under it -- so the real margin is 0.4 mm, not the 2.4 the comment implied. Six
+# times tighter than it read. A number that close to its limit gets an assertion,
+# not a print: a print is only seen by whoever happens to be reading the run.
+WALL_STRIP = 6.4        # faceplate wall depth -- the only support under this board
+assert BOARD_NOTES["tail_band_from_plus_y"] <= WALL_STRIP, (
+    "the THT tail band sits %.2f mm from the +Y edge and the faceplate wall is only "
+    "%.2f deep -- the tails would hang over the motor with no support"
+    % (BOARD_NOTES["tail_band_from_plus_y"], WALL_STRIP))
+
+# ⚠ AND SIX NUMBERS ARE TYPED TWICE, ONCE HERE AND ONCE IN src/dimensions.py. The CAD
+# cuts the motor bay's seat from ITS copy; this file fabs the board from this one. They
+# agree today, and nothing anywhere would notice if they stopped: the netlist does not
+# know the board's outline, DRC compares copper to the netlist, and the overlap gate
+# reads one file at a time. elec/cad_geom_check.py catches exactly this for output_panel
+# and motor_ctrl -- it cannot reach this board, because the CAD keeps no connector
+# anchor table for the tee. (optical and lever_sensor need no check at all: their CAD is
+# GENERATED from the board, one source, not two copies.) So the check lives here.
+def _check_against_cad():
+    from src import dimensions as D
+    for name, mine, theirs in (
+            ("board X", BOARD_W, D.TEE_BOARD_X),
+            ("board Y", BOARD_L, D.TEE_BOARD_Y),
+            ("ear X", EAR_W, D.TEE_EAR_X),
+            ("ear Y", EAR_H, D.TEE_EAR_Y),
+            ("fabbed outline X", BOARD_OUTLINE_W, D.TEE_OUTLINE_X),
+            ("tail row Y", ROW_Y, D.TEE_TAIL_CY)):
+        assert abs(mine - theirs) < 1e-9, (
+            "%s: elec/can_tee.py says %.3f, src/dimensions.py says %.3f -- the fabbed "
+            "board and the seat cut for it would not match" % (name, mine, theirs))
+
+
+_check_against_cad()
 
 
 if __name__ == "__main__":
