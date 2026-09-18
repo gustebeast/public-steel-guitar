@@ -25,6 +25,8 @@ the segments assemble into the whole.
 
 from __future__ import annotations
 
+import math
+
 import cadquery as cq
 
 from . import dimensions as D
@@ -168,18 +170,13 @@ KH_DT_SEAT     = 0.1                    # lower-dovetail seating clearance: the 
 # (XBAR-wide, same christmas-tree mortise + wire raceway), so "one tenon fits any bay"
 # holds -- a lever just spans two of the finer bays. NOTHING is excluded (the knee-lever
 # bay keeps its ribs too; the lever housing is relieved for them in knee_lever.py).
-def _rib_positions():
-    """The rib X-list, computed so there is never a gap. Motor pitch = (first motor .. last
-    motor) / (N-1); take N_STRINGS+4 BASE ribs at that pitch starting two pitches past the
-    -X-most motor (a rib per motor + two beyond each end), then drop a rib at every midpoint
-    between adjacent base ribs -> the uniform half-pitch comb."""
-    mx = sorted(D.motor_pos(i)[0] for i in range(D.N_STRINGS))
-    pitch = (mx[-1] - mx[0]) / (D.N_STRINGS - 1)                       # motor pitch (46)
-    base = [mx[0] - 2 * pitch + k * pitch for k in range(D.N_STRINGS + 4)]   # 2 past each end
-    mids = [(base[i] + base[i + 1]) / 2 for i in range(len(base) - 1)]
-    return sorted(base + mids)   # _RIB_X is trimmed against the leg stubs below
-
-_RIB_X = _rib_positions()
+# The grid is dimensions' (D.lever_grid_x()): as many mortises as fit across the WHOLE chassis
+# floor, centred, with an equal margin at each end. Nothing here trims it. The floor runs SHELL
+# FACE to SHELL FACE -- the chassis' own ends -- not to the endplate takeover faces; laying the
+# grid against the takeover faces instead cost two or three stations at each end, which is the
+# gap the user kept finding (2026-09-16). The agreement is asserted below, where _SHELL_NX and
+# _SHELL_PX are finally in scope.
+_MORT_X = list(D.lever_grid_x())
 # TARGETS MOVED (user's drop-in motor pockets, 2026-09-11): a housing is now 62.3 wide on a
 # 43.9 pitch, so it reaches 31.15 past its own motor and the segment that OWNS that motor
 # carries the whole overhang. A segment's real footprint is therefore its end motors +-31.15,
@@ -187,8 +184,10 @@ _RIB_X = _rib_positions()
 # motor in segment 0 and five/four in the others. BED_X asserts the lengths; wiring asserts
 # that neither plane lands in the RAIL NOTCH at motor 9, where the trunk dips outboard -- a
 # split there puts its tenon back through the dip (5 wires were buried in it).
-SPLIT_X  = [D.rib_comb_x(_t - D.MOTOR_X_STEP / 4) + D.MOTOR_X_STEP / 4
-            for _t in (-205.0, -409.5)]  # 2 cuts → 3 segments < BED_X, each at the MIDDLE of the rib gap nearest its target, in a
+SPLIT_X  = [D.lever_wall_x(_t)
+            for _t in (-205.0, -409.5)]  # 2 cuts → 3 segments < BED_X, each on the centre of one of the grid's 1.6 WALLS, so the
+                                       # plane itself misses every mortise (the seam JOINT is wider than a wall,
+                                       # so the stations it covers are dropped instead -- see _seam_blocked). Was a
                                        # 13 mm gap BETWEEN two ribs. The cut straddles a 43-wide motor
                                        # plate, but that plate is fused WHOLE into the segment that owns
                                        # its motor (see _segments): it overhangs the cut plane with its
@@ -204,8 +203,9 @@ ENDPLATE_JOINT_Y = (Y_HI, Y_LO)
 # in half. (Motor plates are NOT a constraint any more: they fuse per segment, so the plane
 # may cross a plate's X-span; the plate goes whole to its motor's segment and overhangs.)
 for _s in SPLIT_X:
-    _plane_hit = [rx for rx in _RIB_X if abs(_s - rx) < _RIB_W / 2]
-    assert not _plane_hit, f"SPLIT_X {_s} plane slices rib(s) {_plane_hit} — move it into a rib gap"
+    _plane_hit = [rx for rx in _MORT_X if abs(_s - rx) < D.LEVER_MORT_W / 2]
+    assert not _plane_hit, (f"SPLIT_X {_s} plane slices mortise(s) {_plane_hit} — it must land "
+                            "in one of the 1.6 walls (D.lever_wall_x snaps to one)")
 # SEGMENT JOINT — cadkit, install='z' (both hosts print −Z→+Z, so the profile lies
 # in the plan plane and every working face is a vertical printed wall). It replaces
 # the hand-rolled sliding dovetail, which cadkit retired: at a 0.8 nozzle the
@@ -218,9 +218,36 @@ _SEG_JD   = 8.0                        # room into the +X segment (the T uses 5.
 _SEG_JZ1  = TP_GZ0 - TP_TG_DEPTH       # tenon top = the deck-groove FLOOR (−6), so the
                                        # seam joint never reaches into the deck groove
 _SEG_ROOT = 3 * D.BEAD                 # 2.4 volumetric fusion depth back into the −X segment
-_SEG_J    = joint(width=_SEG_JW, length=_SEG_JZ1 - Z_BOT, depth=_SEG_JD,
-                  tenon=_UP, mortise=_UP, install="+z")   # signed: the +X segment is
-                  # lowered on, so RELATIVE to it the tenon travels +Z to seat
+# IT STARTS AT THE BOTTOM'S TOP FACE, NOT AT THE BED (user, 2026-09-15). The tenon is the only
+# MATERIAL half of this joint, and run from Z_BOT it stood in the same 10.4 band as the lever
+# mortises -- so the two stations flanking every seam had to be dropped and mortises went
+# missing exactly where two sections meet. Started at FLOOR_TOP it is clear of that band
+# altogether and the grid runs through the seam unbroken. The cavity stays a THROUGH slot: it
+# is a void, so where it meets a lever mortise the two simply merge.
+_SEG_JZ0  = MB.FLOOR_TOP               # tenon base = the bottom prism's top face
+# WHICH SEGMENT GOES DOWN LAST IS A DESIGN DECISION, and this is it (user, 2026-09-17: the
+# joinery mortise must stop cutting -Z into the lever mortises). Lower the +X segment onto a
+# standing tenon and its whole bottom prism has to sweep DOWN PAST that tenon -- the prism comes
+# from high above, so the tenon's entire height is inside its swept column and the cavity has to
+# run clean through the floor. That through-channel is what was eating the 3.2 walls between
+# lever mortises at every seam. Lower the TENON'S OWN segment last instead and the tenon simply
+# descends into the cavity from above: nothing sweeps the floor, so the cavity can stop at the
+# floor's top face. ASSEMBLY ORDER, then: the +X-MOST segment is placed first and each neighbour
+# comes down on it working -X (every segment carries its tenon at its +X end and its mortise at
+# its -X end, so the chain is consistent). The endplates socket the rail ends and the deck rides
+# both crowns, both of which come after, so nothing else cared which way this went.
+_SEG_J    = joint(width=_SEG_JW, length=_SEG_JZ1 - _SEG_JZ0, depth=_SEG_JD,
+                  tenon=_UP, mortise=_UP, install="-z")   # signed: the TENON's segment is
+                  # lowered on, so RELATIVE to the mortise's host the tenon travels -Z to seat
+# ...and the cavity's own floor: 0.4 below the bottom prism's top face, which is a SKIM off that
+# face rather than a channel through it. The 0.4 is clearance, not a seat -- the segments' Z is
+# set by the rail crowns and the endplates, and the tenon must not bottom out before the rail
+# faces meet (if it ever does sag, this floor is a hard stop, which is a bonus, not the design).
+_SEG_RELIEF_CLR = 0.4                   # the gap under the tenon: the cavity's floor sits this
+                                        # far below the bottom prism's top face AND its 45 deg
+                                        # ramp this far below the tenon's, so the tenon lands on
+                                        # neither -- one number, both faces
+_SEG_MZ0  = MB.FLOOR_TOP - _SEG_RELIEF_CLR
 _SEG_JX1  = _SEG_J.dims["depth_used"]  # the tenon's +X reach past the seam plane
 # the rail wall left beside the cavity is a printed wall like any other, and the only
 # thing keeping it at tier is the hand-picked width above. Say so, so a later change to
@@ -230,10 +257,9 @@ assert (T - _SEG_JW) / 2 - _SEG_J.clearance >= D.MIN_WALL_2P, (
     f"side, under the {D.MIN_WALL_2P} two-bead tier — narrow _SEG_JW or thicken the rail")
 # guard: the seam JOINT (X-footprint s−ROOT .. s+reach, at the RAILS) must not overlap
 # a rib -- the rib runs to the rails there, so an overlap would slice it.
-for _s in SPLIT_X:
-    _rib_hit = [rx for rx in _RIB_X
-                if (rx + _RIB_W / 2) > (_s - _SEG_ROOT) and (rx - _RIB_W / 2) < (_s + _SEG_JX1)]
-    assert not _rib_hit, f"SPLIT_X {_s} seam joint overlaps rib(s) {_rib_hit} — move it into a rib gap"
+# The seam and the grid no longer argue in X: the split PLANE runs down the middle of a 3.2
+# wall, and the joint's material half starts above the mortise band in Z (_SEG_JZ0). So no
+# station is dropped for a seam -- asserted against the real solids in _build_full.
 # Z — the install axis — carries NO seam hardware (user). It does not need any. The
 # body is not three loose pieces bolted together; it is one assembly whose pieces are
 # closed over by everything that follows: the deck panels ride a +Z-retaining dovetail
@@ -242,16 +268,6 @@ for _s in SPLIT_X:
 # corners, the whole body is captive and nothing can come apart — which is why no glue
 # is needed anywhere and why a seam screw would be redundant hardware. So the seam
 # joint does exactly its own job — X and Y by shape — and nothing more.
-
-def _diamond_xz(cx, cz, h, yr):
-    """Diamond (45°) prism through a rail (axis Y) — a self-supporting hole in the
-    vertically-printed rail web (its crown is a 45° peak, not a flat bridge)."""
-    p = [(cx, cz + h), (cx + h, cz), (cx, cz - h), (cx - h, cz)]
-    y0 = yr - (T + 2.0) / 2.0
-    pts = [cq.Vector(x, y0, z) for x, z in p]
-    face = cq.Face.makeFromWires(cq.Wire.makePolygon([*pts, pts[0]]))
-    return cq.Workplane("XY").add(cq.Solid.extrudeLinear(face, cq.Vector(0, T + 2.0, 0)))
-
 
 # ── motor-9 cable cutout ──────────────────────────────────────────────────
 # The +X-most motor's body reaches the -Y rail, so the harness trunk corridor is blocked
@@ -265,33 +281,82 @@ M9_CUT_Z0, M9_CUT_Z1 = -64.0, -40.0                      # trunk Z-band (above t
 
 
 def _rail(y):
-    """A deep longitudinal rail. The strings bow the body about the Y axis, so the
-    top/bottom EDGES are the high-stress flanges and the mid-depth sits near the
-    neutral axis — lighten that web with a row of self-supporting diamonds (an
-    I-beam by material placement: most of the bending stiffness is kept for far
-    less mass). Solid is kept at the ~14 mm flanges, the dovetail joints, and the
-    loaded ends (bulkhead/rib ties) for transport robustness."""
-    rail = box_at(X_BRIDGE - X_NUT, T, Z_TOP - Z_BOT, x=_XC, y=y, z=_ZC)
-    FL = 14.0                                   # flange kept top & bottom
-    h = (Z_TOP - Z_BOT) / 2 - FL - 2.0          # diamond half-diagonal in the web band
-    step = 2 * h + 8.0
-    def ok(cx):                                 # leave the string-mount ends + joints SOLID
-        return (cx + h < D.BRIDGE_AXLE_X - 10.0     # bridge support / bulkhead bond zone
-                and cx - h > -560.0                  # keyhead bulkhead bond zone
-                and all(abs(cx - s) > h + 14.0 for s in SPLIT_X)
-                and not (y == Y_LO and M9_CUT_X0 - h < cx < M9_CUT_X1 + h))   # solid at the m9 cable cutout
-    cx = X_BRIDGE - 30.0
-    while cx > X_NUT + 30.0:
-        if ok(cx):
-            rail = rail.cut(_diamond_xz(cx, _ZC, h, y))
-        cx -= step
-    return rail
+    """A deep longitudinal rail, SOLID.
+
+    It used to carry a row of 45 deg diamond lightening holes through the web -- an I-beam by
+    material placement, on the argument that the strings bow the body about Y so the mid-depth
+    sits near the neutral axis. They are gone (user, 2026-09-15): the rail is a side WALL as
+    much as a beam, and a wall full of holes does not hold light or motor noise in, which is
+    what the sealed bottom is for. The mass they saved is small beside what they cost the
+    enclosure."""
+    return box_at(X_BRIDGE - X_NUT, T, Z_TOP - Z_BOT, x=_XC, y=y, z=_ZC)
 
 
-def _rib(x, w=_RIB_W):
-    """Chunky cross-rib, rail-to-rail, its top flush with the motor rest (FLOOR_TOP)."""
-    return box_at(w, Y_HI - Y_LO, MB.FLOOR_TOP - Z_BOT,
-                  x=x, y=(Y_HI + Y_LO) / 2, z=(MB.FLOOR_TOP + Z_BOT) / 2)
+def mort_segments(station):
+    """The WORLD (y0, y1) runs of the mortise at `station`.
+
+    Most stations are one run, from outboard of the -Y rail to the light window's face. The
+    three at each end are the ones the FEET ride, and they get TWO SHORT runs instead -- one
+    over each foot, open outboard so the foot can slide in, with the floor BETWEEN the feet left
+    solid (user, 2026-09-17). Nothing rides there, and it is most of the floor's length."""
+    from . import knee_lever as _KLY
+    near = _KLY.MOUNT_Y + _KLY.MORT_Y0                   # -Y mouth, outboard of the -Y rail
+    if abs(D.mortise_y_end(station) - D.LIGHT_WIN_Y0) < 1e-9:
+        return [(near, D.LIGHT_WIN_Y0)]
+    lo, hi = LEG_Y[1] + LEG_W / 2.0, LEG_Y[0] - LEG_W / 2.0
+    # ...and both runs KEEP OFF WHATEVER ELSE DROPS THROUGH THE FLOOR in this station's X band
+    # (D.floor_block_y): the bridge end's string access channels, the keyhead end's height-screw
+    # head cavities. Both families sit on the string pitch, so the gaps between neighbours fit no
+    # mortise -- what is left is the clear band outboard of them, and the +Y run starts a two-bead
+    # wall past the +Y-most one (user). It still opens out past the rail, so the +Y foot can
+    # slide in on it. Each station meets only what is near it in X, which is what makes the three
+    # at each end come out at different lengths.
+    field = D.floor_block_y(station)
+    if field is not None:
+        lo, hi = min(lo, field[0]), max(hi, field[1])
+    return [(near, lo),                                  # over the -Y foot, open -Y
+            (hi, D.MORT_FULL_Y1)]                        # over the +Y foot, open +Y
+
+
+def foot_tenon_runs(sx, ly, syg):
+    """[(station, y0, y1)] the tenon runs a foot at (sx, ly) can actually use.
+
+    ONE place decides this, because two parts need the same answer: the body adapter builds a
+    tenon per run, and the leg's lock pin has to know which is the OUTERMOST one it can pin. A
+    run counts when a mortise is there at all, and when it is open the way that corner slides
+    in -- a foot goes outboard along Y, so a run that stops short of its outboard face is no
+    use to it however long it is."""
+    out = []
+    for st in D.lever_grid_x():
+        if abs(st - sx) > LEG_W / 2.0 - LEG_TEN_W / 2.0 + 1e-9:
+            continue
+        y0, y1 = ly - LEG_W / 2.0, ly + LEG_W / 2.0
+        seg = next((q for q in mort_segments(st) if q[0] < y1 and q[1] > y0), None)
+        if seg is None:
+            continue
+        y0, y1 = max(y0, seg[0]), min(y1, seg[1])
+        if syg > 0 and seg[1] < ly + LEG_W / 2.0 - 1e-9:
+            continue
+        if syg < 0 and seg[0] > ly - LEG_W / 2.0 + 1e-9:
+            continue
+        if y1 - y0 < 1.0:
+            continue
+        out.append((st, y0, y1))
+    return out
+
+
+def _mort_cutters(x0=None, x1=None):
+    """Every lever mortise in [x0, x1] as ONE compound. The grid has ~70 stations and a
+    separate boolean per station, repeated for each segment, dominates the build -- OCC cuts a
+    compound of tools in one pass for the same result."""
+    from . import knee_lever as _KLM
+    xs = [x for x in _MORT_X
+          if (x0 is None or x > x0) and (x1 is None or x < x1)]
+    if not xs:
+        return None
+    return cq.Workplane(obj=cq.Compound.makeCompound(
+        [s for x in xs for y0, y1 in mort_segments(x)
+         for s in _KLM.rib_mortise(x, y0, y1).val().Solids()]))
 
 
 RACE_HW   = 2.4     # wire-raceway half-width — passes the fattest cable (Ø2.6 USB)
@@ -318,8 +383,14 @@ def _build_full() -> cq.Workplane:
     body = body.cut(box_at(M9_CUT_X1 - M9_CUT_X0, -116.0 - M9_CUT_YBACK, M9_CUT_Z1 - M9_CUT_Z0,
                            x=(M9_CUT_X0 + M9_CUT_X1) / 2, y=(M9_CUT_YBACK + -116.0) / 2,
                            z=(M9_CUT_Z0 + M9_CUT_Z1) / 2))
-    for x in _RIB_X:                                  # per-motor + bridge/nut cross-ribs (−Z)
-        body = body.union(_rib(x))
+    # THE BOTTOM IS ONE PRISM (user, 2026-09-15), XBAR tall, rail to rail, instead of a comb of
+    # cross-ribs with air between them. The mortises cut below take most of it back out, so it
+    # costs little; what it buys is a lever mounting place every 8.8 instead of every 22.35, and
+    # a continuous CAP over every slot -- the body sealed from underneath against escaping light
+    # and motor noise. It is also self-supporting by construction: a bay wall no longer bridges
+    # a rib gap, because there are no rib gaps.
+    # (THE BOTTOM is not drawn here any more -- each SEGMENT draws its own, identically, at
+    #  the top of the segment pipeline. See _bottom() and _segments.)
     # knee/pedal lever mounts: cut a christmas-tree mortise into EVERY rib (so a lever can mount in
     # any bay -- its two tenons drop into the two ribs flanking the chosen bay). Even rib pitch -> the
     # one tenon fits all. (Retention is a set screw that presses the rib ledge -- no per-bay pilot.)
@@ -330,12 +401,27 @@ def _build_full() -> cq.Workplane:
     # the relationship is only ever true by hand. Assert it here, where both are in
     # scope: change the motor pitch and this fires immediately instead of silently
     # burying the tenons in solid rib (3021 mm^3, found the hard way).
-    assert any(abs(_rx - _KL.MOUNT_X) < 1e-6 for _rx in _RIB_X), (
+    assert any(abs(_rx - _KL.MOUNT_X) < 1e-6 for _rx in _MORT_X), (
         "knee_lever.MOUNT_X %.2f is not a rib X -- the comb is at %s. The lever "
         "mount must sit ON a rib; move MOUNT_X to one." % (
-            _KL.MOUNT_X, [round(r, 2) for r in _RIB_X if abs(r - _KL.MOUNT_X) < 40]))
-    for _rx in _RIB_X:
-        body = body.cut(_KL.rib_mortise(_rx))
+            _KL.MOUNT_X, [round(r, 2) for r in _MORT_X if abs(r - _KL.MOUNT_X) < 40]))
+    # THE SEAM TENON MUST CLEAR THE GRID. It is the only material half of the seam joint, and
+    # it used to stand from the bed straight through the mortise band -- which is why the two
+    # stations flanking each seam had to be dropped. Keyed to the real solids so that a later
+    # change to either datum fails here instead of quietly eating a tenon root.
+    _cap = MB.FLOOR_TOP - _KL.rib_mortise(_MORT_X[0]).val().BoundingBox().zmax
+    assert _cap >= D.MIN_WALL_2P - 1e-9, (
+        "only %.2f of cap over the lever mortises -- the bottom prism (D.BOTTOM_T %.1f) has to "
+        "carry two beads over the joint, and the joint is already at its own floor"
+        % (_cap, D.BOTTOM_T))
+    _tz = _seg_tenon(SPLIT_X[0], Y_LO).val().BoundingBox().zmin
+    _mz = _KL.rib_mortise(_MORT_X[0]).val().BoundingBox().zmax
+    assert _tz >= _mz - 1e-6, (
+        "the seam tenon starts at z %.2f, inside the lever mortises' band (they reach %.2f) -- "
+        "it would be notched by every station it crosses" % (_tz, _mz))
+    _mc = _mort_cutters()
+    if _mc is not None:
+        body = body.cut(_mc)
     # (the pickup now mounts entirely in its deck cover piece — top_plate.py — so
     # the old rail bosses/grooves/X-lock stations that used to live here are gone)
     # keyhead: the box-closure bulkhead is now a SEPARATE, removable part
@@ -448,19 +534,8 @@ def _build_full() -> cq.Workplane:
         cq.Vector(0, 0, 1))))
     #   ^ the TRRS axis rides the octagon's deep waist (legs.TRRS_DY) — the
     #     well tracks the stub's relocated jack way
-    body = body.cut(_raceway(50.5, -67.0, -604.75, 31.5))
-    # HEAD CAVITIES FOR THE KEYHEAD'S INSERT HEIGHT SCREWS (bronner prototype, user's height adjust).
-    # Their heat-sets sit flush in the keyhead's bottom face, just over this -X wide corner rib, so the
-    # button heads hang down INTO the rib, and the 2.5 mm key comes up to them from below. One head
-    # cavity per screw, straight through, placed from nut_block's own height_screw_xy so it cannot drift
-    # off its screw. Flagged for the chassis owner.
-    for _hi in range(D.N_STRINGS):
-        _hx, _hy = _NB.height_screw_xy(_hi)
-        body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-            _NB.HS_HEAD_CAV_D / 2.0, (MB.FLOOR_TOP - Z_BOT) + 2.0,
-            cq.Vector(D.NUT_BLOCK_X + _hx, _hy, Z_BOT - 1.0), cq.Vector(0, 0, 1))))
-    # +X tee-10 clearance notch out of the bridge rib's west face (the
-    # tee pokes 2.4 into it; box clears the PCB + header margin)
+    for _n in _floor_negatives():
+        body = body.cut(_n)
     body = body.cut(box_at(4.0, 17.0, (MB.FLOOR_TOP - Z_BOT) + 2.0,
                            x=-34.5, y=-108.0,
                            z=(MB.FLOOR_TOP + Z_BOT) / 2))
@@ -486,12 +561,20 @@ def _build_full() -> cq.Workplane:
         _egx = -1.0 if _xc_mid > _sx else 1.0       # outboard x sign
         for _s in (1, -1):
             _lc = LEG_Y[0] if _s > 0 else LEG_Y[1]  # flush leg centreline
+            # THESE DO NOT REACH THE FLOOR ANY MORE (user, 2026-09-16). They are still cut
+            # here because the leg's ridges cross the RAIL BAND and the kept +X shell, where
+            # there is no grid to ride and this is the only joinery there is -- dropping them
+            # outright drives 0.65-3.2 cm3 of every adapter into the body. What they can no
+            # longer touch is the FLOOR: each segment lays that down fresh after this and cuts
+            # only the grid out of it, so the leg cannot shape the grid even by accident. The
+            # ridges that run in the floor take grid stations instead (leg_stack.body_adapter).
             for _n in _cgn(_sx, _lc, float(_s), _egx, Z_BOT):
                 body = body.cut(_n)
             body = body.cut(_lpj(_sx, _lc, _egx, float(_s), Z_BOT).cutter((0.0, 0.0, 1.0)))
-    # (the old y-33 / z-70.6 Ø7 harness window is GONE — the wired
-    # corner's pigtail now rides the OVER-RIB raceway lane at y 50.5,
-    # cut with the wide corner ribs above)
+    # (the old y-33 / z-70.6 Ø7 harness window is GONE — the wired corner's pigtail now rides
+    # the raceway lane at y 50.5, cut with the floor's own negatives. The wide corner ribs that
+    # comment used to refer to are gone with the whole rib comb -- the bottom is one solid prism
+    # now, so there is MORE material under the feet than there was, not less.)
     return body
 
 
@@ -531,13 +614,13 @@ EP_TIP_PX = D.BRIDGE_BASE_X1              # bridge +X outer tip (8.5) -- the ACT
 # gate cannot catch it -- leg_body_stub<->chassis is an allowlisted designed
 # contact, so it is blind to that pair forever. Import the real value instead.
 from .legs import SQ_W as LEG_W
-from .legs import STUB_TNG_REBATE_IN as _TNG_REBATE_IN
+from .legs import STUB_TEN_W as LEG_TEN_W
 from .legs import SHELL_GAP as _SHELL_GAP
 assert abs(_SHELL_GAP - EP_LEG_CLR) < 1e-9, (
-    "legs.SHELL_GAP must equal EP_LEG_CLR: the leg screw's insert opens on the shell face")
-assert _TNG_REBATE_IN < EP_LEG_CLR, (
-    "the leg tongue's rebate reaches past the endplate<->shell gap and would notch the "
-    "kept shell")
+    "legs.SHELL_GAP must equal EP_LEG_CLR: the endplate's foot pocket sits a clearance "
+    "outboard of the kept shell")
+# (the tongue-rebate assert went with the tongue -- the leg screw's insert is in the ENDPLATE
+#  now, so nothing of the leg's reaches across that gap into the kept shell.)
 
 
 def _leg_geom(tip, sign):
@@ -556,6 +639,11 @@ def _leg_geom(tip, sign):
 _PKT_NX, _SHELL_NX, _STN_NX = _leg_geom(EP_TIP_NX, +1)    # -X end → body is +X of the tip
 _PKT_PX, _SHELL_PX, _STN_PX = _leg_geom(EP_TIP_PX, -1)    # +X end → body is -X of the tip
 # the kept shell spans from its pinned outer edge to the rail-takeover join line:
+assert (abs(_SHELL_NX - D.bottom_span()[0]) < 1e-9
+        and abs(_SHELL_PX - D.bottom_span()[1]) < 1e-9), (
+    "dimensions lays the floor grid against %.3f..%.3f but the chassis' own shell faces are "
+    "%.3f..%.3f -- the floor is drawn to the second pair, so the grid would not reach its ends"
+    % (D.bottom_span()[0], D.bottom_span()[1], _SHELL_NX, _SHELL_PX))
 LEG_SHELL_NX = (_SHELL_NX, KH_RAIL_X)       # -X leg: -625.6 .. -610.6 (reaches the rail end)
 LEG_SHELL_PX = (TP_EP_GX, _SHELL_PX)        # +X leg: -17.5 .. 5.6
 # leg stations: (+X leg, -X leg) — outer faces ON the endplate tips (flush X):
@@ -565,9 +653,7 @@ LEG_STATIONS_X = (_STN_PX, _STN_NX)         # (-13.4, -614.2)
 # corner cross-tie there -- and it merges into the stub as a clipped nub while its lever
 # mortise would gouge the stub. Drop those (deferred to here: the stations resolve after
 # _rib_positions). A rib within (SQ_W + rib_w)/2 of a station touches its stub.
-from .legs import SQ_W as _STUB_W
-_RIB_X = [x for x in _RIB_X
-          if all(abs(x - _st) >= (_STUB_W + _RIB_W) / 2.0 for _st in LEG_STATIONS_X)]
+# (the grid runs unbroken past the leg stubs now -- see _mort_positions and the bottom prism)
 # FLUSH-LEG round (user): the 44-sq legs sit FLUSH with the outer wall
 # planes instead of outset on the rail centrelines — centres 17 inboard
 # of the rails. Everything leg-shaped (stubs, columns, pedal bar rail)
@@ -599,23 +685,60 @@ def _leg_shell(sx, x0, x1):
     return out
 
 
+def _seg_relief(s, yr, dz=0.0):
+    """The 45 deg wedge under the seam joint, at split X=s and rail Y=yr -- ONE definition, cut
+    from BOTH halves so they cannot drift apart (user, 2026-09-17: the tenon had the 45 and the
+    mortise did not).
+
+    The TENON needs it: it stands on the bottom prism's top face, so everything it projects past
+    the seam plane hangs over the NEIGHBOUR's floor, and flat that underside was a 5.63-deep
+    bridge over air. The MORTISE takes the same wedge lowered by _SEG_RELIEF_CLR -- which gives
+    the cavity's ramp a clearance gap under the tenon's instead of a coincident face to bottom
+    out on, and hands the +X segment back the material its cavity was taking below a tenon that
+    is no longer there. Same `reach`, same angle, same line of code: change one and both move."""
+    reach = _SEG_JX1
+    return (cq.Workplane("XZ")
+            .polyline([(s, _SEG_JZ0), (s + reach, _SEG_JZ0), (s + reach, _SEG_JZ0 + reach)])
+            .close().extrude(T + 4.0)
+            .translate((0.0, yr + (T + 4.0) / 2.0, dz)))
+
+
+def _relieved(solid, s, yr, dz, what):
+    """`solid` minus the seam relief, with proof it bit. A wedge that misses is a SILENT no-op:
+    the overhang (or the surplus cavity) would still be there and nothing downstream would
+    notice, so make the cut prove it took the corner it was aimed at."""
+    out = solid.cut(_seg_relief(s, yr, dz))
+    assert out.val().Volume() < solid.val().Volume() - 1.0, (
+        "the 45 deg relief took %.2f mm3 off the seam %s at x %.2f -- it is missing the corner"
+        % (solid.val().Volume() - out.val().Volume(), what, s))
+    return out
+
+
 def _seg_tenon(s, yr):
     """The −X segment's half of the seam joint at split X=s, rail Y=yr: a plan-plane
-    T prism standing from the bed up to the deck-groove floor. (The bridge/keyhead END
+    T prism standing from the BOTTOM PRISM'S TOP FACE up to the deck-groove floor (see
+    _SEG_JZ0 -- below that is the lever-mortise grid, and this may not stand in it). (The bridge/keyhead END
     joints are a different site — they use the low _br_tongue/_kh_tongue dovetails.)"""
-    return _SEG_J.tenon(root=_SEG_ROOT).translate((s, yr, Z_BOT))
+    # the 45 deg underside is _seg_relief -- self-supporting back to this segment's own floor,
+    # at a cost to the head of its bottom 5.63 of engagement out of 65.35
+    return _relieved(_SEG_J.tenon(root=_SEG_ROOT).translate((s, yr, _SEG_JZ0)),
+                     s, yr, 0.0, "tenon")
 
 
 def _seg_mortise(s, yr):
-    """The +X segment's cavity — a THROUGH slot: open at the segment's BOTTOM face
-    (the tenon enters there as the segment is lowered on) and open at the top through
-    the rail crown, so the cavity has no ceiling to bridge and no 'blind pocket' that
-    the deck groove would have to pass the tenon through. Z is unretained here BY
-    DESIGN — cadkit's install axis; the assembly around it closes Z (see the SEGMENT
-    JOINT block: deck, endplates, and finally the four leg screws)."""
-    return (_SEG_J.mortise(drop=_SEG_ROOT + 1.0,
-                           length=(TP_GZ0 + 2.0) - (Z_BOT - 1.0))
-            .translate((s, yr, Z_BOT - 1.0)))
+    """The +X segment's cavity: open at the TOP through the rail crown, where the tenon comes
+    in, and closed 0.4 into the bottom prism's top face (_SEG_MZ0). No ceiling to bridge; its
+    only horizontal face is a floor.
+
+    IT USED TO RUN CLEAN THROUGH THE BOTTOM PRISM as a second, narrower cavity (drop=0, the
+    tenon's bare footprint) -- the path the +X segment's own floor needed to pass the standing
+    tenon while being lowered on. That band IS the lever-mortise grid, so every mm of it came
+    out of a 3.2 wall between two slots, and the user caught it collided with them. Reversing
+    which segment goes down last deleted the need for it outright (see the SEGMENT JOINT block):
+    nothing sweeps the floor any more, so the cavity stops at the floor."""
+    cav = _SEG_J.mortise(drop=_SEG_ROOT + 1.0,
+                         length=(TP_GZ0 + 2.0) - _SEG_MZ0).translate((s, yr, _SEG_MZ0))
+    return _relieved(cav, s, yr, -_SEG_RELIEF_CLR, "cavity")
 
 
 def _end_dt(x_face, into, yc, z0, z1, socket=False, top_clr=TP_TG_DEPTH):
@@ -660,6 +783,89 @@ def _br_tongue(yc, socket=False):
     return lower.union(upper)
 
 
+# A DOWNWARD LIGHT WINDOW (user, 2026-09-15/16). The sealed bottom is what holds the motor
+# noise in; this is the one deliberate leak, and it aims DOWN at the pedals. It is a window
+# THROUGH THE BOTTOM PRISM -- full XBAR of it, so light passes straight out the bed face -- set
+# one XBAR inboard of the +Y rail's centre, which leaves 1.2 of opaque body between it and the
+# rail's inner face. That inset is the point: the rail stands outboard of it, so nothing of the
+# window is visible from the front. (It was first built as an 8 mm band ON the rail's underside,
+# which read as a lit stripe along the flank -- wrong on both counts.)
+LIGHT_BAND_W  = D.LIGHT_WIN_W
+LIGHT_BAND_DY = D.LIGHT_WIN_DY
+assert abs((Y_HI - LIGHT_BAND_DY) - D.LIGHT_WIN_YC) < 1e-9, (
+    "dimensions spells the +Y rail one way (LIGHT_WIN_YC %.3f) and chassis another "
+    "(Y_HI - DY = %.3f) -- knee_lever reads the first to stop its mortises at the window"
+    % (D.LIGHT_WIN_YC, Y_HI - LIGHT_BAND_DY))
+
+
+# (NO TIES. The window used to be interrupted every few stations, because cut clean through
+#  for the whole length it leaves the +Y rail as a separate solid in the OPAQUE half -- nothing
+#  above the bottom reaches that far +Y. That only mattered while I read the opaque half as the
+#  part: it is one fused print in two filaments (user), so the transparent material is what
+#  holds the rail, and the window runs unbroken end to end.)
+
+
+def _light_band():
+    """The window's own volume: a run down the bottom, broken by ties. Intersected with a
+    segment it gives that segment's transparent piece; cut from it, the aperture it fills."""
+    # BETWEEN THE LEGS, FLUSH WITH WHERE EACH FOOT STARTS (user, 2026-09-17). It ran the
+    # bottom's whole span, and the -X +Y leg stub stood in that band -- 284 mm3 of transparent
+    # material inside the adapter. The legs were there first, so the window gives way, and it
+    # gives way exactly as far as the foot reaches and no further.
+    x0 = min(LEG_STATIONS_X) + LEG_W / 2
+    x1 = max(LEG_STATIONS_X) - LEG_W / 2
+    x0, x1 = max(x0, _SHELL_NX), min(x1, _SHELL_PX)
+    return box_at(x1 - x0, LIGHT_BAND_W, D.BOTTOM_T,
+                  x=(x0 + x1) / 2, y=Y_HI - LIGHT_BAND_DY,
+                  z=(Z_BOT + MB.FLOOR_TOP) / 2)
+
+
+def _floor_negatives():
+    """The chassis' OWN features that pass through the floor band, as a list of cutters.
+
+    Factored out because each segment lays its floor down fresh (see _bottom): anything cut into
+    that band earlier would otherwise be filled straight back in. These are the chassis' own --
+    the +Y wire raceway and the keyhead height screws' head cavities. NOT the leg's grooves:
+    those are the coupling the user asked to remove, and the leg fits the grid instead."""
+    from .legs import lock_pin_joint as _lpj_f
+    out = [_raceway(50.5, -67.0, -604.75, 31.5)]
+    # THE LEG LOCK PINS. A fastener has to pass through whatever it passes through, and this one
+    # crosses the floor band -- cut in the main builder it was filled straight back in by the
+    # fresh slab, burying 45-65 mm3 of every insert and screw in solid body.
+    _xc = sum(LEG_STATIONS_X) / 2
+    for _sx in LEG_STATIONS_X:
+        _egx = -1.0 if _xc > _sx else 1.0
+        for _s in (1, -1):
+            _lc = LEG_Y[0] if _s > 0 else LEG_Y[1]
+            out.append(_lpj_f(_sx, _lc, _egx, float(_s), Z_BOT).cutter((0.0, 0.0, 1.0)))
+    # HEAD CAVITIES FOR THE KEYHEAD'S INSERT HEIGHT SCREWS (bronner prototype, user's height
+    # adjust). Their heat-sets sit flush in the keyhead's bottom face just over the floor, so the
+    # button heads hang down INTO it and the 2.5 mm key comes up to them from below. Placed from
+    # nut_block's own height_screw_xy so they cannot drift off their screws.
+    for _hi in range(D.N_STRINGS):
+        _hx, _hy = _NB.height_screw_xy(_hi)
+        out.append(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+            _NB.HS_HEAD_CAV_D / 2.0, (MB.FLOOR_TOP - Z_BOT) + 2.0,
+            cq.Vector(D.NUT_BLOCK_X + _hx, _hy, Z_BOT - 1.0), cq.Vector(0, 0, 1))))
+    return out
+
+
+def _bottom(a, b):
+    """ONE segment's floor: a plain solid block, rail to rail, bed to FLOOR_TOP, over whatever
+    of the bottom's span this segment holds. Every segment gets the same thing by the same code
+    (user, 2026-09-16), and the lever mortises are cut out of it afterwards.
+
+    Drawn per segment and EARLY in the pipeline on purpose. Drawn once in _build_full it picked
+    up whatever anything else had already carved out of that band -- the leg corner grooves took
+    7-8.6 cm3 a corner out of it, 86% of that inside the grid's own band. A segment that lays its
+    floor down fresh, then cuts only the grid out of it, cannot inherit that."""
+    x0, x1 = max(_SHELL_NX, min(a, b)), min(_SHELL_PX, max(a, b))
+    if x1 - x0 < 0.1:
+        return None
+    return box_at(x1 - x0, Y_HI - Y_LO, MB.FLOOR_TOP - Z_BOT,
+                  x=(x0 + x1) / 2, y=(Y_HI + Y_LO) / 2, z=(MB.FLOOR_TOP + Z_BOT) / 2)
+
+
 def _seg_box(a, b):
     h = (Z_TOP + 18.0) - (Z_BOT - 6.0)
     return box_at(abs(a - b) + 0.02, (Y_HI - Y_LO) + 40.0, h,
@@ -677,7 +883,25 @@ def _largest(seg):
     sols = seg.val().Solids()
     if len(sols) <= 1:
         return seg
-    return cq.Workplane("XY").add(max(sols, key=lambda s: s.Volume()))
+    keep = max(sols, key=lambda s: s.Volume())
+    # WHAT IT DROPS, IT MUST BE ALLOWED TO DROP. This exists to bin the scraps a cut strands --
+    # a sliver of side wall over the corridor, a nub past a seam. It is not a licence to delete
+    # a PART: a corridor that reached under the -Y rail cut that whole rail loose, and this
+    # threw it away in silence, which is how the instrument lost a side wall in both tabs
+    # without one check going red (user spotted it by eye, 2026-09-15).
+    lost = [s for s in sols if s is not keep]
+    _v = sum(s.Volume() for s in lost)
+    # 5 cm3 is the line between the two: the -Y rail was ~190, and the largest honest scrap
+    # here is the 1.2 cm3 strip the keyhead's rail top leaves above Z_TOP at x -611..-607.
+    assert _v < 5000.0, (
+        "_largest would drop %.1f cm3 in %d piece(s) -- that is a part coming loose, not a "
+        "scrap. Bounding boxes: %s" % (
+            _v / 1000.0, len(lost),
+            [tuple(round(v, 1) for v in (s.BoundingBox().xmin, s.BoundingBox().xmax,
+                                         s.BoundingBox().ymin, s.BoundingBox().ymax,
+                                         s.BoundingBox().zmin, s.BoundingBox().zmax))
+             for s in lost]))
+    return cq.Workplane("XY").add(keep)
 
 
 def _segments():
@@ -693,6 +917,11 @@ def _segments():
     for i in range(len(edges) - 1):
         a, b = edges[i], edges[i + 1]                 # a (+X) > b (−X)
         seg = full.intersect(_seg_box(a, b))
+        _flr = _bottom(a, b)                          # this segment's floor, laid fresh...
+        if _flr is not None:
+            seg = seg.union(_flr)
+            for _fn in _floor_negatives():            # ...and the chassis' own way through it
+                seg = seg.cut(_fn)
         if _is_split(b):                              # −X boundary split → +X side → mortise
             for yr in (Y_HI, Y_LO):
                 seg = seg.cut(_seg_mortise(b, yr))
@@ -717,34 +946,99 @@ def _segments():
         # there is nowhere down here a bay may reach the rail. What survives is the part of each
         # bay's back wall ABOVE the corridor, and it gets a 45 deg underside so it is a wedge off
         # what is left rather than a shelf hanging over the wiring.
-        _cy0 = Y_LO - 20.0
-        seg = seg.cut(box_at((a - b) + 40.0, MB.HARNESS_Y1 - _cy0, MB.HARNESS_Z1 - (Z_BOT - 10.0),
+        # IT STOPS AT THE RAIL'S INNER FACE. Taking it out to Y_LO - 20 (outside the
+        # instrument) meant this cut swallowed the -Y rail's bottom 41.75 mm along the whole
+        # body -- the missing side wall the user saw in both tabs. The corridor is the lane
+        # INBOARD of the rail; the rail is the wall that closes it, and the only thing allowed
+        # to reach into it is the m9 notch, which is bounded on its own.
+        # IT STOPS AT THE RAIL'S INNER FACE, AND ON TOP OF THE BOTTOM. Taken out to Y_LO - 20
+        # and down to Z_BOT - 10 it swallowed the -Y rail's own section and, worse, the strip of
+        # BOTTOM that ties that rail to the rest of the body -- so the rail came out of the cut
+        # as a separate solid and _largest threw it away. That is the missing side wall the user
+        # saw in both tabs. The corridor is a lane INBOARD of the rail and ABOVE the bottom: the
+        # trunk rides it at HARNESS_Z1, nothing needs the 30 mm below FLOOR_TOP, and leaving the
+        # bottom whole is the whole point of sealing it.
+        _cy0 = Y_LO + T / 2.0
+        seg = seg.cut(box_at((a - b) + 40.0, MB.HARNESS_Y1 - _cy0,
+                             MB.HARNESS_Z1 - MB.FLOOR_TOP,
                              x=(a + b) / 2, y=(_cy0 + MB.HARNESS_Y1) / 2,
-                             z=((Z_BOT - 10.0) + MB.HARNESS_Z1) / 2))
+                             z=(MB.FLOOR_TOP + MB.HARNESS_Z1) / 2))
         # RISE PAST THE PRISM'S TOP, not past the seat plane. The wedge is a triangle, so its
         # own top edge is FLAT: anything the bay puts above that edge survives with a flat
         # underside. Sized to Z_HI it topped out at -27.25 and left 1.8 of each side wall
         # hanging there -- two 7.6 mm2 ceilings on string 10's bay, which the user spotted.
-        _rise = (MB.SEAT_TOP - MB.HARNESS_Z1) + 1.0
-        _prof = [(MB.HARNESS_Y1, MB.HARNESS_Z1), (MB.HARNESS_Y1, MB.HARNESS_Z1 + _rise),
-                 (MB.HARNESS_Y1 - _rise, MB.HARNESS_Z1 + _rise)]
-        seg = seg.cut(cq.Workplane("YZ").workplane(offset=b - 20.0)
-                      .polyline(_prof).close().extrude((a - b) + 40.0))
+        # ...and ACROSS THE M9 NOTCH it reaches back to the notch's own face. The notch takes
+        # 4 mm off the rail's inner face for the trunk's outboard dip, and string 10's bay back
+        # wall reaches 1.2 past that face -- so with the rail gone there, that 1.2 stood alone
+        # between the notch void and the corridor void. One sliver per probe line, six of them.
+        _nx0, _nx1 = max(M9_CUT_X0, b - 20.0), min(M9_CUT_X1, a + 20.0)
+        if _nx1 - _nx0 > 0.1:
+            seg = seg.cut(box_at(_nx1 - _nx0, _cy0 - M9_CUT_YBACK,
+                                 MB.HARNESS_Z1 - MB.FLOOR_TOP,
+                                 x=(_nx0 + _nx1) / 2, y=(M9_CUT_YBACK + _cy0) / 2,
+                                 z=(MB.FLOOR_TOP + MB.HARNESS_Z1) / 2))
+        # THE 45 DEG UNDERSIDE on whatever stands over the corridor. It is bounded by the VOID
+        # IT RELIEVES: a bare triangle running -Y from HARNESS_Y1 used to reach 15.55 past it,
+        # which was harmless while the -Y rail was (wrongly) missing and became a 2035 mm2 flat
+        # ceiling on the rail's inner face the moment the rail came back. It now stops at the
+        # void's own -Y face -- the rail inside, the notch's back face across the notch.
+        def _relief(yb, x0, x1):
+            # the wedge sitting ON the channel's ceiling, so what is left IS the 45 deg ramp:
+            # from a knife edge at the HARNESS_Y1 wall up to (yb, +(HARNESS_Y1 - yb)). Cutting
+            # the other side of that line -- everything ABOVE the ramp -- is what the old
+            # triangle did, and it leaves the flat ceiling in place with a wedge resting on it.
+            _prof = [(MB.HARNESS_Y1, MB.HARNESS_Z1), (yb, MB.HARNESS_Z1),
+                     (yb, MB.HARNESS_Z1 + (MB.HARNESS_Y1 - yb))]
+            return (cq.Workplane("YZ").workplane(offset=x0)
+                    .polyline(_prof).close().extrude(x1 - x0))
+
+        seg = seg.cut(_relief(_cy0, b - 20.0, a + 20.0))
+        if _nx1 - _nx0 > 0.1:
+            seg = seg.cut(_relief(M9_CUT_YBACK, _nx0, _nx1))
         # THE LEVER MORTISES, RE-CUT AFTER THE BAYS (user, 2026-09-15). _build_full cuts a
         # christmas-tree into every rib, but the housings fuse in above it -- and each faceplate
         # wall runs all the way down to the BED, so it crosses the ribs and fills those mortises
         # straight back in. The documented refill trap: a feature cut before a union does not
         # survive the union. Same remedy as the tee anchors in build.py -- re-cut afterwards,
         # for the ribs this segment actually holds.
-        from . import knee_lever as _KL2
-        for _rx in _RIB_X:
-            if b - 30.0 < _rx < a + 30.0:
-                seg = seg.cut(_KL2.rib_mortise(_rx))
+        _segmc = _mort_cutters(b - 30.0, a + 30.0)
+        if _segmc is not None:
+            seg = seg.cut(_segmc)
         segs.append(_largest(seg))
     return segs
 
 
-segments = _segments()
+def _split_light(segs):
+    """(opaque, transparent) for each segment. Same origin, printed as ONE object in two
+    filaments -- the deck panels' base/colour pattern (build.py registers them as a pair).
+
+    Each band is clipped to its OWN segment's X span. _seg_box deliberately overshoots its
+    neighbour by 0.02 so the halves of a seam joint meet; inherited by the band that reads as
+    two transparent parts interpenetrating (1.1 mm3 a seam, which the gate duly reported)."""
+    edges = [_SHELL_PX + KH_DT_DEPTH + 2.0] + sorted(SPLIT_X, reverse=True) + [X_NUT]
+    out = []
+    for i, s in enumerate(segs):
+        a, b = edges[i], edges[i + 1]
+        band = _light_band().intersect(
+            box_at(a - b, LIGHT_BAND_W + 2.0, D.BOTTOM_T + 2.0,
+                   x=(a + b) / 2, y=Y_HI - LIGHT_BAND_DY,
+                   z=(Z_BOT + MB.FLOOR_TOP) / 2))
+        out.append((s.cut(_light_band()), s.intersect(band)))
+    return out
+
+
+_seg_pairs = _split_light(_segments())
+segments       = [s for s, _ in _seg_pairs]
+segments_light = [c for _, c in _seg_pairs]
+# CONNECTIVITY IS TESTED ON THE PRINTED OBJECT, not on the opaque half. The two filaments fuse
+# into one solid part, so the opaque half may legitimately come out in pieces wherever the
+# window runs between them -- what must never come apart is the union. (Reading the opaque half
+# as the part is what had me tying the window every few stations to keep the +Y rail attached.)
+for _i, (_op, _lt) in enumerate(_seg_pairs):
+    _n = _op.union(_lt).solids().size()
+    assert _n == 1, (
+        "chassis segment %d prints as %d separate solids -- something has come loose "
+        "(the opaque half alone may be in pieces; the fused part may not)" % (_i, _n))
 
 BED_X = 255.0                          # the printer's X, the reason the chassis is in pieces
 for _si, _seg in enumerate(segments):
