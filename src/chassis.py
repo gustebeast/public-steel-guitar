@@ -138,12 +138,9 @@ KH_RAIL_X      = KH_X + EP_TOP_CLR               # rail -X end / keyhead dovetai
 # so string tension can't draw the wide foot back out. The body carries the tenons; the
 # endplate sockets them (X+Y lock, still lifts +Z). The endplate's L-foot resting on the
 # leg-shell top is the drop-depth stop, so the dovetails need no shoulder of their own.
-KH_DT_WR, KH_DT_WT = 2.0, 3.0          # narrow / wide half-widths (Y). Sized so the socket's
-                                       # OUTER wall (to the instrument's outer face, the only
-                                       # bounded side: the dovetail centres on the rail, 5 mm
-                                       # from that face) stays >= 1.6 mm (2x 0.8 nozzle): wall =
-                                       # 5 - WT - KH_DT_CLR = 1.7 mm. 1:8 flank flare (WT-WR=1.0
-                                       # over DEPTH), so the wall comfortably backs the undercut.
+# (KH_DT_WR / KH_DT_WT are gone with the hand-rolled trapezoid they described: the flank
+#  widths are cadkit's business now, computed from EP_J_W by the same max-min rule every
+#  other joint in the body is sized by.)
 KH_DT_DEPTH    = 8.0                    # dovetail reach into the endplate (X)
 KH_DT_Z0       = -29 * D.BEAD           # -23.2 foot line; also the LOWER/UPPER dovetail
                                        # split (the L-corner / drop stop). Every mate
@@ -152,7 +149,37 @@ KH_DT_Z0       = -29 * D.BEAD           # -23.2 foot line; also the LOWER/UPPER 
                                        # top -33.15 + XBAR" -- arithmetic that had ALREADY
                                        # gone stale when the bed and XBAR moved onto the
                                        # grid, so the snap replaces a dead formula.)
-KH_DT_CLR      = 0.3                    # socket clearance (Y fit)
+KH_DT_CLR      = 0.3                    # socket clearance (Y fit) -- now what cadkit's own
+                                       # policy returns for this site (PETG-GF 0.15, fit="loose"
+                                       # x2 for a BLIND drop-on), so the hand-picked number and
+                                       # the library's agree; asserted under _EP_J
+# ── THE ENDPLATE JOINT IS A CADKIT JOINT NOW (user, 2026-09-18) ──────────────────────────
+# It was the last hand-rolled joinery in the body: a Y-flaring trapezoid, i.e. exactly the
+# angled dovetail cadkit RETIRED, because at a 0.8 nozzle the tenon's acute plan corners round
+# DOWN while the mortise's inner corners round UP and the corners collide before the faces seat.
+# The site is: the chassis (printing Z-up, ALONG the install axis -> facing 'axial') carries a
+# tenon that the endplate (printing along the joint's DEPTH, from its deep end toward the mating
+# face -> facing 'down') drops onto. That is cadkit's MUSHROOM site, and the shape it picks is
+# the one the user drew: stem, two 45 deg flares, a two-bead waist vertical, one FLAT top -- the
+# flat end is legal precisely because the mortise host prints it FIRST, on solid material.
+# WIDTH is what the rail allows: the joint centres 5.0 from the instrument's outer face, and the
+# cavity (width/2 + clearance) has to leave the two-bead wall there.
+EP_J_W    = 7 * D.BEAD                  # 5.6 -> cavity half 3.1, outer wall 1.9
+EP_J_ROOT = 3 * D.BEAD                  # 2.4 of volumetric fusion back into the chassis
+_EP_AX    = PrintSpec(nozzle=0.8, material="PETG-GF", facing="axial")   # chassis: builds +Z,
+                                                                       # along the install axis
+_EP_DN    = PrintSpec(nozzle=0.8, material="PETG-GF", facing="down")    # endplates: deep end
+                                                                       # first, mouth last
+_EP_J     = joint(width=EP_J_W, length=10.0, tenon=_EP_AX, mortise=_EP_DN,
+                  install="+x", depth=KH_DT_DEPTH, fit="loose")   # +x: the tenon travels +install
+                                                                 # to seat, and the endplate comes
+                                                                 # DOWN onto it
+assert abs(_EP_J.clearance - KH_DT_CLR) < 1e-9, (
+    "cadkit's clearance for this site is %.2f but KH_DT_CLR says %.2f -- one of them is stale"
+    % (_EP_J.clearance, KH_DT_CLR))
+assert 5.0 - (EP_J_W / 2.0 + _EP_J.clearance) >= D.MIN_WALL_2P - 1e-9, (
+    "the socket leaves %.2f of rail wall outboard, under the two-bead tier"
+    % (5.0 - (EP_J_W / 2.0 + _EP_J.clearance)))
 KH_DT_SEAT     = 0.1                    # lower-dovetail seating clearance: the mortise face stays
                                        # ON the foot line (KH_DT_Z0 = -23.15) and the TENON is
                                        # shortened by this (top -23.25) so the tenon seats on the
@@ -742,23 +769,31 @@ def _seg_mortise(s, yr):
 
 
 def _end_dt(x_face, into, yc, z0, z1, socket=False, top_clr=TP_TG_DEPTH):
-    """ONE Y-flaring vertical dovetail on an end-contact face at x=x_face, Z-extruded
-    z0..z1, centred on Y=yc. `into` (+1/-1) points from the face toward the endplate
-    tip: the trapezoid is NARROW at x_face (rail/shell side) and WIDE KH_DT_DEPTH into
-    the endplate, so string tension can't draw the wide foot back out. The body carries
-    it (tenon); the endplate cuts it (socket=True widens it by the clearance all round).
-    `top_clr` raises the SOCKET top above the tenon top (z1) so the tenon seats on its
-    real stop, not the mortise ceiling: the UPPER dovetail uses TP_TG_DEPTH (its top sits
-    in the deck zone). The LOWER dovetail instead passes z1 = foot line - KH_DT_SEAT with
-    top_clr = KH_DT_SEAT, so the MORTISE face lands exactly on the foot line (-23.15) while
-    the tenon is the shortened one (-23.25) -- the seating clearance, kept off the face."""
-    g = KH_DT_CLR if socket else 0.0
-    wr, wt = KH_DT_WR + g, KH_DT_WT + g
-    x_in = x_face + into * KH_DT_DEPTH
-    z_hi = z1 + (top_clr if socket else 0.0)
-    pts = [(x_face, yc - wr), (x_face, yc + wr),        # narrow (rail/shell face)
-           (x_in, yc + wt), (x_in, yc - wt)]            # wide (into the endplate)
-    return cq.Workplane("XY").workplane(offset=z0).polyline(pts).close().extrude(z_hi - z0)
+    """ONE endplate<->body joint on an end-contact face at x=x_face, running z0..z1 in Z
+    (the install axis) and centred on Y=yc. `into` (+1/-1) points from the face toward the
+    endplate's interior -- the direction the joint's DEPTH runs. The body carries the tenon;
+    the endplate cuts the socket (socket=True).
+
+    THE SHAPE IS CADKIT'S, not ours (see the _EP_J block): a mushroom, because the endplate
+    prints from its deep end toward this face. All this function does is place it -- the
+    library authors the profile in its own frame (width across local Y, depth along local Z,
+    extruded along local X = the install axis), so the placement is a rotation:
+
+        local +X (install)  ->  world +Z     the endplate drops on
+        local +Z (depth)    ->  world `into` * X
+        local  Y (width)    ->  world Y      (the profile is symmetric, so its sign is free --
+                                              which is what lets one rotation serve both ends)
+
+    `top_clr` raises the SOCKET's far end past the tenon's so the tenon seats on its real stop
+    (the L-foot on the shell) and not on the cavity's end -- unchanged in meaning, and still the
+    only asymmetry between the two halves."""
+    L = (z1 - z0) + (top_clr if socket else 0.0)
+    half = (_EP_J.mortise(drop=EP_J_ROOT + 1.0, length=L) if socket
+            else _EP_J.tenon(root=EP_J_ROOT, length=L))
+    half = half.rotate((0, 0, 0), (0, 1, 0), -90.0)      # +x -> +z, +z -> -x
+    if into > 0:
+        half = half.rotate((0, 0, 0), (0, 0, 1), 180.0)  # ...and -x -> +x at the bridge end
+    return half.translate((x_face, yc, z0))
 
 
 def _kh_tongue(yc, socket=False):
