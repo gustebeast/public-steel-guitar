@@ -807,7 +807,7 @@ def _seg_mortise(s, yr):
     return _relieved(cav, s, yr, -_SEG_RELIEF_CLR, "cavity")
 
 
-def _end_dt(x_face, into, yc, z0, z1, socket=False, top_clr=TP_TG_DEPTH):
+def _end_dt(x_face, into, yc, z0, z1, socket=False, top_clr=KH_DT_SEAT):
     """ONE endplate<->body joint on an end-contact face at x=x_face, running z0..z1 in Z
     (the install axis) and centred on Y=yc. `into` (+1/-1) points from the face toward the
     endplate's interior -- the direction the joint's DEPTH runs. The body carries the tenon;
@@ -824,6 +824,12 @@ def _end_dt(x_face, into, yc, z0, z1, socket=False, top_clr=TP_TG_DEPTH):
                                               which is what lets one rotation serve both ends)
 
     `top_clr` raises the SOCKET's far end past the tenon's so the tenon seats on its real stop
+    -- A SEATING CLEARANCE, NOT A RUN-OUT (user, 2026-09-18). The upper joint used to take
+    TP_TG_DEPTH (6.4), which put the cavity's top exactly on the deck plane: the socket ran 6.4
+    past a tenon that stops well short of it, which reads as a mortise that does not match its
+    tenon and costs the endplate that much material for nothing. The tenon enters from BELOW
+    (the endplate drops on), so the top only has to not be a hard stop; 0.1 does that, which is
+    what the lower joint always used
     (the L-foot on the shell) and not on the cavity's end -- unchanged in meaning, and still the
     only asymmetry between the two halves."""
     # The mating plane is the NOMINAL face, and the endplate's 0.4 of assembly air is the
