@@ -62,14 +62,21 @@ XH_FP = "Connector_JST:JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical"
 USB_FP = "Connector_USB:USB_C_Receptacle_HRO_TYPE-C-31-M-12"
 
 
+# ⚠ THE REF IS PINNED FROM THE TAG. Every call passes a tag that spells the intended
+# ref, and without ref= that agreement is a COINCIDENCE of CREATION ORDER, not a
+# mechanism. On lever_sensor, adding a single resistor in the middle of the file consumed
+# R5 and pushed every later resistor up one -- and BOARD_NOTES["placements"] is keyed by
+# ref, so parts silently referred to refs that no longer existed while a new one with no
+# placement would have landed on the board ORIGIN. ERC passed and the netlist was valid.
+# This board had the same latent fault; pinning the ref makes creation order irrelevant.
 def _r(tag, value, desc, pkg="Resistor_SMD:R_0402_1005Metric"):
-    return Part(name="R", ref_prefix="R", tag=tag, dest="NETLIST", tool="skidl",
+    return Part(name="R", ref_prefix="R", ref=tag, tag=tag, dest="NETLIST", tool="skidl",
                 value=value, description=desc, footprint=pkg,
                 pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
 
 
 def _c(tag, value, desc, pkg="Capacitor_SMD:C_0402_1005Metric"):
-    return Part(name="C", ref_prefix="C", tag=tag, dest="NETLIST", tool="skidl",
+    return Part(name="C", ref_prefix="C", ref=tag, tag=tag, dest="NETLIST", tool="skidl",
                 value=value, description=desc, footprint=pkg,
                 pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
 
