@@ -357,6 +357,27 @@ def motor_ctrl():
     v5, v5_raw = Net("+5V"), Net("+5V_RAW")
     # F1 fuses ONLY the buck's feed. The bus connectors keep their unfused 24 V --
     # fusing the trunk here would put this board in series with every motor.
+    #
+    # ⚠ 1 A IS SIZED FOR THE Pi THIS BOARD EXPECTS, NOT FOR THE ONE THE BOM BUDGETS, and
+    # the gap is worth knowing before someone loads the Pi's USB ports. BOM.md specifies a
+    # "Pi buck >=3 A", i.e. 15 W at 5 V, and U5 is a 3 A part chosen to match. Referred to
+    # 24 V through this fuse:
+    #
+    #     Pi draw    eff 90%    eff 85%    eff 80%
+    #       3.0 A     0.694 A    0.735 A    0.781 A     69 / 74 / 78 % of F1
+    #       1.5 A     0.347      0.368      0.391       35 / 37 / 39 %
+    #       0.6 A     0.139      0.147      0.156       14 / 15 / 16 %
+    #
+    # A fuse is normally run at 75 % of rating or less continuously, and derates further
+    # above 25 C. At a typical Pi load this is a third of the fuse and entirely fine; at
+    # the FULL 3 A the design budgets it sits at the derating limit or past it, so the
+    # failure mode is a nuisance blow under heavy USB load rather than anything unsafe.
+    #
+    # It is left at 1 A deliberately: the job here is fault containment -- "a shorted U5
+    # must not feed the fault back out into the trunk" -- and a larger fuse is worse at
+    # that job. What the number really says is that the Pi's ports are not a free
+    # expansion slot on this instrument. If they ever need to be, this fuse and its
+    # derating are the first thing to revisit, not the buck.
     v24_buck = Net("+24V_BUCK")
     f1 = Part(name="Fuse", ref_prefix="F", tag="F1", dest="NETLIST", tool="skidl",
               value="1A", description="24 V fuse for the buck -- a shorted U5 must "
