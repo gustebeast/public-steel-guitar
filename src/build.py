@@ -951,25 +951,36 @@ def _vkl_station() -> float:
     """
     from . import knee_lever_vert as KV
     mid = _LKL_X + _KNEE_GAP_L / 2.0
-    # its tenons sit at KV.TEN_Y in the guitar's X once posed, so the mount is offset from the
-    # station by TEN_Y[1]; walk the REAL station list, so a dropped one is never chosen.
-    return _lever_station(mid, KV.TEN_Y) - KV.TEN_Y[1]
+    # its tenons sit at KV.TEN_Y in the guitar's X once posed; _lever_station returns the MOUNT
+    # that puts them all on real stations, so there is nothing left to subtract here (there used
+    # to be, when it returned a station and this had to undo the offset by hand).
+    return _lever_station(mid, KV.TEN_Y)
 
 
 def _lever_station(x_target, offsets, mirrored=False):
-    """The closest mortise station to x_target at which EVERY one of this lever's tenons
-    lands in a slot that exists.
+    """The lever's MOUNT X, closest to x_target, at which EVERY one of its tenons lands in a
+    slot that exists.
 
-    Not just the nearest grid X. The bottom grid (D.LEVER_PITCH) drops stations where the leg
-    stubs and the segment seams need solid material, so a station can be on-pitch and still have
-    no slot -- and a tenon over solid slab is 1-2.5 cm3 of interference, which is exactly what
-    the gate reported when the knee gaps were still multiples of the old 22.35 rib pitch."""
+    IT RETURNS A MOUNT, NOT A STATION (user, 2026-09-18), and the difference is real now: a
+    lever's tenon set is anchored on its own housing edge, so it carries a phase and the mount
+    sits off-station by exactly that. Candidate mounts are therefore station - offset[0], not
+    the stations themselves.
+
+    And not just the nearest grid X either. The bottom grid (D.LEVER_PITCH) drops stations where
+    the leg feet and the segment seams need solid material, so a station can be on-pitch and
+    still have no slot -- and a tenon over solid slab is 1-2.5 cm3 of interference, which is
+    exactly what the gate reported when the knee gaps were still multiples of the old 22.35 rib
+    pitch."""
     from . import chassis as CH_G
     have = set(round(s, 3) for s in CH_G._MORT_X)
-    ok = [s for s in CH_G._MORT_X
-          if all(round(s + (-t if mirrored else t), 3) in have for t in offsets)]
-    assert ok, "no station on the bottom grid fits a lever with tenons at %s" % (offsets,)
-    return min(ok, key=lambda s: abs(s - x_target))
+    def _at(m, t):
+        return round(m + (-t if mirrored else t), 3)
+    first = (-offsets[0] if mirrored else offsets[0])
+    ok = [s - first for s in CH_G._MORT_X
+          if all(_at(s - first, t) in have for t in offsets)]
+    assert ok, ("no mount on the bottom grid fits a lever with tenons at %s -- the set's own "
+                "spacing has to be a multiple of the grid pitch" % (offsets,))
+    return min(ok, key=lambda m: abs(m - x_target))
 
 
 from . import knee_lever as _KL_ST
