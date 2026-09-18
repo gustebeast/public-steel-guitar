@@ -2559,6 +2559,30 @@ def build(stem):
     # it, and a via is the only way there. A local net has a whole board and an inner
     # layer to find a path through, and it SKIPS what it cannot lay rather than failing.
     # The routine with no alternative goes first.
+    if notes.get("local_nets"):
+        # NOT `skipped` -- that name already holds the single-pad net count this
+        # function reports at the end, and shadowing it made the summary line claim
+        # 40 nets had appeared out of nowhere.
+        n_laid, n_left, n_why = _local_nets(board, notes["local_nets"], _outline_pts(notes),
+                                     inner=notes.get("diff_pair_inner"))
+        print("  local nets: laid %d segment(s)%s"
+              % (n_laid, ", %d left to the router" % n_left if n_left else ""))
+        for _e in n_why:
+            print("      not placeable: %s" % _e)
+
+    # ⚠ LOCAL NETS FIRST, RETRY SECOND, BY THE SAME ARGUMENT THE STITCHER GOT ABOVE: the
+    # routine with fewer alternatives goes first. A local cluster is three pads a couple
+    # of millimetres apart in the tightest part of the strip. A retried net is a long run
+    # with a whole board and an inner layer to find a way through. Running the long one
+    # first spends the strip's space on the part of the problem that did not need it.
+    #
+    # ⚠ AND THAT IS WHAT THE RETRY'S BAD REPUTATION ACTUALLY WAS. finish.py used to
+    # explain its failure as "a net the router could not finish is usually one the
+    # generator cannot finish either". Measured with the skipped edges NAMED rather than
+    # counted, that is false: the retry lays its net, 8 segments, without trouble. What it
+    # cost was everything laid after it -- local nets fell from 90 segments with nothing
+    # skipped to 76 with EIGHTEEN skipped, all of them short cluster hops in the strip
+    # that the long run had just cut across.
     # ⚠ NETS THE ROUTER ALREADY FAILED ON, handed back for a second attempt. finish.py
     # writes this file after a routing pass that left something unconnected, and the
     # difference from `local_nets` is the whole point: those are guessed in advance and
@@ -2584,17 +2608,6 @@ def build(stem):
                           ", %d edge(s) still not placeable" % n_left if n_left else ""))
             for _e in n_why:
                 print("      not placeable: %s" % _e)
-
-    if notes.get("local_nets"):
-        # NOT `skipped` -- that name already holds the single-pad net count this
-        # function reports at the end, and shadowing it made the summary line claim
-        # 40 nets had appeared out of nowhere.
-        n_laid, n_left, n_why = _local_nets(board, notes["local_nets"], _outline_pts(notes),
-                                     inner=notes.get("diff_pair_inner"))
-        print("  local nets: laid %d segment(s)%s"
-              % (n_laid, ", %d left to the router" % n_left if n_left else ""))
-        for _e in n_why:
-            print("      not placeable: %s" % _e)
 
     # outline_poly wins when present; outline_mm stays the LAYOUT REGION either way
     # (place_check and the zone filler both measure parts against it).
