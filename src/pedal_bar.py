@@ -17,14 +17,18 @@ the leg block — is GONE from both. The spigot still fixes X, Y and rotation
 and takes the load; nothing holds the bar down onto the legs, so they part as
 easily as they went together. Deliberate: a blank slate to redesign against.
 
-FLUSH 35.6 COLUMN (user, symmetry round: match the leg shafts): the bar
-prism is BLK_W wide (Y = YC ± 17.8) and 19 tall, and its END faces sit
-at station ± 17.8 — flush with the slimmed towers and the 35.6 leg
-blocks above, so each +Y stack reads as ONE clean 35.6-sq column from
-block top to bar bottom, all at the legs' 4.2 inset. Only the shared
-TPU feet stay 44 (proud ground boots, like under the -Y blocks). The
-feet are the shared legs.leg_foot dovetail inserts (mortise opens at
-the bar's -Y face).
+AS THICK AS ITS TOWER (user, 2026-09-14). The bar prism used to be BLK_W
+wide (Y = YC ± 17.8) to match the leg shafts, which read as one clean
+35.6 column — but the mortise tower that carries the redesigned leg is
+51.2, so it stood 7.4 proud on BOTH Y faces. On the -Y side that face is
+the PRINT BED, which left the bar's whole body 7.4 in the air, hanging
+off the tower. So the bar now takes the tower's own Y thickness
+(TOWER_WY) and the two are FLUSH: one plane from end to end, and a real
+bed under all of it. The +X end still carries the narrower spigot tower,
+so that end face keeps its own margin (END_MARGIN). Only the shared TPU
+feet stay 44 (proud ground boots, like under the -Y blocks). The feet
+are the shared legs.leg_foot dovetail inserts (mortise opens at the
+bar's -Y face).
 
 PRINTS -Y -> +Y (user). The bar used to build bottom-up with its lid on
 the +Z face; it now lies on its -Y face so that the fused foot-pedal
@@ -91,6 +95,7 @@ from .leg_stack import (ENGAGE as LS_ENGAGE, mortise_cutter as LS_mortise,
 from . import bar_latch as BL
 from . import legs as LG
 from . import latch as LT
+from . import bar_trrs as BT
 from .legs import _house
 
 YC = LEG_Y[0]                          # FLUSH round: the bar rides the +Y
@@ -114,18 +119,32 @@ BAR_H = D.PEDAL_BAR_H                      # 27.0 — sized by the LID (see belo
                                            # dimensions.PEDAL_BAR_H). Shared with
                                            # legs.py, which needs the same number to
                                            # keep all four wide sections equal.
-BAR_Y0 = YC - LG.BLK_W / 2                 # BLK_W (35.6) wide — matches
-BAR_Y1 = YC + LG.BLK_W / 2                 # the slimmed towers/blocks: the
-                                           # +Y stacks are FLUSH columns at
-                                           # the legs' 4.2 inset (user)
 # TOWER_W lives up here because the bar's END FACES are derived from it -- see
 # _mortise_tower for what sets the number.
-TOWER_W = 64 * D.BEAD                      # 51.2 across flats. Chosen so the corner
-                                           # room clears the latch stack: half-diagonal
-                                           # 36.2 minus the tenon's 12.3 flat = 23.9
-                                           # against the 22.4 needed, 1.5 spare. 49.6
-                                           # also fits, at 0.37 -- not margin on a
-                                           # mechanism that is not designed yet.
+# THE TOWER IS NOT SQUARE any more (user): X and Y answer to different things.
+TOWER_WX = 68 * D.BEAD                     # 54.4 across X. It was 51.2 with Y, and
+                                           # the latch's RAILS are what widened it:
+                                           # their slot has to keep a wall to this
+                                           # face outboard and to the ring's pocket
+                                           # inboard, and at 51.2 the only way to fit
+                                           # both was to shave two beads off the
+                                           # ring's arm -- which is also the ledge the
+                                           # spring's cup stands on. 54.4 gives the
+                                           # arm back and the cup real walls.
+TOWER_WY = 64 * D.BEAD                     # 51.2 across Y, unchanged, and now the
+                                           # BAR's thickness too (see BAR_Y0/BAR_Y1).
+                                           # Chosen so the corner room clears the latch
+                                           # stack: half-diagonal 36.2 minus the tenon's
+                                           # 12.3 flat = 23.9 against the 22.4 needed,
+                                           # 1.5 spare. 49.6 also fits, at 0.37 -- not
+                                           # margin on a mechanism not yet designed.
+# THE BAR IS AS THICK AS ITS TOWER (user, 2026-09-14), and flush with it on BOTH
+# faces. It was BLK_W (35.6) against a 51.2 tower, which left the tower standing 7.4
+# proud on each side -- and on the -Y side that is the PRINT BED: the bar's whole
+# body was 7.4 in the air, held up by nothing but the tower it hangs off. Flush
+# fixes the look the user was after and the print at the same time.
+BAR_Y0 = YC - TOWER_WY / 2                 # the player-side face = the bed
+BAR_Y1 = YC + TOWER_WY / 2
 
 # END MARGIN IS PER END, because the two towers are no longer the same size. The
 # rule has not changed -- "the bar's end face is flush with the tower's" -- but the
@@ -135,7 +154,7 @@ TOWER_W = 64 * D.BEAD                      # 51.2 across flats. Chosen so the co
 # it (the bore ran -639.7..-628.5 against a piece starting at -638.4). Nothing
 # failed; the part just came out with a hole in its end face.
 END_MARGIN = LG.BLK_W / 2                  # +X end: the spigot tower's face
-END_MARGIN_X0 = TOWER_W / 2                # -X end: the mortise tower is wider
+END_MARGIN_X0 = TOWER_WX / 2               # -X end: the mortise tower is wider
 BAR_X0 = LEG_STATIONS_X[1] - END_MARGIN_X0
 BAR_X1 = LEG_STATIONS_X[0] + END_MARGIN
 
@@ -262,10 +281,14 @@ for _x, _n in ((XS1, "XS1"), (XS2, "XS2")):
     assert _clears_pedals(_x), (
         f"{_n} at {_x:.2f} lands within {_SPLICE_KEEP:.2f} of a pedal centre "
         f"{PEDAL_X} — a splice may not cut a pedal in half")
-XL = (FEET[0][0] + FEET[1][0]) / 2   # lid butt-splice: mid-span,
-                   # ~107 from each bar splice so each lid piece BRIDGES
-                   # one bar joint — the lid IS the splice's Z lock (the
-                   # install axis the joint leaves free), not just a roof
+# LID BUTT-SPLICE. What it has to do is BRIDGE a bar joint with each piece -- the
+# lid is the bar splice's Z lock (the install axis the joint leaves free), not just
+# a roof -- so anywhere between the two bar splices will do, and the assert below is
+# that rule. Which point between them is free, so it goes at the LID's own mid-span
+# and the two pieces come out equal. It used to sit at the legs' mid-span, which is
+# not the same place: the lid is longer at the -X end than the legs are, and when
+# the mortise tower widened, that end went over the bed's diagonal (337.3 against
+# 336.6) while the +X piece sat 10 short.
 # LID SPAN — END TO END (user round: install runs -X -> +X). The lid used to
 # sit BETWEEN the fused towers and slide in from +X. Both ends changed:
 #
@@ -280,9 +303,40 @@ LID_XA = BAR_X0                               # -X: flush, open (wiring access)
 LID_XB = BAR_X1 - LID_END_STOP                # +X: hard stop, 1.6 of bar left
 TROUGH_X0 = FEET[1][0] + LG.BLK_W / 2 + 0.6   # wiring trough: runs
 TROUGH_X1 = FEET[0][0] - LG.BLK_W / 2 - 0.6   # right up to the towers
+
+
+# THE WIRING CHAMBER: the trough, carried -X UNDER THE MORTISE to meet the spine
+# joint's jack. The lead leaves the jack's back travelling -Z and has to turn +X into
+# the trough, and a tunnel is the wrong shape for that turn -- a O3.8 shielded cable
+# wants radius, not a corner. So the trough's own section simply continues to the
+# tower, deeper in Y (the jack sits 3.2 -Y of the trough's face, so the trough as
+# drawn misses it entirely) and shallower in Z (the foot mortise is underneath).
+#
+# It costs nothing in the print. Every face of it is either an UP-facing floor or a
+# wall standing normal to a layer: the bar builds +Y, so a Z-normal face is vertical
+# and only a -Y-facing one would be a ceiling -- and the chamber, like the trough it
+# extends, has none. It opens straight through the +Y face into the lid groove, which
+# is also how the lead is reached: LID_XA is BAR_X0, so the lid covers this.
+CHAM_X0 = BT._ax()[0] - 8.0                # -624.46: 8 of run -X of the spine, which
+                                           # is where the lead's bend wants to live
+CHAM_Y0 = BT._ax()[1] - BT.JB_D / 2 - 0.8  # 41.90 -- deep enough in -Y to swallow the
+                                           # cable way's whole mouth, and no deeper
+CHAM_Z0 = 8.0                              # the floor. NOT the trough's 3.95: the foot
+                                           # mortise is 6.0 tall at this very station
+                                           # and the two would break into each other
+                                           # (asserted in _bar_body against the real
+                                           # cutter, not against this comment)
+CHAM_Z1 = TROUGH_Z1                        # ...and the same ceiling as the trough, so
+                                           # the groove floor above it is untouched and
+                                           # the lid-lock nub's 5.4 of bearing survives
+assert CHAM_Y0 > BAR_Y0 + D.MIN_WALL_2P, "the chamber has eaten the bar's -Y face"
 # End-to-end, the two lid pieces are ~318 each — they no longer fit the bed
 # STRAIGHT and never did (they printed diagonally at ~278 already). A part laid on
 # the diagonal has BED*sqrt(2) to work with, less its own width.
+XL = (LID_XA + LID_XB) / 2.0
+assert XS1 < XL < XS2, (
+    f"the lid's splice at {XL:.1f} does not fall between the bar's ({XS1:.1f}, "
+    f"{XS2:.1f}) — a lid piece would stop short of the joint it has to lock")
 _LID_L = (XL - LID_XA, LID_XB - XL)
 assert max(_LID_L) <= BED * 2 ** 0.5 - D.PEDAL_LID_FOOT_W, (
     f"lid pieces {tuple(round(v, 1) for v in _LID_L)} — one exceeds the "
@@ -351,8 +405,8 @@ TOWER_TOP = BAR_H + LS_ENGAGE + TOWER_FLOOR    # 71.1 the MOUTH plane, in bar
                                    # poses the bar from -- the tenon's far end
                                    # lands on the floor, so the mouth sits
                                    # ENGAGE above it.
-TOWER_CORNER = TOWER_W / 2.0 * math.sqrt(2.0)  # 36.2 axis -> corner
-assert BAR_X0 <= FEET[1][0] - TOWER_W / 2 + 1e-9, (
+TOWER_CORNER = math.hypot(TOWER_WX / 2.0, TOWER_WY / 2.0)   # 37.4 axis -> corner
+assert BAR_X0 <= FEET[1][0] - TOWER_WX / 2 + 1e-9, (
     "the bar's -X end face cuts into the mortise tower")
 
 
@@ -365,44 +419,29 @@ def _corner(d: float, sx: float, sy: float):
 # The tenon's FLAT, measured off leg_stack's own numbers rather than typed in:
 # rotated 45 degrees, the octagon's flats face the corners at half its across-flats.
 TEN_FLAT = (LS_TEN_W + 2 * LS_FIT) / 2.0       # 12.30 axis -> tenon flat
-TRRS_BORE_D = BL.TRRS_BORE_D       # 11.2 the CA-354S body way. The latch's COLLAR shares
-TRRS_CORNER_D = BL.TRRS_D          # this corner layout (its screws take the other three
-                                   # corners), so bar_latch owns it
-# The way runs up through the tower's top face into the COLLAR, which closes it: the
-# collar is the roof the jack's shoulder presses up against.
-TRRS_WAY_TOP = BAR_H - 1.0 + 40 * D.BEAD
-TRRS_CORNER = (-1, -1)             # the -X-Y corner of the tower
+# THE -X-Y CORNER TRRS WAY IS RETIRED (user 2026-09-17). It was sized for the old
+# family's CA-354S body, and the redesigned leg puts its signal on the JOINT'S OWN
+# SPINE -- the same call the user made at the top joint, for the same reason: the
+# octagon's own fit centres the pair, where a corner asks two bores 20 off the
+# axis to agree across two parts and two print directions.
 BAR_UP = (0.0, 1.0, 0.0)           # the bar prints lying on its -Y face
 
 # THE THINGS THE TOWER MUST HOLD, each asserted against the number that actually
 # constrains it, so the tower cannot be quietly shrunk back to the leg's own width.
 # The LATCH (src.bar_latch) sized its slot, pad recess and spring pockets off the
 # tower's faces, so the faces must be where it assumed.
-assert abs(TOWER_W / 2 - BL.FACE_R) < 1e-9, (
-    "bar_latch sized the yoke for faces %.1f off the axis; the tower's are %.1f"
-    % (BL.FACE_R, TOWER_W / 2))
-assert TRRS_CORNER == BL.TRRS_CORNER and BAR_UP == BL.BAR_UP, (
-    "bar_latch laid out its collar for a different TRRS corner or print direction")
-assert TRRS_WAY_TOP > TOWER_TOP - BL.COLLAR_H + D.MIN_WALL_2P, (
-    "the TRRS way no longer reaches the collar that closes it")
-assert TOWER_CORNER - TRRS_CORNER_D >= TRRS_BORE_D / 2 + D.MIN_WALL_2P, (
-    "the TRRS bore breaks out of the tower's corner")
-assert TOWER_W / 2 - TRRS_CORNER_D / math.sqrt(2) >= TRRS_BORE_D / 2 + D.MIN_WALL_2P, (
-    "the TRRS bore breaks out of the tower's flat face")
+assert abs(TOWER_WX / 2 - BL.FACE_X) < 1e-9 and abs(TOWER_WY / 2 - BL.FACE_Y) < 1e-9, (
+    "bar_latch sized the yoke for faces %.1f/%.1f off the axis; the tower's are %.1f/%.1f"
+    % (BL.FACE_X, BL.FACE_Y, TOWER_WX / 2, TOWER_WY / 2))
+assert BAR_UP == BL.BAR_UP, (
+    "bar_latch laid out its collar for a different print direction")
 # and the mortise itself must not eat the bar underneath it
 assert TOWER_TOP - LS_ENGAGE >= BAR_H + D.MIN_WALL_2P, (
     "the blind mortise floor is inside the bar prism")
-# The jack way must NOT surface on the mouth -- that face is a mating face, and a
-# hole in it is either a blind-mate connector or a mistake. It is a mistake here.
-assert TRRS_WAY_TOP <= TOWER_TOP - D.MIN_WALL_2P, (
-    "the TRRS way breaks out through the mortise's MOUTH face")
-assert TRRS_WAY_TOP - (BAR_H - 1.0) >= 30.0, (
-    "the TRRS way is %.1f long; the CA-354S body needs ~31"
-    % (TRRS_WAY_TOP - (BAR_H - 1.0)))
 
 
 def _mortise_tower(lx: float, wired: bool) -> cq.Workplane:
-    """The FEMALE tower: a TOWER_W prism carrying a blind octagon mortise that
+    """The FEMALE tower: a TOWER_WX x TOWER_WY prism carrying a blind octagon mortise that
     the leg's adjust tenon drops into, built in place on the redesigned leg's
     axis (the tenon's mortise cutter comes from leg_stack already positioned).
 
@@ -415,7 +454,7 @@ def _mortise_tower(lx: float, wired: bool) -> cq.Workplane:
         "the mortise tower must stand on the redesigned leg's axis")
     # the tower stops at the SPLIT: the top BL.COLLAR_H is the latch's collar, its own part
     z_split = TOWER_TOP - BL.COLLAR_H
-    b = box_at(TOWER_W, TOWER_W, z_split - BAR_H, x=lx, y=YC, z=(BAR_H + z_split) / 2)
+    b = box_at(TOWER_WX, TOWER_WY, z_split - BAR_H, x=lx, y=YC, z=(BAR_H + z_split) / 2)
     # the mortise: ENGAGE deep from the mouth, overshooting the top so the cut
     # opens cleanly, floored TOWER_FLOOR above the bar
     b = b.cut(LS_mortise(TOWER_TOP - LS_ENGAGE, TOWER_TOP + 2.0))
@@ -430,20 +469,10 @@ def _mortise_tower(lx: float, wired: bool) -> cq.Workplane:
     # only the anchors for the collar's screws
     b = b.cut(BL.tower_cut(TOWER_TOP))
     if wired:
-        # TRRS jack, moved OUT OF THE AXIS. It used to thread up the middle of
-        # the spigot -- which is now the mortise, so it goes in a corner.
-        #
-        # IT DOES NOT REACH THE MOUTH, and that is the point. A bore that opens
-        # on the mouth face only earns its keep if the jack BLIND-MATES as the
-        # leg seats, the way the old spigot's captive plug did. On this chain it
-        # cannot: what enters the mouth is the floating tenon, which is solid and
-        # moving. The leg's own TRRS bore is up on the adjust sleeve, so this
-        # boundary is a patch cable -- which means the jack wants a closed roof
-        # to press up against, not an exit.
-        cx, cy = _corner(TRRS_CORNER_D, *TRRS_CORNER)
-        # upright in the tower, so SIDEWAYS to the bar's print: via cadkit, a teardrop
-        b = b.cut(teardrop_hole(TRRS_BORE_D, (z_split + 1.0) - (BAR_H - 1.0),
-                                (lx + cx, YC + cy, BAR_H - 1.0), (0.0, 0.0, 1.0), BAR_UP))
+        pass    # the corner TRRS way used to be cut here; it is retired. The spine
+                # joint's bore, keeper pocket and cable way are cut in _bar_body
+                # instead -- they run from the mortise floor down PAST this tower's
+                # own bottom face, so the tower is the wrong solid to cut them from
     return b
 
 
@@ -503,20 +532,22 @@ def _bar_full() -> cq.Workplane:
     # and this is the line that says so.
     body = body.union(_mortise_tower(FEET[1][0], True))
     body = body.cut(_foot_mortise_cutter(FEET[0][0]))
-    body = body.cut(_foot_mortise_cutter(FEET[1][0]))
-    # WIRED TOWER'S WAYS. The old route threaded the jack straight UP THE AXIS of
-    # the spigot; that axis is now the mortise, so the jack moved into a corner
-    # (_mortise_tower) and its cable drops from the corner bore into the trough.
-    # Cut AFTER the union because it pierces both the tower and the bar beneath.
-    cx, cy = _corner(TRRS_CORNER_D, *TRRS_CORNER)
-    wlx, wly = FEET[1][0] + cx, YC + cy
-    # down-way: corner bore -> the trough band, opening out the bar's underside
-    # for assembly access the way the old foot-mortise route did
-    body = body.cut(cyl(8 * D.BEAD, BAR_H + 2.0, z=-1.0).translate((wlx, wly, 0)))
-    # side way into the trough itself, along -Y
-    body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        4.0, 24.0, cq.Vector(wlx, wly, BAR_H / 2.0), cq.Vector(0, 1, 0))))
-
+    _fc = _foot_mortise_cutter(FEET[1][0])
+    body = body.cut(_fc)
+    assert _fc.val().BoundingBox().zmax + D.MIN_WALL_2P <= CHAM_Z0, (
+        "the wiring chamber floor (%.2f) sits on the foot mortise (%.2f)"
+        % (CHAM_Z0, _fc.val().BoundingBox().zmax))
+    # THE SPINE JOINT'S BAR HALF, and it is cut from the BODY rather than from
+    # _mortise_tower because it straddles the two: the jack's back is at z 22.30 and
+    # the tower does not start until BAR_H (27.90). Cutting it off the tower alone
+    # left the lower 5.6 of the bore filled in by the bar underneath it.
+    body = body.cut(BT.bar_negatives(TOWER_TOP - LS_ENGAGE, CHAM_Z1))
+    # ...and the chamber the lead turns in, which is the trough carried under the tower
+    body = body.cut(box_at(TROUGH_X0 + 0.01 - CHAM_X0, BAR_Y1 + 1.0 - CHAM_Y0,
+                           CHAM_Z1 - CHAM_Z0,
+                           x=(CHAM_X0 + TROUGH_X0 + 0.01) / 2,
+                           y=(CHAM_Y0 + BAR_Y1 + 1.0) / 2,
+                           z=(CHAM_Z0 + CHAM_Z1) / 2))
     # wiring TROUGH — now opens +Y (the top of the print), directly behind the
     # groove floor and exactly as tall in Z as the dovetail's foot, so the two
     # cavities merge into one channel and the 1.6 rails survive as ledges. No
@@ -701,10 +732,12 @@ def nub_part() -> cq.Workplane:
 
 
 def _cable_runs():
-    """DEMO bar cable: from the trough, through the wired stub's side way,
-    up its core to the captive plug seat (the column-side cable is placed
-    by build.py with the leg stack). Rises on the TRRS axis — offset +5
-    from the station, matching the down-way and the plug seat."""
+    """RETIRED with the corner way (user 2026-09-17), and no longer in the assembly.
+
+    It drew a DEMO cable rising to the old spigot tower's captive plug seat -- a seat
+    that went when FEET[1] became a mortise, and a corner way that went when the bottom
+    joint moved to the spine. Kept as a reference for the trough-to-tower route the new
+    joint will need, which is the one part of it that is still true."""
     lx = FEET[1][0]
     wly = YC - LG.TRRS_DY
     pts = [(lx + 24.0, YC + 2.0, 11.0), (lx + 14.0, wly + 3.5, 11.0),
@@ -734,7 +767,7 @@ def assembly_parts():
             ("leg_foot_4",
              LG.leg_foot().translate((FEET[1][0], YC, -12.0))),
             ("leg_foot_5",
-             LG.leg_foot().translate((FEET[0][0], YC, -12.0)))]         + _latch_parts() + _cable_runs()
+             LG.leg_foot().translate((FEET[0][0], YC, -12.0)))]         + _latch_parts()
 
 
 def _latch_parts():

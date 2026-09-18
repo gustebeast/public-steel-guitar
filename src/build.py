@@ -140,9 +140,13 @@ PARTS = {
     "adjust_sleeve":   (lambda: heal(LS.adjust_sleeve()), "petg-gf/adjust_sleeve.step", "PETG-GF — adjust sleeve: butts the fixed sleeve; one +X screw pins the fixed tenon, one sets the height through the adjust tenon's ladder. Prints -Y -> +Y"),
     "fixed_tenon":     (lambda: heal(LS.fixed_tenon()), "petg-gf/fixed_tenon.step", "PETG-GF — fixed floating tenon: adapter <-> fixed sleeve <-> adjust sleeve, houses the body latch slider and spring. Prints diagonally (+X+Y -> -X-Y)"),
     "adjust_tenon":    (lambda: heal(LS.adjust_tenon()), "petg-gf/adjust_tenon.step", "PETG-GF — adjust floating tenon: the height ladder (blind +X holes) and, at its bar end, the pedal bar latch's pocket and lead-in. Prints diagonally (+X+Y -> -X-Y)"),
+    "leg_trrs_throat": (lambda: heal(__import__("src.leg_trrs", fromlist=["e"]).throat()), "tpu/leg_trrs_throat.step", "TPU — the TRRS jack's up-stop ×4, at the fixed tenon's tip: a Ø10.3 × 6.2 ring bored Ø6.6 so the body plug's overmould still passes, with a 45° funnel at the mouth (radial capture 1.55 → 2.75). It cannot be a step in the bore — the Ø9.7 jack goes in from the tip, so a lip above it would be a lid fitted before the box is filled. It DROPS IN AND TURNS 70° on a bayonet (user): two lugs under 1.6 of octagon, and TPU so the lugs are their own preload. Turn it back out with a flat blade in the two mouth notches — the press-and-pin it replaces had no way out at all, because nothing here may stand proud of a flank that enters a mortise. Carries the coil's 5 N only while the leg is off; with the leg on the mortise roof lies on its top face and the bayonet cannot even lift. PRINT IT TIP UP (mouth away from the bed): the lug's TOP is the bearing face, so it must not be the overhanging one — the underside is chamfered 45° for exactly that reason. So printed, it has no overhang past 45° at all"),
+    "bar_trrs_sleeve": (lambda: heal(__import__("src.bar_trrs", fromlist=["e"]).sleeve()), "tpu/bar_trrs_sleeve.step", "TPU — the BOTTOM blind-mate's plug carrier ×4: a Ø9.6 × 6.4 collar that grips the male overmould at 0.4 of squeeze and rides a bayonet whose run is FLOAT taller than its lugs, so the plug FLOATS — the run's floor holds it in with the leg off, its roof is the up-stop when the bar's jack pushes it back. It is a COLLAR and not a cup: both ends are open, because it has to be threaded on from the Ø3.5 barrel end and pass the Ø6.1 overmould to reach its grip, and the lead's other end is a Ø9.7 jack, so there is no second way on. Prints flange-down (the lug's bearing face is its underside)"),
+    "bar_trrs_throat": (lambda: heal(__import__("src.bar_trrs", fromlist=["e"]).throat()), "tpu/bar_trrs_throat.step", "TPU — the BOTTOM blind-mate's JACK keeper ×4: a Ø10.6 × 6.4 ring that grips the inline jack's Ø7.8 body at 0.4 of squeeze and turns into a bayonet in the bar's mortise floor. The jack is a FLANGELESS moulding — there is no shoulder on it to catch — so gripping it and capturing the grip is the only positive up-stop available against the plug's 5..20 N detent on every leg removal; the jack's own back on the cable way's step is the down-stop. Bench-assemble it onto the jack, thread the lead into the trough, then drop the pair in and turn: the grip is what lets the jack serve as the handle. A pin in the run's outer wall is the anti-rotation detent. Prints lugs-up (their bearing face is the top)"),
+    "leg_trrs_sleeve": (lambda: heal(__import__("src.leg_trrs", fromlist=["e"]).sleeve()), "tpu/leg_trrs_sleeve.step", "TPU — the body plug's retainer ×4: a Ø9.6 × 6.4 cup that grips the male overmould at 0.4 of squeeze and locks into the adapter's roof on the same 70° bayonet. It replaces a Ø6.1-in-Ø6.0 press whose holding force was 6–48 N depending on a modulus nobody publishes — and zero if the bought plug measures at the low end — against the 5–20 N the TRRS pair pulls every time the leg comes off (user: what stops it falling −Z?). Being an elastomer it also takes the 0.15 of slop out, so the plug can no longer cock. Turn it by turning the PLUG; what keeps it from turning back is the lead, folded into a 4.8 channel the chassis closes over. PRINT IT FLANGE DOWN (the narrow end on the bed) — the mirror of the throat, because here it is the lug's UNDERSIDE that bears, so the chamfer goes on top. So printed, it has no overhang past 45°"),
     "leg_latch_slider": (lambda: heal(__import__("src.leg_latch", fromlist=["e"]).slider()), "pctg/leg_latch_slider.step", "PCTG — body latch slider: push-to-connect hook into the adapter, flush 20x20 pad on the fixed sleeve, one steel coil. Prints -X -> +X"),
-    "bar_latch_frame": (lambda: heal(LS.bar_latch_frame()), "pctg/bar_latch_frame.step", "PCTG — pedal bar yoke latch: a ring round the adjust tenon, hook in its pocket, 20x20 pad flush in the collar, lugs for two coils. Prints ring down"),
-    "bar_latch_collar": (lambda: heal(LS.bar_latch_collar()), "petg-gf/bar_latch_collar.step", "PETG-GF — pedal bar latch collar: the top 22.4 of the bar's tower, holding the yoke and its springs; three M4x30 button heads into the tower. Prints mouth down"),
+    "bar_latch_frame": (lambda: heal(LS.bar_latch_frame()), "pctg/bar_latch_frame.step", "PCTG — pedal bar yoke latch: a ring round the adjust tenon, hook in its pocket, 20x20 pad flush in the collar, a cup seating its one coil. Prints ring down"),
+    "bar_latch_collar": (lambda: heal(LS.bar_latch_collar()), "petg-gf/bar_latch_collar.step", "PETG-GF — pedal bar latch collar: the top 22.4 of the bar's tower, holding the yoke and its springs; two T rails slide it onto the tower from +Y, one M4x30 button head into a heat-set insert in the tower locks it. Prints on its +Y face"),
     # pedal bar (the per-foot latches are gone — the towers are passive
     # is validated). The bar itself is a DEMO prism (longer than the bed —
     # it gets segmented for printing once the pedals land on it).
@@ -259,6 +263,29 @@ for _i, _lt in enumerate(chassis_light):        # the transparent under-rail ban
         "nothing shows from the front -- it only aims DOWN, at the pedals. White to match the deck "
         "panels, and it diffuses rather than glares. Same resin family as the PETG-GF body, so the "
         "two weld and purge cleanly")
+# THE TRRS ADAPTER'S STATION over the -X/+Y leg (wiring.trrs_*): the same three-step
+# dance the tees do, and for the same reason -- fuse the cradle into the segment that
+# owns its X, THEN cut the things that live inside it, because the fuse fills them in.
+# The PORT is the extra one here: a bore through the +Y rail that the leg's plug
+# reaches in along, so it has to be cut after the cradle's base merges into that rail.
+_trrs_x = _WR_FUSE.TRRS_X
+# THE CHASSIS-SIDE TRRS BOARD IS PARKED (user, 2026-09-16): dropped off the
+# instrument's underside, with the leg's lead left hanging in free air. The user has a
+# wiring plan for it to be implemented later, and until then a board mounted here is a
+# guess that collides with real parts -- it was behind 6 of the model's 14 unintended
+# overlaps (keyhead_endplate, electronics_tray, pi5 and three nut_height screws).
+#
+# NOTHING IS DELETED. wiring.trrs_cradle / trrs_port / trrs_hold_negatives /
+# trrs_components are all still there and still correct for the station as laid out;
+# only these call sites are commented out, so putting the board back is uncommenting
+# them.
+# for _csi in range(len(_seg_edges) - 1):
+#     if _seg_edges[_csi + 1] < _trrs_x < _seg_edges[_csi]:
+#         chassis_segments[_csi] = chassis_segments[_csi].union(_WR_FUSE.trrs_cradle())
+#         chassis_segments[_csi] = chassis_segments[_csi].cut(_WR_FUSE.trrs_port())
+#         for _cut in _WR_FUSE.trrs_hold_negatives():
+#             chassis_segments[_csi] = chassis_segments[_csi].cut(_cut)
+#         break
 for _i, _seg in enumerate(chassis_segments):     # chassis split into dovetailed segments
     PARTS[f"chassis_{_i}"] = (partial(heal, _seg), f"petg-gf/chassis_{_i}.step",
                               "PETG-GF — chassis segment (cadkit slide-down T joint per rail; NO glue "
@@ -759,12 +786,9 @@ def _electronics_components():
     from . import wiring as WR
     from . import top_plate as TP
     out = [("electronics_tray", EL.electronics_tray()),
-           ("pi5", EL.pi5()), ("teensy_stack", EL.teensy_stack()),
-           ("adc_stack", EL.adc_stack()), ("buck", EL.buck()),
-           ("teensy_ifc", EL.teensy_ifc()),
-           ("analog_frontend", EL.analog_frontend()),
-           ("ts_jack", EL.ts_jack()), ("dc_jack", EL.dc_jack()),
-           ("usbc_jack", EL.usbc_jack()),
+           ("pi5", EL.pi5()),
+           ("motor_ctrl", EL.motor_ctrl()),
+           ("output_panel", EL.output_panel()),
            ("oled", EL.oled()), ("joystick", EL.joystick())]
     out += [(f"top_plate_{i}", seg) for i, seg in enumerate(TP.segments)]
     out += [(f"top_plate_color_{i}", seg) for i, seg in enumerate(TP.segments_color)]
@@ -781,6 +805,7 @@ def _electronics_components():
         out.append((f"top_plate_color_{len(TP.segments_color) + i}",
                     fc.translate((0, dy, 0))))
     out += WR.tee_components()
+    # out += WR.trrs_components()      # PARKED with the station above
     out += WR.build_wires()
     return out
 
@@ -1063,8 +1088,12 @@ def screw_rows_components():
 
 BODY_WORK_PARTS = SCREW_ROW_PARTS + (
     "bridge_endplate", "bridge_bearings", "motor", "chassis_",
-    "electronics_tray", "pi5", "teensy_", "adc_stack", "buck", "tee_", "wire_",
-    "analog_frontend", "dc_jack", "ts_jack", "usbc_jack", "joystick", "oled",
+    # BOTH SIDES OF THE MERGE ARE RIGHT HERE: main added the deck/pickup/optical
+    # parts while this branch deleted teensy_/adc_stack/buck/analog_frontend and the
+    # three free-standing panel jacks (they are PCB parts on the output+panel board
+    # now). Keep main's additions, keep the deletions.
+    "electronics_tray", "pi5", "motor_ctrl", "tee_", "wire_",
+    "output_panel", "joystick", "oled",
     "body_adapter", "lock_pin_", "adjust_", "fixed_", "bar_latch_", "leg_latch_",
     "top_plate", "pickup", "optical")   # the deck piece too: its skirt sets the bay's headroom
 
@@ -1200,9 +1229,24 @@ _COLORS = {
     "leg_latch_spring": (0.62, 0.64, 0.67),  # stainless coil (purchased)
     "lock_pin_screw":  (0.55, 0.55, 0.58),   # M4x12 button head (purchased)
     "lock_pin_insert": (0.80, 0.60, 0.35),   # brass heat-set insert
+    "leg_trrs_plug":   (0.15, 0.15, 0.17),   # the blind-mate: the FIXED plug, in the
+    "leg_trrs_jack":   (0.20, 0.20, 0.22),   # adapter's roof...and the FLOATING jack
+    "leg_trrs_spring": (0.62, 0.64, 0.67),   # ...the coil that holds them together
+    "leg_trrs_throat": (0.34, 0.56, 0.44),   # ...and the ring that keeps the jack in
+    "bar_trrs_sleeve": (0.03, 0.03, 0.03),   # the bottom joint's TPU carrier (black)
+    "bar_trrs_throat": (0.05, 0.05, 0.06),   # ...and the TPU keeper for its jack
+    "bar_trrs_jack":   (0.12, 0.12, 0.14),   # ...the bought jack it holds
+    "bar_trrs_lead":   (0.45, 0.45, 0.48),   # ...and the lead out of its back, as far as the bar's wiring channel
+    "bar_trrs_plug":   (0.15, 0.15, 0.17),   # ...the male plug it floats
+    "bar_trrs_spring": (0.62, 0.64, 0.67),   # ...and the coil above it
+    "leg_trrs_sleeve": (0.03, 0.03, 0.03),   # ...and the TPU cup that holds the plug (black)
+    "leg_trrs_patch":  (0.12, 0.12, 0.14),   # ...the lead up to the chassis socket
+    "leg_trrs_leg_lead": (0.12, 0.12, 0.14), # ...and the column's own, down the leg
     "bar_latch_frame": (0.85, 0.35, 0.20),   # pedal bar latch accent
     "bar_latch_collar": (0.36, 0.42, 0.46),  # PETG-GF, the bar tower's family
     "bar_latch_spring": (0.62, 0.64, 0.67),
+    "bar_latch_screw": (0.55, 0.55, 0.58),   # M4 button -- same SKU, same colour
+    "bar_latch_insert": (0.80, 0.60, 0.35),  # as the leg's screw and insert
     "leg_seg_body":    (0.42, 0.48, 0.52),   # square GF bodies
     "leg_coupler_m":   (0.36, 0.42, 0.46),
     "leg_coupler_f":   (0.36, 0.42, 0.46),
@@ -1282,16 +1326,18 @@ _COLORS = {
     # electronics bay (dummies) + panel jacks
     "electronics_tray": (0.30, 0.36, 0.32),  # printed tray
     "pi5":             (0.05, 0.35, 0.15),   # PCB green
-    "teensy_stack":    (0.10, 0.45, 0.30),
-    "adc_stack":       (0.15, 0.25, 0.50),
-    "buck":            (0.35, 0.30, 0.50),
-    "teensy_ifc":      (0.55, 0.25, 0.25),   # Teensy interface PCB (2x CAN
-                                             # transceiver + XH headers)
+    "output_panel":    (0.45, 0.30, 0.45),   # output + panel board (VBUS broken,
+                                             # DAC + true-bypass relay + the TS jack)
+    "motor_ctrl":      (0.55, 0.25, 0.25),   # motor controller PCB (CH32V307 +
+                                             # 2x CAN transceiver + XH headers)
     "tee_pcb":         (0.10, 0.42, 0.18),   # trunk-and-drop bus tee PCBs
     "tee_cradle":      (0.32, 0.55, 0.42),   # PCTG drop-in PCB cradle (pcb_cradle, side hold-down)
+    "trrs_adapter_pcb":    (0.18, 0.42, 0.24),   # the leg's TRRS<->XH adapter (bronner's board)
+    "trrs_adapter_plug":   (0.15, 0.15, 0.17),   # the lead from the leg, plugged in
+    "trrs_adapter_screw":  (0.55, 0.55, 0.58),   # M4 button, 2.5 hex -- the one lock
+    "trrs_adapter_insert": (0.80, 0.60, 0.35),   # its brass heat-set insert
     "tee_screw":       (0.72, 0.74, 0.78),   # M4x10 button, BESIDE the tee board
     "tee_insert":      (0.72, 0.60, 0.30),   # M4 heat-set brass, in the cradle boss
-    "analog_frontend": (0.20, 0.45, 0.40),   # bridge-end buffer + relay board
     "optical_pcb":     (0.12, 0.30, 0.55),   # per-string optical strip (blue solder mask,
                                              # so it reads apart from the green audio PCBs)
     "optical_cables":  (0.15, 0.15, 0.17),   # USB-C + XHP-6 plugs and their leads
@@ -1305,7 +1351,6 @@ _COLORS = {
     "chassis_light":   (0.88, 0.91, 0.94),   # light window -- the deck panels' white
     "oled":            (0.05, 0.05, 0.08),   # screen (perfect-black OLED)
     "joystick":        (0.15, 0.15, 0.17),   # UI control
-    "ts_jack":         (0.62, 0.64, 0.67),
     "dc_jack":         (0.62, 0.64, 0.67),
     "usbc_jack":       (0.62, 0.64, 0.67),
     # wire harness: HUE = gauge bucket, SHADE = the specific wire in the bucket
@@ -1323,11 +1368,9 @@ _COLORS = {
     "motor_pigtail":   (0.45, 0.45, 0.48),   # grey        - SERVO42D's own 6-pin
                                              #   XH pigtail (factory jacket)
     "wire_knee_drop":  (0.45, 0.45, 0.48),   # grey        - LKL drop stub
-    "wire_pickup":     (0.55, 0.85, 0.55),   # lightest green - shielded: pickup -> AFE
-    "wire_audio":      (0.30, 0.72, 0.40),   # light green - shielded: AFE -> ADC
-    "wire_dac":        (0.10, 0.52, 0.28),   # dark green  - shielded: DAC -> AFE
-    "wire_out":        (0.04, 0.34, 0.18),   # darkest green - shielded: relay -> jack
-    "wire_relayctrl":  (0.98, 0.88, 0.35),   # lightest amber - relay control
+    "wire_pickup":     (0.55, 0.85, 0.55),   # lightest green - shielded. DORMANT: the
+                                             #   wire returns when the optical board is
+                                             #   designed and the pickup plugs into it
     "wire_link":       (0.95, 0.72, 0.22),   # light amber - Teensy <-> Pi
     "wire_tdm":        (0.80, 0.46, 0.10),   # deep amber  - CS stack -> Pi
     "wire_oled":       (0.68, 0.36, 0.08),   # brown-amber - OLED -> Teensy
@@ -1407,11 +1450,12 @@ def _export_assembly(publish=True, gate=True, gate_full=True):
 # elsewhere. The build fails ABOVE it, so a NEW overlap still stops it, and it must
 # always equal the count you can NAME -- a baseline kept above the real number is
 # just a licence for the next fault to arrive unnoticed.
-#   chassis <-> wire_pwr_hot_10   ~0.6 mm^3   a wire clipping a solid; assigned out
-# Was 2. The bridge_endplate <-> wire_out clip went away with the endplate rework,
-# and the three deferred chassis_trrs_cable pairs are gone from DEFERRED entirely
-# (see check_overlaps). Drive this to 0 when the last wire is rerouted.
-OVERLAP_BASELINE = 1
+# NOTHING IS ACCEPTED ANY MORE. Build #657 (branner's prism-first bank rebuild, which
+# rerouted the -Y harness corridor) came back with ZERO unintended pairs, so the last
+# named defect -- chassis <-> wire_pwr_hot_10, ~0.6 mm^3, a wire clipping a solid,
+# carried since August -- is gone. Was 2, then 1, now 0: every unintended pair from
+# here is a regression and stops the build, which is what the rule above is for.
+OVERLAP_BASELINE = 0
 
 
 def _report_overlaps(comps, full=False) -> int:

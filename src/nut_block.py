@@ -1484,46 +1484,51 @@ def height_screw_xy(i: int):
     return HS_ROWS[_row_of(i)], _screw_y(i)
 
 
-def _plan_roof(i: int):
-    """The insert's plan with a ROOF on its +X end: 45 deg off the dowel lobe's corners to a flat
-    HS_ROOF_T past its face. The extension's slot is cut to this, so the keyhead's -X -> +X print gets a
-    roof and a short bridge down there instead of a ceiling."""
-    (dy, dw), _cl = insert_lobes(i)
-    assert HS_ROOF_T < dw / 2.0, f"string {i + 1}'s dowel lobe is too narrow for its roof"
-    yld, yhd = dy - dw / 2.0, dy + dw / 2.0
+def _roof_groups():
+    """The +X ROOF spans, as (y_lo, y_hi, clr) of the dowel lobes (the fit included in lo/hi, and kept so
+    the roof can start exactly at the pockets' own +X face). Pockets whose lobes abut -- the bass SKUs,
+    8-10 -- take ONE roof over the lot: give each its own and the roofs meet in a peak and a valley
+    between the strings (user caught this), where the bridge has to stay flat."""
     out = []
-    for x, y in _plan(i):
-        if x == INS_X1 and y == yld:
-            out += [(x, y), (INS_X1 + HS_ROOF_T, yld + HS_ROOF_T)]
-        elif x == INS_X1 and y == yhd:
-            out += [(INS_X1 + HS_ROOF_T, yhd - HS_ROOF_T), (x, y)]
+    for i in range(D.N_STRINGS):                  # string 1 is +Y, so each next string is -Y of the last
+        (dy, dw), _cl = insert_lobes(i)
+        c = _clr(i)
+        lo, hi = dy - dw / 2.0 - c, dy + dw / 2.0 + c
+        if out and out[-1][0] - hi < D.MIN_WALL_2P:
+            out[-1] = (min(out[-1][0], lo), max(out[-1][1], hi), max(out[-1][2], c))
         else:
-            out.append((x, y))
-    assert len(out) == len(_plan(i)) + 2, f"string {i + 1}'s plan has no +X face to roof"
+            out.append((lo, hi, c))
     return out
 
 
-def lower_pockets() -> cq.Workplane:
-    """Every extension's slot: the insert's own plan, roofed at +X and grown by the fit, from the floor up
-    into the main pockets. Neighbours that abut -- the bass SKUs, 8-10 -- simply run together, and their
-    merged roof is one long bridge (user)."""
+def _roof_cutter(lo: float, hi: float, c: float, z_top: float) -> cq.Workplane:
+    """One group's roof, floor to the prism's top: full width until the pockets' own +X face (INS_X1 + the
+    fit), then a TRUE 45 deg ramp -- rise HS_ROOF_T over the same run -- to a flat HS_ROOF_T past that
+    face. Starting the ramp anywhere -X of that face would leave the pocket at full width under part of
+    it, and the material would then arrive in one step: a narrow flat ledge, which is neither a ramp the
+    printer can climb nor a span it can bridge (user). It runs the FULL height of the prism because that
+    is how far the prism stands +X of those faces: roofed, the -X -> +X print never meets a ceiling there
+    and the prism's own +X wall stays whole."""
+    t = HS_ROOF_T
+    assert hi - lo > 2 * t, f"a {hi - lo:.2f} roof span has no room for its flat top"
+    x0 = INS_X1 + c                                # the pockets' +X face: where the ramp starts
+    pts = [(x0 - 0.5, lo), (x0, lo), (x0 + t, lo + t),
+           (x0 + t, hi - t), (x0, hi), (x0 - 0.5, hi)]
+    return (cq.Workplane("XY").polyline(pts).close()
+            .extrude(z_top - HS_FLOOR).translate((0, 0, HS_FLOOR)))
+
+
+def lower_pockets(z_top: float) -> cq.Workplane:
+    """Every extension's slot, floor up into the main pockets: the insert's own plan grown by the fit,
+    and ONE roof per group of abutting pockets (_roof_groups), carried up to the prism's top `z_top`."""
     out = None
     for i in range(D.N_STRINGS):
-        k = (cq.Workplane("XY").polyline(_plan_roof(i)).close().offset2D(_clr(i), kind="arc")
+        k = (_plan_wire(i).offset2D(_clr(i), kind="arc")
              .extrude((POCKET_Z0 + 0.5) - HS_FLOOR).translate((0, 0, HS_FLOOR)))
         out = k if out is None else out.union(k)
+    for lo, hi, c in _roof_groups():
+        out = out.union(_roof_cutter(lo, hi, c, z_top))
     return out
-
-
-def pocket_x_slot(i: int, x_to: float, z_top: float) -> cq.Workplane:
-    """Opens the MAIN pocket's +X end out through the prism, over the band the insert's full-profile
-    body travels inside the prism (POCKET_Z0 up to z_top). There that end is the dowel lobe's flat,
-    and material +X of it would be a ceiling in the -X -> +X print."""
-    (dy, dw), _cl = insert_lobes(i)
-    c = _clr(i)
-    x0 = INS_X1 - 0.5
-    z0 = POCKET_Z0 - 0.1
-    return box_at(x_to - x0, dw + 2 * c, z_top - z0, x=(x0 + x_to) / 2, y=dy, z=(z0 + z_top) / 2)
 
 
 def height_screw_negatives(i: int):

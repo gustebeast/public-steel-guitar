@@ -67,6 +67,7 @@ import cadquery as cq
 
 from . import dimensions as D
 from .helpers import box_at, cyl_y
+from cadkit.holes import teardrop_hole
 from cadkit.printing import snap as _snap
 
 # ── the bead grid ────────────────────────────────────────────────────────────
@@ -223,17 +224,49 @@ LOAD_Z = -15 * B                  # -12.0 tunnel/cover bottom (load window botto
                                   # plug lives.
 
 # ── spring (NEW BOM SKU) ─────────────────────────────────────────────────────
+# ONE COIL FOR BOTH LATCHES (user), USED AS BOUGHT -- no cutting (user: cutting
+# introduces room for error). uxcell B0GCZVQFWN: 304 SS, O5.0 OD x 0.6 wire x 15.0
+# FREE, 10 to a pack, $6.99.
+#
+# 15.0 DID NOT FIT THE LOWER LATCH until the collar was reworked. The bar collar's
+# sleeve has to swallow the coil at FREE length plus a MIN_WALL_2P back wall, and from
+# the cup's floor it had 12.8 -- 2.2 short of the coil itself. What bought the room was
+# the user's observation that the collar carries TWO T rails and a screw: drop the rail
+# on the screw's side, let the ring's arm run out into the space on that side, and the
+# spring's axis can move outboard -- which pays, one for one, for pulling the cup's
+# floor back -Y. The sleeve is 16.0 now. See bar_latch.ARM_SPR and RAIL_SIDES.
 SPR_OD = 5.0
 SPR_WIRE = 0.6
-SPR_FREE = 12.0
-SPR_N = 6.0                       # active coils
-SPR_SOLID = (SPR_N + 2) * SPR_WIRE                     # 4.8
-SPR_RATE = 2.51                   # N/mm (G=79300, see the BOM line)
+SPR_FREE = 15.0
+SPR_N = 10.0                      # active coils -- the WORST plausible count on 15.0 of
+                                  # free length at 0.6 wire, which is a 1.25 pitch.
+                                  # Anything denser is nearly closed at rest, which
+                                  # catalogue springs are not. The COUNT matters more
+                                  # than the rate here: solid height is what makes a
+                                  # latch bind, and the rate only sets the feel
+SPR_SOLID = (SPR_N + 2) * SPR_WIRE                     # 7.2, up from 4.8
+SPR_RATE = 1.9                    # N/mm, ESTIMATED and bracketed 1.6-2.4: McMaster
+                                  # publishes 1.96 for a O5.63 x 0.63 x 12.5 and this
+                                  # one is longer at a smaller OD. MEASURE ON ARRIVAL --
+                                  # every force below derives from it
+SLIDER_UP = (1.0, 0.0, 0.0)       # the slider's build direction. leg_stack.PRINT_UP
+                                  # is the authority and leg_latch asserts the two
+                                  # agree; it is repeated here because the spring
+                                  # bore is horizontal in that direction and so has
+                                  # to be teardropped, and latch.py cannot import
+                                  # leg_stack without a cycle
 SPR_BORE_D = SPR_OD + 0.4         # 5.4 pocket in the slider
 SPR_ID = SPR_OD - 2 * SPR_WIRE    # 3.8 coil bore
 POST_D = SPR_ID - 0.8             # 3.0 guide post (0.4 radial clearance in the coil)
 POST_L = 6 * B                    # 4.8 post length off the tunnel's back wall
-SPR_SEAT = 8 * B                  # 6.4 blind-bore depth in the slider
+SPR_SEAT = 10 * B                 # 8.0 blind-bore depth in the slider, up from
+                                  # 6.4. Installed length is SPR_GAP + SPR_SEAT
+                                  # and it has to clear SPR_SOLID + 0.5 at full
+                                  # stroke: at 6.4 the bought coil went solid
+                                  # under the thumb (7.20 against a 7.70 floor).
+                                  # At 8.0 the pressed length is 8.80 and the
+                                  # slider still keeps 0.72 over MIN_WALL_2P
+                                  # behind its seat
 SPR_GAP = 5 * B                   # 4.0 slider back face -> tunnel back at REST.
                                   # MUST EXCEED STROKE or the slider bottoms on the
                                   # tunnel wall before the hook has cleared.
@@ -471,8 +504,13 @@ def slider(cx: float = LX_C) -> cq.Workplane:
     # PAD: through the cover aperture, flush with the outer face at rest
     b = b.union(_yz(PAD_W, FACE_Y, COVER_IN, PAD_Z0, PAD_Z1, cx))
     # spring blind bore, into the back face
-    b = b.cut(cyl_y(SPR_BORE_D, SPR_SEAT + 0.2, y0=back - 0.2,
-                    x=cx, z=(PAD_Z0 + PAD_Z1) / 2))
+    # TEARDROP, not a plain cylinder. The slider prints with +X up, so this bore is
+    # HORIZONTAL in the print and its upper arc is an overhang -- it was already ~21 mm2
+    # past 45 degrees before the coil grew, and the bought O5.63 took it to ~24 (user's
+    # rule: nothing past 45). A teardrop peaks instead of arching, and costs nothing.
+    b = b.cut(teardrop_hole(SPR_BORE_D, SPR_SEAT + 0.2,
+                            (cx, back - 0.2, (PAD_Z0 + PAD_Z1) / 2.0),
+                            (0, 1, 0), SLIDER_UP))
     return b
 
 
@@ -507,6 +545,42 @@ def spring_length(pressed: bool = False) -> float:
 
 def spring_force(pressed: bool = False) -> float:
     return (SPR_FREE - spring_length(pressed)) * SPR_RATE
+
+
+def coil(length: float, base, direction) -> cq.Workplane:
+    """THE COIL, swept as a real helix, along any axis.
+
+    This used to live inside spring() and nothing else could reach it, so the two
+    OTHER latch springs in the assembly -- leg_latch's and bar_latch's -- were drawn as
+    a plain cylinder and a tube instead. A tube is the coil's swept ENVELOPE, which is
+    what the overlap gate wants; a cylinder is not even that, it is the envelope with
+    the bore filled in. Neither is what a person should be shown, and the user spotted
+    exactly that in the viewer: one spring a helix, the next a solid slug.
+
+    Exact where it matters: OD, wire diameter, turn count, and OVERALL length -- the
+    helix PATH is built one wire-diameter short, because the swept tube adds a wire
+    radius past the path at each end.
+
+    Simplified where it does not: uniform pitch, so the closed-and-ground END coils are
+    drawn pitched rather than touching. No interface cares -- OD sets the bore fit,
+    overall length sets the gap, and solid height is turns x wire either way."""
+    r_mid = (SPR_OD - SPR_WIRE) / 2.0
+    path_h = length - SPR_WIRE
+    wire = cq.Wire.makeHelix(pitch=path_h / SPR_TURNS, height=path_h, radius=r_mid)
+    c = (cq.Workplane("XZ").center(r_mid, 0).circle(SPR_WIRE / 2.0)
+         .sweep(cq.Workplane("XY").add(wire), isFrenet=True))
+    c = c.rotate((0, 0, 0), (1, 0, 0), -90)          # helix +Z -> +Y
+    d = cq.Vector(*direction).normalized()
+    y = cq.Vector(0, 1, 0)
+    ax = y.cross(d)
+    if ax.Length > 1e-9:
+        import math
+        ang = math.degrees(math.acos(max(-1.0, min(1.0, y.dot(d)))))
+        c = c.rotate((0, 0, 0), ax.toTuple(), ang)
+    elif d.y < 0:
+        c = c.rotate((0, 0, 0), (1, 0, 0), 180)
+    b = cq.Vector(*base) + d * (SPR_WIRE / 2.0)
+    return c.translate(b.toTuple())
 
 
 def spring(cx: float = LX_C, pressed: bool = False) -> cq.Workplane:
