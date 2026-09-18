@@ -406,6 +406,26 @@ twisting + the bridge-side AFE buffer, not conductor size):
 > carry CAN. **Open:** a wider shell, a separate power bus, or a measured slew
 > budget showing the staggered peak really is under 3 A.
 >
+> ⚠ **THE PARAGRAPH ABOVE MAY BE CHASING A PROBLEM THAT DOES NOT EXIST — audited
+> 2026-09-18 and left standing only because the answer is not certain.** It assumes the
+> motors draw their current *through* J1. `elec/motor_ctrl.py` states the opposite in
+> as many words: *"THE MOTOR CURRENT NEVER COMES THROUGH HERE. The chain runs output
+> panel → tees → keyhead and every motor taps at its own tee, so what reaches this board
+> is its own draw plus the Pi's 5 V worth — about 0.7 A at 24 V."*
+>
+> **The harness supports the board file.** `src/wiring.py` builds the trunk from the
+> output panel's J7, out to tee 10, then west along the rail through the tees, and
+> *terminates* it at the motor controller's **J3** — "THE TRUNK ENDS AT THE MERGED
+> BOARD … the chain simply terminates at a connector on a board". On that topology the
+> motors tap upstream of this board and J1 carries CAN plus its own modest draw, not
+> 5 A, and there is nothing here to fix.
+>
+> **What is genuinely open is narrower and different:** J1's cable carries a 24 V
+> conductor to the same tees the trunk already feeds, which is a *second* path to the
+> same nodes. Either it is a parallel feed nobody designed as one, or bus A's cable
+> should carry CAN only. That question decides J1's current, and neither file answers
+> it. Until it is answered, do not spend a wider shell on this.
+>
 > ⚠ **And the third option is almost certainly the right one, because the screw is
 > self-locking.** `Tr8×2`'s 5.2° lead angle holds tune with the motor de-energised
 > — that is why the drivetrain chose it, and it is recorded as "zero-power tune
