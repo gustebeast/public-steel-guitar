@@ -807,8 +807,8 @@ def optical():
         #             Everything below is computed on the typical, so a worst-case
         #             emitter delivers a QUARTER of it: the thinnest string's ~60 nA
         #             becomes ~15 nA and 0.28 V at the output becomes 0.07 V.
-        #             THAT IS STILL WORKABLE -- against the 48 uVrms noise floor
-        #             computed further down it is ~63 dB instead of ~75 -- but it is
+        #             THAT IS STILL WORKABLE -- against the 120 uVrms noise floor
+        #             computed further down it is ~55 dB instead of ~67 -- but it is
         #             the number the per-string Rf tuning has to absorb, and it is why
         #             that tuning is not optional. Ten emitters from one reel will not
         #             span the full 4x; ten boards built a year apart might.
