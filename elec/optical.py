@@ -1628,8 +1628,24 @@ BOARD_NOTES = {
     # THIS netlist produces, and re-measure. The coordinates are not reusable -- they were
     # already invalidated once by the J2 two-way change, because a repair is geometry
     # pinned to one routing, not a property of the schematic.
-    # "repair_vias": [("+3V3A", ...)],
-    # "repair_tracks": [...],
+    # ⚠ AND THE NET THAT NEEDS REPAIRING IS NO LONGER +3V3A. With J2 two-way the router
+    # closes +3V3A on its own; MID is the casualty instead, and its break is a different
+    # SHAPE -- a 2.54 mm gap on F.Cu, the pad's own layer, needing one track and no via.
+    # The first search tool modelled only via-plus-spur and targeted B.Cu only, so it
+    # reported "0 legal paths" for a repair that is one straight line. Generalised, the
+    # same board offers 12 same-layer paths and 1181 via paths.
+    #
+    # This is the shortest same-layer one, 4.57 mm, found by elec/repair_search.py
+    # against the board THIS netlist produces. Re-run it after any netlist change: the
+    # coordinates are pinned to one routing and have already been invalidated once.
+    # ⚠ AND THAT PATH CROSSED A +3V3A DIAGONAL, which the search called clear by
+    # +0.758 mm. The bug was in the geometry, not the board knowledge: the minimum of
+    # the four endpoint-to-segment distances is only the segment-to-segment distance
+    # when the segments DO NOT CROSS. Two that properly intersect are at distance zero
+    # while every endpoint stays far from the other line, so a crossing read as room.
+    # Fixed in elec/repair_search.py; the same line now reads 0.000 and is rejected.
+    # Re-searching needs a board WITHOUT this repair in it, so it is off for one run.
+    # "repair_tracks": [("MID", "F.Cu", 0.25, [(-29.443, 48.312), (-24.870, 48.312)])],
     # ⚠ NARROWING +3V3A IS WORSE TOO: 0.25 -> 0.15 mm took it from 1 unconnected to 2.
     # This was the one lever that was not about giving the router more ROOM. Three
     # attempts had tried that (pre-lay, retry rounds, dropping the B.Cu pour) and all
