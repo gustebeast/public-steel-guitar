@@ -148,7 +148,15 @@ def finish(stem, rounds=1):
     _run("route.py", stem)
     best_n, nets, best_v = _drc(stem)
     print("  pass 1: %d unconnected, %d violation(s)" % (best_n, best_v))
+    # ⚠ THE DRC FILE TRAVELS WITH THE BOARD, because otherwise it does not. This routine
+    # keeps the BEST board but _drc overwrites .finish.drc.json on every pass, so after a
+    # two-round run the board on disk was pass 1 and the DRC file beside it described
+    # pass 2 -- a file whose whole purpose is to say what the board is, saying something
+    # else. It reads as a board that just got worse, and it is the same file the retry
+    # list is built from. Caught by re-running DRC by hand and getting a different answer
+    # from the one lying next to the board.
     shutil.copy(stem + ".kicad_pcb", stem + ".best.kicad_pcb")
+    shutil.copy(stem + ".finish.drc.json", stem + ".best.drc.json")
 
     for k in range(2, rounds + 1):
         if not best_n:
@@ -163,6 +171,7 @@ def finish(stem, rounds=1):
         # is not finished -- so violations are compared first and only then the count.
         if (v, n) < (best_v, best_n):
             shutil.copy(stem + ".kicad_pcb", stem + ".best.kicad_pcb")
+            shutil.copy(stem + ".finish.drc.json", stem + ".best.drc.json")
             best_n, best_v, nets = n, v, nets_now
         else:
             print("  pass %d did not improve on pass %d -- keeping the better board"
@@ -173,6 +182,8 @@ def finish(stem, rounds=1):
         os.remove(retry)
     shutil.copy(stem + ".best.kicad_pcb", stem + ".kicad_pcb")
     os.remove(stem + ".best.kicad_pcb")
+    shutil.copy(stem + ".best.drc.json", stem + ".finish.drc.json")
+    os.remove(stem + ".best.drc.json")
     print("%s: %d unconnected, %d violation(s)"
           % (os.path.basename(stem), best_n, best_v))
     return best_n, best_v
