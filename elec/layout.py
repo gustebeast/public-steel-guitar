@@ -1787,6 +1787,21 @@ def _local_nets(board, patterns, outline, inner=None, local_mm=6.0, width=0.2,
                if q.GetAttribute() in (pcbnew.PAD_ATTRIB_PTH, pcbnew.PAD_ATTRIB_NPTH)]
 
     laid, skipped, reach = 0, 0, pcbnew.FromMM(local_mm)
+    # ⚠ NAME THE SKIPS, DO NOT JUST COUNT THEM. A count says five edges could not be
+    # laid and points at nothing; the names point straight at the pads that end up
+    # unconnected two steps later, which is where the board's last failures live.
+    #
+    # It paid for itself on the first run. The optical board's five skips are not five
+    # problems -- they are ONE problem on five identical op-amp blocks:
+    #     TIA_OUT_1B: U1.7 -> Rf12.2 (3.48 mm)   and 3B, 5B, 7B, 9B, all 3.48 mm
+    # The straight line from the op-amp output to its feedback resistor's far pad passes
+    # the SAME RESISTOR'S OTHER PAD, 0.52 mm off the centreline. A 0.2 mm track needs
+    # 0.1 + 0.14 clearance and the pad reaches 0.27 from its centre: 0.51 mm required
+    # against 0.52 available, a margin of TEN MICRONS. That is why the deterministic pass
+    # will not place it and why the router, stepping finer, squeaks through every time.
+    # The board is not failing on these today -- it is passing on a hundredth of a
+    # millimetre, five times, which is a placement problem wearing a routing costume.
+    skipped_edges = []
     for netname in sorted(by_net):
         group = by_net[netname]
         if same_part_only:
@@ -1867,11 +1882,22 @@ def _local_nets(board, patterns, outline, inner=None, local_mm=6.0, width=0.2,
                         laid += hop
                     else:
                         skipped += 1
+                        skipped_edges.append(_edge_name(a, b, netname, math))
                 else:
                     skipped += 1
+                    skipped_edges.append(_edge_name(a, b, netname, math))
                 inside.append(b)
                 outside.remove(b)
-    return laid, skipped
+    return laid, skipped, skipped_edges
+
+
+def _edge_name(a, b, netname, math):
+    """"net: REF.pad -> REF.pad (d mm)" for an edge this routine could not lay."""
+    def _p(q):
+        fp = q.GetParentFootprint()
+        return "%s.%s" % (fp.GetReference() if fp else "?", q.GetNumber())
+    d = pcbnew.ToMM((a.GetPosition() - b.GetPosition()).EuclideanNorm())
+    return "%s: %s -> %s (%.2f mm)" % (netname, _p(a), _p(b), d)
 
 
 def _outline_pts(notes):
@@ -2519,21 +2545,25 @@ def build(stem):
     if os.path.isfile(retry):
         want = json.load(open(retry, encoding="utf-8"))
         if want:
-            n_laid, n_left = _local_nets(board, [re.escape(n) for n in want],
-                                         _outline_pts(notes), local_mm=1e9,
-                                         inner=notes.get("diff_pair_inner"))
+            n_laid, n_left, n_why = _local_nets(
+                board, [re.escape(n) for n in want], _outline_pts(notes),
+                local_mm=1e9, inner=notes.get("diff_pair_inner"))
             print("  retry: laid %d segment(s) for %d net(s) the router could not finish"
                   "%s" % (n_laid, len(want),
                           ", %d edge(s) still not placeable" % n_left if n_left else ""))
+            for _e in n_why:
+                print("      not placeable: %s" % _e)
 
     if notes.get("local_nets"):
         # NOT `skipped` -- that name already holds the single-pad net count this
         # function reports at the end, and shadowing it made the summary line claim
         # 40 nets had appeared out of nowhere.
-        n_laid, n_left = _local_nets(board, notes["local_nets"], _outline_pts(notes),
+        n_laid, n_left, n_why = _local_nets(board, notes["local_nets"], _outline_pts(notes),
                                      inner=notes.get("diff_pair_inner"))
         print("  local nets: laid %d segment(s)%s"
               % (n_laid, ", %d left to the router" % n_left if n_left else ""))
+        for _e in n_why:
+            print("      not placeable: %s" % _e)
 
     # outline_poly wins when present; outline_mm stays the LAYOUT REGION either way
     # (place_check and the zone filler both measure parts against it).
