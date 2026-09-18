@@ -1550,6 +1550,19 @@ BOARD_NOTES = {
     # vias are for, and those go in open copper where there is room for them.
     # It is also just the normal way to build a mixed-signal board -- ground on every
     # layer it can be on -- so this is the pipeline catching up with practice.
+    # ⚠ DROPPING THE B.Cu POUR IS WORSE, MEASURED: 1 unconnected -> 4. The reasoning
+    # was that B.Cu is the starved layer -- F.Cu carries 1121 track segments, In2.Cu 700,
+    # B.Cu only 190 -- and that its GND pour is why, since In1.Cu is the real reference
+    # plane, unbroken and directly under F.Cu. Free the layer, close the last net.
+    #
+    # It went the other way, and the reason is worth keeping: a GND POUR IS NOT ONLY AN
+    # OBSTACLE, IT IS ALSO THE RETURN PATH AND THE VIA TARGET. Every ground pad and every
+    # stitch via on that layer lands in the pour and needs no track at all. Remove it and
+    # all of that becomes routing the router now has to do, on the layer it was supposed
+    # to be freeing. The 190 segments were never the measure of how much work B.Cu does.
+    #
+    # So B.Cu being "half empty" is not spare capacity. Third structural lever tried on
+    # this net and the third to lose, after the +3V3A pre-lay and the full permutation.
     "zones": [("GND", "F.Cu", 0.3), ("GND", "In1.Cu", 0.3), ("GND", "B.Cu", 0.3)],
     # ⚠ THE PLACEMENTS NAME THE COURTYARD CENTRE, not the pad centroid. This is the
     # only board in elec/ where that is true, and it is true because these coordinates
