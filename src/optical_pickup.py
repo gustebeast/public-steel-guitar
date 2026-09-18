@@ -1142,7 +1142,14 @@ def _parts():
     # buck it feeds; the USB-C gains the +X end, and the whole high-speed chain lays out
     # behind it IN SIGNAL ORDER. The cable run is a wash -- both plugs turn +X to the
     # conduit, so one gets shorter by roughly what the other gains.
-    add("J2", "power in -- 24V, PWR_GND, 2 cavities empty", "XH-SM-4Y",
+    # ⚠ ALL FOUR CAVITIES ARE POPULATED, and this string said "2 cavities empty" until
+    # 2026-09-18. The netlist doubles both rails -- 1=GND 2=+24V 3=+24V 4=GND -- and has
+    # since the contact doubling went in; this description predates it. It is the line a
+    # person reads while crimping, and it was telling them to make a 2-wire cable for a
+    # 4-crimp connector. BOM.md's cable row was already right (4 x 26 AWG); only this
+    # was wrong.
+    add("J2", "power in -- 24V and PWR_GND, both doubled: 1=GND 2=+24V 3=+24V 4=GND",
+        "XH-SM-4Y",
         COMPUTE_X0 + EDGE_KEEP + CRTYD["XH-SM-4Y"][0] / 2,
         edge_y + CRTYD["XH-SM-4Y"][1] / 2)
     # ⚠ THE CHAIN SITS INBOARD OF THE +X EDGE, AND THE PHY'S PINOUT IS WHY. With DP/DM
