@@ -2383,6 +2383,32 @@ def _rules(board, notes):
         nc.SetViaDiameter(pcbnew.FromMM(0.6))
         nc.SetViaDrill(pcbnew.FromMM(0.3))
 
+    # ⚠ PER-NET WIDTH, BECAUSE UNTIL NOW EVERY NET ON EVERY BOARD WAS 0.25 mm AND A 24 V
+    # TRUNK WAS ONE OF THEM. The fleet's 24 V bus is budgeted under 5 A: the cable was
+    # raised to 2 x 22 AWG for it and the XH contacts were doubled for it. The copper
+    # between them was never sized, because there was nowhere to say so -- track_mm is one
+    # number for the whole board. By IPC-2221 at a 10 C rise, 0.25 mm of 1 oz outer copper
+    # carries 0.88 A. Nothing downstream can notice: DRC compares copper to the netlist
+    # and has no concept of current, and the netlist has no concept of width.
+    #
+    # ⚠ AND A WIDTH IS ONLY USEFUL IF A PAD CAN ACCEPT IT. freerouting does not neck down
+    # into a land, so a net that touches an 0402 (0.6 mm pads) cannot sensibly be drawn
+    # much over 0.5 mm, whatever the current argument says. That is why this is a per-NET
+    # dial and not a per-current one, and why a trunk that genuinely needs 2 mm wants
+    # deliberate copper of its own rather than a bigger number here.
+    for _pattern, _w in sorted((notes.get("net_widths") or {}).items()):
+        _name = "W%.2f" % _w
+        if not bds.m_NetSettings.HasNetclass(_name):
+            _nc = pcbnew.NETCLASS(_name)
+            _nc.SetClearance(pcbnew.FromMM(0.127))
+            _nc.SetTrackWidth(pcbnew.FromMM(_w))
+            _nc.SetViaDiameter(pcbnew.FromMM(0.6))
+            _nc.SetViaDrill(pcbnew.FromMM(0.3))
+            bds.m_NetSettings.SetNetclass(_name, _nc)
+        bds.m_NetSettings.SetNetclassPatternAssignment(_pattern, _name)
+    if notes.get("net_widths"):
+        bds.m_NetSettings.RecomputeEffectiveNetclasses()
+
 
 _LAYERS = {"F.Cu": pcbnew.F_Cu, "B.Cu": pcbnew.B_Cu,
            "In1.Cu": pcbnew.In1_Cu, "In2.Cu": pcbnew.In2_Cu}

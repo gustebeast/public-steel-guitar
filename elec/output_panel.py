@@ -766,6 +766,17 @@ BOARD_NOTES = {
     # B.Cu pours the same net rather than a second one -- see the one-ground note in
     # output_panel() for why that stopped being a split.
     "zones": [("GND", "In1.Cu", 0.3), ("GND", "B.Cu", 0.3)],
+    # ⚠ THE 24 V RAILS ARE NOT SIGNAL NETS AND WERE BEING DRAWN AS IF THEY WERE. At the
+    # board default of 0.25 mm they carry 0.88 A of 1 oz outer copper (IPC-2221, 10 C
+    # rise) while the bus budget is under 5 A -- the cable and the connector contacts were
+    # both sized for that figure and audited, and the traces between them never were.
+    # 0.5 mm takes them to 1.6 A, which is as far as a blanket width can go here: these
+    # nets land on 0402 decoupling parts whose pads are 0.6 mm, and freerouting does not
+    # neck down into a land.
+    # ⚠ SO THIS IS AN IMPROVEMENT AND NOT THE FIX. The J6 -> J7 pass-through still carries
+    # the fleet's whole <5 A and wants about 2.8 mm at a 10 C rise, or 1.8 mm if a 20 C
+    # rise is accepted. That is deliberate trunk copper, not a netclass number.
+    "net_widths": {"+24V": 0.5, "PWR_GND": 0.5},
     # ⚠ IN1 IS A PLANE, AND THE ROUTER HAS TO BE TOLD. A zone is just copper as far
     # as freerouting is concerned: pour GND on In1 and say nothing, and it will route
     # signals straight through the plane, which is exactly what it did here. The damage
