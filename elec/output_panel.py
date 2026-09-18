@@ -982,6 +982,21 @@ BOARD_NOTES = {
         "R6": (11.00, -12.00, 0.0),
         "R7": (14.00, -12.00, 0.0),
         # -Y CORNER: THE 24 V ISLAND AND ITS SWITCHER, on their own copper
+        # ⚠ SWAPPING J7 AND J9 DOES NOT FIX THE SEVERED BUS -- measured, still 2
+        # unconnected. The reasoning looked strong: along this edge the inlet J6 is at
+        # x 32, J7 carries the fleet's <5 A and sits at x 0, J9 carries the optical
+        # board's 120 mA and sits at x 16 -- so the low-current tap sits squarely between
+        # the inlet and the big load, and the 24 V bus has to get past a connector
+        # footprint to reach the pads drawing forty times more current. Putting J7 at 16
+        # and J9 at 0 gives the 5 A leg a clear run and leaves the squeeze to the leg
+        # carrying 4 % of it.
+        #
+        # The board came back 2 unconnected either way, which says the break is NOT about
+        # which tap is inboard. Both rails sever in the same pad row whichever order they
+        # sit in, so what blocks the bus is the ROW ITSELF -- three connectors' worth of
+        # through-hole pads and courtyards in one line at y -28, with no lane left between
+        # them on any layer. Re-ordering pads inside a full row does not empty it.
+        # (A 2.0 mm B.Cu lane under it was tried separately and went 2 -> 4.)
         "J7": (0.00, -28.00, 0.0),
         # SWD pads -- the tightest free cluster next to U1; see the note in output_panel()
         "TP1": (-6.10, -2.10, 0.0),

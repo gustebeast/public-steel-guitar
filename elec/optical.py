@@ -1564,6 +1564,21 @@ BOARD_NOTES = {
     # So B.Cu being "half empty" is not spare capacity. Third structural lever tried on
     # this net and the third to lose, after the +3V3A pre-lay and the full permutation.
     "zones": [("GND", "F.Cu", 0.3), ("GND", "In1.Cu", 0.3), ("GND", "B.Cu", 0.3)],
+    # ⚠ NARROWING +3V3A IS WORSE TOO: 0.25 -> 0.15 mm took it from 1 unconnected to 2.
+    # This was the one lever that was not about giving the router more ROOM. Three
+    # attempts had tried that (pre-lay, retry rounds, dropping the B.Cu pour) and all
+    # three lost, and the measured geometry said the gaps were TIGHT rather than blocked
+    # -- the rail already passes 3.86 mm from the pad on B.Cu, and the F.Cu lane at the
+    # pad's own y is shadowed by MID at 0.56 mm centre to centre. So: make the net
+    # smaller instead of the space bigger. It carries ~40 mA and 0.15 mm is good for
+    # 0.62 A, so the width was free electrically.
+    #
+    # It still lost, and that is the useful part. A narrower net is not only a smaller
+    # obstacle, it is also a DIFFERENT netclass -- the router re-plans every +3V3A
+    # segment on the board, not just the failing hop, and the 101 segments that were
+    # working had no reason to come back the same way. FOUR levers, four losses, and the
+    # last one rules out "the corridor is too tight" as the explanation.
+    # What is left is not a router setting. See the open note at the end of this file.
     # ⚠ THE PLACEMENTS NAME THE COURTYARD CENTRE, not the pad centroid. This is the
     # only board in elec/ where that is true, and it is true because these coordinates
     # come from a MECHANICAL model, which reasons about the box a part occupies rather
