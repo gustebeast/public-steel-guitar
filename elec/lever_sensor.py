@@ -251,6 +251,23 @@ def lever_sensor():
     # test pad for exactly this reason. Resolve it before fabrication: either confirm the
     # internal pull from WCH's manual, or spend one 0402 on a pull-down.
     #
+    # ⚠ CAN_RX MEASURED, 2026-09-18: THE MCU PIN CANNOT ESCAPE AT ALL. Probed at 24
+    # directions and five distances from 0.3 to 1.5 mm, U3 pad 19 has ZERO clear exits --
+    # not one bearing, not at any length. Reachable via sites: 885 from the transceiver's
+    # pad, NONE from this one. No 2-segment or 3-segment F.Cu path exists between the two
+    # pads, and no In2.Cu link between any of the 60 nearest reachable via sites.
+    #
+    # The blockers name the cause: CAN_TX's own track and pads take four of the eight
+    # bearings, +3V3 one, GND pads the rest. CAN_TX and CAN_RX are adjacent MCU pins, and
+    # whichever routes first takes the other's escape -- which is exactly what the note
+    # below already predicted ("pre-lay CAN_RX and it connects, and CAN_TX becomes the
+    # unconnected net instead, a clean swap"). The measurement corroborates it rather
+    # than adding anything new.
+    #
+    # So this is NOT repairable the way optical's MID was. That pin had one clear bearing
+    # and needed only a detour around two pads; this one has none, so there is no
+    # geometry to find and no post-route track can help. The recorded conclusion stands
+    # and is now measured rather than argued: only MOVING PARTS fixes this corner.
     # ⚠ AND THE SAME PIN LIST CLOSES OFF THE CAN REMAP. This package brings out PB8 (on
     # pin 1) but NO PB9 at all, so CAN1's PB8/PB9 remap -- the one motor_ctrl uses to get
     # CAN off PA11/PA12 -- does not exist here, and remap 3 is PD0/PD1, which the crystal
