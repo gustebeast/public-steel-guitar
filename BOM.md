@@ -112,6 +112,28 @@ the constraint is stock, not selection. See the optical-pickup section.
 | **TRRS float spring** | Compression, **Ø8.0 OD × 0.7 wire × 20.0 free**, **ID 6.6**, 304 SS (rate ~0.75 N/mm, bracketed 0.6–0.9; **measure on arrival**) | 1 (+ 4 spare) | [uxcell B0C33C21K9](https://www.amazon.com/dp/B0C33C21K9) — 5 to a pack, used **AS BOUGHT** | **$6.29 / 5** [a] | SECOND SKU, and not a preference: the coil has to end up ON the lead, and a lead has two ends — the moulded jack (Ø9.7) and the moulded far plug (Ø6.1). The latch coil's 3.8 ID passes neither, so no assembly order puts it there and the joint was unbuildable with it (user found this). **ID 6.6 clears the far plug by 0.5.** Installed 13.80 → **4.7 N at rest / 6.9 N seated**. The installed length is the SOLID FLOOR here, not the preload target: at 0.75 N/mm a 5.0 N target would want 13.33 and the coil would go solid before the leg seats |
 
 
+> ✅ **THE BEND RADIUS IS RESOLVED — the duty cycle is what settles it (user, 2026-09-18).**
+> This lead is **SET ONCE**: the leg's height is chosen at first setup and again only if
+> the instrument is resold. So the coil is a static form bent once, not a flexing
+> member, and fatigue — the usual reason to respect a bend radius — does not apply.
+> What breaks at a tight radius is the **foil**, and the foil does no work here: the
+> shield is one of the four CIRCUIT conductors (assembly drawing: D → shield → D,
+> sleeve = GND), the spiral serve carries that current and survives bending, the 3.5 mm
+> connector has no shield continuity through the mate anyway, and CAN_H/CAN_L are not a
+> twisted pair in a round 4C cable, so nothing was screening them to begin with.
+> Outermost-conductor strain is ~14% at the design's worst radius against ~5% at the
+> published one; annealed copper breaks at 20–30% and strands redistribute by slip.
+> `leg_trrs.CABLE_BEND_STATIC` (7.5) records the deviation and its licence, and the
+> mandrel asserts against it.
+>
+> **SEARCHED, AND THERE IS NOTHING BETTER TO BUY.** Tensility's whole 2750-part
+> catalogue holds exactly **two** 4C audio assemblies — 10-02135 and 10-02133 — and both
+> use the same 30-00179 wire at Ø3.8 / 22.8. The wider market for 4-pole 3.5 mm leads is
+> consumer headphone cable, which publishes no bend radius at all, which is the reason
+> this project is on Tensility. A **thinner** lead would genuinely help (Ø3.0 at 3×OD
+> clears the cavity outright) and unshielded would cost us nothing electrically — but
+> not at the price of an unpublished datasheet.
+
 > ⚠⚠ **READ THE VENDOR'S PAGE, 2026-09-18 — and it BLOCKS the coil (user asked).**
 > Tensility publish, for 10-02135: wire outer **Ø3.8** ✓, cable length **915** (not the
 > 914 above, distributor rounding), price **$5.01** (not $5.31), PVC jacket, **spiral +
