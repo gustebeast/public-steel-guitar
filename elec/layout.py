@@ -1045,6 +1045,206 @@ def add_missing_vias(board, eps_mm=0.05, via_d=0.6, via_drill=0.3, clr=0.14):
     return added
 
 
+def drop_redundant_pth_vias(board):
+    """Delete routing vias that the router drilled into a through-hole pad of their own net.
+
+    ⚠ THIS IS THE ROUTER'S DOING, NOT THE STITCHER'S, and the distinction cost a
+    while to find because the symptom is identical. layout.py's stitcher really did put
+    20 vias on motor_ctrl's XH pins and 14 on output_panel's, and excluding PTH pads
+    from its via-in-pad branch really did fix those. What it did NOT fix -- 8 on
+    motor_ctrl, 6 on lever_sensor, 4 on output_panel -- has a different author: measured
+    on the UNROUTED board, every one of those boards has ZERO vias sitting in a PTH pad,
+    and they all appear in the .ses that comes back. Freerouting treats a through-hole
+    pad as a free layer change on its own net, which is electrically true and mechanically
+    not: the drill enters an already-drilled hole, risks the bit and leaves an oval bore.
+    No amount of tuning the stitcher's clearances reaches a via the stitcher never made.
+
+    ⚠ DELETING IS SAFE HERE AND WOULD NOT BE EARLIER. A PTH pad already connects
+    every copper layer -- that is what the barrel is -- so a same-net via inside it
+    carries nothing the pad was not already carrying, and any track ending at the via's
+    centre ends inside the pad's own copper and stays connected. That is why the test
+    below demands BOTH that the holes overlap and that the via centre is inside the pad
+    shape: a via merely NEAR the pad may be holding a track that the pad does not touch.
+
+    And the timing is the whole reason this is allowed at all. Removing vias BEFORE
+    routing re-plans the board -- it took optical from 0 unconnected to 6, on a board
+    with four through-hole pads -- because every other net then routes around the
+    absence. Here the router has finished and nothing re-plans; see the deliberate
+    repairs in route.py, which are placed after routing for the same reason.
+    """
+    import math
+    pth = []
+    for fp in board.GetFootprints():
+        for pad in fp.Pads():
+            if pad.GetAttribute() not in (pcbnew.PAD_ATTRIB_PTH, pcbnew.PAD_ATTRIB_NPTH):
+                continue
+            d = pad.GetDrillSize()
+            pth.append((pad, pad.GetNetCode(), pad.GetPosition(),
+                        max(d.x, d.y) / 2.0, fp.GetReference(), pad.GetNumber()))
+    # ⚠ EVERY MEASUREMENT BEFORE ANY REMOVAL -- board.Remove() leaves the track
+    # container in a state where GetTracks() raises, the same SWIG ownership hazard that
+    # corrupted the footprint IO plugin earlier in this file's history.
+    doomed = []
+    for t in board.GetTracks():
+        if not isinstance(t, pcbnew.PCB_VIA):
+            continue
+        vp, vr = t.GetPosition(), t.GetDrill() / 2.0
+        for pad, nc, pp, pr, ref, num in pth:
+            if t.GetNetCode() != nc:
+                continue                       # a DIFFERENT net in the hole is a short,
+                                               # which DRC already calls an error
+            if math.hypot(vp.x - pp.x, vp.y - pp.y) >= vr + pr:
+                continue                       # holes do not touch
+            if not pad.HitTest(vp):
+                continue                       # centre outside the pad's copper: the
+                                               # via may be holding a track the pad is
+                                               # not touching, so leave it alone
+            doomed.append((t, "%s.%s [%s]" % (ref, num, t.GetNetname())))
+            break
+    for t, _why in doomed:
+        board.Remove(t)
+    if doomed:
+        board.BuildConnectivity()
+        print("  removed %d redundant via(s) drilled into a through-hole pad: %s"
+              % (len(doomed), ", ".join(w for _t, w in doomed[:8])))
+    return len(doomed)
+
+
+def tidy_router_vias(board, min_gap_mm=0.25):
+    """Remove vias the router left carrying nothing, and merge ones drilled too close.
+
+    ⚠ NOT WIRED IN, AND MUST NOT BE UNTIL THE TWO DEFECTS BELOW ARE FIXED. It is kept
+    because the PROBLEM it describes is real and measured, and because both ways it failed
+    are worth knowing before anyone writes it a second time. Run on output_panel it:
+
+      1. CALLED SIX GND STITCH VIAS DANGLING AND WOULD HAVE DELETED THEM. `attached()`
+         below counts track ends and nothing else, but a plane stitching via is attached
+         to a ZONE -- that is its entire job -- so every one of them reads as carrying
+         nothing. DRC flagged exactly ONE dangling via on that board and it was right;
+         this function found seven and was wrong six times. The fix is not a better
+         geometric test, it is to ask the board: pcbnew's CONNECTIVITY_DATA knows about
+         zone connections and this routine does not.
+      2. CORRUPTED THE BOARD by removing nine items. The next pass to iterate footprints
+         got a bare SwigPyObject back from GetFootprints() -- the same ownership hazard
+         the file warns about around fp.Remove(). Two removals survive it and nine do
+         not, so "count before removing" is necessary and not sufficient; the removal
+         itself probably has to be the last thing done to the board.
+
+    The warnings it was written for are still on output_panel and still unfixed: one
+    dangling SWDIO via, +3V3 vias 0.392 mm apart, GND vias 0.502 mm apart.
+
+    ⚠ FOUND BY LOOKING PAST THE ERROR COUNT, and they are the same shape of defect as
+    the co-located drills next door: DRC grades both of these WARNING, finish.py counts
+    only unexpected ERRORS, so a board reporting "0 unconnected, 0 violations" carried
+    three of them. On output_panel, reproducibly: one dangling SWDIO via, and two pairs of
+    same-net vias 0.39 and 0.50 mm apart centre to centre.
+
+    ⚠ 0.39 mm APART IS NOT A TIGHT FIT, IT IS ONE HOLE. Two 0.3 mm drills on 0.39 mm
+    centres leave 0.09 mm of laminate between the walls, which breaks out on the drill and
+    comes back as a single oval bore -- so the fab rule this trips is real even though both
+    vias are on the same net and shorting them is the intent.
+
+    The two cases are one operation with the count of attached tracks set to zero or not:
+      * nothing attached -> the via is a stub antenna; delete it outright.
+      * a crowded pair   -> delete the one carrying less, and hand its tracks to the
+                            survivor with a short segment on each affected layer.
+    ⚠ THAT JOINING SEGMENT ADDS NO NEW COPPER AREA, which is the only reason it needs
+    no clearance search: the pass runs only when the two via PADS ALREADY OVERLAP, and
+    every point between two overlapping discs is inside one of them. A pair further apart
+    than that is left alone and reported rather than guessed at.
+
+    Like drop_redundant_pth_vias, this is safe HERE and would not be before routing -- see
+    that function for the six nets that removing vias early cost the optical board.
+    """
+    import math
+    vias = [t for t in board.GetTracks() if isinstance(t, pcbnew.PCB_VIA)]
+    tracks = [t for t in board.GetTracks() if isinstance(t, pcbnew.PCB_TRACK)
+              and not isinstance(t, pcbnew.PCB_VIA)]
+
+    def attached(v):
+        """Track ends landing in this via's pad, on a layer the via actually spans."""
+        out, vp, r = [], v.GetPosition(), v.GetWidth() / 2.0
+        lo, hi = v.TopLayer(), v.BottomLayer()
+        for t in tracks:
+            if t.GetNetCode() != v.GetNetCode():
+                continue
+            if not (lo <= t.GetLayer() <= hi):
+                continue
+            for end in (t.GetStart(), t.GetEnd()):
+                if math.hypot(end.x - vp.x, end.y - vp.y) <= r:
+                    out.append((t, t.GetLayer()))
+                    break
+        return out
+
+    # ⚠ INDICES, NOT THE OBJECTS -- a SWIG-wrapped PCB_VIA is unhashable, so it can
+    # be neither a dict key nor a set member.
+    load = [attached(v) for v in vias]
+    doomed, joins, wide = [], [], []
+    gone = set()
+
+    for i, v in enumerate(vias):
+        if not load[i]:
+            gone.add(i)
+            doomed.append((v, "dangling %s" % v.GetNetname()))
+
+    for i, a in enumerate(vias):
+        if i in gone:
+            continue
+        for j in range(i + 1, len(vias)):
+            b = vias[j]
+            if j in gone or a.GetNetCode() != b.GetNetCode():
+                continue
+            ap, bp = a.GetPosition(), b.GetPosition()
+            d = math.hypot(ap.x - bp.x, ap.y - bp.y)
+            gap = d - (a.GetDrill() + b.GetDrill()) / 2.0
+            if gap >= pcbnew.FromMM(min_gap_mm):
+                continue
+            ra, rb = a.GetWidth() / 2.0, b.GetWidth() / 2.0
+            if d > ra + rb:
+                # holes too close but pads apart: a joining segment WOULD be new copper
+                # over ground nobody has checked, so say so instead of laying it blind.
+                wide.append("%s at %.2f,%.2f (%.3f mm of laminate between the walls)"
+                            % (a.GetNetname(), pcbnew.ToMM(ap.x) - 100.0,
+                               100.0 - pcbnew.ToMM(ap.y), pcbnew.ToMM(gap)))
+                continue
+            di, ki = (i, j) if len(load[i]) <= len(load[j]) else (j, i)
+            drop, keep = vias[di], vias[ki]
+            # All or nothing: a track wider than the overlap would carry the joining
+            # segment outside the two pads, so that pair is left alone entirely rather
+            # than half-merged.
+            want = [(t.GetNetCode(), layer, t.GetWidth(),
+                     drop.GetPosition(), keep.GetPosition())
+                    for t, layer in load[di]]
+            if any(w > 2 * min(ra, rb) for _nc, _l, w, _p, _q in want):
+                wide.append("%s at %.2f,%.2f (track too wide to hand over)"
+                            % (drop.GetNetname(), pcbnew.ToMM(ap.x) - 100.0,
+                               100.0 - pcbnew.ToMM(ap.y)))
+                continue
+            joins += want
+            gone.add(di)
+            doomed.append((drop, "crowded %s (%.3f mm gap)"
+                           % (drop.GetNetname(), pcbnew.ToMM(gap))))
+
+    for nc, layer, w, p, q in joins:
+        t = pcbnew.PCB_TRACK(board)
+        t.SetStart(p)
+        t.SetEnd(q)
+        t.SetWidth(w)
+        t.SetLayer(layer)
+        t.SetNetCode(nc)
+        board.Add(t)
+    for v, _why in doomed:
+        board.Remove(v)
+    if doomed:
+        board.BuildConnectivity()
+        print("  tidied %d router via(s) -- %s%s"
+              % (len(doomed), "; ".join(w for _v, w in doomed[:6]),
+                 (" (+%d joining segment(s))" % len(joins)) if joins else ""))
+    for w in wide:
+        print("    NOT FIXED -- vias too close to drill, not mergeable: %s" % w)
+    return len(doomed)
+
+
 def snap_hairline_gaps(board, eps_mm=0.02):
     """Close same-net track gaps too small to bridge, by MOVING an end rather than
     adding copper -- and say how many.

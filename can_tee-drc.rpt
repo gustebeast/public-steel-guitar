@@ -1,24 +1,8 @@
 ** Drc report for can_tee.kicad_pcb **
-** Created on 2026-09-19T09:34:40 **
+** Created on 2026-09-19T12:13:43 **
 ** Report includes: Errors, Warnings **
 
-** Found 4 DRC violations **
-[holes_co_located]: Drilled holes co-located
-    Local override; warning
-    @(101.7500 mm, 98.0000 mm): Via [CAN_L] on F.Cu - B.Cu
-    @(101.7500 mm, 98.0000 mm): PTH pad 8 [CAN_L] of J1
-[holes_co_located]: Drilled holes co-located
-    Local override; warning
-    @(89.2500 mm, 98.0000 mm): Via [CAN_H] on F.Cu - B.Cu
-    @(89.2500 mm, 98.0000 mm): PTH pad 3 [CAN_H] of J1
-[holes_co_located]: Drilled holes co-located
-    Local override; warning
-    @(89.2500 mm, 98.0000 mm): Via [CAN_H] on F.Cu - B.Cu
-    @(89.2500 mm, 98.0000 mm): PTH pad 3 [CAN_H] of J1
-[holes_co_located]: Drilled holes co-located
-    Local override; warning
-    @(101.7500 mm, 98.0000 mm): Via [CAN_L] on F.Cu - B.Cu
-    @(101.7500 mm, 98.0000 mm): PTH pad 8 [CAN_L] of J1
+** Found 0 DRC violations **
 
 ** Found 0 unconnected pads **
 

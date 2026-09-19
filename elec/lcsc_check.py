@@ -34,6 +34,22 @@ a warning about the other two. The PHY reads as low next to a flat threshold and
 ninety-eight builds; a threshold that does not know the BOM quantity cannot tell those
 apart, which is why the number to act on is the rightmost column.
 
+⚠ RE-RUN 2026-09-19: 32 codes (B2B-XH-A closed, C158012), all still matching. The
+report changed shape, and not because a supplier moved -- because THIS BOARD SET DID.
+S8B-XH-A appeared under the threshold at 160, and read per instrument it is now the
+second-tightest part in the BOM:
+
+    VEMD4110X01    20 per instrument                             95 ->  4.8 instruments
+    S8B-XH-A       21 per instrument (10 tees + 11 sensor boards) 160 ->  7.6
+    USB3343-CP      1 per instrument                              92 -> 92
+    K3A260002010    1 per instrument                             108 -> 108
+
+It was a 10-per-instrument part until lever_sensor's J1 moved onto the same connector on
+2026-09-18, which doubled the demand without anything in the pipeline noticing: a part
+count per instrument is not a quantity any DRC, netlist or gate reads. That is the check
+this file is for, and it only caught it because the per-instrument divisor is applied by
+hand -- so apply it by hand, every time, and do not read the stock column alone.
+
 The PHY is still worth watching for a different reason: this same file recorded it OUT OF
 STOCK on 2026-08-04, so 98 is a recovery rather than a floor, and it has no second source
 in the catalogue.
