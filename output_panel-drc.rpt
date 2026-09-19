@@ -1,8 +1,8 @@
 ** Drc report for output_panel.kicad_pcb **
-** Created on 2026-09-19T11:18:44 **
+** Created on 2026-09-19T12:13:40 **
 ** Report includes: Errors, Warnings **
 
-** Found 7 DRC violations **
+** Found 3 DRC violations **
 [via_dangling]: Via is not connected or connected on only one layer
     Local override; warning
     @(94.7553 mm, 102.9553 mm): Via [SWDIO] on F.Cu - B.Cu
@@ -10,26 +10,10 @@
     Rule: board setup constraints; warning
     @(107.2201 mm, 106.2846 mm): Via [+3V3] on F.Cu - B.Cu
     @(107.2201 mm, 105.8926 mm): Via [+3V3] on F.Cu - B.Cu
-[holes_co_located]: Drilled holes co-located
-    Local override; warning
-    @(130.4533 mm, 123.5000 mm): Via [PWR_GND] on F.Cu - B.Cu
-    @(130.4533 mm, 123.5000 mm): PTH pad 2 [PWR_GND] of J6
-[holes_co_located]: Drilled holes co-located
-    Local override; warning
-    @(96.2500 mm, 128.0000 mm): Via [PWR_GND] on F.Cu - B.Cu
-    @(96.2500 mm, 128.0000 mm): PTH pad 1 [PWR_GND] of J7
 [hole_to_hole]: Drilled hole too close to other hole (board setup constraints min 0.2500 mm; actual 0.2025 mm)
     Rule: board setup constraints; warning
     @(99.9500 mm, 105.6000 mm): Via [GND] on F.Cu - B.Cu
     @(99.9000 mm, 105.1000 mm): Via [GND] on F.Cu - B.Cu
-[holes_co_located]: Drilled holes co-located
-    Local override; warning
-    @(130.4533 mm, 123.5000 mm): Via [PWR_GND] on F.Cu - B.Cu
-    @(130.4533 mm, 123.5000 mm): PTH pad 2 [PWR_GND] of J6
-[holes_co_located]: Drilled holes co-located
-    Local override; warning
-    @(96.2500 mm, 128.0000 mm): Via [PWR_GND] on F.Cu - B.Cu
-    @(96.2500 mm, 128.0000 mm): PTH pad 1 [PWR_GND] of J7
 
 ** Found 0 unconnected pads **
 
