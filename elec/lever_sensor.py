@@ -64,18 +64,37 @@ I, O, PWR, PIN = Pin.types.INPUT, Pin.types.OUTPUT, Pin.types.PWRIN, Pin.types.P
 MCU_FP = "Package_DFN_QFN:QFN-28-1EP_4x4mm_P0.4mm_EP2.4x2.4mm"
 SENSOR_FP = "Package_DFN_QFN:QFN-16-1EP_3x3mm_P0.5mm_EP1.45x1.45mm"
 
-# 28 x 22. THE HEIGHT IS CAPPED BY THE FOOT PEDAL, not by the knee levers:
-# its housing is clipped to the pedal bar's own width, so the board may not
-# reach below z -10.95 from the axle, and the horizontal lever's ceiling is
-# +11.60 -- 22.55 between them. 25 was drawn before that was checked and does
-# not fit. foot_pedal.py asserts it; board_flip does NOT, because it polices
-# the cradle's window and the pedal's budget is tighter than the window.
-# (Earlier note, still true of the connector: J1's COURTYARD is 21.29 x 10.29, far bigger
-# than the 19.9 body -- a side-entry connector reserves the plug's run-in too.
-# At 22 the board was 60% covered and the parts could not be placed. The
-# horizontal lever's window is 26.10, so 25 still clears the shell by 0.30 at
-# the bottom and 0.80 at the top with the chip pinned to the axle.
-BOARD_W, BOARD_L = 28.0, 21.4
+# ⚠⚠ AND THIS BREAKS THE KNEE HOUSING, WHICH IS NOT MY PART. The gate already carries
+# a DEFERRED overlap between the lever board's components and knee_housing -- 25 pairs,
+# ~207 mm3, owner branner -- and its recorded reason is that "bronner's board is at its
+# floor (21.4 against J1's 21.29 courtyard), so the room has to come from the housing".
+#
+# That reason is now stale in the worst direction. The board is no longer at 21.4: it is
+# 34 x 28, up 59 % in area from 28 x 21.4, and the connector that forced it is deeper
+# than the PH it replaced. The cradle was sized to the old box, so the overlap will be
+# substantially larger than 207 mm3 and the housing needs re-cutting around the new
+# outline, not just relieving.
+#
+# Flagged rather than fixed: knee_housing is branner's file, and the cached gate an
+# agent may run cannot even see this yet -- its context solids are ~92 h old and predate
+# both this board and the new wiring. The full gate runs in the lead's build on merge,
+# which is where this will show up. It is in the submit message.
+
+# ⚠ THE BOARD GREW FOR THE XH (user freed the plastic, 2026-09-19). J1 stands on end
+# -- rotated 90, so its LENGTH runs along BOARD_L -- and the XH is 25.0 mm against PH's
+# 19.9, which 21.4 could not hold. 28.0 in Y gives 25.0 plus 1.5 of margin at each end.
+#
+# AND 6 mm WIDER IN X, measured rather than assumed. The XH's courtyard is 12.5 x 23.4
+# against the PH's much slimmer one, so at 28 wide it overlapped U2, U3, Y1 and TP4 --
+# four courtyard violations, every one of them this single part. The circuit occupies
+# local x -3..+11 and cannot shift right, because the MT6701 sits on the axle at
+# x 11.0 and that position is not negotiable. So the room comes off the -X edge: 34
+# wide puts J1 at x -10.75, spanning -17..-4.5, clear of U3's -1.6 by 2.9 mm.
+#
+# The extra area is also what the CAN_RX corner has been short of. That net has been
+# unroutable since it was measured -- U3 pad 19 showed ZERO clear escape bearings, at
+# any distance and in any direction -- and what it lacked was room.
+BOARD_W, BOARD_L = 34.0, 28.0
 CHIP_XY = (11.0, -0.3)        # the axle axis, in board-local mm (see board_json)
 
 # Anything TALLER than 1.5 mm must keep its whole footprint outside the magnet
@@ -118,10 +137,21 @@ def lever_sensor():
     # order the motor tee uses (GND / +V / CAN_H / CAN_L) so one crimp order
     # serves every connector in the instrument. The two halves are the same four
     # nets -- a pass-through, not a switch.
-    j1 = Part(name="S8B-PH-SM4-TB", ref_prefix="J", tag="J1", dest="NETLIST",
-              tool="skidl", value="S8B-PH-SM4-TB",
-              description="CAN trunk in (1-4) and out (5-8), LCSC C265121",
-              footprint="Connector_JST:JST_PH_S8B-PH-SM4-TB_1x08-1MP_P2.00mm_Horizontal",
+    # ⚠ XH NOW, THE SAME PART THE POWER AND TEE BOARDS USE (user, 2026-09-19). PH was
+    # chosen because an 8-way XH in SIDE-ENTRY SMT is not stocked -- see the header note
+    # -- and that was the whole objection. S8B-XH-A is side-entry THT, 8-way, 25.0 mm,
+    # LCSC C157914, and can_tee has been using it all along. What kept it off THIS board
+    # was its THT posts sweeping the magnet cap on install, which is a PLASTIC problem,
+    # and the plastic is being redesigned (user), so the constraint moved.
+    #
+    # What it buys: ONE connector family across both buses instead of two, the same
+    # crimps and the same 8-way housing as the trunk, and 3 A contacts where PH gave 2.
+    # What it costs: 5.1 mm more length (25.0 against 19.9), which is why the board grew
+    # -- see BOARD_L.
+    j1 = Part(name="S8B-XH-A", ref_prefix="J", ref="J1", tag="J1", dest="NETLIST",
+              tool="skidl", value="S8B-XH-A",
+              description="CAN trunk in (1-4) and out (5-8), LCSC C157914",
+              footprint="Connector_JST:JST_XH_S8B-XH-A_1x08_P2.50mm_Horizontal",
               pins=[Pin(num=i + 1, name=n, func=P) for i, n in enumerate(
                   ("GND_IN", "V24_IN", "CANH_IN", "CANL_IN",
                    "GND_OUT", "V24_OUT", "CANH_OUT", "CANL_OUT"))])
@@ -251,6 +281,50 @@ def lever_sensor():
     # test pad for exactly this reason. Resolve it before fabrication: either confirm the
     # internal pull from WCH's manual, or spend one 0402 on a pull-down.
     #
+    # ⚠ AND ALL FOUR MCU ROTATIONS ARE NOW MEASURED, not inferred. The rotation note
+    # in BOARD_NOTES picked 0 by total pin-to-net distance, which is a PROXY -- and this
+    # project has a long record of proxies being inverted (see the optical board, where
+    # three of them were). Routed on the 34 x 28 board, one run each:
+    #       rot   0   1 unconnected, 0 violations   <- kept
+    #       rot  90   3 unconnected
+    #       rot 180   3 unconnected
+    #       rot 270   2 unconnected
+    # The proxy was right this time. Recorded because "we chose it by a proxy" and "we
+    # measured it" are different claims, and only one of them survives someone asking.
+
+    # ⚠ AND THE BIGGER BOARD DID NOT FIX IT -- MEASURED AGAIN 2026-09-19, after the
+    # board went to 34 x 28 for the XH. The open net swapped from CAN_RX to CAN_TX,
+    # exactly the clean swap predicted below, and the shape is identical: the
+    # TRANSCEIVER end has 14 of 24 clear bearings and 566 reachable via sites, the MCU
+    # end (U3 pad 20) has ZERO and ZERO.
+    #
+    # That locates the constraint precisely, and it is not board area: the blockage is
+    # inside the QFN's own escape fan, where the neighbouring pins' escapes take the
+    # lane, so adding 6 mm of board in another direction cannot reach it. Two nets need
+    # to leave adjacent pins of a 0.4 mm-pitch package through the same gap and only one
+    # can. Re-assigning the pins is not available either -- see the remap note below;
+    # this package brings out no PB9.
+    #
+    # What is left is moving the MCU or the transceiver relative to each other, which is
+    # a placement question for the next revision rather than a routing one.
+
+    # ⚠ CAN_RX MEASURED, 2026-09-18: THE MCU PIN CANNOT ESCAPE AT ALL. Probed at 24
+    # directions and five distances from 0.3 to 1.5 mm, U3 pad 19 has ZERO clear exits --
+    # not one bearing, not at any length. Reachable via sites: 885 from the transceiver's
+    # pad, NONE from this one. No 2-segment or 3-segment F.Cu path exists between the two
+    # pads, and no In2.Cu link between any of the 60 nearest reachable via sites.
+    #
+    # The blockers name the cause: CAN_TX's own track and pads take four of the eight
+    # bearings, +3V3 one, GND pads the rest. CAN_TX and CAN_RX are adjacent MCU pins, and
+    # whichever routes first takes the other's escape -- which is exactly what the note
+    # below already predicted ("pre-lay CAN_RX and it connects, and CAN_TX becomes the
+    # unconnected net instead, a clean swap"). The measurement corroborates it rather
+    # than adding anything new.
+    #
+    # So this is NOT repairable the way optical's MID was. That pin had one clear bearing
+    # and needed only a detour around two pads; this one has none, so there is no
+    # geometry to find and no post-route track can help. The recorded conclusion stands
+    # and is now measured rather than argued: only MOVING PARTS fixes this corner.
     # ⚠ AND THE SAME PIN LIST CLOSES OFF THE CAN REMAP. This package brings out PB8 (on
     # pin 1) but NO PB9 at all, so CAN1's PB8/PB9 remap -- the one motor_ctrl uses to get
     # CAN off PA11/PA12 -- does not exist here, and remap 3 is PD0/PD1, which the crystal
@@ -418,8 +492,27 @@ BOARD_NOTES = {
         "TP1": (4.75, 1.45, 0.0),      # SWDIO
         "TP2": (4.75, -0.95, 0.0),     # SWCLK
         "TP3": (7.15, 1.05, 0.0),      # GND  -- the three above are within 2.5 mm
-        "TP4": (-2.65, 2.25, 0.0),     # NRST -- stranded, recovery only
-        "J1": (-10.55, 0.00, 90.0),
+        # ⚠ TP4 MOVED FOR THE XH. J1's courtyard now reaches x 96.75 and TP4 sat at
+        # 96.30..98.39 -- the one part the bigger connector still clipped. TP4 is the
+        # right one to move: it is NRST, described above as stranded and for
+        # connect-under-reset recovery only, so it is the least coupled pad on the
+        # board. Sited from pcbnew's own courtyards rather than estimated, 32241 free
+        # positions, this the nearest to the circuit's centre.
+        "TP4": (-1.30, 11.70, 0.0),   # moved off J1's courtyard; see below
+        "J1": (-13.00, 0.00, 90.0),
+        # ⚠ READ THROUGH pcbnew, AFTER FOUR PLACEMENTS BY ESTIMATE. The XH's pins
+        # run DOWNWARD from pin 1 -- pad 1 at abs y 100.30, pad 8 at 82.80 -- so the
+        # field is 17.5 mm long and its centre is 8.45 BELOW the origin, not on it.
+        # Guessing that offset put pins off the bottom edge, then off the top, then
+        # over TP4. Loading the board and printing the pad coordinates settles it in
+        # one step: centred, the origin sits at local y 0.00. This
+        # footprint is anchored at PIN 1, not at its body centre, so placing it at
+        # local y 0 put the pin field at abs y 107.8..127.2 against a board ending at
+        # 114 -- thirteen millimetres of connector hanging off the edge, which DRC
+        # reported as courtyard overlaps with whatever it landed near rather than as
+        # "off the board". Measured: the pads centred at abs y 117.5 and the board
+        # centre is 100, so the origin moves +17.5 in board-local y to bring them onto
+        # it. Two placements before this one were estimates and both were wrong.
         "U1": (-1.10, 8.75, 0.0),
         "L1": (3.00, 8.70, 0.0),
         "D1": (7.60, 9.25, 0.0),
@@ -508,6 +601,15 @@ BOARD_NOTES = {
     # board -- the pour reaches them, but a pour is what routing can orphan, which is
     # the whole reason the plane is there. Every GND pad gets its own via down.
     "stitch_nets": ("GND",),
+    # ⚠ J1.5 REACHES THE PLANE THROUGH ITS OWN BARREL. The XH is a THROUGH-HOLE part,
+    # so its ground pin is plated through every layer and is already connected to the
+    # In1 plane by existing -- a stitching via beside it would add copper that joins
+    # nothing new. It arrived as "no room for a stitching via beside J1.5" only because
+    # the connector now sits against the -X edge with the mounting boss on one side and
+    # the board edge on the other, and layout stops rather than silently leave a SURFACE
+    # pad on the pour alone. That stop is right in general and does not apply to a pad
+    # with its own hole. Same reasoning as output_panel's USB shield tabs.
+    "stitch_exceptions": ("J1.5",),
     # ⚠ NO local_nets ON THIS BOARD, AND THE MEASUREMENT SAYS SO. Pre-laying every
     # short net here took it from 4 unconnected to 7. The generator is not better than
     # the router in general -- it wins on the optical board because twenty identical

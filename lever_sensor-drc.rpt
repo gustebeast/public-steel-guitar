@@ -1,36 +1,22 @@
 ** Drc report for lever_sensor.kicad_pcb **
-** Created on 2026-09-16T13:44:54 **
+** Created on 2026-09-19T09:35:21 **
 ** Report includes: Errors, Warnings **
 
-** Found 3 DRC violations **
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; warning
-    @(96.6066 mm, 109.5050 mm): Via [CAN_RX] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; warning
-    @(97.1037 mm, 104.9589 mm): Via [CAN_TX] on F.Cu - B.Cu
+** Found 2 DRC violations **
+[silk_overlap]: Silkscreen clearance
+    Rule: board setup constraints silk; warning
+    @(97.3500 mm, 97.7500 mm): Circle of TP4 on F.Silkscreen
+    @(98.3900 mm, 97.2400 mm): Polygon of U3 on F.Silkscreen
 [silk_overlap]: Silkscreen clearance
     Rule: board setup constraints silk; warning
     @(97.0400 mm, 104.7100 mm): Segment of Y1 on F.Silkscreen
     @(97.9000 mm, 105.1300 mm): Polygon of U2 on F.Silkscreen
 
-** Found 4 unconnected pads **
+** Found 1 unconnected pads **
 [unconnected_items]: Missing connection between items
     Local override; error
-    @(102.4500 mm, 94.4339 mm): Track [+3V3] on F.Cu, length 3.3462 mm
-    @(101.4000 mm, 96.5125 mm): Pad 17 [+3V3] of U3 on F.Cu
-[unconnected_items]: Missing connection between items
-    Local override; error
-    @(100.9700 mm, 102.1500 mm): Track [OSC_OUT] on F.Cu, length 0.7700 mm
-    @(100.6000 mm, 100.3875 mm): Pad 3 [OSC_OUT] of U3 on F.Cu
-[unconnected_items]: Missing connection between items
-    Local override; error
-    @(101.0000 mm, 100.3875 mm): Pad 4 [NRST] of U3 on F.Cu
-    @(105.5200 mm, 102.5000 mm): Pad 1 [NRST] of C7 on F.Cu
-[unconnected_items]: Missing connection between items
-    Local override; error
-    @(98.0250 mm, 109.5050 mm): Track [CAN_RX] on F.Cu, length 1.4184 mm
-    @(100.6000 mm, 96.5125 mm): Pad 19 [CAN_RX] of U3 on F.Cu
+    @(98.0250 mm, 109.5050 mm): Pad 4 [CAN_RX] of U2 on F.Cu
+    @(102.9375 mm, 98.0500 mm): Pad 19 [CAN_RX] of U3 on F.Cu
 
 ** Found 0 Footprint errors **
 

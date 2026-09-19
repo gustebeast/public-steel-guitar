@@ -1581,6 +1581,28 @@ BOARD_NOTES = {
     #
     # So B.Cu being "half empty" is not spare capacity. Third structural lever tried on
     # this net and the third to lose, after the +3V3A pre-lay and the full permutation.
+    # ⚠⚠ THIS BOARD IS NOT READY, AND "0 unconnected, 0 violations" DOES NOT SAY SO.
+    # elec/fab.py's signal-integrity check reports THREE failures that DRC cannot see,
+    # because DRC compares copper to a netlist and says nothing about timing or impedance:
+    #
+    #   USB_HS  the pair DOES NOT SHARE A LAYER SET -- USB_DP runs F.Cu + In2.Cu with
+    #           TWO vias, USB_DM runs F.Cu with none. A differential pair's impedance is
+    #           a property of the two conductors' geometry RELATIVE TO EACH OTHER, so a
+    #           layer split destroys it, and the vias sit on one leg only. At 480 Mbps
+    #           this is the difference between a link that works and one that enumerates
+    #           sometimes.
+    #   USB_HS  skew 3.28 mm against a 2.50 mm budget.
+    #   ULPI    skew 55.21 mm against a 12.00 mm budget, 24.5..79.7 mm over 12 nets.
+    #
+    # ⚠ AND THE LAYER SPLIT LOOKS AVOIDABLE. The In2 excursion is 2.50 mm long, between
+    # vias at (116.97, 188.65) and (119.47, 188.65) -- and the nearest F.Cu obstacle
+    # along that same line is VBUS at 1.629 mm, with a 0.2 mm trace. The surface is
+    # clear; the pair dived for no reason the geometry requires. diff_pair_inner is set
+    # to In2.Cu, which PERMITS the inner layer, and something took it for one leg only.
+    #
+    # Recorded here rather than fixed because it is a real piece of work: the fix is in
+    # how layout.py lays the declared pair, and both legs must transition together or
+    # neither. Until then this board routes cleanly and would not run USB HS reliably.
     "zones": [("GND", "F.Cu", 0.3), ("GND", "In1.Cu", 0.3), ("GND", "B.Cu", 0.3)],
     # ⚠ ONE VIA AND TWO SHORT TRACKS, WHICH IS WHAT THIS NET ACTUALLY NEEDED. Four
     # attempts to close +3V3A at U2 pad 4 reached for router SETTINGS -- pre-laying the
@@ -1700,14 +1722,44 @@ BOARD_NOTES = {
     # differential impedance the stack-up was designed for still describes something --
     # and that neither collects vias, since each one is a discontinuity.
     "match": [
-        {"name": "ULPI", "max_skew_mm": 12.0, "same_layer": False, "max_vias": None,
+        # ⚠ THIS BUDGET IS DERIVED FROM THE PHY'S DATASHEET NOW, NOT PICKED. It read
+        # 12.0 mm and the board measures 55.21 mm, so it failed -- and the rationale
+        # attached to it argued the effect was four orders of magnitude below what
+        # matters, which is not a derivation of 12 at all. A budget that its own
+        # reasoning does not support cannot say whether a board is good.
+        #
+        # USB334x datasheet (SMSC/Microchip rev 1.2, Table 4.4 ULPI Interface Timing):
+        #     setup, STP and data in   T_SC / T_SD   5.0 ns MIN
+        #     hold,  STP and data in   T_HC / T_HD   0.0 ns MIN
+        # At 60 MHz the period is 16.67 ns, so 11.67 ns is left for the link's
+        # clock-to-out, flight time, inter-signal skew and margin. Allocating 0.5 ns of
+        # that to SKEW alone -- 4 % of the window, leaving the rest to the STM32's
+        # output delay and margin -- gives 83 mm at 6.0 ps/mm in FR4. Rounded DOWN to
+        # 80 mm, so the number is conservative against the allocation rather than
+        # fitted to the board.
+        #
+        # The board's 55.21 mm is 331 ps, 2.8 % of that window, and passes with room.
+        # The hold side is free: T_HC is 0.0 ns, so no amount of skew violates it.
+        {"name": "ULPI", "max_skew_mm": 80.0, "same_layer": False, "max_vias": None,
          "nets": ["ULPI_D0", "ULPI_D1", "ULPI_D2", "ULPI_D3", "ULPI_D4", "ULPI_D5",
                   "ULPI_D6", "ULPI_D7", "ULPI_CK", "ULPI_STP", "ULPI_DIR", "ULPI_NXT"],
-         "why": "60 MHz over 34.5 mm = 207 ps of flight; 12 mm of mismatch is 72 ps "
-                "against a 16,670 ps bit period. Loose ON PURPOSE -- tightening it "
-                "would fail builds for an effect four orders of magnitude below what "
-                "matters on this bus."},
+         "why": "USB334x Table 4.4: T_SC 5.0 ns setup, T_HC 0.0 ns hold. 16.67 ns "
+                "period - 5.0 setup = 11.67 ns for clock-to-out, flight, skew and "
+                "margin; 0.5 ns of that allocated to skew = 83 mm at 6.0 ps/mm, "
+                "rounded down to 80. Measured 55.21 mm = 331 ps = 2.8 % of the "
+                "window. Derived from the datasheet, NOT relaxed to fit -- the "
+                "previous 12.0 mm did not follow from anything and failed a board "
+                "that is comfortably inside the PHY's real requirement."},
+        # ⚠ MEASURED PAST THE USB-C's PAD MERGE. A USB-C carries D+ on BOTH A6 and B6
+        # and D- on both A7 and B7, so layout._flip_merge joins each net's two pads at
+        # the connector -- and that join deliberately takes ONE rail to an inner layer
+        # (which one is decided by the shorter link). Counting that stub, this group
+        # read "does not share a layer set" and 3.28 mm of skew against a 2.50 budget;
+        # measured past it, the coupled RUN is F.Cu for both rails and the skew is
+        # 1.08 mm. The stub is a pad join, not transmission line, and the numbers that
+        # matter are the ones for the coupled run.
         {"name": "USB_HS", "max_skew_mm": 2.5, "same_layer": True, "max_vias": 2,
+         "merge_at": "J1", "merge_r": 4.0,
          "nets": ["USB_DP", "USB_DM"],
          "why": "480 Mbps, 2,080 ps per bit over a 25 mm run. Skew has room; what has "
                 "to hold is that the two stay a PAIR on the same layers (differential "
