@@ -35,12 +35,44 @@ import sys
 import pcbnew
 
 
-def net_lengths(board):
+def net_lengths(board, merge_ref=None, merge_r=4.0):
     """{net name: (copper length in mm, {layer name: length}, via count)}."""
+    # ⚠ A PAD-MERGE STUB IS NOT PART OF THE TRANSMISSION LINE, and counting it made this
+    # check cry wolf twice on the optical board. A USB-C carries D+ on BOTH A6 and B6 and
+    # D- on both A7 and B7, so the generator joins each net's two pads at the connector
+    # (layout._flip_merge) -- and that join deliberately takes ONE rail down to an inner
+    # layer, because which one dives is decided by which link is shorter.
+    #
+    # Measured on optical: counting every segment, USB_DP read F.Cu+In2.Cu against
+    # USB_DM's F.Cu and the pair was reported as SPLIT ACROSS LAYERS, while skew read
+    # 3.28 mm against a 2.50 budget. Excluding copper within `merge_r` of the merge
+    # connector, the coupled RUN is F.Cu for both rails and the skew is 1.08 mm. The
+    # board was fine; the measurement was counting the wrong copper.
+    #
+    # The exclusion is by NAMED REF, not by guessing which stubs look like merges: a
+    # group says where its merge is, or nothing is excluded.
+    skip = []
+    if merge_ref:
+        fp = board.FindFootprintByReference(merge_ref)
+        if fp is not None:
+            c = fp.GetPosition()
+            skip.append((c.x, c.y, pcbnew.FromMM(merge_r)))
+
+    def _in_merge(t):
+        for cx, cy, r in skip:
+            p = t.GetPosition() if t.GetClass() == "PCB_VIA" else t.GetStart()
+            q = t.GetPosition() if t.GetClass() == "PCB_VIA" else t.GetEnd()
+            mx, my = (p.x + q.x) / 2.0, (p.y + q.y) / 2.0
+            if ((mx - cx) ** 2 + (my - cy) ** 2) ** 0.5 < r:
+                return True
+        return False
+
     out = {}
     for t in board.GetTracks():
         name = t.GetNetname()
         if not name:
+            continue
+        if _in_merge(t):
             continue
         total, per_layer, vias = out.get(name, (0.0, {}, 0))
         if t.GetClass() == "PCB_VIA":
@@ -81,6 +113,11 @@ def check(stem):
 
     bad = 0
     for g in groups:
+        # a group measured through a pad-merge connector says so; see net_lengths
+        if g.get("merge_at"):
+            lens = net_lengths(board, g["merge_at"], g.get("merge_r", 4.0))
+        else:
+            lens = net_lengths(board)
         nets = g["nets"]
         missing = [n for n in nets if n not in lens]
         if missing:
