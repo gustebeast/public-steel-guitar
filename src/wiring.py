@@ -203,9 +203,13 @@ def _motor_back(i):
 
 def tee_stations():
     """[(x, y, drop_sign)] tee-PCB anchors, all on the -Y rail (TEE_Y) so the CAN trunk
-    stays on the rail and never crosses a rib. 0..9 bus A (one per motor); 10 is the
-    24 V drop the optical pickup board takes. THERE ARE NO BUS-B TEES -- 11 (knee) and
-    12 (leg-socket) are deleted; see the module docstring. The two +X-most motors (8,9) reach the rail, so a tee
+    stays on the rail and never crosses a rib. 0..9 bus A, ONE PER MOTOR AND NOTHING
+    ELSE -- a tee board exists to give a motor power and CAN, so a tee that serves no
+    motor has no reason to be a board (user, 2026-09-18). Tee 10 used to sit here as the
+    optical pickup board's 24 V drop; that board is fed from the output panel's J9 and
+    has no CAN at all, so the drop was feeding a board fed from somewhere else.
+    THERE ARE NO BUS-B TEES either -- 11 (knee) and 12 (leg-socket) are deleted; see the
+    module docstring. The two +X-most motors (8,9) reach the rail, so a tee
     dead-behind them would sit inside the motor -- their tees shift into the clear corridor
     (m8 -X toward m7, m9 +X past the motor bank) and reach back with a longer pigtail."""
     out = []
@@ -215,15 +219,13 @@ def tee_stations():
         # motor bank in the clear corridor; every other motor's tee rides the rail at its own X (m8's
         # tee corner just grazes m8's PCB, a whitelisted mount contact).
         out.append((mx, TEE_Y, +1))
-    out.append((-48.0, TEE_Y, -1))            # 10: the optical pickup board's 24 V drop
-                                              # (rail; -X of the +X leg stub at -13.4)
     return out
 
 
 _TEE_LIFT = TEE_Z - EL.FLOOR_Z          # lift a RAIL tee dummy onto its cradle, above the rib tops
 
 # ── TEES ON THE MOTORS (user, 2026-09-14) ───────────────────────────────────
-# Bus-A tees 0..8 no longer ride the rail: each sits on its own motor's pocket, resting on the
+# Bus-A tees 0..9 no longer ride the rail: each sits on its own motor's pocket, resting on the
 # faceplate wall's top and LAPPING the motor, so the one M4 that holds the board down also stops
 # the motor lifting out -- board and motor share a screw. The drop pigtail becomes a hand's
 # breadth instead of a reach to the rail, and the trunk flies tee to tee over the bank.
@@ -310,9 +312,11 @@ def tee_hold(i, x, y, d):
         # down the bare ear off its +X end into the post: positive in X and Y, not frictional.
         cx, cy = tee_center(i, x, y)
         return (D.TEE_OUTLINE_X, EL.TEE_BOARD_Y, cx, cy, "-x", "through", None)
-    # THE ONLY TEE LEFT ON THE RAIL IS 10, the optical pickup board's 24 V drop. It is the
-    # same board held the same way -- through its ear -- but it sits in a cradle on the rib
-    # tops rather than on a motor, so all four walls can close around it.
+    # ⚠ UNREACHABLE SINCE TEE 10 WENT: every tee is on a motor now, so on_motor() above
+    # always takes it. Kept as the rail-mounted form -- a cradle on the rib tops with all
+    # four walls closed -- because it is the shape any future rail tee would want, and
+    # raising here instead would lose that. If nothing rail-mounted returns by the time
+    # this file is next touched, delete it rather than letting it rot.
     return D.TEE_OUTLINE_X, EL.TEE_BOARD_Y, x, EL.tee_board_cy(y), None, "through", None
 
 
@@ -640,6 +644,7 @@ def build_wires():
             for i in range(len(tees))}
     dropA = {i: tee_point(i, tees[i][0], tees[i][1], "drop") for i in range(10)}
     west = sorted(range(10), key=lambda i: hdrA[i][0])       # bus A west→east
+    _WEST0 = west[-1]                 # the trunk's landing: the EAST-most tee, nearest J7
 
     # bus A CAN head: motor_ctrl J1 -> bay corridor -> -Y rail -> westernmost motor tee;
     # then one crimped segment per hop east. Termination: the controller's JP1 + tee 0's
@@ -697,9 +702,13 @@ def build_wires():
             (tx, cy, -52.0), (tx, TEE_Y + 4.5, -52.0), (tx, TEE_Y + 4.5, HDR_Z)],
             WIRE_OD["motor_pigtail"])))
 
-    # 24 V pair (2 × 22 AWG per rail): DC inlet -> AFE tee (10) -> tee 0 ... tee 9 -> buck;
-    # the AFE's LDO feed is tee 10's DROP. hot/gnd offset ±PWR_OFF.
-    x10, y10 = hdrA[10][0], hdrA[10][1]
+    # 24 V pair (2 × 22 AWG per rail): panel J7 -> tee 9 ... tee 0 -> motor controller.
+    # hot/gnd offset ±PWR_OFF.
+    # ⚠ IT USED TO LAND ON TEE 10 AND TEE 10 IS GONE. The run now goes straight from the
+    # panel to the westmost motor tee. Nothing had to be re-sized for it: these cables are
+    # crimped from spooled wire (user), so the head is simply made to whatever length the
+    # new landing needs, and cable length was never the reason the junction existed.
+    x10, y10 = hdrA[_WEST0][0], hdrA[_WEST0][1]
     # the power heads drop just inboard of the bridge endplate's wall, and that wall
     # follows BRIDGE_AXLE_X -- so this lane does too. It was a constant -5.5, and when
     # the bearing grew O8 -> O13 the axle (and the wall) stepped 2.5 -X and clipped the
@@ -724,14 +733,34 @@ def build_wires():
     # (main's afe_drop is dropped with the AFE board itself. Tee 10 survives -- the
     #  optical pickup board takes 24 V off it -- but its drop has no modelled endpoint
     #  until that board exists.)
+    #
+    # ⚠ THAT BOARD NOW EXISTS, AND IT IS NOT FED FROM HERE. elec/optical.py is a finished
+    # design with exactly two connectors: J1, a USB-C to the panel, and J2, a 4-pin XH
+    # carrying 24 V. It has NO CAN -- the board speaks USB to the Pi -- so a CAN-rail tee
+    # is the wrong shape of source for it: a tee exists to split the four-wire
+    # CAN-plus-power cable for a device ON the bus, and this device is not on it.
+    #
+    # Its 24 V comes from the output panel instead: elec/output_panel.py's J9 is
+    # documented as "24 V out to the optical pickup board", and the two boards are about
+    # 150 mm apart -- which is the whole reason the USB hub moved onto the panel, taking
+    # that 480 Mbps link from ~800 mm to ~100 mm (BOM.md, the hub row). A panel outlet is
+    # a short cable; a rail drop would be a long one to a board with no bus to join.
+    #
+    # ⚠ SO TEE 10 LOOKS STALE, AND IT IS THE ONLY TEE LEFT ON THE RAIL (see tee_outline
+    # above), which makes this more than one part: the rail-mounted tee, its cradle, its
+    # M4 side hold-down and the drop's two wires all exist to feed a board that is fed
+    # from somewhere else. Flagged rather than deleted -- removing it changes the rail
+    # geometry and the rib spacing around it, which is not this file's call alone.
+    # What would settle it: confirm that nothing else on the rail needs a 24 V drop.
     for _nm, _do in (("wire_pwr_hot", -PWR_OFF), ("wire_pwr_gnd", PWR_OFF)):
         def _off(pts):
             return [(px + _do, py + _do, pz) for px, py, pz in pts]
         out.append((f"{_nm}_0", _wire(_off(heads), WIRE_OD[_nm])))
-        out.append((f"{_nm}_1", _seg(hdrA[10], hdrA[west[-1]], LANE_PWR, WIRE_OD[_nm], off=_do)))
         for k in range(9):
             out.append((f"{_nm}_{k + 2}",
                         _seg(hdrA[west[k + 1]], hdrA[west[k]], LANE_PWR, WIRE_OD[_nm], off=_do)))
+        # _1 is vacant: it was the hop from tee 10 onto the rail, and tee 10 is gone.
+        # The tail keeps its own index rather than shifting up into the loop's _2.._10.
         out.append((f"{_nm}_11", _wire(_off(tail), WIRE_OD[_nm])))
 
 

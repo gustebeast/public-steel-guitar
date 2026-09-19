@@ -1064,7 +1064,16 @@ def _knee_lever_components():
 
 
 def _lever_stations_components():
-    """All six knee levers, each design posed at its station (LEVER_STATIONS).
+    """FIVE of the six knee levers, each design posed at its station (LEVER_STATIONS).
+
+    ⚠ THIS SAID "ALL SIX" AND THE TABLE HAS FIVE. The instrument has 6 knee levers
+    and 5 pedals (user, 2026-09-18; now D.N_LEVERS / D.N_PEDALS). LEVER_STATIONS lists
+    lkl, vkl, lkr, rkl, rkr -- the right knee has no vertical lever "in this copedent",
+    per the comment in the table, so the sixth control is not modelled here. The gap is
+    real and not a typo; what was wrong was the docstring claiming coverage the table
+    does not have. elec/lever_sensor.py orders against D.N_SENSED (11) and not against
+    this table, so the sensor panel is unaffected -- but anything that sizes hardware
+    from LEVER_STATIONS is sizing for five.
 
     Both source modules build their parts in a LOCAL frame and hand them to a
     module-level pose, so a station is just that pose with x/y replaced — the Z
@@ -1148,7 +1157,8 @@ def body_work_components():
 
 
 def lever_components():
-    """Every lever as ONE named set: the six knee-lever stations and the foot pedals.
+    """Every lever as ONE named set: the five modelled knee-lever stations (of six --
+    see _knee_components) and the foot pedals.
 
     Like screw_rows_components, the build does not need it; it exists so the per-agent
     scratch view can make the whole lever family LIVE. All of them share knee_lever's

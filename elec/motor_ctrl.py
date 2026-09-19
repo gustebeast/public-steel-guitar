@@ -51,6 +51,8 @@ import json  # noqa: E402
 
 from skidl import ERC, Net, Part, Pin, generate_netlist, subcircuit  # noqa: E402
 
+import netcheck                                     # noqa: E402
+
 P = Pin.types.PASSIVE
 I, O, PWR = Pin.types.INPUT, Pin.types.OUTPUT, Pin.types.PWRIN
 
@@ -60,14 +62,21 @@ XH_FP = "Connector_JST:JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical"
 USB_FP = "Connector_USB:USB_C_Receptacle_HRO_TYPE-C-31-M-12"
 
 
+# ⚠ THE REF IS PINNED FROM THE TAG. Every call passes a tag that spells the intended
+# ref, and without ref= that agreement is a COINCIDENCE of CREATION ORDER, not a
+# mechanism. On lever_sensor, adding a single resistor in the middle of the file consumed
+# R5 and pushed every later resistor up one -- and BOARD_NOTES["placements"] is keyed by
+# ref, so parts silently referred to refs that no longer existed while a new one with no
+# placement would have landed on the board ORIGIN. ERC passed and the netlist was valid.
+# This board had the same latent fault; pinning the ref makes creation order irrelevant.
 def _r(tag, value, desc, pkg="Resistor_SMD:R_0402_1005Metric"):
-    return Part(name="R", ref_prefix="R", tag=tag, dest="NETLIST", tool="skidl",
+    return Part(name="R", ref_prefix="R", ref=tag, tag=tag, dest="NETLIST", tool="skidl",
                 value=value, description=desc, footprint=pkg,
                 pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
 
 
 def _c(tag, value, desc, pkg="Capacitor_SMD:C_0402_1005Metric"):
-    return Part(name="C", ref_prefix="C", tag=tag, dest="NETLIST", tool="skidl",
+    return Part(name="C", ref_prefix="C", ref=tag, tag=tag, dest="NETLIST", tool="skidl",
                 value=value, description=desc, footprint=pkg,
                 pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
 
@@ -100,16 +109,39 @@ def motor_ctrl():
     # the 8-way in/out pattern belongs to the tees and lever boards in the middle.
     a_h, a_l = Net("CANA_H"), Net("CANA_L")
     b_h, b_l = Net("CANB_H"), Net("CANB_L")
+    # ⚠ J1 CARRIES BUS A'S WHOLE CURRENT ON ONE 3 A CONTACT, and BOM.md has the analysis
+    # -- see "The bottleneck moves rather than disappears" in the 24 V bus section. In
+    # short: J3 below was doubled because its ways were idle, and doing the same here is
+    # not free because ways 3 and 4 carry CAN. The BOM's own conclusion is that the answer
+    # is probably a firmware slew cap rather than a connector change, since Tr8x2 is
+    # self-locking and the bus carries essentially nothing at rest.
+    # This pointer exists because the netlist is where someone meets this connector, and
+    # the analysis lives three files away.
     j1 = _xh("J1", "bus A out -- the ten motor tees")
     j2 = _xh("J2", "bus B out -- the eight lever/pedal boards")
     j3 = _xh("J3", "24 V in from the rail (2 contacts populated)")
-    gnd += j1[1], j2[1], j3[1]
-    v24 += j1[2], j2[2], j3[2]
+    gnd += j1[1], j2[1], j3[1], j3[4]
+    v24 += j1[2], j2[2], j3[2], j3[3]
     a_h += j1[3]; a_l += j1[4]
     b_h += j2[3]; b_l += j2[4]
-    # J3's CAN cavities stay EMPTY: a 4-way shell for one crimp order across the
-    # instrument, but wiring the pair to a power-only connector would hang an
-    # unterminated stub off whichever bus the lead came from.
+    # ⚠ J3 NOW DOUBLES ITS CONTACTS, AND IT IS A RATING FIX RATHER THAN TIDINESS. This
+    # is the sink end of the instrument's whole 24 V trunk. BOM.md sizes that bus at
+    # under 5 A and XH is rated 3 A per contact, which is exactly why the SOURCE (the
+    # output panel's J7) puts two contacts on each rail -- and this end was taking all
+    # of it through one. A doubled source into a single-contact sink is not doubled.
+    # The cavities were previously left empty on the reasoning that wiring the CAN pair
+    # to a power-only connector would hang an unterminated stub; that reasoning was
+    # right about CAN and does not apply to power, which is what they carry now. Pin
+    # order is the instrument's standard: 1=GND 2=+24V 3=+24V 4=GND.
+    #
+    # ⚠ AND THE BOTTLENECK MOVES RATHER THAN DISAPPEARS -- FLAGGED, NOT FIXED. J1 and
+    # J2 are the bus outputs, and on a four-wire CAN-plus-power bus (GND, +24V, H, L --
+    # the user's colour scheme) the 24 V rides ONE conductor and one contact. Bus A
+    # feeds ten SERVO42D drivers, so very nearly the whole <5 A passes through a single
+    # 3 A contact at J1. Doubling here is free because J3's spare ways were idle; doing
+    # the same at J1/J2 is not, because those ways carry CAN. Resolving it means a
+    # wider shell, a separate power bus, or a measured slew budget showing the staggered
+    # peak is genuinely under 3 A -- a motor-controller decision, recorded in BOM.md.
 
     # ── 24 V -> 3V3, LMR16006XDDCR (LCSC C87080), same part as the lever board ─
     # TI SNVSA24 section 6: 1 CB, 2 GND, 3 FB, 4 SHDN, 5 VIN, 6 SW. SHDN floats =
@@ -193,6 +225,21 @@ def motor_ctrl():
     #   35 PB12 = CAN2_RX  , 36 PB13 = CAN2_TX    <- bus B
     #   46 PA11 = OTG_FS_DM, 47 PA12 = OTG_FS_DP  <- the Pi link
     #   48 PA13 = SWDIO    , 52 PA14 = SWCLK
+    #
+    # ⚠ ALL TWENTY-FOUR CHECKED AGAINST THE QFN68 COLUMN, 2026-09-17, ZERO MISMATCHES --
+    # numbers AND names, including every power pin, read with per-word coordinates so the
+    # value taken is the one standing in the QFN68 column rather than whichever number
+    # happens to be on the line. A wrong pin number here is invisible to everything
+    # downstream: SKiDL connects a net to a pin NUMBER, layout places the pad it names,
+    # and DRC agrees the copper matches the netlist. The board would simply not run.
+    #
+    # ⚠ AND THE DIRECTION OF THE CAN1 REMAP IS THE PART WORTH RE-READING. PB8 is RX and
+    # PB9 is TX; an automated pass over the alternate-function table said PB8 = CAN1_TX_2,
+    # which would have meant the bus-A transceiver wired backwards and a dead bus. It was
+    # the extraction, not the datasheet: that table splits CAN1_RX_2 across two lines as
+    # "CAN1_RX_" and "2", and the rows are close enough together that the tail of one
+    # lands beside its neighbour. Read by eye off page 53, PB8 is RX. The remap exists at
+    # all because CAN1's home pins are PA11/PA12, which USB is using.
     dm, dp = Net("USB_DM"), Net("USB_DP")
     nrst, boot0 = Net("NRST"), Net("BOOT0")
     osc1, osc2 = Net("OSC_IN"), Net("OSC_OUT")
@@ -226,6 +273,27 @@ def motor_ctrl():
     for tag, net in (("C4", osc1), ("C5", osc2)):
         c = _c(tag, "12pF", "crystal load"); net += c[1]; gnd += c[2]
     c_n = _c("C6", "100nF", "NRST filter"); nrst += c_n[1]; gnd += c_n[2]
+
+    # ⚠ SWDIO AND SWCLK REACHED THE MCU AND STOPPED. Single-node nets: layout drops them
+    # as unplaceable, so no copper is ever laid and DRC then compares a clean board
+    # against a netlist that never asked for anything. Found 2026-09-17 by running the
+    # orphan-pin check across the whole fleet after the optical board had the same fault.
+    #
+    # THIS BOARD IS NOT AS BAD AS THE LEVER BOARD, which had no way in at all. Here the
+    # CH32V307's USB reaches a connector, so WCH's ROM bootloader is reachable in
+    # principle -- but BOOT0 goes only to a pull-down and the MCU pin, so entering it
+    # means tack-soldering onto a resistor pad, and SWD debugging would be unavailable
+    # for the life of the board. Five pads cost nothing and remove both problems.
+    for _ref, _net, _what in (("TP1", swdio, "SWDIO"), ("TP2", swclk, "SWCLK"),
+                              ("TP3", nrst, "NRST"), ("TP4", gnd, "GND"),
+                              ("TP5", v33, "target sense")):
+        _tp = Part(name="TestPoint", ref_prefix="TP", ref=_ref, dest="NETLIST",
+                   tool="skidl", value="SWD",
+                   description="SWD pad -- %s; bare copper, no component" % _what,
+                   footprint="TestPoint:TestPoint_Pad_D1.5mm",
+                   pins=[Pin(num=1, func=P)])
+        _net += _tp[1]
+
     r_b = _r("R7", "10k", "BOOT0 pull-down"); boot0 += r_b[1]; gnd += r_b[2]
     # Eight supply pins want their own decoupling; one bulk holds the rail up.
     for tag in ("C7", "C8", "C9", "C10", "C11", "C12", "C13", "C14"):
@@ -234,6 +302,21 @@ def motor_ctrl():
     v33 += c_bulk[1]; gnd += c_bulk[2]
 
     # ── USB-C to the Pi ──────────────────────────────────────────────────────
+    # ⚠ USB_DP ROUTES HERE, AND AN EARLIER NOTE IN THIS PLACE SAID IT COULD NOT. Worth
+    # keeping the correction, because the arithmetic was right and the conclusion drawn
+    # from it was not. Escaping BETWEEN two adjacent USB-C pads does need 0.6 of via plus
+    # 0.137 of clearance beside a 0.2 track -- 0.537 mm into a 0.500 mm pitch -- and that
+    # remains impossible. But joining A6 to B6 does not have to pass between the pads: the
+    # router took it AROUND THE ENDS. The pads span y 119.10..120.55 and the link runs
+    # across at y = 120.85, clearing them by 0.305 mm, which is 0.18 mm edge to edge
+    # against a 0.127 fab rule. Tight, legal, and DRC agrees at zero violations.
+    #
+    # ⚠ IT IS A SEARCH RESULT, NOT A CONSTRUCTION, WHICH IS THE PART TO WATCH. Nothing was
+    # done to USB_DP: it appeared when +24V went from 0.25 to 0.5 mm and perturbed the
+    # router's search, and a solution found that way can be lost the same way. The optical
+    # board does not rely on luck here -- it declares the pair and _flip_merge builds the
+    # A6/B6 link deliberately -- and if this link goes missing after some unrelated
+    # change, that is the fix, not another routing run.
     # HRO TYPE-C-31-M-12 (LCSC C165948), the same receptacle the optical board
     # uses. Both halves of D+/D- are tied so the cable works either way up.
     # VBUS IS DELIBERATELY UNCONNECTED: the board runs off the 24 V rail, and
@@ -281,6 +364,27 @@ def motor_ctrl():
     v5, v5_raw = Net("+5V"), Net("+5V_RAW")
     # F1 fuses ONLY the buck's feed. The bus connectors keep their unfused 24 V --
     # fusing the trunk here would put this board in series with every motor.
+    #
+    # ⚠ 1 A IS SIZED FOR THE Pi THIS BOARD EXPECTS, NOT FOR THE ONE THE BOM BUDGETS, and
+    # the gap is worth knowing before someone loads the Pi's USB ports. BOM.md specifies a
+    # "Pi buck >=3 A", i.e. 15 W at 5 V, and U5 is a 3 A part chosen to match. Referred to
+    # 24 V through this fuse:
+    #
+    #     Pi draw    eff 90%    eff 85%    eff 80%
+    #       3.0 A     0.694 A    0.735 A    0.781 A     69 / 74 / 78 % of F1
+    #       1.5 A     0.347      0.368      0.391       35 / 37 / 39 %
+    #       0.6 A     0.139      0.147      0.156       14 / 15 / 16 %
+    #
+    # A fuse is normally run at 75 % of rating or less continuously, and derates further
+    # above 25 C. At a typical Pi load this is a third of the fuse and entirely fine; at
+    # the FULL 3 A the design budgets it sits at the derating limit or past it, so the
+    # failure mode is a nuisance blow under heavy USB load rather than anything unsafe.
+    #
+    # It is left at 1 A deliberately: the job here is fault containment -- "a shorted U5
+    # must not feed the fault back out into the trunk" -- and a larger fuse is worse at
+    # that job. What the number really says is that the Pi's ports are not a free
+    # expansion slot on this instrument. If they ever need to be, this fuse and its
+    # derating are the first thing to revisit, not the buck.
     v24_buck = Net("+24V_BUCK")
     f1 = Part(name="Fuse", ref_prefix="F", tag="F1", dest="NETLIST", tool="skidl",
               value="1A", description="24 V fuse for the buck -- a shorted U5 must "
@@ -337,12 +441,19 @@ def motor_ctrl():
     # Feedback from the RAW node, BEFORE the fuse: regulating after F2 would put
     # the fuse's resistance inside the loop and let a warm fuse move the rail.
     r10 = _r("R10", "100k", "5 V feedback divider, top")
-    r11 = _r("R11", "preset", "5 V feedback divider, bottom -- set with the part")
+    # 24k9: VREF is 1.0 V (LMR33630 datasheet SNVSAN3), so RFBB = RFBT / (VOUT/VREF - 1)
+    # = 100k / 4 = 25k, and TI's own 5 V example in that datasheet uses 100k / 24.9k.
+    r11 = _r("R11", "24k9 1%", "5 V feedback divider, bottom -- 5.02 V with R10")
     v5_raw += r10[1]; fb5 += r10[2], r11[1]; gnd += r11[2]
     # EN divider: hold the converter off until the 24 V rail is up, so it does not
     # try to start into a sagging supply and chatter.
-    r12 = _r("R12", "preset", "5 V EN/UVLO divider, top -- turn-on around 18 V")
-    r13 = _r("R13", "preset", "5 V EN/UVLO divider, bottom")
+    # The EN pin has a PRECISION threshold -- 1.231 V typ, 1.2 to 1.26 over temperature
+    # (LMR33630 datasheet, VEN-H) -- which is what makes an external divider a real UVLO
+    # rather than a pull-up. For turn-on at 18 V the divider must be 18/1.231 = 14.6:1,
+    # so 137k over 10k (147k total) trips at 18.1 V typical and 17.6 to 18.5 V across the
+    # threshold's own spread. Enable leakage is 0.2 nA, so a 147k divider is not loaded.
+    r12 = _r("R12", "137k 1%", "5 V EN/UVLO divider, top -- turn-on at 18.1 V")
+    r13 = _r("R13", "10k 1%", "5 V EN/UVLO divider, bottom")
     v24 += r12[1]; en5 += r12[2], r13[1]; gnd += r13[2]
 
     f2 = Part(name="Fuse", ref_prefix="F", tag="F2", dest="NETLIST", tool="skidl",
@@ -411,6 +522,12 @@ BOARD_NOTES = {
         "J1": (-10.00, 2.50, 0.0),
         "J2": (4.00, 2.50, 0.0),
         "J3": (15.50, -8.50, 90.0),
+        # SWD pads -- nearest free 2.5 mm sites to U4; see the note in motor_ctrl()
+        "TP1": (-10.10, -12.85, 0.0),
+        "TP2": (2.40, -15.60, 0.0),
+        "TP3": (-10.85, -3.10, 0.0),
+        "TP4": (5.40, -15.60, 0.0),
+        "TP5": (-6.85, -21.35, 0.0),
         "J4": (0.00, -20.50, 0.0),
         "U4": (-4.00, -9.50, 0.0),
         "U2": (6.30, -5.00, 0.0),
@@ -474,6 +591,38 @@ BOARD_NOTES = {
     # THE GROUND PLANE is why this is four layers, same as the lever board: the
     # buck switches on a board carrying a 12 MHz USB pair and two CAN pairs.
     "zones": [("GND", "In1.Cu", 0.3), ("GND", "B.Cu", 0.3)],
+    # ⚠ +24V IS A PASS-THROUGH ON THIS BOARD, NOT A LOCAL SUPPLY. v24 reaches J1 and J2 as
+    # well as the inlet J3, so the drivers' current crosses this PCB on its way to the
+    # motors -- BOM.md's "very nearly the whole <5 A". At the board default of 0.25 mm
+    # that is 0.88 A of 1 oz outer copper by IPC-2221 at a 10 C rise, about 5.7x short,
+    # and it went unnoticed because until now no board could state a per-net width at all.
+    # The audit that found it also cleared the other two: optical's inlet is ~324 mA
+    # against 0.88 A, and lever_sensor's 0.15 mm pass-through is 0.60 A on the sensor bus.
+    #
+    # 0.5 mm takes it to 1.45 A. That is the ceiling for a blanket width here for the same
+    # reason as on the panel -- this net lands on 0402 parts with 0.6 mm pads and
+    # freerouting does not neck into a land -- so it is an improvement, not the answer.
+    # The J3 -> J1/J2 path still wants deliberate copper; see the trunk note on
+    # output_panel for why that is a pinout decision rather than a routing one.
+    # GND needs nothing: it has plane copper on In1.Cu and a pour on B.Cu.
+    "net_widths": {"+24V": 0.5},
+    # ⚠ IN1 IS A PLANE, AND THE ROUTER HAS TO BE TOLD. A zone is just copper as far
+    # as freerouting is concerned: pour GND on In1 and say nothing, and it will route
+    # signals straight through the plane, which is exactly what it did here. The damage
+    # is not cosmetic -- a signal in the reference plane splits the return path of every
+    # trace that crosses it, and the nets carved through this one included the ones that
+    # care most.
+    #
+    # This was found and fixed on the optical board and the fix never reached the other
+    # three 4-layer boards, because it was made where the symptom appeared instead of
+    # where the property belonged. A board that pours a plane declares it.
+    "plane_layers": ("In1.Cu",),
+    # ⚠ AND A PLANE NEEDS STITCHING TO IT. Declaring In1 a plane is only half the
+    # job: it stops the router carrying ground THROUGH the plane, and then nothing
+    # connects the ground pads TO it. Declared alone it stranded six GND pads on this
+    # board -- the pour reaches them, but a pour is what routing can orphan, which is
+    # the whole reason the plane is there. Every GND pad gets its own via down.
+    "stitch_nets": ("GND",),
     "hold_edge": "+x",
     "no_mounting_holes": True,
     "single_sided": True,
@@ -485,6 +634,8 @@ if __name__ == "__main__":
     motor_ctrl(tag="ctrl")
     ERC()
     generate_netlist(file_=os.path.join(OUT_DIR, "motor_ctrl.net"))
+    netcheck.grounds_meet(os.path.join(OUT_DIR, "motor_ctrl.net"))
+    netcheck.no_orphan_pins(os.path.join(OUT_DIR, "motor_ctrl.net"))
     with open(os.path.join(OUT_DIR, "motor_ctrl.board.json"), "w") as f:
         json.dump(BOARD_NOTES, f, indent=2)
     print("board %.1f x %.1f mm, %d placements"
