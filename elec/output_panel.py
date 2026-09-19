@@ -955,6 +955,26 @@ BOARD_NOTES = {
     # connects the ground pads TO it. Declared alone it stranded six GND pads on this
     # board -- the pour reaches them, but a pour is what routing can orphan, which is
     # the whole reason the plane is there. Every GND pad gets its own via down.
+    # ⚠ THE SEVERED 24 V BUS, CLOSED AS A POST-ROUTE REPAIR. Both power rails break in
+    # the -Y connector row and three attempts to fix it as a ROUTING problem all failed:
+    # re-ordering J7 and J9 inside the row changed nothing, a 2.0 mm B.Cu lane under it
+    # went 2 unconnected to 4, and shrinking J9 to a 2-way freed 5 mm of row and closed
+    # +24V for one build only. The row is full; re-ordering a full row does not empty it.
+    #
+    # Measured against every obstacle class on the ROUTED board (elec/repair_search.py):
+    # PWR_GND's two ends see each other directly at 0.5 mm wide, and +24V needs one step
+    # out of the row -- 1.50 mm to y -29.50 -- to get past what sits between J7 and J9.
+    # Both at 0.5 mm, the width these rails already carry (1.45 A of 1 oz outer copper),
+    # not the 0.25 signal default.
+    #
+    # Applied AFTER routing, like optical's MID detour, so the other 43 nets never plan
+    # around them. Pinned to THIS routing: re-run repair_search after any netlist change.
+    "repair_tracks": [
+        ("PWR_GND", "F.Cu", 0.5, [(3.750, -28.000), (11.115, -24.665)]),
+        ("+24V", "F.Cu", 0.5, [(-1.250, -28.000), (-1.250, -29.500)]),
+        ("+24V", "F.Cu", 0.5, [(-1.250, -29.500), (17.250, -29.500)]),
+        ("+24V", "F.Cu", 0.5, [(17.250, -29.500), (17.250, -28.000)]),
+    ],
     "stitch_nets": ("GND",),
     # ⚠ THE USB SHIELD TABS REACH THE PLANE THROUGH THEIR OWN BARRELS. J2.SH and J4.SH
     # are the shells' through-hole mounting tabs: big PTH pads whose plated barrel already
