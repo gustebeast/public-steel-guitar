@@ -46,28 +46,39 @@ the output panel gained a high-speed hub it runs ~100 mm to that board's J4
 instead, and the hub carries both devices upstream on one cable. Both are HS, so
 neither sits behind a Transaction Translator.
 
-⚠ ROUTING IS NOT FINISHED, AND HERE IS EXACTLY WHERE IT STOPPED. Freerouting gets
-this board to 2 real violations and 15 unconnected items and then converges -- 20
-passes and 30 passes give the same answer, and 30 is sometimes WORSE, so more
-effort is not the missing ingredient. The remainder, diagnosed rather than
-summarised, because "15 unconnected" is not something anyone can act on:
+⚠ ROUTING IS FINISHED: 0 unconnected, 0 violations, 0 warnings, reproduced across
+runs, with a fab package whose BOM, CPL, drill file, gerber layer set and outline
+have all been checked. This paragraph used to say the opposite -- "2 real violations
+and 15 unconnected items" -- and it stayed wrong long after the board was clean,
+which is worse than never having written it: a reader of this file would conclude
+the board does not route.
 
-  * 13 of the 15 are DANGLING GND STUBS. The router laid a short track from a
-    ground pad toward the plane and never placed the via at the end of it. GND
-    lives on In1.Cu and B.Cu; a pad on F.Cu cannot reach it without one. These are
-    a mechanical cleanup -- drop a via at each free end, or delete the stub and let
-    the pad's own via serve it -- not a routing problem.
-  * 2 are REAL: TIA_OUT_7A and TIA_IN_1B. Those are transimpedance amp nets in the
-    dense sensing strip, and they want a human.
-  * The 2 violations are dangling vias, same family as the first bullet.
+WHAT ACTUALLY CLOSED IT, because the diagnosis is the reusable part:
+  * The 13 DANGLING GND STUBS were a generator problem, not a routing one -- the
+    router laid a track from a ground pad toward the plane and never placed the via
+    at the end. add_missing_vias drops a via wherever a net changes layer with
+    nothing to carry it, which is the mechanical cleanup this note predicted.
+  * The 2 REAL ones, TIA_OUT_7A and TIA_IN_1B, did want a human and got one. They
+    are closed by deliberate copper laid AFTER routing (see the repair block in
+    route.py): geometry searched with repair_search.py, verified clear against every
+    obstacle class, and applied where the router cannot plan around it. Laid BEFORE
+    routing the same copper cost five analog nets.
+  * Freerouting converging at 20 and 30 passes was the right read. More effort was
+    never the missing ingredient; the missing ingredient was doing the last two nets
+    somewhere other than in the router.
 
-AND THE COUNT IS NOT THE REASON TO FINISH IT BY HAND. Twenty summing nodes reading
-tens of nanoamps and a 60 MHz ULPI bus are not things to hand to an autorouter and
-stop looking at. Nothing here has checked that the ULPI pair is length-matched,
-that the TIA inputs are guarded, or that the switcher's loop is tight -- and DRC
-does not know to ask. Treat the routed .kicad_pcb as a CANDIDATE. The placement,
-which is the part this file is actually responsible for, is clean: the only DRC
-violations on the placed board are the 20 declared sensor-triplet courtyards.
+⚠ AND CLEAN IS NOT VERIFIED. This is the part that has not changed. DRC compares
+copper to a netlist: it does not know that twenty summing nodes read tens of
+nanoamps, or that a 60 MHz ULPI bus has timing. verify.py now checks ULPI skew
+against the USB334x datasheet's own numbers and the USB pair's coupled length, but
+nothing has confirmed the TIA inputs are guarded or that the switcher's loop is
+tight. Treat the routed .kicad_pcb as a CANDIDATE that passes every check we have,
+not as a board somebody has signed off.
+
+The placement, which is the part this file is actually responsible for, is clean:
+the only DRC violations on the placed board are the 20 declared sensor-triplet
+courtyards -- verified, all twenty are a PDnA/PDnB photodiode against its own Dn.
+
 """
 
 
@@ -547,7 +558,10 @@ assert DIFF_SIGN_INVERTED == (1, 4, 5, 8, 10), (
 # rules out distance as the cause. The far-side crossing is a resource with about five
 # slots, and the net arriving from farthest away was the one squeezed out of it.
 #
-# ⚠ WHAT IT COST: +3V3A. The board is still at 1 unconnected, but the open net is now the
+# ⚠ WHAT IT COST: +3V3A. (STATE AT THE TIME -- the board is now 0 unconnected and 0
+# violations; +3V3A is closed by the deliberate repair in route.py's repair block, which
+# is where this paragraph's "better problem" was eventually solved.) The board was then
+# still at 1 unconnected, but the open net had become the
 # analog supply rail, 6.5 mm between a track at 71.16,46.43 and U2's pin 4 -- the freed
 # analog nets took the corridor the rail had been using. That is a better problem than the
 # one it replaced: a local gap beside an op-amp rather than a 123 mm run that has to get
