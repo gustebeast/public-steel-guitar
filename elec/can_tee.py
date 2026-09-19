@@ -67,13 +67,16 @@ import json  # noqa: E402
 
 from skidl import ERC, Net, Part, Pin, generate_netlist, subcircuit  # noqa: E402
 
+import harness                                      # noqa: E402
 import netcheck                                     # noqa: E402
 
 # ── the harness contract ─────────────────────────────────────────────────────
 # Four conductors, colours the user's: black GND / red 24V / yellow CAN_H /
 # green CAN_L. The pin ORDER is the board's half of that contract and is the SAME
 # on every connector in the instrument, so one crimp order serves all of them.
-XH_PINOUT = ("GND", "V24", "CAN_H", "CAN_L")
+# The pin order lives in harness.py -- see the note there for why it is not
+# allowed to have a second copy.
+XH_PINOUT = harness.XH_PINOUT
 
 # 120 R, 1%. ISO 11898 wants 120 ohm at each END of the trunk and nowhere else,
 # so every board carries the resistor and leaves the jumper OPEN; the one that
@@ -102,7 +105,7 @@ def can_tee():
               value="S8B-XH-A", description="CAN trunk: in 1-4, out 5-8 (LCSC C157914)",
               footprint="Connector_JST:JST_XH_S8B-XH-A_1x08_P2.50mm_Horizontal",
               pins=[Pin(num=i + 1, name=n, func=Pin.types.PASSIVE) for i, n in enumerate(
-                  tuple(x + "_IN" for x in XH_PINOUT) + tuple(x + "_OUT" for x in XH_PINOUT))])
+                  harness.xh_trunk_pins())])
     j2 = Part(name="B4B-XH-A", ref_prefix="J", tag="J2", dest="NETLIST", tool="skidl",
               value="S4B-XH-A", description="drop to this node's motor",
               footprint="Connector_JST:JST_XH_S4B-XH-A_1x04_P2.50mm_Horizontal",
