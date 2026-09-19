@@ -64,6 +64,22 @@ I, O, PWR, PIN = Pin.types.INPUT, Pin.types.OUTPUT, Pin.types.PWRIN, Pin.types.P
 MCU_FP = "Package_DFN_QFN:QFN-28-1EP_4x4mm_P0.4mm_EP2.4x2.4mm"
 SENSOR_FP = "Package_DFN_QFN:QFN-16-1EP_3x3mm_P0.5mm_EP1.45x1.45mm"
 
+# ⚠⚠ AND THIS BREAKS THE KNEE HOUSING, WHICH IS NOT MY PART. The gate already carries
+# a DEFERRED overlap between the lever board's components and knee_housing -- 25 pairs,
+# ~207 mm3, owner branner -- and its recorded reason is that "bronner's board is at its
+# floor (21.4 against J1's 21.29 courtyard), so the room has to come from the housing".
+#
+# That reason is now stale in the worst direction. The board is no longer at 21.4: it is
+# 34 x 28, up 59 % in area from 28 x 21.4, and the connector that forced it is deeper
+# than the PH it replaced. The cradle was sized to the old box, so the overlap will be
+# substantially larger than 207 mm3 and the housing needs re-cutting around the new
+# outline, not just relieving.
+#
+# Flagged rather than fixed: knee_housing is branner's file, and the cached gate an
+# agent may run cannot even see this yet -- its context solids are ~92 h old and predate
+# both this board and the new wiring. The full gate runs in the lead's build on merge,
+# which is where this will show up. It is in the submit message.
+
 # ⚠ THE BOARD GREW FOR THE XH (user freed the plastic, 2026-09-19). J1 stands on end
 # -- rotated 90, so its LENGTH runs along BOARD_L -- and the XH is 25.0 mm against PH's
 # 19.9, which 21.4 could not hold. 28.0 in Y gives 25.0 plus 1.5 of margin at each end.
