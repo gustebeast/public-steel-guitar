@@ -1645,7 +1645,24 @@ BOARD_NOTES = {
     # while every endpoint stays far from the other line, so a crossing read as room.
     # Fixed in elec/repair_search.py; the same line now reads 0.000 and is rejected.
     # Re-searching needs a board WITHOUT this repair in it, so it is off for one run.
-    # "repair_tracks": [("MID", "F.Cu", 0.25, [(-29.443, 48.312), (-24.870, 48.312)])],
+    # ⚠ U2 PAD 3 ESCAPES WEST ONLY, AND ONLY ON F.Cu. Measured on eight directions,
+    # seven are negative: +3V3A's track at 0 and 45 deg, its pad at 90 and 135,
+    # TIA_IN_3A's pad and track from 225 to 315. Pad 3 is IN A+ (MID) and pad 4 is V+
+    # (+3V3A) -- adjacent SOIC pins on 1.27 mm pitch, each one's escape copper boxing
+    # the other in, against the strip's own edge 1.72 mm away.
+    #
+    # A VIA CANNOT GO WEST even though a TRACK can: a through via has to clear every
+    # layer, and TIA_OUT_1A (B.Cu) and TIA_OUT_3A (In2.Cu) both run under that corridor.
+    # F.Cu is clear there and the layers below are not, which is why every via site in
+    # the search failed while the track to it passed.
+    #
+    # So the repair is a DETOUR, not a hop: west 1.30 mm into the corridor, 2.54 mm along
+    # it past the two pads that block the direct line, then 1.30 mm back east to the
+    # stub the router left. 5.13 mm of F.Cu and no via. The search only tried straight
+    # lines, which is why it reported zero -- a third shape of repair it did not model.
+    "repair_tracks": [("MID", "F.Cu", 0.25, [(-29.443, 48.312), (-30.740, 48.312)]),
+                      ("MID", "F.Cu", 0.25, [(-30.740, 48.312), (-30.740, 45.772)]),
+                      ("MID", "F.Cu", 0.25, [(-30.740, 45.772), (-29.443, 45.772)])],
     # ⚠ NARROWING +3V3A IS WORSE TOO: 0.25 -> 0.15 mm took it from 1 unconnected to 2.
     # This was the one lever that was not about giving the router more ROOM. Three
     # attempts had tried that (pre-lay, retry rounds, dropping the B.Cu pour) and all
