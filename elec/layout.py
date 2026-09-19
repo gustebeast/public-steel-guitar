@@ -2041,8 +2041,29 @@ def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
               (t.GetPosition().x, t.GetPosition().y), _via_r(t),
               t.GetNetname()) for t in board.GetTracks() if t.GetClass() == "PCB_VIA"]
 
+    # ⚠ HOLE-VS-HOLE ON EVERY NET WAS TRIED HERE AND REVERTED -- IT BROKE THE BUILD.
+    # The idea is sound: copper on one net may touch, two DRILLS may never, and
+    # _clear_of skips same-net obstacles, so a stitch via beside one GND connector pin
+    # can land in the NEXT GND pin's hole. That is the 8 on motor_ctrl and 6 on
+    # output_panel still reported as holes_co_located after the via-in-pad fix.
+    #
+    # What it cost: `need` is measured from the pad CENTRE and is about 0.5 mm, which is
+    # outside an SMD land and INSIDE a PTH land's 1.0 mm barrel. Make holes obstacles and
+    # every candidate ring for a through-hole pad falls in its own hole -- seven pads on
+    # motor_ctrl reported "no room to stitch" and layout.py failed outright. A rule that
+    # is too strict does not fail safe: it turns a DRC warning into a build that does not
+    # complete. Two attempts at the margin (via pad radius, then drill-edge clearance)
+    # both failed the same way, because the margin was never the problem -- the SEARCH
+    # RING starting inside the barrel was.
+    #
+    # To finish this properly: raise `need` for PTH pads to clear their own drill before
+    # making holes obstacles, and re-measure all three boards. Left undone rather than
+    # half-done, because the remaining co-located drills are warnings and a broken layout
+    # is not.
     def _clear_of(x, y, netname, margin):
-        """True if (x, y) keeps `margin` from every pad or track NOT on `netname`."""
+        """True if (x, y) keeps `margin` from every pad or track NOT on `netname`.
+
+"""
         for bb, onet in others:
             if onet == netname:
                 continue
@@ -2063,19 +2084,20 @@ def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
     for pad, fp in pads:
         if pad.GetNetname() not in nets_wanted:
             continue
-        # ⚠ A THROUGH-HOLE PAD IS ALREADY ITS OWN VIA. Stitching exists to get a SURFACE
-        # pad down to the plane; a PTH pad has a barrel through every layer and reaches
-        # the plane by existing. Stitching one anyway drills a second hole in the same
-        # place, which DRC grades only a WARNING (holes_co_located) -- so finish.py's
-        # error count stayed at zero and nobody looked. Found by auditing the DRC json
-        # directly: 20 on motor_ctrl and 14 on output_panel, every one a stitch via on a
-        # connector pin (J1, J2, J3, J5 -- all the XH headers).
+        # ⚠ A PAD'S OWN DRILL IS INVISIBLE TO ITS OWN STITCH VIA, and on a THROUGH-HOLE
+        # pad that means the via lands in the hole. `free()` below skips every obstacle
+        # on the same net -- correct for copper, wrong for a BARREL -- so a PTH pad's
+        # stitch via is placed at the one spot guaranteed to collide with it. DRC grades
+        # the result holes_co_located, severity WARNING, so finish.py's error count stayed
+        # at zero and nobody looked: 20 on motor_ctrl, 14 on output_panel, every one a
+        # stitch via on an XH connector pin.
         #
-        # It is a real fab problem even at warning severity: the drill enters an
-        # already-drilled hole, which risks the bit and leaves an oval bore, and the
-        # copper buys nothing. Skip them.
-        if pad.GetAttribute() in (pcbnew.PAD_ATTRIB_PTH, pcbnew.PAD_ATTRIB_NPTH):
-            continue
+        # ⚠ AND SKIPPING PTH PADS ALTOGETHER WAS THE WRONG FIX -- MEASURED. It is
+        # defensible on paper (a PTH pad reaches the plane by existing, so the via is
+        # redundant) and it cost the optical board SIX NETS, reproducibly: 0 unconnected
+        # to 6, on a board with only four through-hole pads. Removing four vias from a
+        # board at its routing limit re-planned the whole thing. The narrow fix keeps
+        # every stitch via and only moves it OFF the hole, so nothing else sees a change.
         net = pad.GetNet()
         pc = pad.GetPosition()
         half = max(pad.GetSize().x, pad.GetSize().y) / 2.0
@@ -2104,7 +2126,22 @@ def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
         # The threshold keeps ordinary SMD lands out of it: an 0805's 1.0 mm land is too
         # narrow to swallow a 0.6 via and still hold solder, and via-in-pad there wicks
         # paste down the hole.
-        if min(pad.GetSize().x, pad.GetSize().y) >= pcbnew.FromMM(via_d + 0.6):
+        # ⚠ "NOTHING TO COLLIDE WITH BY DEFINITION" IS TRUE OF AN SMD PAD AND FALSE OF A
+        # THROUGH-HOLE ONE, whose own drill is at exactly the point this branch puts the
+        # via. An XH connector land is ~1.7 mm, so it passes the threshold above and gets
+        # a via dead centre, in the hole. DRC calls that holes_co_located at severity
+        # WARNING, finish.py counts only unexpected ERRORS, and the count stayed at zero:
+        # 20 on motor_ctrl and 14 on output_panel, every one an XH pin.
+        #
+        # PTH pads fall through to the beside-the-pad search instead, which keeps the
+        # stitch and only moves it off the hole. Skipping them ENTIRELY was tried first
+        # and cost the optical board six nets reproducibly (0 unconnected -> 6, on a
+        # board with four through-hole pads) -- removing vias from a board at its routing
+        # limit re-plans the whole thing. The narrow fix changes where one via sits; the
+        # blunt one changed how many exist.
+        _is_pth = pad.GetAttribute() in (pcbnew.PAD_ATTRIB_PTH, pcbnew.PAD_ATTRIB_NPTH)
+        if (not _is_pth
+                and min(pad.GetSize().x, pad.GetSize().y) >= pcbnew.FromMM(via_d + 0.6)):
             v = pcbnew.PCB_VIA(board)
             v.SetPosition(pc)
             v.SetWidth(pcbnew.FromMM(via_d))
