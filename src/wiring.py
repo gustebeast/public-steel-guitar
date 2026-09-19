@@ -554,6 +554,40 @@ def build_wires():
     _mc24 = EL.mctrl_pt("J3")
     tail = [_w0, (BAY_X, _w0[1], _w0[2]), (BAY_X, _mc24[1], _w0[2]),
             (BAY_X, _mc24[1], _mc24[2]), _mc24]
+
+    # ── the SECOND 24 V feed: panel J10 -> motor_ctrl J3, bypassing the tees ──
+    # Runs in the same power lane as the first feed but carries straight past every
+    # tee to the far end. See the emission below for why it exists and why it is a
+    # power-only 4-way.
+    _j10 = EL.op_pt("J10")
+    feed2 = [_j10, (_PWR_X, _j10[1], _j10[2]), (_PWR_X, TEE_Y, -52.0),
+             (BAY_X, TEE_Y, -52.0), (BAY_X, _mc24[1], -52.0),
+             (BAY_X, _mc24[1], _mc24[2]), _mc24]
+
+    # ── the 111 mm of coiled slack, on the J7 (east) cable ───────────────────
+    # A flat SERPENTINE in the power lane, not a wound helix: easier to retain, keeps
+    # the pair together along its whole length (which is what makes it bifilar), and
+    # needs no former.
+    #
+    # ⚠ EXTRA LENGTH IS PATH MINUS THE DIRECT LINE, NOT PATH. The first version here
+    # was a rectangular out-and-back of four 27.75 mm sides -- 111 mm of polyline, and
+    # only 55.5 mm of EXTRA conductor, because the direct line across it is 55.5. Half
+    # the coil it was supposed to be. A serpentine is the right shape: each lobe runs
+    # out and back, so it adds 2 x its depth and the direct line barely grows.
+    #
+    # Four lobes of 13.875 mm add 8 x 13.875 = 111.0 mm, and the deepest excursion is
+    # under 14 mm -- compact enough to sit in the lane instead of needing its own bay.
+    _LOBE_N = 4
+    _LOBE_D = 111.0 / (2.0 * _LOBE_N)                 # 13.875
+    _PITCH = 6.0                                       # along the run, per lobe
+    _cx, _cy = _PWR_X, TEE_Y + _LOBE_N * _PITCH
+    coil = [(_cx, _cy, -52.0)]
+    for _k in range(_LOBE_N):
+        _y0 = _cy - _k * _PITCH
+        coil += [(_cx - _LOBE_D, _y0, -52.0),
+                 (_cx - _LOBE_D, _y0 - _PITCH / 2.0, -52.0),
+                 (_cx, _y0 - _PITCH / 2.0, -52.0),
+                 (_cx, _y0 - _PITCH, -52.0)]
     # (main's afe_drop is dropped with the AFE board itself. Tee 10 survives -- the
     #  optical pickup board takes 24 V off it -- but its drop has no modelled endpoint
     #  until that board exists.)
@@ -586,6 +620,32 @@ def build_wires():
         # _1 is vacant: it was the hop from tee 10 onto the rail, and tee 10 is gone.
         # The tail keeps its own index rather than shifting up into the loop's _2.._10.
         out.append((f"{_nm}_11", _wire(_off(tail), WIRE_OD[_nm])))
+
+        # ⚠ THE SECOND FEED (option A, user 2026-09-18). The tee chain is fed from BOTH
+        # ends now: J7 at the east, and this cable running the length of the instrument
+        # to motor_ctrl's J3 at the west, from which J1 injects onto the chain. Current
+        # enters at both ends and meets in the middle, so the worst-loaded segment
+        # carries about half the fleet instead of all of it -- the single +24V contact
+        # between tees is the 3 A ceiling this relieves.
+        #
+        # It does NOT go through the tees. That is the whole point: this run bypasses
+        # the chain so it arrives at the far end with its own capacity, and it is a
+        # 4-way carrying ONLY power, so both +24V ways parallel and its 582 mm behaves
+        # like 291. The trunk cannot do that -- two of its four ways are CAN.
+        out.append((f"{_nm}_12", _wire(_off(feed2), WIRE_OD[_nm])))
+
+        # ⚠ AND THE COIL, WHICH IS DELIBERATE RESISTANCE. The two feeds are wildly
+        # asymmetric -- J7 reaches the chain in 180 mm, this one travels 582 -- so
+        # uncorrected the east feed takes 5.6 of the 10 motors and the west 4.4. 111 mm
+        # of slack on the J7 cable brings it to exactly 5.00/5.00. It costs 0.0059 ohm,
+        # 0.018 V of 24 at 3 A, which is 0.07 %.
+        #
+        # WOUND AS A PAIR, NOT TWO COILS. A coil carrying DC is electrically nothing,
+        # but motor current is SWITCHED, and 111 mm wound tightly is enough series
+        # inductance to ring against the drivers' input capacitance. Bifilar, the
+        # outbound and return fields cancel -- which is free as long as the pair is
+        # simply not separated, and very annoying to discover on a bench.
+        out.append((f"{_nm}_13", _wire(_off(coil), WIRE_OD[_nm])))
 
 
     # ── bus B (inputs): motor_ctrl J2 -> the lever boards, NO TEES ────────
