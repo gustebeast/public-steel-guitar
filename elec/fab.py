@@ -255,6 +255,17 @@ def fab(board):
     v = subprocess.run([KICAD_PY, os.path.join(HERE, "verify.py"), stem],
                        capture_output=True, text=True)
     if v.returncode:
+        # ⚠ AND THE STALE ZIP GOES HERE TOO. The unconnected-items refusal above
+        # deletes it, on the principle that a board which cannot be packaged must not
+        # appear packaged -- and this refusal, added later, did not. Found by making a
+        # budget fail on purpose to check the gate bites: it does, and it left the
+        # previous output_panel.zip in the fab directory, described by nothing. A
+        # refusal that leaves the artefact behind is the weaker half of a gate.
+        _stale = os.path.join(FAB_DIR, "%s.zip" % board)
+        if os.path.isfile(_stale):
+            os.remove(_stale)
+            print("  removed the previous %s.zip -- it describes an older board and "
+                  "this one cannot be packaged" % board)
         raise SystemExit("%s: FAILED its declared high-speed budgets --\n%s"
                          % (board, (v.stdout or "") + (v.stderr or "")[-400:]))
 
@@ -390,6 +401,37 @@ def _sweep_stale(names):
             # output.
             print("  !! %s.zip is from an earlier run and was NOT rebuilt now -- check "
                   "its date before ordering" % board)
+
+    # ⚠ THE SAME ARGUMENT REACHES ONE DIRECTORY UP, and the sweep stopped at the zips.
+    # Deleting usb_panel.zip left elec/out/usb_panel.kicad_pcb, .net, .dsn and eight more
+    # files from 2026-09-14 -- a whole board's intermediates for a generator that is no
+    # longer in the design. Nothing distinguishes them from a current board's: finish.py
+    # will happily route that .kicad_pcb if somebody names the stem, and it would produce
+    # a real-looking result for a board nobody can regenerate.
+    #
+    # NAMED, NOT DELETED, and the asymmetry with the zips is deliberate. A zip is derived
+    # and can always be rebuilt from the board; these intermediates are the ONLY surviving
+    # artefact of a design whose source has been removed, so throwing them away is not
+    # reversible in the way deleting a package is. Whoever removed the generator gets to
+    # decide, and now they get told there is something to decide about.
+    # ⚠ ONLY THINGS THAT ARE ACTUALLY BOARDS. The first version of this asked "does
+    # a generator exist for every stem in elec/out" and named FIFTY-SEVEN of them --
+    # o2, rp7, z9, chk, skidl_REPL and the rest of years of scratch files. A warning
+    # channel that cries wolf fifty-seven times is worse than no warning at all, which
+    # is the same argument as the DRC warnings this session spent its time on. A board
+    # is a stem with a .kicad_pcb; scratch is not.
+    for f in sorted(glob.glob(os.path.join(OUT_DIR, "*.kicad_pcb"))):
+        board = os.path.basename(f)[:-len(".kicad_pcb")]
+        # A tagged snapshot is <board>.<tag>.kicad_pcb -- optical.baseline1,
+        # optical.pre_incr, <board>.unrouted. Those belong to a board that DOES exist
+        # and are kept on purpose for comparison; only an undotted stem is its own board.
+        if "." in board:
+            continue
+        if not os.path.isfile(os.path.join(HERE, "%s.py" % board)):
+            n = len(glob.glob(os.path.join(OUT_DIR, board + ".*")))
+            print("  !! elec/out holds %d file(s) for '%s', which has no generator -- a "
+                  "board that is not in the design any more. Delete them or restore it."
+                  % (n, board))
 
 
 def main(names):

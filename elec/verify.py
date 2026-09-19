@@ -18,6 +18,16 @@ eyeball a layout. That only works if the judgement calls a person would make are
 written down as CHECKS. So the budgets live in <board>.board.json beside the design
 that has to meet them, and this exits non-zero when they are not met.
 
+⚠ WHAT IS DELIBERATELY NOT CHECKED, so nobody adds it back as an improvement. The CAN
+pairs on motor_ctrl, can_tee and lever_sensor declare no group. Measured rather than
+assumed: can_tee's pair runs 33.25/32.36 mm and lever_sensor's 39.75/42.23 mm, and
+lever_sensor's two rails do NOT share a layer set. At 500 kbit/s a bit is 2,000,000 ps,
+so 2.5 mm of skew is 15 ps -- eight millionths of a bit. A budget there would fail builds
+for nothing, which is the cargo cult this file's last paragraph is about. Pairness on a
+40 mm stub of a 120-ohm bus is in the same category. If the bus ever runs CAN-FD at
+5 Mbit/s the arithmetic changes by 10x and is still not close; revisit it then, with a
+number, not now.
+
 ⚠ A BUDGET NEEDS A REASON, AND THE REASON IS CHECKED TOO. Every entry carries a
 `why`; a limit with no stated basis is a number someone will later relax because it
 was in the way. The optical board's ULPI budget, for instance, is deliberately

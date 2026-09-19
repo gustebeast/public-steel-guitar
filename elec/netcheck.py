@@ -144,6 +144,18 @@ def no_orphan_pins(path):
     The exemption is by NAME and deliberately narrow: a net whose name says NC, or
     SPARE, or matches <REF>_NC_<pin>, is a documented no-connect. Everything else with
     one pin is a fault.
+
+    ⚠ AND IT WAS NOT AS NARROW AS THAT SENTENCE CLAIMED. The pattern carried a bare
+    `NC_` alternative matching ANYWHERE in a name, so SYNC_OUT, ENC_A, FUNC_SEL and
+    INC_PIN were all silently excused -- ordinary signal names, and the failure mode is
+    a pin wired to nothing that this check reports as fine. Nothing on the fleet hit it:
+    all 143 exempted nets today are genuine no-connects, so this is a latent hole rather
+    than a bug that bit, which is exactly when it is cheap to close.
+
+    Now NC/SPARE/NOT_CONNECTED must be a whole underscore-delimited TOKEN. Verified
+    against every netlist in the fleet before and after: the same 143 nets are exempt,
+    and the four names above are no longer. An exemption list that quietly grows is
+    worse than no exemption, because the check keeps reporting success.
     """
     txt = open(path, encoding="utf-8").read()
     bad = []
@@ -151,7 +163,7 @@ def no_orphan_pins(path):
                            r'(?=\(net\s+\(code|\Z)', txt, re.S):
         nodes = re.findall(r'\(ref "([^"]+)"\)\s*\(pin "([^"]+)"\)', blk.group(0))
         name = blk.group(1)
-        if len(nodes) == 1 and not re.search(r"(^|_)NC(_|$)|NC_|SPARE|NOT_CONNECTED",
+        if len(nodes) == 1 and not re.search(r"(^|_)(NC|SPARE|NOT_CONNECTED)(_|$)",
                                              name, re.I):
             bad.append("%s (%s.%s)" % (name, nodes[0][0], nodes[0][1]))
     if bad:

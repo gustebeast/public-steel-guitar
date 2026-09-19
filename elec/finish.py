@@ -112,7 +112,7 @@ def _check_fresh(stem):
     """Refuse to route placements the generator has already changed.
 
     ⚠ THIS SILENTLY WASTED THREE ROUTING RUNS AND PRODUCED THREE CONFIDENT WRONG
-    CONCLUSIONS. finish.py runs layout -> route -> drc -> verify; it does NOT run the
+    CONCLUSIONS. finish.py runs layout -> route -> drc; it does NOT run the
     skidl generator, so `.net` and `.board.json` are whatever the last generator run
     wrote. Edit a placement in elec/<board>.py, run finish.py, and it re-routes the OLD
     placement and reports a result -- which reads exactly like a real measurement of the
@@ -221,6 +221,30 @@ def finish(stem, rounds=1):
     os.remove(stem + ".best.kicad_pcb")
     shutil.copy(stem + ".best.drc.json", stem + ".finish.drc.json")
     os.remove(stem + ".best.drc.json")
+
+    # ⚠ verify.py HAD NEVER BEEN RUN BY ANYTHING. Its own docstring says "THE POINT IS
+    # TO REMOVE THE HUMAN, NOT TO ADVISE ONE" and that it exits non-zero when a budget is
+    # missed -- and nothing called it. It is the only check in this pipeline that asks
+    # whether the board is CORRECT rather than manufacturable: DRC will happily pass a
+    # board whose USB pair is split across two layers on two unrelated paths.
+    #
+    # ⚠ REPORTED HERE, NOT ENFORCED HERE, AND THE SPLIT IS DELIBERATE. _run() aborts
+    # the whole run on a non-zero exit, so gating here would throw away a twenty-minute
+    # routing result over a skew number -- and the board would still be the best one we
+    # have. fab.py is where refusing belongs, because that is the step that produces
+    # something orderable; it already refuses a package built from an unrouted board.
+    try:
+        proc = subprocess.run([PY, os.path.join(HERE, "verify.py"), stem],
+                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                              text=True)
+        for line in proc.stdout.splitlines():
+            if "image handler" in line or line.startswith("WARNING"):
+                continue
+            if line.strip():
+                print("    " + line)
+    except Exception as exc:                      # a check that breaks must not break the
+        print("    verify.py did not run: %r" % (exc,))   # board it was checking
+
     print("%s: %d unconnected, %d violation(s)"
           % (os.path.basename(stem), best_n, best_v))
     return best_n, best_v
