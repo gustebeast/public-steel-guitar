@@ -575,20 +575,15 @@ BOARD_NOTES = {
         # pitch: three signals needing three escape lanes, and a 0.6 mm via leaves room
         # for two. That is the whole problem, stated properly at last.
         #
-        # SO THE REMAINING FIXES ALL COST SOMETHING, and none is a routing change:
-        #   1. A SMALLER ESCAPE VIA. Three 0.45/0.25 vias fit where two 0.6/0.3 do. This
-        #      is the standard answer for a 0.4 mm QFN and it is the cheapest change --
-        #      but see the via note in layout.py: 0.6/0.3 was chosen BECAUSE it is
-        #      JLCPCB's standard capability and costs nothing extra. A 0.25 drill leaves
-        #      standard capability, on 11 boards per instrument. That is a price
-        #      decision, not a layout one.
-        #   2. A COARSER PACKAGE. CH32V203 exists in LQFP32 at 0.8 mm pitch, which is
-        #      twice the escape room and removes the problem rather than squeezing it.
-        #      Costs board area on a board that is already fighting knee_housing.
-        #   3. ACCEPT A RECEIVE-ONLY-BROKEN NODE, which is not acceptable: CAN_RX open
-        #      means the node cannot hear the bus, so the board is dead on it.
-        # Left at 1 unconnected deliberately, with the cause named, rather than spending
-        # more routing runs on a fan that provably has no room.
+        # SOLVED BY THE VIA, NOT BY THE PLACEMENT: at 0.50 mm instead of 0.60 all three
+        # signals escape and this board reaches 0 unconnected and 0 violations for the
+        # first time. The full sweep and the JLCPCB capability figures are in the
+        # "via_mm" note below -- including that it is NOT a move off standard capability
+        # and carries no surcharge, which is the opposite of what it looks like.
+        #
+        # The placement work above stays because each move is right on its own terms, and
+        # because the diagnosis needed it: it was only after the parts stopped being
+        # plausible suspects that the fan itself became the obvious one.
         "U3": (1.00, 1.55, 0.0),
         "C9": (5.50, 3.20, 0.0),
         "C8": (7.50, 3.20, 0.0),
@@ -690,6 +685,45 @@ BOARD_NOTES = {
     # conclusion: the generator is not an option for this net AT ALL, so "pre-lay
     # CAN_RX and CAN_TX fails instead" cannot be reproduced on this board and is not
     # the state to reason from any more.
+    # ⚠ A SMALLER VIA, AND IT IS WHAT CLOSES THE CAN FAN -- see the note in
+    # lever_sensor() for the measurement. Three signals leave three adjacent 0.4 mm-pitch
+    # QFN pins and a 0.6 mm via leaves room for two; at 0.50 all three escape and this
+    # board reaches 0 unconnected, 0 violations for the first time.
+    #
+    # THE PAD IS THE DIMENSION THAT MATTERS, NOT THE DRILL, which the sweep separates:
+    #     0.60 / 0.30   1 unconnected (CAN_RX)     -- the fan has room for two
+    #     0.55 / 0.30   2 unconnected (SCL, SWDIO) -- worse, not a gradient
+    #     0.50 / 0.30   0 unconnected, 12 hole_clearance errors
+    #     0.50 / 0.25   0 unconnected, 0 violations
+    #     0.45 / 0.25   0 unconnected, 11 hole_clearance errors
+    # The drill only shrinks to keep the annulus wide enough for KiCad's DEFAULT 0.25 mm
+    # hole-clearance constraint, which the 0.30 drill misses by 0.011 mm.
+    #
+    # ⚠ AND IT COSTS NOTHING, WHICH WAS WORTH CHECKING RATHER THAN ASSUMING. The via
+    # note in layout.py chose 0.6/0.3 because it is JLCPCB's standard capability, so the
+    # obvious reading is that this leaves it. Their published capabilities (2026-09-19)
+    # say otherwise on both counts:
+    #   * "Min. Via hole size/diameter ... Multilayer: 0.15 mm hole size / 0.25 mm via
+    #     diameter", so 0.50/0.25 is inside standard capability, not beyond it.
+    #   * The surcharge is specific: "0.2mm or 0.25mm hole size with via diameter LESS
+    #     THAN 0.45mm will cost more". 0.50 is above that, so a 0.25 drill here is not
+    #     surcharged. It also satisfies their "via diameter should be 0.1mm (0.15mm
+    #     preferred) larger than via hole size" -- this is 0.25 larger.
+    #   * Their real hole-to-copper rule is "Via hole to Track 0.2mm", LOOSER than the
+    #     0.25 KiCad enforces. So the 0.50/0.30 board that failed 12 hole_clearance
+    #     checks was failing a house default and not a fab limit -- it is manufacturable
+    #     too. 0.50/0.25 is used because it needs no rule relaxed to prove it.
+    "via_mm": (0.50, 0.25),
+    # ⚠ THE VIA SIZE IS AN ORDER-FORM FIELD, NOT JUST A GERBER FACT. JLCPCB's own
+    # capability page says "please select corresponding via size option when placing
+    # order" for 0.2/0.25 mm hole sizes. The gerbers carry the geometry; the process is
+    # chosen on the form, and nothing in the drill file makes the operator pick it.
+    "order_options": {
+        "via size": "0.25 mm hole / 0.50 mm diameter -- SELECT THIS ON THE ORDER FORM. "
+                    "Inside standard capability and NOT surcharged (the surcharge is for "
+                    "a 0.25 hole with a diameter under 0.45; this is 0.50). The board "
+                    "does not route at the 0.6/0.3 default -- see the CAN fan note.",
+    },
     "refs_on_fab": True,
     "hold_edge": None,          # NO screw: the grooves hold five faces and the
                                 # instrument's underside closes over the sixth
