@@ -291,6 +291,12 @@ def lever_sensor():
     #       rot 270   2 unconnected
     # The proxy was right this time. Recorded because "we chose it by a proxy" and "we
     # measured it" are different claims, and only one of them survives someone asking.
+    #
+    # ⚠ THOSE FOUR NUMBERS WERE TAKEN AT THE 0.6/0.3 VIA, when the best any rotation
+    # could do was 1 unconnected. At 0.50/0.25 rotation 0 reaches ZERO, so the absolute
+    # figures no longer describe this board -- only the RANKING is still being relied on,
+    # and the ranking has not been re-measured at the smaller via. If a rotation is ever
+    # in question again, re-run it rather than reading this table as current.
 
     # ⚠ AND THE BIGGER BOARD DID NOT FIX IT -- MEASURED AGAIN 2026-09-19, after the
     # board went to 34 x 28 for the XH. The open net swapped from CAN_RX to CAN_TX,
