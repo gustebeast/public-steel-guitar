@@ -2613,8 +2613,14 @@ def _rules(board, notes):
     # -- leaving it in place reports the router's own legal narrowing (it drops
     # to 0.187 to escape a 0.4 mm-pitch QFN) as 50 violations.
     bds.m_TrackMinWidth = pcbnew.FromMM(0.127)
-    bds.m_ViasMinSize = pcbnew.FromMM(0.6)
-    bds.m_MinThroughDrill = pcbnew.FromMM(0.3)
+    # ⚠ THE MINIMUMS HAVE TO FOLLOW THE NET CLASS OR DRC GRADES THE BOARD AGAINST A
+    # RULE IT NO LONGER USES. Setting only the net class via and leaving these at 0.6/0.3
+    # gave lever_sensor 0 unconnected and 36 errors -- 18 via_diameter and 18
+    # drill_out_of_range -- every one of them the board complaining about vias it had
+    # just been told to make.
+    _mvd, _mvdr = notes.get("via_mm", (0.6, 0.3))
+    bds.m_ViasMinSize = pcbnew.FromMM(_mvd)
+    bds.m_MinThroughDrill = pcbnew.FromMM(_mvdr)
     bds.m_CopperEdgeClearance = pcbnew.FromMM(0.3)
     for nc in board.GetAllNetClasses().values():
         nc.SetClearance(pcbnew.FromMM(0.127))
@@ -2630,8 +2636,15 @@ def _rules(board, notes):
         # not fit between the pads, so the router simply leaves those pins
         # unrouted. 0.6/0.3 is JLCPCB's STANDARD (not advanced) capability and
         # costs nothing extra.
-        nc.SetViaDiameter(pcbnew.FromMM(0.6))
-        nc.SetViaDrill(pcbnew.FromMM(0.3))
+        # ⚠ PER-BOARD, BECAUSE ONE BOARD'S FAN NEEDS THREE LANES WHERE 0.6 GIVES TWO.
+        # lever_sensor puts CAN_RX, CAN_TX and SWDIO on three adjacent 0.4 mm-pitch QFN
+        # pins; measured there, the two that escape park their vias in the third's only
+        # opening. A smaller via is the standard answer, and it is NOT free -- a 0.25 mm
+        # drill leaves the standard capability the note above is about -- so a board that
+        # wants one says so and pays for it explicitly.
+        _vd, _vdr = notes.get("via_mm", (0.6, 0.3))
+        nc.SetViaDiameter(pcbnew.FromMM(_vd))
+        nc.SetViaDrill(pcbnew.FromMM(_vdr))
 
     # ⚠ PER-NET WIDTH, BECAUSE UNTIL NOW EVERY NET ON EVERY BOARD WAS 0.25 mm AND A 24 V
     # TRUNK WAS ONE OF THEM. The fleet's 24 V bus is budgeted under 5 A: the cable was
