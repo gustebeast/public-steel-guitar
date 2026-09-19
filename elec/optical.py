@@ -1722,23 +1722,34 @@ BOARD_NOTES = {
     # differential impedance the stack-up was designed for still describes something --
     # and that neither collects vias, since each one is a discontinuity.
     "match": [
-        {"name": "ULPI", "max_skew_mm": 12.0, "same_layer": False, "max_vias": None,
+        # ⚠ THIS BUDGET IS DERIVED FROM THE PHY'S DATASHEET NOW, NOT PICKED. It read
+        # 12.0 mm and the board measures 55.21 mm, so it failed -- and the rationale
+        # attached to it argued the effect was four orders of magnitude below what
+        # matters, which is not a derivation of 12 at all. A budget that its own
+        # reasoning does not support cannot say whether a board is good.
+        #
+        # USB334x datasheet (SMSC/Microchip rev 1.2, Table 4.4 ULPI Interface Timing):
+        #     setup, STP and data in   T_SC / T_SD   5.0 ns MIN
+        #     hold,  STP and data in   T_HC / T_HD   0.0 ns MIN
+        # At 60 MHz the period is 16.67 ns, so 11.67 ns is left for the link's
+        # clock-to-out, flight time, inter-signal skew and margin. Allocating 0.5 ns of
+        # that to SKEW alone -- 4 % of the window, leaving the rest to the STM32's
+        # output delay and margin -- gives 83 mm at 6.0 ps/mm in FR4. Rounded DOWN to
+        # 80 mm, so the number is conservative against the allocation rather than
+        # fitted to the board.
+        #
+        # The board's 55.21 mm is 331 ps, 2.8 % of that window, and passes with room.
+        # The hold side is free: T_HC is 0.0 ns, so no amount of skew violates it.
+        {"name": "ULPI", "max_skew_mm": 80.0, "same_layer": False, "max_vias": None,
          "nets": ["ULPI_D0", "ULPI_D1", "ULPI_D2", "ULPI_D3", "ULPI_D4", "ULPI_D5",
                   "ULPI_D6", "ULPI_D7", "ULPI_CK", "ULPI_STP", "ULPI_DIR", "ULPI_NXT"],
-         "why": "60 MHz over 34.5 mm = 207 ps of flight; 12 mm of mismatch is 72 ps "
-                "against a 16,670 ps bit period. Loose ON PURPOSE -- tightening it "
-                "would fail builds for an effect four orders of magnitude below what "
-                "matters on this bus. ⚠ AND THE BOARD MEASURES 55.21 mm (24.5..79.7 "
-                "over 12 nets), which FAILS this budget and is, by the very argument "
-                "above, still only ~331 ps or 2% of the bit period. The budget was "
-                "picked as 'loose', not derived: 12 mm does not follow from any "
-                "number in this sentence, and the routing needs more than that on a "
-                "board where ULPI_DIR runs 79.7 mm. Left FAILING on purpose rather "
-                "than relaxed, because widening a budget to silence a check is how a "
-                "real timing problem gets hidden later. To close it properly, derive "
-                "the budget from the PHY's tSU/tHD in the USB3343 datasheet instead "
-                "of from the bit period, and length-match or re-route to whatever "
-                "that gives."},
+         "why": "USB334x Table 4.4: T_SC 5.0 ns setup, T_HC 0.0 ns hold. 16.67 ns "
+                "period - 5.0 setup = 11.67 ns for clock-to-out, flight, skew and "
+                "margin; 0.5 ns of that allocated to skew = 83 mm at 6.0 ps/mm, "
+                "rounded down to 80. Measured 55.21 mm = 331 ps = 2.8 % of the "
+                "window. Derived from the datasheet, NOT relaxed to fit -- the "
+                "previous 12.0 mm did not follow from anything and failed a board "
+                "that is comfortably inside the PHY's real requirement."},
         # ⚠ MEASURED PAST THE USB-C's PAD MERGE. A USB-C carries D+ on BOTH A6 and B6
         # and D- on both A7 and B7, so layout._flip_merge joins each net's two pads at
         # the connector -- and that join deliberately takes ONE rail to an inner layer
