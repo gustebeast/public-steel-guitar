@@ -108,6 +108,37 @@ def _run(script, stem):
     return "".join(out)
 
 
+def _check_fresh(stem):
+    """Refuse to route placements the generator has already changed.
+
+    ⚠ THIS SILENTLY WASTED THREE ROUTING RUNS AND PRODUCED THREE CONFIDENT WRONG
+    CONCLUSIONS. finish.py runs layout -> route -> drc -> verify; it does NOT run the
+    skidl generator, so `.net` and `.board.json` are whatever the last generator run
+    wrote. Edit a placement in elec/<board>.py, run finish.py, and it re-routes the OLD
+    placement and reports a result -- which reads exactly like a real measurement of the
+    change. On lever_sensor that produced "moving the SWD pads does not help" and "moving
+    C7 and R6 does not help", both of which were statements about an unmodified board.
+    (The same shape of mistake was made on optical earlier: a file reverted, the netlist
+    not regenerated, and a regression reported that had never happened.)
+
+    A stale netlist is not a wrong answer, it is an answer to a question nobody asked,
+    and there is no way to tell from the output. So compare the timestamps and stop.
+    """
+    src = os.path.join(HERE, os.path.basename(stem) + ".py")
+    if not os.path.isfile(src):
+        return
+    for ext in (".net", ".board.json"):
+        f = stem + ext
+        if os.path.isfile(f) and os.path.getmtime(f) < os.path.getmtime(src):
+            raise SystemExit(
+                "%s is NEWER than %s.\n"
+                "finish.py does not run the generator, so routing now would measure the "
+                "PREVIOUS placements and report it as a result. Run:\n"
+                "    py -3.12 %s"
+                % (os.path.relpath(src), os.path.basename(stem) + ext,
+                   os.path.relpath(src)))
+
+
 def finish(stem, rounds=1):
     """Route `stem`; with rounds>1, retry the nets the router could not finish.
 
@@ -146,6 +177,7 @@ def finish(stem, rounds=1):
     space to solve the easy half of the problem. A retry that only ever laid the CLUSTER
     end of a failed net, and left the long run to the router, has not been tried.
     """
+    _check_fresh(stem)
     retry = stem + ".retry.json"
     if os.path.isfile(retry):
         os.remove(retry)          # always start from the board as designed
