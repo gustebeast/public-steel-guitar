@@ -1,8 +1,40 @@
 ** Drc report for motor_ctrl.kicad_pcb **
-** Created on 2026-09-16T13:09:44 **
+** Created on 2026-09-18T19:42:25 **
 ** Report includes: Errors, Warnings **
 
-** Found 0 DRC violations **
+** Found 8 DRC violations **
+[holes_co_located]: Drilled holes co-located
+    Local override; warning
+    @(101.2500 mm, 74.0000 mm): PTH pad 3 [+5V] of J5
+    @(101.2500 mm, 74.0000 mm): Via [+5V] on F.Cu - B.Cu
+[holes_co_located]: Drilled holes co-located
+    Local override; warning
+    @(102.7500 mm, 97.5000 mm): Via [+24V] on F.Cu - B.Cu
+    @(102.7500 mm, 97.5000 mm): PTH pad 2 [+24V] of J2
+[holes_co_located]: Drilled holes co-located
+    Local override; warning
+    @(88.7500 mm, 97.5000 mm): PTH pad 2 [+24V] of J1
+    @(88.7500 mm, 97.5000 mm): Via [+24V] on F.Cu - B.Cu
+[holes_co_located]: Drilled holes co-located
+    Local override; warning
+    @(98.7500 mm, 74.0000 mm): Via [+5V] on F.Cu - B.Cu
+    @(98.7500 mm, 74.0000 mm): PTH pad 2 [+5V] of J5
+[holes_co_located]: Drilled holes co-located
+    Local override; warning
+    @(102.7500 mm, 97.5000 mm): Via [+24V] on F.Cu - B.Cu
+    @(102.7500 mm, 97.5000 mm): PTH pad 2 [+24V] of J2
+[holes_co_located]: Drilled holes co-located
+    Local override; warning
+    @(98.7500 mm, 74.0000 mm): Via [+5V] on F.Cu - B.Cu
+    @(98.7500 mm, 74.0000 mm): PTH pad 2 [+5V] of J5
+[holes_co_located]: Drilled holes co-located
+    Local override; warning
+    @(101.2500 mm, 74.0000 mm): PTH pad 3 [+5V] of J5
+    @(101.2500 mm, 74.0000 mm): Via [+5V] on F.Cu - B.Cu
+[holes_co_located]: Drilled holes co-located
+    Local override; warning
+    @(88.7500 mm, 97.5000 mm): PTH pad 2 [+24V] of J1
+    @(88.7500 mm, 97.5000 mm): Via [+24V] on F.Cu - B.Cu
 
 ** Found 0 unconnected pads **
 

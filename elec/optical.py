@@ -1581,6 +1581,28 @@ BOARD_NOTES = {
     #
     # So B.Cu being "half empty" is not spare capacity. Third structural lever tried on
     # this net and the third to lose, after the +3V3A pre-lay and the full permutation.
+    # ⚠⚠ THIS BOARD IS NOT READY, AND "0 unconnected, 0 violations" DOES NOT SAY SO.
+    # elec/fab.py's signal-integrity check reports THREE failures that DRC cannot see,
+    # because DRC compares copper to a netlist and says nothing about timing or impedance:
+    #
+    #   USB_HS  the pair DOES NOT SHARE A LAYER SET -- USB_DP runs F.Cu + In2.Cu with
+    #           TWO vias, USB_DM runs F.Cu with none. A differential pair's impedance is
+    #           a property of the two conductors' geometry RELATIVE TO EACH OTHER, so a
+    #           layer split destroys it, and the vias sit on one leg only. At 480 Mbps
+    #           this is the difference between a link that works and one that enumerates
+    #           sometimes.
+    #   USB_HS  skew 3.28 mm against a 2.50 mm budget.
+    #   ULPI    skew 55.21 mm against a 12.00 mm budget, 24.5..79.7 mm over 12 nets.
+    #
+    # ⚠ AND THE LAYER SPLIT LOOKS AVOIDABLE. The In2 excursion is 2.50 mm long, between
+    # vias at (116.97, 188.65) and (119.47, 188.65) -- and the nearest F.Cu obstacle
+    # along that same line is VBUS at 1.629 mm, with a 0.2 mm trace. The surface is
+    # clear; the pair dived for no reason the geometry requires. diff_pair_inner is set
+    # to In2.Cu, which PERMITS the inner layer, and something took it for one leg only.
+    #
+    # Recorded here rather than fixed because it is a real piece of work: the fix is in
+    # how layout.py lays the declared pair, and both legs must transition together or
+    # neither. Until then this board routes cleanly and would not run USB HS reliably.
     "zones": [("GND", "F.Cu", 0.3), ("GND", "In1.Cu", 0.3), ("GND", "B.Cu", 0.3)],
     # ⚠ ONE VIA AND TWO SHORT TRACKS, WHICH IS WHAT THIS NET ACTUALLY NEEDED. Four
     # attempts to close +3V3A at U2 pad 4 reached for router SETTINGS -- pre-laying the
