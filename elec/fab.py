@@ -221,6 +221,17 @@ def fab(board):
         # three nets left wants a look at those three nets, and being told to "run
         # route.py first" sends you to re-run a step that already ran. Track count is
         # what distinguishes them, and it costs one pass over a file already on disk.
+        # ⚠ AND TAKE THE OLD PACKAGE WITH IT. Refusing to WRITE a zip leaves any
+        # previous one sitting in fab/ looking exactly like a current one -- which is
+        # the same "looks complete and arrives incomplete" failure this refusal exists
+        # to prevent, arriving by the back door. lever_sensor.zip survived here from
+        # 2026-09-17, two days and a BOOT0 rework out of date, describing a board that
+        # no longer exists. A board that cannot be packaged must not appear packaged.
+        _stale = os.path.join(FAB_DIR, "%s.zip" % board)
+        if os.path.isfile(_stale):
+            os.remove(_stale)
+            print("  removed the previous %s.zip -- it describes an older board and "
+                  "this one cannot be packaged" % board)
         raise SystemExit(
             "%s: %d unconnected item(s) -- %s. A fab package built from it would look "
             "complete and arrive incomplete."
@@ -342,8 +353,45 @@ def fab(board):
     return n, len(groups), sorted(open_real), sorted(open_generic), z, opts or {}
 
 
+def _sweep_stale(names):
+    """Delete packages for boards that no longer exist, and warn on ones left behind.
+
+    ⚠ THIS FILE REFUSES TO BUILD A PACKAGE FOR A BOARD THAT DOES NOT PASS, AND THAT IS
+    ONLY HALF THE GUARANTEE. Refusing to write a new zip does nothing about the OLD one
+    sitting beside it, and a stale zip is indistinguishable from a fresh one to whoever
+    uploads it -- which is exactly the "looks complete and arrives incomplete" failure
+    this file exists to prevent, arriving by the back door.
+
+    Found by listing the directory rather than trusting it: trrs_adapter.zip from
+    2026-09-16 and usb_panel.zip from 09-14, both for boards whose GENERATORS HAVE BEEN
+    DELETED from the design, and lever_sensor.zip from 09-17, which predates that
+    board's BOOT0 rework and describes a board that no longer exists either. All three
+    were orderable-looking and none of them were current.
+
+    A package whose generator is gone is deleted outright -- there is no board it could
+    describe. A package for a board that still exists but was not rebuilt this run is
+    left alone and NAMED, because it may simply not have been asked for.
+    """
+    import glob
+    for z in sorted(glob.glob(os.path.join(FAB_DIR, "*.zip"))):
+        board = os.path.splitext(os.path.basename(z))[0]
+        gen = os.path.join(HERE, "%s.py" % board)
+        if not os.path.isfile(gen):
+            os.remove(z)
+            print("  removed %s.zip -- no generator; that board is not in the design"
+                  % board)
+        elif board not in names:
+            # ASCII only in PRINTED text: this console is cp1252 and a warning glyph
+            # here raised UnicodeEncodeError, which took the whole tool down. The
+            # comments in this file use the glyph freely because they are source, not
+            # output.
+            print("  !! %s.zip is from an earlier run and was NOT rebuilt now -- check "
+                  "its date before ordering" % board)
+
+
 def main(names):
     os.makedirs(FAB_DIR, exist_ok=True)
+    _sweep_stale(names)
     blocked, order = {}, {}
     for b in names:
         n, g, open_real, open_generic, z, opts = fab(b)
