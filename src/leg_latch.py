@@ -240,6 +240,9 @@ DIVOT = 2 * B                      # 1.6 in the tenon's pocket floor
 SLIDER_SEAT = LT.SPR_SEAT - DIVOT  # 4.8 in the slider
 SPR_REST_L = SLIDER_BACK + SLIDER_SEAT - (TUNNEL_BACK - DIVOT)   # 10.4 installed
 SPR_PRESS_L = SPR_REST_L - STROKE                                 # 7.2 pressed
+assert tuple(LT.SLIDER_UP) == tuple(LS.PRINT_UP["latch_slider"]), (
+    "latch.py teardrops the spring bore for %s; leg_stack prints the slider %s"
+    % (LT.SLIDER_UP, LS.PRINT_UP["latch_slider"]))
 assert SPR_REST_L < LT.SPR_FREE, "the spring is not preloaded at rest"
 assert SPR_PRESS_L >= LT.SPR_SOLID, "the spring goes solid before full stroke"
 PRELOAD_N = (LT.SPR_FREE - SPR_REST_L) * LT.SPR_RATE             # ~4.0
@@ -511,8 +514,13 @@ def slider() -> cq.Workplane:
 def spring() -> cq.Workplane:
     """The steel coil at REST, drawn at its true INSTALLED length: floor of the
     divot to floor of the seat. HARDWARE, so its numbers are the part's and not on
-    the bead grid."""
-    return _radial_cyl(LT.SPR_OD, TUNNEL_BACK - DIVOT, SPR_REST_L, SPR_Z)
+    the bead grid.
+
+    A real HELIX (latch.coil), not the solid cylinder this used to be -- the user found
+    that in the viewer next to the TRRS coil and the difference is not subtle."""
+    return LT.coil(SPR_REST_L,
+                   (LS.LEG_X, LS.LEG_Y + BUTTON_SIDE * (TUNNEL_BACK - DIVOT), SPR_Z),
+                   (0, BUTTON_SIDE, 0))
 
 
 # -- what each host part gives up -------------------------------------------

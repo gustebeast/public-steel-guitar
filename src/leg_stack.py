@@ -264,16 +264,14 @@ assert LADDER_SKIN >= D.MIN_WALL_2P
 # legs._cross_x, the STUB_TNG_* numbers) and line up BY CONSTRUCTION, not by
 # copied numbers. (The first version bolted the adapter up with four M4s through
 # the closed end -- joinery the body has no holes for.) Per corner:
-#   * two Y-running octagon RIDGES at the thirds of the side-panel overlap; the
-#     middle one's INBOARD end is cut back by legs.SERVICE_SLIDE (user: the endplates
-#     use that space; the leg slides out that far to reach it)
-#   * one rectangular END-WALL TONGUE into a rebate against the endplate wall's
-#     inner face; its blind end is the flush hard stop
-#   * ONE SCREW (user): an M4 set-screw LOCK PIN along X, threaded in a heat-set
-#     insert in the endplate's end wall and crossing the tongue through a clearance
-#     hole. It locks the leg in the body and the endplate to the chassis. With a
-#     service slide set, a SECOND tongue hole SERVICE_SLIDE inboard takes the same
-#     screw with the leg slid out to its service position.
+#   * a Y-running octagon RIDGE in EVERY lever mortise over this foot, each one clamped
+#     to the run chassis.foot_tenon_runs gives that station (the tongue and the cut-back
+#     middle ridge are both gone: the bottom grid is the joinery now)
+#   * ONE SCREW (user): an M4 LOCK PIN along X, threaded in a heat-set insert in the
+#     endplate's end wall and crossing those tenons through clearance holes. It locks the
+#     leg in the body and the endplate to the chassis. At the +Y corners a SECOND hole,
+#     legs.SERVICE_SLIDE inboard, takes the same screw with the foot slid out to its
+#     service position -- legs.foot_pin_joints hands over both.
 # The ridges are undercut, so this joint SLIDES IN ALONG Y from outboard -- the
 # adapter cannot go straight up. It is the semi-permanent half: fitted once.
 assert abs(LG.SQ_W - LEG_W) < 1e-9, "the body's mortises were cut for a %.1f leg" % LG.SQ_W
@@ -398,7 +396,14 @@ def adjust_tenon(top: float = Z_ADJ_TEN_TOP):
     # the PEDAL BAR's latch hooks this end: its retention pocket and lead-in chamfer,
     # placed from where this tenon seats in the bar (src.bar_latch)
     from . import bar_latch as BL
-    return t.cut(BL.tenon_cut(top - ADJ_TEN_L + ENGAGE))
+    t = t.cut(BL.tenon_cut(top - ADJ_TEN_L + ENGAGE))
+    # THE BOTTOM BLIND-MATE (src.bar_trrs): the male plug floats in this tenon on the
+    # same coil SKU as the top joint, and the bar keeps a short PCB jack. Cut last, and
+    # only on the tenon as drawn -- a shortened one is a height setting, not a station
+    if abs(top - Z_ADJ_TEN_TOP) < 1e-9:
+        from . import bar_trrs as BT
+        t = t.cut(BT.tenon_negatives(TENON_UP))
+    return t
 
 
 def fixed_tenon():
@@ -416,7 +421,11 @@ def fixed_tenon():
     for z in (Z_FIX_SCREW, Z_ADJ_SCREW):
         t = t.cut(_from_plus_x(ADJ_HOLE_D, z, LEG_X + TEN_APEX - JOIN_SEAT,
                                TENON_UP, limit_deg=TEN_HOLE_LIMIT_DEG))
-    return t
+    # THE LEG'S SIGNAL, down the joint's own axis (src.leg_trrs): the throat at this
+    # tenon's tip, the floating jack's travel, its coil, and the cable on down the leg
+    from . import leg_trrs as LTR       # late: leg_trrs reads this module
+    return t.cut(LTR.tenon_negatives(LEG_X, LEG_Y, TENON_UP,
+                                     bot=Z_FIX_TEN_BOT - 1.0))
 
 
 def body_adapter(sx: float = LEG_X, ly: float = LEG_Y):
@@ -452,24 +461,43 @@ def body_adapter(sx: float = LEG_X, ly: float = LEG_Y):
     b = b.translate((sx - LEG_X, ly - LEG_Y, 0.0))
     # BODY TENONS, on the top face (see BODY JOINERY). Both ridges and the tongue
     # run the full LEG_W along Y, the slide axis.
-    mid_cut = LG.service_slide(egx, syg)
-    for i, dx in enumerate(LG._cross_x(egx)):
-        cut = mid_cut if i == 0 else 0.0        # the middle ridge gives up its inboard end
-        if cut >= LEG_W - 1e-9:
-            continue
-        y0 = ly - LEG_W / 2.0 + (cut if syg > 0 else 0.0)
-        ridge = LG._stub_ridge(LEG_W - cut).translate((sx + dx, y0, Z_TOP))
-        b = b.union(ridge)
-    b = b.union(box_at(LG.STUB_TNG_W, LEG_W, LG.STUB_TNG_H,
-                       x=sx + egx * LG.STUB_RIDGE_EP, y=ly,
-                       z=Z_TOP + LG.STUB_TNG_H / 2.0))
-    # M4 LOCK PIN, the adapter's ONLY screw (user): the set screw from the endplate's
-    # insert crosses the tongue along X, locking the leg in the body and the endplate to
-    # the chassis. Its SECOND hole, SERVICE_SLIDE inboard along the tongue, is where that
-    # screw lands with the leg slid out to its service position (legs.SERVICE_SLIDE).
-    # The same legs helper the endplate's half comes from, shaped by cadkit.
-    for dy in (0.0,) + ((-syg * mid_cut,) if mid_cut else ()):
-        b = b.cut(LG.tongue_pin_cutter(sx, ly + dy, egx, Z_TOP, ADAPTER_UP, syg))
+    # THE RIDGES FIT THE CHASSIS, not the other way round (user, 2026-09-16). The chassis cuts
+    # its lever-mortise grid by its own rule and nothing here reshapes it, so each ridge takes
+    # the grid's station where the grid reaches this corner (_cross_x(egx, sx)) and stops where
+    # the mortises stop -- they end at the light window's face, and a ridge that ran the full
+    # 44.8 past it drove 515 mm3 straight into the floor.
+    # A TENON IN EVERY MORTISE OVER THIS FOOT (user, 2026-09-17). Not two stations picked out
+    # of the grid: every station whose tenon fits inside the foot's own footprint gets one, so
+    # nothing above the foot is left as an unused slot. chassis.mort_segments is the one
+    # authority on where each station's mortise actually runs -- one run for most, two short
+    # runs (one per foot) for the three at each end -- and a tenon is clamped to the run it sits
+    # in and kept only if that run opens the way this corner slides in.
+    for st, y0, y1 in CH.foot_tenon_runs(sx, ly, syg):
+        # (keeping off the height-screw heads and the string access channels is the MORTISE's
+        #  business, not the tenon's: chassis.mort_segments shortens the run and this follows it.
+        #  It was duplicated here, which is two places to get the same rule wrong.)
+        b = b.union(LG._stub_ridge(y1 - y0).translate((st, y0, Z_TOP)))
+    # M4 LOCK PIN, the adapter's ONLY screw (user): it threads into an insert in the ENDPLATE
+    # and carries on through the chassis floor into this foot's TENONS, which it pins -- that is
+    # what stops the foot sliding back out along Y. Same legs helper the endplate's and the
+    # chassis' halves come from, shaped by cadkit for this part's print.
+    # TWO HOLES ON THAT ONE AXIS (user, 2026-09-17): where the foot sits, and where it sits
+    # SLID OUT to its service position -- legs.foot_pin_joints, which is also what asserts the
+    # service one lands in a tenon that is still in the body out there. Same screw, same insert:
+    # the player pulls the foot out until the second hole lines up and drives the screw back in.
+    from cadkit.fasteners import M4 as _M4L
+    for _j in LG.foot_pin_joints(sx, ly, egx, syg, Z_TOP):
+        b = b.cut(_j.cutter(ADAPTER_UP))
+        # ...and the strip of tenon ABOVE each hole comes off, the whole way along the pin. The
+        # tenon is 8.6 tall and the hole is centred at LOCK_Z, so 0.6 would be left over it -- a
+        # sliver on the very feature doing the pinning. Taken away, the pin sits in a NOTCH and
+        # bears on the tenon's Y walls. Spans face to tip, because the pin crosses every tenon
+        # over the foot on its way to the last one.
+        _x_face = sx + egx * LEG_W / 2.0
+        _x_tip = _x_face - egx * (LG.LOCK_RECESS + LG.LOCK_SCREW_L)
+        b = b.cut(box_at(abs(_x_face - _x_tip), _M4L.shaft_clr_d, 8.0,
+                         x=(_x_face + _x_tip) / 2.0, y=_j.entry[1],
+                         z=Z_TOP + LG.LOCK_Z + 4.0))
     return b
 
 
@@ -576,16 +604,10 @@ def bar_latch_frame():
     return BL.frame(Z_BAR_MOUTH)
 
 
-def _bar_trrs_top():
-    """The bar's TRRS jack way top in world z (the bar is posed from its mouth)."""
-    from . import pedal_bar as PB
-    return Z_BAR_MOUTH - (PB.TOWER_TOP - PB.TRRS_WAY_TOP)
-
-
 def bar_latch_collar():
     """The pedal bar latch's COLLAR -- printed on its own, screwed onto the bar's tower."""
     from . import bar_latch as BL
-    return BL.collar(Z_BAR_MOUTH, _bar_trrs_top())
+    return BL.collar(Z_BAR_MOUTH)
 
 
 PARTS = {
@@ -656,10 +678,18 @@ def leg_parts():
            ("leg_latch_spring", LL.spring()),
            # the pedal bar latch, AT REST (hook in, pad flush)
            ("bar_latch_frame", BL.frame(Z_BAR_MOUTH)),
-           ("bar_latch_collar", BL.collar(Z_BAR_MOUTH, _bar_trrs_top()))]
+           ("bar_latch_collar", BL.collar(Z_BAR_MOUTH))]
+    from . import bar_trrs as BT
+    out += BT.dummies()
+    # ...and the BAR's half of the same joint. It is authored against a caller-supplied
+    # mortise floor precisely so it can be drawn in either frame; in world, that floor
+    # is the adjust tenon's own bottom face, which is BT.TIP.
+    out += BT.bar_dummies(BT.TIP)
     out += [("bar_latch_spring_%d" % i, s) for i, s in enumerate(BL.springs(Z_BAR_MOUTH))]
     out += BL.screw_dummies(Z_BAR_MOUTH)        # the collar's one screw, and its insert
     out += LG.lock_pin_dummies(LEG_X, LEG_Y, EGX, SYG, Z_TOP, 0)   # the leg's one screw
+    from . import leg_trrs as LTR
+    out += LTR.dummies(LEG_X, LEG_Y, 0)        # the blind-mate, at its MATED length
     return out
 
 

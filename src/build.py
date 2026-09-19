@@ -43,6 +43,7 @@ from .bridge_endplate import bridge_endplate
 from . import bridge_endplate as BE
 from . import belt_tensioner as BTn
 from .chassis import segments as chassis_segments
+from .chassis import segments_light as chassis_light
 from . import nut_block as NB
 from . import tension_fork as TF
 from . import pickup_mount as PM
@@ -139,6 +140,10 @@ PARTS = {
     "adjust_sleeve":   (lambda: heal(LS.adjust_sleeve()), "petg-gf/adjust_sleeve.step", "PETG-GF — adjust sleeve: butts the fixed sleeve; one +X screw pins the fixed tenon, one sets the height through the adjust tenon's ladder. Prints -Y -> +Y"),
     "fixed_tenon":     (lambda: heal(LS.fixed_tenon()), "petg-gf/fixed_tenon.step", "PETG-GF — fixed floating tenon: adapter <-> fixed sleeve <-> adjust sleeve, houses the body latch slider and spring. Prints diagonally (+X+Y -> -X-Y)"),
     "adjust_tenon":    (lambda: heal(LS.adjust_tenon()), "petg-gf/adjust_tenon.step", "PETG-GF — adjust floating tenon: the height ladder (blind +X holes) and, at its bar end, the pedal bar latch's pocket and lead-in. Prints diagonally (+X+Y -> -X-Y)"),
+    "leg_trrs_throat": (lambda: heal(__import__("src.leg_trrs", fromlist=["e"]).throat()), "tpu/leg_trrs_throat.step", "TPU — the TRRS jack's up-stop ×4, at the fixed tenon's tip: a Ø10.3 × 6.2 ring bored Ø6.6 so the body plug's overmould still passes, with a 45° funnel at the mouth (radial capture 1.55 → 2.75). It cannot be a step in the bore — the Ø9.7 jack goes in from the tip, so a lip above it would be a lid fitted before the box is filled. It DROPS IN AND TURNS 70° on a bayonet (user): two lugs under 1.6 of octagon, and TPU so the lugs are their own preload. Turn it back out with a flat blade in the two mouth notches — the press-and-pin it replaces had no way out at all, because nothing here may stand proud of a flank that enters a mortise. Carries the coil's 5 N only while the leg is off; with the leg on the mortise roof lies on its top face and the bayonet cannot even lift. PRINT IT TIP UP (mouth away from the bed): the lug's TOP is the bearing face, so it must not be the overhanging one — the underside is chamfered 45° for exactly that reason. So printed, it has no overhang past 45° at all"),
+    "bar_trrs_sleeve": (lambda: heal(__import__("src.bar_trrs", fromlist=["e"]).sleeve()), "tpu/bar_trrs_sleeve.step", "TPU — the BOTTOM blind-mate's plug carrier ×4: a Ø9.6 × 6.4 collar that grips the male overmould at 0.4 of squeeze and rides a bayonet whose run is FLOAT taller than its lugs, so the plug FLOATS — the run's floor holds it in with the leg off, its roof is the up-stop when the bar's jack pushes it back. It is a COLLAR and not a cup: both ends are open, because it has to be threaded on from the Ø3.5 barrel end and pass the Ø6.1 overmould to reach its grip, and the lead's other end is a Ø9.7 jack, so there is no second way on. Prints flange-down (the lug's bearing face is its underside)"),
+    "bar_trrs_throat": (lambda: heal(__import__("src.bar_trrs", fromlist=["e"]).throat()), "tpu/bar_trrs_throat.step", "TPU — the BOTTOM blind-mate's JACK keeper ×4: a Ø10.6 × 6.4 ring that grips the inline jack's Ø7.8 body at 0.4 of squeeze and turns into a bayonet in the bar's mortise floor. The jack is a FLANGELESS moulding — there is no shoulder on it to catch — so gripping it and capturing the grip is the only positive up-stop available against the plug's 5..20 N detent on every leg removal; the jack's own back on the cable way's step is the down-stop. Bench-assemble it onto the jack, thread the lead into the trough, then drop the pair in and turn: the grip is what lets the jack serve as the handle. A pin in the run's outer wall is the anti-rotation detent. Prints lugs-up (their bearing face is the top)"),
+    "leg_trrs_sleeve": (lambda: heal(__import__("src.leg_trrs", fromlist=["e"]).sleeve()), "tpu/leg_trrs_sleeve.step", "TPU — the body plug's retainer ×4: a Ø9.6 × 6.4 cup that grips the male overmould at 0.4 of squeeze and locks into the adapter's roof on the same 70° bayonet. It replaces a Ø6.1-in-Ø6.0 press whose holding force was 6–48 N depending on a modulus nobody publishes — and zero if the bought plug measures at the low end — against the 5–20 N the TRRS pair pulls every time the leg comes off (user: what stops it falling −Z?). Being an elastomer it also takes the 0.15 of slop out, so the plug can no longer cock. Turn it by turning the PLUG; what keeps it from turning back is the lead, folded into a 4.8 channel the chassis closes over. PRINT IT FLANGE DOWN (the narrow end on the bed) — the mirror of the throat, because here it is the lug's UNDERSIDE that bears, so the chamfer goes on top. So printed, it has no overhang past 45°"),
     "leg_latch_slider": (lambda: heal(__import__("src.leg_latch", fromlist=["e"]).slider()), "pctg/leg_latch_slider.step", "PCTG — body latch slider: push-to-connect hook into the adapter, flush 20x20 pad on the fixed sleeve, one steel coil. Prints -X -> +X"),
     "bar_latch_frame": (lambda: heal(LS.bar_latch_frame()), "pctg/bar_latch_frame.step", "PCTG — pedal bar yoke latch: a ring round the adjust tenon, hook in its pocket, 20x20 pad flush in the collar, a cup seating its one coil. Prints ring down"),
     "bar_latch_collar": (lambda: heal(LS.bar_latch_collar()), "petg-gf/bar_latch_collar.step", "PETG-GF — pedal bar latch collar: the top 22.4 of the bar's tower, holding the yoke and its springs; two T rails slide it onto the tower from +Y, one M4x30 button head into a heat-set insert in the tower locks it. Prints on its +Y face"),
@@ -214,9 +219,13 @@ for _cnm, _cr, (_ctx, _cty, _ctd) in _WR_FUSE.tee_cradles():
 from . import knee_lever as _KL_FUSE
 for _csi in sorted(_fused_segs):
     _seg = chassis_segments[_csi]
-    for _rx in CH._RIB_X:
+    for _rx in CH._MORT_X:
         if _seg_edges[_csi + 1] < _rx < _seg_edges[_csi]:
-            _seg = _seg.cut(_KL_FUSE.rib_mortise(_rx))
+            # THROUGH chassis.mort_segments, not the whole run: the three stations at each end
+            # are two short runs over the feet with the floor between them solid, and re-cutting
+            # them full length here carved that floor straight back out again.
+            for _my0, _my1 in CH.mort_segments(_rx):
+                _seg = _seg.cut(_KL_FUSE.rib_mortise(_rx, _my0, _my1))
     chassis_segments[_csi] = _seg
 # STRING ACCESS through the chassis floor, under each string's endplate channel (see
 # dimensions.string_access_x). LAST in the segment pipeline, like the mortise re-cut, so no
@@ -243,12 +252,54 @@ for _ctx, _cutters in _WR_FUSE.tee_hold_negatives():
             for _cut in _cutters:
                 chassis_segments[_csi] = chassis_segments[_csi].cut(_cut)
             break
+chassis_light = list(chassis_light)
+for _i, _lt in enumerate(chassis_light):        # the transparent under-rail band
+    PARTS[f"chassis_{_i}_light"] = (
+        partial(heal, _lt), f"petg/chassis_{_i}_light.step",
+        "PETG (WHITE, translucent) — DOWNWARD LIGHT WINDOW: 8 mm across Y by the bottom "
+        f"prism's full XBAR, one XBAR inboard of the +Y rail (print AS ONE OBJECT with chassis_{_i}, "
+        "the deck panels' base/colour pattern). The bottom is sealed now, which is what keeps the "
+        "motor noise in; this is the one deliberate leak, and the rail stands outboard of it so "
+        "nothing shows from the front -- it only aims DOWN, at the pedals. White to match the deck "
+        "panels, and it diffuses rather than glares. Same resin family as the PETG-GF body, so the "
+        "two weld and purge cleanly")
+# THE TRRS ADAPTER'S STATION over the -X/+Y leg (wiring.trrs_*): the same three-step
+# dance the tees do, and for the same reason -- fuse the cradle into the segment that
+# owns its X, THEN cut the things that live inside it, because the fuse fills them in.
+# The PORT is the extra one here: a bore through the +Y rail that the leg's plug
+# reaches in along, so it has to be cut after the cradle's base merges into that rail.
+_trrs_x = _WR_FUSE.TRRS_X
+# THE CHASSIS-SIDE TRRS BOARD IS PARKED (user, 2026-09-16): dropped off the
+# instrument's underside, with the leg's lead left hanging in free air. The user has a
+# wiring plan for it to be implemented later, and until then a board mounted here is a
+# guess that collides with real parts -- it was behind 6 of the model's 14 unintended
+# overlaps (keyhead_endplate, electronics_tray, pi5 and three nut_height screws).
+#
+# NOTHING IS DELETED. wiring.trrs_cradle / trrs_port / trrs_hold_negatives /
+# trrs_components are all still there and still correct for the station as laid out;
+# only these call sites are commented out, so putting the board back is uncommenting
+# them.
+# for _csi in range(len(_seg_edges) - 1):
+#     if _seg_edges[_csi + 1] < _trrs_x < _seg_edges[_csi]:
+#         chassis_segments[_csi] = chassis_segments[_csi].union(_WR_FUSE.trrs_cradle())
+#         chassis_segments[_csi] = chassis_segments[_csi].cut(_WR_FUSE.trrs_port())
+#         for _cut in _WR_FUSE.trrs_hold_negatives():
+#             chassis_segments[_csi] = chassis_segments[_csi].cut(_cut)
+#         break
 for _i, _seg in enumerate(chassis_segments):     # chassis split into dovetailed segments
     PARTS[f"chassis_{_i}"] = (partial(heal, _seg), f"petg-gf/chassis_{_i}.step",
                               "PETG-GF — chassis segment (cadkit slide-down T joint per rail; NO glue "
                               "and NO seam fastener — the deck, endplates and finally the 4 leg screws "
                               "close the seam's Z axis. + tee cradles)")
 # Section-joint coupon (the LEG stack's octagon at the real 28 mm width — legs.SEC_W)
+# COIL MANDREL -- UNREGISTERED, and deliberately. src/coil_mandrel.py sizes a coil
+# at r 9.5 against the 22.8 minimum bend radius Tensility publish for 10-02135, so
+# it asserts on import and CANNOT be built until that is resolved (accept the
+# overbend, move the slack store out of the leg, or source a different lead -- see
+# the block at the top of the module and docs/leg-trrs-routing.md).
+# Left out of PARTS rather than left in to fail, so the lead's build is not red on
+# a decision that is not the build's to make. Re-register both entries when it is.
+
 PARTS["test_section_tenon"] = (
     lambda: heal(__import__("src.joint_coupon", fromlist=["e"]).section_tenon_coupon()),
     "test_section_tenon.step",
@@ -762,6 +813,7 @@ def _electronics_components():
         out.append((f"top_plate_color_{len(TP.segments_color) + i}",
                     fc.translate((0, dy, 0))))
     out += WR.tee_components()
+    # out += WR.trrs_components()      # PARKED with the station above
     out += WR.build_wires()
     return out
 
@@ -907,26 +959,69 @@ def _vkl_station() -> float:
     """
     from . import knee_lever_vert as KV
     mid = _LKL_X + _KNEE_GAP_L / 2.0
-    best = min((abs(rib - KV.TEN_Y[1] - mid), rib - KV.TEN_Y[1])
-               for rib in (_RIB0 + _RIB * k for k in range(30)))
-    return best[1]
+    # its tenons sit at KV.TEN_Y in the guitar's X once posed; _lever_station returns the MOUNT
+    # that puts them all on real stations, so there is nothing left to subtract here (there used
+    # to be, when it returned a station and this had to undo the offset by hand).
+    #
+    # ...THEN ONE MORTISE -X (user, 2026-09-18, reading the render). THE GRID CANNOT CENTRE THIS
+    # LEVER: the two legal mounts either side of the knee gap's midpoint sit 5.20 off it each
+    # way, so which one it takes is a preference, not an optimum, and the user wants the -X one.
+    # Stepped by a whole PITCH, so the three tenons stay in slots that exist -- re-checked below
+    # rather than assumed, because a lever over solid floor is 1-2.5 cm3 of interference and the
+    # gate is the only other thing that would notice.
+    m = _lever_station(mid, KV.TEN_Y) - D.LEVER_PITCH
+    from . import chassis as CH_V
+    _have = set(round(x, 3) for x in CH_V._MORT_X)
+    _off = [round(m + t, 3) for t in KV.TEN_Y if round(m + t, 3) not in _have]
+    assert not _off, ("the -X step puts VKL's tenons at %s, which are not mortise stations -- "
+                      "the station one pitch -X of %.2f is dropped" % (_off, m + D.LEVER_PITCH))
+    return m
 
 
-_LKL_X = D.rib_comb_x(-501.0)                # hard -X bound: the left leg block (ILKL's old
-                                             # station; LKL always shared it — see _KNEE_GAP_L)
-_RKL_X = D.rib_comb_x(-225.0)                # right knee (snapped to the rib comb)
+def _lever_station(x_target, offsets, mirrored=False):
+    """The lever's MOUNT X, closest to x_target, at which EVERY one of its tenons lands in a
+    slot that exists.
+
+    IT RETURNS A MOUNT, NOT A STATION (user, 2026-09-18), and the difference is real now: a
+    lever's tenon set is anchored on its own housing edge, so it carries a phase and the mount
+    sits off-station by exactly that. Candidate mounts are therefore station - offset[0], not
+    the stations themselves.
+
+    And not just the nearest grid X either. The bottom grid (D.LEVER_PITCH) drops stations where
+    the leg feet and the segment seams need solid material, so a station can be on-pitch and
+    still have no slot -- and a tenon over solid slab is 1-2.5 cm3 of interference, which is
+    exactly what the gate reported when the knee gaps were still multiples of the old 22.35 rib
+    pitch."""
+    from . import chassis as CH_G
+    have = set(round(s, 3) for s in CH_G._MORT_X)
+    def _at(m, t):
+        return round(m + (-t if mirrored else t), 3)
+    first = (-offsets[0] if mirrored else offsets[0])
+    ok = [s - first for s in CH_G._MORT_X
+          if all(_at(s - first, t) in have for t in offsets)]
+    assert ok, ("no mount on the bottom grid fits a lever with tenons at %s -- the set's own "
+                "spacing has to be a multiple of the grid pitch" % (offsets,))
+    return min(ok, key=lambda m: abs(m - x_target))
+
+
+from . import knee_lever as _KL_ST
+_LKL_X = _lever_station(-501.0, _KL_ST.TEN_X)   # hard -X bound: the left leg block (ILKL's old
+                                                # station; LKL shared it — see _KNEE_GAP_L)
+_RKL_X = _lever_station(-225.0, _KL_ST.TEN_X)   # right knee
 
 LEVER_STATIONS = (
     # LEFT KNEE: the knee sits in the gap between LKL and LKR, and VKL sits in that
     # same gap so the vertical arm is directly above it (user). VKL's station is
     # rib-DERIVED (MOUNT_X = rib - 10.4) so its own two tenons land on ribs.
     ("lkl",  "kl", _LKL_X,               _LEVER_Y, False),
-    ("vkl",  "kv", _vkl_station(),       None,     False),   # mid-gap, rib-derived
+    ("vkl",  "kv", _vkl_station(),       None,     False),   # mid-gap, grid-derived
     #                                                          None -> _vkl_mount_y()
-    ("lkr",  "kl", _LKL_X + _KNEE_GAP_L, _LEVER_Y, True),    # -386
+    # the GAPS are the ergonomic numbers; the station is the nearest one the grid can
+    # actually host, which is within half a pitch (4.4) of it
+    ("lkr",  "kl", _lever_station(_LKL_X + _KNEE_GAP_L, _KL_ST.TEN_X, True), _LEVER_Y, True),
     # RIGHT KNEE: same gap, no vertical lever in this copedent
     ("rkl",  "kl", _RKL_X,               _LEVER_Y, False),
-    ("rkr",  "kl", _RKL_X + _KNEE_GAP_R, _LEVER_Y, True),    # -133
+    ("rkr",  "kl", _lever_station(_RKL_X + _KNEE_GAP_R, _KL_ST.TEN_X, True), _LEVER_Y, True),
 )
 
 
@@ -1055,6 +1150,7 @@ def body_work_components():
             if n.startswith("motor")]
     out += _electronics_components()          # includes the deck pieces
     out += [(f"chassis_{i}", seg) for i, seg in enumerate(chassis_segments)]
+    out += [(f"chassis_light_{i}", lt) for i, lt in enumerate(chassis_light)]
     out += _leg_components()
     out += _pickup_mount_components()
     return out
@@ -1175,6 +1271,19 @@ _COLORS = {
     "leg_latch_spring": (0.62, 0.64, 0.67),  # stainless coil (purchased)
     "lock_pin_screw":  (0.55, 0.55, 0.58),   # M4x12 button head (purchased)
     "lock_pin_insert": (0.80, 0.60, 0.35),   # brass heat-set insert
+    "leg_trrs_plug":   (0.15, 0.15, 0.17),   # the blind-mate: the FIXED plug, in the
+    "leg_trrs_jack":   (0.20, 0.20, 0.22),   # adapter's roof...and the FLOATING jack
+    "leg_trrs_spring": (0.62, 0.64, 0.67),   # ...the coil that holds them together
+    "leg_trrs_throat": (0.34, 0.56, 0.44),   # ...and the ring that keeps the jack in
+    "bar_trrs_sleeve": (0.03, 0.03, 0.03),   # the bottom joint's TPU carrier (black)
+    "bar_trrs_throat": (0.05, 0.05, 0.06),   # ...and the TPU keeper for its jack
+    "bar_trrs_jack":   (0.12, 0.12, 0.14),   # ...the bought jack it holds
+    "bar_trrs_lead":   (0.45, 0.45, 0.48),   # ...and the lead out of its back, as far as the bar's wiring channel
+    "bar_trrs_plug":   (0.15, 0.15, 0.17),   # ...the male plug it floats
+    "bar_trrs_spring": (0.62, 0.64, 0.67),   # ...and the coil above it
+    "leg_trrs_sleeve": (0.03, 0.03, 0.03),   # ...and the TPU cup that holds the plug (black)
+    "leg_trrs_patch":  (0.12, 0.12, 0.14),   # ...the lead up to the chassis socket
+    "leg_trrs_leg_lead": (0.12, 0.12, 0.14), # ...and the column's own, down the leg
     "bar_latch_frame": (0.85, 0.35, 0.20),   # pedal bar latch accent
     "bar_latch_collar": (0.36, 0.42, 0.46),  # PETG-GF, the bar tower's family
     "bar_latch_spring": (0.62, 0.64, 0.67),
@@ -1265,6 +1374,10 @@ _COLORS = {
                                              # 2x CAN transceiver + XH headers)
     "tee_pcb":         (0.10, 0.42, 0.18),   # trunk-and-drop bus tee PCBs
     "tee_cradle":      (0.32, 0.55, 0.42),   # PCTG drop-in PCB cradle (pcb_cradle, side hold-down)
+    "trrs_adapter_pcb":    (0.18, 0.42, 0.24),   # the leg's TRRS<->XH adapter (bronner's board)
+    "trrs_adapter_plug":   (0.15, 0.15, 0.17),   # the lead from the leg, plugged in
+    "trrs_adapter_screw":  (0.55, 0.55, 0.58),   # M4 button, 2.5 hex -- the one lock
+    "trrs_adapter_insert": (0.80, 0.60, 0.35),   # its brass heat-set insert
     "tee_screw":       (0.72, 0.74, 0.78),   # M4x10 button, BESIDE the tee board
     "tee_insert":      (0.72, 0.60, 0.30),   # M4 heat-set brass, in the cradle boss
     "optical_pcb":     (0.12, 0.30, 0.55),   # per-string optical strip (blue solder mask,
@@ -1277,6 +1390,7 @@ _COLORS = {
                                              # detectors, so a light one would bounce IR
     "top_plate":       (0.88, 0.91, 0.94),   # transparent-PCTG deck base + fret lines
     "top_plate_color": (0.30, 0.33, 0.38),   # colour-PCTG deck layer (skin contact)
+    "chassis_light":   (0.88, 0.91, 0.94),   # light window -- the deck panels' white
     "oled":            (0.05, 0.05, 0.08),   # screen (perfect-black OLED)
     "joystick":        (0.15, 0.15, 0.17),   # UI control
     "dc_jack":         (0.62, 0.64, 0.67),
