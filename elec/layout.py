@@ -1088,7 +1088,7 @@ def drop_redundant_pth_vias(board):
     for t in board.GetTracks():
         if not isinstance(t, pcbnew.PCB_VIA):
             continue
-        vp, vr = t.GetPosition(), t.GetDrill() / 2.0
+        vp, vr = t.GetPosition(), t.GetDrillValue() / 2.0
         for pad, nc, pp, pr, ref, num in pth:
             if t.GetNetCode() != nc:
                 continue                       # a DIFFERENT net in the hole is a short,
@@ -1110,139 +1110,166 @@ def drop_redundant_pth_vias(board):
     return len(doomed)
 
 
-def tidy_router_vias(board, min_gap_mm=0.25):
+def tidy_router_vias(board, notes, min_gap_mm=0.25):
     """Remove vias the router left carrying nothing, and merge ones drilled too close.
 
-    ⚠ NOT WIRED IN, AND MUST NOT BE UNTIL THE TWO DEFECTS BELOW ARE FIXED. It is kept
-    because the PROBLEM it describes is real and measured, and because both ways it failed
-    are worth knowing before anyone writes it a second time. Run on output_panel it:
+    ⚠ THE FIRST VERSION OF THIS ASKED THE GEOMETRY AND GOT IT WRONG SIX TIMES OUT OF
+    SEVEN. It counted track ends landing in a via's pad and called a via with none
+    "dangling" -- but a plane stitching via is attached to a ZONE, which is its entire
+    job and which no track-end test can see. On output_panel it found seven and would
+    have deleted six real GND stitches. DRC found one, and DRC was right.
 
-      1. CALLED SIX GND STITCH VIAS DANGLING AND WOULD HAVE DELETED THEM. `attached()`
-         below counts track ends and nothing else, but a plane stitching via is attached
-         to a ZONE -- that is its entire job -- so every one of them reads as carrying
-         nothing. DRC flagged exactly ONE dangling via on that board and it was right;
-         this function found seven and was wrong six times. The fix is not a better
-         geometric test, it is to ask the board: pcbnew's CONNECTIVITY_DATA knows about
-         zone connections and this routine does not.
-      2. CORRUPTED THE BOARD by removing nine items. The next pass to iterate footprints
-         got a bare SwigPyObject back from GetFootprints() -- the same ownership hazard
-         the file warns about around fp.Remove(). Two removals survive it and nine do
-         not, so "count before removing" is necessary and not sufficient; the removal
-         itself probably has to be the last thing done to the board.
+    So ask the board: CONNECTIVITY_DATA.TestTrackEndpointDangling is the test DRC itself
+    uses, and it knows about zones. Checked against DRC's own report on output_panel it
+    returns exactly the one via DRC flags, at the same coordinates. A classifier for
+    deleting copper is worth validating against a known answer BEFORE it deletes any.
 
-    The warnings it was written for are still on output_panel and still unfixed: one
-    dangling SWDIO via, +3V3 vias 0.392 mm apart, GND vias 0.502 mm apart.
-
-    ⚠ FOUND BY LOOKING PAST THE ERROR COUNT, and they are the same shape of defect as
-    the co-located drills next door: DRC grades both of these WARNING, finish.py counts
-    only unexpected ERRORS, so a board reporting "0 unconnected, 0 violations" carried
-    three of them. On output_panel, reproducibly: one dangling SWDIO via, and two pairs of
-    same-net vias 0.39 and 0.50 mm apart centre to centre.
+    ⚠ GetDrill() IS NOT THE DRILL, AND IT READ ZERO ON EXACTLY THE PAIR THIS WAS
+    WRITTEN FOR. A via whose drill comes from its netclass has no drill of its own, so
+    GetDrill() returns 0 and only GetDrillValue() gives the effective size. With zero the
+    computed wall gap for output_panel's GND pair came out 0.50 mm instead of 0.20, which
+    is comfortably outside the threshold -- so the pass ran, reported nothing, and left
+    the warning standing while looking like it had checked.
 
     ⚠ 0.39 mm APART IS NOT A TIGHT FIT, IT IS ONE HOLE. Two 0.3 mm drills on 0.39 mm
-    centres leave 0.09 mm of laminate between the walls, which breaks out on the drill and
-    comes back as a single oval bore -- so the fab rule this trips is real even though both
+    centres leave 0.09 mm of laminate between the walls, which breaks out on the drill
+    and comes back as a single oval bore -- so the second case is real even though both
     vias are on the same net and shorting them is the intent.
 
-    The two cases are one operation with the count of attached tracks set to zero or not:
-      * nothing attached -> the via is a stub antenna; delete it outright.
-      * a crowded pair   -> delete the one carrying less, and hand its tracks to the
-                            survivor with a short segment on each affected layer.
-    ⚠ THAT JOINING SEGMENT ADDS NO NEW COPPER AREA, which is the only reason it needs
-    no clearance search: the pass runs only when the two via PADS ALREADY OVERLAP, and
-    every point between two overlapping discs is inside one of them. A pair further apart
-    than that is left alone and reported rather than guessed at.
+    ⚠ THE ONE THIS STILL LEAVES IS A JUDGEMENT, NOT AN OVERSIGHT. output_panel keeps a
+    GND stitch pair with 0.202 mm of laminate between the walls, which trips KiCad's
+    default 0.25 mm hole-to-hole rule. JLCPCB's published requirement is "Via Hole-to-Hole
+    Spacing 0.2mm", so it passes -- by 2.5 MICRONS, against a stated hole position
+    tolerance of +-0.05 mm. Nominally legal and practically thin: drilled at the far ends
+    of that tolerance the two holes meet. It is left standing rather than merged because
+    the right fix is upstream, in the stitcher, and it is the SAME root cause as the
+    co-located drills drop_redundant_pth_vias exists for -- _stitch_plane_pads skips
+    same-net obstacles, so nothing stops it putting a stitch via next to another one.
+    Fixing it there means a pre-route change, which this file's history says to measure
+    rather than assume.
 
-    Like drop_redundant_pth_vias, this is safe HERE and would not be before routing -- see
-    that function for the six nets that removing vias early cost the optical board.
+    ⚠ STITCHING VIAS ARE NEVER MERGED, only reported. They are placed deliberately, a
+    later pass re-checks that each one landed in its plane, and this routine has no way
+    to know which pad depends on which stitch. Removing the wrong one is how the first
+    version would have unstitched six pads.
+
+    ⚠ AND NOTHING IS REMOVED WHILE A PROXY TO IT IS STILL HELD. The first version
+    corrupted the board -- the next pass got a bare SwigPyObject back from
+    GetFootprints() -- by removing nine items from lists it was still holding. Here the
+    decision is recorded as UUIDs, the references are dropped, and the removal re-finds
+    each item on a fresh walk of the board. "Count before removing" was necessary and
+    not sufficient; do not hold the thing you are about to delete.
     """
     import math
+    conn = board.GetConnectivity()
+    stitch = set(notes.get("stitch_nets", ()))
     vias = [t for t in board.GetTracks() if isinstance(t, pcbnew.PCB_VIA)]
-    tracks = [t for t in board.GetTracks() if isinstance(t, pcbnew.PCB_TRACK)
-              and not isinstance(t, pcbnew.PCB_VIA)]
+    # ⚠ A DECLARED REPAIR VIA IS NEVER A LEAVING. This pass runs at the END of the
+    # post-route sequence, which means the deliberate repairs are already down -- and on
+    # optical one of them is the only thing closing a net. They are searched geometry
+    # somebody committed to the board file on purpose, so they are off limits here
+    # whatever they look like to a dangling test.
+    # NOT "keep" -- the merge loop below binds that name to the surviving VIA, and this
+    # closure then tested membership in a PCB_VIA.
+    declared_xy = {(round(rv[1], 3), round(rv[2], 3))
+                   for rv in notes.get("repair_vias", [])}
 
-    def attached(v):
-        """Track ends landing in this via's pad, on a layer the via actually spans."""
+    def _declared(v):
+        p = v.GetPosition()
+        return (round(pcbnew.ToMM(p.x) - 100.0, 3),
+                round(100.0 - pcbnew.ToMM(p.y), 3)) in declared_xy
+
+    doomed, joins, reported = {}, [], []
+    for v in vias:
+        if conn.TestTrackEndpointDangling(v, False) and not _declared(v):
+            doomed[v.m_Uuid.AsString()] = "dangling %s" % v.GetNetname()
+
+    def _ends(v):
+        """Track ends landing in this via's pad, on a layer it spans -- for the HANDOVER
+        only. Used to move copper, never to decide whether a via is needed."""
         out, vp, r = [], v.GetPosition(), v.GetWidth() / 2.0
         lo, hi = v.TopLayer(), v.BottomLayer()
-        for t in tracks:
-            if t.GetNetCode() != v.GetNetCode():
+        for t in board.GetTracks():
+            if isinstance(t, pcbnew.PCB_VIA) or t.GetNetCode() != v.GetNetCode():
                 continue
             if not (lo <= t.GetLayer() <= hi):
                 continue
-            for end in (t.GetStart(), t.GetEnd()):
-                if math.hypot(end.x - vp.x, end.y - vp.y) <= r:
-                    out.append((t, t.GetLayer()))
+            for e in (t.GetStart(), t.GetEnd()):
+                if math.hypot(e.x - vp.x, e.y - vp.y) <= r:
+                    out.append((t.GetLayer(), t.GetWidth()))
                     break
         return out
 
-    # ⚠ INDICES, NOT THE OBJECTS -- a SWIG-wrapped PCB_VIA is unhashable, so it can
-    # be neither a dict key nor a set member.
-    load = [attached(v) for v in vias]
-    doomed, joins, wide = [], [], []
-    gone = set()
-
-    for i, v in enumerate(vias):
-        if not load[i]:
-            gone.add(i)
-            doomed.append((v, "dangling %s" % v.GetNetname()))
-
     for i, a in enumerate(vias):
-        if i in gone:
+        if a.m_Uuid.AsString() in doomed:
             continue
-        for j in range(i + 1, len(vias)):
-            b = vias[j]
-            if j in gone or a.GetNetCode() != b.GetNetCode():
+        for b in vias[i + 1:]:
+            if b.m_Uuid.AsString() in doomed or a.GetNetCode() != b.GetNetCode():
                 continue
             ap, bp = a.GetPosition(), b.GetPosition()
             d = math.hypot(ap.x - bp.x, ap.y - bp.y)
-            gap = d - (a.GetDrill() + b.GetDrill()) / 2.0
+            gap = d - (a.GetDrillValue() + b.GetDrillValue()) / 2.0
             if gap >= pcbnew.FromMM(min_gap_mm):
+                continue
+            where = "%s at %.2f,%.2f (%.3f mm of laminate between the walls)" % (
+                a.GetNetname(), pcbnew.ToMM(ap.x) - 100.0, 100.0 - pcbnew.ToMM(ap.y),
+                pcbnew.ToMM(gap))
+            if _declared(a) or _declared(b):
+                reported.append(where + " -- one is a DECLARED repair via, not touched")
+                continue
+            if a.GetNetname() in stitch:
+                reported.append(where + " -- STITCHING, not touched")
                 continue
             ra, rb = a.GetWidth() / 2.0, b.GetWidth() / 2.0
             if d > ra + rb:
-                # holes too close but pads apart: a joining segment WOULD be new copper
-                # over ground nobody has checked, so say so instead of laying it blind.
-                wide.append("%s at %.2f,%.2f (%.3f mm of laminate between the walls)"
-                            % (a.GetNetname(), pcbnew.ToMM(ap.x) - 100.0,
-                               100.0 - pcbnew.ToMM(ap.y), pcbnew.ToMM(gap)))
+                # pads apart: a joining segment would be new copper over ground nobody
+                # has checked, so say so rather than lay it blind.
+                reported.append(where + " -- pads do not overlap, cannot merge")
                 continue
-            di, ki = (i, j) if len(load[i]) <= len(load[j]) else (j, i)
-            drop, keep = vias[di], vias[ki]
-            # All or nothing: a track wider than the overlap would carry the joining
-            # segment outside the two pads, so that pair is left alone entirely rather
-            # than half-merged.
-            want = [(t.GetNetCode(), layer, t.GetWidth(),
-                     drop.GetPosition(), keep.GetPosition())
-                    for t, layer in load[di]]
-            if any(w > 2 * min(ra, rb) for _nc, _l, w, _p, _q in want):
-                wide.append("%s at %.2f,%.2f (track too wide to hand over)"
-                            % (drop.GetNetname(), pcbnew.ToMM(ap.x) - 100.0,
-                               100.0 - pcbnew.ToMM(ap.y)))
+            la, lb = _ends(a), _ends(b)
+            drop, keep, load = (a, b, la) if len(la) <= len(lb) else (b, a, lb)
+            if any(w > 2 * min(ra, rb) for _l, w in load):
+                reported.append(where + " -- a track is too wide to hand over")
                 continue
-            joins += want
-            gone.add(di)
-            doomed.append((drop, "crowded %s (%.3f mm gap)"
-                           % (drop.GetNetname(), pcbnew.ToMM(gap))))
+            dp, kp = drop.GetPosition(), keep.GetPosition()
+            for layer, w in load:
+                joins.append((drop.GetNetCode(), layer, w, (dp.x, dp.y), (kp.x, kp.y)))
+            doomed[drop.m_Uuid.AsString()] = "crowded %s (%.3f mm gap)" % (
+                drop.GetNetname(), pcbnew.ToMM(gap))
+
+    why = list(doomed.values())
+    want = set(doomed)
+    del vias, doomed                       # drop every proxy before touching the board
 
     for nc, layer, w, p, q in joins:
         t = pcbnew.PCB_TRACK(board)
-        t.SetStart(p)
-        t.SetEnd(q)
+        t.SetStart(pcbnew.VECTOR2I(*p))
+        t.SetEnd(pcbnew.VECTOR2I(*q))
         t.SetWidth(w)
         t.SetLayer(layer)
         t.SetNetCode(nc)
         board.Add(t)
-    for v, _why in doomed:
-        board.Remove(v)
-    if doomed:
+    gone = 0
+    while want:
+        hit = None
+        for t in board.GetTracks():
+            if t.m_Uuid.AsString() in want:
+                hit = t
+                break
+        if hit is None:
+            break
+        want.discard(hit.m_Uuid.AsString())
+        board.Remove(hit)
+        del hit
+        gone += 1
+    if gone:
         board.BuildConnectivity()
         print("  tidied %d router via(s) -- %s%s"
-              % (len(doomed), "; ".join(w for _v, w in doomed[:6]),
+              % (gone, "; ".join(why[:6]),
                  (" (+%d joining segment(s))" % len(joins)) if joins else ""))
-    for w in wide:
-        print("    NOT FIXED -- vias too close to drill, not mergeable: %s" % w)
-    return len(doomed)
+    for r in reported:
+        print("    NOT FIXED -- %s" % r)
+    return gone
 
 
 def snap_hairline_gaps(board, eps_mm=0.02):
