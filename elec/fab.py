@@ -174,7 +174,17 @@ GENERIC = re.compile(r"^(R_|C_|Fuse_|Jumper:|Diode_SMD:D_SOD|Diode_SMD:D_SM[AB]|
 # simply does not start with a digit. The placeholder rule below applies to this subset.
 PASSIVE = re.compile(r"^(R_|C_|L_|Inductor_SMD)")
 # Footprint LIBRARIES that hold no orderable part -- see the BOM loop.
-COPPER_ONLY = re.compile(r"^(TestPoint|NetTie|Fiducial)$")
+# ⚠ Jumper BELONGS HERE AND WAS MISSING. A SolderJumper is a BOARD FEATURE: two pads and
+# a mask opening, closed with solder by whoever assembles it. There is nothing to buy and
+# nothing to place. It was reaching the BOM as a line reading Comment "TERM", footprint
+# "SolderJumper-2_P1.3mm_Open...", and NO part number -- an order asking a fab to source
+# a part that does not exist. can_tee carried one, motor_ctrl two.
+#
+# It slipped past the placeholder guard because that guard only fires on PASSIVES, and a
+# jumper is "generic" (the GENERIC pattern lists Jumper:) without being a passive. So
+# "TERM" -- a value that cannot pick a part -- was accepted. The CPL was right all along
+# and omitted them, which is how the discrepancy showed: BOM designators 4 against CPL 3.
+COPPER_ONLY = re.compile(r"^(TestPoint|NetTie|Fiducial|SolderJumper|Jumper)")
 
 
 def _run(args):
