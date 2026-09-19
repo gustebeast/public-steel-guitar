@@ -97,6 +97,13 @@ BELT_PLANE_DZ   = 11 * BEAD  # 8.8 — the two screw-pulley planes' Z separation
 # ─────────────────────────────────────────────────────────────────────────
 N_STRINGS       = 10
 STRING_PITCH    = 9.5       # mm, changer pitch (across, Y)
+# PLAYER CONTROLS (user, 2026-09-18). Every one of these carries an MT6701 on its own
+# lever_sensor board, so this pair is what the sensor panel is ordered against -- see
+# BOARD_NOTES in elec/lever_sensor.py. It lived only in the BOM's angle-sensor quantity
+# until now, which meant the board file had no way to state how many of itself exist.
+N_LEVERS        = 6         # knee levers
+N_PEDALS        = 5
+N_SENSED        = N_LEVERS + N_PEDALS   # 11 sensor boards, 11 MT6701s
 NUT_PITCH       = 6.5       # mm, spacing at the nut/keyhead end
 STRING_FIELD_W  = (N_STRINGS - 1) * STRING_PITCH   # 85.5 mm
 MOUNTING_SPAN   = 615.0     # between a string's two mounting ends (~24.2" scale)
@@ -246,7 +253,7 @@ NUT_HOLE_DX     = 8.0       # ± from the axis (16 mm hole pitch)
 # down among them. The boss hangs below on the screw axis, where the pulley's own
 # swept circle is the only thing nearby and NUT_BOT_MIN is asserted against it.
 NUT_TOP_MAX     = NUT_TOP_Z                                            # -10.0
-NUT_BOT_MIN     = NUT_TOP_Z - CARRIAGE_TRAVEL - NUT_H                  # -29.8, at BOTTOM of travel
+NUT_BOT_MIN     = NUT_TOP_Z - CARRIAGE_TRAVEL - NUT_H                  # -30.55, at BOTTOM of travel
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -492,10 +499,10 @@ PULLEY_COL_D    = PULLEY_BOSS_D                                         # 9.6
 # thrust stack — see SCREW_PULLEY_Z. 3 beads gives a 4.1 socket at ~2.0 MPa on the formed
 # thread, under a third of the 6.5 MPa the old collar was accepted at.
 PULLEY_COL_HI   = 3 * BEAD                                              # 2.4, HIGH
-PULLEY_COL_H    = PULLEY_COL_HI + BELT_PLANE_DZ                         # 8.0, LOW
+PULLEY_COL_H    = PULLEY_COL_HI + BELT_PLANE_DZ                         # 11.2, LOW
 PULLEY_END_A    = (PULLEY_GAP / 2 + PULLEY_CONE
                    + PULLEY_COL_HI + PULLEY_BOSS_H)                     # 7.2, HIGH band→top
-PULLEY_END_B    = PULLEY_END_A + BELT_PLANE_DZ                          # 12.8, LOW band→top
+PULLEY_END_B    = PULLEY_END_A + BELT_PLANE_DZ                          # 16.0, LOW band→top
 # BOTH FLANGES CHAMFER TOWARD THE BELT (user): each presents a 45° face, so the pair is a
 # shallow V and the belt self-centres. Below the lower cone a full disc is the bed face.
 PULLEY_BOT      = (PULLEY_GAP / 2 + PULLEY_FLANGE_T
@@ -581,7 +588,7 @@ BRG_LEDGE_T     = 5 * BEAD                          # 4.0 of rail over the outer
 PULLEY_TOP_MAX  = (SCREW_PULLEY_Z + BELT_PLANE_DZ
                    + PULLEY_END_A)                  # -38.6, BOTH SKUs' top (same Z)
 SUPPORT_BRG_BOT = PULLEY_TOP_MAX                    # the stack seats straight on it
-SUPPORT_BRG_Z   = SUPPORT_BRG_BOT + SUPPORT_BRG_W   # -28.0, thrust ledge underside
+SUPPORT_BRG_Z   = SUPPORT_BRG_BOT + SUPPORT_BRG_W   # -33.6, thrust ledge underside
 # THE NUT'S LOWEST SWEEP. The deepest part of the nut is its Ø10.2 BOSS, and it descends
 # INSIDE the thrust ledge's bore (screw_rail.SEAT_LEDGE_D — asserted there, radially), so
 # the thing it has to clear vertically is the BEARING at the bottom of that bore, not the
@@ -637,7 +644,7 @@ def string_access_x(i: int) -> float:
 # and the socket depth, so the rod ends at the same Z on every station.
 SCREW_SOCKET_GAP = 0.2
 SCREW_BOT_Z     = PULLEY_TOP_MAX - PULLEY_SOCKET_L + SCREW_SOCKET_GAP   # -42.5
-SCREW_LEN       = SCREW_TOP_Z - SCREW_BOT_Z         # 52.3 — the CUT length (see BOM).
+SCREW_LEN       = SCREW_TOP_Z - SCREW_BOT_Z         # 37.7 — the CUT length (see BOM).
 # Not a purchasable length: Tr5x1 stock starts at 100 mm, so every screw is cut from a
 # longer blank. That is fine because the requirement is a WINDOW, not a number — the
 # rod has to clear the nut's top at the top of travel and fill the collar at the
@@ -716,7 +723,7 @@ MOTOR_CLR       = 0.4       # slip fit round a PURCHASED motor body (42.3 nomina
 # 0.35 by the motor's own lift path. 1.6 of wall with a fit either side is 2.4, which costs the
 # bank 7.2 of length -- string 10's belt run still clears the clamp's travel by 5.5 (asserted).
 MOTOR_GAP       = MIN_WALL_2P + 2 * MOTOR_CLR       # 2.4 between neighbouring motor bodies
-MOTOR_X_STEP    = MOTOR_SQ + MOTOR_GAP              # 43.9 along-X step between motors
+MOTOR_X_STEP    = MOTOR_SQ + MOTOR_GAP              # 44.7 along-X step between motors
 # BANK ANCHOR (user, 2026-09-11): the -X end of the bank is pinned to the electronics, which
 # stand against the keyhead endplate, and the bank is packed toward them -- so the SHORTEST
 # belt (string 10, next to the bridge) gets all the run there is. That run has to cover the
@@ -1030,11 +1037,11 @@ KEYHEAD_PX_BUF = 19 * BEAD / 4                      # 3.8 = KH_X - NUT_BLOCK_X, 
 # At the old 23.10 face the apex stood 0.36 PROUD of it, i.e. the seat broke out through
 # the -X face. Sized from whichever of the two reaches further, plus a 2-bead wall.
 _BRG_TEARDROP = (SUPPORT_BRG_OD + 0.2) / 2 * 1.4143            # 11.46, seat apex
-_ROD_TEARDROP = (GUIDE_ROD_D + GUIDE_ROD_FIT) / 2 * 1.4143     # 2.16, rod-bore apex
+_ROD_TEARDROP = (GUIDE_ROD_D + GUIDE_ROD_FIT) / 2 * 1.4143     # 2.51, rod-bore apex
 BRIDGE_BASE_HALF = (SCREW_ROW_DX
                     + max(_BRG_TEARDROP, NUT_HOLE_DX + _ROD_TEARDROP)
                     + MIN_WALL_2P)                             # 25.06
-BRIDGE_BASE_X0 = BRIDGE_X - BRIDGE_BASE_HALF        # -23.1  (-X face)
+BRIDGE_BASE_X0 = BRIDGE_X - BRIDGE_BASE_HALF        # -25.06  (-X face)
 
 
 # THE BOTTOM'S OWN SPAN: the chassis floor runs END TO END of the chassis -- the two KEPT-SHELL

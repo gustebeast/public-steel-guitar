@@ -67,6 +67,8 @@ import json  # noqa: E402
 
 from skidl import ERC, Net, Part, Pin, generate_netlist, subcircuit  # noqa: E402
 
+import netcheck                                     # noqa: E402
+
 # ── the harness contract ─────────────────────────────────────────────────────
 # Four conductors, colours the user's: black GND / red 24V / yellow CAN_H /
 # green CAN_L. The pin ORDER is the board's half of that contract and is the SAME
@@ -157,6 +159,14 @@ EAR_W, EAR_H = 9.5, 8.7                  # the tab, off the +X end at the +Y cor
 BOARD_OUTLINE_W = BOARD_W + EAR_W        # 49.5 overall; the LAYOUT region is still 40
 HOLE_D = 4.5                             # M4 clearance, centred in the ear
 
+# ONE TEE PER MOTOR, AND ONE MOTOR PER STRING -- see the qty note below.
+def _tee_qty():
+    from src import dimensions as D
+    return D.N_STRINGS
+
+
+_TEE_QTY = _tee_qty()
+
 _HW, _HL = BOARD_W / 2.0, BOARD_L / 2.0
 _EAR_X1 = _HW + EAR_W                    # +29.5
 _EAR_Y0 = _HL - EAR_H                    # -0.7
@@ -196,15 +206,61 @@ BOARD_NOTES = {
     # hold_edge is gone and the cradle's job is locating, not gripping.
     "mounting_hole_xy": (_EAR_X1 - EAR_W / 2.0, _HL - EAR_H / 2.0),
     "single_sided": True,
-    "tail_band_from_plus_y": BOARD_L / 2.0 - ROW_Y,   # 4.0, against a 6.4 limit
-    "qty_per_instrument": 9,
+    "tail_band_from_plus_y": BOARD_L / 2.0 - ROW_Y,   # 6.0, against a 6.4 limit
+    # ⚠ THIS READ 9 AND THE INSTRUMENT HAS 10. It has been 9 since the board was reshaped
+    # to 40 x 16, through the tee purpose being corrected and through tee 10's deletion,
+    # and neither moved it -- a hand-typed count in the file that ORDERS THE BOARDS, one
+    # short. One tee per motor is the board's whole definition ("a tee board exists to
+    # give a MOTOR power and CAN", which is why tee 10 went: it served none), so it is
+    # now the motor count and not a number.
+    "qty_per_instrument": _TEE_QTY,
 }
+
+
+# ── TWO CHECKS THIS FILE WAS MISSING ─────────────────────────────────────────
+# ⚠ THE TAIL BAND WAS PRINTED, NOT CHECKED, AND THE COMMENT BESIDE IT SAID 4.0.
+# The value is 6.0. The through-hole tails have to land on the faceplate wall's
+# 6.4 mm strip -- everything -Y of that overhangs the motor and there is nothing
+# under it -- so the real margin is 0.4 mm, not the 2.4 the comment implied. Six
+# times tighter than it read. A number that close to its limit gets an assertion,
+# not a print: a print is only seen by whoever happens to be reading the run.
+WALL_STRIP = 6.4        # faceplate wall depth -- the only support under this board
+assert BOARD_NOTES["tail_band_from_plus_y"] <= WALL_STRIP, (
+    "the THT tail band sits %.2f mm from the +Y edge and the faceplate wall is only "
+    "%.2f deep -- the tails would hang over the motor with no support"
+    % (BOARD_NOTES["tail_band_from_plus_y"], WALL_STRIP))
+
+# ⚠ AND SIX NUMBERS ARE TYPED TWICE, ONCE HERE AND ONCE IN src/dimensions.py. The CAD
+# cuts the motor bay's seat from ITS copy; this file fabs the board from this one. They
+# agree today, and nothing anywhere would notice if they stopped: the netlist does not
+# know the board's outline, DRC compares copper to the netlist, and the overlap gate
+# reads one file at a time. elec/cad_geom_check.py catches exactly this for output_panel
+# and motor_ctrl -- it cannot reach this board, because the CAD keeps no connector
+# anchor table for the tee. (optical and lever_sensor need no check at all: their CAD is
+# GENERATED from the board, one source, not two copies.) So the check lives here.
+def _check_against_cad():
+    from src import dimensions as D
+    for name, mine, theirs in (
+            ("board X", BOARD_W, D.TEE_BOARD_X),
+            ("board Y", BOARD_L, D.TEE_BOARD_Y),
+            ("ear X", EAR_W, D.TEE_EAR_X),
+            ("ear Y", EAR_H, D.TEE_EAR_Y),
+            ("fabbed outline X", BOARD_OUTLINE_W, D.TEE_OUTLINE_X),
+            ("tail row Y", ROW_Y, D.TEE_TAIL_CY)):
+        assert abs(mine - theirs) < 1e-9, (
+            "%s: elec/can_tee.py says %.3f, src/dimensions.py says %.3f -- the fabbed "
+            "board and the seat cut for it would not match" % (name, mine, theirs))
+
+
+_check_against_cad()
 
 
 if __name__ == "__main__":
     can_tee(tag="tee")
     ERC()
     generate_netlist(file_=os.path.join(OUT_DIR, "can_tee.net"))
+    netcheck.grounds_meet(os.path.join(OUT_DIR, "can_tee.net"))
+    netcheck.no_orphan_pins(os.path.join(OUT_DIR, "can_tee.net"))
     with open(os.path.join(OUT_DIR, "can_tee.board.json"), "w") as f:
         json.dump(BOARD_NOTES, f, indent=2)
     print("board %.1f x %.1f mm, tails %.1f mm from the +Y edge (limit 6.4)"

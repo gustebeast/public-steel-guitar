@@ -22,7 +22,7 @@ one part is not stocked at all in the library we committed to:
 | Row | Was | Now | Impact |
 |---|---|---|---|
 | Optical photodiode (VEMD4110X02) | ~$0.35 ea | **not on LCSC**; use **X01**, same filter, **$0.58 @100+** | +$4.6/board; ⚠ 72 in stock vs 200 needed |
-| Optical MCU STM32H743ZIT6 | $7.63 | **$11.07 / $9.93 @10**, 7 in stock | +$2.30/board, and a stock block |
+| Optical MCU STM32H743IIT6 (was ZIT6) | $7.63 | **$10.01 @10**, 548 in stock (C89597, 2026-09-17) | +$2.38/board; stock block CLEARED by the LQFP176 swap |
 | TRRS jack Tensility 10-03404 | $5.15 | **$8.19 / $6.96 @10** | +$3 |
 | Bridge bearing 693ZZ | ~$1 ea | **superseded 2026-08-07** | part RETIRED — the whole instrument moved to one 695ZZ (Ø5×13×4); see the ball-bearing row |
 | PCTG filament | $25/kg | **$29.95/kg** | +$3 |
@@ -380,7 +380,7 @@ the constraint is stock, not selection. See the optical-pickup section.
 > covers 23 sizes and would let the rate be chosen by test rather than by catalogue.
 
 | **M4 mount screw** | M4 × 0.7, 12 mm, 18-8 SS **button head** (ISO 7380, **2.5 mm hex** — the instrument's one key) | 6 | [McMaster 92095A192](https://www.mcmaster.com/92095A192/) | $14.77 / pack [m] | 2 optical-strip board grips, into the bridge endplate plinth's inserts. + **4 leg LOCK PINS** (one per corner: in through the endplate's end face, through the body adapter's tongue, into an insert in the chassis — the one screw that holds a leg on AND the endplate down; `legs.lock_pin_joint`, `LOCK_SCREW_L` = 12). *This row used to list 4 leg-sleeve pinch bolts into inserts, but legs.py draws those as thread-formed GRUBS — they come back here when they become button heads.* **M4 × 0.7** (coarse) to match the inserts — NOT the M4 × 0.5 fine-thread 90751A120. (The old "pickup X/Y clamp screw" is retired — the pickup Y-lock is now the -Y cup-tip retention grub above) |
-| **M4 × 10 button screw** | M4 × 0.7, 10 mm, 18-8 SS button head (ISO 7380, 2.5 mm hex) | 11 | [McMaster 92095A-series](https://www.mcmaster.com/92095A192/) | ~$12 / pack [m] | CAN tee hold-downs, one per bus-A tee (`wiring.tee_hold`, on each board's +X edge). BESIDE the board, not through it: the head laps the board edge by 1.3 and clamps it onto its cradle boss (cadkit `pcb_cradle(hold_edge=...)`), so the tee needs no mounting hole. 10 mm puts the tip 0.10 above the insert anchor's floor (asserted in wiring.py). Replaces one M2 per bus-A tee; the 2 bus-B PLACEHOLDER tees keep their M2 for now (no clear spot for an M4 in that bay, and they are slated to fold into the lever PCBs). The leg end-wall lock screws are the same SKU but are counted with the leg-stack rework. **Confirm the ×10 length suffix at purchase.** |
+| **M4 × 10 button screw** | M4 × 0.7, 10 mm, 18-8 SS button head (ISO 7380, 2.5 mm hex) | 10 | [McMaster 92095A-series](https://www.mcmaster.com/92095A192/) | ~$12 / pack [m] | CAN tee hold-downs, one per bus-A tee (`wiring.tee_hold`, on each board's +X edge). BESIDE the board, not through it: the head laps the board edge by 1.3 and clamps it onto its cradle boss (cadkit `pcb_cradle(hold_edge=...)`), so the tee needs no mounting hole. 10 mm puts the tip 0.10 above the insert anchor's floor (asserted in wiring.py). Replaces one M2 per bus-A tee; the 2 bus-B PLACEHOLDER tees keep their M2 for now (no clear spot for an M4 in that bay, and they are slated to fold into the lever PCBs). The leg end-wall lock screws are the same SKU but are counted with the leg-stack rework. **Confirm the ×10 length suffix at purchase.** |
 | ~~**TRRS pigtail** (adapter → chassis jack)~~ | **SUPERSEDED 2026-09-17 — folded into the jack-to-plug row above.** It specified **10-02155**, a PLUG-TO-PLUG cable cut in half. That is the right idea and the wrong cable: cut in half it yields TWO MALE pigtails, and the pedal-bar end of the instrument needs a FEMALE one. **10-02135** is the same cable with a jack on one end, so one cut gives the male pigtail for the body adapter AND the female pigtail for the bar — and it is the same SKU the leg's own lead already is. Same 50-00397 plug the design is dimensioned to (overmould Ø6.1 × 14, barrel Ø3.5 × 14, cable Ø3.8), so nothing upstream moves | — | — | — |
 | **M4 collar screw** | M4 × 0.7, 30 mm, 18-8 SS button head (hex drive) | 1 | [McMaster 92095A-series](https://www.mcmaster.com/92095A192/) | ~$12 / pack [m] | the ONE screw locking the pedal-bar latch collar to the bar's tower. The collar is held by a cadkit slide joint — two T rails in slots in the tower's top — which locks every direction but the one it slid in along; this screw locks that one. 30 mm because it passes the collar's full 22.4 height (head recessed 2.4 in the mouth face) before biting 10 into its insert in the tower. **Confirm the ×30 length suffix at purchase.** |
 | **M4 hold-down screw** | M4 × 0.7, 18 mm, 18-8 SS **button head** (ISO 7380, 2.5 mm hex) — a plain machine screw, NOT a Torx plastic thread-former | 11 | [McMaster 92095A-series](https://www.mcmaster.com/92095A192/) | ~$12 / pack [m] | **THE 4 LEG LOCK PINS LEFT THIS ROW** (2026-09-17): restoring the feet's SERVICE POSITION made them **M4 × 40** (their own row below) -- the second hole can only go in a tenon whose mortise runs the foot's full length, and at both ends that is the third station in, 39.96 from the end face. 18 reached 20.4.<br>Also the single +Z screw locking the merged keyhead nut-block endplate down — up from the floor bottom, forming its own thread in a Ø3.6 pilot in the PETG-GF boss, exactly as the leg lock screws do (the rest of the body is held by joinery). **Confirm ×18 is stocked at purchase** (16 and 20 are the common neighbours; the pilot depth decides which) **+ 10 keyhead insert HEIGHT screws** (prototype): one under each string's sliding insert, threading a heat-set in the endplate slab and pushing the insert's foot up; its head hangs in a cavity in the chassis corner rib, reached with the 2.5 mm key from below (strings 1-2: slide the +Y keyhead leg out to its service position, legs.SERVICE_SLIDE). |
@@ -421,7 +421,7 @@ fitted on every instrument.
 | **USB cable, optical board → output panel** | B | **USB-A ↔ USB-C, ~150 mm, USB 2.0 HIGH SPEED, STRAIGHT plug, overmold ≤ 17.5 mm** (mating face → cable exit) | ~$5–8 [m] | commodity. **Two changes, 2026-09-15.** *Destination*: it lands on the output panel's hub downstream port, not the Pi — which is the whole point of putting a hub there, and takes this 480 Mbps link from ~800 mm to ~100 mm, so the length drops from 1 m. *Overmold*: **20 → 17.5 mm**. Spacing the optical board's layout by land rather than by body moved its −Y face 2.58 mm further out, and that came straight off the conduit's depth budget (`PLUG_L` in `src/optical_pickup.py`, asserted against the endplate's exterior wall). Surveyed overmolds run 10–25 mm, so this rules out the long boots, not the market — but it is now a **purchasing constraint to check, not a preference** |
 | **Raspberry Pi 4, 2 GB** | B | Dexed + USB gadget (MIDI/audio/DFU) + USB host for the optical board | **$55.00** [v] | [PiShop](https://www.pishop.us/product/raspberry-pi-4-model-b-2gb/) |
 | ~~Buck 24→5 V ≥3 A~~ | — | **DELETED** ($29.95, Pololu D24V50F5) — see the Power PCB row above and the note below | — | — |
-| ~~10-ch audio ADC~~ | — | **DELETED.** Three PCM1864 + a carrier PCB existed to digitise ten string signals for the Pi. The optical pickup board now does its own 20-channel conversion (STM32H743ZIT6, 20× 16-bit) and sends audio over USB, so this whole path is redundant — ~$29 of ICs plus an entire board's fab, assembly and feeder cost removed | — | — |
+| ~~10-ch audio ADC~~ | — | **DELETED.** Three PCM1864 + a carrier PCB existed to digitise ten string signals for the Pi. The optical pickup board now does its own 20-channel conversion (STM32H743IIT6, 20× 16-bit) and sends audio over USB, so this whole path is redundant — ~$29 of ICs plus an entire board's fab, assembly and feeder cost removed | — | — |
 
 ⚠ **Both Pololu bucks are gone, and the reason is assembly, not price.** The row
 above used to argue about which module to buy; the answer turned out to be
@@ -496,7 +496,7 @@ rest + UI mount) — see `py -3.12 -m src.build --list`.
 
 ## Control sensors (knee levers + pedals)
 
-Every player input — **5 knee levers + 5 pedals** — is a **contactless magnetic
+Every player input — **6 knee levers + 5 pedals** — is a **contactless magnetic
 angle sensor** rather than a switch or a pot: a diametrically-magnetised magnet
 rides the control's axle and an MT6701 reads its angle across an air gap. There
 is no wiper to wear out and no mechanical calibration. The boards are our own
@@ -508,10 +508,18 @@ populate them.
 | **Angle sensor IC** | 11 | **$1.68 ea** [v] | [LCSC C2913974](https://www.lcsc.com/product-detail/Position-Sensor_Magn-Tek-MT6701QT-STD_C2913974.html) | ⚠ **Corrected 2026-08-04: $1.6815 at the 10+ break** (4,207 in stock). The $1.1139 recorded on 08-01 came from a search snippet, which reports LCSC's *volume-floor* price (the 1,000+ break is $1.1161) — not the price at the 11 pieces we buy. See the snippet-bias note in the optical section. Note the QFN part is **C2913974**; the more commonly cited **C2856764 is the MT6701*C*T-STD**, the SOP-8, which is the variant this row explicitly rejects — do not let the wrong LCSC code onto the BOM line. MagnTek **MT6701QT-STD**, 14-bit on-axis magnetic encoder. Take the **QFN-16**, *not* the SOP-8 variant: the air gap is measured to the IC's own top surface, so the package height comes straight out of the gap budget, and the SOP-8 is ~1.5 mm tall — twice the QFN — on the axis where we have the least room. Datasheet §9.2: D = E = 2.900–3.100, **A (total height) = 0.700–0.800** (the model carries the 0.800 max). §1.2: *"Sensing Center at Geometry Center"* — so the package body centres on the axle axis with no per-package offset. Assembled by JLCPCB onto our sensor PCB alongside the tee boards — no hand soldering |
 | **Diametric magnet** | 11 | **$0.40 / $0.332 @10** [v] | [DigiKey](https://www.digikey.com/en/products/detail/radial-magnets-inc/8995/5126077) | Radial Magnets **8995** — NdFeB **N35, Ø6 × 2.5 mm, DIAMETRICALLY magnetised**, NiCuNi, 80 °C, 3873 G surface; ~9k in stock. ⚠ **Diametric, NOT axial** — axial discs are far more common and simply do not work here (DigiKey lists the direction in the specs, so it is checkable at order time). It is also the datasheet's own **recommended magnet** (§5: "Ø6mm x 2.5mm"), so this pair is the configuration the IC was characterised in. Drops into the axle's end pocket; `kl_magnet_cap` screws over it — no adhesive |
 
-*(qty 11 = **10 controls** + 1 spare. The controls are not modelled yet — only
-two knee levers exist in `src/` — but the count is fixed by the instrument: 5
-foot pedals + 5 knee levers, each with its own sensor board. An earlier revision
-of this section said 4 knee levers + 3 pedals and was sized for 7.)*
+*(qty 11 = **11 controls**, no spare — corrected 2026-09-18 (user): the
+instrument has **6 knee levers + 5 foot pedals**, each with its own sensor
+board. The quantity does not move, but its MEANING does: this line read "10
+controls + 1 spare", and the same 11 is now fully committed. ⚠ **Decide
+whether to add a spare before ordering** — an assembled board is ~$4 and a
+failed one strands a control.*
+
+*The count is now `D.N_LEVERS + D.N_PEDALS` in `src/dimensions.py`, and
+`elec/lever_sensor.py` derives `qty_per_instrument` from it, so the board file
+and this row share a source instead of agreeing by coincidence. It has been
+wrong twice before: an earlier revision said 4 knee levers + 3 pedals and was
+sized for 7, and the CAN section sized bus B for 8.)*
 
 **Board spec (ours, for layout).** Outline **28 × 19 × 1.6 mm**, strongly
 *asymmetric* about the sensor: the chip sits on the axle axis just **3.0 mm from
@@ -688,14 +696,143 @@ twisting + the bridge-side AFE buffer, not conductor size):
 
 | Net | Cable | OD |
 |---|---|---|
-| 24 V bus | 20 AWG silicone pair, twisted/flat (fleet slew staggered <5 A; ~0.3 V drop over the run) | ~2.4 |
-| CAN | 26 AWG twisted pair, 120 Ω terminated | ~2.2 |
+| 24 V bus | **2 × 22 AWG per rail** silicone, twisted/flat (fleet slew staggered <5 A; ~0.3 V drop over the run) ⚠ **was 20 AWG — see the note below** | ~2.4 |
+
+> ⚠ **AND NEITHER IS THE PCB COPPER — the third link in the same chain, audited
+> 2026-09-18.** The wire was raised to 2 × 22 AWG for <5 A and the XH contacts were
+> doubled for <5 A. The board traces between them were never sized at all. Every net on
+> every board in this fleet was drawn at the one board-wide netclass width, **0.25 mm**,
+> because no per-net width mechanism existed in the generator — `track_mm` was a single
+> number per board with nothing overriding it for a power net.
+>
+> ⚠ **THAT LAST SENTENCE IS NO LONGER TRUE and this note is kept for the audit trail.**
+> `net_widths` was added to `elec/layout.py` the same day (a dict of net-name pattern →
+> width, which builds a netclass per width and assigns it), and `output_panel` and
+> `motor_ctrl` both use it to put their 24 V rails on **0.5 mm** — 1.45 A, not 0.88.
+> The shortfall below is therefore the state that prompted the fix, not the state today.
+> What is still true is the conclusion the fix could not reach: 0.5 mm is as far as a
+> blanket netclass goes, because these nets land on 0402 pads 0.6 mm wide, so the J6→J7
+> pass-through still wants deliberate 2.8 mm trunk copper that no netclass can express.
+>
+> By IPC-2221 at a 10 °C rise, 0.25 mm carries:
+>
+> | trace | capacity |
+> |---|---|
+> | 0.25 mm, outer, 1 oz | **0.88 A** (1.19 A if 20 °C rise is accepted) |
+> | 0.25 mm, inner, 0.5 oz | **0.26 A** |
+> | needed for 5 A, outer 1 oz | **2.77 mm** |
+> | needed for 5 A, inner 0.5 oz | 14.4 mm — an inner layer cannot do this job |
+>
+> So the panel's 24 V trunk is carrying a <5 A budget on copper rated 0.88 A, a shortfall
+> of roughly 5.7×, and any part of it the router put on an inner layer is far worse.
+> The optical board's own 24 V inlet is fine by contrast — **79 mA** against 0.88 A — so
+> this is about the TRUNK nets, not every net. (This said ~324 mA until 2026-09-18, which
+> is that board's **5 V rail** current; through an 85 % buck it is 79 mA at 24 V. The
+> conclusion was right and the number was four times too big.)
+>
+> ⚠ Nothing in the pipeline can see this. DRC checks copper against the netlist and has
+> no concept of current; the netlist has no concept of width. It needs a per-net width in
+> the generator, and until that exists the trunk cannot be widened even deliberately.
+> (Stack-up assumed JLCPCB standard 4-layer: 1 oz outer, 0.5 oz inner. The boards do not
+> declare copper weight anywhere, which is its own gap.)
+
+> ⚠ **The wire is sized for <5 A; the connector contacts are not, in one place.**
+> XH is rated **3 A per contact**, which is why the panel's 24 V outlet (J7) puts
+> two contacts on each rail. Audited 2026-09-17: the motor controller's inlet J3
+> was taking all of it through **one** contact — a doubled source into a
+> single-contact sink is not doubled — and that is now fixed, along with the
+> optical board's J2, so every 24 V connector in the instrument is
+> `1=GND 2=+24V 3=+24V 4=GND`.
+>
+> **The bottleneck moves rather than disappears.** The motor controller's bus
+> outputs J1/J2 carry 24 V on a *single* conductor, because bus A/B is the
+> four-wire CAN-plus-power scheme (GND, +24 V, H, L). Bus A feeds ten SERVO42D
+> drivers, so nearly the whole <5 A passes through one 3 A contact. Doubling J3
+> was free (its ways were idle); doing it at J1/J2 is not, because those ways
+> carry CAN. **Open:** a wider shell, a separate power bus, or a measured slew
+> budget showing the staggered peak really is under 3 A.
+>
+> ⚠ **THE PARAGRAPH ABOVE MAY BE CHASING A PROBLEM THAT DOES NOT EXIST — audited
+> 2026-09-18 and left standing only because the answer is not certain.** It assumes the
+> motors draw their current *through* J1. `elec/motor_ctrl.py` states the opposite in
+> as many words: *"THE MOTOR CURRENT NEVER COMES THROUGH HERE. The chain runs output
+> panel → tees → keyhead and every motor taps at its own tee, so what reaches this board
+> is its own draw plus the Pi's 5 V worth — about 0.7 A at 24 V."*
+>
+> **The harness supports the board file.** `src/wiring.py` builds the trunk from the
+> output panel's J7, out to tee 10, then west along the rail through the tees, and
+> *terminates* it at the motor controller's **J3** — "THE TRUNK ENDS AT THE MERGED
+> BOARD … the chain simply terminates at a connector on a board". On that topology the
+> motors tap upstream of this board and J1 carries CAN plus its own modest draw, not
+> 5 A, and there is nothing here to fix.
+>
+> **What is genuinely open is narrower and different:** J1's cable carries a 24 V
+> conductor to the same tees the trunk already feeds, which is a *second* path to the
+> same nodes. Either it is a parallel feed nobody designed as one, or bus A's cable
+> should carry CAN only. That question decides J1's current, and neither file answers
+> it. Until it is answered, do not spend a wider shell on this.
+>
+> ⚠ **And the third option is almost certainly the right one, because the screw is
+> self-locking.** `Tr8×2`'s 5.2° lead angle holds tune with the motor de-energised
+> — that is why the drivetrain chose it, and it is recorded as "zero-power tune
+> hold". So at rest the bus carries essentially **nothing**: the current is set
+> entirely by how many motors are *moving at once*, not by how many exist. A pedal
+> or lever change moves two or three strings, which at a NEMA17's few hundred mA of
+> supply current is comfortably inside one XH contact's 3 A.
+>
+> That turns a connector problem into a **firmware limit**, and a cheap one: cap
+> the number of simultaneously-slewing motors. The number to pick needs the
+> SERVO42D's actual 24 V supply current, which is **not recorded anywhere in this
+> file** — the only figure is the fleet's "<5 A", which is a budget rather than a
+> measurement. **Measure one motor before trusting any of this**; if a single
+> moving motor turns out to draw over 1 A, three at once already exceeds the
+> contact and the stagger limit has to be two.
+>
+> ⚠ **And 20 AWG would not have fitted the connector at all.** JST's XH datasheet
+> gives *Applicable wire: AWG #30 to #22* and rates the contact at **3 A at AWG
+> #22**. Every 24 V connector in the instrument is XH (the lever board's is the
+> smaller **PH**, AWG #32–#24 at 2 A). 20 AWG is outside both ranges — it does not
+> crimp. The wire gauge was chosen for the drop budget and the connector for the
+> crimp order, and nobody had put the two datasheets side by side.
+>
+> **The doubling resolves both at once**, which is why the row above now reads
+> 2 × 22 AWG per rail. Two 22 AWG conductors in parallel are 26.4 mΩ/m against a
+> single 20 AWG's 33.3 — *more* copper than the spec it replaces — and each
+> contact then carries half the current, inside the 3 A rating. One change fixes
+> the gauge, the rating and the drop together.
+>
+> ✅ **The lever board's PH connector is fine, and here is the arithmetic that
+> retires the question.** Bus B feeds **eleven** sensor boards, not steppers (this
+> read "eight" until 2026-09-18 — 6 knee levers + 5 pedals, see the sensor-IC row).
+> Each is a CH32V203 (~30 mA), an MT6701 (~18 mA), a recessive SN65HVD230 (~10 mA)
+> and an LDO — about **59 mA at 3V3**, so eleven boards are 0.65 A at 3V3 and
+> roughly **105 mA at 24 V** through the bus. That is **5.2 % of PH's 2 A contact
+> rating** — the conclusion survives the correction with room to spare, which is why
+> the number was worth fixing rather than re-arguing. The
+> 26 AWG the CAN cable already specifies sits mid-range in PH's AWG 30–24 window.
+>
+> **The two families map cleanly onto the two buses**, which is why this works: bus
+> A (ten steppers, the high-current one) is XH end to end, and only bus B crosses
+> XH→PH — at a twenty-fifth of the rating. The gauge argument above therefore
+> applies to the 24 V *trunk* and to bus A, not to bus B.
+>
+> ⚠ **The CAN cable carries the 24 V as well, and only its signal pair is
+> specified.** Bus A and bus B are the user's four-conductor scheme — black GND,
+> red +24 V, yellow H, green L — so the cable row above ("26 AWG twisted pair")
+> describes two of the four conductors. The other two feed **ten SERVO42D
+> drivers** on bus A, i.e. very nearly the whole <5 A. At 26 AWG that would be
+> 132 mΩ/m, which is not a candidate; the power pair needs its own gauge and it
+> has never had one. This is the same bottleneck as the single-contact J1/J2
+> above, seen from the cable end rather than the connector end — and both have to
+> be answered by the same decision about how bus A carries its current.
+| CAN | 26 AWG twisted pair, 120 Ω terminated — ⚠ **this is the H/L pair only; the same cable's 24 V and GND conductors have no gauge** | ~2.2 |
+| 24 V → optical board | **4 × 26 AWG**, ~150 mm, XH crimps both ends — panel **J9** to optical **J2**, both `1=GND 2=+24V 3=+24V 4=GND`. ⚠ **Was missing entirely:** the connector exists at both ends and this row did not, found 2026-09-18. 26 AWG is ample here — the board draws **79 mA at 24 V** typical (324 mA on its 5 V rail through an 85 % buck), ~122 mA at the worst case in `elec/optical.py`'s budget, against XH's applicable #30–#22. It runs beside the ~150 mm USB cable between the same two boards | ~2.2 |
 | pickup / audio / DAC / out | 28 AWG **shielded** pair (mA signals — the shield is the spec) | ~2.0 |
 | USB panel → Pi | slim shielded USB-2 | ~2.6 |
 | logic (relay, link, TDM, OLED, joystick) | 28 AWG | ~1.4 |
 
 A 45 m hookup spool (~$20) covers power/CAN/control; ~1.5 m shielded pair
-(~$16) for the pickup/audio runs. **~$35.** Excludes the **10 control sensor drops** (5 pedals + 5 knee levers,
+(~$16) for the pickup/audio runs. **~$35.** Excludes the **11 control sensor drops** (5 pedals + 6 knee levers,
 not yet modelled) and the optical pickup's USB + 5 V feed. All cross-rib raceways pass ≤ Ø2.6 and sit above the
 knee-lever mortise plane — route no fatter cable through the floor trunk.
 
@@ -722,6 +859,115 @@ turn — deterministic clocking sets the depth, and the plug's annular
 contacts rotate freely, so threading twists no wires). The SERVO42D is classic-CAN-only, which is why any bus with
 motors runs classic; sensor boards still get FD-capable transceivers to keep
 the FD option on bus B. XT30 only at the PSU trunk joints.
+
+⚠ **OPEN: TWO INCOMPATIBLE PINOUTS SHARE ONE 4-WAY XH HOUSING** (found 2026-09-18,
+user asked where the "standard" power cable is used and the premise did not survive
+the question). Every 4-way XH in the instrument is one of two patterns:
+
+| pattern | pins 1 2 3 4 | where |
+|---|---|---|
+| **A, CAN drop** | `GND +24V CAN_H CAN_L` | can_tee J2, motor_ctrl J1/J2 (and the 8-ways are two of these back to back: can_tee J1, lever_sensor J1) |
+| **B, power only** | `GND +24V +24V GND` | optical J2, output_panel J7/J9, motor_ctrl J3 (J5 is the same at 5 V) |
+
+**A 4-way XH plug mates with any 4-way XH header** — the family has no
+per-application keying — so a CAN drop cable physically fits a power inlet and a
+power cable fits a motor's CAN drop. **Pins 1 and 2 agree in both patterns**, which
+makes it worse rather than better: a mis-mated node powers up normally and fails on
+the signal pins. A power cable in a CAN socket puts **+24 V onto CAN_H**, against an
+SN65HVD230 bus pin rated −4 to +16 V, and the bus is shared, so one wrong plug can
+take several transceivers with it.
+
+This is not hypothetical maintenance-only risk: the project's standing rule is that
+every field connection is a connector, so these are all meant to be unplugged.
+
+Not yet fixed — the options trade against each other and against the connector
+strategy: (a) give pattern B a different position count, costing one housing SKU;
+(b) drop the doubling so B becomes `GND +24V NC NC`, which makes BOTH mis-mate
+directions harmless at zero SKU cost, but **J7 cannot take it** — it passes the
+fleet's whole <5 A and needs two contacts against 3 A each; (c) move the true power
+feeds to XT30, which the BOM currently restricts to PSU trunk joints.
+
+### Dual-feed 24 V trunk (option A, locked 2026-09-18 by user)
+
+The tee chain is fed from **both ends** so the worst-loaded segment carries about half
+the fleet instead of all of it. The single +24V contact between tees is a 3 A / 72 W
+ceiling, and this is what relieves it without touching the tee board — which matters,
+because a bigger trunk connector does not fit: the tee pitch is **44.7 mm**, set by the
+motors, and an 8-way VH trunk row comes to 47.3 mm. It collides with its neighbour in
+any orientation, and turning the plugs to face along X is worse (the board is 16 mm deep
+and the tail band already sits 6.0 mm from the +Y edge against a 6.4 mm wall).
+
+| leg | cable | note |
+|---|---|---|
+| panel **J7** → east end of the chain | 4-way XH, 2× +24V + 2× GND | **+ 111 mm of coiled slack** |
+| panel **J10** → `motor_ctrl` **J3** | 4-way XH, 2× +24V + 2× GND, ~582 mm | new connector, new cable |
+| `motor_ctrl` **J1** → west end of the chain | existing bus-A cable | board copper J3→J1 must widen |
+
+**⚠ THE COIL IS 111 mm, ON THE J7 (EAST) CABLE, AND IT IS DELIBERATE RESISTANCE.** The two
+feeds are wildly asymmetric: J7 reaches the chain in 180 mm while J10 travels 582 mm to
+get there, so without correction the east feed carries 5.6 of the 10 motors and the west
+4.4 — 56 % on the worst feed instead of 50 %. Two things fix it, and both are already
+paid for:
+
+* J10 is a **4-way carrying only power**, so both +24V ways parallel and its 582 mm
+  behaves like 291 mm. The trunk cannot do this: two of its four ways are CAN.
+* **111 mm of coiled slack on J7** brings the split to exactly 5.00 / 5.00.
+
+The cost of that deliberate resistance is **0.0059 Ω, or 0.018 V of 24 at 3 A — 0.07 %**.
+Without the doubling the coil would have to be 403 mm; with it, 111 mm.
+
+**Wind the +24V and its GND return TOGETHER as a pair.** A coil carrying DC is
+electrically nothing, but motor current is switched, and ~111 mm wound tightly is enough
+series inductance to ring against the drivers' input capacitance. Wound bifilar the
+outbound and return fields cancel. This is free if the pair is simply not separated.
+
+**⚠ TODO — MODEL THE COIL IN THE CAD (user).** `src/wiring.py` routes trunk segments as
+swept paths; 111 mm of slack needs a real home with a bend radius, a retention point and
+clearance from the motors, or it becomes loose wire in a machine full of moving belts.
+It is currently in no model.
+
+**⚠ AND THE WHOLE THING RESTS ON AN UNMEASURED NUMBER.** 0.8 A per moving motor is
+DERIVED — 147 N of string tension through a Tr8×2 leadscrew at 37.2 % efficiency, plus an
+estimated ~4 W of copper loss — not measured. This BOM records SERVO42D's real 24 V
+supply current as written down nowhere. At 0.4 A none of this is needed; at 1.2 A it is
+not enough. **One clamp-meter reading during a pedal change decides whether to build any
+of it**, and costs less than any of the options it would settle.
+
+### Instrument power budget — and there is no PSU on this BOM
+
+⚠ **NOTHING HERE SPECIFIES A SUPPLY.** There is an XT30 row "PSU trunk only" and no
+supply, no wattage, no part. Every per-board budget in this file sizes a *buck*; none of
+them add up to what feeds the instrument. Itemised 2026-09-18, at the 24 V inlet:
+
+| load | worst case | playing |
+|---|---|---|
+| 10 × SERVO42D, bus A (the <5 A budget cap) | 120.0 W | 30.0 W |
+| Raspberry Pi + USB, via buck | 16.7 W | 5.6 W |
+| **LED strip, 580 mm @ 100/m, via buck** | **25.3 W** | **8.9 W** |
+| optical board | 2.9 W | 1.9 W |
+| 11 sensor boards | 2.5 W | 2.5 W |
+| output panel | 1.0 W | 0.9 W |
+| motor controller | 0.9 W | 0.9 W |
+| **total** | **169 W / 7.1 A** | **51 W / 2.1 A** |
+
+**Suggested: 24 V 150 W (6.25 A)** with the strip power-capped in firmware; 24 V 240 W
+covers every load at maximum simultaneously, which nothing makes happen.
+
+**The 120 W motor line is a cap, not a draw.** The self-locking screw means there is no
+holding current, so motors pull only while a pedal moves, and moves stagger. See the
+bus-A contact-current note above, which is the same figure viewed as a connector problem.
+
+**The LED strip is the only load that is on continuously**, so it matters more for heat
+and for the supply's continuous rating than its 20 % share of the peak suggests. Strip
+figures are HD108 RGBW 5050 at 5 V, 80 mA per pixel with all four dice lit (user's
+`led-lighting-summary.md`, Sept 2026; 580 mm, user). 57 pixels at full white is 4.6 A on
+the 5 V rail — **cap it in the effects daemon's output stage** (sum the frame and scale)
+rather than buying a 5 A buck for a state no musical content produces.
+
+⚠ **AND THE LED NOTE ASSUMES A Pi 5; THIS BOM SPECIFIES A Pi 4, 2 GB.** The Pi 4 and its
+buck replaced a Pi 5 and a 6 A buck to save ~$130 (see the Pi row). SPI at 10–20 MHz is
+fine on a Pi 4 so the LED plan survives intact, but the two documents disagree about
+which board is in the instrument. Resolve before ordering either.
 
 **PCB buying plan**: tee PCBs + sensor PCBs ship as ONE panel (V-score /
 mouse-bite, snap apart — never hand-cut FR4), ONE assembly job, **full paid
@@ -750,7 +996,7 @@ $0.59–0.78 per pre-crimped lead — 20×; needs a ~$25–45 tool, below).
 | **XH headers**, THT top-entry | JST **B2B/B4B/B6B-XH-A(LF)(SN)** | ~30 | **$0.17** [v] | [DigiKey](https://www.digikey.com/en/products/result?keywords=B4B-XH-A) | on every custom PCB (sensor boards, motor controller, leg adapters); B4B verified, other sizes same class. Modelled from JST's own drawing (`cadkit.pcb.jst_xh_header`): B4B is **12.4 × 5.75**, **7.0 mm** tall bare and **9.8 mm mated** — the mated figure is the one clearances must use — with □0.64 posts reaching 3.4 mm below the seating plane, i.e. **1.8 mm proud** of a 1.6 mm board's far face. The pin row is **2.0 mm from one long edge, 3.75 from the other**, so the part is not symmetric about its pins and which way it faces is a real layout decision |
 | **Power connector** (PSU trunk only) | XT30 pair — DFRobot **FIT0586** | 4 pr | **$1.90** [v] | [DigiKey](https://www.digikey.com/en/products/detail/dfrobot/FIT0586/9559255) | 15 A/30 A pk, gold; pigtails bench-soldered ONCE, field = plug/unplug only |
 | **CAN terminator R** | Yageo **CFR-25JB-52-120R** (120 Ω ¼ W) | 10 | **$0.10 / $0.036 @10** [v] | [DigiKey](https://www.digikey.com/en/products/result?keywords=CFR-25JB-52-120R) | motor controller + last motor; bus-B termination lives ON the tees (SMT 120R there) |
-| **Tee PCB** | custom 49.5 × 16 L (40 × 16 layout + a bare 9.5 × 8.7 mounting ear, M4 through-hole): ONE 8-way side-entry XH (trunk in 1-4, out 5-8) + ONE 4-way drop + 120 Ω + shunt jumper | **11** | ~$2 assembled (est.) | JLCPCB | panelized with the sensor boards; close the jumper on the LAST tee = bus-B termination. Qty 12 → 11: tees 11/12 are deleted (the lever board passes the trunk through its own 8-way, and the TRRS adapter carries the leg jack on the board) |
+| **Tee PCB** | custom 49.5 × 16 L (40 × 16 layout + a bare 9.5 × 8.7 mounting ear, M4 through-hole): ONE 8-way side-entry XH (trunk in 1-4, out 5-8) + ONE 4-way drop + 120 Ω + shunt jumper | **10** | ~$2 assembled (est.) | JLCPCB | panelized with the sensor boards; close the jumper on the LAST tee = bus-B termination. Qty 12 → 11: tees 11/12 are deleted (the lever board passes the trunk through its own 8-way; tee 12 went with the wired leg column, which is now an off-the-shelf TRRS M→F extension cable with molded ends and no junction anywhere along it. The TRRS adapter PCB that briefly carried that jack is deleted too — the cable crosses the joint with zero connections on the leg, so the board had nothing left to do) |
 | **Leg carrier PCB** | custom: LCSC SMT jack + B4B-XH-A header | 2 | ~$2 assembled (est.) | JLCPCB | rides the same panel; sits in the shaft pocket — auto-mate jack's terminals land on XH, fully factory-soldered |
 | ~~**FD-capable transceiver**~~ | ~~Microchip **MCP2562FD-E/SN**~~ | — | **DROPPED** | — | Superseded by **SN65HVD230DR** (`C12084`, $0.6185 @10, 32,557 stock) on the sensor boards — see Control sensors. Two corrections this row carried: LCSC is **$1.85 @10**, not the “~$0.50” claimed here, and it needs **4.5–5.5 V**, so it dragged a second regulator onto the most area-constrained board in the project. FD is moot now that the sensor MCU is classic-only — bus B could have been FD (the motors are on bus A), but the payload does not want it |
 
@@ -768,6 +1014,65 @@ The SERVO42D's own I/O is **XH2.54 native**, so the XH standard needs no
 adapting at the motors.
 
 ## Optical pickup PCB (per-string sensing + on-board audio→MIDI)
+
+> ### ⚠ 2026-09-17 — every part audited against its manufacturer's datasheet
+>
+> Prompted by the user: verify the parts before routing the board again. All 155
+> checked, pinout by pinout. **Seven faults, none of which DRC can see** — DRC
+> checks copper against the netlist, and these were in the netlist.
+>
+> | What was wrong | Why it matters |
+> |---|---|
+> | USB3343 PHY pinout was invented — D+/D− on 16/15 (really 13/14), crystal on 10/11 (really 21/20), RBIAS on 17 (really 19) | The board could not have worked. The file had said "check against Microchip's datasheet"; nobody had |
+> | Y2 was 24 MHz | The USB3343 takes **26 MHz**. Neither 24 nor the MPN table's 25 would enumerate |
+> | Crystals specified by frequency only | The PHY needs **CL 20 pF, ESR ≤ 30 Ω** (T4.13). The obvious 26 MHz 3225 part is CL 10 pF / 50 Ω and fails both — a mismatched load pulls frequency off the ±500 ppm budget, and 50 Ω against a 30 Ω limit may not start |
+> | TIA op-amps ran on **+5 V** and drive ADC pins | ST rates those pins at **4.0 V absolute maximum** (DS12110 T21). A saturated channel put ~4.95 V on them. Moved to +3V3A — which costs nothing, since the ADC measures against VREF+ = 3V3A and could never read above it |
+> | U9's BYP pin floating | Its datasheet: **300 µVrms** without the cap, **40 µVrms** with. 40 µV is why the part was chosen. New C127 |
+> | Ferrite bead had the **ten pulsed emitters on its quiet side** | The bead was keeping the buck's ripple out of a node the board's own worst aggressor already sat on. Emitters + digital LDO now on the buck side |
+> | U11 ordered as the SC70 part on a SOT-23 footprint | TI gives the two packages **different pinouts** — as ordered, the mid-rail buffer drove its own input |
+> | 50 passives had placeholder values (`Rf`, `Cf C0G`, `ballast`) | They were counted as sourced generics and would have reached a quote as blank lines. `fab.py` now refuses them |
+>
+> **What the audit cost in routing:** the sensing strip now carries two power
+> rails (+3V3A to the quads, V5_PRE to the ballasts) where it carried one, which
+> is the direct price of separating the pulsed emitters from the analog supply.
+> Unconnected went 5 → 10 on an otherwise identical board. Zero DRC violations
+> either way, beyond the 20 declared sensing-cell courtyard overlaps.
+>
+> ### ⚠ Second pass, same day — the parts that were still OPEN, and four more faults
+>
+> The first pass checked what was *written*. This one closed what was *missing*,
+> and found that the two files naming each part had drifted apart.
+>
+> | What was wrong | Why it matters |
+> |---|---|
+> | **D8 and D9 were BOM'd as an output-panel relay flyback and an output clamp, both OPEN** | On this board D8 and D9 are two of the **ten IR emitters**. The CAD's sourcing table matches by longest ref prefix, and the panel's `D8`/`D9` entries beat this board's bare `D` rule. The exact-ref table exists *because* designators collide within a board; this was the same failure across boards, and nothing could see it — each file was internally consistent |
+> | **Y1 and Y2 both still mapped to a 25 MHz part** | A 25 MHz crystal on the pin that has to clock the PHY at 26. The first pass fixed the netlist and left the CAD table saying "confirm vs USB3343". One `Y` rule cannot cover two different crystals |
+> | L1 was **18 µH** with the part OPEN | The note computed 15.8 µH from TI's eq. 9 and rounded *up*, which is backwards — `KIND` is a choice in TI's own 20–60 % band. And the binding spec is not the load: SLVSE22B 9.2.2.4 sizes the inductor against the **IC's current limit** (0.8/1.1/**1.4** A), and no 4 × 4 part at 22 µH gets past 1.05 A. At 15 µH the same package gives Isat 1.35 A, DCR 0.299 Ω instead of 0.455, Irms 0.77 instead of 0.62. **SWPA4020S150MT**, C36407, 8,816 in stock |
+> | FB1 was OPEN, and the obvious part is a trap | **"600" in a Murata or Sunlord bead part number means 60 Ω** — two digits and a decade multiplier. `BLM18PG600SN1D`, the top hit with 136,668 in stock, is a *tenth* of the specified filtering in the right package, on the right footprint, and no DRC or netlist check could ever catch it. `GZ1608D601TF` (C1002) is the 600 Ω part |
+> | U10's **body** was the SOT-563's 1.6 × 1.6 | The part ordered is USBLC6-2SC6 in **SOT-23-6**. The courtyard had been corrected and the body left behind — and body is what the CAD's pairwise clearance assert measures, so a neighbour could sit closer than the real package allows |
+> | J2 was OPEN pending "confirm B = 15.0" | Confirmed against JST's own drawing: S4B-XH-SM4-TB is A = 7.5, **B = 15.0**. C161861 (the `(LF)(SN)` form, 20,992 — the bare listing is zero, the same trap J1 hit on the lever board) |
+> | **BOM.md was missing thirteen parts** | The whole local supply (U13, L1, C160–C163, R40/R41), the PHY's R37/R39, the LED gate pull-down R38, and the H7's two core-regulator caps — everything added when the board took the 24 V trunk on 2026-09-14. J2 still read "5 V, XH-SM-2" |
+>
+> **The drift is now checked mechanically.** `elec/mpn_check.py` compares the CAD's
+> sourcing table against the netlist and runs on every netlist generation. It is
+> what found D8/D9 and the crystals.
+>
+> **And the photodiode has no substitute.** LCSC's catalogue was swept for a
+> daylight-filtered PIN photodiode in an 0805 land: `VEMD4110X01` is the only one.
+> `TEMD7000X01` (3,904 in stock) is 350–1120 nm, `VEMD1060X01` (1,914) is
+> 350–1070, `VEMD8081` (5,501) is 4.8 × 2.5 mm, visible-*enhanced* and 33 pF. The
+> filter is load-bearing: at Rf = 4M7 the TIA saturates at 617 nA and open room
+> light on an unfiltered diode is already that order. 95 in stock is four boards,
+> against 200 for the ten-instrument basis — a purchasing problem with no design
+> answer.
+>
+> **One number the audit corrected rather than found:** the photodiodes run at
+> **zero bias**, and Vishay characterises the part at V\_R = 5 V, so both figures
+> quoted in the design were the wrong line of the table — responsivity is
+> **Ik 2.2 µA/(mW/cm²)**, not Ira 2.4, and diode capacitance is **7 pF**, not 2.5.
+> The 3× capacitance error was still safe (Cf is ten times the stability minimum),
+> but it is the number anyone re-deriving Rf needs.
+
 
 One custom board lying **under the strings, firing up**, on a carrier that is part
 of the bridge endplate and **rides on top of the deck**, that reads all ten
@@ -815,7 +1120,7 @@ at time of writing:
 
 | Candidate | HS PHY | Fits a 20 mm board | Verdict |
 |---|---|---|---|
-| STM32H7 (LQFP100) | external ULPI | yes | **chosen** — M7, 3× 16-bit ADC |
+| STM32H7 (LQFP176, was LQFP144) | external ULPI | yes | **chosen** — M7, 3× 16-bit ADC |
 | STM32F723/733 | internal | no — ≥144 pins, 22×22 over leads | too wide |
 | AT32F435/437 | none (full-speed only) | yes | no HS |
 | GD32F470 | external ULPI | yes | M4 240 MHz, 12-bit ADC |
@@ -827,27 +1132,55 @@ ADC inputs plus a 12-signal ULPI bus will not fit a 64-pin part.
 
 | Qty | Ref | Part / role | Package | Envelope (mm) |
 |-----|-----|-------------|---------|---------------|
-| 1 | U6 | MCU — **STM32H743ZIT6**, 20× 16-bit ADC ch, USB OTG_HS via ULPI | LQFP144 | 22.00 × 22.00 × 1.60 |
+| 1 | U6 | MCU — **STM32H743IIT6**, 20× 16-bit ADC ch, USB OTG_HS via ULPI | LQFP176 | 26.00 × 26.00 × 1.60 |
 | 1 | J1 | USB-C receptacle — 10 ch audio + MIDI + DFU | USB-C | 8.94 × 7.35 × 3.16 |
-| 1 | J2 | power in, 5 V from the instrument rail — side entry, −X edge | XH-SM-2 | 6.10 × 10.00 × 7.00 |
+| 1 | J2 | **24 V in** from the instrument trunk — side entry, −X edge, 2 cavities empty ⚠ **no source yet, see below** | XH-SM-4 | 6.10 × 15.00 × 7.00 |
 | 5 | U1–U5 | quad op-amp — 4× transimpedance amp | SOIC-14 | 6.00 × 8.65 × 1.75 |
 | 1 | U7 | USB 2.0 high-speed ULPI PHY | QFN-24 | 4.00 × 4.00 × 0.90 |
-| 1 | U8 | LDO — 3V3 digital | SOT-23-5 | 2.90 × 2.80 × 1.45 |
-| 1 | U9 | LDO — 3V3 analog (low noise) | SOT-23-5 | 2.90 × 2.80 × 1.45 |
+| 1 | U8 | LDO — 3V3 digital, **AMS1117-3.3, tab = VOUT not GND** (0.51 W) | **SOT-223** | 6.50 × 3.50 × 1.80 |
+| 1 | U9 | LDO — 3V3 analog (low noise, **needs C127 on BYP**) | SOT-23-5 | 2.90 × 2.80 × 1.45 |
+| 1 | C127 | analog LDO noise bypass — 1 µF, **the reason U9 is this part** | 0402 | 1.00 × 0.50 × 0.55 |
 | 1 | U11 | single op-amp — TIA mid-rail reference buffer | SOT-23-5 | 2.90 × 2.80 × 1.45 |
-| 1 | Y1 | 25 MHz crystal — MCU HSE | 3225 | 3.20 × 2.50 × 0.90 |
-| 1 | Y2 | 24 MHz crystal — PHY reference | 3225 | 3.20 × 2.50 × 0.90 |
+| 1 | U13 | **TPS560430XFDBVR** 24→5 V synchronous buck, 1.1 MHz forced PWM | SOT-23-6 | 2.90 × 1.60 × 1.10 |
+| 1 | L1 | buck inductor — **SWPA4020S150MT**, 15 µH shielded, **Isat 1.35 A** | 4040 | 4.00 × 4.00 × 2.00 |
+| 1 | C160 | 24 V input bulk — 10 µF/50 V, **1206 for the DC-bias derating** | 1206 | 3.20 × 1.60 × 1.45 |
+| 1 | C162 | buck 5 V output bulk — 22 µF/16 V | 0805 | 2.00 × 1.25 × 1.45 |
+| 1 | C164 | **U8 input bulk** — 10 µF/16 V; V5_PRE had no local capacitor at all | 0805 | 2.00 × 1.25 × 1.45 |
+| 2 | C161, C163 | 24 V HF bypass; buck bootstrap CB→SW, 100 nF | 0402 | 1.00 × 0.50 × 0.55 |
+| 2 | R40–R41 | buck feedback divider — 40k2/10k 1%, 5.02 V | 0402 | 1.00 × 0.50 × 0.55 |
+| 2 | C112–C113 | H7 core regulator caps (VCAP1/2), 2.2 µF — **required, not optional** | 0805 | 2.00 × 1.25 × 1.45 |
+| 1 | R37 | PHY RBIAS — **8k06 1%**, sets the USB transmitter's drive current | 0402 | 1.00 × 0.50 × 0.55 |
+| 1 | R39 | PHY VBUS series — 20k, device-only value | 0402 | 1.00 × 0.50 × 0.55 |
+| 1 | R38 | LED gate pull-down — 100k, emitters OFF while the MCU is in reset | 0402 | 1.00 × 0.50 × 0.55 |
+| 1 | Y1 | 25 MHz crystal — MCU HSE, **CL 20 pF, ESR ≤ 30 Ω** | 3225 | 3.20 × 2.50 × 0.90 |
+| 1 | Y2 | **26 MHz** crystal — PHY reference, **CL 20 pF, ESR ≤ 30 Ω** | 3225 | 3.20 × 2.50 × 0.90 |
 | 1 | Q1 | N-ch MOSFET — LED row driver | SOT-23 | 2.90 × 2.40 × 1.30 |
-| 1 | U10 | USB data-line ESD array | SOT-563 | 1.60 × 1.60 × 0.60 |
-| 10 | D1–D10 | IR emitter, 940 nm — **narrow beam, see below** | 0805 (opto) | 2.00 × 1.25 × 0.85 |
+| 1 | U10 | USB data-line ESD array — USBLC6-2SC6 | **SOT-23-6** | 2.90 × 2.80 × 1.45 |
+| 10 | D1–D10 | IR emitter, 940 nm — `IR17-21C/TR8`, **120° view angle** (not narrow), Ie **0.2 min / 0.8 typ** mW/sr | 0805 (opto) | 2.00 × 1.25 × 0.85 |
+
+> ⚠ **Two corrections to this row, both from Everlight's own datasheet, 2026-09-17.**
+> It said "narrow beam"; the part is **120°**, which the MPN table has said all
+> along ("120 deg CONFIRMED") — the two lines have contradicted each other.
+> And its radiant intensity is **0.2 mW/sr minimum against 0.8 typical**, a
+> guaranteed fourfold spread on the part the whole optical budget rests on. The
+> budget in `elec/optical.py` is computed on the typical, so a worst-case emitter
+> gives a quarter of the signal — still **~55 dB** SNR rather than ~67, but it is what
+> the per-string Rf tuning has to absorb. (These read 63 and 75 until 2026-09-18, when
+> the noise budget in `elec/optical.py` was re-derived: the op-amp's own voltage noise
+> is not rolled off by the Rf·Cf pole, so the floor is ~120 µVrms rather than 48.)
+>
+> ⚠ **Soldering:** `Tsol` 260 °C, ≤5 s. JLCPCB's Economic PCBA reflow is fixed at
+> **255 ± 5 °C, not adjustable** — so this part, like the VEMD4110X01 photodiode,
+> sits at the top of its rating with no margin. Two of the twenty most
+> irreplaceable parts on the board are in that position.
 | 20 | PD1A–PD10B | PIN photodiode — **Vishay VEMD4110X01**, daylight filter (740–1040 nm) | 0805 (opto) | 2.00 × 1.25 × 0.85 |
-| 5 | R1–R5 | LED current-set — **per-string value**, plain strings | 0603 | 1.60 × 0.80 × 0.95 |
-| 5 | R6–R10 | LED current-set — **per-string value**, wound strings | 0603 | 1.60 × 0.80 × 0.95 |
+| 5 | R1–R5 | LED current-set — **180R** (21 mA) nominal, plain strings | 0603 | 1.60 × 0.80 × 0.95 |
+| 5 | R6–R10 | LED current-set — **180R** (21 mA) nominal, wound strings | 0603 | 1.60 × 0.80 × 0.95 |
 | 1 | FB1 | ferrite bead — analog rail isolation | 0603 | 1.60 × 0.80 × 0.95 |
 | 4 | C130–C133 | bulk caps — VBUS / 3V3D / 3V3A / reference | 0805 | 2.00 × 1.25 × 1.45 |
-| 20 | Rf11–Rf54 | TIA feedback resistor — **per-string value** | 0402 | 1.00 × 0.50 × 0.55 |
+| 20 | Rf11–Rf54 | TIA feedback resistor — **4M7** nominal, tuned per string | 0402 | 1.00 × 0.50 × 0.55 |
 | 4 | C140–C143 | power-input decoupling | 0402 | 1.00 × 0.50 × 0.55 |
-| 20 | Cf11–Cf54 | TIA feedback cap (sets the anti-alias pole) | 0402 | 1.00 × 0.50 × 0.55 |
+| 20 | Cf11–Cf54 | TIA feedback cap — **2.2 pF** C0G, 15.4 kHz pole | 0402 | 1.00 × 0.50 × 0.55 |
 | 12 | C100–C111 | MCU decoupling | 0402 | 1.00 × 0.50 × 0.55 |
 | 10 | Cd11–Cd52 | op-amp decoupling | 0402 | 1.00 × 0.50 × 0.55 |
 | 4 | C123–C126 | crystal load caps | 0402 | 1.00 × 0.50 × 0.55 |
@@ -857,7 +1190,21 @@ ADC inputs plus a 12-signal ULPI bus will not fit a 64-pin part.
 | 1 | R30 | BOOT0 pull-down | 0402 | 1.00 × 0.50 × 0.55 |
 | 1 | R31 | NRST pull-up | 0402 | 1.00 × 0.50 × 0.55 |
 | 1 | R36 | LED driver gate resistor | 0402 | 1.00 × 0.50 × 0.55 |
-| — | — | SWD programming pads (no component; first flash before USB DFU works) | pads | — |
+| 5 | TP1–TP5 | **SWD pads** — SWDIO, SWCLK, **NRST**, GND, +3V3D target sense. Bare copper: no part, no paste, excluded from the BOM and the CPL | 1.5 mm pad | 1.50 × 1.50 |
+
+> ⚠ **These were a BOM row and nothing else until 2026-09-17.** `SWDIO` and `SWCLK`
+> reached the MCU and stopped — single-node nets, which layout drops as unplaceable
+> and DRC cannot complain about. **And there was no second way in.** A blank H743
+> cannot enumerate over this board's USB (the ULPI PHY needs firmware to start, and
+> the ROM bootloader's DFU is on OTG_FS `PA11`/`PA12`, which this board does not
+> wire); AN2606's other bootloader interfaces are not brought out either. An
+> assembled board would have been a **brick** — nothing about it repairable in
+> firmware, because no firmware could be put on it.
+>
+> `NRST` is on the list for a reason that looks optional and is not: `PA13`/`PA14`
+> are ordinary GPIO after reset, so firmware that reconfigures them takes SWD away,
+> and **connect-under-reset is the only way back**. `BOOT0` is deliberately *not*
+> brought out — it only helps if a ROM bootloader interface exists, and none does.
 
 ### Was magnetic ruled out too early? — feasibility check, 2026-08-02
 
@@ -959,8 +1306,8 @@ JLCPCB BOM line. And all three that did have numbers failed:
 
 | Line | Was | Now |
 |---|---|---|
-| U6, MCU | `STM32H743ZIT6`, **7 in stock** (need 10) | unchanged — ⚠ still short |
-| PD ×20 | `VEMD4110X02`, **not in catalogue** | **`VEMD4110X01`** — same filter, in catalogue ✓ ⚠ 72 in stock (need 200) |
+| U6, MCU | `STM32H743ZIT6` 0 in stock (2026-09-17) → **`STM32H743IIT6`**, 548 | resolved by package swap |
+| PD ×20 | `VEMD4110X02`, **not in catalogue** | **`VEMD4110X01`** — same filter, in catalogue ✓ ⚠ 95 in stock 2026-09-17 (need 200); **swept, and it is the only filtered 0805 PIN at LCSC** |
 | D ×10 | `VSMB1940X01`, **not in catalogue**, ±60° | **`IR17-21C/TR8`** — in catalogue ✓ but ~120° |
 
 **Two items closed that had been open for a while:** the **ULPI PHY** is
@@ -1020,8 +1367,8 @@ Basic classes (no feeder charge):
 
 | Line | MPN | LCSC | Qty | Ext. | Note |
 |---|---|---|--:|--:|---|
-| PD1A–PD10B | `VEMD4110X01` | C3211080 | 20 | **$11.60** | filtered ✓ · ⚠ 72 in stock, 200 needed |
-| U6 | `STM32H743ZIT6` | C114408 | 1 | $9.93 | ⚠ 7 in stock |
+| PD1A–PD10B | `VEMD4110X01` | C3211080 | 20 | **$11.60** | filtered ✓ · ⚠ 95 in stock 2026-09-17, 200 needed · **no substitute exists** |
+| U6 | `STM32H743IIT6` | C89597 | 1 | $10.01 | 548 in stock (2026-09-17) |
 | U7 | `USB3343-CP` | C633347 | 1 | $1.78 | ULPI PHY, QFN-24 ✓ |
 | U1–U5 | `TLV9064IDR` | C388176 | 5 | $1.08 | **the TIA part** — see below ✓ |
 | U9 | `SPX3819M5-L-3-3/TR` | C9055 | 1 | $0.30 | 3V3 **analog**, 40 µVrms ✓ |
@@ -1138,10 +1485,26 @@ that is the one number to watch if the 5 V rail sags over the cable and the XH
 connector, and it is an argument for keeping J2's doubled pins.
 
 U8 and U9 are now **different parts**, which costs one line: U9 stays the
-low-noise `SPX3819` (40 µVrms) on the analog rail, where its ~40 mA load makes
-SOT-23-5 fine. The split is the point — the noisy cheap regulator feeds the MCU,
+low-noise `SPX3819` (40 µVrms) on the analog rail, where its **11.7 mA** load makes
+SOT-23-5 fine (that figure was guessed at "~40 mA" until the budget below was
+itemised; five TLV9064 quads are 538 µA *per amplifier*). The split is the point — the noisy cheap regulator feeds the MCU,
 the quiet one feeds the front end. Cost: **+0.7 mm of board**, and parts actually
 fall $0.20 because the AMS1117 is cheaper than a second SPX3819.
+
+> **⚠ The 5 V rail was never added up** — itemised 2026-09-17 in
+> `elec/optical.py`, every figure from the part's own datasheet. Typical load
+> **324 mA against a 600 mA buck (54 %)**; 499 mA (83 %) with maximum-spec parts at
+> 25 °C and the emitters on. ST's 85 °C characterisation maximum would put it at
+> 679 mA, *over* the buck — but that is 400 mA of MCU with every peripheral on a
+> 176-pin part enabled, which this firmware does not do. The real conclusion is
+> that **enabling peripherals is a power decision on this board**, and that raising
+> emitter drive to the IR17‑21C's 65 mA rating is dead: 650 mA of emitters alone
+> exceeds the buck.
+>
+> ⚠ This paragraph's dropout warning is also stale: it predates the board taking
+> **24 V** and generating 5 V locally. The 5 V rail no longer crosses a cable or a
+> connector, so cable sag cannot eat U8's dropout margin. J2's doubled pins are
+> still right, for the 24 V.
 
 **Nothing is now outstanding on this board's schematic.**
 
@@ -1604,10 +1967,38 @@ Swept across the plausible range, with the conduit as built:
 So **anything from 10 to 22 mm works** and only the extreme fails. Once a real cable is in
 hand, set `PLUG_L["J1"]` to the measured value; nothing else has to move.
 
-**Power (J2): 5 V from the instrument rail, not USB VBUS.** MCU ~200–300 mA, PHY
-~50, 21 op-amp channels ~40 — already past a USB port's 500 mA before a single
-emitter is lit. Since LED current is the second-best SNR lever, capping it at
-what a host port will give up would throw away the thing the design most needs.
+**Power (J2): 24 V from the instrument trunk, not USB VBUS.** (This said *5 V* until
+2026-09-18; the rail moved to 24 V with a local buck on 2026-09-14 and this line did
+not follow. `elec/optical.py` wires J2's four ways as `1=GND 2=+24V 3=+24V 4=GND`.)
+⚠ **And the current argument that used to sit here was wrong in both directions.** It
+read *MCU ~200–300 mA, PHY ~50, 21 op-amp channels ~40 — already past a USB port's
+500 mA before a single emitter is lit.* The itemised budget in `elec/optical.py` was
+written in the first place because assertions like that one had never been added up, and
+it names this line as one of them. Derived from the datasheets:
+
+| | claim | derived |
+|---|---|---|
+| MCU (DS12110 T30) | ~200–300 mA | **165** typ / 220 max @25 / 400 max @85 |
+| PHY (DS00002646 T4-2) | ~50 mA | **41** typ / 51 max |
+| 21 op-amp channels | ~40 mA | **11.7** typ / 16.1 max |
+
+The op-amp figure is 2.5× the derived maximum — 21 channels is five TLV9064 quads plus a
+TLV9061, and the TLV906x draws 538 µA per amplifier, so 21 × 538 µA = 11.3 mA. And the
+conclusion does not survive either: **219 mA at 5 V before any emitter**, 324 mA at the
+50 % duty the design assumes, 430 mA with the emitters on continuously. A USB port's
+500 mA would in fact carry it.
+
+**The real reasons stand and are elsewhere in this design.** Margin: the worst case in the
+budget is 499 mA with maximum parts at 25 °C, which is the limit and not a headroom. And
+noise, which is the actual argument — taking 5 V would mean a ~600 mm run sharing a
+return with the Pi, on a board whose LED driver switches at 96 kHz *synchronously with
+sampling*, where a shared return puts that switching straight onto the reference the TIAs
+measure against.
+⚠ **LED current is NOT the best SNR lever** — this said "second-best" and
+`src/optical_pickup.py` said "first", and the re-derived noise budget says neither.
+The dominant term is the op-amp's voltage noise across a plateau that ends at
+GBW/noise-gain, so it scales with the amplifier's BANDWIDTH: a slower part cuts it and
+a faster one makes it worse. Emitter drive is a real lever and it is not the first one.
 J2 is side-entry on the **−X edge**: the −Y edge is taken by the USB receptacle
 and the floor-ledge lane, and −X of the board is open air (the optical relief
 removes the tie bar's wall there), so that mouth is reachable. It plugs in after
@@ -1625,6 +2016,17 @@ neighbouring strings — one of the things the prototype needs to measure.
 `STM32H743VIT6` brings out only **16** ADC channels; this board digitises **20**
 (one per photodiode). The 144-pin **`STM32H743ZIT6`** has exactly 20, and 22 × 22
 over its leads fits the 30 mm tail with 4.0 mm clear. That reasoning stands.
+
+> **2026-09-17 — swapped to the LQFP176 `STM32H743IIT6` (C89597).** The ZIT6 went to
+> **0** at JLCPCB; the IIT6 had **548** at **$10.01 @10**. Same die (20 ADC channels,
+> OTG_HS, 2 MB flash), so the ADC and ULPI port assignments carry over and only pin
+> numbers change — re-derived from KiCad's CubeMX-generated ST symbol and verified on
+> the generated netlist. The tail is now 62 mm wide, not 30, so the 26 × 26 package
+> fits with room: its −X escape side went from 6.6 mm to 26.9 mm. The board grows
+> 5.4 mm at −Y and stays inside the −Y budget (cables clear the instrument edge by
+> 5.38 mm). Rejected alternative: the `STM32H750ZBT6` in the same LQFP144 (416 in
+> stock) — footprint-identical but 128 KB of flash, needing an external QSPI part and
+> a two-stage boot.
 
 ⚠ **The ~$7.63 does not.** Verified on LCSC 2026-08-01 (**C114408**): **$11.07
 @1, $9.93 @10 — and 7 units in stock.** Ten boards need ten parts. So it is
@@ -1759,9 +2161,25 @@ Two consequences worth acting on:
 
 ### Optical pickup board at that basis — $44.69 per instrument
 
-Board is **37.4 × 171.6 mm = 64.2 cm²**, 4-layer, 148 parts, ~560 solder joints.
-(Earlier revisions said 47.5 cm², which predates the +X wraps and the M4 bands,
-then 184.4 mm long, which predates J2 becoming a 4-way.)
+Board is **62.3 × 187.1 mm** bounding, **66.4 cm² of actual outline**, 4-layer,
+**155 parts**, ~560 solder joints. (Earlier revisions said 47.5 cm², which predates
+the +X wraps and the M4 bands; then 184.4 mm long, which predates J2 becoming a
+4-way; then 37.4 × 171.6, which predates the LQFP176.)
+
+⚠ **The two numbers are far apart and the fab bills the LARGER one.** The board is
+not a rectangle: a 13.6 mm-wide sensing strip runs the full 187 mm, and only the
+two ends open out to 62.3 mm — for the MCU pocket at one end and the connectors at
+the other. So the outline is 66.4 cm² (essentially unchanged by the MCU swap, which
+is the useful news) while the **billed bounding rectangle is 116.6 cm²**, and the
+$6.42 fab line below is computed on the outline. At $0.10/cm² the honest figure is
+**$11.66**, about **+$5.24 per board** — 12 % on the $44.69.
+
+That is the strongest argument on this page for panelising, and it is worth
+measuring rather than assuming: 50 cm² of each board's billed rectangle is empty
+air, and a naïve 2-up head-to-tail nest does *not* recover it (the free region
+beside the strip is 43.7 mm wide and 103 mm long, and the other board's pocket is
+62.3 × 69.6). An offset or interleaved nest may; that is a layout exercise with a
+$5-per-board answer attached.
 
 | | | |
 |---|---|---:|
@@ -1914,7 +2332,16 @@ Two rows verified but flagged for **availability**, not price:
 * **Tinmorry TPU 95A** — $22.99 correct, but **sold out**. Only ~40 g is needed,
   so any 95A spool substitutes.
 
-Plus the two optical-board parts that cannot supply a run of ten — the
-**STM32H743ZIT6** (7 in stock, need 10) and the **VEMD4110X01** (72, need 200).
-Both are correctly specified now; only stock is short. Documented in full in the
-optical pickup section.
+Plus **one** optical-board part that cannot supply a run of ten. The
+**STM32H743ZIT6** (7 in stock) is closed — the board moved to the **IIT6**, 548 in
+stock. What remains is the **VEMD4110X01** photodiode: 95 in stock on 2026-09-17
+against 200 for a run of ten.
+
+⚠ **And it has no substitute.** LCSC's catalogue was swept on 2026-09-17 for a
+daylight-filtered PIN photodiode in an 0805 land and this is the only one. The
+parts that look like alternatives all fail on the filter — `TEMD7000X01` (0805,
+3,904 in stock) is 350–1120 nm, `VEMD1060X01` (0805, 1,914) is 350–1070, and
+`VEMD8081` (5,501) is 4.8 × 2.5 mm, *visible-enhanced*, and 33 pF. The filter is
+not a nicety: at Rf = 4M7 the TIA saturates at 617 nA, and open room light on an
+unfiltered diode is already that order. So the choice is **build 2 or 5 now and
+re-check stock**, or pre-order — the reel MOQ is 3,000.

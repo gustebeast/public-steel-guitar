@@ -162,7 +162,7 @@ DECK_TOP  = D.DECK_TOP_Z                      # 6.4 — THE deck datum (was a st
                                               # under the strings, bar still can't bottom
 OLED_Y    = -100.0                            # wide -Y deck band (clear of strings)
 OLED_W, OLED_L, OLED_T = 38.0, 72.0, 1.6      # 2.42" module PCB (Y x X)
-JOY_X     = UI_X + 70 * D.BEAD                # 56: just +X of the screen
+JOY_X     = UI_X + 70 * D.BEAD                # -252.17: just +X of the screen
 JOY_Y     = -102 * D.BEAD                     # -81.6
 
 
@@ -306,6 +306,16 @@ OP_J = {"J1": (29.44, 4.00, 90.0),        # panel USB-C, mouth +X
         "J4": (-24.32, -8.00, 270.0),     # USB-A, hub downstream -> optical board
         "J6": (32.02, -20.50, 0.0),       # 24 V inlet, barrel, bushing out +X
         "J7": (0.00, -28.00, 0.0),        # 24 V trunk out, 2 contacts per rail
+        # ⚠ J9 WAS ON THE BOARD AND NOT IN THIS TABLE. It is the second 24 V outlet, the
+        # optical pickup's feed, added to elec/output_panel.py without ever being added
+        # here -- so the CAD has been modelling a board with one power outlet where the
+        # netlist has two, and nothing compares the two files. A missing connector is
+        # invisible in exactly the way that matters: the solid looks right, and the
+        # clearance it does not take is the clearance nobody checks.
+        # x is 16.00 rather than 14.00 because at 14.00 its courtyard sat 0.50 mm from
+        # J7's and cut the 24 V bus in half -- see the note at the part in
+        # elec/output_panel.py.
+        "J9": (16.00, -28.00, 0.0),       # 24 V out to the optical pickup board
         "J8": (-13.50, 28.00, 0.0)}       # magnetic pickup in, SCREW TERMINALS
 # (courtyard L, W, height, courtyard-centre offset from the anchor)
 OP_BOX = {"J1": (9.51, 10.73, 3.26, (2.81, 0.00)),
@@ -314,6 +324,10 @@ OP_BOX = {"J1": (9.51, 10.73, 3.26, (2.81, 0.00)),
           "J4": (16.57, 15.59, 6.60, (-4.39, 0.00)),
           "J6": (11.59, 16.09, 11.00, (-0.82, -3.20)),
           "J7": (13.49, 6.84, 7.00, (0.00, -0.53)),
+          # J9 is a B2B-XH-A now, 2-way -- see elec/output_panel.py. Five millimetres
+          # shorter than J7, which is the point: it was emptying the pad row, not
+          # saving a part.
+          "J9": (8.49, 6.84, 7.00, (0.00, -0.53)),
           "J8": (11.59, 8.90, 10.50, (-0.25, 0.10))}
 OP_TS_XY = (23.11, 21.50)                 # the 1/4 in jack's pad anchor
 OP_TS_L, OP_TS_W = 27.62, 20.32           # its courtyard
@@ -683,106 +697,20 @@ def tee_pcb(x: float, y: float, drop: int = 1, accurate: bool = True) -> cq.Work
     return b
 
 
-# ── TRRS <-> JST-XH ADAPTER PCB ──────────────────────────────────────────────
-# Two of them, and they are the SAME board used in opposite directions: a passive
-# four-wire pass-through, so "TRRS in, JST out" and "JST in, TRRS out" are the
-# same copper. One at the chassis (trunk -> leg), one at the bar cradle.
+# (THE TRRS <-> JST-XH ADAPTER PCB IS DELETED, 2026-09-16, user. It existed to put the
+#  leg-link TRRS jack on a board so the joint could be crossed without crimping a
+#  factory-cabled part -- and the leg column has since become an off-the-shelf TRRS
+#  M->F extension cable with molded ends, which crosses the same joint with ZERO
+#  connections on the leg. The board was solving a problem the cable stopped having.
 #
-# IT REPLACES THE FACTORY-CABLED TRRS PARTS. BOM.md crosses both joints with a
-# Tensility 10-03404 jack-on-a-cable at $8.19 and a CA-354S plug-on-a-cable at
-# $3.53, each with an XH crimped onto its cut end. Putting the jack ON A BOARD
-# costs ~$0.10 of connector, deletes both crimps, and deletes the leg-socket tee.
+#  Nothing referenced trrs_adapter_pcb: it was modelled, dimensioned against the real
+#  PJ-320D-4A and B4B-XH-A courtyards, given an M4 through-hole for retention, and never
+#  placed in an assembly. Worth noting, because a part with no caller is exactly the kind
+#  that survives a design change unnoticed.
 #
-# ⚠ THE OUTLINE IS AN OUTPUT HERE, NOT AN INPUT -- the opposite of every other
-# board in this file. There is no housing yet (the leg-carrier CAD was never
-# built; the column became an off-the-shelf extension cable), so these numbers
-# are the board sizing ITSELF, derived from the two connectors' courtyards in
-# elec/trrs_adapter.py. THE MECHANICAL SIDE SHOULD BE BUILT TO THEM.
-#
-# SIGNAL MAP, and the pin order is a SAFETY decision: tip = +24 V, ring1 = CAN_H,
-# ring2 = CAN_L, sleeve = GND. A plug drags its bands across every socket contact
-# on the way in, and 24 V on the wrong one lands on the CAN pair -- past the
-# SN65HVD230's -4..+16 V bus-pin maximum. The escape is that each socket contact
-# sits at a fixed depth and each plug band travels only as deep as its own
-# resting position, so the socket's TIP contact is touched by exactly one thing
-# in the whole insertion: the plug's tip band. The rail goes there, with the
-# POWERED side carrying the SOCKET.
-# ⚠ THE MOUTH FACES -Y, ALONG THE LONG AXIS (branner, 2026-09-14). The pocket
-# over the leg is 22-26 across X between the keyhead endplate's inner wall and
-# the electronics tray, so a board lying 26 across that gap (29.8 with its
-# cradle) did not fit. Turned, the jack occupies 10.09 of a 20 mm width and the
-# board reaches its 26 INBOARD along the plug's own line, which fits. The mouth
-# also came in from 2.61 off the edge to 0.1: the jack's courtyard edge IS its
-# barrel opening, so every millimetre of inset was a millimetre the plug had to
-# reach through the chassis rail for nothing.
-# ⚠ AND IT NOW HAS AN M4 THROUGH-HOLE (user, 2026-09-15). The board went out with
-# none, on the project's rule that plastic captures a board on every axis but one
-# and an M4 button head BESIDE the edge closes the last. The user's objection is
-# right and it is the same one that produced the tee's ear: beside-the-edge
-# retention is FRICTION. Nothing here stops the board backing out along -Y except
-# a tight screw, and -Y is exactly the direction a hand pulls when it unplugs the
-# lead. A screw THROUGH the board takes that load in shear instead.
-#
-# IT COST 5 MM OF LENGTH AND NOTHING IN X, which is the constraint that mattered:
-# the strips either side of the turned jack are 4.955 wide and a 4.5 clearance hole
-# wants ~5.3, so a side hole would have pushed the board past 20 across the 22-26
-# pocket -- the very thing the turn was for. The hole goes BETWEEN the connectors
-# instead, which is also the better place for it: mid-span, where the lever arm
-# about either connector is smallest. ⚠ THE BINDING NUMBER IS THE BUTTON HEAD, NOT
-# THE HOLE -- an M4 button is ~7.0 across, so the band clears 7.0 not 4.5.
-TRRS_BOARD_X, TRRS_BOARD_Y = 20.0, 31.0     # board-local, origin at its centre
-TRRS_HOLE_XY = (0.0, 3.6)                   # M4 clearance, mid-span
-TRRS_HOLE_D  = 4.5
-TRRS_HEAD_D  = 7.0                          # button head -- what sets the band
-TRRS_JACK_XY = (-1.085, -6.01)              # PJ-320D-4A (LCSC C95562), TURNED 90
-TRRS_XH_XY   = (0.0, 10.30)                 # B4B-XH-A, turned 180 (see elec/)
-TRRS_JACK_L  = 10.09                        # jack land ACROSS the board (X)...
-TRRS_JACK_W  = 15.18                        # ...and along the plug's line (Y)
-TRRS_JACK_OFF = (1.085, -1.80)              # courtyard centre from the pad anchor
-TRRS_JACK_H  = 5.0                          # body height above the board. ⚠ the
-                                            # one figure not off a footprint --
-                                            # PJ-320 bodies run ~5, confirm at
-                                            # purchase before a lid depends on it.
-TRRS_MOUTH_Y = TRRS_JACK_XY[1] - 9.39       # -15.40: the barrel's opening face
-TRRS_PLUG_RUN = 30.0                        # what a MATED plug needs -Y of the
-                                            # mouth: ~14 of barrel inside plus the
-                                            # moulded handle and its strain relief.
-                                            # Deliberately generous -- the number
-                                            # exists to reserve room, and over-
-                                            # reserving is the safe error.
-TRRS_PLUG_D  = 10.0                         # handle diameter to keep clear
-
-
-def trrs_adapter_pcb(mating: bool = False) -> cq.Workplane:
-    """The TRRS<->XH adapter, in its OWN frame: board centred on the origin in
-    XY with its underside at z=0, parts rising +Z, the jack's mouth facing -Y
-    along the board's LONG axis (see the note above). Pose it where a housing
-    wants it -- there is no station for it yet.
-
-    The M4 hole is CUT, not drawn: a cradle that wants to put a boss through it
-    should be able to ask this solid where the hole is rather than re-deriving
-    TRRS_HOLE_XY. There is no posed accessor because there is no station yet --
-    whoever builds the cradle owns the pose and can read the hole off the solid.
-
-    `mating=True` adds the envelope a plugged-in lead needs (TRRS_PLUG_RUN of
-    Ø TRRS_PLUG_D out of the mouth, and the XH's mated height), which is the
-    volume a housing has to leave alone rather than the board's own bulk."""
-    b = box_at(TRRS_BOARD_X, TRRS_BOARD_Y, _PCB_T, x=0.0, y=0.0, z=_PCB_T / 2)
-    jx, jy = TRRS_JACK_XY
-    b = b.union(box_at(TRRS_JACK_L, TRRS_JACK_W, TRRS_JACK_H,
-                       x=jx + TRRS_JACK_OFF[0], y=jy + TRRS_JACK_OFF[1],
-                       z=_PCB_T + TRRS_JACK_H / 2))
-    b = b.union(jst_xh_header(4, mated=mating)
-                .rotate((0, 0, 0), (0, 0, 1), 180)
-                .translate((TRRS_XH_XY[0], TRRS_XH_XY[1], _PCB_T)))
-    b = b.cut(cyl(TRRS_HOLE_D, _PCB_T + 1.0)
-              .translate((TRRS_HOLE_XY[0], TRRS_HOLE_XY[1], -0.5)))
-    if mating:
-        b = b.union(cyl(TRRS_PLUG_D, TRRS_PLUG_RUN)
-                    .rotate((0, 0, 0), (1, 0, 0), 90)
-                    .translate((jx + TRRS_JACK_OFF[0], TRRS_MOUTH_Y,
-                                _PCB_T + TRRS_JACK_H / 2)))
-    return b
+#  The leg's own TRRS geometry is NOT this and stays: see TRRS_DX/TRRS_DY and
+#  leg_shaft_trrs in legs.py, which seat the naked 10-03404 jack and the extension
+#  cable's molded barrel. Same four wires, different problem.)
 
 
 # (ts_jack is DELETED: the 1/4 in jack is a PCB part on the output+panel board
@@ -791,5 +719,7 @@ def trrs_adapter_pcb(mating: bool = False) -> cq.Workplane:
 
 
 # (dc_jack is DELETED: the 24 V inlet is a PCB part on the output+panel board now
-#  -- see OP_J["J5"]. As a free-standing panel jack it was a PJ-005A, whose SOLDER
+#  -- see OP_J["J6"]; this said J5 until 2026-09-18, and OP_J has no J5 key at
+#  all, because the 1/4 in jack is modelled as a cylinder rather than a box.
+#  As a free-standing panel jack it was a PJ-005A, whose SOLDER
 #  LUGS carried the same hand-soldering violation the TS jack did.)
