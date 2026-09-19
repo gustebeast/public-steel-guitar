@@ -1684,9 +1684,13 @@ def _outline(grow=0.0, t=None, zc=None):
 
 def _part_solid(p):
     """Package standing UP from the board's top face (single-sided, components at the
-    strings)."""
+    strings). None where the package has NO BODY: a test point is bare copper, PKG['TP']
+    height 0.00, and a zero-height box is not a solid -- OCC raises Standard_DomainError
+    and takes the whole build with it. Nothing to draw is not the same as an error."""
     dx, dy = part_wh(p)
     dz = PKG[p["pkg"]][2]
+    if dz <= 0.0:
+        return None
     return box_at(dx, dy, dz, x=p["x"], y=p["y"], z=PCB_TOP + dz / 2)
 
 
@@ -1696,7 +1700,9 @@ def opt_pcb() -> cq.Workplane:
     assembly as the fit-check that it clears the strings and fits the carrier."""
     pcb = _outline()
     for p in PARTS:
-        pcb = pcb.union(_part_solid(p))
+        body = _part_solid(p)
+        if body is not None:                          # bare pads (TP) have no body
+            pcb = pcb.union(body)
     for mx, my in mount_points():                     # M4 clearance, one per +X wrap
         pcb = pcb.cut(box_at(M4.shaft_clr_d, M4.shaft_clr_d, PCB_T + 2,
                              x=mx, y=my, z=PCB_BOT + PCB_T / 2))
