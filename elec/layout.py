@@ -1124,6 +1124,13 @@ def tidy_router_vias(board, notes, min_gap_mm=0.25):
     returns exactly the one via DRC flags, at the same coordinates. A classifier for
     deleting copper is worth validating against a known answer BEFORE it deletes any.
 
+    ⚠ AND THE VIA ACCESSORS TRAP TWICE, once quietly and once loudly. Widths go
+    through _via_r, which exists for this: PCB_VIA::GetWidth() with no layer argument
+    trips a wxWidgets assertion, and on Windows that is a MODAL DIALOG -- it stopped a
+    run dead waiting for a human to click it. The helper was already in this file and
+    this routine called the raw accessor anyway, which is the whole argument for having
+    had a helper.
+
     ⚠ GetDrill() IS NOT THE DRILL, AND IT READ ZERO ON EXACTLY THE PAIR THIS WAS
     WRITTEN FOR. A via whose drill comes from its netclass has no drill of its own, so
     GetDrill() returns 0 and only GetDrillValue() gives the effective size. With zero the
@@ -1196,7 +1203,7 @@ def tidy_router_vias(board, notes, min_gap_mm=0.25):
     def _ends(v):
         """Track ends landing in this via's pad, on a layer it spans -- for the HANDOVER
         only. Used to move copper, never to decide whether a via is needed."""
-        out, vp, r = [], v.GetPosition(), v.GetWidth() / 2.0
+        out, vp, r = [], v.GetPosition(), _via_r(v)
         lo, hi = v.TopLayer(), v.BottomLayer()
         for t in board.GetTracks():
             if isinstance(t, pcbnew.PCB_VIA) or t.GetNetCode() != v.GetNetCode():
@@ -1229,7 +1236,7 @@ def tidy_router_vias(board, notes, min_gap_mm=0.25):
             if a.GetNetname() in stitch:
                 reported.append(where + " -- STITCHING, not touched")
                 continue
-            ra, rb = a.GetWidth() / 2.0, b.GetWidth() / 2.0
+            ra, rb = _via_r(a), _via_r(b)
             if d > ra + rb:
                 # pads apart: a joining segment would be new copper over ground nobody
                 # has checked, so say so rather than lay it blind.

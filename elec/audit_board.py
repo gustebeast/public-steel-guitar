@@ -96,7 +96,7 @@ def check(stem):
     on_board |= {s["net"] for s in RS._segments(pcb)}
     multi = {n for n, nodes in nl.items() if len(nodes) > 1}
     missing = sorted(n for n in multi if n not in on_board and not re.search(
-        r"(^|_)NC(_|$)|NC_|SPARE|NOT_CONNECTED", n, re.I))
+        r"(^|_)(NC|SPARE|NOT_CONNECTED)(_|$)", n, re.I))
     notes.append("nets in netlist: %d (%d with >1 pin); with copper: %d"
                  % (len(nl), len(multi), len(on_board)))
     if missing:
