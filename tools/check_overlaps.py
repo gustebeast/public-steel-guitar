@@ -343,8 +343,11 @@ DEFERRED_RULES = (
      "to be redesigned around the boards later"),
     (re.compile(r"^(?:[a-z0-9]+_)*k[lv]_[A-Z]+\d+$"), re.compile(r"housing$"),
      "lever board parts vs their knee/lever housing (25 pairs, ~207 mm3). USER DEFERRED; "
-     "OWNER branner -- the cradle was sized to a plain box, and bronner's board is at its "
-     "floor (21.4 against J1's 21.29 courtyard), so the room has to come from the housing"),
+     "OWNER branner -- the cradle was sized to a plain box. ⚠ THE ORIGINAL REASON IS VOID "
+     "(2026-09-19): it said bronner's board was at its floor at 28 x 21.4, so the room had "
+     "to come from the housing. The user then asked for ONE connector family across both "
+     "buses, and the board grew to 34 x 28 to take the S8B-XH-A -- +59% area. The housing "
+     "needs RE-CUTTING to the new outline, not relieving by a millimetre"),
 )
 _DEFERRED_SEEN = set()
 
