@@ -2063,6 +2063,19 @@ def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
     for pad, fp in pads:
         if pad.GetNetname() not in nets_wanted:
             continue
+        # ⚠ A THROUGH-HOLE PAD IS ALREADY ITS OWN VIA. Stitching exists to get a SURFACE
+        # pad down to the plane; a PTH pad has a barrel through every layer and reaches
+        # the plane by existing. Stitching one anyway drills a second hole in the same
+        # place, which DRC grades only a WARNING (holes_co_located) -- so finish.py's
+        # error count stayed at zero and nobody looked. Found by auditing the DRC json
+        # directly: 20 on motor_ctrl and 14 on output_panel, every one a stitch via on a
+        # connector pin (J1, J2, J3, J5 -- all the XH headers).
+        #
+        # It is a real fab problem even at warning severity: the drill enters an
+        # already-drilled hole, which risks the bit and leaves an oval bore, and the
+        # copper buys nothing. Skip them.
+        if pad.GetAttribute() in (pcbnew.PAD_ATTRIB_PTH, pcbnew.PAD_ATTRIB_NPTH):
+            continue
         net = pad.GetNet()
         pc = pad.GetPosition()
         half = max(pad.GetSize().x, pad.GetSize().y) / 2.0
