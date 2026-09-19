@@ -39,8 +39,11 @@ os.makedirs(OUT_DIR, exist_ok=True)
 os.chdir(OUT_DIR)
 
 import json  # noqa: E402
+import re  # noqa: E402
 
 from skidl import ERC, Net, Part, Pin, generate_netlist, subcircuit  # noqa: E402
+
+import netcheck                                     # noqa: E402
 
 P = Pin.types.PASSIVE
 I, O, PWR, PIN = Pin.types.INPUT, Pin.types.OUTPUT, Pin.types.PWRIN, Pin.types.PWRIN
@@ -83,14 +86,22 @@ CAP_SWEEP_R = 5.66
 TALL_PARTS = ("J1", "U2", "L1")
 
 
+# ⚠ THE REF IS PINNED FROM THE TAG, AND IT HAS TO BE. Every call already passes a tag
+# that spells the intended ref ("R5", "C11"), and until 2026-09-18 that was a COINCIDENCE:
+# skidl numbered these parts in CREATION order and the order happened to agree. Adding one
+# resistor in the MCU block broke it -- R5 vanished, the two I2C pull-ups became R7 and R9,
+# and BOARD_NOTES["placements"] is keyed by ref, so three placed parts silently referred to
+# refs that no longer existed while a new R9 had no placement and would have landed on the
+# origin. The board still generated, ERC still passed, and the netlist was still valid.
+# Passing ref= makes the tag authoritative, so where a part is CREATED stops mattering.
 def _r(ref, tag, value, desc, pkg="Resistor_SMD:R_0402_1005Metric"):
-    return Part(name="R", ref_prefix=ref, tag=tag, dest="NETLIST", tool="skidl",
+    return Part(name="R", ref_prefix=ref, ref=tag, tag=tag, dest="NETLIST", tool="skidl",
                 value=value, description=desc, footprint=pkg,
                 pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
 
 
 def _c(tag, value, desc, pkg="Capacitor_SMD:C_0402_1005Metric"):
-    return Part(name="C", ref_prefix="C", tag=tag, dest="NETLIST", tool="skidl",
+    return Part(name="C", ref_prefix="C", ref=tag, tag=tag, dest="NETLIST", tool="skidl",
                 value=value, description=desc, footprint=pkg,
                 pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
 
@@ -225,10 +236,27 @@ def lever_sensor():
     #   19 PA11 = CAN1_RX    20 PA12 = CAN1_TX
     #   21 PA13 = SWDIO      22 PA14 = SWCLK
     #   27 PB6  = I2C1_SCL   28 PB7  = I2C1_SDA
-    # ⚠ PIN 1 IS NOT IDENTIFIED. The datasheet's G6 table skips it in extraction,
-    # and BOOT0 does not appear in that column at all (it is pin 4 on the QSOP28
-    # G8 part, where NRST is elsewhere). Nothing here connects to pin 1, and the
-    # boot strap must be resolved against the package drawing before fabrication.
+    # ⚠ PIN 1 IS BOOT0/PB8, AND NOTHING ON THIS BOARD CONNECTS TO IT. This note used to
+    # say pin 1 was unidentified and had to be resolved against the package drawing
+    # before fabrication. A second source now answers it: KiCad's own MCU_WCH_RiscV
+    # library gives CH32V203GxUx pin 1 as BOOT0/PB8, and its pin list agrees with this
+    # board's other twelve declarations exactly. That is a library rather than WCH's
+    # drawing, so it is corroboration and not proof -- but the question is no longer open,
+    # it is answerable, and the answer has a consequence.
+    #
+    # ⚠ A FLOATING BOOT STRAP IS NOT A NEUTRAL STATE. BOOT0 selects where the part starts;
+    # left unconnected it is whatever the die's internal pull does, which is a thing to
+    # confirm rather than assume -- and if there is no internal pull-down, an assembled
+    # board's boot mode is set by leakage. motor_ctrl ties its BOOT0 to a pull-down and a
+    # test pad for exactly this reason. Resolve it before fabrication: either confirm the
+    # internal pull from WCH's manual, or spend one 0402 on a pull-down.
+    #
+    # ⚠ AND THE SAME PIN LIST CLOSES OFF THE CAN REMAP. This package brings out PB8 (on
+    # pin 1) but NO PB9 at all, so CAN1's PB8/PB9 remap -- the one motor_ctrl uses to get
+    # CAN off PA11/PA12 -- does not exist here, and remap 3 is PD0/PD1, which the crystal
+    # occupies. CAN_RX and CAN_TX are therefore stuck on PA11/PA12, immediately beside
+    # SWDIO on PA13, which is the crowded corner described below. That corner cannot be
+    # fixed by moving signals; only by moving parts.
     sda, scl = Net("SDA"), Net("SCL")
     swdio, swclk, nrst = Net("SWDIO"), Net("SWCLK"), Net("NRST")
     osc1, osc2 = Net("OSC_IN"), Net("OSC_OUT")
@@ -242,7 +270,8 @@ def lever_sensor():
                     Pin(num=17, name="VDD", func=PWR), Pin(num=19, name="PA11", func=I),
                     Pin(num=20, name="PA12", func=O), Pin(num=21, name="PA13", func=P),
                     Pin(num=22, name="PA14", func=P), Pin(num=27, name="PB6", func=P),
-                    Pin(num=28, name="PB7", func=P)])
+                    Pin(num=28, name="PB7", func=P),
+                    Pin(num=1, name="PB8", func=I)])   # BOOT0 -- see the note above
     gnd += u2["VSS"], u2["VSS_PAD"]
     v33 += u2["VDD"], u2["VDDA"]
     nrst += u2["NRST"]
@@ -250,6 +279,39 @@ def lever_sensor():
     can_rx += u2["PA11"]; can_tx += u2["PA12"]
     swdio += u2["PA13"]; swclk += u2["PA14"]
     scl += u2["PB6"]; sda += u2["PB7"]
+    # ⚠ BOOT0 RESOLVED: IT GETS THE 0402. The note above left two ways out -- confirm the
+    # die's internal pull from WCH's manual, or spend a resistor -- and the resistor is
+    # right even if the manual turns out to say there is a pull-down. An explicit strap is
+    # immune to a datasheet revision and to a part substitution, motor_ctrl already does
+    # exactly this on the same vendor's silicon (its R7, "BOOT0 pull-down"), and the cost
+    # is one 0402 of a value this board already stocks -- no new SKU and no new feeder,
+    # across all eleven boards. Confirming the internal pull would have cost more reading
+    # than the part costs and still left the board leaning on an undocumented default.
+    #
+    # NO TEST PAD BESIDE IT, unlike motor_ctrl. A BOOT0 pad exists to force the ROM
+    # bootloader, and that only helps if the bootloader can be REACHED -- this board has
+    # no USB and brings out no USART, so the entry path does not exist. That absence is
+    # the whole reason the SWD pads were added; SWD is the recovery route here.
+    # ⚠ TIED HARD TO GND, NOT PULLED DOWN -- AND THE BOARD DECIDED THAT, NOT ME. The
+    # 0402 pull-down went in first, matching motor_ctrl. It could not be placed: this
+    # board is FULL (its own note: six free 2.0 mm sites, four already spent on the SWD
+    # pads), and three sitings gave three different failures -- inside two courtyards
+    # (3 unconnected, 3 violations), clearing pads but not courtyards (2 and 2), and
+    # clearing both but displacing the router badly (4 and 1). The part was costing more
+    # than it bought every time.
+    #
+    # A pull-down exists so BOOT0 can be forced HIGH externally to reach the ROM
+    # bootloader. THIS BOARD HAS NO BOOTLOADER PATH -- no USB, no USART brought out --
+    # which is the whole reason the SWD pads were added. So the resistor buys an entry
+    # to a door that does not exist here, and a hard tie is the honest wiring of "this
+    # part always boots from flash". motor_ctrl keeps ITS pull-down because it has USB
+    # on a connector and the door is real.
+    #
+    # What a hard tie costs: forcing the bootloader later would mean cutting copper
+    # rather than lifting a resistor. Against a board with no way to use the bootloader
+    # and a working SWD route, that is not a cost worth one 0402 and three re-routes.
+    gnd += u2["PB8"]
+
 
     y1 = Part(name="Crystal", ref_prefix="Y", tag="Y1", dest="NETLIST", tool="skidl",
               value="8MHz", description="HSE -- CAN bit timing wants a crystal, not the RC",
@@ -263,6 +325,32 @@ def lever_sensor():
         net += c[1]; gnd += c[2]
     c_nrst = _c("C7", "100nF", "NRST filter")
     nrst += c_nrst[1]; gnd += c_nrst[2]
+
+    # ⚠ WITHOUT THESE FOUR PADS THIS BOARD CANNOT BE PROGRAMMED AT ALL, and there are
+    # eight to ten of them in the instrument. Audited 2026-09-17, after the same fault
+    # was found on the optical board: SWDIO and SWCLK reached the MCU and stopped --
+    # single-node nets, which layout drops as unplaceable and DRC cannot complain about.
+    #
+    # AND UNLIKE THE OTHER BOARDS THERE IS NO SECOND WAY IN. Listed from the netlist,
+    # the only externally reachable nets were +24V, CAN_H, CAN_L and GND. The CH32V203
+    # has no CAN bootloader -- WCH's ISP is USB or USART -- and this board brings out
+    # neither, nor a BOOT0 pin. motor_ctrl and output_panel at least have USB on a
+    # connector, so their ROM bootloader is reachable in principle; this one had nothing.
+    # An assembled lever board would have been a brick, ten times over.
+    #
+    # Four pads, not five: the board is FULL. A scan of its courtyards found six free
+    # 2.0 mm sites and no contiguous strip at all, so there is no room for the +3V3
+    # target-sense pad the optical board carries. SWDIO, SWCLK and GND are clustered
+    # within 2.5 mm for a probe; NRST is the outlier, which is the right one to strand
+    # because it is only needed for connect-under-reset recovery.
+    for _ref, _net, _what in (("TP1", swdio, "SWDIO"), ("TP2", swclk, "SWCLK"),
+                              ("TP3", gnd, "GND"), ("TP4", nrst, "NRST")):
+        _tp = Part(name="TestPoint", ref_prefix="TP", ref=_ref, dest="NETLIST",
+                   tool="skidl", value="SWD",
+                   description="SWD pad -- %s; bare copper, no component" % _what,
+                   footprint="TestPoint:TestPoint_Pad_D1.0mm",
+                   pins=[Pin(num=1, func=P)])
+        _net += _tp[1]
     for tag in ("C8", "C9"):
         c = _c(tag, "100nF", "MCU decoupling")
         v33 += c[1]; gnd += c[2]
@@ -296,7 +384,27 @@ def lever_sensor():
         v33 += r[1]; net += r[2]
 
 
+def _sensor_qty():
+    """One board per sensed player control: 6 knee levers + 5 pedals."""
+    from src import dimensions as D
+    return D.N_SENSED
+
+
+_SENSOR_QTY = _sensor_qty()
+
 BOARD_NOTES = {
+    # ⚠ THE ONLY BOARD THERE IS MORE THAN ONE OF, AND IT USED TO DECLARE NO COUNT AT ALL.
+    # Every other board states it -- optical 1, output_panel 1, motor_ctrl 1, can_tee one
+    # per motor -- and this one, the multi-unit board, stated nothing. The count existed
+    # only as the BOM's angle-sensor quantity, 11, with no record of what the 11 WERE, so
+    # it could not be checked and could not be traced if it moved.
+    #
+    # It is 6 knee levers and 5 pedals (user, 2026-09-18): one sensed axis each, one
+    # MT6701 each, one of these boards each. That is D.N_SENSED, and it reproduces the
+    # BOM's 11 independently -- the first time those two numbers have had a common source
+    # rather than agreeing by coincidence. Derived, not typed, because a typed board count
+    # is how can_tee came to ship a 9 against a ten-motor instrument (see the note there).
+    "qty_per_instrument": _SENSOR_QTY,
     "outline_mm": (BOARD_W, BOARD_L),
     "layers": 4,
     "thickness_mm": 1.6,
@@ -305,6 +413,12 @@ BOARD_NOTES = {
     "chip_on_axle_xy": CHIP_XY,
     "placements": {
         "U4": (11.00, -0.60, 0.0),
+        # SWD pads -- the only four 2.0 mm sites this board has left; see the note in
+        # lever_sensor() for why they are not in a neat row.
+        "TP1": (4.75, 1.45, 0.0),      # SWDIO
+        "TP2": (4.75, -0.95, 0.0),     # SWCLK
+        "TP3": (7.15, 1.05, 0.0),      # GND  -- the three above are within 2.5 mm
+        "TP4": (-2.65, 2.25, 0.0),     # NRST -- stranded, recovery only
         "J1": (-10.55, 0.00, 90.0),
         "U1": (-1.10, 8.75, 0.0),
         "L1": (3.00, 8.70, 0.0),
@@ -315,7 +429,30 @@ BOARD_NOTES = {
         "C3": (6.50, 5.70, 0.0),
         "R2": (8.60, 5.70, 0.0),
         "R7": (10.90, 5.70, 0.0),
-        "U3": (1.00, 1.55, 90.0),
+        # ⚠ 0, NOT 90, AND IT IS A ROUTING DECISION. At 90 the CAN pair sat on the MCU's
+        # NORTH edge while the transceiver it talks to is south of it, and J1 walls off
+        # the whole west side -- so both signals had to travel around the package to get
+        # anywhere. CAN_TX made it and CAN_RX did not, through three rounds of trying to
+        # fix it as a routing problem.
+        # Measured across all four orientations by total pin-to-net distance: 58.7 mm at
+        # 0 against 66.6 at 90. A square QFN's envelope does not change when it turns, so
+        # this costs nothing but the decision to look.
+        #
+        # ⚠ AND THE REAL CONSTRAINT IS NOT "CAN_RX IS HARD", IT IS THREE SIGNALS AND TWO
+        # WAYS OUT. Pre-lay CAN_RX and it connects -- and CAN_TX becomes the unconnected
+        # net instead, a clean swap. Pre-lay BOTH and the second is reported not placeable
+        # by the generator too. They leave adjacent pins, 19 and 20, on the same QFN edge.
+        # Probing the escape ring outward from each: CAN_TX's own via sits 0.7 to 1.4 mm
+        # off pin 19, squarely in CAN_RX's path, and SWDIO runs through that corridor at
+        # every radius from 0.7 to 2.2 mm.
+        #
+        # SWDIO is there because of TP1. Before the SWD pads existed this net was
+        # single-node, so layout dropped it and it laid no copper at all -- the board was
+        # unprogrammable, which is why the pads went in. Giving SWDIO a destination gave
+        # it a route, and that route goes through the one corner CAN_RX needed. Both are
+        # required, so this is a placement question and not a routing one: move what the
+        # transceiver or TP1 asks of that edge, or accept one CAN direction unrouted.
+        "U3": (1.00, 1.55, 0.0),
         "C9": (5.50, 3.20, 0.0),
         "C8": (7.50, 3.20, 0.0),
         "R5": (11.00, 2.90, 0.0),
@@ -341,6 +478,46 @@ BOARD_NOTES = {
     # plane between them is worth more than the couple of dollars it costs."
     # Without this pour the stackup buys nothing.
     "zones": [("GND", "In1.Cu", 0.3), ("GND", "B.Cu", 0.3)],
+    # ⚠ IN1 IS A PLANE, AND THE ROUTER HAS TO BE TOLD. A zone is just copper as far
+    # as freerouting is concerned: pour GND on In1 and say nothing, and it will route
+    # signals straight through the plane, which is exactly what it did here. The damage
+    # is not cosmetic -- a signal in the reference plane splits the return path of every
+    # trace that crosses it, and the nets carved through this one included the ones that
+    # care most.
+    #
+    # This was found and fixed on the optical board and the fix never reached the other
+    # three 4-layer boards, because it was made where the symptom appeared instead of
+    # where the property belonged. A board that pours a plane declares it.
+    "plane_layers": ("In1.Cu",),
+    # ⚠ THE LAYER LOCAL/RETRIED NETS MAY DIVE TO. In1.Cu is the ground plane and B.Cu
+    # carries a second GND pour, so In2.Cu is the one inner layer with no pads on it.
+    # Without this the generator has no way off the component layer at all, which is
+    # exactly why the nets stranded at the QFN stayed stranded: its only escape was
+    # gated on a differential-pair setting this board has no reason to declare.
+    "local_inner": "In2.Cu",
+    # ⚠ 0.15 mm TRACK, because the tightest part on this board is a 0.4 mm pitch QFN-28
+    # and the default 0.25 does not leave its escape fan room to turn. Four nets -- NRST,
+    # OSC_OUT, CAN_RX and a +3V3 pin -- were stranded at that package and neither the
+    # router nor the generator could get them out.
+    # 0.15 on 1 oz copper carries ~0.5 A at a 10 C rise, against this board's largest
+    # load of roughly 100 mA; the constraint here is geometry, not current.
+    "track_mm": 0.15,
+    # ⚠ AND A PLANE NEEDS STITCHING TO IT. Declaring In1 a plane is only half the
+    # job: it stops the router carrying ground THROUGH the plane, and then nothing
+    # connects the ground pads TO it. Declared alone it stranded six GND pads on this
+    # board -- the pour reaches them, but a pour is what routing can orphan, which is
+    # the whole reason the plane is there. Every GND pad gets its own via down.
+    "stitch_nets": ("GND",),
+    # ⚠ NO local_nets ON THIS BOARD, AND THE MEASUREMENT SAYS SO. Pre-laying every
+    # short net here took it from 4 unconnected to 7. The generator is not better than
+    # the router in general -- it wins on the optical board because twenty identical
+    # feedback clusters in a strip holding 107 parts is a pattern, and a pattern is a
+    # thing a generator does better than a search. This board is 28 x 21 with 29 parts
+    # and the router has slack; deterministic copper laid first only takes that slack
+    # away, and the search it constrains could have done better.
+    #
+    # Worth keeping the number rather than the conclusion: if this board grows a
+    # component row, re-measure rather than assuming either way.
     "refs_on_fab": True,
     "hold_edge": None,          # NO screw: the grooves hold five faces and the
                                 # instrument's underside closes over the sixth
@@ -360,6 +537,24 @@ if __name__ == "__main__":
     lever_sensor(tag="lever")
     ERC()
     generate_netlist(file_=os.path.join(OUT_DIR, "lever_sensor.net"))
+    netcheck.grounds_meet(os.path.join(OUT_DIR, "lever_sensor.net"))
+    netcheck.no_orphan_pins(os.path.join(OUT_DIR, "lever_sensor.net"))
+    # ⚠ EVERY PART PLACED, EVERY PLACEMENT REAL. placements is keyed by REF, and a ref
+    # is assigned by skidl rather than written here, so the two can disagree without
+    # anything downstream objecting: a part with no entry lands on the ORIGIN, and an
+    # entry naming a ref that no longer exists is simply ignored. Both happened on
+    # 2026-09-18 from adding one resistor -- see the note on _r. ERC passed, the netlist
+    # was valid, and three parts were in the wrong place.
+    _refs = set(re.findall(r'\(comp\s*\(ref "([^"]+)"\)',
+                           open(os.path.join(OUT_DIR, "lever_sensor.net"),
+                                encoding="utf-8").read()))
+    _placed = set(BOARD_NOTES["placements"])
+    assert not (_refs - _placed), (
+        "no placement for %s -- it would be laid on the board origin"
+        % sorted(_refs - _placed))
+    assert not (_placed - _refs), (
+        "placements name %s, which no part has -- a ref moved under it"
+        % sorted(_placed - _refs))
     with open(os.path.join(OUT_DIR, "lever_sensor.board.json"), "w") as f:
         json.dump(BOARD_NOTES, f, indent=2)
     print("board %.1f x %.1f mm, %d placements, chip on the axle at (%.1f, %.1f)"

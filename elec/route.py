@@ -19,11 +19,22 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
 
 import pcbnew
+import wx
+# ⚠ NO MODAL DIALOGS IN A BUILD STEP. KiCad's Python is a wxWidgets application, and a
+# failed internal assertion pops a GUI alert -- "Do you want to stop the program?" -- and
+# WAITS. On a developer's machine that is a surprise; in any automated run it is a hang
+# with no output and no exit code, and the whole point of this directory is that someone
+# can run it unattended years from now. One real assertion (a KiCad 10 API change in
+# PCB_VIA::GetWidth) surfaced this, and the assertion was worth fixing on its own -- but
+# a pipeline that CAN block on a dialog is a defect independent of which dialog it is.
+wx.DisableAsserts()
+
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import layout                                        # noqa: E402  (needs the path above)
@@ -35,26 +46,66 @@ JAVA = os.path.expandvars(
 JAR = os.path.expandvars(
     r"%LOCALAPPDATA%\Temp\claude\C--Users-gus-Sync-Documents-Archive-3D-public-steel-guitar"
     r"\d7576032-b257-4aee-8a45-89e587fe4007\scratchpad\freerouting.jar")
-# ⚠ PASSES ARE OPTIMISER PASSES, AND THEY ARE NOT WHERE THE ROUTING HAPPENS.
-# Freerouting finds connectivity in the first pass or two; every pass after that
-# re-optimises the whole board, single-threaded, and on the optical board (153 parts)
-# each one costs roughly half a minute. 20 passes is ~10 minutes PER ATTEMPT.
+# ⚠ PASSES BUY CONNECTIVITY ON A HARD BOARD, AND THIS COMMENT USED TO SAY THEY DO NOT.
+# The old claim was that freerouting finds connectivity in the first pass or two and
+# every pass after that only shortens track, so "the curve is flat after about 10". It
+# was measured on the small boards, where it is true because they finish. On the optical
+# board it is false, and not marginally:
 #
-# MEASURED, on the optical board: 10 passes -> 17 unconnected, 20 -> 15, 30 -> 15 and
-# occasionally worse. The curve is flat after about 10, so the extra time buys track
-# length and not connectivity. Keep this low while ITERATING on a design and raise it
-# for the final run, where shorter tracks are worth the wall clock.
+#     1 pass  -> 105 unconnected
+#     3       ->  50
+#    10       ->  13
+#    25       ->   6          (1069 s, against ~700 for ten)
 #
-# ⚠ THOSE MEASUREMENTS PREDATE THE REPRODUCIBILITY FIX and are worth less than they
-# look. They were taken when the same board routed to 14, 17 and 30 on identical input,
-# so a 10-versus-20 comparison was one sample each from a distribution wider than the
-# difference being measured. The shape of the claim is probably right -- connectivity is
-# found early, later passes shorten track -- but the numbers are not evidence. Re-measure
-# before leaning on them.
+# Half the failures of a ten-pass run are still there because the optimiser has not got
+# to them yet. That is what a board near its routing limit looks like: the early passes
+# leave a mess that later passes rip up and re-lay, and stopping early freezes the mess.
+# 60% more wall clock for 54% fewer failures is not a marginal trade.
+#
+# SO THE RULE IS PER-BOARD, not global. Boards that finish easily gain nothing past ten
+# and should not pay for the passes; boards that do not finish should ask for more via
+# `router_passes` (optical does). Keep this default low for iteration.
+#
+# ⚠ AND RAISE `timeout` WITH THE PASS COUNT. 25 passes on the optical board needs about
+# 1070 s and the default was 900, so the first attempt at this measurement was KILLED --
+# and the DRC that followed reported 266 unconnected, which is the UNROUTED board. A
+# timeout that fires looks exactly like a routing result unless you read the log.
+DSN_CLEAR_MARGIN_UM = 10      # see the clearance block in route()
 PASSES = 10
 
 
-def route(stem, passes=None, timeout=900):
+def failing_nets(stem):
+    """The nets the last DRC left unconnected, for an incremental re-route."""
+    d = json.load(open(stem + ".finish.drc.json", encoding="utf-8"))
+    out = set()
+    for v in d.get("unconnected_items", []):
+        for item in v["items"]:
+            m = re.search(r"\[([^\]]+)\]", item.get("description", ""))
+            if m:
+                out.add(m.group(1))
+    return sorted(out)
+
+
+def route(stem, passes=None, timeout=3600, incremental=False, dsn_only=False):
+    """Route the board at `stem`.
+
+    ⚠ `incremental` ROUTES FROM THE BOARD AS IT STANDS, NOT FROM A FRESH PLACEMENT, and
+    it is the answer to "must every experiment cost a full run". The normal path throws
+    the routing away (finish.py re-runs layout.py first) and hands freerouting all 96
+    nets; incremental hands it the routed board with every net FROZEN except the handful
+    DRC says are still unconnected. The router then has one small problem instead of a
+    whole board, and the copper it already got right cannot be disturbed.
+
+    It only became possible once the frozen-copper restore existed. Freezing a wire in
+    the DSN is half the operation -- the session file does not carry fixed wires, so
+    without the re-lay below an incremental run would delete everything it froze, which
+    is exactly the bug that cost a routing run to find.
+
+    ⚠ IT IS NOT A SUBSTITUTE FOR A FULL RUN. The frozen copper is an obstacle the router
+    cannot move, so a net that fails because its neighbour took the only channel will go
+    on failing. Use it to attack the last few nets on a board that is otherwise good;
+    use a full run after anything that changes the netlist or the placement.
+    """
     pcb, dsn, ses = stem + ".kicad_pcb", stem + ".dsn", stem + ".ses"
     # ⚠ A BOARD MAY ASK FOR MORE PASSES, and recording that beats remembering it.
     # "Raise it for the final run" is an instruction to a person, and a person who is
@@ -97,17 +148,186 @@ def route(stem, passes=None, timeout=900):
         print("  declared %s as plane layer(s) -- the router will not route on them"
               % ", ".join(planes))
 
+    # ⚠ THE ROUTER IS GIVEN MORE CLEARANCE THAN THE FAB RULE, ON PURPOSE. freerouting
+    # routes right up to the clearance it is handed, and its geometry and KiCad's do not
+    # round the same way -- so a board it considers finished comes back with tracks
+    # 0.1212-0.1247 mm apart against a 0.127 mm rule. Four such violations on the optical
+    # board, all of them 4-6 um short, all of them freerouting's own copper touching
+    # freerouting's own copper. There is nothing to fix on the board; the router simply
+    # aims at the line instead of inside it.
+    #
+    # THE FIX BELONGS IN THE DSN, NOT IN THE DESIGN RULE. Raising the netclass to 0.137
+    # would raise it for the fab as well, and 0.127 mm is what the cheap JLCPCB process
+    # is quoted at -- we want the real rule checked by the real DRC. So the exported DSN
+    # gets the margin and the board keeps its rule: the router aims 10 um inside the
+    # line, DRC still measures against the line.
+    #
+    # The smd_smd clearance is deliberately NOT bumped. That one is pad-to-pad, decided
+    # by placement before the router ever runs, and widening it only makes the router
+    # refuse geometry that is already legal and already built.
+    txt = open(dsn, encoding="utf-8").read()
+    bumped = set()
+
+    def _bump(m):
+        v = float(m.group(1))
+        bumped.add(v)
+        return "(clearance %g)" % (v + DSN_CLEAR_MARGIN_UM)
+
+    txt, n_bump = re.subn(r"\(clearance ([\d.]+)\)", _bump, txt)
+    if not n_bump:
+        raise SystemExit("no plain (clearance N) rule in the DSN -- cannot add the "
+                         "router margin, and routing without it produces violations")
+    # ⚠ THE COPPER THE GENERATOR LAID IS HANDED TO THE ROUTER AS A SUGGESTION, AND FOR
+    # THE DIFFERENTIAL PAIR THAT IS A BUG. kicad-cli exports every existing track as
+    # `(type route)`, which in Specctra means the router owns it and may rip it up -- so
+    # all 223 pre-laid segments are advisory. For the GND stitches and the local nets
+    # that is fine and arguably the point; they were measured as a help, not a promise.
+    #
+    # FOR A COUPLED PAIR IT DEFEATS THE ENTIRE ROUTINE THAT LAID IT. _diff_pairs exists
+    # because freerouting has no concept of a differential pair and routes D+ and D- as
+    # two independent nets; it builds both rails by offsetting ONE centreline so they
+    # cannot diverge. Measured on 2026-09-17, the generator handed over
+    #     DP 11.62 mm / 8 segments / 0 vias      DM 11.80 mm / 8 segments / 0 vias
+    # -- matched to 0.18 mm, same shape -- and freerouting gave back
+    #     DP 12.78 mm / 7 segments / 1 via       DM 15.44 mm / 12 segments / 0 vias
+    # which is 2.66 mm of mismatch, different segment counts, and a via on one rail
+    # only. That is not a pair. It is the exact defect the docstring of _diff_pairs
+    # opens by describing, reintroduced one step downstream, and nothing downstream
+    # could see it: DRC checks copper against the netlist and both nets were connected.
+    #
+    # `(type fix)` is freerouting's "do not touch" -- its FixedState has UNFIXED,
+    # SHOVE_FIXED, USER_FIXED and SYSTEM_FIXED, and only the last two survive a rip-up
+    # pass unchanged. SHOVE_FIXED would let the pair be shoved, which changes the
+    # geometry and so is no better for coupling.
+    #
+    # ONLY THE DECLARED PAIRS ARE FROZEN BY DEFAULT. Freezing everything is a different
+    # question with a real trade behind it -- pre-laid copper becomes a hard obstacle
+    # instead of negotiable, which this project has measured going the wrong way before
+    # -- so it is exposed as `fix_prelaid` in the board notes to be MEASURED rather than
+    # assumed. The pairs are not a trade: copper that must not move, must not move.
+    frozen = set()
+    for spec in (notes or {}).get("diff_pairs", ()):
+        frozen.update(spec.get("nets", ()))
+    pair_nets = None if (notes or {}).get("fix_prelaid") else frozen
+    if incremental:
+        # Everything that HAS copper is frozen except the nets still unfinished.
+        free = set(failing_nets(stem))
+        have = {t.GetNetname() for t in board.GetTracks() if t.GetNetname()}
+        frozen = have - free
+        pair_nets = frozen
+        print("  incremental: %d net(s) left free (%s), %d frozen"
+              % (len(free), ", ".join(sorted(free)) or "-", len(frozen)))
+
+    def _fix(m):
+        if pair_nets is None or m.group(1) in pair_nets:
+            _fix.n += 1
+            return "(net %s)(type fix)" % m.group(1)
+        return m.group(0)
+    _fix.n = 0
+    txt = re.sub(r"\(net ([^)]+)\)\(type route\)", _fix, txt)
+    if frozen and not _fix.n:
+        raise SystemExit(
+            "no pre-laid wiring found for the declared differential pair(s) %s -- the "
+            "pair is supposed to be generated before the router sees it, so either it "
+            "was not laid or the DSN's wire syntax has changed. Routing on would hand "
+            "the pair to freerouting, which does not know it is one."
+            % ", ".join(sorted(pair_nets)))
+
+    # ⚠ LAYER COSTS ARE A DEAD LEVER IN FREEROUTING 2.4.1, AND THE CODE THAT EMITTED
+    # THEM IS GONE. The measurement that motivated it stands: in the MCU approach corridor
+    # on the optical board, F.Cu carried 10.6% copper, In2.Cu 12.8% and B.Cu 4.6% -- the
+    # bottom layer less than half the top, in the one region where the board ran out of
+    # room. Pushing traffic down there would have cost a router setting instead of a
+    # placement change. It cannot be done this way.
+    #
+    # Four experiments, and the first three all failed SILENTLY and DIFFERENTLY:
+    #   1. autoroute_settings emitted as a sibling of (structure) -> the reader skips an
+    #      unknown scope at the level it is reading, and the routed board came back
+    #      BYTE-IDENTICAL. Read as "the lever does nothing" until the md5s matched.
+    #   2. nested correctly -> 294 track segments instead of 2426 and 190 nets
+    #      unconnected. AutorouteSettings.readScope applies its (autoroute)/(postroute)
+    #      flags unconditionally when the scope closes, so omitting them means OFF. The
+    #      block does not patch the defaults, it REPLACES them.
+    #   3. the cost keywords are PLURAL, ..._trace_costs. Grepping the jar for the
+    #      singular matched, because the plural contains it, so the check that was meant
+    #      to confirm the spelling confirmed nothing.
+    #   4. even a complete, correctly nested block in the DSN stops the router dead: a
+    #      one-pass run writes a 254-byte session against 114378 bytes for the same DSN
+    #      with the scope removed. The scope belongs in a .rules file passed with -dr, and
+    #      there it routes normally.
+    #
+    # ⚠ AND THROUGH -dr, WHERE IT IS READ PROPERLY, THE TRACE COST STILL DOES NOTHING.
+    # Two runs whose rules files differed ONLY in B.Cu's cost, 1.0 against 0.7, produced
+    # sessions of identical size and identical per-layer wire length to the tenth of a
+    # millimetre. What moved the earlier comparison was preferred_direction, which was
+    # changed in the same file -- an experiment with two variables in it. Direction is a
+    # real lever and cost is not:
+    #     defaults (no rules file)      B.Cu  161.2 mm,  6.2% of wire, 238 vias
+    #     F h, In1 v, In2 h, B v        B.Cu  134.6 mm,  4.9%,         255 vias
+    #     F h,        In2 v, B h        B.Cu   49.6 mm,  2.0%,         228 vias
+    # Every direction set tried is WORSE than freerouting's own defaults, on B.Cu share
+    # and on total wire and vias alike, so there is nothing here to adopt. If someone
+    # wants to try again, the channel is a .rules file via -dr, and the control to beat is
+    # the default. The corridor still needs a placement answer.
+
+    open(dsn, "w", encoding="utf-8").write(txt)
+    if _fix.n:
+        print("  froze %d pre-laid wire(s) as (type fix)%s" % (
+            _fix.n, "" if pair_nets is None else " -- the declared pair(s)"))
+    print("  router clearance %s um (fab rule %s um + %g um of rounding margin)"
+          % ("/".join("%g" % (v + DSN_CLEAR_MARGIN_UM) for v in sorted(bumped)),
+             "/".join("%g" % v for v in sorted(bumped)), DSN_CLEAR_MARGIN_UM))
+
+    # ⚠ --dsn-only STOPS HERE, and it exists for the pin search rather than for people.
+    # elec/pinsearch.py scores a string-to-pair assignment by routing the twenty analog
+    # nets ALONE, which means it wants this function's DSN -- the real placement, the real
+    # clearances, the real pre-laid copper -- and then its own filtered copy of it. Making
+    # it re-implement the export would be a second copy of the rules to keep true.
+    if dsn_only:
+        print("  --dsn-only: stopping after the export")
+        return dsn
     if not os.path.isfile(JAVA):
         raise SystemExit("no Java 25 runtime at %s" % JAVA)
     # -Djava.awt.headless=true: freerouting has no --no-gui flag and pops an
     # "Autorouter Confirmation" dialog on every run, which steals focus from
     # whoever is at the machine -- and this gets run many times per board.
     # Headless AWT suppresses it and the router works unchanged.
-    # -mt 1: freerouting warns that its multi-threaded optimiser is broken and
-    # generates clearance violations. Single-threaded costs a fraction of a
-    # second on boards this size.
+    # ⚠ -mt 1 BY DEFAULT: freerouting warns that its multi-threaded optimiser is broken
+    # and generates clearance violations, and a board that cannot be manufactured is not
+    # worth any amount of wall clock. The note that used to sit here also claimed single
+    # threading "costs a fraction of a second on boards this size" -- true when the boards
+    # were 20 parts, and badly false now: the optical board takes ten minutes, which is
+    # the main brake on iterating it.
+    # So `threads` is exposed per board to be MEASURED rather than assumed. Raising it is
+    # only defensible if the result is both violation-free and reproducible, and both are
+    # checkable.
+    # ⚠ THE OPTIMISER'S STRATEGY IS A BOARD-LEVEL CHOICE, not a global constant. It
+    # changes which nets freerouting revisits and in what order, and on a board that is
+    # one or two connections short that is exactly the lever that matters -- far more
+    # than the pass count, which buys track length and not connectivity. It is only
+    # worth exposing now: before the pipeline was reproducible, comparing two strategies
+    # meant comparing two samples from a distribution wider than the difference.
+    strat = json.load(open(stem + ".board.json", encoding="utf-8")).get("router")
     cmd = [JAVA, "-Djava.awt.headless=true", "-jar", JAR, "-de", dsn, "-do", ses,
-           "-mp", str(passes), "-mt", "1"]
+           "-mp", str(passes), "-mt", str((strat or {}).get("threads", 1))]
+    # ⚠ THE VALUES ARE CASE-SENSITIVE AND A WRONG ONE IS IGNORED IN SILENCE, which is
+    # the worst way for an option to fail: a sweep of four strategies came back with four
+    # identical boards -- 668 segments each -- and read as "strategy does not matter on
+    # this board" when in fact none of them had been applied. Spelled as freerouting
+    # spells them, checked here rather than trusted, and the command is printed so the
+    # next person can see what actually ran.
+    US = {"greedy": "Greedy", "global": "Global", "hybrid": "Hybrid"}
+    IS = {"sequential": "Sequential", "random": "random", "prioritized": "prioritized"}
+    for flag, key, table in (("-us", "updating", US), ("-is", "selection", IS)):
+        want = (strat or {}).get(key)
+        if not want:
+            continue
+        if want.lower() not in table:
+            raise SystemExit("%s: router %s=%r is not one of %s"
+                             % (os.path.basename(stem), key, want, sorted(table)))
+        cmd += [flag, table[want.lower()]]
+    if (strat or {}):
+        print("  router strategy: %s" % " ".join(cmd[cmd.index("-mt") + 2:]))
     # ⚠ A TIMEOUT HERE MUST NOT LOOK LIKE A ROUTING RESULT. subprocess.run raises
     # TimeoutExpired, which a caller redirecting stderr will never see -- and the board
     # is then left exactly as it was, PLACED AND UNROUTED. Downstream that reads as
@@ -119,7 +339,8 @@ def route(stem, passes=None, timeout=900):
         raise SystemExit(
             "freerouting exceeded %d s on %s at %d passes and was killed. The board is "
             "UNROUTED -- it has not silently produced a bad result, it has produced "
-            "none. Lower the pass count (the curve is flat past ~10) or raise `timeout`."
+            "none. Lower the pass count or raise `timeout` -- and note that passes DO "
+            "buy connectivity on this board, so lowering them has its own cost."
             % (timeout, os.path.basename(stem), passes))
     tail = (r.stdout or "").strip().splitlines()[-6:]
     print("\n".join("  " + t for t in tail))
@@ -131,6 +352,53 @@ def route(stem, passes=None, timeout=900):
     shutil.copyfile(pcb, stem + ".unrouted.kicad_pcb")
     if not pcbnew.ImportSpecctraSES(board, ses):
         raise SystemExit("Specctra SES import failed")
+
+    # PUT THE FROZEN COPPER BACK, BECAUSE THE SESSION FILE DOES NOT CARRY IT. This is
+    # the half of `(type fix)` that a reasonable reading of Specctra misses, and it cost
+    # a routing run to find: a SESSION file reports what the ROUTER did, and a fixed
+    # wire is by definition not something the router did. freerouting therefore omits it
+    # -- measured, 797 wires in the session and not one of them on either pair net --
+    # and ImportSpecctraSES replaces the board's routing wholesale, so the frozen pair
+    # was not preserved but DELETED. The board came back with the pair 11.62 mm shorter
+    # and five of its eight unconnected items on USB_DP/USB_DM, which reads exactly like
+    # a router that ran out of room and is nothing of the kind.
+    #
+    # The router still SAW the copper -- it routed around it as an obstacle, which is
+    # what freezing is for -- so re-laying it here is geometrically consistent with
+    # everything else in the session, not a patch over a conflict.
+    #
+    # ⚠ THIS IS ALSO THE MECHANISM FOR INCREMENTAL ROUTING, and the reason to get it
+    # right rather than revert. "Freeze what already routed, re-run only the failures"
+    # needs exactly these two halves: fix the wires in the DSN so the router leaves them
+    # alone, and re-lay them here so they survive the import.
+    if frozen:
+        src = pcbnew.LoadBoard(stem + ".unrouted.kicad_pcb")
+        back = 0
+        for t in src.GetTracks():
+            if t.GetNetname() not in frozen:
+                continue
+            net = board.FindNet(t.GetNetname())
+            if net is None:
+                raise SystemExit("frozen net %s is not on the board after import"
+                                 % t.GetNetname())
+            if t.GetClass() == "PCB_VIA":
+                v = pcbnew.PCB_VIA(board)
+                v.SetPosition(t.GetPosition())
+                v.SetWidth(t.GetWidth())
+                v.SetDrill(t.GetDrill())
+                v.SetViaType(t.GetViaType())
+                v.SetNet(net)
+                board.Add(v)
+            else:
+                k = pcbnew.PCB_TRACK(board)
+                k.SetStart(t.GetStart())
+                k.SetEnd(t.GetEnd())
+                k.SetWidth(t.GetWidth())
+                k.SetLayer(t.GetLayer())
+                k.SetNet(net)
+                board.Add(k)
+            back += 1
+        print("  re-laid %d frozen wire(s) the session file does not carry" % back)
     # CLAMP ANY TRACK THE ROUTER NECKED BELOW THE FAB FLOOR. Freerouting works in
     # its own units and rounds, so it lands a couple of segments at 0.125 against
     # JLCPCB's 0.127 minimum -- 2 microns under, but under. Widening a track can
@@ -161,6 +429,97 @@ def route(stem, passes=None, timeout=900):
         # before the pour existed, which is a confusing way to learn it.
         board.BuildConnectivity()
         pcbnew.ZONE_FILLER(board).Fill(board.Zones())
+        # ⚠ AND CHECK THE STITCHES AGAIN HERE, NOT ONLY IN layout.py. At layout time the
+        # plane is poured around 60 parts and every stitch via lands in copper. THIS
+        # refill pours it around those parts plus 700 routed tracks, and the plane that
+        # results is a different shape -- so a via that was in the plane before routing
+        # can be in a hole after it. Every board passes the check in layout.py and
+        # output_panel failed it here, which is exactly why it has to run twice.
+        if layout._check_stitches_landed(board, notes):
+            n_moved = layout.rescue_stray_stitches(board, notes)
+            if n_moved:
+                # moving copper changes the pour that was just computed, so pour again
+                board.BuildConnectivity()
+                pcbnew.ZONE_FILLER(board).Fill(board.Zones())
+                print("    moved %d of them into the plane and re-poured" % n_moved)
+            if layout._check_stitches_landed(board, notes):
+                print("    (the rest have nowhere to go: move the part or except the "
+                      "pad -- another routing run will not help)")
+    # ⚠ THE ROUTER LEAVES SAME-PART GAPS, and they are cheap to close once it has
+    # finished. Done here rather than before routing because before routing the same
+    # idea is a constraint that costs more than it buys -- see link_same_part_gaps.
+    # ⚠ SNAP THE HAIRLINES FIRST. A gap of a couple of microns cannot be repaired by
+    # laying copper across it -- the segment that results is itself degenerate and the
+    # clean-up below removes it again, which is a loop the logs do not show. Move the
+    # endpoint instead; see snap_hairline_gaps.
+    n_snap = layout.snap_hairline_gaps(board)
+    if n_snap:
+        print("  snapped %d hairline gap(s) shut (no copper added)" % n_snap)
+        board.BuildConnectivity()
+    # ⚠ AND THE LAYER CHANGES THE ROUND TRIP DROPPED. Two tracks of one net ending at
+    # the same point on DIFFERENT layers is a via that went missing, not a gap -- no
+    # amount of re-routing recovers it and no copper can bridge it. See add_missing_vias.
+    n_via = layout.add_missing_vias(board)
+    if n_via:
+        print("  dropped in %d via(s) where a net changed layer with nothing to carry it"
+              % n_via)
+        board.BuildConnectivity()
+    n_link = layout.link_close_gaps(board, layout._outline_pts(notes),
+                                   same_part_only=False)
+    if n_link:
+        print("  joined %d same-net pad pair(s) the router left in separate islands"
+              % n_link)
+
+    # ⚠ DELIBERATE COPPER GOES IN HERE, NOT IN layout.py, AND THE DIFFERENCE IS THE
+    # WHOLE POINT. The optical board's last net, +3V3A at U2 pad 4, is closed by one via
+    # and two short tracks -- that geometry was searched and it works. Laid BEFORE
+    # routing it also cost FIVE analog nets, 1 unconnected to 5, because 76 other nets
+    # then had to plan around it. Laid here it closes the same gap and disturbs nothing,
+    # for exactly the reason the same-part gap repair above is done here: before routing
+    # the same idea is a constraint that costs more than it buys.
+    #
+    # A re-search confirmed the placement was not the problem. Scored by how many analog
+    # nets sit within 1.2 mm of the path, the best of all 2638 legal sites touches SIX --
+    # and so does the one already chosen. There is no quiet corner in that corridor, so
+    # no amount of re-siting helps and the timing is the only lever left.
+    #
+    # These are repairs, not hints: they are applied after the router has finished and
+    # are never visible to it.
+    _nets = {n.GetNetname(): n for n in board.GetNetInfo().NetsByName().values()}
+    for _rv in notes.get("repair_vias", []):
+        assert _rv[0] in _nets, "repair_vias names unknown net %r" % (_rv[0],)
+        layout._add_via(board, _nets[_rv[0]], _rv[1], _rv[2],
+                        _rv[3] if len(_rv) > 3 else 0.3, _rv[4] if len(_rv) > 4 else 0.6)
+    for _rt in notes.get("repair_tracks", []):
+        assert _rt[0] in _nets, "repair_tracks names unknown net %r" % (_rt[0],)
+        layout._add_track(board, _nets[_rt[0]], _rt[1], _rt[2], _rt[3])
+    if notes.get("repair_vias") or notes.get("repair_tracks"):
+        print("  laid %d deliberate via(s) and %d track(s) AFTER routing"
+              % (len(notes.get("repair_vias", [])), len(notes.get("repair_tracks", []))))
+        board.BuildConnectivity()
+
+    # ⚠ COUNT BEFORE REMOVING. board.Remove() leaves the track container in a state
+    # where GetTracks() raises -- the same SWIG ownership hazard that made fp.Remove()
+    # corrupt the footprint IO plugin earlier in this file's history. The rule that
+    # comes out of both: take every measurement you need from a board BEFORE deleting
+    # anything from it, and delete last.
+    n = len(list(board.GetTracks()))
+    n_junk = layout.drop_degenerate(board)
+    if n_junk:
+        # the Specctra round trip rounds, and rounding leaves sub-micron fragments
+        print("  dropped %d degenerate track fragment(s) from the import" % n_junk)
+        n -= n_junk
+
+    # ⚠ POUR AGAIN, BECAUSE THE REPAIRS ABOVE ADDED COPPER AFTER THE LAST POUR. The
+    # zones were last filled before the repair block; snap/add_missing_vias/link then
+    # put down vias and tracks, and a zone does not know to clear around copper that
+    # arrived after it was computed. The result is a via sitting in un-cleared pour --
+    # which DRC reports as a clearance AND a hole-clearance violation against the zone,
+    # and which looks like a badly placed via rather than a stale pour.
+    # Measured: five violations on the optical board, four of them this, from two vias.
+    if board.Zones():
+        board.BuildConnectivity()
+        pcbnew.ZONE_FILLER(board).Fill(board.Zones())
     board.Save(pcb)
     # ⚠ CANONICALISE THE ROUTED BOARD TOO, for the same reason layout.py does it --
     # and the reason is now MEASURED rather than argued. Two independent runs of the
@@ -171,10 +530,32 @@ def route(stem, passes=None, timeout=900):
     # make "did this change anything?" unanswerable at exactly the point where the
     # answer matters most.
     layout._canonical_uuids(pcb)
-    n = len(list(board.GetTracks()))
     print("%s: %d track segments + vias imported" % (os.path.basename(pcb), n))
     return pcb
 
 
 if __name__ == "__main__":
-    route(os.path.abspath(sys.argv[1]))
+    _p = None
+    for _a in sys.argv[2:]:
+        if _a.startswith("--passes="):
+            _p = int(_a.split("=", 1)[1])
+    route(os.path.abspath(sys.argv[1]), passes=_p,
+          incremental="--incremental" in sys.argv[2:],
+          dsn_only="--dsn-only" in sys.argv[2:])
+    # ⚠ LEAVE WITHOUT TEARING DOWN THE INTERPRETER. pcbnew's SWIG bindings hand back
+    # objects they have no destructor for -- every run says so, a dozen times, about
+    # PCB_TRACK and ZONE_FILLER -- and with enough of them the shutdown itself aborts.
+    # It cost a whole experiment to find: route.py returned non-zero on a board it had
+    # just written correctly, no traceback, the segments imported and the file on disk,
+    # and finish.py quite reasonably treated that as a failed step and threw the pass
+    # away. The board was never in question; only the exit was.
+    #
+    # ⚠ THIS DOES NOT HIDE REAL FAILURES, which is the only reason it is acceptable. An
+    # exception from route() propagates and never reaches this line, so anything that
+    # actually goes wrong still exits non-zero with its traceback. Only a CLEAN return
+    # gets here, and all this says is that a clean return should be a clean exit.
+    # The flush is not optional: os._exit skips it, and finish.py reads this stdout
+    # through a pipe, so the last lines would vanish.
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os._exit(0)
