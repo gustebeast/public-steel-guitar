@@ -554,6 +554,41 @@ BOARD_NOTES = {
         # it a route, and that route goes through the one corner CAN_RX needed. Both are
         # required, so this is a placement question and not a routing one: move what the
         # transceiver or TP1 asks of that edge, or accept one CAN direction unrouted.
+        #
+        # ⚠ 2026-09-19: THE PLACEMENT HALF OF THAT WAS DONE, AND THE NET ONLY SWAPPED.
+        # TP1/TP2/TP3 moved off this edge into the empty east (x 14.75), C7 and R6 went
+        # to the chips they serve, and sitesearch.py says the two ICs cannot help: U2 has
+        # 32 legal sites, ALL within 1.5 mm of where it already is, and U3 has ZERO -- it
+        # cannot move at all without displacing something. The board is saturated. What
+        # changed is which direction fails: CAN_TX now routes and CAN_RX does not.
+        #
+        # ⚠ AND THE CAUSE IS NOW MEASURED RATHER THAN INFERRED, which it never was
+        # before. Probing due east of U3.19 (CAN_RX) on the routed board names what holds
+        # the lane, at these distances from the pad:
+        #     +0.9 mm   CAN_TX's escape via   (and its F.Cu and B.Cu tracks)
+        #     +1.6 mm   SWDIO's escape via    (and its tracks)
+        #     +2.6 mm   SDA on In2.Cu, a GND via
+        # Both neighbours parked a VIA in the only opening CAN_RX has. Unrouted, with
+        # nothing on the board but pads, that pad already has just 2 of 24 clear bearings;
+        # routed it has 1, and there are ZERO legal via sites anywhere in a 360-degree
+        # ring out to 4 mm. Pins 19, 20 and 21 are CAN_RX, CAN_TX and SWDIO on 0.4 mm
+        # pitch: three signals needing three escape lanes, and a 0.6 mm via leaves room
+        # for two. That is the whole problem, stated properly at last.
+        #
+        # SO THE REMAINING FIXES ALL COST SOMETHING, and none is a routing change:
+        #   1. A SMALLER ESCAPE VIA. Three 0.45/0.25 vias fit where two 0.6/0.3 do. This
+        #      is the standard answer for a 0.4 mm QFN and it is the cheapest change --
+        #      but see the via note in layout.py: 0.6/0.3 was chosen BECAUSE it is
+        #      JLCPCB's standard capability and costs nothing extra. A 0.25 drill leaves
+        #      standard capability, on 11 boards per instrument. That is a price
+        #      decision, not a layout one.
+        #   2. A COARSER PACKAGE. CH32V203 exists in LQFP32 at 0.8 mm pitch, which is
+        #      twice the escape room and removes the problem rather than squeezing it.
+        #      Costs board area on a board that is already fighting knee_housing.
+        #   3. ACCEPT A RECEIVE-ONLY-BROKEN NODE, which is not acceptable: CAN_RX open
+        #      means the node cannot hear the bus, so the board is dead on it.
+        # Left at 1 unconnected deliberately, with the cause named, rather than spending
+        # more routing runs on a fan that provably has no room.
         "U3": (1.00, 1.55, 0.0),
         "C9": (5.50, 3.20, 0.0),
         "C8": (7.50, 3.20, 0.0),
@@ -561,6 +596,14 @@ BOARD_NOTES = {
         "C11": (7.00, -0.60, 0.0),
         "C10": (9.50, -3.90, 0.0),
         "Y1": (-0.90, -3.00, 0.0),
+        # ⚠ C5/C6 STAY EAST OF THE CRYSTAL, AND THE SHORT-LOOP ARGUMENT LOSES. They
+        # are Y1's load caps sitting 4.5 mm from it, on the wrong side of everything they
+        # connect to, and sitesearch put both on the MCU's west side at ~1.6 mm. MEASURED
+        # THERE: 1 unconnected -> 5 (+3V3, CAN_RX, NRST, OSC_IN, OSC_OUT). C7 had already
+        # moved west for the same good reason, and three small parts plus the crystal is
+        # more than that side will take -- the caps' own nets were among the casualties.
+        # The distance score is real and it is not the binding constraint; west-side
+        # congestion is. Left where they are deliberately.
         "C5": (3.60, -2.50, 0.0),
         "C6": (3.60, -4.30, 0.0),
         # ⚠ C7 AND R6 MOVED TO THEIR OWN CHIPS, 2026-09-19, and the corridor they
@@ -639,6 +682,14 @@ BOARD_NOTES = {
     #
     # Worth keeping the number rather than the conclusion: if this board grows a
     # component row, re-measure rather than assuming either way.
+    #
+    # ⚠ RE-MEASURED 2026-09-19 AS THAT NOTE ASKS, on the 34 x 28 board: "local_nets":
+    # ("CAN_RX",) lays ZERO segments. The generator's reach is 6 mm single-linkage and
+    # CAN_RX spans 12.5 mm end to end, so pre-laying it is not refused, it is out of
+    # range. The conclusion stands for a new reason, which is worth more than the
+    # conclusion: the generator is not an option for this net AT ALL, so "pre-lay
+    # CAN_RX and CAN_TX fails instead" cannot be reproduced on this board and is not
+    # the state to reason from any more.
     "refs_on_fab": True,
     "hold_edge": None,          # NO screw: the grooves hold five faces and the
                                 # instrument's underside closes over the sixth
