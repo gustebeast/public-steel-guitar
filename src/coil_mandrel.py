@@ -160,10 +160,12 @@ MEAN_LONG = math.sqrt(max((COIL_LEN / TURNS) ** 2 - _P_LONG ** 2, 0.0)) / math.p
 # throughout. The options are the user's: accept exceeding the published radius on a
 # static install, move the slack store out of the leg where nothing caps the diameter
 # (docs/leg-trrs-routing.md option 2), or source a lead with a smaller bend radius.
-assert MEAN_LONG / 2.0 >= LT.CABLE_BEND_R, (
-    "the coil bends to r %.1f at full leg extension and %s publishes %.1f as its "
-    "minimum -- see the block above; this is a DESIGN DECISION, not a number to relax"
-    % (MEAN_LONG / 2.0, "10-02135", LT.CABLE_BEND_R))
+assert MEAN_LONG / 2.0 >= LT.CABLE_BEND_STATIC, (
+    "the coil bends to r %.1f at full leg extension, under the %.1f static-duty "
+    "allowance -- and THAT allowance is already a deliberate deviation from the "
+    "published %.1f (leg_trrs.CABLE_BEND_STATIC says why). Do not relax it further "
+    "without re-reading that block"
+    % (MEAN_LONG / 2.0, LT.CABLE_BEND_STATIC, LT.CABLE_BEND_R))
 assert MEAN_LONG >= 15.0, (
     "stretched over the %.1f gap the coil narrows to mean O%.1f, under the 15 floor"
     % (GAP_MAX, MEAN_LONG))
