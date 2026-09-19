@@ -489,9 +489,18 @@ BOARD_NOTES = {
         "U4": (11.00, -0.60, 0.0),
         # SWD pads -- the only four 2.0 mm sites this board has left; see the note in
         # lever_sensor() for why they are not in a neat row.
-        "TP1": (4.75, 1.45, 0.0),      # SWDIO
-        "TP2": (4.75, -0.95, 0.0),     # SWCLK
-        "TP3": (7.15, 1.05, 0.0),      # GND  -- the three above are within 2.5 mm
+        # ⚠ MOVED OFF THE MCU'S EAST EDGE, 2026-09-19, TO TEST THE NOTE ABOVE. That
+        # note ends "move what the transceiver or TP1 asks of that edge", and TP1 is the
+        # cheaper half: SWDIO is only in that corner because TP1 is, and pins 19/20/21 --
+        # CAN_RX, CAN_TX and SWDIO -- all leave the same edge at 0.4 mm pitch. The east
+        # of this board is empty past x 12 (U4's courtyard ends at 13.18) and it was not
+        # empty when these pads were sited, which is what makes "the only four 2.0 mm
+        # sites this board has left" a statement about the OLD 21.4-wide outline.
+        # An inline column is also the shape a programming clip actually wants; the old
+        # L was what fitted, not what was preferred.
+        "TP1": (14.75, 1.45, 0.0),     # SWDIO
+        "TP2": (14.75, -0.95, 0.0),    # SWCLK
+        "TP3": (14.75, 3.85, 0.0),     # GND  -- 2.4 mm pitch, one column
         # ⚠ TP4 MOVED FOR THE XH. J1's courtyard now reaches x 96.75 and TP4 sat at
         # 96.30..98.39 -- the one part the bigger connector still clipped. TP4 is the
         # right one to move: it is NRST, described above as stranded and for
@@ -545,6 +554,36 @@ BOARD_NOTES = {
         # it a route, and that route goes through the one corner CAN_RX needed. Both are
         # required, so this is a placement question and not a routing one: move what the
         # transceiver or TP1 asks of that edge, or accept one CAN direction unrouted.
+        #
+        # ⚠ 2026-09-19: THE PLACEMENT HALF OF THAT WAS DONE, AND THE NET ONLY SWAPPED.
+        # TP1/TP2/TP3 moved off this edge into the empty east (x 14.75), C7 and R6 went
+        # to the chips they serve, and sitesearch.py says the two ICs cannot help: U2 has
+        # 32 legal sites, ALL within 1.5 mm of where it already is, and U3 has ZERO -- it
+        # cannot move at all without displacing something. The board is saturated. What
+        # changed is which direction fails: CAN_TX now routes and CAN_RX does not.
+        #
+        # ⚠ AND THE CAUSE IS NOW MEASURED RATHER THAN INFERRED, which it never was
+        # before. Probing due east of U3.19 (CAN_RX) on the routed board names what holds
+        # the lane, at these distances from the pad:
+        #     +0.9 mm   CAN_TX's escape via   (and its F.Cu and B.Cu tracks)
+        #     +1.6 mm   SWDIO's escape via    (and its tracks)
+        #     +2.6 mm   SDA on In2.Cu, a GND via
+        # Both neighbours parked a VIA in the only opening CAN_RX has. Unrouted, with
+        # nothing on the board but pads, that pad already has just 2 of 24 clear bearings;
+        # routed it has 1, and there are ZERO legal via sites anywhere in a 360-degree
+        # ring out to 4 mm. Pins 19, 20 and 21 are CAN_RX, CAN_TX and SWDIO on 0.4 mm
+        # pitch: three signals needing three escape lanes, and a 0.6 mm via leaves room
+        # for two. That is the whole problem, stated properly at last.
+        #
+        # SOLVED BY THE VIA, NOT BY THE PLACEMENT: at 0.50 mm instead of 0.60 all three
+        # signals escape and this board reaches 0 unconnected and 0 violations for the
+        # first time. The full sweep and the JLCPCB capability figures are in the
+        # "via_mm" note below -- including that it is NOT a move off standard capability
+        # and carries no surcharge, which is the opposite of what it looks like.
+        #
+        # The placement work above stays because each move is right on its own terms, and
+        # because the diagnosis needed it: it was only after the parts stopped being
+        # plausible suspects that the fan itself became the obvious one.
         "U3": (1.00, 1.55, 0.0),
         "C9": (5.50, 3.20, 0.0),
         "C8": (7.50, 3.20, 0.0),
@@ -552,10 +591,28 @@ BOARD_NOTES = {
         "C11": (7.00, -0.60, 0.0),
         "C10": (9.50, -3.90, 0.0),
         "Y1": (-0.90, -3.00, 0.0),
+        # ⚠ C5/C6 STAY EAST OF THE CRYSTAL, AND THE SHORT-LOOP ARGUMENT LOSES. They
+        # are Y1's load caps sitting 4.5 mm from it, on the wrong side of everything they
+        # connect to, and sitesearch put both on the MCU's west side at ~1.6 mm. MEASURED
+        # THERE: 1 unconnected -> 5 (+3V3, CAN_RX, NRST, OSC_IN, OSC_OUT). C7 had already
+        # moved west for the same good reason, and three small parts plus the crystal is
+        # more than that side will take -- the caps' own nets were among the casualties.
+        # The distance score is real and it is not the binding constraint; west-side
+        # congestion is. Left where they are deliberately.
         "C5": (3.60, -2.50, 0.0),
         "C6": (3.60, -4.30, 0.0),
-        "C7": (6.00, -2.50, 0.0),
-        "R6": (6.00, -4.50, 0.0),
+        # ⚠ C7 AND R6 MOVED TO THEIR OWN CHIPS, 2026-09-19, and the corridor they
+        # were standing in is the point. Both sat in the x = 6 column between the crystal
+        # and the transceiver, which is the ONLY lane from the MCU's south-east corner
+        # down to U2 -- the lane CAN_TX and CAN_RX have been fighting over for four
+        # rounds. Neither belongs there: C7 decouples NRST and sat 8.6 mm from that pin,
+        # R6 pulls up SDA and sat 6.0 mm from the chip it pulls up.
+        # Sited by elec/sitesearch.py over all 1950 legal positions for each, scored on
+        # the net each part actually serves: C7 8.6 -> 1.6 mm, R6 6.0 -> 1.8 mm. So this
+        # is the right placement on its own terms and opens the lane as a consequence,
+        # which is the kind of move worth preferring over one that only does the latter.
+        "C7": (-2.55, 1.09, 90.0),
+        "R6": (11.97, -3.92, 270.0),
         "U2": (0.50, -7.60, 0.0),
         "C4": (6.00, -6.30, 0.0),
         "R3": (6.00, -7.80, 0.0),
@@ -620,6 +677,53 @@ BOARD_NOTES = {
     #
     # Worth keeping the number rather than the conclusion: if this board grows a
     # component row, re-measure rather than assuming either way.
+    #
+    # ⚠ RE-MEASURED 2026-09-19 AS THAT NOTE ASKS, on the 34 x 28 board: "local_nets":
+    # ("CAN_RX",) lays ZERO segments. The generator's reach is 6 mm single-linkage and
+    # CAN_RX spans 12.5 mm end to end, so pre-laying it is not refused, it is out of
+    # range. The conclusion stands for a new reason, which is worth more than the
+    # conclusion: the generator is not an option for this net AT ALL, so "pre-lay
+    # CAN_RX and CAN_TX fails instead" cannot be reproduced on this board and is not
+    # the state to reason from any more.
+    # ⚠ A SMALLER VIA, AND IT IS WHAT CLOSES THE CAN FAN -- see the note in
+    # lever_sensor() for the measurement. Three signals leave three adjacent 0.4 mm-pitch
+    # QFN pins and a 0.6 mm via leaves room for two; at 0.50 all three escape and this
+    # board reaches 0 unconnected, 0 violations for the first time.
+    #
+    # THE PAD IS THE DIMENSION THAT MATTERS, NOT THE DRILL, which the sweep separates:
+    #     0.60 / 0.30   1 unconnected (CAN_RX)     -- the fan has room for two
+    #     0.55 / 0.30   2 unconnected (SCL, SWDIO) -- worse, not a gradient
+    #     0.50 / 0.30   0 unconnected, 12 hole_clearance errors
+    #     0.50 / 0.25   0 unconnected, 0 violations
+    #     0.45 / 0.25   0 unconnected, 11 hole_clearance errors
+    # The drill only shrinks to keep the annulus wide enough for KiCad's DEFAULT 0.25 mm
+    # hole-clearance constraint, which the 0.30 drill misses by 0.011 mm.
+    #
+    # ⚠ AND IT COSTS NOTHING, WHICH WAS WORTH CHECKING RATHER THAN ASSUMING. The via
+    # note in layout.py chose 0.6/0.3 because it is JLCPCB's standard capability, so the
+    # obvious reading is that this leaves it. Their published capabilities (2026-09-19)
+    # say otherwise on both counts:
+    #   * "Min. Via hole size/diameter ... Multilayer: 0.15 mm hole size / 0.25 mm via
+    #     diameter", so 0.50/0.25 is inside standard capability, not beyond it.
+    #   * The surcharge is specific: "0.2mm or 0.25mm hole size with via diameter LESS
+    #     THAN 0.45mm will cost more". 0.50 is above that, so a 0.25 drill here is not
+    #     surcharged. It also satisfies their "via diameter should be 0.1mm (0.15mm
+    #     preferred) larger than via hole size" -- this is 0.25 larger.
+    #   * Their real hole-to-copper rule is "Via hole to Track 0.2mm", LOOSER than the
+    #     0.25 KiCad enforces. So the 0.50/0.30 board that failed 12 hole_clearance
+    #     checks was failing a house default and not a fab limit -- it is manufacturable
+    #     too. 0.50/0.25 is used because it needs no rule relaxed to prove it.
+    "via_mm": (0.50, 0.25),
+    # ⚠ THE VIA SIZE IS AN ORDER-FORM FIELD, NOT JUST A GERBER FACT. JLCPCB's own
+    # capability page says "please select corresponding via size option when placing
+    # order" for 0.2/0.25 mm hole sizes. The gerbers carry the geometry; the process is
+    # chosen on the form, and nothing in the drill file makes the operator pick it.
+    "order_options": {
+        "via size": "0.25 mm hole / 0.50 mm diameter -- SELECT THIS ON THE ORDER FORM. "
+                    "Inside standard capability and NOT surcharged (the surcharge is for "
+                    "a 0.25 hole with a diameter under 0.45; this is 0.50). The board "
+                    "does not route at the 0.6/0.3 default -- see the CAN fan note.",
+    },
     "refs_on_fab": True,
     "hold_edge": None,          # NO screw: the grooves hold five faces and the
                                 # instrument's underside closes over the sixth
