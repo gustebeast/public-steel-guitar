@@ -766,13 +766,35 @@ def motor_pos(i: int):
     return (-(MOTOR_X0 + (N_STRINGS - 1 - i) * MOTOR_X_STEP), string_y(i), MOTOR_BELT_Z)
 
 
+# THE INSTRUMENT'S BOTTOM GRID (user, 2026-09-15). The bottom is one solid XBAR-tall prism
+# with as many lever mortises cut in it as will fit, 1.6 apart -- so a lever (and, on the same
+# grid, a foot) can mount almost anywhere, and the caps over the slots seal the body from below
+# against escaping light and motor noise. The pitch is not a new number: the octagon joint is
+# already sized so its mortise plus a two-bead wall either side IS the rib (knee_lever._JW), so
+# repeating it with no gap between ribs gives one mortise + one wall.
+LEVER_MORT_W = XBAR - 2 * MIN_WALL_2P        # 7.2 across the octagon mortise (the tenon's own
+                                             # MORT_CLR cancels: mortise = tenon + 2*clr)
+# A TWO-BEAD WALL EACH SIDE, NOT ONE SHARED BETWEEN NEIGHBOURS (user, 2026-09-15). At one
+# shared 1.6 the pitch was 8.8 and a SEGMENT SEAM had nowhere to land: the seam needs solid
+# material, so the stations it crossed were dropped and mortises went missing exactly where
+# two chassis sections meet. At 3.2 the seam plane runs down the middle of a wall with 1.6
+# left on each side. The pitch is then XBAR on the nose -- each mortise gets back the full
+# rib section the joint was sized against, and consecutive ribs simply touch.
+LEVER_PITCH  = LEVER_MORT_W + 2 * MIN_WALL_2P    # 10.4
+# THE BOTTOM PRISM'S THICKNESS is NOT the same number (user, 2026-09-16). The octagon mortise
+# reaches 8.9 up from the bed, so a floor of XBAR left only 1.5 of cap over each slot -- under
+# the two-bead rule, and the joint itself is already bottomed out at 1.6, so the cap is where
+# the tenth of a millimetre has to come from. chassis asserts the cap against the real solids.
+BOTTOM_T     = XBAR + 0.1                        # 10.5
+
+
+
 def rib_comb_x(x_target: float) -> float:
-    """The chassis rib-comb X nearest x_target. The comb is a rib at every motor plus one
-    midway between each pair -- motor_pos(0).x + k * MOTOR_X_STEP / 2, the same comb
-    chassis._rib_positions builds -- so a lever station or a split plane snapped here
-    follows the motors instead of being a hand-typed number the comb can walk away from."""
-    x0, p = motor_pos(0)[0], MOTOR_X_STEP / 2
-    return x0 + round((x_target - x0) / p) * p
+    """The nearest MORTISE STATION in the bottom grid (LEVER_GRID_X) -- so a lever station
+    snapped here lands on a slot instead of being a hand-typed number the grid can walk away
+    from. Was the half-motor-pitch rib comb (22.35); the bottom is one prism now and the
+    stations are XBAR apart across all of it."""
+    return min(lever_grid_x(), key=lambda s: abs(s - x_target))
 
 
 # FAR-ROW BELTS vs NEAR-ROW PULLEYS (see BELT_PLANE_DZ). Each far-row belt passes the near
@@ -835,6 +857,68 @@ BRIDGE_AXLE_X     = BRIDGE_X - BRIDGE_BEARING_OD / 2     # bearing/axle centre X
 # WIDTH DATUM (not the axle's span any more -- see BRIDGE_AXLE_L). chassis.Y_HI,
 # knee_lever.MORT_Y_END and screw_rail.ACROSS are measured from this.
 BRIDGE_AXLE_Y     = STRING_FIELD_W / 2 + 12 * BEAD  # 52.35
+# THE DOWNWARD LIGHT WINDOW (user, 2026-09-16). A slot straight through the bottom prism, one
+# XBAR inboard of the +Y rail's centre-line, so the rail stands outboard of it and none of it
+# shows from the front -- it only ever aims DOWN, at the pedals. Here rather than in chassis
+# because knee_lever has to know where it starts (the lever mortises stop there) and cannot
+# import chassis; chassis asserts the two spellings of the rail agree.
+LIGHT_WIN_W  = 8.0                                   # across Y
+# ONE XBAR INBOARD OF THE +Y RAIL'S CENTRE-LINE (user). The 1.2 left between the window and
+# the rail's inner face is NOT a wall and is not held to the wall rule: the window is a separate
+# MODEL only so the slicer can colour it, and it prints as one fused solid with the chassis.
+RAIL_HI_INNER_Y = BRIDGE_AXLE_Y + 4 * BEAD           # +Y rail inner face (chassis.Y_HI - T/2)
+LIGHT_WIN_DY = XBAR                                  # inboard of the +Y rail's centre-line
+LIGHT_WIN_YC = (RAIL_HI_INNER_Y + WALL_THICKNESS / 2) - LIGHT_WIN_DY
+LIGHT_WIN_Y0 = LIGHT_WIN_YC - LIGHT_WIN_W / 2        # -Y edge: where the mortises stop
+LIGHT_WIN_Y1 = LIGHT_WIN_YC + LIGHT_WIN_W / 2
+
+# THE END STATIONS RUN THE INSTRUMENT'S FULL LENGTH (user, 2026-09-17). Every other mortise
+# stops at the light window's face, but the three outermost at each end are the ones the FEET
+# ride, and a +Y foot slides in from +Y -- so its channel has to be open that way, out through
+# the +Y rail, the way the leg's own grooves used to be. There is no window above a leg anyway
+# (it runs BETWEEN them), so nothing is lost by carrying these through.
+LEVER_FULL_END_N = 3
+# ...AND THEY KEEP OFF THE STRING ACCESS CHANNELS (user, 2026-09-17). Those drop through the
+# floor at the bridge end, ONE PER STRING -- ten of them on the string pitch, not one at the +Y
+# edge -- so a mortise crossing that field has to clear the whole of it, not merely stop short
+# of the +Y-most. The gaps between neighbours are 1.5, which no mortise fits, so what is left is
+# the clear band OUTBOARD of the field at each end.
+def floor_block_y(station_x: float) -> tuple:
+    """(y_lo, y_hi) of everything a mortise at `station_x` must keep off, grown by a two-bead
+    wall -- or None if its X band is clear.
+
+    TWO FAMILIES, both dropping through the floor at an end of the instrument and both on the
+    string pitch, so a mortise that meets one meets several: the BRIDGE end's string access
+    channels, and the KEYHEAD end's insert height-screw head cavities. Each station crosses only
+    the ones near it in X, which is why the three at each end come out different lengths -- the
+    height screws sit in two X columns, so the -X-most station clears the +Y-most screw, the
+    middle one clears only the second column's, and the +X-most of the three meets neither."""
+    lo, hi = [], []
+    half = STRING_ACCESS_D / 2 + MIN_WALL_2P
+    ys = [string_y(i) for i in range(N_STRINGS)
+          if abs(string_access_x(i) - station_x) < half + LEVER_MORT_W / 2]
+    if ys:
+        lo.append(min(ys) - half)
+        hi.append(max(ys) + half)
+    from . import nut_block as _NB                     # deferred: nut_block imports this module
+    hs_half = _NB.HS_HEAD_CAV_D / 2 + MIN_WALL_2P
+    hys = [_NB.height_screw_xy(i)[1] for i in range(N_STRINGS)
+           if abs(NUT_BLOCK_X + _NB.height_screw_xy(i)[0] - station_x)
+           < hs_half + LEVER_MORT_W / 2]
+    if hys:
+        lo.append(min(hys) - hs_half)
+        hi.append(max(hys) + hs_half)
+    return (min(lo), max(hi)) if lo else None
+MORT_FULL_Y1 = RAIL_HI_INNER_Y + WALL_THICKNESS + 1.0     # out past the +Y rail's outer face
+
+
+def mortise_y_end(station: float) -> float:
+    """The +Y end of the mortise at `station`: the window's face, or the full length for the
+    LEVER_FULL_END_N outermost stations at each end."""
+    g = lever_grid_x()
+    i = min(range(len(g)), key=lambda k: abs(g[k] - station))
+    return (MORT_FULL_Y1 if i < LEVER_FULL_END_N or i >= len(g) - LEVER_FULL_END_N
+            else LIGHT_WIN_Y0)
 BRIDGE_ARM_W      = 6 * BEAD  # 4.8 bridge-endplate bearing-arm / edge-web thickness (Y); the
                             # screw rail widens by this so the rib overlaps it cleanly
 # THE AXLE'S TWO ENDS. It is a plain ground shaft with no shoulder — it has to be, since
@@ -958,6 +1042,62 @@ BRIDGE_BASE_HALF = (SCREW_ROW_DX
                     + max(_BRG_TEARDROP, NUT_HOLE_DX + _ROD_TEARDROP)
                     + MIN_WALL_2P)                             # 25.06
 BRIDGE_BASE_X0 = BRIDGE_X - BRIDGE_BASE_HALF        # -25.06  (-X face)
+
+
+# THE BOTTOM'S OWN SPAN: the chassis floor runs END TO END of the chassis -- the two KEPT-SHELL
+# faces at the leg sockets (chassis._SHELL_NX / _SHELL_PX), NOT the endplate takeover faces
+# further in. Beyond the shell faces is the endplates' own floor, which is their business.
+# Getting this wrong by the takeover faces is what lost two or three stations at each end.
+# Spelled here because the grid is defined here; chassis asserts the two agree. The keyhead
+# endplate's thickness comes from nut_block, which imports THIS module -- hence the deferred
+# import, and hence the grid being built on first use rather than at import.
+_EP_CLR = 0.4                                        # chassis.EP_LEG_CLR
+
+
+def bottom_span():
+    """(x0, x1) of the chassis floor: shell face to shell face."""
+    from . import nut_block as _NB                    # deferred: nut_block imports this module
+    return ((-764 * BEAD - _NB.KEYHEAD_W) + WALL_THICKNESS + _EP_CLR,
+            BRIDGE_BASE_X1 - WALL_THICKNESS - _EP_CLR)
+
+
+def _lever_grid():
+    """Every mortise station: as many as fit across the WHOLE bottom, CENTRED, with at least
+    a two-bead wall left at each end (user, 2026-09-16).
+
+    It used to be anchored on motor 1 and run two motor pitches past the last one, then get
+    trimmed wherever a leg stub stood -- which left a full-width GAP in the bottom at each leg
+    and made the grid's phase an accident of the motor pitch. Now the bottom is drawn whole and
+    the grid is laid into it: the leftover after a whole number of pitches is split evenly
+    between the two ends, so both ends carry the same margin and neither is ever under 1.6."""
+    b0, b1 = bottom_span()
+    span = b1 - b0
+    n = int((span - 2 * MIN_WALL_2P - LEVER_MORT_W) // LEVER_PITCH) + 1
+    used = (n - 1) * LEVER_PITCH + LEVER_MORT_W
+    x0 = b0 + (span - used) / 2.0 + LEVER_MORT_W / 2.0
+    stations = [x0 + k * LEVER_PITCH for k in range(n)]
+    margin = (stations[0] - LEVER_MORT_W / 2) - b0
+    assert margin >= MIN_WALL_2P - 1e-9, (
+        "the bottom grid leaves only %.2f at its ends, under the two-bead floor" % margin)
+    return stations
+
+
+_GRID = []
+
+
+def lever_grid_x():
+    """The mortise stations, built on first use (see bottom_span)."""
+    if not _GRID:
+        _GRID.extend(_lever_grid())
+    return _GRID
+
+
+def lever_wall_x(x_target: float) -> float:
+    """The nearest WALL centre in the bottom grid -- the middle of the 3.2 between two
+    mortises. A split plane or anything else that must not land in a slot snaps here."""
+    x0 = lever_grid_x()[0] + LEVER_PITCH / 2
+    return x0 + round((x_target - x0) / LEVER_PITCH) * LEVER_PITCH
+
 BRIDGE_BASE_X1 = BRIDGE_X + BRIDGE_BASE_HALF        # +23.1  (+X face)
 
 

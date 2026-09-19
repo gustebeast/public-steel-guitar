@@ -190,6 +190,33 @@ GLOBAL_OK = {
     frozenset({"shaft_trrs_jack", "leg_column_plug"}),
     frozenset({"shaft_trrs_jack", "jack_seat_ring"}),
     frozenset({"jack_seat_ring", "leg_shaft"}),
+    # ── THE REDESIGNED LEG's blind-mate (src/leg_trrs.py), all four DESIGNED fits ──
+    # the male barrel inside the female jack IS the mate: two bought parts modelled
+    # as separate solids, engaged over BARREL_L when the leg is latched
+    frozenset({"leg_trrs_plug", "leg_trrs_jack"}),
+    # the keeper is PRESSED into the tenon's tip (THROAT_PRESS 0.1 on Ø10.5)...
+    frozenset({"fixed_tenon", "leg_trrs_throat"}),
+    # ...both of which are TPU on a bayonet, and a bayonet in an elastomer is
+    # PRELOADED on purpose: the lug is LUG_H tall in a LUG_SLOT_H slot, so ~1 mm3 of it
+    # is squashed at rest and the joint cannot rattle. See leg_trrs.LUG_H
+    frozenset({"body_adapter", "leg_trrs_sleeve"}),
+    # and the sleeve GRIPS the male overmould at SLV_SQUEEZE -- that interference is
+    # the entire retention scheme, not a clash
+    frozenset({"leg_trrs_sleeve", "leg_trrs_plug"}),
+    # and the BOTTOM joint's collar grips the same bought overmould the same way, with
+    # the same SLV_SQUEEZE -- see src.bar_trrs
+    frozenset({"bar_trrs_sleeve", "bar_trrs_plug"}),
+    # ── AND THE BAR HALF OF THAT SAME JOINT (src/bar_trrs.py, the bar-frame end) ──
+    # the same mate as the top joint's, the other way up: this time the BOUGHT female
+    # is the one fixed in the structure and the male is the half that floats
+    frozenset({"bar_trrs_plug", "bar_trrs_jack"}),
+    # the throat GRIPS the bought jack at SLV_SQUEEZE on its O7.8 body. The jack is a
+    # flangeless moulding, so this 30.6 mm3 of interference IS the up-stop -- there is
+    # no shoulder on the part to catch instead
+    frozenset({"bar_trrs_throat", "bar_trrs_jack"}),
+    # ...and the throat's own lugs are preloaded in the bar's bayonet, LUG_H tall in a
+    # TH_RUN_H slot, exactly as the two sleeves are in theirs
+    frozenset({"bar_trrs_throat", "pedal_bar_a"}),
 }
 
 # The pedal bar is a self-contained subassembly (bar pieces + the sliding
@@ -276,7 +303,30 @@ def _knee(n) -> bool:
 # pickup. The gate never reported it: TP_FAMILY accepted ANY deck contact with
 # pickup_zplate, so a real collision read as a designed one. Note the gate still
 # only checks the demo pose; the 308 mm^3 case needs a sweep across the depth window.
-DEFERRED = {frozenset({"pickup_zplate", "top_plate"})}
+# CROSS-AGENT COLLISIONS FROM THE 2026-09-17 MERGE. Neither branch was red alone; both
+# pairs appeared only when the two landed together, which is exactly what the lead's
+# build exists to find. Parked so branner's chassis/leg/deck round is not held behind two
+# other agents (user: these must not block merges), each with its owner named.
+DEFERRED = {frozenset({"pickup_zplate", "top_plate"}),
+            # ~750 mm3 per segment, x3. bronner's optical cable run (a 1.6 bundle at
+            # y -129, z -9, the board's whole length) crosses the -Y rail branner CLOSED
+            # in the same round. OWNER bronner, with branner: the route needs a way
+            # through, or the rail needs a port. Nobody has guessed at it.
+            frozenset({"chassis", "optical_cables"}),
+            # brenner's leg blind-mate against branner's decoupled body adapter at the
+            # -X/+Y corner: the patch lead 379 mm3, the plug 140 mm3. OWNER brenner --
+            # body_adapter lives in leg_stack, their registered scope, so both halves of
+            # this one are theirs.
+            frozenset({"body_adapter", "leg_trrs_patch"}),
+            frozenset({"body_adapter", "leg_trrs_plug"}),
+            # THE BANK'S END POWER RUNS, 2026-09-18. bronner's round moved the hot and
+            # ground runs at the -X end; they now clip motor 9 (53.9 / 47.8 mm3) and then
+            # the chassis (4.1 / 3.3). These are REAL routing bugs -- a wire clipping a
+            # solid is exactly what WIRE_OK exists to catch -- parked only because the
+            # user's rule is that they must not block merges. OWNER bronner: the route is
+            # theirs, and the 30+ commits of electrical work behind it are not.
+            frozenset({"wire_pwr_hot", "motor"}), frozenset({"wire_pwr_gnd", "motor"}),
+            frozenset({"chassis", "wire_pwr_hot"}), frozenset({"chassis", "wire_pwr_gnd"})}
 
 # DEFERRED CLASSES, by pattern. Some deferrals are not one pair but one fault repeated
 # per station -- five knee levers, five pedals -- and listing 55 frozensets would hide
@@ -293,8 +343,11 @@ DEFERRED_RULES = (
      "to be redesigned around the boards later"),
     (re.compile(r"^(?:[a-z0-9]+_)*k[lv]_[A-Z]+\d+$"), re.compile(r"housing$"),
      "lever board parts vs their knee/lever housing (25 pairs, ~207 mm3). USER DEFERRED; "
-     "OWNER branner -- the cradle was sized to a plain box, and bronner's board is at its "
-     "floor (21.4 against J1's 21.29 courtyard), so the room has to come from the housing"),
+     "OWNER branner -- the cradle was sized to a plain box. ⚠ THE ORIGINAL REASON IS VOID "
+     "(2026-09-19): it said bronner's board was at its floor at 28 x 21.4, so the room had "
+     "to come from the housing. The user then asked for ONE connector family across both "
+     "buses, and the board grew to 34 x 28 to take the S8B-XH-A -- +59% area. The housing "
+     "needs RE-CUTTING to the new outline, not relieving by a millimetre"),
 )
 _DEFERRED_SEEN = set()
 
