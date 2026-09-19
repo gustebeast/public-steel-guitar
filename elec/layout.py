@@ -1141,12 +1141,21 @@ def tidy_router_vias(board, notes, min_gap_mm=0.25):
     default 0.25 mm hole-to-hole rule. JLCPCB's published requirement is "Via Hole-to-Hole
     Spacing 0.2mm", so it passes -- by 2.5 MICRONS, against a stated hole position
     tolerance of +-0.05 mm. Nominally legal and practically thin: drilled at the far ends
-    of that tolerance the two holes meet. It is left standing rather than merged because
-    the right fix is upstream, in the stitcher, and it is the SAME root cause as the
-    co-located drills drop_redundant_pth_vias exists for -- _stitch_plane_pads skips
-    same-net obstacles, so nothing stops it putting a stitch via next to another one.
-    Fixing it there means a pre-route change, which this file's history says to measure
-    rather than assume.
+    of that tolerance the two holes meet.
+
+    ⚠ AND THE FIRST GUESS AT WHOSE FAULT IT IS WAS WRONG, which is worth keeping.
+    This note used to say the fix belonged upstream in the stitcher, by analogy with the
+    co-located drills. It does not: _stitch_plane_pads ALREADY refuses a site within
+    via_d + clr (0.8 mm) of a via it has placed, and this pair is 0.50 mm apart, so a
+    stitch via is not what landed second. The other one comes from add_missing_vias or
+    link_close_gaps, which run AFTER routing and place a via at a point they do not get
+    to choose -- the spot where a net changes layer with nothing carrying it. Making
+    those refuse on hole spacing would trade a warning for an OPEN NET, which is the
+    same "too strict does not fail safe" trap recorded beside the hole-vs-hole attempt.
+
+    So the movable party is the STITCH via, and the fix is to nudge it after the required
+    vias are down -- rescue_stray_stitches already moves stitch vias for a different
+    reason and is the place to build it. Left specified rather than half-built.
 
     ⚠ STITCHING VIAS ARE NEVER MERGED, only reported. They are placed deliberately, a
     later pass re-checks that each one landed in its plane, and this routine has no way
