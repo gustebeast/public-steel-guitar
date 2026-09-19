@@ -93,6 +93,46 @@ CABLE_BEND_R = 22.8     # ...AND ITS PUBLISHED MINIMUM BEND RADIUS, which is 6x 
                         # module bends the lead near it -- the tightest here is the
                         # adapter's fold, in stripped 28 AWG, not in the jacket -- but
                         # anything that COILS this cable has to answer to it
+CABLE_BEND_STATIC = 7.5
+                        # WHAT WE ACTUALLY DESIGN TO, and it is BELOW the published
+                        # 22.8 on purpose. The licence is the duty cycle (user,
+                        # 2026-09-18): THIS LEAD IS SET ONCE. The leg's height is
+                        # chosen when the instrument is first set up and again only if
+                        # it is ever resold -- so the coil is a static form that is
+                        # bent once, not a flexing member. Three things follow:
+                        #
+                        #  * FATIGUE IS OFF THE TABLE. The usual reason to respect a
+                        #    bend radius is cycles, and there are none.
+                        #  * WHAT BREAKS AT 10.4 IS THE FOIL, and the foil is doing no
+                        #    work here. This cable's shield is one of the four CIRCUIT
+                        #    conductors (the assembly drawing's wiring table: D ->
+                        #    shield -> D, and sleeve = GND), the spiral serve carries
+                        #    that current and survives bending, and the 3.5 mm
+                        #    connector has no shield continuity through the mate
+                        #    anyway. CAN_H/CAN_L are not a twisted pair in a round 4C
+                        #    cable either, so nothing was screening them to begin with.
+                        #  * THE STRAIN IS SURVIVABLE ONCE. Outermost conductor at
+                        #    R 7.5 is ~15% against ~5% at the published radius;
+                        #    annealed copper breaks around 20-30% and stranded
+                        #    conductors redistribute by strand slip. Tight, and a
+                        #    number to respect if the duty ever changes.
+                        #
+                        # 7.5 IS NOT A ROUND NUMBER I LIKED, it is what the geometry
+                        # imposes. The coil NARROWS as it stretches -- a helix holding
+                        # a fixed cable length over a growing span has no choice -- so
+                        # the cavity's 10.4 describes the RELAXED coil and the worst
+                        # case is the stretched one at 7.9. The floor sits just under
+                        # that. There is no turn count that improves it: more turns
+                        # narrow faster, fewer will not fit the bore relaxed.
+                        #
+                        # AND NOTHING BETTER EXISTS TO BUY. Tensility's whole 2750-part
+                        # catalogue holds exactly two 4C audio assemblies (10-02135 and
+                        # 10-02133) and both use this same wire at O3.8 / 22.8. The
+                        # wider market for 4-pole 3.5 mm leads is consumer headphone
+                        # cable, which does not publish a bend radius at all -- which
+                        # is why this project is on Tensility in the first place.
+                        # A thinner lead would genuinely help (O3.0 at 3xOD clears the
+                        # cavity), but not at the price of an unpublished datasheet.
 CABLE_D = 3.8           # the lead, either side (10-02135's is 3.8). The leg's coil is
                         # slid on over the far PLUG, not the cable, so the cable's own
                         # diameter is no longer a sourcing constraint -- the O6.6 coil

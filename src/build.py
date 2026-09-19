@@ -292,13 +292,19 @@ for _i, _seg in enumerate(chassis_segments):     # chassis split into dovetailed
                               "and NO seam fastener — the deck, endplates and finally the 4 leg screws "
                               "close the seam's Z axis. + tee cradles)")
 # Section-joint coupon (the LEG stack's octagon at the real 28 mm width — legs.SEC_W)
-# COIL MANDREL -- UNREGISTERED, and deliberately. src/coil_mandrel.py sizes a coil
-# at r 9.5 against the 22.8 minimum bend radius Tensility publish for 10-02135, so
-# it asserts on import and CANNOT be built until that is resolved (accept the
-# overbend, move the slack store out of the leg, or source a different lead -- see
-# the block at the top of the module and docs/leg-trrs-routing.md).
-# Left out of PARTS rather than left in to fail, so the lead's build is not red on
-# a decision that is not the build's to make. Re-register both entries when it is.
+# COIL MANDREL -- a SHOP TOOL, registered for EXPORT but never in the assembly.
+# Re-registered 2026-09-18: it was pulled while the 22.8 published bend radius was
+# unresolved, and the user's duty-cycle answer resolved it -- the lead is SET ONCE,
+# so the coil is a static form and leg_trrs.CABLE_BEND_STATIC records the deviation
+# and its licence. coil_mandrel still asserts against that floor.
+PARTS["coil_mandrel"] = (
+    lambda: heal(__import__("src.coil_mandrel", fromlist=["e"]).mandrel()),
+    "tools/coil_mandrel.step",
+    "TOOL — inner mandrel for winding the leg's TRRS lead into a 7-turn coil. Barrel Ø15.2 with a helical pitch rib, flange-down on a Ø27.8 base, TAIL_RUN of plain barrel each side so both tails leave AXIAL, and a full-thickness slit so the starting tail carries on DOWN through the flange. PA6-GF, printed SOLID")
+PARTS["coil_mandrel_sleeve"] = (
+    lambda: heal(__import__("src.coil_mandrel", fromlist=["e"]).sleeve()),
+    "tools/coil_mandrel_sleeve.step",
+    "TOOL — the mandrel's outer sleeve, bore Ø23.0. It caps the coil's diameter so the mean lands on arithmetic rather than on spring-back, and holds both axial tails against the barrel while they set. PA6-GF, printed SOLID")
 
 PARTS["test_section_tenon"] = (
     lambda: heal(__import__("src.joint_coupon", fromlist=["e"]).section_tenon_coupon()),
