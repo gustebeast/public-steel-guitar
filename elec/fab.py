@@ -255,6 +255,17 @@ def fab(board):
     v = subprocess.run([KICAD_PY, os.path.join(HERE, "verify.py"), stem],
                        capture_output=True, text=True)
     if v.returncode:
+        # ⚠ AND THE STALE ZIP GOES HERE TOO. The unconnected-items refusal above
+        # deletes it, on the principle that a board which cannot be packaged must not
+        # appear packaged -- and this refusal, added later, did not. Found by making a
+        # budget fail on purpose to check the gate bites: it does, and it left the
+        # previous output_panel.zip in the fab directory, described by nothing. A
+        # refusal that leaves the artefact behind is the weaker half of a gate.
+        _stale = os.path.join(FAB_DIR, "%s.zip" % board)
+        if os.path.isfile(_stale):
+            os.remove(_stale)
+            print("  removed the previous %s.zip -- it describes an older board and "
+                  "this one cannot be packaged" % board)
         raise SystemExit("%s: FAILED its declared high-speed budgets --\n%s"
                          % (board, (v.stdout or "") + (v.stderr or "")[-400:]))
 
