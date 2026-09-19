@@ -1,15 +1,8 @@
 ** Drc report for output_panel.kicad_pcb **
-** Created on 2026-09-19T12:40:26 **
+** Created on 2026-09-19T13:28:47 **
 ** Report includes: Errors, Warnings **
 
-** Found 3 DRC violations **
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; warning
-    @(94.7553 mm, 102.9553 mm): Via [SWDIO] on F.Cu - B.Cu
-[hole_to_hole]: Drilled hole too close to other hole (board setup constraints min 0.2500 mm; actual 0.0920 mm)
-    Rule: board setup constraints; warning
-    @(107.2201 mm, 106.2846 mm): Via [+3V3] on F.Cu - B.Cu
-    @(107.2201 mm, 105.8926 mm): Via [+3V3] on F.Cu - B.Cu
+** Found 1 DRC violations **
 [hole_to_hole]: Drilled hole too close to other hole (board setup constraints min 0.2500 mm; actual 0.2025 mm)
     Rule: board setup constraints; warning
     @(99.9500 mm, 105.6000 mm): Via [GND] on F.Cu - B.Cu
