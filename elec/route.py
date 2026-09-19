@@ -464,6 +464,17 @@ def route(stem, passes=None, timeout=3600, incremental=False, dsn_only=False):
         print("  dropped in %d via(s) where a net changed layer with nothing to carry it"
               % n_via)
         board.BuildConnectivity()
+    # ⚠ AND TAKE BACK THE VIAS THE ROUTER DRILLED INTO THROUGH-HOLE PADS. Freerouting
+    # changes layer on a THT pad for free, which is electrically true and leaves a drill
+    # inside an already-drilled hole. DRC grades it holes_co_located at severity WARNING,
+    # so finish.py's ERROR count stays at zero and nobody looks. See drop_redundant_pth_vias
+    # for why removing them is safe HERE and was not before routing.
+    layout.drop_redundant_pth_vias(board)
+    # ⚠ tidy_router_vias IS DELIBERATELY NOT CALLED HERE. output_panel's remaining
+    # DRC warnings -- one dangling via and two same-net pairs drilled 0.39/0.50 mm apart
+    # -- are real, but the pass written to clear them failed twice on this board and the
+    # function records how. Until it uses KiCad's own connectivity instead of measuring
+    # geometry, calling it deletes plane stitching.
     n_link = layout.link_close_gaps(board, layout._outline_pts(notes),
                                    same_part_only=False)
     if n_link:
