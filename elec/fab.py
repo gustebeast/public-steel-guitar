@@ -123,6 +123,18 @@ LCSC = {
 # value that is neither sourced nor generic nor listed below FAILS THE BUILD,
 # which means changing a part number forces you to come here and say so.
 OPEN_VALUES = frozenset({
+    "B2B-XH-A",            # ⚠ A PART I ADDED AND DID NOT SOURCE. output_panel's J9 went
+                           # from a 4-way to a 2-way on 2026-09-18 (the optical feed needs
+                           # one ground and one rail, and the shorter land freed 5 mm of a
+                           # full connector row). The 2-way is a real JST part -- unlike
+                           # S2B-XH-SM4-TB, which I tried to use the same day and which
+                           # does not exist, because the SMT SIDE-ENTRY line starts at
+                           # 4-way -- but I have not got a verified LCSC code for it.
+                           # B4B-XH-A is C144395; the 2-way's code is NOT derivable from
+                           # that and this file's whole point is that a guessed part
+                           # number is the one error nothing downstream catches.
+                           # Declared OPEN so the package builds and the gap stays
+                           # COUNTED. Resolve before ordering.
     "NMJ4HCD2",            # 1/4 in jack. JLCPCB lists it (C18185363) at ZERO
                            # stock, 2026-09-17 -- a listing is not a source
     "USB1046-GF-0180",     # GCT USB-A. Not listed at JLCPCB (2026-09-17); the

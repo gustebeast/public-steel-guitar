@@ -1728,8 +1728,27 @@ BOARD_NOTES = {
          "why": "60 MHz over 34.5 mm = 207 ps of flight; 12 mm of mismatch is 72 ps "
                 "against a 16,670 ps bit period. Loose ON PURPOSE -- tightening it "
                 "would fail builds for an effect four orders of magnitude below what "
-                "matters on this bus."},
+                "matters on this bus. ⚠ AND THE BOARD MEASURES 55.21 mm (24.5..79.7 "
+                "over 12 nets), which FAILS this budget and is, by the very argument "
+                "above, still only ~331 ps or 2% of the bit period. The budget was "
+                "picked as 'loose', not derived: 12 mm does not follow from any "
+                "number in this sentence, and the routing needs more than that on a "
+                "board where ULPI_DIR runs 79.7 mm. Left FAILING on purpose rather "
+                "than relaxed, because widening a budget to silence a check is how a "
+                "real timing problem gets hidden later. To close it properly, derive "
+                "the budget from the PHY's tSU/tHD in the USB3343 datasheet instead "
+                "of from the bit period, and length-match or re-route to whatever "
+                "that gives."},
+        # ⚠ MEASURED PAST THE USB-C's PAD MERGE. A USB-C carries D+ on BOTH A6 and B6
+        # and D- on both A7 and B7, so layout._flip_merge joins each net's two pads at
+        # the connector -- and that join deliberately takes ONE rail to an inner layer
+        # (which one is decided by the shorter link). Counting that stub, this group
+        # read "does not share a layer set" and 3.28 mm of skew against a 2.50 budget;
+        # measured past it, the coupled RUN is F.Cu for both rails and the skew is
+        # 1.08 mm. The stub is a pad join, not transmission line, and the numbers that
+        # matter are the ones for the coupled run.
         {"name": "USB_HS", "max_skew_mm": 2.5, "same_layer": True, "max_vias": 2,
+         "merge_at": "J1", "merge_r": 4.0,
          "nets": ["USB_DP", "USB_DM"],
          "why": "480 Mbps, 2,080 ps per bit over a 25 mm run. Skew has room; what has "
                 "to hold is that the two stay a PAIR on the same layers (differential "
