@@ -470,11 +470,6 @@ def route(stem, passes=None, timeout=3600, incremental=False, dsn_only=False):
     # so finish.py's ERROR count stays at zero and nobody looks. See drop_redundant_pth_vias
     # for why removing them is safe HERE and was not before routing.
     layout.drop_redundant_pth_vias(board)
-    # ⚠ tidy_router_vias IS DELIBERATELY NOT CALLED HERE. output_panel's remaining
-    # DRC warnings -- one dangling via and two same-net pairs drilled 0.39/0.50 mm apart
-    # -- are real, but the pass written to clear them failed twice on this board and the
-    # function records how. Until it uses KiCad's own connectivity instead of measuring
-    # geometry, calling it deletes plane stitching.
     n_link = layout.link_close_gaps(board, layout._outline_pts(notes),
                                    same_part_only=False)
     if n_link:
@@ -509,6 +504,14 @@ def route(stem, passes=None, timeout=3600, incremental=False, dsn_only=False):
               % (len(notes.get("repair_vias", [])), len(notes.get("repair_tracks", []))))
         board.BuildConnectivity()
 
+    # ⚠ THE ROUTER'S LEAVINGS GO LAST, AFTER EVERY PASS THAT CAN ADD A VIA. Vias
+    # attached to nothing, and same-net vias drilled so close that the laminate between
+    # them breaks out, are both DRC WARNINGS -- invisible to the error count. Called
+    # BEFORE link_close_gaps this missed a pair outright, because link_close_gaps lays
+    # vias of its own and one of them landed 0.50 mm from an existing GND stitch: the
+    # pass cannot see copper that does not exist yet, and every earlier slot in this
+    # sequence has something after it that adds more. So it runs at the end.
+    layout.tidy_router_vias(board, notes)
     # ⚠ COUNT BEFORE REMOVING. board.Remove() leaves the track container in a state
     # where GetTracks() raises -- the same SWIG ownership hazard that made fp.Remove()
     # corrupt the footprint IO plugin earlier in this file's history. The rule that
