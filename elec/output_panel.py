@@ -138,6 +138,18 @@ def _usba(tag, desc):
 
 
 @subcircuit
+# ⚠ EVERY REF IS PINNED, NOT JUST THE PASSIVES. _r and _c were given ref=tag earlier
+# today after skidl's creation-order numbering silently renamed three resistors on
+# lever_sensor. The CONNECTORS were left relying on the same coincidence, and adding J10
+# broke it exactly the same way: the netlist came out J1-J7, J9, J10, J11 with NO J8,
+# because the explicitly-named J10 displaced the screw terminal that used to autonumber
+# there. BOARD_NOTES["placements"] still keyed J8, so layout stopped with "no placement
+# given for: J10, J11" -- and this board had been unbuildable since J10 was added,
+# because I added the part and never routed the board.
+#
+# Same defect, third occurrence, after I had already written the fix for it. Pinning one
+# family and leaving the rest is not a fix, it is a smaller version of the bug.
+
 def output_panel():
     # ⚠ EVERY PART BELOW IS CREATED IN THE ORDER ITS REF SHOULD TAKE. SKiDL numbers
     # a ref_prefix group by CREATION order and IGNORES the tag, so building a part
@@ -218,7 +230,7 @@ def output_panel():
     # lugs. Its nut clamps the endplate, so the PANEL takes the cable-yank load
     # rather than the PCB.
     outp = Net("JACK_TIP")
-    j5 = Part(name="NMJ4HCD2", ref_prefix="J", tag="J5", dest="NETLIST", tool="skidl",
+    j5 = Part(name="NMJ4HCD2", ref_prefix="J", ref="J5", tag="J5", dest="NETLIST", tool="skidl",
               value="NMJ4HCD2", description="1/4 in TS output, PCB mount, panel bushing",
               footprint=TS_FP,
               pins=[Pin(num="T", name="TIP", func=P), Pin(num="TN", name="TIP_N", func=P),
@@ -257,7 +269,7 @@ def output_panel():
     # written down.
     # THE RESPIN ADDS ONE TAP TO THAT ISLAND -- U5's input -- and that tap is the
     # only thing on it besides the two connectors.
-    j6 = Part(name="PJ-102AH", ref_prefix="J", tag="J6", dest="NETLIST", tool="skidl",
+    j6 = Part(name="PJ-102AH", ref_prefix="J", ref="J6", tag="J6", dest="NETLIST", tool="skidl",
               value="PJ-102AH", description="24 V inlet, PCB mount, panel bushing",
               footprint=DC_FP,
               pins=[Pin(num=1, name="TIP", func=P), Pin(num=2, name="SLEEVE", func=P),
@@ -267,7 +279,7 @@ def output_panel():
     # Trunk out on the instrument's standard 4-way, TWO CONTACTS PER RAIL. XH is
     # rated 3 A per contact and BOM.md sizes the 24 V bus at under 5 A, so one
     # contact would sit over its rating and two sit comfortably under.
-    j7 = Part(name="B4B-XH-A", ref_prefix="J", tag="J7", dest="NETLIST", tool="skidl",
+    j7 = Part(name="B4B-XH-A", ref_prefix="J", ref="J7", tag="J7", dest="NETLIST", tool="skidl",
               value="B4B-XH-A", description="24 V trunk out (2 contacts per rail)",
               footprint=XH_FP,
               pins=[Pin(num=i + 1, name=n, func=P)
@@ -312,7 +324,7 @@ def output_panel():
     # neither soldered nor crimped. A pickup arrives as two bare tinned leads; a
     # screw terminal takes them as they are.
     pk_hot = Net("PICKUP_HOT")
-    j8 = Part(name="SCREW_2", ref_prefix="J", tag="J8", dest="NETLIST", tool="skidl",
+    j8 = Part(name="SCREW_2", ref_prefix="J", ref="J8", tag="J8", dest="NETLIST", tool="skidl",
               value="MX126-5.0-02P", description="magnetic pickup in, screw terminals",
               footprint=TERM_FP,
               pins=[Pin(num=1, name="HOT", func=P), Pin(num=2, name="RET", func=P)])
@@ -393,7 +405,7 @@ def output_panel():
     # the 5-way keying proposal, available here because the current never needed four.
     #
     # The cable and the optical board's J2 must change with it: both ends become 2-way.
-    j9 = Part(name="B2B-XH-A", ref_prefix="J", tag="J9", dest="NETLIST", tool="skidl",
+    j9 = Part(name="B2B-XH-A", ref_prefix="J", ref="J9", tag="J9", dest="NETLIST", tool="skidl",
               value="B2B-XH-A", description="24 V out to the optical pickup board",
               footprint="Connector_JST:JST_XH_B2B-XH-A_1x02_P2.50mm_Vertical",
               pins=[Pin(num=i + 1, name=n, func=P)
@@ -424,7 +436,7 @@ def output_panel():
                  18, 49, 12, 69,                        # VSS + the exposed pad
                  5, 6, 7,                               # OSC_IN, OSC_OUT, NRST
                  61, 62, 35, 36, 37, 38, 25, 48, 52, 63)]
-    u1 = Part(name="CH32V307WCU6", ref_prefix="U", tag="U1", dest="NETLIST", tool="skidl",
+    u1 = Part(name="CH32V307WCU6", ref_prefix="U", ref="U1", tag="U1", dest="NETLIST", tool="skidl",
               value="CH32V307WCU6",
               description="RISC-V MCU, USB2.0 HS with INTERNAL PHY (LCSC C5142795)",
               footprint=MCU_FP, pins=mcu_pins)
@@ -503,7 +515,7 @@ def output_panel():
     # MD1/MD0 low = SLAVE mode: the MCU owns BCK and LRCK, which is what keeps the
     # ADC and the DAC on the same clock.
     pk_buf = Net("PICKUP_BUF")
-    u2 = Part(name="PCM1808PWR", ref_prefix="U", tag="U2", dest="NETLIST", tool="skidl",
+    u2 = Part(name="PCM1808PWR", ref_prefix="U", ref="U2", tag="U2", dest="NETLIST", tool="skidl",
               value="PCM1808PWR", description="24-bit 99 dB 96 kHz stereo ADC",
               footprint=ADC_FP,
               pins=[Pin(num=i, func=P) for i in range(1, 17)])
@@ -523,7 +535,7 @@ def output_panel():
 
     # ── U3: the DAC -- the Pi's processed audio, made analog again ───────────
     proc = Net("AUDIO_PROC")
-    u3 = Part(name="DAC_I2S", ref_prefix="U", tag="U3", dest="NETLIST", tool="skidl",
+    u3 = Part(name="DAC_I2S", ref_prefix="U", ref="U3", tag="U3", dest="NETLIST", tool="skidl",
               value="PCM5102A-class", description="I2S stereo DAC, no MCLK needed",
               footprint=DAC_FP,
               pins=[Pin(num=1, name="LRCK", func=P), Pin(num=2, name="DIN", func=P),
@@ -555,7 +567,7 @@ def output_panel():
     # Generic 2-port pinout: 1 UDP 2 UDM (upstream) 3 VDD 4 GND 5 XI 6 XO
     #                        7 DP1 8 DM1 9 DP2 10 DM2, 11-23 unused, 24 GND/EP.
     hub_xi, hub_xo = Net("HUB_XI"), Net("HUB_XO")
-    u4 = Part(name="USB_HUB", ref_prefix="U", tag="U4", dest="NETLIST", tool="skidl",
+    u4 = Part(name="USB_HUB", ref_prefix="U", ref="U4", tag="U4", dest="NETLIST", tool="skidl",
               value="CH334-class HS hub", description="2-port USB 2.0 HIGH-SPEED hub: "
               "the MCU and the optical board reach the Pi on ONE cable",
               footprint=HUB_FP, pins=[Pin(num=i, func=P) for i in range(1, 25)])
@@ -606,7 +618,7 @@ def output_panel():
     # passes signal -- and it also means the worst-case supply current and the worst-case
     # audio path are the same state, not opposite ones.
 
-    u5 = Part(name="LMR16006XDDCR", ref_prefix="U", tag="U5", dest="NETLIST", tool="skidl",
+    u5 = Part(name="LMR16006XDDCR", ref_prefix="U", ref="U5", tag="U5", dest="NETLIST", tool="skidl",
               value="LMR16006XDDCR", description="60 V 0.6 A buck, 24 V -> 5 V "
               "(LCSC C87080)", footprint="Package_TO_SOT_SMD:SOT-23-6",
               pins=[Pin(num=i, func=P) for i in range(1, 7)])
@@ -618,7 +630,7 @@ def output_panel():
     sw += u5[6]
 
     # ── U6: 5 -> 3.3 V for the MCU, the hub and the converters' digital side ─
-    u6 = Part(name="LDO_3V3", ref_prefix="U", tag="U6", dest="NETLIST", tool="skidl",
+    u6 = Part(name="LDO_3V3", ref_prefix="U", ref="U6", tag="U6", dest="NETLIST", tool="skidl",
               value="AP2112K-3.3TRG1", description="5 V -> 3V3, AFTER the bead",
               footprint="Package_TO_SOT_SMD:SOT-23-5",
               pins=[Pin(num=i, func=P) for i in range(1, 6)])
@@ -629,7 +641,7 @@ def output_panel():
 
     # ── U7/U8: the two analog buffers ────────────────────────────────────────
     sel, buf = Net("AUDIO_SEL"), Net("BUF_OUT")
-    u7 = Part(name="OPAMP", ref_prefix="U", tag="U7", dest="NETLIST", tool="skidl",
+    u7 = Part(name="OPAMP", ref_prefix="U", ref="U7", tag="U7", dest="NETLIST", tool="skidl",
               value="TLV9061IDBVR", description="output buffer -- drives the TS jack",
               footprint="Package_TO_SOT_SMD:SOT-23-5",
               pins=[Pin(num=1, name="OUT", func=P), Pin(num=2, name="V-", func=P),
@@ -644,7 +656,7 @@ def output_panel():
     # pickup's tone IS its loading -- hang two inputs straight on the coil and you
     # have changed the instrument's sound. One buffer, two taps off its output, so
     # the coil sees a single high impedance whichever mode is selected.
-    u8 = Part(name="OPAMP", ref_prefix="U", tag="U8", dest="NETLIST", tool="skidl",
+    u8 = Part(name="OPAMP", ref_prefix="U", ref="U8", tag="U8", dest="NETLIST", tool="skidl",
               value="TLV9061IDBVR", description="pickup buffer -- feeds BOTH the "
               "relay's direct contact and the ADC, so the coil sees one load",
               footprint="Package_TO_SOT_SMD:SOT-23-5",
@@ -685,14 +697,14 @@ def output_panel():
     coil += q1[3]
 
     # ── crystals ─────────────────────────────────────────────────────────────
-    y1 = Part(name="Crystal", ref_prefix="Y", tag="Y1", dest="NETLIST", tool="skidl",
+    y1 = Part(name="Crystal", ref_prefix="Y", ref="Y1", tag="Y1", dest="NETLIST", tool="skidl",
               value="8MHz", description="MCU HSE -- the PLL source for USB HS",
               footprint="Crystal:Crystal_SMD_3225-4Pin_3.2x2.5mm",
               pins=[Pin(num=i, func=P) for i in range(1, 5)])
     osc_in += y1[1]
     osc_out += y1[3]
     gnd += y1[2], y1[4]
-    y2 = Part(name="Crystal", ref_prefix="Y", tag="Y2", dest="NETLIST", tool="skidl",
+    y2 = Part(name="Crystal", ref_prefix="Y", ref="Y2", tag="Y2", dest="NETLIST", tool="skidl",
               value="12MHz", description="hub reference",
               footprint="Crystal:Crystal_SMD_3225-4Pin_3.2x2.5mm",
               pins=[Pin(num=i, func=P) for i in range(1, 5)])
@@ -701,7 +713,7 @@ def output_panel():
     gnd += y2[2], y2[4]
 
     # ── L1 / FB1: the buck's output, and the ONE place the rails join ────────
-    l1 = Part(name="L", ref_prefix="L", tag="L1", dest="NETLIST", tool="skidl",
+    l1 = Part(name="L", ref_prefix="L", ref="L1", tag="L1", dest="NETLIST", tool="skidl",
               value="47uH", description="buck output inductor, SHIELDED -- it sits on "
               "the same board as a magnetic pickup's preamp",
               footprint="Inductor_SMD:L_Taiyo-Yuden_NR-30xx",
@@ -713,7 +725,7 @@ def output_panel():
     # domains meet, deliberately and in one identifiable place. Route it as the
     # single crossing it is -- if copper joins the rails anywhere else, this part
     # is decoration.
-    fb1 = Part(name="FerriteBead", ref_prefix="FB", tag="FB1", dest="NETLIST",
+    fb1 = Part(name="FerriteBead", ref_prefix="FB", ref="FB1", tag="FB1", dest="NETLIST",
                tool="skidl", value="600R@100MHz",
                description="5 V rail split: buck side to board side",
                footprint="Inductor_SMD:L_0603_1608Metric",
@@ -944,6 +956,19 @@ BOARD_NOTES = {
     # board -- the pour reaches them, but a pour is what routing can orphan, which is
     # the whole reason the plane is there. Every GND pad gets its own via down.
     "stitch_nets": ("GND",),
+    # ⚠ THE USB SHIELD TABS REACH THE PLANE THROUGH THEIR OWN BARRELS. J2.SH and J4.SH
+    # are the shells' through-hole mounting tabs: big PTH pads whose plated barrel already
+    # passes every layer, so a stitching via beside them adds copper that connects
+    # nothing new. They used to be stitched via-in-pad -- a via dropped at the pad centre,
+    # straight into the pad's own hole, which DRC reports as holes_co_located and grades
+    # a WARNING, so it sat unnoticed behind a "0 violations" summary.
+    #
+    # With via-in-pad correctly refused for through-hole pads, these two have no room
+    # BESIDE them either, and layout stopped the build rather than leave them unstitched.
+    # That stop is right in general (an SMD pad on the pour alone can be orphaned by
+    # routing) and wrong for these two specifically, which is exactly what this list is
+    # for: a pad that really can live without a via, named with the reason.
+    "stitch_exceptions": ("J2.SH", "J4.SH"),
     # ⚠ NO local_nets HERE EITHER, AND NOW THERE IS A PATTERN. Measured on three
     # boards: it takes lever_sensor from 4 unconnected to 7, this board from 2 to 5, and
     # the optical board from 26 to 12. Pre-laying copper is not a general improvement --
@@ -1077,6 +1102,16 @@ BOARD_NOTES = {
         # room to spare -- the comment this line used to carry, "on the same island", was
         # the intent and not the measurement.
         "J9": (16.00, -28.00, 0.0),   # the optical board's feed
+        # ⚠ J10 IS ON THE +X EDGE, NOT THE -Y ROW, BECAUSE THAT ROW IS FULL. The -Y edge
+        # already carries U5, C3, C2, D6, J7, J9 and the barrel jack J6, and measured off
+        # the board's real courtyards the widest remaining gap there is 5.25 mm against a
+        # 13.40 mm connector. My first two guesses (x 17, then x 28) were both estimates
+        # and the second landed three of J10's pads inside J6's courtyard -- the fourth
+        # time today a part was placed by eye and rejected by DRC.
+        #
+        # Sited by searching the whole board against every real courtyard, preferring a
+        # board edge so the cable can leave: +X edge, hard against it.
+        "J10": (29.70, -8.70, 0.0),
         "D6": (-12.00, -28.00, 0.0),
         "C2": (-20.00, -28.00, 0.0),
         "C3": (-25.00, -28.00, 0.0),
