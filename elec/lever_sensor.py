@@ -43,6 +43,7 @@ import re  # noqa: E402
 
 from skidl import ERC, Net, Part, Pin, generate_netlist, subcircuit  # noqa: E402
 
+import harness                                      # noqa: E402
 import netcheck                                     # noqa: E402
 
 P = Pin.types.PASSIVE
@@ -153,8 +154,7 @@ def lever_sensor():
               description="CAN trunk in (1-4) and out (5-8), LCSC C157914",
               footprint="Connector_JST:JST_XH_S8B-XH-A_1x08_P2.50mm_Horizontal",
               pins=[Pin(num=i + 1, name=n, func=P) for i, n in enumerate(
-                  ("GND_IN", "V24_IN", "CANH_IN", "CANL_IN",
-                   "GND_OUT", "V24_OUT", "CANH_OUT", "CANL_OUT"))])
+                  harness.xh_trunk_pins())])
     gnd += j1[1], j1[5]
     v24 += j1[2], j1[6]
     can_h += j1[3], j1[7]

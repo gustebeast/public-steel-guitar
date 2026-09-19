@@ -51,12 +51,15 @@ import json  # noqa: E402
 
 from skidl import ERC, Net, Part, Pin, generate_netlist, subcircuit  # noqa: E402
 
+import harness                                      # noqa: E402
 import netcheck                                     # noqa: E402
 
 P = Pin.types.PASSIVE
 I, O, PWR = Pin.types.INPUT, Pin.types.OUTPUT, Pin.types.PWRIN
 
-XH_PINOUT = ("GND", "V24", "CAN_H", "CAN_L")     # same order as every other board
+# ⚠ THIS USED TO BE ITS OWN COPY, annotated "same order as every other board" --
+# a claim with nothing checking it. It is now the same OBJECT as every other board.
+XH_PINOUT = harness.XH_PINOUT
 MCU_FP = "Package_DFN_QFN:QFN-68-1EP_8x8mm_P0.4mm_EP5.2x5.2mm"
 XH_FP = "Connector_JST:JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical"
 USB_FP = "Connector_USB:USB_C_Receptacle_HRO_TYPE-C-31-M-12"
