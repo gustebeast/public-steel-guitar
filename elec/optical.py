@@ -1772,7 +1772,15 @@ BOARD_NOTES = {
         # measured past it, the coupled RUN is F.Cu for both rails and the skew is
         # 1.08 mm. The stub is a pad join, not transmission line, and the numbers that
         # matter are the ones for the coupled run.
-        {"name": "USB_HS", "max_skew_mm": 2.5, "same_layer": True, "max_vias": 2,
+        # ⚠ 2.5 -> 8.3 mm, DERIVED. This limit was never derived; the `why` below
+        # argues skew "has room" and that pairness is what matters, which supports a
+        # loose budget and then wrote a tight one. It only came up because output_panel
+        # inherited the same 2.5 and a pair missed it at 2.98. Two independent bases --
+        # 10 % of the USB 2.0 HS 500 ps minimum rise time, and half of USB-IF's ~100 ps
+        # cable-assembly skew budget -- both give 50 ps, which at 6.0 ps/mm is 8.3 mm.
+        # This board measures 1.08 mm and passed either way; the number is fixed because
+        # it was wrong, not because it was failing. See output_panel.py for the working.
+        {"name": "USB_HS", "max_skew_mm": 8.3, "same_layer": True, "max_vias": 2,
          "merge_at": "J1", "merge_r": 4.0,
          "nets": ["USB_DP", "USB_DM"],
          "why": "480 Mbps, 2,080 ps per bit over a 25 mm run. Skew has room; what has "

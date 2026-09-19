@@ -944,6 +944,69 @@ BOARD_NOTES = {
     # This was found and fixed on the optical board and the fix never reached the other
     # three 4-layer boards, because it was made where the symptom appeared instead of
     # where the property belonged. A board that pours a plane declares it.
+    # ⚠ THIS BOARD DECLARED NO MATCHED GROUPS AT ALL, and it carries FOUR USB 2.0
+    # high-speed pairs. verify.py exists for exactly the failure that leaves: "a router
+    # can produce a DRC-perfect board on which the USB pair is split across two layers
+    # and takes two unrelated paths, and nothing in the pipeline would notice". Nothing
+    # in the pipeline was noticing here, on the board that is the instrument's USB hub.
+    #
+    # One group per pair -- skew is intra-pair, so lumping all eight nets into one group
+    # would measure the distance between unrelated ports.
+    #
+    # ⚠ 8.3 mm IS DERIVED, AND IT IS A RELAXATION OF THE NUMBER THIS STARTED WITH.
+    # The first version copied the optical board's 2.5 mm, and THRU failed it at 2.98 --
+    # at which point the number had to be defended rather than enforced, because 2.5 does
+    # not follow from anything. Neither board's note ever derived it; both argue that at
+    # 480 Mbps "skew has room" and that PAIRNESS is the real constraint, which is an
+    # argument for a LOOSE budget and then writes a tight one.
+    #
+    # Two independent bases, and they agree:
+    #   * USB 2.0 spec gives the HS driver a 500 ps MINIMUM rise time, and the standard
+    #     SI criterion is to hold intra-pair skew under 10 % of the rise time to limit
+    #     differential-to-common mode conversion. 50 ps.
+    #   * USB-IF budgets ~100 ps of intra-pair skew for a cable assembly; half of that
+    #     for the board is 50 ps.
+    # At 6.0 ps/mm in FR4 -- the same figure the ULPI budget uses -- that is 8.3 mm.
+    #
+    # This is NOT fitted to the board: both bases are computed from the standard with no
+    # reference to what this board measures, and they land on the same number. Measured,
+    # the worst pair is THRU at 2.98 mm = 17.9 ps = 3.6 % of the rise time. Same move the
+    # ULPI budget made when it went 12 -> 80 mm: an undefended limit replaced by a
+    # derived one, in the direction the evidence pointed.
+    "match": [
+        {"name": "HUB_UP", "max_skew_mm": 8.3, "same_layer": True, "max_vias": 2,
+         "nets": ["HUB_UP_DP", "HUB_UP_DM"],
+         "why": "USB 2.0 high speed, hub upstream -- the whole board's traffic to the Pi. 480 Mbps is 2,080 ps a bit, so skew has "
+                "room; what has to hold is that the two stay a PAIR on the same "
+                "layers -- differential impedance is a property of the two "
+                "conductors' geometry relative to each other, and a layer split "
+                "destroys it -- and that neither collects vias, each being an "
+                "impedance discontinuity."},
+        {"name": "HUB_DN1", "max_skew_mm": 8.3, "same_layer": True, "max_vias": 2,
+         "nets": ["HUB_DN1_DP", "HUB_DN1_DM"],
+         "why": "USB 2.0 high speed, hub downstream port 1. 480 Mbps is 2,080 ps a bit, so skew has "
+                "room; what has to hold is that the two stay a PAIR on the same "
+                "layers -- differential impedance is a property of the two "
+                "conductors' geometry relative to each other, and a layer split "
+                "destroys it -- and that neither collects vias, each being an "
+                "impedance discontinuity."},
+        {"name": "HUB_DN2", "max_skew_mm": 8.3, "same_layer": True, "max_vias": 2,
+         "nets": ["HUB_DN2_DP", "HUB_DN2_DM"],
+         "why": "USB 2.0 high speed, hub downstream port 2. 480 Mbps is 2,080 ps a bit, so skew has "
+                "room; what has to hold is that the two stay a PAIR on the same "
+                "layers -- differential impedance is a property of the two "
+                "conductors' geometry relative to each other, and a layer split "
+                "destroys it -- and that neither collects vias, each being an "
+                "impedance discontinuity."},
+        {"name": "THRU", "max_skew_mm": 8.3, "same_layer": True, "max_vias": 2,
+         "nets": ["THRU_DP", "THRU_DM"],
+         "why": "USB 2.0 high speed, front-panel pass-through. 480 Mbps is 2,080 ps a bit, so skew has "
+                "room; what has to hold is that the two stay a PAIR on the same "
+                "layers -- differential impedance is a property of the two "
+                "conductors' geometry relative to each other, and a layer split "
+                "destroys it -- and that neither collects vias, each being an "
+                "impedance discontinuity."},
+    ],
     "plane_layers": ("In1.Cu",),
     # ⚠ NO track_mm HERE: 0.15 was TESTED AND CHANGED NOTHING -- 2 unconnected either
     # way. This board has a 0.4 mm pitch MCU like lever_sensor, where narrowing fixed
