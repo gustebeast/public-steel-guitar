@@ -292,12 +292,26 @@ def lever_sensor():
     # bootloader, and that only helps if the bootloader can be REACHED -- this board has
     # no USB and brings out no USART, so the entry path does not exist. That absence is
     # the whole reason the SWD pads were added; SWD is the recovery route here.
-    boot0 = Net("BOOT0")
-    boot0 += u2["PB8"]
-    # This is created in the MCU block, which runs BEFORE the MODE strap and the I2C
-    # pull-ups. That used to decide its ref; see the note on _r for why it no longer does.
-    r_boot = _r("R", "R8", "10k", "BOOT0 pull-down -- boot from flash")
-    boot0 += r_boot[1]; gnd += r_boot[2]
+    # ⚠ TIED HARD TO GND, NOT PULLED DOWN -- AND THE BOARD DECIDED THAT, NOT ME. The
+    # 0402 pull-down went in first, matching motor_ctrl. It could not be placed: this
+    # board is FULL (its own note: six free 2.0 mm sites, four already spent on the SWD
+    # pads), and three sitings gave three different failures -- inside two courtyards
+    # (3 unconnected, 3 violations), clearing pads but not courtyards (2 and 2), and
+    # clearing both but displacing the router badly (4 and 1). The part was costing more
+    # than it bought every time.
+    #
+    # A pull-down exists so BOOT0 can be forced HIGH externally to reach the ROM
+    # bootloader. THIS BOARD HAS NO BOOTLOADER PATH -- no USB, no USART brought out --
+    # which is the whole reason the SWD pads were added. So the resistor buys an entry
+    # to a door that does not exist here, and a hard tie is the honest wiring of "this
+    # part always boots from flash". motor_ctrl keeps ITS pull-down because it has USB
+    # on a connector and the door is real.
+    #
+    # What a hard tie costs: forcing the bootloader later would mean cutting copper
+    # rather than lifting a resistor. Against a board with no way to use the bootloader
+    # and a working SWD route, that is not a cost worth one 0402 and three re-routes.
+    gnd += u2["PB8"]
+
 
     y1 = Part(name="Crystal", ref_prefix="Y", tag="Y1", dest="NETLIST", tool="skidl",
               value="8MHz", description="HSE -- CAN bit timing wants a crystal, not the RC",
@@ -415,11 +429,6 @@ BOARD_NOTES = {
         "C3": (6.50, 5.70, 0.0),
         "R2": (8.60, 5.70, 0.0),
         "R7": (10.90, 5.70, 0.0),
-        # BOOT0 pull-down, west of the MCU where pin 1 is. Sited by re-running the
-        # courtyard scan that found the SWD pads' homes, not by eye -- the last part
-        # placed here by guess landed on C9's courtyard, for 3 unconnected and 3
-        # violations.
-        "R8": (-2.25, 0.80, 0.0),
         # ⚠ 0, NOT 90, AND IT IS A ROUTING DECISION. At 90 the CAN pair sat on the MCU's
         # NORTH edge while the transceiver it talks to is south of it, and J1 walls off
         # the whole west side -- so both signals had to travel around the package to get
