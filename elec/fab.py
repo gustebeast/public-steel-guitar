@@ -96,6 +96,11 @@ LCSC = {
     # genuine manufacturer; where a listing was the bare MPN at 0 stock and its (LF)(SN)
     # tin-plated form was stocked, the stocked form is the same part as ordered from JST.
     "B4B-XH-A": "C144395",          # JST B4B-XH-A(LF)(SN), stock 60,424
+    "B2B-XH-A": "C158012",          # JST B2B-XH-A(LF)(SN), stock 381,008 -- sourced
+                                    # 2026-09-19 by asking the catalogue, and it is the
+                                    # (LF)(SN) trap again and not a preference: the BARE
+                                    # "B2B-XH-A" listing is C19272845 with ONE piece in
+                                    # stock. Same shape as S4B-XH-SM4-TB and B4B-XH-A.
     "S4B-XH-A": "C157925",          # JST S4B-XH-A(LF)(SN), stock 88,547
     "LMR33630ADDAR": "C841384",     # TI, ESOP-8 (= HSOIC-8 PowerPAD), stock 6,730
     "PJ-102AH": "C3096093",         # CUI PJ-102AH, stock 1,593
@@ -123,18 +128,6 @@ LCSC = {
 # value that is neither sourced nor generic nor listed below FAILS THE BUILD,
 # which means changing a part number forces you to come here and say so.
 OPEN_VALUES = frozenset({
-    "B2B-XH-A",            # ⚠ A PART I ADDED AND DID NOT SOURCE. output_panel's J9 went
-                           # from a 4-way to a 2-way on 2026-09-18 (the optical feed needs
-                           # one ground and one rail, and the shorter land freed 5 mm of a
-                           # full connector row). The 2-way is a real JST part -- unlike
-                           # S2B-XH-SM4-TB, which I tried to use the same day and which
-                           # does not exist, because the SMT SIDE-ENTRY line starts at
-                           # 4-way -- but I have not got a verified LCSC code for it.
-                           # B4B-XH-A is C144395; the 2-way's code is NOT derivable from
-                           # that and this file's whole point is that a guessed part
-                           # number is the one error nothing downstream catches.
-                           # Declared OPEN so the package builds and the gap stays
-                           # COUNTED. Resolve before ordering.
     "NMJ4HCD2",            # 1/4 in jack. JLCPCB lists it (C18185363) at ZERO
                            # stock, 2026-09-17 -- a listing is not a source
     "USB1046-GF-0180",     # GCT USB-A. Not listed at JLCPCB (2026-09-17); the
@@ -174,7 +167,17 @@ GENERIC = re.compile(r"^(R_|C_|Fuse_|Jumper:|Diode_SMD:D_SOD|Diode_SMD:D_SM[AB]|
 # simply does not start with a digit. The placeholder rule below applies to this subset.
 PASSIVE = re.compile(r"^(R_|C_|L_|Inductor_SMD)")
 # Footprint LIBRARIES that hold no orderable part -- see the BOM loop.
-COPPER_ONLY = re.compile(r"^(TestPoint|NetTie|Fiducial)$")
+# ⚠ Jumper BELONGS HERE AND WAS MISSING. A SolderJumper is a BOARD FEATURE: two pads and
+# a mask opening, closed with solder by whoever assembles it. There is nothing to buy and
+# nothing to place. It was reaching the BOM as a line reading Comment "TERM", footprint
+# "SolderJumper-2_P1.3mm_Open...", and NO part number -- an order asking a fab to source
+# a part that does not exist. can_tee carried one, motor_ctrl two.
+#
+# It slipped past the placeholder guard because that guard only fires on PASSIVES, and a
+# jumper is "generic" (the GENERIC pattern lists Jumper:) without being a passive. So
+# "TERM" -- a value that cannot pick a part -- was accepted. The CPL was right all along
+# and omitted them, which is how the discrepancy showed: BOM designators 4 against CPL 3.
+COPPER_ONLY = re.compile(r"^(TestPoint|NetTie|Fiducial|SolderJumper|Jumper)")
 
 
 def _run(args):
