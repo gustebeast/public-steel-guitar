@@ -316,6 +316,11 @@ OP_J = {"J1": (29.44, 4.00, 90.0),        # panel USB-C, mouth +X
         # J7's and cut the 24 V bus in half -- see the note at the part in
         # elec/output_panel.py.
         "J9": (16.00, -28.00, 0.0),       # 24 V out to the optical pickup board
+        # J10, the trunk's SECOND 24 V outlet -- the west-end feed that makes the motor
+        # bus dual-fed. On the +X edge, not the -Y row with J7 and J9, because that row
+        # is full (measured off the real courtyards: widest gap 5.25 mm against a
+        # 13.40 mm connector).
+        "J10": (29.70, -8.70, 0.0),
         "J8": (-13.50, 28.00, 0.0)}       # magnetic pickup in, SCREW TERMINALS
 # (courtyard L, W, height, courtyard-centre offset from the anchor)
 OP_BOX = {"J1": (9.51, 10.73, 3.26, (2.81, 0.00)),
@@ -328,6 +333,7 @@ OP_BOX = {"J1": (9.51, 10.73, 3.26, (2.81, 0.00)),
           # shorter than J7, which is the point: it was emptying the pad row, not
           # saving a part.
           "J9": (8.49, 6.84, 7.00, (0.00, -0.53)),
+          "J10": (13.49, 6.84, 7.00, (0.00, -0.53)),   # same B4B-XH-A as J7
           "J8": (11.59, 8.90, 10.50, (-0.25, 0.10))}
 OP_TS_XY = (23.11, 21.50)                 # the 1/4 in jack's pad anchor
 OP_TS_L, OP_TS_W = 27.62, 20.32           # its courtyard
