@@ -265,6 +265,17 @@ def lever_sensor():
     # test pad for exactly this reason. Resolve it before fabrication: either confirm the
     # internal pull from WCH's manual, or spend one 0402 on a pull-down.
     #
+    # ⚠ AND ALL FOUR MCU ROTATIONS ARE NOW MEASURED, not inferred. The rotation note
+    # in BOARD_NOTES picked 0 by total pin-to-net distance, which is a PROXY -- and this
+    # project has a long record of proxies being inverted (see the optical board, where
+    # three of them were). Routed on the 34 x 28 board, one run each:
+    #       rot   0   1 unconnected, 0 violations   <- kept
+    #       rot  90   3 unconnected
+    #       rot 180   3 unconnected
+    #       rot 270   2 unconnected
+    # The proxy was right this time. Recorded because "we chose it by a proxy" and "we
+    # measured it" are different claims, and only one of them survives someone asking.
+
     # ⚠ AND THE BIGGER BOARD DID NOT FIX IT -- MEASURED AGAIN 2026-09-19, after the
     # board went to 34 x 28 for the XH. The open net swapped from CAN_RX to CAN_TX,
     # exactly the clean swap predicted below, and the shape is identical: the
