@@ -69,9 +69,11 @@ WHAT ACTUALLY CLOSED IT, because the diagnosis is the reusable part:
 
 ⚠ AND CLEAN IS NOT VERIFIED. This is the part that has not changed. DRC compares
 copper to a netlist: it does not know that twenty summing nodes read tens of
-nanoamps, or that a 60 MHz ULPI bus has timing. verify.py now checks ULPI skew
-against the USB334x datasheet's own numbers and the USB pair's coupled length, but
-nothing has confirmed the TIA inputs are guarded or that the switcher's loop is
+nanoamps, or that a 60 MHz ULPI bus has timing. Two of the three things this
+paragraph used to list as unchecked are now checked: verify.py holds ULPI skew
+against the USB334x datasheet's own numbers and the USB pair's coupled length,
+and the TIA inputs are shown not to NEED guarding -- the leakage arithmetic sits
+beside the MID divider. What is still unconfirmed is that the switcher's loop is
 tight. Treat the routed .kicad_pcb as a CANDIDATE that passes every check we have,
 not as a board somebody has signed off.
 
@@ -1387,6 +1389,30 @@ def optical():
     # mode inside spec (the TLV9064 includes both rails).
     # 9k09/1k from +3V3A: 0.330 V, 363 uA. Low impedance on purpose -- the divider's
     # thermal noise lands on the reference every channel shares, and U11 buffers it.
+    # ⚠ AND THE SUMMING NODES DO NOT NEED A GUARD RING -- ARITHMETIC, 2026-09-19, because
+    # the header used to list "are the TIA inputs guarded" as an open question and an open
+    # question with no number attached stays open forever.
+    #
+    # There IS no guard: the only zones on this board are GND (F.Cu, In1.Cu, B.Cu), so
+    # what sits beside a summing node is ground pour at 0 V, not a ring at the node's own
+    # potential. The question is therefore not clearance -- DRC already guarantees every
+    # foreign net is at least 0.127 mm away, and it reports zero violations -- but how
+    # much current that 0.127 mm of board surface leaks at the voltage across it.
+    #
+    # MID is 0.327 V (3.3 x 1k/(9k09+1k)), so that voltage is 0.327 and not a supply rail:
+    #     surface 1e14 ohm  (clean, conformal coated)   0.003 pA   0.000005 % of 60 nA
+    #     surface 1e12 ohm  (typical clean board)       0.33  pA   0.0005   %
+    #     surface 1e10 ohm  (flux residue left on)     32.7   pA   0.055    %
+    #     surface 1e9  ohm  (visibly contaminated)    327     pA   0.55     %
+    # Against the ~60 nA this board was designed around, even a dirty board loses half a
+    # percent. A guard ring buys nothing measurable and would cost room in the one place
+    # this board has none.
+    #
+    # ⚠ THE LOW MID IS DOING WORK IT WAS NOT CHOSEN FOR. 0.327 V was picked for OUTPUT
+    # SWING -- it leaves 2.9 V of headroom above MID for the ADC. But leakage scales with
+    # the voltage driving it, so a conventional mid-supply reference at 1.65 V would make
+    # every figure above FIVE TIMES larger. Worth knowing before anyone "fixes" MID to a
+    # more standard half-rail.
     r34 = _r("R34", "9k09 1%", "MID divider, top -- sets the TIA virtual earth to 0.33 V")
     r35 = _r("R35", "1k 1%", "MID divider, bottom")
     v3a += r34[1]
@@ -1754,6 +1780,21 @@ BOARD_NOTES = {
         #
         # The board's 55.21 mm is 331 ps, 2.8 % of that window, and passes with room.
         # The hold side is free: T_HC is 0.0 ns, so no amount of skew violates it.
+        # ⚠ max_vias IS None HERE AND 2 ON THE PAIR BELOW, AND THE DIFFERENCE IS THE
+        # STACKUP, not inattention. Measured on the routed board 2026-09-19, the twelve
+        # ULPI nets carry 2 to 5 vias each (mean 2.9; the CLOCK, which everything else
+        # is timed against, carries 3). That is fine here for a reason specific to this
+        # board: In1.Cu is the ONLY plane, and every signal layer references it -- F.Cu
+        # from above it, In2.Cu and B.Cu from below. So a via that moves a ULPI signal
+        # between any two of those layers keeps the SAME reference plane, and the return
+        # current stays on In1 instead of having to find a way between two planes. The
+        # transition that actually hurts a source-synchronous bus -- a reference change
+        # with no stitching via to carry the return -- cannot occur on this stackup.
+        #
+        # What is left is the via's own discontinuity, and at 60 MHz that is not the
+        # constraint: the datasheet window below is 11.67 ns wide and the measured skew
+        # spends 331 ps of it. The USB pair is held to 2 vias because 480 Mbps is where
+        # a discontinuity starts to matter, not because its reference behaves worse.
         {"name": "ULPI", "max_skew_mm": 80.0, "same_layer": False, "max_vias": None,
          "nets": ["ULPI_D0", "ULPI_D1", "ULPI_D2", "ULPI_D3", "ULPI_D4", "ULPI_D5",
                   "ULPI_D6", "ULPI_D7", "ULPI_CK", "ULPI_STP", "ULPI_DIR", "ULPI_NXT"],
@@ -1851,10 +1892,19 @@ BOARD_NOTES = {
     # of the job while a comment claims the summing node is deterministic would be
     # worse than none, so there is none.
     #
-    # ⚠ WHAT THAT LEAVES: the most sensitive geometry on this board is chosen by
-    # freerouting and differs between runs. That is a real limitation and it is not
-    # visible in any DRC report. If the analog performance ever disappoints, this is
-    # the first thing to look at -- and the fix is to give the strip more room so the
+    # ⚠ WHAT THAT LEAVES -- AND ONE HALF OF IT IS NO LONGER TRUE. This paragraph used to
+    # end "the most sensitive geometry on this board is chosen by freerouting and DIFFERS
+    # BETWEEN RUNS". Measured 2026-09-19 by routing optical twice from the same netlist
+    # and hashing the result: the two .kicad_pcb files are BYTE-IDENTICAL, same md5,
+    # 0 unconnected and 0 violations both times. Freerouting is deterministic given
+    # deterministic input, and route.py canonicalises the UUIDs that used to be the only
+    # thing separating two runs.
+    #
+    # So the limitation is smaller and differently shaped than it was written down as:
+    # the summing-node geometry is still CHOSEN BY THE ROUTER rather than designed, which
+    # is the real complaint, but it is stable, measurable and reviewable. If the analog
+    # performance ever disappoints, you are debugging a fixed target rather than a moving
+    # one -- and the fix is still to give the strip more room so the
     # cells CAN be wired on one layer, not to tune the router.
     # ⚠ THIS DECLARATION CURRENTLY FAILS, ON PURPOSE, AND THAT IS THE POINT.
     # layout.py reports "inner run U7->U10 blocked" on every build and verify.py fails
