@@ -1754,6 +1754,21 @@ BOARD_NOTES = {
         #
         # The board's 55.21 mm is 331 ps, 2.8 % of that window, and passes with room.
         # The hold side is free: T_HC is 0.0 ns, so no amount of skew violates it.
+        # ⚠ max_vias IS None HERE AND 2 ON THE PAIR BELOW, AND THE DIFFERENCE IS THE
+        # STACKUP, not inattention. Measured on the routed board 2026-09-19, the twelve
+        # ULPI nets carry 2 to 5 vias each (mean 2.9; the CLOCK, which everything else
+        # is timed against, carries 3). That is fine here for a reason specific to this
+        # board: In1.Cu is the ONLY plane, and every signal layer references it -- F.Cu
+        # from above it, In2.Cu and B.Cu from below. So a via that moves a ULPI signal
+        # between any two of those layers keeps the SAME reference plane, and the return
+        # current stays on In1 instead of having to find a way between two planes. The
+        # transition that actually hurts a source-synchronous bus -- a reference change
+        # with no stitching via to carry the return -- cannot occur on this stackup.
+        #
+        # What is left is the via's own discontinuity, and at 60 MHz that is not the
+        # constraint: the datasheet window below is 11.67 ns wide and the measured skew
+        # spends 331 ps of it. The USB pair is held to 2 vias because 480 Mbps is where
+        # a discontinuity starts to matter, not because its reference behaves worse.
         {"name": "ULPI", "max_skew_mm": 80.0, "same_layer": False, "max_vias": None,
          "nets": ["ULPI_D0", "ULPI_D1", "ULPI_D2", "ULPI_D3", "ULPI_D4", "ULPI_D5",
                   "ULPI_D6", "ULPI_D7", "ULPI_CK", "ULPI_STP", "ULPI_DIR", "ULPI_NXT"],
