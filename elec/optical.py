@@ -69,13 +69,14 @@ WHAT ACTUALLY CLOSED IT, because the diagnosis is the reusable part:
 
 ⚠ AND CLEAN IS NOT VERIFIED. This is the part that has not changed. DRC compares
 copper to a netlist: it does not know that twenty summing nodes read tens of
-nanoamps, or that a 60 MHz ULPI bus has timing. Two of the three things this
-paragraph used to list as unchecked are now checked: verify.py holds ULPI skew
+nanoamps, or that a 60 MHz ULPI bus has timing. All three things this paragraph
+used to list as unchecked now have numbers attached: verify.py holds ULPI skew
 against the USB334x datasheet's own numbers and the USB pair's coupled length,
-and the TIA inputs are shown not to NEED guarding -- the leakage arithmetic sits
-beside the MID divider. What is still unconfirmed is that the switcher's loop is
-tight. Treat the routed .kicad_pcb as a CANDIDATE that passes every check we have,
-not as a board somebody has signed off.
+the TIA inputs are shown not to NEED guarding, and the switcher's hot loop is
+measured at 6.23 mm2 fifty millimetres from the nearest summing node -- all three
+sit beside the MID divider and the regulator. What is still unconfirmed is
+everything nobody has thought to ask. Treat the routed .kicad_pcb as a CANDIDATE
+that passes every check we have, not as a board somebody has signed off.
 
 The placement, which is the part this file is actually responsible for, is clean:
 the only DRC violations on the placed board are the 20 declared sensor-triplet
@@ -1413,6 +1414,27 @@ def optical():
     # the voltage driving it, so a conventional mid-supply reference at 1.65 V would make
     # every figure above FIVE TIMES larger. Worth knowing before anyone "fixes" MID to a
     # more standard half-rail.
+    # ⚠ THE SWITCHER'S HOT LOOP, MEASURED 2026-09-19 -- the last of the three things this
+    # file's header listed as unchecked. U13 is a TPS560430 in SOT-23-6, whose VIN (4, 5)
+    # and GND (2) sit on OPPOSITE sides of the package, so the input cap cannot straddle
+    # them the way it can on a part with adjacent pins.
+    #
+    # Traced from the routed copper: C161's +24V pad reaches VIN by arcing over the NORTH
+    # side of the package -- 7.08 mm of track -- while the GND return is 1.60 mm straight
+    # back underneath. Enclosed area 6.23 mm2, with the cap 4.84 mm from the VIN pad it
+    # feeds. That is inside the usual "keep the input loop under ~10 mm2" guidance and it
+    # is NOT tight; on a board that is only a switcher it would be worth moving the cap.
+    #
+    # ⚠ IT IS FINE HERE FOR A REASON THAT IS ABOUT DISTANCE, NOT ABOUT THE LOOP. The
+    # nearest photodiode is 52.90 mm away (PD10B) and the farthest is 140.37 mm, with the
+    # In1.Cu plane unbroken underneath the whole span -- one poured region, checked in the
+    # gerbers. Near-field magnetic coupling from a small loop falls off as 1/r^3, so a
+    # 6 mm2 loop fifty millimetres from the first summing node is not what will limit this
+    # board. The 188 mm outline that makes the strip awkward to route is the same thing
+    # that puts the switcher this far from it.
+    #
+    # If the switcher ever moves toward the strip, this stops being true and the cap
+    # placement becomes the first thing to fix.
     r34 = _r("R34", "9k09 1%", "MID divider, top -- sets the TIA virtual earth to 0.33 V")
     r35 = _r("R35", "1k 1%", "MID divider, bottom")
     v3a += r34[1]
