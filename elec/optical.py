@@ -1892,10 +1892,19 @@ BOARD_NOTES = {
     # of the job while a comment claims the summing node is deterministic would be
     # worse than none, so there is none.
     #
-    # ⚠ WHAT THAT LEAVES: the most sensitive geometry on this board is chosen by
-    # freerouting and differs between runs. That is a real limitation and it is not
-    # visible in any DRC report. If the analog performance ever disappoints, this is
-    # the first thing to look at -- and the fix is to give the strip more room so the
+    # ⚠ WHAT THAT LEAVES -- AND ONE HALF OF IT IS NO LONGER TRUE. This paragraph used to
+    # end "the most sensitive geometry on this board is chosen by freerouting and DIFFERS
+    # BETWEEN RUNS". Measured 2026-09-19 by routing optical twice from the same netlist
+    # and hashing the result: the two .kicad_pcb files are BYTE-IDENTICAL, same md5,
+    # 0 unconnected and 0 violations both times. Freerouting is deterministic given
+    # deterministic input, and route.py canonicalises the UUIDs that used to be the only
+    # thing separating two runs.
+    #
+    # So the limitation is smaller and differently shaped than it was written down as:
+    # the summing-node geometry is still CHOSEN BY THE ROUTER rather than designed, which
+    # is the real complaint, but it is stable, measurable and reviewable. If the analog
+    # performance ever disappoints, you are debugging a fixed target rather than a moving
+    # one -- and the fix is still to give the strip more room so the
     # cells CAN be wired on one layer, not to tune the router.
     # ⚠ THIS DECLARATION CURRENTLY FAILS, ON PURPOSE, AND THAT IS THE POINT.
     # layout.py reports "inner run U7->U10 blocked" on every build and verify.py fails
