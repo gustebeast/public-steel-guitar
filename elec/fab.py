@@ -283,6 +283,10 @@ def fab(board):
     #  value; passing "false" makes kicad-cli read it as the input file and fail.
     #  Omitting them is what gives one merged drill file and no map.)
 
+    _check_drill(pcb, d, board)
+    _check_gerbers(d, json.load(open(stem + ".board.json", encoding="utf-8")),
+                   board, pcb)
+
     # ---- CPL, converted to JLCPCB's column names ----
     raw = os.path.join(d, "_pos.csv")
     _run([KICAD_CLI, "pcb", "export", "pos", "-o", raw, "--format", "csv",
@@ -376,6 +380,164 @@ def fab(board):
         for fn in sorted(os.listdir(d)):
             zf.write(os.path.join(d, fn), fn)
     return n, len(groups), sorted(open_real), sorted(open_generic), z, opts or {}
+
+
+def _check_gerbers(gdir, notes, board, pcb):
+    """Did the copper actually reach the gerbers, and is the reference plane whole?
+
+    ⚠ THE EXPORT IS THE LAST PLACE A POUR CAN VANISH, and this project has watched one
+    do it: route.py records the optical board's F.Cu ground pour disappearing at a stray
+    refill and taking 74 pads with it. DRC ran on the board, not on the files, so a
+    package can carry a layer that is missing copper the board had.
+
+    Two things, at opposite severities.
+
+    REFUSES on a declared zone whose layer exports NO region at all. KiCad writes a
+    poured zone as a G36/G37 region block, so zero regions on a layer that declares a
+    zone means the pour is not in the file. There is no benign reading of that.
+
+    REPORTS, loudly, when a declared PLANE comes out as more than one region. In1.Cu is
+    the impedance reference for the USB pair and the ULPI bus, and a plane arrives
+    fragmented when something has been routed THROUGH it -- the exact damage the
+    plane_layers declaration exists to prevent, which route.py had to be taught after a
+    router turned 5729 mm2 of pour into 1043. It is not refused because a board outline
+    could legitimately split a plane; it is printed because on these five boards it
+    never has, and a change in that number means something moved.
+
+    Measured 2026-09-19: In1.Cu is exactly ONE region on all four 4-layer boards.
+    F.Cu and B.Cu fragment freely and are meant to -- optical's F.Cu is 26 islands --
+    which is why only the DECLARED plane is held to one.
+    """
+    zones = {z[1] for z in notes.get("zones", []) or []}
+    planes = set(notes.get("plane_layers", ()) or ())
+    seen = {}
+    for fn in sorted(os.listdir(gdir)):
+        m = re.search(r"(F_Cu|In\d_Cu|B_Cu)\.(gtl|gbl|g\d)$", fn)
+        if not m:
+            continue
+        txt = open(os.path.join(gdir, fn), encoding="utf-8", errors="replace").read()
+        seen[m.group(1).replace("_", ".")] = len(re.findall(r"G36\*", txt))
+    for layer in sorted(zones):
+        if layer not in seen:
+            raise SystemExit("%s: a zone is declared on %s and no such copper gerber "
+                             "was exported" % (board, layer))
+        if not seen[layer]:
+            raise SystemExit(
+                "%s: %s declares a zone and its gerber carries NO poured region. The "
+                "pour is not in the file the fab will use." % (board, layer))
+    for layer in sorted(planes):
+        n = seen.get(layer, 0)
+        if n > 1:
+            print("  !! %s: the %s PLANE exported as %d separate regions. A reference "
+                  "plane arrives fragmented when something is routed through it; check "
+                  "plane_layers is being honoured." % (board, layer, n))
+    # ⚠ PASTE IS THE LAYER THAT DECIDES WHETHER A PART IS SOLDERED AT ALL, and until now
+    # nothing compared it to anything. A stencil aperture missing for a pad is a joint
+    # that never forms: the board arrives assembled-looking with a part sitting on dry
+    # copper. It is invisible to DRC, to the netlist, and to every check above.
+    #
+    # Counted as flashes plus regions, against the pads KiCad says are ON that layer --
+    # not against "SMD pads", which is a different and wrong question. Measured
+    # 2026-09-19: exact on all five boards, and B.Paste is empty on all five because
+    # every board here is single-sided.
+    #
+    # ⚠ AND "SMD PADS" WAS THE FIRST VERSION OF THIS TEST AND IT MISREAD FIVE BOARDS. It
+    # called 20 pads on motor_ctrl bottom-side, which would have meant parts with no
+    # paste under them; they are the EXPOSED THERMAL PADS of U4 (QFN-68) and U5
+    # (SOIC-8), whose copper reaches B.Cu through thermal vias while the part sits on
+    # top. Asking IsOnLayer(F_Paste) asks the question the gerber actually answers.
+    import pcbnew as _pcb
+    _bd = _pcb.LoadBoard(pcb)
+    for _lay, _suffix, _name in ((_pcb.F_Paste, "F_Paste.gtp", "F.Paste"),
+                                 (_pcb.B_Paste, "B_Paste.gbp", "B.Paste")):
+        _want = sum(1 for _fp in _bd.GetFootprints() for _p in _fp.Pads()
+                    if _p.IsOnLayer(_lay))
+        _f = [x for x in os.listdir(gdir) if x.endswith(_suffix)]
+        _got = 0
+        if _f:
+            _t = open(os.path.join(gdir, _f[0]), encoding="utf-8", errors="replace").read()
+            _got = len(re.findall(r"D03\*", _t)) + len(re.findall(r"G36\*", _t))
+        if _got != _want:
+            raise SystemExit(
+                "%s: %s carries %d aperture(s) for %d pad(s) on that layer. A missing "
+                "stencil aperture is a part that never gets soldered."
+                % (board, _name, _got, _want))
+
+    # ⚠ MASK MAY EXCEED ITS PADS AND MUST NEVER FALL SHORT. An opening fewer than pads
+    # means a pad sealed under soldermask, which is unsolderable; an opening MORE is
+    # normal and on these boards is exactly the solder jumpers' bridging window --
+    # measured, the excess equals the JP count on every board: can_tee 1, lever_sensor
+    # 1, motor_ctrl 2, optical 0, output_panel 0. So this is a floor, not an equality.
+    _wantm = sum(1 for _fp in _bd.GetFootprints() for _p in _fp.Pads()
+                 if _p.IsOnLayer(_pcb.F_Mask))
+    _fm = [x for x in os.listdir(gdir) if x.endswith("F_Mask.gts")]
+    if _fm:
+        _t = open(os.path.join(gdir, _fm[0]), encoding="utf-8", errors="replace").read()
+        _gotm = len(re.findall(r"D03\*", _t)) + len(re.findall(r"G36\*", _t))
+        if _gotm < _wantm:
+            raise SystemExit(
+                "%s: F.Mask has %d opening(s) for %d pad(s) -- %d pad(s) would arrive "
+                "sealed under soldermask." % (board, _gotm, _wantm, _wantm - _gotm))
+
+    return seen
+
+
+def _check_drill(pcb, drill_dir, board):
+    """Does the drill file describe the holes the board actually has?
+
+    ⚠ THIS CHECKS kicad-cli's OUTPUT, WHICH NOTHING ELSE DOES. Everything upstream
+    validates the board; from the export onwards the artefact is whatever the tool
+    wrote, and the fab drills from that file, not from the .kicad_pcb. A flag that
+    changes meaning between KiCad versions, or an export that silently drops the NPTH
+    pass, produces a package that looks complete and arrives as a board with no holes
+    where holes were meant to be.
+
+    Two things are compared, and both are cheap:
+      * hit count == vias + through-hole pads. Exact, not approximate.
+      * every G85 slot's TRAVEL matches an oval pad's (length - width).
+
+    ⚠ A SLOT'S TOOL DIAMETER IS ITS WIDTH, NOT ITS LENGTH, and reading that wrong is
+    what made optical's drill file look broken during the first hand check: the tools
+    were 0.6 where the pads were 1.7, which looked like a mismatch and was a unit
+    confusion. KiCad emits an oval PTH as a routed slot -- tool diameter = the narrow
+    dimension, then a G85 move of (length - width). Comparing TRAVEL is what makes the
+    two directly comparable.
+
+    This one REFUSES rather than reports, unlike the BOM checks: a wrong drill file is
+    a fab error, not a documentation error, and it cannot be caught by looking at the
+    board afterwards.
+    """
+    import math
+    import pcbnew
+    drl = [f for f in os.listdir(drill_dir) if f.lower().endswith(".drl")]
+    if not drl:
+        raise SystemExit("%s: the drill export produced no .drl file" % board)
+    txt = open(os.path.join(drill_dir, drl[0]), encoding="utf-8").read()
+    hits = len(re.findall(r"^X[-\d.]+Y[-\d.]+", txt, re.M))
+    slots = sorted(round(math.hypot(float(c) - float(a), float(d) - float(b)), 3)
+                   for a, b, c, d in re.findall(
+                       r"X(-?[\d.]+)Y(-?[\d.]+)G85X(-?[\d.]+)Y(-?[\d.]+)", txt))
+    bd = pcbnew.LoadBoard(pcb)
+    vias = sum(1 for t in bd.GetTracks() if isinstance(t, pcbnew.PCB_VIA))
+    pth, ovals = 0, []
+    for fp in bd.GetFootprints():
+        for p in fp.Pads():
+            if p.GetAttribute() not in (pcbnew.PAD_ATTRIB_PTH, pcbnew.PAD_ATTRIB_NPTH):
+                continue
+            pth += 1
+            s = p.GetDrillSize()
+            if s.x != s.y:
+                ovals.append(round(pcbnew.ToMM(abs(s.x - s.y)), 3))
+    if hits != vias + pth:
+        raise SystemExit(
+            "%s: the drill file has %d hit(s) and the board has %d hole(s) "
+            "(%d vias + %d through-hole pads). The fab drills from the FILE."
+            % (board, hits, vias + pth, vias, pth))
+    if slots != sorted(ovals):
+        raise SystemExit(
+            "%s: %d routed slot(s) with travels %s, against %d oval pad(s) with "
+            "travels %s" % (board, len(slots), slots, len(ovals), sorted(ovals)))
+    return hits, len(slots)
 
 
 def _rotation_critical(pcb):
