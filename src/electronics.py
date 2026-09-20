@@ -68,9 +68,11 @@ PI_FP     = (-603.0, -547.0, -50.0, 35.0)     # Pi 5: 56 x 85 (long side on Y);
                                        # stay clear of y > 35 there; east is
                                        # walled by motor 0)
 # THE SOUTH HALF WAS RE-LAID-OUT around the motor controller (2026-09-14). The
-# Teensy stack and the teensy_ifc carrier are both gone -- one 40 x 35 board does
-# their job -- and 40 does not fit across 60 of tray beside the 36-wide buck, so
-# the new board stands 90 deg to the tray's X (35 across, 40 along) in the -X -Y
+# Teensy stack and the teensy_ifc carrier are both gone -- one board does their job.
+# (⚠ THE SIZES IN THIS PARAGRAPH WERE 40 x 35 AND A 90 DEG ROTATION, both true of the
+# board as it stood on 09-14 and neither true since: it is 46 x 58 and UNROTATED, which
+# is what MCTRL_BOARD_X/Y and MCTRL_ROT below already say. The constants moved and the
+# prose above them did not.) The board sits in the -X -Y
 # corner and the buck turns with it into the strip east of it. The ADC shifted
 # 3 south to clear it; 0.5 of gap is all that is left between them, which is the
 # honest state of a 60 x 181 tray holding four boards.
@@ -480,9 +482,12 @@ def usb_panel_y() -> float:
 # harness that used to run from the Teensy stack to the carrier.
 #
 # ⚠ THE OUTLINE IS AN OUTPUT, like the TRRS adapter and unlike every purchased
-# board here: 40 x 35 is what elec/motor_ctrl.py's own contents came to, and the
-# TRAY was re-laid-out around it (see MCTRL_FP). It stands 90 deg to the tray's
-# X so 40 of board fits across 60 of tray beside the buck.
+# board here: 46 x 58 is what elec/motor_ctrl.py's own contents came to, and the
+# TRAY was re-laid-out around it (see MCTRL_FP). It is UNROTATED -- see MCTRL_ROT.
+# (Said "40 x 35 ... stands 90 deg to the tray's X" until 2026-09-19, directly above
+# a constant reading 46.0, 58.0. A number in prose beside the number it describes is
+# the one place nothing checks; BOM.md carried the same stale 40 x 35 for this board
+# and sized an enclosure row from it.)
 MCTRL_BOARD_X, MCTRL_BOARD_Y = 46.0, 58.0
 MCTRL_ROT = 0.0                  # UNROTATED now: at 46 x 58 the board fits
                                  # the tray straight, and the ADC slot it grows
