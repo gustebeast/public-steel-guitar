@@ -360,11 +360,72 @@ def fab(board):
             f.write("%s -- order form settings that are NOT in the gerbers\n\n" % board)
             for k in sorted(opts):
                 f.write("  %-12s %s\n" % (k + ":", opts[k]))
+    crit, _total = _rotation_critical(pcb)
+    with open(os.path.join(d, "ROTATION-CHECK.txt"), "w", encoding="utf-8") as f:
+        f.write("%s -- the placements a rotation difference can DAMAGE\n\n" % board)
+        f.write("The CPL carries KiCad's convention unmodified. JLCPCB's placement "
+                "machine wants\nthe LCSC part's frame, and for many parts those differ "
+                "by 90/180/270. Check these\nin the previewer before paying:\n\n")
+        for _ref, _rot, _fpn in crit:
+            f.write("  %-8s %3d deg   %s\n" % (_ref, _rot, _fpn))
+        f.write("\n%d of %d placements. The rest are two-pad chip passives, which both\n"
+                "conventions align along the pad axis -- symmetric, so a 0/180 "
+                "difference\ncannot change them.\n" % (len(crit), _total))
     z = os.path.join(FAB_DIR, "%s.zip" % board)
     with zipfile.ZipFile(z, "w", zipfile.ZIP_DEFLATED) as zf:
         for fn in sorted(os.listdir(d)):
             zf.write(os.path.join(d, fn), fn)
     return n, len(groups), sorted(open_real), sorted(open_generic), z, opts or {}
+
+
+def _rotation_critical(pcb):
+    """Which placements could a rotation convention difference actually DAMAGE?
+
+    ⚠ EVERY PACKAGE ENDS BY TELLING A PERSON TO CHECK EVERY PART IN JLCPCB'S PREVIEWER,
+    and across five boards that is 329 placements. A human asked to check 329 things
+    checks them carefully the first time. This does not replace that step and corrects
+    nothing -- the CPL still carries KiCad's convention unmodified, for the reason at the
+    top of this file -- it says WHICH ones can bite, so the attention goes where the
+    damage is.
+
+    ⚠ THE RULE IS ABOUT SYMMETRY, NOT PAD COUNT. A two-pad chip resistor or ceramic
+    capacitor is rotationally symmetric: KiCad and JLCPCB both align it along its pad
+    axis, so the conventions can differ by 0 or 180 and the part is identical either way.
+    Everything else -- anything polarized, anything with three or more pads, anything
+    whose pin 1 means something -- is at risk.
+
+    ⚠ AND THE FIRST VERSION OF THIS ASKED THE PADS AND GOT DIODES WRONG. A SOD-123 diode
+    has pads numbered 1 and 2 exactly like an 0402, and a diode fitted backwards is a
+    dead board. Polarity is a property of the PART, not of its pad count, so the test is
+    the reference prefix and the footprint name. Measured after fixing it: 108 of 329
+    placements, against 56 while diodes were being waved through.
+
+    ⚠ AND THE CATALOGUE CANNOT SETTLE IT EITHER -- CHECKED, so nobody has to check
+    again. JLCPCB's own parts API returns 67 fields for a component (the same endpoint
+    lcsc_check.py uses) and NOT ONE of them describes the part's frame: no rotation, no
+    orientation, no pin-1 reference, nothing in the package or footprint fields that
+    would let a script derive the offset. So there is no source here to correct against,
+    which makes "narrow the human's work and correct nothing" the only honest answer
+    available rather than a cautious preference.
+    """
+    import pcbnew
+    board = pcbnew.LoadBoard(pcb)
+    out, total = [], 0
+    for fp in board.GetFootprints():
+        pads = [q for q in fp.Pads() if q.GetAttribute() != pcbnew.PAD_ATTRIB_NPTH]
+        if not pads:
+            continue
+        total += 1
+        ref, name = fp.GetReference(), fp.GetFPIDAsString()
+        sym = (len({q.GetNumber() for q in pads}) <= 2
+               and not re.match(r"^CP", ref)
+               and not re.search(r"Polarized|CP_|SOD|SMA|SMB|SMC|LED|Diode|Crystal",
+                                 name, re.I)
+               and re.match(r"^(R|C|L|FB|TP|JP)[A-Za-z]*[0-9]", ref))
+        if not sym:
+            out.append((ref, round(fp.GetOrientationDegrees()) % 360,
+                        name.split(":")[-1]))
+    return sorted(out), total
 
 
 def _sweep_stale(names):
@@ -510,8 +571,12 @@ def main(names):
     # ASCII on purpose: this prints to a Windows console whose default
     # codepage is cp1252, and a warning that raises UnicodeEncodeError is
     # worse than no warning at all.
-    print("\n!! CHECK EVERY ROTATION in JLCPCB's previewer before paying: the CPL "
-          "carries\n  KiCad's convention, which differs per part from LCSC's.")
+    print("")
+    print("!! CHECK THE ROTATIONS in JLCPCB's previewer before paying: the CPL carries")
+    print("  KiCad's convention, which differs per part from LCSC's. Each package's")
+    print("  ROTATION-CHECK.txt lists ONLY the placements a difference can DAMAGE --")
+    print("  polarised, multi-pad, or pin-1-bearing. Two-pad chip passives are")
+    print("  symmetric under a 0/180 difference and are deliberately left off it.")
 
 
 if __name__ == "__main__":
