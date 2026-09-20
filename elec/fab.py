@@ -285,7 +285,7 @@ def fab(board):
 
     _check_drill(pcb, d, board)
     _check_gerbers(d, json.load(open(stem + ".board.json", encoding="utf-8")),
-                   board)
+                   board, pcb)
 
     # ---- CPL, converted to JLCPCB's column names ----
     raw = os.path.join(d, "_pos.csv")
@@ -382,7 +382,7 @@ def fab(board):
     return n, len(groups), sorted(open_real), sorted(open_generic), z, opts or {}
 
 
-def _check_gerbers(gdir, notes, board):
+def _check_gerbers(gdir, notes, board, pcb):
     """Did the copper actually reach the gerbers, and is the reference plane whole?
 
     ⚠ THE EXPORT IS THE LAST PLACE A POUR CAN VANISH, and this project has watched one
@@ -431,6 +431,54 @@ def _check_gerbers(gdir, notes, board):
             print("  !! %s: the %s PLANE exported as %d separate regions. A reference "
                   "plane arrives fragmented when something is routed through it; check "
                   "plane_layers is being honoured." % (board, layer, n))
+    # ⚠ PASTE IS THE LAYER THAT DECIDES WHETHER A PART IS SOLDERED AT ALL, and until now
+    # nothing compared it to anything. A stencil aperture missing for a pad is a joint
+    # that never forms: the board arrives assembled-looking with a part sitting on dry
+    # copper. It is invisible to DRC, to the netlist, and to every check above.
+    #
+    # Counted as flashes plus regions, against the pads KiCad says are ON that layer --
+    # not against "SMD pads", which is a different and wrong question. Measured
+    # 2026-09-19: exact on all five boards, and B.Paste is empty on all five because
+    # every board here is single-sided.
+    #
+    # ⚠ AND "SMD PADS" WAS THE FIRST VERSION OF THIS TEST AND IT MISREAD FIVE BOARDS. It
+    # called 20 pads on motor_ctrl bottom-side, which would have meant parts with no
+    # paste under them; they are the EXPOSED THERMAL PADS of U4 (QFN-68) and U5
+    # (SOIC-8), whose copper reaches B.Cu through thermal vias while the part sits on
+    # top. Asking IsOnLayer(F_Paste) asks the question the gerber actually answers.
+    import pcbnew as _pcb
+    _bd = _pcb.LoadBoard(pcb)
+    for _lay, _suffix, _name in ((_pcb.F_Paste, "F_Paste.gtp", "F.Paste"),
+                                 (_pcb.B_Paste, "B_Paste.gbp", "B.Paste")):
+        _want = sum(1 for _fp in _bd.GetFootprints() for _p in _fp.Pads()
+                    if _p.IsOnLayer(_lay))
+        _f = [x for x in os.listdir(gdir) if x.endswith(_suffix)]
+        _got = 0
+        if _f:
+            _t = open(os.path.join(gdir, _f[0]), encoding="utf-8", errors="replace").read()
+            _got = len(re.findall(r"D03\*", _t)) + len(re.findall(r"G36\*", _t))
+        if _got != _want:
+            raise SystemExit(
+                "%s: %s carries %d aperture(s) for %d pad(s) on that layer. A missing "
+                "stencil aperture is a part that never gets soldered."
+                % (board, _name, _got, _want))
+
+    # ⚠ MASK MAY EXCEED ITS PADS AND MUST NEVER FALL SHORT. An opening fewer than pads
+    # means a pad sealed under soldermask, which is unsolderable; an opening MORE is
+    # normal and on these boards is exactly the solder jumpers' bridging window --
+    # measured, the excess equals the JP count on every board: can_tee 1, lever_sensor
+    # 1, motor_ctrl 2, optical 0, output_panel 0. So this is a floor, not an equality.
+    _wantm = sum(1 for _fp in _bd.GetFootprints() for _p in _fp.Pads()
+                 if _p.IsOnLayer(_pcb.F_Mask))
+    _fm = [x for x in os.listdir(gdir) if x.endswith("F_Mask.gts")]
+    if _fm:
+        _t = open(os.path.join(gdir, _fm[0]), encoding="utf-8", errors="replace").read()
+        _gotm = len(re.findall(r"D03\*", _t)) + len(re.findall(r"G36\*", _t))
+        if _gotm < _wantm:
+            raise SystemExit(
+                "%s: F.Mask has %d opening(s) for %d pad(s) -- %d pad(s) would arrive "
+                "sealed under soldermask." % (board, _gotm, _wantm, _wantm - _gotm))
+
     return seen
 
 
