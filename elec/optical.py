@@ -69,8 +69,8 @@ WHAT ACTUALLY CLOSED IT, because the diagnosis is the reusable part:
 
 ⚠ AND CLEAN IS NOT VERIFIED. This is the part that has not changed. DRC compares
 copper to a netlist: it does not know that twenty summing nodes read tens of
-nanoamps, or that a 60 MHz ULPI bus has timing. Two of the three things this
-paragraph used to list as unchecked are now checked: verify.py holds ULPI skew
+nanoamps, or that a 60 MHz ULPI bus has timing. All three things this paragraph
+used to list as unchecked now have numbers attached: verify.py holds ULPI skew
 against the USB334x datasheet's own numbers and the USB pair's coupled length,
 the TIA inputs are shown not to NEED guarding, and the switcher's hot loop is
 measured at 6.23 mm2 fifty millimetres from the nearest summing node -- all three
