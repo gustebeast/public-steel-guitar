@@ -13,6 +13,24 @@ run BEFORE the last board is designed, so that a problem here (a layer name JLCP
 rejects, a rotation convention, a missing sourcing decision) is found once rather
 than once per board.
 
+⚠ RUN END TO END FROM A CLEAN REGENERATION, 2026-09-19, and this is the claim the
+pipeline makes about itself: regenerate every netlist from its generator, route all five
+boards, package all five, with nothing carried over from a previous state. Result:
+
+    can_tee       0 unconnected  0 violations                     3 placements
+    lever_sensor  0              0            1 silk_overlap     28
+    motor_ctrl    0              0                               59
+    output_panel  0              0            1 hole_to_hole     60   verify 4/0
+    optical       0              0                              156   verify 2/0
+
+Both warnings are recorded as deliberate keeps where they live. Every check in this file
+passed silently -- drill hits against holes, poured zones against declared zones, the
+In1.Cu plane whole on all four 4-layer boards, paste apertures against pads on the paste
+layer, mask openings never short -- and BOM.md agreed with all five packages.
+
+That is the whole point of writing the judgement calls down as CHECKS rather than doing
+them by eye: the run above needed no human in it, and the next one will not either.
+
 ⚠ ROTATION IS THE CLASSIC WAY TO LOSE A BOARD, and it is NOT fully solvable here.
 KiCad's position file gives the footprint's rotation in the KiCad footprint's own
 frame; JLCPCB's placement machine wants it in the LCSC part's frame, and for many
