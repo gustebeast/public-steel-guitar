@@ -434,6 +434,56 @@ def _sweep_stale(names):
                   % (n, board))
 
 
+def _check_bom_md(names):
+    """Hold BOM.md against the packages just built, and say so here.
+
+    ⚠ A CHECK NOTHING CALLS IS A CHECK THAT DOES NOT RUN. verify.py sat unrun for
+    weeks behind a docstring insisting it existed to remove the human, because no step
+    invoked it. bom_check.py and part_totals.py were written today and were in exactly
+    that position. This is the step that turns boards into something orderable and
+    BOM.md is what a person orders from, so this is where the two belong.
+
+    ⚠ IT REPORTS, IT DOES NOT REFUSE, and the line is drawn at the artefact. A wrong
+    part number in BOM.md does not corrupt the fab package -- JLC assembles from the CPL
+    and BOM inside the zip, which are generated. Refusing to build the package over a
+    documentation error would block the thing that is correct because the thing beside it
+    is not. It fails where it actually bites: somebody hand-ordering, or reading the file
+    to understand what the instrument is made of.
+
+    Only runs on a FULL build. Against a partial one it would report parts as unnamed
+    that are simply not in this run's packages.
+    """
+    if set(names) != set(BOARDS):
+        return
+    try:
+        import bom_check
+        import part_totals
+        bad = bom_check.check()[0]
+        per = part_totals.totals()[0]
+        bom_txt = open(os.path.join(os.path.dirname(HERE), "BOM.md"),
+                       encoding="utf-8").read()
+        unlisted = [v for v in per if v in LCSC and v not in bom_txt]
+    except Exception as exc:                # a check that breaks must not break the run
+        print()
+        print("  !! BOM.md checks did not run: %r" % (exc,))
+        return
+    if not bad and not unlisted:
+        print()
+        print("BOM.md agrees with the packages: every designator row names the part its "
+              "board places,")
+        print("  and every sourced part is named.")
+        return
+    print()
+    print("!! BOM.md DISAGREES WITH THE BOARDS -- the packages are fine, the document "
+          "is not:")
+    for board, des, part, code, val, line in bad:
+        print("   BOM.md:%-5d %-6s says %-20s %-10s but %s places %s"
+              % (line, des, part, code, board, val))
+    for val in sorted(unlisted):
+        print("   %-20s is placed and SOURCED (%s) but named nowhere in BOM.md"
+              % (val, LCSC[val]))
+
+
 def main(names):
     os.makedirs(FAB_DIR, exist_ok=True)
     _sweep_stale(names)
@@ -456,6 +506,7 @@ def main(names):
         for b, opts in order.items():
             for k in sorted(opts):
                 print("   %-13s %-11s %s" % (b, k, opts[k].split(" -- ")[0]))
+    _check_bom_md(names)
     # ASCII on purpose: this prints to a Windows console whose default
     # codepage is cp1252, and a warning that raises UnicodeEncodeError is
     # worse than no warning at all.
