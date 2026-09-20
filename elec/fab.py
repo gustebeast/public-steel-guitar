@@ -399,6 +399,14 @@ def _rotation_critical(pcb):
     dead board. Polarity is a property of the PART, not of its pad count, so the test is
     the reference prefix and the footprint name. Measured after fixing it: 108 of 329
     placements, against 56 while diodes were being waved through.
+
+    ⚠ AND THE CATALOGUE CANNOT SETTLE IT EITHER -- CHECKED, so nobody has to check
+    again. JLCPCB's own parts API returns 67 fields for a component (the same endpoint
+    lcsc_check.py uses) and NOT ONE of them describes the part's frame: no rotation, no
+    orientation, no pin-1 reference, nothing in the package or footprint fields that
+    would let a script derive the offset. So there is no source here to correct against,
+    which makes "narrow the human's work and correct nothing" the only honest answer
+    available rather than a cautious preference.
     """
     import pcbnew
     board = pcbnew.LoadBoard(pcb)
