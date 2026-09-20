@@ -633,6 +633,29 @@ BOARD_NOTES = {
     # angle sensor whose entire job is reading a small field. A solid ground
     # plane between them is worth more than the couple of dollars it costs."
     # Without this pour the stackup buys nothing.
+    # ⚠ AND THE PLANE EARNS ITS KEEP A SECOND WAY, MEASURED 2026-09-19. The argument
+    # above is about SHIELDING -- copper between the switcher and the sensor. The plane
+    # also closes the switcher's own current loops, which is a different mechanism and
+    # the bigger effect.
+    #
+    # U1 is an LMR16006 in SOT-23-6 with VIN (5) and GND (2) on OPPOSITE sides of the
+    # package, and C1 sits CROSSED relative to it -- C1's +24V pad on the chip's GND
+    # side and vice versa. On a two-layer board that geometry forces a wide loop. Here
+    # neither return is a trace at all: U1.GND and C1.GND each drop straight into In1.Cu
+    # through their own via, so the return current flows in the plane directly beneath
+    # the outgoing trace and the loop is the trace length times the prepreg thickness.
+    #
+    #     input path   C1(+24V) -> U1.VIN       4.29 mm on F.Cu
+    #     SW path      U1.SW    -> D1 cathode   6.57 mm  (this is an ASYNCHRONOUS buck,
+    #                                                     so D1 carries the commutation)
+    #     input loop      4.29 x 0.2 mm prepreg  =  0.86 mm2
+    #     commutation    10.86 x 0.2             =  2.17 mm2
+    #
+    # For scale, the optical board's switcher -- whose GND return IS a trace, because it
+    # has to cross the package -- encloses 6.23 mm2, and that board gets away with it by
+    # being 53 mm from anything sensitive. This one cannot use that argument: the MT6701
+    # is 15.29 mm away (this note used to say ~10, which was pessimistic and never
+    # measured). It does not need to.
     "zones": [("GND", "In1.Cu", 0.3), ("GND", "B.Cu", 0.3)],
     # ⚠ IN1 IS A PLANE, AND THE ROUTER HAS TO BE TOLD. A zone is just copper as far
     # as freerouting is concerned: pour GND on In1 and say nothing, and it will route
