@@ -1375,8 +1375,8 @@ Basic classes (no feeder charge):
 | U1–U5 | `TLV9064IDR` | C388176 | 5 | $1.08 | **the TIA part** — see below ✓ |
 | U9 | `SPX3819M5-L-3-3/TR` | C9055 | 1 | $0.30 | 3V3 **analog**, 40 µVrms ✓ |
 | U8 | `AMS1117-3.3` | C6186 | 1 | $0.10 | 3V3 **digital**, SOT-223 tab — 0.51 W ✓ |
-| J2 | `S6B-XH-SM4-TB` | C191914 | 1 | $0.44 | 6-way, −Y edge: 2×5V, 2×PWR_GND, AUDIO, AUDIO_GND ✓ |
-| U11 | `TLV9061IDCKR` | C693480 | 1 | $0.36 | single of the U1–U5 family ✓ |
+| J2 | `S4B-XH-SM4-TB` | C161861 | 1 | $0.4379 | **4-way, not 6** — corrected 2026-09-19. The row still described the connector from before the optical feed became TWO WIRES: it listed 2×5V, 2×PWR_GND, AUDIO and AUDIO_GND, and the board now wires only PWR_GND and +24V, with ways 3–4 as declared no-connects. 20,952 in stock ✓ |
+| U11 | `TLV9061IDBVR` | C398358 | 1 | $0.0935 | **SOT-23-5, not the SC-70 IDCKR** — corrected 2026-09-19. The old row named `TLV9061IDCKR` against **C693480, which THIS FILE already records as a P6KE39CA TVS diode** (see the sourcing-trap note above): a known-bad code left sitting in the parts table. The board uses IDBVR, whose pinout fab.py checks pin-for-pin against the netlist. 297,517 in stock ✓ |
 | U12 | `PCM1808PWR` | C55513 | 1 | $0.34 | 24-bit audio ADC — magnetic pickup → I²S ✓ |
 | D1–D10 | `IR17-21C/TR8` | C131250 | 10 | $0.28 | 940 nm 0805 · ⚠ ~120°, confirm at layout |
 | J1 | `TYPE-C-31-M-12` | C165948 | 1 | $0.20 | the modelled envelope *is* this part ✓ |
@@ -1388,7 +1388,7 @@ Basic classes (no feeder charge):
 | R×29 | 0402 thick-film | Basic | 29 | $0.06 | TIA feedback + pulls |
 | Q1 | `AO3400A` | C20917 | 1 | $0.05 | logic-level FET ✓ |
 | R1–R10 | 0603 thick-film | Basic | 10 | $0.03 | per-string LED ballast |
-| FB1 | `GZ2012D601TF` | C1017 | 1 | $0.02 | 600 Ω @100 MHz ✓ |
+| FB1 | `GZ1608D601TF` | C1002 | 1 | $0.0197 | 600 Ω @100 MHz, **0603 not 0805** — corrected 2026-09-19; the row named the 2012 (0805) body, the board places a 1608 (0603). 901,019 in stock ✓ |
 | | | | **148** | **$26.96** | **`open_lines()` is empty** |
 
 **The op-amp is the happy surprise.** `TLV9064IDR` is a 4× CMOS RRIO part with
