@@ -50,6 +50,22 @@ count per instrument is not a quantity any DRC, netlist or gate reads. That is t
 this file is for, and it only caught it because the per-instrument divisor is applied by
 hand -- so apply it by hand, every time, and do not read the stock column alone.
 
+⚠ RE-RUN 2026-09-19, AND THE DIVISION IS NOW DONE BY THE TOOL. Everything above argued
+that the number to act on is stock DIVIDED BY the per-instrument count, and then printed
+a bare stock figure and left the division to whoever read it -- which is how S8B-XH-A at
+160 looked like the PHY at 92 when one covers 7.6 builds and the other 92.
+part_totals.py derives demand from the built packages, so the report computes it:
+
+    VEMD4110X01     C3211080    95 / 20 per instrument =   4.8 builds
+    S8B-XH-A        C157914    160 / 21               =   7.6
+    USB3343-CP      C633347     92 /  1               =  92
+    K3A260002010    C2835957   108 /  1               = 108
+    SPX3819M5       C9055      171 /  1               = 171
+
+Only the first two are constraints. The other three are under a flat 200 threshold and
+cover a hundred builds each, which is exactly the confusion the flat threshold creates
+and the reason this column exists.
+
 The PHY is still worth watching for a different reason: this same file recorded it OUT OF
 STOCK on 2026-08-04, so 98 is a recovery rather than a floor, and it has no second source
 in the catalogue.
@@ -102,9 +118,31 @@ def main(low_stock=200):
         time.sleep(0.15)
     print("%d code(s) checked" % len(pairs))
     if thin:
-        print("\nstock under %d:" % low_stock)
-        for mpn, code, n in sorted(thin, key=lambda t: t[2]):
-            print("   %-22s %-10s %s" % (mpn, code, n))
+        # ⚠ DIVIDE BY THE PER-INSTRUMENT COUNT, WHICH THIS FILE USED TO ASK A HUMAN TO
+        # DO. Its own note says "a threshold that does not know the BOM quantity cannot
+        # tell those apart, which is why the number to act on is the rightmost column"
+        # -- and then printed a bare stock figure and left the division to whoever read
+        # it. That is how S8B-XH-A sat at 160 looking like the PHY at 92, when one
+        # covers 7.6 instruments and the other 92. part_totals.py derives the demand
+        # from the built packages, so the column can just be computed.
+        demand = {}
+        try:
+            import part_totals
+            demand = part_totals.totals()[0]
+        except Exception as exc:
+            print("\n  (per-instrument demand unavailable: %r)" % (exc,))
+        print("\nstock under %d, worst coverage first:" % low_stock)
+        rows = []
+        for mpn, code, n in thin:
+            per = demand.get(mpn)
+            rows.append((n / per if per else float("inf"), mpn, code, n, per))
+        for cover, mpn, code, n, per in sorted(rows):
+            if per:
+                print("   %-22s %-10s %6d in stock / %2d per instrument = %5.1f builds"
+                      % (mpn, code, n, per, cover))
+            else:
+                print("   %-22s %-10s %6d in stock / not placed by any built package"
+                      % (mpn, code, n))
     if bad:
         print("\n*** %d CODE(S) DO NOT MATCH THEIR MPN ***" % len(bad))
         for mpn, code, got in bad:
