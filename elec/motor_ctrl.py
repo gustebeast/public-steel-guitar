@@ -170,6 +170,14 @@ def motor_ctrl():
     cin = _c("C1", "4.7uF/50V", "buck input bulk -- 50 V part on a 24 V rail",
              "Capacitor_SMD:C_1206_3216Metric")
     v24 += cin[1]; gnd += cin[2]
+    # ⚠ AND U1 HAD NO HF INPUT BYPASS AT ALL until 2026-09-19 -- only C1, which its own
+    # description calls "input bulk", 11.50 mm from the VIN pin through 15.94 mm of
+    # copper and two vias. Bulk at that distance is a DC reservoir; it cannot supply a
+    # switching edge, because the path to it is ~10-15 nH and most of that is the B.Cu
+    # stretch, a full core thickness from the plane. C21 is the part that actually holds
+    # VIN up during the edge, and the only thing it has to be is CLOSE.
+    c_hf = _c("C23", "100nF", "buck input HF bypass -- must sit at U1's VIN/GND pins")
+    v24 += c_hf[1]; gnd += c_hf[2]
     cout = _c("C2", "10uF/16V", "buck output bulk", "Capacitor_SMD:C_0805_2012Metric")
     v33 += cout[1]; gnd += cout[2]
     cboot = _c("C3", "100nF", "bootstrap, CB to SW")
@@ -539,6 +547,11 @@ BOARD_NOTES = {
         "L1": (-16.00, -8.00, 0.0),
         "D1": (-16.00, -11.50, 0.0),
         "C1": (-16.50, -15.00, 0.0),
+        # ⚠ C23 SITS AS CLOSE TO U1's VIN PIN AS A COURTYARD ALLOWS, and that is the
+        # whole specification. Vertical so it clears U1 (right edge -13.905) and TP3
+        # (left edge -12.145); its pads land 1.73 mm from the VIN pad, against C1's
+        # 11.50 mm through two vias.
+        "C23": (-13.20, -3.50, 90.0),
         "C2": (-16.00, -18.00, 0.0),
         "C3": (-12.50, -15.00, 0.0),
         "R1": (-12.50, -17.50, 0.0),
@@ -580,7 +593,12 @@ BOARD_NOTES = {
         "F1": (-18.00, 13.00, 0.0),
         "C16": (-12.00, 13.00, 0.0),
         "C17": (-6.00, 13.00, 0.0),
-        "C18": (-1.50, 13.00, 0.0),
+        # ⚠ C18 WAS 18.08 mm FROM THE PIN IT EXISTS TO BYPASS -- the FARTHEST of the
+        # three caps on +24V_BUCK, behind the 10 uF bulk at 8.93 and C17 at 13.26. Its
+        # own description says "nearest VIN/GND". Nothing checks that a placement honours
+        # what a part is FOR, so it drifted and read as decoupling that was present.
+        # Now north of U5's VIN pad (-18.475, 20.405), clear of the courtyard's y 21.25.
+        "C18": (-18.475, 21.90, 0.0),
         "D8": (5.00, 13.00, 0.0),
         "F2": (13.00, 13.00, 0.0),
         "U5": (-16.00, 18.50, 0.0),
