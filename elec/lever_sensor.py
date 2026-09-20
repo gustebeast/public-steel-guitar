@@ -656,6 +656,22 @@ BOARD_NOTES = {
     # being 53 mm from anything sensitive. This one cannot use that argument: the MT6701
     # is 15.29 mm away (this note used to say ~10, which was pessimistic and never
     # measured). It does not need to.
+    # ⚠ AND C1 IS THE HF BYPASS HERE, NOT JUST THE BULK -- CHECKED 2026-09-19, because
+    # the same question found a real defect on motor_ctrl the same day and the obvious
+    # next move is to "fix" this board the same way. It does not apply.
+    #
+    # motor_ctrl's U1 had bulk 11.50 mm away and nothing else, with clear board beside
+    # the pin; a 100nF 0402 went in at 1.73 mm. Here C1 is a 4.7 uF CERAMIC at 3.20 mm
+    # and it is already as close as the layout permits: U1's courtyard ends at x 1.00 and
+    # L1's begins at 1.16, a 0.16 mm gap, with TP4 above and C2 below. The only free
+    # pocket that takes an 0402 is north-east at about (0.45, 11.6), which lands its pads
+    # 2.41 mm from the VIN pad. Trading a 4.7 uF ceramic at 3.20 for a 100nF at 2.41 is
+    # not an improvement worth a part number on a board built ELEVEN times per
+    # instrument -- the trace inductance dominates either way at these lengths.
+    #
+    # The thing that actually keeps this switcher quiet is the plane return measured
+    # above: 0.86 mm2 of input loop, against 11.38 on output_panel. Decoupling distance
+    # is the second-order term here and the layout is already at its limit on it.
     "zones": [("GND", "In1.Cu", 0.3), ("GND", "B.Cu", 0.3)],
     # ⚠ IN1 IS A PLANE, AND THE ROUTER HAS TO BE TOLD. A zone is just copper as far
     # as freerouting is concerned: pour GND on In1 and say nothing, and it will route
