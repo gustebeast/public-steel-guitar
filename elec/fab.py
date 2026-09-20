@@ -284,6 +284,8 @@ def fab(board):
     #  Omitting them is what gives one merged drill file and no map.)
 
     _check_drill(pcb, d, board)
+    _check_gerbers(d, json.load(open(stem + ".board.json", encoding="utf-8")),
+                   board)
 
     # ---- CPL, converted to JLCPCB's column names ----
     raw = os.path.join(d, "_pos.csv")
@@ -378,6 +380,58 @@ def fab(board):
         for fn in sorted(os.listdir(d)):
             zf.write(os.path.join(d, fn), fn)
     return n, len(groups), sorted(open_real), sorted(open_generic), z, opts or {}
+
+
+def _check_gerbers(gdir, notes, board):
+    """Did the copper actually reach the gerbers, and is the reference plane whole?
+
+    ⚠ THE EXPORT IS THE LAST PLACE A POUR CAN VANISH, and this project has watched one
+    do it: route.py records the optical board's F.Cu ground pour disappearing at a stray
+    refill and taking 74 pads with it. DRC ran on the board, not on the files, so a
+    package can carry a layer that is missing copper the board had.
+
+    Two things, at opposite severities.
+
+    REFUSES on a declared zone whose layer exports NO region at all. KiCad writes a
+    poured zone as a G36/G37 region block, so zero regions on a layer that declares a
+    zone means the pour is not in the file. There is no benign reading of that.
+
+    REPORTS, loudly, when a declared PLANE comes out as more than one region. In1.Cu is
+    the impedance reference for the USB pair and the ULPI bus, and a plane arrives
+    fragmented when something has been routed THROUGH it -- the exact damage the
+    plane_layers declaration exists to prevent, which route.py had to be taught after a
+    router turned 5729 mm2 of pour into 1043. It is not refused because a board outline
+    could legitimately split a plane; it is printed because on these five boards it
+    never has, and a change in that number means something moved.
+
+    Measured 2026-09-19: In1.Cu is exactly ONE region on all four 4-layer boards.
+    F.Cu and B.Cu fragment freely and are meant to -- optical's F.Cu is 26 islands --
+    which is why only the DECLARED plane is held to one.
+    """
+    zones = {z[1] for z in notes.get("zones", []) or []}
+    planes = set(notes.get("plane_layers", ()) or ())
+    seen = {}
+    for fn in sorted(os.listdir(gdir)):
+        m = re.search(r"(F_Cu|In\d_Cu|B_Cu)\.(gtl|gbl|g\d)$", fn)
+        if not m:
+            continue
+        txt = open(os.path.join(gdir, fn), encoding="utf-8", errors="replace").read()
+        seen[m.group(1).replace("_", ".")] = len(re.findall(r"G36\*", txt))
+    for layer in sorted(zones):
+        if layer not in seen:
+            raise SystemExit("%s: a zone is declared on %s and no such copper gerber "
+                             "was exported" % (board, layer))
+        if not seen[layer]:
+            raise SystemExit(
+                "%s: %s declares a zone and its gerber carries NO poured region. The "
+                "pour is not in the file the fab will use." % (board, layer))
+    for layer in sorted(planes):
+        n = seen.get(layer, 0)
+        if n > 1:
+            print("  !! %s: the %s PLANE exported as %d separate regions. A reference "
+                  "plane arrives fragmented when something is routed through it; check "
+                  "plane_layers is being honoured." % (board, layer, n))
+    return seen
 
 
 def _check_drill(pcb, drill_dir, board):
