@@ -283,6 +283,8 @@ def fab(board):
     #  value; passing "false" makes kicad-cli read it as the input file and fail.
     #  Omitting them is what gives one merged drill file and no map.)
 
+    _check_drill(pcb, d, board)
+
     # ---- CPL, converted to JLCPCB's column names ----
     raw = os.path.join(d, "_pos.csv")
     _run([KICAD_CLI, "pcb", "export", "pos", "-o", raw, "--format", "csv",
@@ -376,6 +378,64 @@ def fab(board):
         for fn in sorted(os.listdir(d)):
             zf.write(os.path.join(d, fn), fn)
     return n, len(groups), sorted(open_real), sorted(open_generic), z, opts or {}
+
+
+def _check_drill(pcb, drill_dir, board):
+    """Does the drill file describe the holes the board actually has?
+
+    ⚠ THIS CHECKS kicad-cli's OUTPUT, WHICH NOTHING ELSE DOES. Everything upstream
+    validates the board; from the export onwards the artefact is whatever the tool
+    wrote, and the fab drills from that file, not from the .kicad_pcb. A flag that
+    changes meaning between KiCad versions, or an export that silently drops the NPTH
+    pass, produces a package that looks complete and arrives as a board with no holes
+    where holes were meant to be.
+
+    Two things are compared, and both are cheap:
+      * hit count == vias + through-hole pads. Exact, not approximate.
+      * every G85 slot's TRAVEL matches an oval pad's (length - width).
+
+    ⚠ A SLOT'S TOOL DIAMETER IS ITS WIDTH, NOT ITS LENGTH, and reading that wrong is
+    what made optical's drill file look broken during the first hand check: the tools
+    were 0.6 where the pads were 1.7, which looked like a mismatch and was a unit
+    confusion. KiCad emits an oval PTH as a routed slot -- tool diameter = the narrow
+    dimension, then a G85 move of (length - width). Comparing TRAVEL is what makes the
+    two directly comparable.
+
+    This one REFUSES rather than reports, unlike the BOM checks: a wrong drill file is
+    a fab error, not a documentation error, and it cannot be caught by looking at the
+    board afterwards.
+    """
+    import math
+    import pcbnew
+    drl = [f for f in os.listdir(drill_dir) if f.lower().endswith(".drl")]
+    if not drl:
+        raise SystemExit("%s: the drill export produced no .drl file" % board)
+    txt = open(os.path.join(drill_dir, drl[0]), encoding="utf-8").read()
+    hits = len(re.findall(r"^X[-\d.]+Y[-\d.]+", txt, re.M))
+    slots = sorted(round(math.hypot(float(c) - float(a), float(d) - float(b)), 3)
+                   for a, b, c, d in re.findall(
+                       r"X(-?[\d.]+)Y(-?[\d.]+)G85X(-?[\d.]+)Y(-?[\d.]+)", txt))
+    bd = pcbnew.LoadBoard(pcb)
+    vias = sum(1 for t in bd.GetTracks() if isinstance(t, pcbnew.PCB_VIA))
+    pth, ovals = 0, []
+    for fp in bd.GetFootprints():
+        for p in fp.Pads():
+            if p.GetAttribute() not in (pcbnew.PAD_ATTRIB_PTH, pcbnew.PAD_ATTRIB_NPTH):
+                continue
+            pth += 1
+            s = p.GetDrillSize()
+            if s.x != s.y:
+                ovals.append(round(pcbnew.ToMM(abs(s.x - s.y)), 3))
+    if hits != vias + pth:
+        raise SystemExit(
+            "%s: the drill file has %d hit(s) and the board has %d hole(s) "
+            "(%d vias + %d through-hole pads). The fab drills from the FILE."
+            % (board, hits, vias + pth, vias, pth))
+    if slots != sorted(ovals):
+        raise SystemExit(
+            "%s: %d routed slot(s) with travels %s, against %d oval pad(s) with "
+            "travels %s" % (board, len(slots), slots, len(ovals), sorted(ovals)))
+    return hits, len(slots)
 
 
 def _rotation_critical(pcb):
