@@ -241,6 +241,36 @@ def output_panel():
     agnd += j5["S"], j5["TN"], j5["SN"]
 
     # ── J6/J7: the 24 V inlet, crossing its own corner ───────────────────────
+    # ⚠ AND THE SPLIT COSTS SOMETHING, MEASURED 2026-09-19: THIS BOARD HAS THE WORST
+    # SWITCHER LOOP IN THE FLEET, and it is the split that makes it so. PWR_GND is a
+    # separate net, so it gets NO POUR -- the zones here are GND on In1.Cu and B.Cu. The
+    # buck's return current therefore cannot drop into a plane beneath its own trace the
+    # way it does on every other board; it has to run as copper, all the way around the
+    # package:
+    #
+    #     +24V out     U5.VIN -> C3      3.38 mm  straight
+    #     PWR_GND back C3 -> U5.GND     10.72 mm  around the package
+    #     enclosed                      11.38 mm2
+    #
+    # against the rest of the fleet, same measurement:
+    #     lever_sensor U1   0.86 mm2   plane return, and 11 of these per instrument
+    #     motor_ctrl   U5   plane return, input cap 8.93 mm from VIN
+    #     motor_ctrl   U1   plane return, input cap 11.91 mm from VIN -- the longest
+    #     optical      U13  6.23 mm2   trace return, forced by the package pinout
+    #
+    # ⚠ THE TRADE IS REAL AND WORTH STATING PLAINLY. The split keeps switcher return
+    # current out of the audio ground, which is what it is for and which no loop-area
+    # number argues against. What it costs is that the switcher's own loop is three
+    # times the size it would otherwise be. Both effects are real; this board chose the
+    # one that protects the signal chain.
+    #
+    # It is acceptable here for the same reason optical's is: distance. U5 sits in one
+    # corner and the analog chain in the other -- nearest is U7 at 49.67 mm, then J8 at
+    # 57.72, U3 at 58.80, U2 at 65.61 and the jack at 74.20, on a board whose diagonal is
+    # 99 mm. Near-field coupling falls as 1/r^3 and the GND plane spans the gap. But of
+    # the fleet's four switchers this is the one with the least margin, so if EMI ever
+    # shows up in the audio path, this loop is the first thing to look at and the fix is
+    # a local PWR_GND pour under the buck, tied to the split's single joining point.
     # ⚠ PWR_GND IS A SEPARATE NET AND IS NEVER JOINED TO THE SIGNAL GROUND HERE. The
     # trunk feeds ten stepper drivers and its return current is chopped at their
     # switching rate; sharing a plane with the audio reference would put that
