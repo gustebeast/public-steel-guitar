@@ -730,6 +730,16 @@ BOARD_NOTES = {
                     "a 0.25 hole with a diameter under 0.45; this is 0.50). The board "
                     "does not route at the 0.6/0.3 default -- see the CAN fan note.",
     },
+    # ⚠ THE ONE DRC WARNING THIS BOARD KEEPS IS COSMETIC, AND IS KEPT ON PURPOSE.
+    # silk_overlap x1: the segment of Y1's silkscreen OUTLINE against U2's outline
+    # polygon, ~0.96 mm apart at 97.0,104.7. It is two part outlines touching on the ink
+    # layer -- not a reference designator over a pad, which is the case that actually
+    # costs something, and not anything the fab cannot handle (silk over copper is
+    # clipped automatically). The parts either side of it are the crystal and the CAN
+    # transceiver, both of which are where they are for routing reasons that took four
+    # rounds to settle; moving one to tidy ink would risk the 0 unconnected this board
+    # only just reached. Recorded rather than chased, so it is not mistaken later for a
+    # warning nobody looked at.
     "refs_on_fab": True,
     "hold_edge": None,          # NO screw: the grooves hold five faces and the
                                 # instrument's underside closes over the sixth
