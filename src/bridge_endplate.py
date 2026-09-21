@@ -876,7 +876,7 @@ def _build() -> cq.Workplane:
     # panel at all; before that it was 20 mm inboard and never reached the wall to clash
     # with it. Read the board's own span and add a clearance each side.
     from .electronics import (TS_Y, JACK_Z, JACK_WALL_X, JACK_TIP, OP_BOARD_Y,
-                              OP_PANEL_CLR, op_origin, op_panel_openings)
+                              OP_PANEL_CLR, op_origin, op_panel_openings, op_rear_mounts)
     _rc_y = op_origin()[1]                           # the board's Y centre
     _rc_w = OP_BOARD_Y + 2 * OP_PANEL_CLR            # its span plus a fit clearance
     body = body.cut(box_at(JACK_WALL_X - (XLO - 1.0), _rc_w, FOOT_Z - (JACK_Z - 14.0),
@@ -888,6 +888,18 @@ def _build() -> cq.Workplane:
     # the panel would otherwise fill a hole back in (the cut-order trap this file has hit
     # four times -- bearing seats, guide sockets, axle bores, conduit).
     body = body.union(op_cradle())
+    # THE TS JACK'S CLAMP. The panel is 1.6 everywhere but here: the NMJ4HCD2's nose nut
+    # clamps 3.0..4.7 (Neutrik), so a BOSS behind the panel makes the clamp 4.0, and the face
+    # is counterbored for the nut's 2.05 head below (after the openings) so the head -- where
+    # a plug seats -- finishes flush with the barrel and the USB-C (user: every port "at the
+    # same installation x value"). Fused before the openings, which then bore it.
+    for _ref, _ry, _rz, _sp in op_rear_mounts():
+        _bx0 = JACK_TIP - (_sp["clamp"] + _sp["nut"][1])        # the jack's shoulder
+        _boss = (cq.Workplane("YZ").circle(_sp["boss_d"] / 2.0)
+                 .extrude(JACK_WALL_X + 0.2 - _bx0).translate((_bx0, _ry, _rz)))
+        _floor = _rz - _sp["cbore_d"] / 2.0                      # flat, level with the cbore
+        _boss = _boss.cut(box_at(40.0, 40.0, 40.0, x=_bx0 + 10.0, y=_ry, z=_floor - 20.0))
+        body = body.union(_boss)
     # THE PANEL OPENINGS, one per connector, CENTRED WHERE THE ROUTED BOARD PUTS IT. They
     # used to be three typed holes at one height -- the TS jack's -- which put the USB-C
     # hole 7.85 mm above the receptacle and the barrel's hole in front of a jack that faced
@@ -902,6 +914,17 @@ def _build() -> cq.Workplane:
         else:
             _cut = cq.Workplane("YZ").rect(_op[1], _op[2]).extrude(_x1 - _x0)
         body = body.cut(_cut.translate((_x0, _oy, _oz)))
+    for _ref, _ry, _rz, _sp in op_rear_mounts():
+        # the stub's hole runs back through the BOSS to the shoulder -- the openings above
+        # start at the thin panel's inner face, 3.45 in front of it, and left the jack's
+        # O11.4 stub buried in the boss (334.8 mm3 on the first build)
+        _bx0 = JACK_TIP - (_sp["clamp"] + _sp["nut"][1])
+        body = body.cut(cq.Workplane("YZ").circle(_sp["opening"][1] / 2.0)
+                        .extrude(JACK_TIP + 1.0 - (_bx0 - 0.5))
+                        .translate((_bx0 - 0.5, _ry, _rz)))
+        _ht = _sp["nut"][1]
+        body = body.cut(cq.Workplane("YZ").circle(_sp["cbore_d"] / 2.0).extrude(_ht + 1.0)
+                        .translate((JACK_TIP - _ht, _ry, _rz)))
     # +Z RETENTION LIP: protrudes -X under the deck in the -Y bay (see the LIP_* block);
     # the installed deck panels trap it, blocking the endplate from lifting +Z. Its +X face
     # is the endplate -X face (XLO); top is the deck-bottom plane (z0) so the deck rides it.
