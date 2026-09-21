@@ -27,6 +27,16 @@ import re
 import sys
 
 import pcbnew
+import wx
+# ⚠ NO MODAL DIALOGS IN A BUILD STEP. KiCad's Python is a wxWidgets application, and a
+# failed internal assertion pops a GUI alert -- "Do you want to stop the program?" -- and
+# WAITS. On a developer's machine that is a surprise; in any automated run it is a hang
+# with no output and no exit code, and the whole point of this directory is that someone
+# can run it unattended years from now. One real assertion (a KiCad 10 API change in
+# PCB_VIA::GetWidth) surfaced this, and the assertion was worth fixing on its own -- but
+# a pipeline that CAN block on a dialog is a defect independent of which dialog it is.
+wx.DisableAsserts()
+
 
 FP_DIRS = [
     os.environ.get("KICAD10_FOOTPRINT_DIR")
@@ -98,6 +108,16 @@ def read_netlist(path):
 # somewhere sensible on the sheet, so every placement goes through here and the
 # sign flip lives in exactly one place.
 SHEET_ORIGIN = (100.0, 100.0)
+
+# ⚠ DRILL-TO-DRILL, AND IT IS NOT THE COPPER CLEARANCE. Two holes may not share
+# laminate even when the copper around them is one net and shorting them is the intent.
+# 0.30 mm is chosen against three numbers, not rounded: JLCPCB's published minimum is
+# "Via Hole-to-Hole Spacing 0.2mm", KiCad's default board rule -- the one that actually
+# reports it -- is 0.25, and their stated hole POSITION tolerance is +-0.05. Sitting at
+# 0.25 would satisfy DRC and still let two holes drilled at opposite ends of that
+# tolerance meet; 0.30 keeps the full tolerance in hand above the fab limit.
+HOLE_GAP = 300000            # 0.30 mm in KiCad internal units (1 nm)
+
 
 
 def _to_board(x, y):
@@ -261,6 +281,139 @@ def _centrelines(p0, p1, detour_mm=6.0, step_mm=0.5):
             else:
                 out.append([p0, (p0[0], c), (p1[0], c), p1])
     return out
+
+
+def _pad_neck(m, pad, toward, width, clr):
+    """The point a pair's centreline must reach, straight out of `pad`'s row, before it
+    may start to turn or taper: along the pad's LONG axis, toward `toward`, far enough
+    to clear the pad row's end plus a track's half-width and the clearance."""
+    bb = pad.GetBoundingBox()
+    w, h = bb.GetWidth(), bb.GetHeight()
+    reach = max(w, h) / 2.0 + pcbnew.FromMM(width / 2.0 + clr)
+    if h >= w:                                  # pads long in Y: leave along Y
+        sgn = 1 if toward[1] >= m[1] else -1
+        return (m[0], m[1] + sgn * reach)
+    sgn = 1 if toward[0] >= m[0] else -1
+    return (m[0] + sgn * reach, m[1])
+
+
+def _flip_merge(fp, na, nb, inner, width, clr, margin, via_margin,
+                clear, seg_clear, on_board, g_all, g_thru, math,
+                pitch_mm=1.25, neck_mm=0.45, fan_mm=1.90, link_mm=3.00):
+    """Join a USB-C receptacle's DUPLICATED D+ and D- pads, which is not optional.
+
+    A USB-C socket carries D+ on two pads and D- on two pads, and joining them is the
+    entire mechanism by which the cable works either way up. Join them and the port
+    enumerates in both orientations; leave them and it enumerates in one -- a defect no
+    bench test finds unless somebody thinks to flip the plug over.
+
+    The pair generator terminates on ONE pad of each net, because a differential pair
+    has two rails and not four. The other two were simply left, and came back from every
+    routing run as "USB_DP unconnected" -- read for several runs as the router being
+    short of room, when no amount of routing could ever have fixed it.
+
+    THE ROUTER CANNOT FIX IT, AND THAT IS WHY IT IS DONE HERE. On the HRO
+    TYPE-C-31-M-12 the four pads run, at 0.5 mm pitch:
+
+            B7(D-)   A6(D+)   A7(D-)   B6(D+)
+
+    The two nets INTERLEAVE, so each has to cross the other; a crossing needs a layer
+    change; a layer change needs a via; and a 0.6 mm via beside a 0.2 mm track at
+    0.127 mm clearance needs 0.537 mm of pitch. There is 0.500. Every arrangement that
+    keeps the vias on the pad axis fails by those 37 micrometres -- which is why this
+    FANS FIRST: straight out of the pad row, apart to 1.25 mm, and only then across.
+
+    THE ROOM EXISTS, ON THE SIDE NOBODY LOOKS AT. The escape side of the pad row is the
+    board's busiest corner -- it is where the pair leaves for the PHY. The other side is
+    under the socket's own plastic: 5.0 x 3.3 mm of empty board, bounded by the two NPTH
+    locating holes and the shell tabs, and going nowhere. Both sides are tried and the
+    one that clears is kept, but it is that one.
+
+    NECK BEFORE FANNING, for the reason recorded against _pad_neck: a diagonal leaving a
+    0.5 mm pad row clips its neighbours. Each trace runs straight out past the row and
+    its clearance, and only then turns.
+
+    Nothing is emitted unless every segment and both vias clear. A partial merge is never
+    laid -- half a flip fix is a board that works one way up with copper claiming
+    otherwise, which is worse than the honest failure.
+    """
+    rows = {}
+    for q in fp.Pads():
+        if q.GetNetname() in (na, nb):
+            rows.setdefault(q.GetNetname(), []).append(q)
+    if not all(len(rows.get(n, ())) == 2 for n in (na, nb)):
+        return [], None                    # nothing duplicated: an ordinary part
+
+    quads = rows[na] + rows[nb]
+    xs = [q.GetPosition().x for q in quads]
+    ys = [q.GetPosition().y for q in quads]
+    if max(ys) - min(ys) > max(xs) - min(xs):
+        return [], ("%s: the duplicated %s / %s pads are not in one row along X, which "
+                    "is the only arrangement this handles"
+                    % (fp.GetReference(), na, nb))
+    row_y = sum(ys) / 4.0
+    half = max(abs(q.GetBoundingBox().GetTop() - q.GetBoundingBox().GetBottom())
+               for q in quads) / 2.0
+    nets = {na, nb}
+    order = sorted(quads, key=lambda q: q.GetPosition().x)
+    centre = sum(q.GetPosition().x for q in order) / 4.0
+    step = pcbnew.FromMM(pitch_mm)
+    fx = {id(q): int(centre + (k - 1.5) * step) for k, q in enumerate(order)}
+
+    def span(n):
+        a, b = rows[n]
+        return abs(fx[id(a)] - fx[id(b)])
+
+    for sign in (+1, -1):                  # +1 first: under the connector body
+        neck = row_y + sign * (half + pcbnew.FromMM(neck_mm))
+        fan = row_y + sign * (half + pcbnew.FromMM(fan_mm))
+        link = row_y + sign * (half + pcbnew.FromMM(link_mm))
+        # which net dives is decided by which inner link is shorter, and if that one
+        # will not clear the other is tried -- nothing in the geometry says it must be D+
+        for dive in sorted((na, nb), key=span):
+            flat = nb if dive == na else na
+            pend, ok = [], True
+            for q in quads:
+                px, py = q.GetPosition().x, q.GetPosition().y
+                for p0, p1 in (((px, py), (px, neck)),
+                               ((px, neck), (fx[id(q)], fan))):
+                    if not seg_clear(p0, p1, nets, margin, g_all):
+                        ok = False
+                        break
+                    pend.append(("TRK", q, p0, p1, q.GetLayer()))
+                if not ok:
+                    break
+            if not ok:
+                continue
+
+            va, vb = rows[dive]
+            pa, pb = (fx[id(va)], fan), (fx[id(vb)], fan)
+            for v in (pa, pb):
+                if not (clear(v[0], v[1], nets, via_margin, g_all)
+                        and on_board(v[0], v[1], 0.3 + clr)):
+                    ok = False
+            if not ok or not seg_clear(pa, pb, nets, margin, g_thru):
+                continue
+            pend.append(("VIA", va, pa, pa, None))
+            pend.append(("VIA", vb, pb, pb, None))
+            pend.append(("TRK", va, pa, pb, _LAYERS[inner]))
+
+            # the flat net drops to the link depth, crosses, and comes back up -- going
+            # AROUND the two vias rather than between them, which is the whole reason
+            # the link depth is deeper than the fan depth
+            fa, fb = rows[flat]
+            qa, qb = (fx[id(fa)], fan), (fx[id(fb)], fan)
+            la, lb = (qa[0], link), (qb[0], link)
+            for p0, p1 in ((qa, la), (la, lb), (lb, qb)):
+                if not seg_clear(p0, p1, nets, margin, g_all):
+                    ok = False
+                    break
+                pend.append(("TRK", fa, p0, p1, fa.GetLayer()))
+            if ok:
+                return pend, None
+    return [], ("%s: no clear way to join the duplicated %s / %s pads on either side of "
+                "the pad row -- the port would work in ONE cable orientation only"
+                % (fp.GetReference(), na, nb))
 
 
 def _diff_pairs(board, specs, outline=None, inner=None, clr=0.14):
@@ -442,8 +595,15 @@ def _diff_pairs(board, specs, outline=None, inner=None, clr=0.14):
                 rail[0] = (p_start.GetPosition().x, p_start.GetPosition().y)
                 rail[-1] = (p_end.GetPosition().x, p_end.GetPosition().y)
                 if vi is None:
+                    # ⚠ OWN NET ONLY, THE SAME RULE AS THE VIA PATH BELOW -- and this branch
+                    # was the one that still excluded BOTH. With the pair's partner net
+                    # excluded, D+ could not see D-'s PADS: on the optical board's socket
+                    # hop it ran diagonally onto A6 straight past B7 (a D- pad), and DRC
+                    # reported it. The partner's RAIL is not in the grid yet (nothing is
+                    # laid until the whole pair clears), so excluding only the own net
+                    # costs the coupled run nothing and makes the partner's pads real.
                     for q0, q1 in zip(rail, rail[1:]):
-                        if q0 != q1 and not seg_clear(q0, q1, nets, margin, grid):
+                        if q0 != q1 and not seg_clear(q0, q1, own, margin, grid):
                             ok = False
                             break
                     if not ok:
@@ -594,9 +754,19 @@ def _diff_pairs(board, specs, outline=None, inner=None, clr=0.14):
                              a1.GetPosition().y - b1.GetPosition().y) / 2.0
             hop = None
             # 1. the surface try: no vias at all, if the component layer is open
-            for sh in _centrelines(m0, m1):
-                ds = [max(off, hs0)] + [off] * (len(sh) - 2) + [max(off, hs1)]
-                hop = rails_for(sh, ds, None, a0, b0, a1, b1, na, nb, margin, width,
+            # ⚠ NECK OUT OF EACH PAD ROW BEFORE TAPERING. The rails used to taper from one
+            # part's pad pitch to the other's along the WHOLE hop, so on a short hop onto
+            # a fine-pitch connector they came in diagonally -- and a diagonal entering a
+            # 0.5 mm pad row crosses its neighbours. Each end now runs straight out along
+            # its pads' long axis, at its own pad separation, until it is past the pad row
+            # and its clearance; the taper happens only between those two neck points.
+            n0 = _pad_neck(m0, a0, m1, width, clr)
+            n1 = _pad_neck(m1, a1, m0, width, clr)
+            for sh in _centrelines(n0, n1):
+                centre = [m0] + sh + [m1]
+                ds = ([max(off, hs0)] * 2 + [off] * (len(sh) - 2)
+                      + [max(off, hs1)] * 2)
+                hop = rails_for(centre, ds, None, a0, b0, a1, b1, na, nb, margin, width,
                                 a0.GetLayer(), None, via_margin, g_all)
                 if hop:
                     break
@@ -635,6 +805,50 @@ def _diff_pairs(board, specs, outline=None, inner=None, clr=0.14):
         if why:
             done.append((na, why))
             continue
+
+        # ⚠ A PASS-THROUGH PART IS ONE NODE INSIDE AND TWO PADS OUTSIDE, and the board
+        # file only knows about the pads. The USBLC6 puts D+ on pins 1 AND 6 and D- on 3
+        # AND 4, joined on the die -- which is the whole reason the chain can enter one
+        # face and leave the other. KiCad's connectivity does not model that: it sees two
+        # pads of one net with no copper between them and calls the net unfinished, and
+        # the router then tries to "fix" it, laying stubs that end up as orphan islands.
+        # That is exactly how USB_DP and USB_DM came back unconnected on a board whose
+        # pair was laid correctly end to end.
+        #
+        # So the generator links them itself: it CHOSE the in and out pads, so it is the
+        # thing that knows they are the same node. The link is short, straight and runs
+        # under the part's own body between its own pads, and it is checked like any
+        # other segment -- if it does not clear, it is not laid and the net is reported
+        # rather than silently shorted to a neighbour.
+        for st in stops:
+            for n, qi, qo in ((na, st["in"][0], st["out"][0]),
+                              (nb, st["in"][1], st["out"][1])):
+                if qi is qo or qi.GetPosition() == qo.GetPosition():
+                    continue
+                p0 = (qi.GetPosition().x, qi.GetPosition().y)
+                p1 = (qo.GetPosition().x, qo.GetPosition().y)
+                if not seg_clear(p0, p1, {n}, margin, g_all):
+                    done.append((n, "pads %s/%s of %s are one node inside the part and "
+                                 "no clear link between them exists"
+                                 % (qi.GetNumber(), qo.GetNumber(),
+                                    st["fp"].GetReference())))
+                    continue
+                pending.append(("TRK", qi, p0, p1, qi.GetLayer()))
+
+        # AND THE DUPLICATED PADS AT THE ENDS OF THE CHAIN. A pass-through part is one
+        # node with two pads because the die joins them; a USB-C socket is one node with
+        # two pads because the connector is reversible, and there it is the BOARD that
+        # has to do the joining. Same shape, opposite obligation -- and the loop above
+        # cannot see it, because at the first and last stop `in` and `out` are the same
+        # pad, so its `qi is qo` guard skips them.
+        if inner is not None:
+            for st in (stops[0], stops[-1]):
+                extra, why_fm = _flip_merge(
+                    st["fp"], na, nb, inner, width, clr, margin, via_margin,
+                    clear, seg_clear, on_board, g_all, g_thru, math)
+                if why_fm:
+                    done.append((na, why_fm))
+                pending += extra
 
         for kind, pad, q0, q1, layer in pending:
             if kind == "VIA":
@@ -721,6 +935,874 @@ def _escape_plan(fpo, m, pa, pb, hs, voff, margin, via_margin, na, nb,
     return out
 
 
+def _pad_pitch(fp):
+    """The smallest centre-to-centre distance between two pads of `fp`, or None.
+
+    Measured rather than tabulated: at these part counts it costs nothing, and a measured
+    pitch cannot disagree with the footprint the way a table can.
+    """
+    import math as _m
+    pts = [(q.GetPosition().x, q.GetPosition().y) for q in fp.Pads()]
+    if len(pts) < 2:
+        return None
+    best = None
+    for i, (x0, y0) in enumerate(pts):
+        for x1, y1 in pts[i + 1:]:
+            d = _m.hypot(x1 - x0, y1 - y0)
+            if d > 0 and (best is None or d < best):
+                best = d
+    return best
+
+
+def add_missing_vias(board, eps_mm=0.05, via_d=0.6, via_drill=0.3, clr=0.14):
+    """Where one net's copper changes layer and nothing carries it across, drop the via.
+
+    ⚠ THE ROUTER DOES NOT LOSE THE ROUTE, IT LOSES THE VIA. TIA_OUT_2B came back from
+    the Specctra round trip as a B.Cu track and an F.Cu track ending at exactly the same
+    point -- 0.002 mm apart -- with no via between them. Both halves of the layer change
+    are there; the thing that makes it a layer change is not.
+
+    That failure reads as a routing failure and is not one. Every attempt to fix it as
+    one -- more passes, a different strategy, more room around the parts -- re-routes a
+    net that was ALREADY ROUTED and then loses the via again. And the tempting repair,
+    bridging the "gap" with copper, cannot work at all: the two ends are on different
+    layers, so no segment can join them however short it is.
+
+    So look for the signature instead: two tracks of one net, on DIFFERENT layers,
+    whose endpoints coincide. That is a layer change with its via missing, and the
+    repair is exact rather than approximate -- the via goes where the route already
+    says it goes, and nothing else moves.
+
+    It still has to be LEGAL, and checking that is not optional: a via is bigger than
+    the track that leads to it (0.6 against 0.25), so a spot with room for the track can
+    be short of room for the via. One that will not fit is left alone and reported,
+    because a via placed into a clearance violation turns a board that is unfinished
+    into a board that cannot be made.
+    """
+    import math
+    eps = pcbnew.FromMM(eps_mm)
+    margin = pcbnew.FromMM(via_d / 2.0 + clr)
+
+    pads, segs, vias = [], [], []
+    for fp in board.GetFootprints():
+        for q in fp.Pads():
+            pads.append((q.GetBoundingBox(), q.GetNetname()))
+    for t in board.GetTracks():
+        if t.GetClass() == "PCB_VIA":
+            vias.append((t.GetPosition().x, t.GetPosition().y, _via_r(t), t.GetNetname()))
+        else:
+            segs.append(((t.GetStart().x, t.GetStart().y),
+                         (t.GetEnd().x, t.GetEnd().y),
+                         t.GetWidth() / 2.0, t.GetNetname()))
+
+    def clear(x, y, net):
+        for bb, onet in pads:
+            if onet == net:
+                continue
+            dx = max(bb.GetLeft() - x, 0, x - bb.GetRight())
+            dy = max(bb.GetTop() - y, 0, y - bb.GetBottom())
+            if math.hypot(dx, dy) < margin:
+                return False
+        for (ax, ay), (bx, by), hw, onet in segs:
+            if onet == net:
+                continue
+            vx, vy = bx - ax, by - ay
+            L2 = vx * vx + vy * vy
+            u = 0.0 if L2 == 0 else max(0.0, min(1.0, ((x - ax) * vx + (y - ay) * vy) / L2))
+            if math.hypot(x - (ax + u * vx), y - (ay + u * vy)) - hw < margin:
+                return False
+        for vx2, vy2, vr, onet in vias:
+            if onet == net:
+                continue
+            if math.hypot(x - vx2, y - vy2) < margin + vr:
+                return False
+        return True
+
+    ends = {}
+    for t in board.GetTracks():
+        if t.GetClass() == "PCB_VIA" or not t.GetNetname():
+            continue
+        for p in (t.GetStart(), t.GetEnd()):
+            ends.setdefault(t.GetNetname(), []).append((p.x, p.y, t.GetLayer(), t))
+
+    added, refused = 0, []
+    for net, items in ends.items():
+        for i in range(len(items)):
+            xi, yi, li, ti = items[i]
+            for j in range(i + 1, len(items)):
+                xj, yj, lj, tj = items[j]
+                if li == lj or math.hypot(xi - xj, yi - yj) > eps:
+                    continue
+                # already carried across? then there is nothing missing
+                if any(onet == net and math.hypot(xi - vx2, yi - vy2) <= vr
+                       for vx2, vy2, vr, onet in vias):
+                    continue
+                if not clear(xi, yi, net):
+                    refused.append((net, pcbnew.ToMM(xi), pcbnew.ToMM(yi)))
+                    continue
+                v = pcbnew.PCB_VIA(board)
+                v.SetPosition(pcbnew.VECTOR2I(int(xi), int(yi)))
+                v.SetWidth(pcbnew.FromMM(via_d))
+                v.SetDrill(pcbnew.FromMM(via_drill))
+                v.SetNet(ti.GetNet())
+                v.SetViaType(pcbnew.VIATYPE_THROUGH)
+                board.Add(v)
+                vias.append((xi, yi, pcbnew.FromMM(via_d / 2.0), net))
+                added += 1
+    for net, x, y in refused:
+        print("    ⚠ %s changes layer at %.2f,%.2f and a 0.6 via does not fit there"
+              % (net, x, y))
+    return added
+
+
+def drop_redundant_pth_vias(board):
+    """Delete routing vias that the router drilled into a through-hole pad of their own net.
+
+    ⚠ THIS IS THE ROUTER'S DOING, NOT THE STITCHER'S, and the distinction cost a
+    while to find because the symptom is identical. layout.py's stitcher really did put
+    20 vias on motor_ctrl's XH pins and 14 on output_panel's, and excluding PTH pads
+    from its via-in-pad branch really did fix those. What it did NOT fix -- 8 on
+    motor_ctrl, 6 on lever_sensor, 4 on output_panel -- has a different author: measured
+    on the UNROUTED board, every one of those boards has ZERO vias sitting in a PTH pad,
+    and they all appear in the .ses that comes back. Freerouting treats a through-hole
+    pad as a free layer change on its own net, which is electrically true and mechanically
+    not: the drill enters an already-drilled hole, risks the bit and leaves an oval bore.
+    No amount of tuning the stitcher's clearances reaches a via the stitcher never made.
+
+    ⚠ DELETING IS SAFE HERE AND WOULD NOT BE EARLIER. A PTH pad already connects
+    every copper layer -- that is what the barrel is -- so a same-net via inside it
+    carries nothing the pad was not already carrying, and any track ending at the via's
+    centre ends inside the pad's own copper and stays connected. That is why the test
+    below demands BOTH that the holes overlap and that the via centre is inside the pad
+    shape: a via merely NEAR the pad may be holding a track that the pad does not touch.
+
+    And the timing is the whole reason this is allowed at all. Removing vias BEFORE
+    routing re-plans the board -- it took optical from 0 unconnected to 6, on a board
+    with four through-hole pads -- because every other net then routes around the
+    absence. Here the router has finished and nothing re-plans; see the deliberate
+    repairs in route.py, which are placed after routing for the same reason.
+    """
+    import math
+    pth = []
+    for fp in board.GetFootprints():
+        for pad in fp.Pads():
+            if pad.GetAttribute() not in (pcbnew.PAD_ATTRIB_PTH, pcbnew.PAD_ATTRIB_NPTH):
+                continue
+            d = pad.GetDrillSize()
+            pth.append((pad, pad.GetNetCode(), pad.GetPosition(),
+                        max(d.x, d.y) / 2.0, fp.GetReference(), pad.GetNumber()))
+    # ⚠ EVERY MEASUREMENT BEFORE ANY REMOVAL -- board.Remove() leaves the track
+    # container in a state where GetTracks() raises, the same SWIG ownership hazard that
+    # corrupted the footprint IO plugin earlier in this file's history.
+    doomed = []
+    for t in board.GetTracks():
+        if not isinstance(t, pcbnew.PCB_VIA):
+            continue
+        vp, vr = t.GetPosition(), t.GetDrillValue() / 2.0
+        for pad, nc, pp, pr, ref, num in pth:
+            if t.GetNetCode() != nc:
+                continue                       # a DIFFERENT net in the hole is a short,
+                                               # which DRC already calls an error
+            if math.hypot(vp.x - pp.x, vp.y - pp.y) >= vr + pr:
+                continue                       # holes do not touch
+            if not pad.HitTest(vp):
+                continue                       # centre outside the pad's copper: the
+                                               # via may be holding a track the pad is
+                                               # not touching, so leave it alone
+            doomed.append((t, "%s.%s [%s]" % (ref, num, t.GetNetname())))
+            break
+    for t, _why in doomed:
+        board.Remove(t)
+    if doomed:
+        board.BuildConnectivity()
+        print("  removed %d redundant via(s) drilled into a through-hole pad: %s"
+              % (len(doomed), ", ".join(w for _t, w in doomed[:8])))
+    return len(doomed)
+
+
+def tidy_router_vias(board, notes, min_gap_mm=0.25):
+    """Remove vias the router left carrying nothing, and merge ones drilled too close.
+
+    ⚠ THE FIRST VERSION OF THIS ASKED THE GEOMETRY AND GOT IT WRONG SIX TIMES OUT OF
+    SEVEN. It counted track ends landing in a via's pad and called a via with none
+    "dangling" -- but a plane stitching via is attached to a ZONE, which is its entire
+    job and which no track-end test can see. On output_panel it found seven and would
+    have deleted six real GND stitches. DRC found one, and DRC was right.
+
+    So ask the board: CONNECTIVITY_DATA.TestTrackEndpointDangling is the test DRC itself
+    uses, and it knows about zones. Checked against DRC's own report on output_panel it
+    returns exactly the one via DRC flags, at the same coordinates. A classifier for
+    deleting copper is worth validating against a known answer BEFORE it deletes any.
+
+    ⚠ AND THE VIA ACCESSORS TRAP TWICE, once quietly and once loudly. Widths go
+    through _via_r, which exists for this: PCB_VIA::GetWidth() with no layer argument
+    trips a wxWidgets assertion, and on Windows that is a MODAL DIALOG -- it stopped a
+    run dead waiting for a human to click it. The helper was already in this file and
+    this routine called the raw accessor anyway, which is the whole argument for having
+    had a helper.
+
+    ⚠ GetDrill() IS NOT THE DRILL, AND IT READ ZERO ON EXACTLY THE PAIR THIS WAS
+    WRITTEN FOR. A via whose drill comes from its netclass has no drill of its own, so
+    GetDrill() returns 0 and only GetDrillValue() gives the effective size. With zero the
+    computed wall gap for output_panel's GND pair came out 0.50 mm instead of 0.20, which
+    is comfortably outside the threshold -- so the pass ran, reported nothing, and left
+    the warning standing while looking like it had checked.
+
+    ⚠ 0.39 mm APART IS NOT A TIGHT FIT, IT IS ONE HOLE. Two 0.3 mm drills on 0.39 mm
+    centres leave 0.09 mm of laminate between the walls, which breaks out on the drill
+    and comes back as a single oval bore -- so the second case is real even though both
+    vias are on the same net and shorting them is the intent.
+
+    ⚠ THE ONE THIS STILL LEAVES IS A JUDGEMENT, NOT AN OVERSIGHT. output_panel keeps a
+    GND stitch pair with 0.202 mm of laminate between the walls, which trips KiCad's
+    default 0.25 mm hole-to-hole rule. JLCPCB's published requirement is "Via Hole-to-Hole
+    Spacing 0.2mm", so it passes -- by 2.5 MICRONS, against a stated hole position
+    tolerance of +-0.05 mm. Nominally legal and practically thin: drilled at the far ends
+    of that tolerance the two holes meet.
+
+    ⚠ AND THE FIRST GUESS AT WHOSE FAULT IT IS WAS WRONG, which is worth keeping.
+    This note used to say the fix belonged upstream in the stitcher, by analogy with the
+    co-located drills. It does not: _stitch_plane_pads ALREADY refuses a site within
+    via_d + clr (0.8 mm) of a via it has placed, and this pair is 0.50 mm apart, so a
+    stitch via is not what landed second. The other one comes from add_missing_vias or
+    link_close_gaps, which run AFTER routing and place a via at a point they do not get
+    to choose -- the spot where a net changes layer with nothing carrying it. Making
+    those refuse on hole spacing would trade a warning for an OPEN NET, which is the
+    same "too strict does not fail safe" trap recorded beside the hole-vs-hole attempt.
+
+    So the movable party is the STITCH via, and the fix is to nudge it after the required
+    vias are down -- rescue_stray_stitches already moves stitch vias for a different
+    reason and is the place to build it. Left specified rather than half-built.
+
+    ⚠ STITCHING VIAS ARE NEVER MERGED, only reported. They are placed deliberately, a
+    later pass re-checks that each one landed in its plane, and this routine has no way
+    to know which pad depends on which stitch. Removing the wrong one is how the first
+    version would have unstitched six pads.
+
+    ⚠ AND NOTHING IS REMOVED WHILE A PROXY TO IT IS STILL HELD. The first version
+    corrupted the board -- the next pass got a bare SwigPyObject back from
+    GetFootprints() -- by removing nine items from lists it was still holding. Here the
+    decision is recorded as UUIDs, the references are dropped, and the removal re-finds
+    each item on a fresh walk of the board. "Count before removing" was necessary and
+    not sufficient; do not hold the thing you are about to delete.
+    """
+    import math
+    conn = board.GetConnectivity()
+    stitch = set(notes.get("stitch_nets", ()))
+    vias = [t for t in board.GetTracks() if isinstance(t, pcbnew.PCB_VIA)]
+    # ⚠ A DECLARED REPAIR VIA IS NEVER A LEAVING. This pass runs at the END of the
+    # post-route sequence, which means the deliberate repairs are already down -- and on
+    # optical one of them is the only thing closing a net. They are searched geometry
+    # somebody committed to the board file on purpose, so they are off limits here
+    # whatever they look like to a dangling test.
+    # NOT "keep" -- the merge loop below binds that name to the surviving VIA, and this
+    # closure then tested membership in a PCB_VIA.
+    declared_xy = {(round(rv[1], 3), round(rv[2], 3))
+                   for rv in notes.get("repair_vias", [])}
+
+    def _declared(v):
+        p = v.GetPosition()
+        return (round(pcbnew.ToMM(p.x) - 100.0, 3),
+                round(100.0 - pcbnew.ToMM(p.y), 3)) in declared_xy
+
+    doomed, joins, reported = {}, [], []
+    for v in vias:
+        if conn.TestTrackEndpointDangling(v, False) and not _declared(v):
+            doomed[v.m_Uuid.AsString()] = "dangling %s" % v.GetNetname()
+
+    def _ends(v):
+        """Track ends landing in this via's pad, on a layer it spans -- for the HANDOVER
+        only. Used to move copper, never to decide whether a via is needed."""
+        out, vp, r = [], v.GetPosition(), _via_r(v)
+        lo, hi = v.TopLayer(), v.BottomLayer()
+        for t in board.GetTracks():
+            if isinstance(t, pcbnew.PCB_VIA) or t.GetNetCode() != v.GetNetCode():
+                continue
+            if not (lo <= t.GetLayer() <= hi):
+                continue
+            for e in (t.GetStart(), t.GetEnd()):
+                if math.hypot(e.x - vp.x, e.y - vp.y) <= r:
+                    out.append((t.GetLayer(), t.GetWidth()))
+                    break
+        return out
+
+    for i, a in enumerate(vias):
+        if a.m_Uuid.AsString() in doomed:
+            continue
+        for b in vias[i + 1:]:
+            if b.m_Uuid.AsString() in doomed or a.GetNetCode() != b.GetNetCode():
+                continue
+            ap, bp = a.GetPosition(), b.GetPosition()
+            d = math.hypot(ap.x - bp.x, ap.y - bp.y)
+            gap = d - (a.GetDrillValue() + b.GetDrillValue()) / 2.0
+            if gap >= pcbnew.FromMM(min_gap_mm):
+                continue
+            where = "%s at %.2f,%.2f (%.3f mm of laminate between the walls)" % (
+                a.GetNetname(), pcbnew.ToMM(ap.x) - 100.0, 100.0 - pcbnew.ToMM(ap.y),
+                pcbnew.ToMM(gap))
+            if _declared(a) or _declared(b):
+                reported.append(where + " -- one is a DECLARED repair via, not touched")
+                continue
+            if a.GetNetname() in stitch:
+                reported.append(where + " -- STITCHING, not touched")
+                continue
+            ra, rb = _via_r(a), _via_r(b)
+            if d > ra + rb:
+                # pads apart: a joining segment would be new copper over ground nobody
+                # has checked, so say so rather than lay it blind.
+                reported.append(where + " -- pads do not overlap, cannot merge")
+                continue
+            la, lb = _ends(a), _ends(b)
+            drop, keep, load = (a, b, la) if len(la) <= len(lb) else (b, a, lb)
+            if any(w > 2 * min(ra, rb) for _l, w in load):
+                reported.append(where + " -- a track is too wide to hand over")
+                continue
+            dp, kp = drop.GetPosition(), keep.GetPosition()
+            for layer, w in load:
+                joins.append((drop.GetNetCode(), layer, w, (dp.x, dp.y), (kp.x, kp.y)))
+            doomed[drop.m_Uuid.AsString()] = "crowded %s (%.3f mm gap)" % (
+                drop.GetNetname(), pcbnew.ToMM(gap))
+
+    why = list(doomed.values())
+    want = set(doomed)
+    del vias, doomed                       # drop every proxy before touching the board
+
+    for nc, layer, w, p, q in joins:
+        t = pcbnew.PCB_TRACK(board)
+        t.SetStart(pcbnew.VECTOR2I(*p))
+        t.SetEnd(pcbnew.VECTOR2I(*q))
+        t.SetWidth(w)
+        t.SetLayer(layer)
+        t.SetNetCode(nc)
+        board.Add(t)
+    gone = 0
+    while want:
+        hit = None
+        for t in board.GetTracks():
+            if t.m_Uuid.AsString() in want:
+                hit = t
+                break
+        if hit is None:
+            break
+        want.discard(hit.m_Uuid.AsString())
+        board.Remove(hit)
+        del hit
+        gone += 1
+    if gone:
+        board.BuildConnectivity()
+        print("  tidied %d router via(s) -- %s%s"
+              % (gone, "; ".join(why[:6]),
+                 (" (+%d joining segment(s))" % len(joins)) if joins else ""))
+    for r in reported:
+        print("    NOT FIXED -- %s" % r)
+    return gone
+
+
+def snap_hairline_gaps(board, eps_mm=0.02):
+    """Close same-net track gaps too small to bridge, by MOVING an end rather than
+    adding copper -- and say how many.
+
+    ⚠ THIS EXISTS BECAUSE THE REPAIR AND THE CLEAN-UP WERE UNDOING EACH OTHER.
+    link_close_gaps sees two ends of one net 2 MICRONS apart and lays a segment between
+    them; drop_degenerate then sees a 2-micron segment, correctly calls it degenerate,
+    and removes it. The net goes back to being two islands, DRC reports it as
+    unconnected, and nothing in either log says a repair was reverted. TIA_OUT_2B spent
+    three routing runs in that loop.
+
+    Neither routine is wrong. A 2-micron track IS junk -- on 0.25 mm copper that is a
+    100:1 ratio, and drop_degenerate's reasoning about it holds. The mistake is trying
+    to express "these two ends are the same point" as a piece of copper AT ALL. Say it
+    by moving the end instead: exact, adds nothing, and there is no fragment left for
+    the clean-up to find.
+
+    The displacement is bounded by eps, which is two hundredths of a millimetre --
+    two orders below the clearance rule, so a snap cannot walk a track into a violation.
+    """
+    import math
+    eps = pcbnew.FromMM(eps_mm)
+    ends = {}
+    for t in board.GetTracks():
+        if t.GetClass() == "PCB_VIA":
+            continue
+        key = (t.GetNetname(), t.GetLayer())
+        ends.setdefault(key, []).append(t)
+
+    snapped = 0
+    for (net, layer), tracks in ends.items():
+        if not net or len(tracks) < 2:
+            continue
+        # bucket the endpoints so this stays linear in the common case
+        pts = []
+        for t in tracks:
+            pts.append((t.GetStart(), t, True))
+            pts.append((t.GetEnd(), t, False))
+        for i in range(len(pts)):
+            pi, ti, si = pts[i]
+            for j in range(i + 1, len(pts)):
+                pj, tj, sj = pts[j]
+                if ti is tj:
+                    continue
+                d = math.hypot(pi.x - pj.x, pi.y - pj.y)
+                if d == 0 or d > eps:
+                    continue
+                if sj:
+                    tj.SetStart(pcbnew.VECTOR2I(pi.x, pi.y))
+                else:
+                    tj.SetEnd(pcbnew.VECTOR2I(pi.x, pi.y))
+                pts[j] = (pcbnew.VECTOR2I(pi.x, pi.y), tj, sj)
+                snapped += 1
+    return snapped
+
+
+def drop_degenerate(board, floor_mm=0.005):
+    """Remove tracks too short to be anything, and report how many.
+
+    ⚠ A TRACK HAS WIDTH, which is what makes this safe. These fragments are half a
+    MICRON long on 0.2 mm wide copper -- a 400:1 ratio -- so whatever a zero-length track
+    touches, the copper already at that spot touches far more of. It can never be the
+    only link between two things. Either it is redundant with its neighbours, or there
+    are no neighbours and it is an orphan.
+
+    And the orphans are not harmless: an isolated fragment is a separate island of its
+    net, so DRC counts it as an unconnected item and a board reads as unfinished because
+    of copper 0.0005 mm long. One of output_panel's two remaining failures was exactly
+    that, and chasing it as a routing problem would have found nothing to fix.
+
+    They come from both directions -- rounding in the Specctra round trip, and this
+    file's own generators emitting a segment whose ends differ in the last nanometre --
+    so the clean-up belongs where both can be caught rather than at either source.
+    """
+    floor = pcbnew.FromMM(floor_mm)
+    doomed = [t for t in board.GetTracks()
+              if t.GetClass() != "PCB_VIA" and t.GetLength() < floor]
+    for t in doomed:
+        board.Remove(t)
+    return len(doomed)
+
+
+def _check_stitches_landed(board, notes):
+    """Did every stitch via actually land IN the plane it was aiming at?
+
+    ⚠ THE STITCHER PLACES VIAS BEFORE THE ZONES ARE FILLED, so it cannot know where
+    the plane will actually be. It checks that a via clears other copper -- which is a
+    different question entirely from whether there is any plane copper AT that spot. A
+    zone flows around obstacles and drops islands it cannot connect, so a position that
+    is beautifully clear of everything can be a hole in the plane, and a via dropped into
+    one reaches nothing.
+
+    It fails silently and it fails late: the board looks stitched, the pad has a track and
+    a via, and the only symptom is one unconnected item on a routed board -- attributed by
+    DRC to a DIFFERENT pad, because it names the two ends of a missing ratline and either
+    end will do. On output_panel it cost an hour of looking at the wrong pin.
+
+    This cannot be prevented at placement time without filling the zones first, so it is
+    caught after the fact and reported loudly. A board that fails here needs the part
+    moved or the pad excepted -- not another routing run.
+
+    ⚠ WHAT A STRAY STITCH ACTUALLY LOOKS LIKE, SINCE IT IS EASY TO GET WRONG. The two on
+    the optical board (GND at 116.36,162.95 and 76.32,100.81) are not loose vias sitting
+    in empty copper: each is the far end of a short GND stub -- pad, track, via, no plane
+    -- and the boards read clean because those pads reach GND another way. A first probe
+    said they touched nothing at all and suggested simply deleting them, which would have
+    been wrong twice over: the probe compared each track's GetPosition(), which is its
+    START, so a track whose END lands exactly on the via reads as absent, and deleting the
+    via would have left the stub and could have cut the pad's only return.
+
+    So they stay, and the message stands: this is a placement problem. Report it, do not
+    tidy it away.
+    """
+    planes = {}
+    for z in board.Zones():
+        if z.GetNetname() in set(notes.get("stitch_nets", ())):
+            planes.setdefault(z.GetNetname(), []).append(z)
+    if not planes:
+        return
+    stray = []
+    for t in board.GetTracks():
+        if t.GetClass() != "PCB_VIA":
+            continue
+        zs = planes.get(t.GetNetname())
+        if not zs:
+            continue
+        if not any(z.GetFilledPolysList(z.GetLayer()).Collide(t.GetPosition()) for z in zs):
+            stray.append((t.GetNetname(), pcbnew.ToMM(t.GetPosition().x),
+                          pcbnew.ToMM(t.GetPosition().y)))
+    if stray:
+        print("  ⚠ %d stitch via(s) landed where the plane is not: %s"
+              % (len(stray), ", ".join("%s at %.2f,%.2f" % s for s in stray[:6])))
+    return stray
+
+
+def _via_r(v):
+    """A via's radius. KiCad 10's PCB_VIA::GetWidth() wants a layer -- a via may be a
+    different diameter on different layers -- and calling the no-argument form trips an
+    assertion and returns something arbitrary. Ours are plain through vias of one
+    diameter, but asking properly costs nothing and the warning was real."""
+    try:
+        return v.GetWidth(v.GetLayer()) / 2.0
+    except TypeError:
+        return v.GetWidth() / 2.0
+
+
+class _Terminal:
+    """A track end, dressed up enough to stand in for a pad in link_close_gaps.
+
+    The repair joins two things left in different islands, and a track END is as valid a
+    thing to join as a pad -- the router routed most of the way and stopped. Giving it
+    the three methods the repair actually calls is cheaper than branching the logic.
+    """
+
+    def __init__(self, pos, track):
+        self._pos = pcbnew.VECTOR2I(pos.x, pos.y)
+        self._t = track
+
+    def GetPosition(self):
+        return self._pos
+
+    def GetNetname(self):
+        return self._t.GetNetname()
+
+    def GetNet(self):
+        return self._t.GetNet()
+
+    def GetLayer(self):
+        return self._t.GetLayer()
+
+    def GetParentFootprint(self):
+        return None
+
+    def real(self):
+        """The board item the connectivity graph actually knows about."""
+        return self._t
+
+    def GetSize(self):
+        # a track end has no land; its "pad" is the trace width, which is what the
+        # via-escape search needs in order to stand a via clear of it
+        w = self._t.GetWidth()
+        return pcbnew.VECTOR2I(w, w)
+
+
+def link_close_gaps(board, outline, max_mm=5.0, width=0.25, clr=0.2,
+                    same_part_only=True, inner=None):
+    """Join same-net pads of ONE part that the routed board left in separate islands.
+
+    ⚠ A REPAIR, NOT A CONSTRAINT, and the difference is the whole lesson of the day. The
+    same idea applied BEFORE routing -- "join every part's same-net pads" -- laid 75
+    segments and took output_panel from 1 unconnected to 8, because most of those pads
+    were already going to be connected and the copper only cost the router freedom.
+    Capping it by distance laid 50 and was no better in kind.
+
+    Applied AFTER routing it costs nothing by construction: connectivity has already been
+    computed, so the only pads considered are ones actually left in different islands.
+    There is no counterfactual route being denied, because the routing is done.
+
+    It exists because the router leaves this case surprisingly often. J7 pins 2 and 3 are
+    both +24V, 2.5 mm apart on one connector, and freerouting wired each to a different
+    half of the net and never joined them -- the SES has no via and no trace between them.
+    And a USBLC6's pins 3 and 4 are one node inside the device, so no copper is needed
+    there in reality and KiCad has no way to know that; two millimetres of trace makes the
+    netlist's claim true on the board.
+    """
+    import math
+    board.BuildConnectivity()
+    cc = board.GetConnectivity()
+    pads = [(q.GetBoundingBox(), q.GetNetname())
+            for fp in board.GetFootprints() for q in fp.Pads()]
+    segs = [((t.GetStart().x, t.GetStart().y), (t.GetEnd().x, t.GetEnd().y),
+             t.GetWidth() / 2.0, t.GetNetname()) for t in board.GetTracks()
+            if t.GetClass() != "PCB_VIA"]
+    segs += [((t.GetPosition().x, t.GetPosition().y),
+              (t.GetPosition().x, t.GetPosition().y), _via_r(t), t.GetNetname())
+             for t in board.GetTracks() if t.GetClass() == "PCB_VIA"]
+    margin = pcbnew.FromMM(width / 2.0 + clr)
+    drills = [(t.GetPosition().x, t.GetPosition().y) for t in board.GetTracks()
+              if t.GetClass() == "PCB_VIA"]
+
+    def clear(x, y, net):
+        # ⚠ THE BOARD EDGE, AGAIN. This is the THIRD copper-laying routine in this file
+        # to be written without it and caught by DRC afterwards -- the stitcher, then
+        # _local_nets, now this. The edge is not in any obstacle list because it is not
+        # copper, so every new routine starts out unable to see it and runs traces off
+        # the side of the board until something says so.
+        # The real fix is that these three should share one obstacle model instead of
+        # each building its own; that is a refactor, and this is the note that says why
+        # it is worth doing rather than a fourth patch.
+        if not _inside(outline, int(x), int(y),
+                       margin - pcbnew.FromMM(clr) + pcbnew.FromMM(0.3)):
+            return False
+        for bb, onet in pads:
+            if onet == net:
+                continue
+            dx = max(bb.GetLeft() - x, 0, x - bb.GetRight())
+            dy = max(bb.GetTop() - y, 0, y - bb.GetBottom())
+            if math.hypot(dx, dy) < margin:
+                return False
+        for (ax, ay), (bx, by), hw, onet in segs:
+            if onet == net:
+                continue
+            vx, vy = bx - ax, by - ay
+            L2 = vx * vx + vy * vy
+            t = 0.0 if L2 == 0 else max(0.0, min(1.0, ((x - ax) * vx + (y - ay) * vy) / L2))
+            if math.hypot(x - (ax + t * vx), y - (ay + t * vy)) - hw < margin:
+                return False
+        return True
+
+    # ⚠ WIDENED FROM ONE PART TO ANY TWO PADS WITHIN REACH, because the optical board's
+    # remaining failures are the same shape one step out: a feedback capacitor and its
+    # feedback resistor, 2 mm apart, on the same net, left in two islands. Same argument
+    # as the same-part case and it survives the widening for the same reason -- this runs
+    # AFTER routing, so the only pairs considered are ones already left unconnected.
+    # There is no route being denied; the routing is over.
+    # ⚠ A TERMINAL IS NOT ALWAYS A PAD. Most of what the router leaves unfinished is a
+    # TRACK END a millimetre or two short of where it was going -- it routed most of the
+    # way and stopped. Considering only pads misses all of those, which on the optical
+    # board is most of them: of thirteen failures, one was pad-to-pad and the rest had a
+    # track end at one side or both.
+    groups = {}
+    if same_part_only:
+        for fp in board.GetFootprints():
+            for q in fp.Pads():
+                if q.GetNetname():
+                    groups.setdefault((fp.GetReference(), q.GetNetname()), []).append(q)
+    else:
+        for fp in board.GetFootprints():
+            for q in fp.Pads():
+                if q.GetNetname():
+                    groups.setdefault(q.GetNetname(), []).append(q)
+        for t in board.GetTracks():
+            if t.GetClass() == "PCB_VIA" or not t.GetNetname():
+                continue
+            for end in (t.GetStart(), t.GetEnd()):
+                groups.setdefault(t.GetNetname(), []).append(_Terminal(end, t))
+
+    made = 0
+    if True:
+        by_net = {k: v for k, v in groups.items()}
+        for net_key, group in by_net.items():
+            net = net_key[1] if isinstance(net_key, tuple) else net_key
+            for i, a in enumerate(group):
+                for b in group[i + 1:]:
+                    d = (a.GetPosition() - b.GetPosition()).EuclideanNorm()
+                    if d > pcbnew.FromMM(max_mm) or d == 0:
+                        continue
+                    # the connectivity graph knows board items, not our stand-ins
+                    ra = a.real() if hasattr(a, "real") else a
+                    rb = b.real() if hasattr(b, "real") else b
+                    if ra is rb:
+                        continue          # the two ends of one track
+                    joined = False
+                    for it in cc.GetConnectedItems(ra):
+                        if it == rb or it.GetPosition() == b.GetPosition():
+                            joined = True
+                            break
+                    if joined:
+                        continue          # already one island, by copper or by the plane
+                    p0 = (a.GetPosition().x, a.GetPosition().y)
+                    p1 = (b.GetPosition().x, b.GetPosition().y)
+                    # ⚠ NOT JUST A STRAIGHT LINE. The pads that need joining are often
+                    # diagonally across an intervening pad -- a feedback cap's far pin to
+                    # its resistor's far pin passes 0.077 mm from the cap's OWN other pad,
+                    # which is a different net. A straight segment is the common case and
+                    # not the interesting one; the interesting one turns a corner.
+                    way = None
+                    for sh in _centrelines(p0, p1, detour_mm=2.0, step_mm=0.25):
+                        ok = True
+                        for q0, q1 in zip(sh, sh[1:]):
+                            L = math.hypot(q1[0] - q0[0], q1[1] - q0[1])
+                            n = max(4, int(pcbnew.ToMM(L) / 0.15) + 1)
+                            if not all(clear(q0[0] + (q1[0] - q0[0]) * k / n,
+                                             q0[1] + (q1[1] - q0[1]) * k / n, net)
+                                       for k in range(n + 1)):
+                                ok = False
+                                break
+                        if ok:
+                            way = sh
+                            break
+                    if way is None and inner is not None:
+                        # ⚠ GO UNDER, when the component layer is full -- and in the
+                        # sensing strip it always is: 107 parts in 13.6 mm, which is
+                        # exactly where the router gave up too. The inner layer is empty
+                        # by comparison, and an SMD pad is no obstacle at all to a trace
+                        # a layer below it.
+                        def _seg_ok(q0, q1, netname, thru_only=False):
+                            L = math.hypot(q1[0] - q0[0], q1[1] - q0[1])
+                            n2 = max(4, int(pcbnew.ToMM(L) / 0.15) + 1)
+                            return all(clear(q0[0] + (q1[0] - q0[0]) * k / n2,
+                                             q0[1] + (q1[1] - q0[1]) * k / n2, netname)
+                                       for k in range(n2 + 1))
+                        def _emit(q0, q1, pad, netname, layer, _net=net):
+                            if q0 == q1:
+                                return
+                            tk = pcbnew.PCB_TRACK(board)
+                            tk.SetStart(pcbnew.VECTOR2I(int(q0[0]), int(q0[1])))
+                            tk.SetEnd(pcbnew.VECTOR2I(int(q1[0]), int(q1[1])))
+                            tk.SetWidth(pcbnew.FromMM(width))
+                            tk.SetLayer(layer)
+                            tk.SetNet(pad.GetNet())
+                            board.Add(tk)
+                            segs.append((q0, q1, pcbnew.FromMM(width) / 2.0, _net))
+                        hop = _hop_via_inner(board, a, b, net, inner,
+                                             lambda x, y, nn, **kw: clear(x, y, nn),
+                                             _seg_ok, _emit,
+                                             0.6, 0.3, clr, width, math, outline, drills)
+                        if hop:
+                            made += hop
+                            board.BuildConnectivity()
+                            cc = board.GetConnectivity()
+                        continue
+                    if way is None:
+                        continue
+                    for q0, q1 in zip(way, way[1:]):
+                        if q0 == q1:
+                            continue
+                        t = pcbnew.PCB_TRACK(board)
+                        t.SetStart(pcbnew.VECTOR2I(int(q0[0]), int(q0[1])))
+                        t.SetEnd(pcbnew.VECTOR2I(int(q1[0]), int(q1[1])))
+                        t.SetWidth(pcbnew.FromMM(width))
+                        t.SetLayer(a.GetLayer())
+                        t.SetNet(a.GetNet())
+                        board.Add(t)
+                        segs.append((q0, q1, pcbnew.FromMM(width) / 2.0, net))
+                        made += 1
+                    board.BuildConnectivity()
+                    cc = board.GetConnectivity()
+    return made
+
+
+def rescue_stray_stitches(board, notes, via_d=0.6, clr=0.2):
+    """Move stitch vias that ended up in a hole in the plane, and say how many.
+
+    ⚠ THE PLANE CHANGES SHAPE WHEN THE BOARD IS ROUTED. At layout time it is poured
+    around the parts and every stitch via sits in copper; after routing it is poured
+    around the parts AND seven hundred tracks, and it flows differently -- so a via that
+    was in the plane can be in a void, connected to nothing, with no warning anywhere.
+    The pad still has its track and its via and looks stitched.
+
+    This cannot be prevented at placement time without knowing the routed board, so the
+    honest structure is to fix it afterwards: find the vias that missed, and walk each one
+    out from its pad until it is somewhere the plane actually IS. The track follows it.
+
+    It runs after the post-route refill, and the caller refills again afterwards, because
+    moving copper changes the pour that was just computed.
+    """
+    import math
+    planes = {}
+    for z in board.Zones():
+        if z.GetNetname() in set(notes.get("stitch_nets", ())):
+            planes.setdefault(z.GetNetname(), []).append(z)
+    if not planes:
+        return 0
+
+    def in_plane(net, x, y):
+        pt = pcbnew.VECTOR2I(int(x), int(y))
+        return any(z.GetFilledPolysList(z.GetLayer()).Collide(pt)
+                   for z in planes.get(net, ()))
+
+    pads = [(q.GetBoundingBox(), q.GetNetname())
+            for fp in board.GetFootprints() for q in fp.Pads()]
+    segs, vias = [], []
+    for t in board.GetTracks():
+        if t.GetClass() == "PCB_VIA":
+            vias.append(t)
+        else:
+            segs.append(((t.GetStart().x, t.GetStart().y),
+                         (t.GetEnd().x, t.GetEnd().y), t.GetWidth() / 2.0,
+                         t.GetNetname()))
+
+    def clear(x, y, net, margin):
+        for bb, onet in pads:
+            if onet == net:
+                continue
+            dx = max(bb.GetLeft() - x, 0, x - bb.GetRight())
+            dy = max(bb.GetTop() - y, 0, y - bb.GetBottom())
+            if math.hypot(dx, dy) < margin:
+                return False
+        for (ax, ay), (bx, by), hw, onet in segs:
+            if onet == net:
+                continue
+            vx, vy = bx - ax, by - ay
+            L2 = vx * vx + vy * vy
+            t = 0.0 if L2 == 0 else max(0.0, min(1.0, ((x - ax) * vx + (y - ay) * vy) / L2))
+            if math.hypot(x - (ax + t * vx), y - (ay + t * vy)) - hw < margin:
+                return False
+        for v in vias:
+            # ⚠ COPPER ON ONE NET MAY TOUCH; TWO DRILLS MAY NOT. The same-net skip
+            # below is right for clearance and wrong for the hole, and that asymmetry is
+            # what put two GND stitch vias 0.50 mm apart on output_panel -- 0.20 mm of
+            # laminate between the walls, which breaks out on the drill.
+            if (math.hypot(x - v.GetPosition().x, y - v.GetPosition().y)
+                    < HOLE_GAP + v.GetDrillValue()):
+                return False
+            if v.GetNetname() == net:
+                continue
+                continue
+            if math.hypot(x - v.GetPosition().x, y - v.GetPosition().y) < margin + _via_r(v):
+                return False
+        return True
+
+    v_margin = pcbnew.FromMM(via_d / 2.0 + clr)
+    t_margin = pcbnew.FromMM(0.25 / 2.0 + clr)
+    moved = 0
+    for v in list(vias):
+        net = v.GetNetname()
+        # ⚠ A CROWDED STITCH CANNOT BE RESCUED FROM HERE, and the attempt is recorded
+        # rather than left in as dead code. output_panel ends with one hole_to_hole: a GND
+        # stitch 0.50 mm from a via that add_missing_vias or link_close_gaps put down. The
+        # obvious fix is to widen this trigger to "outside its plane OR crowding another
+        # hole" -- and it can never fire, because route.py calls this routine only when
+        # _check_stitches_landed reports a stray, and that block runs BEFORE the passes
+        # that create the crowding. The via it would move does not exist yet.
+        # To finish it: a separate pass at the END of the post-route sequence, beside
+        # tidy_router_vias, reusing this routine's search. Not built, because the pair it
+        # would fix passes the fab's real 0.2 mm limit and the pipeline it would change
+        # is the one that finally reaches 0/0 on five boards.
+        if net not in planes or in_plane(net, v.GetPosition().x, v.GetPosition().y):
+            continue
+        # the track that feeds this via, and the pad end it comes from
+        here = (v.GetPosition().x, v.GetPosition().y)
+        feed = None
+        for t in board.GetTracks():
+            if t.GetClass() == "PCB_VIA" or t.GetNetname() != net:
+                continue
+            for a, b in ((t.GetStart(), t.GetEnd()), (t.GetEnd(), t.GetStart())):
+                if abs(a.x - here[0]) < 1000 and abs(a.y - here[1]) < 1000:
+                    feed = (t, b)
+                    break
+            if feed:
+                break
+        if feed is None:
+            continue
+        track, anchor = feed
+        best = None
+        for step in range(1, 40):
+            r = pcbnew.FromMM(0.4 + 0.1 * step)
+            for k in range(24):
+                ang = 2 * math.pi * k / 24.0
+                x = int(anchor.x + r * math.cos(ang))
+                y = int(anchor.y + r * math.sin(ang))
+                if not in_plane(net, x, y):
+                    continue
+                if not clear(x, y, net, v_margin):
+                    continue
+                n = max(4, int(pcbnew.ToMM(r) / 0.15) + 1)
+                if not all(clear(anchor.x + (x - anchor.x) * i / n,
+                                 anchor.y + (y - anchor.y) * i / n, net, t_margin)
+                           for i in range(1, n + 1)):
+                    continue
+                best = (x, y)
+                break
+            if best:
+                break
+        if best is None:
+            continue
+        v.SetPosition(pcbnew.VECTOR2I(*best))
+        track.SetStart(anchor)
+        track.SetEnd(pcbnew.VECTOR2I(*best))
+        moved += 1
+    return moved
+
+
+
 def _canonical_uuids(path):
     """Rewrite a saved board so the same design always produces the same file.
 
@@ -792,7 +1874,85 @@ def _canonical_uuids(path):
     open(path, "w", encoding="utf-8").write("".join(out))
 
 
-def _local_nets(board, patterns, local_mm=6.0, width=0.2, clr=0.14):
+def _hop_via_inner(board, pa, pb, netname, inner, clear, seg_clear, emit,
+                   via_d, via_drill, clr, width, math, outline, drills):
+    """pad -> via -> a run on `inner` -> via -> pad, or 0 if there is no room.
+
+    The two vias are searched separately and close to their own pads, because unlike a
+    differential pair there is nothing to keep parallel here -- one net, one conductor,
+    and the only requirement is that it arrives.
+    """
+    def spot(pad, toward):
+        """A via position just off `pad`, preferring the direction of travel."""
+        pc = pad.GetPosition()
+        half = max(pad.GetSize().x, pad.GetSize().y) / 2.0
+        need = pcbnew.FromMM(via_d / 2.0 + clr)
+        base = math.atan2(toward[1] - pc.y, toward[0] - pc.x)
+        # ⚠ THE SEARCH RANGE IS THE LIMIT, NOT THE ROOM. Probed on the optical board at
+        # the five edges this routine gives up on: a 0.6 mm via has 5.48 mm of clearance
+        # available beside U1.7 and 2.82 mm beside Rf12.2 -- but at ring radii of 3.31 and
+        # 2.16 mm, and the old escalation stopped at 2.0 mm with ten fixed angles. It was
+        # not that there was nowhere to put a via; it was that nobody looked that far.
+        for step in range(40):
+            r = half + need + pcbnew.FromMM(0.1 * step)
+            for dth in (0, 0.4, -0.4, 0.8, -0.8, 1.2, -1.2, 1.6, -1.6, 2.0, -2.0,
+                        2.4, -2.4, 2.8, -2.8, math.pi):
+                x = int(pc.x + r * math.cos(base + dth))
+                y = int(pc.y + r * math.sin(base + dth))
+                # ⚠ A VIA IS NOT A TRACK, and checking it as one is what made this
+                # routine lay DRC-violating copper the first time it was let loose on a
+                # small board: 0.6 mm of pad needs via/2 + clearance, not width/2, and a
+                # drilled hole needs room from every OTHER hole and from the board edge,
+                # neither of which a track cares about. Three separate rules, and the
+                # track margin satisfies none of them.
+                if not clear(x, y, netname, margin=pcbnew.FromMM(via_d / 2.0 + clr)):
+                    continue
+                if not _inside(outline, x, y, pcbnew.FromMM(via_d / 2.0 + 0.3)):
+                    continue
+                lim = pcbnew.FromMM(via_d + clr)
+                if any(math.hypot(x - hx, y - hy) < lim for hx, hy in drills):
+                    continue
+                if not seg_clear((pc.x, pc.y), (x, y), netname):
+                    continue
+                drills.append((x, y))
+                return (x, y)
+        return None
+
+    va = spot(pa, (pb.GetPosition().x, pb.GetPosition().y))
+    vb = spot(pb, (pa.GetPosition().x, pa.GetPosition().y))
+    if va is None or vb is None:
+        return 0
+    # the run itself only has to clear THROUGH-HOLE copper: an SMD pad lives on the
+    # component layer and is no obstacle at all to a trace an layer down
+    way = None
+    for sh in _centrelines(va, vb, detour_mm=2.0, step_mm=0.25):
+        if all(seg_clear(q0, q1, netname, thru_only=True, layer=inner)
+               for q0, q1 in zip(sh, sh[1:])):
+            way = sh
+            break
+    if way is None:
+        return 0
+    n = 0
+    emit((pa.GetPosition().x, pa.GetPosition().y), va, pa, netname, pa.GetLayer())
+    emit(vb, (pb.GetPosition().x, pb.GetPosition().y), pb, netname, pb.GetLayer())
+    n += 2
+    for q0, q1 in zip(way, way[1:]):
+        emit(q0, q1, pa, netname, _LAYERS[inner])
+        n += 1
+    for pt, pad in ((va, pa), (vb, pb)):
+        v = pcbnew.PCB_VIA(board)
+        v.SetPosition(pcbnew.VECTOR2I(int(pt[0]), int(pt[1])))
+        v.SetWidth(pcbnew.FromMM(via_d))
+        v.SetDrill(pcbnew.FromMM(via_drill))
+        v.SetNet(pad.GetNet())
+        v.SetViaType(pcbnew.VIATYPE_THROUGH)
+        board.Add(v)
+    return n
+
+
+def _local_nets(board, patterns, outline, inner=None, local_mm=6.0, width=0.2,
+                clr=0.14, via_d=0.6, via_drill=0.3, same_part_only=False,
+                skip_nets=()):
     """Lay the SHORT, LOCAL part of repetitive nets before the autorouter sees them.
 
     ⚠ THE TIA NETS ARE TWO PROBLEMS WEARING ONE NAME, and that is why they were the
@@ -818,40 +1978,66 @@ def _local_nets(board, patterns, local_mm=6.0, width=0.2, clr=0.14):
     a constraint it has to honour.
     """
     import math
-    margin = pcbnew.FromMM(width / 2.0 + clr)
+    trk_margin = pcbnew.FromMM(width / 2.0 + clr)
     CELL = pcbnew.FromMM(2.0)
 
     pads = [(q, fp) for fp in board.GetFootprints() for q in fp.Pads()]
-    boxes = [(q.GetBoundingBox(), q.GetNetname()) for q, _ in pads]
+    # the third field says whether this obstacle pierces EVERY layer: a through pad does
+    # and an SMD pad does not, which is the whole difference between a surface run and an
+    # inner one
+    boxes = [(q.GetBoundingBox(), q.GetNetname(),
+              q.GetAttribute() in (pcbnew.PAD_ATTRIB_PTH, pcbnew.PAD_ATTRIB_NPTH))
+             for q, _ in pads]
     # ⚠ TRACKS AS SEGMENTS, not bounding boxes -- see _stitch_plane_pads. A diagonal
     # trace's box is mostly empty corner, and treating that as copper is how a board
     # that has room reports that it has none.
+    # ⚠ AN OBSTACLE HAS A LAYER, AND IGNORING THAT MADE THE INNER-LAYER FALLBACK
+    # POINTLESS. The fifth field is the layer a track lives on, or None for a via, which
+    # pierces every layer and obstructs them all. Without it every F.Cu trace counted
+    # against a run on In2.Cu -- so "the surface is full, go under" was evaluated against
+    # the copper on the surface, and the answer was always that under is full too. On the
+    # optical board that silently disabled the fallback for all five op-amp blocks:
+    # instrumented, both vias placed and the run between them was blocked, every time.
     segs = [((t.GetStart().x, t.GetStart().y), (t.GetEnd().x, t.GetEnd().y),
-             t.GetWidth() / 2.0, t.GetNetname()) for t in board.GetTracks()
+             t.GetWidth() / 2.0, t.GetNetname(), t.GetLayer()) for t in board.GetTracks()
             if t.GetClass() != "PCB_VIA"]
     segs += [((t.GetPosition().x, t.GetPosition().y),
-              (t.GetPosition().x, t.GetPosition().y), t.GetWidth() / 2.0,
-              t.GetNetname()) for t in board.GetTracks() if t.GetClass() == "PCB_VIA"]
+              (t.GetPosition().x, t.GetPosition().y), _via_r(t),
+              t.GetNetname(), None) for t in board.GetTracks() if t.GetClass() == "PCB_VIA"]
     grid = {}
-    for bb, onet in boxes:
+    for bb, onet, is_thru in boxes:
         for cx in range(bb.GetLeft() // CELL, bb.GetRight() // CELL + 1):
             for cy in range(bb.GetTop() // CELL, bb.GetBottom() // CELL + 1):
-                grid.setdefault((cx, cy), []).append((bb, onet))
+                grid.setdefault((cx, cy), []).append((bb, onet, is_thru))
 
-    def clear(x, y, netname):
+    def clear(x, y, netname, thru_only=False, margin=None, layer=None):
+        """`layer` None means "this obstructs on every layer" -- the right question for a
+        VIA, which drills through the board. Pass a layer for a TRACK, and copper on the
+        other layers stops counting against it."""
         x, y = int(x), int(y)
+        margin = trk_margin if margin is None else margin
+        # ⚠ THE BOARD EDGE IS AN OBSTACLE TOO, and it is not in the obstacle list because
+        # it is not copper. Checking only against pads and tracks let this routine run
+        # traces off the side of a 28 x 21 board -- six edge-clearance violations on a
+        # board that had none -- because nothing it could see was in the way. The edge
+        # rule is measured from the copper's own half width, not from the centreline, so
+        # the clearance term comes out and the fab's edge keep-out goes in.
+        if not _inside(outline, x, y, margin - pcbnew.FromMM(clr) + pcbnew.FromMM(0.3)):
+            return False
         for cx in range((x - margin) // CELL, (x + margin) // CELL + 1):
             for cy in range((y - margin) // CELL, (y + margin) // CELL + 1):
-                for bb, onet in grid.get((cx, cy), ()):
-                    if onet == netname:
+                for bb, onet, is_thru in grid.get((cx, cy), ()):
+                    if onet == netname or (thru_only and not is_thru):
                         continue
                     dx = max(bb.GetLeft() - x, 0, x - bb.GetRight())
                     dy = max(bb.GetTop() - y, 0, y - bb.GetBottom())
                     if math.hypot(dx, dy) < margin:
                         return False
-        for (ax, ay), (bx, by), hw, onet in segs:
+        for (ax, ay), (bx, by), hw, onet, olay in segs:
             if onet == netname:
                 continue
+            if layer is not None and olay is not None and olay != layer:
+                continue                      # different layer: not in the way
             vx, vy = bx - ax, by - ay
             L2 = vx * vx + vy * vy
             t = 0.0 if L2 == 0 else max(0.0, min(1.0, ((x - ax) * vx + (y - ay) * vy) / L2))
@@ -859,36 +2045,110 @@ def _local_nets(board, patterns, local_mm=6.0, width=0.2, clr=0.14):
                 return False
         return True
 
-    def seg_clear(p0, p1, netname):
+    def seg_clear(p0, p1, netname, thru_only=False, layer=None):
         L = math.hypot(p1[0] - p0[0], p1[1] - p0[1])
         n = max(4, int(pcbnew.ToMM(L) / 0.15) + 1)
         return all(clear(p0[0] + (p1[0] - p0[0]) * t / n,
-                         p0[1] + (p1[1] - p0[1]) * t / n, netname)
+                         p0[1] + (p1[1] - p0[1]) * t / n, netname, thru_only, layer=layer)
                    for t in range(n + 1))
 
     by_net = {}
     for q, fp in pads:
         n = q.GetNetname()
-        if n and any(re.fullmatch(pat, n) for pat in patterns):
+        if n and n not in skip_nets and any(re.fullmatch(pat, n) for pat in patterns):
             by_net.setdefault(n, []).append(q)
 
+    def emit(q0, q1, pad, netname, layer):
+        """One track segment, registered as an obstacle for everything laid after it."""
+        if q0 == q1:
+            return
+        t = pcbnew.PCB_TRACK(board)
+        t.SetStart(pcbnew.VECTOR2I(int(q0[0]), int(q0[1])))
+        t.SetEnd(pcbnew.VECTOR2I(int(q1[0]), int(q1[1])))
+        t.SetWidth(pcbnew.FromMM(width))
+        t.SetLayer(layer)
+        t.SetNet(pad.GetNet())
+        board.Add(t)
+        segs.append((q0, q1, pcbnew.FromMM(width) / 2.0, netname, layer))
+
+    # every hole already on the board, so a new via keeps clear of all of them
+    drills = [(t.GetPosition().x, t.GetPosition().y) for t in board.GetTracks()
+              if t.GetClass() == "PCB_VIA"]
+    drills += [(q.GetPosition().x, q.GetPosition().y) for q, _ in pads
+               if q.GetAttribute() in (pcbnew.PAD_ATTRIB_PTH, pcbnew.PAD_ATTRIB_NPTH)]
+
     laid, skipped, reach = 0, 0, pcbnew.FromMM(local_mm)
+    # ⚠ NAME THE SKIPS, DO NOT JUST COUNT THEM. A count says five edges could not be
+    # laid and points at nothing; the names point straight at the pads that end up
+    # unconnected two steps later, which is where the board's last failures live.
+    #
+    # It paid for itself on the first run. The optical board's five skips are not five
+    # problems -- they are ONE problem on five identical op-amp blocks:
+    #     TIA_OUT_1B: U1.7 -> Rf12.2 (3.48 mm)   and 3B, 5B, 7B, 9B, all 3.48 mm
+    # The straight line from the op-amp output to its feedback resistor's far pad passes
+    # the SAME RESISTOR'S OTHER PAD, 0.52 mm off the centreline. A 0.2 mm track needs
+    # 0.1 + 0.14 clearance and the pad reaches 0.27 from its centre: 0.51 mm required
+    # against 0.52 available. Ten microns, so this pass will not place it.
+    #
+    # ⚠ THAT IS A LIMIT OF THIS ROUTINE, NOT A RISK ON THE BOARD, and the first version of
+    # this note got it backwards -- it said the board was "passing on a hundredth of a
+    # millimetre, five times". It is not. Measured on the routed board, the router's own
+    # copper clears those pads by 0.600, 0.278 and 0.575 mm on F.Cu against a 0.127 fab
+    # rule, and on the other two it simply drops to In2.Cu, where an SMD pad does not
+    # exist and there is nothing to clear at all. Ten microns is the margin of the path
+    # THIS CODE tries, in its own model; it says nothing about the copper that ends up
+    # there.
+    #
+    # What is worth fixing is narrower: the inner-layer fallback below exists for exactly
+    # this case -- surface blocked, a layer down trivial -- and on these five it cannot
+    # place its via either, so five nets the generator should own go to the router. That
+    # costs the router effort in the densest part of the board, which is where its two
+    # remaining failures are. A capability gap, not a fragility.
+    skipped_edges = []
     for netname in sorted(by_net):
         group = by_net[netname]
-        # single-linkage clustering: a pad joins a cluster it is within reach of
-        clusters = []
-        for q in group:
-            here = (q.GetPosition().x, q.GetPosition().y)
-            hit = [c for c in clusters
-                   if any(math.hypot(here[0] - r.GetPosition().x,
-                                     here[1] - r.GetPosition().y) <= reach for r in c)]
-            if not hit:
-                clusters.append([q])
-                continue
-            hit[0].append(q)
-            for other in hit[1:]:                 # this pad merged two clusters
-                hit[0].extend(other)
-                clusters.remove(other)
+        if same_part_only:
+            # ⚠ ONE CLUSTER PER PART, and this is the safest pre-laid copper there is.
+            # Two pads of the SAME net on the SAME part are usually centimetres of net
+            # apart in the router's eyes and millimetres apart in fact: J7 pins 2 and 3
+            # are both +24V on a 2.5 mm connector pitch, and freerouting wired each of
+            # them to a different half of the net and never joined them to each other --
+            # leaving a board one connection short with a 2.5 mm gap in the middle of it.
+            #
+            # It costs the router almost nothing in freedom, which is what makes it
+            # different from the general case: the copper is the shortest that could
+            # possibly exist between those two points, so there is no alternative path it
+            # could be denying anything.
+            by_fp = {}
+            for q in group:
+                by_fp.setdefault(q.GetParentFootprint().GetReference(), []).append(q)
+            # ⚠ ONLY ADJACENT PADS, and the cap is not a detail -- it is the difference
+            # between 75 segments and 8. Unrestricted, "join a part's same-net pads"
+            # carpets an MCU in copper joining ground pins on opposite corners, which is
+            # exactly the freedom-for-determinism trade this was supposed to avoid, and
+            # it took output_panel from 1 unconnected to 8. What the router actually fails
+            # at is the SHORT case: two pins of one connector 2.5 mm apart. Past a few
+            # millimetres the router is better at this than a straight line is.
+            clusters = [[a for a in c
+                         if any(a is bq or (a.GetPosition() - bq.GetPosition())
+                                .EuclideanNorm() <= reach for bq in c if bq is not a)]
+                        for c in by_fp.values()]
+            clusters = [c for c in clusters if len(c) > 1]
+        else:
+            # single-linkage clustering: a pad joins a cluster it is within reach of
+            clusters = []
+            for q in group:
+                here = (q.GetPosition().x, q.GetPosition().y)
+                hit = [c for c in clusters
+                       if any(math.hypot(here[0] - r.GetPosition().x,
+                                         here[1] - r.GetPosition().y) <= reach for r in c)]
+                if not hit:
+                    clusters.append([q])
+                    continue
+                hit[0].append(q)
+                for other in hit[1:]:                 # this pad merged two clusters
+                    hit[0].extend(other)
+                    clusters.remove(other)
         for cl in clusters:
             if len(cl) < 2:
                 continue
@@ -909,22 +2169,56 @@ def _local_nets(board, patterns, local_mm=6.0, width=0.2, clr=0.14):
                         break
                 if way is not None:
                     for q0, q1 in zip(way, way[1:]):
-                        if q0 == q1:
-                            continue
-                        t = pcbnew.PCB_TRACK(board)
-                        t.SetStart(pcbnew.VECTOR2I(int(q0[0]), int(q0[1])))
-                        t.SetEnd(pcbnew.VECTOR2I(int(q1[0]), int(q1[1])))
-                        t.SetWidth(pcbnew.FromMM(width))
-                        t.SetLayer(a.GetLayer())
-                        t.SetNet(a.GetNet())
-                        board.Add(t)
-                        segs.append((q0, q1, pcbnew.FromMM(width) / 2.0, netname))
+                        emit(q0, q1, a, netname, a.GetLayer())
                         laid += 1
+                elif inner is not None:
+                    # ⚠ GO UNDER, when the component layer is full. Half of these edges
+                    # were being skipped on a board where they had somewhere to go: a
+                    # feedback resistor 2 mm from its op-amp pin with another part's land
+                    # between them has no surface path and a trivial one a layer down.
+                    # The surface is where the pads are and therefore where the traffic
+                    # is; the free inner layer is empty by construction.
+                    hop = _hop_via_inner(board, a, b, netname, inner, clear, seg_clear,
+                                         emit, via_d, via_drill, clr, width, math,
+                                         outline, drills)
+                    if hop:
+                        laid += hop
+                    else:
+                        skipped += 1
+                        skipped_edges.append(_edge_name(a, b, netname, math))
                 else:
                     skipped += 1
+                    skipped_edges.append(_edge_name(a, b, netname, math))
                 inside.append(b)
                 outside.remove(b)
-    return laid, skipped
+    return laid, skipped, skipped_edges
+
+
+def _edge_name(a, b, netname, math):
+    """"net: REF.pad -> REF.pad (d mm)" for an edge this routine could not lay."""
+    def _p(q):
+        fp = q.GetParentFootprint()
+        return "%s.%s" % (fp.GetReference() if fp else "?", q.GetNumber())
+    d = pcbnew.ToMM((a.GetPosition() - b.GetPosition()).EuclideanNorm())
+    return "%s: %s -> %s (%.2f mm)" % (netname, _p(a), _p(b), d)
+
+
+def _local_inner(notes):
+    """The layer local and retried nets may dive to, or None.
+
+    ⚠ THIS USED TO READ diff_pair_inner, WHICH SILENTLY DISABLED THE FALLBACK ON ANY
+    BOARD WITHOUT A DIFFERENTIAL PAIR. "Surface blocked, go a layer down" has nothing to
+    do with differential pairs; it needs an inner layer with no pads on it and nothing
+    else. Keying it on a diff-pair setting meant lever_sensor -- four layers, In1.Cu a
+    ground plane, In2.Cu empty, and a recorded history of nets "stranded at that package"
+    that "neither the router nor the generator could get out" -- never called it once.
+    Instrumented per end, the hop was not failing: it was never reached, because the
+    caller passed None and _local_nets skips the edge without comment when inner is None.
+
+    A board can now say `local_inner` outright, and diff_pair_inner stays as the fallback
+    so the boards that already work keep working.
+    """
+    return notes.get("local_inner") or notes.get("diff_pair_inner")
 
 
 def _outline_pts(notes):
@@ -1016,11 +2310,32 @@ def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
              t.GetWidth() / 2.0, t.GetNetname()) for t in board.GetTracks()
             if t.GetClass() != "PCB_VIA"]
     segs += [((t.GetPosition().x, t.GetPosition().y),
-              (t.GetPosition().x, t.GetPosition().y), t.GetWidth() / 2.0,
+              (t.GetPosition().x, t.GetPosition().y), _via_r(t),
               t.GetNetname()) for t in board.GetTracks() if t.GetClass() == "PCB_VIA"]
 
+    # ⚠ HOLE-VS-HOLE ON EVERY NET WAS TRIED HERE AND REVERTED -- IT BROKE THE BUILD.
+    # The idea is sound: copper on one net may touch, two DRILLS may never, and
+    # _clear_of skips same-net obstacles, so a stitch via beside one GND connector pin
+    # can land in the NEXT GND pin's hole. That is the 8 on motor_ctrl and 6 on
+    # output_panel still reported as holes_co_located after the via-in-pad fix.
+    #
+    # What it cost: `need` is measured from the pad CENTRE and is about 0.5 mm, which is
+    # outside an SMD land and INSIDE a PTH land's 1.0 mm barrel. Make holes obstacles and
+    # every candidate ring for a through-hole pad falls in its own hole -- seven pads on
+    # motor_ctrl reported "no room to stitch" and layout.py failed outright. A rule that
+    # is too strict does not fail safe: it turns a DRC warning into a build that does not
+    # complete. Two attempts at the margin (via pad radius, then drill-edge clearance)
+    # both failed the same way, because the margin was never the problem -- the SEARCH
+    # RING starting inside the barrel was.
+    #
+    # To finish this properly: raise `need` for PTH pads to clear their own drill before
+    # making holes obstacles, and re-measure all three boards. Left undone rather than
+    # half-done, because the remaining co-located drills are warnings and a broken layout
+    # is not.
     def _clear_of(x, y, netname, margin):
-        """True if (x, y) keeps `margin` from every pad or track NOT on `netname`."""
+        """True if (x, y) keeps `margin` from every pad or track NOT on `netname`.
+
+"""
         for bb, onet in others:
             if onet == netname:
                 continue
@@ -1041,10 +2356,39 @@ def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
     for pad, fp in pads:
         if pad.GetNetname() not in nets_wanted:
             continue
+        # ⚠ A PAD'S OWN DRILL IS INVISIBLE TO ITS OWN STITCH VIA, and on a THROUGH-HOLE
+        # pad that means the via lands in the hole. `free()` below skips every obstacle
+        # on the same net -- correct for copper, wrong for a BARREL -- so a PTH pad's
+        # stitch via is placed at the one spot guaranteed to collide with it. DRC grades
+        # the result holes_co_located, severity WARNING, so finish.py's error count stayed
+        # at zero and nobody looked: 20 on motor_ctrl, 14 on output_panel, every one a
+        # stitch via on an XH connector pin.
+        #
+        # ⚠ AND SKIPPING PTH PADS ALTOGETHER WAS THE WRONG FIX -- MEASURED. It is
+        # defensible on paper (a PTH pad reaches the plane by existing, so the via is
+        # redundant) and it cost the optical board SIX NETS, reproducibly: 0 unconnected
+        # to 6, on a board with only four through-hole pads. Removing four vias from a
+        # board at its routing limit re-planned the whole thing. The narrow fix keeps
+        # every stitch via and only moves it OFF the hole, so nothing else sees a change.
         net = pad.GetNet()
         pc = pad.GetPosition()
         half = max(pad.GetSize().x, pad.GetSize().y) / 2.0
         need = pcbnew.FromMM(via_d / 2.0 + clr)
+        # ⚠ STAY OUT OF A FINE-PITCH PART'S ESCAPE FAN. This routine puts a ground via
+        # as close to its pad as it will fit, which is right in open board and wrong at
+        # the edge of a 0.4 mm QFN: the via lands in the first rank of the fan-out and
+        # the SIGNAL pins either side of it -- 0.4 mm away -- have nowhere left to leave.
+        # On lever_sensor one via at pin 16 was enough to strand pins 15 and 17, and it
+        # read as "the router cannot escape a fine-pitch package" rather than as this
+        # routine having taken their lane.
+        #
+        # Ground has somewhere else to go and signals do not: the plane is directly
+        # underneath, so a millimetre more track to reach it costs a ground connection
+        # nothing, while that millimetre is the whole difference for a signal. Threshold
+        # is 0.65 mm because 0.8 mm pitch and coarser has room for both.
+        pitch = _pad_pitch(fp)
+        if pitch is not None and pitch < pcbnew.FromMM(0.65):
+            need += pcbnew.FromMM(1.1)
         # ⚠ A BIG PAD TAKES THE VIA INSIDE ITSELF, and that is the right answer rather
         # than a concession. An exposed thermal pad -- a QFN's belly, a SOT-223's tab --
         # is enclosed by its own part's pins, so there is no "beside" to search; the
@@ -1054,7 +2398,22 @@ def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
         # The threshold keeps ordinary SMD lands out of it: an 0805's 1.0 mm land is too
         # narrow to swallow a 0.6 via and still hold solder, and via-in-pad there wicks
         # paste down the hole.
-        if min(pad.GetSize().x, pad.GetSize().y) >= pcbnew.FromMM(via_d + 0.6):
+        # ⚠ "NOTHING TO COLLIDE WITH BY DEFINITION" IS TRUE OF AN SMD PAD AND FALSE OF A
+        # THROUGH-HOLE ONE, whose own drill is at exactly the point this branch puts the
+        # via. An XH connector land is ~1.7 mm, so it passes the threshold above and gets
+        # a via dead centre, in the hole. DRC calls that holes_co_located at severity
+        # WARNING, finish.py counts only unexpected ERRORS, and the count stayed at zero:
+        # 20 on motor_ctrl and 14 on output_panel, every one an XH pin.
+        #
+        # PTH pads fall through to the beside-the-pad search instead, which keeps the
+        # stitch and only moves it off the hole. Skipping them ENTIRELY was tried first
+        # and cost the optical board six nets reproducibly (0 unconnected -> 6, on a
+        # board with four through-hole pads) -- removing vias from a board at its routing
+        # limit re-plans the whole thing. The narrow fix changes where one via sits; the
+        # blunt one changed how many exist.
+        _is_pth = pad.GetAttribute() in (pcbnew.PAD_ATTRIB_PTH, pcbnew.PAD_ATTRIB_NPTH)
+        if (not _is_pth
+                and min(pad.GetSize().x, pad.GetSize().y) >= pcbnew.FromMM(via_d + 0.6)):
             v = pcbnew.PCB_VIA(board)
             v.SetPosition(pc)
             v.SetWidth(pcbnew.FromMM(via_d))
@@ -1326,18 +2685,64 @@ def _rules(board, notes):
     # -- leaving it in place reports the router's own legal narrowing (it drops
     # to 0.187 to escape a 0.4 mm-pitch QFN) as 50 violations.
     bds.m_TrackMinWidth = pcbnew.FromMM(0.127)
-    bds.m_ViasMinSize = pcbnew.FromMM(0.6)
-    bds.m_MinThroughDrill = pcbnew.FromMM(0.3)
+    # ⚠ THE MINIMUMS HAVE TO FOLLOW THE NET CLASS OR DRC GRADES THE BOARD AGAINST A
+    # RULE IT NO LONGER USES. Setting only the net class via and leaving these at 0.6/0.3
+    # gave lever_sensor 0 unconnected and 36 errors -- 18 via_diameter and 18
+    # drill_out_of_range -- every one of them the board complaining about vias it had
+    # just been told to make.
+    _mvd, _mvdr = notes.get("via_mm", (0.6, 0.3))
+    bds.m_ViasMinSize = pcbnew.FromMM(_mvd)
+    bds.m_MinThroughDrill = pcbnew.FromMM(_mvdr)
     bds.m_CopperEdgeClearance = pcbnew.FromMM(0.3)
     for nc in board.GetAllNetClasses().values():
         nc.SetClearance(pcbnew.FromMM(0.127))
-        nc.SetTrackWidth(pcbnew.FromMM(0.25))
+        # ⚠ TRACK WIDTH IS A BOARD-LEVEL CHOICE, because escape room is set by the
+        # finest-pitch part on the board and not by a house default. 0.25 with 0.127
+        # clearance needs 0.377 mm per lane, which fits a 0.5 mm pitch part comfortably
+        # and a 0.4 mm QFN only just -- and "only just" is not enough once the fan has to
+        # turn. A board whose tightest package is 0.4 says so and gets narrower default
+        # track; boards without one keep 0.25, which is cheaper to manufacture and more
+        # forgiving of etch variation.
+        nc.SetTrackWidth(pcbnew.FromMM(notes.get("track_mm", 0.25)))
         # KiCad's default 0.8/0.4 via cannot escape a 0.4 mm-pitch QFN -- it does
         # not fit between the pads, so the router simply leaves those pins
         # unrouted. 0.6/0.3 is JLCPCB's STANDARD (not advanced) capability and
         # costs nothing extra.
-        nc.SetViaDiameter(pcbnew.FromMM(0.6))
-        nc.SetViaDrill(pcbnew.FromMM(0.3))
+        # ⚠ PER-BOARD, BECAUSE ONE BOARD'S FAN NEEDS THREE LANES WHERE 0.6 GIVES TWO.
+        # lever_sensor puts CAN_RX, CAN_TX and SWDIO on three adjacent 0.4 mm-pitch QFN
+        # pins; measured there, the two that escape park their vias in the third's only
+        # opening. A smaller via is the standard answer, and it is NOT free -- a 0.25 mm
+        # drill leaves the standard capability the note above is about -- so a board that
+        # wants one says so and pays for it explicitly.
+        _vd, _vdr = notes.get("via_mm", (0.6, 0.3))
+        nc.SetViaDiameter(pcbnew.FromMM(_vd))
+        nc.SetViaDrill(pcbnew.FromMM(_vdr))
+
+    # ⚠ PER-NET WIDTH, BECAUSE UNTIL NOW EVERY NET ON EVERY BOARD WAS 0.25 mm AND A 24 V
+    # TRUNK WAS ONE OF THEM. The fleet's 24 V bus is budgeted under 5 A: the cable was
+    # raised to 2 x 22 AWG for it and the XH contacts were doubled for it. The copper
+    # between them was never sized, because there was nowhere to say so -- track_mm is one
+    # number for the whole board. By IPC-2221 at a 10 C rise, 0.25 mm of 1 oz outer copper
+    # carries 0.88 A. Nothing downstream can notice: DRC compares copper to the netlist
+    # and has no concept of current, and the netlist has no concept of width.
+    #
+    # ⚠ AND A WIDTH IS ONLY USEFUL IF A PAD CAN ACCEPT IT. freerouting does not neck down
+    # into a land, so a net that touches an 0402 (0.6 mm pads) cannot sensibly be drawn
+    # much over 0.5 mm, whatever the current argument says. That is why this is a per-NET
+    # dial and not a per-current one, and why a trunk that genuinely needs 2 mm wants
+    # deliberate copper of its own rather than a bigger number here.
+    for _pattern, _w in sorted((notes.get("net_widths") or {}).items()):
+        _name = "W%.2f" % _w
+        if not bds.m_NetSettings.HasNetclass(_name):
+            _nc = pcbnew.NETCLASS(_name)
+            _nc.SetClearance(pcbnew.FromMM(0.127))
+            _nc.SetTrackWidth(pcbnew.FromMM(_w))
+            _nc.SetViaDiameter(pcbnew.FromMM(0.6))
+            _nc.SetViaDrill(pcbnew.FromMM(0.3))
+            bds.m_NetSettings.SetNetclass(_name, _nc)
+        bds.m_NetSettings.SetNetclassPatternAssignment(_pattern, _name)
+    if notes.get("net_widths"):
+        bds.m_NetSettings.RecomputeEffectiveNetclasses()
 
 
 _LAYERS = {"F.Cu": pcbnew.F_Cu, "B.Cu": pcbnew.B_Cu,
@@ -1354,6 +2759,32 @@ def _add_track(board, net, layer, width, pts):
         t.SetLayer(_LAYERS[layer])
         t.SetNet(net)
         board.Add(t)
+
+
+def _add_via(board, net, x, y, drill=0.3, diameter=0.6):
+    """One explicit through via, in board-local mm.
+
+    ⚠ WHY THIS EXISTS. `tracks` could already lay explicit copper, but only ON ONE
+    LAYER, so a connection that has to CHANGE layers was not expressible at all. The
+    optical board's last unconnected net is exactly that shape: +3V3A already passes
+    3.86 mm from U2's supply pad on B.Cu, and the F.Cu lane at the pad's own y is
+    shadowed by MID at 0.56 mm centre to centre. The fix is a via and a short hop, and
+    before this there was no way to say so -- which is why four successive attempts all
+    reached for router SETTINGS (pre-lay, retry rounds, dropping the B.Cu pour,
+    narrowing the net) and all four made the board worse.
+
+    A via here is pre-laid copper, and this file is emphatic that pre-laid copper is an
+    obstacle the router can never renegotiate. That objection is real and it is why this
+    takes explicit coordinates instead of a net name: one via placed deliberately is a
+    different proposition from a rule that lays 122 segments.
+    """
+    v = pcbnew.PCB_VIA(board)
+    v.SetPosition(_to_board(x, y))
+    v.SetWidth(pcbnew.FromMM(diameter))
+    v.SetDrill(pcbnew.FromMM(drill))
+    v.SetNet(net)
+    v.SetViaType(pcbnew.VIATYPE_THROUGH)
+    board.Add(v)
 
 
 def _add_zone(board, net, layer, inset, w, h):
@@ -1512,18 +2943,6 @@ def build(stem):
                                  inner=notes.get("diff_pair_inner")):
         print("  diff pair %s: %s" % (name, msg))
 
-    # ⚠ AFTER THE PAIRS, BEFORE THE STITCHING. The pair has the least freedom and
-    # goes first; these clusters are next because they are small and local and the
-    # ground stitching, which can put a via almost anywhere, is the one that should be
-    # asked to work around what is already there.
-    if notes.get("local_nets"):
-        # NOT `skipped` -- that name already holds the single-pad net count this
-        # function reports at the end, and shadowing it made the summary line claim
-        # 40 nets had appeared out of nowhere.
-        n_laid, n_left = _local_nets(board, notes["local_nets"])
-        print("  local nets: laid %d segment(s)%s"
-              % (n_laid, ", %d left to the router" % n_left if n_left else ""))
-
     stitch = set(notes.get("stitch_nets", ()))
     if stitch:
         n = _stitch_plane_pads(board, stitch, _outline_pts(notes),
@@ -1531,6 +2950,69 @@ def build(stem):
                                keepouts=notes.get("via_keepouts", ()))
         print("  stitched %d pad(s) on %s straight to the plane"
               % (n, "/".join(sorted(stitch))))
+
+
+    # ⚠ AFTER THE STITCHING, WHICH REVERSES WHAT THIS COMMENT USED TO SAY. The first
+    # ordering ran local nets before the stitcher on the argument that a via can go
+    # almost anywhere and a track cannot. That was true when this routine laid 39
+    # segments; at 85 on a 28 x 21 board it is not -- the local nets filled the space
+    # around a QFN and the stitcher then had nowhere to put ONE ground via, which it
+    # correctly refused to fake.
+    #
+    # The asymmetry that decides it is the same one that moved ground vias out of the
+    # escape fan: a ground pad has exactly one destination, the plane directly beneath
+    # it, and a via is the only way there. A local net has a whole board and an inner
+    # layer to find a path through, and it SKIPS what it cannot lay rather than failing.
+    # The routine with no alternative goes first.
+    if notes.get("local_nets"):
+        # NOT `skipped` -- that name already holds the single-pad net count this
+        # function reports at the end, and shadowing it made the summary line claim
+        # 40 nets had appeared out of nowhere.
+        n_laid, n_left, n_why = _local_nets(board, notes["local_nets"], _outline_pts(notes),
+                                     inner=_local_inner(notes))
+        print("  local nets: laid %d segment(s)%s"
+              % (n_laid, ", %d left to the router" % n_left if n_left else ""))
+        for _e in n_why:
+            print("      not placeable: %s" % _e)
+
+    # ⚠ LOCAL NETS FIRST, RETRY SECOND, BY THE SAME ARGUMENT THE STITCHER GOT ABOVE: the
+    # routine with fewer alternatives goes first. A local cluster is three pads a couple
+    # of millimetres apart in the tightest part of the strip. A retried net is a long run
+    # with a whole board and an inner layer to find a way through. Running the long one
+    # first spends the strip's space on the part of the problem that did not need it.
+    #
+    # ⚠ AND THAT IS WHAT THE RETRY'S BAD REPUTATION ACTUALLY WAS. finish.py used to
+    # explain its failure as "a net the router could not finish is usually one the
+    # generator cannot finish either". Measured with the skipped edges NAMED rather than
+    # counted, that is false: the retry lays its net, 8 segments, without trouble. What it
+    # cost was everything laid after it -- local nets fell from 90 segments with nothing
+    # skipped to 76 with EIGHTEEN skipped, all of them short cluster hops in the strip
+    # that the long run had just cut across.
+    # ⚠ NETS THE ROUTER ALREADY FAILED ON, handed back for a second attempt. finish.py
+    # writes this file after a routing pass that left something unconnected, and the
+    # difference from `local_nets` is the whole point: those are guessed in advance and
+    # frozen whether the router needed help or not, while these are MEASURED -- the
+    # router has been given its chance and demonstrably could not take it.
+    #
+    # That inverts the trade. Pre-laid copper costs the router freedom it can never
+    # recover, so freezing nets it would have solved makes a board worse -- measured at
+    # 2 -> 5 on output_panel and 4 -> 7 on lever_sensor. Freezing only the nets it just
+    # failed costs it freedom on exactly the paths it was not using anyway.
+    #
+    # No span limit here: a failed net is laid however far it reaches, because the
+    # alternative on offer is not laying it at all.
+    retry = stem + ".retry.json"
+    if os.path.isfile(retry):
+        want = json.load(open(retry, encoding="utf-8"))
+        if want:
+            n_laid, n_left, n_why = _local_nets(
+                board, [re.escape(n) for n in want], _outline_pts(notes),
+                local_mm=1e9, inner=_local_inner(notes))
+            print("  retry: laid %d segment(s) for %d net(s) the router could not finish"
+                  "%s" % (n_laid, len(want),
+                          ", %d edge(s) still not placeable" % n_left if n_left else ""))
+            for _e in n_why:
+                print("      not placeable: %s" % _e)
 
     # outline_poly wins when present; outline_mm stays the LAYOUT REGION either way
     # (place_check and the zone filler both measure parts against it).
@@ -1544,6 +3026,15 @@ def build(stem):
     nets_by_name = {n.GetNetname(): n for n in board.GetNetInfo().NetsByName().values()}
     for net_name, layer, width, pts in notes.get("tracks", []):
         _add_track(board, nets_by_name[net_name], layer, width, pts)
+    for _v in notes.get("vias", []):
+        _net, _vx, _vy = _v[0], _v[1], _v[2]
+        _drill = _v[3] if len(_v) > 3 else 0.3
+        _dia = _v[4] if len(_v) > 4 else 0.6
+        assert _net in nets_by_name, (
+            "vias names net %r, which this board does not have" % _net)
+        _add_via(board, nets_by_name[_net], _vx, _vy, _drill, _dia)
+    if notes.get("vias"):
+        print("      placed %d explicit via(s)" % len(notes["vias"]))
     for net_name, layer, inset in notes.get("zones", []):
         _add_zone(board, nets_by_name[net_name], layer, inset, *notes["outline_mm"])
     if notes.get("zones"):
@@ -1557,6 +3048,11 @@ def build(stem):
         # filled fine.
         board.BuildConnectivity()
         pcbnew.ZONE_FILLER(board).Fill(board.Zones())
+        _check_stitches_landed(board, notes)
+
+    n_junk = drop_degenerate(board)
+    if n_junk:
+        print("  dropped %d degenerate track fragment(s)" % n_junk)
 
     out = stem + ".kicad_pcb"
     board.Save(out)

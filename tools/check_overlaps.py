@@ -132,8 +132,11 @@ GLOBAL_OK = {
     frozenset({"leg_body_stub", "keyhead_endplate"}),
     frozenset({"leg_body_stub", "bridge_endplate"}),
     # the electronics tray's snap nubs/fingers bite their boards by design
-    frozenset({"electronics_tray", "pi5"}),
-    frozenset({"electronics_tray", "motor_ctrl"}),   # teensy_ifc is deleted; the
+    # the tray is gone -- both boards now rest on cradles fused into the keyhead
+    # endplate (electronics.keyhead_cradles), so the designed board-on-pads contact
+    # is against that part instead.
+    frozenset({"keyhead_endplate", "pi5"}),
+    frozenset({"keyhead_endplate", "motor_ctrl"}),   # teensy_ifc is deleted; the
                                                     # merged controller took its place
     # (tee_pcb <-> motor is GONE, 2026-09-14: it was written for a corner graze and had grown
     # into 1621 mm3 of board buried in motor 9. The tees now sit ON the motors, lapping them
@@ -308,17 +311,21 @@ def _knee(n) -> bool:
 # build exists to find. Parked so branner's chassis/leg/deck round is not held behind two
 # other agents (user: these must not block merges), each with its owner named.
 DEFERRED = {frozenset({"pickup_zplate", "top_plate"}),
-            # ~750 mm3 per segment, x3. bronner's optical cable run (a 1.6 bundle at
-            # y -129, z -9, the board's whole length) crosses the -Y rail branner CLOSED
-            # in the same round. OWNER bronner, with branner: the route needs a way
-            # through, or the rail needs a port. Nobody has guessed at it.
-            frozenset({"chassis", "optical_cables"}),
+            # (chassis <-> optical_cable_usb/pwr, OWNER bronner, is UN-deferred 2026-09-21:
+            # the USB run no longer goes to the Pi through the -Y rail -- both optical leads
+            # now end a few cm away on the output board, J4 and J9 -- so the gate checks them
+            # again. Parked, the collision had been invisible for four days.)
             # brenner's leg blind-mate against branner's decoupled body adapter at the
             # -X/+Y corner: the patch lead 379 mm3, the plug 140 mm3. OWNER brenner --
             # body_adapter lives in leg_stack, their registered scope, so both halves of
             # this one are theirs.
             frozenset({"body_adapter", "leg_trrs_patch"}),
-            frozenset({"body_adapter", "leg_trrs_plug"})}
+            frozenset({"body_adapter", "leg_trrs_plug"}),
+            # (the 24 V runs vs motor/chassis deferral, OWNER bronner, is UN-deferred
+            # 2026-09-21: it excused EVERY 24 V wire against ANY motor or chassis part, which
+            # hid far more than the two clips it was written for -- the runs are rerouted
+            # through the new wall trough and are gated again.)
+            }
 
 # DEFERRED CLASSES, by pattern. Some deferrals are not one pair but one fault repeated
 # per station -- five knee levers, five pedals -- and listing 55 frozensets would hide
@@ -335,8 +342,11 @@ DEFERRED_RULES = (
      "to be redesigned around the boards later"),
     (re.compile(r"^(?:[a-z0-9]+_)*k[lv]_[A-Z]+\d+$"), re.compile(r"housing$"),
      "lever board parts vs their knee/lever housing (25 pairs, ~207 mm3). USER DEFERRED; "
-     "OWNER branner -- the cradle was sized to a plain box, and bronner's board is at its "
-     "floor (21.4 against J1's 21.29 courtyard), so the room has to come from the housing"),
+     "OWNER branner -- the cradle was sized to a plain box. ⚠ THE ORIGINAL REASON IS VOID "
+     "(2026-09-19): it said bronner's board was at its floor at 28 x 21.4, so the room had "
+     "to come from the housing. The user then asked for ONE connector family across both "
+     "buses, and the board grew to 34 x 28 to take the S8B-XH-A -- +59% area. The housing "
+     "needs RE-CUTTING to the new outline, not relieving by a millimetre"),
 )
 _DEFERRED_SEEN = set()
 
