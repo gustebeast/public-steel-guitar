@@ -311,12 +311,10 @@ def _knee(n) -> bool:
 # build exists to find. Parked so branner's chassis/leg/deck round is not held behind two
 # other agents (user: these must not block merges), each with its owner named.
 DEFERRED = {frozenset({"pickup_zplate", "top_plate"}),
-            # ~750 mm3 per segment, x3. bronner's optical cable run (a 1.6 bundle at
-            # y -129, z -9, the board's whole length) crosses the -Y rail branner CLOSED
-            # in the same round. OWNER bronner, with branner: the route needs a way
-            # through, or the rail needs a port. Nobody has guessed at it.
-            frozenset({"chassis", "optical_cable_usb"}),
-            frozenset({"chassis", "optical_cable_pwr"}),
+            # (chassis <-> optical_cable_usb/pwr, OWNER bronner, is UN-deferred 2026-09-21:
+            # the USB run no longer goes to the Pi through the -Y rail -- both optical leads
+            # now end a few cm away on the output board, J4 and J9 -- so the gate checks them
+            # again. Parked, the collision had been invisible for four days.)
             # brenner's leg blind-mate against branner's decoupled body adapter at the
             # -X/+Y corner: the patch lead 379 mm3, the plug 140 mm3. OWNER brenner --
             # body_adapter lives in leg_stack, their registered scope, so both halves of
