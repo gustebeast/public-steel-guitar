@@ -1171,7 +1171,7 @@ def lever_components():
     return _lever_stations_components() + _foot_pedal_components()
 
 
-_LKL_VKL_STATIONS = ("lkl",)   # the focused stations (VKL dropped for now, user)
+_LKL_VKL_STATIONS = ("lkl", "vkl")   # the focused stations (user: LKL + LKV)
 
 
 def lkl_vkl_box():
