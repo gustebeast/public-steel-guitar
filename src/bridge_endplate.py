@@ -862,26 +862,69 @@ def _build() -> cq.Workplane:
             body = body.cut(_n)
     # PANEL I/O (the instrument's right face): the base's +X end wall is CH.T (10)
     # thick -- too deep for the jacks (their bodies span x -16..6) -- so RECESS its
-    # interior back to a 4 mm panel at the -Y jack corner (the wall face at
+    # interior back to a thin panel (OP_PANEL_T, 1.6) at the -Y jack corner (the wall face at
     # JACK_WALL_X..XHI stays; the bodies seat through the recess into the hollow
     # foot interior). Recess band z (JACK_Z-14)..FOOT_Z, inside the hollow's Y span
     # (the Y-INSTALL leg grooves top out at bed+7.34, 12.7 below the recess floor,
     # so the recess is back at its full pre-EP-tenon size).
     # Then the three jack holes - 1/4" TS line out, DC power inlet, USB-C (audio-interface
     # port). Printed flat, so the panel + holes are vertical in the print - no supports.
-    from .electronics import TS_Y, DC_Y, USB_Y, JACK_Z, JACK_WALL_X
-    body = body.cut(box_at(JACK_WALL_X - (XLO - 1.0), 62.0, FOOT_Z - (JACK_Z - 14.0),
-                           x=((XLO - 1.0) + JACK_WALL_X) / 2, y=-88.0,
+    # ⚠ THE RECESS IS SIZED FROM THE BOARD, not from a typed 62. It was 62 wide centred
+    # at y -88, which spans -119..-57 -- and the board spans -122.50..-56.50, so both its
+    # ends sat in the full 10.4 mm wall: 194 mm3 of board buried at the -Y end and 5 at
+    # the +Y. That only surfaced once JACK_TIP was fixed and the board arrived at the
+    # panel at all; before that it was 20 mm inboard and never reached the wall to clash
+    # with it. Read the board's own span and add a clearance each side.
+    from .electronics import (TS_Y, JACK_Z, JACK_WALL_X, JACK_TIP, OP_BOARD_Y,
+                              OP_PANEL_CLR, op_origin, op_panel_openings, op_rear_mounts)
+    _rc_y = op_origin()[1]                           # the board's Y centre
+    _rc_w = OP_BOARD_Y + 2 * OP_PANEL_CLR            # its span plus a fit clearance
+    body = body.cut(box_at(JACK_WALL_X - (XLO - 1.0), _rc_w, FOOT_Z - (JACK_Z - 14.0),
+                           x=((XLO - 1.0) + JACK_WALL_X) / 2, y=_rc_y,
                            z=(FOOT_Z + (JACK_Z - 14.0)) / 2))
-    for jy, jd in ((TS_Y, 11.8), (DC_Y, 6.2)):   # Ø11.4 TS bushing, Ø5.7 DC thread
-        body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-            jd / 2, 6.0, cq.Vector(JACK_WALL_X - 1.0, jy, JACK_Z),
-            cq.Vector(1, 0, 0))))
-    body = body.cut(box_at(6.0, 13.2, 6.8, x=JACK_WALL_X + 2.0, y=USB_Y, z=JACK_Z))
-    for sy in (USB_Y - 9.0, USB_Y + 9.0):       # USB-C flange screw pilots
-        body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-            1.25, 6.0, cq.Vector(JACK_WALL_X - 1.0, sy, JACK_Z),
-            cq.Vector(1, 0, 0))))
+    # ⚠ THE OUTPUT BOARD'S PLATE GOES ON AFTER THE RECESS, not before: the recess cut
+    # above clears this whole band, so a cradle fused earlier would simply be deleted by
+    # it. And BEFORE the panel openings, not after: anything of the cradle that reaches
+    # the panel would otherwise fill a hole back in (the cut-order trap this file has hit
+    # four times -- bearing seats, guide sockets, axle bores, conduit).
+    body = body.union(op_cradle())
+    # THE TS JACK'S CLAMP. The panel is 1.6 everywhere but here: the NMJ4HCD2's nose nut
+    # clamps 3.0..4.7 (Neutrik), so a BOSS behind the panel makes the clamp 4.0, and the face
+    # is counterbored for the nut's 2.05 head below (after the openings) so the head -- where
+    # a plug seats -- finishes flush with the barrel and the USB-C (user: every port "at the
+    # same installation x value"). Fused before the openings, which then bore it.
+    for _ref, _ry, _rz, _sp in op_rear_mounts():
+        _bx0 = JACK_TIP - (_sp["clamp"] + _sp["nut"][1])        # the jack's shoulder
+        _boss = (cq.Workplane("YZ").circle(_sp["boss_d"] / 2.0)
+                 .extrude(JACK_WALL_X + 0.2 - _bx0).translate((_bx0, _ry, _rz)))
+        _floor = _rz - _sp["cbore_d"] / 2.0                      # flat, level with the cbore
+        _boss = _boss.cut(box_at(40.0, 40.0, 40.0, x=_bx0 + 10.0, y=_ry, z=_floor - 20.0))
+        body = body.union(_boss)
+    # THE PANEL OPENINGS, one per connector, CENTRED WHERE THE ROUTED BOARD PUTS IT. They
+    # used to be three typed holes at one height -- the TS jack's -- which put the USB-C
+    # hole 7.85 mm above the receptacle and the barrel's hole in front of a jack that faced
+    # the chassis rail. Printed with this face on the bed, every opening runs along the
+    # build axis, so none needs a teardrop or support.
+    _x0, _x1 = JACK_WALL_X - 1.0, JACK_TIP + 1.0
+    for _ref, _oy, _oz, _op in op_panel_openings():
+        if _op[0] == "round":
+            _cut = cq.Workplane("YZ").circle(_op[1] / 2.0).extrude(_x1 - _x0)
+        elif _op[0] == "stadium":
+            _cut = cq.Workplane("YZ").slot2D(_op[1], _op[2]).extrude(_x1 - _x0)
+        else:
+            _cut = cq.Workplane("YZ").rect(_op[1], _op[2]).extrude(_x1 - _x0)
+        body = body.cut(_cut.translate((_x0, _oy, _oz)))
+    for _ref, _ry, _rz, _sp in op_rear_mounts():
+        # the stub's hole runs back through the BOSS to the shoulder -- the openings above
+        # start at the thin panel's inner face, 3.45 in front of it, and left the jack's
+        # O11.4 stub buried in the boss (334.8 mm3 on the first build)
+        _bx0 = JACK_TIP - (_sp["clamp"] + _sp["nut"][1])
+        body = body.cut(cq.Workplane("YZ").circle(_sp["opening"][1] / 2.0)
+                        .extrude(JACK_TIP + 1.0 - (_bx0 - 0.5))
+                        .translate((_bx0 - 0.5, _ry, _rz)))
+        _ht = _sp["nut"][1]
+        body = body.cut(cq.Workplane("YZ").circle(_sp["cbore_d"] / 2.0).extrude(_ht + 1.0)
+                        .translate((JACK_TIP - _ht, _ry, _rz)))
     # +Z RETENTION LIP: protrudes -X under the deck in the -Y bay (see the LIP_* block);
     # the installed deck panels trap it, blocking the endplate from lifting +Z. Its +X face
     # is the endplate -X face (XLO); top is the deck-bottom plane (z0) so the deck rides it.
@@ -910,11 +953,79 @@ def _build() -> cq.Workplane:
     # alternative was routing the USB lead ~47 mm back +Y to clear the lip entirely, which
     # buys whole-lip retention at the cost of a doubled-back cable and a longer run.
     body = body.cut(OP.opt_conduit())
+    body = body.cut(OP.opt_pwr_slot())            # the optical 24 V lead's way down to J9
     body = body.cut(box_at(LIP_DX + 2.0, OP.CONDUIT_D, LIP_DZ + 2.0,
                            x=XLO - (LIP_DX + 2.0) / 2 + 1.0,
                            y=(OP.CONDUIT_Y0 + OP.CONDUIT_Y1) / 2,
                            z=CH.TP_GZ0 - LIP_DZ / 2))
     return body
+
+
+def op_cradle():
+    """The output+panel board's bottom plate, fused into the endplate.
+
+    ⚠ THE BOARD HAD NOTHING UNDER IT. Probed across its whole 74 x 66 footprint, the
+    endplate carried material only at the wall itself, and the recess takes out everything
+    from XLO-1 to JACK_WALL_X in this band, so the board hung in open bay air supported by
+    its own connectors. This is the plate it sits on.
+
+    THE BOARD SLIDES IN TOWARD THE PANEL NOW, NOT DOWN ONTO THE PLATE (2026-09-21). Its
+    connectors used to stop 4.8 mm short of the face; they now reach INTO the panel -- the
+    barrel through its window to the face, the USB-C to within 0.4, the TS jack's nose
+    through its hole -- and a board whose connectors pass through a wall cannot be lowered
+    in from above. So the install direction is +X: it goes down onto the plate a couple of
+    millimetres short of home, then slides along it between the +-Y walls until its
+    connectors are through the panel and its edge meets it. The PANEL is the +X stop; the
+    connectors in their openings hold the +X end down; one M4 button goes down THROUGH the
+    board's mounting ear into a boss, which locks every direction at once.
+    Same rule as every board in the instrument: plastic everywhere but one direction, and
+    one screw, one 2.5 mm key, locking that.
+
+    standoff is measured, not chosen: the board's underside above the recess floor at
+    JACK_Z - 14, so the base lands exactly on that floor.
+    """
+    from cadkit.pcb import pcb_cradle
+    from cadkit.fasteners import M4 as _M4
+    from .electronics import (op_origin, OP_BOARD_X, OP_BOARD_Y, OP_PANEL_CLR,
+                              JACK_Z, _PCB_T)
+    cx, cy, cz = op_origin()
+    standoff = cz - (JACK_Z - 14.0)              # board underside above the recess floor
+    # ⚠ THE M4 GOES THROUGH THE BOARD NOW, not beside it (user, 2026-09-21: "the screw
+    # adjacent ... doesn't provide as strong of retention"). The board grew a mounting EAR
+    # off its -X edge (elec/output_panel.py EAR_*), and the screw goes down through that ear
+    # into a boss: a head clamping the laminate round a hole holds the board every way,
+    # where the side screw lapped 1 mm of its edge.
+    # pcb_cradle's through-board path was written for M2 and sizes its boss "pad + 1.5" --
+    # too small for an M4 insert -- so cadkit's own M4 boss (boss_od) is stood under the
+    # hole here and the anchor re-cut with cadkit's cut_anchor, which the union refilled.
+    # Built walled all round, then opened: the board still SLIDES IN +X (its connectors pass
+    # through the panel), so the +X wall (the panel is the stop) and the -X wall above the
+    # board's underside (the way in) come away, and the screw is what closes it.
+    from cadkit.fasteners import cut_anchor as _cut_anchor
+    from . import board_geom as _BG
+    (hx, hy, _hd), = _BG.holes("output_panel")
+    cr = pcb_cradle(OP_BOARD_X, OP_BOARD_Y, screw_xy=(hx, hy), spec=_M4, open_edge=None,
+                    standoff=standoff, clr=OP_PANEL_CLR)
+    _base_t = max(1.6, _M4.anchor_min_wall - standoff)
+    cr = cr.union(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        _M4.boss_od / 2.0, _base_t + standoff, cq.Vector(hx, hy, -_base_t))))
+    cr = _cut_anchor(_M4, cr, (hx, hy, standoff), (0, 0, -1), _M4.anchor_min_wall)
+    # pcb_cradle's own frame: the MOUNTING SURFACE is local z 0 and the board's underside
+    # is local z `standoff` (the base plate hangs below 0).
+    _base_top = 0.0
+    # +X WALL: the panel is the stop, and a wall there would sit IN the panel, standing
+    # above the board's edge exactly where the three connectors overhang it.
+    cr = cr.cut(box_at(20.0, OP_BOARD_Y + 40.0, 60.0,
+                       x=OP_BOARD_X / 2 + OP_PANEL_CLR + 10.0, y=0.0, z=0.0))
+    # -X WALL, above the board's underside only: that is the way in. What stays below is a
+    # curb the board slides over, and the screw's boss, which pcb_cradle stood on the
+    # mounting surface and topped at the board's underside -- so this cut leaves it whole.
+    cr = cr.cut(box_at(20.0, OP_BOARD_Y + 40.0, 60.0,
+                       x=-(OP_BOARD_X / 2 + OP_PANEL_CLR + 10.0), y=0.0,
+                       z=standoff + 30.0))
+    # (The 24 V lane cut that used to take the -Y wall away is gone with the lane: the 24 V
+    #  runs cross ABOVE the board now, in the recess, and nothing rides y -120.75 at z -52.)
+    return cr.translate((cx, cy, cz - standoff))
 
 
 bridge_endplate = _build()
