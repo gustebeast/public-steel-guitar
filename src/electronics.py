@@ -600,123 +600,49 @@ MCTRL_BOARD_X, MCTRL_BOARD_Y = 46.0, 58.0
 MCTRL_ROT = 0.0                  # UNROTATED now: at 46 x 58 the board fits
                                  # the tray straight, and the ADC slot it grows
                                  # into is free (that board is deleted).
-# Pad-row centres, board-local, straight out of elec/motor_ctrl.py's placements.
-MCTRL_J = {"J1": (-10.0, 2.5, 0.0),      # bus A out -- the ten motor tees
-           "J2": (4.0, 2.5, 0.0),        # bus B out -- the eight lever boards
-           "J3": (15.5, -8.5, 90.0),     # 24 V in, +X edge
-           "J4": (0.0, -20.5, 0.0),      # USB-C to the Pi, -Y edge
-           "J5": (0.0, 26.0, 0.0)}       # 5 V to the Pi's GPIO (was the power board)
 # THE MOUNTING EAR, read off the ROUTED board (elec/geom/motor_ctrl.geom.json), moved into
-# this file's frame: the rectangle's centre, which is what MCTRL_FP, MCTRL_J and MCTRL_BOM
-# are all written about. The geom file centres on the outline's BOX, which the ear pushes
-# +Y by half its height.
+# this file's frame: the rectangle's centre, which is what MCTRL_FP is written about. The
+# geom file centres on the outline's BOX, which the ear pushes +Y by half its height.
 def _mctrl_ear():
-    from . import board_geom as _BG
-    poly = _BG.load("motor_ctrl")["outline_poly"]
+    poly = BG.load("motor_ctrl")["outline_poly"]
     ymin = min(p[1] for p in poly)
     dy = -ymin - MCTRL_BOARD_Y / 2.0                  # geom frame -> rectangle frame
     out = [(p[0], p[1] + dy) for p in poly]
-    (hx, hy, hd), = _BG.holes("motor_ctrl")
+    (hx, hy, hd), = BG.holes("motor_ctrl")
     ear_h = max(p[1] for p in out) - MCTRL_BOARD_Y / 2.0
-    return out, (hx, hy + dy, hd), ear_h
+    return out, (hx, hy + dy, hd), ear_h, dy
 
 
-MCTRL_OUTLINE, MCTRL_HOLE, MCTRL_EAR_H = _mctrl_ear()
-MCTRL_USB = (10.73, 9.51, 3.26, 0.0, -23.31)   # HRO TYPE-C-31-M-12: courtyard + height
-# Every populated part except the four connectors, which are modelled properly
-# (cadkit XH / the USB block above). (name, value, X, Y, height, x, y), board-local
-# and GENERATED from the laid-out board -- XY is the KiCad COURTYARD about the pad
-# centroid, so the envelope is the assembly clearance rather than the bare body,
-# which is the right error for a clearance model. HEIGHT is the one hand-entered
-# column: it is package-family typical (the same figures knee_lever.SENSOR_BOM
-# carries), not a footprint output, and it is the number to distrust.
-MCTRL_BOM = (
-    ("C1",   "4.7uF/50V",         4.69,  2.39, 1.60,  -16.50, -15.00),
-    ("C2",   "10uF/16V",          3.49,  2.05, 1.45,  -16.00, -18.00),
-    ("C3",   "100nF",             1.91,  1.01, 0.55,  -12.50, -15.00),
-    ("C4",   "12pF",              1.91,  1.01, 0.55,   -8.00, -16.50),
-    ("C5",   "12pF",              1.91,  1.01, 0.55,    0.00, -16.50),
-    ("C6",   "100nF",             1.91,  1.01, 0.55,  -11.00,  -9.50),
-    ("C7",   "100nF",             1.91,  1.01, 0.55,  -11.00,  -6.50),
-    ("C8",   "100nF",             1.91,  1.01, 0.55,  -11.00,  -5.00),
-    ("C9",   "100nF",             1.91,  1.01, 0.55,   -8.60,  -3.00),
-    ("C10",  "100nF",             1.91,  1.01, 0.55,   -6.60,  -3.00),
-    ("C11",  "100nF",             1.91,  1.01, 0.55,   -4.60,  -3.00),
-    ("C12",  "100nF",             1.91,  1.01, 0.55,   -2.60,  -3.00),
-    ("C13",  "100nF",             1.91,  1.01, 0.55,   -0.60,  -3.00),
-    ("C14",  "100nF",             1.91,  1.01, 0.55,    1.40,  -3.00),
-    ("C15",  "10uF",              3.49,  2.05, 1.45,   -8.00, -19.00),
-    ("C16",  "10uF/50V",          4.69,  2.39, 1.60,  -12.00,  13.00),
-    ("C17",  "10uF/50V",          4.69,  2.39, 1.60,   -6.00,  13.00),
-    ("C18",  "100nF",             1.91,  1.01, 0.55,   -1.50,  13.00),
-    ("C19",  "1uF",               1.91,  1.01, 0.55,  -17.00,   9.00),
-    ("C20",  "100nF",             1.91,  1.01, 0.55,  -13.00,   9.00),
-    ("C21",  "22uF/16V",          3.49,  2.05, 1.45,    9.00,  18.50),
-    ("C22",  "22uF/16V",          3.49,  2.05, 1.45,   13.50,  18.50),
-    ("D1",   "B5819W",            4.79,  2.39, 1.10,  -16.00, -11.50),
-    ("D2",   "SMF24CA",           2.59,  1.49, 0.75,   12.30,   1.00),
-    ("D3",   "SMF24CA",           2.59,  1.49, 0.75,   15.30,   1.00),
-    ("D4",   "SMF24CA",           2.59,  1.49, 0.75,   10.00, -17.00),
-    ("D5",   "SMF24CA",           2.59,  1.49, 0.75,   13.00, -17.00),
-    ("D6",   "ESD",               2.59,  1.49, 0.75,    7.00, -24.00),
-    ("D7",   "ESD",               2.59,  1.49, 0.75,   10.00, -24.00),
-    ("D8",   "SMAJ30A",           7.09,  3.59, 2.20,    5.00,  13.00),
-    ("D9",   "SMBJ5.0A",          7.39,  4.59, 2.30,    2.00,  18.50),
-    ("F1",   "1A",                4.65,  2.35, 1.10,  -18.00,  13.00),
-    ("F2",   "4A",                4.65,  2.35, 1.10,   13.00,  13.00),
-    ("JP1",  "TERM",              3.39,  2.59, 0.05,   16.50, -17.50),
-    ("JP2",  "TERM",              3.39,  2.59, 0.05,   16.50, -24.50),
-    ("L1",   "47uH",              3.69,  3.69, 1.50,  -16.00,  -8.00),
-    ("L2",   "6.8uH",             6.69,  6.29, 2.80,   -7.00,  18.50),
-    ("R1",   "100k",              1.95,  1.03, 0.50,  -12.50, -17.50),
-    ("R2",   "30k1",              1.95,  1.03, 0.50,  -12.50, -19.00),
-    ("R3",   "10k",               1.95,  1.03, 0.50,   11.20,  -5.00),
-    ("R4",   "10k",               1.95,  1.03, 0.50,   11.20, -11.50),
-    ("R5",   "120R",              3.05,  1.55, 0.55,   16.50,   3.50),
-    ("R6",   "120R",              3.05,  1.55, 0.55,   16.50, -21.00),
-    ("R7",   "10k",               1.95,  1.03, 0.50,  -11.00, -11.00),
-    ("R8",   "5k1",               1.95,  1.03, 0.50,   -7.00, -24.00),
-    ("R9",   "5k1",               1.95,  1.03, 0.50,  -10.00, -24.00),
-    ("R10",  "100k",              1.95,  1.03, 0.50,   -9.00,   9.00),
-    ("R11",  "preset",            1.95,  1.03, 0.50,   -5.00,   9.00),
-    ("R12",  "preset",            1.95,  1.03, 0.50,   -1.00,   9.00),
-    ("R13",  "preset",            1.95,  1.03, 0.50,    3.00,   9.00),
-    ("U1",   "LMR16006XDDCR",     4.19,  3.49, 1.10,  -16.00,  -3.50),
-    ("U2",   "SN65HVD230DR",      7.49,  5.49, 1.75,    6.30,  -5.00),
-    ("U3",   "SN65HVD230DR",      7.49,  5.49, 1.75,    6.30, -11.50),
-    ("U4",   "CH32V307WCU6",      9.29,  9.29, 0.90,   -4.00,  -9.50),
-    ("U5",   "LMR33630ADDAR",     7.49,  5.49, 1.75,  -16.00,  18.50),
-    ("Y1",   "8MHz",              4.29,  3.59, 0.90,   -4.00, -16.50),
-)
+MCTRL_OUTLINE, MCTRL_HOLE, MCTRL_EAR_H, _MCTRL_DY = _mctrl_ear()
+
+
+def _mctrl_fab(ref):
+    """(x0, x1, y0, y1) of a part's routed F.Fab body, in the rectangle frame."""
+    x0, x1, y0, y1 = BG.footprint("motor_ctrl", ref)["fab"]
+    return x0, x1, y0 + _MCTRL_DY, y1 + _MCTRL_DY
+
+
+# ⚠ EVERY PART OF THIS BOARD IS READ OFF THE ROUTED BOARD NOW (2026-09-21). It was a hand
+# table -- sixty rows of courtyard boxes and pad-row centres typed from motor_ctrl.py's
+# placements -- and cad_geom_check found 8 of its 60 parts not where the router left them.
+# A copy of the layout's INPUT cannot know where the layout's OUTPUT put anything; the same
+# export the output board's CAD reads (elec/geom/*.geom.json) can.
+# The connectors wiring.py asks about: each lead leaves its body's centre.
+MCTRL_J = {r: ((_f := _mctrl_fab(r))[0] / 2 + _f[1] / 2, _f[2] / 2 + _f[3] / 2,
+               BG.footprint("motor_ctrl", r)["rot"])
+           for r in ("J1", "J2", "J3", "J5")}          # J1 bus A, J2 bus B, J3 24 V, J5 5 V
+_u = _mctrl_fab("J4")                                   # USB-C to the Pi, on the -Y edge
+MCTRL_USB = (_u[1] - _u[0], _u[3] - _u[2],
+             BG.HEIGHT["USB_C_Receptacle_HRO_TYPE-C-31-M-12"],
+             (_u[0] + _u[1]) / 2, (_u[2] + _u[3]) / 2)
 
 
 def motor_ctrl_pcb(mating: bool = False) -> cq.Workplane:
-    """The motor controller, in its OWN frame: board centred on the origin in XY
-    with its underside at z=0 and every part rising +Z (single-sided, one
-    assembly setup). `mating=True` swaps the bare XH headers for their mated
-    envelope, which is the volume a housing has to leave alone.
-
-    The three XH headers take cadkit's dummy with `flip=True`: the B4B-XH-A
-    footprint puts the body on the -Y side of its pin row, and the connector is
-    not symmetric about its pins, so which side the body falls on is a real
-    choice at layout rather than a cosmetic one."""
-    # the laminate as ROUTED -- the rectangle plus its +Y mounting ear, minus the M4 hole
-    b = (cq.Workplane("XY").polyline(MCTRL_OUTLINE).close().extrude(_PCB_T)
-         .cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-             MCTRL_HOLE[2] / 2.0, _PCB_T + 2.0,
-             cq.Vector(MCTRL_HOLE[0], MCTRL_HOLE[1], -1.0)))))
-    for ref, (jx, jy, rot) in MCTRL_J.items():
-        if ref == "J4":
-            w, l, h, ox, oy = MCTRL_USB
-            b = b.union(box_at(w, l, h, x=ox, y=oy, z=_PCB_T + h / 2))
-            continue
-        p = jst_xh_header(4, mated=mating, flip=True)
-        if rot:
-            p = p.rotate((0, 0, 0), (0, 0, 1), rot)
-        b = b.union(p.translate((jx, jy, _PCB_T)))
-    for _n, _v, _w, _l, _h, _x, _y in MCTRL_BOM:
-        b = b.union(box_at(_w, _l, _h, x=_x, y=_y, z=_PCB_T + _h / 2))
-    return b
+    """The motor controller, in its OWN frame: the rectangle centred on the origin in XY
+    (its mounting ear off the +Y edge), underside at z=0, every part rising +Z -- the
+    ROUTED board (board_geom.solid), not a table. `mating=True` stands the XH headers at
+    their plugged height, which is the volume a housing has to leave alone."""
+    return BG.solid("motor_ctrl", mated=mating).translate((0.0, _MCTRL_DY, 0.0))
 
 
 def mctrl_pt(ref: str):

@@ -81,7 +81,15 @@ HEIGHT = {
     # measured off HRO's own model (KiCad demo royalblue54L_feather): shell z 0.05..3.25
     "USB_C_Receptacle_HRO_TYPE-C-31-M-12": 3.25,
     "TestPoint_Pad_D1.5mm": 0.0,       # bare copper
+    # the motor controller's (2026-09-21), package max heights off the JEDEC outlines / the
+    # makers' drawings -- the old hand table carried the same 1.75 / 1.10 for these
+    "SOIC-8_3.9x4.9mm_P1.27mm": 1.75, "SOIC-8-1EP_3.9x4.9mm_P1.27mm_EP2.29x3mm": 1.75,
+    "D_SMB": 2.45, "Fuse_1206_3216Metric": 1.10, "R_0603_1608Metric": 0.55,
+    "L_Bourns-SRN6028": 2.80,
 }
+# a top-entry XH with its XHP plug seated: 9.8 over the board (JST's "assembled board
+# height"), which is what a housing has to leave room for -- see solid(mated=True)
+_XH_MATED_H = 9.8
 
 # ── PANEL CONNECTORS: the facts a panel is cut to ───────────────────────────────────
 #   mouth   the mouth's direction in the footprint's OWN frame (KiCad's, +Y DOWN)
@@ -191,10 +199,11 @@ def mouth(board: str, ref: str) -> dict:
     return dict(dir=d, front=front, across=across, axis_h=spec["axis_h"], spec=spec)
 
 
-def solid(board: str) -> cq.Workplane:
+def solid(board: str, mated: bool = False) -> cq.Workplane:
     """The board in its OWN frame: centred on the origin in XY, underside at z = 0, parts
     rising +Z. Every part is its routed F.Fab body extruded to its HEIGHT, and a panel
-    connector with a nose gets that too."""
+    connector with a nose gets that too. `mated=True` stands every top-entry XH at its
+    plugged height -- the envelope a housing has to clear, not the bare header."""
     g = load(board)
     t = g["thickness_mm"]
     out = _plate(board)
@@ -207,6 +216,8 @@ def solid(board: str) -> cq.Workplane:
         if not f["fab"]:
             continue                               # solder jumpers: flat copper
         h = HEIGHT[fp_name(f["fpid"])]
+        if mated and fp_name(f["fpid"]).startswith("JST_XH_") and "Vertical" in f["fpid"]:
+            h = _XH_MATED_H
         if h <= 0.0:
             continue
         x0, x1, y0, y1 = f["fab"]
