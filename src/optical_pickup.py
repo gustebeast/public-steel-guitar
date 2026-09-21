@@ -1985,8 +1985,16 @@ def usb_run_length():
     return segs, sum(v for _, v in segs)
 
 
-def opt_cables() -> cq.Workplane:
+def opt_cables(which: str = "all") -> cq.Workplane:
     """The MALE connectors and their cable, at true diameter -- an assembly aid, not a part.
+
+    ⚠ SPLIT BY WHAT THE CABLE IS, because one grey solid could not say. `which` is
+    "usb" (J1's plug, its lead, and the long haul to the Pi), "pwr" (J2's plug and its
+    24 V lead), or "all". The build registers the two separately so each carries its own
+    name and its own colour in the viewer -- violet for USB and red for 24 V, the same
+    scheme the loose wires already use -- and so either can be hidden on its own while
+    tracing a route. As one part they were a single near-black mass, which also broke the
+    project's rule that black is reserved for TPU.
 
     Modelled so the route can be planned rather than assumed: each plug leaves its socket
     along -Y, runs to the conduit's mouth and turns down it. The USB-C socket sits -X of the
@@ -1999,8 +2007,20 @@ def opt_cables() -> cq.Workplane:
         nonlocal out
         out = s if out is None else out.union(s)
 
-    for ref, w, h, od, xoff in (("J1", _USBC_W, _USBC_H, USB_OD, -2.2),
-                                ("J2", _XH6_W, _XH6_D, XH_OD, +2.2)):
+    _WANT = {"usb": ("J1",), "pwr": ("J2",), "all": ("J1", "J2")}[which]
+    # ⚠ EACH LEAD TAKES THE CONDUIT SIDE NEAREST ITS OWN PLUG, and it used to take the far
+    # one. J1 sits at x +9.88 and dropped at -2.2; J2 sits at -29.29 and dropped at +2.2 --
+    # so each lead had to cross the OTHER's drop column to reach its own, and the two
+    # leads interpenetrated. Swapping the offsets removes both crossings at once: no lead
+    # passes over a column it does not own, and neither run reaches the other's x band.
+    # (Splitting opt_cables in two is what exposed this. As one unioned solid the clash
+    # was absorbed silently; tightening the crossing test alone made it WORSE -- 9.4 mm3
+    # to 40.2 -- because both leads then turned down at the same y. The offsets were the
+    # actual fault.)
+    for ref, w, h, od, xoff in (("J1", _USBC_W, _USBC_H, USB_OD, +2.2),
+                                ("J2", _XH6_W, _XH6_D, XH_OD, -2.2)):
+        if ref not in _WANT:
+            continue
         p, plen = part(ref), PLUG_L[ref]
         zc = PCB_TOP + PKG[p["pkg"]][2] / 2                   # cable/plug centre height
         add(box_at(w, plen, h, x=p["x"], y=PCB_YM - plen / 2, z=zc))
@@ -2009,14 +2029,23 @@ def opt_cables() -> cq.Workplane:
         # the right-angle J1 drive through J2; deriving it from the neighbour alone would
         # make a LONG plug double back on itself. Taking the deeper of the two is correct
         # for every plug length, so no overmold dimension can produce a clash.
+        # ⚠ THE CROSSING TEST WAS SHORT BY THE CABLE'S OWN RADIUS, and the 9.4 mm3 it let
+        # through was invisible until opt_cables was split in two: as ONE unioned solid the
+        # power lead and the USB plug could interpenetrate and the union simply absorbed it.
+        # The run's SOLID is |dx| + od wide (see the box below), so it reaches od/2 past the
+        # endpoints this test used -- J2's path stops at x 2.2 but its copper reaches 4.2,
+        # and the USB-C plug's overmold starts at 3.88. Test the solid, not the path.
+        lo = min(p["x"], CONDUIT_XC + xoff) - od / 2.0
+        hi = max(p["x"], CONDUIT_XC + xoff) + od / 2.0
         backs = [PCB_YM - plen]
+        crosses = []
         for q in ("J1", "J2"):
             if q == ref:
                 continue
             qx, qw = part(q)["x"], (_USBC_W if q == "J1" else _XH6_W)
-            if min(p["x"], CONDUIT_XC + xoff) < qx + qw / 2 and \
-                    max(p["x"], CONDUIT_XC + xoff) > qx - qw / 2:
+            if lo < qx + qw / 2 and hi > qx - qw / 2:
                 backs.append(PCB_YM - PLUG_L[q])       # crosses q: clear q's back face too
+                crosses.append(q)
         y_turn = min(backs) - CONDUIT_CLR
         assert CONDUIT_Y0 < y_turn < CONDUIT_Y1, \
             f"{ref}: cable turns down at y {y_turn:.2f}, outside the conduit"
@@ -2035,6 +2064,8 @@ def opt_cables() -> cq.Workplane:
     # At the keyhead the boards stand on end with string 1's motor right against them, so the
     # run drops to PI_RUN_Z at pi_column_x(), crosses the motor's Y band just over its top, and
     # turns into the Pi only at the Pi's Y.
+    if "J1" not in _WANT:            # the haul to the Pi belongs to the USB cable alone
+        return out
     px, py, pz = pi_target()
     xc = pi_column_x()
     assert PI_RUN_Z - USB_OD / 2 > _MB.SEAT_TOP, (
