@@ -344,12 +344,6 @@ DEFERRED_RULES = (
     # (the old "lever board parts vs their knee/lever housing" class is RESOLVED, 2026-09-21:
     #  the cradle's plinth is relieved over the board's interior and J1 moved off the magnet
     #  face -- branner. It left the gate on its own, as the contract says.)
-    (re.compile(r"^(?:[a-z0-9]+_)*(?:k[lv]_)?[A-Z]+\d+$"), re.compile(r"can_header$"),
-     "lever board parts vs J1's post tails (2 pairs per station, ~1.5 mm3). DEFERRED to the "
-     "BOARD RE-SPIN, OWNER bronner: the CAD board is now the SPEC (J1 = B8B-XH-A on the BACK "
-     "face, pin row in the top band -- knee_lever.sensor_connector), while SENSOR_BOM is still "
-     "the pre-route layout, which puts U1 and L1 under that pin row "
-     "(knee_lever.CONN_PAD_CONFLICTS). The re-spin places parts clear of it"),
 )
 _DEFERRED_SEEN = set()
 

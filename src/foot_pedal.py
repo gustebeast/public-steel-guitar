@@ -287,15 +287,7 @@ assert Y_GROWTH <= PB.BAR_Y1 - PB.BAR_Y0 - Y_BUDGET + 1e-6, (
     f"the pedal housing is {Y_GROWTH:.2f} deeper than its {Y_BUDGET} budget, past the bar's "
     f"own depth -- it would stand proud of the bar's +Y face")
 
-assert KL.PCB_Z0 >= HOUS_Z0, (
-    f"the sensor board reaches z {KL.PCB_Z0:.2f}, below this housing's {HOUS_Z0:.2f} — it "
-    f"would poke through the -Y face and the clip would take the cradle floor with it, "
-    f"leaving nothing to stop the board sliding out while pcb_shim presses that way. "
-    f"That was the state before PCB_WZ came down to {KL.PCB_WZ:.0f}; keep it fitting.")
-# Unguarded until now, and the one direction nothing else checks: board_flip polices
-# the board against a housing's Z WINDOW, but this housing is clipped to a Y budget
-# that is tighter than the window its cradle is built against, so the board can fit
-# board_flip and still overhang here.
+
 
 
 def _housing() -> cq.Workplane:
@@ -398,6 +390,10 @@ MOUNT_DY = BAR_FACE_Y - HOUS_Z0
 
 # ── the board goes in UPSIDE DOWN, and the bar opens to take it ──────────────
 BOARD_FLIP = True                   # user: connector DOWN into the bar (see _housing)
+# the board as INSTALLED (turned over) must not reach past the player-side face
+assert KL.board_z(CRADLE_Z0, HOUS_Z1, BOARD_FLIP)[0] >= HOUS_Z0 - 1e-6, (
+    f"the sensor board as installed reaches z {KL.board_z(CRADLE_Z0, HOUS_Z1, BOARD_FLIP)[0]:.2f}, "
+    f"past this housing's player-side face at {HOUS_Z0:.2f}")
 # Flipped, the board's far edge is at local +X = -PCB_X0, so the cradle is allowed
 # out that far instead of stopping at the bar top. On the knee lever the rule is
 # "nothing +X of the housing prism's face"; here +X is INTO the bar, and the bay
