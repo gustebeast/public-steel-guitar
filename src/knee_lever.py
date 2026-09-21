@@ -50,7 +50,7 @@ from cadkit.fasteners import (M4_SHAFT_CLR_D, M4_INSERT_D,
 from cadkit.pcb import (PCB_T as _PCB_T, jst_ph_side_header, ph_side_length,
                         PH_SIDE_H, PH_SIDE_D, PH_ROW_OFF)
 from cadkit.joinery import PrintSpec, joint   # cadkit's one joinery entrypoint
-from cadkit.supports import printable_bore, contact_rib
+from cadkit.supports import printable_bore
 # the M4 insert pocket/boss helpers now live in cadkit/fasteners.py (shared); keep the old local names:
 _insert_pocket, _seated_insert = cut_m4_pocket, seated_m4_insert
 _insert_boss_cut, _insert_dummy = cut_m4_boss, m4_boss_insert
@@ -943,17 +943,19 @@ HOUS_X1 = max(ARM_TX / 2, BRG_SEAT_D / 2 + BRG_WALL_X)   # +11.25 (was +5.0, the
 #           race needs 6.5 of radius plus its wall, where the arm wanted 5.0)
 HOUS_X0 = -(HS_POCKET_BX + HS_REAR_T)                    # was -78.1 with the Ø6 coil
 HOUS_HW = max(abs(HS_YC) + HS_CART_WY / 2 + HS_CLR + HS_HOUS_WALL,
-              LEVER_HW + HS_CLR + BRG_W + 1.0)           # 15.4 — the 4.0-wide seats
-#           now set the cheeks, not the cartridges: 10.4 + 4.0 + 1.0 outboard skin
+              LEVER_HW + HS_CLR + BRG_W)                 # 17.45 — the cartridge pocket wall
+#           sets it now (17.45 vs the seats' 17.4). There is NO outboard skin beyond the
+#           bearings any more (user, 2026-09-21): the seats already ran out through the
+#           face, so the old 1.0 "skin" was only an empty recess over each bearing.
 HOUS_Z1 = HOUS_TOP_Z                                     # +12.0, the seat roof (was 9.6; flush: BODY_Z
 #           = HUB_TOP + 2.4 — the designed 2.4 stands between lever and body)
 HOUS_Z0 = (HS_Z - HS_PISTON_WZ / 2) + _FEEL_DZ - HS_CLR - HS_HOUS_WALL  # -14.8
 #           ^ = HS_FLOOR_Z (defined below, after the piston) placed
-BRG_Y0 = LEVER_HW + HS_CLR          # bearing INNER faces at ±10.4 = the lever-room wall
-                                    # (user: the old wall-station bearings poked along Y —
-                                    # moved against the lever so both sit FULLY inside the
-                                    # ±13.9 cheeks: span 10.4..12.9, 1.0 outboard skin;
-                                    # 0.4 gap to the ±10 hub ends. Seats = axle round.)
+BRG_Y0 = HOUS_HW - BRG_W            # bearing INNER faces at ±12.45: the bearings sit FLUSH
+                                    # with the housing's outer faces (user, 2026-09-21: full
+                                    # seat engagement right to the face, nothing recessed).
+                                    # That leaves 0.45 to the ±12 hub ends.
+assert BRG_Y0 >= LEVER_HW + HS_CLR - 1e-9, "the flush bearings would bite the lever hub"
 # ── MOUNT TENON STATIONS (user: "4 sets"). The chassis rib comb is a uniform
 # RIB_PITCH/2 = 23 mm and the lever is posed ON a rib (MOUNT_X = -501 IS a rib X), so
 # the stations are just k·23 walking -X from the axle, kept while the whole 6-wide
@@ -1019,11 +1021,16 @@ TEN_ROOT = D.MIN_WALL               # 0.8 root below the mating face — volumet
 # on a cadkit CONTACT RIB on the housing's outer face, so the magnet's Y — and
 # with it the sensor air gap — is set by a printed datum instead of by wherever
 # the stack happens to come to rest.
-RIB_T = RIB_PROUD = D.MIN_WALL_2P   # cadkit contact-rib section: TWO nozzles (quality tier, no 0.05
-                                   # buffer). The air gap is unaffected -- PCB_Y = MAG_Y1 + AIR_GAP +
-                                   # CHIP_H tracks the magnet, so raising RIB_PROUD shifts the whole
-                                   # axle->magnet->sensor stack +0.75 outboard together (AIR_GAP kept).
-AXLE_SHOULDER_Y = HOUS_HW + RIB_PROUD           # 14.75: flange face, ON the rib
+# AXIAL DATUM = the +Y bearing's INNER RACE (user, 2026-09-21: bearings flush with the face).
+# The printed contact rib that used to sit on the housing face is gone -- with the bearing flush
+# it would have stood on the bearing, not on plastic. A Ø9.6 LAND on the axle flange seats on the
+# inner race instead: that is the 688's shaft-abutment band (inner-ring shoulder ~Ø10, shield bore
+# larger), so it touches only the ring that turns WITH the axle -- no rubbing datum at all -- and
+# the Ø12.8 flange behind it stands AXLE_LAND_T clear of the shield. The air gap is unaffected:
+# PCB_Y = MAG_Y1 + AIR_GAP + CHIP_H tracks the magnet, so the whole stack moves together.
+AXLE_LAND_D = 12 * D.BEAD           # 9.6 inner-race land
+AXLE_LAND_T = D.MIN_WALL            # 0.8 land height = the flange's clearance over the shield
+AXLE_SHOULDER_Y = HOUS_HW + AXLE_LAND_T         # flange face
 AXLE_FLANGE_D   = 16 * D.BEAD       # 12.8 flange Ø (what seats on the rib; was 9.6 over the Ø5 journal —
                                     # the rib's mean Ø is this - 1.5 and its inner edge has to stay outside
                                     # the Ø9 axle way). NOT the thread
@@ -1101,7 +1108,10 @@ AXLE_BORE_D = AXLE_D + 0.2                      # lever's through D-bore (slip f
 AXLE_SET_R  = HUB_D / 2                         # mouth: the hub's OD, on the +Z flat side
 AXLE_SET_L  = AXLE_SET_R - AXLE_FLAT_R + 0.2    # 3.2: through the wall, 0.2 past the flat
 PCB_Y   = MAG_Y1 + AIR_GAP + CHIP_H             # board face = magnet + gap + PACKAGE
-AXLE_Y0, AXLE_Y1 = -13.1, MAG_Y1                # axle: -Y journal tip (stops INSIDE its
+AXLE_Y0, AXLE_Y1 = -HOUS_HW, MAG_Y1             # axle: -Y journal tip FLUSH with the -Y bearing's
+                                                # outer face -- the full bearing width (user,
+                                                # 2026-09-21; it was a spelled -13.1 that went
+                                                # stale when the lever widened). Was: (stops INSIDE its
                                                 # bearing pocket, back wall -13.2) .. the
                                                 # magnet face at the +Y end
 
@@ -1679,28 +1689,25 @@ def cut_axle_stack(w):
         sideways, and a drooping ceiling takes the seat OUT OF ROUND — the one
         property a press fit needs. The load helps: the lever's weight presses
         the axle DOWN onto round metal, so the opened top carries nothing.
-      * the rib is UNIONED BEFORE the axle way is cut. cadkit builds the ring
-        ROUND, so adding it after the bore lays a round aperture straight across
-        the teardrop's peak and undoes it (user spotted the round hole). Cutting
-        the way afterwards opens the rib's top too."""
+      * (the printed contact rib and its axle way are gone: the bearings sit
+        FLUSH with the faces and the axle's land seats on the +Y inner race.)"""
     # The seats run OUT THROUGH THE OUTER FACE — the bearing is open to the air (user).
     # There used to be a thin skin behind each one, and it was never real: at 0.70 (now
     # 0.50) it is under one 0.8 bead, so the slicer puts NOTHING there. The bearing was
     # already located by its press fit alone and the skin only existed in the CAD.
     # Modelling it open is the honest version, and it also lets the bearing be pressed
     # from outside rather than through the lever room.
-    _seat_out = HOUS_HW + 1.0
+    # Each seat starts at the LEVER-ROOM wall, not at the bearing's inner face: the flush bearings
+    # sit 0.05 outboard of that wall, and starting the seat at the bearing left a 0.05 sliver of
+    # housing across the axle's path.
+    _seat_out, _seat_in = HOUS_HW + 1.0, LEVER_HW + HS_CLR
     for sgn in (1.0, -1.0):
-        y0 = sgn * BRG_Y0 if sgn > 0 else -_seat_out
-        w = w.cut(printable_bore(BRG_SEAT_D, _seat_out - BRG_Y0, (0.0, y0, 0.0),
+        y0 = sgn * _seat_in if sgn > 0 else -_seat_out
+        w = w.cut(printable_bore(BRG_SEAT_D, _seat_out - _seat_in, (0.0, y0, 0.0),
                                  (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)))
-    w = w.union(contact_rib(AXLE_FLANGE_D - 1.5, RIB_PROUD, RIB_T,
-                            (0.0, HOUS_HW, 0.0), (0.0, 1.0, 0.0),
-                            (0.0, 0.0, 1.0)))
-    _y0 = BRG_Y0 + BRG_W + 0.2
-    return w.cut(printable_bore(AXLE_D + 1.0, (HOUS_HW + RIB_PROUD) - _y0,
-                                (0.0, _y0, 0.0),
-                                (0.0, 1.0, 0.0), (0.0, 0.0, 1.0), overshoot=0.6))
+    # (no contact rib and no separate axle way: the seats run out through BOTH faces at the
+    # full Ø16.1, and the axle's own land seats on the +Y bearing's inner race -- see AXLE_LAND_D)
+    return w
 
 
 def cut_feel_pockets(w, place, x_front=None):
@@ -1906,10 +1913,12 @@ def kl_axle() -> cq.Workplane:
     # smooth blank along +Z: journal shaft, then the flange/collar barrel
     b = cq.Workplane("XY").add(cq.Solid.makeCylinder(
         r, AXLE_SHOULDER_Y - AXLE_Y0, cq.Vector(0, 0, AXLE_Y0), cq.Vector(0, 0, 1)))
+    b = b.union(cq.Workplane("XY").add(cq.Solid.makeCylinder(   # inner-race LAND (the datum)
+        AXLE_LAND_D / 2, AXLE_LAND_T, cq.Vector(0, 0, HOUS_HW), cq.Vector(0, 0, 1))))
     b = b.union(cq.Workplane("XY").add(cq.Solid.makeCylinder(
         (MAG_TH_MAJOR - MAG_TH_CLR) / 2, MAG_FLANGE_T + MAG_COLLAR_H,
         cq.Vector(0, 0, AXLE_SHOULDER_Y), cq.Vector(0, 0, 1))))
-    b = b.union(cq.Workplane("XY").add(cq.Solid.makeCylinder(   # flange (rides the rib)
+    b = b.union(cq.Workplane("XY").add(cq.Solid.makeCylinder(   # flange (clear of the shield)
         AXLE_FLANGE_D / 2, MAG_FLANGE_T,
         cq.Vector(0, 0, AXLE_SHOULDER_Y), cq.Vector(0, 0, 1))))
     b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(     # magnet pocket
