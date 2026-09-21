@@ -312,7 +312,8 @@ DEFERRED = {frozenset({"pickup_zplate", "top_plate"}),
             # y -129, z -9, the board's whole length) crosses the -Y rail branner CLOSED
             # in the same round. OWNER bronner, with branner: the route needs a way
             # through, or the rail needs a port. Nobody has guessed at it.
-            frozenset({"chassis", "optical_cables"}),
+            frozenset({"chassis", "optical_cable_usb"}),
+            frozenset({"chassis", "optical_cable_pwr"}),
             # brenner's leg blind-mate against branner's decoupled body adapter at the
             # -X/+Y corner: the patch lead 379 mm3, the plug 140 mm3. OWNER brenner --
             # body_adapter lives in leg_stack, their registered scope, so both halves of

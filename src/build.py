@@ -687,7 +687,13 @@ def _pickup_mount_components():
     # MALE connectors + cable at true diameter. Not a printed part -- it exists so the
     # route can be PLANNED rather than assumed, and so the overlap gate has something to
     # complain about if the conduit or the plinth ever moves into the cable's path.
-    out.append(("optical_cables", OP.opt_cables()))
+    # ⚠ TWO CABLES, TWO NAMES, TWO COLOURS. These were one "optical_cables" solid in a
+    # single near-black grey, so the USB lead and the 24 V lead were indistinguishable in
+    # the viewer and neither could be hidden without hiding the other. Split so each says
+    # what it is, and coloured off the loose-wire scheme already in this table: violet for
+    # USB, red for 24 V.
+    out.append(("optical_cable_usb", OP.opt_cables("usb")))
+    out.append(("optical_cable_pwr", OP.opt_cables("pwr")))
     # The two M4 grips that locate the board: heat-set insert seated in the endplate's
     # wrap plinth, button screw down through the board's clearance hole into it. Same
     # fastener family as the pickup height jacks, so no new BOM line.
@@ -1382,7 +1388,11 @@ _COLORS = {
     "tee_insert":      (0.72, 0.60, 0.30),   # M4 heat-set brass, in the cradle boss
     "optical_pcb":     (0.12, 0.30, 0.55),   # per-string optical strip (blue solder mask,
                                              # so it reads apart from the green audio PCBs)
-    "optical_cables":  (0.15, 0.15, 0.17),   # USB-C + XHP-6 plugs and their leads
+    # ⚠ MATCHED TO THE LOOSE-WIRE COLOURS BELOW, not picked fresh: a USB run is a USB
+    # run whether it is drawn as a wire or as a modelled cable, and the old single entry
+    # was (0.15,0.15,0.17) -- near-black, which this project reserves for TPU.
+    "optical_cable_usb": (0.55, 0.25, 0.75),  # violet, as wire_usb - USB-C plug + lead to the Pi
+    "optical_cable_pwr": (0.85, 0.12, 0.10),  # red, as wire_pwr_hot - 24 V in at J2
     "optical_insert":  (0.72, 0.60, 0.30),   # M4 heat-set brass, board grips
     "optical_screw":   (0.72, 0.74, 0.78),   # M4x12 button, down into it
     "optical_cover":   (0.18, 0.18, 0.20),   # slotted lid over the sensor row -- print it
