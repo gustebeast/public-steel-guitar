@@ -203,6 +203,18 @@ def _build():
     # Fused AFTER the cuts above so nothing takes it back out again.
     from .electronics import keyhead_cradles
     w = w.union(keyhead_cradles())
+    # ONE SOLID, CHECKED. The cradles are fused to a ledge 22 mm inboard of this plate's
+    # face, and the first version of them reached nowhere near it: the motor controller's
+    # came out as a free-floating 18,121 mm3 lump and the part was quietly TWO pieces. The
+    # overlap gate cannot see that -- it reports interpenetration, and two solids that never
+    # touch do not interpenetrate -- and every feature-by-feature check of the cradle passed,
+    # because each of its walls, pads and screw bosses was exactly right. Only whether it was
+    # ATTACHED was never asked. Ask it here, where a change to either part fails loudly.
+    _n = len(w.val().Solids())
+    assert _n == 1, (
+        "keyhead_endplate came out as %d disconnected solids -- a cradle (or another fused "
+        "feature) is not touching the plate. Check electronics.LEDGE_L* against where this "
+        "plate's material actually reaches." % _n)
     return heal(w)
 
 
