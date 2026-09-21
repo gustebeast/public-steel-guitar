@@ -71,7 +71,7 @@ HEIGHT = {
     "QFN-68-1EP_8x8mm_P0.4mm_EP5.2x5.2mm": 0.90,
     "JST_XH_B2B-XH-A_1x02_P2.50mm_Vertical": 7.0,
     "JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical": 7.0,
-    "Jack_6.35mm_Neutrik_NMJ4HCD2_Horizontal": 19.0,
+    "Jack_6.35mm_Neutrik_NMJ4HCD2_Horizontal": 15.67,     # Neutrik's STEP: body top
     "L_0603_1608Metric": 0.95, "L_Taiyo-Yuden_NR-30xx": 1.50,
     "Relay_DPDT_FRT5_SMD": 5.10,
     "SOT-23": 1.30, "SOT-23-5": 1.45, "SOT-23-6": 1.10,
@@ -92,13 +92,25 @@ HEIGHT = {
 #           (so the body front sits AT the panel's inner face);
 #           "through": the body itself passes into the panel toward its outer face
 PANEL = {
-    # Neutrik NMJ4HCD2 (product sheet, read 2026-09-21): REAR MOUNTING, panel < 4.7 mm,
-    # chassis hole 11.4 mm, mounting nut included. The threaded chrome nose is not in
-    # the footprint's F.Fab; it is modelled here. ⚠ axis_h 9.5 and the nose's 11.0 x 7.5
-    # are NOT off a drawing -- the sheet gives neither -- and nothing checks them. Confirm
-    # against Neutrik's dimensioned drawing (ST-NMJ4HCD2) before cutting a panel.
+    # Neutrik NMJ4HCD2, off Neutrik's own STEP (d-nmj4hcd2.stp) and drawing (ST-NMJ4HCD2),
+    # both read 2026-09-21: bore axis 8.14 above the PCB (the old 9.5 was a flagged guess,
+    # 1.36 high); a 3.0 mm O11.4 STUB in front of the body's shoulder, which F.Fab draws as
+    # the last 3.0 of the outline, and which locates in the panel's O11.4 hole; and a
+    # separate NOSE NUT -- a 2.05 hex head, A/F 11, on a 3.74 shank -- that screws into the
+    # jack and clamps the panel against the shoulder. Clamped thickness 3.0..4.7 (the
+    # drawing's three 1.2 washers build thin panels up to it).
+    #   stub     (d, length) in front of the shoulder, INSIDE the F.Fab outline
+    #   nut      (head A/F, head thickness, shank d, shank length)
+    #   clamp    the thickness the nut clamps, chosen in that window
+    #   boss_d   the pad the endplate stands behind the panel for the shoulder to bear on
+    #   cbore_d  the face counterbore the nut's head sits in, flush: 15.6, a thin-wall
+    #            11 mm socket (OD <= 15.2) plus 0.2 a side. Wider could not be had -- at an
+    #            8.14 axis a O16.5 dips 0.11 below the board's top at the panel.
+    #   boss_d   the counterbore plus a 1.6 wall all round, flat underneath at the
+    #            counterbore's own bottom so no sliver is left between them
     "Jack_6.35mm_Neutrik_NMJ4HCD2_Horizontal": dict(
-        mouth=(1.0, 0.0), axis_h=9.5, nose=("round", 11.0, 7.5),
+        mouth=(1.0, 0.0), axis_h=8.14, nose=None, stub=(11.4, 3.0),
+        nut=(11.0, 2.05, 9.0, 3.74), clamp=4.0, boss_d=18.8, cbore_d=15.6,
         opening=("round", 11.8), mount="rear"),
     # HRO TYPE-C-31-M-12, measured off HRO's model: shell 8.94 x 3.20 on the board, so
     # the axis is 1.65 up. Mouth is the footprint's +Y. The OPENING is overmold-sized
@@ -171,9 +183,25 @@ def solid(board: str) -> cq.Workplane:
             continue
         x0, x1, y0, y1 = f["fab"]
         z0 = -h if f["side"] == "B" else t
+        spec = PANEL.get(fp_name(f["fpid"]))
+        if spec and spec.get("stub"):
+            # the body box stops at the SHOULDER; the stub is a O11.4 cylinder, not the body's
+            # full 18.2 width -- drawn as a box it could never pass the panel's O11.4 hole
+            m = mouth(board, f["ref"])
+            sd, sl = spec["stub"]
+            assert m["dir"][0] > 0.99, "a stubbed panel part must face +X"
+            x1 = m["front"] - sl
+            ax_z = t + m["axis_h"]
+            out = out.union(cq.Workplane("YZ").circle(sd / 2.0).extrude(sl)
+                            .translate((x1, m["across"], ax_z)))
+            af, ht, shd, shl = spec["nut"]
+            head0 = x1 + spec["clamp"]                  # the head bears on the clamp's face
+            out = out.union(cq.Workplane("YZ").polygon(6, af / math.cos(math.pi / 6))
+                            .extrude(ht).translate((head0, m["across"], ax_z)))
+            out = out.union(cq.Workplane("YZ").circle(shd / 2.0).extrude(shl)
+                            .translate((head0 - shl, m["across"], ax_z)))
         out = out.union(box_at(x1 - x0, y1 - y0, h, x=(x0 + x1) / 2.0,
                                y=(y0 + y1) / 2.0, z=z0 + h / 2.0))
-        spec = PANEL.get(fp_name(f["fpid"]))
         if spec and spec["nose"]:
             m = mouth(board, f["ref"])
             kind, d, length = spec["nose"]

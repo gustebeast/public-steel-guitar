@@ -321,14 +321,11 @@ DEFERRED = {frozenset({"pickup_zplate", "top_plate"}),
             # this one are theirs.
             frozenset({"body_adapter", "leg_trrs_patch"}),
             frozenset({"body_adapter", "leg_trrs_plug"}),
-            # THE BANK'S END POWER RUNS, 2026-09-18. bronner's round moved the hot and
-            # ground runs at the -X end; they now clip motor 9 (53.9 / 47.8 mm3) and then
-            # the chassis (4.1 / 3.3). These are REAL routing bugs -- a wire clipping a
-            # solid is exactly what WIRE_OK exists to catch -- parked only because the
-            # user's rule is that they must not block merges. OWNER bronner: the route is
-            # theirs, and the 30+ commits of electrical work behind it are not.
-            frozenset({"wire_pwr_hot", "motor"}), frozenset({"wire_pwr_gnd", "motor"}),
-            frozenset({"chassis", "wire_pwr_hot"}), frozenset({"chassis", "wire_pwr_gnd"})}
+            # (the 24 V runs vs motor/chassis deferral, OWNER bronner, is UN-deferred
+            # 2026-09-21: it excused EVERY 24 V wire against ANY motor or chassis part, which
+            # hid far more than the two clips it was written for -- the runs are rerouted
+            # through the new wall trough and are gated again.)
+            }
 
 # DEFERRED CLASSES, by pattern. Some deferrals are not one pair but one fault repeated
 # per station -- five knee levers, five pedals -- and listing 55 frozensets would hide
