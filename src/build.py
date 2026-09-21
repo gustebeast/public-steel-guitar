@@ -1148,12 +1148,12 @@ def lever_components():
     return _lever_stations_components() + _foot_pedal_components()
 
 
-_LKL_VKL_STATIONS = ("lkl", "vkl")
+_LKL_VKL_STATIONS = ("lkl",)   # the focused stations (VKL dropped for now, user)
 
 
 def lkl_vkl_box():
-    """(w, d, h, x, y, z) round the LKL and VKL stations: both levers whole, plus the
-    chassis bottom they hang from. X/Z come from the two stations' posed parts; Y spans
+    """(w, d, h, x, y, z) round the focused lever stations (_LKL_VKL_STATIONS): the levers
+    whole, plus the chassis bottom they hang from. X/Z come from the stations' posed parts; Y spans
     the whole chassis (the rib mortises run its depth); +Z stops under the deck so the
     view looks up into the ribs rather than at the top plate."""
     from . import chassis as CH, top_plate as TP
@@ -1171,7 +1171,7 @@ def _lkl_vkl_levers():
 
 
 def lkl_vkl_components():
-    """LKL + VKL and the chassis bottom they mount to, as ONE live set -- for the lever
+    """The focused lever stations and the chassis bottom they mount to, as ONE live set -- for the lever
     joinery work. The chassis is CLIPPED to lkl_vkl_box(): the rest of its length is
     context the levers cannot reach, and it is most of the solids."""
     w, d, h, x, y, z = lkl_vkl_box()
