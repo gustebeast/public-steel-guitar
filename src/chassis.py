@@ -436,99 +436,77 @@ def _raceway(cy, z0, x, thick):
             .polyline(pts).close().extrude(thick + 2.0))
 
 
-# ── -Y rail WIRING CHANNEL ────────────────────────────────────────────────
-# A trough cut the length of the -Y rail's INNER face, for the harness to be stuffed into.
-# Until now the trunk simply floated in front of this wall with nothing holding it: the ribs
-# are off limits (a cable lying in one blocks a lever from sliding to that depth -- see
-# _raceway), the motor bank owns everything inboard of MB.HARNESS_Y1, and the rail itself was
-# solid, so there was nowhere for a cable to BE. The one exception was motor 9's notch below,
-# which is this same pocket cut for one motor's span; the channel now subsumes it.
+# ── -Y rail WIRING TROUGH ─────────────────────────────────────────────────
+# A trough standing OFF the -Y rail's inner face, above the motors, for the harness to be
+# laid into. It REPLACES a channel that was cut 4.8 mm into this 10.4 mm wall for most of
+# its length (user, 2026-09-21: "that reduces structural integrity of the instrument...
+# have it extend out from the wall rather than cutting into it"). Right: the rail is the
+# body's side beam, and a pocket along its middle trades beam depth for a cable tray. This
+# costs only the tray's own material and leaves the wall whole.
 #
-# SECTION: flat floor, vertical back, 45 deg roof. The rail prints +Z, so the roof is the only
-# face that would otherwise be an unsupported ceiling, and at 45 deg it carries itself (the
-# same reason _raceway is gabled). The floor and the back are printed walls like any other.
+# WHY THIS HEIGHT. The motors fan across the body -- only string 10's (back 2.0 off the
+# wall) and string 9's (11.5 off) come near it -- and every motor top is at z -29.05
+# (MOTOR_BELT_Z + MOTOR_SQ/2). The deck's retention groove owns the wall from z -6.4 up. The
+# trough lives in the band between: floor at -26.4, lip top at -13.6.
 #
-# It is a POCKET, NOT A HOLE -- 4.8 of a 10.4 wall, leaving 5.6 behind. The rail is a side wall
-# as much as a beam (it is why the lightening diamonds came out), and a pocket keeps light and
-# motor noise in where a through-slot would not.
-WC_D      = 6 * D.BEAD                  # 4.8 deep from the inner face
-WC_STRAP  = 2 * D.BEAD                  # 1.6 of face skin left ACROSS the mouth at intervals:
-                                        # the cable is stuffed in PAST it and cannot fall back
-                                        # out. A strap is a vertical column in the print, so it
-                                        # costs nothing to make -- unlike a lip, which would be
-                                        # an overhang on this wall.
-WC_STRAP_W  = 6 * D.BEAD                # 4.8 of X per strap
-WC_STRAP_PITCH = 48.0                   # about one every two rib bays
-WC_Y1     = Y_LO + T / 2                # -128.75: the mouth = the rail's inner face
-WC_Y0     = WC_Y1 - WC_D                # -133.55: the back
-WC_LANE_Y = (WC_Y0 + (WC_Y1 - WC_STRAP)) / 2    # -131.95: the wire centreline, BEHIND the
-                                        # straps -- wiring.py rides this, and the 3.2 of clear
-                                        # depth behind a strap passes the fattest cable (O2.6)
-WC_Z0     = -70 * D.BEAD                # -56.0: floor, under the lowest lane (24 V hot)
-WC_Z1     = MB.HARNESS_Z1               # -40.0: the straight walls stop where the motor
-                                        # pockets do, so the opening is exactly the declared
-                                        # harness corridor; above it the roof ramps out at 45.
-WC_X0, WC_X1 = -578.0, -28.0            # ends. +X: short of the bridge leg shell, which starts
-                                        # at -25.46 and is solid rail with its own joinery.
-                                        # -X: short of the BAY COLUMN at -585, where the USB, bus
-                                        # B and the 24 V feed all turn up out of the corridor to
-                                        # reach the boards. A channel that reached past it would
-                                        # have them climbing through the closed roof -- the one
-                                        # face of this pocket that is not open.
-WC_END_CLR = 2.0                        # the harness turns in/out of the channel this far INSIDE
-                                        # each run's end, not at it: the turn carries an elbow of
-                                        # the cable's own radius, and struck at the very edge that
-                                        # elbow lands in the solid rail past it (it did -- 4 of
-                                        # them, one per seam face).
-WC_SEAM_CLR = 10.0                      # THE CHANNEL BREAKS AT EVERY SPLIT PLANE. The seam
-                                        # joint's cavity starts 2.0 behind this same face and
-                                        # runs z -71.35..-6.4, so a 4.8 pocket through a seam
-                                        # would eat the tenon that holds two segments together.
-                                        # The harness steps back out in front of the wall for
-                                        # those 20 mm instead (wiring._rail_pts).
+# SECTION (Y-Z, extruded along X), and why each face is the angle it is -- the chassis
+# prints +Z, so every face that looks down must be 45 or steeper:
+#   * a 45 deg GUSSET under the floor, from the wall out to the lip, so the floor is never
+#     a ledge over air;
+#   * a vertical outer LIP, a printed wall like any other;
+#   * a small NUB at the lip's top, reaching back toward the wall with a 45 deg underside,
+#     so the mouth is narrower than the trough and a stuffed-in cable stays put.
+WT_Y0 = Y_LO + T / 2                     # -128.75: the rail's inner face
+WT_D = 8 * D.BEAD                        # 6.4 out from the wall (outer lip face -122.35)
+WT_T = 2 * D.BEAD                        # 1.6 lip
+WT_ZF = -33 * D.BEAD                     # -26.4 floor top (gusset root at -32.8)
+WT_H = 16 * D.BEAD                       # 12.8 lip height above the floor (top -13.6)
+WT_NUB = 3 * D.BEAD / 2                  # 1.2 the nub's reach back toward the wall
+WT_LANE_Y = WT_Y0 + (WT_D - WT_T) / 2    # -126.35: the centreline of the space inside
+WT_X0, WT_X1 = -575.0, -88.0             # -X: short of the keyhead bay, where the wires
+                                         # leave it in three columns (-585, -582, -579 --
+                                         # the last grazed a -578 end). +X: short of the bay the output
+                                         # board's harness gathers and loops in.
+# NO TROUGH OVER STRING 10'S MOTOR (user). Its back is 2.0 mm off the wall, and its pigtail
+# climbs out of the rail notch just +X of it, straight through this band. The cables simply
+# carry on over the motor's top there -- the trough is above it anyway.
+# ...AND OVER STRING 9'S PIGTAIL, which climbs behind its own motor (back 11.5 off the
+# wall) straight up through this band -- 116.6 mm3 of it in the trough on the first build.
+# What that took out was a 21 mm piece between the seam and string 10's motor, too short to
+# be worth re-routing a motor lead for.
+_M9X_W = D.motor_pos(D.N_STRINGS - 1)[0]
+_M8X_W = D.motor_pos(D.N_STRINGS - 2)[0]
+WT_SKIP = [(_M8X_W - 5.0, _M9X_W + D.MOTOR_SQ / 2 + 26.0)]
+# ...and a hair of air at each seam, so two segments' trough ends never have to meet exactly
+WT_SEAM_GAP = 0.2
 
 
-def _wc_runs():
-    """[(x0, x1)] the channel's continuous X runs — WC_X0..WC_X1 broken at each split."""
-    edges = [WC_X0]
-    for s in sorted(SPLIT_X):
-        if WC_X0 < s < WC_X1:
-            edges += [s - WC_SEAM_CLR, s + WC_SEAM_CLR]
-    edges.append(WC_X1)
-    return [(edges[i], edges[i + 1]) for i in range(0, len(edges), 2)]
+def _wt_runs():
+    """[(x0, x1)] the trough's pieces: WT_X0..WT_X1 minus the motor-10 span and the seams."""
+    cuts = sorted(WT_SKIP + [(s - WT_SEAM_GAP, s + WT_SEAM_GAP) for s in SPLIT_X])
+    runs, x = [], WT_X0
+    for a, b in cuts:
+        if b <= x or a >= WT_X1:
+            continue
+        if a > x:
+            runs.append((x, min(a, WT_X1)))
+        x = max(x, b)
+    if x < WT_X1:
+        runs.append((x, WT_X1))
+    return runs
 
 
-WC_RUNS = _wc_runs()
-# X bands that get NO strap: where a cable leaves the mouth and crosses the face plane. Motor
-# 9's pigtail lies in the notch and comes out over its own motor; the other three are the ends
-# of the runs that the USB, bus B and the 24 V feed turn inboard at.
-WC_NO_STRAP = ((-520.0, -496.0), (-172.0, -126.0), (-54.0, -28.0))
+WT_RUNS = _wt_runs()
 
 
-def _wc_cutter(x0, x1):
-    """The channel's solid over [x0, x1]: floor, back wall, 45 deg roof, open at the mouth."""
-    ym = WC_Y1 + 1.0                     # overshoot past the face so the mouth is fully open
-    pts = [(ym, WC_Z0), (WC_Y0, WC_Z0), (WC_Y0, WC_Z1), (ym, WC_Z1 + WC_D + 1.0)]
+def _wt_solid(x0, x1):
+    """The trough over [x0, x1], fused 0.4 into the wall."""
+    y0, d, t, zf, h, n = WT_Y0, WT_D, WT_T, WT_ZF, WT_H, WT_NUB
+    pts = [(y0 - 0.4, zf - d), (y0, zf - d), (y0 + d, zf), (y0 + d, zf + h),
+           (y0 + d - t - n, zf + h), (y0 + d - t, zf + h - n), (y0 + d - t, zf),
+           (y0 - 0.4, zf)]
     return (cq.Workplane("YZ").workplane(offset=x0)
             .polyline(pts).close().extrude(x1 - x0))
-
-
-def _wc_straps():
-    """The face skin left across the channel mouth, every WC_STRAP_PITCH along each run."""
-    out = []
-    for x0, x1 in WC_RUNS:
-        # start a strap-pitch in from each end of the run: the harness turns inboard AT a run's
-        # ends (the seam step-outs, the boards at either end), and a strap there would sit on
-        # the cable as it crosses the mouth plane.
-        n = max(1, int(round((x1 - x0) / WC_STRAP_PITCH)) - 1)
-        step = (x1 - x0) / (n + 1)
-        for k in range(1, n + 1):
-            here = x0 + k * step
-            if any(a < here < b for a, b in WC_NO_STRAP):
-                continue
-            out.append(box_at(WC_STRAP_W, WC_STRAP, WC_Z1 - WC_Z0,
-                              x=here, y=WC_Y1 - WC_STRAP / 2, z=(WC_Z0 + WC_Z1) / 2))
-    return out
 
 
 def _build_full() -> cq.Workplane:
@@ -538,13 +516,9 @@ def _build_full() -> cq.Workplane:
     body = body.cut(box_at(M9_CUT_X1 - M9_CUT_X0, -116.0 - M9_CUT_YBACK, M9_CUT_Z1 - M9_CUT_Z0,
                            x=(M9_CUT_X0 + M9_CUT_X1) / 2, y=(M9_CUT_YBACK + -116.0) / 2,
                            z=(M9_CUT_Z0 + M9_CUT_Z1) / 2))
-    # ...and the harness channel the length of the rail (see WC_* above). Cut BEFORE anything
-    # else meets this wall, so the straps that close its mouth are just more rail to everything
-    # that follows.
-    for _wx0, _wx1 in WC_RUNS:
-        body = body.cut(_wc_cutter(_wx0, _wx1))
-    for _st in _wc_straps():
-        body = body.union(_st)
+    # ...and the wiring trough standing off the -Y wall above the motors (see WT_*).
+    for _wx0, _wx1 in WT_RUNS:
+        body = body.union(_wt_solid(_wx0, _wx1))
     # THE BOTTOM IS ONE PRISM (user, 2026-09-15), XBAR tall, rail to rail, instead of a comb of
     # cross-ribs with air between them. The mortises cut below take most of it back out, so it
     # costs little; what it buys is a lever mounting place every 8.8 instead of every 22.35, and
