@@ -200,6 +200,7 @@ a keyboard rig. 10 strings at 9.5 mm pitch at the bridge.
 | `src/` | CadQuery source — one module per printed part + helpers |
 | `tools/` | overlap gate + `fast_build` (fast single-part iteration) + `build_profile` (build-cost/regression gate) + web-viewer GLB exporter |
 | `docs/` | GitHub Pages 3D viewer (`index.html` + `assembly.glb`) |
+| `INSTALL_NOTES.md` | installation steps the CAD can't show (thread lock, order, settings) — raw notes for the future install doc |
 | `BOM.md` | purchased parts with sourcing links and prices |
 | `electromechanical-pedal-steel-spec.md` | the full design specification and rationale |
 | `*.step` | generated geometry (per part + full assembly) |
