@@ -215,7 +215,7 @@ def _crop_body():
 
 
 def _crop_lkl_vkl():
-    """LKL + VKL whole and the chassis bottom over them -- shared with the live set in
+    """The focused lever(s) whole and the chassis bottom over them -- shared with the live set in
     src.build.lkl_vkl_box so the clipped chassis and the cropped context cannot disagree."""
     return importlib.import_module("src.build").lkl_vkl_box()
 
