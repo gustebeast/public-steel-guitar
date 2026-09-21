@@ -48,7 +48,7 @@ from cadkit.fasteners import (M4_SHAFT_CLR_D, M4_INSERT_D,
                        cut_selftap,
                        cut_m4_pocket, seated_m4_insert, cut_m4_boss, m4_boss_insert)
 from cadkit.pcb import (PCB_T as _PCB_T, jst_ph_side_header, ph_side_length,
-                        PH_SIDE_H, PH_SIDE_D)
+                        PH_SIDE_H, PH_SIDE_D, PH_TAB_D, PH_PLUG_RUN)
 from cadkit.joinery import PrintSpec, joint   # cadkit's one joinery entrypoint
 from cadkit.supports import printable_bore
 # the M4 insert pocket/boss helpers now live in cadkit/fasteners.py (shared); keep the old local names:
@@ -150,7 +150,7 @@ CEIL_CLR = 0.4                      # board top edge -> the instrument's undersi
                                     # the slide clearance plus the board's own height
                                     # tolerance. The board still RESTS on the cradle floor, so
                                     # this is a LIFT STOP, not a datum.
-PCB_WZ = 22.0                       # 10.1 up + 11.9 down: J1's 20.0 + the 1.0 edge rule twice.
+PCB_WZ = 21.9                       # 10.1 up + 11.8 down: J1's 19.9 + the 1.0 edge rule twice.
                                     # History: 21.4 before the XH; the notes below are from
                                     # the PH-era layout. ONE board for every lever. 16.0 until the real circuit
                                     # was laid out (elec/lever_sensor.py): 29 parts and an
@@ -1062,8 +1062,7 @@ TEN_ROOT = D.MIN_WALL               # 0.8 root below the mating face — volumet
 # the Ø12.8 flange behind it stands AXLE_LAND_T clear of the shield. The air gap is unaffected:
 # PCB_Y = MAG_Y1 + AIR_GAP + CHIP_H tracks the magnet, so the whole stack moves together.
 AXLE_LAND_D = 12 * D.BEAD           # 9.6 inner-race land
-# J1 stands PH_SIDE_H (7.0, RESERVED -- cadkit borrowed XH's figure; tighten from JST's
-# ePH drawing) off the magnet face, and the magnet face sits a fixed stack
+# J1 stands PH_SIDE_H (5.5, JST's ePH drawing) off the magnet face, and the magnet face sits a fixed stack
 # (land + pocket floor + magnet + air gap + chip) off the housing's +Y face -- 6.4 with a
 # one-bead land. So the LAND grows until that stack clears J1 by CONN_GAP: the magnet, and
 # with it the board, stands 0.9 further out instead of J1 cutting the housing wall (user:
@@ -1071,7 +1070,8 @@ AXLE_LAND_D = 12 * D.BEAD           # 9.6 inner-race land
 MAG_FLANGE_T    = 0.8                           # pocket floor under the magnet
 CONN_GAP = 0.3                      # J1 body -> housing face
 AXLE_LAND_T = max(D.MIN_WALL,
-                  PH_SIDE_H + CONN_GAP - (MAG_FLANGE_T + MAG_T + AIR_GAP + CHIP_H))   # 1.7
+                  PH_SIDE_H + CONN_GAP - (MAG_FLANGE_T + MAG_T + AIR_GAP + CHIP_H))   # 0.8: the PH
+                  # fits the 6.4 stack as it is (the XH's 7.0 needed 1.7 -- a 0.9 stand-off)
 AXLE_SHOULDER_Y = HOUS_HW + AXLE_LAND_T         # flange face
 AXLE_FLANGE_D   = 16 * D.BEAD       # 12.8 flange Ø (what seats on the rib; was 9.6 over the Ø5 journal —
                                     # the rib's mean Ø is this - 1.5 and its inner edge has to stay outside
@@ -1427,12 +1427,12 @@ CR_Z1    = HOUS_Z1                              # web tops FLUSH with the housin
 # reaches the housing's cheek. SMT: no post tails at all.
 CONN_N       = 8
 CONN_PART    = "S8B-PH-SM4-TB"                        # LCSC C265121
-CONN_L       = ph_side_length(CONN_N)                 # 20.0, vertical
+CONN_L       = ph_side_length(CONN_N)                 # 19.9, vertical (JST B)
 CONN_MOUTH_X = PCB_X0 + 3.05                          # the PH-era layout's mouth: its courtyard
                                                       #   (10.29 deep) sits clear of the groove band
 CONN_ZC      = (PCB_Z0 + PCB_Z1) / 2                  # centred on the board's height
 CONN_POCKET  = 0.3                  # clearance around it in the web tunnel
-CONN_PLUG_RUN = 7.5                 # mated PHR reach past the mouth (cadkit's RESERVED envelope)
+CONN_PLUG_RUN = PH_PLUG_RUN         # 3.6: mated PHR reach past the mouth (JST's drawing)
 assert PCB_Z0 + CONN_EDGE <= CONN_ZC - CONN_L / 2 and CONN_ZC + CONN_L / 2 <= PCB_Z1 - CONN_EDGE, (
     "J1 standing on end does not fit the board's height with the 1.0 edge rule")
 assert PCB_Y - PH_SIDE_H - CONN_POCKET >= HOUS_HW - 1e-6, (
@@ -1451,7 +1451,7 @@ def _conn_keepout():
     """(x0, x1, z0, z1) J1 forbids on the magnet face: its body AND the mated plug's run.
     Parts of the pre-route SENSOR_BOM layout that land in it are a handoff item
     (CONN_PAD_CONFLICTS), not an error here: that table predates the routed board."""
-    return (CONN_MOUTH_X - CONN_PLUG_RUN, CONN_MOUTH_X + PH_SIDE_D,
+    return (CONN_MOUTH_X - CONN_PLUG_RUN, CONN_MOUTH_X + PH_SIDE_D + PH_TAB_D,   # + the solder tabs
             CONN_ZC - CONN_L / 2, CONN_ZC + CONN_L / 2)
 
 
