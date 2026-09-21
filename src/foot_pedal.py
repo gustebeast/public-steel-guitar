@@ -405,7 +405,6 @@ BOARD_FLIP = True                   # user: connector DOWN into the bar (see _ho
 CRADLE_X_MAX = -KL.PCB_X0                          # 25.0
 # Everything that has to live inside the beam: the board's lower half, the mated
 # connector and the plug's reach past the mouth.
-BAY_X1 = -KL.CONN_MOUTH_X + KL.CONN_PLUG_RUN       # 30.65 — deepest hardware
 BAY_CLR = 0.6                                      # printed clearance around the bay
 # WHERE THE SHIM STOPS. The knee lever's shim runs to the housing ceiling and the
 # chassis underside presses it. The pedal's ceiling IS the bar's +Y face — and that
@@ -442,7 +441,10 @@ def board_bay_cutter():
     # board in both local Y and Z, and they descend with it
     y0, y1 = min(y0, KL.CR_Y0) - BAY_CLR, max(y1, KL.CR_Y1) + BAY_CLR
     z0, z1 = z0 - KL.CR_WEB_T - BAY_CLR, z1 + KL.CR_WEB_T + BAY_CLR
-    x0, x1 = HOUS_X1 - 20.0, BAY_X1 + BAY_CLR      # -20: run out through the top
+    # +X (into the bar) is the deepest posed hardware, measured -- it used to be a typed
+    # connector reach, which went stale when J1 moved to the board's back (2026-09-21)
+    x0, x1 = HOUS_X1 - 20.0, max(max(p.val().BoundingBox().xmax for p in parts),
+                                 CRADLE_X_MAX) + BAY_CLR      # -20: run out through the top
     return box_at(x1 - x0, y1 - y0, z1 - z0,
                   x=(x0 + x1) / 2, y=(y0 + y1) / 2, z=(z0 + z1) / 2)
 

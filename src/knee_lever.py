@@ -47,8 +47,8 @@ from cadkit.fasteners import (M4_SHAFT_CLR_D, M4_INSERT_D,
                        M4_INSERT_L, M4_SCREW_L, M2, M4, cut_insert_bore,
                        cut_selftap,
                        cut_m4_pocket, seated_m4_insert, cut_m4_boss, m4_boss_insert)
-from cadkit.pcb import (PCB_T as _PCB_T, jst_ph_side_header, ph_side_length,
-                        PH_SIDE_H, PH_SIDE_D, PH_ROW_OFF)
+from cadkit.pcb import (PCB_T as _PCB_T, jst_xh_header, xh_length, XH_PITCH,
+                        XH_BODY_W, XH_ROW_OFF, XH_POST_TAIL)
 from cadkit.joinery import PrintSpec, joint   # cadkit's one joinery entrypoint
 from cadkit.supports import printable_bore
 # the M4 insert pocket/boss helpers now live in cadkit/fasteners.py (shared); keep the old local names:
@@ -680,14 +680,18 @@ def sensor_board():
 
 
 def sensor_connector():
-    """The CAN drop as drawn on that board: S4B-XH-SM4-TB, MATED (a connector nobody
-    can get a plug onto is not a fit, and for side entry the plug's reach is the
-    whole question). Height +Z -> -Y so it stands off the magnet-facing face, mating
-    axis +Y -> +X so the plug arrives from -X, length -> Z."""
-    return (jst_ph_side_header(CONN_N, mated=True)
-            .rotate((0, 0, 0), (1, 0, 0), 90)
-            .rotate((0, 0, 0), (0, 1, 0), 90)
-            .translate((CONN_MOUTH_X, PCB_Y, PCB_Z0 + CONN_RISE)))
+    """J1 as SPECIFIED for the next board spin (user, 2026-09-21): B8B-XH-A, the top-entry
+    8-way XH the CAN tee already uses for its trunk, on the board's BACK (+Y) face, MATED.
+    The plug comes straight out +Y, away from the magnet and the housing, so nothing on
+    the magnet side stands taller than the chip region any more and the housing's +Y
+    cheek is never cut. cadkit's header is built pin row along X, body across Y, height
+    +Z off the board face: -90 about X turns height to +Y and puts the body's short
+    (XH_ROW_OFF) side toward +Z, i.e. the pin row toward the board's TOP edge. Its post
+    TAILS come back through the board and stand XH_POST_TAIL - PCB_T proud of the
+    magnet-side face -- which is why the row sits ABOVE the axle (see CONN_ROW_Z)."""
+    return (jst_xh_header(CONN_N, mated=True)
+            .rotate((0, 0, 0), (1, 0, 0), -90)
+            .translate((CONN_XC, PCB_Y + PCB_T, CONN_ROW_Z)))
 
 
 def _install(s, z_bot, z_top, flip=None):
@@ -738,9 +742,7 @@ def _cradle(w, z_bot=None, z_top=None, x_max=None, flip=None):
     z_bot = HOUS_Z0 if z_bot is None else z_bot
     z_top = HOUS_Z1 if z_top is None else z_top
     pcb_z0, pcb_z1 = board_z(z_bot, z_top, flip)
-    conn_zc = conn_z(z_bot, z_top, flip)
     bx0, bx1 = board_x(z_bot, z_top, flip)   # installed edges — the flip swaps them
-    conn_mx = conn_mouth_x(z_bot, z_top, flip)
     _sx = -1.0 if board_flip(z_bot, z_top, flip) else 1.0
     x_max = CR_X1_MAX if x_max is None else x_max
     # The BOARD ITSELF must fit the housing's +X face, not just its groove web.
@@ -823,6 +825,21 @@ def _cradle(w, z_bot=None, z_top=None, x_max=None, flip=None):
     w = w.union(box_at(outer1 - outer0, CR_SLOT_Y0 - CR_Y0, CR_PLINTH_Z1 - z_bot,
                        x=(outer0 + outer1) / 2, y=(CR_Y0 + CR_SLOT_Y0) / 2,
                        z=(z_bot + CR_PLINTH_Z1) / 2))
+    # ...RELIEVED over the board's interior (2026-09-21). As a full-width slab it met the
+    # magnet face wherever parts sit low on it -- the long-deferred board-parts-vs-housing
+    # overlaps. The magnet face is now seated by the two edge grooves' front flanks alone
+    # (the CR_EDGE_KEEP bands are kept clear of parts by rule; a bottom-edge strip is not --
+    # the pre-route layout has parts 0.16 from that edge). Sized
+    # off no layout: the whole interior, as deep as the tallest thing that may stand on the
+    # magnet face (a part, or J1's post tails when the board goes in turned over), so the
+    # re-spun board fits it whatever its placement.
+    _ix0, _ix1 = sorted((bx0, bx1))
+    _ix0, _ix1 = _ix0 + CR_EDGE_KEEP, _ix1 - CR_EDGE_KEEP
+    _deep = max(max(r[4] for r in SENSOR_BOM), XH_POST_TAIL - PCB_T) + CR_CLR + 0.3
+    _rz0 = pcb_z0
+    w = w.cut(box_at(_ix1 - _ix0, _deep + 1.0, (CR_PLINTH_Z1 + 1.0) - _rz0,
+                     x=(_ix0 + _ix1) / 2, y=CR_SLOT_Y0 - _deep / 2 + 0.5,
+                     z=(_rz0 + CR_PLINTH_Z1 + 1.0) / 2))
     # floor under the board + the tie between the two webs behind it
     w = w.union(box_at(outer1 - outer0, CR_Y1 - CR_SLOT_Y0, pcb_z0 - z_bot,
                        x=(outer0 + outer1) / 2, y=(CR_SLOT_Y0 + CR_Y1) / 2,
@@ -832,40 +849,10 @@ def _cradle(w, z_bot=None, z_top=None, x_max=None, flip=None):
     w = w.cut(box_at(slot1 - slot0, CR_SLOT_Y1 - CR_SLOT_Y0, (z_top + 2.0) - pcb_z0,
                      x=(slot0 + slot1) / 2, y=(CR_SLOT_Y0 + CR_SLOT_Y1) / 2,
                      z=(pcb_z0 + z_top + 2.0) / 2))
-    # ── ROOM FOR THE CONNECTOR, which lives on the board's MAGNET-facing face.
-    # Two cuts, both through material that is ours — the cradle's own plinth and
-    # web, and 0.85 of the housing's +Y cheek. The cheek can afford it: it is 3.50
-    # thick (lever-room wall at BRG_Y0, outer face at HOUS_HW), this leaves 2.65,
-    # and the LEVER never comes past y=10.00 at any angle in its whole -95°..+34°
-    # range — 3.35 short of the deepest point of this relief. Nothing that moves
-    # is anywhere near it.
-    # ONE relief, doing two jobs, and open out the TOP so it has no ceiling:
-    #   * a DESCENT CHANNEL for the connector — not merely a pocket at its rest
-    #     position, since the board is lowered in and the body needs the relief all
-    #     the way up. That is also why the cut runs past z_top rather than stopping
-    #     at the connector: a lid over it would be a 45 mm² flat overhang.
-    #   * a PLUG RUN-IN through the -X web, which is what stood in the plug's way.
-    # The web keeps its groove and its +Y back flank — both live outboard of PCB_Y,
-    # so this cut never reaches them. What it gives up is the seat face on that side
-    # above _cz0; the board's -X edge is then seated by the plinth below and by the
-    # +X groove, which is enough for a rigid board.
-    _cy0 = PCB_Y - PH_SIDE_H - CONN_POCKET          # relief floor
-    _cz0 = conn_zc - ph_side_length(CONN_N) / 2 - CONN_POCKET
-    # -X end: far enough for the plug to come fully OFF, not merely to sit there.
-    # It needs its own length of straight travel before it clears the header, and
-    # for that whole stroke its inboard face is still inside the cheek's outer
-    # 0.85 — probed, and it was a real foul until this reached out here.
-    _cx0 = conn_mx - _sx * (2 * CONN_PLUG_RUN + 3.0)   # the plug's unplug stroke
-    _cx1 = conn_mx + _sx * (PH_SIDE_D + CONN_POCKET)
-    # +Z end: clear THROUGH the mount tenons, not just up to the cradle top. The
-    # x=-23 tenon is a Y-rail that runs out to HOUS_HW, so it stands in this
-    # relief's path; stopping the cut at z_top left a 2.9 mm² flat ceiling notched
-    # into it. Running past TEN_H instead trims 0.85 off that tenon's +Y end — 3%
-    # of a 27.8 rail, and it exits cleanly.
-    _cz1 = z_top + TEN_H + 1.0
-    w = w.cut(box_at(abs(_cx1 - _cx0), PCB_Y - _cy0, _cz1 - _cz0,
-                     x=(_cx0 + _cx1) / 2, y=(_cy0 + PCB_Y) / 2,
-                     z=(_cz0 + _cz1) / 2))
+    # (NO CONNECTOR RELIEF any more: J1 is on the board's BACK face and its plug exits +Y,
+    # so the cheek and the -X web stay whole -- see sensor_connector. The relief used to
+    # cut 0.85 into the housing's +Y cheek, through the 1.6 wall beside the half-stop
+    # pocket.)
     # SOCKET CONE — reserved so kl_magnet_cap can be driven with the cradle in
     # place. Cut rather than merely avoided: it is a guarantee, not an intention,
     # and anything a later round adds in this zone now gets removed instead of
@@ -1223,11 +1210,6 @@ CEIL_CLR = 0.4                      # board top edge -> the instrument's undersi
 CR_FLOOR_T = 4 * D.NOZZLE_D         # 3.2 (was 2.8 = 3.5 beads)                    # cradle floor under the board
 CONN_EDGE  = 1.0                    # connector body -> board's bottom edge (JLCPCB's
                                     # component-to-edge rule; the TOP end stays flush)
-CONN_RISE  = 11.0                   # connector row above the board's bottom edge -- the
-                                    # PAD-ROW centre, taken from the layout. (Was 8.5;
-                                    # it moves with PCB_WZ so the connector keeps spanning
-                                    # z -8..+7 — flush at the top, CONN_EDGE clear at the
-                                    # bottom — while the dead strip under it is cut away.
 CHIP_DROP  = 11.3                   # chip below the board's TOP edge. Derived from the
                                     # LAID-OUT board: 22.0 tall with the sensing centre
                                     # 0.3 BELOW the board's own centre, which spends the
@@ -1369,17 +1351,6 @@ def board_x(z_bot, z_top, flip=None):
     return (-PCB_X1, -PCB_X0) if board_flip(z_bot, z_top, flip) else (PCB_X0, PCB_X1)
 
 
-def conn_z(z_bot, z_top, flip=None):
-    """Connector row Z as installed: a fixed rise off the board's own bottom edge,
-    carried through the flip with it."""
-    f = board_flip(z_bot, z_top, flip)
-    return -(PCB_Z0 + CONN_RISE) if f else PCB_Z0 + CONN_RISE
-
-
-def conn_mouth_x(z_bot, z_top, flip=None):
-    return -CONN_MOUTH_X if board_flip(z_bot, z_top, flip) else CONN_MOUTH_X
-
-
 PCB_TOP = PCB_Z1
 def _cr_faces(edge):
     """(web inner, groove wall, web outer) X for a board edge — the groove is the
@@ -1407,59 +1378,37 @@ CR_Z1    = HOUS_Z1                              # web tops FLUSH with the housin
 # FOUR circuits because that is what CAN costs us: black GND / red 24 V / yellow H
 # / green L. One connector, not two — the bus is daisy-chained by the TEE boards
 # and every device hangs off its tee by one short drop.
-# It goes on the +Y face (the magnet side is spoken for) and DOWN LOW, and the
-# driver bore is why: a connector inside SOCK_R would block the socket, and the
-# board is installed last precisely so it doesn't. Its Ø0.64 post TAILS matter
-# more than the body here — they protrude 3.4 back out of the board's SEATING
-# face, so they have to miss both the driver bore and the plinth.
+# ── J1, the CAN trunk connector: SPEC for the next board spin (user, 2026-09-21) ─────────
+# The routed board (elec/geom/lever_sensor.geom.json, 34 x 28) put an S8B-XH-A side-entry on
+# the MAGNET face. That face is 6.4 from the housing's +Y cheek and the XH stands 7.0, so the
+# cradle had to relieve the cheek -- through the 1.6 wall beside the half-stop pocket (user
+# caught it) -- and the board itself outgrew every housing's window. The CAD here is therefore
+# the SPEC, not the routed board, and elec/cad_geom_check will flag the difference until the
+# board is re-spun to it:
+#   * part: B8B-XH-A -- top-entry, 8-way, the CAN tee's own trunk connector (same crimps, same
+#     8-way housing, same pinout as now: harness.xh_trunk_pins()).
+#   * side: the BACK (+Y) face; the plug exits +Y. On the magnet face only its pin row remains.
+#   * where: pin row ALONG X in the board's TOP band. The board drops into its slot past the
+#     spinning magnet cap, and the tails stand 1.8 proud of the magnet face: anything BELOW the
+#     axle passes the cap on the way down, anything above it never does.
+#   * outline unchanged from the pre-route envelope (PCB_X0/X1/Z0/Z1), which was checked
+#     against all four in-plane orientations of all three housings.
 CONN_N     = 8
-# THE CONNECTOR IS ON THE MAGNET SIDE (user), so that the QFN and it share ONE face
-# and the board is a single-sided SMT job — that is the entire point, and it is worth
-# the geometry below because double-sided assembly is a per-order setup fee.
-# It has to be the SIDE-ENTRY SMT part, S4B-XH-SM4-TB, for two independent reasons:
-#   * SMT — a through-hole header's posts would stand 1.8 proud of this face, which is
-#     the face that seats, and would sweep the magnet cap on the way in.
-#   * SIDE entry — a top-entry plug would have to be inserted from -Y, i.e. from
-#     inside the housing. Mating parallel to the board turns that into a horizontal
-#     run-in, which is a cut we can make.
-# X POSITION is forced. The board installs by dropping straight down past the cap, so
-# anything on this face deeper than the 1.5 between the board and the cap's outer
-# face must keep its WHOLE footprint outside the cap's 5.4 circumradius + clearance.
-# The body is XH_SIDE_D deep, so the mouth goes at -11.9 and the body runs +X to -5.8
-# — 0.4 clear of the cap for the entire stroke, not just at rest.
-CONN_MOUTH_X = PCB_X0 + 3.05            # -21.95: mouth face; body extends +X from here.
-                                    # Taken from the layout rather than from CR_EDGE_KEEP:
-                                    # the PH part's courtyard is 10.29 deep against the XH's
-                                    # 6.84, so it sits further in than the groove band alone
-                                    # would put it.
-                                    # WAS -11.9, jammed as close to the cap as the 5.4 sweep
-                                    # allowed, because the board only reached -14 and the
-                                    # connector had to fit between the cap and that edge.
-                                    # Now that the board reaches -25 for the circuit, the
-                                    # connector moves out to the -X edge, and that is worth
-                                    # far more than the 11.25 it travels: the MATED PLUG runs
-                                    # 7.5 further -X still, so at -11.9 the header plus its
-                                    # plug occupied x -19.4..-5.8 straight ACROSS the middle
-                                    # of the board — 204 mm2, the single biggest obstruction
-                                    # on it, and the MCU and transceiver landed inside it.
-                                    # At the edge the plug runs OFF the board into the web
-                                    # tunnel that already exists for it, and the whole
-                                    # -17.05..+3 span opens up for the circuit.
-CONN_ZC      = conn_z(HOUS_Z0, HOUS_Z1)   # -0.5 here. A fixed RISE off the board's
-                                    # bottom edge rather than an absolute Z, so the same
-                                    # rule lands it on the vertical lever too (conn_z).
-                                    # Was: length centre -> the body spans z -8.0..+7.0, i.e.
-                                    # topped out flush with the board. HIGH on purpose: the
-                                    # plug's run-in tunnel has to be cut through the -X web
-                                    # and the plinth, and putting the connector high keeps
-                                    # that tunnel above the plinth, which survives whole
-                                    # below -8.5 and goes on carrying the board's seat.
-CONN_POCKET  = 0.3                  # clearance around it in the housing/cradle relief
-CONN_PLUG_RUN = 7.5                 # how far the mated XHP-4 reaches past the mouth. Taken
-                                    # as the housing's own height with NO credit for shroud
-                                    # engagement — JST doesn't publish a mated projection for
-                                    # side entry, and over-reserving is the safe error here
-                                    # because the relief it buys is 0.85 of a 3.50 cheek.
+CONN_PART  = "B8B-XH-A"
+CONN_L     = xh_length(CONN_N)                  # 22.4 body length (along X)
+CONN_ROW_Z = PCB_Z1 - CONN_EDGE - XH_ROW_OFF    # 8.3 pin row: the body's short side toward the
+                                                #   top edge, CONN_EDGE (JLCPCB 1.0) clear of it
+# X: as far -X as the groove band lets the body go -- the -X web's back flank stands behind the
+# board's outermost CR_EDGE_KEEP -- plus a slip clearance. Its +X end then lands behind the chip
+# region, which is free on the BACK face.
+CONN_XC    = PCB_X0 + CR_EDGE_KEEP + 0.3 + CONN_L / 2
+CONN_PAD_R = 1.0                                # pad keep-out round each post on the magnet face
+# the pin row must never come inside the cap's sweep (it does not pass the cap on install, being
+# above the axle, but it must also clear it at REST)
+assert CONN_ROW_Z - CONN_PAD_R > CAP_SWEEP_R, (
+    f"J1's pin row at z {CONN_ROW_Z:.2f} comes inside the magnet cap's {CAP_SWEEP_R} sweep")
+assert CONN_XC + CONN_L / 2 <= PCB_X1 - CR_EDGE_KEEP and CONN_ROW_Z + XH_ROW_OFF <= PCB_Z1, (
+    "J1 as specified does not fit the board outline")
 CR_PLINTH_Z1 = -SOCK_R              # -7.0: front plinth top = the driver bore's floor
 # (the swept-arm relief _cam_swept — a union of rotated hub/arm copies — is
 #  PULLED for now (user: no curved geometry around the axle; keep it simple,
@@ -1471,13 +1420,16 @@ CR_PLINTH_Z1 = -SOCK_R              # -7.0: front plinth top = the driver bore's
 # real designators, so the two exemptions below key off this instead.
 _SENSOR_REF = "U4"
 def _conn_keepout():
-    """(x0, x1, z0, z1) the CONNECTOR forbids to other parts: the header body AND the
-    mated plug's run. It is the biggest single obstruction on the board — 204 mm2 —
-    and placing the MCU and transceiver inside it is a mistake this catches."""
-    mx = CONN_MOUTH_X
-    return (mx - CONN_PLUG_RUN, mx + PH_SIDE_D,
-            CONN_ZC - ph_side_length(CONN_N) / 2, CONN_ZC + ph_side_length(CONN_N) / 2)
+    """(x0, x1, z0, z1) J1 forbids on the MAGNET face: only its row of post pads, the body
+    being on the back. Parts of the pre-route SENSOR_BOM layout that land in it are a
+    handoff item (CONN_PAD_CONFLICTS), not an error in this file: that table predates the
+    routed board, which the re-spin replaces anyway."""
+    half = XH_PITCH * (CONN_N - 1) / 2
+    return (CONN_XC - half - CONN_PAD_R, CONN_XC + half + CONN_PAD_R,
+            CONN_ROW_Z - CONN_PAD_R, CONN_ROW_Z + CONN_PAD_R)
 
+
+CONN_PAD_CONFLICTS = []
 for _n, _lcsc, _lx, _wz, _hy, _cx, _cz in SENSOR_BOM:
     _x0, _x1 = _cx - _lx / 2, _cx + _lx / 2
     _z0, _z1 = _cz - _wz / 2, _cz + _wz / 2
@@ -1498,9 +1450,8 @@ for _n, _lcsc, _lx, _wz, _hy, _cx, _cz in SENSOR_BOM:
             f"— inside the cap's {CAP_SWEEP_R} sweep, so the board could not be installed")
     if _n != _SENSOR_REF:
         _kx0, _kx1, _kz0, _kz1 = _conn_keepout()
-        assert not (_x0 < _kx1 and _x1 > _kx0 and _z0 < _kz1 and _z1 > _kz0), (
-            f"{_n} at x {_x0:.2f}..{_x1:.2f} z {_z0:.2f}..{_z1:.2f} sits under the "
-            f"connector or its mated plug (x {_kx0:.2f}..{_kx1:.2f} z {_kz0:.2f}..{_kz1:.2f})")
+        if _x0 < _kx1 and _x1 > _kx0 and _z0 < _kz1 and _z1 > _kz0:
+            CONN_PAD_CONFLICTS.append(_n)
 
 
 

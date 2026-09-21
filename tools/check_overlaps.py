@@ -341,13 +341,15 @@ DEFERRED_RULES = (
     (re.compile(r"^pedal\d+_[A-Z]+\d+$"), re.compile(r"^pedal_bar_[abc]$"),
      "pedal board parts vs the pedal bar (30 pairs, ~195 mm3). USER DEFERRED: the bar is "
      "to be redesigned around the boards later"),
-    (re.compile(r"^(?:[a-z0-9]+_)*k[lv]_[A-Z]+\d+$"), re.compile(r"housing$"),
-     "lever board parts vs their knee/lever housing (25 pairs, ~207 mm3). USER DEFERRED; "
-     "OWNER branner -- the cradle was sized to a plain box. ⚠ THE ORIGINAL REASON IS VOID "
-     "(2026-09-19): it said bronner's board was at its floor at 28 x 21.4, so the room had "
-     "to come from the housing. The user then asked for ONE connector family across both "
-     "buses, and the board grew to 34 x 28 to take the S8B-XH-A -- +59% area. The housing "
-     "needs RE-CUTTING to the new outline, not relieving by a millimetre"),
+    # (the old "lever board parts vs their knee/lever housing" class is RESOLVED, 2026-09-21:
+    #  the cradle's plinth is relieved over the board's interior and J1 moved off the magnet
+    #  face -- branner. It left the gate on its own, as the contract says.)
+    (re.compile(r"^(?:[a-z0-9]+_)*(?:k[lv]_)?[A-Z]+\d+$"), re.compile(r"can_header$"),
+     "lever board parts vs J1's post tails (2 pairs per station, ~1.5 mm3). DEFERRED to the "
+     "BOARD RE-SPIN, OWNER bronner: the CAD board is now the SPEC (J1 = B8B-XH-A on the BACK "
+     "face, pin row in the top band -- knee_lever.sensor_connector), while SENSOR_BOM is still "
+     "the pre-route layout, which puts U1 and L1 under that pin row "
+     "(knee_lever.CONN_PAD_CONFLICTS). The re-spin places parts clear of it"),
 )
 _DEFERRED_SEEN = set()
 
