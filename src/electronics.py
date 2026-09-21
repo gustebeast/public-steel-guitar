@@ -227,6 +227,20 @@ def _support_posts(fp, bz):
     return out
 
 
+# -- the ledge the cradles hang from, in the FLAT tray frame -------------------
+# The keyhead endplate reaches inboard to x -612 over z -2..-18, across y -129..-39;
+# everything further in is open air, which is what the deleted electronics_tray used to
+# span. MEASURED on the finished endplate solid, so the reading is written once here and
+# the assert in keyhead_endplate checks the RESULT rather than the reading.
+# stand() maps this frame to the world as  world_x = local_z - 543.8  and
+# world_z = -local_x - 609, so the ledge's world box comes back as local:
+LEDGE_LZ  = -70.5        # local z -> world x -614.3: past the ledge face at -612
+LEDGE_LX0 = -606.0       # local x -> world z  -3.0   the ledge's z band, kept a little
+LEDGE_LX1 = -592.0       # local x -> world z -17.0   inside the measured -2..-18
+LEDGE_LY0 = -128.0       # local y = world y, the ledge's -Y end (-129, kept inside)
+LEDGE_LY1 = -40.0        # ...and its +Y end (-39): the Pi runs past this, the mctrl does not
+
+
 def keyhead_cradles(standing: bool = True) -> cq.Workplane:
     """The Pi's and the motor controller's mounts, built INTO the keyhead endplate.
 
@@ -248,9 +262,22 @@ def keyhead_cradles(standing: bool = True) -> cq.Workplane:
 
     open_edge is -Y for both: that is the rail the harness runs along, and a wall there
     would sit across every lead leaving the board.
+
+    AND EACH ONE NEEDS A WEB BACK TO THE ENDPLATE, which the first version of this did not
+    have. The tray was a plate standing ~22 mm PROUD of the endplate's inboard face -- that
+    gap is WHY it existed -- so fusing cradles at the tray's own position attached them to
+    nothing. The motor controller's came out as a free-floating 18,121 mm3 lump: a printed
+    part in two pieces, with the controller's mount joined to nothing at all. The Pi's only
+    caught the corner of a ledge. Neither showed up in the overlap gate, which reports
+    interpenetration and has nothing to say about two solids that never touch.
+
+    What they hang from is that ledge (see LEDGE_L* above). The motor controller's web spans
+    its full width; the Pi's is clipped to the ledge's +Y end, because the Pi reaches to
+    y +42 and the ledge stops at -39.
     """
     from cadkit.pcb import pcb_cradle
     from cadkit.fasteners import M4 as _M4
+    from .helpers import box_at
     body = None
     for fp in (PI_FP, MCTRL_FP):
         x0, x1, y0, y1 = fp
@@ -258,6 +285,12 @@ def keyhead_cradles(standing: bool = True) -> cq.Workplane:
                         hold_edge="+y", hold_at=0.0, hold_spec=_M4,
                         standoff=POST_H, clr=0.3)
         cr = cr.translate(((x0 + x1) / 2.0, (y0 + y1) / 2.0, TRAY_Z1))
+        wx0, wx1 = max(x0, LEDGE_LX0), min(x1, LEDGE_LX1)
+        wy0, wy1 = max(y0, LEDGE_LY0), min(y1, LEDGE_LY1)
+        if wx1 > wx0 and wy1 > wy0:
+            cr = cr.union(box_at(wx1 - wx0, wy1 - wy0, TRAY_Z1 - LEDGE_LZ,
+                                 x=(wx0 + wx1) / 2.0, y=(wy0 + wy1) / 2.0,
+                                 z=(LEDGE_LZ + TRAY_Z1) / 2.0))
         body = cr if body is None else body.union(cr)
     return stand(body) if standing else body
 
