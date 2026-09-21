@@ -308,11 +308,6 @@ def keyhead_cradles(standing: bool = True, pi_cut=None) -> cq.Workplane:
     bw, bl = x1 - x0, y1 - y0
     hx, hy = MCTRL_HOLE[0], MCTRL_HOLE[1] - MCTRL_EAR_H / 2.0
     cr = _frame(bw, bl, (hx, hy))
-    # the USB-C (J4) sits ON the -Y edge; its shell's THT legs come through beside it, so
-    # the lip steps back from under it and the board rests on the rest of the ring there
-    _uw, _ul, _uh, _ux, _uy = MCTRL_USB
-    cr = cr.cut(box_at(_uw + 1.0, 2 * LIP + 2 * CLR + 1.0, 2 * POST_H,
-                       x=_ux, y=-bl / 2 + LIP / 2, z=POST_H))
     cr = _cut_anchor(_M4, cr, (hx, hy, POST_H), (0, 0, -1), _M4.anchor_min_wall)
     mc = cr.translate(((x0 + x1) / 2.0, (y0 + y1) / 2.0, TRAY_Z1))
 
@@ -630,11 +625,9 @@ def _mctrl_fab(ref):
 # The connectors wiring.py asks about: each lead leaves its body's centre.
 MCTRL_J = {r: ((_f := _mctrl_fab(r))[0] / 2 + _f[1] / 2, _f[2] / 2 + _f[3] / 2,
                BG.footprint("motor_ctrl", r)["rot"])
-           for r in ("J1", "J2", "J3", "J5")}          # J1 bus A, J2 bus B, J3 24 V, J5 5 V
-_u = _mctrl_fab("J4")                                   # USB-C to the Pi, on the -Y edge
-MCTRL_USB = (_u[1] - _u[0], _u[3] - _u[2],
-             BG.HEIGHT["USB_C_Receptacle_HRO_TYPE-C-31-M-12"],
-             (_u[0] + _u[1]) / 2, (_u[2] + _u[3]) / 2)
+           for r in ("J1", "J2", "J3", "J4", "J5")}
+# J1 bus A, J2 bus B, J3 24 V, J4 the USB link to the Pi (a top-entry XH now -- the USB-C it
+# replaced faced the -Y rail 5.5 mm away and could not be plugged in), J5 5 V to the Pi
 
 
 def motor_ctrl_pcb(mating: bool = False) -> cq.Workplane:
@@ -648,9 +641,8 @@ def motor_ctrl_pcb(mating: bool = False) -> cq.Workplane:
 def mctrl_pt(ref: str):
     """Tray FLAT-frame (x, y, z) where a lead leaves the motor controller's
     connector `ref` -- so wiring.py asks the board where its connectors are
-    instead of carrying a copy of the layout. The three XH leads exit +Z off
-    the top of a mated plug; the USB-C lead exits the mouth horizontally, which
-    the board's 90 deg turn in the tray points at +X.
+    instead of carrying a copy of the layout. Every lead, the USB link's included,
+    leaves +Z off the top of a mated XH plug.
 
     The board-local -> tray mapping IS the MCTRL_ROT turn: board +X -> tray +Y,
     board +Y -> tray -X."""
@@ -664,10 +656,6 @@ def mctrl_pt(ref: str):
             return (cx - by, cy + bx)
         return (cx + bx, cy + by)
 
-    if ref == "J4":
-        _w, l, h, ox, oy = MCTRL_USB
-        x, y = to_tray(ox, oy - l / 2.0)
-        return (x, y, BOARD_Z + BD_T + h / 2.0)
     bx, by, _rot = MCTRL_J[ref]
     x, y = to_tray(bx, by)
     return (x, y, BOARD_Z + BD_T + 9.8)

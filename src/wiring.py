@@ -980,18 +980,18 @@ def build_wires():
         _j5, (_j5[0], _over[1], _j5[2]), (_over[0], _over[1], _over[2]),
         (_gpio[0], _gpio[1], _over[2]), _gpio], WIRE_OD["wire_5v"])))
 
-    # -- motor controller <-> Pi (purple): the USB-C lead the Pi writes travel
-    #    offsets over. It leaves the board's mouth sideways, not off a header.
+    # -- motor controller <-> Pi (purple): the USB lead the Pi writes travel offsets over --
+    #    a stock USB-A -> XH lead now, off J4's top like every other lead on the board
+    #    (the USB-C it replaced faced the -Y rail 5.5 mm away and could not be plugged in).
     _lt, _lp = SP(*EL.mctrl_pt("J4")), SP(-585.0, 20.0, -58.0)
+    # ITS OWN COLUMN, 3 mm short of the bay column: J4 is on the board's -Y edge, at the very
+    # y where bus B drops down the bay column to the floor corridor.
     # It crosses motor 0's Y band, so it takes the BAYFLY lane over the motor top
     # like every other bay wire -- running it across at the board's own height put
     # 62 mm3 of cable inside string 1's motor.
-    # it steps 2.0 -Y off the mouth before it rises: straight up at the mouth's own y it
-    # stood 1.1 from bus B's drop to the floor corridor
-    _ly = _lt[1] - 2.0
+    _LINK_X = BAY_X - 3.0
     out.append(("wire_link", _wire([
-        _lt, (_lt[0], _ly, _lt[2]), (BAY_X, _ly, _lt[2]), (BAY_X, _ly, BAYFLY),
-        (BAY_X, _lp[1], BAYFLY),
+        _lt, (_LINK_X, _lt[1], _lt[2]), (_LINK_X, _lt[1], BAYFLY), (_LINK_X, _lp[1], BAYFLY),
         (_lp[0] + 5.0, _lp[1], BAYFLY), (_lp[0] + 5.0, _lp[1], _lp[2]), _lp],
         WIRE_OD["wire_link"])))
 
