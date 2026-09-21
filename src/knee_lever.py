@@ -47,8 +47,8 @@ from cadkit.fasteners import (M4_SHAFT_CLR_D, M4_INSERT_D,
                        M4_INSERT_L, M4_SCREW_L, M2, M4, cut_insert_bore,
                        cut_selftap,
                        cut_m4_pocket, seated_m4_insert, cut_m4_boss, m4_boss_insert)
-from cadkit.pcb import (PCB_T as _PCB_T, jst_xh_side_header, xh_side_length,
-                        XH_SIDE_H, XH_SIDE_D, XH_POST_TAIL)
+from cadkit.pcb import (PCB_T as _PCB_T, jst_ph_side_header, ph_side_length,
+                        PH_SIDE_H, PH_SIDE_D)
 from cadkit.joinery import PrintSpec, joint   # cadkit's one joinery entrypoint
 from cadkit.supports import printable_bore
 # the M4 insert pocket/boss helpers now live in cadkit/fasteners.py (shared); keep the old local names:
@@ -131,14 +131,16 @@ AIR_GAP = 1.5                       # magnet face -> the IC's OWN TOP SURFACE. T
                                     # 2.5 — EXACTLY ours, so this is the nominal
                                     # configuration the part was characterised in.
 # ── THE SENSOR BOARD AS SPECIFIED FOR ITS RE-SPIN (user, 2026-09-21; docs/lever-sensor-respin.md).
-# SINGLE-SIDED, like every board on the shared panel (elec/fab.py): J1 stays the routed
-# S8B-XH-A side-entry on the MAGNET face at the -X edge, standing on end. What changes is the
+# SINGLE-SIDED, like every board on the shared panel (elec/fab.py). J1 is an S8B-PH-SM4-TB,
+# SMT side-entry, on the MAGNET face at the -X edge, standing on end (user, 2026-09-21: the
+# lever bus goes to 5 V, and a PH connector keys it apart from the 24 V XH motor tees so no
+# harness can put 24 V on a lever board; PH is also 19,469 deep at LCSC against XH's 105).
+# What changes from the routed board is the
 # outline, trimmed from the routed 34 x 28 to what the three housings take: 3.0 off the +X side
 # (the pedal's +X face) and the TOP down to 10.1 over the chip (user chose trimming the top,
 # 2026-09-21): the pedal installs the board TURNED OVER -- J1 down into the bar -- which puts
-# the TOP edge toward the player-side face, 10.15 from the axle. The bottom then grows to 14.3
-# so J1's 22.4 still fits on end, and the horizontal lever's floor drops to take it (HOUS_Z0),
-# while its axle stays where it is.
+# the TOP edge toward the player-side face, 10.15 from the axle. The bottom is then whatever
+# J1's 20.0 on end needs (11.9), inside the horizontal lever's floor.
 CHIP_DROP  = 10.1                   # chip centre below the board's TOP edge (routed: 14.6)
 CEIL_CLR = 0.4                      # board top edge -> the instrument's underside. THE
                                     # INSTRUMENT IS THE BOARD'S +Z RETAINER (user), which is
@@ -148,7 +150,7 @@ CEIL_CLR = 0.4                      # board top edge -> the instrument's undersi
                                     # the slide clearance plus the board's own height
                                     # tolerance. The board still RESTS on the cradle floor, so
                                     # this is a LIFT STOP, not a datum.
-PCB_WZ = 24.4                       # 10.1 up + 14.3 down: J1's 22.4 + the 1.0 edge rule twice.
+PCB_WZ = 22.0                       # 10.1 up + 11.9 down: J1's 20.0 + the 1.0 edge rule twice.
                                     # History: 21.4 before the XH; the notes below are from
                                     # the PH-era layout. ONE board for every lever. 16.0 until the real circuit
                                     # was laid out (elec/lever_sensor.py): 29 parts and an
@@ -703,13 +705,13 @@ def sensor_board():
 
 
 def sensor_connector():
-    """J1 as ROUTED and as SPECIFIED (docs/lever-sensor-respin.md): S8B-XH-A, the 8-way
-    side-entry XH the CAN tee also carries, THROUGH-HOLE, on the MAGNET face (the board is
-    single-sided, like every board on the shared panel). It stands on end at the -X edge,
-    mouth facing -X, MATED so the plug's run is reserved. cadkit builds it row along X,
+    """J1 as SPECIFIED (docs/lever-sensor-respin.md): S8B-PH-SM4-TB, 8-way SMT side-entry
+    PH, on the MAGNET face (single-sided, like every board on the shared panel). SMT, so no
+    post tails. It stands on end at the -X edge, mouth facing -X, MATED so the plug's run
+    is reserved. cadkit builds it row along X,
     mouth at y=0 with the body +Y and the plug -Y, height +Z off the board: this maps its
     X to -Z (length vertical), Y to +X (mouth -> -X) and Z to -Y (off the magnet face)."""
-    c = jst_xh_side_header(CONN_N, smt=False, mated=True)
+    c = jst_ph_side_header(CONN_N, mated=True)
     c = c.rotate((0, 0, 0), (0, 0, 1), 90)       # X->Y, Y->-X
     c = c.rotate((0, 0, 0), (1, 0, 0), -90)      # Y->-Z, Z->Y ... (checked by the bbox below)
     c = c.rotate((0, 0, 0), (0, 0, 1), 180)
@@ -854,12 +856,11 @@ def _cradle(w, z_bot=None, z_top=None, x_max=None, flip=None):
     # overlaps. The magnet face is now seated by the two edge grooves' front flanks alone
     # (the CR_EDGE_KEEP bands are kept clear of parts by rule; a bottom-edge strip is not --
     # the pre-route layout has parts 0.16 from that edge). Sized
-    # off no layout: the whole interior, as deep as the tallest thing that may stand on the
-    # magnet face (a part, or J1's post tails when the board goes in turned over), so the
-    # re-spun board fits it whatever its placement.
+    # off no layout: the whole interior, as deep as the tallest part that may stand on the
+    # magnet face, so the re-spun board fits it whatever its placement.
     _ix0, _ix1 = sorted((bx0, bx1))
     _ix0, _ix1 = _ix0 + CR_EDGE_KEEP, _ix1 - CR_EDGE_KEEP
-    _deep = max(max(r[4] for r in SENSOR_BOM), XH_POST_TAIL - PCB_T) + CR_CLR + 0.3
+    _deep = max(r[4] for r in SENSOR_BOM) + CR_CLR + 0.3
     _rz0 = pcb_z0
     w = w.cut(box_at(_ix1 - _ix0, _deep + 1.0, (CR_PLINTH_Z1 + 1.0) - _rz0,
                      x=(_ix0 + _ix1) / 2, y=CR_SLOT_Y0 - _deep / 2 + 0.5,
@@ -877,12 +878,12 @@ def _cradle(w, z_bot=None, z_top=None, x_max=None, flip=None):
     # between the board and the housing, so the -X web needs a way through, open out the
     # TOP (the board is lowered in, and a lid over it would be a flat overhang). It stops
     # at the housing's +Y face: the magnet stand-off (AXLE_LAND_T) makes that gap
-    # XH_SIDE_H + CONN_GAP, so the tunnel NEVER cuts the cheek -- the old relief took 0.85
+    # PH_SIDE_H + CONN_GAP, so the tunnel NEVER cuts the cheek -- the old relief took 0.85
     # of the 1.6 wall beside the half-stop pocket (user).
-    _cy0 = max(PCB_Y - XH_SIDE_H - CONN_POCKET, CR_Y0)
+    _cy0 = max(PCB_Y - PH_SIDE_H - CONN_POCKET, CR_Y0)
     _cz0 = conn_zc - CONN_L / 2 - CONN_POCKET
     _cx0 = conn_mx - _sx * (2 * CONN_PLUG_RUN + 3.0)   # the plug's full unplug stroke
-    _cx1 = conn_mx + _sx * (XH_SIDE_D + CONN_POCKET)
+    _cx1 = conn_mx + _sx * (PH_SIDE_D + CONN_POCKET)
     _cz1 = z_top + 1.0
     w = w.cut(box_at(abs(_cx1 - _cx0), PCB_Y - _cy0, _cz1 - _cz0,
                      x=(_cx0 + _cx1) / 2, y=(_cy0 + PCB_Y) / 2,
@@ -981,8 +982,8 @@ HOUS_Z1 = HOUS_TOP_Z                                     # +12.0, the seat roof 
 #           = HUB_TOP + 2.4 — the designed 2.4 stands between lever and body)
 HOUS_Z0 = min((HS_Z - HS_PISTON_WZ / 2) + _FEEL_DZ - HS_CLR - HS_HOUS_WALL,   # the cartridges
               (CHIP_DROP - PCB_WZ) - 4 * D.NOZZLE_D)                      # the board + its floor
-#           ^ = HS_FLOOR_Z placed, or PCB_Z0 - CR_FLOOR_T (both defined below). The BOARD binds
-#           since the re-spin spec (14.3 below the axle + the 3.2 floor = -17.5, vs -16.5).
+#           ^ = HS_FLOOR_Z placed, or PCB_Z0 - CR_FLOOR_T (both defined below). The cartridges
+#           bind (-16.5); the board would need -15.1.
 BRG_Y0 = HOUS_HW - BRG_W            # bearing INNER faces at ±12.45: the bearings sit FLUSH
                                     # with the housing's outer faces (user, 2026-09-21: full
                                     # seat engagement right to the face, nothing recessed).
@@ -1061,7 +1062,8 @@ TEN_ROOT = D.MIN_WALL               # 0.8 root below the mating face — volumet
 # the Ø12.8 flange behind it stands AXLE_LAND_T clear of the shield. The air gap is unaffected:
 # PCB_Y = MAG_Y1 + AIR_GAP + CHIP_H tracks the magnet, so the whole stack moves together.
 AXLE_LAND_D = 12 * D.BEAD           # 9.6 inner-race land
-# J1 stands XH_SIDE_H (7.0) off the magnet face, and the magnet face sits a fixed stack
+# J1 stands PH_SIDE_H (7.0, RESERVED -- cadkit borrowed XH's figure; tighten from JST's
+# ePH drawing) off the magnet face, and the magnet face sits a fixed stack
 # (land + pocket floor + magnet + air gap + chip) off the housing's +Y face -- 6.4 with a
 # one-bead land. So the LAND grows until that stack clears J1 by CONN_GAP: the magnet, and
 # with it the board, stands 0.9 further out instead of J1 cutting the housing wall (user:
@@ -1069,7 +1071,7 @@ AXLE_LAND_D = 12 * D.BEAD           # 9.6 inner-race land
 MAG_FLANGE_T    = 0.8                           # pocket floor under the magnet
 CONN_GAP = 0.3                      # J1 body -> housing face
 AXLE_LAND_T = max(D.MIN_WALL,
-                  XH_SIDE_H + CONN_GAP - (MAG_FLANGE_T + MAG_T + AIR_GAP + CHIP_H))   # 1.7
+                  PH_SIDE_H + CONN_GAP - (MAG_FLANGE_T + MAG_T + AIR_GAP + CHIP_H))   # 1.7
 AXLE_SHOULDER_Y = HOUS_HW + AXLE_LAND_T         # flange face
 AXLE_FLANGE_D   = 16 * D.BEAD       # 12.8 flange Ø (what seats on the rib; was 9.6 over the Ø5 journal —
                                     # the rib's mean Ø is this - 1.5 and its inner edge has to stay outside
@@ -1415,23 +1417,25 @@ CR_Z1    = HOUS_Z1                              # web tops FLUSH with the housin
 # FOUR circuits because that is what CAN costs us: black GND / red 24 V / yellow H
 # / green L. One connector, not two — the bus is daisy-chained by the TEE boards
 # and every device hangs off its tee by one short drop.
-# ── J1, the CAN trunk connector (routed, and unchanged by the re-spin spec) ─────────────────
-# S8B-XH-A, THROUGH-HOLE side entry, on the MAGNET face: the board stays SINGLE-SIDED like
-# every other board on the shared panel (user, 2026-09-21 -- the back-face version was
-# withdrawn for exactly that). It stands on end at the -X edge, mouth -X; its plug runs -X in
-# the gap between the board and the housing, through a tunnel in the -X web. That gap is now
-# XH_SIDE_H + CONN_GAP (AXLE_LAND_T buys it), so the tunnel never reaches the housing's cheek.
-# Its post TAILS come out of the BACK face, away from the magnet cap entirely.
+# ── J1, the lever-bus connector (re-spin spec) ────────────────────────────────────────────
+# S8B-PH-SM4-TB, SMT side entry, on the MAGNET face: the board stays SINGLE-SIDED like every
+# other board on the shared panel (user, 2026-09-21 -- a back-face J1 was withdrawn for that).
+# PH, not XH (user, same day): the lever bus runs at 5 V, and a different family means no
+# harness can put the motor tees' 24 V on a lever board. It stands on end at the -X edge,
+# mouth -X; its plug runs -X in the gap between the board and the housing, through a tunnel in
+# the -X web. That gap is PH_SIDE_H + CONN_GAP (AXLE_LAND_T buys it), so the tunnel never
+# reaches the housing's cheek. SMT: no post tails at all.
 CONN_N       = 8
-CONN_PART    = "S8B-XH-A"
-CONN_L       = xh_side_length(CONN_N, smt=False)      # 22.4, vertical
-CONN_MOUTH_X = PCB_X0 + 1.65                          # routed: the fab body's -X face, 1.65 in
+CONN_PART    = "S8B-PH-SM4-TB"                        # LCSC C265121
+CONN_L       = ph_side_length(CONN_N)                 # 20.0, vertical
+CONN_MOUTH_X = PCB_X0 + 3.05                          # the PH-era layout's mouth: its courtyard
+                                                      #   (10.29 deep) sits clear of the groove band
 CONN_ZC      = (PCB_Z0 + PCB_Z1) / 2                  # centred on the board's height
 CONN_POCKET  = 0.3                  # clearance around it in the web tunnel
-CONN_PLUG_RUN = 7.5                 # mated XHP reach past the mouth (cadkit's envelope)
+CONN_PLUG_RUN = 7.5                 # mated PHR reach past the mouth (cadkit's RESERVED envelope)
 assert PCB_Z0 + CONN_EDGE <= CONN_ZC - CONN_L / 2 and CONN_ZC + CONN_L / 2 <= PCB_Z1 - CONN_EDGE, (
     "J1 standing on end does not fit the board's height with the 1.0 edge rule")
-assert PCB_Y - XH_SIDE_H - CONN_POCKET >= HOUS_HW - 1e-6, (
+assert PCB_Y - PH_SIDE_H - CONN_POCKET >= HOUS_HW - 1e-6, (
     "J1's tunnel would cut the housing's +Y cheek -- the magnet stand-off is too small")
 CR_PLINTH_Z1 = -SOCK_R              # -7.0: front plinth top = the driver bore's floor
 # (the swept-arm relief _cam_swept — a union of rotated hub/arm copies — is
@@ -1447,7 +1451,7 @@ def _conn_keepout():
     """(x0, x1, z0, z1) J1 forbids on the magnet face: its body AND the mated plug's run.
     Parts of the pre-route SENSOR_BOM layout that land in it are a handoff item
     (CONN_PAD_CONFLICTS), not an error here: that table predates the routed board."""
-    return (CONN_MOUTH_X - CONN_PLUG_RUN, CONN_MOUTH_X + XH_SIDE_D,
+    return (CONN_MOUTH_X - CONN_PLUG_RUN, CONN_MOUTH_X + PH_SIDE_D,
             CONN_ZC - CONN_L / 2, CONN_ZC + CONN_L / 2)
 
 

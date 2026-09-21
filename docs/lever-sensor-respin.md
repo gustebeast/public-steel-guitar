@@ -5,20 +5,25 @@ The housing CAD (`src/knee_lever.py`) is already built to this spec. Until the b
 re-spun, `elec/cad_geom_check.py lever_sensor` will report that the CAD board isn't the
 routed board. That report is the handoff, not a regression.
 
-## Summary
+## Summary (user decisions, 2026-09-21)
 
-The board **stays single-sided**, like every board on the shared panel (`elec/fab.py`).
-**J1 stays exactly as routed:** an S8B-XH-A side-entry, through-hole part (the CAN tee's
-trunk connector), on the magnet face, standing on end at the −X edge, mouth facing −X.
-Only the **outline is trimmed**, plus a handful of parts that trimming displaces. The
-plastic now makes room for J1 on its side: the magnet/board stack moved out 0.9 mm, so J1
-no longer cuts the housing wall.
+1. **The lever bus runs at 5 V**, not 24 V. The board can lose its 24 V buck.
+2. **J1 is PH, not XH: S8B-PH-SM4-TB** (LCSC C265121), SMT side-entry, 8-way. Using a
+   different family from the 24 V XH motor tees means **no harness can put 24 V on a lever
+   board**. Stock is deep too: 19,469, against S8B-XH-A's 105. brenner's leg wiring uses PH as
+   well.
+3. **Single-sided**, like every board on the shared panel (`elec/fab.py`). J1 goes on the
+   magnet face; the plastic makes room for it (the magnet/board stack moved out 0.9 mm), so it
+   never cuts the housing wall.
+4. **Trim the top**, not the bottom. The foot pedal installs the board **turned over** so J1
+   points down into the bar (the wiring hides in the trough). That puts the board's top edge
+   toward the player-side face, where there's 10.15 of room.
 
 ## Coordinates
 
 Looking at the **magnet face**. The origin is the MT6701 package centre, which sits on the
 axle axis and isn't negotiable. **+X** points toward the lever (the knee side), **+Z** up
-(the chassis side). All dimensions in mm. In the routed board's own frame the chip is at
+(the chassis side). All dimensions in mm. In the routed board's frame the chip is at
 (11.0, −0.6), so routed x = spec x + 11.0 and routed y = spec z − 0.6.
 
 ## The spec
@@ -26,22 +31,25 @@ axle axis and isn't negotiable. **+X** points toward the lever (the knee side), 
 | Item | Routed now | **Spec** | Why |
 |---|---|---|---|
 | +X edge | +6.0 | **+3.0** | the foot pedal's bar-top face, with the cradle web outboard of the edge |
-| Top edge | +14.6 | **+10.1** | the pedal installs the board **turned over** (J1 down into the bar), so the top edge faces the player, and there is 10.15 of room there |
-| Bottom edge | −13.4 | **−14.3** | so J1's 22.4 still fits on end with the 1.0 edge rule at both ends |
-| −X edge | −28.0 | −28.0 | unchanged |
-| **Outline** | 34.0 × 28.0 | **31.0 × 24.4** | |
-| J1 | S8B-XH-A, on end at the −X edge, mouth −X | **same part, same face, same orientation**, mouth 1.65 in from the −X edge, **re-centred on the new height** (spec z −13.3 … +9.1) | |
+| Top edge | +14.6 | **+10.1** | the turned-over pedal board's top faces the player: 10.15 of room |
+| Bottom edge | −13.4 | **−11.9** | J1's 20.0 on end + the 1.0 edge rule at both ends |
+| −X edge | −28.0 | −28.0 | unchanged; an upper bound, so shrink it if the 5 V board allows |
+| **Outline** | 34.0 × 28.0 | **≤ 31.0 × 22.0** | |
+| **J1** | S8B-XH-A (THT) | **S8B-PH-SM4-TB** (SMT), on the **magnet face**, standing **on end** (length along Z, spec z −10.9 … +9.1), **mouth facing −X**, mouth face at x −24.95 (3.05 in from the −X edge) | |
+| J1 pinout | `harness.xh_trunk_pins()` | the same four nets, **in on 1–4, out on 5–8**; +V is the **5 V** lever bus | |
 | Sides | single | **single** | shared panel settings |
 
-## Parts the trim displaces (routed layout)
+## Parts the outline displaces (routed layout)
 
 - **+X trim:** TP1, TP2, TP3.
-- **Top trim:** D1, L1, R1, U1, TP4. J1 also moves down about 2.65 mm with its re-centring (routed z −10.65 … +11.85 → −13.3 … +9.1).
+- **Top trim:** D1, L1, R1, U1, TP4. The 5 V bus removes the buck, which is likely where
+  several of these live.
+- J1 is a different part now, so its footprint is new in any case.
 
 (The CAD's own pre-route table, `knee_lever.SENSOR_BOM`, reports the same kind of list in
 `knee_lever.RESPIN_MOVES`: D1, L1, R1, U1. Those parts aren't drawn on the spec board.)
 
-## Rules on the magnet face (unchanged)
+## Rules on the magnet face
 
 1. **Edge groove bands:** the outermost **1.85** of the ±X edges. No parts except the MT6701.
    The magnet face is seated by these grooves only; the cradle's front plinth is relieved
@@ -49,14 +57,13 @@ axle axis and isn't negotiable. **+X** points toward the lever (the knee side), 
 2. **Part height:** **≤ 1.75** anywhere except J1.
 3. **Magnet-cap sweep:** any part taller than 1.5 keeps its whole footprint more than **5.66**
    from the origin.
-4. **J1's zone:** its body plus the mated plug's 7.5 run past the mouth (x −33.85 … −20.25 over
+4. **J1's zone:** its body plus the mated plug's 7.5 run past the mouth (x −32.45 … −17.25 over
    J1's z span) stays clear of other parts.
 
 ## Please check
 
-- **Stock:** S8B-XH-A (LCSC C157914) showed **105 in stock** on 2026-09-21, against 21 needed
-  (levers + pedals + tees). Check JLCPCB's assembly library too, which draws from its own stock.
-- **The planned 5 V lever bus** (user, 2026-09-21) would change this board: no 24 V buck, and
-  possibly a different connector to key the 5 V lever bus apart from the 24 V motor tees. If
-  that goes ahead, this spec's outline and J1 are up for revision. The housing follows
-  whatever envelope the re-spin lands on.
+- **PH height:** cadkit's `PH_SIDE_H` is **RESERVED at XH's 7.0**. JST's ePH drawing couldn't
+  be read. The housing leaves 7.3 for it. If the real S8B-PH-SM4-TB is shorter, tell branner:
+  the 0.9 magnet stand-off can then come back out.
+- **Harness side:** PHR-8 housings, SPH-002T-P0.5S contacts and a PH crimp tool. Stock for
+  those hasn't been checked yet.
