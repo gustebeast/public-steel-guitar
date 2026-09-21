@@ -232,27 +232,13 @@ def _support_posts(fp, bz):
     return out
 
 
-# -- the ledge the cradles hang from, in the FLAT tray frame -------------------
-# The keyhead endplate reaches inboard to x -612 over z -2..-18, across y -129..-39;
-# everything further in is open air, which is what the deleted electronics_tray used to
-# span. MEASURED on the finished endplate solid, so the reading is written once here and
-# the assert in keyhead_endplate checks the RESULT rather than the reading.
-# stand() maps this frame to the world as  world_x = local_z - 543.8  and
-# world_z = -local_x - 609, so the ledge's world box comes back as local:
-LEDGE_LZ  = -70.5        # local z -> world x -614.3: past the ledge face at -612
-LEDGE_LX0 = -606.0       # local x -> world z  -3.0   the ledge's z band, kept a little
-LEDGE_LX1 = -592.0       # local x -> world z -17.0   inside the measured -2..-18
-LEDGE_LY0 = -128.0       # local y = world y, the ledge's -Y end (-129, kept inside)
-LEDGE_LY1 = -40.0        # ...and its +Y end (-39): the Pi runs past this, the mctrl does not
+# -- where the cradles' columns start, in the FLAT tray frame -------------------------
+# stand() maps this frame to the world as  world_x = local_z - 543.8, so:
 RIB_LZ    = -87.5        # local z -> world x -631.3: just inside the endplate's own wall,
                          # which ends at -631 behind the Pi and -627 behind the controller
-RIB_T     = D.MIN_WALL_2P    # 1.6, a two-bead rib
-RIB_PITCH = 12.0         # leaves ~10.4 for the base plate to bridge between ribs
-NUT_KEEPOUT_Y0 = -39.0   # the string-nut hardware's y band (inserts + height screws reach
-NUT_KEEPOUT_Y1 = 33.0    # x -630.2..-610.1 across y -37.3..+31.5); no rib may cross it
 
 
-def keyhead_cradles(standing: bool = True) -> cq.Workplane:
+def keyhead_cradles(standing: bool = True, pi_cut=None) -> cq.Workplane:
     """The Pi's and the motor controller's mounts, built INTO the keyhead endplate.
 
     ⚠ THIS REPLACES electronics_tray, AND _support_posts SAID IT WOULD: "these boards
@@ -262,8 +248,9 @@ def keyhead_cradles(standing: bool = True) -> cq.Workplane:
     retention at all -- the boards simply rested on them. This is that revisit.
 
     Each board gets its own cradle, independent of the other: walls capture it in the
-    plate's plane, pads carry it off the face, so the only way in or out is straight off
-    the face -- and one M4 button beside the +Y edge closes that. Same pattern, same
+    plate's plane, a lip under its edge carries it off the face, so the only way in or out
+    is straight off the face -- and one M4 button closes that (through the motor
+    controller's mounting ear; beside the Pi's +Y edge, its holes being too small). Same pattern, same
     single 2.5 mm hex key, as the motor tees and the output board.
 
     Authored in the FLAT tray frame (where PI_FP/MCTRL_FP and BOARD_Z are written) and
@@ -271,100 +258,85 @@ def keyhead_cradles(standing: bool = True) -> cq.Workplane:
     file already carries. standoff is POST_H -- the height the posts used to stand the
     board off the plate -- so the boards do not move.
 
-    open_edge is -Y for both: that is the rail the harness runs along, and a wall there
+    The -Y side is open above the board for both: that is the rail the harness runs along, and a wall there
     would sit across every lead leaving the board.
 
-    AND EACH ONE NEEDS A WEB BACK TO THE ENDPLATE, which the first version of this did not
-    have. The tray was a plate standing ~22 mm PROUD of the endplate's inboard face -- that
-    gap is WHY it existed -- so fusing cradles at the tray's own position attached them to
-    nothing. The motor controller's came out as a free-floating 18,121 mm3 lump: a printed
-    part in two pieces, with the controller's mount joined to nothing at all. The Pi's only
-    caught the corner of a ledge. Neither showed up in the overlap gate, which reports
-    interpenetration and has nothing to say about two solids that never touch.
-
-    What they hang from is that ledge (see LEDGE_L* above). The motor controller's web spans
-    its full width; the Pi's is clipped to the ledge's +Y end, because the Pi reaches to
-    y +42 and the ledge stops at -39.
+    EACH ONE IS ATTACHED BY ITS OWN COLUMNS. The tray was a plate standing ~22 mm proud of
+    the endplate's inboard face, and the first cradles fused at the tray's position attached
+    to nothing -- the motor controller's came out a free-floating 18,121 mm3 lump, which the
+    overlap gate cannot see (two solids that never touch do not interpenetrate). Every
+    column here starts inside the endplate wall (RIB_LZ), and keyhead_endplate asserts the
+    finished part is ONE solid.
     """
-    from cadkit.pcb import pcb_cradle
-    from cadkit.fasteners import M4 as _M4
+    from cadkit.fasteners import M4 as _M4, M4_BUTTON_HEAD_D, cut_anchor as _cut_anchor
+    from cadkit.pcb import pcb_hold_xy
     from .helpers import box_at
-    body = None
-    from cadkit.fasteners import cut_anchor as _cut_anchor
     zb = RIB_LZ - TRAY_Z1          # cradle frame: the endplate's wall, -26.5 below the mount face
+    CLR, WALL, LIP = 0.3, D.MIN_WALL_2P, 1.2
 
     def _cyl_col(x, y, d, z0, z1):
         return cq.Workplane("XY").add(cq.Solid.makeCylinder(d / 2.0, z1 - z0, cq.Vector(x, y, z0)))
 
-    # ── THE MOTOR CONTROLLER: A HOLLOW FRAME, NO PLATE (user, 2026-09-21) ──────────────────
-    # It used to be pcb_cradle's plate standing on ribs 27 mm off the endplate wall, and the
-    # user read it right: the ribs cut the plate's bridge to 10 mm, but a bridge is still an
-    # overhang, and the plate was 5.3 mm thick everywhere only because the M4 insert needed
+    def _frame(bw, bl, boss_xy):
+        """A board cradle made ONLY of columns rising from the endplate wall (local z `zb`)
+        to the board: a ring round the board -- a LIP under its edge to carry it, then on up
+        0.8 past its top as the locating wall, open above the board on -Y (the harness side)
+        -- and an M4 boss column at `boss_xy`, the insert in its top. Centred on the board."""
+        ox, oy = bw / 2 + CLR + WALL, bl / 2 + CLR + WALL
+        top = POST_H + BD_T + 0.8
+        ring = (box_at(2 * ox, 2 * oy, POST_H - zb, x=0.0, y=0.0, z=(zb + POST_H) / 2)
+                .cut(box_at(bw - 2 * LIP, bl - 2 * LIP, 80.0, x=0.0, y=0.0, z=0.0)))
+        wall = (box_at(2 * ox, 2 * oy, top - POST_H, x=0.0, y=0.0, z=(POST_H + top) / 2)
+                .cut(box_at(bw + 2 * CLR, bl + 2 * CLR, 80.0, x=0.0, y=0.0, z=0.0))
+                .cut(box_at(2 * ox + 2, 2 * WALL + 2 * CLR + 2, 80.0, x=0.0, y=-bl / 2, z=0.0)))
+        cr = ring.union(wall).union(_cyl_col(boss_xy[0], boss_xy[1], _M4.boss_od, zb, POST_H))
+        return cr
+
+    # ── BOTH BOARDS: HOLLOW FRAMES OF COLUMNS, NO PLATE (user, 2026-09-21) ────────────────
+    # They used to be pcb_cradle plates standing on ribs 27 mm off the endplate wall, and the
+    # user read it right: the ribs cut the plates' bridges to 10 mm, but a bridge is still an
+    # overhang, and each plate was 5.3 mm thick everywhere only because the M4 insert needed
     # 8.5 mm of depth in ONE spot. This endplate prints standing on its -X face, so anything
     # lying across the build axis is a ceiling -- the fix is to have nothing lying across it.
-    # Every piece of this cradle is a COLUMN rising from the endplate wall straight to the
-    # board: a ring of wall round the board (LIP under its edge to carry it, then on up past
-    # its top as the locating wall), and the M4 boss under the ear. Zero ceilings, and the
-    # board -- single-sided, nothing on its underside but THT tails -- needs no floor.
-    # Nothing is behind it but open air down to the wall, so the columns go all the way.
+    # Every piece of these cradles is a COLUMN rising from the endplate wall straight to the
+    # board. The boards need no floor: the motor controller is single-sided, and the Pi's
+    # underside has only the GPIO header's tails, 1 mm inboard of the lip.
+
+    # THE MOTOR CONTROLLER: the M4 goes THROUGH its mounting ear (elec/motor_ctrl.py EAR_*).
     x0, x1, y0, y1 = MCTRL_FP
     y1 = y1 + MCTRL_EAR_H
     bw, bl = x1 - x0, y1 - y0
     hx, hy = MCTRL_HOLE[0], MCTRL_HOLE[1] - MCTRL_EAR_H / 2.0
-    CLR, WALL, LIP = 0.3, D.MIN_WALL_2P, 1.2
-    ox, oy = bw / 2 + CLR + WALL, bl / 2 + CLR + WALL
-    top = POST_H + BD_T + 0.8                          # locating wall stands 0.8 over the board
-    ring = (box_at(2 * ox, 2 * oy, POST_H - zb, x=0.0, y=0.0, z=(zb + POST_H) / 2)
-            .cut(box_at(bw - 2 * LIP, bl - 2 * LIP, 80.0, x=0.0, y=0.0, z=0.0)))
-    wall = (box_at(2 * ox, 2 * oy, top - POST_H, x=0.0, y=0.0, z=(POST_H + top) / 2)
-            .cut(box_at(bw + 2 * CLR, bl + 2 * CLR, 80.0, x=0.0, y=0.0, z=0.0)))
-    # -Y open above the board: the harness side, every lead leaves that way
-    wall = wall.cut(box_at(2 * ox + 2, 2 * WALL + 2 * CLR + 2, 80.0,
-                           x=0.0, y=-bl / 2, z=0.0))
-    cr = ring.union(wall)
+    cr = _frame(bw, bl, (hx, hy))
     # the USB-C (J4) sits ON the -Y edge; its shell's THT legs come through beside it, so
     # the lip steps back from under it and the board rests on the rest of the ring there
     _uw, _ul, _uh, _ux, _uy = MCTRL_USB
     cr = cr.cut(box_at(_uw + 1.0, 2 * LIP + 2 * CLR + 1.0, 2 * POST_H,
                        x=_ux, y=-bl / 2 + LIP / 2, z=POST_H))
-    # the M4: a boss_od column under the ear's hole, the insert in its top
-    cr = cr.union(_cyl_col(hx, hy, _M4.boss_od, zb, POST_H))
     cr = _cut_anchor(_M4, cr, (hx, hy, POST_H), (0, 0, -1), _M4.anchor_min_wall)
-    body = cr.translate(((x0 + x1) / 2.0, (y0 + y1) / 2.0, TRAY_Z1))
+    mc = cr.translate(((x0 + x1) / 2.0, (y0 + y1) / 2.0, TRAY_Z1))
 
-    # ── THE PI KEEPS pcb_cradle's PLATE, AT ITS FULL 5.3 ─────────────────────────────────
-    # It cannot have the frame: the string-nut hardware fills x -630.2..-610.1 behind it
-    # across y -37.3..+31.5 (slide inserts running the full z -55..0), so no column reaches
-    # the wall under most of it. And the plate's thickness is not waste here: at 5.3 its
-    # underside lands ON the endplate's nut block (x -610.1), which is what carries it. At
-    # 1.6 it was tried -- the underside rose 3.7 mm clear of the block and became a 59.8 mm
-    # bridge (check_ceilings), three times the worst span it replaced.
+    # THE PI: a purchased board, holes too small for M4, so its M4 stands BESIDE the +Y edge
+    # (pcb_hold_xy, the same spot pcb_cradle's hold_edge uses) and the wall is notched for
+    # the head. ⚠ AND ITS COLUMNS MOSTLY LAND ON THE NUT HARDWARE'S BLOCK, NOT THE WALL: the
+    # height-adjust prism fills x -630..-610.1 behind it, cut through by the insert slots.
+    # So the columns are built to the wall and then `pi_cut` (keyhead_endplate: the slots,
+    # plus everything straight above them) takes away whatever would land in a slot or hang
+    # over one. What is left stands on a fin between slots, on the solid band along the
+    # board's -Z edge, or -- past both ends of the block -- on the wall itself.
     x0, x1, y0, y1 = PI_FP
     pw, pl = x1 - x0, y1 - y0
-    cr = pcb_cradle(pw, pl, open_edge="-y", hold_edge="+y", hold_at=0.0, hold_spec=_M4,
-                    standoff=POST_H, clr=0.3)
-    cr = cr.translate(((x0 + x1) / 2.0, (y0 + y1) / 2.0, TRAY_Z1))
-    # hung from the endplate's ledge at its -Y end (y < -39, clear of the nut hardware)...
-    wx0, wx1 = max(x0, LEDGE_LX0), min(x1, LEDGE_LX1)
-    wy0, wy1 = max(y0, LEDGE_LY0), min(y1, LEDGE_LY1)
-    if wx1 > wx0 and wy1 > wy0:
-        cr = cr.union(box_at(wx1 - wx0, wy1 - wy0, TRAY_Z1 - LEDGE_LZ,
-                             x=(wx0 + wx1) / 2.0, y=(wy0 + wy1) / 2.0,
-                             z=(LEDGE_LZ + TRAY_Z1) / 2.0))
-    # ...and ribs to the wall wherever the hardware leaves room (both ends of the Pi; the
-    # middle stays a bridge -- the one ceiling here that the hardware forces)
-    _bb = cr.val().BoundingBox()
-    rx0, rx1 = _bb.xmin - 1.0, _bb.xmax + 1.0
-    for k in range(int(pl // RIB_PITCH) + 1):
-        ry = y0 + RIB_PITCH / 2.0 + k * RIB_PITCH
-        if ry > y1 - RIB_T:
-            break
-        if NUT_KEEPOUT_Y0 - RIB_T < ry < NUT_KEEPOUT_Y1 + RIB_T:
-            continue
-        cr = cr.union(box_at(rx1 - rx0, RIB_T, TRAY_Z1 - RIB_LZ,
-                             x=(rx0 + rx1) / 2.0, y=ry, z=(RIB_LZ + TRAY_Z1) / 2.0))
-    body = body.union(cr)
-    return stand(body) if standing else body
+    phx, phy = pcb_hold_xy(pw, pl, "+y", hold_at=0.0, clr=CLR, spec=_M4)
+    cr = _frame(pw, pl, (phx, phy))
+    cr = cr.cut(_cyl_col(phx, phy, M4_BUTTON_HEAD_D + 2 * CLR, POST_H, POST_H + 20.0))
+    cr = _cut_anchor(_M4, cr, (phx, phy, POST_H), (0, 0, -1), _M4.anchor_min_wall)
+    pi = cr.translate(((x0 + x1) / 2.0, (y0 + y1) / 2.0, TRAY_Z1))
+    if not standing:
+        return mc.union(pi)
+    pi = stand(pi)
+    if pi_cut is not None:
+        pi = pi.cut(pi_cut)
+    return stand(mc).union(pi)
 
 
 def board_screws():
