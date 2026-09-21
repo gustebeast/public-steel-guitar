@@ -1,5 +1,5 @@
 ** Drc report for lever_sensor.kicad_pcb **
-** Created on 2026-09-16T13:09:38 **
+** Created on 2026-09-20T10:01:52 **
 ** Report includes: Errors, Warnings **
 
 ** Found 1 DRC violations **
@@ -8,11 +8,7 @@
     @(97.0400 mm, 104.7100 mm): Segment of Y1 on F.Silkscreen
     @(97.9000 mm, 105.1300 mm): Polygon of U2 on F.Silkscreen
 
-** Found 1 unconnected pads **
-[unconnected_items]: Missing connection between items
-    Local override; error
-    @(98.0250 mm, 109.5050 mm): Pad 4 [CAN_RX] of U2 on F.Cu
-    @(100.6000 mm, 96.5125 mm): Pad 19 [CAN_RX] of U3 on F.Cu
+** Found 0 unconnected pads **
 
 ** Found 0 Footprint errors **
 

@@ -13,6 +13,24 @@ run BEFORE the last board is designed, so that a problem here (a layer name JLCP
 rejects, a rotation convention, a missing sourcing decision) is found once rather
 than once per board.
 
+⚠ RUN END TO END FROM A CLEAN REGENERATION, 2026-09-19, and this is the claim the
+pipeline makes about itself: regenerate every netlist from its generator, route all five
+boards, package all five, with nothing carried over from a previous state. Result:
+
+    can_tee       0 unconnected  0 violations                     3 placements
+    lever_sensor  0              0            1 silk_overlap     28
+    motor_ctrl    0              0                               59
+    output_panel  0              0            1 hole_to_hole     60   verify 4/0
+    optical       0              0                              156   verify 2/0
+
+Both warnings are recorded as deliberate keeps where they live. Every check in this file
+passed silently -- drill hits against holes, poured zones against declared zones, the
+In1.Cu plane whole on all four 4-layer boards, paste apertures against pads on the paste
+layer, mask openings never short -- and BOM.md agreed with all five packages.
+
+That is the whole point of writing the judgement calls down as CHECKS rather than doing
+them by eye: the run above needed no human in it, and the next one will not either.
+
 ⚠ ROTATION IS THE CLASSIC WAY TO LOSE A BOARD, and it is NOT fully solvable here.
 KiCad's position file gives the footprint's rotation in the KiCad footprint's own
 frame; JLCPCB's placement machine wants it in the LCSC part's frame, and for many
@@ -44,7 +62,7 @@ FAB_DIR = os.path.join(OUT_DIR, "fab")
 
 # SIX boards: the power board merged into motor_ctrl, and the optical pickup landed
 # (both 2026-09-15). This is now the whole instrument.
-BOARDS = ("can_tee", "trrs_adapter", "lever_sensor", "motor_ctrl", "output_panel",
+BOARDS = ("can_tee", "lever_sensor", "motor_ctrl", "output_panel",
           "optical")
 
 # Layer sets by copper count. JLCPCB takes the KiCad extensions directly.
@@ -68,6 +86,51 @@ LCSC = {
     "CH32V307WCU6": "C5142795",     # motor controller MCU
     "MT6701QT-STD": "C2913974",     # the angle sensor
     "AO3400A": "C20917",            # logic-level N-ch FET; the optical board's Q1 too
+    # ── the optical board, every line checked against the manufacturer's datasheet on
+    # 2026-09-17 (pinout verified pin by pin, not just the package) ──────────────────
+    "STM32H743IIT6": "C89597",      # LQFP176; pins re-derived from ST's CubeMX symbol
+    "USB3343-CP": "C633347",        # ULPI PHY; pinout was INVENTED before this check
+    "USBLC6-2SC6": "C7519",         # ESD array, SOT23-6L: 1 IO1 2 GND 3 IO2 4 IO2 5 VBUS 6 IO1
+    "TLV9064IDR": "C388176",        # quad TIA, SOIC-14 (TI SBOS839 Table 5-5)
+    "TLV9061IDBVR": "C398358",      # mid-rail buffer -- DBV, NOT the DCK part once ordered
+    "AMS1117-3.3": "C6186",         # 3V3 digital LDO: 1 GND 2 VOUT/tab 3 VIN
+    "SPX3819M5-L-3-3/TR": "C9055",  # 3V3 analog LDO: 1 IN 2 GND 3 EN 4 BYP 5 OUT
+    "TPS560430XFDBVR": "C523980",   # 24->5 V sync buck, 1.1 MHz FPWM
+    "IR17-21C/TR8": "C131250",      # 940 nm emitter, 65 mA max, VF 1.2 typ
+    "VEMD4110X01": "C3211080",      # PIN photodiode -- ⚠ 95 in stock, 200 needed for ten
+    "S4B-XH-SM4-TB": "C161861",     # the (LF)(SN) form, 20,992; the bare listing is 0
+    # Crystals are specified by PART, not by frequency -- see the note beside Y1.
+    # Inductors are specified by PART too -- see the note beside L1. Isat 1.35 A
+    # worst case against the TPS560430's 1.4 A maximum current limit, which is the
+    # number TI tells you to size against.
+    "SWPA4020S150MT": "C36407",      # 15 uH, 4x4x2.0 shielded, DCR 0.299 ohm max
+    # ⚠ "600" IS 60 OHM in Murata/Sunlord bead numbering. 601 is the 600 ohm part.
+    "GZ1608D601TF": "C1002",         # 0603 bead, 600R@100MHz, 200 mA, DCR 450 mohm
+    "TX322525M4LBDD2T": "C5308007",  # 25 MHz, CL 20 pF, ESR 30 ohm (MCU HSE)
+    "K3A260002010": "C2835957",      # 26 MHz, CL 20 pF, ESR 30 ohm (the PHY's limits)
+    # ── sourced 2026-09-17 from JLCPCB's own parts API, not from memory ──────────
+    # Each line names the listing's exact model and the stock it showed, because a code
+    # with no source is the thing this file exists to refuse. Picked by EXACT model and
+    # genuine manufacturer; where a listing was the bare MPN at 0 stock and its (LF)(SN)
+    # tin-plated form was stocked, the stocked form is the same part as ordered from JST.
+    "B4B-XH-A": "C144395",          # JST B4B-XH-A(LF)(SN), stock 60,424
+    "B2B-XH-A": "C158012",          # JST B2B-XH-A(LF)(SN), stock 381,008 -- sourced
+                                    # 2026-09-19 by asking the catalogue, and it is the
+                                    # (LF)(SN) trap again and not a preference: the BARE
+                                    # "B2B-XH-A" listing is C19272845 with ONE piece in
+                                    # stock. Same shape as S4B-XH-SM4-TB and B4B-XH-A.
+    "S4B-XH-A": "C157925",          # JST S4B-XH-A(LF)(SN), stock 88,547
+    "LMR33630ADDAR": "C841384",     # TI, ESOP-8 (= HSOIC-8 PowerPAD), stock 6,730
+    "PJ-102AH": "C3096093",         # CUI PJ-102AH, stock 1,593
+    "MX126-5.0-02P": "C5188434",    # MAX MX126-5.0-02P-GN01-Cu-S-A, stock 48,416
+    # The two CLASS lines whose pinout the netlist actually writes out, so a part can be
+    # checked against it pin for pin rather than chosen by name:
+    "TLV9061IDBVR": "C398358",      # TI, SOT-23-5: 1 OUT 2 V- 3 IN+ 4 IN- 5 V+ -- exact
+                                    # match to U7/U8. Stock 301,906. Same family as the
+                                    # optical board's TIAs. RRIO, 5.5 V max on a 5 V rail.
+    "AP2112K-3.3TRG1": "C51118",    # Diodes Inc, SOT-23-5: 1 IN 2 GND 3 EN 4 NC 5 OUT --
+                                    # exact match to U6. 600 mA against a 300 mA class.
+                                    # Stock 55,831.
 }
 # ⚠ EVERY VALUE STRING MUST BE ACCOUNTED FOR -- IN LCSC, GENERIC, OR HERE.
 # branner's catch, and it is the right shape for the bug that happened: usb_panel's
@@ -83,30 +146,33 @@ LCSC = {
 # value that is neither sourced nor generic nor listed below FAILS THE BUILD,
 # which means changing a part number forces you to come here and say so.
 OPEN_VALUES = frozenset({
-    "B4B-XH-A",            # the project's standard 4-way XH, still unsourced
-    "S4B-XH-A",            # its side-entry sibling, the motor tee's drop
-    "LMR33630ADDAR",       # power board buck -- confirm LCSC stock at order time
-    "NMJ4HCD2",            # 1/4 in jack; BOM.md prices it, no LCSC line yet
-    "PJ-102AH",            # 24 V barrel inlet, ditto
-    "USB1046-GF-0180",     # GCT USB-A. ⚠ THE ONE THAT WENT WRONG -- if this
+    "NMJ4HCD2",            # 1/4 in jack. JLCPCB lists it (C18185363) at ZERO
+                           # stock, 2026-09-17 -- a listing is not a source
+    "USB1046-GF-0180",     # GCT USB-A. Not listed at JLCPCB (2026-09-17); the
+                           # nearest is -0190-L-B-A at 5 in stock. ⚠ THE ONE THAT WENT WRONG -- if this
                            # string ever changes, that is the footprint moving
                            # under it, and the build should stop until someone
                            # confirms the two still agree
-    "FRT5-class 5V",       # true-bypass relay -- a class, not a part, on purpose
-    "PCM5102A-class",      # DAC -- ditto
-    "single RRO op-amp",   # output buffer AND pickup buffer -- ditto
+    # ⚠ THESE THREE ARE NOT SOURCING GAPS, THEY ARE PLACEHOLDER PINOUTS -- and the
+    # routed board is therefore electrically wrong at all three, whatever DRC says.
+    # U3 is modelled as 10 invented pins on a TSSOP-20 footprint; a real PCM5102A has
+    # 20, and its pin 1 is CPVDD, not LRCK. U4 (hub) and K1 (relay) are numbered 1..N
+    # with no datasheet behind them. DRC is clean because it checks the board against
+    # the NETLIST, and the netlist is what is wrong. Choosing an LCSC code here would
+    # order a real part for a board wired to an imaginary one.
+    "FRT5-class 5V",       # true-bypass relay -- pinout is a placeholder
+    "PCM5102A-class",      # DAC -- pinout is a placeholder (10 of 20 pins, invented)
     # ── the 2026-09-15 panel respin ──────────────────────────────────────────
-    "PCM1808PWR",          # 24-bit 99 dB ADC. ⚠ I had written an LCSC code into
-                           # its description from memory and took it back out:
-                           # this file's own rule is that a WRONG part number is
-                           # worse than a missing one, and a number I cannot point
-                           # at a source for is a guess wearing a number's clothes
+    "PCM1808PWR",          # ⚠ THE PART IS REAL AND STOCKED (C55513, 463, 2026-09-17)
+                           # AND IT STAYS OPEN, because the board around it is not:
+                           # the netlist gives a 14-pin TSSOP 16 pins in an invented
+                           # order and ties SCKI to BCK. Sourcing it would let the
+                           # panel order the moment the other opens close. See the
+                           # AUDIT note at the top of output_panel.py.
     "CH334-class HS hub",  # ⚠ MUST BE HIGH SPEED -- a full-speed hub puts BOTH
                            # devices behind a Transaction Translator and undoes
                            # the whole reason the panel carries a hub. Confirm the
                            # exact CH334 variant against that before ordering
-    "3V3 LDO 300mA",       # a class, not a part
-    "MX126-5.0-02P",       # 2-way screw terminal, the pickup input
 })
 
 # Generic passives are JLCPCB BASIC parts chosen at order time from the package and
@@ -114,6 +180,22 @@ OPEN_VALUES = frozenset({
 # sourcing decision. They are reported separately from the real OPENs.
 GENERIC = re.compile(r"^(R_|C_|Fuse_|Jumper:|Diode_SMD:D_SOD|Diode_SMD:D_SM[AB]|"
                      r"Inductor_SMD|Crystal:)")
+# ⚠ ONLY PASSIVES ARE VALUE-CHOSEN. An 0402 is picked from its value; an LED in an 0805
+# land is picked from its part number, and "IR17-21C/TR8" is a perfectly good value that
+# simply does not start with a digit. The placeholder rule below applies to this subset.
+PASSIVE = re.compile(r"^(R_|C_|L_|Inductor_SMD)")
+# Footprint LIBRARIES that hold no orderable part -- see the BOM loop.
+# ⚠ Jumper BELONGS HERE AND WAS MISSING. A SolderJumper is a BOARD FEATURE: two pads and
+# a mask opening, closed with solder by whoever assembles it. There is nothing to buy and
+# nothing to place. It was reaching the BOM as a line reading Comment "TERM", footprint
+# "SolderJumper-2_P1.3mm_Open...", and NO part number -- an order asking a fab to source
+# a part that does not exist. can_tee carried one, motor_ctrl two.
+#
+# It slipped past the placeholder guard because that guard only fires on PASSIVES, and a
+# jumper is "generic" (the GENERIC pattern lists Jumper:) without being a passive. So
+# "TERM" -- a value that cannot pick a part -- was accepted. The CPL was right all along
+# and omitted them, which is how the discrepancy showed: BOM designators 4 against CPL 3.
+COPPER_ONLY = re.compile(r"^(TestPoint|NetTie|Fiducial|SolderJumper|Jumper)")
 
 
 def _run(args):
@@ -160,6 +242,17 @@ def fab(board):
         # three nets left wants a look at those three nets, and being told to "run
         # route.py first" sends you to re-run a step that already ran. Track count is
         # what distinguishes them, and it costs one pass over a file already on disk.
+        # ⚠ AND TAKE THE OLD PACKAGE WITH IT. Refusing to WRITE a zip leaves any
+        # previous one sitting in fab/ looking exactly like a current one -- which is
+        # the same "looks complete and arrives incomplete" failure this refusal exists
+        # to prevent, arriving by the back door. lever_sensor.zip survived here from
+        # 2026-09-17, two days and a BOOT0 rework out of date, describing a board that
+        # no longer exists. A board that cannot be packaged must not appear packaged.
+        _stale = os.path.join(FAB_DIR, "%s.zip" % board)
+        if os.path.isfile(_stale):
+            os.remove(_stale)
+            print("  removed the previous %s.zip -- it describes an older board and "
+                  "this one cannot be packaged" % board)
         raise SystemExit(
             "%s: %d unconnected item(s) -- %s. A fab package built from it would look "
             "complete and arrive incomplete."
@@ -180,6 +273,17 @@ def fab(board):
     v = subprocess.run([KICAD_PY, os.path.join(HERE, "verify.py"), stem],
                        capture_output=True, text=True)
     if v.returncode:
+        # ⚠ AND THE STALE ZIP GOES HERE TOO. The unconnected-items refusal above
+        # deletes it, on the principle that a board which cannot be packaged must not
+        # appear packaged -- and this refusal, added later, did not. Found by making a
+        # budget fail on purpose to check the gate bites: it does, and it left the
+        # previous output_panel.zip in the fab directory, described by nothing. A
+        # refusal that leaves the artefact behind is the weaker half of a gate.
+        _stale = os.path.join(FAB_DIR, "%s.zip" % board)
+        if os.path.isfile(_stale):
+            os.remove(_stale)
+            print("  removed the previous %s.zip -- it describes an older board and "
+                  "this one cannot be packaged" % board)
         raise SystemExit("%s: FAILED its declared high-speed budgets --\n%s"
                          % (board, (v.stdout or "") + (v.stderr or "")[-400:]))
 
@@ -196,6 +300,10 @@ def fab(board):
     # (--excellon-separate-th and --generate-map are FLAGS, not options taking a
     #  value; passing "false" makes kicad-cli read it as the input file and fail.
     #  Omitting them is what gives one merged drill file and no map.)
+
+    _check_drill(pcb, d, board)
+    _check_gerbers(d, json.load(open(stem + ".board.json", encoding="utf-8")),
+                   board, pcb)
 
     # ---- CPL, converted to JLCPCB's column names ----
     raw = os.path.join(d, "_pos.csv")
@@ -223,9 +331,34 @@ def fab(board):
         w = csv.writer(g)
         w.writerow(["Comment", "Designator", "Footprint", "LCSC Part #"])
         for (val, fp), refs in sorted(groups.items()):
+            # ⚠ BARE COPPER IS NOT A BOM LINE. Test points, net ties and fiducials are
+            # footprints with no part behind them: nothing is placed, nothing is
+            # soldered, and asking JLCPCB to source one would be asking for a part that
+            # does not exist. The footprints carry exclude_from_bom themselves, but the
+            # BOM here is built from the NETLIST rather than the board, so that
+            # attribute never reaches it.
+            if COPPER_ONLY.search(fp.split(":", 1)[0]):
+                continue
             code = LCSC.get(val, "")
             if not code:
                 generic = bool(GENERIC.search(fp.split(":", 1)[1]) or GENERIC.search(fp))
+                # ⚠ A GENERIC PASSIVE STILL NEEDS A VALUE, and "generic" was letting
+                # placeholders through. JLCPCB picks an 0402 100nF from the value field;
+                # it cannot pick an 0402 "Rf". The optical board carried FIFTY-THREE
+                # parts whose value was a note to self -- "Rf", "Cf C0G", "ballast",
+                # "mid-rail top", "load C0G", "preset" -- and every one was counted as a
+                # sourced generic and would have reached a quote as a blank line.
+                # A real value starts with a digit. That is the whole rule, and it
+                # accepts every value this project actually uses (100nF, 8k06 1%,
+                # 22uF/16V, 600R@100MHz, 18uH) while rejecting every placeholder.
+                if generic and PASSIVE.search(fp.split(":", 1)[1]) \
+                        and not re.match(r"\d", val.strip()):
+                    raise SystemExit(
+                        "%s: %s (%s) has value %r, which is a placeholder rather than a "
+                        "value -- the fab cannot choose a part from it. Give it a real "
+                        "value, or if it is genuinely undecided put it in "
+                        "fab.OPEN_VALUES so it is COUNTED as undecided."
+                        % (board, ",".join(sorted(refs)), fp.split(":", 1)[1], val))
                 if not generic and val not in OPEN_VALUES:
                     raise SystemExit(
                         "%s: value %r (%s) is neither sourced, generic, nor "
@@ -249,6 +382,17 @@ def fab(board):
             f.write("%s -- order form settings that are NOT in the gerbers\n\n" % board)
             for k in sorted(opts):
                 f.write("  %-12s %s\n" % (k + ":", opts[k]))
+    crit, _total = _rotation_critical(pcb)
+    with open(os.path.join(d, "ROTATION-CHECK.txt"), "w", encoding="utf-8") as f:
+        f.write("%s -- the placements a rotation difference can DAMAGE\n\n" % board)
+        f.write("The CPL carries KiCad's convention unmodified. JLCPCB's placement "
+                "machine wants\nthe LCSC part's frame, and for many parts those differ "
+                "by 90/180/270. Check these\nin the previewer before paying:\n\n")
+        for _ref, _rot, _fpn in crit:
+            f.write("  %-8s %3d deg   %s\n" % (_ref, _rot, _fpn))
+        f.write("\n%d of %d placements. The rest are two-pad chip passives, which both\n"
+                "conventions align along the pad axis -- symmetric, so a 0/180 "
+                "difference\ncannot change them.\n" % (len(crit), _total))
     z = os.path.join(FAB_DIR, "%s.zip" % board)
     with zipfile.ZipFile(z, "w", zipfile.ZIP_DEFLATED) as zf:
         for fn in sorted(os.listdir(d)):
@@ -256,8 +400,334 @@ def fab(board):
     return n, len(groups), sorted(open_real), sorted(open_generic), z, opts or {}
 
 
+def _check_gerbers(gdir, notes, board, pcb):
+    """Did the copper actually reach the gerbers, and is the reference plane whole?
+
+    ⚠ THE EXPORT IS THE LAST PLACE A POUR CAN VANISH, and this project has watched one
+    do it: route.py records the optical board's F.Cu ground pour disappearing at a stray
+    refill and taking 74 pads with it. DRC ran on the board, not on the files, so a
+    package can carry a layer that is missing copper the board had.
+
+    Two things, at opposite severities.
+
+    REFUSES on a declared zone whose layer exports NO region at all. KiCad writes a
+    poured zone as a G36/G37 region block, so zero regions on a layer that declares a
+    zone means the pour is not in the file. There is no benign reading of that.
+
+    REPORTS, loudly, when a declared PLANE comes out as more than one region. In1.Cu is
+    the impedance reference for the USB pair and the ULPI bus, and a plane arrives
+    fragmented when something has been routed THROUGH it -- the exact damage the
+    plane_layers declaration exists to prevent, which route.py had to be taught after a
+    router turned 5729 mm2 of pour into 1043. It is not refused because a board outline
+    could legitimately split a plane; it is printed because on these five boards it
+    never has, and a change in that number means something moved.
+
+    Measured 2026-09-19: In1.Cu is exactly ONE region on all four 4-layer boards.
+    F.Cu and B.Cu fragment freely and are meant to -- optical's F.Cu is 26 islands --
+    which is why only the DECLARED plane is held to one.
+    """
+    zones = {z[1] for z in notes.get("zones", []) or []}
+    planes = set(notes.get("plane_layers", ()) or ())
+    seen = {}
+    for fn in sorted(os.listdir(gdir)):
+        m = re.search(r"(F_Cu|In\d_Cu|B_Cu)\.(gtl|gbl|g\d)$", fn)
+        if not m:
+            continue
+        txt = open(os.path.join(gdir, fn), encoding="utf-8", errors="replace").read()
+        seen[m.group(1).replace("_", ".")] = len(re.findall(r"G36\*", txt))
+    for layer in sorted(zones):
+        if layer not in seen:
+            raise SystemExit("%s: a zone is declared on %s and no such copper gerber "
+                             "was exported" % (board, layer))
+        if not seen[layer]:
+            raise SystemExit(
+                "%s: %s declares a zone and its gerber carries NO poured region. The "
+                "pour is not in the file the fab will use." % (board, layer))
+    for layer in sorted(planes):
+        n = seen.get(layer, 0)
+        if n > 1:
+            print("  !! %s: the %s PLANE exported as %d separate regions. A reference "
+                  "plane arrives fragmented when something is routed through it; check "
+                  "plane_layers is being honoured." % (board, layer, n))
+    # ⚠ PASTE IS THE LAYER THAT DECIDES WHETHER A PART IS SOLDERED AT ALL, and until now
+    # nothing compared it to anything. A stencil aperture missing for a pad is a joint
+    # that never forms: the board arrives assembled-looking with a part sitting on dry
+    # copper. It is invisible to DRC, to the netlist, and to every check above.
+    #
+    # Counted as flashes plus regions, against the pads KiCad says are ON that layer --
+    # not against "SMD pads", which is a different and wrong question. Measured
+    # 2026-09-19: exact on all five boards, and B.Paste is empty on all five because
+    # every board here is single-sided.
+    #
+    # ⚠ AND "SMD PADS" WAS THE FIRST VERSION OF THIS TEST AND IT MISREAD FIVE BOARDS. It
+    # called 20 pads on motor_ctrl bottom-side, which would have meant parts with no
+    # paste under them; they are the EXPOSED THERMAL PADS of U4 (QFN-68) and U5
+    # (SOIC-8), whose copper reaches B.Cu through thermal vias while the part sits on
+    # top. Asking IsOnLayer(F_Paste) asks the question the gerber actually answers.
+    import pcbnew as _pcb
+    _bd = _pcb.LoadBoard(pcb)
+    for _lay, _suffix, _name in ((_pcb.F_Paste, "F_Paste.gtp", "F.Paste"),
+                                 (_pcb.B_Paste, "B_Paste.gbp", "B.Paste")):
+        _want = sum(1 for _fp in _bd.GetFootprints() for _p in _fp.Pads()
+                    if _p.IsOnLayer(_lay))
+        _f = [x for x in os.listdir(gdir) if x.endswith(_suffix)]
+        _got = 0
+        if _f:
+            _t = open(os.path.join(gdir, _f[0]), encoding="utf-8", errors="replace").read()
+            _got = len(re.findall(r"D03\*", _t)) + len(re.findall(r"G36\*", _t))
+        if _got != _want:
+            raise SystemExit(
+                "%s: %s carries %d aperture(s) for %d pad(s) on that layer. A missing "
+                "stencil aperture is a part that never gets soldered."
+                % (board, _name, _got, _want))
+
+    # ⚠ MASK MAY EXCEED ITS PADS AND MUST NEVER FALL SHORT. An opening fewer than pads
+    # means a pad sealed under soldermask, which is unsolderable; an opening MORE is
+    # normal and on these boards is exactly the solder jumpers' bridging window --
+    # measured, the excess equals the JP count on every board: can_tee 1, lever_sensor
+    # 1, motor_ctrl 2, optical 0, output_panel 0. So this is a floor, not an equality.
+    _wantm = sum(1 for _fp in _bd.GetFootprints() for _p in _fp.Pads()
+                 if _p.IsOnLayer(_pcb.F_Mask))
+    _fm = [x for x in os.listdir(gdir) if x.endswith("F_Mask.gts")]
+    if _fm:
+        _t = open(os.path.join(gdir, _fm[0]), encoding="utf-8", errors="replace").read()
+        _gotm = len(re.findall(r"D03\*", _t)) + len(re.findall(r"G36\*", _t))
+        if _gotm < _wantm:
+            raise SystemExit(
+                "%s: F.Mask has %d opening(s) for %d pad(s) -- %d pad(s) would arrive "
+                "sealed under soldermask." % (board, _gotm, _wantm, _wantm - _gotm))
+
+    return seen
+
+
+def _check_drill(pcb, drill_dir, board):
+    """Does the drill file describe the holes the board actually has?
+
+    ⚠ THIS CHECKS kicad-cli's OUTPUT, WHICH NOTHING ELSE DOES. Everything upstream
+    validates the board; from the export onwards the artefact is whatever the tool
+    wrote, and the fab drills from that file, not from the .kicad_pcb. A flag that
+    changes meaning between KiCad versions, or an export that silently drops the NPTH
+    pass, produces a package that looks complete and arrives as a board with no holes
+    where holes were meant to be.
+
+    Two things are compared, and both are cheap:
+      * hit count == vias + through-hole pads. Exact, not approximate.
+      * every G85 slot's TRAVEL matches an oval pad's (length - width).
+
+    ⚠ A SLOT'S TOOL DIAMETER IS ITS WIDTH, NOT ITS LENGTH, and reading that wrong is
+    what made optical's drill file look broken during the first hand check: the tools
+    were 0.6 where the pads were 1.7, which looked like a mismatch and was a unit
+    confusion. KiCad emits an oval PTH as a routed slot -- tool diameter = the narrow
+    dimension, then a G85 move of (length - width). Comparing TRAVEL is what makes the
+    two directly comparable.
+
+    This one REFUSES rather than reports, unlike the BOM checks: a wrong drill file is
+    a fab error, not a documentation error, and it cannot be caught by looking at the
+    board afterwards.
+    """
+    import math
+    import pcbnew
+    drl = [f for f in os.listdir(drill_dir) if f.lower().endswith(".drl")]
+    if not drl:
+        raise SystemExit("%s: the drill export produced no .drl file" % board)
+    txt = open(os.path.join(drill_dir, drl[0]), encoding="utf-8").read()
+    hits = len(re.findall(r"^X[-\d.]+Y[-\d.]+", txt, re.M))
+    slots = sorted(round(math.hypot(float(c) - float(a), float(d) - float(b)), 3)
+                   for a, b, c, d in re.findall(
+                       r"X(-?[\d.]+)Y(-?[\d.]+)G85X(-?[\d.]+)Y(-?[\d.]+)", txt))
+    bd = pcbnew.LoadBoard(pcb)
+    vias = sum(1 for t in bd.GetTracks() if isinstance(t, pcbnew.PCB_VIA))
+    pth, ovals = 0, []
+    for fp in bd.GetFootprints():
+        for p in fp.Pads():
+            if p.GetAttribute() not in (pcbnew.PAD_ATTRIB_PTH, pcbnew.PAD_ATTRIB_NPTH):
+                continue
+            pth += 1
+            s = p.GetDrillSize()
+            if s.x != s.y:
+                ovals.append(round(pcbnew.ToMM(abs(s.x - s.y)), 3))
+    if hits != vias + pth:
+        raise SystemExit(
+            "%s: the drill file has %d hit(s) and the board has %d hole(s) "
+            "(%d vias + %d through-hole pads). The fab drills from the FILE."
+            % (board, hits, vias + pth, vias, pth))
+    if slots != sorted(ovals):
+        raise SystemExit(
+            "%s: %d routed slot(s) with travels %s, against %d oval pad(s) with "
+            "travels %s" % (board, len(slots), slots, len(ovals), sorted(ovals)))
+    return hits, len(slots)
+
+
+def _rotation_critical(pcb):
+    """Which placements could a rotation convention difference actually DAMAGE?
+
+    ⚠ EVERY PACKAGE ENDS BY TELLING A PERSON TO CHECK EVERY PART IN JLCPCB'S PREVIEWER,
+    and across five boards that is 329 placements. A human asked to check 329 things
+    checks them carefully the first time. This does not replace that step and corrects
+    nothing -- the CPL still carries KiCad's convention unmodified, for the reason at the
+    top of this file -- it says WHICH ones can bite, so the attention goes where the
+    damage is.
+
+    ⚠ THE RULE IS ABOUT SYMMETRY, NOT PAD COUNT. A two-pad chip resistor or ceramic
+    capacitor is rotationally symmetric: KiCad and JLCPCB both align it along its pad
+    axis, so the conventions can differ by 0 or 180 and the part is identical either way.
+    Everything else -- anything polarized, anything with three or more pads, anything
+    whose pin 1 means something -- is at risk.
+
+    ⚠ AND THE FIRST VERSION OF THIS ASKED THE PADS AND GOT DIODES WRONG. A SOD-123 diode
+    has pads numbered 1 and 2 exactly like an 0402, and a diode fitted backwards is a
+    dead board. Polarity is a property of the PART, not of its pad count, so the test is
+    the reference prefix and the footprint name. Measured after fixing it: 108 of 329
+    placements, against 56 while diodes were being waved through.
+
+    ⚠ AND THE CATALOGUE CANNOT SETTLE IT EITHER -- CHECKED, so nobody has to check
+    again. JLCPCB's own parts API returns 67 fields for a component (the same endpoint
+    lcsc_check.py uses) and NOT ONE of them describes the part's frame: no rotation, no
+    orientation, no pin-1 reference, nothing in the package or footprint fields that
+    would let a script derive the offset. So there is no source here to correct against,
+    which makes "narrow the human's work and correct nothing" the only honest answer
+    available rather than a cautious preference.
+    """
+    import pcbnew
+    board = pcbnew.LoadBoard(pcb)
+    out, total = [], 0
+    for fp in board.GetFootprints():
+        pads = [q for q in fp.Pads() if q.GetAttribute() != pcbnew.PAD_ATTRIB_NPTH]
+        if not pads:
+            continue
+        total += 1
+        ref, name = fp.GetReference(), fp.GetFPIDAsString()
+        sym = (len({q.GetNumber() for q in pads}) <= 2
+               and not re.match(r"^CP", ref)
+               and not re.search(r"Polarized|CP_|SOD|SMA|SMB|SMC|LED|Diode|Crystal",
+                                 name, re.I)
+               and re.match(r"^(R|C|L|FB|TP|JP)[A-Za-z]*[0-9]", ref))
+        if not sym:
+            out.append((ref, round(fp.GetOrientationDegrees()) % 360,
+                        name.split(":")[-1]))
+    return sorted(out), total
+
+
+def _sweep_stale(names):
+    """Delete packages for boards that no longer exist, and warn on ones left behind.
+
+    ⚠ THIS FILE REFUSES TO BUILD A PACKAGE FOR A BOARD THAT DOES NOT PASS, AND THAT IS
+    ONLY HALF THE GUARANTEE. Refusing to write a new zip does nothing about the OLD one
+    sitting beside it, and a stale zip is indistinguishable from a fresh one to whoever
+    uploads it -- which is exactly the "looks complete and arrives incomplete" failure
+    this file exists to prevent, arriving by the back door.
+
+    Found by listing the directory rather than trusting it: trrs_adapter.zip from
+    2026-09-16 and usb_panel.zip from 09-14, both for boards whose GENERATORS HAVE BEEN
+    DELETED from the design, and lever_sensor.zip from 09-17, which predates that
+    board's BOOT0 rework and describes a board that no longer exists either. All three
+    were orderable-looking and none of them were current.
+
+    A package whose generator is gone is deleted outright -- there is no board it could
+    describe. A package for a board that still exists but was not rebuilt this run is
+    left alone and NAMED, because it may simply not have been asked for.
+    """
+    import glob
+    for z in sorted(glob.glob(os.path.join(FAB_DIR, "*.zip"))):
+        board = os.path.splitext(os.path.basename(z))[0]
+        gen = os.path.join(HERE, "%s.py" % board)
+        if not os.path.isfile(gen):
+            os.remove(z)
+            print("  removed %s.zip -- no generator; that board is not in the design"
+                  % board)
+        elif board not in names:
+            # ASCII only in PRINTED text: this console is cp1252 and a warning glyph
+            # here raised UnicodeEncodeError, which took the whole tool down. The
+            # comments in this file use the glyph freely because they are source, not
+            # output.
+            print("  !! %s.zip is from an earlier run and was NOT rebuilt now -- check "
+                  "its date before ordering" % board)
+
+    # ⚠ THE SAME ARGUMENT REACHES ONE DIRECTORY UP, and the sweep stopped at the zips.
+    # Deleting usb_panel.zip left elec/out/usb_panel.kicad_pcb, .net, .dsn and eight more
+    # files from 2026-09-14 -- a whole board's intermediates for a generator that is no
+    # longer in the design. Nothing distinguishes them from a current board's: finish.py
+    # will happily route that .kicad_pcb if somebody names the stem, and it would produce
+    # a real-looking result for a board nobody can regenerate.
+    #
+    # NAMED, NOT DELETED, and the asymmetry with the zips is deliberate. A zip is derived
+    # and can always be rebuilt from the board; these intermediates are the ONLY surviving
+    # artefact of a design whose source has been removed, so throwing them away is not
+    # reversible in the way deleting a package is. Whoever removed the generator gets to
+    # decide, and now they get told there is something to decide about.
+    # ⚠ ONLY THINGS THAT ARE ACTUALLY BOARDS. The first version of this asked "does
+    # a generator exist for every stem in elec/out" and named FIFTY-SEVEN of them --
+    # o2, rp7, z9, chk, skidl_REPL and the rest of years of scratch files. A warning
+    # channel that cries wolf fifty-seven times is worse than no warning at all, which
+    # is the same argument as the DRC warnings this session spent its time on. A board
+    # is a stem with a .kicad_pcb; scratch is not.
+    for f in sorted(glob.glob(os.path.join(OUT_DIR, "*.kicad_pcb"))):
+        board = os.path.basename(f)[:-len(".kicad_pcb")]
+        # A tagged snapshot is <board>.<tag>.kicad_pcb -- optical.baseline1,
+        # optical.pre_incr, <board>.unrouted. Those belong to a board that DOES exist
+        # and are kept on purpose for comparison; only an undotted stem is its own board.
+        if "." in board:
+            continue
+        if not os.path.isfile(os.path.join(HERE, "%s.py" % board)):
+            n = len(glob.glob(os.path.join(OUT_DIR, board + ".*")))
+            print("  !! elec/out holds %d file(s) for '%s', which has no generator -- a "
+                  "board that is not in the design any more. Delete them or restore it."
+                  % (n, board))
+
+
+def _check_bom_md(names):
+    """Hold BOM.md against the packages just built, and say so here.
+
+    ⚠ A CHECK NOTHING CALLS IS A CHECK THAT DOES NOT RUN. verify.py sat unrun for
+    weeks behind a docstring insisting it existed to remove the human, because no step
+    invoked it. bom_check.py and part_totals.py were written today and were in exactly
+    that position. This is the step that turns boards into something orderable and
+    BOM.md is what a person orders from, so this is where the two belong.
+
+    ⚠ IT REPORTS, IT DOES NOT REFUSE, and the line is drawn at the artefact. A wrong
+    part number in BOM.md does not corrupt the fab package -- JLC assembles from the CPL
+    and BOM inside the zip, which are generated. Refusing to build the package over a
+    documentation error would block the thing that is correct because the thing beside it
+    is not. It fails where it actually bites: somebody hand-ordering, or reading the file
+    to understand what the instrument is made of.
+
+    Only runs on a FULL build. Against a partial one it would report parts as unnamed
+    that are simply not in this run's packages.
+    """
+    if set(names) != set(BOARDS):
+        return
+    try:
+        import bom_check
+        import part_totals
+        bad = bom_check.check()[0]
+        per = part_totals.totals()[0]
+        bom_txt = open(os.path.join(os.path.dirname(HERE), "BOM.md"),
+                       encoding="utf-8").read()
+        unlisted = [v for v in per if v in LCSC and v not in bom_txt]
+    except Exception as exc:                # a check that breaks must not break the run
+        print()
+        print("  !! BOM.md checks did not run: %r" % (exc,))
+        return
+    if not bad and not unlisted:
+        print()
+        print("BOM.md agrees with the packages: every designator row names the part its "
+              "board places,")
+        print("  and every sourced part is named.")
+        return
+    print()
+    print("!! BOM.md DISAGREES WITH THE BOARDS -- the packages are fine, the document "
+          "is not:")
+    for board, des, part, code, val, line in bad:
+        print("   BOM.md:%-5d %-6s says %-20s %-10s but %s places %s"
+              % (line, des, part, code, board, val))
+    for val in sorted(unlisted):
+        print("   %-20s is placed and SOURCED (%s) but named nowhere in BOM.md"
+              % (val, LCSC[val]))
+
+
 def main(names):
     os.makedirs(FAB_DIR, exist_ok=True)
+    _sweep_stale(names)
     blocked, order = {}, {}
     for b in names:
         n, g, open_real, open_generic, z, opts = fab(b)
@@ -277,11 +747,16 @@ def main(names):
         for b, opts in order.items():
             for k in sorted(opts):
                 print("   %-13s %-11s %s" % (b, k, opts[k].split(" -- ")[0]))
+    _check_bom_md(names)
     # ASCII on purpose: this prints to a Windows console whose default
     # codepage is cp1252, and a warning that raises UnicodeEncodeError is
     # worse than no warning at all.
-    print("\n!! CHECK EVERY ROTATION in JLCPCB's previewer before paying: the CPL "
-          "carries\n  KiCad's convention, which differs per part from LCSC's.")
+    print("")
+    print("!! CHECK THE ROTATIONS in JLCPCB's previewer before paying: the CPL carries")
+    print("  KiCad's convention, which differs per part from LCSC's. Each package's")
+    print("  ROTATION-CHECK.txt lists ONLY the placements a difference can DAMAGE --")
+    print("  polarised, multi-pad, or pin-1-bearing. Two-pad chip passives are")
+    print("  symmetric under a 0/180 difference and are deliberately left off it.")
 
 
 if __name__ == "__main__":
