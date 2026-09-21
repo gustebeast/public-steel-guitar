@@ -132,7 +132,7 @@ the constraint is stock, not selection. See the optical-pickup section.
 > TENSION on the axis (pushes the seat washer) and POSITION 9.4 above it (socket end bears
 > on a washer in the housing; its protrusion is the cartridge's X home, ±1.6). Per control that
 > is **+4 M4 × 10 set screws, +4 M4 inserts, +4 washers** — not yet folded into those rows'
-> quantities (both already carry recount warnings). Housing −13.7 in X (−78.1 → −64.4); lever
+> quantities (both already carry recount warnings). Housing −12.1 in X (−78.1 → −66.0); lever
 > 20 → 24 wide so the 14-wide cartridges sit on their lobes. The FOOT PEDAL housing grew 6.15
 > deeper in guitar +Y (`foot_pedal.Y_GROWTH`), into the 15.6 of bar behind it.
 

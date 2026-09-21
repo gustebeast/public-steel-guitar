@@ -346,7 +346,12 @@ HS_FOLLOW_WY = LOBE_WY             # follower width (Y) = the lobe width (only h
 # CART_RECEDE pushes the whole cartridge back (-X in the placed frame) while the follower NOSE stays on
 # the lobe -- so the piston BODY and front walls sit OUT of the swinging arm's arc, and only the thin
 # follower tongue reaches into it. Sized (with the front-bottom relief) to clear the full 0..THROW sweep.
-CART_RECEDE = 8.0
+CART_RECEDE = 12 * D.BEAD            # 9.6 (was 8.0). The Ø10 cartridge's floor sits 2.0 lower than the Ø6
+                                     #   one's, into the arm's sweep: at 8.0 the arm reached 0.9 into the MAIN
+                                     #   cartridge's front-bottom edge at 30°. A 45° chamfer there cleared it
+                                     #   but cut through the 1.6 front lip wall (user: weak point), so the
+                                     #   whole cartridge recedes instead -- measured clear to 31° (MAIN; the
+                                     #   HALF-STOP parks HS_SETBACK further back and clears past 33°).
 HS_NOSE_PROTRUDE = FOLL_TRAVEL + 1.0 + CART_RECEDE  # tongue -X of the front (> travel: never retracts; the
                                                    #   extra CART_RECEDE lengthens the tongue = body recede.
                                                    #   8 mm clears the plain-prism cartridge to ~33° with NO
@@ -436,7 +441,6 @@ HS_WASH_RECESS_D = WASHER_OD + 0.4  # the housing's seat for the position washer
 HS_POS_DZ = max(_INS_R * math.sqrt(2.0) + D.MIN_WALL_2P + _INS_R,               # cartridge: insert webs
                 M4_SHAFT_CLR_D / 2 * math.sqrt(2.0) + D.MIN_WALL_2P + HS_WASH_RECESS_D / 2)  # housing:
                 # the washer recess over the tension screw's Ø4.4 teardrop -> 9.41 above the axis
-HS_FRONT_CHAMF = 4 * D.BEAD         # 3.2 45° chamfer on the cartridge's front-bottom edge (arm sweep)
 HS_POS_RANGE = 4 * D.BEAD           # 3.2 of cartridge travel (+-1.6 about nominal)
 HS_POS_NOM   = HS_POS_RANGE / 2     # nominal gap: cartridge back -> pocket back face (HALF-STOP)
 HS_POS_FWD   = M4_SCREW_L - HS_BACKWALL + 0.4   # 4.8: how far the screw's point can reach -X of the back
@@ -1582,16 +1586,6 @@ def _half_stop_cart_base() -> cq.Workplane:
     # Ø10 head in Y (window < head). The tongue rides up through it as the lobe rises over the throw
     base = base.cut(box_at(HS_BODY_X0 - HS_FRONT + 0.1, HS_WIN_WY, FOLL_H + 1.0,
                            x=(HS_FRONT + HS_BODY_X0) / 2, y=HS_YC, z=HS_Z + FOLL_DZ))
-    # FRONT-BOTTOM CHAMFER (45°, along Y): the Ø10 channel dropped the floor 2.0 below the old Ø6
-    # one, into the arm's sweep -- at the full 30° throw the arm's -X face reached 0.9 into this
-    # edge (7 mm3 on the MAIN, which parks HS_SETBACK nearer the lever). Chamfered instead of
-    # receding the whole cartridge, which would spend X. It takes only the lowest HS_FRONT_CHAMF/2
-    # of the lip the head bears on. Prints fine: the edge sits on the bed, a 45° face over it.
-    _c, _e = HS_FRONT_CHAMF, 1.0
-    _tri = [(HS_FRONT - _e, HS_FLOOR_Z + _c + _e), (HS_FRONT + _c + _e, HS_FLOOR_Z - _e),
-            (HS_FRONT - _e, HS_FLOOR_Z - _e)]
-    base = base.cut(cq.Workplane("XZ", origin=(0.0, HS_YC + HS_CART_WY, 0.0)).polyline(_tri).close()
-                    .extrude(2 * HS_CART_WY))
     # the two inserts, both mouths on the BACK face (set screws never self-tap -- they hold load):
     #   TENSION (on the axis): Ø6×5 pocket + the 0.6 web's Ø4.4 way to the seat washer.
     #   POSITION (HS_POS_DZ above): its Ø4.4 way runs on HS_POS_FWD past the wall, because the screw's
