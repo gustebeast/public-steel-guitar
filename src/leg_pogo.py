@@ -12,8 +12,18 @@ bottom one (pedal bar <-> adjust tenon). Each joint is now TWO PCBs and nothing 
     the joint closes, which is how recessed tips find their pads.
 
 Each board has ONE M4 through it into a heat-set insert (the project's PCB rule) and
-ONE top-entry SMT JST PH header on its back for the crimped leg harness -- the only
-wiring through the leg now. There is no jack, plug, coil, float spring, TPU throat,
+ONE top-entry JST PH header on its back for the crimped leg harness -- the only
+wiring through the leg now.
+
+BOTH BOARDS ARE SINGLE-SIDED FOR SMT, because the whole PCB panel shares one set of
+assembly settings (user). The FEMALE's face is bare copper pads, so its SMT PH on the
+back is its only placed part. The MALE's pin header is SMT on its face, so its PH is
+the THROUGH-HOLE B4B-PH-K-S on the back, soldered by JLCPCB's THT step (the tee
+boards' XH headers already put that step on the panel) -- never by the user. Its
+posts come through on the pin side, so it sits OUTBOARD of the pin header, not under
+it. JLCPCB publish no rule on whether a bottom-bodied THT part counts as a second
+side; their setup and stencil fees are priced by SMT side and THT is its own labour
+line, so it should not -- confirm on the live quote with the part on the Bottom layer. There is no jack, plug, coil, float spring, TPU throat,
 sleeve or bayonet left at either joint.
 
 WHY THE PINS ARE ON THE LEG, which reverses what was first proposed (pads on the
@@ -108,27 +118,50 @@ TIP_REST = MALE_FACE - POGO_FREE    # 1.15 -- the free tips, RECESSED inside the
 assert TIP_REST > 0.5, "the free pin tips stand too near the tenon's face"
 
 # ── one board outline, one screw, one connector: both halves ─────────────────
-BOARD_U = 13.0                  # u: the connector (12.0 with its nails) + edge
-BOARD_V = 13.4                  # v: the header, then the screw head beside it
-EDGE = 0.76                     # component to routed edge (JLCPCB wants 0.5)
-ARRAY_V = -BOARD_V / 2.0 + EDGE + POGO_BODY_V / 2.0     # -3.40 the pin/pad array
-SCREW_V = 3.9                   # the M4 -- see the walls below
+BOARD_U = 13.0                  # u: the connector (11.95 with its tabs) + edge
+ARRAY_V = -3.4                  # the pin/pad array's centre, and the connector's
+BOARD_V0 = -8.4                 # v: the connector's tails run out -v, so the board's
+BOARD_V1 = 6.85                 # -v edge carries them; +v carries the screw
+BOARD_V = BOARD_V1 - BOARD_V0   # 15.25
+EDGE = 0.5                      # component to routed edge (JLCPCB's rule)
+SCREW_V = 4.0                   # the M4 -- see the walls below
 HOLE_D = 4.5                    # M4 clearance through the board (elec convention)
 HEAD_D = 7.0                    # button head, as elec/trrs_adapter: the head, not the
 HEAD_H = 2.2                    #   hole, is what sets the spacing
 SCREW_L = 6.0                   # M4 x 6 button: board + 4.4 into the insert
 assert SCREW_V - HEAD_D / 2.0 >= ARRAY_V + POGO_BODY_V / 2.0 + 0.3, (
     "the screw head lands on the pin header")
-assert BOARD_V / 2.0 - SCREW_V - HOLE_D / 2.0 >= 0.5, "the M4 hole is off the board"
+assert BOARD_V1 - SCREW_V - HOLE_D / 2.0 >= EDGE, "the M4 hole is off the board"
+assert ARRAY_V - POGO_BODY_V / 2.0 >= BOARD_V0 + EDGE, "the header is off the board"
 
 # JST PH, SMT TOP ENTRY (B4B-PH-SM4-TB), under the array on the BACK. SMT so it has
 # no tails through to the pin side; top entry so the harness leaves straight up the
-# tenon's bore. ⚠ RESERVED ENVELOPE: its body is from JST's PH series table, the
-# mated height is XH's 9.8 (PH is the smaller series) -- read the drawing and tighten.
-PH_U = 12.0                     # body incl. its solder nails
-PH_V = 4.5
-PH_H = 9.8                      # mated, RESERVED
-PH_LCSC = None                  # bronner to pick (C265121 is the 8-way side entry)
+# tenon's bore. OFF JST's OWN DRAWING (ePH catalogue p.4 "Header (SMT type)", read as
+# an image 2026-09-21 -- its text layer is unreadable, which is why cadkit had
+# reserved these): 4 way B = 11.95 overall, body 5.0 deep with its signal tails
+# running (2) further out ONE side, 6.6 tall. The PHR-4 housing is 6.85 tall (p.3).
+PH_U = 11.95                    # overall, reinforcement tabs included
+PH_V = 5.0                      # the body
+PH_TAIL = 2.0                   # the SMT signal tails, flat on the board, one side (-v)
+PH_TAIL_H = 0.5                 # their height off the board -- a low strip
+PH_BODY_H = 6.6
+PHR_H = 6.85                    # the crimp housing
+PH_H = 8.5                      # MATED: the housing's 6.85 standing on the header's
+                                # floor. The floor is not dimensioned; 1.65 of it is
+                                # an allowance, and the harness's bend (below) gets its
+                                # own room on top of this
+BEND = 4 * B                    # 3.2 room above the housing for the harness to turn
+
+# THE MALE's HEADER IS THROUGH-HOLE: JST B4B-PH-K-S (ePH p.3, "Header (Through-hole
+# type)", top entry): 4 way B = 9.9, 4.5 deep, 6.0 tall, posts (3.4) below the seat.
+PHK_U = 9.9
+PHK_V = 4.5
+PHK_H = 6.0
+PHK_POST = 0.64                 # square post, as XH
+PHK_HOLE_D = 1.0                # its PCB hole (as XH's: the post's diagonal is 0.91)
+PHK_PROUD = 3.4 - PCB_T         # 1.8 of post through to the PIN side
+PHK_LCSC = "C131334"            # B4B-PH-K-S(LF)(SN), JLCPCB Extended, 138k in stock
+PH_LCSC = "C160354"             # B4B-PH-SM4-TB(LF)(SN), JLCPCB Extended, 45k in stock
 
 CLR = 0.3                       # board / connector clearance in its printed pocket
 WALL = D.MIN_WALL_2P
@@ -138,11 +171,36 @@ _INS_R = M4.insert_pilot_d / 2.0
 assert (SCREW_V - _INS_R) - (ARRAY_V + PH_V / 2.0 + CLR) >= WALL - 1e-9, (
     "only %.2f between the insert and the connector's cavity"
     % ((SCREW_V - _INS_R) - (ARRAY_V + PH_V / 2.0 + CLR)))
+assert ARRAY_V - PH_V / 2.0 - PH_TAIL >= BOARD_V0 + EDGE - 1e-9, (
+    "the connector's tails run off the board")
+# the MALE's THT header, outboard of the pin header on -v: its posts come through on
+# the pin side, so its row must clear the header's housing
+PHK_ROW_V = ARRAY_V - POGO_BODY_V / 2.0 - 1.6 * B       # -7.22, 1.28 off the housing
+MALE_V0 = PHK_ROW_V - PHK_V / 2.0 - EDGE                # -9.97 the male's -v edge
+assert PHK_ROW_V + PHK_POST / 2.0 < ARRAY_V - POGO_BODY_V / 2.0 - 0.5, (
+    "the THT posts come up under the pin header")
 INS_CLR = 0.4                   # screw-tip clearance past the insert
 _INS_WHY = ("a PCB's one M4 (project rule): an M4 x 6 through 1.6 of board ends inside "
             "the insert, and there is no depth behind it for a self-tap bite -- the "
             "pin travel and the connector own the rest of the stack")
 assert SCREW_L - PCB_T <= M4.insert_depth + INS_CLR, "the screw bottoms out"
+
+
+# ── the leg's harness ────────────────────────────────────────────────────────
+# TWO TWISTED PAIRS of 28 AWG PVC hookup wire -- CAN_H/CAN_L one pair, 5V/GND the
+# other -- crimped into PHR-4 housings at both ends AFTER threading, so no bore
+# ever has to pass more than a contact. Not a round jacketed 4-core: the ones with a
+# datasheet that fit (Alpha 86004 is O4.83) are fatter than the bores the old lead
+# set, and a round 4-core does not pair CAN_H with CAN_L. A pair twisted is what CAN
+# wants, and PVC hookup takes a heat-set coil on src.coil_mandrel.
+HARNESS_WIRE_OD = 0.9           # 28 AWG 7/36 PVC hookup (Alpha 3048-class) -- inside
+                                # the SPH-002T contact's 0.8..1.5 insulation range
+HARNESS_D = 3 * B               # 2.4: four 0.9 wires bundle to 0.9 (1 + sqrt2) = 2.17
+HARNESS_BEND_STATIC = 3.0 * HARNESS_D   # 7.2 -- a set-once bundle of loose stranded
+                                # conductors: no foil, no jacket, so the 3xOD rule of
+                                # thumb is the honest yardstick here, and the duty is
+                                # the one leg_trrs.CABLE_BEND_STATIC already argued
+assert HARNESS_D >= HARNESS_WIRE_OD * (1 + math.sqrt(2)), "the bundle is under-sized"
 
 
 # ── the two joints ───────────────────────────────────────────────────────────
@@ -202,8 +260,8 @@ def _array():
                    ARRAY_V + (j - (POGO_NV - 1) / 2.0) * POGO_PITCH)
 
 
-def _board(j, face_d, back_d):
-    b = j.box(-BOARD_U / 2.0, BOARD_U / 2.0, -BOARD_V / 2.0, BOARD_V / 2.0,
+def _board(j, face_d, back_d, v0=BOARD_V0):
+    b = j.box(-BOARD_U / 2.0, BOARD_U / 2.0, v0, BOARD_V1,
               min(face_d, back_d), max(face_d, back_d))
     return b.cut(j.cyl(HOLE_D, 0.0, SCREW_V, face_d - 1.0, back_d + 1.0)
                  if face_d < back_d else
@@ -212,17 +270,38 @@ def _board(j, face_d, back_d):
 
 def _ph(j, back_d, sign):
     """The harness connector on a board's back, mated: `sign` is the direction of
-    'away from the board' in d."""
+    'away from the board' in d. Body, its flat tails, and the housing in it."""
     d1 = back_d + sign * PH_H
-    return j.box(-PH_U / 2.0, PH_U / 2.0, ARRAY_V - PH_V / 2.0, ARRAY_V + PH_V / 2.0,
-                 min(back_d, d1), max(back_d, d1))
+    out = j.box(-PH_U / 2.0, PH_U / 2.0, ARRAY_V - PH_V / 2.0, ARRAY_V + PH_V / 2.0,
+                min(back_d, d1), max(back_d, d1))
+    dt = back_d + sign * PH_TAIL_H
+    return out.union(j.box(-PH_U / 2.0 + 1.0, PH_U / 2.0 - 1.0,
+                           ARRAY_V - PH_V / 2.0 - PH_TAIL, ARRAY_V - PH_V / 2.0 + 0.01,
+                           min(back_d, dt), max(back_d, dt)))
+
+
+def _phk(j, back_d):
+    """The male's THT header on its back (+d), mated, and its posts through the board
+    to the pin side (-d)."""
+    out = j.box(-PHK_U / 2.0, PHK_U / 2.0, PHK_ROW_V - PHK_V / 2.0,
+                PHK_ROW_V + PHK_V / 2.0, back_d, back_d + PH_H)
+    face_d = back_d - PCB_T
+    for i in range(4):
+        u = (i - 1.5) * 2.0
+        out = out.union(j.box(u - PHK_POST / 2.0, u + PHK_POST / 2.0,
+                              PHK_ROW_V - PHK_POST / 2.0, PHK_ROW_V + PHK_POST / 2.0,
+                              face_d - PHK_PROUD, back_d))
+    return out
 
 
 def male(j, compress: float = SEAT_C):
     """The leg's board, pins toward the mating plane (-d), drawn with the pins at
     `compress` (the seated SEAT_C by default; 0 = the leg off)."""
     f = MALE_FACE
-    board = _board(j, f, MALE_BACK)
+    board = _board(j, f, MALE_BACK, MALE_V0)
+    for i in range(4):                  # the THT header's plated holes
+        board = board.cut(j.cyl(PHK_HOLE_D, (i - 1.5) * 2.0, PHK_ROW_V, f - 1.0,
+                                MALE_BACK + 1.0))
     hdr = j.box(-POGO_BODY_U / 2.0, POGO_BODY_U / 2.0,
                 ARRAY_V - POGO_BODY_V / 2.0, ARRAY_V + POGO_BODY_V / 2.0,
                 f - POGO_BODY_TOP, f - POGO_FOOT_H)
@@ -232,7 +311,7 @@ def male(j, compress: float = SEAT_C):
         hdr = hdr.union(j.cyl(POGO_PLUNGER_D, u, v, tip, f - POGO_BARREL_TOP))
     return [("pogo_male_board_%s" % j.name, board),
             ("pogo_male_pins_%s" % j.name, hdr),
-            ("pogo_male_ph_%s" % j.name, _ph(j, MALE_BACK, +1.0))]
+            ("pogo_male_ph_%s" % j.name, _phk(j, MALE_BACK))]
 
 
 def female(j):
@@ -265,13 +344,12 @@ def dummies():
     out = []
     for j in (TOP, BOTTOM):
         out += male(j) + female(j) + screws(j)
-    return out
+    return out + harness()
 
 
 # ── what the TENON gives up (the male pocket) ────────────────────────────────
 POCKET_U = BOARD_U + 2 * CLR    # the board's own zone, where it is LOCATED: a CLR fit
-POCKET_V = BOARD_V + 2 * CLR
-DEEP = MALE_BACK + PH_H + CLR   # the connector's cavity floor
+DEEP = MALE_BACK + PH_H + BEND  # the connector's cavity floor, with the harness's turn
 ROUTE_D = MALE_BACK + M4.insert_depth + INS_CLR + WALL   # 16.75: where the harness
                                 # turns across to the lead's bore -- one WALL past the
                                 # insert's hole, which it runs over
@@ -284,13 +362,13 @@ def tenon_negatives(j, route_xy, route_d, route_top, up=None):
     (a world z)."""
     up = up or j.tenon_up
     # the MOUTH: wide enough to swallow the female's pedestal as the joint closes...
-    out = j.box(-PED_U / 2.0 - CLR, PED_U / 2.0 + CLR, PED_V0 - CLR, PED_V1 + CLR,
-                -1.0, MALE_FACE)
+    out = j.box(-PED_U / 2.0 - CLR, PED_U / 2.0 + CLR, min(PED_V0, MALE_V0) - CLR,
+                PED_V1 + CLR, -1.0, MALE_FACE)
     # ...then the board's own zone, a CLR fit that locates it
-    out = out.union(j.box(-POCKET_U / 2.0, POCKET_U / 2.0, -POCKET_V / 2.0,
-                          POCKET_V / 2.0, MALE_FACE - 0.01, MALE_BACK))
-    out = out.union(j.box(-PH_U / 2.0 - CLR, PH_U / 2.0 + CLR,
-                          ARRAY_V - PH_V / 2.0 - CLR, ARRAY_V + PH_V / 2.0 + CLR,
+    out = out.union(j.box(-POCKET_U / 2.0, POCKET_U / 2.0, MALE_V0 - CLR,
+                          BOARD_V1 + CLR, MALE_FACE - 0.01, MALE_BACK))
+    out = out.union(j.box(-PHK_U / 2.0 - CLR, PHK_U / 2.0 + CLR,
+                          PHK_ROW_V - PHK_V / 2.0 - CLR, PHK_ROW_V + PHK_V / 2.0 + CLR,
                           MALE_BACK - 0.01, DEEP))
     out = out.union(insert_bore_cutter(
         M4, j.p(0.0, SCREW_V, MALE_BACK), (0, 0, j.dz), INS_CLR, overshoot=0.01,
@@ -301,7 +379,7 @@ def tenon_negatives(j, route_xy, route_d, route_top, up=None):
     # the harness's way over to the lead's bore: a slot from the connector's cavity to
     # the bore's axis, at the cavity's far end, then the bore itself onward
     ru, rv = j.uv(*route_xy)
-    v0, v1 = sorted((ARRAY_V, rv))
+    v0, v1 = sorted((PHK_ROW_V, rv))
     u0, u1 = sorted((0.0, ru))
     out = out.union(j.box(u0 - route_d / 2.0, u1 + route_d / 2.0,
                           v0 - route_d / 2.0, v1 + route_d / 2.0, ROUTE_D, DEEP))
@@ -318,12 +396,14 @@ def tenon_negatives(j, route_xy, route_d, route_top, up=None):
 # its corners have the room to swallow it.
 _CAV_U = PH_U / 2.0 + CLR                       # the connector's cavity, half-width
 _CAV_V0, _CAV_V1 = ARRAY_V - PH_V / 2.0 - CLR, ARRAY_V + PH_V / 2.0 + CLR
-PED_U = 2 * (_CAV_U + WALL)                     # 15.8
-PED_V0 = _CAV_V0 - WALL                         # -7.55
-PED_V1 = BOARD_V / 2.0                          # 6.70
+_TAIL_V0 = ARRAY_V - PH_V / 2.0 - PH_TAIL - CLR # ...and its low strip for the tails
+PED_U = 2 * (_CAV_U + WALL)                     # 15.55
+PED_V0 = _TAIL_V0 - WALL                        # -9.8
+PED_V1 = BOARD_V1                               # 6.85
 assert PED_U / 2.0 + CLR + WALL <= LS.TEN_W / 2.0, "the mouth breaks the tenon's flat"
-assert -PED_V0 + CLR + WALL <= LS.TEN_W / 2.0, "the mouth breaks the tenon's flat"
-F_DEEP = PED_H - PH_H - CLR     # the connector's cavity floor, into the host (d < 0)
+assert -min(PED_V0, MALE_V0) + CLR + WALL <= LS.TEN_W / 2.0, (
+    "the mouth breaks the tenon's flat")
+F_DEEP = PED_H - PH_H - BEND    # the connector's cavity floor, into the host (d < 0)
 
 
 def host_pedestal(j):
@@ -354,6 +434,8 @@ def host_negatives(j, up=None, deep=F_DEEP):
     insert. The caller adds the way out for the harness (it is host-specific)."""
     up = up or j.host_up
     out = _gable(j, -_CAV_U, _CAV_U, _CAV_V0, _CAV_V1, deep, PED_H + 0.01, up)
+    out = out.union(j.box(-_CAV_U, _CAV_U, _TAIL_V0, _CAV_V0 + 0.01,
+                          PED_H - PH_TAIL_H - CLR, PED_H + 0.01))
     out = out.union(insert_bore_cutter(
         M4, j.p(0.0, SCREW_V, PED_H), (0, 0, -j.dz), INS_CLR, overshoot=0.01,
         reason=_INS_WHY, print_up=up))
@@ -361,8 +443,12 @@ def host_negatives(j, up=None, deep=F_DEEP):
 
 
 # ── the two hosts' own ways out ──────────────────────────────────────────────
-CHAN_W = 4 * B                  # 3.2: four 28 AWG leads side by side, loose
-CHAN_D = 4.8                    # the old lead groove's depth
+CHAN_W = 4 * B                  # 3.2: the harness (HARNESS_D) with room
+# the groove reaches down to the connector's cavity, so the harness turns straight
+# out of the housing into it
+# ...and it keeps the old lead groove's 4.8 regardless: the body tenons are fused onto
+# the top face after this is cut, and their overlap refills the groove's top ~1 mm
+CHAN_D = max(6 * B, LS.Z_TOP - (LS.Z_MORTISE_ROOF - F_DEEP) + 1.0)
 
 
 def adapter_features(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):
@@ -374,7 +460,8 @@ def adapter_features(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):
     j = TOP
     neg = host_negatives(j)
     xc = j.p(0, ARRAY_V, 0)[0]
-    y_in = j.p(0, 0, 0)[1]                      # into the cavity's middle
+    y_in = j.p(0, 0, 0)[1] + CHAN_W             # past the cavity's middle, so the
+                                                # harness's turn up into it is inside
     y_out = j.y - LS.LEG_W / 2.0 - 1.0
     neg = neg.union(cq.Workplane("XY").add(cq.Solid.makeBox(
         CHAN_W, y_in - y_out, CHAN_D + 1.0,
@@ -390,3 +477,57 @@ def bar_features(floor_z: float, chamber_top_z: float):
               BOTTOM.tenon_up, BOTTOM.host_up)
     neg = host_negatives(j, deep=chamber_top_z - floor_z - 0.01)
     return host_pedestal(j), neg
+
+
+# ── the harness, drawn ───────────────────────────────────────────────────────
+def _coil(cx, cy, z_top, z_bot, turns, r, d):
+    """The leg's slack as a helix of `turns` whole turns about (cx, cy)."""
+    path = cq.Wire.makeHelix((z_top - z_bot) / turns, z_top - z_bot, r,
+                             cq.Vector(cx, cy, z_bot), cq.Vector(0, 0, 1))
+    start = path.startPoint()
+    prof = cq.Wire.makeCircle(d / 2.0, start, path.tangentAt(0.0))
+    return cq.Workplane("XY").add(cq.Solid.sweep(prof, [], path, isFrenet=True))
+
+
+def harness():
+    """THE RUN, drawn: male housing to male housing down the whole leg -- over to the
+    old lead's bore, down the fixed tenon, COILED through the gap between the tenons
+    (src.coil_mandrel's coil, at the span the leg is drawn at), into the adjust
+    tenon's channel past the ladder, the jog, and back over to the bottom board -- plus
+    the two female stubs, as far as each host's own way out."""
+    from . import leg_trrs as LTR
+    from . import bar_trrs as BT
+    from . import coil_mandrel as CM
+    from .leg_trrs import _run
+    d = HARNESS_D
+    dm = MALE_BACK + PH_H + BEND / 2.0      # the turn, clear of the housing's top
+    assert dm - d / 2.0 > MALE_BACK + PH_H and dm + d / 2.0 < DEEP, "the turn is off"
+    top_h, bot_h = TOP.p(0.0, PHK_ROW_V, MALE_BACK + PH_H), BOTTOM.p(0.0, PHK_ROW_V,
+                                                                      MALE_BACK + PH_H)
+    xs, ys = LTR._ax()
+    xb, yb = BT._ax()
+    xc, yc = LS.LEG_X + BT.CH_X, LS.LEG_Y + BT.CH_Y
+    z_a, z_b = LS.Z_FIX_TEN_BOT - 8.0, LS.Z_ADJ_TEN_TOP + 8.0
+    span = z_a - z_b
+    pitch = span / CM.TURNS
+    r = math.sqrt(max((CM.COIL_LEN / CM.TURNS) ** 2 - pitch ** 2, 0.0)) / math.pi / 2.0
+    ax, ay = LS.LEG_X, LS.LEG_Y
+    upper = _run([top_h, TOP.p(0.0, PHK_ROW_V, dm), (xs, ys, TOP.p(0, 0, dm)[2]),
+                  (xs, ys, LS.Z_FIX_TEN_BOT - 2.0), (ax + r, ay, z_a)], d)
+    lower = _run([(ax + r, ay, z_b), (xc, yc, LS.Z_ADJ_TEN_TOP + 2.0),
+                  (xc, yc, BT.PASS_TOP), (xb, yb, BT.CH_BOT),
+                  (xb, yb, BOTTOM.p(0, 0, dm)[2]), BOTTOM.p(0.0, PHK_ROW_V, dm), bot_h], d)
+    coil = _coil(ax, ay, z_a, z_b, CM.TURNS, r, d)
+    leg = upper.union(coil).union(lower)
+    # the body adapter's female: up out of the housing into the groove, out -Y
+    f0 = TOP.p(0.0, ARRAY_V, PED_H - PH_H)
+    zc = LS.Z_TOP - CHAN_D + d / 2.0 + 0.2     # lying in the groove's bottom
+    y_out = LS.LEG_Y - LS.LEG_W / 2.0
+    body = _run([f0, (f0[0], LS.LEG_Y, zc), (f0[0], y_out, zc),
+                 (f0[0], y_out - 12.0, zc)], d)
+    # the bar's female: down out of the housing into the wiring chamber, toward the trough
+    g0 = BOTTOM.p(0.0, ARRAY_V, PED_H - PH_H)
+    g1 = BOTTOM.p(0.0, ARRAY_V, -17.0)
+    bar = _run([g0, g1, (g1[0] + 20.0, g1[1], g1[2])], d)
+    return [("pogo_harness_leg", leg), ("pogo_harness_body", body),
+            ("pogo_harness_bar", bar)]
