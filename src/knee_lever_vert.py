@@ -160,7 +160,11 @@ HOUS_HW_N = max((TEN_PITCH + 2 * KL._JHW + 2 * TEN_MARGIN) - HOUS_HW_P,
                 # ...and never inside the -Y cartridge pocket's own wall. The tenon sum
                 # alone went UNDER it once the Ø10 die-spring cartridges spread the
                 # pockets to ±8.45 (2026-09-21): the -Y pocket would have broken out.
-                abs(KL.MAIN_YC) + KL.hs_pocket_hw() + KL.HS_HOUS_WALL)
+                abs(KL.MAIN_YC) + KL.hs_pocket_hw() + KL.HS_HOUS_WALL,
+                # ...and the -Y BEARING, which sits flush with the face (KL.BRG_Y0 + BRG_W =
+                # KL.HOUS_HW): the tenon/pocket terms alone left it 0.75 proud once the
+                # lever went to 25.6 (2026-09-21)
+                KL.BRG_Y0 + KL.BRG_W)
 HOUS_HW = HOUS_HW_P                 # the sensor-side alias the Y stack reads
 # +Z comes from the RAISED POCKET's own measured extent, not from the piston: the
 # cartridge block stands 6.6 above its centre where the piston stands 3.0, and using
