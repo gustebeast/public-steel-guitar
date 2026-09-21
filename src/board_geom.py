@@ -133,6 +133,35 @@ PANEL = {
 }
 
 
+def holes(board: str):
+    """[(x, y, d)] the board's cut holes (its mounting hole), board frame."""
+    out = []
+    for h in load(board).get("holes", []):
+        # the BOX centre, not the vertex mean: KiCad spaces an arc's points unevenly, and
+        # the mean of the motor controller's came out 0.8 mm off its hole
+        xs, ys = [p[0] for p in h], [p[1] for p in h]
+        out.append(((min(xs) + max(xs)) / 2.0, (min(ys) + max(ys)) / 2.0,
+                    max(max(xs) - min(xs), max(ys) - min(ys))))
+    return out
+
+
+def _plate(board: str) -> cq.Workplane:
+    """The laminate itself: the routed OUTLINE (an L where the board has a mounting ear)
+    minus its holes -- not the outline's bounding box, which would lay a slab under
+    everything beside the ear."""
+    g = load(board)
+    t = g["thickness_mm"]
+    poly = g.get("outline_poly")
+    if not poly:
+        w, l = g["outline_mm"]
+        return box_at(w, l, t, x=0.0, y=0.0, z=t / 2.0)
+    plate = cq.Workplane("XY").polyline([tuple(p) for p in poly]).close().extrude(t)
+    for h in g.get("holes", []):
+        plate = plate.cut(cq.Workplane("XY").polyline([tuple(p) for p in h]).close()
+                          .extrude(t + 2.0).translate((0, 0, -1.0)))
+    return plate
+
+
 def _rot(v, deg):
     """A footprint-frame vector (KiCad, +Y down) into the board frame (+Y up), for a
     footprint at KiCad orientation `deg` (counter-clockwise as drawn on screen)."""
@@ -167,9 +196,8 @@ def solid(board: str) -> cq.Workplane:
     rising +Z. Every part is its routed F.Fab body extruded to its HEIGHT, and a panel
     connector with a nose gets that too."""
     g = load(board)
-    w, l = g["outline_mm"]
     t = g["thickness_mm"]
-    out = box_at(w, l, t, x=0.0, y=0.0, z=t / 2.0)
+    out = _plate(board)
     missing = sorted({fp_name(f["fpid"]) for f in g["footprints"]
                       if f["fab"] and fp_name(f["fpid"]) not in HEIGHT})
     if missing:

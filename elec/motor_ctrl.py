@@ -516,8 +516,25 @@ def motor_ctrl():
 # rebuilt around this outline rather than the other way round.
 BOARD_W, BOARD_L = 46.0, 58.0
 
+# THE MOUNTING EAR (user, 2026-09-21): an M4 THROUGH the board, not beside it -- "having the
+# screw adjacent ... doesn't provide as strong of retention". A tab off the +Y edge at the +X
+# corner: that corner is clear (J5 stops at x 6.2, J3 below y -2.2), and standing on the
+# keyhead endplate the +Y edge faces the gap toward the Pi, which is where the side screw was.
+# Bare laminate under the head (the pours cover only the outline_mm layout region). Same ear
+# and hole as the CAN tee's and the output board's.
+EAR_W, EAR_H = 9.5, 8.7
+EAR_HOLE_D = 4.5                                   # M4 clearance
+_EAR_X0 = BOARD_W / 2 - EAR_W
+_EAR_Y1 = BOARD_L / 2 + EAR_H
+EAR_HOLE_XY = (_EAR_X0 + EAR_W / 2, BOARD_L / 2 + EAR_H / 2)
+
 BOARD_NOTES = {
     "outline_mm": (BOARD_W, BOARD_L),
+    "outline_poly": [(-BOARD_W / 2, -BOARD_L / 2), (BOARD_W / 2, -BOARD_L / 2),
+                     (BOARD_W / 2, _EAR_Y1), (_EAR_X0, _EAR_Y1), (_EAR_X0, BOARD_L / 2),
+                     (-BOARD_W / 2, BOARD_L / 2)],
+    "cutouts": [{"xy": EAR_HOLE_XY, "d": EAR_HOLE_D}],
+    "mounting_hole_xy": EAR_HOLE_XY,
     "layers": 4,
     "thickness_mm": 1.6,
     # SKiDL numbers refs by INSTANTIATION order, not by tag: U1 is the buck,
@@ -644,8 +661,6 @@ BOARD_NOTES = {
     # board -- the pour reaches them, but a pour is what routing can orphan, which is
     # the whole reason the plane is there. Every GND pad gets its own via down.
     "stitch_nets": ("GND",),
-    "hold_edge": "+x",
-    "no_mounting_holes": True,
     "single_sided": True,
     "qty_per_instrument": 1,
 }

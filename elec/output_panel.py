@@ -904,8 +904,30 @@ J1_SETBACK = 0.40
 TS_CLAMP_T, TS_HEAD_T, TS_STUB = 4.0, 2.05, 3.0   # Neutrik: clamp 3.0..4.7; nut head; stub
 TS_SHOULDER_DEPTH = TS_CLAMP_T + TS_HEAD_T         # 6.05: face -> jack shoulder
 
+# THE MOUNTING EAR (user, 2026-09-21): "extend the PCB ... so we have room to put an M4 hole?
+# Having the screw adjacent like you have now doesn't provide as strong of retention." Right --
+# a head clamping the board round a hole holds it every way; a screw BESIDE the edge laps ~1 mm
+# of it. The ear is a TAB off the -X edge at the -Y corner, where the side screw used to stand:
+# the -X edge above it is where J2/J3/J4's mouths have to stay, so a tab costs nothing a wider
+# board would. Bare laminate -- the pours cover only the outline_mm LAYOUT REGION -- so nothing
+# is under the head. Same ear and hole as the CAN tee's (can_tee.EAR_*).
+EAR_W, EAR_H = 9.5, 8.7
+EAR_HOLE_D = 4.5                                   # M4 clearance
+_EAR_X0 = -BOARD_W / 2 - EAR_W
+_EAR_Y1 = -BOARD_L / 2 + EAR_H
+EAR_HOLE_XY = (_EAR_X0 + EAR_W / 2, -BOARD_L / 2 + EAR_H / 2)
+
 BOARD_NOTES = {
     "outline_mm": (BOARD_W, BOARD_L),
+    "outline_poly": [(_EAR_X0, -BOARD_L / 2), (BOARD_W / 2, -BOARD_L / 2),
+                     (BOARD_W / 2, BOARD_L / 2), (-BOARD_W / 2, BOARD_L / 2),
+                     (-BOARD_W / 2, _EAR_Y1), (_EAR_X0, _EAR_Y1)],
+    "cutouts": [{"xy": EAR_HOLE_XY, "d": EAR_HOLE_D}],
+    "mounting_hole_xy": EAR_HOLE_XY,
+    # the ear moved the router's first-pass choices and BOOT0 (a one-resistor strap across
+    # the digital block) came back unrouted at the default pass count; more passes let the
+    # optimiser rip up and re-lay rather than freeze the early mess (route.py PASSES note)
+    "router_passes": 20,
     "layers": 4,
     "thickness_mm": 1.6,
     # FOUR LAYERS because this board carries an audio output stage and THREE USB
@@ -1074,8 +1096,12 @@ BOARD_NOTES = {
     # around them. Pinned to THIS routing: re-run repair_search after any netlist change.
     "repair_tracks": [
         ("PWR_GND", "F.Cu", 0.5, [(3.750, -28.000), (11.115, -24.665)]),
-        ("+24V", "F.Cu", 0.5, [(-1.250, -28.000), (-1.250, -29.500)]),
-        ("+24V", "F.Cu", 0.5, [(-1.250, -29.500), (17.250, -29.500)]),
+        # ON B.Cu: the J7 -> J9 hop runs pad to pad UNDER the row. Both ends are THT pads,
+        # so it needs no via, and B.Cu is empty there -- where on F.Cu the router's own
+        # PWR_GND edge run (at y -30.05 since the board grew its mounting ear) crossed it.
+        ("+24V", "B.Cu", 0.5, [(-1.250, -28.000), (-1.250, -29.500)]),
+        ("+24V", "B.Cu", 0.5, [(-1.250, -29.500), (17.250, -29.500)]),
+        ("+24V", "B.Cu", 0.5, [(17.250, -29.500), (17.250, -28.000)]),
         ("+24V", "F.Cu", 0.5, [(17.250, -29.500), (17.250, -28.000)]),
         # THE INLET'S OWN PIN. Turning J6 90 degrees so its mouth faces the panel put its
         # +24V pin (1, the centre pin) at the REAR corner of the body, and the router could
@@ -1296,8 +1322,6 @@ BOARD_NOTES = {
         "FB1": (17.00, -23.50, 0.0),
     },
     "refs_on_fab": True,
-    "hold_edge": "-x",
-    "no_mounting_holes": True,
     "single_sided": True,
     "qty_per_instrument": 1,
 }

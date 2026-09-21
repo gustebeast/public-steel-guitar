@@ -290,11 +290,31 @@ def keyhead_cradles(standing: bool = True) -> cq.Workplane:
     from cadkit.fasteners import M4 as _M4
     from .helpers import box_at
     body = None
+    from cadkit.fasteners import cut_anchor as _cut_anchor
     for fp in (PI_FP, MCTRL_FP):
         x0, x1, y0, y1 = fp
-        cr = pcb_cradle(x1 - x0, y1 - y0, open_edge="-y",
-                        hold_edge="+y", hold_at=0.0, hold_spec=_M4,
-                        standoff=POST_H, clr=0.3)
+        if fp is MCTRL_FP:
+            # ⚠ THE MOTOR CONTROLLER'S M4 GOES THROUGH THE BOARD (user, 2026-09-21: "the
+            # screw adjacent ... doesn't provide as strong of retention"). The board grew a
+            # mounting EAR off its +Y edge (elec/motor_ctrl.py EAR_*), so the cradle is sized
+            # to the board's box INCLUDING the ear and the screw goes down through the ear's
+            # hole into a boss. pcb_cradle's through-board boss is sized for M2 ("pad + 1.5"),
+            # so cadkit's M4 boss is stood under the hole and the anchor re-cut after the
+            # union, as the output board's is (bridge_endplate.op_cradle).
+            # The Pi is a PURCHASED board -- its holes are M2.5 -- so it keeps the M4 beside
+            # its +Y edge.
+            y1 = y1 + MCTRL_EAR_H
+            hx, hy = MCTRL_HOLE[0], MCTRL_HOLE[1] - MCTRL_EAR_H / 2.0
+            cr = pcb_cradle(x1 - x0, y1 - y0, screw_xy=(hx, hy), spec=_M4, open_edge="-y",
+                            standoff=POST_H, clr=0.3)
+            _bt = max(1.6, _M4.anchor_min_wall - POST_H)
+            cr = cr.union(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+                _M4.boss_od / 2.0, _bt + POST_H, cq.Vector(hx, hy, -_bt))))
+            cr = _cut_anchor(_M4, cr, (hx, hy, POST_H), (0, 0, -1), _M4.anchor_min_wall)
+        else:
+            cr = pcb_cradle(x1 - x0, y1 - y0, open_edge="-y",
+                            hold_edge="+y", hold_at=0.0, hold_spec=_M4,
+                            standoff=POST_H, clr=0.3)
         cr = cr.translate(((x0 + x1) / 2.0, (y0 + y1) / 2.0, TRAY_Z1))
         wx0, wx1 = max(x0, LEDGE_LX0), min(x1, LEDGE_LX1)
         wy0, wy1 = max(y0, LEDGE_LY0), min(y1, LEDGE_LY1)
@@ -325,10 +345,18 @@ def keyhead_cradles(standing: bool = True) -> cq.Workplane:
         # y -127.5..-69.5, clear of all of it, and gets its full set.
         _bb = cr.val().BoundingBox()
         rx0, rx1 = _bb.xmin - 1.0, _bb.xmax + 1.0
+        _ribs = []
         for k in range(int((y1 - y0) // RIB_PITCH) + 1):
             ry = y0 + RIB_PITCH / 2.0 + k * RIB_PITCH
             if ry > y1 - RIB_T:
                 break
+            _ribs.append(ry)
+        # and one under the +Y edge when the pitch left more than half a gap there -- the
+        # motor controller's mounting ear stretched its base 8.7 mm past the last rib and
+        # opened a 13.8 mm bridge (check_ceilings) where the pitch alone allows 10.4
+        if y1 - _ribs[-1] > RIB_PITCH / 2.0 + RIB_T:
+            _ribs.append(y1 - RIB_T / 2.0)
+        for ry in _ribs:
             if NUT_KEEPOUT_Y0 - RIB_T < ry < NUT_KEEPOUT_Y1 + RIB_T:
                 continue
             cr = cr.union(box_at(rx1 - rx0, RIB_T, TRAY_Z1 - RIB_LZ,
@@ -583,6 +611,22 @@ MCTRL_J = {"J1": (-10.0, 2.5, 0.0),      # bus A out -- the ten motor tees
            "J3": (15.5, -8.5, 90.0),     # 24 V in, +X edge
            "J4": (0.0, -20.5, 0.0),      # USB-C to the Pi, -Y edge
            "J5": (0.0, 26.0, 0.0)}       # 5 V to the Pi's GPIO (was the power board)
+# THE MOUNTING EAR, read off the ROUTED board (elec/geom/motor_ctrl.geom.json), moved into
+# this file's frame: the rectangle's centre, which is what MCTRL_FP, MCTRL_J and MCTRL_BOM
+# are all written about. The geom file centres on the outline's BOX, which the ear pushes
+# +Y by half its height.
+def _mctrl_ear():
+    from . import board_geom as _BG
+    poly = _BG.load("motor_ctrl")["outline_poly"]
+    ymin = min(p[1] for p in poly)
+    dy = -ymin - MCTRL_BOARD_Y / 2.0                  # geom frame -> rectangle frame
+    out = [(p[0], p[1] + dy) for p in poly]
+    (hx, hy, hd), = _BG.holes("motor_ctrl")
+    ear_h = max(p[1] for p in out) - MCTRL_BOARD_Y / 2.0
+    return out, (hx, hy + dy, hd), ear_h
+
+
+MCTRL_OUTLINE, MCTRL_HOLE, MCTRL_EAR_H = _mctrl_ear()
 MCTRL_USB = (10.73, 9.51, 3.26, 0.0, -23.31)   # HRO TYPE-C-31-M-12: courtyard + height
 # Every populated part except the four connectors, which are modelled properly
 # (cadkit XH / the USB block above). (name, value, X, Y, height, x, y), board-local
@@ -661,7 +705,11 @@ def motor_ctrl_pcb(mating: bool = False) -> cq.Workplane:
     footprint puts the body on the -Y side of its pin row, and the connector is
     not symmetric about its pins, so which side the body falls on is a real
     choice at layout rather than a cosmetic one."""
-    b = box_at(MCTRL_BOARD_X, MCTRL_BOARD_Y, _PCB_T, x=0.0, y=0.0, z=_PCB_T / 2)
+    # the laminate as ROUTED -- the rectangle plus its +Y mounting ear, minus the M4 hole
+    b = (cq.Workplane("XY").polyline(MCTRL_OUTLINE).close().extrude(_PCB_T)
+         .cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+             MCTRL_HOLE[2] / 2.0, _PCB_T + 2.0,
+             cq.Vector(MCTRL_HOLE[0], MCTRL_HOLE[1], -1.0)))))
     for ref, (jx, jy, rot) in MCTRL_J.items():
         if ref == "J4":
             w, l, h, ox, oy = MCTRL_USB
