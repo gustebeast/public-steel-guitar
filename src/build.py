@@ -1148,6 +1148,43 @@ def lever_components():
     return _lever_stations_components() + _foot_pedal_components()
 
 
+_LKL_VKL_STATIONS = ("lkl", "vkl")
+
+
+def lkl_vkl_box():
+    """(w, d, h, x, y, z) round the LKL and VKL stations: both levers whole, plus the
+    chassis bottom they hang from. X/Z come from the two stations' posed parts; Y spans
+    the whole chassis (the rib mortises run its depth); +Z stops under the deck so the
+    view looks up into the ribs rather than at the top plate."""
+    from . import chassis as CH, top_plate as TP
+    bbs = [w.val().BoundingBox() for n, w in _lkl_vkl_levers()]
+    x0, x1 = min(b.xmin for b in bbs) - 30.0, max(b.xmax for b in bbs) + 30.0
+    y0, y1 = CH.Y_LO - 10.0, CH.Y_HI + 10.0
+    z0, z1 = min(b.zmin for b in bbs) - 10.0, TP.BZ
+    return (x1 - x0, y1 - y0, z1 - z0, (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2)
+
+
+def _lkl_vkl_levers():
+    # LKL keeps the bare names; the other stations are prefixed (see _lever_stations_components)
+    others = tuple(f"{st[0]}_" for st in LEVER_STATIONS if st[0] not in _LKL_VKL_STATIONS)
+    return [(n, w) for n, w in _lever_stations_components() if not n.startswith(others)]
+
+
+def lkl_vkl_components():
+    """LKL + VKL and the chassis bottom they mount to, as ONE live set -- for the lever
+    joinery work. The chassis is CLIPPED to lkl_vkl_box(): the rest of its length is
+    context the levers cannot reach, and it is most of the solids."""
+    w, d, h, x, y, z = lkl_vkl_box()
+    box = cq.Workplane("XY").box(w, d, h).translate((x, y, z))
+    out = _lkl_vkl_levers()
+    for n, seg in ([(f"chassis_{i}", s) for i, s in enumerate(chassis_segments)]
+                   + [(f"chassis_light_{i}", s) for i, s in enumerate(chassis_light)]):
+        clip = seg.intersect(box)
+        if clip.solids().vals():
+            out.append((n, clip))
+    return out
+
+
 def _tensioner_coupon_components():
     """The unified belt clamp shown ASSEMBLED, parked off the +X end for a clear look (the real
     clamps ride each string's belt). ONE SKU per half (`clamp_half`; half-B is it turned 180° about
