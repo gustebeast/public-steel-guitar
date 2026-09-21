@@ -62,7 +62,6 @@ I, O, PWR = Pin.types.INPUT, Pin.types.OUTPUT, Pin.types.PWRIN
 XH_PINOUT = harness.XH_PINOUT
 MCU_FP = "Package_DFN_QFN:QFN-68-1EP_8x8mm_P0.4mm_EP5.2x5.2mm"
 XH_FP = "Connector_JST:JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical"
-USB_FP = "Connector_USB:USB_C_Receptacle_HRO_TYPE-C-31-M-12"
 
 
 # ⚠ THE REF IS PINNED FROM THE TAG. Every call passes a tag that spells the intended
@@ -236,6 +235,14 @@ def motor_ctrl():
     #   35 PB12 = CAN2_RX  , 36 PB13 = CAN2_TX    <- bus B
     #   46 PA11 = OTG_FS_DM, 47 PA12 = OTG_FS_DP  <- the Pi link
     #   48 PA13 = SWDIO    , 52 PA14 = SWCLK
+    #   1 VBAT -- tied to 3V3 (2026-09-21)
+    #
+    # ⚠ VBAT (PIN 1) WAS NEVER CONNECTED, on this board AND the output board, both "checked
+    # against the QFN68 column". The check covered the pins that were WIRED; nothing asked
+    # which pins of the package were not. VBAT feeds the backup domain (RTC, backup
+    # registers) and WCH, like every part in this family, wants it tied to VDD when no
+    # battery is fitted -- floating, the backup domain's supply is undefined. Found by
+    # listing Table 3-1's QFN68 column whole (.ins/ch32v307_qfn68.json) against the netlist.
     #
     # ⚠ ALL TWENTY-FOUR CHECKED AGAINST THE QFN68 COLUMN, 2026-09-17, ZERO MISMATCHES --
     # numbers AND names, including every power pin, read with per-word coordinates so the
@@ -261,14 +268,14 @@ def motor_ctrl():
             (17, "VIO_4", PWR), (31, "VIO_1", PWR), (51, "VIO_2", PWR), (67, "VIO_3", PWR),
             (35, "PB12", I), (36, "PB13", O), (46, "PA11", P), (47, "PA12", P),
             (48, "PA13", P), (52, "PA14", P), (63, "BOOT0", I),
-            (64, "PB8", I), (65, "PB9", O)]
+            (64, "PB8", I), (65, "PB9", O), (1, "VBAT", PWR)]
     u1 = Part(name="CH32V307WCU6", ref_prefix="U", tag="U1", dest="NETLIST", tool="skidl",
               value="CH32V307WCU6", description="RISC-V MCU, 2x hardware CAN",
               footprint=MCU_FP,
               pins=[Pin(num=n, name=nm, func=f) for n, nm, f in pins])
     gnd += u1["VSS_PAD"], u1["VSS_1"], u1["VSS_2"], u1["VSSA"]
     v33 += (u1["VDD_1"], u1["VDD_2"], u1["VDD_3"], u1["VDDA"],
-            u1["VIO_1"], u1["VIO_2"], u1["VIO_3"], u1["VIO_4"])
+            u1["VIO_1"], u1["VIO_2"], u1["VIO_3"], u1["VIO_4"], u1["VBAT"])
     nrst += u1["NRST"]; boot0 += u1["BOOT0"]
     osc1 += u1["OSC_IN"]; osc2 += u1["OSC_OUT"]
     a_rx += u1["PB8"]; a_tx += u1["PB9"]         # CAN1 REMAPPED -- see the header
@@ -312,48 +319,32 @@ def motor_ctrl():
     c_bulk = _c("C15", "10uF", "MCU bulk", "Capacitor_SMD:C_0805_2012Metric")
     v33 += c_bulk[1]; gnd += c_bulk[2]
 
-    # ── USB-C to the Pi ──────────────────────────────────────────────────────
-    # ⚠ USB_DP ROUTES HERE, AND AN EARLIER NOTE IN THIS PLACE SAID IT COULD NOT. Worth
-    # keeping the correction, because the arithmetic was right and the conclusion drawn
-    # from it was not. Escaping BETWEEN two adjacent USB-C pads does need 0.6 of via plus
-    # 0.137 of clearance beside a 0.2 track -- 0.537 mm into a 0.500 mm pitch -- and that
-    # remains impossible. But joining A6 to B6 does not have to pass between the pads: the
-    # router took it AROUND THE ENDS. The pads span y 119.10..120.55 and the link runs
-    # across at y = 120.85, clearing them by 0.305 mm, which is 0.18 mm edge to edge
-    # against a 0.127 fab rule. Tight, legal, and DRC agrees at zero violations.
-    #
-    # ⚠ IT IS A SEARCH RESULT, NOT A CONSTRUCTION, WHICH IS THE PART TO WATCH. Nothing was
-    # done to USB_DP: it appeared when +24V went from 0.25 to 0.5 mm and perturbed the
-    # router's search, and a solution found that way can be lost the same way. The optical
-    # board does not rely on luck here -- it declares the pair and _flip_merge builds the
-    # A6/B6 link deliberately -- and if this link goes missing after some unrelated
-    # change, that is the fix, not another routing run.
-    # HRO TYPE-C-31-M-12 (LCSC C165948), the same receptacle the optical board
-    # uses. Both halves of D+/D- are tied so the cable works either way up.
-    # VBUS IS DELIBERATELY UNCONNECTED: the board runs off the 24 V rail, and
-    # taking VBUS as well would leave the Pi's supply and the instrument's
-    # fighting over which one holds the rail.
-    usb = Part(name="USB_C_Receptacle", ref_prefix="J", tag="J4", dest="NETLIST",
-               tool="skidl", value="TYPE-C-31-M-12", description="link to the Pi",
-               footprint=USB_FP,
-               pins=[Pin(num=n, func=P) for n in
-                     ("A1", "A4", "A5", "A6", "A7", "A8", "A9", "A12",
-                      "B1", "B4", "B5", "B6", "B7", "B8", "B9", "B12", "SH")])
-    gnd += usb["A1"], usb["A12"], usb["B1"], usb["B12"], usb["SH"]
-    # VBUS's four pads are ONE pin on the real part, so they are commoned onto a
-    # net that goes nowhere else. Left netless they read as four separate
-    # unconnected pads and DRC reports them shorting each other -- which is the
-    # tool being right about the model and wrong about the connector.
-    # The net carries NO LOAD: this board runs off the 24 V rail, and drawing
-    # VBUS as well would leave the Pi's supply and the instrument's arguing over
-    # who holds the rail. It is a landing for a future VBUS-present sense.
+    # ── the link to the Pi: USB 2.0 on a top-entry XH, NOT a USB-C receptacle ──────
+    # ⚠ THE USB-C COULD NOT BE PLUGGED IN (2026-09-21). It sat on the board's -Y edge with
+    # its mouth facing the -Y rail, and standing on the keyhead endplate that edge is 5.5 mm
+    # from the wall -- no USB-C plug, straight or right-angle, fits in front of it, let alone
+    # goes in. Every other edge is as tight (9 mm to the deck, 10 to the floor, 8 to the Pi).
+    # The only direction with room is straight off the board's face into the bay, which is
+    # the direction every OTHER lead on this board already leaves by: a top-entry XH.
+    # So the link is a stock USB-A -> 4-way XH lead (Amazon B0H9QTYT83), plugged into the
+    # Pi's USB-A like the old cable was. XH is what every board-level connector in the
+    # instrument is (user), the cable's crimps re-pin in the housing without solder if a
+    # batch arrives in another order, and nothing here needed USB-C: no CC (a USB-A host has
+    # none, so R8/R9 went with it), no orientation, and full speed is all the link uses.
+    # Pin order is USB's own: 1 VBUS, 2 D-, 3 D+, 4 GND.
+    # VBUS IS DELIBERATELY UNCONNECTED, as it was on the USB-C: the board runs off the 24 V
+    # rail, and taking VBUS as well would leave the Pi's supply and the instrument's
+    # arguing over who holds the rail. It is a landing for a future VBUS-present sense.
+    usb = Part(name="B4B-XH-A", ref_prefix="J", tag="J4", dest="NETLIST", tool="skidl",
+               value="B4B-XH-A", footprint=XH_FP,
+               description="USB 2.0 link to the Pi (USB-A -> XH lead): VBUS n/c, D-, D+, GND",
+               pins=[Pin(num=i + 1, name=n, func=P)
+                     for i, n in enumerate(("VBUS", "D-", "D+", "GND"))])
     vbus = Net("VBUS_NC")
-    vbus += usb["A4"], usb["B4"], usb["A9"], usb["B9"]
-    dp += usb["A6"], usb["B6"]
-    dm += usb["A7"], usb["B7"]
-    for tag, pin in (("R8", "A5"), ("R9", "B5")):
-        r = _r(tag, "5k1", "USB-C CC pull-down (upstream-facing port)")
-        usb[pin] += r[1]; gnd += r[2]
+    vbus += usb[1]
+    dm += usb[2]
+    dp += usb[3]
+    gnd += usb[4]
     # ── 24 V -> 5 V FOR THE Pi, AND THE CROWBAR THAT MATTERS MORE ────────────
     # THE POWER BOARD IS GONE AND THIS IS IT (user, 2026-09-15). It was its own
     # PCB in the tray; merging it here deletes a board, a connector and a cable --
@@ -535,6 +526,9 @@ BOARD_NOTES = {
                      (-BOARD_W / 2, BOARD_L / 2)],
     "cutouts": [{"xy": EAR_HOLE_XY, "d": EAR_HOLE_D}],
     "mounting_hole_xy": EAR_HOLE_XY,
+    # J4 going XH moved the router's first pass and OSC_OUT (Y1 -> U4) came back open at the
+    # default ten; more passes let it rip up and re-lay (route.py PASSES note)
+    "router_passes": 20,
     "layers": 4,
     "thickness_mm": 1.6,
     # SKiDL numbers refs by INSTANTIATION order, not by tag: U1 is the buck,
@@ -556,7 +550,8 @@ BOARD_NOTES = {
         "TP3": (-10.85, -3.10, 0.0),
         "TP4": (5.40, -15.60, 0.0),
         "TP5": (-6.85, -21.35, 0.0),
-        "J4": (0.00, -20.50, 0.0),
+        "J4": (3.00, -25.20, 0.0),      # XH now (see the link's note): down on the -Y edge,
+                                         # clear of Y1 / C15 / TP5
         "U4": (-4.00, -9.50, 0.0),
         "U2": (6.30, -5.00, 0.0),
         "U3": (6.30, -11.50, 0.0),
@@ -597,10 +592,8 @@ BOARD_NOTES = {
         "D3": (15.30, 1.00, 0.0),
         "D4": (10.00, -17.00, 0.0),
         "D5": (13.00, -17.00, 0.0),
-        "R8": (-7.00, -24.00, 0.0),
-        "R9": (-10.00, -24.00, 0.0),
-        "D6": (7.00, -24.00, 0.0),
-        "D7": (10.00, -24.00, 0.0),
+        "D6": (-7.00, -24.50, 0.0),     # the USB clamps take R8/R9's old slots
+        "D7": (-10.00, -24.50, 0.0),
         "C19": (-17.00, 9.00, 0.0),
         "C20": (-13.00, 9.00, 0.0),
         "R10": (-9.00, 9.00, 0.0),

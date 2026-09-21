@@ -1004,7 +1004,19 @@ def op_cradle():
     from cadkit.fasteners import cut_anchor as _cut_anchor
     from . import board_geom as _BG
     (hx, hy, _hd), = _BG.holes("output_panel")
-    cr = pcb_cradle(OP_BOARD_X, OP_BOARD_Y, screw_xy=(hx, hy), spec=_M4, open_edge=None,
+    # THE CRADLE IS THE BOARD'S RECTANGLE, NOT ITS BOX (user, 2026-09-21: the -X wall made
+    # print overhangs and no real retention, and "a little prism ... doesn't seem to do
+    # anything"). Sized to the bounding box it carried floor, a curb and a corner pad beside
+    # the ear where there is no board. The ear is carried by the M4 boss alone, the -X side
+    # is open (the way in, and nothing the screw does not already hold), and the rectangle's
+    # own +Y edge -- which only the rectangle spans -- is what finds it in the outline.
+    _poly = _BG.load("output_panel")["outline_poly"]
+    _ymax = max(p[1] for p in _poly)
+    _rx0 = min(p[0] for p in _poly if abs(p[1] - _ymax) < 1e-6)
+    _rx1 = max(p[0] for p in _poly)
+    rw, rcx = _rx1 - _rx0, (_rx0 + _rx1) / 2.0        # rectangle width and centre (geom frame)
+    hx -= rcx                                         # the cradle is built about the rectangle
+    cr = pcb_cradle(rw, OP_BOARD_Y, screw_xy=(hx, hy), spec=_M4, open_edge="-x",
                     standoff=standoff, clr=OP_PANEL_CLR)
     _base_t = max(1.6, _M4.anchor_min_wall - standoff)
     cr = cr.union(cq.Workplane("XY").add(cq.Solid.makeCylinder(
@@ -1016,16 +1028,29 @@ def op_cradle():
     # +X WALL: the panel is the stop, and a wall there would sit IN the panel, standing
     # above the board's edge exactly where the three connectors overhang it.
     cr = cr.cut(box_at(20.0, OP_BOARD_Y + 40.0, 60.0,
-                       x=OP_BOARD_X / 2 + OP_PANEL_CLR + 10.0, y=0.0, z=0.0))
-    # -X WALL, above the board's underside only: that is the way in. What stays below is a
-    # curb the board slides over, and the screw's boss, which pcb_cradle stood on the
-    # mounting surface and topped at the board's underside -- so this cut leaves it whole.
-    cr = cr.cut(box_at(20.0, OP_BOARD_Y + 40.0, 60.0,
-                       x=-(OP_BOARD_X / 2 + OP_PANEL_CLR + 10.0), y=0.0,
-                       z=standoff + 30.0))
+                       x=rw / 2 + OP_PANEL_CLR + 10.0, y=0.0, z=0.0))
+    # THE +Y/-X CORNER PAD MOVES OFF J2. That corner is under the USB-A (GCT USB1046, its
+    # courtyard to x -31.75, y 31.3), whose THT shell legs come through the board there; the
+    # pad would stand on them. It goes to the clear strip past J2 along the same +Y edge
+    # (geom x -18.19..-14.3, J8's terminal block beyond it).
+    _pad, _hw, _hl = 3.2, rw / 2.0, OP_BOARD_Y / 2.0
+    _pyc = _hl - _pad / 2.0
+    cr = cr.cut(box_at(_pad + 0.02, _pad + 0.02, standoff + 0.01,
+                       x=-_hw + _pad / 2.0, y=_pyc, z=standoff / 2.0))
+    _PY_X0 = -17.85 - rcx                           # the moved pad's -X edge, cradle frame
+    cr = cr.union(box_at(_pad, _pad, standoff, x=_PY_X0 + _pad / 2.0, y=_pyc,
+                         z=standoff / 2.0))
+    # 45 DEG GUSSETS under the -X pads. This part builds -X off a bed at the panel face, so
+    # each pad stands off the floor as a 4.25 mm cantilever whose +X face looks straight
+    # down at the bed (check_ceilings). A triangle on that face, floor to pad top, turns it
+    # into a 45 deg ramp. (The +X pads sit 1.9 off the bed; theirs is noise.)
+    for _xb, _y in ((-_hw + _pad, -_pyc), (_PY_X0 + _pad, _pyc)):
+        cr = cr.union(cq.Workplane("XZ").polyline([(_xb, 0.0), (_xb + standoff, 0.0),
+                                                   (_xb, standoff)]).close()
+                      .extrude(_pad / 2.0, both=True).translate((0.0, _y, 0.0)))
     # (The 24 V lane cut that used to take the -Y wall away is gone with the lane: the 24 V
     #  runs cross ABOVE the board now, in the recess, and nothing rides y -120.75 at z -52.)
-    return cr.translate((cx, cy, cz - standoff))
+    return cr.translate((cx + rcx, cy, cz - standoff))
 
 
 bridge_endplate = _build()

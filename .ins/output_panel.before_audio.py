@@ -85,13 +85,13 @@ DC_FP = "Connector_BarrelJack:BarrelJack_CUI_PJ-102AH_Horizontal"
 XH_FP = "Connector_JST:JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical"
 TERM_FP = "TerminalBlock:TerminalBlock_MaiXu_MX126-5.0-02P_1x02_P5.00mm"
 MCU_FP = "Package_DFN_QFN:QFN-68-1EP_8x8mm_P0.4mm_EP5.2x5.2mm"
-ADC_FP = "Package_SO:TSSOP-14_4.4x5mm_P0.65mm"     # PCM1808PWR is a 14-pin TSSOP
+ADC_FP = "Package_SO:TSSOP-16_4.4x5mm_P0.65mm"
 DAC_FP = "Package_SO:TSSOP-20_4.4x6.5mm_P0.65mm"
 HUB_FP = "Package_DFN_QFN:HVQFN-24-1EP_4x4mm_P0.5mm_EP2.5x2.5mm"
 # DPDT signal relay, 5 V coil. Only ONE pole switches audio (the tip); an
 # unbalanced output has nothing for the second pole to do, and a DPDT in this
 # package is what is stocked.
-RELAY_FP = "Relay_SMD:Relay_DPDT_Omron_G6K-2F-Y"
+RELAY_FP = "Relay_SMD:Relay_DPDT_FRT5_SMD"
 
 
 # ⚠ THE REF IS PINNED FROM THE TAG. Every call passes a tag that spells the intended
@@ -450,13 +450,7 @@ def output_panel():
     #   37 PB14 = I2S2ext SD (FROM the ADC) -- full duplex on ONE clock pair, which
     #            is what lets the ADC and the DAC share BCK/LRCK and stay sample-
     #            aligned with each other without a resampler in between.
-    #   25 PC5 relay (the comment said PB0 until 2026-09-21; PB0 is pin 26 -- the WIRING was
-    #            always pin 25, so firmware drives PC5), 48 PA13 SWDIO, 52 PA14 SWCLK, 63 BOOT0
-    #   39 PC6  = I2S2_MCK -> the ADC's SCKI and the DAC's SCK (256 fS)
-    #    1 VBAT -> 3V3 (it was floating: see motor_ctrl.py's note -- the same check that
-    #            passed every WIRED pin never asked which pins were not wired)
-    # Re-read 2026-09-21 off datasheet V3.8 Table 3-1 (the 303/305/307 table; pages 41-48
-    # are the CH32V317's and number these pins differently).
+    #   25 PB0 relay, 48 PA13 SWDIO, 52 PA14 SWCLK, 63 BOOT0
     #
     # ⚠ ALL TEN CHECKED AGAINST THE QFN68 COLUMN, 2026-09-17, ZERO MISMATCHES, read
     # with per-word coordinates so the number taken is the one standing in that
@@ -471,7 +465,7 @@ def output_panel():
                 (32, 50, 68, 17, 31, 51, 67, 13,        # VDD
                  18, 49, 12, 69,                        # VSS + the exposed pad
                  5, 6, 7,                               # OSC_IN, OSC_OUT, NRST
-                 61, 62, 35, 36, 37, 38, 25, 48, 52, 63, 39, 1)]
+                 61, 62, 35, 36, 37, 38, 25, 48, 52, 63)]
     u1 = Part(name="CH32V307WCU6", ref_prefix="U", ref="U1", tag="U1", dest="NETLIST", tool="skidl",
               value="CH32V307WCU6",
               description="RISC-V MCU, USB2.0 HS with INTERNAL PHY (LCSC C5142795)",
@@ -491,9 +485,6 @@ def output_panel():
     i2s_sdi += u1[37]
     i2s_sdo += u1[38]
     relay += u1[25]
-    mclk = Net("I2S_MCK")
-    mclk += u1[39]
-    v3v3 += u1[1]             # VBAT: no backup battery, so it is the main supply
     swdio, swclk, boot0 = Net("SWDIO"), Net("SWCLK"), Net("BOOT0")
     swdio += u1[48]
     swclk += u1[52]
@@ -520,104 +511,107 @@ def output_panel():
 
     boot0 += u1[63]
 
-    # ══ THE ANALOG HALF, REWIRED FROM TI'S DATASHEETS (2026-09-21) ══════════════════════
-    # The 2026-09-17 audit found it unbuildable: both converters' pinouts invented, the DAC on
-    # 5 V (abs max 3.9), the ADC's SCKI tied to BCK, and both buffers unable to go below
-    # ground. Every pin below is off the part's own Pin Functions table (PCM1808 SLES177B,
-    # PCM5102A SLAS859C, both read 2026-09-21), every support part off its typical-application
-    # figure (PCM5102A Figure 33; PCM1808 sections 8.2 and 10.1.4). fab.py still holds the
-    # board OPEN until someone checks this against the datasheets independently.
+    # ══ ⚠ AUDIT, 2026-09-17: THE ANALOG HALF OF THIS BOARD IS NOT BUILDABLE AS WIRED ══
+    # Checked against TI's own datasheets (PCM5102A SLAS859C, PCM1808 SLES177B), not
+    # memory. The board routes 0/0 in DRC and is electrically wrong, because DRC checks
+    # copper against the netlist and these faults ARE the netlist.
+    #
+    # 1. U3 (PCM5102A) PINOUT IS INVENTED. Ten made-up pins on a 20-pin TSSOP. The real
+    #    order is 1 CPVDD 2 CAPP 3 CPGND 4 CAPM 5 VNEG 6 OUTL 7 OUTR 8 AVDD 9 AGND
+    #    10 DEMP 11 FLT 12 SCK 13 BCK 14 DIN 15 LRCK 16 FMT 17 XSMT 18 LDOO 19 DGND
+    #    20 DVDD. It also needs a CAPP-CAPM flying cap, VNEG and LDOO decoupling, and
+    #    DEMP/FLT/FMT/SCK strapped -- none of which exist here.
+    # 2. U3 IS WIRED TO 5 V. AVDD and XSMT go to v5. AVDD/CPVDD/DVDD are ABSOLUTE
+    #    MAXIMUM 3.9 V. As drawn, the first power-up damages the DAC.
+    # 3. U2 (PCM1808) PINOUT IS INVENTED. 16 pins on a 14-pin TSSOP. Real order:
+    #    1 VREF 2 AGND 3 VCC(5 V) 4 VDD(3.3 V) 5 DGND 6 SCKI 7 LRCK 8 BCK 9 DOUT
+    #    10 MD0 11 MD1 12 FMT 13 VINL 14 VINR.
+    # 4. SCKI IS TIED TO BCK. SCKI must be 256/384/512 fS; BCK is 64 fS. The ADC needs a
+    #    real MCLK from the MCU (I2S2_MCK), which is not wired.
+    # 5. THE BUFFERS CLIP HALF THE WAVEFORM. PCM5102A's OUTL is GROUND-CENTRED (its
+    #    charge pump makes the negative rail), and the pickup is AC about 0 V. Both feed
+    #    TLV9061s on 5 V with V- at AGND, which cannot go below ground. Each path needs
+    #    a mid-rail bias and coupling caps -- a tone-affecting choice, and a design
+    #    decision rather than a correction.
+    # 6. U4 (hub) and K1 (relay) are numbered 1..N with no datasheet behind them.
+    #
+    # fab.py keeps every one of these parts OPEN so the panel cannot be ordered while
+    # this stands. Delete this note only when each item is fixed and re-checked.
+    # ══════════════════════════════════════════════════════════════════════════════
 
-    # ── U2: PCM1808PWR, TSSOP-14 -- the magnetic channel's ADC ──────────────
-    #   1 VREF 2 AGND 3 VCC(5 V) 4 VDD(3V3) 5 DGND 6 SCKI 7 LRCK 8 BCK 9 DOUT
-    #   10 MD0 11 MD1 12 FMT 13 VINL 14 VINR
-    # MD1 = MD0 = low: SLAVE mode, SCKI auto-detected at 256/384/512 fS, so the MCU owns BCK
-    # and LRCK and the ADC and DAC share one clock. FMT low = I2S.
-    # SCKI is the MCU's I2S2_MCK (PC6) -- a real 256 fS master clock. It was tied to BCK
-    # (64 fS), which the part cannot run from.
-    pk_buf, adc_in, vref = Net("PICKUP_BUF"), Net("ADC_IN"), Net("ADC_VREF")
+    # ── U2: the magnetic channel's ADC ───────────────────────────────────────
+    # PCM1808: 1 VINL 2 VINR 3 AGND 4 VCC 5 MD1 6 MD0 7 SCKI 8 BCK 9 LRCK 10 DOUT
+    #          11 DGND 12 VDD 13 FMT 14-16 unused on this part's TSSOP.
+    # MD1/MD0 low = SLAVE mode: the MCU owns BCK and LRCK, which is what keeps the
+    # ADC and the DAC on the same clock.
+    pk_buf = Net("PICKUP_BUF")
     u2 = Part(name="PCM1808PWR", ref_prefix="U", ref="U2", tag="U2", dest="NETLIST", tool="skidl",
               value="PCM1808PWR", description="24-bit 99 dB 96 kHz stereo ADC",
               footprint=ADC_FP,
-              pins=[Pin(num=i + 1, name=n, func=P) for i, n in enumerate(
-                  ("VREF", "AGND", "VCC", "VDD", "DGND", "SCKI", "LRCK", "BCK", "DOUT",
-                   "MD0", "MD1", "FMT", "VINL", "VINR"))])
-    vref += u2["VREF"]
-    agnd += u2["AGND"]
-    v5 += u2["VCC"]
-    v3v3 += u2["VDD"]
-    gnd += u2["DGND"], u2["MD0"], u2["MD1"], u2["FMT"]
-    mclk += u2["SCKI"]
-    i2s_ws += u2["LRCK"]
-    i2s_ck += u2["BCK"]
-    i2s_sdi += u2["DOUT"]
-    # BOTH inputs take the one buffered pickup (one coil), through ONE coupling cap: the ADC
-    # biases its own inputs at VREF (0.5 VCC), 60k each, so the cap is the input HPF --
-    # TI's 1 uF gives 2.7 Hz into one input; into the two in parallel, 5.3 Hz.
-    adc_in += u2["VINL"], u2["VINR"]
+              pins=[Pin(num=i, func=P) for i in range(1, 17)])
+    # BOTH inputs take the same buffered pickup: the instrument has one magnetic
+    # coil, and driving the unused channel with the signal rather than leaving it
+    # floating keeps the part's two halves at the same bias.
+    pk_buf += u2[1], u2[2]
+    agnd += u2[3]
+    v5 += u2[4]
+    gnd += u2[5], u2[6], u2[11], u2[13]
+    i2s_ck += u2[7], u2[8]
+    i2s_ws += u2[9]
+    i2s_sdi += u2[10]
+    v3v3 += u2[12]
+    for n in (14, 15, 16):
+        Net("U2_NC_%d" % n).connect(u2[n])
 
-    # ── U3: PCM5102APWR, TSSOP-20 -- the Pi's processed audio, made analog again ──
-    #   1 CPVDD 2 CAPP 3 CPGND 4 CAPM 5 VNEG 6 OUTL 7 OUTR 8 AVDD 9 AGND 10 DEMP
-    #   11 FLT 12 SCK 13 BCK 14 DIN 15 LRCK 16 FMT 17 XSMT 18 LDOO 19 DGND 20 DVDD
-    # EVERY SUPPLY IS 3.3 V (AVDD/CPVDD/DVDD abs max 3.9 V). FLT, DEMP, FMT low: normal
-    # latency, no de-emphasis, I2S. SCK takes the same 256 fS MCLK as the ADC (4-wire), so
-    # the DAC's clock does not depend on its PLL locking to BCK. XSMT high = un-muted.
+    # ── U3: the DAC -- the Pi's processed audio, made analog again ───────────
     proc = Net("AUDIO_PROC")
-    capp, capm = Net("DAC_CAPP"), Net("DAC_CAPM")
-    vneg, ldoo = Net("DAC_VNEG"), Net("DAC_LDOO")
-    u3 = Part(name="PCM5102APWR", ref_prefix="U", ref="U3", tag="U3", dest="NETLIST", tool="skidl",
-              value="PCM5102APWR", description="112 dB stereo DAC, 2.1 Vrms ground-centred out",
+    u3 = Part(name="DAC_I2S", ref_prefix="U", ref="U3", tag="U3", dest="NETLIST", tool="skidl",
+              value="PCM5102A-class", description="I2S stereo DAC, no MCLK needed",
               footprint=DAC_FP,
-              pins=[Pin(num=i + 1, name=n, func=P) for i, n in enumerate(
-                  ("CPVDD", "CAPP", "CPGND", "CAPM", "VNEG", "OUTL", "OUTR", "AVDD", "AGND",
-                   "DEMP", "FLT", "SCK", "BCK", "DIN", "LRCK", "FMT", "XSMT", "LDOO", "DGND",
-                   "DVDD"))])
-    v3v3 += u3["CPVDD"], u3["AVDD"], u3["DVDD"], u3["XSMT"]
-    gnd += u3["CPGND"], u3["AGND"], u3["DGND"], u3["DEMP"], u3["FLT"], u3["FMT"]
-    capp += u3["CAPP"]
-    capm += u3["CAPM"]
-    vneg += u3["VNEG"]
-    ldoo += u3["LDOO"]
-    mclk += u3["SCK"]
-    i2s_ck += u3["BCK"]
-    i2s_sdo += u3["DIN"]
-    i2s_ws += u3["LRCK"]
-    proc += u3["OUTL"]
+              pins=[Pin(num=1, name="LRCK", func=P), Pin(num=2, name="DIN", func=P),
+                    Pin(num=3, name="BCK", func=P), Pin(num=4, name="DGND", func=P),
+                    Pin(num=5, name="DVDD", func=P), Pin(num=6, name="AVDD", func=P),
+                    Pin(num=7, name="AGND", func=P), Pin(num=8, name="OUTL", func=P),
+                    Pin(num=9, name="OUTR", func=P), Pin(num=10, name="XSMT", func=P)]
+                   + [Pin(num=i, func=P) for i in range(11, 21)])
+    i2s_ws += u3[1]
+    i2s_sdo += u3[2]
+    i2s_ck += u3[3]
+    gnd += u3[4]
+    v3v3 += u3[5]
+    v5 += u3[6]
+    agnd += u3[7]
     # ⚠ OUTR IS UNCONNECTED ON PURPOSE AND THAT IS NOW A DECISION, NOT AN OMISSION.
     # The user's call: the PI DOES THE STEREO->MONO SUM IN SOFTWARE. It already
     # chooses what to send here, so it can fold down for the jack while the
     # computer gets full stereo over the gadget port -- two different mixes from
-    # one stream.
-    Net("DAC_OUT_R_NC").connect(u3["OUTR"])
+    # one stream. A resistor pair into the buffer's summing node would have frozen
+    # one fixed relationship in copper and made both worse.
+    proc += u3[8]
+    Net("DAC_OUT_R_NC").connect(u3[9])
+    v5 += u3[10]              # XSMT tied high: un-mute
+    for n in range(11, 21):
+        Net("U3_NC_%d" % n).connect(u3[n])
 
     # ── U4: the hub. HIGH SPEED -- a FS hub would reintroduce the TT ─────────
-    # WCH CH334F, QFN-24 4x4 (LCSC C5187527). Pins off WCH's datasheet V2.5 Table 1-3, the
-    # "4F" column (the pin-arrangement FIGURE's package labels are offset by one block --
-    # read the table): 1 OVCUR# 2 NC 3 XO 4 XI 5 DM4 6 DP4 7 DM3 8 DP3 9 DM2 10 DP2
-    # 11 DM1 12 DP1 13 LED3/SCL 14 DMU 15 DPU 16 RESET# 17 NC 18 NC 19 V5 20 VDD33
-    # 21 LED4/SDA 22 LED1/PSELF 23 LED2/PGANG 24 PWREN#, EP = GND.
-    # Powered at 3.3 V on BOTH V5 ("5V or 3.3V power input") and VDD33 ("LDO output and
-    # 3.3V input"). RESET# has its own pull-up and WCH says leave it open; PSELF and PGANG
-    # default high (self-powered, ganged) through their own pull-ups -- both what this board
-    # is. OVCUR# is pulled high: nothing here measures port current. Ports 3/4 unused.
-    # (The old generic "1 UDP 2 UDM 3 VDD..." pinout matched no real hub.)
-    hub_xi, hub_xo, ovcur = Net("HUB_XI"), Net("HUB_XO"), Net("HUB_OVCUR_N")
-    u4 = Part(name="CH334F", ref_prefix="U", ref="U4", tag="U4", dest="NETLIST", tool="skidl",
-              value="CH334F", description="4-port USB 2.0 HIGH-SPEED hub (2 used): "
+    # Generic 2-port pinout: 1 UDP 2 UDM (upstream) 3 VDD 4 GND 5 XI 6 XO
+    #                        7 DP1 8 DM1 9 DP2 10 DM2, 11-23 unused, 24 GND/EP.
+    hub_xi, hub_xo = Net("HUB_XI"), Net("HUB_XO")
+    u4 = Part(name="USB_HUB", ref_prefix="U", ref="U4", tag="U4", dest="NETLIST", tool="skidl",
+              value="CH334-class HS hub", description="2-port USB 2.0 HIGH-SPEED hub: "
               "the MCU and the optical board reach the Pi on ONE cable",
-              footprint=HUB_FP, pins=[Pin(num=i, func=P) for i in range(1, 26)])
-    ovcur += u4[1]
-    hub_xo += u4[3]
-    hub_xi += u4[4]
-    hub_dn2_dm += u4[9]
-    hub_dn2_dp += u4[10]
-    hub_dn1_dm += u4[11]
-    hub_dn1_dp += u4[12]
-    hub_up_dm += u4[14]
-    hub_up_dp += u4[15]
-    v3v3 += u4[19], u4[20]
-    gnd += u4[25]
-    for n in (2, 5, 6, 7, 8, 13, 16, 17, 18, 21, 22, 23, 24):
+              footprint=HUB_FP, pins=[Pin(num=i, func=P) for i in range(1, 25)])
+    hub_up_dp += u4[1]
+    hub_up_dm += u4[2]
+    v3v3 += u4[3]
+    gnd += u4[4], u4[24]
+    hub_xi += u4[5]
+    hub_xo += u4[6]
+    hub_dn1_dp += u4[7]
+    hub_dn1_dm += u4[8]
+    hub_dn2_dp += u4[9]
+    hub_dn2_dm += u4[10]
+    for n in range(11, 24):
         Net("U4_NC_%d" % n).connect(u4[n])
 
     # ── U5: 24 -> 5 V. THE ONE SWITCHER, and it lives in the inlet corner. ───
@@ -676,13 +670,7 @@ def output_panel():
     v3v3 += u6[5]
 
     # ── U7/U8: the two analog buffers ────────────────────────────────────────
-    # ⚠ BOTH BUFFERS RUN AT MID-RAIL NOW (2026-09-21). They sit on 0..5 V, and neither
-    # signal they carry is: the pickup is AC about 0 V and the DAC's OUTL is GROUND-CENTRED
-    # (its charge pump makes the negative rail). Each op-amp input is AC-coupled and biased
-    # at VMID = 2.5 V, so the whole waveform fits the rail instead of the bottom half
-    # clipping at ground.
     sel, buf = Net("AUDIO_SEL"), Net("BUF_OUT")
-    u7_in, pk_in, vmid = Net("OUT_BUF_IN"), Net("PICKUP_IN"), Net("VMID")
     u7 = Part(name="OPAMP", ref_prefix="U", ref="U7", tag="U7", dest="NETLIST", tool="skidl",
               value="TLV9061IDBVR", description="output buffer -- drives the TS jack",
               footprint="Package_TO_SOT_SMD:SOT-23-5",
@@ -691,7 +679,7 @@ def output_panel():
                     Pin(num=5, name="V+", func=P)])
     buf += u7[1], u7[4]       # unity-gain follower
     agnd += u7[2]
-    u7_in += u7[3]            # AC-coupled from the relay's common, biased at VMID
+    sel += u7[3]
     v5 += u7[5]
     # ⚠ U8 IS NEW WITH THE PICKUP, AND IT IS WHAT MAKES ONE COIL FEED TWO THINGS.
     # The ADC and the relay's direct contact both want the pickup, and a magnetic
@@ -707,7 +695,7 @@ def output_panel():
                     Pin(num=5, name="V+", func=P)])
     pk_buf += u8[1], u8[4]
     agnd += u8[2]
-    pk_in += u8[3]            # the coil through C37, biased at VMID through R8 (1M)
+    pk_hot += u8[3]
     v5 += u8[5]
 
     # ── K1/Q1: direct vs processed. DE-ENERGISED IS DIRECT. ──────────────────
@@ -718,24 +706,17 @@ def output_panel():
     # that latching was required because "a held coil hums at the audio it is
     # switching". Wrong -- the coil is driven with DC and a static field does not
     # hum. The real cost of holding it is ~30 mA, which this rail has.
-    # OMRON G6K-2F-Y-DC5 (LCSC C326376), off Omron's own terminal arrangement (TOP VIEW,
-    # datasheet p.6): coil 1 (+) / 8 (-); pole A COM 3, NC 2, NO 4; pole B COM 6, NC 7, NO 5.
-    # It replaces an "FRT5-class" part numbered 1..10 with no datasheet behind it -- the
-    # FRT5's own maker publishes no pin diagram that could be found, and its SMD variant is
-    # not stocked where this board is built. Pole B is spare.
-    # BOTH THROWS ARE AC-COUPLED (C38 on the direct side, the DAC is ground-centred already),
-    # and the common is held at 0 V by R15 -- so switching between them moves no DC and
-    # makes no click.
-    coil, direct, dac_att = Net("RELAY_COIL"), Net("DIRECT_AC"), Net("DAC_ATT")
-    k1 = Part(name="G6K-2F-Y", ref_prefix="K", tag="K1", dest="NETLIST", tool="skidl",
-              value="G6K-2F-Y-DC5", description="true-bypass select; DE-ENERGISED = DIRECT "
-              "(LCSC C326376)", footprint=RELAY_FP, pins=[Pin(num=i, func=P) for i in range(1, 9)])
+    # 1/10 coil, 2 common, 3 NC (direct), 4 NO (processed) on the pole in use.
+    coil = Net("RELAY_COIL")
+    k1 = Part(name="RELAY_DPDT", ref_prefix="K", tag="K1", dest="NETLIST", tool="skidl",
+              value="FRT5-class 5V", description="true-bypass select; DE-ENERGISED = DIRECT",
+              footprint=RELAY_FP, pins=[Pin(num=i, func=P) for i in range(1, 11)])
     v5 += k1[1]
-    coil += k1[8]
-    sel += k1[3]
-    direct += k1[2]
-    dac_att += k1[4]
-    for i in (5, 6, 7):
+    coil += k1[10]
+    sel += k1[2]
+    pk_buf += k1[3]
+    proc += k1[4]
+    for i in (5, 6, 7, 8, 9):
         Net("K1_NC_%d" % i).connect(k1[i])
     q1 = Part(name="Q_NMOS", ref_prefix="Q", tag="Q1", dest="NETLIST", tool="skidl",
               value="AO3400A", description="relay coil driver (LCSC C20917)",
@@ -798,9 +779,7 @@ def output_panel():
     # D5 IS THE PHANTOM GUARD'S CLAMP and it sits INSIDE the DC block: a blocking
     # capacitor stops the 48 V but passes the insertion edge straight through.
     blocked = Net("OUT_BLOCKED")
-    d5 = _d("D5", "ESD5B5.0ST1G", "bidirectional 5 V TVS (LCSC C93623): catches the "
-            "insertion edge C1 passes through. The node it sits on idles at VMID and swings "
-            "0..5 V, inside its 5.0 V working voltage")
+    d5 = _d("D5", "bidir clamp", "catches the insertion edge C1 passes through")
     blocked += d5[1]
     agnd += d5[2]
     d6 = _d("D6", "SMAJ30A", "24 V rail clamp -- the trunk is shared with ten stepper "
@@ -826,10 +805,10 @@ def output_panel():
     r7 = _r("R7", "10k", "BOOT0 pull-down -- run from flash unless deliberately held")
     boot0 += r7[1]
     gnd += r7[2]
-    r8 = _r("R8", "1M", "pickup input bias to VMID -- and the LOAD the pickup sees, which "
-            "sets its tone: 1M is a typical amplifier input")
-    pk_in += r8[1]
-    vmid += r8[2]
+    r8 = _r("R8", "1M", "pickup input bias to ground -- the coil is FLOATING until "
+            "someone screws a pickup on, and an unbiased op-amp input rails")
+    pk_hot += r8[1]
+    agnd += r8[2]
     r9 = _r("R9", "220R", "output series -- bounds a phantom-power fault and C1's inrush")
     buf += r9[1]
     blocked += r9[2]
@@ -882,7 +861,7 @@ def output_panel():
             ("C11", "100nF", v3v3, gnd, "MCU bypass"),
             ("C12", "100nF", v3v3, gnd, "hub bypass"),
             ("C13", "100nF", v5, agnd, "ADC analog bypass"),
-            ("C14", "100nF", v3v3, agnd, "DAC AVDD bypass -- 3V3, never 5 V (abs max 3.9)")):
+            ("C14", "100nF", v5, agnd, "DAC analog bypass")):
         fp = ("Capacitor_SMD:C_0805_2012Metric" if val == "10uF"
               else "Capacitor_SMD:C_0402_1005Metric")
         c = _c(tag, val, desc, fp)
@@ -892,58 +871,6 @@ def output_panel():
         c = _c(tag, "12pF", "crystal load")
         net += c[1]
         gnd += c[2]
-
-    # ── the analog rewrite's parts (2026-09-21) ────────────────────────────────
-    C0805 = "Capacitor_SMD:C_0805_2012Metric"
-    dac_filt = Net("DAC_FILT")
-    for tag, val, a, b, desc, fp in (
-            # U2, PCM1808: VREF, VCC and VDD each 0.1 uF + 10 uF (TI 10.1.4 / 8.2 C3-C5);
-            # C13 is VCC's 0.1 uF
-            ("C19", "100nF", vref, agnd, "ADC VREF", None),
-            ("C20", "10uF", vref, agnd, "ADC VREF bulk", C0805),
-            ("C21", "10uF", v5, agnd, "ADC VCC bulk", C0805),
-            ("C22", "100nF", v3v3, gnd, "ADC VDD", None),
-            ("C23", "10uF", v3v3, gnd, "ADC VDD bulk", C0805),
-            ("C24", "1uF", pk_buf, adc_in, "ADC input coupling (TI's 1 uF)", C0805),
-            # U3, PCM5102A, Figure 33: AVDD / CPVDD / DVDD / LDOO each 0.1 + 10 uF, the charge
-            # pump's flying cap and VNEG 2.2 uF each; C14 is AVDD's 0.1 uF
-            ("C25", "10uF", v3v3, agnd, "DAC AVDD bulk", C0805),
-            ("C26", "100nF", v3v3, gnd, "DAC CPVDD", None),
-            ("C27", "10uF", v3v3, gnd, "DAC CPVDD bulk", C0805),
-            ("C28", "100nF", v3v3, gnd, "DAC DVDD", None),
-            ("C29", "10uF", v3v3, gnd, "DAC DVDD bulk", C0805),
-            ("C30", "100nF", ldoo, gnd, "DAC LDOO", None),
-            ("C31", "10uF", ldoo, gnd, "DAC LDOO bulk", C0805),
-            ("C32", "2.2uF", capp, capm, "DAC charge-pump flying cap", C0805),
-            ("C33", "2.2uF", vneg, gnd, "DAC VNEG", C0805),
-            ("C34", "2.2nF C0G", dac_filt, agnd, "DAC output filter, with R13 "
-             "(TI's recommended 470R + 2.2 nF)", None),
-            # U4, CH334F: V5 >= 1 uF, VDD33 0.1 + 10 uF (C12 is the 0.1)
-            ("C35", "1uF", v3v3, gnd, "hub V5", None),
-            ("C36", "10uF", v3v3, gnd, "hub VDD33 bulk", C0805),
-            # the buffers
-            ("C37", "100nF C0G", pk_hot, pk_in, "pickup input coupling -- 1.6 Hz into R8's "
-             "1M. C0G: a coupling cap in the coil's own path must not have a voltage "
-             "coefficient", "Capacitor_SMD:C_1206_3216Metric"),
-            ("C38", "1uF", pk_buf, direct, "direct-path coupling to the relay -- 16 Hz into "
-             "R15's 10k, two octaves under the lowest string (C2, 65 Hz)", C0805),
-            ("C39", "1uF", sel, u7_in, "output buffer input coupling (1.6 Hz into R16)", C0805),
-            ("C40", "10uF", vmid, agnd, "VMID reservoir", C0805)):
-        c = _c(tag, val, desc, fp) if fp else _c(tag, val, desc)
-        a += c[1]
-        b += c[2]
-    for tag, val, a, b, desc in (
-            ("R13", "470R", proc, dac_filt, "DAC output filter, with C34"),
-            ("R14", "10k", dac_filt, dac_att, "DAC -6 dB with R15: 2.1 Vrms (5.9 Vpp) is "
-             "more than a 5 V rail carries; ~3 Vpp after this"),
-            ("R15", "10k", sel, agnd, "relay common to 0 V -- no DC step when it switches"),
-            ("R16", "100k", u7_in, vmid, "output buffer bias to VMID"),
-            ("R17", "100k", v5, vmid, "VMID divider, top"),
-            ("R18", "100k", vmid, agnd, "VMID divider, bottom"),
-            ("R19", "10k", ovcur, v3v3, "hub OVCUR# pulled inactive")):
-        r = _r(tag, val, desc)
-        a += r[1]
-        b += r[2]
 
 
 # ── the board ────────────────────────────────────────────────────────────────
@@ -1001,21 +928,6 @@ BOARD_NOTES = {
     # the digital block) came back unrouted at the default pass count; more passes let the
     # optimiser rip up and re-lay rather than freeze the early mess (route.py PASSES note)
     "router_passes": 20,
-    # THE HUB'S THREE PAIRS ARE LAID AS PAIRS (2026-09-21). With the CH334F's real pinout the
-    # upstream and downstream pins sit on different faces of the package than the invented
-    # one put them, and freerouting -- which has no notion of a pair -- came back with
-    # HUB_UP split across layers and HUB_DN1 12 mm skewed and split too (fab.py's budgets).
-    # layout._diff_pairs routes each one off a single centreline, the optical board's USB
-    # way, and freezes it before the router runs. THRU (J1 -> J2) routes clean as it is.
-    # (HUB_UP stays with the router: J3 stands at 270 deg, its A/B pad rows run along Y,
-    #  and _diff_pairs' flip-merge only handles rows along X. It routed as a pair before.)
-    # (HUB_DN1 stays with the router too: _diff_pairs cannot fan a coupled pair out of the
-    #  MCU's 0.4 mm-pitch QFN -- it reports an ESCAPE failure, a placement limit of the
-    #  routine. With U4 turned to face U1 and the SWD pads moved off the MCU's top edge, the
-    #  router has a direct corridor for it.)
-    "diff_pairs": [{"nets": ["HUB_DN2_DP", "HUB_DN2_DM"], "chain": ["U4", "J4"],
-                    "gap": 0.2, "width": 0.2}],
-    "diff_pair_inner": "In2.Cu",
     "layers": 4,
     "thickness_mm": 1.6,
     # FOUR LAYERS because this board carries an audio output stage and THREE USB
@@ -1182,16 +1094,8 @@ BOARD_NOTES = {
     #
     # Applied AFTER routing, like optical's MID detour, so the other 43 nets never plan
     # around them. Pinned to THIS routing: re-run repair_search after any netlist change.
-    # THE HUB'S BELLY VIA, placed by hand: U4.25 is a stitch exception (the DN2 pair runs
-    # under the package on In2, and the automatic belly via landed on it) but a QFN belly is
-    # walled in by its own pins, so the pour cannot reach it either -- it came back
-    # UNCONNECTED. This via sits in the pad's north half, 0.7 clear of DM on In2 at y -8.41.
-    # The pair is laid deterministically by _diff_pairs, so this does not drift with the
-    # router the way the repairs below do.
-    "repair_vias": [("GND", -15.500, -7.300)],
     "repair_tracks": [
-        # (the PWR_GND hop that stood first here is gone: since the mounting ear the router
-        #  closes PWR_GND on its own, and the pinned copy crossed its V5_PRE, 2026-09-21)
+        ("PWR_GND", "F.Cu", 0.5, [(3.750, -28.000), (11.115, -24.665)]),
         # ON B.Cu: the J7 -> J9 hop runs pad to pad UNDER the row. Both ends are THT pads,
         # so it needs no via, and B.Cu is empty there -- where on F.Cu the router's own
         # PWR_GND edge run (at y -30.05 since the board grew its mounting ear) crossed it.
@@ -1227,11 +1131,7 @@ BOARD_NOTES = {
     # That stop is right in general (an SMD pad on the pour alone can be orphaned by
     # routing) and wrong for these two specifically, which is exactly what this list is
     # for: a pad that really can live without a via, named with the reason.
-    # U4.25 is the hub's exposed pad: the DN2 pair is pre-laid on In2 straight under the
-    # package toward J4, and a through via at the pad's centre lands on it. The hub draws
-    # ~50 mA and its pad reaches ground through the F.Cu pour it sits in; nothing here
-    # needs that via, and the pair does.
-    "stitch_exceptions": ("J2.SH", "J4.SH", "U4.25"),
+    "stitch_exceptions": ("J2.SH", "J4.SH"),
     # ⚠ NO local_nets HERE EITHER, AND NOW THERE IS A PATTERN. Measured on three
     # boards: it takes lever_sensor from 4 unconnected to 7, this board from 2 to 5, and
     # the optical board from 26 to 12. Pre-laying copper is not a general improvement --
@@ -1301,35 +1201,11 @@ BOARD_NOTES = {
         # pickup's preamp is the cheapest noise measure available.
         "J8": (-13.50, 28.00, 0.0),     # pickup screw terminals
         "U8": (-4.50, 29.00, 0.0),      # pickup buffer, right at the terminals
-        "R8": (-3.20, 24.90, 0.0),
+        "R8": (-4.50, 25.00, 0.0),
+        "C13": (-4.00, 22.50, 0.0),
         "U2": (2.50, 29.00, 0.0),       # ADC
-        # the ADC's supports fill the strip under it that the DAC vacated (2026-09-21)
-        "C19": (0.00, 25.30, 0.0),      # VREF 0.1
-        "C13": (2.20, 25.30, 0.0),      # VCC 0.1
-        "C22": (4.40, 25.30, 0.0),      # VDD 0.1
-        "C20": (-0.40, 22.90, 0.0),      # VREF 10u
-        "C21": (3.10, 22.90, 0.0),      # VCC 10u
-        "C23": (6.60, 22.90, 0.0),      # VDD 10u
-        "C24": (7.60, 29.00, 90.0),     # input coupling, beside VINL/VINR
-        "C37": (-6.20, 23.30, 90.0),    # pickup coupling (C0G 1206), J8 -> U8
-        "C38": (-4.60, 19.80, 0.0),     # direct-path coupling to the relay
-        # THE DAC MOVES to the clear block south of the MCU, with room for the ten parts
-        # PCM5102A's Figure 33 hangs on it. (At (15, 0) it sat across the panel
-        # pass-through's corridor and THRU came back 13 mm skewed and split.)
-        "U3": (16.00, -16.30, 0.0),
-        "C26": (11.00, -12.40, 0.0),       # CPVDD 0.1
-        "C32": (8.60, -14.30, 0.0),       # charge-pump flying 2.2u
-        "C33": (8.60, -16.40, 0.0),       # VNEG 2.2u
-        "C25": (7.40, -18.60, 0.0),      # AVDD 10u
-        "C14": (10.60, -18.20, 0.0),      # AVDD 0.1
-        "R13": (10.60, -19.40, 0.0),      # output filter 470R
-        "C34": (10.60, -20.60, 0.0),      # output filter 2.2nF
-        "R14": (8.60, -20.60, 0.0),      # -6 dB
-        "C28": (21.00, -13.40, 0.0),      # DVDD 0.1
-        "C30": (21.00, -14.70, 0.0),      # LDOO 0.1
-        "C27": (13.60, -21.40, 0.0),     # CPVDD 10u
-        "C29": (17.20, -21.40, 0.0),     # DVDD 10u
-        "C31": (20.80, -21.40, 0.0),     # LDOO 10u
+        "U3": (2.50, 21.00, 0.0),       # DAC
+        "C14": (-3.50, 21.00, 0.0),
         "K1": (-13.00, 15.00, 0.0),
         "Q1": (-4.00, 15.00, 0.0),
         "R5": (-4.00, 12.00, 0.0),
@@ -1341,13 +1217,6 @@ BOARD_NOTES = {
         "C1": (13.00, 8.00, 0.0),
         "D5": (17.50, 8.00, 0.0),
         "R10": (21.00, 8.00, 0.0),
-        # the output buffer's AC coupling and the VMID it biases to
-        "C39": (-0.20, 9.80, 0.0),
-        "R16": (0.60, 7.60, 0.0),
-        "R17": (0.60, 6.20, 0.0),
-        "R18": (0.60, 5.00, 0.0),
-        "C40": (0.40, 3.00, 0.0),
-        "R15": (-1.60, 11.60, 0.0),     # relay common to 0 V
         "C7": (4.00, 4.00, 0.0),
         "C8": (7.50, 4.00, 0.0),
         # CC pull-downs and the panel ESD clamps, beside their own connectors
@@ -1364,7 +1233,7 @@ BOARD_NOTES = {
         "U1": (-6.00, -8.00, 0.0),
         "Y1": (-6.00, -15.00, 0.0),
         "C15": (-11.00, -15.00, 0.0),
-        "C16": (-6.00, -17.60, 0.0),     # under Y1, off the I2S pins' southward escape (35-39)
+        "C16": (-1.00, -15.00, 0.0),
         # ⚠ 2.5 mm EAST, TO OPEN ITS WEST CHANNEL. At -17.00 the hub's courtyard came
         # within 0.75 mm of J4's, and ALL SIX of its west-edge pins -- the upstream
         # differential pair, 3V3, GND and both oscillator pins -- had to escape through
@@ -1373,14 +1242,8 @@ BOARD_NOTES = {
         # looked at rather than the symptom.
         # U1 sits at 89.36, so there were 3.69 mm of slack here doing nothing. The
         # channel goes to 3.25 mm and the hub keeps 1.2 mm to the MCU.
-        # 90 deg (2026-09-21): the real CH334F's DN1 pins (11/12) then face EAST at the MCU,
-        # UP (14/15) faces north toward J3, and DN2 (9/10) leaves east and turns south round
-        # to J4 -- three pairs that do not cross. At 0 deg DN1 faced away from U1 entirely.
-        "U4": (-15.50, -8.00, 90.0),     # 1 W: the DN2 pair runs between it and U1, and U1.12 (VSSA) still needs its via
+        "U4": (-14.50, -8.00, 0.0),
         "C12": (-17.00, -4.00, 0.0),
-        "C35": (-14.60, -3.00, 0.0),    # hub V5 1u
-        "C36": (-18.50, 0.00, 0.0),   # hub VDD33 10u
-        "R19": (-14.60, -1.70, 0.0),    # hub OVCUR# pull-up -- off U1's west edge, where the crystal nets escape
         # ⚠ THE CRYSTAL MOVES UP UNDER ITS HUB, and this is a signal-integrity fix that
         # happened to surface as a routing failure. At -17.50 it sat 9.6 mm from U4's XI
         # pin, with its two load caps another 4.5 mm out either side -- a 12 MHz
@@ -1397,8 +1260,8 @@ BOARD_NOTES = {
         "C9": (11.00, -8.00, 0.0),
         "C10": (14.50, -8.00, 0.0),
         "C11": (6.00, -12.00, 0.0),
-        "R6": (1.50, -12.00, 0.0),
-        "R7": (1.50, -13.30, 0.0),
+        "R6": (11.00, -12.00, 0.0),
+        "R7": (14.00, -12.00, 0.0),
         # -Y CORNER: THE 24 V ISLAND AND ITS SWITCHER, on their own copper
         # ⚠ SWAPPING J7 AND J9 DOES NOT FIX THE SEVERED BUS -- measured, still 2
         # unconnected. The reasoning looked strong: along this edge the inlet J6 is at
@@ -1417,11 +1280,11 @@ BOARD_NOTES = {
         # (A 2.0 mm B.Cu lane under it was tried separately and went 2 -> 4.)
         "J7": (0.00, -28.00, 0.0),
         # SWD pads -- the tightest free cluster next to U1; see the note in output_panel()
-        "TP1": (-6.10, -0.60, 0.0),       # the SWD row sits 1.5 N of U1: USB (61/62) enters from above
-        "TP2": (1.90, -8.10, 0.0),       # 2 E: the five I2S pins (35-39) escape east through here
-        "TP3": (-3.10, -0.60, 0.0),
-        "TP4": (1.90, -5.10, 0.0),
-        "TP5": (-9.10, -0.60, 0.0),
+        "TP1": (-6.10, -2.10, 0.0),
+        "TP2": (-0.10, -8.10, 0.0),
+        "TP3": (-3.10, -2.10, 0.0),
+        "TP4": (-0.10, -5.10, 0.0),
+        "TP5": (-9.10, -2.10, 0.0),
         # ⚠ 16.00, NOT 14.00, AND THE TWO MILLIMETRES ARE THE 24 V BUS. At 14.00 this
         # connector's courtyard ran 107.25..120.75 against J7's 93.25..106.75 -- a gap of
         # 0.50 mm, where a 0.25 mm track needs 0.65 to pass with clearance on both sides.

@@ -1,5 +1,5 @@
 ======================================================================
- INNER-LOOP GATE -- live part FRESH, 579 context solids CACHED (9 min old)
+ INNER-LOOP GATE -- live part FRESH, 579 context solids CACHED (71 min old)
  SCOPED: context is cached and may be CROPPED, so it can only find
  faults involving what is loaded -- widen the live set if your change
  moved anything else. The FULL gates run in the lead's build on merge;
@@ -8,7 +8,7 @@
 
 --- overlaps ---
 skipping base names (pass --full to include): ['belt', 'belt_clamp']
-  overlap cache: 8536 of 8600 pairs reused, 64 to compute (fingerprints 1.5s)
+  overlap cache: 8117 of 8136 pairs reused, 19 to compute (fingerprints 2.5s)
   !! DEFERRED overlap (NOT a designed contact, must be fixed before the instrument is finalised): top_plate_0 <-> pickup_zplate
   !! DEFERRED overlap (NOT a designed contact, must be fixed before the instrument is finalised): body_adapter_0 <-> leg_trrs_plug_0
   !! DEFERRED overlap (NOT a designed contact, must be fixed before the instrument is finalised): body_adapter_0 <-> leg_trrs_patch_0
@@ -37,10 +37,10 @@ skipping base names (pass --full to include): ['belt', 'belt_clamp']
   !! DEFERRED overlap (NOT a designed contact, must be fixed before the instrument is finalised): vkl_kv_housing <-> vkl_kv_JP1 -- lever board parts vs their knee/lever housing (25 pairs, ~207 mm3). USER DEFERRED; OWNER branner -- the cradle was sized to a plain box. ⚠ THE ORIGINAL REASON IS VOID (2026-09-19): it said bronner's board was at its floor at 28 x 21.4, so the room had to come from the housing. The user then asked for ONE connector family across both buses, and the board grew to 34 x 28 to take the S8B-XH-A -- +59% area. The housing needs RE-CUTTING to the new outline, not relieving by a millimetre
   !! DEFERRED overlap (NOT a designed contact, must be fixed before the instrument is finalised): vkl_kv_housing <-> vkl_kv_R3 -- lever board parts vs their knee/lever housing (25 pairs, ~207 mm3). USER DEFERRED; OWNER branner -- the cradle was sized to a plain box. ⚠ THE ORIGINAL REASON IS VOID (2026-09-19): it said bronner's board was at its floor at 28 x 21.4, so the room had to come from the housing. The user then asked for ONE connector family across both buses, and the board grew to 34 x 28 to take the S8B-XH-A -- +59% area. The housing needs RE-CUTTING to the new outline, not relieving by a millimetre
   !! DEFERRED overlap (NOT a designed contact, must be fixed before the instrument is finalised): vkl_kv_housing <-> vkl_kv_U2 -- lever board parts vs their knee/lever housing (25 pairs, ~207 mm3). USER DEFERRED; OWNER branner -- the cradle was sized to a plain box. ⚠ THE ORIGINAL REASON IS VOID (2026-09-19): it said bronner's board was at its floor at 28 x 21.4, so the room had to come from the housing. The user then asked for ONE connector family across both buses, and the board grew to 34 x 28 to take the S8B-XH-A -- +59% area. The housing needs RE-CUTTING to the new outline, not relieving by a millimetre
-checked 868 components for overlaps (8 workers, 6.9s)
+checked 868 components for overlaps (8 workers, 10.4s)
 
 == UNINTENDED overlaps (175) ==
-    266130.6 mm^3   bridge_endplate <-> bridge_endplate
+    263003.8 mm^3   bridge_endplate <-> bridge_endplate
     115949.5 mm^3   motor_9        <-> motor_9
     115949.5 mm^3   motor_8        <-> motor_8
     115949.5 mm^3   motor_7        <-> motor_7
@@ -57,12 +57,12 @@ checked 868 components for overlaps (8 workers, 6.9s)
      83944.0 mm^3   body_adapter_1 <-> body_adapter_1
      34372.1 mm^3   pickup         <-> pickup
      24577.3 mm^3   fixed_tenon    <-> fixed_tenon
-     23019.1 mm^3   output_panel   <-> output_panel
+     22647.8 mm^3   output_panel   <-> output_panel
      20778.5 mm^3   pi5            <-> pi5
      19356.5 mm^3   fixed_sleeve   <-> fixed_sleeve
      17686.0 mm^3   pickup_zplate  <-> pickup_zplate
       8989.9 mm^3   nut_slide_insert_9 <-> nut_slide_insert_9
-      8293.1 mm^3   motor_ctrl     <-> motor_ctrl
+      8549.3 mm^3   motor_ctrl     <-> motor_ctrl
       6800.1 mm^3   nut_slide_insert_8 <-> nut_slide_insert_8
       6763.0 mm^3   nut_slide_insert_7 <-> nut_slide_insert_7
       4455.5 mm^3   tee_pcb_0      <-> tee_pcb_0
