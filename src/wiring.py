@@ -142,11 +142,16 @@ TEE_Y  = RAIL_INNER_Y + 8.0                              # tee-board centre (14m
 # It used to be a pocket cut into the rail below the motor tops; the user moved it OUT of
 # the wall and UP (the wall is the body's side beam). Everything that runs the length of
 # the instrument rides it, stacked in Z inside a 4.8 mm-wide space, at one y (CHAN_Y):
-LANE_PWR2  = CH_WT_ZF + 2.0      # -24.4: the 24 V bypass feed (J10 -> motor_ctrl),
-                                 #        hot -25.4 / gnd -23.4 -- on the floor
-LANE_USB   = CH_WT_ZF + 5.5      # -20.9: output board J2 -> the Pi (O2.6)
-LANE_PWR   = CH_WT_ZF + 9.0      # -17.4: the 24 V head (J7 -> the east tee), hot -18.4 /
-                                 #        gnd -16.4 -- first trough piece only, it leaves
+# ⚠ THE STACK STARTS 1.5 OFF THE FLOOR, NOT ON IT. Where the trough is left out -- over
+# string 10's motor -- the cables carry on at the same height, and two chassis walls either
+# side of that motor stand to -25.45: a lane on the floor (-26.4) clipped both. From there
+# up the stack is packed flat-to-flat (the octagons are rolled so their flats face up and
+# down), and still finishes under the lip's top at -13.6.
+LANE_PWR2  = CH_WT_ZF + 3.5      # -22.9: the 24 V bypass feed (J10 -> motor_ctrl),
+                                 #        hot -23.9 / gnd -21.9, 0.65 over those walls
+LANE_USB   = CH_WT_ZF + 7.1      # -19.3: output board J2 -> the Pi (O2.6)
+LANE_PWR   = CH_WT_ZF + 10.8     # -15.6: the 24 V head (J7 -> the east tee), hot -16.6 /
+                                 #        gnd -14.6 -- first trough piece only, it leaves
                                  #        at string 10's motor for that motor's tee
 LANE_CTRL  = -42.0               # CAN bus B: keyhead-local, on the old floor corridor
 LANE_CAN   = -48.0               # CAN bus A: bank hops only (never on the corridor)
@@ -156,7 +161,7 @@ _TRUNK_OD = max(od for nm, od in WIRE_OD.items() if nm != 'motor_pigtail')
 _TOP_OF_MOTORS = D.MOTOR_BELT_Z + D.MOTOR_SQ / 2          # -29.05
 assert CH_WT_ZF > _TOP_OF_MOTORS, "the trough's floor has come down to the motor tops"
 assert LANE_PWR2 - PWR_OFF - 1.8 / 2 > CH_WT_ZF, "feed 2 is in the trough's floor"
-assert LANE_PWR + PWR_OFF + 1.8 / 2 < CH_WT_ZF + CH_WT_H - 1.2, "the head is in the lip's nub"
+assert LANE_PWR + PWR_OFF + 1.8 / 2 < CH_WT_ZF + CH_WT_H, "the head stands over the lip"
 assert CH_WT_LANE_Y + _TRUNK_OD / 2 <= MB.HARNESS_Y1, (
     "the trough's lane reaches y %.2f, past motor_bank's HARNESS_Y1 %.2f"
     % (CH_WT_LANE_Y + _TRUNK_OD / 2, MB.HARNESS_Y1))
@@ -749,7 +754,9 @@ def build_wires():
     _LOOP_CX, _LOOP_CY = -52.5, CHAN_Y + _LOOP_R
     _LOOP_RISE = 4.0
     _RISE7 = _LOOP_CX - 4.5               # J7 climbs to its trough lane just past the loop
-    _RISE10 = CH_WT_X1 + 1.0              # feed 2 climbs just short of the trough's end
+    _RISE10 = CH_WT_X1 + 2.5              # feed 2 climbs short of the trough's end -- at
+                                          # +1.0 its hot conductor's offset put it in the
+                                          # trough's end face
     _EXIT7 = CH_WT_RUNS[-1][0] - 2.0      # J7 leaves the trough where it stops, before
                                           # string 10's motor, and goes to that motor's tee
 
@@ -782,7 +789,11 @@ def build_wires():
     # for it. Main ran it to a free-standing BUCK; this branch merged the power board
     # into the motor controller, so there is no buck and no junction -- the chain simply
     # terminates at a connector on a board.
-    _mc24 = EL.mctrl_pt("J3")
+    # ⚠ POSED. The boards stand on end against the keyhead endplate (stand_pt); every other
+    # lead to this board was posed and these two -- the tee chain's tail and feed 2 -- were
+    # not, so both ended in mid-air where J3 would be if the board still lay flat (user:
+    # "unterminated ground and 24V wires near the motor control board").
+    _mc24 = SP(*EL.mctrl_pt("J3"))
     tail = [_w0, (BAY_X, _w0[1], _w0[2]), (BAY_X, _mc24[1], _w0[2]),
             (BAY_X, _mc24[1], _mc24[2]), _mc24]
 

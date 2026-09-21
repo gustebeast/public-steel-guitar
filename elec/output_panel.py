@@ -901,6 +901,8 @@ PANEL_CLR, PANEL_T = 0.3, 1.6
 PANEL_OVERHANG = PANEL_CLR + PANEL_T
 _FRONT = {"J5": 13.40, "J1": 7.07, "J6": 10.70}
 J1_SETBACK = 0.40
+TS_CLAMP_T, TS_HEAD_T, TS_STUB = 4.0, 2.05, 3.0   # Neutrik: clamp 3.0..4.7; nut head; stub
+TS_SHOULDER_DEPTH = TS_CLAMP_T + TS_HEAD_T         # 6.05: face -> jack shoulder
 
 BOARD_NOTES = {
     "outline_mm": (BOARD_W, BOARD_L),
@@ -1136,14 +1138,19 @@ BOARD_NOTES = {
         # _FRONT is the body front ahead of the pad-centroid anchor, MEASURED off the
         # routed board's F.Fab (J6 after the 90-degree turn: 13.7 of body ahead of pin 1,
         # pin 1 3.0 behind the centroid).
-        # ...AND J5 IS THE EXCEPTION THE OTHER WAY. The NMJ4HCD2 is a REAR-PANEL-MOUNT jack
-        # (Neutrik: "rear mounting", "panel thickness < 4.7 mm", "chassis shape 11.4 mm",
-        # mounting nut included): its threaded chrome nose goes THROUGH the panel, the
-        # body's shoulder bears on the panel's INSIDE, and the nut clamps from outside --
-        # the way every guitar output jack is fitted. So its body front stops AT the
-        # panel's inner face, PANEL_CLR past the board edge, and the nose and nut do the
-        # rest. (F.Fab draws only the body, which is why the nose was never in the CAD.)
-        "J5": (BOARD_W / 2 + PANEL_CLR - _FRONT["J5"], 21.50, 0.0),         # 1/4 in jack
+        # ...AND J5 IS THE EXCEPTION THE OTHER WAY, set so its PLUG meets the face level with
+        # the other two (user: "all at the same installation x value"). The NMJ4HCD2 is a
+        # REAR-PANEL-MOUNT jack (Neutrik ST-NMJ4HCD2 + its STEP, read 2026-09-21): a 3.0 mm
+        # O11.4 stub in front of the shoulder locates in the panel's O11.4 hole, and a
+        # separate nose nut -- 2.05 hex head (A/F 11) on a 3.74 shank -- screws into the jack
+        # and clamps the panel against the shoulder. The clamped thickness has to be 3.0..4.7
+        # (the drawing's three 1.2 washers build thin panels up to it). So the endplate
+        # thickens to a 4.0 clamp around this jack and counterbores the face 2.05 for the
+        # nut's head: the head's front -- where a plug seats -- finishes flush. That puts the
+        # SHOULDER TS_SHOULDER_DEPTH (6.05) behind the face; _FRONT["J5"] is to the F.Fab
+        # front, which is the stub's tip, 3.0 ahead of the shoulder.
+        "J5": (BOARD_W / 2 + PANEL_OVERHANG - TS_SHOULDER_DEPTH + TS_STUB
+               - _FRONT["J5"], 21.50, 0.0),                                    # 1/4 in jack
         # ...EXCEPT J1, WHICH CANNOT GO AS FAR. Its front shell legs are plated oval pads
         # 1.60 long in X, and at the full overhang their far end crossed the board edge
         # (DRC: 0.000 against the 0.3 copper-to-edge rule -- a plated barrel the router

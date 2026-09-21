@@ -477,6 +477,19 @@ def op_panel_openings():
     return out
 
 
+def op_rear_mounts():
+    """[(ref, world y, world axis z, spec)] -- the panel parts that CLAMP to the panel (the TS
+    jack): the endplate stands a boss behind the panel for their shoulder and counterbores
+    the face for their nut."""
+    cx, cy, cz = op_origin()
+    out = []
+    for ref in OP_PANEL_REFS:
+        m = BG.mouth("output_panel", ref)
+        if m["spec"]["mount"] == "rear":
+            out.append((ref, cy + m["across"], cz + _OP_T + m["axis_h"], m["spec"]))
+    return out
+
+
 def op_panel_fronts():
     """{ref: world x of the part's FRONT} -- where each connector finishes relative to the
     panel. The through-mount parts are meant to reach the face (JACK_TIP); J1 falls short
@@ -499,6 +512,15 @@ def _check_panel():
             assert JACK_TIP - 0.45 <= fronts[ref] <= JACK_TIP + 0.05, (
                 "output_panel %s's front is at x %.2f; the panel face is %.2f -- a "
                 "through-mount connector has to reach it" % (ref, fronts[ref], JACK_TIP))
+        else:
+            # a clamped part: its SHOULDER must sit where the clamp puts it, or the nut's
+            # head is not flush and its plug does not meet the face with the others'
+            sp = m["spec"]
+            shoulder = fronts[ref] - sp["stub"][1]
+            want = JACK_TIP - sp["clamp"] - sp["nut"][1]
+            assert abs(shoulder - want) <= 0.05, (
+                "output_panel %s's shoulder is at x %.2f, the clamp wants it at %.2f"
+                % (ref, shoulder, want))
 
 
 def output_panel() -> cq.Workplane:
