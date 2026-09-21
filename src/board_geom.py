@@ -86,6 +86,9 @@ HEIGHT = {
     "SOIC-8_3.9x4.9mm_P1.27mm": 1.75, "SOIC-8-1EP_3.9x4.9mm_P1.27mm_EP2.29x3mm": 1.75,
     "D_SMB": 2.45, "Fuse_1206_3216Metric": 1.10, "R_0603_1608Metric": 0.55,
     "L_Bourns-SRN6028": 2.80,
+    # the output board's analog rewrite (2026-09-21)
+    "TSSOP-14_4.4x5mm_P0.65mm": 1.20,              # PCM1808PWR (TI PW package, 1.20 max)
+    "Relay_DPDT_Omron_G6K-2F-Y": 5.20,              # Omron G6K-2F-Y: 10 x 6.5 x 5.2 (p.6)
 }
 # a top-entry XH with its XHP plug seated: 9.8 over the board (JST's "assembled board
 # height"), which is what a housing has to leave room for -- see solid(mated=True)

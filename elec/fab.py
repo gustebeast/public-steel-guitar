@@ -131,6 +131,14 @@ LCSC = {
     "AP2112K-3.3TRG1": "C51118",    # Diodes Inc, SOT-23-5: 1 IN 2 GND 3 EN 4 NC 5 OUT --
                                     # exact match to U6. 600 mA against a 300 mA class.
                                     # Stock 55,831.
+    # ── the output board's analog rewrite, 2026-09-21: every one of these is wired pin by
+    # pin from the maker's own table (see output_panel.py), which is what the three
+    # placeholder OPENs below were waiting for ─────────────────────────────────────────
+    "PCM1808PWR": "C55513",         # TI ADC, TSSOP-14 (SLES177B Pin Functions)
+    "PCM5102APWR": "C107671",       # TI DAC, TSSOP-20 (SLAS859C Pin Functions, Figure 33)
+    "CH334F": "C5187527",           # WCH HS hub, QFN-24 4x4 (DS V2.5 Table 1-3, "4F")
+    "G6K-2F-Y-DC5": "C326376",      # Omron DPDT, 5 V coil (terminal arrangement p.6), ~2.5k
+    "ESD5B5.0ST1G": "C93623",       # onsemi bidirectional 5 V TVS, SOD-523, ~166k
 }
 # ⚠ EVERY VALUE STRING MUST BE ACCOUNTED FOR -- IN LCSC, GENERIC, OR HERE.
 # branner's catch, and it is the right shape for the bug that happened: usb_panel's
@@ -153,26 +161,10 @@ OPEN_VALUES = frozenset({
                            # string ever changes, that is the footprint moving
                            # under it, and the build should stop until someone
                            # confirms the two still agree
-    # ⚠ THESE THREE ARE NOT SOURCING GAPS, THEY ARE PLACEHOLDER PINOUTS -- and the
-    # routed board is therefore electrically wrong at all three, whatever DRC says.
-    # U3 is modelled as 10 invented pins on a TSSOP-20 footprint; a real PCM5102A has
-    # 20, and its pin 1 is CPVDD, not LRCK. U4 (hub) and K1 (relay) are numbered 1..N
-    # with no datasheet behind them. DRC is clean because it checks the board against
-    # the NETLIST, and the netlist is what is wrong. Choosing an LCSC code here would
-    # order a real part for a board wired to an imaginary one.
-    "FRT5-class 5V",       # true-bypass relay -- pinout is a placeholder
-    "PCM5102A-class",      # DAC -- pinout is a placeholder (10 of 20 pins, invented)
-    # ── the 2026-09-15 panel respin ──────────────────────────────────────────
-    "PCM1808PWR",          # ⚠ THE PART IS REAL AND STOCKED (C55513, 463, 2026-09-17)
-                           # AND IT STAYS OPEN, because the board around it is not:
-                           # the netlist gives a 14-pin TSSOP 16 pins in an invented
-                           # order and ties SCKI to BCK. Sourcing it would let the
-                           # panel order the moment the other opens close. See the
-                           # AUDIT note at the top of output_panel.py.
-    "CH334-class HS hub",  # ⚠ MUST BE HIGH SPEED -- a full-speed hub puts BOTH
-                           # devices behind a Transaction Translator and undoes
-                           # the whole reason the panel carries a hub. Confirm the
-                           # exact CH334 variant against that before ordering
+    # (The placeholders that stood here -- "FRT5-class 5V", "PCM5102A-class", "CH334-class HS
+    #  hub" -- and PCM1808PWR's hold are gone with the 2026-09-21 rewrite: real parts, real
+    #  pinouts, sourced above. What still wants a second pair of eyes is the ANALOG DESIGN
+    #  -- bias, coupling, the pickup's 1M load -- not a part number.)
 })
 
 # Generic passives are JLCPCB BASIC parts chosen at order time from the package and
