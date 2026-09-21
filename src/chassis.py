@@ -551,6 +551,17 @@ def _build_full() -> cq.Workplane:
     # a continuous CAP over every slot -- the body sealed from underneath against escaping light
     # and motor noise. It is also self-supporting by construction: a bay wall no longer bridges
     # a rib gap, because there are no rib gaps.
+    #
+    # ⚠ THAT CLAIM IS TRUE OF RIB GAPS AND ONLY OF RIB GAPS, and a SEGMENT can still print with
+    # material over air. Measured on chassis_0 (tools.check_ceilings --min-span 0.81): motor 8
+    # sits at x -204.9, just +X of the split at -207.3, so its bay goes whole to chassis_0 by the
+    # rule three lines above -- but the FLOOR under it is drawn per segment and stops at the
+    # split. What is left on chassis_0 is a 1.6 mm bay wall about 40 mm tall, and a 20 x 2.4
+    # ledge beside it, whose first layer is 10.5 mm up from the bed with NOTHING beneath it for
+    # the 20 mm it hangs past the split. The assembly is fine -- chassis_1's floor arrives under
+    # it -- so this is a printing cost, not a geometry error, and it is the price of not cutting
+    # a motor plate in half at a seam. Either accept support material there, or clip the bay to
+    # the split the way the floor already is. NOT decided here: it is a seam decision.
     # (THE BOTTOM is not drawn here any more -- each SEGMENT draws its own, identically, at
     #  the top of the segment pipeline. See _bottom() and _segments.)
     # knee/pedal lever mounts: cut a christmas-tree mortise into EVERY rib (so a lever can mount in
