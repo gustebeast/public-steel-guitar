@@ -1,0 +1,8 @@
+C:\Users\gus\AppData\Local\Programs\Python\Python312\Lib\site-packages\cadquery\utils.py:82: FutureWarning: save will be removed in the next release.
+  warn(f"{f.__name__} will be removed in the next release.", FutureWarning)
+cached 579 context solids in 80s (0 skipped/replaced)
+======================================================================
+ SCRATCH VIEW -- the live part is FRESH; 579 context solids CACHED
+ cache age: 0 min   (--start to re-cache | --merge to end)
+======================================================================
+wrote scratch.step (123349 KB)
