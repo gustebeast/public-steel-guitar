@@ -1,0 +1,64 @@
+{
+ "outline_mm": [
+  49.5,
+  16.0
+ ],
+ "thickness_mm": 1.6,
+ "footprints": [
+  {
+   "ref": "J1",
+   "fpid": "JST_XH_S8B-XH-A_1x08_P2.50mm_Horizontal",
+   "x": -20.5,
+   "y": 2.0,
+   "rot": 0.0,
+   "side": "F",
+   "fab": [
+    -23.0,
+    -0.5,
+    -7.25,
+    4.35
+   ],
+   "crtyd": null
+  },
+  {
+   "ref": "J2",
+   "fpid": "JST_XH_S4B-XH-A_1x04_P2.50mm_Horizontal",
+   "x": 3.2,
+   "y": 2.0,
+   "rot": 0.0,
+   "side": "F",
+   "fab": [
+    0.7,
+    13.2,
+    -7.25,
+    4.35
+   ],
+   "crtyd": null
+  },
+  {
+   "ref": "JP1",
+   "fpid": "SolderJumper-2_P1.3mm_Open_RoundedPad1.0x1.5mm",
+   "x": -5.75,
+   "y": 6.4,
+   "rot": 0.0,
+   "side": "F",
+   "fab": null,
+   "crtyd": null
+  },
+  {
+   "ref": "R1",
+   "fpid": "R_0603_1608Metric",
+   "x": -10.75,
+   "y": 6.2,
+   "rot": 0.0,
+   "side": "F",
+   "fab": [
+    -11.6,
+    -9.9,
+    5.737,
+    6.662
+   ],
+   "crtyd": null
+  }
+ ]
+}

@@ -2,6 +2,10 @@
 
     "C:/Program Files/KiCad/10.0/bin/python.exe" elec/export_geom.py elec/out/output_panel
 
+writes elec/geom/output_panel.geom.json -- TRACKED, unlike elec/out, because the CAD builds
+from it and a checkout without KiCad has to be able to. finish.py runs this at the end of
+every board run, so the file is rewritten whenever the board is.
+
 WHY THIS EXISTS. Every other file in the pipeline flows ONE way: the netlist and
 board.json go INTO layout, and the routed board comes out. Nothing ever read the
 finished board back. So the CAD modelled each board from a hand-typed table of anchors
@@ -26,6 +30,8 @@ import os
 import sys
 
 import pcbnew
+
+GEOM_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "geom")
 
 
 def _bbox(fp, layer, cx, cy):
@@ -71,8 +77,11 @@ def export(stem):
             "crtyd": _bbox(fp, "B.CrtYd" if fp.IsFlipped() else "F.CrtYd", cx, cy),
         })
     out["footprints"].sort(key=lambda f: f["ref"])
-    with open(stem + ".geom.json", "w", encoding="utf-8") as fh:
+    dst = os.path.join(GEOM_DIR, os.path.basename(stem) + ".geom.json")
+    os.makedirs(GEOM_DIR, exist_ok=True)
+    with open(dst, "w", encoding="utf-8", newline="\n") as fh:
         json.dump(out, fh, indent=1)
+        fh.write("\n")
     missing = [f["ref"] for f in out["footprints"] if f["fab"] is None]
     print("%s.geom.json: %d footprints, board %.2f x %.2f%s"
           % (os.path.basename(stem), len(out["footprints"]), out["outline_mm"][0],

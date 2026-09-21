@@ -862,7 +862,7 @@ def _build() -> cq.Workplane:
             body = body.cut(_n)
     # PANEL I/O (the instrument's right face): the base's +X end wall is CH.T (10)
     # thick -- too deep for the jacks (their bodies span x -16..6) -- so RECESS its
-    # interior back to a 4 mm panel at the -Y jack corner (the wall face at
+    # interior back to a thin panel (OP_PANEL_T, 1.6) at the -Y jack corner (the wall face at
     # JACK_WALL_X..XHI stays; the bodies seat through the recess into the hollow
     # foot interior). Recess band z (JACK_Z-14)..FOOT_Z, inside the hollow's Y span
     # (the Y-INSTALL leg grooves top out at bed+7.34, 12.7 below the recess floor,
@@ -875,27 +875,33 @@ def _build() -> cq.Workplane:
     # the +Y. That only surfaced once JACK_TIP was fixed and the board arrived at the
     # panel at all; before that it was 20 mm inboard and never reached the wall to clash
     # with it. Read the board's own span and add a clearance each side.
-    from .electronics import (TS_Y, DC_Y, USB_Y, JACK_Z, JACK_WALL_X,
-                              OP_BOARD_Y, OP_TS_XY, OP_PANEL_CLR)
-    _rc_y = TS_Y - OP_TS_XY[1]                       # the board's Y centre
+    from .electronics import (TS_Y, JACK_Z, JACK_WALL_X, JACK_TIP, OP_BOARD_Y,
+                              OP_PANEL_CLR, op_origin, op_panel_openings)
+    _rc_y = op_origin()[1]                           # the board's Y centre
     _rc_w = OP_BOARD_Y + 2 * OP_PANEL_CLR            # its span plus a fit clearance
     body = body.cut(box_at(JACK_WALL_X - (XLO - 1.0), _rc_w, FOOT_Z - (JACK_Z - 14.0),
                            x=((XLO - 1.0) + JACK_WALL_X) / 2, y=_rc_y,
                            z=(FOOT_Z + (JACK_Z - 14.0)) / 2))
-    for jy, jd in ((TS_Y, 11.8), (DC_Y, 6.2)):   # Ø11.4 TS bushing, Ø5.7 DC thread
-        body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-            jd / 2, 6.0, cq.Vector(JACK_WALL_X - 1.0, jy, JACK_Z),
-            cq.Vector(1, 0, 0))))
-    body = body.cut(box_at(6.0, 13.2, 6.8, x=JACK_WALL_X + 2.0, y=USB_Y, z=JACK_Z))
-    for sy in (USB_Y - 9.0, USB_Y + 9.0):       # USB-C flange screw pilots
-        body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-            1.25, 6.0, cq.Vector(JACK_WALL_X - 1.0, sy, JACK_Z),
-            cq.Vector(1, 0, 0))))
     # ⚠ THE OUTPUT BOARD'S PLATE GOES ON AFTER THE RECESS, not before: the recess cut
     # above clears this whole band, so a cradle fused earlier would simply be deleted by
-    # it. See op_cradle for why the board needed a floor at all -- there was none under
-    # 70 of its 74 mm.
+    # it. And BEFORE the panel openings, not after: anything of the cradle that reaches
+    # the panel would otherwise fill a hole back in (the cut-order trap this file has hit
+    # four times -- bearing seats, guide sockets, axle bores, conduit).
     body = body.union(op_cradle())
+    # THE PANEL OPENINGS, one per connector, CENTRED WHERE THE ROUTED BOARD PUTS IT. They
+    # used to be three typed holes at one height -- the TS jack's -- which put the USB-C
+    # hole 7.85 mm above the receptacle and the barrel's hole in front of a jack that faced
+    # the chassis rail. Printed with this face on the bed, every opening runs along the
+    # build axis, so none needs a teardrop or support.
+    _x0, _x1 = JACK_WALL_X - 1.0, JACK_TIP + 1.0
+    for _ref, _oy, _oz, _op in op_panel_openings():
+        if _op[0] == "round":
+            _cut = cq.Workplane("YZ").circle(_op[1] / 2.0).extrude(_x1 - _x0)
+        elif _op[0] == "stadium":
+            _cut = cq.Workplane("YZ").slot2D(_op[1], _op[2]).extrude(_x1 - _x0)
+        else:
+            _cut = cq.Workplane("YZ").rect(_op[1], _op[2]).extrude(_x1 - _x0)
+        body = body.cut(_cut.translate((_x0, _oy, _oz)))
     # +Z RETENTION LIP: protrudes -X under the deck in the -Y bay (see the LIP_* block);
     # the installed deck panels trap it, blocking the endplate from lifting +Z. Its +X face
     # is the endplate -X face (XLO); top is the deck-bottom plane (z0) so the deck rides it.
@@ -935,67 +941,69 @@ def op_cradle():
     """The output+panel board's bottom plate, fused into the endplate.
 
     ⚠ THE BOARD HAD NOTHING UNDER IT. Probed across its whole 74 x 66 footprint, the
-    endplate carries material only at x >= 18 -- the wall itself -- and the 4 mm recess
-    takes out everything from XLO-1 to JACK_WALL_X in this band, so the board hung in
-    open bay air supported by its own connectors. This is the plate it sits on.
+    endplate carried material only at the wall itself, and the recess takes out everything
+    from XLO-1 to JACK_WALL_X in this band, so the board hung in open bay air supported by
+    its own connectors. This is the plate it sits on.
 
-    RETENTION IS THE PATTERN THE MOTOR TEES USE (cadkit.pcb.pcb_cradle): walls capture
-    the board in X and Y, corner pads carry it in Z, so the ONLY way in or out is
-    straight up -- and one M4 button beside the +Y edge, its head lapping the board,
-    closes that. One screw, one hex size (2.5 mm, the project's single key), no M2.
+    THE BOARD SLIDES IN TOWARD THE PANEL NOW, NOT DOWN ONTO THE PLATE (2026-09-21). Its
+    connectors used to stop 4.8 mm short of the face; they now reach INTO the panel -- the
+    barrel through its window to the face, the USB-C to within 0.4, the TS jack's nose
+    through its hole -- and a board whose connectors pass through a wall cannot be lowered
+    in from above. So the install direction is +X: it goes down onto the plate a couple of
+    millimetres short of home, then slides along it between the +-Y walls until its
+    connectors are through the panel and its edge meets it. The PANEL is the +X stop; the
+    connectors in their openings hold the +X end down; one M4 button beside the -X edge --
+    head lapping the board, shank 0.5 mm off its edge -- holds that end down and blocks the
+    way back out.
+    Same rule as every board in the instrument: plastic everywhere but one direction, and
+    one screw, one 2.5 mm key, locking that. The board's own notes already said hold_edge
+    "-x" (elec/output_panel.py BOARD_NOTES); the first version of this cradle used +Y.
 
-    open_edge is +X because that side belongs to the panel: the connectors face the
-    holes bridge_endplate cuts, and a wall there would sit between them and the face.
-    The board's +X location is already fixed by op_origin() registering on the panel,
-    so the missing wall costs nothing -- the panel is the stop.
+    hold_at -22.5 is where the -X edge is clear: J2/J3/J4 face out of it above y -15.3, and
+    the 24 V lane takes everything below -29.5 (world -119).
 
-    standoff is measured, not chosen: the board's underside sits at JACK_Z - PCB_T -
-    OP_TS_AXIS_H and the recess floor at JACK_Z - 14, so 2.9 mm separates them and the
-    cradle base lands exactly on that floor.
+    standoff is measured, not chosen: the board's underside above the recess floor at
+    JACK_Z - 14, so the base lands exactly on that floor.
     """
     from cadkit.pcb import pcb_cradle
     from cadkit.fasteners import M4 as _M4
     from .electronics import (op_origin, OP_BOARD_X, OP_BOARD_Y, OP_PANEL_CLR,
-                              JACK_Z, _PCB_T, OP_TS_AXIS_H)
+                              JACK_Z, _PCB_T)
     cx, cy, cz = op_origin()
     standoff = cz - (JACK_Z - 14.0)              # board underside above the recess floor
-    cr = pcb_cradle(OP_BOARD_X, OP_BOARD_Y, open_edge="+x",
-                    hold_edge="+y", hold_at=0.0, hold_spec=_M4,
+    # ⚠ BUILT WALLED ALL ROUND, THEN OPENED -- because pcb_cradle's model is DROP-IN. It
+    # refuses a hold on the open edge ("the head's notch needs a wall to sit in, and the
+    # board a stop that way"), and in its world that is right: the board comes down from
+    # +Z, the walls hold X and Y, and the head is all that holds Z. A SLIDE-IN board needs
+    # the open side and the lock on the SAME edge, and there the shank is the stop. So ask
+    # cadkit for the hold at -X in a closed cradle -- which gives the boss, the M4 insert
+    # pocket and the head clearance exactly as the tees get them -- and take away the two
+    # walls this install does not want.
+    cr = pcb_cradle(OP_BOARD_X, OP_BOARD_Y, open_edge=None,
+                    hold_edge="-x", hold_at=-22.5, hold_spec=_M4,
                     standoff=standoff, clr=OP_PANEL_CLR)
-    # ⚠ THE 24 V TRUNK LANE WINS -- IT WAS HERE FIRST. The bus runs -X along y = TEE_Y
-    # (-120.75) at z -52, and the board's -Y edge reaches -122.50, so the cradle's -Y
-    # wall and its two -Y corner pads stood in the lane (4 wire pairs, 7-9 mm3 each). The
-    # bus serves ten motors and its y is set by the tee row; a board that arrived later
-    # does not get to move it.
-    #
-    # So everything ABOVE the base is cut back clear of the lane. The base plate itself
-    # stays: its top is at the recess floor, 2.9 mm below the board, which is under the
-    # bundle and out of its way -- the board keeps a continuous floor and the wires run
-    # over it. The board's last 3.5 mm of -Y edge then overhangs unsupported, which is
-    # what an edge overhang is for; it is carried by the +Y pads and the hold-down.
-    _lane_y = -119.0                                 # clear of the bundle at TEE_Y -120.75
     # pcb_cradle's own frame: the MOUNTING SURFACE is local z 0 and the board's underside
-    # is local z `standoff` (the base plate hangs below 0). Writing -standoff here put
-    # both cuts 2.9 mm low -- the notch then stopped exactly at the wire's underside and
-    # trimmed 0.06 mm3 off a 0.56 mm3 clash, which looked like the cut missing rather
-    # than the frame being wrong.
+    # is local z `standoff` (the base plate hangs below 0).
     _base_top = 0.0
+    # +X WALL: the panel is the stop, and a wall there would sit IN the panel, standing
+    # above the board's edge exactly where the three connectors overhang it.
+    cr = cr.cut(box_at(20.0, OP_BOARD_Y + 40.0, 60.0,
+                       x=OP_BOARD_X / 2 + OP_PANEL_CLR + 10.0, y=0.0, z=0.0))
+    # -X WALL, above the board's underside only: that is the way in. What stays below is a
+    # curb the board slides over, and the screw's boss, which pcb_cradle stood on the
+    # mounting surface and topped at the board's underside -- so this cut leaves it whole.
+    cr = cr.cut(box_at(20.0, OP_BOARD_Y + 40.0, 60.0,
+                       x=-(OP_BOARD_X / 2 + OP_PANEL_CLR + 10.0), y=0.0,
+                       z=standoff + 30.0))
+    # ⚠ THE 24 V TRUNK LANE WINS -- IT WAS HERE FIRST. The bus runs -X along y = TEE_Y
+    # (-120.75) at z -52, and the board's -Y edge reaches -122.50, so the cradle's -Y wall
+    # and its -Y corner pads stood in the lane. The bus serves ten motors and its y is set
+    # by the tee row; a board that arrived later does not get to move it. Everything ABOVE
+    # the base is cut back clear of the lane; the base stays, 2.9 mm under the board and
+    # under the bundle, so the board keeps a continuous floor and the wires run over it.
+    _lane_y = -119.0                                 # clear of the bundle at TEE_Y -120.75
     cr = cr.cut(box_at(2 * (OP_BOARD_X / 2 + 4.0), 40.0, 40.0,
                        x=0.0, y=(_lane_y - cy) - 20.0, z=_base_top + 20.0))
-    # AND ONE NOTCH FOR THE GROUND LEG, which runs 2 mm +Y of the hot pair and so entered
-    # through the -X wall just inboard of the lane cut. Only the wall is notched, and only
-    # across the standoff band -- the board is located by the wall ABOVE its underside, so
-    # a gap below that costs nothing and the bundle passes into the lane.
-    # ⚠ AND THE NOTCH GOES ABOVE THE BOARD'S UNDERSIDE, because the ground leg does. Its
-    # bundle tops out at z -51.29 against a -51.90 underside, so a notch that stopped at
-    # the standoff band left 0.6 mm of wire in the wall. The alternative was dropping the
-    # power lane 1 mm -- LANE z -52.0 is shared by ten motors' feeds and the audio lane,
-    # and moving shared infrastructure to clear one new part is the wrong way round. The
-    # wall loses 6 mm of its length at one y; the board's -X edge is located by the rest.
-    _notch_h = standoff + _PCB_T + 0.8               # base top -> just past the board top
-    cr = cr.cut(box_at(4.0, 6.0, _notch_h,
-                       x=-(OP_BOARD_X / 2 + OP_PANEL_CLR + 0.8), y=(-118.8 - cy),
-                       z=_base_top + _notch_h / 2.0))
     return cr.translate((cx, cy, cz - standoff))
 
 
