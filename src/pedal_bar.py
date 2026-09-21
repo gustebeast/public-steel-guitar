@@ -541,7 +541,11 @@ def _bar_full() -> cq.Workplane:
     # _mortise_tower because it straddles the two: the jack's back is at z 22.30 and
     # the tower does not start until BAR_H (27.90). Cutting it off the tower alone
     # left the lower 5.6 of the bore filled in by the bar underneath it.
-    body = body.cut(BT.bar_negatives(TOWER_TOP - LS_ENGAGE, CHAM_Z1))
+    # (now the POGO joint's female half, src.leg_pogo: a one-bead pedestal on the
+    #  mortise floor, and the connector's cavity running down into the chamber)
+    from . import leg_pogo as PG
+    _ped, _neg = PG.bar_features(TOWER_TOP - LS_ENGAGE, CHAM_Z1)
+    body = body.union(_ped).cut(_neg)
     # ...and the chamber the lead turns in, which is the trough carried under the tower
     body = body.cut(box_at(TROUGH_X0 + 0.01 - CHAM_X0, BAR_Y1 + 1.0 - CHAM_Y0,
                            CHAM_Z1 - CHAM_Z0,

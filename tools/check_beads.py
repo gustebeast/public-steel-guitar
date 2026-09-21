@@ -69,6 +69,36 @@ def _ex(cat: str, **kv) -> None:
         EXEMPT[k.replace("__", ".")] = (cat, v)
 
 
+# The leg's pogo blind-mates (src.leg_pogo). The boards are FAB parts -- cut by the PCB
+# house, not laid in beads -- and the header is a bought part off its drawing.
+_ex("hardware",
+    leg_pogo__POGO_PITCH="C5280862 drawing: 2.54 pin pitch",
+    leg_pogo__POGO_BODY_U="C5280862 drawing: housing 10.16", leg_pogo__POGO_BODY_V="...and 5.08",
+    leg_pogo__POGO_FOOT_H="C5280862 drawing: 0.50 solder feet",
+    leg_pogo__POGO_BODY_TOP="C5280862 drawing: housing top 3.00 above the board",
+    leg_pogo__POGO_BARREL_D="C5280862 drawing: barrel O1.50",
+    leg_pogo__POGO_BARREL_TOP="C5280862 drawing view (undimensioned), cosmetic",
+    leg_pogo__POGO_PLUNGER_D="C5280862 drawing: plunger O0.90",
+    leg_pogo__POGO_FREE="C5280862 drawing: 7.00 free height",
+    leg_pogo__POGO_WORK="C5280862 drawing: 5.50 working height",
+    leg_pogo__POGO_LIMIT="C5280862 drawing: 5.00 compression limit",
+    leg_pogo__PAD_D="an ENIG pad on the PCB at the header's 2.54 pitch",
+    leg_pogo__PAD_T="1 oz copper",
+    leg_pogo__BOARD_U="PCB outline, routed by the fab", leg_pogo__BOARD_V="...and its other side",
+    leg_pogo__EDGE="JLCPCB component-to-edge rule (0.5) plus margin -- a PCB layout number",
+    leg_pogo__SCREW_V="the M4 hole's place on the PCB, set by the insert-to-cavity wall",
+    leg_pogo__HOLE_D="M4 clearance hole in the PCB (elec convention)",
+    leg_pogo__HEAD_D="M4 button head O7.0", leg_pogo__HEAD_H="...and its height",
+    leg_pogo__PH_V="JST PH top-entry SMT body depth (RESERVED envelope)",
+    leg_pogo__PH_H="JST PH mated height (RESERVED at XH's 9.8)")
+_ex("clearance",
+    leg_pogo__CLR="board / connector slip fit in its printed pocket",
+    leg_pogo__INS_CLR="screw-tip clearance past the insert",
+    leg_pogo__LOAD_SLOP="bar_latch.CLR: how far the bottom joint hangs open",
+    leg_pogo__MISALIGN="tip-on-pad landing error: octagon fit plus pocket clearances",
+    leg_pogo__PRINT_TOL="print tolerance on the pocket depths",
+    leg_pogo__SEAT_C="spring-pin compression when seated, on the header's own travel")
+
 # Screw-drive endcap + two-row endplate (branner). Each is off the 0.8 grid FOR A REASON.
 _ex("hardware",
     PULLEY_SOCKET_FLOOR_CLR="2 traces of the 0.2 nozzle the screw pulley prints at, not 0.8 beads",

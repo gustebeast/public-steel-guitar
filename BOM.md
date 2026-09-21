@@ -108,8 +108,8 @@ the constraint is stock, not selection. See the optical-pickup section.
 > — but it is not worth filtering for until the arm question is answered, because the OD
 > is the input.
 
-| **TRRS cable, 4C jack-to-plug** | [Tensility 10-02135](https://www.digikey.com/en/products/detail/tensility-international-corp/10-02135/7606584) — 3.5 mm **4-conductor TRRS**, phone JACK to phone PLUG, 914 mm (3.0 ft), 28 AWG shielded, $5.31, 420 in stock | **2** | DigiKey [d] | **THE ONE CABLE SKU FOR THE WHOLE LEG.** Its own drawing gives the parts, which is why it is here rather than an envelope: plug **3.5 × L20.7**, jack **3.5 × 7.8 × L25.8**, cable Ø3.8. **One is left WHOLE** as the leg's lead — female up (floating in the fixed tenon at the top joint), male down (floating in the adjust tenon at the bottom) — which is exactly the handedness the user's rule wants, since the part with the latch is always female. **One is CUT IN HALF** (user), and a jack-to-plug cut in half is the two pigtails this instrument needs and nothing else: the MALE half fixed in the body adapter at the top, the FEMALE half fixed in the pedal bar at the bottom, both stripped and crimped to JST-XH. A plug-to-plug cut in half would have given two males and left the bar without a female |
-| **TRRS float spring** | Compression, **Ø8.0 OD × 0.7 wire × 20.0 free**, **ID 6.6**, 304 SS (rate ~0.75 N/mm, bracketed 0.6–0.9; **measure on arrival**) | 1 (+ 4 spare) | [uxcell B0C33C21K9](https://www.amazon.com/dp/B0C33C21K9) — 5 to a pack, used **AS BOUGHT** | **$6.29 / 5** [a] | SECOND SKU, and not a preference: the coil has to end up ON the lead, and a lead has two ends — the moulded jack (Ø9.7) and the moulded far plug (Ø6.1). The latch coil's 3.8 ID passes neither, so no assembly order puts it there and the joint was unbuildable with it (user found this). **ID 6.6 clears the far plug by 0.5.** Installed 13.80 → **4.7 N at rest / 6.9 N seated**. The installed length is the SOLID FLOOR here, not the preload target: at 0.75 N/mm a 5.0 N target would want 13.33 and the coil would go solid before the leg seats |
+| ~~**TRRS cable, 4C jack-to-plug**~~ **SUPERSEDED 2026-09-21 by the pogo boards (Connectors → Leg blind-mates)** | [Tensility 10-02135](https://www.digikey.com/en/products/detail/tensility-international-corp/10-02135/7606584) — 3.5 mm **4-conductor TRRS**, phone JACK to phone PLUG, 914 mm (3.0 ft), 28 AWG shielded, $5.31, 420 in stock | **2** | DigiKey [d] | **THE ONE CABLE SKU FOR THE WHOLE LEG.** Its own drawing gives the parts, which is why it is here rather than an envelope: plug **3.5 × L20.7**, jack **3.5 × 7.8 × L25.8**, cable Ø3.8. **One is left WHOLE** as the leg's lead — female up (floating in the fixed tenon at the top joint), male down (floating in the adjust tenon at the bottom) — which is exactly the handedness the user's rule wants, since the part with the latch is always female. **One is CUT IN HALF** (user), and a jack-to-plug cut in half is the two pigtails this instrument needs and nothing else: the MALE half fixed in the body adapter at the top, the FEMALE half fixed in the pedal bar at the bottom, both stripped and crimped to JST-XH. A plug-to-plug cut in half would have given two males and left the bar without a female |
+| ~~**TRRS float spring**~~ **SUPERSEDED 2026-09-21 (pogo boards: no float spring)** | Compression, **Ø8.0 OD × 0.7 wire × 20.0 free**, **ID 6.6**, 304 SS (rate ~0.75 N/mm, bracketed 0.6–0.9; **measure on arrival**) | 1 (+ 4 spare) | [uxcell B0C33C21K9](https://www.amazon.com/dp/B0C33C21K9) — 5 to a pack, used **AS BOUGHT** | **$6.29 / 5** [a] | SECOND SKU, and not a preference: the coil has to end up ON the lead, and a lead has two ends — the moulded jack (Ø9.7) and the moulded far plug (Ø6.1). The latch coil's 3.8 ID passes neither, so no assembly order puts it there and the joint was unbuildable with it (user found this). **ID 6.6 clears the far plug by 0.5.** Installed 13.80 → **4.7 N at rest / 6.9 N seated**. The installed length is the SOLID FLOOR here, not the preload target: at 0.75 N/mm a 5.0 N target would want 13.33 and the coil would go solid before the leg seats |
 
 
 > ✅ **THE BEND RADIUS IS RESOLVED — the duty cycle is what settles it (user, 2026-09-18).**
@@ -262,7 +262,7 @@ the constraint is stock, not selection. See the optical-pickup section.
 > — but it is not worth filtering for until the arm question is answered, because the OD
 > is the input.
 
-| **TRRS float spring** | Compression, **Ø8.0 OD × 0.7 wire × 20.0 free**, **ID 6.6**, 304 SS (rate ~0.75 N/mm, bracketed 0.6–0.9; **measure on arrival**) | 1 (+ 4 spare) | [uxcell B0C33C21K9](https://www.amazon.com/dp/B0C33C21K9) — 5 to a pack, used **AS BOUGHT** | **$6.29 / 5** [a] | SECOND SKU, and not a preference: the coil has to end up ON the lead, and a lead has two ends — the moulded jack (Ø9.7) and the moulded far plug (Ø6.1). The latch coil's 3.8 ID passes neither, so no assembly order puts it there and the joint was unbuildable with it (user found this). **ID 6.6 clears the far plug by 0.5.** Installed 13.80 → **4.7 N at rest / 6.9 N seated**. The installed length is the SOLID FLOOR here, not the preload target: at 0.75 N/mm a 5.0 N target would want 13.33 and the coil would go solid before the leg seats |
+| ~~**TRRS float spring**~~ **SUPERSEDED 2026-09-21 (pogo boards: no float spring)** | Compression, **Ø8.0 OD × 0.7 wire × 20.0 free**, **ID 6.6**, 304 SS (rate ~0.75 N/mm, bracketed 0.6–0.9; **measure on arrival**) | 1 (+ 4 spare) | [uxcell B0C33C21K9](https://www.amazon.com/dp/B0C33C21K9) — 5 to a pack, used **AS BOUGHT** | **$6.29 / 5** [a] | SECOND SKU, and not a preference: the coil has to end up ON the lead, and a lead has two ends — the moulded jack (Ø9.7) and the moulded far plug (Ø6.1). The latch coil's 3.8 ID passes neither, so no assembly order puts it there and the joint was unbuildable with it (user found this). **ID 6.6 clears the far plug by 0.5.** Installed 13.80 → **4.7 N at rest / 6.9 N seated**. The installed length is the SOLID FLOOR here, not the preload target: at 0.75 N/mm a 5.0 N target would want 13.33 and the coil would go solid before the leg seats |
 
 > **SPRING SOURCING, 2026-09-16 — OUTCOME: both leg springs are McMaster catalogue
 > parts, used as bought, $51.30 the pair.** The user's constraints, in the order they
@@ -322,7 +322,7 @@ the constraint is stock, not selection. See the optical-pickup section.
 > — but it is not worth filtering for until the arm question is answered, because the OD
 > is the input.
 
-| **TRRS float spring** | Compression, **Ø8.8 OD × 0.8 wire × 14.5 free**, **ID 7.2**, 302 SS, **rate 1.91 N/mm PUBLISHED**, compressed 6.1 at max load | 1 (+ 4 spare) | [McMaster 2006N232](https://www.mcmaster.com/2006N232/) — pack of 5, used **AS BOUGHT** | **$15.98** [m] | SECOND SKU, and it is not a preference: the coil has to end up ON the lead, and a lead has two ends — the moulded jack (Ø9.7) and the moulded far plug (Ø6.1). The latch coil's 4.37 ID passes neither, so no assembly order puts it there and the joint was unbuildable with it (user found this). **ID 7.2 clears the far plug by 1.1.** Installed 11.88 → **5.0 N at rest / 10.7 N seated**; the rest figure is the one that matters (it holds the jack against its keeper with the leg off) and `leg_trrs.PRELOAD_TARGET` sets it directly |
+| ~~**TRRS float spring**~~ **SUPERSEDED 2026-09-21 (pogo boards: no float spring)** | Compression, **Ø8.8 OD × 0.8 wire × 14.5 free**, **ID 7.2**, 302 SS, **rate 1.91 N/mm PUBLISHED**, compressed 6.1 at max load | 1 (+ 4 spare) | [McMaster 2006N232](https://www.mcmaster.com/2006N232/) — pack of 5, used **AS BOUGHT** | **$15.98** [m] | SECOND SKU, and it is not a preference: the coil has to end up ON the lead, and a lead has two ends — the moulded jack (Ø9.7) and the moulded far plug (Ø6.1). The latch coil's 4.37 ID passes neither, so no assembly order puts it there and the joint was unbuildable with it (user found this). **ID 7.2 clears the far plug by 1.1.** Installed 11.88 → **5.0 N at rest / 10.7 N seated**; the rest figure is the one that matters (it holds the jack against its keeper with the leg off) and `leg_trrs.PRELOAD_TARGET` sets it directly |
 
 > **SPRING SOURCING, 2026-09-16 (user: Lee Spring has bitten us on price before).**
 > Both springs are now catalogue parts at **$13.28 the pair** rather than a Lee Spring
@@ -859,6 +859,36 @@ not yet modelled) and the optical pickup's USB + 5 V feed. All cross-rib raceway
 knee-lever mortise plane — route no fatter cable through the floor trunk.
 
 ## Connectors (wiring strategy, July 2026)
+
+### Leg blind-mates — POGO BOARDS, 2026-09-21 (user)
+
+Both leg joints (leg ↔ body adapter, pedal bar ↔ adjust tenon) are now **two PCBs
+each**, and the whole TRRS stack is gone: no jack, plug, float spring, TPU throat,
+TPU sleeve or bayonet, and no moulded cable. CAD: `src/leg_pogo.py` (boards drawn
+from the component drawings; **bronner routes the real boards from it**).
+
+| Item | Part | Qty | Unit | Note |
+|---|---|---|---|---|
+| **Male pogo board** | custom 13.0 × 13.4, 1.6 mm, **one M4 through it**: 2 × 4 spring-pin header + JST PH on the back | 2 | ~$2 assembled (est.) | on the LEG, in a pocket in each tenon end; the free tips sit **1.15 inside** the tenon face |
+| **Female pogo board** | custom 13.0 × 13.4, 1.6 mm, one M4: 8 × Ø2.0 ENIG pads + JST PH on the back | 2 | ~$2 assembled (est.) | on the FIXED parts, on a one-bead pedestal off the adapter's roof and the bar's floor. The pads are the wear item: **one screw, reached down the empty mortise** |
+| **Spring-pin header, 2 × 4** | Xinyangze **YZ76615070R-08025-01**, LCSC **C5280862** (SMT, 2.54 pitch, 10.16 × 5.08, 7.0 free / 5.5 working / 5.0 limit, **70 gf/pin**, 2 A, 10k cycles, 3 µin Au) | 2 | $1.94 @10 | Extended part, **~235–395 in stock — buy spares**. **Rated 12 V**: bus B runs at **5 V** behind a current-limited switch off the motor controller's 5 V rail, with an LDO on each sensor board (user) |
+| **Harness header, PH top-entry SMT** | JST **B4B-PH-SM4-TB** (LCSC number: bronner to pick) | 4 | ~$0.2 | PH, not XH (user, with branner's lever board). ⚠ The CAD reserves XH's 9.8 mated height — read PH's drawing and tighten |
+| **M4 × 6 button** + **M4 heat-set insert** | — | 4 + 4 | — | one per board (project PCB rule); the insert has no self-tap fallback (`leg_pogo._INS_WHY`) |
+| **Leg harness** | 4 × 28 AWG, crimped PH at both ends | 2 runs | — | replaces the 10-02135 lead; crimped **after** threading, so the bores only have to pass contacts |
+
+**Why the pins are on the leg** (the reverse of the first proposal): the body adapter has
+**12.8** above its mortise roof, and a male stack is 5.75 of pin travel + 1.6 board + 9.8
+connector. Only the female (1.6 + 9.8) fits there. **Why C5280862 and not the 3 mm-stroke
+HJ Tech C54935105** the research ranked first: that stroke was bought for a 3 mm latch
+slop that turned out to be the TRRS's own FLOAT allowance — the latches really hang on
+**0.25** (`bar_latch` CLR) — and the HJ Tech part is through-hole, whose tails fill the
+back of the board exactly where the harness connector goes.
+
+**Open:** (1) the PH envelope is reserved, not read; (2) the pads face UP at the bar
+joint (the geometry forces the male side into the tenon), so dust on them is the thing
+to watch — they sit on a raised pedestal and wipe clean; (3) `coil_mandrel` was sized for
+the Ø3.8 moulded lead and is moot for a loose harness until the harness is chosen.
+
 
 Rule: **solder only happens on factory-assembled PCBs; every field connection
 is a connector** (no bare wire ever meets a bare module pin; never
