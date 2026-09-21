@@ -791,7 +791,14 @@ def _cradle(w, z_bot=None, z_top=None, x_max=None, flip=None):
     # band left that lever with NO +X retention at all, which the push probe caught.
     _lo = (z_bot, min(pcb_z1, CR_PLINTH_Z1))
     _hi = (max(z_bot, SOCK_R), z_top)
-    _span = max(_lo, _hi, key=lambda r: max(0.0, min(r[1], pcb_z1) - max(r[0], pcb_z0)))
+    # Scored by the groove that SURVIVES the 45° underside ramp, not by the raw band: a band that
+    # does not start on the bed loses its lowest (CR_SLOT_Y1 - CR_Y0) at the groove to that ramp.
+    # Scoring the raw band picked LKL's upper band (4.3 of board) whose ramp then ate the whole
+    # web short of the groove -- a loose triangle that held nothing (user caught it in a render).
+    def _held(r):
+        z0 = r[0] if r[0] <= z_bot + 1e-6 else r[0] + (CR_SLOT_Y1 - CR_Y0)
+        return max(0.0, min(r[1], pcb_z1) - max(z0, pcb_z0))
+    _span = max(_lo, _hi, key=_held)
     for a, b, z0, z1 in ((_far[0], _far[1], z_bot, z_top), _near + _span):
         w = w.union(box_at(abs(b - a), CR_Y1 - CR_Y0, z1 - z0,
                            x=(a + b) / 2, y=(CR_Y0 + CR_Y1) / 2,
@@ -802,8 +809,10 @@ def _cradle(w, z_bot=None, z_top=None, x_max=None, flip=None):
             # Ramp it at 45° off the cheek instead. Costs the groove its lowest
             # (CR_Y1-CR_Y0) of engagement and nothing else, and the band it takes
             # is the far end from the board's seat anyway.
-            _p = [(CR_Y0 - 1.0, z0 - 1.0), (CR_Y1 + 1.0, z0 - 1.0),
-                  (CR_Y1 + 1.0, z0 + (CR_Y1 + 1.0) - (CR_Y0 - 1.0)), (CR_Y0 - 1.0, z0)]
+            # The ramp starts ON the housing face (CR_Y0), never inside it: starting 1.0 in
+            # notched the cheek beside the +Y bearing once the bearings went flush (user).
+            _p = [(CR_Y0, z0 - 1.0), (CR_Y1 + 1.0, z0 - 1.0),
+                  (CR_Y1 + 1.0, z0 + (CR_Y1 + 1.0) - CR_Y0), (CR_Y0, z0)]
             _f = cq.Face.makeFromWires(cq.Wire.makePolygon(
                 [cq.Vector(min(a, b) - 1.0, y, z) for y, z in _p]
                 + [cq.Vector(min(a, b) - 1.0, _p[0][0], _p[0][1])]))
