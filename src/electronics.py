@@ -508,6 +508,16 @@ def output_panel() -> cq.Workplane:
     return output_panel_pcb().translate(op_origin())
 
 
+def op_top(ref: str):
+    """World (x, y, z) of the TOP of the output board's connector `ref`, over its body
+    centre -- where a lead leaves a TOP-ENTRY header (J7, J9, J10 are vertical XH)."""
+    cx, cy, cz = op_origin()
+    f = BG.footprint("output_panel", ref)
+    x0, x1, y0, y1 = f["fab"]
+    h = BG.HEIGHT[BG.fp_name(f["fpid"])]
+    return (cx + (x0 + x1) / 2.0, cy + (y0 + y1) / 2.0, cz + _OP_T + h)
+
+
 def op_pt(ref: str):
     """World (x, y, z) where a lead leaves the output+panel board's connector `ref` -- so
     wiring.py asks the board rather than carrying a copy of its layout, the same contract

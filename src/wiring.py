@@ -66,10 +66,13 @@ an EMI defence: noise immunity comes from SHIELDING (audio), TWISTING
 
 from __future__ import annotations
 
+import math
+
 import cadquery as cq
 
 from . import dimensions as D
 from . import electronics as EL
+from .helpers import oct_cable
 
 # modeled cable OD per net (mm): jacketed bundles (shielded/USB) drawn as ONE
 # round conductor at the jacket OD; the 24 V pair AND the CAN pairs as discrete
@@ -102,6 +105,12 @@ CAN_OFF = 0.7         # CAN-H / CAN-L conductor separation (both x and y, same
                       # scheme as PWR_OFF): the split pair stays inside the old
                       # single-jacket envelope (0.7 + 0.65 = 1.35 < the 2.4/2 it
                       # replaces) so the trunk footprint is unchanged.
+# ⚠ THE TEE-TO-TEE TRUNK IS ONE 4-WAY CABLE, AND ITS FOUR CONDUCTORS WERE ON ONE LINE 0.3 mm
+# APART. The hops drew CAN at +-CAN_OFF (0.7) and 24 V at +-PWR_OFF (1.0), both along the same
+# diagonal, so CAN-H ran through 24 V hot and CAN-L through ground on every hop -- 18 pairs,
+# ~80 mm3 each over 45.8 mm, never reported (the gate allow-lists wire against wire). Spread
+# as a flat set at 1.8, which clears the fattest neighbours (O1.8 beside O1.3 needs 1.55):
+TRUNK_OFF = {"hot": -2.7, "canh": -0.9, "canl": 0.9, "gnd": 2.7}
 PWR_OFF = 1.0         # 24 V hot/gnd separation. In X on the bank hops (see _seg) and in Z
                       # along the -Y corridor, where the pair rides one lane each. 2.0 apart
                       # leaves 0.2 of air between two O1.8 conductors, which is right for a
@@ -121,153 +130,71 @@ WIRE_D = 2.0          # default (shielded-pair size)
 # -Y-facing PCB out to its tee. Past m9 the rail is notched (chassis motor-9 cable cut).
 from .chassis import Y_LO as _Y_LO, Y_HI as CH_Y_HI, T as _RAIL_T
 from .chassis import SPLIT_X as CH_SPLIT_X
-from .chassis import WC_RUNS as CH_WC_RUNS, WC_LANE_Y as CH_WC_LANE_Y
-from .chassis import WC_END_CLR as CH_WC_CLR
+from .chassis import WT_LANE_Y as CH_WT_LANE_Y, WT_ZF as CH_WT_ZF, WT_H as CH_WT_H
+from .chassis import WT_X1 as CH_WT_X1, WT_RUNS as CH_WT_RUNS
 from . import motor_bank as MB                          # back_y: where each motor's pigtail leaves
 from .motor_bank import FLOOR_TOP as _RIB_TOP           # -65.15 (rib tops = above = rib-free)
 RAIL_INNER_Y = _Y_LO + _RAIL_T / 2                       # -128.75: -Y rail inner face
-RAIL_Y = RAIL_INNER_Y + 4.5                              # trunk corridor centre, hugging the rail
+RAIL_Y = RAIL_INNER_Y + 4.5                              # the old floor-level corridor, which
+                                                         # only bus B still uses at the keyhead
 TEE_Y  = RAIL_INNER_Y + 8.0                              # tee-board centre (14mm-deep board clears wall)
-# six trunk lanes, STACKED in Z (was spread in Y), all ABOVE the tee headers (-54) so the
-# long-haul nets (audio/dac/relayctrl/usb, which do NOT land on a tee) clear every tee; the
-# CAN/pwr/canb nets dip DOWN to the tee headers to land (whitelisted tee contacts). 2mm pitch.
-# LANE_AUDIO and LANE_DAC are gone with the AFE board that both ended on; their two slots at
-# the bottom of the stack are what the 24 V pair now spreads into. The 24 V rail runs used to
-# ignore this table entirely and ride a hardcoded -52 -- which is why LANE_PWR at -48 read as
-# free and then collided with the USB lane the first time they were made to agree.
-# THE TWO 24 V FEEDS NEED TWO LANES, AND HAD ONE. The J7 head and the bypass feed are
-# separate cables running the same errand from opposite ends -- and both sat at the same y and
-# the same z over the ~150 mm they share, 416 mm^3 of each inside the other. It never showed up
-# because wire-vs-wire is allow-listed as insulated crossings, and two cables lying THROUGH each
-# other is not a crossing: it is a bundle that cannot be assembled, and it made the corridor
-# look one cable narrower than it is. Seven conductors ride this channel, and here they are:
-# The stack is built DOWN from the top and pinned at the bottom by feed 1's hot, which may not
-# go below -53.2: the J7 head and its slack coil pass through the bridge endplate's band at the
-# +X end, and 1.4 lower than this they are inside it.
-LANE_PWR   = -52.2       # 24 V feed 1 (J7 head, tail, coil): hot -53.2, gnd -51.2
-LANE_PWR2  = -48.1       # 24 V feed 2 (the bypass to motor_ctrl): hot -49.1, gnd -47.1
-LANE_USB   = -44.6       # USB-C -> Pi (O2.6, the fattest)
-LANE_CTRL  = -42.0       # CAN bus B (inputs), split +-CAN_OFF in y
-# ...and bus A, which is NOT a corridor lane any anymore and is left out of the stack on purpose:
-# its tees are all on the motor bank, so every hop takes _seg's bank branch and this z is never
-# used along the rail. It sits between feed 2's two conductors, which is harmless while nothing
-# rides it and would need a real slot the day the trunk comes back to the rail.
-LANE_CAN   = -48.0       # CAN bus A (motors) -- bank hops only; see above
-# NOTE: LANE_* are Z heights along the -Y corridor (not lane y's), and the corridor itself is
-# the rail's wiring channel -- see chassis.WC_* and _rail_pts.
+# ── THE -Y CORRIDOR IS THE WIRING TROUGH NOW (chassis.WT_*), ABOVE THE MOTORS ──────────
+# It used to be a pocket cut into the rail below the motor tops; the user moved it OUT of
+# the wall and UP (the wall is the body's side beam). Everything that runs the length of
+# the instrument rides it, stacked in Z inside a 4.8 mm-wide space, at one y (CHAN_Y):
+LANE_PWR2  = CH_WT_ZF + 2.0      # -24.4: the 24 V bypass feed (J10 -> motor_ctrl),
+                                 #        hot -25.4 / gnd -23.4 -- on the floor
+LANE_USB   = CH_WT_ZF + 5.5      # -20.9: output board J2 -> the Pi (O2.6)
+LANE_PWR   = CH_WT_ZF + 9.0      # -17.4: the 24 V head (J7 -> the east tee), hot -18.4 /
+                                 #        gnd -16.4 -- first trough piece only, it leaves
+                                 #        at string 10's motor for that motor's tee
+LANE_CTRL  = -42.0               # CAN bus B: keyhead-local, on the old floor corridor
+LANE_CAN   = -48.0               # CAN bus A: bank hops only (never on the corridor)
 TEE_Z = _RIB_TOP + 4 * D.BEAD                            # 3.2 of printed cradle on the rib tops
-# the motor pockets stop short of this corridor (motor_bank.HARNESS_Y1) -- keep the two in step,
-# or a pocket lands on a tee board or in a trunk lane (it did, once)
-# the TRUNK wires set the corridor top -- the motor pigtails are fat (3.4) but ride down at
-# -52 with the tee headers, not up in the lanes
 _TRUNK_OD = max(od for nm, od in WIRE_OD.items() if nm != 'motor_pigtail')
-_CORR_Y1 = RAIL_Y + _TRUNK_OD / 2
-_CORR_Z1 = max(LANE_PWR, LANE_PWR2, LANE_USB, LANE_CTRL) + _TRUNK_OD / 2
-assert _CORR_Y1 <= MB.HARNESS_Y1 and _CORR_Z1 <= MB.HARNESS_Z1, (
-    "the harness corridor now reaches y %.2f / z %.2f, past motor_bank's HARNESS_Y1 %.2f / "
-    "HARNESS_Z1 %.2f -- the motor pockets stop at those" % (_CORR_Y1, _CORR_Z1,
-                                                            MB.HARNESS_Y1, MB.HARNESS_Z1))
+# the trough's own guarantees, asserted where the lanes are chosen:
+_TOP_OF_MOTORS = D.MOTOR_BELT_Z + D.MOTOR_SQ / 2          # -29.05
+assert CH_WT_ZF > _TOP_OF_MOTORS, "the trough's floor has come down to the motor tops"
+assert LANE_PWR2 - PWR_OFF - 1.8 / 2 > CH_WT_ZF, "feed 2 is in the trough's floor"
+assert LANE_PWR + PWR_OFF + 1.8 / 2 < CH_WT_ZF + CH_WT_H - 1.2, "the head is in the lip's nub"
+assert CH_WT_LANE_Y + _TRUNK_OD / 2 <= MB.HARNESS_Y1, (
+    "the trough's lane reaches y %.2f, past motor_bank's HARNESS_Y1 %.2f"
+    % (CH_WT_LANE_Y + _TRUNK_OD / 2, MB.HARNESS_Y1))
 HDR_Z = -54.0                                            # lifted tee header top (wire entry z)
 
-
-def _wire(pts, d=WIRE_D):
-    """Polyline cable: cylinders between points + sphere elbows, fused in ONE pass.
-
-    ⚠ IT USED TO BE A CHAIN OF PAIRWISE UNIONS, AND THE CHAIN DROPPED CABLE. Moving the second
-    24 V feed to its own lane -- a pure change of z -- turned wire_pwr_hot_12 into 12 loose
-    solids: one 645 mm3 piece covering x -197..+12, eleven free-floating elbow spheres, and
-    1100 mm3 of the run between x -576 and -197 simply GONE. No exception, no warning; the
-    Workplane just came back holding a compound. Nothing about that route is degenerate, and
-    the same path one lane lower fused fine, so it is OCCT giving up on one fuse in a long
-    sequential chain and the chain carrying on regardless.
-
-    ONE multi-argument fuse instead. BOPAlgo takes all the pieces in a single pass, which is
-    both far more robust than N sequential fuses and cheaper. The two wires that were ALREADY
-    arriving in two pieces before any of this (wire_canh_1, wire_canl_5) come out whole too --
-    they had been broken long enough to look normal.
-    """
-    r = d / 2
-    cyls = []
-    for a, b in zip(pts, pts[1:]):
-        va, vb = cq.Vector(*a), cq.Vector(*b)
-        ax = vb - va
-        if ax.Length < 1e-6:
-            continue
-        cyls.append(cq.Solid.makeCylinder(r, ax.Length, va, ax))
-    if not cyls:
-        return cq.Workplane("XY")
-    parts = cyls + [cq.Solid.makeSphere(r, cq.Vector(*p), angleDegrees1=-90)
-                    for p in pts[1:-1]]
-    if len(parts) == 1:
-        return cq.Workplane("XY").add(parts[0])
-    # THE RESULT IS CHECKED BY VOLUME, because a failed fuse here does not raise and does not
-    # come back in pieces -- it comes back as ONE clean solid with cable missing out of the
-    # middle. Feed 2's hot conductor fused to a single valid solid holding 645 mm3 of its 1776,
-    # and nothing about the shape said so. The union of the cylinders alone cannot be much under
-    # their sum (elbows double-count a little, the spheres only add), so anything below 90% of it
-    # is a fuse that quietly dropped a run.
-    want = sum(c.Volume() for c in cyls)
-    # A FUZZY TOLERANCE IS WHAT FIXES IT when it happens: the elbow sphere meets its two
-    # cylinders along a circle all three share exactly, and a hair of numerical slack is what
-    # lets BOPAlgo see one contact instead of several that nearly agree. Exact first, then
-    # progressively looser -- 1e-5 is where the above case comes back whole (ratio 1.00).
-    for tol in (None, 1e-5, 1e-4, 1e-3):
-        try:
-            fused = (parts[0].fuse(*parts[1:], tol=tol) if tol
-                     else parts[0].fuse(*parts[1:]))
-        except Exception:
-            continue
-        if fused.Solids() and fused.Volume() >= 0.9 * want:
-            return cq.Workplane("XY").add(fused.clean())
-    raise RuntimeError("_wire: no fuse tolerance returned a whole cable "
-                       "(%d pieces, %d points, wanted >=%.1f mm3)" % (len(parts), len(pts), want))
-
-
-# motor 9 (the +X-most motor) is the ONE whose body reaches the -Y rail, so the corridor in
-# FRONT of the wall is blocked there. It stopped mattering when the rail gained its wiring
-# channel: the lane now runs INSIDE the wall (CHAN_Y, behind the rail's inner face), which is
-# outboard of everything any motor reaches, so the old dip to CUTOUT_Y has nothing left to dodge
-# and is gone. What the trunk dodges now is the SEAM at each split plane, where the channel
-# breaks so it cannot eat the joint holding two segments together -- there, and only there, the
-# cable steps back out in front of the wall to RAIL_Y.
 _M9X = D.motor_pos(9)[0]
 M9_X0, M9_X1 = _M9X - D.MOTOR_SQ / 2 - 2.0, _M9X + D.MOTOR_SQ / 2 + 2.0
-CHAN_Y = CH_WC_LANE_Y                    # -131.95: the channel's wire centreline, behind the
-                                         # straps that close its mouth (chassis.WC_*)
-CUTOUT_Y = RAIL_INNER_Y - 1.25           # KEPT for motor 9's pigtail, which lies in the notch
-                                         # itself rather than in a lane
-
-
-def _corridor_spans(a, b):
-    """[(x0, x1, y)] left→right: which y the -Y corridor runs at between x a and b.
-
-    Inside a channel run it is CHAN_Y, inside the wall; everywhere else -- the seam breaks and
-    past either end of the channel -- it is RAIL_Y, in free air in front of the wall."""
-    lo, hi = min(a, b), max(a, b)
-    out, x = [], lo
-    for r0, r1 in CH_WC_RUNS:
-        r0, r1 = max(r0 + CH_WC_CLR, lo), min(r1 - CH_WC_CLR, hi)
-        if r1 <= r0:
-            continue
-        if r0 > x:
-            out.append((x, r0, RAIL_Y))
-        out.append((r0, r1, CHAN_Y))
-        x = r1
-    if x < hi or not out:
-        out.append((x, hi, RAIL_Y))
-    return out
+CHAN_Y = CH_WT_LANE_Y                    # -126.35: inside the trough
+CUTOUT_Y = RAIL_INNER_Y - 1.25           # motor 9's pigtail lies in the rail notch itself
 
 
 def _rail_pts(x0, x1, z):
-    """Points riding the -Y corridor from x0 to x1 at height z, in the rail's wiring channel
-    wherever the channel exists and in front of the wall where it does not."""
-    spans = _corridor_spans(x0, x1)
-    if x0 > x1:
-        spans = [(b, a, y) for a, b, y in reversed(spans)]
-    pts = []
-    for a, b, y in spans:
-        pts += [(a, y, z), (b, y, z)]
-    return pts
+    """Points riding the -Y corridor -- the trough -- from x0 to x1 at height z.
+
+    ONE straight line now. The pocket this replaced broke at every split plane (it could not
+    cut through the seam joint) and the cables stepped out and back each time; a trough
+    standing off the wall has nothing to dodge, and where it is left out -- over string 10's
+    motor, and a hair at each seam -- the cables carry on at the same line, above the motor."""
+    return [(x0, CHAN_Y, z), (x1, CHAN_Y, z)]
+
+
+def _wire(pts, d=WIRE_D):
+    """Polyline cable, OCTAGONAL section, across-flats d -- see helpers.oct_cable.
+
+    It was cylinders with sphere elbows, fused first as a chain of pairwise unions (which
+    silently dropped cable: 1100 mm3 of one feed gone, no exception), then as one
+    multi-fuse checked by volume, then with a sphere-free fallback when the spheres broke
+    every tolerance. The user's call (2026-09-21) was to stop fighting round geometry: flat
+    faces fuse reliably and check fast, and across-flats = the cable's diameter keeps the
+    real cable inside the model."""
+    return oct_cable(pts, d)
+
+
+def _floor_pts(x0, x1, z):
+    """The old floor-level corridor at RAIL_Y, which bus B still uses at the keyhead: it runs
+    motor controller -> lever boards low down, where the lever boards are, and has no reason
+    to climb over the motors and back."""
+    return [(x0, RAIL_Y, z), (x1, RAIL_Y, z)]
 
 
 # ── tee stations (all on the -Y rail corridor) ────────────────────────────
@@ -523,7 +450,7 @@ def _trrs_footing(bb):
     rather than an island. The footprint comes from the cradle's OWN bounding box:
     the M4's boss stands proud of the base plate on the -Y side, and sizing this by
     hand is how that boss ends up hanging."""
-    from .helpers import box_at
+    from .helpers import oct_cable, box_at
     return box_at(bb.xlen, bb.ylen, TRRS_FLOOR_TOP - TRRS_FLOOR_BOT,
                   x=bb.center.x, y=bb.center.y,
                   z=(TRRS_FLOOR_BOT + TRRS_FLOOR_TOP) / 2.0)
@@ -718,6 +645,11 @@ def build_wires():
     BAYFLY = -12.0                                      # over motor 0, under the deck
     assert BAYFLY - max(WIRE_OD.values()) / 2 > D.MOTOR_BELT_Z + D.MOTOR_SQ / 2 + 1.0, (
         "the bay fly lane has come down onto string 1's motor")
+    # ⚠ THREE BAY WIRES WERE ONE. The Pi link, bus B and the board-to-Pi USB all crossed
+    # string 1's motor along this one column at BAYFLY -- 234, 69 and 15.5 mm3 of each
+    # inside another, on the committed model, never reported (the gate allow-lists wire
+    # against wire). Bus B flies lower; the USB takes its own column (see _USB_COL).
+    BAYFLY_CANB = BAYFLY - 3.0            # -15.0 (the USB takes its own column instead)
     SP = EL.stand_pt
     # (the AFE's long shielded runs and their _long() helper are gone with the
     #  board; the Teensy stack they climbed onto is gone with the motor controller)
@@ -749,7 +681,8 @@ def build_wires():
             [(px + _co, py + _co, pz) for px, py, pz in _canA_head], _od)))
         for k in range(9):
             out.append((f"wire_can{_sfx}_{k + 1}",
-                        _seg(hdrA[west[k]], hdrA[west[k + 1]], LANE_CAN, _od, off=_co)))
+                        _seg(hdrA[west[k]], hdrA[west[k + 1]], LANE_CAN, _od,
+                             off=TRUNK_OFF["can" + _sfx])))
 
     # bus A drops: each motor's factory 4-pin XH pigtail (grey), from its -Y-facing PCB to its
     # OWN tee. For the nine tees on motors that is a short climb up behind the motor and over
@@ -793,133 +726,115 @@ def build_wires():
     # crimped from spooled wire (user), so the head is simply made to whatever length the
     # new landing needs, and cable length was never the reason the junction existed.
     x10, y10 = hdrA[_WEST0][0], hdrA[_WEST0][1]
-    # the power heads drop just inboard of the bridge endplate's wall, and that wall
-    # follows BRIDGE_AXLE_X -- so this lane does too. It was a constant -5.5, and when
-    # the bearing grew O8 -> O13 the axle (and the wall) stepped 2.5 -X and clipped the
-    # ground wire.
-    _PWR_X = D.BRIDGE_AXLE_X - 1.5                              # -8.0
-    # The trunk now leaves the OUTPUT+PANEL BOARD's own trunk connector, not a
-    # free-standing panel jack: the 24 V inlet is a PCB part on that board and the
-    # pair crosses it on an isolated island before it ever becomes a cable.
-    # (It is J7 since the 2026-09-15 respin -- the board gained a screw-terminal
-    #  pickup input, so the connectors renumbered along the signal path.)
-    _j6 = EL.op_pt("J7")
-    # IT RIDES THE RAIL'S WIRING CHANNEL NOW, not the old TEE_Y line. That line was where the
-    # tees used to sit; they moved onto the motor bank, so this run was left holding a y that
-    # nothing else uses, in free air, with the chassis wall 8 mm behind it. _rail_pts puts it in
-    # the channel and steps it back out at the seams.
-    def _heads(lz):
-        return ([_j6, (_PWR_X, _j6[1], _j6[2]), (_PWR_X, TEE_Y, lz)]
-                + _rail_pts(_PWR_X, x10, lz) + [(x10, TEE_Y, HDR_Z)])
+    # ── THE OUTPUT BOARD'S 24 V HARNESS: TO THE WALL, ONE LOOP, THEN DOWN THE INSTRUMENT ──
+    # (user, 2026-09-21: "route the wires to the chassis wall fairly directly and then coil
+    # them in a single large circle before sending them down the instrument. The snake
+    # pattern you have designed seems hard to achieve.") It was also drawn THROUGH the
+    # output board: the serpentine sat at a fixed spot and nothing re-checked it when the
+    # board moved, so it ran through the PCB and out below it.
+    #
+    # Both pairs leave their top-entry headers UP, cross the endplate's recess along the
+    # board's -Y edge -- over the J7/J9 plug tops (-35.3), under the recess roof (-23.2) --
+    # and come out into the bay, where they turn for the wall.
+    _j7, _j10 = EL.op_top("J7"), EL.op_top("J10")
+    _REC_Y = -121.5                       # along the board's -Y edge, inside the recess
+    _REC_Z7, _REC_Z10 = -27.0, -31.0      # each pair's centre height crossing it
+    _BAY_X7, _BAY_X10 = -28.0, -31.0      # out of the endplate's -X face (-25.06)
+    # THE LOOP: the J7 cable's 111 mm of balancing slack (see below) as ONE flat turn in the
+    # bay above the output board. A full turn adds its whole circumference to the conductor
+    # -- none of it is "the direct line" -- so its radius is 111 / 2 pi. It climbs 4 mm over
+    # the turn so it can close without passing through itself, and its -Y point sits on the
+    # wall line, where the cable arrives and leaves.
+    _LOOP_R = 111.0 / (2.0 * math.pi)     # 17.67
+    _LOOP_CX, _LOOP_CY = -52.5, CHAN_Y + _LOOP_R
+    _LOOP_RISE = 4.0
+    _RISE7 = _LOOP_CX - 4.5               # J7 climbs to its trough lane just past the loop
+    _RISE10 = CH_WT_X1 + 1.0              # feed 2 climbs just short of the trough's end
+    _EXIT7 = CH_WT_RUNS[-1][0] - 2.0      # J7 leaves the trough where it stops, before
+                                          # string 10's motor, and goes to that motor's tee
+
+    def _loop(z0):
+        """One clockwise turn (seen from +Z) from the loop's -Y point, climbing _LOOP_RISE."""
+        return [(_LOOP_CX + _LOOP_R * math.cos(-math.pi / 2 - 2 * math.pi * k / 24),
+                 _LOOP_CY + _LOOP_R * math.sin(-math.pi / 2 - 2 * math.pi * k / 24),
+                 z0 + _LOOP_RISE * k / 24) for k in range(25)]
+
+    # THE PAIR IS SPACED IN X *AND* Z, header to far end. Z alone keeps the two loops apart
+    # (same radius, 2 mm apart in height, all the way round -- side by side they would
+    # cross twice), but it does nothing where the path is VERTICAL: both conductors left
+    # the same header point and rose through each other, 67 mm3 on J7's pair and 154 on
+    # feed 2's -- invisible to the gate, which allow-lists wire against wire as insulated
+    # crossings. X is the pin spacing on the connector; Z is the stack in the trough.
+    def _pair(pts, dz):
+        return [(x + dz, y, z) for x, y, z in pts]
+
+    def _head(dz):
+        """J7 -> the east-most tee's trunk connector (on string 10's motor)."""
+        zr, zl = _REC_Z7 + dz, LANE_PWR + dz
+        loop = _loop(zr)
+        return _pair([_j7, (_j7[0], _j7[1], zr), (_j7[0], _REC_Y, zr), (_BAY_X7, _REC_Y, zr),
+                      (_BAY_X7, CHAN_Y, zr)] + loop
+                     + [(_RISE7, CHAN_Y, loop[-1][2]), (_RISE7, CHAN_Y, zl),
+                        (_EXIT7, CHAN_Y, zl), (_EXIT7, y10, zl), (x10, y10, zl),
+                        hdrA[_WEST0]], dz)
+
     # THE TRUNK ENDS AT THE MERGED BOARD, and main's path off _w0 is the right shape
     # for it. Main ran it to a free-standing BUCK; this branch merged the power board
     # into the motor controller, so there is no buck and no junction -- the chain simply
-    # terminates at a connector on a board. That removed the ONE splice in an instrument
-    # where every other branch is a tee or a pass-through.
+    # terminates at a connector on a board.
     _mc24 = EL.mctrl_pt("J3")
     tail = [_w0, (BAY_X, _w0[1], _w0[2]), (BAY_X, _mc24[1], _w0[2]),
             (BAY_X, _mc24[1], _mc24[2]), _mc24]
 
     # ── the SECOND 24 V feed: panel J10 -> motor_ctrl J3, bypassing the tees ──
-    # Runs in the same power lane as the first feed but carries straight past every
-    # tee to the far end. See the emission below for why it exists and why it is a
-    # power-only 4-way.
-    _j10 = EL.op_pt("J10")
-    def _feed2(lz):
-        return ([_j10, (_PWR_X, _j10[1], _j10[2]), (_PWR_X, TEE_Y, lz)]
-                + _rail_pts(_PWR_X, BAY_X, lz)
-                + [(BAY_X, _mc24[1], lz), (BAY_X, _mc24[1], _mc24[2]), _mc24])
+    # ITS OWN COLUMN at the keyhead, 3 mm +X of the bay column the bay wires climb: run
+    # along the column it crossed bus B's and the Pi link's risers there. At this y there
+    # is no motor at x -582 (string 1's sits far +Y), so the column is free.
+    _FEED2_X = BAY_X + 3.0
+    # AND IT LANDS TWO PIN PITCHES FROM THE TAIL on motor_ctrl J3, not on the tail's own
+    # point: two cables drawn into one point is two cables through each other.
+    _J3_PITCH2 = 2 * 2.5
 
-    # ── the 111 mm of coiled slack, on the J7 (east) cable ───────────────────
-    # A flat SERPENTINE in the power lane, not a wound helix: easier to retain, keeps
-    # the pair together along its whole length (which is what makes it bifilar), and
-    # needs no former.
-    #
-    # ⚠ EXTRA LENGTH IS PATH MINUS THE DIRECT LINE, NOT PATH. The first version here
-    # was a rectangular out-and-back of four 27.75 mm sides -- 111 mm of polyline, and
-    # only 55.5 mm of EXTRA conductor, because the direct line across it is 55.5. Half
-    # the coil it was supposed to be. A serpentine is the right shape: each lobe runs
-    # out and back, so it adds 2 x its depth and the direct line barely grows.
-    #
-    # Four lobes of 13.875 mm add 8 x 13.875 = 111.0 mm, and the deepest excursion is
-    # under 14 mm -- compact enough to sit in the lane instead of needing its own bay.
-    _LOBE_N = 4
-    _LOBE_D = 111.0 / (2.0 * _LOBE_N)                 # 13.875
-    _PITCH = 6.0                                       # along the run, per lobe
-    _cx, _cy = _PWR_X, TEE_Y + _LOBE_N * _PITCH
-    def _coil(lz):
-        out = [(_cx, _cy, lz)]
-        for _k in range(_LOBE_N):
-            _y0 = _cy - _k * _PITCH
-            out += [(_cx - _LOBE_D, _y0, lz), (_cx - _LOBE_D, _y0 - _PITCH / 2.0, lz),
-                    (_cx, _y0 - _PITCH / 2.0, lz), (_cx, _y0 - _PITCH, lz)]
-        return out
-    # (main's afe_drop is dropped with the AFE board itself. Tee 10 survives -- the
-    #  optical pickup board takes 24 V off it -- but its drop has no modelled endpoint
-    #  until that board exists.)
-    #
-    # ⚠ THAT BOARD NOW EXISTS, AND IT IS NOT FED FROM HERE. elec/optical.py is a finished
-    # design with exactly two connectors: J1, a USB-C to the panel, and J2, a 4-pin XH
-    # carrying 24 V. It has NO CAN -- the board speaks USB to the Pi -- so a CAN-rail tee
-    # is the wrong shape of source for it: a tee exists to split the four-wire
-    # CAN-plus-power cable for a device ON the bus, and this device is not on it.
-    #
-    # Its 24 V comes from the output panel instead: elec/output_panel.py's J9 is
-    # documented as "24 V out to the optical pickup board", and the two boards are about
-    # 150 mm apart -- which is the whole reason the USB hub moved onto the panel, taking
-    # that 480 Mbps link from ~800 mm to ~100 mm (BOM.md, the hub row). A panel outlet is
-    # a short cable; a rail drop would be a long one to a board with no bus to join.
-    #
-    # ⚠ SO TEE 10 LOOKS STALE, AND IT IS THE ONLY TEE LEFT ON THE RAIL (see tee_outline
-    # above), which makes this more than one part: the rail-mounted tee, its cradle, its
-    # M4 side hold-down and the drop's two wires all exist to feed a board that is fed
-    # from somewhere else. Flagged rather than deleted -- removing it changes the rail
-    # geometry and the rib spacing around it, which is not this file's call alone.
-    # What would settle it: confirm that nothing else on the rail needs a 24 V drop.
-    # THE PAIR SPLITS IN Z ALONG THE RAIL, NOT IN Y. ±PWR_OFF in y put the two conductors
-    # 2.4 mm apart across a corridor only 3.2 mm deep behind the channel's straps -- one of them
-    # would have sat in the strap. In z they take one lane each out of the six, which is what the
-    # stacked-lane scheme was for, and both ride the channel's centreline. (The x offset stays:
-    # it is what keeps the two from sharing a turn.)
-    for _nm, _do, _lz, _lz2 in (("wire_pwr_hot", -PWR_OFF, LANE_PWR - PWR_OFF,
-                                LANE_PWR2 - PWR_OFF),
-                               ("wire_pwr_gnd", PWR_OFF, LANE_PWR + PWR_OFF,
-                                LANE_PWR2 + PWR_OFF)):
+    def _feed2(dz):
+        zr, zl = _REC_Z10 + dz, LANE_PWR2 + dz
+        return _pair([_j10, (_j10[0], _j10[1], zr), (_j10[0], _REC_Y, zr),
+                      (_BAY_X10, _REC_Y, zr), (_BAY_X10, CHAN_Y, zr), (_RISE10, CHAN_Y, zr),
+                      (_RISE10, CHAN_Y, zl)]
+                     + _rail_pts(_RISE10, _FEED2_X, zl)
+                     + [(_FEED2_X, _mc24[1] + _J3_PITCH2, zl),
+                        (_FEED2_X, _mc24[1] + _J3_PITCH2, _mc24[2] + dz),
+                        (_mc24[0], _mc24[1] + _J3_PITCH2, _mc24[2] + dz)], dz)
+
+    for _nm, _do in (("wire_pwr_hot", -PWR_OFF), ("wire_pwr_gnd", PWR_OFF)):
         def _off(pts, _do=_do):
             return [(px + _do, py, pz) for px, py, pz in pts]
-        out.append((f"{_nm}_0", _wire(_off(_heads(_lz)), WIRE_OD[_nm])))
+        out.append((f"{_nm}_0", _wire(_head(_do), WIRE_OD[_nm])))
         for k in range(9):
             out.append((f"{_nm}_{k + 2}",
-                        _seg(hdrA[west[k + 1]], hdrA[west[k]], _lz, WIRE_OD[_nm], off=_do)))
+                        _seg(hdrA[west[k + 1]], hdrA[west[k]], LANE_PWR, WIRE_OD[_nm],
+                             off=TRUNK_OFF[_nm[9:]])))
         # _1 is vacant: it was the hop from tee 10 onto the rail, and tee 10 is gone.
-        # The tail keeps its own index rather than shifting up into the loop's _2.._10.
-        out.append((f"{_nm}_11", _wire(_off(tail), WIRE_OD[_nm])))
+        # the tail pair spaced like the others -- an X offset alone left its X-running leg
+        # with both conductors on one line (98.5 mm3, on the committed model)
+        out.append((f"{_nm}_11", _wire([(x + _do, y, z + _do) for x, y, z in tail],
+                                       WIRE_OD[_nm])))
 
         # ⚠ THE SECOND FEED (option A, user 2026-09-18). The tee chain is fed from BOTH
         # ends now: J7 at the east, and this cable running the length of the instrument
         # to motor_ctrl's J3 at the west, from which J1 injects onto the chain. Current
         # enters at both ends and meets in the middle, so the worst-loaded segment
-        # carries about half the fleet instead of all of it -- the single +24V contact
-        # between tees is the 3 A ceiling this relieves.
-        #
-        # It does NOT go through the tees. That is the whole point: this run bypasses
-        # the chain so it arrives at the far end with its own capacity, and it is a
-        # 4-way carrying ONLY power, so both +24V ways parallel and its 582 mm behaves
-        # like 291. The trunk cannot do that -- two of its four ways are CAN.
-        out.append((f"{_nm}_12", _wire(_off(_feed2(_lz2)), WIRE_OD[_nm])))
+        # carries about half the fleet instead of all of it. It does NOT go through the
+        # tees: it is a 4-way carrying ONLY power, so both +24V ways parallel and its
+        # 582 mm behaves like 291.
+        out.append((f"{_nm}_12", _wire(_feed2(_do), WIRE_OD[_nm])))
 
-        # ⚠ AND THE COIL, WHICH IS DELIBERATE RESISTANCE. The two feeds are wildly
-        # asymmetric -- J7 reaches the chain in 180 mm, this one travels 582 -- so
-        # uncorrected the east feed takes 5.6 of the 10 motors and the west 4.4. 111 mm
-        # of slack on the J7 cable brings it to exactly 5.00/5.00. It costs 0.0059 ohm,
-        # 0.018 V of 24 at 3 A, which is 0.07 %.
-        #
-        # WOUND AS A PAIR, NOT TWO COILS. A coil carrying DC is electrically nothing,
-        # but motor current is SWITCHED, and 111 mm wound tightly is enough series
-        # inductance to ring against the drivers' input capacitance. Bifilar, the
-        # outbound and return fields cancel -- which is free as long as the pair is
-        # simply not separated, and very annoying to discover on a bench.
-        out.append((f"{_nm}_13", _wire(_off(_coil(_lz)), WIRE_OD[_nm])))
+        # ⚠ AND THE LOOP ON _0 IS DELIBERATE RESISTANCE. The two feeds are wildly
+        # asymmetric -- J7 reaches the chain far sooner than feed 2 -- so uncorrected the
+        # east feed takes 5.6 of the 10 motors and the west 4.4. 111 mm of slack on the J7
+        # cable brings it to 5.00/5.00, for 0.0059 ohm -- 0.07 % of 24 V at 3 A. Kept as a
+        # PAIR through the turn: motor current is switched, and a pair that stays together
+        # is bifilar, so its fields cancel instead of ringing against the drivers' input
+        # capacitance.
 
 
     # ── bus B (inputs): motor_ctrl J2 -> the lever boards, NO TEES ────────
@@ -929,9 +844,9 @@ def build_wires():
     # the leg jack ON the board so it needs no landing. What is left is one run from the
     # controller to the first board on the chain.
     _ib = SP(*EL.mctrl_pt("J2"))
-    _canB_head = ([_ib, (BAY_X - 5.0, _ib[1], _ib[2]), (BAY_X - 5.0, _ib[1], BAYFLY),
-                   (BAY_X, _ib[1], BAYFLY), (BAY_X, RAIL_Y, BAYFLY)]
-                  + _rail_pts(BAY_X, _KNEE_B[0], LANE_CTRL)
+    _canB_head = ([_ib, (BAY_X - 5.0, _ib[1], _ib[2]), (BAY_X - 5.0, _ib[1], BAYFLY_CANB),
+                   (BAY_X, _ib[1], BAYFLY_CANB), (BAY_X, RAIL_Y, BAYFLY_CANB)]
+                  + _floor_pts(BAY_X, _KNEE_B[0], LANE_CTRL)
                   + [(_KNEE_B[0], RAIL_Y, LANE_CTRL), _KNEE_B])
     for _sfx, _co in (("h", -CAN_OFF), ("l", CAN_OFF)):
         _od = WIRE_OD[f"wire_canb{_sfx}"]
@@ -949,14 +864,26 @@ def build_wires():
     # The lane drops -X of the OUTPUT PANEL BOARD's own -X edge rather than at x -12,
     # which is where it used to go. -12 sat inside the relocated DC inlet (x -13.3..4.7)
     # AND inside the board's footprint; clearing the board is what also clears the jack.
-    _USB_LANE_X = -60.0
+    # It leaves J2 out of the board's -X edge through a USB-A plug standing _UA_PLUG past
+    # the mouth, climbs to the trough's USB lane out in the bay -X of the J7 loop, and rides
+    # the trough to the keyhead bay. (It used to run a floor corridor inside the pocket cut
+    # into the rail; the trough replaced both.)
     _usb = SP(-575.0, 20.0, -44.0)
     _ua = EL.op_pt("J2")
+    _UA_PLUG = 25.0
+    # ITS OWN COLUMN at the keyhead, 6 mm +X of the one the bay wires share: at a different
+    # fly height in the shared column it met the OLED lead's drop instead (24.9 mm3). Here it
+    # flies over string 1's motor, well above its top.
+    _USB_COL = BAY_X + 6.0
+    _USB_FLY = BAYFLY - 3.0               # under the Pi link's fly, which it crossed at the Pi
+    _ua_x = EL.op_origin()[0] - EL.OP_BOARD_X / 2 - _UA_PLUG     # the plug's cable end
+    _USB_X = _LOOP_CX - _LOOP_R - 9.5     # -X of the loop, +X of the trough's end
     out.append(("wire_usb", _wire(
-        [_ua, (_ua[0], _ua[1] + 6.0, _ua[2]), (_USB_LANE_X, _ua[1] + 6.0, -45.0),
-         (_USB_LANE_X, RAIL_Y, -45.0)]
-        + _rail_pts(_USB_LANE_X, BAY_X, LANE_USB)
-        + [(BAY_X, RAIL_Y, BAYFLY), (BAY_X, _usb[1], BAYFLY), (_usb[0], _usb[1], BAYFLY), _usb],
+        [(_ua_x, _ua[1], _ua[2]), (_USB_X, _ua[1], _ua[2]), (_USB_X, _ua[1], LANE_USB),
+         (_USB_X, CHAN_Y, LANE_USB)]
+        + _rail_pts(_USB_X, _USB_COL, LANE_USB)
+        + [(_USB_COL, CHAN_Y, _USB_FLY), (_USB_COL, _usb[1], _USB_FLY),
+           (_usb[0], _usb[1], _USB_FLY), _usb],
         WIRE_OD["wire_usb"])))                          # over motor 0, then down into the Pi
 
     # -- 5 V to the Pi's GPIO header, from the merged board's J5. It was never

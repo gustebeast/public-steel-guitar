@@ -930,6 +930,7 @@ def _build() -> cq.Workplane:
     # alternative was routing the USB lead ~47 mm back +Y to clear the lip entirely, which
     # buys whole-lip retention at the cost of a doubled-back cable and a longer run.
     body = body.cut(OP.opt_conduit())
+    body = body.cut(OP.opt_pwr_slot())            # the optical 24 V lead's way down to J9
     body = body.cut(box_at(LIP_DX + 2.0, OP.CONDUIT_D, LIP_DZ + 2.0,
                            x=XLO - (LIP_DX + 2.0) / 2 + 1.0,
                            y=(OP.CONDUIT_Y0 + OP.CONDUIT_Y1) / 2,
