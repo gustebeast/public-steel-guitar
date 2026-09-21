@@ -36,7 +36,7 @@ axle axis and isn't negotiable. **+X** points toward the lever (the knee side), 
 ## Parts the trim displaces (routed layout)
 
 - **+X trim:** TP1, TP2, TP3.
-- **Top trim:** D1, L1, R1, U1, TP4. J1 also moves down about 0.9 mm with its re-centring.
+- **Top trim:** D1, L1, R1, U1, TP4. J1 also moves down about 2.65 mm with its re-centring (routed z −10.65 … +11.85 → −13.3 … +9.1).
 
 (The CAD's own pre-route table, `knee_lever.SENSOR_BOM`, reports the same kind of list in
 `knee_lever.RESPIN_MOVES`: D1, L1, R1, U1. Those parts aren't drawn on the spec board.)
