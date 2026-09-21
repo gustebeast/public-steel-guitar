@@ -214,7 +214,14 @@ def _crop_body():
     return (x1 - x0, y1 - y0, z1 - z0, (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2)
 
 
+def _crop_lkl_vkl():
+    """LKL + VKL whole and the chassis bottom over them -- shared with the live set in
+    src.build.lkl_vkl_box so the clipped chassis and the cropped context cannot disagree."""
+    return importlib.import_module("src.build").lkl_vkl_box()
+
+
 CROPS = {"leg_station": _crop_leg_station, "belt_run": _belt_run_box,
+         "lkl_vkl": _crop_lkl_vkl,
          "keyhead": _crop_keyhead, "bridge": _crop_bridge,
          "screw_rows": _crop_screw_rows, "body": _crop_body}
 # ─────────────────────────────────────────────────────────────────────────────
