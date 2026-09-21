@@ -241,7 +241,10 @@ HUB_D   = 17 * D.BEAD               # 13.6 (was 10.4 on the Ø5 axle): the Ø8.2
                                     # as the hub is wide for a solid root.
 ARM_LEN = 100.0                     # hub centre -> arm tip (knee reach, -Z)
 ARM_TX  = HUB_D                     # arm depth in X (bending axis: knee pushes X) = the hub OD
-ARM_WY  = 30 * D.BEAD               # 24.0 arm width in Y -- the face the player's leg bears on (no paddle).
+ARM_WY  = 32 * D.BEAD               # 25.6 arm width in Y -- the face the player's leg bears on (no paddle).
+                                    #   24 -> 25.6 (user, 2026-09-21): the wall outboard of each lobe
+                                    #   recess was 0.8 (one bead); +0.8 a side makes it 1.6 while the
+                                    #   cartridge lanes (HS_YC) stay exactly where they are.
                                     #   Was 20: the Ø10 die-spring cartridges (2026-09-21) are 14 wide, and
                                     #   each spring axis has to sit ON its follower lobe (an offset axis
                                     #   cocks a 3.2-long piston). The lobes are placed inward from this
@@ -427,7 +430,7 @@ HS_POCKET_HW = HS_CART_WY / 2 + HS_CLR        # cartridge pocket (slot) half-wid
 # Cartridge Y: place each lobe/tongue as far INBOARD as the 0.8mm arm-outboard wall allows -- that (plus
 # the wider head) is what frees the width. The two cartridges nearly meet at the centre (the old dead wall
 # between them is gone); the wall-side gaps to the bearing walls are the leftover slack.
-_ARM_LOBE_WALL = 0.8
+_ARM_LOBE_WALL = D.MIN_WALL_2P       # 1.6 wall outboard of each lobe recess (was 0.8, user)
 HS_YC   =  (LEVER_HW - _ARM_LOBE_WALL - (LOBE_WY + 1) / 2)   # +Y lobe/cartridge centre (arm-outboard-wall limited)
 MAIN_YC = -(LEVER_HW - _ARM_LOBE_WALL - (LOBE_WY + 1) / 2)   # -Y
 
