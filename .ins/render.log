@@ -2,6 +2,6 @@ C:\Users\gus\AppData\Local\Programs\Python\Python312\Lib\site-packages\cadquery\
   warn(f"{f.__name__} will be removed in the next release.", FutureWarning)
 ======================================================================
  SCRATCH VIEW -- the live part is FRESH; 579 context solids CACHED
- cache age: 13 min   (--start to re-cache | --merge to end)
+ cache age: 77 min   (--start to re-cache | --merge to end)
 ======================================================================
-wrote scratch.step (123460 KB)
+wrote scratch.step (131262 KB)
