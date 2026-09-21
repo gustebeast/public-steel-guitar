@@ -23,7 +23,20 @@ WHAT DOES NOT COUNT, and this is the distinction that matters:
   * A pocket that opens AT the bed. That is a hole from layer one, not a
     ceiling; nothing is ever printed over air.
 
-DEPTH IS REPORTED, because it changes what a ceiling means. One at the bed plane
+SPAN IS WHAT DECIDES A CEILING, NOT AREA -- and reporting only area is what this tool
+got wrong for as long as it has existed. The chassis' worst-looking ceiling was 148 mm^2,
+eighteen times over, and every one of them is 0.8 x 185.5: the flat cap at the apex of a
+lever mortise's teardrop roof. One bead wide, anchored on both sides, and 185 mm long,
+which is the only reason the area is big. A genuinely frightening 12 x 12 bridge is 144
+mm^2 and used to sort BELOW it. So the span -- the shorter in-plane extent -- is printed
+first and sorted on, and --min-span is the filter you actually want.
+
+(The span comes from the face's bounding box, so it is honest for the strips and slabs
+this finds and PESSIMISTIC for an L or a ring, whose box is bigger than anything the
+slicer has to bridge. It over-reports rather than under-reports, which is the right way
+round for a checker.)
+
+DEPTH IS REPORTED TOO, because it changes what a ceiling means. One at the bed plane
 bridges over the plate on layer one -- the worst case, and usually a real defect.
 One deep inside a blind pocket bridges over a cavity that is already there; it
 may droop, and whether that matters depends on what lives in the cavity. The
@@ -39,6 +52,7 @@ import argparse
 
 import src.latch as LT  # noqa: F401  (imported so a bad latch datum fails loudly)
 from src import legs as LG
+from src.dimensions import NOZZLE_D as D_NOZZLE
 
 # name -> (builder, build axis 'x'|'y'|'z', bed plane coordinate on that axis,
 #          which side the bed is on: +1 if the part's bed face is at MAX coord)
@@ -96,7 +110,10 @@ def ceilings(part, axis: str, bed: float, side: int, tol: float = 1e-6):
         c = (f.Center().x, f.Center().y, f.Center().z)
         depth = (bed - c[i]) * side
         if depth > tol:                   # set BACK from the bed plane
-            out.append((f.Area(), depth, c))
+            bb = f.BoundingBox()
+            ext = [bb.xlen, bb.ylen, bb.zlen]
+            span = min(e for j, e in enumerate(ext) if j != i)
+            out.append((span, f.Area(), depth, c))
     return sorted(out, reverse=True)
 
 
@@ -105,6 +122,9 @@ def main() -> int:
     ap.add_argument("--only", help="comma-separated part names")
     ap.add_argument("--min", type=float, default=1.0,
                     help="ignore ceilings smaller than this (mm^2)")
+    ap.add_argument("--min-span", type=float, default=0.0,
+                    help="ignore ceilings that bridge less than this (mm). A span at or "
+                         "under one nozzle width is a bead-wide ledge, not a bridge.")
     a = ap.parse_args()
 
     names = list(PARTS)
@@ -115,14 +135,18 @@ def main() -> int:
     total = 0
     for nm in names:
         build, axis, bed, side = PARTS[nm]
-        found = [c for c in ceilings(build(), axis, bed, side) if c[0] >= a.min]
-        area = sum(c[0] for c in found)
-        print("%-22s build axis %s, bed at %+.2f : %d ceiling(s), %.1f mm^2"
-              % (nm, axis.upper(), bed, len(found), area))
-        for ar, depth, c in found:
+        found = [c for c in ceilings(build(), axis, bed, side)
+                 if c[1] >= a.min and c[0] >= a.min_span]
+        area = sum(c[1] for c in found)
+        worst = max((c[0] for c in found), default=0.0)
+        print("%-22s build axis %s, bed at %+.2f : %d ceiling(s), %.1f mm^2, "
+              "worst span %.2f mm" % (nm, axis.upper(), bed, len(found), area, worst))
+        for span, ar, depth, c in found:
             flag = "  <-- ON THE BED" if depth < 0.6 else ""
-            print("    %8.1f mm^2  %6.2f mm below the bed  at (%.1f, %.1f, %.1f)%s"
-                  % (ar, depth, c[0], c[1], c[2], flag))
+            if span <= D_NOZZLE + 1e-6:
+                flag += "  (one bead wide: a ledge, not a bridge)"
+            print("    span %6.2f mm  %8.1f mm^2  %6.2f mm in from the bed  "
+                  "at (%.1f, %.1f, %.1f)%s" % (span, ar, depth, c[0], c[1], c[2], flag))
         total += len(found)
     if not total:
         print("\nno flat ceilings above the threshold.")
