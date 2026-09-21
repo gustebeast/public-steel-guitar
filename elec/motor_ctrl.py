@@ -235,6 +235,14 @@ def motor_ctrl():
     #   35 PB12 = CAN2_RX  , 36 PB13 = CAN2_TX    <- bus B
     #   46 PA11 = OTG_FS_DM, 47 PA12 = OTG_FS_DP  <- the Pi link
     #   48 PA13 = SWDIO    , 52 PA14 = SWCLK
+    #   1 VBAT -- tied to 3V3 (2026-09-21)
+    #
+    # ⚠ VBAT (PIN 1) WAS NEVER CONNECTED, on this board AND the output board, both "checked
+    # against the QFN68 column". The check covered the pins that were WIRED; nothing asked
+    # which pins of the package were not. VBAT feeds the backup domain (RTC, backup
+    # registers) and WCH, like every part in this family, wants it tied to VDD when no
+    # battery is fitted -- floating, the backup domain's supply is undefined. Found by
+    # listing Table 3-1's QFN68 column whole (.ins/ch32v307_qfn68.json) against the netlist.
     #
     # ⚠ ALL TWENTY-FOUR CHECKED AGAINST THE QFN68 COLUMN, 2026-09-17, ZERO MISMATCHES --
     # numbers AND names, including every power pin, read with per-word coordinates so the
@@ -260,14 +268,14 @@ def motor_ctrl():
             (17, "VIO_4", PWR), (31, "VIO_1", PWR), (51, "VIO_2", PWR), (67, "VIO_3", PWR),
             (35, "PB12", I), (36, "PB13", O), (46, "PA11", P), (47, "PA12", P),
             (48, "PA13", P), (52, "PA14", P), (63, "BOOT0", I),
-            (64, "PB8", I), (65, "PB9", O)]
+            (64, "PB8", I), (65, "PB9", O), (1, "VBAT", PWR)]
     u1 = Part(name="CH32V307WCU6", ref_prefix="U", tag="U1", dest="NETLIST", tool="skidl",
               value="CH32V307WCU6", description="RISC-V MCU, 2x hardware CAN",
               footprint=MCU_FP,
               pins=[Pin(num=n, name=nm, func=f) for n, nm, f in pins])
     gnd += u1["VSS_PAD"], u1["VSS_1"], u1["VSS_2"], u1["VSSA"]
     v33 += (u1["VDD_1"], u1["VDD_2"], u1["VDD_3"], u1["VDDA"],
-            u1["VIO_1"], u1["VIO_2"], u1["VIO_3"], u1["VIO_4"])
+            u1["VIO_1"], u1["VIO_2"], u1["VIO_3"], u1["VIO_4"], u1["VBAT"])
     nrst += u1["NRST"]; boot0 += u1["BOOT0"]
     osc1 += u1["OSC_IN"]; osc2 += u1["OSC_OUT"]
     a_rx += u1["PB8"]; a_tx += u1["PB9"]         # CAN1 REMAPPED -- see the header
