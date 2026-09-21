@@ -78,6 +78,22 @@ the constraint is stock, not selection. See the optical-pickup section.
 > either latch. ⚠ **Cut to leave at most 10 total turns** — at 12 the coil binds under
 > the thumb before the button bottoms.
 
+> **LEVER FEEL SPRING — DECIDED 2026-09-21 (user): uxcell blue die spring, Ø10 × 30,
+> [B0B772B9V2](https://www.amazon.com/dp/B0B772B9V2), $9.99 / 20.** Supersedes the note
+> below: the custom Ø6 × 1.4 coil had no stock source and topped out ~1 kg at the knee.
+> The user's kitchen-scale test put the good feel at ~1 kg; the chosen range is **0.5 – 1 kg
+> at the knee**, set by the M4 preload screw.
+>
+> * JIS light-load (blue) die spring: hole Ø10 / rod Ø5, 30 free (±2), 142.2 N at the 40%
+>   max (12 mm) → **~11.9 N/mm** (published max load ÷ max deflection — **measure on arrival**).
+> * Worked at ≤ 80% of max for long life (9.6 mm, 114 N — ASSUMED, uxcell publishes no life
+>   rating). At LOBE_RC 9.5 the stroke is 4.75, so the preload screw spans ~4.9 mm:
+>   **~0.55 kg (min preload) → ~1.1 kg (max)** at full throw, knee at the 100 mm arm tip.
+> * Length is set by the RANGE (≈ 15 mm × max/min), diameter by the TOP force — a 2:1 range
+>   fits in 30, shorter than the old 41.4 bay; the pocket grows Ø6.6 → ~Ø10.5.
+> * One pack of 20 covers every lever's main + half-stop (12) with spares, if the half-stop
+>   takes the same SKU. Housing re-packaging (Ø10.5 × 30 bay) is the next step, not done yet.
+>
 > **LEVER / PEDAL FEEL SPRING — uxcell CANNOT supply this one, 2026-09-16.** The user
 > asked whether the same supplier could cover it. It cannot, and the reason is in the
 > spec rather than in the supplier:
