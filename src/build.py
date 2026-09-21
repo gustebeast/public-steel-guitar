@@ -85,7 +85,7 @@ def _PB_bar(attr):
     # heal BEFORE the threads and not after: thread rules (cut last and alone,
     # never heal a threaded part). That is also why the heal lives here rather
     # than in the PARTS lambda, which used to wrap this call.
-    return FP.cut_backstop_threads(heal(FP.fuse_into_bar(_PB(attr), *span)), *span)
+    return FP.cut_feel_access(heal(FP.fuse_into_bar(_PB(attr), *span)), *span)
 
 
 PARTS = {
@@ -99,8 +99,6 @@ PARTS = {
     "kv_lever":        (lambda: __import__("src.knee_lever_vert", fromlist=["e"]).kv_lever, "pctg/kv_lever.step", "PCTG — VERTICAL knee-lever (LKV) arm: an L. Hub on the axle, a LEG rising +Z carrying the return lobe at 13.2 (sized so the 20° throw gives the SAME 4.51 spring stroke as LKL's 30°), and a 50mm ARM running +X that the knee lifts — 17.1 of paddle rise"),
     "cart_base": (lambda: __import__("src.knee_lever", fromlist=["e"]).cart_base, "pctg/cart_base.step", "PCTG — spring-cartridge (inverted-U, open -Z; shared: print 2, for main + half-stop)"),
     "cart_piston": (lambda: __import__("src.knee_lever", fromlist=["e"]).cart_piston, "pctg/cart_piston.step", "PCTG — spring-cartridge piston, flat follower tongue (shared: print 2)"),
-    "guide_post": (lambda: __import__("src.knee_lever", fromlist=["e"]).guide_post, "pctg/guide_post.step", "PCTG — coil-back guide post, screw pushes it (shared: print 2)"),
-    "cart_backstop": (lambda: __import__("src.knee_lever", fromlist=["e"]).cart_backstop, "pctg/cart_backstop.step", "PCTG — hollow X-position back-stop screw: threads the housing boss, tension screw runs through the Ø5.5 bore (shared: print 2)"),
     # NOT healed: cadkit.threads is explicit that heal()'s unify chokes on a threaded
     # solid. Both of these carry a pilot thread and both export fine unhealed.
     "screw_pulley_hi": (lambda: C.screw_pulley(high=True), "pctg/screw_pulley_hi.step",  "PCTG at a 0.2 NOZZLE — HIGH-plane screw pulley ×5. Prints FLANGE-DOWN — the full Ø11 bottom flange is the bed face and everything above it steps inward except the top flange, which is a 45° cone. No brim, no support. (A single part that FLIPPED to serve both planes was tried and dropped: it could only stand on a Ø5.6 boss, and a solid bed surface is worth more than the engagement it levelled — this SKU's 8.3 mm of formed thread is 2.5 MPa under the 147 N, ~10% of interlayer.) IT IS ALSO THE RETAINING COLLAR: its pilot-thread bore grips the rod and the string's 147 N jams it UP into the thrust bearings stacked straight on its pilot boss, so it needs no set screw, no clamp and no separate collar. Fine teeth AND a 0.3 mm thread groove both need the small nozzle and unfilled material"),
@@ -1048,7 +1046,6 @@ def _knee_lever_components():
     for nm, off, s in (("main", KL.CART_MAIN_OFFSET, s_main), ("half_stop", KL.CART_HALFSTOP_OFFSET, s_hs)):
         out.append((f"{nm}_cart_base", KL.feel_place(KL.cart_base.translate(off))))
         out.append((f"{nm}_cart_piston", KL.feel_place(KL.cart_piston.translate(off)).translate((-s, 0, 0))))
-        out.append((f"{nm}_guide_post", KL.feel_place(KL.guide_post.translate(off))))
     for n, s in KL.demo_parts():                         # magnet spins with the lever; the rest are stationary
         out.append((n, swing(s) if n == "kl_magnet" else s))
     # (the octagon mount tenons are FUSED onto knee_housing now -- no separate floating_tenon parts)
@@ -1381,8 +1378,12 @@ _COLORS = {
     "main_cart_piston":                   (0.95, 0.80, 0.30),
     "half_stop_cart_base":                (0.80, 0.60, 0.10),
     "half_stop_cart_piston":              (0.92, 0.76, 0.26),
-    "main_guide_post":                    (0.70, 0.50, 0.10),
-    "half_stop_guide_post":               (0.66, 0.46, 0.08),
+    "main_spring_seat_washer":            (0.72, 0.72, 0.75),   # steel washers + position screws
+    "half_stop_spring_seat_washer":       (0.72, 0.72, 0.75),
+    "main_position_washer":               (0.72, 0.72, 0.75),
+    "half_stop_position_washer":          (0.72, 0.72, 0.75),
+    "main_position_setscrew":             (0.55, 0.55, 0.58),
+    "half_stop_position_setscrew":        (0.62, 0.62, 0.66),
     "retention_setscrew":                 (0.40, 0.40, 0.43),   # -Y lock screw
     # electronics bay (dummies) + panel jacks
     "electronics_tray": (0.30, 0.36, 0.32),  # printed tray

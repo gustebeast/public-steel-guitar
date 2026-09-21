@@ -43,7 +43,7 @@ WHAT ACTUALLY CHANGES, and it is less than it looks:
     four short rails.
 
 Everything else is imported from knee_lever and used unchanged: the cartridges,
-their pistons, guide posts, back-stop screws and drag pads; the axle, magnet,
+their pistons, die springs, tension and position screws; the axle, magnet,
 magnet cap, bearings and the MT6701 board.
 
 DEFERRED (this round is the basic geometry, per the user):
@@ -133,7 +133,7 @@ def vplace(s):
     return KL.feel_place(s).translate((0.0, 0.0, _FEEL_DZ_V))
 
 
-HOUS_X0 = KL.HOUS_X0                # cartridge back + back-stop engagement — unchanged
+HOUS_X0 = KL.HOUS_X0                # cartridge back + the rear (KL.cut_feel_rear) — unchanged
 HOUS_X1 = max(HUB_D / 2 + KL.HS_CLR + KL.HS_HOUS_WALL,  # the arm exits through here...
               KL.BRG_SEAT_D / 2 + KL.BRG_WALL_X)        # ...or the seat + its +X wall, whichever is
               # bigger — same rule as knee_lever's housing. With the Ø16 688ZZ the race wins
@@ -148,7 +148,11 @@ HOUS_X1 = max(HUB_D / 2 + KL.HS_CLR + KL.HS_HOUS_WALL,  # the arm exits through 
 # 2.2, ALL of it on -Y. (Bare minimum, tenons flush with the faces, is 1.2.)
 HOUS_HW_P = KL.HOUS_HW              # +13.9 — the sensor side, untouched on purpose
 TEN_MARGIN = KL.D.MIN_WALL          # 0.8 (one bead) of material outboard of each tenon's edge
-HOUS_HW_N = (TEN_PITCH + 2 * KL._JHW + 2 * TEN_MARGIN) - HOUS_HW_P      # 16.1
+HOUS_HW_N = max((TEN_PITCH + 2 * KL._JHW + 2 * TEN_MARGIN) - HOUS_HW_P,
+                # ...and never inside the -Y cartridge pocket's own wall. The tenon sum
+                # alone went UNDER it once the Ø10 die-spring cartridges spread the
+                # pockets to ±8.45 (2026-09-21): the -Y pocket would have broken out.
+                abs(KL.MAIN_YC) + KL.hs_pocket_hw() + KL.HS_HOUS_WALL)
 HOUS_HW = HOUS_HW_P                 # the sensor-side alias the Y stack reads
 # +Z comes from the RAISED POCKET's own measured extent, not from the piston: the
 # cartridge block stands 6.6 above its centre where the piston stands 3.0, and using
@@ -279,16 +283,7 @@ def _housing() -> cq.Workplane:
     # identical between the levers except how tall the board is, and that falls
     # out of z_bot/z_top.
     w = KL._cradle(w, HOUS_Z0, HOUS_Z1, x_max=HOUS_X1)
-    w = heal(w)
-    # ...then the two female back-stop threads LAST and ALONE (thread rules)
-    from cadkit.threads import threaded_rod
-    for dy in (KL.MAIN_YC - KL.HS_YC, 0.0):
-        nut = (threaded_rod(KL.HS_TH_MINOR, KL.HS_BSTOP_OD, KL.HS_TH_PITCH,
-                            KL.HS_BSTOP_ENGAGE)
-               .rotate((0, 0, 0), (0, 1, 0), 90)
-               .translate((KL.HS_BACK_X + KL.HS_SETBACK, KL.HS_YC + dy, KL.HS_Z)))
-        w = w.cut(vplace(nut), clean=False)
-    return w
+    return heal(w)                  # no printed back-stop threads any more (KL.cut_feel_rear)
 
 
 def swing(s, throw=0.0):

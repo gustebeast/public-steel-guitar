@@ -237,9 +237,10 @@ _CORE = {"bearing", "magnet", "pcb", "chip", "can_header", "pcb_shim", "axle",
 # the two feel lanes, each with the same hardware
 _LANE = {f"{lane}_{part}"
          for lane in ("main", "half_stop")
-         for part in ("cart_base", "cart_piston", "guide_post", "cart_backstop",
-                      "cart_drag", "spring", "spring_tension_setscrew",
-                      "spring_tension_insert")}
+         for part in ("cart_base", "cart_piston", "cart_drag", "spring",
+                      "spring_seat_washer", "spring_tension_setscrew",
+                      "spring_tension_insert", "position_setscrew",
+                      "position_insert", "position_washer")}
 # Built rather than typed out: the hand-written list had drifted badly. It was
 # missing every kv_* spring/screw/back-stop (those parts did not exist yet), and
 # "kv_can_header" "kv_pcb_shim" had NO COMMA between them — Python concatenated
