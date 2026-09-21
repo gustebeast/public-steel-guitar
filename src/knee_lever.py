@@ -318,10 +318,11 @@ HS_SPR_INST = HS_SPR_FREE           # the BAY: piston seat -> spring-seat washer
 HS_PILOT_D  = HS_SPR_ID - 0.4       # 4.6: piston pilot nosing into the spring's Ø5 bore
 HS_PILOT_LX = 6 * D.BEAD            # 4.8 pilot length
 # SPRING SEAT = a steel WASHER, not a printed guide post (user: the printed post spent 3.2 of X).
-# ISO 7093 M3 (the "large" M3 series): Ø9 x 0.8, Ø3.2 hole. The M4 set screw's Ø4 thread cannot
-# pass the Ø3.2 hole, so its cup nests in the hole and self-centres the washer on the axis, and
-# the Ø9 face carries the spring's ground end (Ø5..10) across most of its width. 0.8 of X, not 3.2.
-WASHER_OD, WASHER_ID, WASHER_T = 9.0, 3.2, 0.8
+# McMaster 91100A120, DIN 9021 M3: Ø9, Ø3.2 hole, 0.7..0.9 thick (modelled at the 0.9 max, so the
+# housing recess always swallows it). The M4 set screw's Ø4 thread cannot pass the Ø3.2 hole, so its
+# cup nests in the hole and self-centres the washer on the axis, and the Ø9 face carries the
+# spring's ground end (Ø5..10) across most of its width. 0.9 of X, not 3.2.
+WASHER_OD, WASHER_ID, WASHER_T = 9.0, 3.2, 0.9
 # TENSION: the M4 x 10 set screw threads an insert in the cartridge back wall and pushes the washer.
 # Max advance keeps 4.4 of thread (1.1 d) in the 5-long insert AND the spring inside its long-life
 # band: at 4.8 preload + the 4.75 throw a nominal spring sees 9.55 of its 12 (~80% = long-life).
