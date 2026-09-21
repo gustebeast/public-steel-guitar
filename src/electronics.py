@@ -130,7 +130,28 @@ assert _STACK <= D.ELEC_STACK_D + 1e-6, (
 # X_BRIDGE+WALL -- the block is centred on the axle, not pinned to the rail end. Keep a
 # 4 mm panel at that tip and slide the connectors (authored with their panel face at
 # x~14) by JACK_FACE_DX so they ride the tip wherever it lands.
-JACK_TIP = D.BRIDGE_AXLE_X + D.ENDPLATE_W / 2        # bridge +X face = centred block (8.5).
+# ⚠ JACK_TIP READS THE ENDPLATE'S OWN +X FACE, and it used to compute a different one.
+# It was BRIDGE_AXLE_X + ENDPLATE_W/2, annotated "= 8.5" -- true when D.BRIDGE_BASE_X1
+# WAS 8.5. That constant has since moved to 25.06 and this formula did not follow, so
+# JACK_TIP read 4.70: 20.36 mm -X of the face it is supposed to name.
+#
+# Both halves of the panel I/O ride this number, which is why one stale constant broke
+# the whole interface and why fixing it here fixes both:
+#   * the output board rides JACK_FACE_DX (see output_panel), so it sat 20.36 mm too far
+#     -X -- its USB-C, barrel and TS ended up in the bay instead of at the face;
+#   * bridge_endplate cuts the 4 mm recess and the three jack bores at JACK_WALL_X, so
+#     it was cutting them in FREE AIR 20 mm inboard of the wall. Probing the endplate at
+#     the jack row (z -40.8, y -68/-85.5/-110) found no material anywhere in x -6..+12,
+#     and the wall itself sitting at x 14.7..25.06 -- CH.T (10.4) thick, exactly as the
+#     recess comment describes, and untouched.
+# So the ports were not merely missing a cutout: the cutout existed and was being made
+# somewhere else. Read the endplate's face from the same constant the endplate uses
+# (bridge_endplate.XHI = D.BRIDGE_BASE_X1) and both land together.
+JACK_TIP = D.BRIDGE_BASE_X1                          # the endplate's +X outer face (25.06)
+# Fit clearance between the board and the plastic it registers against -- used both for
+# the board's setback behind the panel and for the recess the endplate cuts around it.
+# 0.3 is this project's usual printed-to-rigid fit (see pcb_cradle's clr default).
+OP_PANEL_CLR = 0.3
                                                      # Reads the BRIDGE's width, not the keyhead's:
                                                      # it used KH_EP_THK back when they were one
                                                      # number, which is now simply the wrong end
@@ -427,6 +448,18 @@ DC_Y = TS_Y - OP_TS_XY[1] + OP_J["J6"][1]        # the barrel inlet is J6 now
 USB_Y = TS_Y - OP_TS_XY[1] + OP_J["J1"][1]
 
 
+# ⚠ ONE ORIGIN FOR THE BOARD, because two copies of it drifted apart and put a 24 V
+# feed outside the instrument. output_panel() posed the solid and op_pt() computed the
+# same pose independently; when the pose was corrected in one, op_pt kept the old
+# double-shift and returned J10 at x 28.81 -- 3.75 mm PAST the endplate's outer face at
+# 25.06 -- so the wires leaving it were drawn through the wall. Anything that needs the
+# board's world position reads this.
+def op_origin():
+    """World (x, y, z) of the board's -X -Y corner at its underside."""
+    return (JACK_WALL_X - OP_PANEL_CLR - OP_BOARD_X / 2, TS_Y - OP_TS_XY[1],
+            JACK_Z - _PCB_T - OP_TS_AXIS_H)
+
+
 def output_panel() -> cq.Workplane:
     """The output + panel board posed at the bridge endplate: flat, panel
     connectors out through the wall at +X.
@@ -436,12 +469,18 @@ def output_panel() -> cq.Workplane:
     and the board hangs wherever that puts it. Y is set so the jack lands on the
     existing TS_Y; the USB-C then falls 31.27 further -Y, which is where the panel
     hole has to move to."""
-    # X: the jack's courtyard reaches 25.91 of a 26 half-board, so the BOARD EDGE is
-    # the panel face to within 0.09 and is the honest thing to register against.
-    b = output_panel_pcb().translate(
-        (JACK_TIP - OP_BOARD_X / 2, TS_Y - OP_TS_XY[1],
-         JACK_Z - _PCB_T - OP_TS_AXIS_H))
-    return b.translate((JACK_FACE_DX, 0, 0))     # ride the panel's +X face
+    # X: the board's +X edge registers on the panel's INNER face, so the 4 mm panel
+    # bridge_endplate keeps (JACK_WALL_X..JACK_TIP) stands in front of it and the
+    # connectors reach the outside through the holes cut in that panel.
+    #
+    # ⚠ THIS USED TO SHIFT TWICE. The translate below already lands the +X edge on
+    # whatever it is given (centre = edge - OP_BOARD_X/2), and the line then ALSO added
+    # JACK_FACE_DX -- a number meant for the free-standing jack solids "authored with
+    # their panel face at x~14", not for this board. Two wrong offsets partially
+    # cancelled: JACK_TIP was 20.36 mm short and JACK_FACE_DX was -9.3, which put the
+    # edge at -4.6 and looked deliberate. Fixing JACK_TIP alone exposed it -- the board
+    # jumped 40.72 mm and hung 11 mm PAST the instrument's own face.
+    return output_panel_pcb().translate(op_origin())
 
 
 def op_pt(ref: str):
@@ -458,7 +497,7 @@ def op_pt(ref: str):
     need their own exit vector before wiring.py routes a lead to one; until then
     this is honest for the connectors the harness actually uses.
     """
-    cx = JACK_TIP - OP_BOARD_X / 2 + JACK_FACE_DX
+    cx = op_origin()[0]
     cy = TS_Y - OP_TS_XY[1]
     jx, jy, _rot = OP_J[ref]
     l, w, h, (ox, oy) = OP_BOX[ref]

@@ -869,9 +869,18 @@ def _build() -> cq.Workplane:
     # so the recess is back at its full pre-EP-tenon size).
     # Then the three jack holes - 1/4" TS line out, DC power inlet, USB-C (audio-interface
     # port). Printed flat, so the panel + holes are vertical in the print - no supports.
-    from .electronics import TS_Y, DC_Y, USB_Y, JACK_Z, JACK_WALL_X
-    body = body.cut(box_at(JACK_WALL_X - (XLO - 1.0), 62.0, FOOT_Z - (JACK_Z - 14.0),
-                           x=((XLO - 1.0) + JACK_WALL_X) / 2, y=-88.0,
+    # ⚠ THE RECESS IS SIZED FROM THE BOARD, not from a typed 62. It was 62 wide centred
+    # at y -88, which spans -119..-57 -- and the board spans -122.50..-56.50, so both its
+    # ends sat in the full 10.4 mm wall: 194 mm3 of board buried at the -Y end and 5 at
+    # the +Y. That only surfaced once JACK_TIP was fixed and the board arrived at the
+    # panel at all; before that it was 20 mm inboard and never reached the wall to clash
+    # with it. Read the board's own span and add a clearance each side.
+    from .electronics import (TS_Y, DC_Y, USB_Y, JACK_Z, JACK_WALL_X,
+                              OP_BOARD_Y, OP_TS_XY, OP_PANEL_CLR)
+    _rc_y = TS_Y - OP_TS_XY[1]                       # the board's Y centre
+    _rc_w = OP_BOARD_Y + 2 * OP_PANEL_CLR            # its span plus a fit clearance
+    body = body.cut(box_at(JACK_WALL_X - (XLO - 1.0), _rc_w, FOOT_Z - (JACK_Z - 14.0),
+                           x=((XLO - 1.0) + JACK_WALL_X) / 2, y=_rc_y,
                            z=(FOOT_Z + (JACK_Z - 14.0)) / 2))
     for jy, jd in ((TS_Y, 11.8), (DC_Y, 6.2)):   # Ø11.4 TS bushing, Ø5.7 DC thread
         body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
