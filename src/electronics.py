@@ -68,9 +68,11 @@ PI_FP     = (-603.0, -547.0, -50.0, 35.0)     # Pi 5: 56 x 85 (long side on Y);
                                        # stay clear of y > 35 there; east is
                                        # walled by motor 0)
 # THE SOUTH HALF WAS RE-LAID-OUT around the motor controller (2026-09-14). The
-# Teensy stack and the teensy_ifc carrier are both gone -- one 40 x 35 board does
-# their job -- and 40 does not fit across 60 of tray beside the 36-wide buck, so
-# the new board stands 90 deg to the tray's X (35 across, 40 along) in the -X -Y
+# Teensy stack and the teensy_ifc carrier are both gone -- one board does their job.
+# (⚠ THE SIZES IN THIS PARAGRAPH WERE 40 x 35 AND A 90 DEG ROTATION, both true of the
+# board as it stood on 09-14 and neither true since: it is 46 x 58 and UNROTATED, which
+# is what MCTRL_BOARD_X/Y and MCTRL_ROT below already say. The constants moved and the
+# prose above them did not.) The board sits in the -X -Y
 # corner and the buck turns with it into the strip east of it. The ADC shifted
 # 3 south to clear it; 0.5 of gap is all that is left between them, which is the
 # honest state of a 60 x 181 tray holding four boards.
@@ -128,12 +130,38 @@ assert _STACK <= D.ELEC_STACK_D + 1e-6, (
 # X_BRIDGE+WALL -- the block is centred on the axle, not pinned to the rail end. Keep a
 # 4 mm panel at that tip and slide the connectors (authored with their panel face at
 # x~14) by JACK_FACE_DX so they ride the tip wherever it lands.
-JACK_TIP = D.BRIDGE_AXLE_X + D.ENDPLATE_W / 2        # bridge +X face = centred block (8.5).
-                                                     # Reads the BRIDGE's width, not the keyhead's:
-                                                     # it used KH_EP_THK back when they were one
-                                                     # number, which is now simply the wrong end
-JACK_WALL_X = JACK_TIP - 4.0                          # inner face of the 4 mm panel (4.5)
-JACK_FACE_DX = JACK_TIP - 14.0                        # authored face sits at x~14; ride the +X tip
+# ⚠ JACK_TIP READS THE ENDPLATE'S OWN +X FACE, and it used to compute a different one.
+# It was BRIDGE_AXLE_X + ENDPLATE_W/2, annotated "= 8.5" -- true when D.BRIDGE_BASE_X1
+# WAS 8.5. That constant has since moved to 25.06 and this formula did not follow, so
+# JACK_TIP read 4.70: 20.36 mm -X of the face it is supposed to name.
+#
+# Both halves of the panel I/O ride this number, which is why one stale constant broke
+# the whole interface and why fixing it here fixes both:
+#   * the output board rides JACK_FACE_DX (see output_panel), so it sat 20.36 mm too far
+#     -X -- its USB-C, barrel and TS ended up in the bay instead of at the face;
+#   * bridge_endplate cuts the 4 mm recess and the three jack bores at JACK_WALL_X, so
+#     it was cutting them in FREE AIR 20 mm inboard of the wall. Probing the endplate at
+#     the jack row (z -40.8, y -68/-85.5/-110) found no material anywhere in x -6..+12,
+#     and the wall itself sitting at x 14.7..25.06 -- CH.T (10.4) thick, exactly as the
+#     recess comment describes, and untouched.
+# So the ports were not merely missing a cutout: the cutout existed and was being made
+# somewhere else. Read the endplate's face from the same constant the endplate uses
+# (bridge_endplate.XHI = D.BRIDGE_BASE_X1) and both land together.
+JACK_TIP = D.BRIDGE_BASE_X1                          # the endplate's +X outer face (25.06)
+# Fit clearance between the board and the plastic it registers against -- used both for
+# the board's setback behind the panel and for the recess the endplate cuts around it.
+# 0.3 is this project's usual printed-to-rigid fit (see pcb_cradle's clr default).
+OP_PANEL_CLR = 0.3
+# THE PANEL IN FRONT OF THE OUTPUT BOARD IS 1.6, NOT 4.0 (user, 2026-09-21: "the board is
+# also 4mm recessed from the endplate +x wall ... make the endplate thinner there so it's
+# closer to flush"). The board's placements are built to the same two numbers --
+# elec/output_panel.py PANEL_CLR / PANEL_T -- and output_panel() checks the ROUTED board
+# against them, so neither side can move alone. 1.6 is also strong enough for the one part
+# that bears on it: the TS jack's nut clamps this plate, which prints lying on the bed, so
+# pushing the jack out means shearing ~75 mm2 of unbroken in-plane strands -- about 2 kN
+# against Neutrik's 7 N withdrawal force.
+OP_PANEL_T = 2 * D.BEAD
+JACK_WALL_X = JACK_TIP - OP_PANEL_T                   # the panel's inner face
 JACK_Z = -51 * D.BEAD                  # -40.8 jack row centre height
 # THE PANEL ROW IS NO LONGER EVENLY PITCHED, and it is not meant to be. TS and USB
 # are now BOARD parts on output_panel and their spacing (31.27) is set by that board;
@@ -145,8 +173,8 @@ JACK_Z = -51 * D.BEAD                  # -40.8 jack row centre height
 # jack, which is the separation that matters.
 TS_Y = -68.0                           # THE ONE PANEL INPUT. Every other panel hole
                                        # is now an OUTPUT of the output+panel board
-                                       # (DC_Y, USB_Y, defined after it) -- put all
-                                       # three jacks on one PCB and the board, not
+                                       # (see op_panel_openings) -- put all three
+                                       # jacks on one PCB and the ROUTED board, not
                                        # this file, decides where the holes go.
 
 # ---- UI: OLED + joystick on the top deck (mounted to the top plate) ----
@@ -162,7 +190,7 @@ DECK_TOP  = D.DECK_TOP_Z                      # 6.4 — THE deck datum (was a st
                                               # under the strings, bar still can't bottom
 OLED_Y    = -100.0                            # wide -Y deck band (clear of strings)
 OLED_W, OLED_L, OLED_T = 38.0, 72.0, 1.6      # 2.42" module PCB (Y x X)
-JOY_X     = UI_X + 70 * D.BEAD                # 56: just +X of the screen
+JOY_X     = UI_X + 70 * D.BEAD                # -252.17: just +X of the screen
 JOY_Y     = -102 * D.BEAD                     # -81.6
 
 
@@ -201,6 +229,135 @@ def _support_posts(fp, bz):
     for px in (x0 + 5, x1 - 5):
         for py in (y0 + 5, y1 - 5):
             out = out.add(cyl(5.0, bz - TRAY_Z1, z=TRAY_Z1).translate((px, py, 0)))
+    return out
+
+
+# -- where the cradles' columns start, in the FLAT tray frame -------------------------
+# stand() maps this frame to the world as  world_x = local_z - 543.8, so:
+RIB_LZ    = -87.5        # local z -> world x -631.3: just inside the endplate's own wall,
+                         # which ends at -631 behind the Pi and -627 behind the controller
+
+
+def keyhead_cradles(standing: bool = True, pi_cut=None) -> cq.Workplane:
+    """The Pi's and the motor controller's mounts, built INTO the keyhead endplate.
+
+    ⚠ THIS REPLACES electronics_tray, AND _support_posts SAID IT WOULD: "these boards
+    are revisited later under the one-M4-beside-the-board rule (cadkit.pcb.pcb_cradle
+    hold_edge), so nothing here should grow an M2 back". The tray was a separate printed
+    plate that stood against the endplate carrying four bare posts per board and NO
+    retention at all -- the boards simply rested on them. This is that revisit.
+
+    Each board gets its own cradle, independent of the other: walls capture it in the
+    plate's plane, a lip under its edge carries it off the face, so the only way in or out
+    is straight off the face -- and one M4 button closes that (through the motor
+    controller's mounting ear; beside the Pi's +Y edge, its holes being too small). Same pattern, same
+    single 2.5 mm hex key, as the motor tees and the output board.
+
+    Authored in the FLAT tray frame (where PI_FP/MCTRL_FP and BOARD_Z are written) and
+    posed by stand(), exactly as the tray was, so the footprints stay the numbers this
+    file already carries. standoff is POST_H -- the height the posts used to stand the
+    board off the plate -- so the boards do not move.
+
+    The -Y side is open above the board for both: that is the rail the harness runs along, and a wall there
+    would sit across every lead leaving the board.
+
+    EACH ONE IS ATTACHED BY ITS OWN COLUMNS. The tray was a plate standing ~22 mm proud of
+    the endplate's inboard face, and the first cradles fused at the tray's position attached
+    to nothing -- the motor controller's came out a free-floating 18,121 mm3 lump, which the
+    overlap gate cannot see (two solids that never touch do not interpenetrate). Every
+    column here starts inside the endplate wall (RIB_LZ), and keyhead_endplate asserts the
+    finished part is ONE solid.
+    """
+    from cadkit.fasteners import M4 as _M4, M4_BUTTON_HEAD_D, cut_anchor as _cut_anchor
+    from cadkit.pcb import pcb_hold_xy
+    from .helpers import box_at
+    zb = RIB_LZ - TRAY_Z1          # cradle frame: the endplate's wall, -26.5 below the mount face
+    CLR, WALL, LIP = 0.3, D.MIN_WALL_2P, 1.2
+
+    def _cyl_col(x, y, d, z0, z1):
+        return cq.Workplane("XY").add(cq.Solid.makeCylinder(d / 2.0, z1 - z0, cq.Vector(x, y, z0)))
+
+    def _frame(bw, bl, boss_xy):
+        """A board cradle made ONLY of columns rising from the endplate wall (local z `zb`)
+        to the board: a ring round the board -- a LIP under its edge to carry it, then on up
+        0.8 past its top as the locating wall, open above the board on -Y (the harness side)
+        -- and an M4 boss column at `boss_xy`, the insert in its top. Centred on the board."""
+        ox, oy = bw / 2 + CLR + WALL, bl / 2 + CLR + WALL
+        top = POST_H + BD_T + 0.8
+        ring = (box_at(2 * ox, 2 * oy, POST_H - zb, x=0.0, y=0.0, z=(zb + POST_H) / 2)
+                .cut(box_at(bw - 2 * LIP, bl - 2 * LIP, 80.0, x=0.0, y=0.0, z=0.0)))
+        wall = (box_at(2 * ox, 2 * oy, top - POST_H, x=0.0, y=0.0, z=(POST_H + top) / 2)
+                .cut(box_at(bw + 2 * CLR, bl + 2 * CLR, 80.0, x=0.0, y=0.0, z=0.0))
+                .cut(box_at(2 * ox + 2, 2 * WALL + 2 * CLR + 2, 80.0, x=0.0, y=-bl / 2, z=0.0)))
+        cr = ring.union(wall).union(_cyl_col(boss_xy[0], boss_xy[1], _M4.boss_od, zb, POST_H))
+        return cr
+
+    # ── BOTH BOARDS: HOLLOW FRAMES OF COLUMNS, NO PLATE (user, 2026-09-21) ────────────────
+    # They used to be pcb_cradle plates standing on ribs 27 mm off the endplate wall, and the
+    # user read it right: the ribs cut the plates' bridges to 10 mm, but a bridge is still an
+    # overhang, and each plate was 5.3 mm thick everywhere only because the M4 insert needed
+    # 8.5 mm of depth in ONE spot. This endplate prints standing on its -X face, so anything
+    # lying across the build axis is a ceiling -- the fix is to have nothing lying across it.
+    # Every piece of these cradles is a COLUMN rising from the endplate wall straight to the
+    # board. The boards need no floor: the motor controller is single-sided, and the Pi's
+    # underside has only the GPIO header's tails, 1 mm inboard of the lip.
+
+    # THE MOTOR CONTROLLER: the M4 goes THROUGH its mounting ear (elec/motor_ctrl.py EAR_*).
+    x0, x1, y0, y1 = MCTRL_FP
+    y1 = y1 + MCTRL_EAR_H
+    bw, bl = x1 - x0, y1 - y0
+    hx, hy = MCTRL_HOLE[0], MCTRL_HOLE[1] - MCTRL_EAR_H / 2.0
+    cr = _frame(bw, bl, (hx, hy))
+    # the USB-C (J4) sits ON the -Y edge; its shell's THT legs come through beside it, so
+    # the lip steps back from under it and the board rests on the rest of the ring there
+    _uw, _ul, _uh, _ux, _uy = MCTRL_USB
+    cr = cr.cut(box_at(_uw + 1.0, 2 * LIP + 2 * CLR + 1.0, 2 * POST_H,
+                       x=_ux, y=-bl / 2 + LIP / 2, z=POST_H))
+    cr = _cut_anchor(_M4, cr, (hx, hy, POST_H), (0, 0, -1), _M4.anchor_min_wall)
+    mc = cr.translate(((x0 + x1) / 2.0, (y0 + y1) / 2.0, TRAY_Z1))
+
+    # THE PI: a purchased board, holes too small for M4, so its M4 stands BESIDE the +Y edge
+    # (pcb_hold_xy, the same spot pcb_cradle's hold_edge uses) and the wall is notched for
+    # the head. ⚠ AND ITS COLUMNS MOSTLY LAND ON THE NUT HARDWARE'S BLOCK, NOT THE WALL: the
+    # height-adjust prism fills x -630..-610.1 behind it, cut through by the insert slots.
+    # So the columns are built to the wall and then `pi_cut` (keyhead_endplate: the slots,
+    # plus everything straight above them) takes away whatever would land in a slot or hang
+    # over one. What is left stands on a fin between slots, on the solid band along the
+    # board's -Z edge, or -- past both ends of the block -- on the wall itself.
+    x0, x1, y0, y1 = PI_FP
+    pw, pl = x1 - x0, y1 - y0
+    phx, phy = pcb_hold_xy(pw, pl, "+y", hold_at=0.0, clr=CLR, spec=_M4)
+    cr = _frame(pw, pl, (phx, phy))
+    cr = cr.cut(_cyl_col(phx, phy, M4_BUTTON_HEAD_D + 2 * CLR, POST_H, POST_H + 20.0))
+    cr = _cut_anchor(_M4, cr, (phx, phy, POST_H), (0, 0, -1), _M4.anchor_min_wall)
+    pi = cr.translate(((x0 + x1) / 2.0, (y0 + y1) / 2.0, TRAY_Z1))
+    if not standing:
+        return mc.union(pi)
+    pi = stand(pi)
+    if pi_cut is not None:
+        pi = pi.cut(pi_cut)
+    return stand(mc).union(pi)
+
+
+def board_screws():
+    """The M4 through each of OUR boards' mounting ears: [(name, solid)] -- an M4x10 button
+    head seated on the board's top face and its heat-set insert in the boss below, placed
+    from the same hole the cradles are bored from. The motor controller's is authored in
+    the flat tray frame and stood up with the board; the output board's is world-vertical."""
+    from cadkit.fasteners import M4 as _M4, M4_BUTTON_HEAD_H, m4_button_screw, seated_insert
+    L = 10.0                                   # M4x10: 1.6 of board, 8.4 into the 8.5 anchor
+    assert L - _PCB_T <= _M4.anchor_min_wall + 1e-9
+    out = []
+    cx, cy = _ctr(MCTRL_FP)
+    tx, ty = cx + MCTRL_HOLE[0], cy + MCTRL_HOLE[1]
+    out.append(("board_insert_0", stand(seated_insert(_M4, (tx, ty, BOARD_Z), (0, 0, -1)))))
+    out.append(("board_screw_0", stand(m4_button_screw(L).translate(
+        (tx, ty, BOARD_Z + BD_T + M4_BUTTON_HEAD_H)))))
+    ox, oy, oz = op_origin()
+    (hx, hy, _hd), = BG.holes("output_panel")
+    out.append(("board_insert_1", seated_insert(_M4, (ox + hx, oy + hy, oz), (0, 0, -1))))
+    out.append(("board_screw_1", m4_button_screw(L).translate(
+        (ox + hx, oy + hy, oz + _PCB_T + M4_BUTTON_HEAD_H))))
     return out
 
 
@@ -285,167 +442,140 @@ def pi5() -> cq.Workplane:
 #      fleet slew is staggered -- which is routine to carry across a board corner. The
 #      noise argument survives only as a LAYOUT OBLIGATION, and it is met by keeping
 #      PWR_GND a separate net that never joins AGND on this board (see J5/J6).
-OP_BOARD_X, OP_BOARD_Y = 74.0, 66.0
-# ⚠ IT GREW IN X, 52 -> 74, AND ONLY IN X. The 2026-09-15 respin put the magnetic
-# pickup's whole conversion chain on this board -- an MCU, a 24-bit ADC, a DAC, a
-# USB hub and a local 24->5 V buck -- because the pickup now LANDS here on screw
-# terminals and no analog signal crosses the instrument any more. The board's -Y
-# edge sits 3.67 off the chassis rail, so Y had nothing to give; the endplate
-# corner is open about 100 in X, and the growth goes BACKWARDS into the bay behind
-# the panel face. The panel connectors did not move relative to each other.
-#
-# Connector anchors, board-local, straight out of elec/output_panel.py.
-# ⚠ J2/J3/J4 ARE AT 270, NOT 180, and that is load-bearing: this USB-A footprint's
-# courtyard runs -12.68..+3.90 in Y about the pad centroid, so its MOUTH is the -Y
-# face. At 180 the shell measures flush against the -X edge while pointing +Y --
-# along the board, opening onto the pickup terminals. 270 turns the mouth out
-# through the -X edge, which is what these three are for.
-OP_J = {"J1": (29.44, 4.00, 90.0),        # panel USB-C, mouth +X
-        "J2": (-24.32, 24.00, 270.0),     # USB-A -> the Pi's gadget port, mouth -X
-        "J3": (-29.44, 8.00, 270.0),      # USB-C, hub upstream -> a Pi host port
-        "J4": (-24.32, -8.00, 270.0),     # USB-A, hub downstream -> optical board
-        "J6": (32.02, -20.50, 0.0),       # 24 V inlet, barrel, bushing out +X
-        "J7": (0.00, -28.00, 0.0),        # 24 V trunk out, 2 contacts per rail
-        "J8": (-13.50, 28.00, 0.0)}       # magnetic pickup in, SCREW TERMINALS
-# (courtyard L, W, height, courtyard-centre offset from the anchor)
-OP_BOX = {"J1": (9.51, 10.73, 3.26, (2.81, 0.00)),
-          "J2": (16.57, 15.59, 6.60, (-4.39, 0.00)),
-          "J3": (9.51, 10.73, 3.26, (-2.81, 0.00)),
-          "J4": (16.57, 15.59, 6.60, (-4.39, 0.00)),
-          "J6": (11.59, 16.09, 11.00, (-0.82, -3.20)),
-          "J7": (13.49, 6.84, 7.00, (0.00, -0.53)),
-          "J8": (11.59, 8.90, 10.50, (-0.25, 0.10))}
-OP_TS_XY = (23.11, 21.50)                 # the 1/4 in jack's pad anchor
-OP_TS_L, OP_TS_W = 27.62, 20.32           # its courtyard
-OP_TS_OFF = (0.09, 0.00)                  # courtyard centre from the anchor
-OP_TS_BODY_D = 15.0                       # Ø behind the panel (as ts_jack had it)
-OP_TS_AXIS_H = 9.5                        # ⚠ THE ONE FIGURE NOT OFF A FOOTPRINT:
-                                          # how high the bore sits above the board.
-                                          # It sets the panel hole's Z and nothing
-                                          # else checks it. Confirm against
-                                          # Neutrik's drawing before cutting metal.
-# The small parts, generated from the routed board (scratch gen_bom.py) rather
-# than typed -- XY is the KiCad courtyard about the pad centroid, which is the
-# conservative envelope, and only the HEIGHT column is hand-entered.
-OP_BOM = (
-    ("C1",  "2.2uF/100V",    4.69,  3.29, 1.80,   13.00,   8.00),
-    ("C10", "100nF",         1.91,  1.01, 0.55,   14.50,  -8.00),
-    ("C11", "100nF",         1.91,  1.01, 0.55,    6.00, -12.00),
-    ("C12", "100nF",         1.91,  1.01, 0.55,  -17.00,  -4.00),
-    ("C13", "100nF",         1.91,  1.01, 0.55,   -4.00,  22.50),
-    ("C14", "100nF",         1.91,  1.01, 0.55,   -3.50,  21.00),
-    ("C15", "12pF",          1.91,  1.01, 0.55,  -11.00, -15.00),
-    ("C16", "12pF",          1.91,  1.01, 0.55,   -1.00, -15.00),
-    ("C17", "12pF",          1.91,  1.01, 0.55,  -21.50, -17.50),
-    ("C18", "12pF",          1.91,  1.01, 0.55,  -12.50, -17.50),
-    ("C2",  "10uF/50V",      4.69,  2.39, 1.60,  -20.00, -28.00),
-    ("C3",  "100nF",         1.91,  1.01, 0.55,  -25.00, -28.00),
-    ("C4",  "10nF",          1.91,  1.01, 0.55,  -19.00, -23.50),
-    ("C5",  "22uF/16V",      3.49,  2.05, 1.45,    9.00, -23.50),
-    ("C6",  "22uF/16V",      3.49,  2.05, 1.45,   13.00, -23.50),
-    ("C7",  "10uF",          3.49,  2.05, 1.45,    4.00,   4.00),
-    ("C8",  "100nF",         1.91,  1.01, 0.55,    7.50,   4.00),
-    ("C9",  "10uF",          3.49,  2.05, 1.45,   11.00,  -8.00),
-    ("D1",  "B5819W",        4.79,  2.39, 1.10,  -24.00, -23.50),
-    ("D2",  "ESD",           2.59,  1.49, 0.75,   24.00,  -2.50),
-    ("D3",  "ESD",           2.59,  1.49, 0.75,   24.00,  -4.50),
-    ("D4",  "flyback",       2.59,  1.49, 0.75,    0.00,  15.00),
-    ("D5",  "bidir clamp",   2.59,  1.49, 0.75,   17.50,   8.00),
-    ("D6",  "SMAJ30A",       7.09,  3.59, 2.20,  -12.00, -28.00),
-    ("FB1", "600R@100MHz",   3.05,  1.55, 0.95,   17.00, -23.50),
-    ("K1",  "FRT5 5V",      13.15, 14.81, 5.10,  -13.00,  15.00),
-    ("L1",  "47uH",          3.69,  3.69, 1.50,  -30.00, -23.50),
-    ("Q1",  "AO3400A",       3.95,  3.49, 1.30,   -3.69,  15.00),
-    ("R1",  "5k1",           1.95,  1.03, 0.50,   24.00,   2.00),
-    ("R10", "100k",          1.95,  1.03, 0.50,   21.00,   8.00),
-    ("R11", "preset",        1.95,  1.03, 0.50,  -16.00, -23.50),
-    ("R12", "preset",        1.95,  1.03, 0.50,  -16.00, -25.50),
-    ("R2",  "5k1",           1.95,  1.03, 0.50,   24.00,   0.00),
-    ("R3",  "5k1",           1.95,  1.03, 0.50,  -25.50, -18.00),
-    ("R4",  "5k1",           1.95,  1.03, 0.50,  -25.50, -20.00),
-    ("R5",  "100R",          1.95,  1.03, 0.50,   -4.00,  12.00),
-    ("R6",  "10k",           1.95,  1.03, 0.50,   11.00, -12.00),
-    ("R7",  "10k",           1.95,  1.03, 0.50,   14.00, -12.00),
-    ("R8",  "1M",            1.95,  1.03, 0.50,   -4.50,  25.00),
-    ("R9",  "220R",          1.95,  1.03, 0.50,    8.00,   8.00),
-    ("U1",  "CH32V307WCU6",  9.29,  9.29, 0.90,   -6.00,  -8.00),
-    ("U2",  "PCM1808PWR",    7.79,  5.59, 1.20,    2.50,  29.00),
-    ("U3",  "PCM5102A",      7.79,  7.09, 1.20,    2.50,  21.00),
-    ("U4",  "HS USB hub",    5.35,  5.35, 0.80,  -17.00,  -8.00),
-    ("U5",  "LMR16006",      4.19,  3.49, 1.10,  -30.00, -28.00),
-    ("U6",  "3V3 LDO",       4.19,  3.49, 1.45,    6.23,  -8.00),
-    ("U7",  "RRO op-amp",    4.19,  3.49, 1.45,    4.23,   8.00),
-    ("U8",  "RRO op-amp",    4.19,  3.49, 1.45,   -3.77,  29.00),
-    ("Y1",  "8MHz",          4.29,  3.59, 0.90,   -6.00, -15.00),
-    ("Y2",  "12MHz",         4.29,  3.59, 0.90,  -17.00, -17.50),
-)
+# ── THE BOARD ITSELF COMES FROM THE ROUTED BOARD ─────────────────────────────────────
+# Everything below used to be hand tables -- OP_J anchors, OP_BOX courtyard boxes, OP_BOM,
+# OP_TS_* -- copied "straight out of" elec/output_panel.py and checked against that same
+# file's placements, i.e. against the numbers layout was GIVEN. It agreed with itself while
+# the panel connectors' bodies sat 0.54 short of the board edge, the barrel inlet faced the
+# chassis rail, and the USB-C hole was cut 7.85 mm above the receptacle. src/board_geom.py
+# builds it from elec/geom/output_panel.geom.json instead: the finished board, read back.
+from . import board_geom as BG
+
+_OP = BG.load("output_panel")
+OP_BOARD_X, OP_BOARD_Y = _OP["outline_mm"]
+_OP_T = _OP["thickness_mm"]
+# the three connectors a player reaches through the panel, in the order they sit along it
+OP_PANEL_REFS = ("J5", "J1", "J6")          # 1/4 in jack, USB-C, 24 V barrel
 
 
 def output_panel_pcb() -> cq.Workplane:
-    """The output + panel board in its OWN frame: board centred on the origin in
-    XY, underside at z=0, parts rising +Z, the panel connectors facing +X."""
-    b = box_at(OP_BOARD_X, OP_BOARD_Y, _PCB_T, x=0.0, y=0.0, z=_PCB_T / 2)
-    for ref, (jx, jy, _rot) in OP_J.items():
-        l, w, h, (ox, oy) = OP_BOX[ref]
-        b = b.union(box_at(l, w, h, x=jx + ox, y=jy + oy, z=_PCB_T + h / 2))
-    # the 1/4 in jack: a real cylinder, because its BORE is what the endplate hole
-    # has to line up with and a box would hide that
-    jx, jy = OP_TS_XY
-    zc = _PCB_T + OP_TS_AXIS_H
-    b = b.union(box_at(OP_TS_L, OP_TS_W, OP_TS_AXIS_H, x=jx + OP_TS_OFF[0],
-                       y=jy + OP_TS_OFF[1], z=_PCB_T + OP_TS_AXIS_H / 2))
-    b = b.union(cyl_x(OP_TS_BODY_D, OP_TS_L, jx + OP_TS_OFF[0] - OP_TS_L / 2, jy, zc))
-    for _n, _v, _w, _l, _h, _x, _y in OP_BOM:
-        b = b.union(box_at(_w, _l, _h, x=_x, y=_y, z=_PCB_T + _h / 2))
-    return b
+    """The output + panel board in its OWN frame: centred on the origin in XY, underside
+    at z = 0, parts rising +Z, the panel connectors facing +X -- built from the routed
+    board, not from a table of what it was meant to be."""
+    return BG.solid("output_panel")
 
 
-# The panel holes bridge_endplate cuts. DERIVED, not typed: they follow the board.
-DC_Y = TS_Y - OP_TS_XY[1] + OP_J["J6"][1]        # the barrel inlet is J6 now
-USB_Y = TS_Y - OP_TS_XY[1] + OP_J["J1"][1]
+# ⚠ ONE ORIGIN FOR THE BOARD, because two copies of it drifted apart and put a 24 V
+# feed outside the instrument. output_panel() posed the solid and op_pt() computed the
+# same pose independently; when the pose was corrected in one, op_pt kept the old
+# double-shift and returned J10 at x 28.81 -- 3.75 mm PAST the endplate's outer face at
+# 25.06 -- so the wires leaving it were drawn through the wall. Anything that needs the
+# board's world position reads this.
+def op_origin():
+    """World (x, y, z) the board solid is translated BY: its CENTRE in x and y, and
+    its underside in z.
+
+    X: the board's +X edge sits OP_PANEL_CLR behind the panel's inner face.
+    Y: the TS jack's axis lands on TS_Y.
+    Z: from the TS jack's BORE, not the board -- it is the part whose hole a player has
+       to hit with a plug, so it owns the row height and the board hangs where that puts
+       it. (The other two holes are wherever the board then puts THEIR axes; they used
+       to share this one Z, which is how the USB-C hole ended up 7.85 mm too high.)"""
+    ts = BG.mouth("output_panel", "J5")
+    return (JACK_WALL_X - OP_PANEL_CLR - OP_BOARD_X / 2, TS_Y - ts["across"],
+            JACK_Z - _OP_T - ts["axis_h"])
+
+
+def op_panel_openings():
+    """[(ref, world y, world z, opening)] -- the hole the panel needs for each connector,
+    centred where the ROUTED board puts that connector. A "rect" opening may carry its own
+    centre height (the barrel's body is not symmetric about its bore)."""
+    cx, cy, cz = op_origin()
+    out = []
+    for ref in OP_PANEL_REFS:
+        m = BG.mouth("output_panel", ref)
+        op = m["spec"]["opening"]
+        zc = op[3] if (op[0] == "rect" and len(op) > 3) else m["axis_h"]
+        out.append((ref, cy + m["across"], cz + _OP_T + zc, op))
+    return out
+
+
+def op_rear_mounts():
+    """[(ref, world y, world axis z, spec)] -- the panel parts that CLAMP to the panel (the TS
+    jack): the endplate stands a boss behind the panel for their shoulder and counterbores
+    the face for their nut."""
+    cx, cy, cz = op_origin()
+    out = []
+    for ref in OP_PANEL_REFS:
+        m = BG.mouth("output_panel", ref)
+        if m["spec"]["mount"] == "rear":
+            out.append((ref, cy + m["across"], cz + _OP_T + m["axis_h"], m["spec"]))
+    return out
+
+
+def op_panel_fronts():
+    """{ref: world x of the part's FRONT} -- where each connector finishes relative to the
+    panel. The through-mount parts are meant to reach the face (JACK_TIP); J1 falls short
+    by the board's J1_SETBACK because its own shell legs would otherwise cross the edge."""
+    cx = op_origin()[0]
+    return {ref: cx + BG.mouth("output_panel", ref)["front"] for ref in OP_PANEL_REFS}
+
+
+def _check_panel():
+    """The ROUTED board against the panel it is built for. Raises rather than drawing a
+    board whose connectors cannot be reached -- which is what the old tables did, three
+    ways, with every check passing."""
+    fronts = op_panel_fronts()
+    for ref in OP_PANEL_REFS:
+        m = BG.mouth("output_panel", ref)
+        assert m["dir"][0] > 0.99, (
+            "output_panel %s's mouth faces %r, not +X out through the panel -- check its "
+            "rotation on the routed board" % (ref, m["dir"]))
+        if m["spec"]["mount"] == "through":
+            assert JACK_TIP - 0.45 <= fronts[ref] <= JACK_TIP + 0.05, (
+                "output_panel %s's front is at x %.2f; the panel face is %.2f -- a "
+                "through-mount connector has to reach it" % (ref, fronts[ref], JACK_TIP))
+        else:
+            # a clamped part: its SHOULDER must sit where the clamp puts it, or the nut's
+            # head is not flush and its plug does not meet the face with the others'
+            sp = m["spec"]
+            shoulder = fronts[ref] - sp["stub"][1]
+            want = JACK_TIP - sp["clamp"] - sp["nut"][1]
+            assert abs(shoulder - want) <= 0.05, (
+                "output_panel %s's shoulder is at x %.2f, the clamp wants it at %.2f"
+                % (ref, shoulder, want))
 
 
 def output_panel() -> cq.Workplane:
-    """The output + panel board posed at the bridge endplate: flat, panel
-    connectors out through the wall at +X.
+    """The output + panel board posed at the bridge endplate: flat, panel connectors out
+    through the wall at +X. See op_origin for how each axis is set."""
+    _check_panel()
+    return output_panel_pcb().translate(op_origin())
 
-    Z is set from the TS JACK'S BORE, not from the board: the jack is the part
-    whose hole a player has to hit with a plug, so it owns the panel row's height
-    and the board hangs wherever that puts it. Y is set so the jack lands on the
-    existing TS_Y; the USB-C then falls 31.27 further -Y, which is where the panel
-    hole has to move to."""
-    # X: the jack's courtyard reaches 25.91 of a 26 half-board, so the BOARD EDGE is
-    # the panel face to within 0.09 and is the honest thing to register against.
-    b = output_panel_pcb().translate(
-        (JACK_TIP - OP_BOARD_X / 2, TS_Y - OP_TS_XY[1],
-         JACK_Z - _PCB_T - OP_TS_AXIS_H))
-    return b.translate((JACK_FACE_DX, 0, 0))     # ride the panel's +X face
+
+def op_top(ref: str):
+    """World (x, y, z) of the TOP of the output board's connector `ref`, over its body
+    centre -- where a lead leaves a TOP-ENTRY header (J7, J9, J10 are vertical XH)."""
+    cx, cy, cz = op_origin()
+    f = BG.footprint("output_panel", ref)
+    x0, x1, y0, y1 = f["fab"]
+    h = BG.HEIGHT[BG.fp_name(f["fpid"])]
+    return (cx + (x0 + x1) / 2.0, cy + (y0 + y1) / 2.0, cz + _OP_T + h)
 
 
 def op_pt(ref: str):
-    """World (x, y, z) where a lead leaves the output+panel board's connector `ref`
-    -- so wiring.py asks the board rather than carrying a copy of its layout, the
-    same contract mctrl_pt provides for the motor controller.
+    """World (x, y, z) where a lead leaves the output+panel board's connector `ref` -- so
+    wiring.py asks the board rather than carrying a copy of its layout, the same contract
+    mctrl_pt provides for the motor controller.
 
-    J2, J3 and J4 all exit along the board's -X, out of the mouths that face the
-    instrument; J7 and J8 exit +Y and -Y respectively. J1 and J6 are panel parts
-    and have no internal lead at all -- a player's cable is what plugs into them.
-
-    ⚠ IT RETURNS THE COURTYARD'S FAR FACE ALONG +Y FOR EVERY REF, which was right
-    while every connector exited +Y and is now right for J7/J8 only. The -X three
-    need their own exit vector before wiring.py routes a lead to one; until then
-    this is honest for the connectors the harness actually uses.
-    """
-    cx = JACK_TIP - OP_BOARD_X / 2 + JACK_FACE_DX
-    cy = TS_Y - OP_TS_XY[1]
-    jx, jy, _rot = OP_J[ref]
-    l, w, h, (ox, oy) = OP_BOX[ref]
-    return (cx + jx, cy + jy + oy + w / 2, JACK_Z - OP_TS_AXIS_H + h / 2)
-
-
-def usb_panel_y() -> float:
-    """Where the panel's USB-C hole now sits, for whoever cuts the endplate."""
-    return TS_Y - OP_TS_XY[1] + OP_J["J1"][1]
+    ⚠ IT RETURNS THE BODY'S FAR FACE ALONG +Y FOR EVERY REF, which is right for the
+    connectors the harness actually uses (J7, J9, J10 exit +Y) and not for the -X three.
+    Those need their own exit vector before wiring.py routes a lead to one."""
+    cx, cy, cz = op_origin()
+    f = BG.footprint("output_panel", ref)
+    x0, x1, y0, y1 = f["fab"]
+    h = BG.HEIGHT[BG.fp_name(f["fpid"])]
+    return (cx + (x0 + x1) / 2.0, cy + y1, cz + _OP_T + h / 2.0)
 
 
 # ── MOTOR CONTROLLER PCB ─────────────────────────────────────────────────────
@@ -460,9 +590,12 @@ def usb_panel_y() -> float:
 # harness that used to run from the Teensy stack to the carrier.
 #
 # ⚠ THE OUTLINE IS AN OUTPUT, like the TRRS adapter and unlike every purchased
-# board here: 40 x 35 is what elec/motor_ctrl.py's own contents came to, and the
-# TRAY was re-laid-out around it (see MCTRL_FP). It stands 90 deg to the tray's
-# X so 40 of board fits across 60 of tray beside the buck.
+# board here: 46 x 58 is what elec/motor_ctrl.py's own contents came to, and the
+# TRAY was re-laid-out around it (see MCTRL_FP). It is UNROTATED -- see MCTRL_ROT.
+# (Said "40 x 35 ... stands 90 deg to the tray's X" until 2026-09-19, directly above
+# a constant reading 46.0, 58.0. A number in prose beside the number it describes is
+# the one place nothing checks; BOM.md carried the same stale 40 x 35 for this board
+# and sized an enclosure row from it.)
 MCTRL_BOARD_X, MCTRL_BOARD_Y = 46.0, 58.0
 MCTRL_ROT = 0.0                  # UNROTATED now: at 46 x 58 the board fits
                                  # the tray straight, and the ADC slot it grows
@@ -473,6 +606,22 @@ MCTRL_J = {"J1": (-10.0, 2.5, 0.0),      # bus A out -- the ten motor tees
            "J3": (15.5, -8.5, 90.0),     # 24 V in, +X edge
            "J4": (0.0, -20.5, 0.0),      # USB-C to the Pi, -Y edge
            "J5": (0.0, 26.0, 0.0)}       # 5 V to the Pi's GPIO (was the power board)
+# THE MOUNTING EAR, read off the ROUTED board (elec/geom/motor_ctrl.geom.json), moved into
+# this file's frame: the rectangle's centre, which is what MCTRL_FP, MCTRL_J and MCTRL_BOM
+# are all written about. The geom file centres on the outline's BOX, which the ear pushes
+# +Y by half its height.
+def _mctrl_ear():
+    from . import board_geom as _BG
+    poly = _BG.load("motor_ctrl")["outline_poly"]
+    ymin = min(p[1] for p in poly)
+    dy = -ymin - MCTRL_BOARD_Y / 2.0                  # geom frame -> rectangle frame
+    out = [(p[0], p[1] + dy) for p in poly]
+    (hx, hy, hd), = _BG.holes("motor_ctrl")
+    ear_h = max(p[1] for p in out) - MCTRL_BOARD_Y / 2.0
+    return out, (hx, hy + dy, hd), ear_h
+
+
+MCTRL_OUTLINE, MCTRL_HOLE, MCTRL_EAR_H = _mctrl_ear()
 MCTRL_USB = (10.73, 9.51, 3.26, 0.0, -23.31)   # HRO TYPE-C-31-M-12: courtyard + height
 # Every populated part except the four connectors, which are modelled properly
 # (cadkit XH / the USB block above). (name, value, X, Y, height, x, y), board-local
@@ -551,7 +700,11 @@ def motor_ctrl_pcb(mating: bool = False) -> cq.Workplane:
     footprint puts the body on the -Y side of its pin row, and the connector is
     not symmetric about its pins, so which side the body falls on is a real
     choice at layout rather than a cosmetic one."""
-    b = box_at(MCTRL_BOARD_X, MCTRL_BOARD_Y, _PCB_T, x=0.0, y=0.0, z=_PCB_T / 2)
+    # the laminate as ROUTED -- the rectangle plus its +Y mounting ear, minus the M4 hole
+    b = (cq.Workplane("XY").polyline(MCTRL_OUTLINE).close().extrude(_PCB_T)
+         .cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+             MCTRL_HOLE[2] / 2.0, _PCB_T + 2.0,
+             cq.Vector(MCTRL_HOLE[0], MCTRL_HOLE[1], -1.0)))))
     for ref, (jx, jy, rot) in MCTRL_J.items():
         if ref == "J4":
             w, l, h, ox, oy = MCTRL_USB
@@ -683,113 +836,28 @@ def tee_pcb(x: float, y: float, drop: int = 1, accurate: bool = True) -> cq.Work
     return b
 
 
-# ── TRRS <-> JST-XH ADAPTER PCB ──────────────────────────────────────────────
-# Two of them, and they are the SAME board used in opposite directions: a passive
-# four-wire pass-through, so "TRRS in, JST out" and "JST in, TRRS out" are the
-# same copper. One at the chassis (trunk -> leg), one at the bar cradle.
+# (THE TRRS <-> JST-XH ADAPTER PCB IS DELETED, 2026-09-16, user. It existed to put the
+#  leg-link TRRS jack on a board so the joint could be crossed without crimping a
+#  factory-cabled part -- and the leg column has since become an off-the-shelf TRRS
+#  M->F extension cable with molded ends, which crosses the same joint with ZERO
+#  connections on the leg. The board was solving a problem the cable stopped having.
 #
-# IT REPLACES THE FACTORY-CABLED TRRS PARTS. BOM.md crosses both joints with a
-# Tensility 10-03404 jack-on-a-cable at $8.19 and a CA-354S plug-on-a-cable at
-# $3.53, each with an XH crimped onto its cut end. Putting the jack ON A BOARD
-# costs ~$0.10 of connector, deletes both crimps, and deletes the leg-socket tee.
+#  Nothing referenced trrs_adapter_pcb: it was modelled, dimensioned against the real
+#  PJ-320D-4A and B4B-XH-A courtyards, given an M4 through-hole for retention, and never
+#  placed in an assembly. Worth noting, because a part with no caller is exactly the kind
+#  that survives a design change unnoticed.
 #
-# ⚠ THE OUTLINE IS AN OUTPUT HERE, NOT AN INPUT -- the opposite of every other
-# board in this file. There is no housing yet (the leg-carrier CAD was never
-# built; the column became an off-the-shelf extension cable), so these numbers
-# are the board sizing ITSELF, derived from the two connectors' courtyards in
-# elec/trrs_adapter.py. THE MECHANICAL SIDE SHOULD BE BUILT TO THEM.
-#
-# SIGNAL MAP, and the pin order is a SAFETY decision: tip = +24 V, ring1 = CAN_H,
-# ring2 = CAN_L, sleeve = GND. A plug drags its bands across every socket contact
-# on the way in, and 24 V on the wrong one lands on the CAN pair -- past the
-# SN65HVD230's -4..+16 V bus-pin maximum. The escape is that each socket contact
-# sits at a fixed depth and each plug band travels only as deep as its own
-# resting position, so the socket's TIP contact is touched by exactly one thing
-# in the whole insertion: the plug's tip band. The rail goes there, with the
-# POWERED side carrying the SOCKET.
-# ⚠ THE MOUTH FACES -Y, ALONG THE LONG AXIS (branner, 2026-09-14). The pocket
-# over the leg is 22-26 across X between the keyhead endplate's inner wall and
-# the electronics tray, so a board lying 26 across that gap (29.8 with its
-# cradle) did not fit. Turned, the jack occupies 10.09 of a 20 mm width and the
-# board reaches its 26 INBOARD along the plug's own line, which fits. The mouth
-# also came in from 2.61 off the edge to 0.1: the jack's courtyard edge IS its
-# barrel opening, so every millimetre of inset was a millimetre the plug had to
-# reach through the chassis rail for nothing.
-# ⚠ AND IT NOW HAS AN M4 THROUGH-HOLE (user, 2026-09-15). The board went out with
-# none, on the project's rule that plastic captures a board on every axis but one
-# and an M4 button head BESIDE the edge closes the last. The user's objection is
-# right and it is the same one that produced the tee's ear: beside-the-edge
-# retention is FRICTION. Nothing here stops the board backing out along -Y except
-# a tight screw, and -Y is exactly the direction a hand pulls when it unplugs the
-# lead. A screw THROUGH the board takes that load in shear instead.
-#
-# IT COST 5 MM OF LENGTH AND NOTHING IN X, which is the constraint that mattered:
-# the strips either side of the turned jack are 4.955 wide and a 4.5 clearance hole
-# wants ~5.3, so a side hole would have pushed the board past 20 across the 22-26
-# pocket -- the very thing the turn was for. The hole goes BETWEEN the connectors
-# instead, which is also the better place for it: mid-span, where the lever arm
-# about either connector is smallest. ⚠ THE BINDING NUMBER IS THE BUTTON HEAD, NOT
-# THE HOLE -- an M4 button is ~7.0 across, so the band clears 7.0 not 4.5.
-TRRS_BOARD_X, TRRS_BOARD_Y = 20.0, 31.0     # board-local, origin at its centre
-TRRS_HOLE_XY = (0.0, 3.6)                   # M4 clearance, mid-span
-TRRS_HOLE_D  = 4.5
-TRRS_HEAD_D  = 7.0                          # button head -- what sets the band
-TRRS_JACK_XY = (-1.085, -6.01)              # PJ-320D-4A (LCSC C95562), TURNED 90
-TRRS_XH_XY   = (0.0, 10.30)                 # B4B-XH-A, turned 180 (see elec/)
-TRRS_JACK_L  = 10.09                        # jack land ACROSS the board (X)...
-TRRS_JACK_W  = 15.18                        # ...and along the plug's line (Y)
-TRRS_JACK_OFF = (1.085, -1.80)              # courtyard centre from the pad anchor
-TRRS_JACK_H  = 5.0                          # body height above the board. ⚠ the
-                                            # one figure not off a footprint --
-                                            # PJ-320 bodies run ~5, confirm at
-                                            # purchase before a lid depends on it.
-TRRS_MOUTH_Y = TRRS_JACK_XY[1] - 9.39       # -15.40: the barrel's opening face
-TRRS_PLUG_RUN = 30.0                        # what a MATED plug needs -Y of the
-                                            # mouth: ~14 of barrel inside plus the
-                                            # moulded handle and its strain relief.
-                                            # Deliberately generous -- the number
-                                            # exists to reserve room, and over-
-                                            # reserving is the safe error.
-TRRS_PLUG_D  = 10.0                         # handle diameter to keep clear
-
-
-def trrs_adapter_pcb(mating: bool = False) -> cq.Workplane:
-    """The TRRS<->XH adapter, in its OWN frame: board centred on the origin in
-    XY with its underside at z=0, parts rising +Z, the jack's mouth facing -Y
-    along the board's LONG axis (see the note above). Pose it where a housing
-    wants it -- there is no station for it yet.
-
-    The M4 hole is CUT, not drawn: a cradle that wants to put a boss through it
-    should be able to ask this solid where the hole is rather than re-deriving
-    TRRS_HOLE_XY. There is no posed accessor because there is no station yet --
-    whoever builds the cradle owns the pose and can read the hole off the solid.
-
-    `mating=True` adds the envelope a plugged-in lead needs (TRRS_PLUG_RUN of
-    Ø TRRS_PLUG_D out of the mouth, and the XH's mated height), which is the
-    volume a housing has to leave alone rather than the board's own bulk."""
-    b = box_at(TRRS_BOARD_X, TRRS_BOARD_Y, _PCB_T, x=0.0, y=0.0, z=_PCB_T / 2)
-    jx, jy = TRRS_JACK_XY
-    b = b.union(box_at(TRRS_JACK_L, TRRS_JACK_W, TRRS_JACK_H,
-                       x=jx + TRRS_JACK_OFF[0], y=jy + TRRS_JACK_OFF[1],
-                       z=_PCB_T + TRRS_JACK_H / 2))
-    b = b.union(jst_xh_header(4, mated=mating)
-                .rotate((0, 0, 0), (0, 0, 1), 180)
-                .translate((TRRS_XH_XY[0], TRRS_XH_XY[1], _PCB_T)))
-    b = b.cut(cyl(TRRS_HOLE_D, _PCB_T + 1.0)
-              .translate((TRRS_HOLE_XY[0], TRRS_HOLE_XY[1], -0.5)))
-    if mating:
-        b = b.union(cyl(TRRS_PLUG_D, TRRS_PLUG_RUN)
-                    .rotate((0, 0, 0), (1, 0, 0), 90)
-                    .translate((jx + TRRS_JACK_OFF[0], TRRS_MOUTH_Y,
-                                _PCB_T + TRRS_JACK_H / 2)))
-    return b
+#  The leg's own TRRS geometry is NOT this and stays: see TRRS_DX/TRRS_DY and
+#  leg_shaft_trrs in legs.py, which seat the naked 10-03404 jack and the extension
+#  cable's molded barrel. Same four wires, different problem.)
 
 
 # (ts_jack is DELETED: the 1/4 in jack is a PCB part on the output+panel board
-#  now -- see OP_TS_XY. Modelling it as a free-floating panel jack implied
+#  now -- see board_geom.PANEL. Modelling it as a free-floating panel jack implied
 #  hand-soldered lugs, which the project forbids.)
 
 
 # (dc_jack is DELETED: the 24 V inlet is a PCB part on the output+panel board now
-#  -- see OP_J["J5"]. As a free-standing panel jack it was a PJ-005A, whose SOLDER
+#  -- J6 on the routed board (board_geom). As a free-standing panel jack it was
+#  a PJ-005A, whose SOLDER
 #  LUGS carried the same hand-soldering violation the TS jack did.)

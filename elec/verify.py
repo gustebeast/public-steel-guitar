@@ -18,6 +18,16 @@ eyeball a layout. That only works if the judgement calls a person would make are
 written down as CHECKS. So the budgets live in <board>.board.json beside the design
 that has to meet them, and this exits non-zero when they are not met.
 
+⚠ WHAT IS DELIBERATELY NOT CHECKED, so nobody adds it back as an improvement. The CAN
+pairs on motor_ctrl, can_tee and lever_sensor declare no group. Measured rather than
+assumed: can_tee's pair runs 33.25/32.36 mm and lever_sensor's 39.75/42.23 mm, and
+lever_sensor's two rails do NOT share a layer set. At 500 kbit/s a bit is 2,000,000 ps,
+so 2.5 mm of skew is 15 ps -- eight millionths of a bit. A budget there would fail builds
+for nothing, which is the cargo cult this file's last paragraph is about. Pairness on a
+40 mm stub of a 120-ohm bus is in the same category. If the bus ever runs CAN-FD at
+5 Mbit/s the arithmetic changes by 10x and is still not close; revisit it then, with a
+number, not now.
+
 ⚠ A BUDGET NEEDS A REASON, AND THE REASON IS CHECKED TOO. Every entry carries a
 `why`; a limit with no stated basis is a number someone will later relax because it
 was in the way. The optical board's ULPI budget, for instance, is deliberately
@@ -35,12 +45,44 @@ import sys
 import pcbnew
 
 
-def net_lengths(board):
+def net_lengths(board, merge_ref=None, merge_r=4.0):
     """{net name: (copper length in mm, {layer name: length}, via count)}."""
+    # ⚠ A PAD-MERGE STUB IS NOT PART OF THE TRANSMISSION LINE, and counting it made this
+    # check cry wolf twice on the optical board. A USB-C carries D+ on BOTH A6 and B6 and
+    # D- on both A7 and B7, so the generator joins each net's two pads at the connector
+    # (layout._flip_merge) -- and that join deliberately takes ONE rail down to an inner
+    # layer, because which one dives is decided by which link is shorter.
+    #
+    # Measured on optical: counting every segment, USB_DP read F.Cu+In2.Cu against
+    # USB_DM's F.Cu and the pair was reported as SPLIT ACROSS LAYERS, while skew read
+    # 3.28 mm against a 2.50 budget. Excluding copper within `merge_r` of the merge
+    # connector, the coupled RUN is F.Cu for both rails and the skew is 1.08 mm. The
+    # board was fine; the measurement was counting the wrong copper.
+    #
+    # The exclusion is by NAMED REF, not by guessing which stubs look like merges: a
+    # group says where its merge is, or nothing is excluded.
+    skip = []
+    if merge_ref:
+        fp = board.FindFootprintByReference(merge_ref)
+        if fp is not None:
+            c = fp.GetPosition()
+            skip.append((c.x, c.y, pcbnew.FromMM(merge_r)))
+
+    def _in_merge(t):
+        for cx, cy, r in skip:
+            p = t.GetPosition() if t.GetClass() == "PCB_VIA" else t.GetStart()
+            q = t.GetPosition() if t.GetClass() == "PCB_VIA" else t.GetEnd()
+            mx, my = (p.x + q.x) / 2.0, (p.y + q.y) / 2.0
+            if ((mx - cx) ** 2 + (my - cy) ** 2) ** 0.5 < r:
+                return True
+        return False
+
     out = {}
     for t in board.GetTracks():
         name = t.GetNetname()
         if not name:
+            continue
+        if _in_merge(t):
             continue
         total, per_layer, vias = out.get(name, (0.0, {}, 0))
         if t.GetClass() == "PCB_VIA":
@@ -81,6 +123,11 @@ def check(stem):
 
     bad = 0
     for g in groups:
+        # a group measured through a pad-merge connector says so; see net_lengths
+        if g.get("merge_at"):
+            lens = net_lengths(board, g["merge_at"], g.get("merge_r", 4.0))
+        else:
+            lens = net_lengths(board)
         nets = g["nets"]
         missing = [n for n in nets if n not in lens]
         if missing:
