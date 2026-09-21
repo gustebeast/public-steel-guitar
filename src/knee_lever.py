@@ -365,8 +365,14 @@ HS_CLR    = 0.4                     # piston/coil <-> channel slide clearance (p
 HS_WALL   = D.MIN_WALL_2P           # cartridge STRUCTURAL wall (floor / front); sides are HS_CART_WALL
 HS_HOUS_WALL = D.MIN_WALL_2P        # housing shell wall around the pocket -- CONSTANT thickness, the
                                     #   outer /\ bottom parallels the pocket /\ (no thick flat bottom)
-HS_LIP    = D.MIN_WALL_2P           # front-lip depth in X (side lips that catch the piston body).
-                                    #   Was 1.5 -- a bare number, and 1.88 beads (user-caught).
+HS_LIP    = 4 * D.BEAD              # 3.2 front wall (the lips that catch the piston head). Was 1.6: this
+                                    #   wall holds the spring's PRELOAD at rest -- constantly, on the
+                                    #   half-stop, whose follower is off the lobe at rest -- up to ~80 N
+                                    #   (full tension on a +2 long spring). At 1.6 the 2.2-tall strip
+                                    #   under the tongue window bent at ~25 MPa and the side lips ~12:
+                                    #   creep territory for PETG-GF under a steady load (want <= ~7).
+                                    #   Bending goes as t^2, so 3.2 takes them to ~6 and ~3 (user,
+                                    #   durability pass 2026-09-21). Costs 1.6 of X.
 HS_TRAVEL = FOLL_TRAVEL + 0.5       # channel back-travel (>= follower travel)
 HS_ROOF_SPLIT = HS_Z + HS_PISTON_WZ / 2 + HS_CLR   # channel ceiling = +Z cap underside (just above piston)
 HS_ENGAGE_DEG = 15.0                          # half-stop engagement angle (throw deg)

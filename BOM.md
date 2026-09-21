@@ -55,6 +55,7 @@ the constraint is stock, not selection. See the optical-pickup section.
 | **Latch return spring** | Compression, **Ø5.0 OD × 0.6 wire × 15.0 free**, ID 3.8, 304 SS (rate ~1.9 N/mm, bracketed 1.6–2.4 off McMaster's published 1.96 for a Ø5.63 × 0.63 × 12.5; **measure on arrival**) | 6 (+ 4 spare) | [uxcell B0GCZVQFWN](https://www.amazon.com/dp/B0GCZVQFWN) — 10 to a pack, used **AS BOUGHT** | **$6.99 / 10** [a] | ONE SKU for BOTH latches (user). 4 leg↔body + 2 bar↔leg. Upper **5.7 N hold / 11.8 N press**, lower **5.7 / 13.3** — the design was drawn around 4.0 / 12.05, so the hold is firmer and the press is unchanged. Installed 12.00 (`SPR_SEAT` 6.4 → 8.0), pressed 8.80 upper / 7.75 lower against a worst-case solid of 7.2 |
 | **Lever feel spring** | JIS light-load (blue) **die spring, Ø10 hole / Ø5 rod × 30 free** (±2), 142.2 N at 40% → ~11.9 N/mm (**measure on arrival**) | **22** (2 per control × 11: 6 knee levers + 5 pedals) | [uxcell B0B772B9V2](https://www.amazon.com/dp/B0B772B9V2) — 20 to a pack | **$9.99 / 20** [a] ×2 packs | Every knee lever AND pedal carries the same two cartridges (MAIN + HALF-STOP), so 22, not 12 — two packs. `knee_lever.HS_SPR_*`. See the DECIDED note below. |
 | **Spring-seat / position washer** | **DIN 9021 M3 flat washer, Ø9 × 0.7–0.9, Ø3.2 hole**, zinc-plated steel | **44** (4 per control × 11) | [McMaster 91100A120](https://www.mcmaster.com/91100A120/) — 100 to a pack | **$2.97 / 100** [m] | Two per cartridge. (1) SPRING SEAT: the tension screw's cup nests in the Ø3.2 hole (its Ø4 thread cannot pass), replacing the 3.2-long printed guide post with ≤0.9 of steel. (2) POSITION STOP: seated in a Ø9.4 × 0.9 recess in the housing pocket's back face, under the position screw's socket end; the 2.0 key reaches through its hole. `knee_lever.WASHER_*`. |
+| **Thread locker (position screws)** | **Vibra-Tite VC-3** reusable, plastic-safe (or nylon-patch M4 × 10 set screws) | 1 bottle (22 screws) | ⚠ **source not yet picked** — prefer a stock distributor over Amazon | — | On every cartridge's POSITION set screw — see `INSTALL_NOTES.md` KL-1. NOT an anaerobic (Loctite 2xx): it can craze PETG. |
 
 > **WHY THE LATCH COIL IS CUT, 2026-09-16 (user: one spring for BOTH latches, from
 > uxcell, and geometry may move so long as 1.6 mm and 45° hold).** It is cut because
@@ -132,7 +133,7 @@ the constraint is stock, not selection. See the optical-pickup section.
 > TENSION on the axis (pushes the seat washer) and POSITION 9.4 above it (socket end bears
 > on a washer in the housing; its protrusion is the cartridge's X home, ±1.6). Per control that
 > is **+4 M4 × 10 set screws, +4 M4 inserts, +4 washers** — not yet folded into those rows'
-> quantities (both already carry recount warnings). Housing −12.0 in X (−78.1 → −66.1); lever
+> quantities (both already carry recount warnings). Housing −10.4 in X (−78.1 → −67.7, after the 3.2 front wall); lever
 > 20 → 24 wide so the 14-wide cartridges sit on their lobes. The FOOT PEDAL housing grew 6.15
 > deeper in guitar +Y (`foot_pedal.Y_GROWTH`), into the 15.6 of bar behind it.
 
