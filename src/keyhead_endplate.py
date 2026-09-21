@@ -119,6 +119,28 @@ def _height_negatives():
     return out.translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z))
 
 
+def _slot_shadow():
+    """The insert slots, plus everything straight above them in +X (this part's build
+    direction) -- what the Pi's cradle columns must not stand in or hang over.
+
+    The Pi's columns rise from this part's wall to the board, and most of them land on the
+    height-adjust prism, whose +X face (HS_X1) is cut through by the insert slots. A column
+    in a slot fills it; a column continuing ABOVE a slot is a ceiling with nothing under it.
+    So: the slot negatives themselves, and each slot's opening in the HS_X1 face swept
+    +X past the board. What survives stands on a fin, the band, or the wall."""
+    from OCP.BRepPrimAPI import BRepPrimAPI_MakePrism
+    from OCP.gp import gp_Vec
+    neg = _height_negatives()
+    skin = neg.intersect(box_at(2.0, 400.0, 400.0, x=HS_X1 - 1.0 + 0.01, y=0.0, z=0.0))
+    out = neg
+    for f in skin.faces().vals():
+        n = f.normalAt()
+        if n.x > 0.99 and abs(f.Center().x - (HS_X1 + 0.01)) < 0.02:
+            out = out.union(cq.Workplane("XY").add(cq.Shape.cast(
+                BRepPrimAPI_MakePrism(f.wrapped, gp_Vec(40.0, 0.0, 0.0)).Shape())))
+    return out
+
+
 def _build():
     # THE SHARED TWO-PRISM BASE (endplate_base — same code as the bridge):
     # 1) the FILL SLAB (z -23.15..6, full footprint) = the -X cross-tie;
@@ -202,7 +224,7 @@ def _build():
     # plastic on every side but the install face and one M4 button to close that.
     # Fused AFTER the cuts above so nothing takes it back out again.
     from .electronics import keyhead_cradles
-    w = w.union(keyhead_cradles())
+    w = w.union(keyhead_cradles(pi_cut=_slot_shadow()))
     # ONE SOLID, CHECKED. The cradles are fused to a ledge 22 mm inboard of this plate's
     # face, and the first version of them reached nowhere near it: the motor controller's
     # came out as a free-floating 18,121 mm3 lump and the part was quietly TWO pieces. The
@@ -213,8 +235,8 @@ def _build():
     _n = len(w.val().Solids())
     assert _n == 1, (
         "keyhead_endplate came out as %d disconnected solids -- a cradle (or another fused "
-        "feature) is not touching the plate. Check electronics.LEDGE_L* against where this "
-        "plate's material actually reaches." % _n)
+        "feature) is not touching the plate. Check electronics.RIB_LZ (where the columns start) "
+        "against where this plate's wall actually is." % _n)
     return heal(w)
 
 

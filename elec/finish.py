@@ -245,6 +245,20 @@ def finish(stem, rounds=1):
     except Exception as exc:                      # a check that breaks must not break the
         print("    verify.py did not run: %r" % (exc,))   # board it was checking
 
+    # ...AND WRITE THE BOARD BACK OUT FOR THE CAD, every run. elec/out is git-ignored, so
+    # the geometry the CAD builds from has to live in a TRACKED file (elec/geom), and the
+    # only way it cannot drift from the board is if the step that makes the board also
+    # writes it. The CAD used to model boards from hand-copied placements and nothing
+    # re-read the finished board -- see export_geom.py for what that let through.
+    try:
+        proc = subprocess.run([PY, os.path.join(HERE, "export_geom.py"), stem],
+                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        for line in proc.stdout.splitlines():
+            if line.strip() and "memory leak" not in line:
+                print("    " + line)
+    except Exception as exc:
+        print("    export_geom.py did not run: %r" % (exc,))
+
     print("%s: %d unconnected, %d violation(s)"
           % (os.path.basename(stem), best_n, best_v))
     return best_n, best_v

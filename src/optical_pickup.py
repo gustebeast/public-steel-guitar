@@ -130,7 +130,7 @@ from cadquery.selectors import NearestToPointSelector
 from . import dimensions as D
 from . import chassis as CH
 from . import top_plate as TP
-from .helpers import box_at, cyl, cyl_y
+from .helpers import box_at, cyl, cyl_y, oct_cable
 from cadkit.fasteners import M4
 from cadkit.pcb import PCB_T as _PCB_T
 
@@ -2008,6 +2008,7 @@ def opt_cables(which: str = "all") -> cq.Workplane:
         out = s if out is None else out.union(s)
 
     _WANT = {"usb": ("J1",), "pwr": ("J2",), "all": ("J1", "J2")}[which]
+    _yturn, _path, _od = {}, {}, {}
     # ⚠ EACH LEAD TAKES THE CONDUIT SIDE NEAREST ITS OWN PLUG, and it used to take the far
     # one. J1 sits at x +9.88 and dropped at -2.2; J2 sits at -29.29 and dropped at +2.2 --
     # so each lead had to cross the OTHER's drop column to reach its own, and the two
@@ -2049,61 +2050,77 @@ def opt_cables(which: str = "all") -> cq.Workplane:
         y_turn = min(backs) - CONDUIT_CLR
         assert CONDUIT_Y0 < y_turn < CONDUIT_Y1, \
             f"{ref}: cable turns down at y {y_turn:.2f}, outside the conduit"
-        add(box_at(abs(CONDUIT_XC + xoff - p["x"]) + od, od, od,
-                   x=(CONDUIT_XC + xoff + p["x"]) / 2, y=y_turn, z=zc))
-        add(cyl(od, zc - RUN_Z, z=RUN_Z).translate((CONDUIT_XC + xoff, y_turn, 0)))
-    # ---- and the USB run onward to the Pi, which is what sets the cable LENGTH ----
-    # Orthogonal inside the box, the way a harness actually lies: along Y to the Pi's Y,
-    # then the long haul -X down the instrument, then up into the Pi. 2.6 mm OD is exactly
-    # the Ø2.6 raceway limit the chassis already publishes, so it uses the existing route.
-    # ORDER MATTERS. Going to the Pi's Y first and then running -X puts the cable straight
-    # through the string mechanism -- the gate caught it hitting four leadscrews, three nuts
-    # and a carriage. The long -X haul therefore stays out at the conduit's own Y, which is
-    # ~119 mm off centre and clear of everything the strings drive, and only turns +Y once it
-    # is down at the keyhead. Same total length, completely different path.
-    # At the keyhead the boards stand on end with string 1's motor right against them, so the
-    # run drops to PI_RUN_Z at pi_column_x(), crosses the motor's Y band just over its top, and
-    # turns into the Pi only at the Pi's Y.
-    if "J1" not in _WANT:            # the haul to the Pi belongs to the USB cable alone
+        # the lead as a PATH, built once at the end as one octagonal cable (helpers.oct_cable)
+        # -- it used to be separate boxes and cylinders added piece by piece
+        z_end = USB_Z if ref == "J1" else PWR_Z_TURN
+        _yturn[ref] = y_turn
+        col = CONDUIT_XC + xoff
+        _path[ref] = [(p["x"], PCB_YM - plen, zc), (p["x"], y_turn, zc), (col, y_turn, zc),
+                      (col, y_turn, z_end)]
+        _od[ref] = od
+    # ---- and on to the OUTPUT BOARD, which is where both cables actually go ----------------
+    # ⚠ THEY USED TO GO TO THE PI, AND ONE OF THEM THROUGH THE RAIL. The USB lead ran the
+    # length of the instrument to the Pi, through the middle of the -Y rail's section
+    # (y -134.83 against a rail at -139.15..-128.75) -- a collision that was PARKED in the
+    # gate's deferred list, which is exactly why nobody saw it. And the 24 V lead stopped at
+    # the bottom of the conduit, connected to nothing (user: "the red one stops short and
+    # doesn't go very far at all"). The USB hub moved onto the output board: its J4 is "hub
+    # downstream -> the optical board, ~100 mm", and its J9 is "24 V out to the optical pickup
+    # board". Both are a few centimetres from the conduit's foot.
+    from .electronics import op_origin, op_top, OP_BOARD_X
+    if "J2" in _WANT:
+        # 24 V: across the conduit's floor to its +Y side, down the slot (opt_pwr_slot) into
+        # the endplate's board recess, and onto J9 from above -- J9 is a top-entry XH.
+        xd = CONDUIT_XC - 2.2
+        j9 = op_top("J9")
+        _path["J2"] += [(xd, PWR_Y, PWR_Z_TURN), (xd, PWR_Y, PWR_Z_REC),
+                        (j9[0], PWR_Y, PWR_Z_REC), (j9[0], j9[1], PWR_Z_REC), j9]
+        add(oct_cable(_path["J2"], _od["J2"]))
+    if "J1" not in _WANT:
         return out
-    px, py, pz = pi_target()
-    xc = pi_column_x()
-    assert PI_RUN_Z - USB_OD / 2 > _MB.SEAT_TOP, (
-        "the USB run's +Y leg has come down onto the motor bank")
-    # ⚠ THIS RUN IS BURIED IN THE CHASSIS'S -Y RAIL, AND THE FIX IS A DOGLEG RATHER THAN
-    # A NUMBER. Measured 2026-09-18, which is the parked chassis <-> optical_cables
-    # collision (~750 mm3 x3, OWNER bronner):
-    #     -Y rail        y -139.15 .. -128.75,  z -81.75 .. +9.60   (chassis.Y_LO, T)
-    #     this run       y -134.83,             z  -9.60
-    # The run is not grazing the rail, it is through the middle of its 10.4 mm section.
-    # The rail's existing cable notch cannot take it: that one is cut for the motor-9
-    # trunk at z -64..-40 (chassis.M9_CUT_Z0/Z1), a different band entirely.
-    #
-    # ⚠ AND MOVING y_run ALONE CANNOT WORK, WHICH IS WHY A CONSTANT IS THE WRONG SHAPE.
-    # Tried -127.0 (inboard of the rail) and -122.0 (past the conduit's mouth). Both clear
-    # the RAIL -- its y-span ends at -128.75 -- and neither clears the ENDPLATE, because
-    # bridge_endplate spans y -139.1 .. 66.0, the whole width of the instrument. Its X span
-    # is -38.9 .. 25.1 and this run STARTS at x -2.2, inside it. The conduit exists exactly
-    # to carry the cable through that material, so while the run is inside the endplate's
-    # X band it has to stay in the conduit, and it can only step inboard once x < -38.9.
-    #
-    # So the fix is: hold the conduit's centre out to x -38.9, THEN step to y > -128.75 for
-    # the long leg to the Pi column. Two segments and a jog, not one constant. Not built
-    # here because the jog wants the endplate's real outer face rather than its bounding
-    # box, and that is bridge_endplate's to give.
-    #
-    # ⚠ THE GATE CANNOT ADJUDICATE THIS ON ITS OWN. Re-running it after each attempt
-    # reported "2794 of 2794 pairs reused, 0 to compute" -- the context solids are cached,
-    # so the numbers it printed for these pairs did not move with the edit. The figures
-    # above are analytic, off the two modules' own constants.
-    y_run = CONDUIT_Y1 - CONDUIT_D / 2
-    add(box_at(abs(xc - (CONDUIT_XC - 2.2)), USB_OD, USB_OD,
-               x=(xc + CONDUIT_XC - 2.2) / 2, y=y_run, z=RUN_Z))
-    add(cyl(USB_OD, RUN_Z - PI_RUN_Z, z=PI_RUN_Z).translate((xc, y_run, 0)))
-    add(cyl_y(USB_OD, abs(py - y_run), y0=min(py, y_run), x=xc, z=PI_RUN_Z))
-    add(box_at(xc - px, USB_OD, USB_OD, x=(xc + px) / 2, y=py, z=PI_RUN_Z))
-    add(cyl(USB_OD, abs(pz - PI_RUN_Z), z=min(PI_RUN_Z, pz)).translate((px, py, 0)))
+    # USB: out through the conduit's mouth into the bay -- the only part of that mouth the
+    # rail leaves open is y -128.75..-124.58 -- over the output board, down, and into the
+    # USB-A plug standing in J4's mouth on the board's -X edge.
+    xu = CONDUIT_XC + 2.2
+    ua_mouth = op_origin()[0] - OP_BOARD_X / 2          # the board's -X edge = J4's mouth
+    ua_end = ua_mouth - USBA_PLUG_L
+    zc4 = op_top("J4")[2] - 3.3                         # USB-A shell axis, mid-height
+    y4 = op_top("J4")[1]
+    add(box_at(USBA_PLUG_L, USBA_PLUG_W, USBA_PLUG_H, x=(ua_mouth + ua_end) / 2, y=y4, z=zc4))
+    _path["J1"] += [(xu, USB_Y, USB_Z), (BAND_X0 - 1.0, USB_Y, USB_Z),
+                    (USB_DROP_X, USB_Y, USB_Z), (USB_DROP_X, y4, USB_Z),
+                    (USB_DROP_X, y4, zc4), (ua_end, y4, zc4)]
+    add(oct_cable(_path["J1"], _od["J1"]))
     return out
+
+
+# Where the two optical leads run below the conduit's plug level (see opt_cables).
+USB_Z = RUN_Z + 2.1                     # -7.5: the USB turns ABOVE the 24 V lead's column
+PWR_Z_TURN = RUN_Z - 2.4                # -12.0: the 24 V lead turns under the USB's run,
+                                        # 0.35 over the conduit floor at CONDUIT_Z0
+USB_Y = -126.6                          # both leads' y in the conduit's open mouth strip
+PWR_Y = -126.4                          # (y -128.75..-124.58, the rail on one side)
+PWR_Z_REC = -25.5                       # the 24 V lead crossing into the board recess,
+                                        # 0.3 under its roof at FOOT_Z
+USB_DROP_X = -84.0                      # the USB drops to J4's height out in the bay, -X of
+                                        # the 24 V loop and clear of the board-to-Pi lead
+USBA_PLUG_L, USBA_PLUG_W, USBA_PLUG_H = 25.0, 16.0, 8.0   # USB-A male, past the mouth
+XH_OD = 4.0                             # the 24 V lead (6x 26 AWG), as opt_cables draws it
+
+
+def opt_pwr_slot() -> cq.Workplane:
+    """The endplate cut the 24 V lead drops through, from the conduit's floor into the
+    output board's recess. It runs out through the endplate's -X face rather than stopping
+    inside it: the part prints -X off its +X face, so a void that ended inside would leave a
+    face of material printed over it -- a bridge. Open to the -X face, its only X-facing end
+    is at +X, which the print meets as a floor."""
+    x0, x1 = BAND_X0 - 1.0, CONDUIT_XC + 5.0
+    y0, y1 = PWR_Y - 2.2, -120.8        # into the recess, which starts at -122.8
+    # up past the lead's own turn: it crosses the conduit's +Y wall at PWR_Z_TURN, above the
+    # conduit's floor, so a slot that stopped at the floor left 2.8 mm3 of wall in the lead
+    z0, z1 = PWR_Z_REC - 2.1, PWR_Z_TURN + XH_OD / 2 + 0.5
+    return box_at(x1 - x0, y1 - y0, z1 - z0, x=(x0 + x1) / 2, y=(y0 + y1) / 2,
+                  z=(z0 + z1) / 2)
 
 
 def opt_carrier_pocket() -> cq.Workplane:

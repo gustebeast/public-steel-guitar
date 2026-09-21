@@ -311,26 +311,21 @@ def _knee(n) -> bool:
 # build exists to find. Parked so branner's chassis/leg/deck round is not held behind two
 # other agents (user: these must not block merges), each with its owner named.
 DEFERRED = {frozenset({"pickup_zplate", "top_plate"}),
-            # ~750 mm3 per segment, x3. bronner's optical cable run (a 1.6 bundle at
-            # y -129, z -9, the board's whole length) crosses the -Y rail branner CLOSED
-            # in the same round. OWNER bronner, with branner: the route needs a way
-            # through, or the rail needs a port. Nobody has guessed at it.
-            frozenset({"chassis", "optical_cable_usb"}),
-            frozenset({"chassis", "optical_cable_pwr"}),
+            # (chassis <-> optical_cable_usb/pwr, OWNER bronner, is UN-deferred 2026-09-21:
+            # the USB run no longer goes to the Pi through the -Y rail -- both optical leads
+            # now end a few cm away on the output board, J4 and J9 -- so the gate checks them
+            # again. Parked, the collision had been invisible for four days.)
             # brenner's leg blind-mate against branner's decoupled body adapter at the
             # -X/+Y corner: the patch lead 379 mm3, the plug 140 mm3. OWNER brenner --
             # body_adapter lives in leg_stack, their registered scope, so both halves of
             # this one are theirs.
             frozenset({"body_adapter", "leg_trrs_patch"}),
             frozenset({"body_adapter", "leg_trrs_plug"}),
-            # THE BANK'S END POWER RUNS, 2026-09-18. bronner's round moved the hot and
-            # ground runs at the -X end; they now clip motor 9 (53.9 / 47.8 mm3) and then
-            # the chassis (4.1 / 3.3). These are REAL routing bugs -- a wire clipping a
-            # solid is exactly what WIRE_OK exists to catch -- parked only because the
-            # user's rule is that they must not block merges. OWNER bronner: the route is
-            # theirs, and the 30+ commits of electrical work behind it are not.
-            frozenset({"wire_pwr_hot", "motor"}), frozenset({"wire_pwr_gnd", "motor"}),
-            frozenset({"chassis", "wire_pwr_hot"}), frozenset({"chassis", "wire_pwr_gnd"})}
+            # (the 24 V runs vs motor/chassis deferral, OWNER bronner, is UN-deferred
+            # 2026-09-21: it excused EVERY 24 V wire against ANY motor or chassis part, which
+            # hid far more than the two clips it was written for -- the runs are rerouted
+            # through the new wall trough and are gated again.)
+            }
 
 # DEFERRED CLASSES, by pattern. Some deferrals are not one pair but one fault repeated
 # per station -- five knee levers, five pedals -- and listing 55 frozensets would hide
