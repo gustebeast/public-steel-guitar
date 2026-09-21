@@ -893,9 +893,41 @@ def output_panel():
 #      J4 to the optical board) plus a USB-C (J3, hub upstream). Those face INTO
 #      the instrument, not out the panel, and want cable room behind them.
 BOARD_W, BOARD_L = 74.0, 66.0
+# How far each panel connector's body front stands past the +X edge: the fit clearance
+# between the board and the endplate's panel, plus the panel itself. src/electronics.py
+# builds the panel to the same two numbers (OP_PANEL_CLR, OP_PANEL_T), and
+# reads the placed board back from <board>.geom.json rather than trusting these.
+PANEL_CLR, PANEL_T = 0.3, 1.6
+PANEL_OVERHANG = PANEL_CLR + PANEL_T
+_FRONT = {"J5": 13.40, "J1": 7.07, "J6": 10.70}
+J1_SETBACK = 0.40
+TS_CLAMP_T, TS_HEAD_T, TS_STUB = 4.0, 2.05, 3.0   # Neutrik: clamp 3.0..4.7; nut head; stub
+TS_SHOULDER_DEPTH = TS_CLAMP_T + TS_HEAD_T         # 6.05: face -> jack shoulder
+
+# THE MOUNTING EAR (user, 2026-09-21): "extend the PCB ... so we have room to put an M4 hole?
+# Having the screw adjacent like you have now doesn't provide as strong of retention." Right --
+# a head clamping the board round a hole holds it every way; a screw BESIDE the edge laps ~1 mm
+# of it. The ear is a TAB off the -X edge at the -Y corner, where the side screw used to stand:
+# the -X edge above it is where J2/J3/J4's mouths have to stay, so a tab costs nothing a wider
+# board would. Bare laminate -- the pours cover only the outline_mm LAYOUT REGION -- so nothing
+# is under the head. Same ear and hole as the CAN tee's (can_tee.EAR_*).
+EAR_W, EAR_H = 9.5, 8.7
+EAR_HOLE_D = 4.5                                   # M4 clearance
+_EAR_X0 = -BOARD_W / 2 - EAR_W
+_EAR_Y1 = -BOARD_L / 2 + EAR_H
+EAR_HOLE_XY = (_EAR_X0 + EAR_W / 2, -BOARD_L / 2 + EAR_H / 2)
 
 BOARD_NOTES = {
     "outline_mm": (BOARD_W, BOARD_L),
+    "outline_poly": [(_EAR_X0, -BOARD_L / 2), (BOARD_W / 2, -BOARD_L / 2),
+                     (BOARD_W / 2, BOARD_L / 2), (-BOARD_W / 2, BOARD_L / 2),
+                     (-BOARD_W / 2, _EAR_Y1), (_EAR_X0, _EAR_Y1)],
+    "cutouts": [{"xy": EAR_HOLE_XY, "d": EAR_HOLE_D}],
+    "mounting_hole_xy": EAR_HOLE_XY,
+    # the ear moved the router's first-pass choices and BOOT0 (a one-resistor strap across
+    # the digital block) came back unrouted at the default pass count; more passes let the
+    # optimiser rip up and re-lay rather than freeze the early mess (route.py PASSES note)
+    "router_passes": 20,
     "layers": 4,
     "thickness_mm": 1.6,
     # FOUR LAYERS because this board carries an audio output stage and THREE USB
@@ -1064,9 +1096,27 @@ BOARD_NOTES = {
     # around them. Pinned to THIS routing: re-run repair_search after any netlist change.
     "repair_tracks": [
         ("PWR_GND", "F.Cu", 0.5, [(3.750, -28.000), (11.115, -24.665)]),
-        ("+24V", "F.Cu", 0.5, [(-1.250, -28.000), (-1.250, -29.500)]),
-        ("+24V", "F.Cu", 0.5, [(-1.250, -29.500), (17.250, -29.500)]),
+        # ON B.Cu: the J7 -> J9 hop runs pad to pad UNDER the row. Both ends are THT pads,
+        # so it needs no via, and B.Cu is empty there -- where on F.Cu the router's own
+        # PWR_GND edge run (at y -30.05 since the board grew its mounting ear) crossed it.
+        ("+24V", "B.Cu", 0.5, [(-1.250, -28.000), (-1.250, -29.500)]),
+        ("+24V", "B.Cu", 0.5, [(-1.250, -29.500), (17.250, -29.500)]),
+        ("+24V", "B.Cu", 0.5, [(17.250, -29.500), (17.250, -28.000)]),
         ("+24V", "F.Cu", 0.5, [(17.250, -29.500), (17.250, -28.000)]),
+        # THE INLET'S OWN PIN. Turning J6 90 degrees so its mouth faces the panel put its
+        # +24V pin (1, the centre pin) at the REAR corner of the body, and the router could
+        # not get a trace out of it to either side -- the only two unconnected items on the
+        # board. It sits straight above the end of the bus run above, so the bus simply
+        # continues to it. Both runs pass under J6's plastic body, clear of its PWR_GND
+        # pins at x 28.2 and 31.2.
+        # ⚠ J10's +24V PADS ARE 2 AND 3 (x 28.45, 30.95), NOT PAD 1. Pad 1, straight above
+        # this pin at x 25.95, is PWR_GND -- the first draft of this run landed on it, which
+        # is a dead short across the 24 V bus. The run turns along y -12, below J10's pad
+        # row, and comes up into pad 2.
+        ("+24V", "F.Cu", 0.5, [(17.250, -29.500), (25.200, -29.500)]),
+        ("+24V", "F.Cu", 0.5, [(25.200, -29.500), (25.200, -21.500)]),
+        ("+24V", "F.Cu", 0.5, [(25.200, -21.500), (25.200, -12.000), (28.450, -12.000),
+                               (28.450, -8.700)]),
     ],
     "stitch_nets": ("GND",),
     # ⚠ THE USB SHIELD TABS REACH THE PLANE THROUGH THEIR OWN BARRELS. J2.SH and J4.SH
@@ -1099,11 +1149,42 @@ BOARD_NOTES = {
     # block across the middle, and the ANALOG CHAIN along +Y as far from the
     # switching node as 66 mm allows.
     "placements": {
-        # +X, THE PANEL FACE -- all three flush to the edge, because a connector
-        # inset from the board edge is a connector the chassis wall cannot reach.
-        "J5": (23.11, 21.50, 0.0),      # 1/4 in jack, 27.62 x 20.32 -- the big one
-        "J1": (29.44, 4.00, 90.0),      # panel USB-C
-        "J6": (32.02, -20.50, 0.0),     # 24 V barrel inlet
+        # +X, THE PANEL FACE. Each connector's BODY FRONT overhangs the board edge by
+        # PANEL_OVERHANG, so it passes through the endplate's panel and finishes FLUSH
+        # with the instrument's face -- which is where a player's plug has to meet it.
+        #
+        # ⚠ THIS USED TO SAY "all three flush to the edge", AND IT WAS THE COURTYARDS THAT
+        # WERE FLUSH. A courtyard is the keep-out, not the part: it is bigger than the body,
+        # so both bodies stopped 0.54 mm SHORT of the edge, behind a 4 mm wall, ~4.8 mm
+        # inside the instrument. And J6 was at 0 degrees, where this footprint's mouth
+        # (its local +Y) points along the board at the chassis rail -- a panel inlet no
+        # hole in the panel could ever reach. Every check agreed with it, because every
+        # check compared a copy of these numbers to these numbers.
+        #
+        # _FRONT is the body front ahead of the pad-centroid anchor, MEASURED off the
+        # routed board's F.Fab (J6 after the 90-degree turn: 13.7 of body ahead of pin 1,
+        # pin 1 3.0 behind the centroid).
+        # ...AND J5 IS THE EXCEPTION THE OTHER WAY, set so its PLUG meets the face level with
+        # the other two (user: "all at the same installation x value"). The NMJ4HCD2 is a
+        # REAR-PANEL-MOUNT jack (Neutrik ST-NMJ4HCD2 + its STEP, read 2026-09-21): a 3.0 mm
+        # O11.4 stub in front of the shoulder locates in the panel's O11.4 hole, and a
+        # separate nose nut -- 2.05 hex head (A/F 11) on a 3.74 shank -- screws into the jack
+        # and clamps the panel against the shoulder. The clamped thickness has to be 3.0..4.7
+        # (the drawing's three 1.2 washers build thin panels up to it). So the endplate
+        # thickens to a 4.0 clamp around this jack and counterbores the face 2.05 for the
+        # nut's head: the head's front -- where a plug seats -- finishes flush. That puts the
+        # SHOULDER TS_SHOULDER_DEPTH (6.05) behind the face; _FRONT["J5"] is to the F.Fab
+        # front, which is the stub's tip, 3.0 ahead of the shoulder.
+        "J5": (BOARD_W / 2 + PANEL_OVERHANG - TS_SHOULDER_DEPTH + TS_STUB
+               - _FRONT["J5"], 21.50, 0.0),                                    # 1/4 in jack
+        # ...EXCEPT J1, WHICH CANNOT GO AS FAR. Its front shell legs are plated oval pads
+        # 1.60 long in X, and at the full overhang their far end crossed the board edge
+        # (DRC: 0.000 against the 0.3 copper-to-edge rule -- a plated barrel the router
+        # would cut in half). J1_SETBACK is what buys the 0.3: the USB-C finishes that far
+        # behind the panel face, and the endplate opens an OVERMOLD-sized window for it so
+        # a plug still seats fully (see electronics.OP_PANEL).
+        "J1": (BOARD_W / 2 + PANEL_OVERHANG - J1_SETBACK - _FRONT["J1"], 4.00, 90.0),
+        "J6": (BOARD_W / 2 + PANEL_OVERHANG - _FRONT["J6"], -19.93, 90.0),  # 24 V barrel
         # -X, FACING INTO THE INSTRUMENT.
         # ⚠ 270, NOT 180, AND THE DIFFERENCE IS NOT COSMETIC. This footprint's
         # courtyard runs -12.68..+3.90 in Y about the pad centroid, so its MOUTH is
@@ -1241,8 +1322,6 @@ BOARD_NOTES = {
         "FB1": (17.00, -23.50, 0.0),
     },
     "refs_on_fab": True,
-    "hold_edge": "-x",
-    "no_mounting_holes": True,
     "single_sided": True,
     "qty_per_instrument": 1,
 }
