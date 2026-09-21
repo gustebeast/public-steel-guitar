@@ -227,6 +227,26 @@ def _support_posts(fp, bz):
     return out
 
 
+# -- the ledge the cradles hang from, in the FLAT tray frame -------------------
+# The keyhead endplate reaches inboard to x -612 over z -2..-18, across y -129..-39;
+# everything further in is open air, which is what the deleted electronics_tray used to
+# span. MEASURED on the finished endplate solid, so the reading is written once here and
+# the assert in keyhead_endplate checks the RESULT rather than the reading.
+# stand() maps this frame to the world as  world_x = local_z - 543.8  and
+# world_z = -local_x - 609, so the ledge's world box comes back as local:
+LEDGE_LZ  = -70.5        # local z -> world x -614.3: past the ledge face at -612
+LEDGE_LX0 = -606.0       # local x -> world z  -3.0   the ledge's z band, kept a little
+LEDGE_LX1 = -592.0       # local x -> world z -17.0   inside the measured -2..-18
+LEDGE_LY0 = -128.0       # local y = world y, the ledge's -Y end (-129, kept inside)
+LEDGE_LY1 = -40.0        # ...and its +Y end (-39): the Pi runs past this, the mctrl does not
+RIB_LZ    = -87.5        # local z -> world x -631.3: just inside the endplate's own wall,
+                         # which ends at -631 behind the Pi and -627 behind the controller
+RIB_T     = D.MIN_WALL_2P    # 1.6, a two-bead rib
+RIB_PITCH = 12.0         # leaves ~10.4 for the base plate to bridge between ribs
+NUT_KEEPOUT_Y0 = -39.0   # the string-nut hardware's y band (inserts + height screws reach
+NUT_KEEPOUT_Y1 = 33.0    # x -630.2..-610.1 across y -37.3..+31.5); no rib may cross it
+
+
 def keyhead_cradles(standing: bool = True) -> cq.Workplane:
     """The Pi's and the motor controller's mounts, built INTO the keyhead endplate.
 
@@ -248,9 +268,22 @@ def keyhead_cradles(standing: bool = True) -> cq.Workplane:
 
     open_edge is -Y for both: that is the rail the harness runs along, and a wall there
     would sit across every lead leaving the board.
+
+    AND EACH ONE NEEDS A WEB BACK TO THE ENDPLATE, which the first version of this did not
+    have. The tray was a plate standing ~22 mm PROUD of the endplate's inboard face -- that
+    gap is WHY it existed -- so fusing cradles at the tray's own position attached them to
+    nothing. The motor controller's came out as a free-floating 18,121 mm3 lump: a printed
+    part in two pieces, with the controller's mount joined to nothing at all. The Pi's only
+    caught the corner of a ledge. Neither showed up in the overlap gate, which reports
+    interpenetration and has nothing to say about two solids that never touch.
+
+    What they hang from is that ledge (see LEDGE_L* above). The motor controller's web spans
+    its full width; the Pi's is clipped to the ledge's +Y end, because the Pi reaches to
+    y +42 and the ledge stops at -39.
     """
     from cadkit.pcb import pcb_cradle
     from cadkit.fasteners import M4 as _M4
+    from .helpers import box_at
     body = None
     for fp in (PI_FP, MCTRL_FP):
         x0, x1, y0, y1 = fp
@@ -258,6 +291,44 @@ def keyhead_cradles(standing: bool = True) -> cq.Workplane:
                         hold_edge="+y", hold_at=0.0, hold_spec=_M4,
                         standoff=POST_H, clr=0.3)
         cr = cr.translate(((x0 + x1) / 2.0, (y0 + y1) / 2.0, TRAY_Z1))
+        wx0, wx1 = max(x0, LEDGE_LX0), min(x1, LEDGE_LX1)
+        wy0, wy1 = max(y0, LEDGE_LY0), min(y1, LEDGE_LY1)
+        if wx1 > wx0 and wy1 > wy0:
+            cr = cr.union(box_at(wx1 - wx0, wy1 - wy0, TRAY_Z1 - LEDGE_LZ,
+                                 x=(wx0 + wx1) / 2.0, y=(wy0 + wy1) / 2.0,
+                                 z=(LEDGE_LZ + TRAY_Z1) / 2.0))
+        # ...AND THE RIBS THAT MAKE THE BASE PRINTABLE. The web above attaches the cradle; it
+        # does not hold the base plate up. This endplate builds +X off a bed at x -637.26, so
+        # the base is a slab lying ACROSS the layers 27 mm up, and it was a 49.80 mm bridge
+        # over open air -- the single worst ceiling in the fleet. These ribs stand under it,
+        # from the endplate's own wall (which ends at x -631 behind the Pi and -627 behind the
+        # controller) out to the base. Each is a COLUMN in this print -- constant section all
+        # the way up the build axis -- so the ribs cost nothing to print themselves, and what
+        # is left to bridge is the RIB_PITCH gap between them.
+        # Ribs, not a solid fill: filling the gap behind the Pi alone would be 110,000 mm3.
+        # The ribs are sized to the BASE PLATE, measured, not to the footprint. Sized to the
+        # footprint they stopped 1.9 mm short at each end -- pcb_cradle's base is bigger than
+        # the board by its walls and clearance -- so they cut SLOTS in the base's underside
+        # instead of dividing it, it stayed one connected face around them, and the bridge was
+        # still the whole 49.8 mm plate. Five ribs that changed nothing.
+        # ...but ONLY where the space behind the base is actually free. It mostly is not: the
+        # gap between this endplate's wall and the cradle bases is where the STRING NUT
+        # hardware lives -- the nut slide inserts and height screws fill x -630.2..-610.1
+        # across y -37.3..+31.5, measured off the built assembly. That is the Pi's footprint
+        # almost exactly, so the Pi gets no ribs through it (the first attempt did, and buried
+        # six inserts and two height screws in 7,100 mm3 of rib). The motor controller sits at
+        # y -127.5..-69.5, clear of all of it, and gets its full set.
+        _bb = cr.val().BoundingBox()
+        rx0, rx1 = _bb.xmin - 1.0, _bb.xmax + 1.0
+        for k in range(int((y1 - y0) // RIB_PITCH) + 1):
+            ry = y0 + RIB_PITCH / 2.0 + k * RIB_PITCH
+            if ry > y1 - RIB_T:
+                break
+            if NUT_KEEPOUT_Y0 - RIB_T < ry < NUT_KEEPOUT_Y1 + RIB_T:
+                continue
+            cr = cr.union(box_at(rx1 - rx0, RIB_T, TRAY_Z1 - RIB_LZ,
+                                 x=(rx0 + rx1) / 2.0, y=ry,
+                                 z=(RIB_LZ + TRAY_Z1) / 2.0))
         body = cr if body is None else body.union(cr)
     return stand(body) if standing else body
 

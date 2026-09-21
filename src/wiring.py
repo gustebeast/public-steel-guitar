@@ -102,12 +102,13 @@ CAN_OFF = 0.7         # CAN-H / CAN-L conductor separation (both x and y, same
                       # scheme as PWR_OFF): the split pair stays inside the old
                       # single-jacket envelope (0.7 + 0.65 = 1.35 < the 2.4/2 it
                       # replaces) so the trunk footprint is unchanged.
-PWR_OFF = 1.2         # 24 V hot/gnd separation, applied in BOTH x and y (+off /
-                      # -off): a single-axis offset leaves the pair COLLINEAR on
-                      # runs along that axis (the y-offset pair coincided on the
-                      # y-running motor stubs). x-runs separate by the y part,
-                      # y-runs by the x part, verticals by both. Lane edges at
-                      # 1.2 + 0.9 = 2.1 < RACE_HW 2.4.
+PWR_OFF = 1.0         # 24 V hot/gnd separation. In X on the bank hops (see _seg) and in Z
+                      # along the -Y corridor, where the pair rides one lane each. 2.0 apart
+                      # leaves 0.2 of air between two O1.8 conductors, which is right for a
+                      # pair that is BIFILAR on purpose -- they are meant to stay together.
+                      # (Was 1.2 in both x and y. The y half is what had to go: 2.4 across a
+                      # corridor only 3.2 deep behind the channel's straps put one conductor
+                      # in a strap.)
 WIRE_D = 2.0          # default (shielded-pair size)
 
 # ── -Y RAIL harness corridor ──────────────────────────────────────────────
@@ -134,10 +135,24 @@ TEE_Y  = RAIL_INNER_Y + 8.0                              # tee-board centre (14m
 # the bottom of the stack are what the 24 V pair now spreads into. The 24 V rail runs used to
 # ignore this table entirely and ride a hardcoded -52 -- which is why LANE_PWR at -48 read as
 # free and then collided with the USB lane the first time they were made to agree.
-LANE_PWR   = -52.0       # 24 V: hot at -53.2, gnd at -50.8 (LANE_PWR -/+ PWR_OFF)
-LANE_CAN   = -48.0       # CAN bus A (motors) -- bank hops only today; the tees left the rail
-LANE_USB   = -46.0       # USB-C -> Pi
-LANE_CTRL  = -42.0       # CAN bus B (inputs)
+# THE TWO 24 V FEEDS NEED TWO LANES, AND HAD ONE. The J7 head and the bypass feed are
+# separate cables running the same errand from opposite ends -- and both sat at the same y and
+# the same z over the ~150 mm they share, 416 mm^3 of each inside the other. It never showed up
+# because wire-vs-wire is allow-listed as insulated crossings, and two cables lying THROUGH each
+# other is not a crossing: it is a bundle that cannot be assembled, and it made the corridor
+# look one cable narrower than it is. Seven conductors ride this channel, and here they are:
+# The stack is built DOWN from the top and pinned at the bottom by feed 1's hot, which may not
+# go below -53.2: the J7 head and its slack coil pass through the bridge endplate's band at the
+# +X end, and 1.4 lower than this they are inside it.
+LANE_PWR   = -52.2       # 24 V feed 1 (J7 head, tail, coil): hot -53.2, gnd -51.2
+LANE_PWR2  = -48.1       # 24 V feed 2 (the bypass to motor_ctrl): hot -49.1, gnd -47.1
+LANE_USB   = -44.6       # USB-C -> Pi (O2.6, the fattest)
+LANE_CTRL  = -42.0       # CAN bus B (inputs), split +-CAN_OFF in y
+# ...and bus A, which is NOT a corridor lane any anymore and is left out of the stack on purpose:
+# its tees are all on the motor bank, so every hop takes _seg's bank branch and this z is never
+# used along the rail. It sits between feed 2's two conductors, which is harmless while nothing
+# rides it and would need a real slot the day the trunk comes back to the rail.
+LANE_CAN   = -48.0       # CAN bus A (motors) -- bank hops only; see above
 # NOTE: LANE_* are Z heights along the -Y corridor (not lane y's), and the corridor itself is
 # the rail's wiring channel -- see chassis.WC_* and _rail_pts.
 TEE_Z = _RIB_TOP + 4 * D.BEAD                            # 3.2 of printed cradle on the rib tops
@@ -147,7 +162,7 @@ TEE_Z = _RIB_TOP + 4 * D.BEAD                            # 3.2 of printed cradle
 # -52 with the tee headers, not up in the lanes
 _TRUNK_OD = max(od for nm, od in WIRE_OD.items() if nm != 'motor_pigtail')
 _CORR_Y1 = RAIL_Y + _TRUNK_OD / 2
-_CORR_Z1 = max(LANE_CAN, LANE_PWR, LANE_USB, LANE_CTRL) + _TRUNK_OD / 2
+_CORR_Z1 = max(LANE_PWR, LANE_PWR2, LANE_USB, LANE_CTRL) + _TRUNK_OD / 2
 assert _CORR_Y1 <= MB.HARNESS_Y1 and _CORR_Z1 <= MB.HARNESS_Z1, (
     "the harness corridor now reaches y %.2f / z %.2f, past motor_bank's HARNESS_Y1 %.2f / "
     "HARNESS_Z1 %.2f -- the motor pockets stop at those" % (_CORR_Y1, _CORR_Z1,
@@ -156,20 +171,56 @@ HDR_Z = -54.0                                            # lifted tee header top
 
 
 def _wire(pts, d=WIRE_D):
-    """Polyline cable: cylinders between points + sphere elbows."""
+    """Polyline cable: cylinders between points + sphere elbows, fused in ONE pass.
+
+    ⚠ IT USED TO BE A CHAIN OF PAIRWISE UNIONS, AND THE CHAIN DROPPED CABLE. Moving the second
+    24 V feed to its own lane -- a pure change of z -- turned wire_pwr_hot_12 into 12 loose
+    solids: one 645 mm3 piece covering x -197..+12, eleven free-floating elbow spheres, and
+    1100 mm3 of the run between x -576 and -197 simply GONE. No exception, no warning; the
+    Workplane just came back holding a compound. Nothing about that route is degenerate, and
+    the same path one lane lower fused fine, so it is OCCT giving up on one fuse in a long
+    sequential chain and the chain carrying on regardless.
+
+    ONE multi-argument fuse instead. BOPAlgo takes all the pieces in a single pass, which is
+    both far more robust than N sequential fuses and cheaper. The two wires that were ALREADY
+    arriving in two pieces before any of this (wire_canh_1, wire_canl_5) come out whole too --
+    they had been broken long enough to look normal.
+    """
     r = d / 2
-    out = cq.Workplane("XY")
+    cyls = []
     for a, b in zip(pts, pts[1:]):
         va, vb = cq.Vector(*a), cq.Vector(*b)
         ax = vb - va
         if ax.Length < 1e-6:
             continue
-        out = out.union(cq.Workplane("XY").add(
-            cq.Solid.makeCylinder(r, ax.Length, va, ax)))
-    for p in pts[1:-1]:
-        out = out.union(cq.Workplane("XY").add(
-            cq.Solid.makeSphere(r, cq.Vector(*p), angleDegrees1=-90)))
-    return out
+        cyls.append(cq.Solid.makeCylinder(r, ax.Length, va, ax))
+    if not cyls:
+        return cq.Workplane("XY")
+    parts = cyls + [cq.Solid.makeSphere(r, cq.Vector(*p), angleDegrees1=-90)
+                    for p in pts[1:-1]]
+    if len(parts) == 1:
+        return cq.Workplane("XY").add(parts[0])
+    # THE RESULT IS CHECKED BY VOLUME, because a failed fuse here does not raise and does not
+    # come back in pieces -- it comes back as ONE clean solid with cable missing out of the
+    # middle. Feed 2's hot conductor fused to a single valid solid holding 645 mm3 of its 1776,
+    # and nothing about the shape said so. The union of the cylinders alone cannot be much under
+    # their sum (elbows double-count a little, the spheres only add), so anything below 90% of it
+    # is a fuse that quietly dropped a run.
+    want = sum(c.Volume() for c in cyls)
+    # A FUZZY TOLERANCE IS WHAT FIXES IT when it happens: the elbow sphere meets its two
+    # cylinders along a circle all three share exactly, and a hair of numerical slack is what
+    # lets BOPAlgo see one contact instead of several that nearly agree. Exact first, then
+    # progressively looser -- 1e-5 is where the above case comes back whole (ratio 1.00).
+    for tol in (None, 1e-5, 1e-4, 1e-3):
+        try:
+            fused = (parts[0].fuse(*parts[1:], tol=tol) if tol
+                     else parts[0].fuse(*parts[1:]))
+        except Exception:
+            continue
+        if fused.Solids() and fused.Volume() >= 0.9 * want:
+            return cq.Workplane("XY").add(fused.clean())
+    raise RuntimeError("_wire: no fuse tolerance returned a whole cable "
+                       "(%d pieces, %d points, wanted >=%.1f mm3)" % (len(parts), len(pts), want))
 
 
 # motor 9 (the +X-most motor) is the ONE whose body reaches the -Y rail, so the corridor in
@@ -623,7 +674,17 @@ def _seg(a, b, lane_z, d=WIRE_D, off=0.0):
         # out of each mouth, along the -Y side of the boards at mouth height, into the next --
         # low enough to pass under the magnetic pickup's neck-most position at every X
         lane = min(a[1], b[1]) - 4.0
-        pts = [a, (a[0], lane, a[2]), (b[0], lane, b[2]), b]
+        # EACH HOP LEAVES ITS CONNECTOR LEANING TOWARD THE HOP IT IS GOING TO. Straight out of
+        # the mouth, the stub of the hop ARRIVING at a tee and the stub of the hop LEAVING it
+        # were the same line -- same x, same z, same direction out of the same point -- so two
+        # Ø1.3 conductors ran COINCIDENT for 4.65 mm, ~6.0 mm3 of each inside the other. OCCT
+        # cannot boolean coincident cylinders, which is what put wire_canh_8/9 and wire_canl_8/9
+        # in the gate's "could not be checked" list for as long as it has had one: they were not
+        # suspect, they were a modelling artefact. Leaning them apart is also the truer picture --
+        # the trunk in and the trunk out are different contacts on the same 6-way, and two crimps
+        # leaving a connector lie side by side, not through each other.
+        _lean = 2.0 if b[0] >= a[0] else -2.0
+        pts = [a, (a[0] + _lean, lane, a[2]), (b[0] - _lean, lane, b[2]), b]
     elif _on_bank(a) or _on_bank(b):
         t, r = (a, b) if _on_bank(a) else (b, a)          # t on the bank, r on the rail
         pts = [t, (t[0], t[1] - 4.0, t[2]), (r[0], t[1] - 4.0, t[2]), (r[0], r[1], t[2]),
@@ -820,8 +881,10 @@ def build_wires():
     # would have sat in the strap. In z they take one lane each out of the six, which is what the
     # stacked-lane scheme was for, and both ride the channel's centreline. (The x offset stays:
     # it is what keeps the two from sharing a turn.)
-    for _nm, _do, _lz in (("wire_pwr_hot", -PWR_OFF, LANE_PWR - PWR_OFF),
-                          ("wire_pwr_gnd", PWR_OFF, LANE_PWR + PWR_OFF)):
+    for _nm, _do, _lz, _lz2 in (("wire_pwr_hot", -PWR_OFF, LANE_PWR - PWR_OFF,
+                                LANE_PWR2 - PWR_OFF),
+                               ("wire_pwr_gnd", PWR_OFF, LANE_PWR + PWR_OFF,
+                                LANE_PWR2 + PWR_OFF)):
         def _off(pts, _do=_do):
             return [(px + _do, py, pz) for px, py, pz in pts]
         out.append((f"{_nm}_0", _wire(_off(_heads(_lz)), WIRE_OD[_nm])))
@@ -843,7 +906,7 @@ def build_wires():
         # the chain so it arrives at the far end with its own capacity, and it is a
         # 4-way carrying ONLY power, so both +24V ways parallel and its 582 mm behaves
         # like 291. The trunk cannot do that -- two of its four ways are CAN.
-        out.append((f"{_nm}_12", _wire(_off(_feed2(_lz)), WIRE_OD[_nm])))
+        out.append((f"{_nm}_12", _wire(_off(_feed2(_lz2)), WIRE_OD[_nm])))
 
         # ⚠ AND THE COIL, WHICH IS DELIBERATE RESISTANCE. The two feeds are wildly
         # asymmetric -- J7 reaches the chain in 180 mm, this one travels 582 -- so
