@@ -195,6 +195,14 @@ def _build():
     # the bore back in (the gate: 905 mm3 of rod inside the endplate). Same cutter as the
     # nut block's own, from the module that owns the rod.
     w = w.cut(NB.rod_bore().translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z)))
+    # ⚠ THE PI AND MOTOR CONTROLLER MOUNT ON THIS PART NOW, not on a separate tray that
+    # stood against it. electronics_tray was a printed plate carrying four bare posts per
+    # board and no retention at all -- _support_posts said so and said this revisit was
+    # coming. Each board now gets its own pcb_cradle fused here, independent of the other,
+    # plastic on every side but the install face and one M4 button to close that.
+    # Fused AFTER the cuts above so nothing takes it back out again.
+    from .electronics import keyhead_cradles
+    w = w.union(keyhead_cradles())
     return heal(w)
 
 
