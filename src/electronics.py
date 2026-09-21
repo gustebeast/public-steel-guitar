@@ -227,6 +227,41 @@ def _support_posts(fp, bz):
     return out
 
 
+def keyhead_cradles(standing: bool = True) -> cq.Workplane:
+    """The Pi's and the motor controller's mounts, built INTO the keyhead endplate.
+
+    ⚠ THIS REPLACES electronics_tray, AND _support_posts SAID IT WOULD: "these boards
+    are revisited later under the one-M4-beside-the-board rule (cadkit.pcb.pcb_cradle
+    hold_edge), so nothing here should grow an M2 back". The tray was a separate printed
+    plate that stood against the endplate carrying four bare posts per board and NO
+    retention at all -- the boards simply rested on them. This is that revisit.
+
+    Each board gets its own cradle, independent of the other: walls capture it in the
+    plate's plane, pads carry it off the face, so the only way in or out is straight off
+    the face -- and one M4 button beside the +Y edge closes that. Same pattern, same
+    single 2.5 mm hex key, as the motor tees and the output board.
+
+    Authored in the FLAT tray frame (where PI_FP/MCTRL_FP and BOARD_Z are written) and
+    posed by stand(), exactly as the tray was, so the footprints stay the numbers this
+    file already carries. standoff is POST_H -- the height the posts used to stand the
+    board off the plate -- so the boards do not move.
+
+    open_edge is -Y for both: that is the rail the harness runs along, and a wall there
+    would sit across every lead leaving the board.
+    """
+    from cadkit.pcb import pcb_cradle
+    from cadkit.fasteners import M4 as _M4
+    body = None
+    for fp in (PI_FP, MCTRL_FP):
+        x0, x1, y0, y1 = fp
+        cr = pcb_cradle(x1 - x0, y1 - y0, open_edge="-y",
+                        hold_edge="+y", hold_at=0.0, hold_spec=_M4,
+                        standoff=POST_H, clr=0.3)
+        cr = cr.translate(((x0 + x1) / 2.0, (y0 + y1) / 2.0, TRAY_Z1))
+        body = cr if body is None else body.union(cr)
+    return stand(body) if standing else body
+
+
 def electronics_tray(standing: bool = True) -> cq.Workplane:
     """The printed tray: plate + board support posts. Prints flat (plate on the bed,
     posts up); stands against the keyhead endplate in the instrument (see STANDING TRAY).
