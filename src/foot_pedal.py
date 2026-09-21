@@ -106,7 +106,7 @@ DEFERRED (this is the first round):
 
 WHAT IS SHARED AND WHAT BRANCHES (user). Shared: the whole feel system — the
 cartridges are the SAME PRINTED SKUs across all three levers (cart_base,
-cart_piston, guide_post, and the coils/screws/inserts/back-stops that
+cart_piston, and the die springs/washers/screws/inserts that
 knee_lever.feel_dummies emits), plus the axle, bearings, magnet, board and cradle
 builder. Branching: the pose, the lobe radius, the throw, the housing envelope,
 and now the cradle's clip — this is the only lever whose housing has an external
@@ -228,7 +228,7 @@ def lever_room() -> cq.Workplane:
 
 
 # ── housing envelope ─────────────────────────────────────────────────────────
-HOUS_X0 = KL.HOUS_X0                       # cartridge back + back-stop engagement
+HOUS_X0 = KL.HOUS_X0                       # cartridge back + the rear (KL.cut_feel_rear)
 # THIS FACE SITS ON THE BAR TOP, so it is the axle's standoff above the bar, and the
 # PLAYING DATUM sets it — not the race and not the hub (user, 2026-09-10). It used to be
 # max(hub + clearance + wall, race + wall), which the Ø16 688ZZ and the Ø13.6 hub took to
@@ -274,7 +274,18 @@ CRADLE_Z0 = KL.PCB_Z0 - KL.CR_FLOOR_T       # the z_bot the cradle is BUILT
                                             # the two values disagree about it, so
                                             # mixing them would flip the demo board
                                             # inside an unflipped cradle.
-HOUS_Z0 = HOUS_Z1 - Y_BUDGET
+# The PLAYING datum: the axle 10.15 in from the player-side face (= the 25.45 - 35.6 this
+# budget was tuned at). The Ø10 die-spring cartridge (2026-09-21) stands 6.15 taller than the
+# Ø6 coil's, which lifted HOUS_Z1; holding Z0 = Z1 - Y_BUDGET would have dragged the axle and
+# the board with it until the board no longer fit. Z0 holds the datum instead, and the housing
+# grows +Y by Y_GROWTH -- into the 15.6 of bar that stands behind it (the bar is 51.2 deep, see
+# the module header), so it is still inside the bar.
+AXLE_INSET = 10.15
+HOUS_Z0 = min(HOUS_Z1 - Y_BUDGET, -AXLE_INSET)
+Y_GROWTH = (HOUS_Z1 - HOUS_Z0) - Y_BUDGET
+assert Y_GROWTH <= PB.BAR_Y1 - PB.BAR_Y0 - Y_BUDGET + 1e-6, (
+    f"the pedal housing is {Y_GROWTH:.2f} deeper than its {Y_BUDGET} budget, past the bar's "
+    f"own depth -- it would stand proud of the bar's +Y face")
 
 assert KL.PCB_Z0 >= HOUS_Z0, (
     f"the sensor board reaches z {KL.PCB_Z0:.2f}, below this housing's {HOUS_Z0:.2f} — it "
@@ -479,31 +490,27 @@ def fuse_into_bar(piece, x0, x1):
     return piece
 
 
-def cut_backstop_threads(piece, x0: float, x1: float):
-    """The two FEMALE back-stop threads per pedal, cut into the fused bar piece.
+# How far past the housing's own rear the access holes run. The housing stands UP off the bar
+# top (local -X is guitar +Z), so behind its rear there is air, not bar -- this only carries the
+# holes cleanly out through the fused face.
+_BAR_REACH = 1.0
 
-    Separate from fuse_into_bar, and called AFTER the piece is healed, because the
-    thread rules say threads are cut last and alone and a threaded part is never
-    healed — and this housing is fused into a bar piece that heal()s. Cutting them
-    inside _housing would have put a heal after the threads.
 
-    They were missing entirely: knee_lever and knee_lever_vert both cut these, the
-    pedal did not, so its back-stop screws had nothing to thread into and sat
-    183 mm3 buried in solid bar. Invisible until the housings actually reached the
-    assembly."""
-    from cadkit.threads import threaded_rod
+def cut_feel_access(piece, x0: float, x1: float):
+    """The feel cartridges' REAR ACCESS per pedal, cut into the fused bar piece:
+    the tension screw's Ø4.4 way and the position screw's washer recess + key way
+    (KL.cut_feel_rear), carried on THROUGH the bar behind the housing.
+
+    Separate from fuse_into_bar and cut AFTER the union, because the bar stands
+    behind the housing: cut only in the housing, the bar would close the holes
+    and the keys could not reach either screw. (This used to cut the printed
+    back-stop THREADS, which had the same problem -- they sat 183 mm3 buried in
+    solid bar until they were cut here.)"""
     for x in PEDAL_X:
         if not (x0 <= x < x1):
             continue
-        for dy in (KL.MAIN_YC - KL.HS_YC, 0.0):
-            nut = (threaded_rod(KL.HS_TH_MINOR, KL.HS_BSTOP_OD, KL.HS_TH_PITCH,
-                                KL.HS_BSTOP_ENGAGE)
-                   .rotate((0, 0, 0), (0, 1, 0), 90)
-                   .translate((KL.HS_BACK_X + KL.HS_SETBACK,
-                               KL.HS_YC + dy, KL.HS_Z)))
-            piece = piece.cut(place(pplace(nut), x), clean=False)
+        piece = KL.cut_feel_rear(piece, lambda s, x=x: place(pplace(s), x), reach=_BAR_REACH)
     return piece
-
 
 def demo_parts():
     """(name, solid) in GUITAR coordinates — the WHOLE control core at each of the
