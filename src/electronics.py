@@ -239,6 +239,12 @@ LEDGE_LX0 = -606.0       # local x -> world z  -3.0   the ledge's z band, kept a
 LEDGE_LX1 = -592.0       # local x -> world z -17.0   inside the measured -2..-18
 LEDGE_LY0 = -128.0       # local y = world y, the ledge's -Y end (-129, kept inside)
 LEDGE_LY1 = -40.0        # ...and its +Y end (-39): the Pi runs past this, the mctrl does not
+RIB_LZ    = -87.5        # local z -> world x -631.3: just inside the endplate's own wall,
+                         # which ends at -631 behind the Pi and -627 behind the controller
+RIB_T     = D.MIN_WALL_2P    # 1.6, a two-bead rib
+RIB_PITCH = 12.0         # leaves ~10.4 for the base plate to bridge between ribs
+NUT_KEEPOUT_Y0 = -39.0   # the string-nut hardware's y band (inserts + height screws reach
+NUT_KEEPOUT_Y1 = 33.0    # x -630.2..-610.1 across y -37.3..+31.5); no rib may cross it
 
 
 def keyhead_cradles(standing: bool = True) -> cq.Workplane:
@@ -291,6 +297,38 @@ def keyhead_cradles(standing: bool = True) -> cq.Workplane:
             cr = cr.union(box_at(wx1 - wx0, wy1 - wy0, TRAY_Z1 - LEDGE_LZ,
                                  x=(wx0 + wx1) / 2.0, y=(wy0 + wy1) / 2.0,
                                  z=(LEDGE_LZ + TRAY_Z1) / 2.0))
+        # ...AND THE RIBS THAT MAKE THE BASE PRINTABLE. The web above attaches the cradle; it
+        # does not hold the base plate up. This endplate builds +X off a bed at x -637.26, so
+        # the base is a slab lying ACROSS the layers 27 mm up, and it was a 49.80 mm bridge
+        # over open air -- the single worst ceiling in the fleet. These ribs stand under it,
+        # from the endplate's own wall (which ends at x -631 behind the Pi and -627 behind the
+        # controller) out to the base. Each is a COLUMN in this print -- constant section all
+        # the way up the build axis -- so the ribs cost nothing to print themselves, and what
+        # is left to bridge is the RIB_PITCH gap between them.
+        # Ribs, not a solid fill: filling the gap behind the Pi alone would be 110,000 mm3.
+        # The ribs are sized to the BASE PLATE, measured, not to the footprint. Sized to the
+        # footprint they stopped 1.9 mm short at each end -- pcb_cradle's base is bigger than
+        # the board by its walls and clearance -- so they cut SLOTS in the base's underside
+        # instead of dividing it, it stayed one connected face around them, and the bridge was
+        # still the whole 49.8 mm plate. Five ribs that changed nothing.
+        # ...but ONLY where the space behind the base is actually free. It mostly is not: the
+        # gap between this endplate's wall and the cradle bases is where the STRING NUT
+        # hardware lives -- the nut slide inserts and height screws fill x -630.2..-610.1
+        # across y -37.3..+31.5, measured off the built assembly. That is the Pi's footprint
+        # almost exactly, so the Pi gets no ribs through it (the first attempt did, and buried
+        # six inserts and two height screws in 7,100 mm3 of rib). The motor controller sits at
+        # y -127.5..-69.5, clear of all of it, and gets its full set.
+        _bb = cr.val().BoundingBox()
+        rx0, rx1 = _bb.xmin - 1.0, _bb.xmax + 1.0
+        for k in range(int((y1 - y0) // RIB_PITCH) + 1):
+            ry = y0 + RIB_PITCH / 2.0 + k * RIB_PITCH
+            if ry > y1 - RIB_T:
+                break
+            if NUT_KEEPOUT_Y0 - RIB_T < ry < NUT_KEEPOUT_Y1 + RIB_T:
+                continue
+            cr = cr.union(box_at(rx1 - rx0, RIB_T, TRAY_Z1 - RIB_LZ,
+                                 x=(rx0 + rx1) / 2.0, y=ry,
+                                 z=(RIB_LZ + TRAY_Z1) / 2.0))
         body = cr if body is None else body.union(cr)
     return stand(body) if standing else body
 
