@@ -64,6 +64,17 @@ def export(stem):
         "thickness_mm": round(board.GetDesignSettings().GetBoardThickness() / 1e6, 3),
         "footprints": [],
     }
+    # THE OUTLINE ITSELF, not just its box: a board with a mounting EAR is an L, and the box
+    # would draw a slab under everything beside the ear (on the output board, under the
+    # three USB ports that have to stay at the -X edge). Holes -- the mounting hole -- too.
+    polys = pcbnew.SHAPE_POLY_SET()
+    board.GetBoardPolygonOutlines(polys, True)
+
+    def _pts(chain):
+        return [[round(chain.CPoint(i).x / 1e6 - cx, 3), round(-(chain.CPoint(i).y / 1e6 - cy), 3)]
+                for i in range(chain.PointCount())]
+    out["outline_poly"] = _pts(polys.Outline(0))
+    out["holes"] = [_pts(polys.Hole(0, h)) for h in range(polys.HoleCount(0))]
     for fp in board.GetFootprints():
         p = fp.GetPosition()
         out["footprints"].append({

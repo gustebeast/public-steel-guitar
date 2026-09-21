@@ -976,15 +976,10 @@ def op_cradle():
     in from above. So the install direction is +X: it goes down onto the plate a couple of
     millimetres short of home, then slides along it between the +-Y walls until its
     connectors are through the panel and its edge meets it. The PANEL is the +X stop; the
-    connectors in their openings hold the +X end down; one M4 button beside the -X edge --
-    head lapping the board, shank 0.5 mm off its edge -- holds that end down and blocks the
-    way back out.
+    connectors in their openings hold the +X end down; one M4 button goes down THROUGH the
+    board's mounting ear into a boss, which locks every direction at once.
     Same rule as every board in the instrument: plastic everywhere but one direction, and
-    one screw, one 2.5 mm key, locking that. The board's own notes already said hold_edge
-    "-x" (elec/output_panel.py BOARD_NOTES); the first version of this cradle used +Y.
-
-    hold_at -22.5 is where the -X edge is clear: J2/J3/J4 face out of it above y -15.3, and
-    the 24 V lane takes everything below -29.5 (world -119).
+    one screw, one 2.5 mm key, locking that.
 
     standoff is measured, not chosen: the board's underside above the recess floor at
     JACK_Z - 14, so the base lands exactly on that floor.
@@ -995,17 +990,26 @@ def op_cradle():
                               JACK_Z, _PCB_T)
     cx, cy, cz = op_origin()
     standoff = cz - (JACK_Z - 14.0)              # board underside above the recess floor
-    # ⚠ BUILT WALLED ALL ROUND, THEN OPENED -- because pcb_cradle's model is DROP-IN. It
-    # refuses a hold on the open edge ("the head's notch needs a wall to sit in, and the
-    # board a stop that way"), and in its world that is right: the board comes down from
-    # +Z, the walls hold X and Y, and the head is all that holds Z. A SLIDE-IN board needs
-    # the open side and the lock on the SAME edge, and there the shank is the stop. So ask
-    # cadkit for the hold at -X in a closed cradle -- which gives the boss, the M4 insert
-    # pocket and the head clearance exactly as the tees get them -- and take away the two
-    # walls this install does not want.
-    cr = pcb_cradle(OP_BOARD_X, OP_BOARD_Y, open_edge=None,
-                    hold_edge="-x", hold_at=-22.5, hold_spec=_M4,
+    # ⚠ THE M4 GOES THROUGH THE BOARD NOW, not beside it (user, 2026-09-21: "the screw
+    # adjacent ... doesn't provide as strong of retention"). The board grew a mounting EAR
+    # off its -X edge (elec/output_panel.py EAR_*), and the screw goes down through that ear
+    # into a boss: a head clamping the laminate round a hole holds the board every way,
+    # where the side screw lapped 1 mm of its edge.
+    # pcb_cradle's through-board path was written for M2 and sizes its boss "pad + 1.5" --
+    # too small for an M4 insert -- so cadkit's own M4 boss (boss_od) is stood under the
+    # hole here and the anchor re-cut with cadkit's cut_anchor, which the union refilled.
+    # Built walled all round, then opened: the board still SLIDES IN +X (its connectors pass
+    # through the panel), so the +X wall (the panel is the stop) and the -X wall above the
+    # board's underside (the way in) come away, and the screw is what closes it.
+    from cadkit.fasteners import cut_anchor as _cut_anchor
+    from . import board_geom as _BG
+    (hx, hy, _hd), = _BG.holes("output_panel")
+    cr = pcb_cradle(OP_BOARD_X, OP_BOARD_Y, screw_xy=(hx, hy), spec=_M4, open_edge=None,
                     standoff=standoff, clr=OP_PANEL_CLR)
+    _base_t = max(1.6, _M4.anchor_min_wall - standoff)
+    cr = cr.union(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        _M4.boss_od / 2.0, _base_t + standoff, cq.Vector(hx, hy, -_base_t))))
+    cr = _cut_anchor(_M4, cr, (hx, hy, standoff), (0, 0, -1), _M4.anchor_min_wall)
     # pcb_cradle's own frame: the MOUNTING SURFACE is local z 0 and the board's underside
     # is local z `standoff` (the base plate hangs below 0).
     _base_top = 0.0
@@ -1019,15 +1023,8 @@ def op_cradle():
     cr = cr.cut(box_at(20.0, OP_BOARD_Y + 40.0, 60.0,
                        x=-(OP_BOARD_X / 2 + OP_PANEL_CLR + 10.0), y=0.0,
                        z=standoff + 30.0))
-    # ⚠ THE 24 V TRUNK LANE WINS -- IT WAS HERE FIRST. The bus runs -X along y = TEE_Y
-    # (-120.75) at z -52, and the board's -Y edge reaches -122.50, so the cradle's -Y wall
-    # and its -Y corner pads stood in the lane. The bus serves ten motors and its y is set
-    # by the tee row; a board that arrived later does not get to move it. Everything ABOVE
-    # the base is cut back clear of the lane; the base stays, 2.9 mm under the board and
-    # under the bundle, so the board keeps a continuous floor and the wires run over it.
-    _lane_y = -119.0                                 # clear of the bundle at TEE_Y -120.75
-    cr = cr.cut(box_at(2 * (OP_BOARD_X / 2 + 4.0), 40.0, 40.0,
-                       x=0.0, y=(_lane_y - cy) - 20.0, z=_base_top + 20.0))
+    # (The 24 V lane cut that used to take the -Y wall away is gone with the lane: the 24 V
+    #  runs cross ABOVE the board now, in the recess, and nothing rides y -120.75 at z -52.)
     return cr.translate((cx, cy, cz - standoff))
 
 
