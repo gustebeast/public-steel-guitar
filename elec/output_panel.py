@@ -893,6 +893,14 @@ def output_panel():
 #      J4 to the optical board) plus a USB-C (J3, hub upstream). Those face INTO
 #      the instrument, not out the panel, and want cable room behind them.
 BOARD_W, BOARD_L = 74.0, 66.0
+# How far each panel connector's body front stands past the +X edge: the fit clearance
+# between the board and the endplate's panel, plus the panel itself. src/electronics.py
+# builds the panel to the same two numbers (OP_PANEL_CLR, OP_PANEL_T), and
+# reads the placed board back from <board>.geom.json rather than trusting these.
+PANEL_CLR, PANEL_T = 0.3, 1.6
+PANEL_OVERHANG = PANEL_CLR + PANEL_T
+_FRONT = {"J5": 13.40, "J1": 7.07, "J6": 10.70}
+J1_SETBACK = 0.40
 
 BOARD_NOTES = {
     "outline_mm": (BOARD_W, BOARD_L),
@@ -1067,6 +1075,20 @@ BOARD_NOTES = {
         ("+24V", "F.Cu", 0.5, [(-1.250, -28.000), (-1.250, -29.500)]),
         ("+24V", "F.Cu", 0.5, [(-1.250, -29.500), (17.250, -29.500)]),
         ("+24V", "F.Cu", 0.5, [(17.250, -29.500), (17.250, -28.000)]),
+        # THE INLET'S OWN PIN. Turning J6 90 degrees so its mouth faces the panel put its
+        # +24V pin (1, the centre pin) at the REAR corner of the body, and the router could
+        # not get a trace out of it to either side -- the only two unconnected items on the
+        # board. It sits straight above the end of the bus run above, so the bus simply
+        # continues to it. Both runs pass under J6's plastic body, clear of its PWR_GND
+        # pins at x 28.2 and 31.2.
+        # ⚠ J10's +24V PADS ARE 2 AND 3 (x 28.45, 30.95), NOT PAD 1. Pad 1, straight above
+        # this pin at x 25.95, is PWR_GND -- the first draft of this run landed on it, which
+        # is a dead short across the 24 V bus. The run turns along y -12, below J10's pad
+        # row, and comes up into pad 2.
+        ("+24V", "F.Cu", 0.5, [(17.250, -29.500), (25.200, -29.500)]),
+        ("+24V", "F.Cu", 0.5, [(25.200, -29.500), (25.200, -21.500)]),
+        ("+24V", "F.Cu", 0.5, [(25.200, -21.500), (25.200, -12.000), (28.450, -12.000),
+                               (28.450, -8.700)]),
     ],
     "stitch_nets": ("GND",),
     # ⚠ THE USB SHIELD TABS REACH THE PLANE THROUGH THEIR OWN BARRELS. J2.SH and J4.SH
@@ -1099,11 +1121,37 @@ BOARD_NOTES = {
     # block across the middle, and the ANALOG CHAIN along +Y as far from the
     # switching node as 66 mm allows.
     "placements": {
-        # +X, THE PANEL FACE -- all three flush to the edge, because a connector
-        # inset from the board edge is a connector the chassis wall cannot reach.
-        "J5": (23.11, 21.50, 0.0),      # 1/4 in jack, 27.62 x 20.32 -- the big one
-        "J1": (29.44, 4.00, 90.0),      # panel USB-C
-        "J6": (32.02, -20.50, 0.0),     # 24 V barrel inlet
+        # +X, THE PANEL FACE. Each connector's BODY FRONT overhangs the board edge by
+        # PANEL_OVERHANG, so it passes through the endplate's panel and finishes FLUSH
+        # with the instrument's face -- which is where a player's plug has to meet it.
+        #
+        # ⚠ THIS USED TO SAY "all three flush to the edge", AND IT WAS THE COURTYARDS THAT
+        # WERE FLUSH. A courtyard is the keep-out, not the part: it is bigger than the body,
+        # so both bodies stopped 0.54 mm SHORT of the edge, behind a 4 mm wall, ~4.8 mm
+        # inside the instrument. And J6 was at 0 degrees, where this footprint's mouth
+        # (its local +Y) points along the board at the chassis rail -- a panel inlet no
+        # hole in the panel could ever reach. Every check agreed with it, because every
+        # check compared a copy of these numbers to these numbers.
+        #
+        # _FRONT is the body front ahead of the pad-centroid anchor, MEASURED off the
+        # routed board's F.Fab (J6 after the 90-degree turn: 13.7 of body ahead of pin 1,
+        # pin 1 3.0 behind the centroid).
+        # ...AND J5 IS THE EXCEPTION THE OTHER WAY. The NMJ4HCD2 is a REAR-PANEL-MOUNT jack
+        # (Neutrik: "rear mounting", "panel thickness < 4.7 mm", "chassis shape 11.4 mm",
+        # mounting nut included): its threaded chrome nose goes THROUGH the panel, the
+        # body's shoulder bears on the panel's INSIDE, and the nut clamps from outside --
+        # the way every guitar output jack is fitted. So its body front stops AT the
+        # panel's inner face, PANEL_CLR past the board edge, and the nose and nut do the
+        # rest. (F.Fab draws only the body, which is why the nose was never in the CAD.)
+        "J5": (BOARD_W / 2 + PANEL_CLR - _FRONT["J5"], 21.50, 0.0),         # 1/4 in jack
+        # ...EXCEPT J1, WHICH CANNOT GO AS FAR. Its front shell legs are plated oval pads
+        # 1.60 long in X, and at the full overhang their far end crossed the board edge
+        # (DRC: 0.000 against the 0.3 copper-to-edge rule -- a plated barrel the router
+        # would cut in half). J1_SETBACK is what buys the 0.3: the USB-C finishes that far
+        # behind the panel face, and the endplate opens an OVERMOLD-sized window for it so
+        # a plug still seats fully (see electronics.OP_PANEL).
+        "J1": (BOARD_W / 2 + PANEL_OVERHANG - J1_SETBACK - _FRONT["J1"], 4.00, 90.0),
+        "J6": (BOARD_W / 2 + PANEL_OVERHANG - _FRONT["J6"], -19.93, 90.0),  # 24 V barrel
         # -X, FACING INTO THE INSTRUMENT.
         # ⚠ 270, NOT 180, AND THE DIFFERENCE IS NOT COSMETIC. This footprint's
         # courtyard runs -12.68..+3.90 in Y about the pad centroid, so its MOUTH is
