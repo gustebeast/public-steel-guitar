@@ -158,7 +158,6 @@ PARTS = {
     "pedal_lever":     (lambda: heal(__import__("src.foot_pedal", fromlist=["e"]).pedal_lever()), "pctg/pedal_lever.step", "PCTG — FOOT PEDAL lever ×3 (initial design): hub on the axle, leg carrying the return lobe at 13.2 (sized so the 20° throw gives the SAME 4.51 spring stroke as the knee levers — which is what lets the half stop transfer for free), a 90 mm arm running out to the player and the pedal board across its end (30.8 mm of travel, ~1.6→3 N at the board)"),
     "pedal_detent_nub": (lambda: heal(_PB("nub_part")), "tpu/pedal_detent_nub.step", "TPU — detent nub ×1 (Ø4×4): presses into the bar top as the LID lock"),
     # (pedal_bar_foot merged into the shared leg_foot SKU — one look ×4)
-    "electronics_tray": (lambda: heal(__import__("src.electronics", fromlist=["e"]).electronics_tray(standing=False)), "pctg/electronics_tray.step", "PCTG — compute-bay tray, exported FLAT (its print pose); in the instrument it STANDS against the keyhead endplate's inboard face (mount pending the keyhead round). Board support posts for Teensy+shield, Pi 5, ADC stack, buck, CAN interface"),
 }
 # Deck panels: each is a (base, colour) PAIR — same origin, print as ONE object
 # with two filaments (the ha-keypad keycaps/keycaps_text pattern). The base is
@@ -290,6 +289,14 @@ for _i, _seg in enumerate(chassis_segments):     # chassis split into dovetailed
                               "and NO seam fastener — the deck, endplates and finally the 4 leg screws "
                               "close the seam's Z axis. + tee cradles)")
 # Section-joint coupon (the LEG stack's octagon at the real 28 mm width — legs.SEC_W)
+# COIL MANDREL -- UNREGISTERED, and deliberately. src/coil_mandrel.py sizes a coil
+# at r 9.5 against the 22.8 minimum bend radius Tensility publish for 10-02135, so
+# it asserts on import and CANNOT be built until that is resolved (accept the
+# overbend, move the slack store out of the leg, or source a different lead -- see
+# the block at the top of the module and docs/leg-trrs-routing.md).
+# Left out of PARTS rather than left in to fail, so the lead's build is not red on
+# a decision that is not the build's to make. Re-register both entries when it is.
+
 PARTS["test_section_tenon"] = (
     lambda: heal(__import__("src.joint_coupon", fromlist=["e"]).section_tenon_coupon()),
     "test_section_tenon.step",
@@ -677,7 +684,13 @@ def _pickup_mount_components():
     # MALE connectors + cable at true diameter. Not a printed part -- it exists so the
     # route can be PLANNED rather than assumed, and so the overlap gate has something to
     # complain about if the conduit or the plinth ever moves into the cable's path.
-    out.append(("optical_cables", OP.opt_cables()))
+    # ⚠ TWO CABLES, TWO NAMES, TWO COLOURS. These were one "optical_cables" solid in a
+    # single near-black grey, so the USB lead and the 24 V lead were indistinguishable in
+    # the viewer and neither could be hidden without hiding the other. Split so each says
+    # what it is, and coloured off the loose-wire scheme already in this table: violet for
+    # USB, red for 24 V.
+    out.append(("optical_cable_usb", OP.opt_cables("usb")))
+    out.append(("optical_cable_pwr", OP.opt_cables("pwr")))
     # The two M4 grips that locate the board: heat-set insert seated in the endplate's
     # wrap plinth, button screw down through the board's clearance hole into it. Same
     # fastener family as the pickup height jacks, so no new BOM line.
@@ -783,11 +796,14 @@ def _electronics_components():
     from . import electronics as EL
     from . import wiring as WR
     from . import top_plate as TP
-    out = [("electronics_tray", EL.electronics_tray()),
-           ("pi5", EL.pi5()),
+    # electronics_tray is gone: the Pi's and the motor controller's mounts are cradles
+    # fused into keyhead_endplate now (see electronics.keyhead_cradles). One less printed
+    # part, and the boards gained retention they never had on the tray's bare posts.
+    out = [("pi5", EL.pi5()),
            ("motor_ctrl", EL.motor_ctrl()),
            ("output_panel", EL.output_panel()),
            ("oled", EL.oled()), ("joystick", EL.joystick())]
+    out += EL.board_screws()
     out += [(f"top_plate_{i}", seg) for i, seg in enumerate(TP.segments)]
     out += [(f"top_plate_color_{i}", seg) for i, seg in enumerate(TP.segments_color)]
     # the fillers the pickup piece displaced: show them slid +Y clear of the
@@ -1053,7 +1069,16 @@ def _knee_lever_components():
 
 
 def _lever_stations_components():
-    """All six knee levers, each design posed at its station (LEVER_STATIONS).
+    """FIVE of the six knee levers, each design posed at its station (LEVER_STATIONS).
+
+    ⚠ THIS SAID "ALL SIX" AND THE TABLE HAS FIVE. The instrument has 6 knee levers
+    and 5 pedals (user, 2026-09-18; now D.N_LEVERS / D.N_PEDALS). LEVER_STATIONS lists
+    lkl, vkl, lkr, rkl, rkr -- the right knee has no vertical lever "in this copedent",
+    per the comment in the table, so the sixth control is not modelled here. The gap is
+    real and not a typo; what was wrong was the docstring claiming coverage the table
+    does not have. elec/lever_sensor.py orders against D.N_SENSED (11) and not against
+    this table, so the sensor panel is unaffected -- but anything that sizes hardware
+    from LEVER_STATIONS is sizing for five.
 
     Both source modules build their parts in a LOCAL frame and hand them to a
     module-level pose, so a station is just that pose with x/y replaced — the Z
@@ -1113,7 +1138,7 @@ BODY_WORK_PARTS = SCREW_ROW_PARTS + (
     # parts while this branch deleted teensy_/adc_stack/buck/analog_frontend and the
     # three free-standing panel jacks (they are PCB parts on the output+panel board
     # now). Keep main's additions, keep the deletions.
-    "electronics_tray", "pi5", "motor_ctrl", "tee_", "wire_",
+    "pi5", "motor_ctrl", "tee_", "wire_",
     "output_panel", "joystick", "oled",
     "body_adapter", "lock_pin_", "adjust_", "fixed_", "bar_latch_", "leg_latch_",
     "top_plate", "pickup", "optical")   # the deck piece too: its skirt sets the bay's headroom
@@ -1137,7 +1162,8 @@ def body_work_components():
 
 
 def lever_components():
-    """Every lever as ONE named set: the six knee-lever stations and the foot pedals.
+    """Every lever as ONE named set: the five modelled knee-lever stations (of six --
+    see _knee_components) and the foot pedals.
 
     Like screw_rows_components, the build does not need it; it exists so the per-agent
     scratch view can make the whole lever family LIVE. All of them share knee_lever's
@@ -1386,7 +1412,7 @@ _COLORS = {
     "half_stop_position_setscrew":        (0.62, 0.62, 0.66),
     "retention_setscrew":                 (0.40, 0.40, 0.43),   # -Y lock screw
     # electronics bay (dummies) + panel jacks
-    "electronics_tray": (0.30, 0.36, 0.32),  # printed tray
+
     "pi5":             (0.05, 0.35, 0.15),   # PCB green
     "output_panel":    (0.45, 0.30, 0.45),   # output + panel board (VBUS broken,
                                              # DAC + true-bypass relay + the TS jack)
@@ -1399,10 +1425,16 @@ _COLORS = {
     "trrs_adapter_screw":  (0.55, 0.55, 0.58),   # M4 button, 2.5 hex -- the one lock
     "trrs_adapter_insert": (0.80, 0.60, 0.35),   # its brass heat-set insert
     "tee_screw":       (0.72, 0.74, 0.78),   # M4x10 button, BESIDE the tee board
-    "tee_insert":      (0.72, 0.60, 0.30),   # M4 heat-set brass, in the cradle boss
+    "tee_insert":      (0.72, 0.60, 0.30),
+    "board_screw":     (0.72, 0.74, 0.78),   # M4x10 button THROUGH our boards' mounting ears
+    "board_insert":    (0.72, 0.60, 0.30),   # its heat-set brass, in the cradle boss   # M4 heat-set brass, in the cradle boss
     "optical_pcb":     (0.12, 0.30, 0.55),   # per-string optical strip (blue solder mask,
                                              # so it reads apart from the green audio PCBs)
-    "optical_cables":  (0.15, 0.15, 0.17),   # USB-C + XHP-6 plugs and their leads
+    # ⚠ MATCHED TO THE LOOSE-WIRE COLOURS BELOW, not picked fresh: a USB run is a USB
+    # run whether it is drawn as a wire or as a modelled cable, and the old single entry
+    # was (0.15,0.15,0.17) -- near-black, which this project reserves for TPU.
+    "optical_cable_usb": (0.55, 0.25, 0.75),  # violet, as wire_usb - USB-C plug + lead to the Pi
+    "optical_cable_pwr": (0.85, 0.12, 0.10),  # red, as wire_pwr_hot - 24 V in at J2
     "optical_insert":  (0.72, 0.60, 0.30),   # M4 heat-set brass, board grips
     "optical_screw":   (0.72, 0.74, 0.78),   # M4x12 button, down into it
     "optical_cover":   (0.18, 0.18, 0.20),   # slotted lid over the sensor row -- print it

@@ -13,7 +13,6 @@ If you are reading this because you want to change something, read
 | board | what it is | qty |
 |---|---|---|
 | `can_tee` | CAN trunk junction, one per motor | 11 |
-| `trrs_adapter` | TRRS ↔ JST-XH pass-through at the leg joints | 2 |
 | `lever_sensor` | MT6701 angle sensor on a pedal/knee lever | 8 |
 | `motor_ctrl` | CH32V307 + dual CAN + the 24→5 V supply | 1 |
 | `output_panel` | the front panel, both audio conversions, a USB hub | 1 |

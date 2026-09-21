@@ -114,3 +114,69 @@ def heal(wp: cq.Workplane) -> cq.Workplane:
     else:
         wrapped = cq.Solid(unified)
     return cq.Workplane("XY").add(wrapped)
+
+
+# ── CABLES: octagonal prisms, not cylinders (user, 2026-09-21) ─────────────────────────
+# A round cable made of cylinders with sphere elbows is the slowest and least reliable thing
+# in the model to fuse and to check. Measured on the J7 24 V head (36 points, one loop):
+# its cylinders alone fused whole, but with the elbow spheres every tolerance came back
+# 0.19-0.31 of the cable or in loose pieces -- a sphere meeting two cylinders along a shared
+# circle is the tangent case OCCT handles worst -- and every boolean the overlap gate runs
+# against a curved face costs more than one against planes.
+#
+# So a cable is an OCTAGONAL prism per segment, ACROSS-FLATS = the cable's diameter: the real
+# round cable always fits inside it, so any error lands on the side of clearance (the corners
+# stand 8 % proud). Bends have no elbow solid at all: each segment runs on past an interior
+# corner by half its width, and the overlapping ends fill the outside of the bend with flat
+# faces. Nothing in the fuse is tangent to anything.
+import math as _math
+
+_OCT_R = 1.0 / _math.cos(_math.pi / 8)          # circumradius per unit half-across-flats
+
+
+def _oct_prism(s0, u, length, d):
+    """One octagonal prism from point s0 along unit vector u, across-flats d."""
+    ref = cq.Vector(0, 0, 1) if abs(u.z) < 0.9 else cq.Vector(1, 0, 0)
+    x = ref.cross(u).normalized()
+    plane = cq.Plane(origin=s0, xDir=x, normal=u)
+    # rotate 22.5 deg so a FLAT (not a corner) faces each principal direction: stacked lanes
+    # then sit flat against each other and against the floor of a trough
+    return (cq.Workplane(plane).transformed(rotate=(0, 0, 22.5))
+            .polygon(8, 2 * (d / 2) * _OCT_R).extrude(length).val())
+
+
+def oct_cable(pts, d: float) -> cq.Workplane:
+    """A cable through `pts` (a polyline of (x, y, z)), octagonal section, across-flats d.
+
+    The ends at the first and last point stay where they are (they are connector
+    contacts); every interior corner is filled by running the segments past it. The fuse is
+    checked BY VOLUME against the section times the path length: a failed fuse here does not
+    raise, it returns one clean solid with cable missing out of the middle (645 of 1776 mm3,
+    once), and only the volume says so."""
+    segs = []
+    for a, b in zip(pts, pts[1:]):
+        va, vb = cq.Vector(*a), cq.Vector(*b)
+        if (vb - va).Length > 1e-6:
+            segs.append((va, vb))
+    if not segs:
+        return cq.Workplane("XY")
+    r = d / 2.0
+    parts = []
+    for i, (va, vb) in enumerate(segs):
+        u = (vb - va).normalized()
+        s0 = va - u * r if i > 0 else va
+        s1 = vb + u * r if i < len(segs) - 1 else vb
+        parts.append(_oct_prism(s0, u, (s1 - s0).Length, d))
+    if len(parts) == 1:
+        return cq.Workplane("XY").add(parts[0])
+    area = 2.0 * d * d * (_math.sqrt(2.0) - 1.0)          # regular octagon, across-flats d
+    want = area * sum((vb - va).Length for va, vb in segs)
+    for tol in (None, 1e-5, 1e-4):
+        try:
+            fused = parts[0].fuse(*parts[1:], tol=tol) if tol else parts[0].fuse(*parts[1:])
+        except Exception:
+            continue
+        if fused.Solids() and fused.Volume() >= 0.9 * want:
+            return cq.Workplane("XY").add(fused.clean())
+    raise RuntimeError("oct_cable: no fuse tolerance returned a whole cable "
+                       "(%d segments, wanted >= %.1f mm3)" % (len(segs), want))
