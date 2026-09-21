@@ -13,8 +13,8 @@ routed board. That report is the handoff, not a regression.
    board**. Stock is deep too: 19,469, against S8B-XH-A's 105. brenner's leg wiring uses PH as
    well.
 3. **Single-sided**, like every board on the shared panel (`elec/fab.py`). J1 goes on the
-   magnet face; the plastic makes room for it (the magnet/board stack moved out 0.9 mm), so it
-   never cuts the housing wall.
+   magnet face. The PH stands 5.5, so it fits the existing 6.4 gap to the housing with 0.9
+   to spare: it never cuts the housing wall, and the magnet stack didn't have to move.
 4. **Trim the top**, not the bottom. The foot pedal installs the board **turned over** so J1
    points down into the bar (the wiring hides in the trough). That puts the board's top edge
    toward the player-side face, where there's 10.15 of room.
@@ -32,10 +32,10 @@ axle axis and isn't negotiable. **+X** points toward the lever (the knee side), 
 |---|---|---|---|
 | +X edge | +6.0 | **+3.0** | the foot pedal's bar-top face, with the cradle web outboard of the edge |
 | Top edge | +14.6 | **+10.1** | the turned-over pedal board's top faces the player: 10.15 of room |
-| Bottom edge | −13.4 | **−11.9** | J1's 20.0 on end + the 1.0 edge rule at both ends |
+| Bottom edge | −13.4 | **−11.8** | J1's 19.9 on end + the 1.0 edge rule at both ends |
 | −X edge | −28.0 | −28.0 | unchanged; an upper bound, so shrink it if the 5 V board allows |
-| **Outline** | 34.0 × 28.0 | **≤ 31.0 × 22.0** | |
-| **J1** | S8B-XH-A (THT) | **S8B-PH-SM4-TB** (SMT), on the **magnet face**, standing **on end** (length along Z, spec z −10.9 … +9.1), **mouth facing −X**, mouth face at x −24.95 (3.05 in from the −X edge) | |
+| **Outline** | 34.0 × 28.0 | **≤ 31.0 × 21.9** | |
+| **J1** | S8B-XH-A (THT) | **S8B-PH-SM4-TB** (SMT), on the **magnet face**, standing **on end** (length along Z, spec z −10.8 … +9.1), **mouth facing −X**, mouth face at x −24.95 (3.05 in from the −X edge) | |
 | J1 pinout | `harness.xh_trunk_pins()` | the same four nets, **in on 1–4, out on 5–8**; +V is the **5 V** lever bus | |
 | Sides | single | **single** | shared panel settings |
 
@@ -57,13 +57,13 @@ axle axis and isn't negotiable. **+X** points toward the lever (the knee side), 
 2. **Part height:** **≤ 1.75** anywhere except J1.
 3. **Magnet-cap sweep:** any part taller than 1.5 keeps its whole footprint more than **5.66**
    from the origin.
-4. **J1's zone:** its body plus the mated plug's 7.5 run past the mouth (x −32.45 … −17.25 over
-   J1's z span) stays clear of other parts.
+4. **J1's zone:** its body, its 2.6 solder tabs, and the mated plug's 3.6 run past the mouth
+   (x −28.55 … −16.35 over J1's z span) stay clear of other parts.
 
 ## Please check
 
-- **PH height:** cadkit's `PH_SIDE_H` is **RESERVED at XH's 7.0**. JST's ePH drawing couldn't
-  be read. The housing leaves 7.3 for it. If the real S8B-PH-SM4-TB is shorter, tell branner:
-  the 0.9 magnet stand-off can then come back out.
+- **J1's dimensions** are from JST's ePH datasheet, **side-entry** sections: p.4 (19.9 long,
+  5.5 tall, 6.0 deep + 2.6 tabs), p.2 (mated 9.6 × 5.5), p.3 (PHR-8: 6.85 × 4.5). Note that
+  B4B-PH-SM4-TB (6.6 tall, 5.0 deep) is the *top-entry* part on the same page, not this one.
 - **Harness side:** PHR-8 housings, SPH-002T-P0.5S contacts and a PH crimp tool. Stock for
   those hasn't been checked yet.
