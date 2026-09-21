@@ -47,8 +47,8 @@ from cadkit.fasteners import (M4_SHAFT_CLR_D, M4_INSERT_D,
                        M4_INSERT_L, M4_SCREW_L, M2, M4, cut_insert_bore,
                        cut_selftap,
                        cut_m4_pocket, seated_m4_insert, cut_m4_boss, m4_boss_insert)
-from cadkit.pcb import (PCB_T as _PCB_T, jst_xh_header, xh_length, XH_PITCH,
-                        XH_BODY_W, XH_ROW_OFF, XH_POST_TAIL)
+from cadkit.pcb import (PCB_T as _PCB_T, jst_xh_side_header, xh_side_length,
+                        XH_SIDE_H, XH_SIDE_D, XH_POST_TAIL)
 from cadkit.joinery import PrintSpec, joint   # cadkit's one joinery entrypoint
 from cadkit.supports import printable_bore
 # the M4 insert pocket/boss helpers now live in cadkit/fasteners.py (shared); keep the old local names:
@@ -130,7 +130,27 @@ AIR_GAP = 1.5                       # magnet face -> the IC's OWN TOP SURFACE. T
                                     # 0.5 / 1.0 / 2.0 min/typ/max; recommended magnet Ø6 x
                                     # 2.5 — EXACTLY ours, so this is the nominal
                                     # configuration the part was characterised in.
-PCB_WZ = 21.4                       # ONE board for every lever. 16.0 until the real circuit
+# ── THE SENSOR BOARD AS SPECIFIED FOR ITS RE-SPIN (user, 2026-09-21; docs/lever-sensor-respin.md).
+# SINGLE-SIDED, like every board on the shared panel (elec/fab.py): J1 stays the routed
+# S8B-XH-A side-entry on the MAGNET face at the -X edge, standing on end. What changes is the
+# outline, trimmed from the routed 34 x 28 to what the three housings take: 3.0 off the +X side
+# (the pedal's +X face) and the TOP down to 10.1 over the chip (user chose trimming the top,
+# 2026-09-21): the pedal installs the board TURNED OVER -- J1 down into the bar -- which puts
+# the TOP edge toward the player-side face, 10.15 from the axle. The bottom then grows to 14.3
+# so J1's 22.4 still fits on end, and the horizontal lever's floor drops to take it (HOUS_Z0),
+# while its axle stays where it is.
+CHIP_DROP  = 10.1                   # chip centre below the board's TOP edge (routed: 14.6)
+CEIL_CLR = 0.4                      # board top edge -> the instrument's underside. THE
+                                    # INSTRUMENT IS THE BOARD'S +Z RETAINER (user), which is
+                                    # why there is no retaining screw: the board goes in with
+                                    # the lever OFF the guitar, and the chassis becomes its
+                                    # lid the moment the lever slides into the ribs. 0.4 is
+                                    # the slide clearance plus the board's own height
+                                    # tolerance. The board still RESTS on the cradle floor, so
+                                    # this is a LIFT STOP, not a datum.
+PCB_WZ = 24.4                       # 10.1 up + 14.3 down: J1's 22.4 + the 1.0 edge rule twice.
+                                    # History: 21.4 before the XH; the notes below are from
+                                    # the PH-era layout. ONE board for every lever. 16.0 until the real circuit
                                     # was laid out (elec/lever_sensor.py): 29 parts and an
                                     # 8-way trunk connector do not fit 16, and the 8-way is
                                     # what lets the bus-B tee disappear into this board.
@@ -534,7 +554,10 @@ MORT_Y0   = -3 * D.BEAD           # -2.4 mortise -Y mouth (opens outboard of the
 # band's outer edge is the line x + z = (seat radius + wall)·√2, so the top sits where it
 # crosses the stem wall (half-width _JW/4). The whole lever drops by the difference.
 _SEAT_ROOF_Z = (BRG_SEAT_D / 2 + BRG_WALL) * math.sqrt(2.0) - _JW / 4
-HOUS_TOP_Z = max(BODY_Z, BRG_OD / 2 + BRG_WALL, _SEAT_ROOF_Z)
+HOUS_TOP_Z = max(BODY_Z, BRG_OD / 2 + BRG_WALL, _SEAT_ROOF_Z,
+                 CHIP_DROP + CEIL_CLR)      # ...and the sensor board, whose top edge stands
+                                            # CHIP_DROP over the axle and must stay CEIL_CLR
+                                            # under the chassis (10.5 -- not binding).
 # X is SNAPPED AGAIN once the tenons are known (see _TEN_PHASE, below the housing block): the
 # TENONS are what must land on the grid, not the housing's origin, and the tenon set carries a
 # phase now. This first value is the nominal; nothing between here and there reads it but
@@ -680,18 +703,17 @@ def sensor_board():
 
 
 def sensor_connector():
-    """J1 as SPECIFIED for the next board spin (user, 2026-09-21): B8B-XH-A, the top-entry
-    8-way XH the CAN tee already uses for its trunk, on the board's BACK (+Y) face, MATED.
-    The plug comes straight out +Y, away from the magnet and the housing, so nothing on
-    the magnet side stands taller than the chip region any more and the housing's +Y
-    cheek is never cut. cadkit's header is built pin row along X, body across Y, height
-    +Z off the board face: -90 about X turns height to +Y and puts the body's short
-    (XH_ROW_OFF) side toward +Z, i.e. the pin row toward the board's TOP edge. Its post
-    TAILS come back through the board and stand XH_POST_TAIL - PCB_T proud of the
-    magnet-side face -- which is why the row sits ABOVE the axle (see CONN_ROW_Z)."""
-    return (jst_xh_header(CONN_N, mated=True)
-            .rotate((0, 0, 0), (1, 0, 0), -90)
-            .translate((CONN_XC, PCB_Y + PCB_T, CONN_ROW_Z)))
+    """J1 as ROUTED and as SPECIFIED (docs/lever-sensor-respin.md): S8B-XH-A, the 8-way
+    side-entry XH the CAN tee also carries, THROUGH-HOLE, on the MAGNET face (the board is
+    single-sided, like every board on the shared panel). It stands on end at the -X edge,
+    mouth facing -X, MATED so the plug's run is reserved. cadkit builds it row along X,
+    mouth at y=0 with the body +Y and the plug -Y, height +Z off the board: this maps its
+    X to -Z (length vertical), Y to +X (mouth -> -X) and Z to -Y (off the magnet face)."""
+    c = jst_xh_side_header(CONN_N, smt=False, mated=True)
+    c = c.rotate((0, 0, 0), (0, 0, 1), 90)       # X->Y, Y->-X
+    c = c.rotate((0, 0, 0), (1, 0, 0), -90)      # Y->-Z, Z->Y ... (checked by the bbox below)
+    c = c.rotate((0, 0, 0), (0, 0, 1), 180)
+    return c.translate((CONN_MOUTH_X, PCB_Y, CONN_ZC))
 
 
 def _install(s, z_bot, z_top, flip=None):
@@ -743,6 +765,8 @@ def _cradle(w, z_bot=None, z_top=None, x_max=None, flip=None):
     z_top = HOUS_Z1 if z_top is None else z_top
     pcb_z0, pcb_z1 = board_z(z_bot, z_top, flip)
     bx0, bx1 = board_x(z_bot, z_top, flip)   # installed edges — the flip swaps them
+    conn_zc = conn_z(z_bot, z_top, flip)
+    conn_mx = conn_mouth_x(z_bot, z_top, flip)
     _sx = -1.0 if board_flip(z_bot, z_top, flip) else 1.0
     x_max = CR_X1_MAX if x_max is None else x_max
     # The BOARD ITSELF must fit the housing's +X face, not just its groove web.
@@ -849,10 +873,20 @@ def _cradle(w, z_bot=None, z_top=None, x_max=None, flip=None):
     w = w.cut(box_at(slot1 - slot0, CR_SLOT_Y1 - CR_SLOT_Y0, (z_top + 2.0) - pcb_z0,
                      x=(slot0 + slot1) / 2, y=(CR_SLOT_Y0 + CR_SLOT_Y1) / 2,
                      z=(pcb_z0 + z_top + 2.0) / 2))
-    # (NO CONNECTOR RELIEF any more: J1 is on the board's BACK face and its plug exits +Y,
-    # so the cheek and the -X web stay whole -- see sensor_connector. The relief used to
-    # cut 0.85 into the housing's +Y cheek, through the 1.6 wall beside the half-stop
-    # pocket.)
+    # ── THE PLUG'S TUNNEL. J1 lives on the magnet face and its plug runs -X in the gap
+    # between the board and the housing, so the -X web needs a way through, open out the
+    # TOP (the board is lowered in, and a lid over it would be a flat overhang). It stops
+    # at the housing's +Y face: the magnet stand-off (AXLE_LAND_T) makes that gap
+    # XH_SIDE_H + CONN_GAP, so the tunnel NEVER cuts the cheek -- the old relief took 0.85
+    # of the 1.6 wall beside the half-stop pocket (user).
+    _cy0 = max(PCB_Y - XH_SIDE_H - CONN_POCKET, CR_Y0)
+    _cz0 = conn_zc - CONN_L / 2 - CONN_POCKET
+    _cx0 = conn_mx - _sx * (2 * CONN_PLUG_RUN + 3.0)   # the plug's full unplug stroke
+    _cx1 = conn_mx + _sx * (XH_SIDE_D + CONN_POCKET)
+    _cz1 = z_top + 1.0
+    w = w.cut(box_at(abs(_cx1 - _cx0), PCB_Y - _cy0, _cz1 - _cz0,
+                     x=(_cx0 + _cx1) / 2, y=(_cy0 + PCB_Y) / 2,
+                     z=(_cz0 + _cz1) / 2))
     # SOCKET CONE — reserved so kl_magnet_cap can be driven with the cradle in
     # place. Cut rather than merely avoided: it is a guarantee, not an intention,
     # and anything a later round adds in this zone now gets removed instead of
@@ -945,8 +979,10 @@ HOUS_HW = max(abs(HS_YC) + HS_CART_WY / 2 + HS_CLR + HS_HOUS_WALL,
 #           face, so the old 1.0 "skin" was only an empty recess over each bearing.
 HOUS_Z1 = HOUS_TOP_Z                                     # +12.0, the seat roof (was 9.6; flush: BODY_Z
 #           = HUB_TOP + 2.4 — the designed 2.4 stands between lever and body)
-HOUS_Z0 = (HS_Z - HS_PISTON_WZ / 2) + _FEEL_DZ - HS_CLR - HS_HOUS_WALL  # -14.8
-#           ^ = HS_FLOOR_Z (defined below, after the piston) placed
+HOUS_Z0 = min((HS_Z - HS_PISTON_WZ / 2) + _FEEL_DZ - HS_CLR - HS_HOUS_WALL,   # the cartridges
+              (CHIP_DROP - PCB_WZ) - 4 * D.NOZZLE_D)                      # the board + its floor
+#           ^ = HS_FLOOR_Z placed, or PCB_Z0 - CR_FLOOR_T (both defined below). The BOARD binds
+#           since the re-spin spec (14.3 below the axle + the 3.2 floor = -17.5, vs -16.5).
 BRG_Y0 = HOUS_HW - BRG_W            # bearing INNER faces at ±12.45: the bearings sit FLUSH
                                     # with the housing's outer faces (user, 2026-09-21: full
                                     # seat engagement right to the face, nothing recessed).
@@ -1025,13 +1061,20 @@ TEN_ROOT = D.MIN_WALL               # 0.8 root below the mating face — volumet
 # the Ø12.8 flange behind it stands AXLE_LAND_T clear of the shield. The air gap is unaffected:
 # PCB_Y = MAG_Y1 + AIR_GAP + CHIP_H tracks the magnet, so the whole stack moves together.
 AXLE_LAND_D = 12 * D.BEAD           # 9.6 inner-race land
-AXLE_LAND_T = D.MIN_WALL            # 0.8 land height = the flange's clearance over the shield
+# J1 stands XH_SIDE_H (7.0) off the magnet face, and the magnet face sits a fixed stack
+# (land + pocket floor + magnet + air gap + chip) off the housing's +Y face -- 6.4 with a
+# one-bead land. So the LAND grows until that stack clears J1 by CONN_GAP: the magnet, and
+# with it the board, stands 0.9 further out instead of J1 cutting the housing wall (user:
+# the old relief took 0.85 out of the 1.6 beside the half-stop pocket).
+MAG_FLANGE_T    = 0.8                           # pocket floor under the magnet
+CONN_GAP = 0.3                      # J1 body -> housing face
+AXLE_LAND_T = max(D.MIN_WALL,
+                  XH_SIDE_H + CONN_GAP - (MAG_FLANGE_T + MAG_T + AIR_GAP + CHIP_H))   # 1.7
 AXLE_SHOULDER_Y = HOUS_HW + AXLE_LAND_T         # flange face
 AXLE_FLANGE_D   = 16 * D.BEAD       # 12.8 flange Ø (what seats on the rib; was 9.6 over the Ø5 journal —
                                     # the rib's mean Ø is this - 1.5 and its inner edge has to stay outside
                                     # the Ø9 axle way). NOT the thread
                                     # major any more — the hex cap forced those apart
-MAG_FLANGE_T    = 0.8                           # pocket floor under the magnet
 MAG_Y0  = AXLE_SHOULDER_Y + MAG_FLANGE_T        # 15.55: magnet seat
 MAG_Y1  = MAG_Y0 + MAG_T                        # 18.05: magnet face -> the air gap
 MAG_POCKET_D  = MAG_D + 0.2                     # 6.2 slip fit for the Ø6 disc
@@ -1165,7 +1208,8 @@ PCB_X1  =  3.0                                  # +X edge: as close to the CHIP 
                                                 # no longer binds because the +X groove carrier
                                                 # is now confined BELOW the bore (see CR_X1_MAX
                                                 # and _cradle) instead of running full height.
-PCB_X0  = -25.0                                 # -X edge: was -14.0, CONNECTOR-limited. It is now
+PCB_X0  = -28.0                                 # -X edge: the routed board's (chip 28.0 in). Was -25.
+                                                # History: was -14.0, CONNECTOR-limited. It is now
                                                 # CIRCUIT-limited, and the board had to grow.
                                                 #
                                                 # The board was modelled as a sensor plus a
@@ -1195,27 +1239,9 @@ PCB_X0  = -25.0                                 # -X edge: was -14.0, CONNECTOR-
                                                 # orientation. Checked against all 4 in-plane
                                                 # orientations of all 3 housings.
 PCB_WX  = PCB_X1 - PCB_X0                       # 28.0
-CEIL_CLR = 0.4                      # board top edge -> the instrument's underside. THE
-                                    # INSTRUMENT IS THE BOARD'S +Z RETAINER (user), which is
-                                    # why there is no retaining screw: the board goes in with
-                                    # the lever OFF the guitar, and the chassis becomes its
-                                    # lid the moment the lever slides into the ribs. 0.4 is
-                                    # the slide clearance plus the board's own height
-                                    # tolerance. The board still RESTS on the cradle floor, so
-                                    # this is a LIFT STOP, not a datum — it costs the chip's
-                                    # position nothing. PROBED against the built chassis at
-                                    # the board's own Y: the ceiling is real over x -9..-1.8
-                                    # and 1.8..9.0, the gap being only the rib's own mortise
-                                    # slot, which the rigid board simply bridges.
 CR_FLOOR_T = 4 * D.NOZZLE_D         # 3.2 (was 2.8 = 3.5 beads)                    # cradle floor under the board
 CONN_EDGE  = 1.0                    # connector body -> board's bottom edge (JLCPCB's
                                     # component-to-edge rule; the TOP end stays flush)
-CHIP_DROP  = 11.3                   # chip below the board's TOP edge. Derived from the
-                                    # LAID-OUT board: 22.0 tall with the sensing centre
-                                    # 0.3 BELOW the board's own centre, which spends the
-                                    # 22.55 window as 11.30 up / 10.70 down -- 0.30 under the
-                                    # lever's ceiling and 0.25 over the pedal's floor.
-
 # THE BOARD IS ONE DESIGN, FIXED (user: "the boards should be fully identical").
 # It is not derived from the housing any more: the chip has to sit on the axle axis,
 # the outline hangs off the chip, so the board's Z span is a property of the BOARD.
@@ -1294,6 +1320,8 @@ def sensor_hardware():
     Single-sided by design — one assembly setup."""
     out = []
     for n, _lcsc, lx, wz, hy, cx, cz in SENSOR_BOM:
+        if n in RESPIN_MOVES:        # off the re-spin spec's outline: the re-layout moves it
+            continue
         out.append((n, box_at(lx, hy, wz, x=cx, y=PCB_Y - hy / 2, z=cz)))
     return out
 
@@ -1351,6 +1379,15 @@ def board_x(z_bot, z_top, flip=None):
     return (-PCB_X1, -PCB_X0) if board_flip(z_bot, z_top, flip) else (PCB_X0, PCB_X1)
 
 
+def conn_z(z_bot, z_top, flip=None):
+    """J1's centre height as installed (the flip turns it over)."""
+    return -CONN_ZC if board_flip(z_bot, z_top, flip) else CONN_ZC
+
+
+def conn_mouth_x(z_bot, z_top, flip=None):
+    return -CONN_MOUTH_X if board_flip(z_bot, z_top, flip) else CONN_MOUTH_X
+
+
 PCB_TOP = PCB_Z1
 def _cr_faces(edge):
     """(web inner, groove wall, web outer) X for a board edge — the groove is the
@@ -1378,37 +1415,24 @@ CR_Z1    = HOUS_Z1                              # web tops FLUSH with the housin
 # FOUR circuits because that is what CAN costs us: black GND / red 24 V / yellow H
 # / green L. One connector, not two — the bus is daisy-chained by the TEE boards
 # and every device hangs off its tee by one short drop.
-# ── J1, the CAN trunk connector: SPEC for the next board spin (user, 2026-09-21) ─────────
-# The routed board (elec/geom/lever_sensor.geom.json, 34 x 28) put an S8B-XH-A side-entry on
-# the MAGNET face. That face is 6.4 from the housing's +Y cheek and the XH stands 7.0, so the
-# cradle had to relieve the cheek -- through the 1.6 wall beside the half-stop pocket (user
-# caught it) -- and the board itself outgrew every housing's window. The CAD here is therefore
-# the SPEC, not the routed board, and elec/cad_geom_check will flag the difference until the
-# board is re-spun to it:
-#   * part: B8B-XH-A -- top-entry, 8-way, the CAN tee's own trunk connector (same crimps, same
-#     8-way housing, same pinout as now: harness.xh_trunk_pins()).
-#   * side: the BACK (+Y) face; the plug exits +Y. On the magnet face only its pin row remains.
-#   * where: pin row ALONG X in the board's TOP band. The board drops into its slot past the
-#     spinning magnet cap, and the tails stand 1.8 proud of the magnet face: anything BELOW the
-#     axle passes the cap on the way down, anything above it never does.
-#   * outline unchanged from the pre-route envelope (PCB_X0/X1/Z0/Z1), which was checked
-#     against all four in-plane orientations of all three housings.
-CONN_N     = 8
-CONN_PART  = "B8B-XH-A"
-CONN_L     = xh_length(CONN_N)                  # 22.4 body length (along X)
-CONN_ROW_Z = PCB_Z1 - CONN_EDGE - XH_ROW_OFF    # 8.3 pin row: the body's short side toward the
-                                                #   top edge, CONN_EDGE (JLCPCB 1.0) clear of it
-# X: as far -X as the groove band lets the body go -- the -X web's back flank stands behind the
-# board's outermost CR_EDGE_KEEP -- plus a slip clearance. Its +X end then lands behind the chip
-# region, which is free on the BACK face.
-CONN_XC    = PCB_X0 + CR_EDGE_KEEP + 0.3 + CONN_L / 2
-CONN_PAD_R = 1.0                                # pad keep-out round each post on the magnet face
-# the pin row must never come inside the cap's sweep (it does not pass the cap on install, being
-# above the axle, but it must also clear it at REST)
-assert CONN_ROW_Z - CONN_PAD_R > CAP_SWEEP_R, (
-    f"J1's pin row at z {CONN_ROW_Z:.2f} comes inside the magnet cap's {CAP_SWEEP_R} sweep")
-assert CONN_XC + CONN_L / 2 <= PCB_X1 - CR_EDGE_KEEP and CONN_ROW_Z + XH_ROW_OFF <= PCB_Z1, (
-    "J1 as specified does not fit the board outline")
+# ── J1, the CAN trunk connector (routed, and unchanged by the re-spin spec) ─────────────────
+# S8B-XH-A, THROUGH-HOLE side entry, on the MAGNET face: the board stays SINGLE-SIDED like
+# every other board on the shared panel (user, 2026-09-21 -- the back-face version was
+# withdrawn for exactly that). It stands on end at the -X edge, mouth -X; its plug runs -X in
+# the gap between the board and the housing, through a tunnel in the -X web. That gap is now
+# XH_SIDE_H + CONN_GAP (AXLE_LAND_T buys it), so the tunnel never reaches the housing's cheek.
+# Its post TAILS come out of the BACK face, away from the magnet cap entirely.
+CONN_N       = 8
+CONN_PART    = "S8B-XH-A"
+CONN_L       = xh_side_length(CONN_N, smt=False)      # 22.4, vertical
+CONN_MOUTH_X = PCB_X0 + 1.65                          # routed: the fab body's -X face, 1.65 in
+CONN_ZC      = (PCB_Z0 + PCB_Z1) / 2                  # centred on the board's height
+CONN_POCKET  = 0.3                  # clearance around it in the web tunnel
+CONN_PLUG_RUN = 7.5                 # mated XHP reach past the mouth (cadkit's envelope)
+assert PCB_Z0 + CONN_EDGE <= CONN_ZC - CONN_L / 2 and CONN_ZC + CONN_L / 2 <= PCB_Z1 - CONN_EDGE, (
+    "J1 standing on end does not fit the board's height with the 1.0 edge rule")
+assert PCB_Y - XH_SIDE_H - CONN_POCKET >= HOUS_HW - 1e-6, (
+    "J1's tunnel would cut the housing's +Y cheek -- the magnet stand-off is too small")
 CR_PLINTH_Z1 = -SOCK_R              # -7.0: front plinth top = the driver bore's floor
 # (the swept-arm relief _cam_swept — a union of rotated hub/arm copies — is
 #  PULLED for now (user: no curved geometry around the axle; keep it simple,
@@ -1420,25 +1444,25 @@ CR_PLINTH_Z1 = -SOCK_R              # -7.0: front plinth top = the driver bore's
 # real designators, so the two exemptions below key off this instead.
 _SENSOR_REF = "U4"
 def _conn_keepout():
-    """(x0, x1, z0, z1) J1 forbids on the MAGNET face: only its row of post pads, the body
-    being on the back. Parts of the pre-route SENSOR_BOM layout that land in it are a
-    handoff item (CONN_PAD_CONFLICTS), not an error in this file: that table predates the
-    routed board, which the re-spin replaces anyway."""
-    half = XH_PITCH * (CONN_N - 1) / 2
-    return (CONN_XC - half - CONN_PAD_R, CONN_XC + half + CONN_PAD_R,
-            CONN_ROW_Z - CONN_PAD_R, CONN_ROW_Z + CONN_PAD_R)
+    """(x0, x1, z0, z1) J1 forbids on the magnet face: its body AND the mated plug's run.
+    Parts of the pre-route SENSOR_BOM layout that land in it are a handoff item
+    (CONN_PAD_CONFLICTS), not an error here: that table predates the routed board."""
+    return (CONN_MOUTH_X - CONN_PLUG_RUN, CONN_MOUTH_X + XH_SIDE_D,
+            CONN_ZC - CONN_L / 2, CONN_ZC + CONN_L / 2)
 
 
 CONN_PAD_CONFLICTS = []
+RESPIN_MOVES = {}                   # pre-route part -> why the re-spin must move it
 for _n, _lcsc, _lx, _wz, _hy, _cx, _cz in SENSOR_BOM:
     _x0, _x1 = _cx - _lx / 2, _cx + _lx / 2
     _z0, _z1 = _cz - _wz / 2, _cz + _wz / 2
-    assert PCB_Z0 <= _z0 and _z1 <= PCB_Z1, f"{_n} hangs off the board in Z"
-    if _n != _SENSOR_REF:
-        # the sensor is the one part allowed into the groove band: it is 0.80 tall
-        # and its position is FIXED on the axle axis, so the outline is drawn round it
-        assert PCB_X0 + CR_EDGE_KEEP <= _x0 and _x1 <= PCB_X1 - CR_EDGE_KEEP, (
-            f"{_n} at x {_x0:.2f}..{_x1:.2f} intrudes on the {CR_EDGE_KEEP} groove band")
+    # The table is the PRE-ROUTE layout, and the outline is now the RE-SPIN SPEC, so a part
+    # that falls off it or into a groove band is a handoff item (RESPIN_MOVES), not an error.
+    # It is left out of the drawn board (sensor_hardware) rather than drawn hanging in air.
+    if not (PCB_Z0 <= _z0 and _z1 <= PCB_Z1):
+        RESPIN_MOVES[_n] = "off the spec outline in Z"
+    elif _n != _SENSOR_REF and not (PCB_X0 + CR_EDGE_KEEP <= _x0 and _x1 <= PCB_X1 - CR_EDGE_KEEP):
+        RESPIN_MOVES[_n] = f"in the {CR_EDGE_KEEP} groove band / off the outline in X"
     if _hy > CAP_CLR_H:
         # the board is installed by dropping it PAST the rotating magnet cap, so a part
         # deeper than the gap must clear the cap's sweep — measured as the true distance
