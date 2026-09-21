@@ -134,9 +134,12 @@ from .chassis import WT_LANE_Y as CH_WT_LANE_Y, WT_ZF as CH_WT_ZF, WT_H as CH_WT
 from .chassis import WT_X1 as CH_WT_X1, WT_RUNS as CH_WT_RUNS
 from . import motor_bank as MB                          # back_y: where each motor's pigtail leaves
 from .motor_bank import FLOOR_TOP as _RIB_TOP           # -65.15 (rib tops = above = rib-free)
-RAIL_INNER_Y = _Y_LO + _RAIL_T / 2                       # -128.75: -Y rail inner face
-RAIL_Y = RAIL_INNER_Y + 4.5                              # the old floor-level corridor, which
-                                                         # only bus B still uses at the keyhead
+RAIL_INNER_Y = _Y_LO + _RAIL_T / 2                       # -131.55: -Y rail inner face
+# the old floor-level corridor, which only bus B still uses at the keyhead. Held where it was
+# (-124.25) when the body widened for string 10's pigtail (chassis.RAIL_GAP): nothing on it
+# wanted to move, and following the wall out put bus B across the Pi link's riser.
+from .chassis import RAIL_GAP as _RAIL_GAP
+RAIL_Y = RAIL_INNER_Y + 4.5 + (_RAIL_GAP - 2.0)
 TEE_Y  = RAIL_INNER_Y + 8.0                              # tee-board centre (14mm-deep board clears wall)
 # ── THE -Y CORRIDOR IS THE WIRING TROUGH NOW (chassis.WT_*), ABOVE THE MOTORS ──────────
 # It used to be a pocket cut into the rail below the motor tops; the user moved it OUT of
@@ -167,10 +170,7 @@ assert CH_WT_LANE_Y + _TRUNK_OD / 2 <= MB.HARNESS_Y1, (
     % (CH_WT_LANE_Y + _TRUNK_OD / 2, MB.HARNESS_Y1))
 HDR_Z = -54.0                                            # lifted tee header top (wire entry z)
 
-_M9X = D.motor_pos(9)[0]
-M9_X0, M9_X1 = _M9X - D.MOTOR_SQ / 2 - 2.0, _M9X + D.MOTOR_SQ / 2 + 2.0
-CHAN_Y = CH_WT_LANE_Y                    # -126.35: inside the trough
-CUTOUT_Y = RAIL_INNER_Y - 1.25           # motor 9's pigtail lies in the rail notch itself
+CHAN_Y = CH_WT_LANE_Y                    # inside the trough
 
 
 def _rail_pts(x0, x1, z):
@@ -699,19 +699,32 @@ def build_wires():
         if on_motor(i):
             dx, dy, dz = dropA[i]
             room = back - RAIL_INNER_Y                 # from the motor's back face to the rail
-            if room < WIRE_OD["motor_pigtail"] + 2.0:
-                # STRING 10's back is 2.0 off the rail -- no room to climb there. Its cable lies
-                # in the rail NOTCH (which exists for exactly this), runs east until it is past
-                # the motor, and only then climbs to the tee's mouth height and comes back over
-                # the motor's top. Under the magnetic pickup the whole way.
-                _ex = mx + D.MOTOR_SQ / 2 + 4.0
-                _ly = dy - (MB.STAGGER + 4.0)      # clear of this motor's own +X post band
-                out.append((f"motor_pigtail_{i}", _wire([
-                    (mx, back, mz), (mx, back - 1.5, mz), (_ex, back - 1.5, mz),
-                    (_ex, _ly, mz), (_ex, _ly, dz), (dx, _ly, dz), (dx, dy, dz)],
-                    WIRE_OD["motor_pigtail"])))
-                continue
             stand = MB.BACK_T + MB.MOTOR_CLR + 2.0     # clear of the bay's back wall
+            # STRING 10's bay has no back wall -- the harness corridor takes it, and the rail
+            # is right there -- so its pigtail climbs hugging the motor's back instead, in the
+            # chassis.RAIL_GAP left for exactly this: 0.5 off the rail. (It used to lie in a
+            # notch cut into the rail and run east round the motor; the user had the body
+            # widened so the wall could stay whole.)
+            _od = WIRE_OD["motor_pigtail"]
+            stand = min(stand, room - _od / 2.0 - 0.5)
+            assert stand >= MB.MOTOR_CLR + _od / 2.0, (
+                "motor %d: %.2f between its back and the -Y rail -- no room for its Ø%.1f "
+                "pigtail to climb (chassis.RAIL_GAP)" % (i, room, _od))
+            _yc = back - stand
+            if _yc - _od / 2.0 < CHAN_Y + 2.5:
+                # ...and it climbs RIGHT UNDER THE TROUGH'S LANES, which carry on over this
+                # motor at CHAN_Y where the trough is left out. Its tee's mouth is at feed 2's
+                # height, so rising to it and turning east ran 21 mm along inside that cable.
+                # So it crosses onto the motor at the motor's own top, UNDER the lanes, and
+                # only rises to the mouth once it is +Y of them.
+                _zc = D.MOTOR_BELT_Z + D.MOTOR_SQ / 2 + _od / 2.0 + 0.35
+                assert _zc + _od / 2.0 < LANE_PWR2 - PWR_OFF - 0.9 - 0.3, (
+                    "motor %d's pigtail cannot pass under the trough lanes" % i)
+                _yi = CHAN_Y + 2.5 + _od / 2.0 + 1.0
+                out.append((f"motor_pigtail_{i}", _wire([
+                    (mx, back, mz), (mx, _yc, mz), (mx, _yc, _zc), (mx, _yi, _zc),
+                    (mx, _yi, dz), (dx, _yi, dz), (dx, dy, dz)], _od)))
+                continue
             out.append((f"motor_pigtail_{i}", _wire([
                 (mx, back, mz), (mx, back - stand, mz), (mx, back - stand, dz),
                 (dx, back - stand, dz), (dx, dy, dz)],
