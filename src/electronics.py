@@ -455,7 +455,8 @@ USB_Y = TS_Y - OP_TS_XY[1] + OP_J["J1"][1]
 # 25.06 -- so the wires leaving it were drawn through the wall. Anything that needs the
 # board's world position reads this.
 def op_origin():
-    """World (x, y, z) of the board's -X -Y corner at its underside."""
+    """World (x, y, z) the board solid is translated BY: its CENTRE in x and y, and
+    its underside in z (output_panel_pcb is modelled centred on the origin)."""
     return (JACK_WALL_X - OP_PANEL_CLR - OP_BOARD_X / 2, TS_Y - OP_TS_XY[1],
             JACK_Z - _PCB_T - OP_TS_AXIS_H)
 
