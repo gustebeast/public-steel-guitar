@@ -132,8 +132,11 @@ GLOBAL_OK = {
     frozenset({"leg_body_stub", "keyhead_endplate"}),
     frozenset({"leg_body_stub", "bridge_endplate"}),
     # the electronics tray's snap nubs/fingers bite their boards by design
-    frozenset({"electronics_tray", "pi5"}),
-    frozenset({"electronics_tray", "motor_ctrl"}),   # teensy_ifc is deleted; the
+    # the tray is gone -- both boards now rest on cradles fused into the keyhead
+    # endplate (electronics.keyhead_cradles), so the designed board-on-pads contact
+    # is against that part instead.
+    frozenset({"keyhead_endplate", "pi5"}),
+    frozenset({"keyhead_endplate", "motor_ctrl"}),   # teensy_ifc is deleted; the
                                                     # merged controller took its place
     # (tee_pcb <-> motor is GONE, 2026-09-14: it was written for a corner graze and had grown
     # into 1621 mm3 of board buried in motor 9. The tees now sit ON the motors, lapping them

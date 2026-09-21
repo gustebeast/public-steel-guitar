@@ -160,7 +160,6 @@ PARTS = {
     "pedal_lever":     (lambda: heal(__import__("src.foot_pedal", fromlist=["e"]).pedal_lever()), "pctg/pedal_lever.step", "PCTG — FOOT PEDAL lever ×3 (initial design): hub on the axle, leg carrying the return lobe at 13.2 (sized so the 20° throw gives the SAME 4.51 spring stroke as the knee levers — which is what lets the half stop transfer for free), a 90 mm arm running out to the player and the pedal board across its end (30.8 mm of travel, ~1.6→3 N at the board)"),
     "pedal_detent_nub": (lambda: heal(_PB("nub_part")), "tpu/pedal_detent_nub.step", "TPU — detent nub ×1 (Ø4×4): presses into the bar top as the LID lock"),
     # (pedal_bar_foot merged into the shared leg_foot SKU — one look ×4)
-    "electronics_tray": (lambda: heal(__import__("src.electronics", fromlist=["e"]).electronics_tray(standing=False)), "pctg/electronics_tray.step", "PCTG — compute-bay tray, exported FLAT (its print pose); in the instrument it STANDS against the keyhead endplate's inboard face (mount pending the keyhead round). Board support posts for Teensy+shield, Pi 5, ADC stack, buck, CAN interface"),
 }
 # Deck panels: each is a (base, colour) PAIR — same origin, print as ONE object
 # with two filaments (the ha-keypad keycaps/keycaps_text pattern). The base is
@@ -799,8 +798,10 @@ def _electronics_components():
     from . import electronics as EL
     from . import wiring as WR
     from . import top_plate as TP
-    out = [("electronics_tray", EL.electronics_tray()),
-           ("pi5", EL.pi5()),
+    # electronics_tray is gone: the Pi's and the motor controller's mounts are cradles
+    # fused into keyhead_endplate now (see electronics.keyhead_cradles). One less printed
+    # part, and the boards gained retention they never had on the tray's bare posts.
+    out = [("pi5", EL.pi5()),
            ("motor_ctrl", EL.motor_ctrl()),
            ("output_panel", EL.output_panel()),
            ("oled", EL.oled()), ("joystick", EL.joystick())]
@@ -1139,7 +1140,7 @@ BODY_WORK_PARTS = SCREW_ROW_PARTS + (
     # parts while this branch deleted teensy_/adc_stack/buck/analog_frontend and the
     # three free-standing panel jacks (they are PCB parts on the output+panel board
     # now). Keep main's additions, keep the deletions.
-    "electronics_tray", "pi5", "motor_ctrl", "tee_", "wire_",
+    "pi5", "motor_ctrl", "tee_", "wire_",
     "output_panel", "joystick", "oled",
     "body_adapter", "lock_pin_", "adjust_", "fixed_", "bar_latch_", "leg_latch_",
     "top_plate", "pickup", "optical")   # the deck piece too: its skirt sets the bay's headroom
@@ -1372,7 +1373,7 @@ _COLORS = {
     "half_stop_guide_post":               (0.66, 0.46, 0.08),
     "retention_setscrew":                 (0.40, 0.40, 0.43),   # -Y lock screw
     # electronics bay (dummies) + panel jacks
-    "electronics_tray": (0.30, 0.36, 0.32),  # printed tray
+
     "pi5":             (0.05, 0.35, 0.15),   # PCB green
     "output_panel":    (0.45, 0.30, 0.45),   # output + panel board (VBUS broken,
                                              # DAC + true-bypass relay + the TS jack)
