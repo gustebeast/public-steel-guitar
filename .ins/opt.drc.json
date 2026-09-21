@@ -1,0 +1,497 @@
+{
+    "$schema": "https://schemas.kicad.org/drc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-09-21T11:28:57",
+    "ignored_checks": [
+        {
+            "description": "Footprint has no courtyard defined",
+            "key": "missing_courtyard"
+        },
+        {
+            "description": "Track endpoint not centered on via",
+            "key": "track_not_centered_on_via"
+        },
+        {
+            "description": "Tuning profile track geometries",
+            "key": "tuning_profile_track_geometries"
+        },
+        {
+            "description": "Footprint doesn't match symbol's footprint filters",
+            "key": "footprint_filters_mismatch"
+        },
+        {
+            "description": "Footprint component type doesn't match footprint pads",
+            "key": "footprint_type_mismatch"
+        }
+    ],
+    "included_severities": [
+        "error",
+        "warning"
+    ],
+    "kicad_version": "10.0.6",
+    "schematic_parity": [],
+    "source": "optical.kicad_pcb",
+    "unconnected_items": [],
+    "violations": [
+        {
+            "description": "Courtyards overlap",
+            "items": [
+                {
+                    "description": "Footprint PD1A",
+                    "pos": {
+                        "x": 79.7125,
+                        "y": 27.9496
+                    },
+                    "uuid": "06b53aae-0652-5dd3-9b90-84f0140ab25b"
+                },
+                {
+                    "description": "Footprint D1",
+                    "pos": {
+                        "x": 79.7125,
+                        "y": 29.5496
+                    },
+                    "uuid": "591fffeb-810e-5391-bdf4-84247d80637f"
+                }
+            ],
+            "severity": "error",
+            "type": "courtyards_overlap"
+        },
+        {
+            "description": "Courtyards overlap",
+            "items": [
+                {
+                    "description": "Footprint PD8A",
+                    "pos": {
+                        "x": 79.7125,
+                        "y": 93.4935
+                    },
+                    "uuid": "088c55db-7630-5c7a-bb9c-7913b7473a68"
+                },
+                {
+                    "description": "Footprint D8",
+                    "pos": {
+                        "x": 79.7125,
+                        "y": 95.0935
+                    },
+                    "uuid": "e4795788-d3bc-5f73-ac7d-e4920ff5fbd7"
+                }
+            ],
+            "severity": "error",
+            "type": "courtyards_overlap"
+        },
+        {
+            "description": "Courtyards overlap",
+            "items": [
+                {
+                    "description": "Footprint PD5B",
+                    "pos": {
+                        "x": 79.7125,
+                        "y": 68.6033
+                    },
+                    "uuid": "1b3d5d25-cfde-54e7-89a1-15363e54dcd5"
+                },
+                {
+                    "description": "Footprint D5",
+                    "pos": {
+                        "x": 79.7125,
+                        "y": 67.0033
+                    },
+                    "uuid": "fb359cb0-32e5-5fe7-868e-2466061ddb21"
+                }
+            ],
+            "severity": "error",
+            "type": "courtyards_overlap"
+        },
+        {
+            "description": "Courtyards overlap",
+            "items": [
+                {
+                    "description": "Footprint D4",
+                    "pos": {
+                        "x": 79.7125,
+                        "y": 57.6399
+                    },
+                    "uuid": "1e5cbc37-07f4-5ac2-aa81-1c4ffaa131fb"
+                },
+                {
+                    "description": "Footprint PD4A",
+                    "pos": {
+                        "x": 79.7125,
+                        "y": 56.0399
+                    },
+                    "uuid": "44546c3e-3138-52ba-8fc3-fbfb3415c1e2"
+                }
+            ],
+            "severity": "error",
+            "type": "courtyards_overlap"
+        },
+        {
+            "description": "Courtyards overlap",
+            "items": [
+                {
+                    "description": "Footprint D4",
+                    "pos": {
+                        "x": 79.7125,
+                        "y": 57.6399
+                    },
+                    "uuid": "1e5cbc37-07f4-5ac2-aa81-1c4ffaa131fb"
+                },
+                {
+                    "description": "Footprint PD4B",
+                    "pos": {
+                        "x": 79.7125,
+                        "y": 59.2399
+                    },
+                    "uuid": "9b9d1054-5828-5fef-9001-ef6b32d62497"
+                }
+            ],
+            "severity": "error",
+            "type": "courtyards_overlap"
+        },
+        {
+            "description": "Courtyards overlap",
+            "items": [
+                {
+                    "description": "Footprint PD9B",
+                    "pos": {
+                        "x": 79.7125,
+                        "y": 106.057
+                    },
+                    "uuid": "342792e6-eba8-52da-aea1-7c17cad7f6b0"
+                },
+                {
+                    "description": "Footprint D9",
+                    "pos": {
+                        "x": 79.7125,
+                        "y": 104.457
+                    },
+                    "uuid": "553837c5-d2c1-5e24-b91d-6b8ce052adf0"
+                }
+            ],
+            "severity": "error",
+            "type": "courtyards_overlap"
+        },
+        {
+            "description": "Courtyards overlap",
+            "items": [
+                {
+                    "description": "Footprint PD7B",
+                    "pos": {
+                        "x": 79.7125,
+                        "y": 87.3301
+                    },
+                    "uuid": "41366798-f9b4-5cbc-993f-fa10ea5b477a"
+                },
+                {
+                    "description": "Footprint D7",
+                    "pos": {
+                        "x": 79.7125,
+                        "y": 85.7301
+                    },
+                    "uuid": "f0ead601-3221-548b-86d3-e0bbe00a5aba"
+                }
+            ],
+            "severity": "error",
+            "type": "courtyards_overlap"
+        },
+        {
+            "description": "Courtyards overlap",
+            "items": [
+                {
+                    "description": "Footprint PD3A",
+                    "pos": {
+                        "x": 79.7125,
+                        "y": 46.6765
+                    },
+                    "uuid": "49c0e3ec-4589-5213-a88c-0119b29f5afe"
+                },
+                {
+                    "description": "Footprint D3",
+                    "pos": {
+                        "x": 79.7125,
+                        "y": 48.2765
+                    },
+                    "uuid": "e6acb4c9-684e-5e51-973f-22d2c219696c"
+                }
+            ],
+            "severity": "error",
+            "type": "courtyards_overlap"
+        },
+        {
+            "description": "Courtyards overlap",
+            "items": [
+                {
+                    "description": "Footprint D2",
+                    "pos": {
+                        "x": 79.7125,
+                        "y": 38.913
+                    },
+                    "uuid": "51687e26-b8f0-5ad4-bb40-91b45352d726"
+                },
+                {
+                    "description": "Footprint PD2B",
+                    "pos": {
+                        "x": 79.7125,
+                        "y": 40.513
+                    },
+                    "uuid": "6697285e-2407-5780-926d-0def7a3ffd6e"
+                }
+            ],
+            "severity": "error",
+            "type": "courtyards_overlap"
+        },
+        {
+            "description": "Courtyards overlap",
+            "items": [
+                {
+                    "description": "Footprint D2",
+                    "pos": {
+                        "x": 79.7125,
+                        "y": 38.913
+                    },
+                    "uuid": "51687e26-b8f0-5ad4-bb40-91b45352d726"
+                },
+                {
+                    "description": "Footprint PD2A",
+                    "pos": {
+                        "x": 79.7125,
+                        "y": 37.313
+                    },
+                    "uuid": "edf5fcc4-b3d0-5c7c-8290-9b1d11abab91"
+                }
+            ],
+            "severity": "error",
+            "type": "courtyards_overlap"
+        },
+        {
+            "description": "Courtyards overlap",
+            "items": [
+                {
+                    "description": "Footprint D9",
+                    "pos": {
+                        "x": 79.7125,
+                        "y": 104.457
+                    },
+                    "uuid": "553837c5-d2c1-5e24-b91d-6b8ce052adf0"
+                },
+                {
+                    "description": "Footprint PD9A",
+                    "pos": {
+                        "x": 79.7125,
+                        "y": 102.857
+                    },
+                    "uuid": "57c1ca09-e633-5688-9a9a-9fd7f330e7e7"
+                }
+            ],
+            "severity": "error",
+            "type": "courtyards_overlap"
+        },
+        {
+            "description": "Courtyards overlap",
+            "items": [
+                {
+                    "description": "Footprint PD6B",
+                    "pos": {
+                        "x": 79.7125,
+                        "y": 77.9667
+                    },
+                    "uuid": "55dce976-b5ca-5c56-8083-1b4a3af0fb01"
+                },
+                {
+                    "description": "Footprint D6",
+                    "pos": {
+                        "x": 79.7125,
+                        "y": 76.3667
+                    },
+                    "uuid": "f22c6fe0-ed67-5fb9-9c24-6b30fee01b97"
+                }
+            ],
+            "severity": "error",
+            "type": "courtyards_overlap"
+        },
+        {
+            "description": "Courtyards overlap",
+            "items": [
+                {
+                    "description": "Footprint D1",
+                    "pos": {
+                        "x": 79.7125,
+                        "y": 29.5496
+                    },
+                    "uuid": "591fffeb-810e-5391-bdf4-84247d80637f"
+                },
+                {
+                    "description": "Footprint PD1B",
+                    "pos": {
+                        "x": 79.7125,
+                        "y": 31.1496
+                    },
+                    "uuid": "e9fb6265-05cf-5013-98a0-2108b63f37ff"
+                }
+            ],
+            "severity": "error",
+            "type": "courtyards_overlap"
+        },
+        {
+            "description": "Courtyards overlap",
+            "items": [
+                {
+                    "description": "Footprint PD3B",
+                    "pos": {
+                        "x": 79.7125,
+                        "y": 49.8765
+                    },
+                    "uuid": "5c0f8fce-21be-563f-918b-dbd570b7511a"
+                },
+                {
+                    "description": "Footprint D3",
+                    "pos": {
+                        "x": 79.7125,
+                        "y": 48.2765
+                    },
+                    "uuid": "e6acb4c9-684e-5e51-973f-22d2c219696c"
+                }
+            ],
+            "severity": "error",
+            "type": "courtyards_overlap"
+        },
+        {
+            "description": "Courtyards overlap",
+            "items": [
+                {
+                    "description": "Footprint PD8B",
+                    "pos": {
+                        "x": 79.7125,
+                        "y": 96.6935
+                    },
+                    "uuid": "7852e221-f83a-5e41-b7eb-159dce355c54"
+                },
+                {
+                    "description": "Footprint D8",
+                    "pos": {
+                        "x": 79.7125,
+                        "y": 95.0935
+                    },
+                    "uuid": "e4795788-d3bc-5f73-ac7d-e4920ff5fbd7"
+                }
+            ],
+            "severity": "error",
+            "type": "courtyards_overlap"
+        },
+        {
+            "description": "Courtyards overlap",
+            "items": [
+                {
+                    "description": "Footprint PD7A",
+                    "pos": {
+                        "x": 79.7125,
+                        "y": 84.1301
+                    },
+                    "uuid": "b16a8744-0a6a-59ed-8fca-1bd3d44f6228"
+                },
+                {
+                    "description": "Footprint D7",
+                    "pos": {
+                        "x": 79.7125,
+                        "y": 85.7301
+                    },
+                    "uuid": "f0ead601-3221-548b-86d3-e0bbe00a5aba"
+                }
+            ],
+            "severity": "error",
+            "type": "courtyards_overlap"
+        },
+        {
+            "description": "Courtyards overlap",
+            "items": [
+                {
+                    "description": "Footprint PD10A",
+                    "pos": {
+                        "x": 79.7125,
+                        "y": 112.2204
+                    },
+                    "uuid": "b188762f-1daa-5370-8f55-3db93b50b135"
+                },
+                {
+                    "description": "Footprint D10",
+                    "pos": {
+                        "x": 79.7125,
+                        "y": 113.8204
+                    },
+                    "uuid": "c1213b4a-046b-526a-9f35-3d2dd5882ce5"
+                }
+            ],
+            "severity": "error",
+            "type": "courtyards_overlap"
+        },
+        {
+            "description": "Courtyards overlap",
+            "items": [
+                {
+                    "description": "Footprint D10",
+                    "pos": {
+                        "x": 79.7125,
+                        "y": 113.8204
+                    },
+                    "uuid": "c1213b4a-046b-526a-9f35-3d2dd5882ce5"
+                },
+                {
+                    "description": "Footprint PD10B",
+                    "pos": {
+                        "x": 79.7125,
+                        "y": 115.4204
+                    },
+                    "uuid": "dc7f02f9-a015-5cc0-b0b3-0459abe44eaf"
+                }
+            ],
+            "severity": "error",
+            "type": "courtyards_overlap"
+        },
+        {
+            "description": "Courtyards overlap",
+            "items": [
+                {
+                    "description": "Footprint PD6A",
+                    "pos": {
+                        "x": 79.7125,
+                        "y": 74.7667
+                    },
+                    "uuid": "dc1d6cd9-1dea-5300-bd8b-5e6a16f11d47"
+                },
+                {
+                    "description": "Footprint D6",
+                    "pos": {
+                        "x": 79.7125,
+                        "y": 76.3667
+                    },
+                    "uuid": "f22c6fe0-ed67-5fb9-9c24-6b30fee01b97"
+                }
+            ],
+            "severity": "error",
+            "type": "courtyards_overlap"
+        },
+        {
+            "description": "Courtyards overlap",
+            "items": [
+                {
+                    "description": "Footprint PD5A",
+                    "pos": {
+                        "x": 79.7125,
+                        "y": 65.4033
+                    },
+                    "uuid": "f145c238-8a6d-5ae6-9e64-aa070a30e1b7"
+                },
+                {
+                    "description": "Footprint D5",
+                    "pos": {
+                        "x": 79.7125,
+                        "y": 67.0033
+                    },
+                    "uuid": "fb359cb0-32e5-5fe7-868e-2466061ddb21"
+                }
+            ],
+            "severity": "error",
+            "type": "courtyards_overlap"
+        }
+    ]
+}

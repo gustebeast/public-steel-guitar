@@ -1,0 +1,221 @@
+======================================================================
+ INNER-LOOP GATE -- live part FRESH, 579 context solids CACHED (9 min old)
+ SCOPED: context is cached and may be CROPPED, so it can only find
+ faults involving what is loaded -- widen the live set if your change
+ moved anything else. The FULL gates run in the lead's build on merge;
+ do not run them yourself before `submit`.
+======================================================================
+
+--- overlaps ---
+skipping base names (pass --full to include): ['belt', 'belt_clamp']
+  overlap cache: 8536 of 8600 pairs reused, 64 to compute (fingerprints 1.5s)
+  !! DEFERRED overlap (NOT a designed contact, must be fixed before the instrument is finalised): top_plate_0 <-> pickup_zplate
+  !! DEFERRED overlap (NOT a designed contact, must be fixed before the instrument is finalised): body_adapter_0 <-> leg_trrs_plug_0
+  !! DEFERRED overlap (NOT a designed contact, must be fixed before the instrument is finalised): body_adapter_0 <-> leg_trrs_patch_0
+  !! DEFERRED overlap (NOT a designed contact, must be fixed before the instrument is finalised): kl_D2 <-> knee_housing -- lever board parts vs their knee/lever housing (25 pairs, ~207 mm3). USER DEFERRED; OWNER branner -- the cradle was sized to a plain box. ⚠ THE ORIGINAL REASON IS VOID (2026-09-19): it said bronner's board was at its floor at 28 x 21.4, so the room had to come from the housing. The user then asked for ONE connector family across both buses, and the board grew to 34 x 28 to take the S8B-XH-A -- +59% area. The housing needs RE-CUTTING to the new outline, not relieving by a millimetre
+  !! DEFERRED overlap (NOT a designed contact, must be fixed before the instrument is finalised): kl_D3 <-> knee_housing -- lever board parts vs their knee/lever housing (25 pairs, ~207 mm3). USER DEFERRED; OWNER branner -- the cradle was sized to a plain box. ⚠ THE ORIGINAL REASON IS VOID (2026-09-19): it said bronner's board was at its floor at 28 x 21.4, so the room had to come from the housing. The user then asked for ONE connector family across both buses, and the board grew to 34 x 28 to take the S8B-XH-A -- +59% area. The housing needs RE-CUTTING to the new outline, not relieving by a millimetre
+  !! DEFERRED overlap (NOT a designed contact, must be fixed before the instrument is finalised): kl_JP1 <-> knee_housing -- lever board parts vs their knee/lever housing (25 pairs, ~207 mm3). USER DEFERRED; OWNER branner -- the cradle was sized to a plain box. ⚠ THE ORIGINAL REASON IS VOID (2026-09-19): it said bronner's board was at its floor at 28 x 21.4, so the room had to come from the housing. The user then asked for ONE connector family across both buses, and the board grew to 34 x 28 to take the S8B-XH-A -- +59% area. The housing needs RE-CUTTING to the new outline, not relieving by a millimetre
+  !! DEFERRED overlap (NOT a designed contact, must be fixed before the instrument is finalised): kl_R3 <-> knee_housing -- lever board parts vs their knee/lever housing (25 pairs, ~207 mm3). USER DEFERRED; OWNER branner -- the cradle was sized to a plain box. ⚠ THE ORIGINAL REASON IS VOID (2026-09-19): it said bronner's board was at its floor at 28 x 21.4, so the room had to come from the housing. The user then asked for ONE connector family across both buses, and the board grew to 34 x 28 to take the S8B-XH-A -- +59% area. The housing needs RE-CUTTING to the new outline, not relieving by a millimetre
+  !! DEFERRED overlap (NOT a designed contact, must be fixed before the instrument is finalised): kl_U2 <-> knee_housing -- lever board parts vs their knee/lever housing (25 pairs, ~207 mm3). USER DEFERRED; OWNER branner -- the cradle was sized to a plain box. ⚠ THE ORIGINAL REASON IS VOID (2026-09-19): it said bronner's board was at its floor at 28 x 21.4, so the room had to come from the housing. The user then asked for ONE connector family across both buses, and the board grew to 34 x 28 to take the S8B-XH-A -- +59% area. The housing needs RE-CUTTING to the new outline, not relieving by a millimetre
+  !! DEFERRED overlap (NOT a designed contact, must be fixed before the instrument is finalised): lkr_kl_D2 <-> lkr_knee_housing -- lever board parts vs their knee/lever housing (25 pairs, ~207 mm3). USER DEFERRED; OWNER branner -- the cradle was sized to a plain box. ⚠ THE ORIGINAL REASON IS VOID (2026-09-19): it said bronner's board was at its floor at 28 x 21.4, so the room had to come from the housing. The user then asked for ONE connector family across both buses, and the board grew to 34 x 28 to take the S8B-XH-A -- +59% area. The housing needs RE-CUTTING to the new outline, not relieving by a millimetre
+  !! DEFERRED overlap (NOT a designed contact, must be fixed before the instrument is finalised): lkr_kl_D3 <-> lkr_knee_housing -- lever board parts vs their knee/lever housing (25 pairs, ~207 mm3). USER DEFERRED; OWNER branner -- the cradle was sized to a plain box. ⚠ THE ORIGINAL REASON IS VOID (2026-09-19): it said bronner's board was at its floor at 28 x 21.4, so the room had to come from the housing. The user then asked for ONE connector family across both buses, and the board grew to 34 x 28 to take the S8B-XH-A -- +59% area. The housing needs RE-CUTTING to the new outline, not relieving by a millimetre
+  !! DEFERRED overlap (NOT a designed contact, must be fixed before the instrument is finalised): lkr_kl_JP1 <-> lkr_knee_housing -- lever board parts vs their knee/lever housing (25 pairs, ~207 mm3). USER DEFERRED; OWNER branner -- the cradle was sized to a plain box. ⚠ THE ORIGINAL REASON IS VOID (2026-09-19): it said bronner's board was at its floor at 28 x 21.4, so the room had to come from the housing. The user then asked for ONE connector family across both buses, and the board grew to 34 x 28 to take the S8B-XH-A -- +59% area. The housing needs RE-CUTTING to the new outline, not relieving by a millimetre
+  !! DEFERRED overlap (NOT a designed contact, must be fixed before the instrument is finalised): lkr_kl_R3 <-> lkr_knee_housing -- lever board parts vs their knee/lever housing (25 pairs, ~207 mm3). USER DEFERRED; OWNER branner -- the cradle was sized to a plain box. ⚠ THE ORIGINAL REASON IS VOID (2026-09-19): it said bronner's board was at its floor at 28 x 21.4, so the room had to come from the housing. The user then asked for ONE connector family across both buses, and the board grew to 34 x 28 to take the S8B-XH-A -- +59% area. The housing needs RE-CUTTING to the new outline, not relieving by a millimetre
+  !! DEFERRED overlap (NOT a designed contact, must be fixed before the instrument is finalised): lkr_kl_U2 <-> lkr_knee_housing -- lever board parts vs their knee/lever housing (25 pairs, ~207 mm3). USER DEFERRED; OWNER branner -- the cradle was sized to a plain box. ⚠ THE ORIGINAL REASON IS VOID (2026-09-19): it said bronner's board was at its floor at 28 x 21.4, so the room had to come from the housing. The user then asked for ONE connector family across both buses, and the board grew to 34 x 28 to take the S8B-XH-A -- +59% area. The housing needs RE-CUTTING to the new outline, not relieving by a millimetre
+  !! DEFERRED overlap (NOT a designed contact, must be fixed before the instrument is finalised): rkl_kl_D2 <-> rkl_knee_housing -- lever board parts vs their knee/lever housing (25 pairs, ~207 mm3). USER DEFERRED; OWNER branner -- the cradle was sized to a plain box. ⚠ THE ORIGINAL REASON IS VOID (2026-09-19): it said bronner's board was at its floor at 28 x 21.4, so the room had to come from the housing. The user then asked for ONE connector family across both buses, and the board grew to 34 x 28 to take the S8B-XH-A -- +59% area. The housing needs RE-CUTTING to the new outline, not relieving by a millimetre
+  !! DEFERRED overlap (NOT a designed contact, must be fixed before the instrument is finalised): rkl_kl_D3 <-> rkl_knee_housing -- lever board parts vs their knee/lever housing (25 pairs, ~207 mm3). USER DEFERRED; OWNER branner -- the cradle was sized to a plain box. ⚠ THE ORIGINAL REASON IS VOID (2026-09-19): it said bronner's board was at its floor at 28 x 21.4, so the room had to come from the housing. The user then asked for ONE connector family across both buses, and the board grew to 34 x 28 to take the S8B-XH-A -- +59% area. The housing needs RE-CUTTING to the new outline, not relieving by a millimetre
+  !! DEFERRED overlap (NOT a designed contact, must be fixed before the instrument is finalised): rkl_kl_JP1 <-> rkl_knee_housing -- lever board parts vs their knee/lever housing (25 pairs, ~207 mm3). USER DEFERRED; OWNER branner -- the cradle was sized to a plain box. ⚠ THE ORIGINAL REASON IS VOID (2026-09-19): it said bronner's board was at its floor at 28 x 21.4, so the room had to come from the housing. The user then asked for ONE connector family across both buses, and the board grew to 34 x 28 to take the S8B-XH-A -- +59% area. The housing needs RE-CUTTING to the new outline, not relieving by a millimetre
+  !! DEFERRED overlap (NOT a designed contact, must be fixed before the instrument is finalised): rkl_kl_R3 <-> rkl_knee_housing -- lever board parts vs their knee/lever housing (25 pairs, ~207 mm3). USER DEFERRED; OWNER branner -- the cradle was sized to a plain box. ⚠ THE ORIGINAL REASON IS VOID (2026-09-19): it said bronner's board was at its floor at 28 x 21.4, so the room had to come from the housing. The user then asked for ONE connector family across both buses, and the board grew to 34 x 28 to take the S8B-XH-A -- +59% area. The housing needs RE-CUTTING to the new outline, not relieving by a millimetre
+  !! DEFERRED overlap (NOT a designed contact, must be fixed before the instrument is finalised): rkl_kl_U2 <-> rkl_knee_housing -- lever board parts vs their knee/lever housing (25 pairs, ~207 mm3). USER DEFERRED; OWNER branner -- the cradle was sized to a plain box. ⚠ THE ORIGINAL REASON IS VOID (2026-09-19): it said bronner's board was at its floor at 28 x 21.4, so the room had to come from the housing. The user then asked for ONE connector family across both buses, and the board grew to 34 x 28 to take the S8B-XH-A -- +59% area. The housing needs RE-CUTTING to the new outline, not relieving by a millimetre
+  !! DEFERRED overlap (NOT a designed contact, must be fixed before the instrument is finalised): rkr_kl_D2 <-> rkr_knee_housing -- lever board parts vs their knee/lever housing (25 pairs, ~207 mm3). USER DEFERRED; OWNER branner -- the cradle was sized to a plain box. ⚠ THE ORIGINAL REASON IS VOID (2026-09-19): it said bronner's board was at its floor at 28 x 21.4, so the room had to come from the housing. The user then asked for ONE connector family across both buses, and the board grew to 34 x 28 to take the S8B-XH-A -- +59% area. The housing needs RE-CUTTING to the new outline, not relieving by a millimetre
+  !! DEFERRED overlap (NOT a designed contact, must be fixed before the instrument is finalised): rkr_kl_D3 <-> rkr_knee_housing -- lever board parts vs their knee/lever housing (25 pairs, ~207 mm3). USER DEFERRED; OWNER branner -- the cradle was sized to a plain box. ⚠ THE ORIGINAL REASON IS VOID (2026-09-19): it said bronner's board was at its floor at 28 x 21.4, so the room had to come from the housing. The user then asked for ONE connector family across both buses, and the board grew to 34 x 28 to take the S8B-XH-A -- +59% area. The housing needs RE-CUTTING to the new outline, not relieving by a millimetre
+  !! DEFERRED overlap (NOT a designed contact, must be fixed before the instrument is finalised): rkr_kl_JP1 <-> rkr_knee_housing -- lever board parts vs their knee/lever housing (25 pairs, ~207 mm3). USER DEFERRED; OWNER branner -- the cradle was sized to a plain box. ⚠ THE ORIGINAL REASON IS VOID (2026-09-19): it said bronner's board was at its floor at 28 x 21.4, so the room had to come from the housing. The user then asked for ONE connector family across both buses, and the board grew to 34 x 28 to take the S8B-XH-A -- +59% area. The housing needs RE-CUTTING to the new outline, not relieving by a millimetre
+  !! DEFERRED overlap (NOT a designed contact, must be fixed before the instrument is finalised): rkr_kl_R3 <-> rkr_knee_housing -- lever board parts vs their knee/lever housing (25 pairs, ~207 mm3). USER DEFERRED; OWNER branner -- the cradle was sized to a plain box. ⚠ THE ORIGINAL REASON IS VOID (2026-09-19): it said bronner's board was at its floor at 28 x 21.4, so the room had to come from the housing. The user then asked for ONE connector family across both buses, and the board grew to 34 x 28 to take the S8B-XH-A -- +59% area. The housing needs RE-CUTTING to the new outline, not relieving by a millimetre
+  !! DEFERRED overlap (NOT a designed contact, must be fixed before the instrument is finalised): rkr_kl_U2 <-> rkr_knee_housing -- lever board parts vs their knee/lever housing (25 pairs, ~207 mm3). USER DEFERRED; OWNER branner -- the cradle was sized to a plain box. ⚠ THE ORIGINAL REASON IS VOID (2026-09-19): it said bronner's board was at its floor at 28 x 21.4, so the room had to come from the housing. The user then asked for ONE connector family across both buses, and the board grew to 34 x 28 to take the S8B-XH-A -- +59% area. The housing needs RE-CUTTING to the new outline, not relieving by a millimetre
+  !! DEFERRED overlap (NOT a designed contact, must be fixed before the instrument is finalised): vkl_kv_D2 <-> vkl_kv_housing -- lever board parts vs their knee/lever housing (25 pairs, ~207 mm3). USER DEFERRED; OWNER branner -- the cradle was sized to a plain box. ⚠ THE ORIGINAL REASON IS VOID (2026-09-19): it said bronner's board was at its floor at 28 x 21.4, so the room had to come from the housing. The user then asked for ONE connector family across both buses, and the board grew to 34 x 28 to take the S8B-XH-A -- +59% area. The housing needs RE-CUTTING to the new outline, not relieving by a millimetre
+  !! DEFERRED overlap (NOT a designed contact, must be fixed before the instrument is finalised): vkl_kv_D3 <-> vkl_kv_housing -- lever board parts vs their knee/lever housing (25 pairs, ~207 mm3). USER DEFERRED; OWNER branner -- the cradle was sized to a plain box. ⚠ THE ORIGINAL REASON IS VOID (2026-09-19): it said bronner's board was at its floor at 28 x 21.4, so the room had to come from the housing. The user then asked for ONE connector family across both buses, and the board grew to 34 x 28 to take the S8B-XH-A -- +59% area. The housing needs RE-CUTTING to the new outline, not relieving by a millimetre
+  !! DEFERRED overlap (NOT a designed contact, must be fixed before the instrument is finalised): vkl_kv_housing <-> vkl_kv_JP1 -- lever board parts vs their knee/lever housing (25 pairs, ~207 mm3). USER DEFERRED; OWNER branner -- the cradle was sized to a plain box. ⚠ THE ORIGINAL REASON IS VOID (2026-09-19): it said bronner's board was at its floor at 28 x 21.4, so the room had to come from the housing. The user then asked for ONE connector family across both buses, and the board grew to 34 x 28 to take the S8B-XH-A -- +59% area. The housing needs RE-CUTTING to the new outline, not relieving by a millimetre
+  !! DEFERRED overlap (NOT a designed contact, must be fixed before the instrument is finalised): vkl_kv_housing <-> vkl_kv_R3 -- lever board parts vs their knee/lever housing (25 pairs, ~207 mm3). USER DEFERRED; OWNER branner -- the cradle was sized to a plain box. ⚠ THE ORIGINAL REASON IS VOID (2026-09-19): it said bronner's board was at its floor at 28 x 21.4, so the room had to come from the housing. The user then asked for ONE connector family across both buses, and the board grew to 34 x 28 to take the S8B-XH-A -- +59% area. The housing needs RE-CUTTING to the new outline, not relieving by a millimetre
+  !! DEFERRED overlap (NOT a designed contact, must be fixed before the instrument is finalised): vkl_kv_housing <-> vkl_kv_U2 -- lever board parts vs their knee/lever housing (25 pairs, ~207 mm3). USER DEFERRED; OWNER branner -- the cradle was sized to a plain box. ⚠ THE ORIGINAL REASON IS VOID (2026-09-19): it said bronner's board was at its floor at 28 x 21.4, so the room had to come from the housing. The user then asked for ONE connector family across both buses, and the board grew to 34 x 28 to take the S8B-XH-A -- +59% area. The housing needs RE-CUTTING to the new outline, not relieving by a millimetre
+checked 868 components for overlaps (8 workers, 6.9s)
+
+== UNINTENDED overlaps (175) ==
+    266130.6 mm^3   bridge_endplate <-> bridge_endplate
+    115949.5 mm^3   motor_9        <-> motor_9
+    115949.5 mm^3   motor_8        <-> motor_8
+    115949.5 mm^3   motor_7        <-> motor_7
+    115949.5 mm^3   motor_6        <-> motor_6
+    115949.5 mm^3   motor_1        <-> motor_1
+    115949.5 mm^3   motor_4        <-> motor_4
+    115949.5 mm^3   motor_2        <-> motor_2
+    115949.5 mm^3   motor_0        <-> motor_0
+    115949.5 mm^3   motor_5        <-> motor_5
+    115949.5 mm^3   motor_3        <-> motor_3
+     85843.5 mm^3   body_adapter_2 <-> body_adapter_2
+     85843.5 mm^3   body_adapter_3 <-> body_adapter_3
+     85063.8 mm^3   body_adapter_0 <-> body_adapter_0
+     83944.0 mm^3   body_adapter_1 <-> body_adapter_1
+     34372.1 mm^3   pickup         <-> pickup
+     24577.3 mm^3   fixed_tenon    <-> fixed_tenon
+     23019.1 mm^3   output_panel   <-> output_panel
+     20778.5 mm^3   pi5            <-> pi5
+     19356.5 mm^3   fixed_sleeve   <-> fixed_sleeve
+     17686.0 mm^3   pickup_zplate  <-> pickup_zplate
+      8989.9 mm^3   nut_slide_insert_9 <-> nut_slide_insert_9
+      8293.1 mm^3   motor_ctrl     <-> motor_ctrl
+      6800.1 mm^3   nut_slide_insert_8 <-> nut_slide_insert_8
+      6763.0 mm^3   nut_slide_insert_7 <-> nut_slide_insert_7
+      4455.5 mm^3   tee_pcb_0      <-> tee_pcb_0
+      4455.5 mm^3   tee_pcb_1      <-> tee_pcb_1
+      4455.5 mm^3   tee_pcb_8      <-> tee_pcb_8
+      4455.5 mm^3   tee_pcb_7      <-> tee_pcb_7
+      4455.5 mm^3   tee_pcb_6      <-> tee_pcb_6
+      4455.5 mm^3   tee_pcb_9      <-> tee_pcb_9
+      4455.5 mm^3   tee_pcb_5      <-> tee_pcb_5
+      4455.5 mm^3   tee_pcb_4      <-> tee_pcb_4
+      4455.5 mm^3   tee_pcb_3      <-> tee_pcb_3
+      4455.5 mm^3   tee_pcb_2      <-> tee_pcb_2
+      4170.1 mm^3   optical_cable_usb <-> optical_cable_usb
+      3960.8 mm^3   nut_slide_insert_6 <-> nut_slide_insert_6
+      3949.9 mm^3   nut_slide_insert_5 <-> nut_slide_insert_5
+      3939.1 mm^3   nut_slide_insert_4 <-> nut_slide_insert_4
+      3931.8 mm^3   nut_slide_insert_3 <-> nut_slide_insert_3
+      3926.4 mm^3   nut_slide_insert_2 <-> nut_slide_insert_2
+      3922.7 mm^3   nut_slide_insert_0 <-> nut_slide_insert_0
+      3920.9 mm^3   nut_slide_insert_1 <-> nut_slide_insert_1
+      3365.7 mm^3   leg_latch_slider <-> leg_latch_slider
+      1895.0 mm^3   leadscrew_9    <-> leadscrew_9
+      1895.0 mm^3   leadscrew_0    <-> leadscrew_0
+      1895.0 mm^3   leadscrew_8    <-> leadscrew_8
+      1895.0 mm^3   leadscrew_1    <-> leadscrew_1
+      1895.0 mm^3   leadscrew_7    <-> leadscrew_7
+      1895.0 mm^3   leadscrew_6    <-> leadscrew_6
+      1895.0 mm^3   leadscrew_5    <-> leadscrew_5
+      1895.0 mm^3   leadscrew_4    <-> leadscrew_4
+      1895.0 mm^3   leadscrew_3    <-> leadscrew_3
+      1895.0 mm^3   leadscrew_2    <-> leadscrew_2
+      1232.8 mm^3   leg_trrs_jack_0 <-> leg_trrs_jack_0
+       955.5 mm^3   nut_9          <-> nut_9
+       955.5 mm^3   nut_1          <-> nut_1
+       955.5 mm^3   nut_7          <-> nut_7
+       955.5 mm^3   nut_6          <-> nut_6
+       955.5 mm^3   nut_5          <-> nut_5
+       955.5 mm^3   nut_3          <-> nut_3
+       955.5 mm^3   nut_2          <-> nut_2
+       955.5 mm^3   nut_8          <-> nut_8
+       955.5 mm^3   nut_0          <-> nut_0
+       955.5 mm^3   nut_4          <-> nut_4
+       912.3 mm^3   optical_cable_pwr <-> optical_cable_pwr
+       754.0 mm^3   screw_bearing_7_0 <-> screw_bearing_7_0
+       754.0 mm^3   screw_bearing_6_0 <-> screw_bearing_6_0
+       754.0 mm^3   screw_bearing_5_0 <-> screw_bearing_5_0
+       754.0 mm^3   screw_bearing_4_0 <-> screw_bearing_4_0
+       754.0 mm^3   screw_bearing_3_0 <-> screw_bearing_3_0
+       754.0 mm^3   screw_bearing_2_0 <-> screw_bearing_2_0
+       754.0 mm^3   screw_bearing_9_0 <-> screw_bearing_9_0
+       754.0 mm^3   screw_bearing_8_0 <-> screw_bearing_8_0
+       754.0 mm^3   screw_bearing_1_0 <-> screw_bearing_1_0
+       754.0 mm^3   screw_bearing_0_0 <-> screw_bearing_0_0
+       622.6 mm^3   leg_trrs_patch_0 <-> leg_trrs_patch_0
+       595.4 mm^3   lock_pin_screw_0 <-> lock_pin_screw_0
+       595.4 mm^3   lock_pin_screw_3 <-> lock_pin_screw_3
+       595.4 mm^3   lock_pin_screw_1 <-> lock_pin_screw_1
+       595.4 mm^3   lock_pin_screw_2 <-> lock_pin_screw_2
+       543.8 mm^3   leg_trrs_plug_0 <-> leg_trrs_plug_0
+       329.5 mm^3   leg_trrs_sleeve_0 <-> leg_trrs_sleeve_0
+       318.9 mm^3   nut_height_screw_8 <-> nut_height_screw_8
+       318.9 mm^3   nut_height_screw_7 <-> nut_height_screw_7
+       318.9 mm^3   nut_height_screw_2 <-> nut_height_screw_2
+       318.9 mm^3   nut_height_screw_0 <-> nut_height_screw_0
+       318.9 mm^3   nut_height_screw_9 <-> nut_height_screw_9
+       318.9 mm^3   nut_height_screw_6 <-> nut_height_screw_6
+       318.9 mm^3   nut_height_screw_5 <-> nut_height_screw_5
+       318.9 mm^3   nut_height_screw_4 <-> nut_height_screw_4
+       318.9 mm^3   nut_height_screw_3 <-> nut_height_screw_3
+       318.9 mm^3   nut_height_screw_1 <-> nut_height_screw_1
+       300.2 mm^3   guide_rod_8    <-> guide_rod_8
+       300.2 mm^3   guide_rod_7    <-> guide_rod_7
+       300.2 mm^3   guide_rod_6    <-> guide_rod_6
+       300.2 mm^3   guide_rod_5    <-> guide_rod_5
+       300.2 mm^3   guide_rod_4    <-> guide_rod_4
+       300.2 mm^3   guide_rod_3    <-> guide_rod_3
+       300.2 mm^3   guide_rod_2    <-> guide_rod_2
+       300.2 mm^3   guide_rod_9    <-> guide_rod_9
+       300.2 mm^3   guide_rod_1    <-> guide_rod_1
+       300.2 mm^3   guide_rod_0    <-> guide_rod_0
+       278.7 mm^3   leg_trrs_throat_0 <-> leg_trrs_throat_0
+       237.5 mm^3   string_9       <-> string_9
+       229.1 mm^3   leg_trrs_leg_lead_0 <-> leg_trrs_leg_lead_0
+       218.4 mm^3   tee_screw_6    <-> tee_screw_6
+       218.4 mm^3   tee_screw_1    <-> tee_screw_1
+       218.4 mm^3   tee_screw_5    <-> tee_screw_5
+       218.4 mm^3   tee_screw_4    <-> tee_screw_4
+       218.4 mm^3   tee_screw_3    <-> tee_screw_3
+       218.4 mm^3   tee_screw_2    <-> tee_screw_2
+       218.4 mm^3   tee_screw_8    <-> tee_screw_8
+       218.4 mm^3   tee_screw_9    <-> tee_screw_9
+       218.4 mm^3   tee_screw_7    <-> tee_screw_7
+       218.4 mm^3   board_screw_0  <-> board_screw_0
+       218.4 mm^3   board_screw_1  <-> board_screw_1
+       218.4 mm^3   tee_screw_0    <-> tee_screw_0
+       202.3 mm^3   pickup_jack_screw_2 <-> pickup_jack_screw_2
+       202.3 mm^3   pickup_jack_screw_0 <-> pickup_jack_screw_0
+       202.3 mm^3   pickup_jack_screw_1 <-> pickup_jack_screw_1
+       141.6 mm^3   string_8       <-> string_8
+       123.6 mm^3   leg_trrs_spring_0 <-> leg_trrs_spring_0
+       117.0 mm^3   pickup_retention_screw <-> pickup_retention_screw
+        78.1 mm^3   string_7       <-> string_7
+        65.3 mm^3   tee_insert_9   <-> tee_insert_9
+        65.3 mm^3   tee_insert_8   <-> tee_insert_8
+        65.3 mm^3   tee_insert_7   <-> tee_insert_7
+        65.3 mm^3   tee_insert_6   <-> tee_insert_6
+        65.3 mm^3   tee_insert_5   <-> tee_insert_5
+        65.3 mm^3   tee_insert_4   <-> tee_insert_4
+        65.3 mm^3   tee_insert_3   <-> tee_insert_3
+        65.3 mm^3   tee_insert_2   <-> tee_insert_2
+        65.3 mm^3   tee_insert_1   <-> tee_insert_1
+        65.3 mm^3   pickup_jack_insert_0 <-> pickup_jack_insert_0
+        65.3 mm^3   board_insert_1 <-> board_insert_1
+        65.3 mm^3   lock_pin_insert_3 <-> lock_pin_insert_3
+        65.3 mm^3   pickup_retention_insert <-> pickup_retention_insert
+        65.3 mm^3   pickup_jack_insert_2 <-> pickup_jack_insert_2
+        65.3 mm^3   lock_pin_insert_2 <-> lock_pin_insert_2
+        65.3 mm^3   board_insert_0 <-> board_insert_0
+        65.3 mm^3   lock_pin_insert_1 <-> lock_pin_insert_1
+        65.3 mm^3   lock_pin_insert_0 <-> lock_pin_insert_0
+        65.3 mm^3   pickup_jack_insert_1 <-> pickup_jack_insert_1
+        65.3 mm^3   nut_height_insert_9 <-> nut_height_insert_9
+        65.3 mm^3   tee_insert_0   <-> tee_insert_0
+        65.3 mm^3   nut_height_insert_8 <-> nut_height_insert_8
+        65.3 mm^3   nut_height_insert_7 <-> nut_height_insert_7
+        65.3 mm^3   nut_height_insert_6 <-> nut_height_insert_6
+        65.3 mm^3   nut_height_insert_5 <-> nut_height_insert_5
+        65.3 mm^3   nut_height_insert_4 <-> nut_height_insert_4
+        65.3 mm^3   nut_height_insert_3 <-> nut_height_insert_3
+        65.3 mm^3   nut_height_insert_2 <-> nut_height_insert_2
+        65.3 mm^3   nut_height_insert_1 <-> nut_height_insert_1
+        65.3 mm^3   nut_height_insert_0 <-> nut_height_insert_0
+        57.5 mm^3   string_6       <-> string_6
+        46.9 mm^3   leg_latch_spring <-> leg_latch_spring
+        39.8 mm^3   string_5       <-> string_5
+        37.7 mm^3   string_nut_9   <-> string_nut_9
+        37.7 mm^3   string_nut_8   <-> string_nut_8
+        37.7 mm^3   string_nut_7   <-> string_nut_7
+        37.7 mm^3   string_nut_6   <-> string_nut_6
+        37.7 mm^3   string_nut_5   <-> string_nut_5
+        37.7 mm^3   string_nut_4   <-> string_nut_4
+        37.7 mm^3   string_nut_3   <-> string_nut_3
+        37.7 mm^3   string_nut_2   <-> string_nut_2
+        37.7 mm^3   string_nut_1   <-> string_nut_1
+        37.7 mm^3   string_nut_0   <-> string_nut_0
+        25.5 mm^3   string_4       <-> string_4
+        17.7 mm^3   string_3       <-> string_3
+        12.8 mm^3   string_2       <-> string_2
+        10.9 mm^3   string_0       <-> string_0
+        10.9 mm^3   optical_screw_1 <-> optical_screw_1
+        10.9 mm^3   optical_screw_0 <-> optical_screw_0
+         9.5 mm^3   string_1       <-> string_1
+
+--- sweep ---
+check_sweep: 40 rotating parts, 878 components to clear them against
+clean: every rotating part clears everything through a full turn.
