@@ -49,8 +49,15 @@ Z_BOT    = MB.BED_Z                    # print bed (shared with the motor walls)
 # Rail CENTRES, defined so the INNER faces stay fixed as the wall T changes (the wall
 # grows outward): +Y inner clears the bearing arm, -Y inner clears the motor PCBs.
 Y_HI     = D.BRIDGE_AXLE_Y + 4 * D.BEAD + T / 2   # +Y rail (inner face = axle_Y + 3.2)
+# THE GAP BEHIND STRING 10's MOTOR is its pigtail's (user, 2026-09-21: "extend the instrument
+# body -y until there is enough room to fit that wiring, ensuring we don't need to cut away the
+# chassis wall"). It was 2.0 -- motor PCB to rail -- and the pigtail had nowhere to go but a
+# 4 mm notch cut INTO the side wall. At 4.8 the Ø3.4 cable climbs straight up behind its own
+# motor like the other nine (wiring: 0.9 off the motor's back, 0.5 off the rail), and the wall
+# stays whole. The body is 2.8 wider for it.
+RAIL_GAP = 6 * D.BEAD
 Y_LO     = (D.string_y(D.N_STRINGS - 1) - MOTOR_PULLEY_STANDOFF - D.MOTOR_BODY_LEN
-            - D.MOTOR_PCB_LEN - 2.0) - T / 2      # −Y rail off the −Y-most string (last index)
+            - D.MOTOR_PCB_LEN - RAIL_GAP) - T / 2   # −Y rail off the −Y-most string (last index)
 _XC, _ZC = (X_BRIDGE + X_NUT) / 2, (Z_TOP + Z_BOT) / 2
 _RIB_W   = D.XBAR                      # cross-rib X-width = XBAR (square XBAR×XBAR section)
 # Top-plate retention grooves (top_plate.py rides these): a slot in each rail
@@ -329,15 +336,8 @@ assert (T - _SEG_JW) / 2 - _SEG_J.clearance >= D.MIN_WALL_2P, (
 # is needed anywhere and why a seam screw would be redundant hardware. So the seam
 # joint does exactly its own job — X and Y by shape — and nothing more.
 
-# ── motor-9 cable cutout ──────────────────────────────────────────────────
-# The +X-most motor's body reaches the -Y rail, so the harness trunk corridor is blocked
-# there; the trunk dips OUTBOARD into the rail behind it (wiring._rail_pts / CUTOUT_Y). We
-# notch the -Y rail's inner face for those cables over that span and DROP the diamond
-# lightening there (keep the rail SOLID around the notch, per the user). +X-most motor.
-_M9X_CH = D.motor_pos(D.N_STRINGS - 1)[0]                 # -110
-M9_CUT_X0, M9_CUT_X1 = _M9X_CH - 25.0, _M9X_CH + 35.0     # cutout X-span (covers the m9 trunk dip)
-M9_CUT_YBACK = Y_LO + T / 2 - 4.0                         # notch back: inner face -> 4mm into the rail
-M9_CUT_Z0, M9_CUT_Z1 = -64.0, -40.0                      # trunk Z-band (above the rib tops, over the top lane)
+# (the motor-9 cable NOTCH in the -Y rail is gone: RAIL_GAP makes room for that cable inside
+#  the wall instead of in it)
 
 
 def _rail(y):
@@ -511,11 +511,6 @@ def _wt_solid(x0, x1):
 
 def _build_full() -> cq.Workplane:
     body = _rail(Y_HI).union(_rail(Y_LO))
-    # motor-9 cable cutout: notch the -Y rail inner face for the trunk that dips behind the
-    # +X-most motor (diamonds already dropped over this span in _rail).
-    body = body.cut(box_at(M9_CUT_X1 - M9_CUT_X0, -116.0 - M9_CUT_YBACK, M9_CUT_Z1 - M9_CUT_Z0,
-                           x=(M9_CUT_X0 + M9_CUT_X1) / 2, y=(M9_CUT_YBACK + -116.0) / 2,
-                           z=(M9_CUT_Z0 + M9_CUT_Z1) / 2))
     # ...and the wiring trough standing off the -Y wall above the motors (see WT_*).
     for _wx0, _wx1 in WT_RUNS:
         body = body.union(_wt_solid(_wx0, _wx1))
@@ -1113,15 +1108,13 @@ def _segments():
             seg = seg.cut(MB.tee_pocket(_mi))     # ...and its tee board's, which reaches into
                                                   # the neighbouring bay (40 board, 42.3 motor)
         # THE HARNESS CORRIDOR is the wiring's, the whole length of the bank: the trunk rides it
-        # at MB.HARNESS_Y1 and DIPS OUTBOARD into the rail notch behind the +X-most motor, so
-        # there is nowhere down here a bay may reach the rail. What survives is the part of each
+        # at MB.HARNESS_Y1, so there is nowhere down here a bay may reach the rail. What survives is the part of each
         # bay's back wall ABOVE the corridor, and it gets a 45 deg underside so it is a wedge off
         # what is left rather than a shelf hanging over the wiring.
         # IT STOPS AT THE RAIL'S INNER FACE. Taking it out to Y_LO - 20 (outside the
         # instrument) meant this cut swallowed the -Y rail's bottom 41.75 mm along the whole
         # body -- the missing side wall the user saw in both tabs. The corridor is the lane
-        # INBOARD of the rail; the rail is the wall that closes it, and the only thing allowed
-        # to reach into it is the m9 notch, which is bounded on its own.
+        # INBOARD of the rail; the rail is the wall that closes it, and nothing reaches into it.
         # IT STOPS AT THE RAIL'S INNER FACE, AND ON TOP OF THE BOTTOM. Taken out to Y_LO - 20
         # and down to Z_BOT - 10 it swallowed the -Y rail's own section and, worse, the strip of
         # BOTTOM that ties that rail to the rest of the body -- so the rail came out of the cut
@@ -1138,21 +1131,11 @@ def _segments():
         # own top edge is FLAT: anything the bay puts above that edge survives with a flat
         # underside. Sized to Z_HI it topped out at -27.25 and left 1.8 of each side wall
         # hanging there -- two 7.6 mm2 ceilings on string 10's bay, which the user spotted.
-        # ...and ACROSS THE M9 NOTCH it reaches back to the notch's own face. The notch takes
-        # 4 mm off the rail's inner face for the trunk's outboard dip, and string 10's bay back
-        # wall reaches 1.2 past that face -- so with the rail gone there, that 1.2 stood alone
-        # between the notch void and the corridor void. One sliver per probe line, six of them.
-        _nx0, _nx1 = max(M9_CUT_X0, b - 20.0), min(M9_CUT_X1, a + 20.0)
-        if _nx1 - _nx0 > 0.1:
-            seg = seg.cut(box_at(_nx1 - _nx0, _cy0 - M9_CUT_YBACK,
-                                 MB.HARNESS_Z1 - MB.FLOOR_TOP,
-                                 x=(_nx0 + _nx1) / 2, y=(M9_CUT_YBACK + _cy0) / 2,
-                                 z=(MB.FLOOR_TOP + MB.HARNESS_Z1) / 2))
         # THE 45 DEG UNDERSIDE on whatever stands over the corridor. It is bounded by the VOID
         # IT RELIEVES: a bare triangle running -Y from HARNESS_Y1 used to reach 15.55 past it,
         # which was harmless while the -Y rail was (wrongly) missing and became a 2035 mm2 flat
         # ceiling on the rail's inner face the moment the rail came back. It now stops at the
-        # void's own -Y face -- the rail inside, the notch's back face across the notch.
+        # void's own -Y face -- the rail's inner face.
         def _relief(yb, x0, x1):
             # the wedge sitting ON the channel's ceiling, so what is left IS the 45 deg ramp:
             # from a knife edge at the HARNESS_Y1 wall up to (yb, +(HARNESS_Y1 - yb)). Cutting
@@ -1164,8 +1147,6 @@ def _segments():
                     .polyline(_prof).close().extrude(x1 - x0))
 
         seg = seg.cut(_relief(_cy0, b - 20.0, a + 20.0))
-        if _nx1 - _nx0 > 0.1:
-            seg = seg.cut(_relief(M9_CUT_YBACK, _nx0, _nx1))
         # THE LEVER MORTISES, RE-CUT AFTER THE BAYS (user, 2026-09-15). _build_full cuts a
         # christmas-tree into every rib, but the housings fuse in above it -- and each faceplate
         # wall runs all the way down to the BED, so it crosses the ribs and fills those mortises
