@@ -140,10 +140,6 @@ PARTS = {
     "adjust_sleeve":   (lambda: heal(LS.adjust_sleeve()), "petg-gf/adjust_sleeve.step", "PETG-GF — adjust sleeve: butts the fixed sleeve; one +X screw pins the fixed tenon, one sets the height through the adjust tenon's ladder. Prints -Y -> +Y"),
     "fixed_tenon":     (lambda: heal(LS.fixed_tenon()), "petg-gf/fixed_tenon.step", "PETG-GF — fixed floating tenon: adapter <-> fixed sleeve <-> adjust sleeve, houses the body latch slider and spring. Prints diagonally (+X+Y -> -X-Y)"),
     "adjust_tenon":    (lambda: heal(LS.adjust_tenon()), "petg-gf/adjust_tenon.step", "PETG-GF — adjust floating tenon: the height ladder (blind +X holes) and, at its bar end, the pedal bar latch's pocket and lead-in. Prints diagonally (+X+Y -> -X-Y)"),
-    "leg_trrs_throat": (lambda: heal(__import__("src.leg_trrs", fromlist=["e"]).throat()), "tpu/leg_trrs_throat.step", "TPU — the TRRS jack's up-stop ×4, at the fixed tenon's tip: a Ø10.3 × 6.2 ring bored Ø6.6 so the body plug's overmould still passes, with a 45° funnel at the mouth (radial capture 1.55 → 2.75). It cannot be a step in the bore — the Ø9.7 jack goes in from the tip, so a lip above it would be a lid fitted before the box is filled. It DROPS IN AND TURNS 70° on a bayonet (user): two lugs under 1.6 of octagon, and TPU so the lugs are their own preload. Turn it back out with a flat blade in the two mouth notches — the press-and-pin it replaces had no way out at all, because nothing here may stand proud of a flank that enters a mortise. Carries the coil's 5 N only while the leg is off; with the leg on the mortise roof lies on its top face and the bayonet cannot even lift. PRINT IT TIP UP (mouth away from the bed): the lug's TOP is the bearing face, so it must not be the overhanging one — the underside is chamfered 45° for exactly that reason. So printed, it has no overhang past 45° at all"),
-    "bar_trrs_sleeve": (lambda: heal(__import__("src.bar_trrs", fromlist=["e"]).sleeve()), "tpu/bar_trrs_sleeve.step", "TPU — the BOTTOM blind-mate's plug carrier ×4: a Ø9.6 × 6.4 collar that grips the male overmould at 0.4 of squeeze and rides a bayonet whose run is FLOAT taller than its lugs, so the plug FLOATS — the run's floor holds it in with the leg off, its roof is the up-stop when the bar's jack pushes it back. It is a COLLAR and not a cup: both ends are open, because it has to be threaded on from the Ø3.5 barrel end and pass the Ø6.1 overmould to reach its grip, and the lead's other end is a Ø9.7 jack, so there is no second way on. Prints flange-down (the lug's bearing face is its underside)"),
-    "bar_trrs_throat": (lambda: heal(__import__("src.bar_trrs", fromlist=["e"]).throat()), "tpu/bar_trrs_throat.step", "TPU — the BOTTOM blind-mate's JACK keeper ×4: a Ø10.6 × 6.4 ring that grips the inline jack's Ø7.8 body at 0.4 of squeeze and turns into a bayonet in the bar's mortise floor. The jack is a FLANGELESS moulding — there is no shoulder on it to catch — so gripping it and capturing the grip is the only positive up-stop available against the plug's 5..20 N detent on every leg removal; the jack's own back on the cable way's step is the down-stop. Bench-assemble it onto the jack, thread the lead into the trough, then drop the pair in and turn: the grip is what lets the jack serve as the handle. A pin in the run's outer wall is the anti-rotation detent. Prints lugs-up (their bearing face is the top)"),
-    "leg_trrs_sleeve": (lambda: heal(__import__("src.leg_trrs", fromlist=["e"]).sleeve()), "tpu/leg_trrs_sleeve.step", "TPU — the body plug's retainer ×4: a Ø9.6 × 6.4 cup that grips the male overmould at 0.4 of squeeze and locks into the adapter's roof on the same 70° bayonet. It replaces a Ø6.1-in-Ø6.0 press whose holding force was 6–48 N depending on a modulus nobody publishes — and zero if the bought plug measures at the low end — against the 5–20 N the TRRS pair pulls every time the leg comes off (user: what stops it falling −Z?). Being an elastomer it also takes the 0.15 of slop out, so the plug can no longer cock. Turn it by turning the PLUG; what keeps it from turning back is the lead, folded into a 4.8 channel the chassis closes over. PRINT IT FLANGE DOWN (the narrow end on the bed) — the mirror of the throat, because here it is the lug's UNDERSIDE that bears, so the chamfer goes on top. So printed, it has no overhang past 45°"),
     "leg_latch_slider": (lambda: heal(__import__("src.leg_latch", fromlist=["e"]).slider()), "pctg/leg_latch_slider.step", "PCTG — body latch slider: push-to-connect hook into the adapter, flush 20x20 pad on the fixed sleeve, one steel coil. Prints -X -> +X"),
     "bar_latch_frame": (lambda: heal(LS.bar_latch_frame()), "pctg/bar_latch_frame.step", "PCTG — pedal bar yoke latch: a ring round the adjust tenon, hook in its pocket, 20x20 pad flush in the collar, a cup seating its one coil. Prints ring down"),
     "bar_latch_collar": (lambda: heal(LS.bar_latch_collar()), "petg-gf/bar_latch_collar.step", "PETG-GF — pedal bar latch collar: the top 22.4 of the bar's tower, holding the yoke and its springs; two T rails slide it onto the tower from +Y, one M4x30 button head into a heat-set insert in the tower locks it. Prints on its +Y face"),
@@ -1285,6 +1281,16 @@ _COLORS = {
     "leg_latch_spring": (0.62, 0.64, 0.67),  # stainless coil (purchased)
     "lock_pin_screw":  (0.55, 0.55, 0.58),   # M4x12 button head (purchased)
     "lock_pin_insert": (0.80, 0.60, 0.35),   # brass heat-set insert
+    # the leg's blind-mates: pogo boards (src.leg_pogo). PCB green, gold pads/pins,
+    # the JST PH mated envelope in harness white, screws steel
+    "pogo_male_board":   (0.10, 0.35, 0.18),
+    "pogo_female_board": (0.10, 0.35, 0.18),
+    "pogo_male_pins":    (0.83, 0.69, 0.22),
+    "pogo_female_pads":  (0.83, 0.69, 0.22),
+    "pogo_male_ph":      (0.90, 0.90, 0.86),
+    "pogo_female_ph":    (0.90, 0.90, 0.86),
+    "pogo_male_screw":   (0.62, 0.64, 0.67),
+    "pogo_female_screw": (0.62, 0.64, 0.67),
     "leg_trrs_plug":   (0.15, 0.15, 0.17),   # the blind-mate: the FIXED plug, in the
     "leg_trrs_jack":   (0.20, 0.20, 0.22),   # adapter's roof...and the FLOATING jack
     "leg_trrs_spring": (0.62, 0.64, 0.67),   # ...the coil that holds them together
@@ -1452,6 +1458,10 @@ def _color_for(name):
         return cq.Color(*_TPU_BLACK)             # TPU is always black
     if base in _COLORS:
         return cq.Color(*_COLORS[base])
+    # the pogo boards are named per joint (pogo_male_board_top / _bottom)
+    _pg = re.match(r"(pogo_[a-z]+_[a-z]+)_(?:top|bottom)$", base)
+    if _pg and _pg.group(1) in _COLORS:
+        return cq.Color(*_COLORS[_pg.group(1)])
     # The three foot pedals are the knee-lever core VERBATIM, only posed and named
     # pedal{i}_<knee part>. Strip that station prefix and inherit the sibling's
     # colour rather than adding 66 near-duplicate entries — otherwise every pedal
