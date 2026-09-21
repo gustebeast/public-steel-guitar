@@ -805,6 +805,7 @@ def _electronics_components():
            ("motor_ctrl", EL.motor_ctrl()),
            ("output_panel", EL.output_panel()),
            ("oled", EL.oled()), ("joystick", EL.joystick())]
+    out += EL.board_screws()
     out += [(f"top_plate_{i}", seg) for i, seg in enumerate(TP.segments)]
     out += [(f"top_plate_color_{i}", seg) for i, seg in enumerate(TP.segments_color)]
     # the fillers the pickup piece displaced: show them slid +Y clear of the
@@ -1386,7 +1387,9 @@ _COLORS = {
     "trrs_adapter_screw":  (0.55, 0.55, 0.58),   # M4 button, 2.5 hex -- the one lock
     "trrs_adapter_insert": (0.80, 0.60, 0.35),   # its brass heat-set insert
     "tee_screw":       (0.72, 0.74, 0.78),   # M4x10 button, BESIDE the tee board
-    "tee_insert":      (0.72, 0.60, 0.30),   # M4 heat-set brass, in the cradle boss
+    "tee_insert":      (0.72, 0.60, 0.30),
+    "board_screw":     (0.72, 0.74, 0.78),   # M4x10 button THROUGH our boards' mounting ears
+    "board_insert":    (0.72, 0.60, 0.30),   # its heat-set brass, in the cradle boss   # M4 heat-set brass, in the cradle boss
     "optical_pcb":     (0.12, 0.30, 0.55),   # per-string optical strip (blue solder mask,
                                              # so it reads apart from the green audio PCBs)
     # ⚠ MATCHED TO THE LOOSE-WIRE COLOURS BELOW, not picked fresh: a USB run is a USB
