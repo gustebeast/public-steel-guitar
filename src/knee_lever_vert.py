@@ -50,9 +50,7 @@ DEFERRED (this round is the basic geometry, per the user):
   * the REST STOP. Gravity and the springs both pull this arm down, so unlike
     LKL there is no spring-defined rest angle — it needs a hard stop to land on.
   * the global MOUNT POSE (which bay, and how far inboard).
-  * the follower RECESSES are plain rectangles here, not knee_lever's swept
-    tongue envelopes — the arm keeps more material with the swept version, so it
-    is worth porting once the throw is settled.
+  * (DONE 2026-09-21) the follower recesses are knee_lever's swept tongue envelopes.
 """
 
 from __future__ import annotations
@@ -99,9 +97,17 @@ ARM_LEN_V   = 80.0                  # axle -> paddle end (user; was 50). 80 give
 ARM_TZ      = 8.0                   # arm thickness in Z (it is the arm's bending depth now)
 LEG_TOP     = LOBE_RC_V + 4 * KL.D.BEAD     # leg reaches 3.2 past the lobe station
 HUB_D       = KL.HUB_D              # Ø10 hub on the axle — unchanged
-LEVER_HW    = KL.LEVER_HW           # ±10 in Y — unchanged, so every bearing/sensor Y holds
-REC_X       = 5 * KL.D.BEAD         # 4.0 follower recess depth into the leg's -X face
-REC_Z       = 9 * KL.D.BEAD         # 7.2 recess height (the follower's swept band)
+LEVER_HW    = KL.LEVER_HW           # ±12 in Y -- LKL's, so every bearing/sensor Y holds
+# The arm SAGS past rest (gravity and both springs pull it down) until its rest stop, which is
+# still deferred -- so the recess covers REST_SAG_V of travel that way with the follower at rest.
+REST_SAG_V  = 10.0
+# HALF-STOP SETBACK for THIS lever. LKL's HS_SETBACK (1.863) was solved for its 9.5 lobe
+# radius and a 15° engagement; on this lever's 13.2 radius it engaged at 8.32° instead of
+# ENGAGE_V. Re-solved the same way -- a solid-contact bisection of kv_lever against the
+# half-stop piston -- for first contact at ENGAGE_V (2026-09-21): +0.373. It is only where the
+# cartridge PARKS on its position screw (the same part, the same pocket), and it leaves that
+# screw 1.23 / 1.97 of its range either side.
+HS_SETBACK_V = KL.HS_SETBACK + 0.373
 
 
 def _lever() -> cq.Workplane:
@@ -114,11 +120,13 @@ def _lever() -> cq.Workplane:
     leg = box_at(KL.ARM_TX, 2 * LEVER_HW, LEG_TOP, x=0.0, y=0.0, z=LEG_TOP / 2)
     arm = box_at(ARM_LEN_V, 2 * LEVER_HW, ARM_TZ, x=ARM_LEN_V / 2, y=0.0, z=0.0)
     body = hub.union(leg).union(arm)
-    # follower recesses, one per cartridge lane, cut into the leg's -X face so the
-    # lobe can protrude into them
+    # follower recesses: knee_lever's SWEPT tongue envelope, one per lane, so the leg keeps its
+    # material right behind the lobe (they were plain notches sized to the CARTRIDGE -- 14.8
+    # wide each on a 24 leg once the Ø10 cartridges arrived -- which left the lobe standing on
+    # a sliver). This lever throws the arm UP, i.e. -a about +Y, hence sense=-1.
     for yc in (KL.MAIN_YC, KL.HS_YC):
-        body = body.cut(box_at(REC_X, KL.HS_CART_WY + 2 * KL.HS_CLR, REC_Z,
-                               x=-KL.ARM_TX / 2 + REC_X / 2, y=yc, z=LOBE_RC_V))
+        body = body.cut(KL.recess_swept(yc, LOBE_RC_V, THROW_V, LOBE_RC_V + KL.FOLL_DZ,
+                                        sense=-1, rest_span=REST_SAG_V))
     body = body.union(cyl_y(2 * KL.LOBE_R, 2 * LEVER_HW, y0=-LEVER_HW)
                       .translate((0.0, 0.0, LOBE_RC_V)))
     body = KL.cut_axle_bore(body)
@@ -298,10 +306,10 @@ kv_housing = _housing()
 def demo_parts():
     """Bought/printed dummies in the local frame, for the assembly."""
     out = KL.axle_dummies(lambda s: s, "kv", HOUS_Z0, HOUS_Z1)
-    out += KL.cart_dummies(vplace, "kv")
+    out += KL.cart_dummies(vplace, "kv", hs_setback=HS_SETBACK_V)
     # the springs, tension screws, inserts and back-stops were MISSING here — this
     # lever was drawn with cartridge bodies and no feel system inside them
-    out += KL.feel_dummies(vplace, "kv")
+    out += KL.feel_dummies(vplace, "kv", hs_setback=HS_SETBACK_V)
     return out
 
 
