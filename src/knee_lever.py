@@ -604,7 +604,7 @@ def _bearing():
     return o.cut(b)
 
 
-def feel_dummies(place, prefix=""):
+def feel_dummies(place, prefix="", hs_setback=None):
     """The two feel cartridges' hardware, posed by `place` — the caller's own
     feel_place (horizontal), vplace (vertical) or pplace (pedal).
 
@@ -628,7 +628,10 @@ def feel_dummies(place, prefix=""):
         return solid.rotate((0, 0, 0), (0, 1, 0), 90).translate((x, y, z))
 
     washer = cyl(WASHER_OD, WASHER_T, z=0.0).cut(cyl(WASHER_ID, WASHER_T + 2, z=-1.0))
-    for nm, dx, dy in (("main", 0.0, MAIN_YC - HS_YC), ("half_stop", HS_SETBACK, 0.0)):
+    # hs_setback: where the HALF-STOP cartridge parks on its position screw -- a per-lever
+    # number, because the engagement angle depends on that lever's lobe radius (see HS_SETBACK)
+    _hs = HS_SETBACK if hs_setback is None else hs_setback
+    for nm, dx, dy in (("main", 0.0, MAIN_YC - HS_YC), ("half_stop", _hs, 0.0)):
         yc, zp = HS_YC + dy, HS_Z + HS_POS_DZ
         # every dummy is BUILT in the +Z/+X frame then placed to its installed spot (below the axle,
         # spring -X) -- same map as the cartridge, so they track AXLE_Z too. Drawn with the tension
@@ -652,22 +655,27 @@ def feel_dummies(place, prefix=""):
     return out
 
 
-def cart_dummies(place, prefix="", stroke=(0.0, 0.0)):
+def cart_dummies(place, prefix="", stroke=(0.0, 0.0), hs_setback=None):
     """The two cartridges themselves — base and piston. `stroke` is the
     (main, half_stop) piston retraction for a posed throw; 0 at rest."""
     p = f"{prefix}_" if prefix else ""
     out = []
     for nm, off, s in (("main", CART_MAIN_OFFSET, stroke[0]),
-                       ("half_stop", CART_HALFSTOP_OFFSET, stroke[1])):
+                       ("half_stop", (HS_SETBACK if hs_setback is None else hs_setback, 0.0, 0.0),
+                        stroke[1])):
         out.append((f"{p}{nm}_cart_base", place(cart_base.translate(off))))
         out.append((f"{p}{nm}_cart_piston",
                     place(cart_piston.translate(off)).translate((-s, 0, 0))))
     return out
 
 
-def axle_dummies(place, prefix, z_bot, z_top, flip=None, shim_top=None):
+def axle_dummies(place, prefix, z_bot, z_top, flip=None, shim_top=None, axle=True):
     """Bearings, magnet and the sensor stack — everything on the axle that is not
     the lever. `place` poses the whole group; z_bot/z_top size the board.
+
+    `axle` adds the printed AXLE and MAGNET CAP too (user, 2026-09-21: LKV and all five
+    pedals had neither -- only the horizontal stations drew them, because LKL's own
+    builder adds them with its throw applied; that builder passes axle=False).
 
     `shim_top` overrides where the SHIM stops. It defaults to the housing ceiling,
     which is right when the thing pressing the shim is the chassis — but the foot
@@ -681,6 +689,9 @@ def axle_dummies(place, prefix, z_bot, z_top, flip=None, shim_top=None):
     _sh = pcb_shim(z_bot, z_top if shim_top is None else shim_top, flip)
     if _sh is not None:
         out.append((f"{prefix}_pcb_shim", place(_sh)))
+    if axle:
+        out.append((f"{prefix}_axle", place(kl_axle)))
+        out.append((f"{prefix}_magnet_cap", place(kl_magnet_cap)))
     return out
 
 
@@ -688,7 +699,7 @@ def demo_parts():
     """Bought-part dummies in the local frame: (name, shape). Assembly-only."""
     # (no kl_axle dummy: the axle is PRINTED now — +Y journal integral to
     #  the lever, -Y journal = the kl_axle_insert part)
-    out = axle_dummies(lambda s: s, "kl", HOUS_Z0, HOUS_Z1)
+    out = axle_dummies(lambda s: s, "kl", HOUS_Z0, HOUS_Z1, axle=False)   # build adds them, swung
     out += feel_dummies(feel_place)
     # (no travel-stop screw: the +Z-cam-era stop boss was removed -- see _housing)
     # (no retention set-screw dummy: the rib-mount tenons + their M2 lock are
@@ -1484,6 +1495,38 @@ for _n, _lcsc, _lx, _wz, _hy, _cx, _cz in SENSOR_BOM:
 
 
 
+def recess_swept(yc, lobe_rc, throw, zc, sense=1, rest_span=45.0, step=3.0):
+    """The follower TONGUE's clearance swept through a lever's motion, in the LEVER frame -- the
+    recess that lets the lobe reach its follower while the lever keeps its material right
+    behind the lobe. Shared by every lever in the family (user, 2026-09-21: LKV had been left
+    with plain rectangular notches sized to the CARTRIDGE, 14.8 wide on a 24 leg).
+
+      yc        the follower lane's Y
+      lobe_rc   axle -> lobe radius (the tongue retreats lobe_rc*sin(a) as the lobe rises)
+      throw     working throw (deg), follower engaged
+      zc        the follower's centre Z in the lever frame at rest
+      sense     +1 if the working throw is +a about +Y (LKL), -1 if it is -a (LKV)
+      rest_span how far the lever travels the OTHER way with the follower at rest (LKL: the
+                storage fold; LKV: sag past rest until its deferred rest stop)
+    """
+    c = HS_CLR
+    x_hi, x_lo = 0.0, -13.0                              # lobe centre .. back into open air
+    tongue = box_at(x_hi - x_lo, LOBE_WY + 1.0, FOLL_H + 2 * c,
+                    x=(x_hi + x_lo) / 2, y=yc, z=zc)
+    def at(deg):
+        s = lobe_rc * math.sin(math.radians(deg)) if deg > 0 else 0.0
+        # the lever turns by sense*deg, so in the LEVER frame the tongue turns the other way
+        return tongue.translate((-s, 0, 0)).rotate((0, 0, 0), (0, 1, 0), -sense * deg)
+    degs = list(range(0, int(round(throw)) + 1, int(step))) + \
+           [-d for d in range(int(step), int(rest_span) + 1, int(step))]
+    if int(round(throw)) % int(step):
+        degs.append(throw)                               # always include the full throw
+    env = None
+    for d in degs:
+        env = at(d) if env is None else env.union(at(d))
+    return heal(env)
+
+
 def _recess_swept(yc, step=3.0, fold=45.0):
     """The follower TONGUE's clearance region swept through the lever's WHOLE motion, mapped into the ARM
     frame -> the arm recess for one follower band. Two motions feed it:
@@ -1497,20 +1540,8 @@ def _recess_swept(yc, step=3.0, fold=45.0):
     A clearance box bounding tongue+nose (FOLL_H + 2*HS_CLR tall, opening from the lobe back into open air)
     is swept and unioned; only its in-arm part removes material, so the recess hugs the motion -- far less
     removed than the old rectangular notch, leaving the arm solid right behind the lobe."""
-    c = HS_CLR
-    zc = _FEEL_DZ + HS_Z + FOLL_DZ                       # follower centre, placed frame
-    x_hi, x_lo = 0.0, -13.0                              # lobe centre .. back into open air (past -X face)
-    tongue = box_at(x_hi - x_lo, LOBE_WY + 1.0, FOLL_H + 2 * c,
-                    x=(x_hi + x_lo) / 2, y=yc, z=zc)
-    def at(deg):
-        s = LOBE_RC * math.sin(math.radians(deg)) if deg > 0 else 0.0
-        return tongue.translate((-s, 0, 0)).rotate((0, 0, 0), (0, 1, 0), -deg)
-    degs = list(range(0, int(round(THROW)) + 1, int(step))) + \
-           [-d for d in range(int(step), int(fold) + 1, int(step))]
-    env = None
-    for d in degs:
-        env = at(d) if env is None else env.union(at(d))
-    return heal(env)
+    return recess_swept(yc, LOBE_RC, THROW, _FEEL_DZ + HS_Z + FOLL_DZ, sense=1,
+                        rest_span=fold, step=step)
 
 
 _RECESS_SWEPT = _recess_swept(MAIN_YC)               # one band, built once; translated in Y for the other
