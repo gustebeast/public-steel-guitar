@@ -64,7 +64,7 @@ import math
 
 import cadquery as cq
 
-from cadkit.cables import helix_cable, oct_cable
+from cadkit.cables import bundle_paths, helix_cable, oct_cable
 from cadkit.fasteners import M4, M4_BUTTON_HEAD_D, M4_BUTTON_HEAD_H, ScrewJoint
 from cadkit.holes import teardrop_hole
 from cadkit.pcb import PCB_T
@@ -161,6 +161,24 @@ HARNESS_WIRE_OD = 0.9           # 28 AWG 7/36 PVC hookup (Alpha 3048-class)
 HARNESS_D = 3 * B               # 2.4: four 0.9 wires bundle to 0.9 (1 + sqrt2) = 2.17
 HARNESS_BEND_STATIC = 3.0 * HARNESS_D   # 7.2 -- set once, no foil, no jacket
 assert HARNESS_D >= HARNESS_WIRE_OD * (1 + math.sqrt(2)), "the bundle is under-sized"
+
+# FOUR CONDUCTORS, DRAWN AS FOUR (user), the way src.wiring already draws every CAN run
+# rather than as one jacket -- there is no jacket here to draw. They sit in the
+# connector's own PIN ORDER around the bundle's axis, so no conductor has to cross a
+# neighbour to reach its crimp: GND, 5V, CAN_H, CAN_L on 1-4 at both ends.
+#
+# The pair that matters is CAN_H/CAN_L, and they are placed DIAGONALLY OPPOSITE across
+# the bundle rather than side by side. Twisted, that is the pair; untwisted -- which is
+# what the model draws -- keeping them on one diagonal at least keeps their spacing
+# equal down the whole run instead of letting the power pair sit between them.
+# The four centres sit on a square of SIDE 2 * _WOFF, so the neighbour spacing is that
+# side, NOT the diagonal: at anything under one wire OD the conductors interpenetrate
+# down the whole run (0.37 gave 24 overlaps, the worst 48 mm3).
+_WOFF = (HARNESS_WIRE_OD + 0.1) / 2.0                   # 0.5: touching plus 0.1 of air
+HARNESS_WIRES = (("gnd", (-_WOFF, -_WOFF)), ("5v", (_WOFF, -_WOFF)),
+                 ("canh", (_WOFF, _WOFF)), ("canl", (-_WOFF, _WOFF)))
+assert 2 * (_WOFF * math.sqrt(2) + HARNESS_WIRE_OD / 2.0) <= HARNESS_D, (
+    "the four conductors as placed do not fit the O%.1f bundle" % HARNESS_D)
 
 
 # ── the female board, flat on the host face ──────────────────────────────────
@@ -534,15 +552,18 @@ def harness():
     pitch = (z_a - z_b) / CM.TURNS
     r = math.sqrt(max((CM.COIL_LEN / CM.TURNS) ** 2 - pitch ** 2, 0.0)) / math.pi / 2.0
     ax, ay = LS.LEG_X, LS.LEG_Y
-    upper = oct_cable([TOP.p(pt, 0.0, PLUG_TOP), TOP.p(pt, 0.0, dm),
-                  (xs, ys, TOP.p(0, 0, dm)[2]), (xs, ys, LS.Z_FIX_TEN_BOT - 2.0),
-                  (ax + r, ay, z_a + COIL_LEAD), (ax + r, ay, z_a + COIL_GAP)], d)
-    lower = oct_cable([(ax + r, ay, z_b - COIL_GAP), (ax + r, ay, z_b - COIL_LEAD), (xc, yc, LS.Z_ADJ_TEN_TOP + 2.0),
-                  (xc, yc, BT.PASS_TOP), (xb, yb, BT.CH_BOT),
-                  (xb, yb, BOTTOM.p(0, 0, dm)[2]), BOTTOM.p(pt, 0.0, dm),
-                  BOTTOM.p(pt, 0.0, PLUG_TOP)], d)
+    up_path = [TOP.p(pt, 0.0, PLUG_TOP), TOP.p(pt, 0.0, dm),
+               (xs, ys, TOP.p(0, 0, dm)[2]), (xs, ys, LS.Z_FIX_TEN_BOT - 2.0),
+               (ax + r, ay, z_a + COIL_LEAD), (ax + r, ay, z_a + COIL_GAP)]
+    lo_path = [(ax + r, ay, z_b - COIL_GAP), (ax + r, ay, z_b - COIL_LEAD),
+               (xc, yc, LS.Z_ADJ_TEN_TOP + 2.0),
+               (xc, yc, BT.PASS_TOP), (xb, yb, BT.CH_BOT),
+               (xb, yb, BOTTOM.p(0, 0, dm)[2]), BOTTOM.p(pt, 0.0, dm),
+               BOTTOM.p(pt, 0.0, PLUG_TOP)]
+    # THE COIL STAYS ONE BODY (see helix_cable): four helices about one axis is four
+    # sweeps where the bundle reads the same, and the wind count and mean diameter --
+    # the two things it has to get right -- are the bundle's, not a conductor's.
     coil = helix_cable(ax, ay, z_b, z_a, CM.TURNS, r, d)
-    leg = upper.union(lower)
     fr = ZR_MOUTH - ZR_PLUG - d / 2.0 - 0.1         # running past the plug, clear of it
     fc = fr                                          # ...and it drops there
     zd = PCB_T + ZR_H / 2.0                         # the plug's height off the host
@@ -550,14 +571,22 @@ def harness():
     zc = LS.Z_TOP - CHAN_D + d / 2.0 + 0.2          # lying in the groove's bottom
     y_out = LS.LEG_Y - LS.LEG_W / 2.0
     f1 = TOP.p(fr, 0.0, zd)
-    body = oct_cable([f0, f1, (f1[0], f1[1], zc), (f1[0], y_out, zc),
-                 (f1[0], y_out - 12.0, zc)], d)
+    body_path = [f0, f1, (f1[0], f1[1], zc), (f1[0], y_out, zc),
+                 (f1[0], y_out - 12.0, zc)]
     g0 = BOTTOM.p(ZR_MOUTH - ZR_PLUG - 0.1, 0.0, zd)
     g0b = BOTTOM.p(fr, 0.0, zd)                    # clear of the plug first...
     g1a = BOTTOM.p(fr, -S_C, zd)                   # ...over to the leg's axis line,
     g2 = BOTTOM.p(fc, -S_C, -17.0)                 # ...and down into it
-    bar = oct_cable([g0, g0b, g1a, g2, (g2[0] + 10.0, g2[1], g2[2])], d)   # along the chamber, toward
-                                                            # the trough
-    return [("pogo_harness_leg", leg), ("pogo_harness_coil", coil),
-            ("pogo_harness_body", body),
-            ("pogo_harness_bar", bar)]
+    bar_path = [g0, g0b, g1a, g2, (g2[0] + 10.0, g2[1], g2[2])]   # along the chamber,
+                                                                  # toward the trough
+    out = [("pogo_harness_coil", coil)]
+    w = HARNESS_WIRE_OD
+    # NUMBERED, not named, per run (0 leg above the coil, 1 leg below, 2 body stub,
+    # 3 bar stub): check_overlaps strips a trailing index group, so all four runs of a
+    # circuit collapse to ONE base name and the wire allow-list needs four entries
+    # rather than sixteen.
+    for k, path in enumerate((up_path, lo_path, body_path, bar_path)):
+        for (name, _), cpath in zip(HARNESS_WIRES,
+                                    bundle_paths(path, [o for _, o in HARNESS_WIRES])):
+            out.append(("pogo_wire_%s_%d" % (name, k), oct_cable(cpath, w)))
+    return out

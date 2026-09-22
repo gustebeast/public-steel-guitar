@@ -86,6 +86,77 @@ def oct_cable(pts, d: float) -> cq.Workplane:
                        "(%d segments, wanted >= %.1f mm3)" % (len(segs), want))
 
 
+def bundle_paths(pts, offsets):
+    """Split one bundle centreline into N CONDUCTOR paths, one per (a, b) offset.
+
+    `offsets` are in the bundle's OWN cross-section, so a conductor keeps its place
+    in the bundle around every corner. A constant WORLD offset cannot: the moment a
+    segment runs parallel to the offset direction, two conductors slide onto the
+    same line and become the same cable. (A leg harness has exactly that -- mostly
+    vertical, with horizontal jogs at both ends.)
+
+    The frames are ROTATION-MINIMISING: the first is built off whichever world axis
+    is least parallel to the run, and each next one is the previous rotated by the
+    smallest rotation carrying one segment direction onto the next, so the bundle
+    does not spin about its own axis just because the path turned a corner. At a
+    vertex the two adjoining frames are averaged, which keeps each conductor a
+    single unbroken polyline through the turn.
+
+    Returns a list of point-lists, one per offset, ready for `oct_cable`.
+    """
+    segs = []
+    for a, b in zip(pts, pts[1:]):
+        va, vb = cq.Vector(*a), cq.Vector(*b)
+        if (vb - va).Length > 1e-6:
+            segs.append((va, vb))
+    if not segs:
+        return [list(pts) for _ in offsets]
+    dirs = [(vb - va).normalized() for va, vb in segs]
+    ref = cq.Vector(0, 0, 1) if abs(dirs[0].z) < 0.9 else cq.Vector(1, 0, 0)
+    fa = ref.cross(dirs[0]).normalized()
+    frames = [(fa, dirs[0].cross(fa).normalized())]
+    for u_prev, u in zip(dirs, dirs[1:]):
+        a_prev, _ = frames[-1]
+        # rotate the frame by the same rotation that carries u_prev onto u: project
+        # the old axis onto the new segment's normal plane and renormalise, which IS
+        # that rotation for the axis, and is stable when the turn is small
+        a_new = (a_prev - u * a_prev.dot(u))
+        if a_new.Length < 1e-9:                 # a full reversal -- pick any normal
+            a_new = ref.cross(u)
+            if a_new.Length < 1e-9:
+                a_new = cq.Vector(1, 0, 0).cross(u)
+        a_new = a_new.normalized()
+        frames.append((a_new, u.cross(a_new).normalized()))
+    verts = [segs[0][0]] + [vb for _, vb in segs]
+    out = []
+    for oa, ob in offsets:
+        # each SEGMENT offsets as a whole line, and a vertex is where consecutive
+        # offset lines meet -- a true polyline offset, the MITRE. Averaging the two
+        # frames at the vertex instead lets each conductor cut the corner by a
+        # different amount, and neighbours then cross INSIDE the turn (16 overlaps,
+        # the worst 17 mm3, all of them at corners).
+        org = [v + a * oa + b * ob for v, (a, b) in zip(verts[:-1], frames)]
+        path = [(org[0].x, org[0].y, org[0].z)]
+        for i in range(1, len(segs)):
+            p0, u0 = org[i - 1], dirs[i - 1]
+            p1, u1 = org[i], dirs[i]
+            w0 = p0 - p1
+            b_ = u0.dot(u1)
+            den = 1.0 - b_ * b_
+            if den < 1e-9:                      # collinear -- no corner to mitre
+                m = p1
+            else:                               # closest approach of the two lines
+                d_, e_ = u0.dot(w0), u1.dot(w0)
+                q0 = p0 + u0 * ((b_ * e_ - d_) / den)
+                q1 = p1 + u1 * ((e_ - b_ * d_) / den)
+                m = (q0 + q1) * 0.5
+            path.append((m.x, m.y, m.z))
+        end = verts[-1] + frames[-1][0] * oa + frames[-1][1] * ob
+        path.append((end.x, end.y, end.z))
+        out.append(path)
+    return out
+
+
 def helix_cable(cx: float, cy: float, z0: float, z1: float, turns: float,
                 r: float, d: float) -> cq.Workplane:
     """A slack COIL: a round profile swept along a true helix. THREE faces.

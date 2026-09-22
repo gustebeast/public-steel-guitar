@@ -110,6 +110,7 @@ _ex("hardware",
     leg_pogo___D="sqrt(0.5) -- a direction cosine for the tenon's diagonal, not a length")
 _ex("clearance",
     leg_pogo__CLR="board / connector slip fit in its printed pocket",
+    leg_pogo___WOFF="air between two conductors in the bundle -- wire, not printed",
     leg_pogo__INS_CLR="screw-tip clearance past the insert",
     leg_pogo__LOAD_SLOP="bar_latch.CLR: how far the bottom joint hangs open",
     leg_pogo__MISALIGN="tip-on-pad landing error: octagon fit plus pocket clearances",
