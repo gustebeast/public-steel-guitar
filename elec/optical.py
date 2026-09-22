@@ -1834,21 +1834,40 @@ BOARD_NOTES = {
     # rather than a via among the AVDD/AREG/VREF caps the cell puts on that side.
     # ⚠ THE F.Cu POUR DOES NOT DO IT, MEASURED: the pin's inner end is 0.20 from the EP and
     # the pour's 0.3 clearance cannot enter, so all five AVSS pins came back unconnected.
-    "stitch_exceptions": ("J1.SH", "U14.4", "U15.4", "U16.4", "U17.4", "U18.4"),
+    # ...and pins 15/16 (ADDR1/ADDR0, both GND since the five parts share one address) the
+    # same way, into the EP from the other side: stitched like ordinary GND pads, their vias
+    # landed across the SHDNZ escape beside them and shorted it.
+    "stitch_exceptions": ("J1.SH",) + tuple("U%d.%d" % (u, p) for u in range(14, 19)
+                                            for p in (4, 15, 16)),
     # THE CONVERTERS' INPUT FAN, laid rather than routed: from each top pin straight up to
     # its coupling cap's pin-side pad, widening by at most 0.25 -- see CELL_FAN in
     # src/optical_pickup.py for why the router could not find these (12 of 28 open).
     # Pin x (part turned 180): 12 -1.25, 11 -0.75, 10 -0.25, 9 +0.25, 8 +0.75, 7 +1.25 at
     # y +1.96; pin 6 (IN1P) at (+1.96, +1.25), pin 13 (IN4M) at (-1.96, +1.25). A near cap's
     # pin-side pad centres 0.48 below its centre, a far cap's likewise.
+    # SHDNZ escapes: pin 14 sits on each part's crowded -X side between IN4M and the
+    # grounded address straps, and failed on all five parts in two routings. A stub out to
+    # a via 0.9 off the pad lets the router take the net on an inner layer from there.
     # AVSS -> EP, one per converter. Pin 4 sits at (+1.962, +0.25) from the EP centre with
     # the part turned 180 (read off the placed board through pcbnew); the track ends 0.9
     # in from the EP centre, well inside the 2.7 pad. Neighbour pins 3/5 clear by 0.27.
-    "tracks": [("GND", "F.Cu", 0.2, [(_placements(CX, CY)["U%d" % (14 + k)][0] + 1.962,
+    "tracks": [("GND", "F.Cu", 0.2, [(_placements(CX, CY)["U%d" % (14 + k)][0] - 1.962,
+                                       _placements(CX, CY)["U%d" % (14 + k)][1] + dy),
+                                      (_placements(CX, CY)["U%d" % (14 + k)][0] - 0.9,
+                                       _placements(CX, CY)["U%d" % (14 + k)][1] + dy)])
+               for k in range(5) for dy in (0.25, -0.25)]            # ADDR1 / ADDR0 -> EP
+             + [("GND", "F.Cu", 0.2, [(_placements(CX, CY)["U%d" % (14 + k)][0] + 1.962,
                                        _placements(CX, CY)["U%d" % (14 + k)][1] + 0.25),
                                       (_placements(CX, CY)["U%d" % (14 + k)][0] + 0.9,
                                        _placements(CX, CY)["U%d" % (14 + k)][1] + 0.25)])
-               for k in range(5)] + _fan_tracks(),
+               for k in range(5)] + _fan_tracks()
+              + [("ADC_SHDNZ", "F.Cu", 0.15,
+                  [(_placements(CX, CY)["U%d" % (14 + k)][0] - 1.96,
+                    _placements(CX, CY)["U%d" % (14 + k)][1] + 0.75),
+                   (_placements(CX, CY)["U%d" % (14 + k)][0] - 2.85,
+                    _placements(CX, CY)["U%d" % (14 + k)][1] + 0.75)]) for k in range(5)],
+    "vias": [("ADC_SHDNZ", _placements(CX, CY)["U%d" % (14 + k)][0] - 2.85,
+              _placements(CX, CY)["U%d" % (14 + k)][1] + 0.75) for k in range(5)],
     # ⚠ ORDER OPTIONS ARE PART OF THE DESIGN, and nothing in a gerber records them.
     # Mask colour is usually cosmetic and on this board it is not: twenty photodiodes
     # look up through a 0.30 mm gap that runs 5.40 mm to the cover's aperture, and that

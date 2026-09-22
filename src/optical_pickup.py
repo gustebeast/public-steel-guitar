@@ -1058,11 +1058,16 @@ def _parts():
     _cy_top = _part_y("U6") + CRTYD[_MCU_PKG][1] / 2
     _cy_gap = CRTYD[_MCU_PKG][1] - 2 * _ch
     assert _cy_gap >= 0, "two converter cells do not fit beside U6 (%.2f short)" % -_cy_gap
+    # ⚠ THE SPARE HEIGHT GOES ABOVE THE CELLS FIRST (2026-09-22). All twenty TIA outputs
+    # arrive down the strip and have to turn +X to reach the cells' input rows; with the
+    # spare all between the rows, row 1's far caps sat against the strip's end and 7 of the
+    # 16 open nets were outputs bound for row 1 that had no band to fan out through.
+    _band = 0.6 * _cy_gap
 
     def _cell(col, row):
         """The part's centre for a cell."""
         return (_cx0 + col * (_cw + _cgap) + _left,
-                _cy_top - row * (_ch + _cy_gap) - _far - _c[0] / 2)
+                _cy_top - _band - row * (_ch + _cy_gap - _band) - _far - _c[0] / 2)
 
     for k in range(5):
         qx, qy = _cell(k % 3, k // 3)
