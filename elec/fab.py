@@ -123,6 +123,9 @@ LCSC = {
     "TLC59711PWPR": "C116842",      # 12-ch 16-bit constant-current LED driver (led_strip)
     "XL-5050RGBW": "C7371891",      # XINGLIGHT RGBW 5050, separate anodes/cathodes (led_strip)
     "S6B-PH-SM4-TB": "C265405",     # 6-way side-entry PH, the LED strip's chain connector
+                                    # and pi_cap J3, 5 V + SPI out to the strip
+    "S4B-XH-SM4-TB": "C161861",     # S4B-XH-SM4-TB(LF)(SN), 20,777 -- pi_cap J2/J4,
+                                    # side entry so they fit UNDER the cap (see there)
     "B2B-XH-A": "C158012",          # JST B2B-XH-A(LF)(SN), stock 381,008 -- sourced
                                     # 2026-09-19 by asking the catalogue, and it is the
                                     # (LF)(SN) trap again and not a preference: the BARE

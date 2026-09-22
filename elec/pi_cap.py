@@ -89,8 +89,8 @@ P = Pin.types.PASSIVE
 
 BOARD_W, BOARD_L = 56.0, 26.0
 
-XH_FP = "Connector_JST:JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical"
-PH6_FP = "Connector_JST:JST_PH_B6B-PH-K_1x06_P2.00mm_Vertical"
+XH_FP = "Connector_JST:JST_XH_S4B-XH-SM4-TB_1x04-1MP_P2.50mm_Horizontal"
+PH6_FP = "Connector_JST:JST_PH_S6B-PH-SM4-TB_1x06-1MP_P2.00mm_Horizontal"
 SOCKET_FP = "Connector_PinSocket_2.54mm:PinSocket_2x20_P2.54mm_Vertical"
 
 # Raspberry Pi 40-way header, PHYSICAL pin numbers -- which is also how the 2x20 footprint
@@ -120,8 +120,9 @@ def _c(tag, value, desc, fp="Capacitor_SMD:C_0402_1005Metric"):
 
 
 def _xh(tag, desc):
-    return Part(name="B4B-XH-A", ref_prefix="J", ref=tag, tag=tag, dest="NETLIST",
-                tool="skidl", value="B4B-XH-A", description=desc, footprint=XH_FP,
+    return Part(name="S4B-XH-SM4-TB", ref_prefix="J", ref=tag, tag=tag,
+                dest="NETLIST", tool="skidl", value="S4B-XH-SM4-TB",
+                description=desc, footprint=XH_FP,
                 pins=[Pin(num=i + 1, name=n, func=P)
                       for i, n in enumerate(("GND", "V5", "V5", "GND"))])
 
@@ -164,9 +165,9 @@ def pi_cap():
     v5_led += j4[2], j4[3]
 
     # the one cable to the strip: power and both signals, in led_strip.J_PINS order
-    j3 = Part(name="B6B-PH-K-S", ref_prefix="J", ref="J3", tag="J3", dest="NETLIST",
-              tool="skidl", value="B6B-PH-K-S",
-              description="to the LED strip's section 1 -- 5 V and SPI, LCSC C131342",
+    j3 = Part(name="S6B-PH-SM4-TB", ref_prefix="J", ref="J3", tag="J3",
+              dest="NETLIST", tool="skidl", value="S6B-PH-SM4-TB",
+              description="to the LED strip's section 1 -- 5 V and SPI, LCSC C265405",
               footprint=PH6_FP,
               pins=[Pin(num=i + 1, name=n, func=P) for i, n in enumerate(STRIP_PINS)])
     gnd += j3[1], j3[4]
@@ -203,18 +204,21 @@ BOARD_NOTES = {
         # stood 51.9 mm tall on a 26 mm board and hung off both edges. "Vertical" in the
         # footprint name is the MATING direction (pins up), not the row's direction.
         "J1": (0.00, -8.50, 90.0),   # 4.5 from the board edge = the Pi header's own margin
-        # the three connectors are 13.5 wide in courtyard and the board is 56: they tile
-        # -26.75..15.5 with the requested x at each courtyard's CENTRE
-        "J2": (-20.00, 8.00, 0.0),      # Pi 5 V in
-        "J4": (-6.00, 8.00, 0.0),       # LED 5 V in
-        "J3": (9.00, 8.00, 0.0),        # out to the strip (J4 ends at 0.75; this starts 1.5)
-        # passives in their own row, spaced so each GND pad keeps its stitching-via room
-        "C1": (-20.00, 1.50, 0.0),
-        "C3": (-15.00, 1.50, 0.0),
-        "C2": (-6.00, 1.50, 0.0),
-        "C4": (20.00, -1.00, 0.0),
-        "R1": (5.00, 1.50, 0.0),
-        "R2": (8.00, 1.50, 0.0),
+        # ⚠ RE-TILED FOR THE SIDE-ENTRY BODIES. They are 16.8 x 12.1 (XH) and 17.3 x 10.3
+        # (PH) against the 12.4 x 5.75 of the vertical parts they replace, so the three
+        # together take 50.9 of the board's 56: ~1 mm of margin at each edge, 1.05 between
+        # them. Their courtyards sit 6.05 ABOVE the placement point, which is why y is 5.4
+        # and not 8 -- at 8 they overhung the +Y edge by 2 mm.
+        "J2": (-18.60, 5.40, 0.0),      # Pi 5 V in
+        "J4": (-0.75, 5.40, 0.0),       # LED 5 V in
+        "J3": (17.35, 5.40, 0.0),       # out to the strip
+        # the passives drop into the band between J1's socket and the connector row
+        "C1": (-20.00, -3.00, 0.0),
+        "C3": (-15.00, -3.00, 0.0),
+        "C2": (-6.00, -3.00, 0.0),
+        "C4": (-1.00, -3.00, 0.0),
+        "R1": (5.00, -3.00, 0.0),
+        "R2": (8.00, -3.00, 0.0),
     },
     # ⚠ THE SOCKET'S GROUND PADS TAKE NO STITCHING VIA, AND DO NOT NEED ONE. The check
     # exists because an SMD pad touching only a pour can be orphaned when routing carves
@@ -231,7 +235,15 @@ BOARD_NOTES = {
     # ⚠ THE SOCKET IS ON THE BACK, and that is the whole mechanical idea: its body is the
     # standoff the cap hangs off the Pi's header by. Mounted on the front it would be a
     # bump on top of the board with nothing holding the board on.
-    "back_refs": ("J1",),
+    # ⚠ EVERY CONNECTOR IS ON THE BACK TOO, AND THAT IS A HEIGHT FIX, NOT A STYLE CHOICE
+    # (2026-09-22). dimensions.ELEC_STACK_D reserves 14.0 mm above the Pi's PCB and the
+    # MOTOR BANK is packed against that number, so it cannot grow to suit this board. With
+    # vertical connectors the cap needed 8.5 (socket) + 1.6 (board) + 7.0 (XH) = 17.1 and
+    # drove 260 mm3 into the endplate -- measured by sweeping it, not by looking at it.
+    # Side entry on TOP still needs 15.85. Underneath, the cap's top face is bare PCB at
+    # 10.1 and the connectors live in the socket's own 8.5 mm gap (PH 5.5, XH 5.75), with
+    # their cables leaving sideways instead of upward into the endplate.
+    "back_refs": ("J1", "J2", "J3", "J4"),
     "single_sided": False,          # the 2x20 socket is through-hole, and on the far side
     "qty_per_instrument": 1,
 }

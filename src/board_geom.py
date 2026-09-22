@@ -83,6 +83,7 @@ HEIGHT = {
     "XINGLIGHT_XL-5050RGBW": 1.6,                   # 5.0 x 5.0 x 1.6 (LCSC C7371891)
     "HTSSOP-20-1EP_4.4x6.5mm_P0.65mm_EP3.4x6.5mm_Mask2.75x3.43mm": 1.2,   # TLC59711 PWP
     "JST_PH_S6B-PH-SM4-TB_1x06-1MP_P2.00mm_Horizontal": 5.5,   # cadkit PH_SIDE_H
+    "JST_XH_S4B-XH-SM4-TB_1x04-1MP_P2.50mm_Horizontal": 5.75,  # XH side entry (JST eXH p.4)
     # ⚠ THE 2x20 SOCKET IS THE STRUCTURE, NOT A COMPONENT ON TOP OF ONE. 8.5 is its body
     # height, and it faces DOWN: the pi_cap hangs off the Pi's header by it, so this figure
     # is the standoff between the Pi's top face and the cap's underside, not a bump on the
