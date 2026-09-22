@@ -1417,6 +1417,16 @@ def _cell_tracks():
 # genuinely full across its whole length. Crossing it needs In2 and therefore vias, and the
 # router will not connect to a pre-laid via here -- so that hop stays the router's.
 #
+# ⚠ AND SWAPPING THE CELL'S ROWS WAS TRIED AND IS WRONG (2026-09-22). The reasoning below
+# is sound as far as it goes -- Ci really does sit inboard of Cm, so a signal from the strip
+# really does meet the GND-local cap before its own coupling cap -- but swapping them routed
+# 14 unconnected and 28 VIOLATIONS against 9 and 0. The near/far split is not free to move:
+# the fan threads INxP and INxM between each other at 0.5 pin pitch, and which row a cap sits
+# in is what keeps those threads from crossing (the note above _fan_tracks says so, and says
+# an earlier wider-flung arrangement left 12 of them open). So the corridor stays 0.4 mm and
+# U15 needs a different answer -- more board, or a cell narrow enough to sit clear of the
+# jack. Reverted; kept here so the next reader does not spend another route finding out.
+# ORIGINAL REASONING, still true and still not actionable on its own:
 # ⚠ AND THE NEXT LEVER FOR U15 IS THE CELL'S ROW ORDER, WHICH IS BACKWARDS FOR SIGNAL FLOW.
 # In each cell the Ci coupling caps sit in the NEAR row (3.75 from the chip) and the Cm caps
 # in the FAR row (5.85) -- so a signal arriving from the strip meets Cm FIRST and has to get
