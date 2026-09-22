@@ -7,649 +7,613 @@ WARNING: fp-lib-table file was not found. Component footprints are not available
 WARNING: fp-lib-table file was not found. Component footprints are not available.
 WARNING: fp-lib-table file was not found. Component footprints are not available.
 WARNING: fp-lib-table file was not found. Component footprints are not available.
-ERC WARNING: Only one pin (PASSIVE pin 19/ of STM32H743IIT6/U6) attached to net U6_NC_19.
-ERC WARNING: Only one pin (PASSIVE pin 107/ of STM32H743IIT6/U6) attached to net U6_NC_107.
-ERC WARNING: Only one pin (PASSIVE pin 10/ of STM32H743IIT6/U6) attached to net U6_NC_10.
-ERC WARNING: Only one pin (PASSIVE pin 41/ of STM32H743IIT6/U6) attached to net U6_NC_41.
-ERC WARNING: Only one pin (PASSIVE pin 77/ of STM32H743IIT6/U6) attached to net U6_NC_77.
-ERC WARNING: Only one pin (PASSIVE pin 95/ of STM32H743IIT6/U6) attached to net U6_NC_95.
-ERC WARNING: Only one pin (PASSIVE pin 132/ of STM32H743IIT6/U6) attached to net U6_NC_132.
-ERC WARNING: Only one pin (PASSIVE pin 134/ of STM32H743IIT6/U6) attached to net U6_NC_134.
-ERC WARNING: Only one pin (PASSIVE pin 142/ of STM32H743IIT6/U6) attached to net U6_NC_142.
-ERC WARNING: Only one pin (PASSIVE pin 160/ of STM32H743IIT6/U6) attached to net U6_NC_160.
-ERC WARNING: Only one pin (PASSIVE pin 155/ of STM32H743IIT6/U6) attached to net U6_NC_155.
-ERC WARNING: Only one pin (PASSIVE pin 173/ of STM32H743IIT6/U6) attached to net U6_NC_173.
-ERC WARNING: Only one pin (PASSIVE pin 146/ of STM32H743IIT6/U6) attached to net U6_NC_146.
-ERC WARNING: Only one pin (PASSIVE pin 128/ of STM32H743IIT6/U6) attached to net U6_NC_128.
-ERC WARNING: Only one pin (PASSIVE pin 43/ of STM32H743IIT6/U6) attached to net U6_NC_43.
-ERC WARNING: Only one pin (PASSIVE pin 99/ of STM32H743IIT6/U6) attached to net U6_NC_99.
-ERC WARNING: Only one pin (PASSIVE pin 78/ of STM32H743IIT6/U6) attached to net U6_NC_78.
-ERC WARNING: Only one pin (PASSIVE pin 104/ of STM32H743IIT6/U6) attached to net U6_NC_104.
-ERC WARNING: Only one pin (PASSIVE pin 105/ of STM32H743IIT6/U6) attached to net U6_NC_105.
-ERC WARNING: Only one pin (PASSIVE pin 106/ of STM32H743IIT6/U6) attached to net U6_NC_106.
-ERC WARNING: Only one pin (PASSIVE pin 121/ of STM32H743IIT6/U6) attached to net U6_NC_121.
-ERC WARNING: Only one pin (PASSIVE pin 3/NC3 of S4B-XH-SM4-TB/J2) attached to net J2_NC_3.
-ERC WARNING: Only one pin (PASSIVE pin 153/ of STM32H743IIT6/U6) attached to net U6_NC_153.
-ERC WARNING: Only one pin (PASSIVE pin 120/ of STM32H743IIT6/U6) attached to net U6_NC_120.
-ERC WARNING: Only one pin (PASSIVE pin 33/ of STM32H743IIT6/U6) attached to net U6_NC_33.
-ERC WARNING: Only one pin (PASSIVE pin 139/ of STM32H743IIT6/U6) attached to net U6_NC_139.
-ERC WARNING: Only one pin (PASSIVE pin 20/ of STM32H743IIT6/U6) attached to net U6_NC_20.
-ERC WARNING: Only one pin (PASSIVE pin 76/ of STM32H743IIT6/U6) attached to net U6_NC_76.
-ERC WARNING: Only one pin (PASSIVE pin 24/ of STM32H743IIT6/U6) attached to net U6_NC_24.
-ERC WARNING: Only one pin (PASSIVE pin 110/ of STM32H743IIT6/U6) attached to net U6_NC_110.
-ERC WARNING: Only one pin (PASSIVE pin 94/ of STM32H743IIT6/U6) attached to net U6_NC_94.
-ERC WARNING: Only one pin (PASSIVE pin 88/ of STM32H743IIT6/U6) attached to net U6_NC_88.
-ERC WARNING: Only one pin (PASSIVE pin 98/ of STM32H743IIT6/U6) attached to net U6_NC_98.
-ERC WARNING: Only one pin (PASSIVE pin 25/ of STM32H743IIT6/U6) attached to net U6_NC_25.
-ERC WARNING: Only one pin (PASSIVE pin 74/ of STM32H743IIT6/U6) attached to net U6_NC_74.
-ERC WARNING: Only one pin (PASSIVE pin 100/ of STM32H743IIT6/U6) attached to net U6_NC_100.
-ERC WARNING: Only one pin (PASSIVE pin 20/ of TLV320ADC3140/U15) attached to net ADC2_GPIO1_NC.
-ERC WARNING: Only one pin (PASSIVE pin 59/ of STM32H743IIT6/U6) attached to net U6_NC_59.
-ERC WARNING: Only one pin (PASSIVE pin 63/ of STM32H743IIT6/U6) attached to net U6_NC_63.
-ERC WARNING: Only one pin (PASSIVE pin 1/ of STM32H743IIT6/U6) attached to net U6_NC_1.
-ERC WARNING: Only one pin (PASSIVE pin 34/ of STM32H743IIT6/U6) attached to net U6_NC_34.
-ERC WARNING: Only one pin (PASSIVE pin 70/ of STM32H743IIT6/U6) attached to net U6_NC_70.
-ERC WARNING: Only one pin (PASSIVE pin 20/ of TLV320ADC3140/U16) attached to net ADC3_GPIO1_NC.
-ERC WARNING: Only one pin (PASSIVE pin 21/ of STM32H743IIT6/U6) attached to net U6_NC_21.
-ERC WARNING: Only one pin (PASSIVE pin 111/ of STM32H743IIT6/U6) attached to net U6_NC_111.
-ERC WARNING: Only one pin (PASSIVE pin 83/ of STM32H743IIT6/U6) attached to net U6_NC_83.
-ERC WARNING: Only one pin (PASSIVE pin 156/ of STM32H743IIT6/U6) attached to net U6_NC_156.
-ERC WARNING: Only one pin (PASSIVE pin 26/ of STM32H743IIT6/U6) attached to net U6_NC_26.
-ERC WARNING: Only one pin (PASSIVE pin 108/ of STM32H743IIT6/U6) attached to net U6_NC_108.
-ERC WARNING: Only one pin (PASSIVE pin 89/ of STM32H743IIT6/U6) attached to net U6_NC_89.
-ERC WARNING: Only one pin (PASSIVE pin 69/ of STM32H743IIT6/U6) attached to net U6_NC_69.
-ERC WARNING: Only one pin (PASSIVE pin 20/ of TLV320ADC3140/U17) attached to net ADC4_GPIO1_NC.
-ERC WARNING: Only one pin (PASSIVE pin 67/ of STM32H743IIT6/U6) attached to net U6_NC_67.
-ERC WARNING: Only one pin (PASSIVE pin 176/ of STM32H743IIT6/U6) attached to net U6_NC_176.
-ERC WARNING: Only one pin (PASSIVE pin 8/ of STM32H743IIT6/U6) attached to net U6_NC_8.
-ERC WARNING: Only one pin (PASSIVE pin 87/ of STM32H743IIT6/U6) attached to net U6_NC_87.
-ERC WARNING: Only one pin (PASSIVE pin 174/ of STM32H743IIT6/U6) attached to net U6_NC_174.
-ERC WARNING: Only one pin (PASSIVE pin 55/ of STM32H743IIT6/U6) attached to net U6_NC_55.
-ERC WARNING: Only one pin (PASSIVE pin 117/ of STM32H743IIT6/U6) attached to net U6_NC_117.
-ERC WARNING: Only one pin (PASSIVE pin 138/ of STM32H743IIT6/U6) attached to net U6_NC_138.
-ERC WARNING: Only one pin (PASSIVE pin 133/ of STM32H743IIT6/U6) attached to net U6_NC_133.
-ERC WARNING: Only one pin (PASSIVE pin 101/ of STM32H743IIT6/U6) attached to net U6_NC_101.
-ERC WARNING: Only one pin (PASSIVE pin 147/ of STM32H743IIT6/U6) attached to net U6_NC_147.
-ERC WARNING: Only one pin (PASSIVE pin 168/ of STM32H743IIT6/U6) attached to net U6_NC_168.
-ERC WARNING: Only one pin (PASSIVE pin 112/ of STM32H743IIT6/U6) attached to net U6_NC_112.
-ERC WARNING: Only one pin (PASSIVE pin 164/ of STM32H743IIT6/U6) attached to net U6_NC_164.
-ERC WARNING: Only one pin (PASSIVE pin 115/ of STM32H743IIT6/U6) attached to net U6_NC_115.
-ERC WARNING: Only one pin (PASSIVE pin 73/ of STM32H743IIT6/U6) attached to net U6_NC_73.
-ERC WARNING: Only one pin (PASSIVE pin 11/ of STM32H743IIT6/U6) attached to net U6_NC_11.
-ERC WARNING: Only one pin (PASSIVE pin 9/ of STM32H743IIT6/U6) attached to net U6_NC_9.
-ERC WARNING: Only one pin (PASSIVE pin 20/ of TLV320ADC3140/U18) attached to net ADC5_GPIO1_NC.
-ERC WARNING: Only one pin (PASSIVE pin 84/ of STM32H743IIT6/U6) attached to net U6_NC_84.
-ERC WARNING: Only one pin (PASSIVE pin 109/ of STM32H743IIT6/U6) attached to net U6_NC_109.
 ERC WARNING: Only one pin (PASSIVE pin 35/ of STM32H743IIT6/U6) attached to net U6_NC_35.
-ERC WARNING: Only one pin (PASSIVE pin 5/ of TLV320ADC3140/U16) attached to net ADC3_MICBIAS_NC.
-ERC WARNING: Only one pin (PASSIVE pin 12/ of STM32H743IIT6/U6) attached to net U6_NC_12.
-ERC WARNING: Only one pin (PASSIVE pin 118/ of STM32H743IIT6/U6) attached to net U6_NC_118.
-ERC WARNING: Only one pin (PASSIVE pin 66/ of STM32H743IIT6/U6) attached to net U6_NC_66.
-ERC WARNING: Only one pin (PASSIVE pin 122/ of STM32H743IIT6/U6) attached to net U6_NC_122.
-ERC WARNING: Only one pin (PASSIVE pin 162/ of STM32H743IIT6/U6) attached to net U6_NC_162.
-ERC WARNING: Only one pin (PASSIVE pin 54/ of STM32H743IIT6/U6) attached to net U6_NC_54.
-ERC WARNING: Only one pin (PASSIVE pin 96/ of STM32H743IIT6/U6) attached to net U6_NC_96.
-ERC WARNING: Only one pin (PASSIVE pin 151/ of STM32H743IIT6/U6) attached to net U6_NC_151.
-ERC WARNING: Only one pin (PASSIVE pin 165/ of STM32H743IIT6/U6) attached to net U6_NC_165.
 ERC WARNING: Only one pin (PASSIVE pin 28/ of STM32H743IIT6/U6) attached to net U6_NC_28.
-ERC WARNING: Only one pin (PASSIVE pin 131/ of STM32H743IIT6/U6) attached to net U6_NC_131.
-ERC WARNING: Only one pin (PASSIVE pin 27/ of STM32H743IIT6/U6) attached to net U6_NC_27.
-ERC WARNING: Only one pin (PASSIVE pin 85/ of STM32H743IIT6/U6) attached to net U6_NC_85.
-ERC WARNING: Only one pin (PASSIVE pin 60/ of STM32H743IIT6/U6) attached to net U6_NC_60.
-ERC WARNING: Only one pin (PASSIVE pin 75/ of STM32H743IIT6/U6) attached to net U6_NC_75.
-ERC WARNING: Only one pin (PASSIVE pin 123/ of STM32H743IIT6/U6) attached to net U6_NC_123.
-ERC WARNING: Only one pin (PASSIVE pin 129/ of STM32H743IIT6/U6) attached to net U6_NC_129.
-ERC WARNING: Only one pin (PASSIVE pin 46/ of STM32H743IIT6/U6) attached to net U6_NC_46.
-ERC WARNING: Only one pin (PASSIVE pin 5/ of TLV320ADC3140/U14) attached to net ADC1_MICBIAS_NC.
-ERC WARNING: Only one pin (PASSIVE pin 52/ of STM32H743IIT6/U6) attached to net U6_NC_52.
-ERC WARNING: Only one pin (PASSIVE pin 169/ of STM32H743IIT6/U6) attached to net U6_NC_169.
-ERC WARNING: Only one pin (PASSIVE pin 5/ of TLV320ADC3140/U17) attached to net ADC4_MICBIAS_NC.
-ERC WARNING: Only one pin (PASSIVE pin 53/ of STM32H743IIT6/U6) attached to net U6_NC_53.
-ERC WARNING: Only one pin (PASSIVE pin 140/ of STM32H743IIT6/U6) attached to net U6_NC_140.
-ERC WARNING: Only one pin (PASSIVE pin 58/ of STM32H743IIT6/U6) attached to net U6_NC_58.
-ERC WARNING: Only one pin (PASSIVE pin 141/ of STM32H743IIT6/U6) attached to net U6_NC_141.
-ERC WARNING: Only one pin (PASSIVE pin 5/ of TLV320ADC3140/U15) attached to net ADC2_MICBIAS_NC.
-ERC WARNING: Only one pin (PASSIVE pin 150/ of STM32H743IIT6/U6) attached to net U6_NC_150.
-ERC WARNING: Only one pin (PASSIVE pin 130/ of STM32H743IIT6/U6) attached to net U6_NC_130.
-ERC WARNING: Only one pin (PASSIVE pin 152/ of STM32H743IIT6/U6) attached to net U6_NC_152.
-ERC WARNING: Only one pin (PASSIVE pin 157/ of STM32H743IIT6/U6) attached to net U6_NC_157.
+ERC WARNING: Only one pin (PASSIVE pin 44/ of STM32H743IIT6/U6) attached to net U6_NC_44.
 ERC WARNING: Only one pin (PASSIVE pin 116/ of STM32H743IIT6/U6) attached to net U6_NC_116.
+ERC WARNING: Only one pin (PASSIVE pin 8/ of LMR33630CRNX/U13) attached to net BUCK_PG_NC.
+ERC WARNING: Only one pin (PASSIVE pin 7/ of STM32H743IIT6/U6) attached to net U6_NC_7.
+ERC WARNING: Only one pin (PASSIVE pin 74/ of STM32H743IIT6/U6) attached to net U6_NC_74.
+ERC WARNING: Only one pin (PASSIVE pin 55/ of STM32H743IIT6/U6) attached to net U6_NC_55.
+ERC WARNING: Only one pin (PASSIVE pin 66/ of STM32H743IIT6/U6) attached to net U6_NC_66.
+ERC WARNING: Only one pin (PASSIVE pin 95/ of STM32H743IIT6/U6) attached to net U6_NC_95.
+ERC WARNING: Only one pin (PASSIVE pin 5/ of TLV320ADC3140/U16) attached to net ADC3_MICBIAS_NC.
+ERC WARNING: Only one pin (PASSIVE pin 8/ of STM32H743IIT6/U6) attached to net U6_NC_8.
+ERC WARNING: Only one pin (PASSIVE pin 54/ of STM32H743IIT6/U6) attached to net U6_NC_54.
+ERC WARNING: Only one pin (PASSIVE pin 84/ of STM32H743IIT6/U6) attached to net U6_NC_84.
+ERC WARNING: Only one pin (PASSIVE pin 5/ of TLV320ADC3140/U14) attached to net ADC1_MICBIAS_NC.
+ERC WARNING: Only one pin (PASSIVE pin 59/ of STM32H743IIT6/U6) attached to net U6_NC_59.
+ERC WARNING: Only one pin (PASSIVE pin 10/ of STM32H743IIT6/U6) attached to net U6_NC_10.
+ERC WARNING: Only one pin (PASSIVE pin 97/ of STM32H743IIT6/U6) attached to net U6_NC_97.
+ERC WARNING: Only one pin (PASSIVE pin 20/ of TLV320ADC3140/U18) attached to net ADC5_GPIO1_NC.
+ERC WARNING: Only one pin (PASSIVE pin 110/ of STM32H743IIT6/U6) attached to net U6_NC_110.
+ERC WARNING: Only one pin (PASSIVE pin 105/ of STM32H743IIT6/U6) attached to net U6_NC_105.
+ERC WARNING: Only one pin (PASSIVE pin 76/ of STM32H743IIT6/U6) attached to net U6_NC_76.
+ERC WARNING: Only one pin (PASSIVE pin 160/ of STM32H743IIT6/U6) attached to net U6_NC_160.
+ERC WARNING: Only one pin (PASSIVE pin 18/ of STM32H743IIT6/U6) attached to net U6_NC_18.
+ERC WARNING: Only one pin (PASSIVE pin 130/ of STM32H743IIT6/U6) attached to net U6_NC_130.
+ERC WARNING: Only one pin (PASSIVE pin 68/ of STM32H743IIT6/U6) attached to net U6_NC_68.
+ERC WARNING: Only one pin (PASSIVE pin 5/ of TLV320ADC3140/U17) attached to net ADC4_MICBIAS_NC.
+ERC WARNING: Only one pin (PASSIVE pin 111/ of STM32H743IIT6/U6) attached to net U6_NC_111.
+ERC WARNING: Only one pin (PASSIVE pin 146/ of STM32H743IIT6/U6) attached to net U6_NC_146.
+ERC WARNING: Only one pin (PASSIVE pin 122/ of STM32H743IIT6/U6) attached to net U6_NC_122.
+ERC WARNING: Only one pin (PASSIVE pin 46/ of STM32H743IIT6/U6) attached to net U6_NC_46.
+ERC WARNING: Only one pin (PASSIVE pin 26/ of STM32H743IIT6/U6) attached to net U6_NC_26.
+ERC WARNING: Only one pin (PASSIVE pin 139/ of STM32H743IIT6/U6) attached to net U6_NC_139.
+ERC WARNING: Only one pin (PASSIVE pin 128/ of STM32H743IIT6/U6) attached to net U6_NC_128.
+ERC WARNING: Only one pin (PASSIVE pin 24/ of STM32H743IIT6/U6) attached to net U6_NC_24.
+ERC WARNING: Only one pin (PASSIVE pin 152/ of STM32H743IIT6/U6) attached to net U6_NC_152.
+ERC WARNING: Only one pin (PASSIVE pin 20/ of TLV320ADC3140/U17) attached to net ADC4_GPIO1_NC.
+ERC WARNING: Only one pin (PASSIVE pin 63/ of STM32H743IIT6/U6) attached to net U6_NC_63.
+ERC WARNING: Only one pin (PASSIVE pin 65/ of STM32H743IIT6/U6) attached to net U6_NC_65.
+ERC WARNING: Only one pin (PASSIVE pin 41/ of STM32H743IIT6/U6) attached to net U6_NC_41.
+ERC WARNING: Only one pin (PASSIVE pin 138/ of STM32H743IIT6/U6) attached to net U6_NC_138.
+ERC WARNING: Only one pin (PASSIVE pin 151/ of STM32H743IIT6/U6) attached to net U6_NC_151.
+ERC WARNING: Only one pin (PASSIVE pin 33/ of STM32H743IIT6/U6) attached to net U6_NC_33.
+ERC WARNING: Only one pin (PASSIVE pin 140/ of STM32H743IIT6/U6) attached to net U6_NC_140.
+ERC WARNING: Only one pin (PASSIVE pin 52/ of STM32H743IIT6/U6) attached to net U6_NC_52.
 ERC WARNING: Only one pin (PASSIVE pin 167/ of STM32H743IIT6/U6) attached to net U6_NC_167.
+ERC WARNING: Only one pin (PASSIVE pin 174/ of STM32H743IIT6/U6) attached to net U6_NC_174.
+ERC WARNING: Only one pin (PASSIVE pin 109/ of STM32H743IIT6/U6) attached to net U6_NC_109.
+ERC WARNING: Only one pin (PASSIVE pin 156/ of STM32H743IIT6/U6) attached to net U6_NC_156.
+ERC WARNING: Only one pin (PASSIVE pin 107/ of STM32H743IIT6/U6) attached to net U6_NC_107.
+ERC WARNING: Only one pin (PASSIVE pin 165/ of STM32H743IIT6/U6) attached to net U6_NC_165.
+ERC WARNING: Only one pin (PASSIVE pin 43/ of STM32H743IIT6/U6) attached to net U6_NC_43.
+ERC WARNING: Only one pin (PASSIVE pin 5/ of TLV320ADC3140/U18) attached to net ADC5_MICBIAS_NC.
+ERC WARNING: Only one pin (PASSIVE pin 88/ of STM32H743IIT6/U6) attached to net U6_NC_88.
+ERC WARNING: Only one pin (PASSIVE pin 96/ of STM32H743IIT6/U6) attached to net U6_NC_96.
+ERC WARNING: Only one pin (PASSIVE pin 169/ of STM32H743IIT6/U6) attached to net U6_NC_169.
+ERC WARNING: Only one pin (PASSIVE pin 157/ of STM32H743IIT6/U6) attached to net U6_NC_157.
+ERC WARNING: Only one pin (PASSIVE pin 21/ of STM32H743IIT6/U6) attached to net U6_NC_21.
+ERC WARNING: Only one pin (PASSIVE pin 19/ of STM32H743IIT6/U6) attached to net U6_NC_19.
+ERC WARNING: Only one pin (PASSIVE pin 101/ of STM32H743IIT6/U6) attached to net U6_NC_101.
+ERC WARNING: Only one pin (PASSIVE pin 150/ of STM32H743IIT6/U6) attached to net U6_NC_150.
+ERC WARNING: Only one pin (PASSIVE pin 20/ of TLV320ADC3140/U15) attached to net ADC2_GPIO1_NC.
+ERC WARNING: Only one pin (PASSIVE pin 115/ of STM32H743IIT6/U6) attached to net U6_NC_115.
+ERC WARNING: Only one pin (PASSIVE pin 141/ of STM32H743IIT6/U6) attached to net U6_NC_141.
+ERC WARNING: Only one pin (PASSIVE pin 86/ of STM32H743IIT6/U6) attached to net U6_NC_86.
+ERC WARNING: Only one pin (PASSIVE pin 123/ of STM32H743IIT6/U6) attached to net U6_NC_123.
+ERC WARNING: Only one pin (PASSIVE pin 50/ of STM32H743IIT6/U6) attached to net U6_NC_50.
+ERC WARNING: Only one pin (PASSIVE pin 4/NC4 of S4B-XH-SM4-TB/J2) attached to net J2_NC_4.
+ERC WARNING: Only one pin (PASSIVE pin 176/ of STM32H743IIT6/U6) attached to net U6_NC_176.
+ERC WARNING: Only one pin (PASSIVE pin 25/ of STM32H743IIT6/U6) attached to net U6_NC_25.
+ERC WARNING: Only one pin (PASSIVE pin 108/ of STM32H743IIT6/U6) attached to net U6_NC_108.
+ERC WARNING: Only one pin (PASSIVE pin 153/ of STM32H743IIT6/U6) attached to net U6_NC_153.
+ERC WARNING: Only one pin (PASSIVE pin 60/ of STM32H743IIT6/U6) attached to net U6_NC_60.
+ERC WARNING: Only one pin (PASSIVE pin 1/ of STM32H743IIT6/U6) attached to net U6_NC_1.
+ERC WARNING: Only one pin (PASSIVE pin 134/ of STM32H743IIT6/U6) attached to net U6_NC_134.
+ERC WARNING: Only one pin (PASSIVE pin 170/ of STM32H743IIT6/U6) attached to net U6_NC_170.
+ERC WARNING: Only one pin (PASSIVE pin 42/ of STM32H743IIT6/U6) attached to net U6_NC_42.
+ERC WARNING: Only one pin (PASSIVE pin 89/ of STM32H743IIT6/U6) attached to net U6_NC_89.
+ERC WARNING: Only one pin (PASSIVE pin 142/ of STM32H743IIT6/U6) attached to net U6_NC_142.
+ERC WARNING: Only one pin (PASSIVE pin 85/ of STM32H743IIT6/U6) attached to net U6_NC_85.
+ERC WARNING: Only one pin (PASSIVE pin 67/ of STM32H743IIT6/U6) attached to net U6_NC_67.
+ERC WARNING: Only one pin (PASSIVE pin 20/ of STM32H743IIT6/U6) attached to net U6_NC_20.
+ERC WARNING: Only one pin (PASSIVE pin 64/ of STM32H743IIT6/U6) attached to net U6_NC_64.
+ERC WARNING: Only one pin (PASSIVE pin 77/ of STM32H743IIT6/U6) attached to net U6_NC_77.
+ERC WARNING: Only one pin (PASSIVE pin 78/ of STM32H743IIT6/U6) attached to net U6_NC_78.
+ERC WARNING: Only one pin (PASSIVE pin 100/ of STM32H743IIT6/U6) attached to net U6_NC_100.
+ERC WARNING: Only one pin (PASSIVE pin 34/ of STM32H743IIT6/U6) attached to net U6_NC_34.
+ERC WARNING: Only one pin (PASSIVE pin 27/ of STM32H743IIT6/U6) attached to net U6_NC_27.
+ERC WARNING: Only one pin (PASSIVE pin 9/ of STM32H743IIT6/U6) attached to net U6_NC_9.
+ERC WARNING: Only one pin (PASSIVE pin 104/ of STM32H743IIT6/U6) attached to net U6_NC_104.
+ERC WARNING: Only one pin (PASSIVE pin 106/ of STM32H743IIT6/U6) attached to net U6_NC_106.
+ERC WARNING: Only one pin (PASSIVE pin 3/NC3 of S4B-XH-SM4-TB/J2) attached to net J2_NC_3.
+ERC WARNING: Only one pin (PASSIVE pin 73/ of STM32H743IIT6/U6) attached to net U6_NC_73.
+ERC WARNING: Only one pin (PASSIVE pin 162/ of STM32H743IIT6/U6) attached to net U6_NC_162.
+ERC WARNING: Only one pin (PASSIVE pin 87/ of STM32H743IIT6/U6) attached to net U6_NC_87.
+ERC WARNING: Only one pin (PASSIVE pin 155/ of STM32H743IIT6/U6) attached to net U6_NC_155.
+ERC WARNING: Only one pin (PASSIVE pin 11/ of STM32H743IIT6/U6) attached to net U6_NC_11.
+ERC WARNING: Only one pin (PASSIVE pin 94/ of STM32H743IIT6/U6) attached to net U6_NC_94.
+ERC WARNING: Only one pin (PASSIVE pin 168/ of STM32H743IIT6/U6) attached to net U6_NC_168.
+ERC WARNING: Only one pin (PASSIVE pin 119/ of STM32H743IIT6/U6) attached to net U6_NC_119.
+ERC WARNING: Only one pin (PASSIVE pin 131/ of STM32H743IIT6/U6) attached to net U6_NC_131.
+ERC WARNING: Only one pin (PASSIVE pin 5/ of TLV320ADC3140/U15) attached to net ADC2_MICBIAS_NC.
+ERC WARNING: Only one pin (PASSIVE pin 129/ of STM32H743IIT6/U6) attached to net U6_NC_129.
+ERC WARNING: Only one pin (PASSIVE pin 53/ of STM32H743IIT6/U6) attached to net U6_NC_53.
+ERC WARNING: Only one pin (PASSIVE pin 58/ of STM32H743IIT6/U6) attached to net U6_NC_58.
+ERC WARNING: Only one pin (PASSIVE pin 69/ of STM32H743IIT6/U6) attached to net U6_NC_69.
+ERC WARNING: Only one pin (PASSIVE pin 98/ of STM32H743IIT6/U6) attached to net U6_NC_98.
+ERC WARNING: Only one pin (PASSIVE pin 133/ of STM32H743IIT6/U6) attached to net U6_NC_133.
+ERC WARNING: Only one pin (PASSIVE pin 70/ of STM32H743IIT6/U6) attached to net U6_NC_70.
+ERC WARNING: Only one pin (PASSIVE pin 121/ of STM32H743IIT6/U6) attached to net U6_NC_121.
+ERC WARNING: Only one pin (PASSIVE pin 144/ of STM32H743IIT6/U6) attached to net U6_NC_144.
+ERC WARNING: Only one pin (PASSIVE pin 147/ of STM32H743IIT6/U6) attached to net U6_NC_147.
+ERC WARNING: Only one pin (PASSIVE pin 112/ of STM32H743IIT6/U6) attached to net U6_NC_112.
+ERC WARNING: Only one pin (PASSIVE pin 20/ of TLV320ADC3140/U16) attached to net ADC3_GPIO1_NC.
+ERC WARNING: Only one pin (PASSIVE pin 117/ of STM32H743IIT6/U6) attached to net U6_NC_117.
+ERC WARNING: Only one pin (PASSIVE pin 118/ of STM32H743IIT6/U6) attached to net U6_NC_118.
+ERC WARNING: Only one pin (PASSIVE pin 173/ of STM32H743IIT6/U6) attached to net U6_NC_173.
+ERC WARNING: Only one pin (PASSIVE pin 12/ of STM32H743IIT6/U6) attached to net U6_NC_12.
+ERC WARNING: Only one pin (PASSIVE pin 132/ of STM32H743IIT6/U6) attached to net U6_NC_132.
+ERC WARNING: Only one pin (PASSIVE pin 99/ of STM32H743IIT6/U6) attached to net U6_NC_99.
+ERC WARNING: Only one pin (PASSIVE pin 154/ of STM32H743IIT6/U6) attached to net U6_NC_154.
+ERC WARNING: Only one pin (PASSIVE pin 120/ of STM32H743IIT6/U6) attached to net U6_NC_120.
+ERC WARNING: Only one pin (PASSIVE pin 75/ of STM32H743IIT6/U6) attached to net U6_NC_75.
 ERC WARNING: Only one pin (PASSIVE pin 145/ of STM32H743IIT6/U6) attached to net U6_NC_145.
 ERC WARNING: Only one pin (PASSIVE pin 20/ of TLV320ADC3140/U14) attached to net ADC1_GPIO1_NC.
-ERC WARNING: Only one pin (PASSIVE pin 44/ of STM32H743IIT6/U6) attached to net U6_NC_44.
-ERC WARNING: Only one pin (PASSIVE pin 119/ of STM32H743IIT6/U6) attached to net U6_NC_119.
-ERC WARNING: Only one pin (PASSIVE pin 42/ of STM32H743IIT6/U6) attached to net U6_NC_42.
-ERC WARNING: Only one pin (PASSIVE pin 4/NC4 of S4B-XH-SM4-TB/J2) attached to net J2_NC_4.
-ERC WARNING: Only one pin (PASSIVE pin 170/ of STM32H743IIT6/U6) attached to net U6_NC_170.
-ERC WARNING: Only one pin (PASSIVE pin 68/ of STM32H743IIT6/U6) attached to net U6_NC_68.
-ERC WARNING: Only one pin (PASSIVE pin 97/ of STM32H743IIT6/U6) attached to net U6_NC_97.
-ERC WARNING: Only one pin (PASSIVE pin 86/ of STM32H743IIT6/U6) attached to net U6_NC_86.
-ERC WARNING: Only one pin (PASSIVE pin 7/ of STM32H743IIT6/U6) attached to net U6_NC_7.
-ERC WARNING: Only one pin (PASSIVE pin 144/ of STM32H743IIT6/U6) attached to net U6_NC_144.
-ERC WARNING: Only one pin (PASSIVE pin 50/ of STM32H743IIT6/U6) attached to net U6_NC_50.
-ERC WARNING: Only one pin (PASSIVE pin 5/ of TLV320ADC3140/U18) attached to net ADC5_MICBIAS_NC.
-ERC WARNING: Only one pin (PASSIVE pin 154/ of STM32H743IIT6/U6) attached to net U6_NC_154.
+ERC WARNING: Only one pin (PASSIVE pin 83/ of STM32H743IIT6/U6) attached to net U6_NC_83.
+ERC WARNING: Only one pin (PASSIVE pin 164/ of STM32H743IIT6/U6) attached to net U6_NC_164.
 ERC WARNING: Unconnected pin: PASSIVE pin A8/ of USB_C_Receptacle/J1.
 ERC WARNING: Unconnected pin: PASSIVE pin B8/ of USB_C_Receptacle/J1.
-ERC INFO: 125 warnings found while running ERC.
+ERC INFO: 129 warnings found while running ERC.
 ERC INFO: 0 errors found while running ERC.
 
-WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:332.
-WARNING: Random tag QiVTQ0pwab generated for R.
-WARNING: Missing tag on LED_IR instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:413.
-WARNING: Random tag C_CAv2mRgr generated for LED_IR.
-WARNING: Missing tag on PHOTODIODE instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:434.
-WARNING: Random tag O88EO0ZT43 generated for PHOTODIODE.
-WARNING: Missing tag on PHOTODIODE instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:434.
-WARNING: Random tag aW27Xmu1op generated for PHOTODIODE.
-WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:332.
-WARNING: Random tag Vs_2Lcniup generated for R.
-WARNING: Missing tag on LED_IR instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:413.
-WARNING: Random tag nAfEZ6joO8 generated for LED_IR.
-WARNING: Missing tag on PHOTODIODE instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:434.
-WARNING: Random tag 4bPIEPsWL2 generated for PHOTODIODE.
-WARNING: Missing tag on PHOTODIODE instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:434.
-WARNING: Random tag MqyZsrnwoh generated for PHOTODIODE.
-WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:332.
-WARNING: Random tag bXnMRiAo7P generated for R.
-WARNING: Missing tag on LED_IR instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:413.
-WARNING: Random tag eYZs0nHDue generated for LED_IR.
-WARNING: Missing tag on PHOTODIODE instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:434.
-WARNING: Random tag s2IKuBhaqY generated for PHOTODIODE.
-WARNING: Missing tag on PHOTODIODE instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:434.
-WARNING: Random tag 9vMyUOyoxT generated for PHOTODIODE.
-WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:332.
-WARNING: Random tag HQtHjQVc6c generated for R.
-WARNING: Missing tag on LED_IR instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:413.
-WARNING: Random tag zoadfLlxyz generated for LED_IR.
-WARNING: Missing tag on PHOTODIODE instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:434.
-WARNING: Random tag maA4otSz9w generated for PHOTODIODE.
-WARNING: Missing tag on PHOTODIODE instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:434.
-WARNING: Random tag 2oc1qwFMWM generated for PHOTODIODE.
-WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:332.
-WARNING: Random tag XJLM1Rfzx5 generated for R.
-WARNING: Missing tag on LED_IR instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:413.
-WARNING: Random tag 69drdmguxO generated for LED_IR.
-WARNING: Missing tag on PHOTODIODE instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:434.
-WARNING: Random tag b9s63dYEty generated for PHOTODIODE.
-WARNING: Missing tag on PHOTODIODE instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:434.
-WARNING: Random tag qf7q21fUhR generated for PHOTODIODE.
-WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:332.
-WARNING: Random tag w3nkfeb89a generated for R.
-WARNING: Missing tag on LED_IR instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:413.
-WARNING: Random tag 2tW8fch9lq generated for LED_IR.
-WARNING: Missing tag on PHOTODIODE instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:434.
-WARNING: Random tag hhFMBgrlLC generated for PHOTODIODE.
-WARNING: Missing tag on PHOTODIODE instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:434.
-WARNING: Random tag HZnoj8torE generated for PHOTODIODE.
-WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:332.
-WARNING: Random tag WzzozlHyZQ generated for R.
-WARNING: Missing tag on LED_IR instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:413.
-WARNING: Random tag haWlqSirbR generated for LED_IR.
-WARNING: Missing tag on PHOTODIODE instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:434.
-WARNING: Random tag j6jyEggYNE generated for PHOTODIODE.
-WARNING: Missing tag on PHOTODIODE instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:434.
-WARNING: Random tag J6NsYZF7Ho generated for PHOTODIODE.
-WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:332.
-WARNING: Random tag Kp2EFZsD8S generated for R.
-WARNING: Missing tag on LED_IR instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:413.
-WARNING: Random tag ka_s0CKDqF generated for LED_IR.
-WARNING: Missing tag on PHOTODIODE instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:434.
-WARNING: Random tag rwiuoQYfUd generated for PHOTODIODE.
-WARNING: Missing tag on PHOTODIODE instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:434.
-WARNING: Random tag ZNTLIbMrIS generated for PHOTODIODE.
-WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:332.
-WARNING: Random tag YL4cnihTK5 generated for R.
-WARNING: Missing tag on LED_IR instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:413.
-WARNING: Random tag 3pg9zrgrIj generated for LED_IR.
-WARNING: Missing tag on PHOTODIODE instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:434.
-WARNING: Random tag 959PDkkvZb generated for PHOTODIODE.
-WARNING: Missing tag on PHOTODIODE instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:434.
-WARNING: Random tag TXj6kFUYXA generated for PHOTODIODE.
-WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:332.
-WARNING: Random tag s1tNuK8abD generated for R.
-WARNING: Missing tag on LED_IR instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:413.
-WARNING: Random tag Sp8zilxPVQ generated for LED_IR.
-WARNING: Missing tag on PHOTODIODE instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:434.
-WARNING: Random tag 5OX9T9CMOo generated for PHOTODIODE.
-WARNING: Missing tag on PHOTODIODE instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:434.
-WARNING: Random tag S50W3eJ0tz generated for PHOTODIODE.
-WARNING: Missing tag on TLV9064 instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:450.
-WARNING: Random tag k3GFVvfTFH generated for TLV9064.
-WARNING: Missing tag on TLV9064 instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:450.
-WARNING: Random tag 1PUiHcphGq generated for TLV9064.
-WARNING: Missing tag on TLV9064 instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:450.
-WARNING: Random tag DZtaBpm1x0 generated for TLV9064.
-WARNING: Missing tag on TLV9064 instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:450.
-WARNING: Random tag D79TRK04eX generated for TLV9064.
-WARNING: Missing tag on TLV9064 instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:450.
-WARNING: Random tag aeQJzx20pC generated for TLV9064.
-WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:332.
-WARNING: Random tag 6TWx9pcqHT generated for R.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag K4vHLfd21Y generated for C.
-WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:332.
-WARNING: Random tag wU74_kkObK generated for R.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag eiDzCzhf4v generated for C.
-WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:332.
-WARNING: Random tag UkWou4KUJM generated for R.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag i7hK4T5fje generated for C.
-WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:332.
-WARNING: Random tag CTzZTBMroc generated for R.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag GZUG9Tyos7 generated for C.
-WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:332.
-WARNING: Random tag 6FbSRjL9yy generated for R.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag fEPan6Daxn generated for C.
-WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:332.
-WARNING: Random tag rZccaVH2TP generated for R.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag RM2deELRIq generated for C.
-WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:332.
-WARNING: Random tag qDdr0zBKuj generated for R.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag dLmUHEdUXz generated for C.
-WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:332.
-WARNING: Random tag 2PISjkDpkE generated for R.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag pR4mh9Ru7u generated for C.
-WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:332.
-WARNING: Random tag hn8AQ46JaK generated for R.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag 36DAvNnXQt generated for C.
-WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:332.
-WARNING: Random tag DbVknESIlf generated for R.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag WMYAXiVC7D generated for C.
-WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:332.
-WARNING: Random tag BPVb9Gi6Vg generated for R.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag O5FINuyltU generated for C.
-WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:332.
-WARNING: Random tag nBtV2xOOp4 generated for R.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag Bp4vdgppjj generated for C.
-WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:332.
-WARNING: Random tag 0ja_b09Cy4 generated for R.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag KdoEVlj2H9 generated for C.
-WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:332.
-WARNING: Random tag D9QL7rIG57 generated for R.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag BrWCkTx3Ne generated for C.
-WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:332.
-WARNING: Random tag Qrz38k3FvZ generated for R.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag c6QbUl88fd generated for C.
-WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:332.
-WARNING: Random tag 2zwJBIRy4G generated for R.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag c8_k_bxj2o generated for C.
-WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:332.
-WARNING: Random tag T5iYzh7HBa generated for R.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag SP5Qse9RZ7 generated for C.
-WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:332.
-WARNING: Random tag p44IPZwRFH generated for R.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag gJm3v6yKxA generated for C.
-WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:332.
-WARNING: Random tag fUkVMrQtle generated for R.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag lFb61f0tmH generated for C.
-WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:332.
-WARNING: Random tag q7UwRerijF generated for R.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag dYKcgkJ5Ke generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag APYNBsKsgm generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag YTWuS2QDv7 generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag 0Gr9gBtIFW generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag unYulnfmgv generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag waV9dLihBP generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag _BcqqOl7j7 generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag diQIaIntki generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag CM8z8xrepK generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag JLV27Fs1gm generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag RAAPkBHbaN generated for C.
-WARNING: Missing tag on TLV320ADC3140 instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:568.
-WARNING: Random tag mAFHOR4b7U generated for TLV320ADC3140.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag 4OO2e6CcMM generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag a_Nan0hmnZ generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag A3ficn6M9S generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag ZpQtm29olq generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag cy2iqIIAP7 generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag 9a8k2y75_p generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag oBHoPUiWmh generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag KpXzEmE6kj generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag OUDpGmBH2f generated for C.
-WARNING: Missing tag on TLV320ADC3140 instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:568.
-WARNING: Random tag F1hX1Xuuct generated for TLV320ADC3140.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag 1ATpvs87qI generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag 0GpRMaWVSB generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag v3I0pXPnIl generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag gcNXoXX9n3 generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag CO9_fZXHwg generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag t7VV5pmzwT generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag 2VTZPSpkLX generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag Z9Bl1cdU7V generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag 8wkA4EFSpn generated for C.
-WARNING: Missing tag on TLV320ADC3140 instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:568.
-WARNING: Random tag XNKisxrBaJ generated for TLV320ADC3140.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag f08sW2IaBO generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag JEr6TCMthZ generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag jDi2CQ2uts generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag OnGfvot36O generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag QmMkj7jINi generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag xhy7qU9a7P generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag m0nLvsYBJT generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag LZ0WPrwE5P generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag wurQ5sq2Bu generated for C.
-WARNING: Missing tag on TLV320ADC3140 instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:568.
-WARNING: Random tag bTNdCV4DZK generated for TLV320ADC3140.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag QGURiejCZM generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag GOT09OZQKt generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag WzSvJKTyxy generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag rjeSs9K0Oe generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag Cluhw1vuNn generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag iC6crZhtB_ generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag yA2FFLGo1C generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag Wz2XHR7C0c generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag 92EQpMmL74 generated for C.
-WARNING: Missing tag on TLV320ADC3140 instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:568.
-WARNING: Random tag 5pQ9ZSfMO9 generated for TLV320ADC3140.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag Wah8IlpYtC generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag bdgQOg9HGF generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag 3FkqTMJ5vk generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag a5Nuj_aTMP generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag 2hWoEqm_wZ generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag c0Pz93wdQ3 generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag bWeujcKE7d generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag Zg3TeVWKKf generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag kMn4P9LUPK generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag rzPXi85FuX generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag Pr3qRu9ag9 generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag P93DQ6VJ3h generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag VnJiaKzUyx generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag KMj58RIing generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag p1v8fpRQzR generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag axDvCdrOGr generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag 1tmOAlDQZs generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag GGhUyBB4kC generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag abeuUp8tsj generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag h31a9ekUgF generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag EzBdf3oIuN generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag m_pjvE5pbX generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag ja_WmGfCCb generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag EGjJGjqtf4 generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag EV5tZFzta4 generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag Cp5seIRa1H generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag E2t349T7fB generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag VpwcJa42ic generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag uIdTJDkspf generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag wjhRG4KADc generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag yYIVFAfTQH generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag kmztvIRoS_ generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag _YrZeMMNHV generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag wwILYEM5QX generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag Oc5OJcK3Hn generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag pDbHfIb5y2 generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag D9GHkpuPDw generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag sTZO2kI7q_ generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag MINM0sriUt generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag ZCxy3lhuD9 generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag Tg7SvgdyIl generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag 18uvNSDmNl generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag Hm5a7Xo2zY generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag RswQfYPWlR generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag rdfy_YQPrs generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag bzU108nnFN generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag 3gXVz3SAcv generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag gQMA5tLNM9 generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag 9D8fQHJpx8 generated for C.
-WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:332.
-WARNING: Random tag _q0Jlze4PK generated for R.
-WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:332.
-WARNING: Random tag 5B5xKIGUf7 generated for R.
-WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:332.
-WARNING: Random tag A09H1aoeRS generated for R.
-WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:332.
-WARNING: Random tag qlKH7_cnyF generated for R.
-WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:332.
-WARNING: Random tag Ho62gb55Ge generated for R.
-WARNING: Missing tag on STM32H743IIT6 instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:629.
-WARNING: Random tag Hs3BprG_QX generated for STM32H743IIT6.
-WARNING: Missing tag on TestPoint instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:697.
-WARNING: Random tag QAH2aHG3Fl generated for TestPoint.
-WARNING: Missing tag on TestPoint instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:697.
-WARNING: Random tag _8E3ziGCpb generated for TestPoint.
-WARNING: Missing tag on TestPoint instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:697.
-WARNING: Random tag 3BletwBfhP generated for TestPoint.
-WARNING: Missing tag on TestPoint instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:697.
-WARNING: Random tag qnjWAAGLBs generated for TestPoint.
-WARNING: Missing tag on TestPoint instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:697.
-WARNING: Random tag u_EJKj5_bm generated for TestPoint.
-WARNING: Missing tag on USB3343 instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:728.
-WARNING: Random tag Y27x2UVRKz generated for USB3343.
-WARNING: Missing tag on AMS1117-3.3 instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:782.
-WARNING: Random tag wVGavTkWL6 generated for AMS1117-3.3.
-WARNING: Missing tag on SPX3819 instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:796.
-WARNING: Random tag dX1T2IXZ1d generated for SPX3819.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag oFfQIdh1Ti generated for C.
-WARNING: Missing tag on USBLC6-2SC6 instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:817.
-WARNING: Random tag 8OOgKzUHBw generated for USBLC6-2SC6.
-WARNING: Missing tag on TLV9061 instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:831.
-WARNING: Random tag pRlAP9WgI4 generated for TLV9061.
-WARNING: Missing tag on TPS560430XF instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:932.
-WARNING: Random tag y5vDBuWpfM generated for TPS560430XF.
-WARNING: Missing tag on L instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:980.
-WARNING: Random tag 6a4Udyfm7r generated for L.
-WARNING: Missing tag on FerriteBead instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:993.
-WARNING: Random tag nNE_qsGHX_ generated for FerriteBead.
-WARNING: Missing tag on Q_NMOS instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:1017.
-WARNING: Random tag Y3VkUaA45R generated for Q_NMOS.
-WARNING: Missing tag on Crystal instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:1031.
-WARNING: Random tag vBn8Vx_nfj generated for Crystal.
-WARNING: Missing tag on Crystal instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:1048.
-WARNING: Random tag QnWnP_A__e generated for Crystal.
-WARNING: Missing tag on USB_C_Receptacle instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:1061.
-WARNING: Random tag lSrQhGZJlM generated for USB_C_Receptacle.
-WARNING: Missing tag on S4B-XH-SM4-TB instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:1110.
-WARNING: Random tag iEz7EKuXjM generated for S4B-XH-SM4-TB.
-WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:332.
-WARNING: Random tag zJmcSo2lHz generated for R.
-WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:332.
-WARNING: Random tag PeA0hl7A9B generated for R.
-WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:332.
-WARNING: Random tag mki3bgPe8N generated for R.
-WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:332.
-WARNING: Random tag FOG4eryEMH generated for R.
-WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:332.
-WARNING: Random tag iJ_C7NgBIb generated for R.
-WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:332.
-WARNING: Random tag ofnlfXstfb generated for R.
-WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:332.
-WARNING: Random tag DqTg7teG7I generated for R.
-WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:332.
-WARNING: Random tag 8ugCe1YvXf generated for R.
-WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:332.
-WARNING: Random tag iwip9pRqVe generated for R.
-WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:332.
-WARNING: Random tag Y3Ca9tR3VN generated for R.
-WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:332.
-WARNING: Random tag CoBCocBxIz generated for R.
-WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:332.
-WARNING: Random tag 3in10HaVzC generated for R.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag VGiyH0RANV generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag J14lYolrXO generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag _NT9xfCVyo generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag KZLTG1Bt6Y generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag VnQD8Hrzsq generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag g38Yj4tjqH generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag 1UikFPgUOq generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag Ljwqmg4LqR generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag gL7UB1gTS_ generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag 7l6bbe0vJJ generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag 6Zg8kmZZ_z generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag MNPG2Z1g3_ generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag 5wdcgsclTP generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag QdqyTIxDxQ generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag bxG4uOHzqm generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag 0AatVZv7Fg generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag PGkW2QZmcP generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag EkAZBuTK4o generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag QjOrrcClZG generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag cHTEwaSnTI generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag Bqjuv67pdc generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag aITlyhrynI generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag 4zjlDR_i4r generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag h6dX5eebmv generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag oT506qSlBQ generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag keqQOahotk generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag rRcSExnR4j generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag QOByZHVArR generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag mpVYV3o1U7 generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag cHcaPiBBfM generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag kXe6i4694U generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag GjTtxNF6Ms generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag 6UgaBksSEY generated for C.
-WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:338.
-WARNING: Random tag cbO6SjbE0Z generated for C.
+WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:346.
+WARNING: Random tag OmAKsJvsfn generated for R.
+WARNING: Missing tag on LED_IR instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:427.
+WARNING: Random tag OOq6v8RNc0 generated for LED_IR.
+WARNING: Missing tag on PHOTODIODE instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:448.
+WARNING: Random tag 243LZmD2NS generated for PHOTODIODE.
+WARNING: Missing tag on PHOTODIODE instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:448.
+WARNING: Random tag 3nEYwZLE02 generated for PHOTODIODE.
+WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:346.
+WARNING: Random tag 1hVVj4JTTH generated for R.
+WARNING: Missing tag on LED_IR instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:427.
+WARNING: Random tag nfHmRmDpul generated for LED_IR.
+WARNING: Missing tag on PHOTODIODE instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:448.
+WARNING: Random tag bbgLX1e_SI generated for PHOTODIODE.
+WARNING: Missing tag on PHOTODIODE instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:448.
+WARNING: Random tag 95QuCq_wi1 generated for PHOTODIODE.
+WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:346.
+WARNING: Random tag KgS_sZM4pK generated for R.
+WARNING: Missing tag on LED_IR instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:427.
+WARNING: Random tag bhjsw2Zace generated for LED_IR.
+WARNING: Missing tag on PHOTODIODE instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:448.
+WARNING: Random tag B9dIE1FJfD generated for PHOTODIODE.
+WARNING: Missing tag on PHOTODIODE instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:448.
+WARNING: Random tag sjzaicHBdA generated for PHOTODIODE.
+WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:346.
+WARNING: Random tag PYdpxc07oS generated for R.
+WARNING: Missing tag on LED_IR instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:427.
+WARNING: Random tag 7nmGzsr4C2 generated for LED_IR.
+WARNING: Missing tag on PHOTODIODE instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:448.
+WARNING: Random tag hBUMwBy39X generated for PHOTODIODE.
+WARNING: Missing tag on PHOTODIODE instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:448.
+WARNING: Random tag ZTL1gxn8o2 generated for PHOTODIODE.
+WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:346.
+WARNING: Random tag yiPnfB2rJB generated for R.
+WARNING: Missing tag on LED_IR instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:427.
+WARNING: Random tag _Ee1G5UtRp generated for LED_IR.
+WARNING: Missing tag on PHOTODIODE instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:448.
+WARNING: Random tag CNVMdqtHGo generated for PHOTODIODE.
+WARNING: Missing tag on PHOTODIODE instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:448.
+WARNING: Random tag xCw3Ofj82E generated for PHOTODIODE.
+WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:346.
+WARNING: Random tag EmcLYv5wY0 generated for R.
+WARNING: Missing tag on LED_IR instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:427.
+WARNING: Random tag zCvlpWo_pA generated for LED_IR.
+WARNING: Missing tag on PHOTODIODE instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:448.
+WARNING: Random tag LtTvg6iSYX generated for PHOTODIODE.
+WARNING: Missing tag on PHOTODIODE instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:448.
+WARNING: Random tag QZgJRtGgt5 generated for PHOTODIODE.
+WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:346.
+WARNING: Random tag 8lN8MPSD9E generated for R.
+WARNING: Missing tag on LED_IR instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:427.
+WARNING: Random tag p_02UwGPjY generated for LED_IR.
+WARNING: Missing tag on PHOTODIODE instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:448.
+WARNING: Random tag OaveSq4XkC generated for PHOTODIODE.
+WARNING: Missing tag on PHOTODIODE instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:448.
+WARNING: Random tag OQ2S2VGthy generated for PHOTODIODE.
+WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:346.
+WARNING: Random tag Ee4mSlNzAJ generated for R.
+WARNING: Missing tag on LED_IR instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:427.
+WARNING: Random tag eGQoE11XCD generated for LED_IR.
+WARNING: Missing tag on PHOTODIODE instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:448.
+WARNING: Random tag M39q1Gj_vT generated for PHOTODIODE.
+WARNING: Missing tag on PHOTODIODE instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:448.
+WARNING: Random tag PCsiZtK27p generated for PHOTODIODE.
+WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:346.
+WARNING: Random tag si5SabTxYK generated for R.
+WARNING: Missing tag on LED_IR instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:427.
+WARNING: Random tag CSiblGYvi7 generated for LED_IR.
+WARNING: Missing tag on PHOTODIODE instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:448.
+WARNING: Random tag Z4hxtE5LDF generated for PHOTODIODE.
+WARNING: Missing tag on PHOTODIODE instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:448.
+WARNING: Random tag 7JV_h93V9E generated for PHOTODIODE.
+WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:346.
+WARNING: Random tag EweV9smqc6 generated for R.
+WARNING: Missing tag on LED_IR instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:427.
+WARNING: Random tag CJWl6yra2S generated for LED_IR.
+WARNING: Missing tag on PHOTODIODE instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:448.
+WARNING: Random tag aov_UmbZQ4 generated for PHOTODIODE.
+WARNING: Missing tag on PHOTODIODE instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:448.
+WARNING: Random tag u9DEt4QA9N generated for PHOTODIODE.
+WARNING: Missing tag on TLV9064 instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:464.
+WARNING: Random tag wGkxFsyXfs generated for TLV9064.
+WARNING: Missing tag on TLV9064 instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:464.
+WARNING: Random tag N0xIBS6XSr generated for TLV9064.
+WARNING: Missing tag on TLV9064 instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:464.
+WARNING: Random tag PswuwSB_Co generated for TLV9064.
+WARNING: Missing tag on TLV9064 instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:464.
+WARNING: Random tag plL2QBJFWj generated for TLV9064.
+WARNING: Missing tag on TLV9064 instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:464.
+WARNING: Random tag 82ZTbrwUQ9 generated for TLV9064.
+WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:346.
+WARNING: Random tag yVpra3qfhQ generated for R.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag 5s9riOmGlB generated for C.
+WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:346.
+WARNING: Random tag 8yB572DEVs generated for R.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag 45r4n0zCEh generated for C.
+WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:346.
+WARNING: Random tag mfYLVAH9KO generated for R.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag ADwsz4NlIH generated for C.
+WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:346.
+WARNING: Random tag CDF5pq1OK8 generated for R.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag Prkq52tiZD generated for C.
+WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:346.
+WARNING: Random tag Kvcwf3sa0w generated for R.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag LOwER2x7Ne generated for C.
+WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:346.
+WARNING: Random tag Vg_TzxjHWn generated for R.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag DTZq1ZPFfU generated for C.
+WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:346.
+WARNING: Random tag kUWKGxokc3 generated for R.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag pdTMmBtCxe generated for C.
+WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:346.
+WARNING: Random tag GyEbYU0_et generated for R.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag wNRzODXalK generated for C.
+WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:346.
+WARNING: Random tag ZSHYs2lpNK generated for R.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag YWgarr5VQ6 generated for C.
+WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:346.
+WARNING: Random tag as1jutfvhy generated for R.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag 9Q3A6mf9Mc generated for C.
+WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:346.
+WARNING: Random tag 3oBLQJkUcy generated for R.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag zgvYf9c3lx generated for C.
+WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:346.
+WARNING: Random tag EgnZYlFISo generated for R.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag 5zbEt6BIDt generated for C.
+WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:346.
+WARNING: Random tag PDO8PxexXa generated for R.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag vdSpFOMCGX generated for C.
+WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:346.
+WARNING: Random tag WigSM_aV14 generated for R.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag 8FeELEnikd generated for C.
+WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:346.
+WARNING: Random tag Wqg2kyc5v5 generated for R.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag Fhq0on0CvE generated for C.
+WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:346.
+WARNING: Random tag _v5l4L_NJH generated for R.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag GiwXCkkfwl generated for C.
+WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:346.
+WARNING: Random tag nmKUzeNeo7 generated for R.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag mI3kkOfHGV generated for C.
+WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:346.
+WARNING: Random tag 5lvoIzxpkB generated for R.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag zVcM49LqZE generated for C.
+WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:346.
+WARNING: Random tag ZZgR4NPlXN generated for R.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag VTrIcZtYlj generated for C.
+WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:346.
+WARNING: Random tag 6xErVev5Ci generated for R.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag 3XwuoCnIal generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag WSHFIZLK6I generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag t5EB_htNnT generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag 7q0qT4RRGy generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag ehN7lOtKIA generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag c3ksExja23 generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag j63GypEOW9 generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag TEdjSPSZwm generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag 1XSOCIj_JL generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag dulem0ieLm generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag qfTxeKyTfd generated for C.
+WARNING: Missing tag on TLV320ADC3140 instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:587.
+WARNING: Random tag KaDaEYrsGx generated for TLV320ADC3140.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag AjxW1XUZKK generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag WKI78eY90k generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag PZW5oe5EmG generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag 9prYcIhtrN generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag C3ba5q6qW7 generated for C.
+WARNING: Missing tag on TLV320ADC3140 instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:587.
+WARNING: Random tag 2pESOtXuvm generated for TLV320ADC3140.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag 6VccnJT6jo generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag zCgu1ugnzc generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag 8khwf0Tow5 generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag VlAOpnPuwO generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag 6SZMMZA5Ro generated for C.
+WARNING: Missing tag on TLV320ADC3140 instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:587.
+WARNING: Random tag blDbF9vGIJ generated for TLV320ADC3140.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag iXCf8gd_A1 generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag LWSMNOpITf generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag SclYk8qRiC generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag zPJzHQ5nJF generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag jBUrhaZjj4 generated for C.
+WARNING: Missing tag on TLV320ADC3140 instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:587.
+WARNING: Random tag cd9bxy7nr2 generated for TLV320ADC3140.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag JX9fKWZdJp generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag jUpsxamIIJ generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag 3ayZWYq3oX generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag Bn_b1FKDPy generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag zdYw75L2l0 generated for C.
+WARNING: Missing tag on TLV320ADC3140 instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:587.
+WARNING: Random tag zvrZqet8Qo generated for TLV320ADC3140.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag GUMn573KuK generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag N7YQLggyzp generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag A8EsvKhmXO generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag WjcTbEtMZy generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag KIdEuvY2wZ generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag 3TDFo6fzbR generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag n317eKgs23 generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag CgSgLbDFJw generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag 7TUgqC60kK generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag NY6WngNH7_ generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag saXMkpDnZt generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag NBXAjYzLtt generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag ZCibp2FtQi generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag aeIoGl3NQF generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag XmCTaP9Lqn generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag 9ogCeshLeB generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag qKfy5j3c48 generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag lNARwcnGzI generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag QxMjpgda_O generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag FqNZMMeLoI generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag _OPClcwjt9 generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag ALx_ddX503 generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag JyTmu_FySz generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag Hdq5en3FV5 generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag Bji6yJ1lgg generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag f0amF92IAr generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag ahijsl4Ged generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag HDAfUkVBtg generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag 6dyBA3OmWh generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag 0jWMG3W6nN generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag LNEr10Qbey generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag TOAllc3ZZS generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag AQ0GcLvYGK generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag k1GLc_1CwX generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag vm_Zr774dr generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag VW7ddtQAMf generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag WWuimU8NoG generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag AAlkCezHSF generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag cuyOxK5HJu generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag sIFCjCWGes generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag qrVcZ61pb0 generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag Pl5iYlMiwN generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag HjeY9dpjnG generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag dLJMHmdXuY generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag aX7mLMu6mC generated for C.
+WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:346.
+WARNING: Random tag FpXjixMOXb generated for R.
+WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:346.
+WARNING: Random tag PL7y3_WTha generated for R.
+WARNING: Missing tag on STM32H743IIT6 instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:653.
+WARNING: Random tag zChfwNcPF9 generated for STM32H743IIT6.
+WARNING: Missing tag on TestPoint instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:720.
+WARNING: Random tag hX3gcx8Ckh generated for TestPoint.
+WARNING: Missing tag on TestPoint instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:720.
+WARNING: Random tag 56RSpvgPWM generated for TestPoint.
+WARNING: Missing tag on TestPoint instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:720.
+WARNING: Random tag 8AgSw7fyRF generated for TestPoint.
+WARNING: Missing tag on TestPoint instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:720.
+WARNING: Random tag Ky7X9lFHoO generated for TestPoint.
+WARNING: Missing tag on TestPoint instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:720.
+WARNING: Random tag xMzzUev1fv generated for TestPoint.
+WARNING: Missing tag on USB3343 instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:751.
+WARNING: Random tag k5Uwh4BPof generated for USB3343.
+WARNING: Missing tag on AMS1117-3.3 instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:805.
+WARNING: Random tag VCMBrCha3x generated for AMS1117-3.3.
+WARNING: Missing tag on SPX3819 instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:819.
+WARNING: Random tag d75nTavHC6 generated for SPX3819.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag U3gJ3P4md8 generated for C.
+WARNING: Missing tag on USBLC6-2SC6 instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:840.
+WARNING: Random tag ovlA4trSyV generated for USBLC6-2SC6.
+WARNING: Missing tag on TLV9061 instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:854.
+WARNING: Random tag Na0cr5zSez generated for TLV9061.
+WARNING: Missing tag on LMR33630CRNX instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:976.
+WARNING: Random tag mqwGBi2Vb_ generated for LMR33630CRNX.
+WARNING: Missing tag on L instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:1028.
+WARNING: Random tag x7Y2KFUaM0 generated for L.
+WARNING: Missing tag on FerriteBead instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:1041.
+WARNING: Random tag Nrn1WjQhiw generated for FerriteBead.
+WARNING: Missing tag on Q_NMOS instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:1065.
+WARNING: Random tag 41qoYoX67i generated for Q_NMOS.
+WARNING: Missing tag on Crystal instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:1079.
+WARNING: Random tag fxaexYzwqv generated for Crystal.
+WARNING: Missing tag on Crystal instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:1096.
+WARNING: Random tag 2esXaKfGz8 generated for Crystal.
+WARNING: Missing tag on USB_C_Receptacle instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:1109.
+WARNING: Random tag nEIpIRM8m0 generated for USB_C_Receptacle.
+WARNING: Missing tag on S4B-XH-SM4-TB instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:1158.
+WARNING: Random tag gialoZSn4d generated for S4B-XH-SM4-TB.
+WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:346.
+WARNING: Random tag uO1E8afapc generated for R.
+WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:346.
+WARNING: Random tag MpUlQ2s_mt generated for R.
+WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:346.
+WARNING: Random tag BM_ZWFsQk5 generated for R.
+WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:346.
+WARNING: Random tag Gj7kZpDZf8 generated for R.
+WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:346.
+WARNING: Random tag 2NSNFBs24V generated for R.
+WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:346.
+WARNING: Random tag ijqiRTVAOS generated for R.
+WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:346.
+WARNING: Random tag ByNsD1fEHL generated for R.
+WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:346.
+WARNING: Random tag g0viHpTymh generated for R.
+WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:346.
+WARNING: Random tag IU6The3zM_ generated for R.
+WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:346.
+WARNING: Random tag 7aBVfHdcZg generated for R.
+WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:346.
+WARNING: Random tag 7N9JflSfNI generated for R.
+WARNING: Missing tag on R instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:346.
+WARNING: Random tag crVcpRh8uq generated for R.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag 16Hd6fq9DU generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag 96ZeONVIkk generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag itvToflUXF generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag b692S0LZj6 generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag k7m336bIOR generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag u4hKEfg921 generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag ZSRaYv1Qfm generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag xWpIgr_1Ng generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag yxg9UfX24Z generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag atl7sgSzsA generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag 4NdtAPpxO1 generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag HUaSbSMyv2 generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag IaGmnCZqZK generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag VZMgGxzo_c generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag TRyZCW3dat generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag iNktrXUycA generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag tOb_Hs_L1s generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag T1ZG3xath4 generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag IxfClCQfpR generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag 3a7u6RNKUc generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag 1pORnE9ZYy generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag nERMfrCl0U generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag dZwY4NGHMi generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag ZnmMIuAxBn generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag _18MsFgKrS generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag mIGO4TNuPY generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag JYww2qjCeG generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag wK7B5lBmZi generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag j9hKAOcMu6 generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag lE82KhE7Mj generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag GQNcthYexx generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag szTSu_yH8r generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag N30_vzwLTw generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag FDfdFTQsfO generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag HjK28ChyAu generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag QxPupo0Jka generated for C.
+WARNING: Missing tag on C instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\optical.py:352.
+WARNING: Random tag fDWcz9z36r generated for C.
 WARNING: Missing tag on  instantiated at C:\Users\gus\Sync\Documents\Archive\3D\public-steel-guitar-bronner\elec\out\<frozen importlib._bootstrap>:488.
-INFO: 518 warnings found while generating netlist.
+INFO: 478 warnings found while generating netlist.
 INFO: 0 errors found while generating netlist.
 
-optical: CAD table, netlist and BOM.md all agree (256 parts)
-board 62.34 x 188.53 mm, 256 placements, x1 per instrument
+optical: CAD table, netlist and BOM.md all agree (236 parts)
+board 68.34 x 188.53 mm, 236 placements, x1 per instrument
