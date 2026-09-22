@@ -507,6 +507,16 @@ def led_sections() -> list:
     return out
 
 
+# ⚠ NO INSTALL RELIEF IS NEEDED IN THE ENDPLATE, and the near-miss is worth recording.
+# With the cradle's mouth open (see _frame slide_in_x) the Pi and its cap sweep through
+# 17 mm3 on the way down, in a band at z 14.26..16.07 -- which looked like the nut block's
+# slot fins, and a cut was written to relieve them. Asked part by part, every one of those
+# 17 mm3 is STRING: string_5 through string_9. The endplate is clear. So the install
+# constraint is "fit the Pi before stringing", which is an assembly ORDER note, not a
+# geometry change -- and cutting the nut block for it would have weakened a part that
+# carries string load to make room for the strings themselves.
+
+
 def pi_cap() -> cq.Workplane:
     """The Pi's connector board, plugged onto its GPIO header.
 
