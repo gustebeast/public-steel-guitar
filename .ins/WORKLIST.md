@@ -17,12 +17,30 @@ mark it here. Items needing the user go to NEEDS USER, not skipped silently.
     * Stale header comment: bus B has 11 sensor boards (6 knee levers + 5 pedals), not 8.
     * Board spec: docs/lever-sensor-respin.md. cad_geom_check lever_sensor MISMATCHES until
       the lever board is re-spun -- that is the handoff, not a regression.
-12. LED strip re-spin for direct board-to-board (user, 2026-09-22): 2x3 right-angle
-    2.54 mm pair (male PZ254R-12-6P C492431 / female C56182 or SMD C22373944) at both ends,
-    in the DRIVER band where the board is empty, so the LED band runs to 5.75 mm of each
-    edge and the pitch (~15.9) is UNIFORM ACROSS THE JUNCTION. PH stays on EVERY board
-    (user: fit it if spacing allows, else a special section 1) -- it fits in the same free
-    driver band, -69.5..-40.5 is empty until driver 1.
+12. LED strip re-spin for direct board-to-board (user, 2026-09-22). BLOCKED ON PART
+    GEOMETRY -- do not place by eye, that is what hung both connectors off the ends last time.
+    * SETTLED: the pitch that makes a junction invisible is DERIVED, not chosen --
+      2*(W/2 - 4P) + G = P  ->  P = (W + G)/9, where G is the mated board-edge gap. The
+      connectors go in the DRIVER band (empty at both ends: the first driver is 3 pitches
+      in), so the LED band runs past them to within half a pitch of each edge.
+      With G = 2.0 and the chassis seat's 568.0 clear run: W = 140, P = 15.778, four
+      sections + three junctions = 566.0, and LED-to-LED across a junction = 15.78 = P.
+    * SETTLED: the mating PIN MAP mirrors. Derived from the two KiCad footprints' pads --
+      male pin 1 meets female pin 5, 3 meets 3, 5 meets 1, 2-6, 4-4, 6-2. Generate both
+      pinouts from ONE column list (as harness.py does for the trunk), never type them twice.
+      Suggested columns: (GND,V5), (SCK,SDI), (GND,V5) -- signals flanked by rails.
+    * BLOCKER: G itself is unknown. KiCad's courtyards (header x -1.77..13.09, socket
+      x -13.10..1.75) are NOT mating depths, and worked through end to end they say a
+      coplanar edge-to-edge mate needs the socket body to overhang its board edge by ~4 mm
+      into a 2 mm gap -- i.e. the two parts collide. Either the real insertion depth is
+      shorter than the courtyard implies, or these generic horizontal parts are not meant to
+      mate each other coplanar. NEEDS the actual drawing for PZ254R-12-6P (C492431) and the
+      chosen socket (C56182 / C22373944) before anything is placed.
+    * ALTERNATIVE worth pricing if the drawings disappoint: CARD EDGE -- board B's own gold
+      fingers into a card-edge socket on board A. One part instead of two, and the mating
+      depth is just the socket's slot, so the geometry is knowable without a drawing.
+    * PH: fits on EVERY board in the same free driver band (user asked for this if it costs
+      no LED spacing) -- its 15.9 body spans +-7.95 against a lip inner edge at +-8.4.
 10. Next checkpoint submit after 3-7 land.
 
 ## DONE
