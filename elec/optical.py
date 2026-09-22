@@ -287,10 +287,10 @@ ULPI = {"ULPI_D0": "PA3", "ULPI_D1": "PB0", "ULPI_D2": "PB1", "ULPI_D3": "PB10",
 #   * the analog nets end at a converter beside the MCU instead of fanning into a 0.5 mm
 #     pitch LQFP edge -- which was this board's routing problem, every time
 # ONE CONVERTER PER QUAD: U14..U18 take U1..U5's four outputs, IN1..IN4 in the quad's own
-# section order (see SEC below), differential and AC-coupled: INxP from the TIA output
-# (10 nF C0G each), all four INxM from MID through one shared 100 nF (TI: "for the best dynamic range performance, the
-# differential AC-coupled input must be used", SBAS993B 8.3.x). MID is what every TIA
-# output sits on, so taking it as the - input cancels its noise instead of adding it.
+# section order (see SEC below), single-ended AC-coupled (SBAS993B Fig. 31): INxP from the
+# TIA output through 10 nF C0G, INxM to GND through its own 10 nF C0G. TI rates the
+# DIFFERENTIAL connection a few dB better; at ~13 uVrms against a light-limited ~35 uVrms
+# floor that is not what limits this board, and a differential INxM had no room to route.
 #
 # ⚠ THEY RUN AT fS = 192 kHz AND THE EMITTERS ARE MODULATED AT 48 kHz, LOCKED TO FSYNC.
 # The old ambient scheme -- a LEDs-on and a LEDs-off sample inside each 48 kHz frame --
@@ -604,11 +604,6 @@ def optical():
             net += c[1]
             rtn += c[2]
     # the couplings: quad q's section s -> converter q's input s+1
-    adc_inm = [Net("ADC%d_INM" % (k + 1)) for k in range(5)]
-    for k in range(5):
-        cm = _c("Cm%d" % (k + 1), "100nF", "MID -> U%d IN1M..IN4M (shared reference)" % (14 + k))
-        mid += cm[1]
-        adc_inm[k] += cm[2]
     for ch in range(20):
         i, side = ch // 2 + 1, "A" if ch % 2 == 0 else "B"
         k, s_in = ch // 4, ch % 4 + 1
@@ -617,12 +612,15 @@ def optical():
                 % (i, side, 14 + k, s_in))
         tia_out[(i, side)] += ci[1]
         pos += ci[2], adcs[k][4 + 2 * s_in]
-        # ⚠ ONE INxM COUPLING PER CONVERTER, NOT FOUR: all four INxM pins share a node,
-        # AC-grounded to MID by one 100 nF (33 ohm at the 48 kHz carrier, against the pins'
-        # 20 k each). The node carries no signal -- it is the reference -- so sharing it
-        # couples nothing between channels, and it took 15 parts out of cells that could
-        # not route.
-        adc_inm[k] += adcs[k][5 + 2 * s_in]
+        # INxM: SINGLE-ENDED AC-COUPLED, TI's Figure 31 -- the pin grounded through its
+        # own 10 nF. (A shared INxM node to MID was tried, 2026-09-21: the four INxM pins
+        # alternate with the INxP pins at 0.5 mm pitch, so joining them needs a via per
+        # pin inside a crowded cell, and it was the cells' worst net. MID's own noise is
+        # a buffered reference's; rejecting it was never worth an unroutable cell.)
+        neg = Net("ADC%d_IN%dM" % (k + 1, s_in))
+        cm = _c("Cm%d%d" % (k + 1, s_in), "10nF C0G", "U%d IN%dM -> GND" % (14 + k, s_in))
+        neg += cm[1], adcs[k][5 + 2 * s_in]
+        gnd += cm[2]
     for ref, net, rail, what in (("R50", i2c[0][1], v3d, "I2C2 SCL"),
                                  ("R51", i2c[0][0], v3d, "I2C2 SDA"),
                                  ("R52", i2c[1][1], v3d, "I2C4 SCL"),
