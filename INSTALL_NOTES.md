@@ -53,14 +53,15 @@ any knee depth over 197.5 mm in Y.
 
 ### KL-2 — Cut the lever segments long and tie the hank to the lever
 
-- **Where:** the lace loop on each lever housing's **+Y cheek** (`knee_lever.lace_loop`,
-  on both `kl_housing` and `kv_housing`) — the side the plug leaves the board on —
-  **flush with the housing's back end**, the screw end. It is well clear of the plug's
-  full withdrawal (`knee_lever.CONN_UNPLUG`), so a tied hank never blocks unplugging,
-  and the wire runs the length of the cheek before it is tied.
-- **What:** cut each lever-to-lever segment for the **widest** spacing you would use,
-  fold the excess into a flat hank, pass it through the loop and tie it there with a
-  reusable tie. The bore takes a doubled bundle.
+- **Where:** the cable keeper on each lever housing's **+Y cheek**
+  (`knee_lever.cable_keeper`, on both `kl_housing` and `kv_housing`) — the side the plug
+  leaves the board on — **flush with the housing's back end**, the screw end.
+- **What:** cut each lever-to-lever segment to the length in `build.cable_cut_list()`,
+  coil the excess and **press it into the keeper** past the nub.
+- **It comes back out.** The keeper is an open pocket whose mouth (2.4 mm) is narrower
+  than the cable, not a closed loop: a closed loop can only be threaded before the
+  connectors are crimped on and never released. Lever the coil out with a screwdriver
+  tip under it.
 - **Why:** moving a lever is a thing you do to the *instrument*, not to the loom. The
   harness is the crimped, tooled, contacts-ordered part; it should survive a
   re-placement. Tying the hank to the **lever** rather than to the chassis is what makes

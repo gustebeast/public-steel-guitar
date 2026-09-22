@@ -479,6 +479,19 @@ _ex("layout",
     leg_latch__BUTTON_SIDE="a direction SIGN (-1: the latch button faces -Y), "
                            "not a length",
 )
+# The bus-B lever harness (src.wiring.lever_bus + the keeper it stows in). None of these
+# is printed material: they are WIRE, the space wire needs, or route geometry.
+_ex("hardware",
+    CANB_WIRE_OD="one 26 AWG conductor, insulated -- a bought wire's OD",
+    CANB_BUNDLE_OD="the four of them together (BOM, Wire)",
+)
+_ex("layout",
+    CANB_COIL_R="the radius the SLACK is wound at -- a cable bend, not a wall",
+    CANB_COIL_LEAD="axial run-in to the coil (route geometry, not material)",
+    CANB_LACE_THREAD="how far along its own axis a run stands off a lever (route)",
+    CANB_LANE_STEP="side-by-side spacing of cables in the lane (an air gap)",
+    CANB_SLACK="the spare WIRE a segment carries -- a harness length",
+)
 _ex("layout",
     KEYHEAD_INBOARD_X="keyhead endplate inboard face X -- a POSITION (asserted in build.py)",
     ELEC_STACK_D="purchased-board envelope: tray + posts + Pi 5 height (asserted in electronics)",
