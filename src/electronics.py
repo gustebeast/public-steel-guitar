@@ -1,29 +1,27 @@
 """Electronics bay: compute hardware mounts + purchased-part dummies.
 
-The PRO compute stack (per the compute plan) lives on one printed TRAY in the
-keyhead bay (x -608..-530 - between the keyhead bulkhead and motor 9, under
-the strings, above the open floor):
+WHAT IS ACTUALLY IN THE BAY (keyhead end, x -608..-547, under the strings):
 
-  - Raspberry Pi 5            (pro: 10ch audio->MIDI + Dexed + USB audio)
-  - Teensy 4.1 + audio shield (basic+pro: sensors, CAN servo loop, UI, USB)
-  - multichannel TDM ADC stack (pro: 10ch analog in; modeled stacked)
-  - buck converter            (24V -> 5V for Pi + Teensy)
-  - CAN transceiver breakout  (SN65HVD230: Teensy logic <-> CAN-H/L bus)
+  - Raspberry Pi 5      -- audio, UI, copedent logic, USB
+  - motor controller    -- elec/motor_ctrl.py: CH32V307 + CAN, the sensor->motor
+                           loop and the two bus tees' upstream end
+  - output + panel board -- elec/output_panel.py, at the BRIDGE end, not here
 
-A BASIC build prints the SAME tray and just leaves the Pi/ADC/buck mounts
-empty - the sockets are the upgrade path.
+THE TRAY IS GONE (2026-09-20). It was a printed plate carrying bare posts; the
+Pi and the motor controller now mount on cradles fused into keyhead_endplate,
+retained by M4 screws through each board's own mounting ear (board_screws).
+Nothing here snaps: no flex fingers, no press-fits (user rule).
 
-Mounting is tool-free and zero-hardware: each board sits on corner posts
-between low locator strips and is retained by two 45-degree snap fingers
-(all clearance-fit in the model - posts stop 0.2 under the board, finger
-nubs hover 0.15 over it, so the gate sees no contact). The tray itself
-drops in from above: a 40-wide tab on each side edge rides a vertical
-channel cut in the rail web (open at the top, floor at the tab's z) -
-gravity plus the wire loom holds it; lift straight out for service.
+WHAT THE TRAY LEFT BEHIND IS A COORDINATE FRAME, and that is why TRAY_* still
+exists. Boards and cradles are AUTHORED FLAT -- plate band at TRAY_Z0..Z1,
+footprints in X/Y -- and stand() rotates the whole frame +90 deg about Y onto
+the keyhead endplate's inboard face, so the stack costs its DEPTH in X rather
+than its 60 mm length. Author flat, pose once; never write standing coordinates
+by hand. stand_pt() is the same transform for a single point, which is what
+wiring.py needs for cable ends on these boards.
 
-Panel I/O (TS line out, DC power in, USB-C) mounts through a 4 mm recessed
-wall in the bridge endplate's lower -Y corner - the endplate prints flat so
-the holes are print-trivial, and the inside there is empty floor band.
+Panel I/O (TS line out, DC power in, USB) is on the output + panel board at the
+BRIDGE end, cut flush through the +X endplate face.
 """
 
 from __future__ import annotations
@@ -45,7 +43,7 @@ from . import dimensions as D
 # circular-import ImportError -- only working at all because everything else
 # happened to import chassis first. These are plain literals, so hoisting them is
 # free and makes the module importable on its own.
-# ---- bay geometry (the tray's FLAT frame; see STANDING TRAY below) ----
+# ---- bay geometry: the FLAT authoring frame (see THE STANDING FRAME below) ----
 TRAY_X0, TRAY_X1 = -607.0, -547.0
 TRAY_Y0, TRAY_Y1 = -127.5, 53.5        # 1.25 off each rail inner face
 TRAY_Z0, TRAY_Z1 = -64.0, -61.0        # plate band (3 thick) - 1.15 ABOVE the
@@ -80,7 +78,7 @@ MCTRL_FP  = (-600.0, -554.0, -127.5, -69.5)   # motor controller + power, 46 x 5
 
 BOARD_Z = TRAY_Z1 + POST_H             # every bottom board sits at -67
 
-# ── STANDING TRAY (user, 2026-09-11) ─────────────────────────────────────────
+# ── THE STANDING FRAME (user, 2026-09-11) ────────────────────────────────────
 # Everything above is the tray's FLAT layout -- plate, posts, boards -- and it is still
 # the frame the tray PRINTS in. In the instrument the whole thing stands on its end with
 # the plate's underside against the keyhead endplate's inboard face, so it takes only
@@ -89,9 +87,9 @@ BOARD_Z = TRAY_Z1 + POST_H             # every bottom board sits at -67
 # moves relative to anything else: rotate +90 deg about Y through the flat tray's -X
 # bottom edge (up -> +X, the old +X end -> down), plate underside onto the keyhead face,
 # bottom edge STAND_Z0.
-# NO MOUNT YET (user): bronner is reworking the keyhead endplate, so retention is left
-# for that round. The old drop-in side tabs and their rail channels are gone -- they
-# do not line up with a standing tray.
+# RETENTION LANDED 2026-09-20 (bronner): cradles fused into keyhead_endplate, one M4
+# through each board's own mounting ear. The old drop-in side tabs and their rail
+# channels are gone -- they did not line up with a standing stack.
 STAND_Z0 = -62.0                       # bottom edge: 1.1 above the wired leg's TRRS pigtail
                                        # (top -63.1) where it runs east under this corner
 STAND_DX = D.KEYHEAD_INBOARD_X - TRAY_X0
