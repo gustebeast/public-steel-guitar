@@ -41,11 +41,23 @@ import netcheck                                     # noqa: E402
 
 P = Pin.types.PASSIVE
 
-BOARD_W, BOARD_L = 145.0, 20.0          # X along the strip, Y = the strip's height (20: the
+# ⚠ THE SECTION LENGTH IS SET BY THE CHASSIS RAIL, NOT BY A ROUND NUMBER (2026-09-22). The
+# strip lives in a channel on the +Y rail's inner face, whose clear run is KH_RAIL_X ..
+# TP_EP_GX = 585.34 mm. Four 145 mm boards is 580 of that -- which leaves 5.34 for THREE
+# jumper junctions, and a junction cannot be under ~8: each side-entry PH plug projects
+# PH_PLUG_RUN 3.6 past its mouth and the mouths sit 1.0 inside the board ends, so two facing
+# plugs alone eat 5.2 before the jumper's U has anywhere to go. 139 + 8 x 3 = 580.0 fits with
+# 2.7 mm of air at each end.
+BOARD_W, BOARD_L = 139.0, 20.0          # X along the strip, Y = the strip's height (20: the
                                         # PH tabs need 1.0 to the long edges)
-SECTIONS = 4                            # 580 mm / 145
-LED_PITCH = 14.5                        # 9 LEDs over 116 mm: ~62 per metre (the end LEDs
-                                        # clear the connectors' courtyards by 0.9)
+SECTIONS = 4                            # 4 x 139 + 3 x JUNCTION_GAP = 580, in a 585.34 rail
+JUNCTION_GAP = 8.0                      # board end to board end: 2 x 2.6 of mated plug past
+                                        # the ends, plus room for the jumper to turn
+LED_PITCH = 13.5                        # 9 LEDs over 108 mm: ~62 per metre. The END LED sets
+                                        # this, not the light: the connector centroid sits
+                                        # _J_ANCHOR out, and its courtyard reaches 7.8 back
+                                        # toward the middle, so the last LED has to stop
+                                        # short of that. 14.0 overlapped both end courtyards.
 N_LED, N_DRV = 9, 3
 # IREF sets every output's ceiling: I = 41 x 1.21 V / R (TLC59711 datasheet). 3k3 = 15.0 mA,
 # three quarters of the LED's 20 mA rating -- headroom, and 2.2 A for the whole strip.
