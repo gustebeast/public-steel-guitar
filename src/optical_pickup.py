@@ -600,6 +600,15 @@ FB_ROWS = tuple(5.6 + k * FB_ROW_PITCH for k in range(4))
 FB_ROWS_U1 = FB_ROWS
 
 
+# The converter cells' input fan (see 3e in _parts): cap x per input, relative to the
+# converter's centre with the part turned 180. Module-level so elec/optical.py lays the
+# fan's copper from the same numbers the caps are placed by.
+CELL_FAN = {"IN4M": -2.70, "IN4P": -1.50, "IN3M": -0.90, "IN3P": -0.30,
+            "IN2M": 0.30, "IN2P": 0.90, "IN1M": 1.50, "IN1P": 2.10}
+CELL_NEAR = 3.75                                 # near-row cap centre above the part's centre
+CELL_FAR = CELL_NEAR + 1.95 + 0.15               # far row (0402 on end + CRTYD_GAP)
+
+
 def _members(it):
     """One item, or the members of a CLUSTER that must be placed adjacent."""
     return it if isinstance(it[0], tuple) else (it,)
@@ -1031,12 +1040,12 @@ def _parts():
     _cx1 = _part_x("U6") - CRTYD[_MCU_PKG][0] / 2 - CRTYD_GAP
     _q, _c = CRTYD["WQFN-24"][0], CRTYD["0402"]          # 5.26; (1.95, 1.03)
     _rx = _q / 2 + CRTYD_GAP + _c[0] / 2                  # the +X column
-    _cw = (2.12 + _c[1] / 2) + (_rx + _c[0] / 2)
+    _cw = (2.70 + _c[1] / 2) + (_rx + _c[0] / 2)
     _cgap = ((_cx1 - _cx0) - 3 * _cw) / 2
     assert _cgap >= CRTYD_GAP - 1e-9, (
         "the converter cells need %.2f mm across and the annulus -X of U6 is %.2f"
         % (3 * _cw + 2 * CRTYD_GAP, _cx1 - _cx0))
-    _near = 3.75                                           # near input row / bottom row, |y|
+    _near = CELL_NEAR                                      # near input row / bottom row, |y|
     _far = _near + _c[0] + CRTYD_GAP                       # far input row
     _ch = (_far + _c[0] / 2) + (_near + _c[0] / 2)
     _cy_top = _part_y("U6") + CRTYD[_MCU_PKG][1] / 2
@@ -1045,7 +1054,7 @@ def _parts():
 
     def _cell(col, row):
         """The part's centre for a cell."""
-        return (_cx0 + col * (_cw + _cgap) + 2.12 + _c[1] / 2,
+        return (_cx0 + col * (_cw + _cgap) + 2.70 + _c[1] / 2,
                 _cy_top - row * (_ch + _cy_gap) - _far - _c[0] / 2)
 
     for k in range(5):
@@ -1057,14 +1066,22 @@ def _parts():
         # 270 on top. Every cap here is wired pad 1 = the net nearer the part's pins' far
         # side, so: above the part the input caps (pad 2 = the ADC pin for Ci, pad 1 for Cm)
         # and below it the rail caps (pad 1 = the rail pin) are turned to face the pins.
-        for ref, dx, dy, rot in (("Cm%d4" % t, -2.12, _near, 90.0),
-                                 ("Ci%d4" % t, -0.94, _near, 270.0),
-                                 ("Ci%d3" % t, 0.24, _near, 270.0),
-                                 ("Ci%d2" % t, 1.43, _near, 270.0),
-                                 ("Ci%d1" % t, 2.60, _near, 270.0),
-                                 ("Cm%d3" % t, -0.35, _far, 90.0),
-                                 ("Cm%d2" % t, 0.83, _far, 90.0),
-                                 ("Cm%d1" % t, 2.00, _far, 90.0),
+        # ⚠ THE INPUT FAN IS A GEOMETRY, NOT A SEARCH (2026-09-21). The top pins run
+        # 13 (left side) 12 11 10 9 8 7 6 (right side) at 0.5 pitch, alternating INxP/INxM,
+        # and the caps for 12/10/8/6 sit in the near row with 11/9/7 threading up between
+        # them to the far row. Near caps at 1.2 pitch put every cap within 0.25 of its own
+        # pin's x, so the fan only ever WIDENS -- no two traces converge -- and each thread
+        # clears the near pads either side by 0.215. With the caps at their earlier,
+        # wider-flung positions the paths crossed and the router left 12 of these open.
+        # elec/optical.py lays the fan itself ("tracks"), from these same offsets.
+        for ref, dx, dy, rot in (("Cm%d4" % t, CELL_FAN["IN4M"], _near, 90.0),
+                                 ("Ci%d4" % t, CELL_FAN["IN4P"], _near, 270.0),
+                                 ("Ci%d3" % t, CELL_FAN["IN3P"], _near, 270.0),
+                                 ("Ci%d2" % t, CELL_FAN["IN2P"], _near, 270.0),
+                                 ("Ci%d1" % t, CELL_FAN["IN1P"], _near, 270.0),
+                                 ("Cm%d3" % t, CELL_FAN["IN3M"], _far, 90.0),
+                                 ("Cm%d2" % t, CELL_FAN["IN2M"], _far, 90.0),
+                                 ("Cm%d1" % t, CELL_FAN["IN1M"], _far, 90.0),
                                  # bottom: IOVDD under pin 19, DREG beside pin 24, and a 2.5 mm
                                  # corridor between them for SDOUT/BCLK/FSYNC
                                  ("Cs%d8" % t, -1.25, -_near, 270.0),
