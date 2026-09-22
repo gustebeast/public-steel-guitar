@@ -64,6 +64,7 @@ import math
 
 import cadquery as cq
 
+from elec import harness as EH             # the PCB's pin order, single-sourced
 from cadkit.cables import bundle_paths, helix_cable, oct_cable
 from cadkit.fasteners import M4, M4_BUTTON_HEAD_D, M4_BUTTON_HEAD_H, ScrewJoint
 from cadkit.holes import teardrop_hole
@@ -136,6 +137,7 @@ _SHAFT_R = M4.shaft_clr_d / 2.0
 M_HOLE_D = REAR + CLR + WALL + _SHAFT_R         # 10.2
 # JST PH, SIDE ENTRY, SMT: S4B-PH-SM4-TB (ePH p.4): 4 way B 11.9, body 6.0 deep with
 # its tails (2.6) behind, 5.5 off the board. Mouth UP the leg, at the board's top edge.
+PH_PITCH = 2.0                  # JST ePH: the PH family is 2.00 mm pitch
 SE_S = 11.9
 SE_DEPTH = 6.0
 SE_TAIL = 2.6
@@ -175,8 +177,26 @@ assert HARNESS_D >= HARNESS_WIRE_OD * (1 + math.sqrt(2)), "the bundle is under-s
 # side, NOT the diagonal: at anything under one wire OD the conductors interpenetrate
 # down the whole run (0.37 gave 24 overlaps, the worst 48 mm3).
 _WOFF = (HARNESS_WIRE_OD + 0.1) / 2.0                   # 0.5: touching plus 0.1 of air
-HARNESS_WIRES = (("gnd", (-_WOFF, -_WOFF)), ("5v", (_WOFF, -_WOFF)),
-                 ("canh", (_WOFF, _WOFF)), ("canl", (-_WOFF, _WOFF)))
+# THE PIN ORDER IS THE PCB's, IMPORTED, NOT RETYPED (elec.harness). That module exists
+# because this constant was written out three times with nothing comparing the copies,
+# and a wrong pin order is invisible until it puts a rail into a signal -- so the CAD
+# reads it rather than keeping a fourth copy. Change PH_PINOUT and the wires move.
+_PINOUT = tuple(n.lower() for n in EH.ph_drop_pins())   # ('gnd', 'v5', 'can_h', 'can_l')
+_PLACE = ((-_WOFF, -_WOFF), (_WOFF, -_WOFF), (_WOFF, _WOFF), (-_WOFF, _WOFF))
+HARNESS_WIRES = tuple(zip(_PINOUT, _PLACE))
+# ...and THE TWO PAIRS MUST STAY PAIRS. This is two twisted pairs, not a four-core:
+# CAN_H with CAN_L, and the rail with its return. A twisted pair is twisted with its
+# OWN partner, so each pair sits on one side of the square -- ADJACENT, sharing an
+# edge. (Diagonal is what an earlier pass of this file claimed and drew; it is wrong
+# on both counts, and this assert is what caught it.)
+def _adjacent(a, b):
+    return sum(1 for u, v in zip(_PLACE[a], _PLACE[b]) if u != v) == 1
+
+
+for _p, _q in (("can_h", "can_l"), ("gnd", _PINOUT[1])):
+    assert _adjacent(_PINOUT.index(_p), _PINOUT.index(_q)), (
+        "%s and %s are a TWISTED PAIR and no longer sit side by side in the bundle -- "
+        "elec.harness.PH_PINOUT moved a pin and _PLACE has not followed" % (_p, _q))
 assert 2 * (_WOFF * math.sqrt(2) + HARNESS_WIRE_OD / 2.0) <= HARNESS_D, (
     "the four conductors as placed do not fit the O%.1f bundle" % HARNESS_D)
 
@@ -186,6 +206,7 @@ assert 2 * (_WOFF * math.sqrt(2) + HARNESS_WIRE_OD / 2.0) <= HARNESS_D, (
 # JST ZR, S4B-ZR-SM4A-TF (eZR p.5 SM4 type): 4 way B 9.0, body 5.0 deep with its tails
 # (1.5) behind, 3.7 off the board. ZR's own sockets are IDC; its header also takes the
 # ZH CRIMP housing (ZHR-4 + SZH-002T, eZR p.1), which is how this harness is made.
+ZR_PITCH = 1.5                  # JST eZR/eZH: the ZR/ZH family is 1.50 mm pitch
 ZR_S = 9.0
 ZR_DEPTH = 5.0
 ZR_TAIL = 1.5
@@ -441,8 +462,14 @@ def tenon_negatives(j, route_xy, route_d, route_top, up=None):
                             -1.0, MB_TOP + CLR))
     out = out.union(j.house(TF, TF + RA_BODY_T + CLR, -RA_BODY_S / 2.0 - CLR,
                             RA_BODY_S / 2.0 + CLR, -1.0, REAR + CLR))
+    # THE PH's ROOM IS SWEPT DOWN THE INSTALL STROKE, not just cut where the connector
+    # ends up. The board slides in from the tenon's mouth, so everything standing off
+    # its face travels the WHOLE depth to reach its seat: cut only at the seat, the PH
+    # gouged up to 396 mm3 of tenon on the way past (the board and the pins are clean
+    # -- nothing else stands as far off the face). At rest AND fully withdrawn it read
+    # zero, which is why this survived every static check the project has.
     out = out.union(j.house(TF, TF + SE_H + CLR, -SE_S / 2.0 - CLR, SE_S / 2.0 + CLR,
-                            SE_TAIL0 - CLR, PLUG_TOP + CLR))
+                            -1.0, PLUG_TOP + CLR))
     # the harness's turn over to the lead's bore, then the bore itself onward
     rx, ry = route_xy
     rt = (rx - j.x) * j.T[0] + (ry - j.y) * j.T[1]
@@ -534,6 +561,14 @@ COIL_LEAD = 4.0                 # the vertical run-in
 COIL_GAP = 2 * B                # 1.6 -- > (HARNESS_D / 2) cos(lead), measured 1.118
 
 
+def pin_s(pitch, k, n=RA_N):
+    """Where way `k` (0-based) of an `n`-way connector sits along s, centred on the
+    housing. PIN 1 IS AT -s at every connector in this joint, which is the half of
+    the pin-order contract the CAD owns: elec.harness says WHICH circuit is pin 1,
+    this says WHERE pin 1 is. bronner needs both to route the boards."""
+    return (k - (n - 1) / 2.0) * pitch
+
+
 def harness():
     """THE RUN, drawn: plug to plug down the whole leg -- over to the old lead's bore,
     down the fixed tenon, COILED through the gap between the tenons (src.coil_mandrel's
@@ -585,8 +620,19 @@ def harness():
     # 3 bar stub): check_overlaps strips a trailing index group, so all four runs of a
     # circuit collapse to ONE base name and the wire allow-list needs four entries
     # rather than sixteen.
-    for k, path in enumerate((up_path, lo_path, body_path, bar_path)):
-        for (name, _), cpath in zip(HARNESS_WIRES,
-                                    bundle_paths(path, [o for _, o in HARNESS_WIRES])):
+    # ...and each run FANS OUT onto its own pin at the connector it ends at, instead
+    # of all four arriving on the housing's centre line. Which end that is differs per
+    # run: the leg's two runs leave a PH, the stubs leave a ZH.
+    ends = ((0, PH_PITCH, TOP), (-1, PH_PITCH, BOTTOM),
+            (0, ZR_PITCH, TOP), (0, ZR_PITCH, BOTTOM))
+    for k, (path, (at, pitch, j)) in enumerate(zip((up_path, lo_path, body_path,
+                                                    bar_path), ends)):
+        for i, ((name, _), cpath) in enumerate(zip(
+                HARNESS_WIRES, bundle_paths(path, [o for _, o in HARNESS_WIRES]))):
+            cpath = list(cpath)
+            p = list(cpath[at])
+            # slide the terminating point along s to its way, in the joint's frame
+            ds = pin_s(pitch, i)
+            cpath[at] = (p[0] + ds * j.S[0], p[1] + ds * j.S[1], p[2])
             out.append(("pogo_wire_%s_%d" % (name, k), oct_cable(cpath, w)))
     return out
