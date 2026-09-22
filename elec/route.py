@@ -86,7 +86,7 @@ def failing_nets(stem):
     return sorted(out)
 
 
-def route(stem, passes=None, timeout=7200, incremental=False, dsn_only=False):
+def route(stem, passes=None, timeout=14400, incremental=False, dsn_only=False):
     """Route the board at `stem`.
 
     ⚠ `incremental` ROUTES FROM THE BOARD AS IT STANDS, NOT FROM A FRESH PLACEMENT, and
