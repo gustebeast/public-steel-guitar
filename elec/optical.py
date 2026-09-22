@@ -1366,10 +1366,11 @@ def _fan_tracks():
             pts = [(pin_x, 1.96), (pin_x, 2.60), (cx, 2.60 + abs(d)), (cx, row)]
             out.append(("ADC%d_%s" % (k + 1, name), "F.Cu", 0.15,
                         [(ux + x, uy + y) for x, y in pts]))
-        for name, (px, py) in (("IN1P", (1.96, 1.25)), ("IN4M", (-1.96, 1.25))):
+        for name, (px, py), row in (("IN1P", (1.96, 1.25), near),
+                                    ("IN4M", (-1.96, 1.25), far)):   # IN4M's cap: far row
             cx = OP.CELL_FAN[name]
             out.append(("ADC%d_%s" % (k + 1, name), "F.Cu", 0.15,
-                        [(ux + px, uy + py), (ux + cx, uy + py), (ux + cx, uy + near)]))
+                        [(ux + px, uy + py), (ux + cx, uy + py), (ux + cx, uy + row)]))
     return out
 
 
@@ -1687,7 +1688,7 @@ BOARD_NOTES = {
     # copper against F.Cu's 10.6% while the corridor was the thing that ran out of room.
     # A cost below 1.0 tells freerouting to prefer a layer; the bottom layer is the one
     # with headroom, so it gets 0.7. In1.Cu is absent because it is the ground plane.
-    "router_passes": 30,
+    "router_passes": 40,
     # ⚠ NO track_mm HERE: 0.15 was TESTED AND IS WORSE. It helps lever_sensor, whose
     # 0.4 mm pitch QFN needs the lane, and it hurt this board -- 12 unconnected and no
     # violations at the 0.25 default, against 15 and a real clearance violation at 0.15.

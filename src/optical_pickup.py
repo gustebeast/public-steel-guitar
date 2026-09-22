@@ -603,7 +603,7 @@ FB_ROWS_U1 = FB_ROWS
 # The converter cells' input fan (see 3e in _parts): cap x per input, relative to the
 # converter's centre with the part turned 180. Module-level so elec/optical.py lays the
 # fan's copper from the same numbers the caps are placed by.
-CELL_FAN = {"IN4M": -2.70, "IN4P": -1.50, "IN3M": -0.90, "IN3P": -0.30,
+CELL_FAN = {"IN4M": -2.30, "IN4P": -1.50, "IN3M": -0.90, "IN3P": -0.30,
             "IN2M": 0.30, "IN2P": 0.90, "IN1M": 1.50, "IN1P": 2.10}
 CELL_NEAR = 3.75                                 # near-row cap centre above the part's centre
 CELL_FAR = CELL_NEAR + 1.95 + 0.15               # far row (0402 on end + CRTYD_GAP)
@@ -1039,8 +1039,15 @@ def _parts():
     _cx0 = COMPUTE_X0 + EDGE_KEEP
     _cx1 = _part_x("U6") - CRTYD[_MCU_PKG][0] / 2 - CRTYD_GAP
     _q, _c = CRTYD["WQFN-24"][0], CRTYD["0402"]          # 5.26; (1.95, 1.03)
-    _rx = _q / 2 + CRTYD_GAP + _c[0] / 2                  # the +X column
-    _cw = (2.70 + _c[1] / 2) + (_rx + _c[0] / 2)
+    # ⚠ NARROW CELLS, SO THE ROUTING SIDE HAS A CHANNEL (2026-09-22). Each part's -X side
+    # (SHDNZ, the address straps, SCL, SDA) faced the next cell's +X column across ~0.5 mm,
+    # and that column's ground vias filled the gap: SHDNZ failed on all five parts. The +X
+    # column is now two caps ON END beside their pins (AREG, VREF) with AVDD's cap moved to
+    # the bottom row, and IN4M's cap went to the far row -- 1.3 mm off every cell, so the
+    # channels between cells open from ~0.5 to ~2.5 mm.
+    _rx = _q / 2 + CRTYD_GAP + _c[1] / 2                  # the +X column, caps on end
+    _left = -CELL_FAN["IN4M"] + _c[1] / 2                 # IN4M's far cap is the -X extreme
+    _cw = _left + (_rx + _c[1] / 2)
     _cgap = ((_cx1 - _cx0) - 3 * _cw) / 2
     assert _cgap >= CRTYD_GAP - 1e-9, (
         "the converter cells need %.2f mm across and the annulus -X of U6 is %.2f"
@@ -1054,7 +1061,7 @@ def _parts():
 
     def _cell(col, row):
         """The part's centre for a cell."""
-        return (_cx0 + col * (_cw + _cgap) + 2.70 + _c[1] / 2,
+        return (_cx0 + col * (_cw + _cgap) + _left,
                 _cy_top - row * (_ch + _cy_gap) - _far - _c[0] / 2)
 
     for k in range(5):
@@ -1074,7 +1081,7 @@ def _parts():
         # clears the near pads either side by 0.215. With the caps at their earlier,
         # wider-flung positions the paths crossed and the router left 12 of these open.
         # elec/optical.py lays the fan itself ("tracks"), from these same offsets.
-        for ref, dx, dy, rot in (("Cm%d4" % t, CELL_FAN["IN4M"], _near, 90.0),
+        for ref, dx, dy, rot in (("Cm%d4" % t, CELL_FAN["IN4M"], _far, 90.0),
                                  ("Ci%d4" % t, CELL_FAN["IN4P"], _near, 270.0),
                                  ("Ci%d3" % t, CELL_FAN["IN3P"], _near, 270.0),
                                  ("Ci%d2" % t, CELL_FAN["IN2P"], _near, 270.0),
@@ -1085,12 +1092,14 @@ def _parts():
                                  # bottom: IOVDD under pin 19, DREG beside pin 24, and a 2.5 mm
                                  # corridor between them for SDOUT/BCLK/FSYNC
                                  ("Cs%d8" % t, -1.25, -_near, 270.0),
-                                 ("Cs%d6" % t, 1.90, -_near, 270.0)):
+                                 ("Cs%d6" % t, 1.90, -_near, 270.0),
+                                 ("Cs%d1" % t, 3.10, -_near, 270.0),   # AVDD, pin 1 at +X low
+                                 # +X column on end: AREG (pin 2, y -0.75) rail pad on top,
+                                 # VREF (pin 3, y -0.25) rail pad at the bottom
+                                 ("Cs%d3" % t, _rx, -1.20, 270.0),
+                                 ("Cs%d5" % t, _rx, 0.90, 90.0)):
             add(ref, "ADC input AC coupling" if ref[1] in "im" else "ADC supply bypass",
                 "0402", qx + dx, qy + dy, rot)
-        # +X column at the pins' own heights: AVDD (pin 1, y -1.25), AREG (-0.75), VREF (-0.25)
-        for ref, dy in (("Cs%d1" % t, -1.90), ("Cs%d3" % t, -0.72), ("Cs%d5" % t, 0.46)):
-            add(ref, "ADC supply / reference bypass", "0402", qx + _rx, qy + dy)
     qx, qy = _cell(2, 1)
     for m, (ref, desc) in enumerate((("R50", "I2C2 SCL pull-up"), ("R51", "I2C2 SDA pull-up"),
                                      ("R54", "ADC SHDNZ pull-down -- converters off in reset"))):
