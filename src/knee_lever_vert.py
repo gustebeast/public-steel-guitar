@@ -295,7 +295,7 @@ def _housing() -> cq.Workplane:
     # identical between the levers except how tall the board is, and that falls
     # out of z_bot/z_top.
     w = KL._cradle(w, HOUS_Z0, HOUS_Z1, x_max=HOUS_X1)
-    w = w.union(KL.lace_loop(HOUS_X0, HOUS_Z0))   # the bus-B tie-off, on THIS floor
+    w = w.union(KL.lace_loop(HOUS_HW_P, HOUS_Z0))  # the bus-B tie-off, on THIS floor
     return heal(w)                  # no printed back-stop threads any more (KL.cut_feel_rear)
 
 
