@@ -875,9 +875,10 @@ def optical():
     #     5x TLV9064 quad          538 uA/amp typ, 750 max  ->  10.8 / 15.0 mA
     #     U11 TLV9061 single                                ->   0.54 / 0.75
     #     R34/R35 mid-rail divider 3.3 V / 10.09 k          ->   0.33 / 0.33
-    #     5x TLV320ADC3140 AVDD (2026-09-21)   ">23 mA" each at 48 kHz, 4 ch (SBAS993B
-    #       Table 131) -- NO figure at 192 kHz; ~25 each assumed ->  125 / ~150 ?
-    #                                                   subtotal ~137 / ~166 mA
+    #     5x TLV320ADC3140 AVDD (2026-09-21)   21.3 mA each, 4 ch at 48 kHz, PLL on
+    #       (SBAS993B 7.5; 19.7 at 16 kHz, so it scales weakly) -- NO figure at 192 kHz;
+    #       ~26 each assumed                                 ->  ~130 / ~150
+    #                                                   subtotal ~142 / ~166 mA
     #     ⚠ THE CONVERTERS MULTIPLY THIS RAIL TENFOLD. U9 (SPX3819, 500 mA) carries it,
     #       but it burns (5 - 3.3) x 0.14 = 0.24 W in a SOT-23-5 -- ~45 C of rise -- and
     #       the buck's worst case below grows by the same ~150 mA. MEASURE AVDD current
@@ -902,6 +903,12 @@ def optical():
     #       firmware picks. Only the "324 mA typical" headline moves.
     #     U8 input ~= its output                             207 / 272 / 452
     #     U9 input ~= its output                              12 /  16 /  16
+    #   ⚠ + THE CONVERTERS' ~130 mA (2026-09-21, via U9 above): typical ~454 mA, 76 %;
+    #     "max parts @25" becomes ~629 mA, 105 % OF THIS 600 mA BUCK. Not a routing
+    #     fault -- a sizing one. The in-stock fix is the motor controller's LMR33630
+    #     (3 A, 36 V, HSOIC-8, C841384), which changes U13's land and L1; measure the
+    #     converters at 192 kHz first, since the headline max is the MCU's all-peripherals
+    #     worst case and this board no longer runs the MCU's three ADCs.
     #                              average          324 mA   54 % of the buck
     #                              emitters on      430 mA   72 %
     #                              + max parts @25  499 mA   83 %
@@ -1649,7 +1656,7 @@ BOARD_NOTES = {
     # copper against F.Cu's 10.6% while the corridor was the thing that ran out of room.
     # A cost below 1.0 tells freerouting to prefer a layer; the bottom layer is the one
     # with headroom, so it gets 0.7. In1.Cu is absent because it is the ground plane.
-    "router_passes": 10,
+    "router_passes": 30,
     # ⚠ NO track_mm HERE: 0.15 was TESTED AND IS WORSE. It helps lever_sensor, whose
     # 0.4 mm pitch QFN needs the lane, and it hurt this board -- 12 unconnected and no
     # violations at the 0.25 default, against 15 and a real clearance violation at 0.15.
@@ -1790,11 +1797,20 @@ BOARD_NOTES = {
     # J1's shell tabs are through-hole: their barrels reach the plane. Before the layout
     # fix that gives every duplicate-numbered pad its net, three of the four had no net and
     # drew no via; stitching them now re-planned the board and left TIA_OUT_1B open.
-    # U14-U18 pin 4 (AVSS): TI wants AVSS shorted straight to the thermal pad, and on this
-    # package it sits beside it -- the EP (GND, via-stitched) and the F.Cu GND pour join
-    # them in under half a millimetre. Its own via would land among the AVDD/AREG/VREF caps
-    # the cell puts on that side, which is where they belong.
+    # U14-U18 pin 4 (AVSS): TI wants AVSS shorted straight to the thermal pad, and it sits
+    # beside it -- so it gets exactly that, a 0.2 mm track into the EP (see "tracks"),
+    # rather than a via among the AVDD/AREG/VREF caps the cell puts on that side.
+    # ⚠ THE F.Cu POUR DOES NOT DO IT, MEASURED: the pin's inner end is 0.20 from the EP and
+    # the pour's 0.3 clearance cannot enter, so all five AVSS pins came back unconnected.
     "stitch_exceptions": ("J1.SH", "U14.4", "U15.4", "U16.4", "U17.4", "U18.4"),
+    # AVSS -> EP, one per converter. Pin 4 sits at (+1.962, +0.25) from the EP centre with
+    # the part turned 180 (read off the placed board through pcbnew); the track ends 0.9
+    # in from the EP centre, well inside the 2.7 pad. Neighbour pins 3/5 clear by 0.27.
+    "tracks": [("GND", "F.Cu", 0.2, [(_placements(CX, CY)["U%d" % (14 + k)][0] + 1.962,
+                                       _placements(CX, CY)["U%d" % (14 + k)][1] + 0.25),
+                                      (_placements(CX, CY)["U%d" % (14 + k)][0] + 0.9,
+                                       _placements(CX, CY)["U%d" % (14 + k)][1] + 0.25)])
+               for k in range(5)],
     # ⚠ ORDER OPTIONS ARE PART OF THE DESIGN, and nothing in a gerber records them.
     # Mask colour is usually cosmetic and on this board it is not: twenty photodiodes
     # look up through a 0.30 mm gap that runs 5.40 mm to the cover's aperture, and that
