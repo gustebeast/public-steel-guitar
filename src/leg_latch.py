@@ -259,14 +259,6 @@ def _band(r0: float, r1: float, z0: float, z1: float, w: float = BAND_W,
                   y=LS.LEG_Y + BUTTON_SIDE * (r0 + r1) / 2.0, z=(z0 + z1) / 2.0)
 
 
-def _radial_cyl(d: float, r0: float, length: float, z: float, x: float = 0.0):
-    """A cylinder pointing at the button, x off the band's centreline: starting at
-    radius r0 and running `length` further out, at height z."""
-    return cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        d / 2.0, length, cq.Vector(LS.LEG_X + x, LS.LEG_Y + BUTTON_SIDE * r0, z),
-        cq.Vector(0, BUTTON_SIDE, 0)))
-
-
 def lead_l() -> float:
     """The ramp's length along the leg, from LEAD_DEG (read at call time): it rises
     from TIP_RELIEF inside the bore to HOOK_ENGAGE outside it."""

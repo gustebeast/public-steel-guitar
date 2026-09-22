@@ -155,7 +155,8 @@ machines anywhere.
 ## Building the CAD
 
 CadQuery on Python 3.12 generates a STEP file per printed part plus a colored
-`assembly.step` (~233 placed components including purchased-part dummies).
+`assembly.step`. The assembly places ~900 components: the printed parts, every
+purchased-part dummy, the PCBs, and the wiring harness drawn as real cable.
 
 ```bash
 py -3.12 -m src.build              # all parts + assembly.step (the guaranteed full build)
@@ -166,11 +167,18 @@ py -3.12 -m tools.fast_build NAME  # ITERATION: rebuild one part in <1s-9s — i
                                    #   part's module, not all of src.build. Builds FRESH (no
                                    #   stale cache); handles 59/71 parts, falls back for the rest.
 py -3.12 -m tools.check_overlaps   # design gate: any unintended interpenetration.
-                                   #   NOTE: a full build runs this gate ITSELF (~15s, on the
-                                   #   model it just made). Standalone costs ~5m51s, because
-                                   #   it must rebuild the model first — the printed scan time
-                                   #   is not the real cost. Use it when NOT building; the
-                                   #   build's own gate covers you when you are. --no-gate opts out.
+                                   #   A full build runs this gate ITSELF on the model it just
+                                   #   made, so you rarely need it standalone. The scan is a few
+                                   #   seconds (an incremental cache keyed on each part's
+                                   #   geometry — only changed pairs are re-measured); standalone
+                                   #   cost is dominated by rebuilding the model first.
+                                   #   --no-gate opts out.
+py -3.12 -m tools.check_sweep      # rotating parts swept through a full turn (the overlap
+                                   #   gate is structurally blind to this)
+py -3.12 -m tools.check_ceilings   # unsupported overhangs, per part, in its own print pose
+py -3.12 -m tools.check_walls      # thin walls / minimum material
+py -3.12 -m tools.check_beads      # dimensions on the nozzle-width grid
+py -3.12 -m tools.check_dead       # source drift: definitions nothing names any more
 py -3.12 -m tools.build_profile    # per-part/module build-cost + face-count regression gate
 py -3.12 -m tools.export_glb       # simplified colored GLB for the web viewer (docs/)
 ```
@@ -179,16 +187,22 @@ py -3.12 -m tools.export_glb       # simplified colored GLB for the web viewer (
   bridge, +Y across, +Z up) and **every** dimension as a named constant.
 - `src/components.py` — schematic dummies of purchased parts (motor, screw,
   nut, bearings, pulleys, belt, strings, dowels) used only in the assembly.
-- Printed parts: `carriage` ×10, `bridge_endplate`, `keyhead_endplate`
-  (nut block fused in), `chassis_0/1/2`, `belt_clamp`, `screw_pulley`, `motor_pulley`,
-  `tension_fork` (graded belt-tension lock set), the **top deck** (a
-  pickup-carrier piece with an under-pickup floor, 3 M4 `height_screw`s + 1 M4
-  `clamp_screw`, swappable fret-marked filler bands, and the UI/keyhead panels),
-  and the legs: `leg_socket`/`leg_segment`/`leg_sleeve`/`leg_shaft`
-  plus `leg_foot`/`leg_washer` in TPU, and `electronics_tray` (compute-bay snap mounts).
-- `tools/check_overlaps.py` exits non-zero on any unintended part
-  interpenetration; carriage geometry is additionally swept through both
-  travel extremes during design review.
+- Printed parts, by area (`py -3.12 -m src.build --list` is the authoritative
+  list — it is generated, this is a map):
+  - **body**: `chassis_0/1/2` (+ `_light` variants), `bridge_endplate`,
+    `keyhead_endplate` (nut block fused in)
+  - **top deck**: `top_plate_*` segments and their colour inlays,
+    `pickup_zplate` (the pickup's height plate)
+  - **drivetrain**: `screw_pulley_hi`/`_lo`, `motor_pulley`, `tension_fork`,
+    and the belt-tension clamp (one `clamp_half` SKU fitted twice per string)
+  - **controls**: `knee_housing`/`knee_lever`, `kv_housing`/`kv_lever`,
+    `pedal_bar_a/b/c`, `pedal_lever`, and the shared feel cartridge
+    (`cart_base`/`cart_piston`)
+  - **legs**: `fixed_sleeve`/`adjust_sleeve`, `fixed_tenon`/`adjust_tenon`,
+    `body_adapter*`, `leg_foot` (TPU), and the latch set
+  - **coupons**: `test_*` — print-fit test pieces, not part of the instrument
+- Every gate exits non-zero on a finding, and `src.build` runs the overlap and
+  sweep gates itself on the model it just built.
 
 Envelope ≈ 100 × 200 × 655 mm (thick × across × long) — thin enough to sit on
 a keyboard rig. 10 strings at 9.5 mm pitch at the bridge.
@@ -198,7 +212,9 @@ a keyboard rig. 10 strings at 9.5 mm pitch at the bridge.
 | Path | What |
 |---|---|
 | `src/` | CadQuery source — one module per printed part + helpers |
-| `tools/` | overlap gate + `fast_build` (fast single-part iteration) + `build_profile` (build-cost/regression gate) + web-viewer GLB exporter |
+| `tools/` | the checkers (`check_*.py` — overlaps, sweep, ceilings, walls, beads, dead code), `fast_build` (fast single-part iteration), `build_profile` (build-cost/regression gate), the web-viewer exporters |
+| `elec/` | the PCB sources — schematic + layout + autoroute + fab output, generated with skidl/KiCad, one module per board |
+| `cadkit/` | shared CAD library, vendored as a git subtree from its own repo and used by ten projects — edit it there, not here |
 | `docs/` | GitHub Pages 3D viewer (`index.html` + `assembly.glb`) |
 | `INSTALL_NOTES.md` | installation steps the CAD can't show (thread lock, order, settings) — raw notes for the future install doc |
 | `BOM.md` | purchased parts with sourcing links and prices |
