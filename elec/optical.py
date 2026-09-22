@@ -1473,18 +1473,32 @@ def _outline_poly(cx, cy):
             bands[-1] = (bands[-1][0], y1, x1, x0)
         else:
             bands.append((y0, y1, x1, x0))
-    # Walk the +X side from -Y to +Y, then the -X side back down. The -X edge is one
-    # straight line end to end (see COMPUTE_X0 in the CAD), so it contributes just its
-    # two extreme corners -- emitting a point per band there would put collinear
-    # duplicates on Edge.Cuts, which KiCad reports as a self-intersecting outline.
+    # Walk the +X side from -Y to +Y, then the -X side back down, one corner pair per band
+    # on each side. Since the strip widened -X (2026-09-22) the -X edge is no longer one
+    # straight line. Collinear points (a band whose edge continues its neighbour's) are
+    # dropped: KiCad reads collinear duplicates on Edge.Cuts as a self-intersection.
     pts = []
     for y0, y1, _x1, x0 in bands:
-        if not pts or pts[-1] != (x0, y0):
-            pts.append((x0, y0))
-        pts.append((x0, y1))
-    x_left = min(b[2] for b in bands)
-    pts += [(x_left, bands[-1][1]), (x_left, bands[0][0])]
-    return [(x - cx, y - cy) for x, y in pts]
+        pts += [(x0, y0), (x0, y1)]
+    for y0, y1, x1, _x0 in reversed(bands):
+        pts += [(x1, y1), (x1, y0)]
+    out = []
+    for p in pts:
+        if not out or out[-1] != p:
+            out.append(p)
+    if out[0] == out[-1]:
+        out.pop()
+    changed = True
+    while changed:                              # drop points in the middle of a straight run
+        changed = False
+        for i in range(len(out)):
+            a, b, c = out[i - 1], out[i], out[(i + 1) % len(out)]
+            if (abs(a[0] - b[0]) < 1e-9 and abs(b[0] - c[0]) < 1e-9) or \
+               (abs(a[1] - b[1]) < 1e-9 and abs(b[1] - c[1]) < 1e-9):
+                out.pop(i)
+                changed = True
+                break
+    return [(x - cx, y - cy) for x, y in out]
 
 
 def _placements(cx, cy):
