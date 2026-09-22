@@ -463,13 +463,13 @@ def body_adapter(sx: float = LEG_X, ly: float = LEG_Y):
     # chamfered mouth that lets a printed hook ride in without catching
     b = b.cut(LL.adapter_pocket())
     b = b.cut(LL.mouth_chamfer())
-    # THE SIGNAL CORNER's female pogo board (src.leg_pogo): a one-bead pedestal off the
-    # mortise roof, the connector's cavity above it and the harness's groove out the
-    # -Y face. Only this corner carries the bus
+    # THE SIGNAL CORNER's female pogo board (src.leg_pogo): it lies on the mortise roof;
+    # the connector's cavity above it and the harness's groove out the -Y face. Only
+    # this corner carries the bus
     if abs(sx - LEG_X) < 1e-6 and abs(ly - LEG_Y) < 1e-6:
         from . import leg_pogo as PG
         _ped, _neg = PG.adapter_features()
-        b = b.union(_ped).cut(_neg)
+        b = (b.union(_ped) if _ped is not None else b).cut(_neg)
     b = b.translate((sx - LEG_X, ly - LEG_Y, 0.0))
     # BODY TENONS, on the top face (see BODY JOINERY). Both ridges and the tongue
     # run the full LEG_W along Y, the slide axis.
