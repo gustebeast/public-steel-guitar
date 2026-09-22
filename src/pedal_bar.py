@@ -317,11 +317,11 @@ TROUGH_X1 = FEET[0][0] - LG.BLK_W / 2 - 0.6   # right up to the towers
 # and only a -Y-facing one would be a ceiling -- and the chamber, like the trough it
 # extends, has none. It opens straight through the +Y face into the lid groove, which
 # is also how the lead is reached: LID_XA is BAR_X0, so the lid covers this.
-CHAM_X0 = BT._ax()[0] - 8.8                # 8.8 of run -X of the old spine: the pogo
-                                           # joint's harness drops through the bar's
-                                           # floor 9.1 off the leg's axis (leg_pogo)
-CHAM_Y0 = BT._ax()[1] - BT.JB_D / 2 - 0.8  # 41.90 -- deep enough in -Y to swallow the
-                                           # cable way's whole mouth, and no deeper
+CHAM_X0 = BT._ax()[0] - 8.0                # -624.46: 8 of run -X of the spine, which
+                                           # is where the lead's bend wants to live
+CHAM_Y0 = YC - 8.0                          # deep enough in -Y to take the pogo joint's
+                                           # harness, which drops through the floor on
+                                           # the tenon's +X-Y diagonal (src.leg_pogo)
 CHAM_Z0 = 8.0                              # the floor. NOT the trough's 3.95: the foot
                                            # mortise is 6.0 tall at this very station
                                            # and the two would break into each other

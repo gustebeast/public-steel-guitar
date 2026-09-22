@@ -43,9 +43,15 @@ current-limited switch, with an LDO on each sensor board (user, 2026-09-21).
 
 FRAME. Every joint is built in LOCAL (t, s, d): t off the male board's component face,
 s along the pin row, d INTO THE TENON from the mating plane (the tenon's end face = the
-mortise's roof or floor when seated). Each joint picks which world axis t is, because
-each tenon end has different things in it (see TOP and BOTTOM). The male board's BACK
-is at t = 0 and everything on it lies at t > 0.
+mortise's roof or floor when seated). The male board's BACK is at t = 0 and everything
+on it lies at t > 0.
+
+t RUNS ALONG A DIAGONAL, and that is not a detail: THE TENON IS A SQUARE TURNED 45
+DEGREES. It reaches 16.17 along X and Y -- those are its APEXES, trimmed by a 1.6
+chamfer -- and its FLATS face the diagonals, 12 from the axis. The male board's screw
+has to cross the board square and come out at a flat, so the board's face normal is a
+diagonal. Built on X and Y instead, the head's recess ended 0.8 SHORT of the surface,
+buried in solid material (check_thin found it as a 1.39 web).
 
 DIMENSIONS ARE THE DRAWINGS' (C54799748 YZ165615055F-04025-02; JST ePH pp.3-4, read
 as images) except where marked INFERRED or RESERVED. This is CAD for bronner to route
@@ -58,7 +64,7 @@ import math
 
 import cadquery as cq
 
-from cadkit.fasteners import M4, insert_bore_cutter
+from cadkit.fasteners import M4, M4_BUTTON_HEAD_D, M4_BUTTON_HEAD_H, ScrewJoint
 from cadkit.holes import teardrop_hole
 from cadkit.pcb import PCB_T
 from . import dimensions as D
@@ -168,8 +174,8 @@ ZR_H = 3.7
 ZR_PLUG = 2.0                   # the mated housing past the mouth (eZR p.2: 7 overall
                                 # back of header to plug, less the 5.0 body)
 ZR_LCSC = "C485354"             # S4B-ZR-SM4A-TF(LF)(SN), 27k in stock
-HEAD_D = 7.0                    # M4 button head: the head, not the hole, sets spacing
-HEAD_H = 2.2
+HEAD_D = M4_BUTTON_HEAD_D       # 7.6 -- cadkit's ISO 7380 button, the head (not the
+HEAD_H = M4_BUTTON_HEAD_H       # hole) is what sets every spacing here
 _INS_R = M4.insert_pilot_d / 2.0
 TG_T0 = PIN_T - TG_BODY_T / 2.0                         # 1.65 the target's -t side
 ZR_T1 = TG_T0 - EDGE                                    # 1.15 the ZR's back (tails)
@@ -183,10 +189,8 @@ FB_T0 = ZR_MOUTH                                        # the plug overhangs thi
 FB_T1 = PIN_T + TG_BODY_T / 2.0 + EDGE                  # 4.65
 FB_S0 = -TG_BODY_S / 2.0 - EDGE                         # along the row, from its centre
 FB_S1 = F_HOLE_S + HOLE_D / 2.0 + EDGE
-F_SCREW_L = 6.0                 # M4 x 6: 1.6 of board + 4.4 into the insert
-INS_CLR = 0.4
-_INS_WHY = ("a PCB's one M4 (project rule), into plastic with no depth behind it for "
-            "a self-tap bite")
+F_SCREW_L = 8.0                 # M4 x 8 button: 1.6 of board, then 6.4 of insert bite
+F_END = F_SCREW_L + 1.0          # the hole stops past the screw's tip
 assert ZR_S / 2.0 <= TG_BODY_S / 2.0 + EDGE, "the ZR runs past the target's end"
 assert PCB_T + ZR_H < EDGE_D and PCB_T + HEAD_H < EDGE_D, (
     "the female's parts reach the male board's edge")
@@ -204,23 +208,43 @@ assert FB_T1 + CLR + WALL <= _HALF, "the female breaks the tenon's +t flat"
 # the male's sideways screw: head recessed in the +t flat, insert pressed into the -t
 # flat from outside -- the -t side is where nothing else is, at this height
 M_SCREW_L = 20.0                # M4 x 20 button
+M_RECESS = HEAD_H + 0.8         # buried in the flat, so the mortise never touches it
+M_INSERT_AT = LS.TEN_W - M4.insert_depth        # the pocket's mouth, faceing the screw
+M_END = LS.TEN_W + 0.5
 M_HOLE_S = -S_C                 # ON THE LEG'S CENTRE LINE, not the row's: 3.5 off it the
                                 # head's edge met the mortise's corner faces (the gate
                                 # found 1.1 mm3 in each host)
 assert abs(M_HOLE_S) + HOLE_D / 2.0 + EDGE <= MB_S / 2.0, "the M4 hole leaves the board"
-M_HEAD_SEAT = _HALF - HEAD_H - 0.2                      # the counterbore's floor, in t
-assert M_HEAD_SEAT - M_SCREW_L > -_HALF + 1.0, "the M4 x 20 pokes out the far flat"
-assert M_HEAD_SEAT - M_SCREW_L < -_HALF + M4.insert_depth - 3.0, (
-    "under 3 of the M4 x 20 reaches its insert")
+M_HEAD_SEAT = _HALF - M_RECESS                          # the counterbore's floor, in t
+
+
+def male_screw(j):
+    """The sideways M4 through the tenon and the board: head in the +t flat, insert
+    pressed into the -t flat from outside. cadkit shapes the whole hole per part."""
+    return ScrewJoint(M4, j.p(_HALF, M_HOLE_S, M_HOLE_D), (-j.T[0], -j.T[1], 0.0),
+                      M_SCREW_L, insert_at=M_INSERT_AT, end_at=M_END,
+                      head_d=HEAD_D, head_h=HEAD_H, recess=M_RECESS)
+
+
+def female_screw(j):
+    """The female's M4, down the mortise: head on its board, insert in the host."""
+    return ScrewJoint(M4, j.p(F_HOLE_T, F_HOLE_S, PCB_T), (0.0, 0.0, -j.dz),
+                      F_SCREW_L, insert_at=PCB_T, end_at=F_END,
+                      head_d=HEAD_D, head_h=HEAD_H)
 
 # ── the two joints ───────────────────────────────────────────────────────────
 class Joint(object):
     """A joint's mating plane and axes: `T` and `S` are world unit vectors (axis
     aligned) for t and s, `dz` is +-1, world Z of 'into the tenon'."""
 
-    def __init__(self, name, z, dz, T, S, tenon_up, host_up):
-        self.name, self.z, self.dz, self.T, self.S = name, z, dz, T, S
+    def __init__(self, name, z, dz, T, tenon_up, host_up):
+        self.name, self.z, self.dz, self.T = name, z, dz, T
+        self.S = (-T[1], T[0])          # s is t turned +90 about the joint's axis
+        self.ang = math.degrees(math.atan2(T[1], T[0]))
         self.tenon_up, self.host_up = tenon_up, host_up
+        # which s face of a cavity in the TENON is its ceiling: the one the part builds
+        # toward (the tenon lies on a flat, so its build direction is +-S)
+        self.up_s = 1.0 if (self.S[0] * tenon_up[0] + self.S[1] * tenon_up[1]) > 0 else -1.0
         self.x, self.y = LS.LEG_X, LS.LEG_Y
 
     def p(self, t, s, d):
@@ -231,11 +255,54 @@ class Joint(object):
                 self.y + t * self.T[1] + s * self.S[1], self.z + self.dz * d)
 
     def box(self, t0, t1, s0, s1, d0, d1):
-        pts = [self.p(t, s, d) for t in (t0, t1) for s in (s0, s1) for d in (d0, d1)]
-        lo = [min(q[i] for q in pts) for i in range(3)]
-        hi = [max(q[i] for q in pts) for i in range(3)]
-        return cq.Workplane("XY").add(cq.Solid.makeBox(
-            hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2], cq.Vector(*lo)))
+        """A box in LOCAL axes -- turned onto this joint's diagonal, not world-aligned."""
+        # d is INTO the tenon, which is -Z at the top joint: take the lower world z,
+        # not the lower d, or every cavity up there comes out mirrored about the seam
+        z0 = min(self.z + self.dz * d0, self.z + self.dz * d1)
+        b = cq.Workplane("XY").add(cq.Solid.makeBox(
+            t1 - t0, s1 - s0, abs(d1 - d0), cq.Vector(t0, s0 + S_C, 0.0)))
+        return (b.rotate((0, 0, 0), (0, 0, 1), self.ang)
+                .translate((self.x, self.y, z0)))
+
+    def house(self, t0, t1, s0, s1, d0, d1):
+        """A cavity shaped like a HOUSE: the box, with a 45 degree gable standing on
+        whichever s face the tenon builds toward, because that face is its CEILING.
+        ONE closed profile, extruded along d -- not a box with a triangle unioned onto
+        it. (It was that union: the gable's face was computed as -s1 rather than s0, so
+        on a joint that builds toward -S the roof came out as a SEPARATE triangle
+        floating beside the slot.)"""
+        u = self.up_s
+        sc = s1 if u > 0 else s0                # the ceiling face
+        sf = s0 if u > 0 else s1                # and the floor opposite it
+        hw = (t1 - t0) / 2.0                    # 45 degrees, so the ridge is half-span
+        tm = (t0 + t1) / 2.0
+        apex = sc + u * hw
+        z0, z1 = sorted((self.z + self.dz * d0, self.z + self.dz * d1))
+        pts = [(t0, sf + S_C), (t1, sf + S_C), (t1, sc + S_C)]
+        s_flat = u * (LS.TEN_W / 2.0) - S_C     # the tenon's flat on the ceiling side
+        if (apex - s_flat) * u > 0:
+            # THE RIDGE DOES NOT FIT. The mouth is 10.6 wide and its ceiling sits 2.75
+            # inside the flat, so a 45 degree ridge (5.3) runs out through the tenon's
+            # face -- unavoidable, and harmless: assembled, this is 34 of the 40 of
+            # engagement deep inside the mortise, walled in and closed at its far end.
+            # What is NOT harmless is letting the 45 flanks themselves cross the flat:
+            # they leave a wedge of material tapering to ZERO along the crossing, which
+            # prints as a curled burr ON A SLIDING FACE. So the flanks stop one bead
+            # short and go STRAIGHT out instead -- they run along the build direction
+            # there, which prints fine -- and the slot breaks out square-edged.
+            s_br = s_flat - u * D.MIN_WALL
+            half = hw - abs(s_br - sc)
+            assert half > 0.0, "the cavity's ceiling is already outside the flat"
+            s_out = s_flat + u * 1.0
+            pts += [(tm + half, s_br + S_C), (tm + half, s_out + S_C),
+                    (tm - half, s_out + S_C), (tm - half, s_br + S_C)]
+        else:
+            pts += [(tm, apex + S_C)]
+        pts += [(t0, sc + S_C)]
+        return (cq.Workplane("XY").workplane(offset=z0)
+                .polyline(pts).close().extrude(z1 - z0)
+                .rotate((0, 0, 0), (0, 0, 1), self.ang)
+                .translate((self.x, self.y, 0.0)))
 
     def cyl_d(self, dia, t, s, d0, d1):
         """A cylinder along the joint axis."""
@@ -265,16 +332,16 @@ class Joint(object):
             yield (k - (TG_N - 1) / 2.0) * TG_PITCH
 
 
-# TOP: the fixed tenon's upper end, in the adapter. Into the tenon is -Z. t is +Y:
-# the leg latch's pocket owns y < -1.6 from 27.75 down, the harness turns at 26-29,
-# and with t = +Y everything of the male's lies at y >= -CLR. The sideways screw runs
-# along Y, 17 above that pocket.
-TOP = Joint("top", LS.Z_MORTISE_ROOF, -1.0, (0.0, 1.0), (1.0, 0.0),
+# BOTH JOINTS put t on the -X+Y diagonal, so the board's parts and the ZR's mouth face
+# +X-Y: at the bottom that points the harness's drop at the bar's trough (user), and at
+# the top it puts everything clear of the leg latch's pocket (y < -1.6 from 27.75 down).
+# The tenon builds along -S here, so every cavity's s0 face is its ceiling: house()
+# stands a 45 degree gable on it, in the SAME profile as the cavity.
+_D = math.sqrt(0.5)
+TOP = Joint("top", LS.Z_MORTISE_ROOF, -1.0, (-_D, _D),
             LS.PRINT_UP["fixed_tenon"], LS.PRINT_UP["body_adapter"])
-# BOTTOM: the adjust tenon's lower end, in the pedal bar. Into the tenon is +Z. t is +X
-# and the row runs along Y: the bar latch's pocket across the +Y side starts at y 10.5
-# (probed) and its lead-in at 11.81, and the ladder is 64 up.
-BOTTOM = Joint("bottom", LS.Z_ADJ_TEN_BOT, 1.0, (1.0, 0.0), (0.0, 1.0),
+# BOTTOM: the adjust tenon's lower end, in the pedal bar. Into the tenon is +Z.
+BOTTOM = Joint("bottom", LS.Z_ADJ_TEN_BOT, 1.0, (-_D, _D),
                LS.PRINT_UP["adjust_tenon"], (0.0, 1.0, 0.0))
 
 
@@ -319,13 +386,11 @@ def female(j):
 
 
 def screws(j):
-    """The female's M4 x 6 (down the mortise) and the male's M4 x 20 (sideways)."""
-    fh = j.cyl_d(HEAD_D, F_HOLE_T, F_HOLE_S, PCB_T, PCB_T + HEAD_H)
-    fs = j.cyl_d(M4.screw_d, F_HOLE_T, F_HOLE_S, PCB_T - F_SCREW_L, PCB_T)
-    mh = j.cyl_t(HEAD_D, M_HEAD_SEAT, M_HEAD_SEAT + HEAD_H, M_HOLE_S, M_HOLE_D)
-    ms = j.cyl_t(M4.screw_d, M_HEAD_SEAT - M_SCREW_L, M_HEAD_SEAT, M_HOLE_S, M_HOLE_D)
-    return [("pogo_female_screw_%s" % j.name, fh.union(fs)),
-            ("pogo_male_screw_%s" % j.name, mh.union(ms))]
+    """Both M4s and their inserts, drawn by cadkit from the same joints the parts cut."""
+    return (female_screw(j).dummies("pogo_female_screw_%s" % j.name,
+                                    "pogo_female_insert_%s" % j.name)
+            + male_screw(j).dummies("pogo_male_screw_%s" % j.name,
+                                    "pogo_male_insert_%s" % j.name))
 
 
 def dummies():
@@ -347,18 +412,18 @@ def tenon_negatives(j, route_xy, route_d, route_top, up=None):
     the sideways screw (counterbore in the +t flat, insert from the -t flat), and a way
     over to the lead's bore at `route_xy` (world), `route_d` wide, on to `route_top`."""
     up = up or j.tenon_up
-    out = j.box(FB_T0 - CLR, FB_T1 + CLR, FB_S0 - CLR, FB_S1 + CLR, -1.0, MOUTH_D)
+    out = j.house(FB_T0 - CLR, FB_T1 + CLR, FB_S0 - CLR, FB_S1 + CLR, -1.0, MOUTH_D)
     # ...its screw head, which overhangs the board's end, and the ZR's plug and the
     # harness's drop, which overhang its -t edge
     out = out.union(j.bore_d(HEAD_D + 2 * CLR, F_HOLE_T, F_HOLE_S, -1.0, MOUTH_D, up))
-    out = out.union(j.box(WIRE_T0 - CLR, FB_T0 + 0.01, -ZR_S / 2.0 - CLR,
-                          ZR_S / 2.0 + CLR, -1.0, MOUTH_D))
-    out = out.union(j.box(TB - CLR, TF + 0.01, -MB_S / 2.0 - CLR, MB_S / 2.0 + CLR,
-                          -1.0, MB_TOP + CLR))
-    out = out.union(j.box(TF, TF + RA_BODY_T + CLR, -RA_BODY_S / 2.0 - CLR,
-                          RA_BODY_S / 2.0 + CLR, -1.0, REAR + CLR))
-    out = out.union(j.box(TF, TF + SE_H + CLR, -SE_S / 2.0 - CLR, SE_S / 2.0 + CLR,
-                          SE_TAIL0 - CLR, PLUG_TOP + CLR))
+    out = out.union(j.house(WIRE_T0 - CLR, FB_T0 + 0.01, -ZR_S / 2.0 - CLR,
+                            ZR_S / 2.0 + CLR, -1.0, MOUTH_D))
+    out = out.union(j.house(TB - CLR, TF + 0.01, -MB_S / 2.0 - CLR, MB_S / 2.0 + CLR,
+                            -1.0, MB_TOP + CLR))
+    out = out.union(j.house(TF, TF + RA_BODY_T + CLR, -RA_BODY_S / 2.0 - CLR,
+                            RA_BODY_S / 2.0 + CLR, -1.0, REAR + CLR))
+    out = out.union(j.house(TF, TF + SE_H + CLR, -SE_S / 2.0 - CLR, SE_S / 2.0 + CLR,
+                            SE_TAIL0 - CLR, PLUG_TOP + CLR))
     # the harness's turn over to the lead's bore, then the bore itself onward
     rx, ry = route_xy
     rt = (rx - j.x) * j.T[0] + (ry - j.y) * j.T[1]
@@ -370,16 +435,7 @@ def tenon_negatives(j, route_xy, route_d, route_top, up=None):
                           s0 - route_d / 2.0, s1 + route_d / 2.0, PLUG_TOP, DEEP))
     top_d = (route_top - j.z) * j.dz
     out = out.union(j.bore_d(route_d, rt, rs, DEEP - route_d, top_d, up))
-    # the male's sideways M4: counterbore in the +t flat, clearance through, insert
-    # pocket from the -t flat
-    out = out.union(j.bore_t(HEAD_D + 2 * CLR, M_HEAD_SEAT, _HALF + 1.0, M_HOLE_S,
-                             M_HOLE_D, up))
-    out = out.union(j.bore_t(M4.shaft_clr_d, -_HALF + M4.insert_depth - 0.01,
-                             M_HEAD_SEAT + 0.01, M_HOLE_S, M_HOLE_D, up))
-    out = out.union(insert_bore_cutter(
-        M4, j.p(-_HALF, M_HOLE_S, M_HOLE_D), (j.T[0], j.T[1], 0), 0.01, overshoot=1.0,
-        reason=_INS_WHY, print_up=up))
-    return out
+    return out.union(male_screw(j).cutter(up))
 
 
 # ── what the FIXED part gives up (the female's insert and the harness's slot) ─
@@ -388,18 +444,20 @@ F_DEEP = -(LS.Z_TOP - LS.Z_MORTISE_ROOF - 6 * B + B)    # the slot's floor in th
 
 
 def _gable(j, t0, t1, s0, s1, d0, d1, up):
-    """A box cavity whose ceiling is PRINTABLE: in a host that builds along world +Y
-    the cavity's +Y face is a ceiling, so it is carried up to a 45 degree ridge along
-    the joint axis."""
+    """A box cavity whose ceiling is PRINTABLE in a host that builds along world +Y.
+    The joint sits on the tenon's DIAGONAL, so in the host's frame the cavity is a
+    rectangle turned 45 degrees: its two upper edges already rise at 45 degrees and
+    meet in a point, which is self-supporting, and it needs no roof at all.
+
+    It used to get one anyway, off the cavity's BOUNDING BOX -- and once the joint was
+    rotated onto the diagonal that box was the diamond's AABB, so the roof came out as
+    a wide axis-aligned triangle floating clear of the slot (two cutouts in section,
+    not one)."""
     assert up[1] > 0.99, "the gable assumes a +Y build"
-    cav = j.box(t0, t1, s0, s1, d0, d1)
-    b = cav.val().BoundingBox()
-    hw = (b.xmax - b.xmin) / 2.0
-    xc = (b.xmax + b.xmin) / 2.0
-    tri = (cq.Workplane("XY").workplane(offset=b.zmin)
-           .polyline([(xc - hw, b.ymax - 0.01), (xc + hw, b.ymax - 0.01),
-                      (xc, b.ymax + hw)]).close().extrude(b.zmax - b.zmin))
-    return cav.union(tri)
+    assert abs((j.ang % 90.0) - 45.0) < 1e-6, (
+        "the cavity is no longer on the diagonal, so its ceiling is flat again and "
+        "this owes it a real gable")
+    return j.box(t0, t1, s0, s1, d0, d1)
 
 
 def host_negatives(j, up=None, deep=F_DEEP):
@@ -409,10 +467,7 @@ def host_negatives(j, up=None, deep=F_DEEP):
     up = up or j.host_up
     out = _gable(j, WIRE_T0 - CLR, ZR_MOUTH - ZR_PLUG + CLR, -ZR_S / 2.0 - CLR,
                  ZR_S / 2.0 + CLR, deep, 0.01, up)
-    out = out.union(insert_bore_cutter(
-        M4, j.p(F_HOLE_T, F_HOLE_S, 0.0), (0, 0, -j.dz), INS_CLR, overshoot=0.01,
-        reason=_INS_WHY, print_up=up))
-    return out
+    return out.union(female_screw(j).cutter(up))
 
 
 CHAN_W = 4 * B                  # 3.2: the harness with room
@@ -438,7 +493,7 @@ def adapter_features(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):
 def bar_features(floor_z: float, chamber_top_z: float):
     """(None, negatives) for the pedal bar, in the BAR's frame: the connector's cavity
     runs on down into the wiring chamber, which it overlaps."""
-    j = Joint("bottom_bar", floor_z, BOTTOM.dz, BOTTOM.T, BOTTOM.S, BOTTOM.tenon_up,
+    j = Joint("bottom_bar", floor_z, BOTTOM.dz, BOTTOM.T, BOTTOM.tenon_up,
               BOTTOM.host_up)
     return None, host_negatives(j, deep=chamber_top_z - floor_z - 0.01)
 
