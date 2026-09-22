@@ -63,6 +63,7 @@ FAB_DIR = os.path.join(OUT_DIR, "fab")
 # SIX boards: the power board merged into motor_ctrl, and the optical pickup landed
 # (both 2026-09-15). This is now the whole instrument.
 BOARDS = ("can_tee", "led_strip", "lever_sensor", "motor_ctrl", "output_panel",
+          "pi_cap",
           "optical")
 
 # Layer sets by copper count. JLCPCB takes the KiCad extensions directly.
@@ -77,6 +78,8 @@ L4 = ("F.Cu,In1.Cu,In2.Cu,B.Cu,F.Paste,B.Paste,F.Silkscreen,B.Silkscreen,"
 # made. See the module docstring on why blank beats a guess.
 LCSC = {
     "S8B-XH-A": "C157914",          # 8-way side-entry XH, motor tee trunk
+    "2.54-2*20P": "C5124634",       # 2x20 female header, the pi_cap's Pi socket
+    "B6B-PH-K-S": "C131342",        # B6B-PH-K-S(LF)(SN) -- pi_cap J3, 5 V + SPI to the strip
     "S8B-PH-SM4-TB": "C265121",     # 8-way side-entry PH, the 11 lever/pedal J1
     "B8B-PH-K-S": "C157974",        # B8B-PH-K-S(LF)(SN), stock 21,709 -- motor_ctrl J2,
                                     # the same bus-B trunk on the vertical variant
