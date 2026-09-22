@@ -1780,7 +1780,7 @@ def cut_feel_rear(w, place, reach=0.0):
 
 
 
-# -- THE LACE LOOP: where a lever's bus-B slack is tied off ------------------
+# -- THE CABLE KEEPER: where a lever's bus-B slack is stowed ----------------
 # User, 2026-09-22: "we need a way to cable manage having some extra wire length
 # between each lever. That way you can adjust the lever positions without having to
 # make new cables."
@@ -1790,70 +1790,64 @@ def cut_feel_rear(w, place, reach=0.0):
 # MORT_Y0 = 197.5 in Y, so it also slides to any knee depth. The harness therefore has
 # to reach a lever that has MOVED since the cable was cut -- and the loom is the
 # crimped, tooled, contacts-ordered part, the one thing that should survive a
-# re-placement. So a bus-B segment is cut long and the excess is folded into a hank and
-# tied HERE, on the lever itself, which travels with it: wherever the lever goes, its
-# stow point goes with it. (A field of tie points on the chassis bottom would have to
-# cover every station a lever might take, and that slab is not this module's.)
+# re-placement. So a bus-B segment is cut long and the excess is coiled and pressed in
+# HERE, on the lever itself, which travels with it.
 #
-# ON THE CONNECTOR CHEEK, NOT THE BACK FACE (user, 2026-09-22: "that as a cable storage
-# location would block access to the set screws once the wire is in place. Why not put
-# them on the side next to the JST connector?"). Right on both counts: the back face is
-# how a 2.0 key reaches both feel screws, and a hank tied across it covers them for the
-# life of the instrument -- while the +Y cheek is where the wire already IS, since J1's
-# plug leaves the board -X in the gap between the board and this very face.
+# IT IS OPEN, AND THAT IS THE POINT (user, 2026-09-22: "the cable clip doesn't work
+# because it traps the cable and it can't be removed"). This was a closed loop -- a bore
+# through a block -- which a cable can only reach by being THREADED from one end, i.e.
+# before its connectors are crimped on, and can never leave. A harness you cannot take
+# out is not serviceable and is barely installable.
 #
-# FLUSH WITH THE BACK END (user, 2026-09-22: "move the loop so it's flush with the back
-# end of the lever where the screws are instead of putting it close to the port"). It sat
-# just -X of the plug's withdrawal, which was the nearest legal spot to J1; back at the
-# end face it is out of the way of everything -- the plug, its unplug stroke and the
-# board -- and the wire runs the length of the cheek before it is tied, which is the
-# slack you want between the tie and the connector anyway. The assert below is what
-# still keeps it clear of the withdrawal that _cradle tunnels the web for.
+# The section is the chassis wiring trough's, shrunk (chassis.WT_*): floor, outer wall,
+# and a NUB at the wall's top reaching back toward the cheek with a 45 deg underside, so
+# the MOUTH IS NARROWER THAN THE POCKET. Cable presses in past the nub and stays; a
+# screwdriver tip under the coil pops it back out. Borrowing that profile is also what
+# makes it print: the mouth opens along +Z, the build direction, so the pocket has no
+# ceiling, and the nub's underside is the 45 deg this whole part is drawn to.
 #
-# IT PRINTS WITH NO OVERHANG, which is what picks the shape. The housing builds -Z ->
-# +Z, so the only feature needing no support is one standing on the bed face: the loop's
-# underside IS HOUS_Z0, and its bore is a house section -- vertical walls, 45 deg gable
-# -- run along X, which is also the way the cable runs. A round bore on a horizontal
-# axis would have needed a teardrop; a flat-roofed one would have needed a bridge.
-LACE_BORE_Y = 5 * D.NOZZLE_D        # 4.0 the cable sits this far off the cheek
-LACE_BORE_Z = 5 * D.NOZZLE_D        # 4.0 straight height, then the gable
-LACE_WALL   = D.MIN_WALL_2P         # 1.6
-LACE_WX     = 15 * D.NOZZLE_D       # 12.0 along X -- the run the cable threads through
-LACE_GABLE  = LACE_BORE_Y / 2.0     # 45 deg roof over the bore
-assert HOUS_X0 + LACE_WX <= CONN_MOUTH_X - CONN_UNPLUG - D.MIN_WALL_2P, (
-    "the lace loop reaches into the plug's withdrawal -- a hank tied on it would stop "
-    "the plug being drawn off")
+# ON THE CONNECTOR CHEEK, FLUSH WITH THE BACK END (user, both). Not the back face --
+# that is how a 2.0 key reaches both feel screws, and a coil parked across it covers
+# them for the life of the instrument. The +Y cheek is where the wire already is, since
+# J1's plug leaves the board -X in the gap between the board and this very face.
+CANB_WIRE_OD = 1.3                  # one bus-B conductor, 26 AWG (wiring.WIRE_OD)
+KEEP_Y      = 5 * D.NOZZLE_D        # 4.0 pocket width, the cable lies across it
+KEEP_Z      = 8 * D.NOZZLE_D        # 6.4 pocket depth: several passes of the coil
+KEEP_WALL   = D.MIN_WALL_2P         # 1.6
+KEEP_NUB    = 2 * D.NOZZLE_D        # 1.6 reach back over the mouth, 45 deg underside
+KEEP_WX     = 15 * D.NOZZLE_D       # 12.0 along the cheek
+KEEP_MOUTH  = KEEP_Y - KEEP_NUB     # 2.4 -- what the cable is pressed through
+assert KEEP_MOUTH < CANB_WIRE_OD * 2, (
+    "the keeper's mouth is wider than the cable it is meant to hold in")
+assert KEEP_NUB <= KEEP_Z, "the nub is deeper than the pocket it closes"
 
 
-def lace_loop(y_face=None, z_bed=None, x_back=None):
-    """The bus-B tie-off on a lever housing's +Y (connector) cheek, in the lever's local
-    frame: a block standing on the bed face with a house-section bore along X.
+def cable_keeper(y_face=None, z_bed=None, x_back=None):
+    """The open cable keeper on a lever housing's +Y (connector) cheek, in the lever's
+    local frame. Section in Y-Z, run along X; mouth opens +Z.
 
     Parameterised because the VERTICAL lever (knee_lever_vert) is the same design with
     the feel block moved above the axle -- same cheek and same back face, its own floor
-    -- and it adjusts on the same grid, so it needs the same tie-off."""
+    -- and it adjusts on the same grid, so it needs the same keeper."""
     y0 = HOUS_HW if y_face is None else y_face
-    y1 = y0 + LACE_BORE_Y + LACE_WALL
     z0 = HOUS_Z0 if z_bed is None else z_bed
-    z1 = z0 + LACE_WALL + LACE_BORE_Z + LACE_GABLE + LACE_WALL
-    x0 = HOUS_X0 if x_back is None else x_back       # FLUSH with the back end face
-    x1 = x0 + LACE_WX
-    block = box_at(x1 - x0, y1 - y0, z1 - z0,
-                   x=(x0 + x1) / 2, y=(y0 + y1) / 2, z=(z0 + z1) / 2)
-    by1, bz0 = y1 - LACE_WALL, z0 + LACE_WALL
-    pts = [(y0, bz0), (by1, bz0), (by1, bz0 + LACE_BORE_Z),
-           ((y0 + by1) / 2, bz0 + LACE_BORE_Z + LACE_GABLE), (y0, bz0 + LACE_BORE_Z)]
-    bore = (cq.Workplane("YZ").polyline(pts).close()
-            .extrude(LACE_WX + 2.0).translate((x0 - 1.0, 0.0, 0.0)))
-    return block.cut(bore)
+    x0 = HOUS_X0 if x_back is None else x_back
+    y1 = y0 + KEEP_Y + KEEP_WALL
+    zf = z0 + KEEP_WALL                      # the pocket's floor
+    z1 = zf + KEEP_Z                         # ...and its lip
+    block = box_at(KEEP_WX, y1 - y0, z1 - z0,
+                   x=x0 + KEEP_WX / 2.0, y=(y0 + y1) / 2.0, z=(z0 + z1) / 2.0)
+    yp = y0 + KEEP_Y                         # the outer wall's inner face
+    # the VOID: floor, outer wall, the nub's 45 deg underside, then the mouth straight
+    # up. Drawn as the cavity rather than the solid because the nub is the only part of
+    # it that is not a rectangle, and it is one segment this way.
+    pts = [(y0 - 1.0, zf), (yp, zf), (yp, z1 - KEEP_NUB), (yp - KEEP_NUB, z1),
+           (yp - KEEP_NUB, z1 + 1.0), (y0 - 1.0, z1 + 1.0)]
+    void = (cq.Workplane("YZ").polyline(pts).close()
+            .extrude(KEEP_WX + 2.0).translate((x0 - 1.0, 0.0, 0.0)))
+    return block.cut(void)
 
 
-
-# -- WHERE THE HARNESS MEETS THIS LEVER -------------------------------------
-# Two points, both in the lever's LOCAL frame, both read off the features they name so
-# the modelled harness (src.wiring.lever_bus) cannot drift from the part. They are the
-# only things the wiring needs to know about a lever, which is why they are functions
-# here rather than numbers there.
 def plug_point(z_bot=None, z_top=None, flip=None):
     """Where the four conductors leave J1's plug: the plug's cable end, on the axis of
     the mouth. The plug runs -X off the mouth, so this is PLUG_RUN past it."""
@@ -1863,15 +1857,15 @@ def plug_point(z_bot=None, z_top=None, flip=None):
     return (mx + sx * CONN_PLUG_RUN, PCB_Y - PH_SIDE_H / 2.0, zc)
 
 
-def lace_point(z_bed=None, x_back=None, y_face=None):
-    """The centre of the lace loop's bore -- where a tied hank passes through, and the
-    point the slack coil is wound on. Defaults are LKL's, like lace_loop's."""
+def keeper_point(z_bed=None, x_back=None, y_face=None):
+    """The centre of the keeper's pocket -- where the stowed cable lies. Defaults are
+    LKL's, like cable_keeper's."""
     x0 = HOUS_X0 if x_back is None else x_back
     y0 = HOUS_HW if y_face is None else y_face
     z0 = HOUS_Z0 if z_bed is None else z_bed
-    return (x0 + LACE_WX / 2.0,
-            y0 + LACE_BORE_Y / 2.0,
-            z0 + LACE_WALL + LACE_BORE_Z / 2.0)
+    return (x0 + KEEP_WX / 2.0,
+            y0 + KEEP_Y / 2.0,
+            z0 + KEEP_WALL + KEEP_Z / 2.0)
 
 
 def _housing() -> cq.Workplane:
@@ -1972,7 +1966,7 @@ def _housing() -> cq.Workplane:
     w = cut_axle_stack(w)          # bearing seats + contact rib + axle way
     w = cut_feel_pockets(w, feel_place)
     w = _cradle(w)                                                  # the MT6701 board cradle (user)
-    w = w.union(lace_loop())        # ...and the bus-B tie-off on the back face
+    w = w.union(cable_keeper())     # ...and the bus-B keeper on the cheek
     return heal(w)                  # no printed threads any more -- the whole part heals
 
 

@@ -1239,6 +1239,10 @@ def pedal_bar_work_components():
     return _pedal_bar_components() + _foot_pedal_components()
 
 
+LEVER_ESCAPE = 8.0       # how far past a station's envelope the harness crosses to
+                         # the lane -- clear of the lever, not merely clear of its keeper
+
+
 def lever_bus_nodes():
     """[(name, plug, lace, out_dir)] in GUITAR coordinates, in CHAIN ORDER -- what
     src.wiring.lever_bus needs to draw the knee levers' bus-B harness and cut list.
@@ -1252,6 +1256,13 @@ def lever_bus_nodes():
     CHAIN ORDER IS -X -> +X: bus B arrives from the motor controller at the keyhead and
     the far end of the chain terminates at the +X-most lever (elec/motor_ctrl: the
     controller is a MID-BUS node now, and the ends close their own JP1).
+
+    EACH NODE ALSO CARRIES AN ESCAPE X -- an x clear of that station's whole posed
+    envelope, on the side the keeper is nearest. The harness crosses to and from the
+    lane THERE and nowhere else, because a lever is not a point: the VERTICAL one spans
+    y -54.7..+24.3, so the lane's own y line runs straight THROUGH its body, and any
+    route that crossed at the lever's own x went through it. Measured off the posed
+    parts, so it tracks whatever a station's envelope becomes.
     """
     from . import knee_lever as KL
     from . import knee_lever_vert as KV
@@ -1266,20 +1277,32 @@ def lever_bus_nodes():
             return (x, y, z)
         return (x + sx, y + sy, z + (KL.MOUNT_Z if kind == "kl" else KV.MOUNT_Z))
 
+    # every station's own posed envelope, by name prefix (LKL keeps the bare names)
+    spans = {}
+    for n, w in _lever_stations_components():
+        st = n.split("_", 1)[0] if n.split("_", 1)[0] in {s[0] for s in LEVER_STATIONS}             else "lkl"
+        b = w.val().BoundingBox()
+        x0, x1, y0, y1 = spans.get(st, (b.xmin, b.xmax, b.ymin, b.ymax))
+        spans[st] = (min(x0, b.xmin), max(x1, b.xmax),
+                     min(y0, b.ymin), max(y1, b.ymax))
+
     out = []
     for name, kind, sx, sy, mirrored in sorted(LEVER_STATIONS, key=lambda st: st[2]):
         if sy is None:
             sy = _vkl_mount_y()
         if kind == "kl":
-            plug, lace = KL.plug_point(), KL.lace_point()
+            plug, lace = KL.plug_point(), KL.keeper_point()
         else:
             plug = KL.plug_point(KV.HOUS_Z0, KV.HOUS_Z1)
-            lace = KL.lace_point(KV.HOUS_Z0, KV.HOUS_X0, KV.HOUS_HW_P)
+            lace = KL.keeper_point(KV.HOUS_Z0, KV.HOUS_X0, KV.HOUS_HW_P)
         # the plug's wires leave along local -X (the mouth faces -X), posed the same way
-        out.append((name,
-                    _pose(kind, sx, sy, mirrored, plug),
-                    _pose(kind, sx, sy, mirrored, lace),
-                    _pose(kind, sx, sy, mirrored, (-1.0, 0.0, 0.0), vector=True)))
+        p = _pose(kind, sx, sy, mirrored, plug)
+        l = _pose(kind, sx, sy, mirrored, lace)
+        d = _pose(kind, sx, sy, mirrored, (-1.0, 0.0, 0.0), vector=True)
+        x0, x1 = spans[name][:2]
+        esc = (x1 + LEVER_ESCAPE if abs(l[0] - x1) <= abs(l[0] - x0)
+               else x0 - LEVER_ESCAPE)
+        out.append((name, p, l, d, esc))
     return out
 
 
@@ -1297,17 +1320,62 @@ def lever_bus_lane():
     return max(ys) + 4.0, CH.Z_BOT - WR.CANB_COIL_R - 2.0
 
 
+def lever_bus_blockers():
+    """[(x0, x1, pass_y)] one per lever station: the X it occupies, and a Y the lane can
+    get past it on.
+
+    THERE IS NO ONE LANE Y. The horizontal housings run y -98.2..-52.0 so the lane has
+    to be ABOVE them (-48); the VERTICAL lever, turned 90 deg, runs -54.7..+24.3, so at
+    its X the lane has to be BELOW that -- there is no y clear of both. They are apart
+    in X though, so the lane steps round each station it passes, and the step happens in
+    the gap between them. Each station's side is whichever clears it by less, so the
+    lane deviates as little as it can.
+    """
+    from . import wiring as WR
+    lane_y, lane_z = lever_bus_lane()
+    band = WR.CANB_COIL_R + WR.CANB_BUNDLE_OD
+    spans = _lever_station_spans(lane_z - band, lane_z + band)
+    out = []
+    for name, x0, x1, y0, y1 in spans:
+        hi, lo = y1 + LEVER_ESCAPE, y0 - LEVER_ESCAPE
+        out.append((x0 - LEVER_ESCAPE, x1 + LEVER_ESCAPE,
+                    hi if abs(hi - lane_y) <= abs(lo - lane_y) else lo))
+    return sorted(out)
+
+
+def _lever_station_spans(z0=None, z1=None):
+    """(x, y) extents per station, posed -- shared by the nodes and the blockers.
+
+    CLIPPED IN Z when a band is given, and the blockers need that: a station's whole
+    bbox includes the ARM, which hangs far into -Y well below the lane, and measured
+    whole the vertical lever looked like it had to be passed on the +Y side -- an 80 mm
+    detour to dodge something that is nowhere near the lane's height."""
+    names = {s[0] for s in LEVER_STATIONS}
+    spans = {}
+    for n, w in _lever_stations_components():
+        st = n.split("_", 1)[0] if n.split("_", 1)[0] in names else "lkl"
+        b = w.val().BoundingBox()
+        if z0 is not None and (b.zmax < z0 or b.zmin > z1):
+            continue                      # nowhere near the lane
+        x0, x1, y0, y1 = spans.get(st, (b.xmin, b.xmax, b.ymin, b.ymax))
+        spans[st] = (min(x0, b.xmin), max(x1, b.xmax),
+                     min(y0, b.ymin), max(y1, b.ymax))
+    return [(k,) + v for k, v in spans.items()]
+
+
 def _lever_bus_components():
     """The knee levers' bus-B harness, drawn. See wiring.lever_bus."""
     from . import wiring as WR
-    parts, _ = WR.lever_bus(lever_bus_nodes(), *lever_bus_lane())
+    parts, _ = WR.lever_bus(lever_bus_nodes(), *lever_bus_lane(),
+                            blockers=lever_bus_blockers())
     return parts
 
 
 def cable_cut_list():
     """The modelled harness as a CUT LIST -- what to cut before crimping."""
     from . import wiring as WR
-    return WR.lever_bus_cut_list(lever_bus_nodes(), *lever_bus_lane())
+    return WR.lever_bus_cut_list(lever_bus_nodes(), *lever_bus_lane(),
+                                 blockers=lever_bus_blockers())
 
 
 def bus_b_components():
@@ -1599,6 +1667,11 @@ _COLORS = {
     "wire_pwr_gnd":    (0.05, 0.05, 0.05),   # black       - CAN ground/return
     "wire_canh":       (0.95, 0.85, 0.10),   # yellow      - bus A CAN-H
     "wire_canl":       (0.13, 0.72, 0.20),   # green       - bus A CAN-L
+    "wire_canb_gnd":   (0.05, 0.05, 0.05),   # black       - bus B ground (levers)
+    "wire_canb_v5":    (0.85, 0.12, 0.10),   # red         - bus B +5 V  (levers)
+    "wire_canb_h":     (0.95, 0.85, 0.10),   # yellow      - bus B CAN-H (levers)
+    "wire_canb_l":     (0.13, 0.72, 0.20),   # green       - bus B CAN-L (levers)
+    "wire_canb_coil":  (0.45, 0.45, 0.48),   # grey        - the slack, drawn as a bundle
     "wire_canbh":      (0.95, 0.85, 0.10),   # yellow      - bus B CAN-H
     "wire_canbl":      (0.13, 0.72, 0.20),   # green       - bus B CAN-L
     "wire_canjmph":    (0.95, 0.85, 0.10),   # yellow      - jumper CAN-H
