@@ -1239,6 +1239,77 @@ def pedal_bar_work_components():
     return _pedal_bar_components() + _foot_pedal_components()
 
 
+def lever_bus_nodes():
+    """[(name, plug, lace, out_dir)] in GUITAR coordinates, in CHAIN ORDER -- what
+    src.wiring.lever_bus needs to draw the knee levers' bus-B harness and cut list.
+
+    It lives here because a station's POSE lives here (LEVER_STATIONS, and the rotate /
+    mirror / translate in _lever_stations_components), and wiring is imported BY this
+    module -- the same one-way dodge the pedal housings use. The two attachment points
+    themselves are the LEVERS' (knee_lever.plug_point / lace_point), read off the
+    connector and the lace loop, so nothing here is a transcribed coordinate.
+
+    CHAIN ORDER IS -X -> +X: bus B arrives from the motor controller at the keyhead and
+    the far end of the chain terminates at the +X-most lever (elec/motor_ctrl: the
+    controller is a MID-BUS node now, and the ends close their own JP1).
+    """
+    from . import knee_lever as KL
+    from . import knee_lever_vert as KV
+
+    def _pose(kind, sx, sy, mirrored, p, vector=False):
+        x, y, z = p
+        if kind != "kl":
+            x, y = y, -x                    # the -90 about Z that KV parts carry
+        if mirrored:
+            x = -x                          # mirror YZ: local +X -> -X
+        if vector:
+            return (x, y, z)
+        return (x + sx, y + sy, z + (KL.MOUNT_Z if kind == "kl" else KV.MOUNT_Z))
+
+    out = []
+    for name, kind, sx, sy, mirrored in sorted(LEVER_STATIONS, key=lambda st: st[2]):
+        if sy is None:
+            sy = _vkl_mount_y()
+        if kind == "kl":
+            plug, lace = KL.plug_point(), KL.lace_point()
+        else:
+            plug = KL.plug_point(KV.HOUS_Z0, KV.HOUS_Z1)
+            lace = KL.lace_point(KV.HOUS_Z0, KV.HOUS_X0, KV.HOUS_HW_P)
+        # the plug's wires leave along local -X (the mouth faces -X), posed the same way
+        out.append((name,
+                    _pose(kind, sx, sy, mirrored, plug),
+                    _pose(kind, sx, sy, mirrored, lace),
+                    _pose(kind, sx, sy, mirrored, (-1.0, 0.0, 0.0), vector=True)))
+    return out
+
+
+def lever_bus_lane():
+    """(y, z) of the lane the lever harness runs in, MEASURED off what bounds it.
+
+    y: just outboard of the horizontal housings' +Y cheeks -- the vertical lever is
+    excluded because, turned 90 deg, its body runs ALONG Y and would push the lane
+    across the whole chassis. z: a coil radius and a margin under the chassis slab, so
+    a wound coil hangs clear of the floor it is under."""
+    from . import chassis as CH
+    from . import wiring as WR
+    ys = [w.val().BoundingBox().ymax for n, w in _lever_stations_components()
+          if n.endswith("knee_housing")]
+    return max(ys) + 4.0, CH.Z_BOT - WR.CANB_COIL_R - 2.0
+
+
+def _lever_bus_components():
+    """The knee levers' bus-B harness, drawn. See wiring.lever_bus."""
+    from . import wiring as WR
+    parts, _ = WR.lever_bus(lever_bus_nodes(), *lever_bus_lane())
+    return parts
+
+
+def cable_cut_list():
+    """The modelled harness as a CUT LIST -- what to cut before crimping."""
+    from . import wiring as WR
+    return WR.lever_bus_cut_list(lever_bus_nodes(), *lever_bus_lane())
+
+
 def bus_b_components():
     """EVERYTHING ON BUS B as ONE live set: the five modelled knee-lever stations, the
     five foot pedals, and the pedal bar they are fused into.
@@ -1249,7 +1320,8 @@ def bus_b_components():
     the scratch view. No crop goes with it: the chain spans the whole instrument, and
     cropping to the levers is what left the pedal bar looking like a bar in empty
     space."""
-    return lever_components() + _pedal_bar_components()
+    return (lever_components() + _pedal_bar_components()
+            + _lever_bus_components())
 
 
 def _tensioner_coupon_components():
