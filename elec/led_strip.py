@@ -257,7 +257,36 @@ BOARD_NOTES = {
     # y 7) and clear of the cluster GND spines (which stop at y 6.1).
     + [("+5V", "F.Cu", 0.3, [(x - 2.14, 2.52 + _YO), (x - 2.14, _V5_SPINE_Y)]) for x in _LED_X]
     + [("+5V", "F.Cu", 0.6, [(_LED_X[0] - 2.14, _V5_SPINE_Y),
-                             (_LED_X[-1] - 2.14, _V5_SPINE_Y)])],
+                             (_LED_X[-1] - 2.14, _V5_SPINE_Y)])]
+    # ⚠ AND THE DRIVERS' OWN VCC PINS, which the spine does not reach. The spine feeds the 36
+    # anodes; each TLC59711 still wants pin 19, and the router kept dropping exactly that one
+    # (U2's, at 30 passes, at 60 and at 90 -- passes are not the problem, a missing bus is).
+    # ⚠ IT HAS TO STEP SIDEWAYS BEFORE IT CLIMBS. VREG sits directly above VCC in the same
+    # pad column, 0.66 mm away, so a stub straight up off the pad fouls it. It steps +X clear
+    # of the column (outer pad edge 3.645) and rises at 4.30.
+    # ⚠ AND IT MUST NOT CLIMB ALL THE WAY TO THE SPINE. The band east of a driver is the
+    # CATHODE HIGHWAY -- its +X pad column feeds the LEDs either side -- and a full-height
+    # stub there walls it off (D5_K7 failed the moment one was laid). So it ducks along
+    # under the LED row instead and joins the NEXT LED's anode column, which is already on
+    # +5V. Cathodes cross that short run on B.Cu, which is the layer they use anyway.
+    + [("+5V", "F.Cu", 0.3, [(_LED_X[3 * k + 1] + 3.40, _DRV_Y + 2.27),
+                             (_LED_X[3 * k + 1] + 4.30, _DRV_Y + 2.27),
+                             (_LED_X[3 * k + 1] + 4.30, _LED_Y - 5.00),
+                             (_LED_X[3 * k + 2] - 2.14, _LED_Y - 5.00),
+                             (_LED_X[3 * k + 2] - 2.14, _LED_Y - 1.98)])
+       for k in range(N_DRV)]
+    # ⚠ AND A SHORT WESTWARD NUB ON THE DRIVER'S PIN-2 GROUND. Its thermal pad carries the
+    # heat and most of the current, but pin 2 sits in the -X column with D4's cathodes either
+    # side and the F.Cu pour could not reach in past them (one zone-to-zone open).
+    # ⚠ IT GOES SIDEWAYS ONLY. The first attempt dropped from here to the open band below the
+    # drivers and took the board from 1 unconnected to 21: the -X band is D4's cathode
+    # highway exactly as the +X band is D5/D6's, and a full-height stub walls it off. Two
+    # millimetres due west clears the pad column and reaches open pour without crossing
+    # anything.
+    + [("GND", "F.Cu", 0.3, [(_LED_X[3 * k + 1] - 3.40, _DRV_Y + 2.27),
+                             (_LED_X[3 * k + 1] - 5.40, _DRV_Y + 2.27)])
+       for k in range(N_DRV)],
+
     "stitch_nets": ("GND",),
     "single_sided": True,
     "no_mounting_holes": True,       # the rail's channel holds it (src/chassis.py)

@@ -523,7 +523,114 @@ def pi_cap() -> cq.Workplane:
     header's axis, and lifted by the socket's own body height so the socket fills the
     standoff between the two boards -- which is why board_geom carries that 8.5 once and
     both this and the flipped footprint read it from there."""
-    b = BG.solid("pi_cap").rotate((0, 0, 0), (0, 0, 1), -90.0)
+    return _cap_place(BG.solid("pi_cap"))
+
+
+def _cap_place(shape):
+    """Put anything authored in the CAP'S BOARD FRAME where the cap is.
+
+    ⚠ ONE TRANSFORM, USED BY EVERYTHING. The board, and every wire that has to land on one
+    of its pins, go through this exact call -- because stand() inverts an axis and the last
+    time that was reimplemented by hand it cut the wrong side of a part."""
+    j1_y = -8.5
+    return stand(shape.rotate((0, 0, 0), (0, 0, 1), -90.0)
+                 .translate((PI_HDR_X - j1_y, PI_HDR_Y,
+                             BOARD_Z + BD_T + PI_CAP_STANDOFF)))
+
+
+def pi_cap_pin(ref, n):
+    """World point of pin `n` (1-based) on the cap's connector `ref`.
+
+    Read off the ROUTED footprint (board_geom), so the pin order a wire is drawn into is the
+    one the board actually has -- not a second copy of the pitch that could drift from it."""
+    f = BG.footprint("pi_cap", ref)
+    x0, x1, y0, y1 = f["fab"]
+    pitch = 2.5 if "XH" in BG.fp_name(f["fpid"]) else 2.0
+    cnt = {"J2": 4, "J4": 4, "J3": 6}[ref]
+    px = (x0 + x1) / 2.0 + (n - (cnt + 1) / 2.0) * pitch
+    py = (y0 + y1) / 2.0
+    marker = box_at(0.01, 0.01, 0.01, x=px, y=py, z=0.0)
+    bb = _cap_place(marker).val().BoundingBox()
+    return ((bb.xmin + bb.xmax) / 2.0, (bb.ymin + bb.ymax) / 2.0, (bb.zmin + bb.zmax) / 2.0)
+
+
+
+
+# ── THE LED STRIP SECTIONS (elec/led_strip.py) in the chassis seat ───────────
+# ⚠ WORLD FRAME, NOT THE TRAY FRAME. Everything else in this file is authored flat and
+# `stand`s into place; these are not, because the seat they sit in is a CHASSIS feature
+# (chassis.LED_*) already written in world coordinates. Anything here that reads a chassis
+# datum has to stay in that frame or the two will drift apart silently.
+def led_sections() -> list:
+    """The four RGBW sections standing in the +Y rail's channel, facing -Y.
+
+    board_geom hands the board flat -- centred in XY, underside at z = 0, parts rising +Z --
+    so ONE rotation stands it up: +90 about X takes its own +Z (the component side) to world
+    -Y and its +Y (the board's height) to world +Z. Then its BACK sits on the wall and its
+    centre goes midway up the channel, both of which chassis already states."""
+    from . import chassis as CH
+    from . import board_geom as _BG
+    w = LED_SECTION_W
+    gap = (CH.LED_X1 - CH.LED_X0 - LED_SECTIONS * w) / (LED_SECTIONS - 1)
+    zc = (CH.LED_BOARD_BOT + CH.LED_BOARD_TOP) / 2.0
+    b = _BG.solid("led_strip").rotate((0, 0, 0), (1, 0, 0), 90.0)
+    out = []
+    for i in range(LED_SECTIONS):
+        cx = CH.LED_X0 + w / 2.0 + i * (w + gap)
+        out.append(("led_strip_%d" % i, b.translate((cx, CH.LED_Y0, zc))))
+    return out
+
+
+# ⚠ NO INSTALL RELIEF IS NEEDED IN THE ENDPLATE, and the near-miss is worth recording.
+# With the cradle's mouth open (see _frame slide_in_x) the Pi and its cap sweep through
+# 17 mm3 on the way down, in a band at z 14.26..16.07 -- which looked like the nut block's
+# slot fins, and a cut was written to relieve them. Asked part by part, every one of those
+# 17 mm3 is STRING: string_5 through string_9. The endplate is clear. So the install
+# constraint is "fit the Pi before stringing", which is an assembly ORDER note, not a
+# geometry change -- and cutting the nut block for it would have weakened a part that
+# carries string load to make room for the strings themselves.
+
+
+def pi_cap() -> cq.Workplane:
+    """The Pi's connector board, plugged onto its GPIO header.
+
+    The board is turned -90 so its socket (which runs along the board's X) lies along the
+    header's axis, and lifted by the socket's own body height so the socket fills the
+    standoff between the two boards -- which is why board_geom carries that 8.5 once and
+    both this and the flipped footprint read it from there."""
+    return _cap_place(BG.solid("pi_cap"))
+
+
+def _cap_place(shape):
+    """Put anything authored in the CAP'S BOARD FRAME where the cap is.
+
+    ⚠ ONE TRANSFORM, USED BY EVERYTHING. The board, and every wire that has to land on one
+    of its pins, go through this exact call -- because stand() inverts an axis and the last
+    time that was reimplemented by hand it cut the wrong side of a part."""
+    j1_y = -8.5
+    return stand(shape.rotate((0, 0, 0), (0, 0, 1), -90.0)
+                 .translate((PI_HDR_X - j1_y, PI_HDR_Y,
+                             BOARD_Z + BD_T + PI_CAP_STANDOFF)))
+
+
+def pi_cap_pin(ref, n):
+    """World point of pin `n` (1-based) on the cap's connector `ref`.
+
+    Read off the ROUTED footprint (board_geom), so the pin order a wire is drawn into is the
+    one the board actually has -- not a second copy of the pitch that could drift from it."""
+    f = BG.footprint("pi_cap", ref)
+    x0, x1, y0, y1 = f["fab"]
+    pitch = 2.5 if "XH" in BG.fp_name(f["fpid"]) else 2.0
+    cnt = {"J2": 4, "J4": 4, "J3": 6}[ref]
+    px = (x0 + x1) / 2.0 + (n - (cnt + 1) / 2.0) * pitch
+    py = (y0 + y1) / 2.0
+    marker = box_at(0.01, 0.01, 0.01, x=px, y=py, z=0.0)
+    bb = _cap_place(marker).val().BoundingBox()
+    return ((bb.xmin + bb.xmax) / 2.0, (bb.ymin + bb.ymax) / 2.0, (bb.zmin + bb.zmax) / 2.0)
+
+
+def _pi_cap_unused(shape):
+    b = shape
     # after -90, the board-frame point (x, y) is at (y, -x): the socket's (0, J1_Y) lands
     # at (J1_Y, 0), so the cap's centre goes that far the other way from the header.
     j1_y = -8.5
