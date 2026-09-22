@@ -1848,6 +1848,32 @@ def lace_loop(y_face=None, z_bed=None, x_back=None):
     return block.cut(bore)
 
 
+
+# -- WHERE THE HARNESS MEETS THIS LEVER -------------------------------------
+# Two points, both in the lever's LOCAL frame, both read off the features they name so
+# the modelled harness (src.wiring.lever_bus) cannot drift from the part. They are the
+# only things the wiring needs to know about a lever, which is why they are functions
+# here rather than numbers there.
+def plug_point(z_bot=None, z_top=None, flip=None):
+    """Where the four conductors leave J1's plug: the plug's cable end, on the axis of
+    the mouth. The plug runs -X off the mouth, so this is PLUG_RUN past it."""
+    zc = CONN_ZC if z_bot is None else conn_z(z_bot, z_top, flip)
+    mx = CONN_MOUTH_X if z_bot is None else conn_mouth_x(z_bot, z_top, flip)
+    sx = -1.0 if mx <= 0 else 1.0
+    return (mx + sx * CONN_PLUG_RUN, PCB_Y - PH_SIDE_H / 2.0, zc)
+
+
+def lace_point(z_bed=None, x_back=None, y_face=None):
+    """The centre of the lace loop's bore -- where a tied hank passes through, and the
+    point the slack coil is wound on. Defaults are LKL's, like lace_loop's."""
+    x0 = HOUS_X0 if x_back is None else x_back
+    y0 = HOUS_HW if y_face is None else y_face
+    z0 = HOUS_Z0 if z_bed is None else z_bed
+    return (x0 + LACE_WX / 2.0,
+            y0 + LACE_BORE_Y / 2.0,
+            z0 + LACE_WALL + LACE_BORE_Z / 2.0)
+
+
 def _housing() -> cq.Workplane:
     """ONE PARAMETRIC PRISM (user simplification round): the box spanned by
     HOUS_* (every face derived from the lever / cartridge / body extents),
