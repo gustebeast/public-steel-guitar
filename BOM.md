@@ -1196,8 +1196,8 @@ ADC inputs plus a 12-signal ULPI bus will not fit a 64-pin part.
 | 1 | U9 | LDO — 3V3 analog (low noise, **needs C127 on BYP**) | SOT-23-5 | 2.90 × 2.80 × 1.45 |
 | 1 | C127 | analog LDO noise bypass — 1 µF, **the reason U9 is this part** | 0402 | 1.00 × 0.50 × 0.55 |
 | 1 | U11 | single op-amp — TIA mid-rail reference buffer | SOT-23-5 | 2.90 × 2.80 × 1.45 |
-| 1 | U13 | **TPS560430XFDBVR** 24→5 V synchronous buck, 1.1 MHz forced PWM | SOT-23-6 | 2.90 × 1.60 × 1.10 |
-| 1 | L1 | buck inductor — **SWPA4020S150MT**, 15 µH shielded, **Isat 1.35 A** | 4040 | 4.00 × 4.00 × 2.00 |
+| 1 | U13 | **LMR33630CRNXR** 24→5 V synchronous buck, 2.1 MHz, 3 A (was the 600 mA TPS560430, 105 % used worst case once the five converters landed; user 2026-09-22). No forced-PWM variant is stocked; at 2.1 MHz with 4.7 µH it stays in continuous conduction above ~0.2 A | RNX-12 | 2.00 × 3.00 × 1.00 |
+| 1 | L1 | buck inductor — **SWPA4030S4R7MT** (C57269), 4.7 µH shielded, **Isat 3.2 A** | 4040 | 4.00 × 4.00 × 3.00 |
 | 1 | C160 | 24 V input bulk — 10 µF/50 V, **1206 for the DC-bias derating** | 1206 | 3.20 × 1.60 × 1.45 |
 | 1 | C162 | buck 5 V output bulk — 22 µF/16 V | 0805 | 2.00 × 1.25 × 1.45 |
 | 1 | C164 | **U8 input bulk** — 10 µF/16 V; V5_PRE had no local capacitor at all | 0805 | 2.00 × 1.25 × 1.45 |
