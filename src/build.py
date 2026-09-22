@@ -799,7 +799,7 @@ def _electronics_components():
     # electronics_tray is gone: the Pi's and the motor controller's mounts are cradles
     # fused into keyhead_endplate now (see electronics.keyhead_cradles). One less printed
     # part, and the boards gained retention they never had on the tray's bare posts.
-    out = [("pi5", EL.pi5()),
+    out = [("pi5", EL.pi5()), ("pi_cap", EL.pi_cap()),
            ("motor_ctrl", EL.motor_ctrl()),
            ("output_panel", EL.output_panel()),
            ("oled", EL.oled()), ("joystick", EL.joystick())]
@@ -1138,7 +1138,7 @@ BODY_WORK_PARTS = SCREW_ROW_PARTS + (
     # parts while this branch deleted teensy_/adc_stack/buck/analog_frontend and the
     # three free-standing panel jacks (they are PCB parts on the output+panel board
     # now). Keep main's additions, keep the deletions.
-    "pi5", "motor_ctrl", "tee_", "wire_",
+    "pi5", "pi_cap", "motor_ctrl", "tee_", "wire_",
     "output_panel", "joystick", "oled",
     "body_adapter", "lock_pin_", "adjust_", "fixed_", "bar_latch_", "leg_latch_",
     "top_plate", "pickup", "optical")   # the deck piece too: its skirt sets the bay's headroom
@@ -1414,6 +1414,7 @@ _COLORS = {
     # electronics bay (dummies) + panel jacks
 
     "pi5":             (0.05, 0.35, 0.15),   # PCB green
+    "pi_cap":          (0.05, 0.35, 0.15),   # PCB green
     "output_panel":    (0.45, 0.30, 0.45),   # output + panel board (VBUS broken,
                                              # DAC + true-bypass relay + the TS jack)
     "motor_ctrl":      (0.55, 0.25, 0.25),   # motor controller PCB (CH32V307 +

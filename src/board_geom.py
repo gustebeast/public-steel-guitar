@@ -77,6 +77,12 @@ HEIGHT = {
                                                     # 8-way since bus B became a mid-bus
                                                     # pass-through; same 6.0 body as the
                                                     # 4-way it replaced, 17.9 long)
+    "JST_PH_B6B-PH-K_1x06_P2.00mm_Vertical": 6.0,   # JST PH top entry (pi_cap J3)
+    # ⚠ THE 2x20 SOCKET IS THE STRUCTURE, NOT A COMPONENT ON TOP OF ONE. 8.5 is its body
+    # height, and it faces DOWN: the pi_cap hangs off the Pi's header by it, so this figure
+    # is the standoff between the Pi's top face and the cap's underside, not a bump on the
+    # cap. src/electronics.py uses the same number to place the cap; it is written once here.
+    "PinSocket_2x20_P2.54mm_Vertical": 8.5,
     "JST_PH_S8B-PH-SM4-TB_1x08-1MP_P2.00mm_Horizontal": 5.5,   # cadkit PH_SIDE_H
     "Jack_6.35mm_Neutrik_NMJ4HCD2_Horizontal": 15.67,     # Neutrik's STEP: body top
     "L_0603_1608Metric": 0.95, "L_Taiyo-Yuden_NR-30xx": 1.50,

@@ -446,6 +446,35 @@ def pi5() -> cq.Workplane:
 # builds it from elec/geom/output_panel.geom.json instead: the finished board, read back.
 from . import board_geom as BG
 
+
+# ── THE Pi CAP (elec/pi_cap.py) ──────────────────────────────────────────────
+# Where the Pi's 40-way header is, in the tray frame. ⚠ ASSUMED FROM THE STANDARD Pi
+# LAYOUT, NOT MEASURED: the header runs parallel to the 85 mm edge, its rows 3.5 and 6.04
+# in from one long edge, pin 1 3.5 in from the short edge AWAY from the USB/ethernet block
+# (which pi5() puts at +Y). If a real Pi says otherwise, these two numbers are the fix and
+# nothing else moves. The cap is 56 x 26 against the Pi's 85 x 56, so it lands inside the
+# Pi's outline apart from 0.37 mm at the -Y end -- real HATs sit flush, and 0.37 is the
+# difference between the cap's half-length and the header's margin, not a placement error.
+PI_HDR_X = PI_FP[0] + 3.5 + 1.27               # -598.23, between the two pin rows
+PI_HDR_Y = PI_FP[2] + 3.5 + (20 - 1) * 2.54 / 2.0   # -22.37, the pad centroid along the row
+PI_CAP_STANDOFF = BG.HEIGHT["PinSocket_2x20_P2.54mm_Vertical"]   # 8.5, the socket's body
+
+
+def pi_cap() -> cq.Workplane:
+    """The Pi's connector board, plugged onto its GPIO header.
+
+    The board is turned -90 so its socket (which runs along the board's X) lies along the
+    header's axis, and lifted by the socket's own body height so the socket fills the
+    standoff between the two boards -- which is why board_geom carries that 8.5 once and
+    both this and the flipped footprint read it from there."""
+    b = BG.solid("pi_cap").rotate((0, 0, 0), (0, 0, 1), -90.0)
+    # after -90, the board-frame point (x, y) is at (y, -x): the socket's (0, J1_Y) lands
+    # at (J1_Y, 0), so the cap's centre goes that far the other way from the header.
+    j1_y = -8.5
+    return stand(b.translate((PI_HDR_X - j1_y, PI_HDR_Y,
+                              BOARD_Z + BD_T + PI_CAP_STANDOFF)))
+
+
 _OP = BG.load("output_panel")
 OP_BOARD_X, OP_BOARD_Y = _OP["outline_mm"]
 _OP_T = _OP["thickness_mm"]

@@ -26,21 +26,43 @@ WHAT CROSSES HERE
 pickup. Four things are done about it here, cheapest first, because a clocked edge on a
 300-600 mm unshielded cable is exactly what an inductive sensor is built to hear:
 
-  1. SERIES SOURCE TERMINATION, R1/R2 at the driver. The Pi's GPIO output impedance is
-     ~30-50 ohm against a loose pair's ~100-120, so a bare edge reflects and rings; 68 ohm
-     in series damps that AND slopes the edge, which is what actually cuts the harmonics.
-     It is at the SOURCE on purpose -- a resistor at the far end does not stop the launch.
-  2. RUN THE CLOCK SLOWLY. This is the biggest lever and it is free. A TLC59711 packet is
-     224 bits and the strip is twelve of them = 2688 bits per frame, so 200 Hz of refresh
-     needs 538 kbit/s. A 1 MHz SPI clock gives ~372 Hz. There is NO reason to clock this at
-     the tens of MHz SPI will happily do, and every MHz is radiated energy bought for
-     refresh nobody can see. ⚠ FIRMWARE: cap the LED SPI at 1 MHz.
+  ⚠ FIRST, TWO CLOCKS THAT ARE NOT THE SAME CLOCK, because conflating them gets the
+  advice backwards. The STRIP was chosen for a high PWM rate -- the frequency its driver
+  switches LED current at, which has to sit above the audio band or the pickup simply hears
+  it (SK6812 at 1.2 kHz and SK9822 at 4.7 kHz were rejected for this; the TLC59711's
+  enhanced-spectrum PWM spreads each period over 128 segments at ~19.5 kHz). Nothing below
+  changes that. What follows is about the SPI DATA clock on the cable, a different wire
+  carrying a different signal.
+
+  1. SERIES SOURCE TERMINATION, R1/R2 at the driver. THIS IS THE REAL FIX. What radiates is
+     the EDGE RATE, not the clock frequency: a 1 MHz clock with 2 ns edges emits the same
+     harmonics as a 10 MHz clock with 2 ns edges, just fewer per second. The Pi's GPIO
+     output impedance is ~30-50 ohm against a loose pair's ~100-120, so a bare edge also
+     reflects and rings. 68 ohm in series damps the ringing AND slopes the edge, which is
+     what actually removes the high-frequency content. At the SOURCE on purpose -- a
+     resistor at the far end does not stop the launch.
+  2. STREAM CONTINUOUSLY; DO NOT BURST. ⚠ THIS REPLACES AN EARLIER "cap the clock at
+     1 MHz" NOTE, WHICH WAS WRONG, and wrong in the direction that matters. The audio-band
+     threat is not the clock frequency -- it is the ENVELOPE. A TLC59711 packet is 224 bits
+     and the strip is twelve of them = 2688 bits per frame; at 1 MHz that frame takes
+     2.69 ms, so refreshing at 200 Hz gives 2.69 ms of activity and 2.3 ms of silence,
+     repeating 200 times a second. That envelope sits squarely in the audio band, and
+     anything that rectifies it turns it into a 200 Hz buzz. Slowing the clock makes the
+     burst LONGER, not smaller. So: pick a clock with enough headroom to write frames
+     BACK TO BACK and keep writing, so the line carries a steady inaudible carrier with no
+     audio-band modulation. The chip latches per packet, so continuous writes are fine.
+     ⚠ FIRMWARE: continuous streaming, not a timed refresh. Rate is then free to choose.
   3. A GROUND RETURN BESIDE EACH SIGNAL. J3's order puts GND on both ends of the six ways
      (GND V5 V5 GND SCK SDI matches the strip's own J_PINS), so the pair has a return
      conductor in the same cable instead of finding its way home through the chassis. Loop
      AREA is what couples to a coil, not wire length.
   4. DISTANCE, which is the harness's job, not this board's: the run should reach the strip
      along the +Y rail, not across the deck past the pickup. See INSTALL_NOTES.md.
+
+  ⚠ NONE OF THIS TOUCHES THE ONE KNOWN AUDIO-BAND TERM. At grey levels under 128/65535
+  the TLC59711's own PWM energy lands at sub-audio multiples of its 152 Hz full cycle (see
+  elec/led_strip.py). That is inside the driver, on the strip, not on this cable -- bench it
+  beside the pickup before committing, because no cable discipline can reach it.
 
   If a bench test beside the pickup still shows the strip in the audio, the escalation is a
   differential pair (RS-422 driver here, receiver at the strip) -- NOT more filtering. That
@@ -180,7 +202,7 @@ BOARD_NOTES = {
         # ⚠ ROT 90: PinSocket_2x20_Vertical runs along Y in its own frame, so unrotated it
         # stood 51.9 mm tall on a 26 mm board and hung off both edges. "Vertical" in the
         # footprint name is the MATING direction (pins up), not the row's direction.
-        "J1": (0.00, -6.00, 90.0),
+        "J1": (0.00, -8.50, 90.0),   # 4.5 from the board edge = the Pi header's own margin
         # the three connectors are 13.5 wide in courtyard and the board is 56: they tile
         # -26.75..15.5 with the requested x at each courtyard's CENTRE
         "J2": (-20.00, 8.00, 0.0),      # Pi 5 V in
@@ -206,7 +228,11 @@ BOARD_NOTES = {
     "zones": [("GND", "F.Cu", 0.3), ("GND", "B.Cu", 0.3)],
     "stitch_nets": ("GND",),
     "router_passes": 12,
-    "single_sided": False,          # the 2x20 socket is through-hole by necessity
+    # ⚠ THE SOCKET IS ON THE BACK, and that is the whole mechanical idea: its body is the
+    # standoff the cap hangs off the Pi's header by. Mounted on the front it would be a
+    # bump on top of the board with nothing holding the board on.
+    "back_refs": ("J1",),
+    "single_sided": False,          # the 2x20 socket is through-hole, and on the far side
     "qty_per_instrument": 1,
 }
 
@@ -218,5 +244,5 @@ if __name__ == "__main__":
     netcheck.grounds_meet(os.path.join(OUT_DIR, "pi_cap.net"))
     with open(os.path.join(OUT_DIR, "pi_cap.board.json"), "w") as f:
         json.dump(BOARD_NOTES, f, indent=2)
-    print("board %.1f x %.1f mm, %d GPIO pins used of 40, SPI capped at 1 MHz in firmware"
+    print("board %.1f x %.1f mm, %d GPIO pins used of 40, SPI streams continuously (see docstring)"
           % (BOARD_W, BOARD_L, len(set(PI_5V) | set(PI_GND) | {PI_SCLK, PI_MOSI})))
