@@ -60,6 +60,18 @@ mark it here. Items needing the user go to NEEDS USER, not skipped silently.
 - M4 through-board ears (a98762e), motor controller frame cradle + ear screws (f52686c)
 
 ## NEEDS USER
+- LED strip 5 V buck ON THE MOTOR BOARD (user asked, 2026-09-22): the circuit is worked out
+  (second LMR33630 off the same 24 V, own fuse + EN/UVLO, XH out to pi_cap J4, ~0.5 A more
+  on a 24 V bus sized under 5 A) and the REASON is settled -- a separate buck keeps a
+  lighting cue from browning out the Pi, and the board sits at the keyhead end, furthest
+  from the bridge pickup. IT DOES NOT FIT. Measured on the placed board, the only clear X
+  bands are -27.0..-20.3 (6.7 mm) and 21.6..27.0 (5.4 mm); the buck needs ~8.5 for the 6x6
+  inductor alone. Growing 46 -> 54 in X was not enough, and +Y is blocked by the mounting
+  EAR, which reaches 8.7 into the 10.8 mm gap to the Pi. Options: (a) grow X to ~60 and
+  rework the tray/cradle margins, (b) move the ear and grow +Y, (c) put the buck on its own
+  small board beside the Pi cap. Reverted for now -- the committed motor_ctrl routes 0/0.
+  The pi_cap already has J4 waiting for whatever generates it.
+
 - Optical re-route after grounding the USB-C shell tabs (layout.py: stitch exceptions skip PTH
   pads too): 25 passes -> TIA_OUT_1B open, 28 -> TIA_IN_8A open (freerouting re-plans every
   net). UNCOMMITTED in the tree (layout.py, optical.py passes 28, optical geom). Superseded by
