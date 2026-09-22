@@ -59,6 +59,27 @@ mark it here. Items needing the user go to NEEDS USER, not skipped silently.
 - Pi cradle = column frame cut by keyhead_endplate._slot_shadow (bbda046); ceilings 6587->2582
 - M4 through-board ears (a98762e), motor controller frame cradle + ear screws (f52686c)
 
+## IN THE BACK POCKET
+- **O-SHAPED OPTICAL PCB** (user, 2026-09-22): "keep it in your back pocket in case that is
+  our only way out". Today the board is a C -- the +Y wrap reaches the main body only
+  through the sensing strip on the -X side. Adding a second band on the +X side closes it
+  into an O and gives the DIGITAL nets a path that does not cross the analog strip.
+  * WHAT IT WOULD FIX: the two +3V3D opens for certain -- that annulus-to-wrap hop has NO
+    single-layer path across the strip (searched: no straight lane, and no 3-segment dogleg
+    over a 26 x 60 x 26 grid, checking pads AND outline). Probably SAI_SCK too, plus
+    whatever the freed strip space recovers.
+  * WHAT IT WOULD NOT FIX: U15's analog inputs. Those come from the strip and a +X band sits
+    ~32 mm away from them. (Moot if the five-in-the-strip column works -- see below.)
+  * WHAT IT COSTS: the opening is not empty. bridge_endplate fills it with 20,268 mm3 at
+    z 9.3..16.0, which IS the board's own z band. So this is an endplate redesign, and the
+    endplate has to be able to grow back to that +z height without overhangs (user).
+  * ⚠ AND IT NO LONGER BUYS ROD RETENTION. The idea of letting the PCB hold the guide rods
+    down died with the rod-ring support cap (2026-09-22): PCB_X0 now stops 1.6 mm short of
+    the rod holes so their bearing rings can close, so the board never reaches the rods.
+    Ring support wins -- an unsupported bore is structural, retention was convenience.
+  * PREFER FIRST: all five converters in the strip beside their own quads (committed
+    2026-09-22, 8.7 mm runs). If that routes clean the O is not needed at all.
+
 ## NEEDS USER
 - LED strip 5 V buck ON THE MOTOR BOARD (user asked, 2026-09-22): the circuit is worked out
   (second LMR33630 off the same 24 V, own fuse + EN/UVLO, XH out to pi_cap J4, ~0.5 A more
