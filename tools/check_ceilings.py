@@ -51,7 +51,6 @@ from __future__ import annotations
 import argparse
 import importlib
 
-import src.latch as LT  # noqa: F401  (imported so a bad latch datum fails loudly)
 from src import legs as LG
 from src.dimensions import NOZZLE_D as D_NOZZLE
 

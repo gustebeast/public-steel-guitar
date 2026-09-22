@@ -43,7 +43,7 @@ from __future__ import annotations
 import cadquery as cq
 
 from . import dimensions as D
-from .helpers import box_at, cyl_y
+from .helpers import box_at, cyl_x, cyl_y
 from cadkit.fasteners import M4, m4_button_screw, seated_insert
 
 # ── belt cross-section ───────────────────────────────────────────────────────
@@ -117,12 +117,6 @@ _SCREW_MIN = (HALF_B_OUTER - HEAD_X) + 2.0               # 34.4  reach the nut a
 SCREW_L  = 35.0                           # M4×35 (nearest stock ≥ min; see the take-up table)
 
 
-def cyl_x(d: float, length: float, x0: float, z: float = 0.0) -> cq.Workplane:
-    """Solid cylinder along +X, base at x0, centred on (y=0, z)."""
-    return cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        d / 2, length, pnt=cq.Vector(x0, 0.0, z), dir=cq.Vector(1, 0, 0)))
-
-
 def _ridges(x0: float, x1: float, zc: float, width: float) -> cq.Workplane:
     """GT2 half-round ridges (axis Y) at pitch BP over [x0,x1], centred at z=zc."""
     out = None
@@ -174,7 +168,7 @@ def clamp_half() -> cq.Workplane:
     body = body.cut(box_at(mouth - bx0, LANE, CEIL_UZ,                                # 3  belt tunnel
                            x=(bx0 + mouth) / 2, y=0.0, z=CEIL_UZ / 2))                #    (open at −X)
     body = body.union(_ret_ramp(x1))                                                 # 4  +X retention ramp
-    body = body.cut(cyl_x(SCR_CLR, mouth - HEAD_X, HEAD_X, Z_SCR))                    # 1  screw channel — cut
+    body = body.cut(cyl_x(SCR_CLR, mouth - HEAD_X, HEAD_X, z=Z_SCR))                    # 1  screw channel — cut
     return body                                                                      #    LAST, so it clears the ramp too
 
 
@@ -225,11 +219,6 @@ def screw_dummy() -> cq.Workplane:
     # head/shank junction (the BEARING face) lands on HEAD_X and the head sits OUTSIDE half-A.
     scr = m4_button_screw(SCREW_L, head_d=HEAD_D, head_h=HEAD_H).rotate((0, 0, 0), (0, 1, 0), -90)
     return scr.translate((HEAD_X - HEAD_H, 0.0, Z_SCR))
-
-
-def insert_dummy() -> cq.Workplane:
-    # NOT heat-set: the insert sits OUTSIDE half-B's +X face on the Ø4.4 rim, acting as a plain nut
-    return seated_insert(M4, (HALF_B_OUTER, 0.0, Z_SCR), (1.0, 0.0, 0.0))
 
 
 def seated_lifter(bar, well_mid: float, locked: bool = True) -> cq.Workplane:
