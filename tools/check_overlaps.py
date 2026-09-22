@@ -240,9 +240,10 @@ _CORE = {"bearing", "magnet", "pcb", "chip", "can_header", "pcb_shim", "axle",
 # the two feel lanes, each with the same hardware
 _LANE = {f"{lane}_{part}"
          for lane in ("main", "half_stop")
-         for part in ("cart_base", "cart_piston", "guide_post", "cart_backstop",
-                      "cart_drag", "spring", "spring_tension_setscrew",
-                      "spring_tension_insert")}
+         for part in ("cart_base", "cart_piston", "cart_drag", "spring",
+                      "spring_seat_washer", "spring_tension_setscrew",
+                      "spring_tension_insert", "position_setscrew",
+                      "position_insert", "position_washer")}
 # Built rather than typed out: the hand-written list had drifted badly. It was
 # missing every kv_* spring/screw/back-stop (those parts did not exist yet), and
 # "kv_can_header" "kv_pcb_shim" had NO COMMA between them — Python concatenated
@@ -340,13 +341,9 @@ DEFERRED_RULES = (
     (re.compile(r"^pedal\d+_[A-Z]+\d+$"), re.compile(r"^pedal_bar_[abc]$"),
      "pedal board parts vs the pedal bar (30 pairs, ~195 mm3). USER DEFERRED: the bar is "
      "to be redesigned around the boards later"),
-    (re.compile(r"^(?:[a-z0-9]+_)*k[lv]_[A-Z]+\d+$"), re.compile(r"housing$"),
-     "lever board parts vs their knee/lever housing (25 pairs, ~207 mm3). USER DEFERRED; "
-     "OWNER branner -- the cradle was sized to a plain box. ⚠ THE ORIGINAL REASON IS VOID "
-     "(2026-09-19): it said bronner's board was at its floor at 28 x 21.4, so the room had "
-     "to come from the housing. The user then asked for ONE connector family across both "
-     "buses, and the board grew to 34 x 28 to take the S8B-XH-A -- +59% area. The housing "
-     "needs RE-CUTTING to the new outline, not relieving by a millimetre"),
+    # (the old "lever board parts vs their knee/lever housing" class is RESOLVED, 2026-09-21:
+    #  the cradle's plinth is relieved over the board's interior and J1 moved off the magnet
+    #  face -- branner. It left the gate on its own, as the contract says.)
 )
 _DEFERRED_SEEN = set()
 
