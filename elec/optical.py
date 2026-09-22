@@ -1472,16 +1472,18 @@ def _fan_tracks():
     out = []
     near, far = OP.CELL_NEAR - 0.48, OP.CELL_FAR - 0.48
     for k in range(5):
-        for name, pin_x, row in (("IN4P", -1.25, near), ("IN3M", -0.75, far),
-                                 ("IN3P", -0.25, near), ("IN2M", 0.25, far),
-                                 ("IN2P", 0.75, near), ("IN1M", 1.25, far)):
+        # rows swapped with src/optical_pickup.py: Ci (the P side, which the strip feeds)
+        # is the OUTER row now and Cm (M side, GND-local) the inner one -- see the note there
+        for name, pin_x, row in (("IN4P", -1.25, far), ("IN3M", -0.75, near),
+                                 ("IN3P", -0.25, far), ("IN2M", 0.25, near),
+                                 ("IN2P", 0.75, far), ("IN1M", 1.25, near)):
             cx = OP.CELL_FAN[name]
             d = cx - pin_x
             pts = [(pin_x, 1.96), (pin_x, 2.60), (cx, 2.60 + abs(d)), (cx, row)]
             out.append(("ADC%d_%s" % (k + 1, name), "F.Cu", 0.15,
                         [_cell_pt(k, x, y) for x, y in pts]))
-        for name, (px, py), row in (("IN1P", (1.96, 1.25), near),
-                                    ("IN4M", (-1.96, 1.25), far)):   # IN4M's cap: far row
+        for name, (px, py), row in (("IN1P", (1.96, 1.25), far),
+                                    ("IN4M", (-1.96, 1.25), near)):  # IN4M's cap: inner row
             cx = OP.CELL_FAN[name]
             out.append(("ADC%d_%s" % (k + 1, name), "F.Cu", 0.15,
                         [_cell_pt(k, px, py), _cell_pt(k, cx, py), _cell_pt(k, cx, row)]))

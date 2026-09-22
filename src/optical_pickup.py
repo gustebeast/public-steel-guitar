@@ -1125,14 +1125,24 @@ def _parts():
         # clears the near pads either side by 0.215. With the caps at their earlier,
         # wider-flung positions the paths crossed and the router left 12 of these open.
         # elec/optical.py lays the fan itself ("tracks"), from these same offsets.
-        for ref, dx, dy, rot in (("Cm%d4" % t, CELL_FAN["IN4M"], _far, 90.0),
-                                 ("Ci%d4" % t, CELL_FAN["IN4P"], _near, 270.0),
-                                 ("Ci%d3" % t, CELL_FAN["IN3P"], _near, 270.0),
-                                 ("Ci%d2" % t, CELL_FAN["IN2P"], _near, 270.0),
-                                 ("Ci%d1" % t, CELL_FAN["IN1P"], _near, 270.0),
-                                 ("Cm%d3" % t, CELL_FAN["IN3M"], _far, 90.0),
-                                 ("Cm%d2" % t, CELL_FAN["IN2M"], _far, 90.0),
-                                 ("Cm%d1" % t, CELL_FAN["IN1M"], _far, 90.0),
+        # ⚠ Ci IS THE OUTER ROW NOW, Cm THE INNER (2026-09-22). It used to be the other way
+        # round, and that put the M-side caps -- which only ever go to GND, a local trip --
+        # between the chip and the P-side caps that the SIGNAL has to reach from the strip.
+        # Every incoming TIA_OUT therefore had to get past the whole Cm row to land on its
+        # own Ci. On the annulus cells that is a 2 mm detour; on U15, out at the +X end of
+        # the +Y wrap, it is what closed the only eastward corridor to 0.4 mm (Cm21 starts
+        # at y 81.4) and starved all four of its inputs, run after run. Swapped, the signal
+        # meets its coupling cap first and the corridor opens to ~2.5 mm.
+        # ⚠ elec/optical.py's _fan_tracks LAYS this fan from the same two offsets and has to
+        # swap with it -- the rows are a pair, and moving one alone crosses every thread.
+        for ref, dx, dy, rot in (("Cm%d4" % t, CELL_FAN["IN4M"], _near, 90.0),
+                                 ("Ci%d4" % t, CELL_FAN["IN4P"], _far, 270.0),
+                                 ("Ci%d3" % t, CELL_FAN["IN3P"], _far, 270.0),
+                                 ("Ci%d2" % t, CELL_FAN["IN2P"], _far, 270.0),
+                                 ("Ci%d1" % t, CELL_FAN["IN1P"], _far, 270.0),
+                                 ("Cm%d3" % t, CELL_FAN["IN3M"], _near, 90.0),
+                                 ("Cm%d2" % t, CELL_FAN["IN2M"], _near, 90.0),
+                                 ("Cm%d1" % t, CELL_FAN["IN1M"], _near, 90.0),
                                  # bottom: IOVDD under pin 19, DREG beside pin 24, and a 2.5 mm
                                  # corridor between them for SDOUT/BCLK/FSYNC
                                  ("Cs%d8" % t, -1.25, -_near, 270.0),
