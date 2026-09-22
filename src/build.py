@@ -1327,10 +1327,14 @@ _COLORS = {
     "pogo_female_screw": (0.62, 0.64, 0.67),
     "pogo_male_insert":  (0.72, 0.52, 0.20),   # the brass heat-set inserts
     "pogo_female_insert": (0.72, 0.52, 0.20),
-    "pogo_harness_leg":  (0.75, 0.15, 0.12),   # the leg's harness, two twisted pairs
-    "pogo_harness_coil": (0.75, 0.15, 0.12),   # ...its slack, a part of its own
-    "pogo_harness_body": (0.75, 0.15, 0.12),
-    "pogo_harness_bar":  (0.75, 0.15, 0.12),
+    # the leg's harness: FOUR conductors, in the same colours src.wiring gives every
+    # CAN run (black GND / red hot / yellow CAN-H / green CAN-L), plus the slack coil,
+    # which stays one body at the BUNDLE's diameter
+    "pogo_wire_gnd":     (0.05, 0.05, 0.05),   # black       - 0 V return
+    "pogo_wire_5v":      (0.85, 0.12, 0.10),   # red         - bus B's 5 V
+    "pogo_wire_canh":    (0.95, 0.85, 0.10),   # yellow      - CAN-H
+    "pogo_wire_canl":    (0.13, 0.72, 0.20),   # green       - CAN-L
+    "pogo_harness_coil": (0.75, 0.15, 0.12),   # the slack, as one bundle
     "leg_trrs_plug":   (0.15, 0.15, 0.17),   # the blind-mate: the FIXED plug, in the
     "leg_trrs_jack":   (0.20, 0.20, 0.22),   # adapter's roof...and the FLOATING jack
     "leg_trrs_spring": (0.62, 0.64, 0.67),   # ...the coil that holds them together

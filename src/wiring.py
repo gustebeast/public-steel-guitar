@@ -1044,6 +1044,16 @@ WIRE_OK = {
     "shaft_trrs_cable": {"leg_shaft", "leg_sleeve", "leg_seg_body",
                          "shaft_trrs_jack", "leg_cable_coil",
                          "leg_junction_pcb", "leg_head"},
+    # THE LEG's POGO HARNESS (src.leg_pogo), four conductors and the slack coil. They
+    # are allowed against each OTHER and nothing else: wire-to-wire is automatic once a
+    # base is in here, and these four are one twisted bundle, so they touch at every
+    # corner by construction -- but any of them clipping a SOLID is a routing bug, and
+    # that is exactly what this table is for.
+    "pogo_wire_gnd":  set(),
+    "pogo_wire_5v":   set(),
+    "pogo_wire_canh": set(),
+    "pogo_wire_canl": set(),
+    "pogo_harness_coil": set(),
     "wire_pwr_hot":   {"output_panel", "tee_pcb", "motor_ctrl"},
     "wire_pwr_gnd":   {"output_panel", "tee_pcb", "motor_ctrl"},
     "wire_5v":        {"motor_ctrl", "pi5"},
