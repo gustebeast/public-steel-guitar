@@ -61,7 +61,6 @@ import cadquery as cq
 
 from cadkit.holes import teardrop_hole
 from . import dimensions as D
-from . import latch as LT
 from . import leg_stack as LS
 from . import legs as LG
 
@@ -604,24 +603,6 @@ def _lugs(r_in, r_out, z_lo, z_hi, x, y, angles, bear_up, chamfer=None):
         w = _sector(r_in, r_out, z_lo, z_hi, a0 + LUG_TURN, LUG_DEG, x, y)
         out = w if out is None else out.union(w)
     return out.cut(chamfer)
-
-
-def adapter_negatives(sx: float = LS.LEG_X, ly: float = LS.LEG_Y, up=None):
-    """Cut in the BODY ADAPTER: the counterbore the TPU sleeve turns into, its bayonet
-    slots, the lead bore through the counterbore's roof, and the channel above.
-
-    There is no press here any more. What used to hold the plug was a O6.1 overmould in
-    a O6.0 bore, and the user asked the question that has no good answer: with the leg
-    off, what stops it falling -Z? Friction, sized at somewhere between 6 and 48 N
-    depending on a modulus nobody published -- against a plug detent of 5-20 N that
-    pulls on it every single time the leg comes off."""
-    x, y = _ax(sx, ly)
-    up = up or LS.PRINT_UP["body_adapter"]
-    out = _bore(CB_D, SLV_BOT - 0.01, SLV_TOP, x, y, up)          # the sleeve's barrel
-    out = out.union(_bayonet_slots(CB_D / 2.0 - 0.01, LUG_D / 2.0,
-                                   LUG_BOT, LUG_BOT + LUG_SLOT_H, True, x, y, SLV_A, up))
-    out = out.union(_bore(LEAD_BORE_D, SLV_TOP, LS.Z_TOP + 0.01, x, y, up))
-    return out.union(channel(sx, ly))
 
 
 def sleeve(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):

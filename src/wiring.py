@@ -142,8 +142,7 @@ WIRE_D = 2.0          # default (shielded-pair size)
 # reaches and -- except the +X-most motor (m9) -- no motor body reaches either. The tees
 # mount on the rail (each on a pcb_cradle); every motor's drop pigtail reaches from its
 # -Y-facing PCB out to its tee. Past m9 the rail is notched (chassis motor-9 cable cut).
-from .chassis import Y_LO as _Y_LO, Y_HI as CH_Y_HI, T as _RAIL_T
-from .chassis import SPLIT_X as CH_SPLIT_X
+from .chassis import Y_LO as _Y_LO, T as _RAIL_T
 from .chassis import WT_LANE_Y as CH_WT_LANE_Y, WT_ZF as CH_WT_ZF, WT_H as CH_WT_H
 from .chassis import WT_X1 as CH_WT_X1, WT_RUNS as CH_WT_RUNS
 from . import motor_bank as MB                          # back_y: where each motor's pigtail leaves

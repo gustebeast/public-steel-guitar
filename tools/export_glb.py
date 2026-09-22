@@ -12,7 +12,6 @@ matches the build 1:1. Re-run after a design change:  py -3.12 -m tools.export_g
 
 from __future__ import annotations
 
-import os
 import pathlib
 
 import cadquery as cq
