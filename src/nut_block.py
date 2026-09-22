@@ -623,7 +623,6 @@ def clamp_y(i: int) -> float:
 # what used to be per-string was a POCKET DEPTH differing by 0.025 mm, which no printer
 # here can hold. What is per-string now is a Y layout differing by millimetres, which any
 # printer holds trivially. The precision moved off the machine and onto the string.
-INS_STEP_X  = (DOWEL_X + ROD_X) / 2.0           # (unused: the step is derived in _plan)
 # Both lobes are the FEATURE plus a hair, not a round number -- the padding is wall
 # taken from the neighbour, and at the bass end there is none to spare. 4.3 puts the
 # dowel-lobe wall on the 1.6 two-bead target exactly.

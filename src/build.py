@@ -1220,6 +1220,19 @@ def _tensioner_coupon_components():
 
 
 def collect_components():
+    """EVERY placed thing in the instrument: [(name, cq.Workplane), ...].
+
+    The one entry point the whole tool chain is built on -- the overlap and sweep
+    gates, the GLB and rig exporters, scratch_view and the build profiler all take
+    their model from here, so a part that is not in this list is invisible to every
+    check in the project. It is the ASSEMBLY, not the print list: purchased-part
+    dummies, PCBs and the wiring harness are all in it, each already posed in world
+    coordinates (printed parts are exported separately, in their print poses).
+
+    Names matter beyond display. The gates key their allow-lists on them, and a
+    trailing index (``chassis_0``) is stripped to a base name before matching, so
+    renaming a part silently changes which contacts are treated as designed.
+    """
     _KE = __import__("src.keyhead_endplate", fromlist=["e"])
     # the standing electronics and the whole motor bank are packed against this face
     # (dimensions.KEYHEAD_INBOARD_X). Checked here, where the gate builds the keyhead anyway
