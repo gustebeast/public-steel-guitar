@@ -1406,114 +1406,29 @@ def _cell_tracks():
         for dy in (0.25, -0.25):
             out.append(("GND", "F.Cu", 0.2, [_cell_pt(k, -1.962, dy), _cell_pt(k, -0.9, dy)]))
         out.append(("GND", "F.Cu", 0.2, [_cell_pt(k, 1.962, 0.25), _cell_pt(k, 0.9, 0.25)]))
-    return out + _fan_tracks() + _shdn_tracks() + _v3_trunk() + _u15_haul()
+    return out + _fan_tracks() + _shdn_tracks() + _v3_trunk()
 
 
-def _u15_haul():
-    """Lay the LONG HAUL for U15's four analog inputs; leave both ends to the router.
-
-    ⚠ U15 IS THE ONLY CELL WHOSE INPUTS CROSS THE BOARD, and it loses them every run --
-    TIA_OUT_3A/3B/4A/4B, four of the nine that remain. It sits at the +X half of the +Y
-    wrap (the far side of the jack head's keep-out) while its signals originate in the
-    strip ~40 mm away, and it cannot move: its x is already the keep-out edge plus the
-    cell's own half-width, and putting it back in the annulus measured far worse (26
-    unconnected against 9).
-
-    ⚠ BUT THE BOARD IS NOT SHORT OF ROOM -- MEASURED (.ins/u15path.py, .ins/u15solve.py).
-    A vertical corridor at x -16.5..-5.5 is completely clear of pads over y 45..83 (11 mm;
-    four lanes at 0.3 pitch need 1.2), and a horizontal band at y 74.4..81.2 is clear right
-    across x -28..-6. The routed board put just TWELVE track endpoints in that whole
-    region. The room is there and unused; what the router cannot do is discover a 40 mm
-    journey for four nets at once. That is the same thing +3V3D needed _v3_trunk for.
-
-    So this lays the middle and nothing else. Each net gets its own lane in the corridor
-    and its own lane in the band, ending directly under its coupling cap. The two ENDS are
-    deliberately left alone: escaping the op-amp column and dropping the last few mm into
-    Ci2x past Cm2x are both LOCAL problems the router already solves -- U16/17/18's
-    identical cells route their coupling caps every run. NO VIAS: all four stay on F.Cu end
-    to end, because the router never connects to a pre-laid via on this board."""
-    lanes = (("TIA_OUT_3A", "Ci21", -16.20, 75.20), ("TIA_OUT_3B", "Ci22", -15.00, 76.60),
-             ("TIA_OUT_4A", "Ci23", -13.80, 78.00), ("TIA_OUT_4B", "Ci24", -12.60, 79.40))
-    p = _placements(CX, CY)
-    out = []
-    for net, cap, lx, by in lanes:
-        tx = p[cap][0]
-        out.append((net, "F.Cu", 0.15, [(lx, 46.0), (lx, by), (tx, by)]))
-    return out
-
-
-def _v3_trunk():
-    """Join each CLUSTER of converter cells' +3V3D stubs into one piece of B.Cu copper.
-
-    ⚠ +3V3D WAS A THIRD OF EVERY FAILURE (5 of 15 unconnected, 2026-09-22) and it is not
-    a routing problem, it is a MISSING BUS. The rail reached the board as 131 separate
-    F.Cu traces because nothing ever laid it down deliberately: each cell got its own
-    little F/B/F jog off IOVDD (see _shdn_tracks) and the router was left to find the
-    trunk joining them. It found most and missed five, in a different five every run.
-
-    The stubs already end on B.Cu at the same y within a cluster, so the trunk is one
-    straight track per cluster through points the cell code chose -- the islands MERGE
-    into one net island, with NO via to connect to (the router never connects to a
-    pre-laid via on this board -- measured on SHDNZ and again on SAI). The two clusters
-    are still the router's to join; this removes the four intra-cluster hops it keeps
-    dropping, and gives the digital supply a real low-impedance spine while it is there."""
-    end = lambda k: _cell_pt(k, -2.85, -3.27)
-    return [("+3V3D", "B.Cu", 0.3, [end(0), end(1)]),          # the +Y wrap pair
-            ("+3V3D", "B.Cu", 0.3, [end(2), end(4)])]          # the annulus row of three
-
-
-def _fan_tracks():
-    out = []
-    near, far = OP.CELL_NEAR - 0.48, OP.CELL_FAR - 0.48
-    for k in range(5):
-        for name, pin_x, row in (("IN4P", -1.25, near), ("IN3M", -0.75, far),
-                                 ("IN3P", -0.25, near), ("IN2M", 0.25, far),
-                                 ("IN2P", 0.75, near), ("IN1M", 1.25, far)):
-            cx = OP.CELL_FAN[name]
-            d = cx - pin_x
-            pts = [(pin_x, 1.96), (pin_x, 2.60), (cx, 2.60 + abs(d)), (cx, row)]
-            out.append(("ADC%d_%s" % (k + 1, name), "F.Cu", 0.15,
-                        [_cell_pt(k, x, y) for x, y in pts]))
-        for name, (px, py), row in (("IN1P", (1.96, 1.25), near),
-                                    ("IN4M", (-1.96, 1.25), far)):   # IN4M's cap: far row
-            cx = OP.CELL_FAN[name]
-            out.append(("ADC%d_%s" % (k + 1, name), "F.Cu", 0.15,
-                        [_cell_pt(k, px, py), _cell_pt(k, cx, py), _cell_pt(k, cx, row)]))
-    return out
-
-
-def _sai_escape(k):
-    """(net, pin x, via x, via y) for converter k's three SAI pins, part turned 180: SDOUT
-    (pin 21, x -0.25), BCLK (22, +0.25), FSYNC (23, +0.75) leave the bottom corridor between
-    the IOVDD and DREG caps. With all three left to the router the middle one, BCLK, was
-    walled in by the other two in every routing (and repair_search found no path): so
-    SDOUT and FSYNC drop to vias side by side and BCLK threads down between them to a
-    lower one. Clearances: 0.19 to the IOVDD cap, 0.34 to DREG's, 0.19 either side of BCLK.
-    ⚠ TRIED AND REVERTED, 2026-09-22: laid, SCK and FS failed at EVERY part (17 open) --
-    the router never connected to a pre-laid via on this board, SHDNZ's either. Kept for
-    the record; nothing calls it."""
-    return (("SAI_SD%d" % (k + 1), -0.25, -0.45, -3.40),
-            ("SAI_SCK", 0.25, 0.25, -4.40),
-            ("SAI_FS", 0.75, 0.95, -3.40))
-
-
-def _shdn_tracks():
-    """Each converter's SHDNZ to its own IOVDD: pin 14 (-1.96, +0.75) -> via at (-2.85, +0.75)
-    -> In2 down the channel -> via at (-2.85, -3.27) -> the IOVDD cap Cs<k>8's rail pad at
-    (-1.25, -3.27). Offsets from the part's centre, part turned 180."""
-    out = []
-    for k in range(5):
-        P = lambda dx, dy, k=k: _cell_pt(k, dx, dy)
-        out += [("+3V3D", "F.Cu", 0.15, [P(-1.96, 0.75), P(-2.85, 0.75)]),
-                # on B.Cu, NOT In2: down the channel on In2 it fenced the one free signal
-                # layer off between every pair of cells, and the +3V3D rail itself then
-                # failed to cross from cell to cell (4 of 14 open). B.Cu is a GND pour; a
-                # 4 mm track in it costs the pour a slot, not the router a layer.
-                ("+3V3D", "B.Cu", 0.15, [P(-2.85, 0.75), P(-2.85, -3.27)]),
-                ("+3V3D", "F.Cu", 0.15, [P(-2.85, -3.27), P(-1.25, -3.27)]),
-                # and IOVDD's own pin 19 straight down onto that same pad
-                ("+3V3D", "F.Cu", 0.2, [P(-1.25, -1.96), P(-1.25, -3.27)])]
-    return out
+# ⚠ _u15_haul IS DELETED, AND THE REASON IS WORTH MORE THAN THE CODE WAS (2026-09-22).
+# It laid four F.Cu lanes from the strip to U15's coupling caps, through a corridor measured
+# "completely clear of pads" at x -16.5..-5.5 over y 45..83. It routed 11 unconnected and 3
+# violations against 9 and 0 without it.
+#
+# ⚠ THE CORRIDOR WAS MOSTLY NOT BOARD. The clearance scan asked the PADS and never asked the
+# OUTLINE, and this board is not a rectangle: below y ~80.9 it is only the sensing strip,
+# x -32.42..-13.14, and it is the HEAD above that which reaches x +32.42. So two of the four
+# lanes (-13.8, -12.6) were outside the board edge entirely, which is what DRC reported --
+# copper_edge_clearance, 0.00 mm. The region scanned "clear" because it is AIR.
+#
+# What the corrected scan says, for whoever picks this up:
+#   * vertical lanes x -16.5..-14.1 ARE clear and ARE inside the strip (2.4 mm, four lanes fit)
+#   * but there is only ONE horizontal lane east into the head -- y 80.9..81.3, about 0.4 mm,
+#     because Cm21 starts at y 81.4 -- and four nets cannot share it
+#   * the last hop is fine: a vertical at each Ci's own x threads between the Cm caps with
+#     0.6 mm either side, which is what _fan_tracks already does inside the cell
+# So the haul needs either a second layer for the eastward leg (which needs vias the router
+# will not connect to, so the whole path would have to be laid pad to pad) or the Cm row
+# moved +Y to open a second horizontal lane. Measure the OUTLINE first next time.
 
 
 def _outline_poly(cx, cy):
