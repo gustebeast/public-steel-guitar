@@ -1187,7 +1187,7 @@ ADC inputs plus a 12-signal ULPI bus will not fit a 64-pin part.
 | 5 | U14–U18 | **audio ADC — TI `TLV320ADC3140IRTWT`** (C1852021), 4 ch each, one per quad, 192 kHz, differential AC-coupled against MID. Replaced the H743's own ADCs 2026-09-21: they were the noise floor (77 dB single-ended), and a delta-sigma converter also filters the op-amps' out-of-band noise and samples all 20 channels on one edge | WQFN-24 (RTW) | 4.00 × 4.00 × 0.80 |
 | 25 | Cs11–Cs58 | ADC supply / reference bypass — per converter 1 µF (AVDD), 10 µF (AREG, DREG, IOVDD), 1 µF (VREF): TI SBAS993B Fig. 165 less its 100 nF partners, which 0402 bulk parts make redundant | 0402 | 1.00 × 0.50 × 0.55 |
 | 40 | Ci11–Cm54 | ADC input coupling — **10 nF C0G**: INxP from each TIA, INxM to GND (single-ended AC-coupled, SBAS993B Fig. 31) | 0402 | 1.00 × 0.50 × 0.55 |
-| 3 | R50, R51, R54 | I2C2 pull-ups 4k7 ×2 (all five converters share one bus and one address, written together), converter SHDNZ pull-down 100k | 0402 | 1.00 × 0.50 × 0.55 |
+| 2 | R50, R51 | I2C2 pull-ups 4k7 ×2 (all five converters share one bus and one address, written together; SHDNZ is tied high at each part and firmware issues the software reset) | 0402 | 1.00 × 0.50 × 0.55 |
 | 1 | J1 | USB-C receptacle — 10 ch audio + MIDI + DFU | USB-C | 8.94 × 7.35 × 3.16 |
 | 1 | J2 | **24 V in** from the instrument trunk — side entry, −X edge, 2 cavities empty ⚠ **no source yet, see below** | XH-SM-4 | 6.10 × 15.00 × 7.00 |
 | 5 | U1–U5 | quad op-amp — 4× transimpedance amp | SOIC-14 | 6.00 × 8.65 × 1.75 |
