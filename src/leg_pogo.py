@@ -513,7 +513,7 @@ def bar_features(floor_z: float, chamber_top_z: float):
 # off horizontal), so the coil overshoots its nominal end by (HARNESS_D / 2) cos(lead) =
 # 1.118 -- cos, not sin, which is what a first guess of 0.6 got wrong.
 COIL_LEAD = 4.0                 # the vertical run-in
-COIL_GAP = 1.4                  # > (HARNESS_D / 2) cos(lead), measured 1.118
+COIL_GAP = 2 * B                # 1.6 -- > (HARNESS_D / 2) cos(lead), measured 1.118
 
 
 def harness():
