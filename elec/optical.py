@@ -1348,6 +1348,26 @@ def optical():
 # board whose shape the instrument dictates. _SECTIONS is (y0, y1, x_minus, x_plus)
 # per band, and the shape it makes is a bracket -- wide over the endplate at both Y
 # ends, narrow through the middle where it has to fit the 14 mm deck band.
+def _fan_tracks():
+    out = []
+    near, far = OP.CELL_NEAR - 0.48, OP.CELL_FAR - 0.48
+    for k in range(5):
+        ux, uy = _placements(CX, CY)["U%d" % (14 + k)][:2]
+        for name, pin_x, row in (("IN4P", -1.25, near), ("IN3M", -0.75, far),
+                                 ("IN3P", -0.25, near), ("IN2M", 0.25, far),
+                                 ("IN2P", 0.75, near), ("IN1M", 1.25, far)):
+            cx = OP.CELL_FAN[name]
+            d = cx - pin_x
+            pts = [(pin_x, 1.96), (pin_x, 2.60), (cx, 2.60 + abs(d)), (cx, row)]
+            out.append(("ADC%d_%s" % (k + 1, name), "F.Cu", 0.15,
+                        [(ux + x, uy + y) for x, y in pts]))
+        for name, (px, py) in (("IN1P", (1.96, 1.25)), ("IN4M", (-1.96, 1.25))):
+            cx = OP.CELL_FAN[name]
+            out.append(("ADC%d_%s" % (k + 1, name), "F.Cu", 0.15,
+                        [(ux + px, uy + py), (ux + cx, uy + py), (ux + cx, uy + near)]))
+    return out
+
+
 def _outline_poly(cx, cy):
     """The board edge as a closed polygon, board-local. Adjacent bands with the same
     X extents are merged so the polygon has no zero-length edges for the fab to
@@ -1809,6 +1829,12 @@ BOARD_NOTES = {
     # ⚠ THE F.Cu POUR DOES NOT DO IT, MEASURED: the pin's inner end is 0.20 from the EP and
     # the pour's 0.3 clearance cannot enter, so all five AVSS pins came back unconnected.
     "stitch_exceptions": ("J1.SH", "U14.4", "U15.4", "U16.4", "U17.4", "U18.4"),
+    # THE CONVERTERS' INPUT FAN, laid rather than routed: from each top pin straight up to
+    # its coupling cap's pin-side pad, widening by at most 0.25 -- see CELL_FAN in
+    # src/optical_pickup.py for why the router could not find these (12 of 28 open).
+    # Pin x (part turned 180): 12 -1.25, 11 -0.75, 10 -0.25, 9 +0.25, 8 +0.75, 7 +1.25 at
+    # y +1.96; pin 6 (IN1P) at (+1.96, +1.25), pin 13 (IN4M) at (-1.96, +1.25). A near cap's
+    # pin-side pad centres 0.48 below its centre, a far cap's likewise.
     # AVSS -> EP, one per converter. Pin 4 sits at (+1.962, +0.25) from the EP centre with
     # the part turned 180 (read off the placed board through pcbnew); the track ends 0.9
     # in from the EP centre, well inside the 2.7 pad. Neighbour pins 3/5 clear by 0.27.
@@ -1816,7 +1842,7 @@ BOARD_NOTES = {
                                        _placements(CX, CY)["U%d" % (14 + k)][1] + 0.25),
                                       (_placements(CX, CY)["U%d" % (14 + k)][0] + 0.9,
                                        _placements(CX, CY)["U%d" % (14 + k)][1] + 0.25)])
-               for k in range(5)],
+               for k in range(5)] + _fan_tracks(),
     # ⚠ ORDER OPTIONS ARE PART OF THE DESIGN, and nothing in a gerber records them.
     # Mask colour is usually cosmetic and on this board it is not: twenty photodiodes
     # look up through a 0.30 mm gap that runs 5.40 mm to the cover's aperture, and that
