@@ -77,7 +77,9 @@ L4 = ("F.Cu,In1.Cu,In2.Cu,B.Cu,F.Paste,B.Paste,F.Silkscreen,B.Silkscreen,"
 # made. See the module docstring on why blank beats a guess.
 LCSC = {
     "S8B-XH-A": "C157914",          # 8-way side-entry XH, motor tee trunk
-    "S8B-PH-SM4-TB": "C265121",     # 8-way side-entry PH, lever board trunk
+    "S8B-PH-SM4-TB": "C265121",     # 8-way side-entry PH, the 11 lever/pedal J1
+    "B8B-PH-K-S": "C157974",        # B8B-PH-K-S(LF)(SN), stock 21,709 -- motor_ctrl J2,
+                                    # the same bus-B trunk on the vertical variant
     "PJ-320D-4A": "C95562",         # TRRS 4-pole socket
     "SN65HVD230DR": "C12084",       # CAN transceiver, both boards
     "LMR16006XDDCR": "C87080",      # 60 V 0.6 A buck, lever + motor controller
@@ -115,7 +117,6 @@ LCSC = {
     # genuine manufacturer; where a listing was the bare MPN at 0 stock and its (LF)(SN)
     # tin-plated form was stocked, the stocked form is the same part as ordered from JST.
     "B4B-XH-A": "C144395",          # JST B4B-XH-A(LF)(SN), stock 60,424
-    "B4B-PH-K-S": "C131334",        # JST B4B-PH-K-S(LF)(SN), stock 138,037 -- motor ctrl J2 (lever bus)
     "TLC59711PWPR": "C116842",      # 12-ch 16-bit constant-current LED driver (led_strip)
     "XL-5050RGBW": "C7371891",      # XINGLIGHT RGBW 5050, separate anodes/cathodes (led_strip)
     "S6B-PH-SM4-TB": "C265405",     # 6-way side-entry PH, the LED strip's chain connector

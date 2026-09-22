@@ -73,7 +73,10 @@ HEIGHT = {
     "QFN-68-1EP_8x8mm_P0.4mm_EP5.2x5.2mm": 0.90,
     "JST_XH_B2B-XH-A_1x02_P2.50mm_Vertical": 7.0,
     "JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical": 7.0,
-    "JST_PH_B4B-PH-K_1x04_P2.00mm_Vertical": 6.0,   # JST PH top entry (motor ctrl J2)
+    "JST_PH_B8B-PH-K_1x08_P2.00mm_Vertical": 6.0,   # JST PH top entry (motor ctrl J2 --
+                                                    # 8-way since bus B became a mid-bus
+                                                    # pass-through; same 6.0 body as the
+                                                    # 4-way it replaced, 17.9 long)
     "JST_PH_S8B-PH-SM4-TB_1x08-1MP_P2.00mm_Horizontal": 5.5,   # cadkit PH_SIDE_H
     "Jack_6.35mm_Neutrik_NMJ4HCD2_Horizontal": 15.67,     # Neutrik's STEP: body top
     "L_0603_1608Metric": 0.95, "L_Taiyo-Yuden_NR-30xx": 1.50,

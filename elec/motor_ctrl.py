@@ -20,8 +20,17 @@ strings, so "a few controls moving" IS the ten-motor case:
     bus A, 10 motors, 8-byte frames, command + drive reply
       500 kbps @ 100 Hz -> 52%       500 kbps @ 200 Hz -> 104%  (over)
       1 Mbps   @ 200 Hz -> 52%
-    bus B, 8 sensor boards, 2-byte frames @ 500 Hz
-      500 kbps -> 57.6%              1 Mbps -> 28.8%
+    bus B, 11 sensor boards, 2-byte frames @ 500 Hz
+      500 kbps -> 79.2%  (OVER)      1 Mbps -> 39.6%
+⚠ BUS B AT 500 kbps IS NO LONGER VIABLE, and that is a consequence of the control
+count, not of the respin. This table was written for EIGHT sensor boards (57.6%);
+the real count is ELEVEN -- 6 knee levers + 5 pedals -- and the load is linear in
+it, so the same bus reads 79.2%. That is past the 52% target and well into the
+region where low-priority frames wait on arbitration. BUS B MUST RUN AT 1 Mbps
+(39.6%), or its frame rate has to come down. Nothing on the board changes for
+this -- both transceivers and the MCU's controllers are good for 1 Mbps, and R5's
+slope-control note already assumes short cable -- but the FIRMWARE bitrate is now
+a requirement rather than a preference.
 52% is the target, not 90%: CAN arbitrates by priority, so high utilisation
 delays low-priority frames unpredictably -- the headroom buys latency, not just
 throughput. Worth confirming the SERVO42Ds will run 1 Mbps; it doubles the margin.
@@ -89,17 +98,31 @@ def _xh(tag, desc):
                 pins=[Pin(num=i + 1, name=n, func=P) for i, n in enumerate(XH_PINOUT)])
 
 
-PH_FP = "Connector_JST:JST_PH_B4B-PH-K_1x04_P2.00mm_Vertical"
+# ⚠ BUS B'S CONNECTOR IS THE 8-WAY TRUNK PART, NOT A 4-WAY DROP (user, 2026-09-22,
+# topology option B). The controller MOVED TO THE MIDDLE of bus B: the pedals arrive from
+# the leg at the -X end and the lever chain arrives at -X too, so both plug into this board
+# instead of one chain looping back through the body. A mid-bus node is a PASS-THROUGH by
+# construction -- bus in on ways 1-4, out on 5-8 -- which is the same S8B-PH-SM4-TB, the
+# same crimps and the same pin order every other bus-B node already uses (lever_sensor J1).
+# It is the VERTICAL 8-way, not the sensor boards' side-entry S8B-PH-SM4-TB. The harness
+# contract is identical either way -- every S8B/B8B mates the same PHR-8 housing on the same
+# SPH-002T-P0.5S crimps in the same pin order -- so what the variant buys is board fit: this
+# board's connectors are top-entry and mid-board (J1 is), it already had the 4-way vertical
+# PH here, and the side-entry part needs a board EDGE with its mouth off it. Placed at J2's
+# existing site the side-entry body took C10's stitching-via room and layout refused it.
+PH_FP = "Connector_JST:JST_PH_B8B-PH-K_1x08_P2.00mm_Vertical"
 
 
 def _ph(tag, desc):
-    """The LEVER bus's connector: JST PH, top entry. Same pin ORDER as the XH buses
-    (GND / +V / CAN_H / CAN_L) so one crimp order serves the whole harness, but a
-    different FAMILY, so a lever harness cannot mate a 24 V XH header and vice versa."""
-    return Part(name="B4B-PH-K-S", ref_prefix="J", tag=tag, dest="NETLIST", tool="skidl",
-                value="B4B-PH-K-S", description=desc, footprint=PH_FP,
+    """The LEVER bus's TRUNK connector: JST PH, 8-way, vertical top entry. Same pin ORDER as
+    the XH buses (GND / +V / CAN_H / CAN_L, harness.PH_PINOUT) so one crimp order serves
+    the whole harness, but a different FAMILY, so a lever harness cannot mate a 24 V XH
+    header and vice versa -- and way 2 is +5 V here, which is why bus B has its own
+    pinout name rather than borrowing the 24 V one."""
+    return Part(name="B8B-PH-K-S", ref_prefix="J", tag=tag, dest="NETLIST",
+                tool="skidl", value="B8B-PH-K-S", description=desc, footprint=PH_FP,
                 pins=[Pin(num=i + 1, name=n, func=P)
-                      for i, n in enumerate(("GND", "V5", "CAN_H", "CAN_L"))])
+                      for i, n in enumerate(harness.ph_trunk_pins())])
 
 
 def _xcvr(tag, desc):
@@ -140,10 +163,11 @@ def motor_ctrl():
     # that net exists.
     j2 = _ph("J2", "bus B out -- the eleven lever/pedal boards, 5 V, JST PH")
     j3 = _xh("J3", "24 V in from the rail (2 contacts populated)")
-    gnd += j1[1], j2[1], j3[1], j3[4]
+    gnd += j1[1], j2[1], j2[5], j3[1], j3[4]
     v24 += j1[2], j3[2], j3[3]
     a_h += j1[3]; a_l += j1[4]
-    b_h += j2[3]; b_l += j2[4]
+    # bus B passes THROUGH: ways 1-4 in, 5-8 out, same four nets on both halves
+    b_h += j2[3], j2[7]; b_l += j2[4], j2[8]
     # ⚠ J3 NOW DOUBLES ITS CONTACTS, AND IT IS A RATING FIX RATHER THAN TIDINESS. This
     # is the sink end of the instrument's whole 24 V trunk. BOM.md sizes that bus at
     # under 5 A and XH is rated 3 A per contact, which is exactly why the SOURCE (the
@@ -219,10 +243,16 @@ def motor_ctrl():
         rs = _r(rtag, "10k", "transceiver slope control")
         u["Rs"] += rs[1]; gnd += rs[2]
 
-    # TERMINATION at THIS end of each bus. The far ends are the last motor tee
-    # and the last lever board, which carry the same resistor behind the same
-    # jumper -- populated everywhere, closed only at the two ends of each bus.
-    for tag, (ch, cl), jtag in (("R5", (a_h, a_l), "JP1"), ("R6", (b_h, b_l), "JP2")):
+    # TERMINATION -- BUS A ONLY (user, 2026-09-22). A 120 ohm terminator is an END-OF-BUS
+    # part, and since the controller moved to the MIDDLE of bus B it is no longer an end of
+    # it. Terminating a mid-bus node puts a third 120 ohm across the pair: the two real
+    # ends already load it to 60, a third drops it to 40 and the transceivers drive a load
+    # they are not specified into. Bus B's two terminators now live where the bus actually
+    # ends -- the +X-end lever board and the far-end pedal board, on the JP1 + R4 each
+    # lever/pedal board already carries, so exactly two jumpers are closed in the
+    # instrument and every board in between stays open.
+    # Bus A is unchanged: this board IS its end, the last motor tee is the other.
+    for tag, (ch, cl), jtag in (("R5", (a_h, a_l), "JP1"),):
         rt = _r(tag, "120R", "CAN termination, 1%", "Resistor_SMD:R_0603_1608Metric")
         jp = Part(name="SolderJumper_2_Open", ref_prefix="JP", tag=jtag, dest="NETLIST",
                   tool="skidl", value="TERM", description="close at the bus end",
@@ -497,7 +527,7 @@ def motor_ctrl():
     # are not a free expansion slot" limit F1's note already names. And a D9 crowbar
     # event now also drops the lever bus, which is the right way round: nothing senses
     # while the Pi is dark anyway.
-    v5 += j2[2]
+    v5 += j2[2], j2[6]
 
     for tag, net in (("D6", dp), ("D7", dm)):
         d = Part(name="TVS", ref_prefix="D", tag=tag, dest="NETLIST", tool="skidl",
@@ -568,7 +598,12 @@ BOARD_NOTES = {
     # the strip the growth added.
     "placements": {
         "J1": (-10.00, 2.50, 0.0),
-        "J2": (4.00, 2.50, 0.0),
+        # ⚠ J2 MOVED WHEN IT GREW 4-WAY -> 8-WAY (2026-09-22). At its old mid-board site the
+        # 17.9 mm body overlapped J1's courtyard and put a PTH pad inside it. This site is
+        # elec/sitesearch.py's top-ranked of 672 legal ones, which is the tool that exists
+        # because this board "keeps being placed by eye and keeps being wrong" -- and it
+        # puts bus B's trunk beside J3's 24 V inlet on the +X edge, where bus A's already is.
+        "J2": (18.25, 14.25, 90.0),
         "J3": (15.50, -8.50, 90.0),
         # SWD pads -- nearest free 2.5 mm sites to U4; see the note in motor_ctrl()
         "TP1": (-10.10, -12.85, 0.0),
@@ -612,8 +647,6 @@ BOARD_NOTES = {
         "R4": (11.20, -11.50, 0.0),
         "R5": (16.50, 3.50, 0.0),
         "JP1": (16.50, -17.50, 0.0),
-        "R6": (16.50, -21.00, 0.0),
-        "JP2": (16.50, -24.50, 0.0),
         "D2": (12.30, 1.00, 0.0),
         "D3": (15.30, 1.00, 0.0),
         "D4": (10.00, -17.00, 0.0),
