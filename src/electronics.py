@@ -475,7 +475,7 @@ from . import board_geom as BG
 # difference between the cap's half-length and the header's margin, not a placement error.
 LED_SECTION_W = 139.0        # elec/led_strip.BOARD_W -- four of these fill the seat
 LED_SECTIONS = 4
-LED_SLOT_U_MID = 10.0        # the board's centre across the slope (20 wide, in a 20.3 slot)
+
 PI_HDR_X = PI_FP[0] + 3.5 + 1.27               # -598.23, between the two pin rows
 PI_HDR_Y = PI_FP[2] + 3.5 + (20 - 1) * 2.54 / 2.0   # -22.37, the pad centroid along the row
 PI_CAP_STANDOFF = BG.HEIGHT["PinSocket_2x20_P2.54mm_Vertical"]   # 8.5, the socket's body
@@ -487,23 +487,22 @@ PI_CAP_STANDOFF = BG.HEIGHT["PinSocket_2x20_P2.54mm_Vertical"]   # 8.5, the sock
 # (chassis.LED_*) already written in world coordinates. Anything here that reads a chassis
 # datum has to stay in that frame or the two will drift apart silently.
 def led_sections() -> list:
-    """The four RGBW sections lying in the +Y rail's 45 deg seat, face up-and-inboard.
+    """The four RGBW sections standing in the +Y rail's channel, facing -Y.
 
-    The seat's frame is (u, v): u down the slope from the board's high edge on the wall,
-    v out along the surface normal. A section is 20 across the slope and 1.6 thick, so its
-    centre is at u = 10, v = 0 -- chassis._led_uv turns that into (y, z), and the board is
-    simply rotated 45 about X, which is the rotation that takes its own +Z to the seat's
-    normal (0, -1, +1)/sqrt2 and its +Y to the up-slope direction."""
+    board_geom hands the board flat -- centred in XY, underside at z = 0, parts rising +Z --
+    so ONE rotation stands it up: +90 about X takes its own +Z (the component side) to world
+    -Y and its +Y (the board's height) to world +Z. Then its BACK sits on the wall and its
+    centre goes midway up the channel, both of which chassis already states."""
     from . import chassis as CH
     from . import board_geom as _BG
     w = LED_SECTION_W
     gap = (CH.LED_X1 - CH.LED_X0 - LED_SECTIONS * w) / (LED_SECTIONS - 1)
-    y, z = CH._led_uv(LED_SLOT_U_MID, 0.0)
-    b = _BG.solid("led_strip").rotate((0, 0, 0), (1, 0, 0), 45.0)
+    zc = (CH.LED_BOARD_BOT + CH.LED_BOARD_TOP) / 2.0
+    b = _BG.solid("led_strip").rotate((0, 0, 0), (1, 0, 0), 90.0)
     out = []
     for i in range(LED_SECTIONS):
         cx = CH.LED_X0 + w / 2.0 + i * (w + gap)
-        out.append(("led_strip_%d" % i, b.translate((cx, y, z))))
+        out.append(("led_strip_%d" % i, b.translate((cx, CH.LED_Y0, zc))))
     return out
 
 
