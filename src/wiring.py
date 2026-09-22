@@ -133,6 +133,9 @@ PWR_OFF = 1.0         # 24 V hot/gnd separation. In X on the bank hops (see _seg
                       # corridor only 3.2 deep behind the channel's straps put one conductor
                       # in a strap.)
 WIRE_D = 2.0          # default (shielded-pair size)
+# straight run a conductor makes out of a JST mouth before it may bend, so the
+# pin order is legible in the model instead of a bundle meeting a connector face
+CAP_LEAD_IN = 4.0
 
 # ── -Y RAIL harness corridor ──────────────────────────────────────────────
 # The ribs are STRUCTURE + lever mounts ONLY: a knee/pedal lever slides along its rib
@@ -973,12 +976,41 @@ def build_wires():
     #    drew the cable -- so the harness has been a connector short all along.
     # It rides ABOVE the board tops between the two connectors and only drops at the
     # Pi. Run level with the header it started from, it grazed the tray plate.
+    # ⚠ IT LANDS ON THE PI CAP'S J2 NOW, PIN BY PIN, not on a guessed point over the header.
+    # It used to end at a hardcoded (-596, -38, -57) "GPIO" point, which is why the gate had
+    # it 55 mm3 inside the cap: there was nothing for it to land ON until that board existed.
+    # Four conductors, drawn as four, in J2's own order -- GND, +5V, +5V, GND -- each with a
+    # straight LEAD-IN out of the mouth so the pin order reads off the model. Same idea as
+    # tee_pin() on the CAN tees.
     _j5 = SP(*EL.mctrl_pt("J5"))
-    _gpio = SP(-596.0, -38.0, -57.0)
-    _over = SP(-596.0, -50.0, -46.4)
-    out.append(("wire_5v", _wire([
-        _j5, (_j5[0], _over[1], _j5[2]), (_over[0], _over[1], _over[2]),
-        (_gpio[0], _gpio[1], _over[2]), _gpio], WIRE_OD["wire_5v"])))
+    for _n, _nm in ((1, "gnd_a"), (2, "hot_a"), (3, "hot_b"), (4, "gnd_b")):
+        _pin = EL.pi_cap_pin("J2", _n)
+        _lead = (_pin[0], _pin[1], _pin[2] - CAP_LEAD_IN)     # mouths face -Z (see pi_cap.py)
+        _over = (_j5[0], _pin[1], _lead[2] - 6.0)
+        out.append(("wire_5v_%s" % _nm, _wire(
+            [_j5, (_j5[0], _j5[1], _over[2]), _over, (_lead[0], _lead[1], _over[2]),
+             _lead, _pin], WIRE_OD["wire_5v"])))
+
+    # -- the Pi cap's J3 -> LED strip section 0's J1. One cable carries the strip's 5 V and
+    #    its SPI pair, in led_strip.J_PINS order: GND V5 V5 GND SCK SDI. Six conductors drawn
+    #    as six, so which way round the plug goes is visible rather than assumed.
+    for _n, _nm in ((1, "gnd_a"), (2, "v5_a"), (3, "v5_b"), (4, "gnd_b"),
+                    (5, "sck"), (6, "sdi")):
+        _a = EL.pi_cap_pin("J3", _n)
+        _b = EL.led_pin(0, "J1", _n)
+        _al = (_a[0], _a[1], _a[2] - CAP_LEAD_IN)
+        _bl = (_b[0], _b[1] - CAP_LEAD_IN, _b[2])             # off the strip's mouth, -Y
+        out.append(("wire_led_%s" % _nm, _wire(
+            [_a, _al, (_al[0], _bl[1], _al[2]), (_bl[0], _bl[1], _al[2]), _bl, _b],
+            WIRE_OD["wire_oled"])))
+
+    # -- J4, the LED strip's 5 V IN. ⚠ DRAWN AS A STUB ON PURPOSE: nothing feeds it yet.
+    #    The buck does not fit on the motor controller (see .ins/WORKLIST.md), so this cable
+    #    has no source to be drawn from. The stub shows the four pins and where they face.
+    for _n, _nm in ((1, "gnd_a"), (2, "hot_a"), (3, "hot_b"), (4, "gnd_b")):
+        _pin = EL.pi_cap_pin("J4", _n)
+        out.append(("wire_ledpwr_%s" % _nm, _wire(
+            [_pin, (_pin[0], _pin[1], _pin[2] - CAP_LEAD_IN * 2)], WIRE_OD["wire_5v"])))
 
     # -- motor controller <-> Pi (purple): the USB lead the Pi writes travel offsets over --
     #    a stock USB-A -> XH lead now, off J4's top like every other lead on the board
