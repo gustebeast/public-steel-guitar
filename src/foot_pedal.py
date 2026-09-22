@@ -106,7 +106,7 @@ DEFERRED (this is the first round):
 
 WHAT IS SHARED AND WHAT BRANCHES (user). Shared: the whole feel system — the
 cartridges are the SAME PRINTED SKUs across all three levers (cart_base,
-cart_piston, guide_post, and the coils/screws/inserts/back-stops that
+cart_piston, and the die springs/washers/screws/inserts that
 knee_lever.feel_dummies emits), plus the axle, bearings, magnet, board and cradle
 builder. Branching: the pose, the lobe radius, the throw, the housing envelope,
 and now the cradle's clip — this is the only lever whose housing has an external
@@ -138,15 +138,23 @@ ARM_LEN_P  = 112 * KL.D.BEAD        # 89.6 axle -> pedal-board centre
 ARM_TX     = KL.ARM_TX              # arm depth in X = the bending axis (the foot
                                     # presses along -X), same section as the knee arm
 HUB_D      = KL.HUB_D               # Ø10 hub on the axle — unchanged
-LEVER_HW   = KL.LEVER_HW            # ±10 in Y — unchanged, so the whole bearing /
+LEVER_HW   = KL.LEVER_HW            # ±12.8 in Y (LKL's) — unchanged, so the whole bearing /
                                     # axle / magnet / board stack transfers verbatim
-PAD_LZ     = 88 * KL.D.BEAD         # 70.4 board length along local Z (= guitar Y, the
-                                    # foot's own direction)
-PAD_WY     = 28.0                   # board width along local Y (= guitar X, across)
-PAD_T      = 4.0                    # board thickness
-REC_X      = 5 * KL.D.BEAD          # 4.0 follower recess depth into the leg's -X face
-                                    # (keep = knee_lever_vert.REC_X)
-REC_Z      = 9 * KL.D.BEAD          # 7.2 recess height (keep = knee_lever_vert.REC_Z)
+# THE ARM IS THE PAD (user, 2026-09-21). A separate 28-wide board used to stand on the arm's
+# working face; once the lever widened to 25.6 for the 1.6 recess walls it stood only 1.2 proud
+# a side and read as a stray ledge. The arm's own 25.6 face is the pad now, and the arm runs
+# ARM_TIP further so the foot surface still ends where the board's did.
+PAD_WY     = 2 * LEVER_HW           # 25.6 the working face's width (local Y = guitar X)
+ARM_TIP    = 4.0                    # the arm's reach past ARM_LEN_P (the old board's overhang)
+# Past REST the other way (+theta) nothing but gravity acts, and gravity pulls INTO the spring,
+# so the pedal barely goes there -- the recess still covers a small margin of it.
+REST_OVER_P = 5.0
+# HALF-STOP SETBACK for the pedal: LKL's HS_SETBACK was solved for a 9.5 lobe and 15 deg; on
+# this 13.2 lobe it engaged at 8.32 deg. Re-solved by contact bisection of the pedal lever
+# against its own half-stop piston for first contact at ENGAGE_P (2026-09-21): +0.373 -- the
+# same as LKV, as it should be (same lobe radius, same target). Where the cartridge PARKS on
+# its position screw; the part and the pocket are unchanged.
+HS_SETBACK_P = KL.HS_SETBACK + 0.373
 LEG_TOP    = LOBE_RC_P + 4 * KL.D.BEAD   # the leg reaches 3.2 past the lobe station
 
 # ── PEDAL STATIONS ───────────────────────────────────────────────────────────
@@ -156,9 +164,12 @@ LEG_TOP    = LOBE_RC_P + 4 * KL.D.BEAD   # the leg reaches 3.2 past the lobe sta
 # exactly how XS1 came to fall inside a pedal.
 PEDAL_X  = PB.PEDAL_X
 N_PEDALS = PB.N_PEDALS
-assert PAD_WY == PB.PEDAL_W, (
-    f"the pad is {PAD_WY} but the bar lays the stations out on {PB.PEDAL_W} — the "
-    f"bar's spacing and the pedal's own footprint have to be the same number")
+assert PAD_WY <= PB.PEDAL_W, (
+    f"the pad (the arm, {PAD_WY}) is wider than the {PB.PEDAL_W} the bar lays each station "
+    f"out on")
+# ⚠ PB.PEDAL_W (28) is also described as "the pedal's X footprint, marginally wider than its
+# 27.4 housing" -- stale: the housing is 2*HOUS_HW = 36.4 now. It still works (the splices clear
+# every housing by >= 13, measured 2026-09-21), but it is the bar's number to update.
 
 
 def swing(s, deg):
@@ -180,19 +191,17 @@ def _lever() -> cq.Workplane:
     recess per follower — knee_lever's scheme unchanged."""
     hub = cyl_y(HUB_D, 2 * LEVER_HW, y0=-LEVER_HW)
     leg = box_at(ARM_TX, 2 * LEVER_HW, LEG_TOP, x=0.0, y=0.0, z=LEG_TOP / 2)
-    arm = box_at(ARM_TX, 2 * LEVER_HW, ARM_LEN_P, x=0.0, y=0.0, z=-ARM_LEN_P / 2)
+    arm = box_at(ARM_TX, 2 * LEVER_HW, ARM_LEN_P + ARM_TIP, x=0.0, y=0.0,
+                 z=-(ARM_LEN_P + ARM_TIP) / 2)          # the arm's +X face IS the pad
     body = hub.union(leg).union(arm)
-    # follower recesses, one per cartridge lane, cut into the leg's -X face so the
-    # lobe can protrude into them
+    # follower recesses: knee_lever's SWEPT tongue envelope, one per lane (they were plain
+    # notches sized to the CARTRIDGE -- 14.8 wide each -- which stripped the leg around the
+    # lobe; 2026-09-21, same fix as LKV). The foot drives -theta, hence sense=-1.
     for yc in (KL.MAIN_YC, KL.HS_YC):
-        body = body.cut(box_at(REC_X, KL.HS_CART_WY + 2 * KL.HS_CLR, REC_Z,
-                               x=-ARM_TX / 2 + REC_X / 2, y=yc, z=LOBE_RC_P))
+        body = body.cut(KL.recess_swept(yc, LOBE_RC_P, THROW_P, LOBE_RC_P + KL.FOLL_DZ,
+                                        sense=-1, rest_span=REST_OVER_P))
     body = body.union(cyl_y(2 * KL.LOBE_R, 2 * LEVER_HW, y0=-LEVER_HW)
                       .translate((0.0, 0.0, LOBE_RC_P)))
-    # PEDAL BOARD: the foot presses -X, so the board's working face is its +X one.
-    body = body.union(box_at(PAD_T, PAD_WY, PAD_LZ,
-                             x=ARM_TX / 2 - PAD_T / 2, y=0.0,
-                             z=-(ARM_LEN_P - PAD_LZ / 2 + 4.0)))
     body = KL.cut_axle_bore(body)
     return heal(body)
 
@@ -205,8 +214,8 @@ def _lever_envelope() -> cq.Workplane:
     hub = cyl_y(HUB_D + 2 * c, 2 * (LEVER_HW + c), y0=-(LEVER_HW + c))
     leg = box_at(ARM_TX + 2 * c, 2 * (LEVER_HW + c), LEG_TOP + c,
                  x=0.0, y=0.0, z=(LEG_TOP + c) / 2)
-    arm = box_at(ARM_TX + 2 * c, 2 * (LEVER_HW + c), ARM_LEN_P + 2.0,
-                 x=0.0, y=0.0, z=-(ARM_LEN_P + 2.0) / 2)
+    arm = box_at(ARM_TX + 2 * c, 2 * (LEVER_HW + c), ARM_LEN_P + ARM_TIP + 2.0,
+                 x=0.0, y=0.0, z=-(ARM_LEN_P + ARM_TIP + 2.0) / 2)   # the arm reaches ARM_TIP further now
     return heal(hub.union(leg).union(arm))
 
 
@@ -228,7 +237,7 @@ def lever_room() -> cq.Workplane:
 
 
 # ── housing envelope ─────────────────────────────────────────────────────────
-HOUS_X0 = KL.HOUS_X0                       # cartridge back + back-stop engagement
+HOUS_X0 = KL.HOUS_X0                       # cartridge back + the rear (KL.cut_feel_rear)
 # THIS FACE SITS ON THE BAR TOP, so it is the axle's standoff above the bar, and the
 # PLAYING DATUM sets it — not the race and not the hub (user, 2026-09-10). It used to be
 # max(hub + clearance + wall, race + wall), which the Ø16 688ZZ and the Ø13.6 hub took to
@@ -274,17 +283,20 @@ CRADLE_Z0 = KL.PCB_Z0 - KL.CR_FLOOR_T       # the z_bot the cradle is BUILT
                                             # the two values disagree about it, so
                                             # mixing them would flip the demo board
                                             # inside an unflipped cradle.
-HOUS_Z0 = HOUS_Z1 - Y_BUDGET
+# The PLAYING datum: the axle 10.15 in from the player-side face (= the 25.45 - 35.6 this
+# budget was tuned at). The Ø10 die-spring cartridge (2026-09-21) stands 6.15 taller than the
+# Ø6 coil's, which lifted HOUS_Z1; holding Z0 = Z1 - Y_BUDGET would have dragged the axle and
+# the board with it until the board no longer fit. Z0 holds the datum instead, and the housing
+# grows +Y by Y_GROWTH -- into the 15.6 of bar that stands behind it (the bar is 51.2 deep, see
+# the module header), so it is still inside the bar.
+AXLE_INSET = 10.15
+HOUS_Z0 = min(HOUS_Z1 - Y_BUDGET, -AXLE_INSET)
+Y_GROWTH = (HOUS_Z1 - HOUS_Z0) - Y_BUDGET
+assert Y_GROWTH <= PB.BAR_Y1 - PB.BAR_Y0 - Y_BUDGET + 1e-6, (
+    f"the pedal housing is {Y_GROWTH:.2f} deeper than its {Y_BUDGET} budget, past the bar's "
+    f"own depth -- it would stand proud of the bar's +Y face")
 
-assert KL.PCB_Z0 >= HOUS_Z0, (
-    f"the sensor board reaches z {KL.PCB_Z0:.2f}, below this housing's {HOUS_Z0:.2f} — it "
-    f"would poke through the -Y face and the clip would take the cradle floor with it, "
-    f"leaving nothing to stop the board sliding out while pcb_shim presses that way. "
-    f"That was the state before PCB_WZ came down to {KL.PCB_WZ:.0f}; keep it fitting.")
-# Unguarded until now, and the one direction nothing else checks: board_flip polices
-# the board against a housing's Z WINDOW, but this housing is clipped to a Y budget
-# that is tighter than the window its cradle is built against, so the board can fit
-# board_flip and still overhang here.
+
 
 
 def _housing() -> cq.Workplane:
@@ -387,6 +399,10 @@ MOUNT_DY = BAR_FACE_Y - HOUS_Z0
 
 # ── the board goes in UPSIDE DOWN, and the bar opens to take it ──────────────
 BOARD_FLIP = True                   # user: connector DOWN into the bar (see _housing)
+# the board as INSTALLED (turned over) must not reach past the player-side face
+assert KL.board_z(CRADLE_Z0, HOUS_Z1, BOARD_FLIP)[0] >= HOUS_Z0 - 1e-6, (
+    f"the sensor board as installed reaches z {KL.board_z(CRADLE_Z0, HOUS_Z1, BOARD_FLIP)[0]:.2f}, "
+    f"past this housing's player-side face at {HOUS_Z0:.2f}")
 # Flipped, the board's far edge is at local +X = -PCB_X0, so the cradle is allowed
 # out that far instead of stopping at the bar top. On the knee lever the rule is
 # "nothing +X of the housing prism's face"; here +X is INTO the bar, and the bay
@@ -394,7 +410,6 @@ BOARD_FLIP = True                   # user: connector DOWN into the bar (see _ho
 CRADLE_X_MAX = -KL.PCB_X0                          # 25.0
 # Everything that has to live inside the beam: the board's lower half, the mated
 # connector and the plug's reach past the mouth.
-BAY_X1 = -KL.CONN_MOUTH_X + KL.CONN_PLUG_RUN       # 30.65 — deepest hardware
 BAY_CLR = 0.6                                      # printed clearance around the bay
 # WHERE THE SHIM STOPS. The knee lever's shim runs to the housing ceiling and the
 # chassis underside presses it. The pedal's ceiling IS the bar's +Y face — and that
@@ -431,7 +446,10 @@ def board_bay_cutter():
     # board in both local Y and Z, and they descend with it
     y0, y1 = min(y0, KL.CR_Y0) - BAY_CLR, max(y1, KL.CR_Y1) + BAY_CLR
     z0, z1 = z0 - KL.CR_WEB_T - BAY_CLR, z1 + KL.CR_WEB_T + BAY_CLR
-    x0, x1 = HOUS_X1 - 20.0, BAY_X1 + BAY_CLR      # -20: run out through the top
+    # +X (into the bar) is the deepest posed hardware, measured -- it used to be a typed
+    # connector reach, which went stale when J1 moved to the board's back (2026-09-21)
+    x0, x1 = HOUS_X1 - 20.0, max(max(p.val().BoundingBox().xmax for p in parts),
+                                 CRADLE_X_MAX) + BAY_CLR      # -20: run out through the top
     return box_at(x1 - x0, y1 - y0, z1 - z0,
                   x=(x0 + x1) / 2, y=(y0 + y1) / 2, z=(z0 + z1) / 2)
 
@@ -479,31 +497,27 @@ def fuse_into_bar(piece, x0, x1):
     return piece
 
 
-def cut_backstop_threads(piece, x0: float, x1: float):
-    """The two FEMALE back-stop threads per pedal, cut into the fused bar piece.
+# How far past the housing's own rear the access holes run. The housing stands UP off the bar
+# top (local -X is guitar +Z), so behind its rear there is air, not bar -- this only carries the
+# holes cleanly out through the fused face.
+_BAR_REACH = 1.0
 
-    Separate from fuse_into_bar, and called AFTER the piece is healed, because the
-    thread rules say threads are cut last and alone and a threaded part is never
-    healed — and this housing is fused into a bar piece that heal()s. Cutting them
-    inside _housing would have put a heal after the threads.
 
-    They were missing entirely: knee_lever and knee_lever_vert both cut these, the
-    pedal did not, so its back-stop screws had nothing to thread into and sat
-    183 mm3 buried in solid bar. Invisible until the housings actually reached the
-    assembly."""
-    from cadkit.threads import threaded_rod
+def cut_feel_access(piece, x0: float, x1: float):
+    """The feel cartridges' REAR ACCESS per pedal, cut into the fused bar piece:
+    the tension screw's Ø4.4 way and the position screw's washer recess + key way
+    (KL.cut_feel_rear), carried on THROUGH the bar behind the housing.
+
+    Separate from fuse_into_bar and cut AFTER the union, because the bar stands
+    behind the housing: cut only in the housing, the bar would close the holes
+    and the keys could not reach either screw. (This used to cut the printed
+    back-stop THREADS, which had the same problem -- they sat 183 mm3 buried in
+    solid bar until they were cut here.)"""
     for x in PEDAL_X:
         if not (x0 <= x < x1):
             continue
-        for dy in (KL.MAIN_YC - KL.HS_YC, 0.0):
-            nut = (threaded_rod(KL.HS_TH_MINOR, KL.HS_BSTOP_OD, KL.HS_TH_PITCH,
-                                KL.HS_BSTOP_ENGAGE)
-                   .rotate((0, 0, 0), (0, 1, 0), 90)
-                   .translate((KL.HS_BACK_X + KL.HS_SETBACK,
-                               KL.HS_YC + dy, KL.HS_Z)))
-            piece = piece.cut(place(pplace(nut), x), clean=False)
+        piece = KL.cut_feel_rear(piece, lambda s, x=x: place(pplace(s), x), reach=_BAR_REACH)
     return piece
-
 
 def demo_parts():
     """(name, solid) in GUITAR coordinates — the WHOLE control core at each of the
@@ -530,8 +544,8 @@ def demo_parts():
         out.append((f"pedal_lever_{i}", _P(swing(_lever(), 0.0))))
         out += KL.axle_dummies(_P, pre, CRADLE_Z0, HOUS_Z1, flip=BOARD_FLIP,
                                shim_top=SHIM_TOP)
-        out += KL.cart_dummies(_F, pre)
-        out += KL.feel_dummies(_F, pre)
+        out += KL.cart_dummies(_F, pre, hs_setback=HS_SETBACK_P)
+        out += KL.feel_dummies(_F, pre, hs_setback=HS_SETBACK_P)
     return out
 
 
