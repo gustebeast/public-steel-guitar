@@ -21,7 +21,7 @@ one part is not stocked at all in the library we committed to:
 
 | Row | Was | Now | Impact |
 |---|---|---|---|
-| Optical photodiode (VEMD4110X02) | ~$0.35 ea | **not on LCSC**; use **X01**, same filter, **$0.58 @100+** | +$4.6/board; ⚠ 72 in stock vs 200 needed |
+| Optical photodiode (VEMD4110X02) | ~$0.35 ea | **REPLACED 2026-09-21 by the Everlight `PD15-22B/TR8` (C161211), $0.067 @200, 11,271 in stock** — filtered, 940 nm peak, ~3× the photocurrent; the sensor triplet was redesigned around its 3.3 × 2.8 body | **−$10.3/board**; stock block CLEARED |
 | Optical MCU STM32H743IIT6 (was ZIT6) | $7.63 | **$10.01 @10**, 548 in stock (C89597, 2026-09-17) | +$2.38/board; stock block CLEARED by the LQFP176 swap |
 | TRRS jack Tensility 10-03404 | $5.15 | **$8.19 / $6.96 @10** | +$3 |
 | Bridge bearing 693ZZ | ~$1 ea | **superseded 2026-08-07** | part RETIRED — the whole instrument moved to one 695ZZ (Ø5×13×4); see the ball-bearing row |
@@ -1023,9 +1023,9 @@ $0.59–0.78 per pre-crimped lead — 20×; needs a ~$25–45 tool, below).
 | **XH crimp contacts** | JST **SXH-001T-P0.6** | 300 | **$0.0235–0.047** [v] | [DigiKey](https://www.digikey.com/en/products/result?keywords=SXH-001T-P0.6) | 22–30 AWG; qty includes learning-curve scrap |
 | **XH housings** | JST **XHP-2 / XHP-4 / XHP-6** | ~30 | **$0.10** [v] | [DigiKey](https://www.digikey.com/en/products/result?keywords=XHP-4) | contacts click in by hand, extractable; XHP-6 mates the SERVO42D pigtail |
 | **XH header**, SMT side-entry | JST **S4B-XH-SM4-TB** | 1 | **$0.6577 / $0.2889 @800** [v] | [LCSC C161861](https://lcsc.com/product-detail/Wire-To-Board-Connector_JST-S4B-XH-SM4-TB-LF-SN_C161861.html) | **OPTICAL board only (J2), qty 1** — corrected 2026-09-19 from "8, sensor boards only", which was true until the sensor board moved to an S8B-XH-A and stopped using this part at all. It earns the second part number: it is the piece that lets a board be SINGLE-SIDED. SMT (no post tails through a face that has to seat), side entry (a top-entry plug would have to be inserted from inside the housing). B = 15.0, 7.0 tall, 6.1 body depth, 4.5 mouth. Mates the same XHP-4 plugs and crimps as everything else, so the harness is unaffected. ~40k in LCSC stock; in JLC's library as C161861 — check it is orderable for assembly at quote time |
-| **XH headers**, THT top-entry | JST **B4B-XH-A(LF)(SN)** ×7, **B2B-XH-A(LF)(SN)** ×1 | 8 | **$0.17** [v] | [DigiKey](https://www.digikey.com/en/products/result?keywords=B4B-XH-A) | motor_ctrl ×5 and output_panel ×2 (B4B), output_panel J9 ×1 (B2B). Counted from the built fab packages by `elec/part_totals.py`, not by hand — this row said "~30" and named a B6B, and there is no B6B anywhere in the design. B4B is C144395, B2B is C158012, both verified. Modelled from JST's own drawing (`cadkit.pcb.jst_xh_header`): B4B is **12.4 × 5.75**, **7.0 mm** tall bare and **9.8 mm mated** — the mated figure is the one clearances must use — with □0.64 posts reaching 3.4 mm below the seating plane, i.e. **1.8 mm proud** of a 1.6 mm board's far face. The pin row is **2.0 mm from one long edge, 3.75 from the other**, so the part is not symmetric about its pins and which way it faces is a real layout decision |
+| **XH headers**, THT top-entry | JST **B4B-XH-A(LF)(SN)** ×6, **B2B-XH-A(LF)(SN)** ×1 | 7 | **$0.17** [v] | [DigiKey](https://www.digikey.com/en/products/result?keywords=B4B-XH-A) | motor_ctrl ×4 and output_panel ×2 (B4B) — motor_ctrl J2 (the lever bus) went **PH** 2026-09-21, see the next row, output_panel J9 ×1 (B2B). Counted from the built fab packages by `elec/part_totals.py`, not by hand — this row said "~30" and named a B6B, and there is no B6B anywhere in the design. B4B is C144395, B2B is C158012, both verified. Modelled from JST's own drawing (`cadkit.pcb.jst_xh_header`): B4B is **12.4 × 5.75**, **7.0 mm** tall bare and **9.8 mm mated** — the mated figure is the one clearances must use — with □0.64 posts reaching 3.4 mm below the seating plane, i.e. **1.8 mm proud** of a 1.6 mm board's far face. The pin row is **2.0 mm from one long edge, 3.75 from the other**, so the part is not symmetric about its pins and which way it faces is a real layout decision |
 | **XH header**, SMT side-entry 8-way | JST **S8B-XH-A(LF)(SN)** | **10** | **$0.1785 / $0.1418 @50** [v] | [LCSC C157914](https://lcsc.com/search?q=S8B-XH-A) | **THE MOST NUMEROUS CONNECTOR IN THE INSTRUMENT, and it was missing from this table entirely until 2026-09-19.** 10 CAN tees, one each (**the 11 lever/pedal sensor boards moved to PH, 2026-09-21 — row below**); both carry the bus THROUGH, so the 8 ways are the trunk twice over (in on 1–4, out on 5–8) in the one pin order `elec/harness.py` defines. **Watch the stock:** 160 pieces at last check is 7.6 instruments — the second tightest part in this BOM after the photodiode, and it only became a 21-per-instrument part when the sensor board's connector changed on 09-18 |
-| **PH header**, SMT side-entry 8-way | JST **S8B-PH-SM4-TB(LF)(SN)** | **11** | **$0.2885 @100 / $0.3344 @30** [v] | [LCSC C265121](https://www.lcsc.com/product-detail/C265121.html) — 19,469 in stock 2026-09-21 | The lever/pedal SENSOR boards' J1 (user, 2026-09-21): the lever bus runs at **5 V**, so it takes a different family from the 24 V XH motor tees — **no harness can put 24 V on a lever board**. SMT (single-sided panel, no THT step), on the magnet face, on end: 19.9 long, 5.5 tall, 6.0 deep + 2.6 tabs (JST ePH p.4, side-entry). Stock was the other reason: S8B-XH-A showed 105. Harness side = PHR-8 housing + SPH-002T-P0.5S contacts (stock not yet checked) and a PH crimp tool; **brenner's leg wiring uses PH too** (user). See `docs/lever-sensor-respin.md`. |
+| **PH header**, SMT side-entry 8-way | JST **S8B-PH-SM4-TB(LF)(SN)** | **12** | **$0.2885 @100 / $0.3344 @30** [v] | [LCSC C265121](https://www.lcsc.com/product-detail/C265121.html) — 19,469 in stock 2026-09-21 | The lever/pedal SENSOR boards' J1 (11) **and motor_ctrl J2** (1, 2026-09-22: the controller moved to the MIDDLE of bus B, so it is a pass-through node and takes the same 8-way trunk part, in on ways 1-4 and out on 5-8, as every other bus-B node) (user, 2026-09-21): the lever bus runs at **5 V**, so it takes a different family from the 24 V XH motor tees — **no harness can put 24 V on a lever board**. SMT (single-sided panel, no THT step), on the magnet face, on end: 19.9 long, 5.5 tall, 6.0 deep + 2.6 tabs (JST ePH p.4, side-entry). Stock was the other reason: S8B-XH-A showed 105. Harness side = PHR-8 housing + SPH-002T-P0.5S contacts (stock not yet checked) and a PH crimp tool; **brenner's leg wiring uses PH too** (user). See `docs/lever-sensor-respin.md`. |
 | **XH header**, SMT side-entry 4-way | JST **S4B-XH-A(LF)(SN)** | **10** | **$0.0896 / $0.0699 @50** [v] | [LCSC C157925](https://lcsc.com/search?q=S4B-XH-A) | The CAN tee's drop to its own motor, one per tee. Also absent from this table until 2026-09-19. Same XHP-4 plug and crimp as the rest of the harness. 86,305 in stock 2026-09-19 — no sourcing concern |
 | **Power connector** (PSU trunk only) | XT30 pair — DFRobot **FIT0586** | 4 pr | **$1.90** [v] | [DigiKey](https://www.digikey.com/en/products/detail/dfrobot/FIT0586/9559255) | 15 A/30 A pk, gold; pigtails bench-soldered ONCE, field = plug/unplug only |
 | ~~**CAN terminator R**~~ | ~~Yageo **CFR-25JB-52-120R** (120 Ω ¼ W)~~ | **0** | — | — | **OBSOLETE 2026-09-19 — there is no site left for a discrete terminator.** Every termination in the instrument is now an on-board SMT 120R behind a solder jumper: motor_ctrl ×2 ("termination at THIS end of each bus"), can_tee ×1 per tee, lever_sensor ×1 per board. This row said "motor controller + last motor", and the "last motor" end IS the last tee — one tee sits at every motor, each with its own jumpered 120R. The row already half-knew, noting "bus-B termination lives ON the tees". Qty was 10, which matched neither the two bus ends it describes nor anything else. **23 SMT 120R are FITTED per instrument** (10 tees + 11 sensor boards + 2 on the motor controller) and exactly **2 are closed** — one at each end of each bus — which is what the jumpers are for; ISO 11898 wants 120 Ω at each END of the trunk and nowhere else. They are part of each board's assembly BOM, not a separately ordered line |
@@ -1047,6 +1047,23 @@ The SERVO42D's own I/O is **XH2.54 native**, so the XH standard needs no
 adapting at the motors.
 
 ## Optical pickup PCB (per-string sensing + on-board audio→MIDI)
+
+> **⚠ 2026-09-21 — detector and converter changed; parts of this section predate it.**
+> * **Photodiode → Everlight `PD15-22B/TR8`** (C161211, $0.067, 11,271 in stock). The
+>   VEMD4110X01 had 95 in stock against 20 per board and no 0805 substitute; the full
+>   catalogue (802 photodiodes) has filtered parts in bigger packages, and the triplet was
+>   redesigned around this one: detectors at ±2.375 across the string, apertures 7.6 wide.
+>   Peak sensitivity 940 nm (the emitter's), ~3× the photocurrent.
+> * **Converters → 5× TI `TLV320ADC3140`** ($18.23/board). The H743's own ADCs were the
+>   noise floor (77 dB single-ended). The converters run at 192 kHz, the emitters are
+>   square-waved at 48 kHz locked to the frame, and firmware demodulates (lock-in) — the
+>   old LEDs-on/LEDs-off sampling needs a sampler, which a delta-sigma part is not.
+> * **TIA: 1M / 1 pF** (was 4M7 / 2.2 pF), to pass the carrier. The photodiode is now wired
+>   cathode-to-summing-node: the old anode-in wiring drove the output DOWN from a 0.33 V MID.
+> * **Noise floor = the light itself** (photon shot noise, ~67 dB on the thinnest string
+>   with pulsed emitters, no ambient). Ambient IR (sun, halogen) adds shot noise the filter
+>   cannot remove; LED/fluorescent stage light is rejected. Net board cost ~+$8.40.
+> Older text below that quotes 67/75 dB, 4M7, 96 kHz pulsing, or the VEMD part is history.
 
 > ### ⚠ 2026-09-17 — every part audited against its manufacturer's datasheet
 >
@@ -1165,7 +1182,11 @@ ADC inputs plus a 12-signal ULPI bus will not fit a 64-pin part.
 
 | Qty | Ref | Part / role | Package | Envelope (mm) |
 |-----|-----|-------------|---------|---------------|
-| 1 | U6 | MCU — **STM32H743IIT6**, 20× 16-bit ADC ch, USB OTG_HS via ULPI | LQFP176 | 26.00 × 26.00 × 1.60 |
+| 1 | U6 | MCU — **STM32H743IIT6**, 5 SAI TDM lanes from the audio ADCs, USB OTG_HS via ULPI (its own ADCs unused since 2026-09-21) | LQFP176 | 26.00 × 26.00 × 1.60 |
+| 5 | U14–U18 | **audio ADC — TI `TLV320ADC3140IRTWT`** (C1852021), 4 ch each, one per quad, 192 kHz, differential AC-coupled against MID. Replaced the H743's own ADCs 2026-09-21: they were the noise floor (77 dB single-ended), and a delta-sigma converter also filters the op-amps' out-of-band noise and samples all 20 channels on one edge | WQFN-24 (RTW) | 4.00 × 4.00 × 0.80 |
+| 25 | Cs11–Cs58 | ADC supply / reference bypass — per converter 1 µF (AVDD), 10 µF (AREG, DREG, IOVDD), 1 µF (VREF): TI SBAS993B Fig. 165 less its 100 nF partners, which 0402 bulk parts make redundant | 0402 | 1.00 × 0.50 × 0.55 |
+| 40 | Ci11–Cm54 | ADC input coupling — **10 nF C0G**: INxP from each TIA, INxM to GND (single-ended AC-coupled, SBAS993B Fig. 31) | 0402 | 1.00 × 0.50 × 0.55 |
+| 2 | R50, R51 | I2C2 pull-ups 4k7 ×2 (all five converters share one bus and one address, written together; SHDNZ is tied high at each part and firmware issues the software reset) | 0402 | 1.00 × 0.50 × 0.55 |
 | 1 | J1 | USB-C receptacle — 10 ch audio + MIDI + DFU | USB-C | 8.94 × 7.35 × 3.16 |
 | 1 | J2 | **24 V in** from the instrument trunk — side entry, −X edge, 2 cavities empty ⚠ **no source yet, see below** | XH-SM-4 | 6.10 × 15.00 × 7.00 |
 | 5 | U1–U5 | quad op-amp — 4× transimpedance amp | SOIC-14 | 6.00 × 8.65 × 1.75 |
@@ -1174,8 +1195,8 @@ ADC inputs plus a 12-signal ULPI bus will not fit a 64-pin part.
 | 1 | U9 | LDO — 3V3 analog (low noise, **needs C127 on BYP**) | SOT-23-5 | 2.90 × 2.80 × 1.45 |
 | 1 | C127 | analog LDO noise bypass — 1 µF, **the reason U9 is this part** | 0402 | 1.00 × 0.50 × 0.55 |
 | 1 | U11 | single op-amp — TIA mid-rail reference buffer | SOT-23-5 | 2.90 × 2.80 × 1.45 |
-| 1 | U13 | **TPS560430XFDBVR** 24→5 V synchronous buck, 1.1 MHz forced PWM | SOT-23-6 | 2.90 × 1.60 × 1.10 |
-| 1 | L1 | buck inductor — **SWPA4020S150MT**, 15 µH shielded, **Isat 1.35 A** | 4040 | 4.00 × 4.00 × 2.00 |
+| 1 | U13 | **LMR33630CRNXR** 24→5 V synchronous buck, 2.1 MHz, 3 A (was the 600 mA TPS560430, 105 % used worst case once the five converters landed; user 2026-09-22). No forced-PWM variant is stocked; at 2.1 MHz with 4.7 µH it stays in continuous conduction above ~0.2 A | RNX-12 | 2.00 × 3.00 × 1.00 |
+| 1 | L1 | buck inductor — **SWPA4030S4R7MT** (C57269), 4.7 µH shielded, **Isat 3.2 A** | 4040 | 4.00 × 4.00 × 3.00 |
 | 1 | C160 | 24 V input bulk — 10 µF/50 V, **1206 for the DC-bias derating** | 1206 | 3.20 × 1.60 × 1.45 |
 | 1 | C162 | buck 5 V output bulk — 22 µF/16 V | 0805 | 2.00 × 1.25 × 1.45 |
 | 1 | C164 | **U8 input bulk** — 10 µF/16 V; V5_PRE had no local capacitor at all | 0805 | 2.00 × 1.25 × 1.45 |
@@ -1206,14 +1227,14 @@ ADC inputs plus a 12-signal ULPI bus will not fit a 64-pin part.
 > **255 ± 5 °C, not adjustable** — so this part, like the VEMD4110X01 photodiode,
 > sits at the top of its rating with no margin. Two of the twenty most
 > irreplaceable parts on the board are in that position.
-| 20 | PD1A–PD10B | PIN photodiode — **Vishay VEMD4110X01**, daylight filter (740–1040 nm) | 0805 (opto) | 2.00 × 1.25 × 0.85 |
-| 5 | R1–R5 | LED current-set — **180R** (21 mA) nominal, plain strings | 0603 | 1.60 × 0.80 × 0.95 |
-| 5 | R6–R10 | LED current-set — **180R** (21 mA) nominal, wound strings | 0603 | 1.60 × 0.80 × 0.95 |
+| 20 | PD1A–PD10B | PIN photodiode — **Everlight PD15-22B/TR8** (C161211), black-epoxy daylight filter (730–1100 nm, **peak 940 nm**), ±2.375 across the string. Was the VEMD4110X01 (95 in stock) until 2026-09-21 | 3.3 × 2.8 (4 pads) | 3.30 × 2.80 × 1.10 |
+| 5 | R1–R5 | LED current-set — **180R** (21 mA) nominal, plain strings | 0402 | 1.00 × 0.50 × 0.55 |
+| 5 | R6–R10 | LED current-set — **180R** (21 mA) nominal, wound strings | 0402 | 1.00 × 0.50 × 0.55 |
 | 1 | FB1 | ferrite bead — analog rail isolation | 0603 | 1.60 × 0.80 × 0.95 |
 | 4 | C130–C133 | bulk caps — VBUS / 3V3D / 3V3A / reference | 0805 | 2.00 × 1.25 × 1.45 |
-| 20 | Rf11–Rf54 | TIA feedback resistor — **4M7** nominal, tuned per string | 0402 | 1.00 × 0.50 × 0.55 |
+| 20 | Rf11–Rf54 | TIA feedback resistor — **1M** nominal (was 4M7), tuned per string — the TIA must now pass the 48 kHz emitter carrier | 0402 | 1.00 × 0.50 × 0.55 |
 | 4 | C140–C143 | power-input decoupling | 0402 | 1.00 × 0.50 × 0.55 |
-| 20 | Cf11–Cf54 | TIA feedback cap — **2.2 pF** C0G, 15.4 kHz pole | 0402 | 1.00 × 0.50 × 0.55 |
+| 20 | Cf11–Cf54 | TIA feedback cap — **1 pF** C0G, ~160 kHz pole (was 2.2 pF / 15.4 kHz) | 0402 | 1.00 × 0.50 × 0.55 |
 | 12 | C100–C111 | MCU decoupling | 0402 | 1.00 × 0.50 × 0.55 |
 | 10 | Cd11–Cd52 | op-amp decoupling | 0402 | 1.00 × 0.50 × 0.55 |
 | 4 | C123–C126 | crystal load caps | 0402 | 1.00 × 0.50 × 0.55 |
@@ -1400,7 +1421,8 @@ Basic classes (no feeder charge):
 
 | Line | MPN | LCSC | Qty | Ext. | Note |
 |---|---|---|--:|--:|---|
-| PD1A–PD10B | `VEMD4110X01` | C3211080 | 20 | **$11.60** | filtered ✓ · ⚠ 95 in stock 2026-09-17, 200 needed · **no substitute exists** |
+| PD1A–PD10B | `PD15-22B/TR8` | C161211 | 20 | **$1.33** | filtered ✓ · 11,271 in stock 2026-09-21 · replaced the VEMD4110X01 ($11.60, 95 in stock) |
+| U14–U18 | `TLV320ADC3140IRTWT` | C1852021 | 5 | **$18.23** | 4-ch audio ADC ✓ · 306 in stock 2026-09-21 (the IRTWR reel C882863 is ~$1 less each but had 67) |
 | U6 | `STM32H743IIT6` | C89597 | 1 | $10.01 | 548 in stock (2026-09-17) |
 | U7 | `USB3343-CP` | C633347 | 1 | $1.78 | ULPI PHY, QFN-24 ✓ |
 | U1–U5 | `TLV9064IDR` | C388176 | 5 | $1.08 | **the TIA part** — see below ✓ |
