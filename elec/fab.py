@@ -115,6 +115,7 @@ LCSC = {
     # genuine manufacturer; where a listing was the bare MPN at 0 stock and its (LF)(SN)
     # tin-plated form was stocked, the stocked form is the same part as ordered from JST.
     "B4B-XH-A": "C144395",          # JST B4B-XH-A(LF)(SN), stock 60,424
+    "B4B-PH-K-S": "C131334",        # JST B4B-PH-K-S(LF)(SN), stock 138,037 -- motor ctrl J2 (lever bus)
     "B2B-XH-A": "C158012",          # JST B2B-XH-A(LF)(SN), stock 381,008 -- sourced
                                     # 2026-09-19 by asking the catalogue, and it is the
                                     # (LF)(SN) trap again and not a preference: the BARE

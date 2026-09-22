@@ -1278,19 +1278,15 @@ def tidy_router_vias(board, notes, min_gap_mm=0.25):
         t.SetLayer(layer)
         t.SetNetCode(nc)
         board.Add(t)
-    gone = 0
-    while want:
-        hit = None
-        for t in board.GetTracks():
-            if t.m_Uuid.AsString() in want:
-                hit = t
-                break
-        if hit is None:
-            break
-        want.discard(hit.m_Uuid.AsString())
-        board.Remove(hit)
-        del hit
-        gone += 1
+    # ONE sweep, collected before anything is removed. The old loop re-walked the track
+    # list after every Remove and left its loop variable bound to a removed item; on the
+    # optical board (34 removals, 2026-09-21) the container came back as a bare
+    # SwigPyObject and the next GetTracks() raised, discarding the route.
+    hits = [t for t in board.GetTracks() if t.m_Uuid.AsString() in want]
+    gone = len(hits)
+    for h in hits:
+        board.Delete(h)
+    del hits
     if gone:
         board.BuildConnectivity()
         print("  tidied %d router via(s) -- %s%s"

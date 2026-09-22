@@ -66,11 +66,15 @@ HEIGHT = {
     "C_0402_1005Metric": 0.55, "R_0402_1005Metric": 0.50,
     "C_0805_2012Metric": 1.45, "C_1206_3216Metric": 1.60, "C_1210_3225Metric": 1.80,
     "Crystal_SMD_3225-4Pin_3.2x2.5mm": 0.90,
+    # the lever board's QFNs: CH32V203G6U6 (QFN-28 4x4, 0.90 max), MT6701QT (QFN-16, 0.80)
+    "QFN-28-1EP_4x4mm_P0.4mm_EP2.4x2.4mm": 0.90, "QFN-16-1EP_3x3mm_P0.5mm_EP1.45x1.45mm": 0.80,
     "D_SMA": 2.20, "D_SOD-123": 1.10, "D_SOD-523": 0.75,
     "HVQFN-24-1EP_4x4mm_P0.5mm_EP2.5x2.5mm": 0.80,
     "QFN-68-1EP_8x8mm_P0.4mm_EP5.2x5.2mm": 0.90,
     "JST_XH_B2B-XH-A_1x02_P2.50mm_Vertical": 7.0,
     "JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical": 7.0,
+    "JST_PH_B4B-PH-K_1x04_P2.00mm_Vertical": 6.0,   # JST PH top entry (motor ctrl J2)
+    "JST_PH_S8B-PH-SM4-TB_1x08-1MP_P2.00mm_Horizontal": 5.5,   # cadkit PH_SIDE_H
     "Jack_6.35mm_Neutrik_NMJ4HCD2_Horizontal": 15.67,     # Neutrik's STEP: body top
     "L_0603_1608Metric": 0.95, "L_Taiyo-Yuden_NR-30xx": 1.50,
     "Relay_DPDT_FRT5_SMD": 5.10,
@@ -93,6 +97,10 @@ HEIGHT = {
 # a top-entry XH with its XHP plug seated: 9.8 over the board (JST's "assembled board
 # height"), which is what a housing has to leave room for -- see solid(mated=True)
 _XH_MATED_H = 9.8
+# ⚠ ESTIMATE, NOT READ: a top-entry PH with its PHR plug seated. 6.0 body + the PHR's
+# reach above it; confirm off JST's ePH drawing (the same pages cadkit's PH_SIDE_* were
+# rendered from) before a housing is cut to it.
+_PH_MATED_H = 8.0
 
 # ── PANEL CONNECTORS: the facts a panel is cut to ───────────────────────────────────
 #   mouth   the mouth's direction in the footprint's OWN frame (KiCad's, +Y DOWN)
@@ -221,6 +229,8 @@ def solid(board: str, mated: bool = False) -> cq.Workplane:
         h = HEIGHT[fp_name(f["fpid"])]
         if mated and fp_name(f["fpid"]).startswith("JST_XH_") and "Vertical" in f["fpid"]:
             h = _XH_MATED_H
+        elif mated and fp_name(f["fpid"]).startswith("JST_PH_") and "Vertical" in f["fpid"]:
+            h = _PH_MATED_H
         if h <= 0.0:
             continue
         x0, x1, y0, y1 = f["fab"]
