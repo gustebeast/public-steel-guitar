@@ -1409,6 +1409,24 @@ def _cell_tracks():
     return out + _fan_tracks() + _shdn_tracks() + _v3_trunk()
 
 
+# ⚠ THE +3V3D CLUSTERS CANNOT BE JOINED BY LAYING EITHER (2026-09-22). _v3_trunk links
+# each cluster internally and took that net from 5 failures to 2; the 2 that remain are the
+# annulus-to-wrap hop. Searched for a single-layer path from (-28.75, -36.04) to
+# (-22.06, 91.61), checking BOTH the pads and the outline: no straight lane exists, and no
+# 3-segment dogleg over a 26 x 60 x 26 grid of candidates exists either. The sensing strip is
+# genuinely full across its whole length. Crossing it needs In2 and therefore vias, and the
+# router will not connect to a pre-laid via here -- so that hop stays the router's.
+#
+# ⚠ AND THE NEXT LEVER FOR U15 IS THE CELL'S ROW ORDER, WHICH IS BACKWARDS FOR SIGNAL FLOW.
+# In each cell the Ci coupling caps sit in the NEAR row (3.75 from the chip) and the Cm caps
+# in the FAR row (5.85) -- so a signal arriving from the strip meets Cm FIRST and has to get
+# past it to reach its own Ci. That is what closes the eastward corridor to 0.4 mm (Cm21
+# starts at y 81.4). Swapping the two rows would put Ci outermost, facing the incoming run.
+# It is not a one-line change: elec/optical.py's _fan_tracks lays the fan from these same
+# CELL_NEAR/CELL_FAR offsets and assigns rows per pin, so both have to move together, and it
+# touches all five cells including the three that route fine today.
+
+
 # ⚠ _u15_haul IS DELETED, AND ITS LESSON IS WORTH MORE THAN THE CODE WAS (2026-09-22).
 # It laid four F.Cu lanes from the strip to U15's coupling caps, through a corridor measured
 # "completely clear of pads" at x -16.5..-5.5 over y 45..83. It routed 11 unconnected and 3
