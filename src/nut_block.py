@@ -69,7 +69,7 @@ import math
 import cadquery as cq
 
 from . import dimensions as D
-from .helpers import cyl, box_at, cyl_y
+from .helpers import box_at, cyl_y
 from cadkit.holes import teardrop_hole
 
 PRINT_UP = (1.0, 0.0, 0.0)                      # build axis: the -X face is the bed
@@ -455,11 +455,6 @@ assert not _WRAPS_BAD, (
     f"strings {_WRAPS_BAD} cannot fit the recommended {WRAPS} wraps in their lane")
 
 
-def clamp_widths(i: int) -> float:
-    """Contact at the clamp, in string widths -- what CLAMP_WIDTHS asked for."""
-    return (wraps(i) - 1.0) * WRAP_F + 1.0
-
-
 def exit_angle(i: int) -> float:
     """Where string i's tail leaves the rod -- EXIT_DEG, by construction, since turns()
     is built as the entry sweep plus a whole number of revolutions."""
@@ -628,7 +623,6 @@ def clamp_y(i: int) -> float:
 # what used to be per-string was a POCKET DEPTH differing by 0.025 mm, which no printer
 # here can hold. What is per-string now is a Y layout differing by millimetres, which any
 # printer holds trivially. The precision moved off the machine and onto the string.
-INS_STEP_X  = (DOWEL_X + ROD_X) / 2.0           # (unused: the step is derived in _plan)
 # Both lobes are the FEATURE plus a hair, not a round number -- the padding is wall
 # taken from the neighbour, and at the bass end there is none to spare. 4.3 puts the
 # dowel-lobe wall on the 1.6 two-bead target exactly.

@@ -32,7 +32,7 @@ import cadquery as cq
 from . import dimensions as D
 from . import motor_bank as MB
 from .components import MOTOR_PULLEY_STANDOFF
-from .helpers import box_at, cyl
+from .helpers import box_at
 from cadkit.joinery import PrintSpec, joint
 
 T        = D.WALL_THICKNESS            # rail thickness (solid; slicer infills)

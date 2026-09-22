@@ -525,11 +525,6 @@ def cover(cx: float = LX_C) -> cq.Workplane:
     return b.cut(_cover_lock_pocket())
 
 
-def slider_pressed(cx: float = LX_C) -> cq.Workplane:
-    """The slider RELEASED -- pressed in by STROKE, i.e. away from the face."""
-    return slider(cx).translate((0, -STROKE, 0))
-
-
 # ═══════════════════════════════════════════════════════════════════════════
 # hardware dummy
 # ═══════════════════════════════════════════════════════════════════════════
@@ -541,10 +536,6 @@ def spring_length(pressed: bool = False) -> float:
     """Installed coil length: SEAT (inside the slider's blind bore) + GAP (open,
     to the tunnel's back wall). Pressing the button closes the GAP by STROKE."""
     return SPR_SEAT + SPR_GAP - (STROKE if pressed else 0.0)
-
-
-def spring_force(pressed: bool = False) -> float:
-    return (SPR_FREE - spring_length(pressed)) * SPR_RATE
 
 
 def coil(length: float, base, direction) -> cq.Workplane:

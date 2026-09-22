@@ -34,10 +34,9 @@ except Exception:                       # a profiling hook must NEVER break a bu
     def report_build_regressions(): return 0
 
 from . import dimensions as D
-from .helpers import heal, cyl, cyl_y
+from .helpers import heal
 from . import components as C
 from . import chassis as CH
-from . import motor_bank as MB
 from .components import MOTOR_PULLEY_STANDOFF
 from .bridge_endplate import bridge_endplate
 from . import bridge_endplate as BE
@@ -1264,6 +1263,19 @@ def _tensioner_coupon_components():
 
 
 def collect_components():
+    """EVERY placed thing in the instrument: [(name, cq.Workplane), ...].
+
+    The one entry point the whole tool chain is built on -- the overlap and sweep
+    gates, the GLB and rig exporters, scratch_view and the build profiler all take
+    their model from here, so a part that is not in this list is invisible to every
+    check in the project. It is the ASSEMBLY, not the print list: purchased-part
+    dummies, PCBs and the wiring harness are all in it, each already posed in world
+    coordinates (printed parts are exported separately, in their print poses).
+
+    Names matter beyond display. The gates key their allow-lists on them, and a
+    trailing index (``chassis_0``) is stripped to a base name before matching, so
+    renaming a part silently changes which contacts are treated as designed.
+    """
     _KE = __import__("src.keyhead_endplate", fromlist=["e"])
     # the standing electronics and the whole motor bank are packed against this face
     # (dimensions.KEYHEAD_INBOARD_X). Checked here, where the gate builds the keyhead anyway
@@ -1525,10 +1537,10 @@ _COLORS = {
     "wire_pickup":     (0.55, 0.85, 0.55),   # lightest green - shielded. DORMANT: the
                                              #   wire returns when the optical board is
                                              #   designed and the pickup plugs into it
-    "wire_link":       (0.95, 0.72, 0.22),   # light amber - Teensy <-> Pi
+    "wire_link":       (0.95, 0.72, 0.22),   # light amber - motor controller <-> Pi
     "wire_tdm":        (0.80, 0.46, 0.10),   # deep amber  - CS stack -> Pi
-    "wire_oled":       (0.68, 0.36, 0.08),   # brown-amber - OLED -> Teensy
-    "wire_joy":        (0.54, 0.28, 0.08),   # darkest amber - joystick -> Teensy
+    "wire_oled":       (0.68, 0.36, 0.08),   # brown-amber - OLED -> Pi
+    "wire_joy":        (0.54, 0.28, 0.08),   # darkest amber - joystick -> Pi
     "wire_usb":        (0.55, 0.25, 0.75),   # violet      - shielded USB-2 -> Pi
 }
 _DEFAULT_COLOR = (0.80, 0.80, 0.80)
@@ -1601,7 +1613,7 @@ def _export_assembly(publish=True, gate=True, gate_full=True):
     if not gate:
         return 0
     # both gates always run, so one RED doesn't hide the other's result
-    return _report_overlaps(comps, full=gate_full) | _report_sweep(comps)
+    return _report_overlaps(comps, full=gate_full) | _report_sweep(comps) | _report_dead()
 
 
 # The overlap gate's ACCEPTED baseline: the count of REAL defects tracked
@@ -1619,10 +1631,10 @@ OVERLAP_BASELINE = 0
 def _report_overlaps(comps, full=False) -> int:
     """Run the overlap gate on the model we JUST built, and return 1 on regression.
 
-    This is the whole point of folding the gate into the build: the scan itself is
-    ~13 s, but ``tools.check_overlaps`` run standalone spends ~5.5 MINUTES rebuilding
-    the model first. Reusing ``comps`` makes a full-tree gate essentially free, so
-    the lead never has to choose between gating and building.
+    This is the whole point of folding the gate into the build: the scan is seconds
+    on a warm pair cache, but ``tools.check_overlaps`` run standalone spends MINUTES
+    rebuilding the model first. Reusing ``comps`` makes a full-tree gate essentially
+    free, so the lead never has to choose between gating and building.
     """
     try:
         from tools.check_overlaps import gate
@@ -1653,6 +1665,26 @@ def _report_sweep(comps) -> int:
         return 0
     print(f"SWEEP GATE: {'green' if n == 0 else f'RED — {n} swept collision(s)'}", flush=True)
     return 1 if n else 0
+
+
+def _report_dead() -> int:
+    """Source drift, not geometry: module-level definitions nothing in the repo names
+    any more. REPORT ONLY -- it never fails the build. Retired parts leave their
+    builders behind (the electronics tray left nine), and the cost of that is a reader
+    believing dead code is live, which is worth a line of output and not worth blocking
+    an agent's merge over. See tools/check_dead.py for what counts as a use."""
+    try:
+        from tools.check_dead import scan, KNOWN
+        dead = [d for d in scan() if d[2] not in KNOWN]
+    except Exception as e:               # noqa: BLE001 -- never let a report eat a build
+        print(f"dead-code report: SKIPPED ({type(e).__name__}: {e})", flush=True)
+        return 0
+    if dead:
+        print(f"dead code: {len(dead)} unreferenced definition(s) -- "
+              f"py -3.12 -m tools.check_dead", flush=True)
+        for path, lineno, name in dead:
+            print(f"    {path}:{lineno}  {name}()", flush=True)
+    return 0
 
 
 def _publish_web_preview(comps, build_n):

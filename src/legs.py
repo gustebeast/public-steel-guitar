@@ -93,7 +93,6 @@ Z-ovality would eat the 0.2..0.4 fits and roughen the thread flanks):
 
 from __future__ import annotations
 
-import math
 
 import cadquery as cq
 
