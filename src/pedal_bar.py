@@ -319,8 +319,9 @@ TROUGH_X1 = FEET[0][0] - LG.BLK_W / 2 - 0.6   # right up to the towers
 # is also how the lead is reached: LID_XA is BAR_X0, so the lid covers this.
 CHAM_X0 = BT._ax()[0] - 8.0                # -624.46: 8 of run -X of the spine, which
                                            # is where the lead's bend wants to live
-CHAM_Y0 = BT._ax()[1] - BT.JB_D / 2 - 0.8  # 41.90 -- deep enough in -Y to swallow the
-                                           # cable way's whole mouth, and no deeper
+CHAM_Y0 = YC - 8.0                          # deep enough in -Y to take the pogo joint's
+                                           # harness, which drops through the floor on
+                                           # the tenon's +X-Y diagonal (src.leg_pogo)
 CHAM_Z0 = 8.0                              # the floor. NOT the trough's 3.95: the foot
                                            # mortise is 6.0 tall at this very station
                                            # and the two would break into each other
@@ -541,7 +542,11 @@ def _bar_full() -> cq.Workplane:
     # _mortise_tower because it straddles the two: the jack's back is at z 22.30 and
     # the tower does not start until BAR_H (27.90). Cutting it off the tower alone
     # left the lower 5.6 of the bore filled in by the bar underneath it.
-    body = body.cut(BT.bar_negatives(TOWER_TOP - LS_ENGAGE, CHAM_Z1))
+    # (now the POGO joint's female half, src.leg_pogo: the board lies on the mortise
+    #  floor, and its connector's cavity runs down into the chamber)
+    from . import leg_pogo as PG
+    _ped, _neg = PG.bar_features(TOWER_TOP - LS_ENGAGE, CHAM_Z1)
+    body = (body.union(_ped) if _ped is not None else body).cut(_neg)
     # ...and the chamber the lead turns in, which is the trough carried under the tower
     body = body.cut(box_at(TROUGH_X0 + 0.01 - CHAM_X0, BAR_Y1 + 1.0 - CHAM_Y0,
                            CHAM_Z1 - CHAM_Z0,

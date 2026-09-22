@@ -137,9 +137,31 @@ the constraint is stock, not selection. See the optical-pickup section.
 > 20 → 24 wide so the 14-wide cartridges sit on their lobes. The FOOT PEDAL housing grew 6.15
 > deeper in guitar +Y (`foot_pedal.Y_GROWTH`), into the 15.6 of bar behind it.
 
-| **TRRS cable, 4C jack-to-plug** | [Tensility 10-02135](https://www.digikey.com/en/products/detail/tensility-international-corp/10-02135/7606584) — 3.5 mm **4-conductor TRRS**, phone JACK to phone PLUG, 914 mm (3.0 ft), 28 AWG shielded, $5.31, 420 in stock | **2** | DigiKey [d] | **THE ONE CABLE SKU FOR THE WHOLE LEG.** Its own drawing gives the parts, which is why it is here rather than an envelope: plug **3.5 × L20.7**, jack **3.5 × 7.8 × L25.8**, cable Ø3.8. **One is left WHOLE** as the leg's lead — female up (floating in the fixed tenon at the top joint), male down (floating in the adjust tenon at the bottom) — which is exactly the handedness the user's rule wants, since the part with the latch is always female. **One is CUT IN HALF** (user), and a jack-to-plug cut in half is the two pigtails this instrument needs and nothing else: the MALE half fixed in the body adapter at the top, the FEMALE half fixed in the pedal bar at the bottom, both stripped and crimped to JST-XH. A plug-to-plug cut in half would have given two males and left the bar without a female |
-| **TRRS float spring** | Compression, **Ø8.0 OD × 0.7 wire × 20.0 free**, **ID 6.6**, 304 SS (rate ~0.75 N/mm, bracketed 0.6–0.9; **measure on arrival**) | 1 (+ 4 spare) | [uxcell B0C33C21K9](https://www.amazon.com/dp/B0C33C21K9) — 5 to a pack, used **AS BOUGHT** | **$6.29 / 5** [a] | SECOND SKU, and not a preference: the coil has to end up ON the lead, and a lead has two ends — the moulded jack (Ø9.7) and the moulded far plug (Ø6.1). The latch coil's 3.8 ID passes neither, so no assembly order puts it there and the joint was unbuildable with it (user found this). **ID 6.6 clears the far plug by 0.5.** Installed 13.80 → **4.7 N at rest / 6.9 N seated**. The installed length is the SOLID FLOOR here, not the preload target: at 0.75 N/mm a 5.0 N target would want 13.33 and the coil would go solid before the leg seats |
+| ~~**TRRS cable, 4C jack-to-plug**~~ **SUPERSEDED 2026-09-21 by the pogo boards (Connectors → Leg blind-mates)** | [Tensility 10-02135](https://www.digikey.com/en/products/detail/tensility-international-corp/10-02135/7606584) — 3.5 mm **4-conductor TRRS**, phone JACK to phone PLUG, 914 mm (3.0 ft), 28 AWG shielded, $5.31, 420 in stock | **2** | DigiKey [d] | **THE ONE CABLE SKU FOR THE WHOLE LEG.** Its own drawing gives the parts, which is why it is here rather than an envelope: plug **3.5 × L20.7**, jack **3.5 × 7.8 × L25.8**, cable Ø3.8. **One is left WHOLE** as the leg's lead — female up (floating in the fixed tenon at the top joint), male down (floating in the adjust tenon at the bottom) — which is exactly the handedness the user's rule wants, since the part with the latch is always female. **One is CUT IN HALF** (user), and a jack-to-plug cut in half is the two pigtails this instrument needs and nothing else: the MALE half fixed in the body adapter at the top, the FEMALE half fixed in the pedal bar at the bottom, both stripped and crimped to JST-XH. A plug-to-plug cut in half would have given two males and left the bar without a female |
+| ~~**TRRS float spring**~~ **SUPERSEDED 2026-09-21 (pogo boards: no float spring)** | Compression, **Ø8.0 OD × 0.7 wire × 20.0 free**, **ID 6.6**, 304 SS (rate ~0.75 N/mm, bracketed 0.6–0.9; **measure on arrival**) | 1 (+ 4 spare) | [uxcell B0C33C21K9](https://www.amazon.com/dp/B0C33C21K9) — 5 to a pack, used **AS BOUGHT** | **$6.29 / 5** [a] | SECOND SKU, and not a preference: the coil has to end up ON the lead, and a lead has two ends — the moulded jack (Ø9.7) and the moulded far plug (Ø6.1). The latch coil's 3.8 ID passes neither, so no assembly order puts it there and the joint was unbuildable with it (user found this). **ID 6.6 clears the far plug by 0.5.** Installed 13.80 → **4.7 N at rest / 6.9 N seated**. The installed length is the SOLID FLOOR here, not the preload target: at 0.75 N/mm a 5.0 N target would want 13.33 and the coil would go solid before the leg seats |
 
+
+> ✅ **THE BEND RADIUS IS RESOLVED — the duty cycle is what settles it (user, 2026-09-18).**
+> This lead is **SET ONCE**: the leg's height is chosen at first setup and again only if
+> the instrument is resold. So the coil is a static form bent once, not a flexing
+> member, and fatigue — the usual reason to respect a bend radius — does not apply.
+> What breaks at a tight radius is the **foil**, and the foil does no work here: the
+> shield is one of the four CIRCUIT conductors (assembly drawing: D → shield → D,
+> sleeve = GND), the spiral serve carries that current and survives bending, the 3.5 mm
+> connector has no shield continuity through the mate anyway, and CAN_H/CAN_L are not a
+> twisted pair in a round 4C cable, so nothing was screening them to begin with.
+> Outermost-conductor strain is ~14% at the design's worst radius against ~5% at the
+> published one; annealed copper breaks at 20–30% and strands redistribute by slip.
+> `leg_trrs.CABLE_BEND_STATIC` (7.5) records the deviation and its licence, and the
+> mandrel asserts against it.
+>
+> **SEARCHED, AND THERE IS NOTHING BETTER TO BUY.** Tensility's whole 2750-part
+> catalogue holds exactly **two** 4C audio assemblies — 10-02135 and 10-02133 — and both
+> use the same 30-00179 wire at Ø3.8 / 22.8. The wider market for 4-pole 3.5 mm leads is
+> consumer headphone cable, which publishes no bend radius at all, which is the reason
+> this project is on Tensility. A **thinner** lead would genuinely help (Ø3.0 at 3×OD
+> clears the cavity outright) and unshielded would cost us nothing electrically — but
+> not at the price of an unpublished datasheet.
 
 > ⚠⚠ **READ THE VENDOR'S PAGE, 2026-09-18 — and it BLOCKS the coil (user asked).**
 > Tensility publish, for 10-02135: wire outer **Ø3.8** ✓, cable length **915** (not the
@@ -269,7 +291,7 @@ the constraint is stock, not selection. See the optical-pickup section.
 > — but it is not worth filtering for until the arm question is answered, because the OD
 > is the input.
 
-| **TRRS float spring** | Compression, **Ø8.0 OD × 0.7 wire × 20.0 free**, **ID 6.6**, 304 SS (rate ~0.75 N/mm, bracketed 0.6–0.9; **measure on arrival**) | 1 (+ 4 spare) | [uxcell B0C33C21K9](https://www.amazon.com/dp/B0C33C21K9) — 5 to a pack, used **AS BOUGHT** | **$6.29 / 5** [a] | SECOND SKU, and not a preference: the coil has to end up ON the lead, and a lead has two ends — the moulded jack (Ø9.7) and the moulded far plug (Ø6.1). The latch coil's 3.8 ID passes neither, so no assembly order puts it there and the joint was unbuildable with it (user found this). **ID 6.6 clears the far plug by 0.5.** Installed 13.80 → **4.7 N at rest / 6.9 N seated**. The installed length is the SOLID FLOOR here, not the preload target: at 0.75 N/mm a 5.0 N target would want 13.33 and the coil would go solid before the leg seats |
+| ~~**TRRS float spring**~~ **SUPERSEDED 2026-09-21 (pogo boards: no float spring)** | Compression, **Ø8.0 OD × 0.7 wire × 20.0 free**, **ID 6.6**, 304 SS (rate ~0.75 N/mm, bracketed 0.6–0.9; **measure on arrival**) | 1 (+ 4 spare) | [uxcell B0C33C21K9](https://www.amazon.com/dp/B0C33C21K9) — 5 to a pack, used **AS BOUGHT** | **$6.29 / 5** [a] | SECOND SKU, and not a preference: the coil has to end up ON the lead, and a lead has two ends — the moulded jack (Ø9.7) and the moulded far plug (Ø6.1). The latch coil's 3.8 ID passes neither, so no assembly order puts it there and the joint was unbuildable with it (user found this). **ID 6.6 clears the far plug by 0.5.** Installed 13.80 → **4.7 N at rest / 6.9 N seated**. The installed length is the SOLID FLOOR here, not the preload target: at 0.75 N/mm a 5.0 N target would want 13.33 and the coil would go solid before the leg seats |
 
 > **SPRING SOURCING, 2026-09-16 — OUTCOME: both leg springs are McMaster catalogue
 > parts, used as bought, $51.30 the pair.** The user's constraints, in the order they
@@ -329,7 +351,7 @@ the constraint is stock, not selection. See the optical-pickup section.
 > — but it is not worth filtering for until the arm question is answered, because the OD
 > is the input.
 
-| **TRRS float spring** | Compression, **Ø8.8 OD × 0.8 wire × 14.5 free**, **ID 7.2**, 302 SS, **rate 1.91 N/mm PUBLISHED**, compressed 6.1 at max load | 1 (+ 4 spare) | [McMaster 2006N232](https://www.mcmaster.com/2006N232/) — pack of 5, used **AS BOUGHT** | **$15.98** [m] | SECOND SKU, and it is not a preference: the coil has to end up ON the lead, and a lead has two ends — the moulded jack (Ø9.7) and the moulded far plug (Ø6.1). The latch coil's 4.37 ID passes neither, so no assembly order puts it there and the joint was unbuildable with it (user found this). **ID 7.2 clears the far plug by 1.1.** Installed 11.88 → **5.0 N at rest / 10.7 N seated**; the rest figure is the one that matters (it holds the jack against its keeper with the leg off) and `leg_trrs.PRELOAD_TARGET` sets it directly |
+| ~~**TRRS float spring**~~ **SUPERSEDED 2026-09-21 (pogo boards: no float spring)** | Compression, **Ø8.8 OD × 0.8 wire × 14.5 free**, **ID 7.2**, 302 SS, **rate 1.91 N/mm PUBLISHED**, compressed 6.1 at max load | 1 (+ 4 spare) | [McMaster 2006N232](https://www.mcmaster.com/2006N232/) — pack of 5, used **AS BOUGHT** | **$15.98** [m] | SECOND SKU, and it is not a preference: the coil has to end up ON the lead, and a lead has two ends — the moulded jack (Ø9.7) and the moulded far plug (Ø6.1). The latch coil's 4.37 ID passes neither, so no assembly order puts it there and the joint was unbuildable with it (user found this). **ID 7.2 clears the far plug by 1.1.** Installed 11.88 → **5.0 N at rest / 10.7 N seated**; the rest figure is the one that matters (it holds the jack against its keeper with the leg off) and `leg_trrs.PRELOAD_TARGET` sets it directly |
 
 > **SPRING SOURCING, 2026-09-16 (user: Lee Spring has bitten us on price before).**
 > Both springs are now catalogue parts at **$13.28 the pair** rather than a Lee Spring
@@ -867,6 +889,40 @@ not yet modelled) and the optical pickup's USB + 5 V feed. All cross-rib raceway
 knee-lever mortise plane — route no fatter cable through the floor trunk.
 
 ## Connectors (wiring strategy, July 2026)
+
+### Leg blind-mates — POGO BOARDS, 2026-09-21 (user)
+
+Both leg joints (leg ↔ body adapter, pedal bar ↔ adjust tenon) are now **two PCBs
+each**, and the whole TRRS stack is gone: no jack, plug, float spring, TPU throat,
+TPU sleeve or bayonet, and no moulded cable. CAD: `src/leg_pogo.py` (boards drawn
+from the component drawings; **bronner routes the real boards from it**).
+
+| Item | Part | Qty | Unit | Note |
+|---|---|---|---|---|
+| **Male pogo board** | custom 13.0 × 19.0, 1.6 mm, **STANDING ON EDGE** in a slot in the tenon end: a **right-angle** 1 × 4 spring-pin header on its lower edge + a **side-entry** PH on its upper edge, mouth up the leg. **Every part on ONE face** | 2 | ~$2 assembled (est.) | on the LEG; the free tips sit **0.6 inside** the tenon face. One M4 × 20 runs **sideways** through the tenon and the board (head recessed in one flat, insert pressed into the opposite flat from outside) — the tenon end is exposed whenever the leg is off |
+| **Female pogo board** | custom ~10 × 17, 1.6 mm, lies flat on the adapter's roof / the bar's floor: a **gold target** + a **side-entry ZR** on ONE face, one M4 × 6 beyond the target's end | 2 | ~$2 assembled (est.) | Single-sided. The contacts are the TARGET's own gold, so the panel stays on **HASL** — ENIG for the whole panel was +$16.60 (1 µin) / +$33.16 (2 µin) per order on one small test board, scaling with area. One screw, reached down the empty mortise |
+| **Contact target, vertical 1 × 4** | Xinyangze **YZ185115035T-04025-01**, LCSC **C54930022**: 4 × Ø1.2 contacts at **2.54** pitch (the header's 2.5 — 0.06 at the ends, in the landing budget), 3.5 tall, 3 µin Au over Ni, SMT | 2 | $1.03 @10 | **210 in stock** — the thinnest-stocked part here; buy spares. Its right-angle twin C5296825 is the header's exact mate but would stand the female on edge, which the adapter's 12.8 cannot take |
+| **Spring-pin header, right angle 1 × 4** | Xinyangze **YZ165615055F-04025-02**, LCSC **C54799748** — or the **-01, C5296819** (same drawing). SMT, 2.5 pitch, 11.0 × 2.5, 5.5 free / 4.0 working, Ø1.0 plunger, **120 gf**, 1 A, 12 V, 10k cycles, 3 µin Au | 2 | $1.46 @10 | **1,467 + 910 in stock** at JLCPCB. ONE pin per circuit — two headers side by side (22 of pads) do not fit the female board inside a 24-square tenon (`leg_pogo` docstring). JLCPCB flag it a hard-to-process part: tick it by hand in the BOM step (+$0.08 each) |
+| **Harness header, male (side entry)** | JST **S4B-PH-SM4-TB(LF)(SN)**, LCSC **C265102** (Extended, 30k stock) | 2 | ~$0.25 | 11.9 × 6.0 (+2.6 tails) × 5.5; the PHR-4 reaches 3.6 past its mouth |
+| **Harness header, female (side entry)** | JST **S4B-ZR-SM4A-TF(LF)(SN)**, LCSC **C485354** (27k stock) | 2 | ~$0.2 | 9.0 × 5.0 (+1.5 tails) × 3.7 (eZR p.5). ZR sockets are IDC; the header also takes the **ZH crimp** housing (ZHR-4 + SZH-002T), so the two female stubs are ZH-to-PH jumpers — a second crimp family (its own contacts and die) |
+| **M4 × 20 button** + **M4 × 6 button** + **M4 heat-set inserts** | — | 2 + 2 + 4 | — | one screw per board (project PCB rule); the inserts have no self-tap fallback (`leg_pogo._INS_WHY`) |
+| **Leg harness** | **two twisted pairs** of 28 AWG 7/36 PVC hookup wire (CAN_H/CAN_L, 5V/GND), PHR-4 + SPH-002T at both ends | 1 leg run + 2 stubs | — | replaces the 10-02135 lead; crimped **after** threading, so the bores only have to pass contacts. Bundle ~Ø2.4 (`leg_pogo.HARNESS_D`); the leg's slack is heat-set into a coil on `coil_mandrel` (barrel now Ø16.8; stretched r 7.94 against a 7.2 floor). A round jacketed 4-core was rejected: the datasheeted ones that fit the bores are too fat (Alpha 86004 is Ø4.83) and none pairs CAN_H with CAN_L |
+
+**Why the male board stands on edge:** the panel shares one assembly setting (user), so
+no board may carry parts on both faces. The live JLCPCB quote (2026-09-21, 5 boards,
+Standard, list prices) settled what that is worth: a through-hole PH on the bottom is
+billed **Both Sides** — setup $25.75 → $51.50 and a **$16.54 fixture**, ~$45 an order —
+and Economic PCBA has no Both Sides at all. On edge, a right-angle header and a
+side-entry PH share one face. **Why the pins are on the leg:** the body adapter has 12.8
+above its mortise roof; only the flat female fits there. **Why one header:** the female
+board lies above the host face, so all of it must fit in the tenon's pocket, and two
+headers' 22 of pads plus a connector and a screw do not (the diagonal leaves ~23 × 7).
+
+**Open:** (1) the PHR-4's seated height on the top-entry header is an allowance (8.5
+mated) — JST do not dimension the floor; (2) the pads face UP at the bar joint, so dust on
+them is the thing to watch; (3) the header's plunger line (1.3 off the board) is read off
+a view whose datum is not stated — confirm on a sample before bronner fixes the pads.
+
 
 Rule: **solder only happens on factory-assembled PCBs; every field connection
 is a connector** (no bare wire ever meets a bare module pin; never

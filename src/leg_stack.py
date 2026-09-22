@@ -397,12 +397,16 @@ def adjust_tenon(top: float = Z_ADJ_TEN_TOP):
     # placed from where this tenon seats in the bar (src.bar_latch)
     from . import bar_latch as BL
     t = t.cut(BL.tenon_cut(top - ADJ_TEN_L + ENGAGE))
-    # THE BOTTOM BLIND-MATE (src.bar_trrs): the male plug floats in this tenon on the
-    # same coil SKU as the top joint, and the bar keeps a short PCB jack. Cut last, and
-    # only on the tenon as drawn -- a shortened one is a height setting, not a station
+    # THE BOTTOM BLIND-MATE (src.leg_pogo): the MALE pogo board in a pocket in this
+    # end, and the harness's way up past the ladder (bar_trrs's route, which the TRRS
+    # left behind). Cut last, and only on the tenon as drawn -- a shortened one is a
+    # height setting, not a station
     if abs(top - Z_ADJ_TEN_TOP) < 1e-9:
         from . import bar_trrs as BT
-        t = t.cut(BT.tenon_negatives(TENON_UP))
+        from . import leg_pogo as PG
+        t = t.cut(PG.tenon_negatives(PG.BOTTOM, BT._ax(), BT.PASS_D, BT.PASS_TOP,
+                                     TENON_UP))
+        t = t.cut(BT.route_negatives(TENON_UP))
     return t
 
 
@@ -421,11 +425,12 @@ def fixed_tenon():
     for z in (Z_FIX_SCREW, Z_ADJ_SCREW):
         t = t.cut(_from_plus_x(ADJ_HOLE_D, z, LEG_X + TEN_APEX - JOIN_SEAT,
                                TENON_UP, limit_deg=TEN_HOLE_LIMIT_DEG))
-    # THE LEG'S SIGNAL, down the joint's own axis (src.leg_trrs): the throat at this
-    # tenon's tip, the floating jack's travel, its coil, and the cable on down the leg
-    from . import leg_trrs as LTR       # late: leg_trrs reads this module
-    return t.cut(LTR.tenon_negatives(LEG_X, LEG_Y, TENON_UP,
-                                     bot=Z_FIX_TEN_BOT - 1.0))
+    # THE LEG'S SIGNAL (src.leg_pogo): the MALE pogo board in a pocket at this
+    # tenon's tip, and the harness's bore on down the leg at the old lead's spine
+    from . import leg_trrs as LTR       # late: both read this module
+    from . import leg_pogo as PG
+    return t.cut(PG.tenon_negatives(PG.TOP, LTR._ax(), LTR.PASS_D,
+                                    Z_FIX_TEN_BOT - 1.0, TENON_UP))
 
 
 def body_adapter(sx: float = LEG_X, ly: float = LEG_Y):
@@ -458,6 +463,13 @@ def body_adapter(sx: float = LEG_X, ly: float = LEG_Y):
     # chamfered mouth that lets a printed hook ride in without catching
     b = b.cut(LL.adapter_pocket())
     b = b.cut(LL.mouth_chamfer())
+    # THE SIGNAL CORNER's female pogo board (src.leg_pogo): it lies on the mortise roof;
+    # the connector's cavity above it and the harness's groove out the -Y face. Only
+    # this corner carries the bus
+    if abs(sx - LEG_X) < 1e-6 and abs(ly - LEG_Y) < 1e-6:
+        from . import leg_pogo as PG
+        _ped, _neg = PG.adapter_features()
+        b = (b.union(_ped) if _ped is not None else b).cut(_neg)
     b = b.translate((sx - LEG_X, ly - LEG_Y, 0.0))
     # BODY TENONS, on the top face (see BODY JOINERY). Both ridges and the tongue
     # run the full LEG_W along Y, the slide axis.
@@ -679,17 +691,12 @@ def leg_parts():
            # the pedal bar latch, AT REST (hook in, pad flush)
            ("bar_latch_frame", BL.frame(Z_BAR_MOUTH)),
            ("bar_latch_collar", BL.collar(Z_BAR_MOUTH))]
-    from . import bar_trrs as BT
-    out += BT.dummies()
-    # ...and the BAR's half of the same joint. It is authored against a caller-supplied
-    # mortise floor precisely so it can be drawn in either frame; in world, that floor
-    # is the adjust tenon's own bottom face, which is BT.TIP.
-    out += BT.bar_dummies(BT.TIP)
+    # both blind-mates, male and female boards and their screws (src.leg_pogo)
+    from . import leg_pogo as PG
+    out += PG.dummies()
     out += [("bar_latch_spring_%d" % i, s) for i, s in enumerate(BL.springs(Z_BAR_MOUTH))]
     out += BL.screw_dummies(Z_BAR_MOUTH)        # the collar's one screw, and its insert
     out += LG.lock_pin_dummies(LEG_X, LEG_Y, EGX, SYG, Z_TOP, 0)   # the leg's one screw
-    from . import leg_trrs as LTR
-    out += LTR.dummies(LEG_X, LEG_Y, 0)        # the blind-mate, at its MATED length
     return out
 
 
