@@ -2412,6 +2412,14 @@ def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
         # limit re-plans the whole thing. The narrow fix changes where one via sits; the
         # blunt one changed how many exist.
         _is_pth = pad.GetAttribute() in (pcbnew.PAD_ATTRIB_PTH, pcbnew.PAD_ATTRIB_NPTH)
+        # ...UNLESS IT IS A NAMED EXCEPTION: then there is no via at all. This branch checks
+        # nothing (by the argument above), and that argument fails the moment something is
+        # PRE-LAID under the package on an inner layer -- the output board's DN2 pair runs
+        # on In2 beneath the hub, and the hub's belly via landed on it. Naming the pad in
+        # stitch_exceptions said "this one reaches ground through the pour"; honour that
+        # here rather than only in the report. (PTH exceptions keep their old behaviour.)
+        if (not _is_pth and "%s.%s" % (fp.GetReference(), pad.GetNumber()) in allow):
+            continue
         if (not _is_pth
                 and min(pad.GetSize().x, pad.GetSize().y) >= pcbnew.FromMM(via_d + 0.6)):
             v = pcbnew.PCB_VIA(board)
@@ -2840,6 +2848,17 @@ def build(stem):
     _rules(board, notes)
     for ref, (fp_spec, value) in sorted(comps.items()):
         fp = _load_footprint(fp_spec)
+        # LAND RESIZE: [(ref regex, x or None, y or None)] -- a stock footprint with its pads
+        # resized in the footprint's own frame (None keeps that dimension). Kept as a board
+        # note rather than a copied .kicad_mod, so the part stays KiCad's and only the one
+        # number that had a reason to change does.
+        for _pat, _sx, _sy in notes.get("land_resize", ()):
+            if re.fullmatch(_pat, ref):
+                for _pad in fp.Pads():
+                    _sz = _pad.GetSize()
+                    _pad.SetSize(pcbnew.VECTOR2I(
+                        pcbnew.FromMM(_sx) if _sx is not None else _sz.x,
+                        pcbnew.FromMM(_sy) if _sy is not None else _sz.y))
         board.Add(fp)
         fp.SetReference(ref)
         fp.SetValue(value)
@@ -2922,10 +2941,15 @@ def build(stem):
         net = pcbnew.NETINFO_ITEM(board, name)
         board.Add(net)
         for ref, pad_no in nodes:
-            pad = by_ref[ref].FindPadByNumber(pad_no)
-            if pad is None:
+            # EVERY pad with that number, not the first: a USB-C's four shell tabs are all
+            # "SH", and FindPadByNumber handed the net to one of them. The other three
+            # (on both output-board USB-Cs) came out <no net> -- shell tabs soldered to
+            # nothing, found in the routed board's own pad list.
+            pads = [p for p in by_ref[ref].Pads() if p.GetNumber() == str(pad_no)]
+            if not pads:
                 raise SystemExit("%s has no pad %s" % (ref, pad_no))
-            pad.SetNet(net)
+            for pad in pads:
+                pad.SetNet(net)
 
     # ⚠ ORDER MATTERS, AND IT IS PAIRS FIRST. Both routines lay copper and each
     # treats the other's as an obstacle, so whichever runs first gets the free board.
