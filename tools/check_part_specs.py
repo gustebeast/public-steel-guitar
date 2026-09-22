@@ -63,6 +63,17 @@ PARTS = [
          },
          "the right-angle 1 x 4 spring-pin header on both male boards (its -01 sibling "
          "C5296819 is the same drawing)"),
+    Part("C54930022", "https://datasheet.lcsc.com/datasheet/pdf/"
+                      "65bd6f266e7b263b1372ed187d4a9c4d.pdf?productCode=C54930022",
+         "2026-09-22",
+         {
+             "contact pitch":        (2.54, "src.leg_pogo.TG_PITCH"),
+             "housing length":       (10.2, "src.leg_pogo.TG_BODY_S"),
+             "housing width":        (2.5, "src.leg_pogo.TG_BODY_T"),
+             "contact face height":  (3.5, "src.leg_pogo.TG_FACE_H"),
+             "contact face":         (1.2, "src.leg_pogo.TG_FACE_D"),
+         },
+         "the vertical gold 1 x 4 target on both female boards"),
 ]
 
 # SUPERSEDED 2026-09-21 -- the TRRS cable the leg used before the pogo boards. Its
