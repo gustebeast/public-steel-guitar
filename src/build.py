@@ -1557,7 +1557,7 @@ def _export_assembly(publish=True, gate=True, gate_full=True):
     if not gate:
         return 0
     # both gates always run, so one RED doesn't hide the other's result
-    return _report_overlaps(comps, full=gate_full) | _report_sweep(comps)
+    return _report_overlaps(comps, full=gate_full) | _report_sweep(comps) | _report_dead()
 
 
 # The overlap gate's ACCEPTED baseline: the count of REAL defects tracked
@@ -1609,6 +1609,26 @@ def _report_sweep(comps) -> int:
         return 0
     print(f"SWEEP GATE: {'green' if n == 0 else f'RED — {n} swept collision(s)'}", flush=True)
     return 1 if n else 0
+
+
+def _report_dead() -> int:
+    """Source drift, not geometry: module-level definitions nothing in the repo names
+    any more. REPORT ONLY -- it never fails the build. Retired parts leave their
+    builders behind (the electronics tray left nine), and the cost of that is a reader
+    believing dead code is live, which is worth a line of output and not worth blocking
+    an agent's merge over. See tools/check_dead.py for what counts as a use."""
+    try:
+        from tools.check_dead import scan, KNOWN
+        dead = [d for d in scan() if d[2] not in KNOWN]
+    except Exception as e:               # noqa: BLE001 -- never let a report eat a build
+        print(f"dead-code report: SKIPPED ({type(e).__name__}: {e})", flush=True)
+        return 0
+    if dead:
+        print(f"dead code: {len(dead)} unreferenced definition(s) -- "
+              f"py -3.12 -m tools.check_dead", flush=True)
+        for path, lineno, name in dead:
+            print(f"    {path}:{lineno}  {name}()", flush=True)
+    return 0
 
 
 def _publish_web_preview(comps, build_n):

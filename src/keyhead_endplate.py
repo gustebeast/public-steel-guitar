@@ -29,24 +29,6 @@ from .endplate_base import endplate_base
 from .helpers import box_at, heal
 
 
-def _stow_bore(d, x_hole, x_face, z_top, z_bot):
-    """The WHOLE string-stow hole as ONE swept solid (built at y=0) -- no unions, so no
-    internal seams. A circle is swept up a straight vertical bore (from below the bed at
-    z_bot, at x_hole), SMOOTHLY through a 45-deg (1/8-circle) arc, then out a short 45-deg
-    lead-in at the -X face (x_face, z_top). The bore->arc and arc->lead joins are tangent,
-    so the inserted string rides one continuous wall from the face down into the bore."""
-    R = (x_hole - x_face) / (1.0 - math.cos(math.radians(45)))   # arc radius for the 45-deg span
-    zj = z_top - R * math.sin(math.radians(45))                  # straight bore up to here, then arc
-    cx = x_hole - R                                              # arc centre x (z = zj)
-    mid = (cx + R * math.cos(math.radians(22.5)), zj + R * math.sin(math.radians(22.5)))
-    c = math.cos(math.radians(45))
-    path = (cq.Workplane("XZ").moveTo(x_hole, z_bot)
-            .lineTo(x_hole, zj)                                  # straight vertical bore
-            .threePointArc(mid, (x_face, z_top))                # 1/8-circle blend to 45 deg
-            .lineTo(x_face - 3.0 * c, z_top + 3.0 * c))         # 45-deg lead-in through the face
-    prof = cq.Workplane("XY", origin=(x_hole, 0.0, z_bot)).circle(d / 2)
-    return prof.sweep(path)
-
 # ONE part (x −636 .. −611, PETG-GF), FULL-WIDTH (rail outer to rail outer) so it TAKES
 # OVER the whole −X end and its edge shows from the front, mirroring the bridge endplate.
 # Per the endplate methodology it's AS SOLID AS POSSIBLE: a solid block from the deck
