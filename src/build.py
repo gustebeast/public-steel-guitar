@@ -1211,15 +1211,24 @@ def lkl_vkl_components():
     return out
 
 
+LEG_CONTEXT_Z = 250.0    # how far UP the legs the pedal-bar crop reaches
+
+
 def pedal_bar_box():
     """(w, d, h, x, y, z) round the PEDAL BAR: the bar end to end, its towers, the
-    pedals standing on it and the feet under it, with nothing of the instrument above.
-    The bar is the far end of the leg columns, so a box that reached the body would be
-    mostly leg."""
+    pedals standing on it, the feet under it -- and LEG_CONTEXT_Z of the leg columns
+    above it.
+
+    The legs are the reason for that last term. A box drawn to the bar's own bounds
+    is only ~175 tall, and everything the bar hangs off is outside it, so the view
+    came out as a bar floating in space with no instrument attached to it (user). The
+    box stops well short of the body all the same: the legs are ~700 long and all of
+    that is somebody else's work."""
     bbs = [w.val().BoundingBox() for _, w in _pedal_bar_components() + _foot_pedal_components()]
     x0, x1 = min(b.xmin for b in bbs) - 20.0, max(b.xmax for b in bbs) + 20.0
     y0, y1 = min(b.ymin for b in bbs) - 30.0, max(b.ymax for b in bbs) + 30.0
-    z0, z1 = min(b.zmin for b in bbs) - 30.0, max(b.zmax for b in bbs) + 30.0
+    z0 = min(b.zmin for b in bbs) - 30.0
+    z1 = max(b.zmax for b in bbs) + LEG_CONTEXT_Z
     return (x1 - x0, y1 - y0, z1 - z0, (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2)
 
 
