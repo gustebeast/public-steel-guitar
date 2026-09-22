@@ -896,7 +896,7 @@ def _cradle(w, z_bot=None, z_top=None, x_max=None, flip=None):
     # of the 1.6 wall beside the half-stop pocket (user).
     _cy0 = max(PCB_Y - PH_SIDE_H - CONN_POCKET, CR_Y0)
     _cz0 = conn_zc - CONN_L / 2 - CONN_POCKET
-    _cx0 = conn_mx - _sx * (2 * CONN_PLUG_RUN + 3.0)   # the plug's full unplug stroke
+    _cx0 = conn_mx - _sx * CONN_UNPLUG                 # the plug's full unplug stroke
     _cx1 = conn_mx + _sx * (PH_SIDE_D + CONN_POCKET)
     _cz1 = z_top + 1.0
     w = w.cut(box_at(abs(_cx1 - _cx0), PCB_Y - _cy0, _cz1 - _cz0,
@@ -1447,6 +1447,11 @@ CONN_MOUTH_X = PCB_X0 + 3.05                          # the PH-era layout's mout
 CONN_ZC      = (PCB_Z0 + PCB_Z1) / 2                  # centred on the board's height
 CONN_POCKET  = 0.3                  # clearance around it in the web tunnel
 CONN_PLUG_RUN = PH_PLUG_RUN         # 3.6: mated PHR reach past the mouth (JST's drawing)
+CONN_UNPLUG = 2 * CONN_PLUG_RUN + 4 * D.BEAD   # the plug's full WITHDRAWAL. _cradle
+                                    # tunnels the web this far so the plug can be drawn off
+                                    # without lifting the board out, and the lace loop has to
+                                    # start past it (it used to be a 3.0 literal in _cradle,
+                                    # which is also what put the loop off the bead grid).
 assert PCB_Z0 + CONN_EDGE <= CONN_ZC - CONN_L / 2 and CONN_ZC + CONN_L / 2 <= PCB_Z1 - CONN_EDGE, (
     "J1 standing on end does not fit the board's height with the 1.0 edge rule")
 assert PCB_Y - PH_SIDE_H - CONN_POCKET >= HOUS_HW - 1e-6, (
@@ -1786,52 +1791,57 @@ def cut_feel_rear(w, place, reach=0.0):
 # to reach a lever that has MOVED since the cable was cut -- and the loom is the
 # crimped, tooled, contacts-ordered part, the one thing that should survive a
 # re-placement. So a bus-B segment is cut long and the excess is folded into a hank and
-# tied HERE, on the lever's own back face, which travels with the lever: wherever it
-# goes, its stow point goes with it. (A field of tie points on the chassis bottom would
-# have to cover every station a lever might take, and that slab is not this module's.)
+# tied HERE, on the lever itself, which travels with it: wherever the lever goes, its
+# stow point goes with it. (A field of tie points on the chassis bottom would have to
+# cover every station a lever might take, and that slab is not this module's.)
 #
-# SIZED FOR A TWEAK, NOT A RELOCATION (user: two grid steps either way, plus knee
-# depth). Two neighbours moving apart by 2 steps each is 41.6; a hank of that plus
-# service slack is what the loop has to pass, doubled, not the 197.5 the mortise
-# allows. Moving a lever the length of the mortise is a new segment and always was.
+# ON THE CONNECTOR CHEEK, NOT THE BACK FACE (user, 2026-09-22: "that as a cable storage
+# location would block access to the set screws once the wire is in place. Why not put
+# them on the side next to the JST connector?"). Right on both counts: the back face is
+# how a 2.0 key reaches both feel screws, and a hank tied across it covers them for the
+# life of the instrument -- while the +Y cheek is where the wire already IS, since J1's
+# plug leaves the board -X in the gap between the board and this very face.
+#
+# It sits -X of the plug's UNPLUG STROKE, not merely of the plug: _cradle tunnels the
+# web for 2*CONN_PLUG_RUN + 3.0 so the plug can be drawn off without lifting the board,
+# and a loop inside that would have traded a screw you cannot reach for a plug you
+# cannot pull.
 #
 # IT PRINTS WITH NO OVERHANG, which is what picks the shape. The housing builds -Z ->
-# +Z, so the only feature that needs no support is one standing on the bed face: the
-# loop's underside IS HOUS_Z0, and its bore is a house section -- vertical walls, 45 deg
-# gable -- run along Y, the same idiom as the pogo cavities. A round bore across a
-# horizontal axis would have needed a teardrop; a plain rectangular one would have
-# needed a bridge.
-LACE_BORE_X = 5 * D.NOZZLE_D        # 4.0 the cable sits this far off the back face
+# +Z, so the only feature needing no support is one standing on the bed face: the loop's
+# underside IS HOUS_Z0, and its bore is a house section -- vertical walls, 45 deg gable
+# -- run along X, which is also the way the cable runs. A round bore on a horizontal
+# axis would have needed a teardrop; a flat-roofed one would have needed a bridge.
+LACE_BORE_Y = 5 * D.NOZZLE_D        # 4.0 the cable sits this far off the cheek
 LACE_BORE_Z = 5 * D.NOZZLE_D        # 4.0 straight height, then the gable
-LACE_WALL   = D.MIN_WALL_2P         # 1.6 all round
-LACE_WY     = 15 * D.NOZZLE_D       # 12.0 along Y -- it lives BETWEEN the two cartridge
-                                    # lanes (+-8.45), so it never covers a screw way and
-                                    # the 2.0 key still reaches both from behind
-LACE_GABLE  = LACE_BORE_X / 2.0     # 45 deg roof over the bore
-assert LACE_WY / 2 + LACE_WALL <= abs(HS_YC) - HS_CART_WY / 2 + LACE_WALL + 1e-9 or \
-       LACE_WY / 2 <= abs(HS_YC), (
-    "the lace loop is wide enough to cover a feel-screw way on the back face")
+LACE_WALL   = D.MIN_WALL_2P         # 1.6
+LACE_WX     = 15 * D.NOZZLE_D       # 12.0 along X -- the run the cable threads through
+LACE_GABLE  = LACE_BORE_Y / 2.0     # 45 deg roof over the bore
+# the plug's whole withdrawal, which _cradle opens the web for
+LACE_X1 = CONN_MOUTH_X - CONN_UNPLUG - D.MIN_WALL_2P
+assert LACE_X1 - LACE_WX >= HOUS_X0 + D.MIN_WALL_2P, (
+    "the lace loop has run off the -X end of the housing")
 
 
-def lace_loop(x_face=None, z_bed=None):
-    """The tie-off loop on a lever housing's BACK face, in the lever's local frame: a
-    block standing on the bed face with a house-section bore through it along Y.
+def lace_loop(y_face=None, z_bed=None):
+    """The bus-B tie-off on a lever housing's +Y (connector) cheek, in the lever's local
+    frame: a block standing on the bed face with a house-section bore along X.
 
     Parameterised because the VERTICAL lever (knee_lever_vert) is the same design with
-    the feel block moved above the axle -- same back face, its own floor -- and it
-    adjusts on the same grid, so it needs the same tie-off. Defaults are LKL's."""
-    x1 = HOUS_X0 if x_face is None else x_face       # fused into the back face
-    x0 = x1 - (LACE_BORE_X + LACE_WALL)
-    z0 = HOUS_Z0 if z_bed is None else z_bed         # ...the bed: nothing to support
+    the feel block moved above the axle -- same cheek and same connector, its own floor
+    -- and it adjusts on the same grid, so it needs the same tie-off."""
+    y0 = HOUS_HW if y_face is None else y_face
+    y1 = y0 + LACE_BORE_Y + LACE_WALL
+    z0 = HOUS_Z0 if z_bed is None else z_bed
     z1 = z0 + LACE_WALL + LACE_BORE_Z + LACE_GABLE + LACE_WALL
-    block = box_at(x1 - x0, LACE_WY, z1 - z0,
-                   x=(x0 + x1) / 2, y=0.0, z=(z0 + z1) / 2)
-    bx0, bx1 = x0 + LACE_WALL, x1
-    bz0 = z0 + LACE_WALL
-    pts = [(bx0, bz0), (bx1, bz0), (bx1, bz0 + LACE_BORE_Z),
-           ((bx0 + bx1) / 2, bz0 + LACE_BORE_Z + LACE_GABLE), (bx0, bz0 + LACE_BORE_Z)]
-    bore = (cq.Workplane("XZ").polyline(pts).close()
-            .extrude(LACE_WY + 2.0).translate((0.0, (LACE_WY + 2.0) / 2, 0.0)))
+    x0, x1 = LACE_X1 - LACE_WX, LACE_X1
+    block = box_at(x1 - x0, y1 - y0, z1 - z0,
+                   x=(x0 + x1) / 2, y=(y0 + y1) / 2, z=(z0 + z1) / 2)
+    by1, bz0 = y1 - LACE_WALL, z0 + LACE_WALL
+    pts = [(y0, bz0), (by1, bz0), (by1, bz0 + LACE_BORE_Z),
+           ((y0 + by1) / 2, bz0 + LACE_BORE_Z + LACE_GABLE), (y0, bz0 + LACE_BORE_Z)]
+    bore = (cq.Workplane("YZ").polyline(pts).close()
+            .extrude(LACE_WX + 2.0).translate((x0 - 1.0, 0.0, 0.0)))
     return block.cut(bore)
 
 

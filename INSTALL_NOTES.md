@@ -53,9 +53,10 @@ any knee depth over 197.5 mm in Y.
 
 ### KL-2 — Cut the lever segments long and tie the hank to the lever
 
-- **Where:** the lace loop on each lever housing's **back face** (`knee_lever.lace_loop`,
-  on both `kl_housing` and `kv_housing`) — between the two cartridge screw lanes, so it
-  never covers a screw way.
+- **Where:** the lace loop on each lever housing's **+Y cheek, beside J1**
+  (`knee_lever.lace_loop`, on both `kl_housing` and `kv_housing`) — the side the plug
+  already leaves the board on. It sits −X of the plug's full withdrawal
+  (`knee_lever.CONN_UNPLUG`), so a tied hank never blocks unplugging.
 - **What:** cut each lever-to-lever segment for the **widest** spacing you would use,
   fold the excess into a flat hank, pass it through the loop and tie it there with a
   reusable tie. The bore takes a doubled bundle.
@@ -66,8 +67,10 @@ any knee depth over 197.5 mm in Y.
 - **Sized for a tweak, not a relocation** (user: two grid steps either way, plus knee
   depth). Two neighbours moving 2 steps apart each is 41.6 mm. Moving a lever the length
   of the mortise needs a new segment, and always did.
-- **Do this before** the lever goes up into the chassis: the back face is reachable with
-  the lever in your hand and not much afterwards.
+- **Not on the back face.** That was the first attempt and it was wrong (user): the back
+  face is how the 2.0 key reaches both feel screws, and a hank tied across it would cover
+  them for the life of the instrument.
+- **Do this before** the lever goes up into the chassis — easier with it in your hand.
 
 ---
 
@@ -79,25 +82,18 @@ an 8-way PH, bus **in** on ways 1–4 and **out** on 5–8, so the chain runs th
 the board. Pedal 5 is the far end of the bus: it is the one pedal that closes its
 termination jumper.
 
-### PB-1 — Cut every pedal segment to the SAME length, and wind the excess on
+### PB-1 — Route each pedal segment through its spur
 
-- **Where:** the five bus-B segments in the trough — leg→pedal 1 and the four
-  pedal→pedal runs. One `foot_pedal.CLEAT` stands in the trough for each of them.
-- **What:** make all five segments identical, at `foot_pedal.CABLE_LEN` (**~100 mm**
-  conductor length between plug backs, at the current pitch). Route a segment from
-  one board's bay, up its **spur** into the trough, **3 turns round the cleat**,
-  then along to the next bay. Wind before plugging in, with the trough open.
-- **Why:** a pedal's X position is printed into the bar (`fuse_into_bar`), so moving
-  the pedals means new bar pieces. The loom is the crimped, tooled, contacts-ordered
-  part, and it is what should survive that change: one length that fits every gap,
-  and a cleat that takes up the difference, means a re-pitched bar reuses the
-  harness as-is. `CABLE_LEN` is cut for the **widest** pitch the bar can be built at
-  (`PITCH_MAX`); at any narrower pitch the cleat stows the slack. One cleat holds
-  **~76 mm**, against **~52 mm** for the full pitch range plus service slack.
-- **The cleat head is a 45° cone**, so a wrap cannot lift off it — but it is only
-  2.4 proud. Seat the wraps down against the trough floor, not up under the head.
-- **Order:** wire the trough **before** the lid slides in. The lid is a full-length
-  sliding dovetail entering from the −X end; once it is on, nothing in the trough is
-  reachable, and a wrap standing proud of the trough will stop it.
-- **Leave the last one out:** pedal 5 has no onward segment. Its J1 out-half is the
-  bus end.
+- **Where:** the spur at each pedal station — the short passage from the board bay up
+  into the bar's wiring trough (`foot_pedal.cut_wire_ways`).
+- **What:** plug the segment onto J1 in the bay, bring the wire up through the spur into
+  the trough, and run it along to the next station.
+- **Why:** the bay is a closed pocket otherwise. The 2026-09-21 board re-spin moved J1,
+  and the bay follows the posed hardware, so it stopped reaching the trough and left each
+  plug sealed in. Nothing caught it — a cavity that doesn't reach another cavity isn't an
+  overlap.
+- **No slack cleat here**, unlike the knee levers: a pedal's X station is printed into the
+  bar, so nothing about it moves. Cut these segments to fit.
+- **Order:** wire the trough **before** the lid slides in. The lid is a full-length sliding
+  dovetail entering from the −X end; once it's on, nothing in the trough is reachable.
+- **Leave the last one out:** pedal 5 has no onward segment. Its J1 out-half is the bus end.

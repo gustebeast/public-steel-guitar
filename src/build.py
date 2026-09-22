@@ -86,7 +86,7 @@ def _PB_bar(attr):
     # never heal a threaded part). That is also why the heal lives here rather
     # than in the PARTS lambda, which used to wrap this call.
     piece = FP.cut_feel_access(heal(FP.fuse_into_bar(_PB(attr), *span)), *span)
-    return FP.wire_management(piece, *span)
+    return FP.cut_wire_ways(piece, *span)
 
 
 PARTS = {
