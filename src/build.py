@@ -34,6 +34,7 @@ except Exception:                       # a profiling hook must NEVER break a bu
     def report_build_regressions(): return 0
 
 from . import dimensions as D
+from elec import harness as _EH           # the PCB's pin order, single-sourced
 from .helpers import heal, cyl, cyl_y
 from . import components as C
 from . import chassis as CH
@@ -1330,10 +1331,9 @@ _COLORS = {
     # the leg's harness: FOUR conductors, in the same colours src.wiring gives every
     # CAN run (black GND / red hot / yellow CAN-H / green CAN-L), plus the slack coil,
     # which stays one body at the BUNDLE's diameter
-    "pogo_wire_gnd":     (0.05, 0.05, 0.05),   # black       - 0 V return
-    "pogo_wire_5v":      (0.85, 0.12, 0.10),   # red         - bus B's 5 V
-    "pogo_wire_canh":    (0.95, 0.85, 0.10),   # yellow      - CAN-H
-    "pogo_wire_canl":    (0.13, 0.72, 0.20),   # green       - CAN-L
+    # ...keyed BY PIN NUMBER off elec.harness, in wiring's colour order (return black,
+    # rail red, CAN-H yellow, CAN-L green), so the colours follow the pinout instead of
+    # being a fifth place the circuit names are written out
     "pogo_harness_coil": (0.75, 0.15, 0.12),   # the slack, as one bundle
     "leg_trrs_plug":   (0.15, 0.15, 0.17),   # the blind-mate: the FIXED plug, in the
     "leg_trrs_jack":   (0.20, 0.20, 0.22),   # adapter's roof...and the FLOATING jack
@@ -1497,6 +1497,12 @@ _DEFAULT_COLOR = (0.80, 0.80, 0.80)
 _TPU_BLACK = (0.03, 0.03, 0.03)                  # ALL TPU parts render black (user rule)
 # every part whose output path is tpu/... -> black, regardless of instance prefix/suffix
 _TPU_BASES = tuple(sorted((k for k, v in PARTS.items() if v[1].startswith("tpu/")), key=len, reverse=True))
+
+
+_COLORS.update({
+    "pogo_wire_%s" % n.lower(): c for n, c in zip(
+        _EH.PH_PINOUT, ((0.05, 0.05, 0.05), (0.85, 0.12, 0.10),
+                        (0.95, 0.85, 0.10), (0.13, 0.72, 0.20)))})
 
 
 def _color_for(name):

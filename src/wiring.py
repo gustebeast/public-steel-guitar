@@ -71,6 +71,7 @@ import math
 import cadquery as cq
 
 from . import dimensions as D
+from elec import harness as EH            # the PCB's pin order, single-sourced
 from . import electronics as EL
 from .helpers import oct_cable
 
@@ -116,7 +117,16 @@ TRUNK_OFF = {"gnd": -2.7, "hot": -0.9, "canh": 0.9, "canl": 2.7}
 # ...and each LANDS on its own pin. All of them used to end on the 8-way's centre, so the
 # cables arriving at a tee and leaving it ran through each other for 10-20 mm (nine pairs in
 # check_cable_pairs, the worst 9.5 mm3). In on 1-4 from the WEST, out on 5-8 to the EAST.
-TRUNK_PIN = {"gnd": 1, "hot": 2, "canh": 3, "canl": 4}
+# ...and the ORDER IS THE PCB's, READ FROM elec.harness, not retyped here. That module
+# was written because this one constant existed in three places with nothing comparing
+# them, and its warning is exact: a wrong pin order is invisible until it puts a rail
+# into a signal, because each board stays internally consistent with its own copy. This
+# was a FOURTH copy -- the CAD's -- and the one place the EDA side could not see.
+_CAD_NAME = {"GND": "gnd", "V24": "hot", "CAN_H": "canh", "CAN_L": "canl"}
+TRUNK_PIN = {_CAD_NAME[n]: i + 1 for i, n in enumerate(EH.XH_PINOUT)}
+assert set(TRUNK_PIN) == set(TRUNK_OFF), (
+    "elec.harness.XH_PINOUT names a circuit this trunk has no lane for: %s"
+    % (set(TRUNK_PIN) ^ set(TRUNK_OFF)))
 # ...and at its own HEIGHT between tees. With the same pin order at both ends, the four
 # conductors have to cross over one another near one connector or the other -- a crimped
 # harness of discrete wires does exactly that, one lying over the next -- and a model can only
@@ -1019,6 +1029,15 @@ def build_wires():
 
 # what each net is ALLOWED to touch (its source/destination bodies);
 # everything else a wire grazes is a routing bug the gate reports
+# ...and the leg's four conductors are keyed FROM THE PINOUT (elec.harness), so a
+# renamed circuit cannot quietly drop out of the allow-list the way "5v" did when the
+# pin order became the source of the name. Each may clip the connector bodies it
+# actually enters, and its own plug -- nothing else.
+# NAMED PER JOINT, because check_overlaps' base() strips only a trailing INDEX group:
+# "pogo_male_ph_top" is its own base, and a bare "pogo_male_ph" here matches nothing.
+_POGO_ENDS = {"pogo_%s_%s_%s" % (side, body, end)
+              for side in ("male", "female") for body in ("ph", "board")
+              for end in ("top", "bottom")}
 WIRE_OK = {
     "wire_canh":      {"motor_ctrl", "tee_pcb"},
     "wire_canl":      {"motor_ctrl", "tee_pcb"},
@@ -1049,10 +1068,6 @@ WIRE_OK = {
     # base is in here, and these four are one twisted bundle, so they touch at every
     # corner by construction -- but any of them clipping a SOLID is a routing bug, and
     # that is exactly what this table is for.
-    "pogo_wire_gnd":  set(),
-    "pogo_wire_5v":   set(),
-    "pogo_wire_canh": set(),
-    "pogo_wire_canl": set(),
     "pogo_harness_coil": set(),
     "wire_pwr_hot":   {"output_panel", "tee_pcb", "motor_ctrl"},
     "wire_pwr_gnd":   {"output_panel", "tee_pcb", "motor_ctrl"},
@@ -1062,6 +1077,9 @@ WIRE_OK = {
     "wire_oled":      {"oled", "pi5"},
     "wire_joy":       {"joystick", "pi5"},
 }
+
+WIRE_OK.update({"pogo_wire_%s" % n.lower(): set(_POGO_ENDS)
+                for n in EH.PH_PINOUT})
 
 
 # THE BAYS' BACK WALLS reach to MB.HARNESS_Y1 now, so a tee still ON THE RAIL must not fall
