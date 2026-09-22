@@ -1802,10 +1802,13 @@ def cut_feel_rear(w, place, reach=0.0):
 # life of the instrument -- while the +Y cheek is where the wire already IS, since J1's
 # plug leaves the board -X in the gap between the board and this very face.
 #
-# It sits -X of the plug's UNPLUG STROKE, not merely of the plug: _cradle tunnels the
-# web for 2*CONN_PLUG_RUN + 3.0 so the plug can be drawn off without lifting the board,
-# and a loop inside that would have traded a screw you cannot reach for a plug you
-# cannot pull.
+# FLUSH WITH THE BACK END (user, 2026-09-22: "move the loop so it's flush with the back
+# end of the lever where the screws are instead of putting it close to the port"). It sat
+# just -X of the plug's withdrawal, which was the nearest legal spot to J1; back at the
+# end face it is out of the way of everything -- the plug, its unplug stroke and the
+# board -- and the wire runs the length of the cheek before it is tied, which is the
+# slack you want between the tie and the connector anyway. The assert below is what
+# still keeps it clear of the withdrawal that _cradle tunnels the web for.
 #
 # IT PRINTS WITH NO OVERHANG, which is what picks the shape. The housing builds -Z ->
 # +Z, so the only feature needing no support is one standing on the bed face: the loop's
@@ -1817,24 +1820,24 @@ LACE_BORE_Z = 5 * D.NOZZLE_D        # 4.0 straight height, then the gable
 LACE_WALL   = D.MIN_WALL_2P         # 1.6
 LACE_WX     = 15 * D.NOZZLE_D       # 12.0 along X -- the run the cable threads through
 LACE_GABLE  = LACE_BORE_Y / 2.0     # 45 deg roof over the bore
-# the plug's whole withdrawal, which _cradle opens the web for
-LACE_X1 = CONN_MOUTH_X - CONN_UNPLUG - D.MIN_WALL_2P
-assert LACE_X1 - LACE_WX >= HOUS_X0 + D.MIN_WALL_2P, (
-    "the lace loop has run off the -X end of the housing")
+assert HOUS_X0 + LACE_WX <= CONN_MOUTH_X - CONN_UNPLUG - D.MIN_WALL_2P, (
+    "the lace loop reaches into the plug's withdrawal -- a hank tied on it would stop "
+    "the plug being drawn off")
 
 
-def lace_loop(y_face=None, z_bed=None):
+def lace_loop(y_face=None, z_bed=None, x_back=None):
     """The bus-B tie-off on a lever housing's +Y (connector) cheek, in the lever's local
     frame: a block standing on the bed face with a house-section bore along X.
 
     Parameterised because the VERTICAL lever (knee_lever_vert) is the same design with
-    the feel block moved above the axle -- same cheek and same connector, its own floor
+    the feel block moved above the axle -- same cheek and same back face, its own floor
     -- and it adjusts on the same grid, so it needs the same tie-off."""
     y0 = HOUS_HW if y_face is None else y_face
     y1 = y0 + LACE_BORE_Y + LACE_WALL
     z0 = HOUS_Z0 if z_bed is None else z_bed
     z1 = z0 + LACE_WALL + LACE_BORE_Z + LACE_GABLE + LACE_WALL
-    x0, x1 = LACE_X1 - LACE_WX, LACE_X1
+    x0 = HOUS_X0 if x_back is None else x_back       # FLUSH with the back end face
+    x1 = x0 + LACE_WX
     block = box_at(x1 - x0, y1 - y0, z1 - z0,
                    x=(x0 + x1) / 2, y=(y0 + y1) / 2, z=(z0 + z1) / 2)
     by1, bz0 = y1 - LACE_WALL, z0 + LACE_WALL

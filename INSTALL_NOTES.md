@@ -53,10 +53,11 @@ any knee depth over 197.5 mm in Y.
 
 ### KL-2 — Cut the lever segments long and tie the hank to the lever
 
-- **Where:** the lace loop on each lever housing's **+Y cheek, beside J1**
-  (`knee_lever.lace_loop`, on both `kl_housing` and `kv_housing`) — the side the plug
-  already leaves the board on. It sits −X of the plug's full withdrawal
-  (`knee_lever.CONN_UNPLUG`), so a tied hank never blocks unplugging.
+- **Where:** the lace loop on each lever housing's **+Y cheek** (`knee_lever.lace_loop`,
+  on both `kl_housing` and `kv_housing`) — the side the plug leaves the board on —
+  **flush with the housing's back end**, the screw end. It is well clear of the plug's
+  full withdrawal (`knee_lever.CONN_UNPLUG`), so a tied hank never blocks unplugging,
+  and the wire runs the length of the cheek before it is tied.
 - **What:** cut each lever-to-lever segment for the **widest** spacing you would use,
   fold the excess into a flat hank, pass it through the loop and tie it there with a
   reusable tie. The bore takes a doubled bundle.
