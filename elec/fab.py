@@ -97,7 +97,8 @@ LCSC = {
     "SPX3819M5-L-3-3/TR": "C9055",  # 3V3 analog LDO: 1 IN 2 GND 3 EN 4 BYP 5 OUT
     "TPS560430XFDBVR": "C523980",   # 24->5 V sync buck, 1.1 MHz FPWM
     "IR17-21C/TR8": "C131250",      # 940 nm emitter, 65 mA max, VF 1.2 typ
-    "VEMD4110X01": "C3211080",      # PIN photodiode -- ⚠ 95 in stock, 200 needed for ten
+    "PD15-22B/TR8": "C161211",      # Everlight PIN photodiode, 940 nm peak, 11k stock (2026-09-21)
+    "TLV320ADC3140IRTWT": "C1852021",  # TI 4-ch audio ADC, WQFN-24 RTW, 306 stock (2026-09-21)
     "S4B-XH-SM4-TB": "C161861",     # the (LF)(SN) form, 20,992; the bare listing is 0
     # Crystals are specified by PART, not by frequency -- see the note beside Y1.
     # Inductors are specified by PART too -- see the note beside L1. Isat 1.35 A
