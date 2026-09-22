@@ -1240,6 +1240,19 @@ def pedal_bar_work_components():
     return _pedal_bar_components() + _foot_pedal_components()
 
 
+def bus_b_components():
+    """EVERYTHING ON BUS B as ONE live set: the five modelled knee-lever stations, the
+    five foot pedals, and the pedal bar they are fused into.
+
+    The bus is the unit of work for the harness -- a lever chains to the next lever and
+    the chain carries on down the leg to the bar -- and it is the one view that shows
+    both ends of it. Like lever_components, the build does not need this; it exists for
+    the scratch view. No crop goes with it: the chain spans the whole instrument, and
+    cropping to the levers is what left the pedal bar looking like a bar in empty
+    space."""
+    return lever_components() + _pedal_bar_components()
+
+
 def _tensioner_coupon_components():
     """The unified belt clamp shown ASSEMBLED, parked off the +X end for a clear look (the real
     clamps ride each string's belt). ONE SKU per half (`clamp_half`; half-B is it turned 180° about
