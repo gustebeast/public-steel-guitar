@@ -26,6 +26,15 @@ centre, and it must sit on the axle axis. Everything else is placed around it.
 
 EVERY PIN NUMBER BELOW IS OFF THE DATASHEET, not a library symbol -- see the
 per-part notes. Getting one wrong is the failure this file exists to prevent.
+
+⚠ RE-SPUN 2026-09-21 TO branner's SPEC (docs/lever-sensor-respin.md), user decisions:
+  * the lever bus runs at 5 V -- the 24 V buck (U1 LMR16006, L1, D1, C1-C3, R1/R2) is
+    gone, and a 5 V -> 3V3 LDO (AP2112K) takes its place
+  * J1 is PH again: S8B-PH-SM4-TB (LCSC C265121), SMT side entry, on the magnet face, on
+    end with its mouth -X -- a different family from the 24 V XH tees, so no harness can
+    put 24 V on a lever board
+  * the outline is the spec's 31.0 x 21.9, trimmed at +X and at the top
+The paragraph above on why PH is right again; the XH interlude it replaced is in git.
 """
 from __future__ import annotations
 
@@ -50,60 +59,26 @@ P = Pin.types.PASSIVE
 I, O, PWR, PIN = Pin.types.INPUT, Pin.types.OUTPUT, Pin.types.PWRIN, Pin.types.PWRIN
 
 # ── the board ────────────────────────────────────────────────────────────────
-# 28 x 22. The 28 is the FOOT PEDAL's cap (it turns the board 90 deg). The 22 is
-# new: 16 was derived from the old 15.0 connector, and the 19.9 PH needs 20.9
-# with JLCPCB's 1.0 component-to-edge rule. The horizontal lever's Z window is
-# 26.10, so 22 costs nothing -- and it takes coverage from ~62% to ~48%, which
-# this board needs: it has never modelled a single passive.
-# ⚠ FOOTPRINTS NOT YET VERIFIED AGAINST THE PACKAGE DRAWINGS. The PIN NUMBERS
-# above are datasheet-confirmed; these two LAND PATTERNS are the nearest stock
-# KiCad parts and carry two open questions each -- the MCU's pitch (0.4 vs 0.45
-# on a 4x4 QFN28) and both parts' exposed-pad size. The MT6701's pin list runs
-# 1..16 with no pin 0, so it may have NO thermal pad at all, in which case this
-# footprint leaves unconnected copper under the die. Resolve both off the
-# drawings before any board is ordered; nothing else in this file depends on it.
+# ⚠ THE OUTLINE IS branner's RE-SPIN SPEC, NOT AN OUTPUT OF THIS FILE (docs/lever-sensor-
+# respin.md, 2026-09-21). In the spec's frame -- origin on the MT6701, +X toward the lever,
+# +Z up -- the edges are +X 3.0, top 10.1, bottom -11.8, -X -28.0: 31.0 x 21.9. This file
+# works in board-local mm with the origin at the board CENTRE, so the chip sits at
+# (+12.5, +0.85): 3.0 from the +X edge and 10.1 below the top.
+# The -X edge is an upper bound the spec allows shrinking; it stays, because J1's plug run
+# and the tunnel in the -X web are sized to it.
+# ⚠ FOOTPRINTS: the MCU's QFN-28 pitch (0.4 vs 0.45) and both QFNs' exposed pads are still
+# the nearest stock KiCad lands, not read off the drawings -- resolve before ordering.
 MCU_FP = "Package_DFN_QFN:QFN-28-1EP_4x4mm_P0.4mm_EP2.4x2.4mm"
 SENSOR_FP = "Package_DFN_QFN:QFN-16-1EP_3x3mm_P0.5mm_EP1.45x1.45mm"
-
-# ⚠⚠ AND THIS BREAKS THE KNEE HOUSING, WHICH IS NOT MY PART. The gate already carries
-# a DEFERRED overlap between the lever board's components and knee_housing -- 25 pairs,
-# ~207 mm3, owner branner -- and its recorded reason is that "bronner's board is at its
-# floor (21.4 against J1's 21.29 courtyard), so the room has to come from the housing".
-#
-# That reason is now stale in the worst direction. The board is no longer at 21.4: it is
-# 34 x 28, up 59 % in area from 28 x 21.4, and the connector that forced it is deeper
-# than the PH it replaced. The cradle was sized to the old box, so the overlap will be
-# substantially larger than 207 mm3 and the housing needs re-cutting around the new
-# outline, not just relieving.
-#
-# Flagged rather than fixed: knee_housing is branner's file, and the cached gate an
-# agent may run cannot even see this yet -- its context solids are ~92 h old and predate
-# both this board and the new wiring. The full gate runs in the lead's build on merge,
-# which is where this will show up. It is in the submit message.
-
-# ⚠ THE BOARD GREW FOR THE XH (user freed the plastic, 2026-09-19). J1 stands on end
-# -- rotated 90, so its LENGTH runs along BOARD_L -- and the XH is 25.0 mm against PH's
-# 19.9, which 21.4 could not hold. 28.0 in Y gives 25.0 plus 1.5 of margin at each end.
-#
-# AND 6 mm WIDER IN X, measured rather than assumed. The XH's courtyard is 12.5 x 23.4
-# against the PH's much slimmer one, so at 28 wide it overlapped U2, U3, Y1 and TP4 --
-# four courtyard violations, every one of them this single part. The circuit occupies
-# local x -3..+11 and cannot shift right, because the MT6701 sits on the axle at
-# x 11.0 and that position is not negotiable. So the room comes off the -X edge: 34
-# wide puts J1 at x -10.75, spanning -17..-4.5, clear of U3's -1.6 by 2.9 mm.
-#
-# The extra area is also what the CAN_RX corner has been short of. That net has been
-# unroutable since it was measured -- U3 pad 19 showed ZERO clear escape bearings, at
-# any distance and in any direction -- and what it lacked was room.
-BOARD_W, BOARD_L = 34.0, 28.0
-CHIP_XY = (11.0, -0.3)        # the axle axis, in board-local mm (see board_json)
+BOARD_W, BOARD_L = 31.0, 21.9
+CHIP_XY = (12.5, 0.85)        # the axle axis, in board-local mm
 
 # Anything TALLER than 1.5 mm must keep its whole footprint outside the magnet
 # cap's swept circle, because the board installs by dropping straight down past
-# the cap. Only the connector, the transceiver and the inductor qualify; every
-# passive here is under 1.5.
+# the cap. Only the connector and the transceiver (SOIC-8, 1.75) qualify now that the
+# inductor went with the buck; every passive here is under 1.5, the LDO is 1.45.
 CAP_SWEEP_R = 5.66
-TALL_PARTS = ("J1", "U2", "L1")
+TALL_PARTS = ("J1", "U2")
 
 
 # ⚠ THE REF IS PINNED FROM THE TAG, AND IT HAS TO BE. Every call already passes a tag
@@ -128,9 +103,9 @@ def _c(tag, value, desc, pkg="Capacitor_SMD:C_0402_1005Metric"):
 
 @subcircuit
 def lever_sensor():
-    gnd, v24, v33 = Net("GND"), Net("+24V"), Net("+3V3")
+    gnd, v5, v33 = Net("GND"), Net("+5V"), Net("+3V3")
     can_h, can_l = Net("CAN_H"), Net("CAN_L")
-    for n in (gnd, v24, v33, can_h, can_l):
+    for n in (gnd, v5, v33, can_h, can_l):
         n.drive = Pin.drives.POWER
 
     # ── the trunk, in and out of one connector ───────────────────────────────
@@ -138,77 +113,51 @@ def lever_sensor():
     # order the motor tee uses (GND / +V / CAN_H / CAN_L) so one crimp order
     # serves every connector in the instrument. The two halves are the same four
     # nets -- a pass-through, not a switch.
-    # ⚠ XH NOW, THE SAME PART THE POWER AND TEE BOARDS USE (user, 2026-09-19). PH was
-    # chosen because an 8-way XH in SIDE-ENTRY SMT is not stocked -- see the header note
-    # -- and that was the whole objection. S8B-XH-A is side-entry THT, 8-way, 25.0 mm,
-    # LCSC C157914, and can_tee has been using it all along. What kept it off THIS board
-    # was its THT posts sweeping the magnet cap on install, which is a PLASTIC problem,
-    # and the plastic is being redesigned (user), so the constraint moved.
-    #
-    # What it buys: ONE connector family across both buses instead of two, the same
-    # crimps and the same 8-way housing as the trunk, and 3 A contacts where PH gave 2.
-    # What it costs: 5.1 mm more length (25.0 against 19.9), which is why the board grew
-    # -- see BOARD_L.
-    j1 = Part(name="S8B-XH-A", ref_prefix="J", ref="J1", tag="J1", dest="NETLIST",
-              tool="skidl", value="S8B-XH-A",
-              description="CAN trunk in (1-4) and out (5-8), LCSC C157914",
-              footprint="Connector_JST:JST_XH_S8B-XH-A_1x08_P2.50mm_Horizontal",
+    # PH, SMT side entry (user, 2026-09-21). Pin order is the XH trunk's (harness.XH_PINOUT)
+    # so one crimp order serves every connector -- but the +V way is the 5 V LEVER bus, which
+    # is why the family differs from the 24 V tees: a lever harness physically cannot mate
+    # a motor tee. The footprint's two MP tabs are mechanical and carry no net.
+    j1 = Part(name="S8B-PH-SM4-TB", ref_prefix="J", ref="J1", tag="J1", dest="NETLIST",
+              tool="skidl", value="S8B-PH-SM4-TB",
+              description="lever bus in (1-4) and out (5-8), 5 V, LCSC C265121",
+              footprint="Connector_JST:JST_PH_S8B-PH-SM4-TB_1x08-1MP_P2.00mm_Horizontal",
               pins=[Pin(num=i + 1, name=n, func=P) for i, n in enumerate(
-                  harness.xh_trunk_pins())])
+                  tuple(x + "_IN" for x in ("GND", "V5", "CAN_H", "CAN_L"))
+                  + tuple(x + "_OUT" for x in ("GND", "V5", "CAN_H", "CAN_L")))])
     gnd += j1[1], j1[5]
-    v24 += j1[2], j1[6]
+    v5 += j1[2], j1[6]
     can_h += j1[3], j1[7]
     can_l += j1[4], j1[8]
 
-    # ── 24 V -> 3V3, LMR16006XDDCR (LCSC C87080) ─────────────────────────────
-    # Pins off TI SNVSA24 section 6: 1 CB, 2 GND, 3 FB, 4 SHDN, 5 VIN, 6 SW.
-    # SHDN is left FLOATING, which the datasheet defines as enabled (internal
-    # pull-up current source) -- deliberate, not an omission.
-    # ASYNCHRONOUS buck: the catch diode D1 is required, not optional.
-    u1 = Part(name="LMR16006XDDCR", ref_prefix="U", tag="U1", dest="NETLIST",
-              tool="skidl", value="LMR16006XDDCR",
-              description="60 V 0.6 A buck, 24 V -> 3V3",
-              footprint="Package_TO_SOT_SMD:SOT-23-6",
-              pins=[Pin(num=1, name="CB", func=P), Pin(num=2, name="GND", func=PWR),
-                    Pin(num=3, name="FB", func=I), Pin(num=4, name="SHDN", func=I),
-                    Pin(num=5, name="VIN", func=PWR), Pin(num=6, name="SW", func=O)])
-    sw, fb, cb = Net("SW"), Net("FB"), Net("CB")
-    v24 += u1["VIN"]
+    # ── 5 V -> 3V3, AP2112K-3.3TRG1 (LCSC C51118) ─────────────────────────────
+    # Replaces the 24 V buck. SOT-23-5 (Diodes Inc DS33549): 1 IN, 2 GND, 3 EN, 4 NC,
+    # 5 OUT -- the same part and pin map the output panel uses. EN tied to IN: always on.
+    # 1 uF ceramic on each side is the datasheet's stability requirement. Load is ~30 mA
+    # (MCU + transceiver + sensor), so it drops (5 - 3.3) x 0.03 = 0.05 W -- nothing.
+    # A LINEAR regulator is also the right call beside a magnetic angle sensor: the buck
+    # was the one switching node on this board, 15 mm from the MT6701.
+    u1 = Part(name="AP2112K-3.3", ref_prefix="U", ref="U1", tag="U1", dest="NETLIST",
+              tool="skidl", value="AP2112K-3.3TRG1",
+              description="600 mA LDO, 5 V -> 3V3 (LCSC C51118)",
+              footprint="Package_TO_SOT_SMD:SOT-23-5",
+              pins=[Pin(num=1, name="IN", func=PWR), Pin(num=2, name="GND", func=PWR),
+                    Pin(num=3, name="EN", func=I), Pin(num=4, name="NC", func=P),
+                    Pin(num=5, name="OUT", func=P)])
+    v5 += u1["IN"], u1["EN"]
     gnd += u1["GND"]
-    sw += u1["SW"]
-    fb += u1["FB"]
-    cb += u1["CB"]
-
-    l1 = Part(name="L", ref_prefix="L", tag="L1", dest="NETLIST", tool="skidl",
-              value="47uH", description="buck inductor",
-              footprint="Inductor_SMD:L_Taiyo-Yuden_NR-30xx",
-              pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
-    sw += l1[1]
-    v33 += l1[2]
-
-    d1 = Part(name="B5819W", ref_prefix="D", tag="D1", dest="NETLIST", tool="skidl",
-              value="B5819W", description="buck catch diode (Schottky, 40 V)",
-              footprint="Diode_SMD:D_SOD-123",
-              pins=[Pin(num=1, name="K", func=P), Pin(num=2, name="A", func=P)])
-    sw += d1["K"]
-    gnd += d1["A"]
-
-    cin = _c("C1", "4.7uF/50V", "buck input bulk -- 50 V part on a 24 V rail",
-             "Capacitor_SMD:C_1206_3216Metric")
-    v24 += cin[1]; gnd += cin[2]
-    cout = _c("C2", "10uF/16V", "buck output bulk", "Capacitor_SMD:C_0805_2012Metric")
+    v33 += u1["OUT"]
+    Net("U1_NC").connect(u1["NC"])
+    cin = _c("C1", "1uF", "LDO input")
+    v5 += cin[1]; gnd += cin[2]
+    cout = _c("C2", "1uF", "LDO output")
     v33 += cout[1]; gnd += cout[2]
-    cboot = _c("C3", "100nF", "bootstrap, CB to SW")
-    cb += cboot[1]; sw += cboot[2]
-    # VOUT = VFB x (1 + R1/R2); VFB = 0.765 V typ -> R1/R2 = 3.31 for 3V3
-    rfb1 = _r("R", "R1", "100k", "feedback divider, top")
-    rfb2 = _r("R", "R2", "30k1", "feedback divider, bottom")
-    v33 += rfb1[1]; fb += rfb1[2], rfb2[1]; gnd += rfb2[2]
 
     # ── CAN transceiver, SN65HVD230DR (LCSC C12084) ──────────────────────────
     # SOIC-8: 1 D, 2 GND, 3 VCC, 4 R, 5 Vref, 6 CANL, 7 CANH, 8 Rs.
     can_tx, can_rx = Net("CAN_TX"), Net("CAN_RX")
-    u3 = Part(name="SN65HVD230DR", ref_prefix="U", tag="U3", dest="NETLIST",
+    # ⚠ ref= PINNED: this part has always been U2 on the board (skidl numbered it second,
+    # after the buck), and with the buck gone creation order would make it U1.
+    u3 = Part(name="SN65HVD230DR", ref_prefix="U", ref="U2", tag="U3", dest="NETLIST",
               tool="skidl", value="SN65HVD230DR", description="3.3 V CAN transceiver",
               footprint="Package_SO:SOIC-8_3.9x4.9mm_P1.27mm",
               pins=[Pin(num=1, name="D", func=I), Pin(num=2, name="GND", func=PWR),
@@ -236,7 +185,7 @@ def lever_sensor():
     # makes this board ALL-0402 for resistors, dropping a feeder.
     rt = _r("R", "R4", "120R", "CAN termination, closed only on the last board",
             "Resistor_SMD:R_0402_1005Metric")
-    jp1 = Part(name="SolderJumper_2_Open", ref_prefix="JP", tag="JP1", dest="NETLIST",
+    jp1 = Part(name="SolderJumper_2_Open", ref_prefix="JP", ref="JP1", tag="JP1", dest="NETLIST",
                tool="skidl", value="TERM", description="close on the bus's LAST board only",
                footprint="Jumper:SolderJumper-2_P1.3mm_Open_RoundedPad1.0x1.5mm",
                pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
@@ -247,10 +196,12 @@ def lever_sensor():
     # CAN array, on purpose: a 2-pin bidirectional part is symmetric, so there is
     # no pinout to get wrong, and the 3-pin arrays' pin order is the one number I
     # could not verify. The threat is real -- a TRRS plug sweeps every contact on
-    # insertion, so the leg's 24 V momentarily reaches CAN_H and CAN_L, and this
-    # transceiver's bus pins are absolute-max -4..+16 V.
+    # insertion, so the leg's supply momentarily reaches CAN_H and CAN_L, and this
+    # transceiver's bus pins are absolute-max -4..+16 V. (That supply is 5 V on the lever
+    # bus now, inside the rating -- the clamps stay for ESD, which is what a plug on a
+    # player-handled lever mostly sees.)
     for tag, net in (("D2", can_h), ("D3", can_l)):
-        d = Part(name="TVS", ref_prefix="D", tag=tag, dest="NETLIST", tool="skidl",
+        d = Part(name="TVS", ref_prefix="D", ref=tag, tag=tag, dest="NETLIST", tool="skidl",
                  value="PESD1CAN-like", description="bidirectional TVS, bus pin to GND",
                  # SOD-523, not SOD-123: these are signal-line ESD clamps, not power
                  # TVS, and the big package cost 18 mm2 the board no longer has once
@@ -340,7 +291,7 @@ def lever_sensor():
     sda, scl = Net("SDA"), Net("SCL")
     swdio, swclk, nrst = Net("SWDIO"), Net("SWCLK"), Net("NRST")
     osc1, osc2 = Net("OSC_IN"), Net("OSC_OUT")
-    u2 = Part(name="CH32V203G6U6", ref_prefix="U", tag="U2", dest="NETLIST",
+    u2 = Part(name="CH32V203G6U6", ref_prefix="U", ref="U3", tag="U2", dest="NETLIST",
               tool="skidl", value="CH32V203G6U6",
               description="RISC-V MCU, 2x CAN; same toolchain as the controller board",
               footprint=MCU_FP,
@@ -393,7 +344,7 @@ def lever_sensor():
     gnd += u2["PB8"]
 
 
-    y1 = Part(name="Crystal", ref_prefix="Y", tag="Y1", dest="NETLIST", tool="skidl",
+    y1 = Part(name="Crystal", ref_prefix="Y", ref="Y1", tag="Y1", dest="NETLIST", tool="skidl",
               value="8MHz", description="HSE -- CAN bit timing wants a crystal, not the RC",
               footprint="Crystal:Crystal_SMD_3225-4Pin_3.2x2.5mm",
               pins=[Pin(num=1, func=P), Pin(num=2, func=P),
@@ -434,7 +385,7 @@ def lever_sensor():
     for tag in ("C8", "C9"):
         c = _c(tag, "100nF", "MCU decoupling")
         v33 += c[1]; gnd += c[2]
-    c_bulk = _c("C10", "4.7uF", "MCU bulk", "Capacitor_SMD:C_0805_2012Metric")
+    c_bulk = _c("C10", "4.7uF", "MCU bulk -- 0402 since the re-spin (6.3 V X5R)")
     v33 += c_bulk[1]; gnd += c_bulk[2]
 
     # ── the sensor, MT6701QT-STD QFN-16 (LCSC C2913974) ──────────────────────
@@ -444,7 +395,7 @@ def lever_sensor():
     # MODE selects ABZ against I2C/SSI. It is strapped through a resistor rather
     # than tied, because which level selects which is a datasheet detail to
     # confirm on the first board -- a resistor is a jumper you can move.
-    u4 = Part(name="MT6701QT-STD", ref_prefix="U", tag="U4", dest="NETLIST",
+    u4 = Part(name="MT6701QT-STD", ref_prefix="U", ref="U4", tag="U4", dest="NETLIST",
               tool="skidl", value="MT6701QT-STD",
               description="14-bit Hall angle encoder, sensing centre = package centre",
               footprint=SENSOR_FP,
@@ -491,187 +442,60 @@ BOARD_NOTES = {
     # Board-local mm, origin at the board centre. The housing frame is x -25..+3
     # and z -14.2..+7.8, so the axle axis (housing 0,0) lands at CHIP_XY.
     "chip_on_axle_xy": CHIP_XY,
+    # ⚠ RE-PLACED 2026-09-21 FOR THE RE-SPIN. The circuit is the routed board's, moved
+    # as a block by (+1.5, +1.45) -- the frame shift that keeps the chip on the axle in the
+    # new board-centred frame -- so every relationship the CAN-fan notes below were
+    # measured on (MCU beside transceiver beside crystal) is preserved exactly. What
+    # changed: the buck is gone from the top, the LDO and its two caps take that corner,
+    # R6 steps 0.57 -X out of the +X groove band, and the four SWD pads come in off the
+    # trimmed +X edge into the top strip (one column of three plus NRST, as before).
     "placements": {
-        "U4": (11.00, -0.60, 0.0),
-        # SWD pads -- the only four 2.0 mm sites this board has left; see the note in
-        # lever_sensor() for why they are not in a neat row.
-        # ⚠ MOVED OFF THE MCU'S EAST EDGE, 2026-09-19, TO TEST THE NOTE ABOVE. That
-        # note ends "move what the transceiver or TP1 asks of that edge", and TP1 is the
-        # cheaper half: SWDIO is only in that corner because TP1 is, and pins 19/20/21 --
-        # CAN_RX, CAN_TX and SWDIO -- all leave the same edge at 0.4 mm pitch. The east
-        # of this board is empty past x 12 (U4's courtyard ends at 13.18) and it was not
-        # empty when these pads were sited, which is what makes "the only four 2.0 mm
-        # sites this board has left" a statement about the OLD 21.4-wide outline.
-        # An inline column is also the shape a programming clip actually wants; the old
-        # L was what fitted, not what was preferred.
-        "TP1": (14.75, 1.45, 0.0),     # SWDIO
-        "TP2": (14.75, -0.95, 0.0),    # SWCLK
-        "TP3": (14.75, 3.85, 0.0),     # GND  -- 2.4 mm pitch, one column
-        # ⚠ TP4 MOVED FOR THE XH. J1's courtyard now reaches x 96.75 and TP4 sat at
-        # 96.30..98.39 -- the one part the bigger connector still clipped. TP4 is the
-        # right one to move: it is NRST, described above as stranded and for
-        # connect-under-reset recovery only, so it is the least coupled pad on the
-        # board. Sited from pcbnew's own courtyards rather than estimated, 32241 free
-        # positions, this the nearest to the circuit's centre.
-        "TP4": (-1.30, 11.70, 0.0),   # moved off J1's courtyard; see below
-        "J1": (-13.00, 0.00, 90.0),
-        # ⚠ READ THROUGH pcbnew, AFTER FOUR PLACEMENTS BY ESTIMATE. The XH's pins
-        # run DOWNWARD from pin 1 -- pad 1 at abs y 100.30, pad 8 at 82.80 -- so the
-        # field is 17.5 mm long and its centre is 8.45 BELOW the origin, not on it.
-        # Guessing that offset put pins off the bottom edge, then off the top, then
-        # over TP4. Loading the board and printing the pad coordinates settles it in
-        # one step: centred, the origin sits at local y 0.00. This
-        # footprint is anchored at PIN 1, not at its body centre, so placing it at
-        # local y 0 put the pin field at abs y 107.8..127.2 against a board ending at
-        # 114 -- thirteen millimetres of connector hanging off the edge, which DRC
-        # reported as courtyard overlaps with whatever it landed near rather than as
-        # "off the board". Measured: the pads centred at abs y 117.5 and the board
-        # centre is 100, so the origin moves +17.5 in board-local y to bring them onto
-        # it. Two placements before this one were estimates and both were wrong.
-        "U1": (-1.10, 8.75, 0.0),
-        "L1": (3.00, 8.70, 0.0),
-        "D1": (7.60, 9.25, 0.0),
-        "R1": (11.10, 9.25, 0.0),
-        "C1": (-0.90, 5.60, 0.0),
-        "C2": (3.40, 5.70, 0.0),
-        "C3": (6.50, 5.70, 0.0),
-        "R2": (8.60, 5.70, 0.0),
-        "R7": (10.90, 5.70, 0.0),
-        # ⚠ 0, NOT 90, AND IT IS A ROUTING DECISION. At 90 the CAN pair sat on the MCU's
-        # NORTH edge while the transceiver it talks to is south of it, and J1 walls off
-        # the whole west side -- so both signals had to travel around the package to get
-        # anywhere. CAN_TX made it and CAN_RX did not, through three rounds of trying to
-        # fix it as a routing problem.
-        # Measured across all four orientations by total pin-to-net distance: 58.7 mm at
-        # 0 against 66.6 at 90. A square QFN's envelope does not change when it turns, so
-        # this costs nothing but the decision to look.
-        #
-        # ⚠ AND THE REAL CONSTRAINT IS NOT "CAN_RX IS HARD", IT IS THREE SIGNALS AND TWO
-        # WAYS OUT. Pre-lay CAN_RX and it connects -- and CAN_TX becomes the unconnected
-        # net instead, a clean swap. Pre-lay BOTH and the second is reported not placeable
-        # by the generator too. They leave adjacent pins, 19 and 20, on the same QFN edge.
-        # Probing the escape ring outward from each: CAN_TX's own via sits 0.7 to 1.4 mm
-        # off pin 19, squarely in CAN_RX's path, and SWDIO runs through that corridor at
-        # every radius from 0.7 to 2.2 mm.
-        #
-        # SWDIO is there because of TP1. Before the SWD pads existed this net was
-        # single-node, so layout dropped it and it laid no copper at all -- the board was
-        # unprogrammable, which is why the pads went in. Giving SWDIO a destination gave
-        # it a route, and that route goes through the one corner CAN_RX needed. Both are
-        # required, so this is a placement question and not a routing one: move what the
-        # transceiver or TP1 asks of that edge, or accept one CAN direction unrouted.
-        #
-        # ⚠ 2026-09-19: THE PLACEMENT HALF OF THAT WAS DONE, AND THE NET ONLY SWAPPED.
-        # TP1/TP2/TP3 moved off this edge into the empty east (x 14.75), C7 and R6 went
-        # to the chips they serve, and sitesearch.py says the two ICs cannot help: U2 has
-        # 32 legal sites, ALL within 1.5 mm of where it already is, and U3 has ZERO -- it
-        # cannot move at all without displacing something. The board is saturated. What
-        # changed is which direction fails: CAN_TX now routes and CAN_RX does not.
-        #
-        # ⚠ AND THE CAUSE IS NOW MEASURED RATHER THAN INFERRED, which it never was
-        # before. Probing due east of U3.19 (CAN_RX) on the routed board names what holds
-        # the lane, at these distances from the pad:
-        #     +0.9 mm   CAN_TX's escape via   (and its F.Cu and B.Cu tracks)
-        #     +1.6 mm   SWDIO's escape via    (and its tracks)
-        #     +2.6 mm   SDA on In2.Cu, a GND via
-        # Both neighbours parked a VIA in the only opening CAN_RX has. Unrouted, with
-        # nothing on the board but pads, that pad already has just 2 of 24 clear bearings;
-        # routed it has 1, and there are ZERO legal via sites anywhere in a 360-degree
-        # ring out to 4 mm. Pins 19, 20 and 21 are CAN_RX, CAN_TX and SWDIO on 0.4 mm
-        # pitch: three signals needing three escape lanes, and a 0.6 mm via leaves room
-        # for two. That is the whole problem, stated properly at last.
-        #
-        # SOLVED BY THE VIA, NOT BY THE PLACEMENT: at 0.50 mm instead of 0.60 all three
-        # signals escape and this board reaches 0 unconnected and 0 violations for the
-        # first time. The full sweep and the JLCPCB capability figures are in the
-        # "via_mm" note below -- including that it is NOT a move off standard capability
-        # and carries no surcharge, which is the opposite of what it looks like.
-        #
-        # The placement work above stays because each move is right on its own terms, and
-        # because the diagnosis needed it: it was only after the parts stopped being
-        # plausible suspects that the fan itself became the obvious one.
-        "U3": (1.00, 1.55, 0.0),
-        "C9": (5.50, 3.20, 0.0),
-        "C8": (7.50, 3.20, 0.0),
-        "R5": (11.00, 2.90, 0.0),
-        "C11": (7.00, -0.60, 0.0),
-        "C10": (9.50, -3.90, 0.0),
-        "Y1": (-0.90, -3.00, 0.0),
-        # ⚠ C5/C6 STAY EAST OF THE CRYSTAL, AND THE SHORT-LOOP ARGUMENT LOSES. They
-        # are Y1's load caps sitting 4.5 mm from it, on the wrong side of everything they
-        # connect to, and sitesearch put both on the MCU's west side at ~1.6 mm. MEASURED
-        # THERE: 1 unconnected -> 5 (+3V3, CAN_RX, NRST, OSC_IN, OSC_OUT). C7 had already
-        # moved west for the same good reason, and three small parts plus the crystal is
-        # more than that side will take -- the caps' own nets were among the casualties.
-        # The distance score is real and it is not the binding constraint; west-side
-        # congestion is. Left where they are deliberately.
-        "C5": (3.60, -2.50, 0.0),
-        "C6": (3.60, -4.30, 0.0),
-        # ⚠ C7 AND R6 MOVED TO THEIR OWN CHIPS, 2026-09-19, and the corridor they
-        # were standing in is the point. Both sat in the x = 6 column between the crystal
-        # and the transceiver, which is the ONLY lane from the MCU's south-east corner
-        # down to U2 -- the lane CAN_TX and CAN_RX have been fighting over for four
-        # rounds. Neither belongs there: C7 decouples NRST and sat 8.6 mm from that pin,
-        # R6 pulls up SDA and sat 6.0 mm from the chip it pulls up.
-        # Sited by elec/sitesearch.py over all 1950 legal positions for each, scored on
-        # the net each part actually serves: C7 8.6 -> 1.6 mm, R6 6.0 -> 1.8 mm. So this
-        # is the right placement on its own terms and opens the lane as a consequence,
-        # which is the kind of move worth preferring over one that only does the latter.
-        "C7": (-2.55, 1.09, 90.0),
-        "R6": (11.97, -3.92, 270.0),
-        "U2": (0.50, -7.60, 0.0),
-        "C4": (6.00, -6.30, 0.0),
-        "R3": (6.00, -7.80, 0.0),
-        "R4": (9.50, -5.75, 0.0),
-        "JP1": (9.50, -7.70, 0.0),
-        "D2": (5.80, -9.80, 0.0),
-        "D3": (8.60, -9.80, 0.0),
+        "U4": (12.50, 0.85, 0.0),
+        # SWD: SWDIO / SWCLK / GND in a row for a clip, NRST stranded (recovery only)
+        "TP1": (8.00, 8.80, 0.0),     # SWDIO
+        "TP2": (10.40, 8.80, 0.0),    # SWCLK
+        "TP3": (8.00, 6.50, 0.0),     # GND
+        "TP4": (-1.65, 8.90, 0.0),    # NRST
+        # J1 on end, mouth -X at x -12.45 (3.05 in from the -X edge, the spec's figure).
+        # Placements anchor on the PAD CENTROID: the footprint's mouth is its local +y 4.4,
+        # its pad centroid local y -1.70 (eight pins at -2.85, two tabs at +2.90), and rot
+        # 270 turns +y to -X -- so the centroid sits 6.10 +X of the mouth. Read back off
+        # the routed geom, not assumed: -8.05 put the mouth at -14.15.
+        "J1": (-6.35, 0.00, 270.0),
+        "U1": (4.00, 8.00, 0.0),
+        "C1": (0.60, 8.60, 0.0),
+        "C2": (0.60, 7.30, 0.0),
+        "R7": (12.40, 7.15, 0.0),
+        # ⚠ U3 (the MCU) AT 0 ROTATION, AND IT IS A ROUTING DECISION -- measured across all
+        # four rotations on the old board (see lever_sensor()). The CAN fan (pins 19-21,
+        # 0.4 pitch) closes only with the 0.50/0.25 via; see via_mm.
+        "U3": (2.50, 3.00, 0.0),
+        "C9": (7.00, 4.65, 0.0),
+        "C8": (9.00, 4.65, 0.0),
+        "R5": (12.50, 4.35, 0.0),
+        "C11": (8.50, 0.85, 0.0),
+        "C10": (11.00, -2.45, 0.0),
+        "Y1": (0.60, -1.55, 0.0),
+        # C5/C6 stay east of the crystal: moving them west measured 1 -> 5 unconnected
+        "C5": (5.10, -1.05, 0.0),
+        "C6": (5.10, -2.85, 0.0),
+        # C7 (NRST) steps 2.8 +Y off the MCU's west edge: J1's pads now stand 1.9 from
+        # it rather than 3.6, and at its old site it sat squarely in OSC_OUT's escape
+        # (pin 3, the pin below NRST) -- 1 unconnected with no legal repair path.
+        "C7": (-1.05, 5.30, 90.0),
+        "R6": (12.90, -2.47, 270.0),
+        "U2": (2.00, -6.15, 0.0),
+        "C4": (7.50, -4.85, 0.0),
+        "R3": (7.50, -6.35, 0.0),
+        "R4": (11.00, -4.30, 0.0),
+        "JP1": (11.00, -6.25, 0.0),
+        "D2": (7.30, -8.35, 0.0),
+        "D3": (10.10, -8.35, 0.0),
     },
     "cap_keepout": {"xy": list(CHIP_XY), "r": CAP_SWEEP_R, "tall": list(TALL_PARTS)},
-    # THE GROUND PLANE IS WHY THIS BOARD IS FOUR LAYERS. BOM.md says so outright:
-    # "4 LAYERS, and not for density: the buck switches ~10 mm from a magnetic
-    # angle sensor whose entire job is reading a small field. A solid ground
-    # plane between them is worth more than the couple of dollars it costs."
-    # Without this pour the stackup buys nothing.
-    # ⚠ AND THE PLANE EARNS ITS KEEP A SECOND WAY, MEASURED 2026-09-19. The argument
-    # above is about SHIELDING -- copper between the switcher and the sensor. The plane
-    # also closes the switcher's own current loops, which is a different mechanism and
-    # the bigger effect.
-    #
-    # U1 is an LMR16006 in SOT-23-6 with VIN (5) and GND (2) on OPPOSITE sides of the
-    # package, and C1 sits CROSSED relative to it -- C1's +24V pad on the chip's GND
-    # side and vice versa. On a two-layer board that geometry forces a wide loop. Here
-    # neither return is a trace at all: U1.GND and C1.GND each drop straight into In1.Cu
-    # through their own via, so the return current flows in the plane directly beneath
-    # the outgoing trace and the loop is the trace length times the prepreg thickness.
-    #
-    #     input path   C1(+24V) -> U1.VIN       4.29 mm on F.Cu
-    #     SW path      U1.SW    -> D1 cathode   6.57 mm  (this is an ASYNCHRONOUS buck,
-    #                                                     so D1 carries the commutation)
-    #     input loop      4.29 x 0.2 mm prepreg  =  0.86 mm2
-    #     commutation    10.86 x 0.2             =  2.17 mm2
-    #
-    # For scale, the optical board's switcher -- whose GND return IS a trace, because it
-    # has to cross the package -- encloses 6.23 mm2, and that board gets away with it by
-    # being 53 mm from anything sensitive. This one cannot use that argument: the MT6701
-    # is 15.29 mm away (this note used to say ~10, which was pessimistic and never
-    # measured). It does not need to.
-    # ⚠ AND C1 IS THE HF BYPASS HERE, NOT JUST THE BULK -- CHECKED 2026-09-19, because
-    # the same question found a real defect on motor_ctrl the same day and the obvious
-    # next move is to "fix" this board the same way. It does not apply.
-    #
-    # motor_ctrl's U1 had bulk 11.50 mm away and nothing else, with clear board beside
-    # the pin; a 100nF 0402 went in at 1.73 mm. Here C1 is a 4.7 uF CERAMIC at 3.20 mm
-    # and it is already as close as the layout permits: U1's courtyard ends at x 1.00 and
-    # L1's begins at 1.16, a 0.16 mm gap, with TP4 above and C2 below. The only free
-    # pocket that takes an 0402 is north-east at about (0.45, 11.6), which lands its pads
-    # 2.41 mm from the VIN pad. Trading a 4.7 uF ceramic at 3.20 for a 100nF at 2.41 is
-    # not an improvement worth a part number on a board built ELEVEN times per
-    # instrument -- the trace inductance dominates either way at these lengths.
-    #
-    # The thing that actually keeps this switcher quiet is the plane return measured
-    # above: 0.86 mm2 of input loop, against 11.38 on output_panel. Decoupling distance
-    # is the second-order term here and the layout is already at its limit on it.
+    # FOUR LAYERS: an unbroken GND plane on In1 under a magnetic angle sensor, and the
+    # layer set the 0.4 mm-pitch MCU's escape needs. (It was first argued against the 24 V
+    # buck's switching loop; the buck is gone and the plane's other two jobs remain.)
     "zones": [("GND", "In1.Cu", 0.3), ("GND", "B.Cu", 0.3)],
     # ⚠ IN1 IS A PLANE, AND THE ROUTER HAS TO BE TOLD. A zone is just copper as far
     # as freerouting is concerned: pour GND on In1 and say nothing, and it will route
@@ -697,21 +521,16 @@ BOARD_NOTES = {
     # 0.15 on 1 oz copper carries ~0.5 A at a 10 C rise, against this board's largest
     # load of roughly 100 mA; the constraint here is geometry, not current.
     "track_mm": 0.15,
+    # 20 passes on the re-spun board: at the default 10 the J1 move alone swapped 0
+    # unconnected for 1 (OSC_OUT) -- the router re-plans everything on any change.
+    "router_passes": 20,
     # ⚠ AND A PLANE NEEDS STITCHING TO IT. Declaring In1 a plane is only half the
     # job: it stops the router carrying ground THROUGH the plane, and then nothing
     # connects the ground pads TO it. Declared alone it stranded six GND pads on this
     # board -- the pour reaches them, but a pour is what routing can orphan, which is
     # the whole reason the plane is there. Every GND pad gets its own via down.
     "stitch_nets": ("GND",),
-    # ⚠ J1.5 REACHES THE PLANE THROUGH ITS OWN BARREL. The XH is a THROUGH-HOLE part,
-    # so its ground pin is plated through every layer and is already connected to the
-    # In1 plane by existing -- a stitching via beside it would add copper that joins
-    # nothing new. It arrived as "no room for a stitching via beside J1.5" only because
-    # the connector now sits against the -X edge with the mounting boss on one side and
-    # the board edge on the other, and layout stops rather than silently leave a SURFACE
-    # pad on the pour alone. That stop is right in general and does not apply to a pad
-    # with its own hole. Same reasoning as output_panel's USB shield tabs.
-    "stitch_exceptions": ("J1.5",),
+    # (No stitch exceptions: J1 is SMT again, so its GND pads get vias like every other.)
     # ⚠ NO local_nets ON THIS BOARD, AND THE MEASUREMENT SAYS SO. Pre-laying every
     # short net here took it from 4 unconnected to 7. The generator is not better than
     # the router in general -- it wins on the optical board because twenty identical
@@ -790,7 +609,9 @@ BOARD_NOTES = {
     # mated plug forbids a strip -- board-local, converted from the chip frame.
     "groove_keepout_x": 1.85,
     "groove_exempt": ["U4", "J1"],
-    "conn_keepout": {"box": [-14.0, -3.25, -11.0, 11.0], "exempt": ["J1", "U4"]},
+    # J1's zone (spec rule 4): its body, its solder tabs and the mated plug's 3.6 run past
+    # the mouth, over J1's length -- x -16.05..-3.85 here, clipped to the board.
+    "conn_keepout": {"box": [-15.5, -9.95, -3.85, 9.95], "exempt": ["J1", "U4"]},
 }
 
 

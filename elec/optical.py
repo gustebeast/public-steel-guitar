@@ -287,8 +287,8 @@ ULPI = {"ULPI_D0": "PA3", "ULPI_D1": "PB0", "ULPI_D2": "PB1", "ULPI_D3": "PB10",
 #   * the analog nets end at a converter beside the MCU instead of fanning into a 0.5 mm
 #     pitch LQFP edge -- which was this board's routing problem, every time
 # ONE CONVERTER PER QUAD: U14..U18 take U1..U5's four outputs, IN1..IN4 in the quad's own
-# section order (see SEC below), differential and AC-coupled: INxP from the TIA output,
-# INxM from MID, 10 nF C0G each (TI: "for the best dynamic range performance, the
+# section order (see SEC below), differential and AC-coupled: INxP from the TIA output
+# (10 nF C0G each), all four INxM from MID through one shared 100 nF (TI: "for the best dynamic range performance, the
 # differential AC-coupled input must be used", SBAS993B 8.3.x). MID is what every TIA
 # output sits on, so taking it as the - input cancels its noise instead of adding it.
 #
@@ -604,17 +604,25 @@ def optical():
             net += c[1]
             rtn += c[2]
     # the couplings: quad q's section s -> converter q's input s+1
+    adc_inm = [Net("ADC%d_INM" % (k + 1)) for k in range(5)]
+    for k in range(5):
+        cm = _c("Cm%d" % (k + 1), "100nF", "MID -> U%d IN1M..IN4M (shared reference)" % (14 + k))
+        mid += cm[1]
+        adc_inm[k] += cm[2]
     for ch in range(20):
         i, side = ch // 2 + 1, "A" if ch % 2 == 0 else "B"
         k, s_in = ch // 4, ch % 4 + 1
-        pos, neg = Net("ADC%d_IN%dP" % (k + 1, s_in)), Net("ADC%d_IN%dM" % (k + 1, s_in))
+        pos = Net("ADC%d_IN%dP" % (k + 1, s_in))
         ci = _c("Ci%d%d" % (k + 1, s_in), "10nF C0G", "string %d%s -> U%d IN%dP"
                 % (i, side, 14 + k, s_in))
-        cm = _c("Cm%d%d" % (k + 1, s_in), "10nF C0G", "MID -> U%d IN%dM" % (14 + k, s_in))
         tia_out[(i, side)] += ci[1]
         pos += ci[2], adcs[k][4 + 2 * s_in]
-        mid += cm[1]
-        neg += cm[2], adcs[k][5 + 2 * s_in]
+        # ⚠ ONE INxM COUPLING PER CONVERTER, NOT FOUR: all four INxM pins share a node,
+        # AC-grounded to MID by one 100 nF (33 ohm at the 48 kHz carrier, against the pins'
+        # 20 k each). The node carries no signal -- it is the reference -- so sharing it
+        # couples nothing between channels, and it took 15 parts out of cells that could
+        # not route.
+        adc_inm[k] += adcs[k][5 + 2 * s_in]
     for ref, net, rail, what in (("R50", i2c[0][1], v3d, "I2C2 SCL"),
                                  ("R51", i2c[0][0], v3d, "I2C2 SDA"),
                                  ("R52", i2c[1][1], v3d, "I2C4 SCL"),
@@ -1782,7 +1790,11 @@ BOARD_NOTES = {
     # J1's shell tabs are through-hole: their barrels reach the plane. Before the layout
     # fix that gives every duplicate-numbered pad its net, three of the four had no net and
     # drew no via; stitching them now re-planned the board and left TIA_OUT_1B open.
-    "stitch_exceptions": ("J1.SH",),
+    # U14-U18 pin 4 (AVSS): TI wants AVSS shorted straight to the thermal pad, and on this
+    # package it sits beside it -- the EP (GND, via-stitched) and the F.Cu GND pour join
+    # them in under half a millimetre. Its own via would land among the AVDD/AREG/VREF caps
+    # the cell puts on that side, which is where they belong.
+    "stitch_exceptions": ("J1.SH", "U14.4", "U15.4", "U16.4", "U17.4", "U18.4"),
     # ⚠ ORDER OPTIONS ARE PART OF THE DESIGN, and nothing in a gerber records them.
     # Mask colour is usually cosmetic and on this board it is not: twenty photodiodes
     # look up through a 0.30 mm gap that runs 5.40 mm to the cover's aperture, and that

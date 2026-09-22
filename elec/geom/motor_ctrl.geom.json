@@ -532,16 +532,16 @@
   },
   {
    "ref": "J2",
-   "fpid": "JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical",
-   "x": 0.25,
+   "fpid": "JST_PH_B4B-PH-K_1x04_P2.00mm_Vertical",
+   "x": 1.0,
    "y": -1.85,
    "rot": 0.0,
    "side": "F",
    "fab": [
-    -2.25,
-    10.25,
-    -5.398,
-    0.55
+    -1.41,
+    9.0,
+    -4.7,
+    0.31
    ],
    "crtyd": null
   },
