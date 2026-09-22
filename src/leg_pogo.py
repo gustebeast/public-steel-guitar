@@ -501,9 +501,13 @@ def tenon_negatives(j, route_xy, route_d, route_top, up=None):
         # four conductors are still spread across the pin row, which reaches further in
         # s (+-3.0 at PH pitch) than half the lane's width (2.0).
         _fan = abs(pin_s(PH_PITCH, 0)) + HARNESS_D
-        out = out.union(j.box(t0 - route_d / 2.0, t1 + route_d / 2.0,
-                              min(s0 - route_d / 2.0, -_fan),
-                              max(s1 + route_d / 2.0, _fan), PLUG_TOP, DEEP))
+        # house(), not box(): this is the ONE cavity here that kept a flat roof, and at
+        # span 4.80 it was the only real ceiling either tenon had (user spotted it in the
+        # tab, in the print orientation -- I had first mis-read it as a wall by probing
+        # the nearest face CENTRE instead of the nearest surface).
+        out = out.union(j.house(t0 - route_d / 2.0, t1 + route_d / 2.0,
+                                min(s0 - route_d / 2.0, -_fan),
+                                max(s1 + route_d / 2.0, _fan), PLUG_TOP, DEEP))
     top_d = (route_top - j.z) * j.dz
     out = out.union(j.bore_d(route_d, rt, rs, DEEP - route_d, top_d, up))
     return out.union(male_screw(j).cutter(up))
