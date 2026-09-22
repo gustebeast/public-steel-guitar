@@ -440,7 +440,17 @@ SENSE_HL = _OUTER_Y + PD_DY                      # last sensor Y
 # endplate pad's), so the strip steps out -X past them; STRIP_X1 is its own -X edge.
 STRIP_GROW_PX = 3.15
 STRIP_GROW_MX = 8.5   # 2.5 of measured lane (.ins/lane_use.py) + 6.0 for the ADC column
-PCB_X0  = BAND_X0 - BAND_CLR + STRIP_GROW_PX                  # -22.11, strip +X edge
+# ⚠ AND THE +X EDGE IS CAPPED BY THE GUIDE-ROD HOLES, NOT BY THE DECK BAND (user,
+# 2026-09-22). The near row of rods sits at x -20.0 (the far row is +20.0 and nowhere near
+# this board). Each hole needs a COMPLETE RING of endplate around it -- a bearing bore open
+# on one side is not supported -- and the board was leaving only 0.36 mm of material on the
+# rods' -X flank, so for half the strings that ring never closed. The cutaway may start one
+# two-bead wall further west and no sooner. Derived from the rod geometry so it cannot drift
+# if a rod moves: whichever of the deck band or the rod support binds first, wins.
+ROD_SUPPORT = D.MIN_WALL_2P                                   # 1.6, the ring's own wall
+_ROD_CAP = min(D.guide_rod_x(i) for i in range(D.N_STRINGS)
+               if D.guide_rod_x(i) < 0) - D.GUIDE_ROD_D / 2 - ROD_SUPPORT
+PCB_X0  = min(BAND_X0 - BAND_CLR + STRIP_GROW_PX, _ROD_CAP)   # -23.35, strip +X edge
 PCB_X1S = BAND_X1 + BAND_CLR                                  # -38.88, wraps' / tail's -X edge
 STRIP_X1 = PCB_X1S - STRIP_GROW_MX                            # -41.38, the strip's own -X edge
 # ⚠ THESE FOUR X DATUMS ARE DERIVED FROM top_plate AND THEIR COMMENTS WENT STALE BY
