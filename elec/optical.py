@@ -1377,6 +1377,18 @@ def _fan_tracks():
     return out
 
 
+def _sai_escape(k):
+    """(net, pin x, via x, via y) for converter k's three SAI pins, part turned 180: SDOUT
+    (pin 21, x -0.25), BCLK (22, +0.25), FSYNC (23, +0.75) leave the bottom corridor between
+    the IOVDD and DREG caps. With all three left to the router the middle one, BCLK, was
+    walled in by the other two in every routing (and repair_search found no path): so
+    SDOUT and FSYNC drop to vias side by side and BCLK threads down between them to a
+    lower one. Clearances: 0.19 to the IOVDD cap, 0.34 to DREG's, 0.19 either side of BCLK."""
+    return (("SAI_SD%d" % (k + 1), -0.25, -0.45, -3.40),
+            ("SAI_SCK", 0.25, 0.25, -4.40),
+            ("SAI_FS", 0.75, 0.95, -3.40))
+
+
 def _shdn_tracks():
     """Each converter's SHDNZ to its own IOVDD: pin 14 (-1.96, +0.75) -> via at (-2.85, +0.75)
     -> In2 down the channel -> via at (-2.85, -3.27) -> the IOVDD cap Cs<k>8's rail pad at
@@ -1706,7 +1718,7 @@ BOARD_NOTES = {
     # copper against F.Cu's 10.6% while the corridor was the thing that ran out of room.
     # A cost below 1.0 tells freerouting to prefer a layer; the bottom layer is the one
     # with headroom, so it gets 0.7. In1.Cu is absent because it is the ground plane.
-    "router_passes": 40,
+    "router_passes": 50,
     # ⚠ NO track_mm HERE: 0.15 was TESTED AND IS WORSE. It helps lever_sensor, whose
     # 0.4 mm pitch QFN needs the lane, and it hurt this board -- 12 unconnected and no
     # violations at the 0.25 default, against 15 and a real clearance violation at 0.15.
@@ -1879,10 +1891,21 @@ BOARD_NOTES = {
                                       (_placements(CX, CY)["U%d" % (14 + k)][0] + 0.9,
                                        _placements(CX, CY)["U%d" % (14 + k)][1] + 0.25)])
                for k in range(5)] + _fan_tracks()
-              + _shdn_tracks(),
+              + _shdn_tracks()
+              + [(net, "F.Cu", 0.15,
+                  [(_placements(CX, CY)["U%d" % (14 + k)][0] + px,
+                    _placements(CX, CY)["U%d" % (14 + k)][1] - 1.96),
+                   (_placements(CX, CY)["U%d" % (14 + k)][0] + px,
+                    _placements(CX, CY)["U%d" % (14 + k)][1] - 2.60),
+                   (_placements(CX, CY)["U%d" % (14 + k)][0] + vx,
+                    _placements(CX, CY)["U%d" % (14 + k)][1] + vy)])
+                 for k in range(5) for net, px, vx, vy in _sai_escape(k)],
     "vias": [("+3V3D", _placements(CX, CY)["U%d" % (14 + k)][0] - 2.85,
               _placements(CX, CY)["U%d" % (14 + k)][1] + y) for k in range(5)
-             for y in (0.75, -3.27)],
+             for y in (0.75, -3.27)]
+            + [(net, _placements(CX, CY)["U%d" % (14 + k)][0] + vx,
+                _placements(CX, CY)["U%d" % (14 + k)][1] + vy)
+               for k in range(5) for net, _px, vx, vy in _sai_escape(k)],
     # ⚠ ORDER OPTIONS ARE PART OF THE DESIGN, and nothing in a gerber records them.
     # Mask colour is usually cosmetic and on this board it is not: twenty photodiodes
     # look up through a 0.30 mm gap that runs 5.40 mm to the cover's aperture, and that
