@@ -1106,8 +1106,7 @@ def _parts():
             add(ref, "ADC input AC coupling" if ref[1] in "im" else "ADC supply bypass",
                 "0402", qx + dx, qy + dy, rot)
     qx, qy = _cell(2, 1)
-    for m, (ref, desc) in enumerate((("R50", "I2C2 SCL pull-up"), ("R51", "I2C2 SDA pull-up"),
-                                     ("R54", "ADC SHDNZ pull-down -- converters off in reset"))):
+    for m, (ref, desc) in enumerate((("R50", "I2C2 SCL pull-up"), ("R51", "I2C2 SDA pull-up"))):
         add(ref, desc, "0402", qx - 1.5 + (m % 3) * (_c[0] + CRTYD_GAP),
             qy + _far - (m // 3) * (_c[1] + CRTYD_GAP))
 
@@ -1641,7 +1640,7 @@ _MPN_RULES = (
 # ambiguous group is spelled out instead of pattern-matched.
 _MPN_EXACT = {r: ("0402 thick-film R", "BASIC", 0.002, "pulls / divider / gate")
               for r in ("R30", "R31", "R32", "R33", "R34", "R35", "R36", "R37", "R38", "R39",
-                        "R50", "R51", "R54")}
+                        "R50", "R51")}
 # The five audio converters: exact, because the bare "U" rule is the TIA quad's.
 _MPN_EXACT.update({r: ("TLV320ADC3140IRTWT", "C1852021", 3.6456,
                        "TI 4-ch 768 kHz audio ADC, WQFN-24 (RTW). 106 dB SNR (2 Vrms diff). "

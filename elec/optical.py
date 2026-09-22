@@ -322,9 +322,16 @@ ULPI = {"ULPI_D0": "PA3", "ULPI_D1": "PB0", "ULPI_D2": "PB1", "ULPI_D3": "PB10",
 # (I2C2 for four parts at four addresses, I2C4 for the fifth), and the straps that pulled
 # ADDR0/ADDR1 up to +3V3D were two of the last 14 nets the router could not close -- the
 # address pins sit between the I2C pins on the part's routing side.
-# I2C2: PF0 SDA (16), PF1 SCL (17). SHDNZ for all five on PF2, pulled LOW, so
-# the converters sit in hardware shutdown until firmware has the supplies settled
-# (SBAS993B 9.2.1.2 step 1).
+# I2C2: PF0 SDA (16), PF1 SCL (17).
+# ⚠ SHDNZ IS TIED TO EACH PART'S OWN IOVDD, NOT DRIVEN BY THE MCU (2026-09-22). As one
+# six-terminal net across the cells it failed in every routing -- three layouts, escape vias
+# and all. Tied locally it is five private hops: pin 14 -> via -> In2 down the channel ->
+# via -> the IOVDD cap's rail pad, all laid (see "tracks"/"vias"). What it costs: TI's
+# power-up sequence holds SHDNZ low until AVDD and IOVDD settle (SBAS993B 9.2.1.2 step 1);
+# tied high, the parts leave shutdown as IOVDD rises. FIRMWARE MUST THEREFORE ISSUE THE
+# SOFTWARE RESET (P0_R1, SW_RESET) over the I2C broadcast once both rails are up, before
+# configuring -- that is the documented recovery, and the only one this board keeps.
+# Hardware shutdown (the < 1 uA state) is lost; nothing here needs it.
 # ⚠ THE EMITTER GATE (PB3) IS TIM2_CH2, and firmware must run it from the same PLL as the
 # SAI kernel clock so the carrier is frequency-locked to FSYNC; its phase is fixed at start.
 SAI_CLK = {"SAI_SCK": "PE5", "SAI_FS": "PE4"}
@@ -332,7 +339,6 @@ SAI_SD = ("PE6", "PE3", "PA0", "PI6", "PD1")     # lane k -> converter U(14 + k)
 I2C_BUS = (("PF0", "PF1"),)                       # (SDA, SCL): I2C2
 ADC_I2C = (0, 0, 0, 0, 0)                          # converter k -> bus
 ADC_ADDR = (0, 0, 0, 0, 0)                         # converter k -> ADDR1:ADDR0 strap
-ADC_SHDN = "PF2"
 
 
 def _r(ref, value, desc, fp=_R_0402):
@@ -566,7 +572,6 @@ def optical():
     sai_sck, sai_fs = Net("SAI_SCK"), Net("SAI_FS")
     sai_sd = [Net("SAI_SD%d" % (k + 1)) for k in range(5)]
     i2c = [(Net("I2C%d_SDA" % b), Net("I2C%d_SCL" % b)) for b in (2,)]
-    adc_shdn = Net("ADC_SHDNZ")
 
     # ── U14-U18: the audio converters, one per quad ─────────────────────────
     # TLV320ADC3140IRTWT, WQFN-24 RTW. Pins (SBAS993B Pin Functions): 1 AVDD 2 AREG 3 VREF
@@ -592,7 +597,7 @@ def optical():
         vref += u[3]
         gnd += u[4], u[25]
         Net("ADC%d_MICBIAS_NC" % tag).connect(u[5])
-        adc_shdn += u[14]
+        v3d += u[14]              # SHDNZ tied high locally -- see THE CONVERTERS
         a1, a0 = divmod(ADC_ADDR[k], 2)
         (v3d if a1 else gnd).__iadd__(u[15])
         (v3d if a0 else gnd).__iadd__(u[16])
@@ -637,8 +642,7 @@ def optical():
         neg += cm[1], adcs[k][5 + 2 * s_in]
         gnd += cm[2]
     for ref, net, rail, what in (("R50", i2c[0][1], v3d, "I2C2 SCL"),
-                                 ("R51", i2c[0][0], v3d, "I2C2 SDA"),
-                                 ("R54", adc_shdn, gnd, "SHDNZ pull-down")):
+                                 ("R51", i2c[0][0], v3d, "I2C2 SDA")):
         r = _r(ref, "4k7" if rail is v3d else "100k", what)
         net += r[1]
         rail += r[2]
@@ -666,7 +670,6 @@ def optical():
     for (sda, scl), (p_sda, p_scl) in zip(i2c, I2C_BUS):
         sda += u6[PIN[p_sda]]
         scl += u6[PIN[p_scl]]
-    adc_shdn += u6[PIN[ADC_SHDN]]
 
     # ULPI
     ulpi = {k: Net(k) for k in ULPI}
@@ -731,7 +734,7 @@ def optical():
     used = set(MCU_VDD) | set(MCU_VSS) | {
         PIN[k] for k in ("VSSA", "VDDA", "VREF+", "VBAT", "VDD33_USB", "PDR_ON",
                          "PH0", "PH1", "NRST", "BOOT0", "PA13", "PA14", "PB3",
-                         "VCAP1", "VCAP2", ADC_SHDN) + tuple(SAI_CLK.values()) + SAI_SD
+                         "VCAP1", "VCAP2") + tuple(SAI_CLK.values()) + SAI_SD
         + tuple(p for bus in I2C_BUS for p in bus)}
     used |= {PIN[p] for p in ULPI.values()}
     for n in mcu_pins:
@@ -1374,6 +1377,21 @@ def _fan_tracks():
     return out
 
 
+def _shdn_tracks():
+    """Each converter's SHDNZ to its own IOVDD: pin 14 (-1.96, +0.75) -> via at (-2.85, +0.75)
+    -> In2 down the channel -> via at (-2.85, -3.27) -> the IOVDD cap Cs<k>8's rail pad at
+    (-1.25, -3.27). Offsets from the part's centre, part turned 180."""
+    out = []
+    for k in range(5):
+        ux, uy = _placements(CX, CY)["U%d" % (14 + k)][:2]
+        out += [("+3V3D", "F.Cu", 0.15, [(ux - 1.96, uy + 0.75), (ux - 2.85, uy + 0.75)]),
+                ("+3V3D", "In2.Cu", 0.15, [(ux - 2.85, uy + 0.75), (ux - 2.85, uy - 3.27)]),
+                ("+3V3D", "F.Cu", 0.15, [(ux - 2.85, uy - 3.27), (ux - 1.25, uy - 3.27)]),
+                # and IOVDD's own pin 19 straight down onto that same pad
+                ("+3V3D", "F.Cu", 0.2, [(ux - 1.25, uy - 1.96), (ux - 1.25, uy - 3.27)])]
+    return out
+
+
 def _outline_poly(cx, cy):
     """The board edge as a closed polygon, board-local. Adjacent bands with the same
     X extents are merged so the polygon has no zero-length edges for the fab to
@@ -1861,13 +1879,10 @@ BOARD_NOTES = {
                                       (_placements(CX, CY)["U%d" % (14 + k)][0] + 0.9,
                                        _placements(CX, CY)["U%d" % (14 + k)][1] + 0.25)])
                for k in range(5)] + _fan_tracks()
-              + [("ADC_SHDNZ", "F.Cu", 0.15,
-                  [(_placements(CX, CY)["U%d" % (14 + k)][0] - 1.96,
-                    _placements(CX, CY)["U%d" % (14 + k)][1] + 0.75),
-                   (_placements(CX, CY)["U%d" % (14 + k)][0] - 2.85,
-                    _placements(CX, CY)["U%d" % (14 + k)][1] + 0.75)]) for k in range(5)],
-    "vias": [("ADC_SHDNZ", _placements(CX, CY)["U%d" % (14 + k)][0] - 2.85,
-              _placements(CX, CY)["U%d" % (14 + k)][1] + 0.75) for k in range(5)],
+              + _shdn_tracks(),
+    "vias": [("+3V3D", _placements(CX, CY)["U%d" % (14 + k)][0] - 2.85,
+              _placements(CX, CY)["U%d" % (14 + k)][1] + y) for k in range(5)
+             for y in (0.75, -3.27)],
     # ⚠ ORDER OPTIONS ARE PART OF THE DESIGN, and nothing in a gerber records them.
     # Mask colour is usually cosmetic and on this board it is not: twenty photodiodes
     # look up through a 0.30 mm gap that runs 5.40 mm to the cover's aperture, and that
