@@ -67,6 +67,7 @@ import cadquery as cq
 from . import dimensions as D
 from . import leg_stack as LS
 from . import leg_trrs as LT
+from . import leg_pogo as PG
 
 B = D.BEAD
 
@@ -82,7 +83,10 @@ COIL_CABLE = 432.7              # the jacket left once every straight run is acc
                                 # for -- docs/leg-trrs-routing.md. CONSTANT: the straight
                                 # runs do not change with the adjustment
 
-_MEAN_MAX = CAVITY_D - LT.CABLE_D                       # 20.9 widest mean coil that fits
+CABLE_D = PG.HARNESS_D          # THE HARNESS now, two twisted pairs (src.leg_pogo),
+                                # not the O3.8 moulded TRRS lead this tool was first
+                                # sized for
+_MEAN_MAX = CAVITY_D - CABLE_D                       # 20.9 widest mean coil that fits
 TURNS_MIN = COIL_CABLE / (math.pi * _MEAN_MAX)          # 6.59 -- THE THRESHOLD
 TURNS = 7                       # the first whole turn above it
 
@@ -91,17 +95,19 @@ assert TURNS > TURNS_MIN, (
     "O%.1f bore before the leg reaches its low stop" % (TURNS, TURNS_MIN, CAVITY_D))
 
 # ── the tool ────────────────────────────────────────────────────────────────
-BARREL_D = 19 * B               # 15.2. With the cable captured against SLEEVE_ID the
+BARREL_D = 21 * B               # 16.8 -- opened from 15.2 when the O2.4 harness
+                                # replaced the O3.8 lead: the bore frees the room, and
+                                # the stretched coil's radius is what it buys. With the cable captured against SLEEVE_ID the
                                 # coil's mean is BARREL_D + CABLE_D and nothing about
                                 # spring-back enters it
-MEAN_SET = BARREL_D + LT.CABLE_D                        # 19.8, as heat-set
+MEAN_SET = BARREL_D + CABLE_D                        # 19.8, as heat-set
 SLEEVE_CLR = 0.2                # ...and the annulus is the cable plus this, so the
                                 # sleeve slides rather than shaves
-SLEEVE_ID = BARREL_D + 2 * LT.CABLE_D + SLEEVE_CLR      # 23.8
+SLEEVE_ID = BARREL_D + 2 * CABLE_D + SLEEVE_CLR      # 23.8
 SLEEVE_WALL = 3 * B                                     # 2.4
 SLEEVE_OD = SLEEVE_ID + 2 * SLEEVE_WALL                 # 28.6
 
-SOLID_SPAN = TURNS * LT.CABLE_D                         # 26.6, turns touching
+SOLID_SPAN = TURNS * CABLE_D                         # 26.6, turns touching
 FREE_SPAN = 80.0                # ...AND THE COIL IS NOT SET THERE. Turns-touching is
                                 # the obvious thing to wind and it is wrong here: the
                                 # service span is 90.8..253.2, so a coil set at 26.6
@@ -125,7 +131,7 @@ COIL_LEN = TURNS * math.hypot(math.pi * MEAN_SET, PITCH)        # cable the coil
 assert FREE_SPAN < GAP_MIN, (
     "set free at %.1f in a gap that closes to %.1f, the coil would be COMPRESSED at "
     "the leg's low stop and buckle" % (FREE_SPAN, GAP_MIN))
-assert PITCH > LT.CABLE_D, "the turns overlap at the set pitch"
+assert PITCH > CABLE_D, "the turns overlap at the set pitch"
 
 assert MEAN_SET <= _MEAN_MAX, (
     "set at mean O%.1f, the coil will not enter the O%.1f bore" % (MEAN_SET, CAVITY_D))
@@ -141,29 +147,15 @@ _P_LONG = (GAP_MAX - _STRAIGHT_IN_GAP) / TURNS
 assert _STRAIGHT_IN_GAP >= 0.0, (
     "the coil wants %.1f of cable and the gap frees %.1f" % (COIL_LEN, COIL_CABLE))
 MEAN_LONG = math.sqrt(max((COIL_LEN / TURNS) ** 2 - _P_LONG ** 2, 0.0)) / math.pi
-# ⚠⚠ THIS TOOL IS BLOCKED ON A VENDOR NUMBER, AND THE ASSERT BELOW SAYS SO. ⚠⚠
-#
-# Tensility publish a MINIMUM BEND RADIUS of 22.8 for 10-02135 -- 6x the jacket,
-# because the shield is spiral + FOIL and foil cracks long before PVC complains.
-# (leg_trrs.CABLE_BEND_R, checked against their page by tools/check_part_specs.py.)
-#
-# A coil at that radius needs a mean diameter of 45.6. The cavity it has to live in --
-# the adjust sleeve above the tenon -- measures O24.7, which caps the mean at 20.9.
-# There is no turn count that reconciles those: the coil is impossible in the leg at
-# the published radius, not merely tight. Everything below sizes a coil at mean 19.0,
-# which is r 9.5 against a required 22.8.
-#
-# I found this AFTER building the tool, by reading the vendor's page (user asked).
-# Every earlier bend-radius figure in this module and in docs/leg-trrs-routing.md was
-# measured against a 3xOD rule of thumb I brought with me, not against the number the
-# manufacturer publishes -- so "2.1xOD, tight but acceptable" was the wrong yardstick
-# throughout. The options are the user's: accept exceeding the published radius on a
-# static install, move the slack store out of the leg where nothing caps the diameter
-# (docs/leg-trrs-routing.md option 2), or source a lead with a smaller bend radius.
-assert MEAN_LONG / 2.0 >= LT.CABLE_BEND_R, (
-    "the coil bends to r %.1f at full leg extension and %s publishes %.1f as its "
-    "minimum -- see the block above; this is a DESIGN DECISION, not a number to relax"
-    % (MEAN_LONG / 2.0, "10-02135", LT.CABLE_BEND_R))
+# THE BEND IS THE HARNESS's NOW. The 22.8 that blocked this tool was the moulded TRRS
+# lead's published radius, set by its FOIL shield; the pogo joints retired that lead
+# (src.leg_pogo). The harness is loose twisted pairs with no foil and no jacket, set
+# ONCE (the leg's height is chosen at setup and again only on resale), and
+# PG.HARNESS_BEND_STATIC is the floor its stretched coil answers to.
+assert MEAN_LONG / 2.0 >= PG.HARNESS_BEND_STATIC, (
+    "the coil bends to r %.1f at full leg extension, under the harness's %.1f "
+    "static floor (leg_pogo.HARNESS_BEND_STATIC)"
+    % (MEAN_LONG / 2.0, PG.HARNESS_BEND_STATIC))
 assert MEAN_LONG >= 15.0, (
     "stretched over the %.1f gap the coil narrows to mean O%.1f, under the 15 floor"
     % (GAP_MAX, MEAN_LONG))
@@ -186,7 +178,7 @@ RIB_H = 2 * B                   # 1.6 of helical rib between turns. Its lower fl
                                 # MEAN_SET stays barrel + cable; the rib only spaces
                                 # the turns, which at PITCH they will not do themselves
 SCRIBE_W, SCRIBE_DEEP = 0.6, 0.4        # the line you wind TO
-CLEAT_W = LT.CABLE_D - 0.4      # 3.4: a light pinch on the O3.8 jacket, pressed in
+CLEAT_W = CABLE_D - 0.4      # 3.4: a light pinch on the O3.8 jacket, pressed in
                                 # SIDEWAYS -- it cannot be threaded
 TAIL_RUN = 12.0                 # PLAIN BARREL EITHER SIDE OF THE WINDING ZONE, so each
                                 # tail leaves the helix, TURNS AXIAL, and is held that
@@ -200,7 +192,7 @@ TAIL_RUN = 12.0                 # PLAIN BARREL EITHER SIDE OF THE WINDING ZONE, 
                                 # instead of being bent to it afterwards. 7 WHOLE turns
                                 # also leaves both tails at the same azimuth, which is
                                 # what those two radii want
-CLEAT_R = BARREL_D / 2.0 + LT.CABLE_D / 2.0     # 9.5, the cable's OWN radius: the slit
+CLEAT_R = BARREL_D / 2.0 + CABLE_D / 2.0     # 9.5, the cable's OWN radius: the slit
                                         # has to sit where the tail already is, or it
                                         # pulls the tail sideways to reach it
 BARREL_L = 2 * TAIL_RUN + FREE_SPAN
@@ -213,7 +205,7 @@ SLEEVE_L = BARREL_L                     # covers both tail runs AND every turn: 
                                         # of the flange (the assert below, which caught
                                         # exactly that on the first build)
 
-assert CLEAT_W < LT.CABLE_D, "the cleat has to pinch, not clear"
+assert CLEAT_W < CABLE_D, "the cleat has to pinch, not clear"
 assert SLEEVE_L <= BARREL_L, "the sleeve stands proud of the barrel"
 
 
@@ -292,5 +284,5 @@ def report() -> str:
         "  leg at its lowest  gap %.1f, coil solid at %.1f -> %.1f of headroom"
         % (GAP_MIN, SOLID_SPAN, GAP_MIN - SOLID_SPAN),
         "  leg at its highest gap %.1f, mean O%.1f (bend R %.1f = %.1fxOD)"
-        % (GAP_MAX, MEAN_LONG, MEAN_LONG / 2, MEAN_LONG / 2 / LT.CABLE_D),
+        % (GAP_MAX, MEAN_LONG, MEAN_LONG / 2, MEAN_LONG / 2 / CABLE_D),
     ])

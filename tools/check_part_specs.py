@@ -45,25 +45,42 @@ class Part(object):
 # assembly drawing gives the finished part as O11 x 45. We never touch the connector.
 # We only ever touch the moulding. Check against the thing you can hold.
 PARTS = [
-    Part("10-02135", "https://tensility.s3.us-west-2.amazonaws.com/imports/"
-                     "product_spec_sheets/10-02135.pdf", "2026-09-18",
+    # THE LEG'S BLIND-MATES ARE POGO BOARDS NOW (2026-09-21), and this header is the
+    # bought part their pockets and pedestals are cut to. Off its own drawing
+    # (YZ76615070R-08025-01), not the LCSC listing's attributes, which carry no stroke.
+    Part("C54799748", "https://datasheet.lcsc.com/datasheet/pdf/"
+                      "7aab94cc3f2faa41c25b1234644cb837.pdf?productCode=C54799748",
+         "2026-09-21",
          {
-             "cable OD":               (3.8, "src.leg_trrs.CABLE_D"),
-             "cable length":           (915.0, "src.leg_trrs.CABLE_LEN"),
-             "bend radius":            (22.8, "src.leg_trrs.CABLE_BEND_R"),
-             # the PLUG end, as moulded
-             "plug overmould OD":      (6.1, "src.leg_trrs.PLUG_D"),
-             "plug bare barrel":       (14.0, "src.leg_trrs.BARREL_L"),
-             "plug overall":           (23.3, lambda: __import__(
-                 "src.leg_trrs", fromlist=["e"]).BARREL_L
-                 + __import__("src.leg_trrs", fromlist=["e"]).PLUG_L),
-             # ...and the JACK end, likewise
-             "jack overmould OD":      (11.0, "src.leg_trrs.JACK_D"),
-             "jack overall":           (45.0, "src.leg_trrs.JACK_L"),
+             "pin pitch":            (2.5, "src.leg_pogo.RA_PITCH"),
+             "housing length":       (11.0, "src.leg_pogo.RA_BODY_S"),
+             "housing thickness":    (2.5, "src.leg_pogo.RA_BODY_T"),
+             "free height":          (5.5, "src.leg_pogo.RA_FREE"),
+             "working height":       (4.0, "src.leg_pogo.RA_WORK"),
+             "plunger":              (1.0, "src.leg_pogo.RA_PLUNGER_D"),
+             "rated DC volts":       (12.0, "src.leg_pogo.RA_V"),
+             "force at working, gf": (120.0, "src.leg_pogo.RA_GF"),
          },
-         "the FINISHED cable, off its own assembly drawing. Every figure here is the "
-         "moulded part, which is the only part the instrument ever sees"),
+         "the right-angle 1 x 4 spring-pin header on both male boards (its -01 sibling "
+         "C5296819 is the same drawing)"),
+    Part("C54930022", "https://datasheet.lcsc.com/datasheet/pdf/"
+                      "65bd6f266e7b263b1372ed187d4a9c4d.pdf?productCode=C54930022",
+         "2026-09-22",
+         {
+             "contact pitch":        (2.54, "src.leg_pogo.TG_PITCH"),
+             "housing length":       (10.2, "src.leg_pogo.TG_BODY_S"),
+             "housing width":        (2.5, "src.leg_pogo.TG_BODY_T"),
+             "contact face height":  (3.5, "src.leg_pogo.TG_FACE_H"),
+             "contact face":         (1.2, "src.leg_pogo.TG_FACE_D"),
+         },
+         "the vertical gold 1 x 4 target on both female boards"),
 ]
+
+# SUPERSEDED 2026-09-21 -- the TRRS cable the leg used before the pogo boards. Its
+# ASSEMBLY drawing (not the component pages) was the source, and that distinction put a
+# wrong jack through two joints once:
+#   10-02135  cable O3.8 x 915, bend R 22.8; plug overmould O6.1, 14 bare barrel, 23.3
+#             overall; jack overmould O11 x 45 overall
 
 # The bare connectors, kept for reference ONLY. They are what is INSIDE the mouldings
 # above; nothing in the model should be cut to them.
