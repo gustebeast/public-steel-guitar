@@ -1406,7 +1406,40 @@ def _cell_tracks():
         for dy in (0.25, -0.25):
             out.append(("GND", "F.Cu", 0.2, [_cell_pt(k, -1.962, dy), _cell_pt(k, -0.9, dy)]))
         out.append(("GND", "F.Cu", 0.2, [_cell_pt(k, 1.962, 0.25), _cell_pt(k, 0.9, 0.25)]))
-    return out + _fan_tracks() + _shdn_tracks() + _v3_trunk()
+    return out + _fan_tracks() + _shdn_tracks() + _v3_trunk() + _u15_haul()
+
+
+def _u15_haul():
+    """Lay the LONG HAUL for U15's four analog inputs; leave both ends to the router.
+
+    ⚠ U15 IS THE ONLY CELL WHOSE INPUTS CROSS THE BOARD, and it loses them every run --
+    TIA_OUT_3A/3B/4A/4B, four of the nine that remain. It sits at the +X half of the +Y
+    wrap (the far side of the jack head's keep-out) while its signals originate in the
+    strip ~40 mm away, and it cannot move: its x is already the keep-out edge plus the
+    cell's own half-width, and putting it back in the annulus measured far worse (26
+    unconnected against 9).
+
+    ⚠ BUT THE BOARD IS NOT SHORT OF ROOM -- MEASURED (.ins/u15path.py, .ins/u15solve.py).
+    A vertical corridor at x -16.5..-5.5 is completely clear of pads over y 45..83 (11 mm;
+    four lanes at 0.3 pitch need 1.2), and a horizontal band at y 74.4..81.2 is clear right
+    across x -28..-6. The routed board put just TWELVE track endpoints in that whole
+    region. The room is there and unused; what the router cannot do is discover a 40 mm
+    journey for four nets at once. That is the same thing +3V3D needed _v3_trunk for.
+
+    So this lays the middle and nothing else. Each net gets its own lane in the corridor
+    and its own lane in the band, ending directly under its coupling cap. The two ENDS are
+    deliberately left alone: escaping the op-amp column and dropping the last few mm into
+    Ci2x past Cm2x are both LOCAL problems the router already solves -- U16/17/18's
+    identical cells route their coupling caps every run. NO VIAS: all four stay on F.Cu end
+    to end, because the router never connects to a pre-laid via on this board."""
+    lanes = (("TIA_OUT_3A", "Ci21", -16.20, 75.20), ("TIA_OUT_3B", "Ci22", -15.00, 76.60),
+             ("TIA_OUT_4A", "Ci23", -13.80, 78.00), ("TIA_OUT_4B", "Ci24", -12.60, 79.40))
+    p = _placements(CX, CY)
+    out = []
+    for net, cap, lx, by in lanes:
+        tx = p[cap][0]
+        out.append((net, "F.Cu", 0.15, [(lx, 46.0), (lx, by), (tx, by)]))
+    return out
 
 
 def _v3_trunk():
