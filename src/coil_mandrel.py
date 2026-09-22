@@ -66,7 +66,6 @@ import cadquery as cq
 
 from . import dimensions as D
 from . import leg_stack as LS
-from . import leg_trrs as LT
 from . import leg_pogo as PG
 
 B = D.BEAD

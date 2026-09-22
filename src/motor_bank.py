@@ -26,12 +26,10 @@ from __future__ import annotations
 
 import cadquery as cq
 
-import math
 
 from . import dimensions as D
 from .helpers import box_at
 from .components import MOTOR_PULLEY_STANDOFF
-from cadkit.fasteners import M4 as _M4
 
 PLATE_T      = 8 * D.NOZZLE_D    # 6.4 (was 6.0 = 7.5 beads)
 _BOLT_EDGE   = 7 * D.BEAD                   # 5.6 material around the NEMA17 bolt square
@@ -118,14 +116,6 @@ def tee_ear_box(i):
     return sx1 - D.TEE_EAR_X, sx1, sy1 - D.TEE_EAR_Y, sy1
 
 
-def tee_hole(i):
-    """The M4 that goes THROUGH motor i's tee board: (x, y, z of the board's underside).
-    Centred in the bare ear, so the head laps only bare board and the anchor bores into the
-    POST -- solid for a full insert depth on every motor, ear to ear."""
-    ex0, ex1, ey0, ey1 = tee_ear_box(i)
-    return (ex0 + ex1) / 2, (ey0 + ey1) / 2, tee_board_box(i)[4]
-
-
 def tee_pocket(i):
     """The tee board's space: its profile plus a fit, open upward so it drops in, together with
     the relief the THT tails need under its +Y band. ONE cutter, because the board is 40 across
@@ -150,26 +140,6 @@ def tee_pocket(i):
                                x=(sx0 + sx1) / 2 - D.TEE_EAR_X / 2,
                                y=(sy0 + sy1) / 2 + D.TEE_TAIL_CY,
                                z=sz - (D.TEE_TAIL_DROP + 2.0) / 2 + 0.01))
-
-
-def tee_seat(i):
-    """Where motor i's CAN tee sits: (x centre, the +Y face its board's +Y edge lines up with,
-    seat plane z). The board rests on the faceplate wall's top and laps the motor -- so the ONE
-    screw that holds the board down also stops the motor lifting out (user, 2026-09-14). wiring
-    builds the cradle there and cuts it with lift_prism, since nothing FIXED may overhang a
-    motor or it can never come out."""
-    mx, my, _ = D.motor_pos(i)
-    return mx, _face_y(i) + PLATE_T / 2, Z_HI
-
-
-def gap_keepout(i):
-    """Everything -X of this motor's pocket face: the MOTOR GAP, which belongs to the pocket's
-    own wall. Anything built over a motor gets cut by this as well as by lift_prism, or it
-    leaves a sliver in the gap."""
-    bx0, _, by0, by1, bz0, bz1 = body_box(i)
-    return box_at(200.0, (by1 - by0) + 400.0, (bz1 + 300.0) - (bz0 - 100.0),
-                  x=(bx0 - MOTOR_CLR) - 100.0, y=(by0 + by1) / 2,
-                  z=((bz0 - 100.0) + (bz1 + 300.0)) / 2)
 
 
 def lift_prism(i):

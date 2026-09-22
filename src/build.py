@@ -34,10 +34,9 @@ except Exception:                       # a profiling hook must NEVER break a bu
     def report_build_regressions(): return 0
 
 from . import dimensions as D
-from .helpers import heal, cyl, cyl_y
+from .helpers import heal
 from . import components as C
 from . import chassis as CH
-from . import motor_bank as MB
 from .components import MOTOR_PULLEY_STANDOFF
 from .bridge_endplate import bridge_endplate
 from . import bridge_endplate as BE
@@ -1482,10 +1481,10 @@ _COLORS = {
     "wire_pickup":     (0.55, 0.85, 0.55),   # lightest green - shielded. DORMANT: the
                                              #   wire returns when the optical board is
                                              #   designed and the pickup plugs into it
-    "wire_link":       (0.95, 0.72, 0.22),   # light amber - Teensy <-> Pi
+    "wire_link":       (0.95, 0.72, 0.22),   # light amber - motor controller <-> Pi
     "wire_tdm":        (0.80, 0.46, 0.10),   # deep amber  - CS stack -> Pi
-    "wire_oled":       (0.68, 0.36, 0.08),   # brown-amber - OLED -> Teensy
-    "wire_joy":        (0.54, 0.28, 0.08),   # darkest amber - joystick -> Teensy
+    "wire_oled":       (0.68, 0.36, 0.08),   # brown-amber - OLED -> Pi
+    "wire_joy":        (0.54, 0.28, 0.08),   # darkest amber - joystick -> Pi
     "wire_usb":        (0.55, 0.25, 0.75),   # violet      - shielded USB-2 -> Pi
 }
 _DEFAULT_COLOR = (0.80, 0.80, 0.80)

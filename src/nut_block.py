@@ -69,7 +69,7 @@ import math
 import cadquery as cq
 
 from . import dimensions as D
-from .helpers import cyl, box_at, cyl_y
+from .helpers import box_at, cyl_y
 from cadkit.holes import teardrop_hole
 
 PRINT_UP = (1.0, 0.0, 0.0)                      # build axis: the -X face is the bed
@@ -453,11 +453,6 @@ def wraps(i: int) -> float:
 _WRAPS_BAD = [i + 1 for i in range(D.N_STRINGS) if wraps(i) > turns(i) + 1e-9]
 assert not _WRAPS_BAD, (
     f"strings {_WRAPS_BAD} cannot fit the recommended {WRAPS} wraps in their lane")
-
-
-def clamp_widths(i: int) -> float:
-    """Contact at the clamp, in string widths -- what CLAMP_WIDTHS asked for."""
-    return (wraps(i) - 1.0) * WRAP_F + 1.0
 
 
 def exit_angle(i: int) -> float:
