@@ -41,3 +41,36 @@ washers (the spring seat, and the position stop in the housing). See `BOM.md` an
   stress-craze it.
 - **Not needed** on the TENSION screw: the spring loads it permanently, and that
   friction holds it.
+
+---
+
+## Pedal bar wiring (bus B)
+
+The bar's wiring trough carries bus B from the −X (wired) leg tower to the five
+pedal sensor boards, daisy-chained: leg → pedal 1 → … → pedal 5. Each board's J1 is
+an 8-way PH, bus **in** on ways 1–4 and **out** on 5–8, so the chain runs through
+the board. Pedal 5 is the far end of the bus: it is the one pedal that closes its
+termination jumper.
+
+### PB-1 — Cut every pedal segment to the SAME length, and wind the excess on
+
+- **Where:** the five bus-B segments in the trough — leg→pedal 1 and the four
+  pedal→pedal runs. One `foot_pedal.CLEAT` stands in the trough for each of them.
+- **What:** make all five segments identical, at `foot_pedal.CABLE_LEN` (**~100 mm**
+  conductor length between plug backs, at the current pitch). Route a segment from
+  one board's bay, up its **spur** into the trough, **3 turns round the cleat**,
+  then along to the next bay. Wind before plugging in, with the trough open.
+- **Why:** a pedal's X position is printed into the bar (`fuse_into_bar`), so moving
+  the pedals means new bar pieces. The loom is the crimped, tooled, contacts-ordered
+  part, and it is what should survive that change: one length that fits every gap,
+  and a cleat that takes up the difference, means a re-pitched bar reuses the
+  harness as-is. `CABLE_LEN` is cut for the **widest** pitch the bar can be built at
+  (`PITCH_MAX`); at any narrower pitch the cleat stows the slack. One cleat holds
+  **~76 mm**, against **~52 mm** for the full pitch range plus service slack.
+- **The cleat head is a 45° cone**, so a wrap cannot lift off it — but it is only
+  2.4 proud. Seat the wraps down against the trough floor, not up under the head.
+- **Order:** wire the trough **before** the lid slides in. The lid is a full-length
+  sliding dovetail entering from the −X end; once it is on, nothing in the trough is
+  reachable, and a wrap standing proud of the trough will stop it.
+- **Leave the last one out:** pedal 5 has no onward segment. Its J1 out-half is the
+  bus end.
