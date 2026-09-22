@@ -14,7 +14,6 @@ import cadquery as cq
 from . import dimensions as D
 from .helpers import cyl, cyl_y, box_at
 
-from cadkit.fasteners import M2, cut_selftap
 from cadkit.threads import threaded_rod
 from cadkit.fasteners import set_screw, m4_insert                # the ONE dummies now live in cadkit/fasteners.py;
 # re-exported here so C.set_screw() / C.m4_insert() keep working across the project

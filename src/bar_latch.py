@@ -69,7 +69,6 @@ import cadquery as cq
 from cadkit.fasteners import M4, ScrewJoint
 from cadkit.holes import teardrop_hole
 from cadkit.joinery import PrintSpec, joint, joint_box_min
-from cadkit.supports import printable_bore
 from . import dimensions as D
 from . import latch as LT
 from . import leg_latch as LL

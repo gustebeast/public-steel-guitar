@@ -402,9 +402,6 @@ def intended(na, nb) -> bool:
     for w, o in ((na, nb), (nb, na)):
         if base(w) in WIRE_OK:
             return base(o) in WIRE_OK[base(w)]
-    # the electronics tray's tabs rest on their channel floors
-    if frozenset({base(na), base(nb)}) == frozenset({"electronics_tray", "chassis"}):
-        return True
     # bus tee PCBs mount flat on the chassis floor (christmas-tree boss TBD)
     if frozenset({base(na), base(nb)}) == frozenset({"tee_pcb", "chassis"}):
         return True

@@ -54,7 +54,7 @@ TRAY_Z0, TRAY_Z1 = -64.0, -61.0        # plate band (3 thick) - 1.15 ABOVE the
 
 
 from . import chassis as CH          # only early constants (X_*, Z_*) used here
-from .helpers import box_at, cyl, cyl_x
+from .helpers import box_at, cyl
 from cadkit.pcb import (PCB_T as _PCB_T, jst_xh_header, jst_xh_side_header,
                         xh_length, xh_side_length)
 
@@ -354,21 +354,6 @@ def board_screws():
     out.append(("board_screw_1", m4_button_screw(L).translate(
         (ox + hx, oy + hy, oz + _PCB_T + M4_BUTTON_HEAD_H))))
     return out
-
-
-def electronics_tray(standing: bool = True) -> cq.Workplane:
-    """The printed tray: plate + board support posts. Prints flat (plate on the bed,
-    posts up); stands against the keyhead endplate in the instrument (see STANDING TRAY).
-    Pass standing=False for the print pose."""
-    body = box_at(TRAY_X1 - TRAY_X0, TRAY_Y1 - TRAY_Y0, TRAY_Z1 - TRAY_Z0,
-                  x=(TRAY_X0 + TRAY_X1) / 2, y=(TRAY_Y0 + TRAY_Y1) / 2,
-                  z=(TRAY_Z0 + TRAY_Z1) / 2)
-    # each board rests on four plain posts -- no retention yet (see _support_posts)
-    for fp, bz in ((PI_FP, BOARD_Z), (MCTRL_FP, BOARD_Z)):
-        body = body.union(_support_posts(fp, bz))
-    # (the NORTH-SHELF lane channel for the TRRS pigtail is gone: standing, the tray's
-    #  bottom edge rides above that pigtail instead of lying over it)
-    return stand(body) if standing else body
 
 
 def _board(fp, bz, t=BD_T):
