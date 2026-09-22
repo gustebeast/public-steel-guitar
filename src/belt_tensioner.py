@@ -115,6 +115,9 @@ WELL_MID_B = -WELL_MID_A + TB             # 4.5    lifter_b well centre (SAME li
 # works but over-reaches — a permanent 2.6–6.6 mm stub past the nut.)
 _SCREW_MIN = (HALF_B_OUTER - HEAD_X) + 2.0               # 34.4  reach the nut at GAP + 2 mm engagement
 SCREW_L  = 35.0                           # M4×35 (nearest stock ≥ min; see the take-up table)
+assert SCREW_L >= _SCREW_MIN, (
+    f"M4×{SCREW_L:.0f} cannot reach the insert-nut at the loosest gap with 2 mm engaged "
+    f"({_SCREW_MIN:.1f} needed) -- the geometry moved, so the stock screw has to move with it")
 
 
 def _ridges(x0: float, x1: float, zc: float, width: float) -> cq.Workplane:
