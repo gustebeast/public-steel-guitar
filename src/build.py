@@ -85,7 +85,8 @@ def _PB_bar(attr):
     # heal BEFORE the threads and not after: thread rules (cut last and alone,
     # never heal a threaded part). That is also why the heal lives here rather
     # than in the PARTS lambda, which used to wrap this call.
-    return FP.cut_feel_access(heal(FP.fuse_into_bar(_PB(attr), *span)), *span)
+    piece = FP.cut_feel_access(heal(FP.fuse_into_bar(_PB(attr), *span)), *span)
+    return FP.wire_management(piece, *span)
 
 
 PARTS = {
@@ -1208,6 +1209,26 @@ def lkl_vkl_components():
         if clip.solids().vals():
             out.append((n, clip))
     return out
+
+
+def pedal_bar_box():
+    """(w, d, h, x, y, z) round the PEDAL BAR: the bar end to end, its towers, the
+    pedals standing on it and the feet under it, with nothing of the instrument above.
+    The bar is the far end of the leg columns, so a box that reached the body would be
+    mostly leg."""
+    bbs = [w.val().BoundingBox() for _, w in _pedal_bar_components() + _foot_pedal_components()]
+    x0, x1 = min(b.xmin for b in bbs) - 20.0, max(b.xmax for b in bbs) + 20.0
+    y0, y1 = min(b.ymin for b in bbs) - 30.0, max(b.ymax for b in bbs) + 30.0
+    z0, z1 = min(b.zmin for b in bbs) - 30.0, max(b.zmax for b in bbs) + 30.0
+    return (x1 - x0, y1 - y0, z1 - z0, (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2)
+
+
+def pedal_bar_work_components():
+    """The bar, its lid and latch, and the five pedals on it, as ONE live set -- for
+    work on the bar itself (the wiring trough, the splices, the fused housings). Like
+    lever_components, the build does not need it: it exists so the scratch view can
+    make the whole bar live at once, which is the unit a trough change touches."""
+    return _pedal_bar_components() + _foot_pedal_components()
 
 
 def _tensioner_coupon_components():
