@@ -138,15 +138,21 @@ ARM_LEN_P  = 112 * KL.D.BEAD        # 89.6 axle -> pedal-board centre
 ARM_TX     = KL.ARM_TX              # arm depth in X = the bending axis (the foot
                                     # presses along -X), same section as the knee arm
 HUB_D      = KL.HUB_D               # Ø10 hub on the axle — unchanged
-LEVER_HW   = KL.LEVER_HW            # ±10 in Y — unchanged, so the whole bearing /
+LEVER_HW   = KL.LEVER_HW            # ±12.8 in Y (LKL's) — unchanged, so the whole bearing /
                                     # axle / magnet / board stack transfers verbatim
 PAD_LZ     = 88 * KL.D.BEAD         # 70.4 board length along local Z (= guitar Y, the
                                     # foot's own direction)
 PAD_WY     = 28.0                   # board width along local Y (= guitar X, across)
 PAD_T      = 4.0                    # board thickness
-REC_X      = 5 * KL.D.BEAD          # 4.0 follower recess depth into the leg's -X face
-                                    # (keep = knee_lever_vert.REC_X)
-REC_Z      = 9 * KL.D.BEAD          # 7.2 recess height (keep = knee_lever_vert.REC_Z)
+# Past REST the other way (+theta) nothing but gravity acts, and gravity pulls INTO the spring,
+# so the pedal barely goes there -- the recess still covers a small margin of it.
+REST_OVER_P = 5.0
+# HALF-STOP SETBACK for the pedal: LKL's HS_SETBACK was solved for a 9.5 lobe and 15 deg; on
+# this 13.2 lobe it engaged at 8.32 deg. Re-solved by contact bisection of the pedal lever
+# against its own half-stop piston for first contact at ENGAGE_P (2026-09-21): +0.373 -- the
+# same as LKV, as it should be (same lobe radius, same target). Where the cartridge PARKS on
+# its position screw; the part and the pocket are unchanged.
+HS_SETBACK_P = KL.HS_SETBACK + 0.373
 LEG_TOP    = LOBE_RC_P + 4 * KL.D.BEAD   # the leg reaches 3.2 past the lobe station
 
 # ── PEDAL STATIONS ───────────────────────────────────────────────────────────
@@ -182,11 +188,12 @@ def _lever() -> cq.Workplane:
     leg = box_at(ARM_TX, 2 * LEVER_HW, LEG_TOP, x=0.0, y=0.0, z=LEG_TOP / 2)
     arm = box_at(ARM_TX, 2 * LEVER_HW, ARM_LEN_P, x=0.0, y=0.0, z=-ARM_LEN_P / 2)
     body = hub.union(leg).union(arm)
-    # follower recesses, one per cartridge lane, cut into the leg's -X face so the
-    # lobe can protrude into them
+    # follower recesses: knee_lever's SWEPT tongue envelope, one per lane (they were plain
+    # notches sized to the CARTRIDGE -- 14.8 wide each -- which stripped the leg around the
+    # lobe; 2026-09-21, same fix as LKV). The foot drives -theta, hence sense=-1.
     for yc in (KL.MAIN_YC, KL.HS_YC):
-        body = body.cut(box_at(REC_X, KL.HS_CART_WY + 2 * KL.HS_CLR, REC_Z,
-                               x=-ARM_TX / 2 + REC_X / 2, y=yc, z=LOBE_RC_P))
+        body = body.cut(KL.recess_swept(yc, LOBE_RC_P, THROW_P, LOBE_RC_P + KL.FOLL_DZ,
+                                        sense=-1, rest_span=REST_OVER_P))
     body = body.union(cyl_y(2 * KL.LOBE_R, 2 * LEVER_HW, y0=-LEVER_HW)
                       .translate((0.0, 0.0, LOBE_RC_P)))
     # PEDAL BOARD: the foot presses -X, so the board's working face is its +X one.
@@ -535,8 +542,8 @@ def demo_parts():
         out.append((f"pedal_lever_{i}", _P(swing(_lever(), 0.0))))
         out += KL.axle_dummies(_P, pre, CRADLE_Z0, HOUS_Z1, flip=BOARD_FLIP,
                                shim_top=SHIM_TOP)
-        out += KL.cart_dummies(_F, pre)
-        out += KL.feel_dummies(_F, pre)
+        out += KL.cart_dummies(_F, pre, hs_setback=HS_SETBACK_P)
+        out += KL.feel_dummies(_F, pre, hs_setback=HS_SETBACK_P)
     return out
 
 
