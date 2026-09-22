@@ -313,18 +313,25 @@ ULPI = {"ULPI_D0": "PA3", "ULPI_D1": "PB0", "ULPI_D2": "PB1", "ULPI_D3": "PB10",
 # internally -- which is why lanes 3-5 need no SCK/FS pins of their own. SAI4 would have
 # kept lane 5 on the strip-facing edge (PC1, pin 33) but it sits in the D3 domain; confirm
 # SAI4<-SAI1 synchronisation in RM0433 before moving it there.
-# CONTROL IS TWO I2C BUSES, because the part has two address straps -- four addresses
-# (1001100..1001111, SBAS993B Table 48) for five devices. U14..U17 on I2C2 (PF0 SDA, PF1
-# SCL), U18 alone on I2C4 (PF15 SDA, PF14 SCL). SHDNZ for all five on PF2, pulled LOW, so
+# CONTROL IS ONE I2C BUS AT ONE ADDRESS, ALL FIVE PARTS WRITTEN AT ONCE (2026-09-22). The
+# five are configured IDENTICALLY -- each already has its own data lane, so each uses slots
+# 0-3 on it -- so every register write is the same write to all five, and they share
+# address 1001100 (both straps to GND). Open-drain ACKs from five parts simply wire
+# together. What it gives up is reading one part back on its own (a read returns the
+# wired-AND of five); firmware only writes. What it bought: this used to be two buses
+# (I2C2 for four parts at four addresses, I2C4 for the fifth), and the straps that pulled
+# ADDR0/ADDR1 up to +3V3D were two of the last 14 nets the router could not close -- the
+# address pins sit between the I2C pins on the part's routing side.
+# I2C2: PF0 SDA (16), PF1 SCL (17). SHDNZ for all five on PF2, pulled LOW, so
 # the converters sit in hardware shutdown until firmware has the supplies settled
 # (SBAS993B 9.2.1.2 step 1).
 # ⚠ THE EMITTER GATE (PB3) IS TIM2_CH2, and firmware must run it from the same PLL as the
 # SAI kernel clock so the carrier is frequency-locked to FSYNC; its phase is fixed at start.
 SAI_CLK = {"SAI_SCK": "PE5", "SAI_FS": "PE4"}
 SAI_SD = ("PE6", "PE3", "PA0", "PI6", "PD1")     # lane k -> converter U(14 + k)
-I2C_BUS = (("PF0", "PF1"), ("PF15", "PF14"))      # (SDA, SCL): I2C2, I2C4
-ADC_I2C = (0, 0, 0, 0, 1)                          # converter k -> bus
-ADC_ADDR = (0, 1, 2, 3, 0)                         # converter k -> ADDR1:ADDR0 strap
+I2C_BUS = (("PF0", "PF1"),)                       # (SDA, SCL): I2C2
+ADC_I2C = (0, 0, 0, 0, 0)                          # converter k -> bus
+ADC_ADDR = (0, 0, 0, 0, 0)                         # converter k -> ADDR1:ADDR0 strap
 ADC_SHDN = "PF2"
 
 
@@ -558,7 +565,7 @@ def optical():
 
     sai_sck, sai_fs = Net("SAI_SCK"), Net("SAI_FS")
     sai_sd = [Net("SAI_SD%d" % (k + 1)) for k in range(5)]
-    i2c = [(Net("I2C%d_SDA" % b), Net("I2C%d_SCL" % b)) for b in (2, 4)]
+    i2c = [(Net("I2C%d_SDA" % b), Net("I2C%d_SCL" % b)) for b in (2,)]
     adc_shdn = Net("ADC_SHDNZ")
 
     # ── U14-U18: the audio converters, one per quad ─────────────────────────
@@ -631,8 +638,6 @@ def optical():
         gnd += cm[2]
     for ref, net, rail, what in (("R50", i2c[0][1], v3d, "I2C2 SCL"),
                                  ("R51", i2c[0][0], v3d, "I2C2 SDA"),
-                                 ("R52", i2c[1][1], v3d, "I2C4 SCL"),
-                                 ("R53", i2c[1][0], v3d, "I2C4 SDA"),
                                  ("R54", adc_shdn, gnd, "SHDNZ pull-down")):
         r = _r(ref, "4k7" if rail is v3d else "100k", what)
         net += r[1]
