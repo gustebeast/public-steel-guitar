@@ -277,7 +277,7 @@ def keyhead_cradles(standing: bool = True, pi_cut=None) -> cq.Workplane:
     def _cyl_col(x, y, d, z0, z1):
         return cq.Workplane("XY").add(cq.Solid.makeCylinder(d / 2.0, z1 - z0, cq.Vector(x, y, z0)))
 
-    def _frame(bw, bl, boss_xy):
+    def _frame(bw, bl, boss_xy, slide_in_x=False):
         """A board cradle made ONLY of columns rising from the endplate wall (local z `zb`)
         to the board: a ring round the board -- a LIP under its edge to carry it, then on up
         0.8 past its top as the locating wall, open above the board on -Y (the harness side)
@@ -289,6 +289,24 @@ def keyhead_cradles(standing: bool = True, pi_cut=None) -> cq.Workplane:
         wall = (box_at(2 * ox, 2 * oy, top - POST_H, x=0.0, y=0.0, z=(POST_H + top) / 2)
                 .cut(box_at(bw + 2 * CLR, bl + 2 * CLR, 80.0, x=0.0, y=0.0, z=0.0))
                 .cut(box_at(2 * ox + 2, 2 * WALL + 2 * CLR + 2, 80.0, x=0.0, y=-bl / 2, z=0.0)))
+        if slide_in_x:
+            # ⚠ AND AN INSTALL MOUTH (user, 2026-09-22): "slide into place from +Z to -Z
+            # rather than from +X to -X". Opening it is what lets the board be lowered into
+            # the cradle IN ITS OWN PLANE instead of being pressed face-first into the wall.
+            # ⚠ IT IS THE LOCAL -X SIDE, AND THAT IS NOT THE OBVIOUS ONE. stand() INVERTS
+            # this axis: the frame's local -x is the instrument's +Z, so the mouth the board
+            # is lowered THROUGH is the one that looks like the bottom here. Cutting +x
+            # instead left all 252 mm3 exactly where it was, which is how this was caught --
+            # the swept volume, not the picture, is what says which side opened.
+            # ⚠ IT IS THE ONLY THING IN THE WAY. Swept over the whole 66 mm stroke against
+            # the finished endplate, the board passes through 269 mm3 of material and 252 of
+            # that is this one wall -- a 2.4 x 1.6 ledge running the board's full length.
+            # The rest is ~17 mm3 of slot fins its corner grazes. So this is a mouth, not a
+            # redesign. The -Y opening STAYS: that one is the harness's, not the board's.
+            # Retention is unchanged -- the lip still carries the board, the other three
+            # walls still locate it, and the M4 through the boss is what holds it in.
+            wall = wall.cut(box_at(2 * WALL + 2 * CLR + 2, 2 * oy + 2, 80.0,
+                                   x=-bw / 2, y=0.0, z=0.0))
         cr = ring.union(wall).union(_cyl_col(boss_xy[0], boss_xy[1], _M4.boss_od, zb, POST_H))
         return cr
 
@@ -322,7 +340,7 @@ def keyhead_cradles(standing: bool = True, pi_cut=None) -> cq.Workplane:
     x0, x1, y0, y1 = PI_FP
     pw, pl = x1 - x0, y1 - y0
     phx, phy = pcb_hold_xy(pw, pl, "+y", hold_at=0.0, clr=CLR, spec=_M4)
-    cr = _frame(pw, pl, (phx, phy))
+    cr = _frame(pw, pl, (phx, phy), slide_in_x=True)
     cr = cr.cut(_cyl_col(phx, phy, M4_BUTTON_HEAD_D + 2 * CLR, POST_H, POST_H + 20.0))
     cr = _cut_anchor(_M4, cr, (phx, phy, POST_H), (0, 0, -1), _M4.anchor_min_wall)
     pi = cr.translate(((x0 + x1) / 2.0, (y0 + y1) / 2.0, TRAY_Z1))
@@ -455,9 +473,38 @@ from . import board_geom as BG
 # nothing else moves. The cap is 56 x 26 against the Pi's 85 x 56, so it lands inside the
 # Pi's outline apart from 0.37 mm at the -Y end -- real HATs sit flush, and 0.37 is the
 # difference between the cap's half-length and the header's margin, not a placement error.
+LED_SECTION_W = 139.0        # elec/led_strip.BOARD_W -- four of these fill the seat
+LED_SECTIONS = 4
+LED_SLOT_U_MID = 10.0        # the board's centre across the slope (20 wide, in a 20.3 slot)
 PI_HDR_X = PI_FP[0] + 3.5 + 1.27               # -598.23, between the two pin rows
 PI_HDR_Y = PI_FP[2] + 3.5 + (20 - 1) * 2.54 / 2.0   # -22.37, the pad centroid along the row
 PI_CAP_STANDOFF = BG.HEIGHT["PinSocket_2x20_P2.54mm_Vertical"]   # 8.5, the socket's body
+
+
+# ── THE LED STRIP SECTIONS (elec/led_strip.py) in the chassis seat ───────────
+# ⚠ WORLD FRAME, NOT THE TRAY FRAME. Everything else in this file is authored flat and
+# `stand`s into place; these are not, because the seat they sit in is a CHASSIS feature
+# (chassis.LED_*) already written in world coordinates. Anything here that reads a chassis
+# datum has to stay in that frame or the two will drift apart silently.
+def led_sections() -> list:
+    """The four RGBW sections lying in the +Y rail's 45 deg seat, face up-and-inboard.
+
+    The seat's frame is (u, v): u down the slope from the board's high edge on the wall,
+    v out along the surface normal. A section is 20 across the slope and 1.6 thick, so its
+    centre is at u = 10, v = 0 -- chassis._led_uv turns that into (y, z), and the board is
+    simply rotated 45 about X, which is the rotation that takes its own +Z to the seat's
+    normal (0, -1, +1)/sqrt2 and its +Y to the up-slope direction."""
+    from . import chassis as CH
+    from . import board_geom as _BG
+    w = LED_SECTION_W
+    gap = (CH.LED_X1 - CH.LED_X0 - LED_SECTIONS * w) / (LED_SECTIONS - 1)
+    y, z = CH._led_uv(LED_SLOT_U_MID, 0.0)
+    b = _BG.solid("led_strip").rotate((0, 0, 0), (1, 0, 0), 45.0)
+    out = []
+    for i in range(LED_SECTIONS):
+        cx = CH.LED_X0 + w / 2.0 + i * (w + gap)
+        out.append(("led_strip_%d" % i, b.translate((cx, y, z))))
+    return out
 
 
 def pi_cap() -> cq.Workplane:
