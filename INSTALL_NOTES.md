@@ -44,6 +44,33 @@ washers (the spring seat, and the position stop in the housing). See `BOM.md` an
 
 ---
 
+## Knee lever wiring (bus B)
+
+Bus B daisy-chains through every lever board: in on J1 ways 1–4, out on 5–8. A lever
+is **not** at a fixed station — its tenons drop into the chassis bottom's mortise grid
+(`D.LEVER_PITCH`, 10.4 mm) so it steps along X, and the rib mortise lets it slide to
+any knee depth over 197.5 mm in Y.
+
+### KL-2 — Cut the lever segments long and tie the hank to the lever
+
+- **Where:** the lace loop on each lever housing's **back face** (`knee_lever.lace_loop`,
+  on both `kl_housing` and `kv_housing`) — between the two cartridge screw lanes, so it
+  never covers a screw way.
+- **What:** cut each lever-to-lever segment for the **widest** spacing you would use,
+  fold the excess into a flat hank, pass it through the loop and tie it there with a
+  reusable tie. The bore takes a doubled bundle.
+- **Why:** moving a lever is a thing you do to the *instrument*, not to the loom. The
+  harness is the crimped, tooled, contacts-ordered part; it should survive a
+  re-placement. Tying the hank to the **lever** rather than to the chassis is what makes
+  that work at any station — the stow point travels with the lever.
+- **Sized for a tweak, not a relocation** (user: two grid steps either way, plus knee
+  depth). Two neighbours moving 2 steps apart each is 41.6 mm. Moving a lever the length
+  of the mortise needs a new segment, and always did.
+- **Do this before** the lever goes up into the chassis: the back face is reachable with
+  the lever in your hand and not much afterwards.
+
+---
+
 ## Pedal bar wiring (bus B)
 
 The bar's wiring trough carries bus B from the −X (wired) leg tower to the five

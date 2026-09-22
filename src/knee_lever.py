@@ -1774,6 +1774,67 @@ def cut_feel_rear(w, place, reach=0.0):
     return w
 
 
+
+# -- THE LACE LOOP: where a lever's bus-B slack is tied off ------------------
+# User, 2026-09-22: "we need a way to cable manage having some extra wire length
+# between each lever. That way you can adjust the lever positions without having to
+# make new cables."
+#
+# A lever is NOT at a fixed station. Its tenons drop into the chassis bottom's mortise
+# grid (D.LEVER_PITCH, 10.4) so it steps along X, and the rib mortise runs MORT_Y1 -
+# MORT_Y0 = 197.5 in Y, so it also slides to any knee depth. The harness therefore has
+# to reach a lever that has MOVED since the cable was cut -- and the loom is the
+# crimped, tooled, contacts-ordered part, the one thing that should survive a
+# re-placement. So a bus-B segment is cut long and the excess is folded into a hank and
+# tied HERE, on the lever's own back face, which travels with the lever: wherever it
+# goes, its stow point goes with it. (A field of tie points on the chassis bottom would
+# have to cover every station a lever might take, and that slab is not this module's.)
+#
+# SIZED FOR A TWEAK, NOT A RELOCATION (user: two grid steps either way, plus knee
+# depth). Two neighbours moving apart by 2 steps each is 41.6; a hank of that plus
+# service slack is what the loop has to pass, doubled, not the 197.5 the mortise
+# allows. Moving a lever the length of the mortise is a new segment and always was.
+#
+# IT PRINTS WITH NO OVERHANG, which is what picks the shape. The housing builds -Z ->
+# +Z, so the only feature that needs no support is one standing on the bed face: the
+# loop's underside IS HOUS_Z0, and its bore is a house section -- vertical walls, 45 deg
+# gable -- run along Y, the same idiom as the pogo cavities. A round bore across a
+# horizontal axis would have needed a teardrop; a plain rectangular one would have
+# needed a bridge.
+LACE_BORE_X = 5 * D.NOZZLE_D        # 4.0 the cable sits this far off the back face
+LACE_BORE_Z = 5 * D.NOZZLE_D        # 4.0 straight height, then the gable
+LACE_WALL   = D.MIN_WALL_2P         # 1.6 all round
+LACE_WY     = 15 * D.NOZZLE_D       # 12.0 along Y -- it lives BETWEEN the two cartridge
+                                    # lanes (+-8.45), so it never covers a screw way and
+                                    # the 2.0 key still reaches both from behind
+LACE_GABLE  = LACE_BORE_X / 2.0     # 45 deg roof over the bore
+assert LACE_WY / 2 + LACE_WALL <= abs(HS_YC) - HS_CART_WY / 2 + LACE_WALL + 1e-9 or \
+       LACE_WY / 2 <= abs(HS_YC), (
+    "the lace loop is wide enough to cover a feel-screw way on the back face")
+
+
+def lace_loop(x_face=None, z_bed=None):
+    """The tie-off loop on a lever housing's BACK face, in the lever's local frame: a
+    block standing on the bed face with a house-section bore through it along Y.
+
+    Parameterised because the VERTICAL lever (knee_lever_vert) is the same design with
+    the feel block moved above the axle -- same back face, its own floor -- and it
+    adjusts on the same grid, so it needs the same tie-off. Defaults are LKL's."""
+    x1 = HOUS_X0 if x_face is None else x_face       # fused into the back face
+    x0 = x1 - (LACE_BORE_X + LACE_WALL)
+    z0 = HOUS_Z0 if z_bed is None else z_bed         # ...the bed: nothing to support
+    z1 = z0 + LACE_WALL + LACE_BORE_Z + LACE_GABLE + LACE_WALL
+    block = box_at(x1 - x0, LACE_WY, z1 - z0,
+                   x=(x0 + x1) / 2, y=0.0, z=(z0 + z1) / 2)
+    bx0, bx1 = x0 + LACE_WALL, x1
+    bz0 = z0 + LACE_WALL
+    pts = [(bx0, bz0), (bx1, bz0), (bx1, bz0 + LACE_BORE_Z),
+           ((bx0 + bx1) / 2, bz0 + LACE_BORE_Z + LACE_GABLE), (bx0, bz0 + LACE_BORE_Z)]
+    bore = (cq.Workplane("XZ").polyline(pts).close()
+            .extrude(LACE_WY + 2.0).translate((0.0, (LACE_WY + 2.0) / 2, 0.0)))
+    return block.cut(bore)
+
+
 def _housing() -> cq.Workplane:
     """ONE PARAMETRIC PRISM (user simplification round): the box spanned by
     HOUS_* (every face derived from the lever / cartridge / body extents),
@@ -1872,6 +1933,7 @@ def _housing() -> cq.Workplane:
     w = cut_axle_stack(w)          # bearing seats + contact rib + axle way
     w = cut_feel_pockets(w, feel_place)
     w = _cradle(w)                                                  # the MT6701 board cradle (user)
+    w = w.union(lace_loop())        # ...and the bus-B tie-off on the back face
     return heal(w)                  # no printed threads any more -- the whole part heals
 
 
