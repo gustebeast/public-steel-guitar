@@ -86,7 +86,7 @@ def oct_cable(pts, d: float) -> cq.Workplane:
                        "(%d segments, wanted >= %.1f mm3)" % (len(segs), want))
 
 
-def bundle_paths(pts, offsets):
+def bundle_paths(pts, offsets, across=None):
     """Split one bundle centreline into N CONDUCTOR paths, one per (a, b) offset.
 
     `offsets` are in the bundle's OWN cross-section, so a conductor keeps its place
@@ -102,6 +102,13 @@ def bundle_paths(pts, offsets):
     vertex the two adjoining frames are averaged, which keeps each conductor a
     single unbroken polyline through the turn.
 
+    `across` AIMS the cross-section: the second offset axis is lined up with it at the
+    START of the path. Without it the frame is seeded off whichever world axis is least
+    parallel to the run, so which conductor sits on which side of the bundle is
+    arbitrary -- and when the bundle then fans out onto a row of connector pins, wires
+    cross over each other to reach their own way. Pass the pin row's direction and the
+    fan comes out in order.
+
     Returns a list of point-lists, one per offset, ready for `oct_cable`.
     """
     segs = []
@@ -113,7 +120,17 @@ def bundle_paths(pts, offsets):
         return [list(pts) for _ in offsets]
     dirs = [(vb - va).normalized() for va, vb in segs]
     ref = cq.Vector(0, 0, 1) if abs(dirs[0].z) < 0.9 else cq.Vector(1, 0, 0)
-    fa = ref.cross(dirs[0]).normalized()
+    if across is not None:
+        want = cq.Vector(*across)
+        # a is chosen so that b = u x a comes out along `across`
+        cand = want.cross(dirs[0])
+        if cand.Length > 1e-6:
+            ref = want
+            fa = cand.normalized()
+        else:
+            fa = ref.cross(dirs[0]).normalized()
+    else:
+        fa = ref.cross(dirs[0]).normalized()
     frames = [(fa, dirs[0].cross(fa).normalized())]
     for u_prev, u in zip(dirs, dirs[1:]):
         a_prev, _ = frames[-1]
