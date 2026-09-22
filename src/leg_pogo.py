@@ -755,8 +755,18 @@ def harness():
     for k, (path, (at, pitch, j, ed, lead_l)) in enumerate(zip((up_path, lo_path,
                                                                body_path, bar_path),
                                                               ends)):
-        for i, ((name, _), cpath) in enumerate(zip(
-                HARNESS_WIRES, bundle_paths(path, [o for _, o in HARNESS_WIRES]))):
+        # THE BUNDLE IS AIMED AT THE PIN ROW, and the frame is seeded at the path's
+        # START, so a run that ENDS at its connector is walked backwards and flipped
+        # again afterwards. Without both, the conductors arrive in whatever order the
+        # frame happened to land in: one wire ran to the middle of the row and back out
+        # to its own pin, and two others came in almost on top of each other (user).
+        rev = at != 0
+        walk = list(reversed(path)) if rev else list(path)
+        legs = bundle_paths(walk, [o for _, o in HARNESS_WIRES],
+                            across=(j.S[0], j.S[1], 0.0))
+        if rev:
+            legs = [list(reversed(q)) for q in legs]
+        for i, ((name, _), cpath) in enumerate(zip(HARNESS_WIRES, legs)):
             cpath = list(cpath)
             p = cpath[at]
             ds = pin_s(pitch, i)        # this way's place along the row
