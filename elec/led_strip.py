@@ -48,8 +48,16 @@ P = Pin.types.PASSIVE
 # PH_PLUG_RUN 3.6 past its mouth and the mouths sit 1.0 inside the board ends, so two facing
 # plugs alone eat 5.2 before the jumper's U has anywhere to go. 139 + 8 x 3 = 580.0 fits with
 # 2.7 mm of air at each end.
-BOARD_W, BOARD_L = 139.0, 20.0          # X along the strip, Y = the strip's height (20: the
-                                        # PH tabs need 1.0 to the long edges)
+# ⚠ 20 -> 24 FOR THE CHASSIS SLOT (user, 2026-09-22: "add some extra PCB to the bottom").
+# The strip stands vertical in a channel on the +Y rail, its bottom edge trapped in a
+# 4.0 mm slot and a 45 deg roof over its top (chassis.LED_*). The slot has to grip BLANK
+# LAMINATE: the driver row ends only 2.15 mm above the old board's bottom edge, so a 4 mm
+# slot would have swallowed it. All 4 mm of the growth goes BELOW the drivers -- every part
+# keeps its distance from the TOP edge, which is where the LEDs and the roof are, via
+# SLOT_TAB / 2 added to each y below.
+SLOT_TAB = 4.0                          # blank laminate at the bottom, for chassis.LED_SLOT_D
+BOARD_W, BOARD_L = 139.0, 20.0 + SLOT_TAB   # X along the strip, Y = the strip's height
+_YO = SLOT_TAB / 2.0                    # every part shifts +Y by this as the board grows down
 SECTIONS = 4                            # 4 x 139 + 3 x JUNCTION_GAP = 580, in a 585.34 rail
 JUNCTION_GAP = 8.0                      # board end to board end: 2 x 2.6 of mated plug past
                                         # the ends, plus room for the jumper to turn
@@ -186,13 +194,13 @@ def led_strip():
 # between the LEDs, the far LED's cathodes had to pass under its neighbour's pads and 9 of
 # the 14 first-route opens were exactly that.
 _MOUTH = BOARD_W / 2 - 1.0
-_LED_Y, _DRV_Y = 4.5, -4.6
+_LED_Y, _DRV_Y = 4.5 + _YO, -4.6 + _YO
 # the centroid sits on the INBOARD side of the origin (mouth + 4.4 + 1.4125 in from the
 # end); the first two layouts had the sign wrong and hung both connectors ~1.8 mm off the ends
 _J_ANCHOR = _MOUTH - 4.4 - 1.4125
 _LED_X = [(-(N_LED - 1) / 2 + i) * LED_PITCH for i in range(N_LED)]
-_V5_SPINE_Y = 8.3            # above the 5 mm LED packages (they end at 7.0), inside the edge
-_place = {"J1": (-_J_ANCHOR, 0.0, 270.0), "J2": (_J_ANCHOR, 0.0, 90.0),
+_V5_SPINE_Y = 8.3 + _YO            # above the 5 mm LED packages (they end at 7.0), inside the edge
+_place = {"J1": (-_J_ANCHOR, _YO, 270.0), "J2": (_J_ANCHOR, _YO, 90.0),
           "C1": (_LED_X[0], _DRV_Y, 0.0)}
 for i, x in enumerate(_LED_X):
     _place["D%d" % (i + 1)] = (x, _LED_Y, 0.0)
@@ -247,7 +255,7 @@ BOARD_NOTES = {
     # ONE COLUMN at x - 2.14, y 2.52..6.48, so a stub up the column and a spine along the
     # top of the LED row feeds every one deliberately -- above the packages (which end at
     # y 7) and clear of the cluster GND spines (which stop at y 6.1).
-    + [("+5V", "F.Cu", 0.3, [(x - 2.14, 2.52), (x - 2.14, _V5_SPINE_Y)]) for x in _LED_X]
+    + [("+5V", "F.Cu", 0.3, [(x - 2.14, 2.52 + _YO), (x - 2.14, _V5_SPINE_Y)]) for x in _LED_X]
     + [("+5V", "F.Cu", 0.6, [(_LED_X[0] - 2.14, _V5_SPINE_Y),
                              (_LED_X[-1] - 2.14, _V5_SPINE_Y)])],
     "stitch_nets": ("GND",),
