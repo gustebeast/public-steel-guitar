@@ -2866,6 +2866,17 @@ def build(stem):
         fp.SetReference(ref)
         fp.SetValue(value)
         x, y, rot = placements[ref]
+        # ⚠ FLIP BEFORE POSITIONING, NOT AFTER. A part named in back_refs sits on the
+        # BOARD'S UNDERSIDE -- the pi_cap's 2x20 socket is the only one so far, and it has
+        # to be, because that socket is what the board hangs off the Pi's header by: its
+        # body occupies the standoff between the two boards, not the space above the cap.
+        # KiCad's Flip mirrors about the point it is given, so flipping after SetPosition
+        # would move the part as well as turn it over; flipping at the origin first leaves
+        # the anchor routines below to place it exactly as they place anything else.
+        # export_geom already reports side "B" for a flipped part and board_geom already
+        # grows such a part DOWNWARD from the board, so nothing downstream needs teaching.
+        if ref in notes.get("back_refs", ()):
+            fp.Flip(fp.GetPosition(), False)
         fp.SetPosition(_to_board(x, y))
         fp.SetOrientationDegrees(rot)
         # WHICH POINT OF THE FOOTPRINT THE PLACEMENT NAMES. Everywhere but the optical
