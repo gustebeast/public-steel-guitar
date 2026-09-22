@@ -86,9 +86,33 @@ def oct_cable(pts, d: float) -> cq.Workplane:
                        "(%d segments, wanted >= %.1f mm3)" % (len(segs), want))
 
 
+def helix_cable(cx: float, cy: float, z0: float, z1: float, turns: float,
+                r: float, d: float) -> cq.Workplane:
+    """A slack COIL: a round profile swept along a true helix. THREE faces.
+
+    Round, in a module whose whole point is that cables are not round -- because
+    the reason cables are octagonal is that FUSING many round segments loses
+    material silently, and a sweep is not a fuse. It is one solid, built from the
+    exact helix, in 0.02 s.
+
+    So the rule is about the boolean, not the shape: use this wherever the coil
+    can stand as its OWN part, and keep its ends clear of the octagonal run it
+    feeds (a tangent round-to-octagon fuse is the case to avoid). Measured on a
+    7-turn coil: 3 faces here against ~1200 for `helix_pts` + `oct_cable` at 8
+    segments per turn, and ~700 even at 4 -- the cost is the fuse splitting faces
+    at every corner, not the segment count, so coarsening barely helps.
+    """
+    path = cq.Wire.makeHelix((z1 - z0) / turns, z1 - z0, r,
+                             cq.Vector(cx, cy, z0), cq.Vector(0, 0, 1))
+    prof = cq.Wire.makeCircle(d / 2.0, path.startPoint(), path.tangentAt(0.0))
+    return cq.Workplane("XY").add(cq.Solid.sweep(prof, [], path, isFrenet=True))
+
+
 def helix_pts(cx: float, cy: float, z0: float, z1: float, turns: float,
               r: float, per_turn: int = 8):
-    """A helix as a POLYLINE, for feeding to `oct_cable`.
+    """A helix as a POLYLINE, for feeding to `oct_cable` -- for when the coil must
+    be PART OF the same solid as the run. Where it can stand alone, reach for
+    `helix_cable` instead: 3 faces against this one's ~1200.
 
     A swept round profile along a helical wire is one solid and so does not risk
     the fuse above -- but it puts a curved cable in the middle of an octagonal

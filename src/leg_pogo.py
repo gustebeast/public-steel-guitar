@@ -64,7 +64,7 @@ import math
 
 import cadquery as cq
 
-from cadkit.cables import helix_pts, oct_cable
+from cadkit.cables import helix_cable, oct_cable
 from cadkit.fasteners import M4, M4_BUTTON_HEAD_D, M4_BUTTON_HEAD_H, ScrewJoint
 from cadkit.holes import teardrop_hole
 from cadkit.pcb import PCB_T
@@ -500,10 +500,20 @@ def bar_features(floor_z: float, chamber_top_z: float):
 
 
 # ── the harness, drawn ───────────────────────────────────────────────────────
-# the coil is POLYLINE too (cadkit.cables.helix_pts), so the whole leg run is one
-# octagonal section. Swept round along a helical wire was one solid and safe by itself,
-# but it met the octagonal run in a tangent boolean at each end -- the very case the
-# cable module exists to keep out of the model.
+# THE COIL IS ITS OWN PART, and round (cadkit.cables.helix_cable). Drawn octagonal and
+# fused into the run it cost ~1200 faces against 3 -- the fuse splits a face at every
+# corner, so coarsening the helix barely helped (~700 even at 4 segments a turn) -- and
+# every pair the overlap gate checks against the harness then pays for them. Standing it
+# alone buys the cheap swept solid AND keeps the round-to-octagon tangent fuse out, which
+# was the only reason to polyline it. COIL_GAP holds the run clear of its tilted end caps.
+# The run meets the coil VERTICALLY, on the helix's own start radius, so the run's end
+# cap is square to the coil's overhang. Arriving at a slant instead needed 2.2 of gap --
+# most of a cable diameter, which reads as a BREAK in the cable rather than a join.
+# The coil's own end cap is NEARLY VERTICAL (its normal is the helix TANGENT, only 21.3
+# off horizontal), so the coil overshoots its nominal end by (HARNESS_D / 2) cos(lead) =
+# 1.118 -- cos, not sin, which is what a first guess of 0.6 got wrong.
+COIL_LEAD = 4.0                 # the vertical run-in
+COIL_GAP = 1.4                  # > (HARNESS_D / 2) cos(lead), measured 1.118
 
 
 def harness():
@@ -526,13 +536,13 @@ def harness():
     ax, ay = LS.LEG_X, LS.LEG_Y
     upper = oct_cable([TOP.p(pt, 0.0, PLUG_TOP), TOP.p(pt, 0.0, dm),
                   (xs, ys, TOP.p(0, 0, dm)[2]), (xs, ys, LS.Z_FIX_TEN_BOT - 2.0),
-                  (ax + r, ay, z_a)], d)
-    lower = oct_cable([(ax + r, ay, z_b), (xc, yc, LS.Z_ADJ_TEN_TOP + 2.0),
+                  (ax + r, ay, z_a + COIL_LEAD), (ax + r, ay, z_a + COIL_GAP)], d)
+    lower = oct_cable([(ax + r, ay, z_b - COIL_GAP), (ax + r, ay, z_b - COIL_LEAD), (xc, yc, LS.Z_ADJ_TEN_TOP + 2.0),
                   (xc, yc, BT.PASS_TOP), (xb, yb, BT.CH_BOT),
                   (xb, yb, BOTTOM.p(0, 0, dm)[2]), BOTTOM.p(pt, 0.0, dm),
                   BOTTOM.p(pt, 0.0, PLUG_TOP)], d)
-    coil = oct_cable(helix_pts(ax, ay, z_a, z_b, CM.TURNS, r), d)
-    leg = upper.union(coil).union(lower)
+    coil = helix_cable(ax, ay, z_b, z_a, CM.TURNS, r, d)
+    leg = upper.union(lower)
     fr = ZR_MOUTH - ZR_PLUG - d / 2.0 - 0.1         # running past the plug, clear of it
     fc = fr                                          # ...and it drops there
     zd = PCB_T + ZR_H / 2.0                         # the plug's height off the host
@@ -548,5 +558,6 @@ def harness():
     g2 = BOTTOM.p(fc, -S_C, -17.0)                 # ...and down into it
     bar = oct_cable([g0, g0b, g1a, g2, (g2[0] + 10.0, g2[1], g2[2])], d)   # along the chamber, toward
                                                             # the trough
-    return [("pogo_harness_leg", leg), ("pogo_harness_body", body),
+    return [("pogo_harness_leg", leg), ("pogo_harness_coil", coil),
+            ("pogo_harness_body", body),
             ("pogo_harness_bar", bar)]
