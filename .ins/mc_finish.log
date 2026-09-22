@@ -1,0 +1,31 @@
+      stitched 56 pad(s) on GND straight to the plane
+    motor_ctrl.kicad_pcb: 63 parts, 33 nets (+1 single-pad, not placed), 46.0 x 58.0 mm
+    exported motor_ctrl.dsn (65 kB)
+      declared In1.Cu as plane layer(s) -- the router will not route on them
+      router clearance 137 um (fab rule 127 um + 10 um of rounding margin)
+      ?           Thank you for using Freerouting!                       ?
+      ?                                                                  ?
+      ?  If you would like to support the project, please visit          ?
+      ?  https://www.freerouting.app/donate.html                         ?
+      ?  Every contribution helps keep this project open and active!     ?
+      ????????????????????????????????????????????????????????????????????
+      ⚠ 1 stitch via(s) landed where the plane is not: GND at 90.09,111.58
+        moved 1 of them into the plane and re-poured
+      snapped 6 hairline gap(s) shut (no copper added)
+        ⚠ +24V changes layer at 87.51,97.50 and a 0.6 via does not fit there
+        ⚠ +24V changes layer at 87.51,97.50 and a 0.6 via does not fit there
+        ⚠ +24V changes layer at 87.51,97.50 and a 0.6 via does not fit there
+        ⚠ +24V changes layer at 87.51,97.50 and a 0.6 via does not fit there
+      dropped in 6 via(s) where a net changed layer with nothing to carry it
+      removed 6 redundant via(s) drilled into a through-hole pad: J1.2 [+24V], J2.6 [+5V], J5.2 [+5V], J2.4 [CANB_L], J2.3 [CANB_H], J4.2 [USB_DM]
+      joined 1 same-net pad pair(s) the router left in separate islands
+      dropped 5 degenerate track fragment(s) from the import
+    motor_ctrl.kicad_pcb: 530 track segments + vias imported
+    swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
+    swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
+    swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
+    swig/python detected a memory leak of type 'ZONE_FILLER *', no destructor found.
+  pass 1: 0 unconnected, 0 violation(s)
+    motor_ctrl: no matched-length groups declared -- nothing to check
+    motor_ctrl.geom.json: 63 footprints, board 46.00 x 66.70; NO F.Fab body on JP1
+motor_ctrl: 0 unconnected, 0 violation(s)
