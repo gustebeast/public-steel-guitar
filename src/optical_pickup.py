@@ -439,7 +439,7 @@ SENSE_HL = _OUTER_Y + PD_DY                      # last sensor Y
 # ONLY THE STRIP SECTION GROWS. PCB_X1S stays the wraps' and the tail's -X edge (and the
 # endplate pad's), so the strip steps out -X past them; STRIP_X1 is its own -X edge.
 STRIP_GROW_PX = 3.15
-STRIP_GROW_MX = 2.5   # measured: the router reached 1.69 mm into the 6.0 lane (.ins/lane_use.py)
+STRIP_GROW_MX = 8.5   # 2.5 of measured lane (.ins/lane_use.py) + 6.0 for the ADC column
 PCB_X0  = BAND_X0 - BAND_CLR + STRIP_GROW_PX                  # -22.11, strip +X edge
 PCB_X1S = BAND_X1 + BAND_CLR                                  # -38.88, wraps' / tail's -X edge
 STRIP_X1 = PCB_X1S - STRIP_GROW_MX                            # -41.38, the strip's own -X edge
@@ -1104,12 +1104,22 @@ def _parts():
     # cells in the annulus was too crowded was NOT confounded by the missing +3V3D bus after
     # all: the annulus is genuinely the binding constraint, and a starved U15 costs less than
     # a fourth cell there. Keep the 1 + 4 split; U15's access is the thing to fix, not its home.
-    _top_y = PCB_YP - EDGE_KEEP - (_near + _c[0] / 2)          # SAI side toward the +Y edge
-    _TOP = {0: (PCB_X1S + EDGE_KEEP + _rx + _c[1] / 2, _top_y),   # over the strip's -X corner
-            1: (MOUNT_X_HEAD + TP.JACK_HEAD_D / 2 + PKG_CLR + _rx + _c[1] / 2 + 0.6, _top_y)}
+    # ⚠ ALL FIVE NOW SIT IN THE STRIP, EACH BESIDE ITS OWN QUAD (2026-09-22), and the reason
+    # everything above was hard is that A CELL IS MUCH SMALLER THAN THIS FILE ASSUMED.
+    # Measured on the placed board, one converter and its thirteen caps span 5.6 x 9.6 mm.
+    # The half-width this code kept using, _rx + _c[1] / 2, is 13.38 -- it is a ROTATION
+    # RADIUS, not an extent, and reasoning with it made a 5.6 mm part look 27 mm wide. That
+    # is why the cells were ever exiled to the wrap and the annulus in the first place.
+    # At 5.6 wide, five of them stack in 58 mm of the strip's 103 and need 7.6 mm of width
+    # beside the op-amp column -- which is growth on the -X side, the direction the user
+    # already opened ("as much as we want -x of the optical sensors"). So each cell goes
+    # DIRECTLY WEST OF THE QUAD IT SERVES, at that quad's own centroid: the analog run is
+    # ~10 mm instead of the ~40 that starved U15, and nothing crosses the strip any more.
+    _adc_x = STRIP_X1 + EDGE_KEEP + 2.8                        # 2.8 = half the measured cell
     for k in range(5):
-        qx, qy = _TOP[k] if k in _TOP else _cell(k - 2, 0)
-        _s = -1.0 if k in _TOP else 1.0
+        qx = _adc_x
+        qy = (string_y_at(2 * k, SENSE_X) + string_y_at(2 * k + 1, SENSE_X)) / 2
+        _s = 1.0
         t = k + 1
         add("U%d" % (14 + k), "audio ADC -- TLV320ADC3140, 4 ch, quad U%d's outputs" % t,
             "WQFN-24", qx, qy, 180.0 if _s > 0 else 0.0)

@@ -1473,9 +1473,12 @@ def _v3_trunk():
     pre-laid via on this board -- measured on SHDNZ and again on SAI). The two clusters
     are still the router's to join; this removes the four intra-cluster hops it keeps
     dropping, and gives the digital supply a real low-impedance spine while it is there."""
+    # ⚠ ONE TRUNK NOW, NOT TWO. The cells used to sit in two clusters -- a pair at the +Y
+    # wrap and three in the annulus -- and the hop between them had no single-layer path at
+    # all (searched: no straight lane, no dogleg). Since all five moved into the strip in one
+    # column at a common x, their B.Cu stubs line up and ONE track joins the lot.
     end = lambda k: _cell_pt(k, -2.85, -3.27)
-    return [("+3V3D", "B.Cu", 0.3, [end(0), end(1)]),          # the +Y wrap pair
-            ("+3V3D", "B.Cu", 0.3, [end(2), end(4)])]          # the annulus row of three
+    return [("+3V3D", "B.Cu", 0.3, [end(0), end(4)])]
 
 
 def _fan_tracks():
