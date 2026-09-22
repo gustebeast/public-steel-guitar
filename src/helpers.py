@@ -13,16 +13,24 @@ def cyl(d: float, h: float, z: float = 0.0) -> cq.Workplane:
     return cq.Workplane("XY").workplane(offset=z).circle(d / 2).extrude(h)
 
 
-def cyl_y(d: float, length: float, y0: float, x: float = 0.0, z: float = 0.0) -> cq.Workplane:
+def cyl_y(d: float, length: float, y0: float, *, x: float = 0.0,
+          z: float = 0.0) -> cq.Workplane:
     """Solid cylinder with axis along +Y (the motor shaft axis), base face at y0,
-    centred on (x, z)."""
+    centred on (x, z).
+
+    The two OFF-AXIS coordinates are keyword-only on purpose. belt_tensioner kept a
+    private near-copy of cyl_x whose 4th parameter was z, not y; folding it onto this
+    module was a one-line change that silently moved 22 screw channels off axis,
+    because the call passed its z positionally. Nothing passes these positionally
+    today, so the guard costs nothing and makes that mistake impossible."""
     return cq.Workplane("XY").add(cq.Solid.makeCylinder(
         d / 2, length, pnt=cq.Vector(x, y0, z), dir=cq.Vector(0, 1, 0)))
 
 
-def cyl_x(d: float, length: float, x0: float, y: float = 0.0, z: float = 0.0) -> cq.Workplane:
+def cyl_x(d: float, length: float, x0: float, *, y: float = 0.0,
+          z: float = 0.0) -> cq.Workplane:
     """Solid cylinder with axis along +X (the belt / screw axis), base face at x0,
-    centred on (y, z)."""
+    centred on (y, z). Off-axis coordinates keyword-only -- see cyl_y."""
     return cq.Workplane("XY").add(cq.Solid.makeCylinder(
         d / 2, length, pnt=cq.Vector(x0, y, z), dir=cq.Vector(1, 0, 0)))
 
