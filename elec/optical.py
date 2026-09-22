@@ -455,7 +455,13 @@ def optical():
             pins=[Pin(num=n, func=P) for n in range(1, 15)])
     # SOIC-14 quad pinout: 1 OUT_A, 2 IN-_A, 3 IN+_A, 4 V+, 5 IN+_B, 6 IN-_B,
     # 7 OUT_B, 8 OUT_C, 9 IN-_C, 10 IN+_C, 11 V-, 12 IN+_D, 13 IN-_D, 14 OUT_D
-    SEC = {0: (1, 2, 3), 1: (7, 6, 5), 2: (8, 9, 10), 3: (14, 13, 12)}
+    # ⚠ SECTIONS BY HEIGHT, NOT IN ORDER (2026-09-21). A quad serves two strings, and its
+    # four detectors run top to bottom 1A, 1B, 2A, 2B; the SOIC's sections sit A top-left,
+    # D top-right, C bottom-right, B bottom-left. Mapped in plain order, 2B -- the lowest
+    # detector -- went to D at the TOP, and its summing node and output crossed section
+    # C's pins: the pre-laid local nets shorted there. Mapped by height, every detector
+    # meets the pins level with it.
+    SEC = {0: (1, 2, 3), 1: (14, 13, 12), 2: (8, 9, 10), 3: (7, 6, 5)}
 
     tia_out = {}
     for ch in range(20):                       # 0..19 -> (string, side)
@@ -592,17 +598,19 @@ def optical():
         sai_sck += u[22]
         sai_fs += u[23]
         dreg += u[24]
-        for j, (val, net, rtn, fp) in enumerate((
-                ("1uF", v3a, gnd, None), ("100nF", v3a, gnd, None),      # AVDD
-                ("10uF", areg, gnd, None), ("100nF", areg, gnd, None),    # AREG
-                ("1uF", vref, gnd, None),                                  # VREF
-                ("10uF", dreg, gnd, None), ("100nF", dreg, gnd, None),    # DREG
-                ("10uF", v3d, gnd, None), ("100nF", v3d, gnd, None)),     # IOVDD
-                start=1):
+        # SBAS993B Fig 165 less its four 100 nF: TI parallels 0.1 uF with each bulk part,
+        # and here the bulk parts are 0402s already (10 uF 6.3 V X5R, 1 uF) -- the low-ESL
+        # package the 100 nF is there to supply. Four fewer parts in each of five cells
+        # that could not route with them. Refs keep TI's numbering (Cs2/4/7/9 are the gaps).
+        for j, val, net in ((1, "1uF", v3a),            # AVDD
+                            (3, "10uF", areg),          # AREG
+                            (5, "1uF", vref),           # VREF
+                            (6, "10uF", dreg),          # DREG
+                            (8, "10uF", v3d)):          # IOVDD
             c = _c("Cs%d%d" % (tag, j), val, "U%d supply/reference bypass (SBAS993B Fig 165)"
                    % (14 + k))
             net += c[1]
-            rtn += c[2]
+            gnd += c[2]
     # the couplings: quad q's section s -> converter q's input s+1
     for ch in range(20):
         i, side = ch // 2 + 1, "A" if ch % 2 == 0 else "B"
