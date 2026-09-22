@@ -869,26 +869,28 @@ from the component drawings; **bronner routes the real boards from it**).
 
 | Item | Part | Qty | Unit | Note |
 |---|---|---|---|---|
-| **Male pogo board** | custom 13.0 × 16.8, 1.6 mm, **one M4 through it**: 2 × 4 spring-pin header (SMT, face) + **THROUGH-HOLE** PH on the back, outboard of the pins | 2 | ~$2 assembled (est.) | on the LEG, in a pocket in each tenon end; the free tips sit **1.15 inside** the tenon face. **SMT ON ONE SIDE ONLY** (the panel shares one assembly setting — user): the PH is THT so JLCPCB solders it in the THT step, never the user |
-| **Female pogo board** | custom 13.0 × 15.25, 1.6 mm, one M4: 8 × Ø2.0 ENIG pads (bare copper — no placement) + **SMT** PH on the back | 2 | ~$2 assembled (est.) | on the FIXED parts, on a one-bead pedestal off the adapter's roof and the bar's floor. Single-sided: the PH is its only placed part. The pads are the wear item: **one screw, reached down the empty mortise** |
-| **Spring-pin header, 2 × 4** | Xinyangze **YZ76615070R-08025-01**, LCSC **C5280862** (SMT, 2.54 pitch, 10.16 × 5.08, 7.0 free / 5.5 working / 5.0 limit, **70 gf/pin**, 2 A, 10k cycles, 3 µin Au) | 2 | $1.94 @10 | Extended part, **~235–395 in stock — buy spares**. **Rated 12 V**: bus B runs at **5 V** behind a current-limited switch off the motor controller's 5 V rail, with an LDO on each sensor board (user) |
-| **Harness header, female (SMT)** | JST **B4B-PH-SM4-TB(LF)(SN)**, LCSC **C160354** (Extended, 45k stock) | 2 | ~$0.2 | PH, not XH (user, with branner's lever board). Off JST's ePH drawing: 11.95 × 5.0 (+2 tails) × 6.6 |
-| **Harness header, male (THT)** | JST **B4B-PH-K-S(LF)(SN)**, LCSC **C131334** (Extended, 138k stock) | 2 | ~$0.1 | 9.9 × 4.5 × 6.0; THT so the male board stays single-sided for SMT. ⚠ JLCPCB publish no rule on whether a bottom-bodied THT part flags the panel double-sided — **check on the live quote with it on the Bottom layer**. Worst case (Standard PCBA) is +$25.56 setup +$8.21 stencil **per order** |
-| **M4 × 6 button** + **M4 heat-set insert** | — | 4 + 4 | — | one per board (project PCB rule); the insert has no self-tap fallback (`leg_pogo._INS_WHY`) |
+| **Male pogo board** | custom 13.0 × 19.0, 1.6 mm, **STANDING ON EDGE** in a slot in the tenon end: a **right-angle** 1 × 4 spring-pin header on its lower edge + a **side-entry** PH on its upper edge, mouth up the leg. **Every part on ONE face** | 2 | ~$2 assembled (est.) | on the LEG; the free tips sit **0.6 inside** the tenon face. One M4 × 20 runs **sideways** through the tenon and the board (head recessed in one flat, insert pressed into the opposite flat from outside) — the tenon end is exposed whenever the leg is off |
+| **Female pogo board** | custom 16.4 × 13.0, 1.6 mm, one M4 × 6: 4 × Ø2.1 ENIG pads in a row (bare copper — no placement) + **SMT** top-entry PH on the back | 2 | ~$2 assembled (est.) | lies flat on the adapter's roof / the bar's floor. Single-sided. The pads are the wear item: **one screw, reached down the empty mortise** |
+| **Spring-pin header, right angle 1 × 4** | Xinyangze **YZ165615055F-04025-02**, LCSC **C54799748** — or the **-01, C5296819** (same drawing). SMT, 2.5 pitch, 11.0 × 2.5, 5.5 free / 4.0 working, Ø1.0 plunger, **120 gf**, 1 A, 12 V, 10k cycles, 3 µin Au | 2 | $1.46 @10 | **1,467 + 910 in stock** at JLCPCB. ONE pin per circuit — two headers side by side (22 of pads) do not fit the female board inside a 24-square tenon (`leg_pogo` docstring). JLCPCB flag it a hard-to-process part: tick it by hand in the BOM step (+$0.08 each) |
+| **Harness header, male (side entry)** | JST **S4B-PH-SM4-TB(LF)(SN)**, LCSC **C265102** (Extended, 30k stock) | 2 | ~$0.25 | 11.9 × 6.0 (+2.6 tails) × 5.5; the PHR-4 reaches 3.6 past its mouth |
+| **Harness header, female (top entry)** | JST **B4B-PH-SM4-TB(LF)(SN)**, LCSC **C160354** (Extended, 45k stock) | 2 | ~$0.2 | 11.95 × 5.0 (+2 tails) × 6.6, off JST's ePH drawing |
+| **M4 × 20 button** + **M4 × 6 button** + **M4 heat-set inserts** | — | 2 + 2 + 4 | — | one screw per board (project PCB rule); the inserts have no self-tap fallback (`leg_pogo._INS_WHY`) |
 | **Leg harness** | **two twisted pairs** of 28 AWG 7/36 PVC hookup wire (CAN_H/CAN_L, 5V/GND), PHR-4 + SPH-002T at both ends | 1 leg run + 2 stubs | — | replaces the 10-02135 lead; crimped **after** threading, so the bores only have to pass contacts. Bundle ~Ø2.4 (`leg_pogo.HARNESS_D`); the leg's slack is heat-set into a coil on `coil_mandrel` (barrel now Ø16.8; stretched r 7.94 against a 7.2 floor). A round jacketed 4-core was rejected: the datasheeted ones that fit the bores are too fat (Alpha 86004 is Ø4.83) and none pairs CAN_H with CAN_L |
 
-**Why the pins are on the leg** (the reverse of the first proposal): the body adapter has
-**12.8** above its mortise roof, and a male stack is 5.75 of pin travel + 1.6 board + 9.8
-connector. Only the female (1.6 + 9.8) fits there. **Why C5280862 and not the 3 mm-stroke
-HJ Tech C54935105** the research ranked first: that stroke was bought for a 3 mm latch
-slop that turned out to be the TRRS's own FLOAT allowance — the latches really hang on
-**0.25** (`bar_latch` CLR) — and the HJ Tech part is through-hole, whose tails fill the
-back of the board exactly where the harness connector goes.
+**Why the male board stands on edge:** the panel shares one assembly setting (user), so
+no board may carry parts on both faces. The live JLCPCB quote (2026-09-21, 5 boards,
+Standard, list prices) settled what that is worth: a through-hole PH on the bottom is
+billed **Both Sides** — setup $25.75 → $51.50 and a **$16.54 fixture**, ~$45 an order —
+and Economic PCBA has no Both Sides at all. On edge, a right-angle header and a
+side-entry PH share one face. **Why the pins are on the leg:** the body adapter has 12.8
+above its mortise roof; only the flat female fits there. **Why one header:** the female
+board lies above the host face, so all of it must fit in the tenon's pocket, and two
+headers' 22 of pads plus a connector and a screw do not (the diagonal leaves ~23 × 7).
 
-**Open:** (1) the PHR-4's seated height on the header floor is an allowance (8.5
-mated) — JST do not dimension the floor; (2) the pads face UP at the bar joint (the
-geometry forces the male side into the tenon), so dust on them is the thing to watch —
-they sit on a raised pedestal and wipe clean; (3) the THT-on-bottom quote check above.
+**Open:** (1) the PHR-4's seated height on the top-entry header is an allowance (8.5
+mated) — JST do not dimension the floor; (2) the pads face UP at the bar joint, so dust on
+them is the thing to watch; (3) the header's plunger line (1.3 off the board) is read off
+a view whose datum is not stated — confirm on a sample before bronner fixes the pads.
 
 
 Rule: **solder only happens on factory-assembled PCBs; every field connection

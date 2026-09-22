@@ -48,22 +48,21 @@ PARTS = [
     # THE LEG'S BLIND-MATES ARE POGO BOARDS NOW (2026-09-21), and this header is the
     # bought part their pockets and pedestals are cut to. Off its own drawing
     # (YZ76615070R-08025-01), not the LCSC listing's attributes, which carry no stroke.
-    Part("C5280862", "https://datasheet.lcsc.com/datasheet/pdf/"
-                     "32c2423efba8b2266cd8c4a13f90cd78.pdf?productCode=C5280862",
+    Part("C54799748", "https://datasheet.lcsc.com/datasheet/pdf/"
+                      "7aab94cc3f2faa41c25b1234644cb837.pdf?productCode=C54799748",
          "2026-09-21",
          {
-             "pin pitch":            (2.54, "src.leg_pogo.POGO_PITCH"),
-             "housing length":       (10.16, "src.leg_pogo.POGO_BODY_U"),
-             "housing width":        (5.08, "src.leg_pogo.POGO_BODY_V"),
-             "housing top":          (3.00, "src.leg_pogo.POGO_BODY_TOP"),
-             "free height":          (7.00, "src.leg_pogo.POGO_FREE"),
-             "working height":       (5.50, "src.leg_pogo.POGO_WORK"),
-             "compression limit":    (5.00, "src.leg_pogo.POGO_LIMIT"),
-             "plunger":              (0.90, "src.leg_pogo.POGO_PLUNGER_D"),
-             "barrel":               (1.50, "src.leg_pogo.POGO_BARREL_D"),
-             "rated DC volts":       (12.0, "src.leg_pogo.POGO_V"),
+             "pin pitch":            (2.5, "src.leg_pogo.RA_PITCH"),
+             "housing length":       (11.0, "src.leg_pogo.RA_BODY_S"),
+             "housing thickness":    (2.5, "src.leg_pogo.RA_BODY_T"),
+             "free height":          (5.5, "src.leg_pogo.RA_FREE"),
+             "working height":       (4.0, "src.leg_pogo.RA_WORK"),
+             "plunger":              (1.0, "src.leg_pogo.RA_PLUNGER_D"),
+             "rated DC volts":       (12.0, "src.leg_pogo.RA_V"),
+             "force at working, gf": (120.0, "src.leg_pogo.RA_GF"),
          },
-         "the 2 x 4 spring-pin header on both male boards"),
+         "the right-angle 1 x 4 spring-pin header on both male boards (its -01 sibling "
+         "C5296819 is the same drawing)"),
 ]
 
 # SUPERSEDED 2026-09-21 -- the TRRS cable the leg used before the pogo boards. Its
