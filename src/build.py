@@ -1325,6 +1325,8 @@ _COLORS = {
     "pogo_female_ph":    (0.90, 0.90, 0.86),
     "pogo_male_screw":   (0.62, 0.64, 0.67),
     "pogo_female_screw": (0.62, 0.64, 0.67),
+    "pogo_male_insert":  (0.72, 0.52, 0.20),   # the brass heat-set inserts
+    "pogo_female_insert": (0.72, 0.52, 0.20),
     "pogo_harness_leg":  (0.75, 0.15, 0.12),   # the leg's harness, two twisted pairs
     "pogo_harness_body": (0.75, 0.15, 0.12),
     "pogo_harness_bar":  (0.75, 0.15, 0.12),

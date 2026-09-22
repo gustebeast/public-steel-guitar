@@ -103,8 +103,11 @@ _ex("hardware",
     leg_pogo__F_HOLE_T="the female's M4 on the PCB, set by head clearance",
     leg_pogo__FB_T0="PCB outline, routed by the fab", leg_pogo__FB_T1="PCB outline, routed by the fab",
     leg_pogo__PAD_Z="a PCB's 1.6 thickness",
-    leg_pogo__F_SCREW_L="M4 x 6 button, a bought length",
-    leg_pogo__M_HEAD_SEAT="the head recess floor: button head height + 0.2 under the flat")
+    leg_pogo__F_SCREW_L="M4 x 8 button, a bought length",
+    leg_pogo__M_RECESS="button head height + 0.8, buried under the tenon's flat",
+    leg_pogo__M_HEAD_SEAT="the head recess floor, from cadkit's button head",
+    leg_pogo__M_END="how far the screw's hole runs past the insert, not a wall",
+    leg_pogo___D="sqrt(0.5) -- a direction cosine for the tenon's diagonal, not a length")
 _ex("clearance",
     leg_pogo__CLR="board / connector slip fit in its printed pocket",
     leg_pogo__INS_CLR="screw-tip clearance past the insert",
