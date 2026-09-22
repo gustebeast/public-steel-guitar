@@ -1575,10 +1575,10 @@ OVERLAP_BASELINE = 0
 def _report_overlaps(comps, full=False) -> int:
     """Run the overlap gate on the model we JUST built, and return 1 on regression.
 
-    This is the whole point of folding the gate into the build: the scan itself is
-    ~13 s, but ``tools.check_overlaps`` run standalone spends ~5.5 MINUTES rebuilding
-    the model first. Reusing ``comps`` makes a full-tree gate essentially free, so
-    the lead never has to choose between gating and building.
+    This is the whole point of folding the gate into the build: the scan is seconds
+    on a warm pair cache, but ``tools.check_overlaps`` run standalone spends MINUTES
+    rebuilding the model first. Reusing ``comps`` makes a full-tree gate essentially
+    free, so the lead never has to choose between gating and building.
     """
     try:
         from tools.check_overlaps import gate
