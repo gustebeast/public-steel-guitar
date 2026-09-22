@@ -45,7 +45,7 @@ BOM_PKG = {
     "LQFP176": "LQFP-176", "USB-C": "USB_C_Receptacle", "XH-SM-4": "JST_XH_S4B-XH-SM4",
     "SOIC-14": "SOIC-14", "QFN-24": "HVQFN-24", "SOT-223": "SOT-223",
     "SOT-23-5": "SOT-23-5", "SOT-23-6": "SOT-23-6", "SOT-23": "SOT-23",
-    "SOT-563": "SOT-563", "3225": "Crystal_SMD_3225", "4040": "L_Sunlord_SWPA4020S",
+    "SOT-563": "SOT-563", "3225": "Crystal_SMD_3225", "4040": "L_Sunlord_SWPA40", "RNX-12": "Texas_RNX0012",
     "0402": "_0402_", "0603": "_0603_", "0805": "_0805_", "1206": "_1206_",
     "0805 (opto)": "_0805_",
 }

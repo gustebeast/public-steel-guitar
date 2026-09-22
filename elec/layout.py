@@ -41,6 +41,9 @@ wx.DisableAsserts()
 FP_DIRS = [
     os.environ.get("KICAD10_FOOTPRINT_DIR")
     or r"C:\Program Files\KiCad\10.0\share\kicad\footprints",
+    # the project's own footprints (lib "Steel"), for parts KiCad's library has no land
+    # for -- each one drawn from its maker's recommended land pattern
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "footprints"),
 ]
 
 
@@ -1275,19 +1278,15 @@ def tidy_router_vias(board, notes, min_gap_mm=0.25):
         t.SetLayer(layer)
         t.SetNetCode(nc)
         board.Add(t)
-    gone = 0
-    while want:
-        hit = None
-        for t in board.GetTracks():
-            if t.m_Uuid.AsString() in want:
-                hit = t
-                break
-        if hit is None:
-            break
-        want.discard(hit.m_Uuid.AsString())
-        board.Remove(hit)
-        del hit
-        gone += 1
+    # ONE sweep, collected before anything is removed. The old loop re-walked the track
+    # list after every Remove and left its loop variable bound to a removed item; on the
+    # optical board (34 removals, 2026-09-21) the container came back as a bare
+    # SwigPyObject and the next GetTracks() raised, discarding the route.
+    hits = [t for t in board.GetTracks() if t.m_Uuid.AsString() in want]
+    gone = len(hits)
+    for h in hits:
+        board.Delete(h)
+    del hits
     if gone:
         board.BuildConnectivity()
         print("  tidied %d router via(s) -- %s%s"
@@ -2417,8 +2416,12 @@ def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
         # PRE-LAID under the package on an inner layer -- the output board's DN2 pair runs
         # on In2 beneath the hub, and the hub's belly via landed on it. Naming the pad in
         # stitch_exceptions said "this one reaches ground through the pour"; honour that
-        # here rather than only in the report. (PTH exceptions keep their old behaviour.)
-        if (not _is_pth and "%s.%s" % (fp.GetReference(), pad.GetNumber()) in allow):
+        # here rather than only in the report. A PTH exception is skipped too: its own plated
+        # barrel reaches the plane, and every PTH exception before this one had "no room"
+        # beside it anyway, so no board that already used one loses a via. (The optical
+        # board's USB-C shell tabs are why: the pad-number fix gave three of them GND for
+        # the first time, each drew a stitch via, and the re-plan cost a TIA net.)
+        if "%s.%s" % (fp.GetReference(), pad.GetNumber()) in allow:
             continue
         if (not _is_pth
                 and min(pad.GetSize().x, pad.GetSize().y) >= pcbnew.FromMM(via_d + 0.6)):

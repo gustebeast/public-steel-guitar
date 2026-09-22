@@ -1,0 +1,22 @@
+      stitched 26 pad(s) on GND straight to the plane
+    lever_sensor.kicad_pcb: 28 parts, 17 nets (+1 single-pad, not placed), 31.0 x 21.9 mm
+    exported lever_sensor.dsn (35 kB)
+      declared In1.Cu as plane layer(s) -- the router will not route on them
+      router clearance 137 um (fab rule 127 um + 10 um of rounding margin)
+      ?           Thank you for using Freerouting!                       ?
+      ?                                                                  ?
+      ?  If you would like to support the project, please visit          ?
+      ?  https://www.freerouting.app/donate.html                         ?
+      ?  Every contribution helps keep this project open and active!     ?
+      ????????????????????????????????????????????????????????????????????
+      widened 29 track(s) back up to the 0.127 mm floor
+      snapped 6 hairline gap(s) shut (no copper added)
+      dropped 2 degenerate track fragment(s) from the import
+    lever_sensor.kicad_pcb: 280 track segments + vias imported
+    swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
+    swig/python detected a memory leak of type 'ZONE_FILLER *', no destructor found.
+  2 DRC warning(s): silk_overlap x1, track_dangling x1
+  pass 1: 0 unconnected, 0 violation(s)
+    lever_sensor: no matched-length groups declared -- nothing to check
+    lever_sensor.geom.json: 28 footprints, board 31.00 x 21.90; NO F.Fab body on JP1
+lever_sensor: 0 unconnected, 0 violation(s)

@@ -62,7 +62,7 @@ FAB_DIR = os.path.join(OUT_DIR, "fab")
 
 # SIX boards: the power board merged into motor_ctrl, and the optical pickup landed
 # (both 2026-09-15). This is now the whole instrument.
-BOARDS = ("can_tee", "lever_sensor", "motor_ctrl", "output_panel",
+BOARDS = ("can_tee", "led_strip", "lever_sensor", "motor_ctrl", "output_panel",
           "optical")
 
 # Layer sets by copper count. JLCPCB takes the KiCad extensions directly.
@@ -77,7 +77,9 @@ L4 = ("F.Cu,In1.Cu,In2.Cu,B.Cu,F.Paste,B.Paste,F.Silkscreen,B.Silkscreen,"
 # made. See the module docstring on why blank beats a guess.
 LCSC = {
     "S8B-XH-A": "C157914",          # 8-way side-entry XH, motor tee trunk
-    "S8B-PH-SM4-TB": "C265121",     # 8-way side-entry PH, lever board trunk
+    "S8B-PH-SM4-TB": "C265121",     # 8-way side-entry PH, the 11 lever/pedal J1
+    "B8B-PH-K-S": "C157974",        # B8B-PH-K-S(LF)(SN), stock 21,709 -- motor_ctrl J2,
+                                    # the same bus-B trunk on the vertical variant
     "PJ-320D-4A": "C95562",         # TRRS 4-pole socket
     "SN65HVD230DR": "C12084",       # CAN transceiver, both boards
     "LMR16006XDDCR": "C87080",      # 60 V 0.6 A buck, lever + motor controller
@@ -95,15 +97,16 @@ LCSC = {
     "TLV9061IDBVR": "C398358",      # mid-rail buffer -- DBV, NOT the DCK part once ordered
     "AMS1117-3.3": "C6186",         # 3V3 digital LDO: 1 GND 2 VOUT/tab 3 VIN
     "SPX3819M5-L-3-3/TR": "C9055",  # 3V3 analog LDO: 1 IN 2 GND 3 EN 4 BYP 5 OUT
-    "TPS560430XFDBVR": "C523980",   # 24->5 V sync buck, 1.1 MHz FPWM
+    "LMR33630CRNXR": "C2071783",    # 24->5 V sync buck, 2.1 MHz, 3 A, VQFN-HR RNX (optical U13)
     "IR17-21C/TR8": "C131250",      # 940 nm emitter, 65 mA max, VF 1.2 typ
-    "VEMD4110X01": "C3211080",      # PIN photodiode -- ⚠ 95 in stock, 200 needed for ten
+    "PD15-22B/TR8": "C161211",      # Everlight PIN photodiode, 940 nm peak, 11k stock (2026-09-21)
+    "TLV320ADC3140IRTWT": "C1852021",  # TI 4-ch audio ADC, WQFN-24 RTW, 306 stock (2026-09-21)
     "S4B-XH-SM4-TB": "C161861",     # the (LF)(SN) form, 20,992; the bare listing is 0
     # Crystals are specified by PART, not by frequency -- see the note beside Y1.
     # Inductors are specified by PART too -- see the note beside L1. Isat 1.35 A
     # worst case against the TPS560430's 1.4 A maximum current limit, which is the
     # number TI tells you to size against.
-    "SWPA4020S150MT": "C36407",      # 15 uH, 4x4x2.0 shielded, DCR 0.299 ohm max
+    "SWPA4030S4R7MT": "C57269",      # 4.7 uH, 4x4x3.0 shielded, Isat 3.2 A (optical L1)
     # ⚠ "600" IS 60 OHM in Murata/Sunlord bead numbering. 601 is the 600 ohm part.
     "GZ1608D601TF": "C1002",         # 0603 bead, 600R@100MHz, 200 mA, DCR 450 mohm
     "TX322525M4LBDD2T": "C5308007",  # 25 MHz, CL 20 pF, ESR 30 ohm (MCU HSE)
@@ -114,6 +117,9 @@ LCSC = {
     # genuine manufacturer; where a listing was the bare MPN at 0 stock and its (LF)(SN)
     # tin-plated form was stocked, the stocked form is the same part as ordered from JST.
     "B4B-XH-A": "C144395",          # JST B4B-XH-A(LF)(SN), stock 60,424
+    "TLC59711PWPR": "C116842",      # 12-ch 16-bit constant-current LED driver (led_strip)
+    "XL-5050RGBW": "C7371891",      # XINGLIGHT RGBW 5050, separate anodes/cathodes (led_strip)
+    "S6B-PH-SM4-TB": "C265405",     # 6-way side-entry PH, the LED strip's chain connector
     "B2B-XH-A": "C158012",          # JST B2B-XH-A(LF)(SN), stock 381,008 -- sourced
                                     # 2026-09-19 by asking the catalogue, and it is the
                                     # (LF)(SN) trap again and not a preference: the BARE

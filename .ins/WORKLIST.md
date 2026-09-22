@@ -5,6 +5,24 @@ The /loop re-reads this each tick. Tick = take the top OPEN item, do it, commit,
 mark it here. Items needing the user go to NEEDS USER, not skipped silently.
 
 ## OPEN
+11. motor_ctrl respin -- bus B becomes a 5 V PH pass-through (handed over by branner):
+    * J2 -> S8B-PH-SM4-TB (LCSC C265121, SMT side-entry), trunk IN on ways 1-4, OUT on
+      5-8, in elec/harness.py's pin order: the controller is a MID-BUS node now (user
+      topology option B -- pedals and the lever chain both arrive at -X).
+    * J2's +V moves off v24 to the board's 5 V rail (U5 out). CHECK U5 HEADROOM: ~11
+      nodes x ~50 mA = ~0.5 A on top of its existing 5 V loads.
+    * DROP the bus-B 120 ohm termination (end-of-bus part; the controller is no longer an
+      end). Keep bus A's. Termination now = JP1 + R4 closed on exactly two boards, the
+      +X-end lever and the far-end pedal.
+    * Stale header comment: bus B has 11 sensor boards (6 knee levers + 5 pedals), not 8.
+    * Board spec: docs/lever-sensor-respin.md. cad_geom_check lever_sensor MISMATCHES until
+      the lever board is re-spun -- that is the handoff, not a regression.
+12. LED strip re-spin for direct board-to-board (user, 2026-09-22): 2x3 right-angle
+    2.54 mm pair (male PZ254R-12-6P C492431 / female C56182 or SMD C22373944) at both ends,
+    in the DRIVER band where the board is empty, so the LED band runs to 5.75 mm of each
+    edge and the pitch (~15.9) is UNIFORM ACROSS THE JUNCTION. PH stays on EVERY board
+    (user: fit it if spacing allows, else a special section 1) -- it fits in the same free
+    driver band, -69.5..-40.5 is empty until driver 1.
 10. Next checkpoint submit after 3-7 land.
 
 ## DONE
