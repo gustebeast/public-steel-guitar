@@ -1406,7 +1406,27 @@ def _cell_tracks():
         for dy in (0.25, -0.25):
             out.append(("GND", "F.Cu", 0.2, [_cell_pt(k, -1.962, dy), _cell_pt(k, -0.9, dy)]))
         out.append(("GND", "F.Cu", 0.2, [_cell_pt(k, 1.962, 0.25), _cell_pt(k, 0.9, 0.25)]))
-    return out + _fan_tracks() + _shdn_tracks()
+    return out + _fan_tracks() + _shdn_tracks() + _v3_trunk()
+
+
+def _v3_trunk():
+    """Join each CLUSTER of converter cells' +3V3D stubs into one piece of B.Cu copper.
+
+    ⚠ +3V3D WAS A THIRD OF EVERY FAILURE (5 of 15 unconnected, 2026-09-22) and it is not
+    a routing problem, it is a MISSING BUS. The rail reached the board as 131 separate
+    F.Cu traces because nothing ever laid it down deliberately: each cell got its own
+    little F/B/F jog off IOVDD (see _shdn_tracks) and the router was left to find the
+    trunk joining them. It found most and missed five, in a different five every run.
+
+    The stubs already end on B.Cu at the same y within a cluster, so the trunk is one
+    straight track per cluster through points the cell code chose -- the islands MERGE
+    into one net island, with NO via to connect to (the router never connects to a
+    pre-laid via on this board -- measured on SHDNZ and again on SAI). The two clusters
+    are still the router's to join; this removes the four intra-cluster hops it keeps
+    dropping, and gives the digital supply a real low-impedance spine while it is there."""
+    end = lambda k: _cell_pt(k, -2.85, -3.27)
+    return [("+3V3D", "B.Cu", 0.3, [end(0), end(1)]),          # the +Y wrap pair
+            ("+3V3D", "B.Cu", 0.3, [end(2), end(4)])]          # the annulus row of three
 
 
 def _fan_tracks():
