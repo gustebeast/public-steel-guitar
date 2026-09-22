@@ -156,9 +156,10 @@ PIN_LEAD = 2 * B                # 1.6 of STRAIGHT wire square out of every pin b
                                 # lead-in reads at a glance, and is what a crimped
                                 # harness does anyway -- the contact holds the wire in
                                 # line for its own length.
-BEND = 6 * B                    # 4.8 above the plug for the harness to turn: the lead-
-                                # in eats the first 1.6, so this grew by 1.6 to keep the
-                                # fan's room unchanged
+BEND = 7 * B                    # 5.6 above the plug for the harness to turn: the lead-in
+                                # takes 1.6 and the fan 2.4, and the turn at the end of
+                                # those runs past itself by the cable's own radius, so
+                                # the pocket has to end clear of all three
 DEEP = PLUG_TOP + BEND          # the pocket's end
 assert TF + SE_H + CLR + WALL <= LS.TEN_W / 2.0, "the connector breaks the tenon's flat"
 assert TB - CLR - WALL >= -LS.TEN_W / 2.0, "the board breaks the tenon's flat"
@@ -313,13 +314,21 @@ class Joint(object):
         return (b.rotate((0, 0, 0), (0, 0, 1), self.ang)
                 .translate((self.x, self.y, z0)))
 
-    def house(self, t0, t1, s0, s1, d0, d1):
+    def house(self, t0, t1, s0, s1, d0, d1, shed=0):
         """A cavity shaped like a HOUSE: the box, with a 45 degree gable standing on
         whichever s face the tenon builds toward, because that face is its CEILING.
         ONE closed profile, extruded along d -- not a box with a triangle unioned onto
         it. (It was that union: the gable's face was computed as -s1 rather than s0, so
         on a joint that builds toward -S the roof came out as a SEPARATE triangle
-        floating beside the slot.)"""
+        floating beside the slot.)
+
+        `shed` makes the roof ONE-SIDED instead -- +1 rising toward t1, -1 toward t0 --
+        for a cavity that sits against a TALLER neighbour. A gable there puts a
+        descending flank right where the neighbour's wall climbs, and those two make a
+        V VALLEY: the material caught between them narrows to a knife edge that has to
+        start from a point in mid-air. Every face involved is a legal 45, which is
+        exactly why it is worth naming -- a valley is the one place not to sit at the
+        limit. A shed runs up INTO the neighbour's wall, and there is no valley."""
         u = self.up_s
         sc = s1 if u > 0 else s0                # the ceiling face
         sf = s0 if u > 0 else s1                # and the floor opposite it
@@ -327,8 +336,20 @@ class Joint(object):
         tm = (t0 + t1) / 2.0
         apex = sc + u * hw
         z0, z1 = sorted((self.z + self.dz * d0, self.z + self.dz * d1))
-        pts = [(t0, sf + S_C), (t1, sf + S_C), (t1, sc + S_C)]
         s_flat = u * (LS.TEN_W / 2.0) - S_C     # the tenon's flat on the ceiling side
+        if shed:
+            top = sc + u * (t1 - t0)            # 45 degrees across the whole span
+            assert (top - s_flat) * u < 0, (
+                "the shed roof runs out through the tenon's flat")
+            hi_t = t1 if shed > 0 else t0
+            lo_t = t0 if shed > 0 else t1
+            pts = [(t0, sf + S_C), (t1, sf + S_C),
+                   (hi_t, top + S_C), (lo_t, sc + S_C)]
+            return (cq.Workplane("XY").workplane(offset=z0)
+                    .polyline(pts).close().extrude(z1 - z0)
+                    .rotate((0, 0, 0), (0, 0, 1), self.ang)
+                    .translate((self.x, self.y, 0.0)))
+        pts = [(t0, sf + S_C), (t1, sf + S_C), (t1, sc + S_C)]
         if (apex - s_flat) * u > 0:
             # THE RIDGE DOES NOT FIT. The mouth is 10.6 wide and its ceiling sits 2.75
             # inside the flat, so a 45 degree ridge (5.3) runs out through the tenon's
@@ -465,19 +486,29 @@ def tenon_negatives(j, route_xy, route_d, route_top, up=None):
     # ...its screw head, which overhangs the board's end, and the ZR's plug and the
     # harness's drop, which overhang its -t edge
     out = out.union(j.bore_d(HEAD_D + 2 * CLR, F_HOLE_T, F_HOLE_S, -1.0, MOUTH_D, up))
+    # the wire's cavity abuts the MOUTH, whose ceiling stands 7.45 higher, so it gets a
+    # SHED rising toward it rather than a gable -- a gable's far flank and the mouth's
+    # wall made the V the user found at t -5.65
     out = out.union(j.house(WIRE_T0 - CLR, FB_T0 + 0.01, -ZR_S / 2.0 - CLR,
-                            ZR_S / 2.0 + CLR, -1.0, MOUTH_D))
-    out = out.union(j.house(TB - CLR, TF + 0.01, -MB_S / 2.0 - CLR, MB_S / 2.0 + CLR,
-                            -1.0, MB_TOP + CLR))
-    out = out.union(j.house(TF, TF + RA_BODY_T + CLR, -RA_BODY_S / 2.0 - CLR,
-                            RA_BODY_S / 2.0 + CLR, -1.0, REAR + CLR))
+                            ZR_S / 2.0 + CLR, -1.0, MOUTH_D, shed=+1))
+    # THE BOARD'S POCKET IS ONE CAVITY, NOT THREE. The slot, the header's room and the
+    # PH's room sit side by side along t, and cut as three houses each grew ITS OWN
+    # gable -- so where two met, their flanks formed a V VALLEY (user spotted it in the
+    # tab). Each flank is a legal 45, but a valley is the one place not to sit at the
+    # limit: the material under it comes to a knife edge and starts from a point.
+    #
+    # One roof over the lot removes them. It costs almost nothing in material: the three
+    # lanes were already contiguous (the header and the PH both start at TF), so all
+    # this gives up is the sliver above the header's shorter ceiling.
     # THE PH's ROOM IS SWEPT DOWN THE INSTALL STROKE, not just cut where the connector
     # ends up. The board slides in from the tenon's mouth, so everything standing off
     # its face travels the WHOLE depth to reach its seat: cut only at the seat, the PH
     # gouged up to 396 mm3 of tenon on the way past (the board and the pins are clean
     # -- nothing else stands as far off the face). At rest AND fully withdrawn it read
     # zero, which is why this survived every static check the project has.
-    out = out.union(j.house(TF, TF + SE_H + CLR, -SE_S / 2.0 - CLR, SE_S / 2.0 + CLR,
+    out = out.union(j.house(TB - CLR, TF + SE_H + CLR,
+                            -max(MB_S, RA_BODY_S, SE_S) / 2.0 - CLR,
+                            max(MB_S, RA_BODY_S, SE_S) / 2.0 + CLR,
                             -1.0, PLUG_TOP + CLR))
     # THE WAY UP, STRAIGHT OUT OF THE PORT. `route_xy` None means exactly that: the
     # bore stands on the connector's own line, so the harness leaves the plug and goes
@@ -540,7 +571,11 @@ def host_negatives(j, up=None, deep=F_DEEP):
     drops through past the ZR's plug (gabled -- both hosts build +Y). The caller adds
     whatever the slot runs on into."""
     up = up or j.host_up
-    out = _gable(j, WIRE_T0 - CLR, ZR_MOUTH - ZR_PLUG + CLR, -ZR_S / 2.0 - CLR,
+    # ...half a bundle wider than the wire's own lane on the far side: the harness turns
+    # down here, and a turn in oct_cable runs each segment PAST the corner by the cable's
+    # radius, so the run reaches further than its centreline does
+    out = _gable(j, WIRE_T0 - CLR - HARNESS_D / 2.0, ZR_MOUTH - ZR_PLUG + CLR,
+                 -ZR_S / 2.0 - CLR,
                  ZR_S / 2.0 + CLR, deep, 0.01, up)
     return out.union(female_screw(j).cutter(up))
 
@@ -612,6 +647,21 @@ def bar_features(floor_z: float, chamber_top_z: float):
 # The coil's own end cap is NEARLY VERTICAL (its normal is the helix TANGENT, only 21.3
 # off horizontal), so the coil overshoots its nominal end by (HARNESS_D / 2) cos(lead) =
 # 1.118 -- cos, not sin, which is what a first guess of 0.6 got wrong.
+FAN_RUN = 3 * B                 # 2.4 for the fan to gather, AFTER the lead-in ends.
+                                # The lead-in is only half the job: with the bundle's
+                                # first point 0.8 past the lead, four wires had to close
+                                # the whole pin row in 0.8 of run and swung out almost
+                                # square to the axis, so they read as running ALONG the
+                                # plug's face rather than into it (user). Worse on the
+                                # ZH stubs, where the lead-in (1.6) was LONGER than the
+                                # 1.2 to the next point, so every wire ran out past it
+                                # and doubled back.
+# THE ZH STUB GETS ITS OWN, SHORTER PAIR, and not as a preference: its cavity stops at
+# WIRE_T0 - CLR with only 1.6 of tenon beyond that, so PIN_LEAD + FAN_RUN (4.0) ran the
+# wires out through the wall. It is the smaller connector anyway -- 1.5 pitch against the
+# PH's 2.0 -- so it needs less room to separate its ways.
+STUB_LEAD = 1 * B               # 0.8 square out of the ZH
+STUB_FAN = 1 * B                # 0.8 for its fan
 COIL_LEAD = 4.0                 # the vertical run-in
 COIL_GAP = 2 * B                # 1.6 -- > (HARNESS_D / 2) cos(lead), measured 1.118
 
@@ -639,7 +689,7 @@ def harness():
     from . import bar_trrs as BT
     from . import coil_mandrel as CM
     d = HARNESS_D
-    dm = PLUG_TOP + BEND / 2.0
+    dm = PLUG_TOP + PIN_LEAD + FAN_RUN      # lead-in, THEN room for the fan
     pt = TF + SE_H / 2.0
     xs, ys = LTR._ax()
     xb, yb = BT._ax()
@@ -668,7 +718,10 @@ def harness():
     # sweeps where the bundle reads the same, and the wind count and mean diameter --
     # the two things it has to get right -- are the bundle's, not a conductor's.
     coil = helix_cable(ax, ay, z_b, z_a, CM.TURNS, r, d)
-    fr = ZR_MOUTH - ZR_PLUG - d / 2.0 - 0.1         # running past the plug, clear of it
+    # ...and out of the ZH, where FAN_RUN does not fit: the wire cavity stops at
+    # WIRE_T0 - CLR and the tenon's flat is only 1.6 beyond that, so the stub gets the
+    # lead-in plus whatever is left (STUB_FAN) rather than the full 2.4.
+    fr = ZR_MOUTH - ZR_PLUG - 0.1 - STUB_LEAD - STUB_FAN
     fc = fr                                          # ...and it drops there
     zd = PCB_T + ZR_H / 2.0                         # the plug's height off the host
     f0 = TOP.p(ZR_MOUTH - ZR_PLUG - 0.1, 0.0, zd)     # just off the plug's end
@@ -695,19 +748,20 @@ def harness():
     # (terminating end, pitch, joint, the direction the wire LEAVES the pin). The PH's
     # mouth faces up the leg, so its wires leave along the joint axis; the ZH lies on
     # the host face with its mouth facing -t, so its wires leave along -t.
-    ends = ((0, PH_PITCH, TOP, (0.0, 0.0, TOP.dz)),
-            (-1, PH_PITCH, BOTTOM, (0.0, 0.0, BOTTOM.dz)),
-            (0, ZR_PITCH, TOP, (-TOP.T[0], -TOP.T[1], 0.0)),
-            (0, ZR_PITCH, BOTTOM, (-BOTTOM.T[0], -BOTTOM.T[1], 0.0)))
-    for k, (path, (at, pitch, j, ed)) in enumerate(zip((up_path, lo_path, body_path,
-                                                        bar_path), ends)):
+    ends = ((0, PH_PITCH, TOP, (0.0, 0.0, TOP.dz), PIN_LEAD),
+            (-1, PH_PITCH, BOTTOM, (0.0, 0.0, BOTTOM.dz), PIN_LEAD),
+            (0, ZR_PITCH, TOP, (-TOP.T[0], -TOP.T[1], 0.0), STUB_LEAD),
+            (0, ZR_PITCH, BOTTOM, (-BOTTOM.T[0], -BOTTOM.T[1], 0.0), STUB_LEAD))
+    for k, (path, (at, pitch, j, ed, lead_l)) in enumerate(zip((up_path, lo_path,
+                                                               body_path, bar_path),
+                                                              ends)):
         for i, ((name, _), cpath) in enumerate(zip(
                 HARNESS_WIRES, bundle_paths(path, [o for _, o in HARNESS_WIRES]))):
             cpath = list(cpath)
             p = cpath[at]
             ds = pin_s(pitch, i)        # this way's place along the row
             face = (p[0] + ds * j.S[0], p[1] + ds * j.S[1], p[2])
-            lead = tuple(face[m] + ed[m] * PIN_LEAD for m in range(3))
+            lead = tuple(face[m] + ed[m] * lead_l for m in range(3))
             # square out of the pin FIRST, then fan back to the bundle
             cpath[at:at + 1] = ([face, lead] if at == 0 else [lead, face])
             out.append(("pogo_wire_%s_%d" % (name, k), oct_cable(cpath, w)))
