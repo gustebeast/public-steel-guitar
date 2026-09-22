@@ -1,0 +1,6 @@
+  diff pair USB_DP: laid 28 segment(s) as a coupled pair over 2 hop(s)
+  stitched 141 pad(s) on GND straight to the plane
+  local nets: laid 134 segment(s), 1 left to the router
+      not placeable: TIA_OUT_9A: Rf51.2 -> Cf51.2 (3.10 mm)
+      placed 10 explicit via(s)
+optical.kicad_pcb: 236 parts, 161 nets (+127 single-pad, not placed), 68.3 x 188.5 mm

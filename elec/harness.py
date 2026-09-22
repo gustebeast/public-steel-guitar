@@ -20,6 +20,13 @@ daisy-chains through it, which is how both the tees and the sensor boards are wi
 from __future__ import annotations
 
 XH_PINOUT = ("GND", "V24", "CAN_H", "CAN_L")
+# ⚠ BUS B IS THE SAME ORDER AT A DIFFERENT VOLTAGE, AND IT NEEDS ITS OWN NAME (2026-09-22).
+# The lever/pedal bus runs at 5 V on JST PH -- a different FAMILY from the 24 V XH motor
+# tees precisely so no harness can cross them -- but way 2 is +5 V, not +24 V. Calling it
+# XH_PINOUT would have put the string "V24" on a 5 V contact in every board that bound to
+# it, which is the same class of silent disagreement this module exists to stop.
+# lever_sensor.py had already spelled this tuple inline rather than import a wrong name.
+PH_PINOUT = ("GND", "V5", "CAN_H", "CAN_L")
 
 
 def xh_drop_pins():
@@ -31,6 +38,12 @@ def xh_trunk_pins():
     """Pin names for an 8-way trunk: bus in on 1-4, bus out on 5-8."""
     return (tuple(x + "_IN" for x in XH_PINOUT)
             + tuple(x + "_OUT" for x in XH_PINOUT))
+
+
+def ph_trunk_pins():
+    """Pin names for bus B's 8-way PH trunk: bus in on 1-4, bus out on 5-8."""
+    return (tuple(x + "_IN" for x in PH_PINOUT)
+            + tuple(x + "_OUT" for x in PH_PINOUT))
 
 
 def xh_nets(pinout_nets):
