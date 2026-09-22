@@ -509,11 +509,89 @@ def _wt_solid(x0, x1):
             .polyline(pts).close().extrude(x1 - x0))
 
 
+# ── +Y rail LED STRIP SEAT ────────────────────────────────────────────────
+# A 45 deg seat standing OFF the +Y rail's inner face, holding the RGBW strip sections
+# (elec/led_strip.py) face up-and-inboard: the surface normal is (0, -1, +1)/sqrt2.
+#
+# ⚠ 45 IS THE ONLY TILT THAT RETAINS BOTH EDGES (user, 2026-09-22). The strip has to be
+# captured against falling out of a channel that is open toward the light, and on a
+# VERTICAL wall that is impossible to print: a hook over the board's top edge needs a
+# downward-facing horizontal face, which this body's 45 deg rule forbids, and a cantilever
+# that obeys the rule slopes the wrong way (it rises as it leaves the wall, so the board
+# slides out from under it). Tilt the seat to exactly 45 and every downward face in the
+# section -- both lip undersides, the backing plate's underside and the end stops -- lands
+# at 45, the limit. So the board gets a lip over BOTH in-plane edges, no fasteners, no
+# support material, and the middle of the section stays open as the light aperture.
+#
+# It does NOT cut into the wall: same argument as the -Y wiring trough (user, 2026-09-21,
+# "that reduces structural integrity ... have it extend out from the wall rather than
+# cutting into it"). The +Y rail is the other side beam; this is added material, not a
+# pocket milled out of a 10.4 mm web.
+#
+# The board slides in along X and plugs into its neighbour as it seats, so the seat is also
+# what guides that blind mate -- the board is captured for its whole travel before the
+# contacts touch (the joinery-before-connector rule).
+LED_TILT_D = 2 ** 0.5                     # 45 deg: 1 mm along the slope = 1/sqrt2 in Y and Z
+LED_SLOT_T = 1.9                          # 1.6 board + 0.3 slide clearance
+LED_SLOT_U = 20.3                         # board's 20.0 across the slope + 0.3
+LED_LIP = 1.6                             # how far each lip reaches back over the board FACE
+LED_LIP_T = 1.6                           # lip thickness out from the slot
+LED_BACK = 1.6                            # backing plate behind the board (2 beads)
+LED_ZH = -52.0                            # the seat's HIGH edge, on the wall
+LED_Y0 = Y_HI - T / 2                     # 55.55, the wall's inner face
+# X span: the four sections plus their junctions, inside the rail's clear run, broken at the
+# printed seams like the trough is.
+LED_X0, LED_X1 = -600.0, -32.0
+LED_SEAM_GAP = 0.2
+
+
+def _led_uv(u, v):
+    """A section point given in the SEAT's own frame -> chassis (y, z).
+
+    u runs DOWN the slope from the board's high edge on the wall (so +u is -Y and -Z);
+    v runs OUT of the seat face along the normal (-Y, +Z). Everything about this section
+    is easier to state in (u, v) -- "1.6 back over the board" is a u, "1.9 of slot" is a
+    v -- and stating it any other way is how the 45 deg faces stop being 45 deg."""
+    return (LED_Y0 - (u + v) / LED_TILT_D, LED_ZH - (u - v) / LED_TILT_D)
+
+
+def _led_seat(x0, x1):
+    """The seat over [x0, x1]. See _led_uv for the frame; walk the material boundary."""
+    a, b = LED_BACK, LED_SLOT_T                      # behind the board / slot depth
+    c = b + LED_LIP_T                                # lip outer face
+    u1 = LED_SLOT_U                                  # the board's low edge
+    pts = [(-a, -a), (u1 + a, -a),                   # backing plate underside, wall -> low end
+           (u1 + a, c), (u1 - LED_LIP, c),           # low end wall, then its top face
+           (u1 - LED_LIP, b), (u1, b),               # the low lip: inner face, then underside
+           (u1, 0.0), (0.0, 0.0),                    # end stop down to the seat, then the seat
+           (0.0, b), (LED_LIP, b),                   # wall-side stop, then the high lip underside
+           (LED_LIP, c), (-a, c)]                    # high lip inner face, then its top
+    return (cq.Workplane("YZ").workplane(offset=x0)
+            .polyline([_led_uv(u, v) for u, v in pts]).close().extrude(x1 - x0))
+
+
+def _led_runs():
+    """[(x0, x1)] the seat's pieces: LED_X0..LED_X1 broken at each printed seam."""
+    runs, x = [], LED_X0
+    for sx in sorted(SPLIT_X):
+        if LED_X0 < sx < LED_X1:
+            runs.append((x, sx - LED_SEAM_GAP))
+            x = sx + LED_SEAM_GAP
+    runs.append((x, LED_X1))
+    return runs
+
+
+LED_RUNS = _led_runs()
+
+
 def _build_full() -> cq.Workplane:
     body = _rail(Y_HI).union(_rail(Y_LO))
     # ...and the wiring trough standing off the -Y wall above the motors (see WT_*).
     for _wx0, _wx1 in WT_RUNS:
         body = body.union(_wt_solid(_wx0, _wx1))
+    # ...and the 45 deg LED strip seat standing off the +Y wall (see LED_*).
+    for _lx0, _lx1 in LED_RUNS:
+        body = body.union(_led_seat(_lx0, _lx1))
     # THE BOTTOM IS ONE PRISM (user, 2026-09-15), XBAR tall, rail to rail, instead of a comb of
     # cross-ribs with air between them. The mortises cut below take most of it back out, so it
     # costs little; what it buys is a lever mounting place every 8.8 instead of every 22.35, and
