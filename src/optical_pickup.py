@@ -439,10 +439,10 @@ SENSE_HL = _OUTER_Y + PD_DY                      # last sensor Y
 # ONLY THE STRIP SECTION GROWS. PCB_X1S stays the wraps' and the tail's -X edge (and the
 # endplate pad's), so the strip steps out -X past them; STRIP_X1 is its own -X edge.
 STRIP_GROW_PX = 3.15
-STRIP_GROW_MX = 6.0
+STRIP_GROW_MX = 2.5   # measured: the router reached 1.69 mm into the 6.0 lane (.ins/lane_use.py)
 PCB_X0  = BAND_X0 - BAND_CLR + STRIP_GROW_PX                  # -22.11, strip +X edge
 PCB_X1S = BAND_X1 + BAND_CLR                                  # -38.88, wraps' / tail's -X edge
-STRIP_X1 = PCB_X1S - STRIP_GROW_MX                            # -44.88, the strip's own -X edge
+STRIP_X1 = PCB_X1S - STRIP_GROW_MX                            # -41.38, the strip's own -X edge
 # ⚠ THESE FOUR X DATUMS ARE DERIVED FROM top_plate AND THEIR COMMENTS WENT STALE BY
 # 8.46 mm. BAND_X1, PCB_X0, PCB_X1S and COMPUTE_X0 all track TP.PICKUP_X_NOM and
 # TP.CAVITY_X, so when the pickup cavity moved they followed correctly -- the CODE was
