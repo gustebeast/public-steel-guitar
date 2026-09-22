@@ -87,7 +87,11 @@ def _plates(solid, w, l):
         err = abs(dims[0] - min(w, l)) + abs(dims[1] - max(w, l))
         best = err if best is None else min(best, err)
         if err <= 0.5:
-            found.append((f.Center(), f.normalAt()))
+            # the face's BOX centre, not its centre of mass: a board with a mounting ear is
+            # an L, and its mass centre sits millimetres off the frame the geom is written in
+            # (both ear boards fell from 60/60 to ~20/60 on that alone)
+            found.append((cq.Vector((bb.xmin + bb.xmax) / 2, (bb.ymin + bb.ymax) / 2,
+                                    (bb.zmin + bb.zmax) / 2), f.normalAt()))
     if not found:
         # the CAD's plate is not the routed board's size at all -- report both, because
         # that IS the finding (the lever sensor grew 28 x 21.4 -> 34 x 28 and its CAD did not)

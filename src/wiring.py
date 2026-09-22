@@ -110,7 +110,21 @@ CAN_OFF = 0.7         # CAN-H / CAN-L conductor separation (both x and y, same
 # diagonal, so CAN-H ran through 24 V hot and CAN-L through ground on every hop -- 18 pairs,
 # ~80 mm3 each over 45.8 mm, never reported (the gate allow-lists wire against wire). Spread
 # as a flat set at 1.8, which clears the fattest neighbours (O1.8 beside O1.3 needs 1.55):
-TRUNK_OFF = {"hot": -2.7, "canh": -0.9, "canl": 0.9, "gnd": 2.7}
+# ...IN THE CONNECTOR'S OWN PIN ORDER (GND, 24 V, CAN-H, CAN-L on 1-4 / 5-8 -- can_tee J1),
+# so each conductor runs from its own pin to its own lane without crossing a neighbour.
+TRUNK_OFF = {"gnd": -2.7, "hot": -0.9, "canh": 0.9, "canl": 2.7}
+# ...and each LANDS on its own pin. All of them used to end on the 8-way's centre, so the
+# cables arriving at a tee and leaving it ran through each other for 10-20 mm (nine pairs in
+# check_cable_pairs, the worst 9.5 mm3). In on 1-4 from the WEST, out on 5-8 to the EAST.
+TRUNK_PIN = {"gnd": 1, "hot": 2, "canh": 3, "canl": 4}
+# ...and at its own HEIGHT between tees. With the same pin order at both ends, the four
+# conductors have to cross over one another near one connector or the other -- a crimped
+# harness of discrete wires does exactly that, one lying over the next -- and a model can only
+# show that as a height difference. 2.0 steps clear the fattest pair (O1.8 + O1.8), and the
+# stack starts 0.8 under the mouth, no lower: the bays' side walls stand to -25.45 (SEAT_TOP),
+# and a ground lane 3.0 under the mouth sat in all nine of them.
+TRUNK_DZ = {"gnd": -0.8, "hot": 1.2, "canh": 3.2, "canl": 5.2}
+_XH_PITCH = 2.5
 PWR_OFF = 1.0         # 24 V hot/gnd separation. In X on the bank hops (see _seg) and in Z
                       # along the -Y corridor, where the pair rides one lane each. 2.0 apart
                       # leaves 0.2 of air between two O1.8 conductors, which is right for a
@@ -264,6 +278,14 @@ def tee_hdr_z(i):
     """Where a wire lands on tee i: mid-mouth on a motor tee, the header top on a rail one."""
     from cadkit.pcb import XH_SIDE_H
     return (tee_z(i) + _PCB_T + XH_SIDE_H / 2) if on_motor(i) else HDR_Z
+
+
+def tee_pin(i, x, y, cond, out):
+    """Tee i's trunk 8-way, the pin carrying `cond` (TRUNK_PIN key) on its IN (1-4) or OUT
+    (5-8) half -- pin 1 at the connector's -X end."""
+    px, py, pz = tee_point(i, x, y)
+    pin = TRUNK_PIN[cond] + (4 if out else 0)
+    return (px + (pin - (EL.TEE_TRUNK_N + 1) / 2.0) * _XH_PITCH, py, pz)
 
 
 def tee_point(i, x, y, which="trunk"):
@@ -596,7 +618,7 @@ def _on_bank(p):
     return p[2] > HDR_Z + 20.0          # a tee on a motor sits far above the rail lanes
 
 
-def _seg(a, b, lane_z, d=WIRE_D, off=0.0):
+def _seg(a, b, lane_z, d=WIRE_D, off=0.0, a_pin=None, b_pin=None, dz=0.0):
     """One crimped trunk SEGMENT between two tee headers, each a 3D point (tee_point).
 
     Two tees ON THE BANK fly to each other at TOP_Z, over the motors. A segment with a RAIL
@@ -616,6 +638,13 @@ def _seg(a, b, lane_z, d=WIRE_D, off=0.0):
         # the trunk in and the trunk out are different contacts on the same 6-way, and two crimps
         # leaving a connector lie side by side, not through each other.
         _lean = 2.0 if b[0] >= a[0] else -2.0
+        if a_pin is not None and b_pin is not None:
+            # PIN TO PIN: straight out of each pin's own contact, then along its own lane at
+            # its own height (TRUNK_DZ) -- see TRUNK_PIN for why
+            z = a[2] + dz
+            ly = lane + off
+            return _wire([a_pin, (a_pin[0], a_pin[1] - 1.5, z), (a_pin[0], ly, z),
+                          (b_pin[0], ly, z), (b_pin[0], b_pin[1] - 1.5, z), b_pin], d)
         pts = [a, (a[0] + _lean, lane, a[2]), (b[0] - _lean, lane, b[2]), b]
     elif _on_bank(a) or _on_bank(b):
         t, r = (a, b) if _on_bank(a) else (b, a)          # t on the bank, r on the rail
@@ -625,7 +654,12 @@ def _seg(a, b, lane_z, d=WIRE_D, off=0.0):
             pts.reverse()
     else:
         pts = [a] + _rail_pts(a[0], b[0], lane_z) + [b]
-    return _wire([(px + off, py + off, pz) for px, py, pz in pts], d)
+    pts = [(px + off, py + off, pz) for px, py, pz in pts]
+    if a_pin is not None:
+        pts[0] = a_pin
+    if b_pin is not None:
+        pts[-1] = b_pin
+    return _wire(pts, d)
 
 
 def build_wires():
@@ -678,16 +712,26 @@ def build_wires():
     # the teensy_ifc board, which this branch deleted. The merged motor controller is the
     # source now, and it says where its own bus-A connector is rather than being copied.
     _ia = SP(*EL.mctrl_pt("J1"))
-    _canA_head = [_ia, (BAY_X - 5.0, _ia[1], _ia[2]), (BAY_X - 5.0, _ia[1], _w0[2]),
-                  (_w0[0], _ia[1], _w0[2]), _w0]
+    def _pin(i, cond, out):
+        return tee_pin(i, tees[i][0], tees[i][1], cond, out)
+
+    assert _w0[2] + TRUNK_DZ["gnd"] - WIRE_OD["wire_pwr_gnd"] / 2 > MB.SEAT_TOP + 0.3, (
+        "the trunk's ground lane has come down into the bay walls (SEAT_TOP)")
+
     for _sfx, _co in (("h", -CAN_OFF), ("l", CAN_OFF)):
         _od = WIRE_OD[f"wire_can{_sfx}"]
+        _p = _pin(west[0], "can" + _sfx, False)          # the first tee's IN pin
         out.append((f"wire_can{_sfx}_0", _wire(
-            [(px + _co, py + _co, pz) for px, py, pz in _canA_head], _od)))
+            [(px + _co, py + _co, pz) for px, py, pz in
+             [_ia, (BAY_X - 5.0, _ia[1], _ia[2]), (BAY_X - 5.0, _ia[1], _w0[2])]]
+            + [(_p[0], _ia[1] + _co, _w0[2]), _p], _od)))
         for k in range(9):
             out.append((f"wire_can{_sfx}_{k + 1}",
                         _seg(hdrA[west[k]], hdrA[west[k + 1]], LANE_CAN, _od,
-                             off=TRUNK_OFF["can" + _sfx])))
+                             off=TRUNK_OFF["can" + _sfx],
+                             a_pin=_pin(west[k], "can" + _sfx, True),
+                             b_pin=_pin(west[k + 1], "can" + _sfx, False),
+                             dz=TRUNK_DZ["can" + _sfx])))
 
     # bus A drops: each motor's factory 4-pin XH pigtail (grey), from its -Y-facing PCB to its
     # OWN tee. For the nine tees on motors that is a short climb up behind the motor and over
@@ -788,15 +832,17 @@ def build_wires():
     def _pair(pts, dz):
         return [(x + dz, y, z) for x, y, z in pts]
 
-    def _head(dz):
-        """J7 -> the east-most tee's trunk connector (on string 10's motor)."""
+    def _head(dz, cond):
+        """J7 -> the east-most tee's trunk connector (on string 10's motor), onto its OUT
+        pin for `cond` -- dropping straight down onto it from the lane."""
         zr, zl = _REC_Z7 + dz, LANE_PWR + dz
         loop = _loop(zr)
+        _p = _pin(_WEST0, cond, True)
         return _pair([_j7, (_j7[0], _j7[1], zr), (_j7[0], _REC_Y, zr), (_BAY_X7, _REC_Y, zr),
                       (_BAY_X7, CHAN_Y, zr)] + loop
                      + [(_RISE7, CHAN_Y, loop[-1][2]), (_RISE7, CHAN_Y, zl),
-                        (_EXIT7, CHAN_Y, zl), (_EXIT7, y10, zl), (x10, y10, zl),
-                        hdrA[_WEST0]], dz)
+                        (_EXIT7, CHAN_Y, zl), (_EXIT7, y10, zl)], dz) + [
+                        (_p[0], y10, zl), (_p[0], _p[1], zl), _p]
 
     # THE TRUNK ENDS AT THE MERGED BOARD, and main's path off _w0 is the right shape
     # for it. Main ran it to a free-standing BUCK; this branch merged the power board
@@ -807,14 +853,24 @@ def build_wires():
     # not, so both ended in mid-air where J3 would be if the board still lay flat (user:
     # "unterminated ground and 24V wires near the motor control board").
     _mc24 = SP(*EL.mctrl_pt("J3"))
-    tail = [_w0, (BAY_X, _w0[1], _w0[2]), (BAY_X, _mc24[1], _w0[2]),
-            (BAY_X, _mc24[1], _mc24[2]), _mc24]
+    # the tail leaves the first tee's IN pins and runs west ABOVE the CAN head, which comes
+    # in along the same stretch at the tee's own height (the two crossed at x -582)
+    _TAIL_DZ = 3.5
+
+    def _tail(cond, do):
+        # hot (pin 2, do -1) runs HIGH and INBOARD, gnd (pin 1, do +1) low and outboard: each
+        # then passes over or beside the other's turn instead of through it, at both ends
+        _p = _pin(west[0], cond, False)
+        zt = _w0[2] + _TAIL_DZ - do
+        xt = BAY_X - do
+        return [_p, (_p[0], _p[1], zt), (xt, _p[1], zt), (xt, _mc24[1], zt),
+                (xt, _mc24[1], _mc24[2] + do), (_mc24[0], _mc24[1], _mc24[2] + do)]
 
     # ── the SECOND 24 V feed: panel J10 -> motor_ctrl J3, bypassing the tees ──
     # ITS OWN COLUMN at the keyhead, 3 mm +X of the bay column the bay wires climb: run
     # along the column it crossed bus B's and the Pi link's risers there. At this y there
     # is no motor at x -582 (string 1's sits far +Y), so the column is free.
-    _FEED2_X = BAY_X + 3.0
+    _FEED2_X = BAY_X + 4.5            # 3.0 put it 1.0 off the tail's column (1.6 mm3)
     # AND IT LANDS TWO PIN PITCHES FROM THE TAIL on motor_ctrl J3, not on the tail's own
     # point: two cables drawn into one point is two cables through each other.
     _J3_PITCH2 = 2 * 2.5
@@ -832,16 +888,18 @@ def build_wires():
     for _nm, _do in (("wire_pwr_hot", -PWR_OFF), ("wire_pwr_gnd", PWR_OFF)):
         def _off(pts, _do=_do):
             return [(px + _do, py, pz) for px, py, pz in pts]
-        out.append((f"{_nm}_0", _wire(_head(_do), WIRE_OD[_nm])))
+        _cond = _nm[9:]
+        out.append((f"{_nm}_0", _wire(_head(_do, _cond), WIRE_OD[_nm])))
         for k in range(9):
             out.append((f"{_nm}_{k + 2}",
                         _seg(hdrA[west[k + 1]], hdrA[west[k]], LANE_PWR, WIRE_OD[_nm],
-                             off=TRUNK_OFF[_nm[9:]])))
+                             off=TRUNK_OFF[_cond],
+                             a_pin=_pin(west[k + 1], _cond, False),
+                             b_pin=_pin(west[k], _cond, True), dz=TRUNK_DZ[_cond])))
         # _1 is vacant: it was the hop from tee 10 onto the rail, and tee 10 is gone.
         # the tail pair spaced like the others -- an X offset alone left its X-running leg
         # with both conductors on one line (98.5 mm3, on the committed model)
-        out.append((f"{_nm}_11", _wire([(x + _do, y, z + _do) for x, y, z in tail],
-                                       WIRE_OD[_nm])))
+        out.append((f"{_nm}_11", _wire(_tail(_cond, _do), WIRE_OD[_nm])))
 
         # ⚠ THE SECOND FEED (option A, user 2026-09-18). The tee chain is fed from BOTH
         # ends now: J7 at the east, and this cable running the length of the instrument
@@ -922,14 +980,18 @@ def build_wires():
         _j5, (_j5[0], _over[1], _j5[2]), (_over[0], _over[1], _over[2]),
         (_gpio[0], _gpio[1], _over[2]), _gpio], WIRE_OD["wire_5v"])))
 
-    # -- motor controller <-> Pi (purple): the USB-C lead the Pi writes travel
-    #    offsets over. It leaves the board's mouth sideways, not off a header.
+    # -- motor controller <-> Pi (purple): the USB lead the Pi writes travel offsets over --
+    #    a stock USB-A -> XH lead now, off J4's top like every other lead on the board
+    #    (the USB-C it replaced faced the -Y rail 5.5 mm away and could not be plugged in).
     _lt, _lp = SP(*EL.mctrl_pt("J4")), SP(-585.0, 20.0, -58.0)
+    # ITS OWN COLUMN, 3 mm short of the bay column: J4 is on the board's -Y edge, at the very
+    # y where bus B drops down the bay column to the floor corridor.
     # It crosses motor 0's Y band, so it takes the BAYFLY lane over the motor top
     # like every other bay wire -- running it across at the board's own height put
     # 62 mm3 of cable inside string 1's motor.
+    _LINK_X = BAY_X - 3.0
     out.append(("wire_link", _wire([
-        _lt, (BAY_X, _lt[1], _lt[2]), (BAY_X, _lt[1], BAYFLY), (BAY_X, _lp[1], BAYFLY),
+        _lt, (_LINK_X, _lt[1], _lt[2]), (_LINK_X, _lt[1], BAYFLY), (_LINK_X, _lp[1], BAYFLY),
         (_lp[0] + 5.0, _lp[1], BAYFLY), (_lp[0] + 5.0, _lp[1], _lp[2]), _lp],
         WIRE_OD["wire_link"])))
 
