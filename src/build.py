@@ -1328,6 +1328,7 @@ _COLORS = {
     "pogo_male_insert":  (0.72, 0.52, 0.20),   # the brass heat-set inserts
     "pogo_female_insert": (0.72, 0.52, 0.20),
     "pogo_harness_leg":  (0.75, 0.15, 0.12),   # the leg's harness, two twisted pairs
+    "pogo_harness_coil": (0.75, 0.15, 0.12),   # ...its slack, a part of its own
     "pogo_harness_body": (0.75, 0.15, 0.12),
     "pogo_harness_bar":  (0.75, 0.15, 0.12),
     "leg_trrs_plug":   (0.15, 0.15, 0.17),   # the blind-mate: the FIXED plug, in the
