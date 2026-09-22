@@ -1030,8 +1030,7 @@ def _parts():
     _cx0 = COMPUTE_X0 + EDGE_KEEP
     _cx1 = _part_x("U6") - CRTYD[_MCU_PKG][0] / 2 - CRTYD_GAP
     _q, _c = CRTYD["WQFN-24"][0], CRTYD["0402"]          # 5.26; (1.95, 1.03)
-    _rx = _q / 2 + CRTYD_GAP + _c[0] / 2 + 0.35          # right column, 0.35 clear of the corners
-    _cw = _q / 2 + 2.12 + _c[1] / 2 + _rx + _c[0] / 2 - _q / 2 + _q / 2   # -2.12-0.52 .. _rx+0.98
+    _rx = _q / 2 + CRTYD_GAP + _c[0] / 2                  # the +X column
     _cw = (2.12 + _c[1] / 2) + (_rx + _c[0] / 2)
     _cgap = ((_cx1 - _cx0) - 3 * _cw) / 2
     assert _cgap >= CRTYD_GAP - 1e-9, (
@@ -1054,19 +1053,26 @@ def _parts():
         t = k + 1
         add("U%d" % (14 + k), "audio ADC -- TLV320ADC3140, 4 ch, quad U%d's outputs" % t,
             "WQFN-24", qx, qy, 180.0)
-        for ref, dx, dy in (("Cm%d4" % t, -2.12, _near), ("Ci%d4" % t, -0.94, _near),
-                            ("Ci%d3" % t, 0.24, _near), ("Ci%d2" % t, 1.43, _near),
-                            ("Ci%d1" % t, 2.60, _near),
-                            ("Cm%d3" % t, -0.35, _far), ("Cm%d2" % t, 0.83, _far),
-                            ("Cm%d1" % t, 2.00, _far),
-                            # bottom: IOVDD under pin 19, DREG under pin 24, corridor between
-                            ("Cs%d8" % t, -2.12, -_near), ("Cs%d9" % t, -0.94, -_near),
-                            ("Cs%d7" % t, 1.30, -_near), ("Cs%d6" % t, 2.48, -_near)):
+        # ⚠ ROTATION IS WHICH PAD FACES THE PIN. An 0402 at 90 has pad 1 at the BOTTOM, at
+        # 270 on top. Every cap here is wired pad 1 = the net nearer the part's pins' far
+        # side, so: above the part the input caps (pad 2 = the ADC pin for Ci, pad 1 for Cm)
+        # and below it the rail caps (pad 1 = the rail pin) are turned to face the pins.
+        for ref, dx, dy, rot in (("Cm%d4" % t, -2.12, _near, 90.0),
+                                 ("Ci%d4" % t, -0.94, _near, 270.0),
+                                 ("Ci%d3" % t, 0.24, _near, 270.0),
+                                 ("Ci%d2" % t, 1.43, _near, 270.0),
+                                 ("Ci%d1" % t, 2.60, _near, 270.0),
+                                 ("Cm%d3" % t, -0.35, _far, 90.0),
+                                 ("Cm%d2" % t, 0.83, _far, 90.0),
+                                 ("Cm%d1" % t, 2.00, _far, 90.0),
+                                 # bottom: IOVDD under pin 19, DREG beside pin 24, and a 2.5 mm
+                                 # corridor between them for SDOUT/BCLK/FSYNC
+                                 ("Cs%d8" % t, -1.25, -_near, 270.0),
+                                 ("Cs%d6" % t, 1.90, -_near, 270.0)):
             add(ref, "ADC input AC coupling" if ref[1] in "im" else "ADC supply bypass",
-                "0402", qx + dx, qy + dy, 90.0)
-        # +X column, top to bottom: AVDD 1u, VREF, AREG 100n, AREG 10u, AVDD 100n
-        for ref, dy in (("Cs%d1" % t, 2.12), ("Cs%d5" % t, 0.94), ("Cs%d4" % t, -0.24),
-                        ("Cs%d3" % t, -1.43), ("Cs%d2" % t, -2.60)):
+                "0402", qx + dx, qy + dy, rot)
+        # +X column at the pins' own heights: AVDD (pin 1, y -1.25), AREG (-0.75), VREF (-0.25)
+        for ref, dy in (("Cs%d1" % t, -1.90), ("Cs%d3" % t, -0.72), ("Cs%d5" % t, 0.46)):
             add(ref, "ADC supply / reference bypass", "0402", qx + _rx, qy + dy)
     qx, qy = _cell(2, 1)
     for m, (ref, desc) in enumerate((("R50", "I2C2 SCL pull-up"), ("R51", "I2C2 SDA pull-up"),
