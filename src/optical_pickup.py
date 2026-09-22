@@ -427,8 +427,22 @@ SENSE_HL = _OUTER_Y + PD_DY                      # last sensor Y
 # The strip is capped by the 14 mm band. The digital block cannot live in 14 mm (the MCU
 # alone is 16 over its leads), so the board widens in the -Y room PAST the pickup
 # cavity's -Y edge, where the deck is solid again and nothing is overhead.
-PCB_X0  = BAND_X0 - BAND_CLR                                  # -25.26, strip +X edge
-PCB_X1S = BAND_X1 + BAND_CLR                                  # -38.88, strip -X edge
+# ⚠ THE STRIP IS WIDER THAN THE DECK BAND NOW (user, 2026-09-22): "We have space to add
+# some PCB 3.15 +X and as much as we want -X of the optical sensors." The band was the
+# binding constraint this whole file was written around, and after the PD15-22B / five-
+# converter redesign it was also what stopped the board routing: the triplet's land grew
+# 3.45 -> 5.0 across a 13.6 mm strip carrying twenty outputs, MID and the rails.
+#   +X: the full 3.15 -- a lane between the detectors' outer pads and the edge.
+#   -X: STRIP_GROW_MX. The op-amp columns stay where they are (moving them would lengthen
+#       every summing node); the growth is a free lane beyond them for the long TIA
+#       outputs and the digital lines to the +Y converters.
+# ONLY THE STRIP SECTION GROWS. PCB_X1S stays the wraps' and the tail's -X edge (and the
+# endplate pad's), so the strip steps out -X past them; STRIP_X1 is its own -X edge.
+STRIP_GROW_PX = 3.15
+STRIP_GROW_MX = 6.0
+PCB_X0  = BAND_X0 - BAND_CLR + STRIP_GROW_PX                  # -22.11, strip +X edge
+PCB_X1S = BAND_X1 + BAND_CLR                                  # -38.88, wraps' / tail's -X edge
+STRIP_X1 = PCB_X1S - STRIP_GROW_MX                            # -44.88, the strip's own -X edge
 # ⚠ THESE FOUR X DATUMS ARE DERIVED FROM top_plate AND THEIR COMMENTS WENT STALE BY
 # 8.46 mm. BAND_X1, PCB_X0, PCB_X1S and COMPUTE_X0 all track TP.PICKUP_X_NOM and
 # TP.CAVITY_X, so when the pickup cavity moved they followed correctly -- the CODE was
@@ -1784,7 +1798,7 @@ def part_span(p):
 PCB_YM = part("J1")["y"] - CRTYD["USB-C"][1] / 2   # -Y end = the connector's LAND
 PCB_L  = PCB_YP - PCB_YM
 _SECTIONS = ((HEAD_Y0, PCB_YP, PCB_X1S, TAIL_X1),      # +Y wrap, over the endplate
-             (Y_TAIL, HEAD_Y0, PCB_X1S, PCB_X0),       # sensing strip, in the deck band
+             (Y_TAIL, HEAD_Y0, STRIP_X1, PCB_X0),      # sensing strip (wider than the band)
              (WRAP_Y, Y_TAIL, PCB_X1S, TAIL_X1),       # -Y wrap -- the head's mirror
              (PCB_YM, WRAP_Y, COMPUTE_X0, TAIL_X1))    # compute, no -X overhang
 
@@ -1827,6 +1841,8 @@ def _concave():
     the entry is generated from the geometry instead of listed."""
     corners = [(PCB_X0, HEAD_Y0),              # head -> strip, +X side
                (PCB_X0, Y_TAIL)]               # strip -> -Y wrap, +X side
+    if STRIP_X1 < PCB_X1S - 1e-9:              # the strip steps out -X past both wraps
+        corners += [(PCB_X1S, HEAD_Y0), (PCB_X1S, Y_TAIL)]
     if COMPUTE_X0 > PCB_X1S + 1e-9:            # only if the compute section really steps in
         corners.append((COMPUTE_X0, WRAP_Y))   # -Y wrap -> compute, -X side
     return corners
@@ -2364,7 +2380,7 @@ def _assert_field_clear():
     # 1. the whole sensing strip must sit inside the deck band, or it fouls the magnetic
     # pickup's cavity (-X) or the endplate (+X). Both edges are read from top_plate, so
     # this fails loudly if the pickup's travel changes rather than overlapping quietly.
-    if PCB_X1S < BAND_X1 or PCB_X0 > BAND_X0:
+    if STRIP_X1 < BAND_X1 - STRIP_GROW_MX - 1e-9 or PCB_X0 > BAND_X0 + STRIP_GROW_PX + 1e-9:
         raise AssertionError(
             f"optical strip: sensing strip X {PCB_X1S:.2f}..{PCB_X0:.2f} is outside the "
             f"deck band {BAND_X1:.2f}..{BAND_X0:.2f} (pickup cavity to deck end)")
