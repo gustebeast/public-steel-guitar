@@ -1383,7 +1383,10 @@ def _sai_escape(k):
     the IOVDD and DREG caps. With all three left to the router the middle one, BCLK, was
     walled in by the other two in every routing (and repair_search found no path): so
     SDOUT and FSYNC drop to vias side by side and BCLK threads down between them to a
-    lower one. Clearances: 0.19 to the IOVDD cap, 0.34 to DREG's, 0.19 either side of BCLK."""
+    lower one. Clearances: 0.19 to the IOVDD cap, 0.34 to DREG's, 0.19 either side of BCLK.
+    ⚠ TRIED AND REVERTED, 2026-09-22: laid, SCK and FS failed at EVERY part (17 open) --
+    the router never connected to a pre-laid via on this board, SHDNZ's either. Kept for
+    the record; nothing calls it."""
     return (("SAI_SD%d" % (k + 1), -0.25, -0.45, -3.40),
             ("SAI_SCK", 0.25, 0.25, -4.40),
             ("SAI_FS", 0.75, 0.95, -3.40))
@@ -1397,7 +1400,11 @@ def _shdn_tracks():
     for k in range(5):
         ux, uy = _placements(CX, CY)["U%d" % (14 + k)][:2]
         out += [("+3V3D", "F.Cu", 0.15, [(ux - 1.96, uy + 0.75), (ux - 2.85, uy + 0.75)]),
-                ("+3V3D", "In2.Cu", 0.15, [(ux - 2.85, uy + 0.75), (ux - 2.85, uy - 3.27)]),
+                # on B.Cu, NOT In2: down the channel on In2 it fenced the one free signal
+                # layer off between every pair of cells, and the +3V3D rail itself then
+                # failed to cross from cell to cell (4 of 14 open). B.Cu is a GND pour; a
+                # 4 mm track in it costs the pour a slot, not the router a layer.
+                ("+3V3D", "B.Cu", 0.15, [(ux - 2.85, uy + 0.75), (ux - 2.85, uy - 3.27)]),
                 ("+3V3D", "F.Cu", 0.15, [(ux - 2.85, uy - 3.27), (ux - 1.25, uy - 3.27)]),
                 # and IOVDD's own pin 19 straight down onto that same pad
                 ("+3V3D", "F.Cu", 0.2, [(ux - 1.25, uy - 1.96), (ux - 1.25, uy - 3.27)])]
@@ -1891,21 +1898,10 @@ BOARD_NOTES = {
                                       (_placements(CX, CY)["U%d" % (14 + k)][0] + 0.9,
                                        _placements(CX, CY)["U%d" % (14 + k)][1] + 0.25)])
                for k in range(5)] + _fan_tracks()
-              + _shdn_tracks()
-              + [(net, "F.Cu", 0.15,
-                  [(_placements(CX, CY)["U%d" % (14 + k)][0] + px,
-                    _placements(CX, CY)["U%d" % (14 + k)][1] - 1.96),
-                   (_placements(CX, CY)["U%d" % (14 + k)][0] + px,
-                    _placements(CX, CY)["U%d" % (14 + k)][1] - 2.60),
-                   (_placements(CX, CY)["U%d" % (14 + k)][0] + vx,
-                    _placements(CX, CY)["U%d" % (14 + k)][1] + vy)])
-                 for k in range(5) for net, px, vx, vy in _sai_escape(k)],
+              + _shdn_tracks(),
     "vias": [("+3V3D", _placements(CX, CY)["U%d" % (14 + k)][0] - 2.85,
               _placements(CX, CY)["U%d" % (14 + k)][1] + y) for k in range(5)
-             for y in (0.75, -3.27)]
-            + [(net, _placements(CX, CY)["U%d" % (14 + k)][0] + vx,
-                _placements(CX, CY)["U%d" % (14 + k)][1] + vy)
-               for k in range(5) for net, _px, vx, vy in _sai_escape(k)],
+             for y in (0.75, -3.27)],
     # ⚠ ORDER OPTIONS ARE PART OF THE DESIGN, and nothing in a gerber records them.
     # Mask colour is usually cosmetic and on this board it is not: twenty photodiodes
     # look up through a 0.30 mm gap that runs 5.40 mm to the cover's aperture, and that
