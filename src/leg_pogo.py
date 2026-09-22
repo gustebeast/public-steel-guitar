@@ -149,7 +149,16 @@ SE_TAIL0 = M_HOLE_D + _SHAFT_R + WALL + CLR # 14.3 the connector's cavity (which
                                             # CLR under its tails) a WALL above the screw
 MB_TOP = SE_TAIL0 + SE_TAIL + SE_DEPTH      # 22.6 the board's top edge = the mouth
 PLUG_TOP = MB_TOP + PLUG_RUN                # 26.2
-BEND = 4 * B                    # 3.2 room above the plug for the harness to turn
+PIN_LEAD = 2 * B                # 1.6 of STRAIGHT wire square out of every pin before
+                                # the fan starts (user). Fanning straight off the face
+                                # leaves four wires converging at shallow angles and
+                                # you cannot see which one lands where; a short square
+                                # lead-in reads at a glance, and is what a crimped
+                                # harness does anyway -- the contact holds the wire in
+                                # line for its own length.
+BEND = 6 * B                    # 4.8 above the plug for the harness to turn: the lead-
+                                # in eats the first 1.6, so this grew by 1.6 to keep the
+                                # fan's room unchanged
 DEEP = PLUG_TOP + BEND          # the pocket's end
 assert TF + SE_H + CLR + WALL <= LS.TEN_W / 2.0, "the connector breaks the tenon's flat"
 assert TB - CLR - WALL >= -LS.TEN_W / 2.0, "the board breaks the tenon's flat"
@@ -470,15 +479,31 @@ def tenon_negatives(j, route_xy, route_d, route_top, up=None):
     # zero, which is why this survived every static check the project has.
     out = out.union(j.house(TF, TF + SE_H + CLR, -SE_S / 2.0 - CLR, SE_S / 2.0 + CLR,
                             -1.0, PLUG_TOP + CLR))
-    # the harness's turn over to the lead's bore, then the bore itself onward
-    rx, ry = route_xy
-    rt = (rx - j.x) * j.T[0] + (ry - j.y) * j.T[1]
-    rs = (rx - j.x) * j.S[0] + (ry - j.y) * j.S[1] - S_C
+    # THE WAY UP, STRAIGHT OUT OF THE PORT. `route_xy` None means exactly that: the
+    # bore stands on the connector's own line, so the harness leaves the plug and goes
+    # without a turn.
+    #
+    # It used to aim at the RETIRED TRRS BORE's axis and hop 2.10 across to reach it,
+    # then jog a second time to clear the ladder -- two doglegs inherited from a part
+    # that no longer exists, in a channel sized for a plug that no longer travels it
+    # (user spotted the offset in the tab). The port's own line clears the ladder on
+    # its own: the ladder owns |y| <= 2.00 and wants 1.60 of wall, so a O4.0 lane needs
+    # |y| >= 4.80 and the port sits at y +5.20.
     pt = TF + SE_H / 2.0
-    t0, t1 = sorted((pt, rt))
-    s0, s1 = sorted((0.0, rs))
-    out = out.union(j.box(t0 - route_d / 2.0, t1 + route_d / 2.0,
-                          s0 - route_d / 2.0, s1 + route_d / 2.0, PLUG_TOP, DEEP))
+    rt, rs = (pt, 0.0)
+    if route_xy is not None:
+        rx, ry = route_xy
+        rt = (rx - j.x) * j.T[0] + (ry - j.y) * j.T[1]
+        rs = (rx - j.x) * j.S[0] + (ry - j.y) * j.S[1] - S_C
+        t0, t1 = sorted((pt, rt))
+        s0, s1 = sorted((0.0, rs))
+        # ...and the link has to hold the FAN, not just the bundle: above the plug the
+        # four conductors are still spread across the pin row, which reaches further in
+        # s (+-3.0 at PH pitch) than half the lane's width (2.0).
+        _fan = abs(pin_s(PH_PITCH, 0)) + HARNESS_D
+        out = out.union(j.box(t0 - route_d / 2.0, t1 + route_d / 2.0,
+                              min(s0 - route_d / 2.0, -_fan),
+                              max(s1 + route_d / 2.0, _fan), PLUG_TOP, DEEP))
     top_d = (route_top - j.z) * j.dz
     out = out.union(j.bore_d(route_d, rt, rs, DEEP - route_d, top_d, up))
     return out.union(male_screw(j).cutter(up))
@@ -516,6 +541,32 @@ def host_negatives(j, up=None, deep=F_DEEP):
     return out.union(female_screw(j).cutter(up))
 
 
+ROUTE_D = 5 * B                 # 4.0: the harness's own way up the tenon. The bore it
+                                # replaced was O7.6, sized for a moulded TRRS plug that
+                                # had to travel it; nothing travels this but four bare
+                                # wires (they are crimped after threading), so it is
+                                # sized for the O2.4 bundle -- and the narrower it is,
+                                # the closer to the port its lane can sit (below).
+ROUTE_OFF = 9 * B               # 7.2 off the leg's axis in +Y, and NOT on the port's
+                                # own line, which is where this wanted to go.
+                                #
+                                # The port sits at y +5.20 and a straight shot up from
+                                # it would be ideal -- but the ADJUSTMENT LADDER is
+                                # teardropped, and a teardrop's envelope is not its
+                                # diameter: O4.0 holes reach r*sqrt(2) = 2.83, not 2.00.
+                                # Against that, a O4.0 lane needs y >= 6.43, so the port
+                                # line is 1.23 short and the harness takes ONE 2.00 step
+                                # in +Y at the plug and then runs straight.
+                                #
+                                # That step is real and worth keeping honest about. What
+                                # it replaces is TWO doglegs -- a 2.10 hop onto the
+                                # RETIRED TRRS bore's axis and then a jog back out to
+                                # clear the ladder -- both inherited from a part that no
+                                # longer exists (user spotted the offset in the tab).
+_LADDER_R = LS.ADJ_HOLE_D / 2.0 * math.sqrt(2)      # a TEARDROP's reach, not its radius
+assert ROUTE_OFF - ROUTE_D / 2.0 - _LADDER_R >= D.MIN_WALL_2P, (
+    "the harness lane at y %+.2f leaves only %.2f to the ladder's teardrop envelope"
+    % (ROUTE_OFF, ROUTE_OFF - ROUTE_D / 2.0 - _LADDER_R))
 CHAN_W = 4 * B                  # 3.2: the harness with room
 CHAN_D = 6 * B                  # 4.8 -- the body tenons are fused on after this is cut
                                 # and refill the groove's top ~1 mm
@@ -561,6 +612,12 @@ COIL_LEAD = 4.0                 # the vertical run-in
 COIL_GAP = 2 * B                # 1.6 -- > (HARNESS_D / 2) cos(lead), measured 1.118
 
 
+def port_xy(j):
+    """World (x, y) of the PH port's axis: the line the harness leaves the plug on."""
+    x, y, _ = j.p(TF + SE_H / 2.0, 0.0, 0.0)
+    return x, y
+
+
 def pin_s(pitch, k, n=RA_N):
     """Where way `k` (0-based) of an `n`-way connector sits along s, centred on the
     housing. PIN 1 IS AT -s at every connector in this joint, which is the half of
@@ -590,11 +647,19 @@ def harness():
     up_path = [TOP.p(pt, 0.0, PLUG_TOP), TOP.p(pt, 0.0, dm),
                (xs, ys, TOP.p(0, 0, dm)[2]), (xs, ys, LS.Z_FIX_TEN_BOT - 2.0),
                (ax + r, ay, z_a + COIL_LEAD), (ax + r, ay, z_a + COIL_GAP)]
+    # ...and down the PORT's OWN LINE from there: one turn at the top of the tenon and
+    # then straight to the plug, which is what the bore is now cut for.
+    # ...and down the lane on the PORT's OWN X, stepping the last 1.20 in +Y at the
+    # plug (ROUTE_OFF: the ladder's teardrop envelope, not the port, sets that lane)
+    _px, _ = port_xy(BOTTOM)
+    _ly = LS.LEG_Y + ROUTE_OFF
     lo_path = [(ax + r, ay, z_b - COIL_GAP), (ax + r, ay, z_b - COIL_LEAD),
-               (xc, yc, LS.Z_ADJ_TEN_TOP + 2.0),
-               (xc, yc, BT.PASS_TOP), (xb, yb, BT.CH_BOT),
-               (xb, yb, BOTTOM.p(0, 0, dm)[2]), BOTTOM.p(pt, 0.0, dm),
-               BOTTOM.p(pt, 0.0, PLUG_TOP)]
+               # the swing onto the lane happens ABOVE the tenon's top face, in open
+               # air: done below it, the wires were moving sideways inside the bore and
+               # rubbed its wall the whole way down
+               (_px, _ly, LS.Z_ADJ_TEN_TOP + 4.0),
+               (_px, _ly, BOTTOM.p(pt, 0.0, dm)[2]),
+               BOTTOM.p(pt, 0.0, dm), BOTTOM.p(pt, 0.0, PLUG_TOP)]
     # THE COIL STAYS ONE BODY (see helix_cable): four helices about one axis is four
     # sweeps where the bundle reads the same, and the wind count and mean diameter --
     # the two things it has to get right -- are the bundle's, not a conductor's.
@@ -623,16 +688,23 @@ def harness():
     # ...and each run FANS OUT onto its own pin at the connector it ends at, instead
     # of all four arriving on the housing's centre line. Which end that is differs per
     # run: the leg's two runs leave a PH, the stubs leave a ZH.
-    ends = ((0, PH_PITCH, TOP), (-1, PH_PITCH, BOTTOM),
-            (0, ZR_PITCH, TOP), (0, ZR_PITCH, BOTTOM))
-    for k, (path, (at, pitch, j)) in enumerate(zip((up_path, lo_path, body_path,
-                                                    bar_path), ends)):
+    # (terminating end, pitch, joint, the direction the wire LEAVES the pin). The PH's
+    # mouth faces up the leg, so its wires leave along the joint axis; the ZH lies on
+    # the host face with its mouth facing -t, so its wires leave along -t.
+    ends = ((0, PH_PITCH, TOP, (0.0, 0.0, TOP.dz)),
+            (-1, PH_PITCH, BOTTOM, (0.0, 0.0, BOTTOM.dz)),
+            (0, ZR_PITCH, TOP, (-TOP.T[0], -TOP.T[1], 0.0)),
+            (0, ZR_PITCH, BOTTOM, (-BOTTOM.T[0], -BOTTOM.T[1], 0.0)))
+    for k, (path, (at, pitch, j, ed)) in enumerate(zip((up_path, lo_path, body_path,
+                                                        bar_path), ends)):
         for i, ((name, _), cpath) in enumerate(zip(
                 HARNESS_WIRES, bundle_paths(path, [o for _, o in HARNESS_WIRES]))):
             cpath = list(cpath)
-            p = list(cpath[at])
-            # slide the terminating point along s to its way, in the joint's frame
-            ds = pin_s(pitch, i)
-            cpath[at] = (p[0] + ds * j.S[0], p[1] + ds * j.S[1], p[2])
+            p = cpath[at]
+            ds = pin_s(pitch, i)        # this way's place along the row
+            face = (p[0] + ds * j.S[0], p[1] + ds * j.S[1], p[2])
+            lead = tuple(face[m] + ed[m] * PIN_LEAD for m in range(3))
+            # square out of the pin FIRST, then fan back to the bundle
+            cpath[at:at + 1] = ([face, lead] if at == 0 else [lead, face])
             out.append(("pogo_wire_%s_%d" % (name, k), oct_cable(cpath, w)))
     return out

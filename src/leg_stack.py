@@ -398,15 +398,17 @@ def adjust_tenon(top: float = Z_ADJ_TEN_TOP):
     from . import bar_latch as BL
     t = t.cut(BL.tenon_cut(top - ADJ_TEN_L + ENGAGE))
     # THE BOTTOM BLIND-MATE (src.leg_pogo): the MALE pogo board in a pocket in this
-    # end, and the harness's way up past the ladder (bar_trrs's route, which the TRRS
-    # left behind). Cut last, and only on the tenon as drawn -- a shortened one is a
-    # height setting, not a station
+    # end, and the harness's way up past the ladder. Cut last, and only on the tenon as
+    # drawn -- a shortened one is a height setting, not a station
     if abs(top - Z_ADJ_TEN_TOP) < 1e-9:
-        from . import bar_trrs as BT
         from . import leg_pogo as PG
-        t = t.cut(PG.tenon_negatives(PG.BOTTOM, BT._ax(), BT.PASS_D, BT.PASS_TOP,
-                                     TENON_UP))
-        t = t.cut(BT.route_negatives(TENON_UP))
+        # ONE STRAIGHT BORE on the PH port's own line, all the way to the tenon's top
+        # (leg_pogo.ROUTE_D). It replaces the pogo hop onto the retired TRRS spine AND
+        # bar_trrs.route_negatives' jog around the ladder: the port's line already
+        # clears the ladder, so neither dogleg was buying anything.
+        t = t.cut(PG.tenon_negatives(
+            PG.BOTTOM, (PG.port_xy(PG.BOTTOM)[0], LEG_Y + PG.ROUTE_OFF),
+            PG.ROUTE_D, Z_ADJ_TEN_TOP + 1.0, TENON_UP))
     return t
 
 
