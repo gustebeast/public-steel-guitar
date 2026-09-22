@@ -1096,11 +1096,23 @@ def _parts():
     # needs no pads on the way and can run under the In1 ground plane, away from the
     # summing nodes on F.Cu. These two cells are turned the other way up (inputs -Y, toward
     # their quads): every offset below is mirrored through the part's centre by `_s`.
+    # ⚠ ONLY QUAD 1'S CONVERTER FITS AT THE WRAP -- THE SECOND ONE STARVED (2026-09-22).
+    # U15 went to the wrap's +X half, which is the far side of the jack head's keep-out, and
+    # its four analog inputs then had to run ~35 mm north AND ~20 mm east past that keep-out.
+    # Measured on the routed board: of TIA_OUT_3A/3B/4A/4B, only 3A ever reached its coupling
+    # cap; 3B, 4A and 4B never left the strip at all (they stop at y 43-52 against a
+    # destination at y 84). The corridor past the jack is one lane wide, and four signals
+    # wanted it. U15 CANNOT SIMPLY MOVE -X either: its x is already jack edge + PKG_CLR +
+    # the cell's own half-width, so it is hard against the keep-out.
+    # So the wrap keeps the ONE cell that sits directly over the strip -- a straight run
+    # north, no detour -- and the other four go back to the annulus. The earlier reading
+    # that five in the annulus was too crowded (14-17 unconnected over six routings) is
+    # CONFOUNDED: about five of those were the missing +3V3D bus, fixed since by
+    # optical._v3_trunk. Four cells there is a smaller claim than the five that plateaued.
     _top_y = PCB_YP - EDGE_KEEP - (_near + _c[0] / 2)          # SAI side toward the +Y edge
-    _TOP = {0: (PCB_X1S + EDGE_KEEP + _rx + _c[1] / 2, _top_y),   # over the strip's -X corner
-            1: (MOUNT_X_HEAD + TP.JACK_HEAD_D / 2 + PKG_CLR + _rx + _c[1] / 2 + 0.6, _top_y)}
+    _TOP = {0: (PCB_X1S + EDGE_KEEP + _rx + _c[1] / 2, _top_y)}   # over the strip's -X corner
     for k in range(5):
-        qx, qy = _TOP[k] if k in _TOP else _cell(k - 2, 0)
+        qx, qy = _TOP[k] if k in _TOP else _cell((k - 1) % 3, (k - 1) // 3)
         _s = -1.0 if k in _TOP else 1.0
         t = k + 1
         add("U%d" % (14 + k), "audio ADC -- TLV320ADC3140, 4 ch, quad U%d's outputs" % t,
