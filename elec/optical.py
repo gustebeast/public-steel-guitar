@@ -120,6 +120,7 @@ FP = {
     "0805OPT":  "LED_SMD:LED_0805_2012Metric",
     "PD15":     "Steel:Everlight_PD15-22B",           # elec/footprints/Steel.pretty
     "WQFN-24":  "Package_DFN_QFN:Texas_RTW_WQFN-24-1EP_4x4mm_P0.5mm_EP2.7x2.7mm",
+    "RNX12":    "Steel:Texas_RNX0012_VQFN-HR-12_2x3mm_P0.5mm",
     "SOIC-14":  "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm",
     "LQFP144":  "Package_QFP:LQFP-144_20x20mm_P0.5mm",
     "LQFP176":  "Package_QFP:LQFP-176_24x24mm_P0.5mm",
@@ -132,7 +133,7 @@ FP = {
     "3225":     "Crystal:Crystal_SMD_3225-4Pin_3.2x2.5mm",
     # Sunlord's own recommended land (1.1 x 3.7 pads on a 3.0 mm pitch), not the
     # Bourns SRN4018 one that used to be here -- LCSC stocks no usable SRN4018 value.
-    "IND-4040": "Inductor_SMD:L_Sunlord_SWPA4020S",
+    "IND-4040": "Inductor_SMD:L_Sunlord_SWPA4030S",  # 4030 since the LMR33630 swap (same land)
     "TP": "TestPoint:TestPoint_Pad_D1.5mm",
     "USB-C":    "Connector_USB:USB_C_Receptacle_HRO_TYPE-C-31-M-12",
     "XH-SM-4Y": "Connector_JST:JST_XH_S4B-XH-SM4-TB_1x04-1MP_P2.50mm_Horizontal",
@@ -906,7 +907,7 @@ def optical():
     #     R31 / R37 RBIAS / R38                             ->   0.8
     #                                            subtotal  207 / 272 / 452 mA
     #
-    #   +5V / V5_PRE  (U13, TPS560430, 600 mA)
+    #   +5V / V5_PRE  (U13, LMR33630C since 2026-09-22 -- 3 A; this budget was the TPS560430's 600 mA)
     #     ten emitters at 21.1 mA, pulsed -- 105 mA average, 211 mA while on
     #       ⚠ THE 50% DUTY IS AN INFERENCE ABOUT FIRMWARE THAT DOES NOT EXIST YET, not
     #       a measurement: the emitters square-wave at 48 kHz, a quarter of the
@@ -917,12 +918,10 @@ def optical():
     #       firmware picks. Only the "324 mA typical" headline moves.
     #     U8 input ~= its output                             207 / 272 / 452
     #     U9 input ~= its output                              12 /  16 /  16
-    #   ⚠ + THE CONVERTERS' ~130 mA (2026-09-21, via U9 above): typical ~454 mA, 76 %;
-    #     "max parts @25" becomes ~629 mA, 105 % OF THIS 600 mA BUCK. Not a routing
-    #     fault -- a sizing one. The in-stock fix is the motor controller's LMR33630
-    #     (3 A, 36 V, HSOIC-8, C841384), which changes U13's land and L1; measure the
-    #     converters at 192 kHz first, since the headline max is the MCU's all-peripherals
-    #     worst case and this board no longer runs the MCU's three ADCs.
+    #   + THE CONVERTERS' ~130 mA (2026-09-21, via U9 above): typical ~454 mA, worst ~629 mA
+    #     -- 105 % of the 600 mA TPS560430 this budget was written against. RESOLVED
+    #     2026-09-22 (user): U13 is now the 3 A LMR33630C, so the same worst case is 21 %.
+    #     The percentages below are the TPS560430's and are kept as history.
     #                              average          324 mA   54 % of the buck
     #                              emitters on      430 mA   72 %
     #                              + max parts @25  499 mA   83 %
@@ -957,25 +956,41 @@ def optical():
     # audio -- where a fixed 1.1 MHz stays put and filterable. 1.1 MHz rather than the
     # 2.1 MHz part because it is TI's own 5 V reference design and doubles the
     # minimum-on-time margin at 24 V in (189 ns against the 60 ns floor).
-    # Pinout, datasheet section 6: 1 CB, 2 GND, 3 FB, 4 EN, 5 VIN, 6 SW.
-    u13 = Part(name="TPS560430XF", ref_prefix="U", ref="U13", dest="NETLIST",
-               tool="skidl", value="TPS560430XFDBVR",
-               description="24V -> 5V synchronous buck, 1.1 MHz FPWM, 600 mA "
-               "(LCSC C523980)",
-               footprint="Package_TO_SOT_SMD:SOT-23-6",
-               pins=[Pin(num=n, func=P) for n in range(1, 7)])
+    # ⚠ NOW THE LMR33630CRNXR (user, 2026-09-22) -- the TPS560430's 600 mA was 105 % used in
+    # the worst case once the five converters landed on this board. 3 A, 36 V abs max, the
+    # motor controller's family. THE VARIANT IS THE POINT:
+    #   * "C" = 2.1 MHz. No forced-PWM LMR33630 is stocked, and a pulse-skipping buck at
+    #     light load puts its switching energy at variable, low -- sometimes audio --
+    #     frequencies beside twenty TIAs; that is why the TPS560430 was the FPWM part. At
+    #     2.1 MHz with 4.7 uH the ripple is 0.40 A pk-pk, so the part stays in continuous
+    #     conduction (fixed frequency) above ~0.2 A, and this board never draws less than
+    #     the MCU's ~0.3 A. (TI's 5 V / 2.1 MHz example uses 1.5 uH -- sized for 3 A; at
+    #     this board's load its 1.25 A ripple would drop the part into PFM.)
+    #   * "RNX" = VQFN-HR 2 x 3 mm, NOT the motor controller's HSOIC-8: the buck row sits
+    #     against the tail's 0.11 mm length margin and the SOIC grows it 0.86 mm.
+    # Pinout, SNVSB08 Table 6-1 (VQFN column): 1 PGND, 2 VIN, 3 NC, 4 BOOT, 5 VCC, 6 AGND,
+    # 7 FB, 8 PG, 9 EN, 10 VIN, 11 PGND, 12 SW. TI: "connect the SW pin to NC on the PCB"
+    # (it simplifies the CBOOT loop), so pin 3 joins SW. PG is unused and left open.
+    # Footprint: elec/footprints/Steel.pretty, drawn from TI's RNX0012B/C land (identical).
+    # 793 in stock 2026-09-22 (C2071783).
+    u13 = Part(name="LMR33630CRNX", ref_prefix="U", ref="U13", dest="NETLIST",
+               tool="skidl", value="LMR33630CRNXR",
+               description="24V -> 5V synchronous buck, 2.1 MHz, 3 A (LCSC C2071783)",
+               footprint="Steel:Texas_RNX0012_VQFN-HR-12_2x3mm_P0.5mm",
+               pins=[Pin(num=n, func=P) for n in range(1, 13)])
     v24 = Net("+24V")
     v24.drive = Pin.drives.POWER
-    boot = Net("BOOT")
-    boot += u13[1]
-    pgnd += u13[2]
-    fb += u13[3]
-    # EN WAS LEFT FLOATING, and the datasheet says in as many words "Do not float".
-    # Tied to VIN, which it explicitly allows; its precision threshold is 1.23 V, so
-    # 24 V is solidly on.
-    v24 += u13[4]
-    v24 += u13[5]
-    sw += u13[6]
+    boot, vcc_buck = Net("BOOT"), Net("BUCK_VCC")
+    pgnd += u13[1], u13[11], u13[6]
+    v24 += u13[2], u13[10]
+    sw += u13[3], u13[12]
+    boot += u13[4]
+    vcc_buck += u13[5]
+    fb += u13[7]
+    Net("BUCK_PG_NC").connect(u13[8])
+    # EN tied to VIN, which the datasheet allows ("Can be connected directly to VIN; Do
+    # not float") -- the same choice the TPS560430 had.
+    v24 += u13[9]
     # ⚠ THE VALUE IS THE PART NUMBER, for the same reason the crystals' are: "15uH"
     # does not specify an inductor. Saturation current, RMS current, DCR and whether the
     # thing is shielded at all vary by 3x across 4x4 parts that share an inductance, and
@@ -1006,11 +1021,15 @@ def optical():
     # 8,816 in stock 2026-09-17. Footprint is Sunlord's own recommended land (1.1 x 3.7
     # pads on a 3.0 mm pitch); the SRN4018 land that used to be here was a Bourns part
     # that LCSC does not stock in any usable value.
+    # (The TPS560430-era sizing above is history.) With the LMR33630C at 2.1 MHz the pick
+    # is 4.7 uH -- see U13 -- in the same Sunlord 4x4 family, the 3.0-tall 4030 for its
+    # 3.2 A saturation: the IC's own current limit is ~4 A, so a hard short saturates it
+    # briefly either way; in service the peak is ~0.9 A.
     l1 = Part(name="L", ref_prefix="L", ref="L1", dest="NETLIST", tool="skidl",
-              value="SWPA4020S150MT",
-              description="buck output inductor, 15 uH shielded, Isat 1.35 A, "
-              "DCR 0.299 ohm max, 4.0 x 4.0 x 2.0 (LCSC C36407)",
-              footprint="Inductor_SMD:L_Sunlord_SWPA4020S",
+              value="SWPA4030S4R7MT",
+              description="buck output inductor, 4.7 uH shielded, Isat 3.2 A, "
+              "DCR 78 mohm, 4.0 x 4.0 x 3.0 (LCSC C57269)",
+              footprint="Inductor_SMD:L_Sunlord_SWPA4030S",
               pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
     sw += l1[1]
     v5_pre += l1[2]
@@ -1251,8 +1270,9 @@ def optical():
     # VREF = 1.00 V (TPS560430 datasheet, electrical characteristics), so 5 V wants a
     # 4:1 divider. 40.2 k / 10.0 k gives 5.02 V -- 0.4% high, inside the reference's own
     # 1.5% -- from standard E96 values.
-    r40 = _r("R40", "40k2 1%", "buck feedback divider, top -- 5.02 V with R41")
-    r41 = _r("R41", "10k 1%", "buck feedback divider, bottom")
+    # LMR33630: VREF is also 1.0 V; TI's own 5 V example uses 100k / 24.9k (5.02 V).
+    r40 = _r("R40", "100k 1%", "buck feedback divider, top -- 5.02 V with R41")
+    r41 = _r("R41", "24k9 1%", "buck feedback divider, bottom")
     v5_pre += r40[1]
     fb += r40[2], r41[1]
     pgnd += r41[2]
@@ -1346,9 +1366,22 @@ def optical():
     # 100 nF, not 10: the TPS560430 datasheet specifies "a high quality 100-nF capacitor"
     # from CB to SW. Too small a bootstrap cap droops over the on-time and under-drives
     # the high-side FET.
-    c163 = _c("C163", "100nF", "buck bootstrap, CB to SW -- 100 nF per datasheet")
+    c163 = _c("C163", "100nF", "buck bootstrap, BOOT to SW -- 100 nF per datasheet")
     boot += c163[1]
     sw += c163[2]
+    # LMR33630 extras (SNVSB08 Table 6-1 / 9.2.2): VCC needs its own 1 uF; the two VIN
+    # pins sit on OPPOSITE sides of the RNX package, so each gets its own 100 nF (TI's
+    # layout puts one beside each VIN/PGND pair); and a second 22 uF at the output.
+    c165 = _c("C165", "100nF", "24 V HF bypass -- the second VIN/PGND pair (pins 10/11)")
+    v24 += c165[1]
+    pgnd += c165[2]
+    c166 = _c("C166", "1uF", "buck VCC bypass (internal 5 V LDO)")
+    vcc_buck += c166[1]
+    pgnd += c166[2]
+    c167 = _c("C167", "22uF/16V", "buck 5 V output bulk, second",
+              "Capacitor_SMD:C_0805_2012Metric")
+    v5_pre += c167[1]
+    pgnd += c167[2]
 
 
 # ── the board ────────────────────────────────────────────────────────────────
@@ -1356,11 +1389,30 @@ def optical():
 # board whose shape the instrument dictates. _SECTIONS is (y0, y1, x_minus, x_plus)
 # per band, and the shape it makes is a bracket -- wide over the endplate at both Y
 # ends, narrow through the middle where it has to fit the 14 mm deck band.
+def _cell_pt(k, dx, dy):
+    """A point given as an offset from converter k's centre in the frame of a part turned
+    180 -- the frame every cell offset in this file and in src/optical_pickup.py is written
+    in. The two converters at the +Y end are turned 0, so the offset mirrors through the
+    centre."""
+    ux, uy, rot = _placements(CX, CY)["U%d" % (14 + k)]
+    sgn = 1.0 if abs(rot - 180.0) < 1e-6 else -1.0
+    return (ux + sgn * dx, uy + sgn * dy)
+
+
+def _cell_tracks():
+    out = []
+    for k in range(5):
+        # ADDR1 / ADDR0 (pins 15/16) and AVSS (pin 4) straight into the EP
+        for dy in (0.25, -0.25):
+            out.append(("GND", "F.Cu", 0.2, [_cell_pt(k, -1.962, dy), _cell_pt(k, -0.9, dy)]))
+        out.append(("GND", "F.Cu", 0.2, [_cell_pt(k, 1.962, 0.25), _cell_pt(k, 0.9, 0.25)]))
+    return out + _fan_tracks() + _shdn_tracks()
+
+
 def _fan_tracks():
     out = []
     near, far = OP.CELL_NEAR - 0.48, OP.CELL_FAR - 0.48
     for k in range(5):
-        ux, uy = _placements(CX, CY)["U%d" % (14 + k)][:2]
         for name, pin_x, row in (("IN4P", -1.25, near), ("IN3M", -0.75, far),
                                  ("IN3P", -0.25, near), ("IN2M", 0.25, far),
                                  ("IN2P", 0.75, near), ("IN1M", 1.25, far)):
@@ -1368,12 +1420,12 @@ def _fan_tracks():
             d = cx - pin_x
             pts = [(pin_x, 1.96), (pin_x, 2.60), (cx, 2.60 + abs(d)), (cx, row)]
             out.append(("ADC%d_%s" % (k + 1, name), "F.Cu", 0.15,
-                        [(ux + x, uy + y) for x, y in pts]))
+                        [_cell_pt(k, x, y) for x, y in pts]))
         for name, (px, py), row in (("IN1P", (1.96, 1.25), near),
                                     ("IN4M", (-1.96, 1.25), far)):   # IN4M's cap: far row
             cx = OP.CELL_FAN[name]
             out.append(("ADC%d_%s" % (k + 1, name), "F.Cu", 0.15,
-                        [(ux + px, uy + py), (ux + cx, uy + py), (ux + cx, uy + row)]))
+                        [_cell_pt(k, px, py), _cell_pt(k, cx, py), _cell_pt(k, cx, row)]))
     return out
 
 
@@ -1398,16 +1450,16 @@ def _shdn_tracks():
     (-1.25, -3.27). Offsets from the part's centre, part turned 180."""
     out = []
     for k in range(5):
-        ux, uy = _placements(CX, CY)["U%d" % (14 + k)][:2]
-        out += [("+3V3D", "F.Cu", 0.15, [(ux - 1.96, uy + 0.75), (ux - 2.85, uy + 0.75)]),
+        P = lambda dx, dy, k=k: _cell_pt(k, dx, dy)
+        out += [("+3V3D", "F.Cu", 0.15, [P(-1.96, 0.75), P(-2.85, 0.75)]),
                 # on B.Cu, NOT In2: down the channel on In2 it fenced the one free signal
                 # layer off between every pair of cells, and the +3V3D rail itself then
                 # failed to cross from cell to cell (4 of 14 open). B.Cu is a GND pour; a
                 # 4 mm track in it costs the pour a slot, not the router a layer.
-                ("+3V3D", "B.Cu", 0.15, [(ux - 2.85, uy + 0.75), (ux - 2.85, uy - 3.27)]),
-                ("+3V3D", "F.Cu", 0.15, [(ux - 2.85, uy - 3.27), (ux - 1.25, uy - 3.27)]),
+                ("+3V3D", "B.Cu", 0.15, [P(-2.85, 0.75), P(-2.85, -3.27)]),
+                ("+3V3D", "F.Cu", 0.15, [P(-2.85, -3.27), P(-1.25, -3.27)]),
                 # and IOVDD's own pin 19 straight down onto that same pad
-                ("+3V3D", "F.Cu", 0.2, [(ux - 1.25, uy - 1.96), (ux - 1.25, uy - 3.27)])]
+                ("+3V3D", "F.Cu", 0.2, [P(-1.25, -1.96), P(-1.25, -3.27)])]
     return out
 
 
@@ -1888,20 +1940,8 @@ BOARD_NOTES = {
     # AVSS -> EP, one per converter. Pin 4 sits at (+1.962, +0.25) from the EP centre with
     # the part turned 180 (read off the placed board through pcbnew); the track ends 0.9
     # in from the EP centre, well inside the 2.7 pad. Neighbour pins 3/5 clear by 0.27.
-    "tracks": [("GND", "F.Cu", 0.2, [(_placements(CX, CY)["U%d" % (14 + k)][0] - 1.962,
-                                       _placements(CX, CY)["U%d" % (14 + k)][1] + dy),
-                                      (_placements(CX, CY)["U%d" % (14 + k)][0] - 0.9,
-                                       _placements(CX, CY)["U%d" % (14 + k)][1] + dy)])
-               for k in range(5) for dy in (0.25, -0.25)]            # ADDR1 / ADDR0 -> EP
-             + [("GND", "F.Cu", 0.2, [(_placements(CX, CY)["U%d" % (14 + k)][0] + 1.962,
-                                       _placements(CX, CY)["U%d" % (14 + k)][1] + 0.25),
-                                      (_placements(CX, CY)["U%d" % (14 + k)][0] + 0.9,
-                                       _placements(CX, CY)["U%d" % (14 + k)][1] + 0.25)])
-               for k in range(5)] + _fan_tracks()
-              + _shdn_tracks(),
-    "vias": [("+3V3D", _placements(CX, CY)["U%d" % (14 + k)][0] - 2.85,
-              _placements(CX, CY)["U%d" % (14 + k)][1] + y) for k in range(5)
-             for y in (0.75, -3.27)],
+    "tracks": _cell_tracks(),
+    "vias": [("+3V3D",) + _cell_pt(k, -2.85, y) for k in range(5) for y in (0.75, -3.27)],
     # ⚠ ORDER OPTIONS ARE PART OF THE DESIGN, and nothing in a gerber records them.
     # Mask colour is usually cosmetic and on this board it is not: twenty photodiodes
     # look up through a 0.30 mm gap that runs 5.40 mm to the cover's aperture, and that

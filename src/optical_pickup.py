@@ -197,7 +197,9 @@ PKG = {
     "SOT-23":   (2.90, 2.40, 1.30),
     "SOT-23-5": (2.90, 2.80, 1.45),
     "SOT-23-6": (2.90, 2.80, 1.45),   # same envelope as the -5; the buck (see U13)
-    "IND-4040": (4.10, 4.10, 2.10),   # 4x4 shielded power inductor, buck output
+    "IND-4040": (4.10, 4.10, 3.10),   # 4x4 shielded power inductor, buck output (SWPA4030,
+                                      # 3.0 tall since the LMR33630 swap)
+    "RNX12":    (2.00, 3.00, 1.00),   # TI VQFN-HR RNX0012, the LMR33630CRNXR buck
     "1206C":    (3.40, 1.85, 1.60),   # 50 V X7R -- the 24 V input bulk wants the voltage
                                       # rating AND the derating headroom; an 0805 50 V part
                                       # loses most of its capacitance at 24 V bias
@@ -313,6 +315,7 @@ CRTYD = {
     "LQFP176":  (27.36, 27.36),   # KiCad LQFP-176_24x24mm_P0.5mm F.CrtYd
     "3225":     (4.29, 3.59),
     "IND-4040": (5.15, 4.59),
+    "RNX12":    (2.90, 3.90),   # elec/footprints/Steel.pretty/Texas_RNX0012_...
     "USB-C":    (10.73, 9.51),
     "XH-SM-4Y": (16.79, 12.09),  # 12.09 in Y against a 6.10 body: a side-entry
                                  # connector's land reaches well back under it
@@ -1069,11 +1072,25 @@ def _parts():
         return (_cx0 + col * (_cw + _cgap) + _left,
                 _cy_top - _band - row * (_ch + _cy_gap - _band) - _far - _c[0] / 2)
 
+    # ⚠ QUADS 1 AND 2'S CONVERTERS LIVE AT THE +Y END, NOT BESIDE THE MCU (2026-09-22). With
+    # all five in the annulus the board plateaued at 14-17 unconnected over six routings:
+    # five cells and their caps in 25 x 27 mm, fed by twenty outputs funnelled down a
+    # 13.6 mm strip. The +Y wrap is 14.4 x 62 mm of board holding nothing but one grip.
+    # Moved there, U14/U15 take the eight LONGEST analog runs off the strip entirely (quads
+    # 1-2 sit at its +Y end), and the annulus keeps three cells in one row. What crosses
+    # the strip instead is digital -- two SAI lanes, BCLK, FSYNC, I2C and +3V3D -- which
+    # needs no pads on the way and can run under the In1 ground plane, away from the
+    # summing nodes on F.Cu. These two cells are turned the other way up (inputs -Y, toward
+    # their quads): every offset below is mirrored through the part's centre by `_s`.
+    _top_y = PCB_YP - EDGE_KEEP - (_near + _c[0] / 2)          # SAI side toward the +Y edge
+    _TOP = {0: (PCB_X1S + EDGE_KEEP + _rx + _c[1] / 2, _top_y),   # over the strip's -X corner
+            1: (MOUNT_X_HEAD + TP.JACK_HEAD_D / 2 + PKG_CLR + _rx + _c[1] / 2 + 0.6, _top_y)}
     for k in range(5):
-        qx, qy = _cell(k % 3, k // 3)
+        qx, qy = _TOP[k] if k in _TOP else _cell(k - 2, 0)
+        _s = -1.0 if k in _TOP else 1.0
         t = k + 1
         add("U%d" % (14 + k), "audio ADC -- TLV320ADC3140, 4 ch, quad U%d's outputs" % t,
-            "WQFN-24", qx, qy, 180.0)
+            "WQFN-24", qx, qy, 180.0 if _s > 0 else 0.0)
         # ⚠ ROTATION IS WHICH PAD FACES THE PIN. An 0402 at 90 has pad 1 at the BOTTOM, at
         # 270 on top. Every cap here is wired pad 1 = the net nearer the part's pins' far
         # side, so: above the part the input caps (pad 2 = the ADC pin for Ci, pad 1 for Cm)
@@ -1104,7 +1121,7 @@ def _parts():
                                  ("Cs%d3" % t, _rx, -1.20, 270.0),
                                  ("Cs%d5" % t, _rx, 0.90, 90.0)):
             add(ref, "ADC input AC coupling" if ref[1] in "im" else "ADC supply bypass",
-                "0402", qx + dx, qy + dy, rot)
+                "0402", qx + _s * dx, qy + _s * dy, rot if _s > 0 else (rot + 180.0) % 360.0)
     qx, qy = _cell(2, 1)
     for m, (ref, desc) in enumerate((("R50", "I2C2 SCL pull-up"), ("R51", "I2C2 SDA pull-up"))):
         add(ref, desc, "0402", qx - 1.5 + (m % 3) * (_c[0] + CRTYD_GAP),
@@ -1206,12 +1223,18 @@ def _parts():
     # impedance at high frequency and help transient response, and TI suggests one for
     # this part. It is a part added for a problem nobody has measured on this board yet;
     # the layer change costs nothing and should be tried first.
+    # LMR33630CRNXR since 2026-09-22 (see U13 in elec/optical.py): its two VIN/PGND pairs
+    # sit on OPPOSITE sides, so each gets a 100 nF hard against it (C161 -X, C165 +X), and
+    # VCC's 1 uF (C166) and a second output 22 uF (C167) join the row.
     _buck_order = (("C160", "24 V input bulk -- 50 V part, see 1206C", "1206C"),
-                   ("C161", "24 V input HF bypass -- CLOSEST to U13 on purpose", "0402"),
-                   ("U13", "buck -- 24V -> 5V, the board's only switcher", "SOT-23-6"),
-                   ("C163", "bootstrap -- CB to SW, both on U13's left", "0402"),
+                   ("C161", "24 V input HF bypass -- the VIN/PGND pair on U13's -X side", "0402"),
+                   ("U13", "buck -- 24V -> 5V, the board's only switcher", "RNX12"),
+                   ("C165", "24 V input HF bypass -- the VIN/PGND pair on U13's +X side", "0402"),
+                   ("C163", "bootstrap -- BOOT to SW", "0402"),
+                   ("C166", "buck VCC bypass, 1 uF", "0402"),
                    ("L1", "buck output inductor", "IND-4040"),
                    ("C162", "5 V output bulk", "0805C"),
+                   ("C167", "5 V output bulk, second", "0805C"),
                    ("R40", "feedback divider -- top, at the output node", "0402"),
                    ("R41", "feedback divider -- bottom", "0402"))
     _BUCK_X0 = -37.10                    # the row's -X edge, unchanged from before
@@ -1538,22 +1561,17 @@ _MPN_RULES = (
                                                     "paste, excluded from the BOM and "
                                                     "the CPL by the footprint")),
     ("J1",   ("TYPE-C-31-M-12",  "C165948",  0.1709, "USB-C 16P, @5+; the modelled envelope IS this part")),
-    ("U13",  ("TPS560430XFDBVR", "C523980",  0.35,  "24V->5V synchronous buck, SOT-23-6, 600 mA, "
-                                                    "1.1 MHz FORCED PWM. Meets the recorded want: "
-                                                    "synchronous, 38 V abs max (>=30), fSW far from "
-                                                    "the sample rate. 3,494 in stock 2026-09-17. "
-                                                    "NOTE the 24 V trunk also feeds the steppers; "
-                                                    "38 V is the margin against their regen")),
-    ("L1",   ("SWPA4020S150MT",  "C36407",   0.10,  "buck output inductor, 15 uH shielded, 4.0 x 4.0 "
-                                                    "x 2.0. Isat 1.35 A worst case -- sized against "
-                                                    "the TPS560430's 1.4 A MAXIMUM current limit, "
-                                                    "which is what SLVSE22B 9.2.2.4 says to size "
-                                                    "against, not the 0.72 A the board draws. 15 uH "
-                                                    "rather than 18: KIND 0.42 is inside TI's 20-60% "
-                                                    "band and no 4x4 part at 22 uH gets past 1.05 A. "
-                                                    "SHIELDED is not optional -- an unshielded "
-                                                    "inductor radiates into 20 TIAs. "
-                                                    "8,816 in stock 2026-09-17")),
+    ("U13",  ("LMR33630CRNXR",   "C2071783", 1.82,  "24V->5V synchronous buck, VQFN-HR RNX 2x3, 3 A, "
+                                                    "2.1 MHz, 36 V abs max (user, 2026-09-22: the "
+                                                    "TPS560430's 600 mA was 105 % used worst case "
+                                                    "with the five converters). No FPWM variant is "
+                                                    "stocked; at 2.1 MHz / 4.7 uH it stays in CCM "
+                                                    "(fixed frequency) above ~0.2 A. 793 in stock")),
+    ("L1",   ("SWPA4030S4R7MT",  "C57269",   0.12,  "buck output inductor, 4.7 uH shielded, 4.0 x 4.0 "
+                                                    "x 3.0, Isat 3.2 A, DCR 78 mohm. 0.40 A pk-pk "
+                                                    "ripple at 2.1 MHz. SHIELDED is not optional -- "
+                                                    "an unshielded inductor radiates into 20 TIAs. "
+                                                    "42,221 in stock 2026-09-22")),
     # ⚠ "600" IN A FERRITE BEAD PART NUMBER USUALLY MEANS 60 OHM. Murata and Sunlord
     # both code impedance as two digits and a decade multiplier, so BLM18PG600SN1D --
     # 136,668 in stock, the obvious hit for "600 ohm bead 0603" -- is SIXTY ohms, and
@@ -1660,7 +1678,8 @@ _MPN_EXACT.update({r: ("0805 X7R MLCC", "BASIC", 0.01, "audio ADC bypass / DC bl
 _MPN_EXACT.update({r: ("0402 thick-film R", "BASIC", 0.002, "buck feedback divider")
                    for r in ("R40", "R41")})
 _MPN_EXACT.update({r: ("0402 X7R MLCC", "BASIC", 0.004, "buck HF bypass / bootstrap")
-                   for r in ("C161", "C163")})
+                   for r in ("C161", "C163", "C165", "C166")})
+_MPN_EXACT["C167"] = ("0805 X7R MLCC", "BASIC", 0.01, "buck 5 V output bulk, second")
 _MPN_EXACT["C162"] = ("0805 X7R MLCC", "BASIC", 0.01, "buck 5 V output bulk")
 _MPN_EXACT["C164"] = ("0805 X7R MLCC", "BASIC", 0.01,
                        "U8 input bulk -- V5_PRE's only local capacitor")
