@@ -27,8 +27,9 @@ removes the creation-order trap from this file entirely.
 
 WHAT THIS BOARD IS, in one paragraph: ten IR emitters fire up at ten strings;
 twenty photodiodes -- a symmetric pair per string -- catch the reflection; twenty
-transimpedance amps turn tens of nanoamps into volts; twenty ADC channels on one
-STM32H743 digitise them; firmware forms SUM (the audio) and DIFF (the lateral
+transimpedance amps turn tens of nanoamps into volts; five four-channel audio
+converters (TLV320ADC3140) digitise them and hand the STM32H743 five TDM lanes;
+firmware demodulates the 48 kHz emitter carrier, forms SUM (the audio) and DIFF (the lateral
 axis, which is what stops a precessing string reading an octave high); and the
 result leaves over USB HIGH SPEED. See src/optical_pickup.py for why optical
 rather than magnetic, why the detectors sit across Y rather than along X, and why
@@ -117,6 +118,8 @@ FP = {
     "0805C":    "Capacitor_SMD:C_0805_2012Metric",
     "1206C":    "Capacitor_SMD:C_1206_3216Metric",
     "0805OPT":  "LED_SMD:LED_0805_2012Metric",
+    "PD15":     "Steel:Everlight_PD15-22B",           # elec/footprints/Steel.pretty
+    "WQFN-24":  "Package_DFN_QFN:Texas_RTW_WQFN-24-1EP_4x4mm_P0.5mm_EP2.7x2.7mm",
     "SOIC-14":  "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm",
     "LQFP144":  "Package_QFP:LQFP-144_20x20mm_P0.5mm",
     "LQFP176":  "Package_QFP:LQFP-176_24x24mm_P0.5mm",
@@ -181,6 +184,9 @@ PIN = {  # port name -> LQFP176 pin
     "PF3": 19, "PF4": 20, "PF5": 21, "PF6": 24, "PF7": 25, "PF8": 26,
     "PF9": 27, "PF10": 28, "PF11": 59, "PF12": 60, "PF13": 63, "PF14": 64,
     "PH0": 29, "PH1": 30,
+    # the audio converters' buses -- see THE CONVERTERS below
+    "PE3": 2, "PE4": 3, "PE5": 4, "PE6": 5, "PI6": 175, "PD1": 143,
+    "PF0": 16, "PF1": 17, "PF2": 18, "PF15": 65,
     "NRST": 31, "BOOT0": 166, "PDR_ON": 171,
     "VBAT": 6, "VDDA": 39, "VSSA": 37, "VREF+": 38, "VDD33_USB": 114,
     "VCAP1": 81, "VCAP2": 125,
@@ -260,348 +266,66 @@ ULPI = {"ULPI_D0": "PA3", "ULPI_D1": "PB0", "ULPI_D2": "PB1", "ULPI_D3": "PB10",
         "ULPI_CK": "PA5", "ULPI_STP": "PC0", "ULPI_DIR": "PI11",
         "ULPI_NXT": "PH4"}
 
-# ── THE ADC MAP, and the pair skew it cannot avoid ───────────────────────────
-# ⚠ THE COUNTING BELOW WAS DONE FOR THE LQFP144 AND THE PART IS NOW AN LQFP176. The
-# arithmetic that follows -- 28 ADC-capable pins, ULPI taking seven, 21 left for 20
-# channels, one spare -- described the 144 and is kept because it is why the board is
-# not an LQFP100 (16 channels) and why the channel-to-ADC split is what it is. On the
-# 176 the constraint is looser, not tighter, so nothing here becomes unsafe; but the
-# "one spare" is no longer the true headroom and the pin-crowding argument at the end
-# of this note ("twelve on the strip-facing edge and eight round the corner") was
-# measured on the 144's pinout and has NOT been re-measured on the 176.
-# The pair mapping itself is package-independent: ADC channel numbers follow the PORT
-# pin (PF3 is ADC3_INP5 on any package), so ADC_PAIRS did not have to move.
+# ── THE CONVERTERS: FIVE TLV320ADC3140s, NOT THE MCU'S OWN ADCs (2026-09-21) ──────
+# This section used to be ~340 lines on mapping twenty channels onto the H743's three ADCs:
+# which pins each unit could reach, the pair skew a sequenced scan could not avoid, which
+# strings came out with DIFF sign-inverted, and three routing proxies that each predicted
+# wrong. All of it went with the decision below (it is in git history, 2026-09-21).
 #
-# ⚠ A STRING'S TWO DETECTORS SHOULD BE SAMPLED AT THE SAME INSTANT, AND THEY CANNOT
-# ALL BE. SUM and DIFF are formed from a pair, so any time skew between A and B
-# leaks the common mode (which is the large SUM signal) into the difference. The
-# H743 has three ADCs, and the pins do not distribute 10/10:
-#     ADC1 can reach 11 of the free pins, ADC2 9, ADC3 9
-# -- and PF3..PF10, eight pins, are ADC3-ONLY, so ADC3 must carry at least eight
-# channels. Sequences of 8/6/6 were the best split available on those pins alone.
+# WHY THE MCU'S ADCs WENT. They were this board's noise floor. DS12110 rev V gives 77 dB SNR
+# single-ended -- characterised on BGA, "values for LQFP packages might differ" -- which is
+# ~165 uVrms, against the ~35-50 uVrms the front end makes once its own op-amp noise is
+# band-limited. Oversampling could not rescue it: ADC3 carried ten conversions, six of
+# them on SLOW channels (1 Msps at 16 bit, DS12110 Table 185 notes), so ~4x was the
+# ceiling. A delta-sigma audio converter fixes all of it at once:
+#   * ~13 uVrms (SBAS993B 7.5: 106 dB SNR A-wt at 2 Vrms differential full scale)
+#   * its decimation filter removes everything above the band, so the op-amps' voltage
+#     noise out to their GBW no longer folds into the audio
+#   * all twenty channels convert on ONE edge (shared BCLK/FSYNC), so a string's A and B
+#     are simultaneous by construction -- the old pair-skew budget and the
+#     DIFF_SIGN_INVERTED bookkeeping have nothing left to describe
+#   * the analog nets end at a converter beside the MCU instead of fanning into a 0.5 mm
+#     pitch LQFP edge -- which was this board's routing problem, every time
+# ONE CONVERTER PER QUAD: U14..U18 take U1..U5's four outputs, IN1..IN4 in the quad's own
+# section order (see SEC below), differential and AC-coupled: INxP from the TIA output,
+# INxM from MID, 10 nF C0G each (TI: "for the best dynamic range performance, the
+# differential AC-coupled input must be used", SBAS993B 8.3.x). MID is what every TIA
+# output sits on, so taking it as the - input cancels its noise instead of adding it.
 #
-# ⚠ THE SPLIT IS NOW 10/6/4, TRADED DELIBERATELY FOR ROUTING. Strings 5 and 8 moved
-# their A channel from PF11/PF12 (ADC1, and on the package edge FACING AWAY from the
-# sensing strip) onto PC2_C/PC3_C, the direct ADC3 inputs on the edge that faces it --
-# see the corridor note further down for why that is the whole problem. ADC3 therefore
-# runs ten conversions, ADC1 four.
+# ⚠ THEY RUN AT fS = 192 kHz AND THE EMITTERS ARE MODULATED AT 48 kHz, LOCKED TO FSYNC.
+# The old ambient scheme -- a LEDs-on and a LEDs-off sample inside each 48 kHz frame --
+# needs a sampler; a delta-sigma converter's filter averages the two together. So ambient
+# rejection becomes a LOCK-IN: the emitters square-wave at fS/4, the string's audio rides
+# as sidebands at 28..68 kHz inside the 192 kHz filter's ~86 kHz passband, and firmware
+# multiplies by the +-1 reference and decimates to 48 kHz. Ambient light and its flicker
+# land at 28..68 kHz after demodulation and are filtered away. (A 10 nF coupling cap into
+# the 20 k input setting is an ~800 Hz high-pass, far below the carrier's lowest sideband.)
+# The TIAs must pass the carrier, so their pole moved from 15.4 kHz to ~160 kHz -- see Rf.
 #
-# THE TIMING GOT BETTER, NOT WORSE, WHICH IS WHY IT WAS AFFORDABLE. The burst is bounded
-# by the LONGEST sequence: 10 x 0.7 us = 7.0 us of a 20.8 us frame, against 5.6 us
-# before -- still a burst, still finishing in the first third of the frame, which is the
-# condition the argument above actually rests on. And both moved pairs are now SAME-ADC
-# with their partner adjacent in the sequence, so their skew is ONE conversion, 0.7 us,
-# where the worst cross-ADC pair sits at two. The -46 dB bound below is a worst case that
-# these two pairs no longer occupy.
-#
-# THE RESIDUAL IS SMALL AND BOUNDED, which is the point of writing it down rather
-# than discovering it. Run the sequence as a BURST at the top of each 48 kHz frame
-# (~0.7 us per conversion at 16 bit, so ~6 us of a 20.8 us frame) and the worst
-# pair skew is two conversions, ~1.4 us. At a 1 kHz fundamental that is 0.5 deg of
-# phase and about -46 dB of SUM leaking into DIFF -- far below what DIFF is for,
-# which is detecting that SUM has collapsed. It is also correctable for free in
-# firmware: the skew is a known constant, so a short fractional delay on the earlier
-# channel removes it. What must NOT happen is spreading the scan across the frame;
-# then the skew is a whole conversion INTERVAL rather than a conversion, and the
-# argument above stops holding.
-#
-# ⚠ AND THREE SEPARATE PROXIES FOR "HOW HARD IS THIS TO ROUTE" HAVE NOW BEEN WRONG ON
-# THIS BOARD. Before trusting a fourth, read this. The permutation lever was re-opened
-# 2026-09-18 with two metrics that both said a particular reassignment was better:
-#
-#     straight-line crossings   said 80 -> 44        actually destroyed the A side
-#     weighted far-edge cost    said 519 -> 279      board went 1 -> 4 unconnected
-#     per-edge inversions       said 40 -> 33        same run, same result
-#
-# The far-edge measure is the one that looked most principled: twenty nets, fifteen pins
-# on the edge that faces the strip, so at least five must travel around the package, and
-# it is obviously worse to spend a far pin on the string whose quad is already furthest
-# away. String 2 sits 106 mm out and held a far pin; the reassignment gave it a
-# near-only pair and handed the worst pair to string 10 at 30 mm. Both metrics improved,
-# the argument still reads correctly, and the router lost three nets.
-#
-# The honest conclusion is not "use a better proxy" but that ON THIS BOARD the only
-# measurement that has ever predicted routability is a routing run. Proxies are for
-# generating candidates, never for accepting them.
-#
-# ⚠ THE ZERO-INVERSION CLAIM BELOW COULD NOT BE REPRODUCED, and it should be read with
-# that in mind. Counting inversions per package edge -- nets on different edges cannot
-# cross each other at the pin row, so mixing pads 1..44 with 45..88 in one ordering is
-# meaningless and the first attempt at this did exactly that -- the CURRENT map scores 40,
-# not 0. Either the measure differs from the one used below or the claim has gone stale;
-# what is certain is that the PC2_C/PC3_C move took it from 31 to 40 and was still worth
-# making, because the board went from 2 unconnected to 1. If inversions do not predict
-# routability, the argument below deserves the same scepticism as the two above it.
-
-# ⚠ WHICH STRING GETS WHICH PAIR IS FREE, AND IT IS ALREADY SPENT WELL -- CHECKED, so
-# that nobody spends an afternoon rediscovering it. The skew argument above constrains
-# what may form a PAIR and the order of the burst; it says nothing about which string
-# uses which pair, so the mapping is available as a routing lever. Measured on the
-# routed board, the A channels arrive at the MCU's -X edge in pad order 13,14,15,18,
-# 19,20,21,22,27 against quads at y 38,38,57,57,76,76,94,94,113 -- monotonic, so the A
-# side has ZERO crossings and permuting it can only make things worse.
-#
-# ⚠ WHAT IS LEFT IS SILICON, NOT PLACEMENT. Of the 20 ADC pins this board uses, 12 are
-# on the strip-facing edge and EIGHT ARE NOT -- they are round the corner on the edge
-# that faces away, so those eight nets must travel past the package to reach it.
-# ⚠ AND THE LAST THREE NETS FAIL AT THE ESCAPE, NOT ON THE HAUL. Measured 2026-09-17
-# after the ADC remap, with two experiments that both came back negative:
-#   60 passes, continuing from the 25-pass board -> byte-identical result, same three
-#     nets, same fragment lengths to four decimals. Router effort does nothing.
-#   incremental (93 nets frozen, only the 3 free) -> also nothing, and no faster.
-# Neither effort nor interference from movable neighbours, then. Copper per net says
-# what it is:
-#     TIA_OUT_8B  pin 24   26.8 mm   UNROUTED
-#     TIA_OUT_2A  pin 33   13.1 mm   UNROUTED
-#     TIA_OUT_5A  pin 59   18.4 mm   UNROUTED
-#     TIA_OUT_2B  pin 63  159.7 mm   ok
-#     TIA_OUT_4B  pin 55  152.0 mm   ok
-# The three failures carry the LEAST copper of all twenty -- 13 to 27 mm against 44 to
-# 160. They did not get most of the way and stall; the router barely got off the pad.
-# That is escape congestion at a 0.5 mm pitch package carrying 20 ADC nets and a
-# 12-signal ULPI bus, and it is why neither lever above touched it.
-#
-# ⚠ AND IT IS NOT THE PIN'S OWN NEIGHBOURHOOD EITHER -- that hypothesis was built,
-# measured and disproved. Counting how many of a pin's four nearest neighbours also need
-# a lateral escape gives the three failures 2.00 and the seventeen that routed 2.76: the
-# ones that failed are LESS locally crowded, not more.
-#
-# WHAT IT ACTUALLY IS, measured: the approach corridor. Copper coverage in the 20 x 24 mm
-# region where every ADC net and the ULPI bus converge on the MCU, against the board's
-# own average --
-#     F.Cu    10.6%  vs  3.3%   (3.2x)
-#     In2.Cu  12.8%  vs  5.4%   (2.4x)
-#     B.Cu     4.6%  vs  1.9%   (2.4x)
-# Twenty analog nets and twelve ULPI signals all have to reach one 26 mm package, so the
-# density piles up where they meet it. That is why more passes changed nothing: the
-# corridor is full, and no amount of search finds room that is not there.
-#
-# ⚠ B.Cu IS THE LEAST USED LAYER IN THAT CORRIDOR -- 4.6% against F.Cu's 10.6%, less than
-# half -- which is the cheapest lever left and has not been tried. If freerouting is
-# steering away from the bottom layer (layer costs, preferred directions, or simply
-# because the fan-out starts on F.Cu), pushing traffic down there costs nothing but a
-# router setting. Try that before moving the MCU or the pin map.
-#
-# ⚠ THE OTHER LEVER, recorded rather than taken because it trades against something just
-# won: PC2_C and PC3_C (pins 34 and 35) are now UNUSED -- freed when ULPI_DIR and
-# ULPI_NXT moved to PI11/PH4 -- and 34 is adjacent to the failing pin 33. They are
-# ADC3_INP0 and ADC3_INP1, so they are real channels. Moving a failing net onto one
-# costs part of the zero-inversion ordering above, so it wants the same inversion
-# scoring that produced that ordering, not a guess.
-#
-# ⚠ RE-MEASURED ON THE LQFP176, 2026-09-17, because this paragraph was written for the
-# LQFP144 and a package change is exactly the kind of thing that silently invalidates a
-# measurement. It does not: the split is still 12 / 8. Twelve TIA_OUT pads sit on U6's
-# -X edge, which faces the strip; eight sit on its +Y edge, which faces away --
-#     +Y: TIA_OUT_3B 4B 6B 7B 8B 9A 9B 10B
-# and those eight are still the nets that finish last. Of the three unconnected left on
-# the current route, TIA_OUT_8B is one of them. That is the H743's ADC pin distribution meeting a board whose analog all arrives
-# from one direction, and there is no assignment that fixes it: the pins are where they
-# are. Rotating the MCU does not help either (elec/orient.py scores it at its best
-# orientation already), and the eight are why a handful of TIA_OUT nets are the last
-# ones to finish routing.
-#
-# Order below is (A_pin, B_pin) per string, chosen so each pair spans two different
-# ADCs where possible and sits adjacent in the scan otherwise.
-# ⚠ REORDERED 2026-09-17, AND THE METRIC IS THE WHOLE STORY. Measured on the placed
-# board, the twenty strip-to-MCU nets arrived at their pins with ELEVEN inversions from
-# monotonic -- A side 0, B side 11. The A side's perfection is what the note above
-# records and it is real; the B side had never been looked at, and 11 inversions across
-# 7 pins on one package edge is most of the disorder there is room for.
-#
-# ⚠ THE FIRST ATTEMPT AT THIS MADE IT WORSE AND THE PROXY SAID IT WAS BETTER. Scoring
-# candidate maps by CROSSINGS BETWEEN STRAIGHT RATSNEST LINES said the best permutation
-# cut 80 crossings to 44 -- and it got there by destroying the A side, 0 inversions to
-# 14, to buy ONE inversion on the B side. Those long diagonal lines cross each other
-# because the board is long, not because the escape is hard; what actually costs a via
-# is the ORDER nets arrive in at a pin row. Scored on inversions instead, the same
-# search returns the opposite answer. The proxy was not slightly wrong, it was inverted.
-#
-# ⚠ AND PERMUTATION ALONE CANNOT FIX IT, which is why this was stuck. Which string gets
-# which PAIR is free, but a pair carries both its pins, so re-ordering the B side drags
-# the A side with it -- best case 8 inversions with A degraded to 2. The lever that
-# works is swapping A and B WITHIN a pair: it moves one pin between the two lists
-# without changing which pair a string owns, so both sides can be ordered at once.
-# Result: ELEVEN INVERSIONS TO ZERO, both sides monotonic, three strings swapped.
-#
-# ⚠ WHAT THE SWAP COSTS -- AND THE FIRST VERSION OF THIS NOTE OVERSTATED IT. It claimed
-# DIFF = A - B comes out sign-inverted on the three swapped strings. It does not. The
-# hookup loop below is `tia_out[(i, "A")] += u6[PIN[pa]]`: detector A goes to the
-# FIRST-LISTED pin of its pair, for all ten strings, before and after the reorder. Any
-# firmware generated from this table therefore reads A as A, and the sign is uniform.
-#
-# What the swap actually breaks is an INCIDENTAL INVARIANT nobody declared. In the
-# original order, detector A landed on ADC3 for strings 1-8 and ADC2 for 9-10 -- never on
-# ADC1. The three swapped strings now put A on ADC1 (PA1, PF11, PF12) and B on ADC3. So
-# firmware that tells the two detectors apart by WHICH ADC UNIT SAMPLED THEM -- a
-# tempting shortcut when three ADCs run in parallel and the results are demultiplexed
-# afterwards -- gets exactly these three backwards. Firmware that goes by the pin table
-# is unaffected.
-#
-# The obligation is therefore: demultiplex by pin, not by ADC unit. DIFF_SIGN_INVERTED
-# below names the three strings that would be wrong if that rule is broken; it is a
-# tripwire, not a correction to apply. Since the PC2_C/PC3_C move the three fail in two
-# different ways: string 1 has A on ADC1 where the other seven have A on ADC3 or ADC2,
-# and strings 5 and 8 have BOTH channels on ADC3, so the unit does not distinguish them
-# at all. Either way the unit is not the answer and the pin is. (SUM is symmetric and cannot be affected either
-# way.) Recorded here because nothing in the netlist, the CAD or DRC can express it.
-ADC_PAIRS = (
-    ("PA1", "PF4"),          # 1   ADC1[1] / ADC3[1]
-    ("PF3", "PA0"),          # 2   ADC3[0] / ADC1[0]  <- was string 10's pair
-    ("PF10", "PA7"),         # 3   ADC3[7] / ADC2[5]
-    ("PC4", "PC5"),          # 4   ADC2[0] / ADC2[1]
-    ("PC3_C", "PF5"),        # 5   ADC3[9] / ADC3[2]
-    ("PF9", "PA6"),          # 6   ADC3[6] / ADC2[4]
-    ("PF8", "PA4"),          # 7   ADC3[5] / ADC1[5]
-    ("PC2_C", "PF6"),        # 8   ADC3[8] / ADC3[3]
-    ("PF7", "PA2"),          # 9   ADC3[4] / ADC1[4]
-    ("PC1", "PF13"),         # 10  ADC2[2] / ADC2[3]  <- was string 2's pair
-)
-# ⚠ WHICH ADC UNIT A PIN CAN ACTUALLY REACH, CHECKED RATHER THAN ASSUMED. The pairing
-# argument above is entirely about which ADC reads which detector -- and every word of it
-# is worthless if a pin does not offer that ADC at all. Nothing downstream can catch it:
-# the netlist just connects a net to a package pin, DRC compares copper to the netlist,
-# and a pin wired to an ADC it does not have is a dead analog channel that looks perfect
-# all the way to the bench.
-#
-# Verified 2026-09-17, all twenty pins against Table 9 of DS12110 (STM32H742/743/753),
-# zero mismatches. The units each pin offers:
-ADC_UNITS = {
-    "PA0": (1, 2), "PA1": (1, 2), "PA2": (1, 2), "PA4": (1, 2),
-    "PA6": (1, 2), "PA7": (1, 2), "PC1": (1, 2, 3), "PC4": (1, 2), "PC5": (1, 2),
-    "PF3": (3,), "PF4": (3,), "PF5": (3,), "PF6": (3,), "PF7": (3,),
-    "PF8": (3,), "PF9": (3,), "PF10": (3,), "PF11": (1,), "PF12": (1,), "PF13": (2,),
-    "PC2_C": (3,), "PC3_C": (3,),   # ADC3_INP0 / ADC3_INP1, DS12110 p67
-}
-# the unit each pin is USED as, read off the ADCn[k] comments in ADC_PAIRS above
-ADC_USED_AS = {
-    "PA1": 1, "PF4": 3, "PC1": 2, "PF13": 2, "PF10": 3, "PA7": 2, "PC4": 2, "PC5": 2,
-    "PC3_C": 3, "PF5": 3, "PF9": 3, "PA6": 2, "PF8": 3, "PA4": 1, "PC2_C": 3, "PF6": 3,
-    "PF7": 3, "PA2": 1, "PF3": 3, "PA0": 1,
-}
-assert set(ADC_USED_AS) == {p for pair in ADC_PAIRS for p in pair}, (
-    "ADC_USED_AS has drifted from ADC_PAIRS")
-for _p, _u in sorted(ADC_USED_AS.items()):
-    assert _u in ADC_UNITS[_p], (
-        "%s is used as an ADC%d input and the H743 does not offer one there (it has %s)"
-        % (_p, _u, ", ".join("ADC%d" % n for n in ADC_UNITS[_p])))
-
-# ⚠ AND THE BRACKET IS A SCAN SLOT, NOT AN INP NUMBER. ADCn[k] above means "the k-th
-# conversion in ADCn's sequence", a number this file assigns; it is NOT the datasheet's
-# ADCn_INPk. The two disagree -- line 259 records PF3 as ADC3_INP5 while it sits in scan
-# slot 0 -- and mixing them once already produced a contradiction: PC2_C and PC3_C were
-# labelled ADC3[0] and ADC3[1], their real INP numbers, which collided with PF3's and
-# PF4's slots when strings 5 and 8 moved onto them. They now carry slots 8 and 9, the two
-# ADC3 had free. Only the UNIT digit is load-bearing (ADC_USED_AS is read off it); the
-# slot is documentation, so it gets an assertion rather than trust.
-ADC_SLOTS = {   # (unit, scan slot) per pin, read off the ADCn[k] comments above
-    "PA0": (1, 0), "PA1": (1, 1), "PA2": (1, 4), "PA4": (1, 5),
-    "PC4": (2, 0), "PC5": (2, 1), "PC1": (2, 2), "PF13": (2, 3),
-    "PA6": (2, 4), "PA7": (2, 5),
-    "PF3": (3, 0), "PF4": (3, 1), "PF5": (3, 2), "PF6": (3, 3), "PF7": (3, 4),
-    "PF8": (3, 5), "PF9": (3, 6), "PF10": (3, 7), "PC2_C": (3, 8), "PC3_C": (3, 9),
-}
-assert set(ADC_SLOTS) == set(ADC_USED_AS), "ADC_SLOTS has drifted from ADC_PAIRS"
-assert all(u == ADC_USED_AS[p] for p, (u, _k) in ADC_SLOTS.items()), (
-    "a pin's ADC_SLOTS unit disagrees with ADC_USED_AS")
-assert len(set(ADC_SLOTS.values())) == len(ADC_SLOTS), (
-    "two pins claim the same ADCn[k] scan slot -- see the note above; this exact "
-    "collision happened once")
-
-# ⚠ DERIVED, BECAUSE THE HAND-WRITTEN VERSION OF THIS LIST WAS WRONG TWICE. It read
-# (1, 5, 8) and named only one of the two ways the unit fails to identify a detector; it
-# missed string 4, which has been same-ADC since before the list existed, and it did not
-# follow the strings 2/10 swap, which moved the same-ADC pair from 2 to 10. A tripwire
-# nothing downstream can check must not also be a fact nothing downstream can check.
-DIFF_SIGN_INVERTED = tuple(
-    i for i, (pa, pb) in enumerate(ADC_PAIRS, start=1)
-    if ADC_USED_AS[pa] != 3 or ADC_USED_AS[pa] == ADC_USED_AS[pb])
-#   strings whose detectors the ADC UNIT cannot tell apart -- either A is not on ADC3
-#   where the majority put it, or both channels share one unit. A tripwire for firmware
-#   that demultiplexes by unit, NOT a sign table to apply. Demultiplex by PIN.
-assert DIFF_SIGN_INVERTED == (1, 4, 5, 8, 10), (
-    "the demux-ambiguous set moved: %r -- re-read the note above before accepting it"
-    % (DIFF_SIGN_INVERTED,))
-
-# ⚠ AND THE TRAP THAT NEARLY MADE THIS CHECK LIE. The datasheet writes a channel shared
-# between units as ADC12_INP14 or ADC123_INP11, one token, not as ADC1_INP14 plus
-# ADC2_INP14. A search for "ADC1_INP" therefore finds NONE of the shared channels, and
-# the first run of this check reported eleven of the twenty pins as having no ADC at all.
-# Every one of those was the search being wrong. A second trap sits on top: extracting the
-# table from the PDF as flat text scrambles the columns badly enough that a channel from
-# one row lands beside another row's pin, so the answers that do come back cannot be
-# trusted either. The numbers above were read with per-word coordinates, row by row,
-# and the three the column logic could not resolve were read off the page by hand.
-# ⚠ WHY THE MCU APPROACH CORRIDOR IS CROWDED, AND IT IS NOT A MAPPING MISTAKE. Measured
-# on the placed board 2026-09-17: the H743 in LQFP176 has ADC-capable pins on only TWO of
-# its four edges -- fifteen on the -X edge (PF3-PF10, PC0-PC3_C, PA0-PA2) and nine on the
-# +Y edge (PA4-PA7, PC4, PC5, PF11-PF14). The other two edges have NONE.
-#
-# The sensing strip sits at -X and -Y of the package, spanning y 30 to 113 against the
-# MCU at y 137. So the -X edge faces the strip and the +Y edge is the FAR side, and every
-# net landing there has to travel around the package to reach it. Twenty nets, fifteen
-# near pins: at least five must go the long way round whatever the assignment is. The
-# current map sends eight, and two of the three nets that fail to route are among them.
-#
-# That is the density the corridor measurement found. It is a consequence of the pinout
-# and the board being long, not of the pair ordering -- which is why re-permuting pairs
-# could never fix it, and why the router settings could not either.
-#
-# ⚠ STRINGS 2 AND 10 HAVE SWAPPED PAIRS, AND IT CLOSED THE LAST ANALOG NET. Pair 2 is
-# (PC1 near, PF13 FAR) and pair 10 is (PF3 near, PA0 near) -- both near. String 2's
-# detectors sit 99 mm from the MCU, the farthest on the board; string 10's sit 23 mm away.
-# Handing the far-edge pin to the string that barely travels, and the all-near pair to the
-# string that travels farthest, is the trade the evidence asked for:
-#
-#     every net reaching a NEAR pin routes, at any distance up to 107 mm
-#     five of the six nets reaching a FAR pin route
-#     the one that failed was the FARTHEST of the far-pin group, at 99 mm
-#
-# TIA_OUT_1A runs 107 mm -- longer than the net that failed -- and routes, which is what
-# rules out distance as the cause. The far-side crossing is a resource with about five
-# slots, and the net arriving from farthest away was the one squeezed out of it.
-#
-# ⚠ WHAT IT COST: +3V3A. (STATE AT THE TIME -- the board is now 0 unconnected and 0
-# violations; +3V3A is closed by the deliberate repair in route.py's repair block, which
-# is where this paragraph's "better problem" was eventually solved.) The board was then
-# still at 1 unconnected, but the open net had become the
-# analog supply rail, 6.5 mm between a track at 71.16,46.43 and U2's pin 4 -- the freed
-# analog nets took the corridor the rail had been using. That is a better problem than the
-# one it replaced: a local gap beside an op-amp rather than a 123 mm run that has to get
-# round the package, and it is in the part of the board the generator already pre-lays.
-#
-# ⚠ AND THE NEAR/FAR SPLIT IS NOT THE BINDING CONSTRAINT -- MEASURED BY MAKING IT ZERO.
-# Everything above treats "at least five nets must travel around the package" as a floor
-# set by the pinout. It is not a floor, because it assumes the package's ORIENTATION is
-# fixed, and it is not: the ADC pins occupy two ADJACENT edges and the strip lies along
-# two ADJACENT sides, so a rotation exists that puts both ADC edges against the strip.
-# Measured on the placed board, classifying each pad by POSITION rather than by pin
-# number (a metric keyed on (pin-1)//44 cannot see a rotation at all, which is how this
-# went unnoticed):
-#     U6 at   0 deg   -X 14 near  +Y  6 far
-#     U6 at  90 deg   +Y 14 far   +X  6 far    -- zero near, the worst case
-#     U6 at 270 deg   -Y 14 near  -X  6 near   -- ALL TWENTY face the strip
-#
-# ⚠ AND AT 270 THE BOARD ROUTES WORSE: 6 unconnected against 1. Reverted. Rotating the
-# MCU moves every OTHER pin with it -- the ULPI bus, the USB pair, the crystals, the
-# decoupling and the power entry are all placed around this package at 0 deg -- so
-# perfecting the analog escape breaks the four things that were already working. The
-# twenty analog nets are not the scarce resource they look like.
-#
-# The lesson is worth more than the experiment: the corridor-density diagnosis and the
-# near/far split are descriptions of where the copper IS, not of what is stopping the
-# router. Driving either to its optimum made the board worse, twice.
-
-# ⚠ THE ONLY SLACK IS TWO PINS, AND THEY ARE ADC3-ONLY. PC0 is taken by ULPI_STP, PF14 is
-# the spare on the far edge, so the free near-edge ADC pins are PC2_C (34) and PC3_C (35)
-# -- ADC3_INP0 and ADC3_INP1, no other unit. Moving a far-edge net onto one takes the
-# near/far split from 12/8 to 13/7, and makes that net's pair same-ADC unless its partner
-# is already off ADC3. Strings 4 and 10 are same-ADC today (it was 2 and 4 until the
-# strings 2/10 swap moved the pair), so that is a cost the design has accepted twice; the real cost is that ADC3 would carry ten channels against
-# ADC1's four, which is a scan-rate imbalance and wants checking against the latency
-# budget before it is spent.
-
-ADC_SPARE = "PF14"      # the one channel left over; brought out to nothing
+# 20 ch x 16 bit x 192 kHz is 61 Mbit/s, more than one TDM lane carries (BCLK <= 24.576
+# MHz), so EACH CONVERTER GETS ITS OWN DATA LANE at BCLK 12.288 MHz (4 slots x 16 bit x
+# 192 kHz), all five on one BCLK/FSYNC pair driven by SAI1 block A. Pins, read off KiCad's
+# STM32H743IITx symbol alternates (which are generated from ST's database):
+#   SAI1_SCK_A PE5 (4), SAI1_FS_A PE4 (3)                      -- the one clock pair
+#   lane 1 SAI1_SD_A PE6 (5)   lane 2 SAI1_SD_B PE3 (2)   lane 3 SAI2_SD_B PA0 (40)
+#   lane 4 SAI2_SD_A PI6 (175) lane 5 SAI3_SD_A PD1 (143)
+# ⚠ SAI2 AND SAI3 RUN AS SYNCHRONOUS SLAVES OF SAI1 (SAI_GCR SYNCIN), taking its clocks
+# internally -- which is why lanes 3-5 need no SCK/FS pins of their own. SAI4 would have
+# kept lane 5 on the strip-facing edge (PC1, pin 33) but it sits in the D3 domain; confirm
+# SAI4<-SAI1 synchronisation in RM0433 before moving it there.
+# CONTROL IS TWO I2C BUSES, because the part has two address straps -- four addresses
+# (1001100..1001111, SBAS993B Table 48) for five devices. U14..U17 on I2C2 (PF0 SDA, PF1
+# SCL), U18 alone on I2C4 (PF15 SDA, PF14 SCL). SHDNZ for all five on PF2, pulled LOW, so
+# the converters sit in hardware shutdown until firmware has the supplies settled
+# (SBAS993B 9.2.1.2 step 1).
+# ⚠ THE EMITTER GATE (PB3) IS TIM2_CH2, and firmware must run it from the same PLL as the
+# SAI kernel clock so the carrier is frequency-locked to FSYNC; its phase is fixed at start.
+SAI_CLK = {"SAI_SCK": "PE5", "SAI_FS": "PE4"}
+SAI_SD = ("PE6", "PE3", "PA0", "PI6", "PD1")     # lane k -> converter U(14 + k)
+I2C_BUS = (("PF0", "PF1"), ("PF15", "PF14"))      # (SDA, SCL): I2C2, I2C4
+ADC_I2C = (0, 0, 0, 0, 1)                          # converter k -> bus
+ADC_ADDR = (0, 1, 2, 3, 0)                         # converter k -> ADDR1:ADDR0 strap
+ADC_SHDN = "PF2"
 
 
 def _r(ref, value, desc, fp=_R_0402):
@@ -645,7 +369,7 @@ def optical():
     # What actually keeps the switcher quiet here is placement, and that is already
     # done: U13, C160 and C162 sit in one row so the high-di/dt loop is short, and the
     # buck is at the -Y tail as far from the photodiodes as the board allows. Q1's
-    # emitter return -- 211 mA pulsed at 96 kHz, the board's worst aggressor -- is
+    # emitter return -- 211 mA square-waved at 48 kHz, the board's worst aggressor -- is
     # better off on the plane directly beneath its own V5_PRE feed than on a trace
     # running back to a tie point.
     #
@@ -668,7 +392,7 @@ def optical():
 
     # ── the ten sensing channels ─────────────────────────────────────────────
     # Per string: one emitter D(i) with ballast R(i), two photodiodes PDA/PDB, two
-    # TIAs (a quarter of a quad each) with Rf/Cf, and two ADC pins.
+    # TIAs (a quarter of a quad each) with Rf/Cf, and two converter channels.
     led_row = Net("LED_ROW")        # the switched low side, common to all ten
     pd_a, pd_b = {}, {}
     for i in range(1, 11):
@@ -685,8 +409,7 @@ def optical():
         # assumes something near this value. Raising drive is the first SNR lever this
         # board has left, and spending it means re-checking U13, C162's droop over a
         # pulse, and the trunk's wire gauge together.
-        r = _r("R%d" % i, "180R", "LED ballast, string %d -- 21 mA, tune per string" % i,
-               "Resistor_SMD:R_0603_1608Metric")
+        r = _r("R%d" % i, "180R", "LED ballast, string %d -- 21 mA, tune per string" % i)
         d = Part(name="LED_IR", ref_prefix="D", ref="D%d" % i, dest="NETLIST",
                  tool="skidl", value="IR17-21C/TR8",
                  description="IR emitter 940 nm, string %d (LCSC C131250)" % i,
@@ -706,12 +429,14 @@ def optical():
             # and the placements are keyed by ref, so the two orderings are not
             # interchangeable -- they quietly produce a board whose parts sit in the
             # right places under the wrong names.
+            # Everlight PD15-22B/TR8: pad 1 ANODE, pad 2 CATHODE (DTD-152-002 p.2), two
+            # pads each -- elec/layout.py nets every pad that shares a number.
             pd = Part(name="PHOTODIODE", ref_prefix="PD", ref="PD%d%s" % (i, tag),
-                      dest="NETLIST", tool="skidl", value="VEMD4110X01",
+                      dest="NETLIST", tool="skidl", value="PD15-22B/TR8",
                       description="filtered Si PIN photodiode, string %d side %s "
-                      "(LCSC C3211080)" % (i, tag),
-                      footprint="Diode_SMD:D_0805_2012Metric",
-                      pins=[Pin(num=1, name="K", func=P), Pin(num=2, name="A", func=P)])
+                      "(LCSC C161211)" % (i, tag),
+                      footprint="Steel:Everlight_PD15-22B",
+                      pins=[Pin(num=1, name="A", func=P), Pin(num=2, name="K", func=P)])
             store[i] = pd
 
     # ── U1-U5: the transimpedance amps, four to a quad ───────────────────────
@@ -743,118 +468,68 @@ def optical():
         summing = Net("TIA_IN_%d%s" % (i, side))
         out = Net("TIA_OUT_%d%s" % (i, side))
         tia_out[(i, side)] = out
-        # ZERO BIAS: the photodiode's anode sits on the virtual earth and its cathode
-        # on MID, so there is no reverse bias and therefore no dark current to speak
-        # of. Dark current is the noise floor this board actually lives against.
+        # ZERO BIAS: the photodiode's CATHODE sits on the virtual earth and its ANODE on
+        # MID, so there is no reverse bias and next to no dark current.
         #
-        # ⚠ ZERO BIAS ALSO MEANS THE DATASHEET'S HEADLINE NUMBERS ARE THE WRONG ONES.
-        # Vishay characterises the VEMD4110X01 at VR = 5 V, and both figures that
-        # matter here move at VR = 0:
-        #   responsivity   Ira 2.4 uA/(mW/cm2) at VR = 5 V, but Ik 2.2 at zero bias --
-        #                  and Ik, the SHORT-CIRCUIT current, is precisely what a
-        #                  virtual-earth TIA measures. 2.2 is the number to design to.
-        #   capacitance    CD 2.5 pF at VR = 5 V but 7 pF at VR = 0 (1 MHz). Nearly 3x,
-        #                  and CD is what sets the TIA's noise gain and its stability
-        #                  margin, so anyone re-deriving Cf from the front page of the
-        #                  datasheet will get it wrong by a factor of three.
-        # With Cin = 7 (diode) + 6 (TLV9064: CID 2 pF + CIC 4 pF both appear at the
-        # inverting input) + ~2 (board) = 15 pF against Rf = 4M7 and the TLV9064's
-        # 10 MHz GBW, the minimum feedback capacitance for stability is
-        # sqrt(Cin / (2*pi*Rf*GBW)) = 0.23 pF. Cf is 2.2 pF -- ten times that,
-        # deliberately overdamped, because the pole it sets is wanted anyway as the
-        # anti-alias filter. The 3x capacitance error would still have been safe here;
-        # it is recorded because the next person to move Rf will need it.
+        # ⚠ IT WAS WIRED THE OTHER WAY ROUND UNTIL 2026-09-21, AND THE OUTPUT WENT THE WRONG
+        # WAY. Photocurrent leaves a photodiode by its ANODE (it is the + terminal, which is
+        # why Voc is forward polarity), so an anode on the summing node pushes current IN
+        # and drives the output DOWN from MID -- and MID is 0.33 V, set there precisely
+        # because the output was believed to swing UP (see R34). Every string but the
+        # thinnest would have clipped at the rail. With the cathode on the virtual earth
+        # the photocurrent is drawn out through Rf and the output rises, which is what the
+        # rest of the board assumes.
         #
-        # AND THE NOISE BUDGET FALLS OUT OF THE SAME THREE NUMBERS, which is worth
-        # having written down because it says how much room this design has:
-        #   Rf thermal   sqrt(4kTR) = 279 nV/rtHz   -- dominant, as it should be
-        #   in * Rf      23 fA/rtHz x 4M7 = 108     -- not negligible
-        #   en * NG      10 nV/rtHz x (Cin+Cf)/Cf = 10 x 7.8 = 78
-        # summing to 309 nV/rtHz -- but THE THREE TERMS DO NOT SHARE A BANDWIDTH, and
-        # treating them as if they did understates this floor by about 2.5x.
-        #
-        # ⚠ Rf*Cf ROLLS OFF THE FIRST TWO TERMS AND NOT THE THIRD. Rf's thermal noise and
-        # in*Rf both travel the feedback path, so the same 15.4 kHz pole that shapes the
-        # signal shapes them: 24 kHz of equivalent noise bandwidth is right for those two.
-        # The op-amp's OWN voltage noise does not travel that path. It appears at the
-        # output multiplied by the noise gain 1 + Zf/Zin, which RISES from unity at a zero
-        # of 1/(2*pi*Rf*(Cin+Cf)) = 1.97 kHz to the (Cin+Cf)/Cf = 7.8 plateau, and then
-        # stays there until the loop runs out of gain at GBW/NG = 10 MHz / 7.8 = 1.28 MHz.
-        # Rf*Cf does not end that plateau; it CREATES it.
-        #
-        #   Rf thermal   279 nV/rtHz over 24 kHz            ->   43.4 uVrms
-        #   in * Rf      108 nV/rtHz over 24 kHz            ->   16.8
-        #   en * NG       78 nV/rtHz over 1.28 MHz          ->  110.8   <- dominant
-        #                                          total        120 uVrms
-        #
-        # Against the thinnest string's 0.28 V that is ~67 dB rather than the ~75 dB this
-        # note used to claim, and ~55 dB on a worst-case emitter rather than ~63.
-        #
-        # ⚠ AND IT IS AN ALIASING PROBLEM, NOT ONLY A NOISE ONE, WHICH IS THE PART THAT
-        # MATTERS. This pole is described elsewhere as the anti-alias filter, and for the
-        # signal it is. For the dominant noise term it is not: 78 nV/rtHz of flat noise
-        # from 2 kHz to 1.28 MHz meets a 48 kHz sampler with nothing in between -- the TIA
-        # output net carries the op-amp, Rf and Cf and then goes straight to an ADC pin --
-        # so essentially all of it folds into 0-24 kHz. Averaging does not recover it,
-        # because it is white and already in band once sampled.
-        #
-        # The lever is therefore NOT emitter drive, which is what this note used to say.
-        # The plateau ends at GBW/NG, so it scales with the op-amp's bandwidth: a 1 MHz
-        # part in place of the TLV9064's 10 MHz would cut that term by sqrt(10) to ~35
-        # uVrms and put the total back near 58. A real RC between each TIA and its ADC pin
-        # would do it properly, at 40 parts across twenty channels. A FASTER op-amp would
-        # make this worse, which is the opposite of the usual instinct.
-        #
-        # ⚠ 67 dB IS STILL WORKABLE and none of this is a reason to stop -- DIFF's job is
-        # detecting that SUM has collapsed, and 55 dB on the worst-case emitter still does
-        # that. It is recorded because the number was wrong, the conclusion drawn from it
-        # pointed at the wrong lever, and the next person to tune this front end needs the
-        # bandwidth argument more than they need the spot figures.
-        mid += pd[1]
-        summing += pd[2], q[inn_p]
+        # ⚠ THE NOISE FLOOR IS THE LIGHT NOW, NOT THE ELECTRONICS. The budget that used to
+        # sit here left out photon shot noise, and every SNR it quoted (67, 75 dB) inherited
+        # that. Input-referred, per string, in the demodulated band (28..68 kHz at the
+        # converter, 20 kHz after the lock-in), thinnest string, no ambient:
+        #   signal shot    sqrt(2q x 143 nA), on half the time      0.15 pA/rtHz
+        #   Rf thermal     sqrt(4kT / 1M)                            0.13
+        #   en x 2 pi f Cin at 60 kHz (10 nV, ~25 pF)                 0.09
+        #   in             TLV9064                                   0.02
+        #   converter      ~20 nV/rtHz at +12 dB PGA, / Rf           0.02
+        # -> ~67 dB against the thin string's lock-in signal (I/2 at 50% duty). The 143 nA
+        # is the old ~60 nA x the PD15's photocurrent (7 vs 2.2 uA per mW/cm2 at 940 nm)
+        # x 0.75 for the wider triplet. AMBIENT IR adds its own shot noise on top: 1 uA
+        # of it (~0.14 mW/cm2 in the 750-1100 nm band -- a halogen wash can do that) costs
+        # ~9 dB. The daylight filter rejects visible light and nothing else: LED and
+        # fluorescent stage lighting are gone, sun and incandescent are not. Their FLICKER
+        # is removed by the lock-in; their shot noise and headroom are what the cover
+        # (field of view) and Rf's headroom are for.
+        # The lever left is LIGHT: shot-limited SNR grows as sqrt(emitter current), and the
+        # emitters run at 21 mA of a 65 mA rating.
+        mid += pd["A"]
+        summing += pd["K"], q[inn_p]
         mid += q[inp_p]
         out += q[out_p]
-        # ⚠ 4M7 IS A FIRST-ARTICLE VALUE WITH ARITHMETIC BEHIND IT, not a guess, and it
-        # is expected to move per string. The optical budget, from the two datasheets:
-        #   emitter   0.8 mW/sr at 20 mA (IR17-21C), gap 3.0 mm (OPT_GAP)
-        #             ⚠ 0.8 IS THE TYPICAL AND THE DATASHEET'S MINIMUM IS 0.2 -- a
-        #             FOURFOLD spread, guaranteed, on the part that sets the whole
-        #             optical budget. Everlight's own table (IR17-21C/TR8,
-        #             Electro-Optical Characteristics): Ie min 0.2, typ 0.8, no max.
-        #             Everything below is computed on the typical, so a worst-case
-        #             emitter delivers a QUARTER of it: the thinnest string's ~60 nA
-        #             becomes ~15 nA and 0.28 V at the output becomes 0.07 V.
-        #             THAT IS STILL WORKABLE -- against the 120 uVrms noise floor
-        #             computed further down it is ~55 dB instead of ~67 -- but it is
-        #             the number the per-string Rf tuning has to absorb, and it is why
-        #             that tuning is not optional. Ten emitters from one reel will not
-        #             span the full 4x; ten boards built a year apart might.
-        #             -> ~8.9 mW/cm2 at the string
-        #   string    a .014 plain intercepts ~0.036 x 0.1 cm and scatters it; at ~30%
-        #             into a hemisphere that is ~0.003 mW/sr back
-        #   detector  2.2 uA per mW/cm2 (VEMD4110X01 Ik, the ZERO-BIAS figure -- see
-        #             the note at the summing node), ~3.4 mm away
-        #             -> of order 60 nA for the THINNEST string
-        # which is the "tens of nanoamps" this board was designed around, arrived at
-        # independently. 4M7 turns 60 nA into 0.28 V and a wound string's ~300 nA into
-        # 1.4 V, so the quiet end has signal and the loud end does not clip the 2.9 V
-        # the ADC can see above MID. It is a compromise across a 14 dB spread, which is
-        # exactly why the value is per string and why the footprints stay 0402.
-        rf = _r("Rf%s" % n, "4M7", "TIA feedback, string %d%s -- tune per string" % (i, side))
-        # ⚠ Cf IS C0G, NOT X7R, and that is not a general-purpose preference. It sets
-        # the anti-alias pole with Rf; an X7R part's capacitance moves with bias and
-        # temperature, so the pole would drift and the twenty channels would stop
-        # matching each other -- which is exactly what DIFF cannot tolerate.
-        # 2.2 pF against 4M7 puts the pole at 15.4 kHz -- below the 24 kHz Nyquist of a
-        # 48 kHz frame, which is what an anti-alias pole is for. It is also the smallest
-        # value worth specifying: stray capacitance across an 0402 is a few tenths of a
-        # pF, so anything under ~2 pF is set by the layout rather than by the part.
-        cf = _c("Cf%s" % n, "2.2pF", "TIA feedback cap, string %d%s -- C0G, 15.4 kHz pole"
+        # ⚠ 1M / 1 pF SINCE 2026-09-21, FOR BANDWIDTH -- the TIA has to pass the 48 kHz
+        # emitter carrier and its +-20 kHz sidebands, where the old 4M7 / 2.2 pF set a
+        # 15.4 kHz pole that would have eaten them. The closed-loop limit is
+        # sqrt(GBW / (2 pi Rf Cin)) = sqrt(10 MHz / (2 pi x 1M x ~25 pF)) = 250 kHz, and
+        # 1 pF puts the feedback pole at 159 kHz; the least Cf that is stable is
+        # sqrt(Cin / (2 pi Rf GBW)) = 0.63 pF, so 1 pF is 1.6x that. (Cin: the PD15's
+        # zero-bias capacitance is NOT published -- 6 pF is at VR 5 V -- and ~17 pF is
+        # assumed from the VEMD's own 0 V / 5 V ratio. Measure it: more makes the loop
+        # quicker to ring and the en term larger.)
+        # SIGNAL LEVEL: the thin string's ~143 nA gives 0.14 V at MID + ..., a wound
+        # string ~0.7 V, leaving ~2 V of the 2.9 V swing for AMBIENT photocurrent (~2 uA)
+        # before the output rails. The converter's PGA (0..42 dB) takes the small end up
+        # to its full scale, so the gain split is Rf for headroom, PGA for level.
+        # Still per string: the plain strings can take 2M if ambient allows.
+        rf = _r("Rf%s" % n, "1M", "TIA feedback, string %d%s -- tune per string" % (i, side))
+        # ⚠ Cf IS C0G, NOT X7R: it sets the pole, and an X7R part's capacitance moves with
+        # bias and temperature, so twenty channels would stop matching -- which is exactly
+        # what DIFF cannot tolerate. 1 pF is at the edge of what a part sets rather than
+        # the layout (an 0402's own stray is a few tenths): measure the pole at bring-up.
+        cf = _c("Cf%s" % n, "1pF", "TIA feedback cap, string %d%s -- C0G, ~160 kHz pole"
                 % (i, side))
         summing += rf[1], cf[1]
         out += rf[2], cf[2]
     # ⚠ THE QUADS RUN ON +3V3A, NOT +5V, AND THAT IS AN ABSOLUTE-MAXIMUM FIX.
-    # Every TIA output goes straight to an ADC pin, and ST's Table 21 (DS12110,
+    # (Written when every TIA output went straight to an MCU ADC pin; the converters'
+    # inputs are AC-coupled now, but their abs max is AVDD + 0.3 all the same.)
+    # Every TIA output went straight to an ADC pin, and ST's Table 21 (DS12110,
     # "Voltage characteristics") gives "input voltage on any other pins" an absolute
     # maximum of 4.0 V. On a 5 V rail a rail-to-rail output saturates at ~4.95 V, so
     # any channel driven into saturation -- an emitter reflecting off a bright surface,
@@ -875,11 +550,85 @@ def optical():
             v3a += c[1]
             gnd += c[2]
 
+    sai_sck, sai_fs = Net("SAI_SCK"), Net("SAI_FS")
+    sai_sd = [Net("SAI_SD%d" % (k + 1)) for k in range(5)]
+    i2c = [(Net("I2C%d_SDA" % b), Net("I2C%d_SCL" % b)) for b in (2, 4)]
+    adc_shdn = Net("ADC_SHDNZ")
+
+    # ── U14-U18: the audio converters, one per quad ─────────────────────────
+    # TLV320ADC3140IRTWT, WQFN-24 RTW. Pins (SBAS993B Pin Functions): 1 AVDD 2 AREG 3 VREF
+    # 4 AVSS 5 MICBIAS 6/7 IN1P/IN1M 8/9 IN2P/M 10/11 IN3P/M 12/13 IN4P/M 14 SHDNZ
+    # 15 ADDR1 16 ADDR0 17 SCL 18 SDA 19 IOVDD 20 GPIO1 21 SDOUT 22 BCLK 23 FSYNC 24 DREG,
+    # 25 thermal pad (VSS). Support parts are TI's Figure 165, less MICBIAS's 1 uF: there
+    # are no microphones and MICBIAS stays powered down, so the pin is left open.
+    # AVDD on +3V3A (the quiet LDO -- it now carries these too, see the power budget),
+    # IOVDD on +3V3D with the MCU it talks to.
+    adcs = {}
+    for k in range(5):
+        u = Part(name="TLV320ADC3140", ref_prefix="U", ref="U%d" % (14 + k), dest="NETLIST",
+                 tool="skidl", value="TLV320ADC3140IRTWT",
+                 description="4-ch audio ADC, quad U%d's outputs (LCSC C1852021)" % (k + 1),
+                 footprint="Package_DFN_QFN:Texas_RTW_WQFN-24-1EP_4x4mm_P0.5mm_EP2.7x2.7mm",
+                 pins=[Pin(num=n, func=P) for n in range(1, 26)])
+        adcs[k] = u
+        tag = k + 1
+        areg, vref, dreg = (Net("ADC%d_AREG" % tag), Net("ADC%d_VREF" % tag),
+                            Net("ADC%d_DREG" % tag))
+        v3a += u[1]
+        areg += u[2]
+        vref += u[3]
+        gnd += u[4], u[25]
+        Net("ADC%d_MICBIAS_NC" % tag).connect(u[5])
+        adc_shdn += u[14]
+        a1, a0 = divmod(ADC_ADDR[k], 2)
+        (v3d if a1 else gnd).__iadd__(u[15])
+        (v3d if a0 else gnd).__iadd__(u[16])
+        sda, scl = i2c[ADC_I2C[k]]
+        scl += u[17]
+        sda += u[18]
+        v3d += u[19]
+        Net("ADC%d_GPIO1_NC" % tag).connect(u[20])
+        sai_sd[k] += u[21]
+        sai_sck += u[22]
+        sai_fs += u[23]
+        dreg += u[24]
+        for j, (val, net, rtn, fp) in enumerate((
+                ("1uF", v3a, gnd, None), ("100nF", v3a, gnd, None),      # AVDD
+                ("10uF", areg, gnd, None), ("100nF", areg, gnd, None),    # AREG
+                ("1uF", vref, gnd, None),                                  # VREF
+                ("10uF", dreg, gnd, None), ("100nF", dreg, gnd, None),    # DREG
+                ("10uF", v3d, gnd, None), ("100nF", v3d, gnd, None)),     # IOVDD
+                start=1):
+            c = _c("Cs%d%d" % (tag, j), val, "U%d supply/reference bypass (SBAS993B Fig 165)"
+                   % (14 + k))
+            net += c[1]
+            rtn += c[2]
+    # the couplings: quad q's section s -> converter q's input s+1
+    for ch in range(20):
+        i, side = ch // 2 + 1, "A" if ch % 2 == 0 else "B"
+        k, s_in = ch // 4, ch % 4 + 1
+        pos, neg = Net("ADC%d_IN%dP" % (k + 1, s_in)), Net("ADC%d_IN%dM" % (k + 1, s_in))
+        ci = _c("Ci%d%d" % (k + 1, s_in), "10nF C0G", "string %d%s -> U%d IN%dP"
+                % (i, side, 14 + k, s_in))
+        cm = _c("Cm%d%d" % (k + 1, s_in), "10nF C0G", "MID -> U%d IN%dM" % (14 + k, s_in))
+        tia_out[(i, side)] += ci[1]
+        pos += ci[2], adcs[k][4 + 2 * s_in]
+        mid += cm[1]
+        neg += cm[2], adcs[k][5 + 2 * s_in]
+    for ref, net, rail, what in (("R50", i2c[0][1], v3d, "I2C2 SCL"),
+                                 ("R51", i2c[0][0], v3d, "I2C2 SDA"),
+                                 ("R52", i2c[1][1], v3d, "I2C4 SCL"),
+                                 ("R53", i2c[1][0], v3d, "I2C4 SDA"),
+                                 ("R54", adc_shdn, gnd, "SHDNZ pull-down")):
+        r = _r(ref, "4k7" if rail is v3d else "100k", what)
+        net += r[1]
+        rail += r[2]
+
     # ── U6: the MCU ──────────────────────────────────────────────────────────
     mcu_pins = sorted(set(range(1, 177)))
     u6 = Part(name="STM32H743IIT6", ref_prefix="U", ref="U6", dest="NETLIST",
               tool="skidl", value="STM32H743IIT6",
-              description="MCU, LQFP176, 20x ADC + OTG_HS ULPI (LCSC C89597)",
+              description="MCU, LQFP176, SAI TDM from 5 audio ADCs + OTG_HS ULPI (LCSC C89597)",
               footprint="Package_QFP:LQFP-176_24x24mm_P0.5mm",
               pins=[Pin(num=n, func=P) for n in mcu_pins])
     for n in MCU_VDD:
@@ -890,11 +639,15 @@ def optical():
     v3a += u6[PIN["VDDA"]], u6[PIN["VREF+"]]
     v3d += u6[PIN["VBAT"]], u6[PIN["VDD33_USB"]], u6[PIN["PDR_ON"]]
 
-    # the twenty analog inputs, in the pair order argued above
-    for i, (pa, pb) in enumerate(ADC_PAIRS, start=1):
-        tia_out[(i, "A")] += u6[PIN[pa]]
-        tia_out[(i, "B")] += u6[PIN[pb]]
-    Net("ADC_SPARE_NC").connect(u6[PIN[ADC_SPARE]])
+    # the converters' buses -- see THE CONVERTERS
+    sai_sck += u6[PIN[SAI_CLK["SAI_SCK"]]]
+    sai_fs += u6[PIN[SAI_CLK["SAI_FS"]]]
+    for net, port in zip(sai_sd, SAI_SD):
+        net += u6[PIN[port]]
+    for (sda, scl), (p_sda, p_scl) in zip(i2c, I2C_BUS):
+        sda += u6[PIN[p_sda]]
+        scl += u6[PIN[p_scl]]
+    adc_shdn += u6[PIN[ADC_SHDN]]
 
     # ULPI
     ulpi = {k: Net(k) for k in ULPI}
@@ -959,8 +712,8 @@ def optical():
     used = set(MCU_VDD) | set(MCU_VSS) | {
         PIN[k] for k in ("VSSA", "VDDA", "VREF+", "VBAT", "VDD33_USB", "PDR_ON",
                          "PH0", "PH1", "NRST", "BOOT0", "PA13", "PA14", "PB3",
-                         "VCAP1", "VCAP2", ADC_SPARE)}
-    used |= {PIN[p] for pair in ADC_PAIRS for p in pair}
+                         "VCAP1", "VCAP2", ADC_SHDN) + tuple(SAI_CLK.values()) + SAI_SD
+        + tuple(p for bus in I2C_BUS for p in bus)}
     used |= {PIN[p] for p in ULPI.values()}
     for n in mcu_pins:
         if n not in used:
@@ -1114,7 +867,13 @@ def optical():
     #     5x TLV9064 quad          538 uA/amp typ, 750 max  ->  10.8 / 15.0 mA
     #     U11 TLV9061 single                                ->   0.54 / 0.75
     #     R34/R35 mid-rail divider 3.3 V / 10.09 k          ->   0.33 / 0.33
-    #                                                   subtotal  11.7 / 16.1 mA
+    #     5x TLV320ADC3140 AVDD (2026-09-21)   ">23 mA" each at 48 kHz, 4 ch (SBAS993B
+    #       Table 131) -- NO figure at 192 kHz; ~25 each assumed ->  125 / ~150 ?
+    #                                                   subtotal ~137 / ~166 mA
+    #     ⚠ THE CONVERTERS MULTIPLY THIS RAIL TENFOLD. U9 (SPX3819, 500 mA) carries it,
+    #       but it burns (5 - 3.3) x 0.14 = 0.24 W in a SOT-23-5 -- ~45 C of rise -- and
+    #       the buck's worst case below grows by the same ~150 mA. MEASURE AVDD current
+    #       at 192 kHz on first boards before trusting either margin.
     #
     #   +3V3D  (U8, AMS1117, off the BUCK side)
     #     STM32H743 400 MHz VOS1, all peripherals enabled (DS12110 T30)
@@ -1127,8 +886,8 @@ def optical():
     #   +5V / V5_PRE  (U13, TPS560430, 600 mA)
     #     ten emitters at 21.1 mA, pulsed -- 105 mA average, 211 mA while on
     #       ⚠ THE 50% DUTY IS AN INFERENCE ABOUT FIRMWARE THAT DOES NOT EXIST YET, not
-    #       a measurement: the emitters run at 96 kHz against a 48 kHz sample rate with
-    #       an LEDs-off ambient sample between, so equal on and off periods give 50%.
+    #       a measurement: the emitters square-wave at 48 kHz, a quarter of the
+    #       converters' 192 kHz, for the lock-in -- a square wave is 50% by nature.
     #       Firmware could choose a shorter pulse. IT DOES NOT CHANGE THE CONCLUSION --
     #       at 100% duty the emitters are 211 mA continuous and the typical total
     #       becomes 430 mA, still 72% of the buck -- so the budget holds whatever the
@@ -1235,7 +994,7 @@ def optical():
                tool="skidl", value="GZ1608D601TF",
                # ⚠ WHAT IS ON WHICH SIDE WAS THE WHOLE POINT AND IT WAS WRONG. The bead
                # splits a noisy 5 V from a quiet one, and the TEN EMITTERS -- pulsed at
-               # 96 kHz, synchronously with sampling, the one noise source ambient
+               # 48 kHz, synchronously with sampling, the one noise source ambient
                # subtraction cannot remove -- were hanging on the QUIET side, together
                # with the digital LDO that feeds the MCU and the PHY. The bead was
                # keeping the buck's ripple out of a node that the board's own worst
@@ -1549,7 +1308,7 @@ def optical():
     # AMS1117 (207-272 mA) and the ten emitters' ballasts on the way, and its ONLY
     # capacitor was C162 at the buck -- measured 20.7 mm from U8. A linear regulator
     # with no local input capacitance sees that 20.7 mm as series inductance in front of
-    # it, and the emitters pulsing at 96 kHz share the same rail. 10 uF beside U8 costs
+    # it, and the emitters pulsing at 48 kHz share the same rail. 10 uF beside U8 costs
     # one 0805 and one BOM line already in the build.
     c164 = _c("C164", "10uF/16V", "U8 input bulk -- the only local cap on V5_PRE",
               "Capacitor_SMD:C_0805_2012Metric")
@@ -1744,9 +1503,8 @@ BOARD_NOTES = {
     # it past the two pads that block the direct line, then 1.30 mm back east to the
     # stub the router left. 5.13 mm of F.Cu and no via. The search only tried straight
     # lines, which is why it reported zero -- a third shape of repair it did not model.
-    "repair_tracks": [("MID", "F.Cu", 0.25, [(-29.443, 48.312), (-30.740, 48.312)]),
-                      ("MID", "F.Cu", 0.25, [(-30.740, 48.312), (-30.740, 45.772)]),
-                      ("MID", "F.Cu", 0.25, [(-30.740, 45.772), (-29.443, 45.772)])],
+    # (2026-09-21: the detour itself is gone. It was fitted to the old triplet's copper;
+    # the PD15 triplet moved every MID and summing-node pad it threaded between.)
     # ⚠ NARROWING +3V3A IS WORSE TOO: 0.25 -> 0.15 mm took it from 1 unconnected to 2.
     # This was the one lever that was not about giving the router more ROOM. Three
     # attempts had tried that (pre-lay, retry rounds, dropping the B.Cu pour) and all
@@ -1883,7 +1641,7 @@ BOARD_NOTES = {
     # copper against F.Cu's 10.6% while the corridor was the thing that ran out of room.
     # A cost below 1.0 tells freerouting to prefer a layer; the bottom layer is the one
     # with headroom, so it gets 0.7. In1.Cu is absent because it is the ground plane.
-    "router_passes": 25,
+    "router_passes": 10,
     # ⚠ NO track_mm HERE: 0.15 was TESTED AND IS WORSE. It helps lever_sensor, whose
     # 0.4 mm pitch QFN needs the lane, and it hurt this board -- 12 unconnected and no
     # violations at the 0.25 default, against 15 and a real clearance violation at 0.15.
@@ -1977,7 +1735,7 @@ BOARD_NOTES = {
     # every unconnected pad this board reports is one of them failing to reach the pin
     # beside it, and they are the most generator-shaped thing on the board: the same
     # three-pad star, twenty times, at a spacing the string fan fixes.
-    # Only the LOCAL cluster is laid; the long run to the MCU's ADC pin stays the
+    # Only the LOCAL cluster is laid; the long run to the converter's coupling cap stays the
     # router's, which is the half it is good at. See _local_nets.
     # ⚠ THE POWER RAILS ARE *NOT* IN THIS LIST, AND THAT WAS TESTED. Since the emitters
     # and the quads were separated onto V5_PRE and +3V3A, the sensing strip carries two
@@ -2021,7 +1779,10 @@ BOARD_NOTES = {
     # and after the chain was re-planned they were pads it could have reached and was
     # being told not to -- which showed up as U7.19 and U10.2 sitting unconnected on a
     # routed board. Empty is the right default; re-add only what the stitcher reports.
-    "stitch_exceptions": (),
+    # J1's shell tabs are through-hole: their barrels reach the plane. Before the layout
+    # fix that gives every duplicate-numbered pad its net, three of the four had no net and
+    # drew no via; stitching them now re-planned the board and left TIA_OUT_1B open.
+    "stitch_exceptions": ("J1.SH",),
     # ⚠ ORDER OPTIONS ARE PART OF THE DESIGN, and nothing in a gerber records them.
     # Mask colour is usually cosmetic and on this board it is not: twenty photodiodes
     # look up through a 0.30 mm gap that runs 5.40 mm to the cover's aperture, and that

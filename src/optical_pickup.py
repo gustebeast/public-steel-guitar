@@ -46,7 +46,7 @@ What under-string costs, and what pays it back:
     row that gave the plain strings +5.3 dB was dropped for that reason (user's call):
     keeping every TIA within a few mm of its photodiode beats 5.3 dB, because the
     summing node is the noise-critical point on a board reading tens of nanoamps and
-    the alternative was a ~90 mm trace sharing a board with a 96 kHz LED driver whose
+    the alternative was a ~90 mm trace sharing a board with a pulsed LED driver whose
     switching noise is SYNCHRONOUS with sampling, so subtraction would not cancel it.
     The single row sits further out than the old wound row did, so every string gains
     ~+1.9 dB and the thin ones give up 3.4 relative to the stepped plan.
@@ -191,7 +191,9 @@ PKG = {
     "0402":     (1.00, 0.50, 0.55),   # 1005 metric; 0.55 is MLCC max
     "0603":     (1.60, 0.80, 0.95),   # 1608 metric
     "0805C":    (2.00, 1.25, 1.45),   # 2012 metric MLCC
-    "0805OPT":  (2.00, 1.25, 0.85),   # optoelectronic 0805
+    "0805OPT":  (2.00, 1.25, 0.85),   # optoelectronic 0805 -- the IR17-21C emitters
+    "PD15":     (3.30, 2.80, 1.10),   # Everlight PD15-22B/TR8 photodiode (DTD-152-002 p.2)
+    "WQFN-24":  (4.00, 4.00, 0.80),   # TI RTW, TLV320ADC3140 (SBAS993B mechanical)
     "SOT-23":   (2.90, 2.40, 1.30),
     "SOT-23-5": (2.90, 2.80, 1.45),
     "SOT-23-6": (2.90, 2.80, 1.45),   # same envelope as the -5; the buck (see U13)
@@ -258,7 +260,7 @@ PKG = {
     #  below is what found them still sitting here -- a package with no part left.)
 }
 LED_PKG = PKG["0805OPT"]
-PD_PKG  = PKG["0805OPT"]
+PD_PKG  = PKG["PD15"]
 PKG_CLR = 0.25                                   # least placement gap between packages
 EDGE_KEEP = 1.2                                  # part -> board edge: JLCPCB's 1.0 rule
                                                  # + their 0.2 routed-outline tolerance
@@ -295,6 +297,8 @@ CRTYD = {
     "0603":     (3.05, 1.55),
     "0805C":    (3.49, 2.05),
     "0805OPT":  (3.45, 1.99),
+    "PD15":     (5.00, 3.30),   # elec/footprints/Steel.pretty/Everlight_PD15-22B
+    "WQFN-24":  (5.26, 5.26),   # KiCad Texas_RTW_WQFN-24-1EP_4x4mm_P0.5mm_EP2.7x2.7mm
     "1206C":    (4.69, 2.39),
     "SOT-23":   (3.95, 3.49),
     "SOT-23-5": (4.19, 3.49),
@@ -359,7 +363,9 @@ COVER_T   = D.MIN_WALL_2P                        # two-bead floor for added mate
 COVER_Z0  = SENSE_FACE_Z + COVER_GAP             # 12.284
 COVER_Z1  = COVER_Z0 + COVER_T                   # 13.884
 SLOT_DX   = 3.0                                  # aperture over the triplet, in X
-SLOT_DY   = 5.0                                  # ...and in Y (triplet spans +-2.225)
+SLOT_DY   = 7.6                                  # ...and in Y: the PD15 triplet spans
+                                                 # +-3.775; the teeth left between
+                                                 # apertures are PITCH - 7.6 = 1.76 (>=1.6)
 # The lid covers the OPTICS ONLY -- the sensor row's X band and the sensing field's Y
 # span. It deliberately stops short of the quad op-amps, which stand 1.75 above the board
 # (higher than the roof) and need no protection. COVER_X0/COVER_HY are module-level so
@@ -391,8 +397,24 @@ PITCH = abs(string_y_at(1, SENSE_X) - string_y_at(0, SENSE_X))
 # would shade the very detectors it exists to protect. Widening the aperture to suit
 # would admit more ambient light, which is the problem the lid was built for. Trading
 # a real optical loss for a nominal clearance number is the wrong direction.
-PD_DY = 1.6                                      # detector offset either side of the
-                                                 # string; scaled to the SHORT standoff
+# ⚠ 2026-09-21: THE DETECTOR IS NOW THE EVERLIGHT PD15-22B, AND PD_DY FOLLOWS FROM ITS BODY.
+# The VEMD4110X01 had 95 in stock against 20 per instrument; the PD15-22B has 11k, peaks at
+# 940 nm (the emitter's own wavelength), gives ~3x the photocurrent, and costs a tenth. It
+# is 3.3 x 2.8 rather than an 0805, so the triplet cannot stay at 1.6: the same 0.35 body gap
+# to the emitter puts the detectors at 2.375. What the note above says 2.0 would have cost
+# is paid by widening the aperture instead (SLOT_DY), and it buys something: a longer DIFF
+# baseline. Optically the move costs ~25% of the light (line-integrated over the lit
+# string, not the point estimate), more than repaid by the part's photocurrent.
+PD_GAP = 0.35                                    # emitter body -> detector body, in Y
+PD_DY = LED_PKG[1] / 2 + PD_GAP + PD_PKG[1] / 2  # 2.375
+# AND IN X THE DETECTORS SIT JUST -X OF THE ROOF'S +X STRIP, not on the emitter's centre
+# line. Their 4.5 mm land would otherwise reach the board's +X edge keep-out, and set here
+# every detector body lies wholly inside its aperture notch (x1 < APER_X1): the part is
+# 1.1 tall against the emitter's 0.85, so it stands 0.25 above the emitter face and only
+# 0.05 under the roof's underside -- it must never pass UNDER roof material, including
+# while the board slides +X into place along the notches. 0.36 mm off the emitter's line
+# is nothing optically.
+PD_X = (BAND_X0 - D.MIN_WALL_2P) - 0.05 - PD_PKG[0] / 2      # -28.36
 END_KEEP = 2.0
 
 _OUTER_Y = max(abs(string_y_at(i, SENSE_X)) for i in range(D.N_STRINGS))
@@ -748,11 +770,12 @@ def _parts():
     for i in range(D.N_STRINGS):
         n, sy = i + 1, string_y_at(i, SENSE_X)
         add("D%d" % n, "IR emitter, 940 nm, Everlight IR17-21C (~120 deg -- see note)", "0805OPT", SENSE_X, sy)
-        add("PD%dA" % n, "PIN photodiode, Vishay VEMD4110X01 (daylight filter), +Y", "0805OPT", SENSE_X, sy + PD_DY)
-        add("PD%dB" % n, "PIN photodiode, Vishay VEMD4110X01 (daylight filter), -Y", "0805OPT", SENSE_X, sy - PD_DY)
+        add("PD%dA" % n, "PIN photodiode, Everlight PD15-22B (daylight filter), +Y", "PD15", PD_X, sy + PD_DY)
+        add("PD%dB" % n, "PIN photodiode, Everlight PD15-22B (daylight filter), -Y", "PD15", PD_X, sy - PD_DY)
         # ballast rides in the gap just -Y of its own emitter, same X band: no column to
         # spare, and it keeps the high-di/dt emitter loop a couple of mm long
-        add("R%d" % n, "LED current-set (per-string value)", "0603", SENSE_X, sy - PITCH / 2)
+        # 0402 since the PD15 triplet: an 0603's courtyard reaches the detector's
+        add("R%d" % n, "LED current-set (per-string value)", "0402", SENSE_X, sy - PITCH / 2)
 
     # ---- 2. the 20 TIAs: one QUAD per string PAIR, at that pair's centroid ----
     for q in range(D.N_STRINGS // 2):
@@ -796,7 +819,7 @@ def _parts():
     # less. The binding number on the other side is unchanged: ROW_GAP, 1.00 mm to the
     # tail screw's clearance, which is what "as far +X as it may" actually means.)
     _mcu_x1 = MOUNT_X_TAIL - MOUNT_CLR - ROW_GAP
-    add("U6", "MCU -- STM32H743IIT6, 20x 16-bit ADC ch, USB OTG_HS via ULPI", _MCU_PKG,
+    add("U6", "MCU -- STM32H743IIT6, 5 SAI TDM lanes from the audio ADCs, USB OTG_HS via ULPI", _MCU_PKG,
         _mcu_x1 - CRTYD[_MCU_PKG][0] / 2, y)
     y -= CRTYD[_MCU_PKG][1] / 2 + CRTYD_GAP
 
@@ -977,6 +1000,53 @@ def _parts():
     # instead of one row longer.
     add("C127", "analog LDO noise bypass -- 1 uF on the SPX3819's BYP pin", "0402",
         _part_x("U9"), _y1_y)
+
+    # ---- 3e. THE AUDIO CONVERTERS, in the escape annulus -X of the MCU (2026-09-21) ----
+    # Five TLV320ADC3140s, one per quad (see elec/optical.py for why the MCU's own ADCs
+    # went). They go in the 25 x 27 mm of empty board -X of U6 -- the annulus the twenty
+    # analog nets used to cross to reach the LQFP's pins. Now those nets END here, a
+    # converter sits where they arrive, and only seven SAI lines and two I2C pairs continue
+    # to the MCU. Each converter travels with its seventeen capacitors (nine supply/reference,
+    # SBAS993B Figure 165, and eight AC couplings), laid as one cell: the part on top, the
+    # capacitors in rows of three under it. Three cells across, two down; the sixth cell
+    # holds the I2C pulls and the SHDNZ pull-down.
+    _cx0 = COMPUTE_X0 + EDGE_KEEP
+    _cx1 = _part_x("U6") - CRTYD[_MCU_PKG][0] / 2 - CRTYD_GAP
+    _cw = 3 * CRTYD["0402"][0] + 2 * CRTYD_GAP
+    _cgap = ((_cx1 - _cx0) - 3 * _cw) / 2
+    assert _cgap >= CRTYD_GAP - 1e-9, (
+        "the converter cells need %.2f mm across and the annulus -X of U6 is %.2f"
+        % (3 * _cw + 2 * CRTYD_GAP, _cx1 - _cx0))
+    _ch = CRTYD["WQFN-24"][1] + CRTYD_GAP + 6 * (CRTYD["0402"][1] + CRTYD_GAP)
+    _cy_top = _part_y("U6") + CRTYD[_MCU_PKG][1] / 2
+    _cy_gap = CRTYD[_MCU_PKG][1] - 2 * _ch
+    assert _cy_gap >= 0, "two converter cells do not fit beside U6 (%.2f short)" % -_cy_gap
+
+    def _cell(col, row):
+        return _cx0 + col * (_cw + _cgap), _cy_top - row * (_ch + _cy_gap)
+
+    for k in range(5):
+        cx, cy = _cell(k % 3, k // 3)
+        add("U%d" % (14 + k), "audio ADC -- TLV320ADC3140, 4 ch, quad U%d's outputs" % (k + 1),
+            "WQFN-24", cx + _cw / 2, cy - CRTYD["WQFN-24"][1] / 2)
+        caps = (["Cs%d%d" % (k + 1, j) for j in range(1, 10)]
+                + ["Ci%d%d" % (k + 1, c) for c in range(1, 5)]
+                + ["Cm%d%d" % (k + 1, c) for c in range(1, 5)])
+        _yc = cy - CRTYD["WQFN-24"][1] - CRTYD_GAP - CRTYD["0402"][1] / 2
+        for m, ref in enumerate(caps):
+            col, row = m % 3, m // 3
+            desc = ("ADC supply / reference bypass" if ref.startswith("Cs")
+                    else "ADC input AC coupling, C0G")
+            add(ref, desc, "0402",
+                cx + CRTYD["0402"][0] / 2 + col * (CRTYD["0402"][0] + CRTYD_GAP),
+                _yc - row * (CRTYD["0402"][1] + CRTYD_GAP))
+    cx, cy = _cell(2, 1)
+    for m, (ref, desc) in enumerate((("R50", "I2C2 SCL pull-up"), ("R51", "I2C2 SDA pull-up"),
+                                     ("R52", "I2C4 SCL pull-up"), ("R53", "I2C4 SDA pull-up"),
+                                     ("R54", "ADC SHDNZ pull-down -- converters off in reset"))):
+        add(ref, desc, "0402",
+            cx + CRTYD["0402"][0] / 2 + (m % 3) * (CRTYD["0402"][0] + CRTYD_GAP),
+            cy - CRTYD["0402"][1] / 2 - (m // 3) * (CRTYD["0402"][1] + CRTYD_GAP))
 
     # ---- 3b/3b-i/3d ARE GONE: THE MAGNETIC PATH LEFT THIS BOARD (user, 2026-09-15) ----
     # This file used to carry the magnetic pickup's own ADC (U12, a PCM1808, with C150-153
@@ -1191,7 +1261,7 @@ def _parts():
     # quieter here -- and emitter drive comes after it.
     # 24 V rather than a delivered 5 V (user, 2026-09-14) because the alternative is a
     # 5 V rail run ~600 mm from the keyhead, sharing a return with the Pi -- and this
-    # board's LED driver switches at 96 kHz SYNCHRONOUSLY WITH SAMPLING, so that return
+    # board's LED driver switches at 48 kHz SYNCHRONOUSLY WITH SAMPLING, so that return
     # current is the one noise source ambient subtraction cannot cancel. Local conversion
     # keeps it on this board. It costs the board its switcher-free property; see U13.
     # AUDIO_GND is a dedicated pin, not shared with PWR_GND and emphatically not with USB
@@ -1367,9 +1437,10 @@ _OUTPUT_PANEL_OPEN = (
 # ref-prefix -> (mpn, lcsc, unit_usd, note). Longest prefix wins, so "PD" beats "P".
 _MPN_RULES = (
     # --- resolved, verified in LCSC stock 2026-08-01 ---
-    ("U6",   ("STM32H743IIT6",   "C89597",   10.005, "LQFP176; same die as the ZIT6 (20 ADC ch, "
-                                                    "OTG_HS, 2 MB). @10 price. 548 in stock "
-                                                    "2026-09-17; the LQFP144 ZIT6 showed 0.")),
+    ("U6",   ("STM32H743IIT6",   "C89597",   10.005, "LQFP176; same die as the ZIT6 (OTG_HS, "
+                                                    "2 MB). @10 price. 335 in stock 2026-09-21. "
+                                                    "Its own ADCs are no longer used -- the "
+                                                    "five TLV320ADC3140s convert")),
     ("U7",   ("USB3343-CP",      "C633347",  2.6398, "ULPI HS PHY, QFN-24. @10 price. "
                                                 "*** OUT OF STOCK at LCSC 2026-08-04 ***")),
     ("U10",  ("USBLC6-2SC6",     "C7519",    0.1829, "USB ESD array, @5+. NOTE SOT-23-6, not the "
@@ -1442,7 +1513,14 @@ _MPN_RULES = (
     ("C1",   ("0402 X7R MLCC",   "BASIC",    0.002, "decoupling / crystal load (load caps C0G)")),
     ("C13",  ("0805 X7R MLCC",   "BASIC",    0.01,  "bulk")),
     ("C14",  ("0402 X7R MLCC",   "BASIC",    0.002, "power-input decoupling")),
-    ("R",    ("0603 thick-film R", "BASIC",  0.003, "per-string LED ballast")),
+    ("R",    ("0402 thick-film R", "BASIC",  0.002, "per-string LED ballast")),
+    ("Cs",   ("0402 X5R MLCC",   "BASIC",    0.004, "audio ADC supply / reference bypass "
+                                                    "(1 uF, 10 uF 6.3 V and 100 nF per SBAS993B "
+                                                    "Figure 165)")),
+    ("Ci",   ("0402 C0G MLCC",   "BASIC",    0.004, "audio ADC input coupling, 10 nF C0G -- "
+                                                    "the channel's signal rides a 48 kHz "
+                                                    "carrier, so 10 nF into 20 k is ample")),
+    ("Cm",   ("0402 C0G MLCC",   "BASIC",    0.004, "audio ADC INxM coupling to MID, 10 nF C0G")),
     # --- OPEN: see BOM.md. These three block ordering. ---
     # RESOLVED. The emitter is 0805 940 nm and WIDE (~120 deg full) because narrow-beam
     # simply is not made in this package -- see the note below and BOM.md. Angle is the one
@@ -1455,6 +1533,10 @@ _MPN_RULES = (
     # CARRIES THE SAME DAYLIGHT FILTER (740-1040 nm, matched to 830-950 nm emitters),
     # same 0.42 mm2 area, same 0805 2.0x1.25x0.7. It is a drop-in for the absent X02.
     # ⚠ THE ONE PART WITH NO SECOND SOURCE, and it was worth proving rather than
+    # ⚠ SUPERSEDED 2026-09-21 -- the detector is the Everlight PD15-22B now (see PD_DY).
+    # The sweep below looked only at 0805 lands; the full catalogue (802 photodiodes)
+    # has filtered parts in bigger packages, and redesigning the triplet around one
+    # was cheaper than the stock problem. Kept for the history.
     # assuming. LCSC's whole catalogue was swept for a DAYLIGHT-FILTERED PIN photodiode
     # in an 0805 land on 2026-09-17 and there is exactly one: this. The near misses all
     # fail on the filter, which is the thing that cannot be given up --
@@ -1468,14 +1550,13 @@ _MPN_RULES = (
     # So stock is a PURCHASING problem, not a design one: 95 pieces is four boards, and
     # the project's basis is ten (see "PCB cost basis" in BOM.md, 10 x 20 = 200). Build
     # 2 or 5 and re-check, or pre-order; the reel MOQ is 3,000, which is not the answer.
-    ("PD",   ("VEMD4110X01",     "C3211080", 0.58,  "filtered Si PIN, 0.42 mm2, +-55 deg, "
-                                                    "740-1040 nm. ZERO BIAS here, so the "
-                                                    "numbers that apply are Ik 2.2 uA/(mW/cm2) "
-                                                    "and CD 7 pF, not the front page's 2.4 and "
-                                                    "2.5 at VR = 5 V. @100+ price; 10 boards = "
-                                                    "200 pcs. STOCK 95 on 2026-09-17 -- the ONLY "
-                                                    "filtered 0805 PIN at LCSC, so this is a "
-                                                    "timing problem with no substitute")),
+    ("PD",   ("PD15-22B/TR8",    "C161211",  0.067, "Everlight filtered Si PIN, black epoxy "
+                                                    "(730-1100 nm), PEAK 940 nm = the emitter's. "
+                                                    "Isc 6.5 uA/(mW/cm2) typ, 4.0 min (@875 nm); "
+                                                    "6 pF at VR 5 V, zero-bias C not published. "
+                                                    "3.3 x 2.8 x 1.1. 11,271 in stock "
+                                                    "2026-09-21 (the VEMD4110X01 it replaces had "
+                                                    "95, at $0.58)")),
     # CLOSED 2026-09-17 against JST's own drawing (XH series, SMT type shrouded
     # header): S4B-XH-SM4-TB is A = 7.5, B = 15.0 -- the number this line used to ask
     # somebody to confirm. The six-way S6B recorded here before was 20.0, and the two
@@ -1495,7 +1576,13 @@ _MPN_RULES = (
 # file guards against elsewhere -- it evaluates fine and is simply wrong -- so the
 # ambiguous group is spelled out instead of pattern-matched.
 _MPN_EXACT = {r: ("0402 thick-film R", "BASIC", 0.002, "pulls / divider / gate")
-              for r in ("R30", "R31", "R32", "R33", "R34", "R35", "R36", "R37", "R38", "R39")}
+              for r in ("R30", "R31", "R32", "R33", "R34", "R35", "R36", "R37", "R38", "R39",
+                        "R50", "R51", "R52", "R53", "R54")}
+# The five audio converters: exact, because the bare "U" rule is the TIA quad's.
+_MPN_EXACT.update({r: ("TLV320ADC3140IRTWT", "C1852021", 3.6456,
+                       "TI 4-ch 768 kHz audio ADC, WQFN-24 (RTW). 106 dB SNR (2 Vrms diff). "
+                       "306 in stock 2026-09-21; the IRTWR reel (C882863) had 67")
+                   for r in ("U14", "U15", "U16", "U17", "U18")})
 # C112/C113 are the H7's 0805 VCAP pair, but "C112".startswith("C1") would file them
 # under the 0402 line -- the same namespace collision the groups below guard against.
 _MPN_EXACT.update({r: ("0805 X7R MLCC", "BASIC", 0.01, "H7 core regulator cap (VCAP)")
