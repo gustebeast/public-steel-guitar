@@ -62,7 +62,7 @@ FAB_DIR = os.path.join(OUT_DIR, "fab")
 
 # SIX boards: the power board merged into motor_ctrl, and the optical pickup landed
 # (both 2026-09-15). This is now the whole instrument.
-BOARDS = ("can_tee", "lever_sensor", "motor_ctrl", "output_panel",
+BOARDS = ("can_tee", "led_strip", "lever_sensor", "motor_ctrl", "output_panel",
           "optical")
 
 # Layer sets by copper count. JLCPCB takes the KiCad extensions directly.
@@ -116,6 +116,9 @@ LCSC = {
     # tin-plated form was stocked, the stocked form is the same part as ordered from JST.
     "B4B-XH-A": "C144395",          # JST B4B-XH-A(LF)(SN), stock 60,424
     "B4B-PH-K-S": "C131334",        # JST B4B-PH-K-S(LF)(SN), stock 138,037 -- motor ctrl J2 (lever bus)
+    "TLC59711PWPR": "C116842",      # 12-ch 16-bit constant-current LED driver (led_strip)
+    "XL-5050RGBW": "C7371891",      # XINGLIGHT RGBW 5050, separate anodes/cathodes (led_strip)
+    "S6B-PH-SM4-TB": "C265405",     # 6-way side-entry PH, the LED strip's chain connector
     "B2B-XH-A": "C158012",          # JST B2B-XH-A(LF)(SN), stock 381,008 -- sourced
                                     # 2026-09-19 by asking the catalogue, and it is the
                                     # (LF)(SN) trap again and not a preference: the BARE
