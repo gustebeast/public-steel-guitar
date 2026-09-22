@@ -140,10 +140,12 @@ ARM_TX     = KL.ARM_TX              # arm depth in X = the bending axis (the foo
 HUB_D      = KL.HUB_D               # Ø10 hub on the axle — unchanged
 LEVER_HW   = KL.LEVER_HW            # ±12.8 in Y (LKL's) — unchanged, so the whole bearing /
                                     # axle / magnet / board stack transfers verbatim
-PAD_LZ     = 88 * KL.D.BEAD         # 70.4 board length along local Z (= guitar Y, the
-                                    # foot's own direction)
-PAD_WY     = 28.0                   # board width along local Y (= guitar X, across)
-PAD_T      = 4.0                    # board thickness
+# THE ARM IS THE PAD (user, 2026-09-21). A separate 28-wide board used to stand on the arm's
+# working face; once the lever widened to 25.6 for the 1.6 recess walls it stood only 1.2 proud
+# a side and read as a stray ledge. The arm's own 25.6 face is the pad now, and the arm runs
+# ARM_TIP further so the foot surface still ends where the board's did.
+PAD_WY     = 2 * LEVER_HW           # 25.6 the working face's width (local Y = guitar X)
+ARM_TIP    = 4.0                    # the arm's reach past ARM_LEN_P (the old board's overhang)
 # Past REST the other way (+theta) nothing but gravity acts, and gravity pulls INTO the spring,
 # so the pedal barely goes there -- the recess still covers a small margin of it.
 REST_OVER_P = 5.0
@@ -162,9 +164,12 @@ LEG_TOP    = LOBE_RC_P + 4 * KL.D.BEAD   # the leg reaches 3.2 past the lobe sta
 # exactly how XS1 came to fall inside a pedal.
 PEDAL_X  = PB.PEDAL_X
 N_PEDALS = PB.N_PEDALS
-assert PAD_WY == PB.PEDAL_W, (
-    f"the pad is {PAD_WY} but the bar lays the stations out on {PB.PEDAL_W} — the "
-    f"bar's spacing and the pedal's own footprint have to be the same number")
+assert PAD_WY <= PB.PEDAL_W, (
+    f"the pad (the arm, {PAD_WY}) is wider than the {PB.PEDAL_W} the bar lays each station "
+    f"out on")
+# ⚠ PB.PEDAL_W (28) is also described as "the pedal's X footprint, marginally wider than its
+# 27.4 housing" -- stale: the housing is 2*HOUS_HW = 36.4 now. It still works (the splices clear
+# every housing by >= 13, measured 2026-09-21), but it is the bar's number to update.
 
 
 def swing(s, deg):
@@ -186,7 +191,8 @@ def _lever() -> cq.Workplane:
     recess per follower — knee_lever's scheme unchanged."""
     hub = cyl_y(HUB_D, 2 * LEVER_HW, y0=-LEVER_HW)
     leg = box_at(ARM_TX, 2 * LEVER_HW, LEG_TOP, x=0.0, y=0.0, z=LEG_TOP / 2)
-    arm = box_at(ARM_TX, 2 * LEVER_HW, ARM_LEN_P, x=0.0, y=0.0, z=-ARM_LEN_P / 2)
+    arm = box_at(ARM_TX, 2 * LEVER_HW, ARM_LEN_P + ARM_TIP, x=0.0, y=0.0,
+                 z=-(ARM_LEN_P + ARM_TIP) / 2)          # the arm's +X face IS the pad
     body = hub.union(leg).union(arm)
     # follower recesses: knee_lever's SWEPT tongue envelope, one per lane (they were plain
     # notches sized to the CARTRIDGE -- 14.8 wide each -- which stripped the leg around the
@@ -196,10 +202,6 @@ def _lever() -> cq.Workplane:
                                         sense=-1, rest_span=REST_OVER_P))
     body = body.union(cyl_y(2 * KL.LOBE_R, 2 * LEVER_HW, y0=-LEVER_HW)
                       .translate((0.0, 0.0, LOBE_RC_P)))
-    # PEDAL BOARD: the foot presses -X, so the board's working face is its +X one.
-    body = body.union(box_at(PAD_T, PAD_WY, PAD_LZ,
-                             x=ARM_TX / 2 - PAD_T / 2, y=0.0,
-                             z=-(ARM_LEN_P - PAD_LZ / 2 + 4.0)))
     body = KL.cut_axle_bore(body)
     return heal(body)
 
@@ -212,8 +214,8 @@ def _lever_envelope() -> cq.Workplane:
     hub = cyl_y(HUB_D + 2 * c, 2 * (LEVER_HW + c), y0=-(LEVER_HW + c))
     leg = box_at(ARM_TX + 2 * c, 2 * (LEVER_HW + c), LEG_TOP + c,
                  x=0.0, y=0.0, z=(LEG_TOP + c) / 2)
-    arm = box_at(ARM_TX + 2 * c, 2 * (LEVER_HW + c), ARM_LEN_P + 2.0,
-                 x=0.0, y=0.0, z=-(ARM_LEN_P + 2.0) / 2)
+    arm = box_at(ARM_TX + 2 * c, 2 * (LEVER_HW + c), ARM_LEN_P + ARM_TIP + 2.0,
+                 x=0.0, y=0.0, z=-(ARM_LEN_P + ARM_TIP + 2.0) / 2)   # the arm reaches ARM_TIP further now
     return heal(hub.union(leg).union(arm))
 
 
