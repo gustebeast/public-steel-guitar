@@ -220,8 +220,14 @@ def _crop_lkl_vkl():
     return importlib.import_module("src.build").lkl_vkl_box()
 
 
+def _crop_pedal_bar():
+    """The pedal bar end to end with its pedals -- shared with the live set in
+    src.build.pedal_bar_box so the crop and the live set cannot disagree."""
+    return importlib.import_module("src.build").pedal_bar_box()
+
+
 CROPS = {"leg_station": _crop_leg_station, "belt_run": _belt_run_box,
-         "lkl_vkl": _crop_lkl_vkl,
+         "lkl_vkl": _crop_lkl_vkl, "pedal_bar": _crop_pedal_bar,
          "keyhead": _crop_keyhead, "bridge": _crop_bridge,
          "screw_rows": _crop_screw_rows, "body": _crop_body}
 # ─────────────────────────────────────────────────────────────────────────────

@@ -519,6 +519,143 @@ def cut_feel_access(piece, x0: float, x1: float):
         piece = KL.cut_feel_rear(piece, lambda s, x=x: place(pplace(s), x), reach=_BAR_REACH)
     return piece
 
+
+# -- WIRE MANAGEMENT: the spur, and the cleat --------------------------------
+# One request behind both (user, 2026-09-22): "we need a way to cable manage having
+# some extra wire length between each pedal. That way you can adjust the pedal
+# positions without having to make new cables."
+#
+# A pedal's X station is PRINTED IN (fuse_into_bar), so changing the spacing means new
+# bar pieces. What it must not also mean is a new LOOM: the harness is the crimped,
+# tooled, order-the-contacts part, and it is the one thing that carries over from one
+# bar to the next. So every bus-B segment is cut for the LONGEST pitch the bar can
+# hold (CABLE_LEN below), and at any shorter pitch the excess is wound onto a cleat
+# rather than left loose to wander into a bay, a splice mortise or the lid's path.
+#
+# SPUR. The board bay stops short of the trough, so the plug sits in a sealed pocket
+# with no way out. (The bay used to break into the trough -- _housing still says so --
+# but the 2026-09-21 board re-spin moved J1, and the bay is derived from the posed
+# hardware, so it followed the board and quietly parted company with the trough.
+# Nothing failed: a cavity that does not reach another cavity is not an overlap, and
+# the gate has no opinion about wires.) The spur is the trough carried DOWN over the
+# bay's own span. It runs along +Y, the build axis, so it is a bore, not a pocket --
+# no ceiling, no overhang, nothing added to the print.
+#
+# CLEAT. A post standing off the trough floor in the clear run between one board bay
+# and the next, with a 45 deg head the wraps cannot jump off. It grows along +Y too,
+# so it prints as a plain pillar, and the wire goes on by hand through the open
+# trough before the lid slides in. One per SEGMENT, which is why there is one at the
+# -X end as well: that cable comes from the leg and its length moves with pedal 1.
+BUNDLE_OD   = 2.5                   # bus B twisted: 4 x 26 AWG (BOM, Wire)
+CLEAT_D     = 7 * D.NOZZLE_D        # 5.6 shaft -> a 4.05 bend radius at the bundle's
+                                    # centre line, well outside 26 AWG's own minimum
+CLEAT_WRAPS = 3
+CLEAT_H     = 10 * D.NOZZLE_D       # 8.0 of shaft, which is what CLEAT_WRAPS needs
+CLEAT_LIP   = 3 * D.NOZZLE_D        # 2.4 of head, at 45 deg: self-supporting, and it
+                                    # stands 2.4 proud of the shaft all round
+CLEAT_SLACK = CLEAT_WRAPS * math.pi * (CLEAT_D + BUNDLE_OD)      # 76.3 mm stowed
+assert CLEAT_WRAPS * BUNDLE_OD <= CLEAT_H + 1e-9, (
+    f"{CLEAT_WRAPS} wraps of a {BUNDLE_OD} bundle need {CLEAT_WRAPS * BUNDLE_OD:.1f} "
+    f"of shaft; the cleat has {CLEAT_H}")
+assert CLEAT_H + CLEAT_LIP + BUNDLE_OD <= PB.TROUGH_D + 1e-9, (
+    "the cleat (plus a bundle passing over its head) is deeper than the trough")
+assert CLEAT_D + 2 * CLEAT_LIP + 2 * BUNDLE_OD <= PB.TROUGH_HZ + 1e-9, (
+    "the cleat head plus a bundle passing either side is wider than the trough")
+
+
+def _trough_spur(x):
+    """The cutter that joins one station's board bay to the wiring trough."""
+    b = place(board_bay_cutter(), x).val().BoundingBox()
+    y0, y1 = b.ymax - 0.1, PB.LID_Y0 - PB.TROUGH_D + 0.1          # bay -> trough floor
+    z0 = max(b.zmin, PB.TROUGH_Z0)
+    z1 = min(b.zmax, PB.TROUGH_Z1)
+    return box_at(b.xlen, y1 - y0, z1 - z0,
+                  x=(b.xmin + b.xmax) / 2, y=(y0 + y1) / 2, z=(z0 + z1) / 2)
+
+
+def cleat_runs():
+    """[(x0, x1)] the CLEAR trough between consecutive board bays -- one per bus-B
+    segment, the -X end being the leg's feed. Derived from the posed bays, so it
+    re-solves when the pitch or the board changes instead of going stale."""
+    bay = board_bay_cutter()
+    out, prev = [], PB.TROUGH_X0
+    for x in PEDAL_X:
+        b = place(bay, x).val().BoundingBox()
+        out.append((prev, b.xmin))
+        prev = b.xmax
+    return out
+
+
+def _cleat(xc):
+    y0 = PB.LID_Y0 - PB.TROUGH_D
+    zc = (PB.TROUGH_Z0 + PB.TROUGH_Z1) / 2.0
+    post = cyl_y(CLEAT_D, CLEAT_H, y0=y0, x=xc, z=zc)
+    head = cq.Workplane("XY").add(cq.Solid.makeCone(
+        CLEAT_D / 2, CLEAT_D / 2 + CLEAT_LIP, CLEAT_LIP,
+        pnt=cq.Vector(xc, y0 + CLEAT_H, zc), dir=cq.Vector(0, 1, 0)))
+    return post.union(head)
+
+
+# A cleat goes at its run's MIDPOINT unless a splice is there: both bar splices land
+# in a pedal gap by construction (pedal_bar picks them that way), so a run may have a
+# pair of tenons standing in it. Sliding the cleat along its own run is the whole
+# resolution -- there is no other X in the bar that is inside the trough, outside a
+# bay and outside a housing.
+CLEAT_KEEP = 1.6                    # cleat head -> splice tenon, and -> a bay mouth
+
+
+def cleat_x():
+    """One cleat station per run, clear of the splices. Raises if a run has no clear
+    spot, which would mean the bar had run out of trough."""
+    r = CLEAT_D / 2 + CLEAT_LIP + CLEAT_KEEP
+    bars = []
+    for xs in (PB.XS1, PB.XS2):
+        b = PB._splice_tenons(xs).val().BoundingBox()
+        bars.append((b.xmin - r, b.xmax + r))
+    out = []
+    for x0, x1 in cleat_runs():
+        lo, hi = x0 + r, x1 - r
+        for c in ((lo + hi) / 2.0, lo, hi):          # midpoint, then either end
+            if lo - 1e-9 <= c <= hi + 1e-9 and not any(a <= c <= b for a, b in bars):
+                out.append(c)
+                break
+        else:
+            raise AssertionError(
+                f"no room for a wire cleat in the trough run {x0:.1f}..{x1:.1f}")
+    return out
+
+
+def wire_management(piece, x0: float, x1: float):
+    """Cut each station's SPUR and stand its CLEAT, on a fused bar piece.
+
+    After fuse_into_bar, like cut_feel_access, and for the same reason: the spur
+    reaches out of a bay the housing has already been fused around, and the cleat
+    stands in trough the piece clip has already decided it owns."""
+    for x in PEDAL_X:
+        if x0 <= x < x1:
+            piece = piece.cut(_trough_spur(x))
+    for xc in cleat_x():
+        if x0 <= xc < x1:
+            piece = piece.union(_cleat(xc))
+    return piece
+
+
+# THE CABLE, as a purchasing length. The pitch the bar can be built at runs from
+# housings-nearly-touching to the pedals spread over the spare slot; a segment is cut
+# for the long end and the cleat eats the difference at anything shorter.
+# The housing's X footprint is NOT 2*HOUS_HW: the sensor cradle stands out past the
+# +X cheek (local +Y -> guitar -X), so it is HOUS_HW one way and KL.CR_Y1 the other.
+# Read off the constants rather than the solid, so this costs no geometry at import.
+PITCH_MIN = HOUS_HW + KL.CR_Y1 + D.MIN_WALL_2P
+PITCH_MAX = PB.PEDAL_PITCH * (PB.N_PEDALS + 1) / PB.N_PEDALS     # slot 1 shared out
+CABLE_SERVICE = 25.0                # enough to lift a board out of its bay and unplug
+CABLE_LEN = PITCH_MAX + CABLE_SERVICE
+assert PITCH_MAX - PITCH_MIN + CABLE_SERVICE <= CLEAT_SLACK, (
+    f"a cleat stows {CLEAT_SLACK:.0f} mm but the pitch range "
+    f"{PITCH_MIN:.1f}..{PITCH_MAX:.1f} plus service needs "
+    f"{PITCH_MAX - PITCH_MIN + CABLE_SERVICE:.0f}")
+
+
 def demo_parts():
     """(name, solid) in GUITAR coordinates — the WHOLE control core at each of the
     three stations, not just the arm: bearings, magnet, sensor board, connector and

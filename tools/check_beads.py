@@ -479,6 +479,15 @@ _ex("layout",
     leg_latch__BUTTON_SIDE="a direction SIGN (-1: the latch button faces -Y), "
                            "not a length",
 )
+# The pedal bar's wire cleats. None of these three is printed material: two are
+# properties of the WIRE and one is a count.
+_ex("hardware",
+    foot_pedal__BUNDLE_OD="bus B twisted: 4 x 26 AWG hookup wire, measured as a bundle",
+)
+_ex("layout",
+    foot_pedal__CLEAT_WRAPS="a COUNT of turns on the cleat, not a length",
+    foot_pedal__CABLE_SERVICE="spare WIRE for unplugging a board, a harness length",
+)
 _ex("layout",
     KEYHEAD_INBOARD_X="keyhead endplate inboard face X -- a POSITION (asserted in build.py)",
     ELEC_STACK_D="purchased-board envelope: tray + posts + Pi 5 height (asserted in electronics)",
