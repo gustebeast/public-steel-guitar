@@ -770,8 +770,12 @@ def _parts():
     for i in range(D.N_STRINGS):
         n, sy = i + 1, string_y_at(i, SENSE_X)
         add("D%d" % n, "IR emitter, 940 nm, Everlight IR17-21C (~120 deg -- see note)", "0805OPT", SENSE_X, sy)
-        add("PD%dA" % n, "PIN photodiode, Everlight PD15-22B (daylight filter), +Y", "PD15", PD_X, sy + PD_DY)
-        add("PD%dB" % n, "PIN photodiode, Everlight PD15-22B (daylight filter), -Y", "PD15", PD_X, sy - PD_DY)
+        # TURNED 180: the PD15's cathode (pad 2) is its +X pair at 0 deg, i.e. on the far
+        # side from the op-amps -- every summing node, the board's noise-critical trace,
+        # had to go around the detector body, and three of them failed to route. At 180
+        # the cathode faces the quad and the anode (MID, a reference) takes the long way.
+        add("PD%dA" % n, "PIN photodiode, Everlight PD15-22B (daylight filter), +Y", "PD15", PD_X, sy + PD_DY, 180.0)
+        add("PD%dB" % n, "PIN photodiode, Everlight PD15-22B (daylight filter), -Y", "PD15", PD_X, sy - PD_DY, 180.0)
         # ballast rides in the gap just -Y of its own emitter, same X band: no column to
         # spare, and it keeps the high-di/dt emitter loop a couple of mm long
         # 0402 since the PD15 triplet: an 0603's courtyard reaches the detector's
