@@ -34,8 +34,14 @@ FAN="${SCRATCH:-/c/Users/gus/AppData/Local/Temp/claude/C--Users-gus-Sync-Documen
 mkdir -p "$FAN"
 
 for spec in "$@"; do
+  # name:pattern=>repl            edits src/optical_pickup.py
+  # name:FILE:pattern=>repl       edits FILE (e.g. elec/optical.py, for the router strategy)
   name="${spec%%:*}"; expr="${spec#*:}"
   [ "$expr" = "$name" ] && expr=""
+  file="src/optical_pickup.py"
+  case "$expr" in
+    */*.py:*) file="${expr%%:*}"; expr="${expr#*:}";;
+  esac
   d="$FAN/$name"
   rm -rf "$d"; mkdir -p "$d"
   # only the code: elec/out is 32 MB of prior artefacts and every tree regenerates its own
@@ -58,7 +64,7 @@ p=sys.argv[1]; s=io.open(p,encoding='utf-8').read()
 pat,rep=sys.argv[2].split('=>')
 s2=re.sub(pat,rep,s,count=1)
 assert s2!=s, 'variant edit matched nothing: '+pat
-io.open(p,'w',encoding='utf-8',newline='\r\n').write(s2)" "$d/src/optical_pickup.py" "$expr" || { echo "$name: EDIT FAILED"; continue; }
+io.open(p,'w',encoding='utf-8',newline='\r\n').write(s2)" "$d/$file" "$expr" || { echo "$name: EDIT FAILED"; continue; }
   fi
   (
     cd "$d" || exit 1
