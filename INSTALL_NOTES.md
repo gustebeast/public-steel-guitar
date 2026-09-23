@@ -63,8 +63,12 @@ be swapped.
    INSIDE the tenon's face, so nothing should ever be proud.
 5. **Fit the M4 × 20 sideways** through the recess in one tenon flat, across the
    board, into the insert in the opposite flat. That is what holds the board.
-6. **The female board** is the easy one: it lies flat on the mortise roof (top joint)
-   or the bar's floor (bottom), one M4 × 8 straight down into its insert.
+6. **The female board DROPS INTO A POCKET** — in the mortise roof (top joint) or the
+   bar's floor (bottom) — and finishes flush with that face. It goes in one way only,
+   and the pocket's four walls set its orientation before the screw is anywhere near
+   it. Seat it, check it is flat, then the M4 × 8 straight down into its insert. The
+   screw's ONLY job is to stop it lifting back out along the install direction; if you
+   find yourself using it to pull the board into position, the pocket is wrong.
 
 **Why step 3 works at all:** the PH stands 5.5 off the board's face, and cutting its
 pocket only where it ends up left it gouging up to 396 mm³ of the tenon on the way
