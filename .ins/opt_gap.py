@@ -74,8 +74,14 @@ opts = [
     ("clearance 1.10 -> 0.70", GAP_THIN - 0.40, RF),
     ("cover 1.6 -> 0.8 (1-bead; it will sag)", GAP_THIN - 0.80, RF),
     ("both of the above", GAP_THIN - 1.20, RF),
-    ("NO COVER, same 1.10 clearance", GAP_THIN - (COVER_GAP + COVER_T), RF),
-    ("NO COVER + Rf 1M -> 250k", GAP_THIN - (COVER_GAP + COVER_T), 250e3),
+    # ⚠ WITHOUT THE COVER THE CLEARANCE CASE BECOMES THE PD, NOT THE EMITTER FACE. The
+    # PD15 stands 1.10 off the board and the emitter 0.85, so the tallest thing under the
+    # string is a photodiode 0.25 ABOVE the face that OPT_GAP measures from. Holding the
+    # same 1.10 mm of air the cover has today gives OPT_GAP 1.35, not 1.10, and 5.4x rather
+    # than the 7.8x a naive face-to-string reading predicts.
+    ("NO COVER, 1.10 PD-to-string", 2.188, RF),
+    ("NO COVER, 1.10 + Rf 1M -> 250k", 2.188, 250e3),
+    ("NO COVER, 0.90 + Rf 250k", 1.988, 250e3),
 ]
 for name, g, rf in opts:
     gn = gain_for(g)
@@ -89,3 +95,56 @@ print("for +-30 deg -> +-60 deg) it passes %.2f uA and the TIA clips on a haloge
       % (AMB_HEADROOM * 1e6))
 print("Dropping Rf to 250k restores it four-fold and costs only the Rf thermal term,")
 print("which the extra signal more than pays for -- see the last row.")
+
+
+# ── PER-STRING BALANCE (user, 2026-09-23): "every string needs to function as a hard
+# floor, but beyond that ... that should be balanced" ────────────────────────────────
+#
+# ⚠ CLOSING THE GAP MAKES THE BALANCE WORSE, which is the thing to know before spending
+# it. The strings' centres are coplanar, so a thin string's surface sits a FIXED distance
+# further from the sensor than a thick one's -- and that fixed offset is a bigger fraction
+# of a small gap than of a large one. Shrinking the gap therefore helps the fat strings
+# more than the thin ones and widens the spread the user wants closed.
+#
+# The board already carries both levers per string: R1-R10 set emitter current and Rf
+# sets TIA gain, both "per-string VALUES" in optical_pickup.py's own words. Emitters run
+# at 21 mA of a 65 mA rating, and shot-limited SNR grows as sqrt(current), so there is
+# 10*log10(65/21) = +4.9 dB available where it is needed.
+import sys
+sys.path.insert(0, '.')
+from src import dimensions as D  # noqa: E402
+
+STRING_Z = D.STRING_Z
+GAUGES = D.GAUGES_C6_IN
+
+
+def per_string(face_z, i_led_mA=21.0):
+    """(gap, signal) for each string at a given sensor-face height."""
+    out = []
+    for g_in in GAUGES:
+        d = g_in * 25.4
+        h = (STRING_Z - d / 2) - face_z
+        out.append((h, d / h ** 3 * (i_led_mA / 21.0)))
+    return out
+
+
+def report(name, face_z, led=None):
+    rows = per_string(face_z, 21.0) if led is None else \
+        [per_string(face_z, c)[i] for i, c in enumerate(led)]
+    ref = max(s for _, s in rows)
+    db = [10 * math.log10(s / ref) for _, s in rows]
+    print("%-34s spread %4.1f dB   worst string %d" % (name, max(db) - min(db),
+                                                       db.index(min(db)) + 1))
+    return db
+
+
+print()
+print("PER-STRING BALANCE (dB relative to the best string, C6 demo set):")
+old = report("as built (face 11.984)", 11.984)
+new = report("no cover  (face 13.634)", 13.634)
+# rebalance: push current where it is short, capped at the 65 mA rating
+need = [min(65.0, 21.0 * 10 ** (-d / 10.0)) for d in new]
+bal = report("no cover + per-string current", 13.634, need)
+print()
+print("per-string emitter current to balance (mA, 65 max): %s"
+      % ", ".join("%.0f" % c for c in need))
