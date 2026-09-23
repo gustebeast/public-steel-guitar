@@ -1864,13 +1864,12 @@ PCB_L  = PCB_YP - PCB_YM
 #      -18.0, not -17.6: the 0.4 fit gap has to come out of the BOARD's side, because
 #      taking it from -17.6 would thin that wall to 1.2 and it is what holds the bearings
 #      that carry string tension. Wall 1.6 intact, air 0.4, board edge -18.0.
-#   2. GUIDE RODS. Five of them (strings 1/3/5/7/9) on the near row at x -20.0, 19.0 apart
-#      in y, so the band crosses the row and needs clearance holes -- and they are ACCESS
-#      holes, not clearance: the rods top out at z 2.80, 6.73 mm BELOW the board, but their
-#      bores run open to z 14.5, so the board covers the mouth the rod is dropped through.
-#      At Ø3.9 each hole leaves a 1.40 mm neck on the -X side and nothing on the +X, so
-#      about three traces pass each rod -- which is what the three digital nets need and no
-#      more. Installing the rods BEFORE the board would buy back the full 5.35 mm.
+#   2. GUIDE RODS -- AND THE BAND DOES NOT NEED HOLES FOR THEM (user, 2026-09-23). Five sit
+#      on the near row at x -20.0 and the band crosses that row, but the rods top out at
+#      z 2.80, 6.73 mm BELOW the board, and they GO IN BEFORE THE PICKUP. Nothing ever has
+#      to pass through the band. The holes that were here cost 1.40 mm necks at five points
+#      -- about three traces past each rod -- and deleting them gives the full 5.35 mm for
+#      the band's whole length. See INSTALL_NOTES.md: the order is load-bearing now.
 #   3. PRINTABILITY. Across the strip's y range the endplate tops out at z 13.9, and the
 #      band wants z 9.3..11.13. Cutting only the board's own slot would leave a ROOF of
 #      endplate at 11.13..13.9 -- an overhang. The cut has to run to the top instead, which
@@ -1880,9 +1879,8 @@ PCB_L  = PCB_YP - PCB_YM
 # so the overlap gate will fail on bridge_endplate until that work is done.
 O_BAND_X0 = -18.0
 _STRIP_X0 = PCB_X0 if O_BAND_X0 is None else O_BAND_X0
-O_ROD_HOLE_D = 3.9                                     # Ø3.5 rod + 0.4 of routing clearance
-O_ROD_HOLES = [(D.guide_rod_x(i), D.string_y(i)) for i in range(D.N_STRINGS)
-               if D.guide_rod_x(i) < 0] if O_BAND_X0 is not None else []
+O_ROD_HOLE_D = 3.9                                     # kept for the record; nothing uses it
+O_ROD_HOLES = []                                       # none -- rods go in before the board
 _SECTIONS = ((HEAD_Y0, PCB_YP, PCB_X1S, TAIL_X1),      # +Y wrap, over the endplate
              (Y_TAIL, HEAD_Y0, STRIP_X1, _STRIP_X0),   # sensing strip (wider than the band)
              (WRAP_Y, Y_TAIL, PCB_X1S, TAIL_X1),       # -Y wrap -- the head's mirror
