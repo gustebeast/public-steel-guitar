@@ -1826,6 +1826,9 @@ KEEP_WOUND_D = 2 * (KEEP_POST_D + CANB_BUNDLE_OD) / 2.0 + CANB_BUNDLE_OD   # 10.
 # of a 5.6 column. At the post's own diameter it reads as part of the post, and a 45 deg
 # COLLAR at the joint carries the load into it instead of ending on a square corner.
 KEEP_WEB_T  = KEEP_POST_D           # 5.6 -- the support is the post's width
+KEEP_JOIN   = 5 * D.NOZZLE_D        # 4.0 of bare shaft below the winding, where the
+                                    # brace lands -- so the joint is structure, not the
+                                    # first turn of cable
 KEEP_POST_DX = KEEP_WOUND_D / 2.0   # ...but the post still sits a WOUND radius in from
                                     # the housing's back face, so the coil is flush with
                                     # it rather than standing proud
@@ -1933,16 +1936,14 @@ def cable_keeper(y_face=None, z_bed=None, x_back=None, z_top=None, hung=False):
     # triangle that merely touches its supports along an edge fuses into nothing, and
     # the housing came out as three separate solids.
     dy = yc - y0
-    bt = KEEP_POST_D                   # brace thickness, measured vertically
-    # THE POST ENDS IN A CONE, not a disc. A 45 deg brace's coverage shrinks as it
-    # descends, so however the two are stacked, part of a flat bottom pokes out of the
-    # brace's -Y side and hangs in air -- 8 mm2 one way, 17 the other, both found by
-    # probing for downward faces rather than by eye. A tapered end has no flat bottom to
-    # support: its own surface is steeper than 45, and its point lands inside the brace.
-    tip = 5 * D.NOZZLE_D                                        # 4.0 of taper
-    post = cyl(KEEP_POST_D, wz1 - wz0, z=wz0).translate((xc, yc, 0.0))
-    post = post.union(cq.Workplane("XY").add(cq.Solid.makeCone(
-        KEEP_POST_D / 2.0, 0.0, tip, cq.Vector(xc, yc, wz0), cq.Vector(0, 0, -1))))
+    # THE BRACE MEETS THE SHAFT, on a flat top it can sit on (user: "the support
+    # doesn't cleanly merge with the column for LKV creating a weak spot"). It used to
+    # meet a CONE -- the post was tapered to dodge an unsupported bottom disc -- so the
+    # joint was a tangent line on a point, which is exactly the weak spot. A brace with
+    # a HORIZONTAL top, full width under the post, gives the shaft a face to land on:
+    # the disc is then enclosed, not merely adjacent, and nothing needs tapering.
+    wzj = wz0 - KEEP_JOIN                                       # the structural joint
+    post = cyl(KEEP_POST_D, wz1 - wzj, z=wzj).translate((xc, yc, 0.0))
     # A DIAGONAL BRACE: both faces 45, and PARALLEL (user, 2026-09-23: "you need to have
     # both the top and bottom be 45 angles", then "bottom is right, top is angled the
     # wrong way now"). Two wrong shapes preceded it and each is worth naming, because
@@ -1956,10 +1957,11 @@ def cable_keeper(y_face=None, z_bed=None, x_back=None, z_top=None, hung=False):
     # so the two share volume -- a brace that merely touches leaves the post a separate
     # solid with its bottom disc in air (21 mm2, found by probing for downward faces).
     px = yc + KEEP_POST_D / 2.0
-    assert wz0 + ov - dy - bt >= z0, (
+    assert wzj - dy >= z0, (
         "the keeper's brace lands %.2f below this housing's floor"
-        % (z0 - (wz0 + ov - dy - bt)))
-    pts = [(y0 - ov, wz0 - dy), (px, wz0), (px, wz0 - bt), (y0 - ov, wz0 - dy - bt)]
+        % (z0 - (wzj - dy)))
+    # ...horizontal on top (it carries the post), 45 underneath (it has to print)
+    pts = [(y0 - ov, wzj - dy), (px, wzj), (y0 - ov, wzj)]
     but = (cq.Workplane("YZ").polyline(pts).close()
            .extrude(KEEP_WEB_T).translate((xc - KEEP_WEB_T / 2.0, 0.0, 0.0)))
     return post.union(head).union(but)
