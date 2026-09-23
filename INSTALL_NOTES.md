@@ -59,8 +59,9 @@ be swapped.
    PH's room is swept the whole depth of the slot, so the board can go in with its
    plug already on — and that is the easy way round, because the plug's mouth faces
    up the leg and is hard to reach once the board is seated.
-4. **Slide the board in** until it seats. Watch the pins: the free tips rest 4.1
-   INSIDE the tenon's face, so nothing should ever be proud.
+4. **Slide the board in** until it seats. Watch the pins: the free tips rest 2.5
+   INSIDE the tenon's face, so nothing should ever be proud. (It was 4.1 before the
+   female board was recessed into its host — `leg_pogo.TIP_REST` is the live number.)
 5. **Fit the M4 × 20 sideways** through the recess in one tenon flat, across the
    board, into the insert in the opposite flat. That is what holds the board.
 6. **The female board DROPS INTO A POCKET** — in the mortise roof (top joint) or the
@@ -69,7 +70,7 @@ be swapped.
    it. Seat it, check it is flat, then the M4 × 8 straight down into its insert. The
    screw's ONLY job is to stop it lifting back out along the install direction; if you
    find yourself using it to pull the board into position, the pocket is wrong.
-7. **Heat-set the female's insert BEFORE the board goes in.** It presses in from the
+7. **Heat-set the female's insert BEFORE step 6.** It presses in from the
    mortise side, down the same axis the screw later uses, through a bored channel sized
    to the insert. That channel notches the pocket's wall beside the screw -- that is
    deliberate, not damage.
