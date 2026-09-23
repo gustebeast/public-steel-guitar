@@ -97,8 +97,22 @@ SHRINK_ADAPTER = SLIDE_CLR + REST_OUT   # 0.754
 # flanks by the shrink but its APEX FLAT by sqrt2 x the shrink, and a 1x transition
 # leaned that apex face out to 35 degrees (the overhang probe caught it).
 TRANSITION_Z = math.sqrt(2.0) * (SHRINK_ADAPTER - CLR)   # 0.713
-BUTTON_SIDE = -1.0                 # the button faces -Y: inboard of the +Y rail,
-                                   # toward the player
+BUTTON_SIDE = -1.0                 # ⚠ STILL -Y. The user wants +Y (2026-09-23) -- see
+                                   # the swap note below -- but it moves WITH
+                                   # leg_pogo.DROP_OFF or the gate is red either way.
+                                   # The button faces
+                                   # -Y, toward the player, until then. The latches are
+                                   # worked with the instrument UPSIDE DOWN IN ITS CASE,
+                                   # not in playing position, and the plan changed from
+                                   # the pedal bar being the far side as you do that to
+                                   # its being the NEAR side -- so every latch moves
+                                   # across together. They must all face one way.
+                                   #
+                                   # This also swaps with the harness: the pogo lane was
+                                   # on +Y only because this pocket took the -Y middle
+                                   # (leg_pogo.DROP_OFF, and leg_trrs.AX_Y's own comment
+                                   # says so). The two trade sides rather than one being
+                                   # squeezed past the other.
 
 
 # -- the radii (from the leg's axis toward the button) -----------------------

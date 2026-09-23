@@ -308,13 +308,29 @@ class Joint(object):
         self.tenon_up, self.host_up = tenon_up, host_up
         # which s face of a cavity in the TENON is its ceiling: the one the part builds
         # toward (the tenon lies on a flat, so its build direction is +-S)
-        self.up_s = 1.0 if (self.S[0] * tenon_up[0] + self.S[1] * tenon_up[1]) > 0 else -1.0
+        world_up_s = 1.0 if (self.S[0] * tenon_up[0]
+                             + self.S[1] * tenon_up[1]) > 0 else -1.0
+        # THE s MAPPING, which is what lets a joint be REVERSED along t without moving
+        # anything else. Reversing T reverses S with it, so a joint on the opposite
+        # diagonal would otherwise mirror the board's s layout as well -- and that
+        # layout is not symmetric (the row sits S_C off the axis, and the roofs are
+        # sized from the row to the flat on the ceiling side). Mirroring it swings the
+        # roof headroom from 12.0 to 6.0 and the shed runs out through the tenon's flat.
+        #
+        # So local s is mapped, not used raw: world offset = ms * s + s_c along S. With
+        # ms = world_up_s and s_c = S_C * ms, BOTH joints see an identical local frame --
+        # the ceiling is always at +s, the ceiling-side flat is always 15.0 away, and
+        # every board dimension, assert and roof is written once. All that differs in
+        # the world is the direction of t, which is the whole point.
+        self.ms = world_up_s
+        self.s_c = S_C * self.ms
+        self.up_s = 1.0                 # ...so in LOCAL terms the ceiling is always +s
         self.x, self.y = LS.LEG_X, LS.LEG_Y
 
     def p(self, t, s, d):
         """Local -> world. s is measured from the ROW's centre, which sits S_C along
         the row from the leg's axis."""
-        s = s + S_C
+        s = self.ms * s + self.s_c
         return (self.x + t * self.T[0] + s * self.S[0],
                 self.y + t * self.T[1] + s * self.S[1], self.z + self.dz * d)
 
@@ -323,8 +339,9 @@ class Joint(object):
         # d is INTO the tenon, which is -Z at the top joint: take the lower world z,
         # not the lower d, or every cavity up there comes out mirrored about the seam
         z0 = min(self.z + self.dz * d0, self.z + self.dz * d1)
+        sa, sb = self.ms * s0 + self.s_c, self.ms * s1 + self.s_c
         b = cq.Workplane("XY").add(cq.Solid.makeBox(
-            t1 - t0, s1 - s0, abs(d1 - d0), cq.Vector(t0, s0 + S_C, 0.0)))
+            t1 - t0, abs(sb - sa), abs(d1 - d0), cq.Vector(t0, min(sa, sb), 0.0)))
         return (b.rotate((0, 0, 0), (0, 0, 1), self.ang)
                 .translate((self.x, self.y, z0)))
 
@@ -350,20 +367,24 @@ class Joint(object):
         tm = (t0 + t1) / 2.0
         apex = sc + u * hw
         z0, z1 = sorted((self.z + self.dz * d0, self.z + self.dz * d1))
-        s_flat = u * (LS.TEN_W / 2.0) - S_C     # the tenon's flat on the ceiling side
+        # the ceiling-side flat, in LOCAL s. It is the same number for either mapping:
+        # the flat is at world offset ms * TEN_W/2, so local s = TEN_W/2 - s_c/ms, and
+        # s_c/ms is S_C by construction. (Dividing the whole thing by ms instead put it
+        # at -9.0 and the mouth's ridge "was already outside the flat".)
+        s_flat = u * (LS.TEN_W / 2.0) - S_C
         if shed:
             top = sc + u * (t1 - t0)            # 45 degrees across the whole span
             assert (top - s_flat) * u < 0, (
                 "the shed roof runs out through the tenon's flat")
             hi_t = t1 if shed > 0 else t0
             lo_t = t0 if shed > 0 else t1
-            pts = [(t0, sf + S_C), (t1, sf + S_C),
-                   (hi_t, top + S_C), (lo_t, sc + S_C)]
+            pts = [(t0, sf * self.ms + self.s_c), (t1, sf * self.ms + self.s_c),
+                   (hi_t, top * self.ms + self.s_c), (lo_t, sc * self.ms + self.s_c)]
             return (cq.Workplane("XY").workplane(offset=z0)
                     .polyline(pts).close().extrude(z1 - z0)
                     .rotate((0, 0, 0), (0, 0, 1), self.ang)
                     .translate((self.x, self.y, 0.0)))
-        pts = [(t0, sf + S_C), (t1, sf + S_C), (t1, sc + S_C)]
+        pts = [(t0, sf * self.ms + self.s_c), (t1, sf * self.ms + self.s_c), (t1, sc * self.ms + self.s_c)]
         if (apex - s_flat) * u > 0:
             # THE RIDGE DOES NOT FIT. The mouth is 10.6 wide and its ceiling sits 2.75
             # inside the flat, so a 45 degree ridge (5.3) runs out through the tenon's
@@ -378,11 +399,11 @@ class Joint(object):
             half = hw - abs(s_br - sc)
             assert half > 0.0, "the cavity's ceiling is already outside the flat"
             s_out = s_flat + u * 1.0
-            pts += [(tm + half, s_br + S_C), (tm + half, s_out + S_C),
-                    (tm - half, s_out + S_C), (tm - half, s_br + S_C)]
+            pts += [(tm + half, s_br * self.ms + self.s_c), (tm + half, s_out * self.ms + self.s_c),
+                    (tm - half, s_out * self.ms + self.s_c), (tm - half, s_br * self.ms + self.s_c)]
         else:
-            pts += [(tm, apex + S_C)]
-        pts += [(t0, sc + S_C)]
+            pts += [(tm, apex * self.ms + self.s_c)]
+        pts += [(t0, sc * self.ms + self.s_c)]
         return (cq.Workplane("XY").workplane(offset=z0)
                 .polyline(pts).close().extrude(z1 - z0)
                 .rotate((0, 0, 0), (0, 0, 1), self.ang)
@@ -681,6 +702,37 @@ ROUTE_OFF = 9 * B               # 7.2 off the leg's axis in +Y, and NOT on the p
                                 # RETIRED TRRS bore's axis and then a jog back out to
                                 # clear the ladder -- both inherited from a part that no
                                 # longer exists (user spotted the offset in the tab).
+# ── THE FIXED TENON'S LANE, which the harness now owns too ──────────────────
+# It used to be leg_trrs._ax() at +5.6, and that module's own comment says exactly why:
+# "the latch's pocket takes the tenon's -Y middle". The lane was on +Y because the LATCH
+# was on -Y. With every latch moving to +Y (user, 2026-09-23) the two simply SWAP: the
+# latch takes the +Y middle and the harness takes the -Y one it vacates. Neither is
+# squeezed past the other -- each ends up with the room the other had.
+#
+# Declared HERE rather than read off leg_trrs, which is the retired TRRS module: the
+# harness is leg_pogo's and its lane should be too. This was leg_stack's last import of
+# leg_trrs, and it is the same stale inheritance ROUTE_OFF already records from the
+# other end of the run.
+DROP_OFF = 7 * B                # +5.6 STILL, because the latch has not moved yet --
+                                # see the swap note above. Flipping this is one half of
+                                # that swap and it is red on its own: at -5.6 the lane
+                                # lands inside the latch spring's y 29.95..41.95.
+DROP_X = -2 * B                 # -1.6, kept: it is x that keeps this clear of the board
+
+
+def drop_xy(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):
+    """World (x, y) of the fixed tenon's harness lane."""
+    return sx + DROP_X, ly + DROP_OFF
+
+
+# how far that lane sits from the nearest of the tenon's four flats. The section is a
+# square on the diagonals, so the flats' normals are (+-_D, +-_D) at LS.TEN_W / 2.
+_DROP_WALL = min(LS.TEN_W / 2.0 - (DROP_X * nx + DROP_OFF * ny) * math.sqrt(0.5)
+                 for nx in (1.0, -1.0) for ny in (1.0, -1.0))
+assert _DROP_WALL - ROUTE_D / 2.0 * math.sqrt(2) >= D.MIN_WALL_2P, (
+    "the fixed tenon's lane leaves only %.2f to its nearest flat"
+    % (_DROP_WALL - ROUTE_D / 2.0 * math.sqrt(2)))
+
 _LADDER_R = LS.ADJ_HOLE_D / 2.0 * math.sqrt(2)      # a TEARDROP's reach, not its radius
 assert ROUTE_OFF - ROUTE_D / 2.0 - _LADDER_R >= D.MIN_WALL_2P, (
     "the harness lane at y %+.2f leaves only %.2f to the ladder's teardrop envelope"
@@ -771,13 +823,12 @@ def harness():
     down the fixed tenon, COILED through the gap between the tenons (src.coil_mandrel's
     coil at the span the leg is drawn at), the adjust tenon's channel past the ladder,
     the jog, and over to the bottom board -- plus the two female stubs."""
-    from . import leg_trrs as LTR
     from . import bar_trrs as BT
     from . import coil_mandrel as CM
     d = HARNESS_D
     dm = PLUG_TOP + PIN_LEAD + FAN_RUN      # lead-in, THEN room for the fan
     pt = TF + SE_H / 2.0
-    xs, ys = LTR._ax()
+    xs, ys = drop_xy()
     xb, yb = BT._ax()
     xc, yc = LS.LEG_X + BT.CH_X, LS.LEG_Y + BT.CH_Y
     z_a, z_b = LS.Z_FIX_TEN_BOT - 8.0, LS.Z_ADJ_TEN_TOP + 8.0

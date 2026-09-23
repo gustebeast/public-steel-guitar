@@ -429,9 +429,12 @@ def fixed_tenon():
                                TENON_UP, limit_deg=TEN_HOLE_LIMIT_DEG))
     # THE LEG'S SIGNAL (src.leg_pogo): the MALE pogo board in a pocket at this
     # tenon's tip, and the harness's bore on down the leg at the old lead's spine
-    from . import leg_trrs as LTR       # late: both read this module
     from . import leg_pogo as PG
-    return t.cut(PG.tenon_negatives(PG.TOP, LTR._ax(), LTR.PASS_D,
+    # (the lane is leg_pogo's own now -- it was leg_trrs._ax()/PASS_D, sized for a
+    #  moulded TRRS plug that had to travel it. Nothing travels this but four bare
+    #  wires, so it is ROUTE_D like the adjust tenon's, and it is on -Y because the
+    #  latch has taken the +Y middle. This was the last leg_trrs import in leg_stack.)
+    return t.cut(PG.tenon_negatives(PG.TOP, PG.drop_xy(), PG.ROUTE_D,
                                     Z_FIX_TEN_BOT - 1.0, TENON_UP))
 
 
