@@ -1826,9 +1826,8 @@ KEEP_WOUND_D = 2 * (KEEP_POST_D + CANB_BUNDLE_OD) / 2.0 + CANB_BUNDLE_OD   # 10.
 # of a 5.6 column. At the post's own diameter it reads as part of the post, and a 45 deg
 # COLLAR at the joint carries the load into it instead of ending on a square corner.
 KEEP_WEB_T  = KEEP_POST_D           # 5.6 -- the support is the post's width
-KEEP_JOIN   = 5 * D.NOZZLE_D        # 4.0 of bare shaft below the winding, where the
-                                    # brace lands -- so the joint is structure, not the
-                                    # first turn of cable
+KEEP_BUT_T  = 4 * D.BEAD            # 3.2 of buttress, measured SQUARE to its own 45 --
+                                    # a strut's thickness is perpendicular, not vertical
 KEEP_POST_DX = KEEP_WOUND_D / 2.0   # ...but the post still sits a WOUND radius in from
                                     # the housing's back face, so the coil is flush with
                                     # it rather than standing proud
@@ -1904,6 +1903,12 @@ KEEP_DROP = HOUS_Z1 - KEEP_WIND_Z0
 _KEEP_DY = KEEP_CLR_Y + KEEP_COIL_R + CANB_BUNDLE_OD / 2.0
 
 
+def _yz(pts, xc, t):
+    """A YZ profile, t thick and centred on x=xc -- the keeper's struts are all 2D."""
+    return (cq.Workplane("YZ").polyline(pts).close()
+            .extrude(t).translate((xc - t / 2.0, 0.0, 0.0)))
+
+
 def cable_keeper(y_face=None, z_bed=None, x_back=None, z_top=None, hung=False):
     """The cable keeper on a lever housing's +Y (connector) cheek, in the lever's local
     frame: a post standing off the bed, webbed to the cheek below the winding, with a
@@ -1935,36 +1940,46 @@ def cable_keeper(y_face=None, z_bed=None, x_back=None, z_top=None, hung=False):
     # BELOW the winding base into the buttress, and the buttress bites INTO the cheek: a
     # triangle that merely touches its supports along an edge fuses into nothing, and
     # the housing came out as three separate solids.
-    dy = yc - y0
-    # THE BRACE MEETS THE SHAFT, on a flat top it can sit on (user: "the support
-    # doesn't cleanly merge with the column for LKV creating a weak spot"). It used to
-    # meet a CONE -- the post was tapered to dodge an unsupported bottom disc -- so the
-    # joint was a tangent line on a point, which is exactly the weak spot. A brace with
-    # a HORIZONTAL top, full width under the post, gives the shaft a face to land on:
-    # the disc is then enclosed, not merely adjacent, and nothing needs tapering.
-    wzj = wz0 - KEEP_JOIN                                       # the structural joint
-    post = cyl(KEEP_POST_D, wz1 - wzj, z=wzj).translate((xc, yc, 0.0))
-    # A DIAGONAL BRACE: both faces 45, and PARALLEL (user, 2026-09-23: "you need to have
-    # both the top and bottom be 45 angles", then "bottom is right, top is angled the
-    # wrong way now"). Two wrong shapes preceded it and each is worth naming, because
-    # they are the two obvious ones:
-    #   a right triangle with the corner DOWN left a flat 10.6 x 16.8 underside hanging
-    #     in air -- 178 mm2, the face measured in the screenshot;
-    #   a triangle tapering to the post fixed that but sloped its TOP the opposite way,
-    #     so the brace read as an arrowhead rather than a strut.
-    # Parallel faces are what a brace actually is. Its top passes through the post at
-    # the winding base, so it eats none of the column, and it runs PAST the post's axis
-    # so the two share volume -- a brace that merely touches leaves the post a separate
-    # solid with its bottom disc in air (21 mm2, found by probing for downward faces).
-    px = yc + KEEP_POST_D / 2.0
-    assert wzj - dy >= z0, (
-        "the keeper's brace lands %.2f below this housing's floor"
-        % (z0 - (wzj - dy)))
-    # ...horizontal on top (it carries the post), 45 underneath (it has to print)
-    pts = [(y0 - ov, wzj - dy), (px, wzj), (y0 - ov, wzj)]
-    but = (cq.Workplane("YZ").polyline(pts).close()
-           .extrude(KEEP_WEB_T).translate((xc - KEEP_WEB_T / 2.0, 0.0, 0.0)))
-    return post.union(head).union(but)
+    # A STRUT, NOT A GUSSET: parallel faces, both at 45 (user, 2026-09-23, on a shape
+    # whose top ran flat from the post across to the cheek: "still not right", crossing
+    # out the triangle under that flat top). The filled corner is the obvious shape and
+    # it was wrong twice before this, so name the three that failed:
+    #   a right triangle with the corner DOWN -- a flat 10.6 x 16.8 underside hanging in
+    #     air, 178 mm2, the face measured in the screenshot;
+    #   a triangle tapering to the post -- fixed that, but sloped its TOP the opposite
+    #     way, so it read as an arrowhead;
+    #   a triangle with a HORIZONTAL top -- printable and strong, but it is a gusset
+    #     filling the corner rather than a member carrying a load along itself.
+    #
+    # ONE 45 DEG BAND does all of it. Its TOP passes through the post's outboard edge at
+    # the winding base, so the band never rises into the coil; its UNDERSIDE is that
+    # plane dropped KEEP_BUT_T square, and THE POST IS CUT ON IT -- which is what makes
+    # the junction a junction. A flat-bottomed post stacked on a brace hangs part of its
+    # disc in air (8 mm2 one way, 17 the other, both found by probing for downward-facing
+    # faces, both invisible to check_ceilings); a post cut on the band's own underside
+    # has no bottom disc at all. Post and strut share one continuous 45 deg face.
+    px = yc + KEEP_POST_D / 2.0                                 # the band's outboard end
+    tv = KEEP_BUT_T * math.sqrt(2.0)                            # ...its VERTICAL depth
+    def top(y):                                                 # the band's upper plane
+        return wz0 - (px - y)
+    # THE DEPTH IS THE WHOLE BUDGET, and the vertical lever spends nearly all of it: 45
+    # deg buys one mm of drop per mm of offset, the post stands _KEEP_DY + a radius out,
+    # and that is most of the 22.9 between this winding base and this floor. Hence no
+    # bare shaft below the winding (there were 4.0) -- there is no room for any.
+    a = y0 - ov
+    assert top(a) - z0 >= D.MIN_WALL_2P, (
+        "the keeper's 45 deg strut reaches the cheek %.2f above its floor, too thin "
+        "to fuse" % (top(a) - z0))
+    post = cyl(KEEP_POST_D, wz1 - z0, z=z0).translate((xc, yc, 0.0))
+    # below the band, over its whole reach and well past the post either way
+    cut = [(a - KEEP_POST_D, top(a - KEEP_POST_D) - tv), (px, wz0 - tv),
+           (px, z0 - KEEP_POST_D), (a - KEEP_POST_D, z0 - KEEP_POST_D)]
+    # the band, clipped at the floor: the far end lands ON THE BED the way every other
+    # lever's keeper foot does, rather than tapering to a knife edge that will not fuse
+    yu = px - (wz0 - tv - z0)                                   # where the underside lands
+    but = [(px, wz0), (a, top(a)), (a, z0), (yu, z0), (px, wz0 - tv)]
+    return (post.cut(_yz(cut, xc, KEEP_POST_D * 2.0))
+            .union(_yz(but, xc, KEEP_WEB_T)).union(head))
 
 
 def plug_pin(way, z_bot=None, z_top=None, flip=None):
