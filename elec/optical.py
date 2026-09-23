@@ -1481,7 +1481,9 @@ def _v3_trunk():
     return [("+3V3D", "B.Cu", 0.3, [end(0), end(4)])]
 
 
-_I2C_SPINE_DX = -3.782          # x 64.80 on the placed board: see below
+_I2C_SPINE_DX = -3.98           # x 65.60 on the placed board: see below
+_I2C_SCL_DY = -0.75             # pin 17. ⚠ NOT +0.75 -- the cell frame's y is
+                                # INVERTED in the board frame, so +0.75 is pin 14
 
 
 def _i2c_spine():
@@ -1501,21 +1503,36 @@ def _i2c_spine():
     ends at x 66.207, and Cm24/34/44/54 sit at 66.28, so the first clear F.Cu x is
     already inside the caps.
 
-    So: a stub out of each pin 17 to x 64.80, a via, and the spine on B.Cu. The lane
-    works because x 62.0 .. 66.2 carries NO PAD AT ALL over the column's whole y range
-    (30 .. 115) -- checked through pcbnew, not assumed -- and because 64.80 clears the
-    +3V3D B.Cu trunk at 65.58 .. 65.88 by 0.48 mm.
+    ⚠ AND THE FIRST ATTEMPT PUT THE SPINE OFF THE BOARD, which is the SECOND time on this
+    board that a lane was chosen by asking the pads and never the outline -- the first
+    cost eleven unconnected and three violations on U15's haul, and the warning written
+    then is forty lines above this one. x 62.0 .. 66.2 does carry no pad at all over the
+    column's whole y range. It carries no pad because the board edge is at 64.5817, and a
+    spine at 64.80 sits 0.22 mm from it against a 0.30 rule.
+    ASK THE OUTLINE. It is one call: the Edge.Cuts crossings at a given y.
+
+    ⚠ THE SECOND BUG WAS QUIETER AND WOULD HAVE SHIPPED. The stubs were written at cell
+    offset +0.75, read off pcbnew as pin 17's y -- but _cell_pt returns CAD coordinates
+    and the board frame INVERTS y, so +0.75 is pin 14, which is SHDNZ, which _shdn_tracks
+    ties to +3V3D. The DRC did not report a short; it simply relabelled every piece of
+    this copper [+3V3D], and the only reason it was caught is that two unrelated tracks
+    happened to share a length of 74.9077 mm and the coincidence did not sit right.
+
+    So: a stub out of each pin 17 to x 65.60, a via, and the spine on B.Cu, in a channel
+    that had to be WIDENED to exist -- see ADC_BUS_CH in src/optical_pickup.py. At the old
+    column x the gaps either side of the +3V3D via column were 0.55 and 0.18 mm and a
+    0.6 mm via needs 1.2: there was no lane here at all, for this net or any other.
 
     SDA IS DELIBERATELY LEFT TO THE ROUTER. It failed zero times; pin 18 shares pin 17's
     x, so a second spine beside this one would have to cross it, and the cure would cost
     more than the disease. Lay what fails.
     """
-    out, DX = [], _I2C_SPINE_DX
+    out, DX, DY = [], _I2C_SPINE_DX, _I2C_SCL_DY
     for k in range(5):
         out += [("I2C2_SCL", "F.Cu", 0.2,
-                 [_cell_pt(k, -1.963, 0.75), _cell_pt(k, DX, 0.75)])]
+                 [_cell_pt(k, -1.963, DY), _cell_pt(k, DX, DY)])]
     out.append(("I2C2_SCL", "B.Cu", 0.25,
-                [_cell_pt(0, DX, 0.75), _cell_pt(4, DX, 0.75)]))
+                [_cell_pt(0, DX, DY), _cell_pt(4, DX, DY)]))
     return out
 
 
@@ -2067,7 +2084,8 @@ BOARD_NOTES = {
     "tracks": _cell_tracks(),
     "vias": ([("+3V3D",) + _cell_pt(k, -2.85, y)
               for k in range(5) for y in (0.75, -3.27)]
-             + [("I2C2_SCL",) + _cell_pt(k, _I2C_SPINE_DX, 0.75) for k in range(5)]),
+             + [("I2C2_SCL",) + _cell_pt(k, _I2C_SPINE_DX, _I2C_SCL_DY)
+                for k in range(5)]),
     # ⚠ ORDER OPTIONS ARE PART OF THE DESIGN, and nothing in a gerber records them.
     # Mask colour is usually cosmetic and on this board it is not: twenty photodiodes
     # look up through a 0.30 mm gap that runs 5.40 mm to the cover's aperture, and that
