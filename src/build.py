@@ -1294,7 +1294,8 @@ def lever_bus_nodes():
         pins = {w: _pose(kind, sx, sy, mirrored, pin(w)) for w in range(1, KL.CONN_N + 1)}
         # the TURN POST, on the one lever whose plug the bus cannot reach straight
         guide = (_pose(kind, sx, sy, mirrored,
-                       KL.guide_point(KV.HOUS_X1, KV.HOUS_HW_P, KV.HOUS_Z0))
+                       KL.guide_point(KV.HOUS_X0, -KV.HOUS_HW_N, KV.HOUS_Z0,
+                                      sx=-1.0, sy=-1.0))
                  if kind != "kl" else None)
         out.append((name, p, l, d, ka, pa, pins, KL.plug_standoff(),
                     ca, KL.cheek_bypass(), guide))

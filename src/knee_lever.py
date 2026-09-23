@@ -1948,7 +1948,7 @@ def plug_standoff(x_back=None):
     return abs(plug_point()[0] - x0) + 4 * D.BEAD
 
 
-def cable_guide(x_face, y_face, z_bed, z_top):
+def cable_guide(x_face, y_face, z_bed, z_top, sx=1.0, sy=1.0):
     """A TURN POST at a housing's front corner, on the connector side.
 
     Only one lever needs it, and it is the vertical one. LKV is the horizontal lever
@@ -1960,24 +1960,32 @@ def cable_guide(x_face, y_face, z_bed, z_top):
 
     Same shape as the keeper: a pillar along the build direction with a 45 deg head, on
     a base in the corner it stands in. The base ties it to BOTH faces it sits against.
+    `sx`/`sy` pick WHICH corner: the post projects that way off the faces given.
+
+    IT GOES ON THE BACK CORNER, AWAY FROM THE ARM (user, 2026-09-23: "the cable
+    shouldn't go around the front next to the lever arm, it should go around the back",
+    and "the +y side"). Right: LKV's arm hangs to -Y and sweeps there, so a turn post at
+    the front corner puts the cable through the one part of this lever that MOVES. The
+    back corner -- past the +Y end, on the far cheek -- is still air at every throw.
     """
     r = KEEP_POST_D / 2.0
-    xc = x_face + r + D.MIN_WALL_2P
-    yc = y_face + KEEP_COIL_R + CANB_BUNDLE_OD / 2.0 + KEEP_CLR_Y
+    xc = x_face + sx * (r + D.MIN_WALL_2P)
+    yc = y_face + sy * (KEEP_COIL_R + CANB_BUNDLE_OD / 2.0 + KEEP_CLR_Y)
     z1 = z_top - KEEP_HEAD - D.MIN_WALL_2P
     post = cyl(KEEP_POST_D, z1 - z_bed, z=z_bed).translate((xc, yc, 0.0))
     head = cq.Workplane("XY").add(cq.Solid.makeCone(
         r, r + KEEP_HEAD, KEEP_HEAD, cq.Vector(xc, yc, z1), cq.Vector(0, 0, 1)))
-    base = box_at(xc + r - x_face, yc - y_face, KEEP_WEB_H,
-                  x=(x_face + xc + r) / 2.0, y=(y_face + yc) / 2.0,
+    xe = xc + sx * r
+    base = box_at(abs(xe - x_face), abs(yc - y_face), KEEP_WEB_H,
+                  x=(x_face + xe) / 2.0, y=(y_face + yc) / 2.0,
                   z=z_bed + KEEP_WEB_H / 2.0)
     return post.union(head).union(base)
 
 
-def guide_point(x_face, y_face, z_bed):
+def guide_point(x_face, y_face, z_bed, sx=1.0, sy=1.0):
     """Where a cable wraps the turn post: its axis, above the base."""
-    return (x_face + KEEP_POST_D / 2.0 + D.MIN_WALL_2P,
-            y_face + KEEP_COIL_R + CANB_BUNDLE_OD / 2.0 + KEEP_CLR_Y,
+    return (x_face + sx * (KEEP_POST_D / 2.0 + D.MIN_WALL_2P),
+            y_face + sy * (KEEP_COIL_R + CANB_BUNDLE_OD / 2.0 + KEEP_CLR_Y),
             z_bed + KEEP_WEB_H)
 
 
