@@ -296,12 +296,11 @@ def _housing() -> cq.Workplane:
     # out of z_bot/z_top.
     w = KL._cradle(w, HOUS_Z0, HOUS_Z1, x_max=HOUS_X1)
     w = w.union(KL.cable_keeper(HOUS_HW_P, HOUS_Z0, HOUS_X0))  # bus-B keeper, THIS floor
-    # ...and the TURN POST at the front corner. This lever is the only one that needs
-    # one: rotated 90 deg, its body lies along its plug's axis, so the bus arrives at
-    # the wrong end and has to come round the front before it can run back up the cheek
-    # to the connector. See KL.cable_guide.
-    w = w.union(KL.cable_guide(HOUS_X0, -HOUS_HW_N, HOUS_Z0, HOUS_Z1,
-                               sx=-1.0, sy=-1.0))
+    # NO SECOND POST HERE (user, 2026-09-23: "you added an extra winding post to the
+    # LKV but it's unnecessary"). Right -- this lever already has a column, and the
+    # arriving cable can turn round THAT. A turn post was added when the approach was
+    # coming round the front, into the arm's sweep; once it comes round the +Y back end
+    # instead, the keeper is already sitting at that end and does the job.
     return heal(w)                  # no printed back-stop threads any more (KL.cut_feel_rear)
 
 

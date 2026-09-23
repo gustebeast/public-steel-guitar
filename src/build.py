@@ -1292,10 +1292,21 @@ def lever_bus_nodes():
         pa = _pose(kind, sx, sy, mirrored, KL.pin_axis(), vector=True)
         ca = _pose(kind, sx, sy, mirrored, KL.cheek_axis(), vector=True)
         pins = {w: _pose(kind, sx, sy, mirrored, pin(w)) for w in range(1, KL.CONN_N + 1)}
-        # the TURN POST, on the one lever whose plug the bus cannot reach straight
+        # WHERE THE ARRIVING CABLE TURNS, on the one lever whose plug the bus cannot
+        # reach in a straight line: the vertical one, whose body lies along its plug's
+        # axis, so the cable has to come round the +Y end before it can run back to the
+        # connector.
+        #
+        # IT TURNS ON THE HOUSING'S OWN BACK CORNER -- no part at all (user: "you added
+        # an extra winding post to the LKV but it's unnecessary"). A turn post was added
+        # when the approach came round the FRONT, into the arm's sweep; round the back
+        # there is already a corner to rest on, and a corner is a contact surface like
+        # any other. Tried its own KEEPER column first: that sits on the connector
+        # cheek, so turning there means arriving through the body (66 mm3).
+        _off = KL.CANB_BUNDLE_OD / 2.0 + D.MIN_WALL
         guide = (_pose(kind, sx, sy, mirrored,
-                       KL.guide_point(KV.HOUS_X0, -KV.HOUS_HW_N, KV.HOUS_Z0,
-                                      sx=-1.0, sy=-1.0))
+                       (KV.HOUS_X0 - _off, -KV.HOUS_HW_N - _off,
+                        KL.keeper_point(KV.HOUS_Z0, KV.HOUS_X0, KV.HOUS_HW_P)[2]))
                  if kind != "kl" else None)
         out.append((name, p, l, d, ka, pa, pins, KL.plug_standoff(),
                     ca, KL.cheek_bypass(), guide))
