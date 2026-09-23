@@ -1826,8 +1826,15 @@ KEEP_WOUND_D = 2 * (KEEP_POST_D + CANB_BUNDLE_OD) / 2.0 + CANB_BUNDLE_OD   # 10.
 # of a 5.6 column. At the post's own diameter it reads as part of the post, and a 45 deg
 # COLLAR at the joint carries the load into it instead of ending on a square corner.
 KEEP_WEB_T  = KEEP_POST_D           # 5.6 -- the support is the post's width
-KEEP_BUT_T  = 4 * D.BEAD            # 3.2 of buttress, measured SQUARE to its own 45 --
-                                    # a strut's thickness is perpendicular, not vertical
+KEEP_BUT_T  = KEEP_POST_D           # 5.6 of buttress, measured SQUARE to its own 45
+                                    # (user, 2026-09-23, measuring the 3.20 it was:
+                                    # "set the diagonal thickness here to match the
+                                    # diameter of the column"). The strut is now the
+                                    # post's section in BOTH directions -- as wide as it
+                                    # in X and as deep as it across the diagonal -- so
+                                    # the member does not thin down where it turns.
+                                    # A strut's thickness is perpendicular, not vertical:
+                                    # the band is sqrt(2) taller than this in Z.
 KEEP_POST_DX = KEEP_WOUND_D / 2.0   # ...but the post still sits a WOUND radius in from
                                     # the housing's back face, so the coil is flush with
                                     # it rather than standing proud
@@ -1837,7 +1844,15 @@ KEEP_POST_DX = KEEP_WOUND_D / 2.0   # ...but the post still sits a WOUND radius 
 # off the column entirely: turns-per-layer set the HEIGHT, layers set the CAPACITY, and
 # layers cost nothing in Z. The post stopped needing to be tall or fat the moment this
 # was pointed out -- see wiring._coil_layers.
-KEEP_WEB_H  = 6 * D.NOZZLE_D        # 4.8 of base on the bed, under the winding
+KEEP_WEB_H  = KEEP_POST_D           # 5.6 of base on the bed, under the winding -- the
+                                    # POST'S OWN SECTION again (user, 2026-09-23,
+                                    # measuring the 4.80 it was: "ditto for the other
+                                    # levers, make the floor support equal height and
+                                    # width matching the column diameter"). It was
+                                    # already KEEP_WEB_T wide; now it is square. This
+                                    # sets KEEP_DROP, so every coil in the instrument
+                                    # rises the same 0.8 and they stay level with each
+                                    # other -- which is the property that matters.
 # ...far enough that the WOUND CABLE clears the CRADLE, not merely the cheek. The cradle
 # stands CR_Y1 off the axle and carries the board, and a coil tucked inside its shadow
 # put every run that left it straight along its own lever's PCB. Derived, so it tracks
