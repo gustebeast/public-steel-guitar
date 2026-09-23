@@ -47,6 +47,64 @@ The nut's top face runs from **−7.2** at the top of travel down to **−15.55*
 the nut body reaches −30.55 at the bottom. All of it rests on one global
 constant, `DL_OPEN`, the stretch beyond slack at open pitch.
 
+### The sequence the budget actually has to cover (user, 2026-09-23)
+
+Nuts are driven to the **top** of travel; the string is threaded and **hand-tightened
+at the keyhead** — around the Ø8 wrap rod, ~3 turns, then clamped
+(`src/nut_block.py`). The carriage is then pulled **down** to reach open pitch, and
+**down further** for any raise. Down = more tension: the nut descending lengthens the
+dead run off the bridge bearing.
+
+Two things follow, and they change which strings are at risk.
+
+**The hand sets the slack, and nothing else can.** The wrap rod does not rotate —
+it is the bridge axle's own shaft SKU, shared and fixed — so there is no tuner and no
+winding action. You pull, you wrap, you clamp. Whatever tension the player failed to
+reach by hand, the carriage must make up out of its 8.35 mm, on top of the raise.
+Take-up needed is `DL·(1 − T_hand/T_open)`, so a firm pull costs travel and a weak
+pull costs more.
+
+**The +4 case is the cheapest one, not the dearest.** Stretch scales with pitch, so
+string 10 — the only string the copedent can drive +4 (P1 +2 and P2 +2 together) —
+has the *smallest* ΔL in the set. It needs about 1.2 mm of the 8.35 even at +4. The
++4 question the design has been sized around is not where the risk is.
+
+**Where the risk is:** the fattest-sounding, lowest-pitched *wound* strings that are
+still high enough in pitch to stretch a lot — 5 (G3, .024) and 6 (E3, .030). How hard
+the player must pull, as a fraction of final string tension, for the carriage to still
+reach open pitch plus that string's copedent raise:
+
+| Str | Note | Gauge | Raise | core 0.30 | core 0.35 | core 0.42 | core 0.50 |
+|---|---|---|---|---|---|---|---|
+| 1–4 | D4–A3 | plain | +1…+3 | **0%** | 0% | 0% | 0% |
+| **5** | G3 | .024 | +0 | **49%** | **32%** | 3% | 0% |
+| **6** | E3 | .030 | +1 | **41%** | **16%** | 0% | 0% |
+| 7 | C3 | .036 | +2 | 12% | 0% | 0% | 0% |
+| 8–10 | A2–C2 | .042–.070 | +0…+4 | 0% | 0% | 0% | 0% |
+
+*"core 0.35" = core wire 35% of outside diameter. 0% means the string can be left
+barely taut and the carriage still gets there.*
+
+**All four plain strings are fine under every assumption** — plain-string stretch
+depends only on pitch and scale length, not on gauge (the diameter cancels in
+`ΔL = T·L/(E·A)`), and the worst of them, string 2 at E4, comes to 3.97 mm. That is
+almost exactly the modelled `DL_OPEN = 4.0`, which strongly suggests the constant was
+derived from the highest plain string — and that wound strings, whose thin cores carry
+the tension for a much heavier string, were never in the picture.
+
+So the open question is narrow and concrete: **are strings 5 and 6 plain or wound, and
+if wound, how thick is the core?** If .024 is plain (common in C6 sets), the whole
+concern evaporates. If they are wound on thin cores, the player has to pull a third to
+a half of final tension by hand, one-handed, while managing three wraps — which is the
+thing the user has said cannot be relied on.
+
+**There is recoverable travel if the measurement demands it**, which de-risks this: the
+nut clears the ledge lip by 1.45 mm and the thrust bearing by 3.05 at the bottom, and
+`NUT_TOP_Z` could rise ~3.8 mm before the screw top reaches the bridge bearing's 1.0 mm
+keep-out. That is roughly **4 mm of travel** available inside the existing architecture
+— enough to cover a doubling of the worst ΔL — at the cost of re-checking the changer
+ceiling, the access channels and the asserts that currently bound both ends.
+
 **The copedent's worst case is +4 semitones, and `PITCH_UP_ST` is exactly 4.**
 String 10 takes +2 from P1 and +2 from P2; press both and the moves sum, because
 with one motor per string nothing stops them summing. So the design assumption
