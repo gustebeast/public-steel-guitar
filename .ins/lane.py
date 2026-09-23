@@ -55,8 +55,59 @@ for fp in b.Footprints():
 edge = [[d.GetStart().x / 1e6, d.GetStart().y / 1e6,
          d.GetEnd().x / 1e6, d.GetEnd().y / 1e6]
         for d in b.GetDrawings() if d.GetLayerName() == "Edge.Cuts"]
-print("@@" + json.dumps({"pads": pads, "edge": edge}))
+# ⚠ PRE-LAID COPPER IS AN OBSTACLE TOO, and leaving it out of this probe made the
+# tool confidently recommend a via lane straight through the I2C and +3V3D spines --
+# 502 candidate spots, the best of them sitting on a B.Cu trunk. A via pierces every
+# layer, so it does not care which one the spine is on.
+# GetWidth() on a via asserts and pops a MODAL DIALOG (see above): use GetDrillValue.
+vias, tracks = [], []
+for t in b.GetTracks():
+    if t.Type() == pcbnew.PCB_VIA_T:
+        vias.append([t.GetNetname(), t.GetStart().x / 1e6, t.GetStart().y / 1e6,
+                     t.GetDrillValue() / 2e6 + 0.15])
+    else:
+        tracks.append([t.GetNetname(), b.GetLayerName(t.GetLayer()),
+                       t.GetStart().x / 1e6, t.GetStart().y / 1e6,
+                       t.GetEnd().x / 1e6, t.GetEnd().y / 1e6, t.GetWidth() / 2e6])
+print("@@" + json.dumps({"pads": pads, "edge": edge, "vias": vias, "tracks": tracks}))
 """
+
+
+def via_clear(x, y, net, dia=0.6, d=None):
+    """Margin for a THROUGH via at (x, y): pads, board edge, other vias, and every
+    pre-laid track on any layer -- a via connects them all."""
+    d = d or probe()
+    r = dia / 2.0
+    worst = (1e9, "clear")
+    for ref, num, pnet, px, py, hx, hy in d["pads"]:
+        if pnet == net:
+            continue
+        g = max(abs(px - x) - hx, abs(py - y) - hy) - r - CLR
+        if g < worst[0]:
+            worst = (g, "%s pad %s [%s]" % (ref, num, pnet or "-"))
+    for vnet, vx, vy, vr in d.get("vias", ()):
+        if vnet == net:
+            continue
+        g = ((vx - x) ** 2 + (vy - y) ** 2) ** 0.5 - vr - r - CLR
+        if g < worst[0]:
+            worst = (g, "via [%s] at %.2f,%.2f" % (vnet or "-", vx, vy))
+    for tnet, layer, x1, y1, x2, y2, hw in d.get("tracks", ()):
+        if tnet == net:
+            continue
+        dx, dy = x2 - x1, y2 - y1
+        L2 = dx * dx + dy * dy
+        t = 0.0 if L2 == 0 else max(0.0, min(1.0, ((x - x1) * dx + (y - y1) * dy) / L2))
+        g = (((x1 + t * dx - x) ** 2 + (y1 + t * dy - y) ** 2) ** 0.5) - hw - r - CLR
+        if g < worst[0]:
+            worst = (g, "%s track [%s]" % (layer, tnet or "-"))
+    for ex1, ey1, ex2, ey2 in d["edge"]:
+        ux, uy = ex2 - ex1, ey2 - ey1
+        el2 = ux * ux + uy * uy
+        u = 0.0 if el2 == 0 else max(0.0, min(1.0, ((x - ex1) * ux + (y - ey1) * uy) / el2))
+        g = (((ex1 + u * ux - x) ** 2 + (ey1 + u * uy - y) ** 2) ** 0.5) - r - EDGE
+        if g < worst[0]:
+            worst = (g, "BOARD EDGE")
+    return worst
 
 
 def probe(pcb=PCB):
@@ -93,6 +144,50 @@ def check(x, y0, y1, net, width=0.25, d=None):
                 if gap - EDGE < worst[0]:
                     worst = (gap - EDGE, "BOARD EDGE at x %.4f (y %.1f), gap %.3f "
                              "(need %.3f)" % (ex, yy, gap, EDGE))
+    return worst
+
+
+def inner_seg(p0, p1, net, width=0.2, layer="In2.Cu", d=None):
+    """A segment on an INNER layer: pads do not block it, vias and same-layer copper do.
+
+    ⚠ ASKING seg() ABOUT AN INNER LAYER GIVES THE WRONG ANSWER IN BOTH DIRECTIONS. It
+    counts every SMD pad as an obstacle -- on In2 they are three layers away and irrelevant,
+    so it rejects lanes that are wide open -- while knowing nothing about the vias that DO
+    block it. On this board that matters: In2 is the only signal layer left once F.Cu is
+    full, and it is where the analog runs that cannot cross the Ci row have to go."""
+    d = d or probe()
+    (x0, y0), (x1, y1) = p0, p1
+    dx, dy = x1 - x0, y1 - y0
+    L2 = dx * dx + dy * dy
+    worst = (1e9, "clear")
+
+    def near(px, py, r):
+        t = 0.0 if L2 == 0 else max(0.0, min(1.0, ((px - x0) * dx + (py - y0) * dy) / L2))
+        return (((x0 + t * dx - px) ** 2 + (y0 + t * dy - py) ** 2) ** 0.5) - r - width / 2.0
+
+    for vnet, vx, vy, vr in d.get("vias", ()):
+        if vnet == net:
+            continue
+        g = near(vx, vy, vr) - CLR
+        if g < worst[0]:
+            worst = (g, "via [%s] at %.2f,%.2f" % (vnet or "-", vx, vy))
+    for tnet, tlayer, ax, ay, bx, by, hw in d.get("tracks", ()):
+        if tnet == net or tlayer != layer:
+            continue
+        for px, py in ((ax, ay), (bx, by), ((ax + bx) / 2, (ay + by) / 2)):
+            g = near(px, py, hw) - CLR
+            if g < worst[0]:
+                worst = (g, "%s track [%s]" % (tlayer, tnet or "-"))
+    for ex1, ey1, ex2, ey2 in d["edge"]:
+        for s in range(11):
+            t = s / 10.0
+            cx, cy = x0 + t * dx, y0 + t * dy
+            ux, uy = ex2 - ex1, ey2 - ey1
+            el2 = ux * ux + uy * uy
+            u = 0.0 if el2 == 0 else max(0.0, min(1.0, ((cx - ex1) * ux + (cy - ey1) * uy) / el2))
+            g = (((ex1 + u * ux - cx) ** 2 + (ey1 + u * uy - cy) ** 2) ** 0.5) - width / 2.0 - EDGE
+            if g < worst[0]:
+                worst = (g, "BOARD EDGE")
     return worst
 
 
