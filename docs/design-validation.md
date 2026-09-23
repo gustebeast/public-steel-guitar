@@ -27,16 +27,25 @@ Nothing here is fixed. This is a list.
 | B8 | Come apart completely, with one hex key, no glue | **Unverifiable today — no checker covers tool access** |
 | B9 | Be printable on the target machine | **43 of 67 prints are unchecked** |
 | B10 | Fold down and travel | **Holds** |
-| B11 | Know where each carriage IS at power-up | **Not designed yet** |
+| B11 | Know where each carriage IS at power-up | **Not designed yet — firmware soft limits + a reference story** |
 | B12 | Fail safely (string break, stall, power loss mid-move) | **Not analysed** |
 
 ---
 
 ## B1 — reach every pitch the copedent asks for
 
-The travel budget rests on one global constant: `DL_OPEN = 4.0` mm, the stretch
-beyond slack at open pitch, from which
-`CARRIAGE_TRAVEL = DL_OPEN·2^(4/6) + 2.0 = 8.35` (`src/dimensions.py:159-177`).
+**The travel budget is 8.35 mm** (`CARRIAGE_TRAVEL`, `src/dimensions.py:159-177`),
+and it is three terms:
+
+| Term | mm | For |
+|---|---|---|
+| `DL_OPEN` | 4.00 | slack → open pitch take-up when the string goes on |
+| bend | 2.35 | four semitones up, `DL_OPEN·(2^(4/6) − 1)` |
+| margin | 2.00 | new-string break-in |
+
+The nut's top face runs from **−7.2** at the top of travel down to **−15.55**;
+the nut body reaches −30.55 at the bottom. All of it rests on one global
+constant, `DL_OPEN`, the stretch beyond slack at open pitch.
 
 **The copedent's worst case is +4 semitones, and `PITCH_UP_ST` is exactly 4.**
 String 10 takes +2 from P1 and +2 from P2; press both and the moves sum, because
@@ -220,11 +229,23 @@ does not exist in the geometry.
 
 Three consequences:
 
-1. **Nothing bounds a commanded move.** `SCREW_RUNOUT` leaves only **2.4 mm** of
-   thread above the nut at the top of travel (`dimensions.py:315`). A miscommanded
-   move a few millimetres long runs the nut off the end of its screw, with
-   100–150 N of string tension behind it. The printed thread-formed collar at the
-   bottom has the same exposure downward.
+1. **Nothing bounds a commanded move in software** — but the mechanism is far
+   more forgiving about it than this document first claimed, and the correction
+   is worth keeping. ~~A miscommanded move a few millimetres long runs the nut
+   off the end of its screw.~~ **Wrong** (user, 2026-09-23). The nut is **15.0 mm**
+   tall and `SCREW_RUNOUT` stands the screw 2.4 mm *above* the nut's top face at
+   the top of travel, so it is 100% engaged there; over-travel only shortens
+   engagement from the top, gradually. Full disengagement needs **17.4 mm of
+   over-travel, 2.08× the entire travel**; 4 mm of over-travel still leaves 89%
+   engagement and a whole extra travel's worth leaves 60%. And the nut's ears
+   reach the changer-room ceiling **4.0 mm** above the top of travel
+   (`CHANGER_CEIL_Z`), so a runaway stalls against structure — which a
+   closed-loop driver reports — long before thread engagement is interesting.
+   Downward there is 11.95 mm of screw below the nut at the bottom of travel.
+   So the real requirement is a firmware one: **soft limits that refuse to
+   command the nut above or below its travel** (user: to be built with the
+   firmware). There is no mechanical stop to catch a bad command, only structure
+   to crash into.
 2. **Position after power-up is a stored number, not a measurement.** The screw
    being non-backdrivable (B2) means the carriage cannot drift while the
    instrument is off, which is what makes a stored count plausible at all. But
@@ -266,5 +287,7 @@ Not analysed anywhere in the repo, and worth a pass before boards are ordered:
    checker that has already earned its keep.
 3. **Reconcile the control count** (B4). One number, three files.
 4. **Decide the startup and reference story** (B11 + B3) before boards are
-   ordered, and put a mechanical stop back on the list.
+   ordered. Soft travel limits are a firmware requirement the user has already
+   accepted; the open part is how a carriage re-references itself after the
+   stored count and the real position disagree.
 5. **A tool-access check** (B8), so "it comes apart" stops being an opinion.
