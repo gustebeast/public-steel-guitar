@@ -43,7 +43,7 @@ in any other and something either will not fit or will not stay:
      until its top clears the rail into the changer room, spin the nut on THERE, then
      carry on up into the top bearing — so the room has to stay reachable at that
      moment, and anything that later claims that space has to answer for this.
-  2. bearings and comb fingers aligned, then the AXLE from +Y (see AXLE_BORE)
+  2. each bearing laid in its own slot, then the AXLE DROPPED IN from +Z (see AXLE_BORE)
   3. the GUIDE RODS, dropped in from +Z (see GUIDE_DROP_Z1) — last before stringing,
      since the strings then run over their tops
   4. the OPTICAL STRIP, screwed down: it closes the axle's install channel, which
@@ -269,56 +269,50 @@ AXLE_BORE = D.BRIDGE_AXLE_D + 0.4
 # carry no shoulder and nothing can be fitted to it afterwards from the side.
 #
 #   -Y stop: the -Y arm's bore is BLIND. That AXLE_END_WALL of material is the stop.
-#   +Y:     THE OPTICAL STRIP, still -- but by COVERING the shaft, not by biting it.
+#   +Y stop: THE WRAP PLINTH, a full-face butt.
+#   +Z:      the optical strip, 0.20 over the crown.
 #
-# ⚠ THE BOARD USED TO OVERLAP THE SHAFT AND DOES NOT ANY MORE. It sat 2.34 below the
-# crown, so it blocked +Y travel by standing in the shaft's way; _AXLE_STOP_BITE measured
-# that overlap and is gone. Raising the board to rest on the axle (OP.PLINTH_TOP 12.04
-# against a 12.00 crown) leaves nothing of it below the crown to block with.
+# ⚠ THE AXLE DROPS IN FROM +Z NOW, AND THAT IS A CONSEQUENCE OF PRINTABILITY, NOT A GOAL.
+# Nobody set out to make it a drop-in. The board's relief cut the bore's roof; fixing the
+# overhangs that left -- the run-out to the teardrop apex, and shaving the sub-bead feather
+# on the +X lip back to MIN_WALL_2B -- widened the opening until the shaft simply fits
+# through it. Measured at all eleven stations (nine fingers, two arms): a 175 deg opening,
+# chord 8.39 against a 8.00 shaft, 0.39 to spare and identical at every one.
 #
-# I read that as the retention being broken and went looking for a fastener to replace it.
-# It is not broken, and the user's ruling is the reason (2026-09-23): "the PCB can serve as
-# the axle Y axis retention. It doesn't need to be locked super tight in place." The shaft
-# has no axial load on it at all -- the string wrap pulls it DOWN and -X, and nothing in
-# the instrument pushes it along Y. Retention here means "cannot fall out", not "cannot
-# move", and the requirement that actually delivers that is CONTAINMENT:
+# So the INSTALL CHANNEL IS GONE. It existed only so the shaft could be threaded in
+# axially, +Y -> -Y, which meant cutting through the plinth outboard of the +Y arm -- the
+# escape route and the install route were the same hole, which is why the board had to
+# close it. Now the plinth stays solid: the shaft butts a wall covering its whole
+# cross-section (z 4.00..12.00 against a plinth top of 12.04), end-on. That is a better
+# stop than the old one, which relied on the board overlapping 2.34 of a 8.00 diameter.
 #
-#   * along the arms and the eleven comb fingers the bore is a full hole below and a
-#     2.50 mm slot above (the board's relief shaves the crown by 0.20, +-18 deg), so the
-#     shaft cannot lift out anywhere on that span;
-#   * outboard of the +Y arm the install channel's walls rise to the plinth top 12.04,
-#     0.04 PROUD of the crown, so it cannot lift out there either;
-#   * and the channel's mouth is the plinth's own +Y face, which is OP.PCB_YP -- the
-#     board's edge. So every millimetre the shaft could travel is under the board.
+# WHAT RETAINS IT IN +Z IS THE BOARD, and that is the user's ruling: "the PCB can serve as
+# the axle Y axis retention. It doesn't need to be locked super tight in place." There is
+# no axial load on this shaft at all -- the wrap seats it at 7:20..7:43, down and -X -- so
+# retention here means "cannot fall out", not "cannot move". The board sits 0.20 over the
+# crown and covers the whole line.
 #
-# To escape, the shaft would have to walk the full 15.15 mm of channel with no force
-# pushing it, and then still be under the board. That is enough.
-#
-# ⚠ AND IT IS WHY THE AXLE STILL GOES IN AXIALLY. I briefly had it dropping in from +Z,
-# which would have made the plinth a full-face end stop and retired the bearing fixture --
-# but a drop-in needs the bore open from 3 to 9 o'clock, i.e. every finger cut down to the
-# shaft's equator, and the user's ruling there was the opposite: "we just need the endplate
-# material to not collide with the PCB, anything under the PCB floor can stay". The relief
-# takes +-18 deg off the top. It is a shave, not an opening, and the assembly order in the
-# header stands.
+# It also retires the assembly fixture. "Slide the axle through arms + eleven finger bores
+# + ten bearing bores in one pass" needed 23 bores concentric to within the shaft's fit,
+# which is why the bearings were held in an off-instrument jig. Dropping it in needs them
+# only coplanar, and each bearing can be laid in its own slot by hand.
 #
 # It replaced an M2 grub through the +Y arm's top. The grub worked, but it was a fastener
 # bearing on a precision shaft, reachable only with the strings off, in an arm with 2.0 mm
 # between bore crown and top face -- and it was a second hex size (0.9) in a build that
 # holds itself to one 2.5.
 AXLE_END_WALL = MIN_ADDED                             # -Y blind-bore wall (the 2-bead tier)
-# The channel is exactly the plinth's depth: it has to be a through-cut or the shaft cannot
-# be threaded in, and it must not run PAST the board or its mouth stops being covered.
-AXLE_CHAN_Y1  = OP.PCB_YP
-_AXLE_LIFT = OP.PLINTH_TOP - (D.BRIDGE_BEARING_Z + D.BRIDGE_AXLE_D / 2)
-assert _AXLE_LIFT >= 0.0, (
-    f"the install channel's walls top out {-_AXLE_LIFT:.2f} BELOW the shaft's crown, so "
-    f"the shaft can lift straight out of it -- the board is above the crown now and "
-    f"cannot hold it down (OP.PLINTH_TOP {OP.PLINTH_TOP:.2f})")
-_AXLE_ESCAPE = AXLE_CHAN_Y1 - OP.PCB_YP
-assert _AXLE_ESCAPE <= 0.0, (
-    f"the axle's install channel runs {_AXLE_ESCAPE:.2f} past the board's +Y edge, so its "
-    f"mouth is uncovered -- the shaft could walk out and lift clear")
+# ⚠ ENDS ON THE ARM'S OUTER FACE. Do not "tidy" this back out to the plinth end: that
+# re-cuts the install channel, and the solid beyond it is the +Y stop.
+AXLE_CHAN_Y1  = D.BRIDGE_ARM_OUT
+_AXLE_STOP_WALL = OP.PLINTH_TOP - (D.BRIDGE_BEARING_Z + D.BRIDGE_AXLE_D / 2)
+assert _AXLE_STOP_WALL >= 0.0, (
+    f"the +Y stop is the wrap plinth and its top is {-_AXLE_STOP_WALL:.2f} BELOW the "
+    f"shaft's crown, so the shaft would ride over it")
+_AXLE_CAP_GAP = OP.PCB_BOT - (D.BRIDGE_BEARING_Z + D.BRIDGE_AXLE_D / 2)
+assert 0.0 <= _AXLE_CAP_GAP <= 0.6, (
+    f"the board sits {_AXLE_CAP_GAP:.2f} off the axle crown -- under 0 it fouls the shaft, "
+    f"over 0.6 it stops being a cap and the shaft can lift out of a 175 deg opening")
 # ...and the -Y wall has to SURVIVE every other cut in this part, not merely be drawn.
 # The comb-finger bores used to eat it whole -- see the clamp in _build's comb loop.
 _AXLE_BLIND_WALL = D.BRIDGE_AXLE_Y0 - -D.BRIDGE_ARM_OUT
@@ -527,10 +521,9 @@ def _axle_negative() -> cq.Workplane:
     """The shaft's whole path -- arms AND comb fingers -- as ONE bore, CUT LAST.
 
     It runs from the -Y blind floor (AXLE_END_WALL short of that arm's outer face: the
-    shaft's -Y stop) out to the +Y arm's outer face and STOPS THERE. It used to carry on
-    through the board's wrap plinth as an install channel; it does not any more, because
-    the shaft drops in from +Z rather than sliding in axially, and the plinth it used to
-    pass through is now the +Y stop. See AXLE_CHAN_Y1.
+    shaft's -Y stop) out to the +Y arm's outer face and STOPS THERE. There is no install
+    channel any more: the shaft drops in from +Z, so it never has to pass through the
+    plinth, and the solid plinth beyond this bore is what stops it going +Y.
 
     IT USED TO BE THREE CUTS FOR ONE HOLE: this function bored the two arms, and the comb
     loop bored each finger separately as it unioned it. They did not even agree on the
@@ -731,6 +724,33 @@ def _o_band_relief():
     cut = cut.union(cq.Workplane("XZ")
                     .polyline([(_xt, OP.PLINTH_TOP), (_xr, _az),
                                (_xr - (OP.PLINTH_TOP - _az), OP.PLINTH_TOP)])
+                    .close().extrude((_y1 - _y0) / 2, both=True)
+                    .translate((0, (_y0 + _y1) / 2, 0)))
+    # ── 3. the +X lip, cut back to a lip that actually prints ───────────────
+    # ⚠ THIS IS WHAT LETS THE AXLE GO IN FROM +Z, and it is on the OPPOSITE side from the
+    # load. Where the relief floor slices the bore it leaves a wedge that tapers to
+    # nothing: measured 0.20 mm at 12:50, 0.40 at 1:00, 0.65 at 1:10 -- all under one
+    # BEAD, so the slicer will not build them. That is the user's argument for deleting
+    # the install channel ("it goes to a sharp point which won't print as far as modeled
+    # and what does print will be small and slightly flexible so we can likely push the
+    # axel into position"), and the arithmetic backs it: as MODELLED the opening spans
+    # 140 deg and its chord is 7.89 against a 8.00 shaft, so the shaft is trapped; with
+    # the sub-bead feather gone it is ~155 deg and 8.20, and the shaft passes.
+    #
+    # Relying on a feature failing to print is not a fit though -- it is a coincidence
+    # that a slicer setting could take away. So cut the wedge back to MIN_WALL_2P in CAD
+    # and the model becomes the part: a printable lip, a known opening, and an escape
+    # test that can be run on the geometry instead of on a guess.
+    #
+    # ⚠ AND ONLY ON THIS SIDE. The user first read the lost arc as being at 7:30, which
+    # would have been the load path -- the wrap seats at 7:20..7:43 and the plastic there
+    # is what carries 1683 N. The arc actually opened is 8:10 round through 12 to 12:50,
+    # and this cut extends the 12:50 end. Nothing here touches the seat.
+    _lip_z = OP.PLINTH_TOP - D.MIN_WALL_2P
+    _xl = D.BRIDGE_AXLE_X + math.sqrt(max(_ar ** 2 - (_lip_z - _az) ** 2, 0.0))
+    _xi = D.BRIDGE_AXLE_X + math.sqrt(max(_ar ** 2 - (OP.PLINTH_TOP - _az) ** 2, 0.0))
+    cut = cut.union(cq.Workplane("XZ")
+                    .polyline([(_xi, OP.PLINTH_TOP), (_xl, _lip_z), (_xl, OP.PLINTH_TOP)])
                     .close().extrude((_y1 - _y0) / 2, both=True)
                     .translate((0, (_y0 + _y1) / 2, 0)))
     return cut
