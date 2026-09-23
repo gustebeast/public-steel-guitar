@@ -1920,12 +1920,61 @@ PCB_L  = PCB_YP - PCB_YM
 #      recorded in WORKLIST (that figure was for a full-width opening).
 # O_BAND_X0 = None keeps the C. Set it to test the O; the endplate is NOT yet cut for it,
 # so the overlap gate will fail on bridge_endplate until that work is done.
-O_BAND_X0 = -18.0
+O_BAND_X0 = None
 _STRIP_X0 = PCB_X0 if O_BAND_X0 is None else O_BAND_X0
 O_ROD_HOLE_D = 3.9                                     # kept for the record; nothing uses it
 O_ROD_HOLES = []                                       # none -- rods go in before the board
+
+# ── THE O, PROPERLY THIS TIME ────────────────────────────────────────────────
+# ⚠ I BUILT THIS WRONG TWICE BEFORE READING THE USER'S DRAWING. The first attempt widened
+# the sensing strip 5.35 mm eastward and called it an O; it is not, it is a fatter C, and
+# it routed WORSE (10 and 12 unconnected against the C's 9) because one path made wider is
+# not a second path. The second reading had the +X band crossing the bearings and concluded
+# an O was geometrically impossible. Both missed what the user said plainly: THE BEARINGS
+# ARE THE HOLE. The band goes round them on the far side, at x 8.23..23.46 -- 15 mm of
+# board, wider than the sensing strip -- and the two wraps close the ring.
+#
+# The hole is sized outward from the bearings themselves, so it follows them if they move:
+#   the bearings, x -16.0..0.0, y +-45.25 (the outermost string plus half a bearing);
+#   + MIN_WALL_2P of endplate all round them, because that block carries string tension;
+#   + a 45 deg RAMP for the block to climb from the board's seat back up to the bearing
+#     top without an overhang -- currently 0, see _O_RAMP.
+# ⚠ AND THE BLOCK CANNOT GO AWAY, however good the creep margin looks. The AXLE is Ø8.0
+# centred at z 8.0, so it spans z 4.0..12.0 and its bore tops at 12.20 -- straight through
+# the board's own band of 10.55..12.15 (user). The block has to carry material all round
+# that bore at full height, which is what the hole is for. The creep number says the block
+# could be far thinner; the axle says it cannot be absent.
+O_SHAPE = True
+BE_ARM_W = 4.80          # bridge_endplate.ARM_W; mirrored, it imports US
+_BRG_X0 = D.BRIDGE_AXLE_X - D.BRIDGE_BEARING_OD / 2
+_BRG_X1 = D.BRIDGE_AXLE_X + D.BRIDGE_BEARING_OD / 2
+# ⚠ THE HOLE'S Y IS SET BY THE ARMS, NOT THE BEARINGS, and sizing it off the bearings
+# alone quietly decapitated the axle. The arms stand at y +-48.40 and are 4.80 wide, so
+# they reach 50.80 -- outside a hole sized to the outermost bearing at 46.85. That put them
+# in the BOARD's footprint, the relief cut is the board's own outline, and it took the top
+# 1.61 mm off the axle bore: 20% of a Ø8 shaft, open at the top, on both arms. The user
+# spotted it in the render.
+# Creep was never the risk there (the 90 deg turn loads -X and -Z, and the bore's floor and
+# -X wall are both intact below the cut). RETENTION was: this endplate holds the axle with
+# NO FASTENER, and an open-topped bore has nothing to stop it lifting out.
+_BRG_Y = max(max(abs(D.string_y(i)) for i in range(D.N_STRINGS)) + D.BRIDGE_BEARING_W / 2,
+             D.BRIDGE_ARM_Y + BE_ARM_W / 2)
+_BRG_TOP = D.BRIDGE_BEARING_Z + D.BRIDGE_BEARING_OD / 2
+# ⚠ RAMP ALLOWANCE OFF (user, 2026-09-23: "ignore printability, I want to see what it
+# looks like"). It reserved a 45 deg run for the block to climb from the board's seat to
+# the bearing top, and measuring says it buys nothing anyway: with it at 0 the ONLY
+# unsupported material left anywhere in this region is the axle bore's own crown at
+# x -10..-7, which is pre-existing and printable_bore already handles. A vertical wall
+# from the seat to the bearing top does not grow outward with height, so it is not an
+# overhang. Turn this back on if a print says otherwise.
+_O_RAMP = 0.0                                          # was _BRG_TOP - PLINTH_TOP
+O_HOLE_X0 = _BRG_X0 - D.MIN_WALL_2P - _O_RAMP
+O_HOLE_X1 = _BRG_X1 + D.MIN_WALL_2P + _O_RAMP
+O_HOLE_Y = _BRG_Y + D.MIN_WALL_2P + _O_RAMP
+assert O_HOLE_X1 < TAIL_X1 - 2 * D.MIN_WALL_2P, (
+    "the O's +X band is narrower than two walls -- the ramp has eaten it")
 _SECTIONS = ((HEAD_Y0, PCB_YP, PCB_X1S, TAIL_X1),      # +Y wrap, over the endplate
-             (Y_TAIL, HEAD_Y0, STRIP_X1, _STRIP_X0),   # sensing strip (wider than the band)
+             (Y_TAIL, HEAD_Y0, STRIP_X1, TAIL_X1),     # full width; _o_hole() cuts the O
              (WRAP_Y, Y_TAIL, PCB_X1S, TAIL_X1),       # -Y wrap -- the head's mirror
              (PCB_YM, WRAP_Y, COMPUTE_X0, TAIL_X1))    # compute, no -X overhang
 
@@ -1989,6 +2038,12 @@ def _outline(grow=0.0, t=None, zc=None):
         blk = box_at((x0 + grow) - (x1 - grow), b - a, t,
                      x=((x0 + grow) + (x1 - grow)) / 2, y=(a + b) / 2, z=zc)
         out = blk if out is None else out.union(blk)
+    if O_SHAPE:
+        # the hole SHRINKS by `grow`, where the outline grows: a slip-fit copy of the board
+        # must stay clear of the block on the inside too
+        out = out.cut(box_at((O_HOLE_X1 - grow) - (O_HOLE_X0 + grow),
+                             2 * (O_HOLE_Y - grow), t + 2.0,
+                             x=(O_HOLE_X0 + O_HOLE_X1) / 2, y=0.0, z=zc))
     for fx, fy in _concave():
         out = out.edges(NearestToPointSelector((fx, fy, zc))).fillet(ROUT_R + grow)
     return out
@@ -2015,9 +2070,16 @@ def opt_pcb() -> cq.Workplane:
         body = _part_solid(p)
         if body is not None:                          # bare pads (TP) have no body
             pcb = pcb.union(body)
-    for mx, my in mount_points():                     # M4 clearance, one per +X wrap
-        pcb = pcb.cut(box_at(M4.shaft_clr_d, M4.shaft_clr_d, PCB_T + 2,
-                             x=mx, y=my, z=PCB_BOT + PCB_T / 2))
+    # ⚠ NO M4 CLEARANCE HOLES (user, 2026-09-23: "get rid of the M4 mounting holes. We can
+    # add them back later based on where there's available space"). They were cut here as
+    # SQUARE prisms -- box_at on M4.shaft_clr_d -- which is what led to finding that the
+    # FABRICATED board never had them at all: zero Edge.Cuts circles, and Cd11 sitting
+    # 0.47 mm inside where the head one belongs. So the CAD and the gerbers disagreed, and
+    # the placement disagreed with both. Removing them makes the three agree on "none",
+    # which is at least a state that can be reasoned about.
+    # ⚠ mount_points() STILL EXISTS and the endplate still builds anchors, inserts and
+    # screws to it. Those are ORPHANED until the mounts are re-sited on real free board --
+    # see WORKLIST. The board is currently held by nothing.
     pcb = pcb.cut(jack_access())                      # see JACK_ACCESS_XY
     return pcb
 

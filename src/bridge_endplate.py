@@ -605,20 +605,34 @@ def _pcb_pad() -> cq.Workplane:
 # guided length. It does open the bores' mouths sideways into the notch, which is where
 # the board's own Ø3.9 access holes then line up.
 O_RELIEF_CLR = 0.4                       # the board's fit gap, on the board's side
-O_RELIEF_Z1  = 16.5                      # clear over the block top (13.88): no roof left
+O_RELIEF_Z1  = 16.8                      # clear over the block top (16.0): no roof left
 
 
 def _o_band_relief():
-    """The notch the O-band needs, or None while the board is still a C."""
-    if OP.O_BAND_X0 is None:
+    """Open this block wherever the O-shaped board runs, from its seat to the sky.
+
+    ⚠ THE BOARD IS ITS OWN CUTTER, which is the only version of this that stays correct.
+    Earlier this was a hand-written box for a band on the -X side alone; the board is now a
+    RING -- sensing strip at -X, a 16 mm band at +X, the bearings in the hole between them
+    -- and any box I write by hand will be wrong the next time the outline moves. Grown by
+    the fit clearance and extruded up, the board's own footprint removes exactly what it
+    occupies and nothing else.
+
+    ⚠ AND IT RUNS TO THE SKY, NOT TO THE BOARD'S TOP. The block stands to z 16.0 and the
+    board's top is 12.15, so stopping at the board would leave ~5700 mm3 of roof over the
+    +X band -- an unsupported span the printer has to bridge. Taken clear of 16.0 the cut
+    is open upward and prints without support, which is the user's constraint.
+
+    What is deliberately NOT cut is the block between the strip and the band: that is the
+    O's hole, it carries the bearings and the string tension through them, and the board's
+    outline is sized around it (see O_HOLE_* in optical_pickup) with MIN_WALL_2P of
+    material and a 45 deg run to spare."""
+    if not OP.O_SHAPE:
         return None
-    x0, x1 = OP.STRIP_X1 - 1.0, OP.O_BAND_X0 + O_RELIEF_CLR
-    y0, y1 = OP.Y_TAIL - O_RELIEF_CLR, OP.HEAD_Y0 + O_RELIEF_CLR
-    z0 = OP.PLINTH_TOP                   # the board BEARS on this face -- do not undercut
-    assert x1 <= D.BRIDGE_AXLE_X - D.BRIDGE_BEARING_OD / 2 - D.MIN_WALL_2P + 1e-9, (
-        "the O-band relief would thin the bearing arm wall below MIN_WALL_2P")
-    return box_at(x1 - x0, y1 - y0, O_RELIEF_Z1 - z0,
-                  x=(x0 + x1) / 2, y=(y0 + y1) / 2, z=(z0 + O_RELIEF_Z1) / 2)
+    return OP._outline(grow=O_RELIEF_CLR,
+                       t=(O_RELIEF_Z1 - OP.PLINTH_TOP),
+                       zc=(OP.PLINTH_TOP + O_RELIEF_Z1) / 2)
+
 
 
 def _build() -> cq.Workplane:
