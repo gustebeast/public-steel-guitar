@@ -1913,10 +1913,8 @@ def cable_keeper(y_face=None, z_bed=None, x_back=None, z_top=None, hung=False):
     z0 = HOUS_Z0 if z_bed is None else z_bed
     x0 = HOUS_X0 if x_back is None else x_back
     z1 = HOUS_Z1 if z_top is None else z_top
-    xc = x0 + KEEP_POST_DX          # a wound radius in: the COIL is flush with the back
-    yc = y0 + KEEP_COIL_R + CANB_BUNDLE_OD / 2.0 + KEEP_CLR_Y   # the coil clears the cheek
+    xc, yc, wz0 = keeper_point(z0, x0, y0, z1)   # ...THE one place the axis is written
     wz1 = z1 - KEEP_HEAD - D.MIN_WALL_2P                        # winding top
-    wz0 = z1 - KEEP_DROP                                        # ...and its base
     ov = D.MIN_WALL_2P
     head = cq.Workplane("XY").add(cq.Solid.makeCone(
         KEEP_POST_D / 2.0, KEEP_POST_D / 2.0 + KEEP_HEAD, KEEP_HEAD,
@@ -1935,23 +1933,33 @@ def cable_keeper(y_face=None, z_bed=None, x_back=None, z_top=None, hung=False):
     # triangle that merely touches its supports along an edge fuses into nothing, and
     # the housing came out as three separate solids.
     dy = yc - y0
-    assert wz0 - dy >= z0, (
-        "the keeper's 45 deg buttress lands %.2f below this housing's floor"
-        % (z0 - (wz0 - dy)))
-    assert wz0 + dy <= z1, (
-        "the keeper's buttress reaches %.2f above this housing's top" % (wz0 + dy - z1))
+    bt = KEEP_POST_D                   # brace thickness, measured vertically
+    # THE POST ENDS IN A CONE, not a disc. A 45 deg brace's coverage shrinks as it
+    # descends, so however the two are stacked, part of a flat bottom pokes out of the
+    # brace's -Y side and hangs in air -- 8 mm2 one way, 17 the other, both found by
+    # probing for downward faces rather than by eye. A tapered end has no flat bottom to
+    # support: its own surface is steeper than 45, and its point lands inside the brace.
+    tip = 5 * D.NOZZLE_D                                        # 4.0 of taper
     post = cyl(KEEP_POST_D, wz1 - wz0, z=wz0).translate((xc, yc, 0.0))
-    # A WEDGE, 45 ON BOTH FACES (user, 2026-09-23: "there's a flat face here. You need
-    # to have both the top and bottom be 45 angles"). It was a right triangle with the
-    # RIGHT-ANGLE CORNER at the bottom, which left a flat 10.6 x 16.8 underside hanging
-    # in air -- 178 mm2 of unsupported face, and the one surface on this part that had
-    # to be angled. Now it tapers to the post from both directions: the lower face rises
-    # 45 out to the post, the upper falls 45 back to the cheek.
-    # the wedge's apex runs PAST the post's axis, so the two share volume and fuse --
-    # an apex that merely touches the post leaves it a separate solid, and leaves its
-    # bottom face hanging in air (21 mm2 of it, found by probing for downward faces)
-    pts = [(y0 - ov, wz0 - dy), (yc + KEEP_POST_D / 2.0, wz0),
-           (y0 - ov, wz0 + dy)]
+    post = post.union(cq.Workplane("XY").add(cq.Solid.makeCone(
+        KEEP_POST_D / 2.0, 0.0, tip, cq.Vector(xc, yc, wz0), cq.Vector(0, 0, -1))))
+    # A DIAGONAL BRACE: both faces 45, and PARALLEL (user, 2026-09-23: "you need to have
+    # both the top and bottom be 45 angles", then "bottom is right, top is angled the
+    # wrong way now"). Two wrong shapes preceded it and each is worth naming, because
+    # they are the two obvious ones:
+    #   a right triangle with the corner DOWN left a flat 10.6 x 16.8 underside hanging
+    #     in air -- 178 mm2, the face measured in the screenshot;
+    #   a triangle tapering to the post fixed that but sloped its TOP the opposite way,
+    #     so the brace read as an arrowhead rather than a strut.
+    # Parallel faces are what a brace actually is. Its top passes through the post at
+    # the winding base, so it eats none of the column, and it runs PAST the post's axis
+    # so the two share volume -- a brace that merely touches leaves the post a separate
+    # solid with its bottom disc in air (21 mm2, found by probing for downward faces).
+    px = yc + KEEP_POST_D / 2.0
+    assert wz0 + ov - dy - bt >= z0, (
+        "the keeper's brace lands %.2f below this housing's floor"
+        % (z0 - (wz0 + ov - dy - bt)))
+    pts = [(y0 - ov, wz0 - dy), (px, wz0), (px, wz0 - bt), (y0 - ov, wz0 - dy - bt)]
     but = (cq.Workplane("YZ").polyline(pts).close()
            .extrude(KEEP_WEB_T).translate((xc - KEEP_WEB_T / 2.0, 0.0, 0.0)))
     return post.union(head).union(but)
@@ -2058,12 +2066,18 @@ def guide_point(x_face, y_face, z_bed, sx=1.0, sy=1.0):
 
 
 def keeper_point(z_bed=None, x_back=None, y_face=None, z_top=None):
-    """Where the slack coil starts on the keeper post: its axis, at the bottom of the
-    BARE stretch above the web. Defaults are LKL's, like cable_keeper's."""
+    """THE POST'S AXIS, at the winding base -- where the slack coil starts.
+
+    ⚠ THE COIL IS DRAWN ON THIS, so it is the one place the post's position may be
+    written down. cable_keeper builds the post FROM this rather than computing its own
+    xc/yc, because it did compute its own and the two drifted the moment the support
+    changed width: the post moved to a wound radius off the back face while this still
+    returned half the WEB's width, so every coil in the instrument hung 2.5 mm beside
+    its post (user, 2026-09-23: "the cable spirals should be pinned to match the column,
+    they seem to be hardcoded so when we adjust the column they don't move")."""
     y0 = HOUS_HW if y_face is None else y_face
     x0 = HOUS_X0 if x_back is None else x_back
-    z0 = HOUS_Z0 if z_bed is None else z_bed
-    return (x0 + KEEP_WEB_T / 2.0,
+    return (x0 + KEEP_POST_DX,
             y0 + KEEP_COIL_R + CANB_BUNDLE_OD / 2.0 + KEEP_CLR_Y,
             (HOUS_Z1 if z_top is None else z_top) - KEEP_DROP)
 
