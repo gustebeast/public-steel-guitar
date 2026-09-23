@@ -296,6 +296,11 @@ def _housing() -> cq.Workplane:
     # out of z_bot/z_top.
     w = KL._cradle(w, HOUS_Z0, HOUS_Z1, x_max=HOUS_X1)
     w = w.union(KL.cable_keeper(HOUS_HW_P, HOUS_Z0, HOUS_X0))  # bus-B keeper, THIS floor
+    # ...and the TURN POST at the front corner. This lever is the only one that needs
+    # one: rotated 90 deg, its body lies along its plug's axis, so the bus arrives at
+    # the wrong end and has to come round the front before it can run back up the cheek
+    # to the connector. See KL.cable_guide.
+    w = w.union(KL.cable_guide(HOUS_X1, HOUS_HW_P, HOUS_Z0, HOUS_Z1))
     return heal(w)                  # no printed back-stop threads any more (KL.cut_feel_rear)
 
 
