@@ -27,6 +27,7 @@
 # interactive program always wins.
 set -u
 JOBS="${FAN_JOBS:-2}"
+pids=""
 NICE="${FAN_NICE:-/low}"
 SRC="$(cd "$(dirname "$0")/.." && pwd)"
 KI="C:/Program Files/KiCad/10.0/bin/python.exe"
@@ -85,7 +86,20 @@ io.open(p,'w',encoding='utf-8',newline='\r\n').write(s2)" "$d/$file" "$expr" || 
       echo "$name: $got | $(grep -cE 'UNEXPECTED' finish.log) unexpected | $(grep -oE 'laid [0-9]+ segment' finish.log | tail -1)"
     fi
   ) &
-  while [ "$(jobs -r | wc -l)" -ge "$JOBS" ]; do wait -n 2>/dev/null || sleep 5; done
+  # ⚠ NOT `while [ "$(jobs -r | wc -l)" -ge "$JOBS" ]`. `$(...)` is a SUBSHELL and a
+  # subshell has no job table, so that count is meaningless -- the throttle either spins or
+  # jams. It jammed: a run of eight launched four, never created the other four trees, and
+  # sat holding two JVMs for an hour and a half before the user asked what was running.
+  # Count the PIDs we started, which is state this shell actually owns.
+  pids="$pids $!"
+  while :; do
+    live=""
+    for q in $pids; do kill -0 "$q" 2>/dev/null && live="$live $q"; done
+    pids="$live"
+    set -- $pids
+    [ "$#" -lt "$JOBS" ] && break
+    sleep 5
+  done
 done
 wait
 echo "--- trees kept under $FAN for the winner to be copied back"
