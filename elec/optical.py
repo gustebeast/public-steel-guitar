@@ -1439,7 +1439,8 @@ def _cell_tracks():
         for dy in (0.25, -0.25):
             out.append(("GND", "F.Cu", 0.2, [_cell_pt(k, -1.962, dy), _cell_pt(k, -0.9, dy)]))
         out.append(("GND", "F.Cu", 0.2, [_cell_pt(k, 1.962, 0.25), _cell_pt(k, 0.9, 0.25)]))
-    return out + _fan_tracks() + _shdn_tracks() + _v3_trunk() + _i2c_spine()
+    return (out + _fan_tracks() + _shdn_tracks() + _v3_trunk() + _i2c_spine()
+            + _ch4_haul()[0])
 
 
 # ⚠ THE +3V3D CLUSTERS CANNOT BE JOINED BY LAYING EITHER (2026-09-22). _v3_trunk links
@@ -1567,6 +1568,63 @@ def _i2c_spine():
     out.append(("I2C2_SCL", "B.Cu", 0.25,
                 [_cell_pt(0, DX, DY), _cell_pt(4, DX, DY)]))
     return out
+
+
+# U<q> centre -> its pin 7, and Ci<q>4 centre -> its pad 1, in the CAD frame. Measured
+# through pcbnew on the placed board, the same way every other offset in this file was.
+_CH4_PIN7 = (-2.475, -3.810)
+_CH4_CIPAD = (0.000, 0.480)
+
+
+def _ch4_haul():
+    """Lay channel 4's TIA output under the cell on In2, for the four quads that fail it.
+
+    ⚠ THIS ONE HOP IS FOUR OF THE BOARD'S NINE REMAINING OPENS, and it is one hop rather
+    than four problems: TIA_OUT_4B, 6B, 8B and 10B are the same run in quads 2 to 5, and
+    they fail together in every route. Quad 1's TIA_OUT_2B is the same run and SUCCEEDS --
+    because the B.Cu spines span y 34.98 to 109.89, which covers quads 2-5 and misses quad
+    1 at y 30. That asymmetry is what identifies the cause.
+
+    The run cannot be done on F.Cu at all. Ci<q>4 is the westmost of four coupling caps in
+    a row, so reaching it from the op-amp means crossing Ci<q>1..3; searched exhaustively,
+    there is no straight path, no 1-bend and no 2-bend path. It has to go under.
+
+    Route, and every clearance measured with .ins/lane.py before a single route was spent:
+
+        U<q> pin 7 --F.Cu 0.5 mm--> via          stub +0.743   via +0.258
+                   --In2 south into the inter-cell gap, then west--   +0.324
+                   --> via south of the cap --F.Cu--> Ci<q>4 pad   via +0.873  stub +0.065
+
+    Margins are over the 0.127 fab rule, so the tightest is 0.288 mm of real copper gap.
+    The corridor and the via x were optimised together for the WORST of the five, after the
+    stitch exception below changed what is in the way -- the first geometry scored +0.034
+    on that last stub, which is positive and far too thin to build on.
+    The corridor in the gap had 24 valid y positions, so it is a lane and not a knife-edge;
+    the y chosen maximises the worst of the five margins, and comes out identical in all
+    four quads because the cells are periodic.
+
+    ⚠ WRITTEN RELATIVE TO THE TWO PADS, NOT AS COORDINATES. The spine keepout was written
+    as literal numbers and STRIP_GROW_MX silently moved the copper out from under it. Every
+    point here is an offset from U<q> pin 7 or Ci<q>4 pad 1, so the haul follows its own
+    endpoints if the column moves again.
+    """
+    P = _placements(CX, CY)
+    tracks, vias = [], []
+    for q in (2, 3, 4, 5):
+        net = "TIA_OUT_%dB" % (2 * q)
+        ux, uy = P["U%d" % q][:2]
+        cx, cy = P["Ci%d4" % q][:2]
+        px, py = ux + _CH4_PIN7[0], uy + _CH4_PIN7[1]        # op-amp output pin
+        qx, qy = cx + _CH4_CIPAD[0], cy + _CH4_CIPAD[1]      # coupling cap pad
+        ax, ay = px - 0.500, py                              # via, 0.5 mm off the pin
+        gy = qy + 6.500                                      # the inter-cell corridor
+        c2x = qx - 0.400                                     # via, south-west of the cap
+        tracks += [(net, "F.Cu", 0.20, [(px, py), (ax, ay)]),
+                   (net, "In2.Cu", 0.25, [(ax, ay), (ax, gy)]),
+                   (net, "In2.Cu", 0.25, [(ax, gy), (c2x, gy)]),
+                   (net, "F.Cu", 0.20, [(c2x, gy), (qx, qy)])]
+        vias += [(net, ax, ay), (net, c2x, gy)]
+    return tracks, vias
 
 
 def _spine_keepout(via_d=0.6, clr=0.127):
@@ -2131,8 +2189,20 @@ BOARD_NOTES = {
     # ...and pins 15/16 (ADDR1/ADDR0, both GND since the five parts share one address) the
     # same way, into the EP from the other side: stitched like ordinary GND pads, their vias
     # landed across the SHDNZ escape beside them and shorted it.
+    # ⚠ Cm<q>4.2 IS AN ANALOG RETURN, NOT A BYPASS, so this exception is worth more scrutiny
+    # than the rest of the list. Cm<q>4 is channel 4's INxM coupling cap: that pad is the
+    # reference the ADC measures channel 4 against, and its own stitch via -- plus the
+    # pad-to-via track the stitcher lays with it -- is the one obstacle standing in the ch4
+    # haul's last stub, in all four quads (measured: -0.264 and -0.089).
+    # What it gives up is the DEDICATED path to the In1 plane. The pad still sits in the
+    # F.Cu ground pour, so it is grounded as long as its pour island stays attached -- and
+    # the whole reason the stitcher exists is that routing chops that pour into islands.
+    # The risk is therefore real and specific: if this island is cut, channel 4's return
+    # goes long, and it is an audio input. The DRC's unconnected list is the check -- GND
+    # appearing there means an island did get cut -- and the route below is clean.
     "stitch_exceptions": ("J1.SH",) + tuple("U%d.%d" % (u, p) for u in range(14, 19)
-                                            for p in (4, 15, 16)),
+                                            for p in (4, 15, 16))
+                         + tuple("Cm%d4.2" % q for q in (2, 3, 4, 5)),
     # THE CONVERTERS' INPUT FAN, laid rather than routed: from each top pin straight up to
     # its coupling cap's pin-side pad, widening by at most 0.25 -- see CELL_FAN in
     # src/optical_pickup.py for why the router could not find these (12 of 28 open).
@@ -2149,7 +2219,8 @@ BOARD_NOTES = {
     "vias": ([("+3V3D",) + _cell_pt(k, -2.85, y)
               for k in range(5) for y in (0.75, -3.27)]
              + [("I2C2_SCL",) + _cell_pt(k, _I2C_SPINE_DX, _I2C_SCL_DY)
-                for k in range(5)]),
+                for k in range(5)]
+             + _ch4_haul()[1]),
     # ⚠ ORDER OPTIONS ARE PART OF THE DESIGN, and nothing in a gerber records them.
     # Mask colour is usually cosmetic and on this board it is not: twenty photodiodes
     # look up through a 0.30 mm gap that runs 5.40 mm to the cover's aperture, and that
