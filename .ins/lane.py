@@ -130,6 +130,31 @@ def seg(p0, p1, net, width=0.2, d=None):
     return worst
 
 
+def overlaps(d=None, clr=CLR):
+    """Every pair of pads on DIFFERENT nets that is closer than the fab rule.
+
+    ⚠ THE PIPELINE HAD NO SUCH CHECK AND IT COST AN HOUR. Turning the +X supply column
+    flat moved it 0.92 mm east into U1..U5, and layout reported "139 laid, 1 left to the
+    router" and looked entirely healthy. The shorts -- Cs<k>3 pad 2 on its op-amp's pad 5,
+    in every quad -- surfaced only in the DRC at the END of a 57-minute route, as five
+    shorting_items among 35 violations, where they read as routing damage rather than as a
+    placement that was never manufacturable.
+    A placement error should be caught by looking at the placement. This is O(n^2) on 900
+    pads and takes about a second.
+    """
+    d = d or probe()
+    bad = []
+    for i, (r1, n1, net1, x1, y1, hx1, hy1) in enumerate(d["pads"]):
+        for r2, n2, net2, x2, y2, hx2, hy2 in d["pads"][i + 1:]:
+            if r1 == r2 or (net1 and net1 == net2):
+                continue
+            gap = max(abs(x1 - x2) - hx1 - hx2, abs(y1 - y2) - hy1 - hy2)
+            if gap < clr:
+                bad.append((round(gap, 4), "%s.%s [%s]" % (r1, n1, net1 or "-"),
+                            "%s.%s [%s]" % (r2, n2, net2 or "-")))
+    return sorted(bad)
+
+
 def pad(ref, num, d=None):
     d = d or probe()
     for r, n, net, px, py, hx, hy in d["pads"]:
