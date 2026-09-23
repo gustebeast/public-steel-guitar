@@ -2005,7 +2005,16 @@ BOARD_NOTES = {
     # x -34..-28 is the column between U13 and L1, which the pair already travels; the
     # ground pads displaced from it fall back to the pour, which is what they had
     # before any of this existed.
-    "via_keepouts": [[-34.5, -101.0, -27.5, -78.0]],
+    # ⚠ THE SECOND RECTANGLE FENCES THE TWO SPINES IN THE WEST CHANNEL. The stitcher
+    # places a ground via 0.9 off its pad and knows nothing about pre-laid copper, so it
+    # dropped Cm54's onto the +3V3D trunk -- 0.100 mm where the fab rule is 0.127, the
+    # single unexpected violation on an 8-unconnected board. Excluding the pad would have
+    # cost that cap its ground; fencing the lane keeps the stitch and moves the via, which
+    # is the same trade the escape fan already makes. Sized off the copper: the +3V3D
+    # trunk at -33.268 (0.30 wide) and the I2C spine at -34.398 (0.25) each need
+    # 0.127 + 0.30 + half their width of room for a 0.6 mm via.
+    "via_keepouts": [[-34.5, -101.0, -27.5, -78.0],
+                     [-34.95, -12.5, -32.69, 65.1]],
     # ⚠ THE FEEDBACK CLUSTERS, LAID HERE RATHER THAN SEARCHED FOR. Twenty identical
     # networks -- op-amp output, feedback R, feedback C, and the photodiode on the input
     # -- packed into the Y gaps of a 13.6 mm strip that already holds 107 parts. Nearly
