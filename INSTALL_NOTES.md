@@ -41,3 +41,19 @@ washers (the spring seat, and the position stop in the housing). See `BOM.md` an
   stress-craze it.
 - **Not needed** on the TENSION screw: the spring loads it permanently, and that
   friction holds it.
+
+## Guide rods go in BEFORE the optical pickup board
+
+- **Do:** seat all five near-row guide rods (strings 1, 3, 5, 7, 9) in their endplate
+  bores before the optical board is fitted.
+- **Why:** the board is an O rather than a C -- its sensing strip runs +X across the
+  endplate block to give the digital nets a path that does not cross the analog strip --
+  and that band passes straight over the near-row bores. The rods themselves never touch
+  it: they top out at z 2.80, and the board's underside is at 9.53, so there is 6.73 mm
+  of air between them. What the band covers is the MOUTH each rod is dropped through.
+- **The alternative was measured and is worse.** Ø3.9 access holes in the band let the
+  rods go in afterwards, and they neck it to 1.40 mm at five points -- about three traces
+  past each rod. Fitting the rods first buys the band its full 5.35 mm for its whole
+  length, which is most of the reason the band exists.
+- **Not an issue for the far row** (strings 2, 4, 6, 8, 10, at x +20.0): the board does
+  not reach them.
