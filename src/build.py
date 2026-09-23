@@ -84,7 +84,8 @@ def _PB_bar(attr):
     # heal BEFORE the threads and not after: thread rules (cut last and alone,
     # never heal a threaded part). That is also why the heal lives here rather
     # than in the PARTS lambda, which used to wrap this call.
-    return FP.cut_feel_access(heal(FP.fuse_into_bar(_PB(attr), *span)), *span)
+    piece = FP.cut_feel_access(heal(FP.fuse_into_bar(_PB(attr), *span)), *span)
+    return FP.cut_wire_ways(piece, *span)
 
 
 PARTS = {
@@ -1209,6 +1210,164 @@ def lkl_vkl_components():
     return out
 
 
+LEG_CONTEXT_Z = 250.0    # how far UP the legs the pedal-bar crop reaches
+
+
+def pedal_bar_box():
+    """(w, d, h, x, y, z) round the PEDAL BAR: the bar end to end, its towers, the
+    pedals standing on it, the feet under it -- and LEG_CONTEXT_Z of the leg columns
+    above it.
+
+    The legs are the reason for that last term. A box drawn to the bar's own bounds
+    is only ~175 tall, and everything the bar hangs off is outside it, so the view
+    came out as a bar floating in space with no instrument attached to it (user). The
+    box stops well short of the body all the same: the legs are ~700 long and all of
+    that is somebody else's work."""
+    bbs = [w.val().BoundingBox() for _, w in _pedal_bar_components() + _foot_pedal_components()]
+    x0, x1 = min(b.xmin for b in bbs) - 20.0, max(b.xmax for b in bbs) + 20.0
+    y0, y1 = min(b.ymin for b in bbs) - 30.0, max(b.ymax for b in bbs) + 30.0
+    z0 = min(b.zmin for b in bbs) - 30.0
+    z1 = max(b.zmax for b in bbs) + LEG_CONTEXT_Z
+    return (x1 - x0, y1 - y0, z1 - z0, (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2)
+
+
+def pedal_bar_work_components():
+    """The bar, its lid and latch, and the five pedals on it, as ONE live set -- for
+    work on the bar itself (the wiring trough, the splices, the fused housings). Like
+    lever_components, the build does not need it: it exists so the scratch view can
+    make the whole bar live at once, which is the unit a trough change touches."""
+    return _pedal_bar_components() + _foot_pedal_components()
+
+
+def lever_bus_nodes():
+    """[(name, plug, lace, out_dir)] in GUITAR coordinates, in CHAIN ORDER -- what
+    src.wiring.lever_bus needs to draw the knee levers' bus-B harness and cut list.
+
+    It lives here because a station's POSE lives here (LEVER_STATIONS, and the rotate /
+    mirror / translate in _lever_stations_components), and wiring is imported BY this
+    module -- the same one-way dodge the pedal housings use. The two attachment points
+    themselves are the LEVERS' (knee_lever.plug_point / lace_point), read off the
+    connector and the lace loop, so nothing here is a transcribed coordinate.
+
+    CHAIN ORDER IS -X -> +X: bus B arrives from the motor controller at the keyhead and
+    the far end of the chain terminates at the +X-most lever (elec/motor_ctrl: the
+    controller is a MID-BUS node now, and the ends close their own JP1).
+
+    Each node is (name, plug, keeper, plug_dir, keeper_axis, pin_axis, pins, standoff,
+    cheek_axis, cheek_bypass, guide),
+    where `pins` is {way: point} for all CONN_N ways of that lever's J1 -- so the model
+    shows which conductor belongs in which slot (user).
+
+    """
+    from . import knee_lever as KL
+    from . import knee_lever_vert as KV
+
+    def _pose(kind, sx, sy, mirrored, p, vector=False):
+        x, y, z = p
+        if kind != "kl":
+            x, y = y, -x                    # the -90 about Z that KV parts carry
+        if mirrored:
+            x = -x                          # mirror YZ: local +X -> -X
+        if vector:
+            return (x, y, z)
+        return (x + sx, y + sy, z + (KL.MOUNT_Z if kind == "kl" else KV.MOUNT_Z))
+
+    out = []
+    for name, kind, sx, sy, mirrored in sorted(LEVER_STATIONS, key=lambda st: st[2]):
+        if sy is None:
+            sy = _vkl_mount_y()
+        if kind == "kl":
+            pin = KL.plug_pin
+            lace = KL.keeper_point()
+        else:
+            def pin(w, _K=KV):
+                return KL.plug_pin(w, _K.HOUS_Z0, _K.HOUS_Z1)
+            # ...WITH ITS OWN HOUSING TOP. Left off, keeper_point fell back to the
+            # HORIZONTAL lever's, and since the winding is measured DOWN from the top,
+            # LKV's coil hung 19.6 below its own column (user).
+            lace = KL.keeper_point(KV.HOUS_Z0, KV.HOUS_X0, KV.HOUS_HW_P, KV.HOUS_Z1)
+        plug = pin((KL.CONN_N + 1) / 2.0)
+        # the plug's wires leave along local -X (the mouth faces -X), posed the same way
+        p = _pose(kind, sx, sy, mirrored, plug)
+        l = _pose(kind, sx, sy, mirrored, lace)
+        d = _pose(kind, sx, sy, mirrored, (-1.0, 0.0, 0.0), vector=True)
+        ka = _pose(kind, sx, sy, mirrored, KL.keeper_axis(), vector=True)
+        pa = _pose(kind, sx, sy, mirrored, KL.pin_axis(), vector=True)
+        ca = _pose(kind, sx, sy, mirrored, KL.cheek_axis(), vector=True)
+        pins = {w: _pose(kind, sx, sy, mirrored, pin(w)) for w in range(1, KL.CONN_N + 1)}
+        # WHERE THE ARRIVING CABLE TURNS, on the one lever whose plug the bus cannot
+        # reach in a straight line: the vertical one, whose body lies along its plug's
+        # axis, so the cable has to come round the +Y end before it can run back to the
+        # connector.
+        #
+        # IT TURNS ON THE HOUSING'S OWN BACK CORNER -- no part at all (user: "you added
+        # an extra winding post to the LKV but it's unnecessary"). A turn post was added
+        # when the approach came round the FRONT, into the arm's sweep; round the back
+        # there is already a corner to rest on, and a corner is a contact surface like
+        # any other. Tried its own KEEPER column first: that sits on the connector
+        # cheek, so turning there means arriving through the body (66 mm3).
+        # ...AND AT THE COLUMN'S OWN HEIGHT, so the run reaches the corner level and
+        # goes straight on. Off it, the cable drops in Z to round the corner and climbs
+        # back for the connector, for no reason a part gives it (user).
+        _off = KL.CANB_BUNDLE_OD / 2.0 + D.MIN_WALL
+        guide = (_pose(kind, sx, sy, mirrored,
+                       (KV.HOUS_X0 - _off, -KV.HOUS_HW_N - _off,
+                        KL.keeper_point(KV.HOUS_Z0, KV.HOUS_X0, KV.HOUS_HW_P,
+                                        KV.HOUS_Z1)[2]))
+                 if kind != "kl" else None)
+        out.append((name, p, l, d, ka, pa, pins, KL.plug_standoff(),
+                    ca, KL.cheek_bypass(), guide))
+    return out
+
+
+def _lever_bus_components():
+    """The knee levers' bus-B harness, drawn. See wiring.lever_bus."""
+    from . import wiring as WR
+    parts, _ = WR.lever_bus(lever_bus_nodes())
+    return parts
+
+
+def cable_cut_list():
+    """The modelled harness as a CUT LIST -- what to cut before crimping."""
+    from . import wiring as WR
+    return WR.lever_bus_cut_list(lever_bus_nodes())
+
+
+def lever_harness_box():
+    """(w, d, h, x, y, z) round the KNEE LEVERS and their harness -- the unit of work,
+    and nothing else. The pedal bar is 600 mm away down the legs and shares only the
+    board design, so carrying it live cost minutes a gate for geometry the levers
+    cannot reach (user)."""
+    from . import top_plate as TP
+    bbs = [w.val().BoundingBox()
+           for _, w in _lever_stations_components() + _lever_bus_components()]
+    x0, x1 = min(b.xmin for b in bbs) - 25.0, max(b.xmax for b in bbs) + 25.0
+    y0, y1 = min(b.ymin for b in bbs) - 25.0, max(b.ymax for b in bbs) + 25.0
+    z0, z1 = min(b.zmin for b in bbs) - 15.0, TP.BZ
+    return (x1 - x0, y1 - y0, z1 - z0, (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2)
+
+
+def lever_harness_components():
+    """The knee levers and the bus-B harness between them, as ONE live set. The pedals
+    and the bar are OUT: they are a separate subassembly that this work does not move,
+    and leaving them in made every gate rebuild 500 solids to check 200."""
+    return _lever_stations_components() + _lever_bus_components()
+
+
+def bus_b_components():
+    """EVERYTHING ON BUS B as ONE live set: the five modelled knee-lever stations, the
+    five foot pedals, and the pedal bar they are fused into.
+
+    The bus is the unit of work for the harness -- a lever chains to the next lever and
+    the chain carries on down the leg to the bar -- and it is the one view that shows
+    both ends of it. Like lever_components, the build does not need this; it exists for
+    the scratch view. No crop goes with it: the chain spans the whole instrument, and
+    cropping to the levers is what left the pedal bar looking like a bar in empty
+    space."""
+    return (lever_components() + _pedal_bar_components()
+            + _lever_bus_components())
+
+
 def _tensioner_coupon_components():
     """The unified belt clamp shown ASSEMBLED, parked off the +X end for a clear look (the real
     clamps ride each string's belt). ONE SKU per half (`clamp_half`; half-B is it turned 180° about
@@ -1484,6 +1643,11 @@ _COLORS = {
     "wire_pwr_gnd":    (0.05, 0.05, 0.05),   # black       - CAN ground/return
     "wire_canh":       (0.95, 0.85, 0.10),   # yellow      - bus A CAN-H
     "wire_canl":       (0.13, 0.72, 0.20),   # green       - bus A CAN-L
+    "wire_canb_gnd":   (0.05, 0.05, 0.05),   # black       - bus B ground (levers)
+    "wire_canb_v5":    (0.85, 0.12, 0.10),   # red         - bus B +5 V  (levers)
+    "wire_canb_h":     (0.95, 0.85, 0.10),   # yellow      - bus B CAN-H (levers)
+    "wire_canb_l":     (0.13, 0.72, 0.20),   # green       - bus B CAN-L (levers)
+    "wire_canb_coil":  (0.45, 0.45, 0.48),   # grey        - the slack, drawn as a bundle
     "wire_canbh":      (0.95, 0.85, 0.10),   # yellow      - bus B CAN-H
     "wire_canbl":      (0.13, 0.72, 0.20),   # green       - bus B CAN-L
     "wire_canjmph":    (0.95, 0.85, 0.10),   # yellow      - jumper CAN-H
@@ -1507,8 +1671,12 @@ _TPU_BASES = tuple(sorted((k for k, v in PARTS.items() if v[1].startswith("tpu/"
 
 
 def _color_for(name):
-    head, _, tail = name.rpartition("_")
-    base = head if (head and tail.isdigit()) else name
+    # STRIP EVERY TRAILING INDEX GROUP, not just the last one -- the same lesson
+    # tools.check_overlaps.base() records, and this resolver had not learned it. A part
+    # numbered twice (`wire_canb_gnd_0_0`: net, segment, half) kept one index after a
+    # single strip, matched nothing in _COLORS, and came out the default white. The
+    # overlap gate had already been bitten by exactly this and fixed; colours had not.
+    base = re.sub(r"(_\d+)+$", "", name)
     if base in _TPU_BASES or any(base.endswith(k) for k in _TPU_BASES):
         return cq.Color(*_TPU_BLACK)             # TPU is always black
     if base in _COLORS:

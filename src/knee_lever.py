@@ -48,7 +48,7 @@ from cadkit.fasteners import (M4_SHAFT_CLR_D, M4_INSERT_D,
                        cut_selftap,
                        cut_m4_pocket, seated_m4_insert, cut_m4_boss, m4_boss_insert)
 from cadkit.pcb import (PCB_T as _PCB_T, jst_ph_side_header, ph_side_length,
-                        PH_SIDE_H, PH_SIDE_D, PH_TAB_D, PH_PLUG_RUN)
+                        PH_SIDE_H, PH_SIDE_D, PH_TAB_D, PH_PLUG_RUN, PH_PITCH)
 from cadkit.joinery import PrintSpec, joint   # cadkit's one joinery entrypoint
 from cadkit.supports import printable_bore
 # the M4 insert pocket/boss helpers now live in cadkit/fasteners.py (shared); keep the old local names:
@@ -896,7 +896,7 @@ def _cradle(w, z_bot=None, z_top=None, x_max=None, flip=None):
     # of the 1.6 wall beside the half-stop pocket (user).
     _cy0 = max(PCB_Y - PH_SIDE_H - CONN_POCKET, CR_Y0)
     _cz0 = conn_zc - CONN_L / 2 - CONN_POCKET
-    _cx0 = conn_mx - _sx * (2 * CONN_PLUG_RUN + 3.0)   # the plug's full unplug stroke
+    _cx0 = conn_mx - _sx * CONN_UNPLUG                 # the plug's full unplug stroke
     _cx1 = conn_mx + _sx * (PH_SIDE_D + CONN_POCKET)
     _cz1 = z_top + 1.0
     w = w.cut(box_at(abs(_cx1 - _cx0), PCB_Y - _cy0, _cz1 - _cz0,
@@ -1447,6 +1447,11 @@ CONN_MOUTH_X = PCB_X0 + 3.05                          # the PH-era layout's mout
 CONN_ZC      = (PCB_Z0 + PCB_Z1) / 2                  # centred on the board's height
 CONN_POCKET  = 0.3                  # clearance around it in the web tunnel
 CONN_PLUG_RUN = PH_PLUG_RUN         # 3.6: mated PHR reach past the mouth (JST's drawing)
+CONN_UNPLUG = 2 * CONN_PLUG_RUN + 4 * D.BEAD   # the plug's full WITHDRAWAL. _cradle
+                                    # tunnels the web this far so the plug can be drawn off
+                                    # without lifting the board out, and the lace loop has to
+                                    # start past it (it used to be a 3.0 literal in _cradle,
+                                    # which is also what put the loop off the bead grid).
 assert PCB_Z0 + CONN_EDGE <= CONN_ZC - CONN_L / 2 and CONN_ZC + CONN_L / 2 <= PCB_Z1 - CONN_EDGE, (
     "J1 standing on end does not fit the board's height with the 1.0 edge rule")
 assert PCB_Y - PH_SIDE_H - CONN_POCKET >= HOUS_HW - 1e-6, (
@@ -1774,6 +1779,346 @@ def cut_feel_rear(w, place, reach=0.0):
     return w
 
 
+
+# -- THE CABLE KEEPER: where a lever's bus-B slack is stowed ----------------
+# User, 2026-09-22: "we need a way to cable manage having some extra wire length
+# between each lever. That way you can adjust the lever positions without having to
+# make new cables."
+#
+# A lever is NOT at a fixed station. Its tenons drop into the chassis bottom's mortise
+# grid (D.LEVER_PITCH, 10.4) so it steps along X, and the rib mortise runs MORT_Y1 -
+# MORT_Y0 = 197.5 in Y, so it also slides to any knee depth. The harness therefore has
+# to reach a lever that has MOVED since the cable was cut -- and the loom is the
+# crimped, tooled, contacts-ordered part, the one thing that should survive a
+# re-placement. So a bus-B segment is cut long and the excess is coiled and pressed in
+# HERE, on the lever itself, which travels with it.
+#
+# IT IS OPEN, AND THAT IS THE POINT (user, 2026-09-22: "the cable clip doesn't work
+# because it traps the cable and it can't be removed"). This was a closed loop -- a bore
+# through a block -- which a cable can only reach by being THREADED from one end, i.e.
+# before its connectors are crimped on, and can never leave. A harness you cannot take
+# out is not serviceable and is barely installable.
+#
+# The section is the chassis wiring trough's, shrunk (chassis.WT_*): floor, outer wall,
+# and a NUB at the wall's top reaching back toward the cheek with a 45 deg underside, so
+# the MOUTH IS NARROWER THAN THE POCKET. Cable presses in past the nub and stays; a
+# screwdriver tip under the coil pops it back out. Borrowing that profile is also what
+# makes it print: the mouth opens along +Z, the build direction, so the pocket has no
+# ceiling, and the nub's underside is the 45 deg this whole part is drawn to.
+#
+# ON THE CONNECTOR CHEEK, FLUSH WITH THE BACK END (user, both). Not the back face --
+# that is how a 2.0 key reaches both feel screws, and a coil parked across it covers
+# them for the life of the instrument. The +Y cheek is where the wire already is, since
+# J1's plug leaves the board -X in the gap between the board and this very face.
+# THE BUS-B CABLE, sized here because the KEEPER is sized from it -- and re-exported by
+# src.wiring, which draws the harness, rather than the other way round: wiring already
+# imports this module for the keeper's wound radius, so the constants have to live on
+# this side of that edge.
+CANB_WIRE_OD = 1.3                  # one bus-B conductor, 26 AWG, insulated
+CANB_BUNDLE_OD = 2.5                # the four of them together (BOM, Wire)
+KEEP_POST_D = 7 * D.NOZZLE_D        # 5.6 the barrel the slack winds onto
+KEEP_HEAD   = 3 * D.NOZZLE_D        # 2.4 of 45 deg flare at the top: the coil cannot
+                                    # walk off, but it lifts over with a screwdriver
+KEEP_WOUND_D = 2 * (KEEP_POST_D + CANB_BUNDLE_OD) / 2.0 + CANB_BUNDLE_OD   # 10.6 wound OD
+# THE SUPPORT MATCHES THE POST, not the coil (user, 2026-09-23: "the supports could
+# also be cleaner to match the diameter of the post and join more aesthetically /
+# strongly"). It was as wide as the WOUND cable (10.6) -- a slab sticking out either side
+# of a 5.6 column. At the post's own diameter it reads as part of the post, and a 45 deg
+# COLLAR at the joint carries the load into it instead of ending on a square corner.
+KEEP_WEB_T  = KEEP_POST_D           # 5.6 -- the support is the post's width
+KEEP_BUT_T  = KEEP_POST_D           # 5.6 of buttress, measured SQUARE to its own 45
+                                    # (user, 2026-09-23, measuring the 3.20 it was:
+                                    # "set the diagonal thickness here to match the
+                                    # diameter of the column"). The strut is now the
+                                    # post's section in BOTH directions -- as wide as it
+                                    # in X and as deep as it across the diagonal -- so
+                                    # the member does not thin down where it turns.
+                                    # A strut's thickness is perpendicular, not vertical:
+                                    # the band is sqrt(2) taller than this in Z.
+KEEP_POST_DX = KEEP_WOUND_D / 2.0   # ...but the post still sits a WOUND radius in from
+                                    # the housing's back face, so the coil is flush with
+                                    # it rather than standing proud
+# HOW MUCH BARE POST THE COIL NEEDS -- which is a LAYER's worth, not the whole slack
+# (user, 2026-09-23: "you can wrap wire around itself so the outer wraps have a larger
+# diameter"). That is what a hand-wound hank does, and it takes the capacity question
+# off the column entirely: turns-per-layer set the HEIGHT, layers set the CAPACITY, and
+# layers cost nothing in Z. The post stopped needing to be tall or fat the moment this
+# was pointed out -- see wiring._coil_layers.
+KEEP_WEB_H  = KEEP_POST_D           # 5.6 of base on the bed, under the winding -- the
+                                    # POST'S OWN SECTION again (user, 2026-09-23,
+                                    # measuring the 4.80 it was: "ditto for the other
+                                    # levers, make the floor support equal height and
+                                    # width matching the column diameter"). It was
+                                    # already KEEP_WEB_T wide; now it is square. This
+                                    # sets KEEP_DROP, so every coil in the instrument
+                                    # rises the same 0.8 and they stay level with each
+                                    # other -- which is the property that matters.
+# ...far enough that the WOUND CABLE clears the CRADLE, not merely the cheek. The cradle
+# stands CR_Y1 off the axle and carries the board, and a coil tucked inside its shadow
+# put every run that left it straight along its own lever's PCB. Derived, so it tracks
+# the cradle rather than being a number that was once right.
+KEEP_CLR_Y  = CR_Y1 - HOUS_HW + D.MIN_WALL_2P   # 11.5: the coil's inner face clears
+                                    # the cradle's outer one. Was one wall (0.8), which left
+                                    # the wound cable almost touching the lever and nowhere
+                                    # for a finger or a screwdriver to get in (user: "move
+                                    # the columns further from the lever so we have more
+                                    # space to fit wiring") -- and, worse, put every run
+                                    # that LEFT the coil straight along its own board.
+                                    # one wall (0.8), which left the wound cable almost
+                                    # touching the lever and nowhere for a finger or a
+                                    # screwdriver to get in (user: "move the columns
+                                    # further from the lever so we have more space to
+                                    # fit wiring").
+KEEP_COIL_R = (KEEP_POST_D + CANB_BUNDLE_OD) / 2.0       # wound centre line, 4.05
+# THE POST STANDS ON THE BED AND GROWS TOWARD THE INSTRUMENT (user, 2026-09-23: "for
+# the cable winding posts, they create a print overhang... align them along the Z axis
+# instead of the Y axis", and "you can have the material for the cable winding start at
+# the print bed and grow up towards the instrument").
+#
+# That is the whole fix, and it removes a part rather than adding one. Lying along Y the
+# barrel was a horizontal cantilever off a vertical face, so it needed a 45 deg gusset
+# under it -- and the gusset sat exactly where the coil's lower half had to pass, which
+# cost 67 mm3 of lever inside every coil and then a second fix (carry only the inner
+# half) to get out of. Along Z it is a plain pillar in the build direction: no overhang,
+# no gusset, and nothing in the way of the winding.
+#
+# The WEB ties it back to the cheek, and stops below the winding for the same reason the
+# gusset had to: anything beside the post at the coil's height is something the coil
+# cannot get round. It is a vertical wall, so it prints like any other.
+#
+# THE WINDING IS AT THE TOP, right under the instrument (user, 2026-09-22: "so it
+# doesn't dangle and hit your knee"). The post's MATERIAL starts at the bed; the CABLE
+# lives at the far end of it.
+# THE POST HANGS OFF THE HOUSING'S TOP, NOT OFF THE BED (user: "raise it so it matches
+# the height of the other levers... the bottom support grows up from the lever body at a
+# 45 angle"). Every lever's housing top is FLUSH with the chassis underside, so measuring
+# down from HOUS_Z1 puts every coil in the instrument at the same height -- which is what
+# the harness strung between them wants. Measured up from the bed, as it was, the post
+# was as tall as its housing: the VERTICAL lever is 46.6 deep, so its column ran the
+# whole of that and its coil sat 18 below the horizontal ones.
+#
+# And the support becomes a 45 deg BUTTRESS off the cheek rather than a slab on the bed:
+# the same self-supporting angle the rest of the part is drawn to, carrying the post at
+# its base, taking no build-plate area at all.
+KEEP_WIND_Z1 = HOUS_Z1 - KEEP_HEAD - D.MIN_WALL_2P       # the head sits under the top
+KEEP_WIND_Z0 = HOUS_Z0 + KEEP_WEB_H                      # ...and the base ends down here
+KEEP_WIND_H = KEEP_WIND_Z1 - KEEP_WIND_Z0                # whatever is left is winding
+# HOW FAR BELOW THE TOP THE WINDING STARTS -- set by the HORIZONTAL lever, whose post
+# stands on the bed, and then imposed on the others. Every housing top is flush with the
+# chassis underside, so a common drop puts every coil in the instrument at one height,
+# which is what the harness strung between them wants.
+KEEP_DROP = HOUS_Z1 - KEEP_WIND_Z0
+# THE BUTTRESS IS FOR THE VERTICAL LEVER ONLY (user, 2026-09-23: "I was only suggesting
+# adding the 45 to the LKV. The other levers were fine the way they were"). Right: a
+# post standing on the bed is the simpler thing and the horizontal housing is only 28.5
+# deep, so its column is short anyway. LKV is 46.6 deep -- there its post ran the whole
+# depth of the lever and put its coil 18 below everyone else's. Hung at KEEP_DROP with a
+# 45 deg buttress down to the cheek, it matches. The buttress drops the post's whole
+# offset before it lands, which is the budget the assert in cable_keeper checks.
+_KEEP_DY = KEEP_CLR_Y + KEEP_COIL_R + CANB_BUNDLE_OD / 2.0
+
+
+def _yz(pts, xc, t):
+    """A YZ profile, t thick and centred on x=xc -- the keeper's struts are all 2D."""
+    return (cq.Workplane("YZ").polyline(pts).close()
+            .extrude(t).translate((xc - t / 2.0, 0.0, 0.0)))
+
+
+def cable_keeper(y_face=None, z_bed=None, x_back=None, z_top=None, hung=False):
+    """The cable keeper on a lever housing's +Y (connector) cheek, in the lever's local
+    frame: a post standing off the bed, webbed to the cheek below the winding, with a
+    45 deg head at the top.
+
+    Parameterised because the VERTICAL lever (knee_lever_vert) is the same design with
+    the feel block moved above the axle -- same cheek and same back face, its own floor
+    -- and it adjusts on the same grid, so it needs the same keeper."""
+    y0 = HOUS_HW if y_face is None else y_face
+    z0 = HOUS_Z0 if z_bed is None else z_bed
+    x0 = HOUS_X0 if x_back is None else x_back
+    z1 = HOUS_Z1 if z_top is None else z_top
+    xc, yc, wz0 = keeper_point(z0, x0, y0, z1)   # ...THE one place the axis is written
+    wz1 = z1 - KEEP_HEAD - D.MIN_WALL_2P                        # winding top
+    ov = D.MIN_WALL_2P
+    head = cq.Workplane("XY").add(cq.Solid.makeCone(
+        KEEP_POST_D / 2.0, KEEP_POST_D / 2.0 + KEEP_HEAD, KEEP_HEAD,
+        cq.Vector(xc, yc, wz1), cq.Vector(0, 0, 1)))
+    # NO CONICAL COLLAR at the joint, though it is the obvious way to spread it. The
+    # support is the post's own width now, so a cone of any flare stands proud of it on
+    # both sides and leaves a flat crescent hanging underneath -- 26 mm2 of it, found by
+    # probing for downward faces. The 45 deg wedge IS the blend.
+    if not hung:                       # ...stands on the bed, on a base (the default)
+        post = cyl(KEEP_POST_D, wz1 - z0, z=z0).translate((xc, yc, 0.0))
+        foot = box_at(KEEP_WEB_T, yc - y0, KEEP_WEB_H,
+                      x=xc, y=(y0 + yc) / 2.0, z=z0 + KEEP_WEB_H / 2.0)
+        return post.union(head).union(foot)
+    # ...or HANGS at the common height on a 45 deg buttress off the cheek. The post runs
+    # BELOW the winding base into the buttress, and the buttress bites INTO the cheek: a
+    # triangle that merely touches its supports along an edge fuses into nothing, and
+    # the housing came out as three separate solids.
+    # A STRUT, NOT A GUSSET: parallel faces, both at 45 (user, 2026-09-23, on a shape
+    # whose top ran flat from the post across to the cheek: "still not right", crossing
+    # out the triangle under that flat top). The filled corner is the obvious shape and
+    # it was wrong twice before this, so name the three that failed:
+    #   a right triangle with the corner DOWN -- a flat 10.6 x 16.8 underside hanging in
+    #     air, 178 mm2, the face measured in the screenshot;
+    #   a triangle tapering to the post -- fixed that, but sloped its TOP the opposite
+    #     way, so it read as an arrowhead;
+    #   a triangle with a HORIZONTAL top -- printable and strong, but it is a gusset
+    #     filling the corner rather than a member carrying a load along itself.
+    #
+    # ONE 45 DEG BAND does all of it. Its TOP passes through the post's outboard edge at
+    # the winding base, so the band never rises into the coil; its UNDERSIDE is that
+    # plane dropped KEEP_BUT_T square, and THE POST IS CUT ON IT -- which is what makes
+    # the junction a junction. A flat-bottomed post stacked on a brace hangs part of its
+    # disc in air (8 mm2 one way, 17 the other, both found by probing for downward-facing
+    # faces, both invisible to check_ceilings); a post cut on the band's own underside
+    # has no bottom disc at all. Post and strut share one continuous 45 deg face.
+    px = yc + KEEP_POST_D / 2.0                                 # the band's outboard end
+    tv = KEEP_BUT_T * math.sqrt(2.0)                            # ...its VERTICAL depth
+    def top(y):                                                 # the band's upper plane
+        return wz0 - (px - y)
+    # THE DEPTH IS THE WHOLE BUDGET, and the vertical lever spends nearly all of it: 45
+    # deg buys one mm of drop per mm of offset, the post stands _KEEP_DY + a radius out,
+    # and that is most of the 22.9 between this winding base and this floor. Hence no
+    # bare shaft below the winding (there were 4.0) -- there is no room for any.
+    a = y0 - ov
+    assert top(a) - z0 >= D.MIN_WALL_2P, (
+        "the keeper's 45 deg strut reaches the cheek %.2f above its floor, too thin "
+        "to fuse" % (top(a) - z0))
+    post = cyl(KEEP_POST_D, wz1 - z0, z=z0).translate((xc, yc, 0.0))
+    # below the band, over its whole reach and well past the post either way
+    cut = [(a - KEEP_POST_D, top(a - KEEP_POST_D) - tv), (px, wz0 - tv),
+           (px, z0 - KEEP_POST_D), (a - KEEP_POST_D, z0 - KEEP_POST_D)]
+    # the band, clipped at the floor: the far end lands ON THE BED the way every other
+    # lever's keeper foot does, rather than tapering to a knife edge that will not fuse
+    yu = px - (wz0 - tv - z0)                                   # where the underside lands
+    but = [(px, wz0), (a, top(a)), (a, z0), (yu, z0), (px, wz0 - tv)]
+    return (post.cut(_yz(cut, xc, KEEP_POST_D * 2.0))
+            .union(_yz(but, xc, KEEP_WEB_T)).union(head))
+
+
+def plug_pin(way, z_bot=None, z_top=None, flip=None):
+    """Where ONE conductor leaves J1, by WAY NUMBER (1..CONN_N) -- the plug's cable end,
+    on that contact's own line.
+
+    THIS IS MEANT TO BE READ OFF THE MODEL (user, 2026-09-23: "can you make the wires
+    enter the JST in accurate placement so we can use it as a reference when deciding
+    which slot to put each wire into?"). So the way numbers here are the harness's, not
+    a drawing convenience: harness.ph_trunk_pins() is the bus IN on ways 1-4 and OUT on
+    5-8, each group in PH_PINOUT order (GND, +5 V, CAN_H, CAN_L). A lever's ARRIVING
+    cable lands on 1-4 and its DEPARTING cable leaves from 5-8, which is what makes the
+    board pass the trunk through itself.
+
+    WAY 1 IS AT THE -Z END of the connector in this frame, and that is a CONVENTION THE
+    BOARD HAS TO MATCH -- nothing in the CAD can know which end the fab put pin 1 on.
+    docs/lever-sensor-respin.md carries it; if the routed board disagrees, this model is
+    wrong rather than the board.
+    """
+    zc = CONN_ZC if z_bot is None else conn_z(z_bot, z_top, flip)
+    mx = CONN_MOUTH_X if z_bot is None else conn_mouth_x(z_bot, z_top, flip)
+    sx = -1.0 if mx <= 0 else 1.0
+    return (mx + sx * CONN_PLUG_RUN, PCB_Y - PH_SIDE_H / 2.0,
+            zc + (way - 1 - (CONN_N - 1) / 2.0) * PH_PITCH)
+
+
+def plug_point(z_bot=None, z_top=None, flip=None):
+    """The plug's cable end on the connector's axis -- the middle of the pin row."""
+    return plug_pin((CONN_N + 1) / 2.0, z_bot, z_top, flip)
+
+
+def pin_axis():
+    """The direction the pin row runs, in the lever's LOCAL frame: J1 stands on end, so
+    its ways march along +Z."""
+    return (0.0, 0.0, 1.0)
+
+
+def cheek_axis():
+    """The connector cheek's outward normal, in the lever's LOCAL frame."""
+    return (0.0, 1.0, 0.0)
+
+
+def cheek_bypass():
+    """How far off the cheek a cable has to be to pass the lever LENGTHWAYS: outboard of
+    the cradle, which stands further out than the cheek does and carries the board."""
+    return CR_Y1 - HOUS_HW + CANB_BUNDLE_OD
+
+
+def plug_standoff(x_back=None):
+    """How far along the plug's own axis a cable has to come before it can turn.
+
+    The plug sits BEHIND its cradle, a board's length inside the housing, so a straight
+    run at it from the next lever goes through whatever is in between -- on one station
+    that was the board itself, its crystal and two of its capacitors. Coming in along
+    the axis from past the housing's back end is the route that exists in air, and it is
+    the one the user drew: "route it around the back".
+    """
+    x0 = HOUS_X0 if x_back is None else x_back
+    return abs(plug_point()[0] - x0) + 4 * D.BEAD
+
+
+def cable_guide(x_face, y_face, z_bed, z_top, sx=1.0, sy=1.0):
+    """A TURN POST at a housing's front corner, on the connector side.
+
+    Only one lever needs it, and it is the vertical one. LKV is the horizontal lever
+    rotated 90 deg, so its body lies ALONG its plug's axis and its connector points down
+    that axis, away from the neighbour the bus arrives from: every straight line to the
+    plug crosses the housing, the axle or the arm. This is the alternative to bending
+    the cable round nothing -- a post the cable genuinely wraps, so the turn has
+    something making it, which is the rule the rest of this harness is drawn to.
+
+    Same shape as the keeper: a pillar along the build direction with a 45 deg head, on
+    a base in the corner it stands in. The base ties it to BOTH faces it sits against.
+    `sx`/`sy` pick WHICH corner: the post projects that way off the faces given.
+
+    IT GOES ON THE BACK CORNER, AWAY FROM THE ARM (user, 2026-09-23: "the cable
+    shouldn't go around the front next to the lever arm, it should go around the back",
+    and "the +y side"). Right: LKV's arm hangs to -Y and sweeps there, so a turn post at
+    the front corner puts the cable through the one part of this lever that MOVES. The
+    back corner -- past the +Y end, on the far cheek -- is still air at every throw.
+    """
+    r = KEEP_POST_D / 2.0
+    xc = x_face + sx * (r + D.MIN_WALL_2P)
+    yc = y_face + sy * (KEEP_COIL_R + CANB_BUNDLE_OD / 2.0 + KEEP_CLR_Y)
+    z1 = z_top - KEEP_HEAD - D.MIN_WALL_2P
+    post = cyl(KEEP_POST_D, z1 - z_bed, z=z_bed).translate((xc, yc, 0.0))
+    head = cq.Workplane("XY").add(cq.Solid.makeCone(
+        r, r + KEEP_HEAD, KEEP_HEAD, cq.Vector(xc, yc, z1), cq.Vector(0, 0, 1)))
+    xe = xc + sx * r
+    base = box_at(abs(xe - x_face), abs(yc - y_face), KEEP_WEB_H,
+                  x=(x_face + xe) / 2.0, y=(y_face + yc) / 2.0,
+                  z=z_bed + KEEP_WEB_H / 2.0)
+    return post.union(head).union(base)
+
+
+def guide_point(x_face, y_face, z_bed, sx=1.0, sy=1.0):
+    """Where a cable wraps the turn post: its axis, above the base."""
+    return (x_face + sx * (KEEP_POST_D / 2.0 + D.MIN_WALL_2P),
+            y_face + sy * (KEEP_COIL_R + CANB_BUNDLE_OD / 2.0 + KEEP_CLR_Y),
+            z_bed + KEEP_WEB_H)
+
+
+def keeper_point(z_bed=None, x_back=None, y_face=None, z_top=None):
+    """THE POST'S AXIS, at the winding base -- where the slack coil starts.
+
+    ⚠ THE COIL IS DRAWN ON THIS, so it is the one place the post's position may be
+    written down. cable_keeper builds the post FROM this rather than computing its own
+    xc/yc, because it did compute its own and the two drifted the moment the support
+    changed width: the post moved to a wound radius off the back face while this still
+    returned half the WEB's width, so every coil in the instrument hung 2.5 mm beside
+    its post (user, 2026-09-23: "the cable spirals should be pinned to match the column,
+    they seem to be hardcoded so when we adjust the column they don't move")."""
+    y0 = HOUS_HW if y_face is None else y_face
+    x0 = HOUS_X0 if x_back is None else x_back
+    return (x0 + KEEP_POST_DX,
+            y0 + KEEP_COIL_R + CANB_BUNDLE_OD / 2.0 + KEEP_CLR_Y,
+            (HOUS_Z1 if z_top is None else z_top) - KEEP_DROP)
+
+
+def keeper_axis():
+    """The post's axis in the lever's LOCAL frame: the build direction."""
+    return (0.0, 0.0, 1.0)
+
+
 def _housing() -> cq.Workplane:
     """ONE PARAMETRIC PRISM (user simplification round): the box spanned by
     HOUS_* (every face derived from the lever / cartridge / body extents),
@@ -1872,6 +2217,7 @@ def _housing() -> cq.Workplane:
     w = cut_axle_stack(w)          # bearing seats + contact rib + axle way
     w = cut_feel_pockets(w, feel_place)
     w = _cradle(w)                                                  # the MT6701 board cradle (user)
+    w = w.union(cable_keeper())     # ...and the bus-B keeper on the cheek
     return heal(w)                  # no printed threads any more -- the whole part heals
 
 
