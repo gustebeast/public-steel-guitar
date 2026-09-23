@@ -1696,7 +1696,11 @@ BOARD_W, BOARD_L = BOARD_X1 - BOARD_X0, BOARD_Y1 - BOARD_Y0
 BOARD_NOTES = {
     "outline_mm": (round(BOARD_W, 3), round(BOARD_L, 3)),
     "outline_poly": [[round(x, 4), round(y, 4)] for x, y in _outline_poly(CX, CY)],
-    # the O-band crosses the near guide-rod row: five clearance holes, CAD -> board frame
+    # the O's HOLE: the bridge bearings and the block that carries them sit inside the
+    # ring, so the board has a 30 x 105 mm rectangular cutout. Edge.Cuts AND a keepout --
+    # freerouting cannot see Edge.Cuts (see layout._edge_hole).
+    "outline_holes": ([[OP.O_HOLE_X0 - CX, -OP.O_HOLE_Y - CY,
+                        OP.O_HOLE_X1 - CX, OP.O_HOLE_Y - CY]] if OP.O_SHAPE else []),
     "cutouts": [{"xy": [round(x - CX, 4), round(y - CY, 4)], "d": OP.O_ROD_HOLE_D}
                 for x, y in OP.O_ROD_HOLES],
     "layers": 4,

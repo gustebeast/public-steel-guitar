@@ -2668,6 +2668,41 @@ def _cutout(board, cx, cy, d, keepout=0.6):
     board.Add(z)
 
 
+def _edge_hole(board, x0, y0, x1, y1, keepout=0.6):
+    """A RECTANGULAR board cutout: Edge.Cuts for the fab, and a keepout so the router
+    can see it.
+
+    ⚠ BOTH, FOR THE REASON _cutout SPELLS OUT ABOVE: KiCad's Specctra exporter does not
+    turn Edge.Cuts geometry into a DSN boundary, so freerouting is blind to a hole drawn
+    that way and will lay track straight across it. The keepout zone is the only language
+    it reads. This one matters more than the round ones -- the optical board is a RING and
+    its hole is 30 x 105 mm with the bridge bearings inside it, so a router that cannot
+    see it would route half the board through thin air.
+    """
+    corners = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
+    for a, b in zip(corners, corners[1:] + corners[:1]):
+        seg = pcbnew.PCB_SHAPE(board)
+        seg.SetShape(pcbnew.SHAPE_T_SEGMENT)
+        seg.SetStart(_to_board(*a))
+        seg.SetEnd(_to_board(*b))
+        seg.SetLayer(pcbnew.Edge_Cuts)
+        seg.SetWidth(pcbnew.FromMM(0.1))
+        board.Add(seg)
+    k = keepout
+    poly = pcbnew.SHAPE_LINE_CHAIN()
+    for cx, cy in ((x0 - k, y0 - k), (x1 + k, y0 - k), (x1 + k, y1 + k), (x0 - k, y1 + k)):
+        poly.Append(_to_board(cx, cy))
+    poly.SetClosed(True)
+    z = pcbnew.ZONE(board)
+    z.SetIsRuleArea(True)
+    z.SetDoNotAllowTracks(True)
+    z.SetDoNotAllowVias(True)
+    z.SetDoNotAllowZoneFills(True)
+    z.SetLayerSet(pcbnew.LSET.AllCuMask())
+    z.AddPolygon(poly)
+    board.Add(z)
+
+
 def _edge_rect(board, w, h):
     """The outline on Edge.Cuts, centred on the board origin."""
     hw, hh = w / 2.0, h / 2.0
@@ -3060,6 +3095,8 @@ def build(stem):
         _edge_rect(board, *notes["outline_mm"])
     for h in notes.get("cutouts", ()):
         _cutout(board, h["xy"][0], h["xy"][1], h["d"])
+    for r in notes.get("outline_holes", ()):
+        _edge_hole(board, *r)
 
     nets_by_name = {n.GetNetname(): n for n in board.GetNetInfo().NetsByName().values()}
     for net_name, layer, width, pts in notes.get("tracks", []):
