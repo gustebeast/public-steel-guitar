@@ -226,7 +226,14 @@ def _crop_pedal_bar():
     return importlib.import_module("src.build").pedal_bar_box()
 
 
+def _crop_lever_harness():
+    """The knee levers and their harness -- shared with src.build.lever_harness_box so
+    the crop and the live set cannot disagree."""
+    return importlib.import_module("src.build").lever_harness_box()
+
+
 CROPS = {"leg_station": _crop_leg_station, "belt_run": _belt_run_box,
+         "lever_harness": _crop_lever_harness,
          "lkl_vkl": _crop_lkl_vkl, "pedal_bar": _crop_pedal_bar,
          "keyhead": _crop_keyhead, "bridge": _crop_bridge,
          "screw_rows": _crop_screw_rows, "body": _crop_body}

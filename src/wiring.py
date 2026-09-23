@@ -72,6 +72,7 @@ import cadquery as cq
 
 from . import dimensions as D
 from . import electronics as EL
+from . import knee_lever as _KL   # the keeper barrel the lever slack winds on
 from .helpers import oct_cable
 
 # modeled cable OD per net (mm): jacketed bundles (shielded/USB) drawn as ONE
@@ -1019,8 +1020,15 @@ def build_wires():
 # The lever stations' connector part names, as the assembly names them. The prefixes
 # mirror src.build.LEVER_STATIONS (LKL keeps the bare names); a station this does not
 # list simply gets no allow-list entry, which fails LOUD rather than silently.
-_LEVER_CONNS = {p + n for p in ("", "vkl_", "lkr_", "rkl_", "rkr_")
+_LEVER_PREFIX = ("", "vkl_", "lkr_", "rkl_", "rkr_")
+_LEVER_CONNS = {p + n for p in _LEVER_PREFIX
                 for n in ("kl_can_header", "kv_can_header")}
+# ...and the HOUSINGS, for the coil alone: it is wound ON the keeper barrel, which is
+# part of the housing, so cable-on-keeper is a designed contact in the same way
+# cable-on-connector is. The straight RUNS get no such licence -- a run that touches a
+# housing is a routing fault, which is the whole point of a whitelist.
+_LEVER_BODIES = _LEVER_CONNS | {p + n for p in _LEVER_PREFIX
+                                for n in ("knee_housing", "kv_housing")}
 
 # what each net is ALLOWED to touch (its source/destination bodies);
 # everything else a wire grazes is a routing bug the gate reports
@@ -1035,7 +1043,7 @@ WIRE_OK = {
     # are `vkl_`, `lkr_`, ... -- src.build.LEVER_STATIONS), which check_overlaps' base()
     # does not strip: it strips trailing INDEX groups only. So the allow-list has to
     # name them as the assembly does.
-    "wire_canb_coil":  _LEVER_CONNS,
+    "wire_canb_coil":  _LEVER_BODIES,
     # ...the four conductors are added below, where CANB_NETS is defined (this table
     # is read at import by tools.check_overlaps, so it only has to be complete by then)
     "wire_canbl":     {"motor_ctrl", "tee_pcb"},
@@ -1109,8 +1117,10 @@ for _i, (_tx, _ty, _td) in enumerate(tee_stations()):
 # not in main yet (branner asked the lead to take it, 2026-09-22). The CUT LIST is
 # unaffected: four conductors of a bundle are cut to the bundle's length, and the table
 # below multiplies by CANB_WAYS to say so.
-CANB_BUNDLE_OD = 2.5                # the four of them together (BOM, Wire)
-CANB_WIRE_OD = WIRE_OD["wire_canbh"]     # 1.3 -- ONE 26 AWG conductor, insulated
+CANB_BUNDLE_OD = _KL.CANB_BUNDLE_OD      # the four together; the KEEPER is sized
+CANB_WIRE_OD = _KL.CANB_WIRE_OD          # from these, so knee_lever owns them
+assert CANB_WIRE_OD == WIRE_OD["wire_canbh"], (
+    "the lever bus's conductor and the CAN pair's have drifted apart")
 # THE FOUR CONDUCTORS, DRAWN AS FOUR AND COLOURED AS FOUR (user, 2026-09-22), in
 # harness.PH_PINOUT order, with the instrument's own cable colours (black GND, red +V,
 # yellow CAN_H, green CAN_L -- see _COLORS in src.build). The offsets lay them in a
@@ -1120,25 +1130,16 @@ CANB_WIRE_OD = WIRE_OD["wire_canbh"]     # 1.3 -- ONE 26 AWG conductor, insulate
 # branch lands; the lengths differ by well under the crimp allowance either way.
 CANB_NETS = (("gnd", (-1, -1)), ("v5", (1, -1)), ("h", (-1, 1)), ("l", (1, 1)))
 CANB_WAYS = len(CANB_NETS)          # GND / +5 V / CAN_H / CAN_L (harness.PH_PINOUT)
-CANB_LEAD = 1.6                     # square out of the plug before the run turns
+# SQUARE OUT OF THE PLUG far enough to clear the BOARD the plug stands on -- the crimp
+# holds the wire in line for its own length anyway, and a 1.6 lead turned the run while
+# it was still over the PCB.
+CANB_LEAD = 8 * D.BEAD              # 6.4
 # THE SLACK ONE SEGMENT CARRIES. A lever steps on the chassis bottom's mortise grid, so
 # two neighbours moving two steps apart each is 4 * D.LEVER_PITCH; the rest is the
 # service slack to unplug a board and lift it out of its cradle. INSTALL_NOTES KL-2.
 CANB_SLACK = 4 * D.LEVER_PITCH + 25.0            # 66.6
-CANB_COIL_R = 6.0                   # wound radius (bundle centre line)
+CANB_COIL_R = _KL.KEEP_COIL_R       # the keeper barrel's own wound radius
 CANB_COIL_PITCH = 4 * D.BEAD        # 3.2 march per turn -- a bundle laid beside itself
-CANB_COIL_GAP = 2 * D.BEAD          # 1.6 the run stands off the coil's end caps
-CANB_COIL_LEAD = 5 * D.BEAD         # 4.0 approach the coil ALONG ITS AXIS, at the wound
-                                    # radius, so the run never crosses the turns it feeds
-CANB_LACE_THREAD = 10.0             # how far either side of the loop the cable is
-                                    # still running along its bore's axis
-CANB_LANE_STEP = CANB_BUNDLE_OD + 0.3    # segments lie SIDE BY SIDE in the lane, not on
-                                    # one line: near a lever the arriving cable and the
-                                    # departing one share it, and two cables on one
-                                    # centre line is the fault check_cable_pairs exists
-                                    # to catch, not a drawing convenience
-
-
 def _coil_turns():
     """Whole turns, so the coil never carries LESS than the slack it is there for."""
     return max(1, math.ceil(CANB_SLACK / (2.0 * math.pi * CANB_COIL_R)))
@@ -1172,136 +1173,64 @@ def _coil(path, d=CANB_BUNDLE_OD):
     return cq.Workplane("XY").add(cq.Solid.sweep(prof, [], path, isFrenet=True))
 
 
-def _lane_run(a, b, ly, lane_z, blockers):
-    """The lane from a to b, STEPPING ROUND every station it passes.
-
-    A lever is not a point and the lane's own y line runs through one of them (the
-    vertical lever spans y -54.7..+24.3). Each blocker says the X it occupies and a y
-    the lane clears it on; the step happens in the gap BEFORE the station, which is
-    where there is room for it."""
-    pts = [a]
-    lo, hi = sorted((a[0], b[0]))
-    for x0, x1, py in (blockers if a[0] <= b[0] else reversed(blockers)):
-        if x1 <= lo or x0 >= hi or abs(py - ly) < 1e-9:
-            continue                      # not in the way, or already clear of it
-        e0, e1 = (x0, x1) if a[0] <= b[0] else (x1, x0)
-        pts += [(e0, ly, lane_z), (e0, py, lane_z),
-                (e1, py, lane_z), (e1, ly, lane_z)]
-    return pts + [b]
-
-
 def _path_len(pts):
     return sum(math.dist(a, b) for a, b in zip(pts, pts[1:]))
 
 
-def _toward(a, b, dist):
-    """`dist` from a toward b -- the coil's end, stood off along the run."""
-    v = cq.Vector(*(q - p for p, q in zip(a, b)))
-    if v.Length < 1e-9:
-        return tuple(a)
-    u = v.normalized().toTuple()
-    return tuple(a[i] + u[i] * dist for i in range(3))
 
-
-def lever_bus(nodes, lane_y, lane_z, blockers=()):
+def lever_bus(nodes):
     """The bus-B chain through the knee levers: [(name, solid)], [(label, mm)].
 
     `nodes` is [(name, plug, lace, out_dir)] in GUITAR coordinates, in CHAIN ORDER --
     built by src.build, which is the only module that knows where a lever station is.
     The import stays one-way that way, the same dodge the pedal housings use.
 
-    Per segment: out of one lever's plug, square for CANB_LEAD, back to that lever's
-    lace loop, up to the LANE, the slack coil wound along it, then along the lane to the
-    next lever and square into ITS plug. The hank is tied at the UPSTREAM lever because
-    that is the one whose move the slack is there to absorb (INSTALL_NOTES KL-2).
+    Per segment: square out of one lever's plug, straight to the keeper it winds its
+    slack on, then straight to the next lever's plug. The slack is stowed at the
+    UPSTREAM lever because that is the one whose move it is there to absorb
+    (INSTALL_NOTES KL-2).
 
-    THE LANE is why this is not a straight line between plugs. Drawn plug to plug the
-    cable went through four housings, two cartridges and a magnet -- 31 overlaps -- and
-    the coils were wound inside the levers they belong to. It runs just outboard of the
-    horizontal housings' +Y cheeks and just under the chassis slab instead, which is
-    open air, and every lever reaches up into it. (The VERTICAL lever is the odd one:
-    turned 90 deg, its body runs along Y and its plug faces +Y, so it drops to the lane
-    rather than rising to it.) Both numbers come from the posed levers and the slab, in
-    src.build.lever_bus_nodes -- not from here, which cannot see where a station is."""
+    Every leg is STRAIGHT: see the segment body for why."""
     parts, cuts = [], []
     turns = _coil_turns()
-    for k, ((n0, p0, l0, d0, e0), (n1, p1, _l1, d1, e1)) in enumerate(
+    for k, ((n0, p0, l0, d0, ka0), (n1, p1, _l1, d1, _k1)) in enumerate(
             zip(nodes, nodes[1:])):
         # d0/d1 are UNIT vectors: the direction each plug's wires leave on, posed
         lead0 = tuple(p0[i] + d0[i] * CANB_LEAD for i in range(3))
         lead1 = tuple(p1[i] + d1[i] * CANB_LEAD for i in range(3))
-        ly = lane_y + k * CANB_LANE_STEP        # this segment's own line in the lane
-        b = (p1[0], ly, lane_z)                 # the lane, over the next lever
-        sign = 1.0 if b[0] >= l0[0] else -1.0   # the coil marches the way the run goes
-        # THREAD THE LOOP ALONG ITS OWN BORE, which is the lever's local X -- the axis
-        # the plug's wires leave on (d0), posed. Hardcoding global X here was wrong
-        # twice: on a MIRRORED station the entry and exit swapped sides, so the cable
-        # doubled back through the housing to reach the bore; and on the VERTICAL lever,
-        # turned 90 deg, the bore runs along Y, so threading it along X drove the cable
-        # straight through the body. The plug is always on the -d0 side of the loop (the
-        # loop is at the back end and the plug faces it), which is what fixes the entry.
-        thr = CANB_LACE_THREAD
-        in0 = tuple(l0[i] - d0[i] * thr for i in range(3))
-        out0 = tuple(l0[i] + d0[i] * thr for i in range(3))
-        # CROSS TO THE LANE PAST THE LEVER, at its escape x -- not at the keeper's own
-        # x, which is still inside the station's envelope. On the vertical lever that
-        # difference is the whole fault: its body spans the lane's y line.
-        clear0 = (e0, out0[1], out0[2])
-        rise = (e0, ly, lane_z)
-        a = rise
-        path = _coil_path(a, (sign, 0.0, 0.0), turns)
+        # WOUND ON THE KEEPER (user, 2026-09-22: "the cable should be wound around the
+        # cable storage clip on the lever"). The axis is the keeper barrel's own, posed,
+        # so the coil sits on the barrel wherever the lever is and however it is turned.
+        # keeper_point is already past the gusset (the barrel's free half); this is
+        # just the clearance off its end face.
+        start = tuple(l0[i] + ka0[i] * 0.2 for i in range(3))
+        path = _coil_path(start, ka0, turns)
         c0, c1 = path.startPoint().toTuple(), path.endPoint().toTuple()
-        # APPROACH THE COIL ALONG ITS AXIS, at the radius its first turn starts at, and
-        # stop CANB_COIL_GAP short of the end cap. Run in toward the AXIS instead (which
-        # is the obvious thing, and what this did first) and the straight run cuts
-        # through the turns on its way. The gap and the lead are still cable, so they
-        # are still in the cut length.
-        u0 = (c0[0] - sign * CANB_COIL_GAP, c0[1], c0[2])
-        u0l = (c0[0] - sign * (CANB_COIL_GAP + CANB_COIL_LEAD), c0[1], c0[2])
-        u1 = (c1[0] + sign * CANB_COIL_GAP, c1[1], c1[2])
-        u1l = (c1[0] + sign * (CANB_COIL_GAP + CANB_COIL_LEAD), c1[1], c1[2])
-        # OUT TO THE LANE BEFORE RUNNING BACK. The plug sits between the cradle's webs,
-        # so a cable that sets off down the cheek from it is inside the cradle for the
-        # board's whole length; it has to clear the cradle in Y first. Then along to the
-        # lace loop, DOWN through the loop (that is the tie point, and the cable really
-        # does pass through it), and back up into the lane.
-        # THE ARRIVING END comes out of the lane over its plug, then in Y, then square
-        # onto the pin -- not straight down onto it, which took it through the housing,
-        # the cradle and, at the vertical lever, the magnet.
-        # at the LEAD's x, not the plug's: the descent has to happen clear of the board
-        # and its cradle, and then run square into the pin through the web's own tunnel
-        # STAND OFF ALONG THE PLUG'S OWN AXIS before turning onto it, the same way the
-        # departure leaves. Turned in at the lead alone, the last leg crossed the
-        # cradle's web -- on the vertical lever, whose plug is a board's length inside
-        # the housing's envelope, that is material rather than air.
-        app1 = tuple(lead1[i] + d1[i] * CANB_LACE_THREAD for i in range(3))
-        lane = _lane_run(rise, (e1, ly, lane_z), ly, lane_z, blockers)
-        over1 = (e1, ly, lane_z)
-        down1 = (e1, app1[1], app1[2])
-        in1 = (lead1[0], lead1[1], lead1[2])
-        # NOT via the coil's AXIS: a run that visits it crosses the turns on its way
-        # back out to the radius the helix actually starts at.
-        pts = [p0, lead0, in0, out0, clear0, rise, u0l, u0]
-        pts2 = [u1, u1l] + lane[1:] + [down1, app1, in1, p1]
-        # NUMBERED, not suffixed: check_overlaps strips trailing INDEX groups, so
-        # every run of one circuit collapses to ONE base name and the wire allow-list
-        # needs one entry per net rather than one per run.
+        # STRAIGHT BETWEEN CONTACT SURFACES (user, 2026-09-22: "this 90 bend wouldn't
+        # happen because when you pull tension the wire will straighten"). Exactly so: a
+        # wire bends where something holds it and nowhere else. This route used to run
+        # Manhattan -- out to a lane, along it, back in, with a step at every station --
+        # and every one of those corners was a bend in mid-air that no part made. What
+        # is left is the only geometry with a physical cause: SQUARE OUT OF THE PIN for
+        # CANB_LEAD, because the crimp holds the wire in line for its own length; then a
+        # straight line to the keeper it winds on; then a straight line to the next
+        # lever's pin. Nothing else touches it, so nothing else bends it.
+        parts.append((f"wire_canb_coil_{k}", _coil(path)))
+        pts, pts2 = [p0, lead0, c0], [c1, lead1, p1]
         q = (CANB_WIRE_OD + 0.1) / 2.0           # half the bundle's square
         for net, (oy, oz) in CANB_NETS:
             for half, pl in ((0, pts), (1, pts2)):   # not `path`: the coil's
                 off = [(x, y + oy * q, z + oz * q) for x, y, z in pl]
                 parts.append((f"wire_canb_{net}_{k}_{half}",
                               _wire(off, CANB_WIRE_OD)))
-        parts.append((f"wire_canb_coil_{k}", _coil(path)))
         cuts.append((f"{n0} -> {n1}",
-                     _path_len(pts) + _path_len(pts2) + _coil_len(turns)
-                     + 2 * CANB_COIL_GAP))
+                     _path_len(pts) + _path_len(pts2) + _coil_len(turns)))
     return parts, cuts
 
 
-def lever_bus_cut_list(nodes, lane_y, lane_z, blockers=()):
+def lever_bus_cut_list(nodes):
     """The cut list, as text: one line per segment, plus the conductor total."""
-    _, cuts = lever_bus(nodes, lane_y, lane_z, blockers)
+    _, cuts = lever_bus(nodes)
     out = ["bus B, knee levers -- CUT LIST (%d x 26 AWG per segment, O%.1f each)"
            % (CANB_WAYS, CANB_WIRE_OD),
            "  slack per segment %.1f (4 grid steps + service), wound %d turns at r %.1f"
