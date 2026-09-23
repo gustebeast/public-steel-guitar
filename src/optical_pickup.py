@@ -686,14 +686,28 @@ ROW_X0    = SENSE_X - CRTYD["0805OPT"][0] / 2                 # the row's -X edg
 # Defined HERE rather than beside the slots themselves (which need _BRG_Y, ~1350 lines
 # down) because COL_OPA is measured off the +X slot edge and has to know them.
 O_SLOT_CLR = 0.25
-_FINGER_X0 = -17.20                     # measured: what stands above the board, at the arms
+# ⚠ THE -X END IS THE BEARING'S, DERIVED -- NOT A MEASUREMENT (user: "likely cuts we need
+# to cap to the axel size parametrically"). It used to be _FINGER_X0 = -17.20, recorded as
+# "what stands above the board, at the arms". That was true while the arms rose to the
+# bearing top at 16.0; it died the moment ARM_TOP dropped to the board's seat, and the slot
+# went on being cut for a part that is no longer there. Probed to be sure: the endplate
+# puts 0.0 mm3 anywhere in this band within the board's Z.
+#
+# So the only thing that passes through is the BEARING -- and it does not need its full OD
+# of slot. It is a Ø16 cylinder whose centre sits 4.20 BELOW the board, so by the time it
+# crosses the board it is already narrowing: 6.81 of half-width at PCB_BOT against 8.00 at
+# its equator. Size from the widest section the board actually sees, which is at its
+# underside, and the slot shortens by 2.39 mm per bearing.
+_BRG_HALF = math.sqrt(max((D.BRIDGE_BEARING_OD / 2) ** 2
+                          - (PCB_BOT - D.BRIDGE_BEARING_Z) ** 2, 0.0))
 _STRING_EXIT_X = 1.10                   # measured: where a .080 string crosses the board's z
-O_SLOT_X0 = _FINGER_X0 - O_SLOT_CLR
+O_SLOT_X0 = D.BRIDGE_AXLE_X - _BRG_HALF - O_SLOT_CLR
+# ⚠ THE +X END IS THE STRING'S, and it stays a measurement because nothing else predicts
+# it. The bearing only reaches -1.19 here, but the string leaves over the bearing's top and
+# descends to the changer, crossing this board's Z band at x 0.95 for a .070 and ~1.08 for
+# the .080 the instrument is built to take. Ending the slot at the bearing would have the
+# board cut the string.
 O_SLOT_X1 = _STRING_EXIT_X + O_SLOT_CLR
-# ⚠ THE +X EDGE IS THE STRING'S, NOT THE BEARING'S (user). The bearing ends at 0.00 but the
-# string leaves over its top and descends to the changer, crossing this board's z band at
-# x 0.95 for a .070 and ~1.08 for the .080 the instrument is built to take. Ending the slot
-# at the bearing would have the board cut the string.
 
 # ⚠ THE QUAD TIAs LIVE ON THE +X BAND NOW, PAST THE BRIDGE (user, 2026-09-23). They were
 # beside the detectors, which is the textbook place for a transimpedance amp -- and it is
