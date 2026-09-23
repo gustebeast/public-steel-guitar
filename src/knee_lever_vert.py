@@ -295,7 +295,10 @@ def _housing() -> cq.Workplane:
     # identical between the levers except how tall the board is, and that falls
     # out of z_bot/z_top.
     w = KL._cradle(w, HOUS_Z0, HOUS_Z1, x_max=HOUS_X1)
-    w = w.union(KL.cable_keeper(HOUS_HW_P, HOUS_Z0, HOUS_X0))  # bus-B keeper, THIS floor
+    # HUNG, not stood on the bed: this housing is 46.6 deep, so a post from its floor
+    # would run the whole depth of the lever and put its coil 18 below the horizontal
+    # levers'. Hung at KL.KEEP_DROP on a 45 deg buttress, every coil is at one height.
+    w = w.union(KL.cable_keeper(HOUS_HW_P, HOUS_Z0, HOUS_X0, HOUS_Z1, hung=True))
     # NO SECOND POST HERE (user, 2026-09-23: "you added an extra winding post to the
     # LKV but it's unnecessary"). Right -- this lever already has a column, and the
     # arriving cable can turn round THAT. A turn post was added when the approach was
