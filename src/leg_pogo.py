@@ -520,10 +520,16 @@ def tenon_negatives(j, route_xy, route_d, route_top, up=None):
     # gouged up to 396 mm3 of tenon on the way past (the board and the pins are clean
     # -- nothing else stands as far off the face). At rest AND fully withdrawn it read
     # zero, which is why this survived every static check the project has.
-    out = out.union(j.house(TB - CLR, TF + SE_H + CLR,
-                            -max(MB_S, RA_BODY_S, SE_S) / 2.0 - CLR,
-                            max(MB_S, RA_BODY_S, SE_S) / 2.0 + CLR,
-                            -1.0, PLUG_TOP + CLR))
+    # ...and it STEPS IN once the board has ended. The full-width pocket needs a ridge
+    # 3.85 above its ceiling, and up where the PH alone still needs room that ridge came
+    # within 0.30 of the LEG LATCH's pocket. Above MB_TOP only the PH's lane is wanted,
+    # which is 1.90 narrower and rides 1.50 lower, and the step between the two is free:
+    # its face is square to the joint axis, and the tenon builds ACROSS that axis, so it
+    # is a wall in the print, not a ceiling.
+    _w = max(MB_S, RA_BODY_S, SE_S) / 2.0 + CLR
+    out = out.union(j.house(TB - CLR, TF + SE_H + CLR, -_w, _w, -1.0, MB_TOP + CLR))
+    out = out.union(j.house(TF, TF + SE_H + CLR, -SE_S / 2.0 - CLR, SE_S / 2.0 + CLR,
+                            MB_TOP + CLR - 0.01, PLUG_TOP + CLR))
     # THE WAY UP, STRAIGHT OUT OF THE PORT. `route_xy` None means exactly that: the
     # bore stands on the connector's own line, so the harness leaves the plug and goes
     # without a turn.
