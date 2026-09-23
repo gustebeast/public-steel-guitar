@@ -52,6 +52,8 @@ in any other and something either will not fit or will not stay:
 
 from __future__ import annotations
 
+import math
+
 import cadquery as cq
 
 from . import dimensions as D
@@ -155,10 +157,23 @@ ARM_W = D.BRIDGE_ARM_W             # arm / edge-web thickness (Y) — kept clear
 # tail (string-termination → +X tip) is a solid prism filled to that height — no more
 # drop-down cap. BEAR_TOP is single-sourced from the bearing OD so it tracks the string plane.
 BEAR_TOP = D.STRING_Z                                              # 16.0 = bearing top = string plane
-ARM_TOP = BEAR_TOP                                                # side walls flush to the flat top
-#   (was 15.70 = bore + a 2 mm cap; now the arms rise the last 0.3 to the bearing top so the
-#    side walls match the filled tail. There is no axle grub any more to care -- the optical
-#    strip is the +Y stop; see AXLE_END_WALL)
+# ⚠ THE ARMS STOP AT THE BOARD'S SEAT NOW, NOT AT THE BEARING TOP (user, 2026-09-23, who
+# put the cursor on the offending block: X 0.95, Y -50.65, Z 16.00). They used to rise the
+# last 0.3 to BEAR_TOP so their side walls matched the filled tail -- a flat-top cosmetic --
+# and to host the TIE BAR, which no longer exists (only a stale comment in _build still
+# mentions it). Nothing above the bore's crown at 12.2 was holding the axle.
+#
+# What it cost was real, and the layer walk is what showed it: standing to 16.0 the arms had
+# to poke through slots in the board, and at each slot's +X edge the arm re-appeared from the
+# relief floor to 15.80 IN ONE LAYER -- a 4.8 x 3.8 wall printing over air, twice. A face
+# normal check cannot see that; both faces are vertical.
+#
+# Stopping at the board's seat deletes the whole problem rather than ramping round it: there
+# is no step because there is nothing to step up to, the board needs no arm slots (two more
+# solid strips for the router), and the arm's bore just becomes an open-topped U like every
+# comb finger's -- a 2.29 mm slot against a 8.00 shaft, so it still cannot lift out, and the
+# wrap resultant at 7:20..7:42 is nowhere near the material removed.
+ARM_TOP = OP.PLINTH_TOP                                           # 12.04, the board's seat
 MIN_ADDED = D.MIN_WALL_2P         # 1.6 -- two-bead QUALITY floor for material this
                                   # feature ADDS (single-sourced via dimensions)
 
@@ -651,12 +666,65 @@ def _o_band_relief():
     What is deliberately NOT cut is the block between the strip and the band: that is the
     O's hole, it carries the bearings and the string tension through them, and the board's
     outline is sized around it (see O_HOLE_* in optical_pickup) with MIN_WALL_2P of
-    material and a 45 deg run to spare."""
+    material and a 45 deg run to spare.
+
+    ⚠ AND THE FOOTPRINT ALONE LEAVES TWO OVERHANGS, because a prism cut has vertical
+    walls and this part builds along -X (PRINT_UP). Wherever the cut STOPS, material
+    re-forms with nothing under it -- and a face-normal check cannot see it, because the
+    faces involved are vertical. tools.check_ceilings passes both of these. They were
+    found by walking the solid layer by layer and asking what each layer grows FROM
+    (user: "it may look like it is printable but it critically does not have anything
+    supporting the tip of the 45 triangle which it grows from"):
+
+      * the ARMS stand back up through their slots at x +1.35, from the relief floor to
+        15.80 -- a 4.8 x 3.8 wall appearing in mid-air, twice;
+      * each of the ten COMB FINGERS re-closes over the axle bore at x -9.15, a 3.2 mm
+        strip 0.35 thick, where the bore's top drops back below the relief floor.
+
+    Both get a 45 deg RUN-OUT, which is the one shape that fixes an overhang without
+    removing anything the part needs:
+
+      * SLOT_RAMP takes the relief on -X past each slot's +X edge at 45 deg, so the arm
+        grows back over 3.8 mm of travel instead of all at once;
+      * AXLE_RUNOUT opens the bore's upper -X quadrant (9 to 12 oclock) from the -X
+        tangent, and closes at 45 deg beyond the bore.
+
+    ⚠ THE AXLE RUN-OUT IS SAFE BECAUSE OF WHERE THE LOAD IS, and that had to be measured
+    rather than assumed. The wrap resultant is NOT straight down: the string arrives
+    horizontally from the nut and leaves down the bearing's +X side to a ball end at
+    x -/+4, z -13.20, so the resultant bisects to 7:20 (even strings) .. 7:42 (odd) -- 78%
+    -X and 63% -Z. That is BELOW the equator on the -X side. This cut only takes material
+    ABOVE the axle centre, so it removes none of the arc that carries the string."""
     if not OP.O_SHAPE:
         return None
-    return OP._outline(grow=O_RELIEF_CLR,
-                       t=(O_RELIEF_Z1 - OP.PLINTH_TOP),
-                       zc=(OP.PLINTH_TOP + O_RELIEF_Z1) / 2)
+    cut = OP._outline(grow=O_RELIEF_CLR,
+                      t=(O_RELIEF_Z1 - OP.PLINTH_TOP),
+                      zc=(OP.PLINTH_TOP + O_RELIEF_Z1) / 2)
+    # ── 1. a 45 deg run-out off each slot's +X edge ──────────────────────────
+    _h = O_RELIEF_Z1 - OP.PLINTH_TOP
+    for sx0, sy0, sx1, sy1 in OP.O_SLOTS:
+        x1 = sx1 + O_RELIEF_CLR                      # the relief's own +X wall
+        wedge = (cq.Workplane("XZ")
+                 .polyline([(x1, OP.PLINTH_TOP), (x1, O_RELIEF_Z1),
+                            (x1 - _h, O_RELIEF_Z1)])
+                 .close().extrude((sy1 - sy0) / 2 + O_RELIEF_CLR, both=True)
+                 .translate((0, (sy0 + sy1) / 2, 0)))
+        cut = cut.union(wedge)
+    # ── 2. the bore's upper -X quadrant, with a 45 deg close beyond it ───────
+    _az, _ar = D.BRIDGE_BEARING_Z, AXLE_BORE / 2
+    _xt = D.BRIDGE_AXLE_X - math.sqrt(max(_ar ** 2 - (OP.PLINTH_TOP - _az) ** 2, 0.0))
+    _xr = D.BRIDGE_AXLE_X - _ar                      # bore's -X extent; close from here
+    _y0, _y1 = -D.BRIDGE_ARM_OUT - 1.0, AXLE_CHAN_Y1 + 1.0
+    # ⚠ extrude() ON AN "XZ" WORKPLANE GOES -Y (its normal is (0,-1,0)), so a plain
+    # extrude(depth) put this entire cutter at y -51.8..-169 -- clean off the part, removing
+    # nothing, while the code read as though it worked. Same shape of bug as a harness
+    # printing a tidy row for a route that never ran. Centre it and grow both ways instead.
+    cut = cut.union(cq.Workplane("XZ")
+                    .polyline([(_xt, _az), (_xt, OP.PLINTH_TOP),
+                               (_xr - (OP.PLINTH_TOP - _az), OP.PLINTH_TOP), (_xr, _az)])
+                    .close().extrude((_y1 - _y0) / 2, both=True)
+                    .translate((0, (_y0 + _y1) / 2, 0)))
+    return cut
 
 
 
@@ -797,9 +865,18 @@ def _build() -> cq.Workplane:
     # away. 11 fingers, one half-pitch outboard of strings 1 and 10 -- close enough to the
     # arms that they merge into them, which is exactly the tie the end bearings wanted.
     _pitch = abs(D.string_y(1) - D.string_y(0))
-    _comb_y = ([D.string_y(0) + _pitch / 2]
-               + [(D.string_y(k) + D.string_y(k + 1)) / 2 for k in range(D.N_STRINGS - 1)]
-               + [D.string_y(D.N_STRINGS - 1) - _pitch / 2])
+    # ⚠ NINE FINGERS, ONE PER GAP -- THE TWO END ONES ARE GONE (user, 2026-09-23:
+    # "we can also remove the extra material on either side of strings 1 and 10").
+    # They used to sit half a pitch OUTBOARD of strings 1 and 10 so that all ten bearings
+    # were flanked on both sides rather than the outer two leaning on an arm 4.5 mm away.
+    # That was the user's call then and its reversal is the user's call now: those two
+    # fingers land close enough to the arms to FUSE with them, so what they actually
+    # produced was a solid block outboard of each end bearing -- visible in the viewer as
+    # a bar twice the width of a finger -- rather than a flank with air either side.
+    # The arms take over as the outer flank. What that costs is the end spans: they go
+    # from half a pitch to the full 4.5 mm arm gap, which is still under one string pitch,
+    # and the deflection that the comb exists to stop goes as span^3 off a 9.5 mm base.
+    _comb_y = [(D.string_y(k) + D.string_y(k + 1)) / 2 for k in range(D.N_STRINGS - 1)]
     for yc in _comb_y:
         body = body.union(_fpro.translate((0, yc, 0)))
         body = body.union(_comb_brace(yc, CB_W))

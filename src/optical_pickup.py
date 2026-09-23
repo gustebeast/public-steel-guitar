@@ -2061,9 +2061,13 @@ _O_RAMP = 0.0                                          # was _BRG_TOP - PLINTH_T
 O_SLOTS = ([[O_SLOT_X0, D.string_y(i) - D.BRIDGE_BEARING_W / 2 - O_SLOT_CLR,
              O_SLOT_X1, D.string_y(i) + D.BRIDGE_BEARING_W / 2 + O_SLOT_CLR]
             for i in range(D.N_STRINGS)]
-           + [[O_SLOT_X0, ya - BE_ARM_W / 2 - O_SLOT_CLR,
-               O_SLOT_X1, ya + BE_ARM_W / 2 + O_SLOT_CLR]
-              for ya in (-D.BRIDGE_ARM_Y, D.BRIDGE_ARM_Y)])
+           )
+# ⚠ NO ARM SLOTS ANY MORE. There were two, one per axle arm, because the arms stood to the
+# bearing top at 16.0 and had to pass through the board. They stop at the board's SEAT now
+# (bridge_endplate.ARM_TOP), so nothing outboard of the last bearing pokes up at all. Two
+# slots' worth of copper comes back, at the +Y and -Y ends of the comb where the summing
+# nodes are most crowded -- and the arms' +X edges stop being the board's worst print
+# overhang. The slot list is bearings only.
 _strip = abs(D.string_y(1) - D.string_y(0)) - (D.BRIDGE_BEARING_W + 2 * O_SLOT_CLR)
 assert _strip >= 2 * D.MIN_WALL_2P, (
     "the comb's strips are %.2f mm -- under two walls of PCB" % _strip)
