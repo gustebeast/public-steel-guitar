@@ -1569,6 +1569,22 @@ def _i2c_spine():
     return out
 
 
+def _spine_keepout(via_d=0.6, clr=0.127):
+    """Fence the stitcher off the B.Cu spines, sized from where the spines actually are.
+
+    The stitcher places a ground via 0.9 off its pad and knows nothing about pre-laid
+    copper; left alone it dropped one onto the +3V3D trunk at 0.100 mm. Excluding the pad
+    would cost that cap its ground, so the lane is fenced and the stitch kept."""
+    runs = [t for t in _cell_tracks()
+            if t[1] == "B.Cu" and abs(t[3][0][1] - t[3][1][1]) > 10.0]
+    assert runs, "no B.Cu spine to fence -- did the trunks move layer?"
+    xs = [(t[3][0][0] - t[2] / 2, t[3][0][0] + t[2] / 2) for t in runs]
+    ys = [y for t in runs for y in (t[3][0][1], t[3][1][1])]
+    pad = via_d / 2 + clr
+    return [[min(x0 for x0, _ in xs) - pad, min(ys) - pad,
+             max(x1 for _, x1 in xs) + pad, max(ys) + pad]]
+
+
 def _fan_tracks():
     out = []
     near, far = OP.CELL_NEAR - 0.48, OP.CELL_FAR - 0.48
@@ -2046,8 +2062,14 @@ BOARD_NOTES = {
     # is the same trade the escape fan already makes. Sized off the copper: the +3V3D
     # trunk at -33.268 (0.30 wide) and the I2C spine at -34.398 (0.25) each need
     # 0.127 + 0.30 + half their width of room for a 0.6 mm via.
-    "via_keepouts": [[-34.5, -101.0, -27.5, -78.0],
-                     [-34.95, -12.5, -32.69, 65.1]],
+    # ⚠ THE SECOND ONE IS DERIVED, AND IT WAS NOT, WHICH BROKE IT SILENTLY. Written as
+    # literal coordinates it fenced the spines correctly -- until STRIP_GROW_MX moved the
+    # whole column 1.5 mm west and the fence stayed put, leaving the I2C spine at -35.148
+    # outside a keepout running to -34.95. Nothing failed: the DRC stayed at 0 violations
+    # and SCL simply came back unconnected, which reads like the spine not working rather
+    # than like a keepout that had quietly stopped covering it.
+    # A keepout around moving copper has to be computed FROM that copper.
+    "via_keepouts": [[-34.5, -101.0, -27.5, -78.0]] + _spine_keepout(),
     # ⚠ THE FEEDBACK CLUSTERS, LAID HERE RATHER THAN SEARCHED FOR. Twenty identical
     # networks -- op-amp output, feedback R, feedback C, and the photodiode on the input
     # -- packed into the Y gaps of a 13.6 mm strip that already holds 107 parts. Nearly
