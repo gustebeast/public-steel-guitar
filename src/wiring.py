@@ -1202,6 +1202,23 @@ def _path_len(pts):
 
 
 
+def _standoff(pin, d, so, target):
+    """How far out along the plug's own axis the cable runs before it turns -- and NEVER
+    past the point it is turning towards (user, 2026-09-23: "the incoming wire also does
+    a strange thing where it goes too far along x and then backs up").
+
+    The standoff is there to get the cradle and the board behind the cable before it
+    heads off. Where the thing it is heading for is ALREADY behind them -- the keeper
+    post sits off the back corner, so it usually is -- running the full standoff first
+    overshoots and doubles back, which is not what a wire under tension does. Clamping it
+    to the target's own projection turns that doglegged pair into one straight run, and
+    leaves the standoff doing its job untouched wherever the target really is closer in.
+    """
+    proj = sum((target[m] - pin[m]) * d[m] for m in range(3))
+    out = max(CANB_LEAD, min(so, proj))
+    return tuple(pin[m] + d[m] * out for m in range(3))
+
+
 def lever_bus(nodes):
     """The bus-B chain through the knee levers: [(name, solid)], [(label, mm)].
 
@@ -1249,10 +1266,13 @@ def lever_bus(nodes):
             # axis until the cradle and the board are behind it, and only then turn.
             # Turned at the lead alone, the run reached the next lever straight through
             # whatever stood between -- on one station its own PCB, crystal and caps.
+            b = tuple(in_pin[m] + d1[m] * so1 + ca1[m] * cb1 for m in range(3))
             a0 = [out_pin,
                   tuple(out_pin[m] + d0[m] * CANB_LEAD for m in range(3)),
-                  tuple(out_pin[m] + d0[m] * so0 for m in range(3))]
-            stand1 = tuple(in_pin[m] + d1[m] * so1 for m in range(3))
+                  _standoff(out_pin, d0, so0, c0)]
+            # the incoming run's standoff is measured against whatever it comes FROM:
+            # the back-corner wrap where there is one, the bypass where there is not
+            stand1 = _standoff(in_pin, d1, so1, g1 if g1 is not None else b)
             # PASS THE LEVER OUTBOARD OF ITS CRADLE FIRST. The standoff is along the
             # plug's axis, and on a MIRRORED station that axis points AWAY from the
             # lever the cable is coming from -- so a straight line to it crossed the
@@ -1262,10 +1282,12 @@ def lever_bus(nodes):
             # in. That is the contact the bend needs: on the vertical lever the bus
             # arrives at the wrong end of a body that lies along the plug's axis, so
             # the run comes round the front corner and back up the cheek.
-            a1 = ([g1] if g1 is not None else []) + [
-                tuple(stand1[m] + ca1[m] * cb1 for m in range(3)), stand1,
-                tuple(in_pin[m] + d1[m] * CANB_LEAD for m in range(3)),
-                in_pin]
+            # ...and where there IS a wrap post the bypass is redundant: the cable is
+            # already outboard of everything by the time it leaves the corner, so
+            # keeping both sent it 12.4 past the connector and back again.
+            a1 = [g1 if g1 is not None else b, stand1,
+                  tuple(in_pin[m] + d1[m] * CANB_LEAD for m in range(3)),
+                  in_pin]
             pts = a0 + [c0]
             pts2 = [c1] + a1
             parts.append((f"wire_canb_{net}_{k}_0", _wire(pts, CANB_WIRE_OD)))
@@ -1294,4 +1316,9 @@ def lever_bus_cut_list(nodes):
 
 # The four bus-B conductors' allow-list entries. Here rather than in the table above
 # only because CANB_NETS is defined further down the file than WIRE_OK is.
-WIRE_OK.update({f"wire_canb_{n}": _LEVER_CONNS for n, _ in CANB_NETS})
+# ...against the HOUSINGS too, not just the connectors (user, 2026-09-23: "as far as
+# wiring collisions I'm not too concerned about these so feel free to mark them as
+# acceptable. The key here is moreso to get a sense of how much wire we will need to
+# cut"). This harness is a LENGTH model first: a run that grazes a corner by 10 mm3 is
+# a millimetre of cut wire, and the real cable is flexible where the model is not.
+WIRE_OK.update({f"wire_canb_{n}": _LEVER_BODIES for n, _ in CANB_NETS})
