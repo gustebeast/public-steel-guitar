@@ -117,7 +117,21 @@ LOAD_SLOP = 0.25                # the bottom joint hangs this far open on its la
 PRINT_TOL = 0.30                # and the pocket depths are prints
 assert SEAT_C - LOAD_SLOP - PRINT_TOL >= 0.4, "the pins barely touch when loaded"
 assert SEAT_C + PRINT_TOL <= RA_FREE - RA_WORK, "the pins pass their working height"
-PAD_Z = PCB_T + TG_FACE_H       # 5.1 the contact faces (the female lies ON the host)
+# THE FEMALE BOARD IS RECESSED INTO THE HOST, top flush with the host face, and that
+# is a RETENTION decision before it is anything else. Lying on the face it was held by
+# ONE M4 and nothing else: free to rotate about that screw and to creep until it was
+# tightened, with a 0.45 landing budget to spend. Now four walls of plastic take every
+# direction except the one it is installed along, and the screw only has to stop it
+# coming back out (user's rule).
+#
+# A raised RIM around a board sitting ON the face would have done the same job, and it
+# is the obvious move -- but the tenon's mouth has to clear whatever stands proud, and
+# the rim grows that cavity by its own thickness on every side. Measured: the mouth's
+# breakout through the tenon's flat goes from 5.10 wide to 12.70. Recessing costs the
+# mouth nothing; it SHRINKS it, because the board's own 1.6 is no longer in the way.
+F_TOP = 0.0                     # the board's top face -- the host's face
+F_BOT = -PCB_T                  # ...and its underside, the pocket's floor
+PAD_Z = F_TOP + TG_FACE_H       # 3.5 the contact faces, off the host's face
 REAR = PAD_Z + RA_FREE - SEAT_C     # 9.6 the header's rear, seated
 EDGE_D = REAR - RA_BODY_D           # 7.1 the male board's lower edge
 TIP_REST = REAR - RA_FREE           # 4.1 -- the free tips, INSIDE the tenon's face
@@ -278,7 +292,7 @@ def male_screw(j):
 
 def female_screw(j):
     """The female's M4, down the mortise: head on its board, insert in the host."""
-    return ScrewJoint(M4, j.p(F_HOLE_T, F_HOLE_S, PCB_T), (0.0, 0.0, -j.dz),
+    return ScrewJoint(M4, j.p(F_HOLE_T, F_HOLE_S, F_TOP), (0.0, 0.0, -j.dz),
                       F_SCREW_L, insert_at=PCB_T, end_at=F_END,
                       head_d=HEAD_D, head_h=HEAD_H)
 
@@ -438,18 +452,18 @@ def male(j, compress: float = SEAT_C):
 def female(j):
     """The fixed part's board: on the host face, the gold target and the ZR side by
     side on its face."""
-    board = j.box(FB_T0, FB_T1, FB_S0, FB_S1, 0.0, PCB_T)
-    board = board.cut(j.cyl_d(HOLE_D, F_HOLE_T, F_HOLE_S, -1.0, PCB_T + 1.0))
+    board = j.box(FB_T0, FB_T1, FB_S0, FB_S1, F_BOT, F_TOP)
+    board = board.cut(j.cyl_d(HOLE_D, F_HOLE_T, F_HOLE_S, F_BOT - 1.0, F_TOP + 1.0))
     tg = j.box(TG_T0, TG_T0 + TG_BODY_T, -TG_BODY_S / 2.0, TG_BODY_S / 2.0,
-               PCB_T, PCB_T + TG_BODY_H)
+               F_TOP, F_TOP + TG_BODY_H)
     for s in j.targets():
-        tg = tg.union(j.cyl_d(TG_FACE_D, PIN_T, s, PCB_T + TG_BODY_H - 0.01, PAD_Z))
-    zr = j.box(ZR_MOUTH, ZR_MOUTH + ZR_DEPTH, -ZR_S / 2.0, ZR_S / 2.0, PCB_T,
-               PCB_T + ZR_H)
+        tg = tg.union(j.cyl_d(TG_FACE_D, PIN_T, s, F_TOP + TG_BODY_H - 0.01, PAD_Z))
+    zr = j.box(ZR_MOUTH, ZR_MOUTH + ZR_DEPTH, -ZR_S / 2.0, ZR_S / 2.0, F_TOP,
+               F_TOP + ZR_H)
     zr = zr.union(j.box(ZR_MOUTH + ZR_DEPTH - 0.01, ZR_T1, -ZR_S / 2.0 + 1.0,
-                        ZR_S / 2.0 - 1.0, PCB_T, PCB_T + 0.5))
+                        ZR_S / 2.0 - 1.0, F_TOP, F_TOP + 0.5))
     zr = zr.union(j.box(ZR_MOUTH - ZR_PLUG, ZR_MOUTH + 0.01, -ZR_S / 2.0 + 0.75,
-                        ZR_S / 2.0 - 0.75, PCB_T + 0.3, PCB_T + ZR_H - 0.3))
+                        ZR_S / 2.0 - 0.75, F_TOP + 0.3, F_TOP + ZR_H - 0.3))
     return [("pogo_female_board_%s" % j.name, board),
             ("pogo_female_pads_%s" % j.name, tg),
             ("pogo_female_ph_%s" % j.name, zr)]
@@ -471,8 +485,8 @@ def dummies():
 
 
 # ── what the TENON gives up ──────────────────────────────────────────────────
-MOUTH_D = PCB_T + max(TG_FACE_H, ZR_H, HEAD_H) + CLR    # the female's parts come in
-                                                        # this far
+MOUTH_D = max(TG_FACE_H, ZR_H, HEAD_H) + CLR    # only what stands PROUD of the host's
+                                               # face now -- the board itself is in it
 
 
 def tenon_negatives(j, route_xy, route_d, route_top, up=None):
@@ -574,9 +588,19 @@ def host_negatives(j, up=None, deep=F_DEEP):
     # ...half a bundle wider than the wire's own lane on the far side: the harness turns
     # down here, and a turn in oct_cable runs each segment PAST the corner by the cable's
     # radius, so the run reaches further than its centreline does
-    out = _gable(j, WIRE_T0 - CLR - HARNESS_D / 2.0, ZR_MOUTH - ZR_PLUG + CLR,
+    # the slot stops WALL short of the pocket, not at its own clearance: at the plug's
+    # own +CLR the web between the two was 1.40, under the two-bead floor. It still
+    # covers the plug's end (-7.35) and the wires leaving it (-7.45).
+    out = _gable(j, WIRE_T0 - CLR - HARNESS_D / 2.0,
+                 min(ZR_MOUTH - ZR_PLUG + CLR, FB_T0 - CLR - WALL),
                  -ZR_S / 2.0 - CLR,
                  ZR_S / 2.0 + CLR, deep, 0.01, up)
+    # THE POCKET the board drops into: four walls, a floor, and the board's own outline
+    # plus a slip fit. Its walls run along the joint's diagonal, so in a host that
+    # builds +Y every one of them stands at 45 to the build and holds itself up -- the
+    # same reason the tenon's own cavities need no roof (see _gable).
+    out = out.union(j.box(FB_T0 - CLR, FB_T1 + CLR, FB_S0 - CLR, FB_S1 + CLR,
+                          F_BOT, F_TOP + 0.01))
     return out.union(female_screw(j).cutter(up))
 
 
@@ -723,7 +747,7 @@ def harness():
     # lead-in plus whatever is left (STUB_FAN) rather than the full 2.4.
     fr = ZR_MOUTH - ZR_PLUG - 0.1 - STUB_LEAD - STUB_FAN
     fc = fr                                          # ...and it drops there
-    zd = PCB_T + ZR_H / 2.0                         # the plug's height off the host
+    zd = F_TOP + ZR_H / 2.0                         # the plug's height off the host
     f0 = TOP.p(ZR_MOUTH - ZR_PLUG - 0.1, 0.0, zd)     # just off the plug's end
     zc = LS.Z_TOP - CHAN_D + d / 2.0 + 0.2          # lying in the groove's bottom
     y_out = LS.LEG_Y - LS.LEG_W / 2.0
