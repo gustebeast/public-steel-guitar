@@ -1125,7 +1125,20 @@ def _parts():
     # already opened ("as much as we want -x of the optical sensors"). So each cell goes
     # DIRECTLY WEST OF THE QUAD IT SERVES, at that quad's own centroid: the analog run is
     # ~10 mm instead of the ~40 that starved U15, and nothing crosses the strip any more.
-    _adc_x = STRIP_X1 + EDGE_KEEP + 2.8                        # 2.8 = half the measured cell
+    # ⚠ AND THE CHANNEL WEST OF THE COLUMN IS A REAL DIMENSION, not slack to be minimised.
+    # Sat at EDGE_KEEP the column left 1.7 mm between the board edge and the first cap --
+    # and that 1.7 has to carry the +3V3D via column AND the I2C spine, which it cannot:
+    # measured, the gaps either side of the +3V3D vias are 0.55 and 0.18 mm, and a 0.6 mm
+    # via needs 1.2. Every bus that wants to run the length of the column was therefore
+    # competing for a lane that was never wide enough for one of them, which is most of
+    # what the router kept failing to do.
+    # The room is on the OTHER side and was simply unused: x 72..74 on the placed board is
+    # empty, between the last cell cap at 71.7 and the TIA block at 74. Moving the column
+    # 1.0 mm east spends it, widens the channel to 1.85, and SHORTENS the analog runs into
+    # the converters, because the TIAs are east.
+    ADC_BUS_CH = 2.2
+    assert ADC_BUS_CH >= EDGE_KEEP, "the bus channel is also the part-to-edge keepout"
+    _adc_x = STRIP_X1 + ADC_BUS_CH + 2.8                       # 2.8 = half the measured cell
     for k in range(5):
         qx = _adc_x
         qy = (string_y_at(2 * k, SENSE_X) + string_y_at(2 * k + 1, SENSE_X)) / 2
