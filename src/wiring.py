@@ -1193,38 +1193,45 @@ def lever_bus(nodes):
     Every leg is STRAIGHT: see the segment body for why."""
     parts, cuts = [], []
     turns = _coil_turns()
-    for k, ((n0, p0, l0, d0, ka0), (n1, p1, _l1, d1, _k1)) in enumerate(
-            zip(nodes, nodes[1:])):
-        # d0/d1 are UNIT vectors: the direction each plug's wires leave on, posed
-        lead0 = tuple(p0[i] + d0[i] * CANB_LEAD for i in range(3))
-        lead1 = tuple(p1[i] + d1[i] * CANB_LEAD for i in range(3))
-        # WOUND ON THE KEEPER (user, 2026-09-22: "the cable should be wound around the
-        # cable storage clip on the lever"). The axis is the keeper barrel's own, posed,
-        # so the coil sits on the barrel wherever the lever is and however it is turned.
-        # keeper_point is already past the gusset (the barrel's free half); this is
-        # just the clearance off its end face.
-        start = tuple(l0[i] + ka0[i] * 0.2 for i in range(3))
-        path = _coil_path(start, ka0, turns)
+    for k, (a, b) in enumerate(zip(nodes, nodes[1:])):
+        (n0, _p0, l0, d0, ka0, _pa0, pins0, so0, _ca0, _cb0) = a
+        (n1, _p1, _l1, d1, _ka1, _pa1, pins1, so1, ca1, cb1) = b
+        path = _coil_path(tuple(l0[i] + ka0[i] * 0.2 for i in range(3)), ka0, turns)
         c0, c1 = path.startPoint().toTuple(), path.endPoint().toTuple()
-        # STRAIGHT BETWEEN CONTACT SURFACES (user, 2026-09-22: "this 90 bend wouldn't
-        # happen because when you pull tension the wire will straighten"). Exactly so: a
-        # wire bends where something holds it and nowhere else. This route used to run
-        # Manhattan -- out to a lane, along it, back in, with a step at every station --
-        # and every one of those corners was a bend in mid-air that no part made. What
-        # is left is the only geometry with a physical cause: SQUARE OUT OF THE PIN for
-        # CANB_LEAD, because the crimp holds the wire in line for its own length; then a
-        # straight line to the keeper it winds on; then a straight line to the next
-        # lever's pin. Nothing else touches it, so nothing else bends it.
         parts.append((f"wire_canb_coil_{k}", _coil(path)))
-        pts, pts2 = [p0, lead0, c0], [c1, lead1, p1]
-        q = (CANB_WIRE_OD + 0.1) / 2.0           # half the bundle's square
-        for net, (oy, oz) in CANB_NETS:
-            for half, pl in ((0, pts), (1, pts2)):   # not `path`: the coil's
-                off = [(x, y + oy * q, z + oz * q) for x, y, z in pl]
-                parts.append((f"wire_canb_{net}_{k}_{half}",
-                              _wire(off, CANB_WIRE_OD)))
-        cuts.append((f"{n0} -> {n1}",
-                     _path_len(pts) + _path_len(pts2) + _coil_len(turns)))
+        # EACH CONDUCTOR ON ITS OWN WAY, so the model reads as a wiring reference (user).
+        # The trunk passes THROUGH a board: this cable leaves the upstream lever on its
+        # OUT half (ways 5-8) and lands on the downstream lever's IN half (1-4), each in
+        # harness.PH_PINOUT order. That is the whole point of the 8-way part.
+        n = len(CANB_NETS)
+        seg = 0.0
+        # the lateral offsets CANB_NETS carried are gone: a conductor now starts and
+        # ends on its OWN contact, so the bundle's spread is the connector's pitch
+        for j_net, (net, _off) in enumerate(CANB_NETS):
+            out_pin = pins0[n + 1 + j_net]          # ways 5..8 on the upstream lever
+            in_pin = pins1[1 + j_net]               # ways 1..4 on the downstream one
+            # SQUARE OUT OF THE PIN for the crimp's length, then along the plug's own
+            # axis until the cradle and the board are behind it, and only then turn.
+            # Turned at the lead alone, the run reached the next lever straight through
+            # whatever stood between -- on one station its own PCB, crystal and caps.
+            a0 = [out_pin,
+                  tuple(out_pin[m] + d0[m] * CANB_LEAD for m in range(3)),
+                  tuple(out_pin[m] + d0[m] * so0 for m in range(3))]
+            stand1 = tuple(in_pin[m] + d1[m] * so1 for m in range(3))
+            # PASS THE LEVER OUTBOARD OF ITS CRADLE FIRST. The standoff is along the
+            # plug's axis, and on a MIRRORED station that axis points AWAY from the
+            # lever the cable is coming from -- so a straight line to it crossed the
+            # whole body to get there, board and all. This is the leg the user drew as
+            # going "around the back": out past the cradle, along, then in.
+            a1 = [tuple(stand1[m] + ca1[m] * cb1 for m in range(3)), stand1,
+                  tuple(in_pin[m] + d1[m] * CANB_LEAD for m in range(3)),
+                  in_pin]
+            pts = a0 + [c0]
+            pts2 = [c1] + a1
+            parts.append((f"wire_canb_{net}_{k}_0", _wire(pts, CANB_WIRE_OD)))
+            parts.append((f"wire_canb_{net}_{k}_1", _wire(pts2, CANB_WIRE_OD)))
+            seg = max(seg, _path_len(pts) + _path_len(pts2))
+        cuts.append((f"{n0} -> {n1}", seg + _coil_len(turns)))
     return parts, cuts
 
 
