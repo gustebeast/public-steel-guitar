@@ -81,6 +81,25 @@ mark it here. Items needing the user go to NEEDS USER, not skipped silently.
     2026-09-22, 8.7 mm runs). If that routes clean the O is not needed at all.
 
 ## NEEDS USER
+- **THE OPTICAL BOARD HAS NO MOUNTING HOLES, AND PARTS SIT WHERE THEY GO** (found 2026-09-23,
+  chasing the user's question about why the CAD holes are square). Both are real and the
+  second is why this is not a five-minute fix.
+  * opt_pcb() cuts the two M4 clearances with `box_at(M4.shaft_clr_d, M4.shaft_clr_d, ...)`
+    -- a SQUARE prism where a drilled hole belongs. Nothing justifies it in the file; it
+    reads as "a box was easier to type than a cylinder". It is conservative for clearance
+    (it removes more material than a round hole), which is likely why nobody caught it.
+  * THE FABRICATED BOARD HAS NO HOLES AT ALL. elec/out has zero Edge.Cuts circles and the
+    only drilled features are J1's USB-C pins and shield tabs. mount_points() are 24.4 and
+    37.2 mm inside the outline, so they are not notches either -- the gerbers would come
+    back with two M4 screws driving into solid FR4.
+  * AND THE PLACEMENT DOES NOT KNOW ABOUT THEM. Against a Ø4.40 clearance hole:
+    head mount -- Cd11 pad 1 at 0.47 mm and pad 2 at 0.69 mm, both INSIDE it;
+    tail mount -- TP1 pad 1 at 2.10 mm, inside it.
+    So adding the holes destroys Cd11 and clips TP1. Either those parts move, or the
+    mounts do, and both change a placement that took many routes to settle.
+  * Worth deciding together with the O-band, since that is the other open placement
+    question on this board.
+
 - LED strip 5 V buck ON THE MOTOR BOARD (user asked, 2026-09-22): the circuit is worked out
   (second LMR33630 off the same 24 V, own fuse + EN/UVLO, XH out to pi_cap J4, ~0.5 A more
   on a 24 V bus sized under 5 A) and the REASON is settled -- a separate buck keeps a
