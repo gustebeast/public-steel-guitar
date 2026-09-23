@@ -1810,21 +1810,38 @@ def cut_feel_rear(w, place, reach=0.0):
 # that is how a 2.0 key reaches both feel screws, and a coil parked across it covers
 # them for the life of the instrument. The +Y cheek is where the wire already is, since
 # J1's plug leaves the board -X in the gap between the board and this very face.
-CANB_WIRE_OD = 1.3                  # one bus-B conductor, 26 AWG (wiring.WIRE_OD)
-KEEP_Y      = 5 * D.NOZZLE_D        # 4.0 pocket width, the cable lies across it
-KEEP_Z      = 8 * D.NOZZLE_D        # 6.4 pocket depth: several passes of the coil
-KEEP_WALL   = D.MIN_WALL_2P         # 1.6
-KEEP_NUB    = 2 * D.NOZZLE_D        # 1.6 reach back over the mouth, 45 deg underside
-KEEP_WX     = 15 * D.NOZZLE_D       # 12.0 along the cheek
-KEEP_MOUTH  = KEEP_Y - KEEP_NUB     # 2.4 -- what the cable is pressed through
-assert KEEP_MOUTH < CANB_WIRE_OD * 2, (
-    "the keeper's mouth is wider than the cable it is meant to hold in")
-assert KEEP_NUB <= KEEP_Z, "the nub is deeper than the pocket it closes"
+# THE BUS-B CABLE, sized here because the KEEPER is sized from it -- and re-exported by
+# src.wiring, which draws the harness, rather than the other way round: wiring already
+# imports this module for the keeper's wound radius, so the constants have to live on
+# this side of that edge.
+CANB_WIRE_OD = 1.3                  # one bus-B conductor, 26 AWG, insulated
+CANB_BUNDLE_OD = 2.5                # the four of them together (BOM, Wire)
+KEEP_POST_D = 7 * D.NOZZLE_D        # 5.6 the barrel the slack winds onto
+KEEP_POST_L = 16 * D.NOZZLE_D       # 12.8 how far it stands off the cheek
+KEEP_HEAD   = 3 * D.NOZZLE_D        # 2.4 of 45 deg flare at the tip: the coil cannot
+                                    # walk off, but it lifts over with a screwdriver
+# THE GUSSET ONLY CARRIES THE INNER HALF. It has to exist -- a barrel standing off a
+# vertical face is a horizontal cantilever and this part builds -Z -> +Z -- but it fills
+# the space UNDER the barrel, which is exactly where a coil's lower half has to pass.
+# Run the full length it blocked the winding completely (67 mm3 of lever inside every
+# coil). So it stops half way and the OUTER half of the barrel is what the cable winds
+# on: a 6.4 cantilever on a 5.6 barrel, which the slicer bridges.
+KEEP_GUSSET_L = KEEP_POST_L / 2.0   # 6.4 of fin, from the cheek outward
+KEEP_GUSSET = KEEP_GUSSET_L         # ...and it drops the same 45 deg down the cheek
+KEEP_COIL_R = (KEEP_POST_D + CANB_BUNDLE_OD) / 2.0       # wound centre line, 4.05
+# HOW FAR THE BARREL SITS BELOW THE HOUSING'S TOP. Not the barrel's own radius: the COIL
+# is what has to clear the instrument, and it stands a wound radius plus half a bundle
+# proud of the axis. Sized off the barrel alone, the top of every coil stood 0.9 into
+# the chassis slab the housing is flush with.
+KEEP_COIL_TOP = KEEP_COIL_R + CANB_BUNDLE_OD / 2.0 + D.MIN_WALL
+assert KEEP_POST_D / 2.0 >= 2.0, "the barrel bends 26 AWG tighter than it likes"
+assert KEEP_GUSSET <= HOUS_Z1 - HOUS_Z0, "the keeper's gusset is taller than the housing"
 
 
-def cable_keeper(y_face=None, z_bed=None, x_back=None):
-    """The open cable keeper on a lever housing's +Y (connector) cheek, in the lever's
-    local frame. Section in Y-Z, run along X; mouth opens +Z.
+def cable_keeper(y_face=None, z_bed=None, x_back=None, z_top=None):
+    """The cable keeper on a lever housing's +Y (connector) cheek, in the lever's local
+    frame: a barrel standing off the cheek, a 45 deg head at its tip, and a 45 deg
+    gusset under it.
 
     Parameterised because the VERTICAL lever (knee_lever_vert) is the same design with
     the feel block moved above the axle -- same cheek and same back face, its own floor
@@ -1832,20 +1849,26 @@ def cable_keeper(y_face=None, z_bed=None, x_back=None):
     y0 = HOUS_HW if y_face is None else y_face
     z0 = HOUS_Z0 if z_bed is None else z_bed
     x0 = HOUS_X0 if x_back is None else x_back
-    y1 = y0 + KEEP_Y + KEEP_WALL
-    zf = z0 + KEEP_WALL                      # the pocket's floor
-    z1 = zf + KEEP_Z                         # ...and its lip
-    block = box_at(KEEP_WX, y1 - y0, z1 - z0,
-                   x=x0 + KEEP_WX / 2.0, y=(y0 + y1) / 2.0, z=(z0 + z1) / 2.0)
-    yp = y0 + KEEP_Y                         # the outer wall's inner face
-    # the VOID: floor, outer wall, the nub's 45 deg underside, then the mouth straight
-    # up. Drawn as the cavity rather than the solid because the nub is the only part of
-    # it that is not a rectangle, and it is one segment this way.
-    pts = [(y0 - 1.0, zf), (yp, zf), (yp, z1 - KEEP_NUB), (yp - KEEP_NUB, z1),
-           (yp - KEEP_NUB, z1 + 1.0), (y0 - 1.0, z1 + 1.0)]
-    void = (cq.Workplane("YZ").polyline(pts).close()
-            .extrude(KEEP_WX + 2.0).translate((x0 - 1.0, 0.0, 0.0)))
-    return block.cut(void)
+    z1 = HOUS_Z1 if z_top is None else z_top
+    xc = x0 + KEEP_POST_D / 2.0 + D.MIN_WALL_2P
+    # HIGH ON THE CHEEK, right under the instrument (user, 2026-09-22: "put the cable
+    # storage clip close to the instrument body so it doesn't dangle and hit your
+    # knee"). The housing's top face is flush with the chassis underside, so this is as
+    # far out of the knee's way as the lever has to offer -- and the gusset still lands
+    # on the housing, which is what fixes the height from below.
+    zc = z1 - KEEP_COIL_TOP
+    post = cyl_y(KEEP_POST_D, KEEP_POST_L, y0=y0, x=xc, z=zc)
+    head = cq.Workplane("XY").add(cq.Solid.makeCone(
+        KEEP_POST_D / 2.0, KEEP_POST_D / 2.0 + KEEP_HEAD, KEEP_HEAD,
+        cq.Vector(xc, y0 + KEEP_POST_L, zc), cq.Vector(0, 1, 0)))
+    # THE GUSSET. A barrel standing off a vertical face is a horizontal cantilever, and
+    # this part builds -Z -> +Z, so its underside is the one thing here that cannot be
+    # printed unsupported. A 45 deg fin from the cheek to the barrel's far end carries
+    # it, at exactly the angle the rest of the part is drawn to.
+    pts = [(y0, zc), (y0 + KEEP_GUSSET_L, zc), (y0, zc - KEEP_GUSSET)]
+    fin = (cq.Workplane("YZ").polyline(pts).close()
+           .extrude(KEEP_POST_D).translate((xc - KEEP_POST_D / 2.0, 0.0, 0.0)))
+    return post.union(head).union(fin)
 
 
 def plug_point(z_bot=None, z_top=None, flip=None):
@@ -1857,15 +1880,21 @@ def plug_point(z_bot=None, z_top=None, flip=None):
     return (mx + sx * CONN_PLUG_RUN, PCB_Y - PH_SIDE_H / 2.0, zc)
 
 
-def keeper_point(z_bed=None, x_back=None, y_face=None):
-    """The centre of the keeper's pocket -- where the stowed cable lies. Defaults are
-    LKL's, like cable_keeper's."""
-    x0 = HOUS_X0 if x_back is None else x_back
+def keeper_point(z_bed=None, x_back=None, y_face=None, z_top=None):
+    """The keeper barrel's axis, at the cheek -- where the slack coil starts. Defaults
+    are LKL's, like cable_keeper's."""
     y0 = HOUS_HW if y_face is None else y_face
     z0 = HOUS_Z0 if z_bed is None else z_bed
-    return (x0 + KEEP_WX / 2.0,
-            y0 + KEEP_Y / 2.0,
-            z0 + KEEP_WALL + KEEP_Z / 2.0)
+    x0 = HOUS_X0 if x_back is None else x_back
+    z1 = HOUS_Z1 if z_top is None else z_top
+    # ...on the FREE half of the barrel, past the gusset
+    return (x0 + KEEP_POST_D / 2.0 + D.MIN_WALL_2P, y0 + KEEP_GUSSET_L,
+            z1 - KEEP_COIL_TOP)
+
+
+def keeper_axis():
+    """The barrel's axis direction in the lever's LOCAL frame: off the cheek."""
+    return (0.0, 1.0, 0.0)
 
 
 def _housing() -> cq.Workplane:

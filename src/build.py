@@ -1239,10 +1239,6 @@ def pedal_bar_work_components():
     return _pedal_bar_components() + _foot_pedal_components()
 
 
-LEVER_ESCAPE = 8.0       # how far past a station's envelope the harness crosses to
-                         # the lane -- clear of the lever, not merely clear of its keeper
-
-
 def lever_bus_nodes():
     """[(name, plug, lace, out_dir)] in GUITAR coordinates, in CHAIN ORDER -- what
     src.wiring.lever_bus needs to draw the knee levers' bus-B harness and cut list.
@@ -1257,12 +1253,8 @@ def lever_bus_nodes():
     the far end of the chain terminates at the +X-most lever (elec/motor_ctrl: the
     controller is a MID-BUS node now, and the ends close their own JP1).
 
-    EACH NODE ALSO CARRIES AN ESCAPE X -- an x clear of that station's whole posed
-    envelope, on the side the keeper is nearest. The harness crosses to and from the
-    lane THERE and nowhere else, because a lever is not a point: the VERTICAL one spans
-    y -54.7..+24.3, so the lane's own y line runs straight THROUGH its body, and any
-    route that crossed at the lever's own x went through it. Measured off the posed
-    parts, so it tracks whatever a station's envelope becomes.
+    Each node is (name, plug, keeper, plug_dir, keeper_axis).
+
     """
     from . import knee_lever as KL
     from . import knee_lever_vert as KV
@@ -1277,15 +1269,6 @@ def lever_bus_nodes():
             return (x, y, z)
         return (x + sx, y + sy, z + (KL.MOUNT_Z if kind == "kl" else KV.MOUNT_Z))
 
-    # every station's own posed envelope, by name prefix (LKL keeps the bare names)
-    spans = {}
-    for n, w in _lever_stations_components():
-        st = n.split("_", 1)[0] if n.split("_", 1)[0] in {s[0] for s in LEVER_STATIONS}             else "lkl"
-        b = w.val().BoundingBox()
-        x0, x1, y0, y1 = spans.get(st, (b.xmin, b.xmax, b.ymin, b.ymax))
-        spans[st] = (min(x0, b.xmin), max(x1, b.xmax),
-                     min(y0, b.ymin), max(y1, b.ymax))
-
     out = []
     for name, kind, sx, sy, mirrored in sorted(LEVER_STATIONS, key=lambda st: st[2]):
         if sy is None:
@@ -1299,83 +1282,43 @@ def lever_bus_nodes():
         p = _pose(kind, sx, sy, mirrored, plug)
         l = _pose(kind, sx, sy, mirrored, lace)
         d = _pose(kind, sx, sy, mirrored, (-1.0, 0.0, 0.0), vector=True)
-        x0, x1 = spans[name][:2]
-        esc = (x1 + LEVER_ESCAPE if abs(l[0] - x1) <= abs(l[0] - x0)
-               else x0 - LEVER_ESCAPE)
-        out.append((name, p, l, d, esc))
+        ka = _pose(kind, sx, sy, mirrored, KL.keeper_axis(), vector=True)
+        out.append((name, p, l, d, ka))
     return out
-
-
-def lever_bus_lane():
-    """(y, z) of the lane the lever harness runs in, MEASURED off what bounds it.
-
-    y: just outboard of the horizontal housings' +Y cheeks -- the vertical lever is
-    excluded because, turned 90 deg, its body runs ALONG Y and would push the lane
-    across the whole chassis. z: a coil radius and a margin under the chassis slab, so
-    a wound coil hangs clear of the floor it is under."""
-    from . import chassis as CH
-    from . import wiring as WR
-    ys = [w.val().BoundingBox().ymax for n, w in _lever_stations_components()
-          if n.endswith("knee_housing")]
-    return max(ys) + 4.0, CH.Z_BOT - WR.CANB_COIL_R - 2.0
-
-
-def lever_bus_blockers():
-    """[(x0, x1, pass_y)] one per lever station: the X it occupies, and a Y the lane can
-    get past it on.
-
-    THERE IS NO ONE LANE Y. The horizontal housings run y -98.2..-52.0 so the lane has
-    to be ABOVE them (-48); the VERTICAL lever, turned 90 deg, runs -54.7..+24.3, so at
-    its X the lane has to be BELOW that -- there is no y clear of both. They are apart
-    in X though, so the lane steps round each station it passes, and the step happens in
-    the gap between them. Each station's side is whichever clears it by less, so the
-    lane deviates as little as it can.
-    """
-    from . import wiring as WR
-    lane_y, lane_z = lever_bus_lane()
-    band = WR.CANB_COIL_R + WR.CANB_BUNDLE_OD
-    spans = _lever_station_spans(lane_z - band, lane_z + band)
-    out = []
-    for name, x0, x1, y0, y1 in spans:
-        hi, lo = y1 + LEVER_ESCAPE, y0 - LEVER_ESCAPE
-        out.append((x0 - LEVER_ESCAPE, x1 + LEVER_ESCAPE,
-                    hi if abs(hi - lane_y) <= abs(lo - lane_y) else lo))
-    return sorted(out)
-
-
-def _lever_station_spans(z0=None, z1=None):
-    """(x, y) extents per station, posed -- shared by the nodes and the blockers.
-
-    CLIPPED IN Z when a band is given, and the blockers need that: a station's whole
-    bbox includes the ARM, which hangs far into -Y well below the lane, and measured
-    whole the vertical lever looked like it had to be passed on the +Y side -- an 80 mm
-    detour to dodge something that is nowhere near the lane's height."""
-    names = {s[0] for s in LEVER_STATIONS}
-    spans = {}
-    for n, w in _lever_stations_components():
-        st = n.split("_", 1)[0] if n.split("_", 1)[0] in names else "lkl"
-        b = w.val().BoundingBox()
-        if z0 is not None and (b.zmax < z0 or b.zmin > z1):
-            continue                      # nowhere near the lane
-        x0, x1, y0, y1 = spans.get(st, (b.xmin, b.xmax, b.ymin, b.ymax))
-        spans[st] = (min(x0, b.xmin), max(x1, b.xmax),
-                     min(y0, b.ymin), max(y1, b.ymax))
-    return [(k,) + v for k, v in spans.items()]
 
 
 def _lever_bus_components():
     """The knee levers' bus-B harness, drawn. See wiring.lever_bus."""
     from . import wiring as WR
-    parts, _ = WR.lever_bus(lever_bus_nodes(), *lever_bus_lane(),
-                            blockers=lever_bus_blockers())
+    parts, _ = WR.lever_bus(lever_bus_nodes())
     return parts
 
 
 def cable_cut_list():
     """The modelled harness as a CUT LIST -- what to cut before crimping."""
     from . import wiring as WR
-    return WR.lever_bus_cut_list(lever_bus_nodes(), *lever_bus_lane(),
-                                 blockers=lever_bus_blockers())
+    return WR.lever_bus_cut_list(lever_bus_nodes())
+
+
+def lever_harness_box():
+    """(w, d, h, x, y, z) round the KNEE LEVERS and their harness -- the unit of work,
+    and nothing else. The pedal bar is 600 mm away down the legs and shares only the
+    board design, so carrying it live cost minutes a gate for geometry the levers
+    cannot reach (user)."""
+    from . import top_plate as TP
+    bbs = [w.val().BoundingBox()
+           for _, w in _lever_stations_components() + _lever_bus_components()]
+    x0, x1 = min(b.xmin for b in bbs) - 25.0, max(b.xmax for b in bbs) + 25.0
+    y0, y1 = min(b.ymin for b in bbs) - 25.0, max(b.ymax for b in bbs) + 25.0
+    z0, z1 = min(b.zmin for b in bbs) - 15.0, TP.BZ
+    return (x1 - x0, y1 - y0, z1 - z0, (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2)
+
+
+def lever_harness_components():
+    """The knee levers and the bus-B harness between them, as ONE live set. The pedals
+    and the bar are OUT: they are a separate subassembly that this work does not move,
+    and leaving them in made every gate rebuild 500 solids to check 200."""
+    return _lever_stations_components() + _lever_bus_components()
 
 
 def bus_b_components():
@@ -1695,8 +1638,12 @@ _TPU_BASES = tuple(sorted((k for k, v in PARTS.items() if v[1].startswith("tpu/"
 
 
 def _color_for(name):
-    head, _, tail = name.rpartition("_")
-    base = head if (head and tail.isdigit()) else name
+    # STRIP EVERY TRAILING INDEX GROUP, not just the last one -- the same lesson
+    # tools.check_overlaps.base() records, and this resolver had not learned it. A part
+    # numbered twice (`wire_canb_gnd_0_0`: net, segment, half) kept one index after a
+    # single strip, matched nothing in _COLORS, and came out the default white. The
+    # overlap gate had already been bitten by exactly this and fixed; colours had not.
+    base = re.sub(r"(_\d+)+$", "", name)
     if base in _TPU_BASES or any(base.endswith(k) for k in _TPU_BASES):
         return cq.Color(*_TPU_BLACK)             # TPU is always black
     if base in _COLORS:
