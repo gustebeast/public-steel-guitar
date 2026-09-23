@@ -113,6 +113,50 @@ a third raise on one string silently exceeds the travel, and no check would catc
 it: `PITCH_UP_ST` is a hand-set constant in `dimensions.py`, the copedent lives
 in `tools/export_rig.py:66` (a *viewer exporter*), and the two are never compared.
 
+### Sized against REAL string sets, both tunings (2026-09-23)
+
+The requirement is any standard E9 or C6 setup, so the gauges below are the published
+ones (S.I.T. Strings' pedal-steel gauge chart), not remembered ones, and the notes are
+the standard assignments.
+
+**E9 puts its highest string on string 3, not string 1** (user) — G#4 on an .011, the
+thinnest in the set. Since plain-string stretch depends only on pitch, *that* is the
+binding string for the whole instrument, in either tuning:
+
+| | Note | Gauge | ΔL (mm) | T at pitch | Hand pull for +1 / +2 / +4 |
+|---|---|---|---|---|---|
+| **E9 str 3** | **G#4** | **.011p** | **6.30** | 126 N | **1.5 / 3.2 / 7.4 kgf** |
+| E9 str 1 | F#4 | .012p | 5.00 | 119 N | none / none / 3.8 kgf |
+| C6 str 5 | G3 | **.024w** | 4.71 | 112 N | none / none / 2.7 kgf |
+| C6 str 2 | E4 | .014p | 3.97 | 128 N | none / none / none |
+| C6 str 1 | D4 | .017p | 3.15 | 150 N | none / none / none |
+
+*(A tension check caught a mis-pairing on the way: S.I.T.'s C6 chart gives string 1 as
+.017, which at G4 would be 267 N — far too high. It belongs to the **D4-top** C6
+variant, which is the one this project already models.)*
+
+**The .024 IS wound** — S.I.T. lists it as `.024W` — which settles the question left
+open above. But a thin wound string has a proportionally *fat* core (~0.5 of outside
+diameter, versus ~0.3 on a .068), so its ΔL lands near 4.7 mm rather than the 9–14 mm
+the thin-core assumption produced. C6 is comfortable. E9's .011 is not.
+
+**Core diameter cannot be designed against precisely: string makers treat it as a
+trade secret**, and it varies by brand (Steel Guitar Forum, "Core gauge of wound
+strings" — players there note the same core variation changes changer travel on
+*conventional* steels too, so this is a known real-world effect, not an artefact of
+this design).
+
+**What the numbers say.** With 2.0 mm reserved for break-in, E9's string 3 needs a
+1.5 kgf hand pull for its standard +1 (pedal B, G#→A) — fine — but 7.4 kgf for a
+hypothetical +4, which is not achievable bare-handed on an .011. No standard copedent
+asks for that. Note also that the .011 is the string that breaks most often on E9, so
+it is restrung most and is simultaneously the fussiest to tension.
+
+**Spending the break-in reserve instead of reserving it removes almost all of it.**
+Install, let the string take its set, re-clamp — and +1 and +2 are free on every string
+in both tunings; only the hypothetical +4 on E9 string 3 still wants 3.4 kgf. That is
+an ordinary stringing habit, and it converts a mechanism margin into a procedure step.
+
 **`DL_OPEN` is one number for ten very different strings, and the comment above
 it says so** — *"Varies with gauge → size for the largest in the set."* It was
 never sized that way. Worked out per string (T = μ·(2fL)², ΔL = T·L/(E·A_core),
