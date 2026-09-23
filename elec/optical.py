@@ -624,6 +624,39 @@ def optical():
                    % (14 + k))
             net += c[1]
             gnd += c[2]
+    # ⚠ THE ANALOG BOTTLENECK IS THE Cs WALL, AND IT IS NOT THE MAPPING (2026-09-22).
+    # Fifteen of the twenty TIA_OUT runs have no straight path, and which of them the
+    # router drops changes every run -- 4 failures then 8, with nothing analog altered in
+    # between. Measured with .ins/lane.py rather than argued about:
+    #
+    #   ch1  op-amp pin 1  @ x 74.81   3.15 mm  CLEAR
+    #   ch2  pin 14 @ 79.76            9.28 mm  blocked by Ci<k>1
+    #   ch3  pin 8  @ 79.76           13.20 mm  blocked by U<k> pad 4, its OWN op-amp
+    #   ch4  pin 7  @ 74.81           10.48 mm  blocked by Cs<k>3
+    #
+    # The obvious suspect was this loop's assignment -- Ci marches west while the op-amp
+    # outputs alternate between two x columns, so three runs in four cross each other. It
+    # is not: ALL 24 permutations of (1A,1B,2A,2B) -> IN1..IN4 score 1 of 4 clear, and the
+    # order built here is already the shortest of them at 36.12 mm. Scored in seconds off
+    # the placed pads; do not spend a routing run on it again.
+    #
+    # What actually blocks them is a WALL of supply caps between the op-amp column and the
+    # converter, and its gaps are the whole story. Per quad, by y:
+    #
+    #   Cs<k>5  ][  0.340   intra-cap, can never be a door
+    #   Cs<k>5  ][  0.520   a 0.2 track needs 0.454 -- a door, barely
+    #   Cs<k>3  ][  0.340
+    #   Cs<k>3  ][  0.970   a door
+    #   Cs<k>1  ][  0.340
+    #   Cs<k>1
+    #
+    # Two doors, four runs, five quads. The wall's ENDS are open (nothing else sits in
+    # x 71.9..74.6), so the rest go the long way round, which is what the router is doing
+    # and why it is fragile rather than impossible.
+    # THE LEVER IS THE CAPS' ORIENTATION. They stand tall: 1.58 mm in y, 0.62 in x. Turned
+    # 90 they present 0.56 to the wall instead of 1.58 and give back ~3 mm of door across
+    # the column -- at the cost of 1.58 mm in x, which has to come out of the 73.16..74.50
+    # corridor. Not yet tried.
     # the couplings: quad q's section s -> converter q's input s+1
     for ch in range(20):
         i, side = ch // 2 + 1, "A" if ch % 2 == 0 else "B"
