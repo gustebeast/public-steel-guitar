@@ -1696,6 +1696,9 @@ BOARD_W, BOARD_L = BOARD_X1 - BOARD_X0, BOARD_Y1 - BOARD_Y0
 BOARD_NOTES = {
     "outline_mm": (round(BOARD_W, 3), round(BOARD_L, 3)),
     "outline_poly": [[round(x, 4), round(y, 4)] for x, y in _outline_poly(CX, CY)],
+    # the O-band crosses the near guide-rod row: five clearance holes, CAD -> board frame
+    "cutouts": [{"xy": [round(x - CX, 4), round(y - CY, 4)], "d": OP.O_ROD_HOLE_D}
+                for x, y in OP.O_ROD_HOLES],
     "layers": 4,
     "thickness_mm": 1.6,
     # FOUR LAYERS, and on this board it is the least negotiable of the five. In1.Cu
