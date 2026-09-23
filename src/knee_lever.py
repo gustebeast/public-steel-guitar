@@ -1817,31 +1817,40 @@ def cut_feel_rear(w, place, reach=0.0):
 CANB_WIRE_OD = 1.3                  # one bus-B conductor, 26 AWG, insulated
 CANB_BUNDLE_OD = 2.5                # the four of them together (BOM, Wire)
 KEEP_POST_D = 7 * D.NOZZLE_D        # 5.6 the barrel the slack winds onto
-KEEP_POST_L = 16 * D.NOZZLE_D       # 12.8 how far it stands off the cheek
-KEEP_HEAD   = 3 * D.NOZZLE_D        # 2.4 of 45 deg flare at the tip: the coil cannot
+KEEP_HEAD   = 3 * D.NOZZLE_D        # 2.4 of 45 deg flare at the top: the coil cannot
                                     # walk off, but it lifts over with a screwdriver
-# THE GUSSET ONLY CARRIES THE INNER HALF. It has to exist -- a barrel standing off a
-# vertical face is a horizontal cantilever and this part builds -Z -> +Z -- but it fills
-# the space UNDER the barrel, which is exactly where a coil's lower half has to pass.
-# Run the full length it blocked the winding completely (67 mm3 of lever inside every
-# coil). So it stops half way and the OUTER half of the barrel is what the cable winds
-# on: a 6.4 cantilever on a 5.6 barrel, which the slicer bridges.
-KEEP_GUSSET_L = KEEP_POST_L / 2.0   # 6.4 of fin, from the cheek outward
-KEEP_GUSSET = KEEP_GUSSET_L         # ...and it drops the same 45 deg down the cheek
+KEEP_WEB_T  = D.MIN_WALL_2P         # 1.6 the web tying the post back to the cheek
+KEEP_WIND_H = 12 * D.NOZZLE_D       # 9.6 of bare post for the coil
 KEEP_COIL_R = (KEEP_POST_D + CANB_BUNDLE_OD) / 2.0       # wound centre line, 4.05
-# HOW FAR THE BARREL SITS BELOW THE HOUSING'S TOP. Not the barrel's own radius: the COIL
-# is what has to clear the instrument, and it stands a wound radius plus half a bundle
-# proud of the axis. Sized off the barrel alone, the top of every coil stood 0.9 into
-# the chassis slab the housing is flush with.
-KEEP_COIL_TOP = KEEP_COIL_R + CANB_BUNDLE_OD / 2.0 + D.MIN_WALL
-assert KEEP_POST_D / 2.0 >= 2.0, "the barrel bends 26 AWG tighter than it likes"
-assert KEEP_GUSSET <= HOUS_Z1 - HOUS_Z0, "the keeper's gusset is taller than the housing"
+# THE POST STANDS ON THE BED AND GROWS TOWARD THE INSTRUMENT (user, 2026-09-23: "for
+# the cable winding posts, they create a print overhang... align them along the Z axis
+# instead of the Y axis", and "you can have the material for the cable winding start at
+# the print bed and grow up towards the instrument").
+#
+# That is the whole fix, and it removes a part rather than adding one. Lying along Y the
+# barrel was a horizontal cantilever off a vertical face, so it needed a 45 deg gusset
+# under it -- and the gusset sat exactly where the coil's lower half had to pass, which
+# cost 67 mm3 of lever inside every coil and then a second fix (carry only the inner
+# half) to get out of. Along Z it is a plain pillar in the build direction: no overhang,
+# no gusset, and nothing in the way of the winding.
+#
+# The WEB ties it back to the cheek, and stops below the winding for the same reason the
+# gusset had to: anything beside the post at the coil's height is something the coil
+# cannot get round. It is a vertical wall, so it prints like any other.
+#
+# THE WINDING IS AT THE TOP, right under the instrument (user, 2026-09-22: "so it
+# doesn't dangle and hit your knee"). The post's MATERIAL starts at the bed; the CABLE
+# lives at the far end of it.
+KEEP_WIND_Z1 = HOUS_Z1 - KEEP_HEAD - D.MIN_WALL_2P       # the head sits under the top
+KEEP_WIND_Z0 = KEEP_WIND_Z1 - KEEP_WIND_H
+assert KEEP_WIND_Z0 > HOUS_Z0 + 2 * D.MIN_WALL_2P, (
+    "the keeper's winding reaches the bed -- no web is left to carry the post")
 
 
 def cable_keeper(y_face=None, z_bed=None, x_back=None, z_top=None):
     """The cable keeper on a lever housing's +Y (connector) cheek, in the lever's local
-    frame: a barrel standing off the cheek, a 45 deg head at its tip, and a 45 deg
-    gusset under it.
+    frame: a post standing off the bed, webbed to the cheek below the winding, with a
+    45 deg head at the top.
 
     Parameterised because the VERTICAL lever (knee_lever_vert) is the same design with
     the feel block moved above the axle -- same cheek and same back face, its own floor
@@ -1851,24 +1860,16 @@ def cable_keeper(y_face=None, z_bed=None, x_back=None, z_top=None):
     x0 = HOUS_X0 if x_back is None else x_back
     z1 = HOUS_Z1 if z_top is None else z_top
     xc = x0 + KEEP_POST_D / 2.0 + D.MIN_WALL_2P
-    # HIGH ON THE CHEEK, right under the instrument (user, 2026-09-22: "put the cable
-    # storage clip close to the instrument body so it doesn't dangle and hit your
-    # knee"). The housing's top face is flush with the chassis underside, so this is as
-    # far out of the knee's way as the lever has to offer -- and the gusset still lands
-    # on the housing, which is what fixes the height from below.
-    zc = z1 - KEEP_COIL_TOP
-    post = cyl_y(KEEP_POST_D, KEEP_POST_L, y0=y0, x=xc, z=zc)
+    yc = y0 + KEEP_COIL_R + CANB_BUNDLE_OD / 2.0 + D.MIN_WALL   # the coil clears the cheek
+    wz1 = z1 - KEEP_HEAD - D.MIN_WALL_2P                        # winding top
+    wz0 = wz1 - KEEP_WIND_H                                     # ...and its bottom
+    post = cyl(KEEP_POST_D, wz1 - z0, z=z0).translate((xc, yc, 0.0))
     head = cq.Workplane("XY").add(cq.Solid.makeCone(
         KEEP_POST_D / 2.0, KEEP_POST_D / 2.0 + KEEP_HEAD, KEEP_HEAD,
-        cq.Vector(xc, y0 + KEEP_POST_L, zc), cq.Vector(0, 1, 0)))
-    # THE GUSSET. A barrel standing off a vertical face is a horizontal cantilever, and
-    # this part builds -Z -> +Z, so its underside is the one thing here that cannot be
-    # printed unsupported. A 45 deg fin from the cheek to the barrel's far end carries
-    # it, at exactly the angle the rest of the part is drawn to.
-    pts = [(y0, zc), (y0 + KEEP_GUSSET_L, zc), (y0, zc - KEEP_GUSSET)]
-    fin = (cq.Workplane("YZ").polyline(pts).close()
-           .extrude(KEEP_POST_D).translate((xc - KEEP_POST_D / 2.0, 0.0, 0.0)))
-    return post.union(head).union(fin)
+        cq.Vector(xc, yc, wz1), cq.Vector(0, 0, 1)))
+    web = box_at(KEEP_WEB_T, yc - y0, wz0 - z0,
+                 x=xc, y=(y0 + yc) / 2.0, z=(z0 + wz0) / 2.0)
+    return post.union(head).union(web)
 
 
 def plug_point(z_bot=None, z_top=None, flip=None):
@@ -1881,15 +1882,19 @@ def plug_point(z_bot=None, z_top=None, flip=None):
 
 
 def keeper_point(z_bed=None, x_back=None, y_face=None, z_top=None):
-    """The keeper barrel's axis, at the cheek -- where the slack coil starts. Defaults
-    are LKL's, like cable_keeper's."""
+    """Where the slack coil starts on the keeper post: its axis, at the bottom of the
+    BARE stretch above the web. Defaults are LKL's, like cable_keeper's."""
     y0 = HOUS_HW if y_face is None else y_face
-    z0 = HOUS_Z0 if z_bed is None else z_bed
     x0 = HOUS_X0 if x_back is None else x_back
     z1 = HOUS_Z1 if z_top is None else z_top
-    # ...on the FREE half of the barrel, past the gusset
-    return (x0 + KEEP_POST_D / 2.0 + D.MIN_WALL_2P, y0 + KEEP_GUSSET_L,
-            z1 - KEEP_COIL_TOP)
+    return (x0 + KEEP_POST_D / 2.0 + D.MIN_WALL_2P,
+            y0 + KEEP_COIL_R + CANB_BUNDLE_OD / 2.0 + D.MIN_WALL,
+            z1 - KEEP_HEAD - D.MIN_WALL_2P - KEEP_WIND_H)
+
+
+def keeper_axis():
+    """The post's axis in the lever's LOCAL frame: the build direction."""
+    return (0.0, 0.0, 1.0)
 
 
 def keeper_axis():
