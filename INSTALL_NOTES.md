@@ -69,6 +69,10 @@ be swapped.
    it. Seat it, check it is flat, then the M4 × 8 straight down into its insert. The
    screw's ONLY job is to stop it lifting back out along the install direction; if you
    find yourself using it to pull the board into position, the pocket is wrong.
+7. **Heat-set the female's insert BEFORE the board goes in.** It presses in from the
+   mortise side, down the same axis the screw later uses, through a bored channel sized
+   to the insert. That channel notches the pocket's wall beside the screw -- that is
+   deliberate, not damage.
 
 **Why step 3 works at all:** the PH stands 5.5 off the board's face, and cutting its
 pocket only where it ends up left it gouging up to 396 mm³ of the tenon on the way
