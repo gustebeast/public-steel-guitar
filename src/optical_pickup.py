@@ -1072,9 +1072,18 @@ def _parts():
     # column is now two caps ON END beside their pins (AREG, VREF) with AVDD's cap moved to
     # the bottom row, and IN4M's cap went to the far row -- 1.3 mm off every cell, so the
     # channels between cells open from ~0.5 to ~2.5 mm.
-    _rx = _q / 2 + CRTYD_GAP + _c[1] / 2                  # the +X column, caps on end
+    # ⚠ THE +X COLUMN LIES FLAT, AND ITS y EXTENT IS THE ANALOG BOTTLENECK (2026-09-22).
+    # These two caps plus Cs<k>1 form a WALL between the op-amp column and the converter,
+    # and .ins/lane.py measured its gaps: two doors wide enough for a 0.2 mm track, for
+    # FOUR analog runs per quad. Fifteen of the twenty TIA_OUT runs have no straight path
+    # and the router drops a rotating handful of them every time -- see elec/optical.py.
+    # On end, a 0402 is 1.95 mm tall and 1.03 wide; flat it is 1.03 tall. Turning the
+    # column gives back 0.92 mm of door per cap and spends 0.46 mm eastward, which is why
+    # _rx is written off _c[0] rather than _c[1] -- the extent follows the orientation
+    # instead of being a number somebody has to remember to change twice.
+    _rx = _q / 2 + CRTYD_GAP + _c[0] / 2                  # the +X column, caps LYING FLAT
     _left = -CELL_FAN["IN4M"] + _c[1] / 2                 # IN4M's far cap is the -X extreme
-    _cw = _left + (_rx + _c[1] / 2)
+    _cw = _left + (_rx + _c[0] / 2)                       # ... so the cell is wider too
     _cgap = ((_cx1 - _cx0) - 3 * _cw) / 2
     assert _cgap >= CRTYD_GAP - 1e-9, (
         "the converter cells need %.2f mm across and the annulus -X of U6 is %.2f"
@@ -1136,7 +1145,7 @@ def _parts():
     # empty, between the last cell cap at 71.7 and the TIA block at 74. Moving the column
     # 1.0 mm east spends it, widens the channel to 1.85, and SHORTENS the analog runs into
     # the converters, because the TIAs are east.
-    ADC_BUS_CH = 2.2
+    ADC_BUS_CH = 2.0
     assert ADC_BUS_CH >= EDGE_KEEP, "the bus channel is also the part-to-edge keepout"
     _adc_x = STRIP_X1 + ADC_BUS_CH + 2.8                       # 2.8 = half the measured cell
     for k in range(5):
@@ -1173,8 +1182,8 @@ def _parts():
                                  ("Cs%d1" % t, 3.10, -_near, 270.0),   # AVDD, pin 1 at +X low
                                  # +X column on end: AREG (pin 2, y -0.75) rail pad on top,
                                  # VREF (pin 3, y -0.25) rail pad at the bottom
-                                 ("Cs%d3" % t, _rx, -1.20, 270.0),
-                                 ("Cs%d5" % t, _rx, 0.90, 90.0)):
+                                 ("Cs%d3" % t, _rx, -1.20, 0.0),
+                                 ("Cs%d5" % t, _rx, 0.90, 180.0)):
             add(ref, "ADC input AC coupling" if ref[1] in "im" else "ADC supply bypass",
                 "0402", qx + _s * dx, qy + _s * dy, rot if _s > 0 else (rot + 180.0) % 360.0)
     qx, qy = _cell(2, 1)
