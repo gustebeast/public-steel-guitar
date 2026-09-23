@@ -132,3 +132,24 @@ mark it here. Items needing the user go to NEEDS USER, not skipped silently.
   (pre-existing; the Pi plate used to cover it). Roof takes the inserts' string load; a 45 deg
   gable needs 9.2 mm and the Pi board is 7.8 above. Options: move the Pi +X ~2 mm, or reshape
   the 8-10 slots (owner of nut_block geometry?).
+
+## NEEDS USER — the axle bore's bearing stress is 4.9 MPa, and nobody had computed it
+The endplate's creep margin was quoted as 14x. That figure is the BULK section resisting
+-X through the block: 1683 N over 2014 mm2 = 0.84 MPa. It answers the wrong question.
+The creep-critical number is the LOCAL bearing stress where the shaft presses into its
+bore, and that is 1683 N over a projected 343 mm2 (9 fingers x 3.70 + 2 arms x 4.80, times
+the 8.0 shaft) = **4.90 MPa**, roughly 6x higher.
+
+It is NOT a regression from the comb work -- the run-outs only removed material above the
+axle centre and the load seats at 7:20..7:43, below the equator. It is a number that had
+never been taken at the bore.
+
+Whether 4.9 MPa is safe for PCTG over years is not something I can settle from datasheets:
+short-term yield is ~45-50 MPa but the sustained-load limit is far lower and vendor creep
+curves for PCTG are thin. This wants a COUPON, which this project already does for
+material questions.
+
+The geometric levers are nearly exhausted: fingers are 3.70 wide because the bearing takes
+5.0 of a 9.5 pitch, and the shaft is 8.0 because the bridge bearing is a 688ZZ. Dropping
+the bearing side clearance 0.4 -> 0.25 buys CB_W 4.00 and takes it to ~4.5 MPa. That is
+all that is free.

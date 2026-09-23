@@ -713,15 +713,24 @@ def _o_band_relief():
     # ── 2. the bore's upper -X quadrant, with a 45 deg close beyond it ───────
     _az, _ar = D.BRIDGE_BEARING_Z, AXLE_BORE / 2
     _xt = D.BRIDGE_AXLE_X - math.sqrt(max(_ar ** 2 - (OP.PLINTH_TOP - _az) ** 2, 0.0))
-    _xr = D.BRIDGE_AXLE_X - _ar                      # bore's -X extent; close from here
+    # ⚠ THE RUN-OUT HAS TO REACH THE TEARDROP'S APEX, NOT THE CIRCLE'S -X EXTENT, and the
+    # difference is a floating band (user, who put the cursor on both ends of it: the cut
+    # edge at X -13.07 Z 8.87 and the teardrop edge at X -13.54 Z 7.60). Closing from the
+    # circle at -12.20 sends the cut's floor UP at 45 deg while the teardrop's own upper
+    # edge is still coming DOWN at 45 deg -- the two are perpendicular, they cross at
+    # -13.07, and past the crossing the bore roof sits BELOW the cut floor. What is left
+    # between them is material with bore under it and cut over it: a band printing on air.
+    # Run the cut down to the apex instead ("keep the 45 going instead of turning towards
+    # +z") and only climb back from there, so the notch is a V that follows the bore.
+    _xr = D.BRIDGE_AXLE_X - _ar * math.sqrt(2.0)     # teardrop apex, not the circle
     _y0, _y1 = -D.BRIDGE_ARM_OUT - 1.0, AXLE_CHAN_Y1 + 1.0
     # ⚠ extrude() ON AN "XZ" WORKPLANE GOES -Y (its normal is (0,-1,0)), so a plain
     # extrude(depth) put this entire cutter at y -51.8..-169 -- clean off the part, removing
     # nothing, while the code read as though it worked. Same shape of bug as a harness
     # printing a tidy row for a route that never ran. Centre it and grow both ways instead.
     cut = cut.union(cq.Workplane("XZ")
-                    .polyline([(_xt, _az), (_xt, OP.PLINTH_TOP),
-                               (_xr - (OP.PLINTH_TOP - _az), OP.PLINTH_TOP), (_xr, _az)])
+                    .polyline([(_xt, OP.PLINTH_TOP), (_xr, _az),
+                               (_xr - (OP.PLINTH_TOP - _az), OP.PLINTH_TOP)])
                     .close().extrude((_y1 - _y0) / 2, both=True)
                     .translate((0, (_y0 + _y1) / 2, 0)))
     return cut
