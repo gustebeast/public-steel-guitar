@@ -614,8 +614,15 @@ def host_negatives(j, up=None, deep=F_DEEP):
     # So the pilot is carried out to the host's face. It notches the pocket's +t wall
     # beside the screw, which is the cheap half of the trade: the wall is 18 long in s
     # and the board is still held by the rest of it.
+    # ...and it starts at F_BOT - 0.01, NOT F_BOT + 0.01. That sign left a 0.01 mm
+    # film of plastic, 3.79 mm^2 of it, lying exactly in the board pocket's own plane:
+    # the bore began one hundredth of a millimetre short of the cavity it was supposed
+    # to open into, so instead of merging with it, it left a skin between the two.
+    # check_thin reported it as a 0.01 wall -- the thinnest in the part by a factor of
+    # forty -- and it would have printed as a torn membrane over the insert's mouth.
+    # Cavities that are meant to be ONE cavity must OVERLAP; touching is not enough.
     out = out.union(j.bore_d(M4.insert_pilot_d, F_HOLE_T, F_HOLE_S,
-                             F_BOT + 0.01, 0.5, up))
+                             F_BOT - 0.01, 0.5, up))
     return out.union(female_screw(j).cutter(up))
 
 

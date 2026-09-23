@@ -486,11 +486,33 @@ def body_adapter(sx: float = LEG_X, ly: float = LEG_Y):
     # authority on where each station's mortise actually runs -- one run for most, two short
     # runs (one per foot) for the three at each end -- and a tenon is clamped to the run it sits
     # in and kept only if that run opens the way this corner slides in.
+    _bed = ly - LEG_W / 2.0             # the adapter lies on its -Y face (ADAPTER_UP)
+    _rb = LG._stub_ridge(1.0).val().BoundingBox()       # the ridge's own section, measured
     for st, y0, y1 in CH.foot_tenon_runs(sx, ly, syg):
         # (keeping off the height-screw heads and the string access channels is the MORTISE's
         #  business, not the tenon's: chassis.mort_segments shortens the run and this follows it.
         #  It was duplicated here, which is two places to get the same rule wrong.)
         b = b.union(LG._stub_ridge(y1 - y0).translate((st, y0, Z_TOP)))
+        # RAMP THE LEADING END. The adapter builds +Y, so a ridge whose run STARTS above the
+        # bed begins in mid-air: its whole 6.60 x 8.03 section is laid down in one layer with
+        # nothing under it but the 0.80 strip where it meets the top face. Two of them were the
+        # worst ceilings left in this part (35.6 and 37.8 mm^2, span 6.60), and they are
+        # invisible in the viewer because on the printer this "end wall" is a ROOF.
+        #
+        # A 45 wedge off that end lets the section grow out of the top face over its own
+        # height. It costs nothing functionally -- the ridge is a tenon sliding into the
+        # chassis' mortise along Y, so a tapered leading end is a LEAD-IN -- and the run's
+        # far end needs no such thing, because a face at the far end points AWAY from the bed.
+        #
+        # Only ridges that start off the bed: one whose run opens at the adapter's own -Y face
+        # is printed from layer one, and ramping it would throw away engagement for nothing.
+        if y0 > _bed + 0.1:
+            h = _rb.zmax                                # 8.03, the section's height in Z
+            b = b.cut(cq.Workplane("YZ")
+                      .polyline([(y0, Z_TOP), (y0, Z_TOP + h + 0.5),
+                                 (y0 + h + 0.5, Z_TOP + h + 0.5)])
+                      .close().extrude(_rb.xmax - _rb.xmin + 0.4)
+                      .translate((st + _rb.xmin - 0.2, 0.0, 0.0)))
     # M4 LOCK PIN, the adapter's ONLY screw (user): it threads into an insert in the ENDPLATE
     # and carries on through the chassis floor into this foot's TENONS, which it pins -- that is
     # what stops the foot sliding back out along Y. Same legs helper the endplate's and the
