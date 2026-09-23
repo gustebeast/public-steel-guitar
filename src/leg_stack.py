@@ -407,7 +407,7 @@ def adjust_tenon(top: float = Z_ADJ_TEN_TOP):
         # bar_trrs.route_negatives' jog around the ladder: the port's line already
         # clears the ladder, so neither dogleg was buying anything.
         t = t.cut(PG.tenon_negatives(
-            PG.BOTTOM, (PG.port_xy(PG.BOTTOM)[0], LEG_Y + PG.ROUTE_OFF),
+            PG.BOTTOM, PG.route_xy(),
             PG.ROUTE_D, Z_ADJ_TEN_TOP + 1.0, TENON_UP))
     return t
 
