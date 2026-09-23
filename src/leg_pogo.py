@@ -419,11 +419,44 @@ class Joint(object):
 # BOTH JOINTS put t on the -X+Y diagonal, so the board's parts and the ZR's mouth face
 # +X-Y: at the bottom that points the harness's drop at the bar's trough (user), and at
 # the top it puts everything clear of the leg latch's pocket (y < -1.6 from 27.75 down).
+#
+# ⚠ THAT LAST CLAUSE IS TIED TO THE LATCH BEING ON -Y, and the user wants every latch
+# on +Y instead (2026-09-23: the instrument is taken apart upside down in its case, and
+# the bar should be the near side). Measured with leg_latch.BUTTON_SIDE = +1: the
+# run-0 wires descend at y 42..52 through the slider's y 50.75..65.95, and the PH plug
+# clips it -- 6 overlaps, 0.4 to 2.2 mm^3.
+#
+# MIRRORING THIS BOARD IS NOT A ONE-LINE FLIP, and the reasons are worth writing down
+# because they are what any attempt runs into:
+#
+#   1. Only TWO of the tenon's four diagonals are available. house() needs S parallel
+#      to the tenon's build direction or its gables are not on the cavities' ceilings,
+#      and TENON_UP is the -X-Y diagonal, so T must be +-(-_D, _D). The only mirror in
+#      the family is therefore reversing T, a 180 degree rotation about the leg's axis.
+#   2. Reversing T reverses S, which points S_C the wrong way. The row sits 3.0 off the
+#      axis AWAY from the build direction, and that offset is what buys the roof its
+#      headroom: 12.0 as built, 6.0 reversed. The shed roof then runs out through the
+#      tenon's flat, which is exactly the assert that fires. S_C has to become a
+#      property of the JOINT (-3.0 * up_s) rather than a module constant, and the
+#      board's own s extents have to mirror with it or the female's head breaks a flat.
+#   3. Even then the port only reaches y -0.96 off the axis, not -5.20: the board's t
+#      offset and its s offset move it in opposite directions once reversed, and they
+#      very nearly cancel.
+#   4. AND IT STILL WOULD NOT BE ENOUGH. The harness drops down the fixed tenon on
+#      leg_trrs._ax(), y 49.15 -- INSIDE the latch spring's y 45.15..57.15. That bore
+#      is inherited from the retired TRRS lead (see ROUTE_OFF, which records the same
+#      inheritance from the other end), so the +Y routing has to move whether the board
+#      mirrors or not.
+#
+# So the latch move is a routing change first and a board change second.
 # The tenon builds along -S here, so every cavity's s0 face is its ceiling: house()
 # stands a 45 degree gable on it, in the SAME profile as the cavity.
 _D = math.sqrt(0.5)
 TOP = Joint("top", LS.Z_MORTISE_ROOF, -1.0, (-_D, _D),
             LS.PRINT_UP["fixed_tenon"], LS.PRINT_UP["body_adapter"])
+assert abs(TOP.S[0] * LS.TENON_UP[0] + TOP.S[1] * LS.TENON_UP[1]) > 0.999, (
+    "the top joint's s axis must lie along the tenon's build direction, or house()'s "
+    "gables are not on the cavities' ceilings")
 # BOTTOM: the adjust tenon's lower end, in the pedal bar. Into the tenon is +Z.
 BOTTOM = Joint("bottom", LS.Z_ADJ_TEN_BOT, 1.0, (-_D, _D),
                LS.PRINT_UP["adjust_tenon"], (0.0, 1.0, 0.0))
@@ -660,15 +693,22 @@ CHAN_D = 6 * B                  # 4.8 -- the body tenons are fused on after this
 def adapter_features(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):
     """(None, negatives) for the body adapter at the signal corner, in its own frame.
     The harness rises out of the female's connector into a groove in the top face that
-    runs out the -Y face, inboard, under the instrument (the old lead's exit)."""
+    runs out whichever Y face the port points at -- -Y, inboard, under the instrument
+    (the old lead's exit) until the board mirrored to clear the latch."""
     j = TOP
     neg = host_negatives(j)
     fc = j.p((WIRE_T0 + ZR_MOUTH - ZR_PLUG) / 2.0, 0.0, 0.0)
-    y_out = j.y - LS.LEG_W / 2.0 - 1.0
-    y_in = fc[1] + CHAN_W
+    # THE GROOVE LEAVES BY WHICHEVER FACE THE PORT IS ALREADY POINTING AT. It used to
+    # be written as "-Y, inboard", which was the same thing while the board sat on that
+    # side -- but it is the port that decides, and when the board mirrored to dodge the
+    # latch a hard-coded -Y sent the groove back across the whole part, under the
+    # connector it was supposed to be leading away from.
+    _side = 1.0 if fc[1] > j.y else -1.0
+    y_out = j.y + _side * (LS.LEG_W / 2.0 + 1.0)
+    y_in = fc[1] - _side * CHAN_W
     neg = neg.union(cq.Workplane("XY").add(cq.Solid.makeBox(
-        CHAN_W, y_in - y_out, CHAN_D + 1.0,
-        cq.Vector(fc[0] - CHAN_W / 2.0, y_out, LS.Z_TOP - CHAN_D))))
+        CHAN_W, abs(y_in - y_out), CHAN_D + 1.0,
+        cq.Vector(fc[0] - CHAN_W / 2.0, min(y_in, y_out), LS.Z_TOP - CHAN_D))))
     return None, neg
 
 
