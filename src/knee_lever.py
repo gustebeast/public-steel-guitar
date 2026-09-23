@@ -1820,8 +1820,15 @@ KEEP_POST_D = 7 * D.NOZZLE_D        # 5.6 the barrel the slack winds onto
 KEEP_HEAD   = 3 * D.NOZZLE_D        # 2.4 of 45 deg flare at the top: the coil cannot
                                     # walk off, but it lifts over with a screwdriver
 KEEP_WOUND_D = 2 * (KEEP_POST_D + CANB_BUNDLE_OD) / 2.0 + CANB_BUNDLE_OD   # 10.6 wound OD
-KEEP_WEB_T  = KEEP_WOUND_D          # the web is as wide as the WIND it carries (user):
-                                    # a 1.6 fin under a 10.6 coil was a fin, not a base
+# THE SUPPORT MATCHES THE POST, not the coil (user, 2026-09-23: "the supports could
+# also be cleaner to match the diameter of the post and join more aesthetically /
+# strongly"). It was as wide as the WOUND cable (10.6) -- a slab sticking out either side
+# of a 5.6 column. At the post's own diameter it reads as part of the post, and a 45 deg
+# COLLAR at the joint carries the load into it instead of ending on a square corner.
+KEEP_WEB_T  = KEEP_POST_D           # 5.6 -- the support is the post's width
+KEEP_POST_DX = KEEP_WOUND_D / 2.0   # ...but the post still sits a WOUND radius in from
+                                    # the housing's back face, so the coil is flush with
+                                    # it rather than standing proud
 # HOW MUCH BARE POST THE COIL NEEDS -- which is a LAYER's worth, not the whole slack
 # (user, 2026-09-23: "you can wrap wire around itself so the outer wraps have a larger
 # diameter"). That is what a hand-wound hank does, and it takes the capacity question
@@ -1906,7 +1913,7 @@ def cable_keeper(y_face=None, z_bed=None, x_back=None, z_top=None, hung=False):
     z0 = HOUS_Z0 if z_bed is None else z_bed
     x0 = HOUS_X0 if x_back is None else x_back
     z1 = HOUS_Z1 if z_top is None else z_top
-    xc = x0 + KEEP_WEB_T / 2.0      # centred in the web, whose -X face is the housing's
+    xc = x0 + KEEP_POST_DX          # a wound radius in: the COIL is flush with the back
     yc = y0 + KEEP_COIL_R + CANB_BUNDLE_OD / 2.0 + KEEP_CLR_Y   # the coil clears the cheek
     wz1 = z1 - KEEP_HEAD - D.MIN_WALL_2P                        # winding top
     wz0 = z1 - KEEP_DROP                                        # ...and its base
@@ -1914,6 +1921,10 @@ def cable_keeper(y_face=None, z_bed=None, x_back=None, z_top=None, hung=False):
     head = cq.Workplane("XY").add(cq.Solid.makeCone(
         KEEP_POST_D / 2.0, KEEP_POST_D / 2.0 + KEEP_HEAD, KEEP_HEAD,
         cq.Vector(xc, yc, wz1), cq.Vector(0, 0, 1)))
+    # NO CONICAL COLLAR at the joint, though it is the obvious way to spread it. The
+    # support is the post's own width now, so a cone of any flare stands proud of it on
+    # both sides and leaves a flat crescent hanging underneath -- 26 mm2 of it, found by
+    # probing for downward faces. The 45 deg wedge IS the blend.
     if not hung:                       # ...stands on the bed, on a base (the default)
         post = cyl(KEEP_POST_D, wz1 - z0, z=z0).translate((xc, yc, 0.0))
         foot = box_at(KEEP_WEB_T, yc - y0, KEEP_WEB_H,
@@ -1927,8 +1938,20 @@ def cable_keeper(y_face=None, z_bed=None, x_back=None, z_top=None, hung=False):
     assert wz0 - dy >= z0, (
         "the keeper's 45 deg buttress lands %.2f below this housing's floor"
         % (z0 - (wz0 - dy)))
-    post = cyl(KEEP_POST_D, wz1 - wz0 + ov, z=wz0 - ov).translate((xc, yc, 0.0))
-    pts = [(y0 - ov, wz0 - dy), (yc, wz0 + ov), (yc, wz0 - dy)]
+    assert wz0 + dy <= z1, (
+        "the keeper's buttress reaches %.2f above this housing's top" % (wz0 + dy - z1))
+    post = cyl(KEEP_POST_D, wz1 - wz0, z=wz0).translate((xc, yc, 0.0))
+    # A WEDGE, 45 ON BOTH FACES (user, 2026-09-23: "there's a flat face here. You need
+    # to have both the top and bottom be 45 angles"). It was a right triangle with the
+    # RIGHT-ANGLE CORNER at the bottom, which left a flat 10.6 x 16.8 underside hanging
+    # in air -- 178 mm2 of unsupported face, and the one surface on this part that had
+    # to be angled. Now it tapers to the post from both directions: the lower face rises
+    # 45 out to the post, the upper falls 45 back to the cheek.
+    # the wedge's apex runs PAST the post's axis, so the two share volume and fuse --
+    # an apex that merely touches the post leaves it a separate solid, and leaves its
+    # bottom face hanging in air (21 mm2 of it, found by probing for downward faces)
+    pts = [(y0 - ov, wz0 - dy), (yc + KEEP_POST_D / 2.0, wz0),
+           (y0 - ov, wz0 + dy)]
     but = (cq.Workplane("YZ").polyline(pts).close()
            .extrude(KEEP_WEB_T).translate((xc - KEEP_WEB_T / 2.0, 0.0, 0.0)))
     return post.union(head).union(but)
