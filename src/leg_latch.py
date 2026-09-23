@@ -97,8 +97,7 @@ SHRINK_ADAPTER = SLIDE_CLR + REST_OUT   # 0.754
 # flanks by the shrink but its APEX FLAT by sqrt2 x the shrink, and a 1x transition
 # leaned that apex face out to 35 degrees (the overhang probe caught it).
 TRANSITION_Z = math.sqrt(2.0) * (SHRINK_ADAPTER - CLR)   # 0.713
-BUTTON_SIDE = -1.0                 # the button faces -Y: inboard of the +Y rail,
-                                   # toward the player.
+BUTTON_SIDE = 1.0                  # the button faces +Y.
                                    #
                                    # THIS SIDE AND leg_pogo.DROP_OFF ARE ONE CHOICE,
                                    # not two: the latch takes one of the tenon's Y

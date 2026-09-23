@@ -247,12 +247,12 @@ ZR_MOUTH = ZR_T1 - ZR_TAIL - ZR_DEPTH                   # -5.35 its mouth, facin
 WIRE_T0 = ZR_MOUTH - ZR_PLUG - HARNESS_D                # -9.75 the harness drops here
 # the M4 sits BEYOND the end of the target along the row -- nothing on the -t side has
 # room for its head, and the +t side is the tenon's wall
-F_HOLE_S = TG_BODY_S / 2.0 + CLR + HEAD_D / 2.0         # 8.9 from the row's centre
+F_HOLE_S = -(TG_BODY_S / 2.0 + CLR + HEAD_D / 2.0)      # -9.2 from the row's centre
 F_HOLE_T = PIN_T
 FB_T0 = ZR_MOUTH                                        # the plug overhangs this edge
 FB_T1 = PIN_T + TG_BODY_T / 2.0 + EDGE                  # 4.65
-FB_S0 = -TG_BODY_S / 2.0 - EDGE                         # along the row, from its centre
-FB_S1 = F_HOLE_S + HOLE_D / 2.0 + EDGE
+FB_S0 = F_HOLE_S - HOLE_D / 2.0 - EDGE                  # -11.95: past the screw
+FB_S1 = TG_BODY_S / 2.0 + EDGE                          # 5.6: just past the target
 F_SCREW_L = 8.0                 # M4 x 8 button: 1.6 of board, then 6.4 of insert bite
 F_END = F_SCREW_L + 1.0          # the hole stops past the screw's tip
 assert ZR_S / 2.0 <= TG_BODY_S / 2.0 + EDGE, "the ZR runs past the target's end"
@@ -260,12 +260,16 @@ assert PCB_T + ZR_H < EDGE_D and PCB_T + HEAD_H < EDGE_D, (
     "the female's parts reach the male board's edge")
 
 # THE ROW IS OFF CENTRE by S_C, so the female's screw fits beyond the target's end;
-# the male board shifts with it (Joint.p applies it)
-S_C = -3.0
+# the male board shifts with it (Joint.p applies it). It is offset AWAY from the tenon's
+# build direction, which is what leaves the cavities' roofs their headroom -- the
+# ceiling-side flat sits 15.0 off the row, against the 9.0 it would have on the other
+# side of the axis. That is why this sign and the board's s dimensions above go
+# together, and why neither is free on its own.
+S_C = 3.0
 _HALF = LS.TEN_W / 2.0
-assert S_C + F_HOLE_S + HEAD_D / 2.0 + CLR + WALL <= _HALF, "the female's head breaks a flat"
-assert S_C + FB_S0 - CLR - WALL >= -_HALF, "the female breaks a flat"
-assert S_C - MB_S / 2.0 - CLR - WALL >= -_HALF, "the male board breaks a flat"
+assert S_C + F_HOLE_S - HEAD_D / 2.0 - CLR - WALL >= -_HALF, "the female's head breaks a flat"
+assert S_C + FB_S1 + CLR + WALL <= _HALF, "the female breaks a flat"
+assert S_C + MB_S / 2.0 + CLR + WALL <= _HALF, "the male board breaks a flat"
 assert WIRE_T0 - CLR - WALL >= -_HALF, "the harness's drop breaks the tenon's flat"
 assert FB_T1 + CLR + WALL <= _HALF, "the female breaks the tenon's +t flat"
 
@@ -416,9 +420,9 @@ class Joint(object):
             yield (k - (TG_N - 1) / 2.0) * TG_PITCH
 
 
-# BOTH JOINTS put t on the -X+Y diagonal, so the board's parts and the ZR's mouth face
-# +X-Y: at the bottom that points the harness's drop at the bar's trough (user), and at
-# the top it puts everything clear of the leg latch's pocket (y < -1.6 from 27.75 down).
+# BOTH JOINTS put t on the +X-Y diagonal, so the board's parts and the ZR's mouth face
+# -X+Y, and the board's own body sits on the tenon's -Y side -- clear of the latch,
+# which takes the +Y middle at both joints (leg_latch.BUTTON_SIDE).
 #
 # THE DIAGONAL IS NOT A FREE CHOICE, and neither is the side the board sits on:
 #
@@ -436,13 +440,13 @@ class Joint(object):
 # The tenon builds along -S here, so every cavity's s0 face is its ceiling: house()
 # stands a 45 degree gable on it, in the SAME profile as the cavity.
 _D = math.sqrt(0.5)
-TOP = Joint("top", LS.Z_MORTISE_ROOF, -1.0, (-_D, _D),
+TOP = Joint("top", LS.Z_MORTISE_ROOF, -1.0, (_D, -_D),
             LS.PRINT_UP["fixed_tenon"], LS.PRINT_UP["body_adapter"])
 assert abs(TOP.S[0] * LS.TENON_UP[0] + TOP.S[1] * LS.TENON_UP[1]) > 0.999, (
     "the top joint's s axis must lie along the tenon's build direction, or house()'s "
     "gables are not on the cavities' ceilings")
 # BOTTOM: the adjust tenon's lower end, in the pedal bar. Into the tenon is +Z.
-BOTTOM = Joint("bottom", LS.Z_ADJ_TEN_BOT, 1.0, (-_D, _D),
+BOTTOM = Joint("bottom", LS.Z_ADJ_TEN_BOT, 1.0, (_D, -_D),
                LS.PRINT_UP["adjust_tenon"], (0.0, 1.0, 0.0))
 
 
@@ -649,8 +653,9 @@ ROUTE_D = 5 * B                 # 4.0: the harness's own way up the tenon. The b
                                 # wires (they are crimped after threading), so it is
                                 # sized for the O2.4 bundle -- and the narrower it is,
                                 # the closer to the port its lane can sit (below).
-ROUTE_OFF = 9 * B               # 7.2 off the leg's axis in +Y, and NOT on the port's
-                                # own line, which is where this wanted to go.
+ROUTE_OFF = -9 * B              # -7.2 off the leg's axis in -Y (the side the latch
+                                # leaves free), and NOT on the port's own line, which is
+                                # where this wanted to go.
                                 #
                                 # The port sits at y +5.20 and a straight shot up from
                                 # it would be ideal -- but the ADJUSTMENT LADDER is
@@ -669,10 +674,10 @@ ROUTE_OFF = 9 * B               # 7.2 off the leg's axis in +Y, and NOT on the p
 # The harness owns its own lane at BOTH ends -- this one and ROUTE_OFF -- rather than
 # borrowing a bore from somewhere else, which is what put a dogleg in the other end.
 #
-# It sits in the tenon's +Y middle because the LATCH has the -Y one (leg_latch's pocket
+# It sits in the tenon's -Y middle because the LATCH has the +Y one (leg_latch's pocket
 # and spring run the depth of this tenon). The two are one decision: whichever middle
 # the latch takes, the lane takes the other, and neither is squeezed past the other.
-DROP_OFF = 7 * B                # +5.6, the middle the latch leaves free
+DROP_OFF = -7 * B               # -5.6, the middle the latch leaves free
 DROP_X = -2 * B                 # -1.6: it is x that keeps this clear of the board
 
 
@@ -690,9 +695,32 @@ assert _DROP_WALL - ROUTE_D / 2.0 * math.sqrt(2) >= D.MIN_WALL_2P, (
     % (_DROP_WALL - ROUTE_D / 2.0 * math.sqrt(2)))
 
 _LADDER_R = LS.ADJ_HOLE_D / 2.0 * math.sqrt(2)      # a TEARDROP's reach, not its radius
-assert ROUTE_OFF - ROUTE_D / 2.0 - _LADDER_R >= D.MIN_WALL_2P, (
+# the ladder is bored on the leg's axis, so what matters is how far OFF that axis the
+# lane sits -- the side it is on does not enter into it
+assert abs(ROUTE_OFF) - ROUTE_D / 2.0 - _LADDER_R >= D.MIN_WALL_2P, (
     "the harness lane at y %+.2f leaves only %.2f to the ladder's teardrop envelope"
-    % (ROUTE_OFF, ROUTE_OFF - ROUTE_D / 2.0 - _LADDER_R))
+    % (ROUTE_OFF, abs(ROUTE_OFF) - ROUTE_D / 2.0 - _LADDER_R))
+
+ROUTE_X = 4 * B                 # 3.2 off the axis in X, and the FLATS set this, not the
+                                # port. The port stands 5.20 out in X, and a lane there
+                                # -- 5.20 out and ROUTE_OFF along Y -- drives into the
+                                # +X-Y flat: 3.23 to it, 0.41 clear of the teardrop's
+                                # envelope, against the 1.60 two beads want. Pulled to
+                                # 3.20 the lane keeps 4.65 and 1.82. The harness pays a
+                                # 2.00 step in X for it, the same size as the step it
+                                # already takes to get off the port's line.
+
+
+def route_xy(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):
+    """World (x, y) of the adjust tenon's harness lane."""
+    return sx + ROUTE_X, ly + ROUTE_OFF
+
+
+_ROUTE_WALL = min(LS.TEN_W / 2.0 - (ROUTE_X * nx + ROUTE_OFF * ny) * _D
+                  for nx in (1.0, -1.0) for ny in (1.0, -1.0))
+assert _ROUTE_WALL - ROUTE_D / 2.0 * math.sqrt(2) >= D.MIN_WALL_2P, (
+    "the adjust tenon's lane leaves only %.2f to its nearest flat"
+    % (_ROUTE_WALL - ROUTE_D / 2.0 * math.sqrt(2)))
 CHAN_W = 4 * B                  # 3.2: the harness with room
 CHAN_D = 6 * B                  # 4.8 -- the body tenons are fused on after this is cut
                                 # and refill the groove's top ~1 mm
@@ -705,13 +733,15 @@ def adapter_features(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):
     j = TOP
     neg = host_negatives(j)
     fc = j.p((WIRE_T0 + ZR_MOUTH - ZR_PLUG) / 2.0, 0.0, 0.0)
-    # THE GROOVE LEAVES BY WHICHEVER FACE THE PORT POINTS AT, derived rather than
-    # named: a groove written to a fixed face is only right while the board is on that
-    # side, and wrong the moment it is not -- it would run back across the part, under
-    # the connector it is supposed to lead away from.
-    _side = 1.0 if fc[1] > j.y else -1.0
-    y_out = j.y + _side * (LS.LEG_W / 2.0 + 1.0)
-    y_in = fc[1] - _side * CHAN_W
+    # OUT THE -Y FACE (user): inboard, under the instrument. The +Y face is the rail
+    # side, and it is also the one the latch now opens onto.
+    #
+    # The ZR's mouth faces -t, which on this diagonal points -X+Y, so the harness
+    # leaves the connector heading +Y and the groove has to bring it back across the
+    # axis. That is why y_in is taken from the PLUG rather than from the face: the
+    # groove has to start beyond where the wire actually surfaces, not at the board.
+    y_out = j.y - (LS.LEG_W / 2.0 + 1.0)
+    y_in = fc[1] + CHAN_W
     neg = neg.union(cq.Workplane("XY").add(cq.Solid.makeBox(
         CHAN_W, abs(y_in - y_out), CHAN_D + 1.0,
         cq.Vector(fc[0] - CHAN_W / 2.0, min(y_in, y_out), LS.Z_TOP - CHAN_D))))
@@ -796,8 +826,7 @@ def harness():
     # then straight to the plug, which is what the bore is now cut for.
     # ...and down the lane on the PORT's OWN X, stepping the last 1.20 in +Y at the
     # plug (ROUTE_OFF: the ladder's teardrop envelope, not the port, sets that lane)
-    _px, _ = port_xy(BOTTOM)
-    _ly = LS.LEG_Y + ROUTE_OFF
+    _px, _ly = route_xy()
     lo_path = [(ax + r, ay, z_b - COIL_GAP), (ax + r, ay, z_b - COIL_LEAD),
                # the swing onto the lane happens ABOVE the tenon's top face, in open
                # air: done below it, the wires were moving sideways inside the bore and
