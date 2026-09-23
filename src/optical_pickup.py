@@ -1147,7 +1147,13 @@ def _parts():
     # empty, between the last cell cap at 71.7 and the TIA block at 74. Moving the column
     # 1.0 mm east spends it, widens the channel to 1.85, and SHORTENS the analog runs into
     # the converters, because the TIAs are east.
-    ADC_BUS_CH = 2.2
+    # Swept by routing six placements in parallel (.ins/routefan.sh), not by reasoning:
+    #   bus 1.8 -> 9 open (5 analog)   <- here      bus 2.2 -> 12 open (8 analog)
+    #   bus 2.0 -> 13                               bus 2.6 -> 13
+    # all at 0 violations. The differences are draws from a chaotic map rather than points
+    # on a curve, so this is the best sample and not an optimum -- but it is the best
+    # sample of six, and 1.8 still leaves the I2C spine its via lane.
+    ADC_BUS_CH = 1.8
     assert ADC_BUS_CH >= EDGE_KEEP, "the bus channel is also the part-to-edge keepout"
     _adc_x = STRIP_X1 + ADC_BUS_CH + 2.8                       # 2.8 = half the measured cell
     for k in range(5):
