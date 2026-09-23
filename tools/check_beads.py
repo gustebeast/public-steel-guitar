@@ -109,7 +109,8 @@ _ex("hardware",
     leg_pogo__M_RECESS="button head height + 0.8, buried under the tenon's flat",
     leg_pogo__M_HEAD_SEAT="the head recess floor, from cadkit's button head",
     leg_pogo__M_END="how far the screw's hole runs past the insert, not a wall",
-    leg_pogo___D="sqrt(0.5) -- a direction cosine for the tenon's diagonal, not a length")
+    leg_pogo___D="sqrt(0.5) -- a direction cosine for the tenon's diagonal, not a length",
+    bar_latch__PAD_SIDE="+-1: which way the latch faces, a SIGN and not a length")
 _ex("clearance",
     leg_pogo__CLR="board / connector slip fit in its printed pocket",
     leg_pogo___WOFF="air between two conductors in the bundle -- wire, not printed",

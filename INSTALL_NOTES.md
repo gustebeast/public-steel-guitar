@@ -99,3 +99,26 @@ pocket only where it ends up left it gouging up to 396 mm³ of the tenon on the 
 past. The pocket is now swept along the whole install stroke. The part reads CLEAN at
 rest and CLEAN fully withdrawn, which is exactly why no static check caught it —
 `leg_pogo` now sweeps the stroke instead.
+
+## Latches — ALL ON ONE SIDE
+
+Every latch in the instrument faces the same way: the leg-to-body-adapter latch
+(`leg_latch.BUTTON_SIDE`) and the pedal bar's collar yoke (`bar_latch.PAD_SIDE`), and
+the two are asserted equal so they cannot drift apart. Both constants are the single
+place each module says which way round it is.
+
+- **Where:** `leg_latch`, `bar_latch`. Currently **+Y**.
+- **Why that side:** the latches are not worked in playing position. They are worked with
+  the instrument **upside down in its case**, taking parts off for storage, and the plan
+  is for the **pedal bar to be the near side** as you do that — you approach from the
+  playing side, grab the instrument, flip it, and it goes into the case bar-first. The
+  old arrangement put the bar on the far side, which meant walking round the instrument
+  before the flip. One side for every latch is what makes the pass work without
+  reaching over.
+- **Why it is not just ergonomics:** the latch and the leg harness share the tenon. Each
+  takes one of the tenon's Y middles (`leg_pogo.DROP_OFF`, `ROUTE_OFF`), so moving a
+  latch moves the harness with it. They cannot be changed independently.
+- ⚠ **Watch the bar's seat stop on a first print.** With the pad on +Y the collar's rail
+  slots open at the bed, so their closed end — the face the collar seats against — is a
+  14.3 mm² ceiling 31.45 in from the bed. It is left flat because the collar must seat on
+  a face, not a ridge. If it droops, the collar seats slightly deep.
