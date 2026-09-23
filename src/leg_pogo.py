@@ -579,7 +579,7 @@ def _gable(j, t0, t1, s0, s1, d0, d1, up):
     rotated onto the diagonal that box was the diamond's AABB, so the roof came out as
     a wide axis-aligned triangle floating clear of the slot (two cutouts in section,
     not one)."""
-    assert up[1] > 0.99, "the gable assumes a +Y build"
+    assert abs(up[1]) > 0.99, "this assumes the host builds along Y, either way up"
     assert abs((j.ang % 90.0) - 45.0) < 1e-6, (
         "the cavity is no longer on the diagonal, so its ceiling is flat again and "
         "this owes it a real gable")
@@ -607,6 +607,15 @@ def host_negatives(j, up=None, deep=F_DEEP):
     # same reason the tenon's own cavities need no roof (see _gable).
     out = out.union(j.box(FB_T0 - CLR, FB_T1 + CLR, FB_S0 - CLR, FB_S1 + CLR,
                           F_BOT, F_TOP + 0.01))
+    # AN ACCESS CHANNEL FOR THE INSERT. The heat-set goes in from the mortise side,
+    # down the same axis the screw uses -- but its pocket is O6 and everything above
+    # it was the board pocket's local wall, which leaves 2.20 of radius against the
+    # 2.95 the insert needs. It could not physically reach its bore (user spotted it).
+    # So the pilot is carried out to the host's face. It notches the pocket's +t wall
+    # beside the screw, which is the cheap half of the trade: the wall is 18 long in s
+    # and the board is still held by the rest of it.
+    out = out.union(j.bore_d(M4.insert_pilot_d, F_HOLE_T, F_HOLE_S,
+                             F_BOT + 0.01, 0.5, up))
     return out.union(female_screw(j).cutter(up))
 
 
