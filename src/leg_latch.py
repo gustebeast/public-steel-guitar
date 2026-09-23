@@ -583,7 +583,20 @@ def adapter_pocket() -> cq.Workplane:
     on -- pure shear, no cam-out, so a hard lift cannot pop the latch.
 
     Open to the BORE (not to the mouth): the hook enters by riding the bore
-    retracted for RUN, then springing out into this."""
+    retracted for RUN, then springing out into this.
+
+    ⚠ ITS OUTER END IS A 91.8 mm^2 BRIDGE, span 6.90, since the adapter flipped to
+    ADAPTER_UP = -Y (2026-09-23). The pocket is a blind radial slot and that end is
+    the last thing the print reaches. It cannot be gabled: the end sits 2.66 from the
+    adapter's own -Y face, and a 45 roof over 6.90 of span wants 3.45 of depth -- so
+    there is 1.06 to spend against 3.45 needed. What it CAN do is MOVE. On the +Y side
+    of the leg this same end lands near the bed and is a floor again, taking the part
+    to 5 ceilings / 74.8 mm^2 / worst span 1.60 with no ridge ramp either (measured,
+    2026-09-23). See BUTTON_SIDE, and leg_stack.ADAPTER_UP for why the flip was worth
+    this in the meantime.
+
+    Until then it droops into a clearance volume 42 mm deep with the hook's throw
+    under it -- tolerable, not fine."""
     # Reaches in past the bore on purpose: inside the bore there is nothing to
     # remove (that is the mortise), so this cuts only the wall the hook stands in.
     return _band(0.0, POCKET_R, Z_HOOK_LEDGE - CLR, Z_HOOK_LEAD + CLR,
@@ -593,8 +606,13 @@ def adapter_pocket() -> cq.Workplane:
 def mouth_chamfer() -> cq.Workplane:
     """Cut in the BODY ADAPTER: a 45-degree chamfer round the mouth, across the latch
     band only (see MOUTH_CH). The ramp's printed stairs then meet a flat slope, not
-    a square corner. Its faces look into the bore and down, and the adapter prints
-    button face DOWN, so in the print they face up: no overhang."""
+    a square corner.
+
+    Its faces look into the bore and down. The adapter printed button face DOWN until
+    2026-09-23, so in the print they faced UP: no overhang at all. Since ADAPTER_UP
+    flipped they face DOWN and ARE overhangs -- but at the 45 this chamfer is cut to,
+    so they carry themselves, and neither check_ceilings nor check_floating reports
+    anything from this cone."""
     lo = _bore_wire(Z_BUTT - 1.0, MOUTH_CH + 1.0, shrink=0.0)
     hi = _bore_wire(Z_BUTT + MOUTH_CH, 0.0, shrink=0.0)
     cone = cq.Workplane("XY").add(cq.Solid.makeLoft([lo, hi], True))
