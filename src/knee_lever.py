@@ -1822,7 +1822,13 @@ KEEP_HEAD   = 3 * D.NOZZLE_D        # 2.4 of 45 deg flare at the top: the coil c
 KEEP_WOUND_D = 2 * (KEEP_POST_D + CANB_BUNDLE_OD) / 2.0 + CANB_BUNDLE_OD   # 10.6 wound OD
 KEEP_WEB_T  = KEEP_WOUND_D          # the web is as wide as the WIND it carries (user):
                                     # a 1.6 fin under a 10.6 coil was a fin, not a base
-KEEP_WEB_H  = 6 * D.NOZZLE_D        # 4.8 -- and short, so the column is mostly winding
+# HOW MUCH BARE POST THE COIL NEEDS -- which is a LAYER's worth, not the whole slack
+# (user, 2026-09-23: "you can wrap wire around itself so the outer wraps have a larger
+# diameter"). That is what a hand-wound hank does, and it takes the capacity question
+# off the column entirely: turns-per-layer set the HEIGHT, layers set the CAPACITY, and
+# layers cost nothing in Z. The post stopped needing to be tall or fat the moment this
+# was pointed out -- see wiring._coil_layers.
+KEEP_WIND_H = 8 * D.NOZZLE_D        # 6.4 -- two turns per layer at the 3.2 pitch
 # ...far enough that the WOUND CABLE clears the CRADLE, not merely the cheek. The cradle
 # stands CR_Y1 off the axle and carries the board, and a coil tucked inside its shadow
 # put every run that left it straight along its own lever's PCB. Derived, so it tracks
@@ -1859,10 +1865,25 @@ KEEP_COIL_R = (KEEP_POST_D + CANB_BUNDLE_OD) / 2.0       # wound centre line, 4.
 # THE WINDING IS AT THE TOP, right under the instrument (user, 2026-09-22: "so it
 # doesn't dangle and hit your knee"). The post's MATERIAL starts at the bed; the CABLE
 # lives at the far end of it.
+# THE POST HANGS OFF THE HOUSING'S TOP, NOT OFF THE BED (user: "raise it so it matches
+# the height of the other levers... the bottom support grows up from the lever body at a
+# 45 angle"). Every lever's housing top is FLUSH with the chassis underside, so measuring
+# down from HOUS_Z1 puts every coil in the instrument at the same height -- which is what
+# the harness strung between them wants. Measured up from the bed, as it was, the post
+# was as tall as its housing: the VERTICAL lever is 46.6 deep, so its column ran the
+# whole of that and its coil sat 18 below the horizontal ones.
+#
+# And the support becomes a 45 deg BUTTRESS off the cheek rather than a slab on the bed:
+# the same self-supporting angle the rest of the part is drawn to, carrying the post at
+# its base, taking no build-plate area at all.
 KEEP_WIND_Z1 = HOUS_Z1 - KEEP_HEAD - D.MIN_WALL_2P       # the head sits under the top
-KEEP_WIND_Z0 = HOUS_Z0 + KEEP_WEB_H                      # ...and the web ends down here
-KEEP_WIND_H = KEEP_WIND_Z1 - KEEP_WIND_Z0                # whatever is left is winding
-assert KEEP_WIND_H > 0, "the keeper's web leaves no bare column to wind on"
+KEEP_WIND_Z0 = KEEP_WIND_Z1 - KEEP_WIND_H                # ...and the winding starts here
+# The buttress is 45 deg, so it drops the post's whole offset down the cheek before it
+# lands. That offset is the budget, and the horizontal housing is the tight one.
+_KEEP_DY = KEEP_CLR_Y + KEEP_COIL_R + CANB_BUNDLE_OD / 2.0
+assert KEEP_WIND_Z0 - _KEEP_DY >= HOUS_Z0, (
+    "the keeper's 45 deg buttress lands %.2f below the housing floor"
+    % (HOUS_Z0 - (KEEP_WIND_Z0 - _KEEP_DY)))
 
 
 def cable_keeper(y_face=None, z_bed=None, x_back=None, z_top=None):
@@ -1880,13 +1901,20 @@ def cable_keeper(y_face=None, z_bed=None, x_back=None, z_top=None):
     xc = x0 + KEEP_WEB_T / 2.0      # centred in the web, whose -X face is the housing's
     yc = y0 + KEEP_COIL_R + CANB_BUNDLE_OD / 2.0 + KEEP_CLR_Y   # the coil clears the cheek
     wz1 = z1 - KEEP_HEAD - D.MIN_WALL_2P                        # winding top
-    post = cyl(KEEP_POST_D, wz1 - z0, z=z0).translate((xc, yc, 0.0))
+    wz0 = wz1 - KEEP_WIND_H                                     # ...and its base
+    # the post runs BELOW the winding base into the buttress, and the buttress bites
+    # INTO the cheek: a triangle that merely touches its supports along an edge fuses
+    # into nothing, and the housing came out as three separate solids
+    ov = D.MIN_WALL_2P
+    post = cyl(KEEP_POST_D, wz1 - wz0 + ov, z=wz0 - ov).translate((xc, yc, 0.0))
     head = cq.Workplane("XY").add(cq.Solid.makeCone(
         KEEP_POST_D / 2.0, KEEP_POST_D / 2.0 + KEEP_HEAD, KEEP_HEAD,
         cq.Vector(xc, yc, wz1), cq.Vector(0, 0, 1)))
-    web = box_at(KEEP_WEB_T, yc - y0, KEEP_WEB_H,
-                 x=xc, y=(y0 + yc) / 2.0, z=z0 + KEEP_WEB_H / 2.0)
-    return post.union(head).union(web)
+    dy = yc - y0
+    pts = [(y0 - ov, wz0 - dy), (yc, wz0 + ov), (yc, wz0 - dy)]
+    but = (cq.Workplane("YZ").polyline(pts).close()
+           .extrude(KEEP_WEB_T).translate((xc - KEEP_WEB_T / 2.0, 0.0, 0.0)))
+    return post.union(head).union(but)
 
 
 def plug_pin(way, z_bot=None, z_top=None, flip=None):
@@ -1997,7 +2025,8 @@ def keeper_point(z_bed=None, x_back=None, y_face=None, z_top=None):
     z0 = HOUS_Z0 if z_bed is None else z_bed
     return (x0 + KEEP_WEB_T / 2.0,
             y0 + KEEP_COIL_R + CANB_BUNDLE_OD / 2.0 + KEEP_CLR_Y,
-            z0 + KEEP_WEB_H)
+            (HOUS_Z1 if z_top is None else z_top)
+            - KEEP_HEAD - D.MIN_WALL_2P - KEEP_WIND_H)
 
 
 def keeper_axis():
