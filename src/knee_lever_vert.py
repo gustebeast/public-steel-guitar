@@ -300,7 +300,8 @@ def _housing() -> cq.Workplane:
     # one: rotated 90 deg, its body lies along its plug's axis, so the bus arrives at
     # the wrong end and has to come round the front before it can run back up the cheek
     # to the connector. See KL.cable_guide.
-    w = w.union(KL.cable_guide(HOUS_X1, HOUS_HW_P, HOUS_Z0, HOUS_Z1))
+    w = w.union(KL.cable_guide(HOUS_X0, -HOUS_HW_N, HOUS_Z0, HOUS_Z1,
+                               sx=-1.0, sy=-1.0))
     return heal(w)                  # no printed back-stop threads any more (KL.cut_feel_rear)
 
 
