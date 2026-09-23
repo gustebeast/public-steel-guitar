@@ -1860,11 +1860,17 @@ PCB_L  = PCB_YP - PCB_YM
 # the converters crosses the analog strip. Closing it into an O gives them their own path.
 # The +X edge is NOT free -- three things bound it, all measured:
 #   1. BEARING SUPPORT. The bridge bearings span x -16.0..0.0 at z 0..16 on every string,
-#      so the band stops 1.6 mm short of them: -17.6, not the -15.0 first tried.
+#      and the ARM WALL round them is the 1.6 mm from -17.6 to -16.0. The board stops at
+#      -18.0, not -17.6: the 0.4 fit gap has to come out of the BOARD's side, because
+#      taking it from -17.6 would thin that wall to 1.2 and it is what holds the bearings
+#      that carry string tension. Wall 1.6 intact, air 0.4, board edge -18.0.
 #   2. GUIDE RODS. Five of them (strings 1/3/5/7/9) on the near row at x -20.0, 19.0 apart
-#      in y, so the band crosses the row and needs clearance holes. At Ø3.9 each hole leaves
-#      necks of 1.40 mm on the -X side and 0.45 on the +X -- about three traces through the
-#      -X neck, which is what the three digital nets need and no more.
+#      in y, so the band crosses the row and needs clearance holes -- and they are ACCESS
+#      holes, not clearance: the rods top out at z 2.80, 6.73 mm BELOW the board, but their
+#      bores run open to z 14.5, so the board covers the mouth the rod is dropped through.
+#      At Ø3.9 each hole leaves a 1.40 mm neck on the -X side and nothing on the +X, so
+#      about three traces pass each rod -- which is what the three digital nets need and no
+#      more. Installing the rods BEFORE the board would buy back the full 5.35 mm.
 #   3. PRINTABILITY. Across the strip's y range the endplate tops out at z 13.9, and the
 #      band wants z 9.3..11.13. Cutting only the board's own slot would leave a ROOF of
 #      endplate at 11.13..13.9 -- an overhang. The cut has to run to the top instead, which
@@ -1872,7 +1878,7 @@ PCB_L  = PCB_YP - PCB_YM
 #      recorded in WORKLIST (that figure was for a full-width opening).
 # O_BAND_X0 = None keeps the C. Set it to test the O; the endplate is NOT yet cut for it,
 # so the overlap gate will fail on bridge_endplate until that work is done.
-O_BAND_X0 = -17.6
+O_BAND_X0 = -18.0
 _STRIP_X0 = PCB_X0 if O_BAND_X0 is None else O_BAND_X0
 O_ROD_HOLE_D = 3.9                                     # Ø3.5 rod + 0.4 of routing clearance
 O_ROD_HOLES = [(D.guide_rod_x(i), D.string_y(i)) for i in range(D.N_STRINGS)

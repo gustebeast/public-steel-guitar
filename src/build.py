@@ -1145,6 +1145,29 @@ BODY_WORK_PARTS = SCREW_ROW_PARTS + (
     "top_plate", "pickup", "optical")   # the deck piece too: its skirt sets the bay's headroom
 
 
+def optical_work_components():
+    """The optical board and the two parts that SHAPE it -- for the O-band work.
+
+    ⚠ body_work_components WAS THE WRONG UNIT FOR THIS AND THE VIEW SHOWED IT. That set is
+    293 parts, essentially the whole instrument, and ScratchView only skips caching for
+    names matching `replaced` prefixes -- so with none declared every live part was ALSO
+    cached and rendered twice. The user saw the old C-shaped board sitting inside the new
+    O-shaped one. A live set that big also saves nothing: the cache exists to skip the
+    build, and there was almost nothing left to skip.
+
+    This is the actual unit of the work: the board, the endplate whose block it cuts into,
+    and the chassis it sits above. Scope it with
+        scope --set src.build --attr optical_work_components --crop bridge               --replaced optical_,bridge_endplate,chassis_
+    so the cache leaves those to the live build instead of duplicating them."""
+    from . import optical_pickup as OP
+    out = [("optical_pcb", OP.opt_pcb()),
+           ("optical_cable_usb", OP.opt_cables("usb")),
+           ("optical_cable_pwr", OP.opt_cables("pwr")),
+           ("bridge_endplate", PARTS["bridge_endplate"][0]())]
+    out += [(f"chassis_{i}", seg) for i, seg in enumerate(chassis_segments)]
+    return out
+
+
 def body_work_components():
     """The motor bank, the standing electronics and their harness, the chassis, the legs and
     the +X screw rows as ONE live set -- for work that runs the length of the body (the bank
