@@ -486,7 +486,15 @@ def body_adapter(sx: float = LEG_X, ly: float = LEG_Y):
     # authority on where each station's mortise actually runs -- one run for most, two short
     # runs (one per foot) for the three at each end -- and a tenon is clamped to the run it sits
     # in and kept only if that run opens the way this corner slides in.
-    _bed = ly - LEG_W / 2.0             # the adapter lies on its -Y face (ADAPTER_UP)
+    # WHICH END LEADS depends on ADAPTER_UP, so read it rather than assume it. This
+    # ramp is the one piece of adapter geometry that is shaped BY the print direction
+    # without going through a hole cutter, so if the part is ever flipped it has to
+    # follow -- put on the wrong end it would both miss the overhang and throw away
+    # engagement at the end that never needed it.
+    assert abs(ADAPTER_UP[1]) > 0.99 and abs(ADAPTER_UP[0]) < 1e-9, (
+        "the ridge ramp assumes the adapter builds along Y, either way up")
+    _uy = 1.0 if ADAPTER_UP[1] > 0 else -1.0
+    _bed = ly - _uy * LEG_W / 2.0       # the face it lies on: -Y face when it builds +Y
     _rb = LG._stub_ridge(1.0).val().BoundingBox()       # the ridge's own section, measured
     for st, y0, y1 in CH.foot_tenon_runs(sx, ly, syg):
         # (keeping off the height-screw heads and the string access channels is the MORTISE's
@@ -506,11 +514,13 @@ def body_adapter(sx: float = LEG_X, ly: float = LEG_Y):
         #
         # Only ridges that start off the bed: one whose run opens at the adapter's own -Y face
         # is printed from layer one, and ramping it would throw away engagement for nothing.
-        if y0 > _bed + 0.1:
+        _lead = y0 if _uy > 0 else y1               # the end the printer reaches FIRST
+        if abs(_lead - _bed) > 0.1:
             h = _rb.zmax                                # 8.03, the section's height in Z
+            _run = _uy * (h + 0.5)
             b = b.cut(cq.Workplane("YZ")
-                      .polyline([(y0, Z_TOP), (y0, Z_TOP + h + 0.5),
-                                 (y0 + h + 0.5, Z_TOP + h + 0.5)])
+                      .polyline([(_lead, Z_TOP), (_lead, Z_TOP + h + 0.5),
+                                 (_lead + _run, Z_TOP + h + 0.5)])
                       .close().extrude(_rb.xmax - _rb.xmin + 0.4)
                       .translate((st + _rb.xmin - 0.2, 0.0, 0.0)))
     # M4 LOCK PIN, the adapter's ONLY screw (user): it threads into an insert in the ENDPLATE
@@ -563,10 +573,38 @@ _S2 = 1.0 / math.sqrt(2.0)
 SLEEVE_UP = (0.0, -1.0, 0.0)       # both sleeves: the bed is the +Y face (at Y 65.95
                                    # on this station) and the part builds toward -Y,
                                    # so the BUTTON face is the top (user)
-ADAPTER_UP = (0.0, 1.0, 0.0)       # the adapter the OTHER way up, -Y -> +Y (user):
-                                   # button face down. Built like the sleeves, its
-                                   # latch pocket's outer skin was a 5.3 mm flat
-                                   # bridge over the hook; this way up it is a floor.
+ADAPTER_UP = (0.0, -1.0, 0.0)      # +Y -> -Y, button face UP (user, 2026-09-23).
+                                   # It built -Y -> +Y until then, for the latch
+                                   # pocket: printed button-face-up the pocket's
+                                   # outer skin is a 91.8 mm^2 flat bridge over the
+                                   # hook, and button-face-down it is a floor.
+                                   #
+                                   # WHAT CHANGED THE ANSWER IS THE RIDGES, not the
+                                   # pocket. The body tenons on the top face run
+                                   # along Y and END at the +Y face, so building
+                                   # -Y -> +Y each one STARTS in mid-air: a
+                                   # 6.60 x 8.03 section laid down in one layer.
+                                   # Ramping them 45 fixes that but spends 481 mm^3
+                                   # of tenon -- about a quarter of the full-section
+                                   # engagement on two of the three ridges -- and
+                                   # that is joinery holding the leg to the
+                                   # instrument (user). This way up all three reach
+                                   # the bed on layer one and no ramp is needed.
+                                   #
+                                   # So the trade is 481 mm^3 of engagement against
+                                   # one 91.8 mm^2 bridge buried 42 mm inside a
+                                   # clearance pocket, and the engagement wins.
+                                   # ⚠ THE BRIDGE IS NOT THE END OF THE STORY: it
+                                   # goes away entirely if the latch moves to the
+                                   # +Y side (leg_latch.BUTTON_SIDE), which drops
+                                   # this part to 5 ceilings / 74.8 mm^2 / worst
+                                   # span 1.60 with no ramp either -- measured. That
+                                   # is blocked on the POGO BOARD, which is oriented
+                                   # the way it is precisely to stay clear of the
+                                   # latch pocket (leg_pogo, "clear of the leg
+                                   # latch's pocket"); moving the latch across puts
+                                   # the two in the same room (6 overlaps, 0.4-2.2
+                                   # mm^3) until the board mirrors with it.
                                    # (The sleeve's pad recess is the mirror case --
                                    # it wants the button face UP -- which is why the
                                    # two differ.)
@@ -604,7 +642,7 @@ PRINT_UP = {"adjust_sleeve": SLEEVE_UP, "fixed_sleeve": SLEEVE_UP,
             "latch_slider": SLIDER_UP, "bar_latch_frame": BAR_FRAME_UP,
             "bar_latch_collar": BAR_COLLAR_UP}
 PRINT_ROT = {"adjust_sleeve": ((1, 0, 0), -90), "fixed_sleeve": ((1, 0, 0), -90),
-             "body_adapter": ((1, 0, 0), 90),
+             "body_adapter": ((1, 0, 0), -90),
              "adjust_tenon": ((-1, 1, 0), 90), "fixed_tenon": ((-1, 1, 0), 90),
              "latch_slider": ((0, 1, 0), -90), "bar_latch_frame": ((1, 0, 0), 0),
              "bar_latch_collar": ((1, 0, 0), -90)}
