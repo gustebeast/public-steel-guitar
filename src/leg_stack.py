@@ -613,7 +613,7 @@ SLIDER_UP = (1.0, 0.0, 0.0)        # the latch slider builds -X -> +X (user): it
                                    # whose pad wing hung from its tip in mid-air.
 BAR_FRAME_UP = (0.0, 0.0, 1.0)     # the pedal bar's yoke: ring on the bed, pad and
                                    # spring lugs growing up off it (src.bar_latch)
-BAR_COLLAR_UP = (0.0, -1.0, 0.0)   # its collar builds +Y -> -Y: the bed is the +Y
+BAR_COLLAR_UP = (0.0, 1.0, 0.0)    # its collar builds -Y -> +Y: the bed is the -Y
                                    # face, the same AXIS the bar prints in (the bar
                                    # runs -Y -> +Y, this the other way up). Two things
                                    # wanted that: the pad's recess, whose back wall is
@@ -633,7 +633,7 @@ PRINT_ROT = {"adjust_sleeve": ((1, 0, 0), -90), "fixed_sleeve": ((1, 0, 0), -90)
              "body_adapter": ((1, 0, 0), -90),
              "adjust_tenon": ((-1, 1, 0), 90), "fixed_tenon": ((-1, 1, 0), 90),
              "latch_slider": ((0, 1, 0), -90), "bar_latch_frame": ((1, 0, 0), 0),
-             "bar_latch_collar": ((1, 0, 0), -90)}
+             "bar_latch_collar": ((1, 0, 0), 90)}
 
 
 def _rotated(v, axis, deg):
