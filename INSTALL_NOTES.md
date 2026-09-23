@@ -49,10 +49,29 @@ only fits one way round**. The order below is not a preference; steps 2 and 4 ca
 be swapped.
 
 1. **Heat-set the coil first**, on `coil_mandrel`, before anything is crimped — the
-   coil has to pass over a bare wire end. ⚠ The harness is four LOOSE twisted wires,
-   not a jacketed cable: bind it (spiral wrap, braided sleeve or heat-shrink collars)
-   over the coiled section, or the turns splay on the barrel and the set will not
-   hold. **This binding is not yet specified — open item.**
+   coil has to pass over a bare wire end.
+
+   **The harness is not a jacketed cable, so LAY IT UP as one** (this was an open
+   item until 2026-09-23). Twist each pair at its own short lay — CAN_H with CAN_L,
+   and 5V with GND — then twist the **two pairs around each other** at roughly five
+   times that lay. That is what a 4-core cable is, and it is what makes the bundle
+   self-binding at the Ø2.4 the bores are cut for (`leg_pogo.HARNESS_D`). Nothing is
+   added over the coil, which matters: the coil lives in a Ø24.7 bore with the
+   stretched turns already near the floor, and any sleeve or spiral wrap would have
+   been spent out of that clearance.
+
+   **Then cap the lay at each crimped end with a 6 mm adhesive-lined heat-shrink
+   collar**, behind the fan-out, threaded on BEFORE the contacts are crimped. A lay
+   only unwinds from a FREE END, and after step 2 the only free ends are at the two
+   connectors — capture those and the twist cannot back off anywhere along the run.
+   A collar out in the coiled section would have been the obvious place to put one
+   and is the wrong one twice over: at the leg's lowest position only about 5 mm of
+   straight run survives at each end of the coil, and a collar caught on the barrel
+   sets as a stiff spot in a part whose whole job is to flex.
+
+   **Splay during the set is the mandrel's job, not the binding's** — `coil_mandrel`
+   is two pieces for exactly this reason, and the Ø23.0-bore sleeve holds every turn
+   through the heat and the cool (see its BOM row).
 2. **Thread the harness down the leg, then crimp.** Both ends are crimped AFTER
    threading: a fitted PHR-4 will not pass the bores it has to travel.
 3. **Plug the PHR-4 onto the male board** while the board is still in your hand. The

@@ -15,6 +15,12 @@ whose underside is open air parallel to the layers. The slicer must bridge it.
 
 WHAT DOES NOT COUNT, and this is the distinction that matters:
 
+  * MATERIAL THAT STARTS IN MID-AIR WITH NO FLAT FACE AT ALL -- the wedge caught
+    between two adjacent 45 degree cavities, which comes to a point over open
+    air. It has no downward-facing face, only the LINE two flanks share, so
+    nothing here can see it however the normals are tested. That is the other
+    half of the job and it lives in `tools/check_floating.py`, which samples the
+    SOLID instead. Run both; neither alone is cover.
   * 45 degree flanks. A dovetail undercut looks like an overhang to a crude
     point-probe (material inboard, void outboard) but is self-supporting by
     construction -- that is the whole reason the joints use 45. Testing FACE

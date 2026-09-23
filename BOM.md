@@ -857,10 +857,22 @@ twisting + the bridge-side AFE buffer, not conductor size):
 > retires the question.** Bus B feeds **eleven** sensor boards, not steppers (this
 > read "eight" until 2026-09-18 — 6 knee levers + 5 pedals, see the sensor-IC row).
 > Each is a CH32V203 (~30 mA), an MT6701 (~18 mA), a recessive SN65HVD230 (~10 mA)
-> and an LDO — about **59 mA at 3V3**, so eleven boards are 0.65 A at 3V3 and
-> roughly **105 mA at 24 V** through the bus. That is **5.2 % of PH's 2 A contact
-> rating** — the conclusion survives the correction with room to spare, which is why
-> the number was worth fixing rather than re-arguing. The
+> and an LDO — about **59 mA at 3V3**, so eleven boards are **0.65 A at 3V3**.
+>
+> ⚠ **That is also the bus current, because bus B is 5 V and the regulator is an
+> LDO.** This line read "roughly 105 mA at 24 V" until 2026-09-23, and the mistake
+> is worth naming because it is the easy one to make twice: 105 mA is what you get
+> by conserving POWER across the regulator, 0.65 A × 3V3 / 24 V. That arithmetic
+> describes a **buck**. An LDO is a series pass element — it burns the difference
+> as heat and passes the SAME current — so dropping the bus from 24 V to 5 V did
+> not divide the bus current by five, it **multiplied it by six**, to 0.65 A.
+>
+> The conclusion still holds, with a much smaller margin than the old number
+> claimed: 0.65 A is **33 % of PH's 2 A** contact rating rather than 5 %. What the
+> correction does change is that the margin is now worth watching — the leg drop's
+> **ZH is rated 1 A**, and it carries only the five pedal boards (5 × 59 mA ≈
+> **0.30 A, 30 % of ZH**), which is the reason that joint can use the smaller
+> connector at all. Adding boards to the leg drop is no longer free. The
 > 26 AWG the CAN cable already specifies sits mid-range in PH's AWG 30–24 window.
 >
 > **The two families map cleanly onto the two buses**, which is why this works: bus
@@ -906,7 +918,7 @@ from the component drawings; **bronner routes the real boards from it**).
 | **Harness header, male (side entry)** | JST **S4B-PH-SM4-TB(LF)(SN)**, LCSC **C265102** (Extended, 30k stock) | 2 | ~$0.25 | 11.9 × 6.0 (+2.6 tails) × 5.5; the PHR-4 reaches 3.6 past its mouth |
 | **Harness header, female (side entry)** | JST **S4B-ZR-SM4A-TF(LF)(SN)**, LCSC **C485354** (27k stock) | 2 | ~$0.2 | 9.0 × 5.0 (+1.5 tails) × 3.7 (eZR p.5). ZR sockets are IDC; the header also takes the **ZH crimp** housing (ZHR-4 + SZH-002T), so the two female stubs are ZH-to-PH jumpers — a second crimp family (its own contacts and die) |
 | **M4 × 20 button** + **M4 × 6 button** + **M4 heat-set inserts** | — | 2 + 2 + 4 | — | one screw per board (project PCB rule); the inserts have no self-tap fallback (`leg_pogo._INS_WHY`) |
-| **Leg harness** | **two twisted pairs** of 28 AWG 7/36 PVC hookup wire (CAN_H/CAN_L, 5V/GND), PHR-4 + SPH-002T at both ends | 1 leg run + 2 stubs | — | replaces the 10-02135 lead; crimped **after** threading, so the bores only have to pass contacts. Bundle ~Ø2.4 (`leg_pogo.HARNESS_D`); the leg's slack is heat-set into a coil on `coil_mandrel` (barrel now Ø16.8; stretched r 7.94 against a 7.2 floor). A round jacketed 4-core was rejected: the datasheeted ones that fit the bores are too fat (Alpha 86004 is Ø4.83) and none pairs CAN_H with CAN_L |
+| **Leg harness** | **two twisted pairs** of 28 AWG 7/36 PVC hookup wire (CAN_H/CAN_L, 5V/GND), **laid up as a 4-core** — the two pairs twisted around each other at ~5× the pair lay, capped by a 6 mm adhesive-lined heat-shrink collar behind each crimp — PHR-4 + SPH-002T at both ends | 1 leg run + 2 stubs | — | replaces the 10-02135 lead; crimped **after** threading, so the bores only have to pass contacts. Bundle ~Ø2.4 (`leg_pogo.HARNESS_D`); the leg's slack is heat-set into a coil on `coil_mandrel` (barrel now Ø16.8; stretched r 7.94 against a 7.2 floor). A round jacketed 4-core was rejected: the datasheeted ones that fit the bores are too fat (Alpha 86004 is Ø4.83) and none pairs CAN_H with CAN_L |
 
 **Why the male board stands on edge:** the panel shares one assembly setting (user), so
 no board may carry parts on both faces. The live JLCPCB quote (2026-09-21, 5 boards,
