@@ -13,15 +13,31 @@ WHAT COUNTS. A flat ceiling is a PLANAR face whose normal points along the build
 axis, AWAY from the bed, sitting back from the part's bed plane -- i.e. material
 whose underside is open air parallel to the layers. The slicer must bridge it.
 
+NOT ONLY THE DEAD-FLAT ONES. The face normal used to have to lie EXACTLY along the
+build axis, and that is not where the physics is: a face tilted one degree off flat is
+an 89 degree overhang, every bit as unsupported as the flat one and invisible to an
+exact test. What actually separates a fault from a feature is the 45, so that is the
+test -- a downward face is reported when its normal is within --max-tilt of straight
+down, and the tilt is printed so a 5 degree bridge reads differently from a 40 degree
+flank on its way to being fine.
+
 WHAT DOES NOT COUNT, and this is the distinction that matters:
 
   * 45 degree flanks. A dovetail undercut looks like an overhang to a crude
     point-probe (material inboard, void outboard) but is self-supporting by
     construction -- that is the whole reason the joints use 45. Testing FACE
     NORMALS instead of sampled points separates the two for free: a 45 flank's
-    normal is nowhere near the build axis.
+    normal is a full 45 off the build axis, outside the default band.
   * A pocket that opens AT the bed. That is a hole from layer one, not a
     ceiling; nothing is ever printed over air.
+
+COVERAGE IS THE FAILURE MODE, not sensitivity. Five unsupported faces went through this
+tool clean in one session -- a 178 mm^2 slab, a 26 mm^2 crescent and three discs of 8 to
+21 mm^2 -- and it had nothing to do with what counts as a ceiling. The knee levers had
+never declared a print orientation, so they were never checked at all, and the report
+said so in a coverage line at the bottom that nobody read. Both housings declare one
+now. If a part matters, give it a PRINT_UP; a clean report on a part this does not hold
+means nothing.
 
 SPAN IS WHAT DECIDES A CEILING, NOT AREA -- and reporting only area is what this tool
 got wrong for as long as it has existed. The chassis' worst-looking ceiling was 148 mm^2,
@@ -50,6 +66,7 @@ from __future__ import annotations
 
 import argparse
 import importlib
+import math
 
 from src import legs as LG
 from src.dimensions import NOZZLE_D as D_NOZZLE
@@ -119,6 +136,8 @@ DECLARED_UP = {
     "pedal_bar_a":       ("src.pedal_bar", "BAR_UP"),
     "pedal_bar_b":       ("src.pedal_bar", "BAR_UP"),
     "pedal_bar_c":       ("src.pedal_bar", "BAR_UP"),
+    "knee_housing":      ("src.knee_lever", "PRINT_UP"),
+    "kv_housing":        ("src.knee_lever_vert", "PRINT_UP"),
 }
 # The deck panels print deck-DOWN on the one declaration -- each as ONE OBJECT with its colour
 # layer, so that is the unit checked, exactly as a chassis segment is checked with its light band
@@ -201,22 +220,25 @@ def bed_plane(part, axis: str, side: int):
     return hi if side > 0 else lo
 
 
-def ceilings(part, axis: str, bed: float, side: int, tol: float = 1e-6):
-    """Planar faces normal to `axis`, facing the bed, set back from it."""
+def ceilings(part, axis: str, bed: float, side: int, max_tilt: float = 44.0,
+             tol: float = 1e-6):
+    """Faces pointing at the bed within `max_tilt` of straight down, set back from it."""
     i = AX[axis]
     out = []
     for f in part.faces().vals():
         try:
             n = f.normalAt()
         except Exception:
-            continue                      # non-planar: no flat ceiling to have
+            continue                      # no normal to speak of
         comp = (n.x, n.y, n.z)
-        # normal must lie ALONG the build axis (this is what excludes 45s)
-        if abs(abs(comp[i]) - 1.0) > tol:
+        down = comp[i] * side             # +1 is straight at the bed, 0 is a wall
+        if down <= 0:                     # must face the bed, not away from it
             continue
-        if any(abs(c) > tol for j, c in enumerate(comp) if j != i):
-            continue
-        if comp[i] * side <= 0:           # must face the bed, not away from it
+        # HOW FAR OFF FLAT, which is the whole test: 0 is a flat bridge, 45 is a
+        # self-supporting flank, and everything the slicer cannot print unaided is
+        # between them. normalAt() is unit length, so this is just its angle.
+        tilt = math.degrees(math.acos(min(1.0, down)))
+        if tilt > max_tilt:
             continue
         c = (f.Center().x, f.Center().y, f.Center().z)
         depth = (bed - c[i]) * side
@@ -224,7 +246,7 @@ def ceilings(part, axis: str, bed: float, side: int, tol: float = 1e-6):
             bb = f.BoundingBox()
             ext = [bb.xlen, bb.ylen, bb.zlen]
             span = min(e for j, e in enumerate(ext) if j != i)
-            out.append((span, f.Area(), depth, c))
+            out.append((span, f.Area(), depth, tilt, c))
     return sorted(out, reverse=True)
 
 
@@ -236,6 +258,10 @@ def main() -> int:
     ap.add_argument("--min-span", type=float, default=0.0,
                     help="ignore ceilings that bridge less than this (mm). A span at or "
                          "under one nozzle width is a bead-wide ledge, not a bridge.")
+    ap.add_argument("--max-tilt", type=float, default=44.0,
+                    help="how far off flat a downward face may point and still be "
+                         "reported (degrees). 45 is self-supporting, so the default "
+                         "sits just under it; 0 restores the old flat-only test.")
     a = ap.parse_args()
 
     names = list(PARTS)
@@ -249,18 +275,19 @@ def main() -> int:
         part = build()
         if bed is None:
             bed = bed_plane(part, axis, side)
-        found = [c for c in ceilings(part, axis, bed, side)
+        found = [c for c in ceilings(part, axis, bed, side, a.max_tilt)
                  if c[1] >= a.min and c[0] >= a.min_span]
         area = sum(c[1] for c in found)
         worst = max((c[0] for c in found), default=0.0)
         print("%-22s build axis %s, bed at %+.2f : %d ceiling(s), %.1f mm^2, "
               "worst span %.2f mm" % (nm, axis.upper(), bed, len(found), area, worst))
-        for span, ar, depth, c in found:
+        for span, ar, depth, tilt, c in found:
             flag = "  <-- ON THE BED" if depth < 0.6 else ""
             if span <= D_NOZZLE + 1e-6:
                 flag += "  (one bead wide: a ledge, not a bridge)"
-            print("    span %6.2f mm  %8.1f mm^2  %6.2f mm in from the bed  "
-                  "at (%.1f, %.1f, %.1f)%s" % (span, ar, depth, c[0], c[1], c[2], flag))
+            print("    span %6.2f mm  %8.1f mm^2  %5.1f deg off flat  %6.2f mm in from "
+                  "the bed  at (%.1f, %.1f, %.1f)%s"
+                  % (span, ar, tilt, depth, c[0], c[1], c[2], flag))
         total += len(found)
     if not total:
         print("\nno flat ceilings above the threshold.")

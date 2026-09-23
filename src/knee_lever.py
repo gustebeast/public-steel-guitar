@@ -994,6 +994,15 @@ HOUS_HW = max(abs(HS_YC) + HS_CART_WY / 2 + HS_CLR + HS_HOUS_WALL,
 #           face, so the old 1.0 "skin" was only an empty recess over each bearing.
 HOUS_Z1 = HOUS_TOP_Z                                     # +12.0, the seat roof (was 9.6; flush: BODY_Z
 #           = HUB_TOP + 2.4 — the designed 2.4 stands between lever and body)
+# PRINT ORIENTATION (the record, declared once per part) -- the housing goes on the bed
+# on its FLOOR and builds +Z, in world coordinates. It is written here rather than
+# transcribed into a checker because it is a design fact: every 45 in this module is
+# drawn self-supporting AGAINST THIS, the keeper's foot is sized "on the bed" at
+# HOUS_Z0, and the buttress "grows up from the print bed". A part that is ever
+# re-oriented brings this declaration along with it, and tools.check_ceilings reads it
+# by name (src.leg_stack's SLEEVE_UP and friends set the pattern).
+PRINT_UP = (0.0, 0.0, 1.0)
+
 HOUS_Z0 = min((HS_Z - HS_PISTON_WZ / 2) + _FEEL_DZ - HS_CLR - HS_HOUS_WALL,   # the cartridges
               (CHIP_DROP - PCB_WZ) - 4 * D.NOZZLE_D)                      # the board + its floor
 #           ^ = HS_FLOOR_Z placed, or PCB_Z0 - CR_FLOOR_T (both defined below). The cartridges
