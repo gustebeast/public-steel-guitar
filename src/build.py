@@ -1282,7 +1282,10 @@ def lever_bus_nodes():
         else:
             def pin(w, _K=KV):
                 return KL.plug_pin(w, _K.HOUS_Z0, _K.HOUS_Z1)
-            lace = KL.keeper_point(KV.HOUS_Z0, KV.HOUS_X0, KV.HOUS_HW_P)
+            # ...WITH ITS OWN HOUSING TOP. Left off, keeper_point fell back to the
+            # HORIZONTAL lever's, and since the winding is measured DOWN from the top,
+            # LKV's coil hung 19.6 below its own column (user).
+            lace = KL.keeper_point(KV.HOUS_Z0, KV.HOUS_X0, KV.HOUS_HW_P, KV.HOUS_Z1)
         plug = pin((KL.CONN_N + 1) / 2.0)
         # the plug's wires leave along local -X (the mouth faces -X), posed the same way
         p = _pose(kind, sx, sy, mirrored, plug)
@@ -1303,10 +1306,14 @@ def lever_bus_nodes():
         # there is already a corner to rest on, and a corner is a contact surface like
         # any other. Tried its own KEEPER column first: that sits on the connector
         # cheek, so turning there means arriving through the body (66 mm3).
+        # ...AND AT THE COLUMN'S OWN HEIGHT, so the run reaches the corner level and
+        # goes straight on. Off it, the cable drops in Z to round the corner and climbs
+        # back for the connector, for no reason a part gives it (user).
         _off = KL.CANB_BUNDLE_OD / 2.0 + D.MIN_WALL
         guide = (_pose(kind, sx, sy, mirrored,
                        (KV.HOUS_X0 - _off, -KV.HOUS_HW_N - _off,
-                        KL.keeper_point(KV.HOUS_Z0, KV.HOUS_X0, KV.HOUS_HW_P)[2]))
+                        KL.keeper_point(KV.HOUS_Z0, KV.HOUS_X0, KV.HOUS_HW_P,
+                                        KV.HOUS_Z1)[2]))
                  if kind != "kl" else None)
         out.append((name, p, l, d, ka, pa, pins, KL.plug_standoff(),
                     ca, KL.cheek_bypass(), guide))
