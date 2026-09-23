@@ -1172,9 +1172,28 @@ def _parts():
                                  ("Cs%d6" % t, 1.90, -_near, 270.0),
                                  ("Cs%d1" % t, 3.10, -_near, 270.0),   # AVDD, pin 1 at +X low
                                  # +X column on end: AREG (pin 2, y -0.75) rail pad on top,
-                                 # VREF (pin 3, y -0.25) rail pad at the bottom
-                                 ("Cs%d3" % t, _rx, -1.20, 270.0),
-                                 ("Cs%d5" % t, _rx, 0.90, 90.0)):
+                                 # VREF (pin 3, y -0.25) rail pad at the bottom.
+                                 # ⚠ THESE TWO dy ARE THE ANALOG WALL'S DOORS. With Cs<k>1
+                                 # at -_near the three of them form a wall between the
+                                 # op-amp column and the converter, and the runs that have
+                                 # to cross it are FOUR per quad. At the original -1.20 and
+                                 # 0.90 its gaps held three tracks -- permanently one short,
+                                 # in all five quads, which is why fifteen of the twenty
+                                 # TIA_OUT runs had no straight path and the router dropped
+                                 # a different handful every route.
+                                 # Spreading them in y is free: the cell is pinned in x
+                                 # between the converter and the op-amps but has ~9 mm of
+                                 # slack in y. (Turning the caps FLAT was tried first and is
+                                 # reverted -- it opened the same doors and drove the column
+                                 # 0.92 mm east into U1..U5, ten pads shorted by 65 um.)
+                                 # Swept, at 0 pad overlaps throughout:
+                                 #   -1.20 / 0.90 -> 3 slots, VREF run 1.49 mm
+                                 #   -1.00 / 1.80 -> 6 slots, 2.06      <- here
+                                 #   -0.73 / 2.30 -> 8 slots, 2.46
+                                 # Four runs need four slots; six is the headroom worth
+                                 # 0.57 mm of extra VREF bypass run, and eight is not.
+                                 ("Cs%d3" % t, _rx, -1.00, 270.0),
+                                 ("Cs%d5" % t, _rx, 1.80, 90.0)):
             add(ref, "ADC input AC coupling" if ref[1] in "im" else "ADC supply bypass",
                 "0402", qx + _s * dx, qy + _s * dy, rot if _s > 0 else (rot + 180.0) % 360.0)
     qx, qy = _cell(2, 1)
